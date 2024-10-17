@@ -1,0 +1,45 @@
+run_accession	sample_title	fastq_ftp	custom_name
+SRR13736571	Brn1 in Q 5toA Rep1 Input	ftp.sra.ebi.ac.uk/vol1/fastq/SRR137/071/SRR13736571/SRR13736571.fastq.gz	in_5-A_Q_Brn1_rep1
+SRR13736572	Brn1 in Q 5toA Rep2 Input	ftp.sra.ebi.ac.uk/vol1/fastq/SRR137/072/SRR13736572/SRR13736572.fastq.gz	in_5-A_Q_Brn1_rep2
+SRR13736573	Brn1 in Q 5toA Rep1 IP	ftp.sra.ebi.ac.uk/vol1/fastq/SRR137/073/SRR13736573/SRR13736573.fastq.gz	IP_5-A_Q_Brn1_rep1
+SRR13736574	Brn1 in Q 5toA Rep2 IP	ftp.sra.ebi.ac.uk/vol1/fastq/SRR137/074/SRR13736574/SRR13736574.fastq.gz	IP_5-A_Q_Brn1_rep2
+SRR13736575	Brn1 in Q HHF2 Rep1 Input	ftp.sra.ebi.ac.uk/vol1/fastq/SRR137/075/SRR13736575/SRR13736575.fastq.gz	in_HHF2_Q_Brn1_rep1
+SRR13736576	Brn1 in Q HHF2 Rep2 Input	ftp.sra.ebi.ac.uk/vol1/fastq/SRR137/076/SRR13736576/SRR13736576.fastq.gz	in_HHF2_Q_Brn1_rep2
+SRR13736577	Brn1 in Q HHF2 Rep1 IP	ftp.sra.ebi.ac.uk/vol1/fastq/SRR137/077/SRR13736577/SRR13736577.fastq.gz	IP_HHF2_Q_Brn1_rep1
+SRR13736578	Brn1 in Q HHF2 Rep2 IP	ftp.sra.ebi.ac.uk/vol1/fastq/SRR137/078/SRR13736578/SRR13736578.fastq.gz	IP_HHF2_Q_Brn1_rep2
+SRR13736579	Brn1 in Q K16Q Rep1 Input	ftp.sra.ebi.ac.uk/vol1/fastq/SRR137/079/SRR13736579/SRR13736579.fastq.gz	in_K16-Q_Q_Brn1_rep1
+SRR13736580	Brn1 in Q K16Q Rep2 Input	ftp.sra.ebi.ac.uk/vol1/fastq/SRR137/080/SRR13736580/SRR13736580.fastq.gz	in_K16-Q_Q_Brn1_rep2
+SRR13736581	Brn1 in Q K16Q Rep1 IP	ftp.sra.ebi.ac.uk/vol1/fastq/SRR137/081/SRR13736581/SRR13736581.fastq.gz	IP_K16-Q_Q_Brn1_rep1
+SRR13736582	Brn1 in Q K16Q Rep2 IP	ftp.sra.ebi.ac.uk/vol1/fastq/SRR137/082/SRR13736582/SRR13736582.fastq.gz	IP_K16-Q_Q_Brn1_rep2
+SRR13736583	Brn1 in Q R17R19A Rep1 Input	ftp.sra.ebi.ac.uk/vol1/fastq/SRR137/083/SRR13736583/SRR13736583.fastq.gz	in_R17-R19-A_Q_Brn1_rep1
+SRR13736584	Brn1 in Q R17R19A Rep2 Input	ftp.sra.ebi.ac.uk/vol1/fastq/SRR137/084/SRR13736584/SRR13736584.fastq.gz	in_R17-R19-A_Q_Brn1_rep2
+SRR13736585	Brn1 in Q R17R19A Rep1 IP	ftp.sra.ebi.ac.uk/vol1/fastq/SRR137/085/SRR13736585/SRR13736585.fastq.gz	IP_R17-R19-A_Q_Brn1_rep1
+SRR13736586	Brn1 in Q R17R19A Rep2 IP	ftp.sra.ebi.ac.uk/vol1/fastq/SRR137/086/SRR13736586/SRR13736586.fastq.gz	IP_R17-R19-A_Q_Brn1_rep2
+SRR13736587	H3 in Log Rep1 Input	ftp.sra.ebi.ac.uk/vol1/fastq/SRR137/087/SRR13736587/SRR13736587.fastq.gz	in_WT_log_H3_rep1
+SRR13736588	H3 in Log Rep2 Input	ftp.sra.ebi.ac.uk/vol1/fastq/SRR137/088/SRR13736588/SRR13736588.fastq.gz	in_WT_log_H3_rep2
+SRR13736589	H3 in Log Rep1 IP	ftp.sra.ebi.ac.uk/vol1/fastq/SRR137/089/SRR13736589/SRR13736589.fastq.gz	IP_WT_log_H3_rep1
+SRR13736590	H3 in Log Rep2 IP	ftp.sra.ebi.ac.uk/vol1/fastq/SRR137/090/SRR13736590/SRR13736590.fastq.gz	IP_WT_log_H3_rep2
+SRR13736591	H3 in Q Rep1 Input	ftp.sra.ebi.ac.uk/vol1/fastq/SRR137/091/SRR13736591/SRR13736591.fastq.gz	in_WT_Q_H3_rep1
+SRR13736592	H3 in Q Rep2 Input	ftp.sra.ebi.ac.uk/vol1/fastq/SRR137/092/SRR13736592/SRR13736592.fastq.gz	in_WT_Q_H3_rep2
+SRR13736593	H3 in Q Rep1 IP	ftp.sra.ebi.ac.uk/vol1/fastq/SRR137/093/SRR13736593/SRR13736593.fastq.gz	IP_WT_Q_H3_rep1
+SRR13736594	H3 in Q Rep2 IP	ftp.sra.ebi.ac.uk/vol1/fastq/SRR137/094/SRR13736594/SRR13736594.fastq.gz	IP_WT_Q_H3_rep2
+SRR13736595	H4Ac in Log Rep1 Input	ftp.sra.ebi.ac.uk/vol1/fastq/SRR137/095/SRR13736595/SRR13736595.fastq.gz	in_WT_log_H4ac_rep1
+SRR13736596	H4Ac in Log Rep2 Input	ftp.sra.ebi.ac.uk/vol1/fastq/SRR137/096/SRR13736596/SRR13736596.fastq.gz	in_WT_log_H4ac_rep2
+SRR13736597	H4Ac in Log Rep1 IP	ftp.sra.ebi.ac.uk/vol1/fastq/SRR137/097/SRR13736597/SRR13736597.fastq.gz	IP_WT_log_H4ac_rep1
+SRR13736598	H4Ac in Log Rep2 IP	ftp.sra.ebi.ac.uk/vol1/fastq/SRR137/098/SRR13736598/SRR13736598.fastq.gz	IP_WT_log_H4ac_rep2
+SRR13736599	H4Ac in Q Rep1 Input	ftp.sra.ebi.ac.uk/vol1/fastq/SRR137/099/SRR13736599/SRR13736599.fastq.gz	in_WT_Q_H4ac_rep1
+SRR13736600	H4Ac in Q Rep2 Input	ftp.sra.ebi.ac.uk/vol1/fastq/SRR137/000/SRR13736600/SRR13736600.fastq.gz	in_WT_Q_H4ac_rep2
+SRR13736601	H4Ac in Q Rep1 IP	ftp.sra.ebi.ac.uk/vol1/fastq/SRR137/001/SRR13736601/SRR13736601.fastq.gz	IP_WT_Q_H4ac_rep1
+SRR13736602	H4Ac in Q Rep2 IP	ftp.sra.ebi.ac.uk/vol1/fastq/SRR137/002/SRR13736602/SRR13736602.fastq.gz	IP_WT_Q_H4ac_rep2
+SRR13736603	H4Ac in Q + TSA Rep1 Input	ftp.sra.ebi.ac.uk/vol1/fastq/SRR137/003/SRR13736603/SRR13736603.fastq.gz	in_TSA_Q_H4ac_rep1
+SRR13736604	H4Ac in Q + TSA Rep2 Input	ftp.sra.ebi.ac.uk/vol1/fastq/SRR137/004/SRR13736604/SRR13736604.fastq.gz	in_TSA_Q_H4ac_rep2
+SRR13736605	H4Ac in Q +TSA Rep1 IP	ftp.sra.ebi.ac.uk/vol1/fastq/SRR137/005/SRR13736605/SRR13736605.fastq.gz	IP_TSA_Q_H4ac_rep1
+SRR13736606	H4Ac in Q +TSA Rep2 IP	ftp.sra.ebi.ac.uk/vol1/fastq/SRR137/006/SRR13736606/SRR13736606.fastq.gz	IP_TSA_Q_H4ac_rep2
+SRR13736607	Hho1 in Log Rep1 Input	ftp.sra.ebi.ac.uk/vol1/fastq/SRR137/007/SRR13736607/SRR13736607.fastq.gz	in_WT_log_Hho1_rep1
+SRR13736608	Hho1 in Log Rep2 Input	ftp.sra.ebi.ac.uk/vol1/fastq/SRR137/008/SRR13736608/SRR13736608.fastq.gz	in_WT_log_Hho1_rep2
+SRR13736609	Hho1 in Log Rep1 IP	ftp.sra.ebi.ac.uk/vol1/fastq/SRR137/009/SRR13736609/SRR13736609.fastq.gz	IP_WT_log_Hho1_rep1
+SRR13736610	Hho1 in Log Rep2 IP	ftp.sra.ebi.ac.uk/vol1/fastq/SRR137/010/SRR13736610/SRR13736610.fastq.gz	IP_WT_log_Hho1_rep2
+SRR13736611	Hho1 in Q Rep1 Input	ftp.sra.ebi.ac.uk/vol1/fastq/SRR137/011/SRR13736611/SRR13736611.fastq.gz	in_WT_Q_Hho1_rep1
+SRR13736612	Hho1 in Q Rep2 Input	ftp.sra.ebi.ac.uk/vol1/fastq/SRR137/012/SRR13736612/SRR13736612.fastq.gz	in_WT_Q_Hho1_rep2
+SRR13736613	Hho1 in Q Rep1 IP	ftp.sra.ebi.ac.uk/vol1/fastq/SRR137/013/SRR13736613/SRR13736613.fastq.gz	IP_WT_Q_Hho1_rep1
+SRR13736614	Hho1 in Q Rep2 IP	ftp.sra.ebi.ac.uk/vol1/fastq/SRR137/014/SRR13736614/SRR13736614.fastq.gz	IP_WT_Q_Hho1_rep2

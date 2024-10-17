@@ -1,0 +1,21 @@
+run_accession	sample_title	fastq_ftp	custom_name
+SRR7175367	Brn1 in Log Replicate 1 IP	ftp.sra.ebi.ac.uk/vol1/fastq/SRR717/007/SRR7175367/SRR7175367.fastq.gz	IP_WT_log_Brn1_rep1
+SRR7175368	Brn1 in Log Replicate 1 Input	ftp.sra.ebi.ac.uk/vol1/fastq/SRR717/008/SRR7175368/SRR7175368.fastq.gz	in_WT_log_Brn1_rep1
+SRR7175369	Brn1 in Log Replicate 2 IP	ftp.sra.ebi.ac.uk/vol1/fastq/SRR717/009/SRR7175369/SRR7175369.fastq.gz	IP_WT_log_Brn1_rep2
+SRR7175370	Brn1 in Log Replicate 2 Input	ftp.sra.ebi.ac.uk/vol1/fastq/SRR717/000/SRR7175370/SRR7175370.fastq.gz	in_WT_log_Brn1_rep2
+SRR7175371	Brn1 in Log Replicate 3 IP	ftp.sra.ebi.ac.uk/vol1/fastq/SRR717/001/SRR7175371/SRR7175371.fastq.gz	IP_WT_log_Brn1_rep3
+SRR7175372	Brn1 in Log Replicate 3 Input	ftp.sra.ebi.ac.uk/vol1/fastq/SRR717/002/SRR7175372/SRR7175372.fastq.gz	in_WT_log_Brn1_rep3
+SRR7175373	Brn1 in Log All Replicates Merged IP	ftp.sra.ebi.ac.uk/vol1/fastq/SRR717/003/SRR7175373/SRR7175373.fastq.gz	IP_WT_log_Brn1_repM
+SRR7175374	Brn1 in Log All Replicates Merged Input	ftp.sra.ebi.ac.uk/vol1/fastq/SRR717/004/SRR7175374/SRR7175374.fastq.gz	in_WT_log_Brn1_repM
+SRR7175375	Brn1 in Q Replicate 1 IP	ftp.sra.ebi.ac.uk/vol1/fastq/SRR717/005/SRR7175375/SRR7175375.fastq.gz	IP_WT_Q_Brn1_rep1
+SRR7175376	Brn1 in Q Replicate 1 Input	ftp.sra.ebi.ac.uk/vol1/fastq/SRR717/006/SRR7175376/SRR7175376.fastq.gz	in_WT_Q_Brn1_rep1
+SRR7175377	Brn1 in Q Replicate 2 IP	ftp.sra.ebi.ac.uk/vol1/fastq/SRR717/007/SRR7175377/SRR7175377.fastq.gz	IP_WT_Q_Brn1_rep2
+SRR7175378	Brn1 in Q Replicate 2 Input	ftp.sra.ebi.ac.uk/vol1/fastq/SRR717/008/SRR7175378/SRR7175378.fastq.gz	in_WT_Q_Brn1_rep2
+SRR7175379	Brn1 in Q Replicate 3 IP	ftp.sra.ebi.ac.uk/vol1/fastq/SRR717/009/SRR7175379/SRR7175379.fastq.gz	IP_WT_Q_Brn1_rep3
+SRR7175380	Brn1 in Q Replicate 3 Input	ftp.sra.ebi.ac.uk/vol1/fastq/SRR717/000/SRR7175380/SRR7175380.fastq.gz	in_WT_Q_Brn1_rep3
+SRR7175381	Brn1 in Q All Replicates Merged IP	ftp.sra.ebi.ac.uk/vol1/fastq/SRR717/001/SRR7175381/SRR7175381.fastq.gz	IP_WT_Q_Brn1_repM
+SRR7175382	Brn1 in Q All Replicates Merged Input	ftp.sra.ebi.ac.uk/vol1/fastq/SRR717/002/SRR7175382/SRR7175382.fastq.gz	in_WT_Q_Brn1_repM
+SRR8200046	Brn1 in SMC4-off Replicates Merged IP	ftp.sra.ebi.ac.uk/vol1/fastq/SRR820/006/SRR8200046/SRR8200046.fastq.gz	IP_SMC4-off_Q_Brn1_repM
+SRR8200047	Brn1 in SMC4-off Replicates Merged Input	ftp.sra.ebi.ac.uk/vol1/fastq/SRR820/007/SRR8200047/SRR8200047.fastq.gz	in_SMC4-off_Q_Brn1_repM
+SRR8200048	Brn1 in msn2 Replicates Merged IP	ftp.sra.ebi.ac.uk/vol1/fastq/SRR820/008/SRR8200048/SRR8200048.fastq.gz	IP_msn2_Q_Brn1_repM
+SRR8200049	Brn1 in msn2 Replicates Merged Input	ftp.sra.ebi.ac.uk/vol1/fastq/SRR820/009/SRR8200049/SRR8200049.fastq.gz	in_msn2_Q_Brn1_repM

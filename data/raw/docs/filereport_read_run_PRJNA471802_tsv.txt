@@ -1,0 +1,45 @@
+run_accession	sample_title	fastq_ftp
+SRR7175368	Brn1 in Log Replicate 1 Input	ftp.sra.ebi.ac.uk/vol1/fastq/SRR717/008/SRR7175368/SRR7175368.fastq.gz
+SRR7175369	Brn1 in Log Replicate 2 IP	ftp.sra.ebi.ac.uk/vol1/fastq/SRR717/009/SRR7175369/SRR7175369.fastq.gz
+SRR7175371	Brn1 in Log Replicate 3 IP	ftp.sra.ebi.ac.uk/vol1/fastq/SRR717/001/SRR7175371/SRR7175371.fastq.gz
+SRR7175376	Brn1 in Q Replicate 1 Input	ftp.sra.ebi.ac.uk/vol1/fastq/SRR717/006/SRR7175376/SRR7175376.fastq.gz
+SRR7175378	Brn1 in Q Replicate 2 Input	ftp.sra.ebi.ac.uk/vol1/fastq/SRR717/008/SRR7175378/SRR7175378.fastq.gz
+SRR7175384	Rpb3 in SMC4-off Replicate 1 Input	ftp.sra.ebi.ac.uk/vol1/fastq/SRR717/004/SRR7175384/SRR7175384.fastq.gz
+SRR7175386	Rpb3 in SMC4-off Replicate 2 Input	ftp.sra.ebi.ac.uk/vol1/fastq/SRR717/006/SRR7175386/SRR7175386.fastq.gz
+SRR7175388	Rpb3 in SMC4-off All Replicates Merged Input	ftp.sra.ebi.ac.uk/vol1/fastq/SRR717/008/SRR7175388/SRR7175388.fastq.gz
+SRR7175396	Rpb3 in Q Replicate 1 Input	ftp.sra.ebi.ac.uk/vol1/fastq/SRR717/006/SRR7175396/SRR7175396.fastq.gz
+SRR7175370	Brn1 in Log Replicate 2 Input	ftp.sra.ebi.ac.uk/vol1/fastq/SRR717/000/SRR7175370/SRR7175370.fastq.gz
+SRR8200047	Brn1 in SMC4-off Replicates Merged Input	ftp.sra.ebi.ac.uk/vol1/fastq/SRR820/007/SRR8200047/SRR8200047.fastq.gz
+SRR7175373	Brn1 in Log All Replicates Merged IP	ftp.sra.ebi.ac.uk/vol1/fastq/SRR717/003/SRR7175373/SRR7175373.fastq.gz
+SRR8200048	Brn1 in msn2 Replicates Merged IP	ftp.sra.ebi.ac.uk/vol1/fastq/SRR820/008/SRR8200048/SRR8200048.fastq.gz
+SRR7175375	Brn1 in Q Replicate 1 IP	ftp.sra.ebi.ac.uk/vol1/fastq/SRR717/005/SRR7175375/SRR7175375.fastq.gz
+SRR7175377	Brn1 in Q Replicate 2 IP	ftp.sra.ebi.ac.uk/vol1/fastq/SRR717/007/SRR7175377/SRR7175377.fastq.gz
+SRR7175380	Brn1 in Q Replicate 3 Input	ftp.sra.ebi.ac.uk/vol1/fastq/SRR717/000/SRR7175380/SRR7175380.fastq.gz
+SRR7175381	Brn1 in Q All Replicates Merged IP	ftp.sra.ebi.ac.uk/vol1/fastq/SRR717/001/SRR7175381/SRR7175381.fastq.gz
+SRR7175382	Brn1 in Q All Replicates Merged Input	ftp.sra.ebi.ac.uk/vol1/fastq/SRR717/002/SRR7175382/SRR7175382.fastq.gz
+SRR8200049	Brn1 in msn2 Replicates Merged Input	ftp.sra.ebi.ac.uk/vol1/fastq/SRR820/009/SRR8200049/SRR8200049.fastq.gz
+SRR7175385	Rpb3 in SMC4-off Replicate 2 IP	ftp.sra.ebi.ac.uk/vol1/fastq/SRR717/005/SRR7175385/SRR7175385.fastq.gz
+SRR8200051	Msn2 in Q Replicates Merged Input	ftp.sra.ebi.ac.uk/vol1/fastq/SRR820/001/SRR8200051/SRR8200051.fastq.gz
+SRR7175390	Rpb3 in Log Replicate 1 Input	ftp.sra.ebi.ac.uk/vol1/fastq/SRR717/000/SRR7175390/SRR7175390.fastq.gz
+SRR8200052	Ser2-phos in SMC4-off Replicates Merged IP	ftp.sra.ebi.ac.uk/vol1/fastq/SRR820/002/SRR8200052/SRR8200052.fastq.gz
+SRR8200055	Ser2-phos in Q Replicates Merged Input	ftp.sra.ebi.ac.uk/vol1/fastq/SRR820/005/SRR8200055/SRR8200055.fastq.gz
+SRR7175392	Rpb3 in Log Replicate 2 Input	ftp.sra.ebi.ac.uk/vol1/fastq/SRR717/002/SRR7175392/SRR7175392.fastq.gz
+SRR7175393	Rpb3 in Log All Replicates Merged IP	ftp.sra.ebi.ac.uk/vol1/fastq/SRR717/003/SRR7175393/SRR7175393.fastq.gz
+SRR7175395	Rpb3 in Q Replicate 1 IP	ftp.sra.ebi.ac.uk/vol1/fastq/SRR717/005/SRR7175395/SRR7175395.fastq.gz
+SRR7175399	Rpb3 in Q All Replicates Merged IP	ftp.sra.ebi.ac.uk/vol1/fastq/SRR717/009/SRR7175399/SRR7175399.fastq.gz
+SRR8200050	Msn2 in Q Replicates Merged IP	ftp.sra.ebi.ac.uk/vol1/fastq/SRR820/000/SRR8200050/SRR8200050.fastq.gz
+SRR8200053	Ser2-phos in SMC4-off Replicates Merged Input	ftp.sra.ebi.ac.uk/vol1/fastq/SRR820/003/SRR8200053/SRR8200053.fastq.gz
+SRR7175367	Brn1 in Log Replicate 1 IP	ftp.sra.ebi.ac.uk/vol1/fastq/SRR717/007/SRR7175367/SRR7175367.fastq.gz
+SRR7175372	Brn1 in Log Replicate 3 Input	ftp.sra.ebi.ac.uk/vol1/fastq/SRR717/002/SRR7175372/SRR7175372.fastq.gz
+SRR7175374	Brn1 in Log All Replicates Merged Input	ftp.sra.ebi.ac.uk/vol1/fastq/SRR717/004/SRR7175374/SRR7175374.fastq.gz
+SRR7175379	Brn1 in Q Replicate 3 IP	ftp.sra.ebi.ac.uk/vol1/fastq/SRR717/009/SRR7175379/SRR7175379.fastq.gz
+SRR7175383	Rpb3 in SMC4-off Replicate 1 IP	ftp.sra.ebi.ac.uk/vol1/fastq/SRR717/003/SRR7175383/SRR7175383.fastq.gz
+SRR7175387	Rpb3 in SMC4-off All Replicates Merged IP	ftp.sra.ebi.ac.uk/vol1/fastq/SRR717/007/SRR7175387/SRR7175387.fastq.gz
+SRR7175389	Rpb3 in Log Replicate 1 IP	ftp.sra.ebi.ac.uk/vol1/fastq/SRR717/009/SRR7175389/SRR7175389.fastq.gz
+SRR7175391	Rpb3 in Log Replicate 2 IP	ftp.sra.ebi.ac.uk/vol1/fastq/SRR717/001/SRR7175391/SRR7175391.fastq.gz
+SRR7175394	Rpb3 in Log All Replicates Merged Input	ftp.sra.ebi.ac.uk/vol1/fastq/SRR717/004/SRR7175394/SRR7175394.fastq.gz
+SRR7175397	Rpb3 in Q Replicate 2 IP	ftp.sra.ebi.ac.uk/vol1/fastq/SRR717/007/SRR7175397/SRR7175397.fastq.gz
+SRR7175398	Rpb3 in Q Replicate 2 Input	ftp.sra.ebi.ac.uk/vol1/fastq/SRR717/008/SRR7175398/SRR7175398.fastq.gz
+SRR7175400	Rpb3 in Q All Replicates Merged Input	ftp.sra.ebi.ac.uk/vol1/fastq/SRR717/000/SRR7175400/SRR7175400.fastq.gz
+SRR8200046	Brn1 in SMC4-off Replicates Merged IP	ftp.sra.ebi.ac.uk/vol1/fastq/SRR820/006/SRR8200046/SRR8200046.fastq.gz
+SRR8200054	Ser2-phos in Q Replicates Merged IP	ftp.sra.ebi.ac.uk/vol1/fastq/SRR820/004/SRR8200054/SRR8200054.fastq.gz

@@ -1,0 +1,10 @@
+run_accession	sample_title	fastq_ftp
+SRR20053214	Hela, treated with DMSO, input chromatin	ftp.sra.ebi.ac.uk/vol1/fastq/SRR200/014/SRR20053214/SRR20053214_1.fastq.gz;ftp.sra.ebi.ac.uk/vol1/fastq/SRR200/014/SRR20053214/SRR20053214_2.fastq.gz
+SRR20053215	Hela, treated with CBP30, input chromatin	ftp.sra.ebi.ac.uk/vol1/fastq/SRR200/015/SRR20053215/SRR20053215_1.fastq.gz;ftp.sra.ebi.ac.uk/vol1/fastq/SRR200/015/SRR20053215/SRR20053215_2.fastq.gz
+SRR20053222	HeLa, treated with A485, IP for H3K18ac	ftp.sra.ebi.ac.uk/vol1/fastq/SRR200/022/SRR20053222/SRR20053222_1.fastq.gz;ftp.sra.ebi.ac.uk/vol1/fastq/SRR200/022/SRR20053222/SRR20053222_2.fastq.gz
+SRR20053217	HeLa, treated with DMSO, IP for H3K27ac	ftp.sra.ebi.ac.uk/vol1/fastq/SRR200/017/SRR20053217/SRR20053217_1.fastq.gz;ftp.sra.ebi.ac.uk/vol1/fastq/SRR200/017/SRR20053217/SRR20053217_2.fastq.gz
+SRR20053218	HeLa, treated with CBP30, IP for H3K27ac	ftp.sra.ebi.ac.uk/vol1/fastq/SRR200/018/SRR20053218/SRR20053218_1.fastq.gz;ftp.sra.ebi.ac.uk/vol1/fastq/SRR200/018/SRR20053218/SRR20053218_2.fastq.gz
+SRR20053219	HeLa, treated with A485, IP for H3K27ac	ftp.sra.ebi.ac.uk/vol1/fastq/SRR200/019/SRR20053219/SRR20053219_1.fastq.gz;ftp.sra.ebi.ac.uk/vol1/fastq/SRR200/019/SRR20053219/SRR20053219_2.fastq.gz
+SRR20053220	HeLa, treated with DMSO, IP for H3K18ac	ftp.sra.ebi.ac.uk/vol1/fastq/SRR200/020/SRR20053220/SRR20053220_1.fastq.gz;ftp.sra.ebi.ac.uk/vol1/fastq/SRR200/020/SRR20053220/SRR20053220_2.fastq.gz
+SRR20053221	HeLa, treated with CBP30, IP for H3K18ac	ftp.sra.ebi.ac.uk/vol1/fastq/SRR200/021/SRR20053221/SRR20053221_1.fastq.gz;ftp.sra.ebi.ac.uk/vol1/fastq/SRR200/021/SRR20053221/SRR20053221_2.fastq.gz
+SRR20053216	Hela, treated with A485, input chromatin	ftp.sra.ebi.ac.uk/vol1/fastq/SRR200/016/SRR20053216/SRR20053216_1.fastq.gz;ftp.sra.ebi.ac.uk/vol1/fastq/SRR200/016/SRR20053216/SRR20053216_2.fastq.gz
