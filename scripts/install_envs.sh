@@ -12,8 +12,8 @@ if ! ${interactive}; then set -e; fi
 
 #  Set the path to the "scripts" directory
 if ${interactive}; then
-    ## WARNING: Change this path if you're not Kris ##
-    dir_sc="${HOME}/tsukiyamalab/Kris/2023_tutorial_ChIP-seq/scripts"
+    ## WARNING: Change this path if you're not Kris and `interactive=true` ##
+    dir_sc="${HOME}/tsukiyamalab/Kris/202X_tutorial_ChIP/scripts"
 else
     dir_sc="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 fi
