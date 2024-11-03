@@ -3,6 +3,7 @@
 #  execute_download_fastqs.sh
 #  KA
 
+
 #  Run script in interactive/test mode (true) or command-line mode (false)
 interactive=false
 
@@ -14,7 +15,7 @@ if ! ${interactive}; then set -e; fi
 # shellcheck disable=SC1091
 if ${interactive}; then
     ## WARNING: Change path if you're not Kris and `interactive=true` ##
-    dir_sc="${HOME}/tsukiyamalab/Kris/202X_tutorial_ChIP/scripts"
+    dir_sc="${HOME}/tsukiyamalab/Kris/202X_protocol_ChIP/scripts"
 else
     dir_sc="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 fi
@@ -26,13 +27,13 @@ dir_fn="${dir_sc}/functions"
 
 # shellcheck disable=SC1091
 {
-    source "${dir_fn}/check_arg_supplied.sh"
+    source "${dir_fn}/check_supplied_arg.sh"
     source "${dir_fn}/check_exists_file_dir.sh"
     source "${dir_fn}/check_format_time.sh"
     source "${dir_fn}/check_int_pos.sh"
     source "${dir_fn}/check_program_in_path.sh"
     source "${dir_fn}/echo_error.sh"
-    # source "${dir_fn}/echo_warning.sh"
+    source "${dir_fn}/echo_warning.sh"
     source "${dir_fn}/exit_0.sh"
     source "${dir_fn}/exit_1.sh"
 }
@@ -41,12 +42,42 @@ dir_fn="${dir_sc}/functions"
 #  Set up paths, values, and parameters for interactive mode
 function set_interactive() {
     ## WARNING: Change the values if you're not Kris and `interactive=true` ##
-    #TODO
-    :
+    #  Set hardcoded paths, values, etc.
+    dir_bas="${HOME}/tsukiyamalab/Kris"  # ls -lhaFG "${dir_bas}"
+    nam_rep="202X_protocol_ChIP"         # echo "${nam_rep}"
+    dir_rep="${dir_bas}/${nam_rep}"      # ls -lhaFG "${dir_rep}"
+    nam_raw="data/raw"                   # echo "${nam_raw}"
+    dir_raw="${dir_rep}/${nam_raw}"      # ls -lhaFG "${dir_raw}"
+    nam_doc="docs"                       # echo "${nam_doc}"
+    dir_doc="${dir_raw}/${nam_doc}"      # ls -lhaFG "${dir_doc}"
+    nam_sym="data/symlinked"             # echo "${nam_sym}"
+    dir_sym="${dir_rep}/${nam_sym}"      # ls -lhaFG "${dir_sym}"
+    nam_log="logs"                       # echo "${nam_log}"
+    dir_log="${dir_raw}/${nam_log}"      # ls -lhaFG "${dir_log}"
+    nam_tsv="test_1.tsv"                 # echo "${nam_tsv}"
+    pth_tsv="${dir_doc}/${nam_tsv}"      # ls -lhaFG "${pth_tsv}"
+
+    #  Set hardcoded argument assignments
+    # shellcheck disable=SC2269
+    {
+        verbose=true
+        dry_run=true
+        infile="${pth_tsv}"
+        dir_out="${dir_raw}"
+        dir_sym="${dir_sym}"
+        par="slurm"
+        nam_job="download_fastqs"
+        err_out="${dir_log}"
+        max_job=6
+        time="3:00:00"
+    }
 }
 
 
 #  Initialize argument variables, check and parse arguments, etc. =============
+#  Initialize hardcoded argument variables
+sc_sub="${dir_sc}/submit_download_fastqs.sh"
+
 #  Initialize argument variables, assigning default values where applicable
 verbose=false
 dry_run=false
@@ -56,7 +87,6 @@ dir_sym=""
 par=""
 nam_job="download_fastqs"
 err_out=""
-threads=4
 max_job=6
 time="3:00:00"
 
@@ -66,8 +96,7 @@ show_help=$(
 Usage: 
   execute_download_fastqs.sh
     [--verbose] [--dry_run] --infile <str> --dir_out <str> --dir_sym <str>
-    --par <str> --threads <int> --err_out <str> --nam_job <str> --max_job <int>
-    --time <str>
+    --par <str> --err_out <str> --nam_job <str> --max_job <int> --time <str>
 
 Description:
   execute_download_fastqs.sh downloads FASTQ files listed in a TSV file and
@@ -86,8 +115,6 @@ Arguments:
   -nj, --nam_job  The name of the job (default: ${nam_job}).
   -eo, --err_out  The directory to store stderr and stdout TXT outfiles
                   (required; default: \${dir_out}/err_out).
-   -t, --threads  Number of threads for parallelization (default: ${threads}; ignored if
-                  par='serial').
   -mj, --max_job  The maximum number of jobs to run at one time (default: ${max_job};
                   ignored if par='gnu' or par='serial').
   -tm, --time     The length of time, in 'h:mm:ss' format, for the SLURM job
@@ -97,29 +124,19 @@ Notes:
   - The script requires a properly formatted TSV (tab-separated value) file
     with a header and columns for run accession numbers, custom file names, and
     URLs (FTP or HTTPS).
-  - For paired-end files, URLs should be separated by semicolons.
+  - For paired-end files, URLs in the TSV should be separated by semicolons.
   - Symbolic links are created in 'dir_sym' with names specified by the 
     'custom_name' column in the TSV file.
   - Use '--dry_run' to validate inputs without downloading files.
 
-Examples:
-  \`\`\`
-  #  Run with GNU Parallel, distributing jobs across four threads
-  bash execute_download_fastqs.sh \
-      --infile \${HOME}/path/to/PRJNA471802.tsv \
-      --dir_out \${HOME}/path/to/files_downloaded \
-      --dir_sym \${HOME}/path/to/files_symlinked \
-      --par gnu \
-      --threads 4
-  \`\`\`
-  
+Example:
   \`\`\`
   #  Run with SLURM, allowing a maximum of six jobs to run concurrently
-  bash execute_download_fastqs.sh \
-      --infile \${HOME}/path/to/PRJNA471802.tsv \
-      --dir_out \${HOME}/path/to/files_downloaded \
-      --dir_sym \${HOME}/path/to/files_symlinked \
-      --par slurm \
+  bash execute_download_fastqs.sh
+      --infile \${HOME}/path/to/PRJNA471802.tsv
+      --dir_out \${HOME}/path/to/dir_downloaded_files
+      --dir_sym \${HOME}/path/to/dir_symlinked_files
+      --par slurm
       --max_job 6
   \`\`\`
 EOM
@@ -136,13 +153,14 @@ if ${interactive}; then
 else
     while [[ "$#" -gt 0 ]]; do
         case "${1}" in
+             -v|--verbose) verbose=true;   shift 1 ;;
+            -dr|--dry_run) dry_run=true;   shift 1 ;;
              -i|--infile)  infile="${2}";  shift 2 ;;
             -do|--dir_out) dir_out="${2}"; shift 2 ;;
             -ds|--dir_sym) dir_sym="${2}"; shift 2 ;;
              -p|--par)     par="${2,,}";   shift 2 ;;
             -nj|--nam_job) nam_job="${2}"; shift 2 ;;
             -eo|--err_out) err_out="${2}"; shift 2 ;;
-             -t|--threads) threads="${2}"; shift 2 ;;
             -mj|--max_job) max_job="${2}"; shift 2 ;;
             -tm|--time)    time="${2}";    shift 2 ;;
             *)
@@ -178,22 +196,17 @@ fi
 
 case "${par}" in
     slurm)
-        check_arg_supplied -a "${threads}" -n "threads"
-        check_int_pos "${threads}" "threads"
-
         check_arg_supplied -a "${max_job}" -n "max_job"
         check_int_pos "${max_job}" "max_job"
 
         check_arg_supplied -a "${time}" -n "time"
         check_format_time "${time}"
         ;;
-    gnu)
-        check_arg_supplied -a "${threads}" -n "threads"
-        check_int_pos "${threads}" "threads"
-        ;;
+
     serial)
         :
         ;;
+
     *)
         # Invalid option for --par
         echo_error \
@@ -213,13 +226,12 @@ if ${verbose}; then
     echo ""
     echo "verbose=${verbose}"
     echo "dry_run=${dry_run}"
-    echo "infiles=${infile}"
+    echo "infile=${infile}"
     echo "dir_out=${dir_out}"
     echo "dir_sym=${dir_sym}"
     echo "par=${par}"
-    echo "err_out=${err_out}"
     echo "nam_job=${nam_job}"
-    echo "threads=${threads}"
+    echo "err_out=${err_out}"
     echo "max_job=${max_job}"
     echo "time=${time}"
     echo ""
@@ -289,82 +301,94 @@ while IFS=$'\t' read -r line; do
     fi
 done < "${infile}"
 
+#  Report array element assignments if in "verbose mode"
+if ${verbose}; then
+    echo "#######################"
+    echo "## list_acc elements ##"
+    echo "#######################"
+    echo ""
+    for el in "${list_acc[@]}"; do echo "${el}"; done
+    echo ""
+    echo ""
+
+    echo "#######################"
+    echo "## list_cus elements ##"
+    echo "#######################"
+    echo ""
+    for el in "${list_cus[@]}"; do echo "${el}"; done
+    echo ""
+    echo ""
+
+    echo "#########################"
+    echo "## list_url_1 elements ##"
+    echo "#########################"
+    echo ""
+    for el in "${list_url_1[@]}"; do echo "${el}"; done
+    echo ""
+    echo ""
+
+    echo "#########################"
+    echo "## list_url_2 elements ##"
+    echo "#########################"
+    echo ""
+    for el in "${list_url_2[@]}"; do echo "${el}"; done
+    echo ""
+    echo ""
+
+    unset el
+fi
+
 #  Limit job concurrency to the number of files, showing a warning if adjusted
 case "${par}" in
     slurm)
         if [[ ${#list_acc[@]} -lt ${max_job} ]]; then
             max_job=${#list_acc[@]}
+            echo_warning \
+                "The maximum number of SLURM jobs to run at a time, ${max_job}," \
+                "is greater than the number of FASTQ files, ${#list_acc[@]}." \
+                "Adjusting max_job to ${#list_acc[@]}."
         fi
-
-        echo_warning \
-            "The maximum number of SLURM jobs to run at a time, ${max_job}," \
-            "is greater than the number of FASTQ files, ${#list_acc[@]}." \
-            "Adjusting max_job to ${#list_acc[@]}."
-        ;;
-    gnu)
-        if [[ ${#list_acc[@]} -lt ${threads} ]]; then
-            threads=${#list_acc[@]}
-        fi
-
-        echo_warning \
-            "The maximum number of GNU Parallel jobs to run at a time," \
-            "${threads}, is greater than the number of FASTQ files," \
-            "${#list_acc[@]}. Adjusting threads to ${#list_acc[@]}."
         ;;
 esac
 
 #  Download files and create symlinks
 if [[ "${par}" == "slurm" ]]; then
+    #  Join array elements with a delimiter (e.g., comma) to handle spaces correctly
+    str_list_acc=$(IFS=','; echo "${list_acc[*]}")      # echo "${str_list_acc}"
+    str_list_url_1=$(IFS=','; echo "${list_url_1[*]}")  # echo "${str_list_url_1}"
+    str_list_url_2=$(IFS=','; echo "${list_url_2[*]}")  # echo "${str_list_url_2}"
+    str_list_cus=$(IFS=','; echo "${list_cus[*]}")      # echo "${str_list_cus}"
+
     #  Submit each job via a SLURM job array for parallel downloads
     # shellcheck disable=SC2086
     sbatch \
         --job-name=${nam_job} \
         --nodes=1 \
-        --cpus-per-task=${threads} \
+        --cpus-per-task=1 \
         --time=${time} \
         --error=${err_out}/${nam_job}.%A-%a.stderr.txt \
         --output=${err_out}/${nam_job}.%A-%a.stdout.txt \
         --array=1-${#list_acc[@]}%${max_job} \
         --export=\
-        str_list_acc="${list_acc[*]}",\
-        str_list_url_1="${list_url_1[*]}",\
-        str_list_url_2="${list_url_2[*]}",\
-        dir_out="${dir_out}",\
-        dir_sym="${dir_sym}",\
-        str_list_cus="${list_cus[*]}" \
-            submit_download_fastqs.sh
-elif [[ "${par}" == "gnu" ]]; then
-    #  Use GNU Parallel for parallel downloads
-    export dir_out dir_sym
-    par_infile=$(mktemp)
-
-    #  Set up a trap to delete temporary file on script exit
-    trap 'rm -f "${par_infile}"' EXIT
-    
+"str_list_acc=${str_list_acc},\
+str_list_url_1=${str_list_url_1},\
+str_list_url_2=${str_list_url_2},\
+dir_out=${dir_out},\
+dir_sym=${dir_sym},\
+str_list_cus=${str_list_cus}" \
+            ${sc_sub}
+else
+    #  Run serially
     for i in "${!list_acc[@]}"; do
-        echo \
+        bash "${sc_sub}" \
             "${list_acc[i]}" \
             "${list_url_1[i]}" \
             "${list_url_2[i]}" \
             "${dir_out}" \
             "${dir_sym}" \
             "${list_cus[i]}" \
-                >> "${par_infile}"
-    done
-
-    parallel --colsep ' ' -j "${threads}" --eta --bar \
-        'bash submit_download_fastqs.sh {1} {2} {3} {4} {5} {6}' \
-            :::: "${par_infile}"
-else
-    #  Run serially
-    for i in "${!list_acc[@]}"; do
-        bash submit_download_fastqs.sh \
-            "${list_acc[i]}" \
-            "${list_url_1[i]}" \
-            "${list_url_2[i]}" \
-            "${dir_out}" \
-            "${dir_sym}" \
-            "${list_cus[i]}"
+                 > "${err_out}/${nam_job}.${list_acc[i]}.stdout.txt" \
+                2> "${err_out}/${nam_job}.${list_acc[i]}.stderr.txt"
     done
 fi
 
