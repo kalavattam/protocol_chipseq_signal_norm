@@ -27,11 +27,11 @@ dir_fn="${dir_sc}/functions"
 
 # shellcheck disable=SC1091
 {
-    source "${dir_fn}/check_supplied_arg.sh"
     source "${dir_fn}/check_exists_file_dir.sh"
     source "${dir_fn}/check_format_time.sh"
     source "${dir_fn}/check_int_pos.sh"
     source "${dir_fn}/check_program_in_path.sh"
+    source "${dir_fn}/check_supplied_arg.sh"
     source "${dir_fn}/echo_error.sh"
     source "${dir_fn}/echo_warning.sh"
     source "${dir_fn}/exit_0.sh"
@@ -61,7 +61,6 @@ function set_interactive() {
     # shellcheck disable=SC2269
     {
         verbose=true
-        dry_run=true
         infile="${pth_tsv}"
         dir_out="${dir_raw}"
         dir_sym="${dir_sym}"
@@ -80,7 +79,6 @@ sc_sub="${dir_sc}/submit_download_fastqs.sh"
 
 #  Initialize argument variables, assigning default values where applicable
 verbose=false
-dry_run=false
 infile=""
 dir_out=""
 dir_sym=""
@@ -95,8 +93,8 @@ show_help=$(
     cat << EOM
 Usage: 
   execute_download_fastqs.sh
-    [--verbose] [--dry_run] --infile <str> --dir_out <str> --dir_sym <str>
-    --par <str> --err_out <str> --nam_job <str> --max_job <int> --time <str>
+    [--verbose] --infile <str> --dir_out <str> --dir_sym <str> --par <str>
+    --err_out <str> --nam_job <str> --max_job <int> --time <str>
 
 Description:
   execute_download_fastqs.sh downloads FASTQ files listed in a TSV file and
@@ -107,27 +105,26 @@ Description:
 Arguments:
    -h, --help     Display this help message and exit.
    -v, --verbose  Run script in 'verbose' mode (optional).
-  -dr, --dry_run  Run the command in 'check' mode (optional).
    -i, --infile   Input TSV file.
   -do, --dir_out  Output directory for downloaded FASTQ files
   -ds, --dir_sym  Output directory for symlinked FASTQ files.
-   -p, --par      Program for parallelization ('slurm', 'gnu', or 'serial').
+   -p, --par      Program for parallelization ('slurm' or 'serial').
   -nj, --nam_job  The name of the job (default: ${nam_job}).
   -eo, --err_out  The directory to store stderr and stdout TXT outfiles
                   (required; default: \${dir_out}/err_out).
   -mj, --max_job  The maximum number of jobs to run at one time (default: ${max_job};
-                  ignored if par='gnu' or par='serial').
+                  ignored if par='serial').
   -tm, --time     The length of time, in 'h:mm:ss' format, for the SLURM job
-                  (default: ${time}; ignored if par='gnu' or par='serial').
+                  (default: ${time}; ignored if par='serial').
 
 Notes:
   - The script requires a properly formatted TSV (tab-separated value) file
     with a header and columns for run accession numbers, custom file names, and
-    URLs (FTP or HTTPS).
-  - For paired-end files, URLs in the TSV should be separated by semicolons.
+    URLs (FTP or HTTPS). For paired-end files, URLs in the TSV should be
+    separated by semicolons. See TSV files in 202X_protocol_ChIP/data/raw/docs
+    for examples.
   - Symbolic links are created in 'dir_sym' with names specified by the 
     'custom_name' column in the TSV file.
-  - Use '--dry_run' to validate inputs without downloading files.
 
 Example:
   \`\`\`
@@ -154,7 +151,6 @@ else
     while [[ "$#" -gt 0 ]]; do
         case "${1}" in
              -v|--verbose) verbose=true;   shift 1 ;;
-            -dr|--dry_run) dry_run=true;   shift 1 ;;
              -i|--infile)  infile="${2}";  shift 2 ;;
             -do|--dir_out) dir_out="${2}"; shift 2 ;;
             -ds|--dir_sym) dir_sym="${2}"; shift 2 ;;
@@ -208,13 +204,17 @@ case "${par}" in
         ;;
 
     *)
-        # Invalid option for --par
         echo_error \
-            "Invalid selection for --par: '${par}'. Choose 'slurm', 'gnu'," \
-            "or 'serial'."
+            "Invalid selection for --par: '${par}'. Choose 'slurm' or" \
+            "'serial'."
         exit_1
         ;;
 esac
+
+#  Check that dependencies are in PATH
+check_program_in_path curl
+check_program_in_path cut
+check_program_in_path wget
 
 
 #  Do the main work ===========================================================
@@ -225,7 +225,6 @@ if ${verbose}; then
     echo "###################################"
     echo ""
     echo "verbose=${verbose}"
-    echo "dry_run=${dry_run}"
     echo "infile=${infile}"
     echo "dir_out=${dir_out}"
     echo "dir_sym=${dir_sym}"
@@ -245,7 +244,9 @@ typeset -a list_acc list_url_1 list_url_2 list_cus
 #+ available), URLs, and custom names
 iter=0
 while IFS=$'\t' read -r line; do
-    (( iter++ ))
+    (( iter++ )) || true  # Prevent script exit if `set -e` 
+    
+    if ${verbose}; then echo "Processing line #${iter}: ${line}"; fi
     
     #  Parse the header and detect available columns
     if [[ "${iter}" -eq 1 ]]; then
@@ -256,13 +257,13 @@ while IFS=$'\t' read -r line; do
             case "${headers[i]}" in
                 "run_accession") run_acc_idx=${i} ;;
                 "custom_name") custom_name_idx=${i} ;;
-                "fastq_ftp") url_column_idx=${i}; url_column='fastq_ftp'   ;;
-                "fastq_https") url_column_idx=${i}; url_column='fastq_https' ;;
+                "fastq_ftp") url_col_idx=${i}; url_col='fastq_ftp'   ;;
+                "fastq_https") url_col_idx=${i}; url_col='fastq_https' ;;
             esac
         done
         
         #  Ensure the URL column was found
-        if [[ -z "${url_column}" ]]; then
+        if [[ -z "${url_col}" ]]; then
             echo_error "No valid URL column found in header."
             exit_1
         fi
@@ -273,7 +274,7 @@ while IFS=$'\t' read -r line; do
     #  Read each column based on detected header indices
     run_acc=$(echo "${line}" | cut -f $(( run_acc_idx + 1 )))
     custom_name=$(echo "${line}" | cut -f $(( custom_name_idx + 1 )))
-    urls=$(echo "${line}" | cut -f $(( url_column_idx + 1 )))
+    urls=$(echo "${line}" | cut -f $(( url_col_idx + 1 )))
 
     #  Handle missing run_acc entries
     if [[ -z "${run_acc}" || "${run_acc}" == "#N/A" ]]; then
@@ -303,6 +304,8 @@ done < "${infile}"
 
 #  Report array element assignments if in "verbose mode"
 if ${verbose}; then
+    echo ""
+    echo ""
     echo "#######################"
     echo "## list_acc elements ##"
     echo "#######################"
@@ -353,11 +356,12 @@ esac
 
 #  Download files and create symlinks
 if [[ "${par}" == "slurm" ]]; then
-    #  Join array elements with a delimiter (e.g., comma) to handle spaces correctly
-    str_list_acc=$(IFS=','; echo "${list_acc[*]}")      # echo "${str_list_acc}"
-    str_list_url_1=$(IFS=','; echo "${list_url_1[*]}")  # echo "${str_list_url_1}"
-    str_list_url_2=$(IFS=','; echo "${list_url_2[*]}")  # echo "${str_list_url_2}"
-    str_list_cus=$(IFS=','; echo "${list_cus[*]}")      # echo "${str_list_cus}"
+    #  Join array elements with a delimiter (e.g., comma) to handle spaces
+    #+ correctly
+    str_acc=$(IFS=','; echo "${list_acc[*]}")      # echo "${str_acc}"
+    str_url_1=$(IFS=','; echo "${list_url_1[*]}")  # echo "${str_url_1}"
+    str_url_2=$(IFS=','; echo "${list_url_2[*]}")  # echo "${str_url_2}"
+    str_cus=$(IFS=','; echo "${list_cus[*]}")      # echo "${str_cus}"
 
     #  Submit each job via a SLURM job array for parallel downloads
     # shellcheck disable=SC2086
@@ -370,12 +374,12 @@ if [[ "${par}" == "slurm" ]]; then
         --output=${err_out}/${nam_job}.%A-%a.stdout.txt \
         --array=1-${#list_acc[@]}%${max_job} \
         --export=\
-"str_list_acc=${str_list_acc},\
-str_list_url_1=${str_list_url_1},\
-str_list_url_2=${str_list_url_2},\
+"str_acc=${str_acc},\
+str_url_1=${str_url_1},\
+str_url_2=${str_url_2},\
 dir_out=${dir_out},\
 dir_sym=${dir_sym},\
-str_list_cus=${str_list_cus}" \
+str_cus=${str_cus}" \
             ${sc_sub}
 else
     #  Run serially

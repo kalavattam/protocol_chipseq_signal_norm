@@ -20,10 +20,10 @@ else
     #  Convert environment variable strings back to arrays
     # shellcheck disable=SC2154
     {
-        IFS=',' read -ra list_acc <<< "${str_list_acc}"
-        IFS=',' read -ra list_url_1 <<< "${str_list_url_1}"
-        IFS=',' read -ra list_url_2 <<< "${str_list_url_2}"
-        IFS=',' read -ra list_cus <<< "${str_list_cus}"
+        IFS=',' read -ra list_acc <<< "${str_acc}"
+        IFS=',' read -ra list_url_1 <<< "${str_url_1}"
+        IFS=',' read -ra list_url_2 <<< "${str_url_2}"
+        IFS=',' read -ra list_cus <<< "${str_cus}"
     }
 
     #  Retrieve SRR, URLs, directory paths, and custom name based on imported
