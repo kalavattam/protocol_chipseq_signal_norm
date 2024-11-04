@@ -1,24 +1,24 @@
 #!/bin/bash
 
-function check_arg_supplied() {
+function check_supplied_arg() {
     local asgmt
     local name
     local show_help
 
     show_help=$(cat << EOM
 ------------------
-check_arg_supplied
+check_supplied_arg
 ------------------
 
 Description:
-  This function checks if a given argument has been assigned a value. If the
-  argument is empty or not set, it prints an error message and return exit code
-  1.
+  check_supplied_arg checks that a given argument has been assigned a value.
+  If the argument is empty or not set, it prints an error message and return
+  exit code 1.
 
 Keyword parameters:
-   -a, --asgmt  The value (i.e., assignment or "asgmt") of the argument to
-                check (required).
-   -n, --name   The name of the argument to check (required).
+  -a, --asgmt  The value (i.e., assignment or "asgmt") of the argument to
+               check (required).
+  -n, --name   The name of the argument to check (required).
 
 Returns:
   0 if the argument has been assigned a value; otherwise, returns exit code 1
@@ -32,7 +32,7 @@ Example:
   #  Check that a required argument is supplied:
   required_arg="some_value"
   
-  check_arg_supplied -a "\${required_arg}" -n "required_arg"
+  check_supplied_arg -a "\${required_arg}" -n "required_arg"
   \`\`\`
 EOM
     )
@@ -67,8 +67,6 @@ EOM
 
     #  Check that the argument has been supplied; return an informative error
     #+ message if not
-    #TODO 1/2 Need to test that this has intended behavior across a variety of
-    #TODO 2/2 conditions
     if [[ -z "${asgmt}" ]]; then
         echo "Error: --${name} is required." >&2
         return 1

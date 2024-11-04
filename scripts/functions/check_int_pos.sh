@@ -10,7 +10,9 @@ function check_int_pos() {
 check_int_pos
 -------------
 
-Check that a value is an integer greater than or equal to (gte) 1.
+Description:
+  check_int_pos check that a value is an integer greater than or equal to
+  (gte) 1.
 
 Positional parameters:
   1, value (int): The value to check (required).
@@ -21,7 +23,7 @@ Returns:
   0 if the check passes, otherwise calls return 1.
 
 Dependencies:
-  - Bash
+  - Bash or Zsh
 
 Example:
   Check that the value assigned to the argument --threads is a positive integer

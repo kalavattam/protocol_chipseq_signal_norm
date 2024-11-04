@@ -170,18 +170,18 @@ else
 fi
 
 #  Check arguments
-check_arg_supplied -a "${infile}" -n "infile"
+check_supplied_arg -a "${infile}" -n "infile"
 check_exists_file_dir "f" "${infile}" "infile"
 
-check_arg_supplied -a "${dir_out}" -n "dir_out"
+check_supplied_arg -a "${dir_out}" -n "dir_out"
 check_exists_file_dir "d" "${dir_out}" "dir_out"
 
-check_arg_supplied -a "${dir_sym}" -n "dir_sym"
+check_supplied_arg -a "${dir_sym}" -n "dir_sym"
 check_exists_file_dir "d" "${dir_sym}" "dir_sym"
 
-check_arg_supplied -a "${par}" -n "par"
+check_supplied_arg -a "${par}" -n "par"
 
-check_arg_supplied -a "${nam_job}" -n "nam_job"
+check_supplied_arg -a "${nam_job}" -n "nam_job"
 
 if [[ -n "${err_out}" ]]; then
     check_exists_file_dir "d" "${err_out}" "err_out"
@@ -192,10 +192,10 @@ fi
 
 case "${par}" in
     slurm)
-        check_arg_supplied -a "${max_job}" -n "max_job"
+        check_supplied_arg -a "${max_job}" -n "max_job"
         check_int_pos "${max_job}" "max_job"
 
-        check_arg_supplied -a "${time}" -n "time"
+        check_supplied_arg -a "${time}" -n "time"
         check_format_time "${time}"
         ;;
 

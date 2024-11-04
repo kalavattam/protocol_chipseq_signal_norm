@@ -3,6 +3,7 @@
 #  install_envs.sh
 #  KA
 
+
 #  Run script in interactive/test mode (true) or command-line mode (false)
 interactive=false
 
@@ -13,7 +14,7 @@ if ! ${interactive}; then set -e; fi
 #  Set the path to the "scripts" directory
 if ${interactive}; then
     ## WARNING: Change this path if you're not Kris and `interactive=true` ##
-    dir_sc="${HOME}/tsukiyamalab/Kris/202X_tutorial_ChIP/scripts"
+    dir_sc="${HOME}/tsukiyamalab/Kris/202X_protocol_ChIP/scripts"
 else
     dir_sc="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 fi
@@ -25,32 +26,46 @@ dir_fn="${dir_sc}/functions"
 
 # shellcheck disable=SC1091
 {    
+    source "${dir_fn}/check_installed_env.sh"
+    source "${dir_fn}/check_installed_mamba.sh"
     source "${dir_fn}/echo_error.sh"
     source "${dir_fn}/echo_warning.sh"
-    source "${dir_fn}/check_installed_mamba.sh"
-    source "${dir_fn}/check_installed_env.sh"
-    source "${dir_fn}/handle_env_deactivate.sh"
     source "${dir_fn}/handle_env_activate.sh"
+    source "${dir_fn}/handle_env_deactivate.sh"
 }
 
-function show_help() {
-    cat << EOM
-install_envs.sh --env_nam <str> [--yes]
 
-install_envs.sh sets up one of multiple Mamba environments with necessary
-programs and dependencies used in this project. For more details, see "Notes"
-below.
+function set_interactive() {
+    #  Hardcoded argument assignments
+    env_nam="env_align"
+    yes=false
+}
+
+
+#  Parse arguments ============================================================
+#  Initialize variables along with default assignments
+env_nam=""
+yes=false
+
+show_help=$(cat << EOM
+install_envs.sh
+  --env_nam <str> [--yes]
+
+Description:
+  install_envs.sh sets up one of multiple Mamba environments with necessary
+  programs and dependencies used in this project. For more details, see "Notes"
+  below.
 
 Arguments:
-  -h, --help     Display this help message.
+  -h, --help     Display this help message and exit (0).
  -en, --env_nam  Mamba environment to create: 'env_align' or 'env_analyze'
                  (required).
   -y, --yes      Automatically answer yes to mamba prompts (optional).
 
 Dependencies:
   - Programs
-    + Bash
-    + Conda and/or Mamba (Mamba is preferred)
+    + Bash or Zsh
+    + Conda or Mamba
   - Functions
     + echo_error
     + echo_warning
@@ -135,23 +150,16 @@ Example:
       --yes
   \`\`\`
 EOM
-}
-
-
-#  Parse arguments ============================================================
-#  Set argument defaults
-env_nam=""
-yes=false
+)
 
 #  Parse arguments
 if [[ -z "${1}" || "${1}" == "-h" || "${1}" == "--help" ]]; then
-    show_help
+    echo "${show_help}"
     if ! ${interactive}; then exit 0; fi
 fi
 
 if ${interactive}; then
-    env_nam="env_align"
-    yes=false
+    set_interactive
 else
     while [[ "$#" -gt 0 ]]; do
         case "${1}" in
@@ -160,7 +168,7 @@ else
             *)
                 echo "## Unknown parameter passed: ${1} ##" >&2
                 echo "" >&2
-                show_help >&2
+                echo "${show_help}" >&2
                 exit 1
                 ;;
         esac

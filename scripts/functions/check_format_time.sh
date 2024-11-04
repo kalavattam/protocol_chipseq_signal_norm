@@ -12,24 +12,25 @@ check_format_time
 Description:
   This function checks if a variable is assigned a time formatted as 'h:mm:ss' or 'hh:mm:ss'.
 
-Positional parameters:
+Positional parameter:
   1, time (str): The time string to check (required).
 
 Returns:
   0 if the time string is correctly formatted; otherwise, returns 1.
 
+Dependencies:
+  - Bash or Zsh
+
 Example:
   \`\`\`
-  check_format_time "2:30:15"
-  #  Returns 0.
+  check_format_time "2:30:15"  # Returns 0
 
-  check_format_time "25:65:80"  #FIXME
-  #  Returns 1 (invalid time format).
+  check_format_time "25:165:80"  # Returns 1 (invalid time format)
   \`\`\`
 EOM
     )
 
-    #  Parse and check function parameters
+    #  Parse and check function parameter
     if [[ -z "${1}" || "${1}" == "-h" || "${1}" == "--help" ]]; then
         echo "${show_help}"
         return 1

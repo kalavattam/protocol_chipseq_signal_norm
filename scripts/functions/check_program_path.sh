@@ -1,16 +1,16 @@
 #!/bin/bash
 
-function check_program_in_path() {
+function check_program_path() {
     local program="${1}"
     local show_help
 
     show_help=$(cat << EOM
----------------------
-check_program_in_path
----------------------
+------------------
+check_program_path
+------------------
 
 Description:
-  check_program_in_path checks if a given program is available in the system's
+  check_program_path checks if a given program is available in the system's
   PATH. If the program is not found, it prints an error message and returns
   exit code 1.
 
@@ -27,13 +27,13 @@ Dependencies:
 Example:
   \`\`\`
   #  Check if the program "samtools" is in the PATH.
-  check_program_in_path "samtools"
+  check_program_path "samtools"
   # If "samtools" is not in the PATH, an error message is printed.
   \`\`\`
 EOM
     )
 
-    #  Parse and check function parameters
+    #  Parse and check function parameter
     if [[ -z "${1}" || "${1}" == "-h" || "${1}" == "--help" ]]; then
         echo "${show_help}"
         return 0
