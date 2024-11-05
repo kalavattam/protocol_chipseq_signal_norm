@@ -7,7 +7,7 @@ debug=true
 #+ argument inputs are not checked, as this is performed by execute_*.sh
 if [[ -z "${1}" || "${1}" == "-h" || "${1}" == "--help" ]]; then
     cat << EOM
-$(basename "${0}") requires 9 positional arguments:
+$(basename "${0}") requires 8 positional arguments:
 \${1}=env_nam  # Mamba environment to activate. For default, supply "default".
 \${2}=threads  # Number of threads to use.
 \${3}=infiles  # Semicolon-separated serialized string of FASTQ infiles.

@@ -46,18 +46,17 @@ dir_fn="${dir_sc}/functions"
 set_interactive() {
     #  Set hardcoded paths, values, etc.
     ## WARNING: Change the values if you're not Kris and `interactive=true` ##
-    dir_bas="${HOME}/tsukiyamalab/Kris"  # ls -lhaFG "${dir_bas}"
-    nam_rep="202X_protocol_ChIP"         # echo "${nam_rep}"
-    dir_rep="${dir_bas}/${nam_rep}"      # ls -lhaFG "${dir_rep}"
-    nam_dat="data"
-    dir_dat="${dir_rep}/${nam_dat}"
-    nam_sym="symlinked"
-    dir_sym="${dir_dat}/${nam_sym}"
-    nam_pro="processed"
-    dir_pro="${dir_dat}/${nam_pro}"
-    nam_trm=""
-    dir_trm=""
-    nam_aln=""
+    dir_bas="${HOME}/tsukiyamalab/Kris"   # ls -lhaFG "${dir_bas}"
+    nam_rep="202X_protocol_ChIP"          # echo "${nam_rep}"
+    dir_rep="${dir_bas}/${nam_rep}"       # ls -lhaFG "${dir_rep}"
+    nam_dat="data"                        # echo "${nam_dat}"
+    dir_dat="${dir_rep}/${nam_dat}"       # ls -lhaFG "${dir_dat}"
+    nam_gen="genomes/concat"
+    nam_pro="processed"                   # echo "${nam_pro}"
+    dir_pro="${dir_dat}/${nam_pro}"       # ls -lhaFG "${dir_pro}"
+    nam_trm="2024-1104_trim_atria_FASTQ"  # echo "${nam_trm}"
+    dir_trm="${dir_pro}/${nam_trm}"       # ls -lhaFG "${dir_trm}"
+    nam_aln="2024-1104_align"
     dir_aln=""
 
     #  Set hardcoded argument assignments, etc.
@@ -507,7 +506,11 @@ if ${slurm}; then
 else
     #  If --slurm was not specified, run jobs in serial
     if ! ${interactive}; then
-        if [[ "${CONDA_DEFAULT_ENV}" != "${env_nam}" ]]; then
+        if [[
+            -z "${CONDA_DEFAULT_ENV}" || "${CONDA_DEFAULT_ENV}" == "base"
+        ]]; then
+            handle_env_activate "${env_nam}"
+        elif [[ "${CONDA_DEFAULT_ENV}" != "${env_nam}" ]]; then
             handle_env_deactivate
             handle_env_activate "${env_nam}"
         fi

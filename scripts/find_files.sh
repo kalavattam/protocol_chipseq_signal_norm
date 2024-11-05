@@ -7,8 +7,13 @@
 #  Run script in interactive/test mode (true) or command-line mode (false)
 interactive=false
 
-#  If not in interactive/test mode, set script to exit on non-zero exit codes
-if ! ${interactive}; then set -e; fi
+#  Exit on errors, unset variables, or pipe failures if not in "interactive
+#+ mode"
+if ! ${interactive}; then
+    # set -e
+    # set -euo pipefail
+    set -eo pipefail
+fi
 
 #  Set the path to the "scripts" directory
 if ${interactive}; then
@@ -26,21 +31,20 @@ dir_fn="${dir_sc}/functions"
 # shellcheck disable=SC1091
 {
     source "${dir_fn}/build_command_find.sh"
-    source "${dir_fn}/check_supplied_arg.sh"
     source "${dir_fn}/check_exists_file_dir.sh"
-    source "${dir_fn}/check_mut_excl_flags.sh"
     source "${dir_fn}/check_int_pos.sh"
+    source "${dir_fn}/check_mut_excl_flags.sh"
     source "${dir_fn}/check_program_path.sh"
+    source "${dir_fn}/check_supplied_arg.sh"
     source "${dir_fn}/pair_fastqs.sh"
 }
 
 
 set_interactive() {
     #  Hardcoded paths
-    dir_bas="${HOME}/tsukiyamalab/Kris"
-    nam_rep="202X_protocol_ChIP"
-    dir_rep="${dir_bas}/${nam_rep}"
-    dir_fil="01_sym"  # "03_bam/bowtie2/global/flag-2_mapq-1/bam/coor/SC"
+    ## WARNING: Change the values if you're not Kris and `interactive=true` ##
+    dir_rep="${HOME}/tsukiyamalab/Kris/202X_protocol_ChIP"
+    dir_fil="${dir_rep}/data/symlinked"
 
     #  Hardcoded argument assignments
     dir_fnd="${dir_rep}/${dir_fil}"
@@ -56,9 +60,6 @@ set_interactive() {
 
 
 #  Initialize argument variables, check and parse arguments, etc. =============
-#  Initialize hardcoded argument variables
-env_nam="env_align"
-
 #  Initialize variables along with default assignments
 dir_fnd=""
 pattern=""
@@ -71,9 +72,10 @@ chk_con=false
 chk_exc=false
 
 show_help=$(cat << EOM
-find_files.sh
-  --dir_fnd <str> --pattern <str> [--depth <int>] [--follow] [--fastqs]
-  [--include <str>] [--exclude <str>] [--chk_con] [--chk_exc]
+Usage:
+  find_files.sh
+    --dir_fnd <str> --pattern <str> [--depth <int>] [--follow] [--fastqs]
+    [--include <str>] [--exclude <str>] [--chk_con] [--chk_exc]
 
 Description:
   Search for files in a specified directory using the *nix 'find' command.
@@ -108,15 +110,16 @@ Dependencies:
     + sort
   - Functions
     + build_command_find
-    + check_supplied_arg
     + check_exists_file_dir
-    + check_mut_excl_flags
     + check_int_pos
+    + check_mut_excl_flags
     + check_program_path
+    + check_supplied_arg
     + pair_fastqs
 
 Note:
-  - This script doesn't handle OR operations, just AND and AND NOT.
+  - This script doesn't handle logical OR operations, just logical AND and
+    logical AND NOT.
 
 Examples:
   \`\`\`
@@ -186,21 +189,9 @@ check_program_path sort
 
 
 #  Do the main work ===========================================================
-#  Activate required environment if `interactive=true`
-if ${interactive}; then
-    if [[
-        -z "${CONDA_DEFAULT_ENV}" || "${CONDA_DEFAULT_ENV}" == "base"
-    ]]; then
-        handle_env_activate
-    elif [[ "${CONDA_DEFAULT_ENV}" != "${env_nam}" ]]; then
-        handle_env_deactivate
-        handle_env_activate "${env_nam}"
-    fi
-fi
-
 #  Build find command
 # shellcheck disable=SC2046
-find_command="$(
+cmd_find="$(
     build_command_find \
         --dir_fnd "${dir_fnd}" \
         --pattern "${pattern}" \
@@ -215,7 +206,7 @@ if ${chk_con} || ${chk_exc}; then
 
     if ${fastqs}; then
 cat << EOM
-eval "${find_command}" \\
+eval "${cmd_find}" \\
     | sort \\
     | pair_fastqs \\
     | paste -s \\
@@ -226,7 +217,7 @@ eval "${find_command}" \\
 EOM
     else
 cat << EOM
-eval "${find_command}" \\
+eval "${cmd_find}" \\
     | sort \\
     | paste -sd "," -
 
@@ -240,14 +231,14 @@ fi
 
 if ${chk_exc}; then
     echo "## Results of find command ##"
-    eval "${find_command}" | sort
+    eval "${cmd_find}" | sort
     echo ""
 
     if ${fastqs}; then
         echo \
             "## Results of find command as single semicolon- and" \
             "comma-separated string ##"
-        eval "${find_command}" \
+        eval "${cmd_find}" \
             | sort \
             | pair_fastqs \
             | paste -s \
@@ -256,7 +247,7 @@ if ${chk_exc}; then
                 -e 's/;$//'
     else
         echo "## Results of find command as single comma-separated string ##"
-        eval "${find_command}" \
+        eval "${cmd_find}" \
             | sort \
             | paste -sd "," -
         echo ""
@@ -268,7 +259,7 @@ if ${chk_exc}; then
 fi
 
 if ${fastqs}; then
-    eval "${find_command}" \
+    eval "${cmd_find}" \
         | sort \
         | pair_fastqs \
         | paste -s \
@@ -276,7 +267,7 @@ if ${fastqs}; then
             -e 's:\t::g' \
             -e 's/;$//'
 else
-    eval "${find_command}" \
+    eval "${cmd_find}" \
         | sort \
         | paste -sd "," -
 fi

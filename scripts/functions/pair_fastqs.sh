@@ -2,7 +2,7 @@
 
 #  Function to output a string of FASTQ files such that sample-specific ones
 #+ are separated by semicolons and, within semicolon-delimited substrings,
-#+ sample-specific pairs of files are separated by commas
+#+ sample-specific FASTQ pairs are separated by commas
 function pair_fastqs() {
     awk '
         BEGIN { OFS = "" }

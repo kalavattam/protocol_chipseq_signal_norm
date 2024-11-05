@@ -5,11 +5,15 @@
 
 
 #  Run script in interactive/test mode (true) or command-line mode (false)
-interactive=true
+interactive=false
 
 #  Exit on errors, unset variables, or pipe failures if not in "interactive
 #+ mode"
-if ! ${interactive}; then set -euo pipefail; fi
+if ! ${interactive}; then
+    # set -e
+    # set -euo pipefail
+    set -eo pipefail
+fi
 
 #  Set the path to the "scripts" directory
 if ${interactive}; then
@@ -150,8 +154,8 @@ Dependencies:
     + echo_warning
     + exit_0
     + exit_1
-    + handle_env_activate.sh
-    + handle_env_deactivate.sh
+    + handle_env_activate
+    + handle_env_deactivate
 
 Note:
   Atria is set to not allow read lengths less than 35 bp. It's also set to
@@ -250,6 +254,8 @@ check_program_path echo_error
 check_program_path echo_warning
 check_program_path exit_0
 check_program_path exit_1
+check_program_path handle_env_activate
+check_program_path handle_env_deactivate
 
 
 #  Parse the --infiles argument -----------------------------------------------
@@ -347,6 +353,18 @@ if ${verbose}; then
     echo ""
 fi
 
+#  Activate required environment if `interactive=true`
+if ${interactive}; then
+    if [[
+        -z "${CONDA_DEFAULT_ENV}" || "${CONDA_DEFAULT_ENV}" == "base"
+    ]]; then
+        handle_env_activate
+    elif [[ "${CONDA_DEFAULT_ENV}" != "${env_nam}" ]]; then
+        handle_env_deactivate
+        handle_env_activate "${env_nam}"
+    fi
+fi
+
 # shellcheck disable=SC1083,SC2157
 if ${slurm}; then
     #  If --slurm was specified, run jobs in parallel via individual job
@@ -407,9 +425,15 @@ if ${slurm}; then
     fi
 else
     #  If --slurm was not specified, run jobs in serial
-    if [[ "${CONDA_DEFAULT_ENV}" != "env_align" ]]; then
-        eval "$(conda shell.bash hook)"
-        conda activate env_align
+    if ! ${interactive}; then
+        if [[
+            -z "${CONDA_DEFAULT_ENV}" || "${CONDA_DEFAULT_ENV}" == "base"
+        ]]; then
+            handle_env_activate "${env_nam}"
+        elif [[ "${CONDA_DEFAULT_ENV}" != "${env_nam}" ]]; then
+            handle_env_deactivate
+            handle_env_activate "${env_nam}"
+        fi
     fi
     
     if ${dry_run} || ${verbose}; then
