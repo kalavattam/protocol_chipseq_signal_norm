@@ -10,7 +10,7 @@ check_program_path
 ------------------
 
 Description:
-  check_program_path checks if a given program is available in the system\'s
+  check_program_path checks if a given program is available in the system's
   PATH. If the program is not found, it prints an error message and returns
   exit code 1.
 

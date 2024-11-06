@@ -30,7 +30,7 @@ dir_fn="${dir_sc}/functions"
     source "${dir_fn}/check_exists_file_dir.sh"
     source "${dir_fn}/check_format_time.sh"
     source "${dir_fn}/check_int_pos.sh"
-    source "${dir_fn}/check_program_in_path.sh"
+    source "${dir_fn}/check_program_path.sh"
     source "${dir_fn}/check_supplied_arg.sh"
     source "${dir_fn}/echo_error.sh"
     source "${dir_fn}/echo_warning.sh"
@@ -212,9 +212,9 @@ case "${par}" in
 esac
 
 #  Check that dependencies are in PATH
-check_program_in_path curl
-check_program_in_path cut
-check_program_in_path wget
+check_program_path curl
+check_program_path cut
+check_program_path wget
 
 
 #  Do the main work ===========================================================

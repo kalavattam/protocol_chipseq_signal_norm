@@ -240,7 +240,9 @@ if ${slurm}; then
     check_format_time "${time}"
 fi
 
-#  Check that dependencies are in PATH
+#  Activate environment and check that dependencies are in PATH
+handle_env "${env_nam}"
+
 check_program_path awk
 check_program_path python
 check_program_path samtools
@@ -301,18 +303,6 @@ if ${verbose}; then
     echo "time=${time}"
     echo ""
     echo ""
-fi
-
-#  Activate required environment if `interactive=true`
-if ${interactive}; then
-    if [[
-        -z "${CONDA_DEFAULT_ENV}" || "${CONDA_DEFAULT_ENV}" == "base"
-    ]]; then
-        handle_env_activate
-    elif [[ "${CONDA_DEFAULT_ENV}" != "${env_nam}" ]]; then
-        handle_env_deactivate
-        handle_env_activate "${env_nam}"
-    fi
 fi
 
 # shellcheck disable=SC1083,SC2157,SC2046,SC2086

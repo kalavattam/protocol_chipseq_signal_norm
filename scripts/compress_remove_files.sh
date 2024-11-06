@@ -42,6 +42,36 @@ dir_fn="${dir_sc}/functions"
 }
 
 
+function set_interactive() {
+    #  Set hardcoded paths, values, etc.
+    ## WARNING: Change the values if you're not Kris and `interactive=true` ##
+    dir_bas="${HOME}/tsukiyamalab/Kris" 
+    dir_rep="${dir_bas}/202X_protocol_ChIP"
+    nam_qc="04_qc"
+    {
+        #  Assign variables used in file paths
+        aligner="bowtie2"
+        a_type="global"
+        flag=2
+        mapq=1
+        details="${aligner}/${a_type}/flag-${flag}_mapq-${mapq}"
+        prog="preseq"  # "ssp"
+        retain="sc"
+    }
+    dir_qc="${dir_rep}/${nam_qc}/${details}/${prog}/${retain}"
+
+    #  Set hardcoded argument assignments, etc.
+    dir_fnd="${dir_qc}/err_out"
+    pattern="*.std???.txt"  # "*.txt"  # "*.bam"
+    size=1
+    depth=1
+    include=""
+    exclude="*.gz"
+    chk_con=true
+    chk_exc=false
+}
+
+
 #  Initialize argument variables, check and parse arguments, etc. =============
 #  Initialize hardcoded argument variables
 env_nam="env_analyze"
@@ -78,10 +108,11 @@ Arguments:
                   the construction of the find command (default: ${pattern}).
   -sz, --size     Minimum size in kilobytes for compression (default: ${size}).
   -de, --depth    Maximum depth to search within the directory (optional).
-  -in, --include  Comma-separated vector of patterns to include, including
-                  shell wildcards (optional).
-  -ex, --exclude  Comma-separated vector of patterns to exclude, including
-                  shell wildcards (optional; default: ${exclude}).
+  -in, --include  Comma-separated vector of patterns to include with respect to
+                  --pattern, including shell wildcards (optional).
+  -ex, --exclude  Comma-separated vector of patterns to exclude with respect to
+                  --pattern, including shell wildcards (optional; default:
+                  ${exclude}).
   -cc, --chk_con  Check the construction of the find command and exit
                   (optional).
   -ce, --chk_exc  Check the construction and execution of the find command and
@@ -105,8 +136,8 @@ Dependencies:
     + handle_env_deactivate
 
 Notes:
-  - If --threads is assigned a posint greater than 1, then the script will use
-    GNU Parallel to parallelize file handling/processing.
+  - If --threads is assigned a positive integer greater than 1, then the script
+    will use GNU Parallel to parallelize file handling and processing.
 
 Examples:
   \`\`\`
@@ -130,33 +161,7 @@ if [[ -z "${1}" || "${1}" == "-h" || "${1}" == "--help" ]]; then
 fi
 
 if ${interactive}; then
-    #  Hardcoded paths
-    ## WARNING: Change path if you're not Kris and `interactive=true` ##
-    dir_bas="${HOME}/tsukiyamalab/Kris" 
-    nam_rep="202X_protocol_ChIP"
-    dir_rep="${dir_bas}/${nam_rep}"
-    nam_qc="04_qc"
-    {
-        #  Assign variables used in file paths
-        aligner="bowtie2"
-        a_type="global"
-        flag=2
-        mapq=1
-        details="${aligner}/${a_type}/flag-${flag}_mapq-${mapq}"
-        prog="preseq"  # "ssp"
-        retain="sc"
-    }
-    dir_qc="${dir_rep}/${nam_qc}/${details}/${prog}/${retain}"
-
-    #  Hardcoded argument assignments
-    dir_fnd="${dir_qc}/err_out"
-    pattern="*.std???.txt"  # "*.txt"  # "*.bam"
-    size=1
-    depth=1
-    include=""
-    exclude="*.gz"
-    chk_con=true
-    chk_exc=false
+    set_interactive
 else
     while [[ "$#" -gt 0 ]]; do
         case "${1}" in
@@ -190,15 +195,15 @@ if [[ -n "${depth}" ]]; then check_int_pos "${depth}"; fi
 
 check_mut_excl_flags ${chk_con} "chk_con" ${chk_exc} "chk_exc"
 
-#  Check programs
+#  Activate environment and check that dependencies are in PATH
+handle_env "${env_nam}"
+
 check_program_path find
+check_program_path parallel
 check_program_path sort
 
 
 #  Do the main work ===========================================================
-#  Activate required environment if `interactive=true`
-if ${interactive}; then handle_env "${env_nam}"; fi
-
 #  Build find command
 # shellcheck disable=SC2046
 cmd_find="$(
@@ -264,11 +269,6 @@ fi
 
 #  Execute the find command and process the files
 if [[ ${threads} -gt 1 ]]; then
-    if ! ${interactive}; then
-        handle_env "${env_nam}"
-        check_program_path parallel
-    fi
-    
     #  Using GNU Parallel, compress files larger than the size threshold and
     #+ delete empty files
     eval "${cmd_find} -size +${size}k" \

@@ -30,7 +30,6 @@ dir_fn="${dir_sc}/functions"
     source "${dir_fn}/check_installed_mamba.sh"
     source "${dir_fn}/echo_error.sh"
     source "${dir_fn}/echo_warning.sh"
-    source "${dir_fn}/handle_env_activate.sh"
     source "${dir_fn}/handle_env_deactivate.sh"
 }
 
@@ -67,12 +66,11 @@ Dependencies:
     + Bash or Zsh
     + Conda or Mamba
   - Functions
+    + check_installed_env
+    + check_installed_mamba
     + echo_error
     + echo_warning
-    + check_installed_mamba
-    + check_installed_env
     + handle_env_deactivate
-    + handle_env_activate
 
 Notes:
   - The call to mamba will be adapted to allow Rosetta translation if the

@@ -9,7 +9,7 @@ interactive=true
 
 #  Exit on errors, unset variables, or pipe failures if not in "interactive
 #+ mode"
-if ! ${interactive}; then set -euo pipefail; fi
+if ! ${interactive}; then set -eo pipefail; fi
 
 #  Set the path to the "scripts" directory
 # shellcheck disable=SC1091
@@ -38,6 +38,7 @@ dir_fn="${dir_sc}/functions"
     source "${dir_fn}/echo_warning.sh"
     source "${dir_fn}/exit_0.sh"
     source "${dir_fn}/exit_1.sh"
+    source "${dir_fn}/handle_env.sh"
     source "${dir_fn}/handle_env_activate.sh"
     source "${dir_fn}/handle_env_deactivate.sh"
 }
@@ -46,17 +47,13 @@ dir_fn="${dir_sc}/functions"
 set_interactive() {
     #  Set hardcoded paths, values, etc.
     ## WARNING: Change the values if you're not Kris and `interactive=true` ##
-    dir_bas="${HOME}/tsukiyamalab/Kris"   # ls -lhaFG "${dir_bas}"
-    nam_rep="202X_protocol_ChIP"          # echo "${nam_rep}"
-    dir_rep="${dir_bas}/${nam_rep}"       # ls -lhaFG "${dir_rep}"
-    nam_dat="data"                        # echo "${nam_dat}"
-    dir_dat="${dir_rep}/${nam_dat}"       # ls -lhaFG "${dir_dat}"
-    nam_gen="genomes/concat"
-    nam_pro="processed"                   # echo "${nam_pro}"
-    dir_pro="${dir_dat}/${nam_pro}"       # ls -lhaFG "${dir_pro}"
-    nam_trm="2024-1104_trim_atria_FASTQ"  # echo "${nam_trm}"
-    dir_trm="${dir_pro}/${nam_trm}"       # ls -lhaFG "${dir_trm}"
-    nam_aln="2024-1104_align"
+    dir_bas="${HOME}/tsukiyamalab/Kris"      # ls -lhaFG "${dir_bas}"
+    dir_rep="${dir_bas}/202X_protocol_ChIP"  # ls -lhaFG "${dir_rep}"
+    dir_dat="${dir_rep}/data"                # ls -lhaFG "${dir_dat}"
+    dir_gen="${dir_dat}/genomes/concat..."
+    dir_pro="${dir_dat}/processed"           # ls -lhaFG "${dir_pro}"
+    dir_trm="${dir_pro}/trim_atria_FASTQ"    # ls -lhaFG "${dir_trm}"
+    nam_aln="align..."
     dir_aln=""
 
     #  Set hardcoded argument assignments, etc.
@@ -198,6 +195,9 @@ Dependencies:
     + echo_warning
     + exit_0
     + exit_1
+    + handle_env
+    + handle_env_activate
+    + handle_env_deactivate
 
 Notes:
   #TODO
@@ -312,7 +312,9 @@ if ${slurm}; then
     check_format_time "${time}"
 fi
 
-#  Check that dependencies are in PATH
+#  Activate environment and check that dependencies are in PATH
+handle_env "${env_nam}"
+
 case "${aligner}" in
     bowtie2) check_program_path bowtie2 ;;
     bwa)     check_program_path bwa     ;;
@@ -421,18 +423,6 @@ if ${verbose}; then
     echo ""
 fi
 
-#  Activate required environment if `interactive=true`
-if ${interactive}; then
-    if [[
-        -z "${CONDA_DEFAULT_ENV}" || "${CONDA_DEFAULT_ENV}" == "base"
-    ]]; then
-        handle_env_activate
-    elif [[ "${CONDA_DEFAULT_ENV}" != "${env_nam}" ]]; then
-        handle_env_deactivate
-        handle_env_activate "${env_nam}"
-    fi
-fi
-
 # shellcheck disable=SC1083,SC2157
 if ${slurm}; then
     #  If --slurm was specified, run jobs in parallel via individual job
@@ -505,17 +495,6 @@ if ${slurm}; then
     fi
 else
     #  If --slurm was not specified, run jobs in serial
-    if ! ${interactive}; then
-        if [[
-            -z "${CONDA_DEFAULT_ENV}" || "${CONDA_DEFAULT_ENV}" == "base"
-        ]]; then
-            handle_env_activate "${env_nam}"
-        elif [[ "${CONDA_DEFAULT_ENV}" != "${env_nam}" ]]; then
-            handle_env_deactivate
-            handle_env_activate "${env_nam}"
-        fi
-    fi
-
     if ${dry_run} || ${verbose}; then
         echo "#################################################"
         echo "## Serial call(s) for alignment and processing ##"

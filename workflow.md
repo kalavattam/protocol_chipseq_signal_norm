@@ -81,7 +81,7 @@ if [[ -f "${pth_fas}" ]]; then rm "${pth_fas}"; fi
 <br />
 
 <details>
-<summary><i>Bash code: Write accompanying documentation.</i></summary>
+<summary><i>Bash code: Write accompanying documentation for reference.</i></summary>
 
 ```bash
 #!/bin/bash
@@ -89,7 +89,7 @@ if [[ -f "${pth_fas}" ]]; then rm "${pth_fas}"; fi
 #  This is a template example: Be sure to update paths, file names, and other
 #+ details specific to your work before running it
 cat << EOF > "${dir_idx}/docs/2024-1105.txt"
-# Bowtie 2 index generation documentation
+# Documentation: Bowtie 2 index generation
 # Date: 2024-1105
 # Author: Kris Alavattam
 
@@ -236,3 +236,125 @@ bash "${dir_scr}/compress_remove_files.sh" \
 </details>
 <br />
 
+<details>
+<summary><i>Bash code: Write accompanying documentation for reference.</i></summary>
+
+```bash
+#!/bin/bash
+
+#  Save documentation to a text file for reference
+cat << EOF > "${dir_trm}/docs/2024-1105.txt"
+# Documentation: Adapter and quality trimming with Atria 
+# Date: 2024-1105
+# Author: Kris Alavattam
+
+## Purpose
+This step uses Atria to perform adapter and quality trimming of raw FASTQ files to prepare them for read alignment.
+
+## Environment Setup
+- Activated environment: "${env_nam}"
+- Required tools: Atria, pbzip2, pigz, others
+
+## Directory Structure
+- Script directory: "${dir_scr}"
+- FASTQ input directory: "${dir_sym}"
+- Processed data directory: "${dir_trm}"
+- Log output directory: "${dir_trm}/logs"
+
+## Steps
+1. Interactive node request: grabnode (1 core, 20 GB memory, 1 day, no GPU).
+2. Environment activation: Activated "${env_nam}" using custom function handle_env_activate.
+3. Tool check: Ensured Atria and additional tools are in PATH using custom function check_program_path.
+4. Directory setup: Created output directories for trimmed FASTQ files and logs.
+5. File discovery:
+    - Found FASTQ files in "${dir_sym}" with find_files.sh.
+    - Stored file names in a string for batch processing: "${infiles}"
+    - Worked with the following files:
+        $(
+            echo "${infiles}" | tr ';,' '\n' | while read -r i; do
+                echo "        + ${i}"
+            done
+        )
+6. Run Atria for trimming:
+    - Executed the driver script execute_trim_fastqs.sh with the following options:
+        + Set output to "${dir_trm}".
+        + Wrote stderr and stdout to "${dir_trm}/logs".
+        + Used flag --slurm to submit jobs to SLURM for parallel processing.
+    - Logged driver script stdout and stderr to 2024-1105.execute.stdout.txt and 2024-1105.execute.stderr.txt.
+7. Cleanup: Moved Atria-generated logs (.log files) and metadata (.json files) to "${dir_trm}/logs". Upon cleanup, contents of "${dir_trm}":
+    \`\`\`
+    ❯ ls -lhaFG "\${dir_trm}"
+    total 6.2G
+    drwxrws--- 4 kalavatt  908 Nov  5 07:52 ./
+    drwxrws--- 3 kalavatt   34 Nov  5 07:26 ../
+    drwxrws--- 2 kalavatt    0 Nov  5 07:26 docs/
+    -rw-rw---- 1 kalavatt 343M Nov  5 07:40 in_WT_G2M_Hho1_6336_R1.atria.fastq.gz
+    -rw-rw---- 1 kalavatt 344M Nov  5 07:40 in_WT_G2M_Hho1_6336_R2.atria.fastq.gz
+    -rw-rw---- 1 kalavatt 319M Nov  5 07:41 in_WT_G2M_Hho1_6337_R1.atria.fastq.gz
+    -rw-rw---- 1 kalavatt 320M Nov  5 07:41 in_WT_G2M_Hho1_6337_R2.atria.fastq.gz
+    -rw-rw---- 1 kalavatt 283M Nov  5 07:41 in_WT_Q_Hho1_6336_R1.atria.fastq.gz
+    -rw-rw---- 1 kalavatt 284M Nov  5 07:41 in_WT_Q_Hho1_6336_R2.atria.fastq.gz
+    -rw-rw---- 1 kalavatt 225M Nov  5 07:39 in_WT_Q_Hho1_6337_R1.atria.fastq.gz
+    -rw-rw---- 1 kalavatt 225M Nov  5 07:39 in_WT_Q_Hho1_6337_R2.atria.fastq.gz
+    -rw-rw---- 1 kalavatt 370M Nov  5 07:40 IP_WT_G2M_Hho1_6336_R1.atria.fastq.gz
+    -rw-rw---- 1 kalavatt 372M Nov  5 07:40 IP_WT_G2M_Hho1_6336_R2.atria.fastq.gz
+    -rw-rw---- 1 kalavatt 350M Nov  5 07:41 IP_WT_G2M_Hho1_6337_R1.atria.fastq.gz
+    -rw-rw---- 1 kalavatt 352M Nov  5 07:41 IP_WT_G2M_Hho1_6337_R2.atria.fastq.gz
+    -rw-rw---- 1 kalavatt 406M Nov  5 07:44 IP_WT_Q_Hho1_6336_R1.atria.fastq.gz
+    -rw-rw---- 1 kalavatt 408M Nov  5 07:44 IP_WT_Q_Hho1_6336_R2.atria.fastq.gz
+    -rw-rw---- 1 kalavatt 386M Nov  5 07:44 IP_WT_Q_Hho1_6337_R1.atria.fastq.gz
+    -rw-rw---- 1 kalavatt 387M Nov  5 07:44 IP_WT_Q_Hho1_6337_R2.atria.fastq.gz
+    drwxrws--- 2 kalavatt 2.1K Nov  5 08:27 logs/
+    \`\`\`
+8. Optional cleanup: Using compress_remove_files.sh, compressed large (> 1 kb) .stdout.txt, .stderr.txt, .log, and .json files, and removed empty files (i.e., file size 0). Upon cleanup, contents of "${dir_trm}/logs":
+    \`\`\`
+    ❯ ls -lhaFG "\${dir_trm}/logs"
+    total 1.1M
+    drwxrws--- 2 kalavatt 2.1K Nov  5 08:27 ./
+    drwxrws--- 4 kalavatt  908 Nov  5 07:52 ../
+    -rw-rw---- 1 kalavatt 2.2K Nov  5 07:37 2024-1105.execute.stdout.txt.gz
+    -rw-rw---- 1 kalavatt  515 Nov  5 07:40 in_WT_G2M_Hho1_6336_R1.atria.log.gz
+    -rw-rw---- 1 kalavatt  967 Nov  5 07:40 in_WT_G2M_Hho1_6336_R1.atria.log.json.gz
+    -rw-rw---- 1 kalavatt  515 Nov  5 07:41 in_WT_G2M_Hho1_6337_R1.atria.log.gz
+    -rw-rw---- 1 kalavatt  963 Nov  5 07:41 in_WT_G2M_Hho1_6337_R1.atria.log.json.gz
+    -rw-rw---- 1 kalavatt  512 Nov  5 07:41 in_WT_Q_Hho1_6336_R1.atria.log.gz
+    -rw-rw---- 1 kalavatt  964 Nov  5 07:41 in_WT_Q_Hho1_6336_R1.atria.log.json.gz
+    -rw-rw---- 1 kalavatt  512 Nov  5 07:39 in_WT_Q_Hho1_6337_R1.atria.log.gz
+    -rw-rw---- 1 kalavatt  963 Nov  5 07:39 in_WT_Q_Hho1_6337_R1.atria.log.json.gz
+    -rw-rw---- 1 kalavatt  516 Nov  5 07:40 IP_WT_G2M_Hho1_6336_R1.atria.log.gz
+    -rw-rw---- 1 kalavatt  965 Nov  5 07:40 IP_WT_G2M_Hho1_6336_R1.atria.log.json.gz
+    -rw-rw---- 1 kalavatt  516 Nov  5 07:41 IP_WT_G2M_Hho1_6337_R1.atria.log.gz
+    -rw-rw---- 1 kalavatt  969 Nov  5 07:41 IP_WT_G2M_Hho1_6337_R1.atria.log.json.gz
+    -rw-rw---- 1 kalavatt  512 Nov  5 07:44 IP_WT_Q_Hho1_6336_R1.atria.log.gz
+    -rw-rw---- 1 kalavatt  962 Nov  5 07:44 IP_WT_Q_Hho1_6336_R1.atria.log.json.gz
+    -rw-rw---- 1 kalavatt  512 Nov  5 07:44 IP_WT_Q_Hho1_6337_R1.atria.log.gz
+    -rw-rw---- 1 kalavatt  966 Nov  5 07:44 IP_WT_Q_Hho1_6337_R1.atria.log.json.gz
+    -rw-rw---- 1 kalavatt 1.2K Nov  5 07:40 trim_fastqs.in_WT_G2M_Hho1_6336.1004855-1.stderr.txt.gz
+    -rw-rw---- 1 kalavatt  322 Nov  5 07:37 trim_fastqs.in_WT_G2M_Hho1_6336.1004855-1.stdout.txt.gz
+    -rw-rw---- 1 kalavatt 1.2K Nov  5 07:41 trim_fastqs.in_WT_G2M_Hho1_6337.1004855-2.stderr.txt.gz
+    -rw-rw---- 1 kalavatt  322 Nov  5 07:37 trim_fastqs.in_WT_G2M_Hho1_6337.1004855-2.stdout.txt.gz
+    -rw-rw---- 1 kalavatt 1.1K Nov  5 07:41 trim_fastqs.in_WT_Q_Hho1_6336.1004855-3.stderr.txt.gz
+    -rw-rw---- 1 kalavatt  319 Nov  5 07:37 trim_fastqs.in_WT_Q_Hho1_6336.1004855-3.stdout.txt.gz
+    -rw-rw---- 1 kalavatt  948 Nov  5 07:39 trim_fastqs.in_WT_Q_Hho1_6337.1004855-4.stderr.txt.gz
+    -rw-rw---- 1 kalavatt  319 Nov  5 07:37 trim_fastqs.in_WT_Q_Hho1_6337.1004855-4.stdout.txt.gz
+    -rw-rw---- 1 kalavatt 1.3K Nov  5 07:40 trim_fastqs.IP_WT_G2M_Hho1_6336.1004855-5.stderr.txt.gz
+    -rw-rw---- 1 kalavatt  322 Nov  5 07:37 trim_fastqs.IP_WT_G2M_Hho1_6336.1004855-5.stdout.txt.gz
+    -rw-rw---- 1 kalavatt 1.2K Nov  5 07:41 trim_fastqs.IP_WT_G2M_Hho1_6337.1004855-6.stderr.txt.gz
+    -rw-rw---- 1 kalavatt  322 Nov  5 07:37 trim_fastqs.IP_WT_G2M_Hho1_6337.1004855-6.stdout.txt.gz
+    -rw-rw---- 1 kalavatt 1.3K Nov  5 07:44 trim_fastqs.IP_WT_Q_Hho1_6336.1004855-7.stderr.txt.gz
+    -rw-rw---- 1 kalavatt  319 Nov  5 07:39 trim_fastqs.IP_WT_Q_Hho1_6336.1004855-7.stdout.txt.gz
+    -rw-rw---- 1 kalavatt 1.3K Nov  5 07:44 trim_fastqs.IP_WT_Q_Hho1_6337.1004855-8.stderr.txt.gz
+    -rw-rw---- 1 kalavatt  318 Nov  5 07:40 trim_fastqs.IP_WT_Q_Hho1_6337.1004855-8.stdout.txt.gz
+    \`\`\`
+
+## Output
+- Trimmed FASTQ files in "${dir_trm}"
+- Logs: Trimming logs and metadata in "${dir_trm}/logs"
+
+EOF
+
+# cat "${dir_trm}/docs/2024-1105.txt"
+# rm "${dir_trm}/docs/2024-1105.txt"
+```
+</details>
+<br />

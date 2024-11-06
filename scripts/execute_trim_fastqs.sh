@@ -39,6 +39,7 @@ dir_fn="${dir_sc}/functions"
     source "${dir_fn}/echo_warning.sh"
     source "${dir_fn}/exit_0.sh"
     source "${dir_fn}/exit_1.sh"
+    source "${dir_fn}/handle_env.sh"
     source "${dir_fn}/handle_env_activate.sh"
     source "${dir_fn}/handle_env_deactivate.sh"
 }
@@ -47,17 +48,12 @@ dir_fn="${dir_sc}/functions"
 function set_interactive() {
     #  Set hardcoded paths, values, etc.
     ## WARNING: Change the values if you're not Kris and `interactive=true` ##
-    dir_bas="${HOME}/tsukiyamalab/Kris"   # ls -lhaFG "${dir_bas}"
-    nam_rep="202X_protocol_ChIP"          # echo "${nam_rep}"
-    dir_rep="${dir_bas}/${nam_rep}"       # ls -lhaFG "${dir_rep}"
-    nam_dat="data"                        # echo "${nam_dat}"
-    dir_dat="${dir_rep}/${nam_dat}"       # ls -lhaFG "${dir_dat}"
-    nam_sym="symlinked"                   # echo "${nam_sym}"
-    dir_sym="${dir_dat}/${nam_sym}"       # ls -lhaFG "${dir_sym}"
-    nam_pro="processed"                   # echo "${nam_pro}"
-    dir_pro="${dir_dat}/${nam_pro}"       # ls -lhaFG "${dir_pro}"
-    nam_trm="2024-1104_trim_atria_FASTQ"  # echo "${nam_trm}"
-    dir_trm="${dir_pro}/${nam_trm}"       # ls -lhaFG "${dir_trm}"  # mkdir -p ${dir_trm}/{docs,logs}
+    dir_bas="${HOME}/tsukiyamalab/Kris"      # ls -lhaFG "${dir_bas}"
+    dir_rep="${dir_bas}/202X_protocol_ChIP"  # ls -lhaFG "${dir_rep}"
+    dir_dat="${dir_rep}/data"                # ls -lhaFG "${dir_dat}"
+    dir_sym="${dir_dat}/symlinked"           # ls -lhaFG "${dir_sym}"
+    dir_pro="${dir_dat}/processed"           # ls -lhaFG "${dir_pro}"
+    dir_trm="${dir_pro}/trim_atria_FASTQ"    # ls -lhaFG "${dir_trm}"  # mkdir -p ${dir_trm}/{docs,logs}
 
     #  Set hardcoded argument assignments
     verbose=true                          # echo "${verbose}"
@@ -154,6 +150,7 @@ Dependencies:
     + echo_warning
     + exit_0
     + exit_1
+    + handle_env
     + handle_env_activate
     + handle_env_deactivate
 
@@ -243,19 +240,12 @@ if ${slurm}; then
     check_format_time "${time}"
 fi
 
-#  Check dependencies
+#  Activate environment and check that dependencies are in PATH
+handle_env "${env_nam}"
+
 check_program_path atria
-check_program_path check_supplied_arg
-check_program_path check_exists_file_dir
-check_program_path check_format_time
-check_program_path check_int_pos
-check_program_path check_program_path
-check_program_path echo_error
-check_program_path echo_warning
-check_program_path exit_0
-check_program_path exit_1
-check_program_path handle_env_activate
-check_program_path handle_env_deactivate
+check_program_path pbzip2
+check_program_path pigz
 
 
 #  Parse the --infiles argument -----------------------------------------------
@@ -353,18 +343,6 @@ if ${verbose}; then
     echo ""
 fi
 
-#  Activate required environment if `interactive=true`
-if ${interactive}; then
-    if [[
-        -z "${CONDA_DEFAULT_ENV}" || "${CONDA_DEFAULT_ENV}" == "base"
-    ]]; then
-        handle_env_activate
-    elif [[ "${CONDA_DEFAULT_ENV}" != "${env_nam}" ]]; then
-        handle_env_deactivate
-        handle_env_activate "${env_nam}"
-    fi
-fi
-
 # shellcheck disable=SC1083,SC2157
 if ${slurm}; then
     #  If --slurm was specified, run jobs in parallel via individual job
@@ -425,17 +403,6 @@ if ${slurm}; then
     fi
 else
     #  If --slurm was not specified, run jobs in serial
-    if ! ${interactive}; then
-        if [[
-            -z "${CONDA_DEFAULT_ENV}" || "${CONDA_DEFAULT_ENV}" == "base"
-        ]]; then
-            handle_env_activate "${env_nam}"
-        elif [[ "${CONDA_DEFAULT_ENV}" != "${env_nam}" ]]; then
-            handle_env_deactivate
-            handle_env_activate "${env_nam}"
-        fi
-    fi
-    
     if ${dry_run} || ${verbose}; then
         echo "#############################"
         echo "## Serial call(s) to Atria ##"
