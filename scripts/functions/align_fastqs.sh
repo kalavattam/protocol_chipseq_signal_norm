@@ -75,6 +75,7 @@ Notes:
   -qn, --qname  The file will have the same path and stem assigned to
                 --outfile, except the extension will be .qnam.bam in place of
                 .bam.
+
 Examples:
   \`\`\`
   align_fastqs

@@ -7,37 +7,37 @@
 #  Run script in interactive/test mode (true) or command-line mode (false)
 interactive=false
 
-#  If not in interactive/test mode, then set script to exit if non-0 exit codes
-#+ are encountered
-if ! ${interactive}; then set -e; fi
+#  Exit on errors, unset variables, or pipe failures if not in "interactive
+#+ mode"
+if ! ${interactive}; then set -euo pipefail; fi
 
 #  Set the path to the "scripts" directory
 # shellcheck disable=SC1091
 if ${interactive}; then
     ## WARNING: Change path if you're not Kris and `interactive=true` ##
-    dir_sc="${HOME}/tsukiyamalab/Kris/202X_protocol_ChIP/scripts"
+    dir_scr="${HOME}/tsukiyamalab/Kris/202X_protocol_ChIP/scripts"
 else
-    dir_sc="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+    dir_scr="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 fi
 
 
 #  Source and define functions ================================================
 #  Set the path to the "functions" directory
-dir_fn="${dir_sc}/functions"
+dir_fnc="${dir_scr}/functions"
 
 # shellcheck disable=SC1091
 {
-    source "${dir_fn}/check_exists_file_dir.sh"
-    source "${dir_fn}/check_format_time.sh"
-    source "${dir_fn}/check_int_pos.sh"
-    source "${dir_fn}/check_program_path.sh"
-    source "${dir_fn}/check_supplied_arg.sh"
-    source "${dir_fn}/echo_error.sh"
-    source "${dir_fn}/echo_warning.sh"
-    source "${dir_fn}/exit_0.sh"
-    source "${dir_fn}/exit_1.sh"
-    source "${dir_fn}/handle_env_activate.sh"
-    source "${dir_fn}/handle_env_deactivate.sh"
+    source "${dir_fnc}/check_exists_file_dir.sh"
+    source "${dir_fnc}/check_format_time.sh"
+    source "${dir_fnc}/check_int_pos.sh"
+    source "${dir_fnc}/check_program_path.sh"
+    source "${dir_fnc}/check_supplied_arg.sh"
+    source "${dir_fnc}/echo_error.sh"
+    source "${dir_fnc}/echo_warning.sh"
+    source "${dir_fnc}/exit_0.sh"
+    source "${dir_fnc}/exit_1.sh"
+    source "${dir_fnc}/handle_env_activate.sh"
+    source "${dir_fnc}/handle_env_deactivate.sh"
 }
 
 
@@ -45,13 +45,9 @@ dir_fn="${dir_sc}/functions"
 function set_interactive() {
     #  Set hardcoded paths, values, etc.
     ## WARNING: Change the values if you're not Kris and `interactive=true` ##
-    dir_bas="${HOME}/tsukiyamalab/Kris"
-    nam_rep="202X_protocol_ChIP"
-    dir_rep="${dir_bas}/${nam_rep}"
-    nam_bam="03_bam"
-    dir_bam="${dir_rep}/${nam_bam}"
-    nam_scf="06_sf"
-    dir_scf="${dir_rep}/${nam_scf}"
+    dir_rep="${HOME}/tsukiyamalab/Kris/202X_protocol_ChIP"
+    dir_bam="${dir_rep}/03_bam"
+    dir_scf="${dir_rep}/06_sf"
     {
         aligner="bowtie2" 
         a_type="global"
@@ -66,7 +62,7 @@ function set_interactive() {
     dry_run=true
     threads=8
     infiles=$(
-        bash "${dir_sc}/find_files.sh" \
+        bash "${dir_scr}/find_files.sh" \
             --dir_fnd "${dir_ip}" \
             --pattern "*.bam" \
             --depth 1 \
@@ -93,9 +89,9 @@ function set_interactive() {
 #  Initialize argument variables, check and parse arguments, etc. =============
 #  Initialize hardcoded argument variables
 env_nam="env_analyze"
-sc_sub="${dir_sc}/submit_calculate_scaling_factor_alpha.sh"
-sc_pars="${dir_sc}/parse_metadata_siq_chip.py"
-sc_alph="${dir_sc}/calculate_scaling_factor_alpha.py"
+scr_sub="${dir_scr}/submit_calculate_scaling_factor_alpha.sh"
+scr_par="${dir_scr}/parse_metadata_siq_chip.py"
+scr_alf="${dir_scr}/calculate_scaling_factor_alpha.py"
 
 #  Initialize argument variables, assigning default values where applicable
 verbose=false
@@ -155,7 +151,7 @@ EOM
 )
 
 #  Parse arguments
-if [[ -z "${1}" || "${1}" == "-h" || "${1}" == "--help" ]]; then
+if [[ -z "${1:-}" || "${1}" == "-h" || "${1}" == "--help" ]]; then
     echo "${show_help}"
     exit_0
 fi
@@ -194,14 +190,14 @@ fi
 #  Check arguments
 check_supplied_arg -a "${env_nam}" -n "env_nam"
 
-check_supplied_arg -a "${sc_sub}" -n "sc_sub"
-check_exists_file_dir "f" "${sc_sub}" "sc_sub"
+check_supplied_arg -a "${scr_sub}" -n "scr_sub"
+check_exists_file_dir "f" "${scr_sub}" "scr_sub"
 
-check_supplied_arg -a "${sc_pars}" -n "sc_pars"
-check_exists_file_dir "f" "${sc_pars}" "sc_pars"
+check_supplied_arg -a "${scr_par}" -n "scr_par"
+check_exists_file_dir "f" "${scr_par}" "scr_par"
 
-check_supplied_arg -a "${sc_alph}" -n "sc_alph"
-check_exists_file_dir "f" "${sc_alph}" "sc_alph"
+check_supplied_arg -a "${scr_alf}" -n "scr_alf"
+check_exists_file_dir "f" "${scr_alf}" "scr_alf"
 
 check_supplied_arg -a "${threads}" -n "threads"
 check_int_pos "${threads}" "threads"
@@ -276,9 +272,9 @@ if ${verbose}; then
     echo "####################################"
     echo ""
     echo "env_nam=${env_nam}"
-    echo "sc_sub=${sc_sub}"
-    echo "sc_pars=${sc_pars}"
-    echo "sc_alph=${sc_alph}"
+    echo "scr_sub=${scr_sub}"
+    echo "scr_par=${scr_par}"
+    echo "scr_alf=${scr_alf}"
     echo ""
     echo ""
     echo "###################################"
@@ -322,8 +318,8 @@ if ${slurm}; then
         echo "    --error=${err_out}/${nam_job}.%A-%a.stderr.txt \\"
         echo "    --output=${err_out}/${nam_job}.%A-%a.stdout.txt \\"
         echo "    --array=1-${#arr_infiles[@]}%${max_job} \\"
-        echo "    --export=dir_sc=${dir_sc} \\"
-        echo "    ${sc_sub} \\"
+        echo "    --export=dir_scr=${dir_scr} \\"
+        echo "    ${scr_sub} \\"
         echo "        --threads ${threads} \\"
         echo "        --infiles ${infiles} \\"
         echo "        --table ${table} \\"
@@ -335,17 +331,17 @@ if ${slurm}; then
         echo "        --err_out ${err_out} \\"
         echo "        --nam_job ${nam_job} \\"
         echo "        --env_nam ${env_nam} \\"
-        echo "        --sc_pars ${sc_pars} \\"
-        echo "        --sc_alph ${sc_alph}"
+        echo "        --scr_par ${scr_par} \\"
+        echo "        --scr_alf ${scr_alf}"
         echo ""
         echo ""
         echo "#########################################"
         echo "## Contents of SLURM submission script ##"
         echo "#########################################"
         echo ""
-        echo "## ${sc_sub} ##"
+        echo "## ${scr_sub} ##"
         echo ""
-        cat "${sc_sub}"
+        cat "${scr_sub}"
         echo ""
     fi
 
@@ -358,8 +354,8 @@ if ${slurm}; then
             --error=${err_out}/${nam_job}.%A-%a.stderr.txt \
             --output=${err_out}/${nam_job}.%A-%a.stdout.txt \
             --array=1-${#arr_infiles[@]}%${max_job} \
-            --export=dir_sc="${dir_sc}" \
-            ${sc_sub} \
+            --export=dir_scr="${dir_scr}" \
+            ${scr_sub} \
                 --threads ${threads} \
                 --infiles ${infiles} \
                 --table ${table} \
@@ -371,8 +367,8 @@ if ${slurm}; then
                 --err_out ${err_out} \
                 --nam_job ${nam_job} \
                 --env_nam ${env_nam} \
-                --sc_pars ${sc_pars} \
-                --sc_alph ${sc_alph}
+                --scr_par ${scr_par} \
+                --scr_alf ${scr_alf}
     fi
 fi
 

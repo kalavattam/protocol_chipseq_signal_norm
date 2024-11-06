@@ -13,8 +13,8 @@ flg_in=false
 flg_mc=false
 err_out=""
 nam_job="calc_sf_standard"
-env_nam="env_py_r"
-sc_std=""
+env_nam="env_analyze"
+scr_std=""  # calculate_scaling_factor_standard.py
 
 show_help=$(cat << EOM
 $(basename "${0}") takes the following keyword arguments:
@@ -26,12 +26,12 @@ $(basename "${0}") takes the following keyword arguments:
   -eo, --err_out  Directory to store stderr and stdout outfiles.
   -nj, --nam_job  Name of job.
   -en, --env_nam  Name of mamba environment to activate.
-  -sa, --sc_std  Path to script that calculates spike-in-derived scaling
+  -sa, --scr_std  Path to script that calculates spike-in-derived scaling
                   factors.
 
-All arguments are required. If not specified, --threads, --nam_job, and
---env_nam default to, respectively, threads=${threads}, nam_job=${nam_job}, and
-env_nam=${env_nam}. Also, --flg_in and --flg_mc are flags.
+All arguments are required. If not specified, --threads, --nam_job, --env_nam,
+and --scr_std default to, respectively, threads=${threads}, nam_job=${nam_job},
+env_nam=${env_nam}, scr_std=${scr_std}. Also, --flg_in and --flg_mc are flags.
 EOM
 )
 
@@ -51,7 +51,7 @@ while [[ "$#" -gt 0 ]]; do
         -eo|--err_out) err_out="${2}"; shift 2 ;;
         -nj|--nam_job) nam_job="${2}"; shift 2 ;;
         -en|--env_nam) env_nam="${2}"; shift 2 ;;
-        -ss|--sc_std)  sc_std="${2}";  shift 2 ;;
+        -ss|--scr_std) scr_std="${2}"; shift 2 ;;
         *)
             echo "## Unknown argument passed: ${1} ##" >&2
             echo "" >&2
@@ -79,7 +79,7 @@ if ${debug}; then
     echo ""
     echo "env_nam=${env_nam}"
     echo ""
-    echo "sc_std=${sc_std}"
+    echo "scr_std=${scr_std}"
     echo ""
 fi
 
@@ -253,7 +253,7 @@ ln -f "${out_ini}" "${out_dsc}"
 #+ sf, with script calculate_scaling_factor_standard.py
 # shellcheck disable=SC2154
 sf=$(
-    python "${dir_sc}/calculate_scaling_factor_standard.py" \
+    python "${dir_scr}/${scr_std}" \
         --main_ip  "${num_mp}" \
         --spike_ip "${num_sp}" \
         --main_in  "${num_mn}" \

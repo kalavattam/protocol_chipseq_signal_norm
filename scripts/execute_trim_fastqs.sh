@@ -9,79 +9,75 @@ interactive=false
 
 #  Exit on errors, unset variables, or pipe failures if not in "interactive
 #+ mode"
-if ! ${interactive}; then
-    # set -e
-    # set -euo pipefail
-    set -eo pipefail
-fi
+if ! ${interactive}; then set -euo pipefail; fi
 
 #  Set the path to the "scripts" directory
 if ${interactive}; then
     ## WARNING: Change path if you're not Kris and `interactive=true` ##
-    dir_sc="${HOME}/tsukiyamalab/Kris/202X_protocol_ChIP/scripts"
+    dir_scr="${HOME}/tsukiyamalab/Kris/202X_protocol_ChIP/scripts"
 else
-    dir_sc="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+    dir_scr="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 fi
 
 
 #  Source and define functions ================================================
 #  Set the path to the "functions" directory
-dir_fn="${dir_sc}/functions"
+dir_fnc="${dir_scr}/functions"
 
 # shellcheck disable=SC1091
 {
-    source "${dir_fn}/check_exists_file_dir.sh"
-    source "${dir_fn}/check_format_time.sh"
-    source "${dir_fn}/check_int_pos.sh"
-    source "${dir_fn}/check_program_path.sh"
-    source "${dir_fn}/check_supplied_arg.sh"
-    source "${dir_fn}/echo_error.sh"
-    source "${dir_fn}/echo_warning.sh"
-    source "${dir_fn}/exit_0.sh"
-    source "${dir_fn}/exit_1.sh"
-    source "${dir_fn}/handle_env.sh"
-    source "${dir_fn}/handle_env_activate.sh"
-    source "${dir_fn}/handle_env_deactivate.sh"
+    source "${dir_fnc}/check_exists_file_dir.sh"
+    source "${dir_fnc}/check_format_time.sh"
+    source "${dir_fnc}/check_int_pos.sh"
+    source "${dir_fnc}/check_program_path.sh"
+    source "${dir_fnc}/check_supplied_arg.sh"
+    source "${dir_fnc}/echo_error.sh"
+    source "${dir_fnc}/echo_warning.sh"
+    source "${dir_fnc}/exit_0.sh"
+    source "${dir_fnc}/exit_1.sh"
+    source "${dir_fnc}/handle_env.sh"
+    source "${dir_fnc}/handle_env_activate.sh"
+    source "${dir_fnc}/handle_env_deactivate.sh"
 }
 
 
 function set_interactive() {
     #  Set hardcoded paths, values, etc.
     ## WARNING: Change the values if you're not Kris and `interactive=true` ##
-    dir_bas="${HOME}/tsukiyamalab/Kris"      # ls -lhaFG "${dir_bas}"
-    dir_rep="${dir_bas}/202X_protocol_ChIP"  # ls -lhaFG "${dir_rep}"
-    dir_dat="${dir_rep}/data"                # ls -lhaFG "${dir_dat}"
-    dir_sym="${dir_dat}/symlinked"           # ls -lhaFG "${dir_sym}"
-    dir_pro="${dir_dat}/processed"           # ls -lhaFG "${dir_pro}"
-    dir_trm="${dir_pro}/trim_atria_FASTQ"    # ls -lhaFG "${dir_trm}"  # mkdir -p ${dir_trm}/{docs,logs}
+    dir_bas="${HOME}/tsukiyamalab/Kris"
+    dir_rep="${dir_bas}/202X_protocol_ChIP"
+    dir_dat="${dir_rep}/data"
+    dir_sym="${dir_dat}/symlinked"
+    dir_pro="${dir_dat}/processed"
+    dir_trm="${dir_pro}/trim_atria_FASTQ"
 
     #  Set hardcoded argument assignments
-    verbose=true                          # echo "${verbose}"
-    dry_run=true                          # echo "${dry_run}"
-    threads=8                             # echo "${threads}"
+    verbose=true
+    dry_run=true
+    threads=8
     infiles="$(
-        bash "${dir_sc}/find_files.sh" \
+        bash "${dir_scr}/find_files.sh" \
             --dir_fnd "${dir_sym}" \
             --pattern "*.fastq.gz" \
             --depth 1 \
             --follow \
             --fastqs
-    )"                                    # echo "${infiles}"
-    dir_out="${dir_trm}"                  # ls -lhaFG "${dir_out}"
-    sfx_se=".fastq.gz"                    # echo "${sfx_se}"
-    sfx_pe="_R1.fastq.gz"                 # echo "${sfx_pe}"
-    err_out="${dir_out}/logs"             # ls -lhaFG "${err_out}"
-    nam_job="trim_fastqs"                 # echo "${nam_job}"
-    slurm=true                            # echo "${slurm}"
-    max_job=6                             # echo "${max_job}"
-    time="0:45:00"                        # echo "${time}"
+    )"
+    dir_out="${dir_trm}"
+    sfx_se=".fastq.gz"
+    sfx_pe="_R1.fastq.gz"
+    err_out="${dir_out}/logs"
+    nam_job="trim_fastqs"
+    slurm=true
+    max_job=6
+    time="0:45:00"
 }
 
 
 #  Initialize argument variables, check and parse arguments, etc. =============
 #  Initialize hardcoded argument variables
-env_nam="env_analyze"                     # echo "${env_nam}"
-sc_sub="${dir_sc}/submit_trim_fastqs.sh"  # ls -lhaFG "${sc_sub}"
+env_nam="env_analyze"
+scr_sub="${dir_scr}/submit_trim_fastqs.sh"
 
 #  Initialize argument variables, assigning default values where applicable
 verbose=false
@@ -139,6 +135,8 @@ Dependencies:
   - Programs
     + Atria
     + Bash or Zsh
+    + pbzip2
+    + pigz
     + SLURM (if --slurm is specified)
   - Functions
     + check_exists_file_dir
@@ -175,7 +173,7 @@ EOM
 )
 
 #  Parse arguments
-if [[ -z "${1}" || "${1}" == "-h" || "${1}" == "--help" ]]; then
+if [[ -z "${1:-}" || "${1}" == "-h" || "${1}" == "--help" ]]; then
     echo "${show_help}"
     exit_0
 fi
@@ -230,8 +228,8 @@ fi
 check_supplied_arg -a "${nam_job}" -n "nam_job"
 
 if ${slurm}; then
-    check_supplied_arg -a "${sc_sub}" -n "sc_sub"
-    check_exists_file_dir "f" "${sc_sub}" "sc_sub"
+    check_supplied_arg -a "${scr_sub}" -n "scr_sub"
+    check_exists_file_dir "f" "${scr_sub}" "scr_sub"
 
     check_supplied_arg -a "${max_job}" -n "max_job"
     check_int_pos "${max_job}" "max_job"
@@ -319,7 +317,7 @@ if ${verbose}; then
     echo "####################################"
     echo ""
     echo "env_nam=${env_nam}"
-    echo "sc_sub=${sc_sub}"
+    echo "scr_sub=${scr_sub}"
     echo ""
     echo ""
     echo "###################################"
@@ -336,7 +334,7 @@ if ${verbose}; then
     echo "err_out=${err_out}"
     echo "nam_job=${nam_job}"
     echo "slurm=${slurm}"
-    echo "sc_sub=${sc_sub}"
+    echo "scr_sub=${scr_sub}"
     echo "max_job=${max_job}"
     echo "time=${time}"
     echo ""
@@ -360,7 +358,7 @@ if ${slurm}; then
         echo "    --error=${err_out}/${nam_job}.%A-%a.stderr.txt \\"
         echo "    --output=${err_out}/${nam_job}.%A-%a.stdout.txt \\"
         echo "    --array=1-${#arr_infiles[@]}%${max_job} \\"
-        echo "    ${sc_sub} \\"
+        echo "    ${scr_sub} \\"
         echo "        ${env_nam} \\"
         echo "        ${threads} \\"
         echo "        ${infiles} \\"
@@ -375,9 +373,9 @@ if ${slurm}; then
         echo "## Contents of SLURM submission script ##"
         echo "#########################################"
         echo ""
-        echo "## ${sc_sub} ##"
+        echo "## ${scr_sub} ##"
         echo ""
-        cat "${sc_sub}"
+        cat "${scr_sub}"
         echo ""
     fi
 
@@ -391,7 +389,7 @@ if ${slurm}; then
             --error=${err_out}/${nam_job}.%A-%a.stderr.txt \
             --output=${err_out}/${nam_job}.%A-%a.stdout.txt \
             --array=1-${#arr_infiles[@]}%${max_job} \
-            ${sc_sub} \
+            ${scr_sub} \
                 ${env_nam} \
                 ${threads} \
                 ${infiles} \

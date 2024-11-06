@@ -10,6 +10,7 @@ function build_command_find() {
     local show_help
     local array=()
     local find_command
+    local show_help
     
     show_help=$(cat << EOM
 ------------------

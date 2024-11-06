@@ -8,6 +8,7 @@ function check_exists_file_dir() {
     local item_type
     local check_flag
     local not_exist_msg
+    local show_help
 
 show_help=$(cat << EOM
 ---------------------
@@ -25,8 +26,8 @@ Positional parameters:
                  directory (required).
   2, item (str): The file or directory, including its path, to check
                  (required).
-  3, name (str): An optional name to associate with the item for error
-                 messages (optional).
+  3, name (str): The name to associate with the item for error messages
+                 (optional).
 
 Returns:
   0 if the file or directory exists; otherwise, prints an error message and

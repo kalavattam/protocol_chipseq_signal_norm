@@ -5,108 +5,106 @@
 
 
 #  Run script in interactive/test mode (true) or command-line mode (false)
-interactive=true
+interactive=false
 
 #  Exit on errors, unset variables, or pipe failures if not in "interactive
 #+ mode"
-if ! ${interactive}; then set -eo pipefail; fi
+if ! ${interactive}; then set -euo pipefail; fi
 
 #  Set the path to the "scripts" directory
-# shellcheck disable=SC1091
 if ${interactive}; then
     ## WARNING: Change path if you're not Kris and `interactive=true` ##
-    dir_sc="${HOME}/tsukiyamalab/Kris/202X_protocol_ChIP/scripts"
+    dir_scr="${HOME}/tsukiyamalab/Kris/202X_protocol_ChIP/scripts"
 else
-    dir_sc="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+    dir_scr="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 fi
 
 
 #  Source and define functions ================================================
 #  Set the path to the "functions" directory
-dir_fn="${dir_sc}/functions"
+dir_fnc="${dir_scr}/functions"
 
 # shellcheck disable=SC1091
 {
-    source "${dir_fn}/align_fastqs.sh"
-    source "${dir_fn}/check_exists_file_dir.sh"
-    source "${dir_fn}/check_format_time.sh"
-    source "${dir_fn}/check_int_nonneg.sh"
-    source "${dir_fn}/check_int_pos.sh"
-    source "${dir_fn}/check_program_path.sh"
-    source "${dir_fn}/check_supplied_arg.sh"
-    source "${dir_fn}/echo_error.sh"
-    source "${dir_fn}/echo_warning.sh"
-    source "${dir_fn}/exit_0.sh"
-    source "${dir_fn}/exit_1.sh"
-    source "${dir_fn}/handle_env.sh"
-    source "${dir_fn}/handle_env_activate.sh"
-    source "${dir_fn}/handle_env_deactivate.sh"
+    source "${dir_fnc}/align_fastqs.sh"
+    source "${dir_fnc}/check_exists_file_dir.sh"
+    source "${dir_fnc}/check_format_time.sh"
+    source "${dir_fnc}/check_int_nonneg.sh"
+    source "${dir_fnc}/check_int_pos.sh"
+    source "${dir_fnc}/check_program_path.sh"
+    source "${dir_fnc}/check_supplied_arg.sh"
+    source "${dir_fnc}/echo_error.sh"
+    source "${dir_fnc}/echo_warning.sh"
+    source "${dir_fnc}/exit_0.sh"
+    source "${dir_fnc}/exit_1.sh"
+    source "${dir_fnc}/handle_env.sh"
+    source "${dir_fnc}/handle_env_activate.sh"
+    source "${dir_fnc}/handle_env_deactivate.sh"
 }
 
 
 set_interactive() {
     #  Set hardcoded paths, values, etc.
     ## WARNING: Change the values if you're not Kris and `interactive=true` ##
-    dir_bas="${HOME}/tsukiyamalab/Kris"      # ls -lhaFG "${dir_bas}"
-    dir_rep="${dir_bas}/202X_protocol_ChIP"  # ls -lhaFG "${dir_rep}"
-    dir_dat="${dir_rep}/data"                # ls -lhaFG "${dir_dat}"
-    dir_gen="${dir_dat}/genomes/concat..."
-    dir_pro="${dir_dat}/processed"           # ls -lhaFG "${dir_pro}"
-    dir_trm="${dir_pro}/trim_atria_FASTQ"    # ls -lhaFG "${dir_trm}"
-    nam_aln="align..."
-    dir_aln=""
+    dir_bas="${HOME}/tsukiyamalab/Kris"
+    dir_rep="${dir_bas}/202X_protocol_ChIP"
+    dir_dat="${dir_rep}/data"
+    dir_idx="${dir_dat}/genomes/concat/index"
+    str_idx="sc_sp_proc"
+    dir_pro="${dir_dat}/processed"
+    dir_trm="${dir_pro}/trim_atria_FASTQ"
+    dir_aln="${dir_pro}/align"
 
     #  Set hardcoded argument assignments, etc.
-    verbose=true                                                   # echo "${verbose}"
-    dry_run=false                                                  # echo "${dry_run}"
-    threads=8                                                      # echo "${threads}"
-    aligner="bowtie2"                                              # echo "${aligner}"
-    a_type="global"                                                # echo "${a_type}"
-    mapq=1                                                         # echo "${mapq}"
-    req_flg=true                                                   # echo "${req_flg}"
+    verbose=true
+    dry_run=true
+    threads=8
+    aligner="bowtie2"
+    a_type="global"
+    mapq=1
+    req_flg=true
     {
-        flg="$(if ${req_flg}; then echo "2"; else echo "NA"; fi)"  # echo "${flg}"
-        cmb="combined_SC_SP"                                       # echo "${cmb}"
+        flg="$(if ${req_flg}; then echo "2"; else echo "NA"; fi)"
     }
-    index="${HOME}/genomes/${cmb}/${aligner}/${cmb}"               # echo "${index}"
+    index="${dir_idx}/${str_idx}"
     if [[ ${aligner} == "bwa" ]]; then
-        index="${index}.fa"                                        # echo "${index}"
+        index="${index}.fa"
     fi
     infiles="$(
-        bash "${dir_sc}/find_files.sh" \
+        bash "${dir_scr}/find_files.sh" \
             --dir_fnd "${dir_trm}" \
             --pattern "*.atria.fastq.gz" \
             --depth 1 \
-            --fastqs \
-            --include "*G1-1st*"
-    )"                                                            # echo "${infiles}"
+            --fastqs
+    )"
     {
-        dir_aln="${dir_bam}/${aligner}"                           # ls -lhaFG "${dir_aln}"
+        dir_aln="${dir_aln}_${aligner}_${a_type}"
     }
-    dir_out="${dir_aln}/${a_type}/flag-${flg}_mapq-${mapq}/init"  # ls -lhaFG "${dir_out}"
-    qname=false  # true                                           # echo "${qname}"
-    sfx_se=".atria.fastq.gz"                                      # echo "${sfx_se}"
-    sfx_pe="_R1.atria.fastq.gz"                                   # echo "${sfx_pe}"
-    err_out="${dir_out}/err_out"                                  # ls -lhaFG "${err_out}"
-    nam_job="align_fastqs"                                        # echo "${nam_job}"
-    slurm=true  # false                                           # echo "${slurm}"
-    max_job=6                                                     # echo "${max_job}"
-    time="1:00:00"                                                # echo "${time}"
+    dir_out="${dir_aln}/flag-${flg}_mapq-${mapq}/init"  # mkdir -p ${dir_out}/{docs,logs}
+    qname=false  # true
+    sfx_se=".atria.fastq.gz"
+    sfx_pe="_R1.atria.fastq.gz"
+    err_out="${dir_out}/logs"
+    nam_job="align_fastqs"
+    slurm=true  # false
+    max_job=6
+    time="1:00:00"
 }
+
 
 #  Initialize argument variables, check and parse arguments, etc. =============
 #  Initialize hardcoded argument variables
 env_nam="env_align"
-sc_sub="${dir_sc}/submit_align_fastqs.sh"
-sc_func="${dir_fn}/align_fastqs.sh"
+scr_sub="${dir_scr}/submit_align_fastqs.sh"
+scr_fnc="${dir_fnc}/align_fastqs.sh"
 
 #  Initialize argument variables, assigning default values where applicable
 verbose=false
 dry_run=false
 threads=1
 aligner="bowtie2"
-a_type="local"
-mapq=0
+a_type="global"
+mapq=1
 req_flg=false
 index=""
 infiles=""
@@ -130,43 +128,49 @@ execute_align_fastqs.sh
   --nam_job <str> [--slurm] [--max_job <int>] [--time <str>]
 
 Description:
-  execute_align_fastqs.sh performs... #TODO
+  execute_align_fastqs.sh performs short-read alignment of single- or
+  paired-end FASTQ files using Bowtie 2 or BWA. Alignment is followed by a
+  series of output processing steps using Samtools, including filtering,
+  sorting, mate fixing (for paired-end reads), duplicate marking, and indexing.
+  With the flag --qname, users can optionally retain an intermediate
+  queryname-sorted BAM file. If the flag --slurm is specified, jobs will be
+  submitted to a SLURM cluster for parallel execution; otherwise, FASTQ files
+  are processed serially.
 
 Arguments:
    -h, --help     Display this help message and exit (0).
    -v, --verbose  Run script in 'verbose mode' (optional).
   -dr, --dry_run  Perform a dry run without executing commands (optional).
-   -t, --threads  Number of threads to use (required; default: ${threads}).
-   -a, --aligner  Alignment program to use (required: 'bowtie2' or 'bwa';
-                  default: ${aligner}).
+   -t, --threads  Number of threads to use (default: ${threads}).
+   -a, --aligner  Alignment program to use ('bowtie2' or 'bwa'; default:
+                  ${aligner}).
   -at, --a_type   Alignment type (required if using Bowtie 2, ignored if using
                   BWA: 'local', 'global', or 'end-to-end'; default:
                   ${a_type}).
-  -mq, --mapq     MAPQ threshold for filtering BAM outfiles (required;
-                  default: ${mapq}). To perform no filtering, specify 0.
+  -mq, --mapq     MAPQ threshold for filtering BAM outfiles (default: ${mapq}).
+                  To perform no filtering, specify 0.
   -rf, --req_flg  Require flag bit 2, signifying that paired-end alignments are
                   properly paired, for filtering BAM outfiles (optional;
                   ignored if working with single-end sequenced reads).
-  -ix, --index    Path to the directory containing the aligner index
-                  (required). If using Bowtie 2, the path should end with the
-                  index stem: "\${HOME}/path/dir/stem"; if using BWA, the path
-                  should end with the stem and a FASTA file extension (.fa):
-                  "\${HOME}/path/dir/stem.fa".
-   -i, --infiles  Semicolon-separated string vector of FASTQ infiles
-                  (required). Within the semicolon delimiters, sample-specific
-                  corresponding paired-end files must be together separated by
-                  commas, e.g.,
+  -ix, --index    Path to the directory containing the aligner index. If using
+                  Bowtie 2, the path should end with the index stem:
+                  "\${HOME}/path/stem"; if using BWA, the path should end with
+                  the stem and a FASTA file extension (.fa):
+                  "\${HOME}/path/stem.fa".
+   -i, --infiles  Semicolon-separated string vector of FASTQ infiles. Within
+                  the semicolon delimiters, sample-specific paired-end files
+                  must be together separated by commas, e.g.,
                   "\${HOME}/path/samp_1.fastq.gz;\${HOME}/path/samp_2_R1.fastq.gz,\${HOME}/path/samp_2_R2.fastq.gz;\${HOME}/path/samp_3.fastq.gz".
-  -do, --dir_out  Directory to write BAM outfiles (required).
+  -do, --dir_out  Directory to write BAM outfiles.
   -qn, --qname    Retain queryname-sorted intermediate BAM files (optional).
   -ss, --sfx_se   Suffix to strip from single-end sequenced FASTQ files
-                  (required; default: ${sfx_se}).
+                  (default: ${sfx_se}).
   -sp, --sfx_pe   Suffix to strip from paired-end sequenced FASTQ files
-                  (required; default: ${sfx_pe}).
+                  (default: ${sfx_pe}).
   -eo, --err_out  The directory to store stderr and stdout TXT outfiles
-                  (required; default: \${dir_out}/err_out).
+                  (default: \${dir_out}/err_out).
   -nj, --nam_job  The name of the job, which is used when writing stderr and
-                  stdout (required; default: ${nam_job}).
+                  stdout TXT files (default: ${nam_job}).
   -sl, --slurm    Submit jobs to the SLURM scheduler; otherwise, run them in
                   serial (optional).
   -mj, --max_job  The maximum number of jobs to run at one time (required if
@@ -200,17 +204,36 @@ Dependencies:
     + handle_env_deactivate
 
 Notes:
-  #TODO
+  - If using Bowtie 2, the path to index files should end with the index stem:
+    "\${HOME}/path/stem" or "\${HOME}/path/sc_sp_proc"; if using BWA, the path
+    to index files should end with the stem and a FASTA file extension (.fa):
+    "\${HOME}/path/stem.fa" or "\${HOME}/path/sc_sp_proc.fa".
+  - Queryname-sorted BAM files will have the same path and stem as that
+    assigned to argument --outfile; however, the extension will be .qnam.bam
+    instead of .bam.
 
 Example:
   \`\`\`
-  #TODO
+  bash execute_align_fastqs.sh
+      -–threads 8
+      -–aligner "bowtie2"
+      -–a_type "global"
+      -–mapq 1
+      --req_flg
+      -–index "\${HOME}/path/sc_sp_proc"
+      -–infiles "\${HOME}/path/samp_1.fastq.gz;\${HOME}/path/samp_2_R1.fastq.gz,\${HOME}/path/samp_2_R2.fastq.gz;\${HOME}/path/samp_3.fastq.gz"
+      -–dir_out "\${HOME}/path/directory"
+      -–err_out "\${HOME}/path/directory/logs"
+      -–nam_job "align_fastqs"
+      -–slurm
+      -–max_job 4
+      -–time 1:00:00
   \`\`\`
 EOM
 )
 
 #  Parse arguments
-if [[ -z "${1}" || "${1}" == "-h" || "${1}" == "--help" ]]; then
+if [[ -z "${1:-}" || "${1}" == "-h" || "${1}" == "--help" ]]; then
     echo "${show_help}"
     exit_0
 fi
@@ -265,7 +288,9 @@ case "${aligner}" in
                 ;;
         esac
         ;;
+
     bwa) unset a_type ;;
+
     *)
         echo_error \
             "Selection associated with --aligner is not valid: ${aligner}." \
@@ -299,11 +324,11 @@ fi
 check_supplied_arg -a "${nam_job}" -n "nam_job"
 
 if ${slurm}; then
-    check_supplied_arg -a "${sc_sub}" -n "sc_sub"
-    check_exists_file_dir "f" "${sc_sub}" "sc_sub"
+    check_supplied_arg -a "${scr_sub}" -n "scr_sub"
+    check_exists_file_dir "f" "${scr_sub}" "scr_sub"
 
-    check_supplied_arg -a "${sc_func}" -n "sc_func"
-    check_exists_file_dir "f" "${sc_func}" "sc_func"
+    check_supplied_arg -a "${scr_fnc}" -n "scr_fnc"
+    check_exists_file_dir "f" "${scr_fnc}" "scr_fnc"
 
     check_supplied_arg -a "${max_job}" -n "max_job"
     check_int_pos "${max_job}" "max_job"
@@ -348,8 +373,8 @@ for infile in "${arr_infiles[@]}"; do
         fi
 
         #  Validate sample-specific paired-end FASTQ files exist
-        check_exists_file_dir "f" "${fq_1}"
-        check_exists_file_dir "f" "${fq_2}"
+        check_exists_file_dir "f" "${fq_1}" "fq_1"
+        check_exists_file_dir "f" "${fq_2}" "fq_2"
 
         #  Validate presence of file suffix in fq_1 assignment
         if [[ "${fq_1}" != *"${sfx_pe}" ]]; then
@@ -393,8 +418,8 @@ if ${verbose}; then
     echo "####################################"
     echo ""
     echo "env_nam=${env_nam}"
-    echo "sc_sub=${sc_sub}"
-    echo "sc_func=${sc_func}"
+    echo "scr_sub=${scr_sub}"
+    echo "scr_fnc=${scr_fnc}"
     echo ""
     echo ""
     echo "###################################"
@@ -440,8 +465,8 @@ if ${slurm}; then
         echo "    --error=${err_out}/${nam_job}.%A-%a.stderr.txt \\"
         echo "    --output=${err_out}/${nam_job}.%A-%a.stdout.txt \\"
         echo "    --array=1-${#arr_infiles[@]}%${max_job} \\"
-        echo "    ${sc_sub} \\"
-        echo "        --sc_func ${sc_func} \\"
+        echo "    ${scr_sub} \\"
+        echo "        --scr_fnc ${scr_fnc} \\"
         echo "        --threads ${threads} \\"
         echo "        --aligner ${aligner} \\"
         echo "        $(if [[ -n ${a_type} ]]; then echo "--a_type ${a_type}"; fi) \\"
@@ -461,9 +486,9 @@ if ${slurm}; then
         echo "## Contents of SLURM submission script ##"
         echo "#########################################"
         echo ""
-        echo "## ${sc_sub} ##"
+        echo "## ${scr_sub} ##"
         echo ""
-        cat "${sc_sub}"
+        cat "${scr_sub}"
         echo ""
     fi
 
@@ -477,8 +502,8 @@ if ${slurm}; then
             --error=${err_out}/${nam_job}.%A-%a.stderr.txt \
             --output=${err_out}/${nam_job}.%A-%a.stdout.txt \
             --array=1-${#arr_infiles[@]}%${max_job} \
-            ${sc_sub} \
-                --sc_func ${sc_func} \
+            ${scr_sub} \
+                --scr_fnc ${scr_fnc} \
                 --threads ${threads} \
                 --aligner ${aligner} \
                 $(if [[ -n ${a_type} ]]; then echo "--a_type ${a_type}"; fi) \

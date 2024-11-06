@@ -16,9 +16,9 @@ flg_in=false
 flg_mc=false
 err_out=""
 nam_job="calc_sf_alpha"
-env_nam="env_py_r"
-sc_pars=""
-sc_alph=""
+env_nam="env_analyze"
+scr_par=""  #TODO
+scr_alf=""  # calculate_scaling_factor_alpha.py
 
 show_help=$(cat << EOM
 $(basename "${0}") takes the following keyword arguments:
@@ -33,8 +33,8 @@ $(basename "${0}") takes the following keyword arguments:
   -eo, --err_out  Directory to store stderr and stdout outfiles.
   -nj, --nam_job  Name of job.
   -en, --env_nam  Name of mamba environment to activate.
-  -sp, --sc_pars  Path to script that parses siQ-ChIP metadata.
-  -sa, --sc_alph  Path to script that calculates siQ-ChIP alpha values.
+  -sp, --scr_par  Path to script that parses siQ-ChIP metadata.
+  -sa, --scr_alf  Path to script that calculates siQ-ChIP alpha values.
 
 All arguments are required. If not specified, --threads, --nam_job, and
 --env_nam default to, respectively, threads=${threads}, nam_job=${nam_job}, and
@@ -62,8 +62,8 @@ while [[ "$#" -gt 0 ]]; do
         -eo|--err_out) err_out="${2}"; shift 2 ;;
         -nj|--nam_job) nam_job="${2}"; shift 2 ;;
         -en|--env_nam) env_nam="${2}"; shift 2 ;;
-        -sp|--sc_pars) sc_pars="${2}"; shift 2 ;;
-        -sa|--sc_alph) sc_alph="${2}"; shift 2 ;;
+        -sp|--scr_par) scr_par="${2}"; shift 2 ;;
+        -sa|--scr_alf) scr_alf="${2}"; shift 2 ;;
         *)
             echo "## Unknown argument passed: ${1} ##" >&2
             echo "" >&2
@@ -97,15 +97,16 @@ if ${debug}; then
     echo ""
     echo "env_nam=${env_nam}"
     echo ""
-    echo "sc_pars=${sc_pars}"
+    echo "scr_par=${scr_par}"
     echo ""
-    echo "sc_alph=${sc_alph}"
+    echo "scr_alf=${scr_alf}"
     echo ""
 fi
 
 #  Activate environment
 if [[ "${CONDA_DEFAULT_ENV}" != "${env_nam}" ]]; then
     # eval "$(conda shell.bash hook)"
+    # shellcheck disable=SC1091
     source "${HOME}/miniconda3/etc/profile.d/conda.sh"
     conda activate "${env_nam}" ||
         {
@@ -146,8 +147,11 @@ if ${debug}; then
 fi
 
 #  Define IP and input infile assignments based on SLURM_ARRAY_TASK_ID
-file_ip="${arr_infiles[$(( id_tsk - 1 ))]}"
-file_in="$(echo "${file_ip}" | sed 's:\/IP_:\/in_:g')"
+# shellcheck disable=SC2001
+{    
+    file_ip="${arr_infiles[$(( id_tsk - 1 ))]}"
+    file_in="$(echo "${file_ip}" | sed 's:\/IP_:\/in_:g')"
+}
 
 #  Debug output to check which IP and input infiles are being processed
 if ${debug}; then
@@ -188,7 +192,7 @@ fi
 #  Check call to sourced Python script
 if ${debug}; then
     echo "source <("
-    echo "    python \"${sc_pars}\" \\"
+    echo "    python \"${scr_par}\" \\"
     echo "        --text \"${table}\" \\"
     echo "        --bam \"${file_ip}\" \\"
     echo "        --shell"
@@ -198,8 +202,9 @@ fi
 
 #  Assign variables for siQ-ChIP measurements: volume, mass, concentration,
 #+ length
+# shellcheck disable=SC1090
 source <(
-    python "${sc_pars}" \
+    python "${scr_par}" \
         --text "${table}" \
         --bam "${file_ip}" \
         --shell
@@ -208,14 +213,14 @@ source <(
 #  If --flg_dep, calculate sequencing depth (number of alignments) for IP and
 #+ input samples
 if ${flg_dep}; then
-    depth_ip=$(samtools view -@ ${threads} -c "${file_ip}")
-    depth_in=$(samtools view -@ ${threads} -c "${file_in}")
+    depth_ip=$(samtools view -@ "${threads}" -c "${file_ip}")
+    depth_in=$(samtools view -@ "${threads}" -c "${file_in}")
 fi
 
 #  If --flg_len, calculate mean fragment length for IP and input samples
 if ${flg_len}; then
     length_ip="$(
-        samtools view -@ ${threads} "${file_ip}" \
+        samtools view -@ "${threads}" "${file_ip}" \
             | awk '{
                 if ($9 > 0) { sum += $9; count++ }
             } END {
@@ -223,7 +228,7 @@ if ${flg_len}; then
             }'
     )"
     length_in="$(
-        samtools view -@ ${threads} "${file_in}" \
+        samtools view -@ "${threads}" "${file_in}" \
             | awk '{
                 if ($9 > 0) { sum += $9; count++ }
             } END {
@@ -234,6 +239,7 @@ fi
 
 #  Debug output to check IP and input volume, mass, concentration, and flg_len
 #+ values
+# shellcheck disable=SC2154
 if ${debug}; then
     echo "mass_ip=${mass_ip}"
     echo ""
@@ -254,8 +260,11 @@ if ${debug}; then
 fi
 
 #  Derive sample name from file_ip assignment
-samp="${file_ip##*/IP_}"
-samp=$(echo "${samp%.bam}" | sed 's:\.:_:g')
+# shellcheck disable=SC2001
+{    
+    samp="${file_ip##*/IP_}"
+    samp=$(echo "${samp%.bam}" | sed 's:\.:_:g')
+}
 
 #  Debug output to verify sample name
 if ${debug}; then
@@ -275,7 +284,7 @@ ln -f "${out_ini}" "${out_dsc}"
 
 #  Check call to calculate_scaling_factor_alpha.py
 if ${debug}; then
-    echo "python \"${sc_alph}\" \\"
+    echo "python \"${scr_alf}\" \\"
     echo "    --mass_ip ${mass_ip} \\"
     echo "    --mass_in ${mass_in} \\"
     echo "    --volume_ip ${volume_ip} \\"
@@ -290,7 +299,7 @@ fi
 #  Run calculate_scaling_factor_alpha.py
 # shellcheck disable=SC2046,2086
 alpha=$(
-    python "${sc_alph}" \
+    python "${scr_alf}" \
         --mass_ip ${mass_ip} \
         --mass_in ${mass_in} \
         --volume_ip ${volume_ip} \

@@ -7,35 +7,35 @@
 #  Run script in interactive/test mode (true) or command-line mode (false)
 interactive=false
 
-#  If not in interactive/test mode, then set script to exit if non-0 exit codes
-#+ are encountered
-if ! ${interactive}; then set -e; fi
+#  Exit on errors, unset variables, or pipe failures if not in "interactive
+#+ mode"
+if ! ${interactive}; then set -euo pipefail; fi
 
 #  Set the path to the "scripts" directory
 # shellcheck disable=SC1091
 if ${interactive}; then
     ## WARNING: Change path if you're not Kris and `interactive=true` ##
-    dir_sc="${HOME}/tsukiyamalab/Kris/202X_protocol_ChIP/scripts"
+    dir_scr="${HOME}/tsukiyamalab/Kris/202X_protocol_ChIP/scripts"
 else
-    dir_sc="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+    dir_scr="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 fi
 
 
 #  Source and define functions ================================================
 #  Set the path to the "functions" directory
-dir_fn="${dir_sc}/functions"
+dir_fnc="${dir_scr}/functions"
 
 # shellcheck disable=SC1091
 {
-    source "${dir_fn}/check_exists_file_dir.sh"
-    source "${dir_fn}/check_format_time.sh"
-    source "${dir_fn}/check_int_pos.sh"
-    source "${dir_fn}/check_program_path.sh"
-    source "${dir_fn}/check_supplied_arg.sh"
-    source "${dir_fn}/echo_error.sh"
-    source "${dir_fn}/echo_warning.sh"
-    source "${dir_fn}/exit_0.sh"
-    source "${dir_fn}/exit_1.sh"
+    source "${dir_fnc}/check_exists_file_dir.sh"
+    source "${dir_fnc}/check_format_time.sh"
+    source "${dir_fnc}/check_int_pos.sh"
+    source "${dir_fnc}/check_program_path.sh"
+    source "${dir_fnc}/check_supplied_arg.sh"
+    source "${dir_fnc}/echo_error.sh"
+    source "${dir_fnc}/echo_warning.sh"
+    source "${dir_fnc}/exit_0.sh"
+    source "${dir_fnc}/exit_1.sh"
 }
 
 
@@ -43,19 +43,12 @@ dir_fn="${dir_sc}/functions"
 function set_interactive() {
     ## WARNING: Change the values if you're not Kris and `interactive=true` ##
     #  Set hardcoded paths, values, etc.
-    dir_bas="${HOME}/tsukiyamalab/Kris"  # ls -lhaFG "${dir_bas}"
-    nam_rep="202X_protocol_ChIP"         # echo "${nam_rep}"
-    dir_rep="${dir_bas}/${nam_rep}"      # ls -lhaFG "${dir_rep}"
-    nam_raw="data/raw"                   # echo "${nam_raw}"
-    dir_raw="${dir_rep}/${nam_raw}"      # ls -lhaFG "${dir_raw}"
-    nam_doc="docs"                       # echo "${nam_doc}"
-    dir_doc="${dir_raw}/${nam_doc}"      # ls -lhaFG "${dir_doc}"
-    nam_sym="data/symlinked"             # echo "${nam_sym}"
-    dir_sym="${dir_rep}/${nam_sym}"      # ls -lhaFG "${dir_sym}"
-    nam_log="logs"                       # echo "${nam_log}"
-    dir_log="${dir_raw}/${nam_log}"      # ls -lhaFG "${dir_log}"
-    nam_tsv="test_1.tsv"                 # echo "${nam_tsv}"
-    pth_tsv="${dir_doc}/${nam_tsv}"      # ls -lhaFG "${pth_tsv}"
+    dir_rep="${HOME}/tsukiyamalab/Kris/202X_protocol_ChIP"  # ls -lhaFG "${dir_rep}"
+    dir_raw="${dir_rep}/data/raw"                           # ls -lhaFG "${dir_raw}"
+    dir_doc="${dir_raw}/docs"                               # ls -lhaFG "${dir_doc}"
+    dir_sym="${dir_rep}/data/symlinked"                     # ls -lhaFG "${dir_sym}"
+    dir_log="${dir_raw}/logs"                               # ls -lhaFG "${dir_log}"
+    pth_tsv="${dir_doc}/test_1.tsv"                         # ls -lhaFG "${pth_tsv}"
 
     #  Set hardcoded argument assignments
     # shellcheck disable=SC2269
@@ -75,7 +68,7 @@ function set_interactive() {
 
 #  Initialize argument variables, check and parse arguments, etc. =============
 #  Initialize hardcoded argument variables
-sc_sub="${dir_sc}/submit_download_fastqs.sh"
+scr_sub="${dir_scr}/submit_download_fastqs.sh"
 
 #  Initialize argument variables, assigning default values where applicable
 verbose=false
@@ -140,7 +133,7 @@ EOM
 )
 
 #  Parse arguments
-if [[ -z "${1}" || "${1}" == "-h" || "${1}" == "--help" ]]; then
+if [[ -z "${1:-}" || "${1}" == "-h" || "${1}" == "--help" ]]; then
     echo "${show_help}"
     exit_0
 fi
@@ -380,11 +373,11 @@ str_url_2=${str_url_2},\
 dir_out=${dir_out},\
 dir_sym=${dir_sym},\
 str_cus=${str_cus}" \
-            ${sc_sub}
+            ${scr_sub}
 else
     #  Run serially
     for i in "${!list_acc[@]}"; do
-        bash "${sc_sub}" \
+        bash "${scr_sub}" \
             "${list_acc[i]}" \
             "${list_url_1[i]}" \
             "${list_url_2[i]}" \

@@ -7,30 +7,30 @@
 #  Run script in interactive/test mode (true) or command-line mode (false)
 interactive=false
 
-#  If not in interactive/test mode, then set script to exit if non-0 exit codes
-#+ are encountered
-if ! ${interactive}; then set -e; fi
+#  Exit on errors, unset variables, or pipe failures if not in "interactive
+#+ mode"
+if ! ${interactive}; then set -euo pipefail; fi
 
 #  Set the path to the "scripts" directory
 if ${interactive}; then
     ## WARNING: Change this path if you're not Kris and `interactive=true` ##
-    dir_sc="${HOME}/tsukiyamalab/Kris/202X_protocol_ChIP/scripts"
+    dir_scr="${HOME}/tsukiyamalab/Kris/202X_protocol_ChIP/scripts"
 else
-    dir_sc="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+    dir_scr="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 fi
 
 
 #  Source and define functions ================================================
 #  Set the path to the "functions" directory
-dir_fn="${dir_sc}/functions"
+dir_fnc="${dir_scr}/functions"
 
 # shellcheck disable=SC1091
 {    
-    source "${dir_fn}/check_installed_env.sh"
-    source "${dir_fn}/check_installed_mamba.sh"
-    source "${dir_fn}/echo_error.sh"
-    source "${dir_fn}/echo_warning.sh"
-    source "${dir_fn}/handle_env_deactivate.sh"
+    source "${dir_fnc}/check_installed_env.sh"
+    source "${dir_fnc}/check_installed_mamba.sh"
+    source "${dir_fnc}/echo_error.sh"
+    source "${dir_fnc}/echo_warning.sh"
+    source "${dir_fnc}/handle_env_deactivate.sh"
 }
 
 
@@ -151,7 +151,7 @@ EOM
 )
 
 #  Parse arguments
-if [[ -z "${1}" || "${1}" == "-h" || "${1}" == "--help" ]]; then
+if [[ -z "${1:-}" || "${1}" == "-h" || "${1}" == "--help" ]]; then
     echo "${show_help}"
     if ! ${interactive}; then exit 0; fi
 fi
