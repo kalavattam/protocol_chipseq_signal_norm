@@ -1,50 +1,43 @@
 #!/bin/bash
 
-#  If true, run script in debug mode
+#  Enable debug mode if true (optional)
 debug=true
 
-#  Parse positional arguments, assigning them to variables; most of the
-#+ argument inputs are not checked, as this is performed by execute_*.sh
+#  Display help message if no arguments or help option is given
+show_help=$(cat << EOM
+\${1}=env_nam  # Mamba environment to activate; use "default" for default env.
+\${2}=threads  # Number of threads to use.
+\${3}=infiles  # Semicolon-separated serialized string of FASTQ infiles.
+\${4}=dir_out  # Directory for output FASTQ files.
+\${5}=sfx_se   # Suffix to strip from SE FASTQ files.
+\${6}=sfx_pe   # Suffix to strip from PE FASTQ files.
+\${7}=err_out  # Directory to store stderr and stdout output files.
+\${8}=nam_job  # Job name.
+EOM
+)
+
 if [[ -z "${1}" || "${1}" == "-h" || "${1}" == "--help" ]]; then
     cat << EOM
 $(basename "${0}") requires 8 positional arguments:
-\${1}=env_nam  # Mamba environment to activate. For default, supply "default".
-\${2}=threads  # Number of threads to use.
-\${3}=infiles  # Semicolon-separated serialized string of FASTQ infiles.
-\${4}=dir_out  # Directory to write FASTQ outfiles.
-\${5}=sfx_se   # Suffix to strip from SE FASTQ files.
-\${6}=sfx_pe   # Suffix to strip from PE FASTQ files.
-\${7}=err_out  # Directory to store stderr and stdout outfiles.
-\${8}=nam_job  # Name of job.
+${show_help}
 EOM
     exit 0
 fi
 
+#  Check for exactly 8 arguments
 if [[ $# -ne 8 ]]; then
-    if [[ $# -eq 1 ]]; then
-        msg="only $# was"
-    elif [[ $# -gt 8 ]]; then
-        msg="$# were"
-    else
-        msg="only $# were"
-    fi
-
+    msg="but $# were supplied."
+    [[ $# -eq 1 ]] && msg="but only $# was supplied."
     cat << EOM
-Error: $(basename "${0}") requires 8 positional arguments, but ${msg} supplied.
+Error: $(basename "${0}") requires 8 positional arguments, ${msg}
 
 The necessary positional arguments:
-\${1}=env_nam  # Mamba environment to activate. For default, supply "default".
-\${2}=threads  # Number of threads to use.
-\${3}=infiles  # Semicolon-separated serialized string of FASTQ infiles.
-\${4}=dir_out  # Directory to write FASTQ outfiles.
-\${5}=sfx_se   # Suffix to strip from SE FASTQ files.
-\${6}=sfx_pe   # Suffix to strip from PE FASTQ files.
-\${7}=err_out  # Directory to store stderr and stdout outfiles.
-\${8}=nam_job  # Name of job.
+${show_help}
 EOM
     exit 1
 fi
 
+#  Assign positional arguments to variables
 env_nam="${1}"
 threads="${2}"
 infiles="${3}"

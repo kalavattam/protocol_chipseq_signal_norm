@@ -36,6 +36,9 @@ dir_fnc="${dir_scr}/functions"
     source "${dir_fnc}/echo_warning.sh"
     source "${dir_fnc}/exit_0.sh"
     source "${dir_fnc}/exit_1.sh"
+    source "${dir_fnc}/handle_env.sh"
+    source "${dir_fnc}/handle_env_activate.sh"
+    source "${dir_fnc}/handle_env_deactivate.sh"
 }
 
 
@@ -43,24 +46,24 @@ dir_fnc="${dir_scr}/functions"
 function set_interactive() {
     ## WARNING: Change the values if you're not Kris and `interactive=true` ##
     #  Set hardcoded paths, values, etc.
-    dir_rep="${HOME}/tsukiyamalab/Kris/202X_protocol_ChIP"  # ls -lhaFG "${dir_rep}"
-    dir_raw="${dir_rep}/data/raw"                           # ls -lhaFG "${dir_raw}"
-    dir_doc="${dir_raw}/docs"                               # ls -lhaFG "${dir_doc}"
-    dir_sym="${dir_rep}/data/symlinked"                     # ls -lhaFG "${dir_sym}"
-    dir_log="${dir_raw}/logs"                               # ls -lhaFG "${dir_log}"
-    pth_tsv="${dir_doc}/test_1.tsv"                         # ls -lhaFG "${pth_tsv}"
+    dir_rep="${HOME}/tsukiyamalab/Kris/202X_protocol_ChIP"
+    dir_raw="${dir_rep}/data/raw"
+    dir_doc="${dir_raw}/docs"
+    dir_sym="${dir_rep}/data/symlinked"
+    dir_log="${dir_raw}/logs"
+    pth_tsv="${dir_doc}/test_3.tsv"
 
     #  Set hardcoded argument assignments
     # shellcheck disable=SC2269
     {
         verbose=true
+        threads=4
         infile="${pth_tsv}"
         dir_out="${dir_raw}"
         dir_sym="${dir_sym}"
-        par="slurm"
         nam_job="download_fastqs"
         err_out="${dir_log}"
-        max_job=6
+        slurm=true
         time="3:00:00"
     }
 }
@@ -68,17 +71,18 @@ function set_interactive() {
 
 #  Initialize argument variables, check and parse arguments, etc. =============
 #  Initialize hardcoded argument variables
+env_nam="env_align"
 scr_sub="${dir_scr}/submit_download_fastqs.sh"
 
 #  Initialize argument variables, assigning default values where applicable
 verbose=false
+threads=1
 infile=""
 dir_out=""
 dir_sym=""
-par=""
 nam_job="download_fastqs"
 err_out=""
-max_job=6
+slurm=false
 time="3:00:00"
 
 #  Define help message
@@ -86,8 +90,8 @@ show_help=$(
     cat << EOM
 Usage: 
   execute_download_fastqs.sh
-    [--verbose] --infile <str> --dir_out <str> --dir_sym <str> --par <str>
-    --err_out <str> --nam_job <str> --max_job <int> --time <str>
+    [--verbose] --threads <int> --infile <str> --dir_out <str> --dir_sym <str>
+    --nam_job <str> --err_out <str> --slurm --time <str>
 
 Description:
   execute_download_fastqs.sh downloads FASTQ files listed in a TSV file and
@@ -98,17 +102,39 @@ Description:
 Arguments:
    -h, --help     Display this help message and exit.
    -v, --verbose  Run script in 'verbose' mode (optional).
+   -t, --threads  Number of threads to use (default: ${threads}; see 'Notes'
+                  below).
    -i, --infile   Input TSV file.
   -do, --dir_out  Output directory for downloaded FASTQ files
   -ds, --dir_sym  Output directory for symlinked FASTQ files.
-   -p, --par      Program for parallelization ('slurm' or 'serial').
   -nj, --nam_job  The name of the job (default: ${nam_job}).
   -eo, --err_out  The directory to store stderr and stdout TXT outfiles
-                  (required; default: \${dir_out}/err_out).
-  -mj, --max_job  The maximum number of jobs to run at one time (default: ${max_job};
-                  ignored if par='serial').
-  -tm, --time     The length of time, in 'h:mm:ss' format, for the SLURM job
-                  (default: ${time}; ignored if par='serial').
+                  (default: \${dir_out}/err_out).
+  -sl, --slurm    Submit jobs to the SLURM scheduler (optional; see 'Notes'
+                  below).
+  -tm, --time     The length of time (e.g., h:mm:ss) for the SLURM job
+                  (required if --slurm is specified, ignored if not; default:
+                  ${time}).
+
+Dependencies:
+  - Programs
+    + Bash or Zsh
+    + ln
+    + SLURM (if --slurm is specified)
+    + wget
+  - Functions
+    + check_exists_file_dir
+    + check_format_time
+    + check_int_pos
+    + check_program_path
+    + check_supplied_arg
+    + echo_error
+    + echo_warning
+    + exit_0
+    + exit_1
+    + handle_env
+    + handle_env_activate
+    + handle_env_deactivate
 
 Notes:
   - The script requires a properly formatted TSV (tab-separated value) file
@@ -118,16 +144,24 @@ Notes:
     for examples.
   - Symbolic links are created in 'dir_sym' with names specified by the 
     'custom_name' column in the TSV file.
+  - If 'threads' is a positive integer greater than 1, the job submission
+    script will be executed using GNU Parallel with the --jobs option set to
+    \${threads}.
+  - If the --slurm flag is specified and 'threads' is greater than 1, the job
+    submission script will run via GNU Parallel within a SLURM job submission.
+  - If --slurm is specified and 'threads' is set to 1, the execution script
+    will terminate with an error, as serial job submission to SLURM is not
+    permitted (and array job submission code has not been implemented).
 
 Example:
   \`\`\`
-  #  Run with SLURM, allowing a maximum of six jobs to run concurrently
+  #  Run with SLURM, allowing a maximum of four downloads to run concurrently
   bash execute_download_fastqs.sh
+      --threads 4
       --infile \${HOME}/path/to/PRJNA471802.tsv
       --dir_out \${HOME}/path/to/dir_downloaded_files
       --dir_sym \${HOME}/path/to/dir_symlinked_files
-      --par slurm
-      --max_job 6
+      --slurm
   \`\`\`
 EOM
 )
@@ -144,13 +178,13 @@ else
     while [[ "$#" -gt 0 ]]; do
         case "${1}" in
              -v|--verbose) verbose=true;   shift 1 ;;
+             -t|--threads) threads="${2}"; shift 2 ;;
              -i|--infile)  infile="${2}";  shift 2 ;;
             -do|--dir_out) dir_out="${2}"; shift 2 ;;
             -ds|--dir_sym) dir_sym="${2}"; shift 2 ;;
-             -p|--par)     par="${2,,}";   shift 2 ;;
             -nj|--nam_job) nam_job="${2}"; shift 2 ;;
             -eo|--err_out) err_out="${2}"; shift 2 ;;
-            -mj|--max_job) max_job="${2}"; shift 2 ;;
+            -sl|--slurm)   slurm=true;     shift 1 ;;
             -tm|--time)    time="${2}";    shift 2 ;;
             *)
                 echo "## Unknown argument passed: ${1} ##" >&2
@@ -163,6 +197,9 @@ else
 fi
 
 #  Check arguments
+check_supplied_arg -a "${threads}" -n "threads"
+check_int_pos "${threads}" "threads"
+
 check_supplied_arg -a "${infile}" -n "infile"
 check_exists_file_dir "f" "${infile}" "infile"
 
@@ -171,8 +208,6 @@ check_exists_file_dir "d" "${dir_out}" "dir_out"
 
 check_supplied_arg -a "${dir_sym}" -n "dir_sym"
 check_exists_file_dir "d" "${dir_sym}" "dir_sym"
-
-check_supplied_arg -a "${par}" -n "par"
 
 check_supplied_arg -a "${nam_job}" -n "nam_job"
 
@@ -183,48 +218,42 @@ elif [[ -z "${err_out}" ]]; then
     check_exists_file_dir "d" "${err_out}" "err_out"
 fi
 
-case "${par}" in
-    slurm)
-        check_supplied_arg -a "${max_job}" -n "max_job"
-        check_int_pos "${max_job}" "max_job"
+if "${slurm}"; then
+    check_supplied_arg -a "${time}" -n "time"
+    check_format_time "${time}"
+fi
 
-        check_supplied_arg -a "${time}" -n "time"
-        check_format_time "${time}"
-        ;;
+#  Activate environment and check that dependencies are in PATH
+handle_env "${env_nam}"
 
-    serial)
-        :
-        ;;
-
-    *)
-        echo_error \
-            "Invalid selection for --par: '${par}'. Choose 'slurm' or" \
-            "'serial'."
-        exit_1
-        ;;
-esac
-
-#  Check that dependencies are in PATH
-check_program_path curl
 check_program_path cut
+check_program_path parallel
 check_program_path wget
 
 
 #  Do the main work ===========================================================
 #  Report argument variable assignments if in "verbose mode"
 if ${verbose}; then
+    echo "####################################"
+    echo "## Hardcoded variable assignments ##"
+    echo "####################################"
+    echo ""
+    echo "env_nam=${env_nam}"
+    echo "scr_sub=${scr_sub}"
+    echo ""
+    echo ""
     echo "###################################"
     echo "## Argument variable assignments ##"
     echo "###################################"
     echo ""
     echo "verbose=${verbose}"
+    echo "threads=${threads}"
     echo "infile=${infile}"
     echo "dir_out=${dir_out}"
     echo "dir_sym=${dir_sym}"
-    echo "par=${par}"
     echo "nam_job=${nam_job}"
     echo "err_out=${err_out}"
-    echo "max_job=${max_job}"
+    echo "slurm=${slurm}"
     echo "time=${time}"
     echo ""
 fi
@@ -334,59 +363,77 @@ if ${verbose}; then
     unset el
 fi
 
-#  Limit job concurrency to the number of files, showing a warning if adjusted
-case "${par}" in
-    slurm)
-        if [[ ${#list_acc[@]} -lt ${max_job} ]]; then
-            max_job=${#list_acc[@]}
-            echo_warning \
-                "The maximum number of SLURM jobs to run at a time, ${max_job}," \
-                "is greater than the number of FASTQ files, ${#list_acc[@]}." \
-                "Adjusting max_job to ${#list_acc[@]}."
-        fi
-        ;;
-esac
+#  Create a temporary GNU Parallel configuration file if threads > 1
+if [[ "${threads}" -gt 1 ]]; then
+    #  Generate a temporary file and check for issues
+    # config=$(mktmp)
+    config="${err_out}/${nam_job}.${RANDOM}.txt" ||
+        {
+            echo_error \
+                "Failed to create a temporary file for GNU Parallel" \
+                "configuration."
+            exit_1
+        }
 
-#  Download files and create symlinks
-if [[ "${par}" == "slurm" ]]; then
-    #  Join array elements with a delimiter (e.g., comma) to handle spaces
-    #+ correctly
-    str_acc=$(IFS=','; echo "${list_acc[*]}")      # echo "${str_acc}"
-    str_url_1=$(IFS=','; echo "${list_url_1[*]}")  # echo "${str_url_1}"
-    str_url_2=$(IFS=','; echo "${list_url_2[*]}")  # echo "${str_url_2}"
-    str_cus=$(IFS=','; echo "${list_cus[*]}")      # echo "${str_cus}"
+    #  Ensure the temporary file is removed upon script exit
+    trap 'rm -f "${config}"' EXIT
 
-    #  Submit each job via a SLURM job array for parallel downloads
-    # shellcheck disable=SC2086
-    sbatch \
-        --job-name=${nam_job} \
-        --nodes=1 \
-        --cpus-per-task=1 \
-        --time=${time} \
-        --error=${err_out}/${nam_job}.%A-%a.stderr.txt \
-        --output=${err_out}/${nam_job}.%A-%a.stdout.txt \
-        --array=1-${#list_acc[@]}%${max_job} \
-        --export=\
-"str_acc=${str_acc},\
-str_url_1=${str_url_1},\
-str_url_2=${str_url_2},\
-dir_out=${dir_out},\
-dir_sym=${dir_sym},\
-str_cus=${str_cus}" \
-            ${scr_sub}
-else
-    #  Run serially
+    #  Populate the GNU Parallel configuration file with parameters for each
+    #+ job
     for i in "${!list_acc[@]}"; do
-        bash "${scr_sub}" \
+        echo \
             "${list_acc[i]}" \
             "${list_url_1[i]}" \
             "${list_url_2[i]}" \
             "${dir_out}" \
             "${dir_sym}" \
             "${list_cus[i]}" \
-                 > "${err_out}/${nam_job}.${list_acc[i]}.stdout.txt" \
-                2> "${err_out}/${nam_job}.${list_acc[i]}.stderr.txt"
+            "${err_out}" \
+            "${nam_job}" \
+                >> "${config}"
     done
+fi
+
+#  Execute download and symlink creation based on SLURM flag and thread count
+if ${slurm}; then
+    if [[ "${threads}" -gt 1 ]]; then
+        #  Submit jobs to SLURM using GNU Parallel within a single SLURM job
+        sbatch \
+            --job-name="${nam_job}" \
+            --nodes=1 \
+            --cpus-per-task="${threads}" \
+            --time="${time}" \
+            --error="${config%.txt}.%A.stderr.txt" \
+            --output="${config%.txt}.%A.stdout.txt" \
+            --wrap="parallel --colsep ' ' --jobs ${threads} \
+            'bash \"${scr_sub}\" {1} {2} {3} {4} {5} {6} {7} {8}' :::: ${config}"
+    else
+        #  Display error if SLURM submission is attempted with threads=1
+        echo_error \
+            "SLURM submissions require threads > 1; current value:" \
+            "threads=${threads}."
+        exit_1
+    fi
+else
+    if [[ "${threads}" -gt 1 ]]; then
+        #  Use GNU Parallel for multi-threaded execution without SLURM
+        parallel --colsep ' ' --jobs "${threads}" \
+            "bash \"${scr_sub}\" {1} {2} {3} {4} {5} {6} {7} {8}" \
+            :::: "${config}"
+    else
+        #  Run jobs serially if threads=1
+        for i in "${!list_acc[@]}"; do
+            bash "${scr_sub}" \
+                "${list_acc[i]}" \
+                "${list_url_1[i]}" \
+                "${list_url_2[i]}" \
+                "${dir_out}" \
+                "${dir_sym}" \
+                "${list_cus[i]}" \
+                "${err_out}" \
+                "${nam_job}"
+        done
+    fi
 fi
 
 # sra_explorer_prjna471802.sh = Swygert et al., Mol Cell 2019 = ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE114566

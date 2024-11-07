@@ -1,70 +1,84 @@
 #!/bin/bash
 
-#  submit_download_fastqs.sh
-#  KA
+#  Display help message if no arguments or help option is given
+show_help=$(cat << EOM
+\${1}=srr      # NCBI SRA database run accession code.
+\${2}=url_1    # URL (FTP or HTTPS) for FASTQ file.
+\${3}=url_2    # Second FASTQ URL for PE data ("#N/A" for SE).
+\${4}=dir_out  # Directory to save FASTQ file(s).
+\${5}=dir_sym  # Directory for symlink(s) to FASTQ file(s).
+\${6}=nam_cus  # Custom name for symlink(s).
+\${7}=err_out  # Directory to store stderr and stdout output files.
+\${8}=nam_job  # Job name.
+EOM
+)
 
-
-#  Parse arguments ------------------------------------------------------------
-if [[ -z "${SLURM_ARRAY_TASK_ID}" ]]; then
-    #  Use arguments directly serial execution
-    srr="${1}"
-    url_1="${2}"
-    url_2="${3}"  # Will be #N/A for single-end data
-    dir_out="${4}"
-    dir_sym="${5}"
-    nam_cus="${6}"
-else
-    #  For SLURM job arrays, retrieve index from SLURM_ARRAY_TASK_ID
-    idx=$(( SLURM_ARRAY_TASK_ID - 1 ))
-
-    #  Convert environment variable strings back to arrays
-    # shellcheck disable=SC2154
-    {
-        IFS=',' read -ra list_acc <<< "${str_acc}"
-        IFS=',' read -ra list_url_1 <<< "${str_url_1}"
-        IFS=',' read -ra list_url_2 <<< "${str_url_2}"
-        IFS=',' read -ra list_cus <<< "${str_cus}"
-    }
-
-    #  Retrieve SRR, URLs, directory paths, and custom name based on imported
-    #+ variables and array index
-    srr="${list_acc[idx]}"
-    url_1="${list_url_1[idx]}"
-    url_2="${list_url_2[idx]}"
-    # shellcheck disable=SC2269
-    {
-        dir_out="${dir_out}"
-        dir_sym="${dir_sym}"
-    }
-    nam_cus="${list_cus[idx]}"
+if [[ -z "${1}" || "${1}" == "-h" || "${1}" == "--help" ]]; then
+    cat << EOM
+$(basename "${0}") requires 8 positional arguments:
+${show_help}
+EOM
+    exit 0
 fi
 
+#  Check for exactly 8 arguments
+if [[ $# -ne 8 ]]; then
+    msg="but $# were supplied."
+    [[ $# -eq 1 ]] && msg="but only $# was supplied."
+    cat << EOM
+Error: $(basename "${0}") requires 8 positional arguments, ${msg}
 
-#  Do the main work -----------------------------------------------------------
-#  Download the first FASTQ file (always present)
+The necessary positional arguments:
+${show_help}
+EOM
+    exit 1
+fi
+
+#  Assign positional arguments to variables
+srr="${1}"
+url_1="${2}"
+url_2="${3}"
+dir_out="${4}"
+dir_sym="${5}"
+nam_cus="${6}"
+err_out="${7}"
+nam_job="${8}"
+
+#  Download FASTQ file(s)
 echo "Downloading ${srr} from ${url_1}."
-# curl -s -L -o "${dir_out}/${srr}_R1.fastq.gz" "${url_1}" ||
-wget --quiet --no-verbose -O "${dir_out}/${srr}_R1.fastq.gz" "${url_1}" ||
-    {
-        echo "Error: Failed to download ${url_1}."
-        exit 1
-    }
-
-#  If paired-end, download the second FASTQ file
 if [[ "${url_2}" != "#N/A" ]]; then
+    wget --progress=dot:mega -O "${dir_out}/${srr}_R1.fastq.gz" "${url_1}" \
+         > "${err_out}/${nam_job}.${srr}_R1.stdout.txt" \
+        2> "${err_out}/${nam_job}.${srr}_R1.stderr.txt" ||
+        {
+            echo "Error: Failed to download ${url_1}."
+            exit 1
+        }
+
     echo "Downloading ${srr} from ${url_2}."
-    # curl -s -L -o "${dir_out}/${srr}_R2.fastq.gz" "${url_2}" ||
-    wget --quiet --no-verbose -O "${dir_out}/${srr}_R2.fastq.gz" "${url_2}" ||
+    wget --progress=dot:mega -O "${dir_out}/${srr}_R2.fastq.gz" "${url_2}" \
+         > "${err_out}/${nam_job}.${srr}_R2.stdout.txt" \
+        2> "${err_out}/${nam_job}.${srr}_R2.stderr.txt" ||
         {
             echo "Error: Failed to download ${url_2}."
+            exit 1
+        }
+else
+    wget --progress=dot:mega -O "${dir_out}/${srr}.fastq.gz" "${url_1}" \
+         > "${err_out}/${nam_job}.${srr}.stdout.txt" \
+        2> "${err_out}/${nam_job}.${srr}.stderr.txt" ||
+        {
+            echo "Error: Failed to download ${url_1}."
             exit 1
         }
 fi
 
 #  Create symlinks to the downloaded file(s) using the custom name
-ln -sf \
-    "${dir_out}/${srr}_R1.fastq.gz" \
-    "${dir_sym}/${nam_cus}_R1.fastq.gz" ||
+echo "Symlinking ${srr} to ${nam_cus}."
+if [[ "${url_2}" != "#N/A" ]]; then
+    ln -sf \
+        "${dir_out}/${srr}_R1.fastq.gz" \
+        "${dir_sym}/${nam_cus}_R1.fastq.gz" ||
         {
             echo \
                 "Error: Failed to create symlink for" \
@@ -72,7 +86,6 @@ ln -sf \
             exit 1
         }
 
-if [[ "${url_2}" != "#N/A" ]]; then
     ln -sf \
         "${dir_out}/${srr}_R2.fastq.gz" \
         "${dir_sym}/${nam_cus}_R2.fastq.gz" ||
@@ -80,6 +93,16 @@ if [[ "${url_2}" != "#N/A" ]]; then
             echo \
                 "Error: Failed to create symlink for" \
                 "${dir_out}/${srr}_R2.fastq.gz"
+            exit 1
+        }
+else
+    ln -sf \
+        "${dir_out}/${srr}.fastq.gz" \
+        "${dir_sym}/${nam_cus}.fastq.gz" ||
+        {
+            echo \
+                "Error: Failed to create symlink for" \
+                "${dir_out}/${srr}.fastq.gz"
             exit 1
         }
 fi
