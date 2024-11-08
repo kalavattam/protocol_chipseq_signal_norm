@@ -36,8 +36,6 @@ dir_fnc="${dir_scr}/functions"
     source "${dir_fnc}/exit_0.sh"
     source "${dir_fnc}/exit_1.sh"
     source "${dir_fnc}/handle_env.sh"
-    source "${dir_fnc}/handle_env_activate.sh"
-    source "${dir_fnc}/handle_env_deactivate.sh"
 }
 
 
@@ -271,8 +269,8 @@ for infile in "${arr_infiles[@]}"; do
         fi
 
         #  Validate sample-specific paired-end FASTQ files exist
-        check_exists_file_dir "f" "${fq_1}"
-        check_exists_file_dir "f" "${fq_2}"
+        check_exists_file_dir "f" "${fq_1}" "fq_1"
+        check_exists_file_dir "f" "${fq_2}" "fq_2"
 
         #  Validate presence of file suffix in fq_1 assignment
         if [[ "${fq_1}" != *"${sfx_pe}" ]]; then
@@ -286,7 +284,7 @@ for infile in "${arr_infiles[@]}"; do
         unset fq_2
         
         #  Validate sample-specific single-end FASTQ file exists
-        check_exists_file_dir "f" "${fq_1}"
+        check_exists_file_dir "f" "${fq_1}" "fq_1"
 
         #  Validate presence of file suffix in fq_1 assignment
         if [[ "${fq_1}" != *"${sfx_se}" ]]; then

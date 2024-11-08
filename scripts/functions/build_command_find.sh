@@ -114,7 +114,7 @@ EOM
             "Error: Directory associated with --dir_fnd does not exist:" \
             "${dir_fnd}." >&2
         return 1
-    fi  
+    fi
 
     if [[ -z "${pattern}" ]]; then
         echo "Error: --pattern is required." >&2

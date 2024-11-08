@@ -37,8 +37,6 @@ dir_fnc="${dir_scr}/functions"
     source "${dir_fnc}/exit_0.sh"
     source "${dir_fnc}/exit_1.sh"
     source "${dir_fnc}/handle_env.sh"
-    source "${dir_fnc}/handle_env_activate.sh"
-    source "${dir_fnc}/handle_env_deactivate.sh"
 }
 
 
@@ -161,6 +159,7 @@ Example:
       --infile \${HOME}/path/to/PRJNA471802.tsv
       --dir_out \${HOME}/path/to/dir_downloaded_files
       --dir_sym \${HOME}/path/to/dir_symlinked_files
+      --err_out \${HOME}/path/to/dir_downloaded_files/logs
       --slurm
   \`\`\`
 EOM

@@ -31,6 +31,8 @@ dir_fnc="${dir_scr}/functions"
     source "${dir_fnc}/check_mut_excl_flags.sh"
     source "${dir_fnc}/check_program_path.sh"
     source "${dir_fnc}/check_supplied_arg.sh"
+    source "${dir_fnc}/echo_error.sh"
+    source "${dir_fnc}/exit_1.sh"
     source "${dir_fnc}/pair_fastqs.sh"
 }
 
@@ -110,11 +112,14 @@ Dependencies:
     + check_mut_excl_flags
     + check_program_path
     + check_supplied_arg
+    + echo_error
+    + exit_1
     + pair_fastqs
 
-Note:
-  - This script doesn't handle logical OR operations, just logical AND and
-    logical AND NOT.
+Notes:
+  - This script doesn't handle logical OR operations, just AND and AND NOT.
+  - find_files.sh will exit with an error message if it is run from the target
+    directory being searched, as doing so causes file-globbing errors.
 
 Examples:
   \`\`\`
@@ -169,6 +174,15 @@ fi
 #  Check arguments
 check_supplied_arg -a "${dir_fnd}" -n "dir_fnd"
 check_exists_file_dir "d" "${dir_fnd}" "dir_fnd"
+
+if [[ "$(realpath "${dir_fnd}")" == "$(realpath "${PWD}")" ]]; then
+    echo_error \
+        "find_files.sh cannot be run from the target directory" \
+        "being searched, as this causes file-globbing errors. Please run" \
+        "the script from a different directory. Currently," \
+        "dir_fnd=\"${dir_fnd}\"."
+    exit_1
+fi
 
 check_supplied_arg -a "${pattern}" -n "pattern"
 

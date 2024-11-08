@@ -50,13 +50,14 @@ fil_fas="sc_sp_proc.fasta"
 pth_fas="${dir_fas}/${fil_fas}"
 dir_idx="${dir_cat}/index/bowtie2"
 env_nam="env_align"
+day="$(date '+%Y-%m%d')"
 
 #  Source utility functions
 source "${dir_fnc}/check_program_path.sh"
-source "${dir_fnc}/handle_env_activate.sh"
+source "${dir_fnc}/handle_env.sh"
 
-#  Activate the environment for alignment tools, etc.
-handle_env_activate "${env_nam}"
+#  Activate the required environment
+handle_env "${env_nam}"
 
 #  Ensure access to bowtie2-build
 check_program_path "bowtie2-build"
@@ -71,8 +72,8 @@ fi
 
 #  "Build" the Bowtie 2 index using the decompressed FASTA file
 bowtie2-build "${pth_fas}" "${dir_idx}/${fil_fas%.fasta}" \
-     > >(tee -a "${dir_idx}/logs/stdout.txt") \
-    2> >(tee -a "${dir_idx}/logs/stderr.txt")
+     > >(tee -a "${dir_idx}/logs/${day}.execute.stdout.txt") \
+    2> >(tee -a "${dir_idx}/logs/${day}.execute.stderr.txt")
 
 #  Optional cleanup: Once the index is built, delete the decompressed FASTA
 #+ file
@@ -96,7 +97,50 @@ bash "${dir_scr}/compress_remove_files.sh" \
 ```bash
 #!/bin/bash
 
-#TODO
+#  Optional: Request an interactive node
+grabnode  # Request 1 core, 20 GB memory, 1 day, no GPU
+
+#  Define variables for directory paths, etc.
+## WARNING: Change path if you're not Kris ##
+dir_rep="${HOME}/tsukiyamalab/Kris/202X_protocol_ChIP"
+dir_scr="${dir_rep}/scripts"
+dir_fnc="${dir_scr}/functions"
+dir_raw="${dir_rep}/data/raw"
+dir_doc="${dir_raw}/docs"
+## NOTE: Change TSV file as needed ##
+fil_tsv="test_2.tsv"
+pth_tsv="${dir_doc}/${fil_tsv}"
+dir_log="${dir_raw}/logs"
+dir_sym="${dir_rep}/data/symlinked"
+env_nam="env_align"
+seed=24
+threads=4
+day="$(date '+%Y-%m%d')"
+
+#  Source utility functions
+source "${dir_fnc}/check_program_path.sh"
+source "${dir_fnc}/handle_env.sh"
+
+#  Activate the required environment
+handle_env "${env_nam}"
+
+#  Ensure access to bowtie2-build
+check_program_path "parallel"
+
+#  Download and symlink FASTQ files 
+bash "${dir_scr}/execute_download_fastqs.sh" \
+    --threads "${threads}" \
+    --infile "${pth_tsv}" \
+    --dir_out "${dir_raw}" \
+    --dir_sym "${dir_sym}" \
+    --err_out "${dir_raw}/logs" \
+    --slurm \
+         > >(tee -a "${dir_raw}/logs/${day}.execute.stdout.txt") \
+        2> >(tee -a "${dir_raw}/logs/${day}.execute.stderr.txt")
+
+#  Cleanup: Compress large stdout and stderr, and remove files with size 0
+bash "${dir_scr}/compress_remove_files.sh" \
+    --dir_fnd "${dir_raw}/logs"
 ```
 </details>
 <br />
@@ -122,6 +166,7 @@ dir_pro="${dir_dat}/processed"
 dir_trm="${dir_pro}/trim_atria_FASTQ"
 env_nam="env_analyze"
 threads=4
+## NOTE: Change the search parameters as needed ##
 infiles="$(
     bash "${dir_scr}/find_files.sh" \
         --dir_fnd "${dir_sym}" \
@@ -130,13 +175,14 @@ infiles="$(
         --follow \
         --fastqs
 )"
+day="$(date '+%Y-%m%d')"
 
 #  Source utility functions
 source "${dir_fnc}/check_program_path.sh"
-source "${dir_fnc}/handle_env_activate.sh"
+source "${dir_fnc}/handle_env.sh"
 
 #  Activate the required environment
-handle_env_activate "${env_nam}"
+handle_env "${env_nam}"
 
 #  Check availability of Atria and other necessary tools
 check_program_path "atria"
@@ -154,8 +200,8 @@ bash "${dir_scr}/execute_trim_fastqs.sh" \
     --dir_out "${dir_trm}" \
     --err_out "${dir_trm}/logs" \
     --slurm \
-         > >(tee -a "${dir_trm}/logs/2024-1105.execute.stdout.txt") \
-        2> >(tee -a "${dir_trm}/logs/2024-1105.execute.stderr.txt")
+         > >(tee -a "${dir_trm}/logs/${day}.execute.stdout.txt") \
+        2> >(tee -a "${dir_trm}/logs/${day}.execute.stderr.txt")
 
 #  Cleanup: Move Atria LOG and JSON files to the logs directory
 mv ${dir_trm}/*.{log,json} "${dir_trm}/logs"
@@ -220,16 +266,17 @@ dir_out="${dir_aln}/flag-${flg}_mapq-${mapq}"
 nam_job="align_fastqs"
 max_job=6
 time="1:00:00"
+day="$(date '+%Y-%m%d')"
 
 #  Create output directory structure for trimmed FASTQ files and logs
 mkdir -p ${dir_out}/{init,sc,sp}/{docs,logs}
 
 #  Source utility functions
 source "${dir_fnc}/check_program_path.sh"
-source "${dir_fnc}/handle_env_activate.sh"
+source "${dir_fnc}/handle_env.sh"
 
 #  Activate the required environment
-handle_env_activate "${env_nam}"
+handle_env "${env_nam}"
 
 #  Check availability of Atria and other necessary tools
 check_program_path "bowtie2"
@@ -246,8 +293,10 @@ bash "${dir_scr}/execute_align_fastqs.sh" \
     --index "${pth_idx}" \
     --infiles "${infiles}" \
     --dir_out "${dir_out}" \
-    --err_out "${dir_out}/logs" \
-    --slurm
+    --err_out "${dir_out}/init/logs" \
+    --slurm \
+         > >(tee -a "${dir_out}/init/logs/${day}.execute.stdout.txt") \
+        2> >(tee -a "${dir_out}/init/logs/${day}.execute.stderr.txt")
 ```
 </details>
 <br />

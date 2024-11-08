@@ -30,7 +30,7 @@ dir_fnc="${dir_scr}/functions"
     source "${dir_fnc}/check_installed_mamba.sh"
     source "${dir_fnc}/echo_error.sh"
     source "${dir_fnc}/echo_warning.sh"
-    source "${dir_fnc}/handle_env_deactivate.sh"
+    source "${dir_fnc}/handle_env.sh"
 }
 
 

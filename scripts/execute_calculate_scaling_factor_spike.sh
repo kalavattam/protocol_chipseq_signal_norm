@@ -36,6 +36,7 @@ dir_fnc="${dir_scr}/functions"
     source "${dir_fnc}/echo_warning.sh"
     source "${dir_fnc}/exit_0.sh"
     source "${dir_fnc}/exit_1.sh"
+    source "${dir_fnc}/handle_env.sh"
 }
 
 

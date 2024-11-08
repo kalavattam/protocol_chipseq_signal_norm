@@ -38,6 +38,7 @@ dir_fnc="${dir_scr}/functions"
     source "${dir_fnc}/exit_1.sh"
     source "${dir_fnc}/filter_bam_sc.sh"
     source "${dir_fnc}/filter_bam_sp.sh"
+    source "${dir_fnc}/handle_env.sh"
 }
 
 
@@ -122,6 +123,9 @@ Dependencies:
     + exit_1
     + filter_bam_sc
     + filter_bam_sp
+    + handle_env
+    + handle_env_activate
+    + handle_env_deactivate
 
 Note:
   #TODO

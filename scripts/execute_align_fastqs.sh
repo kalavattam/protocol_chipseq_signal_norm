@@ -38,8 +38,6 @@ dir_fnc="${dir_scr}/functions"
     source "${dir_fnc}/exit_0.sh"
     source "${dir_fnc}/exit_1.sh"
     source "${dir_fnc}/handle_env.sh"
-    source "${dir_fnc}/handle_env_activate.sh"
-    source "${dir_fnc}/handle_env_deactivate.sh"
 }
 
 

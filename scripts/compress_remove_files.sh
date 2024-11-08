@@ -7,9 +7,8 @@
 #  Run script in interactive/test mode (true) or command-line mode (false)
 interactive=false
 
-#  Exit on errors, unset variables, or pipe failures if not in "interactive
-#+ mode"
-if ! ${interactive}; then set -euo pipefail; fi
+#  Exit on errors or pipe failures if not in "interactive mode"
+if ! ${interactive}; then set -eo pipefail; fi
 
 #  Set the path to the "scripts" directory
 if ${interactive}; then
@@ -33,8 +32,6 @@ dir_fnc="${dir_scr}/functions"
     source "${dir_fnc}/check_program_path.sh"
     source "${dir_fnc}/check_supplied_arg.sh"
     source "${dir_fnc}/handle_env.sh"
-    source "${dir_fnc}/handle_env_activate.sh"
-    source "${dir_fnc}/handle_env_deactivate.sh"
 }
 
 
@@ -161,6 +158,7 @@ if ${interactive}; then
 else
     while [[ "$#" -gt 0 ]]; do
         case "${1}" in
+             -t|--threads) threads="${2}"; shift 2 ;;
             -df|--dir_fnd) dir_fnd="${2}"; shift 2 ;;
             -pa|--pattern) pattern="${2}"; shift 2 ;;
             -sz|--size)    size="${2}";    shift 2 ;;
@@ -179,15 +177,19 @@ else
     done
 fi
 
+#  Check arguments
+check_supplied_arg -a "${threads}" -n "threads"
+check_int_pos "${threads}" "threads"
+
 check_supplied_arg -a "${dir_fnd}" -n "dir_fnd"
 check_exists_file_dir "d" "${dir_fnd}" "dir_fnd"
 
 check_supplied_arg -a "${pattern}" -n "pattern"
 
 check_supplied_arg -a "${size}" -n "size"
-check_int_pos "${size}"
+check_int_pos "${size}" "size"
 
-if [[ -n "${depth}" ]]; then check_int_pos "${depth}"; fi
+if [[ -n "${depth}" ]]; then check_int_pos "${depth}" "depth"; fi
 
 check_mut_excl_flags ${chk_con} "chk_con" ${chk_exc} "chk_exc"
 
