@@ -39,6 +39,7 @@ dir_fnc="${dir_scr}/functions"
 }
 
 
+#  Set up paths, values, and parameters for interactive mode
 function set_interactive() {
     #  Set hardcoded paths, values, etc.
     ## WARNING: Change the values if you're not Kris and `interactive=true` ##

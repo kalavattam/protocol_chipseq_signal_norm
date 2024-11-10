@@ -16,9 +16,9 @@ Description:
   exit code 1.
 
 Keyword parameters:
-  -a, --asgmt  The value (i.e., assignment or "asgmt") of the argument to
-               check (required).
-  -n, --name   The name of the argument to check (required).
+  -a, --asgmt (str): The value (i.e., assignment or "asgmt") of the argument to
+                     check (required).
+  -n, --name  (str): The name of the argument to check (required).
 
 Returns:
   0 if the argument has been assigned a value; otherwise, returns exit code 1

@@ -12,7 +12,6 @@ interactive=false
 if ! ${interactive}; then set -euo pipefail; fi
 
 #  Set the path to the "scripts" directory
-# shellcheck disable=SC1091
 if ${interactive}; then
     ## WARNING: Change path if you're not Kris and `interactive=true` ##
     dir_scr="${HOME}/tsukiyamalab/Kris/202X_protocol_ChIP/scripts"
@@ -374,9 +373,6 @@ if [[ "${threads}" -gt 1 ]]; then
             exit_1
         }
 
-    #  Ensure the temporary file is removed upon script exit
-    trap 'rm -f "${config}"' EXIT
-
     #  Populate the GNU Parallel configuration file with parameters for each
     #+ job
     for i in "${!list_acc[@]}"; do
@@ -434,8 +430,3 @@ else
         done
     fi
 fi
-
-# sra_explorer_prjna471802.sh = Swygert et al., Mol Cell 2019 = ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE114566
-# sra_explorer_prjna702745.sh = Swygert et al., Elife 2021 = ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE167017
-# sra_explorer_prjna549445.sh = Dickson et al., J Biol Chem 2020 = ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE132906
-# sra_explorer_prjna857063.sh = Dickson et al., Sci Rep 2023 = ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE207783

@@ -34,6 +34,7 @@ dir_fnc="${dir_scr}/functions"
 }
 
 
+#  Set up paths, values, and parameters for interactive mode
 function set_interactive() {
     #  Hardcoded argument assignments
     env_nam="env_align"

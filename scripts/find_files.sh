@@ -37,20 +37,21 @@ dir_fnc="${dir_scr}/functions"
 }
 
 
+#  Set up paths, values, and parameters for interactive mode
 set_interactive() {
-    #  Hardcoded paths
+    #  Set hardcoded paths, values, etc.
     ## WARNING: Change the values if you're not Kris and `interactive=true` ##
     dir_rep="${HOME}/tsukiyamalab/Kris/202X_protocol_ChIP"
     dir_fil="${dir_rep}/data/symlinked"
 
-    #  Hardcoded argument assignments
+    #  Set hardcoded argument assignments
     dir_fnd="${dir_rep}/${dir_fil}"
     pattern="*.fastq.gz"  # "*.bam"
-    follow=true  # false
+    follow=true           # false
     depth=1
     include=""
     exclude=""
-    fastqs=true  # false
+    fastqs=true           # false
     chk_con=false
     chk_exc=true
 }

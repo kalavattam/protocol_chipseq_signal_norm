@@ -12,7 +12,6 @@ interactive=false
 if ! ${interactive}; then set -euo pipefail; fi
 
 #  Set the path to the "scripts" directory
-# shellcheck disable=SC1091
 if ${interactive}; then
     ## WARNING: Change path if you're not Kris and `interactive=true` ##
     dir_scr="${HOME}/tsukiyamalab/Kris/202X_protocol_ChIP/scripts"
@@ -42,6 +41,50 @@ dir_fnc="${dir_scr}/functions"
 }
 
 
+#  Set up paths, values, and parameters for interactive mode
+function set_interactive() {
+    #  Set hardcoded paths, values, etc.
+    ## WARNING: Change the values if you're not Kris and `interactive=true` ##
+    dir_bas="${HOME}/tsukiyamalab/Kris"
+    dir_rep="${dir_bas}/202X_protocol_ChIP"
+    dir_dat="${dir_rep}/data"
+    dir_pro="${dir_dat}/processed"
+    {
+        aligner="bowtie2"
+        a_type="global"
+        req_flg=true
+        flg="$(if ${req_flg}; then echo "2"; else echo "NA"; fi)" 
+        mapq=1
+    }
+    dir_aln="${dir_pro}/align_${aligner}_${a_type}_BAM"
+    dir_flt="${dir_aln}/flag-${flg}_mapq-${mapq}"
+    dir_ini="${dir_flt}/init"
+
+    #  Set hardcoded argument assignments
+    verbose=true
+    dry_run=true
+    retain="sc"  # "sp"
+    threads=4
+    infiles="$(
+        bash "${dir_scr}/find_files.sh" \
+            --dir_fnd "${dir_ini}" \
+            --pattern "*.bam" \
+            --depth 1 \
+            --include "*Q*,*Hho1*"
+    )"
+    # infiles="${dir_bam}/IP_WT_Q_Brn1_rep1.bam"
+    dir_out="${dir_flt}/${retain}"
+    mito=false
+    tg=false
+    mtr=false
+    chk_chr=false
+    err_out="${dir_out}/logs"
+    slurm=true
+    max_job=12
+    time="1:00:00"
+}
+
+
 #  Initialize argument variables, check and parse arguments, etc. =============
 #  Initialize argument variables, assigning default values where applicable
 verbose=false
@@ -59,18 +102,13 @@ slurm=false
 max_job=6
 time="0:30:00"
 
-#  Initialize hardcoded argument variables
-env_nam="env_align"
-nam_job="filter_bams_${retain}"
-scr_fnc="${dir_fnc}/${nam_job}.sh"
-scr_sub="${dir_scr}/submit_filter_bams.sh"
-
 #  Assign variable for help message
 show_help=$(cat << EOM
-execute_filter_bams.sh
-  [--verbose] [--dry_run] --threads <int> --infiles <str> --dir_out <str>
-  --retain <str> [--mito] [--tg] [--mtr] [--chk_chr] --err_out <str>
-  --nam_job <str> [--slurm] [--max_job <int>] [--time <str>]
+Usage:
+  execute_filter_bams.sh
+    [--verbose] [--dry_run] --threads <int> --infiles <str> --dir_out <str>
+    --retain <str> [--mito] [--tg] [--mtr] [--chk_chr] --err_out <str>
+    [--slurm] [--max_job <int>] [--time <str>]
 
 Description:
   execute_filter_bams.sh performs... #TODO
@@ -92,8 +130,6 @@ Arguments:
   -cc, --chk_chr  Check chromosomes in filtered BAM outfile (optional)
   -eo, --err_out  The directory to store stderr and stdout TXT outfiles
                   (required; default: \${dir_out}/err_out).
-  -nj, --nam_job  The name of the job, which is used when writing stderr and
-                  stdout (required; default: ${nam_job}).
   -sl, --slurm    Submit jobs to the SLURM scheduler; otherwise, run them in
                   serial (optional).
   -mj, --max_job  The maximum number of jobs to run at one time (required if
@@ -124,8 +160,6 @@ Dependencies:
     + filter_bam_sc
     + filter_bam_sp
     + handle_env
-    + handle_env_activate
-    + handle_env_deactivate
 
 Note:
   #TODO
@@ -144,45 +178,7 @@ if [[ -z "${1:-}" || "${1}" == "-h" || "${1}" == "--help" ]]; then
 fi
 
 if ${interactive}; then
-    #  Hardcoded paths, etc.
-    dir_bas="${HOME}/tsukiyamalab/Kris"   # ls -lhaFG "${dir_bas}"
-    nam_rep="202X_protocol_ChIP"          # echo "${nam_rep}"
-    dir_rep="${dir_bas}/${nam_rep}"       # ls -lhaFG "${dir_rep}"
-    nam_bam="03_bam"                      # echo "${nam_bam}"
-    dir_bgn="${dir_rep}/${nam_bam}"       # ls -lhaFG "${dir_bgn}"
-    {
-        aligner="bowtie2"                                          # echo "${aligner}"
-        a_type="global"                                            # echo "${a_type}"
-        req_flg=true                                               # echo "${req_flg}"
-        flg="$(if ${req_flg}; then echo "2"; else echo "NA"; fi)"  # echo "${flg}"
-        mapq=1                                                     # echo "${mapq}"
-        details="${aligner}/${a_type}/flag-${flg}_mapq-${mapq}"    # echo "${details}"
-    }
-    dir_bam="${dir_bgn}/${details}/init"  # ls -lhaFG "${dir_bam}"
-
-    #  Hardcoded argument assignments
-    verbose=true                               # echo "${verbose}"
-    dry_run=true                               # echo "${dry_run}"
-    retain="sp"  # "sc"                        # echo "${retain}"
-    threads=4                                  # echo "${threads}"
-    # infiles="$(
-    #     bash "${dir_scr}/find_files.sh" \
-    #         --dir_fnd "${dir_bam}" \
-    #         --pattern "*.bam" \
-    #         --depth 1 \
-    #         --include "*G1-1st*" \
-    #         --exclude "bak.*"
-    # )"                                       # echo "${infiles}"
-    infiles="${dir_bam}/IP_log_Brn1_rep1.bam"  # echo "${infiles}"
-    dir_out="${dir_bgn}/${details}/${retain}"  # ls -lhaFG "${dir_out}"  # mkdir -p "${dir_out}/err_out"
-    mito=false                                 # echo "${mito}"
-    tg=false                                   # echo "${tg}"
-    mtr=false                                  # echo "${mtr}"
-    chk_chr=false                              # echo "${chk_chr}"
-    err_out="${dir_out}/err_out"               # ls -lhaFG "${err_out}"
-    slurm=true                                 # echo "${slurm}"
-    max_job=12                                 # echo "${max_job}"
-    time="0:30:00"                             # echo "${time}"
+    set_interactive
 else
     while [[ "$#" -gt 0 ]]; do
         case "${1}" in
@@ -211,9 +207,6 @@ else
 fi
 
 #  Check arguments
-check_supplied_arg -a "${scr_fnc}" -n "scr_fnc"
-check_exists_file_dir "f" "${scr_fnc}" "scr_fnc"
-
 check_supplied_arg -a "${threads}" -n "threads"
 check_int_pos "${threads}" "threads"
 
@@ -240,12 +233,7 @@ elif [[ -z "${err_out}" ]]; then
     check_exists_file_dir "d" "${err_out}" "err_out"
 fi
 
-check_supplied_arg -a "${nam_job}" -n "nam_job"
-
 if ${slurm}; then
-    check_supplied_arg -a "${scr_sub}" -n "scr_sub"
-    check_exists_file_dir "f" "${scr_sub}" "scr_sub"
-
     check_supplied_arg -a "${max_job}" -n "max_job"
     check_int_pos "${max_job}" "max_job"
     
@@ -253,7 +241,26 @@ if ${slurm}; then
     check_format_time "${time}"
 fi
 
-#  Check that dependencies are in PATH
+#  Based on argument assignments, initialize hardcoded argument variables
+env_nam="env_align"
+nam_job="filter_bam_${retain}"
+scr_fnc="${dir_fnc}/${nam_job}.sh"
+scr_sub="${dir_scr}/submit_filter_bams.sh"
+
+#  Check assignments
+check_supplied_arg -a "${env_nam}" -n "env_nam"
+
+check_supplied_arg -a "${nam_job}" -n "nam_job"
+
+check_supplied_arg -a "${scr_fnc}" -n "scr_fnc"
+check_exists_file_dir "f" "${scr_fnc}" "scr_fnc"
+
+check_supplied_arg -a "${scr_sub}" -n "scr_sub"
+check_exists_file_dir "f" "${scr_sub}" "scr_sub"
+
+#  Activate environment and check that dependencies are in PATH
+handle_env "${env_nam}"
+
 check_program_path awk
 check_program_path grep
 check_program_path mv
@@ -268,7 +275,7 @@ IFS=',' read -r -a arr_infiles <<< "${infiles}"  # unset arr_infiles
 
 #  Check that each infile exists; if not, exit
 for infile in "${arr_infiles[@]}"; do
-    check_exists_file_dir "f" "${infile}"
+    check_exists_file_dir "f" "${infile}" "infile"
 done
 
 if ${slurm}; then
@@ -285,34 +292,36 @@ fi
 #  Do the main work ===========================================================
 #  Report argument variable assignments if in "verbose mode"
 if ${verbose}; then
-cat << EOM
-#TODO
-env_nam=${env_nam}
-nam_job=${nam_job}
-scr_fnc=${scr_fnc}
-scr_sub=${scr_sub}
-
-###################################
-## Argument variable assignments ##
-###################################
-
-verbose=${verbose}
-dry_run=${dry_run}
-threads=${threads}
-infiles=${infiles}
-dir_out=${dir_out}
-retain=${retain}
-mito=${mito}
-tg=${tg}
-mtr=${mtr}
-chk_chr=${chk_chr}
-err_out=${err_out}
-slurm=${slurm}
-max_job=${max_job}
-time=${time}
-
-
-EOM
+    echo "####################################"
+    echo "## Hardcoded variable assignments ##"
+    echo "####################################"
+    echo ""
+    echo "env_nam=${env_nam}"
+    echo "nam_job=${nam_job}"
+    echo "scr_fnc=${scr_fnc}"
+    echo "scr_sub=${scr_sub}"
+    echo ""
+    echo ""
+    echo "###################################"
+    echo "## Argument variable assignments ##"
+    echo "###################################"
+    echo ""
+    echo "verbose=${verbose}"
+    echo "dry_run=${dry_run}"
+    echo "threads=${threads}"
+    echo "infiles=${infiles}"
+    echo "dir_out=${dir_out}"
+    echo "retain=${retain}"
+    echo "mito=${mito}"
+    echo "tg=${tg}"
+    echo "mtr=${mtr}"
+    echo "chk_chr=${chk_chr}"
+    echo "err_out=${err_out}"
+    echo "slurm=${slurm}"
+    echo "max_job=${max_job}"
+    echo "time=${time}"
+    echo ""
+    echo ""
 fi
 
 # shellcheck disable=SC1083,SC2157
@@ -378,12 +387,6 @@ if ${slurm}; then
                 --nam_job ${nam_job}
     fi
 else
-    #  If --slurm was not specified, run jobs in serial
-    if [[ "${CONDA_DEFAULT_ENV}" != "env_align" ]]; then
-        eval "$(conda shell.bash hook)"
-        conda activate env_align
-    fi
-    
     #  Derive function name from function script
     nam_fnc="$(basename "${scr_fnc}" ".sh")"
 

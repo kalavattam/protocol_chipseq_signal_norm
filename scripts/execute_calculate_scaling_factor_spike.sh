@@ -12,7 +12,6 @@ interactive=false
 if ! ${interactive}; then set -euo pipefail; fi
 
 #  Set the path to the "scripts" directory
-# shellcheck disable=SC1091
 if ${interactive}; then
     ## WARNING: Change path if you're not Kris and `interactive=true` ##
     dir_scr="${HOME}/tsukiyamalab/Kris/202X_protocol_ChIP/scripts"

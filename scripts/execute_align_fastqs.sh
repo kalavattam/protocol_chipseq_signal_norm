@@ -41,7 +41,8 @@ dir_fnc="${dir_scr}/functions"
 }
 
 
-set_interactive() {
+#  Set up paths, values, and parameters for interactive mode
+function set_interactive() {
     #  Set hardcoded paths, values, etc.
     ## WARNING: Change the values if you're not Kris and `interactive=true` ##
     dir_bas="${HOME}/tsukiyamalab/Kris"
@@ -386,7 +387,7 @@ for infile in "${arr_infiles[@]}"; do
         unset fq_2
         
         #  Validate sample-specific single-end FASTQ file exists
-        check_exists_file_dir "f" "${fq_1}"
+        check_exists_file_dir "f" "${fq_1}" "fq_1"
 
         #  Validate presence of file suffix in fq_1 assignment
         if [[ "${fq_1}" != *"${sfx_se}" ]]; then

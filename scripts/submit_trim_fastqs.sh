@@ -37,7 +37,9 @@ EOM
     exit 1
 fi
 
-#  Assign positional arguments to variables
+#  Parse positional arguments, assigning them to variables; most of the
+#+ argument inputs are not checked, as this is performed by execute_*.sh and to
+#+ a certain extent by the scripts submitted to SLURM
 env_nam="${1}"
 threads="${2}"
 infiles="${3}"

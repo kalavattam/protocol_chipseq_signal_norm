@@ -39,7 +39,8 @@ grabnode  # Request 1 core, 20 GB memory, 1 day, no GPU
 
 #  Define variables for directory paths, etc.
 ## WARNING: Change path if you're not Kris ##
-dir_rep="${HOME}/tsukiyamalab/Kris/202X_protocol_ChIP"  
+dir_bas="${HOME}/tsukiyamalab/Kris"  ## WARNING: Change if not Kris ##
+dir_rep="${dir_bas}/202X_protocol_ChIP"
 dir_scr="${dir_rep}/scripts"
 dir_fnc="${dir_scr}/functions"
 dir_dat="${dir_rep}/data"
@@ -101,20 +102,19 @@ bash "${dir_scr}/compress_remove_files.sh" \
 grabnode  # Request 1 core, 20 GB memory, 1 day, no GPU
 
 #  Define variables for directory paths, etc.
-## WARNING: Change path if you're not Kris ##
-dir_rep="${HOME}/tsukiyamalab/Kris/202X_protocol_ChIP"
+dir_bas="${HOME}/tsukiyamalab/Kris"  ## WARNING: Change if not Kris ##
+dir_rep="${dir_bas}/202X_protocol_ChIP"
 dir_scr="${dir_rep}/scripts"
 dir_fnc="${dir_scr}/functions"
 dir_raw="${dir_rep}/data/raw"
 dir_doc="${dir_raw}/docs"
-## NOTE: Change TSV file as needed ##
-fil_tsv="test_2.tsv"
+fil_tsv="datasets.tsv"  ## WARNING: Change as needed ##
 pth_tsv="${dir_doc}/${fil_tsv}"
 dir_log="${dir_raw}/logs"
 dir_sym="${dir_rep}/data/symlinked"
 env_nam="env_align"
-seed=24
-threads=4
+threads=6
+time="6:00:00"
 day="$(date '+%Y-%m%d')"
 
 #  Source utility functions
@@ -127,6 +127,11 @@ handle_env "${env_nam}"
 #  Ensure access to bowtie2-build
 check_program_path "parallel"
 
+#  If needed, create directory structure for raw and symlinked FASTQ files and
+#+ logs
+mkdir -p ${dir_raw}/{docs,logs}
+mkdir -p ${dir_sym}/{docs,logs}
+
 #  Download and symlink FASTQ files 
 bash "${dir_scr}/execute_download_fastqs.sh" \
     --threads "${threads}" \
@@ -135,6 +140,7 @@ bash "${dir_scr}/execute_download_fastqs.sh" \
     --dir_sym "${dir_sym}" \
     --err_out "${dir_raw}/logs" \
     --slurm \
+    --time "${time}" \
          > >(tee -a "${dir_raw}/logs/${day}.execute.stdout.txt") \
         2> >(tee -a "${dir_raw}/logs/${day}.execute.stderr.txt")
 
@@ -156,8 +162,8 @@ bash "${dir_scr}/compress_remove_files.sh" \
 grabnode  # Request 1 core, 20 GB memory, 1 day, no GPU
 
 #  Define variables for directory paths, environment, threads, and infiles
-## WARNING: Change path if you're not Kris ##
-dir_rep="${HOME}/tsukiyamalab/Kris/202X_protocol_ChIP"  
+dir_bas="${HOME}/tsukiyamalab/Kris"  ## WARNING: Change if not Kris ##
+dir_rep="${dir_bas}/202X_protocol_ChIP"
 dir_scr="${dir_rep}/scripts"
 dir_fnc="${dir_scr}/functions"
 dir_dat="${dir_rep}/data"
@@ -166,8 +172,7 @@ dir_pro="${dir_dat}/processed"
 dir_trm="${dir_pro}/trim_atria_FASTQ"
 env_nam="env_analyze"
 threads=4
-## NOTE: Change the search parameters as needed ##
-infiles="$(
+infiles="$(  ## WARNING: Change the search parameters as needed ##
     bash "${dir_scr}/find_files.sh" \
         --dir_fnd "${dir_sym}" \
         --pattern "*.fastq.gz" \
@@ -238,7 +243,8 @@ grabnode  # Request 1 core, 20 GB memory, 1 day, no GPU
 #  Define variables for directory paths, environment, driver script parameters,
 #+ and so on
 ## WARNING: Change path if you're not Kris ##
-dir_rep="${HOME}/tsukiyamalab/Kris/202X_protocol_ChIP"
+dir_bas="${HOME}/tsukiyamalab/Kris"  ## WARNING: Change if not Kris ##
+dir_rep="${dir_bas}/202X_protocol_ChIP"
 dir_scr="${dir_rep}/scripts"
 dir_fnc="${dir_scr}/functions"
 dir_dat="${dir_rep}/data"
@@ -254,12 +260,21 @@ req_flg=true
 flg="$(if ${req_flg}; then echo "2"; else echo "NA"; fi)"
 str_idx="sc_sp_proc"
 pth_idx="${dir_idx}/${aligner}/${str_idx}"
-infiles="$(
+infiles="$(  ## WARNING: Change the search parameters as needed ##
     bash "${dir_scr}/find_files.sh" \
         --dir_fnd "${dir_trm}" \
         --pattern "*.atria.fastq.gz" \
         --depth 1 \
-        --fastqs
+        --fastqs \
+        --include "*Q*,*Brn1*" \
+        --exclude "*msn2*,*SMC4off*,*merged*"
+);$(  ## TODO: Delete semicolon and subsequent command after testing ##
+    bash "${dir_scr}/find_files.sh" \
+        --dir_fnd "${dir_trm}" \
+        --pattern "*.atria.fastq.gz" \
+        --depth 1 \
+        --fastqs \
+        --include "*Hho1*"
 )"
 dir_aln="${dir_pro}/align_${aligner}_${a_type}_BAM"
 dir_out="${dir_aln}/flag-${flg}_mapq-${mapq}"
@@ -292,11 +307,61 @@ bash "${dir_scr}/execute_align_fastqs.sh" \
     --req_flg \
     --index "${pth_idx}" \
     --infiles "${infiles}" \
-    --dir_out "${dir_out}" \
+    --dir_out "${dir_out}/init" \
     --err_out "${dir_out}/init/logs" \
     --slurm \
          > >(tee -a "${dir_out}/init/logs/${day}.execute.stdout.txt") \
         2> >(tee -a "${dir_out}/init/logs/${day}.execute.stderr.txt")
+
+#  Adjust variable 'infiles' assignment for filtering BAM files
+infiles="$(  ## WARNING: Change the search parameters as needed ##
+    bash "${dir_scr}/find_files.sh" \
+        --dir_fnd "${dir_out}/init" \
+        --pattern "*.bam" \
+        --depth 1
+)"
+
+#  Run the driver script to filter BAM files for S. cerevisiae ("sc", "main")
+#+ alignments
+bash "${dir_scr}/execute_filter_bams.sh" \
+    --verbose \
+    --threads "${threads}" \
+    --infiles "${infiles}" \
+    --dir_out "${dir_out}/sc" \
+    --err_out "${dir_out}/sc/logs" \
+    --retain "sc" \
+    --slurm \
+         > >(tee -a "${dir_out}/sc/logs/${day}.execute.stdout.txt") \
+        2> >(tee -a "${dir_out}/sc/logs/${day}.execute.stderr.txt")
+
+#  Run the driver script to filter BAM files for S. pombe ("sp", "spike-in")
+#+ alignments
+bash "${dir_scr}/execute_filter_bams.sh" \
+    --verbose \
+    --threads "${threads}" \
+    --infiles "${infiles}" \
+    --dir_out "${dir_out}/sp" \
+    --err_out "${dir_out}/sp/logs" \
+    --retain "sp" \
+    --slurm \
+         > >(tee -a "${dir_out}/sp/logs/${day}.execute.stdout.txt") \
+        2> >(tee -a "${dir_out}/sp/logs/${day}.execute.stderr.txt")
+
+#  Cleanup: Compress large stdout, stderr, LOG, and JSON files, and remove
+#+ files with size 0
+bash "${dir_scr}/compress_remove_files.sh" \
+    --dir_fnd "${dir_out}/init/logs"
+
+bash "${dir_scr}/compress_remove_files.sh" \
+    --dir_fnd "${dir_out}/sc/logs"
+
+bash "${dir_scr}/compress_remove_files.sh" \
+    --dir_fnd "${dir_out}/sp/logs"
+
+#  Optional: Check the contents of the logs directory
+# ls -lhaFG "${dir_trm}/init/logs"
+# ls -lhaFG "${dir_trm}/sc/logs"
+# ls -lhaFG "${dir_trm}/sp/logs"
 ```
 </details>
 <br />

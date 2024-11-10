@@ -21,7 +21,7 @@ EOM
     exit 0
 fi
 
-#  Check for exactly 8 arguments
+#  Check for exactly 8 positional arguments
 if [[ $# -ne 8 ]]; then
     msg="but $# were supplied."
     [[ $# -eq 1 ]] && msg="but only $# was supplied."
@@ -34,7 +34,9 @@ EOM
     exit 1
 fi
 
-#  Assign positional arguments to variables
+#  Parse positional arguments, assigning them to variables; most of the
+#+ argument inputs are not checked, as this is performed by execute_*.sh and to
+#+ a certain extent by the scripts submitted to SLURM
 srr="${1}"
 url_1="${2}"
 url_2="${3}"
