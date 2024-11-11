@@ -66,10 +66,8 @@ function set_interactive() {
         flg="$(if ${req_flg}; then echo "2"; else echo "NA"; fi)"
     }
     index="${dir_idx}/${str_idx}"
-    if [[ ${aligner} == "bwa" ]]; then
-        index="${index}.fa"
-    fi
-    infiles="$(
+    if [[ ${aligner} == "bwa" ]]; then index="${index}.fa"; fi
+    infiles="$(  ## WARNING: Change the search parameters as needed ##
         bash "${dir_scr}/find_files.sh" \
             --dir_fnd "${dir_trm}" \
             --pattern "*.atria.fastq.gz" \
@@ -79,7 +77,7 @@ function set_interactive() {
     {
         dir_aln="${dir_aln}_${aligner}_${a_type}"
     }
-    dir_out="${dir_aln}/flag-${flg}_mapq-${mapq}/init"  # mkdir -p ${dir_out}/{docs,logs}
+    dir_out="${dir_aln}/flag-${flg}_mapq-${mapq}/init"
     qname=false  # true
     sfx_se=".atria.fastq.gz"
     sfx_pe="_R1.atria.fastq.gz"
@@ -120,21 +118,20 @@ time="1:00:00"
 #  Assign variable for help message
 show_help=$(
 cat << EOM
-execute_align_fastqs.sh
-  [--verbose] [--dry_run] --threads <int> --aligner <str> --a_type <str>
-  --mapq <int> [--req_flg] --index <str> --infiles <str> --dir_out <str>
-  [--qname] --sfx_se <str> --sfx_pe <str> --err_out <str>
-  --nam_job <str> [--slurm] [--max_job <int>] [--time <str>]
+Usage:
+  execute_align_fastqs.sh
+    [--verbose] [--dry_run] --threads <int> --aligner <str> --a_type <str>
+    --mapq <int> [--req_flg] --index <str> --infiles <str> --dir_out <str>
+    [--qname] --sfx_se <str> --sfx_pe <str> --err_out <str> --nam_job <str>
+    [--slurm] [--max_job <int>] [--time <str>]
 
 Description:
-  execute_align_fastqs.sh performs short-read alignment of single- or
-  paired-end FASTQ files using Bowtie 2 or BWA. Alignment is followed by a
-  series of output processing steps using Samtools, including filtering,
+  execute_align_fastqs.sh aligns single- or paired-end FASTQ files using Bowtie
+  2 or BWA, followed by processing steps with Samtools, including filtering,
   sorting, mate fixing (for paired-end reads), duplicate marking, and indexing.
-  With the flag --qname, users can optionally retain an intermediate
-  queryname-sorted BAM file. If the flag --slurm is specified, jobs will be
-  submitted to a SLURM cluster for parallel execution; otherwise, FASTQ files
-  are processed serially.
+  The script supports both parallel execution via SLURM or serial execution.
+  The '--qname' flag optionally retains an intermediate queryname-sorted BAM
+  file.
 
 Arguments:
    -h, --help     Display this help message and exit (0).
@@ -188,12 +185,12 @@ Dependencies:
     + SLURM (if --slurm is specified)
   - Functions
     + align_fastqs
-    + check_supplied_arg
     + check_exists_file_dir
     + check_format_time
     + check_int_nonneg
     + check_int_pos
     + check_program_path
+    + check_supplied_arg
     + echo_error
     + echo_warning
     + exit_0
@@ -203,30 +200,32 @@ Dependencies:
     + handle_env_deactivate
 
 Notes:
-  - If using Bowtie 2, the path to index files should end with the index stem:
-    "\${HOME}/path/stem" or "\${HOME}/path/sc_sp_proc"; if using BWA, the path
-    to index files should end with the stem and a FASTA file extension (.fa):
+  - When the '--slurm' flag is used, jobs are parallelized via SLURM array
+    tasks; otherwise, jobs run serially.
+  - Warning: Running alignment and post-alignment processing serially with many
+    files is not recommended, as it can be extremely time-consuming.
+  - If using Bowtie 2, ensure the path to index files ends with the index stem,
+    such as "\${HOME}/path/stem" or "\${HOME}/path/sc_sp_proc". For BWA, the
+    path should include the stem and a FASTA file extension, e.g.,
     "\${HOME}/path/stem.fa" or "\${HOME}/path/sc_sp_proc.fa".
-  - Queryname-sorted BAM files will have the same path and stem as that
-    assigned to argument --outfile; however, the extension will be .qnam.bam
-    instead of .bam.
+  - Queryname-sorted BAM files will share the same path and stem as specified
+    for the '--outfile' argument, but with the extension '.qnam.bam' instead of
+    '.bam'.
 
 Example:
   \`\`\`
-  bash execute_align_fastqs.sh
-      -–threads 8
-      -–aligner "bowtie2"
-      -–a_type "global"
-      -–mapq 1
+  bash "\${dir_scr}/execute_align_fastqs.sh"
+      --verbose
+      --threads "\${threads}"
+      --aligner "\${aligner}"
+      --a_type "\${a_type}"
+      --mapq "\${mapq}"
       --req_flg
-      -–index "\${HOME}/path/sc_sp_proc"
-      -–infiles "\${HOME}/path/samp_1.fastq.gz;\${HOME}/path/samp_2_R1.fastq.gz,\${HOME}/path/samp_2_R2.fastq.gz;\${HOME}/path/samp_3.fastq.gz"
-      -–dir_out "\${HOME}/path/directory"
-      -–err_out "\${HOME}/path/directory/logs"
-      -–nam_job "align_fastqs"
-      -–slurm
-      -–max_job 4
-      -–time 1:00:00
+      --index "\${pth_idx}"
+      --infiles "\${infiles}"
+      --dir_out "\${dir_out}/init"
+      --err_out "\${dir_out}/init/logs"
+      --slurm
   \`\`\`
 EOM
 )
@@ -271,6 +270,14 @@ else
 fi
 
 #  Check arguments
+check_supplied_arg -a "${env_nam}" -n "env_nam"
+
+check_supplied_arg -a "${scr_sub}" -n "scr_sub"
+check_exists_file_dir "f" "${scr_sub}" "scr_sub"
+
+check_supplied_arg -a "${scr_fnc}" -n "scr_fnc"
+check_exists_file_dir "f" "${scr_fnc}" "scr_fnc"
+
 check_supplied_arg -a "${threads}" -n "threads"
 check_int_pos "${threads}" "threads"
 
@@ -278,6 +285,7 @@ case "${aligner}" in
     bowtie2)
         case "${a_type}" in
             local|global|end-to-end) : ;;
+
             *)
                 echo_error \
                     "Selection associated with --a_type is not valid:" \

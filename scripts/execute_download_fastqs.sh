@@ -44,25 +44,22 @@ function set_interactive() {
     ## WARNING: Change the values if you're not Kris and `interactive=true` ##
     #  Set hardcoded paths, values, etc.
     dir_rep="${HOME}/tsukiyamalab/Kris/202X_protocol_ChIP"
-    dir_raw="${dir_rep}/data/raw"
+    dir_dat="${dir_rep}/data"
+    dir_raw="${dir_dat}/raw"
     dir_doc="${dir_raw}/docs"
-    dir_sym="${dir_rep}/data/symlinked"
     dir_log="${dir_raw}/logs"
     pth_tsv="${dir_doc}/test_3.tsv"
 
     #  Set hardcoded argument assignments
-    # shellcheck disable=SC2269
-    {
-        verbose=true
-        threads=4
-        infile="${pth_tsv}"
-        dir_out="${dir_raw}"
-        dir_sym="${dir_sym}"
-        nam_job="download_fastqs"
-        err_out="${dir_log}"
-        slurm=true
-        time="3:00:00"
-    }
+    verbose=true
+    threads=4
+    infile="${pth_tsv}"
+    dir_out="${dir_raw}"
+    dir_sym="${dir_dat}/symlinked"
+    nam_job="download_fastqs"
+    err_out="${dir_log}"
+    slurm=true
+    time="3:00:00"
 }
 
 
@@ -92,9 +89,10 @@ Usage:
 
 Description:
   execute_download_fastqs.sh downloads FASTQ files listed in a TSV file and
-  creates symbolic links to them using custom names provided in the TSV file.
-  The script supports single- and paired-end sequenced reads, as well as
-  downloading from both FTP and HTTPS addresses.
+  creates symbolic links with custom names specified in the file. It handles
+  single- and paired-end reads and supports downloads from FTP and HTTPS
+  sources. The script can execute jobs in parallel using GNU Parallel,
+  optionally with SLURM, or run them serially.
 
 Arguments:
    -h, --help     Display this help message and exit.
@@ -144,21 +142,20 @@ Notes:
   - If 'threads' is a positive integer greater than 1, the job submission
     script will be executed using GNU Parallel with the --jobs option set to
     \${threads}.
-  - If the --slurm flag is specified and 'threads' is greater than 1, the job
+  - If the '--slurm' flag is specified and 'threads' is greater than 1, the job
     submission script will run via GNU Parallel within a SLURM job submission.
-  - If --slurm is specified and 'threads' is set to 1, the execution script
-    will terminate with an error, as serial job submission to SLURM is not
+  - If '--slurm' is specified and 'threads' is set to 1, the execution script
+    will terminate with an error, as serial job submissions to SLURM are not
     permitted (and array job submission code has not been implemented).
 
 Example:
   \`\`\`
-  #  Run with SLURM, allowing a maximum of four downloads to run concurrently
-  bash execute_download_fastqs.sh
-      --threads 4
-      --infile \${HOME}/path/to/PRJNA471802.tsv
-      --dir_out \${HOME}/path/to/dir_downloaded_files
-      --dir_sym \${HOME}/path/to/dir_symlinked_files
-      --err_out \${HOME}/path/to/dir_downloaded_files/logs
+  bash "\${dir_scr}/execute_download_fastqs.sh"
+      --threads "\${threads}"
+      --infile "\${pth_tsv}"
+      --dir_out "\${dir_raw}"
+      --dir_sym "\${dir_sym}"
+      --err_out "\${dir_raw}/logs"
       --slurm
   \`\`\`
 EOM

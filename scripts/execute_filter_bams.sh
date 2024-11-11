@@ -26,11 +26,11 @@ dir_fnc="${dir_scr}/functions"
 
 # shellcheck disable=SC1091
 {
-    source "${dir_fnc}/check_supplied_arg.sh"
     source "${dir_fnc}/check_exists_file_dir.sh"
     source "${dir_fnc}/check_format_time.sh"
     source "${dir_fnc}/check_int_pos.sh"
     source "${dir_fnc}/check_program_path.sh"
+    source "${dir_fnc}/check_supplied_arg.sh"
     source "${dir_fnc}/echo_error.sh"
     source "${dir_fnc}/echo_warning.sh"
     source "${dir_fnc}/exit_0.sh"
@@ -65,7 +65,7 @@ function set_interactive() {
     dry_run=true
     retain="sc"  # "sp"
     threads=4
-    infiles="$(
+    infiles="$(  ## WARNING: Change the search parameters as needed ##
         bash "${dir_scr}/find_files.sh" \
             --dir_fnd "${dir_ini}" \
             --pattern "*.bam" \
@@ -111,31 +111,36 @@ Usage:
     [--slurm] [--max_job <int>] [--time <str>]
 
 Description:
-  execute_filter_bams.sh performs... #TODO
+  execute_filter_bams.sh filters BAM infiles to retain species-specific
+  chromosomes for either S. cerevisiae ("main" alignments) or S. pombe
+  ("spike-in" alignments). The script supports parallel execution via SLURM job
+  scheduling or can run serially. Optional features include retaining
+  mitochondrial and additional chromosomes, and performing checks on
+  chromosomes in filtered BAM outfiles.
 
 Arguments:
    -h, --help     Print this help message and exit.
-   -v, --verbose  Run script in 'verbose' mode (optional).
-  -dr, --dry_run  Run the command in 'check' mode (optional).
-   -t, --threads  Number of threads to use (required; default: ${threads}).
+   -v, --verbose  Run script in "verbose" mode (optional).
+  -dr, --dry_run  Run the command in "check" mode (optional).
+   -t, --threads  Number of threads to use (default: ${threads}).
    -i, --infiles  Comma-separated string vector of coordinate-sorted BAM
-                  infiles (required).
+                  infiles.
   -do, --dir_out  The directory to store species-filtered and -reheadered BAM
-                  outfiles (required).
+                  outfiles.
    -r, --retain   Specify species chromosomes to retain: S. cerevisiae, "sc";
-                  S. pombe, "sp" (required; default: ${retain}).
+                  S. pombe, "sp" (default: ${retain}).
    -m, --mito     Retain mitochondrial chromosome (optional).
   -tg, --tg       Retain SP_II_TG chromosome (optional, sp only).
   -mr, --mtr      Retain SP_MTR chromosome (optional, sp only).
   -cc, --chk_chr  Check chromosomes in filtered BAM outfile (optional)
   -eo, --err_out  The directory to store stderr and stdout TXT outfiles
-                  (required; default: \${dir_out}/err_out).
+                  (default: \${dir_out}/err_out).
   -sl, --slurm    Submit jobs to the SLURM scheduler; otherwise, run them in
                   serial (optional).
   -mj, --max_job  The maximum number of jobs to run at one time (required if
                   --slurm is specified, ignored if not; default: ${max_job}).
   -tm, --time     The length of time, in 'h:mm:ss' format, for the SLURM job
-                  (required if --slurm is specified, ignored if not; default:
+                  (required if '--slurm' is specified, ignored if not; default:
                   ${time}).
 
 Dependencies:
@@ -148,11 +153,11 @@ Dependencies:
     + Samtools
     + SLURM (if --slurm is specified)
   - Functions
-    + check_supplied_arg
     + check_exists_file_dir
     + check_format_time
     + check_int_pos
     + check_program_path
+    + check_supplied_arg
     + echo_error
     + echo_warning
     + exit_0
@@ -160,13 +165,39 @@ Dependencies:
     + filter_bam_sc
     + filter_bam_sp
     + handle_env
+    + handle_env_activate
+    + handle_env_deactivate
 
-Note:
-  #TODO
+Notes:
+  - When the '--slurm' flag is used, jobs are parallelized via SLURM array
+    tasks; otherwise, jobs run serially.
+  - BAM infiles must be coordinate-sorted.
+  - Flags '--tg' and '--mtr' apply only to S. pombe data; flag '--mito'
+    applies to either S. cerevisiae or S. pombe data.
 
-Example:
+Examples:
   \`\`\`
-  #TODO
+  #  Filter BAM files for S. cerevisiae ("sc") chromosomes (i.e., "main"
+  #+ alignments)
+  bash "\${dir_scr}/execute_filter_bams.sh"
+      --verbose
+      --threads "\${threads}"
+      --infiles "\${infiles}"
+      --dir_out "\${dir_out}/sc"
+      --err_out "\${dir_out}/sc/logs"
+      --retain "sc" \
+      --slurm
+
+  #  Filter BAM files for S. pombe ("sp") chromosomes (i.e., "spike-in"
+  #+ alignments)
+  bash "\${dir_scr}/execute_filter_bams.sh"
+      --verbose
+      --threads "\${threads}"
+      --infiles "\${infiles}"
+      --dir_out "\${dir_out}/sp"
+      --err_out "\${dir_out}/sp/logs"
+      --retain "sp"
+      --slurm
   \`\`\`
 EOM
 )

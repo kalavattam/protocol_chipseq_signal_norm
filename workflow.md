@@ -10,6 +10,8 @@ This notebook provides a guide to the ChIP-seq data analysis workflow detailed i
 
 Note: If using a high-performance computing cluster (HPCC), request an interactive node to ensure adequate resources for running code in the below chunks. The specific command (e.g., `grabnode` at Fred Hutch Cancer Center) will depend on the job scheduler setup. This step is unnecessary if running the code on a local machine.
 
+Note: For detailed instructions on keeping your local version of the 202X_protocol_ChIP repository up-to-date, please see [this GitHub gist](https://gist.github.com/kalavattam/76f123011e8dcd77b445a72d23a64036).
+
 ---
 <br />
 
@@ -80,7 +82,8 @@ bowtie2-build "${pth_fas}" "${dir_idx}/${fil_fas%.fasta}" \
 #+ file
 if [[ -f "${pth_fas}" ]]; then rm "${pth_fas}"; fi
 
-#  Cleanup: Compress large stdout and stderr, and remove files with size 0
+#  Cleanup: Compress large stdout and stderr files, and remove files with size
+#+ 0
 bash "${dir_scr}/compress_remove_files.sh" \
     --pattern "*.txt" \
     --dir_fnd "${dir_idx}/logs"
@@ -144,7 +147,8 @@ bash "${dir_scr}/execute_download_fastqs.sh" \
          > >(tee -a "${dir_raw}/logs/${day}.execute.stdout.txt") \
         2> >(tee -a "${dir_raw}/logs/${day}.execute.stderr.txt")
 
-#  Cleanup: Compress large stdout and stderr, and remove files with size 0
+#  Cleanup: Compress large stdout and stderr files, and remove files with size
+#+ 0
 bash "${dir_scr}/compress_remove_files.sh" \
     --dir_fnd "${dir_raw}/logs"
 ```
@@ -321,8 +325,8 @@ infiles="$(  ## WARNING: Change the search parameters as needed ##
         --depth 1
 )"
 
-#  Run the driver script to filter BAM files for S. cerevisiae ("sc", "main")
-#+ alignments
+#  Run the driver script to filter BAM files for S. cerevisiae ("sc")
+#+ alignments (i.e., the "main" alignments)
 bash "${dir_scr}/execute_filter_bams.sh" \
     --verbose \
     --threads "${threads}" \
@@ -334,8 +338,8 @@ bash "${dir_scr}/execute_filter_bams.sh" \
          > >(tee -a "${dir_out}/sc/logs/${day}.execute.stdout.txt") \
         2> >(tee -a "${dir_out}/sc/logs/${day}.execute.stderr.txt")
 
-#  Run the driver script to filter BAM files for S. pombe ("sp", "spike-in")
-#+ alignments
+#  Run the driver script to filter BAM files for S. pombe ("sp") alignments
+#+ (i.e., the "spike-in" alignments)
 bash "${dir_scr}/execute_filter_bams.sh" \
     --verbose \
     --threads "${threads}" \
@@ -347,8 +351,8 @@ bash "${dir_scr}/execute_filter_bams.sh" \
          > >(tee -a "${dir_out}/sp/logs/${day}.execute.stdout.txt") \
         2> >(tee -a "${dir_out}/sp/logs/${day}.execute.stderr.txt")
 
-#  Cleanup: Compress large stdout, stderr, LOG, and JSON files, and remove
-#+ files with size 0
+#  Cleanup: Compress large stdout and stderr files, and remove files with size
+#+ 0
 bash "${dir_scr}/compress_remove_files.sh" \
     --dir_fnd "${dir_out}/init/logs"
 
