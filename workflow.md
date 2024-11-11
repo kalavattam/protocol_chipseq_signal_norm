@@ -2,7 +2,7 @@
 ChIP-seq Protocol Workflow
 ==========================
 
-**Supporting code and documentation for the *Bio-protocol* manuscript "An Introduction to ChIP-seq Data Analysis Using *Saccharomyces cerevisiae* with a Focus on Relative and Quantitative Signal Normalization."**
+**Supporting code and documentation for the *Bio-protocol* manuscript "An Introduction to ChIP-seq Data ~~Analysis~~Processing Using *Saccharomyces cerevisiae* with a Focus on Relative and Quantitative Signal Normalization."**
 
 **Author:** *Kris Alavattam*
 
@@ -10,7 +10,7 @@ This notebook provides a guide to the ChIP-seq data analysis workflow detailed i
 
 Note: If using a high-performance computing cluster (HPCC), request an interactive node to ensure adequate resources for running code in the below chunks. The specific command (e.g., `grabnode` at Fred Hutch Cancer Center) will depend on the job scheduler setup. This step is unnecessary if running the code on a local machine.
 
-Note: For detailed instructions on keeping your local version of the 202X_protocol_ChIP repository up-to-date, please see [this GitHub gist](https://gist.github.com/kalavattam/76f123011e8dcd77b445a72d23a64036).
+Note: For detailed instructions on keeping your local version of the [`202X_protocol_ChIP`](https://github.com/kalavattam/202X_protocol_ChIP) repository up-to-date, please see [this GitHub gist](https://gist.github.com/kalavattam/76f123011e8dcd77b445a72d23a64036).
 
 ---
 <br />

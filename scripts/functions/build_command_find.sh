@@ -18,7 +18,7 @@ build_command_find
 ------------------
 
 Description:
-  build_command_find sonstructs a find command string to locate files in a
+  build_command_find constructs a find command string to locate files in a
   specified directory based on one or more specified patterns. The function
   also allows for the inclusion and/or exclusion of files that match additional
   given patterns.
@@ -32,10 +32,10 @@ Keyword parameters:
                         (optional).
   -in, --include (str): A comma-separated list of patterns, including shell
                         wildcard characters, to include in the search
-                        (optional).
+                        (optional). '--include' is subordinate to '--pattern'.
   -ex, --exclude (str): A comma-separated list of patterns, including shell
                         wildcard characters, to exclude from the search
-                        (optional).
+                        (optional). '--exclude' is subordinate to '--pattern'.
 
 Returns:
   str: A find command string that can be evaluated to perform the file search.
@@ -44,7 +44,9 @@ Dependencies:
   - Bash or Zsh
   - find
 
-Note:
+Notes:
+  This function doesn't handle logical OR operations, just AND and AND NOT.
+
   At its most basic, running build_command_find results in a call to find like
   this:
   \`\`\`
@@ -67,7 +69,7 @@ Example:
   \`\`\`
   find_command=\$(
       build_command_find
-          --dir_fnd "/path/to/dir"
+          --dir_fnd "\${HOME}/path/to/dir"
           --pattern "*.txt"
           --depth 1
           --include "*include_pattern_1*,*include_pattern_2*"

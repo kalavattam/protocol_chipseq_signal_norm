@@ -91,9 +91,11 @@ Arguments:
                   string with paired-end sequenced files in comma-separated
                   substrings (optional).
   -in, --include  Comma-separated serialized list of patterns to include,
-                  including shell wildcards (optional).
+                  including shell wildcards (optional). '--include' is
+                  subordinate to '--pattern'.
   -ex, --exclude  Comma-separated serialized list of patterns to exclude,
-                  including shell wildcards (optional).
+                  including shell wildcards (optional). '--exclude' is
+                  subordinate to '--pattern'.
   -cc, --chk_con  Check the construction of the find command and exit
                   (optional).
   -ce, --chk_exc  Check the construction and execution of the find command and
@@ -121,6 +123,8 @@ Notes:
   - This script doesn't handle logical OR operations, just AND and AND NOT.
   - find_files.sh will exit with an error message if it is run from the target
     directory being searched, as doing so causes file-globbing errors.
+  - The script will exit with an error message if the string assigned to
+    '--pattern' matches anything in the current working directory.
 
 Examples:
   \`\`\`
@@ -186,6 +190,15 @@ if [[ "$(realpath "${dir_fnd}")" == "$(realpath "${PWD}")" ]]; then
 fi
 
 check_supplied_arg -a "${pattern}" -n "pattern"
+
+if compgen -G "${pattern}" > /dev/null; then
+    echo_error \
+        "The specified pattern '${pattern}' matches files in the current" \
+        "working directory. Running this script with such patterns in the" \
+        "current directory will lead to downstream errors. Please ensure you" \
+        "run the script from a different directory or adjust the pattern."
+    exit_1
+fi
 
 if [[ -n "${depth}" ]]; then check_int_pos "${depth}" "depth"; fi
 

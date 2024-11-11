@@ -103,10 +103,11 @@ Arguments:
   -sz, --size     Minimum size in kilobytes for compression (default: ${size}).
   -de, --depth    Maximum depth to search within the directory (optional).
   -in, --include  Comma-separated vector of patterns to include with respect to
-                  --pattern, including shell wildcards (optional).
+                  --pattern, including shell wildcards (optional). '--include'
+                  is subordinate to '--pattern'.
   -ex, --exclude  Comma-separated vector of patterns to exclude with respect to
                   --pattern, including shell wildcards (optional; default:
-                  ${exclude}).
+                  ${exclude}). '--exclude' is subordinate to '--pattern'.
   -cc, --chk_con  Check the construction of the find command and exit
                   (optional).
   -ce, --chk_exc  Check the construction and execution of the find command and
@@ -130,13 +131,19 @@ Dependencies:
     + handle_env_deactivate
 
 Notes:
+  - This script doesn't handle logical OR operations, just AND and AND NOT.
+  - compress_remove_files.sh will exit with an error message if it is run from
+    the target directory being searched, as doing so causes file-globbing
+    errors.
+  - The script will exit with an error message if the string assigned to
+    '--pattern' matches anything in the current working directory.
   - If --threads is assigned a positive integer greater than 1, then the script
     will use GNU Parallel to parallelize file handling and processing.
 
 Examples:
   \`\`\`
   bash process_files.sh
-      --dir_fnd "/path/to/dir"
+      --dir_fnd "\${HOME}/path/to/dir"
       --size 2
       --depth 2
       --include "*.log"
@@ -179,13 +186,33 @@ else
 fi
 
 #  Check arguments
+check_supplied_arg -a "${env_nam}" -n "env_nam"
+
 check_supplied_arg -a "${threads}" -n "threads"
 check_int_pos "${threads}" "threads"
 
 check_supplied_arg -a "${dir_fnd}" -n "dir_fnd"
 check_exists_file_dir "d" "${dir_fnd}" "dir_fnd"
 
+if [[ "$(realpath "${dir_fnd}")" == "$(realpath "${PWD}")" ]]; then
+    echo_error \
+        "compress_remove_files.sh cannot be run from the target directory" \
+        "being searched, as this causes file-globbing errors. Please run" \
+        "the script from a different directory. Currently," \
+        "dir_fnd=\"${dir_fnd}\"."
+    exit_1
+fi
+
 check_supplied_arg -a "${pattern}" -n "pattern"
+
+if compgen -G "${pattern}" > /dev/null; then
+    echo_error \
+        "The specified pattern '${pattern}' matches files in the current" \
+        "working directory. Running this script with such patterns in the" \
+        "current directory will lead to downstream errors. Please ensure you" \
+        "run the script from a different directory or adjust the pattern."
+    exit_1
+fi
 
 check_supplied_arg -a "${size}" -n "size"
 check_int_pos "${size}" "size"
