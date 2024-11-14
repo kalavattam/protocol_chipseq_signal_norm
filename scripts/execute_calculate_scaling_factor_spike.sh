@@ -229,7 +229,7 @@ EOM
 )
 
 #  Parse arguments
-if [[ -z "${1:-}" || "${arr_infiles}" == "-h" || "${arr_infiles}" == "--help" ]]; then
+if [[ -z "${1:-}" || "${1}" == "-h" || "${1}" == "--help" ]]; then
     echo "${show_help}"
     exit_0
 fi
@@ -238,7 +238,7 @@ if ${interactive}; then
     set_interactive
 else
     while [[ "$#" -gt 0 ]]; do
-        case "${arr_infiles}" in
+        case "${1}" in
              -v|--verbose) verbose=true;   shift 1 ;;
             -dr|--dry_run) dry_run=true;   shift 1 ;;
              -t|--threads) threads="${2}"; shift 2 ;;
@@ -253,7 +253,7 @@ else
             -mj|--max_job) max_job="${2}"; shift 2 ;;
             -tm|--time)    time="${2}";    shift 2 ;;
             *)
-                echo "## Unknown parameter passed: ${arr_infiles} ##" >&2
+                echo "## Unknown parameter passed: ${1} ##" >&2
                 echo "" >&2
                 echo "${show_help}" >&2
                 exit_1
