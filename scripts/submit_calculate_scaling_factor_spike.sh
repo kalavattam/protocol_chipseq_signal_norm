@@ -13,27 +13,30 @@ flg_in=false
 flg_mc=false
 err_out=""
 nam_job="calc_sf_spike"
+scr_mng=""
+fnc_env=""
 env_nam="env_analyze"
-scr_spk=""  # calculate_scaling_factor_spike.py
-dir_fnc=""
+scr_spk=""
 
 show_help=$(cat << EOM
 $(basename "${0}") takes the following keyword arguments:
    -t, --threads  Number of threads to use.
-   -i, --infiles  Comma-separated serialized string of sample IP BAM infiles.
+   -i, --infiles  Comma-separated serialized string of sample IP S. cerevisiae
+                  BAM infiles.
    -o, --outfile  Outfile of sample spike-in-derived scaling factors.
   -fi, --flg_in   Include input spike-in-derived scaling factors in outfile.
   -fm, --flg_mc   Include additional measurements, calculations in outfile.
   -eo, --err_out  Directory to store stderr and stdout outfiles.
   -nj, --nam_job  Name of job.
-  -en, --env_nam  Name of Mamba environment to activate.
-  -ss, --scr_spk  Path to script that calculates spike-in-derived scaling
-                  factors.
-  -df, --dir_fnc  Path to directory containing utility functions.
+  -sm, --scr_mng  Conda package manager shell script, conda.sh.
+  -fe, --fnc_env  handle_env.sh utility function script.
+  -en, --env_nam  Name of Conda/Mamba environment to activate.
+  -ss, --scr_spk  Script that calculates spike-in-derived scaling factors,
+                  calculate_scaling_factor_spike.py.
 
-All arguments are required. If not specified, --threads, --nam_job, --env_nam,
-and --scr_spk default to, respectively, threads=${threads}, nam_job=${nam_job},
-env_nam=${env_nam}, scr_spk=${scr_spk}. Also, --flg_in and --flg_mc are flags.
+All arguments are required. If not specified, --threads, --nam_job, and
+--env_nam default to, respectively, threads=${threads}, nam_job=${nam_job}, and
+env_nam=${env_nam}. Also, --flg_in and --flg_mc are flags.
 EOM
 )
 
@@ -52,9 +55,10 @@ while [[ "$#" -gt 0 ]]; do
         -fm|--flg_mc)  flg_mc=true;    shift 1 ;;
         -eo|--err_out) err_out="${2}"; shift 2 ;;
         -nj|--nam_job) nam_job="${2}"; shift 2 ;;
+        -sm|--scr_mng) scr_mng="${2}"; shift 2 ;;
+        -fe|--fnc_env) fnc_env="${2}"; shift 2 ;;
         -en|--env_nam) env_nam="${2}"; shift 2 ;;
         -ss|--scr_spk) scr_spk="${2}"; shift 2 ;;
-        -df|--dir_fnc) dir_fnc="${2}"; shift 2 ;;
         *)
             echo "## Unknown argument passed: ${1} ##" >&2
             echo "" >&2
@@ -80,22 +84,22 @@ if ${debug}; then
     echo ""
     echo "nam_job=${nam_job}"
     echo ""
+    echo "scr_mng=${scr_mng}"
+    echo ""
+    echo "fnc_env=${fnc_env}"
+    echo ""
     echo "env_nam=${env_nam}"
     echo ""
     echo "scr_spk=${scr_spk}"
     echo ""
-    echo "dir_fnc=${dir_fnc}"
-    echo ""
 fi
 
 #  Activate environment
-# shellcheck disable=SC1091
+# shellcheck disable=SC1090,SC1091
 if [[ "${CONDA_DEFAULT_ENV}" != "${env_nam}" ]]; then
-    source "${HOME}/.bashrc" \
-        || source "${HOME}/.bash_profile" \
-        || source "${HOME}/.zshrc"
-    
-    conda activate "${env_nam}"
+    source "${scr_mng}"
+    source "${fnc_env}"
+    handle_env "${env_nam}"
 fi
 
 #  Check that SLURM environment variables are set
@@ -256,7 +260,7 @@ ln -f "${out_ini}" "${out_dsc}"
 #+ sf, with script calculate_scaling_factor_spike.py
 # shellcheck disable=SC2154
 sf=$(
-    python "${dir_scr}/${scr_spk}" \
+    python "${scr_spk}" \
         --main_ip  "${num_mp}" \
         --spike_ip "${num_sp}" \
         --main_in  "${num_mn}" \

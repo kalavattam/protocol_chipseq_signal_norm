@@ -5,7 +5,7 @@
 
 
 #  Run script in interactive/test mode (true) or command-line mode (false)
-interactive=true
+interactive=false
 
 #  Exit on errors, unset variables, or pipe failures if not in "interactive
 #+ mode"
@@ -61,19 +61,20 @@ function set_interactive() {
     #  Set hardcoded argument assignments
     verbose=true
     dry_run=true
-    threads=4
+    threads=8
     infiles="$(
         bash "${dir_scr}/find_files.sh" \
             --dir_fnd "${dir_bam}" \
             --pattern "*.bam" \
             --include "IP*,*Hho1*"
     )"
-    outfile="/dev/stdout"  # "${dir_out}/IP_WT_G1-G2M-Q_Hho1_6336-6337.txt"
+    outfile="${dir_out}/IP-in_WT_G1-G2M-Q_Hho1_6336-6337.txt"  # "/dev/stdout"
     flg_in=true
     flg_mc=true
     err_out="${dir_out}/logs"
     nam_job="calc_sf_spike"
-    slurm=true
+    slurm=false
+    scr_mng="${HOME}/miniforge3/etc/profile.d/conda.sh"
     max_job=6
     time="0:30:00"
 }
@@ -84,6 +85,7 @@ function set_interactive() {
 env_nam="env_analyze"
 scr_sub="${dir_scr}/submit_calculate_scaling_factor_spike.sh"
 scr_spk="${dir_scr}/calculate_scaling_factor_spike.py"
+denom=4
 
 #  Initialize argument variables, assigning default values where applicable
 verbose=false
@@ -96,6 +98,7 @@ flg_mc=false
 err_out=""
 nam_job="calc_sf_spike"
 slurm=false
+scr_mng="${HOME}/miniforge3/etc/profile.d/conda.sh"
 max_job=6
 time="0:30:00"
 
@@ -105,37 +108,128 @@ Usage:
   execute_calculate_scaling_factor_spike.sh
     [--verbose] [--dry_run] --threads <int> --infiles <str> --outfile <str>
     [--flg_in] [--flg_mc] --err_out <str> --nam_job <str> [--slurm]
-    [--max_job <int>] [--time <str>]
+    [--scr_mng <str>] [--max_job <int>] [--time <str>]
 
 Description:
-  execute_calculate_scaling_factor_spike.sh performs... #TODO
+  execute_calculate_scaling_factor_spike.sh orchestrates the calculation of
+  spike-in-derived scaling factors for ChIP-seq data. To handle groups of
+  sample BAM data efficiently, the script uses parallelized processing via
+  SLURM scheduling or GNU Parallel. The main workflow involves counting
+  alignments in main and spike-in S. cerevisiae BAM files, calculating scaling
+  coefficients using a custom Python script, and outputting results to a
+  specified file.
 
 Arguments:
    -h, --help     Display this help message and exit (0).
    -v, --verbose  Run script in 'verbose mode' (optional).
   -dr, --dry_run  Perform a dry run without executing commands (optional).
    -t, --threads  Number of threads to use (default: ${threads}).
-   -i, --infiles  Comma-separated serialized list of IP coordinate-sorted BAM
-                  infiles, including paths.
-   -o, --outfile  #TODO
-  -fi, --flg_in   Include sample input alpha values in outfile.
+   -i, --infiles  Comma-separated serialized list of IP coordinate-sorted S.
+                  cerevisiae BAM infiles.
+   -o, --outfile  Tab-delimited text outfile in which calculated
+                  spike-in-derived scaling factors and, optionally, additional
+                  metrics are saved. If the file already exists, new data will
+                  be appended.
+  -fi, --flg_in   Include sample input coefficients in outfile.
   -fm, --flg_mc   Include additional measurements and calculations in outfile.
   -eo, --err_out  The directory to store stderr and stdout TXT outfiles
                   (default: \${dir_out}/err_out).
   -nj, --nam_job  The name of the job (default: ${nam_job}).
   -sl, --slurm    Submit jobs to the SLURM scheduler.
+  -sm, --scr_mng  Conda package manager shell script, conda.sh (required if
+                  --slurm is specified, ignored if not; default:
+                  ${scr_mng}).
   -mj, --max_job  The maximum number of jobs to run at one time (required if
                   --slurm is specified, ignored if not; default: ${max_job}).
   -tm, --time     The length of time, in 'h:mm:ss' format, for the SLURM job
                   (required if --slurm is specified, ignored if not; default:
                   ${time}).
 
-#TODO Notes, examples, etc.
+Dependencies:
+  - Programs
+    + awk
+    + Bash or Zsh
+    + Conda
+    + GNU Parallel (if '--slurm' is not specified)
+    + Python
+    + Samtools
+    + SLURM (if '--slurm' is specified)
+  - Functions
+    + check_exists_file_dir
+    + check_format_time
+    + check_int_pos
+    + check_program_path
+    + check_supplied_arg
+    + echo_error
+    + echo_warning
+    + exit_0
+    + exit_1
+    + handle_env
+    + handle_env_activate
+    + handle_env_deactivate
+
+Notes:
+  - If '--dry_run' is enabled, the script will output commands that would be
+    executed without actually running them, allowing for workflow verification.
+
+  - For non-SLURM job submission, GNU Parallel is used. This requires
+    specifying a set number of parallel jobs ('par_job') and the number of
+    threads per job ('threads'). The number of parallel jobs is determined by
+    dividing the user-specified 'threads' value by a denominator ('denom'),
+    which is hardcoded to 4 by default. The value of 'threads' is then reset to
+    'denom'. For example, if the user-specified 'threads' value is 8, 'par_job'
+    would be set to 2 (8 divided by 4) and 'threads' would be reset to 4.
+
+  - This and the accompanying submission script assume a specific directory and
+    naming structure for the infiles. The primary infiles are S. cerevisiae
+    ("sc") IP BAM files. Based on the paths of these files, the script derives
+    paths to additional files: S. cerevisiae input files, and S. pombe ("sp")
+    IP and input files:
+    
+    \`\`\`
+    ❯ tree -d align_bowtie2_global_BAM/flag-2_mapq-1/
+    align_bowtie2_global_BAM/flag-2_mapq-1/
+    ├── init
+    │   ├── docs
+    │   └── logs
+    ├── sc
+    │   ├── docs
+    │   └── logs
+    └── sp
+        ├── docs
+        └── logs
+    \`\`\`
+
+    The paths are generated by making systematic substitutions to the file path
+    and names:
+      + sp: Derived from 'mp' (main S. cerevisiae IP file) by replacing /sc/
+        with /sp/ and .sc. with .sp.
+      + mn: Derived from 'mp' by replacing IP_ with in_ to identify the
+        corresponding input file for S. cerevisiae.
+      + sn: Derived from 'sp' by replacing IP_ with in_ to identify the
+        corresponding input file for S. pombe.
+
+    The following logic is used for file name and path manipulation:
+    \`\`\`
+    mp={arr_infiles}
+    sp=\$(echo "\${mp}" | sed "s:/sc/:/sp/:g; s:.sc.:.sp.:g")
+    mn=\$(echo "\${mp}" | sed "s:/IP_:/in_:/g")
+    sn=\$(echo "\${sp}" | sed "s:/IP_:/in_:/g")
+    \`\`\`
+
+    If any of these files are missing, the script will print an error message
+    and exit. This ensures all required input files are present before
+    proceeding.
+
+Examples:
+  \`\`\`
+  #TODO
+  \`\`\`
 EOM
 )
 
 #  Parse arguments
-if [[ -z "${1:-}" || "${1}" == "-h" || "${1}" == "--help" ]]; then
+if [[ -z "${1:-}" || "${arr_infiles}" == "-h" || "${arr_infiles}" == "--help" ]]; then
     echo "${show_help}"
     exit_0
 fi
@@ -144,7 +238,7 @@ if ${interactive}; then
     set_interactive
 else
     while [[ "$#" -gt 0 ]]; do
-        case "${1}" in
+        case "${arr_infiles}" in
              -v|--verbose) verbose=true;   shift 1 ;;
             -dr|--dry_run) dry_run=true;   shift 1 ;;
              -t|--threads) threads="${2}"; shift 2 ;;
@@ -155,10 +249,11 @@ else
             -eo|--err_out) err_out="${2}"; shift 2 ;;
             -nj|--nam_job) nam_job="${2}"; shift 2 ;;
             -sl|--slurm)   slurm=true;     shift 1 ;;
+            -sm|--scr_mng) scr_mng="${2}"; shift 2 ;;
             -mj|--max_job) max_job="${2}"; shift 2 ;;
             -tm|--time)    time="${2}";    shift 2 ;;
             *)
-                echo "## Unknown parameter passed: ${1} ##" >&2
+                echo "## Unknown parameter passed: ${arr_infiles} ##" >&2
                 echo "" >&2
                 echo "${show_help}" >&2
                 exit_1
@@ -195,17 +290,30 @@ fi
 check_supplied_arg -a "${nam_job}" -n "nam_job"
 
 if ${slurm}; then
+    check_supplied_arg -a "${scr_mng}" -n "scr_mng"
+    check_exists_file_dir "f" "${scr_mng}" "scr_mng"
+
     check_supplied_arg -a "${max_job}" -n "max_job"
     check_int_pos "${max_job}" "max_job"
     
     check_supplied_arg -a "${time}" -n "time"
     check_format_time "${time}"
+else
+    par_job=$(( threads / denom ))
+    threads=${denom}
+
+    check_supplied_arg -a "${par_job}" -n "par_job"
+    check_int_pos "${par_job}" "par_job"
+
+    check_supplied_arg -a "${threads}" -n "threads"
+    check_int_pos "${threads}" "threads"
 fi
 
 #  Activate environment and check that dependencies are in PATH
 handle_env "${env_nam}" > /dev/null
 
 check_program_path awk
+check_program_path parallel
 check_program_path python
 check_program_path samtools
 
@@ -216,7 +324,7 @@ IFS=',' read -r -a arr_infiles <<< "${infiles}"  # unset arr_infiles
 
 #  Check that each infile exists; if not, exit
 for infile in "${arr_infiles[@]}"; do
-    check_exists_file_dir "f" "${infile}"
+    check_exists_file_dir "f" "${infile}" "infile"
 done
 
 if ${slurm}; then
@@ -240,6 +348,8 @@ if ${verbose}; then
     echo "env_nam=${env_nam}"
     echo "scr_sub=${scr_sub}"
     echo "scr_spk=${scr_spk}"
+    echo "denom=${denom}"
+    echo "par_job=${par_job:-#N/A}"
     echo ""
     echo ""
     echo "###################################"
@@ -256,6 +366,7 @@ if ${verbose}; then
     echo "err_out=${err_out}"
     echo "nam_job=${nam_job}"
     echo "slurm=${slurm}"
+    echo "scr_mng=${scr_mng}"
     echo "max_job=${max_job}"
     echo "time=${time}"
     echo ""
@@ -288,9 +399,10 @@ if ${slurm}; then
         echo "        $(if ${flg_mc}; then echo "--flg_mc"; fi) \\"
         echo "        --err_out ${err_out} \\"
         echo "        --nam_job ${nam_job} \\"
+        echo "        --scr_mng ${scr_mng} \\"
+        echo "        --fnc_env ${dir_fnc}/handle_env.sh \\"
         echo "        --env_nam ${env_nam} \\"
-        echo "        --scr_spk ${scr_spk} \\"
-        echo "        --dir_fnc ${dir_fnc}"
+        echo "        --scr_spk ${scr_spk}"
         echo ""
         echo ""
         echo "#########################################"
@@ -321,10 +433,141 @@ if ${slurm}; then
                 $(if ${flg_mc}; then echo "--flg_mc"; fi) \
                 --err_out ${err_out} \
                 --nam_job ${nam_job} \
+                --scr_mng ${scr_mng} \
+                --fnc_env ${dir_fnc}/handle_env.sh \
                 --env_nam ${env_nam} \
-                --scr_spk ${scr_spk} \
-                --dir_fnc ${dir_fnc}
+                --scr_spk ${scr_spk}
+    fi
+else
+    #  Define the base GNU Parallel command, specifying the number of jobs to
+    #+ run, using named headers for input variables, and setting a comma as the
+    #+ column separator for input data
+    cmd_par="parallel --jobs ${par_job} --header : --colsep ','"
+    
+    #  Define the main processing logic to be run by GNU Parallel; this block
+    #+ handles input file manipulation, alignment counting, scaling factor
+    #+ calculation, and output writing
+    # shellcheck disable=SC2016,SC2089
+    logic='
+        #  Set variables for main and spike-in input files based on the input
+        #+ filename pattern
+        mp={arr_infiles}
+        sp=$(echo "${mp}" | sed "s:\/sc\/:\/sp\/:g; s:\.sc\.:\.sp\.:g")
+        mn=$(echo "${mp}" | sed "s:\/IP_:\/in_:g")
+        sn=$(echo "${sp}" | sed "s:\/IP_:\/in_:g")
+
+        #  Check for required input files; if missing, print an error message
+        #+ and exit
+        if [[
+            ! -f "${mp}" || ! -f "${sp}" || ! -f "${mn}" || ! -f "${sn}"
+        ]]; then
+            echo \
+                "Error: Missing input file(s) for mp=${mp}, sp=${sp}," \
+                "mn=${mn}, sn=${sn}." >&2
+            exit 1
+        fi
+
+        #  Count the number of alignments in each file using Samtools
+        num_mp=$(samtools view -c -@ {threads} "${mp}")
+        num_sp=$(samtools view -c -@ {threads} "${sp}")
+        num_mn=$(samtools view -c -@ {threads} "${mn}")
+        num_sn=$(samtools view -c -@ {threads} "${sn}")
+
+        #  Extract the sample name from the main input file for naming output
+        #+ entries
+        samp=$(basename "${mp}" | sed "s:IP_::; s:.bam::; s:\\.:_:g")
+
+        #  Calculate the scaling factor (coefficient) using a specified Python
+        #+ script
+        sf=$(
+            python {scr_spk} \
+                --main_ip "${num_mp}" \
+                --spike_ip "${num_sp}" \
+                --main_in "${num_mn}" \
+                --spike_in "${num_sn}"
+        )
+
+        #  Write a header to the output file if it is not already present, using
+        #+ using file locking to prevent concurrent writes from multiple
+        #+ processes
+        {
+            flock -n 200 || exit 1
+            if ! \
+                grep -q "$(printf "^sample\tsf")" {outfile} 2> /dev/null
+            then
+                if ! {flg_mc}; then
+                    echo -e "sample\tsf" >> {outfile}
+                else
+                    echo -e \
+                        "sample\tsf\tmain_ip\tspike_ip\tmain_in\tspike_in" \
+                            >> {outfile}
+                fi
+            fi
+        } 200> "{outfile}.lock"
+
+        #  Write the calculated scaling factor and optional metrics to the
+        #+ output file
+        if ! {flg_mc}; then
+            echo -e "${mp##*/}\t${sf}" >> {outfile}
+            if {flg_in}; then
+                echo -e "${mn##*/}\t1" >> {outfile}
+            fi
+        else
+            echo -e \
+                "${mp##*/}\t${sf}\t${num_mp}\t${num_sp}\t${num_mn}\t${num_sn}" \
+                    >> {outfile}
+            if {flg_in}; then
+                echo -e \
+                    "${mn##*/}\t1\t${num_mp}\t${num_sp}\t${num_mn}\t${num_sn}" \
+                        >> {outfile}
+            fi
+        fi
+    '
+
+    #  Define helper function to run GNU Parallel with the specified logic and
+    #+ variables
+    function run_parallel() {
+        local cmd="${1}"
+
+        ${cmd} "${logic}" \
+            ::: arr_infiles "${arr_infiles[@]}" \
+            ::: threads "${threads}" \
+            ::: scr_spk "${scr_spk}" \
+            ::: flg_mc "${flg_mc}" \
+            ::: flg_in "${flg_in}" \
+            ::: outfile "${outfile}"
+    }
+
+
+    #  Run GNU Parallel in dry-run mode if `dry_run` or `verbose` is enabled,
+    #+ capturing output and error logs
+    if ${dry_run} || ${verbose}; then
+        run_parallel "${cmd_par} --dryrun" \
+             > >(
+                tee -a "${err_out}/${nam_job}.$(
+                    basename "${outfile}" ".txt"
+                ).stdout.txt"
+            ) \
+            2> >(
+                tee -a "${err_out}/${nam_job}.$(
+                    basename "${outfile}" ".txt"
+                ).stderr.txt"
+            )
+    fi
+
+    #  Run GNU Parallel for actual processing if `dry_run` is not enabled,
+    #+ capturing output and error log
+    if ! ${dry_run}; then
+        run_parallel "${cmd_par}" \
+             >> >(
+                tee -a "${err_out}/${nam_job}.$(
+                    basename "${outfile}" ".txt"
+                ).stdout.txt"
+            ) \
+            2>> >(
+                tee -a "${err_out}/${nam_job}.$(
+                    basename "${outfile}" ".txt"
+                ).stderr.txt"
+            )
     fi
 fi
-
-#TODO Write code for local, serial job submission
