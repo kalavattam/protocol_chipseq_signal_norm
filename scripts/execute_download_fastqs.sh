@@ -41,9 +41,10 @@ dir_fnc="${dir_scr}/functions"
 
 #  Set up paths, values, and parameters for interactive mode
 function set_interactive() {
-    ## WARNING: Change the values if you're not Kris and `interactive=true` ##
+    ## WARNING: Change values if you're not Kris and `interactive=true` ##
     #  Set hardcoded paths, values, etc.
-    dir_rep="${HOME}/tsukiyamalab/Kris/202X_protocol_ChIP"
+    dir_bas="${HOME}/tsukiyamalab/Kris"
+    dir_rep="${dir_bas}/202X_protocol_ChIP"
     dir_dat="${dir_rep}/data"
     dir_raw="${dir_dat}/raw"
     dir_doc="${dir_raw}/docs"
@@ -80,8 +81,7 @@ slurm=false
 time="3:00:00"
 
 #  Define help message
-show_help=$(
-    cat << EOM
+show_help=$(cat << EOM
 Usage: 
   execute_download_fastqs.sh
     [--verbose] --threads <int> --infile <str> --dir_out <str> --dir_sym <str>
@@ -219,7 +219,7 @@ if "${slurm}"; then
 fi
 
 #  Activate environment and check that dependencies are in PATH
-handle_env "${env_nam}"
+handle_env "${env_nam}" > /dev/null
 
 check_program_path cut
 check_program_path parallel

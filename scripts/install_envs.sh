@@ -135,6 +135,7 @@ Notes:
       - r-writexl
       - r-xml2
       - rename
+      - tree
   - Given that >100 packages and dependencies will be installed depending on
     the environment specified, the execution and completion of the mamba create
     operation will take >10 minutes if making use of cached packages from
@@ -281,6 +282,7 @@ elif [[ "${env_nam}" == "env_analyze" ]]; then
         r-writexl
         r-xml2
         rename
+        tree
     )
 fi
 

@@ -1,11 +1,11 @@
 #!/bin/bash
 
-#  execute_calculate_scaling_factor_standard.sh
+#  execute_calculate_scaling_factor_spike.sh
 #  KA
 
 
 #  Run script in interactive/test mode (true) or command-line mode (false)
-interactive=false
+interactive=true
 
 #  Exit on errors, unset variables, or pipe failures if not in "interactive
 #+ mode"
@@ -26,11 +26,11 @@ dir_fnc="${dir_scr}/functions"
 
 # shellcheck disable=SC1091
 {
-    source "${dir_fnc}/check_supplied_arg.sh"
     source "${dir_fnc}/check_exists_file_dir.sh"
     source "${dir_fnc}/check_format_time.sh"
     source "${dir_fnc}/check_int_pos.sh"
     source "${dir_fnc}/check_program_path.sh"
+    source "${dir_fnc}/check_supplied_arg.sh"
     source "${dir_fnc}/echo_error.sh"
     source "${dir_fnc}/echo_warning.sh"
     source "${dir_fnc}/exit_0.sh"
@@ -42,40 +42,37 @@ dir_fnc="${dir_scr}/functions"
 #  Set up paths, values, and parameters for interactive mode
 function set_interactive() {
     #  Set hardcoded paths, values, etc.
-    ## WARNING: Change the values if you're not Kris and `interactive=true` ##
-    dir_rep="${HOME}/tsukiyamalab/Kris/202X_protocol_ChIP"
-    dir_bam="${dir_rep}/03_bam"
-    dir_scf="${dir_rep}/06_sf"
+    ## WARNING: Change values if you're not Kris and `interactive=true` ##
+    dir_bas="${HOME}/tsukiyamalab/Kris"
+    dir_rep="${dir_bas}/202X_protocol_ChIP"
+    dir_dat="${dir_rep}/data"
+    dir_pro="${dir_dat}/processed"
     {
         aligner="bowtie2"
         a_type="global"
-        flg=2  # "NA"
+        req_flg=true
+        flg="$(if ${req_flg}; then echo "2"; else echo "NA"; fi)"
         mapq=1
-        details="${aligner}/${a_type}/flag-${flg}_mapq-${mapq}"
     }
-    dir_bam="${dir_bam}/${details}/sc"
+    dir_aln="${dir_pro}/align_${aligner}_${a_type}_BAM"
+    dir_bam="${dir_aln}/flag-${flg}_mapq-${mapq}/sc"
+    dir_out="${dir_pro}/calculate_scaling_factor_spike"
 
     #  Set hardcoded argument assignments
     verbose=true
     dry_run=true
     threads=4
-    infiles=$(
+    infiles="$(
         bash "${dir_scr}/find_files.sh" \
             --dir_fnd "${dir_bam}" \
             --pattern "*.bam" \
-            --depth 1 \
-            --include "IP*,*Hho1*" \
-            --exclude "*WT*,*log*,*rep*"
-    )
-    {
-        dir_out="${dir_scf}/${details}/standard"
-    }
-    outfile="${dir_out}/test.txt"  # "/dev/stdout"
+            --include "IP*,*Hho1*"
+    )"
+    outfile="/dev/stdout"  # "${dir_out}/IP_WT_G1-G2M-Q_Hho1_6336-6337.txt"
     flg_in=true
     flg_mc=true
-    err_out="${dir_out}/err_out"
-    nam_job="calc_sf_standard"
-    serial=false
+    err_out="${dir_out}/logs"
+    nam_job="calc_sf_spike"
     slurm=true
     max_job=6
     time="0:30:00"
@@ -85,8 +82,8 @@ function set_interactive() {
 #  Initialize argument variables, check and parse arguments, etc. =============
 #  Initialize hardcoded argument variables
 env_nam="env_analyze"
-scr_sub="${dir_scr}/submit_calculate_scaling_factor_standard.sh"
-scr_std="${dir_scr}/calculate_scaling_factor_standard.py"
+scr_sub="${dir_scr}/submit_calculate_scaling_factor_spike.sh"
+scr_spk="${dir_scr}/calculate_scaling_factor_spike.py"
 
 #  Initialize argument variables, assigning default values where applicable
 verbose=false
@@ -97,37 +94,35 @@ outfile=""
 flg_in=false
 flg_mc=false
 err_out=""
-nam_job="calc_sf_standard"
-serial=false
+nam_job="calc_sf_spike"
 slurm=false
 max_job=6
 time="0:30:00"
 
 #  Assign variable for help message
-show_help=$(
-cat << EOM
-execute_calculate_scaling_factor_standard.sh
-  [--verbose] [--dry_run] --threads <int> --infiles <str> --outfile <str>
-  [--flg_in] [--flg_mc] --err_out <str> --nam_job <str> [--serial] [--slurm]
-  [--max_job <int>] [--time <str>]
+show_help=$(cat << EOM
+Usage:
+  execute_calculate_scaling_factor_spike.sh
+    [--verbose] [--dry_run] --threads <int> --infiles <str> --outfile <str>
+    [--flg_in] [--flg_mc] --err_out <str> --nam_job <str> [--slurm]
+    [--max_job <int>] [--time <str>]
 
 Description:
-  execute_calculate_scaling_factor_standard.sh performs... #TODO
+  execute_calculate_scaling_factor_spike.sh performs... #TODO
 
 Arguments:
    -h, --help     Display this help message and exit (0).
    -v, --verbose  Run script in 'verbose mode' (optional).
   -dr, --dry_run  Perform a dry run without executing commands (optional).
-   -t, --threads  Number of threads to use (required; default: ${threads}).
+   -t, --threads  Number of threads to use (default: ${threads}).
    -i, --infiles  Comma-separated serialized list of IP coordinate-sorted BAM
-                  infiles, including paths (required).
+                  infiles, including paths.
    -o, --outfile  #TODO
   -fi, --flg_in   Include sample input alpha values in outfile.
   -fm, --flg_mc   Include additional measurements and calculations in outfile.
   -eo, --err_out  The directory to store stderr and stdout TXT outfiles
-                  (required; default: \${dir_out}/err_out).
-  -nj, --nam_job  The name of the job (required; default: ${nam_job}).
-  -se, --serial   Run jobs in serial on the current system.
+                  (default: \${dir_out}/err_out).
+  -nj, --nam_job  The name of the job (default: ${nam_job}).
   -sl, --slurm    Submit jobs to the SLURM scheduler.
   -mj, --max_job  The maximum number of jobs to run at one time (required if
                   --slurm is specified, ignored if not; default: ${max_job}).
@@ -160,7 +155,6 @@ else
             -eo|--err_out) err_out="${2}"; shift 2 ;;
             -nj|--nam_job) nam_job="${2}"; shift 2 ;;
             -sl|--slurm)   slurm=true;     shift 1 ;;
-            -se|--serial)  serial=true;    shift 1 ;;
             -mj|--max_job) max_job="${2}"; shift 2 ;;
             -tm|--time)    time="${2}";    shift 2 ;;
             *)
@@ -179,8 +173,8 @@ check_supplied_arg -a "${env_nam}" -n "env_nam"
 check_supplied_arg -a "${scr_sub}" -n "scr_sub"
 check_exists_file_dir "f" "${scr_sub}" "scr_sub"
 
-check_supplied_arg -a "${scr_std}" -n "scr_std"
-check_exists_file_dir "f" "${scr_std}" "scr_std"
+check_supplied_arg -a "${scr_spk}" -n "scr_spk"
+check_exists_file_dir "f" "${scr_spk}" "scr_spk"
 
 check_supplied_arg -a "${threads}" -n "threads"
 check_int_pos "${threads}" "threads"
@@ -200,14 +194,6 @@ fi
 
 check_supplied_arg -a "${nam_job}" -n "nam_job"
 
-if [[ -z ${serial} ]] || [[ -z ${slurm} ]]; then
-    echo_error "Either --serial or --slurm must be specified."
-    exit_1
-elif ${serial} && ${slurm}; then
-    echo_error "Only one of --serial or --slurm should be provided"
-    exit_1
-fi
-
 if ${slurm}; then
     check_supplied_arg -a "${max_job}" -n "max_job"
     check_int_pos "${max_job}" "max_job"
@@ -217,7 +203,7 @@ if ${slurm}; then
 fi
 
 #  Activate environment and check that dependencies are in PATH
-handle_env "${env_nam}"
+handle_env "${env_nam}" > /dev/null
 
 check_program_path awk
 check_program_path python
@@ -253,7 +239,7 @@ if ${verbose}; then
     echo ""
     echo "env_nam=${env_nam}"
     echo "scr_sub=${scr_sub}"
-    echo "scr_std=${scr_std}"
+    echo "scr_spk=${scr_spk}"
     echo ""
     echo ""
     echo "###################################"
@@ -270,7 +256,6 @@ if ${verbose}; then
     echo "err_out=${err_out}"
     echo "nam_job=${nam_job}"
     echo "slurm=${slurm}"
-    echo "serial=${serial}"
     echo "max_job=${max_job}"
     echo "time=${time}"
     echo ""
@@ -304,7 +289,8 @@ if ${slurm}; then
         echo "        --err_out ${err_out} \\"
         echo "        --nam_job ${nam_job} \\"
         echo "        --env_nam ${env_nam} \\"
-        echo "        --scr_std ${scr_std}"
+        echo "        --scr_spk ${scr_spk} \\"
+        echo "        --dir_fnc ${dir_fnc}"
         echo ""
         echo ""
         echo "#########################################"
@@ -336,7 +322,8 @@ if ${slurm}; then
                 --err_out ${err_out} \
                 --nam_job ${nam_job} \
                 --env_nam ${env_nam} \
-                --scr_std ${scr_std}
+                --scr_spk ${scr_spk} \
+                --dir_fnc ${dir_fnc}
     fi
 fi
 

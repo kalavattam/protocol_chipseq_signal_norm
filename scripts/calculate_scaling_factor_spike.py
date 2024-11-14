@@ -4,7 +4,7 @@
 # Copyright 2024 by Kris Alavattam
 # Email: kalavattam@gmail.com
 #
-# Script: calculate_scaling_factor_standard.py
+# Script: calculate_scaling_factor_spike.py
 #
 # Description:
 #    This script calculates a spike-in-derived scaling factor for ChIP-seq
@@ -18,7 +18,7 @@
 #    For more details, see the following URL: biostars.org/p/9572653/#9572655
 #
 # Usage:
-#     python calculate_scaling_factor_standard.py \
+#     python calculate_scaling_factor_spike.py \
 #         --main_ip <int> \
 #         --spike_ip <int> \
 #         --main_in <int> \
@@ -34,7 +34,7 @@
 #    The scaling factor as a positive floating point number.
 #
 # Example:
-#     python calculate_scaling_factor_standard.py \
+#     python calculate_scaling_factor_spike.py \
 #         --main_ip 100000 \
 #         --spike_ip 5000 \
 #         --main_in 90000 \

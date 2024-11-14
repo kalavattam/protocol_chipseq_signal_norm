@@ -44,7 +44,7 @@ dir_fnc="${dir_scr}/functions"
 #  Set up paths, values, and parameters for interactive mode
 function set_interactive() {
     #  Set hardcoded paths, values, etc.
-    ## WARNING: Change the values if you're not Kris and `interactive=true` ##
+    ## WARNING: Change values if you're not Kris and `interactive=true` ##
     dir_bas="${HOME}/tsukiyamalab/Kris"
     dir_rep="${dir_bas}/202X_protocol_ChIP"
     dir_dat="${dir_rep}/data"
@@ -116,8 +116,7 @@ max_job=6
 time="1:00:00"
 
 #  Assign variable for help message
-show_help=$(
-cat << EOM
+show_help=$(cat << EOM
 Usage:
   execute_align_fastqs.sh
     [--verbose] [--dry_run] --threads <int> --aligner <str> --a_type <str>
@@ -345,7 +344,7 @@ if ${slurm}; then
 fi
 
 #  Activate environment and check that dependencies are in PATH
-handle_env "${env_nam}"
+handle_env "${env_nam}" > /dev/null
 
 case "${aligner}" in
     bowtie2) check_program_path bowtie2 ;;

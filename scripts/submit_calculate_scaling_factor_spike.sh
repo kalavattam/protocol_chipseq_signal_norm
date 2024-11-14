@@ -12,9 +12,10 @@ outfile=""
 flg_in=false
 flg_mc=false
 err_out=""
-nam_job="calc_sf_standard"
+nam_job="calc_sf_spike"
 env_nam="env_analyze"
-scr_std=""  # calculate_scaling_factor_standard.py
+scr_spk=""  # calculate_scaling_factor_spike.py
+dir_fnc=""
 
 show_help=$(cat << EOM
 $(basename "${0}") takes the following keyword arguments:
@@ -25,13 +26,14 @@ $(basename "${0}") takes the following keyword arguments:
   -fm, --flg_mc   Include additional measurements, calculations in outfile.
   -eo, --err_out  Directory to store stderr and stdout outfiles.
   -nj, --nam_job  Name of job.
-  -en, --env_nam  Name of mamba environment to activate.
-  -sa, --scr_std  Path to script that calculates spike-in-derived scaling
+  -en, --env_nam  Name of Mamba environment to activate.
+  -ss, --scr_spk  Path to script that calculates spike-in-derived scaling
                   factors.
+  -df, --dir_fnc  Path to directory containing utility functions.
 
 All arguments are required. If not specified, --threads, --nam_job, --env_nam,
-and --scr_std default to, respectively, threads=${threads}, nam_job=${nam_job},
-env_nam=${env_nam}, scr_std=${scr_std}. Also, --flg_in and --flg_mc are flags.
+and --scr_spk default to, respectively, threads=${threads}, nam_job=${nam_job},
+env_nam=${env_nam}, scr_spk=${scr_spk}. Also, --flg_in and --flg_mc are flags.
 EOM
 )
 
@@ -51,7 +53,8 @@ while [[ "$#" -gt 0 ]]; do
         -eo|--err_out) err_out="${2}"; shift 2 ;;
         -nj|--nam_job) nam_job="${2}"; shift 2 ;;
         -en|--env_nam) env_nam="${2}"; shift 2 ;;
-        -ss|--scr_std) scr_std="${2}"; shift 2 ;;
+        -ss|--scr_spk) scr_spk="${2}"; shift 2 ;;
+        -df|--dir_fnc) dir_fnc="${2}"; shift 2 ;;
         *)
             echo "## Unknown argument passed: ${1} ##" >&2
             echo "" >&2
@@ -79,20 +82,20 @@ if ${debug}; then
     echo ""
     echo "env_nam=${env_nam}"
     echo ""
-    echo "scr_std=${scr_std}"
+    echo "scr_spk=${scr_spk}"
+    echo ""
+    echo "dir_fnc=${dir_fnc}"
     echo ""
 fi
 
 #  Activate environment
 # shellcheck disable=SC1091
 if [[ "${CONDA_DEFAULT_ENV}" != "${env_nam}" ]]; then
-    # eval "$(conda shell.bash hook)"
-    source "${HOME}/miniconda3/etc/profile.d/conda.sh"
-    conda activate "${env_nam}" ||
-        {
-            echo "Error: Failed to activate environment '${env_nam}'." >&2
-            exit 1
-        }
+    source "${HOME}/.bashrc" \
+        || source "${HOME}/.bash_profile" \
+        || source "${HOME}/.zshrc"
+    
+    conda activate "${env_nam}"
 fi
 
 #  Check that SLURM environment variables are set
@@ -250,10 +253,10 @@ ln -f "${err_ini}" "${err_dsc}"
 ln -f "${out_ini}" "${out_dsc}"
 
 #  Calculate the spike-in derived scaling factor, which is assigned to variable
-#+ sf, with script calculate_scaling_factor_standard.py
+#+ sf, with script calculate_scaling_factor_spike.py
 # shellcheck disable=SC2154
 sf=$(
-    python "${dir_scr}/${scr_std}" \
+    python "${dir_scr}/${scr_spk}" \
         --main_ip  "${num_mp}" \
         --spike_ip "${num_sp}" \
         --main_in  "${num_mn}" \

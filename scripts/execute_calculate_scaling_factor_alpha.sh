@@ -42,8 +42,9 @@ dir_fnc="${dir_scr}/functions"
 #  Set up paths, values, and parameters for interactive mode
 function set_interactive() {
     #  Set hardcoded paths, values, etc.
-    ## WARNING: Change the values if you're not Kris and `interactive=true` ##
-    dir_rep="${HOME}/tsukiyamalab/Kris/202X_protocol_ChIP"
+    ## WARNING: Change values if you're not Kris and `interactive=true` ##
+    dir_bas="${HOME}/tsukiyamalab/Kris"
+    dir_rep="${dir_bas}/202X_protocol_ChIP"
     dir_bam="${dir_rep}/03_bam"
     dir_scf="${dir_rep}/06_sf"
     {
@@ -78,7 +79,6 @@ function set_interactive() {
     err_out="${dir_out}/err_out"
     nam_job="calc_sf_alpha"
     slurm=true
-    serial=false
     max_job=6
     time="0:30:00"
 }
@@ -104,18 +104,17 @@ flg_in=false
 flg_mc=false
 err_out=""
 nam_job="calc_sf_alpha"
-serial=false
 slurm=false
 max_job=6
 time="0:30:00"
 
 #  Assign variable for help message
-show_help=$(
-cat << EOM
-execute_calculate_scaling_factor_alpha.sh
-  [--verbose] [--dry_run] --threads <int> --infiles <str> --table <str>
-  --outfile <str> [--flg_dep] [--flg_len] [--flg_in] [--flg_mc] --err_out <str>
-  --nam_job <str> [--serial] [--slurm] [--max_job <int>] [--time <str>]
+show_help=$(cat << EOM
+Usage:
+  execute_calculate_scaling_factor_alpha.sh
+    [--verbose] [--dry_run] --threads <int> --infiles <str> --table <str>
+    --outfile <str> [--flg_dep] [--flg_len] [--flg_in] [--flg_mc] --err_out <str>
+    --nam_job <str> [--slurm] [--max_job <int>] [--time <str>]
 
 Description:
   execute_calculate_scaling_factor_alpha.sh performs... #TODO
@@ -136,7 +135,6 @@ Arguments:
   -eo, --err_out  The directory to store stderr and stdout TXT outfiles
                   (required; default: \${dir_out}/err_out).
   -nj, --nam_job  The name of the job (required; default: ${nam_job}).
-  -se, --serial   Run jobs in serial on the current system.
   -sl, --slurm    Submit jobs to the SLURM scheduler.
   -mj, --max_job  The maximum number of jobs to run at one time (required if
                   --slurm is specified, ignored if not; default: ${max_job}).
@@ -172,7 +170,6 @@ else
             -eo|--err_out) err_out="${2}"; shift 2 ;;
             -nj|--nam_job) nam_job="${2}"; shift 2 ;;
             -sl|--slurm)   slurm=true;     shift 1 ;;
-            -se|--serial)  serial=true;    shift 1 ;;
             -mj|--max_job) max_job="${2}"; shift 2 ;;
             -tm|--time)    time="${2}";    shift 2 ;;
             *)
@@ -216,14 +213,6 @@ elif [[ -z "${err_out}" ]]; then
     check_exists_file_dir "d" "${err_out}" "err_out"
 fi
 
-if [[ -z ${serial} ]] || [[ -z ${slurm} ]]; then
-    echo_error "Either --serial or --slurm must be specified."
-    exit_1
-elif ${serial} && ${slurm}; then
-    echo_error "Only one of --serial or --slurm should be provided"
-    exit_1
-fi
-
 if ${slurm}; then
     check_supplied_arg -a "${nam_job}" -n "nam_job"
     
@@ -235,7 +224,7 @@ if ${slurm}; then
 fi
 
 #  Activate environment and check that dependencies are in PATH
-handle_env "${env_nam}"
+handle_env "${env_nam}" > /dev/null
 
 check_program_path awk
 check_program_path python
@@ -292,7 +281,6 @@ if ${verbose}; then
     echo "err_out=${err_out}"
     echo "nam_job=${nam_job}"
     echo "slurm=${slurm}"
-    echo "serial=${serial}"
     echo "max_job=${max_job}"
     echo "time=${time}"
     echo ""

@@ -42,7 +42,7 @@ dir_fnc="${dir_scr}/functions"
 #  Set up paths, values, and parameters for interactive mode
 function set_interactive() {
     #  Set hardcoded paths, values, etc.
-    ## WARNING: Change the values if you're not Kris and `interactive=true` ##
+    ## WARNING: Change values if you're not Kris and `interactive=true` ##
     dir_bas="${HOME}/tsukiyamalab/Kris"
     dir_rep="${dir_bas}/202X_protocol_ChIP"
     dir_dat="${dir_rep}/data"
@@ -92,12 +92,12 @@ slurm=false
 max_job=6
 time="0:45:00"
 
-show_help=$(
-cat << EOM
-execute_trim_fastqs.sh
-  [--verbose] [--dry_run] --threads <int> --infiles <str> --dir_out <str>
-  --sfx_se <str> --sfx_pe <str> --err_out <str> --nam_job <str> [--slurm]
-  [--max_job <int>] [--time <str>]
+show_help=$(cat << EOM
+Usage:
+  execute_trim_fastqs.sh
+    [--verbose] [--dry_run] --threads <int> --infiles <str> --dir_out <str>
+    --sfx_se <str> --sfx_pe <str> --err_out <str> --nam_job <str> [--slurm]
+    [--max_job <int>] [--time <str>]
 
 Description:
   execute_trim_fastqs.sh performs read-adapter and quality trimming with the
@@ -238,7 +238,7 @@ if ${slurm}; then
 fi
 
 #  Activate environment and check that dependencies are in PATH
-handle_env "${env_nam}"
+handle_env "${env_nam}" > /dev/null
 
 check_program_path atria
 check_program_path pbzip2

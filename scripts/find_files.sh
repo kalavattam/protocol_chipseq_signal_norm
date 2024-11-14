@@ -40,18 +40,18 @@ dir_fnc="${dir_scr}/functions"
 #  Set up paths, values, and parameters for interactive mode
 set_interactive() {
     #  Set hardcoded paths, values, etc.
-    ## WARNING: Change the values if you're not Kris and `interactive=true` ##
+    ## WARNING: Change values if you're not Kris and `interactive=true` ##
     dir_rep="${HOME}/tsukiyamalab/Kris/202X_protocol_ChIP"
     dir_fil="${dir_rep}/data/symlinked"
 
     #  Set hardcoded argument assignments
     dir_fnd="${dir_rep}/${dir_fil}"
     pattern="*.fastq.gz"  # "*.bam"
-    follow=true           # false
+    follow=true  # false
     depth=1
     include=""
     exclude=""
-    fastqs=true           # false
+    fastqs=true  # false
     chk_con=false
     chk_exc=true
 }
@@ -129,16 +129,16 @@ Notes:
 Examples:
   \`\`\`
   #  For BAM files
-  bash /home/user/path/to/find_files.sh
-      --dir_fnd "/path/to/directory"
+  bash \${HOME}/path/to/find_files.sh
+      --dir_fnd "\${HOME}/path/to/directory"
       --pattern "*.bam"
       --depth 1
       --include "*Hho1*,*Q*"
       --exclude "*Hmo1*,*G2M*,*G1*"
 
   #  For FASTQ files
-  bash /home/user/path/to/find_files.sh
-      --dir_fnd "/path/to/another/directory"
+  bash \${HOME}/path/to/find_files.sh
+      --dir_fnd "\${HOME}/path/to/another/directory"
       --pattern "*.fastq.gz"
       --follow
       --fastqs

@@ -38,7 +38,7 @@ dir_fnc="${dir_scr}/functions"
 #  Set up paths, values, and parameters for interactive mode
 function set_interactive() {
     #  Set hardcoded paths, values, etc.
-    ## WARNING: Change the values if you're not Kris and `interactive=true` ##
+    ## WARNING: Change values if you're not Kris and `interactive=true` ##
     dir_bas="${HOME}/tsukiyamalab/Kris" 
     dir_rep="${dir_bas}/202X_protocol_ChIP"
     nam_qc="04_qc"
@@ -222,7 +222,7 @@ if [[ -n "${depth}" ]]; then check_int_pos "${depth}" "depth"; fi
 check_mut_excl_flags ${chk_con} "chk_con" ${chk_exc} "chk_exc"
 
 #  Activate environment and check that dependencies are in PATH
-handle_env "${env_nam}"
+handle_env "${env_nam}" > /dev/null
 
 check_program_path find
 check_program_path parallel

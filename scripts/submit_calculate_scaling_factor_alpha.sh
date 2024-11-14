@@ -32,7 +32,7 @@ $(basename "${0}") takes the following keyword arguments:
   -fm, --flg_mc   Include additional measurements, calculations in outfile.
   -eo, --err_out  Directory to store stderr and stdout outfiles.
   -nj, --nam_job  Name of job.
-  -en, --env_nam  Name of mamba environment to activate.
+  -en, --env_nam  Name of Mamba environment to activate.
   -sp, --scr_par  Path to script that parses siQ-ChIP metadata.
   -sa, --scr_alf  Path to script that calculates siQ-ChIP alpha values.
 

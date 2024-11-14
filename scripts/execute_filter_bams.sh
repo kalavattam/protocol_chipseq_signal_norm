@@ -44,7 +44,7 @@ dir_fnc="${dir_scr}/functions"
 #  Set up paths, values, and parameters for interactive mode
 function set_interactive() {
     #  Set hardcoded paths, values, etc.
-    ## WARNING: Change the values if you're not Kris and `interactive=true` ##
+    ## WARNING: Change values if you're not Kris and `interactive=true` ##
     dir_bas="${HOME}/tsukiyamalab/Kris"
     dir_rep="${dir_bas}/202X_protocol_ChIP"
     dir_dat="${dir_rep}/data"
@@ -290,7 +290,7 @@ check_supplied_arg -a "${scr_sub}" -n "scr_sub"
 check_exists_file_dir "f" "${scr_sub}" "scr_sub"
 
 #  Activate environment and check that dependencies are in PATH
-handle_env "${env_nam}"
+handle_env "${env_nam}" > /dev/null
 
 check_program_path awk
 check_program_path grep
