@@ -31,6 +31,7 @@ dir_fnc="${dir_scr}/functions"
     source "${dir_fnc}/check_mut_excl_flags.sh"
     source "${dir_fnc}/check_program_path.sh"
     source "${dir_fnc}/check_supplied_arg.sh"
+    source "${dir_fnc}/echo_error.sh"
     source "${dir_fnc}/handle_env.sh"
 }
 
@@ -126,6 +127,7 @@ Dependencies:
     + check_mut_excl_flags
     + check_program_path
     + check_supplied_arg
+    + echo_error
     + handle_env
     + handle_env_activate
     + handle_env_deactivate

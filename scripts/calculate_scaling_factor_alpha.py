@@ -114,7 +114,7 @@ def main():
     Returns:
         Outputs the siQ-ChIP alpha scaling factor.
     """
-    #TODO Create a parse_args function
+    # TODO Create a parse_args function
     parser = argparse.ArgumentParser(description=(
         'Calculate a siQ-ChIP alpha scaling factor for a ChIP-seq sample with '
         'IP and input data.'

@@ -7,21 +7,29 @@
 # Script: parse_metadata_siq_chip.py
 #
 # Description:
-#     #TODO
+#     Parses a metadata table in CSV or TSV format to extract siQ-ChIP
+#     measurement values (e.g., volume, mass, concentration, length) based on
+#     characteristics inferred from a BAM file (e.g., state, factor, strain).
 #
 # Usage:
 #     python parse_metadata_siq_chip.py \
-#         #TODO
+#         --text table.tsv --bam sample.bam [--shell] [--verbose]
 #
 # Arguments:
-#     #TODO
+#      -v, --verbose  Enables verbose output for debugging or information.
+#     -tx, --text     CSV or TSV siQ-ChIP metadata infile.
+#      -b, --bam      BAM infile used to identify metadata row.
+#     -sh, --shell    Outputs values in a shell-parseable format (for export).
 #
 # Example:
 #     python parse_metadata_siq_chip.py \
-#         #TODO
+#         --text "${HOME}/path/to/table.tsv" \
+#         --bam "${HOME}/path/to/sample.bam" \
+#         --shell
 #
 # Output:
-#     #TODO
+#     When --shell is specified, outputs key-value pairs in shell-exportable
+#     format. Otherwise, prints measurement values to standard output.
 #
 # License:
 #     Distributed under terms of the MIT license.
@@ -30,6 +38,8 @@
 import argparse
 import os
 import pandas as pd
+import re
+import sys
 
 
 #  Run script in interactive/test mode (True) or command-line mode (False)
@@ -107,19 +117,42 @@ def standardize_columns(df):
 
 
 def parse_bam_filename(filename):
-    """Strip file extensions and split by '_'."""
+    """
+    Parse a BAM filename into its components based on the naming scheme.
+
+    The expected format is:
+        assay_genotype_state_treatment_factor_strain/replicate.
+    
+    Some components (e.g., genotype, state, treatment) are optional.
+
+    Args:
+        filename (str): Path to the BAM file.
+
+    Returns:
+        dict: Parsed components as a dictionary.
+    """
     base_name = os.path.basename(filename)
     bam_id = base_name.split('.')[0]  # Remove extension
-    parts = bam_id.split('_')
-
-    if len(parts) < 4:
-        raise ValueError(
-            f"Filename '{filename}' does not follow the expected structure."
-        )
     
-    #  Extract relevant parts: exp, state, factor, strain
-    exp, state, factor, strain = parts[0], parts[1], parts[2], parts[3]
-    return exp, state, factor, strain
+    #  Define a regex pattern to capture the components
+    pattern = (
+        r'^(?P<assay>\w+)'                 # assay (always present)
+        r'(?:_(?P<genotype>\w+))?'         # genotype (optional)
+        r'(?:_(?P<state>\w+))?'            # state (optional)
+        r'(?:_(?P<treatment>\w+))?'        # treatment (optional)
+        r'_(?P<factor>\w+)'                # factor (always present)
+        r'_(?P<strain_or_replicate>\w+)$'  # strain/replicate (always present)
+    )
+    match = re.match(pattern, bam_id)
+
+    if not match:
+        raise ValueError(
+            f"Filename '{filename}' does not match the expected pattern."
+        )
+
+    #  Extract matched groups as a dictionary
+    components = match.groupdict()
+    return components
 
 
 def load_file(file_path):
@@ -140,18 +173,22 @@ def find_matching_row(df, state, factor, strain):
     df['factor'] = df['factor'].astype(str)
     df['strain'] = df['strain'].astype(str)
 
-    #  Find the matching row based on state, factor, and strain
-    matched_row = df[
-        (df['state'].str.lower() == state.lower()) &
-        (df['factor'].str.lower() == factor.lower()) &
-        (df['strain'].str.lower() == strain.lower())
-    ]
+    #  Handle optional values (e.g., state can be 'N/A')
+    conditions = (df['factor'].str.lower() == factor.lower()) & \
+                 (df['strain'].str.lower() == strain.lower())
+
+    if state != 'N/A':
+        conditions &= (df['state'].str.lower() == state.lower())
+
+    matched_row = df[conditions]
 
     if matched_row.empty:
         raise ValueError(
             f"No matching row found for state '{state}', factor '{factor}', "
             f"strain '{strain}'."
         )
+
+    return matched_row.iloc[0]
 
     #  Return the first match
     return matched_row.iloc[0]
@@ -176,26 +213,25 @@ def parse_args():
         help="Enable verbose output."
     )
     parser.add_argument(
-        "--text",
+        "-tx", "--text",
         help="Input TEXT (TSV/CSV) file",
         required=not interactive
     )
     parser.add_argument(
-        "--bam",
+        "-b", "--bam",
         help="Input BAM file",
         required=not interactive
     )
     parser.add_argument(
-        "--shell",
+        "-sh", "--shell",
         action="store_true",
         help="Output values in shell export format"
     )
     
     return parser.parse_args() if not interactive else argparse.Namespace(
         verbose=True,
-        text="/home/kalavatt/projects-etc/202X_protocol_ChIP/data/measurements_siq_chip.tsv",
-        # bam="/home/kalavatt/projects-etc/202X_protocol_ChIP/03_bam/bowtie2/global/flag-2_mapq-1/sc/IP_G1_Hho1_6336.sc.bam",
-        bam="/home/kalavatt/tsukiyamalab/Kris/202X_protocol_ChIP/03_bam/bowtie2/global/flag-2_mapq-1/sc/IP_Q_Esa5_7041.sc.bam",
+        text="",  # TODO
+        bam="",  # TODO
         shell=True
     )
 
@@ -205,14 +241,23 @@ def main():
     args = parse_args()
 
     #  Parse the BAM filename
-    exp, state, factor, strain = parse_bam_filename(args.bam)
+    parsed_components = parse_bam_filename(args.bam)
+    assay = parsed_components['assay']
+    genotype = parsed_components.get('genotype', 'N/A')
+    state = parsed_components.get('state', 'N/A')
+    treatment = parsed_components.get('treatment', 'N/A')
+    factor = parsed_components['factor']
+    strain = parsed_components['strain_or_replicate']
+
     if args.verbose:
         print(
-            "Parsed BAM filename:\n",
-            f"  - exp={exp}\n",
+            "Parsed BAM filename components:\n",
+            f"  - assay={assay}\n",
+            f"  - genotype={genotype}\n",
             f"  - state={state}\n",
+            f"  - treatment={treatment}\n",
             f"  - factor={factor}\n",
-            f"  - strain={strain}"
+            f"  - strain/replicate={strain}"
         )
 
     #  Load the TSV/CSV file
@@ -221,10 +266,14 @@ def main():
     #  Standardize the column names
     df = standardize_columns(df)
 
-    #  Find the matching row
-    row = find_matching_row(df, state, factor, strain)
-    if args.verbose:
-        print(f"Matching row found:\n{row}")
+    #  Find the matching row, adjusting for missing components
+    try:
+        row = find_matching_row(df, state, factor, strain)
+        if args.verbose:
+            print(f"Matching row found:\n{row}")
+    except ValueError as e:
+        print(e, file=sys.stderr)
+        sys.exit(1)
 
     #  Output based on --shell flag
     if args.shell:

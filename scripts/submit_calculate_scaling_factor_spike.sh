@@ -21,8 +21,7 @@ scr_spk=""
 show_help=$(cat << EOM
 $(basename "${0}") takes the following keyword arguments:
    -t, --threads  Number of threads to use.
-   -i, --infiles  Comma-separated serialized string of sample IP S. cerevisiae
-                  BAM infiles.
+   -i, --infiles  Comma-separated serialized string of sample IP BAM infiles.
    -o, --outfile  Outfile of sample spike-in-derived scaling factors.
   -fi, --flg_in   Include input spike-in-derived scaling factors in outfile.
   -fm, --flg_mc   Include additional measurements, calculations in outfile.
@@ -99,7 +98,7 @@ fi
 if [[ "${CONDA_DEFAULT_ENV}" != "${env_nam}" ]]; then
     source "${scr_mng}"
     source "${fnc_env}"
-    handle_env "${env_nam}"
+    handle_env "${env_nam}" > /dev/null
 fi
 
 #  Check that SLURM environment variables are set
@@ -273,40 +272,40 @@ if ${debug}; then
     echo ""
 fi
 
-#  Write header with flock
-{
-    flock -n 200 || exit 1  # Only proceed if lock is acquired
-
-    #  Check if the header is already present in the file
-    if ! grep -q "^sample"$'\t'"sf" "${outfile}" 2> /dev/null; then
-        #  If the header is not present, write it
-        if ! ${flg_mc}; then
-            echo "sample"$'\t'"sf" >> "${outfile}"
-        else
-            echo "sample"$'\t'"sf"$'\t'"main_ip"$'\t'"spike_ip"$'\t'"main_in"$'\t'"spike_in" \
-                >> "${outfile}"
-        fi
-    fi
-} 200> "${outfile}.lock"  # Use a lock file
+# #  Write header with flock
+# {
+#     flock -n 200 || exit 1  # Only proceed if lock is acquired
+#
+#     #  Check if the header is already present in the file
+#     if ! grep -q "$(printf "^sample\tsf")" "${outfile}" 2> /dev/null; then
+#         #  If the header is not present, write it
+#         if ! ${flg_mc}; then
+#             echo -e "sample\tsf" >> "${outfile}"
+#         else
+#             echo -e "sample\tsf\tmain_ip\tspike_ip\tmain_in\tspike_in" \
+#                 >> "${outfile}"
+#         fi
+#     fi
+# } 200> "${outfile}.lock"  # Use a lock file
 
 #  Print the IP sample and scaling factor to the outfile
 if ! ${flg_mc}; then
-    echo "${mp##*/}"$'\t'"${sf}" >> "${outfile}"
+    echo -e "${mp##*/}\t${sf}" >> "${outfile}"
 
     #  If --flg_in, print the input sample and scaling factor (1) to the
     #+ outfile
     if ${flg_in}; then
-        echo "${mn##*/}"$'\t'"1" >> "${outfile}"
+        echo -e "${mn##*/}\t1" >> "${outfile}"
     fi
 else
     #  If --flg_mc, include num_{m|s}{p|n} values in the outfile
-    echo "${mp##*/}"$'\t'"${sf}"$'\t'"${num_mp}"$'\t'"${num_sp}"$'\t'"${num_mn}"$'\t'"${num_sn}" \
+    echo -e "${mp##*/}\t${sf}\t${num_mp}\t${num_sp}\t${num_mn}\t${num_sn}" \
         >> "${outfile}"
 
     #  If --flg_in, print the input sample and scaling factor (1), as well as
     #+ num_{m|s}{p|n} values, to the outfile
     if ${flg_in}; then
-        echo "${mn##*/}"$'\t'"1"$'\t'"${num_mp}"$'\t'"${num_sp}"$'\t'"${num_mn}"$'\t'"${num_sn}" \
+        echo -e "${mn##*/}\t1\t${num_mp}\t${num_sp}\t${num_mn}\t${num_sn}" \
             >> "${outfile}"
     fi
 fi

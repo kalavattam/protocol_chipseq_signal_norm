@@ -244,9 +244,8 @@ bash "${dir_scr}/compress_remove_files.sh" \
 #  Optional: Request an interactive node
 grabnode  # Request 1 core, 20 GB memory, 1 day, no GPU
 
-#  Define variables for directory paths, environment, driver script parameters,
+#  Define variables for directory paths, environment, driver script arguments,
 #+ and so on
-## WARNING: Change path if you're not Kris ##
 dir_bas="${HOME}/tsukiyamalab/Kris"  ## WARNING: Change if not Kris ##
 dir_rep="${dir_bas}/202X_protocol_ChIP"
 dir_scr="${dir_rep}/scripts"
@@ -259,9 +258,9 @@ env_nam="env_align"
 threads=8
 aligner="bowtie2"
 a_type="global"
-mapq=1
 req_flg=true
 flg="$(if ${req_flg}; then echo "2"; else echo "NA"; fi)"
+mapq=1
 str_idx="sc_sp_proc"
 pth_idx="${dir_idx}/${aligner}/${str_idx}"
 infiles="$(  ## WARNING: Change the search parameters as needed ##
@@ -269,16 +268,7 @@ infiles="$(  ## WARNING: Change the search parameters as needed ##
         --dir_fnd "${dir_trm}" \
         --pattern "*.atria.fastq.gz" \
         --depth 1 \
-        --fastqs \
-        --include "*Q*,*Brn1*" \
-        --exclude "*msn2*,*SMC4off*,*merged*"
-);$(  ## TODO: Delete semicolon and subsequent command after testing ##
-    bash "${dir_scr}/find_files.sh" \
-        --dir_fnd "${dir_trm}" \
-        --pattern "*.atria.fastq.gz" \
-        --depth 1 \
-        --fastqs \
-        --include "*Hho1*"
+        --fastqs
 )"
 dir_aln="${dir_pro}/align_${aligner}_${a_type}_BAM"
 dir_out="${dir_aln}/flag-${flg}_mapq-${mapq}"
@@ -314,8 +304,8 @@ bash "${dir_scr}/execute_align_fastqs.sh" \
     --dir_out "${dir_out}/init" \
     --err_out "${dir_out}/init/logs" \
     --slurm \
-         > >(tee -a "${dir_out}/init/logs/${day}.execute.stdout.txt") \
-        2> >(tee -a "${dir_out}/init/logs/${day}.execute.stderr.txt")
+         >> >(tee -a "${dir_out}/init/logs/${day}.execute.stdout.txt") \
+        2>> >(tee -a "${dir_out}/init/logs/${day}.execute.stderr.txt")
 
 #  Adjust variable 'infiles' assignment for filtering BAM files
 infiles="$(  ## WARNING: Change the search parameters as needed ##
@@ -335,8 +325,8 @@ bash "${dir_scr}/execute_filter_bams.sh" \
     --err_out "${dir_out}/sc/logs" \
     --retain "sc" \
     --slurm \
-         > >(tee -a "${dir_out}/sc/logs/${day}.execute.stdout.txt") \
-        2> >(tee -a "${dir_out}/sc/logs/${day}.execute.stderr.txt")
+         >> >(tee -a "${dir_out}/sc/logs/${day}.execute.stdout.txt") \
+        2>> >(tee -a "${dir_out}/sc/logs/${day}.execute.stderr.txt")
 
 #  Run the driver script to filter BAM files for S. pombe ("sp") alignments
 #+ (i.e., the "spike-in" alignments)
@@ -348,8 +338,8 @@ bash "${dir_scr}/execute_filter_bams.sh" \
     --err_out "${dir_out}/sp/logs" \
     --retain "sp" \
     --slurm \
-         > >(tee -a "${dir_out}/sp/logs/${day}.execute.stdout.txt") \
-        2> >(tee -a "${dir_out}/sp/logs/${day}.execute.stderr.txt")
+         >> >(tee -a "${dir_out}/sp/logs/${day}.execute.stdout.txt") \
+        2>> >(tee -a "${dir_out}/sp/logs/${day}.execute.stderr.txt")
 
 #  Cleanup: Compress large stdout and stderr files, and remove files with size
 #+ 0
@@ -366,6 +356,126 @@ bash "${dir_scr}/compress_remove_files.sh" \
 # ls -lhaFG "${dir_trm}/init/logs"
 # ls -lhaFG "${dir_trm}/sc/logs"
 # ls -lhaFG "${dir_trm}/sp/logs"
+```
+</details>
+<br />
+
+## K. Calculate and normalize coverage using fragment-based, spike-in, and siQ-ChIP methods.
+### 1. Calculate and normalize coverage using spike-in signal.
+<details>
+<summary><i>Bash code: Calculate and normalize coverage using spike-in signal.</i></summary>
+
+```bash
+#!/bin/bash
+
+#  Optional: Request an interactive node
+grabnode  # Request 1 core, 20 GB memory, 1 day, no GPU
+
+#  Define variables for directory paths, etc.
+dir_bas="${HOME}/tsukiyamalab/Kris"  ## WARNING: Change if not Kris ##
+dir_rep="${dir_bas}/202X_protocol_ChIP"
+dir_scr="${dir_rep}/scripts"
+dir_fnc="${dir_scr}/functions"
+dir_dat="${dir_rep}/data"
+dir_pro="${dir_dat}/processed"
+{
+    aligner="bowtie2"
+    a_type="global"
+    req_flg=true
+    flg="$(if ${req_flg}; then echo "2"; else echo "NA"; fi)"
+    mapq=1
+}
+dir_aln="${dir_pro}/align_${aligner}_${a_type}_BAM"
+dir_bam="${dir_aln}/flag-${flg}_mapq-${mapq}/sc"
+dir_out="${dir_pro}/calculate_scaling_factor_spike"
+env_nam="env_analyze"
+day="$(date '+%Y-%m%d')"
+
+#  Set hardcoded argument assignments
+threads=8
+infiles="$(  ## WARNING: Change the search parameters as needed ##
+    bash "${dir_scr}/find_files.sh" \
+        --dir_fnd "${dir_bam}" \
+        --pattern "*.bam" \
+        --include "IP*,*Hmo1*"
+        
+)"
+outfile="${dir_out}/IP_WT_G1-G2M-Q_Hmo1_7750-7751.txt"
+err_out="${dir_out}/logs"
+scr_mng="${HOME}/miniforge3/etc/profile.d/conda.sh"
+
+## NOTE: Previously used 'infiles' parameters and "outfile" assignments ##
+# --include "IP*,*Hho1*"
+# --include "IP*,*Brn1*"
+# "${dir_out}/IP_WT_G1-G2M-Q_Hho1_6336-6337.txt"
+# "${dir_out}/IP_WT_log-Q_Brn1_rep1-rep2-rep3.txt"
+
+#  Create output directory structure for tables of spike-in-derived scaling
+#+ factors
+mkdir -p ${dir_out}/{docs,logs}
+
+#  Source utility functions
+source "${dir_fnc}/check_program_path.sh"
+source "${dir_fnc}/handle_env.sh"
+
+#  Activate the required environment
+handle_env "${env_nam}"
+
+#  Check availability of necessary dependencies
+check_program_path awk
+check_program_path parallel
+check_program_path python
+check_program_path samtools
+check_program_path sbatch
+
+#  Run the driver script to calculate per-sample spike-in-derived scaling
+#+ factors
+bash "${dir_scr}/execute_calculate_scaling_factor_spike.sh" \
+    --verbose \
+    --threads "${threads}" \
+    --infiles "${infiles}" \
+    --outfile "${outfile}" \
+    --err_out "${err_out}" \
+    --slurm \
+         > >(
+            tee -a "${dir_out}/logs/${day}.execute.$(
+                basename "${outfile}" .txt
+            ).stdout.txt"
+        ) \
+        2> >(
+            tee -a "${dir_out}/logs/${day}.execute.$(
+                basename "${outfile}" .txt
+            ).stderr.txt"
+        )
+
+#  Relativize the scaling factors to the maximum IP value, and sort the outfile
+#+ rows
+python "${dir_scr}/relativize_scaling_factors.py" --infile "${outfile}" \
+    | awk 'NR == 1; NR > 1 && NF { print | "sort" }' \
+        > "${dir_out}/tmp.txt"
+
+#  Replace the original outfile with the newly relativized and sorted version
+mv -f "${dir_out}/tmp.txt" "${outfile}"
+
+#  Optional: Check the contents of the outfile
+# cat "${outfile}"
+
+#  Cleanup: Compress large stdout and stderr files, and remove files with size
+#+ 0
+bash "${dir_scr}/compress_remove_files.sh" \
+    --dir_fnd "${err_out}"
+```
+</details>
+<br />
+
+### 2. Calculate and normalize coverage using the siQ-ChIP (alpha) method.
+<details>
+<summary><i>Bash code: Calculate and normalize coverage using the siQ-ChIP (alpha) method.</i></summary>
+
+```bash
+#!/bin/bash
+
+
 ```
 </details>
 <br />

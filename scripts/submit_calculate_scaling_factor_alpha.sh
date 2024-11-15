@@ -16,9 +16,11 @@ flg_in=false
 flg_mc=false
 err_out=""
 nam_job="calc_sf_alpha"
+scr_mng=""
+fnc_env=""
 env_nam="env_analyze"
-scr_par=""  #TODO
-scr_alf=""  # calculate_scaling_factor_alpha.py
+scr_par=""
+scr_alf=""
 
 show_help=$(cat << EOM
 $(basename "${0}") takes the following keyword arguments:
@@ -32,9 +34,12 @@ $(basename "${0}") takes the following keyword arguments:
   -fm, --flg_mc   Include additional measurements, calculations in outfile.
   -eo, --err_out  Directory to store stderr and stdout outfiles.
   -nj, --nam_job  Name of job.
-  -en, --env_nam  Name of Mamba environment to activate.
-  -sp, --scr_par  Path to script that parses siQ-ChIP metadata.
-  -sa, --scr_alf  Path to script that calculates siQ-ChIP alpha values.
+  -sm, --scr_mng  Conda package manager shell script, conda.sh.
+  -fe, --fnc_env  handle_env.sh utility function script.
+  -en, --env_nam  Name of Conda/Mamba environment to activate.
+  -sp, --scr_par  Script that parses siQ-ChIP metadata.
+  -sa, --scr_alf  Script that calculates siQ-ChIP alpha values,
+                  calculate_scaling_factor_alpha.py.
 
 All arguments are required. If not specified, --threads, --nam_job, and
 --env_nam default to, respectively, threads=${threads}, nam_job=${nam_job}, and
@@ -61,6 +66,8 @@ while [[ "$#" -gt 0 ]]; do
         -fm|--flg_mc)  flg_mc=true;    shift 1 ;;
         -eo|--err_out) err_out="${2}"; shift 2 ;;
         -nj|--nam_job) nam_job="${2}"; shift 2 ;;
+        -sm|--scr_mng) scr_mng="${2}"; shift 2 ;;
+        -fe|--fnc_env) fnc_env="${2}"; shift 2 ;;
         -en|--env_nam) env_nam="${2}"; shift 2 ;;
         -sp|--scr_par) scr_par="${2}"; shift 2 ;;
         -sa|--scr_alf) scr_alf="${2}"; shift 2 ;;
@@ -95,6 +102,10 @@ if ${debug}; then
     echo ""
     echo "nam_job=${nam_job}"
     echo ""
+    echo "scr_mng=${scr_mng}"
+    echo ""
+    echo "fnc_env=${fnc_env}"
+    echo ""
     echo "env_nam=${env_nam}"
     echo ""
     echo "scr_par=${scr_par}"
@@ -104,15 +115,11 @@ if ${debug}; then
 fi
 
 #  Activate environment
+# shellcheck disable=SC1090,SC1091
 if [[ "${CONDA_DEFAULT_ENV}" != "${env_nam}" ]]; then
-    # eval "$(conda shell.bash hook)"
-    # shellcheck disable=SC1091
-    source "${HOME}/miniconda3/etc/profile.d/conda.sh"
-    conda activate "${env_nam}" ||
-        {
-            echo "Error: Failed to activate environment '${env_nam}'." >&2
-            exit 1
-        }
+    source "${scr_mng}"
+    source "${fnc_env}"
+    handle_env "${env_nam}" > /dev/null
 fi
 
 #  Check that SLURM environment variables are set
@@ -316,41 +323,45 @@ if ${debug}; then
     echo ""
 fi
 
-#  Write header with flock
-{
-    flock -n 200 || exit 1  # Only proceed if lock is acquired
-
-    #  Check if the header is already present in the file
-    if ! grep -q "^sample"$'\t'"alpha" "${outfile}" 2> /dev/null; then
-        #  If the header is not present, write it
-        if ! ${flg_mc}; then
-            echo "sample"$'\t'"alpha" >> "${outfile}"
-        else
-            echo "sample"$'\t'"alpha"$'\t'"mass_ip"$'\t'"mass_in"$'\t'"volume_ip"$'\t'"volume_in"$'\t'"depth_ip"$'\t'"depth_in"$'\t'"length_ip"$'\t'"length_in" \
-                >> "${outfile}"
-        fi
-    fi
-} 200> "${outfile}.lock"  # Use a lock file
+# #  Write header with flock
+# {
+#     flock -n 200 || exit 1  # Only proceed if lock is acquired
+#
+#     #  Check if the header is already present in the file
+#     if ! grep -q "$(printf "^sample\talpha")" "${outfile}" 2> /dev/null; then
+#         #  If the header is not present, write it
+#         if ! ${flg_mc}; then
+#             echo -e "sample\talpha" >> "${outfile}"
+#         else
+#             echo -e \
+#                 "sample\talpha\tmass_ip\tmass_in\tvolume_ip\tvolume_in\tdepth_ip\tdepth_in\tlength_ip\tlength_in" \
+#                     >> "${outfile}"
+#         fi
+#     fi
+# } 200> "${outfile}.lock"  # Use a lock file
 
 #  Print the IP sample and alpha value to the outfile
 if ! ${flg_mc}; then
-    echo "${file_ip##*/}"$'\t'"${alpha}" >> "${outfile}"
+    echo -e "${file_ip##*/}\t${alpha}" >> "${outfile}"
 
     #  If --flg_in, print the input sample and alpha value (#N/A) to the
     #+ outfile
     if ${flg_in}; then
-        echo "${file_in##*/}"$'\t'"#N/A" >> "${outfile}"
+        echo -e "${file_in##*/}\t#N/A" >> "${outfile}"
     fi
 else
-    #  If --flg_mc, include mass, volume, depth, and length values in the outfile
-    echo "${file_ip##*/}"$'\t'"${alpha}"$'\t'"${mass_ip}"$'\t'"${mass_in}"$'\t'"${volume_ip}"$'\t'"${volume_in}"$'\t'"${depth_ip}"$'\t'"${depth_in}"$'\t'"${length_ip}"$'\t'"${length_in}" \
-        >> "${outfile}"
+    #  If --flg_mc, include mass, volume, depth, and length values in the
+    #+ outfile
+    echo -e \
+        "${file_ip##*/}\t${alpha}\t${mass_ip}\t${mass_in}\t${volume_ip}\t${volume_in}\t${depth_ip}\t${depth_in}\t${length_ip}\t${length_in}" \
+            >> "${outfile}"
 
     #  If --flg_in, print the input sample and alpha value (#N/A), as well as
     #+ mass, volume, depth, and length values, to the outfile
     if ${flg_in}; then
-        echo "${file_in##*/}"$'\t'"#N/A"$'\t'"${mass_ip}"$'\t'"${mass_in}"$'\t'"${volume_ip}"$'\t'"${volume_in}"$'\t'"${depth_ip}"$'\t'"${depth_in}"$'\t'"${length_ip}"$'\t'"${length_in}" \
-            >> "${outfile}"
+        echo -e \
+            "${file_in##*/}\t#N/A\t${mass_ip}\t${mass_in}\t${volume_ip}\t${volume_in}\t${depth_ip}\t${depth_in}\t${length_ip}\t${length_in}" \
+                >> "${outfile}"
     fi
 fi
 
