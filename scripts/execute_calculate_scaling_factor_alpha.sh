@@ -5,7 +5,7 @@
 
 
 #  Run script in interactive/test mode (true) or command-line mode (false)
-interactive=true
+interactive=false
 
 #  Exit on errors, unset variables, or pipe failures if not in "interactive
 #+ mode"
@@ -62,7 +62,7 @@ function set_interactive() {
     #  Set hardcoded argument assignments
     verbose=true
     dry_run=true
-    threads=8
+    threads=16  # 8
     infiles=$(  ## WARNING: Change the search parameters as needed ##
         bash "${dir_scr}/find_files.sh" \
             --dir_fnd "${dir_bam}" \
@@ -70,14 +70,14 @@ function set_interactive() {
             --include "IP*,*Hho1*"
     )
     table="${dir_dat}/raw/docs/measurements_siq_chip.tsv"
-    outfile="${dir_out}/IP-in_WT_G1-G2M-Q_Hho1_6336-6337.mc.txt"
+    outfile="${dir_out}/IP_WT_G1-G2M-Q_Hho1_6336-6337.mc.txt"
     flg_dep=true
     flg_len=true
-    flg_in=true
+    flg_in=false
     flg_mc=true
     err_out="${dir_out}/logs"
     nam_job="calc_sf_alpha"
-    slurm=true
+    slurm=false
     scr_mng="${HOME}/miniforge3/etc/profile.d/conda.sh"
     max_job=6
     time="0:30:00"
@@ -523,6 +523,7 @@ else
         ${cmd} "${logic}" \
             ::: arr_infiles "${arr_infiles[@]}" \
             ::: threads "${threads}" \
+            ::: table "${table}" \
             ::: scr_par "${scr_par}" \
             ::: scr_alf "${scr_alf}" \
             ::: flg_dep "${flg_dep}" \
@@ -536,12 +537,12 @@ else
     #+ to display commands without executing them, capturing output and error
     #+ logs
     if ${dry_run} || ${verbose}; then
-        #  Based on the presence of `flg_mc`, output the appropriate header
-        if ! ${flg_mc}; then
-            echo -e "sample\talpha"
-        else
-            echo -e "sample\talpha\tmass_ip\tmass_in\tvolume_ip\tvolume_in\tdepth_ip\tdepth_in\tlength_ip\tlength_in"
-        fi
+        # #  Based on the presence of `flg_mc`, output the appropriate header
+        # if ! ${flg_mc}; then
+        #     echo -e "sample\talpha"
+        # else
+        #     echo -e "sample\talpha\tmass_ip\tmass_in\tvolume_ip\tvolume_in\tdepth_ip\tdepth_in\tlength_ip\tlength_in"
+        # fi
 
         #  Execute a dry-run of the parallel processing logic, capturing stdout
         #+ and stderr logs for each job

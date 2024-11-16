@@ -43,7 +43,7 @@ import sys
 
 
 #  Run script in interactive/test mode (True) or command-line mode (False)
-interactive = True
+interactive = False
 
 #  Define a dictionary of alternative names for each column
 column_name_map = {
@@ -123,14 +123,14 @@ def parse_bam_filename(filename):
     The expected filename format is:
         assay_genotype_state_treatment_factor_strain/replicate.
     
-    Required components:
+    Required filename components:
         - assay: Must be 'IP' or 'in' and is always present. It must be
                  followed by an underscore.
         - factor: A required component preceded by an underscore.
         - strain/replicate: A required component preceded by an underscore; it
                             marks the end of the pattern.
 
-    Optional components:
+    Optional filename components:
         - genotype: If present, must be preceded by an underscore.
         - state: An optional component with preferred values (e.g., 'G1',
                  'G2M', 'log', or 'Q'), but can also be flexible. If present,

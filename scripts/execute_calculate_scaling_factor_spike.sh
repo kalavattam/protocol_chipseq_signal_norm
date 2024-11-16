@@ -314,7 +314,7 @@ fi
 handle_env "${env_nam}" > /dev/null
 
 check_program_path awk
-check_program_path parallel
+if ! ${slurm}; then check_program_path parallel; fi
 check_program_path python
 check_program_path samtools
 if ${slurm}; then check_program_path sbatch; fi
@@ -555,12 +555,12 @@ else
     #+ to display commands without executing them, capturing output and error
     #+ logs
     if ${dry_run} || ${verbose}; then
-        #  Based on the presence of `flg_mc`, output the appropriate header
-        if ! ${flg_mc}; then
-            echo -e "sample\tsf"
-        else
-            echo -e "sample\tsf\tmain_ip\tspike_ip\tmain_in\tspike_in"
-        fi
+        # #  Based on the presence of `flg_mc`, output the appropriate header
+        # if ! ${flg_mc}; then
+        #     echo -e "sample\tsf"
+        # else
+        #     echo -e "sample\tsf\tmain_ip\tspike_ip\tmain_in\tspike_in"
+        # fi
 
         #  Execute a dry-run of the parallel processing logic, capturing stdout
         #+ and stderr logs for each job

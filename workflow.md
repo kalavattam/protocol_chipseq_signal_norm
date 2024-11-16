@@ -22,7 +22,7 @@ Note: For detailed instructions on keeping your local version of the [`202X_prot
 
 To align ChIP-seq reads against both *S. cerevisiae* and *S. pombe* genomes, we first generate Bowtie 2 indices from a concatenated FASTA file. This ensures efficient and accurate alignment for, e.g., spike-in normalization (described below).
 
-Steps overview:
+**Steps overview:**
 1. *Define directories and files:* Set paths for inputs and outputs.
 2. *Activate environment:* Load necessary tools and dependencies.
 3. *Run Bowtie 2 index creation:* Use the concatenated FASTA file to generate indices, logging output for troubleshooting.
@@ -413,7 +413,6 @@ infiles="$(  ## WARNING: Change the search parameters as needed ##
         --dir_fnd "${dir_bam}" \
         --pattern "*.bam" \
         --include "IP*,*Hmo1*"
-        
 )"
 outfile="${dir_out}/IP_WT_G1-G2M-Q_Hmo1_7750-7751.txt"
 err_out="${dir_out}/logs"
@@ -493,12 +492,145 @@ bash "${dir_scr}/compress_remove_files.sh" \
 
 ### 2. Calculate and normalize coverage using the siQ-ChIP (alpha) method.
 <details>
+<summary><i>Text: Calculate and normalize coverage using the siQ-ChIP (alpha) method.</i></summary>
+<br />
+
+This section describes the steps to calculate and normalize ChIP-seq coverage using the siQ-ChIP (alpha) method. The approach involves... `#TODO`. The procedure makes use of utility scripts and functions, environment handling, and parallel processing where applicable.
+
+**Steps overview:**
+1. *Set up directories and paths:* Define variables for key directories, data locations, and output destinations.
+2. *Activate environment and check dependencies:* Load the necessary computational environment and ensure essential dependencies are available.
+3. *Calculate alpha scaling factors:* Run the driver script to compute siQ-ChIP alpha scaling factors. The script can utilize SLURM for job scheduling if available; otherwise, it will fall back on using GNU Parallel for parallel processing.
+4. *Sort and update output:* Sort the generated output file, replacing it with the sorted version.
+5. *Optional cleanup:* Compress large log files, and remove empty log files.
+
+**Important note:**
+- The `execute_*.sh` script in this code chunk requires that *S. cerevisiae* IP BAM files follow a specific naming convention as outlined in the Bio-protocol manuscript. The expected filename format is:
+    ```txt
+    assay_genotype_state_treatment_factor_strain/replicate.
+    ```
+    + Required filename components:
+        - *assay:* Must be 'IP' or 'in' and and must be followed by an underscore.
+        - *factor:* A required component preceded by an underscore.
+        - *strain/replicate:* A required component preceded by an underscore; it marks the end of the pattern.
+    - Optional filename components:
+        - *genotype:* If present, must be preceded by an underscore.
+        - *state:* An optional component with preferred values (e.g., 'G1', 'G2M', 'log', or 'Q') but can also be flexible; if present, it must be preceded by an underscore.
+        - *treatment:* If present, must be preceded by an underscore.
+- Failure to adhere to this naming convention may cause the script to fail.
+</details>
+<br />
+
+<details>
 <summary><i>Bash code: Calculate and normalize coverage using the siQ-ChIP (alpha) method.</i></summary>
 
 ```bash
 #!/bin/bash
 
+#  Optional: Request an interactive node
+grabnode  # Request 1 core, 20 GB memory, 1 day, no GPU
 
+#  Define variables for directory paths, etc.
+dir_bas="${HOME}/tsukiyamalab/Kris"  ## WARNING: Change if not Kris ##
+dir_rep="${dir_bas}/202X_protocol_ChIP"
+dir_scr="${dir_rep}/scripts"
+dir_fnc="${dir_scr}/functions"
+dir_dat="${dir_rep}/data"
+dir_pro="${dir_dat}/processed"
+{
+    aligner="bowtie2"
+    a_type="global"
+    req_flg=true
+    flg="$(if ${req_flg}; then echo "2"; else echo "NA"; fi)"
+    mapq=1
+}
+dir_aln="${dir_pro}/align_${aligner}_${a_type}_BAM"
+dir_bam="${dir_aln}/flag-${flg}_mapq-${mapq}/sc"
+dir_out="${dir_pro}/calculate_scaling_factor_alpha"
+env_nam="env_analyze"
+day="$(date '+%Y-%m%d')"
+
+#  Set hardcoded argument assignments
+threads=8
+infiles="$(  ## WARNING: Change the search parameters as needed ##
+    bash "${dir_scr}/find_files.sh" \
+        --dir_fnd "${dir_bam}" \
+        --pattern "*.bam" \
+        --include "IP*,*Hho1*"
+)"
+table="${dir_dat}/raw/docs/measurements_siq_chip.tsv"
+outfile="${dir_out}/IP_WT_G1-G2M-Q_Hho1_6336-6337.mc.txt"
+err_out="${dir_out}/logs"
+scr_mng="${HOME}/miniforge3/etc/profile.d/conda.sh"
+
+## NOTE: Previously used 'infiles' parameters and "outfile" assignments ##
+# --include "IP*,*Hmo1*"
+# "${dir_out}/IP_WT_G1-G2M-Q_Hmo1_7750-7751.mc.txt"
+
+#  Create output directory structure for tables of siQ-ChIP alpha scaling
+#+ factors
+mkdir -p ${dir_out}/{docs,logs}
+
+#  Source utility functions
+source "${dir_fnc}/check_program_path.sh"
+source "${dir_fnc}/echo_warning.sh"
+source "${dir_fnc}/handle_env.sh"
+
+#  Activate the required environment
+handle_env "${env_nam}"
+
+#  Check the availability of necessary dependencies such as GNU Parallel and
+#+ SLURM sbatch
+check_program_path awk
+check_program_path parallel
+check_program_path python
+check_program_path samtools
+check_program_path sbatch ||
+    echo_warning \
+        "SLURM is not available on this system. Do not use the '--slurm'" \
+        "flag with the driver script."
+
+#  Run the driver script to calculate per-sample spike-in-derived scaling
+#+ factors
+bash "${dir_scr}/execute_calculate_scaling_factor_alpha.sh" \
+    --verbose \
+    --threads "${threads}" \
+    --infiles "${infiles}" \
+    --table "${table}" \
+    --outfile "${outfile}" \
+    --flg_dep \
+    --flg_len \
+    --flg_mc \
+    --err_out "${err_out}" \
+    --slurm \
+         > >(
+            tee -a "${dir_out}/logs/${day}.execute.$(
+                basename "${outfile}" .txt
+            ).stdout.txt"
+        ) \
+        2> >(
+            tee -a "${dir_out}/logs/${day}.execute.$(
+                basename "${outfile}" .txt
+            ).stderr.txt"
+        )
+
+#  Sort the outfile rows
+awk 'NR == 1; NR > 1 && NF { print | "sort" }' "${outfile}" \
+    > "${dir_out}/tmp.txt"
+
+#  Replace the original outfile with the newly relativized and sorted version
+mv -f "${dir_out}/tmp.txt" "${outfile}"
+
+#  Optional: Check the contents of the outfile
+# cat "${outfile}"
+
+#  Cleanup: Compress large stdout and stderr files, and remove files with size
+#+ 0
+bash "${dir_scr}/compress_remove_files.sh" \
+    --dir_fnd "${err_out}"
+
+#  Optional: Check the contents of the logs directory
+# ls -lhaFG "${err_out}"
 ```
 </details>
 <br />
