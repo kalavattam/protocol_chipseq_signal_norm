@@ -43,7 +43,7 @@ import sys
 
 
 #  Run script in interactive/test mode (True) or command-line mode (False)
-interactive = False
+interactive = True
 
 #  Define a dictionary of alternative names for each column
 column_name_map = {
@@ -120,29 +120,44 @@ def parse_bam_filename(filename):
     """
     Parse a BAM filename into its components based on the naming scheme.
 
-    The expected format is:
+    The expected filename format is:
         assay_genotype_state_treatment_factor_strain/replicate.
     
-    Some components (e.g., genotype, state, treatment) are optional.
+    Required components:
+        - assay: Must be 'IP' or 'in' and is always present. It must be
+                 followed by an underscore.
+        - factor: A required component preceded by an underscore.
+        - strain/replicate: A required component preceded by an underscore; it
+                            marks the end of the pattern.
+
+    Optional components:
+        - genotype: If present, must be preceded by an underscore.
+        - state: An optional component with preferred values (e.g., 'G1',
+                 'G2M', 'log', or 'Q'), but can also be flexible. If present,
+                 it must be preceded by an underscore.
+        - treatment: An optional component preceded by an underscore if
+                     present.
 
     Args:
         filename (str): Path to the BAM file.
 
     Returns:
-        dict: Parsed components as a dictionary.
+        dict: Parsed components as a dictionary with keys 'assay', 'genotype',
+              'state', 'treatment', 'factor', and 'strain'.
     """
     base_name = os.path.basename(filename)
     bam_id = base_name.split('.')[0]  # Remove extension
-    
-    #  Define a regex pattern to capture the components
+
+    #  Define regex pattern to match the filename structure
     pattern = (
-        r'^(?P<assay>\w+)'                 # assay (always present)
-        r'(?:_(?P<genotype>\w+))?'         # genotype (optional)
-        r'(?:_(?P<state>\w+))?'            # state (optional)
-        r'(?:_(?P<treatment>\w+))?'        # treatment (optional)
-        r'_(?P<factor>\w+)'                # factor (always present)
-        r'_(?P<strain_or_replicate>\w+)$'  # strain/replicate (always present)
+        r'^(?P<assay>IP|in)'                    # assay: mandatory (IP or in)
+        r'(?:_(?P<genotype>[^_]+))?'            # genotype: optional
+        r'(?:_(?P<state>G1|G2M|log|Q|[^_]+))?'  # state: optional (flexible)
+        r'(?:_(?P<treatment>[^_]+))?'           # treatment: optional
+        r'_(?P<factor>[^_]+)'                   # factor: mandatory
+        r'_(?P<strain>[^_]+)$'                  # strain/replicate: mandatory
     )
+
     match = re.match(pattern, bam_id)
 
     if not match:
@@ -156,27 +171,31 @@ def parse_bam_filename(filename):
 
 
 def load_file(file_path):
-    """Load as CSV or TSV based on file extension."""
+    """Load dataframe based on file extension: CSV, TSV, or TXT."""
     if file_path.endswith('.csv'):
         delimiter = ','
-    elif file_path.endswith('.tsv'):
+    elif file_path.endswith(('.tsv', '.txt')):
         delimiter = '\t'
     else:
-        raise ValueError("Input file must be a CSV or TSV file.")
+        raise ValueError("Input file must be a CSV, TSV, or TXT file.")
     
     return pd.read_csv(file_path, delimiter=delimiter)
 
 
-def find_matching_row(df, state, factor, strain):
+def find_matching_row(df, factor, strain, genotype='N/A', state='N/A'):
     #  Ensure 'state', 'factor', and 'strain' columns are strings
+    df['genotype'] = df['genotype'].astype(str)
     df['state'] = df['state'].astype(str)
     df['factor'] = df['factor'].astype(str)
     df['strain'] = df['strain'].astype(str)
 
-    #  Handle optional values (e.g., state can be 'N/A')
+    #  Handle optional values (e.g., state and genotype can be 'N/A')
     conditions = (df['factor'].str.lower() == factor.lower()) & \
                  (df['strain'].str.lower() == strain.lower())
 
+    if genotype != 'N/A':
+        conditions &= (df['genotype'].str.lower() == genotype.lower())
+    
     if state != 'N/A':
         conditions &= (df['state'].str.lower() == state.lower())
 
@@ -185,10 +204,8 @@ def find_matching_row(df, state, factor, strain):
     if matched_row.empty:
         raise ValueError(
             f"No matching row found for state '{state}', factor '{factor}', "
-            f"strain '{strain}'."
+            f"strain '{strain}', genotype '{genotype}'."
         )
-
-    return matched_row.iloc[0]
 
     #  Return the first match
     return matched_row.iloc[0]
@@ -230,8 +247,8 @@ def parse_args():
     
     return parser.parse_args() if not interactive else argparse.Namespace(
         verbose=True,
-        text="",  # TODO
-        bam="",  # TODO
+        text="/home/kalavatt/tsukiyamalab/Kris/202X_protocol_ChIP/data/raw/docs/measurements_siq_chip.tsv",
+        bam="/home/kalavatt/tsukiyamalab/Kris/202X_protocol_ChIP/data/processed/align_bowtie2_global_BAM/flag-2_mapq-1/sc/in_WT_G2M_Hmo1_7750.sc.bam",
         shell=True
     )
 
@@ -247,7 +264,7 @@ def main():
     state = parsed_components.get('state', 'N/A')
     treatment = parsed_components.get('treatment', 'N/A')
     factor = parsed_components['factor']
-    strain = parsed_components['strain_or_replicate']
+    strain = parsed_components['strain']
 
     if args.verbose:
         print(
@@ -268,7 +285,7 @@ def main():
 
     #  Find the matching row, adjusting for missing components
     try:
-        row = find_matching_row(df, state, factor, strain)
+        row = find_matching_row(df, factor, strain, genotype, state)
         if args.verbose:
             print(f"Matching row found:\n{row}")
     except ValueError as e:

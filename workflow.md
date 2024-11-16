@@ -122,13 +122,18 @@ day="$(date '+%Y-%m%d')"
 
 #  Source utility functions
 source "${dir_fnc}/check_program_path.sh"
+source "${dir_fnc}/echo_warning.sh"
 source "${dir_fnc}/handle_env.sh"
 
 #  Activate the required environment
 handle_env "${env_nam}"
 
-#  Ensure access to bowtie2-build
-check_program_path "parallel"
+#  Ensure access to necessary dependencies such as GNU Parallel, SLURM sbatch
+check_program_path parallel
+check_program_path sbatch ||
+    echo_warning \
+        "SLURM is not available on this system. Do not use the '--slurm'" \
+        "flag with the driver script."
 
 #  If needed, create directory structure for raw and symlinked FASTQ files and
 #+ logs
@@ -188,15 +193,20 @@ day="$(date '+%Y-%m%d')"
 
 #  Source utility functions
 source "${dir_fnc}/check_program_path.sh"
+source "${dir_fnc}/echo_warning.sh"
 source "${dir_fnc}/handle_env.sh"
 
 #  Activate the required environment
 handle_env "${env_nam}"
 
 #  Check availability of Atria and other necessary tools
-check_program_path "atria"
-check_program_path "pbzip2"
-check_program_path "pigz"
+check_program_path atria
+check_program_path pbzip2
+check_program_path pigz
+check_program_path sbatch ||
+    echo_warning \
+        "SLURM is not available on this system. Do not use the '--slurm'" \
+        "flag with the driver script."
 
 #  Create output directory structure for trimmed FASTQ files and logs
 mkdir -p ${dir_trm}/{docs,logs}
@@ -209,8 +219,8 @@ bash "${dir_scr}/execute_trim_fastqs.sh" \
     --dir_out "${dir_trm}" \
     --err_out "${dir_trm}/logs" \
     --slurm \
-         > >(tee -a "${dir_trm}/logs/${day}.execute.stdout.txt") \
-        2> >(tee -a "${dir_trm}/logs/${day}.execute.stderr.txt")
+         >> >(tee -a "${dir_trm}/logs/${day}.execute.stdout.txt") \
+        2>> >(tee -a "${dir_trm}/logs/${day}.execute.stderr.txt")
 
 #  Cleanup: Move Atria LOG and JSON files to the logs directory
 mv ${dir_trm}/*.{log,json} "${dir_trm}/logs"
@@ -282,14 +292,19 @@ mkdir -p ${dir_out}/{init,sc,sp}/{docs,logs}
 
 #  Source utility functions
 source "${dir_fnc}/check_program_path.sh"
+source "${dir_fnc}/echo_warning.sh"
 source "${dir_fnc}/handle_env.sh"
 
 #  Activate the required environment
 handle_env "${env_nam}"
 
-#  Check availability of Atria and other necessary tools
-check_program_path "bowtie2"
-check_program_path "samtools"
+#  Check the availability of Bowtie 2, Samtools, and SLURM sbatch
+check_program_path bowtie2
+check_program_path samtools
+check_program_path sbatch ||
+    echo_warning \
+        "SLURM is not available on this system. Do not use the '--slurm'" \
+        "flag with the driver script."
 
 #  Run the driver script to align and post-process FASTQ files
 bash "${dir_scr}/execute_align_fastqs.sh" \
@@ -416,17 +431,22 @@ mkdir -p ${dir_out}/{docs,logs}
 
 #  Source utility functions
 source "${dir_fnc}/check_program_path.sh"
+source "${dir_fnc}/echo_warning.sh"
 source "${dir_fnc}/handle_env.sh"
 
 #  Activate the required environment
 handle_env "${env_nam}"
 
-#  Check availability of necessary dependencies
+#  Check the availability of necessary dependencies such as GNU Parallel and
+#+ SLURM sbatch
 check_program_path awk
 check_program_path parallel
 check_program_path python
 check_program_path samtools
-check_program_path sbatch
+check_program_path sbatch ||
+    echo_warning \
+        "SLURM is not available on this system. Do not use the '--slurm'" \
+        "flag with the driver script."
 
 #  Run the driver script to calculate per-sample spike-in-derived scaling
 #+ factors
@@ -464,6 +484,9 @@ mv -f "${dir_out}/tmp.txt" "${outfile}"
 #+ 0
 bash "${dir_scr}/compress_remove_files.sh" \
     --dir_fnd "${err_out}"
+
+#  Optional: Check the contents of the logs directory
+# ls -lhaFG "${err_out}"
 ```
 </details>
 <br />
