@@ -55,7 +55,7 @@ function set_interactive() {
         flg="$(if ${req_flg}; then echo "2"; else echo "NA"; fi)"
         mapq=1
     }
-    dir_aln="${dir_pro}/align_${aligner}_${a_type}_BAM"
+    dir_aln="${dir_pro}/align_${aligner}_${a_type}"
     dir_bam="${dir_aln}/flag-${flg}_mapq-${mapq}/sc"
     dir_out="${dir_pro}/calculate_scaling_factor_spike"
 
@@ -189,7 +189,7 @@ Notes:
         additional files: S. cerevisiae input files and S. pombe ("sp") IP and
         input files:
         \`\`\`
-        align_bowtie2_global_BAM/flag-2_mapq-1/
+        align_bowtie2_global/flag-2_mapq-1/
         ├── init
         │   ├── docs
         │   └── logs

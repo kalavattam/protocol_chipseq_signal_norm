@@ -48,7 +48,7 @@ function set_interactive() {
     dir_dat="${dir_rep}/data"
     dir_sym="${dir_dat}/symlinked"
     dir_pro="${dir_dat}/processed"
-    dir_trm="${dir_pro}/trim_atria_FASTQ"
+    dir_trm="${dir_pro}/trim_atria"
 
     #  Set hardcoded argument assignments
     verbose=true

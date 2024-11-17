@@ -56,7 +56,7 @@ function set_interactive() {
         flg="$(if ${req_flg}; then echo "2"; else echo "NA"; fi)" 
         mapq=1
     }
-    dir_aln="${dir_pro}/align_${aligner}_${a_type}_BAM"
+    dir_aln="${dir_pro}/align_${aligner}_${a_type}"
     dir_flt="${dir_aln}/flag-${flg}_mapq-${mapq}"
     dir_ini="${dir_flt}/init"
 

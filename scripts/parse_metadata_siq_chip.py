@@ -248,7 +248,7 @@ def parse_args():
     return parser.parse_args() if not interactive else argparse.Namespace(
         verbose=True,
         text="/home/kalavatt/tsukiyamalab/Kris/202X_protocol_ChIP/data/raw/docs/measurements_siq_chip.tsv",
-        bam="/home/kalavatt/tsukiyamalab/Kris/202X_protocol_ChIP/data/processed/align_bowtie2_global_BAM/flag-2_mapq-1/sc/in_WT_G2M_Hmo1_7750.sc.bam",
+        bam="/home/kalavatt/tsukiyamalab/Kris/202X_protocol_ChIP/data/processed/align_bowtie2_global/flag-2_mapq-1/sc/in_WT_G2M_Hmo1_7750.sc.bam",
         shell=True
     )
 

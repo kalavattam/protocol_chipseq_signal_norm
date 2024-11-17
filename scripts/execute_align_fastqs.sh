@@ -51,7 +51,7 @@ function set_interactive() {
     dir_idx="${dir_dat}/genomes/concat/index"
     str_idx="sc_sp_proc"
     dir_pro="${dir_dat}/processed"
-    dir_trm="${dir_pro}/trim_atria_FASTQ"
+    dir_trm="${dir_pro}/trim_atria"
     dir_aln="${dir_pro}/align"
 
     #  Set hardcoded argument assignments, etc.

@@ -178,7 +178,7 @@ dir_fnc="${dir_scr}/functions"
 dir_dat="${dir_rep}/data"
 dir_sym="${dir_dat}/symlinked"
 dir_pro="${dir_dat}/processed"
-dir_trm="${dir_pro}/trim_atria_FASTQ"
+dir_trm="${dir_pro}/trim_atria"
 env_nam="env_analyze"
 threads=4
 infiles="$(  ## WARNING: Change the search parameters as needed ##
@@ -263,7 +263,7 @@ dir_fnc="${dir_scr}/functions"
 dir_dat="${dir_rep}/data"
 dir_idx="${dir_dat}/genomes/concat/index"
 dir_pro="${dir_dat}/processed"
-dir_trm="${dir_pro}/trim_atria_FASTQ"
+dir_trm="${dir_pro}/trim_atria"
 env_nam="env_align"
 threads=8
 aligner="bowtie2"
@@ -280,7 +280,7 @@ infiles="$(  ## WARNING: Change the search parameters as needed ##
         --depth 1 \
         --fastqs
 )"
-dir_aln="${dir_pro}/align_${aligner}_${a_type}_BAM"
+dir_aln="${dir_pro}/align_${aligner}_${a_type}"
 dir_out="${dir_aln}/flag-${flg}_mapq-${mapq}"
 nam_job="align_fastqs"
 max_job=6
@@ -378,6 +378,15 @@ bash "${dir_scr}/compress_remove_files.sh" \
 ## K. Calculate and normalize coverage using fragment-based, spike-in, and siQ-ChIP methods.
 ### 1. Calculate and normalize coverage using spike-in signal.
 <details>
+<summary><i>Text: Calculate and normalize coverage using spike-in signal.</i></summary>
+<br />
+
+This section describes the steps to calculate and normalize ChIP-seq coverage using spike-in signal.
+
+</details>
+<br />
+
+<details>
 <summary><i>Bash code: Calculate and normalize coverage using spike-in signal.</i></summary>
 
 ```bash
@@ -399,10 +408,13 @@ dir_pro="${dir_dat}/processed"
     req_flg=true
     flg="$(if ${req_flg}; then echo "2"; else echo "NA"; fi)"
     mapq=1
+    det_bam="flag-${flg}_mapq-${mapq}"
+    det_cov="${aligner}_${a_type}_${det_bam}"
 }
-dir_aln="${dir_pro}/align_${aligner}_${a_type}_BAM"
-dir_bam="${dir_aln}/flag-${flg}_mapq-${mapq}/sc"
-dir_out="${dir_pro}/calculate_scaling_factor_spike"
+dir_aln="${dir_pro}/align_${aligner}_${a_type}"
+dir_bam="${dir_aln}/${det_bam}/sc"
+dir_cov="${dir_pro}/compute_coverage"
+dir_out="${dir_cov}/${det_cov}/spike/tables"
 env_nam="env_analyze"
 day="$(date '+%Y-%m%d')"
 
@@ -413,20 +425,22 @@ infiles="$(  ## WARNING: Change the search parameters as needed ##
         --dir_fnd "${dir_bam}" \
         --pattern "*.bam" \
         --include "IP*,*Hmo1*"
+        # --include "IP*,*Hho1*"
+        # --include "IP*,*Brn1*"
 )"
-outfile="${dir_out}/IP_WT_G1-G2M-Q_Hmo1_7750-7751.txt"
+outfile="${dir_out}/IP_WT_G1-G2M-Q_Hmo1_7750-7751.tsv"
+# outfile="${dir_out}/IP_WT_G1-G2M-Q_Hho1_6336-6337.tsv"
+# outfile="${dir_out}/IP_WT_log-Q_Brn1_rep1-rep2-rep3.tsv"
 err_out="${dir_out}/logs"
 scr_mng="${HOME}/miniforge3/etc/profile.d/conda.sh"
 
-## NOTE: Previously used 'infiles' parameters and "outfile" assignments ##
-# --include "IP*,*Hho1*"
-# --include "IP*,*Brn1*"
-# "${dir_out}/IP_WT_G1-G2M-Q_Hho1_6336-6337.txt"
-# "${dir_out}/IP_WT_log-Q_Brn1_rep1-rep2-rep3.txt"
+#  Using the date and outfile, set path and prefix for driver script logs
+exc_pth="${dir_out}/logs/${day}.execute.$(basename "${outfile}" .tsv)"
 
-#  Create output directory structure for tables of spike-in-derived scaling
-#+ factors
-mkdir -p ${dir_out}/{docs,logs}
+#  Create directory structure for storing output tables and tracks associated
+#+ with different normalization methods (alpha, spike, norm, raw)
+mkdir -p ${dir_cov}/${det_cov}/{alpha,spike}/tables/{docs,logs}
+mkdir -p ${dir_cov}/${det_cov}/{alpha,norm,raw,spike}/tracks/{docs,logs}
 
 #  Source utility functions
 source "${dir_fnc}/check_program_path.sh"
@@ -436,8 +450,8 @@ source "${dir_fnc}/handle_env.sh"
 #  Activate the required environment
 handle_env "${env_nam}"
 
-#  Check the availability of necessary dependencies such as GNU Parallel and
-#+ SLURM sbatch
+#  Check the availability of necessary dependencies such as GNU Parallel,
+#+ Python, and SLURM sbatch
 check_program_path awk
 check_program_path parallel
 check_program_path python
@@ -455,17 +469,10 @@ bash "${dir_scr}/execute_calculate_scaling_factor_spike.sh" \
     --infiles "${infiles}" \
     --outfile "${outfile}" \
     --err_out "${err_out}" \
+    --flg_mc \
     --slurm \
-         > >(
-            tee -a "${dir_out}/logs/${day}.execute.$(
-                basename "${outfile}" .txt
-            ).stdout.txt"
-        ) \
-        2> >(
-            tee -a "${dir_out}/logs/${day}.execute.$(
-                basename "${outfile}" .txt
-            ).stderr.txt"
-        )
+         > >(tee -a "${exc_pth}.stdout.txt") \
+        2> >(tee -a "${exc_pth}.stderr.txt")
 
 #  Relativize the scaling factors to the maximum IP value, and sort the outfile
 #+ rows
@@ -479,6 +486,82 @@ mv -f "${dir_out}/tmp.txt" "${outfile}"
 #  Optional: Check the contents of the outfile
 # cat "${outfile}"
 
+
+nam_job="comp_covg_spike"
+no_infiles="$(tail -n +2 "${outfile}" | wc -l)"
+max_job=6
+threads=8
+bin_siz=1
+outtype="bigwig"
+time="0:30:00"
+dir_out="${dir_pro}/compute_coverage/${det_cov}/spike/tracks"
+err_out="${dir_out}/logs"
+exc_pth="${err_out}/${day}.execute.${nam_job}"
+
+#  Loop over each line (skipping the header) to extract 'sample' and 'scaled' columns
+while IFS=$'\t' read -r sample sf scaled main_ip spike_ip main_in spike_in; do
+    #  Extract the base name (without directory path) for use as outfile prefix
+    outstem="${sample%.bam}"
+
+    echo "sample    ${sample}"
+    echo "outstem   ${outstem}"
+    echo "sf        ${sf}"
+    echo "scaled    ${scaled}"
+    echo "main_ip   ${main_ip}"
+    echo "spike_ip  ${spike_ip}"
+    echo "main_in   ${main_in}"
+    echo "spike_in  ${spike_in}"
+    echo ""
+
+    ls -lhaFG "${dir_bam}/${sample}"
+    echo ""
+
+    #  Run the Python script with parsed values
+    cat << EOM
+        srun \\
+            --job-name=${nam_job} \\
+            --nodes=1 \\
+            --cpus-per-task=${threads} \\
+            --time=${time} \\
+            --error=${err_out}/${nam_job}.%A-%a.stderr.txt \\
+            --output=${err_out}/${nam_job}.%A-%a.stdout.txt \\
+                python "${dir_scr}/compute_coverage.py" \\
+                    --infile "${dir_bam}/${sample}" \\
+                    --outfile "${dir_cov}/${det_cov}/spike/tracks/${outstem}" \\
+                    --scl_fct "${scaled}" \\
+                    --outtype "${outtype}" \\
+                    --threads ${threads} \\
+                    --bin_siz 1 \\
+                         > >(tee -a "${exc_pth}.${outstem}.stdout.txt") \\
+                        2> >(tee -a "${exc_pth}.${outstem}.stderr.txt")
+EOM
+    echo ""
+    echo ""
+
+    srun \
+        --job-name=${nam_job} \
+        --nodes=1 \
+        --cpus-per-task=${threads} \
+        --time=${time} \
+        --error=${err_out}/${nam_job}.%A-%a.stderr.txt \
+        --output=${err_out}/${nam_job}.%A-%a.stdout.txt \
+            python "${dir_scr}/compute_coverage.py" \
+                --infile "${dir_bam}/${sample}" \
+                --outfile "${dir_cov}/${det_cov}/spike/tracks/${outstem}" \
+                --scl_fct "${scaled}" \
+                --outtype "${outtype}" \
+                --threads ${threads} \
+                --bin_siz 1 \
+                     > >(tee -a "${exc_pth}.${outstem}.stdout.txt") \
+                    2> >(tee -a "${exc_pth}.${outstem}.stderr.txt")
+
+    sleep 0.3
+done < <(tail -n +2 "${outfile}")
+
+# --array=1-${no_infiles}%${max_job} \\
+
+
+#TODO ...
 #  Cleanup: Compress large stdout and stderr files, and remove files with size
 #+ 0
 bash "${dir_scr}/compress_remove_files.sh" \
@@ -505,15 +588,15 @@ This section describes the steps to calculate and normalize ChIP-seq coverage us
 5. *Optional cleanup:* Compress large log files, and remove empty log files.
 
 **Important note:**
-- The `execute_*.sh` script in this code chunk requires that *S. cerevisiae* IP BAM files follow a specific naming convention as outlined in the Bio-protocol manuscript. The expected filename format is:
+- The `execute_*.sh` script in this code chunk requires that *S. cerevisiae* IP BAM files follow a specific naming convention as outlined in the *Bio-protocol* manuscript. The expected filename format:
     ```txt
     assay_genotype_state_treatment_factor_strain/replicate.
     ```
     + Required filename components:
-        - *assay:* Must be 'IP' or 'in' and and must be followed by an underscore.
+        - *assay:* Must be 'IP' or 'in', and must be followed by an underscore.
         - *factor:* A required component preceded by an underscore.
         - *strain/replicate:* A required component preceded by an underscore; it marks the end of the pattern.
-    - Optional filename components:
+    + Optional filename components:
         - *genotype:* If present, must be preceded by an underscore.
         - *state:* An optional component with preferred values (e.g., 'G1', 'G2M', 'log', or 'Q') but can also be flexible; if present, it must be preceded by an underscore.
         - *treatment:* If present, must be preceded by an underscore.
@@ -544,9 +627,9 @@ dir_pro="${dir_dat}/processed"
     flg="$(if ${req_flg}; then echo "2"; else echo "NA"; fi)"
     mapq=1
 }
-dir_aln="${dir_pro}/align_${aligner}_${a_type}_BAM"
+dir_aln="${dir_pro}/align_${aligner}_${a_type}"
 dir_bam="${dir_aln}/flag-${flg}_mapq-${mapq}/sc"
-dir_out="${dir_pro}/calculate_scaling_factor_alpha"
+dir_out="${dir_pro}/compute_coverage_alpha"
 env_nam="env_analyze"
 day="$(date '+%Y-%m%d')"
 
@@ -563,9 +646,13 @@ outfile="${dir_out}/IP_WT_G1-G2M-Q_Hho1_6336-6337.mc.txt"
 err_out="${dir_out}/logs"
 scr_mng="${HOME}/miniforge3/etc/profile.d/conda.sh"
 
-## NOTE: Previously used 'infiles' parameters and "outfile" assignments ##
+## NOTE: Alternative 'infiles' parameter and 'outfile' assignment ##
 # --include "IP*,*Hmo1*"
 # "${dir_out}/IP_WT_G1-G2M-Q_Hmo1_7750-7751.mc.txt"
+
+#  Set base path and prefix for stdout/stderr logs, using date and output
+#+ filename
+exc_pth="${dir_out}/logs/${day}.execute.$(basename "${outfile}" .txt)"
 
 #  Create output directory structure for tables of siQ-ChIP alpha scaling
 #+ factors
@@ -603,22 +690,14 @@ bash "${dir_scr}/execute_calculate_scaling_factor_alpha.sh" \
     --flg_mc \
     --err_out "${err_out}" \
     --slurm \
-         > >(
-            tee -a "${dir_out}/logs/${day}.execute.$(
-                basename "${outfile}" .txt
-            ).stdout.txt"
-        ) \
-        2> >(
-            tee -a "${dir_out}/logs/${day}.execute.$(
-                basename "${outfile}" .txt
-            ).stderr.txt"
-        )
+         > >(tee -a "${exc_pth}.stdout.txt") \
+        2> >(tee -a "${exc_pth}.stderr.txt")
 
 #  Sort the outfile rows
 awk 'NR == 1; NR > 1 && NF { print | "sort" }' "${outfile}" \
     > "${dir_out}/tmp.txt"
 
-#  Replace the original outfile with the newly relativized and sorted version
+#  Replace the original outfile with the sorted version
 mv -f "${dir_out}/tmp.txt" "${outfile}"
 
 #  Optional: Check the contents of the outfile
