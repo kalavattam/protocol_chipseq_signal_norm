@@ -136,37 +136,6 @@ def set_interactive():
     )
 
 
-# def sort_chrom_roman_arabic(chrom):
-#     """
-#     Map Roman numerals to integer values, otherwise return as is.
-#     """
-#     try:
-#         #  Attempt Roman numeral conversion
-#         return roman_to_int.get(chrom, int(chrom))
-#     except ValueError:
-#         #  Default to string sorting for non-integer names
-#         return chrom
-"""
-## 2024-1122 ##
-Above function implementation results in this error:
-
-Traceback (most recent call last):
-  File "/home/kalavatt/tsukiyamalab/Kris/202X_protocol_ChIP/scripts/compute_coverage.py", line 498, in <module>
-    main()
-  File "/home/kalavatt/tsukiyamalab/Kris/202X_protocol_ChIP/scripts/compute_coverage.py", line 494, in main
-    write_bigwig(covg_comb, f"{args.outfile}.bw", args.bin_siz, chrom_siz)
-  File "/home/kalavatt/tsukiyamalab/Kris/202X_protocol_ChIP/scripts/compute_coverage.py", line 303, in write_bigwig
-    bw.addEntries(chroms, starts, ends=ends, values=values)
-RuntimeError: The entries you tried to add are out of order, precede already added entries, or otherwise use illegal values.
- Please correct this and try again.
-
-Using below version of function solves the issue.
-
-Another issue is that writing bigwig files is quite slow with less than 8
-threads.
-"""
-
-
 def sort_chrom_roman_arabic(chrom):
     """
     Map Roman numerals to integer values, otherwise return as is.
@@ -332,6 +301,54 @@ def write_bigwig(coverage, outfile, bin_siz, chrom_siz):
     bw.close()
 
 
+# def write_chrom_bigwig(data):
+#     """
+#     # TODO: Description of function.
+#     """
+#     chrom, chrom_coverage, bin_siz, outfile = data
+#     with pyBigWig.open(outfile, 'w') as bw:
+#         chrom_coverage.sort(key=lambda x: x[0])  # Sort by start position
+#         starts, ends, values = zip(*chrom_coverage)
+#         bw.addEntries(
+#             [chrom] * len(starts), starts, ends=ends, values=values
+#         )
+
+
+# def write_bigwig_parallel(coverage, outfile, bin_siz, chrom_siz, threads):
+#     """
+#     Parallelized BIGWIG writing by chromosome.
+#     """
+#     #  Prepare data for each chromosome
+#     tasks = []
+#     for chrom in sorted(chrom_siz.keys(), key=sort_chrom_roman_arabic):
+#         chrom_coverage = [
+#             (start, start + bin_siz, coverage[(chrom, start)])
+#             for (chrom_name, start) in coverage.keys()
+#             if chrom_name == chrom
+#         ]
+#         tasks.append(
+#             (chrom, chrom_coverage, bin_siz, f"{outfile}.{chrom}.tmp.bw")
+#         )
+#
+#     #  Process chromosomes in parallel
+#     with ProcessPoolExecutor(max_workers=threads) as executor:
+#         executor.map(write_chrom_bigwig, tasks)
+#
+#     #  Merge temporary BIGWIG files into one (requires pyBigWig or similar
+#     #  tool)
+#     with pyBigWig.open(outfile, 'w') as bw:
+#         bw.addHeader(list(chrom_siz.items()))
+#         for task in tasks:
+#             tmp_file = task[3]
+#             with pyBigWig.open(tmp_file, 'r') as tmp_bw:
+#                 for chrom in tmp_bw.chroms():
+#                     for entry in tmp_bw.entries(chrom):
+#                         bw.addEntries(
+#                             [chrom], entry[0], ends=entry[1], values=entry[2]
+#                         )
+#             os.remove(tmp_file)
+
+
 def write_bedgraph(coverage, outfile, bin_siz):
     """
     Write the binned coverage data to a BEDGRAPH file.
@@ -372,7 +389,17 @@ def parse_args():
     Parse command-line arguments.
 
     Args:
-        ...
+         -v, --verbose (flag): Increase output verbosity.
+         -t, --threads  (int): Number of threads for parallel processing.
+         -i, --infile   (str): Path to input BAM file.
+         -o, --outfile  (str): Path to output file without extension.
+        -to, --typ_out  (str): Specify output format: 'bedgraph', 'bigwig',
+                               'both'.
+        -bs, --bin_siz  (int): Bin size for coverage calculation in base pairs.
+        -sf, --scl_fct  (flt): Optional scaling factor to apply to coverage.
+        -no, --norm    (flag): Normalize coverage by fragment length and total
+                               reads.
+        -uf, --usr_frg  (int): Optional fixed fragment length.
     """
     parser = argparse.ArgumentParser(
         description=(
@@ -385,7 +412,7 @@ def parse_args():
         "--verbose",
         action="store_true",
         default=False,
-        help="Increase output verbosity for debugging."
+        help="Increase output verbosity."
     )
     parser.add_argument(
         "-t",
@@ -415,7 +442,7 @@ def parse_args():
         )
     )
     parser.add_argument(
-        "-ot",
+        "-to",
         "--typ_out",
         choices=['bedgraph', 'bigwig', 'both'],
         default='bigwig',
@@ -483,9 +510,9 @@ def main():
 
     #  Print verbose output
     if args.verbose:
-        print("## Arguments ##")
+        print("## Arguments for compute_coverage.py ##")
         for arg, value in vars(args).items():
-            print(f"--{arg:<10}: {value if value is not None else 'Default'}")
+            print(f"--{arg:<10}: {value}")
 
     #  Parse and process BAM file
     entries_bam = parse_bam(args.infile, args.usr_frg)
@@ -518,6 +545,13 @@ def main():
     if args.typ_out in ['bigwig', 'both']:
         #  Write output to BIGWIG file
         write_bigwig(covg_comb, f"{args.outfile}.bw", args.bin_siz, chrom_siz)
+
+    # if args.typ_out in ['bigwig', 'both']:
+    #     #  Write output to BIGWIG file using the parallel implementation
+    #     write_bigwig_parallel(
+    #         covg_comb, f"{args.outfile}.bw", args.bin_siz, chrom_siz,
+    #         args.threads
+    #     )
 
 
 if __name__ == "__main__":

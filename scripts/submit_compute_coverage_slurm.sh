@@ -162,7 +162,7 @@ if [[ -z "${usr_frg}" ]]; then
 fi
 
 #  Derive sample name from infile assignment
-samp="${infile##*/}"
+samp="${outfile##*/}"
 samp="${samp%.bam}"
 
 #  Debug sample name

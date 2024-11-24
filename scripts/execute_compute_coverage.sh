@@ -78,8 +78,8 @@ function check_table_column() {
 }
 
 
-#  Helper function to warn that user-supplied scaling factors override those
-#+ in table
+#  Helper function to warn that user-supplied scaling factors override those in
+#+ table
 function check_scaling_factor_table() {
     local scl_fct="${1}"
     local table="${2}"
@@ -93,6 +93,8 @@ function check_scaling_factor_table() {
 }
 
 
+#  Helper function to warn that normalization flags override scaling factors in
+#+ table
 function check_normalization_table() {
     local name="${1}"
     local norm="${2}"
@@ -182,36 +184,36 @@ function set_interactive() {
         det_bam="flag-${flg}_mapq-${mapq}"
         det_cov="${aligner}_${a_type}_${det_bam}"
     }
-    # dir_aln="${dir_pro}/align_${aligner}_${a_type}"
-    # dir_bam="${dir_aln}/${det_bam}/sc"
+    dir_aln="${dir_pro}/align_${aligner}_${a_type}"
+    dir_bam="${dir_aln}/${det_bam}/sc"
     dir_cov="${dir_pro}/compute_coverage"
-    dir_tbl="${dir_cov}/${det_cov}/spike/tables"
-    dir_trk="${dir_cov}/${det_cov}/spike/tracks"
+    # dir_tbl="${dir_cov}/${det_cov}/alpha/tables"  # "${dir_cov}/${det_cov}/spike/tables"
+    dir_trk="${dir_cov}/${det_cov}/alpha/tracks"  # "${dir_cov}/${det_cov}/spike/tracks"
 
     #  Set hardcoded argument assignments
     verbose=true
     dry_run=true
     threads=8
-    infiles=""
-    # infiles="$(  ## WARNING: Change the search parameters as needed ##
-    #     bash "${dir_scr}/find_files.sh" \
-    #         --dir_fnd "${dir_bam}" \
-    #         --pattern "*.bam" \
-    #         --include "IP*,*Hho1*"  # "IP*,*Hmo1*"  # "IP*,*Brn1*"
-    # )"
-    table="${dir_tbl}/IP_WT_log-Q_Brn1_rep1-rep2-rep3.tsv"  # "${dir_tbl}/IP_WT_G1-G2M-Q_Hho1_6336-6337.tsv"  # "${dir_tbl}/IP_WT_G1-G2M-Q_Hmo1_7750-7751.tsv"  # ""
-    tbl_col="scaled"  # ""
+    # infiles=""
+    infiles="$(  ## WARNING: Change the search parameters as needed ##
+        bash "${dir_scr}/find_files.sh" \
+            --dir_fnd "${dir_bam}" \
+            --pattern "*.bam" \
+            --include "IP*,*Hho1*"  # "IP*,*Hmo1*"  # "IP*,*Brn1*"
+    )"
+    # table="${dir_tbl}/IP_WT_log-Q_Brn1_rep1-rep2-rep3.tsv"  # "${dir_tbl}/IP_WT_G1-G2M-Q_Hho1_6336-6337.tsv"  # "${dir_tbl}/IP_WT_G1-G2M-Q_Hmo1_7750-7751.tsv"  # ""  # "IP_WT_G1-G2M-Q_Hho1-Hmo1_6336-6337_7750-7751.tsv"
+    tbl_col="alpha"  # "scaled"  # ""
     dir_out="${dir_trk}"
     typ_out="bigwig"
     bin_siz=1
-    scl_fct=""
+    scl_fct="0.002054,0.003138,0.003127,0.003522,0.056611,0.02906"  # ""
     norm=false
     raw=false
     usr_frg=""
     err_out="${dir_trk}/logs"
     nam_job="compute_coverage"
     slurm=true
-    max_job=6
+    max_job=4  # 6
     time="0:30:00"
 }
 
@@ -254,7 +256,12 @@ Usage:
     [--max_job <int>] [--time <str>]
 
 Description:
-  execute_compute_coverage.sh... #TODO
+  execute_compute_coverage.sh automates the calculation of coverage signal
+  tracks from BAM files. It supports various normalization methods, including
+  user-supplied scaling factors (e.g., unadjusted or relativized spike-in
+  scaling, or siQ-ChIP scaling), normalized (fractional) coverage (per Dickson
+  et al., Sci Rep 2023), and raw (unadjusted) coverage. The script integrates
+  with GNU Parallel or SLURM for parallel processing.
 
 Arguments:
    -h, --help     Print this help message and exit.
@@ -270,7 +277,7 @@ Arguments:
   -tc, --tbl_col  Column in --table containing scaling factors: 'sf', 'scaled',
                   or 'alpha' (required if --table is invoked, ignored if not;
                   default: ${tbl_col}).
-  -do, --dir_out  The directory to write BAM outfiles.
+  -do, --dir_out  The directory to write coverage signal track outfiles.
   -to, --typ_out  Format of coverage signal track outfiles: 'bedgraph',
                   'bigwig', or 'both' (default: ${typ_out}).
   -bs, --bin_siz  Bin size for coverage calculation in base pairs (default:
@@ -309,19 +316,70 @@ Arguments:
 
 Dependencies:
   - Programs
-    + #TODO
+    + awk
+    + Bash or Zsh
+    + GNU Parallel (if not using SLURM and threads > 1)
+    + Python
+    + SLURM (if using --slurm)
   - Functions
-    + #TODO
+    + check_exists_file_dir
+    + check_flt_pos
+    + check_format_time
+    + check_int_pos
+    + check_mut_excl_args
+    + check_mut_excl_flags
+    + check_normalization_table
+    + check_program_path
+    + check_scaling_factor_table
+    + check_str_delim
+    + check_supplied_arg
+    + check_table
+    + check_table_column
+    + debug_contents_array
+    + echo_error
+    + echo_warning
+    + exit_0
+    + exit_1
+    + handle_env
+    + populate_array_empty
+    + reset_max_job
+    + validate_files_array
+    + validate_length_arrays
 
 Notes:
   - When the '--slurm' flag is used, jobs are parallelized via SLURM array
     tasks; otherwise, jobs are parallelized with GNU Parallel.
   - BAM infiles must be coordinate-sorted.
+  - Outfile names are derived BAM infiles and the value(s) associated with
+    --typ_out.
   - #TODO
 
 Examples:
   \`\`\`
-  #TODO
+  #  Example 1: Run with GNU Parallel and --infiles
+  bash "\${HOME}/path/to/scripts/execute_compute_coverage.sh" \
+      --threads 8
+      --infiles "\${HOME}/path/to/sample1.bam,\${HOME}/path/to/sample2.bam"
+      --dir_out "\${HOME}/path/to/outfiles"
+      --typ_out "bigwig"
+      --bin_siz 50
+      --norm
+      --err_out "\${HOME}/path/to/outfiles/logs"
+      --nam_job "coverage_calculation"
+
+  #  Example 2: Run with SLURM and --table
+  bash "\${HOME}/path/to/scripts/execute_compute_coverage.sh" \
+      --threads 8
+      --table "\${HOME}/path/to/table.tsv"
+      --tbl_col "scaled"
+      --dir_out "\${HOME}/path/to/outfiles"
+      --typ_out "both"
+      --bin_siz 1
+      --slurm
+      --max_job 10
+      --time "0:20:00"
+      --err_out "\${HOME}/path/to/outfiles/logs"
+      --nam_job "slurm_coverage"
   \`\`\`
 EOM
 )
@@ -409,11 +467,11 @@ elif [[ -n "${table}" ]]; then
     #  When --table is specified, validate --tbl_col
     check_supplied_arg -a "${tbl_col}" -n "tbl_col"
     case "${tbl_col}" in
-        sf|scaled|alpha) : ;;  # Valid options
+        alpha|scaled|sf) : ;;  # Valid options
         *)
             echo_error \
                 "Selection associated with --tbl_col is not valid:" \
-                "${tbl_col}. Selection must be 'sf', 'scaled', or 'alpha'."
+                "${tbl_col}. Selection must be 'alpha', 'scaled', or 'sf'."
             exit_1
             ;;
     esac
@@ -474,7 +532,7 @@ if [[ -z "${scl_fct}" && -z "${table}" ]] && ! ${norm} && ! ${raw:-false}; then
     echo_warning \
         "No scaling factor or normalization option specified. Defaulting to" \
         "non-normalized/unadjusted coverage (--raw)."
-    # raw=true  #MAYBE 2024-1121, 2024-1123
+    # raw=true
 fi
 
 #  If applicable, ensure --usr_frg is not empty or improperly formatted
@@ -538,14 +596,15 @@ if ${verbose}; then
         fi
     else
         #  Default to --raw if no scaling or normalization method is specified
-        mth_nrm="None; default to raw (unadjusted) coverage"
         if [[ -n "${scl_fct}" ]]; then
-            src_scl="--scl_fct (user-supplied values)"
+            src_scl="--scl_fct"
+            mth_nrm="User-supplied scaling via --scl_fct"
         elif [[ -n "${table}" && -n "${tbl_col}" ]]; then
             src_scl="--table via --tbl_col '${tbl_col}'"
             mth_nrm="User-supplied scaling via --table and --tbl_col"
         else
-            src_scl="None; default to raw (unadjusted) coverage"
+            src_scl="None"
+            mth_nrm="None; default to raw (unadjusted) coverage"
         fi
     fi
 
@@ -628,7 +687,7 @@ validate_files_array "infiles/table" "${arr_infiles[@]}"
 #+ populate arr_outfiles
 unset arr_outfiles && typeset -a arr_outfiles
 for i in "${arr_infiles[@]}"; do
-    if [[ "${tbl_col}" == "scaled" ]]; then
+    if [[ "${tbl_col}" == "scaled" || "${tbl_col}" == "sf" ]]; then
         arr_outfiles+=( "${dir_out}/$(basename "${i}" .bam).${tbl_col}" )
     else
         arr_outfiles+=( "${dir_out}/$(basename "${i}" .bam)" )
@@ -753,7 +812,7 @@ if ${slurm}; then
         echo "    --error=${err_out}/${nam_job}.%A-%a.stderr.txt \\"
         echo "    --output=${err_out}/${nam_job}.%A-%a.stdout.txt \\"
         echo "    --array=1-${#arr_infiles[@]}%${max_job} \\"
-        echo "        ${scr_slm}\\"
+        echo "        ${scr_slm} \\"
         echo "            ${env_nam} \\"
         echo "            ${scr_cvg} \\"
         echo "            ${threads} \\"
@@ -777,6 +836,16 @@ if ${slurm}; then
         echo ""
         cat "${scr_slm}"
         echo ""
+        echo ""
+        echo "###########################################"
+        echo "## Contents of Python computation script ##"
+        echo "###########################################"
+        echo ""
+        echo "## ${scr_cvg} ##"
+        echo ""
+        cat "${scr_cvg}"
+        echo ""
+        echo ""
     fi
 
     if ! ${dry_run}; then
@@ -789,7 +858,7 @@ if ${slurm}; then
             --error=${err_out}/${nam_job}.%A-%a.stderr.txt \
             --output=${err_out}/${nam_job}.%A-%a.stdout.txt \
             --array=1-${#arr_infiles[@]}%${max_job} \
-                ${scr_slm}\
+                ${scr_slm} \
                     ${env_nam} \
                     ${scr_cvg} \
                     ${threads} \
@@ -860,7 +929,9 @@ else
 
             iter=0
             for i in "${!arr_infiles[@]}"; do
-                (( iter++ )) || true    
+                (( iter++ )) || true
+                pth_std="${err_out}/${nam_job}.$(basename "${arr_infiles[i]}").${iter}"
+
                 echo "## Call no. ${iter} ##"
                 echo "bash ${scr_par} \\"
                 echo "    ${env_nam} \\"
@@ -876,8 +947,8 @@ else
                 echo "    ${arr_usr_frg[i]} \\"
                 echo "    ${err_out} \\"
                 echo "    ${nam_job} \\"
-                echo "         > ${err_out}/${nam_job}.$(basename "${arr_infiles[i]}").stdout.txt \\"
-                echo "        2> ${err_out}/${nam_job}.$(basename "${arr_infiles[i]}").stderr.txt"
+                echo "         > ${pth_std}.stdout.txt \\"
+                echo "        2> ${pth_std}.stderr.txt"
                 echo ""
             done
             echo ""
@@ -885,6 +956,8 @@ else
 
         if ! ${dry_run}; then
             for i in "${!arr_infiles[@]}"; do
+                pth_std="${err_out}/${nam_job}.$(basename "${arr_infiles[i]}").${iter}"
+                
                 bash "${scr_par}" \
                     "${env_nam}" \
                     "${scr_cvg}" \
@@ -899,8 +972,8 @@ else
                     "${arr_usr_frg[i]}" \
                     "${err_out}" \
                     "${nam_job}" \
-                         > "${err_out}/${nam_job}.$(basename "${arr_infiles[i]}").stdout.txt" \
-                        2> "${err_out}/${nam_job}.$(basename "${arr_infiles[i]}").stderr.txt"
+                         > "${pth_std}.stdout.txt" \
+                        2> "${pth_std}.stderr.txt"
             done
         fi
     fi
