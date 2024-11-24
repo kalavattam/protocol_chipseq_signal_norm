@@ -108,6 +108,22 @@ column_name_map = {
 }
 
 
+def set_interactive():
+    """Set parameters for interactive mode."""
+    verbose = True
+    text = ...  # TODO
+    bam = ...  # TODO
+    shell = True
+
+    #  Return the arguments wrapped in argparse.Namespace
+    return argparse.Namespace(
+        verbose=verbose,
+        text=text,
+        bam=bam,
+        shell=shell
+    )
+
+
 def standardize_columns(df):
     """Standardize dataframe column names to match expected names."""
     reverse_mapping = {
@@ -219,7 +235,10 @@ def output_for_shell(**kwargs):
 
 def parse_args():
     """
-    Parse command-line arguments or use hardcoded values for interactive mode.
+    Parse command-line arguments.
+
+    Args:
+        ...
     """
     parser = argparse.ArgumentParser(
         description="Parse BAM file and retrieve matching row from TSV/CSV."
@@ -232,30 +251,33 @@ def parse_args():
     parser.add_argument(
         "-tx", "--text",
         help="Input TEXT (TSV/CSV) file",
-        required=not interactive
+        required=True
     )
     parser.add_argument(
         "-b", "--bam",
         help="Input BAM file",
-        required=not interactive
+        required=True
     )
     parser.add_argument(
         "-sh", "--shell",
         action="store_true",
         help="Output values in shell export format"
     )
+
+    #  Display help and exit if no arguments were provided
+    if len(sys.argv) == 1:
+        parser.print_help(sys.stderr)
+        sys.exit(0)
     
-    return parser.parse_args() if not interactive else argparse.Namespace(
-        verbose=True,
-        text="/home/kalavatt/tsukiyamalab/Kris/202X_protocol_ChIP/data/raw/docs/measurements_siq_chip.tsv",
-        bam="/home/kalavatt/tsukiyamalab/Kris/202X_protocol_ChIP/data/processed/align_bowtie2_global/flag-2_mapq-1/sc/in_WT_G2M_Hmo1_7750.sc.bam",
-        shell=True
-    )
+    return parser.parse_args()
 
 
 def main():
-    #  Parse arguments
-    args = parse_args()
+    #  Use command-line arguments or interactive setup based on `interactive`
+    if interactive:
+        args = set_interactive()
+    else:
+        args = parse_args()
 
     #  Parse the BAM filename
     parsed_components = parse_bam_filename(args.bam)

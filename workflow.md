@@ -418,19 +418,21 @@ dir_out="${dir_cov}/${det_cov}/spike/tables"
 env_nam="env_analyze"
 day="$(date '+%Y-%m%d')"
 
-#  Set hardcoded argument assignments
+#  Set hardcoded argument assignments, etc.
 threads=8
+pattern="IP*,*Brn1*"  # pattern="IP*,*Hmo1*"  # pattern="IP*,*Hho1*"
 infiles="$(  ## WARNING: Change the search parameters as needed ##
     bash "${dir_scr}/find_files.sh" \
         --dir_fnd "${dir_bam}" \
         --pattern "*.bam" \
-        --include "IP*,*Hmo1*"
-        # --include "IP*,*Hho1*"
-        # --include "IP*,*Brn1*"
+        --include "${pattern}"
 )"
-outfile="${dir_out}/IP_WT_G1-G2M-Q_Hmo1_7750-7751.tsv"
-# outfile="${dir_out}/IP_WT_G1-G2M-Q_Hho1_6336-6337.tsv"
-# outfile="${dir_out}/IP_WT_log-Q_Brn1_rep1-rep2-rep3.tsv"
+case "${pattern}" in
+    IP*Hho1*) outfile="${dir_out}/IP_WT_G1-G2M-Q_Hho1_6336-6337.tsv" ;;
+    IP*Hmo1*) outfile="${dir_out}/IP_WT_G1-G2M-Q_Hmo1_7750-7751.tsv" ;;
+    IP*Brn1*) outfile="${dir_out}/IP_WT_log-Q_Brn1_rep1-rep2-rep3.tsv" ;;
+    *) echo "Error: No matching pattern found for '${pattern}'" ;;
+esac
 err_out="${dir_out}/logs"
 scr_mng="${HOME}/miniforge3/etc/profile.d/conda.sh"
 
@@ -485,8 +487,10 @@ mv -f "${dir_out}/tmp.txt" "${outfile}"
 
 #  Optional: Check the contents of the outfile
 # cat "${outfile}"
+```
 
-
+`## #INPROGRESS Draft code ##`
+```bash
 nam_job="comp_covg_spike"
 no_infiles="$(tail -n +2 "${outfile}" | wc -l)"
 max_job=6
@@ -626,29 +630,31 @@ dir_pro="${dir_dat}/processed"
     req_flg=true
     flg="$(if ${req_flg}; then echo "2"; else echo "NA"; fi)"
     mapq=1
+    det_bam="flag-${flg}_mapq-${mapq}"
+    det_cov="${aligner}_${a_type}_${det_bam}"
 }
 dir_aln="${dir_pro}/align_${aligner}_${a_type}"
-dir_bam="${dir_aln}/flag-${flg}_mapq-${mapq}/sc"
-dir_out="${dir_pro}/compute_coverage_alpha"
+dir_bam="${dir_aln}/${det_bam}/sc"
+dir_cov="${dir_pro}/compute_coverage"
+dir_out="${dir_cov}/${det_cov}/alpha/tables"
 env_nam="env_analyze"
 day="$(date '+%Y-%m%d')"
 
 #  Set hardcoded argument assignments
 threads=8
+include="IP*"
+exclude="*Brn1*"
 infiles="$(  ## WARNING: Change the search parameters as needed ##
     bash "${dir_scr}/find_files.sh" \
         --dir_fnd "${dir_bam}" \
         --pattern "*.bam" \
-        --include "IP*,*Hho1*"
+        --include "${include}" \
+        --exclude "${exclude}"
 )"
 table="${dir_dat}/raw/docs/measurements_siq_chip.tsv"
-outfile="${dir_out}/IP_WT_G1-G2M-Q_Hho1_6336-6337.mc.txt"
+outfile="${dir_out}/IP_WT_G1-G2M-Q_Hho1-Hmo1_6336-6337_7750-7751.tsv"
 err_out="${dir_out}/logs"
 scr_mng="${HOME}/miniforge3/etc/profile.d/conda.sh"
-
-## NOTE: Alternative 'infiles' parameter and 'outfile' assignment ##
-# --include "IP*,*Hmo1*"
-# "${dir_out}/IP_WT_G1-G2M-Q_Hmo1_7750-7751.mc.txt"
 
 #  Set base path and prefix for stdout/stderr logs, using date and output
 #+ filename
@@ -685,10 +691,10 @@ bash "${dir_scr}/execute_calculate_scaling_factor_alpha.sh" \
     --infiles "${infiles}" \
     --table "${table}" \
     --outfile "${outfile}" \
+    --err_out "${err_out}" \
     --flg_dep \
     --flg_len \
     --flg_mc \
-    --err_out "${err_out}" \
     --slurm \
          > >(tee -a "${exc_pth}.stdout.txt") \
         2> >(tee -a "${exc_pth}.stderr.txt")

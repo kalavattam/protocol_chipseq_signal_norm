@@ -18,7 +18,7 @@
 #
 # Usage:
 #     python compute_coverage.py \
-#         [--verbose] --infile <str> --outfile <str> -outtype <option> \
+#         [--verbose] --infile <str> --outfile <str> -typ_out <option> \
 #         --bin_siz <posint> [--scl_fct <flt>] [--norm] [--usr_frg <posint>]
 #
 # Arguments:
@@ -26,10 +26,10 @@
 #      -t, --threads  Number of threads for parallel processing (default: 1)
 #      -i, --infile   Path to the BAM infile.
 #      -o, --outfile  Path and base name for the outfile (without extension).
-#     -ot, --outtype  Output format: 'bedgraph', 'bigwig', or 'both' (default:
+#     -ot, --typ_out  Output format: 'bedgraph', 'bigwig', or 'both' (default:
 #                     bigwig).
 #     -bs, --bin_siz  Bin size for coverage calculation in base pairs (default:
-#                     30).
+#                     1).
 #     -sf, --scl_fct  Optional scaling factor to apply to the coverage (cannot
 #                     be used with --norm).
 #     -no, --norm     Normalize coverage by fragment length and total reads in
@@ -81,7 +81,7 @@ roman_to_int = {
 
 #  Define functions
 def set_interactive():
-    """Set up paths and parameters for interactive mode."""
+    """Set paths and parameters for interactive mode."""
     #  Set general paths
     dir_bas = "/home/kalavatt/tsukiyamalab/Kris"  # WARNING: Change as needed #
     dir_rep = f"{dir_bas}/202X_protocol_ChIP"
@@ -116,7 +116,7 @@ def set_interactive():
     threads = 8
     infile = pth_bam
     outfile = pth_trk
-    outtype = "bigwig"  # "both"
+    typ_out = "bigwig"  # "both"
     bin_siz = 1
     scl_fct = 0.70371  # None
     norm = False
@@ -128,12 +128,43 @@ def set_interactive():
         threads=threads,
         infile=infile,
         outfile=outfile,
-        outtype=outtype,
+        typ_out=typ_out,
         bin_siz=bin_siz,
         scl_fct=scl_fct,
         norm=norm,
         usr_frg=usr_frg
     )
+
+
+# def sort_chrom_roman_arabic(chrom):
+#     """
+#     Map Roman numerals to integer values, otherwise return as is.
+#     """
+#     try:
+#         #  Attempt Roman numeral conversion
+#         return roman_to_int.get(chrom, int(chrom))
+#     except ValueError:
+#         #  Default to string sorting for non-integer names
+#         return chrom
+"""
+## 2024-1122 ##
+Above function implementation results in this error:
+
+Traceback (most recent call last):
+  File "/home/kalavatt/tsukiyamalab/Kris/202X_protocol_ChIP/scripts/compute_coverage.py", line 498, in <module>
+    main()
+  File "/home/kalavatt/tsukiyamalab/Kris/202X_protocol_ChIP/scripts/compute_coverage.py", line 494, in main
+    write_bigwig(covg_comb, f"{args.outfile}.bw", args.bin_siz, chrom_siz)
+  File "/home/kalavatt/tsukiyamalab/Kris/202X_protocol_ChIP/scripts/compute_coverage.py", line 303, in write_bigwig
+    bw.addEntries(chroms, starts, ends=ends, values=values)
+RuntimeError: The entries you tried to add are out of order, precede already added entries, or otherwise use illegal values.
+ Please correct this and try again.
+
+Using below version of function solves the issue.
+
+Another issue is that writing bigwig files is quite slow with less than 8
+threads.
+"""
 
 
 def sort_chrom_roman_arabic(chrom):
@@ -143,6 +174,20 @@ def sort_chrom_roman_arabic(chrom):
     return roman_to_int.get(chrom, chrom)
 
 
+def validate_outfile(value):
+    """
+    Validates that --outfile does not contain a disallowed extension.
+    """
+    disallowed = {"bigwig", "bw", "bedgraph", "bg"}
+    filename, ext = os.path.splitext(value)
+    if ext.lower().lstrip('.') in disallowed:
+        raise argparse.ArgumentTypeError(
+            f"Invalid extension '{ext}' in --outfile. Provide only the base "
+            f"name (e.g., '{os.path.basename(filename)}')."
+        )
+    return value
+
+    
 def parse_bam(path_bam, usr_frg=None):
     """
     Reads a BAM file and returns a dictionary of lists, where each key is a
@@ -161,25 +206,40 @@ def parse_bam(path_bam, usr_frg=None):
     read length) for single-end alignments.
     """
     entries_bam = defaultdict(list)
-    with pysam.AlignmentFile(path_bam, 'rb') as bam_file:
-        for read in bam_file.fetch():
-            #  Run paired-end logic: Work with properly paired alignments with
-            #  FLAGs 99 or 1123, or 163 or 1187
-            if read.flag in {99, 163, 1123, 1187}:
-                chrom = bam_file.get_reference_name(read.reference_id)
-                start = read.reference_start
-                end = start + (usr_frg if usr_frg else read.template_length)
-                len_frag = usr_frg if usr_frg else read.template_length
-                entries_bam[chrom].append((start, end, len_frag))
+    try:
+        with pysam.AlignmentFile(path_bam, 'rb') as bam_file:
+            for read in bam_file.fetch():
+                #  Run paired-end logic: Work with properly paired alignments
+                #  with FLAGs 99 or 1123, or 163 or 1187
+                if read.flag in {99, 163, 1123, 1187}:
+                    chrom = bam_file.get_reference_name(read.reference_id)
+                    start = read.reference_start
+                    end = start + (
+                        usr_frg if usr_frg else read.template_length
+                    )
+                    len_frag = usr_frg if usr_frg else read.template_length
+                    entries_bam[chrom].append((start, end, len_frag))
 
-            #  Run single-end logic: Work with alignments with FLAGs 0 or 1024
-            #  (forward strand), or 16 or 1040 (reverse strand)
-            elif read.flag in {0, 16, 1024, 1040}:
-                chrom = bam_file.get_reference_name(read.reference_id)
-                start = read.reference_start
-                end = start + (usr_frg if usr_frg else read.query_length)
-                len_frag = usr_frg if usr_frg else read.query_length
-                entries_bam[chrom].append((start, end, len_frag))
+                #  Run single-end logic: Work with alignments with FLAGs 0 or
+                #  1024 (forward strand), or 16 or 1040 (reverse strand)
+                elif read.flag in {0, 16, 1024, 1040}:
+                    chrom = bam_file.get_reference_name(read.reference_id)
+                    start = read.reference_start
+                    end = start + (usr_frg if usr_frg else read.query_length)
+                    len_frag = usr_frg if usr_frg else read.query_length
+                    entries_bam[chrom].append((start, end, len_frag))
+    except FileNotFoundError:
+        print(f"Error: BAM file '{path_bam}' not found.", file=sys.stderr)
+        sys.exit(1)
+    except ValueError as e:
+        print(f"Error processing BAM file '{path_bam}': {e}", file=sys.stderr)
+        sys.exit(1)
+    except Exception as e:
+        print(
+            f"Unexpected error with BAM file '{path_bam}': {e}",
+            file=sys.stderr
+        )
+        sys.exit(1)
 
     return entries_bam
 
@@ -308,7 +368,12 @@ def write_bedgraph(coverage, outfile, bin_siz):
 
 
 def parse_args():
-    """Parse command-line arguments."""
+    """
+    Parse command-line arguments.
+
+    Args:
+        ...
+    """
     parser = argparse.ArgumentParser(
         description=(
             "Calculate binned coverage, normalized or not, from a BAM file."
@@ -319,6 +384,7 @@ def parse_args():
         "-v",
         "--verbose",
         action="store_true",
+        default=False,
         help="Increase output verbosity for debugging."
     )
     parser.add_argument(
@@ -341,15 +407,16 @@ def parse_args():
     parser.add_argument(
         "-o",
         "--outfile",
+        type=validate_outfile,
         required=True,
         help=(
             "Path to the output file without extension; extensions will be "
-            "automatically determined by --outtype."
+            "automatically determined by --typ_out."
         )
     )
     parser.add_argument(
         "-ot",
-        "--outtype",
+        "--typ_out",
         choices=['bedgraph', 'bigwig', 'both'],
         default='bigwig',
         help=(
@@ -361,7 +428,7 @@ def parse_args():
         "-bs",
         "--bin_siz",
         type=int,
-        default=10,
+        default=1,
         help=(
             "Bin size for coverage calculation in base pairs (default: "
             "%(default)s)."
@@ -381,6 +448,7 @@ def parse_args():
         "-no",
         "--norm",
         action="store_true",
+        default=False,
         help=(
             "Normalize coverage by fragment length and total reads, "
             "generating 'normalized coverage' as described in Dickson et "
@@ -401,38 +469,23 @@ def parse_args():
         )
     )
 
+    #  Display help and exit if no arguments were provided
+    if len(sys.argv) == 1:
+        parser.print_help(sys.stderr)
+        sys.exit(0)
+
     return parser.parse_args()
 
 
 def main():
     #  Use command-line arguments or interactive setup based on `interactive`
-    if interactive:
-        args = set_interactive()
-    else:
-        args = parse_args()
+    args = set_interactive() if interactive else parse_args()
 
-    #  Check if --outfile has a disallowed extension
-    filename, ext = os.path.splitext(args.outfile)
-    disallowed = {"bigwig", "bw", "bedgraph", "bg"}
-    if ext.lower().lstrip('.') in disallowed:
-        print(
-            f"Error: --outfile '{args.outfile}' has a disallowed extension "
-            f"'{ext}'. Provide only the base name (e.g., "
-            f"'{os.path.basename(filename)}') without a disallowed extension.",
-            file=sys.stderr
-        )
-        sys.exit(1)
-
-    #  Print argument assignments in 'verbose mode'
+    #  Print verbose output
     if args.verbose:
-        print(f"--threads  {args.threads}")
-        print(f"--infile   {args.infile}")
-        print(f"--outfile  {args.outfile}")
-        print(f"--outtype  {args.outtype}")
-        print(f"--bin_siz  {args.bin_siz}")
-        print(f"--norm     {args.norm}")
-        print(f"--scl_fct  {args.scl_fct if args.scl_fct else None}")
-        print(f"--usr_frg  {args.usr_frg if args.usr_frg else None}")
+        print("## Arguments ##")
+        for arg, value in vars(args).items():
+            print(f"--{arg:<10}: {value if value is not None else 'Default'}")
 
     #  Parse and process BAM file
     entries_bam = parse_bam(args.infile, args.usr_frg)
@@ -443,13 +496,12 @@ def main():
     with pysam.AlignmentFile(args.infile, 'rb') as bam_file:
         chrom_siz = {seq['SN']: seq['LN'] for seq in bam_file.header['SQ']}
 
-    #  Prepare data for parallel processing
+    #  Prepare and execute parallel tasks
     task_data = [
         (chrom, entries, frags_total, args.bin_siz, args.norm, args.scl_fct)
         for chrom, entries in entries_bam.items()
     ]
 
-    #  Execute parallel processing
     with ProcessPoolExecutor(max_workers=args.threads) as executor:
         results = executor.map(calculate_covg_task, task_data)
 
@@ -459,11 +511,11 @@ def main():
             covg_comb[key] += value
 
     #  Write outfile based on user-specified format
-    if args.outtype in ['bedgraph', 'both']:
+    if args.typ_out in ['bedgraph', 'both']:
         #  Write output to BEDGRAPH file
         write_bedgraph(covg_comb, f"{args.outfile}.bdg.gz", args.bin_siz)
 
-    if args.outtype in ['bigwig', 'both']:
+    if args.typ_out in ['bigwig', 'both']:
         #  Write output to BIGWIG file
         write_bigwig(covg_comb, f"{args.outfile}.bw", args.bin_siz, chrom_siz)
 

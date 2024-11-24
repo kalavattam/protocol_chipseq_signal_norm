@@ -60,6 +60,46 @@ import argparse
 import sys
 
 
+#  Run script in interactive/test mode (True) or command-line mode (False)
+interactive = False
+
+
+def set_interactive():
+    """Set up paths and parameters for interactive mode."""
+    #  Set values
+    mass_ip = ...  # TODO
+    mass_in = ...  # TODO
+    volume_ip = ...  # TODO
+    volume_in = ...  # TODO
+    depth_ip = ...  # TODO
+    depth_in = ...  # TODO
+    length_ip = ...  # TODO
+    length_in = ...  # TODO
+    round_alf = ...  # TODO
+
+    #  Return the arguments wrapped in argparse.Namespace
+    return argparse.Namespace(
+        mass_ip=mass_ip,
+        mass_in=mass_in,
+        volume_ip=volume_ip,
+        volume_in=volume_in,
+        depth_ip=depth_ip,
+        depth_in=depth_in,
+        length_ip=length_ip,
+        length_in=length_in,
+        round_alf=round_alf
+    )
+
+
+def validate_positive_values(args):
+    """Ensure all provided values are positive and non-zero."""
+    for name, value in vars(args).items():
+        if value <= 0:
+            raise ValueError(
+                f"{name} must be greater than zero, but got {value}."
+            )
+
+
 def calculate_alpha(
     mass_ip, mass_in,
     volume_ip, volume_in,
@@ -91,16 +131,11 @@ def calculate_alpha(
     return alpha
 
 
-def main():
+def parse_args():
     """
-    Execute the primary control flow for the script.
+    Parse command-line arguments.
 
-    main facilitates the calculation of the siQ-ChIP alpha scaling factor for
-    ChIP-seq datasets by parsing command-line arguments for the required IP
-    and input experimental values. Then, the function calculates the siQ-ChIP
-    alpha scaling factor based on these inputs and prints the result.
-
-    Command-line Arguments:
+    Args:
         -mp, --mass_ip   (float): Mass of the IP sample.
         -mn, --mass_in   (float): Mass of the input sample.
         -vp, --volume_ip (float): Volume of the IP sample.
@@ -109,12 +144,8 @@ def main():
         -dn, --depth_in    (int): Sequencing depth of the input sample.
         -lp, --length_ip (float): Mean fragment length of the IP sample.
         -ln, --length_in (float): Mean fragment length of the input sample.
-        -dp, --round   (int): Number of decimal places for rounding alpha.
-
-    Returns:
-        Outputs the siQ-ChIP alpha scaling factor.
+        -ra, --round_alf   (int): Number of decimal places for rounding alpha.
     """
-    # TODO Create a parse_args function
     parser = argparse.ArgumentParser(description=(
         'Calculate a siQ-ChIP alpha scaling factor for a ChIP-seq sample with '
         'IP and input data.'
@@ -176,8 +207,8 @@ def main():
         help='Mean fragment length of input sample.'
     )
     parser.add_argument(
-        '-rp',
-        '--round',
+        '-ra',
+        '--round_alf',
         type=int,
         default=6,
         required=False,
@@ -189,36 +220,38 @@ def main():
         parser.print_help(sys.stderr)
         sys.exit(0)
 
-    #  Parse arguments
-    args = parser.parse_args()
+    return parser.parse_args()
 
-    #  Validate input values to ensure none are zero or negative
-    if (
-        args.mass_in == 0
-        or args.volume_ip == 0
-        or args.depth_ip == 0
-        or args.length_ip == 0
-    ):
-        raise ValueError(
-            "Input values cannot be zero to avoid division by zero."
-        )
 
-    if any(
-        value <= 0 for value in [
-            args.mass_ip, args.mass_in,
-            args.volume_ip, args.volume_in,
-            args.depth_ip, args.depth_in,
-            args.length_ip, args.length_in
-        ]
-    ):
-        raise ValueError("All input values must be positive.")
-    
+def main():
+    """
+    Execute the primary control flow for the script.
+
+    main() facilitates the calculation of the siQ-ChIP alpha scaling factor for
+    ChIP-seq datasets by parsing command-line arguments for the required IP
+    and input experimental values. Then, the function calculates the siQ-ChIP
+    alpha scaling factor based on these inputs and prints the result.
+
+    Args:
+        ...
+
+    Returns:
+        Outputs the siQ-ChIP alpha scaling factor.
+    """
+    if interactive:
+        args = set_interactive()
+    else:
+        args = parse_args()
+
     #  Calculate the siQ-ChIP alpha scaling factor
     try:
+        #  Validate input values to ensure none are zero or negative
+        validate_positive_values(args)
+
         alpha = round(calculate_alpha(
             args.mass_ip, args.mass_in, args.volume_ip, args.volume_in,
             args.depth_ip, args.depth_in, args.length_ip, args.length_in
-        ), args.round)
+        ), args.round_alf)
         print(f"{alpha}")
     except (ValueError, TypeError, ZeroDivisionError) as e:
         print(f"Error: {e}", file=sys.stderr)

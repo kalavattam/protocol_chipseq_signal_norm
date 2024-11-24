@@ -1,10 +1,10 @@
 #!/bin/bash
 
 function check_mut_excl_flags() {
-    local flag_1="${1}"
-    local name_1="${2}"
-    local flag_2="${3}"
-    local name_2="${4}"
+    local flg_1="${1}"
+    local nam_1="${2}"
+    local flg_2="${3}"
+    local nam_2="${4}"
     local show_help
 
     show_help=$(cat << EOM
@@ -18,10 +18,10 @@ Description:
   message and returns exit code 1.
 
 Positional parameters:
-  1, flag_1 (bool): The first flag to check (required).
-  2, name_1  (str): The name of the first flag (required).
-  3, flag_2 (bool): The second flag to check (required).
-  4, name_2  (str): The name of the second flag (required).
+  1, flg_1 (bool): The first flag to check.
+  2, nam_1  (str): The name of the first flag.
+  3, flg_2 (bool): The second flag to check.
+  4, nam_2  (str): The name of the second flag.
 
 Returns:
   0 if the flags are mutually exclusive; otherwise, if both flags are
@@ -32,17 +32,16 @@ Dependencies:
 
 Example:
   \`\`\`
-  #  Check that either --flag_1 or --flag_2 is specified, but not both.
-  ❯ flag_1=true
-  ❯ flag_2=false
-  ❯ check_mut_excl_flags "\${flag_1}" "flag_1" "\${flag_2}" "flag_2"
-  #  Returns 0.
+  #  Check that either --flg_1 or --flg_2 is specified, but not both.
+  flg_1=true
+  flg_2=false
+  check_mut_excl_flags "\${flg_1}" "flg_1" "\${flg_2}" "flg_2"  # Returns 0
 
-  #  What happens if --flag_1 are --flag_2 are both specified?
-  ❯ flag_1=true
-  ❯ flag_2=true
-  ❯ check_mut_excl_flags "\${flag_1}" "flag_1" "\${flag_2}" "flag_2"
-  Error: Only one of --flag_1 or --flag_2} can be specified at a time.
+  #  What happens if --flg_1 are --flg_2 are both specified?
+  flg_1=true
+  flg_2=true
+  check_mut_excl_flags "\${flg_1}" "flg_1" "\${flg_2}" "flg_2"
+  # Error: Only one of --flg_1 or --flg_2} can be specified at a time.
   \`\`\`
 EOM
     )
@@ -54,10 +53,10 @@ EOM
     fi
 
     #  Perform the check for two-flag mutual exclusivity
-    if ${flag_1} && ${flag_2}; then
+    if ${flg_1} && ${flg_2}; then
         echo \
-            "Error: Only one of --${name_1} or --${name_2} can be specified" \
-            "at a time." >&2
+            "Error: Only one of --${nam_1} or --${nam_2} can be specified at" \
+            "a time." >&2
         return 1
     fi
 }

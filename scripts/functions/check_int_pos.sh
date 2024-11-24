@@ -11,7 +11,7 @@ check_int_pos
 -------------
 
 Description:
-  check_int_pos check that a value is an integer greater than or equal to
+  check_int_pos checks that a value is an integer greater than or equal to
   (gte) 1.
 
 Positional parameters:

@@ -41,10 +41,11 @@ $(basename "${0}") takes the following keyword arguments:
   -sa, --scr_alf  Script that calculates siQ-ChIP alpha values,
                   calculate_scaling_factor_alpha.py.
 
-All arguments are required. If not specified, --threads, --nam_job, and
---env_nam default to, respectively, threads=${threads}, nam_job=${nam_job}, and
-env_nam=${env_nam}. Also, --flg_dep, --flg_len, --flg_in, and --flg_mc are
-flags.
+All arguments are required with the following notes and exceptions:
+  - --threads=${threads}
+  - --nam_job=${nam_job}
+  - --env_nam=${env_nam}
+  - Also, --flg_dep, --flg_len, --flg_in, and --flg_mc are flags.
 EOM
 )
 
@@ -342,28 +343,30 @@ fi
 
 #  Print the IP sample and alpha value to the outfile
 if ! ${flg_mc}; then
-    echo -e "${file_ip##*/}\t${alpha}" >> "${outfile}"
+    echo -e "${file_ip}\t${alpha}" >> "${outfile}"
 
     #  If --flg_in, print the input sample and alpha value (#N/A) to the
     #+ outfile
     if ${flg_in}; then
-        echo -e "${file_in##*/}\t#N/A" >> "${outfile}"
+        echo -e "${file_in}\t#N/A" >> "${outfile}"
     fi
 else
     #  If --flg_mc, include mass, volume, depth, and length values in the
     #+ outfile
     echo -e \
-        "${file_ip##*/}\t${alpha}\t${mass_ip}\t${mass_in}\t${volume_ip}\t${volume_in}\t${depth_ip}\t${depth_in}\t${length_ip}\t${length_in}" \
+        "${file_ip}\t${alpha}\t${mass_ip}\t${mass_in}\t${volume_ip}\t${volume_in}\t${depth_ip}\t${depth_in}\t${length_ip}\t${length_in}" \
             >> "${outfile}"
 
     #  If --flg_in, print the input sample and alpha value (#N/A), as well as
     #+ mass, volume, depth, and length values, to the outfile
     if ${flg_in}; then
         echo -e \
-            "${file_in##*/}\t#N/A\t${mass_ip}\t${mass_in}\t${volume_ip}\t${volume_in}\t${depth_ip}\t${depth_in}\t${length_ip}\t${length_in}" \
+            "${file_in}\t#N/A\t${mass_ip}\t${mass_in}\t${volume_ip}\t${volume_in}\t${depth_ip}\t${depth_in}\t${length_ip}\t${length_in}" \
                 >> "${outfile}"
     fi
 fi
+#NOTE: 2024-1119, replaced ${file_ip##*/} with ${file_ip} and ${file_in##*/}
+#      with ${file_in}
 
 #  Remove the initial SLURM stderr and stdout TXT outfiles
 rm "${err_ini}" "${out_ini}"

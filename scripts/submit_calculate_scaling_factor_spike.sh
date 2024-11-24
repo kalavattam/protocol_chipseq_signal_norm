@@ -290,25 +290,26 @@ fi
 
 #  Print the IP sample and scaling factor to the outfile
 if ! ${flg_mc}; then
-    echo -e "${mp##*/}\t${sf}" >> "${outfile}"
+    echo -e "${mp}\t${sf}" >> "${outfile}"
 
     #  If --flg_in, print the input sample and scaling factor (1) to the
     #+ outfile
     if ${flg_in}; then
-        echo -e "${mn##*/}\t1" >> "${outfile}"
+        echo -e "${mn}\t1" >> "${outfile}"
     fi
 else
     #  If --flg_mc, include num_{m|s}{p|n} values in the outfile
-    echo -e "${mp##*/}\t${sf}\t${num_mp}\t${num_sp}\t${num_mn}\t${num_sn}" \
+    echo -e "${mp}\t${sf}\t${num_mp}\t${num_sp}\t${num_mn}\t${num_sn}" \
         >> "${outfile}"
 
     #  If --flg_in, print the input sample and scaling factor (1), as well as
     #+ num_{m|s}{p|n} values, to the outfile
     if ${flg_in}; then
-        echo -e "${mn##*/}\t1\t${num_mp}\t${num_sp}\t${num_mn}\t${num_sn}" \
+        echo -e "${mn}\t1\t${num_mp}\t${num_sp}\t${num_mn}\t${num_sn}" \
             >> "${outfile}"
     fi
 fi
+#NOTE: 2024-1119, replaced ${mp##*/} with ${mp} and ${mn##*/} with ${mn}
 
 #  Remove the initial SLURM stderr and stdout TXT outfiles
 rm "${err_ini}" "${out_ini}"

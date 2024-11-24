@@ -60,6 +60,20 @@ import sys
 interactive = False
 
 
+def set_interactive():
+    """Set parameters for interactive mode."""
+    infile = ...  # TODO
+    input = False
+    round = 6
+
+    #  Return the arguments wrapped in argparse.Namespace
+    return argparse.Namespace(
+        infile=infile,
+        input=input,
+        round=round
+    )
+
+
 #  Define functions
 def load_tsv(file_path):
     """Load a TSV file into a pandas DataFrame."""
@@ -125,7 +139,12 @@ def relativize(df, scaling_col, include_input, round_digits):
 
 
 def parse_args():
-    """Parse command-line arguments."""
+    """
+    Parse command-line arguments.
+
+    Args:
+        ...
+    """
     parser = argparse.ArgumentParser(
         description=(
             "This script reads a TSV file containing ChIP-seq metrics and "
@@ -172,16 +191,21 @@ def parse_args():
             "is 6 decimal places."
         )
     )
-    return parser.parse_args() if not interactive else argparse.Namespace(
-        infile="",  # TODO
-        input=False,
-        round=6
-    )
+    
+    #  Display help and exit if no arguments were provided
+    if len(sys.argv) == 1:
+        parser.print_help(sys.stderr)
+        sys.exit(0)
+
+    return parser.parse_args()
 
 
 def main():
-    #  Parse command-line arguments
-    args = parse_args()
+    #  Use command-line arguments or interactive setup based on `interactive`
+    if interactive:
+        args = set_interactive()
+    else:
+        args = parse_args()
 
     #  Load the input TSV file
     df = load_tsv(args.infile)

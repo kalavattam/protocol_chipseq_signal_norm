@@ -521,21 +521,22 @@ else
         #  Write the calculated scaling factor and optional metrics to the
         #+ output file
         if ! {flg_mc}; then
-            echo -e "${mp##*/}\t${sf}" >> {outfile}
+            echo -e "${mp}\t${sf}" >> {outfile}
             if {flg_in}; then
-                echo -e "${mn##*/}\t1" >> {outfile}
+                echo -e "${mn}\t1" >> {outfile}
             fi
         else
             echo -e \
-                "${mp##*/}\t${sf}\t${num_mp}\t${num_sp}\t${num_mn}\t${num_sn}" \
+                "${mp}\t${sf}\t${num_mp}\t${num_sp}\t${num_mn}\t${num_sn}" \
                     >> {outfile}
             if {flg_in}; then
                 echo -e \
-                    "${mn##*/}\t1\t${num_mp}\t${num_sp}\t${num_mn}\t${num_sn}" \
+                    "${mn}\t1\t${num_mp}\t${num_sp}\t${num_mn}\t${num_sn}" \
                         >> {outfile}
             fi
         fi
     '
+    #NOTE: 2024-1119, replaced ${mp##*/} with ${mp} and ${mn##*/} with ${mn}
 
     #  Define a helper function to run GNU Parallel with the specified logic
     #+ and variables

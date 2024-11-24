@@ -501,19 +501,21 @@ else
 
         #  Write the calculated alpha value and optional metrics to the output file
         if ! {flg_mc}; then
-            echo -e "${file_ip##*/}\t${alpha}" >> {outfile}
+            echo -e "${file_ip}\t${alpha}" >> {outfile}
             if {flg_in}; then
-                echo -e "${file_in##*/}\t#N/A" >> {outfile}
+                echo -e "${file_in}\t#N/A" >> {outfile}
             fi
         else
-            echo -e "${file_ip##*/}\t${alpha}\t${mass_ip}\t${mass_in}\t${volume_ip}\t${volume_in}\t${depth_ip}\t${depth_in}\t${length_ip}\t${length_in}" \
+            echo -e "${file_ip}\t${alpha}\t${mass_ip}\t${mass_in}\t${volume_ip}\t${volume_in}\t${depth_ip}\t${depth_in}\t${length_ip}\t${length_in}" \
                 >> {outfile}
             if {flg_in}; then
-                echo -e "${file_in##*/}\t#N/A\t${mass_ip}\t${mass_in}\t${volume_ip}\t${volume_in}\t${depth_ip}\t${depth_in}\t${length_ip}\t${length_in}" \
+                echo -e "${file_in}\t#N/A\t${mass_ip}\t${mass_in}\t${volume_ip}\t${volume_in}\t${depth_ip}\t${depth_in}\t${length_ip}\t${length_in}" \
                     >> {outfile}
             fi
         fi
     '
+    #NOTE: 2024-1119, replaced ${file_ip##*/} with ${file_ip} and
+    #      ${file_in##*/} with ${file_in}
 
     #  Define a helper function to run GNU Parallel with the specified logic
     #+ and variables

@@ -47,6 +47,26 @@ import argparse
 import sys
 
 
+#  Run script in interactive/test mode (True) or command-line mode (False)
+interactive = False
+
+
+def set_interactive():
+    """Set parameters for interactive mode."""
+    main_ip = ...  # TODO
+    spike_ip = ...  # TODO
+    main_in = ...  # TODO
+    spike_in = ...  # TODO
+
+    #  Return the arguments wrapped in argparse.Namespace
+    return argparse.Namespace(
+        main_ip=main_ip,
+        spike_ip=spike_ip,
+        main_in=main_in,
+        spike_in=spike_in
+    )
+
+
 def calculate_scaling_factor(main_ip, spike_ip, main_in, spike_in):
     """
     Calculate a spike-in-derived scaling factor based on alignment counts.
@@ -116,21 +136,11 @@ def calculate_scaling_factor(main_ip, spike_ip, main_in, spike_in):
     return ratio_in / ratio_ip
 
 
-def main():
+def parse_args():
     """
-    Execute the primary control flow for the script.
+    Parse command-line arguments.
 
-    This function facilitates the calculation of a spike-in-derived scaling
-    factor for ChIP-seq samples. It parses command-line arguments for the
-    number of alignments from both IP and input samples, calculates ratios of
-    spike-in to main alignments for both sample types, and then computes a
-    final scaling factor by dividing the input sample ratio by the IP sample
-    ratio.
-
-    The function will terminate early and print an error message if any of the
-    main alignment counts are zero, preventing division-by-zero errors.
-    
-    Command-line Arguments:
+    Args:
         -mp, --main_ip  (int): The number of "main" alignments for the ChIP-seq
                                IP sample.
         -sp, --spike_ip (int): The number of spike-in alignments for the
@@ -139,11 +149,7 @@ def main():
                                corresponding ChIP-seq input sample.
         -sn, --spike_in (int): The number of spike-in alignments for the
                                corresponding ChIP-seq input sample.
-
-    Returns:
-        Outputs the final scaling factor.
     """
-    #  Define arguments
     parser = argparse.ArgumentParser(description=(
         'Calculate a spike-in-derived scaling factor for a ChIP-seq sample '
         'with IP and input data.'
@@ -196,7 +202,33 @@ def main():
         parser.print_help(sys.stderr)
         sys.exit(0)
 
-    args = parser.parse_args()
+    return parser.parse_args()
+
+
+def main():
+    """
+    Execute the primary control flow for the script.
+
+    main() facilitates the calculation of a spike-in-derived scaling factor for
+    ChIP-seq samples. It parses command-line arguments for the number of
+    alignments from both IP and input samples, calculates ratios of spike-in to
+    main alignments for both sample types, and then computes a final scaling
+    factor by dividing the input sample ratio by the IP sample ratio.
+
+    The function will terminate early and print an error message if any of the
+    main alignment counts are zero, preventing division-by-zero errors.
+    
+    Args:
+        ...
+
+    Returns:
+        Outputs the final scaling factor.
+    """
+    #  Use command-line arguments or interactive setup based on `interactive`
+    if interactive:
+        args = set_interactive()
+    else:
+        args = parse_args()
 
     #  Calculate the scaling factor, handling exceptions as necessary
     try:
@@ -208,7 +240,7 @@ def main():
         ), args.round)
         print(f'{result}')
     except (ValueError, TypeError, ZeroDivisionError) as e:
-        print(f'Error: {e}', file=sys.stderr)
+        print(f'Error encountered during calculation: {e}', file=sys.stderr)
         sys.exit(1)
 
 

@@ -284,7 +284,6 @@ case "${aligner}" in
     bowtie2)
         case "${a_type}" in
             local|global|end-to-end) : ;;
-
             *)
                 echo_error \
                     "Selection associated with --a_type is not valid:" \
@@ -294,9 +293,7 @@ case "${aligner}" in
                 ;;
         esac
         ;;
-
     bwa) unset a_type ;;
-
     *)
         echo_error \
             "Selection associated with --aligner is not valid: ${aligner}." \
