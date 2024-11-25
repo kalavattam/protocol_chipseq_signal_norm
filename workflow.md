@@ -376,7 +376,231 @@ bash "${dir_scr}/compress_remove_files.sh" \
 <br />
 
 ## K. Calculate and normalize coverage using fragment-based, spike-in, and siQ-ChIP methods.
-### 1. Calculate and normalize coverage using spike-in signal.
+### 1. Calculate raw, unadjusted coverage.
+<details>
+<summary><i>Text: Calculate raw, unadjusted coverage.</i></summary>
+<br />
+
+...
+
+</details>
+<br />
+
+<details>
+<summary><i>Bash code: Calculate raw, unadjusted coverage.</i></summary>
+
+```bash
+#!/bin/bash
+
+#  Optional: Request an interactive node
+grabnode  # Request 1 core, 20 GB memory, 1 day, no GPU
+
+#  Define variables for directory paths, etc.
+dir_bas="${HOME}/tsukiyamalab/Kris"  ## WARNING: Change if not Kris ##
+dir_rep="${dir_bas}/202X_protocol_ChIP"
+dir_scr="${dir_rep}/scripts"
+dir_fnc="${dir_scr}/functions"
+dir_dat="${dir_rep}/data"
+dir_pro="${dir_dat}/processed"
+{
+    aligner="bowtie2"
+    a_type="global"
+    req_flg=true
+    flg="$(if ${req_flg}; then echo "2"; else echo "NA"; fi)"
+    mapq=1
+    det_bam="flag-${flg}_mapq-${mapq}"
+    det_cov="${aligner}_${a_type}_${det_bam}"
+}
+dir_aln="${dir_pro}/align_${aligner}_${a_type}"
+dir_bam="${dir_aln}/${det_bam}/sc"
+dir_cov="${dir_pro}/compute_coverage"
+dir_trk="${dir_cov}/${det_cov}/raw/tracks"
+env_nam="env_analyze"
+day="$(date '+%Y-%m%d')"
+nam_job="compute_coverage_raw"
+typ_out="bigwig"
+bin_siz=1
+
+#  Set hardcoded argument assignments, etc.
+threads=8
+infiles="$(  ## WARNING: Change the search parameters as needed ##
+    bash "${dir_scr}/find_files.sh" \
+        --dir_fnd "${dir_bam}" \
+        --pattern "*.bam"
+)"
+err_out="${dir_trk}/logs"
+
+#  Using the date and outfile, set path and prefix for driver script logs
+exc_pth="${dir_trk}/logs/${day}.execute.${nam_job}"
+
+#  Create directory structure for storing output tables and tracks associated
+#+ with different normalization methods (alpha, spike, norm, raw)
+mkdir -p ${dir_cov}/${det_cov}/{alpha,spike}/tables/{docs,logs}
+mkdir -p ${dir_cov}/${det_cov}/{alpha,norm,raw,spike}/tracks/{docs,logs}
+
+#  Source utility functions
+source "${dir_fnc}/check_program_path.sh"
+source "${dir_fnc}/echo_warning.sh"
+source "${dir_fnc}/handle_env.sh"
+
+#  Activate the required environment
+handle_env "${env_nam}"
+
+#  Check the availability of necessary dependencies such as GNU Parallel,
+#+ Python, and SLURM sbatch
+check_program_path awk
+check_program_path parallel
+check_program_path python
+check_program_path sbatch ||
+    echo_warning \
+        "SLURM is not available on this system. Do not use the '--slurm'" \
+        "flag with the driver script."
+
+#  Run the driver script to calculate per-sample spike-in-derived scaling
+#+ factors
+bash "${dir_scr}/execute_compute_coverage.sh" \
+    --verbose \
+    --threads "${threads}" \
+    --infiles "${infiles}" \
+    --dir_out "${dir_trk}" \
+    --typ_out "${typ_out}" \
+    --bin_siz "${bin_siz}" \
+    --raw \
+    --err_out "${err_out}" \
+    --nam_job "${nam_job}" \
+    --slurm \
+         >> >(tee -a "${exc_pth}.stdout.txt") \
+        2>> >(tee -a "${exc_pth}.stderr.txt")
+
+#  Cleanup: Compress large stdout, stderr, LOG, and JSON files, and remove
+#+ files with size 0
+bash "${dir_scr}/compress_remove_files.sh" --dir_fnd "${err_out}"
+```
+
+```bash
+#!/bin/bash
+
+bash "${dir_scr}/find_files.sh" \
+    --dir_fnd "${dir_bam}" \
+    --pattern "*.bam" \
+    --chk_exc
+```
+</details>
+<br />
+
+### 2. Calculate normalized (fractional) coverage per Dickson et al., *Sci Rep* 2023.
+<details>
+<summary><i>Text: Calculate normalized (fractional) coverage per Dickson et al., </i>Sci Rep<i> 2023.</i></summary>
+<br />
+
+...
+
+</details>
+<br />
+
+<details>
+<summary><i>Bash code: Calculate normalized (fractional) coverage per Dickson et al., </i>Sci Rep<i> 2023.</i></summary>
+
+```bash
+#!/bin/bash
+
+#  Optional: Request an interactive node
+grabnode  # Request 1 core, 20 GB memory, 1 day, no GPU
+
+#  Define variables for directory paths, etc.
+dir_bas="${HOME}/tsukiyamalab/Kris"  ## WARNING: Change if not Kris ##
+dir_rep="${dir_bas}/202X_protocol_ChIP"
+dir_scr="${dir_rep}/scripts"
+dir_fnc="${dir_scr}/functions"
+dir_dat="${dir_rep}/data"
+dir_pro="${dir_dat}/processed"
+{
+    aligner="bowtie2"
+    a_type="global"
+    req_flg=true
+    flg="$(if ${req_flg}; then echo "2"; else echo "NA"; fi)"
+    mapq=1
+    det_bam="flag-${flg}_mapq-${mapq}"
+    det_cov="${aligner}_${a_type}_${det_bam}"
+}
+dir_aln="${dir_pro}/align_${aligner}_${a_type}"
+dir_bam="${dir_aln}/${det_bam}/sc"
+dir_cov="${dir_pro}/compute_coverage"
+dir_trk="${dir_cov}/${det_cov}/norm/tracks"
+env_nam="env_analyze"
+day="$(date '+%Y-%m%d')"
+nam_job="compute_coverage_norm"
+typ_out="bigwig"
+bin_siz=1
+
+#  Set hardcoded argument assignments, etc.
+threads=8
+infiles="$(  ## WARNING: Change the search parameters as needed ##
+    bash "${dir_scr}/find_files.sh" \
+        --dir_fnd "${dir_bam}" \
+        --pattern "*.bam"
+)"
+err_out="${dir_trk}/logs"
+
+#  Using the date and outfile, set path and prefix for driver script logs
+exc_pth="${dir_trk}/logs/${day}.execute.${nam_job}"
+
+#  Create directory structure for storing output tables and tracks associated
+#+ with different normalization methods (alpha, spike, norm, raw)
+mkdir -p ${dir_cov}/${det_cov}/{alpha,spike}/tables/{docs,logs}
+mkdir -p ${dir_cov}/${det_cov}/{alpha,norm,raw,spike}/tracks/{docs,logs}
+
+#  Source utility functions
+source "${dir_fnc}/check_program_path.sh"
+source "${dir_fnc}/echo_warning.sh"
+source "${dir_fnc}/handle_env.sh"
+
+#  Activate the required environment
+handle_env "${env_nam}"
+
+#  Check the availability of necessary dependencies such as GNU Parallel,
+#+ Python, and SLURM sbatch
+check_program_path awk
+check_program_path parallel
+check_program_path python
+check_program_path sbatch ||
+    echo_warning \
+        "SLURM is not available on this system. Do not use the '--slurm'" \
+        "flag with the driver script."
+
+#  Run the driver script to calculate per-sample spike-in-derived scaling
+#+ factors
+bash "${dir_scr}/execute_compute_coverage.sh" \
+    --verbose \
+    --threads "${threads}" \
+    --infiles "${infiles}" \
+    --dir_out "${dir_trk}" \
+    --typ_out "${typ_out}" \
+    --bin_siz "${bin_siz}" \
+    --norm \
+    --err_out "${err_out}" \
+    --nam_job "${nam_job}" \
+    --slurm \
+         >> >(tee -a "${exc_pth}.stdout.txt") \
+        2>> >(tee -a "${exc_pth}.stderr.txt")
+
+#  Cleanup: Compress large stdout, stderr, LOG, and JSON files, and remove
+#+ files with size 0
+bash "${dir_scr}/compress_remove_files.sh" --dir_fnd "${err_out}"
+```
+
+```bash
+#!/bin/bash
+
+bash "${dir_scr}/find_files.sh" \
+    --dir_fnd "${dir_bam}" \
+    --pattern "*.bam" \
+    --chk_exc
+```
+</details>
+<br />
+
+### 3. Calculate and normalize coverage using spike-in signal.
 <details>
 <summary><i>Text: Calculate and normalize coverage using spike-in signal.</i></summary>
 <br />
@@ -420,18 +644,18 @@ day="$(date '+%Y-%m%d')"
 
 #  Set hardcoded argument assignments, etc.
 threads=8
-pattern="IP*,*Brn1*"  # pattern="IP*,*Hmo1*"  # pattern="IP*,*Hho1*"
+include="IP*,*Brn1*"  # include="IP*,*Hmo1*"  # include="IP*,*Hho1*"
 infiles="$(  ## WARNING: Change the search parameters as needed ##
     bash "${dir_scr}/find_files.sh" \
         --dir_fnd "${dir_bam}" \
         --pattern "*.bam" \
-        --include "${pattern}"
+        --include "${include}"
 )"
-case "${pattern}" in
+case "${include}" in
     IP*Hho1*) outfile="${dir_out}/IP_WT_G1-G2M-Q_Hho1_6336-6337.tsv" ;;
     IP*Hmo1*) outfile="${dir_out}/IP_WT_G1-G2M-Q_Hmo1_7750-7751.tsv" ;;
     IP*Brn1*) outfile="${dir_out}/IP_WT_log-Q_Brn1_rep1-rep2-rep3.tsv" ;;
-    *) echo "Error: No matching pattern found for '${pattern}'" ;;
+    *) echo "Error: No matching pattern found for '${include}'" >&2 ;;
 esac
 err_out="${dir_out}/logs"
 scr_mng="${HOME}/miniforge3/etc/profile.d/conda.sh"

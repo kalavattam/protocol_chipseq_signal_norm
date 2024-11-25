@@ -1,6 +1,6 @@
 #!/bin/bash
 
-#  Enable debug mode if true (optional)
+#  If true, run script in debug mode
 debug=true
 
 #  Display help message if no arguments or help option is given

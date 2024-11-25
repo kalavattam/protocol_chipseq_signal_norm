@@ -5,7 +5,7 @@
 
 
 #  Run script in interactive/test mode (true) or command-line mode (false)
-interactive=true
+interactive=false
 
 #  Exit on errors, unset variables, or pipe failures if not in "interactive
 #+ mode"
@@ -72,7 +72,7 @@ function check_table_column() {
     then
         echo \
             "Error: Column '${column}' not found in table header:" \
-            "$(awk 'NR==1' "${table}" | tr '\t' ' ')"
+            "$(awk 'NR == 1' "${table}" | tr '\t' ' ')"
         return 1
     fi
 }
@@ -251,9 +251,9 @@ show_help=$(cat << EOM
 Usage:
   execute_compute_coverage.sh
     [--verbose] [--dry_run] --threads <int> --infiles <str> [--table <str>]
-    --dir_out <str> --typ_out <str> --bin_siz <int> [--scl_fct <flt>] [--norm]
-    [--raw] [--usr_frg <flt>] --err_out <str> --nam_job <str> [--slurm]
-    [--max_job <int>] [--time <str>]
+    [--tbl_col <str>] --dir_out <str> --typ_out <str> --bin_siz <int>
+    [--scl_fct <flt>] [--norm] [--raw] [--usr_frg <flt>] --err_out <str>
+    --nam_job <str> [--slurm] [--max_job <int>] [--time <str>]
 
 Description:
   execute_compute_coverage.sh automates the calculation of coverage signal
@@ -357,7 +357,7 @@ Notes:
 Examples:
   \`\`\`
   #  Example 1: Run with GNU Parallel and --infiles
-  bash "\${HOME}/path/to/scripts/execute_compute_coverage.sh" \
+  bash "\${HOME}/path/to/scripts/execute_compute_coverage.sh"
       --threads 8
       --infiles "\${HOME}/path/to/sample1.bam,\${HOME}/path/to/sample2.bam"
       --dir_out "\${HOME}/path/to/outfiles"
@@ -368,7 +368,7 @@ Examples:
       --nam_job "coverage_calculation"
 
   #  Example 2: Run with SLURM and --table
-  bash "\${HOME}/path/to/scripts/execute_compute_coverage.sh" \
+  bash "\${HOME}/path/to/scripts/execute_compute_coverage.sh"
       --threads 8
       --table "\${HOME}/path/to/table.tsv"
       --tbl_col "scaled"

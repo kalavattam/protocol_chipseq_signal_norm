@@ -78,7 +78,6 @@ function set_interactive() {
     err_out="${dir_out}/logs"
     nam_job="calc_sf_alpha"
     slurm=false
-    scr_mng="${HOME}/miniforge3/etc/profile.d/conda.sh"
     max_job=6
     time="0:30:00"
 }
@@ -106,7 +105,6 @@ flg_mc=false
 err_out=""
 nam_job="calc_sf_alpha"
 slurm=false
-scr_mng="${HOME}/miniforge3/etc/profile.d/conda.sh"
 max_job=6
 time="0:30:00"
 
@@ -116,8 +114,7 @@ Usage:
   execute_calculate_scaling_factor_alpha.sh
     [--verbose] [--dry_run] --threads <int> --infiles <str> --table <str>
     --outfile <str> [--flg_dep] [--flg_len] [--flg_in] [--flg_mc]
-    --err_out <str> --nam_job <str> [--slurm] [--scr_mng <str>]
-    [--max_job <int>] [--time <str>]
+    --err_out <str> --nam_job <str> [--slurm] [--max_job <int>] [--time <str>]
 
 Description:
   execute_calculate_scaling_factor_alpha.sh performs... #TODO
@@ -139,9 +136,6 @@ Arguments:
                   (required; default: \${dir_out}/err_out).
   -nj, --nam_job  The name of the job (required; default: ${nam_job}).
   -sl, --slurm    Submit jobs to the SLURM scheduler.
-  -sm, --scr_mng  Conda package manager shell script, conda.sh (required if
-                  --slurm is specified, ignored if not; default:
-                  ${scr_mng}).
   -mj, --max_job  The maximum number of jobs to run at one time (required if
                   --slurm is specified, ignored if not; default: ${max_job}).
   -tm, --time     The length of time, in 'h:mm:ss' format, for the SLURM job
@@ -176,7 +170,6 @@ else
             -eo|--err_out) err_out="${2}"; shift 2 ;;
             -nj|--nam_job) nam_job="${2}"; shift 2 ;;
             -sl|--slurm)   slurm=true;     shift 1 ;;
-            -sm|--scr_mng) scr_mng="${2}"; shift 2 ;;
             -mj|--max_job) max_job="${2}"; shift 2 ;;
             -tm|--time)    time="${2}";    shift 2 ;;
             *)
@@ -225,9 +218,6 @@ fi
 check_supplied_arg -a "${nam_job}" -n "nam_job"
 
 if ${slurm}; then
-    check_supplied_arg -a "${scr_mng}" -n "scr_mng"
-    check_exists_file_dir "f" "${scr_mng}" "scr_mng"
-
     check_supplied_arg -a "${max_job}" -n "max_job"
     check_int_pos "${max_job}" "max_job"
     
@@ -310,7 +300,6 @@ if ${verbose}; then
     echo "err_out=${err_out}"
     echo "nam_job=${nam_job}"
     echo "slurm=${slurm}"
-    echo "scr_mng=${scr_mng}"
     echo "max_job=${max_job}"
     echo "time=${time}"
     echo ""
@@ -346,8 +335,6 @@ if ${slurm}; then
         echo "        $(if ${flg_mc}; then echo "--flg_mc"; fi) \\"
         echo "        --err_out ${err_out} \\"
         echo "        --nam_job ${nam_job} \\"
-        echo "        --scr_mng ${scr_mng} \\"
-        echo "        --fnc_env ${dir_fnc}/handle_env.sh \\"
         echo "        --env_nam ${env_nam} \\"
         echo "        --scr_par ${scr_par} \\"
         echo "        --scr_alf ${scr_alf}"
@@ -395,8 +382,6 @@ if ${slurm}; then
                 $(if ${flg_mc}; then echo "--flg_mc"; fi) \
                 --err_out ${err_out} \
                 --nam_job ${nam_job} \
-                --scr_mng ${scr_mng} \
-                --fnc_env ${dir_fnc}/handle_env.sh \
                 --env_nam ${env_nam} \
                 --scr_par ${scr_par} \
                 --scr_alf ${scr_alf}

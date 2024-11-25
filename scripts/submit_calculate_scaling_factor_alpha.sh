@@ -16,8 +16,6 @@ flg_in=false
 flg_mc=false
 err_out=""
 nam_job="calc_sf_alpha"
-scr_mng=""
-fnc_env=""
 env_nam="env_analyze"
 scr_par=""
 scr_alf=""
@@ -34,8 +32,6 @@ $(basename "${0}") takes the following keyword arguments:
   -fm, --flg_mc   Include additional measurements, calculations in outfile.
   -eo, --err_out  Directory to store stderr and stdout outfiles.
   -nj, --nam_job  Name of job.
-  -sm, --scr_mng  Conda package manager shell script, conda.sh.
-  -fe, --fnc_env  handle_env.sh utility function script.
   -en, --env_nam  Name of Conda/Mamba environment to activate.
   -sp, --scr_par  Script that parses siQ-ChIP metadata.
   -sa, --scr_alf  Script that calculates siQ-ChIP alpha values,
@@ -67,8 +63,6 @@ while [[ "$#" -gt 0 ]]; do
         -fm|--flg_mc)  flg_mc=true;    shift 1 ;;
         -eo|--err_out) err_out="${2}"; shift 2 ;;
         -nj|--nam_job) nam_job="${2}"; shift 2 ;;
-        -sm|--scr_mng) scr_mng="${2}"; shift 2 ;;
-        -fe|--fnc_env) fnc_env="${2}"; shift 2 ;;
         -en|--env_nam) env_nam="${2}"; shift 2 ;;
         -sp|--scr_par) scr_par="${2}"; shift 2 ;;
         -sa|--scr_alf) scr_alf="${2}"; shift 2 ;;
@@ -103,10 +97,6 @@ if ${debug}; then
     echo ""
     echo "nam_job=${nam_job}"
     echo ""
-    echo "scr_mng=${scr_mng}"
-    echo ""
-    echo "fnc_env=${fnc_env}"
-    echo ""
     echo "env_nam=${env_nam}"
     echo ""
     echo "scr_par=${scr_par}"
@@ -116,11 +106,13 @@ if ${debug}; then
 fi
 
 #  Activate environment
-# shellcheck disable=SC1090,SC1091
 if [[ "${CONDA_DEFAULT_ENV}" != "${env_nam}" ]]; then
-    source "${scr_mng}"
-    source "${fnc_env}"
-    handle_env "${env_nam}" > /dev/null
+    eval "$(conda shell.bash hook)"
+    conda activate "${env_nam}" ||
+        {
+            echo "Error: Failed to activate environment '${env_nam}'." >&2
+            exit 1
+        }
 fi
 
 #  Check that SLURM environment variables are set
@@ -154,10 +146,13 @@ if ${debug}; then
     echo ""
 fi
 
-#  Define IP and input infile assignments based on SLURM_ARRAY_TASK_ID
+#  Determine array index based on SLURM_ARRAY_TASK_ID
+idx=$(( id_tsk - 1 ))
+
+#  Define IP and input infile assignments based on index of reconstructed array
 # shellcheck disable=SC2001
 {    
-    file_ip="${arr_infiles[$(( id_tsk - 1 ))]}"
+    file_ip="${arr_infiles[idx]}"
     file_in="$(echo "${file_ip}" | sed 's:\/IP_:\/in_:g')"
 }
 
@@ -173,12 +168,12 @@ fi
 if [[ -z "${file_ip}" ]]; then
     echo \
         "Error: Failed to retrieve file_ip for id_tsk=${id_tsk}:" \
-        "\${arr_infiles[$(( id_tsk - 1 ))]}." >&2
+        "\${arr_infiles[${idx}]}." >&2
     exit 1
 elif [[ -z "${file_in}" ]]; then
     echo \
         "Error: Failed to retrieve file_in for id_tsk=${id_tsk}:" \
-        "\$(echo \${arr_infiles[$(( id_tsk - 1 ))]} | sed" \
+        "\$(echo \${arr_infiles[${idx}]} | sed" \
         "'s:\/IP_:\/in_:g')." >&2
     exit 1
 fi
@@ -187,12 +182,12 @@ fi
 if [[ ! -f "${file_ip}" ]]; then
     echo \
         "Error: File not found for file_ip from id_tsk=${id_tsk}:" \
-        "\${arr_infiles[$(( id_tsk - 1 ))]}." >&2
+        "\${arr_infiles[${idx}]}." >&2
     exit 1
 elif [[ ! -f "${file_in}" ]]; then
     echo \
         "Error: File not found for file_in from id_tsk=${id_tsk}:" \
-        "\$(echo \${arr_infiles[$(( id_tsk - 1 ))]} | sed" \
+        "\$(echo \${arr_infiles[${idx}]} | sed" \
         "'s:\/IP_:\/in_:g')." >&2
     exit 1
 fi

@@ -198,10 +198,16 @@ def parse_bam(path_bam, usr_frg=None):
                     len_frag = usr_frg if usr_frg else read.query_length
                     entries_bam[chrom].append((start, end, len_frag))
     except FileNotFoundError:
-        print(f"Error: BAM file '{path_bam}' not found.", file=sys.stderr)
+        print(
+            f"Error: BAM file '{path_bam}' not found.",
+            file=sys.stderr
+        )
         sys.exit(1)
     except ValueError as e:
-        print(f"Error processing BAM file '{path_bam}': {e}", file=sys.stderr)
+        print(
+            f"Error processing BAM file '{path_bam}': {e}",
+            file=sys.stderr
+        )
         sys.exit(1)
     except Exception as e:
         print(

@@ -13,8 +13,6 @@ flg_in=false
 flg_mc=false
 err_out=""
 nam_job="calc_sf_spike"
-scr_mng=""
-fnc_env=""
 env_nam="env_analyze"
 scr_spk=""
 
@@ -27,8 +25,6 @@ $(basename "${0}") takes the following keyword arguments:
   -fm, --flg_mc   Include additional measurements, calculations in outfile.
   -eo, --err_out  Directory to store stderr and stdout outfiles.
   -nj, --nam_job  Name of job.
-  -sm, --scr_mng  Conda package manager shell script, conda.sh.
-  -fe, --fnc_env  handle_env.sh utility function script.
   -en, --env_nam  Name of Conda/Mamba environment to activate.
   -ss, --scr_spk  Script that calculates spike-in-derived scaling factors,
                   calculate_scaling_factor_spike.py.
@@ -54,8 +50,6 @@ while [[ "$#" -gt 0 ]]; do
         -fm|--flg_mc)  flg_mc=true;    shift 1 ;;
         -eo|--err_out) err_out="${2}"; shift 2 ;;
         -nj|--nam_job) nam_job="${2}"; shift 2 ;;
-        -sm|--scr_mng) scr_mng="${2}"; shift 2 ;;
-        -fe|--fnc_env) fnc_env="${2}"; shift 2 ;;
         -en|--env_nam) env_nam="${2}"; shift 2 ;;
         -ss|--scr_spk) scr_spk="${2}"; shift 2 ;;
         *)
@@ -83,10 +77,6 @@ if ${debug}; then
     echo ""
     echo "nam_job=${nam_job}"
     echo ""
-    echo "scr_mng=${scr_mng}"
-    echo ""
-    echo "fnc_env=${fnc_env}"
-    echo ""
     echo "env_nam=${env_nam}"
     echo ""
     echo "scr_spk=${scr_spk}"
@@ -94,11 +84,13 @@ if ${debug}; then
 fi
 
 #  Activate environment
-# shellcheck disable=SC1090,SC1091
 if [[ "${CONDA_DEFAULT_ENV}" != "${env_nam}" ]]; then
-    source "${scr_mng}"
-    source "${fnc_env}"
-    handle_env "${env_nam}" > /dev/null
+    eval "$(conda shell.bash hook)"
+    conda activate "${env_nam}" ||
+        {
+            echo "Error: Failed to activate environment '${env_nam}'." >&2
+            exit 1
+        }
 fi
 
 #  Check that SLURM environment variables are set
@@ -132,11 +124,14 @@ if ${debug}; then
     echo ""
 fi
 
+#  Determine array index based on SLURM_ARRAY_TASK_ID
+idx=$(( id_tsk - 1 ))
+
 #  Define main and spike-in IP and input infile assignments based on
-#+ SLURM_ARRAY_TASK_ID
+#+ index of reconstructed array
 # shellcheck disable=SC2001
 {    
-    mp="${arr_infiles[$(( id_tsk - 1 ))]}"
+    mp="${arr_infiles[idx]}"
     sp=$(echo "${mp}" | sed 's:\/sc\/:\/sp\/:g; s:\.sc\.:\.sp\.:g')
     mn=$(echo "${mp}" | sed 's:\/IP_:\/in_:g')
     sn=$(echo "${sp}" | sed 's:\/IP_:\/in_:g')
@@ -158,23 +153,23 @@ fi
 if [[ -z "${mp}" ]]; then
     echo \
         "Error: Failed to retrieve mp for id_tsk=${id_tsk}:" \
-        "\${arr_infiles[$(( id_tsk - 1 ))]}." >&2
+        "\${arr_infiles[${idx}]}." >&2
     exit 1
 elif [[ -z "${sp}" ]]; then
     echo \
         "Error: Failed to retrieve sp for id_tsk=${id_tsk}:" \
-        "\$(echo \${arr_infiles[$(( id_tsk - 1 ))]} | sed s:\/sc\/:\/sp\/:g;" \
+        "\$(echo \${arr_infiles[${idx}]} | sed s:\/sc\/:\/sp\/:g;" \
         "s:\.sc\.:\.sp\.:g')." >&2
     exit 1
 elif [[ -z "${mn}" ]]; then
     echo \
         "Error: Failed to retrieve mn for id_tsk=${id_tsk}:" \
-        "\$(echo \${arr_infiles[$(( id_tsk - 1 ))]} | sed" \
+        "\$(echo \${arr_infiles[${idx}]} | sed" \
         "'s:\/IP_:\/in_:g')." >&2
 elif [[ -z "${sn}" ]]; then
     echo \
         "Error: Failed to retrieve sn for id_tsk=${id_tsk}:" \
-        "\$(echo \${arr_infiles[$(( id_tsk - 1 ))]} | sed 's:\/sc\/:\/sp\/:g;" \
+        "\$(echo \${arr_infiles[${idx}]} | sed 's:\/sc\/:\/sp\/:g;" \
         "s:\.sc\.:\.sp\.:g; s:\/IP_:\/in_:g')." >&2
 fi
 
@@ -182,23 +177,23 @@ fi
 if [[ ! -f "${mp}" ]]; then
     echo \
         "Error: File not found for mp from id_tsk=${id_tsk}:" \
-        "\${arr_infiles[$(( id_tsk - 1 ))]}." >&2
+        "\${arr_infiles[${idx}]}." >&2
     exit 1
 elif [[ ! -f "${sp}" ]]; then
     echo \
         "Error: File not found for sp from id_tsk=${id_tsk}:" \
-        "\$(echo \${arr_infiles[$(( id_tsk - 1 ))]} | sed s:\/sc\/:\/sp\/:g;" \
+        "\$(echo \${arr_infiles[${idx}]} | sed s:\/sc\/:\/sp\/:g;" \
         "s:\.sc\.:\.sp\.:g')." >&2
     exit 1
 elif [[ ! -f "${mn}" ]]; then
     echo \
         "Error: File not found for mn from id_tsk=${id_tsk}:" \
-        "\$(echo \${arr_infiles[$(( id_tsk - 1 ))]} | sed" \
+        "\$(echo \${arr_infiles[${idx}]} | sed" \
         "'s:\/IP_:\/in_:g')." >&2
 elif [[ ! -f "${sn}" ]]; then
     echo \
         "Error: File not found for sn from id_tsk=${id_tsk}:" \
-        "\$(echo \${arr_infiles[$(( id_tsk - 1 ))]} | sed 's:\/sc\/:\/sp\/:g;" \
+        "\$(echo \${arr_infiles[${idx}]} | sed 's:\/sc\/:\/sp\/:g;" \
         "s:\.sc\.:\.sp\.:g; s:\/IP_:\/in_:g')." >&2
 fi
 
@@ -254,6 +249,16 @@ out_dsc="${err_out}/${nam_job}.${samp}.${id_job}-${id_tsk}.stdout.txt"
 #  Give the initial stderr and stdout TXT outfiles more descriptive names
 ln -f "${err_ini}" "${err_dsc}"
 ln -f "${out_ini}" "${out_dsc}"
+
+#  Check call to calculate_scaling_factor_spike.py
+if ${debug}; then
+    echo "python \"${scr_spk}\" \\"
+    echo "    --main_ip  ${num_mp} \\"
+    echo "    --spike_ip ${num_sp} \\"
+    echo "    --main_in  ${num_mn} \\"
+    echo "    --spike_in ${num_sn}"
+    echo ""
+fi
 
 #  Calculate the spike-in derived scaling factor, which is assigned to variable
 #+ sf, with script calculate_scaling_factor_spike.py

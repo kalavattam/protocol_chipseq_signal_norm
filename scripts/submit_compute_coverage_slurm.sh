@@ -113,12 +113,14 @@ if ${debug}; then
     echo ""
 fi
 
-#  Determine variable assignments from reconstructed arrays based on
-#+ SLURM_ARRAY_TASK_ID
-infile="${arr_infiles[$(( id_tsk - 1 ))]}"
-outfile="${arr_outfiles[$(( id_tsk - 1 ))]}"
-scl_fct="${arr_scl_fct[$(( id_tsk - 1 ))]}"
-usr_frg="${arr_usr_frg[$(( id_tsk - 1 ))]}"
+#  Determine array index based on SLURM_ARRAY_TASK_ID
+idx=$(( id_tsk - 1 ))
+
+#  Assign variables from reconstructed arrays based on index
+infile="${arr_infiles[idx]}"
+outfile="${arr_outfiles[idx]}"
+scl_fct="${arr_scl_fct[idx]}"
+usr_frg="${arr_usr_frg[idx]}"
 
 #  Debug variable assignments from reconstructed arrays
 if ${debug}; then
@@ -136,28 +138,28 @@ fi
 if [[ -z "${infile}" ]]; then
     echo \
         "Error: Failed to retrieve infile for id_tsk=${id_tsk}:" \
-        "\${arr_infiles[$(( id_tsk - 1 ))]}." >&2
+        "\${arr_infiles[${idx}]}." >&2
     exit 1
 fi
 
 if [[ -z "${outfile}" ]]; then
     echo \
         "Error: Failed to retrieve outfile for id_tsk=${id_tsk}:" \
-        "\${arr_outfiles[$(( id_tsk - 1 ))]}." >&2
+        "\${arr_outfiles[${idx}]}." >&2
     exit 1
 fi
 
 if [[ -z "${scl_fct}" ]]; then
     echo \
         "Error: Failed to retrieve scl_fct for id_tsk=${id_tsk}:" \
-        "\${arr_scl_fct[$(( id_tsk - 1 ))]}." >&2
+        "\${arr_scl_fct[${idx}]}." >&2
     exit 1
 fi
 
 if [[ -z "${usr_frg}" ]]; then
     echo \
         "Error: Failed to retrieve usr_frg for id_tsk=${id_tsk}:" \
-        "\${arr_usr_frg[$(( id_tsk - 1 ))]}." >&2
+        "\${arr_usr_frg[${idx}]}." >&2
     exit 1
 fi
 
