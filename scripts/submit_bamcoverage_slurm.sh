@@ -72,8 +72,8 @@ $(basename "${0}") takes the following keyword arguments:
   -sf, --str_scl_fct  Comma-separated string of scaling factors. Cannot be
                       used with --norm.
   -no, --norm         Use one of the following normalization methods when
-                      computing coverage: 'Raw', 'None', 'RPKM', 'FPKM', 'CPM',
-                      'BPM', or 'RPGC'. Cannot be used with --str_scl_fct.
+                      computing coverage: 'None', 'RPKM', 'CPM', 'BPM', or
+                      'RPGC'. Cannot be used with --str_scl_fct.
   -ex, --exact        Compute scaling factors based on all alignments. Only
                       applicable if '--norm <str>' is specified. Significantly
                       slows coverage computation.
