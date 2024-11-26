@@ -5,7 +5,7 @@
 
 
 #  Run script in interactive/test mode (true) or command-line mode (false)
-interactive=false
+interactive=true
 
 #  Exit on errors, unset variables, or pipe failures if not in "interactive
 #+ mode"
@@ -33,6 +33,8 @@ dir_fnc="${dir_scr}/functions"
     source "${dir_fnc}/check_mut_excl_args.sh"
     source "${dir_fnc}/check_mut_excl_flags.sh"
     source "${dir_fnc}/check_program_path.sh"
+    source "${dir_fnc}/check_region.sh"
+    source "${dir_fnc}/check_region_bam.sh"
     source "${dir_fnc}/check_str_delim.sh"
     source "${dir_fnc}/check_supplied_arg.sh"
     source "${dir_fnc}/echo_error.sh"
@@ -78,8 +80,8 @@ function check_table_column() {
 }
 
 
-#  Helper function to warn that user-supplied scaling factors override those in
-#+ table
+#  Helper function to warn that user-supplied or bamCoverage-calculated scaling
+#+ factors override those in table
 function check_scaling_factor_table() {
     local scl_fct="${1}"
     local table="${2}"
@@ -90,23 +92,7 @@ function check_scaling_factor_table() {
             "--table." >&2
         return 1
     fi
-}
-
-
-#  Helper function to warn that normalization flags override scaling factors in
-#+ table
-function check_normalization_table() {
-    local name="${1}"
-    local norm="${2}"
-    local table="${3}"
-
-    if ${norm} && [[ -n "${table}" ]]; then
-        echo \
-            "Warning: --${name} will override scaling factors from" \
-            "--table." >&2
-        return 1
-    fi
-}
+}  #TODO: Extend this for use with --norm
 
 
 #  Helper function to populate array with '#N/A' if it is empty
@@ -194,26 +180,27 @@ function set_interactive() {
     verbose=true
     dry_run=true
     threads=8
+    # infiles=""
     infiles="$(  ## WARNING: Change the search parameters as needed ##
         bash "${dir_scr}/find_files.sh" \
             --dir_fnd "${dir_bam}" \
             --pattern "*.bam" \
             --include "IP*,*Hho1*"  # "IP*,*Hmo1*"  # "IP*,*Brn1*"
     )"
-    # table="${dir_tbl}/IP_WT_log-Q_Brn1_rep1-rep2-rep3.tsv"  # "${dir_tbl}/IP_WT_G1-G2M-Q_Hho1_6336-6337.tsv"  # "${dir_tbl}/IP_WT_G1-G2M-Q_Hmo1_7750-7751.tsv"  # ""  # "IP_WT_G1-G2M-Q_Hho1-Hmo1_6336-6337_7750-7751.tsv"
-    # tbl_col="alpha"  # "scaled"  # ""
+    table=""  # "${dir_tbl}/IP_WT_log-Q_Brn1_rep1-rep2-rep3.tsv"  # "${dir_tbl}/IP_WT_G1-G2M-Q_Hho1_6336-6337.tsv"  # "${dir_tbl}/IP_WT_G1-G2M-Q_Hmo1_7750-7751.tsv"  # "IP_WT_G1-G2M-Q_Hho1-Hmo1_6336-6337_7750-7751.tsv"
+    tbl_col="alpha"  # "scaled"  # ""
     dir_out="${dir_trk}"
     typ_out="bigwig"
     bin_siz=1
     region=""
     scl_fct="0.002054,0.003138,0.003127,0.003522,0.056611,0.02906"  # ""
-    norm=""  # "Raw"  # "None"  # "RPKM"  # "FPKM"  # "CPM"  # "BPM"  # "RPGC"
+    norm=""  # "raw"  # "none"  # "rpkm"  # "fpkm"  # "cpm"  # "bpm"  # "rpgc"
     exact=true
     usr_frg=""
     err_out="${dir_trk}/logs"
-    nam_job="run_bamCoverage"
+    nam_job="run_bamcoverage"
     slurm=true
-    max_job=6  # 4
+    max_job=4  # 6
     time="0:30:00"
 }
 
@@ -241,7 +228,7 @@ norm=""
 exact=false
 usr_frg=""
 err_out=""
-nam_job="run_bamCoverage"
+nam_job="run_bamcoverage"
 slurm=false
 max_job=6
 time="0:30:00"
@@ -252,9 +239,8 @@ Usage:
   execute_compute_coverage.sh
     [--verbose] [--dry_run] --threads <int> --infiles <str> [--table <str>]
     [--tbl_col <str>] --dir_out <str> --typ_out <str> --bin_siz <int>
-    [--region <str>] [--scl_fct <flt>] [--norm <str>] [--exact]
-    [--usr_frg <flt>] --err_out <str> --nam_job <str> [--slurm]
-    [--max_job <int>] [--time <str>]
+    [--region <str>] --scl_fct <flt> --norm <str> [--exact] [--usr_frg <flt>]
+    --err_out <str> --nam_job <str> [--slurm] [--max_job <int>] [--time <str>]
 
 Description:
   execute_bamcoverage.sh automates...
@@ -279,15 +265,15 @@ Arguments:
   -bs, --bin_siz  Bin size for coverage calculation in base pairs (default:
                   ${bin_siz}).
    -r, --region   Region of the genome to plot in 'chr' or 'chr:start-stop'
-                  format.
+                  format (optional).
   -sf, --scl_fct  Comma-separated string vector of scaling factors to apply to
                   coverage (optional). Must match the number of infiles via
                   --infiles or --table. If used with --table, these values
                   override those in the specified column (via --tbl_col) with a
                   warning. Cannot be used with --norm.
   -no, --norm     Specify a normalization method to use when computing
-                  coverage; available options are: 'Raw', 'None', 'RPKM',
-                  'FPKM', 'CPM', 'BPM', or 'RPGC'. If used with --table, the
+                  coverage; available options are: 'raw', 'none', 'rpkm',
+                  'fpkm', 'cpm', 'bpm', or 'rpgc'. If used with --table, the
                   normalization scaling factors override values in the column
                   specified by --tbl_col, and a warning is issued. Cannot be
                   used with --scl_fct.
@@ -314,8 +300,10 @@ Dependencies:
   - Programs
     + awk
     + Bash or Zsh
+    + deepTools bamCoverage
     + GNU Parallel (if not using SLURM and threads > 1)
     + Python
+    + Samtools
     + SLURM (if using --slurm)
   - Functions
     + check_exists_file_dir
@@ -324,8 +312,9 @@ Dependencies:
     + check_int_pos
     + check_mut_excl_args
     + check_mut_excl_flags
-    + check_normalization_table
     + check_program_path
+    + check_region
+    + check_region_bam
     + check_scaling_factor_table
     + check_str_delim
     + check_supplied_arg
@@ -379,7 +368,7 @@ else
             -bs|--bin_siz) bin_siz="${2}";   shift 2 ;;
              -r|--region)  region="${2}";    shift 2 ;;
             -sf|--scl_fct) scl_fct="${2}";   shift 2 ;;
-            -no|--norm)    norm="${2}";      shift 2 ;;
+            -no|--norm)    norm="${2,,}";    shift 2 ;;
             -ex|--exact)   exact=true;       shift 1 ;;
             -uf|--usr_frg) usr_frg="${2}";   shift 2 ;;
             -eo|--err_out) err_out="${2}";   shift 2 ;;
@@ -397,6 +386,7 @@ else
     done
 fi
 
+
 #  Check arguments ------------------------------------------------------------
 #  Check that environment name is supplied
 check_supplied_arg -a "${env_nam}" -n "env_nam"
@@ -405,8 +395,8 @@ check_supplied_arg -a "${env_nam}" -n "env_nam"
 check_supplied_arg -a "${scr_slm}" -n "scr_slm"
 check_exists_file_dir "f" "${scr_slm}" "scr_slm"
 
-check_supplied_arg -a "${scr_par}" -n "scr_par"
-check_exists_file_dir "f" "${scr_par}" "scr_par"
+# check_supplied_arg -a "${scr_par}" -n "scr_par"   #TODO: Implement "scr_par"
+# check_exists_file_dir "f" "${scr_par}" "scr_par"
 
 #  Check that denominator is supplied
 check_supplied_arg -a "${denom}" -n "denom"
@@ -472,36 +462,41 @@ esac
 check_supplied_arg -a "${bin_siz}" -n "bin_siz"
 check_int_pos "${bin_siz}" "bin_siz"
 
-#  Ensure --scl_fct and --table compatibility
-check_scaling_factor_table "${scl_fct}" "${table}"
+#  If supplied, check that region is properly formatted
+if [[ -n "${region}" ]]; then
+    check_region "${region}"
+fi
 
-#  If applicable, validate the mutual exclusivity of --scl_fct with --norm or
-#+ --raw, and check that --scl_fct is properly formatted
+#  Check that --scl_fct and --norm are mutually exclusive; one must be
+#+ specified
+check_mut_excl_args "scl_fct" "${scl_fct}" "norm" "${norm}"
+
+#  Validate --scl_fct or --norm
 if [[ -n "${scl_fct}" ]]; then
-    if ${norm}; then
-        check_mut_excl_args "scl_fct" "${scl_fct}" "norm" "${norm}"
-    elif ${raw:-false}; then
-        check_mut_excl_args "scl_fct" "${scl_fct}" "raw" "${raw:-false}"
-    fi
+    #  Ensure --scl_fct and --table compatibility
+    check_scaling_factor_table "${scl_fct}" "${table}"
 
+    #  Check --scl_fct is properly formatted
     check_str_delim "scl_fct" "${scl_fct}"
-fi
+elif [[ -n "${norm}" ]]; then
+    #  Ensure --norm and --table compatibility
+    check_scaling_factor_table "${norm}" "${table}"
 
-#  Ensure mutual exclusivity: --norm and --raw
-check_mut_excl_flags "${norm}" "norm" "${raw:-false}" "raw"
-
-#  Warn about --norm or --raw overriding --table
-if [[ -n "${table}" ]]; then
-    check_normalization_table "norm" ${norm} "${table}"
-    check_normalization_table "raw" ${raw:-false} "${table}"
-fi
-
-#  Default to --raw if no scaling option is provided
-if [[ -z "${scl_fct}" && -z "${table}" ]] && ! ${norm} && ! ${raw:-false}; then
-    echo_warning \
-        "No scaling factor or normalization option specified. Defaulting to" \
-        "non-normalized/unadjusted coverage (--raw)."
-    # raw=true
+    #  Parse and validate --norm assignment
+    case "${norm}" in
+        raw|none)  norm="None" ;;
+        rpkm|fpkm) norm="RPKM" ;;
+        cpm)       norm="CPM"  ;;
+        bpm)       norm="BPM"  ;;
+        rpgc)      norm="RPGC" ;;
+        *)
+            echo_error \
+                "Selection associated with --norm is not valid: '${norm}'." \
+                "Assignment must be 'raw', 'none', 'rpkm', 'fpkm', 'cpm'," \
+                "'bpm', or 'rpgc'."
+            exit_1
+            ;;
+    esac
 fi
 
 #  If applicable, ensure --usr_frg is not empty or improperly formatted
@@ -543,3 +538,310 @@ else
     check_supplied_arg -a "${threads}" -n "threads"
     check_int_pos "${threads}" "threads"
 fi
+
+
+#  Debug summary output of resolved argument states ---------------------------
+#+ ...i.e., for --table, --tbl_col, --scl_fct, and --norm
+if ${verbose}; then
+    if [[ -n "${norm}" ]]; then
+        if [[ "${norm}" != "none" ]]; then
+            mth_nrm="Normalized coverage: ${norm^^}"
+        else
+            mth_nrm="Raw (unadjusted) coverage"
+        fi
+    
+        if [[ -n "${table}" && -n "${tbl_col}" ]]; then
+            src_scl="--table (--tbl_col '${tbl_col}') overridden by --norm '${norm}'"
+        fi
+    else
+        if [[ -n "${scl_fct}" ]]; then
+            src_scl="--scl_fct"
+            mth_nrm="User-supplied scaling via --scl_fct"
+        elif [[ -n "${table}" && -n "${tbl_col}" ]]; then
+            src_scl="--table via --tbl_col '${tbl_col}'"
+            mth_nrm="User-supplied scaling via --table and --tbl_col"
+        else
+            #  This case should never happen due to earlier checks for mutual
+            #+ exclusivity
+            echo_error \
+                "Neither --norm nor --scl_fct nor --table (with --tbl_col)" \
+                "was specified, which violates input requirements."
+            exit_1
+        fi
+    fi
+
+    echo "##############################"
+    echo "## Resolved argument states ##"
+    echo "##############################"
+    echo ""
+    echo "- Scaling factor source: ${src_scl}"
+    echo "- Normalization method: ${mth_nrm}"
+    echo ""
+    echo ""
+fi
+
+
+#  Activate environment and check that dependencies are in PATH ---------------
+handle_env "${env_nam}" > /dev/null
+
+check_program_path awk
+check_program_path bamCoverage
+if ! ${slurm}; then check_program_path parallel; fi
+check_program_path python
+check_program_path samtools
+if ${slurm}; then check_program_path sbatch; fi
+
+
+#  Parse and validate table and/or vector elements ----------------------------
+#  If applicable, parse values associated with --table
+if [[ -n "${table}" ]]; then
+    #  Read the table's header to determine available columns
+    header=$(awk 'NR == 1' "${table}")
+    IFS=$'\t' read -r -a arr_header <<< "${header}"
+
+    #  Determine indices of relevant columns
+    idx_smp=-1
+    idx_sf=-1
+    idx_scl=-1
+    idx_alf=-1
+    for i in "${!arr_header[@]}"; do
+        case "${arr_header[i]}" in
+            sample) idx_smp=${i} ;;
+            sf)     idx_sf=${i}  ;;
+            scaled) idx_scl=${i} ;;
+            alpha)  idx_alf=${i} ;;
+        esac
+    done
+
+    #  Initialize arrays to store values
+    unset arr_infiles && typeset -a arr_infiles
+    unset arr_sf      && typeset -a arr_sf
+    unset arr_scaled  && typeset -a arr_scaled
+    unset arr_alpha   && typeset -a arr_alpha
+
+    #  Parse the table rows, skipping the header
+    while IFS=$'\t' read -r row; do
+        IFS=$'\t' read -r -a fields <<< "${row}"
+
+        #  Extract the 'sample' column (always present)
+        arr_infiles+=( "${fields[idx_smp]}" )
+
+        #  Extract scaling factor columns if present
+        [[ ${idx_sf}  -ne -1 ]] && arr_sf+=( "${fields[idx_sf]}" )
+        [[ ${idx_scl} -ne -1 ]] && arr_scaled+=( "${fields[idx_scl]}" )
+        [[ ${idx_alf} -ne -1 ]] && arr_alpha+=( "${fields[idx_alf]}" )
+    done < <(awk 'NR > 1' "${table}")
+
+    #  Dynamically assign arr_scl_fct based on tbl_col
+    unset arr_scl_fct && typeset -a arr_scl_fct
+    if [[ -z "${scl_fct}" ]] && [[ -z "${norm}" ]]; then
+        eval "arr_scl_fct=( \"\${arr_${tbl_col}[@]}\" )"
+    fi
+fi
+
+#  If applicable, parse --infiles
+if [[ -n "${infiles}" ]]; then
+    IFS=',' read -r -a arr_infiles <<< "${infiles}"
+fi
+
+#  Having parsed --table or --infiles, validate each infile exists
+validate_files_array "infiles/table" "${arr_infiles[@]}"
+
+#  Based on arr_infiles and dir_out, construct outfile paths, using them to
+#+ populate arr_outfiles
+unset arr_outfiles && typeset -a arr_outfiles
+for i in "${arr_infiles[@]}"; do
+    if [[ "${tbl_col}" == "scaled" || "${tbl_col}" == "sf" ]]; then
+        arr_outfiles+=( "${dir_out}/$(basename "${i}" .bam).${tbl_col}" )
+    else
+        arr_outfiles+=( "${dir_out}/$(basename "${i}" .bam)" )
+    fi
+done
+
+#  If applicable, parse --scl_fct
+if [[ -n "${scl_fct}" ]]; then
+    IFS=',' read -r -a arr_scl_fct <<< "${scl_fct}"
+fi
+
+#  If empty, populate --scl_fct array with "#N/A"
+populate_array_empty arr_scl_fct "${#arr_infiles[@]}"
+
+#  Having parsed --table or --scl_fct, validate each scaling factor as a
+#+ positive float (if applicable)
+if [[ "${arr_scl_fct[0]}" != "#N/A" ]]; then
+    for s in "${arr_scl_fct[@]}"; do check_flt_pos "${s}" "scl_fct"; done
+fi
+
+#  If applicable, parse and validate --usr_frg
+if [[ -n "${usr_frg}" ]]; then
+    IFS=',' read -r -a arr_usr_frg <<< "${usr_frg}"
+fi
+
+#  If empty, populate --usr_frg array with "#N/A"
+populate_array_empty arr_usr_frg "${#arr_infiles[@]}"
+
+#  Having parsed --usr_frg, validate each scaling factor as a positive float
+#+ (if applicable)
+if [[ "${arr_usr_frg[0]}" != "#N/A" ]]; then
+    for u in "${arr_usr_frg[@]}"; do check_flt_pos "${u}" "usr_frg"; done
+fi
+
+#  Ensure matching element counts between arr_infiles and the other arrays
+validate_length_arrays "outfiles" arr_outfiles "infiles" arr_infiles
+validate_length_arrays "scl_fct"  arr_scl_fct  "infiles" arr_infiles
+validate_length_arrays "usr_frg"  arr_usr_frg  "infiles" arr_infiles
+
+#  Reset max_job if it is greater than the number of infiles
+if ${slurm}; then
+    max_job=$(reset_max_job "${max_job}" "${#arr_infiles[@]}")
+fi
+
+#  Debug output for infiles and other values
+if ${verbose}; then
+    echo "## Parsed vectors for parallelization ##"
+    debug_contents_array \
+        "arr_infiles" "arr_outfiles" "arr_scl_fct" "arr_usr_frg"
+    if ${slurm}; then
+        echo "  - Max no. jobs to run at a time (SLURM): ${max_job}"
+    else
+        echo "  - Max no. jobs to run at a time (GNU Parallel): ${par_job}"
+    fi
+    echo ""
+    echo ""
+fi
+
+
+#  Do the main work ===========================================================
+if ${verbose}; then
+    echo "####################################"
+    echo "## Hardcoded variable assignments ##"
+    echo "####################################"
+    echo ""
+    echo "env_nam=${env_nam}"
+    echo "scr_slm=${scr_slm}"
+    echo "scr_par=${scr_par}"
+    echo "denom=${denom}"
+    echo "par_job=${par_job:-#N/A}"
+    echo ""
+    echo ""
+    echo "###################################"
+    echo "## Argument variable assignments ##"
+    echo "###################################"
+    echo ""
+    echo "verbose=${verbose}"
+    echo "dry_run=${dry_run}"
+    echo "threads=${threads}"
+    echo "infiles=${infiles:-#N/A}"
+    echo "table=${table:-#N/A}"
+    echo "tbl_col=${tbl_col:-#N/A}"
+    echo "dir_out=${dir_out}"
+    echo "typ_out=${typ_out}"
+    echo "bin_siz=${bin_siz}"
+    echo "region=${region:-#N/A}"
+    echo "scl_fct=${scl_fct:-#N/A}"
+    echo "norm=${norm:-#N/A}"
+    echo "exact=${exact}"
+    echo "usr_frg=${usr_frg:-#N/A}"
+    echo "err_out=${err_out}"
+    echo "nam_job=${nam_job}"
+    echo "slurm=${slurm}"
+    echo "max_job=${max_job}"
+    echo "time=${time}"
+    echo ""
+    echo ""
+    echo "###################################"
+    echo "## Arrays derived from variables ##"
+    echo "###################################"
+    echo ""
+    echo "arr_infiles=( ${arr_infiles[*]} )"
+    echo "arr_outfiles=( ${arr_outfiles[*]} )"
+    echo "arr_scl_fct=( ${arr_scl_fct[*]:-#N/A} )"
+    echo "arr_usr_frg=( ${arr_usr_frg[*]:-#N/A} )"
+    echo ""
+    echo ""
+fi
+
+bash "${scr_slm}"
+
+
+if ${slurm}; then
+    if ${dry_run} || ${verbose}; then
+        echo "####################"
+        echo "## Call to sbatch ##"
+        echo "####################"
+        echo ""
+        echo "sbatch \\"
+        echo "    --job-name=${nam_job} \\"
+        echo "    --nodes=1 \\"
+        echo "    --cpus-per-task=${threads} \\"
+        echo "    --time=${time} \\"
+        echo "    --error=${err_out}/${nam_job}.%A-%a.stderr.txt \\"
+        echo "    --output=${err_out}/${nam_job}.%A-%a.stdout.txt \\"
+        echo "    --array=1-${#arr_infiles[@]}%${max_job} \\"
+        echo "        ${scr_slm} \\"
+        echo "             -v \\"
+        echo "             -t ${threads} \\"
+        echo "            -si $(echo "${arr_infiles[*]}" | tr ' ' ',') \\"
+        echo "            -so $(echo "${arr_outfiles[*]}" | tr ' ' ',') \\"
+        echo "            -to ${typ_out} \\"
+        echo "            -bs ${bin_siz} \\"
+        "$(
+            if [[ -n "${region}" ]]; then
+                echo "             -r ${region} \\"
+            fi
+        )"
+        echo "            -sf $(
+            if [[
+                   "${#arr_scl_fct[@]}" -gt 0
+                && "${arr_scl_fct[0]}" != "#N/A"
+            ]]; then
+                echo "$(echo "${arr_scl_fct[*]}" | tr ' ' ',')"
+            fi
+        ) \\"
+        echo "            $(if [[ -n "${norm}" ]]; then echo "-no ${norm}"; fi)"
+        echo "            $(if ${exact}; then echo "-ex"; fi) \\"
+        echo "            -su $(echo "${arr_usr_frg[*]}" | tr ' ' ',') \\"
+        echo "            -eo ${err_out} \\"
+        echo "            -nj ${nam_job} \\"
+        echo "            -en ${env_nam}"
+        echo ""
+        echo ""
+        # echo "#########################################"
+        # echo "## Contents of SLURM submission script ##"
+        # echo "#########################################"
+        # echo ""
+        # echo "## ${scr_slm} ##"
+        # echo ""
+        # cat "${scr_slm}"
+        # echo ""
+        # echo ""
+    fi
+
+    if ! ${dry_run}; then
+        # shellcheck disable=SC2046,SC2086
+        sbatch \
+            --job-name=${nam_job} \
+            --nodes=1 \
+            --cpus-per-task=${threads} \
+            --time=${time} \
+            --error=${err_out}/${nam_job}.%A-%a.stderr.txt \
+            --output=${err_out}/${nam_job}.%A-%a.stdout.txt \
+            --array=1-${#arr_infiles[@]}%${max_job} \
+                ${scr_slm} \
+                    ${env_nam} \
+                    ${scr_cvg} \
+                    ${threads} \
+                    $(echo "${arr_infiles[*]}" | tr ' ' ',') \
+                    $(echo "${arr_outfiles[*]}" | tr ' ' ',') \
+                    ${typ_out} \
+                    ${bin_siz} \
+                    ${norm} \
+                    ${raw:-false} \
+                    $(echo "${arr_scl_fct[*]}" | tr ' ' ',') \
+                    $(echo "${arr_usr_frg[*]}" | tr ' ' ',') \
+                    ${err_out} \
+                    ${nam_job}
+    fi
+fi
+
+#TODO: Implement GNU Parallel and serial job submissions

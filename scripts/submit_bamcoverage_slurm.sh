@@ -67,7 +67,7 @@ $(basename "${0}") takes the following keyword arguments:
   -si, --str_infile   Comma-separated string of BAM infiles.
   -so, --str_outfile  Comma-separated string of outfile stems.
   -to, --typ_out      Outfile type: 'bedgraph' or 'bigwig' (default: ${typ_out}).
-  -bz, --bin_siz      Bin size in base pairs (default: ${bin_siz}).
+  -bs, --bin_siz      Bin size in base pairs (default: ${bin_siz}).
    -r, --region       Region in 'chr' or 'chr:start-stop' format (optional).
   -sf, --str_scl_fct  Comma-separated string of scaling factors. Cannot be
                       used with --norm.
@@ -97,7 +97,7 @@ while [[ "$#" -gt 0 ]]; do
         -si|--str_infile)  str_infile="${2}";  shift 2 ;;
         -so|--str_outfile) str_outfile="${2}"; shift 2 ;;
         -to|--typ_out)     typ_out="${2}";     shift 2 ;;
-        -bz|--bin_siz)     bin_siz="${2}";     shift 2 ;;
+        -bs|--bin_siz)     bin_siz="${2}";     shift 2 ;;
          -r|--region)      region="${2}";      shift 2 ;;
         -sf|--str_scl_fct) str_scl_fct="${2}"; shift 2 ;;
         -no|--norm)        norm="${2}";        shift 2 ;;

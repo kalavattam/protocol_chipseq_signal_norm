@@ -708,7 +708,7 @@ if [[ "${arr_scl_fct[0]}" != "#N/A" ]]; then
     for s in "${arr_scl_fct[@]}"; do check_flt_pos "${s}" "scl_fct"; done
 fi
 
-#  If applicable, parse and validate --usr_frg; if empty, populate with "#N/A"
+#  If applicable, parse and validate --usr_frg
 if [[ -n "${usr_frg}" ]]; then
     IFS=',' read -r -a arr_usr_frg <<< "${usr_frg}"
 fi
@@ -735,7 +735,8 @@ fi
 #  Debug output for infiles and other values
 if ${verbose}; then
     echo "## Parsed vectors for parallelization ##"
-    debug_contents_array "arr_infiles" "arr_scl_fct" "arr_usr_frg"
+    debug_contents_array \
+        "arr_infiles" "arr_outfiles" "arr_scl_fct" "arr_usr_frg"
     if ${slurm}; then
         echo "  - Max no. jobs to run at a time (SLURM): ${max_job}"
     else
