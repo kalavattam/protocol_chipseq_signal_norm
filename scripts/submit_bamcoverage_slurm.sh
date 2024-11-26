@@ -62,13 +62,13 @@ $(basename "${0}")
   --env_nam <str>
 
 $(basename "${0}") takes the following keyword arguments:
-   -v, --verbose      Run in 'verbose mode' (optional).
+   -v, --verbose      Run in 'verbose mode' (default: ${verbose}).
    -t, --threads      Number of threads to use (default: ${threads}).
   -si, --str_infile   Comma-separated string of BAM infiles.
   -so, --str_outfile  Comma-separated string of outfile stems.
   -to, --typ_out      Outfile type: 'bedgraph' or 'bigwig' (default: ${typ_out}).
   -bs, --bin_siz      Bin size in base pairs (default: ${bin_siz}).
-   -r, --region       Region in 'chr' or 'chr:start-stop' format (optional).
+   -r, --region       Region in 'chr' or 'chr:start-stop' format.
   -sf, --str_scl_fct  Comma-separated string of scaling factors. Cannot be
                       used with --norm.
   -no, --norm         Use one of the following normalization methods when
@@ -76,9 +76,9 @@ $(basename "${0}") takes the following keyword arguments:
                       'RPGC'. Cannot be used with --str_scl_fct.
   -ex, --exact        Compute scaling factors based on all alignments. Only
                       applicable if '--norm <str>' is specified. Significantly
-                      slows coverage computation.
+                      slows coverage computation (default: ${exact}).
   -su, --str_usr_frg  Comma-separated string of fragment lengths for alignment
-                      extension (optional).
+                      extension.
   -eo, --err_out      Directory to store stderr and stdout outfiles.
   -nj, --nam_job      Name of job (default ${nam_job}).
   -en, --env_nam      Mamba environment to activate (default: ${env_nam}).
@@ -92,7 +92,7 @@ fi
 
 while [[ "$#" -gt 0 ]]; do
     case "${1}" in
-         -v|--verbose)     verbose=true;       shift 1 ;;
+         -v|--verbose)     verbose="${2}";     shift 2 ;;
          -t|--threads)     threads="${2}";     shift 2 ;;
         -si|--str_infile)  str_infile="${2}";  shift 2 ;;
         -so|--str_outfile) str_outfile="${2}"; shift 2 ;;
@@ -101,7 +101,7 @@ while [[ "$#" -gt 0 ]]; do
          -r|--region)      region="${2}";      shift 2 ;;
         -sf|--str_scl_fct) str_scl_fct="${2}"; shift 2 ;;
         -no|--norm)        norm="${2}";        shift 2 ;;
-        -ex|--exact)       exact=true;         shift 1 ;;
+        -ex|--exact)       exact="${2}";       shift 2 ;;
         -su|--str_usr_frg) str_usr_frg="${2}"; shift 2 ;;
         -eo|--err_out)     err_out="${2}";     shift 2 ;;
         -nj|--nam_job)     nam_job="${2}";     shift 2 ;;
@@ -117,8 +117,8 @@ done
 
 #  Validate required arguments
 arr_arg_req=(
-    "threads" "str_infile" "str_outfile" "typ_out" "bin_siz" "err_out"
-    "nam_job" "env_nam"
+    "verbose" "threads" "str_infile" "str_outfile" "typ_out" "bin_siz" "region"
+    "str_scl_fct" "norm" "exact" "str_usr_frg" "err_out" "nam_job" "env_nam"
 )
 for var in "${arr_arg_req[@]}"; do
     if [[ -z "${!var}" ]]; then
@@ -130,7 +130,7 @@ for var in "${arr_arg_req[@]}"; do
 done
 
 #  Validate specification of '--norm' or '--str_scl_fct'
-if [[ -z "${norm}" ]]; then
+if [[ "${norm}" == "#N/A" ]]; then
     #  If '--norm' is not specified, ensure '--str_scl_fct' is valid
     if [[
         -z "${str_scl_fct}" || "${str_scl_fct}" =~ (^|,)?'#N/A'(,|$)
@@ -146,10 +146,12 @@ else
     if [[
         -n "${str_scl_fct}" && ! "${str_scl_fct}" =~ (^|,)?'#N/A'(,|$)
     ]]; then
-        echo \
-            "Error: When '--norm <str>' is specified, '--str_scl_fct' must" \
-            "not be provided or must only contain '#N/A' elements." >&2
-        exit 1
+        if [[ "${norm}" != "#N/A" ]]; then
+            echo \
+                "Error: When '--norm <str>' is specified, '--str_scl_fct' must" \
+                "not be provided or must only contain '#N/A' elements." >&2
+            exit 1
+        fi
     fi
 fi
 
@@ -318,6 +320,51 @@ out_dsc="${err_out}/${nam_job}.${samp}.${id_job}-${id_tsk}.stdout.txt"
 ln -f "${err_ini}" "${err_dsc}"
 ln -f "${out_ini}" "${out_dsc}"
 
+#  Debug deepTools bamCoverage execution
+if ${debug}; then
+    echo "bamCoverage \\"
+    echo "    $(if ${verbose}; then echo "--verbose \\"; fi)"
+    echo "    --numberOfProcessors ${threads} \\"
+    echo "    --bam ${infile} \\"
+    echo "    --outFileName ${outfile}.${typ_out} \\"
+    echo "    --outFileFormat ${typ_out} \\"
+    echo "    --binSize ${bin_siz} \\"
+    echo "    $(
+        if [[ -n "${region}" && "${norm}" != "#N/A" ]]; then
+            echo "--region ${region} \\"
+        fi
+    )"
+    echo "    --skipNonCoveredRegions \\"
+    echo "    $(
+        if [[ "${scl_fct}" != "#N/A" && "${norm}" == "#N/A" ]]; then
+            echo "--scaleFactor ${scl_fct} \\"
+        fi
+    )"
+    echo "    $(
+        if [[ "${scl_fct}" == "#N/A" && "${norm}" != "#N/A" ]]; then
+            echo "--normalizeUsing ${norm} \\"
+        fi
+    )"
+    echo "    $(
+        if [[ "${norm}" == "RPGC" ]]; then
+            echo "--effectiveGenomeSize ${gen_siz:-11624332} \\"
+        fi
+    )"
+    echo "    $(if ${exact}; then echo "--exactScaling \\"; fi)"
+    echo "    $(
+        if [[ "${typ_seq}" == "paired" ]]; then
+            echo "--samFlagInclude 64 \\"
+        fi
+    )"
+    echo "    $(
+        if [[ "${typ_seq}" == "paired" && "${usr_frg}" == "#N/A" ]]; then
+            echo "--extendReads"
+        elif [[ "${usr_frg}" != "#N/A" ]]; then
+            echo "--extendReads ${usr_frg}"
+        fi
+    )"
+fi
+
 #  Execute deepTools bamCoverage
 # shellcheck disable=SC2046,SC2154
 bamCoverage \
@@ -327,10 +374,22 @@ bamCoverage \
     --outFileName "${outfile}.${typ_out}" \
     --outFileFormat "${typ_out}" \
     --binSize "${bin_siz}" \
-    $(if [[ -n "${region}" ]]; then echo "--region ${region}"; fi) \
+    $(
+        if [[ -n "${region}" && "${norm}" != "#N/A" ]]; then
+            echo "--region ${region}"
+        fi
+    ) \
     --skipNonCoveredRegions \
-    $(if [[ -n "${scl_fct}" ]]; then echo "--scaleFactor ${scl_fct}"; fi) \
-    $(if [[ -n "${norm}" ]]; then echo "--normalizeUsing ${norm}"; fi) \
+    $(
+        if [[ "${scl_fct}" != "#N/A" && "${norm}" == "#N/A" ]]; then
+            echo "--scaleFactor ${scl_fct}"
+        fi
+    ) \
+    $(
+        if [[ "${scl_fct}" == "#N/A" && "${norm}" != "#N/A" ]]; then
+            echo "--normalizeUsing ${norm}"
+        fi
+    ) \
     $(
         if [[ "${norm}" == "RPGC" ]]; then
             echo "--effectiveGenomeSize ${gen_siz:-11624332}"
@@ -345,7 +404,7 @@ bamCoverage \
     $(
         if [[ "${typ_seq}" == "paired" && "${usr_frg}" == "#N/A" ]]; then
             echo "--extendReads"
-        elif [[ "${typ_seq}" == "single" && "${usr_frg}" != "#N/A" ]]; then
+        elif [[ "${usr_frg}" != "#N/A" ]]; then
             echo "--extendReads ${usr_frg}"
         fi
     )

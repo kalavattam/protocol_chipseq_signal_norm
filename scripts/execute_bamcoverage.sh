@@ -178,7 +178,7 @@ function set_interactive() {
 
     #  Set hardcoded argument assignments
     verbose=true
-    dry_run=true
+    dry_run=false
     threads=8
     # infiles=""
     infiles="$(  ## WARNING: Change the search parameters as needed ##
@@ -191,7 +191,7 @@ function set_interactive() {
     tbl_col="alpha"  # "scaled"  # ""
     dir_out="${dir_trk}"
     typ_out="bigwig"
-    bin_siz=1
+    bin_siz=10  # 1
     region=""
     scl_fct="0.002054,0.003138,0.003127,0.003522,0.056611,0.02906"  # ""
     norm=""  # "raw"  # "none"  # "rpkm"  # "fpkm"  # "cpm"  # "bpm"  # "rpgc"
@@ -545,7 +545,7 @@ fi
 if ${verbose}; then
     if [[ -n "${norm}" ]]; then
         if [[ "${norm}" != "none" ]]; then
-            mth_nrm="Normalized coverage: ${norm^^}"
+            mth_nrm="Normalized coverage: ${norm}"
         else
             mth_nrm="Raw (unadjusted) coverage"
         fi
@@ -761,9 +761,6 @@ if ${verbose}; then
     echo ""
 fi
 
-bash "${scr_slm}"
-
-
 if ${slurm}; then
     if ${dry_run} || ${verbose}; then
         echo "####################"
@@ -779,42 +776,31 @@ if ${slurm}; then
         echo "    --output=${err_out}/${nam_job}.%A-%a.stdout.txt \\"
         echo "    --array=1-${#arr_infiles[@]}%${max_job} \\"
         echo "        ${scr_slm} \\"
-        echo "             -v \\"
+        echo "             -v ${verbose} \\"
         echo "             -t ${threads} \\"
         echo "            -si $(echo "${arr_infiles[*]}" | tr ' ' ',') \\"
         echo "            -so $(echo "${arr_outfiles[*]}" | tr ' ' ',') \\"
         echo "            -to ${typ_out} \\"
         echo "            -bs ${bin_siz} \\"
-        "$(
-            if [[ -n "${region}" ]]; then
-                echo "             -r ${region} \\"
-            fi
-        )"
-        echo "            -sf $(
-            if [[
-                   "${#arr_scl_fct[@]}" -gt 0
-                && "${arr_scl_fct[0]}" != "#N/A"
-            ]]; then
-                echo "$(echo "${arr_scl_fct[*]}" | tr ' ' ',')"
-            fi
-        ) \\"
-        echo "            $(if [[ -n "${norm}" ]]; then echo "-no ${norm}"; fi)"
-        echo "            $(if ${exact}; then echo "-ex"; fi) \\"
+        echo "             -r ${region:-#N/A} \\"
+        echo "            -sf $(echo "${arr_scl_fct[*]}" | tr ' ' ',') \\"
+        echo "            -no ${norm:-#N/A} \\"
+        echo "            -ex ${exact} \\"
         echo "            -su $(echo "${arr_usr_frg[*]}" | tr ' ' ',') \\"
         echo "            -eo ${err_out} \\"
         echo "            -nj ${nam_job} \\"
         echo "            -en ${env_nam}"
         echo ""
         echo ""
-        # echo "#########################################"
-        # echo "## Contents of SLURM submission script ##"
-        # echo "#########################################"
-        # echo ""
-        # echo "## ${scr_slm} ##"
-        # echo ""
-        # cat "${scr_slm}"
-        # echo ""
-        # echo ""
+        echo "#########################################"
+        echo "## Contents of SLURM submission script ##"
+        echo "#########################################"
+        echo ""
+        echo "## ${scr_slm} ##"
+        echo ""
+        cat "${scr_slm}"
+        echo ""
+        echo ""
     fi
 
     if ! ${dry_run}; then
@@ -828,19 +814,20 @@ if ${slurm}; then
             --output=${err_out}/${nam_job}.%A-%a.stdout.txt \
             --array=1-${#arr_infiles[@]}%${max_job} \
                 ${scr_slm} \
-                    ${env_nam} \
-                    ${scr_cvg} \
-                    ${threads} \
-                    $(echo "${arr_infiles[*]}" | tr ' ' ',') \
-                    $(echo "${arr_outfiles[*]}" | tr ' ' ',') \
-                    ${typ_out} \
-                    ${bin_siz} \
-                    ${norm} \
-                    ${raw:-false} \
-                    $(echo "${arr_scl_fct[*]}" | tr ' ' ',') \
-                    $(echo "${arr_usr_frg[*]}" | tr ' ' ',') \
-                    ${err_out} \
-                    ${nam_job}
+                     -v ${verbose} \
+                     -t ${threads} \
+                    -si $(echo "${arr_infiles[*]}" | tr ' ' ',') \
+                    -so $(echo "${arr_outfiles[*]}" | tr ' ' ',') \
+                    -to ${typ_out} \
+                    -bs ${bin_siz} \
+                     -r ${region:-#N/A} \
+                    -sf $(echo "${arr_scl_fct[*]}" | tr ' ' ',') \
+                    -no ${norm:-#N/A} \
+                    -ex ${exact} \
+                    -su $(echo "${arr_usr_frg[*]}" | tr ' ' ',') \
+                    -eo ${err_out} \
+                    -nj ${nam_job} \
+                    -en ${env_nam}
     fi
 fi
 
