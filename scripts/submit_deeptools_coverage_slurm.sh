@@ -320,7 +320,7 @@ out_dsc="${err_out}/${nam_job}.${samp}.${id_job}-${id_tsk}.stdout.txt"
 ln -f "${err_ini}" "${err_dsc}"
 ln -f "${out_ini}" "${out_dsc}"
 
-#  Debug deepTools bamCoverage execution
+#  Debug execution of deepTools bamCoverage
 if ${debug}; then
     echo "bamCoverage \\"
     echo "    $(if ${verbose}; then echo "--verbose \\"; fi)"
