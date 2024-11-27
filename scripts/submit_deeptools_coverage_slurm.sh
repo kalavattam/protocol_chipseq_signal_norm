@@ -375,7 +375,7 @@ bamCoverage \
     --outFileFormat "${typ_out}" \
     --binSize "${bin_siz}" \
     $(
-        if [[ -n "${region}" && "${norm}" != "#N/A" ]]; then
+        if [[ -n "${region}" && "${region}" != "#N/A" ]]; then
             echo "--region ${region}"
         fi
     ) \
