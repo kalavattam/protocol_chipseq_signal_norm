@@ -1,7 +1,26 @@
 #!/bin/bash
 
+set -eo pipefail
+
 #  If true, run script in debug mode
 debug=true
+
+#  Define helper function to validate and log errors for variables
+function validate_var() {
+    local var_nam="${1}"  # Name of the variable
+    local var_val="${2}"  # Value of the variable
+    local arr_ref="${3}"  # Reference to the array (as a string)
+    local idx="${4}"      # Index of the array element
+    local id_tsk="${5}"   # Task ID
+
+    if [[ -z "${var_val}" ]]; then
+        echo \
+            "Error: Failed to retrieve ${var_nam} for id_tsk=${id_tsk}:" \
+            "\${${arr_ref}[${idx}]}." >&2
+        return 1
+    fi
+}
+
 
 #  Define helper function to determine BAM infile's sequenced-read status
 function check_typ_seq() {
@@ -38,7 +57,7 @@ function check_typ_seq() {
 
 #  Parse keyword arguments, assigning them to variables; most of the argument
 #+ inputs are not checked, or not checked thoroughly, as this is performed by
-#+ execute_*.sh and again by the function submitted to SLURM
+#+ execute_*.sh and again by the deepTools program submitted to SLURM
 verbose=false
 threads=8
 str_infile=""
@@ -157,7 +176,7 @@ fi
 
 #  Validate and standardize output file type
 case "${typ_out}" in
-    bigwig|bw) typ_out="bigwig" ;;
+      bigwig|bw) typ_out="bigwig"   ;;
     bedgraph|bg) typ_out="bedgraph" ;;
     *)
         echo \
@@ -275,33 +294,10 @@ if ${debug}; then
 fi
 
 #  Exit if any variable assignment is empty
-if [[ -z "${infile}" ]]; then
-    echo \
-        "Error: Failed to retrieve infile for id_tsk=${id_tsk}:" \
-        "\${arr_infiles[${idx}]}." >&2
-    exit 1
-fi
-
-if [[ -z "${outstem}" ]]; then
-    echo \
-        "Error: Failed to retrieve outstem for id_tsk=${id_tsk}:" \
-        "\${arr_outstems[${idx}]}." >&2
-    exit 1
-fi
-
-if [[ -z "${scl_fct}" ]]; then
-    echo \
-        "Error: Failed to retrieve scl_fct for id_tsk=${id_tsk}:" \
-        "\${arr_scl_fct[${idx}]}." >&2
-    exit 1
-fi
-
-if [[ -z "${usr_frg}" ]]; then
-    echo \
-        "Error: Failed to retrieve usr_frg for id_tsk=${id_tsk}:" \
-        "\${arr_usr_frg[${idx}]}." >&2
-    exit 1
-fi
+validate_var "infile"  "${infile}"  "arr_infiles"  "${idx}" "${id_tsk}"
+validate_var "outstem" "${outstem}" "arr_outstems" "${idx}" "${id_tsk}"
+validate_var "scl_fct" "${scl_fct}" "arr_scl_fct"  "${idx}" "${id_tsk}"
+validate_var "usr_frg" "${usr_frg}" "arr_usr_frg"  "${idx}" "${id_tsk}"
 
 #  Determine BAM infile's sequenced-read status: 'single' or 'paired'
 typ_seq=$(check_typ_seq "${infile}")
@@ -312,7 +308,7 @@ if ${debug}; then
     echo ""
 fi
 
-#  Derive sample name from infile assignment
+#  Derive sample name from outstem assignment
 samp="${outstem##*/}"
 samp="${samp%.bam}"
 
@@ -405,7 +401,7 @@ bamCoverage \
     $(
         if [[ "${norm}" == "RPGC" ]]; then
             echo "--effectiveGenomeSize ${gen_siz:-11624332}"
-        fi
+        fi  #TODO: Add arguments in {execute|submit}*sh scripts
     ) \
     $(if ${exact}; then echo "--exactScaling"; fi) \
     $(

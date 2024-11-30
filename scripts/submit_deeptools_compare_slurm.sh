@@ -1,10 +1,32 @@
 #!/bin/bash
 
-#  If true, run script in debug mode
+set -eo pipefail
+
+#  If true, run script in "debug mode"
 debug=true
 
+#  If true, run script in "dry-run mode"
+dry_run=false
+
+#  Define helper function to validate and log errors for variables
+function validate_var() {
+    local var_nam="${1}"  # Name of the variable
+    local var_val="${2}"  # Value of the variable
+    local arr_ref="${3}"  # Reference to the array (as a string)
+    local idx="${4}"      # Index of the array element
+    local id_tsk="${5}"   # Task ID
+
+    if [[ -z "${var_val}" ]]; then
+        echo \
+            "Error: Failed to retrieve ${var_nam} for id_tsk=${id_tsk}:" \
+            "\${${arr_ref}[${idx}]}." >&2
+        return 1
+    fi
+}
+
+
 #  Define helper function to determine BAM infile's sequenced-read status
-function check_typ_seq() {
+function check_seq_type() {
     local bam="${1}"
     local header
 
@@ -36,21 +58,41 @@ function check_typ_seq() {
 }
 
 
+#  Define helper function to validate matching values between first
+#+ file/numerator and second file/denominator
+function validate_match() {
+    local var_dsc="${1}"  # Description of variable being compared
+    local val_num="${2}"  # Numerator value
+    local val_den="${3}"  # Denominator value
+    local out_nam="${4}"  # Name of the output variable to assign if matched
+
+    if [[ "${val_num}" == "${val_den}" ]]; then
+        #  Assign the matched value to the output variable if specified
+        if [[ -n "${out_nam}" ]]; then eval "${out_nam}=\"${val_num}\""; fi
+    else
+        echo \
+            "Error: ${var_dsc} does not match between numerator" \
+            "(${val_num}) and denominator (${val_den})." >&2
+        return 1
+    fi
+}
+
+
 #  Parse keyword arguments, assigning them to variables; most of the argument
 #+ inputs are not checked, or not checked thoroughly, as this is performed by
-#+ execute_*.sh and again by the function submitted to SLURM
+#+ execute_*.sh and again by the deepTools program submitted to SLURM
 verbose=false
 threads=8
 str_fil_num=""
 str_fil_den=""
-str_outstem=""
+str_fil_stm=""
 typ_out="bigwig"
-operation="log2"
+oper="log2"
 bin_siz=1
 region=""
 str_scl_fct=""
 norm=""
-method="None"
+scl_pre="None"
 exact=false
 str_usr_frg=""
 err_out=""
@@ -59,40 +101,58 @@ env_nam="env_align"
 
 show_help=$(cat << EOM
 $(basename "${0}")
-  [--verbose] --threads <int> --str_fil_num <str> --str_fil_den <str>
-  --str_outstem <str> --typ_out <str> --bin_siz <int> [--region <str>]
-  --str_scl_fct <str> --norm <str> [--exact] [--str_usr_frg <str>]
-  --err_out <str> --nam_job <str> --env_nam <str>
+  --verbose <bol> --threads <int> --str_fil_num <str> --str_fil_den <str>
+  --str_typ_fil <str> --str_fil_stm <str> --typ_out <str> --bin_siz <int>
+  --region <str> --str_scl_fct <str> --norm <str> --exact <bol>
+  --str_usr_frg <str> --err_out <str> --nam_job <str> --env_nam <str>
 
 $(basename "${0}") takes the following keyword arguments:
    -v, --verbose      Run in 'verbose mode' (default: ${verbose}).
    -t, --threads      Number of threads to use (default: ${threads}).
-  -sn, --str_fil_num  Comma-separated list of BAM, BIGWIG, or BEDGRAPH infiles
-                      to be used as the numerator in the comparisons.
-  -sd, --str_fil_den  Comma-separated list of BAM, BIGWIG, or BEDGRAPH infiles
-                      to be used as the denominator in the comparisons.
-  -so, --str_outstem  Comma-separated string of outfile stems.
-  -to, --typ_out      Outfile type: 'bedgraph' or 'bigwig' (default: ${typ_out}).
-  -op, --operation    Operation to perform for comparisons of two BAM infiles
-                      (default: ${operation}).
+  -sn, --str_fil_num  Comma-separated string of BAM, BIGWIG, or BEDGRAPH infiles
+                      to be used as the first file/numerator in the comparisons.
+  -sd, --str_fil_den  Comma-separated string of BAM, BIGWIG, or BEDGRAPH infiles
+                      to be used as the second file/denominator in the
+                      comparisons.
+  -st, --str_typ_fil  Comma-separated string of numerator-denominator pair file
+                      types.
+  -ss, --str_fil_stm  Comma-separated string of outstems sans extensions.
+  -to, --typ_out      Outfile type: 'bedgraph' or 'bigwig' (default: '${typ_out}').
+  -op, --oper         Operation to perform for comparisons of two BAM infiles:
+                      'log2', 'ratio', 'subtract', 'add', 'mean',
+                      'reciprocal_ratio', 'first', 'second' (default: '${oper}').
+                      For more details, see the deepTools documentation.
   -bs, --bin_siz      Bin size in base pairs (default: ${bin_siz}).
-   -r, --region       Region in 'chr' or 'chr:start-stop' format.
-  -sf, --str_scl_fct  Comma-separated string of scaling factors. Cannot be
-                      used with --norm.
+   -r, --region       Specify a genomic region to limit the operation. The
+                      format can be either: 'chr' (entire chromosome) or
+                      'chr:start-stop' (specific range within a chromosome).
+  -sf, --str_scl_fct  Comma-separated string of scaling factors for numerator
+                      and denominator files. Each scaling factor pair should be
+                      in the format 'num:den', where 'num' is the scaling
+                      factor for the numerator and 'den' is the scaling factor
+                      for the denominator. Multiple pairs should be separated
+                      by commas. For example, '0.7:1,0.3:0.6' scales the first
+                      numerator file by 0.7 and the first denominator file by
+                      1.0, and the second numerator file by 0.3 and the second
+                      denominator file by 0.6. This option cannot be used with
+                      '--norm <str>'.
   -no, --norm         Use one of the following normalization methods when
-                      computing coverage: 'None', 'RPKM', 'CPM', 'BPM', or
-                      'RPGC'. Cannot be used with --str_scl_fct.
-   -m, --method       For comparisons, method to compensate for sequencing
-                      depth differences between the samples (default: ${norm}).
-                      If using --norm, will be set to 'None'.
-  -ex, --exact        Compute scaling factors based on all alignments. Only
-                      applicable if '--norm <str>' is specified. Significantly
-                      slows coverage computation (default: ${exact}).
+                      computing comparisons: 'None', 'RPKM', 'CPM', 'BPM', or
+                      'RPGC'. Cannot be used with '--str_scl_fct <str>'.
+  -sp, --scl_pre       For comparisons, method to compensate for sequencing
+                      depth differences between the samples: 'readCount',
+                      'SES', or 'None' (default: '${scl_pre}'). If using
+                      '--norm <str>' or '--str_scl_fct <str>', will be set to
+                      'None'.
+  -ex, --exact        Compute scaling factors based on all alignments
+                      (default: ${exact}). Only applicable if '--norm <str>' is
+                      specified; otherwise, it is ignored. Significantly slows
+                      comparison computation.
   -su, --str_usr_frg  Comma-separated string of fragment lengths for alignment
                       extension.
-  -eo, --err_out      Directory to store stderr and stdout outfiles.
-  -nj, --nam_job      Name of job (default ${nam_job}).
-  -en, --env_nam      Mamba environment to activate (default: ${env_nam}).
+  -eo, --err_out      Directory to store stderr and stdout outstems.
+  -nj, --nam_job      Name of job (default: '${nam_job}').
+  -en, --env_nam      Mamba environment to activate (default: '${env_nam}').
 EOM
 )
 
@@ -107,13 +167,15 @@ while [[ "$#" -gt 0 ]]; do
          -t|--threads)     threads="${2}";     shift 2 ;;
         -sn|--str_fil_num) str_fil_num="${2}"; shift 2 ;;
         -sd|--str_fil_den) str_fil_den="${2}"; shift 2 ;;
-        -so|--str_outstem) str_outstem="${2}"; shift 2 ;;
+        -st|--str_typ_fil) str_typ_fil="${2}"; shift 2 ;;
+        -ss|--str_fil_stm) str_fil_stm="${2}"; shift 2 ;;
         -to|--typ_out)     typ_out="${2}";     shift 2 ;;
+        -op|--oper)        oper="${2}";        shift 2 ;;
         -bs|--bin_siz)     bin_siz="${2}";     shift 2 ;;
          -r|--region)      region="${2}";      shift 2 ;;
         -sf|--str_scl_fct) str_scl_fct="${2}"; shift 2 ;;
         -no|--norm)        norm="${2}";        shift 2 ;;
-         -m|--method)      method="${2}";      shift 2 ;;
+        -sp|--scl_pre)     scl_pre="${2}";     shift 2 ;;
         -ex|--exact)       exact="${2}";       shift 2 ;;
         -su|--str_usr_frg) str_usr_frg="${2}"; shift 2 ;;
         -eo|--err_out)     err_out="${2}";     shift 2 ;;
@@ -130,8 +192,8 @@ done
 
 #  Validate required arguments
 arr_arg_req=(
-    "verbose" "threads" "str_fil_num" "str_fil_den" "str_outstem" "typ_out"
-    "bin_siz" "region" "str_scl_fct" "norm" "method" "exact" "str_usr_frg"
+    "verbose" "threads" "str_fil_num" "str_fil_den" "str_typ_fil" "str_fil_stm"
+    "typ_out" "bin_siz" "region" "str_scl_fct" "norm" "scl_pre" "exact" "str_usr_frg"
     "err_out" "nam_job" "env_nam"
 )
 for var in "${arr_arg_req[@]}"; do
@@ -143,52 +205,61 @@ for var in "${arr_arg_req[@]}"; do
     fi
 done
 
-#  Validate specification of '--norm', '--str_scl_fct', and '--method'
-if [[ -z "${norm}" || "${norm}" == "#N/A" ]]; then
-    #  Ensure '--str_scl_fct' is specified and valid when '--norm' is not used
-    if [[ -z "${str_scl_fct}" || "${str_scl_fct}" =~ (^|,)?'#N/A'(,|$) ]]; then
-        echo \
-            "Error: If '--norm <str>' is not specified, '--str_scl_fct' must" \
-            "be provided and cannot contain '#N/A' elements." >&2
-        exit 1
-    fi
-
-    #  If '--method' is provided, ensure it is compatible with missing '--norm'
-    if [[ "${method}" != "None" ]]; then
-        echo \
-            "Warning: '--method' is ignored because '--norm <str>' is not" \
-            "specified." >&2
-        method="None"
-    fi
-else
-    #  Ensure '--str_scl_fct' is not specified or is invalid when '--norm' is
-    #+ used
-    if [[
-        -n "${str_scl_fct}" && ! "${str_scl_fct}" =~ (^|,)?'#N/A'(,|$)
-    ]]; then
-        echo \
-            "Error: If '--norm <str>' is specified, '--str_scl_fct' must not" \
-            "be provided or must only contain '#N/A' elements." >&2
-        exit 1
-    fi
-
-    #  Automatically set '--method None' if '--norm' is specified
-    if [[ "${method}" != "None" ]]; then
-        echo \
-            "Warning: '--method' is overridden to 'None' because '--norm' is" \
-            "specified." >&2
-        method="None"
-    fi
-fi
+#NOTE 1/2: All this is checked in the execute_*.sh script, and many of these
+#NOTE 2/2: checks are no longer valid.
+# #  Validate specification of '--norm', '--str_scl_fct', and '--scl_pre'
+# if [[ -n "${norm}" && "${norm}" != "None" && "${norm}" != "#N/A" ]]; then
+#     #  If '--norm' is specified, '--str_scl_fct' cannot be specified, and
+#     #+ '--scl_pre' must be 'None'
+#     if [[ -n "${str_scl_fct}" && ! "${str_scl_fct}" =~ (^|,)?'#N/A'(,|$) ]]; then
+#         echo \
+#             "Error: '--str_scl_fct <str>' cannot be specified when" \
+#             "'--norm <str>' is used." >&2
+#         exit 1
+#     fi
+#
+#     if [[ "${scl_pre}" != "None" ]]; then
+#         echo \
+#             "Warning: '--scl_pre <str>' is overridden to 'None' because" \
+#             "'--norm <str>' is specified." >&2
+#         scl_pre="None"
+#     fi
+# elif [[ -n "${str_scl_fct}" && ! "${str_scl_fct}" =~ (^|,)?'#N/A'(,|$) ]]; then
+#     #  If '--str_scl_fct' is specified, '--norm' cannot be specified, and
+#     #+ '--scl_pre' must be 'None'
+#     if [[ "${norm}" != "#N/A" ]]; then
+#         echo \
+#             "Error: '--norm <str>' cannot be specified when" \
+#             "'--str_scl_fct <str>' is used." >&2
+#         exit 1
+#     fi
+#
+#     if [[ "${scl_pre}" != "None" ]]; then
+#         echo \
+#             "Warning: '--scl_pre <str>' is overridden to 'None' because" \
+#             "'--str_scl_fct <str>' is specified." >&2
+#         scl_pre="None"
+#     fi
+# else
+#     #  If neither '--norm' nor a valid '--str_scl_fct' is specified,
+#     #+ '--scl_pre' must not be 'None'
+#     if [[ "${scl_pre}" == "None" ]]; then
+#         echo \
+#             "Error: '--scl_pre <str>' must be specified as either 'readCount'" \
+#             "or 'SES' when neither '--norm <str>' nor valid" \
+#             "'--str_scl_fct <str>' are provided." >&2
+#         exit 1
+#     fi
+# fi
 
 #  Validate and standardize output file type
 case "${typ_out}" in
-    bigwig|bw) typ_out="bigwig" ;;
-    bedgraph|bg) typ_out="bedgraph" ;;
+    bedgraph|bdg|bg) typ_out="bedgraph" ;;
+    bigwig|bw)       typ_out="bigwig"   ;;
     *)
         echo \
-            "Error: Unsupported output type: '${typ_out}'. Supported types:" \
-            "'bigwig', 'bw', 'bedgraph', or 'bg'." >&2 
+            "Error: Unsupported output type: '${typ_out}'. --typ_out must be" \
+            "'bigwig', 'bw', 'bedgraph', 'bdg', or 'bg'." >&2
         exit 1
         ;;
 esac
@@ -203,7 +274,9 @@ if ${debug}; then
     echo ""
     echo "str_fil_den=${str_fil_den}"
     echo ""
-    echo "str_outstem=${str_outstem}"
+    echo "str_typ_fil=${str_typ_fil}"
+    echo ""
+    echo "str_fil_stm=${str_fil_stm}"
     echo ""
     echo "typ_out=${typ_out}"
     echo ""
@@ -215,7 +288,7 @@ if ${debug}; then
     echo ""
     echo "norm=${norm}"
     echo ""
-    echo "method=${method}"
+    echo "scl_pre=${scl_pre}"
     echo ""
     echo "exact=${exact}"
     echo ""
@@ -257,7 +330,8 @@ id_tsk=${SLURM_ARRAY_TASK_ID}
 #  Reconstruct arrays from serialized strings
 IFS=',' read -r -a arr_fil_num  <<< "${str_fil_num}"
 IFS=',' read -r -a arr_fil_den  <<< "${str_fil_den}"
-IFS=',' read -r -a arr_outstems <<< "${str_outstem}"
+IFS=',' read -r -a arr_typ_fil  <<< "${str_typ_fil}"
+IFS=',' read -r -a arr_fil_stm <<< "${str_fil_stm}"
 IFS=',' read -r -a arr_scl_fct  <<< "${str_scl_fct}"
 IFS=',' read -r -a arr_usr_frg  <<< "${str_usr_frg}"
 
@@ -274,9 +348,13 @@ if ${debug}; then
     echo ""
     echo "arr_fil_den=( ${arr_fil_den[*]} )"
     echo ""
-    echo "\${#arr_outstems[@]}=${#arr_outstems[@]}"
+    echo "\${#arr_typ_fil[@]}=${#arr_typ_fil[@]}"
     echo ""
-    echo "arr_outstems=( ${arr_outstems[*]} )"
+    echo "arr_typ_fil=( ${arr_typ_fil[*]} )"
+    echo ""
+    echo "\${#arr_fil_stm[@]}=${#arr_fil_stm[@]}"
+    echo ""
+    echo "arr_fil_stm=( ${arr_fil_stm[*]} )"
     echo ""
     echo "\${#arr_scl_fct[@]}=${#arr_scl_fct[@]}"
     echo ""
@@ -294,7 +372,8 @@ idx=$(( id_tsk - 1 ))
 #  Assign variables from reconstructed arrays based on index
 fil_num="${arr_fil_num[idx]}"
 fil_den="${arr_fil_den[idx]}"
-outstem="${arr_outstems[idx]}"
+typ_fil="${arr_typ_fil[idx]}"
+fil_stm="${arr_fil_stm[idx]}"
 scl_fct="${arr_scl_fct[idx]}"
 usr_frg="${arr_usr_frg[idx]}"
 
@@ -304,7 +383,9 @@ if ${debug}; then
     echo ""
     echo "fil_den=${fil_den}"
     echo ""
-    echo "outstem=${outstem}"
+    echo "typ_fil=${typ_fil}"
+    echo ""
+    echo "fil_stm=${fil_stm}"
     echo ""
     echo "scl_fct=${scl_fct}"
     echo ""
@@ -313,71 +394,251 @@ if ${debug}; then
 fi
 
 #  Exit if any variable assignment is empty
-if [[ -z "${fil_num}" ]]; then
-    echo \
-        "Error: Failed to retrieve fil_num for id_tsk=${id_tsk}:" \
-        "\${arr_fil_num[${idx}]}." >&2
-    exit 1
-fi
-
-if [[ -z "${fil_den}" ]]; then
-    echo \
-        "Error: Failed to retrieve fil_den for id_tsk=${id_tsk}:" \
-        "\${arr_fil_den[${idx}]}." >&2
-    exit 1
-fi
-
-if [[ -z "${outstem}" ]]; then
-    echo \
-        "Error: Failed to retrieve outstem for id_tsk=${id_tsk}:" \
-        "\${arr_outstems[${idx}]}." >&2
-    exit 1
-fi
-
-if [[ -z "${scl_fct}" ]]; then
-    echo \
-        "Error: Failed to retrieve scl_fct for id_tsk=${id_tsk}:" \
-        "\${arr_scl_fct[${idx}]}." >&2
-    exit 1
-fi
-
-if [[ -z "${usr_frg}" ]]; then
-    echo \
-        "Error: Failed to retrieve usr_frg for id_tsk=${id_tsk}:" \
-        "\${arr_usr_frg[${idx}]}." >&2
-    exit 1
-fi
+validate_var "fil_num" "${fil_num}" "arr_fil_num"  "${idx}" "${id_tsk}"
+validate_var "fil_den" "${fil_den}" "arr_fil_den"  "${idx}" "${id_tsk}"
+validate_var "typ_fil" "${fil_den}" "arr_typ_fil"  "${idx}" "${id_tsk}"
+validate_var "fil_stm" "${fil_stm}" "arr_fil_stm" "${idx}" "${id_tsk}"
+validate_var "scl_fct" "${scl_fct}" "arr_scl_fct"  "${idx}" "${id_tsk}"
+validate_var "usr_frg" "${usr_frg}" "arr_usr_frg"  "${idx}" "${id_tsk}"
 
 #  Determine BAM infiles' sequenced-read status and file type, ensuring
 #+ consistency
-typ_seq_num=$(check_typ_seq "${fil_num}")
-typ_seq_den=$(check_typ_seq "${fil_den}")
-if [[ "${typ_seq_num}" == "${typ_seq_den}" ]]; then
-    typ_seq="${typ_seq_num}"
+if [[ "${typ_fil}" == "bam" ]]; then
+    validate_match \
+        "Sequenced-read statuses" \
+        "$(check_seq_type "${fil_num}")" \
+        "$(check_seq_type "${fil_den}")" \
+        typ_seq
 else
-    echo \
-        "Error: Sequenced-read statuses do not match between numerator" \
-        "(${typ_seq_num}) and denominator (${typ_seq_den})." >&2
-    exit 1
+    typ_seq="#N/A"
 fi
 
-typ_fil_num="${fil_num##*.}"
-typ_fil_den="${fil_den##*.}"
-if [[ "${typ_fil_num}" == "${typ_fil_den}" ]]; then
-    typ_fil="${typ_fil_num}"
-else
-    echo \
-        "Error: File extensions do not match between numerator" \
-        "(${typ_fil_num}) and denominator (${typ_fil_den})." >&2
-    exit 1
-fi
+# validate_match \
+#     "File extensions" \
+#     "${fil_num##*.}" \
+#     "${fil_den##*.}" \
+#     typ_fil
 
 #  Debug BAM infiles sequenced-read status and file type
+# shellcheck disable=SC2154
 if ${debug}; then
     echo "typ_seq=${typ_seq}"
     echo ""
-    echo "typ_fil=${typ_fil}"
+    # echo "typ_fil=${typ_fil}"
+    # echo ""
+fi
+
+#  Derive sample name from fil_stm assignment
+samp="${fil_stm##*/}"
+
+#  Debug sample name
+if ${debug}; then
+    echo "samp=${samp}"
     echo ""
 fi
 
+if ${debug}; then
+    # shellcheck disable=SC2005
+    case "${typ_fil}" in
+        bedgraph|bdg|bg|bigwig|bw)
+            echo "bigwigCompare \\"
+            echo "$(if ${verbose}; then echo "    --verbose"; fi) \\"
+            echo "    --numberOfProcessors ${threads} \\"
+            echo "    --bigwig1 ${fil_num} \\"
+            echo "    --bigwig2 ${fil_den} \\"
+            echo "    --outFileName ${fil_stm}.${typ_out} \\"
+            echo "    --outFileFormat ${typ_out} \\"
+            echo "    --operation ${oper} \\"
+            echo "$(
+                if [[ "${oper}" =~ ^(log2|ratio)$ ]]; then
+                    echo "    --pseudocount 1 1 \\"
+                else
+                    echo "    \\"
+                fi
+            )"
+            echo "    --binSize ${bin_siz} \\"
+            echo "$(
+                if [[ "${region}" != "#N/A" ]]; then
+                    echo "    --region ${region} \\"
+                else
+                    echo "    \\"
+                fi
+            )"
+            echo "$(
+                if [[ "${scl_fct}" != "#N/A" ]]; then
+                    echo "    --scaleFactor ${scl_fct} \\"
+                else
+                    echo "    \\"
+                fi
+            )"
+            echo "    --skipZeroOverZero \\"
+            echo "    --skipNonCoveredRegions"
+            echo ""
+            echo ""
+            ;;
+        bam)
+            echo "bamCompare \\"
+            echo "$(if ${verbose}; then echo "    --verbose"; fi) \\"
+            echo "    --numberOfProcessors ${threads} \\"
+            echo "    --bamfile1 ${fil_num} \\"
+            echo "    --bamfile2 ${fil_den} \\"
+            echo "    --outFileName ${fil_stm}.${typ_out} \\"
+            echo "    --outFileFormat ${typ_out} \\"
+            echo "    --operation ${oper} \\"
+            echo "$(
+                if [[ "${oper}" =~ ^(log2|ratio)$ ]]; then
+                    echo "    --pseudocount 1 1 \\"
+                else
+                    echo "    \\"
+                fi
+            )"
+            echo "    --binSize ${bin_siz} \\"
+            echo "$(
+                if [[ "${region}" != "#N/A" ]]; then
+                    echo "    --region ${region} \\"
+                else
+                    echo "    \\"
+                fi
+            )"
+            echo "    --skipZeroOverZero \\"
+            echo "    --skipNonCoveredRegions \\"
+            echo "$(
+                if [[ "${scl_fct}" != "#N/A" ]]; then
+                    echo "    --scaleFactor ${scl_fct} \\"
+                    echo "    --scaleFactorsMethod None \\"
+                elif [[ "${norm}" != "#N/A" ]]; then
+                    echo "    --scaleFactorsMethod None \\"
+                    echo "    --normalizeUsing ${norm} \\"
+                    if [[ "${norm}" == "RPGC" ]]; then
+                        echo "    --effectiveGenomeSize ${gen_siz:-11624332} \\"
+                    fi
+                elif [[ "${scl_pre}" != "#N/A" ]]; then
+                    echo "    --scaleFactorsMethod ${scl_pre:-readCount} \\"
+                else
+                    echo "    \\"
+                fi
+            )"
+            echo "$(
+                if ${exact}; then
+                    echo "    --exactScaling \\"
+                fi
+            )"
+            echo "$(
+                if [[ "${typ_seq}" == "paired" ]]; then
+                    echo "    --samFlagInclude 64 \\"
+                fi
+            )"
+            echo "$(
+                if [[
+                       "${typ_seq}" == "paired" && "${usr_frg}" == "#N/A"
+                ]]; then
+                    echo "    --extendReads"
+                elif [[ "${usr_frg}" != "#N/A" ]]; then
+                    echo "    --extendReads ${usr_frg}"
+                fi
+            )"
+            echo ""
+            echo ""
+            ;;
+    esac
+fi
 
+#  Execute deepTools bamCompare
+if ! ${dry_run}; then
+    #  Assign stdout and stderr outfiles to variables
+    err_ini="${err_out}/${nam_job}.${id_job}-${id_tsk}.stderr.txt"
+    out_ini="${err_out}/${nam_job}.${id_job}-${id_tsk}.stdout.txt"
+    err_dsc="${err_out}/${nam_job}.${samp}.${id_job}-${id_tsk}.stderr.txt"
+    out_dsc="${err_out}/${nam_job}.${samp}.${id_job}-${id_tsk}.stdout.txt"
+
+    #  Give the initial stderr and stdout TXT outfiles more descriptive names
+    ln -f "${err_ini}" "${err_dsc}"
+    ln -f "${out_ini}" "${out_dsc}"
+
+    # shellcheck disable=SC2046
+    case "${typ_fil}" in
+        bedgraph|bdg|bg|bigwig|bw)
+            bigwigCompare \
+                $(if ${verbose}; then echo "--verbose"; fi) \
+                --numberOfProcessors "${threads}" \
+                --bigwig1 "${fil_num}" \
+                --bigwig2 "${fil_den}" \
+                --outFileName "${fil_stm}.${typ_out}" \
+                --outFileFormat "${typ_out}" \
+                --operation "${oper}" \
+                $(
+                    if [[ "${oper}" =~ ^(log2|ratio)$ ]]; then
+                        echo "--pseudocount 1 1"
+                    fi
+                ) \
+                --binSize "${bin_siz}" \
+                $(
+                    if [[ "${region}" != "#N/A" ]]; then
+                        echo "--region ${region}"
+                    fi
+                ) \
+                $(
+                    if [[ "${scl_fct}" != "#N/A" ]]; then
+                        echo "--scaleFactor ${scl_fct}"
+                    fi
+                ) \
+                --skipZeroOverZero \
+                --skipNonCoveredRegions
+            ;;
+        bam)
+            bamCompare \
+                $(if ${verbose}; then echo "--verbose"; fi) \
+                --numberOfProcessors "${threads}" \
+                --bamfile1 "${fil_num}" \
+                --bamfile2 "${fil_den}" \
+                --outFileName "${fil_stm}.${typ_out}" \
+                --outFileFormat "${typ_out}" \
+                --operation "${oper}" \
+                $(
+                    if [[ "${oper}" =~ ^(log2|ratio)$ ]]; then
+                        echo "--pseudocount 1 1"
+                    fi
+                ) \
+                --binSize "${bin_siz}" \
+                $(
+                    if [[ "${region}" != "#N/A" ]]; then
+                        echo "--region ${region}"
+                    fi
+                ) \
+                --skipZeroOverZero \
+                --skipNonCoveredRegions \
+                $(
+                    if [[ "${scl_fct}" != "#N/A" ]]; then
+                        echo "--scaleFactor ${scl_fct}"
+                        echo "--scaleFactorsMethod None"
+                    elif [[ "${norm}" != "#N/A" ]]; then
+                        echo "--scaleFactorsMethod None"
+                        echo "--normalizeUsing ${norm}"
+                        if [[ "${norm}" == "RPGC" ]]; then
+                            echo "--effectiveGenomeSize ${gen_siz:-11624332}"
+                        fi
+                    else
+                        echo "--scaleFactorsMethod ${scl_pre:-readCount}"
+                    fi
+                ) \
+                $(if ${exact}; then echo "--exactScaling"; fi) \
+                $(
+                    if [[ "${typ_seq}" == "paired" ]]; then
+                        echo "--samFlagInclude 64"
+                    fi
+                ) \
+                $(
+                    if [[
+                           "${typ_seq}" == "paired" && "${usr_frg}" == "#N/A"
+                    ]]; then
+                        echo "--extendReads"
+                    elif [[ "${usr_frg}" != "#N/A" ]]; then
+                        echo "--extendReads ${usr_frg}"
+                    fi
+                )
+            ;;
+    esac
+
+    #  Remove the initial SLURM stderr and stdout TXT outfiles
+    rm "${err_ini}" "${out_ini}"
+fi

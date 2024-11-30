@@ -364,9 +364,7 @@ check_supplied_arg -a "${bin_siz}" -n "bin_siz"
 check_int_pos "${bin_siz}" "bin_siz"
 
 #  If supplied, check that region is properly formatted
-if [[ -n "${region}" ]]; then
-    check_region "${region}"
-fi
+if [[ -n "${region}" ]]; then check_region "${region}"; fi
 
 #  Check that --scl_fct and --norm are mutually exclusive; one must be
 #+ specified
@@ -599,7 +597,10 @@ fi
 
 #  Debug output for infiles and other values
 if ${verbose}; then
+    echo "########################################"
     echo "## Parsed vectors for parallelization ##"
+    echo "########################################"
+    echo ""
     debug_array_contents \
         "arr_infiles" "arr_outfiles" "arr_scl_fct" "arr_usr_frg"
     if ${slurm}; then
