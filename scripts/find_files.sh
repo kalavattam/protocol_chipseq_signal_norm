@@ -12,8 +12,8 @@ if ! ${interactive}; then set -eo pipefail; fi
 
 #  Set the path to the "scripts" directory
 if ${interactive}; then
-    ## WARNING: Change path if you're not Kris and `interactive=true` ##
-    dir_scr="${HOME}/tsukiyamalab/Kris/202X_protocol_ChIP/scripts"
+    ## WARNING: Change path as needed (if interactive=true) ##
+    dir_scr="${HOME}/repos/202X_protocol_ChIP/scripts"
 else
     dir_scr="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 fi
@@ -40,8 +40,8 @@ dir_fnc="${dir_scr}/functions"
 #  Set up paths, values, and parameters for interactive mode
 set_interactive() {
     #  Set hardcoded paths, values, etc.
-    ## WARNING: Change values if you're not Kris and `interactive=true` ##
-    dir_rep="${HOME}/tsukiyamalab/Kris/202X_protocol_ChIP"
+    ## WARNING: If interactive=true, change values as needed ##
+    dir_rep="${HOME}/repos/202X_protocol_ChIP"
     dir_fil="${dir_rep}/data/symlinked"
 
     #  Set hardcoded argument assignments

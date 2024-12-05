@@ -13,8 +13,8 @@ if ! ${interactive}; then set -euo pipefail; fi
 
 #  Set the path to the "scripts" directory
 if ${interactive}; then
-    ## WARNING: Change path if you're not Kris and `interactive=true` ##
-    dir_scr="${HOME}/tsukiyamalab/Kris/202X_protocol_ChIP/scripts"
+    ## WARNING: Change path as needed (if interactive=true) ##
+    dir_scr="${HOME}/repos/202X_protocol_ChIP/scripts"
 else
     dir_scr="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 fi
@@ -44,8 +44,8 @@ dir_fnc="${dir_scr}/functions"
 #  Set up paths, values, and parameters for interactive mode
 function set_interactive() {
     #  Set hardcoded paths, values, etc.
-    ## WARNING: Change values if you're not Kris and `interactive=true` ##
-    dir_bas="${HOME}/tsukiyamalab/Kris"
+    ## WARNING: If interactive=true, change values as needed ##
+    dir_bas="${HOME}/repos"
     dir_rep="${dir_bas}/202X_protocol_ChIP"
     dir_dat="${dir_rep}/data"
     dir_pro="${dir_dat}/processed"
@@ -65,7 +65,7 @@ function set_interactive() {
     dry_run=true
     retain="sc"  # "sp"
     threads=4
-    infiles="$(  ## WARNING: Change the search parameters as needed ##
+    infiles="$(  ## WARNING: Change search parameters as needed ##
         bash "${dir_scr}/find_files.sh" \
             --dir_fnd "${dir_ini}" \
             --pattern "*.bam" \

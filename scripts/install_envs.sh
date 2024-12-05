@@ -13,8 +13,8 @@ if ! ${interactive}; then set -euo pipefail; fi
 
 #  Set the path to the "scripts" directory
 if ${interactive}; then
-    ## WARNING: Change this path if you're not Kris and `interactive=true` ##
-    dir_scr="${HOME}/tsukiyamalab/Kris/202X_protocol_ChIP/scripts"
+    ## WARNING: Change path as needed (if interactive=true) ##
+    dir_scr="${HOME}/repos/202X_protocol_ChIP/scripts"
 else
     dir_scr="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 fi

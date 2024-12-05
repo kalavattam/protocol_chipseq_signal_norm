@@ -1,5 +1,9 @@
 #!/bin/bash
 
+#  submit_align_fastqs.sh
+#  KA
+
+
 #  If true, run script in debug mode
 debug=true
 

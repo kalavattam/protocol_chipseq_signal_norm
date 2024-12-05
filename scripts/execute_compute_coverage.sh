@@ -13,8 +13,8 @@ if ! ${interactive}; then set -euo pipefail; fi
 
 #  Set the path to the "scripts" directory
 if ${interactive}; then
-    ## WARNING: Change path if you're not Kris and `interactive=true` ##
-    dir_scr="${HOME}/tsukiyamalab/Kris/202X_protocol_ChIP/scripts"
+    ## WARNING: Change path as needed (if interactive=true) ##
+    dir_scr="${HOME}/repos/202X_protocol_ChIP/scripts"
 else
     dir_scr="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 fi
@@ -54,8 +54,8 @@ dir_fnc="${dir_scr}/functions"
 #  Set up paths, values, and parameters for interactive mode
 function set_interactive() {
     #  Set hardcoded paths, values, etc.
-    ## WARNING: Change values if you're not Kris and `interactive=true` ##
-    dir_bas="${HOME}/tsukiyamalab/Kris"
+    ## WARNING: If interactive=true, change values as needed ##
+    dir_bas="${HOME}/repos"
     dir_rep="${dir_bas}/202X_protocol_ChIP"
     dir_scr="${dir_rep}/scripts"
     dir_dat="${dir_rep}/data"
@@ -80,7 +80,7 @@ function set_interactive() {
     dry_run=true
     threads=8
     # infiles=""
-    infiles="$(  ## WARNING: Change the search parameters as needed ##
+    infiles="$(  ## WARNING: Change search parameters as needed ##
         bash "${dir_scr}/find_files.sh" \
             --dir_fnd "${dir_bam}" \
             --pattern "*.bam" \
@@ -387,8 +387,7 @@ esac
 check_supplied_arg -a "${bin_siz}" -n "bin_siz"
 check_int_pos "${bin_siz}" "bin_siz"
 
-#  Ensure --scl_fct and --table compatibility
-check_table_scaling_factor "str" "${table}" "${scl_fct}" "scl_fct"
+#  Ensure  and --table compatibility
 
 #  If applicable, validate the mutual exclusivity of --scl_fct with --norm or
 #+ --raw, and check that --scl_fct is properly formatted
@@ -405,8 +404,9 @@ fi
 #  Ensure mutual exclusivity: --norm and --raw
 check_mut_excl_flags "${norm}" "norm" "${raw:-false}" "raw"
 
-#  Warn about --norm or --raw overriding --table
+#  Warn about --scl_fct, --norm, or --raw overriding --table
 if [[ -n "${table}" ]]; then
+    check_table_scaling_factor "str" "${table}" "${scl_fct}" "scl_fct"
     check_table_scaling_factor "bool" "${table}" ${norm} "norm" 
     check_table_scaling_factor "bool" "${table}" ${raw:-false} "raw" 
 fi

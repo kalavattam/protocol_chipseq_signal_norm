@@ -1,5 +1,9 @@
 #!/bin/bash
 
+#  submit_calculate_scaling_factor_alpha.sh
+#  KA
+
+
 #  If true, run script in debug mode
 debug=true
 

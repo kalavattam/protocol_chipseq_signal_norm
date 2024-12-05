@@ -13,8 +13,8 @@ if ! ${interactive}; then set -euo pipefail; fi
 
 #  Set the path to the "scripts" directory
 if ${interactive}; then
-    ## WARNING: Change path if you're not Kris and `interactive=true` ##
-    dir_scr="${HOME}/tsukiyamalab/Kris/202X_protocol_ChIP/scripts"
+    ## WARNING: Change path as needed (if interactive=true) ##
+    dir_scr="${HOME}/repos/202X_protocol_ChIP/scripts"
 else
     dir_scr="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 fi
@@ -42,42 +42,52 @@ dir_fnc="${dir_scr}/functions"
 #  Set up paths, values, and parameters for interactive mode
 function set_interactive() {
     #  Set hardcoded paths, values, etc.
-    ## WARNING: Change values if you're not Kris and `interactive=true` ##
-    dir_bas="${HOME}/tsukiyamalab/Kris"
+    ## WARNING: If interactive=true, change values as needed ##
+    dir_bas="${HOME}/repos"  ## WARNING: Change as needed ##
     dir_rep="${dir_bas}/202X_protocol_ChIP"
     dir_scr="${dir_rep}/scripts"
+    dir_fnc="${dir_scr}/functions"
     dir_dat="${dir_rep}/data"
     dir_pro="${dir_dat}/processed"
-    {
-        aligner="bowtie2"
-        a_type="global"
-        req_flg=true
-        flg="$(if ${req_flg}; then echo "2"; else echo "NA"; fi)"
-        mapq=1
-    }
+
+    aligner="bowtie2"
+    a_type="global"
+    req_flg=true
+    flg="$(if ${req_flg}; then echo "2"; else echo "NA"; fi)"
+    mapq=1
+    det_bam="flag-${flg}_mapq-${mapq}"
+    det_cov="${aligner}_${a_type}_${det_bam}"
+    typ_cov="alpha"
+
     dir_aln="${dir_pro}/align_${aligner}_${a_type}"
-    dir_bam="${dir_aln}/flag-${flg}_mapq-${mapq}/sc"
-    dir_out="${dir_pro}/calculate_scaling_factor_alpha"
+    dir_bam="${dir_aln}/${det_bam}/sc"
+    dir_cov="${dir_pro}/compute_coverage"
+    dir_out="${dir_cov}/${det_cov}/${typ_cov}/tables"
+
+    pattern="*.bam"
+    include="IP*"
+    exclude="*Brn1*"
 
     #  Set hardcoded argument assignments
     verbose=true
-    dry_run=true
+    dry_run=false
     threads=16  # 8
-    infiles=$(  ## WARNING: Change the search parameters as needed ##
+    infiles="$(  ## WARNING: Change search parameters as needed ##
         bash "${dir_scr}/find_files.sh" \
             --dir_fnd "${dir_bam}" \
-            --pattern "*.bam" \
-            --include "IP*,*Hho1*"
-    )
+            --pattern "${pattern}" \
+            --include "${include}" \
+            --exclude "${exclude}"
+    )"
     table="${dir_dat}/raw/docs/measurements_siq_chip.tsv"
-    outfile="${dir_out}/IP_WT_G1-G2M-Q_Hho1_6336-6337.mc.txt"
+    outfile="${dir_out}/IP_WT_G1-G2M-Q_Hho1-Hmo1_6336-6337_7750-7751.tsv"
     flg_dep=true
     flg_len=true
     flg_in=false
     flg_mc=true
     err_out="${dir_out}/logs"
     nam_job="calc_sf_alpha"
-    slurm=false
+    slurm=true
     max_job=6
     time="0:30:00"
 }
@@ -323,7 +333,6 @@ if ${slurm}; then
         echo "    --error=${err_out}/${nam_job}.%A-%a.stderr.txt \\"
         echo "    --output=${err_out}/${nam_job}.%A-%a.stdout.txt \\"
         echo "    --array=1-${#arr_infiles[@]}%${max_job} \\"
-        echo "    --export=dir_scr=${dir_scr} \\"
         echo "    ${scr_sub} \\"
         echo "        --threads ${threads} \\"
         echo "        --infiles ${infiles} \\"
@@ -370,7 +379,6 @@ if ${slurm}; then
             --error=${err_out}/${nam_job}.%A-%a.stderr.txt \
             --output=${err_out}/${nam_job}.%A-%a.stdout.txt \
             --array=1-${#arr_infiles[@]}%${max_job} \
-            --export=dir_scr="${dir_scr}" \
             ${scr_sub} \
                 --threads ${threads} \
                 --infiles ${infiles} \

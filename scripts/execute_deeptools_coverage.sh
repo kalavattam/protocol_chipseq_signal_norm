@@ -5,7 +5,7 @@
 
 
 #  Run script in interactive/test mode (true) or command-line mode (false)
-interactive=true
+interactive=false
 
 #  Exit on errors, unset variables, or pipe failures if not in "interactive
 #+ mode"
@@ -13,8 +13,8 @@ if ! ${interactive}; then set -euo pipefail; fi
 
 #  Set the path to the "scripts" directory
 if ${interactive}; then
-    ## WARNING: Change path if you're not Kris and `interactive=true` ##
-    dir_scr="${HOME}/tsukiyamalab/Kris/202X_protocol_ChIP/scripts"
+    ## WARNING: Change path as needed (if interactive=true) ##
+    dir_scr="${HOME}/repos/202X_protocol_ChIP/scripts"
 else
     dir_scr="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 fi
@@ -56,8 +56,8 @@ dir_fnc="${dir_scr}/functions"
 #  Set up paths, values, and parameters for interactive mode
 function set_interactive() {
     #  Set hardcoded paths, values, etc.
-    ## WARNING: Change values if you're not Kris and `interactive=true` ##
-    dir_bas="${HOME}/tsukiyamalab/Kris"
+    ## WARNING: If interactive=true, change values as needed ##
+    dir_bas="${HOME}/repos"
     dir_rep="${dir_bas}/202X_protocol_ChIP"
     dir_scr="${dir_rep}/scripts"
     dir_dat="${dir_rep}/data"
@@ -82,7 +82,7 @@ function set_interactive() {
     dry_run=false
     threads=8
     # infiles=""
-    infiles="$(  ## WARNING: Change the search parameters as needed ##
+    infiles="$(  ## WARNING: Change search parameters as needed ##
         bash "${dir_scr}/find_files.sh" \
             --dir_fnd "${dir_bam}" \
             --pattern "*.bam" \
@@ -366,9 +366,11 @@ check_int_pos "${bin_siz}" "bin_siz"
 #  If supplied, check that region is properly formatted
 if [[ -n "${region}" ]]; then check_region "${region}"; fi
 
-#  Check that --scl_fct and --norm are mutually exclusive; one must be
-#+ specified
-check_mut_excl_args "scl_fct" "${scl_fct}" "norm" "${norm}"
+#  If --table is not specified, check that --scl_fct and --norm are mutually
+#+ exclusive, and that one is specified
+if [[ -z "${table}" ]]; then
+    check_mut_excl_args "scl_fct" "${scl_fct}" "norm" "${norm}"
+fi
 
 #  Validate --scl_fct or --norm
 if [[ -n "${scl_fct}" ]]; then

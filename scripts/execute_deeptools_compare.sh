@@ -5,7 +5,7 @@
 
 
 #  Run script in interactive/test mode (true) or command-line mode (false)
-interactive=true
+interactive=false
 
 #  Exit on errors, unset variables, or pipe failures if not in "interactive
 #+ mode"
@@ -13,8 +13,8 @@ if ! ${interactive}; then set -euo pipefail; fi
 
 #  Set the path to the "scripts" directory
 if ${interactive}; then
-    ## WARNING: Change path if you're not Kris and `interactive=true` ##
-    dir_scr="${HOME}/tsukiyamalab/Kris/202X_protocol_ChIP/scripts"
+    ## WARNING: Change path as needed (if interactive=true) ##
+    dir_scr="${HOME}/repos/202X_protocol_ChIP/scripts"
 else
     dir_scr="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 fi
@@ -42,7 +42,7 @@ dir_fnc="${dir_scr}/functions"
     source "${dir_fnc}/check_supplied_arg.sh"
     source "${dir_fnc}/debug_array_contents.sh"
     source "${dir_fnc}/echo_error.sh"
-    source "${dir_fnc}/echo_warning.sh"          #TODO
+    source "${dir_fnc}/echo_warning.sh"
     source "${dir_fnc}/exit_0.sh"
     source "${dir_fnc}/exit_1.sh"
     source "${dir_fnc}/handle_env.sh"
@@ -54,8 +54,8 @@ dir_fnc="${dir_scr}/functions"
 #  Set up paths, values, and parameters for interactive mode
 function set_interactive() {
     #  Set hardcoded paths, values, etc.
-    ## WARNING: Change values if you're not Kris and `interactive=true` ##
-    dir_bas="${HOME}/tsukiyamalab/Kris"
+    ## WARNING: If interactive=true, change values as needed ##
+    dir_bas="${HOME}/repos"
     dir_rep="${dir_bas}/202X_protocol_ChIP"
     dir_scr="${dir_rep}/scripts"
     dir_dat="${dir_rep}/data"
@@ -67,19 +67,19 @@ function set_interactive() {
     mapq=1
     det_bam="flag-${flg}_mapq-${mapq}"
     det_cov="${aligner}_${a_type}_${det_bam}"
-    typ_fil="bigwig"
+    cov_nrm="depth" # "norm"
+    dir_cov="${dir_pro}/compute_coverage/${det_cov}"
+    typ_fil="bam"  # "bigwig"
     case "${typ_fil}" in
         bedgraph|bdg|bg|bigwig|bw)
-            dir_cov="${dir_pro}/compute_coverage/${det_cov}"
+            dir_bdg="${dir_cov}/${cov_nrm}/tracks"
+            dir_bwg="${dir_cov}/${cov_nrm}/tracks"
             ;;
         bam)
             dir_aln="${dir_pro}/align_${aligner}_${a_type}"
             dir_bam="${dir_aln}/${det_bam}/sc"
             ;;
     esac
-    cov_nrm="norm"
-    dir_bdg="${dir_cov}/${cov_nrm}/tracks"
-    dir_bwg="${dir_cov}/${cov_nrm}/tracks"
     dir_trk="${dir_cov}/log2/${cov_nrm}/tracks"
     include="*Hho1*"  # "*Hmo1*"  # "*Brn1*"
     case "${typ_fil}" in
@@ -99,7 +99,7 @@ function set_interactive() {
 
     #  Set hardcoded argument assignments
     verbose=true
-    dry_run=true
+    dry_run=false
     threads=8
     fil_num="$(
         bash "${dir_scr}/find_files.sh" \
@@ -125,7 +125,7 @@ function set_interactive() {
     oper="log2"
     scl_fct=""
     norm=""
-    scl_pre=""
+    scl_pre="None"  # ""  # "depth"
     exact=true
     usr_frg=""
     err_out="${dir_trk}/logs"
@@ -365,29 +365,37 @@ case "${oper}" in
         ;;
 esac
 
-#  Check that only one of --scl_fct, --norm, or --scl_pre is assigned
-#MAYBE: Allow combinations, i.e., 'asmgt > 1'?
+#  Validate and process --scl_fct, --norm, and --scl_pre
 asmgt=0
+
+#  Count the number of non-empty assignments
 if [[ -n "${scl_fct}" ]]; then (( asmgt++ )) || true; fi
 if [[ -n "${norm}" ]];    then (( asmgt++ )) || true; fi
 if [[ -n "${scl_pre}" ]]; then (( asmgt++ )) || true; fi
 
-if (( asmgt > 1 )); then
-    echo \
-        "Error: Only one of --scl_fct, --norm, or --scl_pre can be" \
+#  Return an error message if none of the arguments are provided
+if (( asmgt == 0 )); then
+    echo_error \
+        "At least one of '--scl_fct', '--norm', or '--scl_pre' must be" \
         "specified." >&2
     exit_1
 fi
 
+#  Process --scl_fct if applicable
 if [[ -n "${scl_fct}" ]]; then
     check_str_delim "scl_fct" "${scl_fct}"
-elif [[ -n "${norm}" ]]; then
+    #TODO 1/2: Check that values assigned to scl_fct are positive floats (if
+    #TODO 2/2: not already performed)
+fi
+
+#  Process --norm if applicable
+if [[ -n "${norm}" ]]; then
     case "${norm}" in
-         raw|none) norm="None" ;;  #MAYBE: Disallow this selection
+        raw|none)  norm="None" ;;
         rpkm|fpkm) norm="RPKM" ;;
-              cpm) norm="CPM"  ;;
-              bpm) norm="BPM"  ;;
-             rpgc) norm="RPGC" ;;
+        cpm)       norm="CPM"  ;;
+        bpm)       norm="BPM"  ;;
+        rpgc)      norm="RPGC" ;;
         *)
             echo_error \
                 "Selection associated with '--norm' is not valid: '${norm}'." \
@@ -396,11 +404,32 @@ elif [[ -n "${norm}" ]]; then
             exit_1
             ;;
     esac
-elif [[ -n "${scl_pre}" ]]; then
+fi
+
+#  Process --scl_pre if applicable
+if [[ -n "${scl_pre}" ]]; then
     case "${scl_pre}" in
         depth) scl_pre="readCount" ;;
-          ses) scl_pre="SES"       ;;
-         none) scl_pre="None"      ;;  #MAYBE: Disallow this selection
+        ses)   scl_pre="SES"       ;;
+        none)
+            if [[ -z "${norm}" ]]; then
+                #  Issue a warning for '--scl_pre "none"' without
+                #+ '--norm <str>'
+                echo_warning \
+                    "Argument '--scl_pre none' was specified without" \
+                    "argument '--norm <str>', meaning the 'bamCompare'" \
+                    "operation ('--oper ${oper}') will proceed without" \
+                    "scaling, allowing sequencing depth to affect the" \
+                    "result."
+            elif [[ "${norm}" == "None" ]]; then
+                echo_warning \
+                    "Argument '--scl_fct none' and argument '--norm none'" \
+                    "were both specified. The 'bamCompare' operation" \
+                    "('--oper ${oper}') will proceed without scaling," \
+                    "allowing sequencing depth to affect the result."
+            fi
+            scl_pre="None"
+            ;;
         *)
             echo_error \
                 "Selection associated with '--scl_pre' is not valid:" \
@@ -408,6 +437,22 @@ elif [[ -n "${scl_pre}" ]]; then
             exit_1
             ;;
     esac
+fi
+
+#  Issue a warning for the dual selection of --scl_fct and --norm when --norm
+#+ is not "none", 
+if [[ -n "${scl_fct}" && -n "${norm}" && "${norm}" != "None" ]]; then
+    echo_warning \
+        "Using '--scl_fct <str>' with '--norm <str>' (when '--norm' is not" \
+        "'none') is not recommended. Options associated with '--norm' are" \
+        "designed to adjust for differences in sequenced read alignment" \
+        "counts (i.e., sequencing depth after alignment and processing)," \
+        "while values supplied to '--scl_fct <str>' typically account for" \
+        "compositional differences between libraries, such as those derived" \
+        "from exogenous spike-in DNA or scaling factors computed by tools" \
+        "like DESeq2 or edgeR. Combining these options can skew y-axis" \
+        "values, leading to misleading or unreliable relative or" \
+        "semiquantitative results."
 fi
 
 if [[ -n "${usr_frg}" ]]; then check_str_delim "usr_frg" "${usr_frg}"; fi
@@ -440,8 +485,55 @@ fi
 
 
 #  Debug summary output of resolved argument states ---------------------------
-#+ ...i.e., for --oper, --scl_fct, --norm, and --scl_pre
-#MAYBE: Allow combinations, i.e., 'asmgt > 1'?
+if ${verbose}; then
+    src_scl="None"
+    mth_nrm="None"
+    
+    #  Check and summarize resolved argument states for --scl_fct, --norm, and
+    #+ --scl_pre
+    if [[ -n "${scl_fct}" && -n "${norm}" && "${norm}" != "None" ]]; then
+        src_scl="'--scl_fct <str>' and '--norm <str>'"
+        mth_nrm="$(cat << EOM
+User-supplied scaling via '--scl_fct ${scl_fct}' combined with coverage \
+normalization via '--norm ${norm}'
+EOM
+)"
+    elif [[ -n "${scl_fct}" ]]; then
+        src_scl="'--scl_fct <str>'"
+        mth_nrm="User-supplied scaling via '--scl_fct ${scl_fct}'"
+    elif [[ -n "${norm}" ]]; then
+        src_scl="--norm"
+        if [[ "${norm}" != "None" ]]; then
+            mth_nrm="Coverage normalization via '--norm ${norm}'"
+        else
+            mth_nrm="Raw (unadjusted) coverage: '--norm ${norm}'"
+        fi
+    elif [[ -n "${scl_pre}" ]]; then
+        src_scl="--scl_pre"
+        if [[ "${scl_pre}" != "None" ]]; then
+            mth_nrm="$(cat << EOM
+deepTools-calculated scaling via '--scl_pre ${scl_pre}'
+EOM
+)"
+        else
+            mth_nrm="Unscaled data: '--scl_pre ${scl_pre}'"
+        fi
+    fi
+
+    #  Output resolved argument states
+    echo "##############################"
+    echo "## Resolved argument states ##"
+    echo "##############################"
+    echo ""
+    echo "- Comparison operation: ${oper}"
+    echo "- Scaling factor source: ${src_scl:-None}"
+    echo "- Normalization method: ${mth_nrm:-None}"
+    echo ""
+    echo ""
+fi
+
+
+#TODO: Allow combinations, i.e., 'asmgt > 1'?
 if ${verbose}; then
     if [[ -n "${norm}" ]]; then
         src_scl="--norm"

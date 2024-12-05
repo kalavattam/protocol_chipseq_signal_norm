@@ -40,8 +40,7 @@ To align ChIP-seq reads against both *S. cerevisiae* and *S. pombe* genomes, we 
 grabnode  # Request 1 core, 20 GB memory, 1 day, no GPU
 
 #  Define variables for directory paths, etc.
-## WARNING: Change path if you're not Kris ##
-dir_bas="${HOME}/tsukiyamalab/Kris"  ## WARNING: Change if not Kris ##
+dir_bas="${HOME}/repos"  ## WARNING: Change as needed ##
 dir_rep="${dir_bas}/202X_protocol_ChIP"
 dir_scr="${dir_rep}/scripts"
 dir_fnc="${dir_scr}/functions"
@@ -105,14 +104,14 @@ bash "${dir_scr}/compress_remove_files.sh" \
 grabnode  # Request 1 core, 20 GB memory, 1 day, no GPU
 
 #  Define variables for directory paths, etc.
-dir_bas="${HOME}/tsukiyamalab/Kris"  ## WARNING: Change if not Kris ##
+dir_bas="${HOME}/repos"  ## WARNING: Change as needed ##
 dir_rep="${dir_bas}/202X_protocol_ChIP"
 dir_scr="${dir_rep}/scripts"
 dir_fnc="${dir_scr}/functions"
 dir_raw="${dir_rep}/data/raw"
 dir_doc="${dir_raw}/docs"
-fil_tsv="datasets.tsv"  ## WARNING: Change as needed ##
-pth_tsv="${dir_doc}/${fil_tsv}"
+fil_tbl="datasets.tsv"  ## WARNING: Change as needed ##
+pth_tsv="${dir_doc}/${fil_tbl}"
 dir_log="${dir_raw}/logs"
 dir_sym="${dir_rep}/data/symlinked"
 env_nam="env_align"
@@ -171,7 +170,7 @@ bash "${dir_scr}/compress_remove_files.sh" \
 grabnode  # Request 1 core, 20 GB memory, 1 day, no GPU
 
 #  Define variables for directory paths, environment, threads, and infiles
-dir_bas="${HOME}/tsukiyamalab/Kris"  ## WARNING: Change if not Kris ##
+dir_bas="${HOME}/repos"  ## WARNING: Change as needed ##
 dir_rep="${dir_bas}/202X_protocol_ChIP"
 dir_scr="${dir_rep}/scripts"
 dir_fnc="${dir_scr}/functions"
@@ -181,7 +180,7 @@ dir_pro="${dir_dat}/processed"
 dir_trm="${dir_pro}/trim_atria"
 env_nam="env_analyze"
 threads=4
-infiles="$(  ## WARNING: Change the search parameters as needed ##
+infiles="$(  ## WARNING: Change search parameters as needed ##
     bash "${dir_scr}/find_files.sh" \
         --dir_fnd "${dir_sym}" \
         --pattern "*.fastq.gz" \
@@ -256,7 +255,7 @@ grabnode  # Request 1 core, 20 GB memory, 1 day, no GPU
 
 #  Define variables for directory paths, environment, driver script arguments,
 #+ and so on
-dir_bas="${HOME}/tsukiyamalab/Kris"  ## WARNING: Change if not Kris ##
+dir_bas="${HOME}/repos"  ## WARNING: Change as needed ##
 dir_rep="${dir_bas}/202X_protocol_ChIP"
 dir_scr="${dir_rep}/scripts"
 dir_fnc="${dir_scr}/functions"
@@ -273,7 +272,7 @@ flg="$(if ${req_flg}; then echo "2"; else echo "NA"; fi)"
 mapq=1
 str_idx="sc_sp_proc"
 pth_idx="${dir_idx}/${aligner}/${str_idx}"
-infiles="$(  ## WARNING: Change the search parameters as needed ##
+infiles="$(  ## WARNING: Change search parameters as needed ##
     bash "${dir_scr}/find_files.sh" \
         --dir_fnd "${dir_trm}" \
         --pattern "*.atria.fastq.gz" \
@@ -323,7 +322,7 @@ bash "${dir_scr}/execute_align_fastqs.sh" \
         2>> >(tee -a "${dir_out}/init/logs/${day}.execute.stderr.txt")
 
 #  Adjust variable 'infiles' assignment for filtering BAM files
-infiles="$(  ## WARNING: Change the search parameters as needed ##
+infiles="$(  ## WARNING: Change search parameters as needed ##
     bash "${dir_scr}/find_files.sh" \
         --dir_fnd "${dir_out}/init" \
         --pattern "*.bam" \
@@ -358,14 +357,11 @@ bash "${dir_scr}/execute_filter_bams.sh" \
 
 #  Cleanup: Compress large stdout and stderr files, and remove files with size
 #+ 0
-bash "${dir_scr}/compress_remove_files.sh" \
-    --dir_fnd "${dir_out}/init/logs"
+bash "${dir_scr}/compress_remove_files.sh" --dir_fnd "${dir_out}/init/logs"
 
-bash "${dir_scr}/compress_remove_files.sh" \
-    --dir_fnd "${dir_out}/sc/logs"
+bash "${dir_scr}/compress_remove_files.sh" --dir_fnd "${dir_out}/sc/logs"
 
-bash "${dir_scr}/compress_remove_files.sh" \
-    --dir_fnd "${dir_out}/sp/logs"
+bash "${dir_scr}/compress_remove_files.sh" --dir_fnd "${dir_out}/sp/logs"
 
 #  Optional: Check the contents of the logs directory
 # ls -lhaFG "${dir_trm}/init/logs"
@@ -375,19 +371,18 @@ bash "${dir_scr}/compress_remove_files.sh" \
 </details>
 <br />
 
-## K. Calculate and normalize coverage using fragment-based, spike-in, and siQ-ChIP methods.
-### 1. Calculate raw, unadjusted coverage.
+## K. Compute raw, normalized (fractional), spike-in-adjusted, and siQ-ChIP-normalized coverage.
+### 1. Compute raw coverage.
 <details>
-<summary><i>Text: Calculate raw, unadjusted coverage.</i></summary>
+<summary><i>Text: Compute raw or normalized (fractional) coverage.</i></summary>
 <br />
 
-...
-
+This following Bash code chunk provides an example of how to compute ChIP-seq coverage, either as raw (unadjusted for sequencing depth or other technical biases) or normalized (fractional) per [Dickson et al., *Sci Rep*, 2023](https://www.nature.com/articles/s41598-023-34430-2). The coverage type is determined by setting the variable `typ_cov` to `"raw"` or `"norm"`. BIGWIG and log output files will be saved to separate directories based on the selected coverage type.
 </details>
 <br />
 
 <details>
-<summary><i>Bash code: Calculate raw, unadjusted coverage.</i></summary>
+<summary><i>Bash code: Compute raw or normalized (fractional) coverage.</i></summary>
 
 ```bash
 #!/bin/bash
@@ -395,35 +390,38 @@ bash "${dir_scr}/compress_remove_files.sh" \
 #  Optional: Request an interactive node
 grabnode  # Request 1 core, 20 GB memory, 1 day, no GPU
 
-#  Define variables for directory paths, etc.
-dir_bas="${HOME}/tsukiyamalab/Kris"  ## WARNING: Change if not Kris ##
+#  Define variables for directory paths, environment, driver script arguments,
+#+ etc.
+dir_bas="${HOME}/repos"  ## WARNING: Change as needed ##
 dir_rep="${dir_bas}/202X_protocol_ChIP"
 dir_scr="${dir_rep}/scripts"
 dir_fnc="${dir_scr}/functions"
 dir_dat="${dir_rep}/data"
 dir_pro="${dir_dat}/processed"
-{
-    aligner="bowtie2"
-    a_type="global"
-    req_flg=true
-    flg="$(if ${req_flg}; then echo "2"; else echo "NA"; fi)"
-    mapq=1
-    det_bam="flag-${flg}_mapq-${mapq}"
-    det_cov="${aligner}_${a_type}_${det_bam}"
-}
+
+aligner="bowtie2"
+a_type="global"
+req_flg=true
+flg="$(if ${req_flg}; then echo "2"; else echo "NA"; fi)"
+mapq=1
+det_bam="flag-${flg}_mapq-${mapq}"
+det_cov="${aligner}_${a_type}_${det_bam}"
+typ_cov="norm"  ## WARNING: "raw" for unadjusted, "norm" for normalized ##
+
 dir_aln="${dir_pro}/align_${aligner}_${a_type}"
 dir_bam="${dir_aln}/${det_bam}/sc"
 dir_cov="${dir_pro}/compute_coverage"
-dir_trk="${dir_cov}/${det_cov}/raw/tracks"
+dir_trk="${dir_cov}/${det_cov}/${typ_cov}/tracks"
+
 env_nam="env_analyze"
 day="$(date '+%Y-%m%d')"
-nam_job="compute_coverage_raw"
+nam_job="compute_coverage_${typ_cov}"
 typ_out="bigwig"
 bin_siz=1
 
 #  Set hardcoded argument assignments, etc.
 threads=8
-infiles="$(  ## WARNING: Change the search parameters as needed ##
+infiles="$(  ## WARNING: Change search parameters as needed ##
     bash "${dir_scr}/find_files.sh" \
         --dir_fnd "${dir_bam}" \
         --pattern "*.bam"
@@ -465,7 +463,11 @@ bash "${dir_scr}/execute_compute_coverage.sh" \
     --dir_out "${dir_trk}" \
     --typ_out "${typ_out}" \
     --bin_siz "${bin_siz}" \
-    --raw \
+    $(
+        if [[ "${typ_cov}" == "norm" ]]; then
+            echo "--norm"
+        fi
+    ) \
     --err_out "${err_out}" \
     --nam_job "${nam_job}" \
     --slurm \
@@ -475,81 +477,122 @@ bash "${dir_scr}/execute_compute_coverage.sh" \
 #  Cleanup: Compress large stdout, stderr, LOG, and JSON files, and remove
 #+ files with size 0
 bash "${dir_scr}/compress_remove_files.sh" --dir_fnd "${err_out}"
-```
 
-```bash
-#!/bin/bash
-
-bash "${dir_scr}/find_files.sh" \
-    --dir_fnd "${dir_bam}" \
-    --pattern "*.bam" \
-    --chk_exc
+#  Optional: Check the contents of the logs directory
+# ls -lhaFG "${err_out}"
 ```
 </details>
 <br />
 
-### 2. Calculate normalized (fractional) coverage per Dickson et al., *Sci Rep* 2023.
+### 2. Compute coverage using the siQ-ChIP method.
 <details>
-<summary><i>Text: Calculate normalized (fractional) coverage per Dickson et al., </i>Sci Rep<i> 2023.</i></summary>
+<summary><i>Text: Compute coverage using the siQ-ChIP method.</i></summary>
 <br />
 
-...
+This section describes the steps to compute ChIP-seq coverage normalized using the siQ-ChIP method. The approach involves... `#TODO`. The procedure makes use of utility scripts and functions, environment handling, and parallel processing where applicable.
 
+**Steps overview:**
+1. *Set up directories and paths:* Define variables for key directories, data locations, and output destinations.
+2. *Activate environment and check dependencies:* Load the necessary computational environment and ensure essential dependencies are available.
+3. *Calculate alpha scaling factors:* Use the driver script to compute siQ-ChIP alpha scaling factors and save the sample-specific values to a TSV file. The script can utilize SLURM for job scheduling if available; otherwise, it will use GNU Parallel for parallel processing.
+4. *Sort and update output:* Sort the generated output file, replacing it with the sorted version.
+5. *Optional cleanup:* Compress large log files, and remove empty log files.
+
+**Important note:**
+- The [`execute_calculate_scaling_factor_alpha.sh`](https://github.com/kalavattam/202X_protocol_ChIP/blob/main/scripts/execute_calculate_scaling_factor_alpha.sh) script in this code chunk requires that *S. cerevisiae* IP BAM files follow a specific naming convention as outlined in the accompanying manuscript. The expected filename format:
+    ```txt
+    assay_genotype_state_treatment_factor_strain/replicate.
+    ```
+    + Required filename components:
+        - *assay:* Must be 'IP' or 'in', and must be followed by an underscore.
+        - *factor:* A required component preceded by an underscore.
+        - *strain/replicate:* A required component preceded by an underscore; it marks the end of the pattern.
+    + Optional filename components:
+        - *genotype:* If present, must be preceded by an underscore.
+        - *state:* An optional component with preferred values (e.g., 'G1', 'G2M', 'log', or 'Q') but can also be flexible; if present, it must be preceded by an underscore.
+        - *treatment:* If present, must be preceded by an underscore.
+- Failure to adhere to this naming convention may cause the script to fail.
 </details>
 <br />
 
 <details>
-<summary><i>Bash code: Calculate normalized (fractional) coverage per Dickson et al., </i>Sci Rep<i> 2023.</i></summary>
+<summary><i>Bash code: Generate a TSV file of sample-specific siQ-ChIP alpha scaling factors.</i></summary>
 
 ```bash
 #!/bin/bash
 
-#  Optional: Request an interactive node
-grabnode  # Request 1 core, 20 GB memory, 1 day, no GPU
+#  Optional: Request an interactive node --------------------------------------
+# grabnode  ## Uncomment to request 1 core, 20 GB memory, 1 day, no GPU ##
 
-#  Define variables for directory paths, etc.
-dir_bas="${HOME}/tsukiyamalab/Kris"  ## WARNING: Change if not Kris ##
+
+#  Define variables -----------------------------------------------------------
+#  Define directory paths
+dir_bas="${HOME}/repos"  ## Change as needed ##
 dir_rep="${dir_bas}/202X_protocol_ChIP"
 dir_scr="${dir_rep}/scripts"
 dir_fnc="${dir_scr}/functions"
 dir_dat="${dir_rep}/data"
+dir_raw="${dir_dat}/raw"
 dir_pro="${dir_dat}/processed"
-{
-    aligner="bowtie2"
-    a_type="global"
-    req_flg=true
-    flg="$(if ${req_flg}; then echo "2"; else echo "NA"; fi)"
-    mapq=1
-    det_bam="flag-${flg}_mapq-${mapq}"
-    det_cov="${aligner}_${a_type}_${det_bam}"
-}
+
+#  Define alignment and coverage details
+aligner="bowtie2"
+a_type="global"
+req_flg=true
+flg="$(if ${req_flg}; then echo "2"; else echo "NA"; fi)"
+mapq=1
+det_bam="flag-${flg}_mapq-${mapq}"
+det_cov="${aligner}_${a_type}_${det_bam}"
+typ_cov="alpha"
+
+#  Further define directory setup
 dir_aln="${dir_pro}/align_${aligner}_${a_type}"
 dir_bam="${dir_aln}/${det_bam}/sc"
 dir_cov="${dir_pro}/compute_coverage"
-dir_trk="${dir_cov}/${det_cov}/norm/tracks"
+dir_det="${dir_cov}/${det_cov}/${typ_cov}"
+dir_tbl="${dir_det}/tables"
+dir_trk="${dir_det}/tracks"
+eo_tbl="${dir_tbl}/logs"
+eo_trk="${dir_trk}/logs"
+
+#  Define environment, resources, and script arguments 
 env_nam="env_analyze"
-day="$(date '+%Y-%m%d')"
-nam_job="compute_coverage_norm"
-typ_out="bigwig"
+threads=8
+mes_tbl="${dir_raw}/docs/measurements_siq_chip.tsv"
 bin_siz=1
 
-#  Set hardcoded argument assignments, etc.
-threads=8
-infiles="$(  ## WARNING: Change the search parameters as needed ##
+#  Define file search parameters
+## Change search parameters as needed ##
+pattern="*.bam"
+include="IP*"
+exclude="*Brn1*"
+infiles="$(
     bash "${dir_scr}/find_files.sh" \
         --dir_fnd "${dir_bam}" \
-        --pattern "*.bam"
+        --pattern "${pattern}" \
+        --include "${include}" \
+        --exclude "${exclude}"
 )"
-err_out="${dir_trk}/logs"
 
-#  Using the date and outfile, set path and prefix for driver script logs
-exc_pth="${dir_trk}/logs/${day}.execute.${nam_job}"
+#  Define scripts and output files
+scr_tbl="execute_calculate_scaling_factor_${typ_cov}.sh"
+scr_trk="execute_deeptools_coverage.sh"
+fil_tbl="${dir_tbl}/IP_WT_G1-G2M-Q_Hho1-Hmo1_6336-6337_7750-7751.tsv"
 
-#  Create directory structure for storing output tables and tracks associated
-#+ with different normalization methods (alpha, spike, norm, raw)
-mkdir -p ${dir_cov}/${det_cov}/{alpha,spike}/tables/{docs,logs}
-mkdir -p ${dir_cov}/${det_cov}/{alpha,norm,raw,spike}/tracks/{docs,logs}
+#  Define log file prefixes
+day="$(date '+%Y-%m%d')"
+exc_tbl="${eo_tbl}/${day}.execute.${scr_tbl%.sh}.$(
+    basename "${fil_tbl}" .tsv
+)"
+exc_trk="${eo_trk}/${day}.${scr_trk%.sh}"
 
+
+#  Create required directories if necessary -----------------------------------
+mkdir -p ${dir_tbl}/{docs,logs}
+mkdir -p ${dir_trk}/{docs,logs}
+
+
+#  Activate the environment and check dependencies ----------------------------
 #  Source utility functions
 source "${dir_fnc}/check_program_path.sh"
 source "${dir_fnc}/echo_warning.sh"
@@ -558,60 +601,82 @@ source "${dir_fnc}/handle_env.sh"
 #  Activate the required environment
 handle_env "${env_nam}"
 
-#  Check the availability of necessary dependencies such as GNU Parallel,
-#+ Python, and SLURM sbatch
+#  Check the availability of necessary dependencies such as GNU Parallel and
+#+ SLURM sbatch
 check_program_path awk
 check_program_path parallel
 check_program_path python
+check_program_path samtools
 check_program_path sbatch ||
     echo_warning \
         "SLURM is not available on this system. Do not use the '--slurm'" \
         "flag with the driver script."
 
-#  Run the driver script to calculate per-sample spike-in-derived scaling
-#+ factors
-bash "${dir_scr}/execute_compute_coverage.sh" \
+
+#  Calculate siQ-ChIP alpha scaling factors -----------------------------------
+if [[ ! "${fil_tbl}" ]]; then
+    #  Run the driver script to generate a TSV file of sample-specific siQ-ChIP
+    #+ alpha scaling factors
+    bash "${dir_scr}/execute_calculate_scaling_factor_${typ_cov}.sh" \
+        --verbose \
+        --threads "${threads}" \
+        --infiles "${infiles}" \
+        --table "${mes_tbl}" \
+        --outfile "${fil_tbl}" \
+        --err_out "${eo_tbl}" \
+        --flg_dep \
+        --flg_len \
+        --flg_mc \
+        --slurm \
+             >> >(tee -a "${exc_tbl}.stdout.txt") \
+            2>> >(tee -a "${exc_tbl}.stderr.txt")
+
+    #  Sort the table of scaling factors by rows
+    awk 'NR == 1; NR > 1 && NF { print | "sort" }' "${fil_tbl}" \
+        > "${dir_tbl}/tmp.tsv"
+
+    #  Replace the original table with the sorted version
+    mv -f "${dir_tbl}/tmp.tsv" "${fil_tbl}"
+
+    # cat "${fil_tbl}"  ## Uncomment to check the table contents ##
+fi
+
+#  Generate alpha-scaled signal tracks ----------------------------------------
+#  Use the TSV file to generate alpha-scaled signal tracks
+bash "${dir_scr}/execute_deeptools_coverage.sh" \
     --verbose \
     --threads "${threads}" \
-    --infiles "${infiles}" \
+    --table "${fil_tbl}" \
+    --tbl_col "${typ_cov}" \
     --dir_out "${dir_trk}" \
-    --typ_out "${typ_out}" \
     --bin_siz "${bin_siz}" \
-    --norm \
-    --err_out "${err_out}" \
-    --nam_job "${nam_job}" \
+    --err_out "${eo_trk}" \
     --slurm \
-         >> >(tee -a "${exc_pth}.stdout.txt") \
-        2>> >(tee -a "${exc_pth}.stderr.txt")
+         >> >(tee -a "${exc_trk}.stdout.txt") \
+        2>> >(tee -a "${exc_trk}.stderr.txt")
 
-#  Cleanup: Compress large stdout, stderr, LOG, and JSON files, and remove
-#+ files with size 0
-bash "${dir_scr}/compress_remove_files.sh" --dir_fnd "${err_out}"
-```
 
-```bash
-#!/bin/bash
+#  Cleanup: Compress logs and remove empty files ------------------------------
+bash "${dir_scr}/compress_remove_files.sh" --dir_fnd "${eo_tbl}"
+bash "${dir_scr}/compress_remove_files.sh" --dir_fnd "${eo_trk}"
 
-bash "${dir_scr}/find_files.sh" \
-    --dir_fnd "${dir_bam}" \
-    --pattern "*.bam" \
-    --chk_exc
+# ls -lhaFG "${eo_tbl}"  ## Uncomment to check directory for table logs ##
+# ls -lhaFG "${eo_trk}"  ## Uncomment to check directory for track logs ##
 ```
 </details>
 <br />
 
-### 3. Calculate and normalize coverage using spike-in signal.
+### 3. Compute coverage using the spike-in method.
 <details>
-<summary><i>Text: Calculate and normalize coverage using spike-in signal.</i></summary>
+<summary><i>Text: Compute coverage using the spike-in method.</i></summary>
 <br />
 
-This section describes the steps to calculate and normalize ChIP-seq coverage using spike-in signal.
-
+This section describes the steps to calculate spike-in normalized ChIP-seq coverage.
 </details>
 <br />
 
 <details>
-<summary><i>Bash code: Calculate and normalize coverage using spike-in signal.</i></summary>
+<summary><i>Bash code: Generate a TSV file of sample-specific spike-in-derived scaling factors.</i></summary>
 
 ```bash
 #!/bin/bash
@@ -620,7 +685,7 @@ This section describes the steps to calculate and normalize ChIP-seq coverage us
 grabnode  # Request 1 core, 20 GB memory, 1 day, no GPU
 
 #  Define variables for directory paths, etc.
-dir_bas="${HOME}/tsukiyamalab/Kris"  ## WARNING: Change if not Kris ##
+dir_bas="${HOME}/repos"  ## WARNING: Change as needed ##
 dir_rep="${dir_bas}/202X_protocol_ChIP"
 dir_scr="${dir_rep}/scripts"
 dir_fnc="${dir_scr}/functions"
@@ -645,7 +710,7 @@ day="$(date '+%Y-%m%d')"
 #  Set hardcoded argument assignments, etc.
 threads=8
 include="IP*,*Brn1*"  # include="IP*,*Hmo1*"  # include="IP*,*Hho1*"
-infiles="$(  ## WARNING: Change the search parameters as needed ##
+infiles="$(  ## WARNING: Change search parameters as needed ##
     bash "${dir_scr}/find_files.sh" \
         --dir_fnd "${dir_bam}" \
         --pattern "*.bam" \
@@ -661,7 +726,7 @@ err_out="${dir_out}/logs"
 scr_mng="${HOME}/miniforge3/etc/profile.d/conda.sh"
 
 #  Using the date and outfile, set path and prefix for driver script logs
-exc_pth="${dir_out}/logs/${day}.execute.$(basename "${outfile}" .tsv)"
+exc_tbl="${dir_out}/logs/${day}.execute.$(basename "${outfile}" .tsv)"
 
 #  Create directory structure for storing output tables and tracks associated
 #+ with different normalization methods (alpha, spike, norm, raw)
@@ -697,8 +762,8 @@ bash "${dir_scr}/execute_calculate_scaling_factor_spike.sh" \
     --err_out "${err_out}" \
     --flg_mc \
     --slurm \
-         > >(tee -a "${exc_pth}.stdout.txt") \
-        2> >(tee -a "${exc_pth}.stderr.txt")
+         > >(tee -a "${exc_tbl}.stdout.txt") \
+        2> >(tee -a "${exc_tbl}.stderr.txt")
 
 #  Relativize the scaling factors to the maximum IP value, and sort the outfile
 #+ rows
@@ -712,6 +777,11 @@ mv -f "${dir_out}/tmp.txt" "${outfile}"
 #  Optional: Check the contents of the outfile
 # cat "${outfile}"
 ```
+</details>
+<br />
+
+<details>
+<summary><i>Bash code: Compute alpha-scaled coverage using the TSV file.</i></summary>
 
 `## #INPROGRESS Draft code ##`
 ```bash
@@ -724,7 +794,7 @@ outtype="bigwig"
 time="0:30:00"
 dir_out="${dir_pro}/compute_coverage/${det_cov}/spike/tracks"
 err_out="${dir_out}/logs"
-exc_pth="${err_out}/${day}.execute.${nam_job}"
+exc_tbl="${err_out}/${day}.execute.${nam_job}"
 
 #  Loop over each line (skipping the header) to extract 'sample' and 'scaled' columns
 while IFS=$'\t' read -r sample sf scaled main_ip spike_ip main_in spike_in; do
@@ -760,8 +830,8 @@ while IFS=$'\t' read -r sample sf scaled main_ip spike_ip main_in spike_in; do
                     --outtype "${outtype}" \\
                     --threads ${threads} \\
                     --bin_siz 1 \\
-                         > >(tee -a "${exc_pth}.${outstem}.stdout.txt") \\
-                        2> >(tee -a "${exc_pth}.${outstem}.stderr.txt")
+                         > >(tee -a "${exc_tbl}.${outstem}.stdout.txt") \\
+                        2> >(tee -a "${exc_tbl}.${outstem}.stderr.txt")
 EOM
     echo ""
     echo ""
@@ -780,8 +850,8 @@ EOM
                 --outtype "${outtype}" \
                 --threads ${threads} \
                 --bin_siz 1 \
-                     > >(tee -a "${exc_pth}.${outstem}.stdout.txt") \
-                    2> >(tee -a "${exc_pth}.${outstem}.stderr.txt")
+                     > >(tee -a "${exc_tbl}.${outstem}.stdout.txt") \
+                    2> >(tee -a "${exc_tbl}.${outstem}.stderr.txt")
 
     sleep 0.3
 done < <(tail -n +2 "${outfile}")
@@ -790,149 +860,6 @@ done < <(tail -n +2 "${outfile}")
 
 
 #TODO ...
-#  Cleanup: Compress large stdout and stderr files, and remove files with size
-#+ 0
-bash "${dir_scr}/compress_remove_files.sh" \
-    --dir_fnd "${err_out}"
-
-#  Optional: Check the contents of the logs directory
-# ls -lhaFG "${err_out}"
-```
-</details>
-<br />
-
-### 2. Calculate and normalize coverage using the siQ-ChIP (alpha) method.
-<details>
-<summary><i>Text: Calculate and normalize coverage using the siQ-ChIP (alpha) method.</i></summary>
-<br />
-
-This section describes the steps to calculate and normalize ChIP-seq coverage using the siQ-ChIP (alpha) method. The approach involves... `#TODO`. The procedure makes use of utility scripts and functions, environment handling, and parallel processing where applicable.
-
-**Steps overview:**
-1. *Set up directories and paths:* Define variables for key directories, data locations, and output destinations.
-2. *Activate environment and check dependencies:* Load the necessary computational environment and ensure essential dependencies are available.
-3. *Calculate alpha scaling factors:* Run the driver script to compute siQ-ChIP alpha scaling factors. The script can utilize SLURM for job scheduling if available; otherwise, it will fall back on using GNU Parallel for parallel processing.
-4. *Sort and update output:* Sort the generated output file, replacing it with the sorted version.
-5. *Optional cleanup:* Compress large log files, and remove empty log files.
-
-**Important note:**
-- The `execute_*.sh` script in this code chunk requires that *S. cerevisiae* IP BAM files follow a specific naming convention as outlined in the *Bio-protocol* manuscript. The expected filename format:
-    ```txt
-    assay_genotype_state_treatment_factor_strain/replicate.
-    ```
-    + Required filename components:
-        - *assay:* Must be 'IP' or 'in', and must be followed by an underscore.
-        - *factor:* A required component preceded by an underscore.
-        - *strain/replicate:* A required component preceded by an underscore; it marks the end of the pattern.
-    + Optional filename components:
-        - *genotype:* If present, must be preceded by an underscore.
-        - *state:* An optional component with preferred values (e.g., 'G1', 'G2M', 'log', or 'Q') but can also be flexible; if present, it must be preceded by an underscore.
-        - *treatment:* If present, must be preceded by an underscore.
-- Failure to adhere to this naming convention may cause the script to fail.
-</details>
-<br />
-
-<details>
-<summary><i>Bash code: Calculate and normalize coverage using the siQ-ChIP (alpha) method.</i></summary>
-
-```bash
-#!/bin/bash
-
-#  Optional: Request an interactive node
-grabnode  # Request 1 core, 20 GB memory, 1 day, no GPU
-
-#  Define variables for directory paths, etc.
-dir_bas="${HOME}/tsukiyamalab/Kris"  ## WARNING: Change if not Kris ##
-dir_rep="${dir_bas}/202X_protocol_ChIP"
-dir_scr="${dir_rep}/scripts"
-dir_fnc="${dir_scr}/functions"
-dir_dat="${dir_rep}/data"
-dir_pro="${dir_dat}/processed"
-{
-    aligner="bowtie2"
-    a_type="global"
-    req_flg=true
-    flg="$(if ${req_flg}; then echo "2"; else echo "NA"; fi)"
-    mapq=1
-    det_bam="flag-${flg}_mapq-${mapq}"
-    det_cov="${aligner}_${a_type}_${det_bam}"
-}
-dir_aln="${dir_pro}/align_${aligner}_${a_type}"
-dir_bam="${dir_aln}/${det_bam}/sc"
-dir_cov="${dir_pro}/compute_coverage"
-dir_out="${dir_cov}/${det_cov}/alpha/tables"
-env_nam="env_analyze"
-day="$(date '+%Y-%m%d')"
-
-#  Set hardcoded argument assignments
-threads=8
-include="IP*"
-exclude="*Brn1*"
-infiles="$(  ## WARNING: Change the search parameters as needed ##
-    bash "${dir_scr}/find_files.sh" \
-        --dir_fnd "${dir_bam}" \
-        --pattern "*.bam" \
-        --include "${include}" \
-        --exclude "${exclude}"
-)"
-table="${dir_dat}/raw/docs/measurements_siq_chip.tsv"
-outfile="${dir_out}/IP_WT_G1-G2M-Q_Hho1-Hmo1_6336-6337_7750-7751.tsv"
-err_out="${dir_out}/logs"
-scr_mng="${HOME}/miniforge3/etc/profile.d/conda.sh"
-
-#  Set base path and prefix for stdout/stderr logs, using date and output
-#+ filename
-exc_pth="${dir_out}/logs/${day}.execute.$(basename "${outfile}" .txt)"
-
-#  Create output directory structure for tables of siQ-ChIP alpha scaling
-#+ factors
-mkdir -p ${dir_out}/{docs,logs}
-
-#  Source utility functions
-source "${dir_fnc}/check_program_path.sh"
-source "${dir_fnc}/echo_warning.sh"
-source "${dir_fnc}/handle_env.sh"
-
-#  Activate the required environment
-handle_env "${env_nam}"
-
-#  Check the availability of necessary dependencies such as GNU Parallel and
-#+ SLURM sbatch
-check_program_path awk
-check_program_path parallel
-check_program_path python
-check_program_path samtools
-check_program_path sbatch ||
-    echo_warning \
-        "SLURM is not available on this system. Do not use the '--slurm'" \
-        "flag with the driver script."
-
-#  Run the driver script to calculate per-sample spike-in-derived scaling
-#+ factors
-bash "${dir_scr}/execute_calculate_scaling_factor_alpha.sh" \
-    --verbose \
-    --threads "${threads}" \
-    --infiles "${infiles}" \
-    --table "${table}" \
-    --outfile "${outfile}" \
-    --err_out "${err_out}" \
-    --flg_dep \
-    --flg_len \
-    --flg_mc \
-    --slurm \
-         > >(tee -a "${exc_pth}.stdout.txt") \
-        2> >(tee -a "${exc_pth}.stderr.txt")
-
-#  Sort the outfile rows
-awk 'NR == 1; NR > 1 && NF { print | "sort" }' "${outfile}" \
-    > "${dir_out}/tmp.txt"
-
-#  Replace the original outfile with the sorted version
-mv -f "${dir_out}/tmp.txt" "${outfile}"
-
-#  Optional: Check the contents of the outfile
-# cat "${outfile}"
-
 #  Cleanup: Compress large stdout and stderr files, and remove files with size
 #+ 0
 bash "${dir_scr}/compress_remove_files.sh" \
