@@ -371,8 +371,7 @@ bash "${dir_scr}/compress_remove_files.sh" --dir_fnd "${dir_out}/sp/logs"
 </details>
 <br />
 
-## K. Compute raw, normalized (fractional), spike-in-adjusted, and siQ-ChIP-normalized coverage.
-### 1. Compute raw coverage.
+## J. Compute normalized (proportional) or raw coverage.
 <details>
 <summary><i>Text: Compute raw or normalized (fractional) coverage.</i></summary>
 <br />
@@ -484,9 +483,9 @@ bash "${dir_scr}/compress_remove_files.sh" --dir_fnd "${err_out}"
 </details>
 <br />
 
-### 2. Compute coverage using the siQ-ChIP method.
+## K. Compute coverage with the sans spike-in quantitative ChIP-seq (siQ-ChIP) method.
 <details>
-<summary><i>Text: Compute coverage using the siQ-ChIP method.</i></summary>
+<summary><i>Text: Compute coverage with the sans spike-in quantitative ChIP-seq (siQ-ChIP) method.</i></summary>
 <br />
 
 This section describes the steps to compute ChIP-seq coverage normalized using the siQ-ChIP method. The approach involves... `#TODO`. The procedure makes use of utility scripts and functions, environment handling, and parallel processing where applicable.
@@ -527,7 +526,7 @@ This section describes the steps to compute ChIP-seq coverage normalized using t
 
 #  Define variables -----------------------------------------------------------
 #  Define directory paths
-dir_bas="${HOME}/repos"  ## Change as needed ##
+dir_bas="${HOME}/repos"  ## WARNING: Change as needed ##
 dir_rep="${dir_bas}/202X_protocol_ChIP"
 dir_scr="${dir_rep}/scripts"
 dir_fnc="${dir_scr}/functions"
@@ -562,7 +561,7 @@ mes_tbl="${dir_raw}/docs/measurements_siq_chip.tsv"
 bin_siz=1
 
 #  Define file search parameters
-## Change search parameters as needed ##
+## WARNING: Change search parameters as needed ##
 pattern="*.bam"
 include="IP*"
 exclude="*Brn1*"
@@ -666,7 +665,7 @@ bash "${dir_scr}/compress_remove_files.sh" --dir_fnd "${eo_trk}"
 </details>
 <br />
 
-### 3. Compute coverage using the spike-in method.
+## L. Compute coverage using the spike-in method.
 <details>
 <summary><i>Text: Compute coverage using the spike-in method.</i></summary>
 <br />
@@ -765,7 +764,7 @@ bash "${dir_scr}/execute_calculate_scaling_factor_spike.sh" \
          > >(tee -a "${exc_tbl}.stdout.txt") \
         2> >(tee -a "${exc_tbl}.stderr.txt")
 
-#  Relativize the scaling factors to the maximum IP value, and sort the outfile
+#  Relativize the scaling factors to the maximum value, and sort the outfile
 #+ rows
 python "${dir_scr}/relativize_scaling_factors.py" --infile "${outfile}" \
     | awk 'NR == 1; NR > 1 && NF { print | "sort" }' \

@@ -307,8 +307,9 @@ else
     echo -e "${mp}\t${sf}\t${num_mp}\t${num_sp}\t${num_mn}\t${num_sn}" \
         >> "${outfile}"
 
-    #  If --flg_in, print the input sample and scaling factor (1), as well as
-    #+ num_{m|s}{p|n} values, to the outfile
+    #  If --flg_in, print the input sample and scaling factor (1, because we
+    #+ don't scale the input signal track), as well as num_{m|s}{p|n} values,
+    #+ to the outfile
     if ${flg_in}; then
         echo -e "${mn}\t1\t${num_mp}\t${num_sp}\t${num_mn}\t${num_sn}" \
             >> "${outfile}"

@@ -12,7 +12,7 @@ if ! ${interactive}; then set -eo pipefail; fi
 
 #  Set the path to the "scripts" directory
 if ${interactive}; then
-    ## WARNING: Change path as needed (if interactive=true) ##
+    ## WARNING: If interactive=true, change path as needed ##
     dir_scr="${HOME}/repos/202X_protocol_ChIP/scripts"
 else
     dir_scr="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"

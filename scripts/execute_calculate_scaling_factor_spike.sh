@@ -13,7 +13,7 @@ if ! ${interactive}; then set -euo pipefail; fi
 
 #  Set the path to the "scripts" directory
 if ${interactive}; then
-    ## WARNING: Change path as needed (if interactive=true) ##
+    ## WARNING: If interactive=true, change path as needed ##
     dir_scr="${HOME}/repos/202X_protocol_ChIP/scripts"
 else
     dir_scr="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -111,12 +111,12 @@ Usage:
 
 Description:
   execute_calculate_scaling_factor_spike.sh orchestrates the calculation of
-  spike-in-derived scaling factors for ChIP-seq data. To handle groups of
-  sample BAM data efficiently, the script uses parallelized processing via
-  SLURM scheduling or GNU Parallel. The main workflow involves counting
-  alignments in main and spike-in S. cerevisiae BAM files, calculating scaling
-  coefficients using a custom Python script, and outputting results to a
-  specified file.
+  spike-in-derived scaling factors for ChIP-seq data. The main workflow
+  involves counting alignments in main and spike-in S. cerevisiae BAM files,
+  calculating scaling coefficients using a custom Python script, and outputting
+  results to a specified table file. To handle groups of sample BAM data
+  efficiently, the script uses parallelized processing via SLURM scheduling or
+  GNU Parallel.
 
 Arguments:
    -h, --help     Display this help message and exit (0).
@@ -174,7 +174,9 @@ Notes:
     dividing the user-specified 'threads' value by a denominator ('denom'),
     which is set (hardcoded) to 4. The value of 'threads' is then reset to
     'denom'. For example, if the user-specified 'threads' value is 8, 'par_job'
-    would be set to 2 (8 divided by 4) and 'threads' would be reset to 4.
+    would be set to 2 (8 divided by 4) and 'threads' would be reset to 4. Thus,
+    2 jobs would be run by GNU Parallel (because 'par_job=2'), each with 4
+    threads (because 'threads=4').
   - This and the accompanying submission script assume a specific directory and
     naming structure for the infiles:
       + The primary infiles are coordinate-sorted S. cerevisiae ("sc") IP BAM
