@@ -140,7 +140,7 @@ def relativize(df, scaling_col, include_input, round_digits):
 
 def parse_args():
     """
-    Parse command-line arguments.
+    Parse command line arguments.
 
     Args:
         ...
@@ -201,7 +201,7 @@ def parse_args():
 
 
 def main():
-    #  Use command-line arguments or interactive setup based on `interactive`
+    #  Use command line arguments or interactive setup based on `interactive`
     if interactive:
         args = set_interactive()
     else:

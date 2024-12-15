@@ -50,6 +50,7 @@ column_name_map = {
     'volume_in': [
         'volume_in',
         'vol_in',
+        'v_in',
         'input sample volume'
     ],
     'volume_ip': [
@@ -57,26 +58,32 @@ column_name_map = {
         'volume_ip',
         'vol_all',
         'vol_ip',
+        'v_all',
+        'v_ip',
         'total volume before removal of input'
     ],
     'mass_in': [
         'mass_in',
+        'm_in',
         'input DNA mass (ng)',
         'input DNA mass'
     ],
     'mass_ip': [
         'mass_ip',
+        'm_ip',
         'IP DNA mass (ng)',
         'IP DNA mass'
     ],
     'conc_in': [
         'conc_in',
+        'con_in',
         'concentration_in',
         'input DNA concentration (ng/µL)',
         'input DNA concentration'
     ],
     'conc_ip': [
         'conc_ip',
+        'con_ip',
         'concentration_ip',
         'IP DNA concentration (ng/µL)',
         'IP DNA concentration'
@@ -97,11 +104,13 @@ column_name_map = {
     ],
     'depth_in': [
         'depth_in',
+        'dep_in',
         'input sequencing depth',
         'input depth'
     ],
     'depth_ip': [
         'depth_ip',
+        'dep_ip',
         'IP sequencing depth',
         'IP depth'
     ]
@@ -136,7 +145,7 @@ def parse_bam_filename(filename):
     """
     Parse a BAM filename into its components based on the naming scheme.
 
-    The expected filename format is:
+    The expected filename format is as follows:
         assay_genotype_state_treatment_factor_strain/replicate.
     
     Required filename components:
@@ -235,10 +244,10 @@ def output_for_shell(**kwargs):
 
 def parse_args():
     """
-    Parse command-line arguments.
+    Parse command line arguments.
 
     Args:
-        ...
+        ... # TODO
     """
     parser = argparse.ArgumentParser(
         description="Parse BAM file and retrieve matching row from TSV/CSV."
@@ -273,7 +282,7 @@ def parse_args():
 
 
 def main():
-    #  Use command-line arguments or interactive setup based on `interactive`
+    #  Use command line arguments or interactive setup
     if interactive:
         args = set_interactive()
     else:

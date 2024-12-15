@@ -84,7 +84,7 @@ def set_interactive():
     """Set paths and parameters for interactive mode."""
     #  Set general paths
     dir_bas = "/home/kalavatt/tsukiyamalab/Kris"  # WARNING: Change as needed #
-    dir_rep = f"{dir_bas}/202X_protocol_ChIP"
+    dir_rep = f"{dir_bas}/protocol_chipseq_signal_norm"
     dir_dat = f"{dir_rep}/data"
     dir_pro = f"{dir_dat}/processed"
 
@@ -392,7 +392,7 @@ def write_bedgraph(coverage, outfile, bin_siz):
 
 def parse_args():
     """
-    Parse command-line arguments.
+    Parse command line arguments.
 
     Args:
          -v, --verbose (flag): Increase output verbosity.
@@ -511,7 +511,7 @@ def parse_args():
 
 
 def main():
-    #  Use command-line arguments or interactive setup based on `interactive`
+    #  Use command line arguments or interactive setup based on `interactive`
     args = set_interactive() if interactive else parse_args()
 
     #  Print verbose output

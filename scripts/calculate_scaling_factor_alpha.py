@@ -133,7 +133,7 @@ def calculate_alpha(
 
 def parse_args():
     """
-    Parse command-line arguments.
+    Parse command line arguments.
 
     Args:
         -mp, --mass_ip   (float): Mass of the IP sample.
@@ -228,7 +228,7 @@ def main():
     Execute the primary control flow for the script.
 
     main() facilitates the calculation of the siQ-ChIP alpha scaling factor for
-    ChIP-seq datasets by parsing command-line arguments for the required IP
+    ChIP-seq datasets by parsing command line arguments for the required IP
     and input experimental values. Then, the function calculates the siQ-ChIP
     alpha scaling factor based on these inputs and prints the result.
 

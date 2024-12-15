@@ -138,7 +138,7 @@ def calculate_scaling_factor(main_ip, spike_ip, main_in, spike_in):
 
 def parse_args():
     """
-    Parse command-line arguments.
+    Parse command line arguments.
 
     Args:
         -mp, --main_ip  (int): The number of "main" alignments for the ChIP-seq
@@ -210,7 +210,7 @@ def main():
     Execute the primary control flow for the script.
 
     main() facilitates the calculation of a spike-in-derived scaling factor for
-    ChIP-seq samples. It parses command-line arguments for the number of
+    ChIP-seq samples. It parses command line arguments for the number of
     alignments from both IP and input samples, calculates ratios of spike-in to
     main alignments for both sample types, and then computes a final scaling
     factor by dividing the input sample ratio by the IP sample ratio.
@@ -224,7 +224,7 @@ def main():
     Returns:
         Outputs the final scaling factor.
     """
-    #  Use command-line arguments or interactive setup based on `interactive`
+    #  Use command line arguments or interactive setup based on `interactive`
     if interactive:
         args = set_interactive()
     else:

@@ -14,7 +14,7 @@ if ! ${interactive}; then set -euo pipefail; fi
 #  Set the path to the "scripts" directory
 if ${interactive}; then
     ## WARNING: If interactive=true, change path as needed ##
-    dir_scr="${HOME}/repos/202X_protocol_ChIP/scripts"
+    dir_scr="${HOME}/repos/protocol_chipseq_signal_norm/scripts"
 else
     dir_scr="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 fi
@@ -44,7 +44,7 @@ function set_interactive() {
     ## WARNING: If interactive=true, change values as needed ##
     #  Set hardcoded paths, values, etc.
     dir_bas="${HOME}/repos"
-    dir_rep="${dir_bas}/202X_protocol_ChIP"
+    dir_rep="${dir_bas}/protocol_chipseq_signal_norm"
     dir_dat="${dir_rep}/data"
     dir_raw="${dir_dat}/raw"
     dir_doc="${dir_raw}/docs"
@@ -135,7 +135,7 @@ Notes:
   - The script requires a properly formatted TSV (tab-separated value) file
     with a header and columns for run accession numbers, custom file names, and
     URLs (FTP or HTTPS). For paired-end files, URLs in the TSV should be
-    separated by semicolons. See TSV files in 202X_protocol_ChIP/data/raw/docs
+    separated by semicolons. See TSV files in protocol_chipseq_signal_norm/data/raw/docs
     for examples.
   - Symbolic links are created in 'dir_sym' with names specified by the 
     'custom_name' column in the TSV file.

@@ -2,20 +2,43 @@
 ChIP-seq Protocol Workflow
 ==========================
 
-**Supporting code and documentation for the *Bio-protocol* manuscript "An Introduction to ChIP-seq Data ~~Analysis~~Processing Using *Saccharomyces cerevisiae* with a Focus on Relative and Quantitative Signal Normalization."**
+**Supporting code and documentation for the *bioRxiv* manuscript "ChIP-seq data processing and relative and quantitative signal normalization for *Saccharomyces cerevisiae*."**
 
 **Author:** *Kris Alavattam*
 
-This notebook provides a guide to the ChIP-seq data analysis workflow detailed in the manuscript, including code snippets, explanations, and step-by-step instructions.
+This notebook provides a guide to the ChIP-seq data processing workflow detailed in the manuscript, including code snippets, explanations, and step-by-step instructions.
 
 Note: If using a high-performance computing cluster (HPCC), request an interactive node to ensure adequate resources for running code in the below chunks. The specific command (e.g., `grabnode` at Fred Hutch Cancer Center) will depend on the job scheduler setup. This step is unnecessary if running the code on a local machine.
 
-Note: For detailed instructions on keeping your local version of the [`202X_protocol_ChIP`](https://github.com/kalavattam/202X_protocol_ChIP) repository up-to-date, please see [this GitHub gist](https://gist.github.com/kalavattam/76f123011e8dcd77b445a72d23a64036).
+Note: For detailed instructions on keeping your local version of the [`protocol_chipseq_signal_norm`](https://github.com/kalavattam/protocol_chipseq_signal_norm) repository up-to-date, please see [this GitHub gist](https://gist.github.com/kalavattam/76f123011e8dcd77b445a72d23a64036).
 
 ---
 <br />
 
-## F. Generate Bowtie 2 indices from the concatenated FASTA file.
+## Procedures
+`#TODO`
+<br />
+<br />
+
+## Data analysis
+### A. Prepare and concatenate FASTA and GFF3 files for model and spike-in organisms.
+<details>
+<summary><i>Text: Prepare and concatenate FASTA and GFF3 files for model and spike-in organisms.</i></summary>
+<br />
+
+`#TODO`
+</details>
+<br />
+
+<details>
+<summary><i>Bash code: Prepare and concatenate FASTA and GFF3 files for model and spike-in organisms.</i></summary>
+<br />
+
+`#TODO`
+</details>
+<br />
+
+### B. Generate Bowtie 2 indices from the concatenated FASTA file.
 <details>
 <summary><i>Text: Generate Bowtie 2 indices from the concatenated FASTA file.</i></summary>
 <br />
@@ -41,7 +64,7 @@ grabnode  # Request 1 core, 20 GB memory, 1 day, no GPU
 
 #  Define variables for directory paths, etc.
 dir_bas="${HOME}/repos"  ## WARNING: Change as needed ##
-dir_rep="${dir_bas}/202X_protocol_ChIP"
+dir_rep="${dir_bas}/protocol_chipseq_signal_norm"
 dir_scr="${dir_rep}/scripts"
 dir_fnc="${dir_scr}/functions"
 dir_dat="${dir_rep}/data"
@@ -93,7 +116,7 @@ bash "${dir_scr}/compress_remove_files.sh" \
 </details>
 <br />
 
-## G. Obtain and organize ChIP-seq FASTQ files.
+### C. Obtain and organize ChIP-seq FASTQ files.
 <details>
 <summary><i>Bash code: Obtain and organize ChIP-seq FASTQ files.</i></summary>
 
@@ -105,7 +128,7 @@ grabnode  # Request 1 core, 20 GB memory, 1 day, no GPU
 
 #  Define variables for directory paths, etc.
 dir_bas="${HOME}/repos"  ## WARNING: Change as needed ##
-dir_rep="${dir_bas}/202X_protocol_ChIP"
+dir_rep="${dir_bas}/protocol_chipseq_signal_norm"
 dir_scr="${dir_rep}/scripts"
 dir_fnc="${dir_scr}/functions"
 dir_raw="${dir_rep}/data/raw"
@@ -159,7 +182,7 @@ bash "${dir_scr}/compress_remove_files.sh" \
 </details>
 <br />
 
-## H. Use Atria to perform adapter and quality trimming of sequenced reads.
+### D. Use Atria to perform adapter and quality trimming of sequenced reads.
 <details>
 <summary><i>Bash code: Use Atria to perform adapter and quality trimming of sequenced reads.</i></summary>
 
@@ -171,7 +194,7 @@ grabnode  # Request 1 core, 20 GB memory, 1 day, no GPU
 
 #  Define variables for directory paths, environment, threads, and infiles
 dir_bas="${HOME}/repos"  ## WARNING: Change as needed ##
-dir_rep="${dir_bas}/202X_protocol_ChIP"
+dir_rep="${dir_bas}/protocol_chipseq_signal_norm"
 dir_scr="${dir_rep}/scripts"
 dir_fnc="${dir_scr}/functions"
 dir_dat="${dir_rep}/data"
@@ -243,7 +266,7 @@ bash "${dir_scr}/compress_remove_files.sh" \
 </details>
 <br />
 
-## I. Align sequenced reads with Bowtie 2 and process the read alignments.
+### E. Align sequenced reads with Bowtie 2 and process the read alignments.
 <details>
 <summary><i>Bash code: Align sequenced reads with Bowtie 2 and process the read alignments.</i></summary>
 
@@ -256,7 +279,7 @@ grabnode  # Request 1 core, 20 GB memory, 1 day, no GPU
 #  Define variables for directory paths, environment, driver script arguments,
 #+ and so on
 dir_bas="${HOME}/repos"  ## WARNING: Change as needed ##
-dir_rep="${dir_bas}/202X_protocol_ChIP"
+dir_rep="${dir_bas}/protocol_chipseq_signal_norm"
 dir_scr="${dir_rep}/scripts"
 dir_fnc="${dir_scr}/functions"
 dir_dat="${dir_rep}/data"
@@ -371,7 +394,7 @@ bash "${dir_scr}/compress_remove_files.sh" --dir_fnd "${dir_out}/sp/logs"
 </details>
 <br />
 
-## J. Compute normalized (proportional) or raw coverage.
+### F. Compute normalized (or raw) coverage.
 <details>
 <summary><i>Text: Compute raw or normalized (fractional) coverage.</i></summary>
 <br />
@@ -392,7 +415,7 @@ grabnode  # Request 1 core, 20 GB memory, 1 day, no GPU
 #  Define variables for directory paths, environment, driver script arguments,
 #+ etc.
 dir_bas="${HOME}/repos"  ## WARNING: Change as needed ##
-dir_rep="${dir_bas}/202X_protocol_ChIP"
+dir_rep="${dir_bas}/protocol_chipseq_signal_norm"
 dir_scr="${dir_rep}/scripts"
 dir_fnc="${dir_scr}/functions"
 dir_dat="${dir_rep}/data"
@@ -483,7 +506,7 @@ bash "${dir_scr}/compress_remove_files.sh" --dir_fnd "${err_out}"
 </details>
 <br />
 
-## K. Compute coverage with the sans spike-in quantitative ChIP-seq (siQ-ChIP) method.
+### G. Compute coverage with the sans spike-in quantitative ChIP-seq (siQ-ChIP) method.
 <details>
 <summary><i>Text: Compute coverage with the sans spike-in quantitative ChIP-seq (siQ-ChIP) method.</i></summary>
 <br />
@@ -498,7 +521,7 @@ This section describes the steps to compute ChIP-seq coverage normalized using t
 5. *Optional cleanup:* Compress large log files, and remove empty log files.
 
 **Important note:**
-- The [`execute_calculate_scaling_factor_alpha.sh`](https://github.com/kalavattam/202X_protocol_ChIP/blob/main/scripts/execute_calculate_scaling_factor_alpha.sh) script in this code chunk requires that *S. cerevisiae* IP BAM files follow a specific naming convention as outlined in the accompanying manuscript. The expected filename format:
+- The [`execute_calculate_scaling_factor_alpha.sh`](https://github.com/kalavattam/protocol_chipseq_signal_norm/blob/main/scripts/execute_calculate_scaling_factor_alpha.sh) script in this code chunk requires that *S. cerevisiae* IP BAM files follow a specific naming convention as outlined in the accompanying manuscript. The expected filename format:
     ```txt
     assay_genotype_state_treatment_factor_strain/replicate.
     ```
@@ -527,7 +550,7 @@ This section describes the steps to compute ChIP-seq coverage normalized using t
 #  Define variables -----------------------------------------------------------
 #  Define directory paths
 dir_bas="${HOME}/repos"  ## WARNING: Change as needed ##
-dir_rep="${dir_bas}/202X_protocol_ChIP"
+dir_rep="${dir_bas}/protocol_chipseq_signal_norm"
 dir_scr="${dir_rep}/scripts"
 dir_fnc="${dir_scr}/functions"
 dir_dat="${dir_rep}/data"
@@ -665,7 +688,7 @@ bash "${dir_scr}/compress_remove_files.sh" --dir_fnd "${eo_trk}"
 </details>
 <br />
 
-## L. Compute coverage using the spike-in method.
+### H. Compute coverage using the spike-in method.
 <details>
 <summary><i>Text: Compute coverage using the spike-in method.</i></summary>
 <br />
@@ -685,7 +708,7 @@ grabnode  # Request 1 core, 20 GB memory, 1 day, no GPU
 
 #  Define variables for directory paths, etc.
 dir_bas="${HOME}/repos"  ## WARNING: Change as needed ##
-dir_rep="${dir_bas}/202X_protocol_ChIP"
+dir_rep="${dir_bas}/protocol_chipseq_signal_norm"
 dir_scr="${dir_rep}/scripts"
 dir_fnc="${dir_scr}/functions"
 dir_dat="${dir_rep}/data"

@@ -13,7 +13,7 @@ if ! ${interactive}; then set -eo pipefail; fi
 #  Set the path to the "scripts" directory
 if ${interactive}; then
     ## WARNING: If interactive=true, change path as needed ##
-    dir_scr="${HOME}/repos/202X_protocol_ChIP/scripts"
+    dir_scr="${HOME}/repos/protocol_chipseq_signal_norm/scripts"
 else
     dir_scr="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 fi
@@ -41,7 +41,7 @@ function set_interactive() {
     #  Set hardcoded paths, values, etc.
     ## WARNING: If interactive=true, change values as needed ##
     dir_bas="${HOME}/repos" 
-    dir_rep="${dir_bas}/202X_protocol_ChIP"
+    dir_rep="${dir_bas}/protocol_chipseq_signal_norm"
     nam_qc="04_qc"
     {
         #  Assign variables used in file paths
