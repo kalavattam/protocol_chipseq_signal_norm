@@ -15,12 +15,36 @@ Note: For detailed instructions on keeping your local version of the [`protocol_
 ---
 <br />
 
+## Table of contents
+<details>
+<summary><i>Table of contents</i></summary>
+<br />
+<!-- MarkdownTOC -->
+
+1. [Procedures](#procedures)
+1. [Data analysis](#data-analysis)
+    1. [A. Prepare and concatenate FASTA and GFF3 files for model and spike-in organisms.](#a-prepare-and-concatenate-fasta-and-gff3-files-for-model-and-spike-in-organisms)
+    1. [B. Generate Bowtie 2 indices from the concatenated FASTA file.](#b-generate-bowtie-2-indices-from-the-concatenated-fasta-file)
+    1. [C. Obtain and organize ChIP-seq FASTQ files.](#c-obtain-and-organize-chip-seq-fastq-files)
+    1. [D. Use Atria to perform adapter and quality trimming of sequenced reads.](#d-use-atria-to-perform-adapter-and-quality-trimming-of-sequenced-reads)
+    1. [E. Align sequenced reads with Bowtie 2 and process the read alignments.](#e-align-sequenced-reads-with-bowtie-2-and-process-the-read-alignments)
+    1. [F. Compute normalized \(or raw\) coverage.](#f-compute-normalized-or-raw-coverage)
+    1. [G. Compute coverage with the sans spike-in quantitative ChIP-seq \(siQ-ChIP\) method.](#g-compute-coverage-with-the-sans-spike-in-quantitative-chip-seq-siq-chip-method)
+    1. [H. Compute coverage using the spike-in method.](#h-compute-coverage-using-the-spike-in-method)
+
+<!-- /MarkdownTOC -->
+</details>
+<br />
+
+<a id="procedures"></a>
 ## Procedures
 `#TODO`
 <br />
 <br />
 
+<a id="data-analysis"></a>
 ## Data analysis
+<a id="a-prepare-and-concatenate-fasta-and-gff3-files-for-model-and-spike-in-organisms"></a>
 ### A. Prepare and concatenate FASTA and GFF3 files for model and spike-in organisms.
 <details>
 <summary><i>Text: Prepare and concatenate FASTA and GFF3 files for model and spike-in organisms.</i></summary>
@@ -38,6 +62,7 @@ Note: For detailed instructions on keeping your local version of the [`protocol_
 </details>
 <br />
 
+<a id="b-generate-bowtie-2-indices-from-the-concatenated-fasta-file"></a>
 ### B. Generate Bowtie 2 indices from the concatenated FASTA file.
 <details>
 <summary><i>Text: Generate Bowtie 2 indices from the concatenated FASTA file.</i></summary>
@@ -116,6 +141,7 @@ bash "${dir_scr}/compress_remove_files.sh" \
 </details>
 <br />
 
+<a id="c-obtain-and-organize-chip-seq-fastq-files"></a>
 ### C. Obtain and organize ChIP-seq FASTQ files.
 <details>
 <summary><i>Bash code: Obtain and organize ChIP-seq FASTQ files.</i></summary>
@@ -182,6 +208,7 @@ bash "${dir_scr}/compress_remove_files.sh" \
 </details>
 <br />
 
+<a id="d-use-atria-to-perform-adapter-and-quality-trimming-of-sequenced-reads"></a>
 ### D. Use Atria to perform adapter and quality trimming of sequenced reads.
 <details>
 <summary><i>Bash code: Use Atria to perform adapter and quality trimming of sequenced reads.</i></summary>
@@ -266,6 +293,7 @@ bash "${dir_scr}/compress_remove_files.sh" \
 </details>
 <br />
 
+<a id="e-align-sequenced-reads-with-bowtie-2-and-process-the-read-alignments"></a>
 ### E. Align sequenced reads with Bowtie 2 and process the read alignments.
 <details>
 <summary><i>Bash code: Align sequenced reads with Bowtie 2 and process the read alignments.</i></summary>
@@ -394,6 +422,7 @@ bash "${dir_scr}/compress_remove_files.sh" --dir_fnd "${dir_out}/sp/logs"
 </details>
 <br />
 
+<a id="f-compute-normalized-or-raw-coverage"></a>
 ### F. Compute normalized (or raw) coverage.
 <details>
 <summary><i>Text: Compute raw or normalized (fractional) coverage.</i></summary>
@@ -506,6 +535,7 @@ bash "${dir_scr}/compress_remove_files.sh" --dir_fnd "${err_out}"
 </details>
 <br />
 
+<a id="g-compute-coverage-with-the-sans-spike-in-quantitative-chip-seq-siq-chip-method"></a>
 ### G. Compute coverage with the sans spike-in quantitative ChIP-seq (siQ-ChIP) method.
 <details>
 <summary><i>Text: Compute coverage with the sans spike-in quantitative ChIP-seq (siQ-ChIP) method.</i></summary>
@@ -688,6 +718,7 @@ bash "${dir_scr}/compress_remove_files.sh" --dir_fnd "${eo_trk}"
 </details>
 <br />
 
+<a id="h-compute-coverage-using-the-spike-in-method"></a>
 ### H. Compute coverage using the spike-in method.
 <details>
 <summary><i>Text: Compute coverage using the spike-in method.</i></summary>

@@ -136,10 +136,19 @@ Notes:
       - r-xml2
       - rename
       - tree
-  - Given that >100 packages and dependencies will be installed depending on
-    the environment specified, the execution and completion of the mamba create
-    operation will take >10 minutes if making use of cached packages from
-    previous installations/separate environments. If this is a fresh
+    + env_siqchip
+      - bc
+      - bedtools
+      - gfortran
+      - gnuplot
+      - parallel
+      - samtools
+      - ucsc-bedgraphtobigwig
+      - ucsc-bedclip
+  - Given that >100 packages and dependencies may be installed depending on
+    the environment specified, the execution and completion of the 'mamba
+    create' operation will take >10 minutes if making use of cached packages
+    from previous installations/separate environments. If this is a fresh
     installation that does not make use of cached packages, then the creation 
     of the environment may take even longer: e.g., more than 20 or 30 minutes.
 
@@ -182,11 +191,11 @@ if [[ -z "${env_nam}" ]]; then
 fi
 
 case "${env_nam}" in
-    "env_align"|"env_analyze") : ;;
+    env_align|env_analyze|env_siqchip) : ;;
     *) 
         echo_error \
-            "Invalid environment name specified. Must be 'env_align' or" \
-            "'env_analyze'."
+            "Invalid environment name specified. Must be 'env_align', " \
+            "'env_analyze', or 'env_siqchip'."
         ;;
 esac
 
@@ -202,11 +211,15 @@ check_installed_mamba
 #  Do the main work ===========================================================
 echo "Creating environment '${env_nam}'."
 
-echo_warning \
-    "Creating '${env_nam}' will take some time given the >100 packages to" \
-    "install. Don't worry if this script is still running without any" \
-    "apparent progress after 10, 20, or even 30 minutes: It will eventually" \
-    "complete."
+case "${env_nam}" in
+    env_align|env_analyze)
+        echo_warning \
+            "Creating '${env_nam}' will take some time given the >100" \
+            "packages to install. Don't worry if this script is still" \
+            "running without any apparent progress after 10, 20, or even 30" \
+            "minutes: It will eventually complete."
+    ;;
+esac
 
 #  If not in base environment, then deactivate current environment
 handle_env_deactivate
@@ -283,6 +296,17 @@ elif [[ "${env_nam}" == "env_analyze" ]]; then
         r-xml2
         rename
         tree
+    )
+elif [[ "${env_nam}" == "env_siqchip" ]]; then
+    packages=(
+        bc
+        bedtools
+        gfortran
+        gnuplot
+        parallel
+        samtools
+        ucsc-bedgraphtobigwig
+        ucsc-bedclip
     )
 fi
 
