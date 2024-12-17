@@ -19,9 +19,9 @@ Workflow: Validate New siQ-ChIP Implementation with the Original
     1. [A. Clone the forked siQ-ChIP repository.](#a-clone-the-forked-siq-chip-repository)
     1. [B. Create an environment for running siQ-ChIP.](#b-create-an-environment-for-running-siq-chip)
 1. [Data analysis](#data-analysis)
-    1. [A. QNAME-sort BAM files filtered for *S. cerevisiae* alignments](#a-qname-sort-bam-files-filtered-for-s-cerevisiae-alignments)
-    1. [B. Generate BED files from QNAME-sorted BAM files](#b-generate-bed-files-from-qname-sorted-bam-files)
-    1. [C. Run the initial implementation of siQ-ChIP](#c-run-the-initial-implementation-of-siq-chip)
+    1. [A. QNAME-sort BAM files filtered for *S. cerevisiae* alignments.](#a-qname-sort-bam-files-filtered-for-s-cerevisiae-alignments)
+    1. [B. Generate BED files from QNAME-sorted BAM files.](#b-generate-bed-files-from-qname-sorted-bam-files)
+    1. [C. Generate metadata for and run the initial implementation of siQ-ChIP.](#c-generate-metadata-for-and-run-the-initial-implementation-of-siq-chip)
 
 <!-- /MarkdownTOC -->
 </details>
@@ -40,7 +40,7 @@ Workflow: Validate New siQ-ChIP Implementation with the Original
 <br />
 
 <details>
-<summary><i>Code: Clone the forked siQ-ChIP repository.</i></summary>
+<summary><i>Bash code: Clone the forked siQ-ChIP repository.</i></summary>
 
 ```bash
 #!/bin/bash
@@ -111,9 +111,9 @@ bash "${dir_scr}/install_envs.sh" \
 <a id="data-analysis"></a>
 ## Data analysis
 <a id="a-qname-sort-bam-files-filtered-for-s-cerevisiae-alignments"></a>
-### A. QNAME-sort BAM files filtered for *S. cerevisiae* alignments
+### A. QNAME-sort BAM files filtered for *S. cerevisiae* alignments.
 <details>
-<summary><i>Bash code: QNAME-sort BAM files filtered for </i>S. cerevisiae<i> alignments</i></summary>
+<summary><i>Bash code: QNAME-sort BAM files filtered for </i>S. cerevisiae<i> alignments.</i></summary>
 
 ```bash
 #!/bin/bash
@@ -283,9 +283,9 @@ bash "${dir_scr}/compress_remove_files.sh" --dir_fnd "${err_out}"
 <br />
 
 <a id="b-generate-bed-files-from-qname-sorted-bam-files"></a>
-### B. Generate BED files from QNAME-sorted BAM files
+### B. Generate BED files from QNAME-sorted BAM files.
 <details>
-<summary><i>Bash code: Generate BED files from QNAME-sorted BAM files</i></summary>
+<summary><i>Bash code: Generate BED files from QNAME-sorted BAM files.</i></summary>
 
 ```bash
 #!/bin/bash
@@ -452,19 +452,75 @@ bash "${dir_scr}/compress_remove_files.sh" --dir_fnd "${err_out}"
 </details>
 <br />
 
-<a id="c-run-the-initial-implementation-of-siq-chip"></a>
-### C. Run the initial implementation of siQ-ChIP
+<a id="c-generate-metadata-for-and-run-the-initial-implementation-of-siq-chip"></a>
+### C. Generate metadata for and run the initial implementation of siQ-ChIP.
 <details>
-<summary><i>Code: Run the initial implementation of siQ-ChIP</i></summary>
+<summary><i>Bash code: Generate metadata for and run the initial implementation of siQ-ChIP.</i></summary>
 
 ```bash
 #!/bin/bash
 
 #  Optional: Request an interactive node
-grabnode  # Request 1 core, 20 GB memory, 1 day, no GPU
+# grabnode  # Uncomment to request 1 core, 20 GB memory, 1 day, no GPU
+
+
+#  Define a function to compute the average fragment length for a sample
+function compute_avg_frag_len() {
+    local infile="${1}"
+    local strip="${2:-".sc.qnam.bed"}"
+    local name
+
+    #  Extract sample name by removing the specified suffix from the file name
+    name="$(basename "${infile}" "${strip}")"
+
+    #  Compute the average fragment length (column 4) for the BED file
+    awk \
+        -v name="${name}" \
+        'BEGIN {
+            OFS = "\t"
+        } {                                        # For each line, sum lengths
+            sum += $4; count++                     # ...and increment count
+        } END {                                    # Compute, print avgerage
+            print name, (count ? sum / count : 0)  # Avoid division by zero
+        }' \
+        "${infile}"
+}
+export -f compute_avg_frag_len
+
+
+#  Define function to split a TSV file into per-sample parameter files; each
+#+ sample gets its own TXT file containing rows of measurements
+function split_tsv_params() {
+    local infile="${1}"   # Path to input TSV file of siQ-ChIP measurements
+    local outdir="${2}"   # Directory to save output parameter files
+
+    #  Extract sample-specific measurements and write to separate files
+    awk -v outdir="${outdir}" \
+        'BEGIN {
+            FS = "\t"   # Set field separator to tab
+            OFS = "\n"  # Set output field separator to newline
+        } NR == 1 {
+            #  From the header row (row 1), create output file paths for each
+            #+ sample
+            for (i = 2; i <= NF; i++) {
+                file_names[i] = outdir "/params_" $i ".txt";
+            }
+            next  # Skip the header row during data processing
+        } {
+            #  Write rows of measurements (2-7) to corresponding sample files
+            for (i = 2; i <= NF; i++) {
+                print $i > file_names[i]
+            }
+        }' \
+        "${infile}"
+}
+export -f split_tsv_params
+
 
 #  Define variables for directory paths, environment, submission script
 #+ arguments, metadata, and so on
+threads=${SLURM_CPUS_ON_NODE:-1}
+
 dir_bas="${HOME}/repos"  ## WARNING: Change as needed ##
 dir_rep="${dir_bas}/protocol_chipseq_signal_norm"
 dir_scr="${dir_rep}/scripts"
@@ -514,11 +570,14 @@ scr_siq="${dir_siq}/${fil_siq}"
 #  Create output directory structure for trimmed FASTQ files and logs
 mkdir -p ${dir_out}/{docs,logs}
 
+#  Debug hardcoded variable assignments
 if ${debug:-true}; then
     {
         echo "####################################"
         echo "## Hardcoded variable assignments ##"
         echo "####################################"
+        echo ""
+        echo "\${threads}=${threads}"
         echo ""
         echo "\${dir_bas}=${dir_bas}"
         echo "\${dir_rep}=${dir_rep}"
@@ -560,56 +619,78 @@ if ${debug:-true}; then
     }
 fi
 
-if ${need_to_do:-false}; then
-    #  Create (temporary) decompressed versions of the BED files
-    for file in ${dir_out}/*.bed.gz; do gunzip -k "${file}"; done
+#  Create (temporary) decompressed versions of the BED files
+for file in ${dir_bed}/*.bed.gz; do
+    if [[ ! -f "${file%.gz}" ]]; then gunzip -k "${file}"; fi
+done
+
+#  Compute the average fragment length per sample
+if [[ ! -f "${dir_doc}/avg_frag_len.txt" ]]; then
+    if [[ ${threads} -gt 1 ]]; then
+        parallel --jobs ${threads} \
+            'compute_avg_frag_len {1} > {2}/{#}.tmp' \
+            ::: "${dir_bed}"/*.bed \
+            ::: "${dir_doc}"
+
+        #  Avoid race conditions by writing to and then combining temporary files
+        cat "${dir_doc}"/*.tmp | sort -k1,1 > "${dir_doc}/avg_frag_len.txt" \
+            && rm "${dir_doc}"/*.tmp
+    else
+        for file in "${dir_bed}"/*.bed; do
+            compute_avg_frag_len "${file}" >> "${dir_doc}/avg_frag_len.txt"
+        done
+    fi
 fi
 
-if ${need_to_do:-false}; then
-    #  Compute the average fragment length per sample
-    for file in ${dir_out}/*.bed; do
-        name="$(basename "${file}" ".sc.qnam.bed")"
-        cat "${file}" \
-            | awk -v name="${name}" '
-                BEGIN {
-                    OFS = "\t"
-                } {
-                    sum += $4
-                    count++
-                } END {
-                    print name, (count ? sum / count : 0)
-                }
-        ' \
-            > "${dir_doc}/"  #TODO: Pick up with this tomorrow...
-    done
+#  Define array of expected parameter files for all samples
+params=(
+    "params_WT_G1_Hho1_6336.txt"
+    "params_WT_G1_Hho1_6337.txt"
+    "params_WT_G1_Hmo1_7750.txt"
+    "params_WT_G1_Hmo1_7751.txt"
+    "params_WT_G2M_Hho1_6336.txt"
+    "params_WT_G2M_Hho1_6337.txt"
+    "params_WT_G2M_Hmo1_7750.txt"
+    "params_WT_G2M_Hmo1_7751.txt"
+    "params_WT_Q_Hho1_6336.txt"
+    "params_WT_Q_Hho1_6337.txt"
+    "params_WT_Q_Hmo1_7750.txt"
+    "params_WT_Q_Hmo1_7751.txt"
+)
+
+#  Check: Do all files already exist in the output directory?
+all_exist=true
+for file in "${params[@]}"; do
+    if [[ ! -f "${dir_doc}/${file}" ]]; then
+        all_exist=false
+        break
+    fi
+done
+
+#  If any file is missing, split a TSV file of siQ-ChIP measurements into
+#+ individual parameter TXT files, one for each sample
+if ! ${all_exist}; then
+    split_tsv_params "${pth_raw}" "${dir_doc}"
+else
+    echo \
+        "All parameter files already exist in ${dir_doc}. Skipping" \
+        "split_tsv_params."
 fi
 
-if ${need_to_do:-false}; then
-    #  Use awk to process a TSV file of per-sample siQ-ChIP measurements to
-    #+ create parameter files for each sample
-    cat "${pth_raw}" \
-        | awk -v dir_doc="${dir_doc}" '
-            BEGIN {
-                FS = "\t"   # Set input field separator to tab
-                OFS = "\n"  # Set output field separator to newline
-            } NR == 1 {
-                #  Store header values (column names) in an array for outfile
-                #+ names
-                for (i = 2; i <= NF; i++) {
-                    file_names[i] = dir_doc "/params_" $i ".txt";
-                }
-                next  # Skip processing the header row
-            } {
-                #  Append rows 2 to 7 to respective files
-                for (i = 2; i <= NF; i++) {
-                    print $i > file_names[i]
-                }
-            }
-        '
-fi
+# #  Less strict check verifying if any 'params_*.txt' files exist in the
+# #+ directory
+# if ! compgen -G "${dir_doc}/params_*.txt" > /dev/null; then
+#     split_tsv_params "${pth_raw}" "${dir_doc}"
+# else
+#     echo \
+#         "Parameter files exist in ${dir_doc}. Skipping split_tsv_params."
+# fi
 
+#  Unset variables used to check and generate parameter TXT files
+unset params file all_exist
+
+#  Debug the contents of the TXT parameters
 if ${debug:-true}; then
-    #  Debug the contents of the TXT parameters
     for file in ${dir_doc}/*.txt; do
         echo "## $(basename "${file}") ##"
         cat "${file}"
@@ -617,12 +698,22 @@ if ${debug:-true}; then
     done
 fi
 
+#  Debug lists of the IP BED files, input BED files, and TXT parameter files
 if ${debug:-true}; then
-    #  Debug lists of the IP and input BED files, and the TXT parameter files
-    for file in "${arr_IP[@]}"; do echo "${file}"; done && echo ""
-    for file in "${arr_in[@]}"; do echo "${file}"; done && echo ""
-    for file in ${dir_doc}/*.txt; do echo "${file}"; done
+    echo "## IP files ##"
+    for file in "${arr_IP[@]}"; do echo "${file}"; done
+    echo ""
+    
+    echo "## input files ##"
+    for file in "${arr_in[@]}"; do echo "${file}"; done
+    echo ""
+    
+    echo "## siQ-ChIP parameter files ##"
+    for file in ${dir_doc}/params_*.txt; do echo "${file}"; done
+    echo ""
 fi
+
+
 ```
 </details>
 <br />

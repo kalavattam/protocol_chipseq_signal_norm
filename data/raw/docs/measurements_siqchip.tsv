@@ -1,4 +1,4 @@
-genotype	state	factor_full	factor	strain	volume_in	volume_ip	mass_in	mass_ip	conc_in	conc_ip	length_in	length_ip	user	received	notes
+genotype	state	factor_full	factor	strain	volume_in	volume_all	mass_in	mass_ip	conc_in	conc_ip	length_in	length_ip	user	received	notes
 WT	G1	Hho1-3xFLAG	Hho1	6336	20	300	72.5	2.7	6.04	0.224	450	626	RH	2023-0915	#N/A
 WT	G1	Hho1-3xFLAG	Hho1	6337	20	300	81.1	5	6.76	0.42	437	663	RH	2023-0915	#N/A
 WT	G2M	Hho1-3xFLAG	Hho1	6336	20	300	104.9	6.6	8.74	0.55	450	667	RH	2023-0915	#N/A
