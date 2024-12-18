@@ -21,7 +21,7 @@ Workflow: Validate New siQ-ChIP Implementation with the Original
 1. [Data analysis](#data-analysis)
     1. [A. QNAME-sort BAM files filtered for *S. cerevisiae* alignments.](#a-qname-sort-bam-files-filtered-for-s-cerevisiae-alignments)
     1. [B. Generate BED files from QNAME-sorted BAM files.](#b-generate-bed-files-from-qname-sorted-bam-files)
-    1. [C. Generate metadata for and run the initial implementation of siQ-ChIP.](#c-generate-metadata-for-and-run-the-initial-implementation-of-siq-chip)
+    1. [C. Organize and generate metadata for and run the initial implementation of siQ-ChIP.](#c-organize-and-generate-metadata-for-and-run-the-initial-implementation-of-siq-chip)
 
 <!-- /MarkdownTOC -->
 </details>
@@ -424,7 +424,7 @@ if ${debug:-true}; then
         echo ""
         cat "${scr_sub}"
         echo ""
-    } >> >(tee -a less "${err_out}/${day}.execute.stdout.txt")
+    } >> >(tee -a "${err_out}/${day}.execute.stdout.txt")
 fi
 
 #  Run SLURM submission script to generate BED files from QNAME-sorted BAM
@@ -452,19 +452,20 @@ bash "${dir_scr}/compress_remove_files.sh" --dir_fnd "${err_out}"
 </details>
 <br />
 
-<a id="c-generate-metadata-for-and-run-the-initial-implementation-of-siq-chip"></a>
-### C. Generate metadata for and run the initial implementation of siQ-ChIP.
+<a id="c-organize-and-generate-metadata-for-and-run-the-initial-implementation-of-siq-chip"></a>
+### C. Organize and generate metadata for and run the initial implementation of siQ-ChIP.
 <details>
-<summary><i>Bash code: Generate metadata for and run the initial implementation of siQ-ChIP.</i></summary>
+<summary><i>Bash code: Organize and generate metadata for and run the initial implementation of siQ-ChIP.</i></summary>
 
 ```bash
 #!/bin/bash
 
-#  Optional: Request an interactive node
+#  Optional: Request an interactive node --------------------------------------
 # grabnode  # Uncomment to request 1 core, 20 GB memory, 1 day, no GPU
 
 
-#  Define a function to compute the average fragment length for a sample
+#  Define functions -----------------------------------------------------------
+#  Define function to compute the average fragment length for a sample
 function compute_avg_frag_len() {
     local infile="${1}"
     local strip="${2:-".sc.qnam.bed"}"
@@ -517,6 +518,88 @@ function split_tsv_params() {
 export -f split_tsv_params
 
 
+#  Define function to rename and move globbed files
+function move_rename_globbed_files() {
+    local pattern="${1}"  # File search pattern (e.g., "Norm*.bed")
+    local target="${2}"   # Target directory for moved files
+    local renamer="${3}"  # 'sed' expression(s) for renaming files
+
+    #  Expand the shell glob before processing
+    local files=( ${pattern} )
+    if [[ ${#files[@]} -eq 0 ]]; then
+        echo "Error: No files matching pattern '${pattern}' found." >&2
+        return 1
+    fi
+
+    #  Process each file using xargs and pass 'target' and 'renamer' explicitly
+    printf '%s\n' "${files[@]}" \
+        | sort \
+        | env \
+            target="${target}" renamer="${renamer}" \
+            xargs -I {} bash -c '
+                #  Generate new name and validate it
+                nam_new=$(echo "{}" | sed -e "${renamer}")
+                if [[ -z "${nam_new}" || "${nam_new}" == "{}" ]]; then
+                    echo "Error: Failed to assign a valid new name for file: {}" >&2
+                    exit 1
+                fi
+
+                #  Attempt to move the file
+                mv "{}" "${target}/${nam_new}" || {
+                    echo "Error: Failed to move {} → ${target}/${nam_new}" >&2
+                    exit 1
+                }
+            '
+}
+
+
+#  Define function to move globbed files without renaming
+function move_globbed_files() {
+    local pattern="${1}"  # File search pattern (e.g., "siqchip*.bed")
+    local target="${2}"   # Target directory for moved files
+
+    #  Expand the shell glob before processing
+    local files=( ${pattern} )
+    if [[ ${#files[@]} -eq 0 ]]; then
+        echo "Error: No files matching pattern '${pattern}' found." >&2
+        return 1
+    fi
+
+    #  Process each file using xargs and pass 'target' explicitly
+    printf '%s\n' "${files[@]}" \
+        | sort \
+        | env target="${target}" xargs -I {} bash -c '
+            #  Attempt to move the file
+            mv "{}" "${target}/{}" || {
+                echo "Error: Failed to move {} → ${target}/{}" >&2
+                exit 1
+            }
+        '
+}
+
+
+#  Define a function to populate an array with sorted file names that match a
+#+ specified pattern (e.g., a file glob), optionally excluding paths
+function populate_array() {
+    local -n arr_ref=${1}  # Name of array to populate (passed by reference)
+    local search="${2}"    # Directory to search
+    local pattern="${3}"   # File name pattern (e.g., "IP_*.bed")
+    local path=${4:-true}  # Retain paths (true/false); default is true
+    
+    mapfile -t arr_ref < <(
+        find "${search}" -maxdepth 1 -type f -name "${pattern}" \
+            | { 
+                if ${path}; then 
+                    cat                         # Retain path in file name
+                else 
+                    awk -F '/' '{ print $NF }'  # Strip path from file name
+                fi 
+            } \
+            | sort
+    )
+}
+
+
 #  Define variables for directory paths, environment, submission script
 #+ arguments, metadata, and so on
 threads=${SLURM_CPUS_ON_NODE:-1}
@@ -538,37 +621,26 @@ spe_typ="sc_bed"
 dir_aln="${dir_pro}/align_${aligner}_${a_type}"
 dir_bed="${dir_aln}/flag-${flg}_mapq-${mapq}/${spe_typ}"
 
-depth=1
-IFS=',' read -r -a arr_IP <<< "$(
-    bash "${dir_scr}/find_files.sh" \
-        --dir_fnd "${dir_bed}" \
-        --pattern "IP_*.bed" \
-        --depth ${depth}
-)"
-IFS=',' read -r -a arr_in <<< "$(
-    bash "${dir_scr}/find_files.sh" \
-        --dir_fnd "${dir_bed}" \
-        --pattern "in_*.bed" \
-        --depth ${depth}
-)"
+unset arr_IP arr_in
+populate_array arr_IP "${dir_bed}" "IP_*.bed" true
+populate_array arr_in "${dir_bed}" "in_*.bed" true
 
 dir_ini="${dir_pro}/compute_coverage"
 dir_cov="${dir_ini}/${aligner}_${a_type}_flag-${flg}_mapq-${mapq}"
 typ_cov="siqchip"
-dir_out="${dir_cov}/${typ_cov}"
-dir_doc="${dir_out}/docs"
-dir_log="${dir_out}/logs"
+dir_exp="${dir_cov}/${typ_cov}"
+dir_doc="${dir_exp}/docs"
+dir_log="${dir_exp}/logs"
+day="$(date '+%Y-%m%d')"
 
 dir_raw="${dir_dat}/raw/docs"
 fil_raw="measurements_siqchip_initial.tsv"
 pth_raw="${dir_raw}/${fil_raw}"
 
 dir_siq="${dir_bas}/siQ-ChIP"
-fil_siq="get_siq.sh"
-scr_siq="${dir_siq}/${fil_siq}"
 
 #  Create output directory structure for trimmed FASTQ files and logs
-mkdir -p ${dir_out}/{docs,logs}
+mkdir -p ${dir_exp}/{docs,logs,alpha,norm}
 
 #  Debug hardcoded variable assignments
 if ${debug:-true}; then
@@ -596,28 +668,28 @@ if ${debug:-true}; then
         echo "\${dir_aln}=${dir_aln}"
         echo "\${dir_bed}=${dir_bed}"
         echo ""
-        echo "\${depth}=${depth}"
         echo "\${arr_IP[@]}=( ${arr_IP[*]} )"
         echo "\${arr_in[@]}=( ${arr_in[*]} )"
         echo ""
         echo "\${dir_ini}=${dir_ini}"
         echo "\${dir_cov}=${dir_cov}"
         echo "\${typ_cov}=${typ_cov}"
-        echo "\${dir_out}=${dir_out}"
+        echo "\${dir_exp}=${dir_exp}"
         echo "\${dir_doc}=${dir_doc}"
         echo "\${dir_log}=${dir_log}"
+        echo "\${day}=${day}"
         echo ""
         echo "\${dir_raw}=${dir_raw}"
         echo "\${fil_raw}=${fil_raw}"
         echo "\${pth_raw}=${pth_raw}"
         echo ""
         echo "\${dir_siq}=${dir_siq}"
-        echo "\${fil_siq}=${fil_siq}"
-        echo "\${scr_siq}=${scr_siq}"
         echo ""
         echo ""
-    }
+    } # >> #TODO
 fi
+
+source activate env_siqchip
 
 #  Create (temporary) decompressed versions of the BED files
 for file in ${dir_bed}/*.bed.gz; do
@@ -627,12 +699,14 @@ done
 #  Compute the average fragment length per sample
 if [[ ! -f "${dir_doc}/avg_frag_len.txt" ]]; then
     if [[ ${threads} -gt 1 ]]; then
+        #  Run in parallel if threads > 1
         parallel --jobs ${threads} \
             'compute_avg_frag_len {1} > {2}/{#}.tmp' \
-            ::: "${dir_bed}"/*.bed \
-            ::: "${dir_doc}"
+                ::: "${dir_bed}"/*.bed \
+                ::: "${dir_doc}"
 
-        #  Avoid race conditions by writing to and then combining temporary files
+        #  Avoid race conditions by individually writing to and then combining
+        #+ temporary files
         cat "${dir_doc}"/*.tmp | sort -k1,1 > "${dir_doc}/avg_frag_len.txt" \
             && rm "${dir_doc}"/*.tmp
     else
@@ -642,8 +716,9 @@ if [[ ! -f "${dir_doc}/avg_frag_len.txt" ]]; then
     fi
 fi
 
-#  Define array of expected parameter files for all samples
-params=(
+#  Check: Do all files already exist in the output directory? First, define
+#+ array of expected parameter files for all samples
+arr_param=(
     "params_WT_G1_Hho1_6336.txt"
     "params_WT_G1_Hho1_6337.txt"
     "params_WT_G1_Hmo1_7750.txt"
@@ -658,9 +733,9 @@ params=(
     "params_WT_Q_Hmo1_7751.txt"
 )
 
-#  Check: Do all files already exist in the output directory?
+#  Perform the check
 all_exist=true
-for file in "${params[@]}"; do
+for file in "${arr_param[@]}"; do
     if [[ ! -f "${dir_doc}/${file}" ]]; then
         all_exist=false
         break
@@ -677,8 +752,8 @@ else
         "split_tsv_params."
 fi
 
-# #  Less strict check verifying if any 'params_*.txt' files exist in the
-# #+ directory
+# #  Less strict check verification of any 'params_*.txt' files exist in the
+# #+ documentation directory
 # if ! compgen -G "${dir_doc}/params_*.txt" > /dev/null; then
 #     split_tsv_params "${pth_raw}" "${dir_doc}"
 # else
@@ -687,31 +762,128 @@ fi
 # fi
 
 #  Unset variables used to check and generate parameter TXT files
-unset params file all_exist
+unset arr_param file all_exist
 
-#  Debug the contents of the TXT parameters
+#  Debug the contents of the parameter TXT files
 if ${debug:-true}; then
-    for file in ${dir_doc}/*.txt; do
-        echo "## $(basename "${file}") ##"
-        cat "${file}"
-        echo ""
-    done
+    {
+        for file in ${dir_doc}/*.txt; do
+            echo "## $(basename "${file}") ##"
+            cat "${file}"
+            echo ""
+        done
+    } # >> #TODO
 fi
+
+#  Assign array of parameter TXT files
+unset arr_param
+populate_array arr_param "${dir_doc}" "params_*.txt" true
+
+#  Copy siQ-ChIP IP BED, input BED, and parameter TXT files into the siQ-ChIP
+#+ repository directory
+if [[ ${threads} -gt 1 ]]; then
+    #  If threads > 1, use GNU Parallel to copy files in parallel
+    parallel --jobs ${threads} 'cp {1} {2}' \
+        ::: "${arr_IP[@]}" "${arr_in[@]}" "${arr_param[@]}" \
+        ::: "${dir_siq}"
+else
+    #  Copy files sequentially if threads <= 1
+    cp "${arr_IP[*]}" "${arr_in[*]}" "${arr_param[*]}" "${dir_siq}"
+fi
+
+#  Assign arrays of path-free IP BED files, input BED files, parameter TXT
+#+ files, and experiment stems
+#  Populate arrays using the helper function
+unset arr_IP arr_in arr_param
+populate_array arr_IP    "${dir_bed}" "IP_*.bed"     false
+populate_array arr_in    "${dir_bed}" "in_*.bed"     false
+populate_array arr_param "${dir_doc}" "params_*.txt" false
+
+unset arr_stem && typeset -a arr_stem+=( $(
+    for file in "${arr_param[@]}"; do
+        init="${file##*params_}"
+        stem="siqchip_${init%.txt}"
+        echo "${stem}"
+    done    
+) )
+unset file init stem
 
 #  Debug lists of the IP BED files, input BED files, and TXT parameter files
 if ${debug:-true}; then
-    echo "## IP files ##"
-    for file in "${arr_IP[@]}"; do echo "${file}"; done
-    echo ""
-    
-    echo "## input files ##"
-    for file in "${arr_in[@]}"; do echo "${file}"; done
-    echo ""
-    
-    echo "## siQ-ChIP parameter files ##"
-    for file in ${dir_doc}/params_*.txt; do echo "${file}"; done
-    echo ""
+    {
+        echo "## IP files ##"
+        for file in "${arr_IP[@]}"; do echo "${file}"; done
+        echo ""
+        
+        echo "## input files ##"
+        for file in "${arr_in[@]}"; do echo "${file}"; done
+        echo ""
+        
+        echo "## siQ-ChIP parameter files ##"
+        for file in "${arr_param[@]}"; do echo "${file}"; done
+        echo ""
+
+        echo "## experiment stems ##"
+        for file in "${arr_stem[@]}"; do echo "${file}"; done
+    } # >> #TODO
 fi
+
+#  Make experiment layout (EXPlayout) file for siQ-ChIP
+if [[ ! -f "${dir_siq}" ]]; then
+    echo "#getTracks: IP.bed input.bed params output_name" \
+        >> "${dir_siq}/EXPlayout"
+
+    for idx in ${!arr_IP[@]}; do
+        echo \
+            "${arr_IP[idx]} ${arr_in[idx]} ${arr_param[idx]}" \
+            "${arr_stem[idx]}" \
+                >> "${dir_siq}/EXPlayout"
+    done
+
+    echo "#getResponse: CNTR.bed EXP.bed output_name" >> "${dir_siq}/EXPlayout"
+    echo "#getFracts: data any order, last is output_name" \
+        >> "${dir_siq}/EXPlayout"
+    echo "#END" >> "${dir_siq}/EXPlayout"
+fi
+
+#  An 'Annotations.bed' file is required in the siQ-ChIP repository directory
+if [[ ! -f "${dir_siq}/Annotations.bed" ]]; then
+    touch "${dir_siq}/Annotations.bed"
+fi
+
+cd "${dir_siq}" || echo "cd'ing failed; check on this"
+
+bash getsiq.sh \
+     >> >(tee -a "${dir_log}/${day}.execute_siqchip.stdout.txt") \
+    2>> >(tee -a "${dir_log}/${day}.execute_siqchip.stderr.txt")
+
+
+#  Cleanup the siQ-ChIP repository directory ----------------------------------
+#  Step 1: Remove copied BED and parameter files
+rm IP*.bed in*.bed params*.txt
+
+#  Step 2: Rename and move normalized coverage BED files to 'norm' directory
+move_rename_globbed_files "Norm*.bed" "${dir_exp}/norm" "
+    s/^NormCovIP_siqchip_/norm_IP_/;
+    s/^NormCovIN_siqchip_/norm_in_/
+"
+
+#  Step 3: Move siQ-ChIP-scaled coverage BED files to 'alpha' directory
+move_globbed_files "siqchip*.bed" "${dir_exp}/alpha"
+
+#  Step 4: Move the "a.out" file to 'log' directory
+mv "a.out" "${dir_log}"
+
+#  Step 5: Move all other recent files to experiment 'docs' directory
+find * -type f -newermt "$(date '+%Y-%m-%d') 15:25:00" ! -name "a.out" \
+    | sort \
+    | env dir_doc="${dir_doc}" xargs -I {} bash -c '
+        mv "{}" "${dir_doc}/{}"
+    '
+
+
+
+
 
 
 ```
