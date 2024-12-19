@@ -466,6 +466,28 @@ bash "${dir_scr}/compress_remove_files.sh" --dir_fnd "${err_out}"
 
 
 #  Define functions -----------------------------------------------------------
+#  Define a function to populate an array with sorted file names that match a
+#+ specified pattern (e.g., a file glob), optionally excluding paths
+function populate_array_glob() {
+    local -n arr_ref=${1}  # Name of array to populate (passed by reference)
+    local search="${2}"    # Directory to search
+    local pattern="${3}"   # File name pattern (e.g., "IP_*.bed")
+    local path=${4:-true}  # Retain paths (true/false); default is true
+    
+    mapfile -t arr_ref < <(
+        find "${search}" -maxdepth 1 -type f -name "${pattern}" \
+            | { 
+                if ${path}; then 
+                    cat                         # Retain path in file name
+                else 
+                    awk -F '/' '{ print $NF }'  # Strip path from file name
+                fi 
+            } \
+            | sort
+    )
+}
+
+
 #  Define function to compute the average fragment length for a sample
 function compute_avg_frag_len() {
     local infile="${1}"
@@ -493,8 +515,8 @@ export -f compute_avg_frag_len
 #  Define function to split a TSV file into per-sample parameter files; each
 #+ sample gets its own TXT file containing rows of measurements
 function split_tsv_params() {
-    local infile="${1}"   # Path to input TSV file of siQ-ChIP measurements
-    local outdir="${2}"   # Directory to save output parameter files
+    local infile="${1}"  # Path to input TSV file of siQ-ChIP measurements
+    local outdir="${2}"  # Directory to save output parameter files
 
     #  Extract sample-specific measurements and write to separate files
     awk -v outdir="${outdir}" \
@@ -502,7 +524,7 @@ function split_tsv_params() {
             FS = "\t"   # Set field separator to tab
             OFS = "\n"  # Set output field separator to newline
         } NR == 1 {
-            #  From the header row (row 1), create output file paths for each
+            #  From the header row (row 1), create outfile paths for each
             #+ sample
             for (i = 2; i <= NF; i++) {
                 file_names[i] = outdir "/params_" $i ".txt";
@@ -578,31 +600,27 @@ function move_globbed_files() {
 }
 
 
-#  Define a function to populate an array with sorted file names that match a
-#+ specified pattern (e.g., a file glob), optionally excluding paths
-function populate_array_glob() {
-    local -n arr_ref=${1}  # Name of array to populate (passed by reference)
-    local search="${2}"    # Directory to search
-    local pattern="${3}"   # File name pattern (e.g., "IP_*.bed")
-    local path=${4:-true}  # Retain paths (true/false); default is true
+#  Convert a BED file to a headered bedgraph file
+function convert_bed_bedgraph() {
+    local pair="${1}"     # Key-value pair: "sample.bed;rgb_color"
+    local dir_out="${2}"  # Output directory for bedgraph file
+
+    #  Extract BED file name and color information from pair
+    local bed=$(awk -F ';' '{ print $1 }' <<< "${pair}")
+    local color=$(awk -F ';' '{ print $2 }' <<< "${pair}")
     
-    mapfile -t arr_ref < <(
-        find "${search}" -maxdepth 1 -type f -name "${pattern}" \
-            | { 
-                if ${path}; then 
-                    cat                         # Retain path in file name
-                else 
-                    awk -F '/' '{ print $NF }'  # Strip path from file name
-                fi 
-            } \
-            | sort
-    )
+    #  Define bedgraph output path
+    local bg="$(basename ${bed} ".bed").bedGraph"
+    local pth_out="${dir_out}/${bg}"
+
+    #  Add track definition line to bedgraph file
+    echo "track type=bedgraph name=\"${bed##*/}\" color=${color}" \
+        > "${pth_out}"
+
+    #  Append BED data as bedgraph format, assuming BED columns are 1-4
+    awk 'BEGIN { OFS="\t" } { print $1, $2, $3, $4 }' "${bed}" >> "${pth_out}"
 }
-
-
-#  Source additional functions
-source "${dir_fnc}/check_program_path.sh"
-source "${dir_fnc}/handle_env.sh"
+export -f convert_bed_bedgraph
 
 
 #  Define variables -----------------------------------------------------------
@@ -711,6 +729,10 @@ if ${debug}; then
         # >> #TODO
 fi
 
+#  Source utility functions to activate environment and check dependencies
+source "${dir_fnc}/check_program_path.sh"
+source "${dir_fnc}/handle_env.sh"
+
 #  Activate the required environment
 handle_env env_siqchip
 
@@ -719,7 +741,7 @@ arr_dep=(
     "bc"                # Precision calculator
     "bedClip"           # Program for clipping BED file entries
     "bedtools"          # Program for genome arithmetic
-    "bedgraphTobigWig"  # Convert bedgraph files to bigWig format
+    "bedGraphToBigWig"  # Convert bedgraph files to bigWig format
     "gfortran"          # GNU Fortran compiler
     "gnuplot"           # Program for data visualization
     "parallel"          # GNU Parallel for parallel processing
@@ -780,9 +802,7 @@ done
 
 #  If any file is missing, split a TSV file of siQ-ChIP measurements into
 #+ individual parameter TXT files, one for each sample
-if ! ${all_exist}; then
-    split_tsv_params "${pth_raw}" "${dir_doc}"
-fi
+if ! ${all_exist}; then split_tsv_params "${pth_raw}" "${dir_doc}"; fi
 
 # #  Less strict check verification of any 'params_*.txt' files exist in the
 # #+ documentation directory
@@ -881,8 +901,8 @@ if ${debug}; then
         # >> #TODO
 fi
 
-#  Make experiment layout file, 'EXPlayout', for siQ-ChIP
 if ${siqchip}; then
+    #  Make experiment layout file, 'EXPlayout', for siQ-ChIP
     if [[ ! -f "${dir_siq}/EXPlayout" ]]; then
         echo "#getTracks: IP.bed input.bed params output_name" \
             >> "${dir_siq}/EXPlayout"
@@ -900,27 +920,21 @@ if ${siqchip}; then
             >> "${dir_siq}/EXPlayout"
         echo "#END" >> "${dir_siq}/EXPlayout"
     fi
-fi
 
-#  An 'Annotations.bed' file is required in the siQ-ChIP repository directory
-if ${siqchip}; then
+    #  An 'Annotations.bed' file is required in the siQ-ChIP repository directory
     if [[ ! -f "${dir_siq}/Annotations.bed" ]]; then
         touch "${dir_siq}/Annotations.bed"
     fi
-fi
 
-#  Change to the siQ-ChIP repository directory and execute the siQ-ChIP
-#+ implementation
-if ${siqchip}; then
-    cd "${dir_siq}" || echo "Error: Failed to change to directory '${dir_siq}'."
-
+    #  Change to the siQ-ChIP repository directory and execute the siQ-ChIP
+    #+ implementation
+    cd "${dir_siq}" \
+        || echo "Error: Failed to change to directory '${dir_siq}'."
     bash getsiq.sh \
          >> >(tee -a "${dir_log}/${day}.execute_siqchip.stdout.txt") \
         2>> >(tee -a "${dir_log}/${day}.execute_siqchip.stderr.txt")
-fi
 
-#  Clean up/organize siQ-ChIP output files
-if ${siqchip}; then
+    #  Clean up/organize siQ-ChIP outfiles
     #  Step 1: Remove copied BED and parameter files
     rm IP*.bed in*.bed params*.txt
 
@@ -948,143 +962,125 @@ if ${siqchip}; then
             xargs -I {} bash -c 'mv "{}" "${dir_doc}/{}"'
 fi
 
-#  Define an array containing key-value pairs for BED files and (IBM) colors
-arr_bed=(
-    #  red 40; #ff8389; 255,131,137
-    "${dir_exp}/norm/bed/norm_in_WT_G1_Hho1_6336.bed;255,131,137"
+if ${convert}; then
+    #  Define an array containing key-value pairs for BED files and (IBM)
+    #+ colors
+    arr_bed=(
+        #  red 40; #ff8389; 255,131,137
+        "${dir_exp}/norm/bed/norm_in_WT_G1_Hho1_6336.bed;255,131,137"
 
-    #  red 30; #ffb3b8; 255,179,184
-    "${dir_exp}/norm/bed/norm_in_WT_G1_Hho1_6337.bed;255,179,184"
+        #  red 30; #ffb3b8; 255,179,184
+        "${dir_exp}/norm/bed/norm_in_WT_G1_Hho1_6337.bed;255,179,184"
 
-    #  magenta 40; #ff7eb6; 255,126,182
-    "${dir_exp}/norm/bed/norm_in_WT_G2M_Hho1_6336.bed;255,126,182"
+        #  magenta 40; #ff7eb6; 255,126,182
+        "${dir_exp}/norm/bed/norm_in_WT_G2M_Hho1_6336.bed;255,126,182"
 
-    #  magenta 30; #ffafd2; 255,175,210
-    "${dir_exp}/norm/bed/norm_in_WT_G2M_Hho1_6337.bed;255,175,210"
+        #  magenta 30; #ffafd2; 255,175,210
+        "${dir_exp}/norm/bed/norm_in_WT_G2M_Hho1_6337.bed;255,175,210"
 
-    #  purple 40; #be95ff; 190,149,255
-    "${dir_exp}/norm/bed/norm_in_WT_Q_Hho1_6336.bed;190,149,255"
+        #  purple 40; #be95ff; 190,149,255
+        "${dir_exp}/norm/bed/norm_in_WT_Q_Hho1_6336.bed;190,149,255"
 
-    #  purple 30; #d4bbff; 212,187,255
-    "${dir_exp}/norm/bed/norm_in_WT_Q_Hho1_6337.bed;212,187,255"
+        #  purple 30; #d4bbff; 212,187,255
+        "${dir_exp}/norm/bed/norm_in_WT_Q_Hho1_6337.bed;212,187,255"
 
-    #  red 70; #da1e28; 162,25,31
-    "${dir_exp}/norm/bed/norm_IP_WT_G1_Hho1_6336.bed;162,25,31" 
+        #  red 70; #da1e28; 162,25,31
+        "${dir_exp}/norm/bed/norm_IP_WT_G1_Hho1_6336.bed;162,25,31" 
 
-    #  red 60; #a2191f; 218,30,40
-    "${dir_exp}/norm/bed/norm_IP_WT_G1_Hho1_6337.bed;218,30,40" 
+        #  red 60; #a2191f; 218,30,40
+        "${dir_exp}/norm/bed/norm_IP_WT_G1_Hho1_6337.bed;218,30,40" 
 
-    #  magenta 70; #9f1853; 159,24,83
-    "${dir_exp}/norm/bed/norm_IP_WT_G2M_Hho1_6336.bed;159,24,83" 
+        #  magenta 70; #9f1853; 159,24,83
+        "${dir_exp}/norm/bed/norm_IP_WT_G2M_Hho1_6336.bed;159,24,83" 
 
-    #  magenta 60; #d02670; 208,38,112
-    "${dir_exp}/norm/bed/norm_IP_WT_G2M_Hho1_6337.bed;208,38,112"
+        #  magenta 60; #d02670; 208,38,112
+        "${dir_exp}/norm/bed/norm_IP_WT_G2M_Hho1_6337.bed;208,38,112"
 
-    #  purple 70; #6929c4; 105,41,196
-    "${dir_exp}/norm/bed/norm_IP_WT_Q_Hho1_6336.bed;105,41,196"
+        #  purple 70; #6929c4; 105,41,196
+        "${dir_exp}/norm/bed/norm_IP_WT_Q_Hho1_6336.bed;105,41,196"
 
-    #  purple 60; #8a3ffc; 138,63,252
-    "${dir_exp}/norm/bed/norm_IP_WT_Q_Hho1_6337.bed;138,63,252"
+        #  purple 60; #8a3ffc; 138,63,252
+        "${dir_exp}/norm/bed/norm_IP_WT_Q_Hho1_6337.bed;138,63,252"
 
-    #  blue 40; #78a9ff; 120,169,255
-    "${dir_exp}/norm/bed/norm_in_WT_G1_Hmo1_7750.bed;120,169,255"
+        #  blue 40; #78a9ff; 120,169,255
+        "${dir_exp}/norm/bed/norm_in_WT_G1_Hmo1_7750.bed;120,169,255"
 
-    #  blue 30; #a6c8ff; 166,200,255
-    "${dir_exp}/norm/bed/norm_in_WT_G1_Hmo1_7751.bed;166,200,255"
+        #  blue 30; #a6c8ff; 166,200,255
+        "${dir_exp}/norm/bed/norm_in_WT_G1_Hmo1_7751.bed;166,200,255"
 
-    #  cyan 40; #33b1ff; 51,177,255
-    "${dir_exp}/norm/bed/norm_in_WT_G2M_Hmo1_7750.bed;51,177,255"
+        #  cyan 40; #33b1ff; 51,177,255
+        "${dir_exp}/norm/bed/norm_in_WT_G2M_Hmo1_7750.bed;51,177,255"
 
-    #  cyan 30; #82cfff; 130,207,255
-    "${dir_exp}/norm/bed/norm_in_WT_G2M_Hmo1_7751.bed;130,207,255"
+        #  cyan 30; #82cfff; 130,207,255
+        "${dir_exp}/norm/bed/norm_in_WT_G2M_Hmo1_7751.bed;130,207,255"
 
-    #  teal 40; #08bdba; 8,189,186
-    "${dir_exp}/norm/bed/norm_in_WT_Q_Hmo1_7750.bed;8,189,186"
+        #  teal 40; #08bdba; 8,189,186
+        "${dir_exp}/norm/bed/norm_in_WT_Q_Hmo1_7750.bed;8,189,186"
 
-    #  teal 30; #3ddbd9; 61,219,217
-    "${dir_exp}/norm/bed/norm_in_WT_Q_Hmo1_7751.bed;61,219,217"
+        #  teal 30; #3ddbd9; 61,219,217
+        "${dir_exp}/norm/bed/norm_in_WT_Q_Hmo1_7751.bed;61,219,217"
 
-    #  blue 70; #0043ce; 0,67,206
-    "${dir_exp}/norm/bed/norm_IP_WT_G1_Hmo1_7750.bed;0,67,206"
+        #  blue 70; #0043ce; 0,67,206
+        "${dir_exp}/norm/bed/norm_IP_WT_G1_Hmo1_7750.bed;0,67,206"
 
-    #  blue 60; #0f62fe; 15,98,254
-    "${dir_exp}/norm/bed/norm_IP_WT_G1_Hmo1_7751.bed;15,98,254"
+        #  blue 60; #0f62fe; 15,98,254
+        "${dir_exp}/norm/bed/norm_IP_WT_G1_Hmo1_7751.bed;15,98,254"
 
-    #  cyan 70; #00539a; 0,83,154
-    "${dir_exp}/norm/bed/norm_IP_WT_G2M_Hmo1_7750.bed;0,83,154"
+        #  cyan 70; #00539a; 0,83,154
+        "${dir_exp}/norm/bed/norm_IP_WT_G2M_Hmo1_7750.bed;0,83,154"
 
-    #  cyan 60; #0072c3; 0,114,195
-    "${dir_exp}/norm/bed/norm_IP_WT_G2M_Hmo1_7751.bed;0,114,195"
+        #  cyan 60; #0072c3; 0,114,195
+        "${dir_exp}/norm/bed/norm_IP_WT_G2M_Hmo1_7751.bed;0,114,195"
 
-    #  teal 70; #005d5d; 0,93,93
-    "${dir_exp}/norm/bed/norm_IP_WT_Q_Hmo1_7750.bed;0,93,93" 
+        #  teal 70; #005d5d; 0,93,93
+        "${dir_exp}/norm/bed/norm_IP_WT_Q_Hmo1_7750.bed;0,93,93" 
 
-    #  teal 60; #007d79; 0,125,121
-    "${dir_exp}/norm/bed/norm_IP_WT_Q_Hmo1_7751.bed;0,125,121"
-)
+        #  teal 60; #007d79; 0,125,121
+        "${dir_exp}/norm/bed/norm_IP_WT_Q_Hmo1_7751.bed;0,125,121"
+    )
 
-#  Debug the array key (BED file)-value (color) pairs
-{
-    echo "########################################"
-    echo "## siQ-ChIP BED-color key-value pairs ##"
-    echo "########################################"
-    echo ""
-
-    for pair in "${arr_bed[@]}"; do
-          key="$(echo "${pair}" | awk -F ';' '{ print $1 }')"
-        value="$(echo "${pair}" | awk -F ';' '{ print $2 }')"
-        
-        echo "  key .......... ${key}"
-        echo "value .......... ${value}"
+    #  Debug the array key (BED file)-value (color) pairs
+    {
+        echo "########################################"
+        echo "## siQ-ChIP BED-color key-value pairs ##"
+        echo "########################################"
         echo ""
-    done
-    echo ""
-} # \
-    # >> #TODO
 
-
-#  Convert a BED file to a headered bedgraph file
-function convert_bed_bedgraph() {
-    local pair="${1}"     # Key-value pair: "sample.bed;rgb_color"
-    local dir_out="${2}"  # Output directory for bedgraph file
-
-    #  Extract BED file name and color information from pair
-    local bed=$(awk -F ';' '{ print $1 }' <<< "${pair}")
-    local color=$(awk -F ';' '{ print $2 }' <<< "${pair}")
-    
-    #  Define bedgraph output path
-    local bg="$(basename ${bed} ".bed").bedGraph"
-    local pth_out="${dir_out}/${bg}"
-
-    #  Add track definition line to bedgraph file
-    echo "track type=bedgraph name=\"${bed##*/}\" color=${color}" \
-        > "${pth_out}"
-
-    #  Append BED data as bedgraph format, assuming BED columns are 1-4
-    awk 'BEGIN { OFS="\t" } { print $1, $2, $3, $4 }' "${bed}" >> "${pth_out}"
-}
-export -f convert_bed_bedgraph
-
-
-#  Perform BED-to-bedgraph file conversions
-if ${convert}; then
-    if [[ ${threads} -gt 1 ]]; then
-        #  Run in parallel if threads > 1
-        parallel --jobs ${threads} \
-            'convert_bed_bedgraph {1} {2}' \
-                ::: "${pair}" \
-                ::: "${dir_exp}/norm/bg"
-    else
-        #  Convert files sequentially if threads <= 1
         for pair in "${arr_bed[@]}"; do
-            convert_bed_bedgraph "${pair}" "${dir_exp}/norm/bg"
+              key="$(echo "${pair}" | awk -F ';' '{ print $1 }')"
+            value="$(echo "${pair}" | awk -F ';' '{ print $2 }')"
+            
+            echo "  key .......... ${key}"
+            echo "value .......... ${value}"
+            echo ""
         done
-    fi
-fi
+        echo ""
+    } # \
+        # >> #TODO
 
-if ${convert}; then
+    #  Perform BED-to-bedgraph file conversions
+    if compgen -G "${dir_exp}/norm/bg/*.bedGraph" > /dev/null; then
+        echo \
+            "BED-to-bedGraph conversion skipped: Files already exist in" \
+            "'${dir_exp}/norm/bg'"
+    else
+        if [[ ${threads} -gt 1 ]]; then
+            #  Run in parallel if threads > 1
+            parallel --jobs ${threads} \
+                'convert_bed_bedgraph {1} {2}' \
+                    ::: "${pair}" \
+                    ::: "${dir_exp}/norm/bg"
+        else
+            #  Convert files sequentially if threads <= 1
+            for pair in "${arr_bed[@]}"; do
+                convert_bed_bedgraph "${pair}" "${dir_exp}/norm/bg"
+            done
+        fi
+    fi
+
     #  Create arrays of bedGraph infiles and bigWig outfiles  #TODO #PICKUPHERE
     populate_array_glob arr_bg "${dir_exp}/norm/bg" "*.bedGraph" true
+    # for bg in "${arr_bg[@]}"; do head "${bg}"; done
 
     #  Create chromosome info TSV file if it does not exist
     if [[ ! -f "${dir_fas}/${fil_chr}" ]]; then
@@ -1112,82 +1108,211 @@ if ${convert}; then
     fi
 
     if [[ ${threads} -gt 1 ]]; then
-        #  Exclude the headers from the bedGraph files
-        parallel --dry-run '
-            if [[ -f {}.bedGraph ]]; then
-                if ! \
-                    tail -n +2 {}.bedGraph \
-                        > {}.noheader.bedGraph
-                then
-                    echo "Error: Failed to remove headers for {}.bedGraph" >&2
+        #  Run parallelized version of pipeline
+        #  Step 1: Exclude headers from bedGraph files
+        parallel --jobs ${threads} '
+            if [[ -f {.}.bedGraph && ! -f {.}.noheader.bedGraph ]]; then
+                if ! tail -n +2 {.}.bedGraph > {.}.noheader.bedGraph; then
+                    echo \
+                        "Error: Failed to remove headers from file:" \
+                        "{.}.bedGraph. Expected outfile:" \
+                        "{.}.noheader.bedGraph." >&2
                     exit 1
                 fi
             else
-                echo "Error: Missing input file: {}.bedGraph" >&2
+                echo \
+                    "Error: Missing infile {.}.bedGraph or outfile" \
+                    "{.}.noheader.bedGraph already exists." >&2
                 exit 1
             fi
         ' \
-            ::: "${arr_bg[@]%%.bedGraph}"
+            ::: "${arr_bg[@]}"
 
-        #  Sort the bedgraph files
-        parallel --dry-run '
-            if [[ -f {}.noheader.bedGraph ]]; then
+        #  Step 2: Sort the bedGraph files
+        parallel --jobs ${threads} '
+            if [[ -f {.}.noheader.bedGraph && ! -f {.}.sorted.bedGraph ]]; then
                 if ! \
-                    LC_ALL=C sort -k1,1 -k2,2n \
-                        {}.noheader.bedGraph \
-                            > {}.sorted.bedGraph
+                    LC_ALL=C sort -k1,1 -k2,2n {.}.noheader.bedGraph \
+                        > {.}.sorted.bedGraph
                 then
-                    echo "Error: Failed to sort {}.noheader.bedGraph" >&2
+                    echo \
+                        "Error: Failed to sort file: {.}.noheader.bedGraph." \
+                        "Expected outfile: {.}.sorted.bedGraph." >&2
                     exit 1
                 fi
             else
-                echo "Error: Missing input file: {}.noheader.bedGraph" >&2
+                echo \
+                    "Error: Missing infile {.}.noheader.bedGraph or outfile" \
+                    "{.}.sorted.bedGraph already exists." >&2
                 exit 1
             fi
         ' \
-            ::: "${arr_bg[@]%%.bedGraph}"
+            ::: "${arr_bg[@]}"
 
-        #  Exclude any records that span the ends of chromosomes in the bedgraph files
-        parallel --dry-run '
-            if [[ -f {}.sorted.bedGraph && -f {2} ]]; then
+        #  Step 3: Clip records spanning chromosome ends
+        parallel --jobs ${threads} '
+            if [[
+                     -f {1.}.sorted.bedGraph \
+                &&   -f {2} \
+                && ! -f {1.}.clipped.bedGraph
+            ]]; then
                 if ! \
                     bedClip -verbose=2 \
-                        {}.sorted.bedGraph \
+                        {1.}.sorted.bedGraph \
                         {2} \
-                        {}.clipped.bedGraph
+                        {1.}.clipped.bedGraph
                 then
-                    echo "Error: Failed to clip {}.sorted.bedGraph" >&2
+                    echo \
+                        "Error: Failed to clip file: {1.}.sorted.bedGraph" \
+                        "using chromosome information from {2}. Expected" \
+                        "outfile: {1.}.clipped.bedGraph." >&2
                     exit 1
                 fi
             else
-                echo "Error: Missing input files: {}.sorted.bedGraph or {2}" >&2
+                echo \
+                    "Error: Missing infiles {1.}.sorted.bedGraph or" \
+                    "chromosome information file {2}, or outfile" \
+                    "{1.}.clipped.bedGraph already exists." >&2
                 exit 1
             fi
         ' \
-            ::: "${arr_bg[@]%%.bedGraph}" \
+            ::: "${arr_bg[@]}" \
             ::: "${dir_fas}/${fil_chr}"
+        #TODO: Need to capture verbose output from bedClip
 
         #  Convert the above-processed bedgraph files to bigWig files
-        parallel --dry-run '
-            if [[ -f {}.clipped.bedGraph && -f {2} ]]; then
+        parallel --jobs ${threads} '
+            if [[
+                     -f {1.}.clipped.bedGraph \
+                &&   -f {2} \
+                && ! -f {3}/{1/.}.bigWig
+            ]]; then
                 if ! \
-                    bedGraphTobigWig \
-                        {1}.clipped.bedGraph \
+                    bedGraphToBigWig \
+                        {1.}.clipped.bedGraph \
                         {2} \
-                        {1}.bigWig
+                        {3}/{1/.}.bigWig
                 then
-                    echo "Error: Failed to convert {1}.clipped.bedGraph to bigWig" >&2
+                    echo \
+                        "Error: Failed to convert file {1.}.clipped.bedGraph" \
+                        "to bigWig using chromosome information from {2}." \
+                        "Expected outfile: {3}/{1/.}.bigWig." >&2
                     exit 1
                 fi
             else
-                echo "Error: Missing input files: {1}.clipped.bedGraph or {2}" >&2
+                echo \
+                    "Error: Missing infiles {1.}.clipped.bedGraph or" \
+                    "chromosome information file {2}, or outfile" \
+                    "{3}/{1/.}.bigWig already exists." >&2
                 exit 1
             fi
         ' \
-            ::: "${arr_bg[@]%%.bedGraph}" \
-            ::: "${dir_fas}/${fil_chr}"
+            ::: "${arr_bg[@]}" \
+            ::: "${dir_fas}/${fil_chr}" \
+            ::: "${dir_exp}/norm/bw"
     else
-        :  #TODO Serial version
+        #  Run serial version of the pipeline
+        for file in "${arr_bg[@]}"; do
+            base="${file%%.bedGraph}"
+
+            #  Step 1: Exclude headers from bedGraph files
+            if [[
+                     -f "${base}.bedGraph" \
+                && ! -f "${base}.noheader.bedGraph"
+            ]]; then
+                if ! \
+                    tail -n +2 "${base}.bedGraph" > "${base}.noheader.bedGraph"
+                then
+                    echo \
+                        "Error: Failed to remove headers from file:" \
+                        "${base}.bedGraph. Expected outfile:" \
+                        "${base}.noheader.bedGraph." >&2
+                    exit 1
+                fi
+            else
+                echo \
+                    "Error: Missing infile ${base}.bedGraph or outfile" \
+                    "${base}.noheader.bedGraph already exists." >&2
+                exit 1
+            fi
+
+            #  Step 2: Sort the bedGraph files
+            if [[
+                     -f "${base}.noheader.bedGraph" \
+                && ! -f "${base}.sorted.bedGraph"
+            ]]; then
+                if ! \
+                    LC_ALL=C sort -k1,1 -k2,2n "${base}.noheader.bedGraph" \
+                        > "${base}.sorted.bedGraph"
+                then
+                    echo \
+                        "Error: Failed to sort file:" \
+                        "${base}.noheader.bedGraph. Expected outfile:" \
+                        "${base}.sorted.bedGraph." >&2
+                    exit 1
+                fi
+            else
+                echo \
+                    "Error: Missing infile ${base}.noheader.bedGraph or" \
+                    "outfile ${base}.sorted.bedGraph already exists." >&2
+                exit 1
+            fi
+
+            #  Step 3: Clip records spanning chromosome ends
+            if [[
+                     -f "${base}.sorted.bedGraph" \
+                &&   -f "${dir_fas}/${fil_chr}" \
+                && ! -f "${base}.clipped.bedGraph"
+            ]]; then
+                if ! \
+                    bedClip -verbose=2 \
+                        "${base}.sorted.bedGraph" \
+                        "${dir_fas}/${fil_chr}" \
+                        "${base}.clipped.bedGraph"
+                then
+                    echo \
+                        "Error: Failed to clip file: ${base}.sorted.bedGraph" \
+                        "using chromosome information from" \
+                        "${dir_fas}/${fil_chr}. Expected outfile:" \
+                        "${base}.clipped.bedGraph." >&2
+                    exit 1
+                fi
+            else
+                echo \
+                    "Error: Missing infile ${base}.sorted.bedGraph or" \
+                    "chromosome information file ${dir_fas}/${fil_chr}, or" \
+                    "outfile ${base}.clipped.bedGraph already exists." >&2
+                exit 1
+            fi
+
+            #  Step 4: Convert clipped bedGraph files to bigWig format
+            if [[
+                     -f "${base}.clipped.bedGraph" \
+                &&   -f "${dir_fas}/${fil_chr}" \
+                && ! -f "${dir_exp}/norm/bw/${base##*/}.bigWig"
+            ]]; then
+                if ! \
+                    bedGraphToBigWig \
+                        "${base}.clipped.bedGraph" \
+                        "${dir_fas}/${fil_chr}" \
+                        "${dir_exp}/norm/bw/${base##*/}.bigWig"
+                then
+                    echo \
+                        "Error: Failed to convert file" \
+                        "${base}.clipped.bedGraph to bigWig using chromosome" \
+                        "information from ${dir_fas}/${fil_chr}. Expected" \
+                        "outfile: ${dir_exp}/norm/bw/${base##*/}.bigWig." >&2
+                    exit 1
+                fi
+            else
+                echo \
+                    "Error: Missing infile ${base}.clipped.bedGraph or" \
+                    "chromosome information file ${dir_fas}/${fil_chr}, or" \
+                    "outfile ${dir_exp}/norm/bw/${base##*/}.bigWig already" \
+                    "exists." >&2
+                exit 1
+            fi
+        done
     fi
 
     #  Clean up intermediate files
