@@ -377,7 +377,7 @@ if ${debug}; then
         echo "\${max_job}=${max_job}"
         echo ""
         echo ""
-    } >> >(tee -a rm "${err_out}/${day}.execute.stdout.txt")
+    } >> >(tee -a "${err_out}/${day}.execute.stdout.txt")
 fi
 
 #  Source utility functions
@@ -466,8 +466,8 @@ bash "${dir_scr}/compress_remove_files.sh" --dir_fnd "${err_out}"
 
 
 #  Define functions -----------------------------------------------------------
-#  Define a function to populate an array with sorted file names that match a
-#+ specified pattern (e.g., a file glob), optionally excluding paths
+#  Populate an array with sorted file names that match a specified pattern
+#+ (e.g., a file glob), optionally excluding paths
 function populate_array_glob() {
     local -n arr_ref=${1}  # Name of array to populate (passed by reference)
     local search="${2}"    # Directory to search
@@ -488,7 +488,7 @@ function populate_array_glob() {
 }
 
 
-#  Define function to compute the average fragment length for a sample
+#  Compute the average fragment length for a sample
 function compute_avg_frag_len() {
     local infile="${1}"
     local strip="${2:-".sc.qnam.bed"}"
@@ -512,8 +512,8 @@ function compute_avg_frag_len() {
 export -f compute_avg_frag_len
 
 
-#  Define function to split a TSV file into per-sample parameter files; each
-#+ sample gets its own TXT file containing rows of measurements
+#  Split a TSV file into per-sample parameter files; each sample gets its own
+#+ TXT file containing rows of measurements
 function split_tsv_params() {
     local infile="${1}"  # Path to input TSV file of siQ-ChIP measurements
     local outdir="${2}"  # Directory to save output parameter files
@@ -540,7 +540,7 @@ function split_tsv_params() {
 }
 
 
-#  Define function to rename and move globbed files
+#  Rename and move globbed files
 function move_rename_globbed_files() {
     local pattern="${1}"  # File search pattern (e.g., "Norm*.bed")
     local target="${2}"   # Target directory for moved files
@@ -575,7 +575,7 @@ function move_rename_globbed_files() {
 }
 
 
-#  Define function to move globbed files without renaming
+#  Move globbed files without renaming
 function move_globbed_files() {
     local pattern="${1}"  # File search pattern (e.g., "siqchip*.bed")
     local target="${2}"   # Target directory for moved files
@@ -621,6 +621,12 @@ function convert_bed_bedgraph() {
     awk 'BEGIN { OFS="\t" } { print $1, $2, $3, $4 }' "${bed}" >> "${pth_out}"
 }
 export -f convert_bed_bedgraph
+
+
+#TODO: Description
+function covert_bedgraph_bigwig() {
+    :  #TODO
+}
 
 
 #  Define variables -----------------------------------------------------------

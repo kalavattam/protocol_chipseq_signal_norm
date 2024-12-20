@@ -1,7 +1,7 @@
 #!/bin/bash
 
 #  Function to check that a region is within the bounds of the reference genome
-#+ based on information encoded in a BAM file
+#+ based on information encoded in a BAM file; dependency: Samtools
 function check_region_bam() {
     local bam="${1}"
     local region="${2}"
@@ -30,9 +30,9 @@ function check_region_bam() {
     local arr_chr=()
     local arr_siz=()
     while IFS=$'\t' read -r chr size _; do
-        arr_chr+=("${chr}")
-        arr_siz+=("${size}")
-    done < <(samtools idxstats "${bam}")
+        arr_chr+=( "${chr}" )
+        arr_siz+=( "${size}" )
+    done < <(samtools idxstats "${bam}")  #MAYBE Use AWK, not Samtools
 
     #  Parse the genomic region
     local chr start end
@@ -78,6 +78,5 @@ function check_region_bam() {
         return 1
     fi
 
-    #  If all checks pass
     return 0
 }

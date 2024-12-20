@@ -36,7 +36,7 @@ dir_fnc="${dir_scr}/functions"
     source "${dir_fnc}/check_mut_excl_args.sh"
     source "${dir_fnc}/check_program_path.sh"
     source "${dir_fnc}/check_region.sh"
-    source "${dir_fnc}/check_region_bam.sh"      #TODO
+    source "${dir_fnc}/check_region_bam.sh"  #TODO
     source "${dir_fnc}/check_seq_type.sh"
     source "${dir_fnc}/check_str_delim.sh"
     source "${dir_fnc}/check_supplied_arg.sh"
@@ -53,22 +53,28 @@ dir_fnc="${dir_scr}/functions"
 
 #  Set up paths, values, and parameters for interactive mode
 function set_interactive() {
-    #  Set hardcoded paths, values, etc.
+    #  Define base directories
     ## WARNING: If interactive=true, change values as needed ##
     dir_bas="${HOME}/repos"
     dir_rep="${dir_bas}/protocol_chipseq_signal_norm"
     dir_scr="${dir_rep}/scripts"
     dir_dat="${dir_rep}/data"
     dir_pro="${dir_dat}/processed"
+
+    #  Define alignment settings
     aligner="bowtie2"
     a_type="global"
     req_flg=true
     flg="$(if ${req_flg}; then echo "2"; else echo "NA"; fi)"
     mapq=1
     det_bam="flag-${flg}_mapq-${mapq}"
+
+    #  Define coverage and normalization settings
     det_cov="${aligner}_${a_type}_${det_bam}"
-    cov_nrm="depth" # "norm"
+    cov_nrm="depth"  # "norm"
     dir_cov="${dir_pro}/compute_coverage/${det_cov}"
+
+    #  Define file type and location
     typ_fil="bam"  # "bigwig"
     case "${typ_fil}" in
         bedgraph|bdg|bg|bigwig|bw)
@@ -80,7 +86,8 @@ function set_interactive() {
             dir_bam="${dir_aln}/${det_bam}/sc"
             ;;
     esac
-    dir_trk="${dir_cov}/log2/${cov_nrm}/tracks"
+
+    #  Define file search settings
     include="*Hho1*"  # "*Hmo1*"  # "*Brn1*"
     case "${typ_fil}" in
         bedgraph|bdg|bg)
@@ -97,9 +104,12 @@ function set_interactive() {
             ;;
     esac
 
+    #  Define track outfile track location
+    dir_trk="${dir_cov}/log2/${cov_nrm}/tracks"
+
     #  Set hardcoded argument assignments
     verbose=true
-    dry_run=false
+    dry_run=true
     threads=8
     fil_num="$(
         bash "${dir_scr}/find_files.sh" \
@@ -123,9 +133,9 @@ function set_interactive() {
     bin_siz=1  # 10
     region=""
     oper="log2"
-    scl_fct=""
+    scl_fct="0.50:0.50,0.50:0.50,0.50:0.50,0.50:0.50,0.50:0.50,0.50:0.50"  # ""
     norm=""
-    scl_pre="None"  # ""  # "depth"
+    scl_pre="none"  # ""  # "depth"
     exact=true
     usr_frg=""
     err_out="${dir_trk}/logs"
@@ -175,7 +185,11 @@ Usage:
     --err_out <str> --nam_job <str> [--slurm] [--max_job <int>] [--time <str>]
 
 Description:
-  execute_deeptools_compare.sh automates...
+  execute_deeptools_compare.sh automates the comparison of genomic signal
+  tracks, such as ChIP-seq IP/input signal, using deepTools utilities
+  bamCompare and bigwigCompare. The script supports BAM, BEDGRAPH, or BIGWIG
+  files as inputs and generates normalized and scaled comparison tracks in
+  either BEDGRAPH or BIGWIG formats.
 
 Arguments:
    -h, --help     Print this help message and exit.
@@ -183,34 +197,35 @@ Arguments:
   -dr, --dry_run  Run script in 'dry-run mode' (optional).
    -t, --threads  Number of threads to use (default: ${threads}).
   -fn, --fil_num  Comma-separated string of BAM, BIGWIG, or BEDGRAPH infiles to
-                  be used as the first file/numerator in the comparisons.
+                  be used as the first file (e.g., numerator) in the
+                  comparisons.
   -fd, --fil_den  Comma-separated string of BAM, BIGWIG, or BEDGRAPH infiles to
-                  be used as the second file/denominator in the comparisons.
-  -fs, --fil_stm  Comma-separated string of outstem sans extensions.
+                  be used as the second file (e.g., denominator) in the
+                  comparisons.
+  -fs, --fil_stm  Comma-separated string of outstems without extensions.
   -to, --typ_out  Format of comparison signal track outfiles: 'bedgraph' or
                   'bigwig' (default: '${typ_out}').
-  -bs, --bin_siz  Bin size for comparison calculation in base pairs (default:
-                  ${bin_siz}).
+  -bs, --bin_siz  Bin size for comparison calculation(s) in base pairs
+                  (default: ${bin_siz}).
    -r, --region   Specify a genomic region to limit the operation (optional).
                   The format can be either: 'chr' (entire chromosome) or
                   'chr:start-stop' (specific range within a chromosome).
-  -op, --oper     Operation to perform for comparisons of first/numerator and
+  -op, --oper     Operation to perform for comparison(s) of first/numerator and
                   second/denominator BAM infiles: 'log2', 'ratio', 'subtract',
                   'add', 'mean', 'reciprocal_ratio', 'first', 'second'
                   (default: '${oper}').
-  -sf, --scl_fct  Comma-separated string of scaling factors for numerator and
-                  denominator files. Each scaling factor pair should be in the
-                  format 'num:den', where 'num' is the scaling factor for the
-                  first file in a pair/numerator and 'den' is the scaling
-                  factor for the second file in a pair/denominator. Multiple
-                  pairs should be separated by commas. For example,
-                  '0.7:1,0.3:0.6' scales the first numerator file by 0.7 and
-                  the first denominator file by 1.0, and the second numerator
-                  file by 0.3 and the second denominator file by 0.6. This
-                  argument cannot be used with '--norm <str>' or
-                  '--scl_pre <str>'.
+  -sf, --scl_fct  Comma-separated string of scaling factors for first (e.g.,
+                  numerator) and second (e.g., denominator) files in
+                  comparison(s). Each scaling factor pair should be in the
+                  format 'first:second' (e.g., 'num:den'), where 'first'
+                  ('num') is the scaling factor for the first file in a pair
+                  (e.g., the numerator) and 'second' ('den') is the scaling
+                  factor for the second file in a pair (e.g., the denominator).
+                  Multiple pairs should be separated by commas. This argument
+                  cannot be used with '--norm <str>' or '--scl_pre <str>'. For
+                  more details, see the 'Notes' documentation below.
   -no, --norm     Specify a normalization method to use when computing
-                  comparisons; available options are: 'raw', 'none', 'rpkm',
+                  comparison(s); available options are 'raw', 'none', 'rpkm',
                   'fpkm', 'cpm', 'bpm', or 'rpgc'. This argument cannot be used
                   with '--scl_fct <str>' or '--scl_pre <str>'.
   -sp, --scl_pre  Predefined scaling method for compensating sequencing depth
@@ -223,10 +238,10 @@ Arguments:
                   invoked. Significantly increases the time required for
                   comparison computation.
   -uf, --usr_frg  Comma-separated string vector of fragment lengths to use
-                  instead of read lengths (single-end alignments) or template
-                  lengths (paired-end alignments; optional). Must match the
-                  number of infiles and outstems via '--fil_num <str>',
-                  '--fil_den <str>', and '--fil_stm <str>'.
+                  instead of read lengths (for alignments of single-end reads)
+                  or template lengths (for alignments of paired-end reads;
+                  optional). Must match the number of infiles and outstems via
+                  '--fil_num <str>', '--fil_den <str>', and '--fil_stm <str>'.
   -eo, --err_out  The directory to store stderr and stdout TXT outfiles
                   (default: '\$(dirname "\${fil_stm%%[,;]*}")/err_out').
   -nj, --nam_job  Prefix for the names of jobs (default: ${nam_job}).
@@ -256,7 +271,11 @@ Notes:
   - BAM infiles must be coordinate-sorted.
   - Outfile names are derived BAM infiles and the value(s) associated with
     --typ_out.
-  - #TODO
+  - On --scl_fct: For example, assigning '0.7:1,0.3:0.6' scales the first file
+    in the first pair (e.g., the numerator file) by 0.7 and the second file in
+    the first pair (e.g., the denominator file) by 1.0, and the first file in
+    the second pair (e.g., the numerator file) by 0.3 and the second file in
+    the second pair (e.g., the denominator file) by 0.6.
 
 Examples:
   \`\`\`
@@ -412,21 +431,20 @@ if [[ -n "${scl_pre}" ]]; then
         depth) scl_pre="readCount" ;;
         ses)   scl_pre="SES"       ;;
         none)
-            if [[ -z "${norm}" ]]; then
+            if [[ -z "${norm}" && -z "${scl_fct}" ]]; then
                 #  Issue a warning for '--scl_pre "none"' without
                 #+ '--norm <str>'
                 echo_warning \
                     "Argument '--scl_pre none' was specified without" \
                     "argument '--norm <str>', meaning the 'bamCompare'" \
                     "operation ('--oper ${oper}') will proceed without" \
-                    "scaling, allowing sequencing depth to affect the" \
-                    "result."
+                    "scaling, allowing sequencing depth to affect results."
             elif [[ "${norm}" == "None" ]]; then
                 echo_warning \
                     "Argument '--scl_fct none' and argument '--norm none'" \
                     "were both specified. The 'bamCompare' operation" \
                     "('--oper ${oper}') will proceed without scaling," \
-                    "allowing sequencing depth to affect the result."
+                    "allowing sequencing depth to affect results."
             fi
             scl_pre="None"
             ;;
@@ -485,6 +503,7 @@ fi
 
 
 #  Debug summary output of resolved argument states ---------------------------
+#TODO: Combine the two 'if' statements
 if ${verbose}; then
     src_scl="None"
     mth_nrm="None"
@@ -532,7 +551,6 @@ EOM
     echo ""
 fi
 
-
 #TODO: Allow combinations, i.e., 'asmgt > 1'?
 if ${verbose}; then
     if [[ -n "${norm}" ]]; then
@@ -571,6 +589,7 @@ handle_env "${env_nam}" > /dev/null
 
 check_program_path awk
 check_program_path bamCompare
+check_program_path bigwigCompare
 if ! ${slurm}; then check_program_path parallel; fi
 check_program_path python
 check_program_path samtools
@@ -588,6 +607,7 @@ check_array_files "fil_den" "${arr_fil_den[@]}"
 
 #  Validate directory existence for outfile stem array
 for fil in "${arr_fil_stm[@]}"; do
+    # echo "${fil}"
     dir="$(dirname "${fil}")"
     if [[ ! -d "${dir}" ]]; then
         echo \

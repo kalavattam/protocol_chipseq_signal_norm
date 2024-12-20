@@ -205,53 +205,6 @@ for var in "${arr_arg_req[@]}"; do
     fi
 done
 
-#NOTE 1/2: All this is checked in the execute_*.sh script, and many of these
-#NOTE 2/2: checks are no longer valid.
-# #  Validate specification of '--norm', '--str_scl_fct', and '--scl_pre'
-# if [[ -n "${norm}" && "${norm}" != "None" && "${norm}" != "#N/A" ]]; then
-#     #  If '--norm' is specified, '--str_scl_fct' cannot be specified, and
-#     #+ '--scl_pre' must be 'None'
-#     if [[ -n "${str_scl_fct}" && ! "${str_scl_fct}" =~ (^|,)?'#N/A'(,|$) ]]; then
-#         echo \
-#             "Error: '--str_scl_fct <str>' cannot be specified when" \
-#             "'--norm <str>' is used." >&2
-#         exit 1
-#     fi
-#
-#     if [[ "${scl_pre}" != "None" ]]; then
-#         echo \
-#             "Warning: '--scl_pre <str>' is overridden to 'None' because" \
-#             "'--norm <str>' is specified." >&2
-#         scl_pre="None"
-#     fi
-# elif [[ -n "${str_scl_fct}" && ! "${str_scl_fct}" =~ (^|,)?'#N/A'(,|$) ]]; then
-#     #  If '--str_scl_fct' is specified, '--norm' cannot be specified, and
-#     #+ '--scl_pre' must be 'None'
-#     if [[ "${norm}" != "#N/A" ]]; then
-#         echo \
-#             "Error: '--norm <str>' cannot be specified when" \
-#             "'--str_scl_fct <str>' is used." >&2
-#         exit 1
-#     fi
-#
-#     if [[ "${scl_pre}" != "None" ]]; then
-#         echo \
-#             "Warning: '--scl_pre <str>' is overridden to 'None' because" \
-#             "'--str_scl_fct <str>' is specified." >&2
-#         scl_pre="None"
-#     fi
-# else
-#     #  If neither '--norm' nor a valid '--str_scl_fct' is specified,
-#     #+ '--scl_pre' must not be 'None'
-#     if [[ "${scl_pre}" == "None" ]]; then
-#         echo \
-#             "Error: '--scl_pre <str>' must be specified as either 'readCount'" \
-#             "or 'SES' when neither '--norm <str>' nor valid" \
-#             "'--str_scl_fct <str>' are provided." >&2
-#         exit 1
-#     fi
-# fi
-
 #  Validate and standardize output file type
 case "${typ_out}" in
     bedgraph|bdg|bg) typ_out="bedgraph" ;;
@@ -466,7 +419,7 @@ if ${debug}; then
             )"
             echo "$(
                 if [[ "${scl_fct}" != "#N/A" ]]; then
-                    echo "    --scaleFactor ${scl_fct} \\"
+                    echo "    --scaleFactors ${scl_fct} \\"
                 else
                     echo "    \\"
                 fi
@@ -504,7 +457,7 @@ if ${debug}; then
             echo "    --skipNonCoveredRegions \\"
             echo "$(
                 if [[ "${scl_fct}" != "#N/A" ]]; then
-                    echo "    --scaleFactor ${scl_fct} \\"
+                    echo "    --scaleFactors ${scl_fct} \\"
                     echo "    --scaleFactorsMethod None \\"
                 elif [[ "${norm}" != "#N/A" ]]; then
                     echo "    --scaleFactorsMethod None \\"
@@ -579,7 +532,7 @@ if ! ${dry_run}; then
                 ) \
                 $(
                     if [[ "${scl_fct}" != "#N/A" ]]; then
-                        echo "--scaleFactor ${scl_fct}"
+                        echo "--scaleFactors ${scl_fct}"
                     fi
                 ) \
                 --skipZeroOverZero \
@@ -609,7 +562,7 @@ if ! ${dry_run}; then
                 --skipNonCoveredRegions \
                 $(
                     if [[ "${scl_fct}" != "#N/A" ]]; then
-                        echo "--scaleFactor ${scl_fct}"
+                        echo "--scaleFactors ${scl_fct}"
                         echo "--scaleFactorsMethod None"
                     elif [[ "${norm}" != "#N/A" ]]; then
                         echo "--scaleFactorsMethod None"

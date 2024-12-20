@@ -36,7 +36,7 @@ dir_fnc="${dir_scr}/functions"
     source "${dir_fnc}/check_mut_excl_flags.sh"
     source "${dir_fnc}/check_program_path.sh"
     source "${dir_fnc}/check_region.sh"
-    source "${dir_fnc}/check_region_bam.sh"
+    source "${dir_fnc}/check_region_bam.sh"  #TODO
     source "${dir_fnc}/check_str_delim.sh"
     source "${dir_fnc}/check_supplied_arg.sh"
     source "${dir_fnc}/check_table.sh"
