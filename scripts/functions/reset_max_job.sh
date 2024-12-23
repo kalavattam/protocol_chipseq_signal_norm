@@ -7,10 +7,10 @@ reset_max_job() {
     local num_fil="${2}"
 
     if [[ "${max_job}" -gt "${num_fil}" ]]; then
-        echo_warning \
-            "The maximum number of SLURM jobs to run at a time, ${max_job}," \
-            "is greater than the number of infiles, ${num_fil}. Adjusting" \
-            "max_job to ${num_fil}."
+        # echo \
+        #     "Warning: The maximum number of SLURM jobs to run at a time," \
+        #     "${max_job}, is greater than the number of infiles, ${num_fil}." \
+        #     "Adjusting max_job to ${num_fil}."
         echo "${num_fil}"  # Return adjusted max_job
     else
         echo "${max_job}"  # Return original max_job

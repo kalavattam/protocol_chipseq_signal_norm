@@ -9,32 +9,37 @@
 # Description:
 #     compute_coverage.py calculates the binned coverage from a BAM file. It
 #     can output coverage as either BEDGRAPH or BIGWIG files, or both. Users
-#     can choose to normalize the coverage by fragment length and total reads,
-#     or apply a scaling factor to adjust for, e.g., spike-in controls or to
-#     model physical quantities of chromatin with a siQ-ChIP 'alpha' scaling
-#     factor. The bin size and fragment length can be customized. The script
-#     supports parallel processing, in which coverage calculations for each
-#     chromosome are distributed across multiple CPU threads.
+#     can choose the type of coverage calculation ('raw' or 'normalized'),
+#     optionally applying a scaling factor for modeling purposes (e.g.,
+#     siQ-ChIP alpha scaling). The bin size and fragment length can be
+#     customized. The script supports parallel processing, in which coverage
+#     calculations for each chromosome are distributed across multiple CPU
+#     threads.
 #
 # Usage:
 #     python compute_coverage.py \
-#         [--verbose] --infile <str> --outfile <str> -typ_out <option> \
-#         --bin_siz <posint> [--scl_fct <flt>] [--norm] [--usr_frg <posint>]
+#         [--verbose] --infile <str> --outfile <str> --typ_out <option> \
+#         --bin_siz <posint> [--scl_fct <flt>] [--typ_cvg <option>]
+#         [--usr_frg <posint>]
 #
 # Arguments:
 #      -v, --verbose  Run script in 'verbose mode'.
 #      -t, --threads  Number of threads for parallel processing (default: 1)
 #      -i, --infile   Path to the BAM infile.
 #      -o, --outfile  Path and base name for the outfile (without extension).
-#     -ot, --typ_out  Output format: 'bedgraph', 'bigwig', or 'both' (default:
+#     -to, --typ_out  Output format: 'bedgraph', 'bigwig', or 'both' (default:
 #                     bigwig).
 #     -bs, --bin_siz  Bin size for coverage calculation in base pairs (default:
 #                     1).
-#     -sf, --scl_fct  Optional scaling factor to apply to the coverage (cannot
-#                     be used with --norm).
-#     -no, --norm     Normalize coverage by fragment length and total reads in
-#                     the style of Dickson et al., Sci Rep 2023 (cannot be used
-#                     with --scl_fct).
+#     -ty, --typ_cvg  Specify coverage calculation type (default: 'norm').
+#                     Options:
+#                       - 'raw', 'unadj', 'unadjusted', 'trad', 'traditional':
+#                         Compute unadjusted coverage.
+#                       - 'norm', 'normalized', 'prop', 'proportional', 'frac',
+#                         or 'fractional': Normalize coverage by fragment
+#                         length and total reads.
+#     -sf, --scl_fct  Optional scaling factor to apply to the coverage. Can be
+#                     used with any --typ_cvg value.
 #     -uf, --usr_frg  Optional fixed fragment length to use instead of the BAM
 #                     infile's query (read) or template lengths.
 #
@@ -45,16 +50,17 @@
 #         --threads 4 \
 #         --infile sample.bam \
 #         --outfile sample_coverage \
-#         --outttyp both \
+#         --typ_out both \
 #         --bin_siz 50 \
-#         --norm
+#         --typ_cvg norm \
+#         --scl_fct 0.5
 #     ```
 #
 # Output:
 #     BEDGRAPH or BIGWIG file (or both) containing binned coverage data.
 #
 # License:
-#     Distributed under terms of the MIT license.
+#     Distributed under the MIT license.
 
 #  Import libraries, etc.
 import argparse
@@ -147,7 +153,7 @@ def validate_outfile(value):
     """
     Validates that --outfile does not contain a disallowed extension.
     """
-    disallowed = {"bigwig", "bw", "bedgraph", "bg"}
+    disallowed = {"bedgraph", "bdg", "bg", "bigwig", "bw"}
     filename, ext = os.path.splitext(value)
     if ext.lower().lstrip('.') in disallowed:
         raise argparse.ArgumentTypeError(
@@ -220,29 +226,25 @@ def parse_bam(path_bam, usr_frg=None):
 
 
 def calculate_covg_chrom(
-    chrom, entries_bam, frags_total, bin_siz, norm, scl_fct=None
+    chrom, entries_bam, frags_total, bin_siz, is_norm, scl_fct=None
 ):
     """
-    Calculate the binned coverage for a set of BED entries, either 'normalized'
-    or 'traditional'. Optionally apply a scaling factor.
+    Calculate the binned coverage for a set of BED entries, either 'raw' or
+    'normalized'. Optionally apply a scaling factor.
     """
     #  Check for invalid bin size
     if bin_siz <= 0:
         raise ValueError("--bin_siz must be greater than 0.")
 
-    #  Ensure scaling factor and normalization are not used together
-    if scl_fct is not None and norm:
-        raise ValueError("--scl_fct cannot be used together with --norm.")
-
     #  Proceed with coverage calculation
     coverage = defaultdict(float)
     for start, end, len_frag in entries_bam:
-        contribution = 1 / len_frag if norm else 1
+        contribution = 1 / len_frag if is_norm else 1
         for pos in range(start, end + 1):
             coverage[(chrom, pos)] += contribution
 
     #  Normalize by aligned reads total if specified
-    if norm:
+    if is_norm:
         for key in coverage:
             coverage[key] /= frags_total
 
@@ -402,9 +404,11 @@ def parse_args():
         -to, --typ_out  (str): Specify output format: 'bedgraph', 'bigwig',
                                'both'.
         -bs, --bin_siz  (int): Bin size for coverage calculation in base pairs.
+        -tc, --typ_cvg  (str): Specify coverage calculation type. Options:
+                               'raw', 'unadj', 'unadjusted', 'norm',
+                               'normalized', 'prop', 'proportional', 'frac', or
+                               'fractional'.
         -sf, --scl_fct  (flt): Optional scaling factor to apply to coverage.
-        -no, --norm    (flag): Normalize coverage by fragment length and total
-                               reads.
         -uf, --usr_frg  (int): Optional fixed fragment length.
     """
     parser = argparse.ArgumentParser(
@@ -444,7 +448,7 @@ def parse_args():
         required=True,
         help=(
             "Path to the output file without extension; extensions will be "
-            "automatically determined by --typ_out."
+            "automatically determined by '--typ_out'."
         )
     )
     parser.add_argument(
@@ -468,26 +472,31 @@ def parse_args():
         )
     )
     parser.add_argument(
+        "-tc",
+        "--typ_cvg",
+        choices=[
+            'raw', 'unadj', 'unadjusted', 'trad', 'traditional', 'norm',
+            'normalized', 'prop', 'proportional', 'frac', 'fractional'
+        ],
+        default='norm',
+        help=(
+            "Specify coverage calculation type:\n"
+            "  - 'raw', 'unadj', 'unadjusted', 'trad', or 'traditional': "
+            "Calculate unadjusted coverage.\n"
+            "  - 'norm', 'normalized', 'prop', 'proportional', 'frac', or "
+            "'fractional': Normalize coverage by fragment length and "
+            "total reads.\n"
+            "Default: %(default)s."
+        )
+    )
+    parser.add_argument(
         "-sf",
         "--scl_fct",
         type=float,
         default=None,
         help=(
             "Optional scaling factor to apply to the coverage (default: "
-            "%(default)s). Cannot be used with --norm."
-        )
-    )
-    parser.add_argument(
-        "-no",
-        "--norm",
-        action="store_true",
-        default=False,
-        help=(
-            "Normalize coverage by fragment length and total reads, "
-            "generating 'normalized coverage' as described in Dickson et "
-            "al., Sci Rep 2023. If not specified, then 'traditional coverage' "
-            "(unadjusted or scaling factor-adjusted aligned read depth) is "
-            "calculated. Cannot be used with --scl_fct."
+            "%(default)s)."
         )
     )
     parser.add_argument(
@@ -511,8 +520,13 @@ def parse_args():
 
 
 def main():
-    #  Use command line arguments or interactive setup based on `interactive`
+    #  Use command line arguments or interactive setup based on 'interactive'
     args = set_interactive() if interactive else parse_args()
+
+    #  Determine whether to normalize based on 'typ_cvg'
+    is_norm = args.typ_cvg in {
+        'norm', 'normalized', 'prop', 'proportional', 'frac', 'fractional'
+    }
 
     #  Print verbose output
     if args.verbose:
@@ -525,13 +539,19 @@ def main():
     frags_total = sum(len(entries) for entries in entries_bam.values())
     covg_comb = defaultdict(float)
 
+    if is_norm and frags_total == 0:
+        raise ValueError(
+            "Normalization requires non-zero total fragments. Check the BAM "
+            "file."
+        )
+
     #  Collect chromosome sizes from BAM file
     with pysam.AlignmentFile(args.infile, 'rb') as bam_file:
         chrom_siz = {seq['SN']: seq['LN'] for seq in bam_file.header['SQ']}
 
     #  Prepare and execute parallel tasks
     task_data = [
-        (chrom, entries, frags_total, args.bin_siz, args.norm, args.scl_fct)
+        (chrom, entries, frags_total, args.bin_siz, is_norm, args.scl_fct)
         for chrom, entries in entries_bam.items()
     ]
 

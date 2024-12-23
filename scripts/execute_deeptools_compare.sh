@@ -53,8 +53,8 @@ dir_fnc="${dir_scr}/functions"
 
 #  Set up paths, values, and parameters for interactive mode
 function set_interactive() {
-    #  Define base directories
     ## WARNING: If interactive=true, change values as needed ##
+    #  Define base directories
     dir_bas="${HOME}/repos"
     dir_rep="${dir_bas}/protocol_chipseq_signal_norm"
     dir_scr="${dir_rep}/scripts"
@@ -125,7 +125,7 @@ function set_interactive() {
     )"
     fil_stm=$(
         echo "${fil_num}" \
-            | sed -e "s:${dir_fnd}:${dir_trk}:g" \
+            | sed -e "s|${dir_fnd}|${dir_trk}|g" \
                   -e 's:/IP:/IP-in:g' \
                   -e 's:\.\(bigwig\|bw\|bedgraph\|bdg\|bg\|bam\)::g'
     )
@@ -215,15 +215,15 @@ Arguments:
                   'add', 'mean', 'reciprocal_ratio', 'first', 'second'
                   (default: '${oper}').
   -sf, --scl_fct  Comma-separated string of scaling factors for first (e.g.,
-                  numerator) and second (e.g., denominator) files in
-                  comparison(s). Each scaling factor pair should be in the
-                  format 'first:second' (e.g., 'num:den'), where 'first'
+                  numerator or 'num') and second (e.g., denominator or 'den')
+                  files in comparison(s). Each scaling factor pair should be in
+                  the format 'first:second' (e.g., 'num:den'), where 'first'
                   ('num') is the scaling factor for the first file in a pair
-                  (e.g., the numerator) and 'second' ('den') is the scaling
-                  factor for the second file in a pair (e.g., the denominator).
-                  Multiple pairs should be separated by commas. This argument
-                  cannot be used with '--norm <str>' or '--scl_pre <str>'. For
-                  more details, see the 'Notes' documentation below.
+                  and 'second' ('den') is the scaling factor for the second
+                  file in a pair. Multiple pairs should be separated by commas.
+                  This argument cannot be used with '--norm <str>' or
+                  '--scl_pre <str>'. For more details, see the 'Notes'
+                  documentation below.
   -no, --norm     Specify a normalization method to use when computing
                   comparison(s); available options are 'raw', 'none', 'rpkm',
                   'fpkm', 'cpm', 'bpm', or 'rpgc'. This argument cannot be used
