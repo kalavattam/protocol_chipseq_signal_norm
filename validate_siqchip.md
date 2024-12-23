@@ -624,7 +624,7 @@ export -f convert_bed_bedgraph
 
 
 #TODO: Description
-function covert_bedgraph_bigwig() {
+function convert_bedgraph_bigwig() {
     :  #TODO
 }
 

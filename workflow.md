@@ -28,7 +28,7 @@ Note: For detailed instructions on keeping your local version of the [`protocol_
     1. [C. Obtain and organize ChIP-seq FASTQ files.](#c-obtain-and-organize-chip-seq-fastq-files)
     1. [D. Use Atria to perform adapter and quality trimming of sequenced reads.](#d-use-atria-to-perform-adapter-and-quality-trimming-of-sequenced-reads)
     1. [E. Align sequenced reads with Bowtie 2 and process the read alignments.](#e-align-sequenced-reads-with-bowtie-2-and-process-the-read-alignments)
-    1. [F. Compute normalized \(or raw\) coverage.](#f-compute-normalized-or-raw-coverage)
+    1. [F. Compute normalized \(proportional\) or raw coverage.](#f-compute-normalized-proportional-or-raw-coverage)
     1. [G. Compute coverage with the sans spike-in quantitative ChIP-seq \(siQ-ChIP\) method.](#g-compute-coverage-with-the-sans-spike-in-quantitative-chip-seq-siq-chip-method)
     1. [H. Compute coverage using the spike-in method.](#h-compute-coverage-using-the-spike-in-method)
 
@@ -422,10 +422,10 @@ bash "${dir_scr}/compress_remove_files.sh" --dir_fnd "${dir_out}/sp/logs"
 </details>
 <br />
 
-<a id="f-compute-normalized-or-raw-coverage"></a>
-### F. Compute normalized (or raw) coverage.
+<a id="f-compute-normalized-proportional-or-raw-coverage"></a>
+### F. Compute normalized (proportional) or raw coverage.
 <details>
-<summary><i>Text: Compute raw or normalized (fractional) coverage.</i></summary>
+<summary><i>Text: Compute normalized (proportional) or raw coverage..</i></summary>
 <br />
 
 This following Bash code chunk provides an example of how to compute ChIP-seq coverage, either as raw (unadjusted for sequencing depth or other technical biases) or normalized (fractional) per [Dickson et al., *Sci Rep*, 2023](https://www.nature.com/articles/s41598-023-34430-2). The coverage type is determined by setting the variable `typ_cov` to `"raw"` or `"norm"`. BIGWIG and log output files will be saved to separate directories based on the selected coverage type.
@@ -438,11 +438,12 @@ This following Bash code chunk provides an example of how to compute ChIP-seq co
 ```bash
 #!/bin/bash
 
-#  Optional: Request an interactive node
-grabnode  # Request 1 core, 20 GB memory, 1 day, no GPU
+#  Optional: Request an interactive node --------------------------------------
+# grabnode  ## Uncomment to request 1 core, 20 GB memory, 1 day, no GPU ##
 
-#  Define variables for directory paths, environment, driver script arguments,
-#+ etc.
+
+#  Define variables -----------------------------------------------------------
+#  Define directory paths
 dir_bas="${HOME}/repos"  ## WARNING: Change as needed ##
 dir_rep="${dir_bas}/protocol_chipseq_signal_norm"
 dir_scr="${dir_rep}/scripts"
@@ -450,6 +451,7 @@ dir_fnc="${dir_scr}/functions"
 dir_dat="${dir_rep}/data"
 dir_pro="${dir_dat}/processed"
 
+#  Define alignment and coverage details
 aligner="bowtie2"
 a_type="global"
 req_flg=true
@@ -459,34 +461,41 @@ det_bam="flag-${flg}_mapq-${mapq}"
 det_cov="${aligner}_${a_type}_${det_bam}"
 typ_cov="norm"  ## WARNING: "raw" for unadjusted, "norm" for normalized ##
 
+#  Further define directory setup
 dir_aln="${dir_pro}/align_${aligner}_${a_type}"
 dir_bam="${dir_aln}/${det_bam}/sc"
 dir_cov="${dir_pro}/compute_coverage"
 dir_trk="${dir_cov}/${det_cov}/${typ_cov}/tracks"
 
-env_nam="env_analyze"
-day="$(date '+%Y-%m%d')"
+#  Define driver script
+exc_cvg="${dir_scr}/execute_compute_coverage.sh"
+
+#  Define script arguments, environment, and resources
 nam_job="compute_coverage_${typ_cov}"
 typ_out="bigwig"
-bin_siz=1
-
-#  Set hardcoded argument assignments, etc.
 threads=8
-infiles="$(  ## WARNING: Change search parameters as needed ##
-    bash "${dir_scr}/find_files.sh" \
-        --dir_fnd "${dir_bam}" \
-        --pattern "*.bam"
-)"
+bin_siz=1
+env_nam="env_analyze"
+day="$(date '+%Y-%m%d')"
 err_out="${dir_trk}/logs"
-
-#  Using the date and outfile, set path and prefix for driver script logs
 exc_pth="${dir_trk}/logs/${day}.execute.${nam_job}"
 
-#  Create directory structure for storing output tables and tracks associated
-#+ with different normalization methods (alpha, spike, norm, raw)
+#  Define file search parameters
+## WARNING: Change search parameters as needed ##
+pattern="*.bam"
+infiles="$(
+    bash "${dir_scr}/find_files.sh" \
+        --dir_fnd "${dir_bam}" \
+        --pattern "${pattern}"
+)"
+
+
+#  Create required directories if necessary -----------------------------------
 mkdir -p ${dir_cov}/${det_cov}/{alpha,spike}/tables/{docs,logs}
 mkdir -p ${dir_cov}/${det_cov}/{alpha,norm,raw,spike}/tracks/{docs,logs}
 
+
+#  Activate the environment and check dependencies ----------------------------
 #  Source utility functions
 source "${dir_fnc}/check_program_path.sh"
 source "${dir_fnc}/echo_warning.sh"
@@ -505,32 +514,27 @@ check_program_path sbatch ||
         "SLURM is not available on this system. Do not use the '--slurm'" \
         "flag with the driver script."
 
-#  Run the driver script to calculate per-sample spike-in-derived scaling
-#+ factors
-bash "${dir_scr}/execute_compute_coverage.sh" \
+
+#  Compute coverage -----------------------------------------------------------
+bash "${exc_cvg}" \
     --verbose \
     --threads "${threads}" \
     --infiles "${infiles}" \
     --dir_out "${dir_trk}" \
     --typ_out "${typ_out}" \
     --bin_siz "${bin_siz}" \
-    $(
-        if [[ "${typ_cov}" == "norm" ]]; then
-            echo "--norm"
-        fi
-    ) \
+    $(if [[ "${typ_cov}" == "norm" ]]; then echo "--norm"; fi) \
     --err_out "${err_out}" \
     --nam_job "${nam_job}" \
     --slurm \
          >> >(tee -a "${exc_pth}.stdout.txt") \
         2>> >(tee -a "${exc_pth}.stderr.txt")
 
-#  Cleanup: Compress large stdout, stderr, LOG, and JSON files, and remove
-#+ files with size 0
+
+#  Cleanup: Compress logs and remove empty files ------------------------------
 bash "${dir_scr}/compress_remove_files.sh" --dir_fnd "${err_out}"
 
-#  Optional: Check the contents of the logs directory
-# ls -lhaFG "${err_out}"
+# ls -lhaFG "${err_out}"  ## Uncomment to check directory for logs ##
 ```
 </details>
 <br />
