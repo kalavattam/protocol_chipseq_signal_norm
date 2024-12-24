@@ -13,6 +13,7 @@ debug=true
 threads=1
 infiles=""
 table=""
+eqn="6nd"
 outfile=""
 flg_dep=false
 flg_len=false
@@ -29,6 +30,7 @@ $(basename "${0}") takes the following keyword arguments:
    -t, --threads  Number of threads to use.
    -i, --infiles  Comma-separated serialized string of sample IP BAM infiles.
   -tb, --table    Comma- or tab-separated table of siQ-ChIP metrics.
+  -eq, --eqn      Alpha equation to compute. Options: '5', '5nd', '6', '6nd'.
    -o, --outfile  Outfile of sample siQ-ChIP alpha values.
   -fd, --flg_dep  Calculate the number of alignments.
   -fl, --flg_len  Calculate the mean fragment length.
@@ -60,6 +62,7 @@ while [[ "$#" -gt 0 ]]; do
          -t|--threads) threads="${2}"; shift 2 ;;
          -i|--infiles) infiles="${2}"; shift 2 ;;
         -tb|--table)   table="${2}";   shift 2 ;;
+        -eq|--eqn)     eqn="${2}";     shift 2 ;;
          -o|--outfile) outfile="${2}"; shift 2 ;;
         -fd|--flg_dep) flg_dep=true;   shift 1 ;;
         -fl|--flg_len) flg_len=true;   shift 1 ;;
@@ -86,6 +89,8 @@ if ${debug}; then
     echo "infiles=${infiles}"
     echo ""
     echo "table=${table}"
+    echo ""
+    echo "eqn=${eqn}"
     echo ""
     echo "outfile=${outfile}"
     echo ""
@@ -201,6 +206,7 @@ if ${debug}; then
     echo "source <("
     echo "    python \"${scr_par}\" \\"
     echo "        --text \"${table}\" \\"
+    echo "        --eqn \"${eqn}\" \\"
     echo "        --bam \"${file_ip}\" \\"
     echo "        --shell"
     echo ")"
@@ -213,6 +219,7 @@ fi
 source <(
     python "${scr_par}" \
         --text "${table}" \
+        --eqn "${eqn}" \
         --bam "${file_ip}" \
         --shell
 )
@@ -220,13 +227,13 @@ source <(
 #  If --flg_dep, calculate sequencing depth (number of alignments) for IP and
 #+ input samples
 if ${flg_dep}; then
-    depth_ip=$(samtools view -@ "${threads}" -c "${file_ip}")
-    depth_in=$(samtools view -@ "${threads}" -c "${file_in}")
+    dep_ip=$(samtools view -@ "${threads}" -c "${file_ip}")
+    dep_in=$(samtools view -@ "${threads}" -c "${file_in}")
 fi
 
 #  If --flg_len, calculate mean fragment length for IP and input samples
 if ${flg_len}; then
-    length_ip="$(
+    len_ip="$(
         samtools view -@ "${threads}" "${file_ip}" \
             | awk '{
                 if ($9 > 0) { sum += $9; count++ }
@@ -234,7 +241,7 @@ if ${flg_len}; then
                 if (count > 0) { print sum / count }
             }'
     )"
-    length_in="$(
+    len_in="$(
         samtools view -@ "${threads}" "${file_in}" \
             | awk '{
                 if ($9 > 0) { sum += $9; count++ }
@@ -252,17 +259,17 @@ if ${debug}; then
     echo ""
     echo "mass_in=${mass_in}"
     echo ""
-    echo "volume_ip=${volume_ip}"
+    echo "vol_all=${vol_all}"
     echo ""
-    echo "volume_in=${volume_in}"
+    echo "vol_in=${vol_in}"
     echo ""
-    echo "depth_ip=${depth_ip}"
+    echo "dep_ip=${dep_ip}"
     echo ""
-    echo "depth_in=${depth_in}"
+    echo "dep_in=${dep_in}"
     echo ""
-    echo "length_ip=${length_ip}"
+    echo "len_ip=${len_ip}"
     echo ""
-    echo "length_in=${length_in}"
+    echo "len_in=${len_in}"
     echo ""
 fi
 
@@ -290,16 +297,17 @@ ln -f "${err_ini}" "${err_dsc}"
 ln -f "${out_ini}" "${out_dsc}"
 
 #  Check call to calculate_scaling_factor_alpha.py
-if ${debug}; then
+if ${debug:-true}; then
     echo "python \"${scr_alf}\" \\"
+    echo "    --eqn \"${eqn}\" \\"
     echo "    --mass_ip ${mass_ip} \\"
     echo "    --mass_in ${mass_in} \\"
-    echo "    --volume_ip ${volume_ip} \\"
-    echo "    --volume_in ${volume_in} \\"
-    echo "    --depth_ip ${depth_ip} \\"
-    echo "    --depth_in ${depth_in} \\"
-    echo "    --length_ip ${length_ip} \\"
-    echo "    --length_in ${length_in}"
+    echo "    --vol_all ${vol_all} \\"
+    echo "    --vol_in ${vol_in} \\"
+    echo "    --dep_ip ${dep_ip} \\"
+    echo "    --dep_in ${dep_in} \\"
+    echo "    --len_ip ${len_ip} \\"
+    echo "    --len_in ${len_in}"
     echo ""
 fi
 
@@ -307,14 +315,15 @@ fi
 # shellcheck disable=SC2046,2086
 alpha=$(
     python "${scr_alf}" \
+        --eqn "${eqn}" \
         --mass_ip ${mass_ip} \
         --mass_in ${mass_in} \
-        --volume_ip ${volume_ip} \
-        --volume_in ${volume_in} \
-        --depth_ip ${depth_ip} \
-        --depth_in ${depth_in} \
-        --length_ip ${length_ip} \
-        --length_in ${length_in}
+        --vol_all ${vol_all} \
+        --vol_in ${vol_in} \
+        --dep_ip ${dep_ip} \
+        --dep_in ${dep_in} \
+        --len_ip ${len_ip} \
+        --len_in ${len_in}
 )
 
 #  Debug output to verify siQ-ChIP alpha value
@@ -322,23 +331,6 @@ if ${debug}; then
     echo "alpha=${alpha}"
     echo ""
 fi
-
-# #  Write header with flock
-# {
-#     flock -n 200 || exit 1  # Only proceed if lock is acquired
-#
-#     #  Check if the header is already present in the file
-#     if ! grep -q "$(printf "^sample\talpha")" "${outfile}" 2> /dev/null; then
-#         #  If the header is not present, write it
-#         if ! ${flg_mc}; then
-#             echo -e "sample\talpha" >> "${outfile}"
-#         else
-#             echo -e \
-#                 "sample\talpha\tmass_ip\tmass_in\tvolume_ip\tvolume_in\tdepth_ip\tdepth_in\tlength_ip\tlength_in" \
-#                     >> "${outfile}"
-#         fi
-#     fi
-# } 200> "${outfile}.lock"  # Use a lock file
 
 #  Print the IP sample and alpha value to the outfile
 if ! ${flg_mc}; then
@@ -353,19 +345,17 @@ else
     #  If --flg_mc, include mass, volume, depth, and length values in the
     #+ outfile
     echo -e \
-        "${file_ip}\t${alpha}\t${mass_ip}\t${mass_in}\t${volume_ip}\t${volume_in}\t${depth_ip}\t${depth_in}\t${length_ip}\t${length_in}" \
+        "${file_ip}\t${alpha}\t${mass_ip}\t${mass_in}\t${vol_all}\t${vol_in}\t${dep_ip}\t${dep_in}\t${len_ip}\t${len_in}" \
             >> "${outfile}"
 
     #  If --flg_in, print the input sample and alpha value (#N/A), as well as
     #+ mass, volume, depth, and length values, to the outfile
     if ${flg_in}; then
         echo -e \
-            "${file_in}\t#N/A\t${mass_ip}\t${mass_in}\t${volume_ip}\t${volume_in}\t${depth_ip}\t${depth_in}\t${length_ip}\t${length_in}" \
+            "${file_in}\t#N/A\t${mass_ip}\t${mass_in}\t${vol_all}\t${vol_in}\t${dep_ip}\t${dep_in}\t${len_ip}\t${len_in}" \
                 >> "${outfile}"
     fi
 fi
-#NOTE: 2024-1119, replaced ${file_ip##*/} with ${file_ip} and ${file_in##*/}
-#      with ${file_in}
 
 #  Remove the initial SLURM stderr and stdout TXT outfiles
 rm "${err_ini}" "${out_ini}"

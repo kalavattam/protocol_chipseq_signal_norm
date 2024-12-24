@@ -80,6 +80,7 @@ function set_interactive() {
             --exclude "${exclude}"
     )"
     table="${dir_dat}/raw/docs/measurements_siq_chip.tsv"
+    eqn="6nd"
     outfile="${dir_out}/IP_WT_G1-G2M-Q_Hho1-Hmo1_6336-6337_7750-7751.tsv"
     flg_dep=true
     flg_len=true
@@ -107,6 +108,7 @@ dry_run=false
 threads=1
 infiles=""
 table=""
+eqn="6nd"
 outfile=""
 flg_dep=false
 flg_len=false
@@ -123,7 +125,7 @@ show_help=$(cat << EOM
 Usage:
   execute_calculate_scaling_factor_alpha.sh
     [--verbose] [--dry_run] --threads <int> --infiles <str> --table <str>
-    --outfile <str> [--flg_dep] [--flg_len] [--flg_in] [--flg_mc]
+    --eqn <str> --outfile <str> [--flg_dep] [--flg_len] [--flg_in] [--flg_mc]
     --err_out <str> --nam_job <str> [--slurm] [--max_job <int>] [--time <str>]
 
 Description:
@@ -137,6 +139,7 @@ Arguments:
    -i, --infiles  Comma-separated serialized list of IP coordinate-sorted BAM
                   infiles, including paths (required).
   -tb, --table    #TODO
+  -eq, --eqn      #TODO
    -o, --outfile  #TODO
   -fd, --flg_dep  Use Samtools to calculate the number of alignments.
   -fl, --flg_len  Use Samtools and awk to calculate the mean fragment length.
@@ -172,6 +175,7 @@ else
              -t|--threads) threads="${2}"; shift 2 ;;
              -i|--infiles) infiles="${2}"; shift 2 ;;
             -tb|--table)   table="${2}";   shift 2 ;;
+            -eq|--eqn)     eqn="${2}";     shift 2 ;;
              -o|--outfile) outfile="${2}"; shift 2 ;;
             -fd|--flg_dep) flg_dep=true;   shift 1 ;;
             -fl|--flg_len) flg_len=true;   shift 1 ;;
@@ -214,6 +218,17 @@ check_exists_file_dir "d" "$(dirname "${infiles%%[,;]*}")" "infiles"
 
 check_supplied_arg -a "${table}" -n "table"
 check_exists_file_dir "f" "${table}" "table"
+
+check_supplied_arg -a "${eqn}" -n "eqn"
+case "${eqn}" in
+    5|5nd|6|6nd) : ;;
+    *)
+        echo_error \
+            "Equation (--eqn) was assigned '${eqn}' must be '5', '5nd', '6'," \
+            "or '6nd'."
+        exit_1
+    ;;
+esac
 
 check_supplied_arg -a "${outfile}" -n "outfile"
 check_exists_file_dir "d" "$(dirname "${outfile}")" "outfile"
@@ -302,6 +317,7 @@ if ${verbose}; then
     echo "threads=${threads}"
     echo "infiles=${infiles}"
     echo "table=${table}"
+    echo "eqn=${eqn}"
     echo "outfile=${outfile}"
     echo "flg_dep=${flg_dep}"
     echo "flg_len=${flg_len}"
@@ -337,6 +353,7 @@ if ${slurm}; then
         echo "        --threads ${threads} \\"
         echo "        --infiles ${infiles} \\"
         echo "        --table ${table} \\"
+        echo "        --eqn ${eqn} \\"
         echo "        --outfile ${outfile} \\"
         echo "        $(if ${flg_dep}; then echo "--flg_dep"; fi) \\"
         echo "        $(if ${flg_len}; then echo "--flg_len"; fi) \\"
@@ -367,7 +384,7 @@ if ${slurm}; then
             echo -e "sample\talpha" >> "${outfile}"
         else
             echo -e \
-                "sample\talpha\tmass_ip\tmass_in\tvolume_ip\tvolume_in\tdepth_ip\tdepth_in\tlength_ip\tlength_in" \
+                "sample\talpha\tmass_ip\tmass_in\tvol_all\tvol_in\tdep_ip\tdep_in\tlen_ip\tlen_in" \
                     >> "${outfile}"
         fi
 
@@ -383,6 +400,7 @@ if ${slurm}; then
                 --threads ${threads} \
                 --infiles ${infiles} \
                 --table ${table} \
+                --eqn ${eqn} \
                 --outfile ${outfile} \
                 $(if ${flg_dep}; then echo "--flg_dep"; fi) \
                 $(if ${flg_len}; then echo "--flg_len"; fi) \
@@ -423,6 +441,7 @@ else
         source <(
             python {scr_par} \
                 --text {table} \
+                --eqn {eqn}
                 --bam "${file_ip}" \
                 --shell
         )
@@ -430,13 +449,13 @@ else
         #  If --flg_dep, calculate sequencing depth (number of alignments) for
         #+ IP and input samples (note the weird single-quoting here)
         if {flg_dep}; then
-            depth_ip=$(samtools view -@ {threads} -c "${file_ip}")
-            depth_in=$(samtools view -@ {threads} -c "${file_in}")
+            dep_ip=$(samtools view -@ {threads} -c "${file_ip}")
+            dep_in=$(samtools view -@ {threads} -c "${file_in}")
         fi
 
         #  If --flg_len, calculate mean fragment length for IP and input samples
         if {flg_len}; then
-            length_ip="$(
+            len_ip="$(
                 samtools view -@ {threads} "${file_ip}" \
                     | awk '\''{
                         if ($9 > 0) { sum += $9; count++ }
@@ -444,7 +463,7 @@ else
                         if (count > 0) { print sum / count }
                     }'\'' 
             )"
-            length_in="$(
+            len_in="$(
                 samtools view -@ {threads} "${file_in}" \
                     | awk '\''{
                         if ($9 > 0) { sum += $9; count++ }
@@ -458,7 +477,7 @@ else
         # #+ samples (here, the embedded awk scripts are passed as strings using
         # #+ double quotes)
         # if {flg_len}; then
-        #     length_ip="$(
+        #     len_ip="$(
         #         samtools view -@ {threads} "${file_ip}" \
         #             | awk "{ \
         #                 if (\$9 > 0) { sum += \$9; count++ } \
@@ -466,7 +485,7 @@ else
         #                 if (count > 0) { print sum / count } \
         #             }"
         #     )"
-        #     length_in="$(
+        #     len_in="$(
         #         samtools view -@ {threads} "${file_in}" \
         #             | awk "{ \
         #                 if (\$9 > 0) { sum += \$9; count++ } \
@@ -482,14 +501,15 @@ else
         #  Calculate the siQ-ChIP alpha value using a specified Python script
         alpha=$(
             python {scr_alf} \
+                --eqn ${eqn} \
                 --mass_ip ${mass_ip} \
                 --mass_in ${mass_in} \
-                --volume_ip ${volume_ip} \
-                --volume_in ${volume_in} \
-                --depth_ip ${depth_ip} \
-                --depth_in ${depth_in} \
-                --length_ip ${length_ip} \
-                --length_in ${length_in}
+                --vol_all ${vol_all} \
+                --vol_in ${vol_in} \
+                --dep_ip ${dep_ip} \
+                --dep_in ${dep_in} \
+                --len_ip ${len_ip} \
+                --len_in ${len_in}
         )
 
         #  Write the calculated alpha value and optional metrics to the output file
@@ -499,16 +519,14 @@ else
                 echo -e "${file_in}\t#N/A" >> {outfile}
             fi
         else
-            echo -e "${file_ip}\t${alpha}\t${mass_ip}\t${mass_in}\t${volume_ip}\t${volume_in}\t${depth_ip}\t${depth_in}\t${length_ip}\t${length_in}" \
+            echo -e "${file_ip}\t${alpha}\t${mass_ip}\t${mass_in}\t${vol_all}\t${vol_in}\t${dep_ip}\t${dep_in}\t${len_ip}\t${len_in}" \
                 >> {outfile}
             if {flg_in}; then
-                echo -e "${file_in}\t#N/A\t${mass_ip}\t${mass_in}\t${volume_ip}\t${volume_in}\t${depth_ip}\t${depth_in}\t${length_ip}\t${length_in}" \
+                echo -e "${file_in}\t#N/A\t${mass_ip}\t${mass_in}\t${vol_all}\t${vol_in}\t${dep_ip}\t${dep_in}\t${len_ip}\t${len_in}" \
                     >> {outfile}
             fi
         fi
     '
-    #NOTE: 2024-1119, replaced ${file_ip##*/} with ${file_ip} and
-    #      ${file_in##*/} with ${file_in}
 
     #  Define a helper function to run GNU Parallel with the specified logic
     #+ and variables
@@ -519,6 +537,7 @@ else
             ::: arr_infiles "${arr_infiles[@]}" \
             ::: threads "${threads}" \
             ::: table "${table}" \
+            ::: eqn "${eqn}" \
             ::: scr_par "${scr_par}" \
             ::: scr_alf "${scr_alf}" \
             ::: flg_dep "${flg_dep}" \
@@ -536,7 +555,7 @@ else
         # if ! ${flg_mc}; then
         #     echo -e "sample\talpha"
         # else
-        #     echo -e "sample\talpha\tmass_ip\tmass_in\tvolume_ip\tvolume_in\tdepth_ip\tdepth_in\tlength_ip\tlength_in"
+        #     echo -e "sample\talpha\tmass_ip\tmass_in\tvol_all\tvol_in\tdep_ip\tdep_in\tlen_ip\tlen_in"
         # fi
 
         #  Execute a dry-run of the parallel processing logic, capturing stdout
@@ -566,7 +585,7 @@ else
             echo -e "sample\talpha" >> "${outfile}"
         else
             echo -e \
-                "sample\talpha\tmass_ip\tmass_in\tvolume_ip\tvolume_in\tdepth_ip\tdepth_in\tlength_ip\tlength_in" \
+                "sample\talpha\tmass_ip\tmass_in\tvol_all\tvol_in\tdep_ip\tdep_in\tlen_ip\tlen_in" \
                     >> "${outfile}"
         fi
 

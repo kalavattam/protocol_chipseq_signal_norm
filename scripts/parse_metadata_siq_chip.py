@@ -18,6 +18,7 @@
 # Arguments:
 #      -v, --verbose  Enables verbose output for debugging or information.
 #     -tx, --text     CSV or TSV siQ-ChIP metadata infile.
+#     -eq, --eqn      Equation to compute. Options: '5', '5nd', '6', or '6nd'.
 #      -b, --bam      BAM infile used to identify metadata row.
 #     -sh, --shell    Outputs values in a shell-parseable format (for export).
 #
@@ -47,13 +48,13 @@ interactive = False
 
 #  Define a dictionary of alternative names for each column
 column_name_map = {
-    'volume_in': [
+    'vol_in': [
         'volume_in',
         'vol_in',
         'v_in',
         'input sample volume'
     ],
-    'volume_ip': [
+    'vol_all': [
         'volume_all',
         'volume_ip',
         'vol_all',
@@ -88,27 +89,27 @@ column_name_map = {
         'IP DNA concentration (ng/µL)',
         'IP DNA concentration'
     ],
-    'length_in': [
+    'len_in': [
         'length_in',
         'len_in',
         'input average fragment length (from TapeStation)',
         'input average fragment length (from Bioanalyzer)',
         'input average fragment length'
     ],
-    'length_ip': [
+    'len_ip': [
         'length_ip',
         'len_ip',
         'IP average fragment length (from TapeStation)',
         'IP average fragment length (from Bioanalyzer)',
         'IP average fragment length'
     ],
-    'depth_in': [
+    'dep_in': [
         'depth_in',
         'dep_in',
         'input sequencing depth',
         'input depth'
     ],
-    'depth_ip': [
+    'dep_ip': [
         'depth_ip',
         'dep_ip',
         'IP sequencing depth',
@@ -121,6 +122,7 @@ def set_interactive():
     """Set parameters for interactive mode."""
     verbose = True
     text = ...  # TODO
+    eqn = '6nd'
     bam = ...  # TODO
     shell = True
 
@@ -128,6 +130,7 @@ def set_interactive():
     return argparse.Namespace(
         verbose=verbose,
         text=text,
+        eqn=eqn,
         bam=bam,
         shell=shell
     )
@@ -263,6 +266,21 @@ def parse_args():
         required=True
     )
     parser.add_argument(
+        '-eq', '--eqn',
+        type=str,
+        required=True,
+        choices=['5', '5nd', '6', '6nd'],
+        default='6nd',
+        help=(
+            "Equation to compute the alpha scaling factor (PMID: 37160995; "
+            "default: %(default)s). Options:\n"
+            "  - '5'   Eq. 5 (for raw coverage).\n"
+            "  - '5nd' Eq. 5 sans depth terms (for normalized coverage).\n"
+            "  - '6'   Eq. 6 (for raw coverage).\n"
+            "  - '6nd' Eq. 6 sans depth terms (for normalized coverage).\n\n"
+        )
+    )
+    parser.add_argument(
         "-b", "--bam",
         help="Input BAM file",
         required=True
@@ -288,6 +306,10 @@ def main():
     else:
         args = parse_args()
 
+    #  Validate the alpha equation assignment
+    if args.eqn not in {'5', '5nd', '6', '6nd'}:
+        raise ValueError(f"Invalid equation selection: {args.eqn}")
+
     #  Parse the BAM filename
     parsed_components = parse_bam_filename(args.bam)
     assay = parsed_components['assay']
@@ -300,6 +322,7 @@ def main():
     if args.verbose:
         print(
             "Parsed BAM filename components:\n",
+            f"  - eqn={args.eqn}\n",
             f"  - assay={assay}\n",
             f"  - genotype={genotype}\n",
             f"  - state={state}\n",
@@ -326,28 +349,29 @@ def main():
     #  Output based on --shell flag
     if args.shell:
         output_for_shell(
-            volume_in=row['volume_in'],
-            volume_ip=row['volume_ip'],
+            eqn=args.eqn,
+            vol_in=row['vol_in'],
+            vol_all=row['vol_all'],
             mass_in=row['mass_in'],
             mass_ip=row['mass_ip'],
             conc_in=row.get('conc_in', 'N/A'),
             conc_ip=row.get('conc_ip', 'N/A'),
-            length_in=row['length_in'],
-            length_ip=row['length_ip'],
-            depth_in=row.get('depth_in', 'N/A'),
-            depth_ip=row.get('depth_ip', 'N/A')
+            len_in=row['len_in'],
+            len_ip=row['len_ip'],
+            dep_in=row.get('dep_in', 'N/A'),
+            dep_ip=row.get('dep_ip', 'N/A')
         )
     else:
-        print(f"volume_in: {row['volume_in']}")
-        print(f"volume_ip: {row['volume_ip']}")
+        print(f"vol_in: {row['vol_in']}")
+        print(f"vol_all: {row['vol_all']}")
         print(f"mass_in: {row['mass_in']}")
         print(f"mass_ip: {row['mass_ip']}")
         print(f"conc_in: {row.get('conc_in', 'N/A')}")
         print(f"conc_ip: {row.get('conc_ip', 'N/A')}")
-        print(f"length_in: {row['length_in']}")
-        print(f"length_ip: {row['length_ip']}")
-        print(f"depth_in: {row.get('depth_in', 'N/A')}")
-        print(f"depth_ip: {row.get('depth_ip', 'N/A')}")
+        print(f"len_in: {row['len_in']}")
+        print(f"len_ip: {row['len_ip']}")
+        print(f"dep_in: {row.get('dep_in', 'N/A')}")
+        print(f"dep_ip: {row.get('dep_ip', 'N/A')}")
 
 
 if __name__ == "__main__":
