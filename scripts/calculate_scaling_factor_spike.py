@@ -219,10 +219,13 @@ def main():
     main alignment counts are zero, preventing division-by-zero errors.
     
     Args:
-        ...
+        None.
 
     Returns:
         Outputs the final scaling factor.
+
+    Raises:
+        #TODO
     """
     #  Use command line arguments or interactive setup based on `interactive`
     if interactive:

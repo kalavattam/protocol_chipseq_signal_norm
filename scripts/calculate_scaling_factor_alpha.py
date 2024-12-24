@@ -113,10 +113,12 @@ def set_interactive():
 def validate_positive_values(args):
     """Ensure all provided values are positive and non-zero."""
     for name, value in vars(args).items():
-        if value <= 0:
-            raise ValueError(
-                f"{name} must be greater than zero, but got {value}."
-            )
+        #  Skip non-numeric attributes (e.g., strings)
+        if isinstance(value, (int, float)):
+            if value <= 0:
+                raise ValueError(
+                    f"{name} must be greater than zero, but got {value}."
+                )
 
 
 def calculate_alpha(
@@ -172,7 +174,7 @@ def calculate_alpha(
         )
     elif eqn in {'6', '6nd'}:
         #  To avoid division by 0 or a negative integer, check that
-        #  vol_all > vol_in for Equations '6' and '6nd'
+        #  vol_all > vol_in for equations '6' and '6nd'
         if vol_all <= vol_in:
             raise ValueError(
                 f"For 'eqn={eqn}', 'vol_all' must be greater than 'vol_in'. "
@@ -226,50 +228,46 @@ def parse_args():
         'IP and input data.'
     ))
     parser.add_argument(
-        '-eq',
-        '--eqn',
+        '-eq', '--eqn',
         type=str,
         required=True,
         choices=['5', '5nd', '6', '6nd'],
+        default='6nd',
         help=(
-            "Equation to compute the alpha scaling factor. Options:\n"
-            "  '5'   Equation 5 (for raw coverage).\n"
-            "  '5nd' Equation 5, excluding depth terms (for norm. coverage).\n"
-            "  '6'   Equation 6 (for raw coverage).\n"
-            "  '6nd' Equation 6, excluding depth terms (for norm. coverage)."
+            "Equation to compute the alpha scaling factor (PMID: 37160995; "
+            "default: %(default)s). Options:\n"
+            "  - '5'   Eq. 5 (for raw coverage).\n"
+            "  - '5nd' Eq. 5 sans depth terms (for normalized coverage).\n"
+            "  - '6'   Eq. 6 (for raw coverage).\n"
+            "  - '6nd' Eq. 6 sans depth terms (for normalized coverage).\n\n"
         )
     )
     parser.add_argument(
-        '-mp',
-        '--mass_ip',
+        '-mp', '--mass_ip',
         type=float,
         required=True,
         help='Mass of IP sample.'
     )
     parser.add_argument(
-        '-mn',
-        '--mass_in',
+        '-mn', '--mass_in',
         type=float,
         required=True,
         help='Mass of input sample.'
     )
     parser.add_argument(
-        '-vp',
-        '--vol_all',
+        '-vp', '--vol_all',
         type=float,
         required=True,
         help='Volume of sample before removal of input.'
     )
     parser.add_argument(
-        '-vn',
-        '--vol_in',
+        '-vn', '--vol_in',
         type=float,
         required=True,
         help='Volume of input sample.'
     )
     parser.add_argument(
-        '-dp',
-        '--dep_ip',
+        '-dp', '--dep_ip',
         type=int,
         required=False,
         help=(
@@ -278,8 +276,7 @@ def parse_args():
         )
     )
     parser.add_argument(
-        '-dn',
-        '--dep_in',
+        '-dn', '--dep_in',
         type=int,
         required=False,
         help=(
@@ -288,22 +285,19 @@ def parse_args():
         )
     )
     parser.add_argument(
-        '-lp',
-        '--len_ip',
+        '-lp', '--len_ip',
         type=float,
         required=True,
         help='Mean fragment length of IP sample.'
     )
     parser.add_argument(
-        '-ln',
-        '--len_in',
+        '-ln', '--len_in',
         type=float,
         required=True,
         help='Mean fragment length of input sample.'
     )
     parser.add_argument(
-        '-ra',
-        '--rnd_alf',
+        '-ra', '--rnd_alf',
         type=int,
         default=6,
         required=False,
@@ -362,7 +356,7 @@ def main():
             args.eqn,
             args.mass_ip, args.mass_in,
             args.vol_all, args.vol_in,
-            args.dep_ip or 1, args.dep_in or 1,  # Default to 1 if not provided
+            args.dep_ip or 1, args.dep_in or 1,
             args.len_ip, args.len_in
         ), args.rnd_alf)
         print(f"{alpha}")

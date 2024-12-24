@@ -614,7 +614,7 @@ eo_trk="${dir_trk}/logs"
 #  Define environment, resources, and script arguments 
 env_nam="env_analyze"
 threads=8
-mes_tbl="${dir_raw}/docs/measurements_siq_chip.tsv"
+mes_tbl="${dir_raw}/docs/measurements_siqchip.tsv"
 bin_siz=1
 
 #  Define file search parameters
@@ -670,7 +670,7 @@ check_program_path sbatch ||
 
 
 #  Calculate siQ-ChIP alpha scaling factors -----------------------------------
-if [[ ! "${fil_tbl}" ]]; then
+if [[ ! -f "${fil_tbl}" ]]; then
     #  Run the driver script to generate a TSV file of sample-specific siQ-ChIP
     #+ alpha scaling factors
     bash "${dir_scr}/execute_calculate_scaling_factor_${typ_cov}.sh" \
@@ -696,6 +696,7 @@ if [[ ! "${fil_tbl}" ]]; then
 
     # cat "${fil_tbl}"  ## Uncomment to check the table contents ##
 fi
+
 
 #  Generate alpha-scaled signal tracks ----------------------------------------
 #  Use the TSV file to generate alpha-scaled signal tracks

@@ -22,6 +22,8 @@ Workflow: Validate New siQ-ChIP Implementation with the Original
     1. [A. QNAME-sort BAM files filtered for *S. cerevisiae* alignments.](#a-qname-sort-bam-files-filtered-for-s-cerevisiae-alignments)
     1. [B. Generate BED files from QNAME-sorted BAM files.](#b-generate-bed-files-from-qname-sorted-bam-files)
     1. [C. Organize and generate metadata for and run the initial implementation of siQ-ChIP.](#c-organize-and-generate-metadata-for-and-run-the-initial-implementation-of-siq-chip)
+1. [Test refactored bespoke code](#test-refactored-bespoke-code)
+    1. [G. Compute coverage with the sans spike-in quantitative ChIP-seq \(siQ-ChIP\) method.](#g-compute-coverage-with-the-sans-spike-in-quantitative-chip-seq-siq-chip-method)
 
 <!-- /MarkdownTOC -->
 </details>
@@ -1328,3 +1330,231 @@ fi
 </details>
 <br />
 
+<a id="test-refactored-bespoke-code"></a>
+## Test refactored bespoke code
+<a id="g-compute-coverage-with-the-sans-spike-in-quantitative-chip-seq-siq-chip-method"></a>
+### G. Compute coverage with the sans spike-in quantitative ChIP-seq (siQ-ChIP) method.
+<details>
+<summary><i>Code: Compute coverage with the sans spike-in quantitative ChIP-seq (siQ-ChIP) method.</i></summary>
+
+```bash
+#!/bin/bash
+
+#  Optional: Request an interactive node --------------------------------------
+# grabnode  ## Uncomment to request 1 core, 20 GB memory, 1 day, no GPU ##
+
+
+#  Define variables -----------------------------------------------------------
+#  Define directory paths
+dir_bas="${HOME}/repos"  ## WARNING: Change as needed ##
+dir_rep="${dir_bas}/protocol_chipseq_signal_norm"
+dir_scr="${dir_rep}/scripts"
+dir_fnc="${dir_scr}/functions"
+dir_dat="${dir_rep}/data"
+dir_raw="${dir_dat}/raw"
+dir_pro="${dir_dat}/processed"
+
+#  Define alignment and coverage details
+aligner="bowtie2"
+a_type="global"
+req_flg=true
+flg="$(if ${req_flg}; then echo "2"; else echo "NA"; fi)"
+mapq=1
+det_bam="flag-${flg}_mapq-${mapq}"
+det_cov="${aligner}_${a_type}_${det_bam}"
+typ_cov="alpha"
+
+#  Further define directory setup
+dir_aln="${dir_pro}/align_${aligner}_${a_type}"
+dir_bam="${dir_aln}/${det_bam}/sc"
+dir_cov="${dir_pro}/compute_coverage"
+dir_det="${dir_cov}/${det_cov}/${typ_cov}"
+dir_tbl="${dir_det}/tables"
+dir_trk="${dir_det}/tracks"
+eo_tbl="${dir_tbl}/logs"
+eo_trk="${dir_trk}/logs"
+
+#  Define environment, resources, and script arguments 
+env_nam="env_analyze"
+threads=8
+mes_tbl="${dir_raw}/docs/measurements_siqchip.tsv"
+eqn="6nd"
+bin_siz=1
+
+#  Define file search parameters
+## WARNING: Change search parameters as needed ##
+pattern="*.bam"
+include="IP*"
+exclude="*Brn1*"
+infiles="$(
+    bash "${dir_scr}/find_files.sh" \
+        --dir_fnd "${dir_bam}" \
+        --pattern "${pattern}" \
+        --include "${include}" \
+        --exclude "${exclude}"
+)"
+
+#  Define scripts and output files
+scr_tbl="execute_calculate_scaling_factor_${typ_cov}.sh"
+scr_trk="execute_deeptools_coverage.sh"
+fil_tbl="${dir_tbl}/IP_WT_G1-G2M-Q_Hho1-Hmo1_6336-6337_7750-7751.tsv"
+
+#  Define log file prefixes
+day="$(date '+%Y-%m%d')"
+exc_tbl="${eo_tbl}/${day}.execute.${scr_tbl%.sh}.$(
+    basename "${fil_tbl}" .tsv
+)"
+exc_trk="${eo_trk}/${day}.${scr_trk%.sh}"
+
+#  Debug hardcoded variable assignments
+if ${debug:-true}; then
+    {
+        echo "####################################"
+        echo "## Hardcoded variable assignments ##"
+        echo "####################################"
+        echo ""
+        echo "#  Define directory paths"
+        echo "\${dir_bas}=${dir_bas}"
+        echo "\${dir_rep}=${dir_rep}"
+        echo "\${dir_scr}=${dir_scr}"
+        echo "\${dir_fnc}=${dir_fnc}"
+        echo "\${dir_dat}=${dir_dat}"
+        echo "\${dir_raw}=${dir_raw}"
+        echo "\${dir_pro}=${dir_pro}"
+        echo ""
+        echo "#  Define alignment and coverage details"
+        echo "\${aligner}=${aligner}"
+        echo "\${a_type}=${a_type}"
+        echo "\${req_flg}=${req_flg}"
+        echo "\${flg}=${flg}"
+        echo "\${mapq}=${mapq}"
+        echo "\${det_bam}=${det_bam}"
+        echo "\${det_cov}=${det_cov}"
+        echo "\${typ_cov}=${typ_cov}"
+        echo ""
+        echo "#  Further define directory setup"
+        echo "\${dir_aln}=${dir_aln}"
+        echo "\${dir_bam}=${dir_bam}"
+        echo "\${dir_cov}=${dir_cov}"
+        echo "\${dir_det}=${dir_det}"
+        echo "\${dir_tbl}=${dir_tbl}"
+        echo "\${dir_trk}=${dir_trk}"
+        echo "\${eo_tbl}=${eo_tbl}"
+        echo "\${eo_trk}=${eo_trk}"
+        echo ""
+        echo "#  Define environment, resources, and script arguments "
+        echo "\${env_nam}=${env_nam}"
+        echo "\${threads}=${threads}"
+        echo "\${mes_tbl}=${mes_tbl}"
+        echo "\${eqn}=${eqn}"
+        echo "\${bin_siz}=${bin_siz}"
+        echo ""
+        echo "#  Define file search parameters"
+        echo "\${pattern}=${pattern}"
+        echo "\${include}=${include}"
+        echo "\${exclude}=${exclude}"
+        echo "\${infiles}=${infiles}"
+        echo ""
+        echo "#  Define scripts and output files"
+        echo "\${scr_tbl}=${scr_tbl}"
+        echo "\${scr_trk}=${scr_trk}"
+        echo "\${fil_tbl}=${fil_tbl}"
+        echo ""
+        echo "#  Define log file prefixes"
+        echo "\${day}=${day}"
+        echo "\${exc_tbl}=${exc_tbl}"
+        echo "\${exc_trk}=${exc_trk}"
+        echo ""
+        echo ""
+    }
+fi
+
+
+#  Create required directories if necessary -----------------------------------
+mkdir -p ${dir_tbl}/{docs,logs}
+mkdir -p ${dir_trk}/{docs,logs}
+
+
+#  Activate the environment and check dependencies ----------------------------
+#  Source utility functions
+source "${dir_fnc}/check_program_path.sh"
+source "${dir_fnc}/echo_error.sh"
+source "${dir_fnc}/echo_warning.sh"
+source "${dir_fnc}/handle_env.sh"
+
+#  Activate the required environment
+handle_env "${env_nam}"
+
+#  Check the availability of necessary dependencies such as GNU Parallel and
+#+ SLURM sbatch
+check_program_path awk
+check_program_path parallel
+check_program_path python
+check_program_path samtools
+check_program_path sbatch ||
+    echo_warning \
+        "SLURM is not available on this system. Do not use the '--slurm'" \
+        "flag with the driver script."
+
+
+#  Calculate siQ-ChIP alpha scaling factors -----------------------------------
+if [[ ! -f "${fil_tbl}" ]]; then
+    #  Run the driver script to generate a TSV file of sample-specific siQ-ChIP
+    #+ alpha scaling factors
+    bash "${dir_scr}/execute_calculate_scaling_factor_${typ_cov}.sh" \
+        --verbose \
+        --threads "${threads}" \
+        --infiles "${infiles}" \
+        --table "${mes_tbl}" \
+        --eqn "${eqn}" \
+        --outfile "${fil_tbl}" \
+        --err_out "${eo_tbl}" \
+        --flg_dep \
+        --flg_len \
+        --flg_mc \
+        --slurm \
+             >> >(tee -a "${exc_tbl}.stdout.txt") \
+            2>> >(tee -a "${exc_tbl}.stderr.txt")
+
+    if [[ $? -ne 0 ]]; then
+        echo_error "The driver script for alpha computation failed."
+    fi
+fi
+
+if [[ -f "${fil_tbl}" ]]; then
+        #  Sort the table of scaling factors by rows
+        awk 'NR == 1; NR > 1 && NF { print | "sort" }' "${fil_tbl}" \
+            > "${dir_tbl}/tmp.tsv"
+
+        #  Replace the original table with the sorted version
+        mv -f "${dir_tbl}/tmp.tsv" "${fil_tbl}"
+
+        # cat "${fil_tbl}"  ## Uncomment to check the table contents ##
+    fi
+fi
+
+
+#  Generate alpha-scaled signal tracks ----------------------------------------
+#  Use the TSV file to generate alpha-scaled signal tracks
+bash "${dir_scr}/execute_deeptools_coverage.sh" \
+    --verbose \
+    --threads "${threads}" \
+    --table "${fil_tbl}" \
+    --tbl_col "${typ_cov}" \
+    --dir_out "${dir_trk}" \
+    --bin_siz "${bin_siz}" \
+    --err_out "${eo_trk}" \
+    --slurm \
+         >> >(tee -a "${exc_trk}.stdout.txt") \
+        2>> >(tee -a "${exc_trk}.stderr.txt")
+
+
+#  Cleanup: Compress logs and remove empty files ------------------------------
+bash "${dir_scr}/compress_remove_files.sh" --dir_fnd "${eo_tbl}"
+bash "${dir_scr}/compress_remove_files.sh" --dir_fnd "${eo_trk}"
+
+# ls -lhaFG "${eo_tbl}"  ## Uncomment to check directory for table logs ##
+# ls -lhaFG "${eo_trk}"  ## Uncomment to check directory for track logs ##
+```
+</details>
+<br />
