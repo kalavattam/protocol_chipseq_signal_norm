@@ -108,7 +108,7 @@ dry_run=false
 threads=1
 infiles=""
 table=""
-eqn="6nd"
+eqn="6"
 outfile=""
 flg_dep=false
 flg_len=false
@@ -447,13 +447,14 @@ else
         )
 
         #  If --flg_dep, calculate sequencing depth (number of alignments) for
-        #+ IP and input samples (note the weird single-quoting here)
+        #+ IP and input samples
         if {flg_dep}; then
             dep_ip=$(samtools view -@ {threads} -c "${file_ip}")
             dep_in=$(samtools view -@ {threads} -c "${file_in}")
         fi
 
-        #  If --flg_len, calculate mean fragment length for IP and input samples
+        #  If --flg_len, calculate mean fragment length for IP and input
+        #+ samples (note the weird single-quoting here)
         if {flg_len}; then
             len_ip="$(
                 samtools view -@ {threads} "${file_ip}" \
@@ -474,8 +475,8 @@ else
         fi
 
         # #  If --flg_len, calculate mean fragment length for IP and input
-        # #+ samples (here, the embedded awk scripts are passed as strings using
-        # #+ double quotes)
+        # #+ samples (here, the embedded awk scripts are passed as strings
+        # #+ using double quotes)
         # if {flg_len}; then
         #     len_ip="$(
         #         samtools view -@ {threads} "${file_ip}" \
@@ -498,7 +499,8 @@ else
         #  Extract the sample name from the IP file for naming output entries
         samp=$(basename "${file_ip}" | sed "s:IP_::; s:.bam::; s:\\.:_:g")
 
-        #  Calculate the siQ-ChIP alpha value using a specified Python script
+        #  Calculate the siQ-ChIP alpha value using a specific, custom Python
+        #+ script
         alpha=$(
             python {scr_alf} \
                 --eqn ${eqn} \
@@ -512,7 +514,8 @@ else
                 --len_in ${len_in}
         )
 
-        #  Write the calculated alpha value and optional metrics to the output file
+        #  Write the calculated alpha value and optional metrics to the output
+        #+ file
         if ! {flg_mc}; then
             echo -e "${file_ip}\t${alpha}" >> {outfile}
             if {flg_in}; then
@@ -547,11 +550,11 @@ else
             ::: outfile "${outfile}"
     }
 
-    #  If `dry_run` or `verbose` is enabled, run GNU Parallel in dry-run mode
+    #  If 'dry_run' or 'verbose' is enabled, run GNU Parallel in dry-run mode
     #+ to display commands without executing them, capturing output and error
     #+ logs
     if ${dry_run} || ${verbose}; then
-        # #  Based on the presence of `flg_mc`, output the appropriate header
+        # #  Based on the presence of 'flg_mc', output the appropriate header
         # if ! ${flg_mc}; then
         #     echo -e "sample\talpha"
         # else
@@ -573,13 +576,13 @@ else
             )
     fi
 
-    #  Run GNU Parallel for actual processing if `dry_run` is not enabled,
+    #  Run GNU Parallel for actual processing if 'dry_run' is not enabled,
     #+ capturing output and error logs
     if ! ${dry_run}; then
         #  To prevent potential race conditions from concurrent writes,
         #+ pre-write the header to the outfile before running GNU Parallel jobs
-        #+ (this avoids relying on `flock`, which seems to exhibit buggy
-        #+ behavior in GNU Parallel job submissions); if `flg_mc=true`, include
+        #+ (this avoids relying on 'flock', which seems to exhibit buggy
+        #+ behavior with GNU Parallel job execution); if 'flg_mc=true', include
         #+ additional column names in the header
         if ! ${flg_mc}; then
             echo -e "sample\talpha" >> "${outfile}"

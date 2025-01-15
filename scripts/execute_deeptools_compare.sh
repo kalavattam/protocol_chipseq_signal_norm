@@ -5,7 +5,7 @@
 
 
 #  Run script in interactive/test mode (true) or command-line mode (false)
-interactive=false
+interactive=true
 
 #  Exit on errors, unset variables, or pipe failures if not in "interactive
 #+ mode"
@@ -37,6 +37,7 @@ dir_fnc="${dir_scr}/functions"
     source "${dir_fnc}/check_program_path.sh"
     source "${dir_fnc}/check_region.sh"
     source "${dir_fnc}/check_region_bam.sh"  #TODO
+    source "${dir_fnc}/check_scl_fct.sh"
     source "${dir_fnc}/check_seq_type.sh"
     source "${dir_fnc}/check_str_delim.sh"
     source "${dir_fnc}/check_supplied_arg.sh"
@@ -71,77 +72,93 @@ function set_interactive() {
 
     #  Define coverage and normalization settings
     det_cov="${aligner}_${a_type}_${det_bam}"
-    cov_nrm="depth"  # "norm"
     dir_cov="${dir_pro}/compute_coverage/${det_cov}"
+    # cov_nrm="depth"  # "norm"
 
-    #  Define file type and location
-    typ_fil="bam"  # "bigwig"
-    case "${typ_fil}" in
-        bedgraph|bdg|bg|bigwig|bw)
-            dir_bdg="${dir_cov}/${cov_nrm}/tracks"
-            dir_bwg="${dir_cov}/${cov_nrm}/tracks"
-            ;;
-        bam)
-            dir_aln="${dir_pro}/align_${aligner}_${a_type}"
-            dir_bam="${dir_aln}/${det_bam}/sc"
-            ;;
-    esac
+    #  Define variables for table of samples, corresponding alpha values
+    dir_tbl="${dir_cov}/alpha/tables"
+    fil_tbl="IP_WT_G1-G2M-Q_Hho1-Hmo1_6336-6337_7750-7751.tsv"
+    pth_tbl="${dir_tbl}/${fil_tbl}"
 
-    #  Define file search settings
-    include="*Hho1*"  # "*Hmo1*"  # "*Brn1*"
-    case "${typ_fil}" in
-        bedgraph|bdg|bg)
-            dir_fnd="${dir_bdg}"
-            pattern="*.bg"
-            ;;
-        bigwig|bw)
-            dir_fnd="${dir_bwg}"
-            pattern="*.bw"
-            ;;
-        bam)
-            dir_fnd="${dir_bam}"
-            pattern="*.bam"
-            ;;
-    esac
+    # #  Define file type and location
+    # typ_fil="bam"  # "bigwig"
+    # case "${typ_fil}" in
+    #     bedgraph|bdg|bg|bigwig|bw)
+    #         dir_bdg="${dir_cov}/${cov_nrm}/tracks"
+    #         dir_bwg="${dir_cov}/${cov_nrm}/tracks"
+    #         ;;
+    #     bam)
+    #         dir_aln="${dir_pro}/align_${aligner}_${a_type}"
+    #         dir_bam="${dir_aln}/${det_bam}/sc"
+    #         ;;
+    # esac
+
+    # #  Define file search settings
+    # case "${typ_fil}" in
+    #     bedgraph|bdg|bg)
+    #         dir_fnd="${dir_bdg}"
+    #         pattern="*.bg"
+    #         ;;
+    #     bigwig|bw)
+    #         dir_fnd="${dir_bwg}"
+    #         pattern="*.bw"
+    #         ;;
+    #     bam)
+    #         dir_fnd="${dir_bam}"
+    #         pattern="*.bam"
+    #         ;;
+    # esac
+    # exclude="*Brn1*"
 
     #  Define track outfile track location
-    dir_trk="${dir_cov}/log2/${cov_nrm}/tracks"
+    dir_trk="${dir_cov}/alpha/tracks"
+    # dir_trk="${dir_cov}/log2/${cov_nrm}/tracks"
 
     #  Set hardcoded argument assignments
     verbose=true
-    dry_run=true
+    dry_run=false
     threads=8
-    fil_num="$(
-        bash "${dir_scr}/find_files.sh" \
-            --dir_fnd "${dir_fnd}" \
-            --pattern "${pattern}" \
-            --include "IP*,${include}"
-    )"
-    fil_den="$(
-        bash "${dir_scr}/find_files.sh" \
-            --dir_fnd "${dir_fnd}" \
-            --pattern "${pattern}" \
-            --include "in*,${include}"
-    )"
+    fil_num=$(awk 'NR > 1 { print $1 }' "${pth_tbl}" | paste -sd ',' -)
+    # fil_num="$(
+    #     bash "${dir_scr}/find_files.sh" \
+    #         --dir_fnd "${dir_fnd}" \
+    #         --pattern "${pattern}" \
+    #         --include "IP*" \
+    #         --exclude "${exclude}"
+    # )"
+    fil_den="$(echo "${fil_num}" | sed 's:/IP:/in:g')"
+    # fil_den="$(
+    #     bash "${dir_scr}/find_files.sh" \
+    #         --dir_fnd "${dir_fnd}" \
+    #         --pattern "${pattern}" \
+    #         --include "in*" \
+    #         --exclude "${exclude}"
+    # )"
     fil_stm=$(
         echo "${fil_num}" \
-            | sed -e "s|${dir_fnd}|${dir_trk}|g" \
-                  -e 's:/IP:/IP-in:g' \
+            | sed -e "s|$(dirname "${fil_num%%,*}")|${dir_trk}|g" \
+                  -e 's:/IP:/siq:g' \
                   -e 's:\.\(bigwig\|bw\|bedgraph\|bdg\|bg\|bam\)::g'
     )
-    typ_out="bigwig"
-    bin_siz=1  # 10
+    # fil_stm=$(
+    #     echo "${fil_num}" \
+    #         | sed -e "s|${dir_fnd}|${dir_trk}|g" \
+    #               -e 's:/IP:/IP-in:g' \
+    #               -e 's:\.\(bigwig\|bw\|bedgraph\|bdg\|bg\|bam\)::g'
+    # )
+    typ_out="bedgraph"  # "bigwig"
+    siz_bin=10  # 1
     region=""
-    oper="log2"
-    scl_fct="0.50:0.50,0.50:0.50,0.50:0.50,0.50:0.50,0.50:0.50,0.50:0.50"  # ""
-    norm=""
-    scl_pre="none"  # ""  # "depth"
-    exact=true
+    oper="ratio"
+    scl_fct=$(awk 'NR > 1 { print $2 }' "${pth_tbl}" | paste -sd ',' -)  # ""
+    typ_cvg="none"
+    scl_pre="none"  # "depth"
+    exact=false
     usr_frg=""
     err_out="${dir_trk}/logs"
     nam_job="run_deeptools_compare"
     slurm=true
-    max_job=4  # 6
+    max_job=6  # 4
     time="0:30:00"
 }
 
@@ -149,8 +166,7 @@ function set_interactive() {
 #  Initialize argument variables, check and parse arguments, etc. =============
 #  Initialize hardcoded argument variables
 env_nam="env_analyze"
-scr_slm="${dir_scr}/submit_deeptools_compare_slurm.sh"
-scr_par="${dir_scr}/submit_deeptools_compare_parallel.sh"
+scr_sub="${dir_scr}/submit_deeptools_compare_slurm.sh"  #TODO: Lose "_slurm"
 denom=4
 
 #  Initialize argument variables, assigning default values where applicable
@@ -160,13 +176,14 @@ threads=1
 fil_num=""
 fil_den=""
 fil_stm=""
-typ_out="bigwig"
-bin_siz=10
+typ_out="bedgraph"  # "bigwig"
+siz_bin=10
+siz_gen=12157105
 region=""
-oper="log2"
-scl_fct=""
-norm=""
-scl_pre=""
+oper="ratio"  # "log2"
+scl_fct="none"
+typ_cvg="none"
+scl_pre="none"
 exact=false
 usr_frg=""
 err_out=""
@@ -180,16 +197,16 @@ show_help=$(cat << EOM
 Usage:
   execute_compute_compare.sh
     [--verbose] [--dry_run] --threads <int> --fil_num <str> --fil_den <str>
-    --fil_stm <str> --typ_out <str> --bin_siz <int> [--region <str>]
-    --scl_fct <flt> --norm <str> --scl_pre <str> [--exact] [--usr_frg <flt>]
+    --fil_stm <str> --typ_out <str> --siz_bin <int> [--region <str>]
+    --scl_fct <flt> --typ_cvg <str> --scl_pre <str> [--exact] [--usr_frg <flt>]
     --err_out <str> --nam_job <str> [--slurm] [--max_job <int>] [--time <str>]
 
 Description:
-  execute_deeptools_compare.sh automates the comparison of genomic signal
-  tracks, such as ChIP-seq IP/input signal, using deepTools utilities
-  bamCompare and bigwigCompare. The script supports BAM, BEDGRAPH, or BIGWIG
-  files as inputs and generates normalized and scaled comparison tracks in
-  either BEDGRAPH or BIGWIG formats.
+  This driver script, 'execute_deeptools_compare.sh', automates the comparison
+  of genomic signal tracks, such as ChIP-seq IP/input signal, using deepTools
+  utilities 'bamCompare' and 'bigwigCompare'. The script supports BAM,
+  BEDGRAPH, or BIGWIG input files, generating normalized and/or scaled
+  comparison tracks in either BEDGRAPH or BIGWIG formats.
 
 Arguments:
    -h, --help     Print this help message and exit.
@@ -204,51 +221,50 @@ Arguments:
                   comparisons.
   -fs, --fil_stm  Comma-separated string of outstems without extensions.
   -to, --typ_out  Format of comparison signal track outfiles: 'bedgraph' or
-                  'bigwig' (default: '${typ_out}').
-  -bs, --bin_siz  Bin size for comparison calculation(s) in base pairs
-                  (default: ${bin_siz}).
+                  'bigwig' (default: "${typ_out}").
+  -sb, --siz_bin  Bin size for comparison calculation(s) in base pairs
+                  (default: ${siz_bin}).
+  -sg, --siz_gen  Effective genome size of model organism (required if
+                  '--typ_cvg rpgc', ignored if not; default: ${siz_gen}).
    -r, --region   Specify a genomic region to limit the operation (optional).
                   The format can be either: 'chr' (entire chromosome) or
                   'chr:start-stop' (specific range within a chromosome).
   -op, --oper     Operation to perform for comparison(s) of first/numerator and
                   second/denominator BAM infiles: 'log2', 'ratio', 'subtract',
                   'add', 'mean', 'reciprocal_ratio', 'first', 'second'
-                  (default: '${oper}').
-  -sf, --scl_fct  Comma-separated string of scaling factors for first (e.g.,
-                  numerator or 'num') and second (e.g., denominator or 'den')
-                  files in comparison(s). Each scaling factor pair should be in
-                  the format 'first:second' (e.g., 'num:den'), where 'first'
-                  ('num') is the scaling factor for the first file in a pair
-                  and 'second' ('den') is the scaling factor for the second
-                  file in a pair. Multiple pairs should be separated by commas.
-                  This argument cannot be used with '--norm <str>' or
-                  '--scl_pre <str>'. For more details, see the 'Notes'
-                  documentation below.
-  -no, --norm     Specify a normalization method to use when computing
+                  (default: "${oper}").
+  -sf, --scl_fct  Comma-separated string of precomputed scaling factors for
+                  first (e.g., numerator or 'num') and second (e.g.,
+                  denominator or 'den') files in comparison(s). Each scaling
+                  factor pair should be in the format 'first:second' (e.g.,
+                  'num:den'), where 'first' ('num') is the scaling factor for
+                  the first file in a pair and 'second' ('den') is the scaling
+                  factor for the second file in a pair. Multiple pairs should
+                  be separated by commas. Set to 'none' if not applying
+                  precomputed scaling factors (default: "${scl_fct}").
+  -tv, --typ_cvg  Specify a normalization method to use when computing
                   comparison(s); available options are 'raw', 'none', 'rpkm',
-                  'fpkm', 'cpm', 'bpm', or 'rpgc'. This argument cannot be used
-                  with '--scl_fct <str>' or '--scl_pre <str>'.
+                  'fpkm', 'cpm', 'bpm', or 'rpgc' (default: "${typ_cvg}").
   -sp, --scl_pre  Predefined scaling method for compensating sequencing depth
                   differences in comparison operations: 'depth', 'ses', or
-                  'none'. This argument cannot be used with '--norm <str>' or
-                  '--scl_fct <str>'.
+                  'none' (default: "${scl_pre}").
   -ex, --exact    Compute scaling factors using all alignments instead of a
-                  sampled subset. Only applicable if '--norm <str>' is
-                  specified, and ignored if '--norm "none"' or '--norm' is not
-                  invoked. Significantly increases the time required for
-                  comparison computation.
+                  sampled subset. Only applicable if '--typ_cvg <str>' is
+                  specified and ignored if '--typ_cvg none', '--typ_cvg #N/A',
+                  or '--typ_cvg' is not invoked. Significantly increases the
+                  time required for comparison computation.
   -uf, --usr_frg  Comma-separated string vector of fragment lengths to use
                   instead of read lengths (for alignments of single-end reads)
                   or template lengths (for alignments of paired-end reads;
                   optional). Must match the number of infiles and outstems via
                   '--fil_num <str>', '--fil_den <str>', and '--fil_stm <str>'.
   -eo, --err_out  The directory to store stderr and stdout TXT outfiles
-                  (default: '\$(dirname "\${fil_stm%%[,;]*}")/err_out').
-  -nj, --nam_job  Prefix for the names of jobs (default: ${nam_job}).
+                  (default: "\$(dirname "\${fil_stm%%[,;]*}")/err_out").
+  -nj, --nam_job  Prefix for the names of jobs (default: "${nam_job}").
   -sl, --slurm    Submit jobs to the SLURM scheduler; otherwise, run them via
                   GNU Parallel (optional).
   -mj, --max_job  The maximum number of jobs to run at one time (required if
-                  --slurm is specified, ignored if not; default: ${max_job}).
+                  '--slurm' is specified, ignored if not; default: ${max_job}).
   -tm, --time     The length of time, in 'h:mm:ss' format, for the SLURM job
                   (required if '--slurm' is specified, ignored if not; default:
                   ${time}).
@@ -257,11 +273,11 @@ Dependencies:
   - Programs
     + awk
     + Bash or Zsh
-    + deepTools bamCoverage
-    + GNU Parallel (if not using SLURM and threads > 1)
+    + deepTools 'bamCompare' and 'bigwigCompare'
+    + GNU Parallel (if not using SLURM and 'threads' > 1)
     + Python
     + Samtools
-    + SLURM (if using --slurm)
+    + SLURM (if using '--slurm')
   - Functions
     + #TODO
 
@@ -269,13 +285,13 @@ Notes:
   - When the '--slurm' flag is used, jobs are parallelized via SLURM array
     tasks; otherwise, jobs are parallelized with GNU Parallel.
   - BAM infiles must be coordinate-sorted.
-  - Outfile names are derived BAM infiles and the value(s) associated with
-    --typ_out.
-  - On --scl_fct: For example, assigning '0.7:1,0.3:0.6' scales the first file
-    in the first pair (e.g., the numerator file) by 0.7 and the second file in
-    the first pair (e.g., the denominator file) by 1.0, and the first file in
-    the second pair (e.g., the numerator file) by 0.3 and the second file in
-    the second pair (e.g., the denominator file) by 0.6.
+  - On '--scl_fct': For example, assigning '0.7:1,0.3:0.6' scales the first
+    file in the first pair (i.e., the numerator file for pair #1) by 0.7 and
+    the second file in the first pair (i.e., the denominator file for pair #1)
+    by 1.0, and the first file in the second pair (i.e., the numerator file for
+    pair #2) by 0.3 and the second file in the second pair (i.e., the
+    denominator file for pair #2) by 0.6.
+  - #TODO
 
 Examples:
   \`\`\`
@@ -302,11 +318,12 @@ else
             -fd|--fil_den) fil_den="${2}";   shift 2 ;;
             -fs|--fil_stm) fil_stm="${2}";   shift 2 ;;
             -to|--typ_out) typ_out="${2,,}"; shift 2 ;;
-            -bs|--bin_siz) bin_siz="${2}";   shift 2 ;;
+            -sb|--siz_bin) siz_bin="${2}";   shift 2 ;;
+            -sg|--siz_gen) siz_gen="${2}";   shift 2 ;;
              -r|--region)  region="${2}";    shift 2 ;;
-            -op|--oper)    oper="${2}";      shift 2 ;;
-            -sf|--scl_fct) scl_fct="${2}";   shift 2 ;;
-            -no|--norm)    norm="${2,,}";    shift 2 ;;
+            -op|--oper)    oper="${2,,}";    shift 2 ;;
+            -sf|--scl_fct) scl_fct="${2,,}"; shift 2 ;;
+            -no|--typ_cvg) typ_cvg="${2,,}"; shift 2 ;;
             -sp|--scl_pre) scl_pre="${2,,}"; shift 2 ;;
             -ex|--exact)   exact=true;       shift 1 ;;
             -uf|--usr_frg) usr_frg="${2}";   shift 2 ;;
@@ -329,11 +346,8 @@ fi
 #  Check arguments ------------------------------------------------------------
 check_supplied_arg -a "${env_nam}" -n "env_nam"
 
-check_supplied_arg -a "${scr_slm}" -n "scr_slm"
-check_exists_file_dir "f" "${scr_slm}" "scr_slm"
-
-# check_supplied_arg -a "${scr_par}" -n "scr_par"   #TODO: Implement "scr_par"
-# check_exists_file_dir "f" "${scr_par}" "scr_par"
+check_supplied_arg -a "${scr_sub}" -n "scr_sub"
+check_exists_file_dir "f" "${scr_sub}" "scr_sub"
 
 check_supplied_arg -a "${denom}" -n "denom"
 
@@ -355,14 +369,17 @@ case "${typ_out}" in
     bigwig|bw)       typ_out="bigwig"   ;;
     *)
         echo_error \
-            "Selection associated with --typ_out is not valid: ${typ_out}." \
-            "Selection must be 'bedgraph' or 'bigwig'."
+            "Selection associated with '--typ_out' is not valid:" \
+            "'${typ_out}'. Selection must be 'bedgraph' or 'bigwig'."
         exit_1
         ;;
 esac
 
-check_supplied_arg -a "${bin_siz}" -n "bin_siz"
-check_int_pos "${bin_siz}" "bin_siz"
+check_supplied_arg -a "${siz_bin}" -n "siz_bin"
+check_int_pos "${siz_bin}" "siz_bin"
+
+check_supplied_arg -a "${siz_gen}" -n "siz_gen"
+check_int_pos "${siz_gen}" "siz_gen"
 
 if [[ -n "${region}" ]]; then check_region "${region}"; fi
 
@@ -384,93 +401,72 @@ case "${oper}" in
         ;;
 esac
 
-#  Validate and process --scl_fct, --norm, and --scl_pre
-asmgt=0
-
-#  Count the number of non-empty assignments
-if [[ -n "${scl_fct}" ]]; then (( asmgt++ )) || true; fi
-if [[ -n "${norm}" ]];    then (( asmgt++ )) || true; fi
-if [[ -n "${scl_pre}" ]]; then (( asmgt++ )) || true; fi
-
-#  Return an error message if none of the arguments are provided
-if (( asmgt == 0 )); then
-    echo_error \
-        "At least one of '--scl_fct', '--norm', or '--scl_pre' must be" \
-        "specified." >&2
-    exit_1
+#  Process '--scl_fct'
+if [[ -z "${scl_fct}" || "${scl_fct}" == "none" ]]; then
+    scl_fct="None"
+else
+    #  Validate and format 'scl_fct'
+    if ! scl_fct_pro=$(check_scl_fct "${scl_fct}" 2> /dev/null); then
+        echo "Error: Invalid value for '--scl_fct': '${scl_fct}'." >&2
+        exit 1
+    fi
+    scl_fct="${scl_fct_pro}"
+    unset scl_fct_pro
 fi
 
-#  Process --scl_fct if applicable
-if [[ -n "${scl_fct}" ]]; then
-    check_str_delim "scl_fct" "${scl_fct}"
-    #TODO 1/2: Check that values assigned to scl_fct are positive floats (if
-    #TODO 2/2: not already performed)
-fi
+#  Process '--typ_cvg'
+if [[ -z "${typ_cvg}" ]]; then typ_cvg="none"; fi
+case "${typ_cvg}" in
+    raw|none)  typ_cvg="None" ;;
+    rpkm|fpkm) typ_cvg="RPKM" ;;
+    cpm)       typ_cvg="CPM"  ;;
+    bpm)       typ_cvg="BPM"  ;;
+    rpgc)      typ_cvg="RPGC" ;;
+    *)
+        echo_error \
+            "Invalid '--typ_cvg' selection: '${typ_cvg}'. Valid options are" \
+            "'raw', 'none', 'rpkm', 'fpkm', 'cpm', 'bpm', or 'rpgc'."
+        exit_1
+        ;;
+esac
 
-#  Process --norm if applicable
-if [[ -n "${norm}" ]]; then
-    case "${norm}" in
-        raw|none)  norm="None" ;;
-        rpkm|fpkm) norm="RPKM" ;;
-        cpm)       norm="CPM"  ;;
-        bpm)       norm="BPM"  ;;
-        rpgc)      norm="RPGC" ;;
-        *)
-            echo_error \
-                "Selection associated with '--norm' is not valid: '${norm}'." \
-                "Assignment must be 'raw', 'none', 'rpkm', 'fpkm', 'cpm'," \
-                "'bpm', or 'rpgc'."
-            exit_1
-            ;;
-    esac
-fi
+#  Process '--scl_pre'
+if [[ -z "${scl_pre}" ]]; then scl_pre="none"; fi
+case "${scl_pre}" in
+    depth) scl_pre="readCount" ;;
+    ses)   scl_pre="SES"       ;;
+    none)
+        # if [[ "${typ_cvg}" == "None" ]]; then
+        #     echo_warning \
+        #         "Specified both '--scl_fct none' and '--typ_cvg none'. The" \
+        #         "'bamCompare' or 'bigwigCompare' operation ('--oper" \
+        #         "${oper}')" "will proceed without scaling, allowing" \
+        #         "sequencing depth to potentially affect results."
+        # fi
+        scl_pre="None"
+        ;;
+    *)
+        echo_error \
+            "Invalid '--scl_pre' selection: '${scl_pre}'. Valid options are" \
+            "'depth', 'ses', or 'none'."
+        exit_1
+        ;;
+esac
 
-#  Process --scl_pre if applicable
-if [[ -n "${scl_pre}" ]]; then
-    case "${scl_pre}" in
-        depth) scl_pre="readCount" ;;
-        ses)   scl_pre="SES"       ;;
-        none)
-            if [[ -z "${norm}" && -z "${scl_fct}" ]]; then
-                #  Issue a warning for '--scl_pre "none"' without
-                #+ '--norm <str>'
-                echo_warning \
-                    "Argument '--scl_pre none' was specified without" \
-                    "argument '--norm <str>', meaning the 'bamCompare'" \
-                    "operation ('--oper ${oper}') will proceed without" \
-                    "scaling, allowing sequencing depth to affect results."
-            elif [[ "${norm}" == "None" ]]; then
-                echo_warning \
-                    "Argument '--scl_fct none' and argument '--norm none'" \
-                    "were both specified. The 'bamCompare' operation" \
-                    "('--oper ${oper}') will proceed without scaling," \
-                    "allowing sequencing depth to affect results."
-            fi
-            scl_pre="None"
-            ;;
-        *)
-            echo_error \
-                "Selection associated with '--scl_pre' is not valid:" \
-                "'${scl_pre}'. Assignment must be 'depth', 'ses', or 'none'."
-            exit_1
-            ;;
-    esac
-fi
-
-#  Issue a warning for the dual selection of --scl_fct and --norm when --norm
-#+ is not "none", 
-if [[ -n "${scl_fct}" && -n "${norm}" && "${norm}" != "None" ]]; then
+#  Issue a warning for the dual selection of non-"none" '--scl_fct' and
+#+ '--typ_cvg'
+if [[ "${scl_fct}" != "None" && "${typ_cvg}" != "None" ]]; then
     echo_warning \
-        "Using '--scl_fct <str>' with '--norm <str>' (when '--norm' is not" \
-        "'none') is not recommended. Options associated with '--norm' are" \
-        "designed to adjust for differences in sequenced read alignment" \
-        "counts (i.e., sequencing depth after alignment and processing)," \
-        "while values supplied to '--scl_fct <str>' typically account for" \
-        "compositional differences between libraries, such as those derived" \
-        "from exogenous spike-in DNA or scaling factors computed by tools" \
-        "like DESeq2 or edgeR. Combining these options can skew y-axis" \
-        "values, leading to misleading or unreliable relative or" \
-        "semiquantitative results."
+        "Using '--scl_fct ${scl_fct}' with '--typ_cvg ${typ_cvg}' (i.e., when" \
+        "neither '--typ_cvg' is nor '--scl_fct' are 'none') is not" \
+        "recommended. Options associated with '--typ_cvg' are designed to" \
+        "adjust for differences in sequenced read alignment counts (i.e.," \
+        "sequencing depth after alignment and processing), while values" \
+        "supplied to '--scl_fct <str>' typically account for compositional" \
+        "differences between libraries, such as those derived from exogenous" \
+        "spike-in DNA or scaling factors computed by tools such as siQ-ChIP," \
+        "DESeq2, or edgeR. Combining these options can skew y-axis values," \
+        "leading to misleading or unreliable semiquantitative results."
 fi
 
 if [[ -n "${usr_frg}" ]]; then check_str_delim "usr_frg" "${usr_frg}"; fi
@@ -503,82 +499,16 @@ fi
 
 
 #  Debug summary output of resolved argument states ---------------------------
-#TODO: Combine the two 'if' statements
 if ${verbose}; then
-    src_scl="None"
-    mth_nrm="None"
-    
-    #  Check and summarize resolved argument states for --scl_fct, --norm, and
-    #+ --scl_pre
-    if [[ -n "${scl_fct}" && -n "${norm}" && "${norm}" != "None" ]]; then
-        src_scl="'--scl_fct <str>' and '--norm <str>'"
-        mth_nrm="$(cat << EOM
-User-supplied scaling via '--scl_fct ${scl_fct}' combined with coverage \
-normalization via '--norm ${norm}'
-EOM
-)"
-    elif [[ -n "${scl_fct}" ]]; then
-        src_scl="'--scl_fct <str>'"
-        mth_nrm="User-supplied scaling via '--scl_fct ${scl_fct}'"
-    elif [[ -n "${norm}" ]]; then
-        src_scl="--norm"
-        if [[ "${norm}" != "None" ]]; then
-            mth_nrm="Coverage normalization via '--norm ${norm}'"
-        else
-            mth_nrm="Raw (unadjusted) coverage: '--norm ${norm}'"
-        fi
-    elif [[ -n "${scl_pre}" ]]; then
-        src_scl="--scl_pre"
-        if [[ "${scl_pre}" != "None" ]]; then
-            mth_nrm="$(cat << EOM
-deepTools-calculated scaling via '--scl_pre ${scl_pre}'
-EOM
-)"
-        else
-            mth_nrm="Unscaled data: '--scl_pre ${scl_pre}'"
-        fi
-    fi
-
-    #  Output resolved argument states
     echo "##############################"
     echo "## Resolved argument states ##"
     echo "##############################"
     echo ""
-    echo "- Comparison operation: ${oper}"
-    echo "- Scaling factor source: ${src_scl:-None}"
-    echo "- Normalization method: ${mth_nrm:-None}"
-    echo ""
-    echo ""
-fi
-
-#TODO: Allow combinations, i.e., 'asmgt > 1'?
-if ${verbose}; then
-    if [[ -n "${norm}" ]]; then
-        src_scl="--norm"
-        if [[ "${norm}" != "none" ]]; then
-            mth_nrm="Coverage normalization via --norm '${norm}'"
-        else
-            mth_nrm="Raw (unadjusted) coverage: --norm '${norm}'"
-        fi
-    elif [[ -n "${scl_fct}" ]]; then
-        src_scl="--scl_fct"
-        mth_nrm="User-supplied scaling via --scl_fct '${scl_fct}'"
-    elif [[ -n "${scl_pre}" ]]; then
-        src_scl="--scl_pre"
-        if [[ "${scl_pre}" != "none" ]]; then
-            mth_nrm="deepTools-calculated scaling via --scl_pre '${scl_pre}'"
-        else
-            mth_nrm="Unscaled data: --scl_pre '${scl_pre}'"
-        fi
-    fi
-
-    echo "##############################"
-    echo "## Resolved argument states ##"
-    echo "##############################"
-    echo ""
-    echo "- Comparison operation: ${oper}"
-    echo "- Scaling factor source: ${src_scl:-#N/A}"
-    echo "- Normalization method: ${mth_nrm:-#N/A}"
+    echo "- Comparison operation: '--oper ${oper}'"
+    echo "- Scaling factor source(s):"
+    echo "    + '--scl_fct ${scl_fct}'"
+    echo "    + '--typ_cvg ${typ_cvg}'"
+    echo "    + '--scl_pre ${scl_pre}'"
     echo ""
     echo ""
 fi
@@ -628,16 +558,17 @@ for i in "${!arr_fil_num[@]}"; do
         "arr_typ_fil[i]"
 done
 
-#  Validate compatibility of --norm and --scl_pre with file types
+#  Validate compatibility of --typ_cvg and --scl_pre with file types
 for ext in "${arr_typ_fil[@]}"; do
     if [[ "${ext}" != "bam" ]]; then
-        if [[ -n "${norm}" || -n "${scl_pre}" ]]; then
-            echo \
-                "Error: The --norm and --scl_pre arguments are only" \
-                "applicable for BAM files. Detected file type '${ext}' is" \
-                "not supported for these arguments. Please remove --norm" \
-                "and --scl_pre if using non-BAM files (e.g., for deepTools" \
-                "bigwigCompare)." >&2
+        if [[ "${typ_cvg}" != "None" || "${scl_pre}" != "None" ]]; then
+            echo_error \
+                "The '--typ_cvg' and '--scl_pre' arguments are only" \
+                "applicable for BAM files; you specified '--typ_cvg" \
+                "${typ_cvg}' and '--scl_pre ${scl_pre}'. Detected file type" \
+                "'${ext}' is not supported for these arguments. Please" \
+                "specify '--typ_cvg none' and '--scl_pre none' if using" \
+                "BEDGRAPH or BIGWIG files."
             exit_1
         fi
     fi
@@ -660,7 +591,7 @@ for i in "${!arr_fil_num[@]}"; do
     fi
 done
 
-#  Handle scaling factors (--scl_fct)
+#  Handle scaling factors ('--scl_fct')
 if [[ -n "${scl_fct}" ]]; then
     IFS=',' read -r -a arr_scl_fct <<< "${scl_fct}"
 
@@ -721,8 +652,7 @@ if ${verbose}; then
     echo "####################################"
     echo ""
     echo "env_nam=${env_nam}"
-    echo "scr_slm=${scr_slm}"
-    echo "scr_par=${scr_par}"
+    echo "scr_sub=${scr_sub}"
     echo "denom=${denom}"
     echo "par_job=${par_job:-#N/A}"
     echo ""
@@ -738,11 +668,11 @@ if ${verbose}; then
     echo "fil_den=${fil_den}"
     echo "fil_stm=${fil_stm}"
     echo "typ_out=${typ_out}"
-    echo "bin_siz=${bin_siz}"
+    echo "siz_bin=${siz_bin}"
     echo "region=${region:-#N/A}"
-    echo "scl_fct=${scl_fct:-#N/A}"
-    echo "norm=${norm:-#N/A}"
-    echo "scl_pre=${scl_pre:-#N/A}"
+    echo "scl_fct=${scl_fct}"
+    echo "typ_cvg=${typ_cvg}"
+    echo "scl_pre=${scl_pre}"
     echo "exact=${exact}"
     echo "usr_frg=${usr_frg:-#N/A}"
     echo "err_out=${err_out}"
@@ -781,7 +711,7 @@ if ${slurm}; then
         echo "    --error=${err_out}/${nam_job}.%A-%a.stderr.txt \\"
         echo "    --output=${err_out}/${nam_job}.%A-%a.stdout.txt \\"
         echo "    --array=1-${#arr_fil_num[@]}%${max_job} \\"
-        echo "        ${scr_slm} \\"
+        echo "        ${scr_sub} \\"
         echo "             -v ${verbose} \\"
         echo "             -t ${threads} \\"
         echo "            -sn $(echo "${arr_fil_num[*]}" | tr ' ' ',') \\"
@@ -790,11 +720,12 @@ if ${slurm}; then
         echo "            -ss $(echo "${arr_fil_stm[*]}" | tr ' ' ',') \\"
         echo "            -to ${typ_out} \\"
         echo "            -op ${oper} \\"
-        echo "            -bs ${bin_siz} \\"
+        echo "            -sb ${siz_bin} \\"
+        echo "            -sg ${siz_gen} \\"
         echo "             -r ${region:-#N/A} \\"
         echo "            -sf $(echo "${arr_scl_fct[*]}" | tr ' ' ',') \\"
-        echo "            -no ${norm:-#N/A} \\"
-        echo "            -sp ${scl_pre:-#N/A} \\"
+        echo "            -tv ${typ_cvg} \\"
+        echo "            -sp ${scl_pre} \\"
         echo "            -ex ${exact} \\"
         echo "            -su $(echo "${arr_usr_frg[*]}" | tr ' ' ',') \\"
         echo "            -eo ${err_out} \\"
@@ -806,9 +737,9 @@ if ${slurm}; then
         # echo "## Contents of SLURM submission script ##"
         # echo "#########################################"
         # echo ""
-        # echo "## ${scr_slm} ##"
+        # echo "## ${scr_sub} ##"
         # echo ""
-        # cat "${scr_slm}"
+        # cat "${scr_sub}"
         # echo ""
         # echo ""
     fi
@@ -823,8 +754,8 @@ if ${slurm}; then
             --error=${err_out}/${nam_job}.%A-%a.stderr.txt \
             --output=${err_out}/${nam_job}.%A-%a.stdout.txt \
             --array=1-${#arr_fil_num[@]}%${max_job} \
-                ${scr_slm} \
-                     -v ${verbose} \
+                ${scr_sub} \
+                    $(if ${verbose}; then echo "-v"; fi) \
                      -t ${threads} \
                     -sn $(echo "${arr_fil_num[*]}" | tr ' ' ',') \
                     -sd $(echo "${arr_fil_den[*]}" | tr ' ' ',') \
@@ -832,15 +763,23 @@ if ${slurm}; then
                     -ss $(echo "${arr_fil_stm[*]}" | tr ' ' ',') \
                     -to ${typ_out} \
                     -op ${oper} \
-                    -bs ${bin_siz} \
+                    -sb ${siz_bin} \
+                    $(
+                        if [[ -n "${siz_gen}" ]]; then
+                            echo "-sg ${siz_gen}"
+                        fi
+                    ) \
                      -r ${region:-#N/A} \
                     -sf $(echo "${arr_scl_fct[*]}" | tr ' ' ',') \
-                    -no ${norm:-#N/A} \
-                    -sp ${scl_pre:-#N/A} \
-                    -ex ${exact} \
+                    -tv ${typ_cvg} \
+                    -sp ${scl_pre} \
+                    $(if ${exact}; then echo "-ex"; fi) \
                     -su $(echo "${arr_usr_frg[*]}" | tr ' ' ',') \
                     -eo ${err_out} \
                     -nj ${nam_job} \
                     -en ${env_nam}
     fi
 fi
+
+#TODO: Implement GNU Parallel and serial job submissions
+#TODO: Correct siz_gen echo statement

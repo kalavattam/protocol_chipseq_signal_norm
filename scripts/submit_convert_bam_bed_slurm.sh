@@ -11,26 +11,27 @@ show_help=$(cat << EOM
 \${1}=env_nam     # str: Name of Conda/Mamba environment to activate
 \${2}=threads     # int: Number of threads to use
 \${3}=str_infile  # str: Comma-separated list of QNAME-sorted BAM infiles
-\${4}=dir_out     # str: Directory to save BED outfiles
-\${5}=err_out     # str: Directory for stdout and stderr files
-\${6}=nam_job     # str: Name of job
+\${4}=pth_scr     # str: Path to script for BAM-to-BED conversion
+\${5}=dir_out     # str: Directory to save BED outfiles
+\${6}=err_out     # str: Directory for stdout and stderr files
+\${7}=nam_job     # str: Name of job
 EOM
 )
 
 if [[ -z "${1:-}" || "${1}" == "-h" || "${1}" == "--help" ]]; then
     cat << EOM
-$(basename "${0}") requires 6 positional arguments:
+$(basename "${0}") requires 7 positional arguments:
 ${show_help}
 EOM
     exit 0
 fi
 
-#  Check for exactly 6 positional arguments
-if [[ $# -ne 6 ]]; then
+#  Check for exactly 7 positional arguments
+if [[ $# -ne 7 ]]; then
     msg="but $# were supplied."
     [[ $# -eq 1 ]] && msg="but only $# was supplied."
     cat << EOM
-Error: $(basename "${0}") requires 6 positional arguments, ${msg}
+Error: $(basename "${0}") requires 7 positional arguments, ${msg}
 
 The necessary positional arguments:
 ${show_help}
@@ -42,9 +43,10 @@ fi
 env_nam="${1}"
 threads="${2}"
 str_infile="${3}"
-dir_out="${4}"
-err_out="${5}"
-nam_job="${6}"
+pth_scr="${4}"
+dir_out="${5}"
+err_out="${6}"
+nam_job="${7}"
 
 #  Debug positional argument assignments
 if ${debug}; then
@@ -54,12 +56,26 @@ if ${debug}; then
     echo ""
     echo "\${str_infile}=${str_infile}"
     echo ""
+    echo "\${pth_scr}="${pth_scr}""
+    echo ""
     echo "\${dir_out}=${dir_out}"
     echo ""
     echo "\${err_out}=${err_out}"
     echo ""
     echo "\${nam_job}=${nam_job}"
     echo ""
+fi
+
+#  Validate number of threads
+if ! [[ "${threads}" =~ ^[1-9][0-9]*$ ]]; then
+    echo "Error: Threads argument must be a positive integer: '${threads}'" >&2
+    exit 1
+fi
+
+#  Validate script for BAM-to-BED conversion
+if [[ ! -f "${pth_scr}" ]]; then
+    echo "Error: File does not exist: '${pth_scr}'" >&2
+    exit 1
 fi
 
 #  Validate specified directories
@@ -69,12 +85,6 @@ for dir in "$(dirname "${str_infile%%,*}")" "${dir_out}" "${err_out}"; do
         exit 1
     fi
 done
-
-#  Validate number of threads
-if ! [[ "${threads}" =~ ^[1-9][0-9]*$ ]]; then
-    echo "Error: Threads argument must be a positive integer: '${threads}'" >&2
-    exit 1
-fi
 
 #  Activate environment
 if [[ "${CONDA_DEFAULT_ENV}" != "${env_nam}" ]]; then
@@ -133,7 +143,7 @@ idx=$(( id_tsk - 1 ))
 
 #  Assign variables from reconstructed array based on index
 infile="${arr_infiles[idx]}"
-outfile="${dir_out}/$(basename "${infile}" ".bam").bed.gz"
+outfile="${dir_out}/$(basename "${infile}" ".bam")"
 
 #  Debug variable assignments from reconstructed array
 if ${debug}; then
@@ -159,7 +169,7 @@ if [[ -z "${outfile}" ]]; then
 fi
 
 #  Derive sample name from outfile assignment
-samp="$(basename "${outfile}" ".bed.gz")"
+samp="$(basename "${outfile}")"
 
 #  Debug sample name
 if ${debug}; then
@@ -177,44 +187,49 @@ out_dsc="${err_out}/${nam_job}.${samp}.${id_job}-${id_tsk}.stdout.txt"
 ln -f "${err_ini}" "${err_dsc}"
 ln -f "${out_ini}" "${out_dsc}"
 
-#  Generate BED outfiles from QNAME-sorted BAM infiles using awk (for field
-#+ formatting and fragment computation), sort (to sort by chromosome, column 1,
-#+ and numerically by start position, column 2), and gzip (for compression)
-if ! \
-    samtools view -@ "${threads}" "${infile}" \
-        | awk '{
-            #  Read paired-end BAM lines
-            if (NR % 2 == 1) {
-                #  When NR is odd, process the first read in a pair
-                chr_1 = $3
-                start_1 = $4
-                len_1 = length($10)
-            } else {
-                #  When NR is even, process the second read in a pair
-                chr_2 = $3
-                start_2 = $4 
-                len_2 = length($10)
+# #  Generate BED outfiles from QNAME-sorted BAM infiles using awk (for field
+# #+ formatting and fragment computation), sort (to sort by chromosome, column 1,
+# #+ and numerically by start position, column 2), and gzip (for compression)
+# if ! \
+#     samtools view -@ "${threads}" "${infile}" \
+#         | awk '{
+#             #  Read paired-end BAM lines
+#             if (NR % 2 == 1) {
+#                 #  When NR is odd, process the first read in a pair
+#                 chr_1 = $3
+#                 start_1 = $4
+#                 len_1 = length($10)
+#             } else {
+#                 #  When NR is even, process the second read in a pair
+#                 chr_2 = $3
+#                 start_2 = $4 
+#                 len_2 = length($10)
+#
+#                 #  Process a read pair only if both are aligned to the same
+#                 #+ chromosome
+#                 if (chr_1 == chr_2) {
+#                     #  Compute fragment start, end, and length:
+#                     #+ - start: the smaller of the two read start positions
+#                     #+ - end: the larger of the two read end positions
+#                     #+ - length: the difference between end and start plus one
+#                     start = (start_1 < start_2) ? start_1 : start_2
+#                     end = (start_1 < start_2) ? start_2 + len_2 - 1 : start_1 + len_1 - 1
+#                     frag_length = end - start + 1
+#
+#                     #  Output fragment in BED format: chr, start, end, length
+#                     print chr_1, start, end, frag_length
+#                 }
+#             }
+#         }' OFS='\t' \
+#         | sort -k1,1 -k2,2n \
+#         | gzip \
+#             > "${outfile}"
+# then
+#     echo "Error: BED file conversion failed for BAM infile: '${infile}'." >&2
+#     exit 1
+# fi
 
-                #  Process a read pair only if both are aligned to the same
-                #+ chromosome
-                if (chr_1 == chr_2) {
-                    #  Compute fragment start, end, and length:
-                    #+ - start: the smaller of the two read start positions
-                    #+ - end: the larger of the two read end positions
-                    #+ - length: the difference between end and start plus one
-                    start = (start_1 < start_2) ? start_1 : start_2
-                    end = (start_1 < start_2) ? start_2 + len_2 - 1 : start_1 + len_1 - 1
-                    frag_length = end - start + 1
-
-                    #  Output fragment in BED format: chr, start, end, length
-                    print chr_1, start, end, frag_length
-                }
-            }
-        }' OFS='\t' \
-        | sort -k1,1 -k2,2n \
-        | gzip \
-            > "${outfile}"
-then
+if ! python "${pth_scr}" -i "${infile}" -o "${outfile}" -to "bed"; then
     echo "Error: BED file conversion failed for BAM infile: '${infile}'." >&2
     exit 1
 fi

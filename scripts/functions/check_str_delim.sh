@@ -6,6 +6,10 @@ function check_str_delim() {
     local show_help
 
     show_help=$(cat << EOM
+---------------
+check_str_delim
+---------------
+
 Description:
   Checks that a string value does not contain improperly formatted comma or
   semicolon delimiters, including consecutive, leading, or trailing delimiters,

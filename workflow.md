@@ -8,7 +8,7 @@ ChIP-seq Protocol Workflow
 
 This notebook provides a guide to the ChIP-seq data processing workflow detailed in the manuscript, including code snippets, explanations, and step-by-step instructions.
 
-Note: If using a high-performance computing cluster (HPCC), request an interactive node to ensure adequate resources for running code in the below chunks. The specific command (e.g., `grabnode` at Fred Hutch Cancer Center) will depend on the job scheduler setup. This step is unnecessary if running the code on a local machine.
+Note: If using a high-performance computing cluster (HPCC), request an interactive node to ensure adequate resources for running code in the below chunks. The specific command (e.g., `grabnode` at Fred Hutch Cancer Center) will depend on the job scheduler setup. (This step is unnecessary if running the code on a local machine.)
 
 Note: For detailed instructions on keeping your local version of the [`protocol_chipseq_signal_norm`](https://github.com/kalavattam/protocol_chipseq_signal_norm) repository up-to-date, please see [this GitHub gist](https://gist.github.com/kalavattam/76f123011e8dcd77b445a72d23a64036).
 
@@ -22,6 +22,9 @@ Note: For detailed instructions on keeping your local version of the [`protocol_
 <!-- MarkdownTOC -->
 
 1. [Procedures](#procedures)
+    1. [A. Install and configure Miniforge.](#a-install-and-configure-miniforge)
+    1. [B. Clone the protocol repository and install project environments.](#b-clone-the-protocol-repository-and-install-project-environments)
+    1. [C. Clone the siQ-ChIP repository and install its environment.](#c-clone-the-siq-chip-repository-and-install-its-environment)
 1. [Data analysis](#data-analysis)
     1. [A. Prepare and concatenate FASTA and GFF3 files for model and spike-in organisms.](#a-prepare-and-concatenate-fasta-and-gff3-files-for-model-and-spike-in-organisms)
     1. [B. Generate Bowtie 2 indices from the concatenated FASTA file.](#b-generate-bowtie-2-indices-from-the-concatenated-fasta-file)
@@ -38,7 +41,150 @@ Note: For detailed instructions on keeping your local version of the [`protocol_
 
 <a id="procedures"></a>
 ## Procedures
+<a id="a-install-and-configure-miniforge"></a>
+### A. Install and configure Miniforge.
+<details>
+<summary><i>Text: Install and configure Miniforge.</i></summary>
+<br />
+
 `#TODO`
+</details>
+<br />
+
+<details>
+<summary><i>Bash code: Install and configure Miniforge.</i></summary>
+
+```bash
+#!/bin/bash
+
+#  Optional: Request an interactive node --------------------------------------
+# grabnode  ## Uncomment to request 1 core, 20 GB memory, 1 day, no GPU ##
+
+
+#  Define variables -----------------------------------------------------------
+#  Define variable for base directory
+dir_bas="${HOME}"  ## WARNING: Change as needed ##
+
+#  Determine the appropriate Miniforge installer to use based on operating
+#+ system (OS) and system architecture
+case $(uname -s) in
+    Darwin) os="MacOSX" ;;
+    Linux)  os="Linux"  ;;
+    *) echo "Error: Unsupported operating system: '$(uname -s)'." >&2 ;;
+esac
+
+ar=$(uname -m)  # e.g., "x86_64" for Intel/AMD, "arm64" for ARM
+
+#  Set Miniforge installer URL and script name
+https="https://github.com/conda-forge/miniforge/releases/latest/download"
+script="Miniforge3-${os}-${ar}.sh"
+
+
+#  Download and install Miniforge ---------------------------------------------
+#  Move to base directory
+cd "${dir_bas}" || echo "Error: Failed to change directory: '${dir_bas}'." >&2
+
+#  Download Miniforge installer
+curl -L -O "${https}/${script}"
+
+#  Run Miniforge installer
+bash "${script}"
+```
+</details>
+<br />
+
+<a id="b-clone-the-protocol-repository-and-install-project-environments"></a>
+### B. Clone the protocol repository and install project environments.
+<details>
+<summary><i>Text: Clone the protocol repository and install project environments.</i></summary>
+<br />
+
+`#TODO`
+</details>
+<br />
+
+<details>
+<summary><i>Bash code: Clone the protocol repository and install project environments.</i></summary>
+
+```bash
+#!/bin/bash
+
+#  Optional: Request an interactive node --------------------------------------
+# grabnode  ## Uncomment to request 1 core, 20 GB memory, 1 day, no GPU ##
+
+
+#  Define variables -----------------------------------------------------------
+dir_bas="${HOME}/repos"  ## WARNING: Change as needed ##
+repo="protocol_chipseq_signal_norm"
+https="https://github.com/kalavattam/${repo}.git"
+
+
+#  Do the main work -----------------------------------------------------------
+#  Make the base directory
+mkdir -p "${dir_bas}"
+
+#  Move to base directory
+cd "${dir_bas}" || echo "Error: Failed to change directory: '${dir_bas}'." >&2
+
+#  Clone the protocol repository
+git clone "${https}"
+
+#  Move to repository directory
+cd "${repo}" || echo "Error: Failed to change directory: '${repo}'." >&2
+
+#  Install Conda/Mamba environments with install_envs.sh
+bash "scripts/install_envs.sh" --env_nam "env_align" --yes
+bash "scripts/install_envs.sh" --env_nam "env_analyze" --yes
+```
+</details>
+<br />
+
+<a id="c-clone-the-siq-chip-repository-and-install-its-environment"></a>
+### C. Clone the siQ-ChIP repository and install its environment.
+<details>
+<summary><i>Text: Clone the siQ-ChIP repository and install its environment.</i></summary>
+<br />
+
+`#TODO`
+</details>
+<br />
+
+<details>
+<summary><i>Bash code: Clone the siQ-ChIP repository and install its environment.</i></summary>
+
+```bash
+#!/bin/bash
+
+#  Optional: Request an interactive node --------------------------------------
+# grabnode  ## Uncomment to request 1 core, 20 GB memory, 1 day, no GPU ##
+
+
+#  Define variables -----------------------------------------------------------
+dir_bas="${HOME}/repos"  ## WARNING: Change as needed ##
+dir_rep="${dir_bas}/siQ-ChIP"
+https="https://github.com/kalavattam/siQ-ChIP.git"
+branch="protocol"
+
+dir_scr="${dir_bas}/protocol_chipseq_signal_norm/scripts"
+
+
+#  Do the main work -----------------------------------------------------------
+#  Move to base directory
+cd "${dir_bas}" || echo "Error: Failed to change directory: '${dir_bas}'." >&2
+
+#  Clone siQ-ChIP repository
+git clone "${https}"
+
+#  Move to siQ-ChIP repository directory
+cd "${dir_rep}" || echo "Error: Failed to change directory: '${dir_rep}'." >&2
+
+#  Switch to specified branch
+git checkout "${branch}"
+
+#  Install Conda/Mamba environment for siQ-ChIP
+bash "${dir_scr}/install_envs.sh" --env_nam "env_siq" --yes
+```
+</details>
 <br />
 <br />
 
@@ -58,7 +204,12 @@ Note: For detailed instructions on keeping your local version of the [`protocol_
 <summary><i>Bash code: Prepare and concatenate FASTA and GFF3 files for model and spike-in organisms.</i></summary>
 <br />
 
-`#TODO`
+```bash
+#!/bin/bash
+
+#  Optional: Request an interactive node --------------------------------------
+# grabnode  ## Uncomment to request 1 core, 20 GB memory, 1 day, no GPU ##
+```
 </details>
 <br />
 
@@ -84,9 +235,11 @@ To align ChIP-seq reads against both *S. cerevisiae* and *S. pombe* genomes, we 
 ```bash
 #!/bin/bash
 
-#  Optional: Request an interactive node
-grabnode  # Request 1 core, 20 GB memory, 1 day, no GPU
+#  Optional: Request an interactive node --------------------------------------
+# grabnode  ## Uncomment to request 1 core, 20 GB memory, 1 day, no GPU ##
 
+
+#  Define variables -----------------------------------------------------------
 #  Define variables for directory paths, etc.
 dir_bas="${HOME}/repos"  ## WARNING: Change as needed ##
 dir_rep="${dir_bas}/protocol_chipseq_signal_norm"
@@ -102,6 +255,8 @@ dir_idx="${dir_cat}/index/bowtie2"
 env_nam="env_align"
 day="$(date '+%Y-%m%d')"
 
+
+#  Do the main work -----------------------------------------------------------
 #  Source utility functions
 source "${dir_fnc}/check_program_path.sh"
 source "${dir_fnc}/handle_env.sh"
@@ -149,9 +304,11 @@ bash "${dir_scr}/compress_remove_files.sh" \
 ```bash
 #!/bin/bash
 
-#  Optional: Request an interactive node
-grabnode  # Request 1 core, 20 GB memory, 1 day, no GPU
+#  Optional: Request an interactive node --------------------------------------
+# grabnode  ## Uncomment to request 1 core, 20 GB memory, 1 day, no GPU ##
 
+
+#  Define variables -----------------------------------------------------------
 #  Define variables for directory paths, etc.
 dir_bas="${HOME}/repos"  ## WARNING: Change as needed ##
 dir_rep="${dir_bas}/protocol_chipseq_signal_norm"
@@ -216,9 +373,11 @@ bash "${dir_scr}/compress_remove_files.sh" \
 ```bash
 #!/bin/bash
 
-#  Optional: Request an interactive node
-grabnode  # Request 1 core, 20 GB memory, 1 day, no GPU
+#  Optional: Request an interactive node --------------------------------------
+# grabnode  ## Uncomment to request 1 core, 20 GB memory, 1 day, no GPU ##
 
+
+#  Define variables -----------------------------------------------------------
 #  Define variables for directory paths, environment, threads, and infiles
 dir_bas="${HOME}/repos"  ## WARNING: Change as needed ##
 dir_rep="${dir_bas}/protocol_chipseq_signal_norm"
@@ -301,9 +460,11 @@ bash "${dir_scr}/compress_remove_files.sh" \
 ```bash
 #!/bin/bash
 
-#  Optional: Request an interactive node
-grabnode  # Request 1 core, 20 GB memory, 1 day, no GPU
+#  Optional: Request an interactive node --------------------------------------
+# grabnode  ## Uncomment to request 1 core, 20 GB memory, 1 day, no GPU ##
 
+
+#  Define variables -----------------------------------------------------------
 #  Define variables for directory paths, environment, driver script arguments,
 #+ and so on
 dir_bas="${HOME}/repos"  ## WARNING: Change as needed ##
@@ -458,14 +619,14 @@ req_flg=true
 flg="$(if ${req_flg}; then echo "2"; else echo "NA"; fi)"
 mapq=1
 det_bam="flag-${flg}_mapq-${mapq}"
-det_cov="${aligner}_${a_type}_${det_bam}"
+det_cvg="${aligner}_${a_type}_${det_bam}"
 typ_cov="norm"  ## WARNING: "raw" for unadjusted, "norm" for normalized ##
 
 #  Further define directory setup
 dir_aln="${dir_pro}/align_${aligner}_${a_type}"
 dir_bam="${dir_aln}/${det_bam}/sc"
-dir_cov="${dir_pro}/compute_coverage"
-dir_trk="${dir_cov}/${det_cov}/${typ_cov}/tracks"
+dir_cvg="${dir_pro}/compute_coverage"
+dir_trk="${dir_cvg}/${det_cvg}/${typ_cov}/tracks"
 
 #  Define driver script
 exc_cvg="${dir_scr}/execute_compute_coverage.sh"
@@ -474,7 +635,7 @@ exc_cvg="${dir_scr}/execute_compute_coverage.sh"
 nam_job="compute_coverage_${typ_cov}"
 typ_out="bigwig"
 threads=8
-bin_siz=1
+siz_bin=1
 env_nam="env_analyze"
 day="$(date '+%Y-%m%d')"
 err_out="${dir_trk}/logs"
@@ -491,8 +652,8 @@ infiles="$(
 
 
 #  Create required directories if necessary -----------------------------------
-mkdir -p ${dir_cov}/${det_cov}/{alpha,spike}/tables/{docs,logs}
-mkdir -p ${dir_cov}/${det_cov}/{alpha,norm,raw,spike}/tracks/{docs,logs}
+mkdir -p ${dir_cvg}/${det_cvg}/{alpha,spike}/tables/{docs,logs}
+mkdir -p ${dir_cvg}/${det_cvg}/{alpha,norm,raw,spike}/tracks/{docs,logs}
 
 
 #  Activate the environment and check dependencies ----------------------------
@@ -522,7 +683,7 @@ bash "${exc_cvg}" \
     --infiles "${infiles}" \
     --dir_out "${dir_trk}" \
     --typ_out "${typ_out}" \
-    --bin_siz "${bin_siz}" \
+    --siz_bin "${siz_bin}" \
     $(if [[ "${typ_cov}" == "norm" ]]; then echo "--norm"; fi) \
     --err_out "${err_out}" \
     --nam_job "${nam_job}" \
@@ -582,8 +743,10 @@ This section describes the steps to compute ChIP-seq coverage normalized using t
 
 
 #  Define variables -----------------------------------------------------------
-#  Define directory paths
+#  Define base directory for repository
 dir_bas="${HOME}/repos"  ## WARNING: Change as needed ##
+
+#  Define paths to protocol repository and its subdirectories
 dir_rep="${dir_bas}/protocol_chipseq_signal_norm"
 dir_scr="${dir_rep}/scripts"
 dir_fnc="${dir_scr}/functions"
@@ -598,27 +761,27 @@ req_flg=true
 flg="$(if ${req_flg}; then echo "2"; else echo "NA"; fi)"
 mapq=1
 det_bam="flag-${flg}_mapq-${mapq}"
-det_cov="${aligner}_${a_type}_${det_bam}"
-typ_cov="alpha"
+det_cvg="${aligner}_${a_type}_${det_bam}"
 
 #  Further define directory setup
 dir_aln="${dir_pro}/align_${aligner}_${a_type}"
 dir_bam="${dir_aln}/${det_bam}/sc"
-dir_cov="${dir_pro}/compute_coverage"
-dir_det="${dir_cov}/${det_cov}/${typ_cov}"
-dir_tbl="${dir_det}/tables"
-dir_trk="${dir_det}/tracks"
+dir_cvg="${dir_pro}/compute_coverage"
+dir_non="${dir_cvg}/${det_cvg}/raw"
+dir_nrm="${dir_cvg}/${det_cvg}/norm"
+dir_alf="${dir_cvg}/${det_cvg}/alpha"
+dir_tbl="${dir_alf}/tables"
+dir_trk="${dir_alf}/tracks"
 eo_tbl="${dir_tbl}/logs"
 eo_trk="${dir_trk}/logs"
 
 #  Define environment, resources, and script arguments 
 env_nam="env_analyze"
 threads=8
-mes_tbl="${dir_raw}/docs/measurements_siqchip.tsv"
-bin_siz=1
+typ_out="bedgraph"
+siz_bin=10  # 1
 
-#  Define file search parameters
-## WARNING: Change search parameters as needed ##
+#  Define file search parameters  ## WARNING: Change as needed ##
 pattern="*.bam"
 include="IP*"
 exclude="*Brn1*"
@@ -631,21 +794,102 @@ infiles="$(
 )"
 
 #  Define scripts and output files
-scr_tbl="execute_calculate_scaling_factor_${typ_cov}.sh"
+scr_tbl="execute_calculate_scaling_factor_alpha.sh"
 scr_trk="execute_deeptools_coverage.sh"
 fil_tbl="${dir_tbl}/IP_WT_G1-G2M-Q_Hho1-Hmo1_6336-6337_7750-7751.tsv"
 
 #  Define log file prefixes
 day="$(date '+%Y-%m%d')"
-exc_tbl="${eo_tbl}/${day}.execute.${scr_tbl%.sh}.$(
-    basename "${fil_tbl}" .tsv
-)"
+exc_tbl="${eo_tbl}/${day}.execute.${scr_tbl%.sh}.$(basename "${fil_tbl}" .tsv)"
 exc_trk="${eo_trk}/${day}.${scr_trk%.sh}"
+
+#  Debug variable assignments
+if ${debug:-true}; then
+    echo "####################################"
+    echo "## Hardcoded variable assignments ##"
+    echo "####################################"
+    echo ""
+    echo "\${dir_bas}=${dir_bas}"
+    echo ""
+    echo "\${dir_rep}=${dir_rep}"
+    echo "\${dir_scr}=${dir_scr}"
+    echo "\${dir_fnc}=${dir_fnc}"
+    echo "\${dir_dat}=${dir_dat}"
+    echo "\${dir_raw}=${dir_raw}"
+    echo "\${dir_pro}=${dir_pro}"
+    echo ""
+    echo "\${aligner}=${aligner}"
+    echo "\${a_type}=${a_type}"
+    echo "\${req_flg}=${req_flg}"
+    echo "\${flg}=${flg}"
+    echo "\${mapq}=${mapq}"
+    echo "\${det_bam}=${det_bam}"
+    echo "\${det_cvg}=${det_cvg}"
+    echo ""
+    echo "\${dir_aln}=${dir_aln}"
+    echo "\${dir_bam}=${dir_bam}"
+    echo "\${dir_cvg}=${dir_cvg}"
+    echo "\${dir_non}=${dir_non}"
+    echo "\${dir_nrm}=${dir_nrm}"
+    echo "\${dir_alf}=${dir_alf}"
+    echo "\${dir_tbl}=${dir_tbl}"
+    echo "\${dir_trk}=${dir_trk}"
+    echo "\${eo_tbl}=${eo_tbl}"
+    echo "\${eo_trk}=${eo_trk}"
+    echo ""
+    echo "\${env_nam}=${env_nam}"
+    echo "\${threads}=${threads}"
+    echo "\${eqn}=${eqn}"
+    echo "\${mes_tbl}=${mes_tbl}"
+    echo "\${tbl_col}=${tbl_col}"
+    echo "\${typ_out}=${typ_out}"
+    echo "\${siz_bin}=${siz_bin}"
+    echo ""
+    echo "\${pattern}=${pattern}"
+    echo "\${include}=${include}"
+    echo "\${exclude}=${exclude}"
+    echo "\${infiles}=${infiles}"
+    echo ""
+    echo "\${scr_tbl}=${scr_tbl}"
+    echo "\${scr_trk}=${scr_trk}"
+    echo "\${fil_tbl}=${fil_tbl}"
+    echo ""
+    echo "\${day}=${day}"
+    echo "\${exc_tbl}=${exc_tbl}"
+    echo "\${exc_trk}=${exc_trk}"
+    echo ""
+    echo ""
+fi
 
 
 #  Create required directories if necessary -----------------------------------
 mkdir -p ${dir_tbl}/{docs,logs}
 mkdir -p ${dir_trk}/{docs,logs}
+
+#  Debug outdirectory paths
+if ${debug:-true}; then
+    echo "#####################################"
+    echo "## Outdirectory paths and contents ##"
+    echo "#####################################"
+    echo ""
+    echo "%%%%%%%%%%%%%"
+    echo "%% dir_tbl %%"
+    echo "%%%%%%%%%%%%%"
+    echo ""
+    ls -lhaFG ${dir_tbl}
+    echo ""
+    ls -lhaFG ${dir_tbl}/*
+    echo ""
+    echo "%%%%%%%%%%%%%"
+    echo "%% dir_trk %%"
+    echo "%%%%%%%%%%%%%"
+    echo ""
+    ls -lhaFG ${dir_trk}
+    echo ""
+    ls -lhaFG ${dir_trk}/*
+    echo ""
+    echo ""
+fi
 
 
 #  Activate the environment and check dependencies ----------------------------
@@ -678,6 +922,7 @@ if [[ ! -f "${fil_tbl}" ]]; then
         --threads "${threads}" \
         --infiles "${infiles}" \
         --table "${mes_tbl}" \
+        --eqn "${eqn}" \
         --outfile "${fil_tbl}" \
         --err_out "${eo_tbl}" \
         --flg_dep \
@@ -686,7 +931,9 @@ if [[ ! -f "${fil_tbl}" ]]; then
         --slurm \
              >> >(tee -a "${exc_tbl}.stdout.txt") \
             2>> >(tee -a "${exc_tbl}.stderr.txt")
+fi
 
+if [[ -f "${fil_tbl}" ]]; then
     #  Sort the table of scaling factors by rows
     awk 'NR == 1; NR > 1 && NF { print | "sort" }' "${fil_tbl}" \
         > "${dir_tbl}/tmp.tsv"
@@ -694,8 +941,23 @@ if [[ ! -f "${fil_tbl}" ]]; then
     #  Replace the original table with the sorted version
     mv -f "${dir_tbl}/tmp.tsv" "${fil_tbl}"
 
-    # cat "${fil_tbl}"  ## Uncomment to check the table contents ##
 fi
+# cat "${fil_tbl}"  ## Uncomment to check the table contents ##
+
+
+#  Generate raw and normalized coverage tracks --------------------------------
+bash "${dir_scr}/execute_deeptools_coverage.sh" \
+    --verbose \
+    --threads "${threads}" \
+    --table "${fil_tbl}" \
+    --tbl_col "${tbl_col}" \
+    --dir_out "${dir_trk}" \
+    --typ_out "${typ_out}" \
+    --siz_bin "${siz_bin}" \
+    --err_out "${eo_trk}" \
+    --slurm \
+         >> >(tee -a "${exc_trk}.stdout.txt") \
+        2>> >(tee -a "${exc_trk}.stderr.txt")
 
 
 #  Generate alpha-scaled signal tracks ----------------------------------------
@@ -704,9 +966,10 @@ bash "${dir_scr}/execute_deeptools_coverage.sh" \
     --verbose \
     --threads "${threads}" \
     --table "${fil_tbl}" \
-    --tbl_col "${typ_cov}" \
+    --tbl_col "${tbl_col}" \
     --dir_out "${dir_trk}" \
-    --bin_siz "${bin_siz}" \
+    --typ_out "${typ_out}" \
+    --siz_bin "${siz_bin}" \
     --err_out "${eo_trk}" \
     --slurm \
          >> >(tee -a "${exc_trk}.stdout.txt") \
@@ -719,6 +982,369 @@ bash "${dir_scr}/compress_remove_files.sh" --dir_fnd "${eo_trk}"
 
 # ls -lhaFG "${eo_tbl}"  ## Uncomment to check directory for table logs ##
 # ls -lhaFG "${eo_trk}"  ## Uncomment to check directory for track logs ##
+```
+</details>
+<br />
+
+<details>
+<summary><i>Code: Raw</i></summary>
+
+```bash
+#!/bin/bash
+
+#  Optional: Request an interactive node --------------------------------------
+# grabnode  ## Uncomment to request 1 core, 20 GB memory, 1 day, no GPU ##
+
+
+#  Define functions -----------------------------------------------------------
+#  Function to write a compressed bedGraph file
+function write_bdg_gz() {
+    local fil_in="${1}"     # Input data file (e.g., 'IP.data' or 'IN.data')
+    local fil_out="${2}"    # Output compressed bedGraph file: '*.bdg.gz'
+    local fct_nrm="${3:-}"  # Norm. factor: Empty or 1 for no norm.
+
+    #  Determine whether to read file with zcat or cat
+    if [[ "${fil_in}" == *.gz ]]; then
+        reader="zcat"
+    else
+        reader="cat"
+    fi
+
+    #  Use awk to process the file
+    # shellcheck disable=SC2002
+    ${reader} "${fil_in}" \
+        | awk \
+            -v OFS="\t" -v nl="${fct_nrm}" '
+            {
+                if (nl != "") { print $1, $2, $3, $4 / nl }
+                else { print $1, $2, $3, $4 }
+            }
+        '  \
+        | gzip \
+            > "${fil_out}"
+}
+
+
+#  Function to print error for writing compressed bedGraph coverage files
+function print_err_cvg() {
+    local type="${1}"
+    echo \
+        "Error with no exit: Encountered issue writing *.bdg.gz file of" \
+        "${type} coverage." >&2
+}
+
+
+#  Helper function to write compressed bedGraph file, handle errors, and
+#+ optionally clean up data infile
+function write_check_bdg() {
+    local fil_src=""
+    local fil_out=""
+    local typ_cvg=""
+    local n_lines=""
+    local rmv_src=false
+
+    #  Parse keyword parameters
+    while [[ $# -gt 0 ]]; do
+        case "${1}" in
+             -s|--fil_src) fil_src="${2}"; shift 2 ;;
+             -o|--fil_out) fil_out="${2}"; shift 2 ;;
+            -tc|--typ_cvg) typ_cvg="${2}"; shift 2 ;;
+            -nl|--n_lines) n_lines="${2}"; shift 2 ;;
+            -rs|--rmv_src) rmv_src=true;   shift 1 ;;
+            *)
+                echo "## Unknown parameter passed: ${1} ##" >&2
+                return 1
+                ;;
+        esac
+    done
+
+    #  Validate required parameters
+    check_supplied_arg "fil_src" "${fil_src}"
+    check_exists_file  "fil_src" "${fil_src}"
+
+    check_supplied_arg "fil_out" "${fil_out}"
+
+    check_supplied_arg "typ_cvg" "${typ_cvg}"
+
+    #  If supplied, validate denominator for normalization 
+    if [[ -n "${n_lines}" ]]; then check_int_nonneg "n_lines" "${n_lines}"; fi
+
+    #  Write compressed bedGraph file
+    # shellcheck disable=SC2086
+    if ! write_bdg_gz "${fil_src}" "${fil_out}" ${n_lines}; then
+        print_err_cvg "${typ_cvg}"
+        return 1
+    fi
+
+    #  Optionally remove source file if compressed bedGraph file was
+    #+ successfully written
+    if ${rmv_src} && [[ -f "${fil_out}" ]]; then
+        rm "${fil_src}" || {
+            echo \
+                "Warning: --rmv_src was specified but could not remove" \
+                "source file '${fil_src}'." >&2
+        }
+    fi
+
+    return 0
+}
+
+
+function check_unity() {
+    local fil_in="${1}"
+    local rng_gt="${2:-0.98}"
+    local rng_lt="${3:-1.02}"
+    local reader
+
+    #  Determine whether to read file with zcat or cat
+    if [[ "${fil_in}" == *.gz ]]; then
+        reader="zcat"
+    else
+        reader="cat"
+    fi
+
+    #  Process the file and check its sum
+    ${reader} "${fil_in}" \
+        | awk -v rng_gt="${rng_gt}" -v rng_lt="${rng_lt}" '{
+            sum += $4
+        } END {
+            if (sum >= rng_gt && sum <= rng_lt) {
+                print "File sums to approximately unity:", sum
+            } else {
+                print "File does not sum to unity:", sum
+            }
+        }'
+}
+
+
+#  Define variables -----------------------------------------------------------
+debug=true
+
+#  Define base directory for repository
+dir_bas="${HOME}/repos"  ## WARNING: Change as needed ##
+
+#  Define paths to protocol repository and its subdirectories
+dir_rep="${dir_bas}/protocol_chipseq_signal_norm"
+dir_scr="${dir_rep}/scripts"
+dir_fnc="${dir_scr}/functions"
+dir_dat="${dir_rep}/data"
+dir_raw="${dir_dat}/raw"
+dir_pro="${dir_dat}/processed"
+
+#  Define alignment and coverage details
+aligner="bowtie2"
+a_type="global"
+req_flg=true
+flg="$(if ${req_flg}; then echo "2"; else echo "NA"; fi)"
+mapq=1
+det_bam="flag-${flg}_mapq-${mapq}"
+det_cvg="${aligner}_${a_type}_${det_bam}"
+
+#  Further define directory setup
+dir_aln="${dir_pro}/align_${aligner}_${a_type}"
+dir_bam="${dir_aln}/${det_bam}/sc"
+dir_cvg="${dir_pro}/compute_coverage"
+dir_non="${dir_cvg}/${det_cvg}/raw"
+dir_nrm="${dir_cvg}/${det_cvg}/norm"
+dir_alf="${dir_cvg}/${det_cvg}/alpha"
+
+#  Define environment, resources, and script arguments 
+env_nam="env_analyze"
+threads=8
+eqn=6
+mes_tbl="${dir_raw}/docs/measurements_siqchip.tsv"
+tbl_col="alpha"
+typ_out="bedgraph"
+siz_bin=10  # 1
+
+#  Define file search parameters  ## WARNING: Change as needed ##
+pattern="*.bam"
+include="IP*"
+exclude="*Brn1*"
+infiles="$(
+    bash "${dir_scr}/find_files.sh" \
+        --dir_fnd "${dir_bam}" \
+        --pattern "${pattern}" \
+        --include "${include}" \
+        --exclude "${exclude}"
+)"
+
+#  Define scripts and output files
+scr_tbl="execute_calculate_scaling_factor_alpha.sh"
+scr_trk="execute_deeptools_coverage.sh"
+fil_tbl="${dir_alf}/tables/IP_WT_G1-G2M-Q_Hho1-Hmo1_6336-6337_7750-7751.tsv"
+
+#  Define information for logging
+day="$(date '+%Y-%m%d')"
+
+#  Debug variable assignments
+if ${debug}; then
+    echo "####################################"
+    echo "## Hardcoded variable assignments ##"
+    echo "####################################"
+    echo ""
+    echo "\${debug}=${debug}"
+    echo ""
+    echo "\${dir_bas}=${dir_bas}"
+    echo ""
+    echo "\${dir_rep}=${dir_rep}"
+    echo "\${dir_scr}=${dir_scr}"
+    echo "\${dir_fnc}=${dir_fnc}"
+    echo "\${dir_dat}=${dir_dat}"
+    echo "\${dir_raw}=${dir_raw}"
+    echo "\${dir_pro}=${dir_pro}"
+    echo ""
+    echo "\${aligner}=${aligner}"
+    echo "\${a_type}=${a_type}"
+    echo "\${req_flg}=${req_flg}"
+    echo "\${flg}=${flg}"
+    echo "\${mapq}=${mapq}"
+    echo "\${det_bam}=${det_bam}"
+    echo "\${det_cvg}=${det_cvg}"
+    echo ""
+    echo "\${dir_aln}=${dir_aln}"
+    echo "\${dir_bam}=${dir_bam}"
+    echo "\${dir_cvg}=${dir_cvg}"
+    echo "\${dir_non}=${dir_non}"
+    echo "\${dir_nrm}=${dir_nrm}"
+    echo "\${dir_alf}=${dir_alf}"
+    echo ""
+    echo "\${env_nam}=${env_nam}"
+    echo "\${threads}=${threads}"
+    echo "\${eqn}=${eqn}"
+    echo "\${mes_tbl}=${mes_tbl}"
+    echo "\${tbl_col}=${tbl_col}"
+    echo "\${typ_out}=${typ_out}"
+    echo "\${siz_bin}=${siz_bin}"
+    echo ""
+    echo "\${pattern}=${pattern}"
+    echo "\${include}=${include}"
+    echo "\${exclude}=${exclude}"
+    echo "\${infiles}=${infiles}"
+    echo ""
+    echo "\${scr_tbl}=${scr_tbl}"
+    echo "\${scr_trk}=${scr_trk}"
+    echo "\${fil_tbl}=${fil_tbl}"
+    echo ""
+    echo "\${day}=${day}"
+    echo ""
+    echo ""
+fi
+
+
+#  Create required directories if necessary -----------------------------------
+mkdir -p {${dir_non},${dir_nrm}}/tracks/{docs,logs}
+mkdir -p ${dir_alf}/{tables,tracks}/{docs,logs}
+
+#  Debug outdirectory paths
+if ${debug}; then
+    echo "#####################################"
+    echo "## Outdirectory paths and contents ##"
+    echo "#####################################"
+    echo ""
+    echo "%%%%%%%%%%%%%%%%%%%%%%%%"
+    echo "%% \${dir_non}/tracks %%"
+    echo "%%%%%%%%%%%%%%%%%%%%%%%%"
+    echo ""
+    ls -lhaFG ${dir_non}/tracks
+    echo ""
+    ls -lhaFG ${dir_non}/tracks/*
+    echo ""
+    echo ""
+    echo "%%%%%%%%%%%%%%%%%%%%%%%%"
+    echo "%% \${dir_nrm}/tracks %%"
+    echo "%%%%%%%%%%%%%%%%%%%%%%%%"
+    echo ""
+    ls -lhaFG ${dir_nrm}/tracks
+    echo ""
+    ls -lhaFG ${dir_nrm}/tracks/*
+    echo ""
+    echo "%%%%%%%%%%%%%%%%%%%%%%%%"
+    echo "%% \${dir_alf}/tables %%"
+    echo "%%%%%%%%%%%%%%%%%%%%%%%%"
+    echo ""
+    ls -lhaFG ${dir_alf}/tables
+    echo ""
+    ls -lhaFG ${dir_alf}/tables/*
+    echo ""
+    echo "%%%%%%%%%%%%%%%%%%%%%%%%"
+    echo "%% \${dir_alf}/tracks %%"
+    echo "%%%%%%%%%%%%%%%%%%%%%%%%"
+    echo ""
+    ls -lhaFG ${dir_alf}/tracks
+    echo ""
+    ls -lhaFG ${dir_alf}/tracks/*
+    echo ""
+    echo ""
+fi
+
+
+#  Activate the environment and check dependencies ----------------------------
+#  Source utility functions
+source "${dir_fnc}/check_program_path.sh"
+source "${dir_fnc}/echo_warning.sh"
+source "${dir_fnc}/handle_env.sh"
+
+#  Activate the required environment
+handle_env "${env_nam}"
+
+#  Check the availability of necessary dependencies such as GNU Parallel and
+#+ SLURM sbatch
+check_program_path awk
+check_program_path parallel
+check_program_path python
+check_program_path samtools
+check_program_path sbatch ||
+    echo_warning \
+        "SLURM is not available on this system. Do not use the '--slurm'" \
+        "flag with the driver script."
+
+
+#  Generate raw, non-normalized signal tracks ---------------------------------
+bash "${dir_scr}/execute_deeptools_coverage.sh" \
+    --verbose \
+    --threads "${threads}" \
+    --infiles "${infiles}" \
+    --dir_out "${dir_non}/tracks" \
+    --typ_out "${typ_out}" \
+    --typ_cvg "raw" \
+    --siz_bin "${siz_bin}" \
+    --err_out "${dir_non}/tracks/logs" \
+    --nam_job "raw" \
+    --slurm \
+         >> >(tee -a "${dir_non}/tracks/logs/${day}_raw.stdout.txt") \
+        2>> >(tee -a "${dir_non}/tracks/logs/${day}_raw.stderr.txt")
+
+samtools view \
+    -@ ${SLURM_CPUS_ON_NODE} -c -f 64 \
+    "${dir_bam}/IP_WT_G1_Hho1_6336.sc.bam"
+# 13492920
+
+wc -l "${dir_aln}/${det_bam}/sc_bed/IP_WT_G1_Hho1_6336.sc.bed" \
+    | awk '{ print $1 }'
+# 13492920
+
+bam="${dir_bam}/IP_WT_G1_Hho1_6336.sc.bam"
+# bdg="${bam/.bam/.norm_len}"
+bdg="${bam/.bam/.py_norm_len_unity}"
+python "${dir_scr}/compute_coverage.py" \
+    --verbose \
+    --threads ${SLURM_CPUS_ON_NODE} \
+    --infile "${bam}" \
+    --outfile "${bdg}" \
+    --typ_out bedgraph \
+    --bin_siz 10 \
+    --typ_cvg norm
+
+write_bdg_gz \
+    "${bdg}.bdg.gz" \
+    "${bdg}_unity.bdg.gz" \
+    13492920
+
+check_unity "${bdg}_unity.bdg.gz"
+
+
+
 ```
 </details>
 <br />
@@ -739,9 +1365,11 @@ This section describes the steps to calculate spike-in normalized ChIP-seq cover
 ```bash
 #!/bin/bash
 
-#  Optional: Request an interactive node
-grabnode  # Request 1 core, 20 GB memory, 1 day, no GPU
+#  Optional: Request an interactive node --------------------------------------
+# grabnode  ## Uncomment to request 1 core, 20 GB memory, 1 day, no GPU ##
 
+
+#  Define variables -----------------------------------------------------------
 #  Define variables for directory paths, etc.
 dir_bas="${HOME}/repos"  ## WARNING: Change as needed ##
 dir_rep="${dir_bas}/protocol_chipseq_signal_norm"
@@ -756,12 +1384,12 @@ dir_pro="${dir_dat}/processed"
     flg="$(if ${req_flg}; then echo "2"; else echo "NA"; fi)"
     mapq=1
     det_bam="flag-${flg}_mapq-${mapq}"
-    det_cov="${aligner}_${a_type}_${det_bam}"
+    det_cvg="${aligner}_${a_type}_${det_bam}"
 }
 dir_aln="${dir_pro}/align_${aligner}_${a_type}"
 dir_bam="${dir_aln}/${det_bam}/sc"
-dir_cov="${dir_pro}/compute_coverage"
-dir_out="${dir_cov}/${det_cov}/spike/tables"
+dir_cvg="${dir_pro}/compute_coverage"
+dir_out="${dir_cvg}/${det_cvg}/spike/tables"
 env_nam="env_analyze"
 day="$(date '+%Y-%m%d')"
 
@@ -788,8 +1416,8 @@ exc_tbl="${dir_out}/logs/${day}.execute.$(basename "${outfile}" .tsv)"
 
 #  Create directory structure for storing output tables and tracks associated
 #+ with different normalization methods (alpha, spike, norm, raw)
-mkdir -p ${dir_cov}/${det_cov}/{alpha,spike}/tables/{docs,logs}
-mkdir -p ${dir_cov}/${det_cov}/{alpha,norm,raw,spike}/tracks/{docs,logs}
+mkdir -p ${dir_cvg}/${det_cvg}/{alpha,spike}/tables/{docs,logs}
+mkdir -p ${dir_cvg}/${det_cvg}/{alpha,norm,raw,spike}/tracks/{docs,logs}
 
 #  Source utility functions
 source "${dir_fnc}/check_program_path.sh"
@@ -843,14 +1471,21 @@ mv -f "${dir_out}/tmp.txt" "${outfile}"
 
 `## #INPROGRESS Draft code ##`
 ```bash
+#!/bin/bash
+
+#  Optional: Request an interactive node --------------------------------------
+# grabnode  ## Uncomment to request 1 core, 20 GB memory, 1 day, no GPU ##
+
+
+#  Define variables -----------------------------------------------------------
 nam_job="comp_covg_spike"
 no_infiles="$(tail -n +2 "${outfile}" | wc -l)"
 max_job=6
 threads=8
-bin_siz=1
+siz_bin=1
 outtype="bigwig"
 time="0:30:00"
-dir_out="${dir_pro}/compute_coverage/${det_cov}/spike/tracks"
+dir_out="${dir_pro}/compute_coverage/${det_cvg}/spike/tracks"
 err_out="${dir_out}/logs"
 exc_tbl="${err_out}/${day}.execute.${nam_job}"
 
@@ -883,11 +1518,11 @@ while IFS=$'\t' read -r sample sf scaled main_ip spike_ip main_in spike_in; do
             --output=${err_out}/${nam_job}.%A-%a.stdout.txt \\
                 python "${dir_scr}/compute_coverage.py" \\
                     --infile "${dir_bam}/${sample}" \\
-                    --outfile "${dir_cov}/${det_cov}/spike/tracks/${outstem}" \\
+                    --outfile "${dir_cvg}/${det_cvg}/spike/tracks/${outstem}" \\
                     --scl_fct "${scaled}" \\
                     --outtype "${outtype}" \\
                     --threads ${threads} \\
-                    --bin_siz 1 \\
+                    --siz_bin 1 \\
                          > >(tee -a "${exc_tbl}.${outstem}.stdout.txt") \\
                         2> >(tee -a "${exc_tbl}.${outstem}.stderr.txt")
 EOM
@@ -903,11 +1538,11 @@ EOM
         --output=${err_out}/${nam_job}.%A-%a.stdout.txt \
             python "${dir_scr}/compute_coverage.py" \
                 --infile "${dir_bam}/${sample}" \
-                --outfile "${dir_cov}/${det_cov}/spike/tracks/${outstem}" \
+                --outfile "${dir_cvg}/${det_cvg}/spike/tracks/${outstem}" \
                 --scl_fct "${scaled}" \
                 --outtype "${outtype}" \
                 --threads ${threads} \
-                --bin_siz 1 \
+                --siz_bin 1 \
                      > >(tee -a "${exc_tbl}.${outstem}.stdout.txt") \
                     2> >(tee -a "${exc_tbl}.${outstem}.stderr.txt")
 

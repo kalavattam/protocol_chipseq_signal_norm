@@ -19,10 +19,10 @@ Workflow: Validate New siQ-ChIP Implementation with the Original
     1. [A. Clone the forked siQ-ChIP repository.](#a-clone-the-forked-siq-chip-repository)
     1. [B. Create an environment for running siQ-ChIP.](#b-create-an-environment-for-running-siq-chip)
 1. [Data analysis](#data-analysis)
-    1. [A. QNAME-sort BAM files filtered for *S. cerevisiae* alignments.](#a-qname-sort-bam-files-filtered-for-s-cerevisiae-alignments)
-    1. [B. Generate BED files from QNAME-sorted BAM files.](#b-generate-bed-files-from-qname-sorted-bam-files)
-    1. [C. Organize and generate metadata for and run the initial implementation of siQ-ChIP.](#c-organize-and-generate-metadata-for-and-run-the-initial-implementation-of-siq-chip)
+    1. [A. Generate BED files from QNAME-sorted BAM files.](#a-generate-bed-files-from-qname-sorted-bam-files)
+    1. [B. Organize, generate metadata for, and then run the initial implementation of siQ-ChIP.](#b-organize-generate-metadata-for-and-then-run-the-initial-implementation-of-siq-chip)
 1. [Test refactored bespoke code](#test-refactored-bespoke-code)
+    1. [F. Compute normalized \(proportional\) or raw coverage.](#f-compute-normalized-proportional-or-raw-coverage)
     1. [G. Compute coverage with the sans spike-in quantitative ChIP-seq \(siQ-ChIP\) method.](#g-compute-coverage-with-the-sans-spike-in-quantitative-chip-seq-siq-chip-method)
 
 <!-- /MarkdownTOC -->
@@ -58,7 +58,7 @@ function echo_warning() { echo "Warning: $*" >&2; return 1; }
 dir_bas="${HOME}/repos"  ## WARNING: Change as needed ##
 dir_rep="${dir_bas}/siQ-ChIP"
 git_rep="kalavattam/siQ-ChIP"
-branch="cerevisiae"
+branch="devel"
 
 #  Go to base repository directory
 cd "${dir_bas}" || echo_warning "cd'ing failed; check on this"
@@ -66,11 +66,11 @@ cd "${dir_bas}" || echo_warning "cd'ing failed; check on this"
 #  Clone forked siQ-ChIP repository
 if [[ ! -d "${dir_rep}" ]]; then gh repo clone "${git_rep}"; fi
 
-#  Checkout the 'cerevisiae' branch
+#  Checkout the 'devel' branch
 cd "${dir_rep}" || echo_warning "cd'ing failed; check on this"
 
 #  Switch to the specified branch
-git checkout -b "${branch}"
+git checkout "${branch}"
 
 echo "Repository is ready and on branch '${branch}'."
 ```
@@ -112,180 +112,16 @@ bash "${dir_scr}/install_envs.sh" \
 
 <a id="data-analysis"></a>
 ## Data analysis
-<a id="a-qname-sort-bam-files-filtered-for-s-cerevisiae-alignments"></a>
-### A. QNAME-sort BAM files filtered for *S. cerevisiae* alignments.
+<a id="a-generate-bed-files-from-qname-sorted-bam-files"></a>
+### A. Generate BED files from QNAME-sorted BAM files.
 <details>
-<summary><i>Bash code: QNAME-sort BAM files filtered for </i>S. cerevisiae<i> alignments.</i></summary>
+<summary><i>Text: Generate BED files from QNAME-sorted BAM files.</i></summary>
+<br />
 
-```bash
-#!/bin/bash
-
-#  Optional: Request an interactive node
-grabnode  # Request 1 core, 20 GB memory, 1 day, no GPU
-
-#  Define variables for directory paths, environment, submission script
-#+ arguments, metadata, and so on
-dir_bas="${HOME}/repos"  ## WARNING: Change as needed ##
-dir_rep="${dir_bas}/protocol_chipseq_signal_norm"
-dir_scr="${dir_rep}/scripts"
-dir_fnc="${dir_scr}/functions"
-dir_dat="${dir_rep}/data"
-dir_pro="${dir_dat}/processed"
-
-aligner="bowtie2"
-a_type="global"
-req_flg=true
-flg="$(if ${req_flg}; then echo "2"; else echo "NA"; fi)"
-mapq=1
-species="sc"
-
-dir_aln="${dir_pro}/align_${aligner}_${a_type}"
-dir_bam="${dir_aln}/flag-${flg}_mapq-${mapq}/${species}"
-
-pattern="*.bam"
-exclude="*Brn1*"
-depth=1
-infiles="$(  ## WARNING: Change search parameters as needed ##
-    bash "${dir_scr}/find_files.sh" \
-        --dir_fnd "${dir_bam}" \
-        --pattern "${pattern}" \
-        --exclude "${exclude}" \
-        --depth ${depth}
-)"
-
-scr_sub="${dir_scr}/submit_qsort_bam_slurm.sh"
-env_nam="env_siqchip"
-dir_out="${dir_bam}_qnam"
-err_out="${dir_out}/logs"
-
-day="$(date '+%Y-%m%d')"
-nam_job="qsort_bams"
-threads=8
-time="2:00:00"
-num_job=$(awk -F "," '{ print NF }' <<< "${infiles}")
-max_job=6
-
-#  Create output directory structure for trimmed FASTQ files and logs
-mkdir -p ${dir_out}/{docs,logs}
-
-#  Debug variable assignments
-if ${debug}; then
-    {
-        echo "####################################"
-        echo "## Hardcoded variable assignments ##"
-        echo "####################################"
-        echo ""
-        echo "\${dir_bas}=${dir_bas}"
-        echo "\${dir_rep}=${dir_rep}"
-        echo "\${dir_scr}=${dir_scr}"
-        echo "\${dir_fnc}=${dir_fnc}"
-        echo "\${dir_dat}=${dir_dat}"
-        echo "\${dir_pro}=${dir_pro}"
-        echo ""
-        echo "\${aligner}=${aligner}"
-        echo "\${a_type}=${a_type}"
-        echo "\${req_flg}=${req_flg}"
-        echo "\${flg}=${flg}"
-        echo "\${mapq}=${mapq}"
-        echo "\${species}=${species}"
-        echo ""
-        echo "\${dir_aln}=${dir_aln}"
-        echo "\${dir_bam}=${dir_bam}"
-        echo ""
-        echo "\${pattern}=${pattern}"
-        echo "\${exclude}=${exclude}"
-        echo "\${depth}=${depth}"
-        echo "\${infiles}=${infiles}"
-        echo ""
-        echo "\${scr_sub}=${scr_sub}"
-        echo "\${env_nam}=${env_nam}"
-        echo "\${dir_out}=${dir_out}"
-        echo "\${err_out}=${err_out}"
-        echo ""
-        echo "\${day}=${day}"
-        echo "\${nam_job}=${nam_job}"
-        echo "\${threads}=${threads}"
-        echo "\${time}=${time}"
-        echo "\${num_job}=${num_job}"
-        echo "\${max_job}=${max_job}"
-        echo ""
-        echo ""
-    } >> >(tee -a "${err_out}/${day}.execute.stdout.txt")
-fi
-
-#  Source utility functions
-source "${dir_fnc}/check_program_path.sh"
-source "${dir_fnc}/echo_warning.sh"
-source "${dir_fnc}/handle_env.sh"
-
-#  Activate the required environment
-handle_env "${env_nam}"
-
-#  Check the availability of Samtools and SLURM sbatch
-check_program_path samtools
-check_program_path sbatch
-
-#  Debug call to sbatch with submission script
-if ${debug}; then
-    {
-        echo "####################"
-        echo "## Call to sbatch ##"
-        echo "####################"
-        echo ""
-        echo "sbatch \\"
-        echo "    --job-name=${nam_job} \\"
-        echo "    --nodes=1 \\"
-        echo "    --cpus-per-task=${threads} \\"
-        echo "    --time=${time} \\"
-        echo "    --error=${err_out}/${nam_job}.%A-%a.stderr.txt \\"
-        echo "    --output=${err_out}/${nam_job}.%A-%a.stdout.txt \\"
-        echo "    --array=1-${num_job}%${max_job} \\"
-        echo "    ${scr_sub} \\"
-        echo "        ${env_nam} \\"
-        echo "        ${threads} \\"
-        echo "        ${infiles} \\"
-        echo "        ${dir_out} \\"
-        echo "        ${err_out} \\"
-        echo "        ${nam_job}"
-        echo ""
-        echo ""
-        echo "#########################################"
-        echo "## Contents of SLURM submission script ##"
-        echo "#########################################"
-        echo ""
-        echo "## ${scr_sub} ##"
-        echo ""
-        cat "${scr_sub}"
-        echo ""
-    } >> >(tee -a "${err_out}/${day}.execute.stdout.txt")
-fi
-
-#  Run SLURM submission script to QNAME-sort BAM files 
-# shellcheck disable=SC2046,SC2086
-sbatch \
-    --job-name=${nam_job} \
-    --nodes=1 \
-    --cpus-per-task=${threads} \
-    --time=${time} \
-    --error=${err_out}/${nam_job}.%A-%a.stderr.txt \
-    --output=${err_out}/${nam_job}.%A-%a.stdout.txt \
-    --array=1-${num_job}%${max_job} \
-    ${scr_sub} \
-        ${env_nam} \
-        ${threads} \
-        ${infiles} \
-        ${dir_out} \
-        ${err_out} \
-        ${nam_job}
-
-#  Compress large stdout and stderr files, and remove files with size 0
-bash "${dir_scr}/compress_remove_files.sh" --dir_fnd "${err_out}"
-```
+`#TODO`
 </details>
 <br />
 
-<a id="b-generate-bed-files-from-qname-sorted-bam-files"></a>
-### B. Generate BED files from QNAME-sorted BAM files.
 <details>
 <summary><i>Bash code: Generate BED files from QNAME-sorted BAM files.</i></summary>
 
@@ -309,7 +145,7 @@ a_type="global"
 req_flg=true
 flg="$(if ${req_flg}; then echo "2"; else echo "NA"; fi)"
 mapq=1
-spe_typ="sc_qnam"
+spe_typ="sc"
 
 dir_aln="${dir_pro}/align_${aligner}_${a_type}"
 dir_bam="${dir_aln}/flag-${flg}_mapq-${mapq}/${spe_typ}"
@@ -324,13 +160,14 @@ infiles="$(  ## WARNING: Change search parameters as needed ##
 )"
 
 scr_sub="${dir_scr}/submit_convert_bam_bed_slurm.sh"
-env_nam="env_siqchip"
-dir_out="${dir_bam%_qnam}_bed"
+scr_cnv="${dir_scr}/compute_coverage.py"
+env_nam="env_analyze"
+dir_out="${dir_bam}_bed"
 err_out="${dir_out}/logs"
 
 day="$(date '+%Y-%m%d')"
 nam_job="convert_bam_bed"
-threads=8
+threads=1
 time="2:00:00"
 num_job=$(awk -F "," '{ print NF }' <<< "${infiles}")
 max_job=6
@@ -339,6 +176,10 @@ max_job=6
 mkdir -p ${dir_out}/{docs,logs}
 
 #  Debug variable assignments
+if [[ -f "${err_out}/${day}.execute.stdout.txt" ]]; then
+    rm "${err_out}/${day}.execute."std???".txt"
+fi
+
 if ${debug}; then
     {
         echo "####################################"
@@ -367,6 +208,7 @@ if ${debug}; then
         echo "\${infiles}=${infiles}"
         echo ""
         echo "\${scr_sub}=${scr_sub}"
+        echo "\${scr_cnv}=${scr_cnv}"
         echo "\${env_nam}=${env_nam}"
         echo "\${dir_out}=${dir_out}"
         echo "\${err_out}=${err_out}"
@@ -391,7 +233,7 @@ source "${dir_fnc}/handle_env.sh"
 handle_env "${env_nam}"
 
 #  Check the availability of Samtools and SLURM sbatch
-check_program_path samtools
+check_program_path python
 check_program_path sbatch
 
 #  Debug call to sbatch with submission script
@@ -413,9 +255,20 @@ if ${debug}; then
         echo "        ${env_nam} \\"
         echo "        ${threads} \\"
         echo "        ${infiles} \\"
+        echo "        ${scr_cnv} \\"
         echo "        ${dir_out} \\"
         echo "        ${err_out} \\"
         echo "        ${nam_job}"
+        echo ""
+        echo ""
+        echo "##############################################"
+        echo "## Contents of BAM-to-BED conversion script ##"
+        echo "##############################################"
+        echo ""
+        echo "## ${scr_cnv} ##"
+        echo ""
+        cat "${scr_cnv}"
+        echo ""
         echo ""
         echo ""
         echo "#########################################"
@@ -444,6 +297,7 @@ sbatch \
         ${env_nam} \
         ${threads} \
         ${infiles} \
+        ${scr_cnv} \
         ${dir_out} \
         ${err_out} \
         ${nam_job}
@@ -454,10 +308,10 @@ bash "${dir_scr}/compress_remove_files.sh" --dir_fnd "${err_out}"
 </details>
 <br />
 
-<a id="c-organize-and-generate-metadata-for-and-run-the-initial-implementation-of-siq-chip"></a>
-### C. Organize and generate metadata for and run the initial implementation of siQ-ChIP.
+<a id="b-organize-generate-metadata-for-and-then-run-the-initial-implementation-of-siq-chip"></a>
+### B. Organize, generate metadata for, and then run the initial implementation of siQ-ChIP.
 <details>
-<summary><i>Bash code: Organize and generate metadata for and run the initial implementation of siQ-ChIP.</i></summary>
+<summary><i>Bash code: Organize, generate metadata for, and then run the initial implementation of siQ-ChIP.</i></summary>
 
 ```bash
 #!/bin/bash
@@ -469,20 +323,20 @@ bash "${dir_scr}/compress_remove_files.sh" --dir_fnd "${err_out}"
 
 #  Define functions -----------------------------------------------------------
 #  Populate an array with sorted file names that match a specified pattern
-#+ (e.g., a file glob), optionally excluding paths
+#+ (e.g., a Shell file glob), optionally excluding paths
 function populate_array_glob() {
-    local -n arr_ref=${1}  # Name of array to populate (passed by reference)
-    local search="${2}"    # Directory to search
-    local pattern="${3}"   # File name pattern (e.g., "IP_*.bed")
-    local path=${4:-true}  # Retain paths (true/false); default is true
+    local -n arr_ref=${1}     # Name of array to populate (passed by reference)
+    local search="${2}"       # Directory to search
+    local pattern="${3}"      # File name pattern (e.g., "IP_*.bed")
+    local pth_ret=${4:-true}  # Retain paths (true/false); default is true
     
     mapfile -t arr_ref < <(
         find "${search}" -maxdepth 1 -type f -name "${pattern}" \
             | { 
-                if ${path}; then 
-                    cat                         # Retain path in file name
+                if ${pth_ret}; then 
+                    cat                         # true: Retain path
                 else 
-                    awk -F '/' '{ print $NF }'  # Strip path from file name
+                    awk -F '/' '{ print $NF }'  # false: Strip path
                 fi 
             } \
             | sort
@@ -491,7 +345,7 @@ function populate_array_glob() {
 
 
 #  Compute the average fragment length for a sample
-function compute_avg_frag_len() {
+function compute_frag_len_avg() {
     local infile="${1}"
     local strip="${2:-".sc.qnam.bed"}"
     local name
@@ -511,7 +365,7 @@ function compute_avg_frag_len() {
         }' \
         "${infile}"
 }
-export -f compute_avg_frag_len
+export -f compute_frag_len_avg
 
 
 #  Split a TSV file into per-sample parameter files; each sample gets its own
@@ -523,8 +377,8 @@ function split_tsv_params() {
     #  Extract sample-specific measurements and write to separate files
     awk -v outdir="${outdir}" \
         'BEGIN {
-            FS = "\t"   # Set field separator to tab
-            OFS = "\n"  # Set output field separator to newline
+            FS = "\t"   # Field separator: tab
+            OFS = "\n"  # Output field separator: newline
         } NR == 1 {
             #  From the header row (row 1), create outfile paths for each
             #+ sample
@@ -543,7 +397,7 @@ function split_tsv_params() {
 
 
 #  Rename and move globbed files
-function move_rename_globbed_files() {
+function move_rename_files_glob() {
     local pattern="${1}"  # File search pattern (e.g., "Norm*.bed")
     local target="${2}"   # Target directory for moved files
     local renamer="${3}"  # 'sed' expression(s) for renaming files
@@ -555,7 +409,7 @@ function move_rename_globbed_files() {
         return 1
     fi
 
-    #  Process each file using xargs and pass 'target' and 'renamer' explicitly
+    #  Process each file using xargs, passing 'target' and 'renamer' explicitly
     printf '%s\n' "${files[@]}" \
         | sort \
         | env \
@@ -578,7 +432,7 @@ function move_rename_globbed_files() {
 
 
 #  Move globbed files without renaming
-function move_globbed_files() {
+function move_files_glob() {
     local pattern="${1}"  # File search pattern (e.g., "siqchip*.bed")
     local target="${2}"   # Target directory for moved files
 
@@ -589,7 +443,7 @@ function move_globbed_files() {
         return 1
     fi
 
-    #  Process each file using xargs and pass 'target' explicitly
+    #  Process each file using xargs, passing 'target' explicitly
     printf '%s\n' "${files[@]}" \
         | sort \
         | env target="${target}" xargs -I {} bash -c '
@@ -599,6 +453,26 @@ function move_globbed_files() {
                 exit 1
             }
         '
+}
+
+
+#  Function to compile Fortran scripts if necessary
+function compile_fortran() {
+    local fil_src="${1}"  # Path to Fortran source file
+    local fil_bin="${2}"  # Path to output binary file
+
+    if [[ ! -f "${fil_bin}" || "${fil_src}" -nt "${fil_bin}" ]]; then
+        if ${dry_run:-false}; then
+            echo "Dry run: Would compile '${fil_src}' -> '${fil_bin}'."
+        else
+            if ! \
+                gfortran -O3 -fbounds-check -o "${fil_bin}" "${fil_src}"
+            then
+                echo "Error: Failed to compile '${fil_src}'." >&2
+                return 1
+            fi
+        fi
+    fi
 }
 
 
@@ -625,9 +499,31 @@ function convert_bed_bedgraph() {
 export -f convert_bed_bedgraph
 
 
-#TODO: Description
-function convert_bedgraph_bigwig() {
-    :  #TODO
+#  Check that normalized coverage files sum to approximately unity
+function check_unity() {
+    local fil_in="${1}"
+    local rng_gt="${2:-0.98}"
+    local rng_lt="${3:-1.02}"
+    local reader
+
+    #  Determine whether to read file with zcat or cat
+    if [[ "${fil_in}" == *.gz ]]; then
+        reader="zcat"
+    else
+        reader="cat"
+    fi
+
+    #  Process the file and check its sum
+    ${reader} "${fil_in}" \
+        | awk -v rng_gt="${rng_gt}" -v rng_lt="${rng_lt}" '{
+            sum += $4
+        } END {
+            if (sum >= rng_gt && sum <= rng_lt) {
+                print "File sums to approximately unity:", sum
+            } else {
+                print "File does not sum to unity:", sum
+            }
+        }'
 }
 
 
@@ -635,8 +531,7 @@ function convert_bedgraph_bigwig() {
 #  Define variables for directory paths, environment, submission script
 #+ arguments, metadata, and so on
 debug=true
-siqchip=false
-convert=true
+siqchip=true
 threads=${SLURM_CPUS_ON_NODE:-1}
 
 dir_bas="${HOME}/repos"  ## WARNING: Change as needed ##
@@ -662,11 +557,12 @@ populate_array_glob arr_IP "${dir_bed}" "IP_*.bed" true
 populate_array_glob arr_in "${dir_bed}" "in_*.bed" true
 
 dir_ini="${dir_pro}/compute_coverage"
-dir_cov="${dir_ini}/${aligner}_${a_type}_flag-${flg}_mapq-${mapq}"
-dir_exp="${dir_cov}/siqchip"
+dir_cvg="${dir_ini}/${aligner}_${a_type}_flag-${flg}_mapq-${mapq}"
+dir_exp="${dir_cvg}/siqchip"
 dir_doc="${dir_exp}/docs"
 dir_log="${dir_exp}/logs"
-day="2024-1217"  ## WARNING: Change as needed ##
+day="2025-0108"  ## WARNING: Change as needed ##
+pth_doc="${dir_doc}/${day}.documentation.txt"
 
 dir_raw="${dir_dat}/raw/docs"
 fil_raw="measurements_siqchip_initial.tsv"
@@ -678,9 +574,29 @@ dir_fas="${dir_gen}/cerevisiae/fasta/proc"
 fil_fas="S288C_R64-5-1_proc.fasta.gz"
 fil_chr="S288C_R64-5-1_proc.chrom-info.tsv"
 
+siz_bin=5  # 10  # 1  # 30
+siz_gen=12157105
+
+submit="gnu"  # "slurm"  # "serial"
+env_nam="env_siqchip"
+
 #  Create output directory structure for trimmed FASTQ files and logs
-mkdir -p ${dir_exp}/{docs,logs}
-mkdir -p ${dir_exp}/{alpha,norm}/{bed,bg,bw}
+mkdir -p ${dir_exp}/{docs,logs,norm,raw,siq}
+
+#  To avoid repeated writing in testing, remove documentation TXT file
+if [[ -f "${pth_doc}" ]]; then rm "${pth_doc}"; fi
+
+if ${debug}; then
+    {
+        echo ""
+        echo "#  siQ-ChIP experiment"
+        echo "#  KA"
+        echo "#  ${day}"
+        echo ""
+        echo ""
+    } \
+        >> >(tee -a "${pth_doc}")
+fi  # cat "${pth_doc}"
 
 #  Debug hardcoded variable assignments
 if ${debug}; then
@@ -691,7 +607,6 @@ if ${debug}; then
         echo ""
         echo "\${debug}=${debug}"
         echo "\${siqchip}=${siqchip}"
-        echo "\${convert}=${convert}"
         echo "\${threads}=${threads}"
         echo ""
         echo "\${dir_bas}=${dir_bas}"
@@ -716,11 +631,12 @@ if ${debug}; then
         echo "\${arr_in[@]}=( ${arr_in[*]} )"
         echo ""
         echo "\${dir_ini}=${dir_ini}"
-        echo "\${dir_cov}=${dir_cov}"
+        echo "\${dir_cvg}=${dir_cvg}"
         echo "\${dir_exp}=${dir_exp}"
         echo "\${dir_doc}=${dir_doc}"
         echo "\${dir_log}=${dir_log}"
         echo "\${day}=${day}"
+        echo "\${pth_doc}=${pth_doc}"
         echo ""
         echo "\${dir_raw}=${dir_raw}"
         echo "\${fil_raw}=${fil_raw}"
@@ -732,52 +648,60 @@ if ${debug}; then
         echo "\${fil_fas}=${fil_fas}"
         echo "\${fil_chr}=${fil_chr}"
         echo ""
+        echo "\${siz_bin}=${siz_bin}"
+        echo "\${siz_gen}=${siz_gen}"
         echo ""
-    } # \
-        # >> #TODO
-fi
+        echo "\${submit}=${submit}"
+        echo "\${env_nam}=${env_nam}"
+        echo ""
+        echo ""
+    } \
+        >> >(tee -a "${pth_doc}")
+fi  # cat "${pth_doc}"
+
 
 #  Source utility functions to activate environment and check dependencies
 source "${dir_fnc}/check_program_path.sh"
 source "${dir_fnc}/handle_env.sh"
 
 #  Activate the required environment
-handle_env env_siqchip
+handle_env "${env_nam}"
 
 #  Ensure access to dependencies
 arr_dep=(
-    "bc"                # Precision calculator
-    "bedClip"           # Program for clipping BED file entries
-    "bedtools"          # Program for genome arithmetic
-    "bedGraphToBigWig"  # Convert bedgraph files to bigWig format
-    "gfortran"          # GNU Fortran compiler
-    "gnuplot"           # Program for data visualization
-    "parallel"          # GNU Parallel for parallel processing
+    "bc"        # Precision calculator
+    "bedtools"  # Program for genome arithmetic
+    "gfortran"  # GNU Fortran compiler
+    "gnuplot"   # Program for data visualization
+    "parallel"  # GNU Parallel for parallel processing
+    "sbatch"    #TODO: Description
 )
 for dep in "${arr_dep[@]}"; do check_program_path "${dep}"; done
 unset arr_dep dep
 
-#  Create (temporary) decompressed versions of the BED files
-for file in ${dir_bed}/*.bed.gz; do
-    if [[ ! -f "${file%.gz}" ]]; then gunzip -k "${file}"; fi
-done
+#  If necessary, create (temporary) decompressed versions of the BED files
+if compgen -G "${dir_bed}/*.bed.gz" > /dev/null; then
+    for file in ${dir_bed}/*.bed.gz; do
+        if [[ ! -f "${file%.gz}" ]]; then gunzip -k "${file}"; fi
+    done
+fi
 
 #  Compute the average fragment length per sample
-if [[ ! -f "${dir_doc}/avg_frag_len.txt" ]]; then
+if [[ ! -f "${dir_doc}/frag_len_avg.txt" ]]; then
     if [[ ${threads} -gt 1 ]]; then
         #  Run in parallel if threads > 1
         parallel --jobs ${threads} \
-            'compute_avg_frag_len {1} > {2}/{#}.tmp' \
+            'compute_frag_len_avg {1} > {2}/{#}.tmp' \
                 ::: "${dir_bed}"/*.bed \
                 ::: "${dir_doc}"
 
         #  Avoid race conditions by individually writing to and then combining
         #+ temporary files
-        cat "${dir_doc}"/*.tmp | sort -k1,1 > "${dir_doc}/avg_frag_len.txt" \
+        cat "${dir_doc}"/*.tmp | sort -k1,1 > "${dir_doc}/frag_len_avg.txt" \
             && rm "${dir_doc}"/*.tmp
     else
         for file in "${dir_bed}"/*.bed; do
-            compute_avg_frag_len "${file}" >> "${dir_doc}/avg_frag_len.txt"
+            compute_frag_len_avg "${file}" >> "${dir_doc}/frag_len_avg.txt"
         done
     fi
 fi
@@ -836,58 +760,55 @@ if ${debug}; then
         done
         
         echo ""
-    } # \
-        # >> #TODO
-fi
+    } \
+        >> >(tee -a "${pth_doc}")
+fi  # cat "${pth_doc}"
 
-#  Assign array of parameter TXT files
-unset arr_param
-populate_array_glob arr_param "${dir_doc}" "params_*.txt" true
-
-#  Copy siQ-ChIP IP BED, input BED, and parameter TXT files into the siQ-ChIP
-#+ repository directory
-if ${siqchip}; then
-    if [[ ${threads} -gt 1 ]]; then
-        #  If threads > 1, use GNU Parallel to copy files in parallel
-        parallel --jobs ${threads} 'cp {1} {2}' \
-            ::: "${arr_IP[@]}" "${arr_in[@]}" "${arr_param[@]}" \
-            ::: "${dir_siq}"
-    else
-        #  Copy files sequentially if threads <= 1
-        cp "${arr_IP[*]}" "${arr_in[*]}" "${arr_param[*]}" "${dir_siq}"
-    fi
-fi
+# #  Copy siQ-ChIP IP BED, input BED, and parameter TXT files into the siQ-ChIP
+# #+ repository directory
+# if ${siqchip}; then
+#     if [[ ${threads} -gt 1 ]]; then
+#         #  If threads > 1, use GNU Parallel to copy files in parallel
+#         parallel --jobs ${threads} 'cp {1} {2}' \
+#             ::: "${arr_IP[@]}" "${arr_in[@]}" "${arr_param[@]}" \
+#             ::: "${dir_siq}"
+#     else
+#         #  Copy files sequentially if threads <= 1
+#         cp "${arr_IP[*]}" "${arr_in[*]}" "${arr_param[*]}" "${dir_siq}"
+#     fi
+# fi
 
 #  Assign arrays of path-free IP BED files, input BED files, parameter TXT
 #+ files, and experiment stems
-#  Populate arrays using the helper function
+#  Populate arrays using the helper function 'populate_array_glob'
 unset arr_IP arr_in arr_param
-populate_array_glob arr_IP    "${dir_bed}" "IP_*.bed"     false
-populate_array_glob arr_in    "${dir_bed}" "in_*.bed"     false
-populate_array_glob arr_param "${dir_doc}" "params_*.txt" false
+populate_array_glob arr_IP    "${dir_bed}" "IP_*.bed"     true  # false
+populate_array_glob arr_in    "${dir_bed}" "in_*.bed"     true  # false
+populate_array_glob arr_param "${dir_doc}" "params_*.txt" true  # false
 
 unset arr_stem && typeset -a arr_stem+=( $(
     for file in "${arr_param[@]}"; do
         init="${file##*params_}"
-        stem="siqchip_${init%.txt}"
-        echo "${stem}"
-    done    
+        echo "${init%.txt}"
+    done
 ) )
-unset file init stem
+unset file init
 
 #  Debug lists of the IP BED files, input BED files, and TXT parameter files
 if ${debug}; then
     {
-        echo "##############"
-        echo "## IP files ##"
-        echo "##############"
+        echo "##################"
+        echo "## IP BED files ##"
+        echo "##################"
+        echo ""
         for file in "${arr_IP[@]}"; do echo "${file}"; done
         echo ""
         echo ""
 
-        echo "#################"
-        echo "## Input files ##"
-        echo "#################"
+        echo "#####################"
+        echo "## Input BED files ##"
+        echo "#####################"
+        echo ""
         for file in "${arr_in[@]}"; do echo "${file}"; done
         echo ""
         echo ""
@@ -895,6 +816,7 @@ if ${debug}; then
         echo "##############################"
         echo "## siQ-ChIP parameter files ##"
         echo "##############################"
+        echo ""
         for file in "${arr_param[@]}"; do echo "${file}"; done
         echo ""
         echo ""
@@ -902,429 +824,149 @@ if ${debug}; then
         echo "######################"
         echo "## Experiment stems ##"
         echo "######################"
+        echo ""
         for file in "${arr_stem[@]}"; do echo "${file}"; done
         echo ""
         echo ""
-    } # \
-        # >> #TODO
-fi
+    } \
+        >> >(tee -a "${pth_doc}")
+fi  # cat "${pth_doc}"
 
 if ${siqchip}; then
-    #  Make experiment layout file, 'EXPlayout', for siQ-ChIP
-    if [[ ! -f "${dir_siq}/EXPlayout" ]]; then
+    #  Make experiment layout file for siQ-ChIP
+    #TODO: Test files with paths (i.e., not in siQ repo directory)
+    if [[ ! -f "${dir_doc}/${day}.layout_exp.txt" ]]; then
         echo "#getTracks: IP.bed input.bed params output_name" \
-            >> "${dir_siq}/EXPlayout"
+            >> "${dir_doc}/${day}.layout_exp.txt"
 
         for idx in ${!arr_IP[@]}; do
             echo \
                 "${arr_IP[idx]} ${arr_in[idx]} ${arr_param[idx]}" \
                 "${arr_stem[idx]}" \
-                    >> "${dir_siq}/EXPlayout"
+                    >> "${dir_doc}/${day}.layout_exp.txt"
         done
 
         echo "#getResponse: CNTR.bed EXP.bed output_name" \
-            >> "${dir_siq}/EXPlayout"
+            >> "${dir_doc}/${day}.layout_exp.txt"
         echo "#getFracts: data any order, last is output_name" \
-            >> "${dir_siq}/EXPlayout"
-        echo "#END" >> "${dir_siq}/EXPlayout"
-    fi
-
-    #  An 'Annotations.bed' file is required in the siQ-ChIP repository directory
-    if [[ ! -f "${dir_siq}/Annotations.bed" ]]; then
-        touch "${dir_siq}/Annotations.bed"
-    fi
+            >> "${dir_doc}/${day}.layout_exp.txt"
+        echo "#END" >> "${dir_doc}/${day}.layout_exp.txt"
+    fi  # cat "${dir_doc}/${day}.layout_exp.txt"
 
     #  Change to the siQ-ChIP repository directory and execute the siQ-ChIP
     #+ implementation
     cd "${dir_siq}" \
         || echo "Error: Failed to change to directory '${dir_siq}'."
-    bash getsiq.sh \
-         >> >(tee -a "${dir_log}/${day}.execute_siqchip.stdout.txt") \
-        2>> >(tee -a "${dir_log}/${day}.execute_siqchip.stderr.txt")
 
-    #  Clean up/organize siQ-ChIP outfiles
-    #  Step 1: Remove copied BED and parameter files
-    rm IP*.bed in*.bed params*.txt
+    #  If necessary, compile required Fortran binaries 
+    compile_fortran "${dir_siq}/tracks.f90" "${dir_siq}/tracks"
+    compile_fortran "${dir_siq}/get_alpha.f90" "${dir_siq}/get_alpha"
+    compile_fortran "${dir_siq}/merge_tracks.f90" "${dir_siq}/merge_tracks"
 
-    #  Step 2: Rename and move normalized coverage BED files to 'norm/bed'
+    #  If doing repeated testing, remove output and log files from experiment
     #+ directory
-    move_rename_globbed_files "Norm*.bed" "${dir_exp}/norm/bed" "
-        s/^NormCovIP_siqchip_/norm_IP_/;
-        s/^NormCovIN_siqchip_/norm_in_/
-    "
+    if compgen -G "${dir_exp}/*.gz" > /dev/null; then
+        rm "${dir_exp}/"*".gz"
+    fi
 
-    #  Step 3: Move siQ-ChIP-scaled coverage BED files to 'alpha/bed' directory
-    move_globbed_files "siqchip*.bed" "${dir_exp}/alpha/bed"
+    if compgen -G "${dir_log}/${day}.execute_siqchip.*.txt" > /dev/null; then
+        rm "${dir_log}/${day}.execute_siqchip.stdout.txt"
+        rm "${dir_log}/${day}.execute_siqchip.stderr.txt"
+    fi
 
-    #  Step 4: Move siQ-ChIP alpha calculation TXT files to 'alpha' directory
-    move_globbed_files "siqchip*.alpha" "${dir_exp}/alpha"
-
-    #  Step 5: Move the 'a.out' file to 'log' directory
-    mv "a.out" "${dir_log}"
-
-    #  Step 6: Move all other recent files to experiment 'docs' directory
-    ## WARNING: Change date and time as needed ##
-    find * -type f -newermt "2024-12-17 15:25:00" \
-        | sort \
-        | env dir_doc="${dir_doc}" \
-            xargs -I {} bash -c 'mv "{}" "${dir_doc}/{}"'
-fi
-
-if ${convert}; then
-    #  Define an array containing key-value pairs for BED files and (IBM)
-    #+ colors
-    arr_bed=(
-        #  red 40; #ff8389; 255,131,137
-        "${dir_exp}/norm/bed/norm_in_WT_G1_Hho1_6336.bed;255,131,137"
-
-        #  red 30; #ffb3b8; 255,179,184
-        "${dir_exp}/norm/bed/norm_in_WT_G1_Hho1_6337.bed;255,179,184"
-
-        #  magenta 40; #ff7eb6; 255,126,182
-        "${dir_exp}/norm/bed/norm_in_WT_G2M_Hho1_6336.bed;255,126,182"
-
-        #  magenta 30; #ffafd2; 255,175,210
-        "${dir_exp}/norm/bed/norm_in_WT_G2M_Hho1_6337.bed;255,175,210"
-
-        #  purple 40; #be95ff; 190,149,255
-        "${dir_exp}/norm/bed/norm_in_WT_Q_Hho1_6336.bed;190,149,255"
-
-        #  purple 30; #d4bbff; 212,187,255
-        "${dir_exp}/norm/bed/norm_in_WT_Q_Hho1_6337.bed;212,187,255"
-
-        #  red 70; #da1e28; 162,25,31
-        "${dir_exp}/norm/bed/norm_IP_WT_G1_Hho1_6336.bed;162,25,31" 
-
-        #  red 60; #a2191f; 218,30,40
-        "${dir_exp}/norm/bed/norm_IP_WT_G1_Hho1_6337.bed;218,30,40" 
-
-        #  magenta 70; #9f1853; 159,24,83
-        "${dir_exp}/norm/bed/norm_IP_WT_G2M_Hho1_6336.bed;159,24,83" 
-
-        #  magenta 60; #d02670; 208,38,112
-        "${dir_exp}/norm/bed/norm_IP_WT_G2M_Hho1_6337.bed;208,38,112"
-
-        #  purple 70; #6929c4; 105,41,196
-        "${dir_exp}/norm/bed/norm_IP_WT_Q_Hho1_6336.bed;105,41,196"
-
-        #  purple 60; #8a3ffc; 138,63,252
-        "${dir_exp}/norm/bed/norm_IP_WT_Q_Hho1_6337.bed;138,63,252"
-
-        #  blue 40; #78a9ff; 120,169,255
-        "${dir_exp}/norm/bed/norm_in_WT_G1_Hmo1_7750.bed;120,169,255"
-
-        #  blue 30; #a6c8ff; 166,200,255
-        "${dir_exp}/norm/bed/norm_in_WT_G1_Hmo1_7751.bed;166,200,255"
-
-        #  cyan 40; #33b1ff; 51,177,255
-        "${dir_exp}/norm/bed/norm_in_WT_G2M_Hmo1_7750.bed;51,177,255"
-
-        #  cyan 30; #82cfff; 130,207,255
-        "${dir_exp}/norm/bed/norm_in_WT_G2M_Hmo1_7751.bed;130,207,255"
-
-        #  teal 40; #08bdba; 8,189,186
-        "${dir_exp}/norm/bed/norm_in_WT_Q_Hmo1_7750.bed;8,189,186"
-
-        #  teal 30; #3ddbd9; 61,219,217
-        "${dir_exp}/norm/bed/norm_in_WT_Q_Hmo1_7751.bed;61,219,217"
-
-        #  blue 70; #0043ce; 0,67,206
-        "${dir_exp}/norm/bed/norm_IP_WT_G1_Hmo1_7750.bed;0,67,206"
-
-        #  blue 60; #0f62fe; 15,98,254
-        "${dir_exp}/norm/bed/norm_IP_WT_G1_Hmo1_7751.bed;15,98,254"
-
-        #  cyan 70; #00539a; 0,83,154
-        "${dir_exp}/norm/bed/norm_IP_WT_G2M_Hmo1_7750.bed;0,83,154"
-
-        #  cyan 60; #0072c3; 0,114,195
-        "${dir_exp}/norm/bed/norm_IP_WT_G2M_Hmo1_7751.bed;0,114,195"
-
-        #  teal 70; #005d5d; 0,93,93
-        "${dir_exp}/norm/bed/norm_IP_WT_Q_Hmo1_7750.bed;0,93,93" 
-
-        #  teal 60; #007d79; 0,125,121
-        "${dir_exp}/norm/bed/norm_IP_WT_Q_Hmo1_7751.bed;0,125,121"
-    )
-
-    #  Debug the array key (BED file)-value (color) pairs
-    {
-        echo "########################################"
-        echo "## siQ-ChIP BED-color key-value pairs ##"
-        echo "########################################"
-        echo ""
-
-        for pair in "${arr_bed[@]}"; do
-              key="$(echo "${pair}" | awk -F ';' '{ print $1 }')"
-            value="$(echo "${pair}" | awk -F ';' '{ print $2 }')"
-            
-            echo "  key .......... ${key}"
-            echo "value .......... ${value}"
+    #  Debug call to get_siq.sh
+    if ${debug}; then
+        {
+            echo "######################################"
+            echo "## Call to driver script get_siq.sh ##"
+            echo "######################################"
             echo ""
-        done
-        echo ""
-    } # \
-        # >> #TODO
+            echo "bash ${dir_siq}/get_siq.sh \\"
+            echo "    --verbose \\"
+            echo "    --exp_lay ${dir_doc}/${day}.layout_exp.txt \\"
+            echo "    --siz_bin ${siz_bin} \\"
+            echo "    --siz_gen ${siz_gen} \\"
+            echo "    --dir_out ${dir_exp} \\"
+            echo "    --raw \\"
+            echo "    --submit ${submit} \\"
 
-    #  Perform BED-to-bedgraph file conversions
-    if compgen -G "${dir_exp}/norm/bg/*.bedGraph" > /dev/null; then
-        echo \
-            "BED-to-bedGraph conversion skipped: Files already exist in" \
-            "'${dir_exp}/norm/bg'"
-    else
-        if [[ ${threads} -gt 1 ]]; then
-            #  Run in parallel if threads > 1
-            parallel --jobs ${threads} \
-                'convert_bed_bedgraph {1} {2}' \
-                    ::: "${pair}" \
-                    ::: "${dir_exp}/norm/bg"
-        else
-            #  Convert files sequentially if threads <= 1
-            for pair in "${arr_bed[@]}"; do
-                convert_bed_bedgraph "${pair}" "${dir_exp}/norm/bg"
-            done
-        fi
-    fi
-
-    #  Create arrays of bedGraph infiles and bigWig outfiles  #TODO #PICKUPHERE
-    populate_array_glob arr_bg "${dir_exp}/norm/bg" "*.bedGraph" true
-    # for bg in "${arr_bg[@]}"; do head "${bg}"; done
-
-    #  Create chromosome info TSV file if it does not exist
-    if [[ ! -f "${dir_fas}/${fil_chr}" ]]; then
-        if [[ -f "${dir_fas}/${fil_fas}" ]]; then
-            zcat "${dir_fas}/${fil_fas}" \
-                | awk '
-                    /^>/ {
-                        #  Print name and length of previous chromosome
-                        if (seq) { print name"\t"length(seq); seq="" }
-
-                        #  Extract chromosome name
-                        name = substr($0, 2)
-                    } index($0, ">") != 1 {
-                        #  Accumulate sequence for length calculation
-                        seq = seq $0
-                    } END {
-                        #  Print name and length of final chromosome
-                        if (seq) { print name"\t"length(seq) }
-                    }
-                ' \
-                    > "${dir_fas}/${fil_chr}"
-        else
-            echo "Error: FASTA file not found: '${dir_fas}/${fil_fas}'" >&2
-        fi
-    fi
-
-    if [[ ${threads} -gt 1 ]]; then
-        #  Run parallelized version of pipeline
-        #  Step 1: Exclude headers from bedGraph files
-        parallel --jobs ${threads} '
-            if [[ -f {.}.bedGraph && ! -f {.}.noheader.bedGraph ]]; then
-                if ! tail -n +2 {.}.bedGraph > {.}.noheader.bedGraph; then
-                    echo \
-                        "Error: Failed to remove headers from file:" \
-                        "{.}.bedGraph. Expected outfile:" \
-                        "{.}.noheader.bedGraph." >&2
-                    exit 1
-                fi
-            else
-                echo \
-                    "Error: Missing infile {.}.bedGraph or outfile" \
-                    "{.}.noheader.bedGraph already exists." >&2
-                exit 1
-            fi
-        ' \
-            ::: "${arr_bg[@]}"
-
-        #  Step 2: Sort the bedGraph files
-        parallel --jobs ${threads} '
-            if [[ -f {.}.noheader.bedGraph && ! -f {.}.sorted.bedGraph ]]; then
-                if ! \
-                    LC_ALL=C sort -k1,1 -k2,2n {.}.noheader.bedGraph \
-                        > {.}.sorted.bedGraph
-                then
-                    echo \
-                        "Error: Failed to sort file: {.}.noheader.bedGraph." \
-                        "Expected outfile: {.}.sorted.bedGraph." >&2
-                    exit 1
-                fi
-            else
-                echo \
-                    "Error: Missing infile {.}.noheader.bedGraph or outfile" \
-                    "{.}.sorted.bedGraph already exists." >&2
-                exit 1
-            fi
-        ' \
-            ::: "${arr_bg[@]}"
-
-        #  Step 3: Clip records spanning chromosome ends
-        parallel --jobs ${threads} '
-            if [[
-                     -f {1.}.sorted.bedGraph \
-                &&   -f {2} \
-                && ! -f {1.}.clipped.bedGraph
-            ]]; then
-                if ! \
-                    bedClip -verbose=2 \
-                        {1.}.sorted.bedGraph \
-                        {2} \
-                        {1.}.clipped.bedGraph
-                then
-                    echo \
-                        "Error: Failed to clip file: {1.}.sorted.bedGraph" \
-                        "using chromosome information from {2}. Expected" \
-                        "outfile: {1.}.clipped.bedGraph." >&2
-                    exit 1
-                fi
-            else
-                echo \
-                    "Error: Missing infiles {1.}.sorted.bedGraph or" \
-                    "chromosome information file {2}, or outfile" \
-                    "{1.}.clipped.bedGraph already exists." >&2
-                exit 1
-            fi
-        ' \
-            ::: "${arr_bg[@]}" \
-            ::: "${dir_fas}/${fil_chr}"
-        #TODO: Need to capture verbose output from bedClip
-
-        #  Convert the above-processed bedgraph files to bigWig files
-        parallel --jobs ${threads} '
-            if [[
-                     -f {1.}.clipped.bedGraph \
-                &&   -f {2} \
-                && ! -f {3}/{1/.}.bigWig
-            ]]; then
-                if ! \
-                    bedGraphToBigWig \
-                        {1.}.clipped.bedGraph \
-                        {2} \
-                        {3}/{1/.}.bigWig
-                then
-                    echo \
-                        "Error: Failed to convert file {1.}.clipped.bedGraph" \
-                        "to bigWig using chromosome information from {2}." \
-                        "Expected outfile: {3}/{1/.}.bigWig." >&2
-                    exit 1
-                fi
-            else
-                echo \
-                    "Error: Missing infiles {1.}.clipped.bedGraph or" \
-                    "chromosome information file {2}, or outfile" \
-                    "{3}/{1/.}.bigWig already exists." >&2
-                exit 1
-            fi
-        ' \
-            ::: "${arr_bg[@]}" \
-            ::: "${dir_fas}/${fil_chr}" \
-            ::: "${dir_exp}/norm/bw"
-    else
-        #  Run serial version of the pipeline
-        for file in "${arr_bg[@]}"; do
-            base="${file%%.bedGraph}"
-
-            #  Step 1: Exclude headers from bedGraph files
-            if [[
-                     -f "${base}.bedGraph" \
-                && ! -f "${base}.noheader.bedGraph"
-            ]]; then
-                if ! \
-                    tail -n +2 "${base}.bedGraph" > "${base}.noheader.bedGraph"
-                then
-                    echo \
-                        "Error: Failed to remove headers from file:" \
-                        "${base}.bedGraph. Expected outfile:" \
-                        "${base}.noheader.bedGraph." >&2
-                    exit 1
-                fi
-            else
-                echo \
-                    "Error: Missing infile ${base}.bedGraph or outfile" \
-                    "${base}.noheader.bedGraph already exists." >&2
-                exit 1
+            if [[ "${submit}" == "slurm" ]]; then
+                echo "    --env_nam ${env_nam} \\"
             fi
 
-            #  Step 2: Sort the bedGraph files
-            if [[
-                     -f "${base}.noheader.bedGraph" \
-                && ! -f "${base}.sorted.bedGraph"
-            ]]; then
-                if ! \
-                    LC_ALL=C sort -k1,1 -k2,2n "${base}.noheader.bedGraph" \
-                        > "${base}.sorted.bedGraph"
-                then
-                    echo \
-                        "Error: Failed to sort file:" \
-                        "${base}.noheader.bedGraph. Expected outfile:" \
-                        "${base}.sorted.bedGraph." >&2
-                    exit 1
-                fi
-            else
-                echo \
-                    "Error: Missing infile ${base}.noheader.bedGraph or" \
-                    "outfile ${base}.sorted.bedGraph already exists." >&2
-                exit 1
+            if [[ "${submit}" == "gnu" ]]; then
+                echo "    --max_job ${SLURM_CPUS_ON_NODE} \\"
             fi
 
-            #  Step 3: Clip records spanning chromosome ends
-            if [[
-                     -f "${base}.sorted.bedGraph" \
-                &&   -f "${dir_fas}/${fil_chr}" \
-                && ! -f "${base}.clipped.bedGraph"
-            ]]; then
-                if ! \
-                    bedClip -verbose=2 \
-                        "${base}.sorted.bedGraph" \
-                        "${dir_fas}/${fil_chr}" \
-                        "${base}.clipped.bedGraph"
-                then
-                    echo \
-                        "Error: Failed to clip file: ${base}.sorted.bedGraph" \
-                        "using chromosome information from" \
-                        "${dir_fas}/${fil_chr}. Expected outfile:" \
-                        "${base}.clipped.bedGraph." >&2
-                    exit 1
-                fi
-            else
-                echo \
-                    "Error: Missing infile ${base}.sorted.bedGraph or" \
-                    "chromosome information file ${dir_fas}/${fil_chr}, or" \
-                    "outfile ${base}.clipped.bedGraph already exists." >&2
-                exit 1
+            if [[ "${submit}" != "gnu" ]]; then
+                echo "         >> >(tee -a ${dir_log}/${day}.execute_siqchip.stdout.txt) \\"
+                echo "        2>> >(tee -a ${dir_log}/${day}.execute_siqchip.stderr.txt)"
             fi
 
-            #  Step 4: Convert clipped bedGraph files to bigWig format
-            if [[
-                     -f "${base}.clipped.bedGraph" \
-                &&   -f "${dir_fas}/${fil_chr}" \
-                && ! -f "${dir_exp}/norm/bw/${base##*/}.bigWig"
-            ]]; then
-                if ! \
-                    bedGraphToBigWig \
-                        "${base}.clipped.bedGraph" \
-                        "${dir_fas}/${fil_chr}" \
-                        "${dir_exp}/norm/bw/${base##*/}.bigWig"
-                then
-                    echo \
-                        "Error: Failed to convert file" \
-                        "${base}.clipped.bedGraph to bigWig using chromosome" \
-                        "information from ${dir_fas}/${fil_chr}. Expected" \
-                        "outfile: ${dir_exp}/norm/bw/${base##*/}.bigWig." >&2
-                    exit 1
-                fi
-            else
-                echo \
-                    "Error: Missing infile ${base}.clipped.bedGraph or" \
-                    "chromosome information file ${dir_fas}/${fil_chr}, or" \
-                    "outfile ${dir_exp}/norm/bw/${base##*/}.bigWig already" \
-                    "exists." >&2
-                exit 1
-            fi
-        done
-    fi
+            echo ""
+            echo ""
+        } \
+            >> >(tee -a "${pth_doc}")
 
-    #  Clean up intermediate files
-    rm *.{noheader,sorted,clipped}.bedGraph
+        {
+            echo "################################"
+            echo "## Dry-run call to get_siq.sh ##"
+            echo "################################"
+            echo ""
+            bash "${dir_siq}/get_siq.sh" \
+                --dry_run \
+                --verbose \
+                --exp_lay "${dir_doc}/${day}.layout_exp.txt" \
+                --siz_bin ${siz_bin} \
+                --siz_gen ${siz_gen} \
+                --dir_out "${dir_exp}" \
+                --raw \
+                --submit "${submit}" \
+                $(
+                    if [[ "${submit}" == "slurm" ]]; then
+                        echo "--env_nam ${env_nam}"
+                    fi
+                ) \
+                $(
+                    if [[ "${submit}" == "gnu" ]]; then
+                        echo "--max_job ${SLURM_CPUS_ON_NODE}"
+                    fi
+                )
+            echo ""
+        } \
+            >> >(tee -a "${pth_doc}")
+    fi  # cat "${pth_doc}"
+
+    #  Run get_siq.sh
+    bash "${dir_siq}/get_siq.sh" \
+        --verbose \
+        --exp_lay "${dir_doc}/${day}.layout_exp.txt" \
+        --siz_bin ${siz_bin} \
+        --siz_gen ${siz_gen} \
+        --dir_out "${dir_exp}" \
+        --raw \
+        --submit "${submit}" \
+        $(
+            if [[ "${submit}" == "slurm" ]]; then
+                echo "--env_nam ${env_nam}"
+            fi
+        ) \
+        $(
+            if [[ "${submit}" == "gnu" ]]; then
+                echo "--max_job ${SLURM_CPUS_ON_NODE}"
+            fi
+        ) \
+             >> >(tee -a "${dir_log}/${day}.execute_siqchip.stdout.txt")
+            2>> >(tee -a "${dir_log}/${day}.execute_siqchip.stderr.txt")
+
+    #  Clean up/organize siQ-ChIP outfiles: Move siQ-scaled, raw, and
+    #+ normalized coverage bedGraph files, and metadata TXT files, to
+    #+ respective directories
+    cd "${dir_exp}" || echo "Failed to cd; check on this"
+    move_files_glob "siq_*.bdg.gz" "${dir_exp}/siq"
+    move_files_glob "norm_*.bdg.gz"  "${dir_exp}/norm"
+    move_files_glob "raw_*.bdg.gz" "${dir_exp}/raw"
+    move_files_glob "meta_*.txt" "${dir_exp}/logs"
 fi
 ```
 </details>
@@ -1332,6 +974,116 @@ fi
 
 <a id="test-refactored-bespoke-code"></a>
 ## Test refactored bespoke code
+<a id="f-compute-normalized-proportional-or-raw-coverage"></a>
+### F. Compute normalized (proportional) or raw coverage.
+<details>
+<summary><i>Code: Compute normalized (proportional) or raw coverage.</i></summary>
+
+```bash
+#!/bin/bash
+
+#  Optional: Request an interactive node --------------------------------------
+# grabnode  ## Uncomment to request 1 core, 20 GB memory, 1 day, no GPU ##
+
+#  Define variables -----------------------------------------------------------
+#  Define directory paths
+dir_bas="${HOME}/repos"  ## WARNING: Change as needed ##
+dir_rep="${dir_bas}/protocol_chipseq_signal_norm"
+dir_scr="${dir_rep}/scripts"
+dir_fnc="${dir_scr}/functions"
+dir_dat="${dir_rep}/data"
+dir_pro="${dir_dat}/processed"
+
+#  Define alignment and coverage details
+aligner="bowtie2"
+a_type="global"
+req_flg=true
+flg="$(if ${req_flg}; then echo "2"; else echo "NA"; fi)"
+mapq=1
+det_bam="flag-${flg}_mapq-${mapq}"
+det_cvg="${aligner}_${a_type}_${det_bam}"
+typ_cvg="norm"  ## WARNING: "raw" for unadjusted, "norm" for normalized ##
+
+#  Further define directory setup
+dir_aln="${dir_pro}/align_${aligner}_${a_type}"
+dir_bam="${dir_aln}/${det_bam}/sc"
+dir_cvg="${dir_pro}/compute_coverage"
+dir_trk="${dir_cvg}/${det_cvg}/${typ_cvg}/tracks"
+
+#  Define file search parameters
+## WARNING: Change search parameters as needed ##
+pattern="*.bam"
+infiles="$(
+    bash "${dir_scr}/find_files.sh" \
+        --dir_fnd "${dir_bam}" \
+        --pattern "${pattern}"
+)"
+
+#  Define script
+exc_cvg="${dir_scr}/execute_compute_coverage.sh"
+
+#  Define environment and script arguments, including resources
+env_nam="env_analyze"
+nam_job="compute_coverage_${typ_cvg}"
+typ_out="bedgraph"  # "bigwig"
+threads=8
+bin_siz=30  # 1
+
+#  Define log files
+err_out="${dir_trk}/logs"
+day="$(date '+%Y-%m%d')"
+exc_pth="${dir_trk}/logs/${day}.execute.${nam_job}"
+
+
+#  Create required directories if necessary -----------------------------------
+mkdir -p ${dir_cvg}/${det_cvg}/norm/tracks/{docs,logs}
+
+
+#  Activate the environment and check dependencies ----------------------------
+#  Source utility functions
+source "${dir_fnc}/check_program_path.sh"
+source "${dir_fnc}/echo_warning.sh"
+source "${dir_fnc}/handle_env.sh"
+
+#  Activate the required environment
+handle_env "${env_nam}"
+
+#  Check the availability of necessary dependencies such as GNU Parallel,
+#+ Python, and SLURM sbatch
+check_program_path awk
+check_program_path parallel
+check_program_path python
+check_program_path sbatch ||
+    echo_warning \
+        "SLURM is not available on this system. Do not use the '--slurm'" \
+        "flag with the driver script."
+
+
+#  Compute coverage -----------------------------------------------------------
+bash "${exc_cvg}" \
+    --verbose \
+    --threads "${threads}" \
+    --infiles "${infiles}" \
+    --dir_out "${dir_trk}" \
+    --typ_out "${typ_out}" \
+    --bin_siz "1" \
+    --typ_cvg "${typ_cvg}" \
+    --err_out "${err_out}" \
+    --nam_job "${nam_job}" \
+    --slurm \
+         >> >(tee -a "${exc_pth}.stdout.txt") \
+        2>> >(tee -a "${exc_pth}.stderr.txt")
+
+    # --bin_siz "${bin_siz}" \
+
+#  Cleanup: Compress logs and remove empty files ------------------------------
+bash "${dir_scr}/compress_remove_files.sh" --dir_fnd "${err_out}"
+
+# ls -lhaFG "${err_out}"  ## Uncomment to check directory for logs ##
+```
+</details>
+<br />
+
 <a id="g-compute-coverage-with-the-sans-spike-in-quantitative-chip-seq-siq-chip-method"></a>
 ### G. Compute coverage with the sans spike-in quantitative ChIP-seq (siQ-ChIP) method.
 <details>
@@ -1361,25 +1113,18 @@ req_flg=true
 flg="$(if ${req_flg}; then echo "2"; else echo "NA"; fi)"
 mapq=1
 det_bam="flag-${flg}_mapq-${mapq}"
-det_cov="${aligner}_${a_type}_${det_bam}"
-typ_cov="alpha"
+det_cvg="${aligner}_${a_type}_${det_bam}"
+typ_cvg="alpha"
 
 #  Further define directory setup
 dir_aln="${dir_pro}/align_${aligner}_${a_type}"
 dir_bam="${dir_aln}/${det_bam}/sc"
-dir_cov="${dir_pro}/compute_coverage"
-dir_det="${dir_cov}/${det_cov}/${typ_cov}"
+dir_cvg="${dir_pro}/compute_coverage"
+dir_det="${dir_cvg}/${det_cvg}/${typ_cvg}"
 dir_tbl="${dir_det}/tables"
 dir_trk="${dir_det}/tracks"
 eo_tbl="${dir_tbl}/logs"
 eo_trk="${dir_trk}/logs"
-
-#  Define environment, resources, and script arguments 
-env_nam="env_analyze"
-threads=8
-mes_tbl="${dir_raw}/docs/measurements_siqchip.tsv"
-eqn="6nd"
-bin_siz=1
 
 #  Define file search parameters
 ## WARNING: Change search parameters as needed ##
@@ -1395,7 +1140,7 @@ infiles="$(
 )"
 
 #  Define scripts and output files
-scr_tbl="execute_calculate_scaling_factor_${typ_cov}.sh"
+scr_tbl="execute_calculate_scaling_factor_${typ_cvg}.sh"
 scr_trk="execute_deeptools_coverage.sh"
 fil_tbl="${dir_tbl}/IP_WT_G1-G2M-Q_Hho1-Hmo1_6336-6337_7750-7751.tsv"
 
@@ -1405,6 +1150,13 @@ exc_tbl="${eo_tbl}/${day}.execute.${scr_tbl%.sh}.$(
     basename "${fil_tbl}" .tsv
 )"
 exc_trk="${eo_trk}/${day}.${scr_trk%.sh}"
+
+#  Define environment and script arguments, including resources
+env_nam="env_analyze"
+threads=8
+mes_tbl="${dir_raw}/docs/measurements_siqchip.tsv"
+eqn=6  # "6nd"
+bin_siz=1
 
 #  Debug hardcoded variable assignments
 if ${debug:-true}; then
@@ -1429,13 +1181,13 @@ if ${debug:-true}; then
         echo "\${flg}=${flg}"
         echo "\${mapq}=${mapq}"
         echo "\${det_bam}=${det_bam}"
-        echo "\${det_cov}=${det_cov}"
-        echo "\${typ_cov}=${typ_cov}"
+        echo "\${det_cvg}=${det_cvg}"
+        echo "\${typ_cvg}=${typ_cvg}"
         echo ""
         echo "#  Further define directory setup"
         echo "\${dir_aln}=${dir_aln}"
         echo "\${dir_bam}=${dir_bam}"
-        echo "\${dir_cov}=${dir_cov}"
+        echo "\${dir_cvg}=${dir_cvg}"
         echo "\${dir_det}=${dir_det}"
         echo "\${dir_tbl}=${dir_tbl}"
         echo "\${dir_trk}=${dir_trk}"
@@ -1501,7 +1253,7 @@ check_program_path sbatch ||
 if [[ ! -f "${fil_tbl}" ]]; then
     #  Run the driver script to generate a TSV file of sample-specific siQ-ChIP
     #+ alpha scaling factors
-    bash "${dir_scr}/execute_calculate_scaling_factor_${typ_cov}.sh" \
+    bash "${dir_scr}/execute_calculate_scaling_factor_${typ_cvg}.sh" \
         --verbose \
         --threads "${threads}" \
         --infiles "${infiles}" \
@@ -1522,15 +1274,14 @@ if [[ ! -f "${fil_tbl}" ]]; then
 fi
 
 if [[ -f "${fil_tbl}" ]]; then
-        #  Sort the table of scaling factors by rows
-        awk 'NR == 1; NR > 1 && NF { print | "sort" }' "${fil_tbl}" \
-            > "${dir_tbl}/tmp.tsv"
+    #  Sort the table of scaling factors by rows
+    awk 'NR == 1; NR > 1 && NF { print | "sort" }' "${fil_tbl}" \
+        > "${dir_tbl}/tmp.tsv"
 
-        #  Replace the original table with the sorted version
-        mv -f "${dir_tbl}/tmp.tsv" "${fil_tbl}"
+    #  Replace the original table with the sorted version
+    mv -f "${dir_tbl}/tmp.tsv" "${fil_tbl}"
 
-        # cat "${fil_tbl}"  ## Uncomment to check the table contents ##
-    fi
+    # cat "${fil_tbl}"  ## Uncomment to check table contents ##
 fi
 
 
@@ -1540,7 +1291,7 @@ bash "${dir_scr}/execute_deeptools_coverage.sh" \
     --verbose \
     --threads "${threads}" \
     --table "${fil_tbl}" \
-    --tbl_col "${typ_cov}" \
+    --tbl_col "${typ_cvg}" \
     --dir_out "${dir_trk}" \
     --bin_siz "${bin_siz}" \
     --err_out "${eo_trk}" \

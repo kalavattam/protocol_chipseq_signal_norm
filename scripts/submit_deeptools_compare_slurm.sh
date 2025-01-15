@@ -88,10 +88,11 @@ str_fil_den=""
 str_fil_stm=""
 typ_out="bigwig"
 oper="log2"
-bin_siz=1
+siz_bin=1
+siz_gen=12157105
 region=""
 str_scl_fct=""
-norm=""
+typ_cvg=""
 scl_pre="None"
 exact=false
 str_usr_frg=""
@@ -100,19 +101,21 @@ nam_job="deeptools_compare"
 env_nam="env_align"
 
 show_help=$(cat << EOM
-$(basename "${0}")
-  --verbose <bol> --threads <int> --str_fil_num <str> --str_fil_den <str>
-  --str_typ_fil <str> --str_fil_stm <str> --typ_out <str> --bin_siz <int>
-  --region <str> --str_scl_fct <str> --norm <str> --exact <bol>
-  --str_usr_frg <str> --err_out <str> --nam_job <str> --env_nam <str>
+submit_deeptools_compare.sh
+  [--verbose] --threads <int> --str_fil_num <str> --str_fil_den <str>
+  --str_typ_fil <str> --str_fil_stm <str> --typ_out <str> --siz_bin <int>
+  [--siz_gen <int>] [--region <str>] --str_scl_fct <str> --typ_cvg <str>
+  [--exact] --str_usr_frg <str> --err_out <str> --nam_job <str> --env_nam <str>
 
-$(basename "${0}") takes the following keyword arguments:
-   -v, --verbose      Run in 'verbose mode' (default: ${verbose}).
+Submission script 'submit_deeptools_compare.sh' takes the following keyword
+arguments:
+   -v, --verbose      Run in 'verbose mode' (optional).
    -t, --threads      Number of threads to use (default: ${threads}).
-  -sn, --str_fil_num  Comma-separated string of BAM, BIGWIG, or BEDGRAPH infiles
-                      to be used as the first file/numerator in the comparisons.
-  -sd, --str_fil_den  Comma-separated string of BAM, BIGWIG, or BEDGRAPH infiles
-                      to be used as the second file/denominator in the
+  -sn, --str_fil_num  Comma-separated string of BAM, BIGWIG, or BEDGRAPH
+                      infiles to be used as the first file/numerator in the
+                      comparisons.
+  -sd, --str_fil_den  Comma-separated string of BAM, BIGWIG, or BEDGRAPH
+                      infiles to be used as the second file/denominator in the
                       comparisons.
   -st, --str_typ_fil  Comma-separated string of numerator-denominator pair file
                       types.
@@ -122,10 +125,13 @@ $(basename "${0}") takes the following keyword arguments:
                       'log2', 'ratio', 'subtract', 'add', 'mean',
                       'reciprocal_ratio', 'first', 'second' (default: '${oper}').
                       For more details, see the deepTools documentation.
-  -bs, --bin_siz      Bin size in base pairs (default: ${bin_siz}).
+  -sb, --siz_bin      Bin size in base pairs (default: ${siz_bin}).
+  -sg, --siz_gen      Effective genome size of model organism (required if
+                      '--typ_cvg rpgc', ignored if not; default: ${siz_gen}).
    -r, --region       Specify a genomic region to limit the operation. The
                       format can be either: 'chr' (entire chromosome) or
-                      'chr:start-stop' (specific range within a chromosome).
+                      'chr:start-stop' (specific range within a chromosome;
+                      optional).
   -sf, --str_scl_fct  Comma-separated string of scaling factors for numerator
                       and denominator files. Each scaling factor pair should be
                       in the format 'num:den', where 'num' is the scaling
@@ -135,17 +141,17 @@ $(basename "${0}") takes the following keyword arguments:
                       numerator file by 0.7 and the first denominator file by
                       1.0, and the second numerator file by 0.3 and the second
                       denominator file by 0.6. This option cannot be used with
-                      '--norm <str>'.
-  -no, --norm         Use one of the following normalization methods when
+                      '--typ_cvg <str>'.
+  -tv, --typ_cvg      Use one of the following normalization methods when
                       computing comparisons: 'None', 'RPKM', 'CPM', 'BPM', or
                       'RPGC'. Cannot be used with '--str_scl_fct <str>'.
   -sp, --scl_pre       For comparisons, method to compensate for sequencing
                       depth differences between the samples: 'readCount',
                       'SES', or 'None' (default: '${scl_pre}'). If using
-                      '--norm <str>' or '--str_scl_fct <str>', will be set to
-                      'None'.
+                      '--typ_cvg <str>' or '--str_scl_fct <str>', will be set
+                      to 'None'.
   -ex, --exact        Compute scaling factors based on all alignments
-                      (default: ${exact}). Only applicable if '--norm <str>' is
+                      (optional). Only applicable if '--typ_cvg <str>' is
                       specified; otherwise, it is ignored. Significantly slows
                       comparison computation.
   -su, --str_usr_frg  Comma-separated string of fragment lengths for alignment
@@ -163,7 +169,7 @@ fi
 
 while [[ "$#" -gt 0 ]]; do
     case "${1}" in
-         -v|--verbose)     verbose="${2}";     shift 2 ;;
+         -v|--verbose)     verbose=true;       shift 1 ;;
          -t|--threads)     threads="${2}";     shift 2 ;;
         -sn|--str_fil_num) str_fil_num="${2}"; shift 2 ;;
         -sd|--str_fil_den) str_fil_den="${2}"; shift 2 ;;
@@ -171,18 +177,19 @@ while [[ "$#" -gt 0 ]]; do
         -ss|--str_fil_stm) str_fil_stm="${2}"; shift 2 ;;
         -to|--typ_out)     typ_out="${2}";     shift 2 ;;
         -op|--oper)        oper="${2}";        shift 2 ;;
-        -bs|--bin_siz)     bin_siz="${2}";     shift 2 ;;
+        -sb|--siz_bin)     siz_bin="${2}";     shift 2 ;;
+        -sg|--siz_gen)     siz_gen="${2}";     shift 2 ;;
          -r|--region)      region="${2}";      shift 2 ;;
         -sf|--str_scl_fct) str_scl_fct="${2}"; shift 2 ;;
-        -no|--norm)        norm="${2}";        shift 2 ;;
+        -tv|--typ_cvg)     typ_cvg="${2}";     shift 2 ;;
         -sp|--scl_pre)     scl_pre="${2}";     shift 2 ;;
-        -ex|--exact)       exact="${2}";       shift 2 ;;
+        -ex|--exact)       exact=true;         shift 1 ;;
         -su|--str_usr_frg) str_usr_frg="${2}"; shift 2 ;;
         -eo|--err_out)     err_out="${2}";     shift 2 ;;
         -nj|--nam_job)     nam_job="${2}";     shift 2 ;;
         -en|--env_nam)     env_nam="${2}";     shift 2 ;;
         *)
-            echo "## Unknown parameter passed: ${1} ##" >&2
+            echo "## Unknown parameter passed: '${1}' ##" >&2
             echo "" >&2
             echo "${show_help}" >&2
             exit 1
@@ -192,8 +199,8 @@ done
 
 #  Validate required arguments
 arr_arg_req=(
-    "verbose" "threads" "str_fil_num" "str_fil_den" "str_typ_fil" "str_fil_stm"
-    "typ_out" "bin_siz" "region" "str_scl_fct" "norm" "scl_pre" "exact" "str_usr_frg"
+    "threads" "str_fil_num" "str_fil_den" "str_typ_fil" "str_fil_stm"
+    "typ_out" "siz_bin" "str_scl_fct" "typ_cvg" "scl_pre" "str_usr_frg"
     "err_out" "nam_job" "env_nam"
 )
 for var in "${arr_arg_req[@]}"; do
@@ -211,11 +218,17 @@ case "${typ_out}" in
     bigwig|bw)       typ_out="bigwig"   ;;
     *)
         echo \
-            "Error: Unsupported output type: '${typ_out}'. --typ_out must be" \
-            "'bigwig', 'bw', 'bedgraph', 'bdg', or 'bg'." >&2
+            "Error: Unsupported output type: '${typ_out}'. '--typ_out' must" \
+            "be 'bigwig', 'bw', 'bedgraph', 'bdg', or 'bg'." >&2
         exit 1
         ;;
 esac
+
+#  Ensure stderr/stdout directory exists
+if [[ ! -d "${err_out}" ]]; then
+    echo "Error: Output directory '${err_out}' does not exist." >&2
+    exit 1
+fi
 
 #  Debug argument assignments
 if ${debug}; then
@@ -233,13 +246,13 @@ if ${debug}; then
     echo ""
     echo "typ_out=${typ_out}"
     echo ""
-    echo "bin_siz=${bin_siz}"
+    echo "siz_bin=${siz_bin}"
     echo ""
     echo "region=${region}"
     echo ""
     echo "str_scl_fct=${str_scl_fct}"
     echo ""
-    echo "norm=${norm}"
+    echo "typ_cvg=${typ_cvg}"
     echo ""
     echo "scl_pre=${scl_pre}"
     echo ""
@@ -267,12 +280,12 @@ fi
 
 #  Check that SLURM environment variables are set
 if [[ -z "${SLURM_ARRAY_JOB_ID}" ]]; then
-    echo "Error: SLURM_ARRAY_JOB_ID is not set." >&2
+    echo "Error: 'SLURM_ARRAY_JOB_ID' is not set." >&2
     exit 1
 fi
 
 if [[ -z "${SLURM_ARRAY_TASK_ID}" ]]; then
-    echo "Error: SLURM_ARRAY_TASK_ID is not set." >&2
+    echo "Error: 'SLURM_ARRAY_TASK_ID' is not set." >&2
     exit 1
 fi
 
@@ -390,7 +403,7 @@ if ${debug}; then
     echo ""
 fi
 
-if ${debug}; then
+if ${debug} || ${dry_run}; then
     # shellcheck disable=SC2005
     case "${typ_fil}" in
         bedgraph|bdg|bg|bigwig|bw)
@@ -402,14 +415,7 @@ if ${debug}; then
             echo "    --outFileName ${fil_stm}.${typ_out} \\"
             echo "    --outFileFormat ${typ_out} \\"
             echo "    --operation ${oper} \\"
-            echo "$(
-                if [[ "${oper}" =~ ^(log2|ratio)$ ]]; then
-                    echo "    --pseudocount 1 1 \\"
-                else
-                    echo "    \\"
-                fi
-            )"
-            echo "    --binSize ${bin_siz} \\"
+            echo "    --binSize ${siz_bin} \\"
             echo "$(
                 if [[ "${region}" != "#N/A" ]]; then
                     echo "    --region ${region} \\"
@@ -424,8 +430,7 @@ if ${debug}; then
                     echo "    \\"
                 fi
             )"
-            echo "    --skipZeroOverZero \\"
-            echo "    --skipNonCoveredRegions"
+            echo "    --skipZeroOverZero"
             echo ""
             echo ""
             ;;
@@ -438,14 +443,7 @@ if ${debug}; then
             echo "    --outFileName ${fil_stm}.${typ_out} \\"
             echo "    --outFileFormat ${typ_out} \\"
             echo "    --operation ${oper} \\"
-            echo "$(
-                if [[ "${oper}" =~ ^(log2|ratio)$ ]]; then
-                    echo "    --pseudocount 1 1 \\"
-                else
-                    echo "    \\"
-                fi
-            )"
-            echo "    --binSize ${bin_siz} \\"
+            echo "    --binSize ${siz_bin} \\"
             echo "$(
                 if [[ "${region}" != "#N/A" ]]; then
                     echo "    --region ${region} \\"
@@ -454,19 +452,26 @@ if ${debug}; then
                 fi
             )"
             echo "    --skipZeroOverZero \\"
-            echo "    --skipNonCoveredRegions \\"
             echo "$(
                 if [[ "${scl_fct}" != "#N/A" ]]; then
                     echo "    --scaleFactors ${scl_fct} \\"
-                    echo "    --scaleFactorsMethod None \\"
-                elif [[ "${norm}" != "#N/A" ]]; then
-                    echo "    --scaleFactorsMethod None \\"
-                    echo "    --normalizeUsing ${norm} \\"
-                    if [[ "${norm}" == "RPGC" ]]; then
-                        echo "    --effectiveGenomeSize ${gen_siz:-11624332} \\"
+                else
+                    echo "    \\"
+                fi
+            )"
+            echo "$(
+                if [[ "${typ_cvg}" != "#N/A" ]]; then
+                    echo "    --normalizeUsing ${typ_cvg} \\"
+                    if [[ "${typ_cvg}" == "RPGC" ]]; then
+                        echo "    --effectiveGenomeSize ${siz_gen} \\"
                     fi
-                elif [[ "${scl_pre}" != "#N/A" ]]; then
-                    echo "    --scaleFactorsMethod ${scl_pre:-readCount} \\"
+                else
+                    echo "    \\"
+                fi
+            )"
+            echo "$(
+                if [[ "${scl_pre}" != "#N/A" ]]; then
+                    echo "    --scaleFactorsMethod ${scl_pre} \\"
                 else
                     echo "    \\"
                 fi
@@ -474,19 +479,21 @@ if ${debug}; then
             echo "$(
                 if ${exact}; then
                     echo "    --exactScaling \\"
+                else
+                    echo "    \\"
                 fi
             )"
             echo "$(
                 if [[ "${typ_seq}" == "paired" ]]; then
                     echo "    --samFlagInclude 64 \\"
-                fi
-            )"
-            echo "$(
-                if [[
-                       "${typ_seq}" == "paired" && "${usr_frg}" == "#N/A"
+                    if [[ "${usr_frg}" != "#N/A" ]]; then
+                        echo "    --extendReads ${usr_frg}"
+                    else
+                        echo "    --extendReads"
+                    fi
+                elif [[
+                    "${typ_seq}" == "single" && "${usr_frg}" != "#N/A"
                 ]]; then
-                    echo "    --extendReads"
-                elif [[ "${usr_frg}" != "#N/A" ]]; then
                     echo "    --extendReads ${usr_frg}"
                 fi
             )"
@@ -519,12 +526,7 @@ if ! ${dry_run}; then
                 --outFileName "${fil_stm}.${typ_out}" \
                 --outFileFormat "${typ_out}" \
                 --operation "${oper}" \
-                $(
-                    if [[ "${oper}" =~ ^(log2|ratio)$ ]]; then
-                        echo "--pseudocount 1 1"
-                    fi
-                ) \
-                --binSize "${bin_siz}" \
+                --binSize "${siz_bin}" \
                 $(
                     if [[ "${region}" != "#N/A" ]]; then
                         echo "--region ${region}"
@@ -535,8 +537,7 @@ if ! ${dry_run}; then
                         echo "--scaleFactors ${scl_fct}"
                     fi
                 ) \
-                --skipZeroOverZero \
-                --skipNonCoveredRegions
+                --skipZeroOverZero
             ;;
         bam)
             bamCompare \
@@ -547,45 +548,43 @@ if ! ${dry_run}; then
                 --outFileName "${fil_stm}.${typ_out}" \
                 --outFileFormat "${typ_out}" \
                 --operation "${oper}" \
-                $(
-                    if [[ "${oper}" =~ ^(log2|ratio)$ ]]; then
-                        echo "--pseudocount 1 1"
-                    fi
-                ) \
-                --binSize "${bin_siz}" \
+                --binSize "${siz_bin}" \
                 $(
                     if [[ "${region}" != "#N/A" ]]; then
                         echo "--region ${region}"
                     fi
                 ) \
                 --skipZeroOverZero \
-                --skipNonCoveredRegions \
                 $(
                     if [[ "${scl_fct}" != "#N/A" ]]; then
                         echo "--scaleFactors ${scl_fct}"
-                        echo "--scaleFactorsMethod None"
-                    elif [[ "${norm}" != "#N/A" ]]; then
-                        echo "--scaleFactorsMethod None"
-                        echo "--normalizeUsing ${norm}"
-                        if [[ "${norm}" == "RPGC" ]]; then
-                            echo "--effectiveGenomeSize ${gen_siz:-11624332}"
+                    fi
+                ) \
+                $(
+                    if [[ "${typ_cvg}" != "#N/A" ]]; then
+                        echo "--normalizeUsing ${typ_cvg}"
+                        if [[ "${typ_cvg}" == "RPGC" ]]; then
+                            echo "--effectiveGenomeSize ${siz_gen}"
                         fi
-                    else
-                        echo "--scaleFactorsMethod ${scl_pre:-readCount}"
+                    fi
+                ) \
+                $(
+                    if [[ "${scl_pre}" != "#N/A" ]]; then
+                        echo "--scaleFactorsMethod ${scl_pre}"
                     fi
                 ) \
                 $(if ${exact}; then echo "--exactScaling"; fi) \
                 $(
                     if [[ "${typ_seq}" == "paired" ]]; then
                         echo "--samFlagInclude 64"
-                    fi
-                ) \
-                $(
-                    if [[
-                           "${typ_seq}" == "paired" && "${usr_frg}" == "#N/A"
+                        if [[ "${usr_frg}" != "#N/A" ]]; then
+                            echo "--extendReads ${usr_frg}"
+                        else
+                            echo "--extendReads"
+                        fi
+                    elif [[
+                        "${typ_seq}" == "single" && "${usr_frg}" != "#N/A"
                     ]]; then
-                        echo "--extendReads"
-                    elif [[ "${usr_frg}" != "#N/A" ]]; then
                         echo "--extendReads ${usr_frg}"
                     fi
                 )
@@ -595,3 +594,20 @@ if ! ${dry_run}; then
     #  Remove the initial SLURM stderr and stdout TXT outfiles
     rm "${err_ini}" "${out_ini}"
 fi
+
+#TODO: Implement GNU Parallel for local and remote execution
+#TODO: Implement serial execution
+
+# echo "$(
+#     if [[ "${oper}" =~ ^(log2|ratio)$ ]]; then
+#         echo "    --pseudocount 1 1 \\"
+#     else
+#         echo "    \\"
+#     fi
+# )"
+
+# $(
+#     if [[ "${oper}" =~ ^(log2|ratio)$ ]]; then
+#         echo "--pseudocount 1 1"
+#     fi
+# ) \
