@@ -1,47 +1,54 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 #
-# Copyright 2024 by Kris Alavattam
+# Copyright 2024-2025 by Kris Alavattam
 # Email: kalavattam@gmail.com
 #
 # Script: compute_coverage.py
 #
 # Description:
-#     compute_coverage.py calculates the binned coverage from a BAM file. It
+#     'compute_coverage.py' calculates the binned coverage from a BAM file. It
 #     can output coverage as either BEDGRAPH or BIGWIG files, or both. Users
-#     can choose the type of coverage calculation ('raw' or 'normalized'),
-#     optionally applying a scaling factor for modeling purposes (e.g.,
-#     siQ-ChIP alpha scaling). The bin size and fragment length can be
-#     customized. The script supports parallel processing, in which coverage
-#     calculations for each chromosome are distributed across multiple CPU
-#     threads.
+#     can choose the type of coverage calculation ('raw', 'frag', or
+#     'normalized'), optionally applying a scaling factor for modeling
+#     purposes. The bin size and fragment length can be customized. The script
+#     supports parallel processing, in which coverage calculations for each
+#     chromosome are distributed across multiple CPU threads (although this
+#     needs to be further optimized).
 #
 # Usage:
 #     python compute_coverage.py \
 #         [--verbose] --infile <str> --outfile <str> --typ_out <option> \
-#         --bin_siz <posint> [--scl_fct <flt>] [--typ_cvg <option>]
+#         --siz_bin <posint> [--scl_fct <flt>] [--typ_cvg <option>]
 #         [--usr_frg <posint>]
 #
 # Arguments:
 #      -v, --verbose  Run script in 'verbose mode'.
 #      -t, --threads  Number of threads for parallel processing (default: 1)
 #      -i, --infile   Path to the BAM infile.
-#      -o, --outfile  Path and base name for the outfile (without extension).
-#     -to, --typ_out  Output format: 'bedgraph', 'bigwig', or 'both' (default:
-#                     bigwig).
-#     -bs, --bin_siz  Bin size for coverage calculation in base pairs (default:
-#                     1).
-#     -ty, --typ_cvg  Specify coverage calculation type (default: 'norm').
+#      -o, --outfile  Path and base name for the outfile without extension.
+#     -to, --typ_out  Output format: 'bedgraph', 'bdg', 'bg', 'bigwig', 'bw',
+#                     or 'both' (default: 'bdg'). Also, the user can supply
+#                     'bed' to write a BED file of alignments processed by
+#                     function parse_bam(). Note: When '--typ_out bed' is used,
+#                     the script will output alignment data processed by
+#                     parse_bam() in BED-like format; this does not calculate
+#                     coverage.
+#     -sb, --siz_bin  Bin size for coverage calculation in base pairs (default:
+#                     10).
+#     -tv, --typ_cvg  Specify coverage calculation type (default: 'norm').
 #                     Options:
-#                       - 'raw', 'unadj', 'unadjusted', 'trad', 'traditional':
-#                         Compute unadjusted coverage.
-#                       - 'norm', 'normalized', 'prop', 'proportional', 'frac',
-#                         or 'fractional': Normalize coverage by fragment
-#                         length and total reads.
+#                       - 'raw', 'unadj', 'unadjusted': Compute unadjusted
+#                         ("raw") coverage.
+#                       - 'frag', 'len_frag': Normalize coverage by fragment
+#                         length.
+#                       - 'norm', 'normalized': Normalize coverage by fragment
+#                         length and total fragments such that coverage sums to
+#                         unity.
 #     -sf, --scl_fct  Optional scaling factor to apply to the coverage. Can be
-#                     used with any --typ_cvg value.
+#                     used with any '--typ_cvg' value.
 #     -uf, --usr_frg  Optional fixed fragment length to use instead of the BAM
-#                     infile's query (read) or template lengths.
+#                     infile's query (read) or template (fragment) lengths.
 #
 # Example:
 #     ```
@@ -50,10 +57,9 @@
 #         --threads 4 \
 #         --infile sample.bam \
 #         --outfile sample_coverage \
-#         --typ_out both \
-#         --bin_siz 50 \
-#         --typ_cvg norm \
-#         --scl_fct 0.5
+#         --typ_out bdg \
+#         --siz_bin 5 \
+#         --typ_cvg norm
 #     ```
 #
 # Output:
@@ -112,10 +118,9 @@ def set_interactive():
     pth_trk = f"{dir_trk}/{fil_trk}"
     
     #  Check if paths exist (optional for debugging/development purposes)
-    assert os.path.exists(dir_bam), f"Indirectory {dir_bam} doesn't exist."
-    assert os.path.exists(dir_trk), f"Outdirectory {dir_trk} doesn't exist."
-    assert os.path.exists(pth_bam), f"Infile {os.path.basename(pth_bam)} doesn't exist."
-    # assert os.path.exists(pth_trk), f"Outfile {os.path.basename(pth_trk)} doesn't exist."
+    assert os.path.exists(dir_bam), f"No indir: {dir_bam}."
+    assert os.path.exists(dir_trk), f"No outdir: {dir_trk}."
+    assert os.path.exists(pth_bam), f"No infile: {os.path.basename(pth_bam)}."
 
     #  Set argument values
     verbose = True
@@ -123,7 +128,7 @@ def set_interactive():
     infile = pth_bam
     outfile = pth_trk
     typ_out = "bigwig"  # "both"
-    bin_siz = 1
+    siz_bin = 1
     scl_fct = 0.70371  # None
     norm = False
     usr_frg = None
@@ -135,7 +140,7 @@ def set_interactive():
         infile=infile,
         outfile=outfile,
         typ_out=typ_out,
-        bin_siz=bin_siz,
+        siz_bin=siz_bin,
         scl_fct=scl_fct,
         norm=norm,
         usr_frg=usr_frg
@@ -226,40 +231,44 @@ def parse_bam(path_bam, usr_frg=None):
 
 
 def calculate_covg_chrom(
-    chrom, entries_bam, frags_total, bin_siz, is_norm, scl_fct=None
+    chrom, entries_bam, frags_total, siz_bin, is_norm, is_len, scl_fct=None
 ):
     """
-    Calculate the binned coverage for a set of BED entries, either 'raw' or
-    'normalized'. Optionally apply a scaling factor.
+    Calculate the binned coverage for a set of BED entries, with options to
+    normalize by fragment length and/or total fragments. Optionally applies a
+    scaling factor.
     """
     #  Check for invalid bin size
-    if bin_siz <= 0:
-        raise ValueError("--bin_siz must be greater than 0.")
+    if siz_bin <= 0:
+        raise ValueError("'--siz_bin' must be greater than 0.")
 
     #  Proceed with coverage calculation
     coverage = defaultdict(float)
     for start, end, len_frag in entries_bam:
-        contribution = 1 / len_frag if is_norm else 1
+        #  Normalize by fragment length if specified
+        contribution = (1 / len_frag) if (is_norm or is_len) else 1
+
+        #  Add the contribution across the span of the fragment
         for pos in range(start, end + 1):
             coverage[(chrom, pos)] += contribution
 
-    #  Normalize by aligned reads total if specified
+    #  Normalize by total fragments if 'is_norm' is true
     if is_norm:
         for key in coverage:
             coverage[key] /= frags_total
 
-    #  Apply scaling factor if provided
+    #  Apply scaling factor if specified
     if scl_fct is not None:
         if scl_fct <= 0:
-            raise ValueError("--scl_fct must be greater than 0.")
+            raise ValueError("'--scl_fct' must be greater than 0.")
         for key in coverage:
             coverage[key] *= scl_fct
 
     #  Bin the coverage data
     coverage_bin = defaultdict(float)
     for (chrom, pos), value in coverage.items():
-        bin_strt = (pos // bin_siz) * bin_siz
-        coverage_bin[(chrom, bin_strt)] += value / bin_siz
+        bin_strt = (pos // siz_bin) * siz_bin
+        coverage_bin[(chrom, bin_strt)] += value
 
     return coverage_bin
 
@@ -268,7 +277,7 @@ def calculate_covg_task(data):
     return calculate_covg_chrom(*data)
 
 
-def write_bigwig(coverage, outfile, bin_siz, chrom_siz):
+def write_bigwig(coverage, outfile, siz_bin, chrom_siz):
     """
     Write the binned coverage data to a BIGWIG file.
     """
@@ -299,7 +308,7 @@ def write_bigwig(coverage, outfile, bin_siz, chrom_siz):
         #  (start + bin size), and value to respective lists
         chroms.append(chrom)
         starts.append(bin_start)
-        ends.append(bin_start + bin_siz)
+        ends.append(bin_start + siz_bin)
         values.append(value)
 
     #  Write the chromosome, start, end, and value lists to the BIGWIG file
@@ -313,7 +322,7 @@ def write_bigwig(coverage, outfile, bin_siz, chrom_siz):
 #     """
 #     # TODO: Description of function.
 #     """
-#     chrom, chrom_coverage, bin_siz, outfile = data
+#     chrom, chrom_coverage, siz_bin, outfile = data
 #     with pyBigWig.open(outfile, 'w') as bw:
 #         chrom_coverage.sort(key=lambda x: x[0])  # Sort by start position
 #         starts, ends, values = zip(*chrom_coverage)
@@ -322,7 +331,7 @@ def write_bigwig(coverage, outfile, bin_siz, chrom_siz):
 #         )
 
 
-# def write_bigwig_parallel(coverage, outfile, bin_siz, chrom_siz, threads):
+# def write_bigwig_parallel(coverage, outfile, siz_bin, chrom_siz, threads):
 #     """
 #     Parallelized BIGWIG writing by chromosome.
 #     """
@@ -330,12 +339,12 @@ def write_bigwig(coverage, outfile, bin_siz, chrom_siz):
 #     tasks = []
 #     for chrom in sorted(chrom_siz.keys(), key=sort_chrom_roman_arabic):
 #         chrom_coverage = [
-#             (start, start + bin_siz, coverage[(chrom, start)])
+#             (start, start + siz_bin, coverage[(chrom, start)])
 #             for (chrom_name, start) in coverage.keys()
 #             if chrom_name == chrom
 #         ]
 #         tasks.append(
-#             (chrom, chrom_coverage, bin_siz, f"{outfile}.{chrom}.tmp.bw")
+#             (chrom, chrom_coverage, siz_bin, f"{outfile}.{chrom}.tmp.bw")
 #         )
 #
 #     #  Process chromosomes in parallel
@@ -357,7 +366,7 @@ def write_bigwig(coverage, outfile, bin_siz, chrom_siz):
 #             os.remove(tmp_file)
 
 
-def write_bedgraph(coverage, outfile, bin_siz):
+def write_bedgraph(coverage, outfile, siz_bin):
     """
     Write the binned coverage data to a BEDGRAPH file.
     """
@@ -381,7 +390,7 @@ def write_bedgraph(coverage, outfile, bin_siz):
             #  (start + bin size), and value to respective lists
             chroms.append(chrom)
             starts.append(bin_start)
-            ends.append(bin_start + bin_siz)
+            ends.append(bin_start + siz_bin)
             values.append(value)
 
         #  Write the contents of chroms, starts, ends, and values to the
@@ -401,19 +410,20 @@ def parse_args():
          -t, --threads  (int): Number of threads for parallel processing.
          -i, --infile   (str): Path to input BAM file.
          -o, --outfile  (str): Path to output file without extension.
-        -to, --typ_out  (str): Specify output format: 'bedgraph', 'bigwig',
-                               'both'.
-        -bs, --bin_siz  (int): Bin size for coverage calculation in base pairs.
+        -to, --typ_out  (str): Specify output format. Options: 'bedgraph',
+                               'bdg', 'bg', 'bigwig', 'bw', 'both'.
+        -sb, --siz_bin  (int): Bin size for coverage calculation in base pairs.
         -tc, --typ_cvg  (str): Specify coverage calculation type. Options:
-                               'raw', 'unadj', 'unadjusted', 'norm',
-                               'normalized', 'prop', 'proportional', 'frac', or
-                               'fractional'.
+                               'raw', 'unadj', 'unadjusted', 'frag',
+                               'len_frag', 'norm', 'normalized'.
         -sf, --scl_fct  (flt): Optional scaling factor to apply to coverage.
         -uf, --usr_frg  (int): Optional fixed fragment length.
     """
     parser = argparse.ArgumentParser(
         description=(
-            "Calculate binned coverage, normalized or not, from a BAM file."
+            "Calculate binned coverage from a BAM file with optional "
+            "normalization. Alternatively, output processed alignments in a "
+            "BED-like format using the parse_bam() function."
         ),
         argument_default=argparse.SUPPRESS
     )
@@ -452,41 +462,47 @@ def parse_args():
         )
     )
     parser.add_argument(
-        "-to",
-        "--typ_out",
-        choices=['bedgraph', 'bigwig', 'both'],
-        default='bigwig',
+        "-to", "--typ_out",
+        choices=['bedgraph', 'bdg', 'bg', 'bigwig', 'bw', 'both', 'bed'],
+        default='bdg',
         help=(
-            "Specify the output format: 'bedgraph', 'bigwig', or 'both' "
-            "(default: %(default)s)."
+            "Specify the output format. Options: 'bedgraph', 'bdg', 'bg', "
+            "'bigwig', 'bw', 'both', 'bed'. Use 'bedgraph', 'bdg', 'bg' to "
+            "output binned coverage in BEDGRAPH format. Use 'bigwig', 'bw' to "
+            "output binned coverage in BIGWIG format. Use 'both' to output "
+            "binned coverage in both BEDGRAPH and BIGWIG formats. Use 'bed' "
+            "to output alignments processed by function parse_bam() in "
+            "BED-like format (note: these are not coverage values; setting "
+            "'--typ_out bed' results in arguments such as '--siz_bin', "
+            "'--typ_cvg', '--scl_fct' '--usr_frg' are ignored). Default: "
+            "%(default)s."
         )
     )
     parser.add_argument(
-        "-bs",
-        "--bin_siz",
+        "-sb", "--siz_bin",
         type=int,
-        default=1,
+        default=10,
         help=(
             "Bin size for coverage calculation in base pairs (default: "
             "%(default)s)."
         )
     )
     parser.add_argument(
-        "-tc",
-        "--typ_cvg",
+        "-tv", "--typ_cvg",
         choices=[
-            'raw', 'unadj', 'unadjusted', 'trad', 'traditional', 'norm',
-            'normalized', 'prop', 'proportional', 'frac', 'fractional'
+            'raw', 'unadj', 'unadjusted', 'frag', 'len_frag', 'norm',
+            'normalized'
         ],
         default='norm',
         help=(
-            "Specify coverage calculation type:\n"
-            "  - 'raw', 'unadj', 'unadjusted', 'trad', or 'traditional': "
-            "Calculate unadjusted coverage.\n"
-            "  - 'norm', 'normalized', 'prop', 'proportional', 'frac', or "
-            "'fractional': Normalize coverage by fragment length and "
-            "total reads.\n"
-            "Default: %(default)s."
+            "Specify coverage calculation type. Options: 'raw', 'unadj', "
+            "'unadjusted', 'frag', 'len_frag', 'norm', 'normalized'. Use "
+            "'raw', 'unadj', 'unadjusted' to calculate unadjusted coverage. "
+            "Use 'frag', 'len_frag' to normalize coverage by fragment length. "
+            "Use 'norm', 'normalized' to compute 'normalized coverage' (PMID: "
+            "37160995), i.e., coverage normalized for both fragment length "
+            "and total fragments such that coverage sums to unity. Default: "
+            "%(default)s."
         )
     )
     parser.add_argument(
@@ -524,21 +540,26 @@ def main():
     args = set_interactive() if interactive else parse_args()
 
     #  Determine whether to normalize based on 'typ_cvg'
-    is_norm = args.typ_cvg in {
-        'norm', 'normalized', 'prop', 'proportional', 'frac', 'fractional'
-    }
+    is_len = args.typ_cvg in {'frag', 'len_frag'}
+    is_norm = args.typ_cvg in {'norm', 'normalized'}
 
     #  Print verbose output
     if args.verbose:
         print("## Arguments for compute_coverage.py ##")
         for arg, value in vars(args).items():
-            print(f"--{arg:<10}: {value}")
+            print(f"--{arg:<6}: {value}")
 
     #  Parse and process BAM file
     entries_bam = parse_bam(args.infile, args.usr_frg)
-    frags_total = sum(len(entries) for entries in entries_bam.values())
-    covg_comb = defaultdict(float)
+    if args.typ_out == 'bed':
+        #  Write alignments processed by parse_bam() in a BED-like format
+        with gzip.open(f"{args.outfile}.bed.gz", "wt") as bed_file:
+            for chrom, fragments in entries_bam.items():
+                for start, end, length in fragments:
+                    bed_file.write(f"{chrom}\t{start}\t{end}\t{length}\n")
+        return  # Omit coverage calculations, etc.
 
+    frags_total = sum(len(entries) for entries in entries_bam.values())
     if is_norm and frags_total == 0:
         raise ValueError(
             "Normalization requires non-zero total fragments. Check the BAM "
@@ -551,7 +572,10 @@ def main():
 
     #  Prepare and execute parallel tasks
     task_data = [
-        (chrom, entries, frags_total, args.bin_siz, is_norm, args.scl_fct)
+        (
+            chrom, entries, frags_total, args.siz_bin, is_norm, is_len,
+            args.scl_fct
+        )
         for chrom, entries in entries_bam.items()
     ]
 
@@ -559,23 +583,24 @@ def main():
         results = executor.map(calculate_covg_task, task_data)
 
     #  Combine results from all processes
+    covg_comb = defaultdict(float)
     for result in results:
         for key, value in result.items():
             covg_comb[key] += value
 
     #  Write outfile based on user-specified format
-    if args.typ_out in ['bedgraph', 'both']:
+    if args.typ_out in ['bedgraph', 'bdg', 'bg', 'both']:
         #  Write output to BEDGRAPH file
-        write_bedgraph(covg_comb, f"{args.outfile}.bdg.gz", args.bin_siz)
+        write_bedgraph(covg_comb, f"{args.outfile}.bdg.gz", args.siz_bin)
 
-    if args.typ_out in ['bigwig', 'both']:
+    if args.typ_out in ['bigwig', 'bw', 'both']:
         #  Write output to BIGWIG file
-        write_bigwig(covg_comb, f"{args.outfile}.bw", args.bin_siz, chrom_siz)
+        write_bigwig(covg_comb, f"{args.outfile}.bw", args.siz_bin, chrom_siz)
 
     # if args.typ_out in ['bigwig', 'both']:
     #     #  Write output to BIGWIG file using the parallel implementation
     #     write_bigwig_parallel(
-    #         covg_comb, f"{args.outfile}.bw", args.bin_siz, chrom_siz,
+    #         covg_comb, f"{args.outfile}.bw", args.siz_bin, chrom_siz,
     #         args.threads
     #     )
 

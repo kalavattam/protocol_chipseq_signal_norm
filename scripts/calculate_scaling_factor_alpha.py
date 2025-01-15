@@ -41,6 +41,7 @@
 #     -dn, --dep_in    (int): Sequencing depth of the input sample.
 #     -lp, --len_ip  (float): Mean fragment length of the IP sample.
 #     -ln, --len_in  (float): Mean fragment length of the input sample.
+#     -ra, --rnd_alf   (int): Number of decimal places for rounding alpha.
 #
 # Examples:
 #     ```bash
@@ -56,7 +57,7 @@
 #
 #     ```bash
 #     python calculate_scaling_factor_alpha.py \
-#         --eqn '5' \
+#         --eqn '6' \
 #         --mass_ip 10.5 \
 #         --mass_in 8.0 \
 #         --vol_all 300 \
@@ -299,7 +300,7 @@ def parse_args():
     parser.add_argument(
         '-ra', '--rnd_alf',
         type=int,
-        default=6,
+        default=20,
         required=False,
         help='Number of decimal places for rounding alpha.'
     )

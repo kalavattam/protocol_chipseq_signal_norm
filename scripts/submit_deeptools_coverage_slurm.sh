@@ -7,16 +7,20 @@ debug=true
 
 #  Define helper function to validate and log errors for variables
 function validate_var() {
-    local var_nam="${1}"  # Name of the variable
-    local var_val="${2}"  # Value of the variable
-    local arr_ref="${3}"  # Reference to the array (as a string)
-    local idx="${4}"      # Index of the array element
+    local var_nam="${1}"  # Name of variable
+    local var_val="${2}"  # Value of variable
+    local arr_ref="${3}"  # Reference to array (as string)
+    local idx="${4}"      # Index of array element
     local id_tsk="${5}"   # Task ID
 
     if [[ -z "${var_val}" ]]; then
         echo \
-            "Error: Failed to retrieve ${var_nam} for id_tsk=${id_tsk}:" \
-            "\${${arr_ref}[${idx}]}." >&2
+            "Task ${id_tsk}: Error retrieving ${var_nam}. Value at" \
+            "\${${arr_ref}[${idx}]} is empty." >&2
+        echo "" >&2
+        echo \
+            "Hint: Verify that inputs to '${arr_ref}' are correctly" \
+            "formatted and align with the expected index (${idx})." >&2
         return 1
     fi
 }
@@ -62,11 +66,12 @@ verbose=false
 threads=8
 str_infile=""
 str_outstem=""
-typ_out="bigwig"
-bin_siz=1
+typ_out="bedgraph"
+siz_bin=1
+siz_gen=12157105
 region=""
 str_scl_fct=""
-norm=""
+typ_cvg="None"
 exact=false
 str_usr_frg=""
 err_out=""
@@ -76,31 +81,33 @@ env_nam="env_align"
 show_help=$(cat << EOM
 $(basename "${0}")
   [--verbose] --threads <int> --str_infile <str> --str_outstem <str>
-  --typ_out <str> --bin_siz <int> [--region <str>] --str_scl_fct <str>
-  --norm <str> [--exact] [--str_usr_frg <str>] --err_out <str> --nam_job <str>
-  --env_nam <str>
+  --typ_out <str> --siz_bin <int> [--siz_gen <int>] [--region <str>]
+  --str_scl_fct <str> --typ_cvg <str> [--exact] [--str_usr_frg <str>]
+  --err_out <str> --nam_job <str> --env_nam <str>
 
 $(basename "${0}") takes the following keyword arguments:
-   -v, --verbose      Run in 'verbose mode' (default: ${verbose}).
-   -t, --threads      Number of threads to use (default: ${threads}).
+   -v, --verbose      Run in 'verbose mode' (optional).
+   -t, --threads      Number of threads to use (optional).
   -si, --str_infile   Comma-separated string of BAM infiles.
   -so, --str_outstem  Comma-separated string of outfile stems.
-  -to, --typ_out      Outfile type: 'bedgraph' or 'bigwig' (default: ${typ_out}).
-  -bs, --bin_siz      Bin size in base pairs (default: ${bin_siz}).
-   -r, --region       Region in 'chr' or 'chr:start-stop' format.
-  -sf, --str_scl_fct  Comma-separated string of scaling factors. Cannot be
-                      used with --norm.
-  -no, --norm         Use one of the following normalization methods when
+  -to, --typ_out      Outfile type: 'bedgraph' or 'bigwig' (default:
+                      "${typ_out}").
+  -sb, --siz_bin      Bin size in base pairs (default: ${siz_bin}).
+  -sg, --siz_gen      Effective genome size of model organism (default:
+                      ${siz_gen}).
+   -r, --region       Region in 'chr' or 'chr:start-stop' format (optional).
+  -sf, --str_scl_fct  Comma-separated string of scaling factors.
+  -tv, --typ_cvg      Use one of the following normalization methods when
                       computing coverage: 'None', 'RPKM', 'CPM', 'BPM', or
-                      'RPGC'. Cannot be used with --str_scl_fct.
+                      'RPGC' (default: "${typ_cvg}").
   -ex, --exact        Compute scaling factors based on all alignments. Only
-                      applicable if '--norm <str>' is specified. Significantly
-                      slows coverage computation (default: ${exact}).
+                      applicable if '--typ_cvg <str != None>' is specified.
+                      Significantly slows coverage computation (optional).
   -su, --str_usr_frg  Comma-separated string of fragment lengths for alignment
-                      extension.
+                      extension (optional).
   -eo, --err_out      Directory to store stderr and stdout outfiles.
-  -nj, --nam_job      Name of job (default ${nam_job}).
-  -en, --env_nam      Mamba environment to activate (default: ${env_nam}).
+  -nj, --nam_job      Name of job (default "${nam_job}").
+  -en, --env_nam      Mamba environment to activate (default: "${env_nam}").
 EOM
 )
 
@@ -116,10 +123,11 @@ while [[ "$#" -gt 0 ]]; do
         -si|--str_infile)  str_infile="${2}";  shift 2 ;;
         -so|--str_outstem) str_outstem="${2}"; shift 2 ;;
         -to|--typ_out)     typ_out="${2}";     shift 2 ;;
-        -bs|--bin_siz)     bin_siz="${2}";     shift 2 ;;
+        -sb|--siz_bin)     siz_bin="${2}";     shift 2 ;;
+        -sg|--siz_gen)     siz_gen="${2}";     shift 2 ;;
          -r|--region)      region="${2}";      shift 2 ;;
         -sf|--str_scl_fct) str_scl_fct="${2}"; shift 2 ;;
-        -no|--norm)        norm="${2}";        shift 2 ;;
+        -tv|--typ_cvg)     typ_cvg="${2}";     shift 2 ;;
         -ex|--exact)       exact="${2}";       shift 2 ;;
         -su|--str_usr_frg) str_usr_frg="${2}"; shift 2 ;;
         -eo|--err_out)     err_out="${2}";     shift 2 ;;
@@ -136,8 +144,9 @@ done
 
 #  Validate required arguments
 arr_arg_req=(
-    "verbose" "threads" "str_infile" "str_outstem" "typ_out" "bin_siz" "region"
-    "str_scl_fct" "norm" "exact" "str_usr_frg" "err_out" "nam_job" "env_nam"
+    "verbose" "threads" "str_infile" "str_outstem" "typ_out" "siz_bin"
+    "siz_gen" "region" "str_scl_fct" "typ_cvg" "exact" "str_usr_frg" "err_out"
+    "nam_job" "env_nam"
 )
 for var in "${arr_arg_req[@]}"; do
     if [[ -z "${!var}" ]]; then
@@ -148,40 +157,42 @@ for var in "${arr_arg_req[@]}"; do
     fi
 done
 
-#  Validate specification of '--norm' or '--str_scl_fct'
-if [[ -z "${norm}" || "${norm}" == "#N/A" ]]; then
-    #  If '--norm' is not specified, ensure '--str_scl_fct' is valid
-    if [[
-        -z "${str_scl_fct}" || "${str_scl_fct}" =~ (^|,)?'#N/A'(,|$)
-    ]]; then
-        echo \
-            "Error: When '--norm <str>' is not specified, '--str_scl_fct'" \
-            "must be provided and cannot contain '#N/A' elements." >&2
-        exit 1
-    fi
-else
-    #  If '--norm' is specified, ensure '--str_scl_fct' is not specified or
-    #+ invalid
-    if [[
-        -n "${str_scl_fct}" && ! "${str_scl_fct}" =~ (^|,)?'#N/A'(,|$)
-    ]]; then
-        if [[ "${norm}" != "#N/A" ]]; then
+#  Validate '--str_scl_fct' if specified
+if [[ -n "${str_scl_fct}" ]]; then
+    IFS=',' read -r -a arr_scl_fct <<< "${str_scl_fct}"
+    for s in "${arr_scl_fct[@]}"; do
+        if [[ "${s}" == "#N/A" ]]; then continue; fi
+        if ! [[ "${s}" =~ ^[0-9]+([.][0-9]+)?$ ]]; then
             echo \
-                "Error: When '--norm <str>' is specified, '--str_scl_fct' must" \
-                "not be provided or must only contain '#N/A' elements." >&2
+                "Error: Invalid scaling factor in '--str_scl_fct':" \
+                "'${s}'." >&2
             exit 1
         fi
-    fi
+    done
+fi
+
+#  Validate '--typ_cvg' if specified
+if [[ -n "${typ_cvg}" ]]; then
+    case "${typ_cvg}" in
+        None|RPKM|CPM|BPM|RPGC) : ;;
+        "#N/A") typ_cvg="None" ;;
+        *)
+            echo \
+                "Error: Unsupported normalization method in '--typ_cvg':" \
+                "'${typ_cvg}'." >&2
+            exit 1
+            ;;
+    esac
 fi
 
 #  Validate and standardize output file type
 case "${typ_out}" in
-      bigwig|bw) typ_out="bigwig"   ;;
-    bedgraph|bg) typ_out="bedgraph" ;;
+          bigwig|bw) typ_out="bigwig"   ;;
+    bedgraph|bdg|bg) typ_out="bedgraph" ;;
     *)
         echo \
             "Error: Unsupported output type: '${typ_out}'. Supported types:" \
-            "'bigwig', 'bw', 'bedgraph', or 'bg'." >&2 
+            "'bigwig', 'bw', 'bedgraph', 'bdg', or 'bg'." >&2 
         exit 1
         ;;
 esac
@@ -198,13 +209,13 @@ if ${debug}; then
     echo ""
     echo "typ_out=${typ_out}"
     echo ""
-    echo "bin_siz=${bin_siz}"
+    echo "siz_bin=${siz_bin}"
     echo ""
     echo "region=${region}"
     echo ""
     echo "str_scl_fct=${str_scl_fct}"
     echo ""
-    echo "norm=${norm}"
+    echo "typ_cvg=${typ_cvg}"
     echo ""
     echo "exact=${exact}"
     echo ""
@@ -281,6 +292,12 @@ outstem="${arr_outstems[idx]}"
 scl_fct="${arr_scl_fct[idx]}"
 usr_frg="${arr_usr_frg[idx]}"
 
+#  Validate array index is not out of bounds
+if (( idx >= ${#arr_infiles[@]} )); then
+    echo "Error: SLURM task ID ${id_tsk} exceeds number of input files." >&2
+    exit 1
+fi
+
 #  Debug variable assignments from reconstructed arrays
 if ${debug}; then
     echo "infile=${infile}"
@@ -336,26 +353,26 @@ if ${debug}; then
     echo "    --bam ${infile} \\"
     echo "    --outFileName ${outstem}.${typ_out} \\"
     echo "    --outFileFormat ${typ_out} \\"
-    echo "    --binSize ${bin_siz} \\"
+    echo "    --binSize ${siz_bin} \\"
     echo "    $(
-        if [[ -n "${region}" && "${norm}" != "#N/A" ]]; then
+        if [[ -n "${region}" && "${region}" != "#N/A" ]]; then
             echo "--region ${region} \\"
         fi
     )"
     echo "    --skipNonCoveredRegions \\"
     echo "    $(
-        if [[ "${scl_fct}" != "#N/A" && "${norm}" == "#N/A" ]]; then
+        if [[ -n "${scl_fct}" && "${scl_fct}" != "#N/A" ]]; then
             echo "--scaleFactor ${scl_fct} \\"
         fi
     )"
     echo "    $(
-        if [[ "${scl_fct}" == "#N/A" && "${norm}" != "#N/A" ]]; then
-            echo "--normalizeUsing ${norm} \\"
+        if [[ -n "${typ_cvg}" ]]; then
+            echo "--normalizeUsing ${typ_cvg} \\"
         fi
     )"
     echo "    $(
-        if [[ "${norm}" == "RPGC" ]]; then
-            echo "--effectiveGenomeSize ${gen_siz:-11624332} \\"
+        if [[ "${typ_cvg}" == "RPGC" ]]; then
+            echo "--effectiveGenomeSize ${siz_gen} \\"
         fi
     )"
     echo "    $(if ${exact}; then echo "--exactScaling \\"; fi)"
@@ -381,7 +398,7 @@ bamCoverage \
     --bam "${infile}" \
     --outFileName "${outstem}.${typ_out}" \
     --outFileFormat "${typ_out}" \
-    --binSize "${bin_siz}" \
+    --binSize "${siz_bin}" \
     $(
         if [[ -n "${region}" && "${region}" != "#N/A" ]]; then
             echo "--region ${region}"
@@ -389,19 +406,19 @@ bamCoverage \
     ) \
     --skipNonCoveredRegions \
     $(
-        if [[ "${scl_fct}" != "#N/A" && "${norm}" == "#N/A" ]]; then
+        if [[ -n "${scl_fct}" && "${scl_fct}" != "#N/A" ]]; then
             echo "--scaleFactor ${scl_fct}"
         fi
     ) \
     $(
-        if [[ "${scl_fct}" == "#N/A" && "${norm}" != "#N/A" ]]; then
-            echo "--normalizeUsing ${norm}"
+        if [[ -n "${typ_cvg}" ]]; then
+            echo "--normalizeUsing ${typ_cvg}"
         fi
     ) \
     $(
-        if [[ "${norm}" == "RPGC" ]]; then
-            echo "--effectiveGenomeSize ${gen_siz:-11624332}"
-        fi  #TODO: Add arguments in {execute|submit}*sh scripts
+        if [[ "${typ_cvg}" == "RPGC" ]]; then
+            echo "--effectiveGenomeSize ${siz_gen}"
+        fi
     ) \
     $(if ${exact}; then echo "--exactScaling"; fi) \
     $(
@@ -420,8 +437,10 @@ bamCoverage \
 #  Remove the initial SLURM stderr and stdout TXT outfiles
 rm "${err_ini}" "${out_ini}"
 
-#  - S. cerevisiae effective genome size if no MAPQ filtering is performed,
-#+   i.e., all multimapping alignments are retained: 12157105 (via faCount)
-#+ - S. cerevisiae effective genome size if any MAPQ filtering is performed,
-#+   i.e., no or only a subset of multimapping alignments are retained:
-#+   11624332 (via khmer unique-kmers.py for 50mers)
+#  - S. cerevisiae effective genome size if multimapping alignments are
+#+   retained: 12157105 (via faCount)
+#+ - S. cerevisiae effective genome size if MAPQ filtering is performed,
+#+   i.e., no multimapping alignments are retained: 11624332 (via khmer
+#+   unique-kmers.py for 50mers)
+
+#TODO: Implement GNU Parallel and serial job submissions
