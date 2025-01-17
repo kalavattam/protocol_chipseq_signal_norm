@@ -11,43 +11,48 @@ debug=true
 #+ inputs are not checked, as this is performed by execute_*.sh and to a
 #+ certain extent by the scripts submitted to SLURM
 threads=1
-infiles=""
+ser_ip=""
+ser_in=""
 table=""
 eqn="6nd"
 outfile=""
 flg_dep=false
 flg_len=false
-flg_in=false
 flg_mc=false
 err_out=""
-nam_job="calc_sf_alpha"
+nam_job="calc_sf_alpha_${eqn}"
 env_nam="env_analyze"
-scr_par=""
+scr_met=""
 scr_alf=""
 
 show_help=$(cat << EOM
 $(basename "${0}") takes the following keyword arguments:
-   -t, --threads  Number of threads to use.
-   -i, --infiles  Comma-separated serialized string of sample IP BAM infiles.
+   -t, --threads  Number of threads to use (default: ${threads}).
+  -sp, --ser_ip   Comma-separated serialized string of sample IP BAM infiles.
+  -sn, --ser_in   Comma-separated serialized string of corresponding sample
+                  input BAM infiles.
   -tb, --table    Comma- or tab-separated table of siQ-ChIP metrics.
-  -eq, --eqn      Alpha equation to compute. Options: '5', '5nd', '6', '6nd'.
+  -eq, --eqn      Alpha equation to compute; options: '5', '5nd', '6', '6nd'
+                  (default: '${eqn}').
    -o, --outfile  Outfile of sample siQ-ChIP alpha values.
   -fd, --flg_dep  Calculate the number of alignments.
   -fl, --flg_len  Calculate the mean fragment length.
-  -fi, --flg_in   Include sample input alpha values in outfile.
   -fm, --flg_mc   Include additional measurements, calculations in outfile.
   -eo, --err_out  Directory to store stderr and stdout outfiles.
-  -nj, --nam_job  Name of job.
-  -en, --env_nam  Name of Conda/Mamba environment to activate.
-  -sp, --scr_par  Script that parses siQ-ChIP metadata.
+  -nj, --nam_job  Name of job (default: '${nam_job}').
+  -en, --env_nam  Name of Conda/Mamba environment to activate (default:
+                  '${env_nam}').
+  -sm, --scr_met  Script that parses siQ-ChIP metadata,
+                  'parse_metadata_siq_chip.py'.
   -sa, --scr_alf  Script that calculates siQ-ChIP alpha values,
-                  calculate_scaling_factor_alpha.py.
+                  'calculate_scaling_factor_alpha.py'.
 
 All arguments are required with the following notes and exceptions:
-  - --threads=${threads}
-  - --nam_job=${nam_job}
-  - --env_nam=${env_nam}
-  - Also, --flg_dep, --flg_len, --flg_in, and --flg_mc are flags.
+  - '--threads ${threads}'
+  - '--eqn ${eqn}'
+  - '--nam_job ${nam_job}'
+  - '--env_nam ${env_nam}'
+  - Also, '--flg_dep', '--flg_len', and '--flg_mc' are flags.
 EOM
 )
 
@@ -60,18 +65,18 @@ fi
 while [[ "$#" -gt 0 ]]; do
     case "${1}" in
          -t|--threads) threads="${2}"; shift 2 ;;
-         -i|--infiles) infiles="${2}"; shift 2 ;;
+        -sp|--ser_ip)  ser_ip="${2}";  shift 2 ;;
+        -sn|--ser_in)  ser_in="${2}";  shift 2 ;;
         -tb|--table)   table="${2}";   shift 2 ;;
         -eq|--eqn)     eqn="${2}";     shift 2 ;;
          -o|--outfile) outfile="${2}"; shift 2 ;;
         -fd|--flg_dep) flg_dep=true;   shift 1 ;;
         -fl|--flg_len) flg_len=true;   shift 1 ;;
-        -fi|--flg_in)  flg_in=true;    shift 1 ;;
         -fm|--flg_mc)  flg_mc=true;    shift 1 ;;
         -eo|--err_out) err_out="${2}"; shift 2 ;;
         -nj|--nam_job) nam_job="${2}"; shift 2 ;;
         -en|--env_nam) env_nam="${2}"; shift 2 ;;
-        -sp|--scr_par) scr_par="${2}"; shift 2 ;;
+        -sm|--scr_met) scr_met="${2}"; shift 2 ;;
         -sa|--scr_alf) scr_alf="${2}"; shift 2 ;;
         *)
             echo "## Unknown argument passed: ${1} ##" >&2
@@ -86,7 +91,9 @@ done
 if ${debug}; then
     echo "threads=${threads}"
     echo ""
-    echo "infiles=${infiles}"
+    echo "ser_ip=${ser_ip}"
+    echo ""
+    echo "ser_in=${ser_in}"
     echo ""
     echo "table=${table}"
     echo ""
@@ -98,9 +105,7 @@ if ${debug}; then
     echo ""
     echo "flg_len=${flg_len}"
     echo ""
-    echo "flg_in=${flg_in}"
-    echo ""
-    echo "flg_mc=${flg_in}"
+    echo "flg_mc=${flg_mc}"
     echo ""
     echo "err_out=${err_out}"
     echo ""
@@ -108,7 +113,7 @@ if ${debug}; then
     echo ""
     echo "env_nam=${env_nam}"
     echo ""
-    echo "scr_par=${scr_par}"
+    echo "scr_met=${scr_met}"
     echo ""
     echo "scr_alf=${scr_alf}"
     echo ""
@@ -139,8 +144,10 @@ fi
 id_job=${SLURM_ARRAY_JOB_ID}
 id_tsk=${SLURM_ARRAY_TASK_ID}
 
-#  Reconstruct arr_infiles from the serialized string assigned to infiles
-IFS=',' read -r -a arr_infiles <<< "${infiles}"
+#  Construct 'arr_ip' and 'arr_in' from the serialized strings assigned to,
+#+ respectively, 'ser_ip' and 'ser_in'
+IFS=',' read -r -a arr_ip <<< "${ser_ip}"
+IFS=',' read -r -a arr_in <<< "${ser_in}"
 
 #  Debug output to check the task ID/array index, number of array elements, and
 #+ array element values
@@ -149,9 +156,13 @@ if ${debug}; then
     echo ""
     echo "SLURM_ARRAY_TASK_ID=${id_tsk}"
     echo ""
-    echo "\${#arr_infiles[@]}=${#arr_infiles[@]}"
+    echo "\${#arr_ip[@]}=${#arr_ip[@]}"
     echo ""
-    echo "arr_infiles=( ${arr_infiles[*]} )"
+    echo "arr_ip=( ${arr_ip[*]} )"
+    echo ""
+    echo "\${#arr_in[@]}=${#arr_in[@]}"
+    echo ""
+    echo "arr_in=( ${arr_in[*]} )"
     echo ""
 fi
 
@@ -159,55 +170,50 @@ fi
 idx=$(( id_tsk - 1 ))
 
 #  Define IP and input infile assignments based on index of reconstructed array
-# shellcheck disable=SC2001
-{    
-    file_ip="${arr_infiles[idx]}"
-    file_in="$(echo "${file_ip}" | sed 's:\/IP_:\/in_:g')"
-}
+fil_ip="${arr_ip[idx]}"
+fil_in="${arr_in[idx]}"
 
-#  Debug output to check which IP and input infiles are being processed
+#  Debug output, checking which IP and input infiles are in use
 if ${debug}; then
-    echo "file_ip=${file_ip}"
+    echo "fil_ip=${fil_ip}"
     echo ""
-    echo "file_in=${file_in}"
+    echo "fil_in=${fil_in}"
     echo ""
 fi
 
-#  Exit if variables file_ip or file_in have empty assignments
-if [[ -z "${file_ip}" ]]; then
+#  Exit if variables 'fil_ip' or 'fil_in' have empty assignments
+if [[ -z "${fil_ip}" ]]; then
     echo \
-        "Error: Failed to retrieve file_ip for id_tsk=${id_tsk}:" \
-        "\${arr_infiles[${idx}]}." >&2
+        "Error: Failed to retrieve 'fil_ip' for 'id_tsk=${id_tsk}':" \
+        "'\${arr_ip[${idx}]}'." >&2
     exit 1
-elif [[ -z "${file_in}" ]]; then
+elif [[ -z "${fil_in}" ]]; then
     echo \
-        "Error: Failed to retrieve file_in for id_tsk=${id_tsk}:" \
-        "\$(echo \${arr_infiles[${idx}]} | sed" \
-        "'s:\/IP_:\/in_:g')." >&2
-    exit 1
-fi
-
-#  Exit if files assigned to variables file_ip or file_in do not exist
-if [[ ! -f "${file_ip}" ]]; then
-    echo \
-        "Error: File not found for file_ip from id_tsk=${id_tsk}:" \
-        "\${arr_infiles[${idx}]}." >&2
-    exit 1
-elif [[ ! -f "${file_in}" ]]; then
-    echo \
-        "Error: File not found for file_in from id_tsk=${id_tsk}:" \
-        "\$(echo \${arr_infiles[${idx}]} | sed" \
-        "'s:\/IP_:\/in_:g')." >&2
+        "Error: Failed to retrieve 'fil_in' for 'id_tsk=${id_tsk}':" \
+        "'\${arr_in[${idx}]}'." >&2
     exit 1
 fi
 
-#  Check call to sourced Python script
+#  Exit if files assigned to variables 'fil_ip' or 'fil_in' do not exist
+if [[ ! -f "${fil_ip}" ]]; then
+    echo \
+        "Error: File not found for 'fil_ip' from 'id_tsk=${id_tsk}':" \
+        "'\${arr_ip[${idx}]}'." >&2
+    exit 1
+elif [[ ! -f "${fil_in}" ]]; then
+    echo \
+        "Error: File not found for 'fil_in' from 'id_tsk=${id_tsk}':" \
+        "'\${arr_in[${idx}]}'." >&2
+    exit 1
+fi
+
+#  Debug call to sourced Python script
 if ${debug}; then
     echo "source <("
-    echo "    python \"${scr_par}\" \\"
+    echo "    python \"${scr_met}\" \\"
     echo "        --text \"${table}\" \\"
     echo "        --eqn \"${eqn}\" \\"
-    echo "        --bam \"${file_ip}\" \\"
+    echo "        --bam \"${fil_ip}\" \\"
     echo "        --shell"
     echo ")"
     echo ""
@@ -217,24 +223,24 @@ fi
 #+ length
 # shellcheck disable=SC1090
 source <(
-    python "${scr_par}" \
+    python "${scr_met}" \
         --text "${table}" \
         --eqn "${eqn}" \
-        --bam "${file_ip}" \
+        --bam "${fil_ip}" \
         --shell
 )
 
-#  If --flg_dep, calculate sequencing depth (number of alignments) for IP and
+#  If '--flg_dep', calculate sequencing depth (number of alignments) for IP and
 #+ input samples
 if ${flg_dep}; then
-    dep_ip=$(samtools view -@ "${threads}" -c "${file_ip}")
-    dep_in=$(samtools view -@ "${threads}" -c "${file_in}")
+    dep_ip=$(samtools view -@ "${threads}" -c "${fil_ip}")
+    dep_in=$(samtools view -@ "${threads}" -c "${fil_in}")
 fi
 
-#  If --flg_len, calculate mean fragment length for IP and input samples
+#  If '--flg_len', calculate mean fragment length for IP and input samples
 if ${flg_len}; then
     len_ip="$(
-        samtools view -@ "${threads}" "${file_ip}" \
+        samtools view -@ "${threads}" "${fil_ip}" \
             | awk '{
                 if ($9 > 0) { sum += $9; count++ }
             } END {
@@ -242,7 +248,7 @@ if ${flg_len}; then
             }'
     )"
     len_in="$(
-        samtools view -@ "${threads}" "${file_in}" \
+        samtools view -@ "${threads}" "${fil_in}" \
             | awk '{
                 if ($9 > 0) { sum += $9; count++ }
             } END {
@@ -251,8 +257,8 @@ if ${flg_len}; then
     )"
 fi
 
-#  Debug output to check IP and input volume, mass, concentration, and flg_len
-#+ values
+#  Debug output, checking IP and input volume, mass, concentration, and
+#+ 'flg_len' values
 # shellcheck disable=SC2154
 if ${debug}; then
     echo "mass_ip=${mass_ip}"
@@ -273,10 +279,10 @@ if ${debug}; then
     echo ""
 fi
 
-#  Derive sample name from file_ip assignment
+#  Derive sample name from fil_ip assignment
 # shellcheck disable=SC2001
 {    
-    samp="${file_ip##*/IP_}"
+    samp="${fil_ip##*/IP_}"
     samp=$(echo "${samp%.bam}" | sed 's:\.:_:g')
 }
 
@@ -297,7 +303,7 @@ ln -f "${err_ini}" "${err_dsc}"
 ln -f "${out_ini}" "${out_dsc}"
 
 #  Check call to calculate_scaling_factor_alpha.py
-if ${debug:-true}; then
+if ${debug}; then
     echo "python \"${scr_alf}\" \\"
     echo "    --eqn \"${eqn}\" \\"
     echo "    --mass_ip ${mass_ip} \\"
@@ -332,29 +338,15 @@ if ${debug}; then
     echo ""
 fi
 
-#  Print the IP sample and alpha value to the outfile
-if ! ${flg_mc}; then
-    echo -e "${file_ip}\t${alpha}" >> "${outfile}"
-
-    #  If --flg_in, print the input sample and alpha value (#N/A) to the
-    #+ outfile
-    if ${flg_in}; then
-        echo -e "${file_in}\t#N/A" >> "${outfile}"
-    fi
-else
-    #  If --flg_mc, include mass, volume, depth, and length values in the
+#  Print the IP sample, input sample, and alpha value to the outfile
+if ${flg_mc}; then
+    #  If '--flg_mc', include mass, volume, depth, and length values in the
     #+ outfile
     echo -e \
-        "${file_ip}\t${alpha}\t${mass_ip}\t${mass_in}\t${vol_all}\t${vol_in}\t${dep_ip}\t${dep_in}\t${len_ip}\t${len_in}" \
+        "${fil_ip}\t${fil_in}\t${alpha}\t${eqn}\t${mass_ip}\t${mass_in}\t${vol_all}\t${vol_in}\t${dep_ip}\t${dep_in}\t${len_ip}\t${len_in}" \
             >> "${outfile}"
-
-    #  If --flg_in, print the input sample and alpha value (#N/A), as well as
-    #+ mass, volume, depth, and length values, to the outfile
-    if ${flg_in}; then
-        echo -e \
-            "${file_in}\t#N/A\t${mass_ip}\t${mass_in}\t${vol_all}\t${vol_in}\t${dep_ip}\t${dep_in}\t${len_ip}\t${len_in}" \
-                >> "${outfile}"
-    fi
+else
+    echo -e "${fil_ip}\t${fil_in}\t${alpha}\t${eqn}" >> "${outfile}"
 fi
 
 #  Remove the initial SLURM stderr and stdout TXT outfiles

@@ -743,6 +743,8 @@ This section describes the steps to compute ChIP-seq coverage normalized using t
 
 
 #  Define variables -----------------------------------------------------------
+debug=true
+
 #  Define base directory for repository
 dir_bas="${HOME}/repos"  ## WARNING: Change as needed ##
 
@@ -770,44 +772,51 @@ dir_cvg="${dir_pro}/compute_coverage"
 dir_non="${dir_cvg}/${det_cvg}/raw"
 dir_nrm="${dir_cvg}/${det_cvg}/norm"
 dir_alf="${dir_cvg}/${det_cvg}/alpha"
-dir_tbl="${dir_alf}/tables"
-dir_trk="${dir_alf}/tracks"
-eo_tbl="${dir_tbl}/logs"
-eo_trk="${dir_trk}/logs"
 
 #  Define environment, resources, and script arguments 
 env_nam="env_analyze"
 threads=8
+tbl_mes="${dir_raw}/docs/measurements_siqchip.tsv"
+typ_cvg="alpha"
+eqn="6nd"  # "6"
 typ_out="bedgraph"
 siz_bin=10  # 1
 
 #  Define file search parameters  ## WARNING: Change as needed ##
 pattern="*.bam"
-include="IP*"
 exclude="*Brn1*"
-infiles="$(
+ser_ip="$(
     bash "${dir_scr}/find_files.sh" \
         --dir_fnd "${dir_bam}" \
         --pattern "${pattern}" \
-        --include "${include}" \
+        --include "IP*" \
+        --exclude "${exclude}"
+)"
+ser_in="$(
+    bash "${dir_scr}/find_files.sh" \
+        --dir_fnd "${dir_bam}" \
+        --pattern "${pattern}" \
+        --include "in*" \
         --exclude "${exclude}"
 )"
 
 #  Define scripts and output files
-scr_tbl="execute_calculate_scaling_factor_alpha.sh"
-scr_trk="execute_deeptools_coverage.sh"
-fil_tbl="${dir_tbl}/IP_WT_G1-G2M-Q_Hho1-Hmo1_6336-6337_7750-7751.tsv"
+scr_tbl="execute_calculate_scaling_factor_${typ_cvg}.sh"
+scr_trk="execute_deeptools_compare.sh"
+fil_tbl="${dir_alf}/tables/ChIP_WT_G1-G2M-Q_Hho1-Hmo1_${typ_cvg}_${eqn}.tsv"
 
 #  Define log file prefixes
 day="$(date '+%Y-%m%d')"
-exc_tbl="${eo_tbl}/${day}.execute.${scr_tbl%.sh}.$(basename "${fil_tbl}" .tsv)"
-exc_trk="${eo_trk}/${day}.${scr_trk%.sh}"
+exc_tbl="${dir_alf}/tables/logs/${day}.${scr_tbl%.sh}_${eqn}"
+exc_trk="${dir_alf}/tracks/logs/${day}.${scr_trk%.sh}"
 
 #  Debug variable assignments
-if ${debug:-true}; then
+if ${debug}; then
     echo "####################################"
     echo "## Hardcoded variable assignments ##"
     echo "####################################"
+    echo ""
+    echo "\${debug}=${debug}"
     echo ""
     echo "\${dir_bas}=${dir_bas}"
     echo ""
@@ -832,23 +841,19 @@ if ${debug:-true}; then
     echo "\${dir_non}=${dir_non}"
     echo "\${dir_nrm}=${dir_nrm}"
     echo "\${dir_alf}=${dir_alf}"
-    echo "\${dir_tbl}=${dir_tbl}"
-    echo "\${dir_trk}=${dir_trk}"
-    echo "\${eo_tbl}=${eo_tbl}"
-    echo "\${eo_trk}=${eo_trk}"
     echo ""
     echo "\${env_nam}=${env_nam}"
     echo "\${threads}=${threads}"
     echo "\${eqn}=${eqn}"
-    echo "\${mes_tbl}=${mes_tbl}"
-    echo "\${tbl_col}=${tbl_col}"
+    echo "\${tbl_mes}=${tbl_mes}"
+    echo "\${typ_cvg}=${typ_cvg}"
     echo "\${typ_out}=${typ_out}"
     echo "\${siz_bin}=${siz_bin}"
     echo ""
     echo "\${pattern}=${pattern}"
-    echo "\${include}=${include}"
     echo "\${exclude}=${exclude}"
-    echo "\${infiles}=${infiles}"
+    echo "\${ser_ip}=${ser_ip}"
+    echo "\${ser_in}=${ser_in}"
     echo ""
     echo "\${scr_tbl}=${scr_tbl}"
     echo "\${scr_trk}=${scr_trk}"
@@ -863,11 +868,10 @@ fi
 
 
 #  Create required directories if necessary -----------------------------------
-mkdir -p ${dir_tbl}/{docs,logs}
-mkdir -p ${dir_trk}/{docs,logs}
+mkdir -p {${dir_alf}/tables,${dir_alf}/tracks}/{docs,logs}
 
 #  Debug outdirectory paths
-if ${debug:-true}; then
+if ${debug}; then
     echo "#####################################"
     echo "## Outdirectory paths and contents ##"
     echo "#####################################"
@@ -876,17 +880,17 @@ if ${debug:-true}; then
     echo "%% dir_tbl %%"
     echo "%%%%%%%%%%%%%"
     echo ""
-    ls -lhaFG ${dir_tbl}
+    ls -lhaFG ${dir_alf}/tables
     echo ""
-    ls -lhaFG ${dir_tbl}/*
+    ls -lhaFG ${dir_alf}/tables/*
     echo ""
     echo "%%%%%%%%%%%%%"
     echo "%% dir_trk %%"
     echo "%%%%%%%%%%%%%"
     echo ""
-    ls -lhaFG ${dir_trk}
+    ls -lhaFG ${dir_alf}/tracks
     echo ""
-    ls -lhaFG ${dir_trk}/*
+    ls -lhaFG ${dir_alf}/tracks/*
     echo ""
     echo ""
 fi
@@ -917,14 +921,15 @@ check_program_path sbatch ||
 if [[ ! -f "${fil_tbl}" ]]; then
     #  Run the driver script to generate a TSV file of sample-specific siQ-ChIP
     #+ alpha scaling factors
-    bash "${dir_scr}/execute_calculate_scaling_factor_${typ_cov}.sh" \
+    bash "${dir_scr}/execute_calculate_scaling_factor_${typ_cvg}.sh" \
         --verbose \
         --threads "${threads}" \
-        --infiles "${infiles}" \
-        --table "${mes_tbl}" \
+        --ser_ip "${ser_ip}" \
+        --ser_in "${ser_in}" \
+        --table "${tbl_mes}" \
         --eqn "${eqn}" \
         --outfile "${fil_tbl}" \
-        --err_out "${eo_tbl}" \
+        --err_out "${dir_alf}/tables/logs" \
         --flg_dep \
         --flg_len \
         --flg_mc \
@@ -936,28 +941,101 @@ fi
 if [[ -f "${fil_tbl}" ]]; then
     #  Sort the table of scaling factors by rows
     awk 'NR == 1; NR > 1 && NF { print | "sort" }' "${fil_tbl}" \
-        > "${dir_tbl}/tmp.tsv"
+        > "${dir_alf}/tables/tmp.tsv"
 
     #  Replace the original table with the sorted version
-    mv -f "${dir_tbl}/tmp.tsv" "${fil_tbl}"
+    mv -f "${dir_alf}/tables/tmp.tsv" "${fil_tbl}"
 
 fi
 # cat "${fil_tbl}"  ## Uncomment to check the table contents ##
 
 
 #  Generate raw and normalized coverage tracks --------------------------------
-bash "${dir_scr}/execute_deeptools_coverage.sh" \
+#  If necessary, decompress files and rename extension
+find \
+    "${dir_nrm}/tracks" \
+    -type f \
+    \( -name "*.gz" -o -name "*.bg" -o -name "*.bdg" \) \
+    -exec sh -c '
+        for f do
+            if [ "${f}" == *.gz ]; then
+                gunzip -f "$f"
+                f="${f%.gz}"
+            fi
+            case "${f}" in
+                *.bg|*.bdg) mv -v "${f}" "${f%.*}.bedgraph" ;;
+            esac
+        done
+    ' \
+    sh {} +
+# ls -lhaFG "${dir_nrm}/tracks"
+
+
+#  Assign necessary variables
+ser_num="$(
+    awk 'NR > 1 { print $1 }' "${fil_tbl}" \
+        | sed \
+            -e "s:${dir_bam}:${dir_nrm}/tracks:g" \
+            -e "s:.bam:.bedgraph:g" \
+        | paste -sd ',' -
+)"
+ser_den="$(
+    awk 'NR > 1 { print $2 }' "${fil_tbl}" \
+        | sed \
+            -e "s:${dir_bam}:${dir_nrm}/tracks:g" \
+            -e "s:.bam:.bedgraph:g" \
+        | paste -sd ',' -
+)"
+ser_stm="$(
+    sed \
+        -e "s:${dir_nrm}:${dir_alf}:g" \
+        -e "s:/IP_:/siq_:g" \
+        -e "s:.bedgraph::g" \
+        < <(echo "${ser_num}")
+)"
+typ_out="bdg"
+siz_bin=10
+oper="ratio"
+scl_fct="$(awk 'NR > 1 { print $3 }' "${fil_tbl}" | paste -sd ',' -)"
+
+if ${debug}; then
+    echo "################################################"
+    echo "## Call to deepTools bamCompare driver script ##"
+    echo "################################################"
+    echo ""
+    echo "bash ${dir_scr}/execute_deeptools_compare.sh \\"
+    echo "    --verbose \\"
+    echo "    --threads ${threads} \\"
+    echo "    --ser_num ${ser_num} \\"
+    echo "    --ser_den ${ser_den} \\"
+    echo "    --ser_stm ${ser_stm} \\"
+    echo "    --typ_out ${typ_out} \\"
+    echo "    --siz_bin ${siz_bin} \\"
+    echo "    --oper ${oper} \\"
+    echo "    --scl_fct ${scl_fct} \\"
+    echo "    --err_out ${dir_alf}/tracks/logs \\"
+    echo "    --slurm \\"
+    echo "         >> >(tee -a ${exc_trk}.stdout.txt) \\"
+    echo "        2>> >(tee -a ${exc_trk}.stderr.txt)"
+    echo ""
+    echo ""
+fi
+
+bash "${dir_scr}/execute_deeptools_compare.sh" \
     --verbose \
     --threads "${threads}" \
-    --table "${fil_tbl}" \
-    --tbl_col "${tbl_col}" \
-    --dir_out "${dir_trk}" \
+    --ser_num "${ser_num}" \
+    --ser_den "${ser_den}" \
+    --ser_stm "${ser_stm}" \
     --typ_out "${typ_out}" \
     --siz_bin "${siz_bin}" \
-    --err_out "${eo_trk}" \
+    --oper "${oper}" \
+    --scl_fct "${scl_fct}" \
+    --err_out "${dir_alf}/tracks/logs" \
     --slurm \
          >> >(tee -a "${exc_trk}.stdout.txt") \
         2>> >(tee -a "${exc_trk}.stderr.txt")
+
 
 
 #  Generate alpha-scaled signal tracks ----------------------------------------
@@ -967,21 +1045,21 @@ bash "${dir_scr}/execute_deeptools_coverage.sh" \
     --threads "${threads}" \
     --table "${fil_tbl}" \
     --tbl_col "${tbl_col}" \
-    --dir_out "${dir_trk}" \
+    --dir_out "${dir_alf}/tracks" \
     --typ_out "${typ_out}" \
     --siz_bin "${siz_bin}" \
-    --err_out "${eo_trk}" \
+    --err_out "${dir_alf}/tracks/logs" \
     --slurm \
          >> >(tee -a "${exc_trk}.stdout.txt") \
         2>> >(tee -a "${exc_trk}.stderr.txt")
 
 
 #  Cleanup: Compress logs and remove empty files ------------------------------
-bash "${dir_scr}/compress_remove_files.sh" --dir_fnd "${eo_tbl}"
-bash "${dir_scr}/compress_remove_files.sh" --dir_fnd "${eo_trk}"
+bash "${dir_scr}/compress_remove_files.sh" --dir_fnd "${dir_alf}/tables/logs"
+bash "${dir_scr}/compress_remove_files.sh" --dir_fnd "${dir_alf}/tracks/logs"
 
-# ls -lhaFG "${eo_tbl}"  ## Uncomment to check directory for table logs ##
-# ls -lhaFG "${eo_trk}"  ## Uncomment to check directory for track logs ##
+# ls -lhaFG "${dir_alf}/tables/logs"  ## Uncomment to check directory for table logs ##
+# ls -lhaFG "${dir_alf}/tracks/logs"  ## Uncomment to check directory for track logs ##
 ```
 </details>
 <br />
@@ -1115,6 +1193,13 @@ function check_unity() {
             }
         }'
 }
+```
+
+```bash
+#!/bin/bash
+
+#  Optional: Request an interactive node --------------------------------------
+# grabnode  ## Uncomment to request 1 core, 20 GB memory, 1 day, no GPU ##
 
 
 #  Define variables -----------------------------------------------------------
@@ -1151,9 +1236,9 @@ dir_alf="${dir_cvg}/${det_cvg}/alpha"
 #  Define environment, resources, and script arguments 
 env_nam="env_analyze"
 threads=8
-eqn=6
-mes_tbl="${dir_raw}/docs/measurements_siqchip.tsv"
+tbl_mes="${dir_raw}/docs/measurements_siqchip.tsv"
 tbl_col="alpha"
+eqn="6nd"
 typ_out="bedgraph"
 siz_bin=10  # 1
 
@@ -1170,9 +1255,9 @@ infiles="$(
 )"
 
 #  Define scripts and output files
-scr_tbl="execute_calculate_scaling_factor_alpha.sh"
+scr_tbl="execute_calculate_scaling_${tbl_col}.sh"
 scr_trk="execute_deeptools_coverage.sh"
-fil_tbl="${dir_alf}/tables/IP_WT_G1-G2M-Q_Hho1-Hmo1_6336-6337_7750-7751.tsv"
+fil_tbl="${dir_alf}/tables/ChIP_WT_G1-G2M-Q_Hho1-Hmo1_${tbl_col}-${eqn}.tsv"
 
 #  Define information for logging
 day="$(date '+%Y-%m%d')"
@@ -1211,9 +1296,9 @@ if ${debug}; then
     echo ""
     echo "\${env_nam}=${env_nam}"
     echo "\${threads}=${threads}"
-    echo "\${eqn}=${eqn}"
-    echo "\${mes_tbl}=${mes_tbl}"
+    echo "\${tbl_mes}=${tbl_mes}"
     echo "\${tbl_col}=${tbl_col}"
+    echo "\${eqn}=${eqn}"
     echo "\${typ_out}=${typ_out}"
     echo "\${siz_bin}=${siz_bin}"
     echo ""
@@ -1343,8 +1428,13 @@ write_bdg_gz \
 
 check_unity "${bdg}_unity.bdg.gz"
 
+cd ~/repos/protocol_chipseq_signal_norm/data/processed/compute_coverage/bowtie2_global_flag-2_mapq-1/norm/tracks
 
-
+for bdg in *.bdg.gz; do
+    echo "## ${bdg} ##"
+    check_unity "${bdg}"
+    echo ""
+done
 ```
 </details>
 <br />

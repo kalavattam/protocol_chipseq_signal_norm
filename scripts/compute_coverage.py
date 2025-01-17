@@ -65,6 +65,9 @@
 # Output:
 #     BEDGRAPH or BIGWIG file (or both) containing binned coverage data.
 #
+# TODO:
+#    - Remove BIGWIG file writing until I have time to optimize it
+#
 # License:
 #     Distributed under the MIT license.
 
@@ -449,7 +452,7 @@ def parse_args():
         "-i",
         "--infile",
         required=True,
-        help="Path to the input BAM file."
+        help="Path to the BAM infile."
     )
     parser.add_argument(
         "-o",
@@ -466,16 +469,16 @@ def parse_args():
         choices=['bedgraph', 'bdg', 'bg', 'bigwig', 'bw', 'both', 'bed'],
         default='bdg',
         help=(
-            "Specify the output format. Options: 'bedgraph', 'bdg', 'bg', "
-            "'bigwig', 'bw', 'both', 'bed'. Use 'bedgraph', 'bdg', 'bg' to "
-            "output binned coverage in BEDGRAPH format. Use 'bigwig', 'bw' to "
-            "output binned coverage in BIGWIG format. Use 'both' to output "
-            "binned coverage in both BEDGRAPH and BIGWIG formats. Use 'bed' "
-            "to output alignments processed by function parse_bam() in "
-            "BED-like format (note: these are not coverage values; setting "
-            "'--typ_out bed' results in arguments such as '--siz_bin', "
-            "'--typ_cvg', '--scl_fct' '--usr_frg' are ignored). Default: "
-            "%(default)s."
+            "Specify the output format (default: %(default)s). Options: "
+            "'bedgraph', 'bdg', 'bg', 'bigwig', 'bw', 'both', 'bed'. Use "
+            "'bedgraph', 'bdg', 'bg' to output binned coverage in BEDGRAPH "
+            "format. Use 'bigwig', 'bw' to output binned coverage in BIGWIG "
+            "format. Use 'both' to output binned coverage in both BEDGRAPH "
+            "and BIGWIG formats. Use 'bed' to output alignments processed by "
+            "function parse_bam() in BED-like format (note: these are not "
+            "coverage values; setting '--typ_out bed' results in arguments "
+            "such as '--siz_bin', '--typ_cvg', '--scl_fct' '--usr_frg' are "
+            "ignored)."
         )
     )
     parser.add_argument(
@@ -496,13 +499,13 @@ def parse_args():
         default='norm',
         help=(
             "Specify coverage calculation type. Options: 'raw', 'unadj', "
-            "'unadjusted', 'frag', 'len_frag', 'norm', 'normalized'. Use "
-            "'raw', 'unadj', 'unadjusted' to calculate unadjusted coverage. "
-            "Use 'frag', 'len_frag' to normalize coverage by fragment length. "
-            "Use 'norm', 'normalized' to compute 'normalized coverage' (PMID: "
-            "37160995), i.e., coverage normalized for both fragment length "
-            "and total fragments such that coverage sums to unity. Default: "
-            "%(default)s."
+            "'unadjusted', 'frag', 'len_frag', 'norm', 'normalized' (default: "
+            "%(default)s). Use 'raw', 'unadj', 'unadjusted' to calculate "
+            "unadjusted coverage. Use 'frag', 'len_frag' to normalize "
+            "coverage by fragment length. Use 'norm', 'normalized' to compute "
+            "'normalized coverage' (PMID: 37160995), i.e., coverage "
+            "normalized for both fragment length and total fragments such "
+            "that coverage sums to unity."
         )
     )
     parser.add_argument(
