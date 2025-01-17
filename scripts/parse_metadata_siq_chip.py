@@ -273,11 +273,12 @@ def parse_args():
         default='6nd',
         help=(
             "Equation to compute the alpha scaling factor (PMID: 37160995; "
-            "default: %(default)s). Options:\n"
-            "  - '5'   Eq. 5 (for raw coverage).\n"
-            "  - '5nd' Eq. 5 sans depth terms (for normalized coverage).\n"
-            "  - '6'   Eq. 6 (for raw coverage).\n"
-            "  - '6nd' Eq. 6 sans depth terms (for normalized coverage).\n\n"
+            "default: %(default)s). Options: '5' applies Equation 5 for use "
+            "with fragment length-normalized coverage, '5nd' uses Equation 5 "
+            "without depth terms for use with 'normalized' coverage, '6' "
+            "applies Equation 6 for use with fragment length-normalized "
+            "coverage, and '6nd' uses Equation 6 without depth terms for use "
+            "with 'normalized' coverage."
         )
     )
     parser.add_argument(

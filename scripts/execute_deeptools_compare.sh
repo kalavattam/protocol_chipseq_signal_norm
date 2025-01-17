@@ -5,7 +5,7 @@
 
 
 #  Run script in interactive/test mode (true) or command-line mode (false)
-interactive=true
+interactive=false
 
 #  Exit on errors, unset variables, or pipe failures if not in "interactive
 #+ mode"
@@ -77,7 +77,7 @@ function set_interactive() {
 
     #  Define variables for table of samples, corresponding alpha values
     dir_tbl="${dir_cov}/alpha/tables"
-    fil_tbl="IP_WT_G1-G2M-Q_Hho1-Hmo1_6336-6337_7750-7751.tsv"
+    fil_tbl="ChIP_WT_G1-G2M-Q_Hho1-Hmo1_alpha_6nd.tsv"
     pth_tbl="${dir_tbl}/${fil_tbl}"
 
     # #  Define file type and location
@@ -118,30 +118,30 @@ function set_interactive() {
     verbose=true
     dry_run=false
     threads=8
-    fil_num=$(awk 'NR > 1 { print $1 }' "${pth_tbl}" | paste -sd ',' -)
-    # fil_num="$(
+    ser_num="$(awk 'NR > 1 { print $1 }' "${pth_tbl}" | paste -sd ',' -)"
+    # ser_num="$(
     #     bash "${dir_scr}/find_files.sh" \
     #         --dir_fnd "${dir_fnd}" \
     #         --pattern "${pattern}" \
     #         --include "IP*" \
     #         --exclude "${exclude}"
     # )"
-    fil_den="$(echo "${fil_num}" | sed 's:/IP:/in:g')"
-    # fil_den="$(
+    ser_den="$(awk 'NR > 1 { print $2 }' "${pth_tbl}" | paste -sd ',' -)"
+    # ser_den="$(
     #     bash "${dir_scr}/find_files.sh" \
     #         --dir_fnd "${dir_fnd}" \
     #         --pattern "${pattern}" \
     #         --include "in*" \
     #         --exclude "${exclude}"
     # )"
-    fil_stm=$(
-        echo "${fil_num}" \
-            | sed -e "s|$(dirname "${fil_num%%,*}")|${dir_trk}|g" \
+    ser_stm=$(
+        echo "${ser_num}" \
+            | sed -e "s|$(dirname "${ser_num%%,*}")|${dir_trk}|g" \
                   -e 's:/IP:/siq:g' \
                   -e 's:\.\(bigwig\|bw\|bedgraph\|bdg\|bg\|bam\)::g'
     )
-    # fil_stm=$(
-    #     echo "${fil_num}" \
+    # ser_stm=$(
+    #     echo "${ser_num}" \
     #         | sed -e "s|${dir_fnd}|${dir_trk}|g" \
     #               -e 's:/IP:/IP-in:g' \
     #               -e 's:\.\(bigwig\|bw\|bedgraph\|bdg\|bg\|bam\)::g'
@@ -150,7 +150,7 @@ function set_interactive() {
     siz_bin=10  # 1
     region=""
     oper="ratio"
-    scl_fct=$(awk 'NR > 1 { print $2 }' "${pth_tbl}" | paste -sd ',' -)  # ""
+    scl_fct=$(awk 'NR > 1 { print $3 }' "${pth_tbl}" | paste -sd ',' -)  # ""
     typ_cvg="none"
     scl_pre="none"  # "depth"
     exact=false
@@ -173,9 +173,9 @@ denom=4
 verbose=false
 dry_run=false
 threads=1
-fil_num=""
-fil_den=""
-fil_stm=""
+ser_num=""
+ser_den=""
+ser_stm=""
 typ_out="bedgraph"  # "bigwig"
 siz_bin=10
 siz_gen=12157105
@@ -196,8 +196,8 @@ time="0:30:00"
 show_help=$(cat << EOM
 Usage:
   execute_compute_compare.sh
-    [--verbose] [--dry_run] --threads <int> --fil_num <str> --fil_den <str>
-    --fil_stm <str> --typ_out <str> --siz_bin <int> [--region <str>]
+    [--verbose] [--dry_run] --threads <int> --ser_num <str> --ser_den <str>
+    --ser_stm <str> --typ_out <str> --siz_bin <int> [--region <str>]
     --scl_fct <flt> --typ_cvg <str> --scl_pre <str> [--exact] [--usr_frg <flt>]
     --err_out <str> --nam_job <str> [--slurm] [--max_job <int>] [--time <str>]
 
@@ -213,13 +213,14 @@ Arguments:
    -v, --verbose  Run script in 'verbose mode' (optional).
   -dr, --dry_run  Run script in 'dry-run mode' (optional).
    -t, --threads  Number of threads to use (default: ${threads}).
-  -fn, --fil_num  Comma-separated string of BAM, BIGWIG, or BEDGRAPH infiles to
-                  be used as the first file (e.g., numerator) in the
+  -sn, --ser_num  Comma-separated serialized string of BAM, BIGWIG, or BEDGRAPH
+                  infiles to be used as the first file (e.g., numerator) in the
                   comparisons.
-  -fd, --fil_den  Comma-separated string of BAM, BIGWIG, or BEDGRAPH infiles to
-                  be used as the second file (e.g., denominator) in the
-                  comparisons.
-  -fs, --fil_stm  Comma-separated string of outstems without extensions.
+  -sd, --ser_den  Comma-separated serialized string of BAM, BIGWIG, or BEDGRAPH
+                  infiles to be used as the second file (e.g., denominator) in
+                  the comparisons.
+  -ss, --ser_stm  Comma-separated serialized string of outstems without
+                  extensions.
   -to, --typ_out  Format of comparison signal track outfiles: 'bedgraph' or
                   'bigwig' (default: "${typ_out}").
   -sb, --siz_bin  Bin size for comparison calculation(s) in base pairs
@@ -233,17 +234,16 @@ Arguments:
                   second/denominator BAM infiles: 'log2', 'ratio', 'subtract',
                   'add', 'mean', 'reciprocal_ratio', 'first', 'second'
                   (default: "${oper}").
-  -sf, --scl_fct  Comma-separated string of precomputed scaling factors for
-                  first (e.g., numerator or 'num') and second (e.g.,
-                  denominator or 'den') files in comparison(s). Each scaling
-                  factor pair should be in the format 'first:second' (e.g.,
-                  'num:den'), where 'first' ('num') is the scaling factor for
-                  the first file in a pair and 'second' ('den') is the scaling
-                  factor for the second file in a pair. Multiple pairs should
-                  be separated by commas. Set to 'none' if not applying
-                  precomputed scaling factors (default: "${scl_fct}").
+  -sf, --scl_fct  Comma-separated serialized string of precomputed scaling
+                  factor pairs for file comparisons. Each pair should be in the
+                  format  'first:second' (e.g., 'num:den'), where 'first'
+                  ('num') is the scaling factor for the first file and 'second'
+                  ('den') is for the second. If only 'num' is provided (e.g.,
+                  '0.5'), it defaults to 'num:1' ('0.5:1'). Multiple pairs
+                  should be comma-separated. Use 'none' to skip precomputed
+                  scaling factors (default: "${scl_fct}").
   -tv, --typ_cvg  Specify a normalization method to use when computing
-                  comparison(s); available options are 'raw', 'none', 'rpkm',
+                  comparison(s); available options are 'none', 'raw', 'rpkm',
                   'fpkm', 'cpm', 'bpm', or 'rpgc' (default: "${typ_cvg}").
   -sp, --scl_pre  Predefined scaling method for compensating sequencing depth
                   differences in comparison operations: 'depth', 'ses', or
@@ -257,9 +257,9 @@ Arguments:
                   instead of read lengths (for alignments of single-end reads)
                   or template lengths (for alignments of paired-end reads;
                   optional). Must match the number of infiles and outstems via
-                  '--fil_num <str>', '--fil_den <str>', and '--fil_stm <str>'.
+                  '--ser_num <str>', '--ser_den <str>', and '--ser_stm <str>'.
   -eo, --err_out  The directory to store stderr and stdout TXT outfiles
-                  (default: "\$(dirname "\${fil_stm%%[,;]*}")/err_out").
+                  (default: "\$(dirname "\${ser_stm%%[,;]*}")/err_out").
   -nj, --nam_job  Prefix for the names of jobs (default: "${nam_job}").
   -sl, --slurm    Submit jobs to the SLURM scheduler; otherwise, run them via
                   GNU Parallel (optional).
@@ -314,9 +314,9 @@ else
              -v|--verbose) verbose=true;     shift 1 ;;
             -dr|--dry_run) dry_run=true;     shift 1 ;;
              -t|--threads) threads="${2}";   shift 2 ;;
-            -fn|--fil_num) fil_num="${2}";   shift 2 ;;
-            -fd|--fil_den) fil_den="${2}";   shift 2 ;;
-            -fs|--fil_stm) fil_stm="${2}";   shift 2 ;;
+            -sn|--ser_num) ser_num="${2}";   shift 2 ;;
+            -sd|--ser_den) ser_den="${2}";   shift 2 ;;
+            -ss|--ser_stm) ser_stm="${2}";   shift 2 ;;
             -to|--typ_out) typ_out="${2,,}"; shift 2 ;;
             -sb|--siz_bin) siz_bin="${2}";   shift 2 ;;
             -sg|--siz_gen) siz_gen="${2}";   shift 2 ;;
@@ -354,14 +354,14 @@ check_supplied_arg -a "${denom}" -n "denom"
 check_supplied_arg -a "${threads}" -n "threads"
 check_int_pos "${threads}" "threads"
 
-check_supplied_arg -a "${fil_num}" -n "fil_num"
-check_exists_file_dir "d" "$(dirname "${fil_num%%[,;]*}")" "fil_num"
+check_supplied_arg -a "${ser_num}" -n "ser_num"
+check_exists_file_dir "d" "$(dirname "${ser_num%%[,;]*}")" "ser_num"
 
-check_supplied_arg -a "${fil_den}" -n "fil_den"
-check_exists_file_dir "d" "$(dirname "${fil_den%%[,;]*}")" "fil_den"
+check_supplied_arg -a "${ser_den}" -n "ser_den"
+check_exists_file_dir "d" "$(dirname "${ser_den%%[,;]*}")" "ser_den"
 
-check_supplied_arg -a "${fil_stm}" -n "fil_stm"
-check_exists_file_dir "d" "$(dirname "${fil_stm%%[,;]*}")" "fil_stm"
+check_supplied_arg -a "${ser_stm}" -n "ser_stm"
+check_exists_file_dir "d" "$(dirname "${ser_stm%%[,;]*}")" "ser_stm"
 
 check_supplied_arg -a "${typ_out}" -n "typ_out"
 case "${typ_out}" in
@@ -417,7 +417,7 @@ fi
 #  Process '--typ_cvg'
 if [[ -z "${typ_cvg}" ]]; then typ_cvg="none"; fi
 case "${typ_cvg}" in
-    raw|none)  typ_cvg="None" ;;
+    none|raw)  typ_cvg="None" ;;
     rpkm|fpkm) typ_cvg="RPKM" ;;
     cpm)       typ_cvg="CPM"  ;;
     bpm)       typ_cvg="BPM"  ;;
@@ -425,7 +425,7 @@ case "${typ_cvg}" in
     *)
         echo_error \
             "Invalid '--typ_cvg' selection: '${typ_cvg}'. Valid options are" \
-            "'raw', 'none', 'rpkm', 'fpkm', 'cpm', 'bpm', or 'rpgc'."
+            "'none', 'raw', 'rpkm', 'fpkm', 'cpm', 'bpm', or 'rpgc'."
         exit_1
         ;;
 esac
@@ -474,7 +474,7 @@ if [[ -n "${usr_frg}" ]]; then check_str_delim "usr_frg" "${usr_frg}"; fi
 if [[ -n "${err_out}" ]]; then
     check_exists_file_dir "d" "${err_out}" "err_out"
 elif [[ -z "${err_out}" ]]; then
-    err_out="$(dirname "${fil_stm%%[,;]*}")/err_out"
+    err_out="$(dirname "${ser_stm%%[,;]*}")/err_out"
     check_exists_file_dir "d" "${err_out}" "err_out"
 fi
 
@@ -527,13 +527,13 @@ if ${slurm}; then check_program_path sbatch; fi
 
 
 #  Parse and validate vector elements -----------------------------------------
-IFS=',' read -r -a arr_fil_num <<< "${fil_num}"
-IFS=',' read -r -a arr_fil_den <<< "${fil_den}"
-IFS=',' read -r -a arr_fil_stm <<< "${fil_stm}"
+IFS=',' read -r -a arr_fil_num <<< "${ser_num}"
+IFS=',' read -r -a arr_fil_den <<< "${ser_den}"
+IFS=',' read -r -a arr_fil_stm <<< "${ser_stm}"
 
 #  Validate file existence for file "numerator" and "denominator" arrays
-check_array_files "fil_num" "${arr_fil_num[@]}"
-check_array_files "fil_den" "${arr_fil_den[@]}"
+check_array_files "ser_num" "${arr_fil_num[@]}"
+check_array_files "ser_den" "${arr_fil_den[@]}"
 
 #  Validate directory existence for outfile stem array
 for fil in "${arr_fil_stm[@]}"; do
@@ -541,7 +541,7 @@ for fil in "${arr_fil_stm[@]}"; do
     dir="$(dirname "${fil}")"
     if [[ ! -d "${dir}" ]]; then
         echo \
-            "Error: --fil_stm directory '${dir}' does not exist. Please" \
+            "Error: --ser_stm directory '${dir}' does not exist. Please" \
             "create it before proceeding." >&2
         exit_1
     fi
@@ -592,7 +592,7 @@ for i in "${!arr_fil_num[@]}"; do
 done
 
 #  Handle scaling factors ('--scl_fct')
-if [[ -n "${scl_fct}" ]]; then
+if [[ -n "${scl_fct}" && "${scl_fct}" != "None" ]]; then
     IFS=',' read -r -a arr_scl_fct <<< "${scl_fct}"
 
     for s in "${arr_scl_fct[@]}"; do
@@ -664,9 +664,9 @@ if ${verbose}; then
     echo "verbose=${verbose}"
     echo "dry_run=${dry_run}"
     echo "threads=${threads}"
-    echo "fil_num=${fil_num}"
-    echo "fil_den=${fil_den}"
-    echo "fil_stm=${fil_stm}"
+    echo "ser_num=${ser_num}"
+    echo "ser_den=${ser_den}"
+    echo "ser_stm=${ser_stm}"
     echo "typ_out=${typ_out}"
     echo "siz_bin=${siz_bin}"
     echo "region=${region:-#N/A}"

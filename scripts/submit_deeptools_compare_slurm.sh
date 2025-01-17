@@ -360,12 +360,12 @@ if ${debug}; then
 fi
 
 #  Exit if any variable assignment is empty
-validate_var "fil_num" "${fil_num}" "arr_fil_num"  "${idx}" "${id_tsk}"
-validate_var "fil_den" "${fil_den}" "arr_fil_den"  "${idx}" "${id_tsk}"
-validate_var "typ_fil" "${fil_den}" "arr_typ_fil"  "${idx}" "${id_tsk}"
+validate_var "fil_num" "${fil_num}" "arr_fil_num" "${idx}" "${id_tsk}"
+validate_var "fil_den" "${fil_den}" "arr_fil_den" "${idx}" "${id_tsk}"
+validate_var "typ_fil" "${typ_fil}" "arr_typ_fil" "${idx}" "${id_tsk}"
 validate_var "fil_stm" "${fil_stm}" "arr_fil_stm" "${idx}" "${id_tsk}"
-validate_var "scl_fct" "${scl_fct}" "arr_scl_fct"  "${idx}" "${id_tsk}"
-validate_var "usr_frg" "${usr_frg}" "arr_usr_frg"  "${idx}" "${id_tsk}"
+validate_var "scl_fct" "${scl_fct}" "arr_scl_fct" "${idx}" "${id_tsk}"
+validate_var "usr_frg" "${usr_frg}" "arr_usr_frg" "${idx}" "${id_tsk}"
 
 #  Determine BAM infiles' sequenced-read status and file type, ensuring
 #+ consistency
@@ -390,8 +390,8 @@ fi
 if ${debug}; then
     echo "typ_seq=${typ_seq}"
     echo ""
-    # echo "typ_fil=${typ_fil}"
-    # echo ""
+    echo "typ_fil=${typ_fil}"
+    echo ""
 fi
 
 #  Derive sample name from fil_stm assignment
@@ -406,7 +406,7 @@ fi
 if ${debug} || ${dry_run}; then
     # shellcheck disable=SC2005
     case "${typ_fil}" in
-        bedgraph|bdg|bg|bigwig|bw)
+        bedgraph|bdg|bg|gz|bigwig|bw)
             echo "bigwigCompare \\"
             echo "$(if ${verbose}; then echo "    --verbose"; fi) \\"
             echo "    --numberOfProcessors ${threads} \\"
@@ -430,7 +430,7 @@ if ${debug} || ${dry_run}; then
                     echo "    \\"
                 fi
             )"
-            echo "    --skipZeroOverZero"
+            # echo "    --skipZeroOverZero"
             echo ""
             echo ""
             ;;
@@ -451,7 +451,7 @@ if ${debug} || ${dry_run}; then
                     echo "    \\"
                 fi
             )"
-            echo "    --skipZeroOverZero \\"
+            # echo "    --skipZeroOverZero \\"
             echo "$(
                 if [[ "${scl_fct}" != "#N/A" ]]; then
                     echo "    --scaleFactors ${scl_fct} \\"
@@ -536,8 +536,10 @@ if ! ${dry_run}; then
                     if [[ "${scl_fct}" != "#N/A" ]]; then
                         echo "--scaleFactors ${scl_fct}"
                     fi
-                ) \
-                --skipZeroOverZero
+                )
+
+                # \
+                # --skipZeroOverZero
             ;;
         bam)
             bamCompare \
@@ -554,7 +556,6 @@ if ! ${dry_run}; then
                         echo "--region ${region}"
                     fi
                 ) \
-                --skipZeroOverZero \
                 $(
                     if [[ "${scl_fct}" != "#N/A" ]]; then
                         echo "--scaleFactors ${scl_fct}"
@@ -588,6 +589,8 @@ if ! ${dry_run}; then
                         echo "--extendReads ${usr_frg}"
                     fi
                 )
+
+                # --skipZeroOverZero \
             ;;
     esac
 

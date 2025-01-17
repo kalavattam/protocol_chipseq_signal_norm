@@ -36,6 +36,7 @@ dir_fnc="${dir_scr}/functions"
     source "${dir_fnc}/exit_0.sh"
     source "${dir_fnc}/exit_1.sh"
     source "${dir_fnc}/handle_env.sh"
+    source "${dir_fnc}/reset_max_job.sh"
 }
 
 
@@ -56,38 +57,43 @@ function set_interactive() {
     flg="$(if ${req_flg}; then echo "2"; else echo "NA"; fi)"
     mapq=1
     det_bam="flag-${flg}_mapq-${mapq}"
-    det_cov="${aligner}_${a_type}_${det_bam}"
-    typ_cov="alpha"
+    det_cvg="${aligner}_${a_type}_${det_bam}"
+    typ_cvg="alpha"
 
     dir_aln="${dir_pro}/align_${aligner}_${a_type}"
     dir_bam="${dir_aln}/${det_bam}/sc"
-    dir_cov="${dir_pro}/compute_coverage"
-    dir_out="${dir_cov}/${det_cov}/${typ_cov}/tables"
+    dir_cvg="${dir_pro}/compute_coverage"
+    dir_out="${dir_cvg}/${det_cvg}/${typ_cvg}/tables"
 
     pattern="*.bam"
-    include="IP*"
     exclude="*Brn1*"
 
     #  Set hardcoded argument assignments
     verbose=true
     dry_run=false
-    threads=16  # 8
-    infiles="$(  ## WARNING: Change search parameters as needed ##
+    threads=8
+    ser_ip="$(  ## WARNING: Change search parameters as needed ##
         bash "${dir_scr}/find_files.sh" \
             --dir_fnd "${dir_bam}" \
             --pattern "${pattern}" \
-            --include "${include}" \
+            --include "IP*" \
             --exclude "${exclude}"
     )"
-    table="${dir_dat}/raw/docs/measurements_siq_chip.tsv"
-    eqn="6nd"
-    outfile="${dir_out}/IP_WT_G1-G2M-Q_Hho1-Hmo1_6336-6337_7750-7751.tsv"
+    ser_in="$(  ## WARNING: Change search parameters as needed ##
+        bash "${dir_scr}/find_files.sh" \
+            --dir_fnd "${dir_bam}" \
+            --pattern "${pattern}" \
+            --include "in*" \
+            --exclude "${exclude}"
+    )"
+    table="${dir_dat}/raw/docs/measurements_siqchip.tsv"
+    eqn="6nd"  # "5"
+    outfile="${dir_out}/ChIP_WT_G1-G2M-Q_Hho1-Hmo1_${typ_cvg}_${eqn}.tsv"
     flg_dep=true
     flg_len=true
-    flg_in=false
     flg_mc=true
     err_out="${dir_out}/logs"
-    nam_job="calc_sf_alpha"
+    nam_job="calc_sf_alpha_${eqn}"
     slurm=true
     max_job=6
     time="0:30:00"
@@ -98,7 +104,7 @@ function set_interactive() {
 #  Initialize hardcoded argument variables
 env_nam="env_analyze"
 scr_sub="${dir_scr}/submit_calculate_scaling_factor_alpha.sh"
-scr_par="${dir_scr}/parse_metadata_siq_chip.py"
+scr_met="${dir_scr}/parse_metadata_siq_chip.py"
 scr_alf="${dir_scr}/calculate_scaling_factor_alpha.py"
 denom=4
 
@@ -106,16 +112,16 @@ denom=4
 verbose=false
 dry_run=false
 threads=1
-infiles=""
+ser_ip=""
+ser_in=""
 table=""
-eqn="6"
+eqn="6nd"
 outfile=""
 flg_dep=false
 flg_len=false
-flg_in=false
 flg_mc=false
 err_out=""
-nam_job="calc_sf_alpha"
+nam_job="calc_sf_alpha_${eqn}"
 slurm=false
 max_job=6
 time="0:30:00"
@@ -124,9 +130,10 @@ time="0:30:00"
 show_help=$(cat << EOM
 Usage:
   execute_calculate_scaling_factor_alpha.sh
-    [--verbose] [--dry_run] --threads <int> --infiles <str> --table <str>
-    --eqn <str> --outfile <str> [--flg_dep] [--flg_len] [--flg_in] [--flg_mc]
-    --err_out <str> --nam_job <str> [--slurm] [--max_job <int>] [--time <str>]
+    [--verbose] [--dry_run] --threads <int> --ser_ip <str> --ser_in <str>
+    --table <str> --eqn <str> --outfile <str> [--flg_dep] [--flg_len]
+    [--flg_mc] --err_out <str> --nam_job <str> [--slurm] [--max_job <int>]
+    [--time <str>]
 
 Description:
   execute_calculate_scaling_factor_alpha.sh performs... #TODO
@@ -136,14 +143,15 @@ Arguments:
    -v, --verbose  Run script in 'verbose mode' (optional).
   -dr, --dry_run  Perform a dry run without executing commands (optional).
    -t, --threads  Number of threads to use (required; default: ${threads}).
-   -i, --infiles  Comma-separated serialized list of IP coordinate-sorted BAM
+  -sp, --ser_ip   Comma-separated serialized list of IP coordinate-sorted BAM
                   infiles, including paths (required).
+  -sn, --ser_in   Comma-separated serialized list of input coordinate-sorted
+                  BAM infiles, including paths (required).
   -tb, --table    #TODO
   -eq, --eqn      #TODO
    -o, --outfile  #TODO
   -fd, --flg_dep  Use Samtools to calculate the number of alignments.
   -fl, --flg_len  Use Samtools and awk to calculate the mean fragment length.
-  -fi, --flg_in   Include sample input alpha values in outfile.
   -fm, --flg_mc   Include additional measurements and calculations in outfile.
   -eo, --err_out  The directory to store stderr and stdout TXT outfiles
                   (required; default: \${dir_out}/err_out).
@@ -173,13 +181,13 @@ else
              -v|--verbose) verbose=true;   shift 1 ;;
             -dr|--dry_run) dry_run=true;   shift 1 ;;
              -t|--threads) threads="${2}"; shift 2 ;;
-             -i|--infiles) infiles="${2}"; shift 2 ;;
+            -sp|--ser_ip)  ser_ip="${2}";  shift 2 ;;
+            -sn|--ser_in)  ser_in="${2}";  shift 2 ;;
             -tb|--table)   table="${2}";   shift 2 ;;
             -eq|--eqn)     eqn="${2}";     shift 2 ;;
              -o|--outfile) outfile="${2}"; shift 2 ;;
             -fd|--flg_dep) flg_dep=true;   shift 1 ;;
             -fl|--flg_len) flg_len=true;   shift 1 ;;
-            -fi|--flg_in)  flg_in=true;    shift 1 ;;
             -fm|--flg_mc)  flg_mc=true;    shift 1 ;;
             -eo|--err_out) err_out="${2}"; shift 2 ;;
             -nj|--nam_job) nam_job="${2}"; shift 2 ;;
@@ -202,8 +210,8 @@ check_supplied_arg -a "${env_nam}" -n "env_nam"
 check_supplied_arg -a "${scr_sub}" -n "scr_sub"
 check_exists_file_dir "f" "${scr_sub}" "scr_sub"
 
-check_supplied_arg -a "${scr_par}" -n "scr_par"
-check_exists_file_dir "f" "${scr_par}" "scr_par"
+check_supplied_arg -a "${scr_met}" -n "scr_met"
+check_exists_file_dir "f" "${scr_met}" "scr_met"
 
 check_supplied_arg -a "${scr_alf}" -n "scr_alf"
 check_exists_file_dir "f" "${scr_alf}" "scr_alf"
@@ -213,8 +221,11 @@ check_supplied_arg -a "${denom}" -n "denom"
 check_supplied_arg -a "${threads}" -n "threads"
 check_int_pos "${threads}" "threads"
 
-check_supplied_arg -a "${infiles}" -n "infiles"
-check_exists_file_dir "d" "$(dirname "${infiles%%[,;]*}")" "infiles"
+check_supplied_arg -a "${ser_ip}" -n "ser_ip"
+check_exists_file_dir "d" "$(dirname "${ser_ip%%[,;]*}")" "ser_ip"
+
+check_supplied_arg -a "${ser_in}" -n "ser_in"
+check_exists_file_dir "d" "$(dirname "${ser_in%%[,;]*}")" "ser_in"
 
 check_supplied_arg -a "${table}" -n "table"
 check_exists_file_dir "f" "${table}" "table"
@@ -224,8 +235,8 @@ case "${eqn}" in
     5|5nd|6|6nd) : ;;
     *)
         echo_error \
-            "Equation (--eqn) was assigned '${eqn}' must be '5', '5nd', '6'," \
-            "or '6nd'."
+            "Equation (--eqn) was assigned '${eqn}' but must be '5', '5nd'," \
+            "'6', or '6nd'."
         exit_1
     ;;
 esac
@@ -267,29 +278,24 @@ fi
 handle_env "${env_nam}" > /dev/null
 
 check_program_path awk
-if ! ${slurm}; then check_program_path parallel; fi
+if ! ${slurm} && [[ ${threads} -gt 1 ]]; then check_program_path parallel; fi
 check_program_path python
 check_program_path samtools
 if ${slurm}; then check_program_path sbatch; fi
 
-#  Parse the --infiles argument into an array, then validate the infile value
-#+ assignments
-IFS=',' read -r -a arr_infiles <<< "${infiles}"  # unset arr_infiles
-# for infile in "${arr_infiles[@]}"; do echo "${infile}"; done  # unset infile
+#  Parse the '--ser_ip' and '--ser_in' arguments into separate arrays, then
+#+ validate the infile value assignments
+IFS=',' read -r -a arr_ip <<< "${ser_ip}"
+IFS=',' read -r -a arr_in <<< "${ser_in}"
 
-#  Check that each infile exists; if not, exit
-for infile in "${arr_infiles[@]}"; do
-    check_exists_file_dir "f" "${infile}" "infile"
+for file in "${arr_ip[@]}" "${arr_in[@]}"; do
+    check_exists_file_dir "f" "${file}" "file"
 done
+unset file
 
+#  Reset 'max_job' if it is greater than the number of infiles
 if ${slurm}; then
-    if [[ "${max_job}" -gt "${#arr_infiles[@]}" ]]; then
-        echo_warning \
-            "The maximum number of SLURM jobs to run at a time, ${max_job}," \
-            "is greater than the number of infiles, ${#arr_infiles[@]}." \
-            "Adjusting max_job to ${#arr_infiles[@]}."
-        max_job="${#arr_infiles[@]}"
-    fi
+    max_job=$(reset_max_job "${max_job}" "${#arr_ip[@]}")
 fi
 
 
@@ -302,7 +308,7 @@ if ${verbose}; then
     echo ""
     echo "env_nam=${env_nam}"
     echo "scr_sub=${scr_sub}"
-    echo "scr_par=${scr_par}"
+    echo "scr_met=${scr_met}"
     echo "scr_alf=${scr_alf}"
     echo "denom=${denom}"
     echo "par_job=${par_job:-#N/A}"
@@ -315,19 +321,27 @@ if ${verbose}; then
     echo "verbose=${verbose}"
     echo "dry_run=${dry_run}"
     echo "threads=${threads}"
-    echo "infiles=${infiles}"
+    echo "ser_ip=${ser_ip}"
+    echo "ser_in=${ser_in}"
     echo "table=${table}"
     echo "eqn=${eqn}"
     echo "outfile=${outfile}"
     echo "flg_dep=${flg_dep}"
     echo "flg_len=${flg_len}"
-    echo "flg_in=${flg_in}"
     echo "flg_mc=${flg_mc}"
     echo "err_out=${err_out}"
     echo "nam_job=${nam_job}"
     echo "slurm=${slurm}"
     echo "max_job=${max_job}"
     echo "time=${time}"
+    echo ""
+    echo ""
+    echo "###################################"
+    echo "## Arrays derived from variables ##"
+    echo "###################################"
+    echo ""
+    echo "arr_ip=( ${arr_ip[*]} )"
+    echo "arr_in=( ${arr_in[*]} )"
     echo ""
     echo ""
 fi
@@ -348,44 +362,45 @@ if ${slurm}; then
         echo "    --time=${time} \\"
         echo "    --error=${err_out}/${nam_job}.%A-%a.stderr.txt \\"
         echo "    --output=${err_out}/${nam_job}.%A-%a.stdout.txt \\"
-        echo "    --array=1-${#arr_infiles[@]}%${max_job} \\"
+        echo "    --array=1-${#arr_ip[@]}%${max_job} \\"
         echo "    ${scr_sub} \\"
         echo "        --threads ${threads} \\"
-        echo "        --infiles ${infiles} \\"
+        echo "        --ser_ip ${ser_ip} \\"
+        echo "        --ser_in ${ser_in} \\"
         echo "        --table ${table} \\"
         echo "        --eqn ${eqn} \\"
         echo "        --outfile ${outfile} \\"
         echo "        $(if ${flg_dep}; then echo "--flg_dep"; fi) \\"
         echo "        $(if ${flg_len}; then echo "--flg_len"; fi) \\"
-        echo "        $(if ${flg_in}; then echo "--flg_in"; fi) \\"
         echo "        $(if ${flg_mc}; then echo "--flg_mc"; fi) \\"
         echo "        --err_out ${err_out} \\"
         echo "        --nam_job ${nam_job} \\"
         echo "        --env_nam ${env_nam} \\"
-        echo "        --scr_par ${scr_par} \\"
+        echo "        --scr_met ${scr_met} \\"
         echo "        --scr_alf ${scr_alf}"
         echo ""
         echo ""
-        echo "#########################################"
-        echo "## Contents of SLURM submission script ##"
-        echo "#########################################"
-        echo ""
-        echo "## ${scr_sub} ##"
-        echo ""
-        cat "${scr_sub}"
-        echo ""
+        # echo "#########################################"
+        # echo "## Contents of SLURM submission script ##"
+        # echo "#########################################"
+        # echo ""
+        # echo "## ${scr_sub} ##"
+        # echo ""
+        # cat "${scr_sub}"
+        # echo ""
+        # echo ""
     fi
 
     if ! ${dry_run}; then
         #  To prevent potential race conditions from concurrent writes,
         #+ pre-write the header to the outfile before running SLURM jobs
         #+ (for more details, see related comment for GNU Parallel jobs below)
-        if ! ${flg_mc}; then
-            echo -e "sample\talpha" >> "${outfile}"
-        else
+        if ${flg_mc}; then
             echo -e \
-                "sample\talpha\tmass_ip\tmass_in\tvol_all\tvol_in\tdep_ip\tdep_in\tlen_ip\tlen_in" \
+                "samp_ip\tsamp_in\talpha\teqn\tmass_ip\tmass_in\tvol_all\tvol_in\tdep_ip\tdep_in\tlen_ip\tlen_in" \
                     >> "${outfile}"
+        else
+            echo -e "samp_ip\tsamp_in\talpha\teqn" >> "${outfile}"
         fi
 
         sbatch \
@@ -395,215 +410,23 @@ if ${slurm}; then
             --time=${time} \
             --error=${err_out}/${nam_job}.%A-%a.stderr.txt \
             --output=${err_out}/${nam_job}.%A-%a.stdout.txt \
-            --array=1-${#arr_infiles[@]}%${max_job} \
+            --array=1-${#arr_ip[@]}%${max_job} \
             ${scr_sub} \
                 --threads ${threads} \
-                --infiles ${infiles} \
+                --ser_ip ${ser_ip} \
+                --ser_in ${ser_in} \
                 --table ${table} \
                 --eqn ${eqn} \
                 --outfile ${outfile} \
                 $(if ${flg_dep}; then echo "--flg_dep"; fi) \
                 $(if ${flg_len}; then echo "--flg_len"; fi) \
-                $(if ${flg_in}; then echo "--flg_in"; fi) \
                 $(if ${flg_mc}; then echo "--flg_mc"; fi) \
                 --err_out ${err_out} \
                 --nam_job ${nam_job} \
                 --env_nam ${env_nam} \
-                --scr_par ${scr_par} \
+                --scr_met ${scr_met} \
                 --scr_alf ${scr_alf}
     fi
 else
-    #  Define the base GNU Parallel command, specifying the number of jobs to
-    #+ run, using named headers for input variables, and setting a comma as the
-    #+ column separator for input data
-    cmd_par="parallel --jobs ${par_job} --header : --colsep ','"
-
-    #  Define the main processing logic to be run by GNU Parallel; this block
-    #+ handles input file manipulation, alignment counting, scaling factor
-    #+ calculation, and output writing
-    # shellcheck disable=SC2016,SC2089
-    logic='
-        #  Set variables for IP and input files based on the input filename
-        file_ip={arr_infiles}
-        file_in=$(echo "${file_ip}" | sed "s:\/IP_:\/in_:g")
-
-        #  Check for required input files; if missing, print an error message
-        #+ and exit
-        if [[ ! -f "${file_ip}" || ! -f "${file_in}" ]]; then
-            echo \
-                "Error: Missing input file(s) for file_ip=${file_ip}," \
-                "file_in=${file_in}." >&2
-            exit 1
-        fi
-
-        #  Run the Python script to parse siQ-ChIP metadata and assign
-        #+ variables for measurements
-        source <(
-            python {scr_par} \
-                --text {table} \
-                --eqn {eqn}
-                --bam "${file_ip}" \
-                --shell
-        )
-
-        #  If --flg_dep, calculate sequencing depth (number of alignments) for
-        #+ IP and input samples
-        if {flg_dep}; then
-            dep_ip=$(samtools view -@ {threads} -c "${file_ip}")
-            dep_in=$(samtools view -@ {threads} -c "${file_in}")
-        fi
-
-        #  If --flg_len, calculate mean fragment length for IP and input
-        #+ samples (note the weird single-quoting here)
-        if {flg_len}; then
-            len_ip="$(
-                samtools view -@ {threads} "${file_ip}" \
-                    | awk '\''{
-                        if ($9 > 0) { sum += $9; count++ }
-                    } END {
-                        if (count > 0) { print sum / count }
-                    }'\'' 
-            )"
-            len_in="$(
-                samtools view -@ {threads} "${file_in}" \
-                    | awk '\''{
-                        if ($9 > 0) { sum += $9; count++ }
-                    } END {
-                        if (count > 0) { print sum / count }
-                    }'\'' 
-            )"
-        fi
-
-        # #  If --flg_len, calculate mean fragment length for IP and input
-        # #+ samples (here, the embedded awk scripts are passed as strings
-        # #+ using double quotes)
-        # if {flg_len}; then
-        #     len_ip="$(
-        #         samtools view -@ {threads} "${file_ip}" \
-        #             | awk "{ \
-        #                 if (\$9 > 0) { sum += \$9; count++ } \
-        #             } END { \
-        #                 if (count > 0) { print sum / count } \
-        #             }"
-        #     )"
-        #     len_in="$(
-        #         samtools view -@ {threads} "${file_in}" \
-        #             | awk "{ \
-        #                 if (\$9 > 0) { sum += \$9; count++ } \
-        #             } END { \
-        #                 if (count > 0) { print sum / count } \
-        #             }"
-        #     )"
-        # fi
-
-        #  Extract the sample name from the IP file for naming output entries
-        samp=$(basename "${file_ip}" | sed "s:IP_::; s:.bam::; s:\\.:_:g")
-
-        #  Calculate the siQ-ChIP alpha value using a specific, custom Python
-        #+ script
-        alpha=$(
-            python {scr_alf} \
-                --eqn ${eqn} \
-                --mass_ip ${mass_ip} \
-                --mass_in ${mass_in} \
-                --vol_all ${vol_all} \
-                --vol_in ${vol_in} \
-                --dep_ip ${dep_ip} \
-                --dep_in ${dep_in} \
-                --len_ip ${len_ip} \
-                --len_in ${len_in}
-        )
-
-        #  Write the calculated alpha value and optional metrics to the output
-        #+ file
-        if ! {flg_mc}; then
-            echo -e "${file_ip}\t${alpha}" >> {outfile}
-            if {flg_in}; then
-                echo -e "${file_in}\t#N/A" >> {outfile}
-            fi
-        else
-            echo -e "${file_ip}\t${alpha}\t${mass_ip}\t${mass_in}\t${vol_all}\t${vol_in}\t${dep_ip}\t${dep_in}\t${len_ip}\t${len_in}" \
-                >> {outfile}
-            if {flg_in}; then
-                echo -e "${file_in}\t#N/A\t${mass_ip}\t${mass_in}\t${vol_all}\t${vol_in}\t${dep_ip}\t${dep_in}\t${len_ip}\t${len_in}" \
-                    >> {outfile}
-            fi
-        fi
-    '
-
-    #  Define a helper function to run GNU Parallel with the specified logic
-    #+ and variables
-    function run_parallel() {
-        local cmd="${1}"
-
-        ${cmd} "${logic}" \
-            ::: arr_infiles "${arr_infiles[@]}" \
-            ::: threads "${threads}" \
-            ::: table "${table}" \
-            ::: eqn "${eqn}" \
-            ::: scr_par "${scr_par}" \
-            ::: scr_alf "${scr_alf}" \
-            ::: flg_dep "${flg_dep}" \
-            ::: flg_len "${flg_len}" \
-            ::: flg_mc "${flg_mc}" \
-            ::: flg_in "${flg_in}" \
-            ::: outfile "${outfile}"
-    }
-
-    #  If 'dry_run' or 'verbose' is enabled, run GNU Parallel in dry-run mode
-    #+ to display commands without executing them, capturing output and error
-    #+ logs
-    if ${dry_run} || ${verbose}; then
-        # #  Based on the presence of 'flg_mc', output the appropriate header
-        # if ! ${flg_mc}; then
-        #     echo -e "sample\talpha"
-        # else
-        #     echo -e "sample\talpha\tmass_ip\tmass_in\tvol_all\tvol_in\tdep_ip\tdep_in\tlen_ip\tlen_in"
-        # fi
-
-        #  Execute a dry-run of the parallel processing logic, capturing stdout
-        #+ and stderr logs for each job
-        run_parallel "${cmd_par} --dryrun" \
-             > >(
-                tee -a "${err_out}/${nam_job}.$(
-                    basename "${outfile}" ".txt"
-                ).stdout.txt"
-            ) \
-            2> >(
-                tee -a "${err_out}/${nam_job}.$(
-                    basename "${outfile}" ".txt"
-                ).stderr.txt"
-            )
-    fi
-
-    #  Run GNU Parallel for actual processing if 'dry_run' is not enabled,
-    #+ capturing output and error logs
-    if ! ${dry_run}; then
-        #  To prevent potential race conditions from concurrent writes,
-        #+ pre-write the header to the outfile before running GNU Parallel jobs
-        #+ (this avoids relying on 'flock', which seems to exhibit buggy
-        #+ behavior with GNU Parallel job execution); if 'flg_mc=true', include
-        #+ additional column names in the header
-        if ! ${flg_mc}; then
-            echo -e "sample\talpha" >> "${outfile}"
-        else
-            echo -e \
-                "sample\talpha\tmass_ip\tmass_in\tvol_all\tvol_in\tdep_ip\tdep_in\tlen_ip\tlen_in" \
-                    >> "${outfile}"
-        fi
-
-        #  Execute the parallel processing logic, capturing stdout and stderr
-        #+ logs for each job
-        run_parallel "${cmd_par}" \
-             >> >(
-                tee -a "${err_out}/${nam_job}.$(
-                    basename "${outfile}" ".txt"
-                ).stdout.txt"
-            ) \
-            2>> >(
-                tee -a "${err_out}/${nam_job}.$(
-                    basename "${outfile}" ".txt"
-                ).stderr.txt"
-            )
-    fi
+    :  #TODO
 fi
