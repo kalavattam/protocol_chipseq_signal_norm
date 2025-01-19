@@ -5,7 +5,7 @@
 
 
 #  Run script in interactive/test mode (true) or command-line mode (false)
-interactive=false
+interactive=true
 
 #  Exit on errors, unset variables, or pipe failures if not in "interactive
 #+ mode"
@@ -32,14 +32,9 @@ dir_fnc="${dir_scr}/functions"
     source "${dir_fnc}/check_flt_pos.sh"
     source "${dir_fnc}/check_format_time.sh"
     source "${dir_fnc}/check_int_pos.sh"
-    source "${dir_fnc}/check_mut_excl_args.sh"
-    source "${dir_fnc}/check_mut_excl_flags.sh"
     source "${dir_fnc}/check_program_path.sh"
     source "${dir_fnc}/check_str_delim.sh"
     source "${dir_fnc}/check_supplied_arg.sh"
-    source "${dir_fnc}/check_table.sh"
-    source "${dir_fnc}/check_table_column.sh"
-    source "${dir_fnc}/check_table_scaling_factor.sh"
     source "${dir_fnc}/debug_array_contents.sh"
     source "${dir_fnc}/echo_error.sh"
     source "${dir_fnc}/echo_warning.sh"
@@ -72,7 +67,6 @@ function set_interactive() {
     dir_aln="${dir_pro}/align_${aligner}_${a_type}"
     dir_bam="${dir_aln}/${det_bam}/sc"
     dir_cov="${dir_pro}/compute_coverage"
-    # dir_tbl="${dir_cov}/${det_cov}/alpha/tables"
     typ_trk="norm"
     dir_trk="${dir_cov}/${det_cov}/${typ_trk}/tracks"
 
@@ -92,15 +86,13 @@ function set_interactive() {
             --include "${include}" \
             --exclude "${exclude}"
     )"
-    # table=""
-    # table="IP_WT_G1-G2M-Q_Hho1-Hmo1_6336-6337_7750-7751.tsv"
-    tbl_col="none"  # "alpha"  # "scaled"
     dir_out="${dir_trk}"
-    typ_out="bdg"
+    typ_out="bdg.gz"
     siz_bin=10  # 30  # 1
-    scl_fct="none"  # "0.002054,0.003138,0.003127,0.003522,0.056611,0.02906"
+    scl_fct=""  # "0.002054,0.003138,0.003127,0.003522,0.056611,0.02906"
     typ_cvg="${typ_trk}"
-    usr_frg="none"
+    usr_frg=""
+    rnd=24
     err_out="${dir_trk}/logs"
     nam_job="compute_coverage"
     slurm=true
@@ -119,16 +111,15 @@ denom=4
 #  Initialize argument variables, assigning default values where applicable
 verbose=false
 dry_run=false
-threads=1
+threads=4
 infiles=""
-table=""
-tbl_col="none"  # "alpha"
 dir_out=""
-typ_out="bigwig"
+typ_out="bdg.gz"
 siz_bin=10
-scl_fct="none"
+scl_fct=""
 typ_cvg="norm"
-usr_frg="none"
+usr_frg=""
+rnd=24
 err_out=""
 nam_job="compute_coverage"
 slurm=false
@@ -139,17 +130,17 @@ time="0:30:00"
 show_help=$(cat << EOM
 Usage:
   execute_compute_coverage.sh
-    [--verbose] [--dry_run] --threads <int> --infiles <str> [--table <str>]
-    [--tbl_col <str>] --dir_out <str> --typ_out <str> --siz_bin <int>
-    [--scl_fct <flt>] --typ_cvg <str> [--usr_frg <flt>] --err_out <str>
-    --nam_job <str> [--slurm] [--max_job <int>] [--time <str>]
+    [--verbose] [--dry_run] --threads <int> --infiles <str> --dir_out <str>
+    --typ_out <str> --siz_bin <int> [--scl_fct <flt>] --typ_cvg <str>
+    [--usr_frg <flt>] --rnd <int> --err_out <str> --nam_job <str> [--slurm]
+    [--max_job <int>] [--time <str>]
 
 Description:
   The driver script 'execute_compute_coverage.sh' automates the calculation of
   coverage signal tracks from BAM files. It supports various normalization
   methods, including user-supplied scaling factors, normalized (probability
   distribution) coverage (per Dickson et al., Sci Rep 2023), and raw
-  (unadjusted) coverage. The script integrates with GNU Parallel or SLURM for
+  (unadjusted) coverage. The script integrates with SLURM or GNU Parallel for
   parallel processing.
 
 Arguments:
@@ -157,32 +148,23 @@ Arguments:
    -v, --verbose  Run script in 'verbose mode' (optional).
   -dr, --dry_run  Run script in 'dry-run mode' (optional).
    -t, --threads  Number of threads to use (default: ${threads}).
-   -i, --infiles  Comma-separated string vector of coordinate-sorted BAM
-                  infiles. Cannot be used with '--table'.
-  -tb, --table    Path to TSV infile listing BAM files with or without scaling
-                  factors. Columns must include 'sample' and, depending on the
-                  scaling factor type, 'sf', 'scaled', or 'alpha'. Cannot be
-                  used with '--infiles'.
-  -tc, --tbl_col  Specify the column in '--table' that contains scaling
-                  factors ('sf', 'scaled', or 'alpha'), or use 'none' to ignore
-                  scaling factors in the table (default: '${tbl_col}'). This
-                  argument is required if '--table' is specified. If '--scl_fct'
-                  is set to any value other than 'none', it takes precedence
-                  over '--tbl_col'. Ignored if '--table' is not specified.
+   -i, --infiles  Comma-separated string of coordinate-sorted BAM infiles.
   -do, --dir_out  Directory to write coverage signal track outfiles.
-  -to, --typ_out  Format of coverage signal track outfiles: 'bedgraph' (or
-                  'bdg' or 'bg'), 'bigwig' (or 'bw'), or 'both'. Alternatively,
-                  one can set '--typ_out bed' to output alignments processed by
-                  function parse_bam() BED-like format (note: these are not
-                  coverage values; default: '${typ_out}').
+  -to, --typ_out  Format of coverage signal track outfiles: 'bedgraph',
+                  'bedgraph.gz', 'bdg', 'bdg.gz', 'bg', 'bg.gz', 'bed', or
+                  'bed.gz' (default: '${typ_out}').
+                    - 'bedgraph', 'bdg', 'bg': BEDGRAPH format (coverage).
+                    - 'bedgraph.gz', 'bdg.gz', 'bg.gz': gzip-compressed
+                       BEDGRAPH format.
+                    - 'bed', 'bed.gz': BED-like format (fragment coordinates,
+                      not coverage signal). Using this option will cause
+                      arguments such as '--siz_bin' and '--typ_cvg' to be
+                      ignored.
   -sb, --siz_bin  Bin size for coverage calculation in base pairs (default:
                   ${siz_bin}).
-  -sf, --scl_fct  Comma-separated string vector of scaling factors to apply to
-                  coverage (optional; default: '${scl_fct}'). Must match the
-                  number of infiles via '--infiles' or '--table'. If used with
-                  '--table', these values override those in the specified
-                  column (via '--tbl_col') with a warning. To explicitly avoid
-                  applying a scaling factor with a table, set '--scl_fct none'.
+  -sf, --scl_fct  Comma-separated string of scaling factors to apply to
+                  coverage (optional). Must match the number of infiles via
+                  '--infiles'.
   -tv, --typ_cvg  Specify coverage calculation type (default: 'norm'). Options:
                     - 'raw', 'unadj', 'unadjusted': Compute unadjusted
                       coverage.
@@ -190,12 +172,12 @@ Arguments:
                     - 'norm', 'normalized': Per Dickson et al., Sci Rep 2023
                       (PMID: 37160995), normalize coverage by fragment length
                       and total fragments/unity.
-  -uf, --usr_frg  Comma-separated string vector of fragment lengths to use
-                  instead of read lengths (single-end alignments) or template
-                  lengths (paired-end alignments; optional; default:
-                  '${usr_frg}'). Must match the number of infiles via
-                  '--infiles' or '--table'. To explicitly avoid applying a
-                  fragment length, set '--usr_frg none'.
+  -uf, --usr_frg  Comma-separated string of fragment lengths to use instead of
+                  read lengths (single-end alignments) or template lengths
+                  (paired-end alignments; optional). Must match the number of
+                  infiles via '--infiles'.
+   -r, --rnd      Number of decimal places for rounding signal (coverage score)
+                  values (default: ${rnd}).
   -eo, --err_out  The directory to store stderr and stdout TXT outfiles
                   (default: "\${dir_out}/err_out").
   -nj, --nam_job  Prefix for the names of jobs (default: '${nam_job}').
@@ -222,14 +204,9 @@ Dependencies:
     + check_flt_pos
     + check_format_time
     + check_int_pos
-    + check_mut_excl_args
-    + check_mut_excl_flags
     + check_program_path
     + check_str_delim
     + check_supplied_arg
-    + check_table
-    + check_table_column
-    + check_table_scaling_factor
     + debug_array_contents
     + echo_error
     + echo_warning
@@ -254,37 +231,13 @@ Examples:
       --threads 8
       --infiles "\${HOME}/path/to/sample1.bam,\${HOME}/path/to/sample2.bam"
       --dir_out "\${HOME}/path/to/outfiles"
-      --typ_out "bigwig"
+      --typ_out "bdg.gz"
       --siz_bin 50
       --typ_cvg "norm"
       --err_out "\${HOME}/path/to/outfiles/logs"
       --nam_job "coverage_calculation"
 
-  #  Example 2: Run with SLURM and '--table' and '--tbl_col'
-  bash "\${HOME}/path/to/scripts/execute_compute_coverage.sh"
-      --threads 8
-      --table "\${HOME}/path/to/table.tsv"
-      --tbl_col "scaled"
-      --dir_out "\${HOME}/path/to/outfiles"
-      --typ_out "both"
-      --siz_bin 5
-      --slurm
-      --max_job 10
-      --time "0:20:00"
-      --err_out "\${HOME}/path/to/outfiles/logs"
-      --nam_job "slurm_coverage"
-
-  #  Example 3: Run with SLURM and '--table' and '--typ_cvg'
-  bash "\${HOME}/path/to/scripts/execute_compute_coverage.sh"
-      --threads 8
-      --table "\${HOME}/path/to/table.tsv"
-      --typ_cvg "norm"
-      --dir_out "\${HOME}/path/to/outfiles"
-      --typ_out "bedgraph"
-      --siz_bin 10
-      --slurm
-      --err_out "\${HOME}/path/to/outfiles/logs"
-      --nam_job "compute_coverage"
+  #  Example 2: #TODO
   \`\`\`
 EOM
 )
@@ -304,14 +257,13 @@ else
             -dr|--dry_run) dry_run=true;     shift 1 ;;
              -t|--threads) threads="${2}";   shift 2 ;;
              -i|--infiles) infiles="${2}";   shift 2 ;;
-            -tb|--table)   table="${2}";     shift 2 ;;
-            -tc|--tbl_col) tbl_col="${2,,}"; shift 2 ;;
             -do|--dir_out) dir_out="${2}";   shift 2 ;;
             -to|--typ_out) typ_out="${2,,}"; shift 2 ;;
             -sb|--siz_bin) siz_bin="${2}";   shift 2 ;;
             -sf|--scl_fct) scl_fct="${2}";   shift 2 ;;
             -tv|--typ_cvg) typ_cvg="${2}";   shift 2 ;;
             -uf|--usr_frg) usr_frg="${2}";   shift 2 ;;
+             -r|--rnd)     rnd="${2}";       shift 2 ;;
             -eo|--err_out) err_out="${2}";   shift 2 ;;
             -nj|--nam_job) nam_job="${2}";   shift 2 ;;
             -sl|--slurm)   slurm=true;       shift 1 ;;
@@ -342,64 +294,21 @@ check_exists_file_dir "f" "${scr_cvg}" "scr_cvg"
 
 #  Check that denominator is supplied
 check_supplied_arg -a "${denom}" -n "denom"
+check_int_pos "${denom}" "denom"
 
 #  Check that threads value is supplied and is a positive integer
 check_supplied_arg -a "${threads}" -n "threads"
 check_int_pos "${threads}" "threads"
 
-#  Check that '--infiles' and '--table' are mutually exclusive
-check_mut_excl_args "infiles" "${infiles}" "table" "${table}"
+#  Check that '--infiles' is supplied
+check_supplied_arg -a "${infiles}" -n "infiles"
+check_str_delim "infiles" "${infiles}"
 
-#  Validate '--infiles' or '--table'
-if [[ -n "${infiles}" ]]; then
-    #  Validate existence of directory containing infiles 
-    check_exists_file_dir "d" "$(dirname "${infiles%%[,;]*}")" "infiles"
+#  Validate existence of directory containing infiles 
+check_exists_file_dir "d" "$(dirname "${infiles%%[,;]*}")" "infiles"
 
-    #  Ensure '--infiles' is not empty or improperly formatted
-    check_str_delim "infiles" "${infiles}"
-elif [[ -n "${table}" ]]; then
-    #  Validate existence of table file
-    check_exists_file_dir "f" "${table}" "table"
-
-    #  Validate table isn't empty by checking its number of lines
-    check_table "${table}"
-
-    #  Ensure '--tbl_col' is specified and valid
-    check_supplied_arg -a "${tbl_col}" -n "tbl_col"
-    case "${tbl_col}" in
-        alpha|scaled|sf|none) : ;;  # Valid options
-        *)
-            echo_error \
-                "Selection associated with '--tbl_col' is not valid:" \
-                "${tbl_col}. Selection must be 'alpha', 'scaled', 'sf', or" \
-                "'none'."
-            exit_1
-            ;;
-    esac
-
-    #  Skip further checks for '--tbl_col none'
-    if [[ "${tbl_col}" != "none" ]]; then
-        #  If present, trim leading/trailing whitespace from 'tbl_col'
-        tbl_col=$(echo "${tbl_col}" | xargs)
-
-        #  Validate 'tbl_col' exists in the table header
-        check_table_column "${table}" "${tbl_col}"
-    fi
-
-    #  Warn if '--scl_fct' overrides '--tbl_col'
-    if [[ -n "${scl_fct}" && "${scl_fct}" != "none" ]]; then
-        if [[ "${tbl_col}" == "none" ]]; then
-            echo_warning \
-                "Scaling factors provided via '--scl_fct' override the" \
-                "absence or non-specification a column in the table:" \
-                "'--table ${table} --tbl_col none'."
-        else
-            echo_warning \
-                "Scaling factors provided via '--scl_fct' override those in the" \
-                "table: '--table ${table} --tbl_col ${tbl_col}'."
-        fi
-    fi
-fi
+#  Ensure '--infiles' is not empty or improperly formatted
+check_str_delim "infiles" "${infiles}"
 
 #  Check that output directory is supplied and exists
 check_supplied_arg -a "${dir_out}" -n "dir_out"
@@ -408,12 +317,12 @@ check_exists_file_dir "d" "${dir_out}" "dir_out"
 #  Check that output type is supplied and valid
 check_supplied_arg -a "${typ_out}" -n "typ_out"
 case "${typ_out}" in
-    bedgraph|bdg|bg|bigwig|bw|both|bed) : ;;  # Valid options
+    bedgraph|bedgraph.gz|bdg|bdg.gz|bg|bg.gz|bed|bed.gz) : ;;  # Valid options
     *)
         echo_error \
             "Selection associated with '--typ_out' is not valid:" \
-            "'${typ_out}'. Selection must be 'bedgraph', 'bdg', 'bg'," \
-            "'bigwig', 'bw', 'both', or 'bed'."
+            "'${typ_out}'. Expected 'bedgraph', 'bedgraph.gz', 'bdg'," \
+            "'bdg.gz', 'bg', 'bg.gz', 'bed', or 'bed.gz'."
         exit_1
         ;;
 esac
@@ -423,24 +332,7 @@ check_supplied_arg -a "${siz_bin}" -n "siz_bin"
 check_int_pos "${siz_bin}" "siz_bin"
 
 #  If supplied, check that '--scl_fct' is properly formatted
-if [[ -n "${scl_fct}" ]]; then
-    if [[ "${scl_fct}" != "none" ]]; then
-        check_str_delim "scl_fct" "${scl_fct}"
-    fi
-fi
-
-#  If applicable, warn about '--scl_fct' overriding scaling factors in the table
-if [[ -n "${table}" && -n "${scl_fct}" && "${scl_fct}" != "none" ]]; then
-    if [[ "${tbl_col}" != "none" ]]; then
-        echo_warning \
-            "Scaling factors provided via '--scl_fct' override those in the" \
-            "table: '--table ${table} --tbl_col ${tbl_col}'."
-    else
-        echo_warning \
-            "Scaling factors provided via '--scl_fct' are being used even" \
-            "though '--tbl_col none' is specified for '--table ${table}'."
-    fi
-fi
+if [[ -n "${scl_fct}" ]]; then check_str_delim "scl_fct" "${scl_fct}"; fi
 
 #  Default to '--typ_cvg raw' if no normalization is provided
 if [[ -z "${typ_cvg}" ]]; then
@@ -455,20 +347,20 @@ else
         norm|normalized) : ;;       # Valid options for "normalized" coverage
         *)
             echo_error \
-                "Invalid value for '--typ_cvg': '${typ_cvg}'. Expected one" \
-                "of 'raw', 'unadj', 'unadjusted', 'len', 'len_frag', 'norm'," \
-                "or 'normalized'."
+                "Invalid value for '--typ_cvg': '${typ_cvg}'. Expected" \
+                "'raw', 'unadj', 'unadjusted', 'len', 'len_frag', 'norm', or" \
+                "'normalized'."
             exit_1
             ;;
     esac
 fi
 
 #  If applicable, ensure '--usr_frg' is not empty or improperly formatted
-if [[ -n "${usr_frg}" ]]; then
-    if [[ "${usr_frg}" != "none" ]]; then
-        check_str_delim "usr_frg" "${usr_frg}"
-    fi
-fi
+if [[ -n "${usr_frg}" ]]; then check_str_delim "usr_frg" "${usr_frg}"; fi
+
+#  Validate '--rnd'
+check_supplied_arg -a "${rnd}" -n "rnd"
+check_int_pos "${rnd}" "rnd"
 
 #  Check that stderr/stdout directory is supplied and exists, or assign default
 if [[ -n "${err_out}" ]]; then
@@ -521,8 +413,8 @@ if ${verbose}; then
             ;;
         norm|normalized)
             mth_nrm="Generating normalized coverage (Dickson et al., Sci Rep"
-            mth_nrm+=" 2023) via fragment-length and unity normalization:"
-            mth_nrm+=" '--typ_cvg ${typ_cvg}'."
+            mth_nrm+=" 2023) via combined fragment-length and unity"
+            mth_nrm+=" normalization: '--typ_cvg ${typ_cvg}'."
             ;;
         *)
             #  Should not be possible to see this
@@ -530,21 +422,16 @@ if ${verbose}; then
             ;;
     esac
 
-    if [[ "${scl_fct}" != "none" ]]; then
+    if [[ -n "${scl_fct}" ]]; then
         src_scl="Custom multiplicative scaling factor(s):"
         src_scl+=" '--scl_fct ${scl_fct}'."
-    elif [[
-        -n "${table}" && -n "${tbl_col}" && "${tbl_col}" != "none"
-    ]]; then
-        src_scl="Custom multiplicative scaling factor(s) via table column:"
-        src_scl+=" '--tbl_col ${tbl_col}'."
     else
         src_scl="No multiplicative scaling factor(s)."
     fi
 
     #  Print debug summary
     echo "##############################"
-    echo "## Resolved Argument States ##"
+    echo "## Resolved argument states ##"
     echo "##############################"
     echo ""
     echo "- Normalization method: ${mth_nrm}"
@@ -563,96 +450,40 @@ check_program_path python
 if ${slurm}; then check_program_path sbatch; fi
 
 
-#  Parse and validate table and/or vector elements ----------------------------
-#  If applicable, parse values associated with '--table'  #TODO: Modularize
-if [[ -n "${table}" ]]; then
-    #  Read the table's header to determine available columns
-    header=$(awk 'NR == 1' "${table}")
-    IFS=$'\t' read -r -a arr_header <<< "${header}"
+#  Parse and validate vector elements -----------------------------------------
+#  Parse '--infiles'
+IFS=',' read -r -a arr_infile <<< "${infiles}"
 
-    #  Determine indices of relevant columns
-    idx_smp=-1
-    idx_sf=-1
-    idx_scl=-1
-    idx_alf=-1
-    for i in "${!arr_header[@]}"; do
-        case "${arr_header[i]}" in
-            sample) idx_smp=${i} ;;
-            sf)     idx_sf=${i}  ;;
-            scaled) idx_scl=${i} ;;
-            alpha)  idx_alf=${i} ;;
-        esac
-    done
-
-    #  Initialize arrays to store values
-    unset arr_infile && typeset -a arr_infile
-    unset arr_sf      && typeset -a arr_sf
-    unset arr_scaled  && typeset -a arr_scaled
-    unset arr_alpha   && typeset -a arr_alpha
-
-    #  Parse the table rows, skipping the header
-    while IFS=$'\t' read -r row; do
-        IFS=$'\t' read -r -a fields <<< "${row}"
-
-        #  Extract the 'sample' column (always present)
-        arr_infile+=( "${fields[idx_smp]}" )
-
-        #  Extract scaling factor columns if present
-        [[ ${idx_sf}  -ne -1 ]] && arr_sf+=( "${fields[idx_sf]}" )
-        [[ ${idx_scl} -ne -1 ]] && arr_scaled+=( "${fields[idx_scl]}" )
-        [[ ${idx_alf} -ne -1 ]] && arr_alpha+=( "${fields[idx_alf]}" )
-    done < <(awk 'NR > 1' "${table}")
-
-    #  Dynamically assign arr_scl_fct based on tbl_col
-    unset arr_scl_fct && typeset -a arr_scl_fct
-    if [[ -z "${scl_fct}" && -z "${typ_cvg}" ]]; then
-        eval "arr_scl_fct=( \"\${arr_${tbl_col}[@]}\" )"
-    fi
-fi
-
-#  If applicable, parse '--infiles'
-if [[ -n "${infiles}" ]]; then
-    IFS=',' read -r -a arr_infile <<< "${infiles}"
-fi
-
-#  Having parsed '--table' or '--infiles', validate each infile exists
-check_array_files "infiles/table" "${arr_infile[@]}"
+#  Validate each infile exists
+check_array_files "infiles" "${arr_infile[@]}"
 
 #  Based on 'arr_infile' and 'dir_out', construct outfile paths, using them to
 #+ populate 'arr_outfile'
 unset arr_outfile && typeset -a arr_outfile
 for i in "${arr_infile[@]}"; do
-    if [[ "${tbl_col}" == "scaled" || "${tbl_col}" == "sf" ]]; then
-        arr_outfile+=( "${dir_out}/$(basename "${i}" .bam).${tbl_col}" )
-    else
-        arr_outfile+=( "${dir_out}/$(basename "${i}" .bam)" )
-    fi
+    arr_outfile+=( "${dir_out}/$(basename "${i}" .bam).${typ_out}" )
 done
 
-#  If applicable, parse '--scl_fct'
-if [[ -n "${scl_fct}" && "${scl_fct}" != "none" ]]; then
+#  If applicable, parse and validate '--scl_fct'
+if [[ -z "${scl_fct}" ]]; then
+    unset arr_scl_fct && typeset -a arr_scl_fct
+    populate_array_empty arr_scl_fct "${#arr_infile[@]}"
+else
     IFS=',' read -r -a arr_scl_fct <<< "${scl_fct}"
 fi
 
-#  If empty or "none", populate '--scl_fct' array with "#N/A"
-populate_array_empty arr_scl_fct "${#arr_infile[@]}"
-
-#  Having parsed '--table' or '--scl_fct', validate each scaling factor as a
-#+ positive float (if applicable)
 for s in "${arr_scl_fct[@]}"; do
     if [[ "${s}" != "#N/A" ]]; then check_flt_pos "${s}" "scl_fct"; fi
 done
 
 #  If applicable, parse and validate '--usr_frg'
-if [[ -n "${usr_frg}" && "${usr_frg}" != "none" ]]; then
+if [[ -z "${usr_frg}" ]]; then
+    unset arr_usr_frg && typeset -a arr_usr_frg
+    populate_array_empty arr_usr_frg "${#arr_infile[@]}"
+else
     IFS=',' read -r -a arr_usr_frg <<< "${usr_frg}"
 fi
 
-#  If empty or "none", populate '--usr_frg' array with "#N/A"
-populate_array_empty arr_usr_frg "${#arr_infile[@]}"
-
-#  Having parsed '--usr_frg', validate each scaling factor as a positive float
-#+ (if applicable)
 for u in "${arr_usr_frg[@]}"; do
     if [[ "${u}" != "#N/A" ]]; then check_flt_pos "${u}" "usr_frg"; fi
 done
@@ -660,8 +491,8 @@ done
 
 #  Ensure matching element counts between 'arr_infile' and the other arrays
 check_arrays_lengths "outfiles" arr_outfile "infiles" arr_infile
-check_arrays_lengths "scl_fct"  arr_scl_fct  "infiles" arr_infile
-check_arrays_lengths "usr_frg"  arr_usr_frg  "infiles" arr_infile
+check_arrays_lengths "scl_fct"  arr_scl_fct "infiles" arr_infile
+check_arrays_lengths "usr_frg"  arr_usr_frg "infiles" arr_infile
 
 #  Reset 'max_job' if it is greater than the number of infiles
 if ${slurm}; then
@@ -706,15 +537,13 @@ if ${verbose}; then
     echo "verbose=${verbose}"
     echo "dry_run=${dry_run}"
     echo "threads=${threads}"
-    echo "infiles=${infiles:-#N/A}"
-    echo "table=${table:-#N/A}"
-    echo "tbl_col=${tbl_col:-#N/A}"
+    echo "infiles=${infiles}"
     echo "dir_out=${dir_out}"
     echo "typ_out=${typ_out}"
     echo "siz_bin=${siz_bin}"
-    echo "scl_fct=${scl_fct:-#N/A}"
+    echo "scl_fct=${scl_fct}"
     echo "typ_cvg=${typ_cvg}"
-    echo "usr_frg=${usr_frg:-#N/A}"
+    echo "usr_frg=${usr_frg}"
     echo "err_out=${err_out}"
     echo "nam_job=${nam_job}"
     echo "slurm=${slurm}"
@@ -742,9 +571,9 @@ outfiles=$(echo "${arr_outfile[*]}" | tr ' ' ',')
  usr_frg=$(echo "${arr_usr_frg[*]}" | tr ' ' ',')
 
 if ${verbose}; then
-    echo "##################################################"
-    echo "## Variable assignments constructed from arrays ##"
-    echo "##################################################"
+    echo "###############################################################"
+    echo "## Variable assignments re- or newly constructed from arrays ##"
+    echo "###############################################################"
     echo ""
     echo "infiles=\"${infiles}\""
     echo "outfiles=\"${outfiles}\""
@@ -775,11 +604,11 @@ if ${slurm}; then
         echo "            ${threads} \\"
         echo "            ${infiles} \\"
         echo "            ${outfiles} \\"
-        echo "            ${typ_out} \\"
         echo "            ${siz_bin} \\"
         echo "            ${typ_cvg} \\"
         echo "            ${scl_fct} \\"
         echo "            ${usr_frg} \\"
+        echo "            ${rnd} \\"
         echo "            ${err_out} \\"
         echo "            ${nam_job}"
         echo ""
@@ -820,11 +649,11 @@ if ${slurm}; then
                     ${threads} \
                     ${infiles} \
                     ${outfiles} \
-                    ${typ_out} \
                     ${siz_bin} \
                     ${typ_cvg} \
                     ${scl_fct} \
                     ${usr_frg} \
+                    ${rnd} \
                     ${err_out} \
                     ${nam_job}
     fi
@@ -847,11 +676,11 @@ else
                 "${threads}" \
                 "${arr_infile[i]}" \
                 "${arr_outfile[i]}" \
-                "${typ_out}" \
                 "${siz_bin}" \
                 "${typ_cvg}" \
                 "${arr_scl_fct[i]}" \
                 "${arr_usr_frg[i]}" \
+                "${rnd}" \
                 "${err_out}" \
                 "${nam_job}" \
                     >> "${config}"
@@ -885,11 +714,11 @@ else
             echo "    ${threads} \\"
             echo "    ${infiles} \\"
             echo "    ${outfiles} \\"
-            echo "    ${typ_out} \\"
             echo "    ${siz_bin} \\"
             echo "    ${typ_cvg} \\"
             echo "    ${scl_fct} \\"
             echo "    ${usr_frg} \\"
+            echo "    ${rnd} \\"
             echo "    ${err_out} \\"
             echo "    ${nam_job} \\"
             echo "         > ${pth_std}.stdout.txt \\"
@@ -905,33 +734,15 @@ else
                 "${threads}" \
                 "${infiles}" \
                 "${outfiles}" \
-                "${typ_out}" \
                 "${siz_bin}" \
                 "${typ_cvg}" \
                 "${scl_fct}" \
                 "${usr_frg}" \
+                "${rnd}" \
                 "${err_out}" \
                 "${nam_job}" \
                      > "${pth_std}.stdout.txt" \
                     2> "${pth_std}.stderr.txt"
-
-            # for i in "${!arr_infile[@]}"; do
-            #     bash "${scr_sub}" \
-            #         "${env_nam}" \
-            #         "${scr_cvg}" \
-            #         "${threads}" \
-            #         "${arr_infile[i]}" \
-            #         "${arr_outfile[i]}" \
-            #         "${typ_out}" \
-            #         "${siz_bin}" \
-            #         "${typ_cvg}" \
-            #         "${arr_scl_fct[i]}" \
-            #         "${arr_usr_frg[i]}" \
-            #         "${err_out}" \
-            #         "${nam_job}" \
-            #              > "${err_out}/${nam_job}.$(basename "${arr_outfile[i]}").stdout.txt" \
-            #             2> "${err_out}/${nam_job}.$(basename "${arr_outfile[i]}").stderr.txt"
-            # done
         fi
     fi
 fi

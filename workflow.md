@@ -31,7 +31,7 @@ Note: For detailed instructions on keeping your local version of the [`protocol_
     1. [C. Obtain and organize ChIP-seq FASTQ files.](#c-obtain-and-organize-chip-seq-fastq-files)
     1. [D. Use Atria to perform adapter and quality trimming of sequenced reads.](#d-use-atria-to-perform-adapter-and-quality-trimming-of-sequenced-reads)
     1. [E. Align sequenced reads with Bowtie 2 and process the read alignments.](#e-align-sequenced-reads-with-bowtie-2-and-process-the-read-alignments)
-    1. [F. Compute normalized \(proportional\) or raw coverage.](#f-compute-normalized-proportional-or-raw-coverage)
+    1. [F. Compute normalized coverage.](#f-compute-normalized-coverage)
     1. [G. Compute coverage with the sans spike-in quantitative ChIP-seq \(siQ-ChIP\) method.](#g-compute-coverage-with-the-sans-spike-in-quantitative-chip-seq-siq-chip-method)
     1. [H. Compute coverage using the spike-in method.](#h-compute-coverage-using-the-spike-in-method)
 
@@ -583,18 +583,18 @@ bash "${dir_scr}/compress_remove_files.sh" --dir_fnd "${dir_out}/sp/logs"
 </details>
 <br />
 
-<a id="f-compute-normalized-proportional-or-raw-coverage"></a>
-### F. Compute normalized (proportional) or raw coverage.
+<a id="f-compute-normalized-coverage"></a>
+### F. Compute normalized coverage.
 <details>
-<summary><i>Text: Compute normalized (proportional) or raw coverage..</i></summary>
+<summary><i>Text: Compute normalized raw coverage..</i></summary>
 <br />
 
-This following Bash code chunk provides an example of how to compute ChIP-seq coverage, either as raw (unadjusted for sequencing depth or other technical biases) or normalized (fractional) per [Dickson et al., *Sci Rep*, 2023](https://www.nature.com/articles/s41598-023-34430-2). The coverage type is determined by setting the variable `typ_cov` to `"raw"` or `"norm"`. BIGWIG and log output files will be saved to separate directories based on the selected coverage type.
+This following Bash code chunk provides an example of how to compute normalized ChIP-seq coverage per [Dickson et al., *Sci Rep*, 2023](https://www.nature.com/articles/s41598-023-34430-2). The coverage type is determined by setting the variable `typ_cvg` to `"raw"` or `"norm"`. BIGWIG and log output files will be saved to separate directories based on the selected coverage type.
 </details>
 <br />
 
 <details>
-<summary><i>Bash code: Compute raw or normalized (fractional) coverage.</i></summary>
+<summary><i>Bash code: Compute normalized coverage.</i></summary>
 
 ```bash
 #!/bin/bash
@@ -620,19 +620,19 @@ flg="$(if ${req_flg}; then echo "2"; else echo "NA"; fi)"
 mapq=1
 det_bam="flag-${flg}_mapq-${mapq}"
 det_cvg="${aligner}_${a_type}_${det_bam}"
-typ_cov="norm"  ## WARNING: "raw" for unadjusted, "norm" for normalized ##
+typ_cvg="norm"  ## WARNING: "norm" for normalized ##
 
 #  Further define directory setup
 dir_aln="${dir_pro}/align_${aligner}_${a_type}"
 dir_bam="${dir_aln}/${det_bam}/sc"
 dir_cvg="${dir_pro}/compute_coverage"
-dir_trk="${dir_cvg}/${det_cvg}/${typ_cov}/tracks"
+dir_trk="${dir_cvg}/${det_cvg}/${typ_cvg}/tracks"
 
 #  Define driver script
 exc_cvg="${dir_scr}/execute_compute_coverage.sh"
 
 #  Define script arguments, environment, and resources
-nam_job="compute_coverage_${typ_cov}"
+nam_job="compute_coverage_${typ_cvg}"
 typ_out="bigwig"
 threads=8
 siz_bin=1
@@ -644,16 +644,17 @@ exc_pth="${dir_trk}/logs/${day}.execute.${nam_job}"
 #  Define file search parameters
 ## WARNING: Change search parameters as needed ##
 pattern="*.bam"
+exclude="*Brn1*"
 infiles="$(
     bash "${dir_scr}/find_files.sh" \
         --dir_fnd "${dir_bam}" \
-        --pattern "${pattern}"
+        --pattern "${pattern}" \
+        --exclude "${exclude}"
 )"
 
 
 #  Create required directories if necessary -----------------------------------
-mkdir -p ${dir_cvg}/${det_cvg}/{alpha,spike}/tables/{docs,logs}
-mkdir -p ${dir_cvg}/${det_cvg}/{alpha,norm,raw,spike}/tracks/{docs,logs}
+mkdir -p echo ${dir_cvg}/${det_cvg}/norm/tracks/{docs,logs}
 
 
 #  Activate the environment and check dependencies ----------------------------
@@ -677,6 +678,8 @@ check_program_path sbatch ||
 
 
 #  Compute coverage -----------------------------------------------------------
+python "${dir_scr}/compute_coverage.py"
+
 bash "${exc_cvg}" \
     --verbose \
     --threads "${threads}" \
@@ -684,7 +687,7 @@ bash "${exc_cvg}" \
     --dir_out "${dir_trk}" \
     --typ_out "${typ_out}" \
     --siz_bin "${siz_bin}" \
-    $(if [[ "${typ_cov}" == "norm" ]]; then echo "--norm"; fi) \
+    $(if [[ "${typ_cvg}" == "norm" ]]; then echo "--norm"; fi) \
     --err_out "${err_out}" \
     --nam_job "${nam_job}" \
     --slurm \
@@ -918,9 +921,43 @@ check_program_path sbatch ||
 
 
 #  Calculate siQ-ChIP alpha scaling factors -----------------------------------
+#  Debug call to alpha computation driver script, etc.
+if ${debug}; then
+    echo "###################################################"
+    echo "## Call to alpha computation driver script, etc. ##"
+    echo "###################################################"
+    echo ""
+    echo "if [[ ! -f ${fil_tbl} ]]; then"
+    echo "    bash ${dir_scr}/execute_calculate_scaling_factor_${typ_cvg}.sh \\"
+    echo "        --verbose \\"
+    echo "        --threads ${threads} \\"
+    echo "        --ser_ip ${ser_ip} \\"
+    echo "        --ser_in ${ser_in} \\"
+    echo "        --table ${tbl_mes} \\"
+    echo "        --eqn ${eqn} \\"
+    echo "        --outfile ${fil_tbl} \\"
+    echo "        --err_out ${dir_alf}/tables/logs \\"
+    echo "        --flg_dep \\"
+    echo "        --flg_len \\"
+    echo "        --flg_mc \\"
+    echo "        --slurm \\"
+    echo "             >> >(tee -a ${exc_tbl}.stdout.txt) \\"
+    echo "            2>> >(tee -a ${exc_tbl}.stderr.txt)"
+    echo "fi"
+    echo ""
+    echo "if [[ -f ${fil_tbl} ]]; then"
+    echo "    awk 'NR == 1; NR > 1 && NF { print | "sort" }' ${fil_tbl} \\"
+    echo "        > ${dir_alf}/tables/tmp.tsv"
+    echo ""
+    echo "    mv -f ${dir_alf}/tables/tmp.tsv ${fil_tbl}"
+    echo "fi"
+    echo ""
+    echo ""
+fi
+
+#  Run the driver script to generate a TSV file of sample-specific siQ-ChIP
+#+ alpha scaling factors
 if [[ ! -f "${fil_tbl}" ]]; then
-    #  Run the driver script to generate a TSV file of sample-specific siQ-ChIP
-    #+ alpha scaling factors
     bash "${dir_scr}/execute_calculate_scaling_factor_${typ_cvg}.sh" \
         --verbose \
         --threads "${threads}" \
@@ -951,7 +988,9 @@ fi
 
 
 #  Generate raw and normalized coverage tracks --------------------------------
-#  If necessary, decompress files and rename extension
+#HERE 2025-0118: Regenerate normalized coverage tracks with new bespoke scripts 
+
+#TB∆: If necessary, decompress files and rename extension
 find \
     "${dir_nrm}/tracks" \
     -type f \
