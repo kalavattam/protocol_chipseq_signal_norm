@@ -35,7 +35,7 @@
 #                             '6nd'.
 #     -mp, --mass_ip (float): Mass of the IP sample.
 #     -mn, --mass_in (float): Mass of the input sample.
-#     -vp, --vol_all (float): Volume of sample before removal of input.
+#     -va, --vol_all (float): Volume of sample before removal of input.
 #     -vn, --vol_in  (float): Volume of the input sample.
 #     -dp, --dep_ip    (int): Sequencing depth of the IP sample.
 #     -dn, --dep_in    (int): Sequencing depth of the input sample.
@@ -214,7 +214,7 @@ def parse_args():
                                 or '6nd'.
         -mp, --mass_ip (float): Mass of the IP sample.
         -mn, --mass_in (float): Mass of the input sample.
-        -vp, --vol_all (float): Volume of sample before removal of input.
+        -va, --vol_all (float): Volume of sample before removal of input.
         -vn, --vol_in  (float): Volume of the input sample.
         -dp, --dep_ip    (int): Sequencing depth of the IP sample (required for
                                 --eqn 5 or --eqn 6; otherwise ignored).
@@ -257,7 +257,7 @@ def parse_args():
         help='Mass of input sample.'
     )
     parser.add_argument(
-        '-vp', '--vol_all',
+        '-va', '--vol_all',
         type=float,
         required=True,
         help='Volume of sample before removal of input.'
@@ -301,7 +301,7 @@ def parse_args():
     parser.add_argument(
         '-ra', '--rnd_alf',
         type=int,
-        default=20,
+        default=24,
         required=False,
         help='Number of decimal places for rounding alpha.'
     )

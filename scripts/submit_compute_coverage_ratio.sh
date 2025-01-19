@@ -39,16 +39,16 @@ function set_logs() {
 
 function set_args_opt() {
     unset optional && typeset -a optional
-    if [[ -n "${typ_cvg}" ]]; then
-        optional+=( --typ_cvg "${typ_cvg}" )
-    fi
-
     if [[ -n "${scl_fct}" && "${scl_fct}" != "#N/A" ]]; then
         optional+=( --scl_fct "${scl_fct}" )
     fi
 
-    if [[ "${usr_frg}" != "#N/A" ]]; then
-        optional+=( --usr_frg "${usr_frg}" )
+    if [[ -n "${dep_min}" && "${dep_min}" != "#N/A" ]]; then
+        optional+=( --dep_min "${dep_min}" )
+    fi
+
+    if [[ "${log2}" == "true" ]]; then
+        optional+=( --log2 )
     fi
 
     if [[ -n "${rnd}" && "${rnd}" != "#N/A" ]]; then
@@ -60,34 +60,33 @@ function set_args_opt() {
 #  Display help message if no arguments or help option is given
 show_help=$(cat << EOM
 \${1}=env_nam       # str: Name of Conda/Mamba environment to activate
-\${2}=scr_cvg       # str: Path to coverage script
-\${3}=threads       # int: Number of threads to use
-\${4}=str_infile    # str: Comma-separated string of infiles
-\${5}=str_outfile   # str: Comma-separated string of outfile stems
-\${6}=siz_bin       # int: Bin size in base pairs
-\${7}=typ_cvg       # str: Type of coverage to compute
-\${8}=str_scl_fct   # flt: Comma-separated string of scaling factors
-\${9}=str_usr_frg  # int: Comma-separated string of fragment lengths
-\${10}=rnd          # int: No. decimal places for rounding signal values
-\${11}=err_out      # str: Directory for stdout and stderr files
-\${12}=nam_job      # str: Name of job
+\${2}=scr_cvg       # str: Path to compute_coverage_ratio.py script
+\${3}=str_fil_ip    # str: Comma-separated string of IP BEDGRAPH files
+\${4}=str_fil_in    # str: Comma-separated string of input BEDGRAPH files
+\${5}=str_fil_out   # str: Comma-separated string of output BEDGRAPH files
+\${6}=str_scl_fct   # flt: Comma-separated string of scaling factors
+\${7}=str_dep_min   # flt: Comma-separated string of minimum input depths
+\${8}=log2          # bol: Apply log2 transformation or not
+\${9}=rnd          # int: Number of decimal places for rounding signal values
+\${10}=err_out      # str: Directory for stdout and stderr files
+\${11}=nam_job      # str: Name of job
 EOM
 )
 
 if [[ -z "${1:-}" || "${1}" == "-h" || "${1}" == "--help" ]]; then
     cat << EOM
-$(basename "${0}") requires 12 positional arguments:
+$(basename "${0}") requires 11 positional arguments:
 ${show_help}
 EOM
     exit 0
 fi
 
-#  Check for exactly 12 positional arguments
-if [[ $# -ne 12 ]]; then
+#  Check for exactly 11 positional arguments
+if [[ $# -ne 11 ]]; then
     msg="but $# were supplied."
     [[ $# -eq 1 ]] && msg="but only $# was supplied."
     cat << EOM
-Error: $(basename "${0}") requires 12 positional arguments, ${msg}
+Error: $(basename "${0}") requires 11 positional arguments, ${msg}
 
 The necessary positional arguments:
 ${show_help}
@@ -96,21 +95,17 @@ EOM
 fi
 
 #  Parse positional arguments, assigning them to variables
-#+ 
-#+ Most of the argument inputs are not checked, as this is performed by
-#+ execute_*.sh and, to a certain extent, the corresponding Python script
 env_nam="${1}"
 scr_cvg="${2}"
-threads="${3}"
-str_infile="${4}"
-str_outfile="${5}"
-siz_bin="${6}"
-typ_cvg="${7}"
-str_scl_fct="${8}"
-str_usr_frg="${9}"
-rnd="${10}"
-err_out="${11}"
-nam_job="${12}"
+str_fil_ip="${3}"
+str_fil_in="${4}"
+str_fil_out="${5}"
+str_scl_fct="${6}"
+str_dep_min="${7}"
+log2="${8}"
+rnd="${9}"
+err_out="${10}"
+nam_job="${11}"
 
 #  Activate environment
 if [[ "${CONDA_DEFAULT_ENV}" != "${env_nam}" ]]; then
@@ -123,28 +118,33 @@ if [[ "${CONDA_DEFAULT_ENV}" != "${env_nam}" ]]; then
 fi
 
 #  Reconstruct arrays from serialized strings
-IFS=',' read -r -a arr_infile <<< "${str_infile}"
-IFS=',' read -r -a arr_outfile <<< "${str_outfile}"
+IFS=',' read -r -a arr_fil_ip  <<< "${str_fil_ip}"
+IFS=',' read -r -a arr_fil_in  <<< "${str_fil_in}"
+IFS=',' read -r -a arr_fil_out <<< "${str_fil_out}"
 IFS=',' read -r -a arr_scl_fct <<< "${str_scl_fct}"
-IFS=',' read -r -a arr_usr_frg <<< "${str_usr_frg}"
+IFS=',' read -r -a arr_dep_min <<< "${str_dep_min}"
 
 #  Debug output to check number of array elements and array element values
 if ${debug}; then
-    echo "\${#arr_infile[@]}=${#arr_infile[@]}"
+    echo "\${#arr_fil_ip[@]}=${#arr_fil_ip[@]}"
     echo ""
-    echo "arr_infile=( ${arr_infile[*]} )"
+    echo "arr_fil_ip=( ${arr_fil_ip[*]} )"
     echo ""
-    echo "\${#arr_outfile[@]}=${#arr_outfile[@]}"
+    echo "\${#arr_fil_in[@]}=${#arr_fil_in[@]}"
     echo ""
-    echo "arr_outfile=( ${arr_outfile[*]} )"
+    echo "arr_fil_in=( ${arr_fil_in[*]} )"
+    echo ""
+    echo "\${#arr_fil_out[@]}=${#arr_fil_out[@]}"
+    echo ""
+    echo "arr_fil_out=( ${arr_fil_out[*]} )"
     echo ""
     echo "\${#arr_scl_fct[@]}=${#arr_scl_fct[@]}"
     echo ""
     echo "arr_scl_fct=( ${arr_scl_fct[*]} )"
     echo ""
-    echo "\${#arr_usr_frg[@]}=${#arr_usr_frg[@]}"
+    echo "\${#arr_dep_min[@]}=${#arr_dep_min[@]}"
     echo ""
-    echo "arr_usr_frg=( ${arr_usr_frg[*]} )"
+    echo "arr_dep_min=( ${arr_dep_min[*]} )"
     echo ""
 fi
 
@@ -155,24 +155,26 @@ if [[ -n "${SLURM_ARRAY_TASK_ID:-}" ]]; then
     id_tsk=${SLURM_ARRAY_TASK_ID}
     idx=$(( id_tsk - 1 ))
 
-    infile="${arr_infile[idx]}"
-    outfile="${arr_outfile[idx]}"
+    fil_ip="${arr_fil_ip[idx]}"
+    fil_in="${arr_fil_in[idx]}"
+    fil_out="${arr_fil_out[idx]}"
     scl_fct="${arr_scl_fct[idx]}"
-    usr_frg="${arr_usr_frg[idx]}"
+    dep_min="${arr_dep_min[idx]}"
 
     #  Debug and validate variable assignments
     if ${debug}; then
         debug_var \
-            "infile=${infile}" "outfile=${outfile}" \
-            "scl_fct=${scl_fct}" "usr_frg=${usr_frg}"
+            "fil_ip=${fil_ip}" "fil_in=${fil_in}" "fil_out=${fil_out}" \
+            "scl_fct=${scl_fct}" "dep_min=${dep_min}"
     fi
-    validate_var "infile"  "${infile}"  "${idx}" || exit 1
-    validate_var "outfile" "${outfile}" "${idx}" || exit 1
+    validate_var "fil_ip"  "${fil_ip}"  "${idx}" || exit 1
+    validate_var "fil_in"  "${fil_in}"  "${idx}" || exit 1
+    validate_var "fil_out" "${fil_out}" "${idx}" || exit 1
     validate_var "scl_fct" "${scl_fct}" "${idx}" || exit 1
-    validate_var "usr_frg" "${usr_frg}" "${idx}" || exit 1
+    validate_var "dep_min" "${dep_min}" "${idx}" || exit 1
 
-    samp="${outfile##*/}"
-    samp="${samp%.bam}"
+    samp="${fil_out##*/}"
+    samp="${samp%.bg}"
 
     #  Debug sample name
     if ${debug}; then echo "samp=${samp}" && echo ""; fi
@@ -188,53 +190,40 @@ if [[ -n "${SLURM_ARRAY_TASK_ID:-}" ]]; then
     if ${debug}; then
         echo "python ${scr_cvg} \\"
         echo "    --verbose \\"
-        echo "    --threads ${threads} \\"
-        echo "    --infile ${infile} \\"
-        echo "    --outfile ${outfile} \\"
-        echo "    --siz_bin ${siz_bin} \\"
+        echo "    --fil_ip ${fil_ip} \\"
+        echo "    --fil_in ${fil_in} \\"
+        echo "    --fil_out ${fil_out} \\"
         echo "    ${optional[*]}"
         echo ""
     fi
 
     python "${scr_cvg}" \
         --verbose \
-        --threads "${threads}" \
-        --infile "${infile}" \
-        --outfile "${outfile}" \
-        --siz_bin "${siz_bin}" \
+        --fil_ip "${fil_ip}" \
+        --fil_in "${fil_in}" \
+        --fil_out "${fil_out}" \
         "${optional[@]}"
 
     rm "${err_ini}" "${out_ini}"
 else
     #  Mode: GNU Parallel/serial
-    for idx in "${!arr_infile[@]}"; do
-        infile="${arr_infile[idx]}"
-        outfile="${arr_outfile[idx]}"
+    for idx in "${!arr_fil_ip[@]}"; do
+        fil_ip="${arr_fil_ip[idx]}"
+        fil_in="${arr_fil_in[idx]}"
+        fil_out="${arr_fil_out[idx]}"
         scl_fct="${arr_scl_fct[idx]}"
-        usr_frg="${arr_usr_frg[idx]}"
-
-        #  Debug and validate variable assignments
-        if ${debug}; then
-            debug_var \
-                "infile=${infile}" "outfile=${outfile}" \
-                "scl_fct=${scl_fct}" "usr_frg=${usr_frg}"
-        fi
-        validate_var "infile"  "${infile}"  "${idx}" || exit 1
-        validate_var "outfile" "${outfile}" "${idx}" || exit 1
-        validate_var "scl_fct" "${scl_fct}" "${idx}" || exit 1
-        validate_var "usr_frg" "${usr_frg}" "${idx}" || exit 1
+        dep_min="${arr_dep_min[idx]}"
 
         #  Set optional arguments if applicable
-        set_args_opt  # Subroutine defines/assigns array 'optional'
+        set_args_opt  
 
         python "${scr_cvg}" \
             --verbose \
-            --threads "${threads}" \
-            --infile "${infile}" \
-            --outfile "${outfile}" \
-            --siz_bin "${siz_bin}" \
+            --fil_ip "${fil_ip}" \
+            --fil_in "${fil_in}" \
+            --fil_out "${fil_out}" \
             "${optional[@]}" \
-                 >> "${err_out}/${nam_job}.$(basename "${outfile}").stdout.txt" \
-                2>> "${err_out}/${nam_job}.$(basename "${outfile}").stderr.txt"
+                 >> "${err_out}/${nam_job}.$(basename "${fil_out}").stdout.txt" \
+                2>> "${err_out}/${nam_job}.$(basename "${fil_out}").stderr.txt"
     done
 fi

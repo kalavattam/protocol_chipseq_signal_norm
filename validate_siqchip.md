@@ -1309,3 +1309,207 @@ bash "${dir_scr}/compress_remove_files.sh" --dir_fnd "${eo_trk}"
 ```
 </details>
 <br />
+
+<details>
+<summary><i>Code: Scraps, 2025-0117</i></summary>
+
+```bash
+#!/bin/bash
+
+#################################
+## START: Material for testing ##
+#################################
+siz_gen=12157105
+smp_tst="in_WT_G1_Hho1_6336"
+dir_siq="${dir_cvg}/bowtie2_global_flag-2_mapq-1/siqchip"
+
+function tally_aln_bam() {
+    local bam="${1}"
+
+    samtools view -F 4 "${bam}" \
+        | awk '$2 == 99 || $2 == 1123 || $2 == 163 || $2 == 1187' \
+        | wc -l
+}
+
+
+tally_aln_bam "${dir_bam}/${smp_tst}.sc.bam"  # 12851824
+wc -l "${dir_bam}_bed/${smp_tst}.sc.bed" | awk '{ print $1 }'  # 12851824
+
+python "${dir_scr}/compute_factor_depth.py" \
+    -i "${dir_bam}/${smp_tst}.sc.bam" \
+    -sb ${siz_bin} \
+    -sg ${siz_gen}
+    # -i "${dir_bam}_bed/${smp_tst}.sc.bed" \
+
+gzip -dc "${dir_siq}/bin_10_slurm/raw/raw_${smp_tst}.bdg.gz" | head
+gzip -dc "${dir_siq}/bin_10_slurm/raw/raw_${smp_tst}.bdg.gz" \
+    | awk '
+        NR == 1 {
+            min = max = $4
+        } {
+            sum += $4; count++
+            if ($4 < min) min = $4
+            if ($4 > max) max = $4
+        } END {
+            if (count > 0) print "Min:", min, "Max:", max, "Avg:", sum / count
+        }'
+# Min: 5.6497175141242938E-003 Max: 2351.3904606954566 Avg: 10.7354
+
+gzip -dc "${dir_siq}/bin_10_slurm/norm/norm_${smp_tst}.bdg.gz" | head
+gzip -dc "${dir_siq}/bin_10_slurm/norm/norm_${smp_tst}.bdg.gz" \
+    | awk '
+        NR == 1 {
+            min = max = $4
+        } {
+            sum += $4; count++
+            if ($4 < min) min = $4
+            if ($4 > max) max = $4
+        } END {
+            if (count > 0) print "Min:", min, "Max:", max, "Avg:", sum / count
+        }'
+#  Min: 4.39604e-10 Max: 0.000182962 Avg: 8.35317e-07
+
+python "${dir_scr}/compute_factor_depth.py" \
+    -i "${dir_bam}/${smp_tst}.sc.bam" \
+    -bg "${dir_siq}/bin_10_slurm/norm/norm_${smp_tst}.bdg.gz" \
+    -sb ${siz_bin} \
+    -sg ${siz_gen}
+# 10.58973100570373127027
+
+python "${dir_scr}/compute_factor_depth.py" \
+    -i "${dir_bam}/${smp_tst}.sc.bam" \
+    -bg "${dir_siq}/bin_10_slurm/raw/raw_${smp_tst}.bdg.gz" \
+    -sb ${siz_bin} \
+    -sg ${siz_gen}
+# 136097359.12745553255081176758
+
+python "${dir_scr}/compute_factor_depth.py" \
+    -i "${dir_bam}/${smp_tst}.sc.bam" \
+    -m "frag" \
+    -sb ${siz_bin} \
+    -sg ${siz_gen}
+# 10.57145971138664286570
+
+gzip -dc "${dir_siq}/bin_10_slurm/raw/raw_${smp_tst}.bdg.gz" \
+    | awk '
+        NR == 1 {
+            min = max = $4
+        } {
+            sum += $4; count++
+            if ($4 < min) min = $4
+            if ($4 > max) max = $4
+        } END {
+            if (count > 0) print "Sum:", sum
+        }'
+# Sum: 1.2874e+07
+
+awk 'BEGIN { print 10.57145971138664286570 / 1.2874e+07 }'
+# 8.21148e-07  # Not correct
+
+awk 'BEGIN { print 10.57145971138664286570 / 12851824 }'
+# 8.22565e-07  # Correct, I think?
+
+#  Min: 5.6497175141242938E-003, 4.39604e-10
+awk 'BEGIN { print 5.6497175141242938E-003 / 12851824 }'
+# 4.39604e-10
+
+#  Max: 2351.3904606954566, 0.000182962
+awk 'BEGIN { print 2351.3904606954566 / 12851824 }'
+# 0.000182962
+
+#  Avg: 10.7354, 8.35317e-07
+awk 'BEGIN { print 10.7354 / 12851824 }'
+# 8.35321e-07
+
+python "${dir_scr}/compute_factor_depth.py" \
+    -i "${dir_bam}/${smp_tst}.sc.bam" \
+    -m "frag" \
+    -sb ${siz_bin} \
+    -sg ${siz_gen}
+# 10.57145971138664286570
+
+python "${dir_scr}/compute_factor_depth.py" \
+    -i "${dir_bam}/${smp_tst}.sc.bam" \
+    -m "norm" \
+    -sb ${siz_bin} \
+    -sg ${siz_gen}
+# 0.00000082256493019097
+
+/usr/bin/time -v \
+    python "${dir_scr}/compute_coverage_ratio.py" \
+        -fp "${dir_nrm}/tracks/IP_WT_G1_Hho1_6336.sc.bedgraph" \
+        -fn "${dir_nrm}/tracks/in_WT_G1_Hho1_6336.sc.bedgraph" \
+        -fo "${dir_alf}/tracks/siq_WT_G1_Hho1_6336.sc.bedgraph" \
+        -sf 0.0023106316806475436 \
+        -de 0.00000082256493019097
+
+less "${dir_nrm}/tracks/IP_WT_G1_Hho1_6336.sc.bedgraph"
+# ...
+# I       139020  139030  0.000000587195438972421814
+# I       139030  139040  0.000000618895019319668699
+# I       139040  139050  0.000000645281853688476867
+# ...
+# I       229140  229150  0.000000003042622662004834
+# II      0       10      0.000000007616689624089380
+
+less "${dir_nrm}/tracks/in_WT_G1_Hho1_6336.sc.bedgraph"
+# I       139020  139030  0.000000829794333179596676
+# I       139030  139040  0.000000775919333803290887
+# I       139040  139050  0.000000759633062811069910
+# ...
+# I       229140  229150  0.000000006281134336350769
+# I       229150  229160  0.000000004116929465424744
+# I       229160  229170  0.000000004116929465424744
+# I       229170  229180  0.000000004116929465424744
+# I       229180  229190  0.000000004116929465424744
+# I       229190  229200  0.000000004116929465424744
+# I       229200  229210  0.000000004116929465424744
+# I       229210  229220  0.000000004116929465424744
+# I       229220  229230  0.000000004116929465424744
+# I       229230  229240  0.000000004116929465424744
+# I       229240  229250  0.000000004116929465424744
+# I       229250  229260  0.000000004116929465424744
+# I       229260  229270  0.000000004116929465424744
+# I       229270  229280  0.000000002058464732712373
+# I       230110  230120  0.000000001556199337930554
+# I       230120  230130  0.000000007780996689652769
+# I       230130  230140  0.000000007780996689652769
+# I       230140  230150  0.000000007780996689652769
+# I       230150  230160  0.000000007780996689652769
+# I       230160  230170  0.000000007780996689652769
+# I       230170  230180  0.000000007780996689652769
+# I       230180  230190  0.000000007780996689652769
+# I       230190  230200  0.000000007780996689652769
+# I       230200  230210  0.000000007780996689652769
+# I       230210  230220  0.000000007002897020687492
+# II      0       10      0.000000037074198027690852
+
+#  Try again after updating function to handle missing bins
+/usr/bin/time -v \
+    python "${dir_scr}/compute_coverage_ratio.py" \
+        -fp "${dir_nrm}/tracks/IP_WT_G1_Hho1_6336.sc.bedgraph" \
+        -fn "${dir_nrm}/tracks/in_WT_G1_Hho1_6336.sc.bedgraph" \
+        -fo "${dir_alf}/tracks/siq_WT_G1_Hho1_6336.sc.bedgraph" \
+        -sf 0.0023106316806475436 \
+        -de 0.00000082256493019097
+
+#  Comparing signal tracks from Brad and Kris's implementations in IGV:
+#+ - Brad's: Max signal of...
+#+     + 0.003155848  for I:28,298-61,871
+#+     + 0.004347577  for I:167,388-191,608
+#+     + 0.004283995  for II:191,406-204,401
+#+     + 0.00886315   for XII:356,615-541,444
+#+     + 0.004360575  for XIV:174,841-421,578
+#+ - Kris's: Max signal of...
+#+     + 0.0031328022 for I:28,298-61,871
+#+     + 0.0043440936 for I:167,388-191,608
+#+     + 0.0042771483 for II:191,406-204,401
+#+     + 0.008773096  for XII:356,615-541,444
+#+     + 0.0043579685 for XIV:174,841-421,578
+
+###############################
+## END: Material for testing ##
+###############################
+```
+</details>
+<br />
