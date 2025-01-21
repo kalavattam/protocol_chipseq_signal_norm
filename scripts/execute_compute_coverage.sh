@@ -5,7 +5,7 @@
 
 
 #  Run script in interactive/test mode (true) or command-line mode (false)
-interactive=true
+interactive=false
 
 #  Exit on errors, unset variables, or pipe failures if not in "interactive
 #+ mode"
@@ -107,6 +107,7 @@ env_nam="env_analyze"
 scr_sub="${dir_scr}/submit_compute_coverage.sh"
 scr_cvg="${dir_scr}/compute_coverage.py"
 denom=4
+par_job=""
 
 #  Initialize argument variables, assigning default values where applicable
 verbose=false
@@ -192,7 +193,6 @@ Arguments:
 
 Dependencies:
   - Programs
-    + awk
     + Bash or Zsh
     + GNU Parallel (if not using SLURM and threads > 1)
     + Python
@@ -281,40 +281,27 @@ fi
 
 
 #  Check arguments ------------------------------------------------------------
-#  Check that environment name is supplied
 check_supplied_arg -a "${env_nam}" -n "env_nam"
 
-#  Check that submission script is supplied and exists as a file
 check_supplied_arg -a "${scr_sub}" -n "scr_sub"
 check_exists_file_dir "f" "${scr_sub}" "scr_sub"
 
-#  Check that coverage script is supplied and exists as a file
 check_supplied_arg -a "${scr_cvg}" -n "scr_cvg"
 check_exists_file_dir "f" "${scr_cvg}" "scr_cvg"
 
-#  Check that denominator is supplied
 check_supplied_arg -a "${denom}" -n "denom"
 check_int_pos "${denom}" "denom"
 
-#  Check that threads value is supplied and is a positive integer
 check_supplied_arg -a "${threads}" -n "threads"
 check_int_pos "${threads}" "threads"
 
-#  Check that '--infiles' is supplied
 check_supplied_arg -a "${infiles}" -n "infiles"
-check_str_delim "infiles" "${infiles}"
-
-#  Validate existence of directory containing infiles 
 check_exists_file_dir "d" "$(dirname "${infiles%%[,;]*}")" "infiles"
-
-#  Ensure '--infiles' is not empty or improperly formatted
 check_str_delim "infiles" "${infiles}"
 
-#  Check that output directory is supplied and exists
 check_supplied_arg -a "${dir_out}" -n "dir_out"
 check_exists_file_dir "d" "${dir_out}" "dir_out"
 
-#  Check that output type is supplied and valid
 check_supplied_arg -a "${typ_out}" -n "typ_out"
 case "${typ_out}" in
     bedgraph|bedgraph.gz|bdg|bdg.gz|bg|bg.gz|bed|bed.gz) : ;;  # Valid options
@@ -327,14 +314,11 @@ case "${typ_out}" in
         ;;
 esac
 
-#  Check that bin size is supplied and is a positive integer
 check_supplied_arg -a "${siz_bin}" -n "siz_bin"
 check_int_pos "${siz_bin}" "siz_bin"
 
-#  If supplied, check that '--scl_fct' is properly formatted
 if [[ -n "${scl_fct}" ]]; then check_str_delim "scl_fct" "${scl_fct}"; fi
 
-#  Default to '--typ_cvg raw' if no normalization is provided
 if [[ -z "${typ_cvg}" ]]; then
     typ_cvg="raw"
     echo_warning \
@@ -344,7 +328,7 @@ else
     case "${typ_cvg}" in
         raw|unadj|unadjusted) : ;;  # Valid options for unadjusted coverage
         len|len_frag) : ;;          # Valid options for fragment-length normalization
-        norm|normalized) : ;;       # Valid options for "normalized" coverage
+        norm|normalized) : ;;       # Valid options for "normalized coverage"
         *)
             echo_error \
                 "Invalid value for '--typ_cvg': '${typ_cvg}'. Expected" \
@@ -355,14 +339,11 @@ else
     esac
 fi
 
-#  If applicable, ensure '--usr_frg' is not empty or improperly formatted
 if [[ -n "${usr_frg}" ]]; then check_str_delim "usr_frg" "${usr_frg}"; fi
 
-#  Validate '--rnd'
 check_supplied_arg -a "${rnd}" -n "rnd"
 check_int_pos "${rnd}" "rnd"
 
-#  Check that stderr/stdout directory is supplied and exists, or assign default
 if [[ -n "${err_out}" ]]; then
     check_exists_file_dir "d" "${err_out}" "err_out"
 elif [[ -z "${err_out}" ]]; then
@@ -370,31 +351,21 @@ elif [[ -z "${err_out}" ]]; then
     check_exists_file_dir "d" "${err_out}" "err_out"
 fi
 
-#  Check that job name is supplied
 check_supplied_arg -a "${nam_job}" -n "nam_job"
 
-#  If submitting jobs to SLURM, perform checks for maximum jobs allowed at a
-#  time (max_job) and the maximum permitted runtime (time)
 if ${slurm}; then
-    #  Ensure max_job is provided and is a positive integer
     check_supplied_arg -a "${max_job}" -n "max_job"
     check_int_pos "${max_job}" "max_job"
     
-    #  Ensure time is provided and has a valid time format
     check_supplied_arg -a "${time}" -n "time"
     check_format_time "${time}"
 else
-    #  For non-SLURM jobs, calculate the number of parallel jobs to run
-    #  based on the number of threads, setting the thread count accordingly
     par_job=$(( threads / denom ))
     threads=${denom}
 
-    #  Ensure the calculated number of parallel jobs (par_job) is provided and
-    #  is a positive integer
     check_supplied_arg -a "${par_job}" -n "par_job"
     check_int_pos "${par_job}" "par_job"
 
-    #  Ensure the number of threads is provided and is a positive integer
     check_supplied_arg -a "${threads}" -n "threads"
     check_int_pos "${threads}" "threads"
 fi
@@ -429,7 +400,6 @@ if ${verbose}; then
         src_scl="No multiplicative scaling factor(s)."
     fi
 
-    #  Print debug summary
     echo "##############################"
     echo "## Resolved argument states ##"
     echo "##############################"
@@ -444,27 +414,20 @@ fi
 #  Activate environment and check that dependencies are in PATH ---------------
 handle_env "${env_nam}" > /dev/null
 
-check_program_path awk
-if ! ${slurm}; then check_program_path parallel; fi
+if ! ${slurm} && [[ ${threads} -gt 1 ]]; then check_program_path parallel; fi
 check_program_path python
 if ${slurm}; then check_program_path sbatch; fi
 
 
 #  Parse and validate vector elements -----------------------------------------
-#  Parse '--infiles'
 IFS=',' read -r -a arr_infile <<< "${infiles}"
-
-#  Validate each infile exists
 check_array_files "infiles" "${arr_infile[@]}"
 
-#  Based on 'arr_infile' and 'dir_out', construct outfile paths, using them to
-#+ populate 'arr_outfile'
 unset arr_outfile && typeset -a arr_outfile
 for i in "${arr_infile[@]}"; do
     arr_outfile+=( "${dir_out}/$(basename "${i}" .bam).${typ_out}" )
 done
 
-#  If applicable, parse and validate '--scl_fct'
 if [[ -z "${scl_fct}" ]]; then
     unset arr_scl_fct && typeset -a arr_scl_fct
     populate_array_empty arr_scl_fct "${#arr_infile[@]}"
@@ -476,7 +439,6 @@ for s in "${arr_scl_fct[@]}"; do
     if [[ "${s}" != "#N/A" ]]; then check_flt_pos "${s}" "scl_fct"; fi
 done
 
-#  If applicable, parse and validate '--usr_frg'
 if [[ -z "${usr_frg}" ]]; then
     unset arr_usr_frg && typeset -a arr_usr_frg
     populate_array_empty arr_usr_frg "${#arr_infile[@]}"
@@ -488,18 +450,12 @@ for u in "${arr_usr_frg[@]}"; do
     if [[ "${u}" != "#N/A" ]]; then check_flt_pos "${u}" "usr_frg"; fi
 done
 
-
-#  Ensure matching element counts between 'arr_infile' and the other arrays
 check_arrays_lengths "outfiles" arr_outfile "infiles" arr_infile
 check_arrays_lengths "scl_fct"  arr_scl_fct "infiles" arr_infile
 check_arrays_lengths "usr_frg"  arr_usr_frg "infiles" arr_infile
 
-#  Reset 'max_job' if it is greater than the number of infiles
-if ${slurm}; then
-    max_job=$(reset_max_job "${max_job}" "${#arr_infile[@]}")
-fi
+if ${slurm}; then max_job=$(reset_max_job "${max_job}" "${#arr_infile[@]}"); fi
 
-#  Debug output for infiles and other values
 if ${verbose}; then
     echo "########################################"
     echo "## Parsed vectors for parallelization ##"
@@ -563,12 +519,10 @@ if ${verbose}; then
     echo ""
 fi
 
-#  Having validated individual array elements, re- or newly assign variables
-#+ with comma-separated string values from array elements
- infiles=$(echo "${arr_infile[*]}"  | tr ' ' ',')
+infiles=$(echo "${arr_infile[*]}"  | tr ' ' ',')
 outfiles=$(echo "${arr_outfile[*]}" | tr ' ' ',')
- scl_fct=$(echo "${arr_scl_fct[*]}" | tr ' ' ',')
- usr_frg=$(echo "${arr_usr_frg[*]}" | tr ' ' ',')
+scl_fct=$(echo "${arr_scl_fct[*]}" | tr ' ' ',')
+usr_frg=$(echo "${arr_usr_frg[*]}" | tr ' ' ',')
 
 if ${verbose}; then
     echo "###############################################################"
@@ -583,8 +537,9 @@ if ${verbose}; then
     echo ""
 fi
 
-# shellcheck disable=SC2016
+# shellcheck disable=SC2016,SC2090
 if ${slurm}; then
+    #  SLURM execution
     if ${dry_run} || ${verbose}; then
         echo "####################"
         echo "## Call to sbatch ##"
@@ -659,16 +614,13 @@ if ${slurm}; then
     fi
 else
     #  GNU Parallel execution
-    if [[ "${threads}" -gt 1 ]]; then
-        #  Generate a configuration file
-        config="${err_out}/${nam_job}.${RANDOM}.txt"
+    if [[ ${threads} -gt 1 ]]; then
+        config="${err_out}/${nam_job}.config_parallel.txt"
         touch "${config}" || {
             echo_error "Failed to create a GNU Parallel configuration file."
             exit_1
         }
 
-        #  Populate the GNU Parallel configuration file with parameters for
-        #+ each job
         for i in "${!arr_infile[@]}"; do
             echo \
                 "${env_nam}" \
@@ -686,27 +638,32 @@ else
                     >> "${config}"
         done
 
-        #  Perform a dry-run to debug and/or verify commands
         if ${dry_run} || ${verbose}; then
-            # shellcheck disable=SC2090
+            echo "##########################################"
+            echo "## Parallel call(s) to compute coverage ##"
+            echo "##########################################"
+            echo ""
+
             parallel --colsep ' ' --jobs "${par_job}" --dryrun \
                 "bash \"${scr_sub}\" {1} {2} {3} {4} {5} {6} {7} {8} {9} {10} {11} {12}" \
                 :::: "${config}"
+
+            echo ""
+            echo ""
         fi
 
-        #  Use GNU Parallel for multi-threaded execution without SLURM
         if ! ${dry_run}; then
-            # shellcheck disable=SC2090
             parallel --colsep ' ' --jobs "${par_job}" \
                 "bash \"${scr_sub}\" {1} {2} {3} {4} {5} {6} {7} {8} {9} {10} {11} {12}" \
                 :::: "${config}"
         fi
     else
+        #  Serial execution
         pth_std="${err_out}/${nam_job}"
         if ${dry_run} || ${verbose}; then
-            echo "###########################################"
-            echo "## Serial call(s) for computing coverage ##"
-            echo "###########################################"
+            echo "########################################"
+            echo "## Serial call(s) to compute coverage ##"
+            echo "########################################"
             echo ""
             echo "bash ${scr_sub} \\"
             echo "    ${env_nam} \\"

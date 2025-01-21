@@ -38,7 +38,7 @@ function set_logs() {
 
 
 function set_args_opt() {
-    unset optional && typeset -a optional
+    unset optional && typeset -g -a optional
     if [[ -n "${scl_fct}" && "${scl_fct}" != "#N/A" ]]; then
         optional+=( --scl_fct "${scl_fct}" )
     fi
@@ -47,9 +47,7 @@ function set_args_opt() {
         optional+=( --dep_min "${dep_min}" )
     fi
 
-    if [[ "${log2}" == "true" ]]; then
-        optional+=( --log2 )
-    fi
+    if ${log2}; then optional+=( --log2 ); fi
 
     if [[ -n "${rnd}" && "${rnd}" != "#N/A" ]]; then
         optional+=( --rnd "${rnd}" )
@@ -59,17 +57,17 @@ function set_args_opt() {
 
 #  Display help message if no arguments or help option is given
 show_help=$(cat << EOM
-\${1}=env_nam       # str: Name of Conda/Mamba environment to activate
-\${2}=scr_cvg       # str: Path to compute_coverage_ratio.py script
-\${3}=str_fil_ip    # str: Comma-separated string of IP BEDGRAPH files
-\${4}=str_fil_in    # str: Comma-separated string of input BEDGRAPH files
-\${5}=str_fil_out   # str: Comma-separated string of output BEDGRAPH files
-\${6}=str_scl_fct   # flt: Comma-separated string of scaling factors
-\${7}=str_dep_min   # flt: Comma-separated string of minimum input depths
-\${8}=log2          # bol: Apply log2 transformation or not
+\${1}=env_nam      # str: Name of Conda/Mamba environment to activate
+\${2}=scr_cvg      # str: Path to 'compute_coverage_ratio.py' script
+\${3}=str_fil_ip   # str: Comma-separated string of IP BEDGRAPH files
+\${4}=str_fil_in   # str: Comma-separated string of input BEDGRAPH files
+\${5}=str_fil_out  # str: Comma-separated string of output BEDGRAPH files
+\${6}=str_scl_fct  # str: Comma-separated string of scaling factors (flt)
+\${7}=str_dep_min  # str: Comma-separated string of minimum input depths (flt)
+\${8}=log2         # bol: Apply log2 transformation or not
 \${9}=rnd          # int: Number of decimal places for rounding signal values
-\${10}=err_out      # str: Directory for stdout and stderr files
-\${11}=nam_job      # str: Name of job
+\${10}=err_out     # str: Directory for stdout and stderr files
+\${11}=nam_job     # str: Name of job
 EOM
 )
 
@@ -84,7 +82,7 @@ fi
 #  Check for exactly 11 positional arguments
 if [[ $# -ne 11 ]]; then
     msg="but $# were supplied."
-    [[ $# -eq 1 ]] && msg="but only $# was supplied."
+    if [[ $# -eq 1 ]]; then msg="but only $# was supplied."; fi
     cat << EOM
 Error: $(basename "${0}") requires 11 positional arguments, ${msg}
 
@@ -174,18 +172,25 @@ if [[ -n "${SLURM_ARRAY_TASK_ID:-}" ]]; then
     validate_var "dep_min" "${dep_min}" "${idx}" || exit 1
 
     samp="${fil_out##*/}"
+    samp="${samp%.bedgraph}"
+    samp="${samp%.bedgraph.gz}"
+    samp="${samp%.bdg}"
+    samp="${samp%.bdg.gz}"
     samp="${samp%.bg}"
+    samp="${samp%.bg.gz}"
 
     #  Debug sample name
     if ${debug}; then echo "samp=${samp}" && echo ""; fi
 
-    #  Run subroutine to set SLURM and symlinked/better-named log files
+    #  Run subroutine to set SLURM and symlinked/better named log files
     set_logs "${id_job}" "${id_tsk}" "${samp}" "${err_out}"
     ln -f "${err_ini}" "${err_dsc}"
     ln -f "${out_ini}" "${out_dsc}"
 
     #  Set optional arguments if applicable
     set_args_opt  # Subroutine defines/assigns array 'optional'
+    echo "set_args_opt(): optional=( ${optional[*]} )"
+    echo ""
 
     if ${debug}; then
         echo "python ${scr_cvg} \\"
@@ -215,7 +220,9 @@ else
         dep_min="${arr_dep_min[idx]}"
 
         #  Set optional arguments if applicable
-        set_args_opt  
+        set_args_opt
+        echo "set_args_opt(): optional=( ${optional[*]} )"
+        echo ""
 
         python "${scr_cvg}" \
             --verbose \

@@ -5,7 +5,7 @@
 
 
 #  Run script in interactive/test mode (true) or command-line mode (false)
-interactive=true
+interactive=false
 
 #  Exit on errors, unset variables, or pipe failures if not in "interactive
 #+ mode"
@@ -92,12 +92,12 @@ function set_interactive() {
     typ_out="bdg.gz"
     scl_fct=""
     dep_min=""  #TODO
-    log2=true
+    log2=false
     rnd=24
     err_out="${dir_alf}/logs"
     nam_job="compute_coverage_ratio"
-    slurm=true
     max_job=6
+    slurm=true
     time="0:30:00"
 }
 
@@ -106,7 +106,7 @@ function set_interactive() {
 env_nam="env_analyze"
 scr_sub="${dir_scr}/submit_compute_coverage_ratio.sh"
 scr_cvg="${dir_scr}/compute_coverage_ratio.py"
-denom=4
+par_job=""
 
 #  Initialize argument variables, assigning default values where applicable
 verbose=false
@@ -115,14 +115,14 @@ fil_ip=""
 fil_in=""
 dir_out=""
 typ_out="bdg.gz"
-scl_fct="none"
+scl_fct=""
 dep_min=""
 log2=false
 rnd=24
 err_out=""
 nam_job="compute_coverage_ratio"
-slurm=false
 max_job=6
+slurm=false
 time="0:30:00"
 
 #  Assign variable for help message
@@ -130,7 +130,7 @@ show_help=$(cat << EOM
 Usage:
   execute_compute_coverage_ratio.sh
     [--verbose] [--dry_run] --fil_ip <str> --fil_in <str> --dir_out <str>
-    --typ_out <str> --scl_fct <flt> --dep_min <flt> [--log2] --rnd <int>
+    --typ_out <str> [--scl_fct <flt>] [--dep_min <flt>] [--log2] --rnd <int>
     --err_out <str> --nam_job <str> --max_job <int> [--slurm] [--time <str>]
 
 Description:
@@ -155,16 +155,19 @@ Arguments:
   -to, --typ_out  Format of coverage signal ratio track outfiles: 'bedgraph',
                   'bedgraph.gz', 'bdg', 'bdg.gz', 'bg', or 'bg.gz' (default:
                   '${typ_out}').
-                    - 'bedgraph', 'bdg', 'bg': BEDGRAPH format (coverage).
+                    - 'bedgraph', 'bdg', 'bg': BEDGRAPH format.
                     - 'bedgraph.gz', 'bdg.gz', 'bg.gz': gzip-compressed
                        BEDGRAPH format.
-  -sf, --scl_fct  Comma-separated string of scaling factors.
+  -sf, --scl_fct  Comma-separated string of scaling factors (optional).
   -dm, --dep_min  Comma-separated string of minimum input depth values used to
-                  avoid extreme/erroneous divisions.
-  -l2, --log2     Compute log2(sig_ip/sig_in) with a pseudocount of 1 to
-                  prevent log(0) errors (optional). The scaling factor
-                  ('--scl_fct') is applied after the log2 transformation:
-                  'scl_fct * log2(sig_ip/sig_in + 1)'.
+                  avoid extreme/erroneous divisions (optional).
+  -l2, --log2     Compute log2(sig_ip / sig_in), ensuring division-by-zero and
+                  log(0) errors are properly handled (optional). If
+                  '--dep_min' is provided, the denominator is adjusted to
+                  'max(sig_in, dep_min)' to prevent extreme values. If 'sig_ip'
+                  is zero, the output is set to negative infinity ('-inf'). The
+                  scaling factor ('--scl_fct') is applied after the log2
+                  transformation: 'scl_fct * log2(sig_ip / sig_in)'.
    -r, --rnd      Number of decimal places for rounding binned signal (coverage
                   score) ratio values (default: ${rnd}).
   -eo, --err_out  The directory to store stderr and stdout TXT outfiles
@@ -177,7 +180,6 @@ Arguments:
                       + If 'max_job' is greater than 1, jobs run in parallel
                         via GNU Parallel.
                       + If 'max_job' is 1, jobs run sequentially (serial mode).
-                  - Default: ${max_job}.
   -sl, --slurm    Submit jobs to the SLURM scheduler (optional; otherwise, if
                   'max_job' > 1, run them via GNU Parallel, and if 'max_job' is
                   1, run them in serial.)
@@ -277,9 +279,6 @@ check_exists_file_dir "f" "${scr_sub}" "scr_sub"
 check_supplied_arg -a "${scr_cvg}" -n "scr_cvg"
 check_exists_file_dir "f" "${scr_cvg}" "scr_cvg"
 
-check_supplied_arg -a "${denom}" -n "denom"
-check_int_pos "${denom}" "denom"
-
 check_supplied_arg -a "${fil_ip}" -n "fil_ip"
 check_exists_file_dir "d" "$(dirname "${fil_ip%%[,;]*}")" "fil_ip"
 check_str_delim "fil_ip" "${fil_ip}"
@@ -293,7 +292,7 @@ check_exists_file_dir "d" "${dir_out}" "dir_out"
 
 check_supplied_arg -a "${typ_out}" -n "typ_out"
 case "${typ_out}" in
-    bedgraph|bedgraph.gz|bdg|bdg.gz|bg|bg.gz) : ;;  # Valid options
+    bedgraph|bedgraph.gz|bdg|bdg.gz|bg|bg.gz) : ;;
     *)
         echo_error \
             "Selection associated with '--typ_out' is not valid:" \
@@ -353,16 +352,38 @@ unset arr_fil_out && typeset -a arr_fil_out
 for i in "${arr_fil_ip[@]}"; do
     base=$(basename "${i}")
 
-    base="${base%.bedgraph.gz}"
-    base="${base%.bdg.gz}"
-    base="${base%.bg.gz}"
-    base="${base%.bedgraph}"
-    base="${base%.bdg}"
-    base="${base%.bg}"
+    #  Strip 'IP_' prefix (if present)
+    base="${base#IP_}"
 
-    arr_fil_out+=( "${dir_out}/${base}.${typ_out}" )
+    #TODO: Allow user to pass custom prefix, otherwise use below logic
+    if [[ -z "${prefix:-}" ]]; then
+        #  Determine prefix based on provided arguments
+        prefix="rat"
+
+        if [[ -n "${scl_fct}" ]]; then
+            prefix="scl_rat"
+        fi
+
+        if ${log2}; then
+            prefix="log2_rat"
+
+            if [[ -n "${scl_fct}" ]]; then
+                prefix="scl_log2_rat"
+            fi
+        fi
+    fi
+
+    #  Remove file extensions
+    base="${base%.bedgraph}"
+    base="${base%.bedgraph.gz}"
+    base="${base%.bdg}"
+    base="${base%.bdg.gz}"
+    base="${base%.bg}"
+    base="${base%.bg.gz}"
+
+    arr_fil_out+=( "${dir_out}/${prefix}_${base}.${typ_out}" )
 done
-unset base
+unset base prefix
 
 if [[ -z "${scl_fct}" ]]; then
     unset arr_scl_fct && typeset -a arr_scl_fct
@@ -374,33 +395,268 @@ fi
 for s in "${arr_scl_fct[@]}"; do
     if [[ "${s}" != "#N/A" ]]; then check_flt_pos "${s}" "scl_fct"; fi
 done
+unset s
 
-#TODO: Need processing for dep_min, which is an array...
-
-
-
-#  Submit job via SLURM or GNU Parallel
-if ${slurm}; then
-    sbatch --job-name="${nam_job}" --array=1-${max_job}%${max_job} "${scr_sub}" \
-        "${env_nam}" "${scr_cvg}" "${fil_ip}" "${fil_in}" "${fil_out}" \
-        "${scl_fct}" "${dep_min}" "${log2}" "${rnd}" "${err_out}" "${nam_job}"
+if [[ -z "${dep_min}" ]]; then
+    unset arr_dep_min && typeset -a arr_dep_min
+    populate_array_empty arr_dep_min "${#arr_dep_min[@]}"
 else
-    bash "${scr_sub}" "${env_nam}" "${scr_cvg}" "${fil_ip}" "${fil_in}" \
-        "${fil_out}" "${scl_fct}" "${dep_min}" "${log2}" "${rnd}" "${err_out}" "${nam_job}"
+    IFS=',' read -r -a arr_dep_min <<< "${dep_min}"
+fi
+
+for d in "${arr_dep_min[@]}"; do
+    if [[ "${d}" != "#N/A" ]]; then check_flt_pos "${d}" "dep_min"; fi
+done
+unset d
+
+check_arrays_lengths "fil_in"  arr_fil_in  "fil_ip" arr_fil_ip
+check_arrays_lengths "fil_out" arr_fil_out "fil_ip" arr_fil_ip
+check_arrays_lengths "scl_fct" arr_scl_fct "fil_ip" arr_fil_ip
+check_arrays_lengths "dep_min" arr_dep_min "fil_ip" arr_fil_ip
+
+if ${slurm}; then max_job=$(reset_max_job "${max_job}" "${#arr_fil_in[@]}"); fi
+
+if ${verbose}; then
+    echo "########################################"
+    echo "## Parsed vectors for parallelization ##"
+    echo "########################################"
+    echo ""
+    debug_array_contents \
+        "arr_fil_ip" "arr_fil_in" "arr_fil_out" "arr_scl_fct" "arr_dep_min"
+    if ${slurm}; then
+        echo "  - Max no. jobs to run at a time (SLURM): ${max_job}"
+    else
+        echo "  - Max no. jobs to run at a time (GNU Parallel): ${par_job}"
+    fi
+    echo ""
+    echo ""
 fi
 
 
+#  Do the main work ===========================================================
+if ${verbose}; then
+    echo "####################################"
+    echo "## Hardcoded variable assignments ##"
+    echo "####################################"
+    echo ""
+    echo "env_nam=${env_nam}"
+    echo "scr_sub=${scr_sub}"
+    echo "scr_cvg=${scr_cvg}"
+    echo "par_job=${par_job:-#N/A}"
+    echo ""
+    echo ""
+    echo "###################################"
+    echo "## Argument variable assignments ##"
+    echo "###################################"
+    echo ""
+    echo "verbose=${verbose}"
+    echo "dry_run=${dry_run}"
+    echo "fil_ip=${fil_ip}"
+    echo "fil_in=${fil_in}"
+    echo "dir_out=${dir_out}"
+    echo "typ_out=${typ_out}"
+    echo "scl_fct=${scl_fct}"
+    echo "dep_min=${dep_min}"
+    echo "log2=${log2}"
+    echo "rnd=${rnd}"
+    echo "err_out=${err_out}"
+    echo "nam_job=${nam_job}"
+    echo "max_job=${max_job}"
+    echo "slurm=${slurm}"
+    echo "time=${time}"
+    echo ""
+    echo ""
+    echo "###################################"
+    echo "## Arrays derived from variables ##"
+    echo "###################################"
+    echo ""
+    echo "arr_fil_ip=( ${arr_fil_ip[*]} )"
+    echo "arr_fil_in=( ${arr_fil_in[*]} )"
+    echo "arr_fil_out=( ${arr_fil_out[*]} )"
+    echo "arr_scl_fct=( ${arr_scl_fct[*]} )"
+    echo "arr_dep_min=( ${arr_dep_min[*]} )"
+    echo ""
+    echo ""
+fi
 
+fil_ip=$(echo "${arr_fil_ip[*]}" | tr ' ' ',')
+fil_in=$(echo "${arr_fil_in[*]}" | tr ' ' ',')
+fil_out=$(echo "${arr_fil_out[*]}" | tr ' ' ',')
+scl_fct=$(echo "${arr_scl_fct[*]}" | tr ' ' ',')
+dep_min=$(echo "${arr_dep_min[*]}" | tr ' ' ',')
 
+if ${verbose}; then
+    echo "###############################################################"
+    echo "## Variable assignments re- or newly constructed from arrays ##"
+    echo "###############################################################"
+    echo ""
+    echo "fil_ip=\"${fil_ip}\""
+    echo "fil_in=\"${fil_in}\""
+    echo "fil_out=\"${fil_out}\""
+    echo "scl_fct=\"${scl_fct}\""
+    echo "dep_min=\"${dep_min}\""
+    echo ""
+    echo ""
+fi
 
+# shellcheck disable=SC2016,SC2090
+if ${slurm}; then
+    #  SLURM execution
+    if ${dry_run} || ${verbose}; then
+        echo "####################"
+        echo "## Call to sbatch ##"
+        echo "####################"
+        echo ""
+        echo "sbatch \\"
+        echo "    --job-name=${nam_job} \\"
+        echo "    --nodes=1 \\"
+        echo "    --cpus-per-task=1 \\"
+        echo "    --time=${time} \\"
+        echo "    --error=${err_out}/${nam_job}.%A-%a.stderr.txt \\"
+        echo "    --output=${err_out}/${nam_job}.%A-%a.stdout.txt \\"
+        echo "    --array=1-${#arr_fil_ip[@]}%${max_job} \\"
+        echo "        ${scr_sub} \\"
+        echo "            ${env_nam} \\"
+        echo "            ${scr_cvg} \\"
+        echo "            ${fil_ip} \\"
+        echo "            ${fil_in} \\"
+        echo "            ${fil_out} \\"
+        echo "            ${scl_fct} \\"
+        echo "            ${dep_min} \\"
+        echo "            ${log2} \\"
+        echo "            ${rnd} \\"
+        echo "            ${err_out} \\"
+        echo "            ${nam_job}"
+        echo ""
+        echo ""
+        # echo "#########################################"
+        # echo "## Contents of SLURM submission script ##"
+        # echo "#########################################"
+        # echo ""
+        # echo "## ${scr_sub} ##"
+        # echo ""
+        # cat "${scr_sub}"
+        # echo ""
+        # echo ""
+        # echo "###########################################"
+        # echo "## Contents of Python computation script ##"
+        # echo "###########################################"
+        # echo ""
+        # echo "## ${scr_cvg} ##"
+        # echo ""
+        # cat "${scr_cvg}"
+        # echo ""
+        # echo ""
+    fi
 
+    if ! ${dry_run}; then
+        # shellcheck disable=SC2046,SC2086
+        sbatch \
+            --job-name=${nam_job} \
+            --nodes=1 \
+            --cpus-per-task=1 \
+            --time=${time} \
+            --error=${err_out}/${nam_job}.%A-%a.stderr.txt \
+            --output=${err_out}/${nam_job}.%A-%a.stdout.txt \
+            --array=1-${#arr_fil_ip[@]}%${max_job} \
+                ${scr_sub} \
+                    ${env_nam} \
+                    ${scr_cvg} \
+                    ${fil_ip} \
+                    ${fil_in} \
+                    ${fil_out} \
+                    ${scl_fct} \
+                    ${dep_min} \
+                    ${log2} \
+                    ${rnd} \
+                    ${err_out} \
+                    ${nam_job}
+    fi
+else
+    #  GNU Parallel execution
+    if [[ ${par_job} -gt 1 ]]; then
+        config="${err_out}/${nam_job}.config_parallel.txt"
+        touch "${config}" || {
+            echo_error "Failed to create a GNU Parallel configuration file."
+            exit_1
+        }
 
+        for i in "${!arr_fil_ip[@]}"; do
+            echo \
+                "${env_nam}" \
+                "${scr_cvg}" \
+                "${arr_fil_ip[i]}" \
+                "${arr_fil_in[i]}" \
+                "${arr_fil_out[i]}" \
+                "${arr_scl_fct[i]}" \
+                "${arr_dep_min[i]}" \
+                "${log2}" \
+                "${rnd}" \
+                "${err_out}" \
+                "${nam_job}" \
+                    >> "${config}"
+        done
 
+        if ${dry_run} || ${verbose}; then
+            echo "###################################################"
+            echo "## Parallel call(s) to compute coverage ratio(s) ##"
+            echo "###################################################"
+            echo ""
 
+            parallel --colsep ' ' --jobs "${par_job}" --dryrun \
+                "bash \"${scr_sub}\" {1} {2} {3} {4} {5} {6} {7} {8} {9} {10} {11}" \
+                :::: "${config}"
 
+            echo ""
+            echo ""
+        fi
 
+        if ! ${dry_run}; then
+            parallel --colsep ' ' --jobs "${par_job}" \
+                "bash \"${scr_sub}\" {1} {2} {3} {4} {5} {6} {7} {8} {9} {10} {11}" \
+                :::: "${config}"
+        fi
+    else
+        #  Serial execution
+        pth_std="${err_out}/${nam_job}"
+        if ${dry_run} || ${verbose}; then
+            echo "#################################################"
+            echo "## Serial call(s) to compute coverage ratio(s) ##"
+            echo "#################################################"
+            echo ""
+            echo "bash ${scr_sub} \\"
+            echo "    ${env_nam} \\"
+            echo "    ${scr_cvg} \\"
+            echo "    ${fil_ip} \\"
+            echo "    ${fil_in} \\"
+            echo "    ${fil_out} \\"
+            echo "    ${scl_fct} \\"
+            echo "    ${dep_min} \\"
+            echo "    ${log2} \\"
+            echo "    ${rnd} \\"
+            echo "    ${err_out} \\"
+            echo "    ${nam_job} \\"
+            echo "         > ${pth_std}.stdout.txt \\"
+            echo "        2> ${pth_std}.stderr.txt"
+            echo ""
+            echo ""
+        fi
 
-
-
-
-
+        if ! ${dry_run}; then
+            bash "${scr_sub}" \
+                "${env_nam}" \
+                "${scr_cvg}" \
+                "${fil_ip}" \
+                "${fil_in}" \
+                "${fil_out}" \
+                "${scl_fct}" \
+                "${dep_min}" \
+                "${log2}" \
+                "${rnd}" \
+                "${err_out}" \
+                "${nam_job}" \
+                     > "${pth_std}.stdout.txt" \
+                    2> "${pth_std}.stderr.txt"
+        fi
+    fi
+fi
