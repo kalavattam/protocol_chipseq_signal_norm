@@ -38,7 +38,7 @@ function set_logs() {
 
 
 function set_args_opt() {
-    unset optional && typeset -a optional
+    unset optional && typeset -g -a optional
     if [[ -n "${typ_cvg}" ]]; then
         optional+=( --typ_cvg "${typ_cvg}" )
     fi
@@ -171,7 +171,7 @@ if [[ -n "${SLURM_ARRAY_TASK_ID:-}" ]]; then
     validate_var "scl_fct" "${scl_fct}" "${idx}" || exit 1
     validate_var "usr_frg" "${usr_frg}" "${idx}" || exit 1
 
-    samp="${outfile##*/}"
+    samp="${infile##*/}"
     samp="${samp%.bam}"
 
     #  Debug sample name
@@ -184,6 +184,8 @@ if [[ -n "${SLURM_ARRAY_TASK_ID:-}" ]]; then
 
     #  Set optional arguments if applicable
     set_args_opt  # Subroutine defines/assigns array 'optional'
+    echo "set_args_opt(): optional=( ${optional[*]} )"
+    echo ""
 
     if ${debug}; then
         echo "python ${scr_cvg} \\"
@@ -226,6 +228,8 @@ else
 
         #  Set optional arguments if applicable
         set_args_opt  # Subroutine defines/assigns array 'optional'
+        echo "set_args_opt(): optional=( ${optional[*]} )"
+        echo ""
 
         python "${scr_cvg}" \
             --verbose \

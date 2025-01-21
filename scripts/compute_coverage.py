@@ -42,7 +42,7 @@
 #     -tv, --typ_cvg  Specify coverage calculation type (default: 'norm').
 #                     Options:
 #                       - 'raw', 'unadj', 'unadjusted': Compute unadjusted
-#                         ("raw") coverage.
+#                         coverage.
 #                       - 'frag', 'len_frag': Normalize coverage by fragment
 #                         length.
 #                       - 'norm', 'normalized': Normalize coverage by both
@@ -181,7 +181,7 @@ def validate_outfile(value):
     Returns:
         str: Validated output filename (including extension).
         str: Output format ('bedgraph', 'bdg', 'bg', or 'bed').
-        bool: Whether the output should be gzip-compressed.
+        bol: Whether the output should be gzip-compressed.
     """
     allowed = {"bedgraph", "bdg", "bg", "bed"}
 
@@ -514,7 +514,7 @@ def parse_args():
                             fragments.
         -sf, --scl_fct  Optional scaling factor. Ignored for '.bed'.
         -uf, --usr_frg  Fixed fragment length instead of read/template lengths.
-        -r, --rnd       Decimal places for rounding BEDGRAPH values (default:
+         -r, --rnd      Decimal places for rounding BEDGRAPH values (default:
                         24). Ignored for '.bed'.
 
     Returns:
@@ -527,9 +527,9 @@ def parse_args():
     """
     parser = argparse.ArgumentParser(
         description=(
-            "Calculate binned coverage from a BAM file with optional "
-            "normalization. Alternatively, output processed alignment "
-            "coordinates in a BED-like format using the parse_bam() function."
+            "Compute binned coverage from a BAM file in BEDGRAPH format, "
+            "optionally applying normalization. Alternatively, extract and "
+            "output processed alignment coordinates in a BED-like format."
         ),
         argument_default=argparse.SUPPRESS
     )
@@ -560,10 +560,9 @@ def parse_args():
         help=(
             "Path to the output file with extension. Supported formats: "
             "'bedgraph', 'bdg', 'bg', and 'bed'. Append '.gz' for gzip "
-            "compression, e.g., 'output.bdg.gz'. Note: yse 'bed' to output "
-            "alignments processed by function parse_bam() in BED-like format. "
-            "These are not coverage values; using 'bed' results in "
-            "arguments such as '--siz_bin', '--typ_cvg', '--scl_fct', and "
+            "compression, e.g., 'output.bdg.gz'. Note: Use 'bed' to output "
+            "alignment coordinates in a BED-like format. Using 'bed' results "
+            "in arguments such as '--siz_bin', '--typ_cvg', '--scl_fct', and "
             "'--usr_frg' being ignored)."
         )
     )
@@ -603,10 +602,10 @@ def parse_args():
         help=(
             "Specify coverage calculation type. Options: 'raw', 'unadj', "
             "'unadjusted', 'frag', 'len_frag', 'norm', 'normalized' (default: "
-            "%(default)s). Use 'raw', 'unadj', 'unadjusted' to calculate "
-            "unadjusted coverage. Use 'frag', 'len_frag' to normalize "
-            "coverage by fragment length. Use 'norm', 'normalized' to compute "
-            "'normalized coverage' (PMID: 37160995), i.e., coverage "
+            "'%(default)s'). Use 'raw', 'unadj', or 'unadjusted' to calculate "
+            "unadjusted coverage. Use 'frag' or 'len_frag' to normalize "
+            "coverage by fragment length. Use 'norm' or 'normalized' to "
+            "compute 'normalized coverage' (PMID: 37160995), i.e., coverage "
             "normalized for both fragment length and total fragments such "
             "that coverage sums to unity."
         )
