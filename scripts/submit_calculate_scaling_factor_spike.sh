@@ -166,7 +166,7 @@ function process_sample() {
 
     #  Print the IP sample and scaling factor to the outfile
     if ! ${flg_mc}; then
-        echo -e "${mp}\t${sf}" >> "${outfile}"
+        echo -e "${mp}\t${sf}" >> "${fil_out}"
     else
         #  If --flg_mc, include num_{m|s}{p|n} values in the outfile
         # shellcheck disable=SC2028
@@ -179,7 +179,7 @@ function process_sample() {
             prt_6="${dm_nm_30}\t${dm_nm_40}\t${dm_nm_50}"
                 
             echo -e "${prt_1}${prt_2}${prt_3}${prt_4}${prt_5}${prt_6}" \
-                >> "${outfile}"
+                >> "${fil_out}"
         }
     fi
 }
@@ -190,8 +190,6 @@ function set_interactive() {
     ## WARNING: If interactive=true, change values as needed ##
     dir_bas="${HOME}/repos"
     dir_rep="${dir_bas}/protocol_chipseq_signal_norm"
-    dir_scr="${dir_rep}/scripts"
-    dir_fnc="${dir_scr}/functions"
     dir_dat="${dir_rep}/data"
     dir_pro="${dir_dat}/processed"
 
@@ -213,15 +211,13 @@ function set_interactive() {
     ser_sip="${dir_pom}/IP_WT_Q_Hho1_6336.sp.bam,${dir_pom}/IP_WT_Q_Hho1_6337.sp.bam"
     ser_min="${dir_cer}/in_WT_Q_Hho1_6336.sc.bam,${dir_cer}/in_WT_Q_Hho1_6337.sc.bam"
     ser_sin="${dir_pom}/in_WT_Q_Hho1_6336.sp.bam,${dir_pom}/in_WT_Q_Hho1_6337.sp.bam"
-    outfile="${dir_out}/spike_test.tsv"
+    fil_out="${dir_out}/spike_test.tsv"
     rnd=24
     flg_mc=true
     err_out="${dir_cvg}/tables/logs"
     nam_job="calc_sf_spike"
     env_nam="env_analyze"
-    scr_spk="${dir_scr}/calculate_scaling_factor_spike.py"
-    scr_ct="${dir_fnc}/count_alignments_bam.sh"
-    scr_min="${dir_fnc}/calculate_factor_depth.sh"
+    dir_scr="${HOME}/repos/protocol_chipseq_signal_norm/scripts"
 }
 
 
@@ -237,28 +233,26 @@ ser_mip=""
 ser_sip=""
 ser_min=""
 ser_sin=""
-outfile=""
+fil_out=""
 rnd=24
 flg_mc=false
 err_out=""
 nam_job="calc_sf_spike"
 env_nam="env_analyze"
-scr_spk=""
-scr_ct=""
-scr_min=""
+dir_scr="${HOME}/repos/protocol_chipseq_signal_norm/scripts"
 
 show_help=$(cat << EOM
 $(basename "${0}") takes the following keyword arguments:
    -t, --threads  Number of threads to use (default: ${threads}).
   -mp, --ser_mip  Comma-separated serialized string of sample "main" IP BAM
-                  input files.
+                  files.
   -sp, --ser_sip  Comma-separated serialized string of sample "spike-in" IP BAM
-                  input files.
+                  files.
   -mn, --ser_min  Comma-separated serialized string of sample "main" input BAM
-                  input files.
+                  files.
   -sn, --ser_sin  Comma-separated serialized string of sample "spike-in" input
-                  BAM input files.
-   -o, --outfile  TSV output file of sample spike-in-derived scaling factors.
+                  BAM files.
+  -fo, --fil_out  TSV output file of sample spike-in-derived scaling factors.
    -r, --rnd      Number of decimal places for rounding the spike-in scaling
                   factor (default: ${rnd}).
   -fm, --flg_mc   Include additional measurements, calculations in outfile
@@ -267,13 +261,8 @@ $(basename "${0}") takes the following keyword arguments:
   -nj, --nam_job  Name of job (default: '${nam_job}').
   -en, --env_nam  Name of Conda/Mamba environment to activate (default:
                   '${env_nam}').
-  -ss, --scr_spk  Script that calculates spike-in-derived scaling factors,
-                  'calculate_scaling_factor_spike.py'.
-  -sc, --scr_ct   Script that counts the number of alignments in a BAM file,
-                  'count_alignments_bam.sh'.
-  -sm, --scr_min  Script that computes a depth factor based on the number of
-                  alignments in a BAM file, bin size, and effective genome
-                  size, 'calculate_factor_depth.sh'.
+  -ds, --dir_scr  Path to directory containing workflow scripts, functions,
+                  etc. (default: '${dir_scr}').
 EOM
 )
 
@@ -293,15 +282,13 @@ else
             -sp|--ser_sip) ser_sip="${2}"; shift 2 ;;
             -mn|--ser_min) ser_min="${2}"; shift 2 ;;
             -sn|--ser_sin) ser_sin="${2}"; shift 2 ;;
-             -o|--outfile) outfile="${2}"; shift 2 ;;
+            -fo|--fil_out) fil_out="${2}"; shift 2 ;;
              -r|--rnd)     rnd="${2}";     shift 2 ;;
             -fm|--flg_mc)  flg_mc=true;    shift 1 ;;
             -eo|--err_out) err_out="${2}"; shift 2 ;;
             -nj|--nam_job) nam_job="${2}"; shift 2 ;;
             -en|--env_nam) env_nam="${2}"; shift 2 ;;
-            -ss|--scr_spk) scr_spk="${2}"; shift 2 ;;
-            -sc|--scr_ct)  scr_ct="${2}";  shift 2 ;;
-            -sm|--scr_min) scr_min="${2}"; shift 2 ;;
+            -ds|--dir_scr) scr_spk="${2}"; shift 2 ;;
             *)
                 echo "## Unknown argument passed: ${1} ##" >&2
                 echo "" >&2
@@ -316,11 +303,34 @@ fi
 if ${debug}; then
     debug_var \
         "threads=${threads}" "ser_mip=${ser_mip}" "ser_sip=${ser_sip}" \
-        "ser_min=${ser_min}" "ser_sin=${ser_sin}" "outfile=${outfile}" \
+        "ser_min=${ser_min}" "ser_sin=${ser_sin}" "fil_out=${fil_out}" \
         "rnd=${rnd}"         "flg_mc=${flg_mc}"   "err_out=${err_out}" \
-        "nam_job=${nam_job}" "env_nam=${env_nam}" "scr_spk=${scr_spk}" \
-        "scr_ct=${scr_ct}"   "scr_min=${scr_min}"
+        "nam_job=${nam_job}" "env_nam=${env_nam}" "dir_scr=${dir_scr}"
 fi
+
+#  Assign and validate variables for scripts, functions, etc.
+scr_spk="${dir_scr}/calculate_scaling_factor_spike.py"
+scr_ct="${dir_scr}/functions/count_alignments_bam.sh"
+scr_min="${dir_scr}/functions/calculate_factor_depth.sh"
+
+if ${debug}; then
+    debug_var "scr_spk=${scr_spk}" "scr_ct=${scr_ct}" "scr_min=${scr_min}"
+fi
+
+for fil in "${scr_spk}" "${scr_ct}" "${scr_min}"; do
+    if [[ ! -f "${fil}" ]]; then
+        echo "Error: Script, function, or subroutine not found: '${fil}'."
+        exit 1
+    fi
+done
+unset fil
+
+#  Source necessary subroutines
+# shellcheck disable=SC1090
+{
+    source "${scr_ct}"
+    source "${scr_min}"
+}
 
 #  Activate environment
 if [[ "${CONDA_DEFAULT_ENV}" != "${env_nam}" ]]; then
@@ -349,13 +359,6 @@ if ${debug}; then
     echo "\${#arr_ser_sin[@]}=${#arr_ser_sin[@]}" && echo ""
     echo "arr_ser_sin=( ${arr_ser_sin[*]} )"      && echo ""
 fi
-
-#  Source necessary subroutines
-# shellcheck disable=SC1090
-{
-    source "${scr_ct}"
-    source "${scr_min}"
-}
 
 #  Determine and run mode: SLURM or GNU Parallel/serial
 if [[ -n "${SLURM_ARRAY_TASK_ID:-}" ]]; then
