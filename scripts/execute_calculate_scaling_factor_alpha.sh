@@ -126,6 +126,8 @@ slurm=false
 max_job=6
 time="0:30:00"
 
+#TODO: Add '--rnd' argument
+
 #  Assign variable for help message
 show_help=$(cat << EOM
 Usage:
@@ -217,6 +219,7 @@ check_supplied_arg -a "${scr_alf}" -n "scr_alf"
 check_exists_file_dir "f" "${scr_alf}" "scr_alf"
 
 check_supplied_arg -a "${denom}" -n "denom"
+check_int_pos "${denom}" "denom"
 
 check_supplied_arg -a "${threads}" -n "threads"
 check_int_pos "${threads}" "threads"
@@ -244,6 +247,9 @@ esac
 check_supplied_arg -a "${outfile}" -n "outfile"
 check_exists_file_dir "d" "$(dirname "${outfile}")" "outfile"
 
+# check_supplied_arg -a "${rnd}" -n "rnd"
+# check_int_pos "${rnd}" "rnd"
+
 if [[ -n "${err_out}" ]]; then
     check_exists_file_dir "d" "${err_out}" "err_out"
 elif [[ -z "${err_out}" ]]; then
@@ -260,10 +266,6 @@ if ${slurm}; then
     check_supplied_arg -a "${time}" -n "time"
     check_format_time "${time}"
 else
-    #  For non-SLURM submissions, calculate the number of parallel jobs
-    #+ ('par_job') by dividing the user-defined 'threads' value by the
-    #+ hardcoded denominator ('denom'); then, reset 'threads' to the value of
-    #+ 'denom' for consistency in processing
     par_job=$(( threads / denom ))
     threads=${denom}
 

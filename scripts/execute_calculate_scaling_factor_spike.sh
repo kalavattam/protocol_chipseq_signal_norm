@@ -46,6 +46,7 @@ function set_interactive() {
     dir_bas="${HOME}/repos"
     dir_rep="${dir_bas}/protocol_chipseq_signal_norm"
     dir_scr="${dir_rep}/scripts"
+    dir_fnc="${dir_scr}/functions"
     dir_dat="${dir_rep}/data"
     dir_pro="${dir_dat}/processed"
 
@@ -54,27 +55,39 @@ function set_interactive() {
     req_flg=true
     flg="$(if ${req_flg}; then echo "2"; else echo "NA"; fi)"
     mapq=1
+    det_bam="flag-${flg}_mapq-${mapq}"
+    det_cvg="${aligner}_${a_type}_${det_bam}"
 
-    dir_aln="${dir_pro}/align_${aligner}_${a_type}"
-    dir_bam="${dir_aln}/flag-${flg}_mapq-${mapq}/sc"
-    dir_out="${dir_pro}/calculate_scaling_factor_spike"
+    dir_aln="${dir_pro}/align_${aligner}_${a_type}/flag-${flg}_mapq-${mapq}"
+    dir_bam="${dir_aln}/sc"
+    dir_cvg="${dir_pro}/compute_coverage"
+    dir_out="${dir_cvg}/${det_cvg}/tables"
+
+    pattern="*.bam"
+    exclude="*Brn1*"
+    
+    typ_cvg="spike"
 
     #  Set hardcoded argument assignments
     verbose=true
     dry_run=true
     threads=8
-    infiles="$(  ## WARNING: Change search parameters as needed ##
+    ser_mip="$(  ## WARNING: Change search parameters as needed ##
         bash "${dir_scr}/find_files.sh" \
             --dir_fnd "${dir_bam}" \
-            --pattern "*.bam" \
-            --include "IP*,*Hho1*"
+            --pattern "${pattern}" \
+            --include "IP*" \
+            --exclude "${exclude}"
     )"
-    outfile="${dir_out}/IP-in_WT_G1-G2M-Q_Hho1_6336-6337.mc.txt"
+    ser_sip="$(sed 's:sc:sp:g' < <(echo "${ser_mip}"))"
+    ser_min="$(sed 's:IP:in:g' < <(echo "${ser_mip}"))"
+    ser_sin="$(sed 's:IP:in:g' < <(echo "${ser_sip}"))"
+    fil_out="${dir_out}/ChIP_WT_G1-G2M-Q_Hho1-Hmo1_${typ_cvg}.tsv"
     rnd=24
     flg_mc=true
     err_out="${dir_out}/logs"
     nam_job="calc_sf_spike"
-    slurm=false
+    slurm=true
     max_job=6
     time="0:30:00"
 }
@@ -82,17 +95,23 @@ function set_interactive() {
 
 #  Initialize argument variables, check and parse arguments, etc. =============
 #  Initialize hardcoded argument variables
-env_nam="env_analyze"
-scr_sub="${dir_scr}/submit_calculate_scaling_factor_spike.sh"
-scr_spk="${dir_scr}/calculate_scaling_factor_spike.py"
-denom=4
+# shellcheck disable=SC2269
+{
+    env_nam="env_analyze"
+    dir_scr="${dir_scr}"
+    scr_sub="${dir_scr}/submit_calculate_scaling_factor_spike.sh"
+    denom=4
+}
 
 #  Initialize argument variables, assigning default values where applicable
 verbose=false
 dry_run=false
 threads=1
-infiles=""
-outfile=""
+ser_mip=""
+ser_sip=""
+ser_min=""
+ser_sin=""
+fil_out=""
 rnd=24
 flg_mc=false
 err_out=""
@@ -105,28 +124,34 @@ time="0:30:00"
 show_help=$(cat << EOM
 Usage:
   execute_calculate_scaling_factor_spike.sh
-    [--verbose] [--dry_run] --threads <int> --infiles <str> --outfile <str>
-    --rnd <int> [--flg_mc] --err_out <str> --nam_job <str> [--slurm]
-    [--max_job <int>] [--time <str>]
+    [--verbose] [--dry_run] --threads <int> --ser_mip <str> --ser_sip <str>
+    --ser_min <str> --ser_sin <str> --fil_out <str> --rnd <int> [--flg_mc]
+    --err_out <str> --nam_job <str> [--slurm] [--max_job <int>] [--time <str>]
 
 Description:
-  execute_calculate_scaling_factor_spike.sh orchestrates the calculation of
-  spike-in-derived scaling factors for ChIP-seq data. The main workflow
-  involves counting alignments in main and spike-in S. cerevisiae BAM files,
+  The driver script 'execute_calculate_scaling_factor_spike.sh' coordinates the
+  calculation of spike-in-derived scaling factors for ChIP-seq data. This
+  involves counting alignments in "main" and spike-in S. cerevisiae BAM files,
   calculating scaling coefficients using a custom Python script, and outputting
-  results to a specified table file. To handle groups of sample BAM data
-  efficiently, the script uses parallelized processing via SLURM scheduling or
-  GNU Parallel.
+  results to a specified table file. [#TODO: Note on calculating 'dep_min' for
+  modes "frag" and "norm" at commen bin sizes.] The script facilitates serial
+  processing or parallelized processing with SLURM or GNU Parallel.
 
 Arguments:
    -h, --help     Display this help message and exit (0).
    -v, --verbose  Run script in 'verbose mode' (optional).
   -dr, --dry_run  Perform a dry run without executing commands (optional).
    -t, --threads  Number of threads to use (default: ${threads}).
-   -i, --infiles  Comma-separated list of S. cerevisiae IP BAM files that are 
-                  coordinate-sorted. (See Notes for file name and path
+  -mp, --ser_mip  Comma-separated list of "main" model organism IP BAM files
+                  that are coordinate-sorted. (See Notes for file name and path
                   structure requirements.)
-   -o, --outfile  Tab-delimited text outfile in which calculated
+  -sp, --ser_sip  Comma-separated serialized string of "spike-in" organism IP
+                  BAM files.
+  -mn, --ser_min  Comma-separated serialized string of "main" organism input
+                  BAM files.
+  -sn, --ser_sin  Comma-separated serialized string of "spike-in" organism
+                  input BAM files.
+   -o, --fil_out  Tab-delimited text outfile in which calculated
                   spike-in-derived scaling factors and, optionally, additional
                   metrics are saved. If the file already exists, new data will
                   be appended.
@@ -178,40 +203,7 @@ Notes:
     would be set to 2 (8 divided by 4) and 'threads' would be reset to 4. Thus,
     2 jobs would be run by GNU Parallel (because 'par_job=2'), each with 4
     threads (because 'threads=4').
-  - This and the accompanying submission script assume a specific directory and
-    naming structure for the infiles:
-      + The primary infiles are coordinate-sorted S. cerevisiae ("sc") IP BAM
-        files.
-      + Based on the paths of these files, the script derives paths to
-        additional files: S. cerevisiae input files and S. pombe ("sp") IP and
-        input files:
-        \`\`\`
-        align_bowtie2_global/flag-2_mapq-1/
-        ├── init
-        │   ├── docs
-        │   └── logs
-        ├── sc
-        │   ├── docs
-        │   └── logs
-        └── sp
-            ├── docs
-            └── logs
-        \`\`\`
-      + The paths are generated by making systematic substitutions to the file
-        path and names, saved in variables 'mp', 'mn', 'sp', and 'sn':
-          - sp: Derived from 'mp' (main S. cerevisiae IP file) by replacing
-            subdirectory /sc/ with /sp/ and string .sc. with .sp.
-          - mn: Derived from 'mp' by replacing string IP_ with in_.
-          - sn: Derived from 'sp' by replacing string IP_ with in_.
-      + The following logic is used for file name and path manipulation:
-        \`\`\`
-        mp={arr_infiles}
-        sp=\$(echo "\${mp}" | sed "s:/sc/:/sp/:g; s:.sc.:.sp.:g")
-        mn=\$(echo "\${mp}" | sed "s:/IP_:/in_:/g")
-        sn=\$(echo "\${sp}" | sed "s:/IP_:/in_:/g")
-        \`\`\`
-      + If any of these files are missing, the script will print an error
-        message and exit.
+  - #TODO
 
 Examples:
   \`\`\`
@@ -234,8 +226,11 @@ else
              -v|--verbose) verbose=true;   shift 1 ;;
             -dr|--dry_run) dry_run=true;   shift 1 ;;
              -t|--threads) threads="${2}"; shift 2 ;;
-             -i|--infiles) infiles="${2}"; shift 2 ;;
-             -o|--outfile) outfile="${2}"; shift 2 ;;
+            -mp|--ser_mip) ser_mip="${2}"; shift 2 ;;
+            -sp|--ser_sip) ser_sip="${2}"; shift 2 ;;
+            -mn|--ser_min) ser_min="${2}"; shift 2 ;;
+            -sn|--ser_sin) ser_sin="${2}"; shift 2 ;;
+            -fo|--fil_out) fil_out="${2}"; shift 2 ;;
              -r|--rnd)     rnd="${2}";     shift 2 ;;
             -fm|--flg_mc)  flg_mc=true;    shift 1 ;;
             -eo|--err_out) err_out="${2}"; shift 2 ;;
@@ -256,22 +251,32 @@ fi
 #  Check arguments
 check_supplied_arg -a "${env_nam}" -n "env_nam"
 
+check_supplied_arg -a "${dir_scr}" -n "dir_scr"
+check_exists_file_dir "d" "${dir_scr}" "dir_scr"
+
 check_supplied_arg -a "${scr_sub}" -n "scr_sub"
 check_exists_file_dir "f" "${scr_sub}" "scr_sub"
 
-check_supplied_arg -a "${scr_spk}" -n "scr_spk"
-check_exists_file_dir "f" "${scr_spk}" "scr_spk"
-
 check_supplied_arg -a "${denom}" -n "denom"
+check_int_pos "${denom}" -n "denom"
 
 check_supplied_arg -a "${threads}" -n "threads"
 check_int_pos "${threads}" "threads"
 
-check_supplied_arg -a "${infiles}" -n "infiles"
-check_exists_file_dir "d" "$(dirname "${infiles%%[,;]*}")" "infiles"
+check_supplied_arg -a "${ser_mip}" -n "ser_mip"
+check_exists_file_dir "d" "$(dirname "${ser_mip%%[,;]*}")" "ser_mip"
 
-check_supplied_arg -a "${outfile}" -n "outfile"
-check_exists_file_dir "d" "$(dirname "${outfile}")" "outfile"
+check_supplied_arg -a "${ser_sip}" -n "ser_sip"
+check_exists_file_dir "d" "$(dirname "${ser_sip%%[,;]*}")" "ser_sip"
+
+check_supplied_arg -a "${ser_min}" -n "ser_min"
+check_exists_file_dir "d" "$(dirname "${ser_min%%[,;]*}")" "ser_min"
+
+check_supplied_arg -a "${ser_sin}" -n "ser_sin"
+check_exists_file_dir "d" "$(dirname "${ser_sin%%[,;]*}")" "ser_sin"
+
+check_supplied_arg -a "${fil_out}" -n "fil_out"
+check_exists_file_dir "d" "$(dirname "${fil_out}")" "fil_out"
 
 check_supplied_arg -a "${rnd}" -n "rnd"
 check_int_pos "${rnd}" "rnd"
@@ -292,10 +297,6 @@ if ${slurm}; then
     check_supplied_arg -a "${time}" -n "time"
     check_format_time "${time}"
 else
-    #  For non-SLURM submissions, calculate the number of parallel jobs
-    #+ ('par_job') by dividing the user-defined 'threads' value by the
-    #+ hardcoded denominator ('denom'); then, reset 'threads' to the value of
-    #+ 'denom' for consistency in processing
     par_job=$(( threads / denom ))
     threads=${denom}
 
@@ -317,22 +318,23 @@ if ${slurm}; then check_program_path sbatch; fi
 
 #  Parse the --infiles argument into an array, then validate the infile value
 #+ assignments
-IFS=',' read -r -a arr_infiles <<< "${infiles}"  # unset arr_infiles
-# for infile in "${arr_infiles[@]}"; do echo "${infile}"; done  # unset infile
+IFS=',' read -r -a arr_ser_mip <<< "${ser_mip}"  # unset arr_ser_mip
+IFS=',' read -r -a arr_ser_sip <<< "${ser_sip}"  # unset arr_ser_sip
+IFS=',' read -r -a arr_ser_min <<< "${ser_min}"  # unset arr_ser_min
+IFS=',' read -r -a arr_ser_sin <<< "${ser_sin}"  # unset arr_ser_sin
 
-#  Check that each infile exists; if not, exit
-for infile in "${arr_infiles[@]}"; do
-    check_exists_file_dir "f" "${infile}" "infile"
+#  Check that each file exists; if not, exit
+for file in \
+    "${arr_ser_mip[@]}" "${arr_ser_sip[@]}" \
+    "${arr_ser_min[@]}" "${arr_ser_sin[@]}"
+do
+    check_exists_file_dir "f" "${file}" "file"
 done
+unset file
 
+#  Reset 'max_job' if it is greater than the number of infiles
 if ${slurm}; then
-    if [[ "${max_job}" -gt "${#arr_infiles[@]}" ]]; then
-        echo_warning \
-            "The maximum number of SLURM jobs to run at a time, ${max_job}," \
-            "is greater than the number of infiles, ${#arr_infiles[@]}." \
-            "Adjusting max_job to ${#arr_infiles[@]}."
-        max_job="${#arr_infiles[@]}"
-    fi
+    max_job=$(reset_max_job "${max_job}" "${#arr_ser_mip[@]}")
 fi
 
 
@@ -344,8 +346,8 @@ if ${verbose}; then
     echo "####################################"
     echo ""
     echo "env_nam=${env_nam}"
+    echo "dir_scr=${dir_scr}"
     echo "scr_sub=${scr_sub}"
-    echo "scr_spk=${scr_spk}"
     echo "denom=${denom}"
     echo "par_job=${par_job:-#N/A}"
     echo ""
@@ -358,7 +360,7 @@ if ${verbose}; then
     echo "dry_run=${dry_run}"
     echo "threads=${threads}"
     echo "infiles=${infiles}"
-    echo "outfile=${outfile}"
+    echo "fil_out=${fil_out}"
     echo "rnd=${rnd}"
     echo "flg_mc=${flg_mc}"
     echo "err_out=${err_out}"
@@ -387,17 +389,16 @@ if ${slurm}; then
         echo "    --error=${err_out}/${nam_job}.%A-%a.stderr.txt \\"
         echo "    --output=${err_out}/${nam_job}.%A-%a.stdout.txt \\"
         echo "    --array=1-${#arr_infiles[@]}%${max_job} \\"
-        echo "    --export=dir_scr=${dir_scr} \\"
         echo "    ${scr_sub} \\"
         echo "        --threads ${threads} \\"
         echo "        --infiles ${infiles} \\"
-        echo "        --outfile ${outfile} \\"
+        echo "        --fil_out ${fil_out} \\"
         echo "        --rnd ${rnd} \\"
         echo "        $(if ${flg_mc}; then echo "--flg_mc"; fi) \\"
         echo "        --err_out ${err_out} \\"
         echo "        --nam_job ${nam_job} \\"
         echo "        --env_nam ${env_nam} \\"
-        echo "        --scr_spk ${scr_spk}"
+        echo "        --dir_scr ${dir_scr}"
         echo ""
         echo ""
         # echo "#########################################"
@@ -415,11 +416,11 @@ if ${slurm}; then
         #+ pre-write the header to the outfile before running SLURM jobs
         #+ (for more details, see related comment for GNU Parallel jobs below)
         if ! ${flg_mc}; then
-            echo -e "sample\tsf" >> "${outfile}"
+            echo -e "sample\tsf" >> "${fil_out}"
         else
             echo -e \
                 "sample\tsf\tmain_ip\tspike_ip\tmain_in\tspike_in" \
-                    >> "${outfile}"
+                    >> "${fil_out}"
         fi
 
         sbatch \
@@ -430,17 +431,16 @@ if ${slurm}; then
             --error=${err_out}/${nam_job}.%A-%a.stderr.txt \
             --output=${err_out}/${nam_job}.%A-%a.stdout.txt \
             --array=1-${#arr_infiles[@]}%${max_job} \
-            --export=dir_scr=${dir_scr} \
             ${scr_sub} \
                 --threads ${threads} \
                 --infiles ${infiles} \
-                --outfile ${outfile} \
+                --fil_out ${fil_out} \
                 --rnd ${rnd} \
                 $(if ${flg_mc}; then echo "--flg_mc"; fi) \
                 --err_out ${err_out} \
                 --nam_job ${nam_job} \
                 --env_nam ${env_nam} \
-                --scr_spk ${scr_spk}
+                --dir_scr ${dir_scr}
     fi
 else
     :  #TODO: Call submission script in 'GNU Parallel/serial' mode
