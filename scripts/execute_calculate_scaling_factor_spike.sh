@@ -48,13 +48,13 @@ function set_interactive() {
     dir_scr="${dir_rep}/scripts"
     dir_dat="${dir_rep}/data"
     dir_pro="${dir_dat}/processed"
-    {
-        aligner="bowtie2"
-        a_type="global"
-        req_flg=true
-        flg="$(if ${req_flg}; then echo "2"; else echo "NA"; fi)"
-        mapq=1
-    }
+
+    aligner="bowtie2"
+    a_type="global"
+    req_flg=true
+    flg="$(if ${req_flg}; then echo "2"; else echo "NA"; fi)"
+    mapq=1
+
     dir_aln="${dir_pro}/align_${aligner}_${a_type}"
     dir_bam="${dir_aln}/flag-${flg}_mapq-${mapq}/sc"
     dir_out="${dir_pro}/calculate_scaling_factor_spike"
@@ -70,7 +70,7 @@ function set_interactive() {
             --include "IP*,*Hho1*"
     )"
     outfile="${dir_out}/IP-in_WT_G1-G2M-Q_Hho1_6336-6337.mc.txt"
-    flg_in=true
+    rnd=24
     flg_mc=true
     err_out="${dir_out}/logs"
     nam_job="calc_sf_spike"
@@ -93,7 +93,7 @@ dry_run=false
 threads=1
 infiles=""
 outfile=""
-flg_in=false
+rnd=24
 flg_mc=false
 err_out=""
 nam_job="calc_sf_spike"
@@ -106,7 +106,7 @@ show_help=$(cat << EOM
 Usage:
   execute_calculate_scaling_factor_spike.sh
     [--verbose] [--dry_run] --threads <int> --infiles <str> --outfile <str>
-    [--flg_in] [--flg_mc] --err_out <str> --nam_job <str> [--slurm]
+    --rnd <int> [--flg_mc] --err_out <str> --nam_job <str> [--slurm]
     [--max_job <int>] [--time <str>]
 
 Description:
@@ -130,17 +130,18 @@ Arguments:
                   spike-in-derived scaling factors and, optionally, additional
                   metrics are saved. If the file already exists, new data will
                   be appended.
-  -fi, --flg_in   Include sample input coefficients in outfile.
+   -r, --rnd      Number of decimal places for rounding the spike-in scaling
+                  factor (default: ${rnd}).
   -fm, --flg_mc   Include additional measurements and calculations in outfile.
   -eo, --err_out  The directory to store stderr and stdout TXT outfiles
                   (default: \${dir_out}/err_out).
-  -nj, --nam_job  The name of the job (default: ${nam_job}).
+  -nj, --nam_job  The name of the job (default: '${nam_job}').
   -sl, --slurm    Submit jobs to the SLURM scheduler.
   -mj, --max_job  The maximum number of jobs to run at one time (required if
                   --slurm is specified, ignored if not; default: ${max_job}).
   -tm, --time     The length of time, in 'h:mm:ss' format, for the SLURM job
                   (required if --slurm is specified, ignored if not; default:
-                  ${time}).
+                  '${time}').
 
 Dependencies:
   - Programs
@@ -235,7 +236,7 @@ else
              -t|--threads) threads="${2}"; shift 2 ;;
              -i|--infiles) infiles="${2}"; shift 2 ;;
              -o|--outfile) outfile="${2}"; shift 2 ;;
-            -fi|--flg_in)  flg_in=true;    shift 1 ;;
+             -r|--rnd)     rnd="${2}";     shift 2 ;;
             -fm|--flg_mc)  flg_mc=true;    shift 1 ;;
             -eo|--err_out) err_out="${2}"; shift 2 ;;
             -nj|--nam_job) nam_job="${2}"; shift 2 ;;
@@ -271,6 +272,9 @@ check_exists_file_dir "d" "$(dirname "${infiles%%[,;]*}")" "infiles"
 
 check_supplied_arg -a "${outfile}" -n "outfile"
 check_exists_file_dir "d" "$(dirname "${outfile}")" "outfile"
+
+check_supplied_arg -a "${rnd}" -n "rnd"
+check_int_pos "${rnd}" "rnd"
 
 if [[ -n "${err_out}" ]]; then
     check_exists_file_dir "d" "${err_out}" "err_out"
@@ -355,7 +359,7 @@ if ${verbose}; then
     echo "threads=${threads}"
     echo "infiles=${infiles}"
     echo "outfile=${outfile}"
-    echo "flg_in=${flg_in}"
+    echo "rnd=${rnd}"
     echo "flg_mc=${flg_mc}"
     echo "err_out=${err_out}"
     echo "nam_job=${nam_job}"
@@ -388,7 +392,7 @@ if ${slurm}; then
         echo "        --threads ${threads} \\"
         echo "        --infiles ${infiles} \\"
         echo "        --outfile ${outfile} \\"
-        echo "        $(if ${flg_in}; then echo "--flg_in"; fi) \\"
+        echo "        --rnd ${rnd} \\"
         echo "        $(if ${flg_mc}; then echo "--flg_mc"; fi) \\"
         echo "        --err_out ${err_out} \\"
         echo "        --nam_job ${nam_job} \\"
@@ -396,14 +400,14 @@ if ${slurm}; then
         echo "        --scr_spk ${scr_spk}"
         echo ""
         echo ""
-        echo "#########################################"
-        echo "## Contents of SLURM submission script ##"
-        echo "#########################################"
-        echo ""
-        echo "## ${scr_sub} ##"
-        echo ""
-        cat "${scr_sub}"
-        echo ""
+        # echo "#########################################"
+        # echo "## Contents of SLURM submission script ##"
+        # echo "#########################################"
+        # echo ""
+        # echo "## ${scr_sub} ##"
+        # echo ""
+        # cat "${scr_sub}"
+        # echo ""
     fi
 
     if ! ${dry_run}; then
@@ -431,7 +435,7 @@ if ${slurm}; then
                 --threads ${threads} \
                 --infiles ${infiles} \
                 --outfile ${outfile} \
-                $(if ${flg_in}; then echo "--flg_in"; fi) \
+                --rnd ${rnd} \
                 $(if ${flg_mc}; then echo "--flg_mc"; fi) \
                 --err_out ${err_out} \
                 --nam_job ${nam_job} \
@@ -439,160 +443,5 @@ if ${slurm}; then
                 --scr_spk ${scr_spk}
     fi
 else
-    #  Define the base GNU Parallel command, specifying the number of jobs to
-    #+ run, using named headers for input variables, and setting a comma as the
-    #+ column separator for input data
-    cmd_par="parallel --jobs ${par_job} --header : --colsep ','"
-    
-    #  Define the main processing logic to be run by GNU Parallel; this block
-    #+ handles input file manipulation, alignment counting, scaling factor
-    #+ calculation, and output writing
-    # shellcheck disable=SC2016,SC2089
-    logic='
-        #  Set variables for main and spike-in input files based on the input
-        #+ filename pattern
-        mp={arr_infiles}
-        sp=$(echo "${mp}" | sed "s:\/sc\/:\/sp\/:g; s:\.sc\.:\.sp\.:g")
-        mn=$(echo "${mp}" | sed "s:\/IP_:\/in_:g")
-        sn=$(echo "${sp}" | sed "s:\/IP_:\/in_:g")
-
-        #  Check for required input files; if missing, print an error message
-        #+ and exit
-        if [[
-            ! -f "${mp}" || ! -f "${sp}" || ! -f "${mn}" || ! -f "${sn}"
-        ]]; then
-            echo \
-                "Error: Missing input file(s) for mp=${mp}, sp=${sp}," \
-                "mn=${mn}, sn=${sn}." >&2
-            exit 1
-        fi
-
-        #  Count the number of alignments in each file using Samtools
-        num_mp=$(samtools view -c -@ {threads} "${mp}")
-        num_sp=$(samtools view -c -@ {threads} "${sp}")
-        num_mn=$(samtools view -c -@ {threads} "${mn}")
-        num_sn=$(samtools view -c -@ {threads} "${sn}")
-
-        #  Extract the sample name from the main input file for naming output
-        #+ entries
-        samp=$(basename "${mp}" | sed "s:IP_::; s:.bam::; s:\\.:_:g")
-
-        #  Calculate the scaling factor (coefficient) using a specified Python
-        #+ script
-        sf=$(
-            python {scr_spk} \
-                --main_ip "${num_mp}" \
-                --spike_ip "${num_sp}" \
-                --main_in "${num_mn}" \
-                --spike_in "${num_sn}"
-        )
-
-        # #  Write a header to the output file if it is not already present
-        # #+ using file locking to prevent concurrent writes from multiple
-        # #+ processes
-        # {
-        #     flock -n 200 || exit 1
-        #     if ! \
-        #         grep -q "$(printf "^sample\tsf")" {outfile} 2> /dev/null
-        #     then
-        #         if ! {flg_mc}; then
-        #             echo -e "sample\tsf" >> {outfile}
-        #         else
-        #             echo -e \
-        #                 "sample\tsf\tmain_ip\tspike_ip\tmain_in\tspike_in" \
-        #                     >> {outfile}
-        #         fi
-        #     fi
-        # } 200> "{outfile}.lock"
-
-        #  Write the calculated scaling factor and optional metrics to the
-        #+ output file
-        if ! {flg_mc}; then
-            echo -e "${mp}\t${sf}" >> {outfile}
-            if {flg_in}; then
-                echo -e "${mn}\t1" >> {outfile}
-            fi
-        else
-            echo -e \
-                "${mp}\t${sf}\t${num_mp}\t${num_sp}\t${num_mn}\t${num_sn}" \
-                    >> {outfile}
-            if {flg_in}; then
-                echo -e \
-                    "${mn}\t1\t${num_mp}\t${num_sp}\t${num_mn}\t${num_sn}" \
-                        >> {outfile}
-            fi
-        fi
-    '
-    #NOTE: 2024-1119, replaced ${mp##*/} with ${mp} and ${mn##*/} with ${mn}
-
-    #  Define a helper function to run GNU Parallel with the specified logic
-    #+ and variables
-    function run_parallel() {
-        local cmd="${1}"
-
-        ${cmd} "${logic}" \
-            ::: arr_infiles "${arr_infiles[@]}" \
-            ::: threads "${threads}" \
-            ::: scr_spk "${scr_spk}" \
-            ::: flg_mc "${flg_mc}" \
-            ::: flg_in "${flg_in}" \
-            ::: outfile "${outfile}"
-    }
-
-    #  If `dry_run` or `verbose` is enabled, run GNU Parallel in dry-run mode
-    #+ to display commands without executing them, capturing output and error
-    #+ logs
-    if ${dry_run} || ${verbose}; then
-        # #  Based on the presence of `flg_mc`, output the appropriate header
-        # if ! ${flg_mc}; then
-        #     echo -e "sample\tsf"
-        # else
-        #     echo -e "sample\tsf\tmain_ip\tspike_ip\tmain_in\tspike_in"
-        # fi
-
-        #  Execute a dry-run of the parallel processing logic, capturing stdout
-        #+ and stderr logs for each job
-        run_parallel "${cmd_par} --dryrun" \
-             > >(
-                tee -a "${err_out}/${nam_job}.$(
-                    basename "${outfile}" ".txt"
-                ).stdout.txt"
-            ) \
-            2> >(
-                tee -a "${err_out}/${nam_job}.$(
-                    basename "${outfile}" ".txt"
-                ).stderr.txt"
-            )
-    fi
-
-    #  Run GNU Parallel for actual processing if `dry_run` is not enabled,
-    #+ capturing output and error logs
-    if ! ${dry_run}; then
-        #  To prevent potential race conditions from concurrent writes,
-        #+ pre-write the header to the outfile before running GNU Parallel jobs
-        #+ (this avoids relying on `flock`, which seems to exhibit buggy
-        #+ behavior in GNU Parallel job submissions); if `flg_mc=true`, include
-        #+ additional column names in the header
-        if ! ${flg_mc}; then
-            echo -e "sample\tsf" >> "${outfile}"
-        else
-            echo -e \
-                "sample\tsf\tmain_ip\tspike_ip\tmain_in\tspike_in" \
-                    >> "${outfile}"
-        fi
-
-        #  Execute the parallel processing logic, capturing stdout and stderr
-        #+ logs for each job
-        run_parallel "${cmd_par}" \
-             >> >(
-                tee -a "${err_out}/${nam_job}.$(
-                    basename "${outfile}" ".txt"
-                ).stdout.txt"
-            ) \
-            2>> >(
-                tee -a "${err_out}/${nam_job}.$(
-                    basename "${outfile}" ".txt"
-                ).stderr.txt"
-            )
-    fi
+    :  #TODO: Call submission script in 'GNU Parallel/serial' mode
 fi

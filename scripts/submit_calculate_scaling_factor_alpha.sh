@@ -233,28 +233,64 @@ source <(
 #  If '--flg_dep', calculate sequencing depth (number of alignments) for IP and
 #+ input samples
 if ${flg_dep}; then
-    dep_ip=$(samtools view -@ "${threads}" -c "${fil_ip}")
-    dep_in=$(samtools view -@ "${threads}" -c "${fil_in}")
+    if ${debug}; then
+        echo "{"
+        echo "    dep_ip=\$(samtools view -@ ${threads} -c \"${fil_ip}\")"
+        echo "    dep_in=\$(samtools view -@ ${threads} -c \"${fil_in}\")"
+        echo "}"
+        echo ""
+    fi
+
+    # shellcheck disable=SC2086
+    {
+        dep_ip=$(samtools view -@ ${threads} -c "${fil_ip}")
+        dep_in=$(samtools view -@ ${threads} -c "${fil_in}")
+    }
 fi
 
 #  If '--flg_len', calculate mean fragment length for IP and input samples
 if ${flg_len}; then
-    len_ip="$(
-        samtools view -@ "${threads}" "${fil_ip}" \
-            | awk '{
-                if ($9 > 0) { sum += $9; count++ }
-            } END {
-                if (count > 0) { print sum / count }
-            }'
-    )"
-    len_in="$(
-        samtools view -@ "${threads}" "${fil_in}" \
-            | awk '{
-                if ($9 > 0) { sum += $9; count++ }
-            } END {
-                if (count > 0) { print sum / count }
-            }'
-    )"
+    if ${debug}; then
+        echo "{"
+        echo "    len_ip=\"\$("
+        echo "        samtools view -@ ${threads} \"${fil_ip}\" "
+        echo "            | awk '{"
+        echo "                if (\$9 > 0) { sum += \$9; count++ }"
+        echo "            } END {"
+        echo "                if (count > 0) { print sum / count }"
+        echo "            }'"
+        echo "    )\""
+        echo "    len_in=\"\$("
+        echo "        samtools view -@ ${threads} \"${fil_in}\" "
+        echo "            | awk '{"
+        echo "                if (\$9 > 0) { sum += \$9; count++ }"
+        echo "            } END {"
+        echo "                if (count > 0) { print sum / count }"
+        echo "            }'"
+        echo "    )\""
+        echo "}"
+        echo ""
+    fi
+
+    # shellcheck disable=SC2086
+    {
+        len_ip="$(
+            samtools view -@ ${threads} "${fil_ip}" \
+                | awk '{
+                    if ($9 > 0) { sum += $9; count++ }
+                } END {
+                    if (count > 0) { print sum / count }
+                }'
+        )"
+        len_in="$(
+            samtools view -@ ${threads} "${fil_in}" \
+                | awk '{
+                    if ($9 > 0) { sum += $9; count++ }
+                } END {
+                    if (count > 0) { print sum / count }
+                }'
+        )"
+    }
 fi
 
 #  Debug output, checking IP and input volume, mass, concentration, and

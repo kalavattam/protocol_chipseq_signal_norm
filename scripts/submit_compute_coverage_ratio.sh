@@ -39,6 +39,8 @@ function set_logs() {
 
 function set_args_opt() {
     unset optional && typeset -g -a optional
+    if ${track}; then optional+=( --track ); fi
+
     if [[ -n "${scl_fct}" && "${scl_fct}" != "#N/A" ]]; then
         optional+=( --scl_fct "${scl_fct}" )
     fi
@@ -62,29 +64,30 @@ show_help=$(cat << EOM
 \${3}=str_fil_ip   # str: Comma-separated string of IP BEDGRAPH files
 \${4}=str_fil_in   # str: Comma-separated string of input BEDGRAPH files
 \${5}=str_fil_out  # str: Comma-separated string of output BEDGRAPH files
-\${6}=str_scl_fct  # str: Comma-separated string of scaling factors (flt)
-\${7}=str_dep_min  # str: Comma-separated string of minimum input depths (flt)
-\${8}=log2         # bol: Apply log2 transformation or not
-\${9}=rnd          # int: Number of decimal places for rounding signal values
-\${10}=err_out     # str: Directory for stdout and stderr files
-\${11}=nam_job     # str: Name of job
+\${6}=track        # bol: Output extra BEDGRAPH files sans '-inf', 'nan' rows
+\${7}=str_scl_fct  # str: Comma-separated string of scaling factors (flt)
+\${8}=str_dep_min  # str: Comma-separated string of minimum input depths (flt)
+\${9}=log2         # bol: Apply log2 transformation or not
+\${10}=rnd         # int: Number of decimal places for rounding signal values
+\${11}=err_out     # str: Directory for stdout and stderr files
+\${12}=nam_job     # str: Name of job
 EOM
 )
 
 if [[ -z "${1:-}" || "${1}" == "-h" || "${1}" == "--help" ]]; then
     cat << EOM
-$(basename "${0}") requires 11 positional arguments:
+$(basename "${0}") requires 12 positional arguments:
 ${show_help}
 EOM
     exit 0
 fi
 
-#  Check for exactly 11 positional arguments
-if [[ $# -ne 11 ]]; then
+#  Check for exactly 12 positional arguments
+if [[ $# -ne 12 ]]; then
     msg="but $# were supplied."
     if [[ $# -eq 1 ]]; then msg="but only $# was supplied."; fi
     cat << EOM
-Error: $(basename "${0}") requires 11 positional arguments, ${msg}
+Error: $(basename "${0}") requires 12 positional arguments, ${msg}
 
 The necessary positional arguments:
 ${show_help}
@@ -98,12 +101,13 @@ scr_cvg="${2}"
 str_fil_ip="${3}"
 str_fil_in="${4}"
 str_fil_out="${5}"
-str_scl_fct="${6}"
-str_dep_min="${7}"
-log2="${8}"
-rnd="${9}"
-err_out="${10}"
-nam_job="${11}"
+track="${6}"
+str_scl_fct="${7}"
+str_dep_min="${8}"
+log2="${9}"
+rnd="${10}"
+err_out="${11}"
+nam_job="${12}"
 
 #  Activate environment
 if [[ "${CONDA_DEFAULT_ENV}" != "${env_nam}" ]]; then

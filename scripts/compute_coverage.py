@@ -205,21 +205,6 @@ def validate_outfile(value):
     return outfile, ext, is_gz
 
 
-# def validate_outfile(value):
-#     """
-#     Validates that '--outfile' assignment does not contain a disallowed
-#     extension.
-#     """
-#     disallowed = {"bedgraph", "bdg", "bg", "bigwig", "bw"}
-#     filename, ext = os.path.splitext(value)
-#     if ext.lower().lstrip('.') in disallowed:
-#         raise argparse.ArgumentTypeError(
-#             f"Invalid extension '{ext}' in --outfile. Provide only the base "
-#             f"name (e.g., '{os.path.basename(filename)}')."
-#         )
-#     return value
-
-
 def parse_bam(path_bam, usr_frg=None):
     """
     Reads a BAM file and returns a dictionary of lists, where each key is a
@@ -566,23 +551,6 @@ def parse_args():
             "'--usr_frg' being ignored)."
         )
     )
-    # parser.add_argument(
-    #     "-to", "--typ_out",
-    #     choices=['bedgraph', 'bdg', 'bg', 'bigwig', 'bw', 'both', 'bed'],
-    #     default='bdg',
-    #     help=(
-    #         "Specify the output format (default: %(default)s). Options: "
-    #         "'bedgraph', 'bdg', 'bg', 'bigwig', 'bw', 'both', 'bed'. Use "
-    #         "'bedgraph', 'bdg', 'bg' to output binned coverage in BEDGRAPH "
-    #         "format. Use 'bigwig', 'bw' to output binned coverage in BIGWIG "
-    #         "format. Use 'both' to output binned coverage in both BEDGRAPH "
-    #         "and BIGWIG formats. Use 'bed' to output alignments processed "
-    #         "by function parse_bam() in BED-like format (note: these are "
-    #         "not coverage values; setting '--typ_out bed' results in "
-    #         "arguments such as '--siz_bin', '--typ_cvg', '--scl_fct', "
-    #         "'--usr_frg' being ignored)."
-    #     )
-    # )
     parser.add_argument(
         "-sb", "--siz_bin",
         type=int,

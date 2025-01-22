@@ -62,12 +62,12 @@ show_help=$(cat << EOM
 \${1}=env_nam       # str: Name of Conda/Mamba environment to activate
 \${2}=scr_cvg       # str: Path to coverage script
 \${3}=threads       # int: Number of threads to use
-\${4}=str_infile    # str: Comma-separated string of infiles
-\${5}=str_outfile   # str: Comma-separated string of outfile stems
+\${4}=str_infile    # str: Comma-separated string of infiles (str)
+\${5}=str_outfile   # str: Comma-separated string of outfile stems (str)
 \${6}=siz_bin       # int: Bin size in base pairs
 \${7}=typ_cvg       # str: Type of coverage to compute
-\${8}=str_scl_fct   # flt: Comma-separated string of scaling factors
-\${9}=str_usr_frg  # int: Comma-separated string of fragment lengths
+\${8}=str_scl_fct   # str: Comma-separated string of scaling factors (flt)
+\${9}=str_usr_frg   # str: Comma-separated string of fragment lengths (int)
 \${10}=rnd          # int: No. decimal places for rounding signal values
 \${11}=err_out      # str: Directory for stdout and stderr files
 \${12}=nam_job      # str: Name of job
@@ -112,6 +112,23 @@ rnd="${10}"
 err_out="${11}"
 nam_job="${12}"
 
+#  Debug argument variable assignments
+if ${debug}; then
+    debug_var \
+        "env_nam=${env_nam}" \
+        "scr_cvg=${scr_cvg}" \
+        "threads=${threads}" \
+        "str_infile=${str_infile}" \
+        "str_outfile=${str_outfile}" \
+        "siz_bin=${siz_bin}" \
+        "typ_cvg=${typ_cvg}" \
+        "str_scl_fct=${str_scl_fct}" \
+        "str_usr_frg=${str_usr_frg}" \
+        "rnd=${rnd}" \
+        "err_out=${err_out}" \
+        "nam_job=${nam_job}"
+fi
+
 #  Activate environment
 if [[ "${CONDA_DEFAULT_ENV}" != "${env_nam}" ]]; then
     eval "$(conda shell.bash hook)"
@@ -130,22 +147,14 @@ IFS=',' read -r -a arr_usr_frg <<< "${str_usr_frg}"
 
 #  Debug output to check number of array elements and array element values
 if ${debug}; then
-    echo "\${#arr_infile[@]}=${#arr_infile[@]}"
-    echo ""
-    echo "arr_infile=( ${arr_infile[*]} )"
-    echo ""
-    echo "\${#arr_outfile[@]}=${#arr_outfile[@]}"
-    echo ""
-    echo "arr_outfile=( ${arr_outfile[*]} )"
-    echo ""
-    echo "\${#arr_scl_fct[@]}=${#arr_scl_fct[@]}"
-    echo ""
-    echo "arr_scl_fct=( ${arr_scl_fct[*]} )"
-    echo ""
-    echo "\${#arr_usr_frg[@]}=${#arr_usr_frg[@]}"
-    echo ""
-    echo "arr_usr_frg=( ${arr_usr_frg[*]} )"
-    echo ""
+    echo "\${#arr_infile[@]}=${#arr_infile[@]}"   && echo ""
+    echo "arr_infile=( ${arr_infile[*]} )"        && echo ""
+    echo "\${#arr_outfile[@]}=${#arr_outfile[@]}" && echo ""
+    echo "arr_outfile=( ${arr_outfile[*]} )"      && echo ""
+    echo "\${#arr_scl_fct[@]}=${#arr_scl_fct[@]}" && echo ""
+    echo "arr_scl_fct=( ${arr_scl_fct[*]} )"      && echo ""
+    echo "\${#arr_usr_frg[@]}=${#arr_usr_frg[@]}" && echo ""
+    echo "arr_usr_frg=( ${arr_usr_frg[*]} )"      && echo ""
 fi
 
 #  Determine and run mode: SLURM or GNU Parallel/serial

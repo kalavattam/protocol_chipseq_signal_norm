@@ -1,37 +1,279 @@
 #!/bin/bash
 
+#  submit_calculate_scaling_factor_alpha.sh
+#  KA
+
+
 #  If true, run script in debug mode
 debug=true
+
+#  Run script in interactive/test mode (true) or command-line mode (false)
+interactive=false
+
+
+#  Define functions
+function debug_var() { for var in "$@"; do echo "${var}" && echo ""; done; }
+
+
+function validate_var() {
+    local var_nam=${1}
+    local var_val=${2}
+    local idx=${3}
+    if [[ -z "${var_val}" ]]; then
+        echo \
+            "Error: '${var_nam}' is empty or unset for array index" \
+            "'${idx}'." >&2
+        return 1
+    fi
+}
+
+
+function exists_var() {
+    local var_nam=${1}
+    local var_val=${2}
+    local idx=${3}
+    if [[ ! -f "${var_val}" ]]; then
+        echo \
+            "Error: '${var_nam}' does not exist for array index '${idx}'." >&2
+        return 1
+    fi
+}
+
+
+function set_logs() {
+    local job_id=${1}
+    local task_id=${2}
+    local nam_smp=${3}
+    local dir_log=${4}
+    err_ini="${dir_log}/${nam_job}.${job_id}-${task_id}.stderr.txt"
+    out_ini="${dir_log}/${nam_job}.${job_id}-${task_id}.stdout.txt"
+    err_dsc="${dir_log}/${nam_job}.${nam_smp}.${job_id}-${task_id}.stderr.txt"
+    out_dsc="${dir_log}/${nam_job}.${nam_smp}.${job_id}-${task_id}.stdout.txt"
+}
+
+
+#  Define subroutine to process a sample
+function process_sample() {
+    local idx="${1:-0}"
+    local mp="${arr_ser_mip[idx]}"
+    local sp="${arr_ser_sip[idx]}"
+    local mn="${arr_ser_min[idx]}"
+    local sn="${arr_ser_sin[idx]}"
+    local num_mp num_sp num_mn num_sn
+    local dm_fr_1 dm_fr_10 dm_fr_20 dm_fr_30 dm_fr_40 dm_fr_50
+    local dm_nm_1 dm_nm_10 dm_nm_20 dm_nm_30 dm_nm_40 dm_nm_50
+    local prt_1 prt_2 prt_3 prt_4 prt_5 prt_6
+
+    #  Debug and validate assignments to variables 'mp', 'sp', 'mn', and 'mn'
+    if ${debug}; then
+        debug_var "idx=${idx}" "mp=${mp}" "sp=${sp}" "mn=${mn}" "sn=${sn}"
+    fi
+
+    #  Exit if variables 'mp', 'sp', 'mn', or 'sn' have empty assignments or do
+    #+ not exist
+    # shellcheck disable=SC2086
+    {
+        validate_var "mp" "${mp}" ${idx} || exit 1
+        exists_var   "mp" "${mp}" ${idx} || exit 1
+        validate_var "sp" "${sp}" ${idx} || exit 1
+        exists_var   "sp" "${sp}" ${idx} || exit 1
+        validate_var "mn" "${mn}" ${idx} || exit 1
+        exists_var   "mn" "${mn}" ${idx} || exit 1
+        validate_var "sn" "${sn}" ${idx} || exit 1
+        exists_var   "sn" "${sn}" ${idx} || exit 1
+    }
+
+    #  Debug commands to count proper alignments
+    if ${debug}; then
+        echo "{"
+        echo "    ## WARNING: Assumes BAM files contain paired-end alignments ##"
+        echo "    num_mp=\$(count_alignments_bam ${threads} \"${mp}\")"
+        echo "    num_sp=\$(count_alignments_bam ${threads} \"${sp}\")"
+        echo "    num_mn=\$(count_alignments_bam ${threads} \"${mn}\")"
+        echo "    num_sn=\$(count_alignments_bam ${threads} \"${sn}\")"
+        echo "}"
+        echo ""
+    fi
+
+    #  Count numbers of proper alignments for mp, sp, mn, and sn
+    # shellcheck disable=SC2086
+    {
+        ## WARNING: Assumes BAM files contain paired-end alignments ##
+        num_mp=$(count_alignments_bam ${threads} "${mp}")
+        num_sp=$(count_alignments_bam ${threads} "${sp}")
+        num_mn=$(count_alignments_bam ${threads} "${mn}")
+        num_sn=$(count_alignments_bam ${threads} "${sn}")
+    }
+
+    #  Debug values assigned to the num_{m|s}{p|n} variables
+    if ${debug}; then
+        debug_var \
+            "num_mp=${num_mp}" "num_sp=${num_sp}" \
+            "num_mn=${num_mn}" "num_sn=${num_sn}"
+    fi
+
+    #  Check call to calculate_scaling_factor_spike.py
+    if ${debug}; then
+        echo "python \"${scr_spk}\" \\"
+        echo "    --main_ip  ${num_mp} \\"
+        echo "    --spike_ip ${num_sp} \\"
+        echo "    --main_in  ${num_mn} \\"
+        echo "    --spike_in ${num_sn} \\"
+        echo "    --rnd      ${rnd} \\"
+        echo ""
+    fi
+
+    #  Calculate the spike-in derived scaling factor, which is assigned to
+    #+ variable sf, with script calculate_scaling_factor_spike.py
+    # shellcheck disable=SC2086
+    sf=$(
+        python "${scr_spk}" \
+            --main_ip  ${num_mp} \
+            --spike_ip ${num_sp} \
+            --main_in  ${num_mn} \
+            --spike_in ${num_sn} \
+            --rnd      ${rnd}
+    )
+
+    if ${debug}; then debug_var "sf=${sf}"; fi
+
+    #TODO: Call(s) to 'dep_min' Python script
+    # shellcheck disable=SC2086
+    {
+         dm_fr_1=$(calculate_factor_depth ${num_mn} 1  12157105 "frag" ${rnd})
+        dm_fr_10=$(calculate_factor_depth ${num_mn} 10 12157105 "frag" ${rnd})
+        dm_fr_20=$(calculate_factor_depth ${num_mn} 20 12157105 "frag" ${rnd})
+        dm_fr_30=$(calculate_factor_depth ${num_mn} 30 12157105 "frag" ${rnd})
+        dm_fr_40=$(calculate_factor_depth ${num_mn} 40 12157105 "frag" ${rnd})
+        dm_fr_50=$(calculate_factor_depth ${num_mn} 50 12157105 "frag" ${rnd})
+
+         dm_nm_1=$(calculate_factor_depth ${num_mn} 1  12157105 "norm" ${rnd})
+        dm_nm_10=$(calculate_factor_depth ${num_mn} 10 12157105 "norm" ${rnd})
+        dm_nm_20=$(calculate_factor_depth ${num_mn} 20 12157105 "norm" ${rnd})
+        dm_nm_30=$(calculate_factor_depth ${num_mn} 30 12157105 "norm" ${rnd})
+        dm_nm_40=$(calculate_factor_depth ${num_mn} 40 12157105 "norm" ${rnd})
+        dm_nm_50=$(calculate_factor_depth ${num_mn} 50 12157105 "norm" ${rnd})
+    }
+
+    #  Debug output to verify spike-in-derived scaling factor
+    if ${debug}; then
+        debug_var \
+            "dm_fr_1=${dm_fr_1}"   "dm_fr_10=${dm_fr_10}" "dm_fr_20=${dm_fr_20}" \
+            "dm_fr_30=${dm_fr_30}" "dm_fr_40=${dm_fr_40}" "dm_fr_50=${dm_fr_50}" \
+            "dm_nm_1=${dm_nm_1}"   "dm_nm_10=${dm_nm_10}" "dm_nm_20=${dm_nm_20}" \
+            "dm_nm_30=${dm_nm_30}" "dm_nm_40=${dm_nm_40}" "dm_nm_50=${dm_nm_50}"
+    fi
+
+    #  Print the IP sample and scaling factor to the outfile
+    if ! ${flg_mc}; then
+        echo -e "${mp}\t${sf}" >> "${outfile}"
+    else
+        #  If --flg_mc, include num_{m|s}{p|n} values in the outfile
+        # shellcheck disable=SC2028
+        {
+            prt_1="${mp}\t${sp}\t${mn}\t${sn}\t${sf}\t${num_mp}\t"
+            prt_2="${num_sp}\t${num_mn}\t${num_sn}\t"
+            prt_3="${dm_fr_1}\t${dm_fr_10}\t${dm_fr_20}\t"
+            prt_4="${dm_fr_30}\t${dm_fr_40}\t${dm_fr_50}\t"
+            prt_5="${dm_nm_1}\t${dm_nm_10}\t${dm_nm_20}\t"
+            prt_6="${dm_nm_30}\t${dm_nm_40}\t${dm_nm_50}"
+                
+            echo -e "${prt_1}${prt_2}${prt_3}${prt_4}${prt_5}${prt_6}" \
+                >> "${outfile}"
+        }
+    fi
+}
+
+
+function set_interactive() {
+    #  Set hardcoded paths, values, etc.
+    ## WARNING: If interactive=true, change values as needed ##
+    dir_bas="${HOME}/repos"
+    dir_rep="${dir_bas}/protocol_chipseq_signal_norm"
+    dir_scr="${dir_rep}/scripts"
+    dir_fnc="${dir_scr}/functions"
+    dir_dat="${dir_rep}/data"
+    dir_pro="${dir_dat}/processed"
+
+    aligner="bowtie2"
+    a_type="global"
+    req_flg=true
+    flg="$(if ${req_flg}; then echo "2"; else echo "NA"; fi)"
+    mapq=1
+
+    dir_aln="${dir_pro}/align_${aligner}_${a_type}/flag-${flg}_mapq-${mapq}"
+    dir_cer="${dir_aln}/sc"
+    dir_pom="${dir_aln}/sp"
+    dir_cvg="${dir_pro}/compute_coverage"
+    dir_out="${dir_cvg}/${aligner}_${a_type}_flag-${flg}_mapq-${mapq}/tables"
+
+    #  Set hardcoded argument assignments
+    threads=8
+    ser_mip="${dir_cer}/IP_WT_Q_Hho1_6336.sc.bam,${dir_cer}/IP_WT_Q_Hho1_6337.sc.bam"
+    ser_sip="${dir_pom}/IP_WT_Q_Hho1_6336.sp.bam,${dir_pom}/IP_WT_Q_Hho1_6337.sp.bam"
+    ser_min="${dir_cer}/in_WT_Q_Hho1_6336.sc.bam,${dir_cer}/in_WT_Q_Hho1_6337.sc.bam"
+    ser_sin="${dir_pom}/in_WT_Q_Hho1_6336.sp.bam,${dir_pom}/in_WT_Q_Hho1_6337.sp.bam"
+    outfile="${dir_out}/spike_test.tsv"
+    rnd=24
+    flg_mc=true
+    err_out="${dir_cvg}/tables/logs"
+    nam_job="calc_sf_spike"
+    env_nam="env_analyze"
+    scr_spk="${dir_scr}/calculate_scaling_factor_spike.py"
+    scr_ct="${dir_fnc}/count_alignments_bam.sh"
+    scr_min="${dir_fnc}/calculate_factor_depth.sh"
+}
+
+
+#  Export functions
+export -f \
+    process_sample validate_var exists_var debug_var set_logs set_interactive
 
 #  Parse keyword arguments, assigning them to variables; most of the argument
 #+ inputs are not checked, as this is performed by execute_*.sh and to a
 #+ certain extent by the scripts submitted to SLURM
 threads=1
-infiles=""
+ser_mip=""
+ser_sip=""
+ser_min=""
+ser_sin=""
 outfile=""
-flg_in=false
+rnd=24
 flg_mc=false
 err_out=""
 nam_job="calc_sf_spike"
 env_nam="env_analyze"
 scr_spk=""
+scr_ct=""
+scr_min=""
 
 show_help=$(cat << EOM
 $(basename "${0}") takes the following keyword arguments:
-   -t, --threads  Number of threads to use.
-   -i, --infiles  Comma-separated serialized string of sample IP BAM infiles.
-   -o, --outfile  Outfile of sample spike-in-derived scaling factors.
-  -fi, --flg_in   Include input spike-in-derived scaling factors in outfile.
-  -fm, --flg_mc   Include additional measurements, calculations in outfile.
+   -t, --threads  Number of threads to use (default: ${threads}).
+  -mp, --ser_mip  Comma-separated serialized string of sample "main" IP BAM
+                  input files.
+  -sp, --ser_sip  Comma-separated serialized string of sample "spike-in" IP BAM
+                  input files.
+  -mn, --ser_min  Comma-separated serialized string of sample "main" input BAM
+                  input files.
+  -sn, --ser_sin  Comma-separated serialized string of sample "spike-in" input
+                  BAM input files.
+   -o, --outfile  TSV output file of sample spike-in-derived scaling factors.
+   -r, --rnd      Number of decimal places for rounding the spike-in scaling
+                  factor (default: ${rnd}).
+  -fm, --flg_mc   Include additional measurements, calculations in outfile
+                  (optional).
   -eo, --err_out  Directory to store stderr and stdout outfiles.
-  -nj, --nam_job  Name of job.
-  -en, --env_nam  Name of Conda/Mamba environment to activate.
+  -nj, --nam_job  Name of job (default: '${nam_job}').
+  -en, --env_nam  Name of Conda/Mamba environment to activate (default:
+                  '${env_nam}').
   -ss, --scr_spk  Script that calculates spike-in-derived scaling factors,
-                  calculate_scaling_factor_spike.py.
-
-All arguments are required. If not specified, --threads, --nam_job, and
---env_nam default to, respectively, threads=${threads}, nam_job=${nam_job}, and
-env_nam=${env_nam}. Also, --flg_in and --flg_mc are flags.
+                  'calculate_scaling_factor_spike.py'.
+  -sc, --scr_ct   Script that counts the number of alignments in a BAM file,
+                  'count_alignments_bam.sh'.
+  -sm, --scr_min  Script that computes a depth factor based on the number of
+                  alignments in a BAM file, bin size, and effective genome
+                  size, 'calculate_factor_depth.sh'.
 EOM
 )
 
@@ -41,46 +283,43 @@ if [[ -z "${1}" || "${1}" == "-h" || "${1}" == "--help" ]]; then
 fi
 
 # shellcheck disable=SC2034,SC2154
-while [[ "$#" -gt 0 ]]; do
-    case "${1}" in
-         -t|--threads) threads="${2}"; shift 2 ;;
-         -i|--infiles) infiles="${2}"; shift 2 ;;
-         -o|--outfile) outfile="${2}"; shift 2 ;;
-        -fi|--flg_in)  flg_in=true;    shift 1 ;;
-        -fm|--flg_mc)  flg_mc=true;    shift 1 ;;
-        -eo|--err_out) err_out="${2}"; shift 2 ;;
-        -nj|--nam_job) nam_job="${2}"; shift 2 ;;
-        -en|--env_nam) env_nam="${2}"; shift 2 ;;
-        -ss|--scr_spk) scr_spk="${2}"; shift 2 ;;
-        *)
-            echo "## Unknown argument passed: ${1} ##" >&2
-            echo "" >&2
-            echo "${show_help}" >&2
-            exit 1
-            ;;
-    esac
-done
+if ${interactive}; then
+    set_interactive
+else
+    while [[ "$#" -gt 0 ]]; do
+        case "${1}" in
+             -t|--threads) threads="${2}"; shift 2 ;;
+            -mp|--ser_mip) ser_mip="${2}"; shift 2 ;;
+            -sp|--ser_sip) ser_sip="${2}"; shift 2 ;;
+            -mn|--ser_min) ser_min="${2}"; shift 2 ;;
+            -sn|--ser_sin) ser_sin="${2}"; shift 2 ;;
+             -o|--outfile) outfile="${2}"; shift 2 ;;
+             -r|--rnd)     rnd="${2}";     shift 2 ;;
+            -fm|--flg_mc)  flg_mc=true;    shift 1 ;;
+            -eo|--err_out) err_out="${2}"; shift 2 ;;
+            -nj|--nam_job) nam_job="${2}"; shift 2 ;;
+            -en|--env_nam) env_nam="${2}"; shift 2 ;;
+            -ss|--scr_spk) scr_spk="${2}"; shift 2 ;;
+            -sc|--scr_ct)  scr_ct="${2}";  shift 2 ;;
+            -sm|--scr_min) scr_min="${2}"; shift 2 ;;
+            *)
+                echo "## Unknown argument passed: ${1} ##" >&2
+                echo "" >&2
+                echo "${show_help}" >&2
+                exit 1
+                ;;
+        esac
+    done
+fi
 
-#  Debug output to check argument assignments
+#  Debug argument variable assignments
 if ${debug}; then
-    echo "threads=${threads}"
-    echo ""
-    echo "infiles=${infiles}"
-    echo ""
-    echo "outfile=${outfile}"
-    echo ""
-    echo "flg_in=${flg_in}"
-    echo ""
-    echo "flg_mc=${flg_mc}"
-    echo ""
-    echo "err_out=${err_out}"
-    echo ""
-    echo "nam_job=${nam_job}"
-    echo ""
-    echo "env_nam=${env_nam}"
-    echo ""
-    echo "scr_spk=${scr_spk}"
-    echo ""
+    debug_var \
+        "threads=${threads}" "ser_mip=${ser_mip}" "ser_sip=${ser_sip}" \
+        "ser_min=${ser_min}" "ser_sin=${ser_sin}" "outfile=${outfile}" \
+        "rnd=${rnd}"         "flg_mc=${flg_mc}"   "err_out=${err_out}" \
+        "nam_job=${nam_job}" "env_nam=${env_nam}" "scr_spk=${scr_spk}" \
+        "scr_ct=${scr_ct}"   "scr_min=${scr_min}"
 fi
 
 #  Activate environment
@@ -93,229 +332,71 @@ if [[ "${CONDA_DEFAULT_ENV}" != "${env_nam}" ]]; then
         }
 fi
 
-#  Check that SLURM environment variables are set
-if [[ -z "${SLURM_ARRAY_JOB_ID}" ]]; then
-    echo "Error: SLURM_ARRAY_JOB_ID is not set." >&2
-    exit 1
-fi
+#  Reconstruct arr_ser_mip from the serialized string assigned to ser_mip
+IFS=',' read -r -a arr_ser_mip <<< "${ser_mip}"
+IFS=',' read -r -a arr_ser_sip <<< "${ser_sip}"
+IFS=',' read -r -a arr_ser_min <<< "${ser_min}"
+IFS=',' read -r -a arr_ser_sin <<< "${ser_sin}"
 
-if [[ -z "${SLURM_ARRAY_TASK_ID}" ]]; then
-    echo "Error: SLURM_ARRAY_TASK_ID is not set." >&2
-    exit 1
-fi
-
-#  Give important SLURM environmental variables shorter names
-id_job=${SLURM_ARRAY_JOB_ID}
-id_tsk=${SLURM_ARRAY_TASK_ID}
-
-#  Reconstruct arr_infiles from the serialized string assigned to infiles
-IFS=',' read -r -a arr_infiles <<< "${infiles}"
-
-#  Debug output to check the task ID/array index, number of array elements, and
-#+ array element values
+#  Debug output to check number of array elements and array element values
 if ${debug}; then
-    echo "SLURM_ARRAY_JOB_ID=${id_job}"
-    echo ""
-    echo "SLURM_ARRAY_TASK_ID=${id_tsk}"
-    echo ""
-    echo "\${#arr_infiles[@]}=${#arr_infiles[@]}"
-    echo ""
-    echo "arr_infiles=( ${arr_infiles[*]} )"
-    echo ""
+    echo "\${#arr_ser_mip[@]}=${#arr_ser_mip[@]}" && echo ""
+    echo "arr_ser_mip=( ${arr_ser_mip[*]} )"      && echo ""
+    echo "\${#arr_ser_sip[@]}=${#arr_ser_sip[@]}" && echo ""
+    echo "arr_ser_sip=( ${arr_ser_sip[*]} )"      && echo ""
+    echo "\${#arr_ser_min[@]}=${#arr_ser_min[@]}" && echo ""
+    echo "arr_ser_min=( ${arr_ser_min[*]} )"      && echo ""
+    echo "\${#arr_ser_sin[@]}=${#arr_ser_sin[@]}" && echo ""
+    echo "arr_ser_sin=( ${arr_ser_sin[*]} )"      && echo ""
 fi
 
-#  Determine array index based on SLURM_ARRAY_TASK_ID
-idx=$(( id_tsk - 1 ))
-
-#  Define main and spike-in IP and input infile assignments based on
-#+ index of reconstructed array
-# shellcheck disable=SC2001
-{    
-    mp="${arr_infiles[idx]}"
-    sp=$(echo "${mp}" | sed 's:\/sc\/:\/sp\/:g; s:\.sc\.:\.sp\.:g')
-    mn=$(echo "${mp}" | sed 's:\/IP_:\/in_:g')
-    sn=$(echo "${sp}" | sed 's:\/IP_:\/in_:g')
-}
-
-#  Debug assignments to variables mp, sp, mn, and mn
-if ${debug}; then
-    echo "mp=${mp}"
-    echo ""
-    echo "sp=${sp}"
-    echo ""
-    echo "mn=${mn}"
-    echo ""
-    echo "sn=${sn}"
-    echo ""
-fi
-
-#  Exit if variables mp, sp, mn, or sn have empty assignments
-if [[ -z "${mp}" ]]; then
-    echo \
-        "Error: Failed to retrieve mp for id_tsk=${id_tsk}:" \
-        "\${arr_infiles[${idx}]}." >&2
-    exit 1
-elif [[ -z "${sp}" ]]; then
-    echo \
-        "Error: Failed to retrieve sp for id_tsk=${id_tsk}:" \
-        "\$(echo \${arr_infiles[${idx}]} | sed s:\/sc\/:\/sp\/:g;" \
-        "s:\.sc\.:\.sp\.:g')." >&2
-    exit 1
-elif [[ -z "${mn}" ]]; then
-    echo \
-        "Error: Failed to retrieve mn for id_tsk=${id_tsk}:" \
-        "\$(echo \${arr_infiles[${idx}]} | sed" \
-        "'s:\/IP_:\/in_:g')." >&2
-elif [[ -z "${sn}" ]]; then
-    echo \
-        "Error: Failed to retrieve sn for id_tsk=${id_tsk}:" \
-        "\$(echo \${arr_infiles[${idx}]} | sed 's:\/sc\/:\/sp\/:g;" \
-        "s:\.sc\.:\.sp\.:g; s:\/IP_:\/in_:g')." >&2
-fi
-
-#  Exit if the files assigned to mp, sp, mn, or sn do not exist
-if [[ ! -f "${mp}" ]]; then
-    echo \
-        "Error: File not found for mp from id_tsk=${id_tsk}:" \
-        "\${arr_infiles[${idx}]}." >&2
-    exit 1
-elif [[ ! -f "${sp}" ]]; then
-    echo \
-        "Error: File not found for sp from id_tsk=${id_tsk}:" \
-        "\$(echo \${arr_infiles[${idx}]} | sed s:\/sc\/:\/sp\/:g;" \
-        "s:\.sc\.:\.sp\.:g')." >&2
-    exit 1
-elif [[ ! -f "${mn}" ]]; then
-    echo \
-        "Error: File not found for mn from id_tsk=${id_tsk}:" \
-        "\$(echo \${arr_infiles[${idx}]} | sed" \
-        "'s:\/IP_:\/in_:g')." >&2
-elif [[ ! -f "${sn}" ]]; then
-    echo \
-        "Error: File not found for sn from id_tsk=${id_tsk}:" \
-        "\$(echo \${arr_infiles[${idx}]} | sed 's:\/sc\/:\/sp\/:g;" \
-        "s:\.sc\.:\.sp\.:g; s:\/IP_:\/in_:g')." >&2
-fi
-
-#  Check calls to samtools view -c for variables mp, sp, mn, and sn
-if ${debug}; then
-    echo "num_mp=\$(samtools view -c -@ ${threads} \"${mp}\")"
-    echo "num_sp=\$(samtools view -c -@ ${threads} \"${sp}\")"
-    echo "num_mn=\$(samtools view -c -@ ${threads} \"${mn}\")"
-    echo "num_sn=\$(samtools view -c -@ ${threads} \"${sn}\")"
-    echo ""
-fi
-
-#  Tally alignment numbers for mp, sp, mn, and sn
-# shellcheck disable=SC2086
+#  Source necessary subroutines
+# shellcheck disable=SC1090
 {
-    num_mp=$(samtools view -c -@ ${threads} "${mp}")
-    num_sp=$(samtools view -c -@ ${threads} "${sp}")
-    num_mn=$(samtools view -c -@ ${threads} "${mn}")
-    num_sn=$(samtools view -c -@ ${threads} "${sn}")
+    source "${scr_ct}"
+    source "${scr_min}"
 }
 
-#  Debug values assigned to the num_{m|s}{p|n} variables
-if ${debug}; then
-    echo "num_mp=${num_mp}"
-    echo ""
-    echo "num_sp=${num_sp}"
-    echo ""
-    echo "num_mn=${num_mn}"
-    echo ""
-    echo "num_sn=${num_sn}"
-    echo ""
-fi
+#  Determine and run mode: SLURM or GNU Parallel/serial
+if [[ -n "${SLURM_ARRAY_TASK_ID:-}" ]]; then
+    #  Mode: SLURM
+    id_job=${SLURM_ARRAY_JOB_ID}
+    id_tsk=${SLURM_ARRAY_TASK_ID}
+    idx=$(( id_tsk - 1 ))
 
-#  Derive sample name from mp assignment
-# shellcheck disable=SC2001
-{    
-    samp="${mp##*/IP_}"
-    samp=$(echo "${samp%.bam}" | sed 's:\.:_:g')
-}
-
-#  Debug output to verify sample name
-if ${debug}; then
-    echo "samp=${samp}"
-    echo ""
-fi
-
-#  Assign stdout and stderr outstems to variables
-err_ini="${err_out}/${nam_job}.${id_job}-${id_tsk}.stderr.txt"
-out_ini="${err_out}/${nam_job}.${id_job}-${id_tsk}.stdout.txt"
-err_dsc="${err_out}/${nam_job}.${samp}.${id_job}-${id_tsk}.stderr.txt"
-out_dsc="${err_out}/${nam_job}.${samp}.${id_job}-${id_tsk}.stdout.txt"
-
-#  Give the initial stderr and stdout TXT outfiles more descriptive names
-ln -f "${err_ini}" "${err_dsc}"
-ln -f "${out_ini}" "${out_dsc}"
-
-#  Check call to calculate_scaling_factor_spike.py
-if ${debug}; then
-    echo "python \"${scr_spk}\" \\"
-    echo "    --main_ip  ${num_mp} \\"
-    echo "    --spike_ip ${num_sp} \\"
-    echo "    --main_in  ${num_mn} \\"
-    echo "    --spike_in ${num_sn}"
-    echo ""
-fi
-
-#  Calculate the spike-in derived scaling factor, which is assigned to variable
-#+ sf, with script calculate_scaling_factor_spike.py
-# shellcheck disable=SC2154
-sf=$(
-    python "${scr_spk}" \
-        --main_ip  "${num_mp}" \
-        --spike_ip "${num_sp}" \
-        --main_in  "${num_mn}" \
-        --spike_in "${num_sn}"
-)
-
-#  Debug output to verify spike-in-derived scaling factor
-if ${debug}; then
-    echo "sf=${sf}"
-    echo ""
-fi
-
-# #  Write header with flock
-# {
-#     flock -n 200 || exit 1  # Only proceed if lock is acquired
-#
-#     #  Check if the header is already present in the file
-#     if ! grep -q "$(printf "^sample\tsf")" "${outfile}" 2> /dev/null; then
-#         #  If the header is not present, write it
-#         if ! ${flg_mc}; then
-#             echo -e "sample\tsf" >> "${outfile}"
-#         else
-#             echo -e "sample\tsf\tmain_ip\tspike_ip\tmain_in\tspike_in" \
-#                 >> "${outfile}"
-#         fi
-#     fi
-# } 200> "${outfile}.lock"  # Use a lock file
-
-#  Print the IP sample and scaling factor to the outfile
-if ! ${flg_mc}; then
-    echo -e "${mp}\t${sf}" >> "${outfile}"
-
-    #  If --flg_in, print the input sample and scaling factor (1) to the
-    #+ outfile
-    if ${flg_in}; then
-        echo -e "${mn}\t1" >> "${outfile}"
+    #  Debug short names of environmental variables
+    if ${debug}; then
+        debug_var "id_job=${id_job}" "id_tsk=${id_tsk}" "idx=${idx}"
     fi
+
+    #  Derive sample name, which is needed for 'set_logs'
+    # shellcheck disable=SC2001
+    {
+        samp="${arr_ser_mip[idx]}"
+        samp="${samp##*/IP_}"
+        samp=$(echo "${samp%.bam}" | sed 's:\.:_:g')
+    }
+
+    #  Debug output to verify sample name
+    if ${debug}; then debug_var "samp=${samp}"; fi
+
+    #  Run subroutine to set SLURM and symlinked/better-named log files
+    set_logs "${id_job}" "${id_tsk}" "${samp}" "${err_out}"
+    set_logs "${id_job}" "${id_tsk}" "${samp}" "${err_out}"
+    ln -f "${err_ini}" "${err_dsc}"
+    ln -f "${out_ini}" "${out_dsc}"
+
+    #  Run processing subroutine
+    # shellcheck disable=SC2086
+    process_sample ${idx}
+
+    #  Remove the initial SLURM stderr and stdout TXT outfiles
+    rm "${err_ini}" "${out_ini}"
 else
-    #  If --flg_mc, include num_{m|s}{p|n} values in the outfile
-    echo -e "${mp}\t${sf}\t${num_mp}\t${num_sp}\t${num_mn}\t${num_sn}" \
-        >> "${outfile}"
-
-    #  If --flg_in, print the input sample and scaling factor (1, because we
-    #+ don't scale the input signal track), as well as num_{m|s}{p|n} values,
-    #+ to the outfile
-    if ${flg_in}; then
-        echo -e "${mn}\t1\t${num_mp}\t${num_sp}\t${num_mn}\t${num_sn}" \
-            >> "${outfile}"
-    fi
+    #  Mode: GNU Parallel/serial
+    for idx in "${!arr_ser_mip[@]}"; do
+        #  Run processing subroutine
+        # shellcheck disable=SC2086
+        process_sample ${idx}
+    done
 fi
-#NOTE: 2024-1119, replaced ${mp##*/} with ${mp} and ${mn##*/} with ${mn}
-
-#  Remove the initial SLURM stderr and stdout TXT outfiles
-rm "${err_ini}" "${out_ini}"

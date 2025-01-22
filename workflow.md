@@ -629,7 +629,7 @@ typ_cvg="norm"  ## WARNING: "norm" for normalized ##
 dir_aln="${dir_pro}/align_${aligner}_${a_type}"
 dir_bam="${dir_aln}/${det_bam}/sc"
 dir_cvg="${dir_pro}/compute_coverage"
-dir_trk="${dir_cvg}/${det_cvg}/${typ_cvg}/tracks"
+dir_trk="${dir_cvg}/${det_cvg}/norm_bin_20/tracks"  # "${dir_cvg}/${det_cvg}/${typ_cvg}/tracks"
 
 #  Define driver script
 exc_cvg="${dir_scr}/execute_compute_coverage.sh"
@@ -638,7 +638,7 @@ exc_cvg="${dir_scr}/execute_compute_coverage.sh"
 nam_job="compute_coverage_${typ_cvg}"
 typ_out="bdg.gz"
 threads=8
-siz_bin=10
+siz_bin=20  # 10
 env_nam="env_analyze"
 day="$(date '+%Y-%m%d')"
 err_out="${dir_trk}/logs"
@@ -657,15 +657,19 @@ infiles="$(
 
 
 #  Create required directories if necessary -----------------------------------
-mkdir -p echo ${dir_cvg}/${det_cvg}/norm/tracks/{docs,logs}
+# shellcheck disable=SC2086
+mkdir -p ${dir_trk}/{docs,logs}
 
 
 #  Activate the environment and check dependencies ----------------------------
 #  Source utility functions
-source "${dir_fnc}/check_program_path.sh"
-source "${dir_fnc}/check_unity.sh"
-source "${dir_fnc}/echo_warning.sh"
-source "${dir_fnc}/handle_env.sh"
+# shellcheck disable=SC1091
+{
+    source "${dir_fnc}/check_program_path.sh"
+    source "${dir_fnc}/check_unity.sh"
+    source "${dir_fnc}/echo_warning.sh"
+    source "${dir_fnc}/handle_env.sh"
+}
 
 #  Activate the required environment
 handle_env "${env_nam}"
@@ -704,6 +708,7 @@ if ${debug}; then
     echo ""
 fi
 
+#  Run driver script
 bash "${exc_cvg}" \
     --verbose \
     --threads "${threads}" \
@@ -724,8 +729,9 @@ if ${debug}; then
     echo "## Check unity of normalized coverage files ##"
     echo "##############################################"
     echo ""
-    for bdg in ${dir_trk}/*.${typ_out}; do
-        echo "$(basename "${bdg}")"
+    for bdg in "${dir_trk}/"*".${typ_out}"; do
+        # echo "$(basename "${bdg}")"
+        echo "${bdg##*/}"
         check_unity "${bdg}"
         echo ""
     done
@@ -793,7 +799,7 @@ dir_lg2="${dir_cvg}/${det_cvg}/log2"
 env_nam="env_analyze"
 threads=8
 typ_out="bdg.gz"
-siz_bin=10
+siz_bin=10  # 20
 
 #  Define file search parameters  ## WARNING: Change as needed ##
 pattern="${typ_out}"
@@ -939,16 +945,17 @@ dep_min="$(
 )"
 
 if ${debug}; then
-    echo "###############################################"
-    echo "## Call to execute_compute_coverage_ratio.sh ##"
-    echo "###############################################"
+    echo "################################################################"
+    echo "## Call to execute_compute_coverage_ratio.sh with '--dep_min' ##"
+    echo "################################################################"
     echo ""
     echo "bash ${dir_scr}/${scr_trk} \\"
     echo "    --verbose \\"
     echo "    --fil_ip ${ser_ip} \\"
     echo "    --fil_in ${ser_in} \\"
-    echo "    --dir_out ${dir_lg2}/tracks \\"
+    echo "    --dir_out ${dir_lg2}/tracks/bin_10_dm_yes \\"
     echo "    --typ_out ${typ_out} \\"
+    echo "    --track \\"
     echo "    --dep_min ${dep_min} \\"
     echo "    --log2 \\"
     echo "    --err_out ${dir_lg2}/tracks/logs \\"
@@ -959,13 +966,29 @@ if ${debug}; then
     echo ""
 fi
 
+#  Generate tracks using 'dep_min'
 bash "${dir_scr}/${scr_trk}" \
     --verbose \
     --fil_ip "${ser_ip}" \
     --fil_in "${ser_in}" \
-    --dir_out "${dir_lg2}/tracks" \
+    --dir_out "${dir_lg2}/tracks/bin_10_dm_yes" \
     --typ_out "${typ_out}" \
+    --track \
     --dep_min "${dep_min}" \
+    --log2 \
+    --err_out "${dir_lg2}/tracks/logs" \
+    --slurm \
+         >> >(tee -a "${exc_trk}.stdout.txt") \
+        2>> >(tee -a "${exc_trk}.stderr.txt")
+
+#  Generate tracks sans 'dep_min'
+bash "${dir_scr}/${scr_trk}" \
+    --verbose \
+    --fil_ip "${ser_ip}" \
+    --fil_in "${ser_in}" \
+    --dir_out "${dir_lg2}/tracks/bin_10_dm_no" \
+    --typ_out "${typ_out}" \
+    --track \
     --log2 \
     --err_out "${dir_lg2}/tracks/logs" \
     --slurm \
@@ -977,32 +1000,7 @@ bash "${dir_scr}/${scr_trk}" \
 bash "${dir_scr}/compress_remove_files.sh" --dir_fnd "${dir_lg2}/tracks/logs"
 
 # ls -lhaFG "${dir_lg2}/tracks/logs"  ## Uncomment to check directory for track logs ##
-
-
-###############
-## Debugging ##
-###############
-
-vi "${dir_scr}/compute_coverage_ratio.py"
-
-{
-    python "${dir_scr}/compute_coverage_ratio.py" \
-        -v \
-        -fp /home/kalavatt/repos/protocol_chipseq_signal_norm/data/processed/compute_coverage/bowtie2_global_flag-2_mapq-1/norm/tracks/IP_WT_G1_Hho1_6337.sc.bdg.gz \
-        -fn /home/kalavatt/repos/protocol_chipseq_signal_norm/data/processed/compute_coverage/bowtie2_global_flag-2_mapq-1/norm/tracks/in_WT_G1_Hho1_6337.sc.bdg.gz \
-        -fo /home/kalavatt/repos/protocol_chipseq_signal_norm/data/processed/compute_coverage/bowtie2_global_flag-2_mapq-1/log2/tracks/dm_yes.log2_rat_WT_G1_Hho1_6337.sc.bdg.gz \
-        -tr \
-        -dm 0.000000822564930190970796 \
-        -l2
-
-    python "${dir_scr}/compute_coverage_ratio.py" \
-        -v \
-        -fp /home/kalavatt/repos/protocol_chipseq_signal_norm/data/processed/compute_coverage/bowtie2_global_flag-2_mapq-1/norm/tracks/IP_WT_G1_Hho1_6337.sc.bdg.gz \
-        -fn /home/kalavatt/repos/protocol_chipseq_signal_norm/data/processed/compute_coverage/bowtie2_global_flag-2_mapq-1/norm/tracks/in_WT_G1_Hho1_6337.sc.bdg.gz \
-        -fo /home/kalavatt/repos/protocol_chipseq_signal_norm/data/processed/compute_coverage/bowtie2_global_flag-2_mapq-1/log2/tracks/dm_no.log2_rat_WT_G1_Hho1_6337.sc.bdg.gz \
-        -tr \
-        -l2
-}
+# find . -maxdepth 1 -type f -size 0 -delete -o -type f -not -name "*.gz" -exec gzip {} +
 ```
 </details>
 <br />
@@ -1023,15 +1021,15 @@ This section describes the steps to compute ChIP-seq coverage normalized using t
 5. *Optional cleanup:* Compress large log files, and remove empty log files.
 
 **Important note:**
-- The [`execute_calculate_scaling_factor_alpha.sh`](https://github.com/kalavattam/protocol_chipseq_signal_norm/blob/main/scripts/execute_calculate_scaling_factor_alpha.sh) script in this code chunk requires that *S. cerevisiae* IP BAM files follow a specific naming convention as outlined in the accompanying manuscript. The expected filename format:
+- The [`execute_calculate_scaling_factor_alpha.sh`](https://github.com/kalavattam/protocol_chipseq_signal_norm/blob/main/scripts/execute_calculate_scaling_factor_alpha.sh) script in this code chunk requires that *S. cerevisiae* IP BAM files follow a specific naming convention as described in the protocol manuscript. The expected filename format:
     ```txt
     assay_genotype_state_treatment_factor_strain/replicate.
     ```
-    + Required filename components:
+    + Required name components:
         - *assay:* Must be 'IP' or 'in', and must be followed by an underscore.
         - *factor:* A required component preceded by an underscore.
         - *strain/replicate:* A required component preceded by an underscore; it marks the end of the pattern.
-    + Optional filename components:
+    + Optional name components:
         - *genotype:* If present, must be preceded by an underscore.
         - *state:* An optional component with preferred values (e.g., 'G1', 'G2M', 'log', or 'Q') but can also be flexible; if present, it must be preceded by an underscore.
         - *treatment:* If present, must be preceded by an underscore.
@@ -1175,6 +1173,7 @@ fi
 
 
 #  Create required directories if necessary -----------------------------------
+# shellcheck disable=SC2086
 mkdir -p ${dir_alf}/{tables,tracks}/{docs,logs}
 
 #  Debug outdirectory paths
@@ -1187,25 +1186,25 @@ if ${debug}; then
     echo "%% \${dir_nrm}/tracks %%"
     echo "%%%%%%%%%%%%%%%%%%%%%%%"
     echo ""
-    ls -lhaFG ${dir_nrm}/tracks
+    ls -lhaFG "${dir_nrm}/tracks"
     echo ""
-    ls -lhaFG ${dir_nrm}/tracks/logs
+    ls -lhaFG "${dir_nrm}/tracks/logs"
     echo ""
     echo "%%%%%%%%%%%%%%%%%%%%%%%"
     echo "%% \${dir_alf}/tables %%"
     echo "%%%%%%%%%%%%%%%%%%%%%%%"
     echo ""
-    ls -lhaFG ${dir_alf}/tables
+    ls -lhaFG "${dir_alf}/tables"
     echo ""
-    ls -lhaFG ${dir_alf}/tables/logs
+    ls -lhaFG "${dir_alf}/tables/logs"
     echo ""
     echo "%%%%%%%%%%%%%%%%%%%%%%%"
-    echo "%% \${dir_trk}/tracks %%"
+    echo "%% \${dir_alf}/tracks %%"
     echo "%%%%%%%%%%%%%%%%%%%%%%%"
     echo ""
-    ls -lhaFG ${dir_alf}/tracks
+    ls -lhaFG "${dir_alf}/tracks"
     echo ""
-    ls -lhaFG ${dir_alf}/tracks/logs
+    ls -lhaFG "${dir_alf}/tracks/logs"
     echo ""
     echo ""
 fi
@@ -1213,9 +1212,13 @@ fi
 
 #  Activate the environment and check dependencies ----------------------------
 #  Source utility functions
-source "${dir_fnc}/check_program_path.sh"
-source "${dir_fnc}/echo_warning.sh"
-source "${dir_fnc}/handle_env.sh"
+# shellcheck disable=SC1091
+{
+    source "${dir_fnc}/check_program_path.sh"
+    source "${dir_fnc}/echo_warning.sh"
+    source "${dir_fnc}/extract_fld_str.sh"
+    source "${dir_fnc}/handle_env.sh"
+}
 
 #  Activate the required environment
 handle_env "${env_nam}"
@@ -1253,7 +1256,7 @@ if [[ ! -f "${tbl_min}" ]]; then
                     -m "norm" \
                     -sb ${siz_bin}
             )
-            echo -e "$(basename ${bam})\t${frag}\t${norm}"
+            echo -e "$(basename "${bam}")\t${frag}\t${norm}"
         done
     } \
         | tee -a "${tbl_min}"
@@ -1276,9 +1279,9 @@ fi
 #  Calculate siQ-ChIP alpha scaling factors -----------------------------------
 #  Debug call to alpha computation driver script, etc.
 if ${debug}; then
-    echo "###################################################"
-    echo "## Call to alpha computation driver script, etc. ##"
-    echo "###################################################"
+    echo "############################################################"
+    echo "## Call to siQ-ChIP alpha computation driver script, etc. ##"
+    echo "############################################################"
     echo ""
     echo "if [[ ! -f ${tbl_alf} ]]; then"
     echo "    bash ${dir_scr}/${scr_tbl} \\"
@@ -1299,7 +1302,7 @@ if ${debug}; then
     echo "fi"
     echo ""
     echo "if [[ -f ${tbl_alf} ]]; then"
-    echo "    awk 'NR == 1; NR > 1 && NF { print | "sort" }' ${tbl_alf} \\"
+    echo "    awk 'NR == 1; NR > 1 && NF { print | \"sort\" }' ${tbl_alf} \\"
     echo "        > ${dir_alf}/tables/tmp.tsv"
     echo ""
     echo "    mv -f ${dir_alf}/tables/tmp.tsv ${tbl_alf}"
@@ -1366,28 +1369,46 @@ ser_num=$(
     sed \
         -e "s:${dir_bam}:${dir_nrm}/tracks:g" \
         -e "s:.bam:.${typ_out}:g" \
-        < <(awk 'NR > 1 { print $1 }' "${tbl_alf}" | paste -sd ',' -)
+        < <(extract_fld_str 1 "${tbl_alf}")
 )
 ser_den=$(
     sed \
         -e "s:${dir_bam}:${dir_nrm}/tracks:g" \
         -e "s:.bam:.${typ_out}:g" \
-        < <(awk 'NR > 1 { print $2 }' "${tbl_alf}" | paste -sd ',' -)
+        < <(extract_fld_str 2 "${tbl_alf}")
 )
-scl_fct="$(awk 'NR > 1 { print $3 }' "${tbl_alf}" | paste -sd ',' -)"
-dep_min="$(awk 'NR > 1 { print $3 }' "${tbl_min}" | paste -sd ',' -)"
+scl_fct="$(extract_fld_str 3 "${tbl_alf}")"
+dep_min="$(extract_fld_str 3 "${tbl_min}")"
 
 if ${debug}; then
     echo "###############################################"
-    echo "## Call to execute_compute_coverage_ratio.sh ##"
+    echo "## Variable assignments parsed from table(s) ##"
     echo "###############################################"
+    echo ""
+    echo "\${ser_num}=${ser_num}"
+    echo ""
+    echo "\${ser_den}=${ser_den}"
+    echo ""
+    echo "\${scl_fct}=${scl_fct}"
+    echo ""
+    echo "\${dep_min}=${dep_min}"
+    echo ""
+    echo ""
+    echo ""
+fi
+
+if ${debug}; then
+    echo "################################################################"
+    echo "## Call to execute_compute_coverage_ratio.sh with '--dep_min' ##"
+    echo "################################################################"
     echo ""
     echo "bash ${dir_scr}/${scr_trk} \\"
     echo "    --verbose \\"
     echo "    --fil_ip ${ser_num} \\"
     echo "    --fil_in ${ser_den} \\"
-    echo "    --dir_out ${dir_alf}/tracks \\"
+    echo "    --dir_out ${dir_alf}/tracks/bin_10_dm_yes \\"
     echo "    --typ_out ${typ_out} \\"
+    echo "    --track \\"
     echo "    --scl_fct ${scl_fct} \\"
     echo "    --dep_min ${dep_min} \\"
     echo "    --err_out ${dir_alf}/tracks/logs \\"
@@ -1398,12 +1419,15 @@ if ${debug}; then
     echo ""
 fi
 
+
+#  Generate tracks using 'dep_min'
 bash "${dir_scr}/${scr_trk}" \
     --verbose \
     --fil_ip "${ser_num}" \
     --fil_in "${ser_den}" \
-    --dir_out "${dir_alf}/tracks" \
+    --dir_out "${dir_alf}/tracks/bin_10_dm_yes" \
     --typ_out "${typ_out}" \
+    --track \
     --scl_fct "${scl_fct}" \
     --dep_min "${dep_min}" \
     --err_out "${dir_alf}/tracks/logs" \
@@ -1411,6 +1435,19 @@ bash "${dir_scr}/${scr_trk}" \
          >> >(tee -a "${exc_trk}.stdout.txt") \
         2>> >(tee -a "${exc_trk}.stderr.txt")
 
+#  Generate tracks sans 'dep_min'
+bash "${dir_scr}/${scr_trk}" \
+    --verbose \
+    --fil_ip "${ser_num}" \
+    --fil_in "${ser_den}" \
+    --dir_out "${dir_alf}/tracks/bin_10_dm_no" \
+    --typ_out "${typ_out}" \
+    --track \
+    --scl_fct "${scl_fct}" \
+    --err_out "${dir_alf}/tracks/logs" \
+    --slurm \
+         >> >(tee -a "${exc_trk}.stdout.txt") \
+        2>> >(tee -a "${exc_trk}.stderr.txt")
 
 #  Cleanup: Compress logs and remove empty files ------------------------------
 bash "${dir_scr}/compress_remove_files.sh" --dir_fnd "${dir_alf}/tables/logs"

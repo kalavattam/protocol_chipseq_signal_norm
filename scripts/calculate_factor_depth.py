@@ -53,7 +53,7 @@ def count_alignments_bed(pth_bed):
         int: Total count of alignments (lines).
     """
     try:
-        # Handle gzip-compressed files
+        #  Handle gzip-compressed files
         open_func = gzip.open if pth_bed.endswith(".gz") else open
         with open_func(pth_bed, "rt") as f:
             return sum(1 for _ in f)
