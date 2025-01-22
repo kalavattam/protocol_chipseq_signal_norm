@@ -12,8 +12,8 @@
 #    corresponding IP (immunoprecipitation) and input data. The script computes
 #    the ratio of spike-in to main alignments for both IP and input data, and
 #    derives the final scaling factor by dividing the ratio of spike-in to main
-#    counts in the input sample by the ratio of spike-in to main counts in the
-#    IP sample.
+#    counts for the input sample by the ratio of spike-in to main counts for
+#    the IP sample.
 #
 #    For more details, see the following URL: biostars.org/p/9572653/#9572655
 #
@@ -57,13 +57,15 @@ def set_interactive():
     spike_ip = ...  # TODO
     main_in = ...  # TODO
     spike_in = ...  # TODO
+    rnd = ...  # TODO
 
     #  Return the arguments wrapped in argparse.Namespace
     return argparse.Namespace(
         main_ip=main_ip,
         spike_ip=spike_ip,
         main_in=main_in,
-        spike_in=spike_in
+        spike_in=spike_in,
+        rnd=rnd
     )
 
 
@@ -151,50 +153,48 @@ def parse_args():
                                corresponding ChIP-seq input sample.
     """
     parser = argparse.ArgumentParser(description=(
-        'Calculate a spike-in-derived scaling factor for a ChIP-seq sample '
-        'with IP and input data.'
+        "Calculate a spike-in-derived scaling factor for a ChIP-seq sample "
+        "with IP and input data."
     ))
     parser.add_argument(
-        '-mp',
-        '--main_ip',
+        "-mp", "--main_ip",
         type=int,
         required=True,
-        help='Number of "main" alignments for the ChIP-seq IP data.'
+        help="Number of 'main' alignments for the ChIP-seq IP data."
     )
     parser.add_argument(
-        '-sp',
-        '--spike_ip',
+        "-sp", "--spike_ip",
         type=int,
         required=True,
-        help='Number of spike-in alignments for the ChIP-seq IP data.'
+        help="Number of spike-in alignments for the ChIP-seq IP data."
     )
     parser.add_argument(
-        '-mn',
-        '--main_in',
+        "-mn", "--main_in",
         type=int,
         required=True,
         help=(
-            'Number of "main" alignments for the corresponding ChIP-seq input '
-            'data.'
+            "Number of 'main' alignments for the corresponding ChIP-seq input "
+            "data."
         )
     )
     parser.add_argument(
-        '-sn',
-        '--spike_in',
+        "-sn", "--spike_in",
         type=int,
         required=True,
         help=(
-            'Number of spike-in alignments for the corresponding ChIP-seq '
-            'input data.'
+            "Number of spike-in alignments for the corresponding ChIP-seq "
+            "input data."
         )
     )
     parser.add_argument(
-        '-rp',
-        '--round',
+        "-r", "--rnd",
         type=int,
-        default=6,
+        default=24,
         required=False,
-        help='Number of decimal places for rounding alpha.'
+        help=(
+            "Number of decimal places for rounding the spike-in scaling "
+            "factor (default: %(default)s)."
+        )
     )
 
     #  Display help and exit if no arguments were provided
@@ -236,11 +236,9 @@ def main():
     #  Calculate the scaling factor, handling exceptions as necessary
     try:
         result = round(calculate_scaling_factor(
-            args.main_ip,
-            args.spike_ip,
-            args.main_in,
-            args.spike_in
-        ), args.round)
+            args.main_ip, args.spike_ip,
+            args.main_in, args.spike_in
+        ), args.rnd)
         print(f'{result}')
     except (ValueError, TypeError, ZeroDivisionError) as e:
         print(f'Error encountered during calculation: {e}', file=sys.stderr)

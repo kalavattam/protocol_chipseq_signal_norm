@@ -90,8 +90,9 @@ function set_interactive() {
     )"
     dir_out="${dir_alf}"
     typ_out="bdg.gz"
+    track=true
     scl_fct=""
-    dep_min=""  #TODO
+    dep_min=""
     log2=false
     rnd=24
     err_out="${dir_alf}/logs"
@@ -115,6 +116,7 @@ fil_ip=""
 fil_in=""
 dir_out=""
 typ_out="bdg.gz"
+track=false
 scl_fct=""
 dep_min=""
 log2=false
@@ -130,8 +132,9 @@ show_help=$(cat << EOM
 Usage:
   execute_compute_coverage_ratio.sh
     [--verbose] [--dry_run] --fil_ip <str> --fil_in <str> --dir_out <str>
-    --typ_out <str> [--scl_fct <flt>] [--dep_min <flt>] [--log2] --rnd <int>
-    --err_out <str> --nam_job <str> --max_job <int> [--slurm] [--time <str>]
+    --typ_out <str> [--track] [--scl_fct <flt>] [--dep_min <flt>] [--log2]
+    --rnd <int> --err_out <str> --nam_job <str> --max_job <int> [--slurm]
+    [--time <str>]
 
 Description:
   The driver script 'execute_compute_coverage_ratio.sh' automates the
@@ -158,6 +161,9 @@ Arguments:
                     - 'bedgraph', 'bdg', 'bg': BEDGRAPH format.
                     - 'bedgraph.gz', 'bdg.gz', 'bg.gz': gzip-compressed
                        BEDGRAPH format.
+  -tr, --track    Generate an additional BEDGRAPH file where rows with '-inf'
+                  and 'nan' values are excluded (optional). The new file will
+                  have '.track' before the extension.
   -sf, --scl_fct  Comma-separated string of scaling factors (optional).
   -dm, --dep_min  Comma-separated string of minimum input depth values used to
                   avoid extreme/erroneous divisions (optional).
@@ -226,6 +232,7 @@ Example:
       --fil_in "/path/to/fil_in_1.bdg.gz,/path/to/fil_in_2.bdg.gz"
       --dir_out "/path/to/write/output/files"
       --typ_out "bdg.gz"
+      --track
       --scl_fct "1.0,1.0"
       --dep_min "0.0035,0.0041"
       --err_out "/path/to/write/output/files/logs"
@@ -251,6 +258,7 @@ else
             -fn|--fil_in)  fil_in="${2}";  shift 2 ;;
             -do|--dir_out) dir_out="${2}"; shift 2 ;;
             -to|--typ_out) typ_out="${2}"; shift 2 ;;
+            -tr|--track)   track=true;     shift 1 ;;
             -sf|--scl_fct) scl_fct="${2}"; shift 2 ;;
             -dm|--dep_min) dep_min="${2}"; shift 2 ;;
              -l|--log2)    log2=true;      shift 1 ;;
@@ -304,8 +312,7 @@ esac
 
 if [[ -n "${scl_fct}" ]]; then check_str_delim "scl_fct" "${scl_fct}"; fi
 
-check_supplied_arg -a "${dep_min}" -n "dep_min"
-check_str_delim "dep_min" "${dep_min}"
+if [[ -n "${dep_min}" ]]; then check_str_delim "dep_min" "${dep_min}"; fi
 
 check_supplied_arg -a "${rnd}" -n "rnd"
 check_int_pos "${rnd}" "rnd"
@@ -399,7 +406,7 @@ unset s
 
 if [[ -z "${dep_min}" ]]; then
     unset arr_dep_min && typeset -a arr_dep_min
-    populate_array_empty arr_dep_min "${#arr_dep_min[@]}"
+    populate_array_empty arr_dep_min "${#arr_fil_ip[@]}"
 else
     IFS=',' read -r -a arr_dep_min <<< "${dep_min}"
 fi
@@ -455,6 +462,7 @@ if ${verbose}; then
     echo "fil_in=${fil_in}"
     echo "dir_out=${dir_out}"
     echo "typ_out=${typ_out}"
+    echo "track=${track}"
     echo "scl_fct=${scl_fct}"
     echo "dep_min=${dep_min}"
     echo "log2=${log2}"
@@ -521,6 +529,7 @@ if ${slurm}; then
         echo "            ${fil_ip} \\"
         echo "            ${fil_in} \\"
         echo "            ${fil_out} \\"
+        echo "            ${track} \\"
         echo "            ${scl_fct} \\"
         echo "            ${dep_min} \\"
         echo "            ${log2} \\"
@@ -565,6 +574,7 @@ if ${slurm}; then
                     ${fil_ip} \
                     ${fil_in} \
                     ${fil_out} \
+                    ${track} \
                     ${scl_fct} \
                     ${dep_min} \
                     ${log2} \
@@ -588,6 +598,7 @@ else
                 "${arr_fil_ip[i]}" \
                 "${arr_fil_in[i]}" \
                 "${arr_fil_out[i]}" \
+                "${track}" \
                 "${arr_scl_fct[i]}" \
                 "${arr_dep_min[i]}" \
                 "${log2}" \
@@ -604,7 +615,7 @@ else
             echo ""
 
             parallel --colsep ' ' --jobs "${par_job}" --dryrun \
-                "bash \"${scr_sub}\" {1} {2} {3} {4} {5} {6} {7} {8} {9} {10} {11}" \
+                "bash \"${scr_sub}\" {1} {2} {3} {4} {5} {6} {7} {8} {9} {10} {11} {12}" \
                 :::: "${config}"
 
             echo ""
@@ -613,7 +624,7 @@ else
 
         if ! ${dry_run}; then
             parallel --colsep ' ' --jobs "${par_job}" \
-                "bash \"${scr_sub}\" {1} {2} {3} {4} {5} {6} {7} {8} {9} {10} {11}" \
+                "bash \"${scr_sub}\" {1} {2} {3} {4} {5} {6} {7} {8} {9} {10} {11} {12}" \
                 :::: "${config}"
         fi
     else
@@ -630,6 +641,7 @@ else
             echo "    ${fil_ip} \\"
             echo "    ${fil_in} \\"
             echo "    ${fil_out} \\"
+            echo "    ${track} \\"
             echo "    ${scl_fct} \\"
             echo "    ${dep_min} \\"
             echo "    ${log2} \\"
@@ -649,6 +661,7 @@ else
                 "${fil_ip}" \
                 "${fil_in}" \
                 "${fil_out}" \
+                "${track}" \
                 "${scl_fct}" \
                 "${dep_min}" \
                 "${log2}" \

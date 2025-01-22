@@ -15,7 +15,7 @@
 #         - pubmed.ncbi.nlm.nih.gov/32994221
 #         - pubmed.ncbi.nlm.nih.gov/37160995
 #
-#     See also the documentation in the GitHub repository
+#     See also the documentation in the following GitHub repository:
 #     github.com/BradleyDickson/siQ-ChIP.
 #
 # Usage:
@@ -41,7 +41,7 @@
 #     -dn, --dep_in    (int): Sequencing depth of the input sample.
 #     -lp, --len_ip  (float): Mean fragment length of the IP sample.
 #     -ln, --len_in  (float): Mean fragment length of the input sample.
-#     -ra, --rnd_alf   (int): Number of decimal places for rounding alpha.
+#      -r, --rnd       (int): Number of decimal places for rounding alpha.
 #
 # Examples:
 #     ```bash
@@ -94,7 +94,7 @@ def set_interactive():
     dep_in = 4500000
     len_ip = 200.0
     len_in = 180.5
-    rnd_alf = 6
+    rnd = 6
 
     #  Return the arguments wrapped in argparse.Namespace
     return argparse.Namespace(
@@ -107,7 +107,7 @@ def set_interactive():
         dep_in=dep_in,
         len_ip=len_ip,
         len_in=len_in,
-        rnd_alf=rnd_alf
+        rnd=rnd
     )
 
 
@@ -222,7 +222,7 @@ def parse_args():
                                 for --eqn 5 or --eqn 6; otherwise ignored).
         -lp, --len_ip  (float): Mean fragment length of the IP sample.
         -ln, --len_in  (float): Mean fragment length of the input sample.
-        -ra, --rnd_alf   (int): Number of decimal places for rounding alpha.
+         -r, --rnd       (int): Number of decimal places for rounding alpha.
     """
     parser = argparse.ArgumentParser(description=(
         'Calculate a siQ-ChIP alpha scaling factor for a ChIP-seq sample with '
@@ -299,7 +299,7 @@ def parse_args():
         help='Mean fragment length of input sample.'
     )
     parser.add_argument(
-        '-ra', '--rnd_alf',
+        '-r', '--rnd',
         type=int,
         default=24,
         required=False,
@@ -360,7 +360,7 @@ def main():
             args.vol_all, args.vol_in,
             args.dep_ip or 1, args.dep_in or 1,
             args.len_ip, args.len_in
-        ), args.rnd_alf)
+        ), args.rnd)
         print(f"{alpha}")
     except (ValueError, TypeError, ZeroDivisionError) as e:
         print(f"Error: {e}", file=sys.stderr)
