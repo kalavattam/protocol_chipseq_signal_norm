@@ -7,23 +7,275 @@
 #  If true, run script in debug mode
 debug=true
 
+#  Run script in interactive/test mode (true) or command-line mode (false)
+interactive=false
+
+
+#  Define functions
+function debug_var() { for var in "$@"; do echo "${var}" && echo ""; done; }
+
+
+function validate_var() {
+    local var_nam=${1}
+    local var_val=${2}
+    local idx=${3}
+    if [[ -z "${var_val}" ]]; then
+        echo \
+            "Error: '${var_nam}' is empty or unset for array index" \
+            "'${idx}'." >&2
+        return 1
+    fi
+}
+
+
+function exists_var() {
+    local var_nam=${1}
+    local var_val=${2}
+    local idx=${3}
+    if [[ ! -f "${var_val}" ]]; then
+        echo \
+            "Error: '${var_nam}' does not exist for array index '${idx}'." >&2
+        return 1
+    fi
+}
+
+
+function set_logs() {
+    local job_id=${1}
+    local task_id=${2}
+    local nam_smp=${3}
+    local dir_log=${4}
+    err_ini="${dir_log}/${nam_job}.${job_id}-${task_id}.stderr.txt"
+    out_ini="${dir_log}/${nam_job}.${job_id}-${task_id}.stdout.txt"
+    err_dsc="${dir_log}/${nam_job}.${nam_smp}.${job_id}-${task_id}.stderr.txt"
+    out_dsc="${dir_log}/${nam_job}.${nam_smp}.${job_id}-${task_id}.stdout.txt"
+}
+
+
+#  Define subroutine to process a sample
+function process_sample() {
+    local idx="${1}"
+    local fil_ip fil_in
+    local dm_fr_1 dm_fr_10 dm_fr_20 dm_fr_30 dm_fr_40 dm_fr_50
+    local dm_nm_1 dm_nm_10 dm_nm_20 dm_nm_30 dm_nm_40 dm_nm_50
+    local prt_1 prt_2 prt_3 prt_4 prt_5 prt_6 prt_7
+
+    #  Assign variables based on idx
+    fil_ip="${arr_ip[idx]}"
+    fil_in="${arr_in[idx]}"
+
+    #  Debug and validate assignments to variables 'fil_ip' and 'fil_in'
+    if ${debug}; then
+        debug_var \
+            "idx=${idx} ('idx' passed to 'process_sample()')" \
+            "fil_ip=${fil_ip}" "fil_in=${fil_in}"
+    fi
+
+    #  Exit if variables 'fil_ip' and 'fil_in' have empty assignments or do not
+    #+ exist
+    # shellcheck disable=SC2086
+    {
+        validate_var "fil_ip" "${fil_ip}" ${idx} || exit 1
+        exists_var   "fil_ip" "${fil_ip}" ${idx} || exit 1
+        validate_var "fil_in" "${fil_in}" ${idx} || exit 1
+        exists_var   "fil_in" "${fil_in}" ${idx} || exit 1
+    }
+
+    #  Debug call to sourced 'parse_metadata_siq_chip.py'
+    if ${debug}; then
+        echo "source <("
+        echo "    python \"${scr_met}\" \\"
+        echo "        --tbl_met \"${tbl_met}\" \\"
+        echo "        --eqn \"${eqn}\" \\"
+        echo "        --bam \"${fil_ip}\" \\"
+        echo "        --shell"
+        echo ")"
+        echo ""
+    fi
+
+    #  Run 'parse_metadata_siq_chip.py' to assign variables for siQ-ChIP
+    #+ metadata: volume, mass, concentration, length
+    # shellcheck disable=SC1090
+    source <(
+        python "${scr_met}" \
+            --tbl_met "${tbl_met}" \
+            --eqn "${eqn}" \
+            --bam "${fil_ip}" \
+            --shell
+    )
+
+    #  Check and calculate fragment depth for IP and input samples
+    if ${debug}; then
+        echo "{"
+        echo "    ## WARNING: Assumes BAM files contain paired-end alignments ##"
+        echo "    dep_ip=\$(count_alignments_bam ${threads} \"${fil_ip}\")"
+        echo "    dep_in=\$(count_alignments_bam ${threads} \"${fil_in}\")"
+        echo "}"
+        echo ""
+    fi
+
+    # shellcheck disable=SC2086
+    {
+        ## WARNING: Assumes BAM files contain paired-end alignments ##
+        dep_ip=$(count_alignments_bam ${threads} "${fil_ip}")
+        dep_in=$(count_alignments_bam ${threads} "${fil_in}")
+    }
+
+    #  Debug and calculate mean fragment lengths for IP and input samples
+    if ${debug}; then
+        echo "{"
+        echo "    ## WARNING: Assumes BAM files contain paired-end alignments ##"
+        echo "    ## WARNING: Overwrites length observations in 'tbl_met' ##"
+        echo "    len_ip=\"\$(calculate_frag_avg ${threads} \"${fil_ip}\")"
+        echo "    len_in=\"\$(calculate_frag_avg ${threads} \"${fil_in}\")"
+        echo "}"
+        echo ""
+    fi
+
+    # shellcheck disable=SC2086
+    {
+        ## WARNING: Assumes BAM files contain paired-end alignments ##
+        ## WARNING: Overwrites length observations in 'tbl_met' ##
+        len_ip=$(calculate_frag_avg ${threads} "${fil_ip}")
+        len_in=$(calculate_frag_avg ${threads} "${fil_in}")
+    }
+
+    #  Debug output, checking IP and input volume, mass, concentration, and
+    #+ length values
+    # shellcheck disable=SC2154
+    if ${debug}; then
+        debug_var \
+            "mass_ip=${mass_ip}" "mass_in=${mass_in}" \
+            "vol_all=${vol_all}" "vol_in=${vol_in}" \
+            "dep_ip=${dep_ip}"   "dep_in=${dep_in}" \
+            "len_ip=${len_ip}"   "len_in=${len_in}"
+    fi
+
+    #  Check call to 'calculate_scaling_factor_alpha.py'
+    if ${debug}; then
+        echo "python \"${scr_alf}\" \\"
+        echo "    --eqn \"${eqn}\" \\"
+        echo "    --mass_ip ${mass_ip} \\"
+        echo "    --mass_in ${mass_in} \\"
+        echo "    --vol_all ${vol_all} \\"
+        echo "    --vol_in ${vol_in} \\"
+        echo "    --dep_ip ${dep_ip} \\"
+        echo "    --dep_in ${dep_in} \\"
+        echo "    --len_ip ${len_ip} \\"
+        echo "    --len_in ${len_in} \\"
+        echo "    --rnd ${rnd} \\"
+        echo ""
+    fi
+
+    #  Run calculate_scaling_factor_alpha.py
+    # shellcheck disable=SC2046,2086
+    alpha=$(
+        python "${scr_alf}" \
+            --eqn "${eqn}" \
+            --mass_ip ${mass_ip} \
+            --mass_in ${mass_in} \
+            --vol_all ${vol_all} \
+            --vol_in ${vol_in} \
+            --dep_ip ${dep_ip} \
+            --dep_in ${dep_in} \
+            --len_ip ${len_ip} \
+            --len_in ${len_in} \
+            --rnd ${rnd}
+    )
+
+    #  Debug output to verify siQ-ChIP alpha value
+    if ${debug}; then debug_var "alpha=${alpha}"; fi
+
+    #  Calculate input minimum depth values for common bin sizes
+    # shellcheck disable=SC2086
+    {
+         dm_fr_1=$(calculate_factor_depth ${dep_in} 1  12157105 "frag" ${rnd})
+        dm_fr_10=$(calculate_factor_depth ${dep_in} 10 12157105 "frag" ${rnd})
+        dm_fr_20=$(calculate_factor_depth ${dep_in} 20 12157105 "frag" ${rnd})
+        dm_fr_30=$(calculate_factor_depth ${dep_in} 30 12157105 "frag" ${rnd})
+        dm_fr_40=$(calculate_factor_depth ${dep_in} 40 12157105 "frag" ${rnd})
+        dm_fr_50=$(calculate_factor_depth ${dep_in} 50 12157105 "frag" ${rnd})
+
+         dm_nm_1=$(calculate_factor_depth ${dep_in} 1  12157105 "norm" ${rnd})
+        dm_nm_10=$(calculate_factor_depth ${dep_in} 10 12157105 "norm" ${rnd})
+        dm_nm_20=$(calculate_factor_depth ${dep_in} 20 12157105 "norm" ${rnd})
+        dm_nm_30=$(calculate_factor_depth ${dep_in} 30 12157105 "norm" ${rnd})
+        dm_nm_40=$(calculate_factor_depth ${dep_in} 40 12157105 "norm" ${rnd})
+        dm_nm_50=$(calculate_factor_depth ${dep_in} 50 12157105 "norm" ${rnd})
+    }
+
+    #  Debug output to verify input minimum depth values
+    if ${debug}; then
+        debug_var \
+            "dm_fr_1=${dm_fr_1}"   "dm_fr_10=${dm_fr_10}" "dm_fr_20=${dm_fr_20}" \
+            "dm_fr_30=${dm_fr_30}" "dm_fr_40=${dm_fr_40}" "dm_fr_50=${dm_fr_50}" \
+            "dm_nm_1=${dm_nm_1}"   "dm_nm_10=${dm_nm_10}" "dm_nm_20=${dm_nm_20}" \
+            "dm_nm_30=${dm_nm_30}" "dm_nm_40=${dm_nm_40}" "dm_nm_50=${dm_nm_50}"
+    fi
+
+    #  Print the IP sample, input sample, and alpha value to the outfile
+    prt_1="${fil_ip}\t${fil_in}\t${alpha}\t${eqn}\t"
+    prt_2="${mass_ip}\t${mass_in}\t${vol_all}\t${vol_in}\t"
+    prt_3="${dep_ip}\t${dep_in}\t${len_ip}\t${len_in}\t"
+    prt_4="${dm_fr_1}\t${dm_fr_10}\t${dm_fr_20}\t${dm_fr_30}\t"
+    prt_5="${dm_fr_40}\t${dm_fr_50}\t"
+    prt_6="${dm_nm_1}\t${dm_nm_10}\t${dm_nm_20}\t${dm_nm_30}\t"
+    prt_7="${dm_nm_40}\t${dm_nm_50}"
+
+    echo -e \
+        "${prt_1}${prt_2}${prt_3}${prt_4}${prt_5}${prt_6}${prt_7}" \
+            >> "${fil_out}"
+}
+
+
+function set_interactive() {
+    #  Set hardcoded paths, values, etc.
+    ## WARNING: If interactive=true, change values as needed ##
+    dir_bas="${HOME}/repos"
+    dir_rep="${dir_bas}/protocol_chipseq_signal_norm"
+    dir_dat="${dir_rep}/data"
+    dir_pro="${dir_dat}/processed"
+
+    aligner="bowtie2"
+    a_type="global"
+    req_flg=true
+    flg="$(if ${req_flg}; then echo "2"; else echo "NA"; fi)"
+    mapq=1
+
+    dir_aln="${dir_pro}/align_${aligner}_${a_type}/flag-${flg}_mapq-${mapq}"
+    dir_bam="${dir_aln}/sc"
+    dir_cvg="${dir_pro}/compute_coverage"
+    dir_out="${dir_cvg}/${aligner}_${a_type}_flag-${flg}_mapq-${mapq}/tables"
+
+    #  Set hardcoded argument assignments
+    threads=8
+    ser_ip="${dir_bam}/IP_WT_Q_Hho1_6336.sc.bam,${dir_bam}/IP_WT_Q_Hho1_6337.sc.bam"
+    ser_in="${dir_bam}/in_WT_Q_Hho1_6336.sc.bam,${dir_bam}/in_WT_Q_Hho1_6337.sc.bam"
+    tbl_met="${dir_dat}/raw/docs/measurements_siqchip.tsv"
+    eqn="6nd"
+    fil_out="${dir_out}/alpha_test.tsv"
+    rnd=24
+    err_out="${dir_out}/logs"
+    nam_job="calc_sf_alpha_${eqn}"
+    env_nam="env_analyze"
+    dir_scr="${HOME}/repos/protocol_chipseq_signal_norm/scripts"
+}
+
+
 #  Parse keyword arguments, assigning them to variables; most of the argument
 #+ inputs are not checked, as this is performed by execute_*.sh and to a
 #+ certain extent by the scripts submitted to SLURM
 threads=1
 ser_ip=""
 ser_in=""
-table=""
+tbl_met=""
 eqn="6nd"
-outfile=""
-flg_dep=false
-flg_len=false
-flg_mc=false
+fil_out=""
+rnd=24
 err_out=""
 nam_job="calc_sf_alpha_${eqn}"
 env_nam="env_analyze"
-scr_met=""
-scr_alf=""
+dir_scr="${HOME}/repos/protocol_chipseq_signal_norm/scripts"
 
 show_help=$(cat << EOM
 $(basename "${0}") takes the following keyword arguments:
@@ -31,92 +283,60 @@ $(basename "${0}") takes the following keyword arguments:
   -sp, --ser_ip   Comma-separated serialized string of sample IP BAM infiles.
   -sn, --ser_in   Comma-separated serialized string of corresponding sample
                   input BAM infiles.
-  -tb, --table    Comma- or tab-separated table of siQ-ChIP metrics.
+  -tm, --tbl_met  TSV table of siQ-ChIP metrics.
   -eq, --eqn      Alpha equation to compute; options: '5', '5nd', '6', '6nd'
                   (default: '${eqn}').
-   -o, --outfile  Outfile of sample siQ-ChIP alpha values.
-  -fd, --flg_dep  Calculate the number of alignments.
-  -fl, --flg_len  Calculate the mean fragment length.
-  -fm, --flg_mc   Include additional measurements, calculations in outfile.
+  -fo, --fil_out  Outfile of sample siQ-ChIP alpha values.
+   -r, --rnd      Number of decimal places for rounding the siQ-ChIP alpha
+                  scaling and minimum input depth factors (default: ${rnd}).
   -eo, --err_out  Directory to store stderr and stdout outfiles.
   -nj, --nam_job  Name of job (default: '${nam_job}').
   -en, --env_nam  Name of Conda/Mamba environment to activate (default:
                   '${env_nam}').
-  -sm, --scr_met  Script that parses siQ-ChIP metadata,
-                  'parse_metadata_siq_chip.py'.
-  -sa, --scr_alf  Script that calculates siQ-ChIP alpha values,
-                  'calculate_scaling_factor_alpha.py'.
-
-All arguments are required with the following notes and exceptions:
-  - '--threads ${threads}'
-  - '--eqn ${eqn}'
-  - '--nam_job ${nam_job}'
-  - '--env_nam ${env_nam}'
-  - Also, '--flg_dep', '--flg_len', and '--flg_mc' are flags.
+  -ds, --dir_scr  Path to directory containing workflow scripts, functions,
+                  etc. (default: '${dir_scr}').
 EOM
 )
 
 if [[ -z "${1}" || "${1}" == "-h" || "${1}" == "--help" ]]; then
     echo "${show_help}"
-    exit 0
+    if ! ${interactive}; then exit 0; fi
 fi
 
 # shellcheck disable=SC2034,SC2154
-while [[ "$#" -gt 0 ]]; do
-    case "${1}" in
-         -t|--threads) threads="${2}"; shift 2 ;;
-        -sp|--ser_ip)  ser_ip="${2}";  shift 2 ;;
-        -sn|--ser_in)  ser_in="${2}";  shift 2 ;;
-        -tb|--table)   table="${2}";   shift 2 ;;
-        -eq|--eqn)     eqn="${2}";     shift 2 ;;
-         -o|--outfile) outfile="${2}"; shift 2 ;;
-        -fd|--flg_dep) flg_dep=true;   shift 1 ;;
-        -fl|--flg_len) flg_len=true;   shift 1 ;;
-        -fm|--flg_mc)  flg_mc=true;    shift 1 ;;
-        -eo|--err_out) err_out="${2}"; shift 2 ;;
-        -nj|--nam_job) nam_job="${2}"; shift 2 ;;
-        -en|--env_nam) env_nam="${2}"; shift 2 ;;
-        -sm|--scr_met) scr_met="${2}"; shift 2 ;;
-        -sa|--scr_alf) scr_alf="${2}"; shift 2 ;;
-        *)
-            echo "## Unknown argument passed: ${1} ##" >&2
-            echo "" >&2
-            echo "${show_help}" >&2
-            exit 1
-            ;;
-    esac
-done
+if ${interactive}; then
+    set_interactive
+else
+    while [[ "$#" -gt 0 ]]; do
+        case "${1}" in
+             -t|--threads) threads="${2}"; shift 2 ;;
+            -sp|--ser_ip)  ser_ip="${2}";  shift 2 ;;
+            -sn|--ser_in)  ser_in="${2}";  shift 2 ;;
+            -tm|--tbl_met) tbl_met="${2}"; shift 2 ;;
+            -eq|--eqn)     eqn="${2}";     shift 2 ;;
+            -fo|--fil_out) fil_out="${2}"; shift 2 ;;
+             -r|--rnd)     rnd="${2}";     shift 2 ;;
+            -eo|--err_out) err_out="${2}"; shift 2 ;;
+            -nj|--nam_job) nam_job="${2}"; shift 2 ;;
+            -en|--env_nam) env_nam="${2}"; shift 2 ;;
+            -ds|--dir_scr) dir_scr="${2}"; shift 2 ;;
+            *)
+                echo "## Unknown argument passed: ${1} ##" >&2
+                echo "" >&2
+                echo "${show_help}" >&2
+                exit 1
+                ;;
+        esac
+    done
+fi
 
-#  Debug output to check argument assignments
+#  Debug argument variable assignments
 if ${debug}; then
-    echo "threads=${threads}"
-    echo ""
-    echo "ser_ip=${ser_ip}"
-    echo ""
-    echo "ser_in=${ser_in}"
-    echo ""
-    echo "table=${table}"
-    echo ""
-    echo "eqn=${eqn}"
-    echo ""
-    echo "outfile=${outfile}"
-    echo ""
-    echo "flg_dep=${flg_dep}"
-    echo ""
-    echo "flg_len=${flg_len}"
-    echo ""
-    echo "flg_mc=${flg_mc}"
-    echo ""
-    echo "err_out=${err_out}"
-    echo ""
-    echo "nam_job=${nam_job}"
-    echo ""
-    echo "env_nam=${env_nam}"
-    echo ""
-    echo "scr_met=${scr_met}"
-    echo ""
-    echo "scr_alf=${scr_alf}"
-    echo ""
+    debug_var \
+        "threads=${threads}" "ser_ip=${ser_ip}"   "ser_in=${ser_in}" \
+        "tbl_met=${tbl_met}" "eqn=${eqn}"         "fil_out=${fil_out}" \
+        "rnd=${rnd}"         "err_out=${err_out}" "nam_job=${nam_job}" \
+        "env_nam=${env_nam}" "dir_scr=${dir_scr}"
 fi
 
 #  Activate environment
@@ -129,261 +349,86 @@ if [[ "${CONDA_DEFAULT_ENV}" != "${env_nam}" ]]; then
         }
 fi
 
-#  Check that SLURM environment variables are set
-if [[ -z "${SLURM_ARRAY_JOB_ID}" ]]; then
-    echo "Error: SLURM_ARRAY_JOB_ID is not set." >&2
-    exit 1
+#  Assign and validate variables for scripts, functions, etc.
+scr_alf="${dir_scr}/calculate_scaling_factor_alpha.py"
+scr_aln="${dir_scr}/functions/count_alignments_bam.sh"
+scr_frg="${dir_scr}/functions/calculate_frag_avg.sh"
+scr_met="${dir_scr}/parse_metadata_siq_chip.py"
+scr_min="${dir_scr}/functions/calculate_factor_depth.sh"
+
+if ${debug}; then
+    debug_var \
+        "scr_alf=${scr_alf}" "scr_aln=${scr_aln}" "scr_frg=${scr_frg}" \
+        "scr_met=${scr_met}" "scr_min=${scr_min}"
 fi
 
-if [[ -z "${SLURM_ARRAY_TASK_ID}" ]]; then
-    echo "Error: SLURM_ARRAY_TASK_ID is not set." >&2
-    exit 1
-fi
+for fil in "${scr_alf}" "${scr_aln}" "${scr_frg}" "${scr_met}" "${scr_min}"; do
+    if [[ ! -f "${fil}" ]]; then
+        echo "Error: Script, function, or subroutine not found: '${fil}'."
+        if ! ${interactive}; then exit 1; fi
+    fi
+done
 
-#  Give important SLURM environmental variables shorter names
-id_job=${SLURM_ARRAY_JOB_ID}
-id_tsk=${SLURM_ARRAY_TASK_ID}
+#  Source necessary subroutines
+# shellcheck disable=SC1090
+{
+    source "${scr_aln}"
+    source "${scr_frg}"
+    source "${scr_min}"
+}
 
-#  Construct 'arr_ip' and 'arr_in' from the serialized strings assigned to,
-#+ respectively, 'ser_ip' and 'ser_in'
+#  Construct arrays from serialized strings
 IFS=',' read -r -a arr_ip <<< "${ser_ip}"
 IFS=',' read -r -a arr_in <<< "${ser_in}"
 
-#  Debug output to check the task ID/array index, number of array elements, and
-#+ array element values
+#  Debug output to check number of array elements and array element values
 if ${debug}; then
-    echo "SLURM_ARRAY_JOB_ID=${id_job}"
-    echo ""
-    echo "SLURM_ARRAY_TASK_ID=${id_tsk}"
-    echo ""
-    echo "\${#arr_ip[@]}=${#arr_ip[@]}"
-    echo ""
-    echo "arr_ip=( ${arr_ip[*]} )"
-    echo ""
-    echo "\${#arr_in[@]}=${#arr_in[@]}"
-    echo ""
-    echo "arr_in=( ${arr_in[*]} )"
-    echo ""
+    echo "\${#arr_ip[@]}=${#arr_ip[@]}" && echo ""
+    echo "arr_ip=( ${arr_ip[*]} )"      && echo ""
+    echo "\${#arr_in[@]}=${#arr_in[@]}" && echo ""
+    echo "arr_in=( ${arr_in[*]} )"      && echo ""
 fi
 
-#  Determine array index based on SLURM_ARRAY_TASK_ID
-idx=$(( id_tsk - 1 ))
+#  Determine and run mode: SLURM or GNU Parallel/serial
+if [[ -n "${SLURM_ARRAY_TASK_ID:-}" ]]; then
+    #  Mode: SLURM
+    id_job=${SLURM_ARRAY_JOB_ID}
+    id_tsk=${SLURM_ARRAY_TASK_ID}
+    idx=$(( id_tsk - 1 ))
 
-#  Define IP and input infile assignments based on index of reconstructed array
-fil_ip="${arr_ip[idx]}"
-fil_in="${arr_in[idx]}"
-
-#  Debug output, checking which IP and input infiles are in use
-if ${debug}; then
-    echo "fil_ip=${fil_ip}"
-    echo ""
-    echo "fil_in=${fil_in}"
-    echo ""
-fi
-
-#  Exit if variables 'fil_ip' or 'fil_in' have empty assignments
-if [[ -z "${fil_ip}" ]]; then
-    echo \
-        "Error: Failed to retrieve 'fil_ip' for 'id_tsk=${id_tsk}':" \
-        "'\${arr_ip[${idx}]}'." >&2
-    exit 1
-elif [[ -z "${fil_in}" ]]; then
-    echo \
-        "Error: Failed to retrieve 'fil_in' for 'id_tsk=${id_tsk}':" \
-        "'\${arr_in[${idx}]}'." >&2
-    exit 1
-fi
-
-#  Exit if files assigned to variables 'fil_ip' or 'fil_in' do not exist
-if [[ ! -f "${fil_ip}" ]]; then
-    echo \
-        "Error: File not found for 'fil_ip' from 'id_tsk=${id_tsk}':" \
-        "'\${arr_ip[${idx}]}'." >&2
-    exit 1
-elif [[ ! -f "${fil_in}" ]]; then
-    echo \
-        "Error: File not found for 'fil_in' from 'id_tsk=${id_tsk}':" \
-        "'\${arr_in[${idx}]}'." >&2
-    exit 1
-fi
-
-#  Debug call to sourced Python script
-if ${debug}; then
-    echo "source <("
-    echo "    python \"${scr_met}\" \\"
-    echo "        --text \"${table}\" \\"
-    echo "        --eqn \"${eqn}\" \\"
-    echo "        --bam \"${fil_ip}\" \\"
-    echo "        --shell"
-    echo ")"
-    echo ""
-fi
-
-#  Assign variables for siQ-ChIP measurements: volume, mass, concentration,
-#+ length
-# shellcheck disable=SC1090
-source <(
-    python "${scr_met}" \
-        --text "${table}" \
-        --eqn "${eqn}" \
-        --bam "${fil_ip}" \
-        --shell
-)
-
-#  If '--flg_dep', calculate sequencing depth (number of alignments) for IP and
-#+ input samples
-if ${flg_dep}; then
+    #  Debug short names of environmental variables
     if ${debug}; then
-        echo "{"
-        echo "    dep_ip=\$(samtools view -@ ${threads} -c \"${fil_ip}\")"
-        echo "    dep_in=\$(samtools view -@ ${threads} -c \"${fil_in}\")"
-        echo "}"
-        echo ""
+        debug_var "id_job=${id_job}" "id_tsk=${id_tsk}" "idx=${idx}"
     fi
 
-    # shellcheck disable=SC2086
+    #  Derive sample name, which is needed for 'set_logs'
+    # shellcheck disable=SC2001
     {
-        dep_ip=$(samtools view -@ ${threads} -c "${fil_ip}")
-        dep_in=$(samtools view -@ ${threads} -c "${fil_in}")
+        samp="${arr_ip[idx]}"
+        samp="${samp##*/IP_}"
+        samp=$(echo "${samp%.bam}" | sed 's:\.:_:g')
     }
-fi
 
-#  If '--flg_len', calculate mean fragment length for IP and input samples
-if ${flg_len}; then
-    if ${debug}; then
-        echo "{"
-        echo "    len_ip=\"\$("
-        echo "        samtools view -@ ${threads} \"${fil_ip}\" "
-        echo "            | awk '{"
-        echo "                if (\$9 > 0) { sum += \$9; count++ }"
-        echo "            } END {"
-        echo "                if (count > 0) { print sum / count }"
-        echo "            }'"
-        echo "    )\""
-        echo "    len_in=\"\$("
-        echo "        samtools view -@ ${threads} \"${fil_in}\" "
-        echo "            | awk '{"
-        echo "                if (\$9 > 0) { sum += \$9; count++ }"
-        echo "            } END {"
-        echo "                if (count > 0) { print sum / count }"
-        echo "            }'"
-        echo "    )\""
-        echo "}"
-        echo ""
-    fi
+    #  Debug output to verify sample name
+    if ${debug}; then debug_var "samp=${samp}"; fi
 
+    #  Run subroutine to set SLURM and symlinked/better-named log files
+    set_logs "${id_job}" "${id_tsk}" "${samp}" "${err_out}"
+    set_logs "${id_job}" "${id_tsk}" "${samp}" "${err_out}"
+    ln -f "${err_ini}" "${err_dsc}"
+    ln -f "${out_ini}" "${out_dsc}"
+
+    #  Run processing subroutine
     # shellcheck disable=SC2086
-    {
-        len_ip="$(
-            samtools view -@ ${threads} "${fil_ip}" \
-                | awk '{
-                    if ($9 > 0) { sum += $9; count++ }
-                } END {
-                    if (count > 0) { print sum / count }
-                }'
-        )"
-        len_in="$(
-            samtools view -@ ${threads} "${fil_in}" \
-                | awk '{
-                    if ($9 > 0) { sum += $9; count++ }
-                } END {
-                    if (count > 0) { print sum / count }
-                }'
-        )"
-    }
-fi
+    process_sample ${idx}
 
-#  Debug output, checking IP and input volume, mass, concentration, and
-#+ 'flg_len' values
-# shellcheck disable=SC2154
-if ${debug}; then
-    echo "mass_ip=${mass_ip}"
-    echo ""
-    echo "mass_in=${mass_in}"
-    echo ""
-    echo "vol_all=${vol_all}"
-    echo ""
-    echo "vol_in=${vol_in}"
-    echo ""
-    echo "dep_ip=${dep_ip}"
-    echo ""
-    echo "dep_in=${dep_in}"
-    echo ""
-    echo "len_ip=${len_ip}"
-    echo ""
-    echo "len_in=${len_in}"
-    echo ""
-fi
-
-#  Derive sample name from fil_ip assignment
-# shellcheck disable=SC2001
-{    
-    samp="${fil_ip##*/IP_}"
-    samp=$(echo "${samp%.bam}" | sed 's:\.:_:g')
-}
-
-#  Debug output to verify sample name
-if ${debug}; then
-    echo "samp=${samp}"
-    echo ""
-fi
-
-#  Assign stdout and stderr outstems to variables
-err_ini="${err_out}/${nam_job}.${id_job}-${id_tsk}.stderr.txt"
-out_ini="${err_out}/${nam_job}.${id_job}-${id_tsk}.stdout.txt"
-err_dsc="${err_out}/${nam_job}.${samp}.${id_job}-${id_tsk}.stderr.txt"
-out_dsc="${err_out}/${nam_job}.${samp}.${id_job}-${id_tsk}.stdout.txt"
-
-#  Give the initial stderr and stdout TXT outfiles more descriptive names
-ln -f "${err_ini}" "${err_dsc}"
-ln -f "${out_ini}" "${out_dsc}"
-
-#  Check call to calculate_scaling_factor_alpha.py
-if ${debug}; then
-    echo "python \"${scr_alf}\" \\"
-    echo "    --eqn \"${eqn}\" \\"
-    echo "    --mass_ip ${mass_ip} \\"
-    echo "    --mass_in ${mass_in} \\"
-    echo "    --vol_all ${vol_all} \\"
-    echo "    --vol_in ${vol_in} \\"
-    echo "    --dep_ip ${dep_ip} \\"
-    echo "    --dep_in ${dep_in} \\"
-    echo "    --len_ip ${len_ip} \\"
-    echo "    --len_in ${len_in}"
-    echo ""
-fi
-
-#  Run calculate_scaling_factor_alpha.py
-# shellcheck disable=SC2046,2086
-alpha=$(
-    python "${scr_alf}" \
-        --eqn "${eqn}" \
-        --mass_ip ${mass_ip} \
-        --mass_in ${mass_in} \
-        --vol_all ${vol_all} \
-        --vol_in ${vol_in} \
-        --dep_ip ${dep_ip} \
-        --dep_in ${dep_in} \
-        --len_ip ${len_ip} \
-        --len_in ${len_in}
-)
-
-#  Debug output to verify siQ-ChIP alpha value
-if ${debug}; then
-    echo "alpha=${alpha}"
-    echo ""
-fi
-
-#  Print the IP sample, input sample, and alpha value to the outfile
-if ${flg_mc}; then
-    #  If '--flg_mc', include mass, volume, depth, and length values in the
-    #+ outfile
-    echo -e \
-        "${fil_ip}\t${fil_in}\t${alpha}\t${eqn}\t${mass_ip}\t${mass_in}\t${vol_all}\t${vol_in}\t${dep_ip}\t${dep_in}\t${len_ip}\t${len_in}" \
-            >> "${outfile}"
+    #  Remove the initial SLURM stderr and stdout TXT outfiles
+    rm "${err_ini}" "${out_ini}"
 else
-    echo -e "${fil_ip}\t${fil_in}\t${alpha}\t${eqn}" >> "${outfile}"
+    #  Mode: GNU Parallel/serial
+    for idx in "${!arr_ip[@]}"; do
+        #  Run processing subroutine
+        # shellcheck disable=SC2086
+        process_sample ${idx}
+    done
 fi
-
-#  Remove the initial SLURM stderr and stdout TXT outfiles
-rm "${err_ini}" "${out_ini}"

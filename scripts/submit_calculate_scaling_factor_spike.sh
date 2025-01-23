@@ -54,19 +54,23 @@ function set_logs() {
 
 #  Define subroutine to process a sample
 function process_sample() {
-    local idx="${1:-0}"
-    local mp="${arr_ser_mip[idx]}"
-    local sp="${arr_ser_sip[idx]}"
-    local mn="${arr_ser_min[idx]}"
-    local sn="${arr_ser_sin[idx]}"
-    local num_mp num_sp num_mn num_sn
+    local idx="${1}"
+    local mp sp mn sn num_mp num_sp num_mn num_sn
     local dm_fr_1 dm_fr_10 dm_fr_20 dm_fr_30 dm_fr_40 dm_fr_50
     local dm_nm_1 dm_nm_10 dm_nm_20 dm_nm_30 dm_nm_40 dm_nm_50
     local prt_1 prt_2 prt_3 prt_4 prt_5 prt_6
 
+    #  Assign variables based on idx
+    mp="${arr_mip[idx]}"
+    sp="${arr_sip[idx]}"
+    mn="${arr_min[idx]}"
+    sn="${arr_sin[idx]}"
+
     #  Debug and validate assignments to variables 'mp', 'sp', 'mn', and 'mn'
     if ${debug}; then
-        debug_var "idx=${idx}" "mp=${mp}" "sp=${sp}" "mn=${mn}" "sn=${sn}"
+        debug_var \
+            "idx=${idx} ('idx' passed to 'process_sample()')" \
+            "mp=${mp}" "sp=${sp}" "mn=${mn}" "sn=${sn}"
     fi
 
     #  Exit if variables 'mp', 'sp', 'mn', or 'sn' have empty assignments or do
@@ -95,7 +99,7 @@ function process_sample() {
         echo ""
     fi
 
-    #  Count numbers of proper alignments for mp, sp, mn, and sn
+    #  Count numbers of proper alignments for 'mp', 'sp', 'mn', and 'sn'
     # shellcheck disable=SC2086
     {
         ## WARNING: Assumes BAM files contain paired-end alignments ##
@@ -112,7 +116,7 @@ function process_sample() {
             "num_mn=${num_mn}" "num_sn=${num_sn}"
     fi
 
-    #  Check call to calculate_scaling_factor_spike.py
+    #  Check call to 'calculate_scaling_factor_spike.py'
     if ${debug}; then
         echo "python \"${scr_spk}\" \\"
         echo "    --main_ip  ${num_mp} \\"
@@ -137,7 +141,7 @@ function process_sample() {
 
     if ${debug}; then debug_var "sf=${sf}"; fi
 
-    #TODO: Call(s) to 'dep_min' Python script
+    #  Calculate input minimum depth values for common bin sizes
     # shellcheck disable=SC2086
     {
          dm_fr_1=$(calculate_factor_depth ${num_mn} 1  12157105 "frag" ${rnd})
@@ -155,7 +159,7 @@ function process_sample() {
         dm_nm_50=$(calculate_factor_depth ${num_mn} 50 12157105 "norm" ${rnd})
     }
 
-    #  Debug output to verify spike-in-derived scaling factor
+    #  Debug output to verify input minimum depth values
     if ${debug}; then
         debug_var \
             "dm_fr_1=${dm_fr_1}"   "dm_fr_10=${dm_fr_10}" "dm_fr_20=${dm_fr_20}" \
@@ -165,23 +169,14 @@ function process_sample() {
     fi
 
     #  Print the IP sample and scaling factor to the outfile
-    if ! ${flg_mc}; then
-        echo -e "${mp}\t${sf}" >> "${fil_out}"
-    else
-        #  If --flg_mc, include num_{m|s}{p|n} values in the outfile
-        # shellcheck disable=SC2028
-        {
-            prt_1="${mp}\t${sp}\t${mn}\t${sn}\t${sf}\t${num_mp}\t"
-            prt_2="${num_sp}\t${num_mn}\t${num_sn}\t"
-            prt_3="${dm_fr_1}\t${dm_fr_10}\t${dm_fr_20}\t"
-            prt_4="${dm_fr_30}\t${dm_fr_40}\t${dm_fr_50}\t"
-            prt_5="${dm_nm_1}\t${dm_nm_10}\t${dm_nm_20}\t"
-            prt_6="${dm_nm_30}\t${dm_nm_40}\t${dm_nm_50}"
-                
-            echo -e "${prt_1}${prt_2}${prt_3}${prt_4}${prt_5}${prt_6}" \
-                >> "${fil_out}"
-        }
-    fi
+    prt_1="${mp}\t${sp}\t${mn}\t${sn}\t${sf}\t"
+    prt_2="${num_mp}\t${num_sp}\t${num_mn}\t${num_sn}\t"
+    prt_3="${dm_fr_1}\t${dm_fr_10}\t${dm_fr_20}\t${dm_fr_30}\t"
+    prt_4="${dm_fr_40}\t${dm_fr_50}\t"
+    prt_5="${dm_nm_1}\t${dm_nm_10}\t${dm_nm_20}\t${dm_nm_30}\t"
+    prt_6="${dm_nm_40}\t${dm_nm_50}"
+        
+    echo -e "${prt_1}${prt_2}${prt_3}${prt_4}${prt_5}${prt_6}" >> "${fil_out}"
 }
 
 
@@ -213,8 +208,7 @@ function set_interactive() {
     ser_sin="${dir_pom}/in_WT_Q_Hho1_6336.sp.bam,${dir_pom}/in_WT_Q_Hho1_6337.sp.bam"
     fil_out="${dir_out}/spike_test.tsv"
     rnd=24
-    flg_mc=true
-    err_out="${dir_cvg}/tables/logs"
+    err_out="${dir_out}/logs"
     nam_job="calc_sf_spike"
     env_nam="env_analyze"
     dir_scr="${HOME}/repos/protocol_chipseq_signal_norm/scripts"
@@ -224,6 +218,7 @@ function set_interactive() {
 #  Export functions
 export -f \
     process_sample validate_var exists_var debug_var set_logs set_interactive
+
 
 #  Parse keyword arguments, assigning them to variables; most of the argument
 #+ inputs are not checked, as this is performed by execute_*.sh and to a
@@ -235,7 +230,6 @@ ser_min=""
 ser_sin=""
 fil_out=""
 rnd=24
-flg_mc=false
 err_out=""
 nam_job="calc_sf_spike"
 env_nam="env_analyze"
@@ -254,9 +248,7 @@ $(basename "${0}") takes the following keyword arguments:
                   BAM files.
   -fo, --fil_out  TSV output file of sample spike-in-derived scaling factors.
    -r, --rnd      Number of decimal places for rounding the spike-in scaling
-                  factor (default: ${rnd}).
-  -fm, --flg_mc   Include additional measurements, calculations in outfile
-                  (optional).
+                  and minimum input depth factors (default: ${rnd}).
   -eo, --err_out  Directory to store stderr and stdout outfiles.
   -nj, --nam_job  Name of job (default: '${nam_job}').
   -en, --env_nam  Name of Conda/Mamba environment to activate (default:
@@ -268,7 +260,7 @@ EOM
 
 if [[ -z "${1}" || "${1}" == "-h" || "${1}" == "--help" ]]; then
     echo "${show_help}"
-    exit 0
+    if ! ${interactive}; then exit 0; fi
 fi
 
 # shellcheck disable=SC2034,SC2154
@@ -284,7 +276,6 @@ else
             -sn|--ser_sin) ser_sin="${2}"; shift 2 ;;
             -fo|--fil_out) fil_out="${2}"; shift 2 ;;
              -r|--rnd)     rnd="${2}";     shift 2 ;;
-            -fm|--flg_mc)  flg_mc=true;    shift 1 ;;
             -eo|--err_out) err_out="${2}"; shift 2 ;;
             -nj|--nam_job) nam_job="${2}"; shift 2 ;;
             -en|--env_nam) env_nam="${2}"; shift 2 ;;
@@ -304,33 +295,9 @@ if ${debug}; then
     debug_var \
         "threads=${threads}" "ser_mip=${ser_mip}" "ser_sip=${ser_sip}" \
         "ser_min=${ser_min}" "ser_sin=${ser_sin}" "fil_out=${fil_out}" \
-        "rnd=${rnd}"         "flg_mc=${flg_mc}"   "err_out=${err_out}" \
-        "nam_job=${nam_job}" "env_nam=${env_nam}" "dir_scr=${dir_scr}"
+        "rnd=${rnd}"         "err_out=${err_out}" "nam_job=${nam_job}" \
+        "env_nam=${env_nam}" "dir_scr=${dir_scr}"
 fi
-
-#  Assign and validate variables for scripts, functions, etc.
-scr_spk="${dir_scr}/calculate_scaling_factor_spike.py"
-scr_ct="${dir_scr}/functions/count_alignments_bam.sh"
-scr_min="${dir_scr}/functions/calculate_factor_depth.sh"
-
-if ${debug}; then
-    debug_var "scr_spk=${scr_spk}" "scr_ct=${scr_ct}" "scr_min=${scr_min}"
-fi
-
-for fil in "${scr_spk}" "${scr_ct}" "${scr_min}"; do
-    if [[ ! -f "${fil}" ]]; then
-        echo "Error: Script, function, or subroutine not found: '${fil}'."
-        exit 1
-    fi
-done
-unset fil
-
-#  Source necessary subroutines
-# shellcheck disable=SC1090
-{
-    source "${scr_ct}"
-    source "${scr_min}"
-}
 
 #  Activate environment
 if [[ "${CONDA_DEFAULT_ENV}" != "${env_nam}" ]]; then
@@ -342,22 +309,46 @@ if [[ "${CONDA_DEFAULT_ENV}" != "${env_nam}" ]]; then
         }
 fi
 
-#  Reconstruct arr_ser_mip from the serialized string assigned to ser_mip
-IFS=',' read -r -a arr_ser_mip <<< "${ser_mip}"
-IFS=',' read -r -a arr_ser_sip <<< "${ser_sip}"
-IFS=',' read -r -a arr_ser_min <<< "${ser_min}"
-IFS=',' read -r -a arr_ser_sin <<< "${ser_sin}"
+#  Assign and validate variables for scripts, functions, etc.
+scr_aln="${dir_scr}/functions/count_alignments_bam.sh"
+scr_min="${dir_scr}/functions/calculate_factor_depth.sh"
+scr_spk="${dir_scr}/calculate_scaling_factor_spike.py"
+
+if ${debug}; then
+    debug_var "scr_aln=${scr_aln}" "scr_min=${scr_min}" "scr_spk=${scr_spk}"
+fi
+
+for fil in "${scr_spk}" "${scr_aln}" "${scr_min}"; do
+    if [[ ! -f "${fil}" ]]; then
+        echo "Error: Script, function, or subroutine not found: '${fil}'."
+        exit 1
+    fi
+done
+unset fil
+
+#  Source necessary subroutines
+# shellcheck disable=SC1090
+{
+    source "${scr_aln}"
+    source "${scr_min}"
+}
+
+#  Construct arrays from serialized strings
+IFS=',' read -r -a arr_mip <<< "${ser_mip}"
+IFS=',' read -r -a arr_sip <<< "${ser_sip}"
+IFS=',' read -r -a arr_min <<< "${ser_min}"
+IFS=',' read -r -a arr_sin <<< "${ser_sin}"
 
 #  Debug output to check number of array elements and array element values
 if ${debug}; then
-    echo "\${#arr_ser_mip[@]}=${#arr_ser_mip[@]}" && echo ""
-    echo "arr_ser_mip=( ${arr_ser_mip[*]} )"      && echo ""
-    echo "\${#arr_ser_sip[@]}=${#arr_ser_sip[@]}" && echo ""
-    echo "arr_ser_sip=( ${arr_ser_sip[*]} )"      && echo ""
-    echo "\${#arr_ser_min[@]}=${#arr_ser_min[@]}" && echo ""
-    echo "arr_ser_min=( ${arr_ser_min[*]} )"      && echo ""
-    echo "\${#arr_ser_sin[@]}=${#arr_ser_sin[@]}" && echo ""
-    echo "arr_ser_sin=( ${arr_ser_sin[*]} )"      && echo ""
+    echo "\${#arr_mip[@]}=${#arr_mip[@]}" && echo ""
+    echo "arr_mip=( ${arr_mip[*]} )"      && echo ""
+    echo "\${#arr_sip[@]}=${#arr_sip[@]}" && echo ""
+    echo "arr_sip=( ${arr_sip[*]} )"      && echo ""
+    echo "\${#arr_min[@]}=${#arr_min[@]}" && echo ""
+    echo "arr_min=( ${arr_min[*]} )"      && echo ""
+    echo "\${#arr_sin[@]}=${#arr_sin[@]}" && echo ""
+    echo "arr_sin=( ${arr_sin[*]} )"      && echo ""
 fi
 
 #  Determine and run mode: SLURM or GNU Parallel/serial
@@ -375,7 +366,7 @@ if [[ -n "${SLURM_ARRAY_TASK_ID:-}" ]]; then
     #  Derive sample name, which is needed for 'set_logs'
     # shellcheck disable=SC2001
     {
-        samp="${arr_ser_mip[idx]}"
+        samp="${arr_mip[idx]}"
         samp="${samp##*/IP_}"
         samp=$(echo "${samp%.bam}" | sed 's:\.:_:g')
     }
@@ -397,7 +388,7 @@ if [[ -n "${SLURM_ARRAY_TASK_ID:-}" ]]; then
     rm "${err_ini}" "${out_ini}"
 else
     #  Mode: GNU Parallel/serial
-    for idx in "${!arr_ser_mip[@]}"; do
+    for idx in "${!arr_mip[@]}"; do
         #  Run processing subroutine
         # shellcheck disable=SC2086
         process_sample ${idx}

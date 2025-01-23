@@ -36,6 +36,7 @@ dir_fnc="${dir_scr}/functions"
     source "${dir_fnc}/exit_0.sh"
     source "${dir_fnc}/exit_1.sh"
     source "${dir_fnc}/handle_env.sh"
+    source "${dir_fnc}/reset_max_job.sh"
 }
 
 
@@ -43,7 +44,7 @@ dir_fnc="${dir_scr}/functions"
 function set_interactive() {
     #  Set hardcoded paths, values, etc.
     ## WARNING: If interactive=true, change values as needed ##
-    dir_bas="${HOME}/repos"
+    dir_bas="${HOME}/repos"  ## WARNING: Change as needed ##
     dir_rep="${dir_bas}/protocol_chipseq_signal_norm"
     dir_scr="${dir_rep}/scripts"
     dir_fnc="${dir_scr}/functions"
@@ -58,8 +59,8 @@ function set_interactive() {
     det_bam="flag-${flg}_mapq-${mapq}"
     det_cvg="${aligner}_${a_type}_${det_bam}"
 
-    dir_aln="${dir_pro}/align_${aligner}_${a_type}/flag-${flg}_mapq-${mapq}"
-    dir_bam="${dir_aln}/sc"
+    dir_aln="${dir_pro}/align_${aligner}_${a_type}"
+    dir_bam="${dir_aln}/${det_bam}/sc"
     dir_cvg="${dir_pro}/compute_coverage"
     dir_out="${dir_cvg}/${det_cvg}/tables"
 
@@ -84,7 +85,6 @@ function set_interactive() {
     ser_sin="$(sed 's:IP:in:g' < <(echo "${ser_sip}"))"
     fil_out="${dir_out}/ChIP_WT_G1-G2M-Q_Hho1-Hmo1_${typ_cvg}.tsv"
     rnd=24
-    flg_mc=true
     err_out="${dir_out}/logs"
     nam_job="calc_sf_spike"
     slurm=true
@@ -101,6 +101,7 @@ function set_interactive() {
     dir_scr="${dir_scr}"
     scr_sub="${dir_scr}/submit_calculate_scaling_factor_spike.sh"
     denom=4
+    par_job=""
 }
 
 #  Initialize argument variables, assigning default values where applicable
@@ -113,7 +114,6 @@ ser_min=""
 ser_sin=""
 fil_out=""
 rnd=24
-flg_mc=false
 err_out=""
 nam_job="calc_sf_spike"
 slurm=false
@@ -125,8 +125,8 @@ show_help=$(cat << EOM
 Usage:
   execute_calculate_scaling_factor_spike.sh
     [--verbose] [--dry_run] --threads <int> --ser_mip <str> --ser_sip <str>
-    --ser_min <str> --ser_sin <str> --fil_out <str> --rnd <int> [--flg_mc]
-    --err_out <str> --nam_job <str> [--slurm] [--max_job <int>] [--time <str>]
+    --ser_min <str> --ser_sin <str> --fil_out <str> --rnd <int> --err_out <str>
+    --nam_job <str> [--slurm] [--max_job <int>] [--time <str>]
 
 Description:
   The driver script 'execute_calculate_scaling_factor_spike.sh' coordinates the
@@ -143,8 +143,7 @@ Arguments:
   -dr, --dry_run  Perform a dry run without executing commands (optional).
    -t, --threads  Number of threads to use (default: ${threads}).
   -mp, --ser_mip  Comma-separated list of "main" model organism IP BAM files
-                  that are coordinate-sorted. (See Notes for file name and path
-                  structure requirements.)
+                  that are coordinate-sorted.
   -sp, --ser_sip  Comma-separated serialized string of "spike-in" organism IP
                   BAM files.
   -mn, --ser_min  Comma-separated serialized string of "main" organism input
@@ -157,7 +156,6 @@ Arguments:
                   be appended.
    -r, --rnd      Number of decimal places for rounding the spike-in scaling
                   factor (default: ${rnd}).
-  -fm, --flg_mc   Include additional measurements and calculations in outfile.
   -eo, --err_out  The directory to store stderr and stdout TXT outfiles
                   (default: \${dir_out}/err_out).
   -nj, --nam_job  The name of the job (default: '${nam_job}').
@@ -232,7 +230,6 @@ else
             -sn|--ser_sin) ser_sin="${2}"; shift 2 ;;
             -fo|--fil_out) fil_out="${2}"; shift 2 ;;
              -r|--rnd)     rnd="${2}";     shift 2 ;;
-            -fm|--flg_mc)  flg_mc=true;    shift 1 ;;
             -eo|--err_out) err_out="${2}"; shift 2 ;;
             -nj|--nam_job) nam_job="${2}"; shift 2 ;;
             -sl|--slurm)   slurm=true;     shift 1 ;;
@@ -258,7 +255,7 @@ check_supplied_arg -a "${scr_sub}" -n "scr_sub"
 check_exists_file_dir "f" "${scr_sub}" "scr_sub"
 
 check_supplied_arg -a "${denom}" -n "denom"
-check_int_pos "${denom}" -n "denom"
+check_int_pos "${denom}" "denom"
 
 check_supplied_arg -a "${threads}" -n "threads"
 check_int_pos "${threads}" "threads"
@@ -311,30 +308,31 @@ fi
 handle_env "${env_nam}" > /dev/null
 
 check_program_path awk
-if ! ${slurm}; then check_program_path parallel; fi
+if ! ${slurm} && [[ ${threads} -gt 1 ]]; then check_program_path parallel; fi
 check_program_path python
 check_program_path samtools
 if ${slurm}; then check_program_path sbatch; fi
 
-#  Parse the --infiles argument into an array, then validate the infile value
-#+ assignments
-IFS=',' read -r -a arr_ser_mip <<< "${ser_mip}"  # unset arr_ser_mip
-IFS=',' read -r -a arr_ser_sip <<< "${ser_sip}"  # unset arr_ser_sip
-IFS=',' read -r -a arr_ser_min <<< "${ser_min}"  # unset arr_ser_min
-IFS=',' read -r -a arr_ser_sin <<< "${ser_sin}"  # unset arr_ser_sin
+#  Parse the '--ser_mip', etc. arguments into arrays, then validate the file
+#+ value assignments
+IFS=',' read -r -a arr_mip <<< "${ser_mip}"  # unset arr_mip
+IFS=',' read -r -a arr_sip <<< "${ser_sip}"  # unset arr_sip
+IFS=',' read -r -a arr_min <<< "${ser_min}"  # unset arr_min
+IFS=',' read -r -a arr_sin <<< "${ser_sin}"  # unset arr_sin
 
 #  Check that each file exists; if not, exit
 for file in \
-    "${arr_ser_mip[@]}" "${arr_ser_sip[@]}" \
-    "${arr_ser_min[@]}" "${arr_ser_sin[@]}"
+    "${arr_mip[@]}" "${arr_sip[@]}" \
+    "${arr_min[@]}" "${arr_sin[@]}"
 do
     check_exists_file_dir "f" "${file}" "file"
 done
 unset file
 
-#  Reset 'max_job' if it is greater than the number of infiles
+#  Reset 'max_job' if it is greater than the array lengths
 if ${slurm}; then
-    max_job=$(reset_max_job "${max_job}" "${#arr_ser_mip[@]}")
+    max_job=$(reset_max_job "${max_job}" "${#arr_mip[@]}")
+    #FIXME: Error when 'max_job' is unset or empty
 fi
 
 
@@ -359,10 +357,12 @@ if ${verbose}; then
     echo "verbose=${verbose}"
     echo "dry_run=${dry_run}"
     echo "threads=${threads}"
-    echo "infiles=${infiles}"
+    echo "ser_mip=${ser_mip}"
+    echo "ser_sip=${ser_sip}"
+    echo "ser_min=${ser_min}"
+    echo "ser_sin=${ser_sin}"
     echo "fil_out=${fil_out}"
     echo "rnd=${rnd}"
-    echo "flg_mc=${flg_mc}"
     echo "err_out=${err_out}"
     echo "nam_job=${nam_job}"
     echo "slurm=${slurm}"
@@ -370,7 +370,40 @@ if ${verbose}; then
     echo "time=${time}"
     echo ""
     echo ""
+    echo "###################################"
+    echo "## Arrays derived from variables ##"
+    echo "###################################"
+    echo ""
+    echo "arr_mip=( ${arr_mip[*]} )"
+    echo ""
+    echo "arr_sip=( ${arr_sip[*]} )"
+    echo ""
+    echo "arr_min=( ${arr_min[*]} )"
+    echo ""
+    echo "arr_sin=( ${arr_sin[*]} )"
+    echo ""
+    echo ""
 fi
+
+#  To prevent potential race conditions from concurrent writes,
+#+ pre-write the header to the outfile before running SLURM jobs
+prt_1="main_ip\tspike_ip\tmain_in\tspike_in\tsf\t"
+prt_2="num_mp\tnum_sp\tnum_mn\tnum_sn\t"
+prt_3="dm_fr_1\tdm_fr_10\tdm_fr_20\tdm_fr_30\t"
+prt_4="dm_fr_40\tdm_fr_50\t"
+prt_5="dm_nm_1\tdm_nm_10\tdm_nm_20\tdm_nm_30\t"
+prt_6="dm_nm_40\tdm_nm_50"
+
+if ${dry_run} || ${verbose}; then
+    echo -e "${prt_1}${prt_2}${prt_3}${prt_4}${prt_5}${prt_6}"
+fi
+
+if ! ${dry_run}; then
+    echo -e \
+        "${prt_1}${prt_2}${prt_3}${prt_4}${prt_5}${prt_6}" \
+            >> "${fil_out}"
+fi
+
 
 # shellcheck disable=SC1083,SC2157,SC2046,SC2086
 if ${slurm}; then
@@ -388,13 +421,15 @@ if ${slurm}; then
         echo "    --time=${time} \\"
         echo "    --error=${err_out}/${nam_job}.%A-%a.stderr.txt \\"
         echo "    --output=${err_out}/${nam_job}.%A-%a.stdout.txt \\"
-        echo "    --array=1-${#arr_infiles[@]}%${max_job} \\"
+        echo "    --array=1-${#arr_mip[@]}%${max_job} \\"
         echo "    ${scr_sub} \\"
         echo "        --threads ${threads} \\"
-        echo "        --infiles ${infiles} \\"
+        echo "        --ser_mip ${ser_mip} \\"
+        echo "        --ser_sip ${ser_sip} \\"
+        echo "        --ser_min ${ser_min} \\"
+        echo "        --ser_sin ${ser_sin} \\"
         echo "        --fil_out ${fil_out} \\"
         echo "        --rnd ${rnd} \\"
-        echo "        $(if ${flg_mc}; then echo "--flg_mc"; fi) \\"
         echo "        --err_out ${err_out} \\"
         echo "        --nam_job ${nam_job} \\"
         echo "        --env_nam ${env_nam} \\"
@@ -409,20 +444,10 @@ if ${slurm}; then
         # echo ""
         # cat "${scr_sub}"
         # echo ""
+        # echo ""
     fi
 
     if ! ${dry_run}; then
-        #  To prevent potential race conditions from concurrent writes,
-        #+ pre-write the header to the outfile before running SLURM jobs
-        #+ (for more details, see related comment for GNU Parallel jobs below)
-        if ! ${flg_mc}; then
-            echo -e "sample\tsf" >> "${fil_out}"
-        else
-            echo -e \
-                "sample\tsf\tmain_ip\tspike_ip\tmain_in\tspike_in" \
-                    >> "${fil_out}"
-        fi
-
         sbatch \
             --job-name=${nam_job} \
             --nodes=1 \
@@ -430,18 +455,110 @@ if ${slurm}; then
             --time=${time} \
             --error=${err_out}/${nam_job}.%A-%a.stderr.txt \
             --output=${err_out}/${nam_job}.%A-%a.stdout.txt \
-            --array=1-${#arr_infiles[@]}%${max_job} \
+            --array=1-${#arr_mip[@]}%${max_job} \
             ${scr_sub} \
                 --threads ${threads} \
-                --infiles ${infiles} \
+                --ser_mip ${ser_mip} \
+                --ser_sip ${ser_sip} \
+                --ser_min ${ser_min} \
+                --ser_sin ${ser_sin} \
                 --fil_out ${fil_out} \
                 --rnd ${rnd} \
-                $(if ${flg_mc}; then echo "--flg_mc"; fi) \
                 --err_out ${err_out} \
                 --nam_job ${nam_job} \
                 --env_nam ${env_nam} \
                 --dir_scr ${dir_scr}
     fi
 else
-    :  #TODO: Call submission script in 'GNU Parallel/serial' mode
+    #  GNU Parallel execution
+    if [[ ${threads} -gt 1 ]]; then
+        config="${err_out}/${nam_job}.config_parallel.txt"
+        
+        if [[ -f "${config}" ]]; then rm "${config}"; fi
+        touch "${config}" || {
+            echo_error "Failed to create a GNU Parallel configuration file."
+            exit_1
+        }
+
+        for idx in "${!arr_mip[@]}"; do
+            echo \
+                "${threads}" \
+                "${arr_mip[idx]}" \
+                "${arr_sip[idx]}" \
+                "${arr_min[idx]}" \
+                "${arr_sin[idx]}" \
+                "${fil_out}" \
+                "${rnd}" \
+                "${err_out}" \
+                "${nam_job}" \
+                "${env_nam}" \
+                "${dir_scr}" \
+                    >> "${config}"
+        done
+        # cat "${config}"
+
+        cmd="bash \"${scr_sub}\" -t {1} -mp {2} -sp {3} -mn {4} -sn {5} -fo {6} -r {7} -eo {8} -nj {9} -en {10} -ds {11}"
+
+        if ${dry_run} || ${verbose}; then
+            echo "##########################################"
+            echo "## Parallel call(s) to compute coverage ##"
+            echo "##########################################"
+            echo ""
+
+            parallel --colsep ' ' --jobs "${par_job}" --dryrun \
+                "${cmd}" \
+                :::: "${config}"
+
+            echo ""
+            echo ""
+        fi
+
+        if ! ${dry_run}; then
+            parallel --colsep ' ' --jobs "${par_job}" \
+                "${cmd}" \
+                :::: "${config}"
+        fi
+    else
+        #  Serial execution
+        pth_std="${err_out}/${nam_job}"
+        if ${dry_run} || ${verbose}; then
+            echo "######################################"
+            echo "## Call to compute coverage: Serial ##"
+            echo "######################################"
+            echo ""
+            echo "bash ${scr_sub} \\"
+            echo "     -t ${threads} \\"
+            echo "    -mp ${ser_mip} \\"
+            echo "    -sp ${ser_sip} \\"
+            echo "    -mn ${ser_min} \\"
+            echo "    -sn ${ser_sin} \\"
+            echo "    -fo ${fil_out} \\"
+            echo "     -r ${rnd} \\"
+            echo "    -eo ${err_out} \\"
+            echo "    -nj ${nam_job} \\"
+            echo "    -en ${env_nam} \\"
+            echo "    -ds ${dir_scr} \\"
+            echo "         > ${pth_std}.stdout.txt \\"
+            echo "        2> ${pth_std}.stderr.txt"
+            echo ""
+            echo ""
+        fi
+
+        if ! ${dry_run}; then
+            bash "${scr_sub}" \
+                 -t "${threads}" \
+                -mp "${ser_mip}" \
+                -sp "${ser_sip}" \
+                -mn "${ser_min}" \
+                -sn "${ser_sin}" \
+                -fo "${fil_out}" \
+                 -r "${rnd}" \
+                -eo "${err_out}" \
+                -nj "${nam_job}" \
+                -en "${env_nam}" \
+                -ds "${dir_scr}" \
+                     > "${pth_std}.stdout.txt" \
+                    2> "${pth_std}.stderr.txt"
+        fi
+    fi
 fi
