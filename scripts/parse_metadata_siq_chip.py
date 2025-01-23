@@ -17,7 +17,7 @@
 #
 # Arguments:
 #      -v, --verbose  Enables verbose output for debugging or information.
-#     -tx, --text     CSV or TSV siQ-ChIP metadata infile.
+#     -tm, --text     CSV or TSV siQ-ChIP metadata infile.
 #     -eq, --eqn      Equation to compute. Options: '5', '5nd', '6', or '6nd'.
 #      -b, --bam      BAM infile used to identify metadata row.
 #     -sh, --shell    Outputs values in a shell-parseable format (for export).
@@ -37,8 +37,8 @@
 
 #  Import libraries
 import argparse
+import csv
 import os
-import pandas as pd
 import re
 import sys
 
@@ -47,7 +47,7 @@ import sys
 interactive = False
 
 #  Define a dictionary of alternative names for each column
-column_name_map = {
+col_nam_map = {
     'vol_in': [
         'volume_in',
         'vol_in',
@@ -121,7 +121,7 @@ column_name_map = {
 def set_interactive():
     """Set parameters for interactive mode."""
     verbose = True
-    text = ...  # TODO
+    tbl_met = ...  # TODO
     eqn = '6nd'
     bam = ...  # TODO
     shell = True
@@ -129,19 +129,11 @@ def set_interactive():
     #  Return the arguments wrapped in argparse.Namespace
     return argparse.Namespace(
         verbose=verbose,
-        text=text,
+        tbl_met=tbl_met,
         eqn=eqn,
         bam=bam,
         shell=shell
     )
-
-
-def standardize_columns(df):
-    """Standardize dataframe column names to match expected names."""
-    reverse_mapping = {
-        alt: std for std, alts in column_name_map.items() for alt in alts
-    }
-    return df.rename(columns=lambda col: reverse_mapping.get(col, col))
 
 
 def parse_bam_filename(filename):
@@ -173,8 +165,8 @@ def parse_bam_filename(filename):
         dict: Parsed components as a dictionary with keys 'assay', 'genotype',
               'state', 'treatment', 'factor', and 'strain'.
     """
-    base_name = os.path.basename(filename)
-    bam_id = base_name.split('.')[0]  # Remove extension
+    nam_bas = os.path.basename(filename)
+    bam_id = nam_bas.split('.')[0]  # Remove extension
 
     #  Define regex pattern to match the filename structure
     pattern = (
@@ -194,49 +186,65 @@ def parse_bam_filename(filename):
         )
 
     #  Extract matched groups as a dictionary
-    components = match.groupdict()
-    return components
+    comp = match.groupdict()
+    return comp
 
 
 def load_file(file_path):
-    """Load dataframe based on file extension: CSV, TSV, or TXT."""
+    """
+    Load CSV/TSV file as a list of dictionaries, standardizing column names.
+    """
     if file_path.endswith('.csv'):
-        delimiter = ','
+        delm = ','
     elif file_path.endswith(('.tsv', '.txt')):
-        delimiter = '\t'
+        delm = '\t'
     else:
         raise ValueError("Input file must be a CSV, TSV, or TXT file.")
     
-    return pd.read_csv(file_path, delimiter=delimiter)
+    with open(file_path, newline='', encoding='utf-8') as file:
+        reader = csv.DictReader(file, delimiter=delm)
+        
+        # Standardize column names
+        standardized_columns = {
+            col: std_col for std_col, alt_nam in col_nam_map.items()
+            for col in reader.fieldnames if col in alt_nam
+        }
+
+        # Rename columns and store as a list of dictionaries
+        data = []
+        for row in reader:
+            standardized_row = {
+                standardized_columns.get(k, k): v for k, v in row.items()
+            }
+            data.append(standardized_row)
+
+    return data
 
 
-def find_matching_row(df, factor, strain, genotype='N/A', state='N/A'):
-    #  Ensure 'state', 'factor', and 'strain' columns are strings
-    df['genotype'] = df['genotype'].astype(str)
-    df['state'] = df['state'].astype(str)
-    df['factor'] = df['factor'].astype(str)
-    df['strain'] = df['strain'].astype(str)
+def find_matching_row(data, factor, strain, genotype='N/A', state='N/A'):
+    """
+    Find a row in the data list matching factor, strain, and optional
+    genotype/state.
+    """
+    for row in data:
+        if (
+            row.get('factor', '').lower() == factor.lower()
+            and row.get('strain', '').lower() == strain.lower()
+            and (
+                genotype == 'N/A' 
+                or row.get('genotype', '').lower() == genotype.lower()
+            )
+            and (
+                state == 'N/A' 
+                or row.get('state', '').lower() == state.lower()
+            )
+        ):
+            return row
 
-    #  Handle optional values (e.g., state and genotype can be 'N/A')
-    conditions = (df['factor'].str.lower() == factor.lower()) & \
-                 (df['strain'].str.lower() == strain.lower())
-
-    if genotype != 'N/A':
-        conditions &= (df['genotype'].str.lower() == genotype.lower())
-    
-    if state != 'N/A':
-        conditions &= (df['state'].str.lower() == state.lower())
-
-    matched_row = df[conditions]
-
-    if matched_row.empty:
-        raise ValueError(
-            f"No matching row found for state '{state}', factor '{factor}', "
-            f"strain '{strain}', genotype '{genotype}'."
-        )
-
-    #  Return the first match
-    return matched_row.iloc[0]
+    raise ValueError(
+        f"No matching row found for state '{state}', factor '{factor}', "
+        f"strain '{strain}', genotype '{genotype}'."
+    )
 
 
 def output_for_shell(**kwargs):
@@ -253,7 +261,10 @@ def parse_args():
         ... # TODO
     """
     parser = argparse.ArgumentParser(
-        description="Parse BAM file and retrieve matching row from TSV/CSV."
+        description=(
+            "Parse BAM file and retrieve matching row from TSV/CSV table of "
+            "siQ-ChIP metadata."
+        )
     )
     parser.add_argument(
         "-v", "--verbose",
@@ -261,8 +272,8 @@ def parse_args():
         help="Enable verbose output."
     )
     parser.add_argument(
-        "-tx", "--text",
-        help="Input TEXT (TSV/CSV) file",
+        "-tm", "--tbl_met",
+        help="TSV or CSV table of siQ-ChIP metadata.",
         required=True
     )
     parser.add_argument(
@@ -275,21 +286,21 @@ def parse_args():
             "Equation to compute the alpha scaling factor (PMID: 37160995; "
             "default: %(default)s). Options: '5' applies Equation 5 for use "
             "with fragment length-normalized coverage, '5nd' uses Equation 5 "
-            "without depth terms for use with 'normalized' coverage, '6' "
+            "without depth terms for use with 'normalized coverage', '6' "
             "applies Equation 6 for use with fragment length-normalized "
             "coverage, and '6nd' uses Equation 6 without depth terms for use "
-            "with 'normalized' coverage."
+            "with 'normalized coverage'."
         )
     )
     parser.add_argument(
         "-b", "--bam",
-        help="Input BAM file",
+        help="Input BAM file.",
         required=True
     )
     parser.add_argument(
         "-sh", "--shell",
         action="store_true",
-        help="Output values in shell export format"
+        help="Output values in shell export format."
     )
 
     #  Display help and exit if no arguments were provided
@@ -312,13 +323,13 @@ def main():
         raise ValueError(f"Invalid equation selection: {args.eqn}")
 
     #  Parse the BAM filename
-    parsed_components = parse_bam_filename(args.bam)
-    assay = parsed_components['assay']
-    genotype = parsed_components.get('genotype', 'N/A')
-    state = parsed_components.get('state', 'N/A')
-    treatment = parsed_components.get('treatment', 'N/A')
-    factor = parsed_components['factor']
-    strain = parsed_components['strain']
+    comp = parse_bam_filename(args.bam)
+    assay = comp['assay']
+    genotype = comp.get('genotype', 'N/A')
+    state = comp.get('state', 'N/A')
+    treatment = comp.get('treatment', 'N/A')
+    factor = comp['factor']
+    strain = comp['strain']
 
     if args.verbose:
         print(
@@ -333,14 +344,11 @@ def main():
         )
 
     #  Load the TSV/CSV file
-    df = load_file(args.text)
+    data = load_file(args.tbl_met)
 
-    #  Standardize the column names
-    df = standardize_columns(df)
-
-    #  Find the matching row, adjusting for missing components
+    #  Find the matching row
     try:
-        row = find_matching_row(df, factor, strain, genotype, state)
+        row = find_matching_row(data, factor, strain, genotype, state)
         if args.verbose:
             print(f"Matching row found:\n{row}")
     except ValueError as e:

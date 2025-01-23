@@ -1,45 +1,46 @@
 #!/bin/bash
 
-function count_alignments_bam() {
+function calculate_frag_avg() {
     local threads="${1}"      # Number of threads for parallelization
-    local fil_in="${2}"       # Input (not IP) BAM file
+    local fil="${2}"          # Input BAM file
     local fil_typ="${3:-pe}"  # "paired", "pe", "single", or "se"
+    local expr=""             # Samtools filtration expression 
     local show_help           # Help message/documentation
 
     show_help=$(cat << EOM
---------------------
-count_alignments_bam
---------------------
+------------------
+calculate_frag_avg
+------------------
 
 Description:
-  Counts the number of alignments in a BAM file based on whether the data is 
-  paired-end ("paired") or single-end ("single"). Uses 'samtools view' with 
-  filtering expressions to count specific alignment flags.
+  Computes the average fragment length from a BAM file based on whether the 
+  data is paired-end ("paired") or single-end ("single"). Uses 'samtools view'
+  with filtering expressions and 'awk' to process fragment lengths.
 
 Positional parameters:
   1, threads (int): Number of threads for 'samtools view'.
-  2, fil_in  (str): Input (not IP) BAM file for which to count alignments.
+  2, fil     (str): Input BAM file for which to compute fragment lengths.
   3, fil_typ (str): Alignment type; options: 'paired' or 'single' (default:
                     'paired').
 
 Returns:
-  An integer representing the count of alignments matching the given type.
+  A floating-point value representing the average fragment length.
 
 Usage:
-  count_alignments_bam "\${threads}" "\${fil_in}" "\${fil_typ}"
+  calculate_average_fragment_length "\${threads}" "\${fil}" "\${fil_typ}"
 
 Examples:
   \`\`\`
-  #  Count alignments in a BAM file of paired-end alignments using 8 threads
-  count_alignments_bam 8 sample.bam paired
+  #  Compute average fragment length for paired-end alignments using 8 threads
+  calculate_average_fragment_length 8 sample.bam paired
 
-  #  Count alignments in a BAM file of single-end alignments using 4 threads
-  count_alignments_bam 4 sample.bam single
+  #  Compute average fragment length for single-end alignments using 4 threads
+  calculate_average_fragment_length 4 sample.bam single
   \`\`\`
 EOM
     )
 
-    #  Parse and check function parameter
+    #  Parse and check function parameters
     if [[ -z "${1}" || "${1}" == "-h" || "${1}" == "--help" ]]; then
         echo "${show_help}"
         return 0
@@ -53,11 +54,11 @@ EOM
         return 1
     fi
 
-    #  Validate existence of input (not IP) BAM file
-    if [[ ! -f "${fil_in}" ]]; then
+    #  Validate existence of input BAM file
+    if [[ ! -f "${fil}" ]]; then
         echo \
-            "Error: Positional parameter 2, 'fil_in', not found:" \
-            "'${fil_in}'." >&2
+            "Error: Positional parameter 2, 'fil', not found:" \
+            "'${fil}'." >&2
         return 1
     fi
 
@@ -89,6 +90,15 @@ EOM
         })"
     fi
 
-    #  Count alignments based on alignment type
-    samtools view -@ "${threads}" -c --expr "${expr}" "${fil_in}"
+    #  Compute average fragment length using samtools + awk
+    samtools view -@ "${threads}" --expr "${expr}" "${fil}" \
+        | awk '{
+            if ($9 > 0) { sum += $9; count++ }
+        } END {
+            if (count > 0) { print sum / count }
+            else {
+                print "Error: No valid fragment lengths found." > "/dev/stderr"
+                exit 1
+            }
+        }'
 }

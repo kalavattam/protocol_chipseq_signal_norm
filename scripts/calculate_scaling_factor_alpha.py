@@ -28,7 +28,8 @@
 #         --dep_ip <int> \
 #         --dep_in <int> \
 #         --len_ip <float> \
-#         --len_in <float>
+#         --len_in <float> \
+#         --rnd <int>
 #
 # Arguments:
 #     -eq, --eqn       (str): Equation to compute. Options: '5', '5nd', '6', or
@@ -94,7 +95,7 @@ def set_interactive():
     dep_in = 4500000
     len_ip = 200.0
     len_in = 180.5
-    rnd = 6
+    rnd = 24
 
     #  Return the arguments wrapped in argparse.Namespace
     return argparse.Namespace(
