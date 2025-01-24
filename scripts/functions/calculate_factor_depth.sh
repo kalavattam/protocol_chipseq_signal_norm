@@ -103,11 +103,17 @@ EOM
     fi
 
     #  Compute numerator and denominator
-    num=$(echo "scale=${rnd}; ((${n_in} * ${siz_bin}) / ${siz_gen})" | bc -l)
-    den=$(echo "scale=${rnd}; (1 - (${siz_bin} / ${siz_gen}))" | bc -l)
+    num=$(
+        echo "scale=$(( rnd * 2 )); ((${n_in} * ${siz_bin}) / ${siz_gen})" \
+            | bc -l
+    )
+    den=$(
+        echo "scale=$(( rnd * 2 )); (1 - (${siz_bin} / ${siz_gen}))" \
+            | bc -l
+    )
 
     #  Compute depth factor
-    fct_dep=$(echo "scale=${rnd}; ${num} / ${den}" | bc -l)
+    fct_dep=$(echo "scale=$(( rnd * 2 )); ${num} / ${den}" | bc -l)
 
     #  Compute final output based on mode
     if [[ "${mode}" == "norm" ]]; then
@@ -115,6 +121,6 @@ EOM
         echo "scale=${rnd}; ${fct_dep} / ${n_in}" | bc -l
     else
         #  For fragment-length normalized coverage
-        echo "${fct_dep}"
+        echo "scale=${rnd}; (${fct_dep} * 2) / 2" | bc -l
     fi
 }

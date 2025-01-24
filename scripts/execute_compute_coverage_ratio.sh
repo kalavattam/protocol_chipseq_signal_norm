@@ -61,14 +61,14 @@ function set_interactive() {
     req_flg=true
     flg="$(if ${req_flg}; then echo "2"; else echo "NA"; fi)"
     mapq=1
-    det_bam="flag-${flg}_mapq-${mapq}"
-    det_cov="${aligner}_${a_type}_${det_bam}"
+    details="${aligner}_${a_type}_flag-${flg}_mapq-${mapq}"
 
-    dir_cov="${dir_pro}/compute_coverage"
-    dir_nrm="${dir_cov}/${det_cov}/norm/tracks"
-    dir_alf="${dir_cov}/${det_cov}/alpha/tracks"
+    dir_cvg="${dir_pro}/compute_coverage/${details}"
+    dir_nrm="${dir_cvg}/norm"
+    dir_alf="${dir_cvg}/alpha"
 
     pattern="*.bdg.gz"
+    include="IP*"
     exclude="*Brn1*"
 
     #  Set hardcoded argument assignments
@@ -78,16 +78,10 @@ function set_interactive() {
         bash "${dir_scr}/find_files.sh" \
             --dir_fnd "${dir_nrm}" \
             --pattern "${pattern}" \
-            --include "IP*" \
+            --include "${include}" \
             --exclude "${exclude}"
     )"
-    fil_in="$(
-        bash "${dir_scr}/find_files.sh" \
-            --dir_fnd "${dir_nrm}" \
-            --pattern "${pattern}" \
-            --include "in*" \
-            --exclude "${exclude}"
-    )"
+    fil_in="$(sed 's:\/IP:\/in:g' < <(echo "${fil_ip}"))"
     dir_out="${dir_alf}"
     typ_out="bdg.gz"
     track=true
@@ -479,9 +473,13 @@ if ${verbose}; then
     echo "###################################"
     echo ""
     echo "arr_fil_ip=( ${arr_fil_ip[*]} )"
+    echo ""
     echo "arr_fil_in=( ${arr_fil_in[*]} )"
+    echo ""
     echo "arr_fil_out=( ${arr_fil_out[*]} )"
+    echo ""
     echo "arr_scl_fct=( ${arr_scl_fct[*]} )"
+    echo ""
     echo "arr_dep_min=( ${arr_dep_min[*]} )"
     echo ""
     echo ""
@@ -499,9 +497,13 @@ if ${verbose}; then
     echo "###############################################################"
     echo ""
     echo "fil_ip=\"${fil_ip}\""
+    echo ""
     echo "fil_in=\"${fil_in}\""
+    echo ""
     echo "fil_out=\"${fil_out}\""
+    echo ""
     echo "scl_fct=\"${scl_fct}\""
+    echo ""
     echo "dep_min=\"${dep_min}\""
     echo ""
     echo ""

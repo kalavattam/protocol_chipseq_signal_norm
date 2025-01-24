@@ -41,7 +41,7 @@ Returns:
   0 if the sum is within the defined range, 1 and error message otherwise.
 
 Usage:
-  check_unity "\${fil_in}" [rng_gt] [rng_lt]
+  check_unity fil_in [rng_gt] [rng_lt]
 
 Examples:
   \`\`\`

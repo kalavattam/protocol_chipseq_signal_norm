@@ -109,6 +109,17 @@ rnd="${10}"
 err_out="${11}"
 nam_job="${12}"
 
+#  Debug argument variable assignments
+if ${debug}; then
+    debug_var \
+        "env_nam=${env_nam}"         "scr_cvg=${scr_cvg}" \
+        "str_fil_ip=${str_fil_ip}"   "str_fil_in=${str_fil_in}" \
+        "str_fil_out=${str_fil_out}" "track=${track}" \
+        "str_scl_fct=${str_scl_fct}" "str_dep_min=${str_dep_min}" \
+        "log2=${log2}"               "rnd=${rnd}" \
+        "err_out=${err_out}"         "nam_job=${nam_job}"
+fi
+
 #  Activate environment
 if [[ "${CONDA_DEFAULT_ENV}" != "${env_nam}" ]]; then
     eval "$(conda shell.bash hook)"
@@ -128,26 +139,16 @@ IFS=',' read -r -a arr_dep_min <<< "${str_dep_min}"
 
 #  Debug output to check number of array elements and array element values
 if ${debug}; then
-    echo "\${#arr_fil_ip[@]}=${#arr_fil_ip[@]}"
-    echo ""
-    echo "arr_fil_ip=( ${arr_fil_ip[*]} )"
-    echo ""
-    echo "\${#arr_fil_in[@]}=${#arr_fil_in[@]}"
-    echo ""
-    echo "arr_fil_in=( ${arr_fil_in[*]} )"
-    echo ""
-    echo "\${#arr_fil_out[@]}=${#arr_fil_out[@]}"
-    echo ""
-    echo "arr_fil_out=( ${arr_fil_out[*]} )"
-    echo ""
-    echo "\${#arr_scl_fct[@]}=${#arr_scl_fct[@]}"
-    echo ""
-    echo "arr_scl_fct=( ${arr_scl_fct[*]} )"
-    echo ""
-    echo "\${#arr_dep_min[@]}=${#arr_dep_min[@]}"
-    echo ""
-    echo "arr_dep_min=( ${arr_dep_min[*]} )"
-    echo ""
+    echo "\${#arr_fil_ip[@]}=${#arr_fil_ip[@]}"   && echo ""
+    echo "arr_fil_ip=( ${arr_fil_ip[*]} )"        && echo ""
+    echo "\${#arr_fil_in[@]}=${#arr_fil_in[@]}"   && echo ""
+    echo "arr_fil_in=( ${arr_fil_in[*]} )"        && echo ""
+    echo "\${#arr_fil_out[@]}=${#arr_fil_out[@]}" && echo ""
+    echo "arr_fil_out=( ${arr_fil_out[*]} )"      && echo ""
+    echo "\${#arr_scl_fct[@]}=${#arr_scl_fct[@]}" && echo ""
+    echo "arr_scl_fct=( ${arr_scl_fct[*]} )"      && echo ""
+    echo "\${#arr_dep_min[@]}=${#arr_dep_min[@]}" && echo ""
+    echo "arr_dep_min=( ${arr_dep_min[*]} )"      && echo ""
 fi
 
 #  Determine and run mode: SLURM or GNU Parallel/serial

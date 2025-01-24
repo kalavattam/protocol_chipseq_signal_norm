@@ -56,13 +56,12 @@ function set_interactive() {
     req_flg=true
     flg="$(if ${req_flg}; then echo "2"; else echo "NA"; fi)"
     mapq=1
-    det_bam="flag-${flg}_mapq-${mapq}"
-    det_cvg="${aligner}_${a_type}_${det_bam}"
+    details="${aligner}_${a_type}_flag-${flg}_mapq-${mapq}"
 
-    dir_aln="${dir_pro}/align_${aligner}_${a_type}"
-    dir_bam="${dir_aln}/${det_bam}/sc"
-    dir_cvg="${dir_pro}/compute_coverage"
-    dir_out="${dir_cvg}/${det_cvg}/tables"
+    dir_aln="${dir_pro}/align_reads/${details}"
+    dir_bam="${dir_aln}/sc"
+    dir_cvg="${dir_pro}/compute_coverage/${details}"
+    dir_out="${dir_cvg}/tables"
 
     pattern="*.bam"
     exclude="*Brn1*"
@@ -154,6 +153,7 @@ Arguments:
                   spike-in-derived scaling factors and, optionally, additional
                   metrics are saved. If the file already exists, new data will
                   be appended.
+  -fd, --flg_dep  #TODO
    -r, --rnd      Number of decimal places for rounding the spike-in scaling
                   factor (default: ${rnd}).
   -eo, --err_out  The directory to store stderr and stdout TXT outfiles
@@ -385,17 +385,44 @@ if ${verbose}; then
     echo ""
 fi
 
+ser_mip=$(echo "${arr_mip[*]}" | tr ' ' ',')
+ser_sip=$(echo "${arr_sip[*]}" | tr ' ' ',')
+ser_min=$(echo "${arr_min[*]}" | tr ' ' ',')
+ser_sin=$(echo "${arr_sin[*]}" | tr ' ' ',')
+
+if ${verbose}; then
+    echo "###############################################################"
+    echo "## Variable assignments re- or newly constructed from arrays ##"
+    echo "###############################################################"
+    echo ""
+    echo "ser_mip=\"${ser_mip}\""
+    echo ""
+    echo "ser_sip=\"${ser_sip}\""
+    echo ""
+    echo "ser_min=\"${ser_min}\""
+    echo ""
+    echo "ser_sin=\"${ser_sin}\""
+    echo ""
+    echo ""
+fi
+
 #  To prevent potential race conditions from concurrent writes,
 #+ pre-write the header to the outfile before running SLURM jobs
 prt_1="main_ip\tspike_ip\tmain_in\tspike_in\tsf\t"
 prt_2="num_mp\tnum_sp\tnum_mn\tnum_sn\t"
-prt_3="dm_fr_1\tdm_fr_10\tdm_fr_20\tdm_fr_30\t"
+prt_3="dm_fr_1\tdm_fr_5\tdm_fr_10\tdm_fr_20\tdm_fr_30\t"
 prt_4="dm_fr_40\tdm_fr_50\t"
-prt_5="dm_nm_1\tdm_nm_10\tdm_nm_20\tdm_nm_30\t"
+prt_5="dm_nm_1\tdm_nm_5\tdm_nm_10\tdm_nm_20\tdm_nm_30\t"
 prt_6="dm_nm_40\tdm_nm_50"
 
 if ${dry_run} || ${verbose}; then
+    echo "##################"
+    echo "## Table header ##"
+    echo "##################"
+    echo ""
     echo -e "${prt_1}${prt_2}${prt_3}${prt_4}${prt_5}${prt_6}"
+    echo ""
+    echo ""
 fi
 
 if ! ${dry_run}; then
@@ -410,9 +437,9 @@ if ${slurm}; then
     #  If --slurm was specified, run jobs in parallel via individual job
     #+ submissions to SLURM
     if ${dry_run} || ${verbose}; then
-        echo "####################"
-        echo "## Call to sbatch ##"
-        echo "####################"
+        echo "#####################"
+        echo "## SLURM execution ##"
+        echo "#####################"
         echo ""
         echo "sbatch \\"
         echo "    --job-name=${nam_job} \\"
@@ -473,7 +500,7 @@ else
     #  GNU Parallel execution
     if [[ ${threads} -gt 1 ]]; then
         config="${err_out}/${nam_job}.config_parallel.txt"
-        
+
         if [[ -f "${config}" ]]; then rm "${config}"; fi
         touch "${config}" || {
             echo_error "Failed to create a GNU Parallel configuration file."
@@ -500,9 +527,9 @@ else
         cmd="bash \"${scr_sub}\" -t {1} -mp {2} -sp {3} -mn {4} -sn {5} -fo {6} -r {7} -eo {8} -nj {9} -en {10} -ds {11}"
 
         if ${dry_run} || ${verbose}; then
-            echo "##########################################"
-            echo "## Parallel call(s) to compute coverage ##"
-            echo "##########################################"
+            echo "############################"
+            echo "## GNU Parallel execution ##"
+            echo "############################"
             echo ""
 
             parallel --colsep ' ' --jobs "${par_job}" --dryrun \
@@ -522,9 +549,9 @@ else
         #  Serial execution
         pth_std="${err_out}/${nam_job}"
         if ${dry_run} || ${verbose}; then
-            echo "######################################"
-            echo "## Call to compute coverage: Serial ##"
-            echo "######################################"
+            echo "######################"
+            echo "## Serial execution ##"
+            echo "######################"
             echo ""
             echo "bash ${scr_sub} \\"
             echo "     -t ${threads} \\"
