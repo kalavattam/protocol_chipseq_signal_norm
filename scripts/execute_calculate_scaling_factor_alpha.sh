@@ -56,13 +56,12 @@ function set_interactive() {
     req_flg=true
     flg="$(if ${req_flg}; then echo "2"; else echo "NA"; fi)"
     mapq=1
-    det_bam="flag-${flg}_mapq-${mapq}"
-    det_cvg="${aligner}_${a_type}_${det_bam}"
+    details="${aligner}_${a_type}_flag-${flg}_mapq-${mapq}"
 
-    dir_aln="${dir_pro}/align_${aligner}_${a_type}"
-    dir_bam="${dir_aln}/${det_bam}/sc"
-    dir_cvg="${dir_pro}/compute_coverage"
-    dir_out="${dir_cvg}/${det_cvg}/tables"
+    dir_aln="${dir_pro}/align_reads/${details}"
+    dir_bam="${dir_aln}/sc"
+    dir_cvg="${dir_pro}/compute_coverage/${details}"
+    dir_out="${dir_cvg}/tables"
 
     pattern="*.bam"
     exclude="*Brn1*"
@@ -110,7 +109,7 @@ dry_run=false
 threads=1
 ser_ip=""
 ser_in=""
-tbl_met=""
+tbl_met="$(dirname "${dir_scr}")/data/raw/docs/measurements_siqchip.tsv"
 eqn="6nd"
 fil_out=""
 rnd=24
@@ -141,10 +140,12 @@ Arguments:
                   infiles, including paths.
   -sn, --ser_in   Comma-separated serialized list of input coordinate-sorted
                   BAM infiles, including paths.
-  -tb, --tbl_met  #TODO
-  -eq, --eqn      #TODO (default: '${eqn}').
-  -fo, --fil_out  #TODO
-   -r, --rnd      #TODO (default: ${rnd}).
+  -tb, --tbl_met  #TODO Write description (default: '${tbl_met}')
+  -eq, --eqn      #TODO Write description (default: '${eqn}').
+  -fo, --fil_out  #TODO Write description
+  -fl, --flg_len  #TODO Implement
+  -fd, --flg_dep  #TODO Implement
+   -r, --rnd      #TODO Write description (default: ${rnd}).
   -eo, --err_out  The directory to store stderr and stdout TXT outfiles
                   (required; default: \${dir_out}/err_out).
   -nj, --nam_job  The name of the job (required; default: '${nam_job}').
@@ -332,18 +333,39 @@ if ${verbose}; then
     echo ""
 fi
 
+ser_ip=$(echo "${arr_ip[*]}" | tr ' ' ',')
+ser_in=$(echo "${arr_in[*]}" | tr ' ' ',')
+
+if ${verbose}; then
+    echo "###############################################################"
+    echo "## Variable assignments re- or newly constructed from arrays ##"
+    echo "###############################################################"
+    echo ""
+    echo "ser_ip=\"${ser_ip}\""
+    echo ""
+    echo "ser_in=\"${ser_in}\""
+    echo ""
+    echo ""
+fi
+
 #  To prevent potential race conditions from concurrent writes,
 #+ pre-write the header to the outfile before running SLURM jobs
 prt_1="fil_ip\tfil_in\talpha\teqn\t"
 prt_2="mass_ip\tmass_in\tvol_all\tvol_in\t"
 prt_3="dep_ip\tdep_in\tlen_ip\tlen_in\t"
-prt_4="dm_fr_1\tdm_fr_10\tdm_fr_20\tdm_fr_30\t"
+prt_4="dm_fr_1\tdm_fr_5\tdm_fr_10\tdm_fr_20\tdm_fr_30\t"
 prt_5="dm_fr_40\tdm_fr_50\t"
-prt_6="dm_nm_1\tdm_nm_10\tdm_nm_20\tdm_nm_30\t"
+prt_6="dm_nm_1\tdm_nm_5\tdm_nm_10\tdm_nm_20\tdm_nm_30\t"
 prt_7="dm_nm_40\tdm_nm_50"
 
 if ${dry_run} || ${verbose}; then
+    echo "##################"
+    echo "## Table header ##"
+    echo "##################"
+    echo ""
     echo -e "${prt_1}${prt_2}${prt_3}${prt_4}${prt_5}${prt_6}${prt_7}"
+    echo ""
+    echo ""
 fi
 
 if ! ${dry_run}; then
@@ -357,9 +379,9 @@ if ${slurm}; then
     #  If --slurm was specified, run jobs in parallel via individual job
     #+ submissions to SLURM
     if ${dry_run} || ${verbose}; then
-        echo "####################"
-        echo "## Call to sbatch ##"
-        echo "####################"
+        echo "#####################"
+        echo "## SLURM execution ##"
+        echo "#####################"
         echo ""
         echo "sbatch \\"
         echo "    --job-name=${nam_job} \\"
@@ -447,9 +469,9 @@ else
         cmd="bash \"${scr_sub}\" -t {1} -sp {2} -sn {3} -tm {4} -eq {5} -fo {6} -r {7} -eo {8} -nj {9} -en {10} -ds {11}"
 
         if ${dry_run} || ${verbose}; then
-            echo "##########################################"
-            echo "## Parallel call(s) to compute coverage ##"
-            echo "##########################################"
+            echo "############################"
+            echo "## GNU Parallel execution ##"
+            echo "############################"
             echo ""
 
             parallel --colsep ' ' --jobs "${par_job}" --dryrun \
@@ -469,9 +491,9 @@ else
         #  Serial execution
         pth_std="${err_out}/${nam_job}"
         if ${dry_run} || ${verbose}; then
-            echo "######################################"
-            echo "## Call to compute coverage: Serial ##"
-            echo "######################################"
+            echo "######################"
+            echo "## Serial execution ##"
+            echo "######################"
             echo ""
             echo "bash ${scr_sub} \\"
             echo "     -t ${threads} \\"

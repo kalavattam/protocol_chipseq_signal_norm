@@ -31,10 +31,13 @@ Note: For detailed instructions on keeping your local version of the [`protocol_
     1. [C. Obtain and organize ChIP-seq FASTQ files.](#c-obtain-and-organize-chip-seq-fastq-files)
     1. [D. Use Atria to perform adapter and quality trimming of sequenced reads.](#d-use-atria-to-perform-adapter-and-quality-trimming-of-sequenced-reads)
     1. [E. Align sequenced reads with Bowtie 2 and process the read alignments.](#e-align-sequenced-reads-with-bowtie-2-and-process-the-read-alignments)
-    1. [F. Compute normalized coverage.](#f-compute-normalized-coverage)
-    1. [G. Compute log2 ratios of IP to input coverage.](#g-compute-log2-ratios-of-ip-to-input-coverage)
-    1. [G. Compute coverage with the sans spike-in quantitative ChIP-seq \(siQ-ChIP\) method.](#g-compute-coverage-with-the-sans-spike-in-quantitative-chip-seq-siq-chip-method)
-    1. [H. Compute coverage using the spike-in method.](#h-compute-coverage-using-the-spike-in-method)
+    1. [F. Construct sample tables recording computed scaling factors for normalization.](#f-construct-sample-tables-recording-computed-scaling-factors-for-normalization)
+        1. [1. Construct sample tables recording siQ-ChIP alpha scaling factors.](#1-construct-sample-tables-recording-siq-chip-alpha-scaling-factors)
+        1. [2. Construct sample tables recording spike-in scaling factors.](#2-construct-sample-tables-recording-spike-in-scaling-factors)
+    1. [G. Compute normalized coverage.](#g-compute-normalized-coverage)
+    1. [H. Compute coverage with the sans spike-in quantitative ChIP-seq \(siQ-ChIP\) method.](#h-compute-coverage-with-the-sans-spike-in-quantitative-chip-seq-siq-chip-method)
+    1. [I. Compute coverage with the spike-in method.](#i-compute-coverage-with-the-spike-in-method)
+    1. [J. Compute log2 ratios of IP to input coverage.](#j-compute-log2-ratios-of-ip-to-input-coverage)
 
 <!-- /MarkdownTOC -->
 </details>
@@ -584,13 +587,328 @@ bash "${dir_scr}/compress_remove_files.sh" --dir_fnd "${dir_out}/sp/logs"
 </details>
 <br />
 
-<a id="f-compute-normalized-coverage"></a>
-### F. Compute normalized coverage.
+<a id="f-construct-sample-tables-recording-computed-scaling-factors-for-normalization"></a>
+### F. Construct sample tables recording computed scaling factors for normalization.
+<details>
+<summary><i>Text: Construct sample tables recording computed scaling factors for normalization.</i></summary>
+<br />
+
+The following Bash code chunk provides a structured approach to generating sample tables that record scaling factors derived from the siQ-ChIP and spike-in methods. These factors are stored in tables for use in downstream processing, where they are applied to ["normalized coverage" data](https://www.nature.com/articles/s41598-023-34430-2#Sec2) to produce scaled coverage tracks. This facilitates ***quantitative*** (siQ-ChIP) and ***semiquantitative*** (spike-in) comparisons across samples.
+
+To generate siQ-ChIP- and spike-in-scaled coverage tracks, we normalize IP (immunoprecipitation) data by dividing it by input (control) data and multiplicatively applying the corresponding scaling factors. *(Note: In siQ-ChIP calculations, the scaling factor is referred to as "alpha".)*
+
+As part of this process, we derive ***minimum input depth factors*** to prevent erroneous (e.g., division by zero) or extreme (e.g., division by anomalously small input values) calculations, promoting numerical stability in resulting scaled coverage tracks. Specifically, when a binned input value falls below the minimum input depth factor, it is replaced by the factor to prevent instability.
+
+To support different analysis resolutions, we compute minimum input depth factors for a range of common genomic bin sizes: 1 (i.e., no binning), 5, 10, 20, 30, 40, and 50 bp. *(Note: The application of minimum input depth factors during scaled coverage track generation is optional. See ... for more details.)*
+</details>
+<br />
+
+<a id="1-construct-sample-tables-recording-siq-chip-alpha-scaling-factors"></a>
+#### 1. Construct sample tables recording siQ-ChIP alpha scaling factors.
+<details>
+<summary><i>Bash code: Construct sample tables recording siQ-ChIP alpha scaling factors.</i></summary>
+
+```bash
+#!/bin/bash
+
+#  Optional: Request an interactive node --------------------------------------
+# grabnode  ## Uncomment to request 1 core, 20 GB memory, 1 day, no GPU ##
+
+
+#  Define variables -----------------------------------------------------------
+debug=true
+
+#  Set hardcoded paths, values, etc.
+dir_bas="${HOME}/repos"  ## WARNING: Change as needed ##
+dir_rep="${dir_bas}/protocol_chipseq_signal_norm"
+dir_scr="${dir_rep}/scripts"
+dir_fnc="${dir_scr}/functions"
+dir_dat="${dir_rep}/data"
+dir_pro="${dir_dat}/processed"
+
+aligner="bowtie2"
+a_type="global"
+req_flg=true
+flag="$(if ${req_flg}; then echo "2"; else echo "NA"; fi)"
+mapq=1
+details="${aligner}_${a_type}_flag-${flag}_mapq-${mapq}"
+
+dir_aln="${dir_pro}/align_reads/${details}"
+dir_bam="${dir_aln}/sc"
+dir_cvg="${dir_pro}/compute_coverage/${details}"
+dir_tbl="${dir_cvg}/tables"
+typ_cvg="alpha"
+
+pattern="*.bam"
+exclude="*Brn1*"
+
+env_nam="env_analyze"
+execute="${dir_scr}/execute_calculate_scaling_factor_${typ_cvg}.sh"
+
+day="$(date '+%Y-%m%d')"
+exc_log="${dir_trk}/logs/${day}.$(basename "${execute}" ".sh")"
+
+#  Set hardcoded argument assignments
+threads=8
+ser_ip="$(  ## WARNING: Change search parameters as needed ##
+    bash "${dir_scr}/find_files.sh" \
+        --dir_fnd "${dir_bam}" \
+        --pattern "${pattern}" \
+        --include "IP*" \
+        --exclude "${exclude}"
+)"
+ser_in="$(sed 's:IP:in:g' < <(echo "${ser_ip}"))"
+tbl_met="${dir_dat}/raw/docs/measurements_siqchip.tsv"
+eqn="6nd"
+fil_out="${dir_tbl}/ChIP_WT_G1-G2M-Q_Hho1-Hmo1_${typ_cvg}.tsv"
+err_out="${dir_tbl}/logs"
+
+
+#  Create required directories if necessary -----------------------------------
+mkdir -p "${dir_tbl}/logs"
+
+
+#  Activate the environment and check dependencies ----------------------------
+#  Source utility functions
+# shellcheck disable=SC1091
+{
+    source "${dir_fnc}/check_program_path.sh"
+    source "${dir_fnc}/echo_warning.sh"
+    source "${dir_fnc}/handle_env.sh"
+}
+
+#  Activate the required environment
+handle_env "${env_nam}"
+
+#  Check the availability of necessary dependencies such as GNU Parallel,
+#+ Python, Samtools, and SLURM
+check_program_path awk
+check_program_path parallel
+check_program_path python
+check_program_path samtools
+check_program_path sbatch ||
+    echo_warning \
+        "SLURM is not available on this system. Do not use the '--slurm'" \
+        "flag with the driver script."
+
+
+#  Construct table ------------------------------------------------------------
+if ${debug}; then
+    echo "###########################"
+    echo "## Call to driver script ##"
+    echo "###########################"
+    echo ""
+    echo "bash \"${execute}\" \\"
+    echo "    --verbose \\"
+    echo "    --threads ${threads} \\"
+    echo "    --ser_ip \"${ser_ip}\" \\"
+    echo "    --ser_in \"${ser_in}\" \\"
+    echo "    --tbl_met \"${tbl_met}\" \\"
+    echo "    --eqn \"${eqn}\" \\"
+    echo "    --fil_out \"${fil_out}\" \\"
+    echo "    --err_out \"${err_out}\" \\"
+    echo "    --slurm"
+    echo "         >> >(tee -a ${exc_log}.stdout.txt) \\"
+    echo "        2>> >(tee -a ${exc_log}.stderr.txt)"
+    echo ""
+    echo ""
+fi
+
+#  Run the driver script: Change '--verbose' to '--dry_run' to perform a 
+#+ test run without executing commands
+bash "${execute}" \
+    --verbose \
+    --threads ${threads} \
+    --ser_ip "${ser_ip}" \
+    --ser_in "${ser_in}" \
+    --tbl_met "${tbl_met}" \
+    --eqn "${eqn}" \
+    --fil_out "${fil_out}" \
+    --err_out "${err_out}" \
+    --slurm \
+         >> >(tee -a "${exc_log}.stdout.txt") \
+        2>> >(tee -a "${exc_log}.stderr.txt")
+
+if [[ -f "${fil_out}" ]]; then
+    #  Sort the table of input minimume depths by rows
+    awk 'NR == 1; NR > 1 && NF { print | "sort" }' "${fil_out}" \
+        > "${dir_tbl}/tmp.tsv"
+
+    #  Replace the original table with the sorted version
+    mv -f "${dir_tbl}/tmp.tsv" "${fil_out}"
+fi
+# cat "${fil_out}"  ## Uncomment to check table ##
+
+
+#  Cleanup: Compress logs and remove empty files ------------------------------
+bash "${dir_scr}/compress_remove_files.sh" --dir_fnd "${err_out}"
+# ls -lhaFG "${err_out}"  ## Uncomment to check directory for logs ##
+```
+</details>
+<br />
+
+<a id="2-construct-sample-tables-recording-spike-in-scaling-factors"></a>
+#### 2. Construct sample tables recording spike-in scaling factors.
+<details>
+<summary><i>Bash code: Construct sample tables recording spike-in scaling factors.</i></summary>
+
+```bash
+#!/bin/bash
+
+#  Optional: Request an interactive node --------------------------------------
+# grabnode  ## Uncomment to request 1 core, 20 GB memory, 1 day, no GPU ##
+
+
+#  Define variables -----------------------------------------------------------
+debug=true
+
+#  Set hardcoded paths, values, etc.
+dir_bas="${HOME}/repos"  ## WARNING: Change as needed ##
+dir_rep="${dir_bas}/protocol_chipseq_signal_norm"
+dir_scr="${dir_rep}/scripts"
+dir_fnc="${dir_scr}/functions"
+dir_dat="${dir_rep}/data"
+dir_pro="${dir_dat}/processed"
+
+aligner="bowtie2"
+a_type="global"
+req_flg=true
+flag="$(if ${req_flg}; then echo "2"; else echo "NA"; fi)"
+mapq=1
+details="${aligner}_${a_type}_flag-${flag}_mapq-${mapq}"
+
+dir_aln="${dir_pro}/align_reads/${details}"
+dir_bam="${dir_aln}/sc"
+dir_cvg="${dir_pro}/compute_coverage/${details}"
+dir_tbl="${dir_cvg}/tables"
+typ_cvg="spike"
+
+pattern="*.bam"
+exclude="*Brn1*"
+
+env_nam="env_analyze"
+execute="${dir_scr}/execute_calculate_scaling_factor_${typ_cvg}.sh"
+
+day="$(date '+%Y-%m%d')"
+exc_log="${dir_trk}/logs/${day}.$(basename "${execute}" ".sh")"
+
+#  Set hardcoded argument assignments
+threads=8
+ser_mip="$(  ## WARNING: Change search parameters as needed ##
+    bash "${dir_scr}/find_files.sh" \
+        --dir_fnd "${dir_bam}" \
+        --pattern "${pattern}" \
+        --include "IP*" \
+        --exclude "${exclude}"
+)"
+ser_sip="$(sed 's:sc:sp:g' < <(echo "${ser_mip}"))"
+ser_min="$(sed 's:IP:in:g' < <(echo "${ser_mip}"))"
+ser_sin="$(sed 's:IP:in:g' < <(echo "${ser_sip}"))"
+fil_out="${dir_tbl}/ChIP_WT_G1-G2M-Q_Hho1-Hmo1_${typ_cvg}.tsv"
+err_out="${dir_tbl}/logs"
+
+
+#  Create required directories if necessary -----------------------------------
+mkdir -p "${dir_tbl}/logs"
+
+
+#  Activate the environment and check dependencies ----------------------------
+#  Source utility functions
+# shellcheck disable=SC1091
+{
+    source "${dir_fnc}/check_program_path.sh"
+    source "${dir_fnc}/echo_warning.sh"
+    source "${dir_fnc}/handle_env.sh"
+}
+
+#  Activate the required environment
+handle_env "${env_nam}"
+
+#  Check the availability of necessary dependencies such as GNU Parallel,
+#+ Python, Samtools, and SLURM
+check_program_path awk
+check_program_path parallel
+check_program_path python
+check_program_path samtools
+check_program_path sbatch ||
+    echo_warning \
+        "SLURM is not available on this system. Do not use the '--slurm'" \
+        "flag with the driver script."
+
+
+#  Construct table ------------------------------------------------------------
+if ${debug}; then
+    echo "###########################"
+    echo "## Call to driver script ##"
+    echo "###########################"
+    echo ""
+    echo "bash \"${execute}\" \\"
+    echo "    --verbose \\"
+    echo "    --threads ${threads} \\"
+    echo "    --ser_mip \"${ser_mip}\" \\"
+    echo "    --ser_sip \"${ser_sip}\" \\"
+    echo "    --ser_min \"${ser_min}\" \\"
+    echo "    --ser_sin \"${ser_sin}\" \\"
+    echo "    --fil_out \"${fil_out}\" \\"
+    echo "    --err_out \"${err_out}\" \\"
+    echo "    --slurm"
+    echo "         >> >(tee -a ${exc_log}.stdout.txt) \\"
+    echo "        2>> >(tee -a ${exc_log}.stderr.txt)"
+    echo ""
+    echo ""
+fi
+
+#  Run the driver script: Change '--verbose' to '--dry_run' to perform a 
+#+ test run without executing commands
+bash "${execute}" \
+    --verbose \
+    --threads ${threads} \
+    --ser_mip "${ser_mip}" \
+    --ser_sip "${ser_sip}" \
+    --ser_min "${ser_min}" \
+    --ser_sin "${ser_sin}" \
+    --fil_out "${fil_out}" \
+    --err_out "${err_out}" \
+    --slurm \
+         >> >(tee -a "${exc_log}.stdout.txt") \
+        2>> >(tee -a "${exc_log}.stderr.txt")
+
+if [[ -f "${fil_out}" ]]; then
+    #  Sort the table of input minimume depths by rows
+    awk 'NR == 1; NR > 1 && NF { print | "sort" }' "${fil_out}" \
+        > "${dir_tbl}/tmp.tsv"
+
+    #  Replace the original table with the sorted version
+    mv -f "${dir_tbl}/tmp.tsv" "${fil_out}"
+fi
+# cat "${fil_out}"  ## Uncomment to check table ##
+
+
+#  Cleanup: Compress logs and remove empty files ------------------------------
+bash "${dir_scr}/compress_remove_files.sh" --dir_fnd "${err_out}"
+# ls -lhaFG "${err_out}"  ## Uncomment to check directory for logs ##
+```
+</details>
+<br />
+
+<a id="g-compute-normalized-coverage"></a>
+### G. Compute normalized coverage.
 <details>
 <summary><i>Text: Compute normalized raw coverage..</i></summary>
 <br />
 
-This following Bash code chunk provides an example of how to compute normalized ChIP-seq coverage per [Dickson et al., *Sci Rep*, 2023](https://www.nature.com/articles/s41598-023-34430-2). The coverage type is determined by setting the variable `typ_cvg` to `"raw"` or `"norm"`. BIGWIG and log output files will be saved to separate directories based on the selected coverage type.
+This following Bash code chunk provides an example of how to compute ChIP-seq normalized coverage per [Dickson et al., *Sci Rep*, 2023](https://www.nature.com/articles/s41598-023-34430-2). The coverage type is determined by setting the variable `typ_cvg` to `"norm"` (other options are `raw` and `frag`; see the [`compute_coverage.py`](https://github.com/kalavattam/protocol_chipseq_signal_norm/blob/main/scripts/compute_coverage.py) documentation for more details). BEDGRAPH and log output files will be saved to separate directories based on the selected coverage type.
+
+<b>Workflow overview</b>  
+1. Set paths and environment: Define paths for input BAM files, output directories, and required dependencies.
+2. Activate environment and check dependencies: Ensure required software (GNU Parallel, Python, SLURM, etc.) is available.
+3. Compute coverage: Calls the driver script (`execute_compute_coverage.sh`) to generate BEDGRAPH coverage tracks.
+4. Verify normalization: Optionally perform a check to confirm the output normalized coverage sums to ~1.
+5. Cleanup: Compress logs and remove size-0 files.
+
+<b>Output files</b>
+1. BEDGRAPH coverage tracks (`*.bdg.gz`) are saved in structured directories based on the chosen normalization type.
+2. Log files tracking the execution process are stored separately.
 </details>
 <br />
 
@@ -607,7 +925,7 @@ This following Bash code chunk provides an example of how to compute normalized 
 #  Define variables -----------------------------------------------------------
 debug=true
 
-#  Define directory paths
+#  Set hardcoded paths, values, etc.
 dir_bas="${HOME}/repos"  ## WARNING: Change as needed ##
 dir_rep="${dir_bas}/protocol_chipseq_signal_norm"
 dir_scr="${dir_rep}/scripts"
@@ -615,50 +933,91 @@ dir_fnc="${dir_scr}/functions"
 dir_dat="${dir_rep}/data"
 dir_pro="${dir_dat}/processed"
 
-#  Define alignment and coverage details
 aligner="bowtie2"
 a_type="global"
 req_flg=true
 flg="$(if ${req_flg}; then echo "2"; else echo "NA"; fi)"
 mapq=1
-det_bam="flag-${flg}_mapq-${mapq}"
-det_cvg="${aligner}_${a_type}_${det_bam}"
-typ_cvg="norm"  ## WARNING: "norm" for normalized ##
+details="${aligner}_${a_type}_flag-${flg}_mapq-${mapq}"
 
-#  Further define directory setup
-dir_aln="${dir_pro}/align_${aligner}_${a_type}"
-dir_bam="${dir_aln}/${det_bam}/sc"
-dir_cvg="${dir_pro}/compute_coverage"
-dir_trk="${dir_cvg}/${det_cvg}/norm_bin_20/tracks"  # "${dir_cvg}/${det_cvg}/${typ_cvg}/tracks"
+dir_aln="${dir_pro}/align_reads/${details}"
+dir_bam="${dir_aln}/sc"
+dir_cvg="${dir_pro}/compute_coverage/${details}"
+typ_trk="norm"
+dir_trk="${dir_cvg}/${typ_trk}"
 
-#  Define driver script
-exc_cvg="${dir_scr}/execute_compute_coverage.sh"
-
-#  Define script arguments, environment, and resources
-nam_job="compute_coverage_${typ_cvg}"
-typ_out="bdg.gz"
-threads=8
-siz_bin=20  # 10
-env_nam="env_analyze"
-day="$(date '+%Y-%m%d')"
-err_out="${dir_trk}/logs"
-exc_pth="${dir_trk}/logs/${day}.$(basename "${exc_cvg}" ".sh")_${typ_cvg}"
-
-#  Define file search parameters
-## WARNING: Change search parameters as needed ##
 pattern="*.bam"
-exclude="*Brn1*"
-infiles="$(
-    bash "${dir_scr}/find_files.sh" \
-        --dir_fnd "${dir_bam}" \
-        --pattern "${pattern}" \
-        --exclude "${exclude}"
-)"
+
+env_nam="env_analyze"
+execute="${dir_scr}/execute_compute_coverage.sh"
+
+day="$(date '+%Y-%m%d')"
+exc_log="${dir_trk}/logs/${day}.$(basename "${execute}" ".sh")"
+
+#  Set hardcoded argument assignments
+threads=8
+infiles="$(  ## WARNING: Change search parameters as needed ##
+        bash "${dir_scr}/find_files.sh" \
+            --dir_fnd "${dir_bam}" \
+            --pattern "${pattern}"
+    )"
+dir_out="${dir_trk}"
+typ_out="bdg.gz"
+siz_bin=30
+typ_cvg="${typ_trk}"
+err_out="${dir_trk}/logs"
+nam_job="compute_coverage_${typ_cvg}"
+
+if ${debug}; then
+    echo "##########################"
+    echo "## Variable assignments ##"
+    echo "##########################"
+    echo ""
+    echo "debug=${debug}"
+    echo ""
+    echo "dir_bas=${dir_bas}"
+    echo "dir_rep=${dir_rep}"
+    echo "dir_scr=${dir_scr}"
+    echo "dir_fnc=${dir_fnc}"
+    echo "dir_dat=${dir_dat}"
+    echo "dir_pro=${dir_pro}"
+    echo ""
+    echo "aligner=${aligner}"
+    echo "a_type=${a_type}"
+    echo "req_flg=${req_flg}"
+    echo "flg=${flg}"
+    echo "mapq=${mapq}"
+    echo "details=${details}"
+    echo ""
+    echo "dir_aln=${dir_aln}"
+    echo "dir_bam=${dir_bam}"
+    echo "dir_cvg=${dir_cvg}"
+    echo "typ_trk=${typ_trk}"
+    echo "dir_trk=${dir_trk}"
+    echo ""
+    echo "pattern=${pattern}"
+    echo ""
+    echo "env_nam=${env_nam}"
+    echo "execute=${execute}"
+    echo ""
+    echo "day=${day}"
+    echo "exc_log=${exc_log}"
+    echo ""
+    echo "threads=${threads}"
+    echo "infiles=${infiles}"
+    echo "dir_out=${dir_out}"
+    echo "typ_out=${typ_out}"
+    echo "siz_bin=${siz_bin}"
+    echo "typ_cvg=${typ_cvg}"
+    echo "err_out=${err_out}"
+    echo "nam_job=${nam_job}"
+    echo ""
+    echo ""
+fi
 
 
 #  Create required directories if necessary -----------------------------------
-# shellcheck disable=SC2086
-mkdir -p ${dir_trk}/{docs,logs}
+mkdir -p "${dir_out}/logs"
 
 
 #  Activate the environment and check dependencies ----------------------------
@@ -691,7 +1050,7 @@ if ${debug}; then
     echo "## Call to driver script ##"
     echo "###########################"
     echo ""
-    echo "bash ${exc_cvg} \\"
+    echo "bash ${execute} \\"
     echo "    --verbose \\"
     echo "    --threads ${threads} \\"
     echo "    --infiles ${infiles} \\"
@@ -702,14 +1061,14 @@ if ${debug}; then
     echo "    --err_out ${err_out} \\"
     echo "    --nam_job ${nam_job} \\"
     echo "    --slurm \\"
-    echo "         >> >(tee -a ${exc_pth}.stdout.txt) \\"
-    echo "        2>> >(tee -a ${exc_pth}.stderr.txt)"
+    echo "         >> >(tee -a ${exc_log}.stdout.txt) \\"
+    echo "        2>> >(tee -a ${exc_log}.stderr.txt)"
     echo ""
     echo ""
 fi
 
 #  Run driver script
-bash "${exc_cvg}" \
+bash "${execute}" \
     --verbose \
     --threads "${threads}" \
     --infiles "${infiles}" \
@@ -720,8 +1079,8 @@ bash "${exc_cvg}" \
     --err_out "${err_out}" \
     --nam_job "${nam_job}" \
     --slurm \
-         >> >(tee -a "${exc_pth}.stdout.txt") \
-        2>> >(tee -a "${exc_pth}.stderr.txt")
+         >> >(tee -a "${exc_log}.stdout.txt") \
+        2>> >(tee -a "${exc_log}.stderr.txt")
 
 #  Check that each normalized coverage BEDGRAPH file sums to unity
 if ${debug}; then
@@ -730,8 +1089,7 @@ if ${debug}; then
     echo "##############################################"
     echo ""
     for bdg in "${dir_trk}/"*".${typ_out}"; do
-        # echo "$(basename "${bdg}")"
-        echo "${bdg##*/}"
+        echo -n "${bdg##*/}: "
         check_unity "${bdg}"
         echo ""
     done
@@ -741,272 +1099,13 @@ fi
 
 #  Cleanup: Compress logs and remove empty files ------------------------------
 bash "${dir_scr}/compress_remove_files.sh" --dir_fnd "${err_out}"
-
 # ls -lhaFG "${err_out}"  ## Uncomment to check directory for logs ##
 ```
 </details>
 <br />
 
-<a id="g-compute-log2-ratios-of-ip-to-input-coverage"></a>
-### G. Compute log2 ratios of IP to input coverage.
-<details>
-<summary><i>Text: Compute log2 ratios of IP to input coverage.</i></summary>
-<br />
-
-`#TODO`
-</details>
-<br />
-
-<details>
-<summary><i>Bash code: Compute log2 ratios of IP to input coverage.</i></summary>
-
-```bash
-#!/bin/bash
-
-#  Optional: Request an interactive node --------------------------------------
-# grabnode  ## Uncomment to request 1 core, 20 GB memory, 1 day, no GPU ##
-
-
-#  Define variables -----------------------------------------------------------
-debug=true
-
-#  Define base directory for repository
-dir_bas="${HOME}/repos"  ## WARNING: Change as needed ##
-
-#  Define paths to protocol repository and its subdirectories
-dir_rep="${dir_bas}/protocol_chipseq_signal_norm"
-dir_scr="${dir_rep}/scripts"
-dir_fnc="${dir_scr}/functions"
-dir_dat="${dir_rep}/data"
-dir_pro="${dir_dat}/processed"
-
-#  Define alignment and coverage details
-aligner="bowtie2"
-a_type="global"
-req_flg=true
-flg="$(if ${req_flg}; then echo "2"; else echo "NA"; fi)"
-mapq=1
-det_bam="flag-${flg}_mapq-${mapq}"
-det_cvg="${aligner}_${a_type}_${det_bam}"
-
-#  Further define directory setup
-dir_cvg="${dir_pro}/compute_coverage"
-dir_nrm="${dir_cvg}/${det_cvg}/norm"
-dir_alf="${dir_cvg}/${det_cvg}/alpha"
-dir_lg2="${dir_cvg}/${det_cvg}/log2"
-
-#  Define environment, resources, and script arguments 
-env_nam="env_analyze"
-threads=8
-typ_out="bdg.gz"
-siz_bin=10  # 20
-
-#  Define file search parameters  ## WARNING: Change as needed ##
-pattern="${typ_out}"
-exclude="*Brn1*"
-ser_ip="$(
-    bash "${dir_scr}/find_files.sh" \
-        --dir_fnd "${dir_nrm}/tracks" \
-        --pattern "*.${typ_out}" \
-        --include "IP*" \
-        --exclude "${exclude}"
-)"
-ser_in="$(
-    bash "${dir_scr}/find_files.sh" \
-        --dir_fnd "${dir_nrm}/tracks" \
-        --pattern "*.${typ_out}" \
-        --include "in*" \
-        --exclude "${exclude}"
-)"
-
-#  Define script and table of minimum input depth values
-scr_trk="execute_compute_coverage_ratio.sh"
-tbl_min="${dir_alf}/tables/ChIP_WT_G1-G2M-Q_Hho1-Hmo1_depth_min_${siz_bin}.tsv"
-
-#  Define log file prefixes
-day="$(date '+%Y-%m%d')"
-exc_trk="${dir_lg2}/tracks/logs/${day}.${scr_trk%.sh}"
-
-#  Debug variable assignments
-if ${debug}; then
-    echo "####################################"
-    echo "## Hardcoded variable assignments ##"
-    echo "####################################"
-    echo ""
-    echo "\${debug}=${debug}"
-    echo ""
-    echo "\${dir_bas}=${dir_bas}"
-    echo ""
-    echo "\${dir_rep}=${dir_rep}"
-    echo "\${dir_scr}=${dir_scr}"
-    echo "\${dir_fnc}=${dir_fnc}"
-    echo "\${dir_dat}=${dir_dat}"
-    echo "\${dir_pro}=${dir_pro}"
-    echo ""
-    echo "\${aligner}=${aligner}"
-    echo "\${a_type}=${a_type}"
-    echo "\${req_flg}=${req_flg}"
-    echo "\${flg}=${flg}"
-    echo "\${mapq}=${mapq}"
-    echo "\${det_bam}=${det_bam}"
-    echo "\${det_cvg}=${det_cvg}"
-    echo ""
-    echo "\${dir_cvg}=${dir_cvg}"
-    echo "\${dir_nrm}=${dir_nrm}"
-    echo "\${dir_alf}=${dir_alf}"
-    echo "\${dir_lg2}=${dir_lg2}"
-    echo ""
-    echo "\${env_nam}=${env_nam}"
-    echo "\${threads}=${threads}"
-    echo "\${typ_out}=${typ_out}"
-    echo "\${siz_bin}=${siz_bin}"
-    echo ""
-    echo "\${pattern}=${pattern}"
-    echo "\${exclude}=${exclude}"
-    echo "\${ser_ip}=${ser_ip}"
-    echo "\${ser_in}=${ser_in}"
-    echo ""
-    echo "\${scr_trk}=${scr_trk}"
-    echo "\${tbl_min}=${tbl_min}"
-    echo ""
-    echo "\${day}=${day}"
-    echo "\${exc_trk}=${exc_trk}"
-    echo ""
-    echo ""
-fi
-
-
-#  Create required directories if necessary -----------------------------------
-# shellcheck disable=SC2086
-mkdir -p ${dir_lg2}/tracks/{docs,logs}
-
-#  Debug outdirectory paths
-if ${debug}; then
-    echo "#####################################"
-    echo "## Outdirectory paths and contents ##"
-    echo "#####################################"
-    echo ""
-    echo "%%%%%%%%%%%%%%%%%%%%%%%"
-    echo "%% \${dir_nrm}/tracks %%"
-    echo "%%%%%%%%%%%%%%%%%%%%%%%"
-    echo ""
-    ls -lhaFG "${dir_nrm}/tracks"
-    echo ""
-    ls -lhaFG "${dir_nrm}/tracks/logs"
-    echo ""
-    echo "%%%%%%%%%%%%%%%%%%%%%%%"
-    echo "%% \${dir_alf}/tables %%"
-    echo "%%%%%%%%%%%%%%%%%%%%%%%"
-    echo ""
-    ls -lhaFG "${dir_alf}/tables"
-    echo ""
-    ls -lhaFG "${dir_alf}/tables/logs"
-    echo ""
-    echo "%%%%%%%%%%%%%%%%%%%%%%%"
-    echo "%% \${dir_lg2}/tracks %%"
-    echo "%%%%%%%%%%%%%%%%%%%%%%%"
-    echo ""
-    ls -lhaFG "${dir_lg2}/tracks"
-    echo ""
-    ls -lhaFG "${dir_lg2}/tracks/logs"
-    echo ""
-    echo ""
-fi
-
-
-#  Activate the environment and check dependencies ----------------------------
-#  Source utility functions
-# shellcheck disable=SC1091
-{
-    source "${dir_fnc}/check_program_path.sh"
-    source "${dir_fnc}/echo_warning.sh"
-    source "${dir_fnc}/handle_env.sh"
-}
-
-#  Activate the required environment
-handle_env "${env_nam}"
-
-#  Check the availability of necessary dependencies such as GNU Parallel and
-#+ SLURM sbatch
-check_program_path awk
-check_program_path parallel
-check_program_path python
-check_program_path samtools
-check_program_path sbatch ||
-    echo_warning \
-        "SLURM is not available on this system. Do not use the '--slurm'" \
-        "flag with the driver script."
-
-
-#  Generate siQ-scaled coverage tracks ----------------------------------------
-#  Parse table, assigning serialized string to variables 
-dep_min="$(
-    awk 'NR > 1 { flt = flt ? flt "," $3 : $3 } END { print flt }' "${tbl_min}"
-)"
-
-if ${debug}; then
-    echo "################################################################"
-    echo "## Call to execute_compute_coverage_ratio.sh with '--dep_min' ##"
-    echo "################################################################"
-    echo ""
-    echo "bash ${dir_scr}/${scr_trk} \\"
-    echo "    --verbose \\"
-    echo "    --fil_ip ${ser_ip} \\"
-    echo "    --fil_in ${ser_in} \\"
-    echo "    --dir_out ${dir_lg2}/tracks/bin_10_dm_yes \\"
-    echo "    --typ_out ${typ_out} \\"
-    echo "    --track \\"
-    echo "    --dep_min ${dep_min} \\"
-    echo "    --log2 \\"
-    echo "    --err_out ${dir_lg2}/tracks/logs \\"
-    echo "    --slurm \\"
-    echo "         >> >(tee -a ${exc_trk}.stdout.txt) \\"
-    echo "        2>> >(tee -a ${exc_trk}.stderr.txt)"
-    echo ""
-    echo ""
-fi
-
-#  Generate tracks using 'dep_min'
-bash "${dir_scr}/${scr_trk}" \
-    --verbose \
-    --fil_ip "${ser_ip}" \
-    --fil_in "${ser_in}" \
-    --dir_out "${dir_lg2}/tracks/bin_10_dm_yes" \
-    --typ_out "${typ_out}" \
-    --track \
-    --dep_min "${dep_min}" \
-    --log2 \
-    --err_out "${dir_lg2}/tracks/logs" \
-    --slurm \
-         >> >(tee -a "${exc_trk}.stdout.txt") \
-        2>> >(tee -a "${exc_trk}.stderr.txt")
-
-#  Generate tracks sans 'dep_min'
-bash "${dir_scr}/${scr_trk}" \
-    --verbose \
-    --fil_ip "${ser_ip}" \
-    --fil_in "${ser_in}" \
-    --dir_out "${dir_lg2}/tracks/bin_10_dm_no" \
-    --typ_out "${typ_out}" \
-    --track \
-    --log2 \
-    --err_out "${dir_lg2}/tracks/logs" \
-    --slurm \
-         >> >(tee -a "${exc_trk}.stdout.txt") \
-        2>> >(tee -a "${exc_trk}.stderr.txt")
-
-
-#  Cleanup: Compress logs and remove empty files ------------------------------
-bash "${dir_scr}/compress_remove_files.sh" --dir_fnd "${dir_lg2}/tracks/logs"
-
-# ls -lhaFG "${dir_lg2}/tracks/logs"  ## Uncomment to check directory for track logs ##
-# find . -maxdepth 1 -type f -size 0 -delete -o -type f -not -name "*.gz" -exec gzip {} +
-```
-</details>
-<br />
-
-<a id="g-compute-coverage-with-the-sans-spike-in-quantitative-chip-seq-siq-chip-method"></a>
-### G. Compute coverage with the sans spike-in quantitative ChIP-seq (siQ-ChIP) method.
+<a id="h-compute-coverage-with-the-sans-spike-in-quantitative-chip-seq-siq-chip-method"></a>
+### H. Compute coverage with the sans spike-in quantitative ChIP-seq (siQ-ChIP) method.
 <details>
 <summary><i>Text: Compute coverage with the sans spike-in quantitative ChIP-seq (siQ-ChIP) method.</i></summary>
 <br />
@@ -1038,7 +1137,7 @@ This section describes the steps to compute ChIP-seq coverage normalized using t
 <br />
 
 <details>
-<summary><i>Bash code: Generate a TSV file of sample-specific siQ-ChIP alpha scaling factors.</i></summary>
+<summary><i>Bash code: Compute coverage with the sans spike-in quantitative ChIP-seq (siQ-ChIP) method.</i></summary>
 
 ```bash
 #!/bin/bash
@@ -1050,131 +1149,120 @@ This section describes the steps to compute ChIP-seq coverage normalized using t
 #  Define variables -----------------------------------------------------------
 debug=true
 
-#  Define base directory for repository
+#  Set hardcoded paths, values, etc.
 dir_bas="${HOME}/repos"  ## WARNING: Change as needed ##
-
-#  Define paths to protocol repository and its subdirectories
 dir_rep="${dir_bas}/protocol_chipseq_signal_norm"
 dir_scr="${dir_rep}/scripts"
 dir_fnc="${dir_scr}/functions"
 dir_dat="${dir_rep}/data"
-dir_raw="${dir_dat}/raw"
 dir_pro="${dir_dat}/processed"
 
-#  Define alignment and coverage details
 aligner="bowtie2"
 a_type="global"
 req_flg=true
 flg="$(if ${req_flg}; then echo "2"; else echo "NA"; fi)"
 mapq=1
-det_bam="flag-${flg}_mapq-${mapq}"
-det_cvg="${aligner}_${a_type}_${det_bam}"
+details="${aligner}_${a_type}_flag-${flg}_mapq-${mapq}"
 
-#  Further define directory setup
-dir_aln="${dir_pro}/align_${aligner}_${a_type}"
-dir_bam="${dir_aln}/${det_bam}/sc"
-dir_cvg="${dir_pro}/compute_coverage"
-dir_nrm="${dir_cvg}/${det_cvg}/norm"
-dir_alf="${dir_cvg}/${det_cvg}/alpha"
+dir_aln="${dir_pro}/align_reads/${details}"
+dir_bam="${dir_aln}/sc"
+dir_cvg="${dir_pro}/compute_coverage/${details}"
+dir_nrm="${dir_cvg}/norm"
+dir_tbl="${dir_cvg}/tables"
+dir_alf="${dir_cvg}/alpha"
 
-#  Define environment, resources, and script arguments 
-env_nam="env_analyze"
-threads=8
-tbl_mes="${dir_raw}/docs/measurements_siqchip.tsv"
-typ_cvg="alpha"
-eqn="6nd"
-typ_out="bdg.gz"
-siz_bin=10
-
-#  Define file search parameters  ## WARNING: Change as needed ##
 pattern="*.bam"
+include="IP*"
 exclude="*Brn1*"
-ser_ip="$(
-    bash "${dir_scr}/find_files.sh" \
-        --dir_fnd "${dir_bam}" \
-        --pattern "${pattern}" \
-        --include "IP*" \
-        --exclude "${exclude}"
-)"
-ser_in="$(
-    bash "${dir_scr}/find_files.sh" \
-        --dir_fnd "${dir_bam}" \
-        --pattern "${pattern}" \
-        --include "in*" \
-        --exclude "${exclude}"
-)"
 
-#  Define scripts and output files
-scr_tbl="execute_calculate_scaling_factor_${typ_cvg}.sh"
-scr_trk="execute_compute_coverage_ratio.sh"
-tbl_alf="${dir_alf}/tables/ChIP_WT_G1-G2M-Q_Hho1-Hmo1_${typ_cvg}_${eqn}.tsv"
-tbl_min="${dir_alf}/tables/ChIP_WT_G1-G2M-Q_Hho1-Hmo1_depth_min_${siz_bin}.tsv"
+env_nam="env_analyze"
+execute="execute_compute_coverage_ratio.sh"
 
-#  Define log file prefixes
 day="$(date '+%Y-%m%d')"
-exc_tbl="${dir_alf}/tables/logs/${day}.${scr_tbl%.sh}_${eqn}"
-exc_trk="${dir_alf}/tracks/logs/${day}.${scr_trk%.sh}"
+exc_log="${dir_alf}/logs/${day}.$(basename "${execute}" ".sh")"
 
-#  Debug variable assignments
+typ_cvg="alpha"
+tbl_alf="${dir_tbl}/ChIP_WT_G1-G2M-Q_Hho1-Hmo1_${typ_cvg}.tsv"
+
+#  Set hardcoded argument assignments
+# shellcheck disable=SC1091
+source "${dir_fnc}/extract_fld_str.sh"
+
+fil_ip=$(
+    sed \
+        -e "s:${dir_bam}:${dir_nrm}:g" \
+        -e "s:.bam:.${typ_out}:g" \
+        < <(extract_fld_str 1 "${tbl_alf}")
+)
+fil_in=$(
+    sed \
+        -e "s:${dir_bam}:${dir_nrm}:g" \
+        -e "s:.bam:.${typ_out}:g" \
+        < <(extract_fld_str 2 "${tbl_alf}")
+)
+dir_out="${dir_alf}"
+typ_out="bdg.gz"
+scl_fct="$(extract_fld_str  3 "${tbl_alf}")"
+dep_min="$(extract_fld_str 24 "${tbl_alf}")"  ## WARNING: See above note ##
+err_out="${dir_alf}/logs"
+nam_job="compute_coverage_ratio_${typ_cvg}"
+
 if ${debug}; then
     echo "####################################"
     echo "## Hardcoded variable assignments ##"
     echo "####################################"
     echo ""
-    echo "\${debug}=${debug}"
+    echo "debug=${debug}"
     echo ""
-    echo "\${dir_bas}=${dir_bas}"
+    echo "dir_bas=${dir_bas}"
+    echo "dir_rep=${dir_rep}"
+    echo "dir_scr=${dir_scr}"
+    echo "dir_fnc=${dir_fnc}"
+    echo "dir_dat=${dir_dat}"
+    echo "dir_pro=${dir_pro}"
     echo ""
-    echo "\${dir_rep}=${dir_rep}"
-    echo "\${dir_scr}=${dir_scr}"
-    echo "\${dir_fnc}=${dir_fnc}"
-    echo "\${dir_dat}=${dir_dat}"
-    echo "\${dir_raw}=${dir_raw}"
-    echo "\${dir_pro}=${dir_pro}"
+    echo "aligner=${aligner}"
+    echo "a_type=${a_type}"
+    echo "req_flg=${req_flg}"
+    echo "flg=${flg}"
+    echo "mapq=${mapq}"
+    echo "details=${details}"
     echo ""
-    echo "\${aligner}=${aligner}"
-    echo "\${a_type}=${a_type}"
-    echo "\${req_flg}=${req_flg}"
-    echo "\${flg}=${flg}"
-    echo "\${mapq}=${mapq}"
-    echo "\${det_bam}=${det_bam}"
-    echo "\${det_cvg}=${det_cvg}"
+    echo "dir_aln=${dir_aln}"
+    echo "dir_bam=${dir_bam}"
+    echo "dir_cvg=${dir_cvg}"
+    echo "dir_nrm=${dir_nrm}"
+    echo "dir_tbl=${dir_tbl}"
+    echo "dir_alf=${dir_alf}"
     echo ""
-    echo "\${dir_aln}=${dir_aln}"
-    echo "\${dir_bam}=${dir_bam}"
-    echo "\${dir_cvg}=${dir_cvg}"
-    echo "\${dir_nrm}=${dir_nrm}"
-    echo "\${dir_alf}=${dir_alf}"
+    echo "pattern=${pattern}"
+    echo "include=${include}"
+    echo "exclude=${exclude}"
     echo ""
-    echo "\${env_nam}=${env_nam}"
-    echo "\${threads}=${threads}"
-    echo "\${eqn}=${eqn}"
-    echo "\${tbl_mes}=${tbl_mes}"
-    echo "\${typ_cvg}=${typ_cvg}"
-    echo "\${typ_out}=${typ_out}"
-    echo "\${siz_bin}=${siz_bin}"
+    echo "env_nam=${env_nam}"
+    echo "execute=${execute}"
     echo ""
-    echo "\${pattern}=${pattern}"
-    echo "\${exclude}=${exclude}"
-    echo "\${ser_ip}=${ser_ip}"
-    echo "\${ser_in}=${ser_in}"
+    echo "day=${day}"
+    echo "exc_log=${exc_log}"
     echo ""
-    echo "\${scr_tbl}=${scr_tbl}"
-    echo "\${scr_trk}=${scr_trk}"
-    echo "\${tbl_min}=${tbl_min}"
-    echo "\${tbl_alf}=${tbl_alf}"
+    echo "typ_cvg=${typ_cvg}"
+    echo "tbl_alf=${tbl_alf}"
     echo ""
-    echo "\${day}=${day}"
-    echo "\${exc_tbl}=${exc_tbl}"
-    echo "\${exc_trk}=${exc_trk}"
+    echo "fil_ip=${fil_ip}"
+    echo "fil_in=${fil_in}"
+    echo "dir_out=${dir_out}"
+    echo "typ_out=${typ_out}"
+    echo "scl_fct=${scl_fct}"
+    echo "dep_min=${dep_min}"
+    echo "err_out=${err_out}"
+    echo "nam_job=${nam_job}"
     echo ""
     echo ""
 fi
 
 
 #  Create required directories if necessary -----------------------------------
-# shellcheck disable=SC2086
-mkdir -p ${dir_alf}/{tables,tracks}/{docs,logs}
+mkdir -p ${dir_alf}/{dm_y,dm_n,logs}
 
 #  Debug outdirectory paths
 if ${debug}; then
@@ -1182,29 +1270,31 @@ if ${debug}; then
     echo "## Outdirectory paths and contents ##"
     echo "#####################################"
     echo ""
-    echo "%%%%%%%%%%%%%%%%%%%%%%%"
-    echo "%% \${dir_nrm}/tracks %%"
-    echo "%%%%%%%%%%%%%%%%%%%%%%%"
+    echo "%%%%%%%%%%%%%"
+    echo "%% dir_nrm %%"
+    echo "%%%%%%%%%%%%%"
     echo ""
-    ls -lhaFG "${dir_nrm}/tracks"
+    ls -lhaFG "${dir_nrm}"
     echo ""
-    ls -lhaFG "${dir_nrm}/tracks/logs"
+    ls -lhaFG "${dir_nrm}/logs"
     echo ""
-    echo "%%%%%%%%%%%%%%%%%%%%%%%"
-    echo "%% \${dir_alf}/tables %%"
-    echo "%%%%%%%%%%%%%%%%%%%%%%%"
+    echo "%%%%%%%%%%%%%"
+    echo "%% dir_tbl %%"
+    echo "%%%%%%%%%%%%%"
     echo ""
-    ls -lhaFG "${dir_alf}/tables"
+    ls -lhaFG "${dir_tbl}"
     echo ""
-    ls -lhaFG "${dir_alf}/tables/logs"
+    ls -lhaFG "${dir_tbl}/logs"
     echo ""
-    echo "%%%%%%%%%%%%%%%%%%%%%%%"
-    echo "%% \${dir_alf}/tracks %%"
-    echo "%%%%%%%%%%%%%%%%%%%%%%%"
+    echo "%%%%%%%%%%%%%"
+    echo "%% dir_alf %%"
+    echo "%%%%%%%%%%%%%"
     echo ""
-    ls -lhaFG "${dir_alf}/tracks"
+    ls -lhaFG "${dir_alf}/dm_y"
     echo ""
-    ls -lhaFG "${dir_alf}/tracks/logs"
+    ls -lhaFG "${dir_alf}/dm_n"
+    echo ""
+    ls -lhaFG "${dir_alf}/logs"
     echo ""
     echo ""
 fi
@@ -1216,7 +1306,6 @@ fi
 {
     source "${dir_fnc}/check_program_path.sh"
     source "${dir_fnc}/echo_warning.sh"
-    source "${dir_fnc}/extract_fld_str.sh"
     source "${dir_fnc}/handle_env.sh"
 }
 
@@ -1235,226 +1324,563 @@ check_program_path sbatch ||
         "flag with the driver script."
 
 
-#  Calculate and write out input minimum depths -------------------------------
-if [[ ! -f "${tbl_min}" ]]; then
-    unset arr_ser_in && typeset -a arr_ser_in
-    IFS=',' read -r -a arr_ser_in <<< "${ser_in}"
-
-    #TODO: Parallelize this
-    {
-        echo -e "file\tfrag\tnorm"
-        for bam in "${arr_ser_in[@]}"; do
-            frag=$(
-                python "${dir_scr}/calculate_factor_depth.py" \
-                    -i "${bam}" \
-                    -m "frag" \
-                    -sb ${siz_bin}
-            )
-            norm=$(
-                python "${dir_scr}/calculate_factor_depth.py" \
-                    -i "${bam}" \
-                    -m "norm" \
-                    -sb ${siz_bin}
-            )
-            echo -e "$(basename "${bam}")\t${frag}\t${norm}"
-        done
-    } \
-        | tee -a "${tbl_min}"
-
-    unset arr_ser_in
-fi
-
-if [[ -f "${tbl_min}" ]]; then
-    #  Sort the table of input minimume depths by rows
-    awk 'NR == 1; NR > 1 && NF { print | "sort" }' "${tbl_min}" \
-        > "${dir_alf}/tables/tmp.tsv"
-
-    #  Replace the original table with the sorted version
-    mv -f "${dir_alf}/tables/tmp.tsv" "${tbl_min}"
-fi
-
-# cat "${tbl_min}"  ## Uncomment to check the table contents ##
-
-
-#  Calculate siQ-ChIP alpha scaling factors -----------------------------------
-#  Debug call to alpha computation driver script, etc.
-if ${debug}; then
-    echo "############################################################"
-    echo "## Call to siQ-ChIP alpha computation driver script, etc. ##"
-    echo "############################################################"
-    echo ""
-    echo "if [[ ! -f ${tbl_alf} ]]; then"
-    echo "    bash ${dir_scr}/${scr_tbl} \\"
-    echo "        --verbose \\"
-    echo "        --threads ${threads} \\"
-    echo "        --ser_ip ${ser_ip} \\"
-    echo "        --ser_in ${ser_in} \\"
-    echo "        --table ${tbl_mes} \\"
-    echo "        --eqn ${eqn} \\"
-    echo "        --outfile ${tbl_alf} \\"
-    echo "        --err_out ${dir_alf}/tables/logs \\"
-    echo "        --flg_dep \\"
-    echo "        --flg_len \\"
-    echo "        --flg_mc \\"
-    echo "        --slurm \\"
-    echo "             >> >(tee -a ${exc_tbl}.stdout.txt) \\"
-    echo "            2>> >(tee -a ${exc_tbl}.stderr.txt)"
-    echo "fi"
-    echo ""
-    echo "if [[ -f ${tbl_alf} ]]; then"
-    echo "    awk 'NR == 1; NR > 1 && NF { print | \"sort\" }' ${tbl_alf} \\"
-    echo "        > ${dir_alf}/tables/tmp.tsv"
-    echo ""
-    echo "    mv -f ${dir_alf}/tables/tmp.tsv ${tbl_alf}"
-    echo "fi"
-    echo ""
-    echo ""
-fi
-
-#  Run the driver script to generate a TSV file of sample-specific siQ-ChIP
-#+ alpha scaling factors
-if [[ ! -f "${tbl_alf}" ]]; then
-    bash "${dir_scr}/${scr_tbl}" \
-        --verbose \
-        --threads "${threads}" \
-        --ser_ip "${ser_ip}" \
-        --ser_in "${ser_in}" \
-        --table "${tbl_mes}" \
-        --eqn "${eqn}" \
-        --outfile "${tbl_alf}" \
-        --err_out "${dir_alf}/tables/logs" \
-        --flg_dep \
-        --flg_len \
-        --flg_mc \
-        --slurm \
-             >> >(tee -a "${exc_tbl}.stdout.txt") \
-            2>> >(tee -a "${exc_tbl}.stderr.txt")
-fi
-
-if [[ -f "${tbl_alf}" ]]; then
-    #  Sort the table of scaling factors by rows
-    awk 'NR == 1; NR > 1 && NF { print | "sort" }' "${tbl_alf}" \
-        > "${dir_alf}/tables/tmp.tsv"
-
-    #  Replace the original table with the sorted version
-    mv -f "${dir_alf}/tables/tmp.tsv" "${tbl_alf}"
-fi
-# cat "${tbl_alf}"  ## Uncomment to check the table contents ##
-
-#  Check that 'tbl_min' column 1 matches 'tbl_alf' column 2 (basenames)
-if ${debug}; then
-    if ! \
-        diff -q \
-            <(awk 'NR > 1 { print $1 }' "${tbl_min}") \
-            <(
-                awk 'NR > 1 { print $2 }' "${tbl_alf}" \
-                    | xargs -I {} basename {}
-            ) > /dev/null
-    then
-        echo \
-            "Mismatch detected between \${tbl_min} column 1 and \${tbl_alf}" \
-            "column 2. Differences:"
-        diff <(awk 'NR > 1 { print $1 }' "${tbl_min}") \
-             <(
-                awk 'NR > 1 { print $2 }' "${tbl_alf}" \
-                    | xargs -I {} basename {}
-            )
-    fi
-fi
-
-
 #  Generate siQ-scaled coverage tracks ----------------------------------------
-#  Parse tables, assigning serialized strings to variables 
-ser_num=$(
-    sed \
-        -e "s:${dir_bam}:${dir_nrm}/tracks:g" \
-        -e "s:.bam:.${typ_out}:g" \
-        < <(extract_fld_str 1 "${tbl_alf}")
-)
-ser_den=$(
-    sed \
-        -e "s:${dir_bam}:${dir_nrm}/tracks:g" \
-        -e "s:.bam:.${typ_out}:g" \
-        < <(extract_fld_str 2 "${tbl_alf}")
-)
-scl_fct="$(extract_fld_str 3 "${tbl_alf}")"
-dep_min="$(extract_fld_str 3 "${tbl_min}")"
-
 if ${debug}; then
-    echo "###############################################"
-    echo "## Variable assignments parsed from table(s) ##"
-    echo "###############################################"
+    echo "############################################"
+    echo "## Call to driver script with '--dep_min' ##"
+    echo "############################################"
     echo ""
-    echo "\${ser_num}=${ser_num}"
-    echo ""
-    echo "\${ser_den}=${ser_den}"
-    echo ""
-    echo "\${scl_fct}=${scl_fct}"
-    echo ""
-    echo "\${dep_min}=${dep_min}"
-    echo ""
-    echo ""
-    echo ""
-fi
-
-if ${debug}; then
-    echo "################################################################"
-    echo "## Call to execute_compute_coverage_ratio.sh with '--dep_min' ##"
-    echo "################################################################"
-    echo ""
-    echo "bash ${dir_scr}/${scr_trk} \\"
+    echo "bash ${dir_scr}/${execute} \\"
     echo "    --verbose \\"
-    echo "    --fil_ip ${ser_num} \\"
-    echo "    --fil_in ${ser_den} \\"
-    echo "    --dir_out ${dir_alf}/tracks/bin_10_dm_yes \\"
+    echo "    --fil_ip ${fil_ip} \\"
+    echo "    --fil_in ${fil_in} \\"
+    echo "    --dir_out ${dir_alf}/dm_y \\"
     echo "    --typ_out ${typ_out} \\"
     echo "    --track \\"
     echo "    --scl_fct ${scl_fct} \\"
     echo "    --dep_min ${dep_min} \\"
-    echo "    --err_out ${dir_alf}/tracks/logs \\"
+    echo "    --err_out ${dir_alf}/logs \\"
     echo "    --slurm \\"
-    echo "         >> >(tee -a ${exc_trk}.stdout.txt) \\"
-    echo "        2>> >(tee -a ${exc_trk}.stderr.txt)"
+    echo "         >> >(tee -a ${exc_log}.stdout.txt) \\"
+    echo "        2>> >(tee -a ${exc_log}.stderr.txt)"
+    echo ""
+    echo ""
+fi
+
+#  Run driver script to generate tracks with 'dep_min'
+bash "${dir_scr}/${execute}" \
+    --verbose \
+    --fil_ip "${fil_ip}" \
+    --fil_in "${fil_in}" \
+    --dir_out "${dir_alf}/dm_y" \
+    --typ_out "${typ_out}" \
+    --track \
+    --scl_fct "${scl_fct}" \
+    --dep_min "${dep_min}" \
+    --err_out "${dir_alf}/logs" \
+    --slurm \
+         >> >(tee -a "${exc_log}.stdout.txt") \
+        2>> >(tee -a "${exc_log}.stderr.txt")
+
+#  Run driver script to generate tracks sans 'dep_min'
+bash "${dir_scr}/${execute}" \
+    --verbose \
+    --fil_ip "${fil_ip}" \
+    --fil_in "${fil_in}" \
+    --dir_out "${dir_alf}/dm_n" \
+    --typ_out "${typ_out}" \
+    --track \
+    --scl_fct "${scl_fct}" \
+    --err_out "${dir_alf}/logs" \
+    --slurm \
+         >> >(tee -a "${exc_log}.stdout.txt") \
+        2>> >(tee -a "${exc_log}.stderr.txt")
+
+#  Cleanup: Compress logs and remove empty files ------------------------------
+bash "${dir_scr}/compress_remove_files.sh" --dir_fnd "${dir_alf}/logs"
+# ls -lhaFG "${dir_alf}/logs"  ## Uncomment to check directory for track logs ##
+```
+</details>
+<br />
+
+<a id="i-compute-coverage-with-the-spike-in-method"></a>
+### I. Compute coverage with the spike-in method.
+<details>
+<summary><i>Text: Compute coverage with the spike-in method.</i></summary>
+<br />
+
+This section describes the steps to calculate spike-in normalized ChIP-seq coverage. `#TODO`
+</details>
+<br />
+
+<details>
+<summary><i>Bash code: Compute coverage with the spike-in method.</i></summary>
+
+```bash
+#!/bin/bash
+
+#  Optional: Request an interactive node --------------------------------------
+# grabnode  ## Uncomment to request 1 core, 20 GB memory, 1 day, no GPU ##
+
+
+#  Define variables -----------------------------------------------------------
+debug=true
+
+#  Set hardcoded paths, values, etc.
+dir_bas="${HOME}/repos"  ## WARNING: Change as needed ##
+dir_rep="${dir_bas}/protocol_chipseq_signal_norm"
+dir_scr="${dir_rep}/scripts"
+dir_fnc="${dir_scr}/functions"
+dir_dat="${dir_rep}/data"
+dir_pro="${dir_dat}/processed"
+
+aligner="bowtie2"
+a_type="global"
+req_flg=true
+flg="$(if ${req_flg}; then echo "2"; else echo "NA"; fi)"
+mapq=1
+details="${aligner}_${a_type}_flag-${flg}_mapq-${mapq}"
+
+dir_aln="${dir_pro}/align_reads/${details}"
+dir_bam="${dir_aln}/sc"
+dir_cvg="${dir_pro}/compute_coverage/${details}"
+dir_nrm="${dir_cvg}/norm"
+dir_tbl="${dir_cvg}/tables"
+dir_spk="${dir_cvg}/spike"
+
+env_nam="env_analyze"
+execute="execute_compute_coverage_ratio.sh"
+
+day="$(date '+%Y-%m%d')"
+exc_log="${dir_spk}/logs/${day}.$(basename "${execute}" ".sh")"
+
+typ_cvg="spike"
+tbl_spk="${dir_tbl}/ChIP_WT_G1-G2M-Q_Hho1-Hmo1_${typ_cvg}.tsv"
+
+#  Set hardcoded argument assignments
+# shellcheck disable=SC1091
+source "${dir_fnc}/extract_fld_str.sh"
+
+fil_ip=$(
+    sed \
+        -e "s:${dir_bam}:${dir_nrm}:g" \
+        -e "s:.bam:.${typ_out}:g" \
+        < <(extract_fld_str 1 "${tbl_spk}")
+)
+fil_in=$(
+    sed \
+        -e "s:${dir_bam}:${dir_nrm}:g" \
+        -e "s:.bam:.${typ_out}:g" \
+        < <(extract_fld_str 3 "${tbl_spk}")
+)
+dir_out="${dir_spk}"
+typ_out="bdg.gz"
+scl_fct="$(extract_fld_str  5 "${tbl_spk}")"
+dep_min="$(extract_fld_str 21 "${tbl_spk}")"  ## WARNING: See above note ##
+err_out="${dir_spk}/logs"
+nam_job="compute_coverage_ratio_${typ_cvg}"
+
+if ${debug}; then
+    echo "####################################"
+    echo "## Hardcoded variable assignments ##"
+    echo "####################################"
+    echo ""
+    echo "debug=${debug}"
+    echo ""
+    echo "dir_bas=${dir_bas}"
+    echo "dir_rep=${dir_rep}"
+    echo "dir_scr=${dir_scr}"
+    echo "dir_fnc=${dir_fnc}"
+    echo "dir_dat=${dir_dat}"
+    echo "dir_pro=${dir_pro}"
+    echo ""
+    echo "aligner=${aligner}"
+    echo "a_type=${a_type}"
+    echo "req_flg=${req_flg}"
+    echo "flg=${flg}"
+    echo "mapq=${mapq}"
+    echo "details=${details}"
+    echo ""
+    echo "dir_aln=${dir_aln}"
+    echo "dir_bam=${dir_bam}"
+    echo "dir_cvg=${dir_cvg}"
+    echo "dir_nrm=${dir_nrm}"
+    echo "dir_tbl=${dir_tbl}"
+    echo "dir_spk=${dir_spk}"
+    echo ""
+    echo "pattern=${pattern}"
+    echo "include=${include}"
+    echo "exclude=${exclude}"
+    echo ""
+    echo "env_nam=${env_nam}"
+    echo "execute=${execute}"
+    echo ""
+    echo "day=${day}"
+    echo "exc_log=${exc_log}"
+    echo ""
+    echo "typ_cvg=${typ_cvg}"
+    echo "tbl_spk=${tbl_spk}"
+    echo ""
+    echo "fil_ip=${fil_ip}"
+    echo "fil_in=${fil_in}"
+    echo "dir_out=${dir_out}"
+    echo "typ_out=${typ_out}"
+    echo "scl_fct=${scl_fct}"
+    echo "dep_min=${dep_min}"
+    echo "err_out=${err_out}"
+    echo "nam_job=${nam_job}"
     echo ""
     echo ""
 fi
 
 
-#  Generate tracks using 'dep_min'
-bash "${dir_scr}/${scr_trk}" \
+#  Create required directories if necessary -----------------------------------
+mkdir -p ${dir_spk}/{dm_y,dm_n,logs}
+
+#  Debug outdirectory paths
+if ${debug}; then
+    echo "#####################################"
+    echo "## Outdirectory paths and contents ##"
+    echo "#####################################"
+    echo ""
+    echo "%%%%%%%%%%%%%"
+    echo "%% dir_nrm %%"
+    echo "%%%%%%%%%%%%%"
+    echo ""
+    ls -lhaFG "${dir_nrm}"
+    echo ""
+    ls -lhaFG "${dir_nrm}/logs"
+    echo ""
+    echo "%%%%%%%%%%%%%"
+    echo "%% dir_tbl %%"
+    echo "%%%%%%%%%%%%%"
+    echo ""
+    ls -lhaFG "${dir_tbl}"
+    echo ""
+    ls -lhaFG "${dir_tbl}/logs"
+    echo ""
+    echo "%%%%%%%%%%%%%"
+    echo "%% dir_spk %%"
+    echo "%%%%%%%%%%%%%"
+    echo ""
+    ls -lhaFG "${dir_spk}/dm_y"
+    echo ""
+    ls -lhaFG "${dir_spk}/dm_n"
+    echo ""
+    ls -lhaFG "${dir_spk}/logs/"
+    echo ""
+    echo ""
+fi
+
+
+#  Activate the environment and check dependencies ----------------------------
+#  Source utility functions
+# shellcheck disable=SC1091
+{
+    source "${dir_fnc}/check_program_path.sh"
+    source "${dir_fnc}/echo_warning.sh"
+    source "${dir_fnc}/handle_env.sh"
+}
+
+#  Activate the required environment
+handle_env "${env_nam}"
+
+#  Check the availability of necessary dependencies such as GNU Parallel and
+#+ SLURM sbatch
+check_program_path awk
+check_program_path parallel
+check_program_path python
+check_program_path samtools
+check_program_path sbatch ||
+    echo_warning \
+        "SLURM is not available on this system. Do not use the '--slurm'" \
+        "flag with the driver script."
+
+
+#  Generate siQ-scaled coverage tracks ----------------------------------------
+if ${debug}; then
+    echo "############################################"
+    echo "## Call to driver script with '--dep_min' ##"
+    echo "############################################"
+    echo ""
+    echo "bash ${dir_scr}/${execute} \\"
+    echo "    --verbose \\"
+    echo "    --fil_ip ${fil_ip} \\"
+    echo "    --fil_in ${fil_in} \\"
+    echo "    --dir_out ${dir_spk}/dm_y \\"
+    echo "    --typ_out ${typ_out} \\"
+    echo "    --track \\"
+    echo "    --scl_fct ${scl_fct} \\"
+    echo "    --dep_min ${dep_min} \\"
+    echo "    --err_out ${dir_spk}/logs \\"
+    echo "    --slurm \\"
+    echo "         >> >(tee -a ${exc_log}.stdout.txt) \\"
+    echo "        2>> >(tee -a ${exc_log}.stderr.txt)"
+    echo ""
+    echo ""
+fi
+
+#  Run driver script to generate tracks with 'dep_min'
+bash "${dir_scr}/${execute}" \
     --verbose \
-    --fil_ip "${ser_num}" \
-    --fil_in "${ser_den}" \
-    --dir_out "${dir_alf}/tracks/bin_10_dm_yes" \
+    --fil_ip "${fil_ip}" \
+    --fil_in "${fil_in}" \
+    --dir_out "${dir_spk}/dm_y" \
     --typ_out "${typ_out}" \
     --track \
     --scl_fct "${scl_fct}" \
     --dep_min "${dep_min}" \
-    --err_out "${dir_alf}/tracks/logs" \
+    --err_out "${dir_spk}/logs" \
     --slurm \
-         >> >(tee -a "${exc_trk}.stdout.txt") \
-        2>> >(tee -a "${exc_trk}.stderr.txt")
+         >> >(tee -a "${exc_log}.stdout.txt") \
+        2>> >(tee -a "${exc_log}.stderr.txt")
 
-#  Generate tracks sans 'dep_min'
-bash "${dir_scr}/${scr_trk}" \
+#  Run driver script to generate tracks sans 'dep_min'
+bash "${dir_scr}/${execute}" \
     --verbose \
-    --fil_ip "${ser_num}" \
-    --fil_in "${ser_den}" \
-    --dir_out "${dir_alf}/tracks/bin_10_dm_no" \
+    --fil_ip "${fil_ip}" \
+    --fil_in "${fil_in}" \
+    --dir_out "${dir_spk}/dm_n" \
     --typ_out "${typ_out}" \
     --track \
     --scl_fct "${scl_fct}" \
-    --err_out "${dir_alf}/tracks/logs" \
+    --err_out "${dir_spk}/logs" \
     --slurm \
-         >> >(tee -a "${exc_trk}.stdout.txt") \
-        2>> >(tee -a "${exc_trk}.stderr.txt")
+         >> >(tee -a "${exc_log}.stdout.txt") \
+        2>> >(tee -a "${exc_log}.stderr.txt")
 
 #  Cleanup: Compress logs and remove empty files ------------------------------
-bash "${dir_scr}/compress_remove_files.sh" --dir_fnd "${dir_alf}/tables/logs"
-bash "${dir_scr}/compress_remove_files.sh" --dir_fnd "${dir_alf}/tracks/logs"
+bash "${dir_scr}/compress_remove_files.sh" --dir_fnd "${dir_spk}/logs"
+# ls -lhaFG "${dir_spk}/logs"  ## Uncomment to check directory for track logs ##
+```
+</details>
+<br />
 
-# ls -lhaFG "${dir_alf}/tables/logs"  ## Uncomment to check directory for table logs ##
-# ls -lhaFG "${dir_alf}/tracks/logs"  ## Uncomment to check directory for track logs ##
+<a id="j-compute-log2-ratios-of-ip-to-input-coverage"></a>
+### J. Compute log2 ratios of IP to input coverage.
+<details>
+<summary><i>Text: Compute log2 ratios of IP to input coverage.</i></summary>
+<br />
+
+`#TODO`
+</details>
+<br />
+
+<details>
+<summary><i>Bash code: Compute log2 ratios of IP to input coverage.</i></summary>
+
+```bash
+#!/bin/bash
+
+#  Optional: Request an interactive node --------------------------------------
+# grabnode  ## Uncomment to request 1 core, 20 GB memory, 1 day, no GPU ##
+
+
+#  Define variables -----------------------------------------------------------
+debug=true
+
+#  Define base directory for repository
+dir_bas="${HOME}/repos"  ## WARNING: Change as needed ##
+dir_rep="${dir_bas}/protocol_chipseq_signal_norm"
+dir_scr="${dir_rep}/scripts"
+dir_fnc="${dir_scr}/functions"
+dir_dat="${dir_rep}/data"
+dir_pro="${dir_dat}/processed"
+
+aligner="bowtie2"
+a_type="global"
+req_flg=true
+flg="$(if ${req_flg}; then echo "2"; else echo "NA"; fi)"
+mapq=1
+details="${aligner}_${a_type}_flag-${flg}_mapq-${mapq}"
+
+dir_aln="${dir_pro}/align_reads/${details}"
+dir_bam="${dir_aln}/sc"
+dir_cvg="${dir_pro}/compute_coverage/${details}"
+dir_nrm="${dir_cvg}/norm"
+dir_tbl="${dir_cvg}/tables"
+dir_lg2="${dir_cvg}/log2"
+
+env_nam="env_analyze"
+execute="execute_compute_coverage_ratio.sh"
+
+day="$(date '+%Y-%m%d')"
+exc_log="${dir_lg2}/logs/${day}.$(basename "${execute}" ".sh")"
+
+typ_cvg="log2"
+tbl_lg2="${dir_tbl}/ChIP_WT_G1-G2M-Q_Hho1-Hmo1_alpha.tsv"
+
+#  Set hardcoded argument assignments
+# shellcheck disable=SC1091
+source "${dir_fnc}/extract_fld_str.sh"
+
+fil_ip=$(
+    sed \
+        -e "s:${dir_bam}:${dir_nrm}:g" \
+        -e "s:.bam:.${typ_out}:g" \
+        < <(extract_fld_str 1 "${tbl_lg2}")
+)
+fil_in=$(
+    sed \
+        -e "s:${dir_bam}:${dir_nrm}:g" \
+        -e "s:.bam:.${typ_out}:g" \
+        < <(extract_fld_str 2 "${tbl_lg2}")
+)
+dir_out="${dir_lg2}"
+typ_out="bdg.gz"
+dep_min="$(extract_fld_str 24 "${tbl_lg2}")"  ## WARNING: See above note ##
+err_out="${dir_lg2}/logs"
+nam_job="compute_coverage_ratio_${typ_cvg}"
+
+if ${debug}; then
+    echo "####################################"
+    echo "## Hardcoded variable assignments ##"
+    echo "####################################"
+    echo ""
+    echo "dir_bas=${dir_bas}"
+    echo "dir_rep=${dir_rep}"
+    echo "dir_scr=${dir_scr}"
+    echo "dir_fnc=${dir_fnc}"
+    echo "dir_dat=${dir_dat}"
+    echo "dir_pro=${dir_pro}"
+    echo ""
+    echo "aligner=${aligner}"
+    echo "a_type=${a_type}"
+    echo "req_flg=${req_flg}"
+    echo "flg=${flg}"
+    echo "mapq=${mapq}"
+    echo "details=${details}"
+    echo ""
+    echo "dir_aln=${dir_aln}"
+    echo "dir_bam=${dir_bam}"
+    echo "dir_cvg=${dir_cvg}"
+    echo "dir_nrm=${dir_nrm}"
+    echo "dir_tbl=${dir_tbl}"
+    echo "dir_lg2=${dir_lg2}"
+    echo ""
+    echo "env_nam=${env_nam}"
+    echo "execute=${execute}"
+    echo ""
+    echo "day=${day}"
+    echo "exc_log=${exc_log}"
+    echo ""
+    echo "typ_cvg=${typ_cvg}"
+    echo "tbl_lg2=${tbl_lg2}"
+    echo ""
+    echo "fil_ip=${fil_ip}"
+    echo "fil_in=${fil_in}"
+    echo "dir_out=${dir_out}"
+    echo "typ_out=${typ_out}"
+    echo "dep_min=${dep_min}"
+    echo "err_out=${err_out}"
+    echo "nam_job=${nam_job}"
+    echo ""
+    echo ""
+fi
+
+
+#  Create required directories if necessary -----------------------------------
+# shellcheck disable=SC2086
+mkdir -p ${dir_lg2}/{dm_y,dm_n,logs}
+
+#  Debug outdirectory paths
+if ${debug}; then
+    echo "#####################################"
+    echo "## Outdirectory paths and contents ##"
+    echo "#####################################"
+    echo ""
+    echo "%%%%%%%%%%%%%"
+    echo "%% dir_nrm %%"
+    echo "%%%%%%%%%%%%%"
+    echo ""
+    ls -lhaFG "${dir_nrm}"
+    echo ""
+    ls -lhaFG "${dir_nrm}/logs"
+    echo ""
+    echo "%%%%%%%%%%%%%"
+    echo "%% dir_tbl %%"
+    echo "%%%%%%%%%%%%%"
+    echo ""
+    ls -lhaFG "${dir_tbl}"
+    echo ""
+    ls -lhaFG "${dir_tbl}/logs"
+    echo ""
+    echo "%%%%%%%%%%%%%"
+    echo "%% dir_lg2 %%"
+    echo "%%%%%%%%%%%%%"
+    echo ""
+    ls -lhaFG "${dir_lg2}/dm_y"
+    echo ""
+    ls -lhaFG "${dir_lg2}/dm_n"
+    echo ""
+    ls -lhaFG "${dir_lg2}/logs/"
+    echo ""
+    echo ""
+fi
+
+
+#  Activate the environment and check dependencies ----------------------------
+#  Source utility functions
+# shellcheck disable=SC1091
+{
+    source "${dir_fnc}/check_program_path.sh"
+    source "${dir_fnc}/echo_warning.sh"
+    source "${dir_fnc}/handle_env.sh"
+}
+
+#  Activate the required environment
+handle_env "${env_nam}"
+
+#  Check the availability of necessary dependencies such as GNU Parallel and
+#+ SLURM sbatch
+check_program_path awk
+check_program_path parallel
+check_program_path python
+check_program_path samtools
+check_program_path sbatch ||
+    echo_warning \
+        "SLURM is not available on this system. Do not use the '--slurm'" \
+        "flag with the driver script."
+
+
+#  Generate siQ-scaled coverage tracks ----------------------------------------
+if ${debug}; then
+    echo "############################################"
+    echo "## Call to driver script with '--dep_min' ##"
+    echo "############################################"
+    echo ""
+    echo "bash ${dir_scr}/${execute} \\"
+    echo "    --verbose \\"
+    echo "    --fil_ip ${fil_ip} \\"
+    echo "    --fil_in ${fil_in} \\"
+    echo "    --dir_out ${dir_lg2}/dm_y \\"
+    echo "    --typ_out ${typ_out} \\"
+    echo "    --track \\"
+    echo "    --dep_min ${dep_min} \\"
+    echo "    --log2 \\"
+    echo "    --err_out ${dir_lg2}/logs \\"
+    echo "    --slurm \\"
+    echo "         >> >(tee -a ${exc_log}.stdout.txt) \\"
+    echo "        2>> >(tee -a ${exc_log}.stderr.txt)"
+    echo ""
+    echo ""
+fi
+
+#  Generate tracks using 'dep_min'
+bash "${dir_scr}/${execute}" \
+    --verbose \
+    --fil_ip "${fil_ip}" \
+    --fil_in "${fil_in}" \
+    --dir_out "${dir_lg2}/dm_y" \
+    --typ_out "${typ_out}" \
+    --track \
+    --dep_min "${dep_min}" \
+    --log2 \
+    --err_out "${dir_lg2}/logs" \
+    --slurm \
+         >> >(tee -a "${exc_log}.stdout.txt") \
+        2>> >(tee -a "${exc_log}.stderr.txt")
+
+#  Generate tracks sans 'dep_min'
+bash "${dir_scr}/${execute}" \
+    --verbose \
+    --fil_ip "${fil_ip}" \
+    --fil_in "${fil_in}" \
+    --dir_out "${dir_lg2}/dm_n" \
+    --typ_out "${typ_out}" \
+    --track \
+    --log2 \
+    --err_out "${dir_lg2}/logs" \
+    --slurm \
+         >> >(tee -a "${exc_log}.stdout.txt") \
+        2>> >(tee -a "${exc_log}.stderr.txt")
+
+
+#  Cleanup: Compress logs and remove empty files ------------------------------
+bash "${dir_scr}/compress_remove_files.sh" --dir_fnd "${dir_lg2}/logs"
+
+# ls -lhaFG "${dir_lg2}/tracks/logs"  ## Uncomment to check directory for track logs ##
+# find . -maxdepth 1 -type f -size 0 -delete -o -type f -not -name "*.gz" -exec gzip {} +
 ```
 </details>
 <br />
@@ -1834,123 +2260,6 @@ done
 </details>
 <br />
 
-<a id="h-compute-coverage-using-the-spike-in-method"></a>
-### H. Compute coverage using the spike-in method.
-<details>
-<summary><i>Text: Compute coverage using the spike-in method.</i></summary>
-<br />
-
-This section describes the steps to calculate spike-in normalized ChIP-seq coverage.
-</details>
-<br />
-
-<details>
-<summary><i>Bash code: Generate a TSV file of sample-specific spike-in-derived scaling factors.</i></summary>
-
-```bash
-#!/bin/bash
-
-#  Optional: Request an interactive node --------------------------------------
-# grabnode  ## Uncomment to request 1 core, 20 GB memory, 1 day, no GPU ##
-
-
-#  Define variables -----------------------------------------------------------
-#  Define variables for directory paths, etc.
-dir_bas="${HOME}/repos"  ## WARNING: Change as needed ##
-dir_rep="${dir_bas}/protocol_chipseq_signal_norm"
-dir_scr="${dir_rep}/scripts"
-dir_fnc="${dir_scr}/functions"
-dir_dat="${dir_rep}/data"
-dir_pro="${dir_dat}/processed"
-{
-    aligner="bowtie2"
-    a_type="global"
-    req_flg=true
-    flg="$(if ${req_flg}; then echo "2"; else echo "NA"; fi)"
-    mapq=1
-    det_bam="flag-${flg}_mapq-${mapq}"
-    det_cvg="${aligner}_${a_type}_${det_bam}"
-}
-dir_aln="${dir_pro}/align_${aligner}_${a_type}"
-dir_bam="${dir_aln}/${det_bam}/sc"
-dir_cvg="${dir_pro}/compute_coverage"
-dir_out="${dir_cvg}/${det_cvg}/spike/tables"
-env_nam="env_analyze"
-day="$(date '+%Y-%m%d')"
-
-#  Set hardcoded argument assignments, etc.
-threads=8
-include="IP*,*Brn1*"  # include="IP*,*Hmo1*"  # include="IP*,*Hho1*"
-infiles="$(  ## WARNING: Change search parameters as needed ##
-    bash "${dir_scr}/find_files.sh" \
-        --dir_fnd "${dir_bam}" \
-        --pattern "*.bam" \
-        --include "${include}"
-)"
-case "${include}" in
-    IP*Hho1*) outfile="${dir_out}/IP_WT_G1-G2M-Q_Hho1_6336-6337.tsv" ;;
-    IP*Hmo1*) outfile="${dir_out}/IP_WT_G1-G2M-Q_Hmo1_7750-7751.tsv" ;;
-    IP*Brn1*) outfile="${dir_out}/IP_WT_log-Q_Brn1_rep1-rep2-rep3.tsv" ;;
-    *) echo "Error: No matching pattern found for '${include}'" >&2 ;;
-esac
-err_out="${dir_out}/logs"
-scr_mng="${HOME}/miniforge3/etc/profile.d/conda.sh"
-
-#  Using the date and outfile, set path and prefix for driver script logs
-exc_tbl="${dir_out}/logs/${day}.execute.$(basename "${outfile}" .tsv)"
-
-#  Create directory structure for storing output tables and tracks associated
-#+ with different normalization methods (alpha, spike, norm, raw)
-mkdir -p ${dir_cvg}/${det_cvg}/{alpha,spike}/tables/{docs,logs}
-mkdir -p ${dir_cvg}/${det_cvg}/{alpha,norm,raw,spike}/tracks/{docs,logs}
-
-#  Source utility functions
-source "${dir_fnc}/check_program_path.sh"
-source "${dir_fnc}/echo_warning.sh"
-source "${dir_fnc}/handle_env.sh"
-
-#  Activate the required environment
-handle_env "${env_nam}"
-
-#  Check the availability of necessary dependencies such as GNU Parallel,
-#+ Python, and SLURM sbatch
-check_program_path awk
-check_program_path parallel
-check_program_path python
-check_program_path samtools
-check_program_path sbatch ||
-    echo_warning \
-        "SLURM is not available on this system. Do not use the '--slurm'" \
-        "flag with the driver script."
-
-#  Run the driver script to calculate per-sample spike-in-derived scaling
-#+ factors
-bash "${dir_scr}/execute_calculate_scaling_factor_spike.sh" \
-    --verbose \
-    --threads "${threads}" \
-    --infiles "${infiles}" \
-    --outfile "${outfile}" \
-    --err_out "${err_out}" \
-    --flg_mc \
-    --slurm \
-         > >(tee -a "${exc_tbl}.stdout.txt") \
-        2> >(tee -a "${exc_tbl}.stderr.txt")
-
-#  Relativize the scaling factors to the maximum value, and sort the outfile
-#+ rows
-python "${dir_scr}/relativize_scaling_factors.py" --infile "${outfile}" \
-    | awk 'NR == 1; NR > 1 && NF { print | "sort" }' \
-        > "${dir_out}/tmp.txt"
-
-#  Replace the original outfile with the newly relativized and sorted version
-mv -f "${dir_out}/tmp.txt" "${outfile}"
-
-#  Optional: Check the contents of the outfile
-# cat "${outfile}"
-```
-</details>
-<br />
-
 <details>
 <summary><i>Bash code: Compute alpha-scaled coverage using the TSV file.</i></summary>
 
@@ -1972,7 +2281,7 @@ outtype="bigwig"
 time="0:30:00"
 dir_out="${dir_pro}/compute_coverage/${det_cvg}/spike/tracks"
 err_out="${dir_out}/logs"
-exc_tbl="${err_out}/${day}.execute.${nam_job}"
+execute="${err_out}/${day}.execute.${nam_job}"
 
 #  Loop over each line (skipping the header) to extract 'sample' and 'scaled' columns
 while IFS=$'\t' read -r sample sf scaled main_ip spike_ip main_in spike_in; do
@@ -2008,8 +2317,8 @@ while IFS=$'\t' read -r sample sf scaled main_ip spike_ip main_in spike_in; do
                     --outtype "${outtype}" \\
                     --threads ${threads} \\
                     --siz_bin 1 \\
-                         > >(tee -a "${exc_tbl}.${outstem}.stdout.txt") \\
-                        2> >(tee -a "${exc_tbl}.${outstem}.stderr.txt")
+                         > >(tee -a "${execute}.${outstem}.stdout.txt") \\
+                        2> >(tee -a "${execute}.${outstem}.stderr.txt")
 EOM
     echo ""
     echo ""
@@ -2028,8 +2337,8 @@ EOM
                 --outtype "${outtype}" \
                 --threads ${threads} \
                 --siz_bin 1 \
-                     > >(tee -a "${exc_tbl}.${outstem}.stdout.txt") \
-                    2> >(tee -a "${exc_tbl}.${outstem}.stderr.txt")
+                     > >(tee -a "${execute}.${outstem}.stdout.txt") \
+                    2> >(tee -a "${execute}.${outstem}.stderr.txt")
 
     sleep 0.3
 done < <(tail -n +2 "${outfile}")

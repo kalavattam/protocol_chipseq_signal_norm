@@ -61,30 +61,24 @@ function set_interactive() {
     req_flg=true
     flg="$(if ${req_flg}; then echo "2"; else echo "NA"; fi)"
     mapq=1
-    det_bam="flag-${flg}_mapq-${mapq}"
-    det_cov="${aligner}_${a_type}_${det_bam}"
+    details="${aligner}_${a_type}_flag-${flg}_mapq-${mapq}"
 
-    dir_aln="${dir_pro}/align_${aligner}_${a_type}"
-    dir_bam="${dir_aln}/${det_bam}/sc"
-    dir_cov="${dir_pro}/compute_coverage"
+    dir_aln="${dir_pro}/align_reads/${details}"
+    dir_bam="${dir_aln}/sc"
+    dir_cvg="${dir_pro}/compute_coverage/${details}"
     typ_trk="norm"
-    dir_trk="${dir_cov}/${det_cov}/${typ_trk}/tracks"
+    dir_trk="${dir_cvg}/${typ_trk}"
 
     pattern="*.bam"
-    include=""  # "IP*"
-    exclude="*Brn1*"
 
     #  Set hardcoded argument assignments
     verbose=true
     dry_run=true
     threads=8
-    # infiles=""
     infiles="$(  ## WARNING: Change search parameters as needed ##
         bash "${dir_scr}/find_files.sh" \
             --dir_fnd "${dir_bam}" \
-            --pattern "${pattern}" \
-            --include "${include}" \
-            --exclude "${exclude}"
+            --pattern "${pattern}"
     )"
     dir_out="${dir_trk}"
     typ_out="bdg.gz"
@@ -512,8 +506,11 @@ if ${verbose}; then
     echo "###################################"
     echo ""
     echo "arr_infile=( ${arr_infile[*]} )"
+    echo ""
     echo "arr_outfile=( ${arr_outfile[*]} )"
+    echo ""
     echo "arr_scl_fct=( ${arr_scl_fct[*]} )"
+    echo ""
     echo "arr_usr_frg=( ${arr_usr_frg[*]} )"
     echo ""
     echo ""
@@ -538,16 +535,15 @@ if ${verbose}; then
     echo "usr_frg=\"${usr_frg}\""
     echo ""
     echo ""
-    echo ""
 fi
 
 # shellcheck disable=SC2016,SC2090
 if ${slurm}; then
     #  SLURM execution
     if ${dry_run} || ${verbose}; then
-        echo "####################"
-        echo "## Call to sbatch ##"
-        echo "####################"
+        echo "#####################"
+        echo "## SLURM execution ##"
+        echo "#####################"
         echo ""
         echo "sbatch \\"
         echo "    --job-name=${nam_job} \\"
@@ -620,36 +616,41 @@ else
     #  GNU Parallel execution
     if [[ ${threads} -gt 1 ]]; then
         config="${err_out}/${nam_job}.config_parallel.txt"
+
+        if [[ -f "${config}" ]]; then rm "${config}"; fi
         touch "${config}" || {
             echo_error "Failed to create a GNU Parallel configuration file."
             exit_1
         }
 
-        for i in "${!arr_infile[@]}"; do
+        for idx in "${!arr_infile[@]}"; do
             echo \
                 "${env_nam}" \
                 "${scr_cvg}" \
                 "${threads}" \
-                "${arr_infile[i]}" \
-                "${arr_outfile[i]}" \
+                "${arr_infile[idx]}" \
+                "${arr_outfile[idx]}" \
                 "${siz_bin}" \
                 "${typ_cvg}" \
-                "${arr_scl_fct[i]}" \
-                "${arr_usr_frg[i]}" \
+                "${arr_scl_fct[idx]}" \
+                "${arr_usr_frg[idx]}" \
                 "${rnd}" \
                 "${err_out}" \
                 "${nam_job}" \
                     >> "${config}"
         done
+        cat "${config}"
+
+        cmd="bash \"${scr_sub}\" {1} {2} {3} {4} {5} {6} {7} {8} {9} {10} {11} {12}"
 
         if ${dry_run} || ${verbose}; then
-            echo "##########################################"
-            echo "## Parallel call(s) to compute coverage ##"
-            echo "##########################################"
+            echo "############################"
+            echo "## GNU Parallel execution ##"
+            echo "############################"
             echo ""
 
             parallel --colsep ' ' --jobs "${par_job}" --dryrun \
-                "bash \"${scr_sub}\" {1} {2} {3} {4} {5} {6} {7} {8} {9} {10} {11} {12}" \
+                "${cmd}" \
                 :::: "${config}"
 
             echo ""
@@ -658,16 +659,16 @@ else
 
         if ! ${dry_run}; then
             parallel --colsep ' ' --jobs "${par_job}" \
-                "bash \"${scr_sub}\" {1} {2} {3} {4} {5} {6} {7} {8} {9} {10} {11} {12}" \
+                "${cmd}" \
                 :::: "${config}"
         fi
     else
         #  Serial execution
         pth_std="${err_out}/${nam_job}"
         if ${dry_run} || ${verbose}; then
-            echo "########################################"
-            echo "## Serial call(s) to compute coverage ##"
-            echo "########################################"
+            echo "######################"
+            echo "## Serial execution ##"
+            echo "######################"
             echo ""
             echo "bash ${scr_sub} \\"
             echo "    ${env_nam} \\"

@@ -141,10 +141,32 @@ function process_sample() {
 
     if ${debug}; then debug_var "sf=${sf}"; fi
 
+    if ${debug}; then
+        echo "{"
+        echo "     dm_fr_1=\$(calculate_factor_depth ${dep_in} 1  12157105 \"frag\" ${rnd})"
+        echo "     dm_fr_5=\$(calculate_factor_depth ${dep_in} 5  12157105 \"frag\" ${rnd})"
+        echo "    dm_fr_10=\$(calculate_factor_depth ${dep_in} 10 12157105 \"frag\" ${rnd})"
+        echo "    dm_fr_20=\$(calculate_factor_depth ${dep_in} 20 12157105 \"frag\" ${rnd})"
+        echo "    dm_fr_30=\$(calculate_factor_depth ${dep_in} 30 12157105 \"frag\" ${rnd})"
+        echo "    dm_fr_40=\$(calculate_factor_depth ${dep_in} 40 12157105 \"frag\" ${rnd})"
+        echo "    dm_fr_50=\$(calculate_factor_depth ${dep_in} 50 12157105 \"frag\" ${rnd})"
+        echo ""
+        echo "     dm_nm_1=\$(calculate_factor_depth ${dep_in} 1  12157105 \"norm\" ${rnd})"
+        echo "     dm_nm_5=\$(calculate_factor_depth ${dep_in} 5  12157105 \"norm\" ${rnd})"
+        echo "    dm_nm_10=\$(calculate_factor_depth ${dep_in} 10 12157105 \"norm\" ${rnd})"
+        echo "    dm_nm_20=\$(calculate_factor_depth ${dep_in} 20 12157105 \"norm\" ${rnd})"
+        echo "    dm_nm_30=\$(calculate_factor_depth ${dep_in} 30 12157105 \"norm\" ${rnd})"
+        echo "    dm_nm_40=\$(calculate_factor_depth ${dep_in} 40 12157105 \"norm\" ${rnd})"
+        echo "    dm_nm_50=\$(calculate_factor_depth ${dep_in} 50 12157105 \"norm\" ${rnd})"
+        echo "}"
+        echo ""
+    fi
+
     #  Calculate input minimum depth values for common bin sizes
     # shellcheck disable=SC2086
     {
          dm_fr_1=$(calculate_factor_depth ${num_mn} 1  12157105 "frag" ${rnd})
+         dm_fr_5=$(calculate_factor_depth ${num_mn} 5  12157105 "frag" ${rnd})
         dm_fr_10=$(calculate_factor_depth ${num_mn} 10 12157105 "frag" ${rnd})
         dm_fr_20=$(calculate_factor_depth ${num_mn} 20 12157105 "frag" ${rnd})
         dm_fr_30=$(calculate_factor_depth ${num_mn} 30 12157105 "frag" ${rnd})
@@ -152,6 +174,7 @@ function process_sample() {
         dm_fr_50=$(calculate_factor_depth ${num_mn} 50 12157105 "frag" ${rnd})
 
          dm_nm_1=$(calculate_factor_depth ${num_mn} 1  12157105 "norm" ${rnd})
+         dm_nm_5=$(calculate_factor_depth ${num_mn} 5  12157105 "norm" ${rnd})
         dm_nm_10=$(calculate_factor_depth ${num_mn} 10 12157105 "norm" ${rnd})
         dm_nm_20=$(calculate_factor_depth ${num_mn} 20 12157105 "norm" ${rnd})
         dm_nm_30=$(calculate_factor_depth ${num_mn} 30 12157105 "norm" ${rnd})
@@ -162,18 +185,20 @@ function process_sample() {
     #  Debug output to verify input minimum depth values
     if ${debug}; then
         debug_var \
-            "dm_fr_1=${dm_fr_1}"   "dm_fr_10=${dm_fr_10}" "dm_fr_20=${dm_fr_20}" \
-            "dm_fr_30=${dm_fr_30}" "dm_fr_40=${dm_fr_40}" "dm_fr_50=${dm_fr_50}" \
-            "dm_nm_1=${dm_nm_1}"   "dm_nm_10=${dm_nm_10}" "dm_nm_20=${dm_nm_20}" \
-            "dm_nm_30=${dm_nm_30}" "dm_nm_40=${dm_nm_40}" "dm_nm_50=${dm_nm_50}"
+            "dm_fr_1=${dm_fr_1}"   "dm_fr_5=${dm_fr_5}"   "dm_fr_10=${dm_fr_10}" \
+            "dm_fr_20=${dm_fr_20}" "dm_fr_30=${dm_fr_30}" "dm_fr_40=${dm_fr_40}" \
+            "dm_fr_50=${dm_fr_50}" \
+            "dm_nm_1=${dm_nm_1}"   "dm_nm_5=${dm_nm_5}"   "dm_nm_10=${dm_nm_10}" \
+            "dm_nm_20=${dm_nm_20}" "dm_nm_30=${dm_nm_30}" "dm_nm_40=${dm_nm_40}" \
+            "dm_nm_50=${dm_nm_50}"
     fi
 
     #  Print the IP sample and scaling factor to the outfile
     prt_1="${mp}\t${sp}\t${mn}\t${sn}\t${sf}\t"
     prt_2="${num_mp}\t${num_sp}\t${num_mn}\t${num_sn}\t"
-    prt_3="${dm_fr_1}\t${dm_fr_10}\t${dm_fr_20}\t${dm_fr_30}\t"
+    prt_3="${dm_fr_1}\t${dm_fr_5}\t${dm_fr_10}\t${dm_fr_20}\t${dm_fr_30}\t"
     prt_4="${dm_fr_40}\t${dm_fr_50}\t"
-    prt_5="${dm_nm_1}\t${dm_nm_10}\t${dm_nm_20}\t${dm_nm_30}\t"
+    prt_5="${dm_nm_1}\t${dm_nm_5}\t${dm_nm_10}\t${dm_nm_20}\t${dm_nm_30}\t"
     prt_6="${dm_nm_40}\t${dm_nm_50}"
         
     echo -e "${prt_1}${prt_2}${prt_3}${prt_4}${prt_5}${prt_6}" >> "${fil_out}"
@@ -247,6 +272,7 @@ $(basename "${0}") takes the following keyword arguments:
   -sn, --ser_sin  Comma-separated serialized string of sample "spike-in" input
                   BAM files.
   -fo, --fil_out  TSV output file of sample spike-in-derived scaling factors.
+  -fd, --flg_dep  #TODO
    -r, --rnd      Number of decimal places for rounding the spike-in scaling
                   and minimum input depth factors (default: ${rnd}).
   -eo, --err_out  Directory to store stderr and stdout outfiles.
