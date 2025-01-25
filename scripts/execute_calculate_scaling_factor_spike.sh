@@ -130,11 +130,12 @@ Usage:
 Description:
   The driver script 'execute_calculate_scaling_factor_spike.sh' coordinates the
   calculation of spike-in-derived scaling factors for ChIP-seq data. This
-  involves counting alignments in "main" and spike-in S. cerevisiae BAM files,
-  calculating scaling coefficients using a custom Python script, and outputting
-  results to a specified table file. [#TODO: Note on calculating 'dep_min' for
-  modes "frag" and "norm" at commen bin sizes.] The script facilitates serial
-  processing or parallelized processing with SLURM or GNU Parallel.
+  involves counting alignments in "main" (S. cerevisiae) and spike-in
+  (S. pombe) BAM files, calculating scaling coefficients using a custom Python
+  script, and outputting results to a specified table file. [#TODO: Note on
+  calculating 'dep_min' for modes "frag" and "norm" at commen bin sizes.] The
+  script facilitates serial processing or parallelized processing with SLURM or
+  GNU Parallel.
 
 Arguments:
    -h, --help     Display this help message and exit (0).

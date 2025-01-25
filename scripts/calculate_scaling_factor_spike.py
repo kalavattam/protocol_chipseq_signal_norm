@@ -10,10 +10,9 @@
 #    This script calculates a spike-in-derived scaling factor for ChIP-seq
 #    datasets. It requires tallies of "main" and spike-in alignments for
 #    corresponding IP (immunoprecipitation) and input data. The script computes
-#    the ratio of spike-in to main alignments for both IP and input data, and
-#    derives the final scaling factor by dividing the ratio of spike-in to main
-#    counts for the input sample by the ratio of spike-in to main counts for
-#    the IP sample.
+#    the IP ratio of spike-in to main alignments and the input ratio of
+#    spike-in to main alignments data, deriving the final scaling factor by
+#    dividing the input ratio by the IP ratio.
 #
 #    For more details, see the following URL: biostars.org/p/9572653/#9572655
 #
@@ -25,10 +24,10 @@
 #         --spike_in <int>
 #
 # Arguments:
-#     -mp, --main_ip  (int): Tally of main alignments in IP sample.
-#     -sp, --spike_ip (int): Tally of spike-in alignments in IP sample.
-#     -mn, --main_in  (int): Tally of main alignments in input sample.
-#     -sn, --spike_in (int): Tally of spike-in alignments in input sample.
+#     -mp, --main_ip  (int): Number of "main" alignments in IP sample.
+#     -sp, --spike_ip (int): Number of spike-in alignments in IP sample.
+#     -mn, --main_in  (int): Number of "main" alignments in input sample.
+#     -sn, --spike_in (int): Number of spike-in alignments in input sample.
 #
 # Output:
 #    The scaling factor as a positive floating point number.
@@ -73,25 +72,26 @@ def calculate_scaling_factor(main_ip, spike_ip, main_in, spike_in):
     """
     Calculate a spike-in-derived scaling factor based on alignment counts.
 
-    calculate_scaling_factor computes two ratios: the ratio of spike-in
-    alignment counts to "main" alignment counts for IP data and the same for
-    its corresponding input data. calculate_scaling_factor then calculates and
-    returns the scaling factor by dividing the input ratio by the IP ratio.
+    This function computes the proportion of spike-in alignments relative to
+    total alignments (main + spike-in) for both IP and input samples. The
+    scaling factor is then obtained by dividing the input proportion by the IP
+    proportion.
 
     Args:
-        main_ip  (int): The number of "main" alignments in the IP data.
-        spike_ip (int): The number of spike-in alignments in the IP data.
-        main_in  (int): The number of "main" alignments in the input data.
-        spike_in (int): The number of spike-in alignments in the input data.
+        main_ip  (int): The number of "main" alignments in the IP sample.
+        spike_ip (int): The number of spike-in alignments in the IP sample.
+        main_in  (int): The number of "main" alignments in the input sample.
+        spike_in (int): The number of spike-in alignments in the input sample.
 
     Returns:
-        float: The scaling factor calculated as the ratio of input sample
-               ratio to IP sample ratio.
+        float: The spike-in scaling factor, calculated as the ratio of spike-in
+               proportions between input and IP samples.
     
     Raises:
         ValueError: If any of the counts are negative.
         TypeError: If any of the counts are not integers.
-        ZeroDivisionError: If any of the main alignment counts are zero.
+        ZeroDivisionError: If any total alignment count (main + spike-in) is
+                           zero.
     """
     #  Validate that all inputs are integers
     for name, count in zip(
@@ -117,9 +117,10 @@ def calculate_scaling_factor(main_ip, spike_ip, main_in, spike_in):
             'Main alignment counts cannot be zero to avoid division by zero.'
         )
 
-    #  Calculate ratios
-    ratio_ip = spike_ip / main_ip
-    ratio_in = spike_in / main_in
+    #  Calculate proportions of spike-in alignments relative to total
+    #  alignments
+    ratio_ip = spike_ip / (main_ip + spike_ip)
+    ratio_in = spike_in / (main_in + spike_in)
 
     # #  Check for very high or low ratios
     # if not (0.1 <= ratio_ip <= 10):
