@@ -66,7 +66,7 @@ function process_sample() {
     mn="${arr_min[idx]}"
     sn="${arr_sin[idx]}"
 
-    #  Debug and validate assignments to variables 'mp', 'sp', 'mn', and 'mn'
+    #  Debug and validate assignments to variables 'mp', 'sp', 'mn', and 'sn'
     if ${debug}; then
         debug_var \
             "idx=${idx} ('idx' passed to 'process_sample()')" \
@@ -401,7 +401,6 @@ if [[ -n "${SLURM_ARRAY_TASK_ID:-}" ]]; then
     if ${debug}; then debug_var "samp=${samp}"; fi
 
     #  Run subroutine to set SLURM and symlinked/better-named log files
-    set_logs "${id_job}" "${id_tsk}" "${samp}" "${err_out}"
     set_logs "${id_job}" "${id_tsk}" "${samp}" "${err_out}"
     ln -f "${err_ini}" "${err_dsc}"
     ln -f "${out_ini}" "${out_dsc}"

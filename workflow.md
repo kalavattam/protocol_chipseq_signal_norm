@@ -2,15 +2,15 @@
 ChIP-seq Protocol Workflow
 ==========================
 
-**Supporting code and documentation for the *bioRxiv* manuscript "ChIP-seq data processing and relative and quantitative signal normalization for *Saccharomyces cerevisiae*."**
+**Supporting code and documentation for the *Bio-protocol* manuscript "ChIP-seq data processing and relative and quantitative signal normalization for *Saccharomyces cerevisiae*."**
 
 **Author:** *Kris Alavattam*
 
 This notebook provides a guide to the ChIP-seq data processing workflow detailed in the manuscript, including code snippets, explanations, and step-by-step instructions.
 
-Note: If using a high-performance computing cluster (HPCC), request an interactive node to ensure adequate resources for running code in the below chunks. The specific command (e.g., `grabnode` at Fred Hutch Cancer Center) will depend on the job scheduler setup. (This step is unnecessary if running the code on a local machine.)
+*Note: If using a high-performance computing cluster (HPCC), request an interactive node to ensure adequate resources for running code in the below chunks. The specific command (e.g., `grabnode` at Fred Hutch Cancer Center) will depend on the job scheduler setup. (This step is unnecessary if running the code on a local machine.)*
 
-Note: For detailed instructions on keeping your local version of the [`protocol_chipseq_signal_norm`](https://github.com/kalavattam/protocol_chipseq_signal_norm) repository up-to-date, please see [this GitHub gist](https://gist.github.com/kalavattam/76f123011e8dcd77b445a72d23a64036).
+*Note: For detailed instructions on keeping your local version of the [`protocol_chipseq_signal_norm`](https://github.com/kalavattam/protocol_chipseq_signal_norm) repository up-to-date, please see [this GitHub gist](https://gist.github.com/kalavattam/76f123011e8dcd77b445a72d23a64036).*
 
 ---
 <br />
@@ -32,7 +32,7 @@ Note: For detailed instructions on keeping your local version of the [`protocol_
     1. [D. Use Atria to perform adapter and quality trimming of sequenced reads.](#d-use-atria-to-perform-adapter-and-quality-trimming-of-sequenced-reads)
     1. [E. Align sequenced reads with Bowtie 2 and process the read alignments.](#e-align-sequenced-reads-with-bowtie-2-and-process-the-read-alignments)
     1. [F. Construct sample tables recording computed scaling factors for normalization.](#f-construct-sample-tables-recording-computed-scaling-factors-for-normalization)
-        1. [1. Construct sample table recording siQ-ChIP alpha scaling factors.](#1-construct-sample-table-recording-siq-chip-alpha-scaling-factors)
+        1. [1. Construct sample table recording siQ-ChIP $\alpha$ scaling factors.](#1-construct-sample-table-recording-siq-chip-%24alpha%24-scaling-factors)
         1. [2. Construct sample table recording spike-in scaling factors.](#2-construct-sample-table-recording-spike-in-scaling-factors)
     1. [G. Compute normalized coverage.](#g-compute-normalized-coverage)
     1. [H. Compute coverage with the siQ-ChIP method.](#h-compute-coverage-with-the-siq-chip-method)
@@ -593,20 +593,80 @@ bash "${dir_scr}/compress_remove_files.sh" --dir_fnd "${dir_out}/sp/logs"
 <summary><i>Text: Construct sample tables recording computed scaling factors for normalization.</i></summary>
 <br />
 
-The following Bash code chunk provides a structured approach to generating sample tables that record scaling factors derived from the siQ-ChIP and spike-in methods. These factors are stored in tables for use in downstream processing, where they are applied to ["normalized coverage" data](https://www.nature.com/articles/s41598-023-34430-2#Sec2) to produce scaled coverage tracks. This facilitates ***quantitative*** (siQ-ChIP) and ***semiquantitative*** (spike-in) comparisons across samples.
+The following Bash code chunks offer a structured approach to generating sample tables that record scaling factors derived from the [siQ-ChIP](#1-construct-sample-table-recording-siq-chip-alpha-scaling-factors) and [spike-in](#2-construct-sample-table-recording-spike-in-scaling-factors) methods. These factors are stored in tables for use in downstream processing, where they are applied to ["normalized coverage" data](https://www.nature.com/articles/s41598-023-34430-2#Sec2) to produce scaled coverage tracks. This facilitates quantitative (siQ-ChIP) and semiquantitative (spike-in) comparisons across samples.
 
-To generate siQ-ChIP- and spike-in-scaled coverage tracks, we normalize IP (immunoprecipitation) data by dividing it by input (control) data and multiplicatively applying the corresponding scaling factors. *(Note: In siQ-ChIP calculations, the scaling factor is referred to as "alpha".)*
+To generate siQ-ChIP- and spike-in-scaled coverage tracks, we normalize IP (immunoprecipitation) data by dividing it by input (control) data and multiplicatively applying the corresponding scaling factors. *(Note: In siQ-ChIP calculations, the scaling factor is referred to as $\alpha$ or "alpha".)*
 
-As part of this process, we derive ***minimum input depth factors*** to prevent erroneous (e.g., division by zero) or extreme (e.g., division by anomalously small input values) calculations, promoting numerical stability in resulting scaled coverage tracks. Specifically, when a binned input value falls below the minimum input depth factor, it is replaced by the factor to prevent instability.
+As part of this process, we derive minimum input depth factors to prevent erroneous (e.g., division by zero) or extreme (e.g., division by anomalously small input values) calculations, promoting numerical stability in resulting scaled coverage tracks. Specifically, when a binned input value falls below the minimum input depth factor, it is replaced by the factor to prevent instability.
 
-To support different analysis resolutions, we compute minimum input depth factors for a range of common genomic bin sizes: 1 (i.e., no binning), 5, 10, 20, 30, 40, and 50 bp. *(Note: The application of minimum input depth factors during scaled coverage track generation is optional. See ... for more details.)*
+To support different analysis resolutions, we compute minimum input depth factors for a range of common genomic bin sizes: 1 (i.e., no binning), 5, 10, 20, 30, 40, and 50 bp. *(Note: The application of minimum input depth factors during scaled coverage track generation is optional. See Sections [H](#h-compute-coverage-with-the-siq-chip-method), [I](#i-compute-coverage-with-the-spike-in-method), and [J](#j-compute-log2-ratios-of-ip-to-input-coverage) for more details.)*
 </details>
 <br />
 
-<a id="1-construct-sample-table-recording-siq-chip-alpha-scaling-factors"></a>
-#### 1. Construct sample table recording siQ-ChIP alpha scaling factors.
+<a id="1-construct-sample-table-recording-siq-chip-%24alpha%24-scaling-factors"></a>
+#### 1. Construct sample table recording siQ-ChIP $\alpha$ scaling factors.
 <details>
-<summary><i>Bash code: Construct sample table recording siQ-ChIP alpha scaling factors.</i></summary>
+<summary><i>Text: Construct sample table recording siQ-ChIP $\alpha$ scaling factors.</i></summary>
+<br />
+
+This section describes the process of constructing a sample table that records siQ-ChIP $\alpha$ scaling factors, which are used to normalize ChIP-seq coverage, enabling quantitative comparisons across samples.
+
+---
+
+To generate siQ-ChIP-scaled coverage, we compute a proportionality constant, $\alpha$, that connects the sequencing-derived data to the underlying IP reaction dynamics. $\alpha$ represents IP efficiency and is defined as
+
+$$\alpha = \frac{c_{IP}}{c_{in}}$$
+
+where $c_{IP}$ and $c_{in}$ are the concentrations of IP (immunoprecipitation) and input DNA, respectively. This relationship is derived from [*Equation 6* in (Dickson et al., 2023)](https://www.nature.com/articles/s41598-023-34430-2#Equ6):
+
+$$c_{IP} = \frac{m_{IP}}{660L(V - v_{in})} \frac{1}{\hat{R}}$$
+$$c_{in} = \frac{m_{in}}{660L_{in}v_{in}} \frac{1}{\hat{R}_{in}}$$
+<div align="center">
+    <i>Concentration equations needed to compute $\alpha$ as presented in</i> Equation 6<i>.</i>
+</div>
+<br />
+
+The equations incorporate the following variables and terms:
+- Total DNA mass in the IP ($m_{IP}$) and input ($m_{in}$) samples.
+- Sample volumes before input removal ($V$) and for the input fraction ($v_{in}$).
+- Sequencing depths for the IP ($\hat{R}$) and input ($\hat{R}_{in}$) samples (if applicable).
+- Average fragment lengths for the IP ($L$) and input ($L_{in}$) samples. These are determined by fluorometric quantification or spectrometry, or inferred from paired-end alignments, as done in this workflow (see ... below).
+- 660 $g/mol/bp$ is the average molecular weight of a DNA base pair.
+- Chromatin mass-to-concentration conversion factors: The terms $\frac{1}{660L(V - v_{in})}$ and $\frac{1}{660L_{in}v_{in}}$ convert chromatin mass to concentration.
+
+The variable assignments, derived from experimental measurements, are recorded in a [structured TSV metadata file](https://github.com/kalavattam/protocol_chipseq_signal_norm/blob/main/data/raw/docs/measurements_siqchip.tsv), extracted, and used to compute $\alpha$ values.
+
+In [the initial siQ-ChIP program implementation](https://github.com/BradleyDickson/siQ-ChIP), $\alpha$ was applied to fragment length-normalized coverage, which was subsequently normalized for unity. However, in this workflow, $\alpha$ is applied to already normalized coverage&mdash;i.e., coverage that is both fragment length- and unity-normalized. Since unity normalization is a depth correction (i.e., dividing by the total number of alignments such that binned genomic coverage sums to 1), we use a modified form of *Equation 6* that excludes sequencing depth terms:
+
+$$c_{IP} = \frac{m_{IP}}{660L(V - v_{in})}$$
+$$c_{in} = \frac{m_{in}}{660L_{in}v_{in}}$$
+<div align="center">
+    <i>Equation 6</i> <i>concentrations without depth terms (referred to as "6 no depth" or "6nd").</i>
+</div>
+<br />
+
+Removing $\hat{R}$ and $\hat{R}_{in}$ ensures that sequencing depth is corrected separately through unity normalization, making $\alpha$ directly applicable to normalized coverage.
+
+**Overview of steps:**  
+1. *Identify ChIP-seq samples* by selecting IP and corresponding input BAM files.
+2. *Extract metadata* from the structured TSV file containing siQ-ChIP measurements (e.g., volume, concentration, DNA mass).
+3. *Compute alpha scaling factors* using a predefined equation (e.g., `eqn="6nd"`). Supported equations:
+    - [*Equation 5*](https://www.nature.com/articles/s41598-023-34430-2#Equ5): Incorporates sequencing depth (use with fragment length-normalized coverage).
+    - *Equation 5nd*: Excludes sequencing depth (use with normalized coverage).
+    - *Equation 6*: Incorporates sequencing depth (use with fragment length-normalized coverage).
+    - *Equation 6nd*: Excludes sequencing depth (use with normalized coverage).
+4. *Store computed values in a structured TSV table.*
+    - Record sample details, computed alpha scaling factors, and minimum input depth values in an output file (`${fil_out}`).
+    - Format the table for compatibility with downstream coverage normalization steps.
+
+**Output files:**  
+- *`${fil_out}`* (TSV): The final table containing sample information, computed alpha scaling factors, and minimum input depth values.
+- *Logs:* Execution logs (`.stdout.txt` and `.stderr.txt`) are stored in `${dir_log}`.
+</details>
+<br />
+
+<details>
+<summary><i>Bash code: Construct sample table recording siQ-ChIP $\alpha$ scaling factors.</i></summary>
 
 ```bash
 #!/bin/bash
@@ -664,7 +724,7 @@ eqn="6nd"
 fil_out="${dir_tbl}/ChIP_WT_G1-G2M-Q_Hho1-Hmo1_${typ_cvg}.tsv"
 err_out="${dir_log}"
 
-if ${debug}; then
+if ${debug:-false}; then
     echo "##########################"
     echo "## Variable assignments ##"
     echo "##########################"
@@ -716,7 +776,7 @@ fi
 #  Create required directories if necessary -----------------------------------
 mkdir -p "${err_out}"
 
-if ${debug}; then
+if ${debug:-false}; then
     echo "#################################################"
     echo "## In- and output directory paths and contents ##"
     echo "#################################################"
@@ -766,7 +826,7 @@ check_program_path sbatch ||
 
 
 #  Construct table ------------------------------------------------------------
-if ${debug}; then
+if ${debug:-false}; then
     echo "###########################"
     echo "## Call to driver script ##"
     echo "###########################"
@@ -803,7 +863,7 @@ bash "${execute}" \
         2>> >(tee -a "${exc_log}.stderr.txt")
 
 if [[ -f "${fil_out}" ]]; then
-    #  Sort the table of input minimume depths by rows
+    #  Sort the table of input minimum depth values by rows
     awk 'NR == 1; NR > 1 && NF { print | "sort" }' "${fil_out}" \
         > "${dir_tbl}/tmp.tsv"
 
@@ -820,8 +880,40 @@ bash "${dir_scr}/compress_remove_files.sh" --dir_fnd "${err_out}"
 </details>
 <br />
 
+<!-- - IP ($\hat{R}$) and input ($\hat{R}_{in}$) sequencing depths, if applicable. -->
+
 <a id="2-construct-sample-table-recording-spike-in-scaling-factors"></a>
 #### 2. Construct sample table recording spike-in scaling factors.
+<details>
+<summary><i>Text: Construct sample table recording spike-in scaling factors.</i></summary>
+<br />
+
+This section describes the process of constructing a sample table that records spike-in scaling factors, which are used to normalize ChIP-seq coverage, enabling semiquantitative comparisons across samples.
+
+To generate spike-in-scaled coverage, we compute a proportionality constant, denoted as $\gamma$, that adjusts for differences in sequencing depth across samples by leveraging a known quantity of exogenous spike-in DNA. This scaling factor is defined as:
+
+$$\gamma = \frac{s_{in}}{m_{in}} \big/ \frac{s_{IP}}{m_{IP}}$$
+
+where $m_{IP}$ and $m_{in}$ represent the number of alignments from the "main" model organism genome (i.e., *S. cerevisiae*) in the IP and input samples, respectively; and $s_{IP}$ and $s_{in}$ represent the number of alignments from the spike-in organism genome (i.e., *S. pombe*) in the IP and input samples, respectively.
+
+By computing the ratio of spike-in alignments to main alignments for both IP and input samples, and then normalizing the IP ratio by the input ratio (*Is this correct? What are you trying to say here? It's not clear.*), we derive $\gamma$, which adjusts for technical variability in sequencing depth while preserving biological signal (*I don't think this is correct.*). Unlike siQ-ChIP’s $\alpha$, which is an absolute correction factor that accounts for biochemical properties of the IP reaction, $\gamma$ provides a relative scaling adjustment based purely on sequencing proportions; where $\alpha$-scaled coverage is quantitative, $\gamma$-scaled coverage is semiquantitative. That is, $\gamma$ scaling provides relative approximations of coverage that can be compared between samples; it is something more than a qualitative assessment, although lacking the precision and standardization of a fully quantitative method.
+
+These alignment counts are obtained from coordinate-sorted BAM files for both the main and spike-in genomes. The script (*Which one?*) automatically extracts these values and computes scaling factors accordingly.
+
+**Overview of steps:**  
+1. *Identify ChIP-seq samples* by selecting BAM files corresponding to the main and spike-in genomes for both IP and input samples.
+2. *Count alignments* using `samtools view` to tally main and spike-in alignments separately for each sample. See (*insert Bash function*) for details.
+3. *Compute spike-in scaling factors* using the equation $\gamma = \frac{\frac{s_{in}}{m_{in}}}{\frac{s_{IP}}{m_{IP}}}$.
+4. *Store computed values in a structured TSV table.*
+    - Record sample details and computed spike-in scaling factors in an output file (`${fil_out}`).
+    - Format the table for compatibility with downstream coverage normalization steps.
+
+**Output files:**  
+- *`${fil_out}`* (TSV): The final table containing sample information and computed spike-in scaling factors.
+- *Logs:* Execution logs (`.stdout.txt` and `.stderr.txt`) are stored in `${dir_log}`*.
+</details>
+<br />
+
 <details>
 <summary><i>Bash code: Construct sample table recording spike-in scaling factors.</i></summary>
 
@@ -881,7 +973,7 @@ ser_sin="$(sed 's:\/IP:\/in:g' < <(echo "${ser_sip}"))"
 fil_out="${dir_tbl}/ChIP_WT_G1-G2M-Q_Hho1-Hmo1_${typ_cvg}.tsv"
 err_out="${dir_log}"
 
-if ${debug}; then
+if ${debug:-false}; then
     echo "##########################"
     echo "## Variable assignments ##"
     echo "##########################"
@@ -933,7 +1025,7 @@ fi
 #  Create required directories if necessary -----------------------------------
 mkdir -p "${err_out}"
 
-if ${debug}; then
+if ${debug:-false}; then
     echo "#################################################"
     echo "## In- and output directory paths and contents ##"
     echo "#################################################"
@@ -983,7 +1075,7 @@ check_program_path sbatch ||
 
 
 #  Construct table ------------------------------------------------------------
-if ${debug}; then
+if ${debug:-false}; then
     echo "###########################"
     echo "## Call to driver script ##"
     echo "###########################"
@@ -1020,7 +1112,7 @@ bash "${execute}" \
         2>> >(tee -a "${exc_log}.stderr.txt")
 
 if [[ -f "${fil_out}" ]]; then
-    #  Sort the table of input minimume depths by rows
+    #  Sort the table of input minimum depth values by rows
     awk 'NR == 1; NR > 1 && NF { print | "sort" }' "${fil_out}" \
         > "${dir_tbl}/tmp.tsv"
 
@@ -1117,7 +1209,7 @@ exc_log="${dir_log}/${day}.$(basename "${execute}" ".sh")"
     nam_job="compute_coverage_${typ_cvg}"
 }
 
-if ${debug}; then
+if ${debug:-false}; then
     echo "##########################"
     echo "## Variable assignments ##"
     echo "##########################"
@@ -1168,7 +1260,7 @@ fi
 #  Create required directories if necessary -----------------------------------
 mkdir -p "${err_out}"
 
-if ${debug}; then
+if ${debug:-false}; then
     echo "#################################################"
     echo "## In- and output directory paths and contents ##"
     echo "#################################################"
@@ -1218,7 +1310,7 @@ check_program_path sbatch ||
 
 
 #  Compute coverage -----------------------------------------------------------
-if ${debug}; then
+if ${debug:-false}; then
     echo "###########################"
     echo "## Call to driver script ##"
     echo "###########################"
@@ -1257,7 +1349,7 @@ bash "${execute}" \
         2>> >(tee -a "${exc_log}.stderr.txt")
 
 #  Check that each normalized coverage file sums to unity
-if ${debug}; then
+if ${debug:-false}; then
     echo "##############################################"
     echo "## Check unity of normalized coverage files ##"
     echo "##############################################"
@@ -1286,14 +1378,14 @@ bash "${dir_scr}/compress_remove_files.sh" --dir_fnd "${err_out}"
 
 This section describes the steps to compute ChIP-seq coverage normalized using the siQ-ChIP method. The approach involves... `#TODO`. The procedure makes use of utility scripts and functions, environment handling, and parallel processing where applicable.
 
-**Overview of steps:**
+**Overview of steps:**  
 1. *Set up directories and paths:* Define variables for key directories, data locations, and output destinations.
 2. *Activate environment and check dependencies:* Load the necessary computational environment and ensure essential dependencies are available.
 3. *Calculate alpha scaling factors:* Use the driver script to compute siQ-ChIP alpha scaling factors and save the sample-specific values to a TSV file. The script can utilize SLURM for job scheduling if available; otherwise, it will use GNU Parallel for parallel processing.
 4. *Sort and update output:* Sort the generated output file, replacing it with the sorted version.
 5. *Optional cleanup:* Compress large log files and remove empty log files.
 
-**Important note:**
+**Important note:**  
 - The [`execute_calculate_scaling_factor_alpha.sh`](https://github.com/kalavattam/protocol_chipseq_signal_norm/blob/main/scripts/execute_calculate_scaling_factor_alpha.sh) script in this code chunk requires that *S. cerevisiae* IP BAM files follow a specific naming convention as described in the protocol manuscript. The expected filename format:
     ```txt
     assay_genotype_state_treatment_factor_strain/replicate.
@@ -1358,6 +1450,7 @@ tbl_alf="${dir_tbl}/ChIP_WT_G1-G2M-Q_Hho1-Hmo1_${typ_cvg}.tsv"
 # shellcheck disable=SC1091
 source "${dir_fnc}/extract_fld_str.sh"  ## NOTE: Use to parse sample table ##
 
+typ_out="bdg.gz"
 fil_ip=$(
     sed \
         -e "s:${dir_bam}:${dir_nrm}:g" \
@@ -1371,13 +1464,12 @@ fil_in=$(
         < <(extract_fld_str 2 "${tbl_alf}")
 )
 dir_out="${dir_alf}"
-typ_out="bdg.gz"
 scl_fct="$(extract_fld_str  3 "${tbl_alf}")"
 dep_min="$(extract_fld_str 24 "${tbl_alf}")"  ## WARNING: See description ##
 err_out="${dir_log}"
 nam_job="compute_coverage_ratio_${typ_cvg}"
 
-if ${debug}; then
+if ${debug:-false}; then
     echo "####################################"
     echo "## Hardcoded variable assignments ##"
     echo "####################################"
@@ -1414,10 +1506,10 @@ if ${debug}; then
     echo "typ_cvg=${typ_cvg}"
     echo "tbl_alf=${tbl_alf}"
     echo ""
+    echo "typ_out=${typ_out}"
     echo "fil_ip=${fil_ip}"
     echo "fil_in=${fil_in}"
     echo "dir_out=${dir_out}"
-    echo "typ_out=${typ_out}"
     echo "scl_fct=${scl_fct}"
     echo "dep_min=${dep_min}"
     echo "err_out=${err_out}"
@@ -1431,7 +1523,7 @@ fi
 # shellcheck disable=SC2086
 mkdir -p ${dir_alf}/{dm_y,dm_n,logs}
 
-if ${debug}; then
+if ${debug:-false}; then
     echo "#################################################"
     echo "## In- and output directory paths and contents ##"
     echo "#################################################"
@@ -1491,7 +1583,7 @@ check_program_path sbatch ||
 
 
 #  Generate siQ-ChIP alpha-scaled coverage tracks -----------------------------
-if ${debug}; then
+if ${debug:-false}; then
     echo "#####################################################"
     echo "## Call to driver script with '--dep_min' argument ##"
     echo "#####################################################"
@@ -1610,6 +1702,7 @@ tbl_spk="${dir_tbl}/ChIP_WT_G1-G2M-Q_Hho1-Hmo1_${typ_cvg}.tsv"
 # shellcheck disable=SC1091
 source "${dir_fnc}/extract_fld_str.sh"  ## NOTE: Use to parse sample table ##
 
+typ_out="bdg.gz"
 fil_ip=$(
     sed \
         -e "s:${dir_bam}:${dir_nrm}:g" \
@@ -1623,13 +1716,12 @@ fil_in=$(
         < <(extract_fld_str 3 "${tbl_spk}")
 )
 dir_out="${dir_spk}"
-typ_out="bdg.gz"
 scl_fct="$(extract_fld_str  5 "${tbl_spk}")"
 dep_min="$(extract_fld_str 21 "${tbl_spk}")"  ## WARNING: See description ##
 err_out="${dir_log}"
 nam_job="compute_coverage_ratio_${typ_cvg}"
 
-if ${debug}; then
+if ${debug:-false}; then
     echo "####################################"
     echo "## Hardcoded variable assignments ##"
     echo "####################################"
@@ -1666,10 +1758,10 @@ if ${debug}; then
     echo "typ_cvg=${typ_cvg}"
     echo "tbl_spk=${tbl_spk}"
     echo ""
+    echo "typ_out=${typ_out}"
     echo "fil_ip=${fil_ip}"
     echo "fil_in=${fil_in}"
     echo "dir_out=${dir_out}"
-    echo "typ_out=${typ_out}"
     echo "scl_fct=${scl_fct}"
     echo "dep_min=${dep_min}"
     echo "err_out=${err_out}"
@@ -1683,7 +1775,7 @@ fi
 # shellcheck disable=SC2086
 mkdir -p ${dir_spk}/{dm_y,dm_n,logs}
 
-if ${debug}; then
+if ${debug:-false}; then
     echo "#################################################"
     echo "## In- and output directory paths and contents ##"
     echo "#################################################"
@@ -1743,7 +1835,7 @@ check_program_path sbatch ||
 
 
 #  Generate spike-in scaled coverage tracks -----------------------------------
-if ${debug}; then
+if ${debug:-false}; then
     echo "#####################################################"
     echo "## Call to driver script with '--dep_min' argument ##"
     echo "#####################################################"
@@ -1862,6 +1954,7 @@ tbl_lg2="${dir_tbl}/ChIP_WT_G1-G2M-Q_Hho1-Hmo1_alpha.tsv"
 # shellcheck disable=SC1091
 source "${dir_fnc}/extract_fld_str.sh"
 
+typ_out="bdg.gz"
 fil_ip=$(
     sed \
         -e "s:${dir_bam}:${dir_nrm}:g" \
@@ -1875,12 +1968,11 @@ fil_in=$(
         < <(extract_fld_str 2 "${tbl_lg2}")
 )
 dir_out="${dir_lg2}"
-typ_out="bdg.gz"
 dep_min="$(extract_fld_str 24 "${tbl_lg2}")"  ## WARNING: See description ##
 err_out="${dir_log}"
 nam_job="compute_coverage_ratio_${typ_cvg}"
 
-if ${debug}; then
+if ${debug:-false}; then
     echo "####################################"
     echo "## Hardcoded variable assignments ##"
     echo "####################################"
@@ -1917,10 +2009,10 @@ if ${debug}; then
     echo "typ_cvg=${typ_cvg}"
     echo "tbl_lg2=${tbl_lg2}"
     echo ""
+    echo "typ_out=${typ_out}"
     echo "fil_ip=${fil_ip}"
     echo "fil_in=${fil_in}"
     echo "dir_out=${dir_out}"
-    echo "typ_out=${typ_out}"
     echo "dep_min=${dep_min}"
     echo "err_out=${err_out}"
     echo "nam_job=${nam_job}"
@@ -1933,7 +2025,7 @@ fi
 # shellcheck disable=SC2086
 mkdir -p ${dir_lg2}/{dm_y,dm_n,logs}
 
-if ${debug}; then
+if ${debug:-false}; then
     echo "#################################################"
     echo "## In- and output directory paths and contents ##"
     echo "#################################################"
@@ -1993,7 +2085,7 @@ check_program_path sbatch ||
 
 
 #  Generate log2(IP/input) coverage tracks ------------------------------------
-if ${debug}; then
+if ${debug:-false}; then
     echo "#####################################################"
     echo "## Call to driver script with '--dep_min' argument ##"
     echo "#####################################################"
