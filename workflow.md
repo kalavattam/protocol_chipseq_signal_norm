@@ -33,8 +33,27 @@ This notebook provides a guide to the ChIP-seq data processing workflow detailed
     1. [E. Align sequenced reads with Bowtie 2 and process the read alignments.](#e-align-sequenced-reads-with-bowtie-2-and-process-the-read-alignments)
     1. [F. Construct sample tables recording computed scaling factors for normalization.](#f-construct-sample-tables-recording-computed-scaling-factors-for-normalization)
         1. [1. Construct sample table recording siQ-ChIP $\alpha$ scaling factors.](#1-construct-sample-table-recording-siq-chip-%24alpha%24-scaling-factors)
-        1. [2. Construct sample table recording spike-in scaling factors.](#2-construct-sample-table-recording-spike-in-scaling-factors)
+        1. [2. Construct sample table recording spike-in $\gamma$ scaling factors.](#2-construct-sample-table-recording-spike-in-%24gamma%24-scaling-factors)
     1. [G. Compute normalized coverage.](#g-compute-normalized-coverage)
+        1. [Tracks](#tracks)
+            1. [Overview](#overview)
+                1. [General](#general)
+                1. [Normalized coverage tracks](#normalized-coverage-tracks)
+                1. [Scaled coverage tracks](#scaled-coverage-tracks)
+                1. [Abbreviations](#abbreviations)
+                1. [Additional note](#additional-note)
+            1. [Hho1 normalized coverage tracks](#hho1-normalized-coverage-tracks)
+                1. [Hho1: II:305000-505000](#hho1-ii305000-505000)
+                1. [Hho1: XII:451250-468750](#hho1-xii451250-468750)
+            1. [Hmo1 normalized coverage tracks](#hmo1-normalized-coverage-tracks)
+                1. [Hmo1: II:305000-505000](#hmo1-ii305000-505000)
+                1. [Hmo1: XII:451250-468750](#hmo1-xii451250-468750)
+            1. [Hho1 scaled coverage tracks](#hho1-scaled-coverage-tracks)
+                1. [Hho1: II:305000-505000](#hho1-ii305000-505000-1)
+                1. [Hho1: XII:451250-468750](#hho1-xii451250-468750-1)
+            1. [Hmo1 scaled coverage tracks](#hmo1-scaled-coverage-tracks)
+                1. [Hmo1: II:305000-505000](#hmo1-ii305000-505000-1)
+                1. [Hmo1: XII:451250-468750](#hmo1-xii451250-468750-1)
     1. [H. Compute coverage with the siQ-ChIP method.](#h-compute-coverage-with-the-siq-chip-method)
     1. [I. Compute coverage with the spike-in method.](#i-compute-coverage-with-the-spike-in-method)
     1. [J. Compute log2 ratios of IP to input coverage.](#j-compute-log2-ratios-of-ip-to-input-coverage)
@@ -595,7 +614,7 @@ bash "${dir_scr}/compress_remove_files.sh" --dir_fnd "${dir_out}/sp/logs"
 
 The following Bash code chunks offer a structured approach to generating sample tables that record scaling factors derived from the [siQ-ChIP](#1-construct-sample-table-recording-siq-chip-alpha-scaling-factors) and [spike-in](#2-construct-sample-table-recording-spike-in-scaling-factors) methods. These factors are stored in tables for use in downstream processing, where they are applied to ["normalized coverage" data](https://www.nature.com/articles/s41598-023-34430-2#Sec2) to produce scaled coverage tracks. This facilitates quantitative (siQ-ChIP) and semiquantitative (spike-in) comparisons across samples.
 
-To generate siQ-ChIP- and spike-in-scaled coverage tracks, we normalize IP (immunoprecipitation) data by dividing it by input (control) data and multiplicatively applying the corresponding scaling factors. *(Note: In siQ-ChIP calculations, the scaling factor is referred to as $\alpha$ or "alpha".)*
+To generate siQ-ChIP- and spike-in-scaled coverage tracks, we normalize IP (immunoprecipitation) data by dividing it by input (control) data and multiplicatively applying the corresponding scaling factors. *(Note: In siQ-ChIP, the scaling factor is called $\alpha$ or "alpha". To distinguish it, we refer to the spike-in scaling factor as $\gamma$ or "gamma".)*
 
 As part of this process, we derive minimum input depth factors to prevent erroneous (e.g., division by zero) or extreme (e.g., division by anomalously small input values) calculations, promoting numerical stability in resulting scaled coverage tracks. Specifically, when a binned input value falls below the minimum input depth factor, it is replaced by the factor to prevent instability.
 
@@ -609,9 +628,18 @@ To support different analysis resolutions, we compute minimum input depth factor
 <summary><i>Text: Construct sample table recording siQ-ChIP $\alpha$ scaling factors.</i></summary>
 <br />
 
-This section describes the process of constructing a sample table that records siQ-ChIP $\alpha$ scaling factors, which are used to normalize ChIP-seq coverage, enabling quantitative comparisons across samples.
+**Overview:**  
+
+This section describes the process of constructing a sample table that records siQ-ChIP $\alpha$ scaling factors, which normalize ChIP-seq coverage to enable quantitative comparisons across samples ([Dickson et al., 2020](https://pubmed.ncbi.nlm.nih.gov/32994221/); [Dickson et al., 2023](https://pubmed.ncbi.nlm.nih.gov/37160995/)). For ChIP-seq samples to be quantitatively comparable via the siQ-ChIP method, they must satisfy the following experimental conditions:
+1. Equal IP volumes across samples.
+2. Equal total chromatin concentration in each IP reaction.
+3. Equal antibody load for all samples.
+
+When these conditions are met, differences in epitope distribution between samples reflect true biological variation, allowing the resulting IP products to be directly compared on a quantitative scale.
 
 ---
+
+**Background:**  
 
 To generate siQ-ChIP-scaled coverage, we compute a proportionality constant, $\alpha$, that connects the sequencing-derived data to the underlying IP reaction dynamics. $\alpha$ represents IP efficiency and is defined as
 
@@ -647,19 +675,30 @@ $$c_{in} = \frac{m_{in}}{660L_{in}v_{in}}$$
 
 Removing $\hat{R}$ and $\hat{R}_{in}$ ensures that sequencing depth is corrected separately through unity normalization, making $\alpha$ directly applicable to normalized coverage.
 
-**Overview of steps:**  
+---
+
+**Steps performed in code chunk:**  
+
 1. *Identify ChIP-seq samples* by selecting IP and corresponding input BAM files.
 2. *Extract metadata* from the structured TSV file containing siQ-ChIP measurements (e.g., volume, concentration, DNA mass).
-3. *Compute alpha scaling factors* using a predefined equation (e.g., `eqn="6nd"`). Supported equations:
+3. *Compute siQ-ChIP scaling factors $\alpha$* using a predefined equation (e.g., `eqn="6nd"`). Supported equations:
     - [*Equation 5*](https://www.nature.com/articles/s41598-023-34430-2#Equ5): Incorporates sequencing depth (use with fragment length-normalized coverage).
-    - *Equation 5nd*: Excludes sequencing depth (use with normalized coverage).
+    $$\alpha = \frac{v_{in}}{V - v_{in}} \frac{m_{IP}}{m_{in}} \frac{\hat{R}_{in}}{\hat{R}} \frac{L_{in}}{L}$$
+    - *Equation 5nd*: Excludes sequencing depth (use with fragment length- and unity-normalized coverage).
+    $$\alpha = \frac{v_{in}}{V - v_{in}} \frac{m_{IP}}{m_{in}} \frac{L_{in}}{L}$$
     - *Equation 6*: Incorporates sequencing depth (use with fragment length-normalized coverage).
-    - *Equation 6nd*: Excludes sequencing depth (use with normalized coverage).
+    $$\alpha = \frac{c_{IP}}{c_{in}} = \left(\frac{m_{IP}}{660L(V - v_{in})} \frac{1}{\hat{R}}\right) \big/ \left(\frac{m_{in}}{660L_{in}v_{in}} \frac{1}{\hat{R}_{in}}\right)$$
+    - *Equation 6nd*: Excludes sequencing depth (use with fragment length- and unity-normalized coverage).
+    $$\alpha = \frac{c_{IP}}{c_{in}} = \left(\frac{m_{IP}}{660L(V - v_{in})}\right) \big/ \left(\frac{m_{in}}{660L_{in}v_{in}}\right)$$
+
 4. *Store computed values in a structured TSV table.*
     - Record sample details, computed alpha scaling factors, and minimum input depth values in an output file (`${fil_out}`).
     - Format the table for compatibility with downstream coverage normalization steps.
 
+---
+
 **Output files:**  
+
 - *`${fil_out}`* (TSV): The final table containing sample information, computed alpha scaling factors, and minimum input depth values.
 - *Logs:* Execution logs (`.stdout.txt` and `.stderr.txt`) are stored in `${dir_log}`.
 </details>
@@ -863,7 +902,7 @@ bash "${execute}" \
         2>> >(tee -a "${exc_log}.stderr.txt")
 
 if [[ -f "${fil_out}" ]]; then
-    #  Sort the table of input minimum depth values by rows
+    #  Sort the table by rows
     awk 'NR == 1; NR > 1 && NF { print | "sort" }' "${fil_out}" \
         > "${dir_tbl}/tmp.tsv"
 
@@ -882,40 +921,101 @@ bash "${dir_scr}/compress_remove_files.sh" --dir_fnd "${err_out}"
 
 <!-- - IP ($\hat{R}$) and input ($\hat{R}_{in}$) sequencing depths, if applicable. -->
 
-<a id="2-construct-sample-table-recording-spike-in-scaling-factors"></a>
-#### 2. Construct sample table recording spike-in scaling factors.
+<a id="2-construct-sample-table-recording-spike-in-%24gamma%24-scaling-factors"></a>
+#### 2. Construct sample table recording spike-in $\gamma$ scaling factors.
 <details>
-<summary><i>Text: Construct sample table recording spike-in scaling factors.</i></summary>
+<summary><i>Text: Construct sample table recording spike-in $\gamma$ scaling factors.</i></summary>
 <br />
 
-This section describes the process of constructing a sample table that records spike-in scaling factors, which are used to normalize ChIP-seq coverage, enabling semiquantitative comparisons across samples.
+**Overview:**  
 
-To generate spike-in-scaled coverage, we compute a proportionality constant, denoted as $\gamma$, that adjusts for differences in sequencing depth across samples by leveraging a known quantity of exogenous spike-in DNA. This scaling factor is defined as:
+This section describes the process of constructing a sample table that records spike-in $\gamma$ scaling factors, which normalize ChIP-seq coverage to enable semiquantitative comparisons across samples. While widely used, spike-in normalization introduces assumptions and limitations that should be carefully considered when interpreting results.
 
-$$\gamma = \frac{s_{in}}{m_{in}} \big/ \frac{s_{IP}}{m_{IP}}$$
+---
 
-where $m_{IP}$ and $m_{in}$ represent the number of alignments from the "main" model organism genome (i.e., *S. cerevisiae*) in the IP and input samples, respectively; and $s_{IP}$ and $s_{in}$ represent the number of alignments from the spike-in organism genome (i.e., *S. pombe*) in the IP and input samples, respectively.
+**What is spike-in normalization?**  
 
-By computing the ratio of spike-in alignments to main alignments for both IP and input samples, and then normalizing the IP ratio by the input ratio (*Is this correct? What are you trying to say here? It's not clear.*), we derive $\gamma$, which adjusts for technical variability in sequencing depth while preserving biological signal (*I don't think this is correct.*). Unlike siQ-ChIP’s $\alpha$, which is an absolute correction factor that accounts for biochemical properties of the IP reaction, $\gamma$ provides a relative scaling adjustment based purely on sequencing proportions; where $\alpha$-scaled coverage is quantitative, $\gamma$-scaled coverage is semiquantitative. That is, $\gamma$ scaling provides relative approximations of coverage that can be compared between samples; it is something more than a qualitative assessment, although lacking the precision and standardization of a fully quantitative method.
+Spike-in normalization was developed to scale ChIP-seq signal in experiments where overall target epitope distributions vary substantially between samples. This method introduces exogenous chromatin&mdash;e.g., from *Drosophila melanogaster* or, in our case, *Saccharomyces pombe*&mdash;before immunoprecipitation. The spike-in chromatin serves as a reference, allowing coverage normalization under the assumption that it is recovered consistently across samples.
 
-These alignment counts are obtained from coordinate-sorted BAM files for both the main and spike-in genomes. The script (*Which one?*) automatically extracts these values and computes scaling factors accordingly.
+The general premise of spike-in normalization is as follows:  
+1. A fixed amount of exogenous chromatin is added to each ChIP sample prior to immunoprecipitation.
+2. If total chromatin input varies between samples (due to differences in IP efficiency or biological factors), then *it is assumed* that the recovery of spike-in chromatin remains constant across all samples.
+3. By computing the ratio of endogenous chromatin alignments to spike-in chromatin alignments, per-sample scaling factors are derived to normalize coverage.
 
-**Overview of steps:**  
+---
+
+**Defining the spike-in scaling factor ($\gamma$):**  
+
+To generate spike-in-scaled coverage, we compute a proportionality constant, $\gamma$ (so named to distinguish it from the siQ-ChIP scaling factor $\alpha$), that accounts for intersample variability in recovered chromatin. It is defined as
+
+$$\gamma = \frac{p_{in}}{p_{IP}}$$
+
+where $p_{in}$ and $p_{IP}$ represent the proportions of spike-in genome alignments (e.g., *S. pombe*) relative to total alignments (i.e., alignments to both the "main" genome, *S. cerevisiae*, and the spike-in organism). Specifically:
+
+$$p_{in} = \frac{s_{in}}{t_{in}}, \quad p_{IP} = \frac{s_{IP}}{t_{IP}}$$
+
+where $s_{in}$ and $s_{IP}$ represent the number of alignments to the spike-in genome in the input and IP samples, respectively; and $t_{in}$ and $t_{IP}$ represent the total number of alignments to the input and IP samples, respectively. Thus, $\gamma$ is calculated as the ratio of these proportions:
+
+$$\gamma = \frac{s_{in}}{t_{in}} \big/ \frac{s_{IP}}{t_{IP}}$$
+
+In this approach, spike-in alignments are treated as an internal reference, and coverage is scaled by how much spike-in chromatin is recovered relative to the main genome chromatin. This assumes that spike-in recovery remains constant across samples&mdash;an assumption that, as discussed below, does not always hold.
+
+---
+
+**Key limitations and concerns:**  
+
+1. Spike-in recovery is variable.
+    - Spike-in normalization assumes that spike-in chromatin is captured with the same efficiency across all conditions.
+    - Several factors can cause spike-in recovery to vary, including variability in chromatin fragmentation, differences in antibody availability, and changes in chromatin accessibility.
+
+2. Spike-in scaling does not account for altered antibody binding dynamics.
+    - When target epitope depletion occurs, both on- and off-target antibody binding can increase.
+    - Depending on antibody specificity, off-target binding may be higher than expected, distorting the final readout.
+    - Spike-in normalization does not account for this and, indeed, may misleadingly present antibody binding as more specific than it actually is.
+    - *(siQ-ChIP modeling predicts that the quantity of off-target material increases when target is removed, and the scaling reflects this.)*
+
+3. Spike-in recovery is not independent of experimental perturbations.
+    - The tacit assumption is that spike-in chromatin behaves identically across samples, providing an unbiased reference.
+    - In reality, spike-in capture can be affected by experimental conditions, meaning that the scaling factor may reflect both technical variation and true biological changes.
+    - Thus, one cannot isolate changes in spike-in recovery that are due to the experimental perturbation itself.
+    - Since this cannot be controlled, the spike-in scaling factor reports a compound effect of both exogenous (spike-in) and endogenous (sample) chromatin capture.
+
+4. Spike-in recovery can saturate, masking differences.
+    - Spike-in recovery may reach a saturation point in which the addition of more spike-in does not proportionally increase sequencing reads.
+    - This has been observed in cases when antibody is in excess, leading to nonlinear spike-in recovery, and when the total amount of spike-in chromatin is too small, resulting in variability due to stochastic effects in sequencing.
+    - Once saturation occurs, spike-in scaling no longer reflects changes in sequencing depth, and normalization is misleading.
+
+---
+
+**On the inclusion of spike-in scaling in this workflow:**  
+
+While we include a form of spike-in method ($\gamma$ scaling) in this workflow for reference, we strongly recommend using the siQ-ChIP method ($\alpha$ scaling), which directly accounts for IP efficiency and input normalization, is a more robust and accurate approach for quantitative ChIP-seq analysis. Use siQ-ChIP scaling ($\alpha$) instead, as it provides a more rigorous and interpretable normalization approach.
+
+---
+
+**Steps performed in code chunk:**  
+
 1. *Identify ChIP-seq samples* by selecting BAM files corresponding to the main and spike-in genomes for both IP and input samples.
-2. *Count alignments* using `samtools view` to tally main and spike-in alignments separately for each sample. See (*insert Bash function*) for details.
-3. *Compute spike-in scaling factors* using the equation $\gamma = \frac{\frac{s_{in}}{m_{in}}}{\frac{s_{IP}}{m_{IP}}}$.
+2. *Count alignments* using `samtools view` to tally main and spike-in alignments separately for each sample. See [`count_alignments_bam()`](https://github.com/kalavattam/protocol_chipseq_signal_norm/blob/main/scripts/functions/count_alignments_bam.sh) for details.
+3. *Compute spike-in scaling factors $\gamma$* using the equation
+
+$$\gamma = \frac{p_{in}}{p_{IP}} = \frac{s_{in}}{t_{in}} \big/ \frac{s_{IP}}{t_{IP}}$$
+
 4. *Store computed values in a structured TSV table.*
-    - Record sample details and computed spike-in scaling factors in an output file (`${fil_out}`).
-    - Format the table for compatibility with downstream coverage normalization steps.
+   - Record sample details and computed spike-in scaling factors in an output file (`${fil_out}`).
+   - Format the table for compatibility with downstream coverage normalization steps.
+
+---
 
 **Output files:**  
-- *`${fil_out}`* (TSV): The final table containing sample information and computed spike-in scaling factors.
-- *Logs:* Execution logs (`.stdout.txt` and `.stderr.txt`) are stored in `${dir_log}`*.
+
+- `${fil_out}` (TSV): The final table containing sample information and computed spike-in scaling factors.
+- Logs: Execution logs (`.stdout.txt` and `.stderr.txt`) are stored in `${dir_log}`.
 </details>
 <br />
 
 <details>
-<summary><i>Bash code: Construct sample table recording spike-in scaling factors.</i></summary>
+<summary><i>Bash code: Construct sample table recording spike-in $\gamma$ scaling factors.</i></summary>
 
 ```bash
 #!/bin/bash
@@ -1112,7 +1212,7 @@ bash "${execute}" \
         2>> >(tee -a "${exc_log}.stderr.txt")
 
 if [[ -f "${fil_out}" ]]; then
-    #  Sort the table of input minimum depth values by rows
+    #  Sort the table by rows
     awk 'NR == 1; NR > 1 && NF { print | "sort" }' "${fil_out}" \
         > "${dir_tbl}/tmp.tsv"
 
@@ -1137,7 +1237,7 @@ bash "${dir_scr}/compress_remove_files.sh" --dir_fnd "${err_out}"
 
 This following Bash code chunk provides an example of how to compute ChIP-seq normalized coverage per [Dickson et al., *Sci Rep*, 2023](https://www.nature.com/articles/s41598-023-34430-2). The coverage type is determined by setting the variable `typ_cvg` to `"norm"` (other options are `raw` and `frag`; see the [`compute_coverage.py`](https://github.com/kalavattam/protocol_chipseq_signal_norm/blob/main/scripts/compute_coverage.py) documentation for more details). BEDGRAPH and log output files will be saved to separate directories based on the selected coverage type.
 
-**Overview of steps:**  
+**Steps performed in code chunk:**  
 1. Set paths and environment: Define paths for input BAM files, output directories, and required dependencies.
 2. Activate environment and check dependencies: Ensure required software (GNU Parallel, Python, SLURM, etc.) is available.
 3. Compute coverage: Calls the driver script (`execute_compute_coverage.sh`) to generate BEDGRAPH coverage tracks.
@@ -1370,6 +1470,126 @@ bash "${dir_scr}/compress_remove_files.sh" --dir_fnd "${err_out}"
 </details>
 <br />
 
+<a id="tracks"></a>
+#### Tracks
+<a id="overview"></a>
+##### Overview
+This section describes the types of tracks used in the analysis, their organization, and the methods used for scaling and normalization.
+
+<a id="general"></a>
+###### General
+- Final row: *S. cerevisiae* annotated genome features.
+
+<a id="normalized-coverage-tracks"></a>
+###### Normalized coverage tracks
+- Rows 1&ndash;12: Normalized coverage tracks (i.e., tracks that have been fragment length- and unity-normalized) with group autoscaling.
+- Rows 13&ndash;18: $\log_{2}$ ratios of normalized coverage tracks, computed using  minimum input depth values, and group autoscaled.
+
+<a id="scaled-coverage-tracks"></a>
+###### Scaled coverage tracks
+- Rows 1&mdash;6: Coverage tracks scaled using spike-in normalization ($\gamma$), computed with minimum input depth values. Group autoscaling is specified in figure captions.
+- Rows 7&mdash;12: Coverage tracks scaled using siQ-ChIP normalization ($\alpha$), computed with minimum input depth values. Group autoscaling is specified in figure captions.
+
+<a id="abbreviations"></a>
+###### Abbreviations
+- norm: Normalized coverage
+- in: Input sample
+- IP: Immunoprecipitated sample
+- G1: Sampled from the G1 stage of the cell cycle
+- G2M: Sampled from a mix of G2/M stages of the cell cycle
+- Q: Sampled from quiescent cells
+- Hho1: *S. cerevisiae* histone H1
+- Hmo1: *S. cerevisiae* high mobility group family member protein
+- 6336, 6337, 7750, 7751: Strain numbers (biological replicates)
+- $\log_{2}$: $\log_{2}$ ratio of IP signal divided by input signal
+- spike: Tracks scaled using spike-in normalization ($\gamma$)
+- siQ: Tracks scaled using siQ-ChIP normalization ($\alpha$)
+
+<a id="additional-note"></a>
+###### Additional note
+- Tracks are binned at 30-bp resolution.
+- All division operations used minimum input depth values.
+
+<a id="hho1-normalized-coverage-tracks"></a>
+##### Hho1 normalized coverage tracks
+<a id="hho1-ii305000-505000"></a>
+###### Hho1: II:305000-505000
+![Hho1: II:305000-505000](data/tracks/png/Hho1/norm/Hho1_b30_dy__1-12n__13-18r__g3sc__II-305000-505000.png)
+
+<a id="hho1-xii451250-468750"></a>
+###### Hho1: XII:451250-468750
+![Hho1: XII:451250-468750](data/tracks/png/Hho1/norm/Hho1_b30_dy__1-12n__13-18r__g3sc__XII-451250-468750.png)
+
+<a id="hmo1-normalized-coverage-tracks"></a>
+##### Hmo1 normalized coverage tracks
+<a id="hmo1-ii305000-505000"></a>
+###### Hmo1: II:305000-505000
+![Hmo1: II:305000-505000](data/tracks/png/Hmo1/norm/Hmo1_b30_dy__1-12n__13-18r__g3sc__II-305000-505000.png)
+
+<a id="hmo1-xii451250-468750"></a>
+###### Hmo1: XII:451250-468750
+![Hmo1: XII:451250-468750](data/tracks/png/Hmo1/norm/Hmo1_b30_dy__1-12n__13-18r__g3sc__XII-451250-468750.png)
+
+<a id="hho1-scaled-coverage-tracks"></a>
+##### Hho1 scaled coverage tracks
+<a id="hho1-ii305000-505000-1"></a>
+###### Hho1: II:305000-505000
+![Hho1: II:305000-505000](data/tracks/png/Hho1/scal/Hho1_b30_dy__1-6g__7-12a__g3sc__II-305000-505000.png)
+<div style="text-align: center;">
+    <em>Autoscaled across G1, G2M, and Q samples.</em>
+</div>
+<br />
+
+![Hho1: II:305000-505000](data/tracks/png/Hho1/scal/Hho1_b30_dy__1-6g__7-12a__g3sc__II-305000-505000_ds.png)
+<div style="text-align: center;">
+    <em>G1 and G2M autoscaled separately from Q.</em>
+</div>
+<br />
+
+<a id="hho1-xii451250-468750-1"></a>
+###### Hho1: XII:451250-468750
+![Hho1: XII:451250-468750](data/tracks/png/Hho1/scal/Hho1_b30_dy__1-6g__7-12a__g3sc__XII-451250-468750.png)
+<div style="text-align: center;">
+    <em>Autoscaled across G1, G2M, and Q samples.</em>
+</div>
+<br />
+
+![Hho1: XII:451250-468750](data/tracks/png/Hho1/scal/Hho1_b30_dy__1-6g__7-12a__g3sc__XII-451250-468750_ds.png)
+<div style="text-align: center;">
+    <em>G1 and G2M autoscaled separately from Q.</em>
+</div>
+<br />
+
+<a id="hmo1-scaled-coverage-tracks"></a>
+##### Hmo1 scaled coverage tracks
+<a id="hmo1-ii305000-505000-1"></a>
+###### Hmo1: II:305000-505000
+![Hmo1: II:305000-505000](data/tracks/png/Hmo1/scal/Hmo1_b30_dy__1-6g__7-12a__g3sc__II-305000-505000.png)
+<div style="text-align: center;">
+    <em>Autoscaled across G1, G2M, and Q samples.</em>
+</div>
+<br />
+
+![Hmo1: II:305000-505000](data/tracks/png/Hmo1/scal/Hmo1_b30_dy__1-6g__7-12a__g3sc__II-305000-505000_ds.png)
+<div style="text-align: center;">
+    <em>G1 and G2M autoscaled separately from Q.</em>
+</div>
+<br />
+
+<a id="hmo1-xii451250-468750-1"></a>
+###### Hmo1: XII:451250-468750
+![Hmo1: XII:451250-468750](data/tracks/png/Hmo1/scal/Hmo1_b30_dy__1-6g__7-12a__g3sc__XII-451250-468750.png)
+<div style="text-align: center;">
+    <em>Autoscaled across G1, G2M, and Q samples.</em>
+</div>
+<br />
+
+![Hmo1: XII:451250-468750](data/tracks/png/Hmo1/scal/Hmo1_b30_dy__1-6g__7-12a__g3sc__XII-451250-468750_ds.png)
+<div style="text-align: center;">
+    <em>G1 and G2M are autoscaled separately from Q. With spike-in scaling ($\gamma$), replicates appear similarly scaled relative to each other. However, with siQ-ChIP scaling ($\alpha$), <code>G1_Hmo1_7751</code> and <code>G2M_Hmo1_7751</code> show significantly lower coverage than their respective replicates, <code>G1_Hmo1_7750</code> and <code>G2M_Hmo1_7750</code>. This likely reflects differences in ChIP-seq IP efficiency (see <a href="https://github.com/kalavattam/protocol_chipseq_signal_norm/blob/main/data/raw/docs/measurements_siqchip.tsv#L8-L11">metadata table</a>).</em>
+</div>
+<br />
+
 <a id="h-compute-coverage-with-the-siq-chip-method"></a>
 ### H. Compute coverage with the siQ-ChIP method.
 <details>
@@ -1378,7 +1598,7 @@ bash "${dir_scr}/compress_remove_files.sh" --dir_fnd "${err_out}"
 
 This section describes the steps to compute ChIP-seq coverage normalized using the siQ-ChIP method. The approach involves... `#TODO`. The procedure makes use of utility scripts and functions, environment handling, and parallel processing where applicable.
 
-**Overview of steps:**  
+**Steps performed in code chunk:**  
 1. *Set up directories and paths:* Define variables for key directories, data locations, and output destinations.
 2. *Activate environment and check dependencies:* Load the necessary computational environment and ensure essential dependencies are available.
 3. *Calculate alpha scaling factors:* Use the driver script to compute siQ-ChIP alpha scaling factors and save the sample-specific values to a TSV file. The script can utilize SLURM for job scheduling if available; otherwise, it will use GNU Parallel for parallel processing.
@@ -1390,11 +1610,11 @@ This section describes the steps to compute ChIP-seq coverage normalized using t
     ```txt
     assay_genotype_state_treatment_factor_strain/replicate.
     ```
-    + Required name components:
+- Required name components:
         - *assay:* Must be 'IP' or 'in', and must be followed by an underscore.
         - *factor:* A required component preceded by an underscore.
         - *strain/replicate:* A required component preceded by an underscore; it marks the end of the pattern.
-    + Optional name components:
+- Optional name components:
         - *genotype:* If present, must be preceded by an underscore.
         - *state:* An optional component with preferred values (e.g., 'G1', 'G2M', 'log', or 'Q') but can also be flexible; if present, it must be preceded by an underscore.
         - *treatment:* If present, must be preceded by an underscore.
