@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<Session genome="/Users/kalavattam/repos/202X_protocol_ChIP/data/genomes/cerevisiae/fasta/proc/S288C_R64-5-1_proc.fasta" locus="XII:451250-468750" nextAutoscaleGroup="22" version="8">
+    <Resources>
+        <Resource path="/Users/kalavattam/repos/202X_protocol_ChIP/data/genomes/cerevisiae/gff3/proc/S288C_R64-5-1_proc_readable.gff3.gz" type="gff3"/>
+        <Resource path="/Users/kalavattam/repos/202X_protocol_ChIP/data/processed/compute_coverage/tracks/norm/in_WT_G1_Hmo1_7750.sc.bdg.gz" type="bdg"/>
+        <Resource path="/Users/kalavattam/repos/202X_protocol_ChIP/data/processed/compute_coverage/tracks/norm/IP_WT_G1_Hmo1_7750.sc.bdg.gz" type="bdg"/>
+        <Resource path="/Users/kalavattam/repos/202X_protocol_ChIP/data/processed/compute_coverage/tracks/norm/in_WT_G1_Hmo1_7751.sc.bdg.gz" type="bdg"/>
+        <Resource path="/Users/kalavattam/repos/202X_protocol_ChIP/data/processed/compute_coverage/tracks/norm/IP_WT_G1_Hmo1_7751.sc.bdg.gz" type="bdg"/>
+        <Resource path="/Users/kalavattam/repos/202X_protocol_ChIP/data/processed/compute_coverage/tracks/norm/in_WT_G2M_Hmo1_7750.sc.bdg.gz" type="bdg"/>
+        <Resource path="/Users/kalavattam/repos/202X_protocol_ChIP/data/processed/compute_coverage/tracks/norm/IP_WT_G2M_Hmo1_7750.sc.bdg.gz" type="bdg"/>
+        <Resource path="/Users/kalavattam/repos/202X_protocol_ChIP/data/processed/compute_coverage/tracks/norm/in_WT_G2M_Hmo1_7751.sc.bdg.gz" type="bdg"/>
+        <Resource path="/Users/kalavattam/repos/202X_protocol_ChIP/data/processed/compute_coverage/tracks/norm/IP_WT_G2M_Hmo1_7751.sc.bdg.gz" type="bdg"/>
+        <Resource path="/Users/kalavattam/repos/202X_protocol_ChIP/data/processed/compute_coverage/tracks/norm/in_WT_Q_Hmo1_7750.sc.bdg.gz" type="bdg"/>
+        <Resource path="/Users/kalavattam/repos/202X_protocol_ChIP/data/processed/compute_coverage/tracks/norm/IP_WT_Q_Hmo1_7750.sc.bdg.gz" type="bdg"/>
+        <Resource path="/Users/kalavattam/repos/202X_protocol_ChIP/data/processed/compute_coverage/tracks/norm/in_WT_Q_Hmo1_7751.sc.bdg.gz" type="bdg"/>
+        <Resource path="/Users/kalavattam/repos/202X_protocol_ChIP/data/processed/compute_coverage/tracks/norm/IP_WT_Q_Hmo1_7751.sc.bdg.gz" type="bdg"/>
+        <Resource path="/Users/kalavattam/repos/202X_protocol_ChIP/data/processed/compute_coverage/tracks/log2/dm_y/log2_rat_WT_G1_Hmo1_7750.sc.track.bdg.gz" type="bdg"/>
+        <Resource path="/Users/kalavattam/repos/202X_protocol_ChIP/data/processed/compute_coverage/tracks/log2/dm_y/log2_rat_WT_G1_Hmo1_7751.sc.track.bdg.gz" type="bdg"/>
+        <Resource path="/Users/kalavattam/repos/202X_protocol_ChIP/data/processed/compute_coverage/tracks/log2/dm_y/log2_rat_WT_G2M_Hmo1_7750.sc.track.bdg.gz" type="bdg"/>
+        <Resource path="/Users/kalavattam/repos/202X_protocol_ChIP/data/processed/compute_coverage/tracks/log2/dm_y/log2_rat_WT_G2M_Hmo1_7751.sc.track.bdg.gz" type="bdg"/>
+        <Resource path="/Users/kalavattam/repos/202X_protocol_ChIP/data/processed/compute_coverage/tracks/log2/dm_y/log2_rat_WT_Q_Hmo1_7750.sc.track.bdg.gz" type="bdg"/>
+        <Resource path="/Users/kalavattam/repos/202X_protocol_ChIP/data/processed/compute_coverage/tracks/log2/dm_y/log2_rat_WT_Q_Hmo1_7751.sc.track.bdg.gz" type="bdg"/>
+    </Resources>
+    <Panel height="450" name="DataPanel" width="1423">
+        <Track attributeKey="in_WT_G1_Hmo1_7750.sc.bdg.gz" autoScale="false" autoscaleGroup="20" clazz="org.broad.igv.track.DataSourceTrack" color="68,1,84" fontSize="10" height="25" id="/Users/kalavattam/repos/202X_protocol_ChIP/data/processed/compute_coverage/tracks/norm/in_WT_G1_Hmo1_7750.sc.bdg.gz" name="norm in_WT_G1_Hmo1_7750" renderer="BAR_CHART" visible="true" windowFunction="mean">
+            <DataRange baseline="0.0" drawBaseline="true" flipAxis="false" maximum="9.5640495E-4" minimum="0.0" type="LINEAR"/>
+        </Track>
+        <Track attributeKey="IP_WT_G1_Hmo1_7750.sc.bdg.gz" autoScale="false" autoscaleGroup="20" clazz="org.broad.igv.track.DataSourceTrack" color="68,1,84" fontSize="10" height="25" id="/Users/kalavattam/repos/202X_protocol_ChIP/data/processed/compute_coverage/tracks/norm/IP_WT_G1_Hmo1_7750.sc.bdg.gz" name="norm IP_WT_G1_Hmo1_7750" renderer="BAR_CHART" visible="true" windowFunction="mean">
+            <DataRange baseline="0.0" drawBaseline="true" flipAxis="false" maximum="9.5640495E-4" minimum="0.0" type="LINEAR"/>
+        </Track>
+        <Track attributeKey="in_WT_G1_Hmo1_7751.sc.bdg.gz" autoScale="false" autoscaleGroup="20" clazz="org.broad.igv.track.DataSourceTrack" color="65,68,135" fontSize="10" height="25" id="/Users/kalavattam/repos/202X_protocol_ChIP/data/processed/compute_coverage/tracks/norm/in_WT_G1_Hmo1_7751.sc.bdg.gz" name="norm in_WT_G1_Hmo1_7751" renderer="BAR_CHART" visible="true" windowFunction="mean">
+            <DataRange baseline="0.0" drawBaseline="true" flipAxis="false" maximum="9.5640495E-4" minimum="0.0" type="LINEAR"/>
+        </Track>
+        <Track attributeKey="IP_WT_G1_Hmo1_7751.sc.bdg.gz" autoScale="false" autoscaleGroup="20" clazz="org.broad.igv.track.DataSourceTrack" color="65,68,135" fontSize="10" height="25" id="/Users/kalavattam/repos/202X_protocol_ChIP/data/processed/compute_coverage/tracks/norm/IP_WT_G1_Hmo1_7751.sc.bdg.gz" name="norm IP_WT_G1_Hmo1_7751" renderer="BAR_CHART" visible="true" windowFunction="mean">
+            <DataRange baseline="0.0" drawBaseline="true" flipAxis="false" maximum="9.5640495E-4" minimum="0.0" type="LINEAR"/>
+        </Track>
+        <Track attributeKey="in_WT_G2M_Hmo1_7750.sc.bdg.gz" autoScale="false" autoscaleGroup="20" clazz="org.broad.igv.track.DataSourceTrack" color="42,120,142" fontSize="10" height="25" id="/Users/kalavattam/repos/202X_protocol_ChIP/data/processed/compute_coverage/tracks/norm/in_WT_G2M_Hmo1_7750.sc.bdg.gz" name="norm in_WT_G2M_Hmo1_7750" renderer="BAR_CHART" visible="true" windowFunction="mean">
+            <DataRange baseline="0.0" drawBaseline="true" flipAxis="false" maximum="9.5640495E-4" minimum="0.0" type="LINEAR"/>
+        </Track>
+        <Track attributeKey="IP_WT_G2M_Hmo1_7750.sc.bdg.gz" autoScale="false" autoscaleGroup="20" clazz="org.broad.igv.track.DataSourceTrack" color="42,120,142" fontSize="10" height="25" id="/Users/kalavattam/repos/202X_protocol_ChIP/data/processed/compute_coverage/tracks/norm/IP_WT_G2M_Hmo1_7750.sc.bdg.gz" name="norm IP_WT_G2M_Hmo1_7750" renderer="BAR_CHART" visible="true" windowFunction="mean">
+            <DataRange baseline="0.0" drawBaseline="true" flipAxis="false" maximum="9.5640495E-4" minimum="0.0" type="LINEAR"/>
+        </Track>
+        <Track attributeKey="in_WT_G2M_Hmo1_7751.sc.bdg.gz" autoScale="false" autoscaleGroup="20" clazz="org.broad.igv.track.DataSourceTrack" color="34,168,132" fontSize="10" height="25" id="/Users/kalavattam/repos/202X_protocol_ChIP/data/processed/compute_coverage/tracks/norm/in_WT_G2M_Hmo1_7751.sc.bdg.gz" name="norm in_WT_G2M_Hmo1_7751" renderer="BAR_CHART" visible="true" windowFunction="mean">
+            <DataRange baseline="0.0" drawBaseline="true" flipAxis="false" maximum="9.5640495E-4" minimum="0.0" type="LINEAR"/>
+        </Track>
+        <Track attributeKey="IP_WT_G2M_Hmo1_7751.sc.bdg.gz" autoScale="false" autoscaleGroup="20" clazz="org.broad.igv.track.DataSourceTrack" color="34,168,132" fontSize="10" height="25" id="/Users/kalavattam/repos/202X_protocol_ChIP/data/processed/compute_coverage/tracks/norm/IP_WT_G2M_Hmo1_7751.sc.bdg.gz" name="norm IP_WT_G2M_Hmo1_7751" renderer="BAR_CHART" visible="true" windowFunction="mean">
+            <DataRange baseline="0.0" drawBaseline="true" flipAxis="false" maximum="9.5640495E-4" minimum="0.0" type="LINEAR"/>
+        </Track>
+        <Track attributeKey="in_WT_Q_Hmo1_7750.sc.bdg.gz" autoScale="false" autoscaleGroup="20" clazz="org.broad.igv.track.DataSourceTrack" color="122,209,81" fontSize="10" height="25" id="/Users/kalavattam/repos/202X_protocol_ChIP/data/processed/compute_coverage/tracks/norm/in_WT_Q_Hmo1_7750.sc.bdg.gz" name="norm in_WT_Q_Hmo1_7750" renderer="BAR_CHART" visible="true" windowFunction="mean">
+            <DataRange baseline="0.0" drawBaseline="true" flipAxis="false" maximum="9.5640495E-4" minimum="0.0" type="LINEAR"/>
+        </Track>
+        <Track attributeKey="IP_WT_Q_Hmo1_7750.sc.bdg.gz" autoScale="false" autoscaleGroup="20" clazz="org.broad.igv.track.DataSourceTrack" color="122,209,81" fontSize="10" height="25" id="/Users/kalavattam/repos/202X_protocol_ChIP/data/processed/compute_coverage/tracks/norm/IP_WT_Q_Hmo1_7750.sc.bdg.gz" name="norm IP_WT_Q_Hmo1_7750" renderer="BAR_CHART" visible="true" windowFunction="mean">
+            <DataRange baseline="0.0" drawBaseline="true" flipAxis="false" maximum="9.5640495E-4" minimum="0.0" type="LINEAR"/>
+        </Track>
+        <Track attributeKey="in_WT_Q_Hmo1_7751.sc.bdg.gz" autoScale="false" autoscaleGroup="20" clazz="org.broad.igv.track.DataSourceTrack" color="253,231,37" fontSize="10" height="25" id="/Users/kalavattam/repos/202X_protocol_ChIP/data/processed/compute_coverage/tracks/norm/in_WT_Q_Hmo1_7751.sc.bdg.gz" name="norm in_WT_Q_Hmo1_7751" renderer="BAR_CHART" visible="true" windowFunction="mean">
+            <DataRange baseline="0.0" drawBaseline="true" flipAxis="false" maximum="9.5640495E-4" minimum="0.0" type="LINEAR"/>
+        </Track>
+        <Track attributeKey="IP_WT_Q_Hmo1_7751.sc.bdg.gz" autoScale="false" autoscaleGroup="20" clazz="org.broad.igv.track.DataSourceTrack" color="253,231,37" fontSize="10" height="25" id="/Users/kalavattam/repos/202X_protocol_ChIP/data/processed/compute_coverage/tracks/norm/IP_WT_Q_Hmo1_7751.sc.bdg.gz" name="norm IP_WT_Q_Hmo1_7751" renderer="BAR_CHART" visible="true" windowFunction="mean">
+            <DataRange baseline="0.0" drawBaseline="true" flipAxis="false" maximum="9.5640495E-4" minimum="0.0" type="LINEAR"/>
+        </Track>
+        <Track attributeKey="log2_rat_WT_G1_Hmo1_7750.sc.track.bdg.gz" autoScale="false" autoscaleGroup="21" clazz="org.broad.igv.track.DataSourceTrack" color="68,1,84" fontSize="10" height="25" id="/Users/kalavattam/repos/202X_protocol_ChIP/data/processed/compute_coverage/tracks/log2/dm_y/log2_rat_WT_G1_Hmo1_7750.sc.track.bdg.gz" name="log2 WT_G1_Hmo1_7750" renderer="BAR_CHART" visible="true" windowFunction="mean">
+            <DataRange baseline="0.0" drawBaseline="true" flipAxis="false" maximum="2.1147308" minimum="-2.3315904" type="LINEAR"/>
+        </Track>
+        <Track attributeKey="log2_rat_WT_G1_Hmo1_7751.sc.track.bdg.gz" autoScale="false" autoscaleGroup="21" clazz="org.broad.igv.track.DataSourceTrack" color="65,68,135" fontSize="10" height="25" id="/Users/kalavattam/repos/202X_protocol_ChIP/data/processed/compute_coverage/tracks/log2/dm_y/log2_rat_WT_G1_Hmo1_7751.sc.track.bdg.gz" name="log2 WT_G1_Hmo1_7751" renderer="BAR_CHART" visible="true" windowFunction="mean">
+            <DataRange baseline="0.0" drawBaseline="true" flipAxis="false" maximum="2.1147308" minimum="-2.3315904" type="LINEAR"/>
+        </Track>
+        <Track attributeKey="log2_rat_WT_G2M_Hmo1_7750.sc.track.bdg.gz" autoScale="false" autoscaleGroup="21" clazz="org.broad.igv.track.DataSourceTrack" color="42,120,142" fontSize="10" height="25" id="/Users/kalavattam/repos/202X_protocol_ChIP/data/processed/compute_coverage/tracks/log2/dm_y/log2_rat_WT_G2M_Hmo1_7750.sc.track.bdg.gz" name="log2 WT_G2M_Hmo1_7750" renderer="BAR_CHART" visible="true" windowFunction="mean">
+            <DataRange baseline="0.0" drawBaseline="true" flipAxis="false" maximum="2.1147308" minimum="-2.3315904" type="LINEAR"/>
+        </Track>
+        <Track attributeKey="log2_rat_WT_G2M_Hmo1_7751.sc.track.bdg.gz" autoScale="false" autoscaleGroup="21" clazz="org.broad.igv.track.DataSourceTrack" color="34,168,132" fontSize="10" height="25" id="/Users/kalavattam/repos/202X_protocol_ChIP/data/processed/compute_coverage/tracks/log2/dm_y/log2_rat_WT_G2M_Hmo1_7751.sc.track.bdg.gz" name="log2 WT_G2M_Hmo1_7751" renderer="BAR_CHART" visible="true" windowFunction="mean">
+            <DataRange baseline="0.0" drawBaseline="true" flipAxis="false" maximum="2.1147308" minimum="-2.3315904" type="LINEAR"/>
+        </Track>
+        <Track attributeKey="log2_rat_WT_Q_Hmo1_7750.sc.track.bdg.gz" autoScale="false" autoscaleGroup="21" clazz="org.broad.igv.track.DataSourceTrack" color="122,209,81" fontSize="10" height="25" id="/Users/kalavattam/repos/202X_protocol_ChIP/data/processed/compute_coverage/tracks/log2/dm_y/log2_rat_WT_Q_Hmo1_7750.sc.track.bdg.gz" name="log2 WT_Q_Hmo1_7750" renderer="BAR_CHART" visible="true" windowFunction="mean">
+            <DataRange baseline="0.0" drawBaseline="true" flipAxis="false" maximum="2.1147308" minimum="-2.3315904" type="LINEAR"/>
+        </Track>
+        <Track attributeKey="log2_rat_WT_Q_Hmo1_7751.sc.track.bdg.gz" autoScale="false" autoscaleGroup="21" clazz="org.broad.igv.track.DataSourceTrack" color="253,231,37" fontSize="10" height="25" id="/Users/kalavattam/repos/202X_protocol_ChIP/data/processed/compute_coverage/tracks/log2/dm_y/log2_rat_WT_Q_Hmo1_7751.sc.track.bdg.gz" name="log2 WT_Q_Hmo1_7751" renderer="BAR_CHART" visible="true" windowFunction="mean">
+            <DataRange baseline="0.0" drawBaseline="true" flipAxis="false" maximum="2.1147308" minimum="-2.3315904" type="LINEAR"/>
+        </Track>
+    </Panel>
+    <Panel height="201" name="FeaturePanel" width="1423">
+        <Track attributeKey="Reference sequence" clazz="org.broad.igv.track.SequenceTrack" fontSize="10" id="Reference sequence" name="Reference sequence" sequenceTranslationStrandValue="+" shouldShowTranslation="false" visible="true"/>
+        <Track attributeKey="S288C_R64-5-1_proc_readable.gff3.gz" clazz="org.broad.igv.track.FeatureTrack" displayMode="SQUISHED" fontSize="10" groupByStrand="true" id="/Users/kalavattam/repos/202X_protocol_ChIP/data/genomes/cerevisiae/gff3/proc/S288C_R64-5-1_proc_readable.gff3.gz" name="S288C_R64-5-1_proc_readable.gff3.gz" visible="true"/>
+    </Panel>
+    <PanelLayout dividerFractions="0.6864535768645358"/>
+    <HiddenAttributes>
+        <Attribute name="DATA FILE"/>
+        <Attribute name="DATA TYPE"/>
+        <Attribute name="NAME"/>
+    </HiddenAttributes>
+</Session>

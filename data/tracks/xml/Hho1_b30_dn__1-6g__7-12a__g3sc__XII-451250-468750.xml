@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<Session genome="/Users/kalavattam/repos/202X_protocol_ChIP/data/genomes/cerevisiae/fasta/proc/S288C_R64-5-1_proc.fasta" locus="XII:451250-468750" nextAutoscaleGroup="17" version="8">
+    <Resources>
+        <Resource path="/Users/kalavattam/repos/202X_protocol_ChIP/data/processed/compute_coverage/tracks/spike/dm_n/scl_rat_WT_G1_Hho1_6336.sc.track.bdg.gz" type="bdg"/>
+        <Resource path="/Users/kalavattam/repos/202X_protocol_ChIP/data/processed/compute_coverage/tracks/spike/dm_n/scl_rat_WT_G1_Hho1_6337.sc.track.bdg.gz" type="bdg"/>
+        <Resource path="/Users/kalavattam/repos/202X_protocol_ChIP/data/processed/compute_coverage/tracks/spike/dm_n/scl_rat_WT_G2M_Hho1_6336.sc.track.bdg.gz" type="bdg"/>
+        <Resource path="/Users/kalavattam/repos/202X_protocol_ChIP/data/processed/compute_coverage/tracks/spike/dm_n/scl_rat_WT_G2M_Hho1_6337.sc.track.bdg.gz" type="bdg"/>
+        <Resource path="/Users/kalavattam/repos/202X_protocol_ChIP/data/processed/compute_coverage/tracks/spike/dm_n/scl_rat_WT_Q_Hho1_6336.sc.track.bdg.gz" type="bdg"/>
+        <Resource path="/Users/kalavattam/repos/202X_protocol_ChIP/data/processed/compute_coverage/tracks/spike/dm_n/scl_rat_WT_Q_Hho1_6337.sc.track.bdg.gz" type="bdg"/>
+        <Resource path="/Users/kalavattam/repos/202X_protocol_ChIP/data/processed/compute_coverage/tracks/alpha/dm_n/scl_rat_WT_G1_Hho1_6336.sc.track.bdg.gz" type="bdg"/>
+        <Resource path="/Users/kalavattam/repos/202X_protocol_ChIP/data/processed/compute_coverage/tracks/alpha/dm_n/scl_rat_WT_G1_Hho1_6337.sc.track.bdg.gz" type="bdg"/>
+        <Resource path="/Users/kalavattam/repos/202X_protocol_ChIP/data/processed/compute_coverage/tracks/alpha/dm_n/scl_rat_WT_G2M_Hho1_6336.sc.track.bdg.gz" type="bdg"/>
+        <Resource path="/Users/kalavattam/repos/202X_protocol_ChIP/data/processed/compute_coverage/tracks/alpha/dm_n/scl_rat_WT_G2M_Hho1_6337.sc.track.bdg.gz" type="bdg"/>
+        <Resource path="/Users/kalavattam/repos/202X_protocol_ChIP/data/processed/compute_coverage/tracks/alpha/dm_n/scl_rat_WT_Q_Hho1_6336.sc.track.bdg.gz" type="bdg"/>
+        <Resource path="/Users/kalavattam/repos/202X_protocol_ChIP/data/processed/compute_coverage/tracks/alpha/dm_n/scl_rat_WT_Q_Hho1_6337.sc.track.bdg.gz" type="bdg"/>
+        <Resource path="/Users/kalavattam/repos/202X_protocol_ChIP/data/genomes/cerevisiae/gff3/proc/S288C_R64-5-1_proc_readable.gff3.gz" type="gff3"/>
+    </Resources>
+    <Panel height="422" name="DataPanel" width="1423">
+        <Track attributeKey="scl_rat_WT_G1_Hho1_6336.sc.track.bdg.gz" autoScale="false" autoscaleGroup="15" clazz="org.broad.igv.track.DataSourceTrack" color="72,33,115" fontSize="10" height="35" id="/Users/kalavattam/repos/202X_protocol_ChIP/data/processed/compute_coverage/tracks/spike/dm_n/scl_rat_WT_G1_Hho1_6336.sc.track.bdg.gz" name="spike WT_G1_Hho1_6336" renderer="BAR_CHART" visible="true" windowFunction="mean">
+            <DataRange baseline="0.0" drawBaseline="true" flipAxis="false" maximum="23.332432" minimum="0.0" type="LINEAR"/>
+        </Track>
+        <Track attributeKey="scl_rat_WT_G1_Hho1_6337.sc.track.bdg.gz" autoScale="false" autoscaleGroup="15" clazz="org.broad.igv.track.DataSourceTrack" color="56,88,140" fontSize="10" height="35" id="/Users/kalavattam/repos/202X_protocol_ChIP/data/processed/compute_coverage/tracks/spike/dm_n/scl_rat_WT_G1_Hho1_6337.sc.track.bdg.gz" name="spike WT_G1_Hho1_6337" renderer="BAR_CHART" visible="true" windowFunction="mean">
+            <DataRange baseline="0.0" drawBaseline="true" flipAxis="false" maximum="23.332432" minimum="0.0" type="LINEAR"/>
+        </Track>
+        <Track attributeKey="scl_rat_WT_G2M_Hho1_6336.sc.track.bdg.gz" autoScale="false" autoscaleGroup="15" clazz="org.broad.igv.track.DataSourceTrack" color="37,133,142" fontSize="10" height="35" id="/Users/kalavattam/repos/202X_protocol_ChIP/data/processed/compute_coverage/tracks/spike/dm_n/scl_rat_WT_G2M_Hho1_6336.sc.track.bdg.gz" name="spike WT_G2M_Hho1_6336" renderer="BAR_CHART" visible="true" windowFunction="mean">
+            <DataRange baseline="0.0" drawBaseline="true" flipAxis="false" maximum="23.332432" minimum="0.0" type="LINEAR"/>
+        </Track>
+        <Track attributeKey="scl_rat_WT_G2M_Hho1_6337.sc.track.bdg.gz" autoScale="false" autoscaleGroup="15" clazz="org.broad.igv.track.DataSourceTrack" color="42,176,127" fontSize="10" height="35" id="/Users/kalavattam/repos/202X_protocol_ChIP/data/processed/compute_coverage/tracks/spike/dm_n/scl_rat_WT_G2M_Hho1_6337.sc.track.bdg.gz" name="spike WT_G2M_Hho1_6337" renderer="BAR_CHART" visible="true" windowFunction="mean">
+            <DataRange baseline="0.0" drawBaseline="true" flipAxis="false" maximum="23.332432" minimum="0.0" type="LINEAR"/>
+        </Track>
+        <Track attributeKey="scl_rat_WT_Q_Hho1_6336.sc.track.bdg.gz" autoScale="false" autoscaleGroup="15" clazz="org.broad.igv.track.DataSourceTrack" color="134,213,73" fontSize="10" height="35" id="/Users/kalavattam/repos/202X_protocol_ChIP/data/processed/compute_coverage/tracks/spike/dm_n/scl_rat_WT_Q_Hho1_6336.sc.track.bdg.gz" name="spike WT_Q_Hho1_6336" renderer="BAR_CHART" visible="true" windowFunction="mean">
+            <DataRange baseline="0.0" drawBaseline="true" flipAxis="false" maximum="23.332432" minimum="0.0" type="LINEAR"/>
+        </Track>
+        <Track attributeKey="scl_rat_WT_Q_Hho1_6337.sc.track.bdg.gz" autoScale="false" autoscaleGroup="15" clazz="org.broad.igv.track.DataSourceTrack" color="253,231,37" fontSize="10" height="35" id="/Users/kalavattam/repos/202X_protocol_ChIP/data/processed/compute_coverage/tracks/spike/dm_n/scl_rat_WT_Q_Hho1_6337.sc.track.bdg.gz" name="spike WT_Q_Hho1_6337" renderer="BAR_CHART" visible="true" windowFunction="mean">
+            <DataRange baseline="0.0" drawBaseline="true" flipAxis="false" maximum="23.332432" minimum="0.0" type="LINEAR"/>
+        </Track>
+        <Track attributeKey="scl_rat_WT_G1_Hho1_6336.sc.track.bdg.gz" autoScale="false" autoscaleGroup="16" clazz="org.broad.igv.track.DataSourceTrack" color="72,33,115" fontSize="10" height="35" id="/Users/kalavattam/repos/202X_protocol_ChIP/data/processed/compute_coverage/tracks/alpha/dm_n/scl_rat_WT_G1_Hho1_6336.sc.track.bdg.gz" name="siQ WT_G1_Hho1_6336" renderer="BAR_CHART" visible="true" windowFunction="mean">
+            <DataRange baseline="0.0" drawBaseline="true" flipAxis="false" maximum="0.1188595" minimum="0.0" type="LINEAR"/>
+        </Track>
+        <Track attributeKey="scl_rat_WT_G1_Hho1_6337.sc.track.bdg.gz" autoScale="false" autoscaleGroup="16" clazz="org.broad.igv.track.DataSourceTrack" color="56,88,140" fontSize="10" height="35" id="/Users/kalavattam/repos/202X_protocol_ChIP/data/processed/compute_coverage/tracks/alpha/dm_n/scl_rat_WT_G1_Hho1_6337.sc.track.bdg.gz" name="siQ WT_G1_Hho1_6337" renderer="BAR_CHART" visible="true" windowFunction="mean">
+            <DataRange baseline="0.0" drawBaseline="true" flipAxis="false" maximum="0.1188595" minimum="0.0" type="LINEAR"/>
+        </Track>
+        <Track attributeKey="scl_rat_WT_G2M_Hho1_6336.sc.track.bdg.gz" autoScale="false" autoscaleGroup="16" clazz="org.broad.igv.track.DataSourceTrack" color="37,133,142" fontSize="10" height="35" id="/Users/kalavattam/repos/202X_protocol_ChIP/data/processed/compute_coverage/tracks/alpha/dm_n/scl_rat_WT_G2M_Hho1_6336.sc.track.bdg.gz" name="siQ WT_G2M_Hho1_6336" renderer="BAR_CHART" visible="true" windowFunction="mean">
+            <DataRange baseline="0.0" drawBaseline="true" flipAxis="false" maximum="0.1188595" minimum="0.0" type="LINEAR"/>
+        </Track>
+        <Track attributeKey="scl_rat_WT_G2M_Hho1_6337.sc.track.bdg.gz" autoScale="false" autoscaleGroup="16" clazz="org.broad.igv.track.DataSourceTrack" color="42,176,127" fontSize="10" height="35" id="/Users/kalavattam/repos/202X_protocol_ChIP/data/processed/compute_coverage/tracks/alpha/dm_n/scl_rat_WT_G2M_Hho1_6337.sc.track.bdg.gz" name="siQ WT_G2M_Hho1_6337" renderer="BAR_CHART" visible="true" windowFunction="mean">
+            <DataRange baseline="0.0" drawBaseline="true" flipAxis="false" maximum="0.1188595" minimum="0.0" type="LINEAR"/>
+        </Track>
+        <Track attributeKey="scl_rat_WT_Q_Hho1_6336.sc.track.bdg.gz" autoScale="false" autoscaleGroup="16" clazz="org.broad.igv.track.DataSourceTrack" color="134,213,73" fontSize="10" height="35" id="/Users/kalavattam/repos/202X_protocol_ChIP/data/processed/compute_coverage/tracks/alpha/dm_n/scl_rat_WT_Q_Hho1_6336.sc.track.bdg.gz" name="siQ WT_Q_Hho1_6336" renderer="BAR_CHART" visible="true" windowFunction="mean">
+            <DataRange baseline="0.0" drawBaseline="true" flipAxis="false" maximum="0.1188595" minimum="0.0" type="LINEAR"/>
+        </Track>
+        <Track attributeKey="scl_rat_WT_Q_Hho1_6337.sc.track.bdg.gz" autoScale="false" autoscaleGroup="16" clazz="org.broad.igv.track.DataSourceTrack" color="253,231,37" fontSize="10" height="35" id="/Users/kalavattam/repos/202X_protocol_ChIP/data/processed/compute_coverage/tracks/alpha/dm_n/scl_rat_WT_Q_Hho1_6337.sc.track.bdg.gz" name="siQ WT_Q_Hho1_6337" renderer="BAR_CHART" visible="true" windowFunction="mean">
+            <DataRange baseline="0.0" drawBaseline="true" flipAxis="false" maximum="0.1188595" minimum="0.0" type="LINEAR"/>
+        </Track>
+    </Panel>
+    <Panel height="565" name="FeaturePanel" width="1423">
+        <Track attributeKey="Reference sequence" clazz="org.broad.igv.track.SequenceTrack" fontSize="10" id="Reference sequence" name="Reference sequence" sequenceTranslationStrandValue="+" shouldShowTranslation="false" visible="true"/>
+        <Track attributeKey="S288C_R64-5-1_proc_readable.gff3.gz" clazz="org.broad.igv.track.FeatureTrack" displayMode="EXPANDED" fontSize="10" groupByStrand="true" id="/Users/kalavattam/repos/202X_protocol_ChIP/data/genomes/cerevisiae/gff3/proc/S288C_R64-5-1_proc_readable.gff3.gz" name="S288C_R64-5-1_proc_readable.gff3.gz" visible="true"/>
+    </Panel>
+    <PanelLayout dividerFractions="0.6453576864535768"/>
+    <HiddenAttributes>
+        <Attribute name="DATA FILE"/>
+        <Attribute name="DATA TYPE"/>
+        <Attribute name="NAME"/>
+    </HiddenAttributes>
+</Session>
