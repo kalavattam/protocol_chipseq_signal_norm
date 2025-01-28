@@ -647,7 +647,7 @@ bash "${dir_scr}/compress_remove_files.sh" --dir_fnd "${dir_out}/sp/logs"
 ##### Overview
 This section provides an example of how to compute ChIP-seq normalized coverage per [Dickson et al., *Sci Rep*, 2023](https://www.nature.com/articles/s41598-023-34430-2)&mdash;i.e., coverage that is both fragment length- and unity-normalized.
 
-In the corresponding [Bash code chunk](#bash-code), The coverage type is determined by setting the variable `typ_cvg` to `"norm"` (for length-and-unity-normalized coverage). Other options are `"raw"` (for non-normalized coverage) and `"frag"` (for fragment length-normalized coverage); for more details, see below as well as the documentation associated with [`compute_coverage.py`](https://github.com/kalavattam/protocol_chipseq_signal_norm/blob/main/scripts/compute_coverage.py). BEDGRAPH and log output files will be saved to separate directories based on the selected coverage type.
+In the corresponding [Bash code chunk](#bash-code), the coverage type is determined by setting the variable `typ_cvg` to `"norm"` (for length-and-unity-normalized coverage). Other options are `"raw"` (for non-normalized coverage) and `"frag"` (for fragment length-normalized coverage); for more details, see below as well as the documentation associated with [`compute_coverage.py`](https://github.com/kalavattam/protocol_chipseq_signal_norm/blob/main/scripts/compute_coverage.py). BEDGRAPH and log output files are saved to separate directories based on the selected coverage type.
 
 ---
 
@@ -655,24 +655,24 @@ In the corresponding [Bash code chunk](#bash-code), The coverage type is determi
 ##### On generating coverage tracks
 To generate scaled coverage tracks, we first compute a raw count density function based on fragment overlap with genomic bins (`typ_cvg="raw"`). Let $f(b)$ represent this density, where $b$ is a genomic bin of a specified size in base pairs (bp). The raw fragment density for bin $b$ is given by
 
-$$f(b) = \text{Number of fragments overlapping bin } b$$
+<div align="center">
+    <img src="https://latex.codecogs.com/svg.image?$$f(b)=\text{Number&space;of&space;fragments&space;overlapping&space;bin}\;b$$" alt="raw coverage statement">
+</div>
 
 which can be expressed as
 
-$$f(b) = \sum_{\varphi \in F} \mathbb{\large 1}_{\{ b \cap \varphi \neq \emptyset \}}$$
+<div align="center">
+    <img src="https://latex.codecogs.com/svg.image?$$f(b)=\sum_{\varphi\in&space;F}\mathbf{1}_{\{b\cap\varphi\neq\emptyset\}}$$" alt="raw coverage equation">
+</div>
 
 where
 - $F$ is the set of all fragments,
 - $\varphi$ is an individual fragment,
-- and $\mathbb{\large 1}$ is an indicator function that equals 1 if there is an overlap between $b$ and $\varphi$ and 0 otherwise, i.e.,
+- and $\mathbf{1}$ is an indicator function that equals 1 if there is an overlap between $b$ and $\varphi$ and 0 otherwise, i.e.,
 
-$$
-\mathbb{\large 1}_{\{ b \cap \varphi \neq \emptyset \}} =
-\begin{cases} 
-1, & \text{if } b \cap \varphi \neq \emptyset \\ 
-0, & \text{otherwise}
-\end{cases}
-$$
+<div align="center">
+    <img src="https://latex.codecogs.com/svg.image?$$\mathbf{1}_{\{b\cap\varphi\neq\emptyset\}}=\begin{cases}1,&\text{if}\;b\cap\varphi\neq\emptyset\\0,&\text{otherwise}\end{cases}$$" alt="raw coverage indicator function">
+</div>
 
 This function tallies the number of fragments overlapping each bin, forming the basis for coverage calculations.
 
@@ -688,26 +688,28 @@ By default, raw coverage tracks are constructed as histograms that tally the num
 
 To correct for this, we first apply length normalization so that each fragment contributes equally to the track regardless of its length (`typ_cvg="frag"`). The fragment length-normalized coverage $f_{\ell}(b)$ is computed as
 
-$$
-f_{\ell}(b) = \sum_{\varphi \in F} \frac{\mathbb{\large 1}_{\{ b \cap \varphi \neq \emptyset \}}}{\ell_{\varphi}}
-$$
+<div align="center">
+    <img src="https://latex.codecogs.com/svg.image?$$f_{\ell}(b)=\sum_{\varphi\in&space;F}\frac{\mathbf{1}_{\{b\cap\varphi\neq\emptyset\}}}{\ell_{\varphi}}$$" alt="length normalization">
+</div>
 
 where
 - $F$ is the set of all fragments,
 - $\varphi$ is an individual fragment,
 - $\ell_{\varphi}$ is the length of fragment $\varphi$,
-- and $\mathbb{\large 1}_{\{ b \cap \varphi \neq \emptyset \}}$ is an indicator function that equals 1 if there is an overlap between $b$ and $\varphi$ and 0 otherwise.
+- and <img src="https://latex.codecogs.com/svg.image?\mathbf{1}_{\{b\cap\varphi\neq\emptyset\}}" 
+  alt="length normalization indicator function" style="vertical-align: middle;"> is an indicator function that equals 1 if there is an overlap between $b$ and $\varphi$ and 0 otherwise.
  
 This normalization distributes each fragment's contribution equally across its span, preventing the overrepresentation of longer fragments in the track.
 <br />
 
 <a id="combined-length-and-unity-normalization"></a>
 ###### Combined length-and-unity normalization
-However, length normalization alone does not account for differences in sequencing depth or library size across samples, which can influence coverage values independently of underlying biological signal. To address this, we apply a combined length-and-unity normalization (`typ_cvg="norm"`). Unity normalization scales by the total number of sequenced fragments ($|F|$), adjusting coverage values so that the sum across all bins in a track equals 1. This makes coverage tracks comparable across datasets with different sequencing depths. The length-and-unity-normalized coverage $f_{\ell,u}(b)$ is computed as
+However, length normalization alone does not account for differences in sequencing depth or library size across samples, which can influence coverage values independently of underlying biological signal. To address this, we apply a combined length-and-unity normalization (`typ_cvg="norm"`). Unity normalization scales by the total number of sequenced fragments ($|F|$), adjusting coverage values so that the sum across all bins in a track equals 1. This makes coverage tracks comparable across datasets with different sequencing depths. The length-and-unity-normalized coverage 
+<img src="https://latex.codecogs.com/svg.image?f_{\ell,u}(b)" alt="f_ell,u(b)" style="vertical-align: middle;"> is computed as
 
-$$
-f_{\ell,u}(b) = \frac{1}{|F|} \sum_{\varphi \in F} \frac{\mathbb{\large 1}_{\{ b \cap \varphi \neq \emptyset \}}}{\ell_{\varphi}}
-$$
+<div align="center">
+    <img src="https://latex.codecogs.com/svg.image?$$f_{\ell,u}(b)=\frac{1}{|F|}\sum_{\varphi\in&space;F}\frac{\mathbf{1}_{\{b\cap\varphi\neq\emptyset\}}}{\ell_{\varphi}}$$" alt="length-and-unity normalization">
+</div>
 
 <a id="coverage-as-a-probability-density-function"></a>
 ###### Coverage as a probability density function
@@ -719,7 +721,7 @@ After this final normalization step, the coverage track represents the probabili
 
 2. It ensures IP concentration is projected correctly onto the genome:
 
-   The normalized coverage $f_{\ell,u}(b)$ allows bulk IP concentration to be mapped to specific genomic regions. If the track is built correctly, multiplying by $c_{IP}$ (which converts IP mass to concentration) gives an estimate of the chromatin concentration bound in the IP at each genomic bin: $c_{IP} f_{\ell,u}(b)$. Similarly, multiplying the input coverage track by $c_{in}$ gives the estimated total chromatin concentration originating from each bin. This projection only holds if the track is normalized for length and unity, ensuring that $\alpha$ actually captures the fraction of chromatin from each bin that was bound in IP.
+   The normalized coverage <img src="https://latex.codecogs.com/svg.image?f_{\ell,u}(b)" alt="f_ell,u(b)" style="vertical-align: middle;"> allows bulk IP concentration to be mapped to specific genomic regions. If the track is built correctly, multiplying by $c_{\text{IP}}$ (which converts IP mass to concentration) gives an estimate of the chromatin concentration bound in the IP at each genomic bin: <img src="https://latex.codecogs.com/svg.image?$c_{\text{IP}}f_{\ell,u}(b)$" alt="c_IP f_ell,u(b)" style="vertical-align: middle;">. Similarly, multiplying the input coverage track by $c_{\text{in}}$ gives the estimated total chromatin concentration originating from each bin. This projection only holds if the track is normalized for length and unity, ensuring that $\alpha$ actually captures the fraction of chromatin from each bin that was bound in IP.
 
 3. It eliminates the need for arbitrary scaling factors (e.g., FPKM):
 
@@ -727,7 +729,7 @@ After this final normalization step, the coverage track represents the probabili
 
 4. It allows direct IP mass projections:
 
-   A properly normalized track lets any material quantity&mdash;such as IP mass&mdash;be projected onto the genome using $m_{IP} f_{\ell,u}(b)$. This makes ChIP-seq data interpretable in quantitative terms. Standard ChIP-seq relies on input normalization, but a properly built track allows siQ-ChIP-like quantification even if no input sequencing was done&mdash;as long as IP conditions were controlled.
+   A properly normalized track lets any material quantity&mdash;such as IP mass&mdash;be projected onto the genome using <img src="https://latex.codecogs.com/svg.image?$m_{\text{IP}}f_{\ell,u}(b)$" alt="m_IP f_ell,u(b)" style="vertical-align: middle;">. This makes ChIP-seq data interpretable in quantitative terms. Standard ChIP-seq relies on input normalization, but a properly built track allows siQ-ChIP-like quantification even if no input sequencing was done&mdash;as long as IP conditions were controlled.
 
 <a id="summary"></a>
 ###### Summary
@@ -737,7 +739,7 @@ The normalization process outlined here is necessary for ensuring that coverage 
 - Scaling factors operate on a physically meaningful track that preserves IP efficiency and chromatin concentration.
 - ChIP-seq signals can be quantitatively or semi-quantitatively interpreted without introducing arbitrary or dataset-dependent scaling heuristics.
 
-Without this normalization, applying $\alpha$ or $\gamma$ scaling factors would introduce distortions that undermine the ability to make, respectively, quantitative or semi-quantitative comparisons across samples. By appropriately structuring and normalizing the coverage track, we ensure that downstream steps in the siQ-ChIP and spike-in methods yield interpretable biological signals.
+Without this normalization, applying $\alpha$ or $\gamma$ scaling factors would introduce distortions that undermine the ability to make, respectively, quantitative or semi-quantitative comparisons across samples. By appropriately structuring and normalizing the coverage track, downstream steps in the siQ-ChIP and spike-in methods yield interpretable biological signals.
 
 ---
 
@@ -990,23 +992,24 @@ The following Bash code chunks present a structured approach to generating sampl
 
 Before applying scaling factors, coverage tracks must be properly normalized to ensure meaningful quantitative comparisons; this means applying [length-and-unity normalization](#combined-length-and-unity-normalization) so that coverage values are structured as [normalized probability distributions](coverage-as-a-probability-density-function). Once this is done, we scale coverage taking the ratio of IP (immunoprecipitation) coverage to input coverage and multiplying by the appropriate scaling factor. Each bin-wise operation follows:
 
-$$
-b_{\text{scaled}} = \frac{f_{\ell,u}^{\text{IP}}(b)}{\max(f_{\ell,u}^{\text{input}}(b), \delta)} \times (\alpha \text{ or } \gamma)
-$$
+<div align="center">
+    <img src="https://latex.codecogs.com/svg.image?$$b_{\text{scaled}}=\frac{f_{\ell,u}^{\text{\text{IP}}}(b)}{\max(f_{\ell,u}^{\text{input}}(b),\delta)}\times(\alpha\;\text{or}\;\gamma)$$" alt="scaled coverage equation">
+</div>
 
-where:
+where
 - $b_{\text{scaled}}$ is the final scaled coverage value for bin $b$ after applying length-and-unity normalization and scaling.
-- $f_{\ell,u}^{\text{IP}}(b)$ and $f_{\ell,u}^{\text{Input}}(b)$ are the [length-and-unity-normalized coverage tracks](#combined-length-and-unity-normalization) for IP and input binned data, respectively.
+- <img src="https://latex.codecogs.com/svg.image?f_{\ell,u}^{\text{IP}}(b)" alt="f_ell,u^IP(b)" style="vertical-align: middle;"> and 
+  <img src="https://latex.codecogs.com/svg.image?f_{\ell,u}^{\text{in}}(b)" alt="f_ell,u^in(b)" style="vertical-align: middle;"> are the [length-and-unity-normalized coverage tracks](#combined-length-and-unity-normalization) for IP and input binned data, respectively.
 - The scaling factor is either $\gamma$ (spike-in normalization) or $\alpha$ (siQ-ChIP normalization), depending on the chosen method.
 - $\delta$ is the minimum input depth factor for [length-and-unity-normalized coverage](#combined-length-and-unity-normalization), ensuring numerical stability by preventing division by zero or extreme values:
 
-$$
-\delta = \frac{\text{bin size}}{\text{effective genome size} - \text{bin size}}
-$$
+<div align="center">
+    <img src="https://latex.codecogs.com/svg.image?$$\delta=\frac{\text{bin&space;size}}{\text{effective&space;genome&space;size}-\text{bin&space;size}}$$" alt="delta equation">
+</div>
 
 The [effective genome size](https://deeptools.readthedocs.io/en/latest/content/feature/effectiveGenomeSize.html) is the portion of the genome that can be aligned to. Typically, this is determined in one of two ways:
-  1. Counting non-N bases: The effective genome size is defined as the number of non-N bases in the reference genome. This approach is used when no MAPQ filtering is applied to alignments.
-  2. Estimating alignable regions: The effective genome size is defined as the number of regions in the genome (of a length dependent on the read length) that are alignable. This approach accounts for mappability and should be used when MAPQ filtering is applied to alignments. (In this analysis, we include only alignments with MAPQ ≥ 1, so we use this definition.)
+  1. Counting non-*N* bases: The effective genome size is defined as the number of non-N bases in the reference genome. This approach is used when no *MAPQ* filtering is applied to alignments.
+  2. Estimating alignable regions: The effective genome size is defined as the number of regions in the genome (of a length dependent on the read length) that are alignable. This approach accounts for mappability and should be used when *MAPQ* filtering is applied to alignments. (In this analysis, we include only alignments with *MAPQ* ≥ 1, so we use this definition.)
 
 We compute minimum input depth factors for multiple common bin sizes (1, 5, 10, 20, 30, 40, and 50 bp), allowing flexibility in downstream analyses.
 </details>
@@ -1035,54 +1038,74 @@ When these conditions are met, differences in epitope distribution between sampl
 ###### Background
 To generate siQ-ChIP-scaled coverage, we compute a proportionality constant, $\alpha$, that connects the sequencing-derived data to the underlying IP reaction dynamics. $\alpha$ represents IP efficiency and is defined as
 
-$$\alpha = \frac{c_{IP}}{c_{in}}$$
+<div align="center">
+    <img src="https://latex.codecogs.com/svg.image?$$\alpha=\frac{c_{\text{IP}}}{c_{\text{in}}}$$" alt="alpha">
+</div>
 
-where $c_{IP}$ and $c_{in}$ are the concentrations of IP (immunoprecipitation) and input DNA, respectively. This relationship is derived from [*Equation 6* in (Dickson et al., 2023)](https://www.nature.com/articles/s41598-023-34430-2#Equ6):
+where $c_{\text{IP}}$ and $c_{\text{in}}$ are the concentrations of IP (immunoprecipitation) and input DNA, respectively. This relationship is derived from [*Equation 6* in (Dickson et al., 2023)](https://www.nature.com/articles/s41598-023-34430-2#Equ6):
 
-$$c_{IP} = \frac{m_{IP}}{660L(V - v_{in})} \frac{1}{\hat{R}}$$
-$$c_{in} = \frac{m_{in}}{660L_{in}v_{in}} \frac{1}{\hat{R}_{in}}$$
+<div align="center">
+    <img src="https://latex.codecogs.com/svg.image?$$c_{\text{IP}}=\frac{m_{\text{IP}}}{660L(V-v_{\text{in}})}\frac{1}{\hat{R}}$$" alt="c_IP">
+</div>
+<div align="center">
+    <img src="https://latex.codecogs.com/svg.image?$$c_{\text{in}}=\frac{m_{\text{in}}}{660L_{\text{in}}v_{\text{in}}}\frac{1}{\hat{R}_{\text{in}}}$$" alt="c_in">
+</div>
 <div align="center">
     <i>Concentration equations needed to compute $\alpha$ as presented in</i> Equation 6<i>.</i>
 </div>
 <br />
 
 The equations incorporate the following variables and terms:
-- Total DNA mass in the IP ($m_{IP}$) and input ($m_{in}$) samples.
-- Sample volumes before input removal ($V$) and for the input fraction ($v_{in}$).
-- Sequencing depths for the IP ($\hat{R}$) and input ($\hat{R}_{in}$) samples (if applicable).
-- Average fragment lengths for the IP ($L$) and input ($L_{in}$) samples. These are determined by fluorometric quantification or spectrometry, or inferred from paired-end alignments, as done in this workflow (see ... below).
-- 660 $g/mol/bp$ is the average molecular weight of a DNA base pair.
-- Chromatin mass-to-concentration conversion factors: The terms $\frac{1}{660L(V - v_{in})}$ and $\frac{1}{660L_{in}v_{in}}$ convert chromatin mass to concentration.
+- Total DNA mass in the IP ($m_{\text{IP}}$) and input ($m_{\text{in}}$) samples.
+- Sample volumes before input removal ($V$) and for the input fraction ($v_{\text{in}}$).
+- Sequencing depths for the IP ($\hat{R}$) and input ($\hat{R}_{\text{in}}$) samples (if applicable).
+- Average fragment lengths for the IP ($L$) and input ($L_{\text{in}}$) samples. These are determined by fluorometric quantification or spectrometry, or inferred from paired-end alignments, as done in this workflow (see ... below).
+- 660 *g/mol/bp* is the average molecular weight of a DNA base pair.
+- Chromatin mass-to-concentration conversion factors: The terms $\frac{1}{660L(V - v_{\text{in}})}$ and $\frac{1}{660L_{\text{in}}v_{\text{in}}}$ convert chromatin mass to concentration.
 
 The variable assignments, derived from experimental measurements, are recorded in a [structured TSV metadata file](https://github.com/kalavattam/protocol_chipseq_signal_norm/blob/main/data/raw/docs/measurements_siqchip.tsv), extracted, and used to compute $\alpha$ values.
 
 In [the initial siQ-ChIP program implementation](https://github.com/BradleyDickson/siQ-ChIP), $\alpha$ was applied to [fragment length-normalized coverage](#fragment-length-normalization), which was subsequently normalized for unity. However, in this workflow, $\alpha$ is applied to coverage that is [both fragment length- and unity-normalized](#combined-length-and-unity-normalization). Since unity normalization is a depth correction (i.e., dividing by the total number of fragments such that binned genomic coverage sums to 1), we use a modified form of *Equation 6* that excludes sequencing depth terms:
 
-$$c_{IP} = \frac{m_{IP}}{660L(V - v_{in})}$$
-$$c_{in} = \frac{m_{in}}{660L_{in}v_{in}}$$
 <div align="center">
-    <i>Equation 6</i> <i>concentrations without depth terms (referred to as "6 no depth" or "6nd").</i>
+    <img src="https://latex.codecogs.com/svg.image?$$c_{\text{IP}}=\frac{m_{\text{IP}}}{660L(V-v_{\text{in}})}$$" alt="c_IP">
+</div>
+<div align="center">
+    <img src="https://latex.codecogs.com/svg.image?$$c_{\text{in}}=\frac{m_{\text{in}}}{660L_{\text{in}}v_{\text{in}}}$$" alt="c_in">
+</div>
+<div align="center">
+    Equation 6 <i>concentrations without depth terms (referred to as "6 no depth" or "6nd").</i>
 </div>
 <br />
 
-Removing $\hat{R}$ and $\hat{R}_{in}$ ensures that sequencing depth is corrected separately through unity normalization, making $\alpha$ directly applicable to normalized coverage.
+Removing $\hat{R}$ and $\hat{R}_{\text{in}}$ allows sequencing depth to be corrected separately through unity normalization, making $\alpha$ directly applicable to normalized coverage.
 
 ---
 
 <a id="steps-performed-in-code-chunk-1"></a>
 ###### Steps performed in code chunk
-
 1. *Identify ChIP-seq samples* by selecting IP and corresponding input BAM files.
 2. *Extract metadata* from the structured TSV file containing siQ-ChIP measurements (e.g., volume, concentration, DNA mass).
-3. *Compute siQ-ChIP scaling factors $\alpha$* using a predefined equation (e.g., `eqn="6nd"`). Supported equations:
+3. *Compute siQ-ChIP scaling factors* $\alpha$ using a predefined equation (e.g., `eqn="6nd"`). Supported equations:
     - [*Equation 5*](https://www.nature.com/articles/s41598-023-34430-2#Equ5): Incorporates sequencing depth (use with fragment length-normalized coverage).
-    $$\alpha = \frac{v_{in}}{V - v_{in}} \frac{m_{IP}}{m_{in}} \frac{\hat{R}_{in}}{\hat{R}} \frac{L_{in}}{L}$$
+    <div align="center">
+        <img src="https://latex.codecogs.com/svg.image?$$\alpha=\frac{v_{\text{in}}}{V-v_{\text{in}}}\frac{m_{\text{IP}}}{m_{\text{in}}}\frac{\hat{R}_{\text{in}}}{\hat{R}}\frac{L_{\text{in}}}{L}$$" alt="5">
+    </div>
+
     - *Equation 5nd*: Excludes sequencing depth (use with fragment length- and unity-normalized coverage).
-    $$\alpha = \frac{v_{in}}{V - v_{in}} \frac{m_{IP}}{m_{in}} \frac{L_{in}}{L}$$
+    <div align="center">
+        <img src="https://latex.codecogs.com/svg.image?$$\alpha=\frac{v_{\text{in}}}{V-v_{\text{in}}}\frac{m_{\text{IP}}}{m_{\text{in}}}\frac{L_{\text{in}}}{L}$$" alt="5nd">
+    </div>
+
     - *Equation 6*: Incorporates sequencing depth (use with fragment length-normalized coverage).
-    $$\alpha = \frac{c_{IP}}{c_{in}} = \left(\frac{m_{IP}}{660L(V - v_{in})} \frac{1}{\hat{R}}\right) \big/ \left(\frac{m_{in}}{660L_{in}v_{in}} \frac{1}{\hat{R}_{in}}\right)$$
+    <div align="center">
+        <img src="https://latex.codecogs.com/svg.image?$$\alpha=\frac{c_{\text{IP}}}{c_{\text{in}}}=\left(\frac{m_{\text{IP}}}{660L(V-v_{\text{in}})}\frac{1}{\hat{R}}\right)\big/\left(\frac{m_{\text{in}}}{660L_{\text{in}}v_{\text{in}}}\frac{1}{\hat{R}_{\text{in}}}\right)$$" alt="6">
+    </div>
+
     - *Equation 6nd*: Excludes sequencing depth (use with fragment length- and unity-normalized coverage).
-    $$\alpha = \frac{c_{IP}}{c_{in}} = \left(\frac{m_{IP}}{660L(V - v_{in})}\right) \big/ \left(\frac{m_{in}}{660L_{in}v_{in}}\right)$$
+    <div align="center">
+        <img src="https://latex.codecogs.com/svg.image?$$\alpha=\frac{c_{\text{IP}}}{c_{\text{in}}}=\left(\frac{m_{\text{IP}}}{660L(V-v_{\text{in}})}\right)\big/\left(\frac{m_{\text{in}}}{660L_{\text{in}}v_{\text{in}}}\right)$$" alt="6nd">
+    </div>
 
 4. *Store computed values in a structured TSV table.*
     - Record sample details, computed alpha scaling factors, and minimum input depth values in an output file (`${fil_out}`).
@@ -1314,8 +1337,6 @@ bash "${dir_scr}/compress_remove_files.sh" --dir_fnd "${err_out}"
 </details>
 <br />
 
-<!-- - IP ($\hat{R}$) and input ($\hat{R}_{in}$) sequencing depths, if applicable. -->
-
 <a id="2-construct-sample-table-recording-spike-in-%24gamma%24-scaling-factors"></a>
 #### 2. Construct sample table recording spike-in $\gamma$ scaling factors.
 <a id="text-2"></a>
@@ -1342,15 +1363,21 @@ The general premise of spike-in normalization is as follows:
 ###### Defining the spike-in scaling factor ($\gamma$)
 To generate spike-in-scaled coverage, we compute a proportionality constant, $\gamma$ (so named to distinguish it from the siQ-ChIP scaling factor $\alpha$), that accounts for intersample variability in recovered chromatin. It is defined as
 
-$$\gamma = \frac{p_{in}}{p_{IP}}$$
+<div align="center">
+    <img src="https://latex.codecogs.com/svg.image?$$\gamma=\frac{p_{\text{in}}}{p_{\text{IP}}}$$" alt="gamma">
+</div>
 
-where $p_{in}$ and $p_{IP}$ represent the proportions of spike-in genome alignments (e.g., *S. pombe*) relative to total alignments (i.e., alignments to both the "main" genome, *S. cerevisiae*, and the spike-in organism). Specifically:
+where $p_{\text{in}}$ and $p_{\text{IP}}$ represent the proportions of spike-in genome alignments (e.g., *S. pombe*) relative to total alignments (i.e., alignments to both the "main" genome, *S. cerevisiae*, and the spike-in organism). Specifically:
 
-$$p_{in} = \frac{s_{in}}{t_{in}}, \quad p_{IP} = \frac{s_{IP}}{t_{IP}}$$
+<div align="center">
+    <img src="https://latex.codecogs.com/svg.image?$$p_{\text{in}}=\frac{s_{\text{in}}}{t_{\text{in}}},\quad&space;p_{\text{IP}}=\frac{s_{\text{IP}}}{t_{\text{IP}}}$$" alt="p_in, p_IP">
+</div>
 
-where $s_{in}$ and $s_{IP}$ represent the number of alignments to the spike-in genome in the input and IP samples, respectively; and $t_{in}$ and $t_{IP}$ represent the total number of alignments to the input and IP samples, respectively. Thus, $\gamma$ is calculated as the ratio of these proportions:
+where $s_{\text{in}}$ and $s_{\text{IP}}$ represent the number of alignments to the spike-in genome in the input and IP samples, respectively; and $t_{\text{in}}$ and $t_{\text{IP}}$ represent the total number of alignments to the input and IP samples, respectively. Thus, $\gamma$ is calculated as the ratio of these proportions:
 
-$$\gamma = \frac{s_{in}}{t_{in}} \big/ \frac{s_{IP}}{t_{IP}}$$
+<div align="center">
+    <img src="https://latex.codecogs.com/svg.image?$$\gamma=\frac{s_{\text{in}}}{t_{\text{in}}}\big/\frac{s_{\text{IP}}}{t_{\text{IP}}}$$" alt="gamma (alternative)">
+</div>
 
 In this approach, spike-in alignments are treated as an internal reference, and coverage is scaled by how much spike-in chromatin is recovered relative to the main genome chromatin. This assumes that spike-in recovery remains constant across samples&mdash;an assumption that, as discussed below, does not always hold.
 
@@ -1389,7 +1416,9 @@ While we include a form of spike-in method ($\gamma$ scaling) in this workflow f
 2. *Count alignments* using `samtools view` to tally main and spike-in alignments separately for each sample. See [`count_alignments_bam()`](https://github.com/kalavattam/protocol_chipseq_signal_norm/blob/main/scripts/functions/count_alignments_bam.sh) for details.
 3. *Compute spike-in scaling factors $\gamma$* using the equation
 
-$$\gamma = \frac{p_{in}}{p_{IP}} = \frac{s_{in}}{t_{in}} \big/ \frac{s_{IP}}{t_{IP}}$$
+<div align="center">
+    <img src="https://latex.codecogs.com/svg.image?$$\gamma=\frac{p_{\text{in}}}{p_{\text{IP}}}=\frac{s_{\text{in}}}{t_{\text{in}}}\big/\frac{s_{\text{IP}}}{t_{\text{IP}}}$$" alt="gamma (detailed)">
+</div>
 
 4. *Store computed values in a structured TSV table.*
    - Record sample details and computed spike-in scaling factors in an output file (`${fil_out}`).
