@@ -641,7 +641,7 @@ bash "${dir_scr}/compress_remove_files.sh" --dir_fnd "${dir_out}/sp/logs"
 <a id="text"></a>
 #### Text
 <details>
-<summary><i>Text: Compute normalized raw coverage.</i></summary>
+<summary><i>Text: Compute normalized coverage.</i></summary>
 
 <a id="overview"></a>
 ##### Overview
@@ -1414,7 +1414,7 @@ While we include a form of spike-in method ($\gamma$ scaling) in this workflow f
 ###### Steps performed in code chunk
 1. *Identify ChIP-seq samples* by selecting BAM files corresponding to the main and spike-in genomes for both IP and input samples.
 2. *Count alignments* using `samtools view` to tally main and spike-in alignments separately for each sample. See [`count_alignments_bam()`](https://github.com/kalavattam/protocol_chipseq_signal_norm/blob/main/scripts/functions/count_alignments_bam.sh) for details.
-3. *Compute spike-in scaling factors $\gamma$* using the equation
+3. *Compute spike-in scaling factors* $\gamma$ using the equation
 
 <div align="center">
     <img src="https://latex.codecogs.com/svg.image?$$\gamma=\frac{p_{\text{in}}}{p_{\text{IP}}}=\frac{s_{\text{in}}}{t_{\text{in}}}\big/\frac{s_{\text{IP}}}{t_{\text{IP}}}$$" alt="gamma (detailed)">
@@ -1678,13 +1678,13 @@ This section describes the steps to compute ChIP-seq coverage normalized using t
     assay_genotype_state_treatment_factor_strain/replicate.
     ```
 - Required name components:
-        - *assay:* Must be 'IP' or 'in', and must be followed by an underscore.
-        - *factor:* A required component preceded by an underscore.
-        - *strain/replicate:* A required component preceded by an underscore; it marks the end of the pattern.
+    + *assay:* Must be 'IP' or 'in', and must be followed by an underscore.
+    + *factor:* A required component preceded by an underscore.
+    + *strain/replicate:* A required component preceded by an underscore; it marks the end of the pattern.
 - Optional name components:
-        - *genotype:* If present, must be preceded by an underscore.
-        - *state:* An optional component with preferred values (e.g., 'G1', 'G2M', 'log', or 'Q') but can also be flexible; if present, it must be preceded by an underscore.
-        - *treatment:* If present, must be preceded by an underscore.
+    + *genotype:* If present, must be preceded by an underscore.
+    + *state:* An optional component with preferred values (e.g., 'G1', 'G2M', 'log', or 'Q') but can also be flexible; if present, it must be preceded by an underscore.
+    + *treatment:* If present, must be preceded by an underscore.
 - Failure to adhere to this naming convention may cause the script to fail.
 </details>
 <br />
