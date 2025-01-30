@@ -653,7 +653,7 @@ In the corresponding [Bash code chunk](#bash-code), the coverage type is determi
 
 <a id="on-generating-coverage-tracks"></a>
 ##### On generating coverage tracks
-To generate scaled coverage tracks, we first compute a raw count density function based on fragment overlap with genomic bins (`typ_cvg="raw"`). Let $f(b)$ represent this density, where $b$ is a genomic bin of a specified size in base pairs (bp). The raw fragment density for bin $b$ is given by
+To generate normalize coverage tracks, we first compute a count density function based on fragment overlap with genomic bins (`typ_cvg="raw"`). Let $f(b)$ represent this density, where $b$ is a genomic bin of a specified size in base pairs (bp). The raw fragment density for bin $b$ is given by
 
 <div align="center">
     <img src="https://latex.codecogs.com/svg.image?$$f(b)=\text{Number&space;of&space;fragments&space;overlapping&space;bin}\;b$$" alt="raw coverage statement">
