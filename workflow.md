@@ -254,7 +254,7 @@ bash "${dir_scr}/install_envs.sh" --env_nam "env_siq" --yes
 <summary><i>Text: Prepare and concatenate FASTA and GFF3 files for model and spike-in organisms.</i></summary>
 <br />
 
-See supplementary notebook [`download_process_fasta_gff3.md`](./download_process_fasta_gff3.md), which provide an annotated, step-by-step implementation of the following:
+See supplementary notebook [`download_process_fasta_gff3.md`](./download_process_fasta_gff3.md), which provides an annotated, step-by-step implementation of the following:
 1. Download FASTA and GFF3 files from the [Saccharomyces Genome Database](http://sgd-archive.yeastgenome.org/sequence/S288C_reference/genome_releases) (*S. cerevisiae*) and [Pombase](https://www.pombase.org/data/releases/) (*S. pombe*).
 2. Process the files by standardizing chromosome names and removing incompatible formatting.
     + Chromosome names in *S. cerevisiae* and *S. pombe* FASTA files are standardized and simplified, with *S. pombe* chromosome names prefixed with "SP_" to enable the downstream separation of *S. pombe* alignments from *S. cerevisiae* alignments.
