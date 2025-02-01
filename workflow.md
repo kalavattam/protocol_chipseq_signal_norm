@@ -27,12 +27,15 @@ This notebook provides a guide to the ChIP-seq data processing workflow detailed
     1. [C. Clone the siQ-ChIP repository and install its environment.](#c-clone-the-siq-chip-repository-and-install-its-environment)
 1. [Data analysis](#data-analysis)
     1. [A. Prepare and concatenate FASTA and GFF3 files for model and spike-in organisms.](#a-prepare-and-concatenate-fasta-and-gff3-files-for-model-and-spike-in-organisms)
-    1. [B. Generate Bowtie 2 indices from the concatenated FASTA file.](#b-generate-bowtie-2-indices-from-the-concatenated-fasta-file)
+        1. [Text](#text)
+    1. [B. Generate Bowtie 2 index files from the concatenated FASTA file.](#b-generate-bowtie-2-index-files-from-the-concatenated-fasta-file)
+        1. [Text](#text-1)
+        1. [Bash code](#bash-code)
     1. [C. Obtain and organize ChIP-seq FASTQ files.](#c-obtain-and-organize-chip-seq-fastq-files)
     1. [D. Use Atria to perform adapter and quality trimming of sequenced reads.](#d-use-atria-to-perform-adapter-and-quality-trimming-of-sequenced-reads)
     1. [E. Align sequenced reads with Bowtie 2 and process the read alignments.](#e-align-sequenced-reads-with-bowtie-2-and-process-the-read-alignments)
     1. [F. Compute normalized coverage.](#f-compute-normalized-coverage)
-        1. [Text](#text)
+        1. [Text](#text-2)
             1. [Overview](#overview)
             1. [On generating coverage tracks](#on-generating-coverage-tracks)
             1. [On normalizing coverage tracks](#on-normalizing-coverage-tracks)
@@ -42,17 +45,17 @@ This notebook provides a guide to the ChIP-seq data processing workflow detailed
                 1. [Summary](#summary)
             1. [Steps performed in code chunk](#steps-performed-in-code-chunk)
             1. [Output files](#output-files)
-        1. [Bash code](#bash-code)
+        1. [Bash code](#bash-code-1)
     1. [G. Construct sample tables recording computed scaling factors for normalization.](#g-construct-sample-tables-recording-computed-scaling-factors-for-normalization)
         1. [1. Construct sample table recording siQ-ChIP $\alpha$ scaling factors.](#1-construct-sample-table-recording-siq-chip-%24alpha%24-scaling-factors)
-            1. [Text](#text-1)
+            1. [Text](#text-3)
                 1. [Overview](#overview-1)
                 1. [Background](#background)
                 1. [Steps performed in code chunk](#steps-performed-in-code-chunk-1)
                 1. [Output files](#output-files-1)
-            1. [Bash code](#bash-code-1)
+            1. [Bash code](#bash-code-2)
         1. [2. Construct sample table recording spike-in $\gamma$ scaling factors.](#2-construct-sample-table-recording-spike-in-%24gamma%24-scaling-factors)
-            1. [Text](#text-2)
+            1. [Text](#text-4)
                 1. [Overview](#overview-2)
                 1. [What is spike-in normalization?](#what-is-spike-in-normalization)
                 1. [Defining the spike-in scaling factor \($\gamma$\)](#defining-the-spike-in-scaling-factor-%24gamma%24)
@@ -60,19 +63,19 @@ This notebook provides a guide to the ChIP-seq data processing workflow detailed
                 1. [On the inclusion of spike-in scaling in this workflow](#on-the-inclusion-of-spike-in-scaling-in-this-workflow)
                 1. [Steps performed in code chunk](#steps-performed-in-code-chunk-2)
                 1. [Output files](#output-files-2)
-            1. [Bash code](#bash-code-2)
+            1. [Bash code](#bash-code-3)
     1. [H. Compute coverage with the siQ-ChIP method.](#h-compute-coverage-with-the-siq-chip-method)
-        1. [Text](#text-3)
+        1. [Text](#text-5)
             1. [Overview](#overview-3)
             1. [Steps performed in code chunk](#steps-performed-in-code-chunk-3)
             1. [Important note](#important-note)
-        1. [Bash code](#bash-code-3)
-    1. [I. Compute coverage with the spike-in method.](#i-compute-coverage-with-the-spike-in-method)
-        1. [Text](#text-4)
         1. [Bash code](#bash-code-4)
-    1. [J. Compute log2 ratios of IP to input coverage.](#j-compute-log2-ratios-of-ip-to-input-coverage)
-        1. [Text](#text-5)
+    1. [I. Compute coverage with the spike-in method.](#i-compute-coverage-with-the-spike-in-method)
+        1. [Text](#text-6)
         1. [Bash code](#bash-code-5)
+    1. [J. Compute log2 ratios of IP to input coverage.](#j-compute-log2-ratios-of-ip-to-input-coverage)
+        1. [Text](#text-7)
+        1. [Bash code](#bash-code-6)
     1. [K. Rough-draft tracks for assessment](#k-rough-draft-tracks-for-assessment)
         1. [1. Abbreviations](#1-abbreviations)
         1. [2. Hho1 normalized coverage tracks](#2-hho1-normalized-coverage-tracks)
@@ -245,45 +248,43 @@ bash "${dir_scr}/install_envs.sh" --env_nam "env_siq" --yes
 ## Data analysis
 <a id="a-prepare-and-concatenate-fasta-and-gff3-files-for-model-and-spike-in-organisms"></a>
 ### A. Prepare and concatenate FASTA and GFF3 files for model and spike-in organisms.
+<a id="text"></a>
+#### Text
 <details>
 <summary><i>Text: Prepare and concatenate FASTA and GFF3 files for model and spike-in organisms.</i></summary>
 <br />
 
-`#TODO`
+See supplementary notebook [`download_process_fasta_gff3.md`](./download_process_fasta_gff3.md), which provide an annotated, step-by-step implementation of the following:
+1. Download FASTA and GFF3 files from the [Saccharomyces Genome Database](http://sgd-archive.yeastgenome.org/sequence/S288C_reference/genome_releases) (*S. cerevisiae*) and [Pombase](https://www.pombase.org/data/releases/) (*S. pombe*).
+2. Process the files by standardizing chromosome names and removing incompatible formatting.
+    + Chromosome names in *S. cerevisiae* and *S. pombe* FASTA files are standardized and simplified, with *S. pombe* chromosome names prefixed with "SP_" to enable the downstream separation of *S. pombe* alignments from *S. cerevisiae* alignments.
+    + Chromosome names in GFF3 files are standardized in the same way. In the *S. cerevisiae* GFF3 file, gene and autonomously replicating sequence (ARS) `Name` fields are reassigned from their systematic names (e.g., "YEL021W") to their standard, more interpretable names (e.g., "URA3"). Additionally, URL-encoded characters and HTML entities are converted to readable equivalents. These steps are unnecessary for the *S. pombe* file, as its `Name` field uses standard names, and the file contains no special characters.
+3. Concatenate the processed files for alignment and visualization.
 </details>
 <br />
 
+<a id="b-generate-bowtie-2-index-files-from-the-concatenated-fasta-file"></a>
+### B. Generate Bowtie 2 index files from the concatenated FASTA file.
+<a id="text-1"></a>
+#### Text
 <details>
-<summary><i>Bash code: Prepare and concatenate FASTA and GFF3 files for model and spike-in organisms.</i></summary>
+<summary><i>Text: Generate Bowtie 2 index files from the concatenated FASTA file.</i></summary>
 <br />
 
-```bash
-#!/bin/bash
-
-#  Optional: Request an interactive node --------------------------------------
-# grabnode  ## Uncomment to request 1 core, 20 GB memory, 1 day, no GPU ##
-```
-</details>
-<br />
-
-<a id="b-generate-bowtie-2-indices-from-the-concatenated-fasta-file"></a>
-### B. Generate Bowtie 2 indices from the concatenated FASTA file.
-<details>
-<summary><i>Text: Generate Bowtie 2 indices from the concatenated FASTA file.</i></summary>
-<br />
-
-To align ChIP-seq reads against both *S. cerevisiae* and *S. pombe* genomes, we first generate Bowtie 2 indices from a concatenated FASTA file. This ensures efficient and accurate alignment for, e.g., spike-in normalization (described below).
+To align ChIP-seq reads against both *S. cerevisiae* and *S. pombe*, e.g., for downstream spike-in normalization, Bowtie 2 index files are generated from the concatenated FASTA file. Additionally, a separate code chunk is provided for generating Bowtie 2 index files using only the *S. cerevisiae* FASTA file, for cases where spike-in normalization is not required.
 
 **Steps overview:**
-1. *Define directories and files:* Set paths for inputs and outputs.
-2. *Activate environment:* Load necessary tools and dependencies.
-3. *Run Bowtie 2 index creation:* Use the concatenated FASTA file to generate indices, logging output for troubleshooting.
-4. *Optional cleanup:* Remove the decompressed FASTA file to save space.
+1. *Set up directories and file paths* for inputs and outputs.
+2. *Activate the required environment* and check for dependencies.
+3. *Run Bowtie 2 index generation* using `bowtie2-build`, logging output.
+4. *Optional cleanup:* Compress logs and remove temporary files to save space.
 </details>
 <br />
 
+<a id="bash-code"></a>
+#### Bash code
 <details>
-<summary><i>Bash code: Generate Bowtie 2 indices from the concatenated FASTA file.</i></summary>
+<summary><i>Bash code: Generate Bowtie 2 index files from the concatenated FASTA file.</i></summary>
 
 ```bash
 #!/bin/bash
@@ -293,7 +294,9 @@ To align ChIP-seq reads against both *S. cerevisiae* and *S. pombe* genomes, we 
 
 
 #  Define variables -----------------------------------------------------------
-#  Define variables for directory paths, etc.
+debug=true
+
+#  Set hardcoded paths, values, etc.
 dir_bas="${HOME}/repos"  ## WARNING: Change as needed ##
 dir_rep="${dir_bas}/protocol_chipseq_signal_norm"
 dir_scr="${dir_rep}/scripts"
@@ -302,17 +305,75 @@ dir_dat="${dir_rep}/data"
 dir_gen="${dir_dat}/genomes"
 dir_cat="${dir_gen}/concat"
 dir_fas="${dir_cat}/fasta/proc"
-fil_fas="sc_sp_proc.fasta"
-pth_fas="${dir_fas}/${fil_fas}"
 dir_idx="${dir_cat}/index/bowtie2"
+dir_log="${dir_idx}/logs"
+
+fil_fas="${dir_fas}/sc_sp_proc.fasta"
 env_nam="env_align"
 day="$(date '+%Y-%m%d')"
+exc_log="${dir_log}/${day}.execute_bowtie2_build"
+
+if ${debug:-false}; then
+    echo "####################################"
+    echo "## Hardcoded variable assignments ##"
+    echo "####################################"
+    echo ""
+    echo "debug=${debug}"
+    echo ""
+    echo "dir_bas=${dir_bas}"
+    echo "dir_rep=${dir_rep}"
+    echo "dir_scr=${dir_scr}"
+    echo "dir_fnc=${dir_fnc}"
+    echo "dir_dat=${dir_dat}"
+    echo "dir_gen=${dir_gen}"
+    echo "dir_cat=${dir_cat}"
+    echo "dir_fas=${dir_fas}"
+    echo "dir_idx=${dir_idx}"
+    echo "dir_log=${dir_log}"
+    echo ""
+    echo "fil_fas=${fil_fas}"
+    echo "env_nam=${env_nam}"
+    echo "day=${day}"
+    echo "exc_log=${exc_log}"
+    echo ""
+    echo ""
+fi
 
 
-#  Do the main work -----------------------------------------------------------
+#  Create required directories if necessary -----------------------------------
+# shellcheck disable=SC2086
+mkdir -p ${dir_idx}/logs
+
+if ${debug:-false}; then
+    echo "#################################################"
+    echo "## In- and output directory paths and contents ##"
+    echo "#################################################"
+    echo ""
+    echo "%%%%%%%%%%%%%"
+    echo "%% dir_fas %%"
+    echo "%%%%%%%%%%%%%"
+    echo ""
+    ls -lhaFG "${dir_fas}"
+    echo ""
+    echo "%%%%%%%%%%%%%"
+    echo "%% dir_idx %%"
+    echo "%%%%%%%%%%%%%"
+    echo ""
+    ls -lhaFG "${dir_idx}"
+    echo ""
+    ls -lhaFG "${dir_idx}/logs"
+    echo ""
+    echo ""
+fi
+
+
+#  Activate the environment and check dependencies ----------------------------
 #  Source utility functions
-source "${dir_fnc}/check_program_path.sh"
-source "${dir_fnc}/handle_env.sh"
+# shellcheck disable=SC1091
+{
+    source "${dir_fnc}/check_program_path.sh"
+    source "${dir_fnc}/handle_env.sh"
+}
 
 #  Activate the required environment
 handle_env "${env_nam}"
@@ -320,31 +381,175 @@ handle_env "${env_nam}"
 #  Ensure access to bowtie2-build
 check_program_path "bowtie2-build"
 
-#  Create output directory structure for Bowtie 2 index files and logs
-mkdir -p ${dir_idx}/{docs,logs}
 
+#  Generate Bowtie 2 index files for the concatenated genome ------------------
 #  If necessary, decompress the FASTA file
-if [[ ! -f "${pth_fas}" && -f "${pth_fas}.gz" ]]; then
-    gunzip -c "${pth_fas}.gz" > "${pth_fas}"
+if [[ ! -f "${fil_fas}" && -f "${fil_fas}.gz" ]]; then
+    gunzip -c "${fil_fas}.gz" > "${fil_fas}"
 fi
 
 #  "Build" the Bowtie 2 index using the decompressed FASTA file
-bowtie2-build "${pth_fas}" "${dir_idx}/${fil_fas%.fasta}" \
-     > >(tee -a "${dir_idx}/logs/${day}.execute.stdout.txt") \
-    2> >(tee -a "${dir_idx}/logs/${day}.execute.stderr.txt")
+if ${debug:-false}; then
+    echo "###########################"
+    echo "## Call to bowtie2-build ##"
+    echo "###########################"
+    echo ""
+    echo "bowtie2-build \\"
+    echo "    ${fil_fas} \\"
+    echo "    ${dir_idx}/$(basename ${fil_fas} ".fasta") \\"
+    echo "         >> >(tee -a ${exc_log}.stdout.txt) \\"
+    echo "        2>> >(tee -a ${exc_log}.stderr.txt)"
+    echo ""
+    echo ""
+fi
 
-#  Optional cleanup: Once the index is built, delete the decompressed FASTA
-#+ file
-if [[ -f "${pth_fas}" ]]; then rm "${pth_fas}"; fi
+bowtie2-build \
+    "${fil_fas}" \
+    "${dir_idx}/$(basename ${fil_fas} ".fasta")" \
+         > >(tee -a "${exc_log}.stdout.txt") \
+        2> >(tee -a "${exc_log}.stderr.txt")
 
-#  Cleanup: Compress large stdout and stderr files, and remove files with size
-#+ 0
-bash "${dir_scr}/compress_remove_files.sh" \
-    --pattern "*.txt" \
-    --dir_fnd "${dir_idx}/logs"
 
-#  Optional: Check the contents of the logs directory
-# ls -lhaFG "${dir_idx}/logs"
+#  Cleanup: Compress logs and remove empty files ------------------------------
+bash "${dir_scr}/compress_remove_files.sh" --dir_fnd "${dir_idx}/logs"
+# ls -lhaFG "${dir_idx}/logs"  ## Uncomment to check directory for track logs ##
+```
+</details>
+<br />
+
+<details>
+<summary><i>Bash code: Generate Bowtie 2 index files from the </i>S. cerevisiae<i> FASTA file.</i></summary>
+
+```bash
+#!/bin/bash
+
+#  Optional: Request an interactive node --------------------------------------
+# grabnode  ## Uncomment to request 1 core, 20 GB memory, 1 day, no GPU ##
+
+
+#  Define variables -----------------------------------------------------------
+debug=true
+
+#  Set hardcoded paths, values, etc.
+dir_bas="${HOME}/repos"  ## WARNING: Change as needed ##
+dir_rep="${dir_bas}/protocol_chipseq_signal_norm"
+dir_scr="${dir_rep}/scripts"
+dir_fnc="${dir_scr}/functions"
+dir_dat="${dir_rep}/data"
+dir_gen="${dir_dat}/genomes"
+dir_cer="${dir_gen}/cerevisiae"
+dir_fas="${dir_cer}/fasta/proc"
+dir_idx="${dir_cer}/index/bowtie2"
+dir_log="${dir_idx}/logs"
+
+fil_fas="${dir_fas}/S288C_R64-5-1_proc.fasta"
+env_nam="env_align"
+day="$(date '+%Y-%m%d')"
+exc_log="${dir_log}/${day}.execute_bowtie2_build"
+
+if ${debug:-false}; then
+    echo "####################################"
+    echo "## Hardcoded variable assignments ##"
+    echo "####################################"
+    echo ""
+    echo "debug=${debug}"
+    echo ""
+    echo "dir_bas=${dir_bas}"
+    echo "dir_rep=${dir_rep}"
+    echo "dir_scr=${dir_scr}"
+    echo "dir_fnc=${dir_fnc}"
+    echo "dir_dat=${dir_dat}"
+    echo "dir_gen=${dir_gen}"
+    echo "dir_cer=${dir_cer}"
+    echo "dir_fas=${dir_fas}"
+    echo "dir_idx=${dir_idx}"
+    echo "dir_log=${dir_log}"
+    echo ""
+    echo "fil_fas=${fil_fas}"
+    echo "env_nam=${env_nam}"
+    echo "day=${day}"
+    echo "exc_log=${exc_log}"
+    echo ""
+    echo ""
+fi
+
+
+#  Create required directories if necessary -----------------------------------
+# shellcheck disable=SC2086
+mkdir -p ${dir_idx}/logs
+
+if ${debug:-false}; then
+    echo "#################################################"
+    echo "## In- and output directory paths and contents ##"
+    echo "#################################################"
+    echo ""
+    echo "%%%%%%%%%%%%%"
+    echo "%% dir_fas %%"
+    echo "%%%%%%%%%%%%%"
+    echo ""
+    ls -lhaFG "${dir_fas}"
+    echo ""
+    echo "%%%%%%%%%%%%%"
+    echo "%% dir_idx %%"
+    echo "%%%%%%%%%%%%%"
+    echo ""
+    ls -lhaFG "${dir_idx}"
+    echo ""
+    ls -lhaFG "${dir_idx}/logs"
+    echo ""
+    echo ""
+fi
+
+
+#  Activate the environment and check dependencies ----------------------------
+#  Source utility functions
+# shellcheck disable=SC1091
+{
+    source "${dir_fnc}/check_program_path.sh"
+    source "${dir_fnc}/handle_env.sh"
+}
+
+#  Activate the required environment
+handle_env "${env_nam}"
+
+#  Ensure access to bowtie2-build
+check_program_path "bowtie2-build"
+
+
+#  Generate Bowtie 2 index files for the concatenated genome ------------------
+#  If necessary, decompress the FASTA file
+if [[ ! -f "${fil_fas}" && -f "${fil_fas}.gz" ]]; then
+    gunzip -c "${fil_fas}.gz" > "${fil_fas}"
+fi
+
+#  "Build" the Bowtie 2 index using the decompressed FASTA file
+if ${debug:-false}; then
+    echo "###########################"
+    echo "## Call to bowtie2-build ##"
+    echo "###########################"
+    echo ""
+    echo "bowtie2-build \\"
+    echo "    ${fil_fas} \\"
+    echo "    ${dir_idx}/$(basename ${fil_fas} ".fasta") \\"
+    echo "         >> >(tee -a ${exc_log}.stdout.txt) \\"
+    echo "        2>> >(tee -a ${exc_log}.stderr.txt)"
+    echo ""
+    echo ""
+fi
+
+bowtie2-build \
+    "${fil_fas}" \
+    "${dir_idx}/$(basename ${fil_fas} ".fasta")" \
+         > >(tee -a "${exc_log}.stdout.txt") \
+        2> >(tee -a "${exc_log}.stderr.txt")
+
+#  Optional: Once the index is built, delete the decompressed FASTA file
+if [[ -f "${fil_fas}" ]]; then rm "${fil_fas}"; fi
+
+
+#  Cleanup: Compress logs and remove empty files ------------------------------
+bash "${dir_scr}/compress_remove_files.sh" --dir_fnd "${dir_idx}/logs"
+# ls -lhaFG "${dir_idx}/logs"  ## Uncomment to check directory for track logs ##
 ```
 </details>
 <br />
@@ -638,7 +843,7 @@ bash "${dir_scr}/compress_remove_files.sh" --dir_fnd "${dir_out}/sp/logs"
 
 <a id="f-compute-normalized-coverage"></a>
 ### F. Compute normalized coverage.
-<a id="text"></a>
+<a id="text-2"></a>
 #### Text
 <details>
 <summary><i>Text: Compute normalized coverage.</i></summary>
@@ -760,7 +965,7 @@ Without this normalization, applying $\alpha$ or $\gamma$ scaling factors would 
 </details>
 <br />
 
-<a id="bash-code"></a>
+<a id="bash-code-1"></a>
 #### Bash code
 <details>
 <summary><i>Bash code: Compute normalized coverage.</i></summary>
@@ -1017,7 +1222,7 @@ We compute minimum input depth factors for multiple common bin sizes (1, 5, 10, 
 
 <a id="1-construct-sample-table-recording-siq-chip-%24alpha%24-scaling-factors"></a>
 #### 1. Construct sample table recording siQ-ChIP $\alpha$ scaling factors.
-<a id="text-1"></a>
+<a id="text-3"></a>
 ##### Text
 <a id="1-construct-sample-table-recording-siq-chip-%24alpha%24-scaling-factors"></a>
 <details>
@@ -1120,7 +1325,7 @@ Removing $\hat{R}$ and $\hat{R}_{\text{in}}$ allows sequencing depth to be corre
 </details>
 <br />
 
-<a id="bash-code-1"></a>
+<a id="bash-code-2"></a>
 ##### Bash code
 <details>
 <summary><i>Bash code: Construct sample table recording siQ-ChIP $\alpha$ scaling factors.</i></summary>
@@ -1339,7 +1544,7 @@ bash "${dir_scr}/compress_remove_files.sh" --dir_fnd "${err_out}"
 
 <a id="2-construct-sample-table-recording-spike-in-%24gamma%24-scaling-factors"></a>
 #### 2. Construct sample table recording spike-in $\gamma$ scaling factors.
-<a id="text-2"></a>
+<a id="text-4"></a>
 ##### Text
 <details>
 <summary><i>Text: Construct sample table recording spike-in $\gamma$ scaling factors.</i></summary>
@@ -1431,7 +1636,7 @@ While we include a form of spike-in method ($\gamma$ scaling) in this workflow f
 </details>
 <br />
 
-<a id="bash-code-2"></a>
+<a id="bash-code-3"></a>
 ##### Bash code
 <details>
 <summary><i>Bash code: Construct sample table recording spike-in $\gamma$ scaling factors.</i></summary>
@@ -1650,7 +1855,7 @@ bash "${dir_scr}/compress_remove_files.sh" --dir_fnd "${err_out}"
 
 <a id="h-compute-coverage-with-the-siq-chip-method"></a>
 ### H. Compute coverage with the siQ-ChIP method.
-<a id="text-3"></a>
+<a id="text-5"></a>
 #### Text
 <details>
 <summary><i>Text: Compute coverage with the siQ-ChIP method.</i></summary>
@@ -1689,7 +1894,7 @@ This section describes the steps to compute ChIP-seq coverage normalized using t
 </details>
 <br />
 
-<a id="bash-code-3"></a>
+<a id="bash-code-4"></a>
 #### Bash code
 <details>
 <summary><i>Bash code: Compute coverage with the siQ-ChIP method.</i></summary>
@@ -1935,7 +2140,7 @@ bash "${dir_scr}/compress_remove_files.sh" --dir_fnd "${dir_log}"
 
 <a id="i-compute-coverage-with-the-spike-in-method"></a>
 ### I. Compute coverage with the spike-in method.
-<a id="text-4"></a>
+<a id="text-6"></a>
 #### Text
 <details>
 <summary><i>Text: Compute coverage with the spike-in method.</i></summary>
@@ -1945,7 +2150,7 @@ This section describes the steps to calculate spike-in normalized ChIP-seq cover
 </details>
 <br />
 
-<a id="bash-code-4"></a>
+<a id="bash-code-5"></a>
 #### Bash code
 <details>
 <summary><i>Bash code: Compute coverage with the spike-in method.</i></summary>
@@ -2191,7 +2396,7 @@ bash "${dir_scr}/compress_remove_files.sh" --dir_fnd "${dir_log}"
 
 <a id="j-compute-log2-ratios-of-ip-to-input-coverage"></a>
 ### J. Compute log2 ratios of IP to input coverage.
-<a id="text-5"></a>
+<a id="text-7"></a>
 #### Text
 <details>
 <summary><i>Text: Compute log2 ratios of IP to input coverage.</i></summary>
@@ -2201,7 +2406,7 @@ bash "${dir_scr}/compress_remove_files.sh" --dir_fnd "${dir_log}"
 </details>
 <br />
 
-<a id="bash-code-5"></a>
+<a id="bash-code-6"></a>
 #### Bash code
 <details>
 <summary><i>Bash code: Compute log2 ratios of IP to input coverage.</i></summary>
