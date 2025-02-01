@@ -136,6 +136,19 @@ Notes:
       - r-xml2
       - rename
       - tree
+    + env_protocol
+      - bc
+      - bowtie2
+      - fastqc
+      - ipython
+      - parallel
+      - pbzip2
+      - pigz
+      - r-argparse
+      - r-plotly
+      - r-ggsci
+      - rename
+      - samtools
     + env_siqchip
       - bc
       - bedtools
@@ -155,7 +168,7 @@ Notes:
 Example:
   \`\`\`
   bash install_envs.sh
-      --env_nam "env_align"
+      --env_nam "env_protocol"
       --yes
   \`\`\`
 EOM
@@ -191,11 +204,11 @@ if [[ -z "${env_nam}" ]]; then
 fi
 
 case "${env_nam}" in
-    env_align|env_analyze|env_siqchip) : ;;
+    env_align|env_analyze|env_protocol|env_siqchip) : ;;
     *) 
         echo_error \
             "Invalid environment name specified. Must be 'env_align', " \
-            "'env_analyze', or 'env_siqchip'."
+            "'env_analyze', 'env_protocol', or 'env_siqchip'."
         ;;
 esac
 
@@ -296,6 +309,21 @@ elif [[ "${env_nam}" == "env_analyze" ]]; then
         r-xml2
         rename
         tree
+    )
+elif [[ "${env_nam}" == "env_protocol" ]]; then
+    packages=(
+        bc
+        bowtie2
+        fastqc
+        ipython
+        parallel
+        pbzip2
+        pigz
+        r-argparse
+        r-plotly
+        r-ggsci
+        rename
+        samtools
     )
 elif [[ "${env_nam}" == "env_siqchip" ]]; then
     packages=(
