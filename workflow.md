@@ -15,7 +15,7 @@ This notebook provides a guide to the ChIP-seq data processing workflow detailed
 ---
 <br />
 
-# Table of contents
+## Table of contents
 <details>
 <summary><i>Table of contents</i></summary>
 <br />

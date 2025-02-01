@@ -37,7 +37,7 @@ This notebook provides a step-by-step workflow for downloading, processing, and 
 <summary><i>Text: Establish directory structure for genome files.</i></summary>
 <br />
 
-This step sets up the directory structure for organizing *S. cerevisiae* and *S. pombe* genome files. Separate subdirectories are created for `raw` and processed (`proc`) FASTA and GFF3 files, along with a directory for concatenated genome files. A temporary directory (`tmp`) is also included for intermediate processing steps.
+This step sets up the directory structure for organizing *S. cerevisiae* and *S. pombe* genome files. Separate subdirectories are created for `raw` and processed (`proc`) FASTA and GFF3 files, along with a directory for concatenated genome files (`concat`). A temporary directory (`tmp`) is also included for intermediate processing steps.
 </details>
 <br />
 
@@ -75,7 +75,7 @@ dir_gen="${dir_dat}/genomes"
 <summary><i>Text: Download, extract, and organize </i>S. cerevisiae<i> genome files.</i></summary>
 <br />
 
-This step downloads the *S. cerevisiae* genome and annotation files from the [Saccharomyces Genome Database (SGD)](https://www.yeastgenome.org/). The genome files are provided as a compressed tarball&mdash;a compressed archive (`.tgz`) containing multiple related files (more information [here](https://en.wikipedia.org/wiki/Tar_(computing))). After downloading, the tarball is extracted in a temporary directory, `tmp`. The FASTA and GFF3 files are then moved to their respective `raw` data directories for further processing. To conserve space, the temporary directory is removed after extraction.
+This step downloads the *S. cerevisiae* genome and annotation files from the [Saccharomyces Genome Database (SGD)](https://www.yeastgenome.org/). The genome files are provided as a compressed tarball&mdash;a compressed archive (`.tgz`) containing multiple related files (more information [here](https://en.wikipedia.org/wiki/Tar_(computing))). After downloading, the tarball is extracted in the temporary directory, `tmp`. The FASTA and GFF3 files are then moved to their respective `raw` data directories for further processing. To conserve space, `tmp` is removed after extraction.
 </details>
 <br />
 
@@ -399,7 +399,7 @@ zcat "${dir_sp_g3_un}/${fil_sp_g3_un}" \
 <summary><i>Text: Concatenate the processed FASTA and GFF3 files</i></summary>
 <br />
 
-This code chunk, the final step in this workflow, concatenates the processed *S. cerevisiae* and *S. pombe* FASTA and GFF3 files into unified files for subsequent data processing and analyses. The concatenated FASTA file is used for Bowtie2 index generation and alignment, while the combined GFF3 file ensures consistent, interpretable genome annotation.
+This final step concatenates the processed *S. cerevisiae* and *S. pombe* FASTA and GFF3 files into unified files for downstream data processing and analyses. The concatenated FASTA file supports Bowtie2 index generation, alignment, and IGV visualization, while the combined GFF3 file provides consistent, interpretable genome annotations for IGV.
 </details>
 <br />
 
