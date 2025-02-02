@@ -160,13 +160,14 @@ Arguments:
   -sf, --scl_fct  Comma-separated string of scaling factors to apply to
                   coverage (optional). Must match the number of infiles via
                   '--infiles'.
-  -tv, --typ_cvg  Specify coverage calculation type (default: 'norm'). Options:
-                    - 'raw', 'unadj', 'unadjusted': Compute unadjusted
-                      coverage.
-                    - 'len', 'len_frag': Normalize coverage by fragment length.
+  -tv, --typ_cvg  Specify coverage calculation type (default: '${typ_cvg}').
+                  Options:
+                    - 'unadj', 'unadjusted': Compute unadjusted signal.
+                    - 'len', 'len_frag': Adjust signal by fragment length.
                     - 'norm', 'normalized': Per Dickson et al., Sci Rep 2023
-                      (PMID: 37160995), normalize coverage by fragment length
-                      and total fragments/unity.
+                      (PMID: 37160995), adjust signal by fragment length
+                      and total fragments/unity, generating "normalized
+                      coverage".
   -uf, --usr_frg  Comma-separated string of fragment lengths to use instead of
                   read lengths (single-end alignments) or template lengths
                   (paired-end alignments; optional). Must match the number of
