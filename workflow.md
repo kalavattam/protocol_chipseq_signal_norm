@@ -36,44 +36,35 @@ This notebook provides a guide to the ChIP-seq data processing workflow detailed
     1. [E. Align sequenced reads with Bowtie 2 and process the read alignments.](#e-align-sequenced-reads-with-bowtie-2-and-process-the-read-alignments)
     1. [F. Compute normalized coverage.](#f-compute-normalized-coverage)
         1. [Text](#text-2)
-            1. [Overview](#overview)
-            1. [On generating coverage tracks](#on-generating-coverage-tracks)
-            1. [On normalizing coverage tracks](#on-normalizing-coverage-tracks)
-                1. [Fragment-length normalization](#fragment-length-normalization)
-                1. [Combined length-and-unity normalization](#combined-length-and-unity-normalization)
-                1. [Coverage as a probability density function](#coverage-as-a-probability-density-function)
-                1. [Summary](#summary)
-            1. [Steps performed in code chunk](#steps-performed-in-code-chunk)
-            1. [Output files](#output-files)
         1. [Bash code](#bash-code-1)
-    1. [G. Construct sample tables recording computed scaling factors for normalization.](#g-construct-sample-tables-recording-computed-scaling-factors-for-normalization)
+    1. [G. Compute log2 ratios of IP to input normalized coverage.](#g-compute-log2-ratios-of-ip-to-input-normalized-coverage)
+        1. [Text](#text-3)
+        1. [Bash code](#bash-code-2)
+    1. [H. Construct sample tables recording computed scaling factors for normalization.](#h-construct-sample-tables-recording-computed-scaling-factors-for-normalization)
         1. [1. Construct sample table recording siQ-ChIP $\alpha$ scaling factors.](#1-construct-sample-table-recording-siq-chip-%24alpha%24-scaling-factors)
-            1. [Text](#text-3)
-                1. [Overview](#overview-1)
-                1. [Background](#background)
-                1. [Steps performed in code chunk](#steps-performed-in-code-chunk-1)
-                1. [Output files](#output-files-1)
-            1. [Bash code](#bash-code-2)
-        1. [2. Construct sample table recording spike-in $\gamma$ scaling factors.](#2-construct-sample-table-recording-spike-in-%24gamma%24-scaling-factors)
             1. [Text](#text-4)
-                1. [Overview](#overview-2)
+                1. [Overview](#overview)
+                1. [Background](#background)
+                1. [Steps performed in code chunk](#steps-performed-in-code-chunk)
+                1. [Output files](#output-files)
+            1. [Bash code](#bash-code-3)
+        1. [2. Construct sample table recording spike-in $\gamma$ scaling factors.](#2-construct-sample-table-recording-spike-in-%24gamma%24-scaling-factors)
+            1. [Text](#text-5)
+                1. [Overview](#overview-1)
                 1. [What is spike-in normalization?](#what-is-spike-in-normalization)
                 1. [Defining the spike-in scaling factor \($\gamma$\)](#defining-the-spike-in-scaling-factor-%24gamma%24)
                 1. [Key limitations and concerns](#key-limitations-and-concerns)
                 1. [On the inclusion of spike-in scaling in this workflow](#on-the-inclusion-of-spike-in-scaling-in-this-workflow)
-                1. [Steps performed in code chunk](#steps-performed-in-code-chunk-2)
-                1. [Output files](#output-files-2)
-            1. [Bash code](#bash-code-3)
-    1. [H. Compute coverage with the siQ-ChIP method.](#h-compute-coverage-with-the-siq-chip-method)
-        1. [Text](#text-5)
-            1. [Overview](#overview-3)
-            1. [Steps performed in code chunk](#steps-performed-in-code-chunk-3)
-            1. [Important note](#important-note)
-        1. [Bash code](#bash-code-4)
-    1. [I. Compute coverage with the spike-in method.](#i-compute-coverage-with-the-spike-in-method)
+                1. [Steps performed in code chunk](#steps-performed-in-code-chunk-1)
+                1. [Output files](#output-files-1)
+            1. [Bash code](#bash-code-4)
+    1. [I. Compute coverage with the siQ-ChIP method.](#i-compute-coverage-with-the-siq-chip-method)
         1. [Text](#text-6)
+            1. [Overview](#overview-2)
+            1. [Steps performed in code chunk](#steps-performed-in-code-chunk-2)
+            1. [Important note](#important-note)
         1. [Bash code](#bash-code-5)
-    1. [J. Compute log2 ratios of IP to input coverage.](#j-compute-log2-ratios-of-ip-to-input-coverage)
+    1. [I. Compute coverage with the spike-in method.](#i-compute-coverage-with-the-spike-in-method)
         1. [Text](#text-7)
         1. [Bash code](#bash-code-6)
     1. [K. Rough-draft tracks for assessment](#k-rough-draft-tracks-for-assessment)
@@ -847,121 +838,27 @@ bash "${dir_scr}/compress_remove_files.sh" --dir_fnd "${dir_out}/sp/logs"
 #### Text
 <details>
 <summary><i>Text: Compute normalized coverage.</i></summary>
-
-<a id="overview"></a>
-##### Overview
-This section provides an example of how to compute ChIP-seq normalized coverage per [Dickson et al., *Sci Rep*, 2023](https://www.nature.com/articles/s41598-023-34430-2)&mdash;i.e., coverage that is both fragment length- and unity-normalized.
-
-In the corresponding [Bash code chunk](#bash-code), the coverage type is determined by setting the variable `typ_cvg` to `"norm"` (for length-and-unity-normalized coverage). Other options are `"raw"` (for non-normalized coverage) and `"frag"` (for fragment length-normalized coverage); for more details, see below as well as the documentation associated with [`compute_coverage.py`](https://github.com/kalavattam/protocol_chipseq_signal_norm/blob/main/scripts/compute_coverage.py). BEDGRAPH and log output files are saved to separate directories based on the selected coverage type.
-
----
-
-<a id="on-generating-coverage-tracks"></a>
-##### On generating coverage tracks
-To generate normalize coverage tracks, we first compute a count density function based on fragment overlap with genomic bins (`typ_cvg="raw"`). Let $f(b)$ represent this density, where $b$ is a genomic bin of a specified size in base pairs (bp). The raw fragment density for bin $b$ is given by
-
-<div align="center">
-    <img src="https://latex.codecogs.com/svg.image?$$f(b)=\text{Number&space;of&space;fragments&space;overlapping&space;bin}\;b$$" alt="raw coverage statement">
-</div>
-
-which can be expressed as
-
-<div align="center">
-    <img src="https://latex.codecogs.com/svg.image?$$f(b)=\sum_{\varphi\in&space;F}\mathbf{1}_{\{b\cap\varphi\neq\emptyset\}}$$" alt="raw coverage equation">
-</div>
-
-where
-- $F$ is the set of all fragments,
-- $\varphi$ is an individual fragment,
-- and $\mathbf{1}$ is an indicator function that equals 1 if there is an overlap between $b$ and $\varphi$ and 0 otherwise, i.e.,
-
-<div align="center">
-    <img src="https://latex.codecogs.com/svg.image?$$\mathbf{1}_{\{b\cap\varphi\neq\emptyset\}}=\begin{cases}1,&\text{if}\;b\cap\varphi\neq\emptyset\\0,&\text{otherwise}\end{cases}$$" alt="raw coverage indicator function">
-</div>
-
-This function tallies the number of fragments overlapping each bin, forming the basis for coverage calculations.
-
----
-
-<a id="on-normalizing-coverage-tracks"></a>
-##### On normalizing coverage tracks
-Before using coverage to apply the siQ-ChIP or spike-in methods, raw fragment coverage tracks must be normalized to allow for meaningful scaling and quantitative (or semi-quantitative) interpretation. This step corrects for fragment length and sequencing biases, ensuring that, e.g., siQ-ChIP-scaled coverage values accurately represent the underlying concentration of immunoprecipitated DNA. 
-
-<a id="fragment-length-normalization"></a>
-###### Fragment-length normalization
-By default, raw coverage tracks are constructed as histograms that tally the number of fragments overlapping each base pair or genomic bin (see above). However, if each fragment contributes a value of $+1$ to every base it overlaps, longer fragments will be overcounted, accumulating a contribution proportional to their length rather than their representation in the data. This distorts the coverage distribution, particularly for datasets with variable fragment lengths.
-
-To correct for this, we first apply length normalization so that each fragment contributes equally to the track regardless of its length (`typ_cvg="frag"`). The fragment length-normalized coverage $f_{\ell}(b)$ is computed as
-
-<div align="center">
-    <img src="https://latex.codecogs.com/svg.image?$$f_{\ell}(b)=\sum_{\varphi\in&space;F}\frac{\mathbf{1}_{\{b\cap\varphi\neq\emptyset\}}}{\ell_{\varphi}}$$" alt="length normalization">
-</div>
-
-where
-- $F$ is the set of all fragments,
-- $\varphi$ is an individual fragment,
-- $\ell_{\varphi}$ is the length of fragment $\varphi$,
-- and <img src="https://latex.codecogs.com/svg.image?\mathbf{1}_{\{b\cap\varphi\neq\emptyset\}}" 
-  alt="length normalization indicator function" style="vertical-align: middle;"> is an indicator function that equals 1 if there is an overlap between $b$ and $\varphi$ and 0 otherwise.
- 
-This normalization distributes each fragment's contribution equally across its span, preventing the overrepresentation of longer fragments in the track.
 <br />
 
-<a id="combined-length-and-unity-normalization"></a>
-###### Combined length-and-unity normalization
-However, length normalization alone does not account for differences in sequencing depth or library size across samples, which can influence coverage values independently of underlying biological signal. To address this, we apply a combined length-and-unity normalization (`typ_cvg="norm"`). Unity normalization scales by the total number of sequenced fragments ($|F|$), adjusting coverage values so that the sum across all bins in a track equals 1. This makes coverage tracks comparable across datasets with different sequencing depths. The length-and-unity-normalized coverage 
-<img src="https://latex.codecogs.com/svg.image?f_{\ell,u}(b)" alt="f_ell,u(b)" style="vertical-align: middle;"> is computed as
+**Overview**  
+This section demonstrates how to compute ChIP-seq normalized coverage ([Dickson et al., *Sci Rep*, 2023](https://www.nature.com/articles/s41598-023-34430-2))&mdash;binned coverage adjusted for fragment lengths that sums to unity.
 
-<div align="center">
-    <img src="https://latex.codecogs.com/svg.image?$$f_{\ell,u}(b)=\frac{1}{|F|}\sum_{\varphi\in&space;F}\frac{\mathbf{1}_{\{b\cap\varphi\neq\emptyset\}}}{\ell_{\varphi}}$$" alt="length-and-unity normalization">
-</div>
-
-<a id="coverage-as-a-probability-density-function"></a>
-###### Coverage as a probability density function
-After this final normalization step, the coverage track represents the probability density of sequenced fragments across the genome, as the total coverage now sums to 1. This is important for several reasons:
-
-1. It makes the track physically meaningful:
-
-   The siQ-ChIP scaling factor ($\alpha$) reflects IP efficiency, but only if the coverage track $f(x)$ is structured as a normalized probability distribution. If $f(x)$ isn't built this way, applying $\alpha$ scales an arbitrary signal rather than one that preserves real physical meaning.
-
-2. It ensures IP concentration is projected correctly onto the genome:
-
-   The normalized coverage <img src="https://latex.codecogs.com/svg.image?f_{\ell,u}(b)" alt="f_ell,u(b)" style="vertical-align: middle;"> allows bulk IP concentration to be mapped to specific genomic regions. If the track is built correctly, multiplying by $c_{\text{IP}}$ (which converts IP mass to concentration) gives an estimate of the chromatin concentration bound in the IP at each genomic bin: <img src="https://latex.codecogs.com/svg.image?$c_{\text{IP}}f_{\ell,u}(b)$" alt="c_IP f_ell,u(b)" style="vertical-align: middle;">. Similarly, multiplying the input coverage track by $c_{\text{in}}$ gives the estimated total chromatin concentration originating from each bin. This projection only holds if the track is normalized for length and unity, ensuring that $\alpha$ actually captures the fraction of chromatin from each bin that was bound in IP.
-
-3. It eliminates the need for arbitrary scaling factors (e.g., FPKM):
-
-   Normalizations like FPKM (Fragments Per Kilobase per Million mapped reads) are arbitrary because they don't enforce a probability constraint on sequencing tracks. In contrast, length-and-unity-normalized coverage ensures all scaling factors ($\alpha$ or the spike-in method's $\gamma$) preserve meaningful quantitative relationships rather than just applying some heuristic.
-
-4. It allows direct IP mass projections:
-
-   A properly normalized track lets any material quantity&mdash;such as IP mass&mdash;be projected onto the genome using <img src="https://latex.codecogs.com/svg.image?$m_{\text{IP}}f_{\ell,u}(b)$" alt="m_IP f_ell,u(b)" style="vertical-align: middle;">. This makes ChIP-seq data interpretable in quantitative terms. Standard ChIP-seq relies on input normalization, but a properly built track allows siQ-ChIP-like quantification even if no input sequencing was done&mdash;as long as IP conditions were controlled.
-
-<a id="summary"></a>
-###### Summary
-
-The normalization process outlined here is necessary for ensuring that coverage tracks can be meaningfully scaled by siQ-ChIP ($\alpha$) or spike-in ($\gamma$). By enforcing a normalized probability distribution, we ensure that:
-- Coverage values represent the relative frequency of fragments per bin rather than arbitrary counts.
-- Scaling factors operate on a physically meaningful track that preserves IP efficiency and chromatin concentration.
-- ChIP-seq signals can be quantitatively or semi-quantitatively interpreted without introducing arbitrary or dataset-dependent scaling heuristics.
-
-Without this normalization, applying $\alpha$ or $\gamma$ scaling factors would introduce distortions that undermine the ability to make, respectively, quantitative or semi-quantitative comparisons across samples. By appropriately structuring and normalizing the coverage track, downstream steps in the siQ-ChIP and spike-in methods yield interpretable biological signals.
+In the corresponding [Bash code chunk](#bash-code), the signal type is specified by setting `typ_cvg` to `"norm"` (normalized coverage). Other options are `"unadj"` (unadjusted binned coverage) and `"frag"` (fragment length-adjusted binned coverage). For details, see below and the [`compute_signal.py` documentation](https://github.com/kalavattam/protocol_chipseq_signal_norm/blob/main/scripts/compute_signal.py). BEDGRAPH and log output files are organized by signal type.
 
 ---
 
-<a id="steps-performed-in-code-chunk"></a>
-##### Steps performed in code chunk
-1. *Set paths and environment:* Define paths for input BAM files, output directories, and required dependencies.
-2. *Activate environment and check dependencies:* Ensure required software (GNU Parallel, Python, SLURM, etc.) is available.
-3. *Compute coverage:* Calls the driver script (`execute_compute_coverage.sh`) to generate length-and-unity-normalized coverage tracks in BEDGRAPH format.
-4. *Verify normalization:* Optionally perform a check to confirm the output normalized coverage sums to ~1.
-5. Cleanup: Compress logs and remove size-0 files.
+**Steps performed in code chunk**  
+1. *Define paths and environment:* Define input BAM paths, output directories, and dependencies.
+2. *Activate environment and check dependencies:* Ensure required software (GNU Parallel, Python, etc.) is available.
+3. *Compute signal:* Call `execute_compute_signal.sh` to generate normalized coverage BEDGRAPH files.
+4. *Verify normalization:* Optionally confirm the normalized coverage sums to ~1.
+5. *Cleanup:* Compress logs and remove empty files.
 
 ---
 
-<a id="output-files"></a>
-##### Output files
-1. BEDGRAPH coverage tracks (`*.bdg.gz`) are saved in structured directories based on the chosen normalization type.
-2. Log files tracking the execution process are stored separately.
+**Output files**  
+1. *BEDGRAPH coverage tracks* (`*.bdg.gz`) organized by signal type.
+2. *Log files* tracking execution steps, stored separately.
 </details>
 <br />
 
@@ -997,7 +894,7 @@ details="${aligner}_${a_type}_flag-${flg}_mapq-${mapq}"
 
 dir_aln="${dir_pro}/align_reads/${details}"
 dir_bam="${dir_aln}/sc"
-dir_cvg="${dir_pro}/compute_coverage/${details}"
+dir_cvg="${dir_pro}/compute_signal/${details}"
 typ_cvg="norm"
 dir_trk="${dir_cvg}/${typ_cvg}"
 dir_log="${dir_trk}/logs"
@@ -1005,7 +902,7 @@ dir_log="${dir_trk}/logs"
 pattern="*.bam"
 
 env_nam="env_analyze"
-execute="${dir_scr}/execute_compute_coverage.sh"
+execute="${dir_scr}/execute_compute_signal.sh"
 day="$(date '+%Y-%m%d')"
 exc_log="${dir_log}/${day}.$(basename "${execute}" ".sh")"
 
@@ -1023,7 +920,7 @@ exc_log="${dir_log}/${day}.$(basename "${execute}" ".sh")"
     siz_bin=30
     typ_cvg="${typ_cvg}"
     err_out="${dir_log}"
-    nam_job="compute_coverage_${typ_cvg}"
+    nam_job="compute_signal_${typ_cvg}"
 }
 
 if ${debug:-false}; then
@@ -1167,9 +1064,9 @@ bash "${execute}" \
 
 #  Check that each normalized coverage file sums to unity
 if ${debug:-false}; then
-    echo "##############################################"
-    echo "## Check unity of normalized coverage files ##"
-    echo "##############################################"
+    echo "#######################################################"
+    echo "## Check that normalized coverage files sum to unity ##"
+    echo "#######################################################"
     echo ""
     for bdg in "${dir_trk}/"*".${typ_out}"; do
         echo -n "${bdg##*/}: "
@@ -1187,15 +1084,289 @@ bash "${dir_scr}/compress_remove_files.sh" --dir_fnd "${err_out}"
 </details>
 <br />
 
-<a id="g-construct-sample-tables-recording-computed-scaling-factors-for-normalization"></a>
-### G. Construct sample tables recording computed scaling factors for normalization.
+<a id="g-compute-log2-ratios-of-ip-to-input-normalized-coverage"></a>
+### G. Compute log2 ratios of IP to input normalized coverage.
+<a id="text-3"></a>
+#### Text
+<details>
+<summary><i>Text: Compute log2 ratios of IP to input normalized coverage.</i></summary>
+<br />
+
+**Overview**  
+This section describes how to compute $\log_{2}$-transformed ratios of IP to input normalized coverage tracks, a common method for visualizing ChIP-seq enrichment relative to background. Normalized coverage must first be computed as described [above](#f-compute-normalized-coverage).
+
+
+In the corresponding Bash code chunk, the signal type is specified by setting `typ_cvg` to `"log2"`, which ensures that $\log_2 \left( \text{IP} / \text{input} \right)$ transformations are applied to normalized coverage tracks. The required input files are identified from a sample metadata table, and BEDGRAPH outputs are organized accordingly.
+
+---
+
+**Steps performed in code chunk**  
+1. *Define paths and environment:* Specify input normalized coverage BEDGRAPH tracks, output directories, and dependencies.
+2.  *Activate environment and check dependencies:* Ensure required software (GNU Parallel, Python, etc.) is available.
+3.  *Compute $\log_{2}$ ratios:* Call `execute_compute_signal_ratio.sh` to generate $\log_2 \left( \text{IP} / \text{input} \right)$ BEDGRAPH tracks.
+4.  *Perform optional depth filtering:* Generate $\log_{2}$ ratios with and without applying a minimum depth filter (`dep_min`).
+5.  *Cleanup:* Compress logs and remove empty files.
+
+---
+
+**Output files**  
+1. *BEDGRAPH $\log_2 \left( \text{IP} / \text{input} \right)$ tracks* (`*.bdg.gz`) organized by depth-filtering status.
+2. *Log files* tracking execution steps, stored separately.
+</details>
+<br />
+
+<a id="bash-code-2"></a>
+#### Bash code
+<details>
+<summary><i>Bash code: Compute log2 ratios of IP to input normalized coverage.</i></summary>
+
+```bash
+#!/bin/bash
+
+#  Optional: Request an interactive node --------------------------------------
+# grabnode  ## Uncomment to request 1 core, 20 GB memory, 1 day, no GPU ##
+
+
+#  Define variables -----------------------------------------------------------
+debug=true
+
+#  Define base directory for repository
+dir_bas="${HOME}/repos"  ## WARNING: Change as needed ##
+dir_rep="${dir_bas}/protocol_chipseq_signal_norm"
+dir_scr="${dir_rep}/scripts"
+dir_fnc="${dir_scr}/functions"
+dir_dat="${dir_rep}/data"
+dir_pro="${dir_dat}/processed"
+
+aligner="bowtie2"
+a_type="global"
+req_flg=true
+flg="$(if ${req_flg}; then echo "2"; else echo "NA"; fi)"
+mapq=1
+details="${aligner}_${a_type}_flag-${flg}_mapq-${mapq}"
+
+dir_aln="${dir_pro}/align_reads/${details}"
+dir_bam="${dir_aln}/sc"
+dir_cvg="${dir_pro}/compute_signal/${details}"
+dir_nrm="${dir_cvg}/norm"
+dir_tbl="${dir_cvg}/tables"
+dir_lg2="${dir_cvg}/log2"
+dir_log="${dir_lg2}/logs"
+
+env_nam="env_analyze"
+execute="execute_compute_signal_ratio.sh"
+day="$(date '+%Y-%m%d')"
+exc_log="${dir_log}/${day}.$(basename "${execute}" ".sh")"
+
+typ_cvg="log2"  ## NOTE: Use samples from either the alpha or spike table ##
+tbl_lg2="${dir_tbl}/ChIP_WT_G1-G2M-Q_Hho1-Hmo1_alpha.tsv"
+
+#  Set hardcoded argument assignments
+# shellcheck disable=SC1091
+source "${dir_fnc}/extract_fld_str.sh"
+
+typ_out="bdg.gz"
+fil_ip=$(
+    sed \
+        -e "s:${dir_bam}:${dir_nrm}:g" \
+        -e "s:.bam:.${typ_out}:g" \
+        < <(extract_fld_str 1 "${tbl_lg2}")
+)
+fil_in=$(
+    sed \
+        -e "s:${dir_bam}:${dir_nrm}:g" \
+        -e "s:.bam:.${typ_out}:g" \
+        < <(extract_fld_str 2 "${tbl_lg2}")
+)
+dir_out="${dir_lg2}"
+dep_min="$(extract_fld_str 24 "${tbl_lg2}")"  ## WARNING: See description ##
+err_out="${dir_log}"
+nam_job="compute_signal_ratio_${typ_cvg}"
+
+if ${debug:-false}; then
+    echo "####################################"
+    echo "## Hardcoded variable assignments ##"
+    echo "####################################"
+    echo ""
+    echo "debug=${debug}"
+    echo ""
+    echo "dir_bas=${dir_bas}"
+    echo "dir_rep=${dir_rep}"
+    echo "dir_scr=${dir_scr}"
+    echo "dir_fnc=${dir_fnc}"
+    echo "dir_dat=${dir_dat}"
+    echo "dir_pro=${dir_pro}"
+    echo ""
+    echo "aligner=${aligner}"
+    echo "a_type=${a_type}"
+    echo "req_flg=${req_flg}"
+    echo "flg=${flg}"
+    echo "mapq=${mapq}"
+    echo "details=${details}"
+    echo ""
+    echo "dir_aln=${dir_aln}"
+    echo "dir_bam=${dir_bam}"
+    echo "dir_cvg=${dir_cvg}"
+    echo "dir_nrm=${dir_nrm}"
+    echo "dir_tbl=${dir_tbl}"
+    echo "dir_lg2=${dir_lg2}"
+    echo "dir_log=${dir_log}"
+    echo ""
+    echo "env_nam=${env_nam}"
+    echo "execute=${execute}"
+    echo "day=${day}"
+    echo "exc_log=${exc_log}"
+    echo ""
+    echo "typ_cvg=${typ_cvg}"
+    echo "tbl_lg2=${tbl_lg2}"
+    echo ""
+    echo "typ_out=${typ_out}"
+    echo "fil_ip=${fil_ip}"
+    echo "fil_in=${fil_in}"
+    echo "dir_out=${dir_out}"
+    echo "dep_min=${dep_min}"
+    echo "err_out=${err_out}"
+    echo "nam_job=${nam_job}"
+    echo ""
+    echo ""
+fi
+
+
+#  Create required directories if necessary -----------------------------------
+# shellcheck disable=SC2086
+mkdir -p ${dir_lg2}/{dm_y,dm_n,logs}
+
+if ${debug:-false}; then
+    echo "#################################################"
+    echo "## In- and output directory paths and contents ##"
+    echo "#################################################"
+    echo ""
+    echo "%%%%%%%%%%%%%"
+    echo "%% dir_nrm %%"
+    echo "%%%%%%%%%%%%%"
+    echo ""
+    ls -lhaFG "${dir_nrm}"
+    echo ""
+    ls -lhaFG "${dir_nrm}/logs"
+    echo ""
+    echo "%%%%%%%%%%%%%"
+    echo "%% dir_tbl %%"
+    echo "%%%%%%%%%%%%%"
+    echo ""
+    ls -lhaFG "${dir_tbl}"
+    echo ""
+    ls -lhaFG "${dir_tbl}/logs"
+    echo ""
+    echo "%%%%%%%%%%%%%"
+    echo "%% dir_lg2 %%"
+    echo "%%%%%%%%%%%%%"
+    echo ""
+    ls -lhaFG "${dir_lg2}/dm_y"
+    echo ""
+    ls -lhaFG "${dir_lg2}/dm_n"
+    echo ""
+    ls -lhaFG "${err_out}"
+    echo ""
+    echo ""
+fi
+
+
+#  Activate the environment and check dependencies ----------------------------
+#  Source utility functions
+# shellcheck disable=SC1091
+{
+    source "${dir_fnc}/check_program_path.sh"
+    source "${dir_fnc}/echo_warning.sh"
+    source "${dir_fnc}/handle_env.sh"
+}
+
+#  Activate the required environment
+handle_env "${env_nam}"
+
+#  Check the availability of necessary dependencies such as GNU Parallel and
+#+ SLURM sbatch
+check_program_path awk
+check_program_path parallel
+check_program_path python
+check_program_path samtools
+check_program_path sbatch ||
+    echo_warning \
+        "SLURM is not available on this system. Do not use the '--slurm'" \
+        "flag with the driver script."
+
+
+#  Generate log2(IP/input) coverage tracks ------------------------------------
+if ${debug:-false}; then
+    echo "#####################################################"
+    echo "## Call to driver script with '--dep_min' argument ##"
+    echo "#####################################################"
+    echo ""
+    echo "bash ${dir_scr}/${execute} \\"
+    echo "    --verbose \\"
+    echo "    --fil_ip ${fil_ip} \\"
+    echo "    --fil_in ${fil_in} \\"
+    echo "    --dir_out ${dir_lg2}/dm_y \\"
+    echo "    --typ_out ${typ_out} \\"
+    echo "    --track \\"
+    echo "    --dep_min ${dep_min} \\"
+    echo "    --log2 \\"
+    echo "    --err_out ${dir_log} \\"
+    echo "    --slurm \\"
+    echo "         >> >(tee -a ${exc_log}.stdout.txt) \\"
+    echo "        2>> >(tee -a ${exc_log}.stderr.txt)"
+    echo ""
+    echo ""
+fi
+
+#  Run driver script to generate tracks with 'dep_min': Add '--dry_run' to view
+#+ commands without execution
+bash "${dir_scr}/${execute}" \
+    --verbose \
+    --fil_ip "${fil_ip}" \
+    --fil_in "${fil_in}" \
+    --dir_out "${dir_lg2}/dm_y" \
+    --typ_out "${typ_out}" \
+    --track \
+    --dep_min "${dep_min}" \
+    --log2 \
+    --err_out "${dir_log}" \
+    --slurm \
+         >> >(tee -a "${exc_log}.dm_y.stdout.txt") \
+        2>> >(tee -a "${exc_log}.dm_y.stderr.txt")
+
+#  Run driver script to generate tracks without 'dep_min': Add '--dry_run' to
+#+ view commands without execution
+bash "${dir_scr}/${execute}" \
+    --verbose \
+    --fil_ip "${fil_ip}" \
+    --fil_in "${fil_in}" \
+    --dir_out "${dir_lg2}/dm_n" \
+    --typ_out "${typ_out}" \
+    --track \
+    --log2 \
+    --err_out "${dir_log}" \
+    --slurm \
+         >> >(tee -a "${exc_log}.dm_n.stdout.txt") \
+        2>> >(tee -a "${exc_log}.dm_n.stderr.txt")
+
+
+#  Cleanup: Compress logs and remove empty files ------------------------------
+bash "${dir_scr}/compress_remove_files.sh" --dir_fnd "${dir_log}"
+# ls -lhaFG "${dir_log}"  ## Uncomment to check directory for track logs ##
+# find . -maxdepth 1 -type f -size 0 -delete -o -type f -not -name "*.gz" -exec gzip {} +
+```
+</details>
+<br />
+
+<a id="h-construct-sample-tables-recording-computed-scaling-factors-for-normalization"></a>
+### H. Construct sample tables recording computed scaling factors for normalization.
 <details>
 <summary><i>Text: Construct sample tables recording computed scaling factors for normalization.</i></summary>
 <br />
 
-The following Bash code chunks present a structured approach to generating sample tables that record scaling factors derived from the [siQ-ChIP](#1-construct-sample-table-recording-siq-chip-alpha-scaling-factors) and [spike-in](#2-construct-sample-table-recording-spike-in-scaling-factors) methods. These factors are stored in tables for use in downstream processing, where they are applied to [length-and-unity normalized data](https://www.nature.com/articles/s41598-023-34430-2#Sec2) to produce scaled coverage tracks. This facilitates quantitative (siQ-ChIP) and semiquantitative (spike-in) comparisons across samples.
+The following Bash code chunks present a structured approach to generating sample tables that record scaling factors derived from the [siQ-ChIP](#1-construct-sample-table-recording-siq-chip-alpha-scaling-factors) and [spike-in](#2-construct-sample-table-recording-spike-in-scaling-factors) methods. These factors are stored in tables for use in downstream processing, where they are applied to [normalized coverage](https://www.nature.com/articles/s41598-023-34430-2#Sec2) to produce scaled coverage tracks. This facilitates quantitative (siQ-ChIP) and semiquantitative (spike-in) comparisons across samples.
 
-Before applying scaling factors, coverage tracks must be properly normalized to ensure meaningful quantitative comparisons; this means applying [length-and-unity normalization](#combined-length-and-unity-normalization) so that coverage values are structured as [normalized probability distributions](coverage-as-a-probability-density-function). Once this is done, we scale coverage taking the ratio of IP (immunoprecipitation) coverage to input coverage and multiplying by the appropriate scaling factor. Each bin-wise operation follows:
+We take the ratio of IP (immunoprecipitation) normalized coverage to input coverage and multiplying by the appropriate scaling factor. Each bin-wise operation follows:
 
 <div align="center">
     <img src="https://latex.codecogs.com/svg.image?$$b_{\text{scaled}}=\frac{f_{\ell,u}^{\text{\text{IP}}}(b)}{\max(f_{\ell,u}^{\text{input}}(b),\delta)}\times(\alpha\;\text{or}\;\gamma)$$" alt="scaled coverage equation">
@@ -1222,13 +1393,13 @@ We compute minimum input depth factors for multiple common bin sizes (1, 5, 10, 
 
 <a id="1-construct-sample-table-recording-siq-chip-%24alpha%24-scaling-factors"></a>
 #### 1. Construct sample table recording siQ-ChIP $\alpha$ scaling factors.
-<a id="text-3"></a>
+<a id="text-4"></a>
 ##### Text
 <a id="1-construct-sample-table-recording-siq-chip-%24alpha%24-scaling-factors"></a>
 <details>
 <summary><i>Text: Construct sample table recording siQ-ChIP $\alpha$ scaling factors.</i></summary>
 
-<a id="overview-1"></a>
+<a id="overview"></a>
 ###### Overview
 This section describes the process of constructing a sample table that records siQ-ChIP $\alpha$ scaling factors, which normalize ChIP-seq coverage to enable quantitative comparisons across samples ([Dickson et al., 2020](https://pubmed.ncbi.nlm.nih.gov/32994221/); [Dickson et al., 2023](https://pubmed.ncbi.nlm.nih.gov/37160995/)). For ChIP-seq samples to be quantitatively comparable via the siQ-ChIP method, they must satisfy the following experimental conditions:
 1. Equal IP volumes across samples.
@@ -1287,7 +1458,7 @@ Removing $\hat{R}$ and $\hat{R}_{\text{in}}$ allows sequencing depth to be corre
 
 ---
 
-<a id="steps-performed-in-code-chunk-1"></a>
+<a id="steps-performed-in-code-chunk"></a>
 ###### Steps performed in code chunk
 1. *Identify ChIP-seq samples* by selecting IP and corresponding input BAM files.
 2. *Extract metadata* from the structured TSV file containing siQ-ChIP measurements (e.g., volume, concentration, DNA mass).
@@ -1318,14 +1489,14 @@ Removing $\hat{R}$ and $\hat{R}_{\text{in}}$ allows sequencing depth to be corre
 
 ---
 
-<a id="output-files-1"></a>
+<a id="output-files"></a>
 ###### Output files
 - *`${fil_out}`* (TSV): The final table containing sample information, computed alpha scaling factors, and minimum input depth values.
 - *Logs:* Execution logs (`.stdout.txt` and `.stderr.txt`) are stored in `${dir_log}`.
 </details>
 <br />
 
-<a id="bash-code-2"></a>
+<a id="bash-code-3"></a>
 ##### Bash code
 <details>
 <summary><i>Bash code: Construct sample table recording siQ-ChIP $\alpha$ scaling factors.</i></summary>
@@ -1357,7 +1528,7 @@ details="${aligner}_${a_type}_flag-${flag}_mapq-${mapq}"
 
 dir_aln="${dir_pro}/align_reads/${details}"
 dir_bam="${dir_aln}/sc"
-dir_cvg="${dir_pro}/compute_coverage/${details}"
+dir_cvg="${dir_pro}/compute_signal/${details}"
 dir_tbl="${dir_cvg}/tables"
 dir_log="${dir_tbl}/logs"
 typ_cvg="alpha"
@@ -1544,12 +1715,12 @@ bash "${dir_scr}/compress_remove_files.sh" --dir_fnd "${err_out}"
 
 <a id="2-construct-sample-table-recording-spike-in-%24gamma%24-scaling-factors"></a>
 #### 2. Construct sample table recording spike-in $\gamma$ scaling factors.
-<a id="text-4"></a>
+<a id="text-5"></a>
 ##### Text
 <details>
 <summary><i>Text: Construct sample table recording spike-in $\gamma$ scaling factors.</i></summary>
 
-<a id="overview-2"></a>
+<a id="overview-1"></a>
 ###### Overview
 This section describes the process of constructing a sample table that records spike-in $\gamma$ scaling factors, which normalize ChIP-seq coverage to enable semiquantitative comparisons across samples. While widely used, spike-in normalization introduces assumptions and limitations that should be carefully considered when interpreting results.
 
@@ -1615,7 +1786,7 @@ While we include a form of spike-in method ($\gamma$ scaling) in this workflow f
 
 ---
 
-<a id="steps-performed-in-code-chunk-2"></a>
+<a id="steps-performed-in-code-chunk-1"></a>
 ###### Steps performed in code chunk
 1. *Identify ChIP-seq samples* by selecting BAM files corresponding to the main and spike-in genomes for both IP and input samples.
 2. *Count alignments* using `samtools view` to tally main and spike-in alignments separately for each sample. See [`count_alignments_bam()`](https://github.com/kalavattam/protocol_chipseq_signal_norm/blob/main/scripts/functions/count_alignments_bam.sh) for details.
@@ -1629,14 +1800,14 @@ While we include a form of spike-in method ($\gamma$ scaling) in this workflow f
    - Record sample details and computed spike-in scaling factors in an output file (`${fil_out}`).
    - Format the table for compatibility with downstream coverage normalization steps.
 
-<a id="output-files-2"></a>
+<a id="output-files-1"></a>
 ###### Output files
 - `${fil_out}` (TSV): The final table containing sample information and computed spike-in scaling factors.
 - Logs: Execution logs (`.stdout.txt` and `.stderr.txt`) are stored in `${dir_log}`.
 </details>
 <br />
 
-<a id="bash-code-3"></a>
+<a id="bash-code-4"></a>
 ##### Bash code
 <details>
 <summary><i>Bash code: Construct sample table recording spike-in $\gamma$ scaling factors.</i></summary>
@@ -1668,7 +1839,7 @@ details="${aligner}_${a_type}_flag-${flag}_mapq-${mapq}"
 
 dir_aln="${dir_pro}/align_reads/${details}"
 dir_bam="${dir_aln}/sc"
-dir_cvg="${dir_pro}/compute_coverage/${details}"
+dir_cvg="${dir_pro}/compute_signal/${details}"
 dir_tbl="${dir_cvg}/tables"
 dir_log="${dir_tbl}/logs"
 typ_cvg="spike"
@@ -1853,20 +2024,20 @@ bash "${dir_scr}/compress_remove_files.sh" --dir_fnd "${err_out}"
 </details>
 <br />
 
-<a id="h-compute-coverage-with-the-siq-chip-method"></a>
-### H. Compute coverage with the siQ-ChIP method.
-<a id="text-5"></a>
+<a id="i-compute-coverage-with-the-siq-chip-method"></a>
+### I. Compute coverage with the siQ-ChIP method.
+<a id="text-6"></a>
 #### Text
 <details>
 <summary><i>Text: Compute coverage with the siQ-ChIP method.</i></summary>
 
-<a id="overview-3"></a>
+<a id="overview-2"></a>
 ##### Overview
 This section describes the steps to compute ChIP-seq coverage normalized using the siQ-ChIP method. For more details, see the introduction to [Section G](#g-construct-sample-tables-recording-computed-scaling-factors-for-normalization). The procedure makes use of utility scripts and functions, environment handling, and parallel processing where applicable.
 
 ---
 
-<a id="steps-performed-in-code-chunk-3"></a>
+<a id="steps-performed-in-code-chunk-2"></a>
 ##### Steps performed in code chunk
 1. *Set up directories and paths:* Define variables for key directories, data locations, and output destinations.
 2. *Activate environment and check dependencies:* Load the necessary computational environment and ensure essential dependencies are available.
@@ -1894,7 +2065,7 @@ This section describes the steps to compute ChIP-seq coverage normalized using t
 </details>
 <br />
 
-<a id="bash-code-4"></a>
+<a id="bash-code-5"></a>
 #### Bash code
 <details>
 <summary><i>Bash code: Compute coverage with the siQ-ChIP method.</i></summary>
@@ -1926,14 +2097,14 @@ details="${aligner}_${a_type}_flag-${flg}_mapq-${mapq}"
 
 dir_aln="${dir_pro}/align_reads/${details}"
 dir_bam="${dir_aln}/sc"
-dir_cvg="${dir_pro}/compute_coverage/${details}"
+dir_cvg="${dir_pro}/compute_signal/${details}"
 dir_nrm="${dir_cvg}/norm"
 dir_tbl="${dir_cvg}/tables"
 dir_alf="${dir_cvg}/alpha"
 dir_log="${dir_alf}/logs"
 
 env_nam="env_analyze"
-execute="execute_compute_coverage_ratio.sh"
+execute="execute_compute_signal_ratio.sh"
 day="$(date '+%Y-%m%d')"
 exc_log="${dir_log}/${day}.$(basename "${execute}" ".sh")"
 
@@ -1961,7 +2132,7 @@ dir_out="${dir_alf}"
 scl_fct="$(extract_fld_str  3 "${tbl_alf}")"
 dep_min="$(extract_fld_str 24 "${tbl_alf}")"  ## WARNING: See description ##
 err_out="${dir_log}"
-nam_job="compute_coverage_ratio_${typ_cvg}"
+nam_job="compute_signal_ratio_${typ_cvg}"
 
 if ${debug:-false}; then
     echo "####################################"
@@ -2140,7 +2311,7 @@ bash "${dir_scr}/compress_remove_files.sh" --dir_fnd "${dir_log}"
 
 <a id="i-compute-coverage-with-the-spike-in-method"></a>
 ### I. Compute coverage with the spike-in method.
-<a id="text-6"></a>
+<a id="text-7"></a>
 #### Text
 <details>
 <summary><i>Text: Compute coverage with the spike-in method.</i></summary>
@@ -2150,7 +2321,7 @@ This section describes the steps to calculate spike-in normalized ChIP-seq cover
 </details>
 <br />
 
-<a id="bash-code-5"></a>
+<a id="bash-code-6"></a>
 #### Bash code
 <details>
 <summary><i>Bash code: Compute coverage with the spike-in method.</i></summary>
@@ -2182,14 +2353,14 @@ details="${aligner}_${a_type}_flag-${flg}_mapq-${mapq}"
 
 dir_aln="${dir_pro}/align_reads/${details}"
 dir_bam="${dir_aln}/sc"
-dir_cvg="${dir_pro}/compute_coverage/${details}"
+dir_cvg="${dir_pro}/compute_signal/${details}"
 dir_nrm="${dir_cvg}/norm"
 dir_tbl="${dir_cvg}/tables"
 dir_spk="${dir_cvg}/spike"
 dir_log="${dir_spk}/logs"
 
 env_nam="env_analyze"
-execute="execute_compute_coverage_ratio.sh"
+execute="execute_compute_signal_ratio.sh"
 day="$(date '+%Y-%m%d')"
 exc_log="${dir_log}/${day}.$(basename "${execute}" ".sh")"
 
@@ -2217,7 +2388,7 @@ dir_out="${dir_spk}"
 scl_fct="$(extract_fld_str  5 "${tbl_spk}")"
 dep_min="$(extract_fld_str 21 "${tbl_spk}")"  ## WARNING: See description ##
 err_out="${dir_log}"
-nam_job="compute_coverage_ratio_${typ_cvg}"
+nam_job="compute_signal_ratio_${typ_cvg}"
 
 if ${debug:-false}; then
     echo "####################################"
@@ -2390,261 +2561,6 @@ bash "${dir_scr}/${execute}" \
 #  Cleanup: Compress logs and remove empty files ------------------------------
 bash "${dir_scr}/compress_remove_files.sh" --dir_fnd "${dir_log}"
 # ls -lhaFG "${dir_log}"  ## Uncomment to check directory for track logs ##
-```
-</details>
-<br />
-
-<a id="j-compute-log2-ratios-of-ip-to-input-coverage"></a>
-### J. Compute log2 ratios of IP to input coverage.
-<a id="text-7"></a>
-#### Text
-<details>
-<summary><i>Text: Compute log2 ratios of IP to input coverage.</i></summary>
-<br />
-
-`#TODO`
-</details>
-<br />
-
-<a id="bash-code-6"></a>
-#### Bash code
-<details>
-<summary><i>Bash code: Compute log2 ratios of IP to input coverage.</i></summary>
-
-```bash
-#!/bin/bash
-
-#  Optional: Request an interactive node --------------------------------------
-# grabnode  ## Uncomment to request 1 core, 20 GB memory, 1 day, no GPU ##
-
-
-#  Define variables -----------------------------------------------------------
-debug=true
-
-#  Define base directory for repository
-dir_bas="${HOME}/repos"  ## WARNING: Change as needed ##
-dir_rep="${dir_bas}/protocol_chipseq_signal_norm"
-dir_scr="${dir_rep}/scripts"
-dir_fnc="${dir_scr}/functions"
-dir_dat="${dir_rep}/data"
-dir_pro="${dir_dat}/processed"
-
-aligner="bowtie2"
-a_type="global"
-req_flg=true
-flg="$(if ${req_flg}; then echo "2"; else echo "NA"; fi)"
-mapq=1
-details="${aligner}_${a_type}_flag-${flg}_mapq-${mapq}"
-
-dir_aln="${dir_pro}/align_reads/${details}"
-dir_bam="${dir_aln}/sc"
-dir_cvg="${dir_pro}/compute_coverage/${details}"
-dir_nrm="${dir_cvg}/norm"
-dir_tbl="${dir_cvg}/tables"
-dir_lg2="${dir_cvg}/log2"
-dir_log="${dir_lg2}/logs"
-
-env_nam="env_analyze"
-execute="execute_compute_coverage_ratio.sh"
-day="$(date '+%Y-%m%d')"
-exc_log="${dir_log}/${day}.$(basename "${execute}" ".sh")"
-
-typ_cvg="log2"  ## NOTE: Use samples from either the alpha or spike table ##
-tbl_lg2="${dir_tbl}/ChIP_WT_G1-G2M-Q_Hho1-Hmo1_alpha.tsv"
-
-#  Set hardcoded argument assignments
-# shellcheck disable=SC1091
-source "${dir_fnc}/extract_fld_str.sh"
-
-typ_out="bdg.gz"
-fil_ip=$(
-    sed \
-        -e "s:${dir_bam}:${dir_nrm}:g" \
-        -e "s:.bam:.${typ_out}:g" \
-        < <(extract_fld_str 1 "${tbl_lg2}")
-)
-fil_in=$(
-    sed \
-        -e "s:${dir_bam}:${dir_nrm}:g" \
-        -e "s:.bam:.${typ_out}:g" \
-        < <(extract_fld_str 2 "${tbl_lg2}")
-)
-dir_out="${dir_lg2}"
-dep_min="$(extract_fld_str 24 "${tbl_lg2}")"  ## WARNING: See description ##
-err_out="${dir_log}"
-nam_job="compute_coverage_ratio_${typ_cvg}"
-
-if ${debug:-false}; then
-    echo "####################################"
-    echo "## Hardcoded variable assignments ##"
-    echo "####################################"
-    echo ""
-    echo "debug=${debug}"
-    echo ""
-    echo "dir_bas=${dir_bas}"
-    echo "dir_rep=${dir_rep}"
-    echo "dir_scr=${dir_scr}"
-    echo "dir_fnc=${dir_fnc}"
-    echo "dir_dat=${dir_dat}"
-    echo "dir_pro=${dir_pro}"
-    echo ""
-    echo "aligner=${aligner}"
-    echo "a_type=${a_type}"
-    echo "req_flg=${req_flg}"
-    echo "flg=${flg}"
-    echo "mapq=${mapq}"
-    echo "details=${details}"
-    echo ""
-    echo "dir_aln=${dir_aln}"
-    echo "dir_bam=${dir_bam}"
-    echo "dir_cvg=${dir_cvg}"
-    echo "dir_nrm=${dir_nrm}"
-    echo "dir_tbl=${dir_tbl}"
-    echo "dir_lg2=${dir_lg2}"
-    echo "dir_log=${dir_log}"
-    echo ""
-    echo "env_nam=${env_nam}"
-    echo "execute=${execute}"
-    echo "day=${day}"
-    echo "exc_log=${exc_log}"
-    echo ""
-    echo "typ_cvg=${typ_cvg}"
-    echo "tbl_lg2=${tbl_lg2}"
-    echo ""
-    echo "typ_out=${typ_out}"
-    echo "fil_ip=${fil_ip}"
-    echo "fil_in=${fil_in}"
-    echo "dir_out=${dir_out}"
-    echo "dep_min=${dep_min}"
-    echo "err_out=${err_out}"
-    echo "nam_job=${nam_job}"
-    echo ""
-    echo ""
-fi
-
-
-#  Create required directories if necessary -----------------------------------
-# shellcheck disable=SC2086
-mkdir -p ${dir_lg2}/{dm_y,dm_n,logs}
-
-if ${debug:-false}; then
-    echo "#################################################"
-    echo "## In- and output directory paths and contents ##"
-    echo "#################################################"
-    echo ""
-    echo "%%%%%%%%%%%%%"
-    echo "%% dir_nrm %%"
-    echo "%%%%%%%%%%%%%"
-    echo ""
-    ls -lhaFG "${dir_nrm}"
-    echo ""
-    ls -lhaFG "${dir_nrm}/logs"
-    echo ""
-    echo "%%%%%%%%%%%%%"
-    echo "%% dir_tbl %%"
-    echo "%%%%%%%%%%%%%"
-    echo ""
-    ls -lhaFG "${dir_tbl}"
-    echo ""
-    ls -lhaFG "${dir_tbl}/logs"
-    echo ""
-    echo "%%%%%%%%%%%%%"
-    echo "%% dir_lg2 %%"
-    echo "%%%%%%%%%%%%%"
-    echo ""
-    ls -lhaFG "${dir_lg2}/dm_y"
-    echo ""
-    ls -lhaFG "${dir_lg2}/dm_n"
-    echo ""
-    ls -lhaFG "${err_out}"
-    echo ""
-    echo ""
-fi
-
-
-#  Activate the environment and check dependencies ----------------------------
-#  Source utility functions
-# shellcheck disable=SC1091
-{
-    source "${dir_fnc}/check_program_path.sh"
-    source "${dir_fnc}/echo_warning.sh"
-    source "${dir_fnc}/handle_env.sh"
-}
-
-#  Activate the required environment
-handle_env "${env_nam}"
-
-#  Check the availability of necessary dependencies such as GNU Parallel and
-#+ SLURM sbatch
-check_program_path awk
-check_program_path parallel
-check_program_path python
-check_program_path samtools
-check_program_path sbatch ||
-    echo_warning \
-        "SLURM is not available on this system. Do not use the '--slurm'" \
-        "flag with the driver script."
-
-
-#  Generate log2(IP/input) coverage tracks ------------------------------------
-if ${debug:-false}; then
-    echo "#####################################################"
-    echo "## Call to driver script with '--dep_min' argument ##"
-    echo "#####################################################"
-    echo ""
-    echo "bash ${dir_scr}/${execute} \\"
-    echo "    --verbose \\"
-    echo "    --fil_ip ${fil_ip} \\"
-    echo "    --fil_in ${fil_in} \\"
-    echo "    --dir_out ${dir_lg2}/dm_y \\"
-    echo "    --typ_out ${typ_out} \\"
-    echo "    --track \\"
-    echo "    --dep_min ${dep_min} \\"
-    echo "    --log2 \\"
-    echo "    --err_out ${dir_log} \\"
-    echo "    --slurm \\"
-    echo "         >> >(tee -a ${exc_log}.stdout.txt) \\"
-    echo "        2>> >(tee -a ${exc_log}.stderr.txt)"
-    echo ""
-    echo ""
-fi
-
-#  Run driver script to generate tracks with 'dep_min': Add '--dry_run' to view
-#+ commands without execution
-bash "${dir_scr}/${execute}" \
-    --verbose \
-    --fil_ip "${fil_ip}" \
-    --fil_in "${fil_in}" \
-    --dir_out "${dir_lg2}/dm_y" \
-    --typ_out "${typ_out}" \
-    --track \
-    --dep_min "${dep_min}" \
-    --log2 \
-    --err_out "${dir_log}" \
-    --slurm \
-         >> >(tee -a "${exc_log}.dm_y.stdout.txt") \
-        2>> >(tee -a "${exc_log}.dm_y.stderr.txt")
-
-#  Run driver script to generate tracks without 'dep_min': Add '--dry_run' to
-#+ view commands without execution
-bash "${dir_scr}/${execute}" \
-    --verbose \
-    --fil_ip "${fil_ip}" \
-    --fil_in "${fil_in}" \
-    --dir_out "${dir_lg2}/dm_n" \
-    --typ_out "${typ_out}" \
-    --track \
-    --log2 \
-    --err_out "${dir_log}" \
-    --slurm \
-         >> >(tee -a "${exc_log}.dm_n.stdout.txt") \
-        2>> >(tee -a "${exc_log}.dm_n.stderr.txt")
-
-
-#  Cleanup: Compress logs and remove empty files ------------------------------
-bash "${dir_scr}/compress_remove_files.sh" --dir_fnd "${dir_log}"
-# ls -lhaFG "${dir_log}"  ## Uncomment to check directory for track logs ##
-# find . -maxdepth 1 -type f -size 0 -delete -o -type f -not -name "*.gz" -exec gzip {} +
 ```
 </details>
 <br />
