@@ -58,8 +58,8 @@ Description:
 
 Arguments:
   -h, --help     Display this help message and exit (0).
- -en, --env_nam  Mamba environment to create: 'env_align' or 'env_analyze'
-                 (required).
+ -en, --env_nam  Mamba environment to create: 'env_align', 'env_analyze',
+                 'env_protocol', or 'env_siqchip' (required).
   -y, --yes      Automatically answer yes to mamba prompts (optional).
 
 Dependencies:
@@ -214,7 +214,7 @@ esac
 
 if check_installed_env "${env_nam}"; then
     echo_error \
-        "An environment with the name ${env_nam} is already installed."
+        "An environment with the name '${env_nam}' is already installed."
 fi
 
 #  Check that dependencies are in PATH
@@ -241,10 +241,6 @@ handle_env_deactivate
 mamba_command="mamba create -n ${env_nam} -c bioconda -c conda-forge"
 
 if ${yes}; then mamba_command+=" --yes"; fi
-
-if [[ "$(uname -m)" == "arm64" ]]; then
-    mamba_command="CONDA_SUBDIR=osx-64 ${mamba_command}"
-fi
 
 #  Assign an array of packages to install
 if [[ "${env_nam}" == "env_align" ]]; then

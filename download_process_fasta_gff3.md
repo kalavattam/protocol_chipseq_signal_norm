@@ -2,7 +2,7 @@
 Downloading, Processing, and Concatenating *S. cerevisiae* and *S. pombe* Genome Files
 ======================================================================================
 
-**Supporting code and documentation for the *Bio-protocol* manuscript: "ChIP-seq Data Processing and Relative and Quantitative Signal Normalization for *Saccharomyces cerevisiae*."**
+**Supporting code and documentation for the *Bio-protocol* manuscript "ChIP-seq Data Processing and Relative and Quantitative Signal Normalization for *Saccharomyces cerevisiae*."**
 
 **Author:** *Kris Alavattam*
 
@@ -83,8 +83,6 @@ This step downloads the *S. cerevisiae* genome and annotation files from the [Sa
 <summary><i>Bash code: Download, extract, and organize </i>S. cerevisiae<i> genome files.</i></summary>
 
 ```bash
-#!/bin/bash
-
 #  Define S. cerevisiae URL, tarball, and file names
 lnk_sc_fa_1="http://sgd-archive.yeastgenome.org/sequence"
 lnk_sc_fa_2="S288C_reference/genome_releases"
@@ -132,8 +130,6 @@ This step downloads the *S. pombe* genome and annotation files from [Pombase](ht
 <summary><i>Bash code: Download, extract, and organize </i>S. pombe<i> files</i></summary>
 
 ```bash
-#!/bin/bash
-
 #  Define the S. pombe URL and file names
 lnk_sp_1="https://www.pombase.org/data"
 lnk_sp_2="releases/pombase-2024-11-01"
@@ -167,8 +163,6 @@ This step processes the *S. cerevisiae* FASTA file to standardize chromosome nam
 <summary><i>Bash code: Prepare </i>S. cerevisiae<i> FASTA file for concatenation</i></summary>
 
 ```bash
-#!/bin/bash
-
 #  Define directories and file names for raw and processed FASTA files
 dir_sc_fa_un="${dir_gen}/cerevisiae/fasta/raw"
 dir_sc_fa_pr="${dir_gen}/cerevisiae/fasta/proc"
@@ -221,8 +215,6 @@ This step processes the *S. cerevisiae* GFF3 file to standardize chromosome name
 <summary><i>Bash code: Prepare </i>S. cerevisiae<i> GFF3 file for concatenation</i></summary>
 
 ```bash
-#!/bin/bash
-
 #  Define directories and file names for raw and processed S. cerevisiae GFF3
 #+ files
 dir_sc_g3_un="${dir_gen}/cerevisiae/gff3/raw"
@@ -329,8 +321,6 @@ This step standardizes *S. pombe* chromosome names by prefixing them with "SP_" 
 <summary><i>Bash code: Prepare </i>S. pombe<i> FASTA file for concatenation</i></summary>
 
 ```bash
-#!/bin/bash
-
 #  Define directories and file names for raw and processed S. pombe FASTA files
 dir_sp_fa_un="${dir_gen}/pombe/fasta/raw"
 dir_sp_fa_pr="${dir_gen}/pombe/fasta/proc"
@@ -368,8 +358,6 @@ This step processes the *S. pombe* GFF3 file by standardizing chromosome names, 
 <summary><i>Bash code: Prepare </i>S. pombe<i> GFF3 file for concatenation</i></summary>
 
 ```bash
-#!/bin/bash
-
 #  Define directories and file names for raw and processed S. pombe GFF3 files
 dir_sp_g3_un="${dir_gen}/pombe/gff3/raw"
 dir_sp_g3_pr="${dir_gen}/pombe/gff3/proc"
@@ -407,8 +395,6 @@ This final step concatenates the processed *S. cerevisiae* and *S. pombe* FASTA 
 <summary><i>Bash code: Concatenate the processed FASTA and GFF3 files</i></summary>
 
 ```bash
-#!/bin/bash
-
 #  Define variables for processed input and output FASTA and GFF3 files
 sc="S288C_R64-5-1_proc"
 sc_fa="${sc}.fasta.gz"

@@ -1,0 +1,10 @@
+data/genomes/
+
+data/raw/docs/SRR_custom.tsv
+data/raw/docs/measurements_siqchip_all.tsv
+
+data/tracks/
+
+scraps/
+
+processed/

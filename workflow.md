@@ -23,8 +23,9 @@ This notebook provides a guide to the ChIP-seq data processing workflow detailed
 
 1. [Procedures](#procedures)
     1. [A. Install and configure Miniforge.](#a-install-and-configure-miniforge)
-    1. [B. Clone the protocol repository and install project environments.](#b-clone-the-protocol-repository-and-install-project-environments)
-    1. [C. Clone the siQ-ChIP repository and install its environment.](#c-clone-the-siq-chip-repository-and-install-its-environment)
+    1. [B. Clone the protocol repository and install the project environment.](#b-clone-the-protocol-repository-and-install-the-project-environment)
+    1. [C. Install and configure Atria for FASTQ adapter and quality trimming.](#c-install-and-configure-atria-for-fastq-adapter-and-quality-trimming)
+    1. [D. Install and configure Integrative Genomics Viewer \(IGV\).](#d-install-and-configure-integrative-genomics-viewer-igv)
 1. [Data analysis](#data-analysis)
     1. [A. Prepare and concatenate FASTA and GFF3 files for model and spike-in organisms.](#a-prepare-and-concatenate-fasta-and-gff3-files-for-model-and-spike-in-organisms)
         1. [Text](#text)
@@ -37,34 +38,23 @@ This notebook provides a guide to the ChIP-seq data processing workflow detailed
     1. [F. Compute normalized coverage.](#f-compute-normalized-coverage)
         1. [Text](#text-2)
         1. [Bash code](#bash-code-1)
-    1. [G. Compute log2 ratios of IP to input normalized coverage.](#g-compute-log2-ratios-of-ip-to-input-normalized-coverage)
-        1. [Text](#text-3)
-        1. [Bash code](#bash-code-2)
-    1. [H. Construct sample tables recording computed scaling factors for normalization.](#h-construct-sample-tables-recording-computed-scaling-factors-for-normalization)
+    1. [G. Construct sample tables recording computed scaling factors for normalization.](#g-construct-sample-tables-recording-computed-scaling-factors-for-normalization)
         1. [1. Construct sample table recording siQ-ChIP $\alpha$ scaling factors.](#1-construct-sample-table-recording-siq-chip-%24alpha%24-scaling-factors)
-            1. [Text](#text-4)
-                1. [Overview](#overview)
-                1. [Background](#background)
-                1. [Steps performed in code chunk](#steps-performed-in-code-chunk)
-                1. [Output files](#output-files)
-            1. [Bash code](#bash-code-3)
+            1. [Text](#text-3)
+            1. [Bash code](#bash-code-2)
         1. [2. Construct sample table recording spike-in $\gamma$ scaling factors.](#2-construct-sample-table-recording-spike-in-%24gamma%24-scaling-factors)
-            1. [Text](#text-5)
-                1. [Overview](#overview-1)
-                1. [What is spike-in normalization?](#what-is-spike-in-normalization)
-                1. [Defining the spike-in scaling factor \($\gamma$\)](#defining-the-spike-in-scaling-factor-%24gamma%24)
-                1. [Key limitations and concerns](#key-limitations-and-concerns)
-                1. [On the inclusion of spike-in scaling in this workflow](#on-the-inclusion-of-spike-in-scaling-in-this-workflow)
-                1. [Steps performed in code chunk](#steps-performed-in-code-chunk-1)
-                1. [Output files](#output-files-1)
-            1. [Bash code](#bash-code-4)
+            1. [Text](#text-4)
+            1. [Bash code](#bash-code-3)
+    1. [H. Compute log2 ratios of IP to input normalized coverage.](#h-compute-log2-ratios-of-ip-to-input-normalized-coverage)
+        1. [Text](#text-5)
+        1. [Bash code](#bash-code-4)
     1. [I. Compute coverage with the siQ-ChIP method.](#i-compute-coverage-with-the-siq-chip-method)
         1. [Text](#text-6)
-            1. [Overview](#overview-2)
-            1. [Steps performed in code chunk](#steps-performed-in-code-chunk-2)
+            1. [Overview](#overview)
+            1. [Steps performed in code chunk](#steps-performed-in-code-chunk)
             1. [Important note](#important-note)
         1. [Bash code](#bash-code-5)
-    1. [I. Compute coverage with the spike-in method.](#i-compute-coverage-with-the-spike-in-method)
+    1. [J. Compute coverage with the spike-in method.](#j-compute-coverage-with-the-spike-in-method)
         1. [Text](#text-7)
         1. [Bash code](#bash-code-6)
     1. [K. Rough-draft tracks for assessment](#k-rough-draft-tracks-for-assessment)
@@ -94,7 +84,7 @@ This notebook provides a guide to the ChIP-seq data processing workflow detailed
 <summary><i>Text: Install and configure Miniforge.</i></summary>
 <br />
 
-`#TODO`
+[Miniforge](https://github.com/conda-forge/miniforge) is an open source tool for managing bioinformatics software in isolated environments&mdash;self-contained workspaces that prevent software conflicts. This protocol uses Miniforge to create and manage a single environment, `env_protocol`, which contains programs for read alignment, alignment processing, signal computation, and signal visualization. It is recommended to [uninstall other software managers (e.g., Anaconda)](https://stackoverflow.com/questions/42182706/how-to-uninstall-anaconda-completely-from-macos) before installing Miniforge.
 </details>
 <br />
 
@@ -140,18 +130,18 @@ bash "${script}"
 </details>
 <br />
 
-<a id="b-clone-the-protocol-repository-and-install-project-environments"></a>
-### B. Clone the protocol repository and install project environments.
+<a id="b-clone-the-protocol-repository-and-install-the-project-environment"></a>
+### B. Clone the protocol repository and install the project environment.
 <details>
-<summary><i>Text: Clone the protocol repository and install project environments.</i></summary>
+<summary><i>Text: Clone the protocol repository and install the project environment.</i></summary>
 <br />
 
-`#TODO`
+Use the script [`install_envs.sh`](./scripts/install_envs.sh) to set up the project environment, `env_protocol`.
 </details>
 <br />
 
 <details>
-<summary><i>Bash code: Clone the protocol repository and install project environments.</i></summary>
+<summary><i>Bash code: Clone the protocol repository and install project the environment.</i></summary>
 
 ```bash
 #!/bin/bash
@@ -174,63 +164,123 @@ mkdir -p "${dir_bas}"
 cd "${dir_bas}" || echo "Error: Failed to change directory: '${dir_bas}'." >&2
 
 #  Clone the protocol repository
-git clone "${https}"
+if [[ ! -d "${repo}" ]]; then git clone "${https}"; fi
 
 #  Move to repository directory
 cd "${repo}" || echo "Error: Failed to change directory: '${repo}'." >&2
 
-#  Install Conda/Mamba environments with install_envs.sh
-bash "scripts/install_envs.sh" --env_nam "env_align" --yes
-bash "scripts/install_envs.sh" --env_nam "env_analyze" --yes
+#  Install Conda/Mamba environment with install_envs.sh
+bash "scripts/install_envs.sh" --env_nam "env_protocol" --yes
 ```
 </details>
 <br />
 
-<a id="c-clone-the-siq-chip-repository-and-install-its-environment"></a>
-### C. Clone the siQ-ChIP repository and install its environment.
+<a id="c-install-and-configure-atria-for-fastq-adapter-and-quality-trimming"></a>
+### C. Install and configure Atria for FASTQ adapter and quality trimming.
 <details>
-<summary><i>Text: Clone the siQ-ChIP repository and install its environment.</i></summary>
+<summary><i>Text: Install and configure Atria for FASTQ adapter and quality trimming.</i></summary>
 <br />
 
-`#TODO`
+To promote accurate alignment of sequenced reads, it is important to remove adapter sequences and low-quality base calls from FASTQ files. For this, we use [Atria](https://github.com/cihga39871/Atria), a tool written in [Julia](https://julialang.org/) that excels in adapter and quality trimming. See the following code chunk to install and configure Atria.
 </details>
 <br />
 
 <details>
-<summary><i>Bash code: Clone the siQ-ChIP repository and install its environment.</i></summary>
+<summary><i>Bash code: Install and configure Atria for FASTQ adapter and quality trimming.</i></summary>
+<br />
+
+*Note: The following code chunks should be run in order, as some later chunks depend on variables defined in earlier ones.*
 
 ```bash
 #!/bin/bash
 
-#  Optional: Request an interactive node --------------------------------------
+#  Optional: Request an interactive node 
 # grabnode  ## Uncomment to request 1 core, 20 GB memory, 1 day, no GPU ##
-
-
-#  Define variables -----------------------------------------------------------
-dir_bas="${HOME}/repos"  ## WARNING: Change as needed ##
-dir_rep="${dir_bas}/siQ-ChIP"
-https="https://github.com/kalavattam/siQ-ChIP.git"
-branch="protocol"
-
-dir_scr="${dir_bas}/protocol_chipseq_signal_norm/scripts"
-
-
-#  Do the main work -----------------------------------------------------------
-#  Move to base directory
-cd "${dir_bas}" || echo "Error: Failed to change directory: '${dir_bas}'." >&2
-
-#  Clone siQ-ChIP repository
-git clone "${https}"
-
-#  Move to siQ-ChIP repository directory
-cd "${dir_rep}" || echo "Error: Failed to change directory: '${dir_rep}'." >&2
-
-#  Switch to specified branch
-git checkout "${branch}"
-
-#  Install Conda/Mamba environment for siQ-ChIP
-bash "${dir_scr}/install_envs.sh" --env_nam "env_siq" --yes
 ```
+
+First, if necessary, download Julia 1.8.5 for the appropriate OS and system architecture from the [official page](https://julialang.org/downloads/oldreleases/).
+
+```bash
+#  Define OS and architecture variables
+os="linux"     ## WARNING: Change as needed, e.g., 'mac' ##
+ar_s="x64"     ## WARNING: Change as needed, e.g., 'aarch64' ##
+ar_l="x86_64"  ## WARNING: Change as needed, e.g., 'macaarch64' ##
+
+#  Set variables for Julia version
+ver_s="1.8"
+ver_l="${ver_s}.5"
+
+#  Define URL and tarball filename
+https="https://julialang-s3.julialang.org/bin/${os}/${ar_s}/${ver_s}"
+tarball="julia-${ver_l}-${os}-${ar_l}.tar.gz"
+
+#  Download the tarball
+curl -L -O "${https}/${tarball}"
+```
+
+Unpack the file in the `HOME` directory.
+
+```bash
+#  Unpack the tarball
+tar -xzf "${tarball}"
+```
+
+Add Julia to the `PATH` variable by appending the following line to the shell configuration file (e.g., `.bashrc`, `.bash_profile`, or `.zshrc`), and then source the file:
+
+```bash
+#  Define variable for shell configuration file
+config="${HOME}/.bashrc" ## WARNING: Change as needed ##
+
+#  Add Julia to PATH and apply changes
+# shellcheck disable=SC1090,SC2016
+{
+    echo 'export PATH="${PATH}:${HOME}/julia-1.8.5/bin"' >> "${config}"
+    source "${config}"
+}
+```
+
+Next, clone the [Atria repository](https://github.com/cihga39871/Atria), activate [`env_protocol`](b-clone-the-protocol-repository-and-install-the-project-environment) (which contains its dependencies), and build Atria using Julia:
+
+```bash
+#  Navigate to the repository directory
+cd "${HOME}/repos"
+
+#  Clone Atria repository from GitHub
+git clone https://github.com/cihga39871/Atria.git
+
+#  Change into newly cloned Atria directory
+cd Atria
+
+#  Activate environment containing Atria dependencies 
+mamba activate env_protocol
+
+#  Build Atria using the provided Julia build script
+julia build_atria.jl
+```
+
+Locate the Atria binary and add its path to the shell configuration file. It will be in a directory like this: `atria-version/bin`, e.g., `atria-4.0.3/bin`. For example,
+
+```bash
+#  Add Atria to PATH and apply changes
+# shellcheck disable=SC1090,SC2016
+{
+    echo 'export PATH="${PATH}:${HOME}/repos/Atria/atria-4.0.3/bin"' \
+        >> "${config}"
+    source "${config}"
+}
+```
+
+Ensure the `env_protocol` environment is active when running Atria.
+</details>
+<br />
+
+<a id="d-install-and-configure-integrative-genomics-viewer-igv"></a>
+### D. Install and configure Integrative Genomics Viewer (IGV).
+<details>
+<summary><i>Text: Install and configure Integrative Genomics Viewer (IGV).</i></summary>
+<br />
+
+Integrative Genomics Viewer (IGV) is a graphical tool for the interactive exploration of ChIP-seq and other genomic data (Robinson et al., 2011, 2017, 2023; Thorvaldsdóttir et al., 2013). To install IGV, visit the [IGV download page](https://igv.org/doc/desktop/#DownloadPage/), select the appropriate bundle for the OS (e.g., "With Java Included"), unzip the file, and move the application to a preferred directory.
 </details>
 <br />
 <br />
@@ -245,7 +295,7 @@ bash "${dir_scr}/install_envs.sh" --env_nam "env_siq" --yes
 <summary><i>Text: Prepare and concatenate FASTA and GFF3 files for model and spike-in organisms.</i></summary>
 <br />
 
-See supplementary notebook [`download_process_fasta_gff3.md`](./download_process_fasta_gff3.md), which provides an annotated, step-by-step implementation of the following:
+For detailed instructions and an example implementation of preparing and concatenating FASTA and GFF3 files for both the model and spike-in organisms, refer to the supplementary notebook [`download_process_fasta_gff3.md`](./download_process_fasta_gff3.md), which provides an annotated, step-by-step implementation of the following:
 1. Download FASTA and GFF3 files from the [Saccharomyces Genome Database](http://sgd-archive.yeastgenome.org/sequence/S288C_reference/genome_releases) (*S. cerevisiae*) and [Pombase](https://www.pombase.org/data/releases/) (*S. pombe*).
 2. Process the files by standardizing chromosome names and removing incompatible formatting.
     + Chromosome names in *S. cerevisiae* and *S. pombe* FASTA files are standardized and simplified, with *S. pombe* chromosome names prefixed with "SP_" to enable the downstream separation of *S. pombe* alignments from *S. cerevisiae* alignments.
@@ -1084,9 +1134,469 @@ bash "${dir_scr}/compress_remove_files.sh" --dir_fnd "${err_out}"
 </details>
 <br />
 
-<a id="g-compute-log2-ratios-of-ip-to-input-normalized-coverage"></a>
-### G. Compute log2 ratios of IP to input normalized coverage.
+<a id="g-construct-sample-tables-recording-computed-scaling-factors-for-normalization"></a>
+### G. Construct sample tables recording computed scaling factors for normalization.
+<a id="1-construct-sample-table-recording-siq-chip-%24alpha%24-scaling-factors"></a>
+#### 1. Construct sample table recording siQ-ChIP $\alpha$ scaling factors.
 <a id="text-3"></a>
+##### Text
+<details>
+<summary><i>Text: Construct sample table recording siQ-ChIP $\alpha$ scaling factors.</i></summary>
+<br />
+
+`#TODO`
+</details>
+<br />
+
+<a id="bash-code-2"></a>
+##### Bash code
+<details>
+<summary><i>Bash code: Construct sample table recording siQ-ChIP $\alpha$ scaling factors.</i></summary>
+
+```bash
+#!/bin/bash
+
+#  Optional: Request an interactive node --------------------------------------
+# grabnode  ## Uncomment to request 1 core, 20 GB memory, 1 day, no GPU ##
+
+
+#  Define variables -----------------------------------------------------------
+debug=true
+
+#  Set hardcoded paths, values, etc.
+dir_bas="${HOME}/repos"  ## WARNING: Change as needed ##
+dir_rep="${dir_bas}/protocol_chipseq_signal_norm"
+dir_scr="${dir_rep}/scripts"
+dir_fnc="${dir_scr}/functions"
+dir_dat="${dir_rep}/data"
+dir_pro="${dir_dat}/processed"
+
+aligner="bowtie2"
+a_type="global"
+req_flg=true
+flag="$(if ${req_flg}; then echo "2"; else echo "NA"; fi)"
+mapq=1
+details="${aligner}_${a_type}_flag-${flag}_mapq-${mapq}"
+
+dir_aln="${dir_pro}/align_reads/${details}"
+dir_bam="${dir_aln}/sc"
+dir_cvg="${dir_pro}/compute_signal/${details}"
+dir_tbl="${dir_cvg}/tables"
+dir_log="${dir_tbl}/logs"
+typ_cvg="alpha"
+
+pattern="*.bam"
+include="IP*"
+exclude="*Brn1*"
+
+env_nam="env_analyze"
+execute="${dir_scr}/execute_calculate_scaling_factor_${typ_cvg}.sh"
+day="$(date '+%Y-%m%d')"
+exc_log="${dir_log}/${day}.$(basename "${execute}" ".sh")"
+
+#  Set hardcoded argument assignments
+threads=8
+ser_ip="$(  ## WARNING: Change search parameters as needed ##
+    bash "${dir_scr}/find_files.sh" \
+        --dir_fnd "${dir_bam}" \
+        --pattern "${pattern}" \
+        --include "${include}" \
+        --exclude "${exclude}"
+)"
+ser_in="$(sed 's:\/IP:\/in:g' < <(echo "${ser_ip}"))"
+tbl_met="${dir_dat}/raw/docs/measurements_siqchip.tsv"
+eqn="6nd"
+fil_out="${dir_tbl}/ChIP_WT_G1-G2M-Q_Hho1-Hmo1_${typ_cvg}.tsv"
+err_out="${dir_log}"
+
+if ${debug:-false}; then
+    echo "##########################"
+    echo "## Variable assignments ##"
+    echo "##########################"
+    echo ""
+    echo "debug=${debug}"
+    echo ""
+    echo "dir_bas=${dir_bas}"
+    echo "dir_rep=${dir_rep}"
+    echo "dir_scr=${dir_scr}"
+    echo "dir_fnc=${dir_fnc}"
+    echo "dir_dat=${dir_dat}"
+    echo "dir_pro=${dir_pro}"
+    echo ""
+    echo "aligner=${aligner}"
+    echo "a_type=${a_type}"
+    echo "req_flg=${req_flg}"
+    echo "flag=${flag}"
+    echo "mapq=${mapq}"
+    echo "details=${details}"
+    echo ""
+    echo "dir_aln=${dir_aln}"
+    echo "dir_bam=${dir_bam}"
+    echo "dir_cvg=${dir_cvg}"
+    echo "dir_tbl=${dir_tbl}"
+    echo "dir_log=${dir_log}"
+    echo "typ_cvg=${typ_cvg}"
+    echo ""
+    echo "pattern=${pattern}"
+    echo "include=${include}"
+    echo "exclude=${exclude}"
+    echo ""
+    echo "env_nam=${env_nam}"
+    echo "execute=${execute}"
+    echo "day=${day}"
+    echo "exc_log=${exc_log}"
+    echo ""
+    echo "threads=${threads}"
+    echo "ser_ip=${ser_ip}"
+    echo "ser_in=${ser_in}"
+    echo "tbl_met=${tbl_met}"
+    echo "eqn=${eqn}"
+    echo "fil_out=${fil_out}"
+    echo "err_out=${err_out}"
+    echo ""
+    echo ""
+fi
+
+
+#  Create required directories if necessary -----------------------------------
+mkdir -p "${err_out}"
+
+if ${debug:-false}; then
+    echo "#################################################"
+    echo "## In- and output directory paths and contents ##"
+    echo "#################################################"
+    echo ""
+    echo "%%%%%%%%%%%%%"
+    echo "%% dir_bam %%"
+    echo "%%%%%%%%%%%%%"
+    echo ""
+    ls -lhaFG "${dir_bam}"
+    echo ""
+    ls -lhaFG "${dir_bam}/logs"
+    echo ""
+    echo "%%%%%%%%%%%%%"
+    echo "%% dir_tbl %%"
+    echo "%%%%%%%%%%%%%"
+    echo ""
+    ls -lhaFG "${dir_tbl}"
+    echo ""
+    ls -lhaFG "${err_out}"
+    echo ""
+    echo ""
+fi
+
+
+#  Activate the environment and check dependencies ----------------------------
+#  Source utility functions
+# shellcheck disable=SC1091
+{
+    source "${dir_fnc}/check_program_path.sh"
+    source "${dir_fnc}/echo_warning.sh"
+    source "${dir_fnc}/handle_env.sh"
+}
+
+#  Activate the required environment
+handle_env "${env_nam}"
+
+#  Check the availability of necessary dependencies such as GNU Parallel,
+#+ Python, Samtools, and SLURM
+check_program_path awk
+check_program_path parallel
+check_program_path python
+check_program_path samtools
+check_program_path sbatch ||
+    echo_warning \
+        "SLURM is not available on this system. Do not use the '--slurm'" \
+        "flag with the driver script."
+
+
+#  Construct table ------------------------------------------------------------
+if ${debug:-false}; then
+    echo "###########################"
+    echo "## Call to driver script ##"
+    echo "###########################"
+    echo ""
+    echo "bash \"${execute}\" \\"
+    echo "    --verbose \\"
+    echo "    --threads ${threads} \\"
+    echo "    --ser_ip \"${ser_ip}\" \\"
+    echo "    --ser_in \"${ser_in}\" \\"
+    echo "    --tbl_met \"${tbl_met}\" \\"
+    echo "    --eqn \"${eqn}\" \\"
+    echo "    --fil_out \"${fil_out}\" \\"
+    echo "    --err_out \"${err_out}\" \\"
+    echo "    --slurm"
+    echo "         >> >(tee -a ${exc_log}.stdout.txt) \\"
+    echo "        2>> >(tee -a ${exc_log}.stderr.txt)"
+    echo ""
+    echo ""
+fi
+
+#  Run the driver script: Include '--dry_run' to perform a test run without
+#+ executing commands
+bash "${execute}" \
+    --verbose \
+    --threads ${threads} \
+    --ser_ip "${ser_ip}" \
+    --ser_in "${ser_in}" \
+    --tbl_met "${tbl_met}" \
+    --eqn "${eqn}" \
+    --fil_out "${fil_out}" \
+    --err_out "${err_out}" \
+    --slurm \
+         >> >(tee -a "${exc_log}.stdout.txt") \
+        2>> >(tee -a "${exc_log}.stderr.txt")
+
+if [[ -f "${fil_out}" ]]; then
+    #  Sort the table by rows
+    awk 'NR == 1; NR > 1 && NF { print | "sort" }' "${fil_out}" \
+        > "${dir_tbl}/tmp.tsv"
+
+    #  Replace the original table with the sorted version
+    mv -f "${dir_tbl}/tmp.tsv" "${fil_out}"
+fi
+# cat "${fil_out}"  ## Uncomment to check table ##
+
+
+#  Cleanup: Compress logs and remove empty files ------------------------------
+bash "${dir_scr}/compress_remove_files.sh" --dir_fnd "${err_out}"
+# ls -lhaFG "${err_out}"  ## Uncomment to check directory for logs ##
+```
+</details>
+<br />
+
+<a id="2-construct-sample-table-recording-spike-in-%24gamma%24-scaling-factors"></a>
+#### 2. Construct sample table recording spike-in $\gamma$ scaling factors.
+<a id="text-4"></a>
+##### Text
+<details>
+<summary><i>Text: Construct sample table recording spike-in $\gamma$ scaling factors.</i></summary>
+<br />
+
+`#TODO`
+</details>
+<br />
+
+<a id="bash-code-3"></a>
+##### Bash code
+<details>
+<summary><i>Bash code: Construct sample table recording spike-in $\gamma$ scaling factors.</i></summary>
+
+```bash
+#!/bin/bash
+
+#  Optional: Request an interactive node --------------------------------------
+# grabnode  ## Uncomment to request 1 core, 20 GB memory, 1 day, no GPU ##
+
+
+#  Define variables -----------------------------------------------------------
+debug=true
+
+#  Set hardcoded paths, values, etc.
+dir_bas="${HOME}/repos"  ## WARNING: Change as needed ##
+dir_rep="${dir_bas}/protocol_chipseq_signal_norm"
+dir_scr="${dir_rep}/scripts"
+dir_fnc="${dir_scr}/functions"
+dir_dat="${dir_rep}/data"
+dir_pro="${dir_dat}/processed"
+
+aligner="bowtie2"
+a_type="global"
+req_flg=true
+flag="$(if ${req_flg}; then echo "2"; else echo "NA"; fi)"
+mapq=1
+details="${aligner}_${a_type}_flag-${flag}_mapq-${mapq}"
+
+dir_aln="${dir_pro}/align_reads/${details}"
+dir_bam="${dir_aln}/sc"
+dir_cvg="${dir_pro}/compute_signal/${details}"
+dir_tbl="${dir_cvg}/tables"
+dir_log="${dir_tbl}/logs"
+typ_cvg="spike"
+
+pattern="*.bam"
+include="IP*"
+exclude="*Brn1*"
+
+env_nam="env_analyze"
+execute="${dir_scr}/execute_calculate_scaling_factor_${typ_cvg}.sh"
+day="$(date '+%Y-%m%d')"
+exc_log="${dir_log}/${day}.$(basename "${execute}" ".sh")"
+
+#  Set hardcoded argument assignments
+threads=8
+ser_mip="$(  ## WARNING: Change search parameters as needed ##
+    bash "${dir_scr}/find_files.sh" \
+        --dir_fnd "${dir_bam}" \
+        --pattern "${pattern}" \
+        --include "${include}" \
+        --exclude "${exclude}"
+)"
+ser_sip="$(sed 's:sc:sp:g' < <(echo "${ser_mip}"))"
+ser_min="$(sed 's:\/IP:\/in:g' < <(echo "${ser_mip}"))"
+ser_sin="$(sed 's:\/IP:\/in:g' < <(echo "${ser_sip}"))"
+fil_out="${dir_tbl}/ChIP_WT_G1-G2M-Q_Hho1-Hmo1_${typ_cvg}.tsv"
+err_out="${dir_log}"
+
+if ${debug:-false}; then
+    echo "##########################"
+    echo "## Variable assignments ##"
+    echo "##########################"
+    echo ""
+    echo "debug=${debug}"
+    echo ""
+    echo "dir_bas=${dir_bas}"
+    echo "dir_rep=${dir_rep}"
+    echo "dir_scr=${dir_scr}"
+    echo "dir_fnc=${dir_fnc}"
+    echo "dir_dat=${dir_dat}"
+    echo "dir_pro=${dir_pro}"
+    echo ""
+    echo "aligner=${aligner}"
+    echo "a_type=${a_type}"
+    echo "req_flg=${req_flg}"
+    echo "flag=${flag}"
+    echo "mapq=${mapq}"
+    echo "details=${details}"
+    echo ""
+    echo "dir_aln=${dir_aln}"
+    echo "dir_bam=${dir_bam}"
+    echo "dir_cvg=${dir_cvg}"
+    echo "dir_tbl=${dir_tbl}"
+    echo "dir_log=${dir_log}"
+    echo "typ_cvg=${typ_cvg}"
+    echo ""
+    echo "pattern=${pattern}"
+    echo "include=${include}"
+    echo "exclude=${exclude}"
+    echo ""
+    echo "env_nam=${env_nam}"
+    echo "execute=${execute}"
+    echo "day=${day}"
+    echo "exc_log=${exc_log}"
+    echo ""
+    echo "threads=${threads}"
+    echo "ser_mip=${ser_mip}"
+    echo "ser_sip=${ser_sip}"
+    echo "ser_min=${ser_min}"
+    echo "ser_sin=${ser_sin}"
+    echo "fil_out=${fil_out}"
+    echo "err_out=${err_out}"
+    echo ""
+    echo ""
+fi
+
+
+#  Create required directories if necessary -----------------------------------
+mkdir -p "${err_out}"
+
+if ${debug:-false}; then
+    echo "#################################################"
+    echo "## In- and output directory paths and contents ##"
+    echo "#################################################"
+    echo ""
+    echo "%%%%%%%%%%%%%"
+    echo "%% dir_bam %%"
+    echo "%%%%%%%%%%%%%"
+    echo ""
+    ls -lhaFG "${dir_bam}"
+    echo ""
+    ls -lhaFG "${dir_bam}/logs"
+    echo ""
+    echo "%%%%%%%%%%%%%"
+    echo "%% dir_tbl %%"
+    echo "%%%%%%%%%%%%%"
+    echo ""
+    ls -lhaFG "${dir_tbl}"
+    echo ""
+    ls -lhaFG "${err_out}"
+    echo ""
+    echo ""
+fi
+
+
+#  Activate the environment and check dependencies ----------------------------
+#  Source utility functions
+# shellcheck disable=SC1091
+{
+    source "${dir_fnc}/check_program_path.sh"
+    source "${dir_fnc}/echo_warning.sh"
+    source "${dir_fnc}/handle_env.sh"
+}
+
+#  Activate the required environment
+handle_env "${env_nam}"
+
+#  Check the availability of necessary dependencies such as GNU Parallel,
+#+ Python, Samtools, and SLURM
+check_program_path awk
+check_program_path parallel
+check_program_path python
+check_program_path samtools
+check_program_path sbatch ||
+    echo_warning \
+        "SLURM is not available on this system. Do not use the '--slurm'" \
+        "flag with the driver script."
+
+
+#  Construct table ------------------------------------------------------------
+if ${debug:-false}; then
+    echo "###########################"
+    echo "## Call to driver script ##"
+    echo "###########################"
+    echo ""
+    echo "bash \"${execute}\" \\"
+    echo "    --verbose \\"
+    echo "    --threads ${threads} \\"
+    echo "    --ser_mip \"${ser_mip}\" \\"
+    echo "    --ser_sip \"${ser_sip}\" \\"
+    echo "    --ser_min \"${ser_min}\" \\"
+    echo "    --ser_sin \"${ser_sin}\" \\"
+    echo "    --fil_out \"${fil_out}\" \\"
+    echo "    --err_out \"${err_out}\" \\"
+    echo "    --slurm"
+    echo "         >> >(tee -a ${exc_log}.stdout.txt) \\"
+    echo "        2>> >(tee -a ${exc_log}.stderr.txt)"
+    echo ""
+    echo ""
+fi
+
+#  Run the driver script: Include '--dry_run' to perform a test run without
+#+ executing commands
+bash "${execute}" \
+    --verbose \
+    --threads ${threads} \
+    --ser_mip "${ser_mip}" \
+    --ser_sip "${ser_sip}" \
+    --ser_min "${ser_min}" \
+    --ser_sin "${ser_sin}" \
+    --fil_out "${fil_out}" \
+    --err_out "${err_out}" \
+    --slurm \
+         >> >(tee -a "${exc_log}.stdout.txt") \
+        2>> >(tee -a "${exc_log}.stderr.txt")
+
+if [[ -f "${fil_out}" ]]; then
+    #  Sort the table by rows
+    awk 'NR == 1; NR > 1 && NF { print | "sort" }' "${fil_out}" \
+        > "${dir_tbl}/tmp.tsv"
+
+    #  Replace the original table with the sorted version
+    mv -f "${dir_tbl}/tmp.tsv" "${fil_out}"
+fi
+# cat "${fil_out}"  ## Uncomment to check table ##
+
+
+#  Cleanup: Compress logs and remove empty files ------------------------------
+bash "${dir_scr}/compress_remove_files.sh" --dir_fnd "${err_out}"
+# ls -lhaFG "${err_out}"  ## Uncomment to check directory for logs ##
+```
+</details>
+<br />
+
+<a id="h-compute-log2-ratios-of-ip-to-input-normalized-coverage"></a>
+### H. Compute log2 ratios of IP to input normalized coverage.
+<a id="text-5"></a>
 #### Text
 <details>
 <summary><i>Text: Compute log2 ratios of IP to input normalized coverage.</i></summary>
@@ -1115,7 +1625,7 @@ In the corresponding Bash code chunk, the signal type is specified by setting `t
 </details>
 <br />
 
-<a id="bash-code-2"></a>
+<a id="bash-code-4"></a>
 #### Bash code
 <details>
 <summary><i>Bash code: Compute log2 ratios of IP to input normalized coverage.</i></summary>
@@ -1358,672 +1868,6 @@ bash "${dir_scr}/compress_remove_files.sh" --dir_fnd "${dir_log}"
 </details>
 <br />
 
-<a id="h-construct-sample-tables-recording-computed-scaling-factors-for-normalization"></a>
-### H. Construct sample tables recording computed scaling factors for normalization.
-<details>
-<summary><i>Text: Construct sample tables recording computed scaling factors for normalization.</i></summary>
-<br />
-
-The following Bash code chunks present a structured approach to generating sample tables that record scaling factors derived from the [siQ-ChIP](#1-construct-sample-table-recording-siq-chip-alpha-scaling-factors) and [spike-in](#2-construct-sample-table-recording-spike-in-scaling-factors) methods. These factors are stored in tables for use in downstream processing, where they are applied to [normalized coverage](https://www.nature.com/articles/s41598-023-34430-2#Sec2) to produce scaled coverage tracks. This facilitates quantitative (siQ-ChIP) and semiquantitative (spike-in) comparisons across samples.
-
-We take the ratio of IP (immunoprecipitation) normalized coverage to input coverage and multiplying by the appropriate scaling factor. Each bin-wise operation follows:
-
-<div align="center">
-    <img src="https://latex.codecogs.com/svg.image?$$b_{\text{scaled}}=\frac{f_{\ell,u}^{\text{\text{IP}}}(b)}{\max(f_{\ell,u}^{\text{input}}(b),\delta)}\times(\alpha\;\text{or}\;\gamma)$$" alt="scaled coverage equation">
-</div>
-
-where
-- $b_{\text{scaled}}$ is the final scaled coverage value for bin $b$ after applying length-and-unity normalization and scaling.
-- <img src="https://latex.codecogs.com/svg.image?f_{\ell,u}^{\text{IP}}(b)" alt="f_ell,u^IP(b)" style="vertical-align: middle;"> and 
-  <img src="https://latex.codecogs.com/svg.image?f_{\ell,u}^{\text{in}}(b)" alt="f_ell,u^in(b)" style="vertical-align: middle;"> are the [length-and-unity-normalized coverage tracks](#combined-length-and-unity-normalization) for IP and input binned data, respectively.
-- The scaling factor is either $\gamma$ (spike-in normalization) or $\alpha$ (siQ-ChIP normalization), depending on the chosen method.
-- $\delta$ is the minimum input depth factor for [length-and-unity-normalized coverage](#combined-length-and-unity-normalization), ensuring numerical stability by preventing division by zero or extreme values:
-
-<div align="center">
-    <img src="https://latex.codecogs.com/svg.image?$$\delta=\frac{\text{bin&space;size}}{\text{effective&space;genome&space;size}-\text{bin&space;size}}$$" alt="delta equation">
-</div>
-
-The [effective genome size](https://deeptools.readthedocs.io/en/latest/content/feature/effectiveGenomeSize.html) is the portion of the genome that can be aligned to. Typically, this is determined in one of two ways:
-  1. Counting non-*N* bases: The effective genome size is defined as the number of non-N bases in the reference genome. This approach is used when no *MAPQ* filtering is applied to alignments.
-  2. Estimating alignable regions: The effective genome size is defined as the number of regions in the genome (of a length dependent on the read length) that are alignable. This approach accounts for mappability and should be used when *MAPQ* filtering is applied to alignments. (In this analysis, we include only alignments with *MAPQ* ≥ 1, so we use this definition.)
-
-We compute minimum input depth factors for multiple common bin sizes (1, 5, 10, 20, 30, 40, and 50 bp), allowing flexibility in downstream analyses.
-</details>
-<br />
-
-<a id="1-construct-sample-table-recording-siq-chip-%24alpha%24-scaling-factors"></a>
-#### 1. Construct sample table recording siQ-ChIP $\alpha$ scaling factors.
-<a id="text-4"></a>
-##### Text
-<a id="1-construct-sample-table-recording-siq-chip-%24alpha%24-scaling-factors"></a>
-<details>
-<summary><i>Text: Construct sample table recording siQ-ChIP $\alpha$ scaling factors.</i></summary>
-
-<a id="overview"></a>
-###### Overview
-This section describes the process of constructing a sample table that records siQ-ChIP $\alpha$ scaling factors, which normalize ChIP-seq coverage to enable quantitative comparisons across samples ([Dickson et al., 2020](https://pubmed.ncbi.nlm.nih.gov/32994221/); [Dickson et al., 2023](https://pubmed.ncbi.nlm.nih.gov/37160995/)). For ChIP-seq samples to be quantitatively comparable via the siQ-ChIP method, they must satisfy the following experimental conditions:
-1. Equal IP volumes across samples.
-2. Equal total chromatin concentration in each IP reaction.
-3. Equal antibody load for all samples.
-
-When these conditions are met, differences in epitope distribution between samples reflect true biological variation, allowing the resulting IP products to be directly compared on a quantitative scale.
-
----
-
-<a id="background"></a>
-###### Background
-To generate siQ-ChIP-scaled coverage, we compute a proportionality constant, $\alpha$, that connects the sequencing-derived data to the underlying IP reaction dynamics. $\alpha$ represents IP efficiency and is defined as
-
-<div align="center">
-    <img src="https://latex.codecogs.com/svg.image?$$\alpha=\frac{c_{\text{IP}}}{c_{\text{in}}}$$" alt="alpha">
-</div>
-
-where $c_{\text{IP}}$ and $c_{\text{in}}$ are the concentrations of IP (immunoprecipitation) and input DNA, respectively. This relationship is derived from [*Equation 6* in (Dickson et al., 2023)](https://www.nature.com/articles/s41598-023-34430-2#Equ6):
-
-<div align="center">
-    <img src="https://latex.codecogs.com/svg.image?$$c_{\text{IP}}=\frac{m_{\text{IP}}}{660L(V-v_{\text{in}})}\frac{1}{\hat{R}}$$" alt="c_IP">
-</div>
-<div align="center">
-    <img src="https://latex.codecogs.com/svg.image?$$c_{\text{in}}=\frac{m_{\text{in}}}{660L_{\text{in}}v_{\text{in}}}\frac{1}{\hat{R}_{\text{in}}}$$" alt="c_in">
-</div>
-<div align="center">
-    <i>Concentration equations needed to compute $\alpha$ as presented in</i> Equation 6<i>.</i>
-</div>
-<br />
-
-The equations incorporate the following variables and terms:
-- Total DNA mass in the IP ($m_{\text{IP}}$) and input ($m_{\text{in}}$) samples.
-- Sample volumes before input removal ($V$) and for the input fraction ($v_{\text{in}}$).
-- Sequencing depths for the IP ($\hat{R}$) and input ($\hat{R}_{\text{in}}$) samples (if applicable).
-- Average fragment lengths for the IP ($L$) and input ($L_{\text{in}}$) samples. These are determined by fluorometric quantification or spectrometry, or inferred from paired-end alignments, as done in this workflow (see ... below).
-- 660 *g/mol/bp* is the average molecular weight of a DNA base pair.
-- Chromatin mass-to-concentration conversion factors: The terms $\frac{1}{660L(V - v_{\text{in}})}$ and $\frac{1}{660L_{\text{in}}v_{\text{in}}}$ convert chromatin mass to concentration.
-
-The variable assignments, derived from experimental measurements, are recorded in a [structured TSV metadata file](https://github.com/kalavattam/protocol_chipseq_signal_norm/blob/main/data/raw/docs/measurements_siqchip.tsv), extracted, and used to compute $\alpha$ values.
-
-In [the initial siQ-ChIP program implementation](https://github.com/BradleyDickson/siQ-ChIP), $\alpha$ was applied to [fragment length-normalized coverage](#fragment-length-normalization), which was subsequently normalized for unity. However, in this workflow, $\alpha$ is applied to coverage that is [both fragment length- and unity-normalized](#combined-length-and-unity-normalization). Since unity normalization is a depth correction (i.e., dividing by the total number of fragments such that binned genomic coverage sums to 1), we use a modified form of *Equation 6* that excludes sequencing depth terms:
-
-<div align="center">
-    <img src="https://latex.codecogs.com/svg.image?$$c_{\text{IP}}=\frac{m_{\text{IP}}}{660L(V-v_{\text{in}})}$$" alt="c_IP">
-</div>
-<div align="center">
-    <img src="https://latex.codecogs.com/svg.image?$$c_{\text{in}}=\frac{m_{\text{in}}}{660L_{\text{in}}v_{\text{in}}}$$" alt="c_in">
-</div>
-<div align="center">
-    Equation 6 <i>concentrations without depth terms (referred to as "6 no depth" or "6nd").</i>
-</div>
-<br />
-
-Removing $\hat{R}$ and $\hat{R}_{\text{in}}$ allows sequencing depth to be corrected separately through unity normalization, making $\alpha$ directly applicable to normalized coverage.
-
----
-
-<a id="steps-performed-in-code-chunk"></a>
-###### Steps performed in code chunk
-1. *Identify ChIP-seq samples* by selecting IP and corresponding input BAM files.
-2. *Extract metadata* from the structured TSV file containing siQ-ChIP measurements (e.g., volume, concentration, DNA mass).
-3. *Compute siQ-ChIP scaling factors* $\alpha$ using a predefined equation (e.g., `eqn="6nd"`). Supported equations:
-    - [*Equation 5*](https://www.nature.com/articles/s41598-023-34430-2#Equ5): Incorporates sequencing depth (use with fragment length-normalized coverage).
-    <div align="center">
-        <img src="https://latex.codecogs.com/svg.image?$$\alpha=\frac{v_{\text{in}}}{V-v_{\text{in}}}\frac{m_{\text{IP}}}{m_{\text{in}}}\frac{\hat{R}_{\text{in}}}{\hat{R}}\frac{L_{\text{in}}}{L}$$" alt="5">
-    </div>
-
-    - *Equation 5nd*: Excludes sequencing depth (use with fragment length- and unity-normalized coverage).
-    <div align="center">
-        <img src="https://latex.codecogs.com/svg.image?$$\alpha=\frac{v_{\text{in}}}{V-v_{\text{in}}}\frac{m_{\text{IP}}}{m_{\text{in}}}\frac{L_{\text{in}}}{L}$$" alt="5nd">
-    </div>
-
-    - *Equation 6*: Incorporates sequencing depth (use with fragment length-normalized coverage).
-    <div align="center">
-        <img src="https://latex.codecogs.com/svg.image?$$\alpha=\frac{c_{\text{IP}}}{c_{\text{in}}}=\left(\frac{m_{\text{IP}}}{660L(V-v_{\text{in}})}\frac{1}{\hat{R}}\right)\big/\left(\frac{m_{\text{in}}}{660L_{\text{in}}v_{\text{in}}}\frac{1}{\hat{R}_{\text{in}}}\right)$$" alt="6">
-    </div>
-
-    - *Equation 6nd*: Excludes sequencing depth (use with fragment length- and unity-normalized coverage).
-    <div align="center">
-        <img src="https://latex.codecogs.com/svg.image?$$\alpha=\frac{c_{\text{IP}}}{c_{\text{in}}}=\left(\frac{m_{\text{IP}}}{660L(V-v_{\text{in}})}\right)\big/\left(\frac{m_{\text{in}}}{660L_{\text{in}}v_{\text{in}}}\right)$$" alt="6nd">
-    </div>
-
-4. *Store computed values in a structured TSV table.*
-    - Record sample details, computed alpha scaling factors, and minimum input depth values in an output file (`${fil_out}`).
-    - Format the table for compatibility with downstream coverage track-generation steps.
-
----
-
-<a id="output-files"></a>
-###### Output files
-- *`${fil_out}`* (TSV): The final table containing sample information, computed alpha scaling factors, and minimum input depth values.
-- *Logs:* Execution logs (`.stdout.txt` and `.stderr.txt`) are stored in `${dir_log}`.
-</details>
-<br />
-
-<a id="bash-code-3"></a>
-##### Bash code
-<details>
-<summary><i>Bash code: Construct sample table recording siQ-ChIP $\alpha$ scaling factors.</i></summary>
-
-```bash
-#!/bin/bash
-
-#  Optional: Request an interactive node --------------------------------------
-# grabnode  ## Uncomment to request 1 core, 20 GB memory, 1 day, no GPU ##
-
-
-#  Define variables -----------------------------------------------------------
-debug=true
-
-#  Set hardcoded paths, values, etc.
-dir_bas="${HOME}/repos"  ## WARNING: Change as needed ##
-dir_rep="${dir_bas}/protocol_chipseq_signal_norm"
-dir_scr="${dir_rep}/scripts"
-dir_fnc="${dir_scr}/functions"
-dir_dat="${dir_rep}/data"
-dir_pro="${dir_dat}/processed"
-
-aligner="bowtie2"
-a_type="global"
-req_flg=true
-flag="$(if ${req_flg}; then echo "2"; else echo "NA"; fi)"
-mapq=1
-details="${aligner}_${a_type}_flag-${flag}_mapq-${mapq}"
-
-dir_aln="${dir_pro}/align_reads/${details}"
-dir_bam="${dir_aln}/sc"
-dir_cvg="${dir_pro}/compute_signal/${details}"
-dir_tbl="${dir_cvg}/tables"
-dir_log="${dir_tbl}/logs"
-typ_cvg="alpha"
-
-pattern="*.bam"
-include="IP*"
-exclude="*Brn1*"
-
-env_nam="env_analyze"
-execute="${dir_scr}/execute_calculate_scaling_factor_${typ_cvg}.sh"
-day="$(date '+%Y-%m%d')"
-exc_log="${dir_log}/${day}.$(basename "${execute}" ".sh")"
-
-#  Set hardcoded argument assignments
-threads=8
-ser_ip="$(  ## WARNING: Change search parameters as needed ##
-    bash "${dir_scr}/find_files.sh" \
-        --dir_fnd "${dir_bam}" \
-        --pattern "${pattern}" \
-        --include "${include}" \
-        --exclude "${exclude}"
-)"
-ser_in="$(sed 's:\/IP:\/in:g' < <(echo "${ser_ip}"))"
-tbl_met="${dir_dat}/raw/docs/measurements_siqchip.tsv"
-eqn="6nd"
-fil_out="${dir_tbl}/ChIP_WT_G1-G2M-Q_Hho1-Hmo1_${typ_cvg}.tsv"
-err_out="${dir_log}"
-
-if ${debug:-false}; then
-    echo "##########################"
-    echo "## Variable assignments ##"
-    echo "##########################"
-    echo ""
-    echo "debug=${debug}"
-    echo ""
-    echo "dir_bas=${dir_bas}"
-    echo "dir_rep=${dir_rep}"
-    echo "dir_scr=${dir_scr}"
-    echo "dir_fnc=${dir_fnc}"
-    echo "dir_dat=${dir_dat}"
-    echo "dir_pro=${dir_pro}"
-    echo ""
-    echo "aligner=${aligner}"
-    echo "a_type=${a_type}"
-    echo "req_flg=${req_flg}"
-    echo "flag=${flag}"
-    echo "mapq=${mapq}"
-    echo "details=${details}"
-    echo ""
-    echo "dir_aln=${dir_aln}"
-    echo "dir_bam=${dir_bam}"
-    echo "dir_cvg=${dir_cvg}"
-    echo "dir_tbl=${dir_tbl}"
-    echo "dir_log=${dir_log}"
-    echo "typ_cvg=${typ_cvg}"
-    echo ""
-    echo "pattern=${pattern}"
-    echo "include=${include}"
-    echo "exclude=${exclude}"
-    echo ""
-    echo "env_nam=${env_nam}"
-    echo "execute=${execute}"
-    echo "day=${day}"
-    echo "exc_log=${exc_log}"
-    echo ""
-    echo "threads=${threads}"
-    echo "ser_ip=${ser_ip}"
-    echo "ser_in=${ser_in}"
-    echo "tbl_met=${tbl_met}"
-    echo "eqn=${eqn}"
-    echo "fil_out=${fil_out}"
-    echo "err_out=${err_out}"
-    echo ""
-    echo ""
-fi
-
-
-#  Create required directories if necessary -----------------------------------
-mkdir -p "${err_out}"
-
-if ${debug:-false}; then
-    echo "#################################################"
-    echo "## In- and output directory paths and contents ##"
-    echo "#################################################"
-    echo ""
-    echo "%%%%%%%%%%%%%"
-    echo "%% dir_bam %%"
-    echo "%%%%%%%%%%%%%"
-    echo ""
-    ls -lhaFG "${dir_bam}"
-    echo ""
-    ls -lhaFG "${dir_bam}/logs"
-    echo ""
-    echo "%%%%%%%%%%%%%"
-    echo "%% dir_tbl %%"
-    echo "%%%%%%%%%%%%%"
-    echo ""
-    ls -lhaFG "${dir_tbl}"
-    echo ""
-    ls -lhaFG "${err_out}"
-    echo ""
-    echo ""
-fi
-
-
-#  Activate the environment and check dependencies ----------------------------
-#  Source utility functions
-# shellcheck disable=SC1091
-{
-    source "${dir_fnc}/check_program_path.sh"
-    source "${dir_fnc}/echo_warning.sh"
-    source "${dir_fnc}/handle_env.sh"
-}
-
-#  Activate the required environment
-handle_env "${env_nam}"
-
-#  Check the availability of necessary dependencies such as GNU Parallel,
-#+ Python, Samtools, and SLURM
-check_program_path awk
-check_program_path parallel
-check_program_path python
-check_program_path samtools
-check_program_path sbatch ||
-    echo_warning \
-        "SLURM is not available on this system. Do not use the '--slurm'" \
-        "flag with the driver script."
-
-
-#  Construct table ------------------------------------------------------------
-if ${debug:-false}; then
-    echo "###########################"
-    echo "## Call to driver script ##"
-    echo "###########################"
-    echo ""
-    echo "bash \"${execute}\" \\"
-    echo "    --verbose \\"
-    echo "    --threads ${threads} \\"
-    echo "    --ser_ip \"${ser_ip}\" \\"
-    echo "    --ser_in \"${ser_in}\" \\"
-    echo "    --tbl_met \"${tbl_met}\" \\"
-    echo "    --eqn \"${eqn}\" \\"
-    echo "    --fil_out \"${fil_out}\" \\"
-    echo "    --err_out \"${err_out}\" \\"
-    echo "    --slurm"
-    echo "         >> >(tee -a ${exc_log}.stdout.txt) \\"
-    echo "        2>> >(tee -a ${exc_log}.stderr.txt)"
-    echo ""
-    echo ""
-fi
-
-#  Run the driver script: Include '--dry_run' to perform a test run without
-#+ executing commands
-bash "${execute}" \
-    --verbose \
-    --threads ${threads} \
-    --ser_ip "${ser_ip}" \
-    --ser_in "${ser_in}" \
-    --tbl_met "${tbl_met}" \
-    --eqn "${eqn}" \
-    --fil_out "${fil_out}" \
-    --err_out "${err_out}" \
-    --slurm \
-         >> >(tee -a "${exc_log}.stdout.txt") \
-        2>> >(tee -a "${exc_log}.stderr.txt")
-
-if [[ -f "${fil_out}" ]]; then
-    #  Sort the table by rows
-    awk 'NR == 1; NR > 1 && NF { print | "sort" }' "${fil_out}" \
-        > "${dir_tbl}/tmp.tsv"
-
-    #  Replace the original table with the sorted version
-    mv -f "${dir_tbl}/tmp.tsv" "${fil_out}"
-fi
-# cat "${fil_out}"  ## Uncomment to check table ##
-
-
-#  Cleanup: Compress logs and remove empty files ------------------------------
-bash "${dir_scr}/compress_remove_files.sh" --dir_fnd "${err_out}"
-# ls -lhaFG "${err_out}"  ## Uncomment to check directory for logs ##
-```
-</details>
-<br />
-
-<a id="2-construct-sample-table-recording-spike-in-%24gamma%24-scaling-factors"></a>
-#### 2. Construct sample table recording spike-in $\gamma$ scaling factors.
-<a id="text-5"></a>
-##### Text
-<details>
-<summary><i>Text: Construct sample table recording spike-in $\gamma$ scaling factors.</i></summary>
-
-<a id="overview-1"></a>
-###### Overview
-This section describes the process of constructing a sample table that records spike-in $\gamma$ scaling factors, which normalize ChIP-seq coverage to enable semiquantitative comparisons across samples. While widely used, spike-in normalization introduces assumptions and limitations that should be carefully considered when interpreting results.
-
----
-
-<a id="what-is-spike-in-normalization"></a>
-###### What is spike-in normalization?
-Spike-in normalization was developed to scale ChIP-seq signal in experiments where overall target epitope distributions vary substantially between samples. This method introduces exogenous chromatin&mdash;e.g., from *Drosophila melanogaster* or, in our case, *Saccharomyces pombe*&mdash;before immunoprecipitation. The spike-in chromatin serves as a reference, allowing coverage normalization under the assumption that it is recovered consistently across samples.
-
-The general premise of spike-in normalization is as follows:
-1. A fixed amount of exogenous chromatin is added to each ChIP sample prior to immunoprecipitation.
-2. If total chromatin input varies between samples (due to differences in IP efficiency or biological factors), then it is assumed that the recovery of spike-in chromatin remains constant across all samples.
-3. By computing the ratio of endogenous chromatin alignments to spike-in chromatin alignments, per-sample scaling factors are derived to normalize coverage.
-
-<a id="defining-the-spike-in-scaling-factor-%24gamma%24"></a>
-###### Defining the spike-in scaling factor ($\gamma$)
-To generate spike-in-scaled coverage, we compute a proportionality constant, $\gamma$ (so named to distinguish it from the siQ-ChIP scaling factor $\alpha$), that accounts for intersample variability in recovered chromatin. It is defined as
-
-<div align="center">
-    <img src="https://latex.codecogs.com/svg.image?$$\gamma=\frac{p_{\text{in}}}{p_{\text{IP}}}$$" alt="gamma">
-</div>
-
-where $p_{\text{in}}$ and $p_{\text{IP}}$ represent the proportions of spike-in genome alignments (e.g., *S. pombe*) relative to total alignments (i.e., alignments to both the "main" genome, *S. cerevisiae*, and the spike-in organism). Specifically:
-
-<div align="center">
-    <img src="https://latex.codecogs.com/svg.image?$$p_{\text{in}}=\frac{s_{\text{in}}}{t_{\text{in}}},\quad&space;p_{\text{IP}}=\frac{s_{\text{IP}}}{t_{\text{IP}}}$$" alt="p_in, p_IP">
-</div>
-
-where $s_{\text{in}}$ and $s_{\text{IP}}$ represent the number of alignments to the spike-in genome in the input and IP samples, respectively; and $t_{\text{in}}$ and $t_{\text{IP}}$ represent the total number of alignments to the input and IP samples, respectively. Thus, $\gamma$ is calculated as the ratio of these proportions:
-
-<div align="center">
-    <img src="https://latex.codecogs.com/svg.image?$$\gamma=\frac{s_{\text{in}}}{t_{\text{in}}}\big/\frac{s_{\text{IP}}}{t_{\text{IP}}}$$" alt="gamma (alternative)">
-</div>
-
-In this approach, spike-in alignments are treated as an internal reference, and coverage is scaled by how much spike-in chromatin is recovered relative to the main genome chromatin. This assumes that spike-in recovery remains constant across samples&mdash;an assumption that, as discussed below, does not always hold.
-
-<a id="key-limitations-and-concerns"></a>
-###### Key limitations and concerns
-1. Spike-in recovery is variable.
-    - Spike-in normalization assumes that spike-in chromatin is captured with the same efficiency across all conditions.
-    - Several factors can cause spike-in recovery to vary, including variability in chromatin fragmentation, differences in antibody availability, and changes in chromatin accessibility.
-
-2. Spike-in scaling does not account for altered antibody binding dynamics.
-    - When target epitope depletion occurs, both on- and off-target antibody binding can increase.
-    - Depending on antibody specificity, off-target binding may be higher than expected, distorting the final readout.
-    - Spike-in normalization does not account for this and, indeed, may misleadingly present antibody binding as more specific than it actually is.
-    - *(siQ-ChIP modeling predicts that the quantity of off-target material increases when target is removed, and the scaling reflects this.)*
-
-3. Spike-in recovery is not independent of experimental perturbations.
-    - The tacit assumption is that spike-in chromatin behaves identically across samples, providing an unbiased reference.
-    - In reality, spike-in capture can be affected by experimental conditions, meaning that the scaling factor may reflect both technical variation and true biological changes.
-    - Thus, one cannot isolate changes in spike-in recovery that are due to the experimental perturbation itself.
-    - Since this cannot be controlled, the spike-in scaling factor reports a compound effect of both exogenous (spike-in) and endogenous (sample) chromatin capture.
-
-4. Spike-in recovery can saturate, masking differences.
-    - Spike-in recovery may reach a saturation point in which the addition of more spike-in does not proportionally increase sequencing reads.
-    - This has been observed in cases when antibody is in excess, leading to nonlinear spike-in recovery, and when the total amount of spike-in chromatin is too small, resulting in variability due to stochastic effects in sequencing.
-    - Once saturation occurs, spike-in scaling no longer reflects changes in sequencing depth, and normalization is misleading.
-
-<a id="on-the-inclusion-of-spike-in-scaling-in-this-workflow"></a>
-###### On the inclusion of spike-in scaling in this workflow
-While we include a form of spike-in method ($\gamma$ scaling) in this workflow for reference, we recommend using the siQ-ChIP method ($\alpha$ scaling), which directly accounts for IP efficiency and input normalization, and is considered a more robust and accurate approach for quantitative ChIP-seq analysis. Use siQ-ChIP scaling ($\alpha$) instead, as it provides a more rigorous and interpretable normalization approach.
-
----
-
-<a id="steps-performed-in-code-chunk-1"></a>
-###### Steps performed in code chunk
-1. *Identify ChIP-seq samples* by selecting BAM files corresponding to the main and spike-in genomes for both IP and input samples.
-2. *Count alignments* using `samtools view` to tally main and spike-in alignments separately for each sample. See [`count_alignments_bam()`](https://github.com/kalavattam/protocol_chipseq_signal_norm/blob/main/scripts/functions/count_alignments_bam.sh) for details.
-3. *Compute spike-in scaling factors* $\gamma$ using the equation
-
-<div align="center">
-    <img src="https://latex.codecogs.com/svg.image?$$\gamma=\frac{p_{\text{in}}}{p_{\text{IP}}}=\frac{s_{\text{in}}}{t_{\text{in}}}\big/\frac{s_{\text{IP}}}{t_{\text{IP}}}$$" alt="gamma (detailed)">
-</div>
-
-4. *Store computed values in a structured TSV table.*
-   - Record sample details and computed spike-in scaling factors in an output file (`${fil_out}`).
-   - Format the table for compatibility with downstream coverage normalization steps.
-
-<a id="output-files-1"></a>
-###### Output files
-- `${fil_out}` (TSV): The final table containing sample information and computed spike-in scaling factors.
-- Logs: Execution logs (`.stdout.txt` and `.stderr.txt`) are stored in `${dir_log}`.
-</details>
-<br />
-
-<a id="bash-code-4"></a>
-##### Bash code
-<details>
-<summary><i>Bash code: Construct sample table recording spike-in $\gamma$ scaling factors.</i></summary>
-
-```bash
-#!/bin/bash
-
-#  Optional: Request an interactive node --------------------------------------
-# grabnode  ## Uncomment to request 1 core, 20 GB memory, 1 day, no GPU ##
-
-
-#  Define variables -----------------------------------------------------------
-debug=true
-
-#  Set hardcoded paths, values, etc.
-dir_bas="${HOME}/repos"  ## WARNING: Change as needed ##
-dir_rep="${dir_bas}/protocol_chipseq_signal_norm"
-dir_scr="${dir_rep}/scripts"
-dir_fnc="${dir_scr}/functions"
-dir_dat="${dir_rep}/data"
-dir_pro="${dir_dat}/processed"
-
-aligner="bowtie2"
-a_type="global"
-req_flg=true
-flag="$(if ${req_flg}; then echo "2"; else echo "NA"; fi)"
-mapq=1
-details="${aligner}_${a_type}_flag-${flag}_mapq-${mapq}"
-
-dir_aln="${dir_pro}/align_reads/${details}"
-dir_bam="${dir_aln}/sc"
-dir_cvg="${dir_pro}/compute_signal/${details}"
-dir_tbl="${dir_cvg}/tables"
-dir_log="${dir_tbl}/logs"
-typ_cvg="spike"
-
-pattern="*.bam"
-include="IP*"
-exclude="*Brn1*"
-
-env_nam="env_analyze"
-execute="${dir_scr}/execute_calculate_scaling_factor_${typ_cvg}.sh"
-day="$(date '+%Y-%m%d')"
-exc_log="${dir_log}/${day}.$(basename "${execute}" ".sh")"
-
-#  Set hardcoded argument assignments
-threads=8
-ser_mip="$(  ## WARNING: Change search parameters as needed ##
-    bash "${dir_scr}/find_files.sh" \
-        --dir_fnd "${dir_bam}" \
-        --pattern "${pattern}" \
-        --include "${include}" \
-        --exclude "${exclude}"
-)"
-ser_sip="$(sed 's:sc:sp:g' < <(echo "${ser_mip}"))"
-ser_min="$(sed 's:\/IP:\/in:g' < <(echo "${ser_mip}"))"
-ser_sin="$(sed 's:\/IP:\/in:g' < <(echo "${ser_sip}"))"
-fil_out="${dir_tbl}/ChIP_WT_G1-G2M-Q_Hho1-Hmo1_${typ_cvg}.tsv"
-err_out="${dir_log}"
-
-if ${debug:-false}; then
-    echo "##########################"
-    echo "## Variable assignments ##"
-    echo "##########################"
-    echo ""
-    echo "debug=${debug}"
-    echo ""
-    echo "dir_bas=${dir_bas}"
-    echo "dir_rep=${dir_rep}"
-    echo "dir_scr=${dir_scr}"
-    echo "dir_fnc=${dir_fnc}"
-    echo "dir_dat=${dir_dat}"
-    echo "dir_pro=${dir_pro}"
-    echo ""
-    echo "aligner=${aligner}"
-    echo "a_type=${a_type}"
-    echo "req_flg=${req_flg}"
-    echo "flag=${flag}"
-    echo "mapq=${mapq}"
-    echo "details=${details}"
-    echo ""
-    echo "dir_aln=${dir_aln}"
-    echo "dir_bam=${dir_bam}"
-    echo "dir_cvg=${dir_cvg}"
-    echo "dir_tbl=${dir_tbl}"
-    echo "dir_log=${dir_log}"
-    echo "typ_cvg=${typ_cvg}"
-    echo ""
-    echo "pattern=${pattern}"
-    echo "include=${include}"
-    echo "exclude=${exclude}"
-    echo ""
-    echo "env_nam=${env_nam}"
-    echo "execute=${execute}"
-    echo "day=${day}"
-    echo "exc_log=${exc_log}"
-    echo ""
-    echo "threads=${threads}"
-    echo "ser_mip=${ser_mip}"
-    echo "ser_sip=${ser_sip}"
-    echo "ser_min=${ser_min}"
-    echo "ser_sin=${ser_sin}"
-    echo "fil_out=${fil_out}"
-    echo "err_out=${err_out}"
-    echo ""
-    echo ""
-fi
-
-
-#  Create required directories if necessary -----------------------------------
-mkdir -p "${err_out}"
-
-if ${debug:-false}; then
-    echo "#################################################"
-    echo "## In- and output directory paths and contents ##"
-    echo "#################################################"
-    echo ""
-    echo "%%%%%%%%%%%%%"
-    echo "%% dir_bam %%"
-    echo "%%%%%%%%%%%%%"
-    echo ""
-    ls -lhaFG "${dir_bam}"
-    echo ""
-    ls -lhaFG "${dir_bam}/logs"
-    echo ""
-    echo "%%%%%%%%%%%%%"
-    echo "%% dir_tbl %%"
-    echo "%%%%%%%%%%%%%"
-    echo ""
-    ls -lhaFG "${dir_tbl}"
-    echo ""
-    ls -lhaFG "${err_out}"
-    echo ""
-    echo ""
-fi
-
-
-#  Activate the environment and check dependencies ----------------------------
-#  Source utility functions
-# shellcheck disable=SC1091
-{
-    source "${dir_fnc}/check_program_path.sh"
-    source "${dir_fnc}/echo_warning.sh"
-    source "${dir_fnc}/handle_env.sh"
-}
-
-#  Activate the required environment
-handle_env "${env_nam}"
-
-#  Check the availability of necessary dependencies such as GNU Parallel,
-#+ Python, Samtools, and SLURM
-check_program_path awk
-check_program_path parallel
-check_program_path python
-check_program_path samtools
-check_program_path sbatch ||
-    echo_warning \
-        "SLURM is not available on this system. Do not use the '--slurm'" \
-        "flag with the driver script."
-
-
-#  Construct table ------------------------------------------------------------
-if ${debug:-false}; then
-    echo "###########################"
-    echo "## Call to driver script ##"
-    echo "###########################"
-    echo ""
-    echo "bash \"${execute}\" \\"
-    echo "    --verbose \\"
-    echo "    --threads ${threads} \\"
-    echo "    --ser_mip \"${ser_mip}\" \\"
-    echo "    --ser_sip \"${ser_sip}\" \\"
-    echo "    --ser_min \"${ser_min}\" \\"
-    echo "    --ser_sin \"${ser_sin}\" \\"
-    echo "    --fil_out \"${fil_out}\" \\"
-    echo "    --err_out \"${err_out}\" \\"
-    echo "    --slurm"
-    echo "         >> >(tee -a ${exc_log}.stdout.txt) \\"
-    echo "        2>> >(tee -a ${exc_log}.stderr.txt)"
-    echo ""
-    echo ""
-fi
-
-#  Run the driver script: Include '--dry_run' to perform a test run without
-#+ executing commands
-bash "${execute}" \
-    --verbose \
-    --threads ${threads} \
-    --ser_mip "${ser_mip}" \
-    --ser_sip "${ser_sip}" \
-    --ser_min "${ser_min}" \
-    --ser_sin "${ser_sin}" \
-    --fil_out "${fil_out}" \
-    --err_out "${err_out}" \
-    --slurm \
-         >> >(tee -a "${exc_log}.stdout.txt") \
-        2>> >(tee -a "${exc_log}.stderr.txt")
-
-if [[ -f "${fil_out}" ]]; then
-    #  Sort the table by rows
-    awk 'NR == 1; NR > 1 && NF { print | "sort" }' "${fil_out}" \
-        > "${dir_tbl}/tmp.tsv"
-
-    #  Replace the original table with the sorted version
-    mv -f "${dir_tbl}/tmp.tsv" "${fil_out}"
-fi
-# cat "${fil_out}"  ## Uncomment to check table ##
-
-
-#  Cleanup: Compress logs and remove empty files ------------------------------
-bash "${dir_scr}/compress_remove_files.sh" --dir_fnd "${err_out}"
-# ls -lhaFG "${err_out}"  ## Uncomment to check directory for logs ##
-```
-</details>
-<br />
-
 <a id="i-compute-coverage-with-the-siq-chip-method"></a>
 ### I. Compute coverage with the siQ-ChIP method.
 <a id="text-6"></a>
@@ -2031,13 +1875,13 @@ bash "${dir_scr}/compress_remove_files.sh" --dir_fnd "${err_out}"
 <details>
 <summary><i>Text: Compute coverage with the siQ-ChIP method.</i></summary>
 
-<a id="overview-2"></a>
+<a id="overview"></a>
 ##### Overview
 This section describes the steps to compute ChIP-seq coverage normalized using the siQ-ChIP method. For more details, see the introduction to [Section G](#g-construct-sample-tables-recording-computed-scaling-factors-for-normalization). The procedure makes use of utility scripts and functions, environment handling, and parallel processing where applicable.
 
 ---
 
-<a id="steps-performed-in-code-chunk-2"></a>
+<a id="steps-performed-in-code-chunk"></a>
 ##### Steps performed in code chunk
 1. *Set up directories and paths:* Define variables for key directories, data locations, and output destinations.
 2. *Activate environment and check dependencies:* Load the necessary computational environment and ensure essential dependencies are available.
@@ -2309,8 +2153,8 @@ bash "${dir_scr}/compress_remove_files.sh" --dir_fnd "${dir_log}"
 </details>
 <br />
 
-<a id="i-compute-coverage-with-the-spike-in-method"></a>
-### I. Compute coverage with the spike-in method.
+<a id="j-compute-coverage-with-the-spike-in-method"></a>
+### J. Compute coverage with the spike-in method.
 <a id="text-7"></a>
 #### Text
 <details>
