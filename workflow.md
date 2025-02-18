@@ -57,20 +57,6 @@ This notebook provides a guide to the ChIP-seq data processing workflow detailed
     1. [J. Compute coverage with the spike-in method.](#j-compute-coverage-with-the-spike-in-method)
         1. [Text](#text-7)
         1. [Bash code](#bash-code-6)
-    1. [K. Rough-draft tracks for assessment](#k-rough-draft-tracks-for-assessment)
-        1. [1. Abbreviations](#1-abbreviations)
-        1. [2. Hho1 normalized coverage tracks](#2-hho1-normalized-coverage-tracks)
-            1. [a. Hho1, II:305000-505000](#a-hho1-ii305000-505000)
-            1. [b. Hho1, XII:451250-468750 \(rDNA locus\)](#b-hho1-xii451250-468750-rdna-locus)
-        1. [3. Hmo1 normalized coverage tracks](#3-hmo1-normalized-coverage-tracks)
-            1. [a. Hmo1, II:305000-505000](#a-hmo1-ii305000-505000)
-            1. [b. Hmo1, XII:451250-468750 \(rDNA locus\)](#b-hmo1-xii451250-468750-rdna-locus)
-        1. [4. Hho1 scaled coverage tracks](#4-hho1-scaled-coverage-tracks)
-            1. [a. Hho1, II:305000-505000](#a-hho1-ii305000-505000-1)
-            1. [b. Hho1, XII:451250-468750 \(rDNA locus\)](#b-hho1-xii451250-468750-rdna-locus-1)
-        1. [5. Hmo1 scaled coverage tracks](#5-hmo1-scaled-coverage-tracks)
-            1. [a. Hmo1, II:305000-505000](#a-hmo1-ii305000-505000-1)
-            1. [b. Hmo1, XII:451250-468750 \(rDNA locus\)](#b-hmo1-xii451250-468750-rdna-locus-1)
 
 <!-- /MarkdownTOC -->
 </details>
@@ -99,6 +85,8 @@ This notebook provides a guide to the ChIP-seq data processing workflow detailed
 
 
 #  Define variables -----------------------------------------------------------
+debug=true
+
 #  Define variable for base directory
 dir_bas="${HOME}"  ## WARNING: Change as needed ##
 
@@ -116,13 +104,31 @@ ar=$(uname -m)  # e.g., "x86_64" for Intel/AMD, "arm64" for ARM
 https="https://github.com/conda-forge/miniforge/releases/latest/download"
 script="Miniforge3-${os}-${ar}.sh"
 
+if ${debug:-false}; then
+    echo "####################################"
+    echo "## Hardcoded variable assignments ##"
+    echo "####################################"
+    echo ""
+    echo "debug=${debug}"
+    echo ""
+    echo "dir_bas=${dir_bas}"
+    echo ""
+    echo "os=${os}"
+    echo "ar=${ar}"
+    echo ""
+    echo "https=${https}"
+    echo "script=${script}"
+    echo ""
+    echo ""
+fi
+
 
 #  Download and install Miniforge ---------------------------------------------
 #  Move to base directory
 cd "${dir_bas}" || echo "Error: Failed to change directory: '${dir_bas}'." >&2
 
 #  Download Miniforge installer
-curl -L -O "${https}/${script}"
+if [[ ! -f "${script}" ]]; then curl -L -O "${https}/${script}"; fi
 
 #  Run Miniforge installer
 bash "${script}"
@@ -151,9 +157,30 @@ Use the script [`install_envs.sh`](./scripts/install_envs.sh) to set up the proj
 
 
 #  Define variables -----------------------------------------------------------
+debug=true
+
 dir_bas="${HOME}/repos"  ## WARNING: Change as needed ##
 repo="protocol_chipseq_signal_norm"
 https="https://github.com/kalavattam/${repo}.git"
+
+env="env_protocol"
+
+if ${debug:-false}; then
+    echo "####################################"
+    echo "## Hardcoded variable assignments ##"
+    echo "####################################"
+    echo ""
+    echo "debug=${debug}"
+    echo ""
+    echo "dir_bas=${dir_bas}"
+    echo ""
+    echo "repo=${repo}"
+    echo "https=${https}"
+    echo ""
+    echo "env=${env}"
+    echo ""
+    echo ""
+fi
 
 
 #  Do the main work -----------------------------------------------------------
@@ -170,7 +197,7 @@ if [[ ! -d "${repo}" ]]; then git clone "${https}"; fi
 cd "${repo}" || echo "Error: Failed to change directory: '${repo}'." >&2
 
 #  Install Conda/Mamba environment with install_envs.sh
-bash "scripts/install_envs.sh" --env_nam "env_protocol" --yes
+bash "scripts/install_envs.sh" --env_nam "${env}" --yes
 ```
 </details>
 <br />
@@ -2408,81 +2435,3 @@ bash "${dir_scr}/compress_remove_files.sh" --dir_fnd "${dir_log}"
 ```
 </details>
 <br />
-
-<a id="k-rough-draft-tracks-for-assessment"></a>
-### K. Rough-draft tracks for assessment
-<a id="1-abbreviations"></a>
-#### 1. Abbreviations
-- norm: Normalized coverage
-- in: Input sample
-- IP: Immunoprecipitated sample
-- G1: Sampled from the G1 stage of the cell cycle
-- G2M: Sampled from a mix of G2/M stages of the cell cycle
-- Q: Sampled from quiescent cells
-- Hho1: *S. cerevisiae* histone H1
-- Hmo1: *S. cerevisiae* high mobility group family member protein
-- 6336, 6337, 7750, 7751: Strain numbers (biological replicates)
-- $\log_{2}$: $\log_{2}$ ratio of IP signal divided by input signal
-- spike: Tracks scaled using spike-in normalization ($\gamma$)
-- siQ: Tracks scaled using siQ-ChIP normalization ($\alpha$)
-
-
-<a id="2-hho1-normalized-coverage-tracks"></a>
-#### 2. Hho1 normalized coverage tracks
-<a id="a-hho1-ii305000-505000"></a>
-##### a. Hho1, II:305000-505000
-![Hho1, II:305000-505000](data/tracks/png/Hho1/norm/Hho1_b30_dy__1-12n__13-18r__g3sc__II-305000-505000.png)
-Rows 1&ndash;12: Hho1 normalized coverage tracks (i.e., tracks that have been [length-and-unity-normalized](#combined-length-and-unity-normalization)) with group autoscaling across G1, G2M, and Q samples. Rows 13&ndash;18: $\log_{2}$ ratios of normalized coverage tracks with group autoscaling across G1, G2M, and Q samples. Final row: *S. cerevisiae* annotated genome features. Tracks are binned at 30-bp resolution. All division operations used [minimum input depth values](#g-construct-sample-tables-recording-computed-scaling-factors-for-normalization).
-
-<a id="b-hho1-xii451250-468750-rdna-locus"></a>
-##### b. Hho1, XII:451250-468750 (rDNA locus)
-![Hho1, XII:451250-468750 (rDNA locus)](data/tracks/png/Hho1/norm/Hho1_b30_dy__1-12n__13-18r__g3sc__XII-451250-468750.png)
-Rows 1&ndash;12: Hho1 normalized coverage tracks (i.e., tracks that have been [length-and-unity-normalized](#combined-length-and-unity-normalization)) with group autoscaling across G1, G2M, and Q samples. Rows 13&ndash;18: $\log_{2}$ ratios of normalized coverage tracks with group autoscaling across G1, G2M, and Q samples. Final row: *S. cerevisiae* annotated genome features. Tracks are binned at 30-bp resolution. All division operations used [minimum input depth values](#g-construct-sample-tables-recording-computed-scaling-factors-for-normalization).
-
-<a id="3-hmo1-normalized-coverage-tracks"></a>
-#### 3. Hmo1 normalized coverage tracks
-<a id="a-hmo1-ii305000-505000"></a>
-##### a. Hmo1, II:305000-505000
-![Hmo1, II:305000-505000](data/tracks/png/Hmo1/norm/Hmo1_b30_dy__1-12n__13-18r__g3sc__II-305000-505000.png)
-Rows 1&ndash;12: Hmo1 normalized coverage tracks (i.e., tracks that have been [length-and-unity-normalized](#combined-length-and-unity-normalization)) with group autoscaling across G1, G2M, and Q samples. Rows 13&ndash;18: $\log_{2}$ ratios of normalized coverage tracks with group autoscaling across G1, G2M, and Q samples. Final row: *S. cerevisiae* annotated genome features. Tracks are binned at 30-bp resolution. All division operations used [minimum input depth values](#g-construct-sample-tables-recording-computed-scaling-factors-for-normalization).
-
-<a id="b-hmo1-xii451250-468750-rdna-locus"></a>
-##### b. Hmo1, XII:451250-468750 (rDNA locus)
-![Hmo1, XII:451250-468750 (rDNA locus)](data/tracks/png/Hmo1/norm/Hmo1_b30_dy__1-12n__13-18r__g3sc__XII-451250-468750.png)
-Rows 1&ndash;12: Hmo1 normalized coverage tracks (i.e., tracks that have been [length-and-unity-normalized](#combined-length-and-unity-normalization)) with group autoscaling across G1, G2M, and Q samples. Rows 13&ndash;18: $\log_{2}$ ratios of normalized coverage tracks with group autoscaling across G1, G2M, and Q samples. Final row: *S. cerevisiae* annotated genome features. Tracks are binned at 30-bp resolution. All division operations used [minimum input depth values](#g-construct-sample-tables-recording-computed-scaling-factors-for-normalization).
-
-<a id="4-hho1-scaled-coverage-tracks"></a>
-#### 4. Hho1 scaled coverage tracks
-<a id="a-hho1-ii305000-505000-1"></a>
-##### a. Hho1, II:305000-505000
-![Hho1, II:305000-505000](data/tracks/png/Hho1/scal/Hho1_b30_dy__1-6g__7-12a__g3sc__II-305000-505000.png)
-Rows 1&mdash;6: Hho1 coverage tracks scaled using spike-in normalization ($\gamma$) with group autoscaling across G1, G2M, and Q samples. Rows 7&mdash;12: Hho1 coverage tracks scaled using siQ-ChIP normalization ($\alpha$) with group autoscaling across G1, G2M, and Q samples. Final row: *S. cerevisiae* annotated genome features. Tracks are binned at 30-bp resolution. All division operations used [minimum input depth values](#g-construct-sample-tables-recording-computed-scaling-factors-for-normalization).
-
-![Hho1, II:305000-505000](data/tracks/png/Hho1/scal/Hho1_b30_dy__1-6g__7-12a__g3sc__II-305000-505000_ds.png)
-Rows 1&mdash;6: Hho1 coverage tracks scaled using spike-in normalization ($\gamma$) with G1 and G2M autoscaled separately from Q. Rows 7&mdash;12: Hho1 coverage tracks scaled using siQ-ChIP normalization ($\alpha$) with G1 and G2M autoscaled separately from Q. Final row: *S. cerevisiae* annotated genome features. Tracks are binned at 30-bp resolution. All division operations used [minimum input depth values](#g-construct-sample-tables-recording-computed-scaling-factors-for-normalization).
-
-<a id="b-hho1-xii451250-468750-rdna-locus-1"></a>
-##### b. Hho1, XII:451250-468750 (rDNA locus)
-![Hho1, XII:451250-468750 (rDNA locus)](data/tracks/png/Hho1/scal/Hho1_b30_dy__1-6g__7-12a__g3sc__XII-451250-468750.png)
-Rows 1&mdash;6: Hho1 coverage tracks scaled using spike-in normalization ($\gamma$) with group autoscaling across G1, G2M, and Q samples. Rows 7&mdash;12: Hho1 coverage tracks scaled using siQ-ChIP normalization ($\alpha$) with group autoscaling across G1, G2M, and Q samples. Final row: *S. cerevisiae* annotated genome features. Tracks are binned at 30-bp resolution. All division operations used [minimum input depth values](#g-construct-sample-tables-recording-computed-scaling-factors-for-normalization).
-
-![Hho1, XII:451250-468750 (rDNA locus)](data/tracks/png/Hho1/scal/Hho1_b30_dy__1-6g__7-12a__g3sc__XII-451250-468750_ds.png)
-Rows 1&mdash;6: Hho1 coverage tracks scaled using spike-in normalization ($\gamma$) with G1 and G2M autoscaled separately from Q. Rows 7&mdash;12: Hho1 coverage tracks scaled using siQ-ChIP normalization ($\alpha$) with G1 and G2M autoscaled separately from Q. Final row: *S. cerevisiae* annotated genome features. Tracks are binned at 30-bp resolution. All division operations used [minimum input depth values](#g-construct-sample-tables-recording-computed-scaling-factors-for-normalization).
-
-<a id="5-hmo1-scaled-coverage-tracks"></a>
-#### 5. Hmo1 scaled coverage tracks
-<a id="a-hmo1-ii305000-505000-1"></a>
-##### a. Hmo1, II:305000-505000
-![Hmo1, II:305000-505000](data/tracks/png/Hmo1/scal/Hmo1_b30_dy__1-6g__7-12a__g3sc__II-305000-505000.png)
-Rows 1&mdash;6: Hmo1 coverage tracks scaled using spike-in normalization ($\gamma$) with group autoscaling across G1, G2M, and Q samples. Rows 7&mdash;12: Hmo1 coverage tracks scaled using siQ-ChIP normalization ($\alpha$) with group autoscaling across G1, G2M, and Q samples. Final row: *S. cerevisiae* annotated genome features. Tracks are binned at 30-bp resolution. All division operations used [minimum input depth values](#g-construct-sample-tables-recording-computed-scaling-factors-for-normalization).
-
-![Hmo1, II:305000-505000](data/tracks/png/Hmo1/scal/Hmo1_b30_dy__1-6g__7-12a__g3sc__II-305000-505000_ds.png)
-Rows 1&mdash;6: Hmo1 coverage tracks scaled using spike-in normalization ($\gamma$) with G1 and G2M autoscaled separately from Q. Rows 7&mdash;12: Hmo1 coverage tracks scaled using siQ-ChIP normalization ($\alpha$) with G1 and G2M autoscaled separately from Q. Final row: *S. cerevisiae* annotated genome features. Tracks are binned at 30-bp resolution. All division operations used [minimum input depth values](#g-construct-sample-tables-recording-computed-scaling-factors-for-normalization).
-
-<a id="b-hmo1-xii451250-468750-rdna-locus-1"></a>
-##### b. Hmo1, XII:451250-468750 (rDNA locus)
-![Hmo1, XII:451250-468750 (rDNA locus)](data/tracks/png/Hmo1/scal/Hmo1_b30_dy__1-6g__7-12a__g3sc__XII-451250-468750.png)
-Rows 1&mdash;6: Hmo1 coverage tracks scaled using spike-in normalization ($\gamma$) with group autoscaling across G1, G2M, and Q samples. Rows 7&mdash;12: Hmo1 coverage tracks scaled using siQ-ChIP normalization ($\alpha$) with group autoscaling across G1, G2M, and Q samples. Final row: *S. cerevisiae* annotated genome features. Tracks are binned at 30-bp resolution. All division operations used [minimum input depth values](#g-construct-sample-tables-recording-computed-scaling-factors-for-normalization).
-
-![Hmo1, XII:451250-468750 (rDNA locus)](data/tracks/png/Hmo1/scal/Hmo1_b30_dy__1-6g__7-12a__g3sc__XII-451250-468750_ds.png)
-Rows 1&mdash;6: Hmo1 coverage tracks scaled using spike-in normalization ($\gamma$) with G1 and G2M autoscaled separately from Q. Rows 7&mdash;12: Hmo1 coverage tracks scaled using siQ-ChIP normalization ($\alpha$) with G1 and G2M autoscaled separately from Q. Final row: *S. cerevisiae* annotated genome features. Tracks are binned at 30-bp resolution. All division operations used [minimum input depth values](#g-construct-sample-tables-recording-computed-scaling-factors-for-normalization).
