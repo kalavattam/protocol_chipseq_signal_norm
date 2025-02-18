@@ -35,8 +35,8 @@ EOM
 fi
 
 #  Parse positional arguments, assigning them to variables; most of the
-#+ argument inputs are not checked, as this is performed by execute_*.sh and to
-#+ a certain extent by the scripts submitted to SLURM
+#+ argument inputs are not checked, as this is performed by execute_*.sh and,
+#+ if applicable, to a certain extent by the scripts submitted to SLURM
 srr="${1}"
 url_1="${2}"
 url_2="${3}"

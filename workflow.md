@@ -221,17 +221,20 @@ To promote accurate alignment of sequenced reads, it is important to remove adap
 ```bash
 #!/bin/bash
 
-#  Optional: Request an interactive node 
+#  Optional: Request an interactive node --------------------------------------
 # grabnode  ## Uncomment to request 1 core, 20 GB memory, 1 day, no GPU ##
 ```
 
 First, if necessary, download Julia 1.8.5 for the appropriate OS and system architecture from the [official page](https://julialang.org/downloads/oldreleases/).
 
 ```bash
+#  Define variables -----------------------------------------------------------
+debug=true
+
 #  Define OS and architecture variables
-os="linux"     ## WARNING: Change as needed, e.g., 'mac' ##
-ar_s="x64"     ## WARNING: Change as needed, e.g., 'aarch64' ##
-ar_l="x86_64"  ## WARNING: Change as needed, e.g., 'macaarch64' ##
+os="mac"           # "linux"   ## WARNING: Change as needed ##
+ar_s="aarch64"     # "x64"     ## WARNING: Change as needed ##
+ar_l="macaarch64"  # "x86_64"  ## WARNING: Change as needed ##
 
 #  Set variables for Julia version
 ver_s="1.8"
@@ -239,7 +242,36 @@ ver_l="${ver_s}.5"
 
 #  Define URL and tarball filename
 https="https://julialang-s3.julialang.org/bin/${os}/${ar_s}/${ver_s}"
-tarball="julia-${ver_l}-${os}-${ar_l}.tar.gz"
+case "${os}" in
+    linux) tarball="julia-${ver_l}-${os}-${ar_l}.tar.gz" ;;
+      mac) tarball="julia-${ver_l}-${ar_l}.tar.gz" ;;
+esac
+
+if ${debug:-false}; then
+    echo "####################################"
+    echo "## Hardcoded variable assignments ##"
+    echo "####################################"
+    echo ""
+    echo "debug=${debug}"
+    echo ""
+    echo "os=${os}"
+    echo "ar_s=${ar_s}"
+    echo "ar_l=${ar_l}"
+    echo ""
+    echo "ver_s=${ver_s}"
+    echo "ver_l=${ver_l}"
+    echo ""
+    echo "https=${https}"
+    echo "tarball=${tarball}"
+    echo ""
+    echo ""
+fi
+
+
+#  Do the main work -----------------------------------------------------------
+if [[ "$(pwd)" != "${HOME}" ]]; then
+    cd "${HOME}" || echo "Error: Failed to change directory: '${HOME}'." >&2
+fi
 
 #  Download the tarball
 curl -L -O "${https}/${tarball}"
@@ -256,7 +288,7 @@ Add Julia to the `PATH` variable by appending the following line to the shell co
 
 ```bash
 #  Define variable for shell configuration file
-config="${HOME}/.bashrc" ## WARNING: Change as needed ##
+config="${HOME}/.bashrc"  # "${HOME}/.zshrc"  ## WARNING: Change as needed ##
 
 #  Add Julia to PATH and apply changes
 # shellcheck disable=SC1090,SC2016
@@ -270,13 +302,13 @@ Next, clone the [Atria repository](https://github.com/cihga39871/Atria), activat
 
 ```bash
 #  Navigate to the repository directory
-cd "${HOME}/repos"
+cd "${HOME}/repos" || echo "Error: Failed to change directory: '${repo}'." >&2
 
 #  Clone Atria repository from GitHub
-git clone https://github.com/cihga39871/Atria.git
+git clone "https://github.com/cihga39871/Atria.git"
 
 #  Change into newly cloned Atria directory
-cd Atria
+cd Atria || echo "Error: Failed to change directory: 'Atria'." >&2
 
 #  Activate environment containing Atria dependencies 
 mamba activate env_protocol
@@ -288,10 +320,10 @@ julia build_atria.jl
 Locate the Atria binary and add its path to the shell configuration file. It will be in a directory like this: `atria-version/bin`, e.g., `atria-4.0.3/bin`. For example,
 
 ```bash
-#  Add Atria to PATH and apply changes
+#  Add Atria to PATH and apply changes  ## WARNING: Change version as needed ##
 # shellcheck disable=SC1090,SC2016
 {
-    echo 'export PATH="${PATH}:${HOME}/repos/Atria/atria-4.0.3/bin"' \
+    echo 'export PATH="${PATH}:${HOME}/repos/Atria/atria-version/bin"' \
         >> "${config}"
     source "${config}"
 }
@@ -377,7 +409,7 @@ dir_idx="${dir_cat}/index/bowtie2"
 dir_log="${dir_idx}/logs"
 
 fil_fas="${dir_fas}/sc_sp_proc.fasta"
-env_nam="env_align"
+env_nam="env_protocol"
 day="$(date '+%Y-%m%d')"
 exc_log="${dir_log}/${day}.execute_bowtie2_build"
 
@@ -511,7 +543,7 @@ dir_idx="${dir_cer}/index/bowtie2"
 dir_log="${dir_idx}/logs"
 
 fil_fas="${dir_fas}/S288C_R64-5-1_proc.fasta"
-env_nam="env_align"
+env_nam="env_protocol"
 day="$(date '+%Y-%m%d')"
 exc_log="${dir_log}/${day}.execute_bowtie2_build"
 
@@ -635,7 +667,9 @@ bash "${dir_scr}/compress_remove_files.sh" --dir_fnd "${dir_idx}/logs"
 
 
 #  Define variables -----------------------------------------------------------
-#  Define variables for directory paths, etc.
+debug=true
+
+#  Define variables for directory paths, etc.  #TODO: Break up for readability
 dir_bas="${HOME}/repos"  ## WARNING: Change as needed ##
 dir_rep="${dir_bas}/protocol_chipseq_signal_norm"
 dir_scr="${dir_rep}/scripts"
@@ -646,11 +680,38 @@ fil_tbl="datasets.tsv"  ## WARNING: Change as needed ##
 pth_tsv="${dir_doc}/${fil_tbl}"
 dir_log="${dir_raw}/logs"
 dir_sym="${dir_rep}/data/symlinked"
-env_nam="env_align"
+env_nam="env_protocol"
 threads=6
 time="6:00:00"
 day="$(date '+%Y-%m%d')"
 
+if ${debug:-false}; then
+    echo "####################################"
+    echo "## Hardcoded variable assignments ##"
+    echo "####################################"
+    echo ""
+    echo "debug=${debug}"
+    echo ""
+    echo "dir_bas=${dir_bas}"
+    echo "dir_rep=${dir_rep}"
+    echo "dir_scr=${dir_scr}"
+    echo "dir_fnc=${dir_fnc}"
+    echo "dir_raw=${dir_raw}"
+    echo "dir_doc=${dir_doc}"
+    echo "fil_tbl=${fil_tbl}"
+    echo "pth_tsv=${pth_tsv}"
+    echo "dir_log=${dir_log}"
+    echo "dir_sym=${dir_sym}"
+    echo "env_nam=${env_nam}"
+    echo "threads=${threads}"
+    echo "time=${time}"
+    echo "day=${day}"
+    echo ""
+    echo ""
+fi
+
+
+#  Activate the environment and check dependencies ----------------------------
 #  Source utility functions
 source "${dir_fnc}/check_program_path.sh"
 source "${dir_fnc}/echo_warning.sh"
@@ -668,10 +729,26 @@ check_program_path sbatch ||
 
 #  If needed, create directory structure for raw and symlinked FASTQ files and
 #+ logs
-mkdir -p ${dir_raw}/{docs,logs}
-mkdir -p ${dir_sym}/{docs,logs}
+mkdir -p {${dir_raw},${dir_sym}}/logs
 
-#  Download and symlink FASTQ files 
+#  Download and symlink FASTQ files
+if ${debug:-false}; then
+    echo "###########################"
+    echo "## Call to driver script ##"
+    echo "###########################"
+    echo ""
+    echo "bash ${dir_scr}/execute_download_fastqs.sh \\"
+    echo "    --threads ${threads} \\"
+    echo "    --infile ${pth_tsv} \\"
+    echo "    --dir_out ${dir_raw} \\"
+    echo "    --dir_sym ${dir_sym} \\"
+    echo "    --err_out ${dir_raw}/logs \\"
+    echo "    --slurm \\"
+    echo "    --time ${time} \\"
+    echo "         > >(tee -a ${dir_raw}/logs/${day}.execute.stdout.txt) \\"
+    echo "        2> >(tee -a ${dir_raw}/logs/${day}.execute.stderr.txt)"
+fi
+
 bash "${dir_scr}/execute_download_fastqs.sh" \
     --threads "${threads}" \
     --infile "${pth_tsv}" \
@@ -685,8 +762,7 @@ bash "${dir_scr}/execute_download_fastqs.sh" \
 
 #  Cleanup: Compress large stdout and stderr files, and remove files with size
 #+ 0
-bash "${dir_scr}/compress_remove_files.sh" \
-    --dir_fnd "${dir_raw}/logs"
+bash "${dir_scr}/compress_remove_files.sh" --dir_fnd "${dir_raw}/logs"
 ```
 </details>
 <br />
@@ -713,7 +789,7 @@ dir_dat="${dir_rep}/data"
 dir_sym="${dir_dat}/symlinked"
 dir_pro="${dir_dat}/processed"
 dir_trm="${dir_pro}/trim_atria"
-env_nam="env_analyze"
+env_nam="env_protocol"
 threads=4
 infiles="$(  ## WARNING: Change search parameters as needed ##
     bash "${dir_scr}/find_files.sh" \
@@ -801,7 +877,7 @@ dir_dat="${dir_rep}/data"
 dir_idx="${dir_dat}/genomes/concat/index"
 dir_pro="${dir_dat}/processed"
 dir_trm="${dir_pro}/trim_atria"
-env_nam="env_align"
+env_nam="env_protocol"
 threads=8
 aligner="bowtie2"
 a_type="global"
@@ -978,7 +1054,7 @@ dir_log="${dir_trk}/logs"
 
 pattern="*.bam"
 
-env_nam="env_analyze"
+env_nam="env_protocol"
 execute="${dir_scr}/execute_compute_signal.sh"
 day="$(date '+%Y-%m%d')"
 exc_log="${dir_log}/${day}.$(basename "${execute}" ".sh")"
@@ -1216,7 +1292,7 @@ pattern="*.bam"
 include="IP*"
 exclude="*Brn1*"
 
-env_nam="env_analyze"
+env_nam="env_protocol"
 execute="${dir_scr}/execute_calculate_scaling_factor_${typ_cvg}.sh"
 day="$(date '+%Y-%m%d')"
 exc_log="${dir_log}/${day}.$(basename "${execute}" ".sh")"
@@ -1445,7 +1521,7 @@ pattern="*.bam"
 include="IP*"
 exclude="*Brn1*"
 
-env_nam="env_analyze"
+env_nam="env_protocol"
 execute="${dir_scr}/execute_calculate_scaling_factor_${typ_cvg}.sh"
 day="$(date '+%Y-%m%d')"
 exc_log="${dir_log}/${day}.$(basename "${execute}" ".sh")"
@@ -1690,7 +1766,7 @@ dir_tbl="${dir_cvg}/tables"
 dir_lg2="${dir_cvg}/log2"
 dir_log="${dir_lg2}/logs"
 
-env_nam="env_analyze"
+env_nam="env_protocol"
 execute="execute_compute_signal_ratio.sh"
 day="$(date '+%Y-%m%d')"
 exc_log="${dir_log}/${day}.$(basename "${execute}" ".sh")"
@@ -1974,7 +2050,7 @@ dir_tbl="${dir_cvg}/tables"
 dir_alf="${dir_cvg}/alpha"
 dir_log="${dir_alf}/logs"
 
-env_nam="env_analyze"
+env_nam="env_protocol"
 execute="execute_compute_signal_ratio.sh"
 day="$(date '+%Y-%m%d')"
 exc_log="${dir_log}/${day}.$(basename "${execute}" ".sh")"
@@ -2230,7 +2306,7 @@ dir_tbl="${dir_cvg}/tables"
 dir_spk="${dir_cvg}/spike"
 dir_log="${dir_spk}/logs"
 
-env_nam="env_analyze"
+env_nam="env_protocol"
 execute="execute_compute_signal_ratio.sh"
 day="$(date '+%Y-%m%d')"
 exc_log="${dir_log}/${day}.$(basename "${execute}" ".sh")"

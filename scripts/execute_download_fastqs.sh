@@ -66,7 +66,7 @@ function set_interactive() {
 
 #  Initialize argument variables, check and parse arguments, etc. =============
 #  Initialize hardcoded argument variables
-env_nam="env_align"
+env_nam="env_protocol"
 scr_sub="${dir_scr}/submit_download_fastqs.sh"
 
 #  Initialize argument variables, assigning default values where applicable

@@ -96,6 +96,7 @@ Notes:
       - ucsc-bedgraphtobigwig
       - ucsc-bedsort
       - ucsc-facount
+      - wget
     + env_analyze
       - bioconductor-annotationdbi
       - bioconductor-chipqc
@@ -149,6 +150,7 @@ Notes:
       - r-ggsci
       - rename
       - samtools
+      - wget
     + env_siqchip
       - bc
       - bedtools
@@ -263,6 +265,7 @@ if [[ "${env_nam}" == "env_align" ]]; then
         ucsc-bedgraphtobigwig
         ucsc-bedsort
         ucsc-facount
+        wget
     )
 elif [[ "${env_nam}" == "env_analyze" ]]; then
     packages=(
@@ -320,6 +323,7 @@ elif [[ "${env_nam}" == "env_protocol" ]]; then
         r-ggsci
         rename
         samtools
+        wget
     )
 elif [[ "${env_nam}" == "env_siqchip" ]]; then
     packages=(
