@@ -1,10 +1,20 @@
-data/genomes/
-
-data/raw/docs/SRR_custom.tsv
-data/raw/docs/measurements_siqchip_all.tsv
-
-data/tracks/
-
+#  Ignore everything in 'scraps/', where temporary scratch work is stored
 scraps/
 
-processed/
+#  Ignore everything in 'data/{genomes,processed,raw,symlinked,tracks}/'
+data/genomes/
+data/processed/
+data/raw/
+data/symlinked/
+data/tracks/
+
+#  Re-allow everything in 'data/raw/docs/', except specific files
+!data/raw/docs/
+data/raw/docs/measurements_siqchip_all.tsv
+data/raw/docs/SRR_custom.tsv
+data/raw/docs/test*
+
+#  Re-allow everything in the 'tables/' subdirectory under
+#+ 'data/processed/compute_coverage/' for manuscript-specific alignment and
+#+ filtering parameters
+!data/processed/compute_coverage/bowtie2_global_flag-2_mapq-1/tables/
