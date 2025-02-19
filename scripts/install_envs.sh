@@ -240,7 +240,7 @@ esac
 handle_env_deactivate
 
 #  Construct the mamba command
-mamba_command="mamba create -n ${env_nam} -c bioconda -c conda-forge"
+mamba_command="mamba create -n ${env_nam}"
 
 if ${yes}; then mamba_command+=" --yes"; fi
 
