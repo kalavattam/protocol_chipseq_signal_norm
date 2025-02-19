@@ -232,9 +232,9 @@ First, if necessary, download Julia 1.8.5 for the appropriate OS and system arch
 debug=true
 
 #  Define OS and architecture variables
-os="mac"           # "linux"   ## WARNING: Change as needed ##
-ar_s="aarch64"     # "x64"     ## WARNING: Change as needed ##
-ar_l="macaarch64"  # "x86_64"  ## WARNING: Change as needed ##
+os="linux"     # "mac"         ## WARNING: Change as needed ##
+ar_s="x64"     # "aarch64"     ## WARNING: Change as needed ##
+ar_l="x86_64"  # "macaarch64"  ## WARNING: Change as needed ##
 
 #  Set variables for Julia version
 ver_s="1.8"
@@ -305,7 +305,9 @@ Next, clone the [Atria repository](https://github.com/cihga39871/Atria), activat
 cd "${HOME}/repos" || echo "Error: Failed to change directory: '${repo}'." >&2
 
 #  Clone Atria repository from GitHub
-git clone "https://github.com/cihga39871/Atria.git"
+if [[ ! -d Atria ]]; then
+    git clone "https://github.com/cihga39871/Atria.git"
+fi
 
 #  Change into newly cloned Atria directory
 cd Atria || echo "Error: Failed to change directory: 'Atria'." >&2
