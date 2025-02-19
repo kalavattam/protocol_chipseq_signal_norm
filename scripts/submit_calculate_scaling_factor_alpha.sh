@@ -282,7 +282,7 @@ function set_interactive() {
     rnd=24
     err_out="${dir_out}/logs"
     nam_job="calc_sf_alpha_${eqn}"
-    env_nam="env_analyze"
+    env_nam="env_protocol"
     dir_scr="${HOME}/repos/protocol_chipseq_signal_norm/scripts"
 }
 
@@ -299,7 +299,7 @@ fil_out=""
 rnd=24
 err_out=""
 nam_job="calc_sf_alpha_${eqn}"
-env_nam="env_analyze"
+env_nam="env_protocol"
 dir_scr="${HOME}/repos/protocol_chipseq_signal_norm/scripts"
 
 show_help=$(cat << EOM

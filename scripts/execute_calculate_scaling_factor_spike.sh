@@ -96,7 +96,7 @@ function set_interactive() {
 #  Initialize hardcoded argument variables
 # shellcheck disable=SC2269
 {
-    env_nam="env_analyze"
+    env_nam="env_protocol"
     dir_scr="${dir_scr}"
     scr_sub="${dir_scr}/submit_calculate_scaling_factor_spike.sh"
     denom=4

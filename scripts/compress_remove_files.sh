@@ -69,7 +69,7 @@ function set_interactive() {
 
 #  Initialize argument variables, check and parse arguments, etc. =============
 #  Initialize hardcoded argument variables
-env_nam="env_analyze"
+env_nam="env_protocol"
 
 #  Initialize variables along with default assignments
 threads=1
@@ -133,7 +133,7 @@ Dependencies:
     + handle_env_deactivate
 
 Notes:
-  - This script doesn't handle logical OR operations, just AND and AND NOT.
+  - This script does not handle logical OR operations, just AND and AND NOT.
   - compress_remove_files.sh will exit with an error message if it is run from
     the target directory being searched, as doing so causes file-globbing
     errors.

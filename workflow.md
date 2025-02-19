@@ -671,17 +671,25 @@ bash "${dir_scr}/compress_remove_files.sh" --dir_fnd "${dir_idx}/logs"
 #  Define variables -----------------------------------------------------------
 debug=true
 
-#  Define variables for directory paths, etc.  #TODO: Break up for readability
+#  Set base repository paths
 dir_bas="${HOME}/repos"  ## WARNING: Change as needed ##
 dir_rep="${dir_bas}/protocol_chipseq_signal_norm"
 dir_scr="${dir_rep}/scripts"
 dir_fnc="${dir_scr}/functions"
-dir_raw="${dir_rep}/data/raw"
+
+#  Define data directories
+dir_dat="${dir_rep}/data"
+dir_raw="${dir_dat}/raw"
 dir_doc="${dir_raw}/docs"
+dir_log="${dir_raw}/logs"
+dir_pro="${dir_dat}/processed"
+dir_sym="${dir_dat}/symlinked"
+
+#  Dataset files
 fil_tbl="datasets.tsv"  ## WARNING: Change as needed ##
 pth_tsv="${dir_doc}/${fil_tbl}"
-dir_log="${dir_raw}/logs"
-dir_sym="${dir_rep}/data/symlinked"
+
+#  Set execution parameters
 env_nam="env_protocol"
 threads=6
 time="6:00:00"
@@ -694,16 +702,25 @@ if ${debug:-false}; then
     echo ""
     echo "debug=${debug}"
     echo ""
+    echo "#  Set base repository paths"
     echo "dir_bas=${dir_bas}"
     echo "dir_rep=${dir_rep}"
     echo "dir_scr=${dir_scr}"
     echo "dir_fnc=${dir_fnc}"
+    echo ""
+    echo "#  Define data directories"
+    echo "dir_dat=${dir_dat}"
     echo "dir_raw=${dir_raw}"
     echo "dir_doc=${dir_doc}"
+    echo "dir_log=${dir_log}"
+    echo "dir_pro=${dir_pro}"
+    echo "dir_sym=${dir_sym}"
+    echo ""
+    echo "#  Dataset files"
     echo "fil_tbl=${fil_tbl}"
     echo "pth_tsv=${pth_tsv}"
-    echo "dir_log=${dir_log}"
-    echo "dir_sym=${dir_sym}"
+    echo ""
+    echo "#  Set execution parameters"
     echo "env_nam=${env_nam}"
     echo "threads=${threads}"
     echo "time=${time}"
@@ -724,15 +741,43 @@ handle_env "${env_nam}"
 
 #  Ensure access to necessary dependencies such as GNU Parallel, SLURM sbatch
 check_program_path parallel
-check_program_path sbatch ||
+check_program_path sbatch &> /dev/null ||
     echo_warning \
         "SLURM is not available on this system. Do not use the '--slurm'" \
         "flag with the driver script."
 
+
+#  Create required directories if necessary -----------------------------------
 #  If needed, create directory structure for raw and symlinked FASTQ files and
 #+ logs
 mkdir -p {${dir_raw},${dir_sym}}/logs
 
+if ${debug:-false}; then
+    echo "#########################################"
+    echo "## Output directory paths and contents ##"
+    echo "#########################################"
+    echo ""
+    echo "%%%%%%%%%%%%%"
+    echo "%% dir_raw %%"
+    echo "%%%%%%%%%%%%%"
+    echo ""
+    ls -lhaFG "${dir_raw}"
+    echo ""
+    ls -lhaFG "${dir_raw}/logs"
+    echo ""
+    echo "%%%%%%%%%%%%%"
+    echo "%% dir_sym %%"
+    echo "%%%%%%%%%%%%%"
+    echo ""
+    ls -lhaFG "${dir_sym}"
+    echo ""
+    ls -lhaFG "${dir_sym}/logs"
+    echo ""
+    echo ""
+fi
+
+
+#  Do the main work -----------------------------------------------------------
 #  Download and symlink FASTQ files
 if ${debug:-false}; then
     echo "###########################"
@@ -782,27 +827,68 @@ bash "${dir_scr}/compress_remove_files.sh" --dir_fnd "${dir_raw}/logs"
 
 
 #  Define variables -----------------------------------------------------------
-#  Define variables for directory paths, environment, threads, and infiles
+debug=true
+
+#  Set base repository paths
 dir_bas="${HOME}/repos"  ## WARNING: Change as needed ##
 dir_rep="${dir_bas}/protocol_chipseq_signal_norm"
 dir_scr="${dir_rep}/scripts"
 dir_fnc="${dir_scr}/functions"
+
+#  Define data directories
 dir_dat="${dir_rep}/data"
 dir_sym="${dir_dat}/symlinked"
 dir_pro="${dir_dat}/processed"
-dir_trm="${dir_pro}/trim_atria"
+dir_trm="${dir_pro}/trim_fastqs"
+
+#  Set execution parameters
 env_nam="env_protocol"
 threads=4
+day="$(date '+%Y-%m%d')"
+
+#  Locate input files
 infiles="$(  ## WARNING: Change search parameters as needed ##
     bash "${dir_scr}/find_files.sh" \
         --dir_fnd "${dir_sym}" \
         --pattern "*.fastq.gz" \
+        --include "*H?o1*" \
         --depth 1 \
         --follow \
         --fastqs
 )"
-day="$(date '+%Y-%m%d')"
 
+if ${debug:-false}; then
+    echo "####################################"
+    echo "## Hardcoded variable assignments ##"
+    echo "####################################"
+    echo ""
+    echo "debug=${debug}"
+    echo ""
+    echo "#  Set base repository paths"
+    echo "dir_bas=${dir_bas}"
+    echo "dir_rep=${dir_rep}"
+    echo "dir_scr=${dir_scr}"
+    echo "dir_fnc=${dir_fnc}"
+    echo ""
+    echo "#  Define data directories"
+    echo "dir_dat=${dir_dat}"
+    echo "dir_sym=${dir_sym}"
+    echo "dir_pro=${dir_pro}"
+    echo "dir_trm=${dir_trm}"
+    echo ""
+    echo "#  Set execution parameters"
+    echo "env_nam=${env_nam}"
+    echo "threads=${threads}"
+    echo "day=${day}"
+    echo ""
+    echo "#  Locate input files"
+    echo "infiles=${infiles}"
+    echo ""
+    echo ""
+fi
+
+
+#  Activate the environment and check dependencies ----------------------------
 #  Source utility functions
 source "${dir_fnc}/check_program_path.sh"
 source "${dir_fnc}/echo_warning.sh"
@@ -815,15 +901,59 @@ handle_env "${env_nam}"
 check_program_path atria
 check_program_path pbzip2
 check_program_path pigz
-check_program_path sbatch ||
+check_program_path sbatch &> /dev/null ||
     echo_warning \
         "SLURM is not available on this system. Do not use the '--slurm'" \
         "flag with the driver script."
 
-#  Create output directory structure for trimmed FASTQ files and logs
-mkdir -p ${dir_trm}/{docs,logs}
 
+#  Create required directories if necessary -----------------------------------
+# shellcheck disable=SC2086
+mkdir -p ${dir_trm}/logs
+
+if ${debug:-false}; then
+    echo "#################################################"
+    echo "## In- and output directory paths and contents ##"
+    echo "#################################################"
+    echo ""
+    echo "%%%%%%%%%%%%%"
+    echo "%% dir_sym %%"
+    echo "%%%%%%%%%%%%%"
+    echo ""
+    ls -lhaFG "${dir_sym}"
+    echo ""
+    ls -lhaFG "${dir_sym}/logs"
+    echo ""
+    echo "%%%%%%%%%%%%%"
+    echo "%% dir_trm %%"
+    echo "%%%%%%%%%%%%%"
+    echo ""
+    ls -lhaFG "${dir_trm}"
+    echo ""
+    ls -lhaFG "${dir_trm}/logs"
+    echo ""
+    echo ""
+fi
+
+
+#  Do the main work -----------------------------------------------------------
 #  Run the driver script to trim FASTQ files with Atria
+if ${debug:-false}; then
+    echo "###########################"
+    echo "## Call to driver script ##"
+    echo "###########################"
+    echo ""
+    echo "bash ${dir_scr}/execute_trim_fastqs.sh \\"
+    echo "    --verbose \\"
+    echo "    --threads ${threads} \\"
+    echo "    --infiles ${infiles} \\"
+    echo "    --dir_out ${dir_trm} \\"
+    echo "    --err_out ${dir_trm}/logs \\"
+    echo "    --slurm \\"
+    echo "         > >(tee -a ${dir_trm}/logs/${day}.execute.stdout.txt) \\"
+    echo "        2> >(tee -a ${dir_trm}/logs/${day}.execute.stderr.txt)"
+fi
+
 bash "${dir_scr}/execute_trim_fastqs.sh" \
     --verbose \
     --threads ${threads} \
@@ -916,7 +1046,7 @@ handle_env "${env_nam}"
 #  Check the availability of Bowtie 2, Samtools, and SLURM sbatch
 check_program_path bowtie2
 check_program_path samtools
-check_program_path sbatch ||
+check_program_path sbatch &> /dev/null ||
     echo_warning \
         "SLURM is not available on this system. Do not use the '--slurm'" \
         "flag with the driver script."
@@ -1172,7 +1302,7 @@ handle_env "${env_nam}"
 check_program_path awk
 check_program_path parallel
 check_program_path python
-check_program_path sbatch ||
+check_program_path sbatch &> /dev/null ||
     echo_warning \
         "SLURM is not available on this system. Do not use the '--slurm'" \
         "flag with the driver script."
@@ -1409,7 +1539,7 @@ check_program_path awk
 check_program_path parallel
 check_program_path python
 check_program_path samtools
-check_program_path sbatch ||
+check_program_path sbatch &> /dev/null ||
     echo_warning \
         "SLURM is not available on this system. Do not use the '--slurm'" \
         "flag with the driver script."
@@ -1638,7 +1768,7 @@ check_program_path awk
 check_program_path parallel
 check_program_path python
 check_program_path samtools
-check_program_path sbatch ||
+check_program_path sbatch &> /dev/null ||
     echo_warning \
         "SLURM is not available on this system. Do not use the '--slurm'" \
         "flag with the driver script."
@@ -1904,7 +2034,7 @@ check_program_path awk
 check_program_path parallel
 check_program_path python
 check_program_path samtools
-check_program_path sbatch ||
+check_program_path sbatch &> /dev/null ||
     echo_warning \
         "SLURM is not available on this system. Do not use the '--slurm'" \
         "flag with the driver script."
@@ -2190,7 +2320,7 @@ check_program_path awk
 check_program_path parallel
 check_program_path python
 check_program_path samtools
-check_program_path sbatch ||
+check_program_path sbatch &> /dev/null ||
     echo_warning \
         "SLURM is not available on this system. Do not use the '--slurm'" \
         "flag with the driver script."
@@ -2446,7 +2576,7 @@ check_program_path awk
 check_program_path parallel
 check_program_path python
 check_program_path samtools
-check_program_path sbatch ||
+check_program_path sbatch &> /dev/null ||
     echo_warning \
         "SLURM is not available on this system. Do not use the '--slurm'" \
         "flag with the driver script."

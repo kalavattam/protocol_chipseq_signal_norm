@@ -98,7 +98,7 @@ function set_interactive() {
 
 #  Initialize argument variables, check and parse arguments, etc. =============
 #  Initialize hardcoded argument variables
-env_nam="env_analyze"
+env_nam="env_protocol"
 scr_sub="${dir_scr}/submit_compute_coverage_ratio.sh"
 scr_cvg="${dir_scr}/compute_coverage_ratio.py"
 par_job=""

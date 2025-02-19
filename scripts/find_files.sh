@@ -120,7 +120,7 @@ Dependencies:
     + pair_fastqs
 
 Notes:
-  - This script doesn't handle logical OR operations, just AND and AND NOT.
+  - This script does not handle logical OR operations, just AND and AND NOT.
   - find_files.sh will exit with an error message if it is run from the target
     directory being searched, as doing so causes file-globbing errors.
   - The script will exit with an error message if the string assigned to
@@ -224,6 +224,77 @@ cmd_find="$(
         $(if [[ -n "${exclude}" ]]; then echo "--exclude ${exclude}"; fi)
 )"
 
+# if ${chk_con} || ${chk_exc}; then
+#     echo "## Call to find ##"
+#
+#     if ${fastqs}; then
+# cat << EOM
+# eval "${cmd_find}" \\
+#     | sort \\
+#     | pair_fastqs \\
+#     | paste -s \\
+#     | sed \\
+#         -e 's:\t::g' \\
+#         -e 's/;$//'
+#
+# EOM
+#     else
+# cat << EOM
+# eval "${cmd_find}" \\
+#     | sort \\
+#     | paste -sd "," -
+#
+# EOM
+#     fi
+# fi
+#
+# if ${chk_con}; then
+#     if ! ${interactive}; then exit 0; fi
+# fi
+#
+# if ${chk_exc}; then
+#     echo "## Results of find command ##"
+#     eval "${cmd_find}" | sort
+#     echo ""
+#
+#     if ${fastqs}; then
+#         echo \
+#             "## Results of find command as single semicolon- and" \
+#             "comma-separated string ##"
+#         eval "${cmd_find}" \
+#             | sort \
+#             | pair_fastqs \
+#             | paste -s \
+#             | sed \
+#                 -e 's:\t::g' \
+#                 -e 's/;$//'
+#     else
+#         echo "## Results of find command as single comma-separated string ##"
+#         eval "${cmd_find}" \
+#             | sort \
+#             | paste -sd "," -
+#         echo ""
+#     fi
+# fi
+#
+# if ${chk_exc}; then
+#     if ! ${interactive}; then exit 0; fi
+# fi
+#
+# if ${fastqs}; then
+#     eval "${cmd_find}" \
+#         | sort \
+#         | pair_fastqs \
+#         | paste -s \
+#         | sed \
+#             -e 's:\t::g' \
+#             -e 's/;$//'
+# else
+#     eval "${cmd_find}" \
+#         | sort \
+#         | paste -sd "," -
+# fi
+
 if ${chk_con} || ${chk_exc}; then
     echo "## Call to find ##"
 
@@ -232,17 +303,16 @@ cat << EOM
 eval "${cmd_find}" \\
     | sort \\
     | pair_fastqs \\
-    | paste -s \\
-    | sed \\
-        -e 's:\t::g' \\
-        -e 's/;$//'
+    | tr -d '\n' \\
+    | sed 's/;$//'
 
 EOM
     else
 cat << EOM
 eval "${cmd_find}" \\
     | sort \\
-    | paste -sd "," -
+    | tr '\n' ',' \\
+    | sed 's/,$//'
 
 EOM
     fi
@@ -264,15 +334,14 @@ if ${chk_exc}; then
         eval "${cmd_find}" \
             | sort \
             | pair_fastqs \
-            | paste -s \
-            | sed \
-                -e 's:\t::g' \
-                -e 's/;$//'
+            | tr -d '\n' \
+            | sed 's/;$//'
     else
         echo "## Results of find command as single comma-separated string ##"
         eval "${cmd_find}" \
             | sort \
-            | paste -sd "," -
+            | tr '\n' ',' \
+            | sed 's/,$//'
         echo ""
     fi
 fi
@@ -285,12 +354,11 @@ if ${fastqs}; then
     eval "${cmd_find}" \
         | sort \
         | pair_fastqs \
-        | paste -s \
-        | sed \
-            -e 's:\t::g' \
-            -e 's/;$//'
+        | tr -d '\n' \
+        | sed 's/;$//'
 else
     eval "${cmd_find}" \
         | sort \
-        | paste -sd "," -
+        | tr '\n' ',' \
+        | sed 's/,$//'
 fi

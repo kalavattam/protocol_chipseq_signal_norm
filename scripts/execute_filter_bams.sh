@@ -273,7 +273,7 @@ if ${slurm}; then
 fi
 
 #  Based on argument assignments, initialize hardcoded argument variables
-env_nam="env_align"
+env_nam="env_protocol"
 nam_job="filter_bam_${retain}"
 scr_fnc="${dir_fnc}/${nam_job}.sh"
 scr_sub="${dir_scr}/submit_filter_bams.sh"

@@ -45,7 +45,7 @@ Dependencies:
   - find
 
 Notes:
-  This function doesn't handle logical OR operations, just AND and AND NOT.
+  This function does not handle logical OR operations, just AND and AND NOT.
 
   At its most basic, running build_command_find results in a call to find like
   this:

@@ -315,6 +315,7 @@ elif [[ "${env_nam}" == "env_protocol" ]]; then
         bowtie2
         fastqc
         ipython
+        multiqc
         parallel
         pbzip2
         pigz

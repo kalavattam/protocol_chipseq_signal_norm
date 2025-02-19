@@ -51,7 +51,7 @@ nam_job="${8}"
 
 #  Activate environment
 if [[ "${env_nam,,}" == "default" ]]; then
-    env_nam="env_analyze"
+    env_nam="env_protocol"
 fi
 
 if [[ "${CONDA_DEFAULT_ENV}" != "${env_nam}" ]]; then

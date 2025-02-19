@@ -75,7 +75,7 @@ function set_interactive() {
 
 #  Initialize argument variables, check and parse arguments, etc. =============
 #  Initialize hardcoded argument variables
-env_nam="env_analyze"
+env_nam="env_protocol"
 scr_sub="${dir_scr}/submit_trim_fastqs.sh"
 
 #  Initialize argument variables, assigning default values where applicable
@@ -152,7 +152,7 @@ Dependencies:
     + handle_env_deactivate
 
 Note:
-  Atria is set to not allow read lengths less than 35 bp. It's also set to
+  Atria is set to not allow read lengths less than 35 bp. It is also set to
   search for and trim known adapters, among other things. For more details, see
   the Atria documentation:
   github.com/cihga39871/Atria/blob/master/docs/2.Atria_trimming_methods_and_usages.md

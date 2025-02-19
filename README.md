@@ -1,6 +1,6 @@
 # protocol_chipseq_signal_norm
 
-**Code and documentation for the *Bio-protocol* manuscript,  
+**Code and documentation for the *Bio-protocol* manuscript  
 "ChIP-seq data processing and relative and quantitative signal normalization for *Saccharomyces cerevisiae*."**
 
 Version 1 of the manuscript is available as a [preprint](https://www.bio-protocol.org/exchange/preprintdetail?type=3&id=2770); version 2 is under review.
@@ -8,7 +8,9 @@ Version 1 of the manuscript is available as a [preprint](https://www.bio-protoco
 ## Workflow documentation
 - Workflow details (regularly updated): [`workflow.md`](./workflow.md).
 - Genome file processing: [`download_process_fasta_gff3.md`](./download_process_fasta_gff3.md).
-- Validation of the Python implementation of siQ-ChIP (notebook in progress): [`validate_siqchip.md`](./validate_siqchip.md).
+- Validation of the Python implementation of siQ-ChIP (in progress): [`validate_siq_chip.md`](./validate_siq_chip.md).
+    + Notebook is in progress&mdash;needs cleanup and better documentation.
+    + Rough figures still need to be added.
 
 ***Note:*** SLURM job execution has undergone the most testing and is considered the most stable. Local and remote execution of parallelized (via [GNU Parallel](https://www.gnu.org/software/parallel/)) and serial jobs are still being refactored and tested.
 

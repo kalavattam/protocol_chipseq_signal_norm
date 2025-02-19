@@ -10,7 +10,7 @@ debug=true
 #  Parse keyword arguments, assigning them to variables; most of the argument
 #+ inputs are not checked, as this is performed by execute_*.sh and again by
 #+ the function submitted to SLURM
-env_nam="env_align"
+env_nam="env_protocol"
 scr_fnc=""
 threads=4
 aligner="bowtie2"
