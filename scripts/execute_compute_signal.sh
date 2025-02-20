@@ -132,11 +132,11 @@ Usage:
 
 Description:
   The driver script 'execute_compute_coverage.sh' automates the calculation of
-  coverage signal tracks from BAM files. It supports various normalization
-  methods, including user-supplied scaling factors, normalized (probability
-  distribution) coverage (per Dickson et al., Sci Rep 2023), and raw
-  (unadjusted) coverage. The script integrates with SLURM or GNU Parallel for
-  parallel processing.
+  signal tracks from BAM files. It supports various normalization methods,
+  including user-supplied scaling factors, normalized (probability
+  distribution) coverage (Dickson et al., Sci Rep 2023), and raw (unadjusted)
+  coverage. The script integrates with SLURM or GNU Parallel for parallel
+  processing.
 
 Arguments:
    -h, --help     Print this help message and exit.
@@ -217,7 +217,6 @@ Notes:
   - BAM infiles must be coordinate-sorted.
   - Outfile names are derived from BAM infiles and the value(s) associated with
     '--typ_out'.
-  - #TODO
 
 Examples:
   \`\`\`
@@ -299,7 +298,7 @@ check_exists_file_dir "d" "${dir_out}" "dir_out"
 
 check_supplied_arg -a "${typ_out}" -n "typ_out"
 case "${typ_out}" in
-    bedgraph|bedgraph.gz|bdg|bdg.gz|bg|bg.gz|bed|bed.gz) : ;;  # Valid options
+    bedgraph|bedgraph.gz|bdg|bdg.gz|bg|bg.gz|bed|bed.gz) : ;;
     *)
         echo_error \
             "Selection associated with '--typ_out' is not valid:" \
@@ -323,7 +322,7 @@ else
     case "${typ_cvg}" in
         raw|unadj|unadjusted) : ;;  # Valid options for unadjusted coverage
         len|len_frag) : ;;          # Valid options for fragment-length normalization
-        norm|normalized) : ;;       # Valid options for "normalized coverage"
+        norm|normalized) : ;;       # Valid options for normalized coverage
         *)
             echo_error \
                 "Invalid value for '--typ_cvg': '${typ_cvg}'. Expected" \
@@ -568,7 +567,6 @@ if ${slurm}; then
         echo "            ${err_out} \\"
         echo "            ${nam_job}"
         echo ""
-        echo ""
         # echo "#########################################"
         # echo "## Contents of SLURM submission script ##"
         # echo "#########################################"
@@ -586,7 +584,7 @@ if ${slurm}; then
         # echo ""
         # cat "${scr_cvg}"
         # echo ""
-        # echo ""
+        echo ""
     fi
 
     if ! ${dry_run}; then

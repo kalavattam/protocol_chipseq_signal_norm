@@ -5,10 +5,7 @@ debug=true
 
 #  Define functions
 function debug_var() {
-    for var in "$@"; do
-        echo "${var}"
-        echo ""
-    done
+    for var in "$@"; do echo "${var}" && echo ""; done
 }
 
 
@@ -30,6 +27,7 @@ function set_logs() {
     local task_id=${2}
     local nam_smp=${3}
     local dir_log=${4}
+    local nam_job=${5}
     err_ini="${dir_log}/${nam_job}.${job_id}-${task_id}.stderr.txt"
     out_ini="${dir_log}/${nam_job}.${job_id}-${task_id}.stdout.txt"
     err_dsc="${dir_log}/${nam_job}.${nam_smp}.${job_id}-${task_id}.stderr.txt"
@@ -187,7 +185,7 @@ if [[ -n "${SLURM_ARRAY_TASK_ID:-}" ]]; then
     if ${debug}; then echo "samp=${samp}" && echo ""; fi
 
     #  Run subroutine to set SLURM and symlinked/better-named log files
-    set_logs "${id_job}" "${id_tsk}" "${samp}" "${err_out}"
+    set_logs "${id_job}" "${id_tsk}" "${samp}" "${err_out}" "${nam_job}"
     ln -f "${err_ini}" "${err_dsc}"
     ln -f "${out_ini}" "${out_dsc}"
 

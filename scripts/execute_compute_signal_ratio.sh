@@ -132,15 +132,20 @@ Usage:
 
 Description:
   The driver script 'execute_compute_coverage_ratio.sh' automates the
-  computation of ratio coverage tracks for ChIP-seq data using BEDGRAPH signal
-  (coverage score) tracks. It can be used to generate either siQ- or spike-in-
-  scaled coverage values, or log2(IP/input) enrichment tracks. When used with
-  '--scl_fct', the script applies a user-specified scaling factor, allowing for
-  normalization based on the siQ-ChIP method or external spike-in controls.
-  Alternatively, enabling flag '--log2' computes the log2-transformed ratio of
-  IP signal to input signal, which is useful for evaluating relative enrichment
-  across genomic regions. The script supports parallel processing via SLURM or
-  GNU Parallel, or it run submit jobs in serial.
+  computation of ratio BEDGRAPH signal tracks for ChIP-seq data. It can be used
+  to generate either siQ- or spike-in-scaled coverage values, or log2(IP/input)
+  enrichment tracks.
+
+  When used with '--scl_fct', the script applies a user-specified scaling
+  factor, allowing for normalization based on the siQ-ChIP method or external
+  spike-in controls.
+
+  Enabling flag '--log2' computes the log2-transformed ratio of IP signal to
+  input signal, which is used to evaluate relative enrichment across genomic
+  regions.
+
+  The script supports parallel processing via SLURM or GNU Parallel, or it run
+  submit jobs in serial.
 
 Arguments:
    -h, --help     Print this help message and exit.
@@ -165,9 +170,9 @@ Arguments:
                   log(0) errors are properly handled (optional). If
                   '--dep_min' is provided, the denominator is adjusted to
                   'max(sig_in, dep_min)' to prevent extreme values. If 'sig_ip'
-                  is zero, the output is set to negative infinity ('-inf'). The
-                  scaling factor ('--scl_fct') is applied after the log2
-                  transformation: 'scl_fct * log2(sig_ip / sig_in)'.
+                  is zero, the output is set to negative infinity ('-inf'). If
+                  applicable, the scaling factor ('--scl_fct') is applied after
+                  the log2 transformation: 'scl_fct * log2(sig_ip / sig_in)'.
    -r, --rnd      Number of decimal places for rounding binned signal (coverage
                   score) ratio values (default: ${rnd}).
   -eo, --err_out  The directory to store stderr and stdout TXT outfiles
@@ -195,30 +200,29 @@ Dependencies:
     + Python
     + SLURM (if using '--slurm')
   - Functions
-    + check_array_files
-    + check_arrays_lengths
-    + check_exists_file_dir
-    + check_flt_pos
-    + check_format_time
-    + check_int_pos
-    + check_program_path
-    + check_str_delim
-    + check_supplied_arg
-    + debug_array_contents
-    + echo_error
-    + echo_warning
-    + exit_0
-    + exit_1
-    + handle_env
-    + populate_array_empty
-    + reset_max_job
+    + check_array_files.sh
+    + check_arrays_lengths.sh
+    + check_exists_file_dir.sh
+    + check_flt_pos.sh
+    + check_format_time.sh
+    + check_int_pos.sh
+    + check_program_path.sh
+    + check_str_delim.sh
+    + check_supplied_arg.sh
+    + debug_array_contents.sh
+    + echo_error.sh
+    + echo_warning.sh
+    + exit_0.sh
+    + exit_1.sh
+    + handle_env.sh
+    + populate_array_empty.sh
+    + reset_max_job.sh
 
 Notes:
   - When the '--slurm' flag is used, jobs are parallelized via SLURM array
     tasks; otherwise, jobs are parallelized with GNU Parallel.
   - Outfile names are derived from BEDGRAPH IP infiles and the value(s)
     associated with '--typ_out'.
-  - #TODO
 
 Example:
   bash execute_compute_coverage_ratio.sh
@@ -426,8 +430,10 @@ if ${verbose}; then
         "arr_fil_ip" "arr_fil_in" "arr_fil_out" "arr_scl_fct" "arr_dep_min"
     if ${slurm}; then
         echo "  - Max no. jobs to run at a time (SLURM): ${max_job}"
-    else
+    elif [[ ${par_job} -gt 1 ]]; then
         echo "  - Max no. jobs to run at a time (GNU Parallel): ${par_job}"
+    else
+        echo "  - Max no. jobs to run at a time: ${par_job}"
     fi
     echo ""
     echo ""

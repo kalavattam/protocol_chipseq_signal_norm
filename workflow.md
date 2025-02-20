@@ -31,31 +31,34 @@ This notebook provides a guide to the ChIP-seq data processing workflow detailed
         1. [Text](#text)
     1. [B. Generate Bowtie 2 index files from the concatenated FASTA file.](#b-generate-bowtie-2-index-files-from-the-concatenated-fasta-file)
         1. [Text](#text-1)
-        1. [Bash code](#bash-code)
+        1. [Bash code #1](#bash-code-1)
+        1. [Bash code #2](#bash-code-2)
     1. [C. Obtain and organize ChIP-seq FASTQ files.](#c-obtain-and-organize-chip-seq-fastq-files)
+        1. [Text](#text-2)
+        1. [Bash code](#bash-code)
     1. [D. Use Atria to perform adapter and quality trimming of sequenced reads.](#d-use-atria-to-perform-adapter-and-quality-trimming-of-sequenced-reads)
     1. [E. Align sequenced reads with Bowtie 2 and process the read alignments.](#e-align-sequenced-reads-with-bowtie-2-and-process-the-read-alignments)
     1. [F. Compute normalized coverage.](#f-compute-normalized-coverage)
-        1. [Text](#text-2)
+        1. [Text](#text-3)
         1. [Bash code](#bash-code-1)
     1. [G. Construct sample tables recording computed scaling factors for normalization.](#g-construct-sample-tables-recording-computed-scaling-factors-for-normalization)
         1. [1. Construct sample table recording siQ-ChIP $\alpha$ scaling factors.](#1-construct-sample-table-recording-siq-chip-%24alpha%24-scaling-factors)
-            1. [Text](#text-3)
+            1. [Text](#text-4)
             1. [Bash code](#bash-code-2)
         1. [2. Construct sample table recording spike-in $\gamma$ scaling factors.](#2-construct-sample-table-recording-spike-in-%24gamma%24-scaling-factors)
-            1. [Text](#text-4)
+            1. [Text](#text-5)
             1. [Bash code](#bash-code-3)
     1. [H. Compute log2 ratios of IP to input normalized coverage.](#h-compute-log2-ratios-of-ip-to-input-normalized-coverage)
-        1. [Text](#text-5)
+        1. [Text](#text-6)
         1. [Bash code](#bash-code-4)
     1. [I. Compute coverage with the siQ-ChIP method.](#i-compute-coverage-with-the-siq-chip-method)
-        1. [Text](#text-6)
+        1. [Text](#text-7)
             1. [Overview](#overview)
             1. [Steps performed in code chunk](#steps-performed-in-code-chunk)
             1. [Important note](#important-note)
         1. [Bash code](#bash-code-5)
     1. [J. Compute coverage with the spike-in method.](#j-compute-coverage-with-the-spike-in-method)
-        1. [Text](#text-7)
+        1. [Text](#text-8)
         1. [Bash code](#bash-code-6)
 
 <!-- /MarkdownTOC -->
@@ -90,8 +93,8 @@ debug=true
 #  Define variable for base directory
 dir_bas="${HOME}"  ## WARNING: Change as needed ##
 
-#  Determine the appropriate Miniforge installer to use based on operating
-#+ system (OS) and system architecture
+#  Determine the appropriate Miniforge installation script to use based on
+#+ operating system (OS) and system architecture
 case $(uname -s) in
     Darwin) os="MacOSX" ;;
     Linux)  os="Linux"  ;;
@@ -100,7 +103,7 @@ esac
 
 ar=$(uname -m)  # e.g., "x86_64" for Intel/AMD, "arm64" for ARM
 
-#  Set Miniforge installer URL and script name
+#  Set Miniforge installation script URL and name
 https="https://github.com/conda-forge/miniforge/releases/latest/download"
 script="Miniforge3-${os}-${ar}.sh"
 
@@ -127,10 +130,10 @@ fi
 #  Move to base directory
 cd "${dir_bas}" || echo "Error: Failed to change directory: '${dir_bas}'." >&2
 
-#  Download Miniforge installer
+#  Download Miniforge installation script
 if [[ ! -f "${script}" ]]; then curl -L -O "${https}/${script}"; fi
 
-#  Run Miniforge installer
+#  Run Miniforge installation script
 bash "${script}"
 ```
 </details>
@@ -383,8 +386,8 @@ To align ChIP-seq reads against both *S. cerevisiae* and *S. pombe*, e.g., for d
 </details>
 <br />
 
-<a id="bash-code"></a>
-#### Bash code
+<a id="bash-code-1"></a>
+#### Bash code #1
 <details>
 <summary><i>Bash code: Generate Bowtie 2 index files from the concatenated FASTA file.</i></summary>
 
@@ -398,11 +401,13 @@ To align ChIP-seq reads against both *S. cerevisiae* and *S. pombe*, e.g., for d
 #  Define variables -----------------------------------------------------------
 debug=true
 
-#  Set hardcoded paths, values, etc.
+#  Set base repository paths
 dir_bas="${HOME}/repos"  ## WARNING: Change as needed ##
 dir_rep="${dir_bas}/protocol_chipseq_signal_norm"
 dir_scr="${dir_rep}/scripts"
 dir_fnc="${dir_scr}/functions"
+
+#  Define data directories
 dir_dat="${dir_rep}/data"
 dir_gen="${dir_dat}/genomes"
 dir_cat="${dir_gen}/concat"
@@ -410,7 +415,10 @@ dir_fas="${dir_cat}/fasta/proc"
 dir_idx="${dir_cat}/index/bowtie2"
 dir_log="${dir_idx}/logs"
 
+#  Define dataset file
 fil_fas="${dir_fas}/sc_sp_proc.fasta"
+
+#  Set execution parameters
 env_nam="env_protocol"
 day="$(date '+%Y-%m%d')"
 exc_log="${dir_log}/${day}.execute_bowtie2_build"
@@ -422,10 +430,13 @@ if ${debug:-false}; then
     echo ""
     echo "debug=${debug}"
     echo ""
+    echo "#  Set base repository paths"
     echo "dir_bas=${dir_bas}"
     echo "dir_rep=${dir_rep}"
     echo "dir_scr=${dir_scr}"
     echo "dir_fnc=${dir_fnc}"
+    echo ""
+    echo "#  Define data directories"
     echo "dir_dat=${dir_dat}"
     echo "dir_gen=${dir_gen}"
     echo "dir_cat=${dir_cat}"
@@ -433,7 +444,10 @@ if ${debug:-false}; then
     echo "dir_idx=${dir_idx}"
     echo "dir_log=${dir_log}"
     echo ""
+    echo "#  Define dataset file"
     echo "fil_fas=${fil_fas}"
+    echo ""
+    echo "#  Set execution parameters"
     echo "env_nam=${env_nam}"
     echo "day=${day}"
     echo "exc_log=${exc_log}"
@@ -484,13 +498,14 @@ handle_env "${env_nam}"
 check_program_path "bowtie2-build"
 
 
-#  Generate Bowtie 2 index files for the concatenated genome ------------------
+#  Do the main work -----------------------------------------------------------
+#  Generate Bowtie 2 index files for the concatenated genome
 #  If necessary, decompress the FASTA file
 if [[ ! -f "${fil_fas}" && -f "${fil_fas}.gz" ]]; then
     gunzip -c "${fil_fas}.gz" > "${fil_fas}"
 fi
 
-#  "Build" the Bowtie 2 index using the decompressed FASTA file
+#  "Build" the Bowtie 2 index files using the decompressed FASTA file
 if ${debug:-false}; then
     echo "###########################"
     echo "## Call to bowtie2-build ##"
@@ -514,11 +529,13 @@ bowtie2-build \
 
 #  Cleanup: Compress logs and remove empty files ------------------------------
 bash "${dir_scr}/compress_remove_files.sh" --dir_fnd "${dir_idx}/logs"
-# ls -lhaFG "${dir_idx}/logs"  ## Uncomment to check directory for track logs ##
+# ls -lhaFG "${dir_idx}/logs"  ## Uncomment to check log directory ##
 ```
 </details>
 <br />
 
+<a id="bash-code-2"></a>
+#### Bash code #2
 <details>
 <summary><i>Bash code: Generate Bowtie 2 index files from the </i>S. cerevisiae<i> FASTA file.</i></summary>
 
@@ -532,11 +549,13 @@ bash "${dir_scr}/compress_remove_files.sh" --dir_fnd "${dir_idx}/logs"
 #  Define variables -----------------------------------------------------------
 debug=true
 
-#  Set hardcoded paths, values, etc.
+#  Set base repository paths
 dir_bas="${HOME}/repos"  ## WARNING: Change as needed ##
 dir_rep="${dir_bas}/protocol_chipseq_signal_norm"
 dir_scr="${dir_rep}/scripts"
 dir_fnc="${dir_scr}/functions"
+
+#  Define data directories
 dir_dat="${dir_rep}/data"
 dir_gen="${dir_dat}/genomes"
 dir_cer="${dir_gen}/cerevisiae"
@@ -544,7 +563,10 @@ dir_fas="${dir_cer}/fasta/proc"
 dir_idx="${dir_cer}/index/bowtie2"
 dir_log="${dir_idx}/logs"
 
+#  Define dataset file
 fil_fas="${dir_fas}/S288C_R64-5-1_proc.fasta"
+
+#  Set execution parameters
 env_nam="env_protocol"
 day="$(date '+%Y-%m%d')"
 exc_log="${dir_log}/${day}.execute_bowtie2_build"
@@ -556,10 +578,13 @@ if ${debug:-false}; then
     echo ""
     echo "debug=${debug}"
     echo ""
+    echo "#  Set base repository paths"
     echo "dir_bas=${dir_bas}"
     echo "dir_rep=${dir_rep}"
     echo "dir_scr=${dir_scr}"
     echo "dir_fnc=${dir_fnc}"
+    echo ""
+    echo "#  Define data directories"
     echo "dir_dat=${dir_dat}"
     echo "dir_gen=${dir_gen}"
     echo "dir_cer=${dir_cer}"
@@ -567,7 +592,10 @@ if ${debug:-false}; then
     echo "dir_idx=${dir_idx}"
     echo "dir_log=${dir_log}"
     echo ""
+    echo "#  Define dataset file"
     echo "fil_fas=${fil_fas}"
+    echo ""
+    echo "#  Set execution parameters"
     echo "env_nam=${env_nam}"
     echo "day=${day}"
     echo "exc_log=${exc_log}"
@@ -651,13 +679,25 @@ if [[ -f "${fil_fas}" ]]; then rm "${fil_fas}"; fi
 
 #  Cleanup: Compress logs and remove empty files ------------------------------
 bash "${dir_scr}/compress_remove_files.sh" --dir_fnd "${dir_idx}/logs"
-# ls -lhaFG "${dir_idx}/logs"  ## Uncomment to check directory for track logs ##
+# ls -lhaFG "${dir_idx}/logs"  ## Uncomment to check log directory ##
 ```
 </details>
 <br />
 
 <a id="c-obtain-and-organize-chip-seq-fastq-files"></a>
 ### C. Obtain and organize ChIP-seq FASTQ files.
+<a id="text-2"></a>
+#### Text
+<details>
+<summary><i>Text: Obtain and organize ChIP-seq FASTQ files.</i></summary>
+<br />
+
+`#TODO`
+</details>
+<br />
+
+<a id="bash-code"></a>
+#### Bash code
 <details>
 <summary><i>Bash code: Obtain and organize ChIP-seq FASTQ files.</i></summary>
 
@@ -685,7 +725,7 @@ dir_log="${dir_raw}/logs"
 dir_pro="${dir_dat}/processed"
 dir_sym="${dir_dat}/symlinked"
 
-#  Dataset files
+#  Define dataset files
 fil_tbl="datasets.tsv"  ## WARNING: Change as needed ##
 pth_tsv="${dir_doc}/${fil_tbl}"
 
@@ -716,7 +756,7 @@ if ${debug:-false}; then
     echo "dir_pro=${dir_pro}"
     echo "dir_sym=${dir_sym}"
     echo ""
-    echo "#  Dataset files"
+    echo "#  Define dataset files"
     echo "fil_tbl=${fil_tbl}"
     echo "pth_tsv=${pth_tsv}"
     echo ""
@@ -807,9 +847,10 @@ bash "${dir_scr}/execute_download_fastqs.sh" \
          > >(tee -a "${dir_raw}/logs/${day}.execute.stdout.txt") \
         2> >(tee -a "${dir_raw}/logs/${day}.execute.stderr.txt")
 
-#  Cleanup: Compress large stdout and stderr files, and remove files with size
-#+ 0
+
+#  Cleanup: Compress logs and remove empty files ------------------------------
 bash "${dir_scr}/compress_remove_files.sh" --dir_fnd "${dir_raw}/logs"
+# ls -lhaFG "${dir_raw}/logs"  ## Uncomment to check log directory ##
 ```
 </details>
 <br />
@@ -949,10 +990,10 @@ if ${debug:-false}; then
     echo "    --infiles ${infiles} \\"
     echo "    --dir_out ${dir_trm} \\"
     echo "    --err_out ${dir_trm}/logs \\"
-    echo "    --slurm \\"
     echo "         > >(tee -a ${dir_trm}/logs/${day}.execute.stdout.txt) \\"
     echo "        2> >(tee -a ${dir_trm}/logs/${day}.execute.stderr.txt)"
 fi
+# echo "    --slurm \\"
 
 bash "${dir_scr}/execute_trim_fastqs.sh" \
     --verbose \
@@ -960,9 +1001,9 @@ bash "${dir_scr}/execute_trim_fastqs.sh" \
     --infiles "${infiles}" \
     --dir_out "${dir_trm}" \
     --err_out "${dir_trm}/logs" \
-    --slurm \
          >> >(tee -a "${dir_trm}/logs/${day}.execute.stdout.txt") \
         2>> >(tee -a "${dir_trm}/logs/${day}.execute.stderr.txt")
+# --slurm \
 
 #  Cleanup: Move Atria LOG and JSON files to the logs directory
 mv ${dir_trm}/*.{log,json} "${dir_trm}/logs"
@@ -981,7 +1022,7 @@ bash "${dir_scr}/compress_remove_files.sh" \
     --pattern "*.json"
 
 #  Optional: Check the contents of the logs directory
-# ls -lhaFG "${dir_trm}/logs"
+# ls -lhaFG "${dir_trm}/logs"  ## Uncomment to check log directory ##
 ```
 </details>
 <br />
@@ -1119,7 +1160,7 @@ bash "${dir_scr}/compress_remove_files.sh" --dir_fnd "${dir_out}/sp/logs"
 
 <a id="f-compute-normalized-coverage"></a>
 ### F. Compute normalized coverage.
-<a id="text-2"></a>
+<a id="text-3"></a>
 #### Text
 <details>
 <summary><i>Text: Compute normalized coverage.</i></summary>
@@ -1373,7 +1414,7 @@ bash "${dir_scr}/compress_remove_files.sh" --dir_fnd "${err_out}"
 ### G. Construct sample tables recording computed scaling factors for normalization.
 <a id="1-construct-sample-table-recording-siq-chip-%24alpha%24-scaling-factors"></a>
 #### 1. Construct sample table recording siQ-ChIP $\alpha$ scaling factors.
-<a id="text-3"></a>
+<a id="text-4"></a>
 ##### Text
 <details>
 <summary><i>Text: Construct sample table recording siQ-ChIP $\alpha$ scaling factors.</i></summary>
@@ -1602,7 +1643,7 @@ bash "${dir_scr}/compress_remove_files.sh" --dir_fnd "${err_out}"
 
 <a id="2-construct-sample-table-recording-spike-in-%24gamma%24-scaling-factors"></a>
 #### 2. Construct sample table recording spike-in $\gamma$ scaling factors.
-<a id="text-4"></a>
+<a id="text-5"></a>
 ##### Text
 <details>
 <summary><i>Text: Construct sample table recording spike-in $\gamma$ scaling factors.</i></summary>
@@ -1831,7 +1872,7 @@ bash "${dir_scr}/compress_remove_files.sh" --dir_fnd "${err_out}"
 
 <a id="h-compute-log2-ratios-of-ip-to-input-normalized-coverage"></a>
 ### H. Compute log2 ratios of IP to input normalized coverage.
-<a id="text-5"></a>
+<a id="text-6"></a>
 #### Text
 <details>
 <summary><i>Text: Compute log2 ratios of IP to input normalized coverage.</i></summary>
@@ -2105,7 +2146,7 @@ bash "${dir_scr}/compress_remove_files.sh" --dir_fnd "${dir_log}"
 
 <a id="i-compute-coverage-with-the-siq-chip-method"></a>
 ### I. Compute coverage with the siQ-ChIP method.
-<a id="text-6"></a>
+<a id="text-7"></a>
 #### Text
 <details>
 <summary><i>Text: Compute coverage with the siQ-ChIP method.</i></summary>
@@ -2390,7 +2431,7 @@ bash "${dir_scr}/compress_remove_files.sh" --dir_fnd "${dir_log}"
 
 <a id="j-compute-coverage-with-the-spike-in-method"></a>
 ### J. Compute coverage with the spike-in method.
-<a id="text-7"></a>
+<a id="text-8"></a>
 #### Text
 <details>
 <summary><i>Text: Compute coverage with the spike-in method.</i></summary>

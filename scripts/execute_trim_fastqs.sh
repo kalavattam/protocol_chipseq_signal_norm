@@ -31,33 +31,39 @@ dir_fnc="${dir_scr}/functions"
     source "${dir_fnc}/check_int_pos.sh"
     source "${dir_fnc}/check_program_path.sh"
     source "${dir_fnc}/check_supplied_arg.sh"
+    source "${dir_fnc}/debug_array_contents.sh"
     source "${dir_fnc}/echo_error.sh"
     source "${dir_fnc}/echo_warning.sh"
     source "${dir_fnc}/exit_0.sh"
     source "${dir_fnc}/exit_1.sh"
     source "${dir_fnc}/handle_env.sh"
+    source "${dir_fnc}/set_params_parallel.sh"
 }
 
 
 #  Set up paths, values, and parameters for interactive mode
 function set_interactive() {
-    #  Set hardcoded paths, values, etc.
-    ## WARNING: If interactive=true, change values as needed ##
-    dir_bas="${HOME}/repos"
+    #  Set base repository paths
+    dir_bas="${HOME}/repos"  ## WARNING: Change as needed ##
     dir_rep="${dir_bas}/protocol_chipseq_signal_norm"
+    dir_scr="${dir_rep}/scripts"
+    dir_fnc="${dir_scr}/functions"
+
+    #  Define data directories
     dir_dat="${dir_rep}/data"
     dir_sym="${dir_dat}/symlinked"
     dir_pro="${dir_dat}/processed"
-    dir_trm="${dir_pro}/trim_atria"
+    dir_trm="${dir_pro}/trim_fastqs"
 
     #  Set hardcoded argument assignments
     verbose=true
     dry_run=true
     threads=8
-    infiles="$(
+    infiles="$(  ## WARNING: Change search parameters as needed ##
         bash "${dir_scr}/find_files.sh" \
             --dir_fnd "${dir_sym}" \
             --pattern "*.fastq.gz" \
+            --include "*Q_Hmo1*" \
             --depth 1 \
             --follow \
             --fastqs
@@ -67,8 +73,8 @@ function set_interactive() {
     sfx_pe="_R1.fastq.gz"
     err_out="${dir_out}/logs"
     nam_job="trim_fastqs"
-    slurm=true
-    max_job=6
+    slurm=false
+    max_job=2
     time="0:45:00"
 }
 
@@ -77,6 +83,7 @@ function set_interactive() {
 #  Initialize hardcoded argument variables
 env_nam="env_protocol"
 scr_sub="${dir_scr}/submit_trim_fastqs.sh"
+par_job=""
 
 #  Initialize argument variables, assigning default values where applicable
 verbose=false
@@ -89,7 +96,7 @@ sfx_pe="_R1.fastq.gz"
 err_out=""
 nam_job="trim_fastqs"
 slurm=false
-max_job=6
+max_job=8
 time="0:45:00"
 
 show_help=$(cat << EOM
@@ -122,10 +129,15 @@ Arguments:
                   (required; default: \${dir_out}/err_out).
   -nj, --nam_job  The name of the job, which is used when writing stderr and
                   stdout (required; default: ${nam_job}).
+  -mj, --max_job  Maximum number of jobs to run concurrently (default: ${max_job}).
+                    - Required if '--slurm' is specified; controls SLURM array
+                      tasks.
+                    - If '--slurm' is not specified:
+                      + If 'max_job' is greater than 1, jobs run in parallel
+                        via GNU Parallel.
+                      + If 'max_job' is 1, jobs run sequentially (serial mode).
   -sl, --slurm    Submit jobs to the SLURM scheduler; otherwise, run them in
                   serial (optional).
-  -mj, --max_job  The maximum number of jobs to run at one time (required if
-                  --slurm is specified, ignored if not; default: ${max_job}).
   -tm, --time     The length of time (e.g., h:mm:ss) for the SLURM job
                   (required if --slurm is specified, ignored if not; default:
                   ${time}).
@@ -143,6 +155,7 @@ Dependencies:
     + check_int_pos
     + check_program_path
     + check_supplied_arg
+    + debug_array_contents
     + echo_error
     + echo_warning
     + exit_0
@@ -235,24 +248,36 @@ if ${slurm}; then
     
     check_supplied_arg -a "${time}" -n "time"
     check_format_time "${time}"
+else
+    read -r threads max_job par_job < <(
+        set_params_parallel "${threads}" "${max_job}" "${par_job}"
+    )
+    # echo "${threads}"
+    # echo "${max_job}"
+    # echo "${par_job}"
+
+    check_supplied_arg -a "${par_job}" -n "par_job"
+    check_int_pos "${par_job}" "par_job"
 fi
 
-#  Activate environment and check that dependencies are in PATH
+
+#  Activate environment and check that dependencies are in PATH ---------------
 handle_env "${env_nam}" > /dev/null
 
 check_program_path atria
+if ! ${slurm} && [[ ${par_job} -gt 1 ]]; then check_program_path parallel; fi
 check_program_path pbzip2
 check_program_path pigz
 
 
 #  Parse the --infiles argument -----------------------------------------------
 #+ ...into an array, then validate the infile value assignments
-IFS=';' read -r -a arr_infiles <<< "${infiles}"  # unset arr_infiles
+IFS=';' read -r -a arr_infiles <<< "${infiles}"
 # for infile in "${arr_infiles[@]}"; do echo "${infile}"; done  # unset infile
 
 #  Check that each infile exists; if not, exit
 for infile in "${arr_infiles[@]}"; do
-    # infile="${arr_infiles[0]}"  # echo "${infile}"
+    # infile="${arr_infiles[1]}"  # echo "${infile}"
     
     #  Check that the infile contains a comma
     if [[ "${infile}" == *,* ]]; then
@@ -297,15 +322,26 @@ for infile in "${arr_infiles[@]}"; do
     fi
 done
 
-#  Check that max_job is not greater than the number of elements in arr_infiles
 if ${slurm}; then
-    if [[ "${max_job}" -gt "${#arr_infiles[@]}" ]]; then
-        echo_warning \
-            "The maximum number of SLURM jobs to run at a time, ${max_job}," \
-            "is greater than the number of infiles, ${#arr_infiles[@]}." \
-            "Adjusting max_job from ${max_job} to ${#arr_infiles[@]}."
-        max_job="${#arr_infiles[@]}"
+    max_job=$(reset_max_job "${max_job}" "${#arr_infiles[@]}")
+fi
+
+if ${verbose}; then
+    echo "#######################################"
+    echo "## Parsed vector for parallelization ##"
+    echo "#######################################"
+    echo ""
+    debug_array_contents "arr_infiles"
+    if ${slurm}; then
+        echo "  - Max no. jobs to run at a time (SLURM): ${max_job}"
+    elif [[ ${par_job} -gt 1 ]]; then
+        echo "  - Max no. jobs to run at a time (GNU Parallel): ${par_job}"
+    else
+        echo "  - Max no. jobs to run at a time: ${par_job}"
     fi
+    echo "  - No. threads per job: ${threads}"
+    echo ""
+    echo ""
 fi
 
 
@@ -317,6 +353,7 @@ if ${verbose}; then
     echo ""
     echo "env_nam=${env_nam}"
     echo "scr_sub=${scr_sub}"
+    echo "par_job=${par_job:-#N/A}"
     echo ""
     echo ""
     echo "###################################"
@@ -336,6 +373,13 @@ if ${verbose}; then
     echo "scr_sub=${scr_sub}"
     echo "max_job=${max_job}"
     echo "time=${time}"
+    echo ""
+    echo ""
+    echo "#################################"
+    echo "## Array derived from variable ##"
+    echo "#################################"
+    echo ""
+    echo "arr_infiles=( ${arr_infiles[*]} )"
     echo ""
     echo ""
 fi
@@ -399,58 +443,103 @@ if ${slurm}; then
                 ${nam_job}
     fi
 else
-    #  If --slurm was not specified, run jobs in serial
-    if ${dry_run} || ${verbose}; then
-        echo "#############################"
-        echo "## Serial call(s) to Atria ##"
-        echo "#############################"
-        echo ""
-    fi
-    
-    for idx in "${!arr_infiles[@]}"; do
-        n_call=$(( idx + 1 ))
-        infile="${arr_infiles[idx]}"
-        
-        if [[ -z "${infile}" ]]; then
-            echo_error \
-                "Failed to retrieve infile for idx=${idx}:" \
-                "\${arr_infiles[idx]}."
+    #  If --slurm was not specified, run jobs in parallel with GNU Parallel
+    if [[ ${par_job} -gt 1 ]]; then
+        config="${err_out}/${nam_job}.config_parallel.txt"  # rm "${config}"
+        touch "${config}" || {
+            echo_error "Failed to create a GNU Parallel configuration file."
             exit_1
-        fi
+        }
 
-        if [[ "${infile}" == *,* ]]; then
-            fq_1="${infile%%,*}"
-            fq_2="${infile#*,}"
-            samp="$(basename "${fq_1%%"${sfx_pe}"}")"
-        else
-            fq_1="${infile}"
-            unset fq_2
-            samp="$(basename "${fq_1%%"${sfx_se}"}")"
-        fi
+        for idx in "${!arr_infiles[@]}"; do
+            echo \
+                "${env_nam}" \
+                "${threads}" \
+                "${arr_infiles[idx]}" \
+                "${dir_out}" \
+                "${sfx_se}" \
+                "${sfx_pe}" \
+                "${err_out}" \
+                "${nam_job}" \
+                    >> "${config}"
+        done
+        # cat "${config}"  # rm "${config}"
 
         if ${dry_run} || ${verbose}; then
-            echo "## Call no. ${n_call} ##"
-            echo "atria \\"
-            echo "    -t ${threads} \\"
-            echo "    -r ${fq_1} \\"
-            echo "    $(if [[ -n ${fq_2} ]]; then echo "-R ${fq_2}"; fi) \\"
-            echo "    -o ${dir_out} \\"
-            echo "    --length-range 35:500 \\"
-            echo "         > ${err_out}/${nam_job}.${samp}.stdout.txt \\"
-            echo "        2> ${err_out}/${nam_job}.${samp}.stderr.txt"
+            echo "#######################################"
+            echo "## Parallel call(s) to trim fastq(s) ##"
+            echo "#######################################"
+            echo ""
+
+            parallel --colsep ' ' --jobs "${par_job}" --dryrun \
+                "bash \"${scr_sub}\" {1} {2} {3} {4} {5} {6} {7} {8}" \
+                :::: "${config}"
+
+            echo ""
             echo ""
         fi
 
         if ! ${dry_run}; then
-            # shellcheck disable=SC2046,SC2086
-            atria \
-                -t ${threads} \
-                -r ${fq_1} \
-                $(if [[ -n ${fq_2} ]]; then echo "-R ${fq_2}"; fi) \
-                -o ${dir_out} \
-                --length-range 35:500 \
-                     > ${err_out}/${nam_job}.${samp}.stdout.txt \
-                    2> ${err_out}/${nam_job}.${samp}.stderr.txt
+            parallel --colsep ' ' --jobs "${par_job}" \
+                "bash \"${scr_sub}\" {1} {2} {3} {4} {5} {6} {7} {8}" \
+                :::: "${config}"
         fi
-    done
+    else
+        #  If --slurm was not specified and 'par_job=1', then run jobs in
+        #+ serial
+        if ${dry_run} || ${verbose}; then
+            echo "#############################"
+            echo "## Serial call(s) to Atria ##"
+            echo "#############################"
+            echo ""
+        fi
+        
+        for idx in "${!arr_infiles[@]}"; do
+            # idx=1
+            n_call=$(( idx + 1 ))
+            infile="${arr_infiles[idx]}"
+            
+            if [[ -z "${infile}" ]]; then
+                echo_error \
+                    "Failed to retrieve infile for idx=${idx}:" \
+                    "\${arr_infiles[idx]}."
+                exit_1
+            fi
+
+            if [[ "${infile}" == *,* ]]; then
+                fq_1="${infile%%,*}"
+                fq_2="${infile#*,}"
+                samp="$(basename "${fq_1%%"${sfx_pe}"}")"
+            else
+                fq_1="${infile}"
+                unset fq_2
+                samp="$(basename "${fq_1%%"${sfx_se}"}")"
+            fi
+
+            if ${dry_run} || ${verbose}; then
+                echo "## Call no. ${n_call} ##"
+                echo "atria \\"
+                echo "    -t ${threads} \\"
+                echo "    -r ${fq_1} \\"
+                echo "    $(if [[ -n ${fq_2} ]]; then echo "-R ${fq_2}"; fi) \\"
+                echo "    -o ${dir_out} \\"
+                echo "    --length-range 35:500 \\"
+                echo "         > ${err_out}/${nam_job}.${samp}.stdout.txt \\"
+                echo "        2> ${err_out}/${nam_job}.${samp}.stderr.txt"
+                echo ""
+            fi
+
+            if ! ${dry_run}; then
+                # shellcheck disable=SC2046,SC2086
+                atria \
+                    -t ${threads} \
+                    -r ${fq_1} \
+                    $(if [[ -n ${fq_2} ]]; then echo "-R ${fq_2}"; fi) \
+                    -o ${dir_out} \
+                    --length-range 35:500 \
+                         > ${err_out}/${nam_job}.${samp}.stdout.txt \
+                        2> ${err_out}/${nam_job}.${samp}.stderr.txt
+            fi
+        done
+    fi
 fi

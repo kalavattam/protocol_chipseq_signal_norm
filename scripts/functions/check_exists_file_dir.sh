@@ -4,7 +4,6 @@ function check_exists_file_dir() {
     local type="${1}"
     local item="${2}"
     local name="${3}"
-    local show_help
     local item_type
     local check_flag
     local not_exist_msg
