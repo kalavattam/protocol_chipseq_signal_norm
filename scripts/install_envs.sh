@@ -145,11 +145,13 @@ Notes:
       - parallel
       - pbzip2
       - pigz
+      - python=3.11  # Restrict Python to version 3.11 for sequali installation
       - r-argparse
       - r-plotly
       - r-ggsci
       - rename
       - samtools
+      - sequali
       - wget
     + env_siqchip
       - bc
@@ -319,11 +321,13 @@ elif [[ "${env_nam}" == "env_protocol" ]]; then
         parallel
         pbzip2
         pigz
+        python=3.11  # Restrict Python to version 3.11 for sequali installation
         r-argparse
         r-plotly
         r-ggsci
         rename
         samtools
+        sequali
         wget
     )
 elif [[ "${env_nam}" == "env_siqchip" ]]; then

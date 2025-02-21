@@ -37,6 +37,7 @@ dir_fnc="${dir_scr}/functions"
     source "${dir_fnc}/exit_0.sh"
     source "${dir_fnc}/exit_1.sh"
     source "${dir_fnc}/handle_env.sh"
+    source "${dir_fnc}/reset_max_job.sh"
     source "${dir_fnc}/set_params_parallel.sh"
 }
 
@@ -445,7 +446,9 @@ if ${slurm}; then
 else
     #  If --slurm was not specified, run jobs in parallel with GNU Parallel
     if [[ ${par_job} -gt 1 ]]; then
-        config="${err_out}/${nam_job}.config_parallel.txt"  # rm "${config}"
+        config="${err_out}/${nam_job}.config_parallel.txt"
+
+        if [[ -f "${config}" ]]; then rm "${config}"; fi
         touch "${config}" || {
             echo_error "Failed to create a GNU Parallel configuration file."
             exit_1
@@ -463,7 +466,6 @@ else
                 "${nam_job}" \
                     >> "${config}"
         done
-        # cat "${config}"  # rm "${config}"
 
         if ${dry_run} || ${verbose}; then
             echo "#######################################"
@@ -488,58 +490,33 @@ else
         #  If --slurm was not specified and 'par_job=1', then run jobs in
         #+ serial
         if ${dry_run} || ${verbose}; then
-            echo "#############################"
-            echo "## Serial call(s) to Atria ##"
-            echo "#############################"
+            echo "##################################################"
+            echo "## Serialized job execution via 'submit' script ##"
+            echo "##################################################"
+            echo ""
+            echo "bash \"${scr_sub}\" \\"
+            echo "    \"${env_nam}\" \\"
+            echo "    \"${threads}\" \\"
+            echo "    \"${infiles}\" \\"
+            echo "    \"${dir_out}\" \\"
+            echo "    \"${sfx_se}\" \\"
+            echo "    \"${sfx_pe}\" \\"
+            echo "    \"${err_out}\" \\"
+            echo "    \"${nam_job}\""
+            echo ""
             echo ""
         fi
         
-        for idx in "${!arr_infiles[@]}"; do
-            # idx=1
-            n_call=$(( idx + 1 ))
-            infile="${arr_infiles[idx]}"
-            
-            if [[ -z "${infile}" ]]; then
-                echo_error \
-                    "Failed to retrieve infile for idx=${idx}:" \
-                    "\${arr_infiles[idx]}."
-                exit_1
-            fi
-
-            if [[ "${infile}" == *,* ]]; then
-                fq_1="${infile%%,*}"
-                fq_2="${infile#*,}"
-                samp="$(basename "${fq_1%%"${sfx_pe}"}")"
-            else
-                fq_1="${infile}"
-                unset fq_2
-                samp="$(basename "${fq_1%%"${sfx_se}"}")"
-            fi
-
-            if ${dry_run} || ${verbose}; then
-                echo "## Call no. ${n_call} ##"
-                echo "atria \\"
-                echo "    -t ${threads} \\"
-                echo "    -r ${fq_1} \\"
-                echo "    $(if [[ -n ${fq_2} ]]; then echo "-R ${fq_2}"; fi) \\"
-                echo "    -o ${dir_out} \\"
-                echo "    --length-range 35:500 \\"
-                echo "         > ${err_out}/${nam_job}.${samp}.stdout.txt \\"
-                echo "        2> ${err_out}/${nam_job}.${samp}.stderr.txt"
-                echo ""
-            fi
-
-            if ! ${dry_run}; then
-                # shellcheck disable=SC2046,SC2086
-                atria \
-                    -t ${threads} \
-                    -r ${fq_1} \
-                    $(if [[ -n ${fq_2} ]]; then echo "-R ${fq_2}"; fi) \
-                    -o ${dir_out} \
-                    --length-range 35:500 \
-                         > ${err_out}/${nam_job}.${samp}.stdout.txt \
-                        2> ${err_out}/${nam_job}.${samp}.stderr.txt
-            fi
-        done
+        if ! ${dry_run}; then
+            bash "${scr_sub}" \
+                "${env_nam}" \
+                "${threads}" \
+                "${infiles}" \
+                "${dir_out}" \
+                "${sfx_se}" \
+                "${sfx_pe}" \
+                "${err_out}" \
+                "${nam_job}"
+        fi
     fi
 fi

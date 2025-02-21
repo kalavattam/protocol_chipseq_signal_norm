@@ -87,7 +87,9 @@ function run_atria() {
         -r "${fq_1}" \
         $(if [[ -n ${fq_2} ]]; then echo "-R ${fq_2}"; fi) \
         -o "${dir_out}" \
-        --length-range 35:500
+        --length-range 35:500 \
+             > ${err_out}/${nam_job}.${samp}.stdout.txt \
+            2> ${err_out}/${nam_job}.${samp}.stderr.txt
 }
 
 
@@ -138,6 +140,9 @@ sfx_pe="${6}"
 err_out="${7}"
 nam_job="${8}"
 
+##########
+## TEST ##
+##########
 # env_nam=env_protocol
 # threads=4
 # str_infile='/Users/kalavattam/repos/protocol_chipseq_signal_norm/data/symlinked/IP_WT_Q_Hmo1_7750_R1.fastq.gz,/Users/kalavattam/repos/protocol_chipseq_signal_norm/data/symlinked/IP_WT_Q_Hmo1_7750_R2.fastq.gz'
@@ -146,6 +151,9 @@ nam_job="${8}"
 # sfx_pe=_R1.fastq.gz
 # err_out=/Users/kalavattam/repos/protocol_chipseq_signal_norm/data/processed/trim_fastqs/logs
 # nam_job=trim_fastqs
+##########
+## TEST ##
+##########
 
 #  Debug argument variable assignments
 if ${debug}; then

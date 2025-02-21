@@ -389,7 +389,7 @@ To align ChIP-seq reads against both *S. cerevisiae* and *S. pombe*, e.g., for d
 <a id="bash-code-1"></a>
 #### Bash code #1
 <details>
-<summary><i>Bash code: Generate Bowtie 2 index files from the concatenated FASTA file.</i></summary>
+<summary><i>Bash code #1: Generate Bowtie 2 index files from the concatenated FASTA file.</i></summary>
 
 ```bash
 #!/bin/bash
@@ -415,7 +415,7 @@ dir_fas="${dir_cat}/fasta/proc"
 dir_idx="${dir_cat}/index/bowtie2"
 dir_log="${dir_idx}/logs"
 
-#  Define dataset file
+#  Define data file
 fil_fas="${dir_fas}/sc_sp_proc.fasta"
 
 #  Set execution parameters
@@ -444,7 +444,7 @@ if ${debug:-false}; then
     echo "dir_idx=${dir_idx}"
     echo "dir_log=${dir_log}"
     echo ""
-    echo "#  Define dataset file"
+    echo "#  Define data file"
     echo "fil_fas=${fil_fas}"
     echo ""
     echo "#  Set execution parameters"
@@ -537,7 +537,7 @@ bash "${dir_scr}/compress_remove_files.sh" --dir_fnd "${dir_idx}/logs"
 <a id="bash-code-2"></a>
 #### Bash code #2
 <details>
-<summary><i>Bash code: Generate Bowtie 2 index files from the </i>S. cerevisiae<i> FASTA file.</i></summary>
+<summary><i>Bash code #2: Generate Bowtie 2 index files from the </i>S. cerevisiae<i> FASTA file.</i></summary>
 
 ```bash
 #!/bin/bash
@@ -563,7 +563,7 @@ dir_fas="${dir_cer}/fasta/proc"
 dir_idx="${dir_cer}/index/bowtie2"
 dir_log="${dir_idx}/logs"
 
-#  Define dataset file
+#  Define data file
 fil_fas="${dir_fas}/S288C_R64-5-1_proc.fasta"
 
 #  Set execution parameters
@@ -592,7 +592,7 @@ if ${debug:-false}; then
     echo "dir_idx=${dir_idx}"
     echo "dir_log=${dir_log}"
     echo ""
-    echo "#  Define dataset file"
+    echo "#  Define data file"
     echo "fil_fas=${fil_fas}"
     echo ""
     echo "#  Set execution parameters"
@@ -725,7 +725,7 @@ dir_log="${dir_raw}/logs"
 dir_pro="${dir_dat}/processed"
 dir_sym="${dir_dat}/symlinked"
 
-#  Define dataset files
+#  Define data files
 fil_tbl="datasets.tsv"  ## WARNING: Change as needed ##
 pth_tsv="${dir_doc}/${fil_tbl}"
 
@@ -756,7 +756,7 @@ if ${debug:-false}; then
     echo "dir_pro=${dir_pro}"
     echo "dir_sym=${dir_sym}"
     echo ""
-    echo "#  Define dataset files"
+    echo "#  Define data files"
     echo "fil_tbl=${fil_tbl}"
     echo "pth_tsv=${pth_tsv}"
     echo ""
@@ -892,11 +892,12 @@ infiles="$(  ## WARNING: Change search parameters as needed ##
     bash "${dir_scr}/find_files.sh" \
         --dir_fnd "${dir_sym}" \
         --pattern "*.fastq.gz" \
-        --include "*H?o1*" \
+        --include "*Q_Hmo1*" \
         --depth 1 \
         --follow \
         --fastqs
 )"
+# --include "*H?o1*" \
 
 if ${debug:-false}; then
     echo "####################################"
@@ -940,6 +941,7 @@ handle_env "${env_nam}"
 
 #  Check availability of Atria and other necessary tools
 check_program_path atria
+check_program_path parallel
 check_program_path pbzip2
 check_program_path pigz
 check_program_path sbatch &> /dev/null ||
@@ -990,10 +992,10 @@ if ${debug:-false}; then
     echo "    --infiles ${infiles} \\"
     echo "    --dir_out ${dir_trm} \\"
     echo "    --err_out ${dir_trm}/logs \\"
+    echo "    --slurm \\"
     echo "         > >(tee -a ${dir_trm}/logs/${day}.execute.stdout.txt) \\"
     echo "        2> >(tee -a ${dir_trm}/logs/${day}.execute.stderr.txt)"
 fi
-# echo "    --slurm \\"
 
 bash "${dir_scr}/execute_trim_fastqs.sh" \
     --verbose \
@@ -1001,9 +1003,9 @@ bash "${dir_scr}/execute_trim_fastqs.sh" \
     --infiles "${infiles}" \
     --dir_out "${dir_trm}" \
     --err_out "${dir_trm}/logs" \
+    --slurm \
          >> >(tee -a "${dir_trm}/logs/${day}.execute.stdout.txt") \
         2>> >(tee -a "${dir_trm}/logs/${day}.execute.stderr.txt")
-# --slurm \
 
 #  Cleanup: Move Atria LOG and JSON files to the logs directory
 mv ${dir_trm}/*.{log,json} "${dir_trm}/logs"
