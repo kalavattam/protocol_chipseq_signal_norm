@@ -26,9 +26,9 @@ align_fastqs
 ------------
 
 Description:
-  align_fastqs aligns single- or paired-end short sequenced reads using either
-  of the alignment programs Bowtie 2 or BWA, and converts the output to a
-  sorted, duplicate-marked, mate-fixed (if working with paired-end reads),
+  'align_fastqs' aligns single- or paired-end short sequenced reads using
+  either of the alignment programs Bowtie 2 or BWA, and converts the output to
+  a sorted, duplicate-marked, mate-fixed (if working with paired-end reads),
   indexed BAM file using Samtools. Optionally, a queryname-sorted BAM file
   generated during alignment post-processing can be retained with the --qname
   flag; otherwise, this intermediate file is deleted.
@@ -102,6 +102,8 @@ Examples:
            > \${err_out}/\${nam_job}.\${samp}.stdout.txt
           2> \${err_out}/\${nam_job}.\${samp}.stderr.txt
   \`\`\`
+
+  #TODO: Extend function for CRAM generation.
 EOM
     )
 
@@ -137,13 +139,13 @@ EOM
 
     #  Validate keyword parameters
     if [[ -z "${threads}" ]]; then
-        echo "Error: --threads is required." >&2
+        echo "Error: '--threads' is required." >&2
         return 1
     fi
 
     if [[ ! "${threads}" =~ ^[1-9][0-9]*$ ]]; then
         echo \
-            "Error: --threads was assigned '${threads}' but must be a" \
+            "Error: '--threads' was assigned '${threads}' but must be a" \
             "positive integer greater than or equal to 1." >&2
         return 1
     fi
@@ -154,22 +156,18 @@ EOM
                 local|global|end-to-end) : ;;
                 *)
                     echo \
-                        "Error: Selection associated with --a_type is not" \
-                        "valid: ${a_type}. Selection must be 'local'," \
+                        "Error: Selection associated with '--a_type' is not" \
+                        "valid: '${a_type}'. Selection must be 'local'," \
                         "'global', or 'end-to-end'." >&2
                     return 1
                     ;;
             esac
             ;;
-
-        bwa)
-            :
-            ;;
-
+        bwa) : ;;
         *)
             echo \
-                "Error: Selection associated with --aligner is not valid:" \
-                "${aligner}. Selection must be 'bowtie2' or 'bwa'." >&2
+                "Error: Selection associated with '--aligner' is not valid:" \
+                "'${aligner}'. Selection must be 'bowtie2' or 'bwa'." >&2
             return 1
             ;;
     esac
@@ -182,45 +180,47 @@ EOM
     fi
 
     if [[ -z "${index}" ]]; then
-        echo "Error: --index is a required parameter." >&2
+        echo "Error: '--index' is a required parameter." >&2
         return 1
     fi
 
     if [[ ! -d "$(dirname "${index}")" ]]; then
         echo \
-            "Error: Directory associated with --index does not exist:" \
-            "$(dirname "${index}")." >&2
+            "Error: Directory associated with '--index' does not exist:" \
+            "'$(dirname "${index}")'." >&2
         return 1
     fi
 
     if [[ -z "${fq_1}" ]]; then
-        echo "Error: --fq_1 is a required parameter." >&2
+        echo "Error: '--fq_1' is a required parameter." >&2
         return 1
     fi
 
     if [[ ! -f "${fq_1}" ]]; then
-        echo "Error: File associated with --fq_1 does not exist: ${fq_1}." >&2
+        echo \
+            "Error: File associated with '--fq_1' does not exist:" \
+            "'${fq_1}'." >&2
         return 1
     fi
 
     if [[ -n "${fq_2}" ]]; then
         if [[ ! -f "${fq_2}" ]]; then
             echo \
-                "Error: File associated with --fq_2 does not exist: ${fq_2}." \
-                >&2
+                "Error: File associated with '--fq_2' does not exist:" \
+                "'${fq_2}'." >&2
             return 1
         fi
     fi
 
     if [[ -z "${outfile}" ]]; then
-        echo "Error: --outfile is a required parameter." >&2
+        echo "Error: '--outfile' is a required parameter." >&2
         return 1
     fi
 
     if [[ ! -d "$(dirname "${outfile}")" ]]; then
         echo \
-            "Error: Directory associated with --outfile does not exist:" \
-            "$(dirname "${outfile}")" >&2
+            "Error: Directory associated with '--outfile' does not exist:" \
+            "'$(dirname "${outfile}")'" >&2
         return 1
     fi
 

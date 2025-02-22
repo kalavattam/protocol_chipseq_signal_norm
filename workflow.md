@@ -726,7 +726,7 @@ dir_pro="${dir_dat}/processed"
 dir_sym="${dir_dat}/symlinked"
 
 #  Define data files
-fil_tbl="datasets.tsv"  ## WARNING: Change as needed ##
+fil_tbl="datasets_dropbox.tsv"  ## WARNING: Change as needed ##
 pth_tsv="${dir_doc}/${fil_tbl}"
 
 #  Set execution parameters
@@ -1007,11 +1007,13 @@ bash "${dir_scr}/execute_trim_fastqs.sh" \
          >> >(tee -a "${dir_trm}/logs/${day}.execute.stdout.txt") \
         2>> >(tee -a "${dir_trm}/logs/${day}.execute.stderr.txt")
 
-#  Cleanup: Move Atria LOG and JSON files to the logs directory
+
+#  Cleanup: Compress logs and remove empty files ------------------------------
+#  Move Atria LOG and JSON files to the logs directory
 mv ${dir_trm}/*.{log,json} "${dir_trm}/logs"
 
-#  Cleanup: Compress large stdout, stderr, LOG, and JSON files, and remove
-#+ files with size 0
+#  Compress large stdout, stderr, LOG, and JSON files, and remove files with
+#+ size 0
 bash "${dir_scr}/compress_remove_files.sh" \
     --dir_fnd "${dir_trm}/logs"
 
@@ -1023,7 +1025,6 @@ bash "${dir_scr}/compress_remove_files.sh" \
     --dir_fnd "${dir_trm}/logs" \
     --pattern "*.json"
 
-#  Optional: Check the contents of the logs directory
 # ls -lhaFG "${dir_trm}/logs"  ## Uncomment to check log directory ##
 ```
 </details>
@@ -1042,16 +1043,21 @@ bash "${dir_scr}/compress_remove_files.sh" \
 
 
 #  Define variables -----------------------------------------------------------
-#  Define variables for directory paths, environment, driver script arguments,
-#+ and so on
+debug=true
+
+#  Set base repository paths
 dir_bas="${HOME}/repos"  ## WARNING: Change as needed ##
 dir_rep="${dir_bas}/protocol_chipseq_signal_norm"
 dir_scr="${dir_rep}/scripts"
 dir_fnc="${dir_scr}/functions"
+
+#  Define data directories
 dir_dat="${dir_rep}/data"
 dir_idx="${dir_dat}/genomes/concat/index"
 dir_pro="${dir_dat}/processed"
 dir_trm="${dir_pro}/trim_atria"
+
+#  Set execution parameters and related variables
 env_nam="env_protocol"
 threads=8
 aligner="bowtie2"
@@ -1059,8 +1065,12 @@ a_type="global"
 req_flg=true
 flg="$(if ${req_flg}; then echo "2"; else echo "NA"; fi)"
 mapq=1
-str_idx="sc_sp_proc"
-pth_idx="${dir_idx}/${aligner}/${str_idx}"
+nam_job="align_fastqs"
+max_job=6
+time="1:00:00"
+day="$(date '+%Y-%m%d')"
+
+#  Locate input files
 infiles="$(  ## WARNING: Change search parameters as needed ##
     bash "${dir_scr}/find_files.sh" \
         --dir_fnd "${dir_trm}" \
@@ -1068,16 +1078,59 @@ infiles="$(  ## WARNING: Change search parameters as needed ##
         --depth 1 \
         --fastqs
 )"
+
+#  Set output directories
+str_idx="sc_sp_proc"
+pth_idx="${dir_idx}/${aligner}/${str_idx}"
 dir_aln="${dir_pro}/align_${aligner}_${a_type}"
 dir_out="${dir_aln}/flag-${flg}_mapq-${mapq}"
-nam_job="align_fastqs"
-max_job=6
-time="1:00:00"
-day="$(date '+%Y-%m%d')"
 
-#  Create output directory structure for trimmed FASTQ files and logs
-mkdir -p ${dir_out}/{init,sc,sp}/{docs,logs}
+if ${debug:-false}; then
+    echo "####################################"
+    echo "## Hardcoded variable assignments ##"
+    echo "####################################"
+    echo ""
+    echo "debug=${debug}"
+    echo ""
+    echo "#  Set base repository paths"
+    echo "dir_bas=${dir_bas}"
+    echo "dir_rep=${dir_rep}"
+    echo "dir_scr=${dir_scr}"
+    echo "dir_fnc=${dir_fnc}"
+    echo ""
+    echo "#  Define data directories"
+    echo "dir_dat=${dir_dat}"
+    echo "dir_idx=${dir_idx}"
+    echo "dir_pro=${dir_pro}"
+    echo "dir_trm=${dir_trm}"
+    echo ""
+    echo "#  Set execution parameters and related variables"
+    echo "env_nam=${env_nam}"
+    echo "threads=${threads}"
+    echo "aligner=${aligner}"
+    echo "a_type=${a_type}"
+    echo "req_flg=${req_flg}"
+    echo "flg=${flg}"
+    echo "mapq=${mapq}"
+    echo "nam_job=${nam_job}"
+    echo "max_job=${max_job}"
+    echo "time=${time}"
+    echo "day=${day}"
+    echo ""
+    echo "#  Locate input files"
+    echo "infiles=${infiles}"
+    echo ""
+    echo "#  Set output directories"
+    echo "str_idx=${str_idx}"
+    echo "pth_idx=${pth_idx}"
+    echo "dir_aln=${dir_aln}"
+    echo "dir_out=${dir_out}"
+    echo ""
+    echo ""
+fi
 
+
+#  Activate the environment and check dependencies ----------------------------
 #  Source utility functions
 source "${dir_fnc}/check_program_path.sh"
 source "${dir_fnc}/echo_warning.sh"
@@ -1088,12 +1141,60 @@ handle_env "${env_nam}"
 
 #  Check the availability of Bowtie 2, Samtools, and SLURM sbatch
 check_program_path bowtie2
+check_program_path parallel
 check_program_path samtools
 check_program_path sbatch &> /dev/null ||
     echo_warning \
         "SLURM is not available on this system. Do not use the '--slurm'" \
         "flag with the driver script."
 
+
+#  Create required directories if necessary -----------------------------------
+#  Create output directory structure for trimmed FASTQ files and logs
+mkdir -p ${dir_out}/{init,sc,sp}/logs
+
+if ${debug:-false}; then
+    echo "#################################################"
+    echo "## In- and output directory paths and contents ##"
+    echo "#################################################"
+    echo ""
+    echo "%%%%%%%%%%%%%"
+    echo "%% dir_trm %%"
+    echo "%%%%%%%%%%%%%"
+    echo ""
+    ls -lhaFG "${dir_trm}"
+    echo ""
+    ls -lhaFG "${dir_trm}/logs"
+    echo ""
+    echo "%%%%%%%%%%%%%%%%%%%%%"
+    echo "%% ${dir_out}/init %%"
+    echo "%%%%%%%%%%%%%%%%%%%%%"
+    echo ""
+    ls -lhaFG "${dir_out}/init"
+    echo ""
+    ls -lhaFG "${dir_out}/init/logs"
+    echo ""
+    echo "%%%%%%%%%%%%%%%%%%%"
+    echo "%% ${dir_out}/sc %%"
+    echo "%%%%%%%%%%%%%%%%%%%"
+    echo ""
+    ls -lhaFG "${dir_out}/sc"
+    echo ""
+    ls -lhaFG "${dir_out}/sc/logs"
+    echo ""
+    echo "%%%%%%%%%%%%%%%%%%%"
+    echo "%% ${dir_out}/sp %%"
+    echo "%%%%%%%%%%%%%%%%%%%"
+    echo ""
+    ls -lhaFG "${dir_out}/sp"
+    echo ""
+    ls -lhaFG "${dir_out}/sp/logs"
+    echo ""
+    echo ""
+fi
+
+
+#  Do the main work -----------------------------------------------------------
 #  Run the driver script to align and post-process FASTQ files
 bash "${dir_scr}/execute_align_fastqs.sh" \
     --verbose \
@@ -1101,7 +1202,7 @@ bash "${dir_scr}/execute_align_fastqs.sh" \
     --aligner "${aligner}" \
     --a_type "${a_type}" \
     --mapq "${mapq}" \
-    --req_flg \
+    $(if ${req_flg:-false}; then echo "--req_flg"; fi) \
     --index "${pth_idx}" \
     --infiles "${infiles}" \
     --dir_out "${dir_out}/init" \
@@ -1144,18 +1245,16 @@ bash "${dir_scr}/execute_filter_bams.sh" \
          >> >(tee -a "${dir_out}/sp/logs/${day}.execute.stdout.txt") \
         2>> >(tee -a "${dir_out}/sp/logs/${day}.execute.stderr.txt")
 
-#  Cleanup: Compress large stdout and stderr files, and remove files with size
-#+ 0
+
+#  Cleanup: Compress logs and remove empty files ------------------------------
+#  Compress large stdout and stderr files, and remove files with size 0
 bash "${dir_scr}/compress_remove_files.sh" --dir_fnd "${dir_out}/init/logs"
-
 bash "${dir_scr}/compress_remove_files.sh" --dir_fnd "${dir_out}/sc/logs"
-
 bash "${dir_scr}/compress_remove_files.sh" --dir_fnd "${dir_out}/sp/logs"
 
-#  Optional: Check the contents of the logs directory
-# ls -lhaFG "${dir_trm}/init/logs"
-# ls -lhaFG "${dir_trm}/sc/logs"
-# ls -lhaFG "${dir_trm}/sp/logs"
+# ls -lhaFG "${dir_trm}/init/logs"  ## Uncomment to check log directory ##
+# ls -lhaFG "${dir_trm}/sc/logs"    ## Uncomment to check log directory ##
+# ls -lhaFG "${dir_trm}/sp/logs"    ## Uncomment to check log directory ##
 ```
 </details>
 <br />
@@ -1169,9 +1268,9 @@ bash "${dir_scr}/compress_remove_files.sh" --dir_fnd "${dir_out}/sp/logs"
 <br />
 
 **Overview**  
-This section demonstrates how to compute ChIP-seq normalized coverage ([Dickson et al., *Sci Rep*, 2023](https://www.nature.com/articles/s41598-023-34430-2))&mdash;binned coverage adjusted for fragment lengths that sums to unity.
+This section demonstrates how to compute ChIP-seq normalized coverage ([Dickson et al., *Sci Rep*, 2023](https://www.nature.com/articles/s41598-023-34430-2))&mdash;i.e., binned coverage adjusted for fragment length that sums to unity.
 
-In the corresponding [Bash code chunk](#bash-code), the signal type is specified by setting `typ_cvg` to `"norm"` (normalized coverage). Other options are `"unadj"` (unadjusted binned coverage) and `"frag"` (fragment length-adjusted binned coverage). For details, see below and the [`compute_signal.py` documentation](https://github.com/kalavattam/protocol_chipseq_signal_norm/blob/main/scripts/compute_signal.py). BEDGRAPH and log output files are organized by signal type.
+In the corresponding [Bash code chunk](#bash-code), the signal type is specified by setting `typ_cvg` to `"norm"` (normalized coverage). Other options are `"unadj"` (unadjusted binned coverage) and `"frag"` (fragment length-adjusted binned coverage; e.g., see [Dickson et al., *Sci Rep*, 2023](https://www.nature.com/articles/s41598-023-34430-2)). For details, see below and the [`compute_signal.py` documentation](https://github.com/kalavattam/protocol_chipseq_signal_norm/blob/main/scripts/compute_signal.py). BEDGRAPH and log output files are organized by signal type.
 
 ---
 

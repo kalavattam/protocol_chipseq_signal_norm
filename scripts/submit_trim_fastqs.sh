@@ -1,45 +1,83 @@
 #!/bin/bash
 
+#  submit_trim_fastqs.sh
+#  KA
+
+
 #  If true, run script in debug mode
 debug=true
+
 
 #  Define functions
 #  Print variable assignment
 function debug_var() { printf "%s\n\n" "$@"; }
 
 
-#  Validate that a variable is not empty or unset
+#  Function to activate user-supplied Conda/Mamba environment
+function activate_env() {
+    local env_nam="${1}"
+    if [[ "${CONDA_DEFAULT_ENV}" != "${env_nam}" ]]; then
+        eval "$(conda shell.bash hook)"
+        conda activate "${env_nam}" || 
+            {
+                echo "Error: Failed to activate environment '${env_nam}'." >&2
+                return 1
+            }
+    fi
+}
+
+
+#  Function to validate that a variable is not empty or unset
 function validate_var() {
     local var_nam="${1}"
     local var_val="${2}"
-    local idx="${3}"
+    local idx="${3:-0}"  # Default to '0' if no index is given
 
     if [[ -z "${var_val}" ]]; then
-        echo \
-            "Error: '${var_nam}' is empty or unset for array index" \
-            "'${idx}'." >&2
+        if [[ "${idx}" -ne 0 ]]; then
+            echo \
+                "Error: '${var_nam}' is empty or unset for array index" \
+                "'${idx}'." >&2
+        else
+            echo "Error: '${var_nam}' is empty or unset." >&2
+        fi
         return 1
     fi
 }
 
 
-#  Set log file paths for SLURM job output, including symlinked and descriptive
-#+ names
+#  Function to set log file paths for SLURM job output, including symlinked and
+#+ descriptive names
 function set_logs() {
-    local job_id="${1}"
-    local task_id="${2}"
-    local nam_smp="${3}"
-    local dir_log="${4}"
+    local id_job="${1}"
+    local id_tsk="${2}"
+    local samp="${3}"
+    local err_out="${4}"
     local nam_job="${5}"
 
-    err_ini="${dir_log}/${nam_job}.${job_id}-${task_id}.stderr.txt"
-    out_ini="${dir_log}/${nam_job}.${job_id}-${task_id}.stdout.txt"
-    err_dsc="${dir_log}/${nam_job}.${nam_smp}.${job_id}-${task_id}.stderr.txt"
-    out_dsc="${dir_log}/${nam_job}.${nam_smp}.${job_id}-${task_id}.stdout.txt"
+    err_ini="${err_out}/${nam_job}.${id_job}-${id_tsk}.stderr.txt"
+    out_ini="${err_out}/${nam_job}.${id_job}-${id_tsk}.stdout.txt"
+    err_dsc="${err_out}/${nam_job}.${samp}.${id_job}-${id_tsk}.stderr.txt"
+    out_dsc="${err_out}/${nam_job}.${samp}.${id_job}-${id_tsk}.stdout.txt"
 }
 
 
-#  Parse 'infile' into 'fq_1', 'fq_2', and 'samp' (sample name)
+#  Function to set up SLURM log file paths (by calling 'set_logs') and create
+#+ symlinked log files
+function setup_slurm_logs() {
+    local id_job="${1}"
+    local id_tsk="${2}"
+    local samp="${3}"
+    local err_out="${4}"
+    local nam_job="${5}"
+
+    set_logs "${id_job}" "${id_tsk}" "${samp}" "${err_out}" "${nam_job}"
+    ln -f "${err_ini}" "${err_dsc}"
+    ln -f "${out_ini}" "${out_dsc}"
+}
+
+
+#  Function to parse 'infile' into 'fq_1', 'fq_2', and 'samp' (sample name)
 function parse_infile() {
     local infile="${1}"
     local sfx_se="${2}"
@@ -57,7 +95,7 @@ function parse_infile() {
 }
 
 
-#  Subroutine to debug, validate, and parse input file
+#  Function to debug, validate, and parse input file
 function process_infile() {
     local infile="${1}"
     local idx="${2}"
@@ -79,21 +117,29 @@ function process_infile() {
 }
 
 
-#  Run Atria with global argument variable values
+#  Function to run Atria with explicitly passed argument values
 function run_atria() {
-    # shellcheck disable=SC2046,2086
+    local threads="${1}"
+    local fq_1="${2}"
+    local fq_2="${3}"
+    local dir_out="${4}"
+    local err_out="${5}"
+    local nam_job="${6}"
+    local samp="${7}"
+
+    # shellcheck disable=SC2046
     atria \
-        -t ${threads} \
+        -t "${threads}" \
         -r "${fq_1}" \
         $(if [[ -n ${fq_2} ]]; then echo "-R ${fq_2}"; fi) \
         -o "${dir_out}" \
         --length-range 35:500 \
-             > ${err_out}/${nam_job}.${samp}.stdout.txt \
-            2> ${err_out}/${nam_job}.${samp}.stderr.txt
+             > "${err_out}/${nam_job}.${samp}.stdout.txt" \
+            2> "${err_out}/${nam_job}.${samp}.stderr.txt"
 }
 
 
-#  Display help message if no arguments or help option is given
+#  Define the help message
 show_help=$(cat << EOM
 \${1}=env_nam     # Mamba environment to activate.
 \${2}=threads     # Number of threads to use.
@@ -106,6 +152,7 @@ show_help=$(cat << EOM
 EOM
 )
 
+#  Display help message if no arguments or help option is given
 if [[ -z "${1}" || "${1}" == "-h" || "${1}" == "--help" ]]; then
     cat << EOM
 '$(basename "${0}")' requires 8 positional arguments:
@@ -140,21 +187,6 @@ sfx_pe="${6}"
 err_out="${7}"
 nam_job="${8}"
 
-##########
-## TEST ##
-##########
-# env_nam=env_protocol
-# threads=4
-# str_infile='/Users/kalavattam/repos/protocol_chipseq_signal_norm/data/symlinked/IP_WT_Q_Hmo1_7750_R1.fastq.gz,/Users/kalavattam/repos/protocol_chipseq_signal_norm/data/symlinked/IP_WT_Q_Hmo1_7750_R2.fastq.gz'
-# dir_out=/Users/kalavattam/repos/protocol_chipseq_signal_norm/data/processed/trim_fastqs
-# sfx_se=.fastq.gz
-# sfx_pe=_R1.fastq.gz
-# err_out=/Users/kalavattam/repos/protocol_chipseq_signal_norm/data/processed/trim_fastqs/logs
-# nam_job=trim_fastqs
-##########
-## TEST ##
-##########
-
 #  Debug argument variable assignments
 if ${debug}; then
     debug_var \
@@ -169,16 +201,10 @@ if ${debug}; then
 fi
 
 #  Activate environment
-if [[ "${CONDA_DEFAULT_ENV}" != "${env_nam}" ]]; then
-    eval "$(conda shell.bash hook)"
-    conda activate "${env_nam}" ||
-        {
-            echo "Error: Failed to activate environment '${env_nam}'." >&2
-            exit 1
-        }
-fi
+activate_env "${env_nam}" || exit 1
 
 #  Reconstruct array from serialized string
+validate_var "str_infile" "${str_infile}" || exit 1
 IFS=';' read -r -a arr_infile <<< "${str_infile}"
 # for infile in "${arr_infile[@]}"; do echo "${infile}"; done  # unset infile
 
@@ -195,26 +221,30 @@ if [[ -n "${SLURM_ARRAY_TASK_ID:-}" ]]; then
     id_tsk="${SLURM_ARRAY_TASK_ID}"
     idx=$(( id_tsk - 1 ))
 
+    #  Retrieve the input file by indexing into the reconstructed input file
+    #+ array
     infile="${arr_infile[idx]}"
 
     #  Run subroutine to debug and validate 'infile', and then parse it into
     #+ 'fq_1', 'fq_2', and 'samp'
     process_infile "${infile}"  "${idx}" "${sfx_se}" "${sfx_pe}" || exit 1
 
-    #  Run subroutine to set SLURM and symlinked/better-named log files
-    set_logs "${id_job}" "${id_tsk}" "${samp}" "${err_out}" "${nam_job}"
-    ln -f "${err_ini}" "${err_dsc}"
-    ln -f "${out_ini}" "${out_dsc}"
+    #  Run functions to set SLURM and symlinked/better-named log files
+    setup_slurm_logs \
+        "${id_job}" "${id_tsk}" "${samp}" "${err_out}" "${nam_job}"
 
     #  Run Atria
-    run_atria "${fq_1}" "${fq_2}" "${dir_out}"
+    run_atria \
+        "${threads}" "${fq_1}" "${fq_2}" "${dir_out}" "${err_out}" \
+        "${nam_job}" "${samp}"
 
     #  Remove the initial SLURM stderr and stdout TXT outfiles
     rm "${err_ini}" "${out_ini}"
 else
     #  Mode: GNU Parallel/serial
     for idx in "${!arr_infile[@]}"; do
-        # idx=0
+        #  Retrieve the input file by indexing into the reconstructed input
+        #+ file array
         infile="${arr_infile[idx]}"
 
         #  Run subroutine to debug and validate 'infile', and then parse it
@@ -222,6 +252,8 @@ else
         process_infile "${infile}"  "${idx}" "${sfx_se}" "${sfx_pe}" || exit 1
 
         #  Run Atria
-        run_atria "${fq_1}" "${fq_2}" "${dir_out}"
+        run_atria \
+            "${threads}" "${fq_1}" "${fq_2}" "${dir_out}" "${err_out}" \
+            "${nam_job}" "${samp}"
     done
 fi
