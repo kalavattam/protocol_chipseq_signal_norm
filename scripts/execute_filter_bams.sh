@@ -24,21 +24,23 @@ fi
 #  Set the path to the "functions" directory
 dir_fnc="${dir_scr}/functions"
 
-# shellcheck disable=SC1091
-{
-    source "${dir_fnc}/check_exists_file_dir.sh"
-    source "${dir_fnc}/check_format_time.sh"
-    source "${dir_fnc}/check_int_pos.sh"
-    source "${dir_fnc}/check_program_path.sh"
-    source "${dir_fnc}/check_supplied_arg.sh"
-    source "${dir_fnc}/echo_error.sh"
-    source "${dir_fnc}/echo_warning.sh"
-    source "${dir_fnc}/exit_0.sh"
-    source "${dir_fnc}/exit_1.sh"
-    source "${dir_fnc}/filter_bam_sc.sh"
-    source "${dir_fnc}/filter_bam_sp.sh"
-    source "${dir_fnc}/handle_env.sh"
-}
+# shellcheck disable=SC1090
+for script in \
+    check_exists_file_dir.sh \
+    check_format_time.sh \
+    check_int_pos.sh \
+    check_program_path.sh \
+    check_supplied_arg.sh \
+    echo_error.sh \
+    echo_warning.sh \
+    exit_0.sh \
+    exit_1.sh \
+    filter_bam_sc.sh \
+    filter_bam_sp.sh \
+    handle_env.sh
+do
+    source "${dir_fnc}/${script}"
+done
 
 
 #  Set up paths, values, and parameters for interactive mode

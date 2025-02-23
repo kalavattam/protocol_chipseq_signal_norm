@@ -6,7 +6,7 @@ function debug_array_contents() {
         #  Access the array indirectly using eval
         eval "arr=( \"\${${arr_nam}[@]}\" )"
         if [[ -n "${arr[*]}" ]]; then
-            echo "  - ${arr_nam}: ( ${arr[*]} )"
+            echo "  - ${arr_nam}=( ${arr[*]} )"
         fi
     done
 }

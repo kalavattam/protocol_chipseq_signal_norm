@@ -9,7 +9,7 @@ debug=true
 
 
 #  Define functions
-#  Print variable assignment
+#  Function to print variable assignment(s)
 function debug_var() { printf "%s\n\n" "$@"; }
 
 
@@ -46,42 +46,39 @@ function validate_var() {
 }
 
 
-#  Function to set log file paths for SLURM job output, including symlinked and
-#+ descriptive names
-function set_logs() {
-    local id_job="${1}"
-    local id_tsk="${2}"
-    local samp="${3}"
-    local err_out="${4}"
-    local nam_job="${5}"
-
-    err_ini="${err_out}/${nam_job}.${id_job}-${id_tsk}.stderr.txt"
-    out_ini="${err_out}/${nam_job}.${id_job}-${id_tsk}.stdout.txt"
-    err_dsc="${err_out}/${nam_job}.${samp}.${id_job}-${id_tsk}.stderr.txt"
-    out_dsc="${err_out}/${nam_job}.${samp}.${id_job}-${id_tsk}.stdout.txt"
-}
-
-
-#  Function to set up SLURM log file paths (by calling 'set_logs') and create
-#+ symlinked log files
+#  Function to set up SLURM log file paths and create symlinked log files
 function setup_slurm_logs() {
     local id_job="${1}"
     local id_tsk="${2}"
     local samp="${3}"
     local err_out="${4}"
     local nam_job="${5}"
+    local err_ini out_ini err_dsc out_dsc
 
-    set_logs "${id_job}" "${id_tsk}" "${samp}" "${err_out}" "${nam_job}"
+    #  Set log paths
+    err_ini="${err_out}/${nam_job}.${id_job}-${id_tsk}.stderr.txt"
+    out_ini="${err_out}/${nam_job}.${id_job}-${id_tsk}.stdout.txt"
+    err_dsc="${err_out}/${nam_job}.${samp}.${id_job}-${id_tsk}.stderr.txt"
+    out_dsc="${err_out}/${nam_job}.${samp}.${id_job}-${id_tsk}.stdout.txt"
+
+    #  Create symlinked log files
     ln -f "${err_ini}" "${err_dsc}"
     ln -f "${out_ini}" "${out_dsc}"
+
+    #  Return values
+    echo "${err_ini};${out_ini};${err_dsc};${out_dsc}"
 }
 
 
-#  Function to parse 'infile' into 'fq_1', 'fq_2', and 'samp' (sample name)
-function parse_infile() {
+#  Function to debug, validate, and parse 'infile' to output variable
+#+ assignments: 'fq_1', 'fq_2', and 'samp' (sample name)
+function process_infile() {
     local infile="${1}"
     local sfx_se="${2}"
     local sfx_pe="${3}"
+    local fq_1 fq_2 samp
+
+    validate_var "infile"  "${infile}" || return 1
 
     if [[ "${infile}" == *,* ]]; then
         fq_1="${infile%%,*}"
@@ -92,28 +89,12 @@ function parse_infile() {
         unset fq_2
         samp="$(basename "${fq_1%%"${sfx_se}"}")"
     fi
-}
 
+    validate_var "fq_1" "${fq_1}" || return 1
+    if [[ -n "${fq_2}" ]]; then validate_var "fq_2" "${fq_2}" || return 1; fi
 
-#  Function to debug, validate, and parse input file
-function process_infile() {
-    local infile="${1}"
-    local idx="${2}"
-    local sfx_se="${3}"
-    local sfx_pe="${4}"
-
-    if ${debug}; then debug_var "infile=${infile}"; fi
-    validate_var "infile"  "${infile}"  "${idx}" || return 1
-
-    #  Parse infile into 'fq_1', 'fq_2', and 'samp'
-    parse_infile "${infile}" "${sfx_se}" "${sfx_pe}" || return 1
-
-    if ${debug}; then
-        debug_var \
-            "fq_1=${fq_1}" \
-            "fq_2=${fq_2}" \
-            "samp=${samp}"
-    fi
+    #  Return values
+    echo "${fq_1};${fq_2};${samp}"
 }
 
 
@@ -141,7 +122,7 @@ function run_atria() {
 
 #  Define the help message
 show_help=$(cat << EOM
-\${1}=env_nam     # Mamba environment to activate.
+\${1}=env_nam     # Conda/Mamba environment to activate.
 \${2}=threads     # Number of threads to use.
 \${3}=str_infile  # Semicolon-separated serialized string of FASTQ files.
 \${4}=dir_out     # Directory for FASTQ output files.
@@ -206,7 +187,7 @@ activate_env "${env_nam}" || exit 1
 #  Reconstruct array from serialized string
 validate_var "str_infile" "${str_infile}" || exit 1
 IFS=';' read -r -a arr_infile <<< "${str_infile}"
-# for infile in "${arr_infile[@]}"; do echo "${infile}"; done  # unset infile
+unset IFS
 
 #  Debug output to check number of array elements and array element values
 if ${debug}; then
@@ -225,18 +206,46 @@ if [[ -n "${SLURM_ARRAY_TASK_ID:-}" ]]; then
     #+ array
     infile="${arr_infile[idx]}"
 
-    #  Run subroutine to debug and validate 'infile', and then parse it into
-    #+ 'fq_1', 'fq_2', and 'samp'
-    process_infile "${infile}"  "${idx}" "${sfx_se}" "${sfx_pe}" || exit 1
+    if ${debug}; then debug_var "infile=${infile}"; fi
 
-    #  Run functions to set SLURM and symlinked/better-named log files
-    setup_slurm_logs \
+    #  Run function to validate 'infile', using it to assign values to
+    #+ variables 'fq_1', 'fq_2', and 'samp'
+    IFS=';' read -r fq_1 fq_2 samp < <(
+        process_infile "${infile}" "${sfx_se}" "${sfx_pe}"
+    ) || exit 1
+    unset IFS
+
+    if ${debug}; then
+        debug_var \
+            "fq_1=${fq_1}" \
+            "fq_2=${fq_2}" \
+            "samp=${samp}"
+    fi
+
+    #  Run function to set SLURM and symlinked log files
+    IFS=';' read -r err_ini out_ini err_dsc out_dsc < <(
+        setup_slurm_logs \
         "${id_job}" "${id_tsk}" "${samp}" "${err_out}" "${nam_job}"
+    ) || exit 1
+    unset IFS
 
-    #  Run Atria
-    run_atria \
-        "${threads}" "${fq_1}" "${fq_2}" "${dir_out}" "${err_out}" \
-        "${nam_job}" "${samp}"
+    if ${debug}; then
+        debug_var \
+            "err_ini=${err_ini}" \
+            "out_ini=${out_ini}" \
+            "err_dsc=${err_dsc}" \
+            "out_dsc=${out_dsc}"
+    fi
+
+    #  Run function that calls Atria
+    if ! \
+        run_atria \
+            "${threads}" "${fq_1}" "${fq_2}" "${dir_out}" "${err_out}" \
+            "${nam_job}" "${samp}"
+    then
+        echo "Error: Failed to perform read trimming." >&2
+        exit 1
+    fi
 
     #  Remove the initial SLURM stderr and stdout TXT outfiles
     rm "${err_ini}" "${out_ini}"
@@ -247,13 +256,30 @@ else
         #+ file array
         infile="${arr_infile[idx]}"
 
-        #  Run subroutine to debug and validate 'infile', and then parse it
-        #+ into 'fq_1', 'fq_2', and 'samp'
-        process_infile "${infile}"  "${idx}" "${sfx_se}" "${sfx_pe}" || exit 1
+        if ${debug}; then debug_var "infile=${infile}"; fi
 
-        #  Run Atria
-        run_atria \
-            "${threads}" "${fq_1}" "${fq_2}" "${dir_out}" "${err_out}" \
-            "${nam_job}" "${samp}"
+        #  Run function to validate 'infile', using it to assign values to
+        #+ variables 'fq_1', 'fq_2', and 'samp'
+        IFS=';' read -r fq_1 fq_2 samp < <(
+            process_infile "${infile}" "${sfx_se}" "${sfx_pe}"
+        ) || exit 1
+        unset IFS
+
+        if ${debug}; then
+            debug_var \
+                "fq_1=${fq_1}" \
+                "fq_2=${fq_2}" \
+                "samp=${samp}"
+        fi
+
+        #  Run function that calls Atria
+        if ! \
+            run_atria \
+                "${threads}" "${fq_1}" "${fq_2}" "${dir_out}" "${err_out}" \
+                "${nam_job}" "${samp}"
+        then
+            echo "Error: Failed to perform read trimming." >&2
+            exit 1
+        fi
     done
 fi

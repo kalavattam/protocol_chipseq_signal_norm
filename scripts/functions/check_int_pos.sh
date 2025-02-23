@@ -11,7 +11,7 @@ check_int_pos
 -------------
 
 Description:
-  check_int_pos checks that a value is an integer greater than or equal to
+  'check_int_pos' checks that a value is an integer greater than or equal to
   (gte) 1.
 
 Positional parameters:
@@ -20,14 +20,14 @@ Positional parameters:
                   (optional).
 
 Returns:
-  0 if the check passes, otherwise calls return 1.
+  0 if the check passes, otherwise returns an error message and exit code 1.
 
 Dependencies:
   - Bash or Zsh
 
 Example:
-  Check that the value assigned to the argument --threads is a positive integer
-  greater than or equal to 1:
+  Check that the value assigned to the argument '--threads' is a positive
+  integer gte 1:
   \`\`\`
   ❯ check_int_pos 4 "threads"  # Returns 0
   

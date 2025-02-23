@@ -11,8 +11,8 @@ check_int_nonneg
 ----------------
 
 Description:
-  This function checks that a value is a non-negative integer, i.e., an integer
-  greater than or equal to 0.
+  'check_int_nonneg' checks that a value is a non-negative integer, i.e., an
+  integer greater than or equal (gte) to 0.
 
 Positional parameters:
   1, value (int): The value to check (required).
@@ -26,9 +26,9 @@ Dependencies:
   - Bash or Zsh
 
 Example:
+  Check that the value assigned to the argument '--threads' is a non-negative
+  integer:
   \`\`\`
-  #  Check that the value assigned to the argument --threads is a non-negative
-  #+ integer
   ❯ check_int_nonneg 4 "threads"  # Returns 0
   
   ❯ check_int_nonneg a "threads"  # Returns 1 and the below message

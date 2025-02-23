@@ -1079,11 +1079,17 @@ infiles="$(  ## WARNING: Change search parameters as needed ##
         --fastqs
 )"
 
-#  Set output directories
+#  Set index path
 str_idx="sc_sp_proc"
-pth_idx="${dir_idx}/${aligner}/${str_idx}"
-dir_aln="${dir_pro}/align_${aligner}_${a_type}"
-dir_out="${dir_aln}/flag-${flg}_mapq-${mapq}"
+if [[ ${aligner} == "bwa" ]]; then
+    index="${dir_idx}/${aligner}/${str_idx}.fa"
+else
+    index="${dir_idx}/${aligner}/${str_idx}"
+fi
+
+#  Set output directories
+dir_aln="${dir_pro}/align_fastqs"
+dir_out="${dir_pro}/align_${aligner}_${a_type}_flag-${flg}_mapq-${mapq}"
 
 if ${debug:-false}; then
     echo "####################################"
@@ -1120,9 +1126,11 @@ if ${debug:-false}; then
     echo "#  Locate input files"
     echo "infiles=${infiles}"
     echo ""
-    echo "#  Set output directories"
+    echo "#  Set index path"
     echo "str_idx=${str_idx}"
     echo "pth_idx=${pth_idx}"
+    echo ""
+    echo "#  Set output directories"
     echo "dir_aln=${dir_aln}"
     echo "dir_out=${dir_out}"
     echo ""

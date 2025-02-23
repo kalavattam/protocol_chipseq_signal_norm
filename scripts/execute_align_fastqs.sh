@@ -24,49 +24,59 @@ fi
 #  Set the path to the "functions" directory
 dir_fnc="${dir_scr}/functions"
 
-# shellcheck disable=SC1091
-{
-    source "${dir_fnc}/align_fastqs.sh"
-    source "${dir_fnc}/check_exists_file_dir.sh"
-    source "${dir_fnc}/check_format_time.sh"
-    source "${dir_fnc}/check_int_nonneg.sh"
-    source "${dir_fnc}/check_int_pos.sh"
-    source "${dir_fnc}/check_program_path.sh"
-    source "${dir_fnc}/check_supplied_arg.sh"
-    source "${dir_fnc}/echo_error.sh"
-    source "${dir_fnc}/echo_warning.sh"
-    source "${dir_fnc}/exit_0.sh"
-    source "${dir_fnc}/exit_1.sh"
-    source "${dir_fnc}/handle_env.sh"
-}
+# shellcheck disable=SC1090
+for script in \
+    "align_fastqs.sh" \
+    "check_exists_file_dir.sh" \
+    "check_fastqs.sh" \
+    "check_format_time.sh" \
+    "check_int_nonneg.sh" \
+    "check_int_pos.sh" \
+    "check_program_path.sh" \
+    "check_supplied_arg.sh" \
+    "debug_array_contents.sh" \
+    "echo_error.sh" \
+    "echo_warning.sh" \
+    "exit_0.sh" \
+    "exit_1.sh" \
+    "handle_env.sh" \
+    "reset_max_job.sh" \
+    "set_params_parallel.sh"
+do
+    source "${dir_fnc}/${script}"
+done
+unset script
 
 
 #  Set up paths, values, and parameters for interactive mode
 function set_interactive() {
-    #  Set hardcoded paths, values, etc.
-    ## WARNING: If interactive=true, change values as needed ##
-    dir_bas="${HOME}/repos"
+    #  Set base repository paths
+    dir_bas="${HOME}/repos"  ## WARNING: Change as needed ##
     dir_rep="${dir_bas}/protocol_chipseq_signal_norm"
+    dir_scr="${dir_rep}/scripts"
+
+    #  Define data directories
     dir_dat="${dir_rep}/data"
     dir_idx="${dir_dat}/genomes/concat/index"
-    str_idx="sc_sp_proc"
     dir_pro="${dir_dat}/processed"
-    dir_trm="${dir_pro}/trim_atria"
-    dir_aln="${dir_pro}/align"
-
-    #  Set hardcoded argument assignments, etc.
+    dir_trm="${dir_pro}/trim_fastqs"
+    dir_aln="${dir_pro}/align_fastqs"
+    
+    #  Set hardcoded argument assignments and related variables
     verbose=true
     dry_run=true
     threads=8
-    aligner="bowtie2"
+    aligner=bowtie2
     a_type="global"
     mapq=1
     req_flg=true
-    {
-        flg="$(if ${req_flg}; then echo "2"; else echo "NA"; fi)"
-    }
-    index="${dir_idx}/${str_idx}"
-    if [[ ${aligner} == "bwa" ]]; then index="${index}.fa"; fi
+    flg="$(if ${req_flg}; then echo "2"; else echo "NA"; fi)"
+    str_idx="sc_sp_proc"
+    if [[ ${aligner} != "bwa" ]]; then
+        index="${dir_idx}/${aligner}/${str_idx}"
+    else
+        index="${dir_idx}/${aligner}/${str_idx}.fa"
+    fi
     infiles="$(  ## WARNING: Change search parameters as needed ##
         bash "${dir_scr}/find_files.sh" \
             --dir_fnd "${dir_trm}" \
@@ -74,17 +84,14 @@ function set_interactive() {
             --depth 1 \
             --fastqs
     )"
-    {
-        dir_aln="${dir_aln}_${aligner}_${a_type}"
-    }
-    dir_out="${dir_aln}/flag-${flg}_mapq-${mapq}/init"
-    qname=false  # true
+    dir_out="${dir_aln}/${aligner}_${a_type}_flag-${flg}_mapq-${mapq}/init"
+    qname=false
     sfx_se=".atria.fastq.gz"
     sfx_pe="_R1.atria.fastq.gz"
     err_out="${dir_out}/logs"
     nam_job="align_fastqs"
-    slurm=true  # false
-    max_job=6
+    slurm=false
+    max_job=2
     time="1:00:00"
 }
 
@@ -94,6 +101,7 @@ function set_interactive() {
 env_nam="env_protocol"
 scr_sub="${dir_scr}/submit_align_fastqs.sh"
 scr_fnc="${dir_fnc}/align_fastqs.sh"
+par_job=""
 
 #  Initialize argument variables, assigning default values where applicable
 verbose=false
@@ -138,10 +146,10 @@ Arguments:
   -dr, --dry_run  Perform a dry run without executing commands (optional).
    -t, --threads  Number of threads to use (default: ${threads}).
    -a, --aligner  Alignment program to use ('bowtie2' or 'bwa'; default:
-                  ${aligner}).
+                  '${aligner}').
   -at, --a_type   Alignment type (required if using Bowtie 2, ignored if using
                   BWA: 'local', 'global', or 'end-to-end'; default:
-                  ${a_type}).
+                  '${a_type}').
   -mq, --mapq     MAPQ threshold for filtering BAM outfiles (default: ${mapq}).
                   To perform no filtering, specify 0.
   -rf, --req_flg  Require flag bit 2, signifying that paired-end alignments are
@@ -159,44 +167,47 @@ Arguments:
   -do, --dir_out  Directory to write BAM outfiles.
   -qn, --qname    Retain queryname-sorted intermediate BAM files (optional).
   -ss, --sfx_se   Suffix to strip from single-end sequenced FASTQ files
-                  (default: ${sfx_se}).
+                  (default: '${sfx_se}').
   -sp, --sfx_pe   Suffix to strip from paired-end sequenced FASTQ files
-                  (default: ${sfx_pe}).
+                  (default: '${sfx_pe}').
   -eo, --err_out  The directory to store stderr and stdout TXT outfiles
                   (default: \${dir_out}/err_out).
   -nj, --nam_job  The name of the job, which is used when writing stderr and
-                  stdout TXT files (default: ${nam_job}).
+                  stdout TXT files (default: '${nam_job}').
   -sl, --slurm    Submit jobs to the SLURM scheduler; otherwise, run them in
                   serial (optional).
   -mj, --max_job  The maximum number of jobs to run at one time (required if
                   --slurm is specified, ignored if not; default: ${max_job}).
   -tm, --time     The length of time, in 'h:mm:ss' format, for the SLURM job
                   (required if --slurm is specified, ignored if not; default:
-                  ${time}).
+                  '${time}').
 
 Dependencies:
   - Programs
     + awk
     + Bash or Zsh
+    + GNU Parallel (when '--slurm' is not specified but multiple jobs are)
     + mv
     + rm
     + Samtools
-    + SLURM (if --slurm is specified)
+    + SLURM (when '--slurm' is specified)
   - Functions
     + align_fastqs
     + check_exists_file_dir
+    + check_fastqs
     + check_format_time
     + check_int_nonneg
     + check_int_pos
     + check_program_path
     + check_supplied_arg
+    + debug_array_contents
     + echo_error
     + echo_warning
     + exit_0
     + exit_1
     + handle_env
-    + handle_env_activate
-    + handle_env_deactivate
+    + reset_max_job
+    + set_params_parallel
 
 Notes:
   - When the '--slurm' flag is used, jobs are parallelized via SLURM array
@@ -243,8 +254,14 @@ else
              -v|--verbose) verbose=true;     shift 1 ;;
             -dr|--dry_run) dry_run=true;     shift 1 ;;
              -t|--threads) threads="${2}";   shift 2 ;;
-             -a|--aligner) aligner="${2,,}"; shift 2 ;;
-            -at|--a_type)  a_type="${2,,}";  shift 2 ;;
+             -a|--aligner)
+                aligner="$(echo "${2}" | tr '[:upper:]' '[:lower:]')"
+                shift 2
+                ;;
+            -at|--a_type)
+                a_type="$(echo "${2}" | tr '[:upper:]' '[:lower:]')"
+                shift 2
+                ;;
             -mq|--mapq)    mapq="${2}";      shift 2 ;;
             -rf|--req_flg) req_flg=true;     shift 1 ;;
             -ix|--index)   index="${2}";     shift 2 ;;
@@ -286,8 +303,8 @@ case "${aligner}" in
             local|global|end-to-end) : ;;
             *)
                 echo_error \
-                    "Selection associated with --a_type is not valid:" \
-                    "${a_type}. Selection must be 'local', 'global', or" \
+                    "Selection associated with '--a_type' is not valid:" \
+                    "'${a_type}'. Selection must be 'local', 'global', or" \
                     "'end-to-end'."
                 exit_1
                 ;;
@@ -296,8 +313,8 @@ case "${aligner}" in
     bwa) unset a_type ;;
     *)
         echo_error \
-            "Selection associated with --aligner is not valid: ${aligner}." \
-            "Selection must be 'bowtie2' or 'bwa'."
+            "Selection associated with '--aligner' is not valid: "\
+            "'${aligner}'. Selection must be 'bowtie2' or 'bwa'."
         exit_1
         ;;
 esac
@@ -326,91 +343,69 @@ fi
 
 check_supplied_arg -a "${nam_job}" -n "nam_job"
 
-if ${slurm}; then
-    check_supplied_arg -a "${scr_sub}" -n "scr_sub"
-    check_exists_file_dir "f" "${scr_sub}" "scr_sub"
 
-    check_supplied_arg -a "${scr_fnc}" -n "scr_fnc"
-    check_exists_file_dir "f" "${scr_fnc}" "scr_fnc"
-
-    check_supplied_arg -a "${max_job}" -n "max_job"
-    check_int_pos "${max_job}" "max_job"
-    
-    check_supplied_arg -a "${time}" -n "time"
-    check_format_time "${time}"
-fi
-
-#  Activate environment and check that dependencies are in PATH
+#  Activate environment and check that dependencies are in PATH ---------------
 handle_env "${env_nam}" > /dev/null
 
 case "${aligner}" in
     bowtie2) check_program_path bowtie2 ;;
     bwa)     check_program_path bwa     ;;
 esac
-
+if ! ${slurm} && [[ ${par_job} -gt 1 ]]; then check_program_path parallel; fi
 check_program_path samtools
+if ${slurm}; then check_program_path sbatch; fi
 
 
-#  Parse the --infiles argument -----------------------------------------------
-#+ ...into an array, then validate the infile value assignments
-IFS=';' read -r -a arr_infiles <<< "${infiles}"  # unset arr_infiles
-# for infile in "${arr_infiles[@]}"; do echo "${infile}"; done  # unset infile
+#  Parse and validate FASTQ infiles -------------------------------------------
+IFS=';' read -r -a arr_infile <<< "${infiles}" && unset IFS
 
-#  Check that each infile exists; if not, exit
-for infile in "${arr_infiles[@]}"; do
-    # infile="${arr_infiles[0]}"
-    
-    #  Check that the infile contains a comma
-    if [[ "${infile}" == *,* ]]; then
-        fq_1="${infile%%,*}"
-        fq_2="${infile#*,}"
+#  Ensure at least one FASTQ file was parsed prior to validation
+if [[ ${#arr_infile[@]} -eq 0 ]]; then
+    echo_error \
+        "No FASTQ files found in 'arr_infile'. Check '--infiles' argument."
+    exit_1
+fi
 
-        #  Ensure there is only one comma
-        if [[ "${fq_2}" == *,* ]]; then
-            echo_error \
-                "It appears an error is present in the string output from" \
-                "running find_files.sh in '--fastqs' mode. More than one" \
-                "comma was found in a specific substring: '${infile}'." \
-                "Exiting now."
-            exit_1
-        fi
+check_fastqs "${infiles}" "${sfx_se}" "${sfx_pe}" || exit_1
 
-        #  Validate sample-specific paired-end FASTQ files exist
-        check_exists_file_dir "f" "${fq_1}" "fq_1"
-        check_exists_file_dir "f" "${fq_2}" "fq_2"
 
-        #  Validate presence of file suffix in fq_1 assignment
-        if [[ "${fq_1}" != *"${sfx_pe}" ]]; then
-            echo_error \
-                "Suffix '${sfx_pe}' not found in file name '${fq_1}'. Check" \
-                "--sfx_pe assignment."
-            exit_1
-        fi
-    else
-        fq_1="${infile}"
-        unset fq_2
-        
-        #  Validate sample-specific single-end FASTQ file exists
-        check_exists_file_dir "f" "${fq_1}" "fq_1"
-
-        #  Validate presence of file suffix in fq_1 assignment
-        if [[ "${fq_1}" != *"${sfx_se}" ]]; then
-            echo_error \
-                "Suffix '${sfx_se}' not found in file name '${fq_1}'. Check" \
-                "--sfx_se assignment."
-            exit_1
-        fi
-    fi
-done
-
+#  Parse job execution parameters ---------------------------------------------
 if ${slurm}; then
-    if [[ "${max_job}" -gt "${#arr_infiles[@]}" ]]; then
-        echo_warning \
-            "The maximum number of SLURM jobs to run at a time, ${max_job}," \
-            "is greater than the number of infiles, ${#arr_infiles[@]}." \
-            "Adjusting max_job to ${#arr_infiles[@]}."
-        max_job="${#arr_infiles[@]}"
+    check_supplied_arg -a "${max_job}" -n "max_job"
+    check_int_pos "${max_job}" "max_job"
+    
+    max_job=$(reset_max_job "${max_job}" "${#arr_infile[@]}")
+    
+    check_supplied_arg -a "${time}" -n "time"
+    check_format_time "${time}"
+else
+    read -r threads max_job par_job < <(
+        set_params_parallel "${threads}" "${max_job}" "${par_job}"
+    )
+
+    check_supplied_arg -a "${par_job}" -n "par_job"
+    check_int_pos "${par_job}" "par_job"
+fi
+
+if ${verbose}; then
+    echo "#######################################"
+    echo "## Parsed vector for parallelization ##"
+    echo "#######################################"
+    echo ""
+
+    debug_array_contents "arr_infile"
+    
+    if ${slurm}; then
+        echo "  - Max concurrent jobs (SLURM): ${max_job}"
+    elif [[ ${par_job} -gt 1 ]]; then
+        echo "  - Max concurrent jobs (GNU Parallel): ${par_job}"
+    else
+        echo "  - Jobs running in serial mode: ${par_job}"
     fi
+    
+    echo "  - Threads per job: ${threads}"
+    echo ""
+    echo ""
 fi
 
 
@@ -423,6 +418,7 @@ if ${verbose}; then
     echo "env_nam=${env_nam}"
     echo "scr_sub=${scr_sub}"
     echo "scr_fnc=${scr_fnc}"
+    echo "par_job=${par_job:-#N/A}"
     echo ""
     echo ""
     echo "###################################"
@@ -449,6 +445,13 @@ if ${verbose}; then
     echo "time=${time}"
     echo ""
     echo ""
+    echo "#################################"
+    echo "## Array derived from variable ##"
+    echo "#################################"
+    echo ""
+    echo "arr_infile=( ${arr_infile[*]} )"
+    echo ""
+    echo ""
 fi
 
 # shellcheck disable=SC1083,SC2157
@@ -467,7 +470,7 @@ if ${slurm}; then
         echo "    --time=${time} \\"
         echo "    --error=${err_out}/${nam_job}.%A-%a.stderr.txt \\"
         echo "    --output=${err_out}/${nam_job}.%A-%a.stdout.txt \\"
-        echo "    --array=1-${#arr_infiles[@]}%${max_job} \\"
+        echo "    --array=1-${#arr_infile[@]}%${max_job} \\"
         echo "    ${scr_sub} \\"
         echo "        --scr_fnc ${scr_fnc} \\"
         echo "        --threads ${threads} \\"
@@ -485,14 +488,14 @@ if ${slurm}; then
         echo "        --nam_job ${nam_job}"
         echo ""
         echo ""
-        echo "#########################################"
-        echo "## Contents of SLURM submission script ##"
-        echo "#########################################"
-        echo ""
-        echo "## ${scr_sub} ##"
-        echo ""
-        cat "${scr_sub}"
-        echo ""
+        # echo "#########################################"
+        # echo "## Contents of SLURM submission script ##"
+        # echo "#########################################"
+        # echo ""
+        # echo "## ${scr_sub} ##"
+        # echo ""
+        # cat "${scr_sub}"
+        # echo ""
     fi
 
     if ! ${dry_run}; then
@@ -504,7 +507,7 @@ if ${slurm}; then
             --time=${time} \
             --error=${err_out}/${nam_job}.%A-%a.stderr.txt \
             --output=${err_out}/${nam_job}.%A-%a.stdout.txt \
-            --array=1-${#arr_infiles[@]}%${max_job} \
+            --array=1-${#arr_infile[@]}%${max_job} \
             ${scr_sub} \
                 --scr_fnc ${scr_fnc} \
                 --threads ${threads} \
@@ -522,70 +525,124 @@ if ${slurm}; then
                 --nam_job ${nam_job}
     fi
 else
-    #  If --slurm was not specified, run jobs in serial
-    if ${dry_run} || ${verbose}; then
-        echo "#################################################"
-        echo "## Serial call(s) for alignment and processing ##"
-        echo "#################################################"
-        echo ""
-    fi
+    #  If --slurm was not specified, run jobs in parallel with GNU Parallel
+    if [[ "${par_job}" -gt 1 ]]; then
+        config="${err_out}/${nam_job}.config_parallel.txt"
 
-    for idx in "${!arr_infiles[@]}"; do
-        n_call=$(( idx + 1 ))
-        infile="${arr_infiles[idx]}"
-        
-        if [[ -z "${infile}" ]]; then
-            echo_error \
-                "Failed to retrieve infile for idx=${idx}:" \
-                "\${arr_infiles[idx]}."
+        if [[ -f "${config}" ]]; then rm "${config}"; fi
+        touch "${config}" || {
+            echo_error "Failed to create a GNU Parallel configuration file."
             exit_1
-        fi
+        }
 
-        if [[ "${infile}" == *,* ]]; then
-            fq_1="${infile%%,*}"
-            fq_2="${infile#*,}"
-            samp="$(basename "${fq_1%%"${sfx_pe}"}")"
-        else
-            fq_1="${infile}"
-            unset fq_2
-            samp="$(basename "${fq_1%%"${sfx_se}"}")"
-        fi
+        #  Populate GNU Parallel configuration file
+        for idx in "${!arr_infile[@]}"; do
+            echo \
+                "${env_nam}" \
+                "${scr_fnc}" \
+                "${threads}" \
+                "${aligner}" \
+                "${a_type}" \
+                "${mapq}" \
+                "${index}" \
+                "${arr_infile[idx]}" \
+                "${dir_out}" \
+                "${sfx_se}" \
+                "${sfx_pe}" \
+                "${err_out}" \
+                "${nam_job}" \
+                    >> "${config}"
+        done
 
-        outfile="${dir_out}/${samp}.bam"
+        #  Construct command to be passed to GNU Parallel
+        cmd="bash ${scr_sub}"
+        cmd+=" -en {1}"   # environment name
+        cmd+=" -sf {2}"   # function script
+        cmd+=" -t {3}"    # number of threads
+        cmd+=" -a {4}"    # aligner
+        cmd+=" -at {5}"   # alignment type
+        cmd+=" -mq {6}"   # MAPQ threshold (for filtering BAM files)
+        
+        if ${req_flg}; then 
+            cmd+=" -rf"   # require flag bit 2
+        fi  
+
+        cmd+=" -ix {7}"   # index path
+        cmd+=" -i {8}"    # input FASTQ file
+        cmd+=" -do {9}"   # output BAM directory
+        
+        if ${qname}; then 
+            cmd+=" -qn"   # retain queryname-sorted BAM files
+        fi  
+
+        cmd+=" -ss {10}"  # SE FASTQ file suffix
+        cmd+=" -sp {11}"  # PE FASTQ file suffix
+        cmd+=" -eo {12}"  # stderr/stdout directory
+        cmd+=" -nj {13}"  # job name
 
         if ${dry_run} || ${verbose}; then
-            echo "## Call no. ${n_call} ##"
-            echo "align_fastqs \\"
-            echo "    --threads ${threads} \\"
-            echo "    --aligner ${aligner} \\"
-            echo "    $(if [[ -n ${a_type} ]]; then echo "--a_type ${a_type}"; fi) \\"
-            echo "    $(if [[ ${mapq} -gt 0 ]]; then echo "--mapq ${mapq}"; fi) \\"
-            echo "    $(if ${req_flg}; then echo "--req_flg"; fi) \\"
-            echo "    --index ${index} \\"
-            echo "    --fq_1 ${fq_1} \\"
-            echo "    $(if [[ -n ${fq_2} ]]; then echo "--fq_2 ${fq_2}"; fi) \\"
-            echo "    --outfile ${outfile} \\"
-            echo "    $(if ${qname}; then echo "--qname"; fi) \\"
-            echo "         > ${err_out}/${nam_job}.${samp}.stdout.txt \\"
-            echo "        2> ${err_out}/${nam_job}.${samp}.stderr.txt"
+            echo "#######################################"
+            echo "## Parallel call(s) to trim fastq(s) ##"
+            echo "#######################################"
+            echo ""
+
+            parallel --colsep ' ' --jobs "${par_job}" --dryrun \
+                "${cmd}" \
+                :::: "${config}"
+
+            echo ""
             echo ""
         fi
 
         if ! ${dry_run}; then
-            # shellcheck disable=SC2046,SC2086
-            align_fastqs \
-                --threads ${threads} \
-                --aligner ${aligner} \
-                $(if [[ -n ${a_type} ]]; then echo "--a_type ${a_type}"; fi) \
-                $(if [[ ${mapq} -gt 0 ]]; then echo "--mapq ${mapq}"; fi) \
-                $(if ${req_flg}; then echo "--req_flg"; fi) \
-                --index ${index} \
-                --fq_1 ${fq_1} \
-                $(if [[ -n ${fq_2} ]]; then echo "--fq_2 ${fq_2}"; fi) \
-                --outfile ${outfile} \
-                $(if ${qname}; then echo "--qname"; fi) \
-                     > ${err_out}/${nam_job}.${samp}.stdout.txt \
-                    2> ${err_out}/${nam_job}.${samp}.stderr.txt
+            parallel --colsep ' ' --jobs "${par_job}" \
+                "${cmd}" \
+                :::: "${config}"
         fi
-    done
+    else
+        #  If --slurm was not specified and 'par_job=1', then run jobs in
+        #+ serial
+        if ${dry_run} || ${verbose}; then
+            echo "##################################################"
+            echo "## Serialized job execution via 'submit' script ##"
+            echo "##################################################"
+            echo ""
+            echo "bash \"${scr_sub}\" \\"
+            echo "    -en \"${env_nam}\" \\"
+            echo "    -sf \"${scr_fnc}\" \\"
+            echo "     -t \"${threads}\" \\"
+            echo "     -a \"${aligner}\" \\"
+            echo "    -at \"${a_type}\" \\"
+            echo "    -mq \"${mapq}\" \\"
+            if ${req_flg}; then echo "    -rf \\"; fi
+            echo "    -ix \"${index}\" \\"
+            echo "     -i \"${infiles}\" \\"
+            echo "    -do \"${dir_out}\" \\"
+            if ${qname}; then   echo "    -qn \\"; fi
+            echo "    -ss \"${sfx_se}\" \\"
+            echo "    -sp \"${sfx_pe}\" \\"
+            echo "    -eo \"${err_out}\" \\"
+            echo "    -nj \"${nam_job}\""
+            echo ""
+            echo ""
+        fi
+
+        # shellcheck disable=SC2046
+        bash "${scr_sub}" \
+            -en "${env_nam}" \
+            -sf "${scr_fnc}" \
+             -t "${threads}" \
+             -a "${aligner}" \
+            -at "${a_type}" \
+            -mq "${mapq}" \
+            $(if ${req_flg}; then echo "-rf"; fi) \
+            -ix "${index}" \
+             -i "${infiles}" \
+            -do "${dir_out}" \
+            $(if ${qname}; then echo "-qn"; fi) \
+            -ss "${sfx_se}" \
+            -sp "${sfx_pe}" \
+            -eo "${err_out}" \
+            -nj "${nam_job}"
+    fi
 fi

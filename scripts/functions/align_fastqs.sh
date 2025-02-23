@@ -118,16 +118,22 @@ EOM
     #  Parse keyword parameters
     while [[ "$#" -gt 0 ]]; do
         case "${1}" in
-             -t|--threads) threads="${2}";   shift 2 ;;
-             -a|--aligner) aligner="${2,,}"; shift 2 ;;
-            -at|--a_type)  a_type="${2,,}";  shift 2 ;;
-            -mq|--mapq)    mapq="${2}";      shift 2 ;;
-            -rf|--req_flg) req_flg=true;     shift 1 ;;
-            -ix|--index)   index="${2}";     shift 2 ;;
-            -f1|--fq_1)    fq_1="${2}";      shift 2 ;;
-            -f2|--fq_2)    fq_2="${2}";      shift 2 ;;
-             -o|--outfile) outfile="${2}";   shift 2 ;;
-            -qn|--qname)   qname=true;       shift 1 ;;
+             -t|--threads) threads="${2}"; shift 2 ;;
+             -a|--aligner)
+                aligner="$(echo "${2}" | tr '[:upper:]' '[:lower:]')"
+                shift 2
+                ;;
+            -at|--a_type)
+                a_type="$(echo "${2}" | tr '[:upper:]' '[:lower:]')"
+                shift 2
+                ;;
+            -mq|--mapq)    mapq="${2}";    shift 2 ;;
+            -rf|--req_flg) req_flg=true;   shift 1 ;;
+            -ix|--index)   index="${2}";   shift 2 ;;
+            -f1|--fq_1)    fq_1="${2}";    shift 2 ;;
+            -f2|--fq_2)    fq_2="${2}";    shift 2 ;;
+             -o|--outfile) outfile="${2}"; shift 2 ;;
+            -qn|--qname)   qname=true;     shift 1 ;;
             *)
                 echo "## Unknown parameter passed: ${1} ##" >&2
                 echo "" >&2

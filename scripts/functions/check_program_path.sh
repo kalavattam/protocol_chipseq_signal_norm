@@ -40,8 +40,8 @@ EOM
 
     if ! command -v "${program}" &> /dev/null; then
         echo \
-            "Error: ${program} is not in PATH. Please install ${program} or" \
-            "add it to PATH." >&2
+            "Error: '${program}' is not in PATH. Please install '${program}'" \
+            "and/or add it to PATH." >&2
         return 1
     fi
 }
