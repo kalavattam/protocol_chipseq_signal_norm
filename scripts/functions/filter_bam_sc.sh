@@ -17,7 +17,7 @@ Description:
   Filter and reheader a BAM file for S. cerevisiae chromosomes.
 
 Keyword parameters:
-   -t, --threads  (int): Number of threads to use (default: ${threads}).
+   -t, --threads  (int): Number of threads to use (default: '${threads}').
    -i, --infile   (str): Coordinate-sorted BAM infile.
    -o, --outfile  (str): Filtered BAM outfile.
    -m, --mito    (flag): Retain mitochondrial chromosome (optional).
@@ -43,7 +43,7 @@ EOM
     )
 
     #  Parse keyword parameters
-    if [[ -z "${1}" || "${1}" == "-h" || "${1}" == "--help" ]]; then
+    if [[ -z "${1:-}" || "${1}" == "-h" || "${1}" == "--help" ]]; then
         echo "${show_help}"
         return 0
     fi
@@ -54,9 +54,9 @@ EOM
              -i|--infile)  infile="${2}";  shift 2 ;;
              -o|--outfile) outfile="${2}"; shift 2 ;;
              -m|--mito)    mito=true;      shift 1 ;;
-            -cc|--chk_chr) chk_chr=true;   shift 2 ;;
+            -cc|--chk_chr) chk_chr=true;   shift 1 ;;
             *)
-                echo "## Unknown parameter passed: ${1} ##" >&2
+                echo "## Unknown parameter passed: '${1}' ##" >&2
                 echo "" >&2
                 show_help >&2
                 exit 1
@@ -66,37 +66,37 @@ EOM
 
     #  Validate keyword parameters
     if [[ -z "${threads}" ]]; then
-        echo "Error: --threads is required." >&2
+        echo "Error: '--threads' is required." >&2
         return 1
     fi
 
     if [[ ! "${threads}" =~ ^[1-9][0-9]*$ ]]; then
         echo \
-            "Error: --threads was assigned '${threads}' but must be a" \
+            "Error: '--threads' was assigned '${threads}' but must be a" \
             "positive integer greater than or equal to 1." >&2
         return 1
     fi
 
     if [[ -z "${infile}" ]]; then
-        echo "Error: --infile is a required parameter." >&2
+        echo "Error: '--infile' is a required parameter." >&2
         return 1
     fi
 
     if [[ ! -f "${infile}" ]]; then
         echo \
-            "Error: File associated with --infile does not exist: ${infile}." \
-            >&2
+            "Error: File associated with '--infile' does not exist:" \
+            "${infile}." >&2
         return 1
     fi
 
     if [[ -z "${outfile}" ]]; then
-        echo "Error: --outfile is a required parameter." >&2
+        echo "Error: '--outfile' is a required parameter." >&2
         return 1
     fi
 
     if [[ ! -d "$(dirname "${outfile}")" ]]; then
         echo \
-            "Error: Directory associated with --outfile does not exist:" \
+            "Error: Directory associated with '--outfile' does not exist:" \
             "$(dirname "${outfile}")" >&2
         return 1
     fi
@@ -128,7 +128,7 @@ EOM
             "${infile}" \
             ${chromosomes}
     then
-        echo "Error: Failed to filter ${infile}." >&2
+        echo "Error: Failed to filter '${infile}'." >&2
         return 1
     fi
 
@@ -156,7 +156,7 @@ EOM
 
         samtools index -@ "${threads}" "${outfile}"
     else
-        echo "Error: Failed to reheader ${outfile}." >&2
+        echo "Error: Failed to reheader '${outfile}'." >&2
         return 1
     fi
 

@@ -15,23 +15,25 @@ function debug_var() { printf "%s\n\n" "$@"; }
 
 #  Function to activate user-supplied Conda/Mamba environment
 function activate_env() {
-    local env_nam="${1}"
+    local env_nam="${1}"  # Name of environment to activate
     if [[ "${CONDA_DEFAULT_ENV}" != "${env_nam}" ]]; then
-        eval "$(conda shell.bash hook)"
-        conda activate "${env_nam}" || 
-            {
-                echo "Error: Failed to activate environment '${env_nam}'." >&2
-                return 1
-            }
+        # shellcheck disable=SC1091
+        source "$(conda info --base)/etc/profile.d/conda.sh"
+        if ! \
+            conda activate "${env_nam}"
+        then
+            echo "Error: Failed to activate environment: '${env_nam}'." >&2
+            return 1
+        fi
     fi
 }
 
 
 #  Function to validate that a variable is not empty or unset
 function validate_var() {
-    local var_nam="${1}"
-    local var_val="${2}"
-    local idx="${3:-0}"  # Default to '0' if no index is given
+    local var_nam="${1}"  # Variable name (for error messages)
+    local var_val="${2}"  # Value to check for emptiness/unset state
+    local idx="${3:-0}"   # Optional index (for arrays); defaults to '0'
 
     if [[ -z "${var_val}" ]]; then
         if [[ "${idx}" -ne 0 ]]; then
@@ -46,9 +48,9 @@ function validate_var() {
 }
 
 
-#  Function to source a function script for SLURM submission
+#  Function to safely source a function script required for SLURM submission
 function source_function() {
-    local fil_scr="${1}"
+    local fil_scr="${1}"  # Function script to source
 
     if [[ ! -f "${fil_scr}" ]]; then
         echo "Error: Function script not found: '${fil_scr}'." >&2
@@ -56,7 +58,9 @@ function source_function() {
     fi
 
     # shellcheck disable=SC1090
-    if ! source "${fil_scr}"; then
+    if ! \
+        source "${fil_scr}"
+    then
         echo "Error: Failed to source function: '${fil_scr}'." >&2
         return 1
     fi
@@ -64,13 +68,16 @@ function source_function() {
 
 
 #  Function to set up SLURM log file paths and create symlinked log files
-function setup_slurm_logs() {
-    local id_job="${1}"
-    local id_tsk="${2}"
-    local samp="${3}"
-    local err_out="${4}"
-    local nam_job="${5}"
-    local err_ini out_ini err_dsc out_dsc
+function set_logs_slurm() {
+    local id_job="${1}"   # SLURM job ID
+    local id_tsk="${2}"   # SLURM task ID within the job array
+    local samp="${3}"     # Sample name associated with log files
+    local err_out="${4}"  # Directory for stderr and stdout log files
+    local nam_job="${5}"  # Name of the job (used in log file naming)
+    local err_ini  # SLURM initial stderr log 
+    local out_ini  # SLURM initial stdout log 
+    local err_dsc  # Symlinked stderr log with descriptive name
+    local out_dsc  # Symlinked stdout log with descriptive name
 
     #  Set log paths
     err_ini="${err_out}/${nam_job}.${id_job}-${id_tsk}.stderr.txt"
@@ -90,19 +97,23 @@ function setup_slurm_logs() {
 #  Function to parse 'infile' and 'scr_fnc' into 'samp' (sample name),
 #+ 'nam_fnc' (name of function to run), and 'outfile'
 function process_infile_function() {
-    local infile="${1}"
-    local scr_fnc="${2}"
-    local dir_out="${3}"
-    local samp nam_fnc outfile
+    local infile="${1}"   # Input BAM file
+    local scr_fnc="${2}"  # Function script
+    local dir_out="${3}"  # Directory for output BAM files
+    local samp     # Sample name derived from infile
+    local nam_fnc  # Function name derived from 'scr_fnc'
+    local outfile  # Output BAM file
 
+    #  Validate input arguments
     validate_var "infile"   "${infile}"  || return 1
     validate_var "scr_fnc"  "${scr_fnc}" || return 1
+    validate_var "dir_out"  "${dir_out}" || return 1
 
-    #  Derive sample and function names from argument variable assignments
+    #  Extract sample and function names from input values
     samp="$(basename "${infile}" ".bam")"
     nam_fnc="$(basename "${scr_fnc}" ".sh")"
 
-    #  Perform pattern matching to assign an outfile name
+    #  Assign outfile name based on function type: 'sc' or 'sp'
     if [[ ${nam_fnc} =~ "sc" ]]; then
         outfile="${dir_out}/${samp}.sc.bam"
     elif [[ ${nam_fnc} =~ "sp" ]]; then
@@ -119,15 +130,25 @@ function process_infile_function() {
 
 #  Function to execute filtering using the specified function
 function run_filtering() {
-    local nam_fnc="${1}"
-    local threads="${2}"
-    local infile="${3}"
-    local outfile="${4}"
-    local mito="${5}"
-    local tg="${6}"
-    local mtr="${7}"
-    local chk_chr="${8}"
+    local nam_fnc="${1}"   # Name of function to run
+    local threads="${2}"   # Number of threads
+    local infile="${3}"    # Input BAM file
+    local outfile="${4}"   # Output BAM file
+    local mito="${5}"      # Retain mito. chr. (true/false)
+    local tg="${6}"        # Retain SP_II_TG chr. (true/false)
+    local mtr="${7}"       # Retain SP_MTR chr. (true/false)
+    local chk_chr="${8}"   # Check chr. in output (true/false)
+    local err_out="${9}"   # Directory for stderr and stdout logs
+    local nam_job="${10}"  # Job name for log file naming
+    local samp="${11}"     # Sample name for log file naming
+    local log_out  # 'nam_fnc' stdout log file
+    local log_err  # 'nam_fnc' stderr log file
 
+    #  Define paths for log output files
+    log_out="${err_out}/${nam_job}.${samp}.stdout.txt"
+    log_err="${err_out}/${nam_job}.${samp}.stderr.txt"
+
+    #  Run the filtering function and capture logs
     # shellcheck disable=SC2046
     "${nam_fnc}" \
         --threads "${threads}" \
@@ -136,7 +157,9 @@ function run_filtering() {
         $(if ${mito}; then echo "--mito"; fi) \
         $(if ${tg}; then echo "--tg"; fi) \
         $(if ${mtr}; then echo "--mtr"; fi) \
-        $(if ${chk_chr}; then echo "--chk_chr"; fi)
+        $(if ${chk_chr}; then echo "--chk_chr"; fi) \
+             > "${log_out}" \
+            2> "${log_err}"
 }
 
 
@@ -156,6 +179,7 @@ chk_chr=false
 err_out=""
 nam_job=""
 
+#  Define the help message
 show_help=$(cat << EOM
 $(basename "${0}") takes the following keyword arguments:
   -en, --env_nam     Conda/Mamba environment to activate.
@@ -177,11 +201,13 @@ All arguments are required with the following notes and exceptions:
 EOM
 )
 
+#  Display help message if no arguments, or help option, is given
 if [[ -z "${1}" || "${1}" == "-h" || "${1}" == "--help" ]]; then
     echo "${show_help}"
     exit 0
 fi
 
+#  Parse keyword arguments
 while [[ "$#" -gt 0 ]]; do
     case "${1}" in
         -en|--env_nam)    env_nam="${2}";    shift 2 ;;
@@ -235,14 +261,25 @@ if ${debug}; then
 fi
 
 #  Source function to submit to SLURM
-source_function "${scr_fnc}" || exit 1
+if [[ -z "${scr_fnc}" ]]; then
+    echo "Error: '--scr_fnc' is required but not set." >&2
+    exit 1
+else
+    source_function "${scr_fnc}" || exit 1
+fi
 
 #  Determine and run mode: SLURM or GNU Parallel/serial
 if [[ -n "${SLURM_ARRAY_TASK_ID:-}" ]]; then
     #  Mode: SLURM
     id_job="${SLURM_ARRAY_JOB_ID}"
     id_tsk="${SLURM_ARRAY_TASK_ID}"
-    idx=$(( id_tsk - 1 ))
+
+    if [[ "${id_tsk}" -lt 1 ]]; then
+        echo "Error: SLURM task ID is invalid: ${id_tsk}" >&2
+        exit 1
+    else
+        idx=$(( id_tsk - 1 ))
+    fi
 
     #  Retrieve the input file by indexing into the reconstructed input file
     #+ array
@@ -266,7 +303,7 @@ if [[ -n "${SLURM_ARRAY_TASK_ID:-}" ]]; then
 
     #  Run function to set SLURM and symlinked log files
     IFS=';' read -r err_ini out_ini err_dsc out_dsc < <(
-        setup_slurm_logs \
+        set_logs_slurm \
         "${id_job}" "${id_tsk}" "${samp}" "${err_out}" "${nam_job}"
     ) || exit 1
     unset IFS
@@ -279,10 +316,11 @@ if [[ -n "${SLURM_ARRAY_TASK_ID:-}" ]]; then
             "out_dsc=${out_dsc}"
     fi
 
+    #  Perform filtering
     if ! \
         run_filtering \
             "${nam_fnc}" "${threads}" "${infile}" "${outfile}" "${mito}" \
-            "${tg}" "${mtr}" "${chk_chr}"
+            "${tg}" "${mtr}" "${chk_chr}" "${err_out}" "${nam_job}" "${samp}"
     then
         echo "Error: Failed to filter BAM file: '${infile}'." >&2
         exit 1
@@ -313,10 +351,12 @@ else
                 "outfile=${outfile}"
         fi
 
+        #  Perform filtering
         if ! \
             run_filtering \
                 "${nam_fnc}" "${threads}" "${infile}" "${outfile}" "${mito}" \
-                "${tg}" "${mtr}" "${chk_chr}"
+                "${tg}" "${mtr}" "${chk_chr}" "${err_out}" "${nam_job}" \
+                "${samp}"
         then
             echo "Error: Failed to filter BAM file: '${infile}'." >&2
             exit 1

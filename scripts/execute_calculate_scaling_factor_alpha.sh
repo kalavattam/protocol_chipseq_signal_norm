@@ -13,7 +13,7 @@ if ! ${interactive}; then set -euo pipefail; fi
 
 #  Set the path to the "scripts" directory
 if ${interactive}; then
-    ## WARNING: If interactive=true, change path as needed ##
+    ## WARNING: If 'interactive=true', change path as needed ##
     dir_scr="${HOME}/repos/protocol_chipseq_signal_norm/scripts"
 else
     dir_scr="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -333,6 +333,7 @@ if ${verbose}; then
     echo ""
 fi
 
+#TODO: Not needed, right?
 ser_ip=$(echo "${arr_ip[*]}" | tr ' ' ',')
 ser_in=$(echo "${arr_in[*]}" | tr ' ' ',')
 
@@ -413,7 +414,6 @@ if ${slurm}; then
         # echo ""
         # cat "${scr_sub}"
         # echo ""
-        # echo ""
     fi
 
     if ! ${dry_run}; then        
@@ -464,7 +464,6 @@ else
                 "${dir_scr}" \
                     >> "${config}"
         done
-        # cat "${config}"
 
         cmd="bash \"${scr_sub}\" -t {1} -sp {2} -sn {3} -tm {4} -eq {5} -fo {6} -r {7} -eo {8} -nj {9} -en {10} -ds {11}"
 
@@ -489,7 +488,6 @@ else
         fi
     else
         #  Serial execution
-        pth_std="${err_out}/${nam_job}"
         if ${dry_run} || ${verbose}; then
             echo "######################"
             echo "## Serial execution ##"
@@ -507,8 +505,8 @@ else
             echo "    -nj ${nam_job} \\"
             echo "    -en ${env_nam} \\"
             echo "    -ds ${dir_scr} \\"
-            echo "         > ${pth_std}.stdout.txt \\"
-            echo "        2> ${pth_std}.stderr.txt"
+            echo "         > ${err_out}/${nam_job}.stdout.txt \\"
+            echo "        2> ${err_out}/${nam_job}.stderr.txt"
             echo ""
             echo ""
         fi
@@ -526,8 +524,8 @@ else
                 -nj "${nam_job}" \
                 -en "${env_nam}" \
                 -ds "${dir_scr}" \
-                     > "${pth_std}.stdout.txt" \
-                    2> "${pth_std}.stderr.txt"
+                     > "${err_out}/${nam_job}.stdout.txt" \
+                    2> "${err_out}/${nam_job}.stderr.txt"
         fi
     fi
 fi

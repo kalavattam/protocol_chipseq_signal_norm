@@ -15,23 +15,25 @@ function debug_var() { printf "%s\n\n" "$@"; }
 
 #  Function to activate user-supplied Conda/Mamba environment
 function activate_env() {
-    local env_nam="${1}"
+    local env_nam="${1}"  # Name of environment to activate
     if [[ "${CONDA_DEFAULT_ENV}" != "${env_nam}" ]]; then
-        eval "$(conda shell.bash hook)"
-        conda activate "${env_nam}" || 
-            {
-                echo "Error: Failed to activate environment '${env_nam}'." >&2
-                return 1
-            }
+        # shellcheck disable=SC1091
+        source "$(conda info --base)/etc/profile.d/conda.sh"
+        if ! \
+            conda activate "${env_nam}"
+        then
+            echo "Error: Failed to activate environment: '${env_nam}'." >&2
+            return 1
+        fi
     fi
 }
 
 
 #  Function to validate that a variable is not empty or unset
 function validate_var() {
-    local var_nam="${1}"
-    local var_val="${2}"
-    local idx="${3:-0}"  # Default to '0' if no index is given
+    local var_nam="${1}"  # Variable name (for error messages)
+    local var_val="${2}"  # Value to check for emptiness/unset state
+    local idx="${3:-0}"   # Optional index (for arrays); defaults to '0'
 
     if [[ -z "${var_val}" ]]; then
         if [[ "${idx}" -ne 0 ]]; then
@@ -46,9 +48,9 @@ function validate_var() {
 }
 
 
-#  Function to source a function script for SLURM submission
+#  Function to safely source a function script required for SLURM submission
 function source_function() {
-    local fil_scr="${1}"
+    local fil_scr="${1}"  # Function script to source
 
     if [[ ! -f "${fil_scr}" ]]; then
         echo "Error: Function script not found: '${fil_scr}'." >&2
@@ -56,7 +58,9 @@ function source_function() {
     fi
 
     # shellcheck disable=SC1090
-    if ! source "${fil_scr}"; then
+    if ! \
+        source "${fil_scr}"
+    then
         echo "Error: Failed to source function: '${fil_scr}'." >&2
         return 1
     fi
@@ -64,13 +68,16 @@ function source_function() {
 
 
 #  Function to set up SLURM log file paths and create symlinked log files
-function setup_slurm_logs() {
-    local id_job="${1}"
-    local id_tsk="${2}"
-    local samp="${3}"
-    local err_out="${4}"
-    local nam_job="${5}"
-    local err_ini out_ini err_dsc out_dsc
+function set_logs_slurm() {
+    local id_job="${1}"   # SLURM job ID
+    local id_tsk="${2}"   # SLURM task ID within the job array
+    local samp="${3}"     # Sample name associated with log files
+    local err_out="${4}"  # Directory for stderr and stdout log files
+    local nam_job="${5}"  # Name of the job (used in log file naming)
+    local err_ini  # SLURM initial stderr log 
+    local out_ini  # SLURM initial stdout log 
+    local err_dsc  # Symlinked stderr log with descriptive name
+    local out_dsc  # Symlinked stdout log with descriptive name
 
     #  Set log paths
     err_ini="${err_out}/${nam_job}.${id_job}-${id_tsk}.stderr.txt"
@@ -87,31 +94,107 @@ function setup_slurm_logs() {
 }
 
 
-#  Function to debug, validate, and parse 'infile' to output variable
-#+ assignments: 'fq_1', 'fq_2', 'samp' (sample name), and 'outfile'
+#  Function to validate FASTQ input file(s), ensuring their existence and
+#+ correct format for either SE or PE files
+function validate_infile() {
+    local infile="${1}"  # Input FASTQ file(s)
+    local sfx_se="${2}"  # Expected suffix for SE FASTQ files
+    local sfx_pe="${3}"  # Expected suffix for PE FASTQ files
+
+    #  Split infile by comma
+    IFS=',' read -r -a parts <<< "${infile}"
+    unset IFS
+
+    #  Reject cases where more than two fields are present
+    if [[ "${#parts[@]}" -gt 2 ]]; then
+        echo \
+            "Error: Too many comma-separated values in input file path:" \
+            "'${infile}'." >&2
+        return 1
+    fi
+
+    #  If PE (two parts), ensure both files exist and match suffix
+    if [[ "${#parts[@]}" -eq 2 ]]; then
+        if [[ ! -f "${parts[0]}" || ! -f "${parts[1]}" ]]; then
+            echo \
+                "Error: One or both paired-end FASTQ files do not exist:" \
+                "'${infile}'." >&2
+            return 1
+        fi
+
+        if [[
+               ! "${parts[0]}" =~ ${sfx_pe}$ \
+            || ! "${parts[1]}" =~ ${sfx_pe}$
+        ]]; then
+            echo \
+                "Error: PE input files do not match expected suffix:" \
+                "'${sfx_pe}'." >&2
+            return 1
+        fi
+    fi
+
+    #  If SE (one part), ensure file exists and matches suffix
+    if [[ "${#parts[@]}" -eq 1 ]]; then
+        if [[ ! -f "${parts[0]}" ]]; then
+            echo \
+                "Error: Single-end FASTQ file does not exist:" \
+                "'${parts[0]}'." >&2
+            return 1
+        fi
+
+        if [[ ! "${parts[0]}" =~ ${sfx_se}$ ]]; then
+            echo \
+                "Error: SE input file does not match expected suffix:" \
+                "'${sfx_se}'." >&2
+            return 1
+        fi
+    fi
+
+    #  If all checks are passed, return success
+    return 0
+}
+
+
+#  Function to debug, validate, and parse 'infile' into 'fq_1', 'fq_2', 'samp'
+#+ (sample name), and 'outfile'
 function process_infile() {
-    local infile="${1}"
-    local sfx_se="${2}"
-    local sfx_pe="${3}"
-    local dir_out="${4}"
-    local fq_1 fq_2 samp outfile
+    local infile="${1}"   # Input FASTQ file(s)
+    local sfx_se="${2}"   # Suffix for SE FASTQ files
+    local sfx_pe="${3}"   # Suffix for PE FASTQ files
+    local dir_out="${4}"  # Directory for output files
+    local fq_1     # FASTQ file #1 (SE or PE read 1)
+    local fq_2     # FASTQ file #2 (PE read 2; '#N/A' if SE)
+    local samp     # Sample name derived from FASTQ filename
+    local outfile  # Output file
 
-    validate_var "infile"  "${infile}" || return 1
+    #  Validate input arguments
+    validate_var "infile"   "${infile}"  || return 1
+    validate_var "sfx_se"   "${sfx_se}"  || return 1
+    validate_var "sfx_pe"   "${sfx_pe}"  || return 1
+    validate_var "dir_out"  "${dir_out}" || return 1
 
+    #  Validate infile format, etc.
+    validate_infile "${infile}" "${sfx_se}" "${sfx_pe}" || return 1
+
+    #  Parse input FASTQ file(s) to assign 'fq_1', 'fq_2', and 'samp'
     if [[ "${infile}" == *,* ]]; then
         fq_1="${infile%%,*}"
         fq_2="${infile#*,}"
         samp="$(basename "${fq_1%%"${sfx_pe}"}")"
     else
         fq_1="${infile}"
-        unset fq_2
+        fq_2="#N/A"
         samp="$(basename "${fq_1%%"${sfx_se}"}")"
     fi
 
+    #  Validate parsed FASTQ file paths
     validate_var "fq_1" "${fq_1}" || return 1
-    if [[ -n "${fq_2}" ]]; then validate_var "fq_2" "${fq_2}" || return 1; fi
+    
+    if [[ "${fq_2}" != "#N/A" ]]; then
+        validate_var "fq_2" "${fq_2}" || return 1
+    fi
 
-    #  Assign the outfile
+    #  Assign outfile
     outfile="${dir_out}/${samp}.bam"
 
     #  Return values
@@ -121,33 +204,56 @@ function process_infile() {
 
 #  Function to execute alignment using the specified function 'align_fastqs'
 function run_alignment() {
-    local scr_fnc="${1}"
-    local threads="${2}"
-    local aligner="${3}"
-    local a_type="${4}"
-    local mapq="${5}"
-    local req_flg="${6}"
-    local index="${7}"
-    local fq_1="${8}"
-    local fq_2="${9}"
-    local outfile="${10}"
-    local qname="${11}"
-    local nam_fnc
+    local scr_fnc="${1}"   # Script containing the function to execute
+    local threads="${2}"   # Number of threads
+    local aligner="${3}"   # Aligner program: 'bowtie2' or 'bwa'
+    local a_type="${4}"    # Alignment type: 'local', 'global', '#N/A'
+    local mapq="${5}"      # MAPQ threshold
+    local req_flg="${6}"   # Flag: Require flag bit 2 (properly paired reads)
+    local index="${7}"     # Index path
+    local fq_1="${8}"      # First FASTQ file
+    local fq_2="${9}"      # Second FASTQ file (optional)
+    local outfile="${10}"  # Output BAM file
+    local qname="${11}"    # Flag: Retain queryname-sorted BAM
+    local err_out="${12}"  # Directory for logging stderr/stdout
+    local nam_job="${13}"  # Job name for log file naming
+    local samp="${14}"     # Sample name for log file naming
+    local nam_fnc  # Name of function to execute (derived from 'scr_fnc')
+    local log_out  # 'nam_fnc' stdout log file
+    local log_err  # 'nam_fnc' stderr log file
 
+    #  Extract function name from 'scr_fnc', and define paths for log output
+    #+ files
     nam_fnc="$(basename "${scr_fnc}" .sh)"
-    
+    log_out="${err_out}/${nam_job}.${samp}.stdout.txt"
+    log_err="${err_out}/${nam_job}.${samp}.stderr.txt"
+
+    #  Run alignment function with specified parameters
     # shellcheck disable=SC2046
-    "${nam_fnc}" \
-        --threads "${threads}" \
-        --aligner "${aligner}" \
-        $(if [[ -n "${a_type}" ]]; then echo "--a_type ${a_type}"; fi) \
-        $(if [[ "${mapq}" -gt 0 ]]; then echo "--mapq ${mapq}"; fi) \
-        $(if ${req_flg:-false}; then echo "--req_flg"; fi) \
-        --index "${index}" \
-        --fq_1 "${fq_1}" \
-        $(if [[ -n "${fq_2}" ]]; then echo "--fq_2 ${fq_2}"; fi) \
-        --outfile "${outfile}" \
-        $(if ${qname:-false}; then echo "--qname"; fi)
+    if ! \
+        "${nam_fnc}" \
+            --threads "${threads}" \
+            --aligner "${aligner}" \
+            --a_type "${a_type}" \
+            $(if [[ "${mapq}" -gt 0 ]]; then echo "--mapq ${mapq}"; fi) \
+            $(if ${req_flg:-false}; then echo "--req_flg"; fi) \
+            --index "${index}" \
+            --fq_1 "${fq_1}" \
+            $(
+                if [[ "${fq_2}" != "#N/A" ]]; then
+                    echo "--fq_2 ${fq_2}"
+                fi
+            ) \
+            --outfile "${outfile}" \
+            $(if ${qname:-false}; then echo "--qname"; fi) \
+                 > "${log_out}" \
+                2> "${log_err}"
+    then
+        echo \
+            "Error: Alignment failed for sample '${samp}'. See log:" \
+            "'${log_err}'" >&2
+        return 1
+    fi
 }
 
 
@@ -195,14 +301,12 @@ All arguments are required with the following notes and exceptions:
   - '--threads' defaults to 'threads=${threads}' if not specified.
   - '--aligner' defaults to 'aligner=${aligner}' if not specified.
   - '--a_type' defaults to 'a_type=${a_type}' if not specified.
-  - '--a_type' is only required if 'aligner=bowtie2'; if 'aligner=bwa', then
-    the assignment is ignored.
   - '--req_flg' and '--qname' are optional.
   - '--nam_job' defaults to 'nam_job=${nam_job}' if not specified.
 EOM
 )
 
-#  Display help message if no arguments or help option is given
+#  Display help message if no arguments, or help option, is given
 if [[ -z "${1}" || "${1}" == "-h" || "${1}" == "--help" ]]; then
     echo "${show_help}"
     exit 0
@@ -276,14 +380,25 @@ if ${debug}; then
 fi
 
 #  Source function to submit to SLURM
-source_function "${scr_fnc}" || exit 1
+if [[ -z "${scr_fnc}" ]]; then
+    echo "Error: '--scr_fnc' is required but not set." >&2
+    exit 1
+else
+    source_function "${scr_fnc}" || exit 1
+fi
 
 #  Determine and run mode: SLURM or GNU Parallel/serial
 if [[ -n "${SLURM_ARRAY_TASK_ID:-}" ]]; then
     #  Mode: SLURM
     id_job="${SLURM_ARRAY_JOB_ID}"
     id_tsk="${SLURM_ARRAY_TASK_ID}"
-    idx=$(( id_tsk - 1 ))
+
+    if [[ "${id_tsk}" -lt 1 ]]; then
+        echo "Error: SLURM task ID is invalid: ${id_tsk}" >&2
+        exit 1
+    else
+        idx=$(( id_tsk - 1 ))
+    fi
 
     #  Retrieve the input file by indexing into the reconstructed input file
     #+ array
@@ -291,8 +406,8 @@ if [[ -n "${SLURM_ARRAY_TASK_ID:-}" ]]; then
 
     if ${debug}; then debug_var "infile=${infile}"; fi
 
-    #  Run function to validate 'infile', using it to assign values to
-    #+ variables 'fq_1', 'fq_2', 'samp', and 'outfile'
+    #  Run function to debug and validate 'infile', using it to assign values
+    #+ to variables 'fq_1', 'fq_2', 'samp', and 'outfile'
     IFS=';' read -r fq_1 fq_2 samp outfile < <(
         process_infile "${infile}" "${sfx_se}" "${sfx_pe}" "${dir_out}"
     ) || exit 1
@@ -308,7 +423,7 @@ if [[ -n "${SLURM_ARRAY_TASK_ID:-}" ]]; then
 
     #  Run function to set SLURM and symlinked log files
     IFS=';' read -r err_ini out_ini err_dsc out_dsc < <(
-        setup_slurm_logs \
+        set_logs_slurm \
         "${id_job}" "${id_tsk}" "${samp}" "${err_out}" "${nam_job}"
     ) || exit 1
     unset IFS
@@ -325,7 +440,8 @@ if [[ -n "${SLURM_ARRAY_TASK_ID:-}" ]]; then
     if ! \
         run_alignment \
             "${scr_fnc}" "${threads}" "${aligner}" "${a_type}" "${mapq}" \
-            "${req_flg}" "${index}" "${fq_1}" "${fq_2}" "${outfile}" "${qname}"
+            "${req_flg}" "${index}" "${fq_1}" "${fq_2}" "${outfile}" \
+            "${qname}" "${err_out}" "${nam_job}" "${samp}"
     then
         echo "Error: Failed to perform alignment, etc." >&2
         exit 1
@@ -361,7 +477,8 @@ else
         if ! \
             run_alignment \
                 "${scr_fnc}" "${threads}" "${aligner}" "${a_type}" "${mapq}" \
-                "${req_flg}" "${index}" "${fq_1}" "${fq_2}" "${outfile}" "${qname}"
+                "${req_flg}" "${index}" "${fq_1}" "${fq_2}" "${outfile}" \
+                "${qname}" "${err_out}" "${nam_job}" "${samp}"
         then
             echo "Error: Failed to perform alignment, etc." >&2
             exit 1

@@ -13,7 +13,7 @@ if ! ${interactive}; then set -euo pipefail; fi
 
 #  Set the path to the "scripts" directory
 if ${interactive}; then
-    ## WARNING: If interactive=true, change path as needed ##
+    ## WARNING: If 'interactive=true', change path as needed ##
     dir_scr="${HOME}/repos/protocol_chipseq_signal_norm/scripts"
 else
     dir_scr="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -26,22 +26,21 @@ dir_fnc="${dir_scr}/functions"
 
 # shellcheck disable=SC1090
 for script in \
-    "align_fastqs.sh" \
-    "check_exists_file_dir.sh" \
-    "check_fastqs.sh" \
-    "check_format_time.sh" \
-    "check_int_nonneg.sh" \
-    "check_int_pos.sh" \
-    "check_program_path.sh" \
-    "check_supplied_arg.sh" \
-    "debug_array_contents.sh" \
-    "echo_error.sh" \
-    "echo_warning.sh" \
-    "exit_0.sh" \
-    "exit_1.sh" \
-    "handle_env.sh" \
-    "reset_max_job.sh" \
-    "set_params_parallel.sh"
+    align_fastqs.sh \
+    check_exists_file_dir.sh \
+    check_fastqs.sh \
+    check_format_time.sh \
+    check_int_nonneg.sh \
+    check_int_pos.sh \
+    check_program_path.sh \
+    check_supplied_arg.sh \
+    echo_error.sh \
+    echo_warning.sh \
+    exit_0.sh \
+    exit_1.sh \
+    handle_env.sh \
+    reset_max_job.sh \
+    set_params_parallel.sh
 do
     source "${dir_fnc}/${script}"
 done
@@ -53,7 +52,6 @@ function set_interactive() {
     #  Set base repository paths
     dir_bas="${HOME}/repos"  ## WARNING: Change as needed ##
     dir_rep="${dir_bas}/protocol_chipseq_signal_norm"
-    dir_scr="${dir_rep}/scripts"
 
     #  Define data directories
     dir_dat="${dir_rep}/data"
@@ -84,7 +82,8 @@ function set_interactive() {
             --depth 1 \
             --fastqs
     )"
-    dir_out="${dir_aln}/${aligner}_${a_type}_flag-${flg}_mapq-${mapq}/init"
+    str_det="${aligner}_${a_type}_flag-${flg}_mapq-${mapq}"
+    dir_out="${dir_aln}/${str_det}/init"
     qname=false
     sfx_se=".atria.fastq.gz"
     sfx_pe="_R1.atria.fastq.gz"
@@ -127,18 +126,19 @@ time="1:00:00"
 show_help=$(cat << EOM
 Usage:
   execute_align_fastqs.sh
-    [--verbose] [--dry_run] --threads <int> --aligner <str> --a_type <str>
+    [--verbose] [--dry_run] --threads <int> --aligner <str> [--a_type <str>]
     --mapq <int> [--req_flg] --index <str> --infiles <str> --dir_out <str>
     [--qname] --sfx_se <str> --sfx_pe <str> --err_out <str> --nam_job <str>
     [--slurm] [--max_job <int>] [--time <str>]
 
 Description:
-  execute_align_fastqs.sh aligns single- or paired-end FASTQ files using Bowtie
-  2 or BWA, followed by processing steps with Samtools, including filtering,
-  sorting, mate fixing (for paired-end reads), duplicate marking, and indexing.
-  The script supports both parallel execution via SLURM or serial execution.
-  The '--qname' flag optionally retains an intermediate queryname-sorted BAM
-  file.
+  The driver script 'execute_align_fastqs.sh' aligns single- or paired-end
+  FASTQ files using Bowtie 2 or BWA, followed by processing steps with
+  Samtools, including filtering, sorting, mate fixing (for paired-end reads),
+  duplicate marking, and indexing.
+
+  The script supports both parallel execution via SLURM ('--slurm') or GNU
+  Parallel, or serial execution. 
 
 Arguments:
    -h, --help     Display this help message and exit (0).
@@ -150,16 +150,15 @@ Arguments:
   -at, --a_type   Alignment type (required if using Bowtie 2, ignored if using
                   BWA: 'local', 'global', or 'end-to-end'; default:
                   '${a_type}').
-  -mq, --mapq     MAPQ threshold for filtering BAM outfiles (default: ${mapq}).
+  -mq, --mapq     MAPQ threshold for filtering BAM outfiles (default: '${mapq}').
                   To perform no filtering, specify 0.
   -rf, --req_flg  Require flag bit 2, signifying that paired-end alignments are
                   properly paired, for filtering BAM outfiles (optional;
                   ignored if working with single-end sequenced reads).
   -ix, --index    Path to the directory containing the aligner index. If using
                   Bowtie 2, the path should end with the index stem:
-                  "\${HOME}/path/stem"; if using BWA, the path should end with
-                  the stem and a FASTA file extension (.fa):
-                  "\${HOME}/path/stem.fa".
+                  "\${HOME}/path/stem"; if using BWA, the stem should end with
+                  a FASTA file extension, e.g., "\${HOME}/path/stem.fa".
    -i, --infiles  Semicolon-separated string vector of FASTQ infiles. Within
                   the semicolon delimiters, sample-specific paired-end files
                   must be together separated by commas, e.g.,
@@ -177,50 +176,35 @@ Arguments:
   -sl, --slurm    Submit jobs to the SLURM scheduler; otherwise, run them in
                   serial (optional).
   -mj, --max_job  The maximum number of jobs to run at one time (required if
-                  --slurm is specified, ignored if not; default: ${max_job}).
+                  --slurm is specified, ignored if not; default: '${max_job}').
   -tm, --time     The length of time, in 'h:mm:ss' format, for the SLURM job
                   (required if --slurm is specified, ignored if not; default:
                   '${time}').
 
 Dependencies:
-  - Programs
-    + awk
-    + Bash or Zsh
-    + GNU Parallel (when '--slurm' is not specified but multiple jobs are)
-    + mv
-    + rm
-    + Samtools
-    + SLURM (when '--slurm' is specified)
-  - Functions
-    + align_fastqs
-    + check_exists_file_dir
-    + check_fastqs
-    + check_format_time
-    + check_int_nonneg
-    + check_int_pos
-    + check_program_path
-    + check_supplied_arg
-    + debug_array_contents
-    + echo_error
-    + echo_warning
-    + exit_0
-    + exit_1
-    + handle_env
-    + reset_max_job
-    + set_params_parallel
+  - AWK
+  - Bash or Zsh
+  - GNU Parallel (when '--slurm' is not specified but multiple jobs are)
+  - mv
+  - rm
+  - Samtools
+  - SLURM (when '--slurm' is specified)
 
 Notes:
   - When the '--slurm' flag is used, jobs are parallelized via SLURM array
-    tasks; otherwise, jobs run serially.
-  - Warning: Running alignment and post-alignment processing serially with many
-    files is not recommended, as it can be extremely time-consuming.
+    tasks; otherwise... #TODO
+  - Warning: Running alignment and post-alignment processing serially (i.e., in
+    a sequence one after the other) with many files is not recommended, as it
+    can be extremely time-consuming.
   - If using Bowtie 2, ensure the path to index files ends with the index stem,
-    such as "\${HOME}/path/stem" or "\${HOME}/path/sc_sp_proc". For BWA, the
-    path should include the stem and a FASTA file extension, e.g.,
+    e.g., "\${HOME}/path/stem" or "\${HOME}/path/sc_sp_proc". For BWA, the path
+    should include the stem and a FASTA file extension, e.g.,
     "\${HOME}/path/stem.fa" or "\${HOME}/path/sc_sp_proc.fa".
-  - Queryname-sorted BAM files will share the same path and stem as specified
-    for the '--outfile' argument, but with the extension '.qnam.bam' instead of
-    '.bam'.
+  - Calling the script with the optional '--qname' flag retains an intermediate
+    queryname-sorted BAM file used for mate fixing.
+  - Retained queryname-sorted BAM files will share the same path and stem as
+    specified for the '--outfile' argument, but with the extension ".qnam.bam"
+    in place of ".bam".
 
 Example:
   \`\`\`
@@ -251,9 +235,9 @@ if ${interactive}; then
 else
     while [[ "$#" -gt 0 ]]; do
         case "${1}" in
-             -v|--verbose) verbose=true;     shift 1 ;;
-            -dr|--dry_run) dry_run=true;     shift 1 ;;
-             -t|--threads) threads="${2}";   shift 2 ;;
+             -v|--verbose) verbose=true;   shift 1 ;;
+            -dr|--dry_run) dry_run=true;   shift 1 ;;
+             -t|--threads) threads="${2}"; shift 2 ;;
              -a|--aligner)
                 aligner="$(echo "${2}" | tr '[:upper:]' '[:lower:]')"
                 shift 2
@@ -262,21 +246,21 @@ else
                 a_type="$(echo "${2}" | tr '[:upper:]' '[:lower:]')"
                 shift 2
                 ;;
-            -mq|--mapq)    mapq="${2}";      shift 2 ;;
-            -rf|--req_flg) req_flg=true;     shift 1 ;;
-            -ix|--index)   index="${2}";     shift 2 ;;
-             -i|--infiles) infiles="${2}";   shift 2 ;;
-            -do|--dir_out) dir_out="${2}";   shift 2 ;;
-            -qn|--qname)   qname=true;       shift 1 ;;
-            -ss|--sfx_se)  sfx_se="${2}";    shift 2 ;;
-            -sp|--sfx_pe)  sfx_pe="${2}";    shift 2 ;;
-            -eo|--err_out) err_out="${2}";   shift 2 ;;
-            -nj|--nam_job) nam_job="${2}";   shift 2 ;;
-            -sl|--slurm)   slurm=true;       shift 1 ;;
-            -mj|--max_job) max_job="${2}";   shift 2 ;;
-            -tm|--time)    time="${2}";      shift 2 ;;
+            -mq|--mapq)    mapq="${2}";    shift 2 ;;
+            -rf|--req_flg) req_flg=true;   shift 1 ;;
+            -ix|--index)   index="${2}";   shift 2 ;;
+             -i|--infiles) infiles="${2}"; shift 2 ;;
+            -do|--dir_out) dir_out="${2}"; shift 2 ;;
+            -qn|--qname)   qname=true;     shift 1 ;;
+            -ss|--sfx_se)  sfx_se="${2}";  shift 2 ;;
+            -sp|--sfx_pe)  sfx_pe="${2}";  shift 2 ;;
+            -eo|--err_out) err_out="${2}"; shift 2 ;;
+            -nj|--nam_job) nam_job="${2}"; shift 2 ;;
+            -sl|--slurm)   slurm=true;     shift 1 ;;
+            -mj|--max_job) max_job="${2}"; shift 2 ;;
+            -tm|--time)    time="${2}";    shift 2 ;;
             *)
-                echo "## Unknown parameter passed: ${1} ##" >&2
+                echo "## Unknown parameter passed: '${1}' ##" >&2
                 echo "" >&2
                 echo "${show_help}" >&2
                 exit_1
@@ -310,7 +294,7 @@ case "${aligner}" in
                 ;;
         esac
         ;;
-    bwa) unset a_type ;;
+    bwa) a_type="#N/A" ;;
     *)
         echo_error \
             "Selection associated with '--aligner' is not valid: "\
@@ -344,27 +328,8 @@ fi
 check_supplied_arg -a "${nam_job}" -n "nam_job"
 
 
-#  Activate environment and check that dependencies are in PATH ---------------
-handle_env "${env_nam}" > /dev/null
-
-case "${aligner}" in
-    bowtie2) check_program_path bowtie2 ;;
-    bwa)     check_program_path bwa     ;;
-esac
-if ! ${slurm} && [[ ${par_job} -gt 1 ]]; then check_program_path parallel; fi
-check_program_path samtools
-if ${slurm}; then check_program_path sbatch; fi
-
-
-#  Parse and validate FASTQ infiles -------------------------------------------
+#  Parse and validate infiles -------------------------------------------------
 IFS=';' read -r -a arr_infile <<< "${infiles}" && unset IFS
-
-#  Ensure at least one FASTQ file was parsed prior to validation
-if [[ ${#arr_infile[@]} -eq 0 ]]; then
-    echo_error \
-        "No FASTQ files found in 'arr_infile'. Check '--infiles' argument."
-    exit_1
-fi
 
 check_fastqs "${infiles}" "${sfx_se}" "${sfx_pe}" || exit_1
 
@@ -379,34 +344,32 @@ if ${slurm}; then
     check_supplied_arg -a "${time}" -n "time"
     check_format_time "${time}"
 else
-    read -r threads max_job par_job < <(
+    IFS=';' read -r threads par_job < <(
         set_params_parallel "${threads}" "${max_job}" "${par_job}"
     )
+    unset IFS max_job time
 
     check_supplied_arg -a "${par_job}" -n "par_job"
     check_int_pos "${par_job}" "par_job"
 fi
 
+#  Debug parallelization information
 if ${verbose}; then
-    echo "#######################################"
-    echo "## Parsed vector for parallelization ##"
-    echo "#######################################"
-    echo ""
-
-    debug_array_contents "arr_infile"
-    
-    if ${slurm}; then
-        echo "  - Max concurrent jobs (SLURM): ${max_job}"
-    elif [[ ${par_job} -gt 1 ]]; then
-        echo "  - Max concurrent jobs (GNU Parallel): ${par_job}"
-    else
-        echo "  - Jobs running in serial mode: ${par_job}"
-    fi
-    
-    echo "  - Threads per job: ${threads}"
-    echo ""
-    echo ""
+    print_parallel_info \
+        "${slurm}" "${max_job:-#N/A}" "${par_job}" "${threads}" "arr_infile"
 fi
+
+
+#  Activate environment and check that dependencies are in PATH ---------------
+handle_env "${env_nam}" > /dev/null
+
+case "${aligner}" in
+    bowtie2) check_program_path bowtie2 ;;
+    bwa)     check_program_path bwa     ;;
+esac
+if ! ${slurm} && [[ ${par_job} -gt 1 ]]; then check_program_path parallel; fi
+check_program_path samtools
+if ${slurm}; then check_program_path sbatch; fi
 
 
 #  Do the main work ===========================================================
@@ -441,8 +404,8 @@ if ${verbose}; then
     echo "err_out=${err_out}"
     echo "nam_job=${nam_job}"
     echo "slurm=${slurm}"
-    echo "max_job=${max_job}"
-    echo "time=${time}"
+    echo "max_job=${max_job:-#N/A}"
+    echo "time=${time:-#N/A}"
     echo ""
     echo ""
     echo "#################################"
@@ -456,8 +419,7 @@ fi
 
 # shellcheck disable=SC1083,SC2157
 if ${slurm}; then
-    #  If --slurm was specified, run jobs in parallel via individual job
-    #+ submissions to SLURM
+    #  If --slurm was specified, run jobs in parallel via SLURM
     if ${dry_run} || ${verbose}; then
         echo "####################"
         echo "## Call to sbatch ##"
@@ -472,30 +434,23 @@ if ${slurm}; then
         echo "    --output=${err_out}/${nam_job}.%A-%a.stdout.txt \\"
         echo "    --array=1-${#arr_infile[@]}%${max_job} \\"
         echo "    ${scr_sub} \\"
-        echo "        --scr_fnc ${scr_fnc} \\"
-        echo "        --threads ${threads} \\"
-        echo "        --aligner ${aligner} \\"
-        echo "        $(if [[ -n ${a_type} ]]; then echo "--a_type ${a_type}"; fi) \\"
-        echo "        --mapq ${mapq} \\"
-        echo "        $(if ${req_flg}; then echo "--req_flg"; fi) \\"
-        echo "        --index ${index} \\"
-        echo "        --infiles ${infiles} \\"
-        echo "        --dir_out ${dir_out} \\"
-        echo "        $(if ${qname}; then echo "--qname"; fi) \\"
-        echo "        --sfx_se ${sfx_se} \\"
-        echo "        --sfx_pe ${sfx_pe} \\"
-        echo "        --err_out ${err_out} \\"
-        echo "        --nam_job ${nam_job}"
+        echo "        -en ${env_nam} \\"
+        echo "        -sf ${scr_fnc} \\"
+        echo "         -t ${threads} \\"
+        echo "         -a ${aligner} \\"
+        echo "        -at ${a_type} \\"
+        echo "        -mq ${mapq} \\"
+        echo "        $(if ${req_flg}; then echo "-rf"; fi) \\"
+        echo "        -ix ${index} \\"
+        echo "         -i ${infiles} \\"
+        echo "        -do ${dir_out} \\"
+        echo "        $(if ${qname}; then echo "-qn"; fi) \\"
+        echo "        -ss ${sfx_se} \\"
+        echo "        -sp ${sfx_pe} \\"
+        echo "        -eo ${err_out} \\"
+        echo "        -nj ${nam_job}"
         echo ""
         echo ""
-        # echo "#########################################"
-        # echo "## Contents of SLURM submission script ##"
-        # echo "#########################################"
-        # echo ""
-        # echo "## ${scr_sub} ##"
-        # echo ""
-        # cat "${scr_sub}"
-        # echo ""
     fi
 
     if ! ${dry_run}; then
@@ -509,23 +464,24 @@ if ${slurm}; then
             --output=${err_out}/${nam_job}.%A-%a.stdout.txt \
             --array=1-${#arr_infile[@]}%${max_job} \
             ${scr_sub} \
-                --scr_fnc ${scr_fnc} \
-                --threads ${threads} \
-                --aligner ${aligner} \
-                $(if [[ -n ${a_type} ]]; then echo "--a_type ${a_type}"; fi) \
-                --mapq ${mapq} \
-                $(if ${req_flg}; then echo "--req_flg"; fi) \
-                --index ${index} \
-                --infiles ${infiles} \
-                --dir_out ${dir_out} \
-                $(if ${qname}; then echo "--qname"; fi) \
-                --sfx_se ${sfx_se} \
-                --sfx_pe ${sfx_pe} \
-                --err_out ${err_out} \
-                --nam_job ${nam_job}
+                -en ${env_nam} \
+                -sf ${scr_fnc} \
+                 -t ${threads} \
+                 -a ${aligner} \
+                -at ${a_type} \
+                -mq ${mapq} \
+                $(if ${req_flg}; then echo "-rf"; fi) \
+                -ix ${index} \
+                 -i ${infiles} \
+                -do ${dir_out} \
+                $(if ${qname}; then echo "-qn"; fi) \
+                -ss ${sfx_se} \
+                -sp ${sfx_pe} \
+                -eo ${err_out} \
+                -nj ${nam_job}
     fi
 else
-    #  If --slurm was not specified, run jobs in parallel with GNU Parallel
+    #  If '--slurm' was not specified, run jobs in parallel with GNU Parallel
     if [[ "${par_job}" -gt 1 ]]; then
         config="${err_out}/${nam_job}.config_parallel.txt"
 
@@ -556,29 +512,32 @@ else
 
         #  Construct command to be passed to GNU Parallel
         cmd="bash ${scr_sub}"
-        cmd+=" -en {1}"   # environment name
-        cmd+=" -sf {2}"   # function script
-        cmd+=" -t {3}"    # number of threads
-        cmd+=" -a {4}"    # aligner
-        cmd+=" -at {5}"   # alignment type
+        cmd+=" -en {1}"   # Environment name
+        cmd+=" -sf {2}"   # Function script
+        cmd+="  -t {3}"   # Number of threads
+        cmd+="  -a {4}"   # Aligner
+        cmd+=" -at {5}"   # Alignment type
         cmd+=" -mq {6}"   # MAPQ threshold (for filtering BAM files)
         
         if ${req_flg}; then 
-            cmd+=" -rf"   # require flag bit 2
+            cmd+=" -rf"   # Flag: Require flag bit 2
         fi  
 
-        cmd+=" -ix {7}"   # index path
-        cmd+=" -i {8}"    # input FASTQ file
-        cmd+=" -do {9}"   # output BAM directory
+        cmd+=" -ix {7}"   # Index path
+        cmd+="  -i {8}"   # Input FASTQ file(s)
+        cmd+=" -do {9}"   # Output BAM directory
         
         if ${qname}; then 
-            cmd+=" -qn"   # retain queryname-sorted BAM files
+            cmd+=" -qn"   # Flag: Retain queryname-sorted BAM files
         fi  
 
         cmd+=" -ss {10}"  # SE FASTQ file suffix
         cmd+=" -sp {11}"  # PE FASTQ file suffix
-        cmd+=" -eo {12}"  # stderr/stdout directory
-        cmd+=" -nj {13}"  # job name
+        cmd+=" -eo {12}"  # Directory for stderr/stdout logs
+        cmd+=" -nj {13}"  # Job name
+        cmd+="  > {12}/{13}_par.{8/.}.stdout.txt"  # 'scr_sub' stdout log
+        cmd+=" 2> {12}/{13}_par.{8/.}.stderr.txt"  # 'scr_sub' stderr log
+
 
         if ${dry_run} || ${verbose}; then
             echo "#######################################"
@@ -607,22 +566,24 @@ else
             echo "## Serialized job execution via 'submit' script ##"
             echo "##################################################"
             echo ""
-            echo "bash \"${scr_sub}\" \\"
-            echo "    -en \"${env_nam}\" \\"
-            echo "    -sf \"${scr_fnc}\" \\"
-            echo "     -t \"${threads}\" \\"
-            echo "     -a \"${aligner}\" \\"
-            echo "    -at \"${a_type}\" \\"
-            echo "    -mq \"${mapq}\" \\"
+            echo "bash ${scr_sub} \\"
+            echo "    -en ${env_nam} \\"
+            echo "    -sf ${scr_fnc} \\"
+            echo "     -t ${threads} \\"
+            echo "     -a ${aligner} \\"
+            echo "    -at ${a_type} \\"
+            echo "    -mq ${mapq} \\"
             if ${req_flg}; then echo "    -rf \\"; fi
-            echo "    -ix \"${index}\" \\"
-            echo "     -i \"${infiles}\" \\"
-            echo "    -do \"${dir_out}\" \\"
-            if ${qname}; then   echo "    -qn \\"; fi
-            echo "    -ss \"${sfx_se}\" \\"
-            echo "    -sp \"${sfx_pe}\" \\"
-            echo "    -eo \"${err_out}\" \\"
-            echo "    -nj \"${nam_job}\""
+            echo "    -ix ${index} \\"
+            echo "     -i ${infiles} \\"
+            echo "    -do ${dir_out} \\"
+            if ${qname}; then echo "    -qn \\"; fi
+            echo "    -ss ${sfx_se} \\"
+            echo "    -sp ${sfx_pe} \\"
+            echo "    -eo ${err_out} \\"
+            echo "    -nj ${nam_job} \\"
+            echo "         > ${err_out}/${nam_job}_ser.stdout.txt \\"
+            echo "        2> ${err_out}/${nam_job}_ser.stderr.txt"
             echo ""
             echo ""
         fi
@@ -643,6 +604,8 @@ else
             -ss "${sfx_se}" \
             -sp "${sfx_pe}" \
             -eo "${err_out}" \
-            -nj "${nam_job}"
+            -nj "${nam_job}" \
+                 > "${err_out}/${nam_job}_ser.stdout.txt" \
+                2> "${err_out}/${nam_job}_ser.stderr.txt"
     fi
 fi

@@ -15,23 +15,25 @@ function debug_var() { printf "%s\n\n" "$@"; }
 
 #  Function to activate user-supplied Conda/Mamba environment
 function activate_env() {
-    local env_nam="${1}"
+    local env_nam="${1}"  # Name of environment to activate
     if [[ "${CONDA_DEFAULT_ENV}" != "${env_nam}" ]]; then
-        eval "$(conda shell.bash hook)"
-        conda activate "${env_nam}" || 
-            {
-                echo "Error: Failed to activate environment '${env_nam}'." >&2
-                return 1
-            }
+        # shellcheck disable=SC1091
+        source "$(conda info --base)/etc/profile.d/conda.sh"
+        if ! \
+            conda activate "${env_nam}"
+        then
+            echo "Error: Failed to activate environment: '${env_nam}'." >&2
+            return 1
+        fi
     fi
 }
 
 
 #  Function to validate that a variable is not empty or unset
 function validate_var() {
-    local var_nam="${1}"
-    local var_val="${2}"
-    local idx="${3:-0}"  # Default to '0' if no index is given
+    local var_nam="${1}"  # Variable name (for error messages)
+    local var_val="${2}"  # Value to check for emptiness/unset state
+    local idx="${3:-0}"   # Optional index (for arrays); defaults to '0'
 
     if [[ -z "${var_val}" ]]; then
         if [[ "${idx}" -ne 0 ]]; then
@@ -47,13 +49,16 @@ function validate_var() {
 
 
 #  Function to set up SLURM log file paths and create symlinked log files
-function setup_slurm_logs() {
-    local id_job="${1}"
-    local id_tsk="${2}"
-    local samp="${3}"
-    local err_out="${4}"
-    local nam_job="${5}"
-    local err_ini out_ini err_dsc out_dsc
+function set_logs_slurm() {
+    local id_job="${1}"   # SLURM job ID
+    local id_tsk="${2}"   # SLURM task ID within the job array
+    local samp="${3}"     # Sample name associated with log files
+    local err_out="${4}"  # Directory for stderr and stdout log files
+    local nam_job="${5}"  # Name of the job (used in log file naming)
+    local err_ini  # SLURM initial stderr log 
+    local out_ini  # SLURM initial stdout log 
+    local err_dsc  # Symlinked stderr log with descriptive name
+    local out_dsc  # Symlinked stdout log with descriptive name
 
     #  Set log paths
     err_ini="${err_out}/${nam_job}.${id_job}-${id_tsk}.stderr.txt"
@@ -70,28 +75,102 @@ function setup_slurm_logs() {
 }
 
 
+#  Function to validate FASTQ input file(s), ensuring their existence and
+#+ correct format for either SE or PE files
+function validate_infile() {
+    local infile="${1}"  # Input FASTQ file(s)
+    local sfx_se="${2}"  # Expected suffix for SE FASTQ files
+    local sfx_pe="${3}"  # Expected suffix for PE FASTQ files
+
+    #  Split infile by comma
+    IFS=',' read -r -a parts <<< "${infile}"
+    unset IFS
+
+    #  Reject cases where more than two fields are present
+    if [[ "${#parts[@]}" -gt 2 ]]; then
+        echo \
+            "Error: Too many comma-separated values in input file path:" \
+            "'${infile}'." >&2
+        return 1
+    fi
+
+    #  If PE (two parts), ensure both files exist and match suffix
+    if [[ "${#parts[@]}" -eq 2 ]]; then
+        if [[ ! -f "${parts[0]}" || ! -f "${parts[1]}" ]]; then
+            echo \
+                "Error: One or both paired-end FASTQ files do not exist:" \
+                "'${infile}'." >&2
+            return 1
+        fi
+
+        if [[
+               ! "${parts[0]}" =~ ${sfx_pe}$ \
+            || ! "${parts[1]}" =~ ${sfx_pe}$
+        ]]; then
+            echo \
+                "Error: PE input files do not match expected suffix:" \
+                "'${sfx_pe}'." >&2
+            return 1
+        fi
+    fi
+
+    #  If SE (one part), ensure file exists and matches suffix
+    if [[ "${#parts[@]}" -eq 1 ]]; then
+        if [[ ! -f "${parts[0]}" ]]; then
+            echo \
+                "Error: Single-end FASTQ file does not exist:" \
+                "'${parts[0]}'." >&2
+            return 1
+        fi
+
+        if [[ ! "${parts[0]}" =~ ${sfx_se}$ ]]; then
+            echo \
+                "Error: SE input file does not match expected suffix:" \
+                "'${sfx_se}'." >&2
+            return 1
+        fi
+    fi
+
+    #  If all checks are passed, return success
+    return 0
+}
+
+
 #  Function to debug, validate, and parse 'infile' to output variable
 #+ assignments: 'fq_1', 'fq_2', and 'samp' (sample name)
 function process_infile() {
-    local infile="${1}"
-    local sfx_se="${2}"
-    local sfx_pe="${3}"
-    local fq_1 fq_2 samp
+    local infile="${1}"  # Input FASTQ file(s)
+    local sfx_se="${2}"  # Suffix for SE FASTQ files
+    local sfx_pe="${3}"  # Suffix for PE FASTQ files
+    local fq_1  # FASTQ file #1 (SE or PE read 1)
+    local fq_2  # FASTQ file #2 (PE read 2; '#N/A' if SE)
+    local samp  # Sample name derived from FASTQ filename
 
+    #  Validate input arguments
     validate_var "infile"  "${infile}" || return 1
+    validate_var "sfx_se"   "${sfx_se}"  || return 1
+    validate_var "sfx_pe"   "${sfx_pe}"  || return 1
 
+    #  Validate infile format, etc.
+    validate_infile "${infile}" "${sfx_se}" "${sfx_pe}" || return 1
+
+    #  Parse input FASTQ file(s) to assign 'fq_1', 'fq_2', and 'samp'
     if [[ "${infile}" == *,* ]]; then
         fq_1="${infile%%,*}"
         fq_2="${infile#*,}"
         samp="$(basename "${fq_1%%"${sfx_pe}"}")"
     else
         fq_1="${infile}"
-        unset fq_2
+        fq_2="#N/A"
         samp="$(basename "${fq_1%%"${sfx_se}"}")"
     fi
 
+    #  Validate parsed FASTQ file paths
     validate_var "fq_1" "${fq_1}" || return 1
-    if [[ -n "${fq_2}" ]]; then validate_var "fq_2" "${fq_2}" || return 1; fi
+
+    if [[ "${fq_2}" != "#N/A" ]]; then
+        validate_var "fq_2" "${fq_2}" || return 1
+    fi
 
     #  Return values
     echo "${fq_1};${fq_2};${samp}"
@@ -100,23 +179,30 @@ function process_infile() {
 
 #  Function to run Atria with explicitly passed argument values
 function run_atria() {
-    local threads="${1}"
-    local fq_1="${2}"
-    local fq_2="${3}"
-    local dir_out="${4}"
-    local err_out="${5}"
-    local nam_job="${6}"
-    local samp="${7}"
+    local threads="${1}"  # Number of threads to use
+    local fq_1="${2}"     # First FASTQ file (required)
+    local fq_2="${3}"     # Second FASTQ file (optional, for PE reads)
+    local dir_out="${4}"  # Output directory for processed FASTQ files
+    local err_out="${5}"  # Directory for logging stderr/stdout
+    local nam_job="${6}"  # Job name for log file naming
+    local samp="${7}"     # Sample name for log file naming
+    local log_out  # Atria stdout log file
+    local log_err  # Atria stderr log file
 
+    #  Define paths for log output files
+    log_out="${err_out}/${nam_job}.${samp}.stdout.txt"
+    log_err="${err_out}/${nam_job}.${samp}.stderr.txt"
+
+    #  Run Atria with the specified arguments
     # shellcheck disable=SC2046
     atria \
         -t "${threads}" \
         -r "${fq_1}" \
-        $(if [[ -n ${fq_2} ]]; then echo "-R ${fq_2}"; fi) \
+        $(if [[ "${fq_2}" != "#N/A" ]]; then echo "-R ${fq_2}"; fi) \
         -o "${dir_out}" \
         --length-range 35:500 \
-             > "${err_out}/${nam_job}.${samp}.stdout.txt" \
-            2> "${err_out}/${nam_job}.${samp}.stderr.txt"
+             > "${log_out}" \
+            2> "${log_err}"
 }
 
 
@@ -200,7 +286,13 @@ if [[ -n "${SLURM_ARRAY_TASK_ID:-}" ]]; then
     #  Mode: SLURM
     id_job="${SLURM_ARRAY_JOB_ID}"
     id_tsk="${SLURM_ARRAY_TASK_ID}"
-    idx=$(( id_tsk - 1 ))
+
+    if [[ "${id_tsk}" -lt 1 ]]; then
+        echo "Error: SLURM task ID is invalid: ${id_tsk}" >&2
+        exit 1
+    else
+        idx=$(( id_tsk - 1 ))
+    fi
 
     #  Retrieve the input file by indexing into the reconstructed input file
     #+ array
@@ -224,7 +316,7 @@ if [[ -n "${SLURM_ARRAY_TASK_ID:-}" ]]; then
 
     #  Run function to set SLURM and symlinked log files
     IFS=';' read -r err_ini out_ini err_dsc out_dsc < <(
-        setup_slurm_logs \
+        set_logs_slurm \
         "${id_job}" "${id_tsk}" "${samp}" "${err_out}" "${nam_job}"
     ) || exit 1
     unset IFS

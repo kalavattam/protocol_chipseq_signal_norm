@@ -19,7 +19,7 @@ Description:
   Filter and reheader a BAM file for S. pombe chromosomes.
 
 Keyword parameters:
-   -t, --threads  (int): Number of threads to use (default: ${threads}).
+   -t, --threads  (int): Number of threads to use (default: '${threads}').
    -i, --infile   (str): Coordinate-sorted BAM infile.
    -o, --outfile  (str): Filtered BAM outfile.
    -m, --mito    (flag): Retain SP_Mito chromosome (optional).
@@ -48,7 +48,7 @@ EOM
     )
 
     #  Parse keyword parameters
-    if [[ -z "${1}" || "${1}" == "-h" || "${1}" == "--help" ]]; then
+    if [[ -z "${1:-}" || "${1}" == "-h" || "${1}" == "--help" ]]; then
         echo "${show_help}"
         return 0
     fi
@@ -61,9 +61,9 @@ EOM
              -m|--mito)    mito=true;      shift 1 ;;
             -tg|--tg)      tg=true;        shift 1 ;;
             -mr|--mtr)     mtr=true;       shift 1 ;;
-            -cc|--chk_chr) chk_chr=true;   shift 2 ;;
+            -cc|--chk_chr) chk_chr=true;   shift 1 ;;
             *)
-                echo "## Unknown parameter passed: ${1} ##" >&2
+                echo "## Unknown parameter passed: '${1}' ##" >&2
                 echo "" >&2
                 show_help >&2
                 exit 1
@@ -73,37 +73,37 @@ EOM
 
     #  Validate keyword parameters
     if [[ -z "${threads}" ]]; then
-        echo "Error: --threads is required." >&2
+        echo "Error: '--threads' is required." >&2
         return 1
     fi
 
     if [[ ! "${threads}" =~ ^[1-9][0-9]*$ ]]; then
         echo \
-            "Error: --threads was assigned '${threads}' but must be a" \
+            "Error: '--threads' was assigned '${threads}' but must be a" \
             "positive integer greater than or equal to 1." >&2
         return 1
     fi
 
     if [[ -z "${infile}" ]]; then
-        echo "Error: --infile is a required parameter." >&2
+        echo "Error: '--infile' is a required parameter." >&2
         return 1
     fi
 
     if [[ ! -f "${infile}" ]]; then
         echo \
-            "Error: File associated with --infile does not exist: ${infile}." \
-            >&2
+            "Error: File associated with '--infile' does not exist:" \
+            "${infile}." >&2
         return 1
     fi
 
     if [[ -z "${outfile}" ]]; then
-        echo "Error: --outfile is a required parameter." >&2
+        echo "Error: '--outfile' is a required parameter." >&2
         return 1
     fi
 
     if [[ ! -d "$(dirname "${outfile}")" ]]; then
         echo \
-            "Error: Directory associated with --outfile does not exist:" \
+            "Error: Directory associated with '--outfile' does not exist:" \
             "$(dirname "${outfile}")" >&2
         return 1
     fi
@@ -115,23 +115,17 @@ EOM
     if ${mtr};  then chromosomes="${chromosomes} SP_MTR";   fi
     if ${mito}; then chromosomes="${chromosomes} SP_Mito";  fi
 
-    # #  Convert the space-separated string of chromosomes to a pipe-separated
-    # #+ string for use in grep pattern matching for retained chromosomes and
-    # #+ program (@PG) lines
-    # # shellcheck disable=SC2001,SC2028
-    # pattern="^@HD|^@SQ.*SN:($(echo "${chromosomes}" | tr ' ' '|'))|^@PG|^[^@]"
-
     #  Define variables for subsequent filtering and reheading
     outdir="$(dirname "${outfile}")"
     insam="$(basename "${infile/.bam/.sam}")"
     outsam="$(basename "${outfile/.bam/.sam}")"
-    path_insam="${outdir}/${insam}"
-    path_outsam="${outdir}/${outsam}"
+    pth_in="${outdir}/${insam}"
+    pth_out="${outdir}/${outsam}"
 
     #  Filter BAM infile, writing to BAM outfile
     #  First, set a trap to remove intermediate files when and however the
     #+ function exits
-    trap 'rm -f "${path_insam}" "${path_outsam}"' EXIT
+    trap 'rm -f "${pth_in}" "${pth_out}"' EXIT
 
     #  Begin by converting BAM to SAM while including the current header in the
     #+ SAM
@@ -140,20 +134,20 @@ EOM
         samtools view \
             -@ "${threads}" \
             -h \
-            -o "${path_insam}" \
+            -o "${pth_in}" \
             "${infile}"
     then
-        echo "Error: Failed to generate ${path_insam}." >&2
+        echo "Error: Failed to generate ${pth_in}." >&2
         return 1
     fi
 
     #  Filter pertinent lines from the SAM header, and perform filtering for
     #+ lines that meet the following conditions: (1) They do not begin with @
-    #+ (i.e., are not in the header) and (2) they contain strings in
-    #+ ${chromosomes} within field 3
+    #+ (i.e., are not in the header) and (2) they contain strings assigned to
+    #+ variable 'chromosomes' within field 3
     # shellcheck disable=SC2002
     if ! \
-        cat "${path_insam}" \
+        cat "${pth_in}" \
             | awk \
                 -v chromosomes="${chromosomes}" \
                 'BEGIN {
@@ -184,43 +178,16 @@ EOM
                         }
                     }
                 }' \
-                    > "${path_outsam}"
+                    > "${pth_out}"
     then
-        echo "Error: Failed to generate ${path_outsam}." >&2
+        echo "Error: Failed to generate ${pth_out}." >&2
         return 1
     fi
-
-    # if ! \
-    #     cat "${path_insam}" \
-    #         | grep -E "${pattern}" \
-    #         | awk \
-    #             -v chromosomes="${chromosomes}" \
-    #             'BEGIN {
-    #                 split(chromosomes, chrom_arr, " ");
-    #                 for (i in chrom_arr) {
-    #                     chrom_map[chrom_arr[i]] = 1;
-    #                 }
-    #             }
-    #
-    #             {
-    #                 if ($0 ~ /^@/) {
-    #                     print $0
-    #                 } else {
-    #                     if ($3 in chrom_map) {
-    #                         print $0
-    #                     }
-    #                 }
-    #             }' \
-    #                 > "${path_outsam}"
-    # then
-    #     echo "Error: Failed to generate ${path_outsam}." >&2
-    #     return 1
-    # fi
 
     #  Perform SAM-to-BAM conversion for filtered, reheadered alignment
     #+ information
     if ! \
-        samtools view -b "${path_outsam}" > "${outfile}"
+        samtools view -b "${pth_out}" > "${outfile}"
     then
         echo "Error: Failed to generate ${outfile}." >&2
         return 1
@@ -231,13 +198,8 @@ EOM
 
     #  Remove intermediate SAM file if present
     if [[ -f "${outfile}" ]]; then
-        if [[ -f "${path_insam}" ]]; then
-            rm "${path_insam}"
-        fi
-    
-        if [[ -f "${path_outsam}" ]]; then
-            rm "${path_outsam}"
-        fi
+        if [[ -f "${pth_in}" ]];  then rm "${pth_in}";  fi
+        if [[ -f "${pth_out}" ]]; then rm "${pth_out}"; fi
     fi
     
     #  Check unique entries in field 3 for lines not beginning with @

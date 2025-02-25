@@ -56,7 +56,7 @@ if ${debug}; then
     echo ""
     echo "\${str_infile}=${str_infile}"
     echo ""
-    echo "\${pth_scr}="${pth_scr}""
+    echo "\${pth_scr}=${pth_scr}"
     echo ""
     echo "\${dir_out}=${dir_out}"
     echo ""
@@ -88,7 +88,8 @@ done
 
 #  Activate environment
 if [[ "${CONDA_DEFAULT_ENV}" != "${env_nam}" ]]; then
-    eval "$(conda shell.bash hook)"
+    # shellcheck disable=SC1091
+    source "$(conda info --base)/etc/profile.d/conda.sh"
     conda activate "${env_nam}" ||
         {
             echo "Error: Failed to activate environment: '${env_nam}'" >&2

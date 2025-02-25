@@ -13,7 +13,7 @@ if ! ${interactive}; then set -euo pipefail; fi
 
 #  Set the path to the "scripts" directory
 if ${interactive}; then
-    ## WARNING: If interactive=true, change path as needed ##
+    ## WARNING: If 'interactive=true', change path as needed ##
     dir_scr="${HOME}/repos/protocol_chipseq_signal_norm/scripts"
 else
     dir_scr="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -24,19 +24,21 @@ fi
 #  Set the path to the "functions" directory
 dir_fnc="${dir_scr}/functions"
 
-# shellcheck disable=SC1091
-{
-    source "${dir_fnc}/check_exists_file_dir.sh"
-    source "${dir_fnc}/check_format_time.sh"
-    source "${dir_fnc}/check_int_pos.sh"
-    source "${dir_fnc}/check_program_path.sh"
-    source "${dir_fnc}/check_supplied_arg.sh"
-    source "${dir_fnc}/echo_error.sh"
-    source "${dir_fnc}/echo_warning.sh"
-    source "${dir_fnc}/exit_0.sh"
-    source "${dir_fnc}/exit_1.sh"
-    source "${dir_fnc}/handle_env.sh"
-}
+# shellcheck disable=SC1090
+for script in \
+    check_exists_file_dir.sh \
+    check_format_time.sh \
+    check_int_pos.sh \
+    check_program_path.sh \
+    check_supplied_arg.sh \
+    echo_error.sh \
+    echo_warning.sh \
+    exit_0.sh \
+    exit_1.sh \
+    handle_env.sh
+do
+    source "${dir_fnc}/${script}"
+done
 
 
 #  Set up paths, values, and parameters for interactive mode
@@ -261,7 +263,7 @@ typeset -a list_acc list_url_1 list_url_2 list_cus
 #+ available), URLs, and custom names
 iter=0
 while IFS=$'\t' read -r line; do
-    (( iter++ )) || true  # Prevent script exit if `set -e` 
+    (( iter++ )) || true  # (Prevent script exit if `set -e`)
     
     if ${verbose}; then echo "Processing line #${iter}: ${line}"; fi
     
@@ -272,10 +274,10 @@ while IFS=$'\t' read -r line; do
         #  Determine the index of the required columns dynamically
         for i in "${!headers[@]}"; do
             case "${headers[i]}" in
-                "run_accession") run_acc_idx=${i} ;;
-                "custom_name") custom_name_idx=${i} ;;
-                "fastq_ftp") url_col_idx=${i}; url_col='fastq_ftp'   ;;
-                "fastq_https") url_col_idx=${i}; url_col='fastq_https' ;;
+                "run_accession") run_acc_idx=${i}     ;;
+                "custom_name")   custom_name_idx=${i} ;;
+                "fastq_ftp")     url_col_idx=${i}; url_col='fastq_ftp'   ;;
+                "fastq_https")   url_col_idx=${i}; url_col='fastq_https' ;;
             esac
         done
         
@@ -398,7 +400,7 @@ if ${slurm}; then
             --error="${config%.txt}.%A.stderr.txt" \
             --output="${config%.txt}.%A.stdout.txt" \
             --wrap="parallel --colsep ' ' --jobs ${threads} \
-            'bash \"${scr_sub}\" {1} {2} {3} {4} {5} {6} {7} {8}' :::: ${config}"
+            'bash ${scr_sub} {1} {2} {3} {4} {5} {6} {7} {8}' :::: ${config}"
     else
         #  Display error if SLURM submission is attempted with threads=1
         echo_error \
@@ -410,7 +412,7 @@ else
     if [[ "${threads}" -gt 1 ]]; then
         #  Use GNU Parallel for multi-threaded execution without SLURM
         parallel --colsep ' ' --jobs "${threads}" \
-            "bash \"${scr_sub}\" {1} {2} {3} {4} {5} {6} {7} {8}" \
+            "bash ${scr_sub} {1} {2} {3} {4} {5} {6} {7} {8}" \
             :::: "${config}"
     else
         #  Run jobs serially if threads=1

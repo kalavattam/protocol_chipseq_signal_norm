@@ -24,7 +24,8 @@ function handle_env_deactivate() {
     #  Source the appropriate Conda shell hook based on the detected shell
     case "${shl_cur}" in
         bash)
-            eval "$(conda shell.bash hook)"
+            # shellcheck disable=SC1091
+            source "$(conda info --base)/etc/profile.d/conda.sh"
             ;;
         zsh)
             eval "$(conda shell.zsh hook)"
@@ -107,7 +108,7 @@ EOM
     shl_cur=$(basename "${SHELL}")
     case "${shl_cur}" in
         bash)
-            eval "$(conda shell.bash hook)"
+            source "$(conda info --base)/etc/profile.d/conda.sh"
             ;;
         zsh)
             eval "$(conda shell.zsh hook)"

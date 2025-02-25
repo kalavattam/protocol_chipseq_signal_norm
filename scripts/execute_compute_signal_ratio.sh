@@ -13,7 +13,7 @@ if ! ${interactive}; then set -euo pipefail; fi
 
 #  Set the path to the "scripts" directory
 if ${interactive}; then
-    ## WARNING: If interactive=true, change path as needed ##
+    ## WARNING: If 'interactive=true', change path as needed ##
     dir_scr="${HOME}/repos/protocol_chipseq_signal_norm/scripts"
 else
     dir_scr="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -24,26 +24,28 @@ fi
 #  Set the path to the "functions" directory
 dir_fnc="${dir_scr}/functions"
 
-# shellcheck disable=SC1091
-{
-    source "${dir_fnc}/check_array_files.sh"
-    source "${dir_fnc}/check_arrays_lengths.sh"
-    source "${dir_fnc}/check_exists_file_dir.sh"
-    source "${dir_fnc}/check_flt_pos.sh"
-    source "${dir_fnc}/check_format_time.sh"
-    source "${dir_fnc}/check_int_pos.sh"
-    source "${dir_fnc}/check_program_path.sh"
-    source "${dir_fnc}/check_str_delim.sh"
-    source "${dir_fnc}/check_supplied_arg.sh"
-    source "${dir_fnc}/debug_array_contents.sh"
-    source "${dir_fnc}/echo_error.sh"
-    source "${dir_fnc}/echo_warning.sh"
-    source "${dir_fnc}/exit_0.sh"
-    source "${dir_fnc}/exit_1.sh"
-    source "${dir_fnc}/handle_env.sh"
-    source "${dir_fnc}/populate_array_empty.sh"
-    source "${dir_fnc}/reset_max_job.sh"
-}
+# shellcheck disable=SC1090
+for script in \
+    check_array_files.sh \
+    check_arrays_lengths.sh \
+    check_exists_file_dir.sh \
+    check_flt_pos.sh \
+    check_format_time.sh \
+    check_int_pos.sh \
+    check_program_path.sh \
+    check_str_delim.sh \
+    check_supplied_arg.sh \
+    debug_array_contents.sh \
+    echo_error.sh \
+    echo_warning.sh \
+    exit_0.sh \
+    exit_1.sh \
+    handle_env.sh \
+    populate_array_empty.sh \
+    reset_max_job.sh
+do
+    source "${dir_fnc}/${script}"
+done
 
 
 #  Set up paths, values, and parameters for interactive mode
@@ -133,8 +135,8 @@ Usage:
 Description:
   The driver script 'execute_compute_coverage_ratio.sh' automates the
   computation of ratio BEDGRAPH signal tracks for ChIP-seq data. It can be used
-  to generate either siQ- or spike-in-scaled coverage values, or log2(IP/input)
-  enrichment tracks.
+  to generate either siQ- or spike-in-scaled coverage values, unscaled IP/input
+  tracks, or log2(IP/input) enrichment tracks.
 
   When used with '--scl_fct', the script applies a user-specified scaling
   factor, allowing for normalization based on the siQ-ChIP method or external
@@ -144,7 +146,7 @@ Description:
   input signal, which is used to evaluate relative enrichment across genomic
   regions.
 
-  The script supports parallel processing via SLURM or GNU Parallel, or it run
+  The script supports parallel processing via SLURM or GNU Parallel, or it can
   submit jobs in serial.
 
 Arguments:
@@ -491,6 +493,7 @@ if ${verbose}; then
     echo ""
 fi
 
+#TODO: Do not need this, I think: if made it this far, initial strings are fine
 fil_ip=$(echo "${arr_fil_ip[*]}" | tr ' ' ',')
 fil_in=$(echo "${arr_fil_in[*]}" | tr ' ' ',')
 fil_out=$(echo "${arr_fil_out[*]}" | tr ' ' ',')
@@ -623,7 +626,7 @@ else
             echo ""
 
             parallel --colsep ' ' --jobs "${par_job}" --dryrun \
-                "bash \"${scr_sub}\" {1} {2} {3} {4} {5} {6} {7} {8} {9} {10} {11} {12}" \
+                "bash ${scr_sub} {1} {2} {3} {4} {5} {6} {7} {8} {9} {10} {11} {12}" \
                 :::: "${config}"
 
             echo ""
@@ -632,7 +635,7 @@ else
 
         if ! ${dry_run}; then
             parallel --colsep ' ' --jobs "${par_job}" \
-                "bash \"${scr_sub}\" {1} {2} {3} {4} {5} {6} {7} {8} {9} {10} {11} {12}" \
+                "bash ${scr_sub} {1} {2} {3} {4} {5} {6} {7} {8} {9} {10} {11} {12}" \
                 :::: "${config}"
         fi
     else

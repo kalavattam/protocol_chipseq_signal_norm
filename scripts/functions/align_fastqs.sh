@@ -160,6 +160,12 @@ EOM
         bowtie2)
             case "${a_type}" in
                 local|global|end-to-end) : ;;
+                "#N/A")
+                    echo \
+                        "Error: '--a_type' cannot be '#N/A' when using Bowtie" \
+                        "2." >&2
+                    return 1
+                    ;;
                 *)
                     echo \
                         "Error: Selection associated with '--a_type' is not" \
@@ -169,7 +175,14 @@ EOM
                     ;;
             esac
             ;;
-        bwa) : ;;
+        bwa)
+            if [[ "${a_type}" != "#N/A" ]]; then
+                echo \
+                    "Error: '--a_type' should be '#N/A' when using 'bwa'," \
+                    "but was assigned '${a_type}'." >&2
+                return 1
+            fi
+            ;;
         *)
             echo \
                 "Error: Selection associated with '--aligner' is not valid:" \

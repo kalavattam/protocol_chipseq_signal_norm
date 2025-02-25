@@ -33,7 +33,7 @@ function set_params_parallel() {
     #  Get system CPU core count
     n_cores=$(determine_cores) || return 1
 
-    #  Assign parallel jobs
+    #  Assign parallel jobs based on 'max_job', 'n_cores', and 'threads' 
     if [[ ${max_job} -gt 1 ]]; then
         par_job=${max_job}
 
@@ -53,20 +53,20 @@ function set_params_parallel() {
             par_job=${n_cores}
         fi
 
-        #  Ensure that the total thread allocation does not exceed 'n_cores'
+        #  Ensure that the total thread allocation does not exceed 'par_job'
         if [[ ${threads} -lt ${par_job} ]]; then
             echo \
-                "Warning: Threads (${threads}) per job too low relative to" \
-                "parallel jobs (${par_job}). Adjusting to 1 thread per job." \
-                >&2
+                "Warning: Threads (${threads}) per job is too low relative" \
+                "to parallel jobs (${par_job}). Adjusting to 1 thread per" \
+                "job." >&2
             threads=1
         else
-            threads=$(( threads / par_job ))
+            threads=$(( threads / par_job ))  # Perform floor division
         fi
     else
         par_job=1
     fi
 
     #  Output modified values
-    echo "${threads} ${max_job} ${par_job}"
+    echo "${threads};${par_job}"
 }

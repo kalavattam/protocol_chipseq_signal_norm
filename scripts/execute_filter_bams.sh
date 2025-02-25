@@ -5,7 +5,7 @@
 
 
 #  Run script in interactive/test mode (true) or command-line mode (false)
-interactive=false
+interactive=true
 
 #  Exit on errors, unset variables, or pipe failures if not in "interactive
 #+ mode"
@@ -13,7 +13,7 @@ if ! ${interactive}; then set -euo pipefail; fi
 
 #  Set the path to the "scripts" directory
 if ${interactive}; then
-    ## WARNING: If interactive=true, change path as needed ##
+    ## WARNING: If 'interactive=true', change path as needed ##
     dir_scr="${HOME}/repos/protocol_chipseq_signal_norm/scripts"
 else
     dir_scr="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -37,57 +37,66 @@ for script in \
     exit_1.sh \
     filter_bam_sc.sh \
     filter_bam_sp.sh \
-    handle_env.sh
+    handle_env.sh \
+    print_parallel_info.sh \
+    set_params_parallel.sh
 do
     source "${dir_fnc}/${script}"
 done
+unset script
 
 
 #  Set up paths, values, and parameters for interactive mode
 function set_interactive() {
-    #  Set hardcoded paths, values, etc.
-    ## WARNING: If interactive=true, change values as needed ##
-    dir_bas="${HOME}/repos"
+    #  Set base repository paths
+    dir_bas="${HOME}/repos"  ## WARNING: Change as needed ##
     dir_rep="${dir_bas}/protocol_chipseq_signal_norm"
+
+    #  Define data directories and related variables
     dir_dat="${dir_rep}/data"
     dir_pro="${dir_dat}/processed"
-    {
-        aligner="bowtie2"
-        a_type="global"
-        req_flg=true
-        flg="$(if ${req_flg}; then echo "2"; else echo "NA"; fi)" 
-        mapq=1
-    }
-    dir_aln="${dir_pro}/align_${aligner}_${a_type}"
-    dir_flt="${dir_aln}/flag-${flg}_mapq-${mapq}"
-    dir_ini="${dir_flt}/init"
+    dir_aln="${dir_pro}/align_fastqs"
+    aligner="bowtie2"
+    a_type="global"
+    req_flg=true
+    flg="$(if ${req_flg}; then echo "2"; else echo "NA"; fi)" 
+    mapq=1
+    str_det="${aligner}_${a_type}_flag-${flg}_mapq-${mapq}"
+    dir_det="${dir_aln}/${str_det}"
+    dir_ini="${dir_det}/init"
 
     #  Set hardcoded argument assignments
     verbose=true
     dry_run=true
-    retain="sc"  # "sp"
-    threads=4
+    retain="sc"
+    threads=8
     infiles="$(  ## WARNING: Change search parameters as needed ##
         bash "${dir_scr}/find_files.sh" \
             --dir_fnd "${dir_ini}" \
             --pattern "*.bam" \
-            --depth 1 \
-            --include "*Q*,*Hho1*"
+            --depth 1
     )"
-    # infiles="${dir_bam}/IP_WT_Q_Brn1_rep1.bam"
-    dir_out="${dir_flt}/${retain}"
+    dir_out="${dir_det}/${retain}"
     mito=false
     tg=false
     mtr=false
     chk_chr=false
     err_out="${dir_out}/logs"
-    slurm=true
-    max_job=12
+    nam_job="filter_bams"
+    slurm=false
+    max_job=2
     time="1:00:00"
 }
 
 
 #  Initialize argument variables, check and parse arguments, etc. =============
+#  Initialize hardcoded argument variables
+env_nam="env_protocol"
+scr_sub="${dir_scr}/submit_filter_bams.sh"
+par_job=""
+#  Hardcoded argument 'scr_fnc' is defined below, after parsing and validating
+#+ user-supplied argument assignments
+
 #  Initialize argument variables, assigning default values where applicable
 verbose=false
 dry_run=false
@@ -100,6 +109,7 @@ tg=false
 mtr=false
 chk_chr=false
 err_out=""
+nam_job="filter_bams"
 slurm=false
 max_job=6
 time="0:30:00"
@@ -110,96 +120,88 @@ Usage:
   execute_filter_bams.sh
     [--verbose] [--dry_run] --threads <int> --infiles <str> --dir_out <str>
     --retain <str> [--mito] [--tg] [--mtr] [--chk_chr] --err_out <str>
-    [--slurm] [--max_job <int>] [--time <str>]
+    --nam_job <str> [--slurm] [--max_job <int>] [--time <str>]
 
 Description:
-  execute_filter_bams.sh filters BAM infiles to retain species-specific
-  chromosomes for either S. cerevisiae ("main" alignments) or S. pombe
-  ("spike-in" alignments). The script supports parallel execution via SLURM job
-  scheduling or can run serially. Optional features include retaining
-  mitochondrial and additional chromosomes, and performing checks on
-  chromosomes in filtered BAM outfiles.
+  The driver script 'execute_filter_bams.sh' filters BAM infiles to retain
+  species-specific chromosomes for S. cerevisiae ("main" alignments) or S.
+  pombe ("spike-in" alignments).
+
+  Optional features include retaining mitochondrial ('--mito') and additional
+  chromosomes ('--tg', '--mtr'), and performing checks on chromosomes in
+  filtered BAM outfiles ('--chk_chr').
+
+  The script supports parallel execution via SLURM or GNU Parallel, or can run
+  serially.
 
 Arguments:
    -h, --help     Print this help message and exit.
    -v, --verbose  Run script in "verbose" mode (optional).
   -dr, --dry_run  Run the command in "check" mode (optional).
-   -t, --threads  Number of threads to use (default: ${threads}).
+   -t, --threads  Number of threads to use (default: '${threads}').
    -i, --infiles  Comma-separated string vector of coordinate-sorted BAM
                   infiles.
   -do, --dir_out  The directory to store species-filtered and -reheadered BAM
                   outfiles.
    -r, --retain   Specify species chromosomes to retain: S. cerevisiae, "sc";
-                  S. pombe, "sp" (default: ${retain}).
+                  S. pombe, "sp" (default: '${retain}').
    -m, --mito     Retain mitochondrial chromosome (optional).
   -tg, --tg       Retain SP_II_TG chromosome (optional, sp only).
   -mr, --mtr      Retain SP_MTR chromosome (optional, sp only).
   -cc, --chk_chr  Check chromosomes in filtered BAM outfile (optional)
   -eo, --err_out  The directory to store stderr and stdout TXT outfiles
-                  (default: \${dir_out}/err_out).
+                  (default: '\${dir_out}/err_out').
   -sl, --slurm    Submit jobs to the SLURM scheduler; otherwise, run them in
                   serial (optional).
+  -nj, --nam_job  The name of the job, which is used when writing stderr and
+                  stdout TXT files (default: '${nam_job}').
   -mj, --max_job  The maximum number of jobs to run at one time (required if
-                  --slurm is specified, ignored if not; default: ${max_job}).
+                  --slurm is specified, ignored if not; default: '${max_job}').
   -tm, --time     The length of time, in 'h:mm:ss' format, for the SLURM job
                   (required if '--slurm' is specified, ignored if not; default:
-                  ${time}).
+                  '${time}').
 
 Dependencies:
-  - Programs
-    + awk
-    + Bash or Zsh
-    + grep
-    + mv
-    + rm
-    + Samtools
-    + SLURM (if --slurm is specified)
-  - Functions
-    + check_exists_file_dir
-    + check_format_time
-    + check_int_pos
-    + check_program_path
-    + check_supplied_arg
-    + echo_error
-    + echo_warning
-    + exit_0
-    + exit_1
-    + filter_bam_sc
-    + filter_bam_sp
-    + handle_env
-    + handle_env_activate
-    + handle_env_deactivate
+  - AWK
+  - Bash or Zsh
+  - GNU Parallel (when '--slurm' is not specified but multiple jobs are)
+  - grep
+  - mv
+  - rm
+  - Samtools
+  - SLURM (when '--slurm' is specified)
 
 Notes:
   - When the '--slurm' flag is used, jobs are parallelized via SLURM array
-    tasks; otherwise, jobs run serially.
+    tasks; otherwise... #TODO
   - BAM infiles must be coordinate-sorted.
-  - Flags '--tg' and '--mtr' apply only to S. pombe data; flag '--mito'
-    applies to either S. cerevisiae or S. pombe data.
+  - Flag '--mito' applies to either S. cerevisiae or S. pombe data.
+  - Flags '--tg' and '--mtr' apply only to S. pombe data.
 
 Examples:
   \`\`\`
-  #  Filter BAM files for S. cerevisiae ("sc") chromosomes (i.e., "main"
-  #+ alignments)
+  #  Use SLURM to filter BAM files for S. cerevisiae ("sc") chromosomes (i.e.,
+  #+ "main" alignments)
+  retain="sc"
   bash "\${dir_scr}/execute_filter_bams.sh"
       --verbose
       --threads "\${threads}"
       --infiles "\${infiles}"
-      --dir_out "\${dir_out}/sc"
-      --err_out "\${dir_out}/sc/logs"
-      --retain "sc" \
+      --dir_out "\${dir_out}/\${retain}"
+      --err_out "\${dir_out}/\${retain}/logs"
+      --retain  "\${retain}"
       --slurm
 
-  #  Filter BAM files for S. pombe ("sp") chromosomes (i.e., "spike-in"
-  #+ alignments)
+  #  Use GNU Parallel to filter BAM files for S. pombe ("sp") chromosomes
+  #+ (i.e., "spike-in" alignments)
+  retain="sp"
   bash "\${dir_scr}/execute_filter_bams.sh"
       --verbose
       --threads "\${threads}"
       --infiles "\${infiles}"
-      --dir_out "\${dir_out}/sp"
-      --err_out "\${dir_out}/sp/logs"
-      --retain "sp"
-      --slurm
+      --dir_out "\${dir_out}/\${retain}"
+      --err_out "\${dir_out}/\${retain}/logs"
+      --retain  "\${retain}"
   \`\`\`
 EOM
 )
@@ -215,22 +217,26 @@ if ${interactive}; then
 else
     while [[ "$#" -gt 0 ]]; do
         case "${1}" in
-             -v|--verbose) verbose=true;    shift 1 ;;
-            -dr|--dry_run) dry_run=true;    shift 1 ;;
-             -t|--threads) threads="${2}";  shift 2 ;;
-             -i|--infiles) infiles="${2}";  shift 2 ;;
-            -do|--dir_out) dir_out="${2}";  shift 2 ;;
-             -r|--retain)  retain="${2,,}"; shift 2 ;;
-             -m|--mito)    mito=true;       shift 1 ;;
-            -tg|--tg)      tg=true;         shift 1 ;;
-            -mr|--mtr)     mtr=true;        shift 1 ;;
-            -cc|--chk_chr) chk_chr=true;    shift 1 ;;
-            -eo|--err_out) err_out="${2}";  shift 2 ;;
-            -sl|--slurm)   slurm=true;      shift 1 ;;
-            -mj|--max_job) max_job="${2}";  shift 2 ;;
-            -tm|--time)    time="${2}";     shift 2 ;;
+             -v|--verbose) verbose=true;   shift 1 ;;
+            -dr|--dry_run) dry_run=true;   shift 1 ;;
+             -t|--threads) threads="${2}"; shift 2 ;;
+             -i|--infiles) infiles="${2}"; shift 2 ;;
+            -do|--dir_out) dir_out="${2}"; shift 2 ;;
+             -r|--retain)
+                retain="$(echo "${2}" | tr '[:upper:]' '[:lower:]')"
+                shift 2
+                ;;
+             -m|--mito)    mito=true;      shift 1 ;;
+            -tg|--tg)      tg=true;        shift 1 ;;
+            -mr|--mtr)     mtr=true;       shift 1 ;;
+            -cc|--chk_chr) chk_chr=true;   shift 1 ;;
+            -eo|--err_out) err_out="${2}"; shift 2 ;;
+            -nj|--nam_job) nam_job="${2}"; shift 2 ;;
+            -sl|--slurm)   slurm=true;     shift 1 ;;
+            -mj|--max_job) max_job="${2}"; shift 2 ;;
+            -tm|--time)    time="${2}";    shift 2 ;;
             *)
-                echo "## Unknown parameter passed: ${1} ##" >&2
+                echo "## Unknown parameter passed: '${1}' ##" >&2
                 echo "" >&2
                 echo "${show_help}" >&2
                 exit_1
@@ -240,6 +246,11 @@ else
 fi
 
 #  Check arguments
+check_supplied_arg -a "${env_nam}" -n "env_nam"
+
+check_supplied_arg -a "${scr_sub}" -n "scr_sub"
+check_exists_file_dir "f" "${scr_sub}" "scr_sub"
+
 check_supplied_arg -a "${threads}" -n "threads"
 check_int_pos "${threads}" "threads"
 
@@ -250,10 +261,16 @@ check_supplied_arg -a "${dir_out}" -n "dir_out"
 check_exists_file_dir "d" "${dir_out}" "dir_out"
 
 case "${retain}" in
-    sc|sp) : ;;
+    sc|sp) 
+        #  Based on '--retain' assignment, define and validate function script
+        scr_fnc="${dir_fnc}/filter_bam_${retain}.sh"
+        
+        check_supplied_arg -a "${scr_fnc}" -n "scr_fnc"
+        check_exists_file_dir "f" "${scr_fnc}" "scr_fnc"
+        ;;
     *)
         echo_error \
-            "Selection associated with --retain is not valid: ${retain}." \
+            "Selection associated with '--retain' is not valid: '${retain}'." \
             "Selection must be 'sc' or 'sp'."
         exit_1
         ;;
@@ -266,73 +283,66 @@ elif [[ -z "${err_out}" ]]; then
     check_exists_file_dir "d" "${err_out}" "err_out"
 fi
 
+check_supplied_arg -a "${nam_job}" -n "nam_job"
+
+
+#  Parse and validate infiles -------------------------------------------------
+IFS=',' read -r -a arr_infile <<< "${infiles}" && unset IFS
+
+#  Check that each infile exists; if not, exit
+for infile in "${arr_infile[@]}"; do
+    check_exists_file_dir "f" "${infile}" "infile"
+done
+
+
+#  Parse job execution parameters ---------------------------------------------
 if ${slurm}; then
     check_supplied_arg -a "${max_job}" -n "max_job"
     check_int_pos "${max_job}" "max_job"
+
+    max_job=$(reset_max_job "${max_job}" "${#arr_infile[@]}")
     
     check_supplied_arg -a "${time}" -n "time"
     check_format_time "${time}"
+else
+    IFS=';' read -r threads par_job < <(
+        set_params_parallel "${threads}" "${max_job}" "${par_job}"
+    )
+    unset IFS max_job time
+
+    check_supplied_arg -a "${par_job}" -n "par_job"
+    check_int_pos "${par_job}" "par_job"
 fi
 
-#  Based on argument assignments, initialize hardcoded argument variables
-env_nam="env_protocol"
-nam_job="filter_bam_${retain}"
-scr_fnc="${dir_fnc}/${nam_job}.sh"
-scr_sub="${dir_scr}/submit_filter_bams.sh"
+#  Debug parallelization information
+if ${verbose}; then
+    print_parallel_info \
+        "${slurm}" "${max_job:-#N/A}" "${par_job}" "${threads}" "arr_infile"
+fi
 
-#  Check assignments
-check_supplied_arg -a "${env_nam}" -n "env_nam"
 
-check_supplied_arg -a "${nam_job}" -n "nam_job"
-
-check_supplied_arg -a "${scr_fnc}" -n "scr_fnc"
-check_exists_file_dir "f" "${scr_fnc}" "scr_fnc"
-
-check_supplied_arg -a "${scr_sub}" -n "scr_sub"
-check_exists_file_dir "f" "${scr_sub}" "scr_sub"
-
-#  Activate environment and check that dependencies are in PATH
+#  Activate environment and check that dependencies are in PATH ---------------
 handle_env "${env_nam}" > /dev/null
 
 check_program_path awk
 check_program_path grep
 check_program_path mv
+if ! ${slurm} && [[ ${par_job} -gt 1 ]]; then check_program_path parallel; fi
 check_program_path rm
 check_program_path samtools
-
-
-#  Parse the --infiles argument -----------------------------------------------
-#+ ...into an array, then validate the infile value assignments
-IFS=',' read -r -a arr_infiles <<< "${infiles}"  # unset arr_infiles
-# for infile in "${arr_infiles[@]}"; do echo "${infile}"; done  # unset infile
-
-#  Check that each infile exists; if not, exit
-for infile in "${arr_infiles[@]}"; do
-    check_exists_file_dir "f" "${infile}" "infile"
-done
-
-if ${slurm}; then
-    if [[ "${max_job}" -gt "${#arr_infiles[@]}" ]]; then
-        echo_warning \
-            "The maximum number of SLURM jobs to run at a time, ${max_job}," \
-            "is greater than the number of infiles, ${#arr_infiles[@]}." \
-            "Adjusting max_job to ${#arr_infiles[@]}."
-        max_job="${#arr_infiles[@]}"
-    fi
-fi
+if ${slurm}; then check_program_path sbatch; fi
 
 
 #  Do the main work ===========================================================
-#  Report argument variable assignments if in "verbose mode"
 if ${verbose}; then
     echo "####################################"
     echo "## Hardcoded variable assignments ##"
     echo "####################################"
     echo ""
     echo "env_nam=${env_nam}"
-    echo "nam_job=${nam_job}"
-    echo "scr_fnc=${scr_fnc}"
     echo "scr_sub=${scr_sub}"
+    echo "scr_fnc=${scr_fnc}"
+    echo "par_job=${par_job:-#N/A}"
     echo ""
     echo ""
     echo "###################################"
@@ -350,17 +360,24 @@ if ${verbose}; then
     echo "mtr=${mtr}"
     echo "chk_chr=${chk_chr}"
     echo "err_out=${err_out}"
+    echo "nam_job=${nam_job}"
     echo "slurm=${slurm}"
-    echo "max_job=${max_job}"
-    echo "time=${time}"
+    echo "max_job=${max_job:-#N/A}"
+    echo "time=${time:-#N/A}"
+    echo ""
+    echo ""
+    echo "#################################"
+    echo "## Array derived from variable ##"
+    echo "#################################"
+    echo ""
+    echo "arr_infile=( ${arr_infile[*]} )"
     echo ""
     echo ""
 fi
 
 # shellcheck disable=SC1083,SC2157
 if ${slurm}; then
-    #  If --slurm was specified, run jobs in parallel via individual job
-    #+ submissions to SLURM
+    #  If --slurm was specified, run jobs in parallel via SLURM
     if ${dry_run} || ${verbose}; then
         echo "####################"
         echo "## Call to sbatch ##"
@@ -373,7 +390,7 @@ if ${slurm}; then
         echo "    --time=${time} \\"
         echo "    --error=${err_out}/${nam_job}.%A-%a.stderr.txt \\"
         echo "    --output=${err_out}/${nam_job}.%A-%a.stdout.txt \\"
-        echo "    --array=1-${#arr_infiles[@]}%${max_job} \\"
+        echo "    --array=1-${#arr_infile[@]}%${max_job} \\"
         echo "    ${scr_sub} \\"
         echo "        --scr_fnc ${scr_fnc} \\"
         echo "        --threads ${threads} \\"
@@ -387,14 +404,6 @@ if ${slurm}; then
         echo "        --nam_job ${nam_job}"
         echo ""
         echo ""
-        echo "#########################################"
-        echo "## Contents of SLURM submission script ##"
-        echo "#########################################"
-        echo ""
-        echo "## ${scr_sub} ##"
-        echo ""
-        cat "${scr_sub}"
-        echo ""
     fi
 
     if ! ${dry_run}; then
@@ -406,84 +415,121 @@ if ${slurm}; then
             --time=${time} \
             --error=${err_out}/${nam_job}.%A-%a.stderr.txt \
             --output=${err_out}/${nam_job}.%A-%a.stdout.txt \
-            --array=1-${#arr_infiles[@]}%${max_job} \
+            --array=1-${#arr_infile[@]}%${max_job} \
             ${scr_sub} \
-                --scr_fnc ${scr_fnc} \
-                --threads ${threads} \
-                --infiles ${infiles} \
-                --dir_out ${dir_out} \
-                $(if ${mito}; then echo "--mito"; fi) \
-                $(if ${tg}; then echo "--tg"; fi) \
-                $(if ${mtr}; then echo "--mtr"; fi) \
-                $(if ${chk_chr}; then echo "--chk_chr"; fi) \
-                --err_out ${err_out} \
-                --nam_job ${nam_job}
+                -en ${env_nam} \
+                -sf ${scr_fnc} \
+                 -t ${threads} \
+                 -i ${infiles} \
+                -do ${dir_out} \
+                $(if ${mito}; then echo "-m"; fi) \
+                $(if ${tg}; then echo "-tg"; fi) \
+                $(if ${mtr}; then echo "-mr"; fi) \
+                $(if ${chk_chr}; then echo "-cc"; fi) \
+                -eo ${err_out} \
+                -nj ${nam_job}
     fi
 else
-    #  Derive function name from function script
-    nam_fnc="$(basename "${scr_fnc}" ".sh")"
+    #  If '--slurm' was not specified, run jobs in parallel with GNU Parallel
+    if [[ "${par_job}" -gt 1 ]]; then
+        config="${err_out}/${nam_job}.config_parallel.txt"
 
-    if ${dry_run} || ${verbose}; then
-        echo "###################################################"
-        echo "## Serial call(s) for species-specific filtering ##"
-        echo "###################################################"
-        echo ""
-    fi
-
-    for idx in "${!arr_infiles[@]}"; do
-        #  Assign infile via array index
-        n_call=$(( idx + 1 ))
-        infile="${arr_infiles[idx]}"
-        
-        if [[ -z "${infile}" ]]; then
-            echo_error \
-                "Failed to retrieve infile for idx=${idx}:" \
-                "\${arr_infiles[idx]}."
+        if [[ -f "${config}" ]]; then rm "${config}"; fi
+        touch "${config}" || {
+            echo_error "Failed to create a GNU Parallel configuration file."
             exit_1
-        fi
+        }
 
-        #  Derive sample name from infile assignment
-        samp="${infile##*/}"
-        samp="${samp%.bam}"
+        #  Populate GNU Parallel configuration file
+        for idx in "${!arr_infile[@]}"; do
+            echo \
+                "${env_nam}" \
+                "${scr_fnc}" \
+                "${threads}" \
+                "${arr_infile[idx]}" \
+                "${dir_out}" \
+                "${err_out}" \
+                "${nam_job}" \
+                    >> "${config}"
+        done
 
-        #  Perform pattern matching to assign the outfile name
-        # shellcheck disable=SC2086
-        if [[ ${nam_fnc} =~ "sc" ]]; then
-            outfile="${dir_out}/${samp}.sc.bam"
-        elif [[ ${nam_fnc} =~ "sp" ]]; then
-            outfile="${dir_out}/${samp}.sp.bam"
-        else
-            echo "Error: Sample name could not be processed." >&2
-            exit 1
-        fi
+        #  Construct command to be passed to GNU Parallel
+        cmd="bash ${scr_sub}"
+        cmd+=" -en {1}"  # Environment name
+        cmd+=" -sf {2}"  # Function script
+        cmd+="  -t {3}"  # Number of threads
+        cmd+="  -i {4}"  # Input BAM file
+        cmd+=" -do {5}"  # Output BAM directory
+        
+        if ${mito};    then cmd+=" -m";  fi  # Flag: Retain mito. alignments
+        if ${tg};      then cmd+=" -tg"; fi  # Flag: Retain SP_II_TG alignments
+        if ${mtr};     then cmd+=" -mr"; fi  # Flag: Retain SP_MTR alignments
+        if ${chk_chr}; then cmd+=" -cc"; fi  # Flag: Check chr. in outfile
+        
+        cmd+=" -eo {6}"  # Directory for stderr/stdout logs
+        cmd+=" -nj {7}"  # Job name
+        cmd+="  > {6}/{7}_par.{4/.}.stdout.txt"  # 'scr_sub' stdout log
+        cmd+=" 2> {6}/{7}_par.{4/.}.stderr.txt"  # 'scr_sub' stderr log
 
         if ${dry_run} || ${verbose}; then
-            echo "## Call no. ${n_call} ##"
-            echo "${nam_fnc} \\"
-            echo "    --threads ${threads} \\"
-            echo "    --infile ${infile} \\"
-            echo "    --outfile ${outfile} \\"
-            echo "    $(if ${mito}; then echo "--mito"; fi) \\"
-            echo "    $(if ${tg}; then echo "--tg"; fi) \\"
-            echo "    $(if ${mtr}; then echo "--mtr"; fi) \\"
-            echo "    $(if ${chk_chr}; then echo "--chk_chr"; fi) \\"
-            echo "         > ${err_out}/${nam_job}.${samp}.stdout.txt \\"
-            echo "        2> ${err_out}/${nam_job}.${samp}.stderr.txt"
+            echo "#######################################"
+            echo "## Parallel call(s) to trim fastq(s) ##"
+            echo "#######################################"
+            echo ""
+
+            parallel --colsep ' ' --jobs "${par_job}" --dryrun \
+                "${cmd}" \
+                :::: "${config}"
+
+            echo ""
             echo ""
         fi
 
         if ! ${dry_run}; then
-            # shellcheck disable=SC2046,SC2086
-            ${nam_fnc} \
-                --threads ${threads} \
-                --infile ${infile} \
-                --outfile ${outfile} \
-                $(if ${mito}; then echo "--mito"; fi) \
-                $(if ${tg}; then echo "--tg"; fi) \
-                $(if ${mtr}; then echo "--mtr"; fi) \
-                $(if ${chk_chr}; then echo "--chk_chr"; fi) \
-                     > ${err_out}/${nam_job}.${samp}.stdout.txt \
-                    2> ${err_out}/${nam_job}.${samp}.stderr.txt
+            parallel --colsep ' ' --jobs "${par_job}" \
+                "${cmd}" \
+                :::: "${config}"
         fi
-    done
+    else
+        #  If --slurm was not specified and 'par_job=1', then run jobs in
+        #+ serial
+        if ${dry_run} || ${verbose}; then
+            echo "##################################################"
+            echo "## Serialized job execution via 'submit' script ##"
+            echo "##################################################"
+            echo ""
+            echo "bash \"${scr_sub}\" \\"
+            echo "    -en ${env_nam} \\"
+            echo "    -sf ${scr_fnc} \\"
+            echo "     -t ${threads} \\"
+            echo "     -i ${infiles} \\"
+            echo "    -do ${dir_out} \\"
+            if ${mito};    then echo "    -m \\";  fi
+            if ${tg};      then echo "    -tg \\"; fi
+            if ${mtr};     then echo "    -mr \\"; fi
+            if ${chk_chr}; then echo "    -cc \\"; fi
+            echo "    -eo ${err_out} \\"
+            echo "    -nj ${nam_job} \\"
+            echo "         > ${err_out}/${nam_job}_ser.stdout.txt \\"
+            echo "        2> ${err_out}/${nam_job}_ser.stderr.txt"
+            echo ""
+            echo ""
+        fi
+
+        # shellcheck disable=SC2046
+        bash "${scr_sub}" \
+            -en "${env_nam}" \
+            -sf "${scr_fnc}" \
+             -t "${threads}" \
+             -i "${infiles}" \
+            -do "${dir_out}" \
+            $(if ${mito};    then echo "-m";  fi) \
+            $(if ${tg};      then echo "-tg"; fi) \
+            $(if ${mtr};     then echo "-mr"; fi) \
+            $(if ${chk_chr}; then echo "-cc"; fi) \
+            -eo "${err_out}" \
+            -nj "${nam_job}" \
+                 > "${err_out}/${nam_job}_ser.stdout.txt" \
+                2> "${err_out}/${nam_job}_ser.stderr.txt"
+    fi
 fi

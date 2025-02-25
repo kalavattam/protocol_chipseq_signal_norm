@@ -12,7 +12,7 @@ if ! ${interactive}; then set -eo pipefail; fi
 
 #  Set the path to the "scripts" directory
 if ${interactive}; then
-    ## WARNING: If interactive=true, change path as needed ##
+    ## WARNING: If 'interactive=true', change path as needed ##
     dir_scr="${HOME}/repos/protocol_chipseq_signal_norm/scripts"
 else
     dir_scr="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -182,7 +182,7 @@ check_exists_file_dir "d" "${dir_fnd}" "dir_fnd"
 
 if [[ "$(realpath "${dir_fnd}")" == "$(realpath "${PWD}")" ]]; then
     echo_error \
-        "find_files.sh cannot be run from the target directory" \
+        "'find_files.sh' cannot be run from the target directory" \
         "being searched, as this causes file-globbing errors. Please run" \
         "the script from a different directory. Currently," \
         "dir_fnd=\"${dir_fnd}\"."
@@ -223,77 +223,6 @@ cmd_find="$(
         $(if [[ -n "${include}" ]]; then echo "--include ${include}"; fi) \
         $(if [[ -n "${exclude}" ]]; then echo "--exclude ${exclude}"; fi)
 )"
-
-# if ${chk_con} || ${chk_exc}; then
-#     echo "## Call to find ##"
-#
-#     if ${fastqs}; then
-# cat << EOM
-# eval "${cmd_find}" \\
-#     | sort \\
-#     | pair_fastqs \\
-#     | paste -s \\
-#     | sed \\
-#         -e 's:\t::g' \\
-#         -e 's/;$//'
-#
-# EOM
-#     else
-# cat << EOM
-# eval "${cmd_find}" \\
-#     | sort \\
-#     | paste -sd "," -
-#
-# EOM
-#     fi
-# fi
-#
-# if ${chk_con}; then
-#     if ! ${interactive}; then exit 0; fi
-# fi
-#
-# if ${chk_exc}; then
-#     echo "## Results of find command ##"
-#     eval "${cmd_find}" | sort
-#     echo ""
-#
-#     if ${fastqs}; then
-#         echo \
-#             "## Results of find command as single semicolon- and" \
-#             "comma-separated string ##"
-#         eval "${cmd_find}" \
-#             | sort \
-#             | pair_fastqs \
-#             | paste -s \
-#             | sed \
-#                 -e 's:\t::g' \
-#                 -e 's/;$//'
-#     else
-#         echo "## Results of find command as single comma-separated string ##"
-#         eval "${cmd_find}" \
-#             | sort \
-#             | paste -sd "," -
-#         echo ""
-#     fi
-# fi
-#
-# if ${chk_exc}; then
-#     if ! ${interactive}; then exit 0; fi
-# fi
-#
-# if ${fastqs}; then
-#     eval "${cmd_find}" \
-#         | sort \
-#         | pair_fastqs \
-#         | paste -s \
-#         | sed \
-#             -e 's:\t::g' \
-#             -e 's/;$//'
-# else
-#     eval "${cmd_find}" \
-#         | sort \
-#         | paste -sd "," -
-# fi
 
 if ${chk_con} || ${chk_exc}; then
     echo "## Call to find ##"

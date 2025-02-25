@@ -13,7 +13,7 @@ if ! ${interactive}; then set -euo pipefail; fi
 
 #  Set the path to the "scripts" directory
 if ${interactive}; then
-    ## WARNING: If interactive=true, change path as needed ##
+    ## WARNING: If 'interactive=true', change path as needed ##
     dir_scr="${HOME}/repos/protocol_chipseq_signal_norm/scripts"
 else
     dir_scr="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -26,20 +26,19 @@ dir_fnc="${dir_scr}/functions"
 
 # shellcheck disable=SC1090
 for script in \
-    "check_exists_file_dir.sh" \
-    "check_fastqs.sh" \
-    "check_format_time.sh" \
-    "check_int_pos.sh" \
-    "check_program_path.sh" \
-    "check_supplied_arg.sh" \
-    "debug_array_contents.sh" \
-    "echo_error.sh" \
-    "echo_warning.sh" \
-    "exit_0.sh" \
-    "exit_1.sh" \
-    "handle_env.sh" \
-    "reset_max_job.sh" \
-    "set_params_parallel.sh"
+    check_exists_file_dir.sh \
+    check_fastqs.sh \
+    check_format_time.sh \
+    check_int_pos.sh \
+    check_program_path.sh \
+    check_supplied_arg.sh \
+    echo_error.sh \
+    echo_warning.sh \
+    exit_0.sh \
+    exit_1.sh \
+    handle_env.sh \
+    reset_max_job.sh \
+    set_params_parallel.sh
 do
     source "${dir_fnc}/${script}"
 done
@@ -51,7 +50,6 @@ function set_interactive() {
     #  Set base repository paths
     dir_bas="${HOME}/repos"  ## WARNING: Change as needed ##
     dir_rep="${dir_bas}/protocol_chipseq_signal_norm"
-    dir_scr="${dir_rep}/scripts"
 
     #  Define data directories
     dir_dat="${dir_rep}/data"
@@ -147,28 +145,12 @@ Arguments:
                   ${time}).
 
 Dependencies:
-  - Programs
-    + Atria
-    + Bash or Zsh
-    + GNU Parallel (when '--slurm' is not specified but multiple jobs are)
-    + pbzip2
-    + pigz
-    + SLURM (when '--slurm' is specified)
-  - Functions
-    + check_exists_file_dir
-    + check_fastqs
-    + check_format_time
-    + check_int_pos
-    + check_program_path
-    + check_supplied_arg
-    + debug_array_contents
-    + echo_error
-    + echo_warning
-    + exit_0
-    + exit_1
-    + handle_env
-    + reset_max_job
-    + set_params_parallel
+  - Atria
+  - Bash or Zsh
+  - GNU Parallel (when '--slurm' is not specified but multiple jobs are)
+  - pbzip2
+  - pigz
+  - SLURM (when '--slurm' is specified)
 
 Note:
   Atria is set to not allow read lengths less than 35 bp. It is also set to
@@ -214,7 +196,7 @@ else
             -mj|--max_job) max_job="${2}"; shift 2 ;;
             -tm|--time)    time="${2}";    shift 2 ;;
             *) 
-                echo "## Unknown parameter passed: ${1} ##" >&2
+                echo "## Unknown parameter passed: '${1}' ##" >&2
                 echo "" >&2
                 echo "${show_help}" >&2
                 exit_1
@@ -251,24 +233,8 @@ fi
 check_supplied_arg -a "${nam_job}" -n "nam_job"
 
 
-#  Activate environment and check that dependencies are in PATH ---------------
-handle_env "${env_nam}" > /dev/null
-
-check_program_path atria
-if ! ${slurm} && [[ ${par_job} -gt 1 ]]; then check_program_path parallel; fi
-check_program_path pbzip2
-check_program_path pigz
-
-
-#  Parse and validate FASTQ infiles -------------------------------------------
+#  Parse and validate infiles -------------------------------------------------
 IFS=';' read -r -a arr_infile <<< "${infiles}" && unset IFS
-
-#  Ensure at least one FASTQ file was parsed prior to validation
-if [[ ${#arr_infile[@]} -eq 0 ]]; then
-    echo_error \
-        "No FASTQ files found in 'arr_infile'. Check '--infiles' argument."
-    exit_1
-fi
 
 check_fastqs "${infiles}" "${sfx_se}" "${sfx_pe}" || exit_1
 
@@ -283,34 +249,30 @@ if ${slurm}; then
     check_supplied_arg -a "${time}" -n "time"
     check_format_time "${time}"
 else
-    read -r threads max_job par_job < <(
+    IFS=';' read -r threads par_job < <(
         set_params_parallel "${threads}" "${max_job}" "${par_job}"
     )
+    unset IFS max_job time
 
     check_supplied_arg -a "${par_job}" -n "par_job"
     check_int_pos "${par_job}" "par_job"
 fi
 
+#  Debug parallelization information
 if ${verbose}; then
-    echo "#######################################"
-    echo "## Parsed vector for parallelization ##"
-    echo "#######################################"
-    echo ""
-
-    debug_array_contents "arr_infile"
-    
-    if ${slurm}; then
-        echo "  - Max concurrent jobs (SLURM): ${max_job}"
-    elif [[ ${par_job} -gt 1 ]]; then
-        echo "  - Max concurrent jobs (GNU Parallel): ${par_job}"
-    else
-        echo "  - Jobs running in serial mode: ${par_job}"
-    fi
-    
-    echo "  - Threads per job: ${threads}"
-    echo ""
-    echo ""
+    print_parallel_info \
+        "${slurm}" "${max_job:-#N/A}" "${par_job}" "${threads}" "arr_infile"
 fi
+
+
+#  Activate environment and check that dependencies are in PATH ---------------
+handle_env "${env_nam}" > /dev/null
+
+check_program_path atria
+if ! ${slurm} && [[ ${par_job} -gt 1 ]]; then check_program_path parallel; fi
+check_program_path pbzip2
+check_program_path pigz
+if ${slurm}; then check_program_path sbatch; fi
 
 
 #  Do the main work ===========================================================
@@ -339,8 +301,8 @@ if ${verbose}; then
     echo "nam_job=${nam_job}"
     echo "slurm=${slurm}"
     echo "scr_sub=${scr_sub}"
-    echo "max_job=${max_job}"
-    echo "time=${time}"
+    echo "max_job=${max_job:-#N/A}"
+    echo "time=${time:-#N/A}"
     echo ""
     echo ""
     echo "#################################"
@@ -354,8 +316,7 @@ fi
 
 # shellcheck disable=SC1083,SC2157
 if ${slurm}; then
-    #  If --slurm was specified, run jobs in parallel via individual job
-    #+ submissions to SLURM
+    #  If --slurm was specified, run jobs in parallel via SLURM
     if ${dry_run} || ${verbose}; then
         echo "####################"
         echo "## Call to sbatch ##"
@@ -380,14 +341,6 @@ if ${slurm}; then
         echo "        ${nam_job}"
         echo ""
         echo ""
-        # echo "#########################################"
-        # echo "## Contents of SLURM submission script ##"
-        # echo "#########################################"
-        # echo ""
-        # echo "## ${scr_sub} ##"
-        # echo ""
-        # cat "${scr_sub}"
-        # echo ""
     fi
 
     if ! ${dry_run}; then
@@ -411,7 +364,7 @@ if ${slurm}; then
                 ${nam_job}
     fi
 else
-    #  If --slurm was not specified, run jobs in parallel with GNU Parallel
+    #  If '--slurm' was not specified, run jobs in parallel with GNU Parallel
     if [[ "${par_job}" -gt 1 ]]; then
         config="${err_out}/${nam_job}.config_parallel.txt"
 
@@ -421,6 +374,7 @@ else
             exit_1
         }
 
+        #  Populate GNU Parallel configuration file
         for idx in "${!arr_infile[@]}"; do
             echo \
                 "${env_nam}" \
@@ -434,6 +388,13 @@ else
                     >> "${config}"
         done
 
+        #  Construct command to be passed to GNU Parallel
+        cmd="bash ${scr_sub}"
+        cmd+=" {1} {2} {3} {4} {5} {6} {7} {8}"  # 'scr_sub' parameters
+        cmd+="  > {7}/{8}_par.{3/.}.stdout.txt"  # 'scr_sub' stdout log
+        cmd+=" 2> {7}/{8}_par.{3/.}.stderr.txt"  # 'scr_sub' stderr log
+        #TODO: Check how {3/.} looks in stdout/stderr log files
+
         if ${dry_run} || ${verbose}; then
             echo "#######################################"
             echo "## Parallel call(s) to trim fastq(s) ##"
@@ -441,7 +402,7 @@ else
             echo ""
 
             parallel --colsep ' ' --jobs "${par_job}" --dryrun \
-                "bash \"${scr_sub}\" {1} {2} {3} {4} {5} {6} {7} {8}" \
+                "${cmd}" \
                 :::: "${config}"
 
             echo ""
@@ -450,7 +411,7 @@ else
 
         if ! ${dry_run}; then
             parallel --colsep ' ' --jobs "${par_job}" \
-                "bash \"${scr_sub}\" {1} {2} {3} {4} {5} {6} {7} {8}" \
+                "${cmd}" \
                 :::: "${config}"
         fi
     else
@@ -461,15 +422,17 @@ else
             echo "## Serialized job execution via 'submit' script ##"
             echo "##################################################"
             echo ""
-            echo "bash \"${scr_sub}\" \\"
-            echo "    \"${env_nam}\" \\"
-            echo "    \"${threads}\" \\"
-            echo "    \"${infiles}\" \\"
-            echo "    \"${dir_out}\" \\"
-            echo "    \"${sfx_se}\" \\"
-            echo "    \"${sfx_pe}\" \\"
-            echo "    \"${err_out}\" \\"
-            echo "    \"${nam_job}\""
+            echo "bash ${scr_sub} \\"
+            echo "    ${env_nam} \\"
+            echo "    ${threads} \\"
+            echo "    ${infiles} \\"
+            echo "    ${dir_out} \\"
+            echo "    ${sfx_se} \\"
+            echo "    ${sfx_pe} \\"
+            echo "    ${err_out} \\"
+            echo "    ${nam_job} \\"
+            echo "         > ${err_out}/${nam_job}_ser.stdout.txt \\"
+            echo "        2> ${err_out}/${nam_job}_ser.stderr.txt"
             echo ""
             echo ""
         fi
@@ -483,7 +446,9 @@ else
                 "${sfx_se}" \
                 "${sfx_pe}" \
                 "${err_out}" \
-                "${nam_job}"
+                "${nam_job}" \
+                     > "${err_out}/${nam_job}_ser.stdout.txt" \
+                    2> "${err_out}/${nam_job}_ser.stderr.txt"
         fi
     fi
 fi

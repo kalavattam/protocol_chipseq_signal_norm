@@ -13,7 +13,7 @@ if ! ${interactive}; then set -euo pipefail; fi
 
 #  Set the path to the "scripts" directory
 if ${interactive}; then
-    ## WARNING: If interactive=true, change path as needed ##
+    ## WARNING: If 'interactive=true', change path as needed ##
     dir_scr="${HOME}/repos/protocol_chipseq_signal_norm/scripts"
 else
     dir_scr="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -24,14 +24,16 @@ fi
 #  Set the path to the "functions" directory
 dir_fnc="${dir_scr}/functions"
 
-# shellcheck disable=SC1091
-{    
-    source "${dir_fnc}/check_installed_env.sh"
-    source "${dir_fnc}/check_installed_mamba.sh"
-    source "${dir_fnc}/echo_error.sh"
-    source "${dir_fnc}/echo_warning.sh"
-    source "${dir_fnc}/handle_env.sh"
-}
+# shellcheck disable=SC1090
+for script in \
+    check_installed_env.sh \
+    check_installed_mamba.sh \
+    echo_error.sh \
+    echo_warning.sh \
+    handle_env.sh
+do
+    source "${dir_fnc}/${script}"
+done
 
 
 #  Set up paths, values, and parameters for interactive mode
@@ -74,9 +76,9 @@ Dependencies:
     + handle_env_deactivate
 
 Notes:
-  - The call to mamba will be adapted to allow Rosetta translation if the
+  - The call to 'mamba' will be adapted to allow Rosetta translation if the
     script detects that the system has "arm64" architecture.
-  - The following packages are installed via a call to mamba create:
+  - The following packages are installed via a call to 'mamba' create:
     + env_align
       - bamtools
       - bbmap
@@ -145,7 +147,7 @@ Notes:
       - parallel
       - pbzip2
       - pigz
-      - python=3.11  # Restrict Python to version 3.11 for sequali installation
+      - python=3.11  # Restrict to version 3.11 for 'sequali' installation
       - r-argparse
       - r-plotly
       - r-ggsci
@@ -242,9 +244,9 @@ esac
 handle_env_deactivate
 
 #  Construct the mamba command
-mamba_command="mamba create -n ${env_nam}"
+cmd_mamba="mamba create -n ${env_nam}"
 
-if ${yes}; then mamba_command+=" --yes"; fi
+if ${yes}; then cmd_mamba+=" --yes"; fi
 
 #  Assign an array of packages to install
 if [[ "${env_nam}" == "env_align" ]]; then
@@ -321,7 +323,7 @@ elif [[ "${env_nam}" == "env_protocol" ]]; then
         parallel
         pbzip2
         pigz
-        python=3.11  # Restrict Python to version 3.11 for sequali installation
+        python=3.11  # Restrict to version 3.11 for 'sequali' installation
         r-argparse
         r-plotly
         r-ggsci
@@ -344,7 +346,7 @@ elif [[ "${env_nam}" == "env_siqchip" ]]; then
 fi
 
 #  Run the mamba environment installation
-if ! eval "${mamba_command} ${packages[*]}"; then
+if ! eval "${cmd_mamba} ${packages[*]}"; then
     echo_error \
         "Failed to create environment '${env_nam}'. Please check the error" \
         "message(s) above."

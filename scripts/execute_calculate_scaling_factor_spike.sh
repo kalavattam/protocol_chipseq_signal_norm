@@ -13,7 +13,7 @@ if ! ${interactive}; then set -euo pipefail; fi
 
 #  Set the path to the "scripts" directory
 if ${interactive}; then
-    ## WARNING: If interactive=true, change path as needed ##
+    ## WARNING: If 'interactive=true', change path as needed ##
     dir_scr="${HOME}/repos/protocol_chipseq_signal_norm/scripts"
 else
     dir_scr="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -132,10 +132,13 @@ Description:
   calculation of spike-in-derived scaling factors for ChIP-seq data. This
   involves counting alignments in "main" (S. cerevisiae) and spike-in
   (S. pombe) BAM files, calculating scaling coefficients using a custom Python
-  script, and outputting results to a specified table file. [#TODO: Note on
-  calculating 'dep_min' for modes "frag" and "norm" at commen bin sizes.] The
-  script facilitates serial processing or parallelized processing with SLURM or
-  GNU Parallel.
+  script, and outputting results to a specified table file.
+
+  [#TODO: Note on calculating 'dep_min' for modes "frag" and "norm" at common
+  bin sizes.]
+
+  The script facilitates serial processing or parallelized processing with
+  SLURM or GNU Parallel.
 
 Arguments:
    -h, --help     Display this help message and exit (0).
@@ -386,6 +389,7 @@ if ${verbose}; then
     echo ""
 fi
 
+#TODO: Not needed, right?
 ser_mip=$(echo "${arr_mip[*]}" | tr ' ' ',')
 ser_sip=$(echo "${arr_sip[*]}" | tr ' ' ',')
 ser_min=$(echo "${arr_min[*]}" | tr ' ' ',')
