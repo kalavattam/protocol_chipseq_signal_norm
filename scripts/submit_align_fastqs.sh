@@ -31,9 +31,9 @@ function activate_env() {
 
 #  Function to validate that a variable is not empty or unset
 function validate_var() {
-    local var_nam="${1}"  # Variable name (for error messages)
-    local var_val="${2}"  # Value to check for emptiness/unset state
-    local idx="${3:-0}"   # Optional index (for arrays); defaults to '0'
+    local var_nam="${1}"   # Variable name (for error messages)
+    local var_val="${2-}"  # Value to check for emptiness/unset state
+    local idx="${3:-0}"    # Optional index (for arrays); defaults to '0'
 
     if [[ -z "${var_val}" ]]; then
         if [[ "${idx}" -ne 0 ]]; then
@@ -99,10 +99,10 @@ function set_logs_slurm() {
 function process_infile() {
     local infile="${1}"   # Input FASTQ file(s)
     local sfx_se="${2}"   # Suffix for SE FASTQ files
-    local sfx_pe="${3}"   # Suffix for PE FASTQ files
+    local sfx_pe="${3}"   # Suffix for PE FASTQ files (FASTQ #1)
     local dir_out="${4}"  # Directory for output files
     local fq_1     # FASTQ file #1 (SE or PE read 1)
-    local fq_2     # FASTQ file #2 (PE read 2; '#N/A' if SE)
+    local fq_2     # FASTQ file #2 (PE read #2; '#N/A' if SE)
     local samp     # Sample name derived from FASTQ filename
     local outfile  # Output file
 
@@ -196,7 +196,7 @@ function run_alignment() {
 #  Parse keyword arguments, assigning them to variables
 #+ 
 #+ Most of the argument inputs are not checked, as this is performed by
-#+ execute_*.sh and the function submitted to SLURM, "${scr_fnc}"
+#+ 'execute_*.sh' and the function submitted to SLURM, 'scr_fnc'
 env_nam="env_protocol"
 scr_fnc=""
 threads=4
@@ -242,7 +242,7 @@ All arguments are required with the following notes and exceptions:
 EOM
 )
 
-#  Display help message if no arguments, or help option, is given
+#  Display help message if a help option or no arguments are given
 if [[ -z "${1}" || "${1}" == "-h" || "${1}" == "--help" ]]; then
     echo "${show_help}"
     exit 0

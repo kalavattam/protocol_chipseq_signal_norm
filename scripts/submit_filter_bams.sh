@@ -31,9 +31,9 @@ function activate_env() {
 
 #  Function to validate that a variable is not empty or unset
 function validate_var() {
-    local var_nam="${1}"  # Variable name (for error messages)
-    local var_val="${2}"  # Value to check for emptiness/unset state
-    local idx="${3:-0}"   # Optional index (for arrays); defaults to '0'
+    local var_nam="${1}"   # Variable name (for error messages)
+    local var_val="${2-}"  # Value to check for emptiness/unset state
+    local idx="${3:-0}"    # Optional index (for arrays); defaults to '0'
 
     if [[ -z "${var_val}" ]]; then
         if [[ "${idx}" -ne 0 ]]; then
@@ -166,7 +166,7 @@ function run_filtering() {
 #  Parse keyword arguments, assigning them to variables
 #+ 
 #+ Most of the argument inputs are not checked, as this is performed by
-#+ execute_*.sh and the function submitted to SLURM, "${scr_fnc}"
+#+ 'execute_*.sh' and the function submitted to SLURM, 'scr_fnc'
 env_nam="env_protocol"
 scr_fnc=""
 threads=4
@@ -201,7 +201,7 @@ All arguments are required with the following notes and exceptions:
 EOM
 )
 
-#  Display help message if no arguments, or help option, is given
+#  Display help message if a help option or no arguments are given
 if [[ -z "${1}" || "${1}" == "-h" || "${1}" == "--help" ]]; then
     echo "${show_help}"
     exit 0
@@ -231,7 +231,7 @@ while [[ "$#" -gt 0 ]]; do
 done
 
 #  Debug argument variable assignments
-if ${debug}; then
+if ${debug:-false}; then
     debug_var \
         "env_nam=${env_nam}" \
         "scr_fnc=${scr_fnc}" \
@@ -255,7 +255,7 @@ IFS=';' read -r -a arr_infile <<< "${str_infile}"
 unset IFS
 
 #  Debug output to check number of array elements and array element values
-if ${debug}; then
+if ${debug:-false}; then
     echo "\${#arr_infile[@]}=${#arr_infile[@]}" && echo ""
     echo "arr_infile=( ${arr_infile[*]} )"      && echo ""
 fi
@@ -285,7 +285,7 @@ if [[ -n "${SLURM_ARRAY_TASK_ID:-}" ]]; then
     #+ array
     infile="${arr_infile[idx]}"
 
-    if ${debug}; then debug_var "infile=${infile}"; fi
+    if ${debug:-false}; then debug_var "infile=${infile}"; fi
 
     #  Run function to debug and validate 'infile', using it with 'scr_fnc' to
     #+ assign values to variables 'samp', 'nam_fnc', and 'outfile'
@@ -294,7 +294,7 @@ if [[ -n "${SLURM_ARRAY_TASK_ID:-}" ]]; then
     ) || exit 1
     unset IFS
 
-    if ${debug}; then
+    if ${debug:-false}; then
         debug_var \
             "samp=${samp}" \
             "nam_fnc=${nam_fnc}" \
@@ -308,7 +308,7 @@ if [[ -n "${SLURM_ARRAY_TASK_ID:-}" ]]; then
     ) || exit 1
     unset IFS
 
-    if ${debug}; then
+    if ${debug:-false}; then
         debug_var \
             "err_ini=${err_ini}" \
             "out_ini=${out_ini}" \
@@ -335,7 +335,7 @@ else
         #+ file array
         infile="${arr_infile[idx]}"
 
-        if ${debug}; then debug_var "infile=${infile}"; fi
+        if ${debug:-false}; then debug_var "infile=${infile}"; fi
 
         #  Run function to debug and validate 'infile', using it with 'scr_fnc'
         #+ to assign values to variables 'samp', 'nam_fnc', and 'outfile'
@@ -344,7 +344,7 @@ else
         ) || exit 1
         unset IFS
 
-        if ${debug}; then
+        if ${debug:-false}; then
             debug_var \
                 "samp=${samp}" \
                 "nam_fnc=${nam_fnc}" \

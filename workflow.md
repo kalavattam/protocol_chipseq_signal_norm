@@ -421,7 +421,7 @@ fil_fas="${dir_fas}/sc_sp_proc.fasta"
 #  Set execution parameters
 env_nam="env_protocol"
 day="$(date '+%Y-%m%d')"
-exc_log="${dir_log}/${day}.execute_bowtie2_build"
+log_exc="${dir_log}/${day}.execute_bowtie2_build"
 
 if ${debug:-false}; then
     echo "####################################"
@@ -450,7 +450,7 @@ if ${debug:-false}; then
     echo "#  Set execution parameters"
     echo "env_nam=${env_nam}"
     echo "day=${day}"
-    echo "exc_log=${exc_log}"
+    echo "log_exc=${log_exc}"
     echo ""
     echo ""
 fi
@@ -514,8 +514,8 @@ if ${debug:-false}; then
     echo "bowtie2-build \\"
     echo "    ${fil_fas} \\"
     echo "    ${dir_idx}/$(basename ${fil_fas} ".fasta") \\"
-    echo "         >> >(tee -a ${exc_log}.stdout.txt) \\"
-    echo "        2>> >(tee -a ${exc_log}.stderr.txt)"
+    echo "         >> >(tee -a ${log_exc}.stdout.txt) \\"
+    echo "        2>> >(tee -a ${log_exc}.stderr.txt)"
     echo ""
     echo ""
 fi
@@ -523,8 +523,8 @@ fi
 bowtie2-build \
     "${fil_fas}" \
     "${dir_idx}/$(basename ${fil_fas} ".fasta")" \
-         > >(tee -a "${exc_log}.stdout.txt") \
-        2> >(tee -a "${exc_log}.stderr.txt")
+         > >(tee -a "${log_exc}.stdout.txt") \
+        2> >(tee -a "${log_exc}.stderr.txt")
 
 
 #  Cleanup: Compress logs and remove empty files ------------------------------
@@ -569,7 +569,7 @@ fil_fas="${dir_fas}/S288C_R64-5-1_proc.fasta"
 #  Set execution parameters
 env_nam="env_protocol"
 day="$(date '+%Y-%m%d')"
-exc_log="${dir_log}/${day}.execute_bowtie2_build"
+log_exc="${dir_log}/${day}.execute_bowtie2_build"
 
 if ${debug:-false}; then
     echo "####################################"
@@ -598,7 +598,7 @@ if ${debug:-false}; then
     echo "#  Set execution parameters"
     echo "env_nam=${env_nam}"
     echo "day=${day}"
-    echo "exc_log=${exc_log}"
+    echo "log_exc=${log_exc}"
     echo ""
     echo ""
 fi
@@ -661,8 +661,8 @@ if ${debug:-false}; then
     echo "bowtie2-build \\"
     echo "    ${fil_fas} \\"
     echo "    ${dir_idx}/$(basename ${fil_fas} ".fasta") \\"
-    echo "         >> >(tee -a ${exc_log}.stdout.txt) \\"
-    echo "        2>> >(tee -a ${exc_log}.stderr.txt)"
+    echo "         >> >(tee -a ${log_exc}.stdout.txt) \\"
+    echo "        2>> >(tee -a ${log_exc}.stderr.txt)"
     echo ""
     echo ""
 fi
@@ -670,8 +670,8 @@ fi
 bowtie2-build \
     "${fil_fas}" \
     "${dir_idx}/$(basename ${fil_fas} ".fasta")" \
-         > >(tee -a "${exc_log}.stdout.txt") \
-        2> >(tee -a "${exc_log}.stderr.txt")
+         > >(tee -a "${log_exc}.stdout.txt") \
+        2> >(tee -a "${log_exc}.stderr.txt")
 
 #  Optional: Once the index is built, delete the decompressed FASTA file
 if [[ -f "${fil_fas}" ]]; then rm "${fil_fas}"; fi
@@ -732,6 +732,7 @@ pth_tsv="${dir_doc}/${fil_tbl}"
 #  Set execution parameters
 env_nam="env_protocol"
 threads=6
+slurm=true
 time="6:00:00"
 day="$(date '+%Y-%m%d')"
 
@@ -763,6 +764,7 @@ if ${debug:-false}; then
     echo "#  Set execution parameters"
     echo "env_nam=${env_nam}"
     echo "threads=${threads}"
+    echo "slurm=${slurm}"
     echo "time=${time}"
     echo "day=${day}"
     echo ""
@@ -772,19 +774,27 @@ fi
 
 #  Activate the environment and check dependencies ----------------------------
 #  Source utility functions
-source "${dir_fnc}/check_program_path.sh"
-source "${dir_fnc}/echo_warning.sh"
-source "${dir_fnc}/handle_env.sh"
+# shellcheck disable=SC1091
+{
+    source "${dir_fnc}/check_program_path.sh"
+    source "${dir_fnc}/echo_warning.sh"
+    source "${dir_fnc}/handle_env.sh"
+}
 
 #  Activate the required environment
 handle_env "${env_nam}"
 
 #  Ensure access to necessary dependencies such as GNU Parallel, SLURM sbatch
 check_program_path parallel
-check_program_path sbatch &> /dev/null ||
-    echo_warning \
-        "SLURM is not available on this system. Do not use the '--slurm'" \
-        "flag with the driver script."
+check_program_path wget
+
+if ${slurm:-false}; then
+    check_program_path sbatch &> /dev/null ||
+        echo_warning \
+            "SLURM is not available on this system. Do not use the '--slurm'" \
+            "flag with the driver script."
+fi
+
 
 
 #  Create required directories if necessary -----------------------------------
@@ -830,7 +840,7 @@ if ${debug:-false}; then
     echo "    --dir_out ${dir_raw} \\"
     echo "    --dir_sym ${dir_sym} \\"
     echo "    --err_out ${dir_raw}/logs \\"
-    echo "    --slurm \\"
+    echo "$(if ${slurm:-false}; then echo "$(if ${slurm:-false}; then echo "    --slurm \\"; fi)"; fi)"
     echo "    --time ${time} \\"
     echo "         > >(tee -a ${dir_raw}/logs/${day}.execute.stdout.txt) \\"
     echo "        2> >(tee -a ${dir_raw}/logs/${day}.execute.stderr.txt)"
@@ -842,7 +852,7 @@ bash "${dir_scr}/execute_download_fastqs.sh" \
     --dir_out "${dir_raw}" \
     --dir_sym "${dir_sym}" \
     --err_out "${dir_raw}/logs" \
-    --slurm \
+    $(if ${slurm:-false}; then echo "--slurm"; fi) \
     --time "${time}" \
          > >(tee -a "${dir_raw}/logs/${day}.execute.stdout.txt") \
         2> >(tee -a "${dir_raw}/logs/${day}.execute.stderr.txt")
@@ -936,20 +946,18 @@ fi
 
 #  Activate the environment and check dependencies ----------------------------
 #  Source utility functions
-source "${dir_fnc}/check_program_path.sh"
-source "${dir_fnc}/echo_warning.sh"
-source "${dir_fnc}/handle_env.sh"
+# shellcheck disable=SC1091
+{
+    source "${dir_fnc}/check_program_path.sh"
+    source "${dir_fnc}/echo_warning.sh"
+    source "${dir_fnc}/handle_env.sh"
+}
 
 #  Activate the required environment
 handle_env "${env_nam}"
 
 #  Check availability of Atria and other necessary tools
 check_program_path atria
-
-if ! ${slurm:-false} && [[ ${threads} -gt 1 ]]; then
-    check_program_path parallel
-fi
-
 check_program_path pbzip2
 check_program_path pigz
 
@@ -958,6 +966,8 @@ if ${slurm:-false}; then
         echo_warning \
             "SLURM is not available on this system. Do not use the '--slurm'" \
             "flag with the driver script."
+elif [[ "${threads}" -gt 1 ]]; then
+    check_program_path parallel
 fi
 
 
@@ -1004,14 +1014,14 @@ if ${debug:-false}; then
     echo "    --dir_out ${dir_trm} \\"
     echo "    --err_out ${dir_trm}/logs \\"
     echo "    --max_job ${max_job} \\"
-    echo "$(if ${slurm:-false}; then echo "    --slurm \\"; fi)"
+    echo "$(if ${slurm:-false}; then echo "$(if ${slurm:-false}; then echo "    --slurm \\"; fi)"; fi)"
     echo "         > >(tee -a ${dir_trm}/logs/${day}.execute.stdout.txt) \\"
     echo "        2> >(tee -a ${dir_trm}/logs/${day}.execute.stderr.txt)"
 fi
 
 bash "${dir_scr}/execute_trim_fastqs.sh" \
     --verbose \
-    --threads ${threads} \
+    --threads "${threads}" \
     --infiles "${infiles}" \
     --dir_out "${dir_trm}" \
     --err_out "${dir_trm}/logs" \
@@ -1155,20 +1165,18 @@ fi
 
 #  Activate the environment and check dependencies ----------------------------
 #  Source utility functions
-source "${dir_fnc}/check_program_path.sh"
-source "${dir_fnc}/echo_warning.sh"
-source "${dir_fnc}/handle_env.sh"
+# shellcheck disable=SC1091
+{
+    source "${dir_fnc}/check_program_path.sh"
+    source "${dir_fnc}/echo_warning.sh"
+    source "${dir_fnc}/handle_env.sh"
+}
 
 #  Activate the required environment
 handle_env "${env_nam}"
 
 #  Check the availability of Bowtie 2, Samtools, and SLURM sbatch
 check_program_path bowtie2
-
-if ! ${slurm:-false} && [[ ${threads} -gt 1 ]]; then
-    check_program_path parallel
-fi
-
 check_program_path samtools
 
 if ${slurm:-false}; then
@@ -1176,6 +1184,8 @@ if ${slurm:-false}; then
         echo_warning \
             "SLURM is not available on this system. Do not use the '--slurm'" \
             "flag with the driver script."
+elif [[ "${threads}" -gt 1 ]]; then
+    check_program_path parallel
 fi
 
 
@@ -1337,51 +1347,49 @@ In the corresponding [Bash code chunk](#bash-code), the signal type is specified
 #  Define variables -----------------------------------------------------------
 debug=true
 
-#  Set hardcoded paths, values, etc.
+#  Set base repository paths
 dir_bas="${HOME}/repos"  ## WARNING: Change as needed ##
 dir_rep="${dir_bas}/protocol_chipseq_signal_norm"
 dir_scr="${dir_rep}/scripts"
 dir_fnc="${dir_scr}/functions"
-dir_dat="${dir_rep}/data"
-dir_pro="${dir_dat}/processed"
 
+#  Set alignment parameters
 aligner="bowtie2"
 a_type="global"
 req_flg=true
 flg="$(if ${req_flg}; then echo "2"; else echo "NA"; fi)"
 mapq=1
-details="${aligner}_${a_type}_flag-${flg}_mapq-${mapq}"
+prm_aln="${aligner}_${a_type}_flag-${flg}_mapq-${mapq}"
 
-dir_aln="${dir_pro}/align_reads/${details}"
-dir_bam="${dir_aln}/sc"
-dir_cvg="${dir_pro}/compute_signal/${details}"
-typ_cvg="norm"
-dir_trk="${dir_cvg}/${typ_cvg}"
+#  Define data directories
+dir_dat="${dir_rep}/data"
+dir_pro="${dir_dat}/processed"
+dir_aln="${dir_pro}/align_fastqs"
+dir_det="${dir_aln}/${prm_aln}"
+dir_bam="${dir_det}/sc"
+
+#  Set output directories
+dir_cvg="${dir_pro}/compute_signal/${prm_aln}"
+dir_trk="${dir_cvg}/norm"
 dir_log="${dir_trk}/logs"
 
-pattern="*.bam"
-
+#  Set execution parameters and related variables
 env_nam="env_protocol"
-execute="${dir_scr}/execute_compute_signal.sh"
-day="$(date '+%Y-%m%d')"
-exc_log="${dir_log}/${day}.$(basename "${execute}" ".sh")"
+scr_exc="${dir_scr}/execute_compute_signal.sh"
+log_exc="${dir_log}/$(date '+%Y-%m%d').$(basename "${scr_exc}" ".sh")"
 
-#  Set hardcoded argument assignments
-# shellcheck disable=SC2269
-{
-    threads=8
-    infiles="$(  ## WARNING: Change search parameters as needed ##
-        bash "${dir_scr}/find_files.sh" \
-            --dir_fnd "${dir_bam}" \
-            --pattern "${pattern}"
-    )"
-    dir_out="${dir_trk}"
-    typ_out="bdg.gz"
-    siz_bin=30
-    typ_cvg="${typ_cvg}"
-    err_out="${dir_log}"
-    nam_job="compute_signal_${typ_cvg}"
-}
+threads=8
+infiles="$(  ## WARNING: Change search parameters as needed ##
+    bash "${dir_scr}/find_files.sh" \
+        --dir_fnd "${dir_bam}" \
+        --pattern "*.bam"
+)"
+dir_out="${dir_trk}"
+typ_out="bdg.gz"
+siz_bin=30
+typ_cvg="norm"
+err_out="${dir_log}"
+nam_job="compute_signal_${typ_cvg}"
 
 if ${debug:-false}; then
     echo "##########################"
@@ -1390,33 +1398,36 @@ if ${debug:-false}; then
     echo ""
     echo "debug=${debug}"
     echo ""
+    echo "#  Set base repository paths"
     echo "dir_bas=${dir_bas}"
     echo "dir_rep=${dir_rep}"
     echo "dir_scr=${dir_scr}"
     echo "dir_fnc=${dir_fnc}"
-    echo "dir_dat=${dir_dat}"
-    echo "dir_pro=${dir_pro}"
     echo ""
+    echo "#  Set alignment parameters"
     echo "aligner=${aligner}"
     echo "a_type=${a_type}"
     echo "req_flg=${req_flg}"
     echo "flg=${flg}"
     echo "mapq=${mapq}"
-    echo "details=${details}"
+    echo "prm_aln=${prm_aln}"
     echo ""
+    echo "#  Define data directories"
+    echo "dir_dat=${dir_dat}"
+    echo "dir_pro=${dir_pro}"
     echo "dir_aln=${dir_aln}"
+    echo "dir_det=${dir_det}"
     echo "dir_bam=${dir_bam}"
+    echo ""
+    echo "#  Set output directories"
     echo "dir_cvg=${dir_cvg}"
-    echo "typ_cvg=${typ_cvg}"
     echo "dir_trk=${dir_trk}"
     echo "dir_log=${dir_log}"
     echo ""
-    echo "pattern=${pattern}"
-    echo ""
+    echo "#  Set execution parameters and related variables"
     echo "env_nam=${env_nam}"
-    echo "execute=${execute}"
-    echo "day=${day}"
-    echo "exc_log=${exc_log}"
+    echo "scr_exc=${scr_exc}"
+    echo "log_exc=${log_exc}"
     echo ""
     echo "threads=${threads}"
     echo "infiles=${infiles}"
@@ -1475,12 +1486,16 @@ handle_env "${env_nam}"
 #  Check the availability of necessary dependencies such as GNU Parallel,
 #+ Python, and SLURM sbatch
 check_program_path awk
-check_program_path parallel
 check_program_path python
-check_program_path sbatch &> /dev/null ||
-    echo_warning \
-        "SLURM is not available on this system. Do not use the '--slurm'" \
-        "flag with the driver script."
+
+if ${slurm:-false}; then
+    check_program_path sbatch &> /dev/null ||
+        echo_warning \
+            "SLURM is not available on this system. Do not use the '--slurm'" \
+            "flag with the driver script."
+elif [[ "${threads}" -gt 1 ]]; then
+    check_program_path parallel
+fi
 
 
 #  Compute coverage -----------------------------------------------------------
@@ -1489,7 +1504,7 @@ if ${debug:-false}; then
     echo "## Call to driver script ##"
     echo "###########################"
     echo ""
-    echo "bash ${execute} \\"
+    echo "bash ${scr_exc} \\"
     echo "    --verbose \\"
     echo "    --threads ${threads} \\"
     echo "    --infiles ${infiles} \\"
@@ -1499,16 +1514,16 @@ if ${debug:-false}; then
     echo "    --typ_cvg ${typ_cvg} \\"
     echo "    --err_out ${err_out} \\"
     echo "    --nam_job ${nam_job} \\"
-    echo "    --slurm \\"
-    echo "         >> >(tee -a ${exc_log}.stdout.txt) \\"
-    echo "        2>> >(tee -a ${exc_log}.stderr.txt)"
+    echo "$(if ${slurm:-false}; then echo "    --slurm \\"; fi)"
+    echo "         >> >(tee -a ${log_exc}.stdout.txt) \\"
+    echo "        2>> >(tee -a ${log_exc}.stderr.txt)"
     echo ""
     echo ""
 fi
 
 #  Run the driver script: Include '--dry_run' to perform a test run without
 #+ executing commands
-bash "${execute}" \
+bash "${scr_exc}" \
     --verbose \
     --threads "${threads}" \
     --infiles "${infiles}" \
@@ -1518,9 +1533,9 @@ bash "${execute}" \
     --typ_cvg "${typ_cvg}" \
     --err_out "${err_out}" \
     --nam_job "${nam_job}" \
-    --slurm \
-         >> >(tee -a "${exc_log}.stdout.txt") \
-        2>> >(tee -a "${exc_log}.stderr.txt")
+    $(if ${slurm:-false}; then echo "--slurm"; fi) \
+         >> >(tee -a "${log_exc}.stdout.txt") \
+        2>> >(tee -a "${log_exc}.stderr.txt")
 
 #  Check that each normalized coverage file sums to unity
 if ${debug:-false}; then
@@ -1600,9 +1615,9 @@ include="IP*"
 exclude="*Brn1*"
 
 env_nam="env_protocol"
-execute="${dir_scr}/execute_calculate_scaling_factor_${typ_cvg}.sh"
+scr_exc="${dir_scr}/execute_calculate_scaling_factor_${typ_cvg}.sh"
 day="$(date '+%Y-%m%d')"
-exc_log="${dir_log}/${day}.$(basename "${execute}" ".sh")"
+log_exc="${dir_log}/${day}.$(basename "${scr_exc}" ".sh")"
 
 #  Set hardcoded argument assignments
 threads=8
@@ -1652,9 +1667,9 @@ if ${debug:-false}; then
     echo "exclude=${exclude}"
     echo ""
     echo "env_nam=${env_nam}"
-    echo "execute=${execute}"
+    echo "scr_exc=${scr_exc}"
     echo "day=${day}"
-    echo "exc_log=${exc_log}"
+    echo "log_exc=${log_exc}"
     echo ""
     echo "threads=${threads}"
     echo "ser_ip=${ser_ip}"
@@ -1711,13 +1726,17 @@ handle_env "${env_nam}"
 #  Check the availability of necessary dependencies such as GNU Parallel,
 #+ Python, Samtools, and SLURM
 check_program_path awk
-check_program_path parallel
 check_program_path python
 check_program_path samtools
-check_program_path sbatch &> /dev/null ||
-    echo_warning \
-        "SLURM is not available on this system. Do not use the '--slurm'" \
-        "flag with the driver script."
+
+if ${slurm:-false}; then
+    check_program_path sbatch &> /dev/null ||
+        echo_warning \
+            "SLURM is not available on this system. Do not use the '--slurm'" \
+            "flag with the driver script."
+elif [[ "${threads}" -gt 1 ]]; then
+    check_program_path parallel
+fi
 
 
 #  Construct table ------------------------------------------------------------
@@ -1726,7 +1745,7 @@ if ${debug:-false}; then
     echo "## Call to driver script ##"
     echo "###########################"
     echo ""
-    echo "bash \"${execute}\" \\"
+    echo "bash \"${scr_exc}\" \\"
     echo "    --verbose \\"
     echo "    --threads ${threads} \\"
     echo "    --ser_ip \"${ser_ip}\" \\"
@@ -1736,15 +1755,15 @@ if ${debug:-false}; then
     echo "    --fil_out \"${fil_out}\" \\"
     echo "    --err_out \"${err_out}\" \\"
     echo "    --slurm"
-    echo "         >> >(tee -a ${exc_log}.stdout.txt) \\"
-    echo "        2>> >(tee -a ${exc_log}.stderr.txt)"
+    echo "         >> >(tee -a ${log_exc}.stdout.txt) \\"
+    echo "        2>> >(tee -a ${log_exc}.stderr.txt)"
     echo ""
     echo ""
 fi
 
 #  Run the driver script: Include '--dry_run' to perform a test run without
 #+ executing commands
-bash "${execute}" \
+bash "${scr_exc}" \
     --verbose \
     --threads ${threads} \
     --ser_ip "${ser_ip}" \
@@ -1753,9 +1772,9 @@ bash "${execute}" \
     --eqn "${eqn}" \
     --fil_out "${fil_out}" \
     --err_out "${err_out}" \
-    --slurm \
-         >> >(tee -a "${exc_log}.stdout.txt") \
-        2>> >(tee -a "${exc_log}.stderr.txt")
+    $(if ${slurm:-false}; then echo "--slurm"; fi) \
+         >> >(tee -a "${log_exc}.stdout.txt") \
+        2>> >(tee -a "${log_exc}.stderr.txt")
 
 if [[ -f "${fil_out}" ]]; then
     #  Sort the table by rows
@@ -1829,9 +1848,9 @@ include="IP*"
 exclude="*Brn1*"
 
 env_nam="env_protocol"
-execute="${dir_scr}/execute_calculate_scaling_factor_${typ_cvg}.sh"
+scr_exc="${dir_scr}/execute_calculate_scaling_factor_${typ_cvg}.sh"
 day="$(date '+%Y-%m%d')"
-exc_log="${dir_log}/${day}.$(basename "${execute}" ".sh")"
+log_exc="${dir_log}/${day}.$(basename "${scr_exc}" ".sh")"
 
 #  Set hardcoded argument assignments
 threads=8
@@ -1881,9 +1900,9 @@ if ${debug:-false}; then
     echo "exclude=${exclude}"
     echo ""
     echo "env_nam=${env_nam}"
-    echo "execute=${execute}"
+    echo "scr_exc=${scr_exc}"
     echo "day=${day}"
-    echo "exc_log=${exc_log}"
+    echo "log_exc=${log_exc}"
     echo ""
     echo "threads=${threads}"
     echo "ser_mip=${ser_mip}"
@@ -1940,13 +1959,17 @@ handle_env "${env_nam}"
 #  Check the availability of necessary dependencies such as GNU Parallel,
 #+ Python, Samtools, and SLURM
 check_program_path awk
-check_program_path parallel
 check_program_path python
 check_program_path samtools
-check_program_path sbatch &> /dev/null ||
-    echo_warning \
-        "SLURM is not available on this system. Do not use the '--slurm'" \
-        "flag with the driver script."
+
+if ${slurm:-false}; then
+    check_program_path sbatch &> /dev/null ||
+        echo_warning \
+            "SLURM is not available on this system. Do not use the '--slurm'" \
+            "flag with the driver script."
+elif [[ "${threads}" -gt 1 ]]; then
+    check_program_path parallel
+fi
 
 
 #  Construct table ------------------------------------------------------------
@@ -1955,7 +1978,7 @@ if ${debug:-false}; then
     echo "## Call to driver script ##"
     echo "###########################"
     echo ""
-    echo "bash \"${execute}\" \\"
+    echo "bash \"${scr_exc}\" \\"
     echo "    --verbose \\"
     echo "    --threads ${threads} \\"
     echo "    --ser_mip \"${ser_mip}\" \\"
@@ -1965,15 +1988,15 @@ if ${debug:-false}; then
     echo "    --fil_out \"${fil_out}\" \\"
     echo "    --err_out \"${err_out}\" \\"
     echo "    --slurm"
-    echo "         >> >(tee -a ${exc_log}.stdout.txt) \\"
-    echo "        2>> >(tee -a ${exc_log}.stderr.txt)"
+    echo "         >> >(tee -a ${log_exc}.stdout.txt) \\"
+    echo "        2>> >(tee -a ${log_exc}.stderr.txt)"
     echo ""
     echo ""
 fi
 
 #  Run the driver script: Include '--dry_run' to perform a test run without
 #+ executing commands
-bash "${execute}" \
+bash "${scr_exc}" \
     --verbose \
     --threads ${threads} \
     --ser_mip "${ser_mip}" \
@@ -1982,9 +2005,9 @@ bash "${execute}" \
     --ser_sin "${ser_sin}" \
     --fil_out "${fil_out}" \
     --err_out "${err_out}" \
-    --slurm \
-         >> >(tee -a "${exc_log}.stdout.txt") \
-        2>> >(tee -a "${exc_log}.stderr.txt")
+    $(if ${slurm:-false}; then echo "--slurm"; fi) \
+         >> >(tee -a "${log_exc}.stdout.txt") \
+        2>> >(tee -a "${log_exc}.stderr.txt")
 
 if [[ -f "${fil_out}" ]]; then
     #  Sort the table by rows
@@ -2074,9 +2097,9 @@ dir_lg2="${dir_cvg}/log2"
 dir_log="${dir_lg2}/logs"
 
 env_nam="env_protocol"
-execute="execute_compute_signal_ratio.sh"
+scr_exc="execute_compute_signal_ratio.sh"
 day="$(date '+%Y-%m%d')"
-exc_log="${dir_log}/${day}.$(basename "${execute}" ".sh")"
+log_exc="${dir_log}/${day}.$(basename "${scr_exc}" ".sh")"
 
 typ_cvg="log2"  ## NOTE: Use samples from either the alpha or spike table ##
 tbl_lg2="${dir_tbl}/ChIP_WT_G1-G2M-Q_Hho1-Hmo1_alpha.tsv"
@@ -2133,9 +2156,9 @@ if ${debug:-false}; then
     echo "dir_log=${dir_log}"
     echo ""
     echo "env_nam=${env_nam}"
-    echo "execute=${execute}"
+    echo "scr_exc=${scr_exc}"
     echo "day=${day}"
-    echo "exc_log=${exc_log}"
+    echo "log_exc=${log_exc}"
     echo ""
     echo "typ_cvg=${typ_cvg}"
     echo "tbl_lg2=${tbl_lg2}"
@@ -2206,13 +2229,17 @@ handle_env "${env_nam}"
 #  Check the availability of necessary dependencies such as GNU Parallel and
 #+ SLURM sbatch
 check_program_path awk
-check_program_path parallel
 check_program_path python
 check_program_path samtools
-check_program_path sbatch &> /dev/null ||
-    echo_warning \
-        "SLURM is not available on this system. Do not use the '--slurm'" \
-        "flag with the driver script."
+
+if ${slurm:-false}; then
+    check_program_path sbatch &> /dev/null ||
+        echo_warning \
+            "SLURM is not available on this system. Do not use the '--slurm'" \
+            "flag with the driver script."
+elif [[ "${threads}" -gt 1 ]]; then
+    check_program_path parallel
+fi
 
 
 #  Generate log2(IP/input) coverage tracks ------------------------------------
@@ -2221,7 +2248,7 @@ if ${debug:-false}; then
     echo "## Call to driver script with '--dep_min' argument ##"
     echo "#####################################################"
     echo ""
-    echo "bash ${dir_scr}/${execute} \\"
+    echo "bash ${dir_scr}/${scr_exc} \\"
     echo "    --verbose \\"
     echo "    --fil_ip ${fil_ip} \\"
     echo "    --fil_in ${fil_in} \\"
@@ -2231,16 +2258,16 @@ if ${debug:-false}; then
     echo "    --dep_min ${dep_min} \\"
     echo "    --log2 \\"
     echo "    --err_out ${dir_log} \\"
-    echo "    --slurm \\"
-    echo "         >> >(tee -a ${exc_log}.stdout.txt) \\"
-    echo "        2>> >(tee -a ${exc_log}.stderr.txt)"
+    echo "$(if ${slurm:-false}; then echo "    --slurm \\"; fi)"
+    echo "         >> >(tee -a ${log_exc}.stdout.txt) \\"
+    echo "        2>> >(tee -a ${log_exc}.stderr.txt)"
     echo ""
     echo ""
 fi
 
 #  Run driver script to generate tracks with 'dep_min': Add '--dry_run' to view
 #+ commands without execution
-bash "${dir_scr}/${execute}" \
+bash "${dir_scr}/${scr_exc}" \
     --verbose \
     --fil_ip "${fil_ip}" \
     --fil_in "${fil_in}" \
@@ -2250,13 +2277,13 @@ bash "${dir_scr}/${execute}" \
     --dep_min "${dep_min}" \
     --log2 \
     --err_out "${dir_log}" \
-    --slurm \
-         >> >(tee -a "${exc_log}.dm_y.stdout.txt") \
-        2>> >(tee -a "${exc_log}.dm_y.stderr.txt")
+    $(if ${slurm:-false}; then echo "--slurm"; fi) \
+         >> >(tee -a "${log_exc}.dm_y.stdout.txt") \
+        2>> >(tee -a "${log_exc}.dm_y.stderr.txt")
 
 #  Run driver script to generate tracks without 'dep_min': Add '--dry_run' to
 #+ view commands without execution
-bash "${dir_scr}/${execute}" \
+bash "${dir_scr}/${scr_exc}" \
     --verbose \
     --fil_ip "${fil_ip}" \
     --fil_in "${fil_in}" \
@@ -2265,9 +2292,9 @@ bash "${dir_scr}/${execute}" \
     --track \
     --log2 \
     --err_out "${dir_log}" \
-    --slurm \
-         >> >(tee -a "${exc_log}.dm_n.stdout.txt") \
-        2>> >(tee -a "${exc_log}.dm_n.stderr.txt")
+    $(if ${slurm:-false}; then echo "--slurm"; fi) \
+         >> >(tee -a "${log_exc}.dm_n.stdout.txt") \
+        2>> >(tee -a "${log_exc}.dm_n.stderr.txt")
 
 
 #  Cleanup: Compress logs and remove empty files ------------------------------
@@ -2358,9 +2385,9 @@ dir_alf="${dir_cvg}/alpha"
 dir_log="${dir_alf}/logs"
 
 env_nam="env_protocol"
-execute="execute_compute_signal_ratio.sh"
+scr_exc="execute_compute_signal_ratio.sh"
 day="$(date '+%Y-%m%d')"
-exc_log="${dir_log}/${day}.$(basename "${execute}" ".sh")"
+log_exc="${dir_log}/${day}.$(basename "${scr_exc}" ".sh")"
 
 typ_cvg="alpha"
 tbl_alf="${dir_tbl}/ChIP_WT_G1-G2M-Q_Hho1-Hmo1_${typ_cvg}.tsv"
@@ -2418,9 +2445,9 @@ if ${debug:-false}; then
     echo "dir_log=${dir_log}"
     echo ""
     echo "env_nam=${env_nam}"
-    echo "execute=${execute}"
+    echo "scr_exc=${scr_exc}"
     echo "day=${day}"
-    echo "exc_log=${exc_log}"
+    echo "log_exc=${log_exc}"
     echo ""
     echo "typ_cvg=${typ_cvg}"
     echo "tbl_alf=${tbl_alf}"
@@ -2492,13 +2519,17 @@ handle_env "${env_nam}"
 #  Check the availability of necessary dependencies such as GNU Parallel and
 #+ SLURM sbatch
 check_program_path awk
-check_program_path parallel
 check_program_path python
 check_program_path samtools
-check_program_path sbatch &> /dev/null ||
-    echo_warning \
-        "SLURM is not available on this system. Do not use the '--slurm'" \
-        "flag with the driver script."
+
+if ${slurm:-false}; then
+    check_program_path sbatch &> /dev/null ||
+        echo_warning \
+            "SLURM is not available on this system. Do not use the '--slurm'" \
+            "flag with the driver script."
+elif [[ "${threads}" -gt 1 ]]; then
+    check_program_path parallel
+fi
 
 
 #  Generate siQ-ChIP alpha-scaled coverage tracks -----------------------------
@@ -2507,7 +2538,7 @@ if ${debug:-false}; then
     echo "## Call to driver script with '--dep_min' argument ##"
     echo "#####################################################"
     echo ""
-    echo "bash ${dir_scr}/${execute} \\"
+    echo "bash ${dir_scr}/${scr_exc} \\"
     echo "    --verbose \\"
     echo "    --fil_ip ${fil_ip} \\"
     echo "    --fil_in ${fil_in} \\"
@@ -2517,16 +2548,16 @@ if ${debug:-false}; then
     echo "    --scl_fct ${scl_fct} \\"
     echo "    --dep_min ${dep_min} \\"
     echo "    --err_out ${dir_log} \\"
-    echo "    --slurm \\"
-    echo "         >> >(tee -a ${exc_log}.stdout.txt) \\"
-    echo "        2>> >(tee -a ${exc_log}.stderr.txt)"
+    echo "$(if ${slurm:-false}; then echo "    --slurm \\"; fi)"
+    echo "         >> >(tee -a ${log_exc}.stdout.txt) \\"
+    echo "        2>> >(tee -a ${log_exc}.stderr.txt)"
     echo ""
     echo ""
 fi
 
 #  Run driver script to generate tracks with 'dep_min': Add '--dry_run' to view
 #+ commands without execution
-bash "${dir_scr}/${execute}" \
+bash "${dir_scr}/${scr_exc}" \
     --verbose \
     --fil_ip "${fil_ip}" \
     --fil_in "${fil_in}" \
@@ -2536,13 +2567,13 @@ bash "${dir_scr}/${execute}" \
     --scl_fct "${scl_fct}" \
     --dep_min "${dep_min}" \
     --err_out "${dir_log}" \
-    --slurm \
-         >> >(tee -a "${exc_log}.dm_y.stdout.txt") \
-        2>> >(tee -a "${exc_log}.dm_y.stderr.txt")
+    $(if ${slurm:-false}; then echo "--slurm"; fi) \
+         >> >(tee -a "${log_exc}.dm_y.stdout.txt") \
+        2>> >(tee -a "${log_exc}.dm_y.stderr.txt")
 
 #  Run driver script to generate tracks without 'dep_min': Add '--dry_run' to
 #+ view commands without execution
-bash "${dir_scr}/${execute}" \
+bash "${dir_scr}/${scr_exc}" \
     --verbose \
     --fil_ip "${fil_ip}" \
     --fil_in "${fil_in}" \
@@ -2551,9 +2582,9 @@ bash "${dir_scr}/${execute}" \
     --track \
     --scl_fct "${scl_fct}" \
     --err_out "${dir_log}" \
-    --slurm \
-         >> >(tee -a "${exc_log}.dm_n.stdout.txt") \
-        2>> >(tee -a "${exc_log}.dm_n.stderr.txt")
+    $(if ${slurm:-false}; then echo "--slurm"; fi) \
+         >> >(tee -a "${log_exc}.dm_n.stdout.txt") \
+        2>> >(tee -a "${log_exc}.dm_n.stderr.txt")
 
 
 #  Cleanup: Compress logs and remove empty files ------------------------------
@@ -2614,9 +2645,9 @@ dir_spk="${dir_cvg}/spike"
 dir_log="${dir_spk}/logs"
 
 env_nam="env_protocol"
-execute="execute_compute_signal_ratio.sh"
+scr_exc="execute_compute_signal_ratio.sh"
 day="$(date '+%Y-%m%d')"
-exc_log="${dir_log}/${day}.$(basename "${execute}" ".sh")"
+log_exc="${dir_log}/${day}.$(basename "${scr_exc}" ".sh")"
 
 typ_cvg="spike"
 tbl_spk="${dir_tbl}/ChIP_WT_G1-G2M-Q_Hho1-Hmo1_${typ_cvg}.tsv"
@@ -2674,9 +2705,9 @@ if ${debug:-false}; then
     echo "dir_log=${dir_log}"
     echo ""
     echo "env_nam=${env_nam}"
-    echo "execute=${execute}"
+    echo "scr_exc=${scr_exc}"
     echo "day=${day}"
-    echo "exc_log=${exc_log}"
+    echo "log_exc=${log_exc}"
     echo ""
     echo "typ_cvg=${typ_cvg}"
     echo "tbl_spk=${tbl_spk}"
@@ -2748,13 +2779,17 @@ handle_env "${env_nam}"
 #  Check the availability of necessary dependencies such as GNU Parallel and
 #+ SLURM sbatch
 check_program_path awk
-check_program_path parallel
 check_program_path python
 check_program_path samtools
-check_program_path sbatch &> /dev/null ||
-    echo_warning \
-        "SLURM is not available on this system. Do not use the '--slurm'" \
-        "flag with the driver script."
+
+if ${slurm:-false}; then
+    check_program_path sbatch &> /dev/null ||
+        echo_warning \
+            "SLURM is not available on this system. Do not use the '--slurm'" \
+            "flag with the driver script."
+elif [[ "${threads}" -gt 1 ]]; then
+    check_program_path parallel
+fi
 
 
 #  Generate spike-in scaled coverage tracks -----------------------------------
@@ -2763,7 +2798,7 @@ if ${debug:-false}; then
     echo "## Call to driver script with '--dep_min' argument ##"
     echo "#####################################################"
     echo ""
-    echo "bash ${dir_scr}/${execute} \\"
+    echo "bash ${dir_scr}/${scr_exc} \\"
     echo "    --verbose \\"
     echo "    --fil_ip ${fil_ip} \\"
     echo "    --fil_in ${fil_in} \\"
@@ -2773,16 +2808,16 @@ if ${debug:-false}; then
     echo "    --scl_fct ${scl_fct} \\"
     echo "    --dep_min ${dep_min} \\"
     echo "    --err_out ${dir_log} \\"
-    echo "    --slurm \\"
-    echo "         >> >(tee -a ${exc_log}.stdout.txt) \\"
-    echo "        2>> >(tee -a ${exc_log}.stderr.txt)"
+    echo "$(if ${slurm:-false}; then echo "    --slurm \\"; fi)"
+    echo "         >> >(tee -a ${log_exc}.stdout.txt) \\"
+    echo "        2>> >(tee -a ${log_exc}.stderr.txt)"
     echo ""
     echo ""
 fi
 
 #  Run driver script to generate tracks with 'dep_min': Add '--dry_run' to view
 #+ commands without execution
-bash "${dir_scr}/${execute}" \
+bash "${dir_scr}/${scr_exc}" \
     --verbose \
     --fil_ip "${fil_ip}" \
     --fil_in "${fil_in}" \
@@ -2792,13 +2827,13 @@ bash "${dir_scr}/${execute}" \
     --scl_fct "${scl_fct}" \
     --dep_min "${dep_min}" \
     --err_out "${dir_log}" \
-    --slurm \
-         >> >(tee -a "${exc_log}.dm_y.stdout.txt") \
-        2>> >(tee -a "${exc_log}.dm_y.stderr.txt")
+    $(if ${slurm:-false}; then echo "--slurm"; fi) \
+         >> >(tee -a "${log_exc}.dm_y.stdout.txt") \
+        2>> >(tee -a "${log_exc}.dm_y.stderr.txt")
 
 #  Run driver script to generate tracks without 'dep_min': Add '--dry_run' to
 #+ view commands without execution
-bash "${dir_scr}/${execute}" \
+bash "${dir_scr}/${scr_exc}" \
     --verbose \
     --fil_ip "${fil_ip}" \
     --fil_in "${fil_in}" \
@@ -2807,9 +2842,9 @@ bash "${dir_scr}/${execute}" \
     --track \
     --scl_fct "${scl_fct}" \
     --err_out "${dir_log}" \
-    --slurm \
-         >> >(tee -a "${exc_log}.dm_n.stdout.txt") \
-        2>> >(tee -a "${exc_log}.dm_n.stderr.txt")
+    $(if ${slurm:-false}; then echo "--slurm"; fi) \
+         >> >(tee -a "${log_exc}.dm_n.stdout.txt") \
+        2>> >(tee -a "${log_exc}.dm_n.stderr.txt")
 
 
 #  Cleanup: Compress logs and remove empty files ------------------------------

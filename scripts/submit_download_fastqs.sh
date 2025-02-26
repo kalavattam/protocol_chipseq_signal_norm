@@ -1,6 +1,10 @@
 #!/bin/bash
 
-#  Display help message if no arguments or help option is given
+#  submit_download_fastqs.sh
+#  KA
+
+
+#  Define the help message
 show_help=$(cat << EOM
 \${1}=srr      # NCBI SRA database run accession code.
 \${2}=url_1    # URL (FTP or HTTPS) for FASTQ file.
@@ -13,6 +17,7 @@ show_help=$(cat << EOM
 EOM
 )
 
+#  Display help message if a help option or no arguments are given
 if [[ -z "${1}" || "${1}" == "-h" || "${1}" == "--help" ]]; then
     cat << EOM
 $(basename "${0}") requires 8 positional arguments:
