@@ -27,16 +27,17 @@ dir_fnc="${dir_scr}/functions"
 # shellcheck disable=SC1090
 for script in \
     check_exists_file_dir.sh \
-    check_fastqs.sh \
     check_format_time.sh \
     check_int_pos.sh \
     check_program_path.sh \
+    check_string_fastqs.sh \
     check_supplied_arg.sh \
     echo_error.sh \
     echo_warning.sh \
     exit_0.sh \
     exit_1.sh \
     handle_env.sh \
+    print_parallel_info.sh \
     reset_max_job.sh \
     set_params_parallel.sh
 do
@@ -75,8 +76,8 @@ function set_interactive() {
     sfx_pe="_R1.fastq.gz"
     err_out="${dir_out}/logs"
     nam_job="trim_fastqs"
-    slurm=false
     max_job=2
+    slurm=false
     time="0:45:00"
 }
 
@@ -97,16 +98,16 @@ sfx_se=".fastq.gz"
 sfx_pe="_R1.fastq.gz"
 err_out=""
 nam_job="trim_fastqs"
-slurm=false
 max_job=8
+slurm=false
 time="0:45:00"
 
 show_help=$(cat << EOM
 Usage:
   execute_trim_fastqs.sh
     [--verbose] [--dry_run] --threads <int> --infiles <str> --dir_out <str>
-    --sfx_se <str> --sfx_pe <str> --err_out <str> --nam_job <str> [--slurm]
-    [--max_job <int>] [--time <str>]
+    --sfx_se <str> --sfx_pe <str> --err_out <str> --nam_job <str>
+    --max_job <int> [--slurm] [--time <str>]
 
 Description:
   execute_trim_fastqs.sh performs read-adapter and quality trimming with the
@@ -116,7 +117,7 @@ Arguments:
    -h, --help     Display this help message and exit.
    -v, --verbose  Run script in 'verbose' mode (optional).
   -dr, --dry_run  Run the command in check mode (optional).
-   -t, --threads  Number of threads to use (required; default: ${threads}).
+   -t, --threads  Number of threads to use (required; default: '${threads}').
    -i, --infiles  Semicolon-separated string vector of FASTQ infiles
                   (required). Within the semicolon delimiters, sample-specific
                   corresponding paired-end files must be together separated by
@@ -124,25 +125,24 @@ Arguments:
                   "\${HOME}/path/samp_1.fastq.gz;\${HOME}/path/samp_2_R1.fastq.gz,\${HOME}/path/samp_2_R2.fastq.gz;\${HOME}/path/samp_3.fastq.gz".
    -o, --dir_out  Directory for Atria-trimmed FASTQ outfile(s) (required).
   -ss, --sfx_se   Suffix to strip from single-end sequenced FASTQ files
-                  (required; default: ${sfx_se}).
-  -sp, --sfx_pe   Suffix to strip from paired-end sequenced FASTQ files
-                  (required; default: ${sfx_pe}).
+                  (required; default: '${sfx_se}').
+  -sp, --sfx_pe   Suffix to strip from the first of two paired-end sequenced
+                  FASTQ files (required; default: '${sfx_pe}').
   -eo, --err_out  The directory to store stderr and stdout TXT outfiles
-                  (required; default: \${dir_out}/err_out).
+                  (required; default: '\${dir_out}/err_out').
   -nj, --nam_job  The name of the job, which is used when writing stderr and
-                  stdout (required; default: ${nam_job}).
-  -mj, --max_job  Maximum number of jobs to run concurrently (default: ${max_job}).
-                    - Required if '--slurm' is specified; controls SLURM array
-                      tasks.
+                  stdout (required; default: '${nam_job}').
+  -mj, --max_job  Maximum number of jobs to run concurrently (default: '${max_job}').
+                    - If '--slurm' is specified, controls SLURM array tasks.
                     - If '--slurm' is not specified:
                       + If 'max_job' is greater than 1, jobs run in parallel
                         via GNU Parallel.
                       + If 'max_job' is 1, jobs run sequentially (serial mode).
   -sl, --slurm    Submit jobs to the SLURM scheduler; otherwise, run them in
                   serial (optional).
-  -tm, --time     The length of time (e.g., h:mm:ss) for the SLURM job
-                  (required if --slurm is specified, ignored if not; default:
-                  ${time}).
+  -tm, --time     The length of time, in 'h:mm:ss' format, for the SLURM job
+                  (required if '--slurm' is specified, ignored if not; default:
+                  '${time}').
 
 Dependencies:
   - Atria
@@ -192,8 +192,8 @@ else
             -sp|--sfx_pe)  sfx_pe="${2}";  shift 2 ;;
             -eo|--err_out) err_out="${2}"; shift 2 ;;
             -nj|--nam_job) nam_job="${2}"; shift 2 ;;
-            -sl|--slurm)   slurm=true;     shift 1 ;;
             -mj|--max_job) max_job="${2}"; shift 2 ;;
+            -sl|--slurm)   slurm=true;     shift 1 ;;
             -tm|--time)    time="${2}";    shift 2 ;;
             *) 
                 echo "## Unknown parameter passed: '${1}' ##" >&2
@@ -236,7 +236,7 @@ check_supplied_arg -a "${nam_job}" -n "nam_job"
 #  Parse and validate infiles -------------------------------------------------
 IFS=';' read -r -a arr_infile <<< "${infiles}" && unset IFS
 
-check_fastqs "${infiles}" "${sfx_se}" "${sfx_pe}" || exit_1
+check_string_fastqs "${infiles}"derive "${sfx_se}" "${sfx_pe}" || exit_1
 
 
 #  Parse job execution parameters ---------------------------------------------
@@ -299,9 +299,8 @@ if ${verbose}; then
     echo "sfx_pe=${sfx_pe}"
     echo "err_out=${err_out}"
     echo "nam_job=${nam_job}"
-    echo "slurm=${slurm}"
-    echo "scr_sub=${scr_sub}"
     echo "max_job=${max_job:-#N/A}"
+    echo "slurm=${slurm}"
     echo "time=${time:-#N/A}"
     echo ""
     echo ""
@@ -396,9 +395,9 @@ else
         #TODO: Check how {3/.} looks in stdout/stderr log files
 
         if ${dry_run} || ${verbose}; then
-            echo "#######################################"
-            echo "## Parallel call(s) to trim fastq(s) ##"
-            echo "#######################################"
+            echo "####################################################"
+            echo "## Parallelized job execution via 'submit' script ##"
+            echo "####################################################"
             echo ""
 
             parallel --colsep ' ' --jobs "${par_job}" --dryrun \

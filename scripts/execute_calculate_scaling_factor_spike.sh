@@ -167,7 +167,7 @@ Arguments:
   -mj, --max_job  The maximum number of jobs to run at one time (required if
                   --slurm is specified, ignored if not; default: ${max_job}).
   -tm, --time     The length of time, in 'h:mm:ss' format, for the SLURM job
-                  (required if --slurm is specified, ignored if not; default:
+                  (required if '--slurm' is specified, ignored if not; default:
                   '${time}').
 
 Dependencies:

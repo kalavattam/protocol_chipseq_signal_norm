@@ -141,48 +141,88 @@ EOM
         return 1
     fi
 
-    #  Filter pertinent lines from the SAM header, and perform filtering for
-    #+ lines that meet the following conditions: (1) They do not begin with @
-    #+ (i.e., are not in the header) and (2) they contain strings assigned to
-    #+ variable 'chromosomes' within field 3
+    # #  Filter pertinent lines from the SAM header, and perform filtering for
+    # #+ lines that meet the following conditions: (1) They do not begin with @
+    # #+ (i.e., are not in the header) and (2) they contain strings assigned to
+    # #+ variable 'chromosomes' within field 3
     # shellcheck disable=SC2002
+    # if ! \
+    #     cat "${pth_in}" \
+    #         | awk \
+    #             -v chromosomes="${chromosomes}" \
+    #             'BEGIN {
+    #                 split(chromosomes, chrom_arr, " ")
+    #                 for (i in chrom_arr) {
+    #                     chrom_map[chrom_arr[i]] = 1
+    #                 }
+    #             }
+    #
+    #             function print_header_line() {
+    #                 if ($0 ~ /^@SQ/ && $0 ~ /SN:([^ \t]+)/) {
+    #                     split($0, a, /SN:/)
+    #                     split(a[2], b, /[ \t]/)
+    #                     sn = b[1]
+    #                     if (!(sn in chrom_map)) {
+    #                         next
+    #                     }
+    #                 }
+    #                 print $0;
+    #             }
+    #
+    #             {
+    #                 if ($0 ~ /^@/) {
+    #                     print_header_line()
+    #                 } else {
+    #                     if ($3 in chrom_map) {
+    #                         print $0
+    #                     }
+    #                 }
+    #             }' \
+    #                 > "${pth_out}"
+    # then
+    #     echo "Error: Failed to generate ${pth_out}." >&2
+    #     return 1
+    # fi
+    #TODO: The above only works with GNU Bash but is fast; need fast for BSD
+
+    #  Filter pertinent lines from the SAM header and body following these
+    #+ conditions:
+    #+ (1) Headers ('@') are retained but '@SQ' lines are filtered based on
+    #+     'SN:'
+    #+ (2) Alignment lines are retained only if their reference sequence (col
+    #+     3) is in the chromosome list
     if ! \
-        cat "${pth_in}" \
-            | awk \
-                -v chromosomes="${chromosomes}" \
-                'BEGIN {
-                    split(chromosomes, chrom_arr, " ")
-                    for (i in chrom_arr) {
-                        chrom_map[chrom_arr[i]] = 1
-                    }
+        awk -v chromosomes="${chromosomes}" '
+            BEGIN {
+                split(chromosomes, chrom_arr, " ")
+                for (i in chrom_arr) {
+                    chrom_map[chrom_arr[i]] = 1
                 }
+            }
 
-                function print_header_line() {
-                    if ($0 ~ /^@SQ/ && $0 ~ /SN:([^ \t]+)/) {
-                        split($0, a, /SN:/)
-                        split(a[2], b, /[ \t]/)
-                        sn = b[1]
-                        if (!(sn in chrom_map)) {
-                            next
-                        }
-                    }
-                    print $0;
+            #  Process header lines (@SQ must match chrom_map)
+            /^@SQ/ {
+                if ($0 ~ /SN:/) {
+                    split($0, a, /SN:/)
+                    split(a[2], b, /[ \t]/)
+                    sn = b[1]
+                    if (sn in chrom_map) { print }
                 }
+                next
+            }
 
-                {
-                    if ($0 ~ /^@/) {
-                        print_header_line()
-                    } else {
-                        if ($3 in chrom_map) {
-                            print $0
-                        }
-                    }
-                }' \
-                    > "${pth_out}"
+            #  Print all other header lines (@HD, @PG, etc.)
+            /^@/ { print; next }
+
+            #  Print alignments only if column 3 (reference sequence) matches
+            ($3 in chrom_map) { print }
+        ' "${pth_in}" \
+            > "${pth_out}"
     then
         echo "Error: Failed to generate ${pth_out}." >&2
         return 1
     fi
+    #TODO: The above is portable (both GNU and BSD) but slow
 
     #  Perform SAM-to-BAM conversion for filtered, reheadered alignment
     #+ information

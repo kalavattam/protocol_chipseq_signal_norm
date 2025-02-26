@@ -94,67 +94,6 @@ function set_logs_slurm() {
 }
 
 
-#  Function to validate FASTQ input file(s), ensuring their existence and
-#+ correct format for either SE or PE files
-function validate_infile() {
-    local infile="${1}"  # Input FASTQ file(s)
-    local sfx_se="${2}"  # Expected suffix for SE FASTQ files
-    local sfx_pe="${3}"  # Expected suffix for PE FASTQ files
-
-    #  Split infile by comma
-    IFS=',' read -r -a parts <<< "${infile}"
-    unset IFS
-
-    #  Reject cases where more than two fields are present
-    if [[ "${#parts[@]}" -gt 2 ]]; then
-        echo \
-            "Error: Too many comma-separated values in input file path:" \
-            "'${infile}'." >&2
-        return 1
-    fi
-
-    #  If PE (two parts), ensure both files exist and match suffix
-    if [[ "${#parts[@]}" -eq 2 ]]; then
-        if [[ ! -f "${parts[0]}" || ! -f "${parts[1]}" ]]; then
-            echo \
-                "Error: One or both paired-end FASTQ files do not exist:" \
-                "'${infile}'." >&2
-            return 1
-        fi
-
-        if [[
-               ! "${parts[0]}" =~ ${sfx_pe}$ \
-            || ! "${parts[1]}" =~ ${sfx_pe}$
-        ]]; then
-            echo \
-                "Error: PE input files do not match expected suffix:" \
-                "'${sfx_pe}'." >&2
-            return 1
-        fi
-    fi
-
-    #  If SE (one part), ensure file exists and matches suffix
-    if [[ "${#parts[@]}" -eq 1 ]]; then
-        if [[ ! -f "${parts[0]}" ]]; then
-            echo \
-                "Error: Single-end FASTQ file does not exist:" \
-                "'${parts[0]}'." >&2
-            return 1
-        fi
-
-        if [[ ! "${parts[0]}" =~ ${sfx_se}$ ]]; then
-            echo \
-                "Error: SE input file does not match expected suffix:" \
-                "'${sfx_se}'." >&2
-            return 1
-        fi
-    fi
-
-    #  If all checks are passed, return success
-    return 0
-}
-
-
 #  Function to debug, validate, and parse 'infile' into 'fq_1', 'fq_2', 'samp'
 #+ (sample name), and 'outfile'
 function process_infile() {
@@ -172,9 +111,6 @@ function process_infile() {
     validate_var "sfx_se"   "${sfx_se}"  || return 1
     validate_var "sfx_pe"   "${sfx_pe}"  || return 1
     validate_var "dir_out"  "${dir_out}" || return 1
-
-    #  Validate infile format, etc.
-    validate_infile "${infile}" "${sfx_se}" "${sfx_pe}" || return 1
 
     #  Parse input FASTQ file(s) to assign 'fq_1', 'fq_2', and 'samp'
     if [[ "${infile}" == *,* ]]; then

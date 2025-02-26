@@ -5,7 +5,7 @@
 
 
 #  Run script in interactive/test mode (true) or command-line mode (false)
-interactive=true
+interactive=false
 
 #  Exit on errors, unset variables, or pipe failures if not in "interactive
 #+ mode"
@@ -83,8 +83,8 @@ function set_interactive() {
     chk_chr=false
     err_out="${dir_out}/logs"
     nam_job="filter_bams"
-    slurm=false
     max_job=2
+    slurm=false
     time="1:00:00"
 }
 
@@ -110,8 +110,8 @@ mtr=false
 chk_chr=false
 err_out=""
 nam_job="filter_bams"
-slurm=false
 max_job=6
+slurm=false
 time="0:30:00"
 
 #  Assign variable for help message
@@ -120,7 +120,7 @@ Usage:
   execute_filter_bams.sh
     [--verbose] [--dry_run] --threads <int> --infiles <str> --dir_out <str>
     --retain <str> [--mito] [--tg] [--mtr] [--chk_chr] --err_out <str>
-    --nam_job <str> [--slurm] [--max_job <int>] [--time <str>]
+    --nam_job <str> --max_job <int> [--slurm] [--time <str>]
 
 Description:
   The driver script 'execute_filter_bams.sh' filters BAM infiles to retain
@@ -151,12 +151,16 @@ Arguments:
   -cc, --chk_chr  Check chromosomes in filtered BAM outfile (optional)
   -eo, --err_out  The directory to store stderr and stdout TXT outfiles
                   (default: '\${dir_out}/err_out').
-  -sl, --slurm    Submit jobs to the SLURM scheduler; otherwise, run them in
-                  serial (optional).
   -nj, --nam_job  The name of the job, which is used when writing stderr and
                   stdout TXT files (default: '${nam_job}').
-  -mj, --max_job  The maximum number of jobs to run at one time (required if
-                  --slurm is specified, ignored if not; default: '${max_job}').
+  -mj, --max_job  Maximum number of jobs to run concurrently (default: '${max_job}').
+                    - If '--slurm' is specified, controls SLURM array tasks.
+                    - If '--slurm' is not specified:
+                      + If 'max_job' is greater than 1, jobs run in parallel
+                        via GNU Parallel.
+                      + If 'max_job' is 1, jobs run sequentially (serial mode).
+  -sl, --slurm    Submit jobs to the SLURM scheduler; otherwise, run them in
+                  serial (optional).
   -tm, --time     The length of time, in 'h:mm:ss' format, for the SLURM job
                   (required if '--slurm' is specified, ignored if not; default:
                   '${time}').
@@ -232,8 +236,8 @@ else
             -cc|--chk_chr) chk_chr=true;   shift 1 ;;
             -eo|--err_out) err_out="${2}"; shift 2 ;;
             -nj|--nam_job) nam_job="${2}"; shift 2 ;;
-            -sl|--slurm)   slurm=true;     shift 1 ;;
             -mj|--max_job) max_job="${2}"; shift 2 ;;
+            -sl|--slurm)   slurm=true;     shift 1 ;;
             -tm|--time)    time="${2}";    shift 2 ;;
             *)
                 echo "## Unknown parameter passed: '${1}' ##" >&2
@@ -361,8 +365,8 @@ if ${verbose}; then
     echo "chk_chr=${chk_chr}"
     echo "err_out=${err_out}"
     echo "nam_job=${nam_job}"
-    echo "slurm=${slurm}"
     echo "max_job=${max_job:-#N/A}"
+    echo "slurm=${slurm}"
     echo "time=${time:-#N/A}"
     echo ""
     echo ""
@@ -472,9 +476,9 @@ else
         cmd+=" 2> {6}/{7}_par.{4/.}.stderr.txt"  # 'scr_sub' stderr log
 
         if ${dry_run} || ${verbose}; then
-            echo "#######################################"
-            echo "## Parallel call(s) to trim fastq(s) ##"
-            echo "#######################################"
+            echo "####################################################"
+            echo "## Parallelized job execution via 'submit' script ##"
+            echo "####################################################"
             echo ""
 
             parallel --colsep ' ' --jobs "${par_job}" --dryrun \

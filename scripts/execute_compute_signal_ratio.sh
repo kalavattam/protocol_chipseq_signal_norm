@@ -176,13 +176,12 @@ Arguments:
                   applicable, the scaling factor ('--scl_fct') is applied after
                   the log2 transformation: 'scl_fct * log2(sig_ip / sig_in)'.
    -r, --rnd      Number of decimal places for rounding binned signal (coverage
-                  score) ratio values (default: ${rnd}).
+                  score) ratio values (default: '${rnd}').
   -eo, --err_out  The directory to store stderr and stdout TXT outfiles
-                  (default: "\${dir_out}/err_out").
+                  (default: '\${dir_out}/err_out').
   -nj, --nam_job  Prefix for the names of jobs (default: '${nam_job}').
   -mj, --max_job  Maximum number of jobs to run concurrently (default: ${max_job}).
-                    - Required if '--slurm' is specified; controls SLURM array
-                      tasks.
+                    - If '--slurm' is specified, controls SLURM array tasks.
                     - If '--slurm' is not specified:
                       + If 'max_job' is greater than 1, jobs run in parallel
                         via GNU Parallel.

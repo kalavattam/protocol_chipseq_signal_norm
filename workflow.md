@@ -884,7 +884,9 @@ dir_trm="${dir_pro}/trim_fastqs"
 
 #  Set execution parameters
 env_nam="env_protocol"
-threads=4
+threads=6
+max_job=2
+slurm=false
 day="$(date '+%Y-%m%d')"
 
 #  Locate input files
@@ -921,6 +923,8 @@ if ${debug:-false}; then
     echo "#  Set execution parameters"
     echo "env_nam=${env_nam}"
     echo "threads=${threads}"
+    echo "max_job=${max_job}"
+    echo "slurm=${slurm}"
     echo "day=${day}"
     echo ""
     echo "#  Locate input files"
@@ -941,13 +945,20 @@ handle_env "${env_nam}"
 
 #  Check availability of Atria and other necessary tools
 check_program_path atria
-check_program_path parallel
+
+if ! ${slurm:-false} && [[ ${threads} -gt 1 ]]; then
+    check_program_path parallel
+fi
+
 check_program_path pbzip2
 check_program_path pigz
-check_program_path sbatch &> /dev/null ||
-    echo_warning \
-        "SLURM is not available on this system. Do not use the '--slurm'" \
-        "flag with the driver script."
+
+if ${slurm:-false}; then
+    check_program_path sbatch &> /dev/null ||
+        echo_warning \
+            "SLURM is not available on this system. Do not use the '--slurm'" \
+            "flag with the driver script."
+fi
 
 
 #  Create required directories if necessary -----------------------------------
@@ -992,7 +1003,8 @@ if ${debug:-false}; then
     echo "    --infiles ${infiles} \\"
     echo "    --dir_out ${dir_trm} \\"
     echo "    --err_out ${dir_trm}/logs \\"
-    echo "    --slurm \\"
+    echo "    --max_job ${max_job} \\"
+    echo "$(if ${slurm:-false}; then echo "    --slurm \\"; fi)"
     echo "         > >(tee -a ${dir_trm}/logs/${day}.execute.stdout.txt) \\"
     echo "        2> >(tee -a ${dir_trm}/logs/${day}.execute.stderr.txt)"
 fi
@@ -1003,7 +1015,8 @@ bash "${dir_scr}/execute_trim_fastqs.sh" \
     --infiles "${infiles}" \
     --dir_out "${dir_trm}" \
     --err_out "${dir_trm}/logs" \
-    --slurm \
+    --max_job ${max_job} \
+    $(if ${slurm:-false}; then echo "--slurm"; fi) \
          >> >(tee -a "${dir_trm}/logs/${day}.execute.stdout.txt") \
         2>> >(tee -a "${dir_trm}/logs/${day}.execute.stderr.txt")
 
@@ -1055,18 +1068,19 @@ dir_fnc="${dir_scr}/functions"
 dir_dat="${dir_rep}/data"
 dir_idx="${dir_dat}/genomes/concat/index"
 dir_pro="${dir_dat}/processed"
-dir_trm="${dir_pro}/trim_atria"
+dir_trm="${dir_pro}/trim_fastqs"
 
 #  Set execution parameters and related variables
 env_nam="env_protocol"
-threads=8
+threads=6
 aligner="bowtie2"
 a_type="global"
 req_flg=true
 flg="$(if ${req_flg}; then echo "2"; else echo "NA"; fi)"
 mapq=1
 nam_job="align_fastqs"
-max_job=6
+max_job=2
+slurm=false
 time="1:00:00"
 day="$(date '+%Y-%m%d')"
 
@@ -1082,14 +1096,14 @@ infiles="$(  ## WARNING: Change search parameters as needed ##
 #  Set index path
 str_idx="sc_sp_proc"
 if [[ ${aligner} == "bwa" ]]; then
-    index="${dir_idx}/${aligner}/${str_idx}.fa"
+    stm_idx="${dir_idx}/${aligner}/${str_idx}.fa"
 else
-    index="${dir_idx}/${aligner}/${str_idx}"
+    stm_idx="${dir_idx}/${aligner}/${str_idx}"
 fi
 
 #  Set output directories
 dir_aln="${dir_pro}/align_fastqs"
-dir_out="${dir_pro}/align_${aligner}_${a_type}_flag-${flg}_mapq-${mapq}"
+dir_out="${dir_aln}/${aligner}_${a_type}_flag-${flg}_mapq-${mapq}"
 
 if ${debug:-false}; then
     echo "####################################"
@@ -1120,6 +1134,7 @@ if ${debug:-false}; then
     echo "mapq=${mapq}"
     echo "nam_job=${nam_job}"
     echo "max_job=${max_job}"
+    echo "slurm=${slurm}"
     echo "time=${time}"
     echo "day=${day}"
     echo ""
@@ -1128,7 +1143,7 @@ if ${debug:-false}; then
     echo ""
     echo "#  Set index path"
     echo "str_idx=${str_idx}"
-    echo "pth_idx=${pth_idx}"
+    echo "stm_idx=${stm_idx}"
     echo ""
     echo "#  Set output directories"
     echo "dir_aln=${dir_aln}"
@@ -1149,12 +1164,19 @@ handle_env "${env_nam}"
 
 #  Check the availability of Bowtie 2, Samtools, and SLURM sbatch
 check_program_path bowtie2
-check_program_path parallel
+
+if ! ${slurm:-false} && [[ ${threads} -gt 1 ]]; then
+    check_program_path parallel
+fi
+
 check_program_path samtools
-check_program_path sbatch &> /dev/null ||
-    echo_warning \
-        "SLURM is not available on this system. Do not use the '--slurm'" \
-        "flag with the driver script."
+
+if ${slurm:-false}; then
+    check_program_path sbatch &> /dev/null ||
+        echo_warning \
+            "SLURM is not available on this system. Do not use the '--slurm'" \
+            "flag with the driver script."
+fi
 
 
 #  Create required directories if necessary -----------------------------------
@@ -1211,11 +1233,12 @@ bash "${dir_scr}/execute_align_fastqs.sh" \
     --a_type "${a_type}" \
     --mapq "${mapq}" \
     $(if ${req_flg:-false}; then echo "--req_flg"; fi) \
-    --index "${pth_idx}" \
+    --index "${stm_idx}" \
     --infiles "${infiles}" \
     --dir_out "${dir_out}/init" \
     --err_out "${dir_out}/init/logs" \
-    --slurm \
+    --max_job "${max_job}" \
+    $(if ${slurm:-false}; then echo "--slurm"; fi) \
          >> >(tee -a "${dir_out}/init/logs/${day}.execute.stdout.txt") \
         2>> >(tee -a "${dir_out}/init/logs/${day}.execute.stderr.txt")
 
@@ -1234,9 +1257,10 @@ bash "${dir_scr}/execute_filter_bams.sh" \
     --threads "${threads}" \
     --infiles "${infiles}" \
     --dir_out "${dir_out}/sc" \
-    --err_out "${dir_out}/sc/logs" \
     --retain "sc" \
-    --slurm \
+    --err_out "${dir_out}/sc/logs" \
+    --max_job "${max_job}" \
+    $(if ${slurm:-false}; then echo "--slurm"; fi) \
          >> >(tee -a "${dir_out}/sc/logs/${day}.execute.stdout.txt") \
         2>> >(tee -a "${dir_out}/sc/logs/${day}.execute.stderr.txt")
 
@@ -1247,9 +1271,10 @@ bash "${dir_scr}/execute_filter_bams.sh" \
     --threads "${threads}" \
     --infiles "${infiles}" \
     --dir_out "${dir_out}/sp" \
-    --err_out "${dir_out}/sp/logs" \
     --retain "sp" \
-    --slurm \
+    --err_out "${dir_out}/sp/logs" \
+    --max_job "${max_job}" \
+    $(if ${slurm:-false}; then echo "--slurm"; fi) \
          >> >(tee -a "${dir_out}/sp/logs/${day}.execute.stdout.txt") \
         2>> >(tee -a "${dir_out}/sp/logs/${day}.execute.stderr.txt")
 

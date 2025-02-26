@@ -110,7 +110,7 @@ Arguments:
   -sl, --slurm    Submit jobs to the SLURM scheduler (optional; see 'Notes'
                   below).
   -tm, --time     The length of time (e.g., h:mm:ss) for the SLURM job
-                  (required if --slurm is specified, ignored if not; default:
+                  (required if '--slurm' is specified, ignored if not; default:
                   ${time}).
 
 Dependencies:

@@ -28,17 +28,18 @@ dir_fnc="${dir_scr}/functions"
 for script in \
     align_fastqs.sh \
     check_exists_file_dir.sh \
-    check_fastqs.sh \
     check_format_time.sh \
     check_int_nonneg.sh \
     check_int_pos.sh \
     check_program_path.sh \
+    check_string_fastqs.sh \
     check_supplied_arg.sh \
     echo_error.sh \
     echo_warning.sh \
     exit_0.sh \
     exit_1.sh \
     handle_env.sh \
+    print_parallel_info.sh \
     reset_max_job.sh \
     set_params_parallel.sh
 do
@@ -118,8 +119,8 @@ sfx_se=".atria.fastq.gz"
 sfx_pe="_R1.atria.fastq.gz"
 err_out=""
 nam_job="align_fastqs"
-slurm=false
 max_job=6
+slurm=false
 time="1:00:00"
 
 #  Assign variable for help message
@@ -129,7 +130,7 @@ Usage:
     [--verbose] [--dry_run] --threads <int> --aligner <str> [--a_type <str>]
     --mapq <int> [--req_flg] --index <str> --infiles <str> --dir_out <str>
     [--qname] --sfx_se <str> --sfx_pe <str> --err_out <str> --nam_job <str>
-    [--slurm] [--max_job <int>] [--time <str>]
+    --max_job <int> [--slurm] [--time <str>]
 
 Description:
   The driver script 'execute_align_fastqs.sh' aligns single- or paired-end
@@ -173,12 +174,16 @@ Arguments:
                   (default: \${dir_out}/err_out).
   -nj, --nam_job  The name of the job, which is used when writing stderr and
                   stdout TXT files (default: '${nam_job}').
+  -mj, --max_job  Maximum number of jobs to run concurrently (default: '${max_job}').
+                    - If '--slurm' is specified, controls SLURM array tasks.
+                    - If '--slurm' is not specified:
+                      + If 'max_job' is greater than 1, jobs run in parallel
+                        via GNU Parallel.
+                      + If 'max_job' is 1, jobs run sequentially (serial mode).
   -sl, --slurm    Submit jobs to the SLURM scheduler; otherwise, run them in
                   serial (optional).
-  -mj, --max_job  The maximum number of jobs to run at one time (required if
-                  --slurm is specified, ignored if not; default: '${max_job}').
   -tm, --time     The length of time, in 'h:mm:ss' format, for the SLURM job
-                  (required if --slurm is specified, ignored if not; default:
+                  (required if '--slurm' is specified, ignored if not; default:
                   '${time}').
 
 Dependencies:
@@ -256,8 +261,8 @@ else
             -sp|--sfx_pe)  sfx_pe="${2}";  shift 2 ;;
             -eo|--err_out) err_out="${2}"; shift 2 ;;
             -nj|--nam_job) nam_job="${2}"; shift 2 ;;
-            -sl|--slurm)   slurm=true;     shift 1 ;;
             -mj|--max_job) max_job="${2}"; shift 2 ;;
+            -sl|--slurm)   slurm=true;     shift 1 ;;
             -tm|--time)    time="${2}";    shift 2 ;;
             *)
                 echo "## Unknown parameter passed: '${1}' ##" >&2
@@ -331,7 +336,7 @@ check_supplied_arg -a "${nam_job}" -n "nam_job"
 #  Parse and validate infiles -------------------------------------------------
 IFS=';' read -r -a arr_infile <<< "${infiles}" && unset IFS
 
-check_fastqs "${infiles}" "${sfx_se}" "${sfx_pe}" || exit_1
+check_string_fastqs "${infiles}"derive "${sfx_se}" "${sfx_pe}" || exit_1
 
 
 #  Parse job execution parameters ---------------------------------------------
@@ -403,8 +408,8 @@ if ${verbose}; then
     echo "sfx_pe=${sfx_pe}"
     echo "err_out=${err_out}"
     echo "nam_job=${nam_job}"
-    echo "slurm=${slurm}"
     echo "max_job=${max_job:-#N/A}"
+    echo "slurm=${slurm}"
     echo "time=${time:-#N/A}"
     echo ""
     echo ""
@@ -537,12 +542,12 @@ else
         cmd+=" -nj {13}"  # Job name
         cmd+="  > {12}/{13}_par.{8/.}.stdout.txt"  # 'scr_sub' stdout log
         cmd+=" 2> {12}/{13}_par.{8/.}.stderr.txt"  # 'scr_sub' stderr log
-
+        #TODO: Not enough is stripped from {8}; may want to pass 'samp' instead
 
         if ${dry_run} || ${verbose}; then
-            echo "#######################################"
-            echo "## Parallel call(s) to trim fastq(s) ##"
-            echo "#######################################"
+            echo "####################################################"
+            echo "## Parallelized job execution via 'submit' script ##"
+            echo "####################################################"
             echo ""
 
             parallel --colsep ' ' --jobs "${par_job}" --dryrun \
