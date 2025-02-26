@@ -17,4 +17,4 @@ data/raw/docs/test*
 #  Re-allow everything in the 'tables/' subdirectory under
 #+ 'data/processed/compute_coverage/' for manuscript-specific alignment and
 #+ filtering parameters
-!data/processed/compute_coverage/bowtie2_global_flag-2_mapq-1/tables/
+!data/processed/compute_signal/bowtie2_global_flag-2_mapq-1/tables/
