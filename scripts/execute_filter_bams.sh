@@ -25,25 +25,26 @@ fi
 dir_fnc="${dir_scr}/functions"
 
 # shellcheck disable=SC1090
-for script in \
-    check_exists_file_dir.sh \
-    check_format_time.sh \
-    check_int_pos.sh \
-    check_program_path.sh \
-    check_supplied_arg.sh \
-    echo_error.sh \
-    echo_warning.sh \
-    exit_0.sh \
-    exit_1.sh \
-    filter_bam_sc.sh \
-    filter_bam_sp.sh \
-    handle_env.sh \
-    print_parallel_info.sh \
-    set_params_parallel.sh
+for fnc in \
+    check_exists_file_dir \
+    check_format_time \
+    check_int_pos \
+    check_program_path \
+    check_str_delim \
+    check_supplied_arg \
+    echo_error \
+    echo_warning \
+    exit_0 \
+    exit_1 \
+    filter_bam_sc \
+    filter_bam_sp \
+    handle_env \
+    print_parallel_info \
+    set_params_parallel
 do
-    source "${dir_fnc}/${script}"
+    source "${dir_fnc}/${fnc}.sh"
 done
-unset script
+unset fnc
 
 
 #  Set up paths, values, and parameters for interactive mode
@@ -92,10 +93,8 @@ function set_interactive() {
 #  Initialize argument variables, check and parse arguments, etc. =============
 #  Initialize hardcoded argument variables
 env_nam="env_protocol"
-scr_sub="${dir_scr}/submit_filter_bams.sh"
+scr_sub="${dir_scr}/submit_filter_bams.sh"  ## 'scr_fnc' is defined below ##
 par_job=""
-#  Hardcoded argument 'scr_fnc' is defined below, after parsing and validating
-#+ user-supplied argument assignments
 
 #  Initialize argument variables, assigning default values where applicable
 verbose=false
@@ -127,9 +126,9 @@ Description:
   species-specific chromosomes for S. cerevisiae ("main" alignments) or S.
   pombe ("spike-in" alignments).
 
-  Optional features include retaining mitochondrial ('--mito') and additional
-  chromosomes ('--tg', '--mtr'), and performing checks on chromosomes in
-  filtered BAM outfiles ('--chk_chr').
+  Optional features include retaining mitochondrial (S. cerevisiae and S.
+  pombe: '--mito') and additional chromosomes (S. pombe: '--tg', '--mtr'), and
+  performing checks on chromosomes in filtered BAM outfiles ('--chk_chr').
 
   The script supports parallel execution via SLURM or GNU Parallel, or can run
   serially.
@@ -139,10 +138,10 @@ Arguments:
    -v, --verbose  Run script in "verbose" mode (optional).
   -dr, --dry_run  Run the command in "check" mode (optional).
    -t, --threads  Number of threads to use (default: '${threads}').
-   -i, --infiles  Comma-separated string vector of coordinate-sorted BAM
-                  infiles.
+   -i, --infiles  Comma-separated serialized string of coordinate-sorted BAM
+                  input files.
   -do, --dir_out  The directory to store species-filtered and -reheadered BAM
-                  outfiles.
+                  output files.
    -r, --retain   Specify species chromosomes to retain: S. cerevisiae, "sc";
                   S. pombe, "sp" (default: '${retain}').
    -m, --mito     Retain mitochondrial chromosome (optional).
@@ -260,6 +259,7 @@ check_int_pos "${threads}" "threads"
 
 check_supplied_arg -a "${infiles}" -n "infiles"
 check_exists_file_dir "d" "$(dirname "${infiles%%,*}")" "infiles"
+check_str_delim "infiles" "${infiles}"
 
 check_supplied_arg -a "${dir_out}" -n "dir_out"
 check_exists_file_dir "d" "${dir_out}" "dir_out"
@@ -331,10 +331,14 @@ handle_env "${env_nam}" > /dev/null
 check_program_path awk
 check_program_path grep
 check_program_path mv
-if ! ${slurm} && [[ ${par_job} -gt 1 ]]; then check_program_path parallel; fi
 check_program_path rm
 check_program_path samtools
-if ${slurm}; then check_program_path sbatch; fi
+
+if ${slurm}; then
+    check_program_path sbatch
+elif [[ ${par_job} -gt 1 ]]; then
+    check_program_path parallel
+fi
 
 
 #  Do the main work ===========================================================
@@ -383,9 +387,9 @@ fi
 if ${slurm}; then
     #  If --slurm was specified, run jobs in parallel via SLURM
     if ${dry_run} || ${verbose}; then
-        echo "####################"
-        echo "## Call to sbatch ##"
-        echo "####################"
+        echo "######################"
+        echo "## Call to 'sbatch' ##"
+        echo "######################"
         echo ""
         echo "sbatch \\"
         echo "    --job-name=${nam_job} \\"

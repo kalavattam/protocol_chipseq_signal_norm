@@ -60,7 +60,7 @@ function set_interactive() {
 
     dir_aln="${dir_pro}/align_reads/${details}"
     dir_bam="${dir_aln}/sc"
-    dir_cvg="${dir_pro}/compute_coverage/${details}"
+    dir_cvg="${dir_pro}/compute_signal/${details}"
     dir_out="${dir_cvg}/tables"
 
     pattern="*.bam"

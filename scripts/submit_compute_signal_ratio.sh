@@ -60,7 +60,7 @@ function set_args_opt() {
 #  Display help message if no arguments or help option is given
 show_help=$(cat << EOM
 \${1}=env_nam      # str: Name of Conda/Mamba environment to activate
-\${2}=scr_cvg      # str: Path to 'compute_coverage_ratio.py' script
+\${2}=scr_cvg      # str: Path to 'compute_signal_ratio.py' script
 \${3}=str_fil_ip   # str: Comma-separated string of IP BEDGRAPH files
 \${4}=str_fil_in   # str: Comma-separated string of input BEDGRAPH files
 \${5}=str_fil_out  # str: Comma-separated string of output BEDGRAPH files

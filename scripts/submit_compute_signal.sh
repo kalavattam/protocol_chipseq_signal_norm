@@ -57,6 +57,7 @@ function process_input() {
     local scl_fct="${3}"  # Scaling factor/coefficient
     local usr_frg="${4}"  # Fragment length
     local samp  # Sample name derived from input BAM file
+    local dsc   # Sample name derived from output file stem
 
     #  Validate input arguments
     validate_var "infile"  "${infile}"  || return 1
@@ -102,45 +103,79 @@ function set_logs_slurm() {
 
 #  Function to set optional arguments for the call to 'scr_sig'
 function set_args_opt() {
-    unset optional
-    typeset -a optional
-    # typeset -g -a optional  # No go for BSD Bash v3.2
+    local typ_cvg="${1}"  # Type of signal computation
+    local scl_fct="${2}"  # Scaling factor/coefficient
+    local usr_frg="${3}"  # Fragment length
+    local rnd="${4}"      # Number of decimal places for rounding
+    unset optional && typeset -a optional
 
-    if [[ -n "${typ_cvg}" ]]; then
-        optional+=( --typ_cvg "${typ_cvg}" )
+    if [[ "${typ_cvg}" != "#N/A" ]]; then
+        args+=( --typ_cvg "${typ_cvg}" )
     fi
 
-    if [[ -n "${scl_fct}" && "${scl_fct}" != "#N/A" ]]; then
-        optional+=( --scl_fct "${scl_fct}" )
+    if [[ "${scl_fct}" != "#N/A" ]]; then
+        args+=( --scl_fct "${scl_fct}" )
     fi
 
     if [[ "${usr_frg}" != "#N/A" ]]; then
-        optional+=( --usr_frg "${usr_frg}" )
+        args+=( --usr_frg "${usr_frg}" )
     fi
 
-    if [[ -n "${rnd}" && "${rnd}" != "#N/A" ]]; then
-        optional+=( --rnd "${rnd}" )
+    if [[ "${rnd}" != "#N/A" ]]; then
+        args+=( --rnd "${rnd}" )
     fi
+
+    #  Return values (space-separated)
+    echo "${args[*]}"
 }
 
 
 #  Function to run 'compute_signal.py'
 function run_comp_sig() {
-    local threads="${1}"  # Number of threads to use
-    local infile="${2}"   # Input BAM file
-    local outfile="${3}"  # Output file stem
-    local siz_bin="${4}"  # Bin size in base pairs
-    local str_opt="${5}"  # Serialized optional arguments (comma-separated)
-    local err_out="${6}"  # Directory for stdout and stderr
-    local nam_job="${7}"  # Job name
-    local dsc="${8}"      # Descriptor for log file naming
+    local debug="${1}"     # Print 'debug' statements: 'true' or 'false'
+    local threads="${2}"   # Number of threads to use
+    local infile="${3}"    # Input BAM file
+    local outfile="${4}"   # Output file stem
+    local siz_bin="${5}"   # Bin size in base pairs
+    local typ_cvg="${6}"   # Type of signal computation
+    local scl_fct="${7}"   # Scaling factor/coefficient
+    local usr_frg="${8}"   # Fragment length
+    local rnd="${9}"       # Number of decimal places for rounding
+    local err_out="${10}"  # Directory for stdout and stderr
+    local nam_job="${11}"  # Job name
+    local dsc="${12}"      # Descriptor for log file naming
 
-    #  Reconstruct optional arguments array
-    unset optional
-    IFS="," read -r -a optional <<< "${str_opt}"
+    #  Generate optional arguments array dynamically
+    IFS=" " read -r -a optional <<< "$(
+        set_args_opt "${typ_cvg}" "${scl_fct}" "${usr_frg}" "${rnd}"
+    )"
     unset IFS
 
-    #  Execute the 'compute_signal.py', writing stdout and stderr to log files
+    #  Debug array of optional arguments
+    if ${debug:-false}; then
+        echo "set_args_opt(): optional=( ${optional[*]} )"
+        echo ""
+    fi
+
+    #  Define paths for log output files
+    log_out="${err_out}/${nam_job}.${dsc}.stdout.txt"
+    log_err="${err_out}/${nam_job}.${dsc}.stderr.txt"
+
+    #  Debug call to 'compute_signal.py'
+    if ${debug:-false}; then
+        echo "python ${scr_sig} \\"
+        echo "    --verbose \\"
+        echo "    --threads ${threads} \\"
+        echo "    --infile ${infile} \\"
+        echo "    --outfile ${outfile} \\"
+        echo "    --siz_bin ${siz_bin} \\"
+        echo "    ${optional[*]} \\"
+        echo "         > ${log_out} \\"
+        echo "        2> ${log_err}"
+        echo ""
+    fi
+
+    #  Execute 'compute_signal.py', writing stdout and stderr to log files
     python "${scr_sig}" \
         --verbose \
         --threads "${threads}" \
@@ -148,8 +183,8 @@ function run_comp_sig() {
         --outfile "${outfile}" \
         --siz_bin "${siz_bin}" \
         "${optional[@]}" \
-             > "${err_out}/${nam_job}.${dsc}.stdout.txt" \
-            2> "${err_out}/${nam_job}.${dsc}.stderr.txt"
+             > "${log_out}" \
+            2> "${log_err}"
 }
 
 
@@ -306,26 +341,20 @@ if [[ -n "${SLURM_ARRAY_TASK_ID:-}" ]]; then
     echo "set_args_opt(): optional=( ${optional[*]} )"
     echo ""
 
-    #  Run Python script to compute signal
-    if ${debug:-false}; then
-        echo "python ${scr_sig} \\"
-        echo "    --verbose \\"
-        echo "    --threads ${threads} \\"
-        echo "    --infile ${infile} \\"
-        echo "    --outfile ${outfile} \\"
-        echo "    --siz_bin ${siz_bin} \\"
-        echo "    ${optional[*]}"
-        echo ""
-    fi
-
-    #TODO: Modularize this
-    python "${scr_sig}" \
-        --verbose \
-        --threads "${threads}" \
-        --infile "${infile}" \
-        --outfile "${outfile}" \
-        --siz_bin "${siz_bin}" \
-        "${optional[@]}"
+    #  Run 'compute_signal.py'
+    run_comp_sig \
+        "${debug:-false}" \
+        "${threads}" \
+        "${infile}" \
+        "${outfile}" \
+        "${siz_bin}" \
+        "${typ_cvg}" \
+        "${scl_fct}" \
+        "${usr_frg}" \
+        "${rnd}" \
+        "${err_out}" \
+        "${nam_job}" \
+        "${dsc}"
 
     rm "${err_ini}" "${out_ini}"
 else
@@ -354,34 +383,19 @@ else
 
         if ${debug:-false}; then echo "samp=${samp}" && echo ""; fi
 
-        #  Set optional arguments if applicable
-        set_args_opt  # Defines and assigns array 'optional'
-        echo "set_args_opt(): optional=( ${optional[*]} )"
-        echo ""
-
-        #  Run Python script to compute signal
-        if ${debug:-false}; then
-            echo "python ${scr_sig} \\"
-            echo "    --verbose \\"
-            echo "    --threads ${threads} \\"
-            echo "    --infile ${infile} \\"
-            echo "    --outfile ${outfile} \\"
-            echo "    --siz_bin ${siz_bin} \\"
-            echo "    ${optional[*]} \\"
-            echo "         >> ${err_out}/${nam_job}.${dsc}.stdout.txt \\"
-            echo "        2>> ${err_out}/${nam_job}.${dsc}.stderr.txt"
-            echo ""
-        fi
-
-        #TODO: Modularize this
-        python "${scr_sig}" \
-            --verbose \
-            --threads "${threads}" \
-            --infile "${infile}" \
-            --outfile "${outfile}" \
-            --siz_bin "${siz_bin}" \
-            "${optional[@]}" \
-                 >> "${err_out}/${nam_job}.${dsc}.stdout.txt" \
-                2>> "${err_out}/${nam_job}.${dsc}.stderr.txt"
+        #  Run 'compute_signal.py'
+        run_comp_sig \
+            "${debug:-false}" \
+            "${threads}" \
+            "${infile}" \
+            "${outfile}" \
+            "${siz_bin}" \
+            "${typ_cvg}" \
+            "${scl_fct}" \
+            "${usr_frg}" \
+            "${rnd}" \
+            "${err_out}" \
+            "${nam_job}" \
+            "${dsc}"
     done
 fi

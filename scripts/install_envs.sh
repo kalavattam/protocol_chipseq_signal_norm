@@ -147,6 +147,7 @@ Notes:
       - parallel
       - pbzip2
       - pigz
+      - pysam
       - python=3.11  # Restrict to version 3.11 for 'sequali' installation
       - r-argparse
       - r-plotly
@@ -323,6 +324,7 @@ elif [[ "${env_nam}" == "env_protocol" ]]; then
         parallel
         pbzip2
         pigz
+        pysam
         python=3.11  # Restrict to version 3.11 for 'sequali' installation
         r-argparse
         r-plotly

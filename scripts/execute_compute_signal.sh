@@ -1,11 +1,11 @@
 #!/bin/bash
 
-#  execute_compute_coverage.sh
+#  execute_compute_signal.sh
 #  KA
 
 
 #  Run script in interactive/test mode (true) or command-line mode (false)
-interactive=false
+interactive=true
 
 #  Exit on errors, unset variables, or pipe failures if not in "interactive
 #+ mode"
@@ -42,7 +42,10 @@ for script in \
     exit_1.sh \
     handle_env.sh \
     populate_array_empty.sh \
-    reset_max_job.sh
+    print_parallel_info.sh \
+    reset_max_job.sh \
+    set_params_parallel.sh \
+    summarize_sig_nrm.sh
 do
     source "${dir_fnc}/${script}"
 done
@@ -50,49 +53,46 @@ done
 
 #  Set up paths, values, and parameters for interactive mode
 function set_interactive() {
-    #  Set hardcoded paths, values, etc.
-    ## WARNING: If interactive=true, change values as needed ##
-    dir_bas="${HOME}/repos"
+    #  Set base repository paths
+    dir_bas="${HOME}/repos"  ## WARNING: Change as needed ##
     dir_rep="${dir_bas}/protocol_chipseq_signal_norm"
+    
+    #  Define data directories and related variables
     dir_scr="${dir_rep}/scripts"
     dir_dat="${dir_rep}/data"
     dir_pro="${dir_dat}/processed"
-
+    dir_aln="${dir_pro}/align_fastqs"
     aligner="bowtie2"
     a_type="global"
     req_flg=true
     flg="$(if ${req_flg}; then echo "2"; else echo "NA"; fi)"
     mapq=1
-    details="${aligner}_${a_type}_flag-${flg}_mapq-${mapq}"
-
-    dir_aln="${dir_pro}/align_reads/${details}"
-    dir_bam="${dir_aln}/sc"
-    dir_cvg="${dir_pro}/compute_coverage/${details}"
-    typ_trk="norm"
-    dir_trk="${dir_cvg}/${typ_trk}"
-
-    pattern="*.bam"
+    str_det="${aligner}_${a_type}_flag-${flg}_mapq-${mapq}"
+    dir_det="${dir_aln}/${str_det}"
+    dir_bam="${dir_det}/sc"
+    dir_cvg="${dir_pro}/compute_signal/${str_det}"
+    dir_trk="${dir_cvg}/norm"
 
     #  Set hardcoded argument assignments
     verbose=true
     dry_run=true
-    threads=8
+    threads=6
     infiles="$(  ## WARNING: Change search parameters as needed ##
         bash "${dir_scr}/find_files.sh" \
             --dir_fnd "${dir_bam}" \
-            --pattern "${pattern}"
+            --pattern "*.bam"
     )"
     dir_out="${dir_trk}"
     typ_out="bdg.gz"
-    siz_bin=10  # 30  # 1
-    scl_fct=""  # "0.002054,0.003138,0.003127,0.003522,0.056611,0.02906"
-    typ_cvg="${typ_trk}"
+    siz_bin=30
+    scl_fct=""
+    typ_cvg="$(basename "${dir_trk}")"
     usr_frg=""
     rnd=24
     err_out="${dir_trk}/logs"
-    nam_job="compute_coverage"
-    slurm=true
-    max_job=6  # 4
+    nam_job="compute_signal"
+    max_job=2
+    slurm=false
     time="0:30:00"
 }
 
@@ -100,9 +100,8 @@ function set_interactive() {
 #  Initialize argument variables, check and parse arguments, etc. =============
 #  Initialize hardcoded argument variables
 env_nam="env_protocol"
-scr_sub="${dir_scr}/submit_compute_coverage.sh"
-scr_cvg="${dir_scr}/compute_coverage.py"
-denom=4
+scr_sub="${dir_scr}/submit_compute_signal.sh"
+scr_cvg="${dir_scr}/compute_signal.py"
 par_job=""
 
 #  Initialize argument variables, assigning default values where applicable
@@ -118,27 +117,28 @@ typ_cvg="norm"
 usr_frg=""
 rnd=24
 err_out=""
-nam_job="compute_coverage"
-slurm=false
+nam_job="compute_signal"
 max_job=6
+slurm=false
 time="0:30:00"
 
 #  Assign variable for help message
 show_help=$(cat << EOM
 Usage:
-  execute_compute_coverage.sh
+  execute_compute_signal.sh
     [--verbose] [--dry_run] --threads <int> --infiles <str> --dir_out <str>
     --typ_out <str> --siz_bin <int> [--scl_fct <flt>] --typ_cvg <str>
-    [--usr_frg <flt>] --rnd <int> --err_out <str> --nam_job <str> [--slurm]
-    [--max_job <int>] [--time <str>]
+    [--usr_frg <flt>] --rnd <int> --err_out <str> --nam_job <str> --max_job <int>
+    [--slurm] [--time <str>]
 
 Description:
-  The driver script 'execute_compute_coverage.sh' automates the calculation of
+  The driver script 'execute_compute_signal.sh' automates the calculation of
   signal tracks from BAM files. It supports various normalization methods,
-  including user-supplied scaling factors, normalized (probability
-  distribution) coverage (Dickson et al., Sci Rep 2023), and raw (unadjusted)
-  coverage. The script integrates with SLURM or GNU Parallel for parallel
-  processing.
+  including user-supplied scaling factors, normalized coverage (Dickson et al.,
+  Sci Rep 2023), and raw (unadjusted) coverage.
+
+  The script supports parallel execution via SLURM or GNU Parallel, or can run
+  serially.
 
 Arguments:
    -h, --help     Print this help message and exit.
@@ -175,55 +175,40 @@ Arguments:
                   (paired-end alignments; optional). Must match the number of
                   infiles via '--infiles'.
    -r, --rnd      Number of decimal places for rounding signal (coverage score)
-                  values (default: ${rnd}).
+                  values (default: '${rnd}').
   -eo, --err_out  The directory to store stderr and stdout TXT outfiles
                   (default: "\${dir_out}/err_out").
   -nj, --nam_job  Prefix for the names of jobs (default: '${nam_job}').
   -sl, --slurm    Submit jobs to the SLURM scheduler (optional; otherwise, if
                   'threads' > 1, run them via GNU Parallel, and if 'threads' is
                   1, run them in serial.)
-  -mj, --max_job  The maximum number of jobs to run at one time (required if
-                  '--slurm' is specified, ignored if not; default: ${max_job}).
+  -mj, --max_job  Maximum number of jobs to run concurrently (default: '${max_job}').
+                    - If '--slurm' is specified, controls SLURM array tasks.
+                    - If '--slurm' is not specified:
+                      + If 'max_job' is greater than 1, jobs run in parallel
+                        via GNU Parallel.
+                      + If 'max_job' is 1, jobs run sequentially (serial mode).
   -tm, --time     The length of time, in 'h:mm:ss' format, for the SLURM job
                   (required if '--slurm' is specified, ignored if not; default:
                   '${time}').
 
 Dependencies:
-  - Programs
-    + Bash or Zsh
-    + GNU Parallel (if not using SLURM and threads > 1)
-    + Python
-    + SLURM (if using --slurm)
-  - Functions
-    + check_array_files
-    + check_arrays_lengths
-    + check_exists_file_dir
-    + check_flt_pos
-    + check_format_time
-    + check_int_pos
-    + check_program_path
-    + check_str_delim
-    + check_supplied_arg
-    + debug_array_contents
-    + echo_error
-    + echo_warning
-    + exit_0
-    + exit_1
-    + handle_env
-    + populate_array_empty
-    + reset_max_job
+  - Bash or Zsh
+  - GNU Parallel (if not using SLURM and threads > 1)
+  - Python
+  - SLURM (if using --slurm)
 
 Notes:
   - When the '--slurm' flag is used, jobs are parallelized via SLURM array
-    tasks; otherwise, jobs are parallelized with GNU Parallel.
+    tasks; otherwise... #TODO
   - BAM infiles must be coordinate-sorted.
   - Outfile names are derived from BAM infiles and the value(s) associated with
     '--typ_out'.
 
 Examples:
   \`\`\`
-  #  Example 1: Run with GNU Parallel and '--infiles'
-  bash "\${HOME}/path/to/scripts/execute_compute_coverage.sh"
+  #  Example 1: Run with GNU Parallel
+  bash "\${HOME}/path/to/scripts/execute_compute_signal.sh"
       --threads 8
       --infiles "\${HOME}/path/to/sample1.bam,\${HOME}/path/to/sample2.bam"
       --dir_out "\${HOME}/path/to/outfiles"
@@ -262,8 +247,8 @@ else
              -r|--rnd)     rnd="${2}";       shift 2 ;;
             -eo|--err_out) err_out="${2}";   shift 2 ;;
             -nj|--nam_job) nam_job="${2}";   shift 2 ;;
-            -sl|--slurm)   slurm=true;       shift 1 ;;
             -mj|--max_job) max_job="${2}";   shift 2 ;;
+            -sl|--slurm)   slurm=true;       shift 1 ;;
             -tm|--time)    time="${2}";      shift 2 ;;
             *)
                 echo "## Unknown parameter passed: ${1} ##" >&2
@@ -284,9 +269,6 @@ check_exists_file_dir "f" "${scr_sub}" "scr_sub"
 
 check_supplied_arg -a "${scr_cvg}" -n "scr_cvg"
 check_exists_file_dir "f" "${scr_cvg}" "scr_cvg"
-
-check_supplied_arg -a "${denom}" -n "denom"
-check_int_pos "${denom}" "denom"
 
 check_supplied_arg -a "${threads}" -n "threads"
 check_int_pos "${threads}" "threads"
@@ -316,15 +298,15 @@ check_int_pos "${siz_bin}" "siz_bin"
 if [[ -n "${scl_fct}" ]]; then check_str_delim "scl_fct" "${scl_fct}"; fi
 
 if [[ -z "${typ_cvg}" ]]; then
-    typ_cvg="raw"
+    typ_cvg="unadj"
     echo_warning \
-        "No coverage normalization provided. Defaulting to 'raw' (i.e.,
-        'non-normalized' or 'unadjusted') coverage ('--typ_cvg raw')."
+        "No coverage normalization provided. Defaulting to '${typ_cvg}' (i.e.,
+        'non-normalized') coverage ('--typ_cvg ${typ_cvg}')."
 else
     case "${typ_cvg}" in
         raw|unadj|unadjusted) : ;;  # Valid options for unadjusted coverage
-        len|len_frag) : ;;          # Valid options for fragment-length normalization
-        norm|normalized) : ;;       # Valid options for normalized coverage
+        len|len_frag)         : ;;  # Valid options for frag.-length norm.
+        norm|normalized)      : ;;  # Valid options for normalized coverage
         *)
             echo_error \
                 "Invalid value for '--typ_cvg': '${typ_cvg}'. Expected" \
@@ -349,73 +331,8 @@ fi
 
 check_supplied_arg -a "${nam_job}" -n "nam_job"
 
-if ${slurm}; then
-    check_supplied_arg -a "${max_job}" -n "max_job"
-    check_int_pos "${max_job}" "max_job"
-    
-    check_supplied_arg -a "${time}" -n "time"
-    check_format_time "${time}"
-else
-    par_job=$(( threads / denom ))
-    threads=${denom}
 
-    check_supplied_arg -a "${par_job}" -n "par_job"
-    check_int_pos "${par_job}" "par_job"
-
-    check_supplied_arg -a "${threads}" -n "threads"
-    check_int_pos "${threads}" "threads"
-fi
-
-
-#  Debug summary output of resolved argument states ---------------------------
-if ${verbose}; then
-    case "${typ_cvg}" in
-        raw|unadj|unadjusted)
-            mth_nrm="No normalization; returning raw (unadjusted) coverage:"
-            mth_nrm+=" '--typ_cvg ${typ_cvg}'."
-            ;;
-        len|len_frag)
-            mth_nrm="Performing fragment-length normalization: '--typ_cvg"
-            mth_nrm+=" ${typ_cvg}'."
-            ;;
-        norm|normalized)
-            mth_nrm="Generating normalized coverage (Dickson et al., Sci Rep"
-            mth_nrm+=" 2023) via combined fragment-length and unity"
-            mth_nrm+=" normalization: '--typ_cvg ${typ_cvg}'."
-            ;;
-        *)
-            #  Should not be possible to see this
-            mth_nrm="Unknown normalization method: '--typ_cvg ${typ_cvg}'."
-            ;;
-    esac
-
-    if [[ -n "${scl_fct}" ]]; then
-        src_scl="Custom multiplicative scaling factor(s):"
-        src_scl+=" '--scl_fct ${scl_fct}'."
-    else
-        src_scl="No multiplicative scaling factor(s)."
-    fi
-
-    echo "##############################"
-    echo "## Resolved argument states ##"
-    echo "##############################"
-    echo ""
-    echo "- Normalization method: ${mth_nrm}"
-    echo "- Scaling factor source: ${src_scl}"
-    echo ""
-    echo ""
-fi
-
-
-#  Activate environment and check that dependencies are in PATH ---------------
-handle_env "${env_nam}" > /dev/null
-
-if ! ${slurm} && [[ ${threads} -gt 1 ]]; then check_program_path parallel; fi
-check_program_path python
-if ${slurm}; then check_program_path sbatch; fi
-
-
-#  Parse and validate vector elements -----------------------------------------
+#  Parse and validate input vector elements -----------------------------------
 IFS=',' read -r -a arr_infile <<< "${infiles}"
 check_array_files "infiles" "${arr_infile[@]}"
 
@@ -446,30 +363,52 @@ for u in "${arr_usr_frg[@]}"; do
     if [[ "${u}" != "#N/A" ]]; then check_flt_pos "${u}" "usr_frg"; fi
 done
 
-check_arrays_lengths "outfiles" arr_outfile "infiles" arr_infile
-check_arrays_lengths "scl_fct"  arr_scl_fct "infiles" arr_infile
-check_arrays_lengths "usr_frg"  arr_usr_frg "infiles" arr_infile
+check_arrays_lengths "arr_outfile" "arr_infile"
+check_arrays_lengths "arr_scl_fct" "arr_infile"
+check_arrays_lengths "arr_usr_frg" "arr_infile"
 
-if ${slurm}; then max_job=$(reset_max_job "${max_job}" "${#arr_infile[@]}"); fi
 
-if ${verbose}; then
-    echo "########################################"
-    echo "## Parsed vectors for parallelization ##"
-    echo "########################################"
-    echo ""
-    debug_array_contents \
-        "arr_infile" "arr_outfile" "arr_scl_fct" "arr_usr_frg"
-    if ${slurm}; then
-        echo "  - Max no. jobs to run at a time (SLURM): ${max_job}"
-    else
-        echo "  - Max no. jobs to run at a time (GNU Parallel): ${par_job}"
-    fi
-    echo ""
-    echo ""
+#  Parse job execution parameters ---------------------------------------------
+if ${slurm}; then
+    check_supplied_arg -a "${max_job}" -n "max_job"
+    check_int_pos "${max_job}" "max_job"
+
+    max_job=$(reset_max_job "${max_job}" "${#arr_infile[@]}")
+    
+    check_supplied_arg -a "${time}" -n "time"
+    check_format_time "${time}"
+else
+    IFS=';' read -r threads par_job < <(
+        set_params_parallel "${threads}" "${max_job}" "${par_job}"
+    )
+    unset IFS max_job time
+
+    check_supplied_arg -a "${par_job}" -n "par_job"
+    check_int_pos "${par_job}" "par_job"
+fi
+
+#  Debug parallelization information and summary output of resolved states
+print_parallel_info \
+    "${slurm}" "${max_job}" "${par_job}" "${threads}" \
+    "arr_infile" "arr_outfile" "arr_scl_fct" "arr_usr_frg"
+
+summarize_sig_nrm "${typ_cvg}" "${scl_fct}"
+
+
+#  Activate environment and check that dependencies are in PATH ---------------
+handle_env "${env_nam}" > /dev/null
+
+check_program_path python
+
+if ${slurm}; then
+    check_program_path sbatch
+elif [[ "${threads}" -gt 1 ]]; then
+    check_program_path parallel
 fi
 
 
 #  Do the main work ===========================================================
+IFS=" "
 if ${verbose}; then
     echo "####################################"
     echo "## Hardcoded variable assignments ##"
@@ -478,7 +417,6 @@ if ${verbose}; then
     echo "env_nam=${env_nam}"
     echo "scr_sub=${scr_sub}"
     echo "scr_cvg=${scr_cvg}"
-    echo "denom=${denom}"
     echo "par_job=${par_job:-#N/A}"
     echo ""
     echo ""
@@ -498,9 +436,9 @@ if ${verbose}; then
     echo "usr_frg=${usr_frg:-#N/A}"
     echo "err_out=${err_out}"
     echo "nam_job=${nam_job}"
+    echo "max_job=${max_job:-#N/A}"
     echo "slurm=${slurm}"
-    echo "max_job=${max_job}"
-    echo "time=${time}"
+    echo "time=${time:-#N/A}"
     echo ""
     echo ""
     echo "###################################"
@@ -543,9 +481,9 @@ fi
 if ${slurm}; then
     #  SLURM execution
     if ${dry_run} || ${verbose}; then
-        echo "#####################"
-        echo "## SLURM execution ##"
-        echo "#####################"
+        echo "######################"
+        echo "## Call to 'sbatch' ##"
+        echo "######################"
         echo ""
         echo "sbatch \\"
         echo "    --job-name=${nam_job} \\"
@@ -569,23 +507,6 @@ if ${slurm}; then
         echo "            ${err_out} \\"
         echo "            ${nam_job}"
         echo ""
-        # echo "#########################################"
-        # echo "## Contents of SLURM submission script ##"
-        # echo "#########################################"
-        # echo ""
-        # echo "## ${scr_sub} ##"
-        # echo ""
-        # cat "${scr_sub}"
-        # echo ""
-        # echo ""
-        # echo "###########################################"
-        # echo "## Contents of Python computation script ##"
-        # echo "###########################################"
-        # echo ""
-        # echo "## ${scr_cvg} ##"
-        # echo ""
-        # cat "${scr_cvg}"
-        # echo ""
         echo ""
     fi
 
@@ -624,6 +545,7 @@ else
             exit_1
         }
 
+        #  Populate GNU Parallel configuration file
         for idx in "${!arr_infile[@]}"; do
             echo \
                 "${env_nam}" \
@@ -640,9 +562,9 @@ else
                 "${nam_job}" \
                     >> "${config}"
         done
-        cat "${config}"
 
-        cmd="bash \"${scr_sub}\" {1} {2} {3} {4} {5} {6} {7} {8} {9} {10} {11} {12}"
+        cmd="bash ${scr_sub}"
+        cmd+=" {1} {2} {3} {4} {5} {6} {7} {8} {9} {10} {11} {12}"
 
         if ${dry_run} || ${verbose}; then
             echo "############################"

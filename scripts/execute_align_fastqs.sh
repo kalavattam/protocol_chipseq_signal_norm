@@ -372,9 +372,14 @@ case "${aligner}" in
     bowtie2) check_program_path bowtie2 ;;
     bwa)     check_program_path bwa     ;;
 esac
-if ! ${slurm} && [[ ${par_job} -gt 1 ]]; then check_program_path parallel; fi
+
 check_program_path samtools
-if ${slurm}; then check_program_path sbatch; fi
+
+if ${slurm}; then
+    check_program_path sbatch
+elif [[ ${par_job} -gt 1 ]]; then
+    check_program_path parallel
+fi
 
 
 #  Do the main work ===========================================================
@@ -426,9 +431,9 @@ fi
 if ${slurm}; then
     #  If --slurm was specified, run jobs in parallel via SLURM
     if ${dry_run} || ${verbose}; then
-        echo "####################"
-        echo "## Call to sbatch ##"
-        echo "####################"
+        echo "######################"
+        echo "## Call to 'sbatch' ##"
+        echo "######################"
         echo ""
         echo "sbatch \\"
         echo "    --job-name=${nam_job} \\"

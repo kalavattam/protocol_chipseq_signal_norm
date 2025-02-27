@@ -60,7 +60,7 @@ function set_interactive() {
 
     dir_aln="${dir_pro}/align_reads/${details}"
     dir_bam="${dir_aln}/sc"
-    dir_cvg="${dir_pro}/compute_coverage/${details}"
+    dir_cvg="${dir_pro}/compute_signal/${details}"
     dir_out="${dir_cvg}/tables"
 
     pattern="*.bam"
@@ -150,8 +150,12 @@ Arguments:
                   (required; default: \${dir_out}/err_out).
   -nj, --nam_job  The name of the job (required; default: '${nam_job}').
   -sl, --slurm    Submit jobs to the SLURM scheduler.
-  -mj, --max_job  The maximum number of jobs to run at one time (required if
-                  '--slurm' is specified, ignored if not; default: ${max_job}).
+  -mj, --max_job  Maximum number of jobs to run concurrently (default: '${max_job}').
+                    - If '--slurm' is specified, controls SLURM array tasks.
+                    - If '--slurm' is not specified:
+                      + If 'max_job' is greater than 1, jobs run in parallel
+                        via GNU Parallel.
+                      + If 'max_job' is 1, jobs run sequentially (serial mode).
   -tm, --time     The length of time, in 'h:mm:ss' format, for the SLURM job
                   (required if '--slurm' is specified, ignored if not; default:
                   '${time}').

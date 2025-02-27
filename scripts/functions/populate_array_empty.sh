@@ -2,10 +2,16 @@
 
 #  Function to populate array with '#N/A' if it is empty
 function populate_array_empty() {
-    local -n arr="${1}"
+    local arr_nam="${1}"
     local target="${2}"
 
-    if [[ -z "${arr[*]}" ]]; then
-        for ((i = 0; i < target; i++)); do arr+=( "#N/A" ); done
+    #  Use indirect reference to access the array
+    eval "local arr_siz=\${#${arr_nam}[@]}"
+
+    # shellcheck disable=SC2154
+    if [[ "${arr_siz}" -eq 0 ]]; then
+        for ((i = 0; i < target; i++)); do
+            eval "${arr_nam}+=( \"#N/A\" )"
+        done
     fi
 }

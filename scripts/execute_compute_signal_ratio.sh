@@ -1,6 +1,6 @@
 #!/bin/bash
 
-#  execute_compute_coverage_ratio.sh
+#  execute_compute_signal_ratio.sh
 #  KA
 
 
@@ -65,7 +65,7 @@ function set_interactive() {
     mapq=1
     details="${aligner}_${a_type}_flag-${flg}_mapq-${mapq}"
 
-    dir_cvg="${dir_pro}/compute_coverage/${details}"
+    dir_cvg="${dir_pro}/compute_signal/${details}"
     dir_nrm="${dir_cvg}/norm"
     dir_alf="${dir_cvg}/alpha"
 
@@ -92,7 +92,7 @@ function set_interactive() {
     log2=false
     rnd=24
     err_out="${dir_alf}/logs"
-    nam_job="compute_coverage_ratio"
+    nam_job="compute_signal_ratio"
     max_job=6
     slurm=true
     time="0:30:00"
@@ -101,8 +101,8 @@ function set_interactive() {
 #  Initialize argument variables, check and parse arguments, etc. =============
 #  Initialize hardcoded argument variables
 env_nam="env_protocol"
-scr_sub="${dir_scr}/submit_compute_coverage_ratio.sh"
-scr_cvg="${dir_scr}/compute_coverage_ratio.py"
+scr_sub="${dir_scr}/submit_compute_signal_ratio.sh"
+scr_cvg="${dir_scr}/compute_signal_ratio.py"
 par_job=""
 
 #  Initialize argument variables, assigning default values where applicable
@@ -118,7 +118,7 @@ dep_min=""
 log2=false
 rnd=24
 err_out=""
-nam_job="compute_coverage_ratio"
+nam_job="compute_signal_ratio"
 max_job=6
 slurm=false
 time="0:30:00"
@@ -126,14 +126,14 @@ time="0:30:00"
 #  Assign variable for help message
 show_help=$(cat << EOM
 Usage:
-  execute_compute_coverage_ratio.sh
+  execute_compute_signal_ratio.sh
     [--verbose] [--dry_run] --fil_ip <str> --fil_in <str> --dir_out <str>
     --typ_out <str> [--track] [--scl_fct <flt>] [--dep_min <flt>] [--log2]
     --rnd <int> --err_out <str> --nam_job <str> --max_job <int> [--slurm]
     [--time <str>]
 
 Description:
-  The driver script 'execute_compute_coverage_ratio.sh' automates the
+  The driver script 'execute_compute_signal_ratio.sh' automates the
   computation of ratio BEDGRAPH signal tracks for ChIP-seq data. It can be used
   to generate either siQ- or spike-in-scaled coverage values, unscaled IP/input
   tracks, or log2(IP/input) enrichment tracks.
@@ -221,12 +221,12 @@ Dependencies:
 
 Notes:
   - When the '--slurm' flag is used, jobs are parallelized via SLURM array
-    tasks; otherwise, jobs are parallelized with GNU Parallel.
+    tasks; otherwise... #TODO
   - Outfile names are derived from BEDGRAPH IP infiles and the value(s)
     associated with '--typ_out'.
 
 Example:
-  bash execute_compute_coverage_ratio.sh
+  bash execute_compute_signal_ratio.sh
       --fil_ip "/path/to/fil_ip_1.bdg.gz,/path/to/fil_ip_2.bdg.gz"
       --fil_in "/path/to/fil_in_1.bdg.gz,/path/to/fil_in_2.bdg.gz"
       --dir_out "/path/to/write/output/files"
@@ -521,9 +521,9 @@ fi
 if ${slurm}; then
     #  SLURM execution
     if ${dry_run} || ${verbose}; then
-        echo "####################"
-        echo "## Call to sbatch ##"
-        echo "####################"
+        echo "######################"
+        echo "## Call to 'sbatch' ##"
+        echo "######################"
         echo ""
         echo "sbatch \\"
         echo "    --job-name=${nam_job} \\"

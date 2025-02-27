@@ -12,21 +12,23 @@ function debug_array_contents() {
 }
 
 
-#  Function to print parsed vector for parallelization
+#  Function to print parsed vector(s) and parameters for parallelization
 function print_parallel_info() {
     local slurm="${1}"    # Boolean flag for SLURM: 'true' or 'false'
     local max_job="${2}"  # No. concurrent jobs: SLURM
-    local par_job="${3}"  # No. concurrent jobs: GNU Parallel or serial ('1')
+    local par_job="${3}"  # No. concurrent jobs: GNU Parallel or serial
     local threads="${4}"  # No. threads per job
-    local arr_nam="${5}"  # Name of array containing input files
+    shift 4
 
-    echo "#######################################"
-    echo "## Parsed vector for parallelization ##"
-    echo "#######################################"
+    echo "#########################################################"
+    echo "## Parsed vector(s) and parameters for parallelization ##"
+    echo "#########################################################"
     echo ""
 
-    debug_array_contents "${arr_nam}"
-    
+    #  Pass remaining arguments as array names
+    debug_array_contents "$@"
+
+    #  Return relevant info
     if ${slurm}; then
         echo "  - Max concurrent jobs (SLURM): ${max_job}"
     elif [[ "${par_job}" -gt 1 ]]; then

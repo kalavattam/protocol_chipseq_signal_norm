@@ -4,10 +4,10 @@
 # Copyright 2024-2025 by Kris Alavattam
 # Email: kalavattam@gmail.com
 #
-# Script: compute_coverage.py
+# Script: compute_signal.py
 #
 # Description:
-#     'compute_coverage.py' calculates binned coverage from a BAM file and
+#     'compute_signal.py' calculates binned coverage from a BAM file and
 #     outputs it in BEDGRAPH format. Users can specify whether to
 #     compute raw coverage, normalize by fragment length, or apply full
 #     normalization (fragment length and total fragment count). A scaling
@@ -25,7 +25,7 @@
 #     calculations distributed across multiple CPU threads.
 #
 # Usage:
-#     python compute_coverage.py \
+#     python compute_signal.py \
 #         [--verbose] --infile <str> --outfile <str> --siz_bin <posint>
 #         [--scl_fct <flt>] [--typ_cvg <option>] [--usr_frg <posint>]
 #         [--rnd <posint>]
@@ -59,7 +59,7 @@
 #
 # Example:
 #     ```
-#     python compute_coverage.py \
+#     python compute_signal.py \
 #         --verbose \
 #         --threads 4 \
 #         --infile sample.bam \
@@ -131,7 +131,7 @@ def set_interactive():
     fil_bam = "IP_WT_Q_Hho1_6337.sc.bam"  # WARNING: Change as needed #
     pth_bam = f"{dir_bam}/{fil_bam}"
     
-    dir_cov = f"{dir_pro}/compute_coverage/{det}/{cov}"
+    dir_cov = f"{dir_pro}/compute_signal/{det}/{cov}"
     dir_trk = f"{dir_cov}/tracks"
     fil_trk = os.path.splitext(fil_bam)[0]
     pth_trk = f"{dir_trk}/{fil_trk}"
@@ -626,7 +626,7 @@ def main():
     #  Print verbose output
     if args.verbose:
         print("#######################################")
-        print("## Arguments for compute_coverage.py ##")
+        print("## Arguments for compute_signal.py ##")
         print("#######################################")
         print("")
         print(f"--verbose {args.verbose}")

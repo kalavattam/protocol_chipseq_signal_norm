@@ -222,7 +222,7 @@ function set_interactive() {
     dir_aln="${dir_pro}/align_${aligner}_${a_type}/flag-${flg}_mapq-${mapq}"
     dir_cer="${dir_aln}/sc"
     dir_pom="${dir_aln}/sp"
-    dir_cvg="${dir_pro}/compute_coverage"
+    dir_cvg="${dir_pro}/compute_signal"
     dir_out="${dir_cvg}/${aligner}_${a_type}_flag-${flg}_mapq-${mapq}/tables"
 
     #  Set hardcoded argument assignments

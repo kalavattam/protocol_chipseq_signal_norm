@@ -225,7 +225,7 @@ def calculate_ratio_bin(sig_ip, sig_in, scl_fct, dep_min, log2):
     return ratio
 
 
-def compute_coverage_ratio(
+def compute_signal_ratio(
     fil_ip, fil_in, fil_out, scl_fct, dep_min, rnd, log2, track
 ):
     """
@@ -483,7 +483,7 @@ def main():
     #  Print verbose output
     if args.verbose:
         print("#############################################")
-        print("## Arguments for compute_coverage_ratio.py ##")
+        print("## Arguments for compute_signal_ratio.py ##")
         print("#############################################")
         print("")
         print(f"--fil_ip  {args.fil_ip}")
@@ -497,7 +497,7 @@ def main():
         print("")
         print("")
 
-    compute_coverage_ratio(
+    compute_signal_ratio(
         args.fil_ip, args.fil_in, args.fil_out, scl_fct, dep_min,
         args.rnd, args.log2, args.track
     )

@@ -317,9 +317,9 @@ fi
 if ${slurm}; then
     #  If --slurm was specified, run jobs in parallel via SLURM
     if ${dry_run} || ${verbose}; then
-        echo "####################"
-        echo "## Call to sbatch ##"
-        echo "####################"
+        echo "######################"
+        echo "## Call to 'sbatch' ##"
+        echo "######################"
         echo ""
         echo "sbatch \\"
         echo "    --job-name=${nam_job} \\"
