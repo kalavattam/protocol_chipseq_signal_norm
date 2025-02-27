@@ -34,9 +34,9 @@ function summarize_sig_nrm() {
     fi
 
     #  Print resolved argument states
-    echo "##############################"
-    echo "## Resolved argument states ##"
-    echo "##############################"
+    echo "#################################################"
+    echo "## Summary of signal normalization and scaling ##"
+    echo "#################################################"
     echo ""
     echo "- Normalization method: ${mth_nrm}"
     echo "- Scaling factor source: ${src_scl}"

@@ -7,27 +7,27 @@
 # Script: compute_signal.py
 #
 # Description:
-#     'compute_signal.py' calculates binned coverage from a BAM file and
-#     outputs it in BEDGRAPH format. Users can specify whether to
-#     compute raw coverage, normalize by fragment length, or apply full
-#     normalization (fragment length and total fragment count). A scaling
+#     'compute_signal.py' calculates binned signal from a BAM file and outputs
+#     it in BEDGRAPH format. Users can specify whether to compute raw signal,
+#     normalize by fragment length, or apply full normalization (fragment
+#     length and total fragment count, i.e., "normalized coverage"). A scaling
 #     factor can also be applied.
 #
 #     The output format is determined by the '--outfile' extension:
-#         - '.bdg', '.bg', '.bedgraph' outputs coverage in BEDGRAPH format
-#         - '.bed' outputs processed alignments, not coverage, in BED format
+#         - '.bdg', '.bg', '.bedgraph' outputs signal in BEDGRAPH format
+#         - '.bed' outputs processed alignments, not signal, in BED format
 #         - '.gz' (e.g., '.bdg.gz', '.bed.gz') performs gzip compression
 #
 #     If '.bed' is specified, the script outputs a BED file of processed
-#     alignments instead of computing coverage.
+#     alignments instead of computing signal.
 #
-#     The script supports parallel processing, with per-chromosome coverage
+#     The script supports parallel processing, with per-chromosome signal
 #     calculations distributed across multiple CPU threads.
 #
 # Usage:
 #     python compute_signal.py \
 #         [--verbose] --infile <str> --outfile <str> --siz_bin <posint>
-#         [--scl_fct <flt>] [--typ_cvg <option>] [--usr_frg <posint>]
+#         [--scl_fct <flt>] [--typ_sig <option>] [--usr_frg <posint>]
 #         [--rnd <posint>]
 #
 # Arguments:
@@ -37,20 +37,20 @@
 #      -o, --outfile  Path to the output file with extension. Supported
 #                     formats: '.bdg', '.bg', '.bedgraph', '.bed' and their
 #                     '.gz' versions for compression.
-#     -sb, --siz_bin  Bin size for coverage calculation in base pairs (default:
+#     -sb, --siz_bin  Bin size for signal calculation in base pairs (default:
 #                     10). Ignored for BED output.
-#     -tv, --typ_cvg  Specify coverage calculation type (default: 'norm').
+#     -tv, --typ_sig  Specify signal calculation type (default: 'norm').
 #                     Options:
 #                       - 'raw', 'unadj', 'unadjusted': Compute unadjusted
-#                         coverage.
-#                       - 'frag', 'len_frag': Normalize coverage by fragment
+#                         signal.
+#                       - 'frag', 'len_frag': Normalize signal by fragment
 #                         length.
-#                       - 'norm', 'normalized': Normalize coverage by both
+#                       - 'norm', 'normalized': Normalize signal by both
 #                         fragment length and total fragments such that
-#                         coverage sums to unity.
-#                       - '--typ_cvg' is ignored for BED output.
-#     -sf, --scl_fct  Optional scaling factor to apply to the coverage. Can be
-#                     used with any '--typ_cvg' mode. Ignored for BED output.
+#                         coverage sums to unity, i.e., "normalized coverage".
+#                       - '--typ_sig' is ignored for BED output.
+#     -sf, --scl_fct  Optional scaling factor to apply to the signal. Can be
+#                     used with any '--typ_sig' mode. Ignored for BED output.
 #     -uf, --usr_frg  Optional fixed fragment length instead of the BAM query
 #                     (read) or template (fragment) lengths. Ignored for BED
 #                     output.
@@ -63,19 +63,19 @@
 #         --verbose \
 #         --threads 4 \
 #         --infile sample.bam \
-#         --outfile sample_coverage.bdg.gz \
+#         --outfile sample_signal.bdg.gz \
 #         --siz_bin 5 \
-#         --typ_cvg norm \
+#         --typ_sig norm \
 #         --rnd 6
 #     ```
 #
 # Output:
 #     - BEDGRAPH ('.bdg', '.bg', '.bedgraph'):
-#         + Contains binned coverage values.
+#         + Contains binned signal values.
 #         + Uses '--rnd' for decimal precision.
 #     - BED ('.bed'):
-#         + Contains processed alignments **instead of coverage**.
-#         + Ignores '--siz_bin', '--typ_cvg', '--scl_fct', '--usr_frg', and
+#         + Contains processed alignments **instead of signal**.
+#         + Ignores '--siz_bin', '--typ_sig', '--scl_fct', '--usr_frg', and
 #           '--rnd'.
 #     - Compression: If '.gz' is in the filename, output is gzip-compressed.
 #
@@ -267,11 +267,11 @@ def parse_bam(path_bam, usr_frg=None):
     return frg_tup
 
 
-def calculate_covg_chrom(
+def calculate_sig_chrom(
     chrom, frg_tup, frg_tot, siz_bin, is_len, is_norm, scl_fct=None
 ):
     """
-    Compute binned coverage for a chromosome.
+    Compute binned signal for a chromosome.
 
     Args:
         chrom   (str)  Chromosome name.
@@ -281,62 +281,62 @@ def calculate_covg_chrom(
         is_len  (bol)  If 'True', normalize by fragment length.
         is_norm (bol)  If 'True', normalize by both fragment length and total
                        fragments (summing to unity).
-        scl_fct (flt)  Scaling factor applied to coverage (optional).
+        scl_fct (flt)  Scaling factor applied to signal (optional).
 
     Returns:
-        dict : Binned coverage data, where keys are (chrom, bin_start) and 
-               values are coverage scores.
+        dict : Binned signal data, where keys are (chrom, bin_start) and 
+               values are signal scores.
 
     Notes:
         - If 'is_len=True' or 'is_norm=True', each fragment contributes
-          '1 / len_frag' to coverage (fragment-length normalization).
-        - If 'is_norm=True', coverage is divided by 'frg_tot' (unity
+          '1 / len_frag' to signal (fragment-length normalization).
+        - If 'is_norm=True', signal is divided by 'frg_tot' (unity
           normalization).
-        - If 'scl_fct' is provided, coverage values are scaled accordingly.
-        - Binning aggregates coverage in intervals of 'siz_bin' base pairs.
+        - If 'scl_fct' is provided, signal values are scaled accordingly.
+        - Binning aggregates signal in intervals of 'siz_bin' base pairs.
     """
     #  Check for invalid bin size
     if siz_bin <= 0:
         raise ValueError("'--siz_bin' must be greater than 0.")
 
-    #  Proceed with coverage calculation
-    coverage = defaultdict(float)
+    #  Proceed with signal calculation
+    signal = defaultdict(float)
     for start, end, len_frag in frg_tup:
         #  Normalize by fragment length if specified
         contribution = (1 / len_frag) if (is_len or is_norm) else 1
 
         #  Add the contribution across the span of the fragment
         for pos in range(start, end + 1):
-            coverage[(chrom, pos)] += contribution
+            signal[(chrom, pos)] += contribution
 
     #  Normalize by total fragments if 'is_norm' is true
     if is_norm:
-        for key in coverage:
-            coverage[key] /= frg_tot
+        for key in signal:
+            signal[key] /= frg_tot
 
     #  Apply scaling factor if specified
     if scl_fct is not None:
         if scl_fct <= 0:
             raise ValueError("'--scl_fct' must be greater than 0.")
-        for key in coverage:
-            coverage[key] *= scl_fct
+        for key in signal:
+            signal[key] *= scl_fct
 
-    #  Bin the coverage data
-    coverage_bin = defaultdict(float)
-    for (chrom, pos), value in coverage.items():
+    #  Bin the signal data
+    signal_bin = defaultdict(float)
+    for (chrom, pos), value in signal.items():
         bin_strt = (pos // siz_bin) * siz_bin
-        coverage_bin[(chrom, bin_strt)] += value
+        signal_bin[(chrom, bin_strt)] += value
 
-    return coverage_bin
+    return signal_bin
 
 
 def calculate_covg_task(data):
-    return calculate_covg_chrom(*data)
+    return calculate_sig_chrom(*data)
 
 
-# def write_bigwig(coverage, outfile, siz_bin, chrom_siz):
+# def write_bigwig(signal, outfile, siz_bin, chrom_siz):
 #     """
-#     Write the binned coverage data to a BIGWIG file.
+#     Write the binned signal data to a BIGWIG file.
 #     """
 #     #  Create a dictionary of chromosome sizes
 #     dict_size = {chrom: size for chrom, size in chrom_siz.items()}
@@ -348,16 +348,16 @@ def calculate_covg_task(data):
 #     bw.addHeader(list(dict_size.items()))
 #
 #     #  Initialize empty lists to store chromosomes, start positions, end
-#     #  positions, and coverage values
+#     #  positions, and signal values
 #     chroms = []
 #     starts = []
 #     ends = []
 #     values = []
 #
-#     #  Iterate over the coverage data, sorted by chromosome (with
+#     #  Iterate over the signal data, sorted by chromosome (with
 #     #  Roman-to-Arabic numeral conversion) and bin start position
 #     for (chrom, bin_start), value in sorted(
-#         coverage.items(), key=lambda x: (
+#         signal.items(), key=lambda x: (
 #             sort_chrom_roman_arabic(x[0][0]), x[0][1]
 #         )
 #     ):
@@ -379,29 +379,29 @@ def calculate_covg_task(data):
 #     """
 #     # TODO: Description of function.
 #     """
-#     chrom, chrom_coverage, siz_bin, outfile = data
+#     chrom, chrom_signal, siz_bin, outfile = data
 #     with pyBigWig.open(outfile, 'w') as bw:
-#         chrom_coverage.sort(key=lambda x: x[0])  # Sort by start position
-#         starts, ends, values = zip(*chrom_coverage)
+#         chrom_signal.sort(key=lambda x: x[0])  # Sort by start position
+#         starts, ends, values = zip(*chrom_signal)
 #         bw.addEntries(
 #             [chrom] * len(starts), starts, ends=ends, values=values
 #         )
 
 
-# def write_bigwig_parallel(coverage, outfile, siz_bin, chrom_siz, threads):
+# def write_bigwig_parallel(signal, outfile, siz_bin, chrom_siz, threads):
 #     """
 #     Parallelized BIGWIG writing by chromosome.
 #     """
 #     #  Prepare data for each chromosome
 #     tasks = []
 #     for chrom in sorted(chrom_siz.keys(), key=sort_chrom_roman_arabic):
-#         chrom_coverage = [
-#             (start, start + siz_bin, coverage[(chrom, start)])
-#             for (chrom_name, start) in coverage.keys()
+#         chrom_signal = [
+#             (start, start + siz_bin, signal[(chrom, start)])
+#             for (chrom_name, start) in signal.keys()
 #             if chrom_name == chrom
 #         ]
 #         tasks.append(
-#             (chrom, chrom_coverage, siz_bin, f"{outfile}.{chrom}.tmp.bw")
+#             (chrom, chrom_signal, siz_bin, f"{outfile}.{chrom}.tmp.bw")
 #         )
 #
 #     #  Process chromosomes in parallel
@@ -425,20 +425,20 @@ def calculate_covg_task(data):
 
 def write_bedgraph(cvg, fil_out, siz_bin, rnd, is_gz=False):
     """
-    Write binned coverage data ("signal") to a BEDGRAPH file.
+    Write binned signal data to a BEDGRAPH file.
 
     Args:
-        cvg     (dct)  Binned coverage data, where keys are (chrom,
-                       bin_start) and values are signal (coverage scores).
+        cvg     (dct)  Binned signal data, where keys are (chrom, bin_start)
+                       and values are signal (signal scores).
         fil_out (str)  Path to the output file. Should have a '.bg', '.bdg', or 
                        '.bedgraph' extension.
         siz_bin (int)  Bin size in base pairs.
-        rnd     (int)  Number of decimal places for rounding coverage values.
+        rnd     (int)  Number of decimal places for rounding signal values.
         is_gz   (bol)  If 'True', output is gzip-compressed ('.gz' extension 
                        expected).
 
     Notes:
-        - Coverage values are rounded to 'rnd' decimal places.
+        - signal values are rounded to 'rnd' decimal places.
         - If 'is_gz=True', output is written in gzip format.
         - BEDGRAPH format: 'chrom  start  end  signal'
     """
@@ -448,13 +448,13 @@ def write_bedgraph(cvg, fil_out, siz_bin, rnd, is_gz=False):
 
     with fnc_opn(fil_out, mode) as fil_out:
         #  Initialize lists to store chromosomes, start positions, end
-        #  positions, and coverage values
+        #  positions, and signal values
         chroms = []
         starts = []
         ends = []
         values = []
 
-        #  Iterate over the coverage data, sorted by chromosome (using
+        #  Iterate over the signal data, sorted by chromosome (using
         #  Roman-to-Arabic numeral conversion) and bin start position
         for (chrom, bin_start), value in sorted(
             cvg.items(), key=lambda x: (
@@ -478,7 +478,7 @@ def write_bedgraph(cvg, fil_out, siz_bin, rnd, is_gz=False):
 
 def parse_args():
     """
-    Parse command-line arguments for computing binned coverage from a BAM file.
+    Parse command-line arguments for computing binned signal from a BAM file.
 
     Args:
         -v, --verbose   Enable verbose output.
@@ -486,14 +486,14 @@ def parse_args():
         -i, --infile    Path to input BAM file.
         -o, --outfile   Path to output file. The extension determines format:
                           + '.bdg', '.bg', '.bedgraph': BEDGRAPH of binned
-                            coverage.
-                          + '.bed': BED of fragment coordinates, not coverage.
+                            signal.
+                          + '.bed': BED of fragment coordinates, not signal.
                           + '.gz' (e.g., 'output.bdg.gz'): gzip-compressed
                             output.
         -sb, --siz_bin  Bin size in base pairs (default: 10). Ignored for
                         '.bed'.
-        -tv, --typ_cvg  Coverage calculation type (default: 'norm'):
-                          + 'raw': Unadjusted coverage.
+        -tv, --typ_sig  Signal calculation type (default: 'norm'):
+                          + 'raw': Unadjusted signal.
                           + 'frag': Normalize by fragment length.
                           + 'norm': Normalize by both fragment length and total
                             fragments.
@@ -507,12 +507,12 @@ def parse_args():
 
     Notes:
         - Output format is determined by '--outfile' extension.
-        - '.bed' outputs fragment coordinates, not coverage.
+        - '.bed' outputs fragment coordinates, not signal.
         - Including '.gz' compresses the output.
     """
     parser = argparse.ArgumentParser(
         description=(
-            "Compute binned coverage from a BAM file in BEDGRAPH format, "
+            "Compute binned signal from a BAM file in BEDGRAPH format, "
             "optionally applying normalization. Alternatively, extract and "
             "output processed alignment coordinates in a BED-like format."
         ),
@@ -531,7 +531,7 @@ def parse_args():
         help=(
             "Number of threads for parallel processing (default: "
             "%(default)s). Each thread processes a different chromosome's "
-            "coverage in parallel."
+            "signal in parallel."
         )
     )
     parser.add_argument(
@@ -547,7 +547,7 @@ def parse_args():
             "'bedgraph', 'bdg', 'bg', and 'bed'. Append '.gz' for gzip "
             "compression, e.g., 'output.bdg.gz'. Note: Use 'bed' to output "
             "alignment coordinates in a BED-like format. Using 'bed' results "
-            "in arguments such as '--siz_bin', '--typ_cvg', '--scl_fct', and "
+            "in arguments such as '--siz_bin', '--typ_sig', '--scl_fct', and "
             "'--usr_frg' being ignored)."
         )
     )
@@ -556,26 +556,26 @@ def parse_args():
         type=int,
         default=10,
         help=(
-            "Bin size for coverage calculation in base pairs (default: "
+            "Bin size for signal calculation in base pairs (default: "
             "%(default)s)."
         )
     )
     parser.add_argument(
-        "-tv", "--typ_cvg",
+        "-ts", "--typ_sig",
         choices=[
             'raw', 'unadj', 'unadjusted', 'frag', 'len_frag', 'norm',
             'normalized'
         ],
         default='norm',
         help=(
-            "Specify coverage calculation type. Options: 'raw', 'unadj', "
+            "Specify signal calculation type. Options: 'raw', 'unadj', "
             "'unadjusted', 'frag', 'len_frag', 'norm', 'normalized' (default: "
             "'%(default)s'). Use 'raw', 'unadj', or 'unadjusted' to calculate "
-            "unadjusted coverage. Use 'frag' or 'len_frag' to normalize "
-            "coverage by fragment length. Use 'norm' or 'normalized' to "
-            "compute 'normalized coverage' (PMID: 37160995), i.e., coverage "
-            "normalized for both fragment length and total fragments such "
-            "that coverage sums to unity."
+            "unadjusted signal. Use 'frag' or 'len_frag' to normalize signal "
+            "by fragment length. Use 'norm' or 'normalized' to compute "
+            "'normalized coverage' (PMID: 37160995), i.e., signal normalized "
+            "for both fragment length and total fragments such that coverage "
+            "sums to unity."
         )
     )
     parser.add_argument(
@@ -583,7 +583,7 @@ def parse_args():
         type=float,
         default=None,
         help=(
-            "Optional scaling factor to apply to the coverage (default: "
+            "Optional scaling factor to apply to the signal (default: "
             "%(default)s)."
         )
     )
@@ -619,14 +619,14 @@ def main():
     #  Use command line arguments or interactive setup based on 'interactive'
     args = set_interactive() if interactive else parse_args()
 
-    #  Determine whether to normalize based on 'typ_cvg'
-    is_len = args.typ_cvg in {'frag', 'len_frag'}
-    is_norm = args.typ_cvg in {'norm', 'normalized'}
+    #  Determine whether to normalize based on 'typ_sig'
+    is_len = args.typ_sig in {'frag', 'len_frag'}
+    is_norm = args.typ_sig in {'norm', 'normalized'}
 
     #  Print verbose output
     if args.verbose:
         print("#######################################")
-        print("## Arguments for compute_signal.py ##")
+        print("## Arguments for 'compute_signal.py' ##")
         print("#######################################")
         print("")
         print(f"--verbose {args.verbose}")
@@ -634,7 +634,7 @@ def main():
         print(f"--infile  {args.infile}")
         print(f"--outfile {args.outfile}")
         print(f"--siz_bin {args.siz_bin}")
-        print(f"--typ_cvg {args.typ_cvg}")
+        print(f"--typ_sig {args.typ_sig}")
         print(f"--scl_fct {args.scl_fct}")
         print(f"--usr_frg {args.usr_frg}")
         print(f"--rnd     {args.rnd}")
@@ -652,7 +652,7 @@ def main():
             for chrom, fragments in frg_tup.items():
                 for start, end, length in fragments:
                     bed_file.write(f"{chrom}\t{start}\t{end}\t{length}\n")
-        return  # Omit coverage calculations, etc.
+        return  # Omit signal calculations, etc.
 
     frg_tot = sum(len(entries) for entries in frg_tup.values())
     if is_norm and frg_tot == 0:

@@ -5,7 +5,7 @@
 
 
 #  Run script in interactive/test mode (true) or command-line mode (false)
-interactive=true
+interactive=false
 
 #  Exit on errors, unset variables, or pipe failures if not in "interactive
 #+ mode"
@@ -70,8 +70,8 @@ function set_interactive() {
     str_det="${aligner}_${a_type}_flag-${flg}_mapq-${mapq}"
     dir_det="${dir_aln}/${str_det}"
     dir_bam="${dir_det}/sc"
-    dir_cvg="${dir_pro}/compute_signal/${str_det}"
-    dir_trk="${dir_cvg}/norm"
+    dir_sig="${dir_pro}/compute_signal/${str_det}"
+    dir_trk="${dir_sig}/norm"
 
     #  Set hardcoded argument assignments
     verbose=true
@@ -86,7 +86,7 @@ function set_interactive() {
     typ_out="bdg.gz"
     siz_bin=30
     scl_fct=""
-    typ_cvg="$(basename "${dir_trk}")"
+    typ_sig="$(basename "${dir_trk}")"
     usr_frg=""
     rnd=24
     err_out="${dir_trk}/logs"
@@ -101,7 +101,7 @@ function set_interactive() {
 #  Initialize hardcoded argument variables
 env_nam="env_protocol"
 scr_sub="${dir_scr}/submit_compute_signal.sh"
-scr_cvg="${dir_scr}/compute_signal.py"
+scr_sig="${dir_scr}/compute_signal.py"
 par_job=""
 
 #  Initialize argument variables, assigning default values where applicable
@@ -113,7 +113,7 @@ dir_out=""
 typ_out="bdg.gz"
 siz_bin=10
 scl_fct=""
-typ_cvg="norm"
+typ_sig="norm"
 usr_frg=""
 rnd=24
 err_out=""
@@ -127,7 +127,7 @@ show_help=$(cat << EOM
 Usage:
   execute_compute_signal.sh
     [--verbose] [--dry_run] --threads <int> --infiles <str> --dir_out <str>
-    --typ_out <str> --siz_bin <int> [--scl_fct <flt>] --typ_cvg <str>
+    --typ_out <str> --siz_bin <int> [--scl_fct <flt>] --typ_sig <str>
     [--usr_frg <flt>] --rnd <int> --err_out <str> --nam_job <str> --max_job <int>
     [--slurm] [--time <str>]
 
@@ -155,14 +155,14 @@ Arguments:
                        BEDGRAPH format.
                     - 'bed', 'bed.gz': BED-like format (fragment coordinates,
                       not coverage signal). Using this option will cause
-                      arguments such as '--siz_bin' and '--typ_cvg' to be
+                      arguments such as '--siz_bin' and '--typ_sig' to be
                       ignored.
   -sb, --siz_bin  Bin size for coverage calculation in base pairs (default:
                   ${siz_bin}).
   -sf, --scl_fct  Comma-separated string of scaling factors to apply to
                   coverage (optional). Must match the number of infiles via
                   '--infiles'.
-  -tv, --typ_cvg  Specify coverage calculation type (default: '${typ_cvg}').
+  -tv, --typ_sig  Specify coverage calculation type (default: '${typ_sig}').
                   Options:
                     - 'unadj', 'unadjusted': Compute unadjusted signal.
                     - 'len', 'len_frag': Adjust signal by fragment length.
@@ -179,15 +179,15 @@ Arguments:
   -eo, --err_out  The directory to store stderr and stdout TXT outfiles
                   (default: "\${dir_out}/err_out").
   -nj, --nam_job  Prefix for the names of jobs (default: '${nam_job}').
-  -sl, --slurm    Submit jobs to the SLURM scheduler (optional; otherwise, if
-                  'threads' > 1, run them via GNU Parallel, and if 'threads' is
-                  1, run them in serial.)
   -mj, --max_job  Maximum number of jobs to run concurrently (default: '${max_job}').
                     - If '--slurm' is specified, controls SLURM array tasks.
                     - If '--slurm' is not specified:
                       + If 'max_job' is greater than 1, jobs run in parallel
                         via GNU Parallel.
                       + If 'max_job' is 1, jobs run sequentially (serial mode).
+  -sl, --slurm    Submit jobs to the SLURM scheduler (optional; otherwise, if
+                  'threads' > 1, run them via GNU Parallel, and if 'threads' is
+                  1, run them in serial.)
   -tm, --time     The length of time, in 'h:mm:ss' format, for the SLURM job
                   (required if '--slurm' is specified, ignored if not; default:
                   '${time}').
@@ -214,7 +214,7 @@ Examples:
       --dir_out "\${HOME}/path/to/outfiles"
       --typ_out "bdg.gz"
       --siz_bin 50
-      --typ_cvg "norm"
+      --typ_sig "norm"
       --err_out "\${HOME}/path/to/outfiles/logs"
       --nam_job "coverage_calculation"
 
@@ -239,10 +239,13 @@ else
              -t|--threads) threads="${2}";   shift 2 ;;
              -i|--infiles) infiles="${2}";   shift 2 ;;
             -do|--dir_out) dir_out="${2}";   shift 2 ;;
-            -to|--typ_out) typ_out="${2,,}"; shift 2 ;;
+            -to|--typ_out)
+                typ_out="$(echo "${typ_out}" | tr '[:upper:]' '[:lower:]')"
+                shift 2
+                ;;
             -sb|--siz_bin) siz_bin="${2}";   shift 2 ;;
             -sf|--scl_fct) scl_fct="${2}";   shift 2 ;;
-            -tv|--typ_cvg) typ_cvg="${2}";   shift 2 ;;
+            -tv|--typ_sig) typ_sig="${2}";   shift 2 ;;
             -uf|--usr_frg) usr_frg="${2}";   shift 2 ;;
              -r|--rnd)     rnd="${2}";       shift 2 ;;
             -eo|--err_out) err_out="${2}";   shift 2 ;;
@@ -267,8 +270,8 @@ check_supplied_arg -a "${env_nam}" -n "env_nam"
 check_supplied_arg -a "${scr_sub}" -n "scr_sub"
 check_exists_file_dir "f" "${scr_sub}" "scr_sub"
 
-check_supplied_arg -a "${scr_cvg}" -n "scr_cvg"
-check_exists_file_dir "f" "${scr_cvg}" "scr_cvg"
+check_supplied_arg -a "${scr_sig}" -n "scr_sig"
+check_exists_file_dir "f" "${scr_sig}" "scr_sig"
 
 check_supplied_arg -a "${threads}" -n "threads"
 check_int_pos "${threads}" "threads"
@@ -297,19 +300,19 @@ check_int_pos "${siz_bin}" "siz_bin"
 
 if [[ -n "${scl_fct}" ]]; then check_str_delim "scl_fct" "${scl_fct}"; fi
 
-if [[ -z "${typ_cvg}" ]]; then
-    typ_cvg="unadj"
+if [[ -z "${typ_sig}" ]]; then
+    typ_sig="unadj"
     echo_warning \
-        "No coverage normalization provided. Defaulting to '${typ_cvg}' (i.e.,
-        'non-normalized') coverage ('--typ_cvg ${typ_cvg}')."
+        "No coverage normalization provided. Defaulting to '${typ_sig}' (i.e.,
+        'non-normalized') coverage ('--typ_sig ${typ_sig}')."
 else
-    case "${typ_cvg}" in
+    case "${typ_sig}" in
         raw|unadj|unadjusted) : ;;  # Valid options for unadjusted coverage
         len|len_frag)         : ;;  # Valid options for frag.-length norm.
         norm|normalized)      : ;;  # Valid options for normalized coverage
         *)
             echo_error \
-                "Invalid value for '--typ_cvg': '${typ_cvg}'. Expected" \
+                "Invalid value for '--typ_sig': '${typ_sig}'. Expected" \
                 "'raw', 'unadj', 'unadjusted', 'len', 'len_frag', 'norm', or" \
                 "'normalized'."
             exit_1
@@ -389,10 +392,10 @@ fi
 
 #  Debug parallelization information and summary output of resolved states
 print_parallel_info \
-    "${slurm}" "${max_job}" "${par_job}" "${threads}" \
+    "${slurm}" "${max_job:-#N/A}" "${par_job}" "${threads}" \
     "arr_infile" "arr_outfile" "arr_scl_fct" "arr_usr_frg"
 
-summarize_sig_nrm "${typ_cvg}" "${scl_fct}"
+summarize_sig_nrm "${typ_sig}" "${scl_fct}"
 
 
 #  Activate environment and check that dependencies are in PATH ---------------
@@ -416,7 +419,7 @@ if ${verbose}; then
     echo ""
     echo "env_nam=${env_nam}"
     echo "scr_sub=${scr_sub}"
-    echo "scr_cvg=${scr_cvg}"
+    echo "scr_sig=${scr_sig}"
     echo "par_job=${par_job:-#N/A}"
     echo ""
     echo ""
@@ -432,7 +435,7 @@ if ${verbose}; then
     echo "typ_out=${typ_out}"
     echo "siz_bin=${siz_bin}"
     echo "scl_fct=${scl_fct:-#N/A}"
-    echo "typ_cvg=${typ_cvg}"
+    echo "typ_sig=${typ_sig}"
     echo "usr_frg=${usr_frg:-#N/A}"
     echo "err_out=${err_out}"
     echo "nam_job=${nam_job}"
@@ -455,6 +458,7 @@ if ${verbose}; then
     echo ""
     echo ""
 fi
+unset IFS
 
 infiles=$(echo "${arr_infile[*]}"  | tr ' ' ',')
 outfiles=$(echo "${arr_outfile[*]}" | tr ' ' ',')
@@ -495,12 +499,12 @@ if ${slurm}; then
         echo "    --array=1-${#arr_infile[@]}%${max_job} \\"
         echo "        ${scr_sub} \\"
         echo "            ${env_nam} \\"
-        echo "            ${scr_cvg} \\"
+        echo "            ${scr_sig} \\"
         echo "            ${threads} \\"
         echo "            ${infiles} \\"
         echo "            ${outfiles} \\"
         echo "            ${siz_bin} \\"
-        echo "            ${typ_cvg} \\"
+        echo "            ${typ_sig} \\"
         echo "            ${scl_fct} \\"
         echo "            ${usr_frg} \\"
         echo "            ${rnd} \\"
@@ -522,12 +526,12 @@ if ${slurm}; then
             --array=1-${#arr_infile[@]}%${max_job} \
                 ${scr_sub} \
                     ${env_nam} \
-                    ${scr_cvg} \
+                    ${scr_sig} \
                     ${threads} \
                     ${infiles} \
                     ${outfiles} \
                     ${siz_bin} \
-                    ${typ_cvg} \
+                    ${typ_sig} \
                     ${scl_fct} \
                     ${usr_frg} \
                     ${rnd} \
@@ -537,35 +541,48 @@ if ${slurm}; then
 else
     #  GNU Parallel execution
     if [[ ${threads} -gt 1 ]]; then
+        #  Create and populate GNU Parallel configuration file
         config="${err_out}/${nam_job}.config_parallel.txt"
 
         if [[ -f "${config}" ]]; then rm "${config}"; fi
-        touch "${config}" || {
-            echo_error "Failed to create a GNU Parallel configuration file."
+        
+        if ! \
+            touch "${config}"
+        then
+            echo_error "Failed to create GNU Parallel configuration file."
             exit_1
-        }
+        fi
 
-        #  Populate GNU Parallel configuration file
-        for idx in "${!arr_infile[@]}"; do
-            echo \
-                "${env_nam}" \
-                "${scr_cvg}" \
-                "${threads}" \
-                "${arr_infile[idx]}" \
-                "${arr_outfile[idx]}" \
-                "${siz_bin}" \
-                "${typ_cvg}" \
-                "${arr_scl_fct[idx]}" \
-                "${arr_usr_frg[idx]}" \
-                "${rnd}" \
-                "${err_out}" \
-                "${nam_job}" \
-                    >> "${config}"
-        done
+        if ! \
+            for idx in "${!arr_infile[@]}"; do
+                echo \
+                    "${env_nam}" \
+                    "${scr_sig}" \
+                    "${threads}" \
+                    "${arr_infile[idx]}" \
+                    "${arr_outfile[idx]}" \
+                    "${siz_bin}" \
+                    "${typ_sig}" \
+                    "${arr_scl_fct[idx]}" \
+                    "${arr_usr_frg[idx]}" \
+                    "${rnd}" \
+                    "${err_out}" \
+                    "${nam_job}" \
+                    "$(basename "${arr_infile[idx]%.*}")" \
+                        >> "${config}"
+            done
+        then
+            echo_error "Failed to populate GNU Parallel configuration file."
+        fi
 
+        #  Construct GNU Parallel command with argument placeholders and log
+        #+ redirection
         cmd="bash ${scr_sub}"
         cmd+=" {1} {2} {3} {4} {5} {6} {7} {8} {9} {10} {11} {12}"
+        cmd+="  > {11}/{12}_par.{13}.stdout.txt"  # 'scr_sub' stdout log
+        cmd+=" 2> {11}/{12}_par.{13}.stderr.txt"  # 'scr_sub' stderr log
 
+        #  Execute jobs with GNU Parallel
         if ${dry_run} || ${verbose}; then
             echo "############################"
             echo "## GNU Parallel execution ##"
@@ -587,7 +604,7 @@ else
         fi
     else
         #  Serial execution
-        pth_std="${err_out}/${nam_job}"
+        pth_std="${err_out}/${nam_job}_ser"
         if ${dry_run} || ${verbose}; then
             echo "######################"
             echo "## Serial execution ##"
@@ -595,12 +612,12 @@ else
             echo ""
             echo "bash ${scr_sub} \\"
             echo "    ${env_nam} \\"
-            echo "    ${scr_cvg} \\"
+            echo "    ${scr_sig} \\"
             echo "    ${threads} \\"
             echo "    ${infiles} \\"
             echo "    ${outfiles} \\"
             echo "    ${siz_bin} \\"
-            echo "    ${typ_cvg} \\"
+            echo "    ${typ_sig} \\"
             echo "    ${scl_fct} \\"
             echo "    ${usr_frg} \\"
             echo "    ${rnd} \\"
@@ -615,12 +632,12 @@ else
         if ! ${dry_run}; then
             bash "${scr_sub}" \
                 "${env_nam}" \
-                "${scr_cvg}" \
+                "${scr_sig}" \
                 "${threads}" \
                 "${infiles}" \
                 "${outfiles}" \
                 "${siz_bin}" \
-                "${typ_cvg}" \
+                "${typ_sig}" \
                 "${scl_fct}" \
                 "${usr_frg}" \
                 "${rnd}" \

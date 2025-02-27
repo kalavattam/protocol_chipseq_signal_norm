@@ -67,7 +67,7 @@ function process_input() {
 
     #  Extract the sample name by stripping the ".bam" extension
     samp="$(basename "${infile}" ".bam")"
-    dsc=$(basename "${outfile}")
+    dsc=$(basename "${outfile%%.*}")
 
     #  Return value
     echo "${samp};${dsc}"
@@ -103,15 +103,10 @@ function set_logs_slurm() {
 
 #  Function to set optional arguments for the call to 'scr_sig'
 function set_args_opt() {
-    local typ_cvg="${1}"  # Type of signal computation
-    local scl_fct="${2}"  # Scaling factor/coefficient
-    local usr_frg="${3}"  # Fragment length
-    local rnd="${4}"      # Number of decimal places for rounding
+    local scl_fct="${1}"  # Scaling factor/coefficient
+    local usr_frg="${2}"  # Fragment length
+    local rnd="${3}"      # Number of decimal places for rounding
     unset optional && typeset -a optional
-
-    if [[ "${typ_cvg}" != "#N/A" ]]; then
-        args+=( --typ_cvg "${typ_cvg}" )
-    fi
 
     if [[ "${scl_fct}" != "#N/A" ]]; then
         args+=( --scl_fct "${scl_fct}" )
@@ -137,7 +132,7 @@ function run_comp_sig() {
     local infile="${3}"    # Input BAM file
     local outfile="${4}"   # Output file stem
     local siz_bin="${5}"   # Bin size in base pairs
-    local typ_cvg="${6}"   # Type of signal computation
+    local typ_sig="${6}"   # Type of signal computation
     local scl_fct="${7}"   # Scaling factor/coefficient
     local usr_frg="${8}"   # Fragment length
     local rnd="${9}"       # Number of decimal places for rounding
@@ -147,7 +142,7 @@ function run_comp_sig() {
 
     #  Generate optional arguments array dynamically
     IFS=" " read -r -a optional <<< "$(
-        set_args_opt "${typ_cvg}" "${scl_fct}" "${usr_frg}" "${rnd}"
+        set_args_opt "${scl_fct}" "${usr_frg}" "${rnd}"
     )"
     unset IFS
 
@@ -169,6 +164,7 @@ function run_comp_sig() {
         echo "    --infile ${infile} \\"
         echo "    --outfile ${outfile} \\"
         echo "    --siz_bin ${siz_bin} \\"
+        echo "    --typ_sig ${typ_sig} \\"
         echo "    ${optional[*]} \\"
         echo "         > ${log_out} \\"
         echo "        2> ${log_err}"
@@ -182,6 +178,7 @@ function run_comp_sig() {
         --infile "${infile}" \
         --outfile "${outfile}" \
         --siz_bin "${siz_bin}" \
+        --typ_sig "${typ_sig}" \
         "${optional[@]}" \
              > "${log_out}" \
             2> "${log_err}"
@@ -190,13 +187,14 @@ function run_comp_sig() {
 
 #  Define the help message
 show_help=$(cat << EOM
+
 \${1}=env_nam       # str: Name of Conda/Mamba environment to activate
 \${2}=scr_sig       # str: Path to signal script
 \${3}=threads       # int: Number of threads to use
 \${4}=str_infile    # str: Comma-separated string of infiles (str)
 \${5}=str_outfile   # str: Comma-separated string of outfile stems (str)
 \${6}=siz_bin       # int: Bin size in base pairs
-\${7}=typ_cvg       # str: Type of signal to compute
+\${7}=typ_sig       # str: Type of signal to compute
 \${8}=str_scl_fct   # str: Comma-separated string of scaling factors (flt)
 \${9}=str_usr_frg   # str: Comma-separated string of fragment lengths (int)
 \${10}=rnd          # int: No. decimal places for rounding signal values
@@ -210,6 +208,7 @@ if [[ -z "${1:-}" || "${1}" == "-h" || "${1}" == "--help" ]]; then
     cat << EOM
 $(basename "${0}") requires 12 positional arguments:
 ${show_help}
+
 EOM
     exit 0
 fi
@@ -223,6 +222,7 @@ Error: $(basename "${0}") requires 12 positional arguments, ${msg}
 
 The necessary positional arguments:
 ${show_help}
+
 EOM
     exit 1
 fi
@@ -237,7 +237,7 @@ threads="${3}"
 str_infile="${4}"
 str_outfile="${5}"
 siz_bin="${6}"
-typ_cvg="${7}"
+typ_sig="${7}"
 str_scl_fct="${8}"
 str_usr_frg="${9}"
 rnd="${10}"
@@ -253,7 +253,7 @@ if ${debug:-false}; then
         "str_infile=${str_infile}" \
         "str_outfile=${str_outfile}" \
         "siz_bin=${siz_bin}" \
-        "typ_cvg=${typ_cvg}" \
+        "typ_sig=${typ_sig}" \
         "str_scl_fct=${str_scl_fct}" \
         "str_usr_frg=${str_usr_frg}" \
         "rnd=${rnd}" \
@@ -319,7 +319,11 @@ if [[ -n "${SLURM_ARRAY_TASK_ID:-}" ]]; then
     ) || exit 1
     unset IFS
 
-    if ${debug:-false}; then echo "samp=${samp}" && echo ""; fi
+    if ${debug:-false}; then
+        debug_var \
+            "samp=${samp}" \
+            "dsc=${dsc}"
+    fi
 
     #  Run function to set SLURM and symlinked log files
     IFS=';' read -r err_ini out_ini err_dsc out_dsc < <(
@@ -336,11 +340,6 @@ if [[ -n "${SLURM_ARRAY_TASK_ID:-}" ]]; then
             "out_dsc=${out_dsc}"
     fi
 
-    #  Set optional arguments if applicable
-    set_args_opt  # Defines and assigns array 'optional'
-    echo "set_args_opt(): optional=( ${optional[*]} )"
-    echo ""
-
     #  Run 'compute_signal.py'
     run_comp_sig \
         "${debug:-false}" \
@@ -348,7 +347,7 @@ if [[ -n "${SLURM_ARRAY_TASK_ID:-}" ]]; then
         "${infile}" \
         "${outfile}" \
         "${siz_bin}" \
-        "${typ_cvg}" \
+        "${typ_sig}" \
         "${scl_fct}" \
         "${usr_frg}" \
         "${rnd}" \
@@ -360,6 +359,7 @@ if [[ -n "${SLURM_ARRAY_TASK_ID:-}" ]]; then
 else
     #  Mode: GNU Parallel/serial
     for idx in "${!arr_infile[@]}"; do
+        # idx=0
         infile="${arr_infile[idx]}"
         outfile="${arr_outfile[idx]}"
         scl_fct="${arr_scl_fct[idx]}"
@@ -381,7 +381,11 @@ else
         ) || exit 1
         unset IFS
 
-        if ${debug:-false}; then echo "samp=${samp}" && echo ""; fi
+        if ${debug:-false}; then
+            debug_var \
+                "samp=${samp}" \
+                "dsc=${dsc}"
+        fi
 
         #  Run 'compute_signal.py'
         run_comp_sig \
@@ -390,7 +394,7 @@ else
             "${infile}" \
             "${outfile}" \
             "${siz_bin}" \
-            "${typ_cvg}" \
+            "${typ_sig}" \
             "${scl_fct}" \
             "${usr_frg}" \
             "${rnd}" \

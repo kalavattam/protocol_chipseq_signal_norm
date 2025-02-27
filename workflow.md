@@ -1313,7 +1313,7 @@ bash "${dir_scr}/compress_remove_files.sh" --dir_fnd "${dir_out}/sp/logs"
 **Overview**  
 This section demonstrates how to compute ChIP-seq normalized coverage ([Dickson et al., *Sci Rep*, 2023](https://www.nature.com/articles/s41598-023-34430-2))&mdash;i.e., binned coverage adjusted for fragment length that sums to unity.
 
-In the corresponding [Bash code chunk](#bash-code), the signal type is specified by setting `typ_cvg` to `"norm"` (normalized coverage). Other options are `"unadj"` (unadjusted binned coverage) and `"frag"` (fragment length-adjusted binned coverage; e.g., see [Dickson et al., *Sci Rep*, 2023](https://www.nature.com/articles/s41598-023-34430-2)). For details, see below and the [`compute_signal.py` documentation](https://github.com/kalavattam/protocol_chipseq_signal_norm/blob/main/scripts/compute_signal.py). BEDGRAPH and log output files are organized by signal type.
+In the corresponding [Bash code chunk](#bash-code), the signal type is specified by setting `typ_sig` to `"norm"` (normalized coverage). Other options are `"unadj"` (unadjusted binned coverage) and `"frag"` (fragment length-adjusted binned coverage; e.g., see [Dickson et al., *Sci Rep*, 2023](https://www.nature.com/articles/s41598-023-34430-2)). For details, see below and the [`compute_signal.py` documentation](https://github.com/kalavattam/protocol_chipseq_signal_norm/blob/main/scripts/compute_signal.py). BEDGRAPH and log output files are organized by signal type.
 
 ---
 
@@ -1378,7 +1378,7 @@ env_nam="env_protocol"
 scr_exc="${dir_scr}/execute_compute_signal.sh"
 log_exc="${dir_log}/$(date '+%Y-%m%d').$(basename "${scr_exc}" ".sh")"
 
-threads=8
+threads=6
 infiles="$(  ## WARNING: Change search parameters as needed ##
     bash "${dir_scr}/find_files.sh" \
         --dir_fnd "${dir_bam}" \
@@ -1387,9 +1387,10 @@ infiles="$(  ## WARNING: Change search parameters as needed ##
 dir_out="${dir_trk}"
 typ_out="bdg.gz"
 siz_bin=30
-typ_cvg="norm"
+typ_sig="norm"
 err_out="${dir_log}"
-nam_job="compute_signal_${typ_cvg}"
+nam_job="compute_signal_${typ_sig}"
+max_job=2
 
 if ${debug:-false}; then
     echo "##########################"
@@ -1434,9 +1435,10 @@ if ${debug:-false}; then
     echo "dir_out=${dir_out}"
     echo "typ_out=${typ_out}"
     echo "siz_bin=${siz_bin}"
-    echo "typ_cvg=${typ_cvg}"
+    echo "typ_sig=${typ_sig}"
     echo "err_out=${err_out}"
     echo "nam_job=${nam_job}"
+    echo "max_job=${max_job}"
     echo ""
     echo ""
 fi
@@ -1511,9 +1513,10 @@ if ${debug:-false}; then
     echo "    --dir_out ${dir_trk} \\"
     echo "    --typ_out ${typ_out} \\"
     echo "    --siz_bin ${siz_bin} \\"
-    echo "    --typ_cvg ${typ_cvg} \\"
+    echo "    --typ_sig ${typ_sig} \\"
     echo "    --err_out ${err_out} \\"
     echo "    --nam_job ${nam_job} \\"
+    echo "    --max_job ${max_job} \\"
     echo "$(if ${slurm:-false}; then echo "    --slurm \\"; fi)"
     echo "         >> >(tee -a ${log_exc}.stdout.txt) \\"
     echo "        2>> >(tee -a ${log_exc}.stderr.txt)"
@@ -1530,9 +1533,10 @@ bash "${scr_exc}" \
     --dir_out "${dir_trk}" \
     --typ_out "${typ_out}" \
     --siz_bin "${siz_bin}" \
-    --typ_cvg "${typ_cvg}" \
+    --typ_sig "${typ_sig}" \
     --err_out "${err_out}" \
     --nam_job "${nam_job}" \
+    --max_job "${max_job}" \
     $(if ${slurm:-false}; then echo "--slurm"; fi) \
          >> >(tee -a "${log_exc}.stdout.txt") \
         2>> >(tee -a "${log_exc}.stderr.txt")
@@ -1608,14 +1612,14 @@ dir_bam="${dir_aln}/sc"
 dir_cvg="${dir_pro}/compute_signal/${details}"
 dir_tbl="${dir_cvg}/tables"
 dir_log="${dir_tbl}/logs"
-typ_cvg="alpha"
+typ_sig="alpha"
 
 pattern="*.bam"
 include="IP*"
 exclude="*Brn1*"
 
 env_nam="env_protocol"
-scr_exc="${dir_scr}/execute_calculate_scaling_factor_${typ_cvg}.sh"
+scr_exc="${dir_scr}/execute_calculate_scaling_factor_${typ_sig}.sh"
 day="$(date '+%Y-%m%d')"
 log_exc="${dir_log}/${day}.$(basename "${scr_exc}" ".sh")"
 
@@ -1631,7 +1635,7 @@ ser_ip="$(  ## WARNING: Change search parameters as needed ##
 ser_in="$(sed 's:\/IP:\/in:g' < <(echo "${ser_ip}"))"
 tbl_met="${dir_dat}/raw/docs/measurements_siqchip.tsv"
 eqn="6nd"
-fil_out="${dir_tbl}/ChIP_WT_G1-G2M-Q_Hho1-Hmo1_${typ_cvg}.tsv"
+fil_out="${dir_tbl}/ChIP_WT_G1-G2M-Q_Hho1-Hmo1_${typ_sig}.tsv"
 err_out="${dir_log}"
 
 if ${debug:-false}; then
@@ -1660,7 +1664,7 @@ if ${debug:-false}; then
     echo "dir_cvg=${dir_cvg}"
     echo "dir_tbl=${dir_tbl}"
     echo "dir_log=${dir_log}"
-    echo "typ_cvg=${typ_cvg}"
+    echo "typ_sig=${typ_sig}"
     echo ""
     echo "pattern=${pattern}"
     echo "include=${include}"
@@ -1841,14 +1845,14 @@ dir_bam="${dir_aln}/sc"
 dir_cvg="${dir_pro}/compute_signal/${details}"
 dir_tbl="${dir_cvg}/tables"
 dir_log="${dir_tbl}/logs"
-typ_cvg="spike"
+typ_sig="spike"
 
 pattern="*.bam"
 include="IP*"
 exclude="*Brn1*"
 
 env_nam="env_protocol"
-scr_exc="${dir_scr}/execute_calculate_scaling_factor_${typ_cvg}.sh"
+scr_exc="${dir_scr}/execute_calculate_scaling_factor_${typ_sig}.sh"
 day="$(date '+%Y-%m%d')"
 log_exc="${dir_log}/${day}.$(basename "${scr_exc}" ".sh")"
 
@@ -1864,7 +1868,7 @@ ser_mip="$(  ## WARNING: Change search parameters as needed ##
 ser_sip="$(sed 's:sc:sp:g' < <(echo "${ser_mip}"))"
 ser_min="$(sed 's:\/IP:\/in:g' < <(echo "${ser_mip}"))"
 ser_sin="$(sed 's:\/IP:\/in:g' < <(echo "${ser_sip}"))"
-fil_out="${dir_tbl}/ChIP_WT_G1-G2M-Q_Hho1-Hmo1_${typ_cvg}.tsv"
+fil_out="${dir_tbl}/ChIP_WT_G1-G2M-Q_Hho1-Hmo1_${typ_sig}.tsv"
 err_out="${dir_log}"
 
 if ${debug:-false}; then
@@ -1893,7 +1897,7 @@ if ${debug:-false}; then
     echo "dir_cvg=${dir_cvg}"
     echo "dir_tbl=${dir_tbl}"
     echo "dir_log=${dir_log}"
-    echo "typ_cvg=${typ_cvg}"
+    echo "typ_sig=${typ_sig}"
     echo ""
     echo "pattern=${pattern}"
     echo "include=${include}"
@@ -2039,7 +2043,7 @@ bash "${dir_scr}/compress_remove_files.sh" --dir_fnd "${err_out}"
 This section describes how to compute $\log_{2}$-transformed ratios of IP to input normalized coverage tracks, a common method for visualizing ChIP-seq enrichment relative to background. Normalized coverage must first be computed as described [above](#f-compute-normalized-coverage).
 
 
-In the corresponding Bash code chunk, the signal type is specified by setting `typ_cvg` to `"log2"`, which ensures that $\log_2 \left( \text{IP} / \text{input} \right)$ transformations are applied to normalized coverage tracks. The required input files are identified from a sample metadata table, and BEDGRAPH outputs are organized accordingly.
+In the corresponding Bash code chunk, the signal type is specified by setting `typ_sig` to `"log2"`, which ensures that $\log_2 \left( \text{IP} / \text{input} \right)$ transformations are applied to normalized coverage tracks. The required input files are identified from a sample metadata table, and BEDGRAPH outputs are organized accordingly.
 
 ---
 
@@ -2101,7 +2105,7 @@ scr_exc="execute_compute_signal_ratio.sh"
 day="$(date '+%Y-%m%d')"
 log_exc="${dir_log}/${day}.$(basename "${scr_exc}" ".sh")"
 
-typ_cvg="log2"  ## NOTE: Use samples from either the alpha or spike table ##
+typ_sig="log2"  ## NOTE: Use samples from either the alpha or spike table ##
 tbl_lg2="${dir_tbl}/ChIP_WT_G1-G2M-Q_Hho1-Hmo1_alpha.tsv"
 
 #  Set hardcoded argument assignments
@@ -2124,7 +2128,7 @@ fil_in=$(
 dir_out="${dir_lg2}"
 dep_min="$(extract_fld_str 24 "${tbl_lg2}")"  ## WARNING: See description ##
 err_out="${dir_log}"
-nam_job="compute_signal_ratio_${typ_cvg}"
+nam_job="compute_signal_ratio_${typ_sig}"
 
 if ${debug:-false}; then
     echo "####################################"
@@ -2160,7 +2164,7 @@ if ${debug:-false}; then
     echo "day=${day}"
     echo "log_exc=${log_exc}"
     echo ""
-    echo "typ_cvg=${typ_cvg}"
+    echo "typ_sig=${typ_sig}"
     echo "tbl_lg2=${tbl_lg2}"
     echo ""
     echo "typ_out=${typ_out}"
@@ -2389,8 +2393,8 @@ scr_exc="execute_compute_signal_ratio.sh"
 day="$(date '+%Y-%m%d')"
 log_exc="${dir_log}/${day}.$(basename "${scr_exc}" ".sh")"
 
-typ_cvg="alpha"
-tbl_alf="${dir_tbl}/ChIP_WT_G1-G2M-Q_Hho1-Hmo1_${typ_cvg}.tsv"
+typ_sig="alpha"
+tbl_alf="${dir_tbl}/ChIP_WT_G1-G2M-Q_Hho1-Hmo1_${typ_sig}.tsv"
 
 #  Set hardcoded argument assignments
 # shellcheck disable=SC1091
@@ -2413,7 +2417,7 @@ dir_out="${dir_alf}"
 scl_fct="$(extract_fld_str  3 "${tbl_alf}")"
 dep_min="$(extract_fld_str 24 "${tbl_alf}")"  ## WARNING: See description ##
 err_out="${dir_log}"
-nam_job="compute_signal_ratio_${typ_cvg}"
+nam_job="compute_signal_ratio_${typ_sig}"
 
 if ${debug:-false}; then
     echo "####################################"
@@ -2449,7 +2453,7 @@ if ${debug:-false}; then
     echo "day=${day}"
     echo "log_exc=${log_exc}"
     echo ""
-    echo "typ_cvg=${typ_cvg}"
+    echo "typ_sig=${typ_sig}"
     echo "tbl_alf=${tbl_alf}"
     echo ""
     echo "typ_out=${typ_out}"
@@ -2649,8 +2653,8 @@ scr_exc="execute_compute_signal_ratio.sh"
 day="$(date '+%Y-%m%d')"
 log_exc="${dir_log}/${day}.$(basename "${scr_exc}" ".sh")"
 
-typ_cvg="spike"
-tbl_spk="${dir_tbl}/ChIP_WT_G1-G2M-Q_Hho1-Hmo1_${typ_cvg}.tsv"
+typ_sig="spike"
+tbl_spk="${dir_tbl}/ChIP_WT_G1-G2M-Q_Hho1-Hmo1_${typ_sig}.tsv"
 
 #  Set hardcoded argument assignments
 # shellcheck disable=SC1091
@@ -2673,7 +2677,7 @@ dir_out="${dir_spk}"
 scl_fct="$(extract_fld_str  5 "${tbl_spk}")"
 dep_min="$(extract_fld_str 21 "${tbl_spk}")"  ## WARNING: See description ##
 err_out="${dir_log}"
-nam_job="compute_signal_ratio_${typ_cvg}"
+nam_job="compute_signal_ratio_${typ_sig}"
 
 if ${debug:-false}; then
     echo "####################################"
@@ -2709,7 +2713,7 @@ if ${debug:-false}; then
     echo "day=${day}"
     echo "log_exc=${log_exc}"
     echo ""
-    echo "typ_cvg=${typ_cvg}"
+    echo "typ_sig=${typ_sig}"
     echo "tbl_spk=${tbl_spk}"
     echo ""
     echo "typ_out=${typ_out}"
