@@ -187,9 +187,8 @@ function run_comp_sig() {
 
 #  Define the help message
 show_help=$(cat << EOM
-
-\${1}=env_nam       # str: Name of Conda/Mamba environment to activate
-\${2}=scr_sig       # str: Path to signal script
+\${1}=env_nam       # str: Conda/Mamba environment to activate
+\${2}=scr_sig       # str: Signal script
 \${3}=threads       # int: Number of threads to use
 \${4}=str_infile    # str: Comma-separated string of infiles (str)
 \${5}=str_outfile   # str: Comma-separated string of outfile stems (str)
@@ -197,7 +196,7 @@ show_help=$(cat << EOM
 \${7}=typ_sig       # str: Type of signal to compute
 \${8}=str_scl_fct   # str: Comma-separated string of scaling factors (flt)
 \${9}=str_usr_frg   # str: Comma-separated string of fragment lengths (int)
-\${10}=rnd          # int: No. decimal places for rounding signal values
+\${10}=rnd          # int: Number of decimal places for rounding
 \${11}=err_out      # str: Directory for stdout and stderr files
 \${12}=nam_job      # str: Name of job
 EOM
@@ -206,7 +205,7 @@ EOM
 #  Display help message if a help option or no arguments are given
 if [[ -z "${1:-}" || "${1}" == "-h" || "${1}" == "--help" ]]; then
     cat << EOM
-$(basename "${0}") requires 12 positional arguments:
+'$(basename "${0}")' requires 12 positional arguments:
 ${show_help}
 
 EOM
@@ -218,7 +217,7 @@ if [[ $# -ne 12 ]]; then
     msg="but $# were supplied."
     [[ $# -eq 1 ]] && msg="but only $# was supplied."
     cat << EOM
-Error: $(basename "${0}") requires 12 positional arguments, ${msg}
+Error: '$(basename "${0}")' requires 12 positional arguments, ${msg}
 
 The necessary positional arguments:
 ${show_help}
@@ -291,7 +290,7 @@ if [[ -n "${SLURM_ARRAY_TASK_ID:-}" ]]; then
     id_tsk=${SLURM_ARRAY_TASK_ID}
 
     if [[ "${id_tsk}" -lt 1 ]]; then
-        echo "Error: SLURM task ID is invalid: ${id_tsk}" >&2
+        echo "Error: SLURM task ID is invalid: '${id_tsk}'." >&2
         exit 1
     else
         idx=$(( id_tsk - 1 ))

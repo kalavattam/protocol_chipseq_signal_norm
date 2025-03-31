@@ -4,7 +4,7 @@
 #  KA
 
 
-#  Run script in interactive/test mode (true) or command-line mode (false)
+#  Run script in interactive mode (true) or command-line mode (false)
 interactive=false
 
 #  Exit on errors, unset variables, or pipe failures if not in "interactive
@@ -12,7 +12,7 @@ interactive=false
 if ! ${interactive}; then set -euo pipefail; fi
 
 #  Set the path to the "scripts" directory
-if ${interactive}; then
+if ${interactive:-false}; then
     ## WARNING: If 'interactive=true', change path as needed ##
     dir_scr="${HOME}/repos/protocol_chipseq_signal_norm/scripts"
 else
@@ -25,30 +25,31 @@ fi
 dir_fnc="${dir_scr}/functions"
 
 # shellcheck disable=SC1090
-for script in \
-    check_array_files.sh \
-    check_arrays_lengths.sh \
-    check_exists_file_dir.sh \
-    check_flt_pos.sh \
-    check_format_time.sh \
-    check_int_pos.sh \
-    check_program_path.sh \
-    check_str_delim.sh \
-    check_supplied_arg.sh \
-    debug_array_contents.sh \
-    echo_error.sh \
-    echo_warning.sh \
-    exit_0.sh \
-    exit_1.sh \
-    handle_env.sh \
-    populate_array_empty.sh \
-    reset_max_job.sh
+for fnc in \
+    check_array_files \
+    check_arrays_lengths \
+    check_exists_file_dir \
+    check_flt_pos \
+    check_format_time \
+    check_int_pos \
+    check_program_path \
+    check_str_delim \
+    check_supplied_arg \
+    debug_array_contents \
+    echo_error \
+    echo_warning \
+    exit_0 \
+    exit_1 \
+    handle_env \
+    populate_array_empty \
+    reset_max_job
 do
-    source "${dir_fnc}/${script}"
+    source "${dir_fnc}/${fnc}.sh"
 done
+unset fnc
 
 
-#  Set up paths, values, and parameters for interactive mode
+#  Set paths, values, arguments, etc. for interactive mode
 function set_interactive() {
     #  Set hardcoded paths, values, etc.
     ## WARNING: If interactive=true, change values as needed ##
@@ -246,7 +247,7 @@ if [[ -z "${1:-}" || "${1}" == "-h" || "${1}" == "--help" ]]; then
     exit 0
 fi
 
-if ${interactive}; then
+if ${interactive:-false}; then
     set_interactive
 else
     while [[ "$#" -gt 0 ]]; do
@@ -328,7 +329,7 @@ check_supplied_arg -a "${nam_job}" -n "nam_job"
 check_supplied_arg -a "${max_job}" -n "max_job"
 check_int_pos "${max_job}" "max_job"
 
-if ${slurm}; then    
+if ${slurm:-false}; then    
     check_supplied_arg -a "${time}" -n "time"
     check_format_time "${time}"
 else
@@ -344,7 +345,7 @@ handle_env "${env_nam}" > /dev/null
 
 if ! ${slurm} && [[ ${par_job} -gt 1 ]]; then check_program_path parallel; fi
 check_program_path python
-if ${slurm}; then check_program_path sbatch; fi
+if ${slurm:-false}; then check_program_path sbatch; fi
 
 
 #  Parse and validate vector elements -----------------------------------------
@@ -420,7 +421,7 @@ check_arrays_lengths "fil_out" arr_fil_out "fil_ip" arr_fil_ip
 check_arrays_lengths "scl_fct" arr_scl_fct "fil_ip" arr_fil_ip
 check_arrays_lengths "dep_min" arr_dep_min "fil_ip" arr_fil_ip
 
-if ${slurm}; then max_job=$(reset_max_job "${max_job}" "${#arr_fil_in[@]}"); fi
+if ${slurm:-false}; then max_job=$(reset_max_job "${max_job}" "${#arr_fil_in[@]}"); fi
 
 if ${verbose}; then
     echo "########################################"
@@ -429,7 +430,7 @@ if ${verbose}; then
     echo ""
     debug_array_contents \
         "arr_fil_ip" "arr_fil_in" "arr_fil_out" "arr_scl_fct" "arr_dep_min"
-    if ${slurm}; then
+    if ${slurm:-false}; then
         echo "  - Max no. jobs to run at a time (SLURM): ${max_job}"
     elif [[ ${par_job} -gt 1 ]]; then
         echo "  - Max no. jobs to run at a time (GNU Parallel): ${par_job}"
@@ -518,7 +519,7 @@ if ${verbose}; then
 fi
 
 # shellcheck disable=SC2016,SC2090
-if ${slurm}; then
+if ${slurm:-false}; then
     #  SLURM execution
     if ${dry_run} || ${verbose}; then
         echo "######################"

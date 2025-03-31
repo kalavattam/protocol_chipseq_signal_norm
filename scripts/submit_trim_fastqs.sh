@@ -146,7 +146,7 @@ function run_atria() {
 show_help=$(cat << EOM
 \${1}=env_nam     # str: Name of Conda/Mamba environment to activate
 \${2}=threads     # int: Number of threads to use
-\${3}=str_infile  # str: Semicolon-separated string of FASTQ files
+\${3}=str_infile  # str: Semicolon-separated string of FASTQ files (str)
 \${4}=dir_out     # str: Directory for FASTQ output files
 \${5}=sfx_se      # str: Suffix to strip from SE FASTQ files
 \${6}=sfx_pe      # str: Suffix to strip from PE FASTQ files (FASTQ #1)
@@ -160,6 +160,7 @@ if [[ -z "${1}" || "${1}" == "-h" || "${1}" == "--help" ]]; then
     cat << EOM
 '$(basename "${0}")' requires 8 positional arguments:
 ${show_help}
+
 EOM
     exit 0
 fi
@@ -173,6 +174,7 @@ Error: '$(basename "${0}")' requires 8 positional arguments, ${msg}
 
 The necessary positional arguments:
 ${show_help}
+
 EOM
     exit 1
 fi
@@ -191,7 +193,7 @@ err_out="${7}"
 nam_job="${8}"
 
 #  Debug argument variable assignments
-if ${debug}; then
+if ${debug:-false}; then
     debug_var \
         "env_nam=${env_nam}" \
         "threads=${threads}" \
@@ -212,7 +214,7 @@ IFS=';' read -r -a arr_infile <<< "${str_infile}"
 unset IFS
 
 #  Debug output to check number of array elements and array element values
-if ${debug}; then
+if ${debug:-false}; then
     echo "\${#arr_infile[@]}=${#arr_infile[@]}" && echo ""
     echo "arr_infile=( ${arr_infile[*]} )"      && echo ""
 fi
@@ -224,7 +226,7 @@ if [[ -n "${SLURM_ARRAY_TASK_ID:-}" ]]; then
     id_tsk="${SLURM_ARRAY_TASK_ID}"
 
     if [[ "${id_tsk}" -lt 1 ]]; then
-        echo "Error: SLURM task ID is invalid: ${id_tsk}" >&2
+        echo "Error: SLURM task ID is invalid: '${id_tsk}'." >&2
         exit 1
     else
         idx=$(( id_tsk - 1 ))
@@ -234,7 +236,7 @@ if [[ -n "${SLURM_ARRAY_TASK_ID:-}" ]]; then
     #+ array
     infile="${arr_infile[idx]}"
 
-    if ${debug}; then debug_var "infile=${infile}"; fi
+    if ${debug:-false}; then debug_var "infile=${infile}"; fi
 
     #  Run function to validate 'infile', using it to assign values to
     #+ variables 'fq_1', 'fq_2', and 'samp'
@@ -243,7 +245,7 @@ if [[ -n "${SLURM_ARRAY_TASK_ID:-}" ]]; then
     ) || exit 1
     unset IFS
 
-    if ${debug}; then
+    if ${debug:-false}; then
         debug_var \
             "fq_1=${fq_1}" \
             "fq_2=${fq_2}" \
@@ -257,7 +259,7 @@ if [[ -n "${SLURM_ARRAY_TASK_ID:-}" ]]; then
     ) || exit 1
     unset IFS
 
-    if ${debug}; then
+    if ${debug:-false}; then
         debug_var \
             "err_ini=${err_ini}" \
             "out_ini=${out_ini}" \
@@ -284,7 +286,7 @@ else
         #+ file array
         infile="${arr_infile[idx]}"
 
-        if ${debug}; then debug_var "infile=${infile}"; fi
+        if ${debug:-false}; then debug_var "infile=${infile}"; fi
 
         #  Run function to validate 'infile', using it to assign values to
         #+ variables 'fq_1', 'fq_2', and 'samp'
@@ -293,7 +295,7 @@ else
         ) || exit 1
         unset IFS
 
-        if ${debug}; then
+        if ${debug:-false}; then
             debug_var \
                 "fq_1=${fq_1}" \
                 "fq_2=${fq_2}" \

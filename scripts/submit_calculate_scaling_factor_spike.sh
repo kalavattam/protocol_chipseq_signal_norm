@@ -7,7 +7,7 @@
 #  If true, run script in debug mode
 debug=true
 
-#  Run script in interactive/test mode (true) or command-line mode (false)
+#  Run script in interactive mode (true) or command-line mode (false)
 interactive=false
 
 
@@ -67,7 +67,7 @@ function process_sample() {
     sn="${arr_sin[idx]}"
 
     #  Debug and validate assignments to variables 'mp', 'sp', 'mn', and 'sn'
-    if ${debug}; then
+    if ${debug:-false}; then
         debug_var \
             "idx=${idx} ('idx' passed to 'process_sample()')" \
             "mp=${mp}" "sp=${sp}" "mn=${mn}" "sn=${sn}"
@@ -88,7 +88,7 @@ function process_sample() {
     }
 
     #  Debug commands to count proper alignments
-    if ${debug}; then
+    if ${debug:-false}; then
         echo "{"
         echo "    ## WARNING: Assumes BAM files contain paired-end alignments ##"
         echo "    num_mp=\$(count_alignments_bam ${threads} \"${mp}\")"
@@ -110,14 +110,14 @@ function process_sample() {
     }
 
     #  Debug values assigned to the num_{m|s}{p|n} variables
-    if ${debug}; then
+    if ${debug:-false}; then
         debug_var \
             "num_mp=${num_mp}" "num_sp=${num_sp}" \
             "num_mn=${num_mn}" "num_sn=${num_sn}"
     fi
 
     #  Check call to 'calculate_scaling_factor_spike.py'
-    if ${debug}; then
+    if ${debug:-false}; then
         echo "python \"${scr_spk}\" \\"
         echo "    --main_ip  ${num_mp} \\"
         echo "    --spike_ip ${num_sp} \\"
@@ -139,9 +139,9 @@ function process_sample() {
             --rnd      ${rnd}
     )
 
-    if ${debug}; then debug_var "sf=${sf}"; fi
+    if ${debug:-false}; then debug_var "sf=${sf}"; fi
 
-    if ${debug}; then
+    if ${debug:-false}; then
         echo "{"
         echo "     dm_fr_1=\$(calculate_factor_depth ${dep_in} 1  12157105 \"frag\" ${rnd})"
         echo "     dm_fr_5=\$(calculate_factor_depth ${dep_in} 5  12157105 \"frag\" ${rnd})"
@@ -183,7 +183,7 @@ function process_sample() {
     }
 
     #  Debug output to verify input minimum depth values
-    if ${debug}; then
+    if ${debug:-false}; then
         debug_var \
             "dm_fr_1=${dm_fr_1}"   "dm_fr_5=${dm_fr_5}"   "dm_fr_10=${dm_fr_10}" \
             "dm_fr_20=${dm_fr_20}" "dm_fr_30=${dm_fr_30}" "dm_fr_40=${dm_fr_40}" \
@@ -290,7 +290,7 @@ if [[ -z "${1}" || "${1}" == "-h" || "${1}" == "--help" ]]; then
 fi
 
 # shellcheck disable=SC2034,SC2154
-if ${interactive}; then
+if ${interactive:-false}; then
     set_interactive
 else
     while [[ "$#" -gt 0 ]]; do
@@ -317,7 +317,7 @@ else
 fi
 
 #  Debug argument variable assignments
-if ${debug}; then
+if ${debug:-false}; then
     debug_var \
         "threads=${threads}" "ser_mip=${ser_mip}" "ser_sip=${ser_sip}" \
         "ser_min=${ser_min}" "ser_sin=${ser_sin}" "fil_out=${fil_out}" \
@@ -341,7 +341,7 @@ scr_aln="${dir_scr}/functions/count_alignments_bam.sh"
 scr_min="${dir_scr}/functions/calculate_factor_depth.sh"
 scr_spk="${dir_scr}/calculate_scaling_factor_spike.py"
 
-if ${debug}; then
+if ${debug:-false}; then
     debug_var "scr_aln=${scr_aln}" "scr_min=${scr_min}" "scr_spk=${scr_spk}"
 fi
 
@@ -367,7 +367,7 @@ IFS=',' read -r -a arr_min <<< "${ser_min}"
 IFS=',' read -r -a arr_sin <<< "${ser_sin}"
 
 #  Debug output to check number of array elements and array element values
-if ${debug}; then
+if ${debug:-false}; then
     echo "\${#arr_mip[@]}=${#arr_mip[@]}" && echo ""
     echo "arr_mip=( ${arr_mip[*]} )"      && echo ""
     echo "\${#arr_sip[@]}=${#arr_sip[@]}" && echo ""
@@ -386,7 +386,7 @@ if [[ -n "${SLURM_ARRAY_TASK_ID:-}" ]]; then
     idx=$(( id_tsk - 1 ))
 
     #  Debug short names of environmental variables
-    if ${debug}; then
+    if ${debug:-false}; then
         debug_var "id_job=${id_job}" "id_tsk=${id_tsk}" "idx=${idx}"
     fi
 
@@ -399,7 +399,7 @@ if [[ -n "${SLURM_ARRAY_TASK_ID:-}" ]]; then
     }
 
     #  Debug output to verify sample name
-    if ${debug}; then debug_var "samp=${samp}"; fi
+    if ${debug:-false}; then debug_var "samp=${samp}"; fi
 
     #  Run subroutine to set SLURM and symlinked/better-named log files
     set_logs "${id_job}" "${id_tsk}" "${samp}" "${err_out}"

@@ -4,7 +4,7 @@
 #  KA
 
 
-#  Run script in interactive/test mode (true) or command-line mode (false)
+#  Run script in interactive mode (true) or command-line mode (false)
 interactive=false
 
 #  Exit on errors, unset variables, or pipe failures if not in "interactive
@@ -12,7 +12,7 @@ interactive=false
 if ! ${interactive}; then set -euo pipefail; fi
 
 #  Set the path to the "scripts" directory
-if ${interactive}; then
+if ${interactive:-false}; then
     ## WARNING: If 'interactive=true', change path as needed ##
     dir_scr="${HOME}/repos/protocol_chipseq_signal_norm/scripts"
 else
@@ -25,28 +25,28 @@ fi
 dir_fnc="${dir_scr}/functions"
 
 # shellcheck disable=SC1090
-for script in \
-    check_exists_file_dir.sh \
-    check_format_time.sh \
-    check_int_pos.sh \
-    check_program_path.sh \
-    check_string_fastqs.sh \
-    check_supplied_arg.sh \
-    echo_error.sh \
-    echo_warning.sh \
-    exit_0.sh \
-    exit_1.sh \
-    handle_env.sh \
-    print_parallel_info.sh \
-    reset_max_job.sh \
-    set_params_parallel.sh
+for fnc in \
+    check_exists_file_dir \
+    check_format_time \
+    check_int_pos \
+    check_program_path \
+    check_string_fastqs \
+    check_supplied_arg \
+    echo_error \
+    echo_warning \
+    exit_0 \
+    exit_1 \
+    handle_env \
+    print_parallel_info \
+    reset_max_job \
+    set_params_parallel
 do
-    source "${dir_fnc}/${script}"
+    source "${dir_fnc}/${fnc}.sh"
 done
-unset script
+unset fnc
 
 
-#  Set up paths, values, and parameters for interactive mode
+#  Set paths, values, arguments, etc. for interactive mode
 function set_interactive() {
     #  Set base repository paths
     dir_bas="${HOME}/repos"  ## WARNING: Change as needed ##
@@ -178,7 +178,7 @@ if [[ -z "${1:-}" || "${1}" == "-h" || "${1}" == "--help" ]]; then
     exit_0
 fi
 
-if ${interactive}; then
+if ${interactive:-false}; then
     set_interactive
 else
     while [[ "$#" -gt 0 ]]; do
@@ -240,7 +240,7 @@ check_string_fastqs "${infiles}"derive "${sfx_se}" "${sfx_pe}" || exit_1
 
 
 #  Parse job execution parameters ---------------------------------------------
-if ${slurm}; then
+if ${slurm:-false}; then
     check_supplied_arg -a "${max_job}" -n "max_job"
     check_int_pos "${max_job}" "max_job"
     
@@ -272,7 +272,7 @@ check_program_path atria
 if ! ${slurm} && [[ ${par_job} -gt 1 ]]; then check_program_path parallel; fi
 check_program_path pbzip2
 check_program_path pigz
-if ${slurm}; then check_program_path sbatch; fi
+if ${slurm:-false}; then check_program_path sbatch; fi
 
 
 #  Do the main work ===========================================================
@@ -314,7 +314,7 @@ if ${verbose}; then
 fi
 
 # shellcheck disable=SC1083,SC2157
-if ${slurm}; then
+if ${slurm:-false}; then
     #  If --slurm was specified, run jobs in parallel via SLURM
     if ${dry_run} || ${verbose}; then
         echo "######################"

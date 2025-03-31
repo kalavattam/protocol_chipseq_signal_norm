@@ -4,7 +4,7 @@
 #  KA
 
 
-#  Run script in interactive/test mode (true) or command-line mode (false)
+#  Run script in interactive mode (true) or command-line mode (false)
 interactive=false
 
 #  Exit on errors, unset variables, or pipe failures if not in "interactive
@@ -12,7 +12,7 @@ interactive=false
 if ! ${interactive}; then set -euo pipefail; fi
 
 #  Set the path to the "scripts" directory
-if ${interactive}; then
+if ${interactive:-false}; then
     ## WARNING: If 'interactive=true', change path as needed ##
     dir_scr="${HOME}/repos/protocol_chipseq_signal_norm/scripts"
 else
@@ -25,51 +25,56 @@ fi
 dir_fnc="${dir_scr}/functions"
 
 # shellcheck disable=SC1090
-for script in \
-    check_array_files.sh \
-    check_arrays_lengths.sh \
-    check_exists_file_dir.sh \
-    check_flt_pos.sh \
-    check_format_time.sh \
-    check_int_pos.sh \
-    check_program_path.sh \
-    check_str_delim.sh \
-    check_supplied_arg.sh \
-    debug_array_contents.sh \
-    echo_error.sh \
-    echo_warning.sh \
-    exit_0.sh \
-    exit_1.sh \
-    handle_env.sh \
-    populate_array_empty.sh \
-    print_parallel_info.sh \
-    reset_max_job.sh \
-    set_params_parallel.sh \
-    summarize_sig_nrm.sh
+for fnc in \
+    check_array_files \
+    check_arrays_lengths \
+    check_exists_file_dir \
+    check_flt_pos \
+    check_format_time \
+    check_int_pos \
+    check_program_path \
+    check_str_delim \
+    check_supplied_arg \
+    debug_array_contents \
+    echo_error \
+    echo_warning \
+    exit_0 \
+    exit_1 \
+    handle_env \
+    populate_array_empty \
+    print_parallel_info \
+    reset_max_job \
+    set_params_parallel \
+    summarize_sig_nrm
 do
-    source "${dir_fnc}/${script}"
+    source "${dir_fnc}/${fnc}.sh"
 done
+unset fnc
 
 
-#  Set up paths, values, and parameters for interactive mode
+#  Set paths, values, arguments, etc. for interactive mode
 function set_interactive() {
     #  Set base repository paths
     dir_bas="${HOME}/repos"  ## WARNING: Change as needed ##
     dir_rep="${dir_bas}/protocol_chipseq_signal_norm"
-    
-    #  Define data directories and related variables
     dir_scr="${dir_rep}/scripts"
-    dir_dat="${dir_rep}/data"
-    dir_pro="${dir_dat}/processed"
-    dir_aln="${dir_pro}/align_fastqs"
+    
+    #  Set alignment parameters
     aligner="bowtie2"
     a_type="global"
     req_flg=true
     flg="$(if ${req_flg}; then echo "2"; else echo "NA"; fi)"
     mapq=1
     str_det="${aligner}_${a_type}_flag-${flg}_mapq-${mapq}"
+
+    #  Define data directories
+    dir_dat="${dir_rep}/data"
+    dir_pro="${dir_dat}/processed"
+    dir_aln="${dir_pro}/align_fastqs"
     dir_det="${dir_aln}/${str_det}"
     dir_bam="${dir_det}/sc"
+
+    #  Set output directories
     dir_sig="${dir_pro}/compute_signal/${str_det}"
     dir_trk="${dir_sig}/norm"
 
@@ -229,7 +234,7 @@ if [[ -z "${1:-}" || "${1}" == "-h" || "${1}" == "--help" ]]; then
     exit_0
 fi
 
-if ${interactive}; then
+if ${interactive:-false}; then
     set_interactive
 else
     while [[ "$#" -gt 0 ]]; do
@@ -254,7 +259,7 @@ else
             -sl|--slurm)   slurm=true;       shift 1 ;;
             -tm|--time)    time="${2}";      shift 2 ;;
             *)
-                echo "## Unknown parameter passed: ${1} ##" >&2
+                echo "## Unknown parameter passed: '${1}' ##" >&2
                 echo "" >&2
                 echo "${show_help}" >&2
                 exit_1
@@ -372,7 +377,7 @@ check_arrays_lengths "arr_usr_frg" "arr_infile"
 
 
 #  Parse job execution parameters ---------------------------------------------
-if ${slurm}; then
+if ${slurm:-false}; then
     check_supplied_arg -a "${max_job}" -n "max_job"
     check_int_pos "${max_job}" "max_job"
 
@@ -403,7 +408,7 @@ handle_env "${env_nam}" > /dev/null
 
 check_program_path python
 
-if ${slurm}; then
+if ${slurm:-false}; then
     check_program_path sbatch
 elif [[ "${threads}" -gt 1 ]]; then
     check_program_path parallel
@@ -482,7 +487,7 @@ if ${verbose}; then
 fi
 
 # shellcheck disable=SC2016,SC2090
-if ${slurm}; then
+if ${slurm:-false}; then
     #  SLURM execution
     if ${dry_run} || ${verbose}; then
         echo "######################"

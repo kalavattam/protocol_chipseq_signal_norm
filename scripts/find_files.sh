@@ -4,14 +4,14 @@
 #  KA
 
 
-#  Run script in interactive/test mode (true) or command-line mode (false)
+#  Run script in interactive mode (true) or command-line mode (false)
 interactive=false
 
 #  Exit on errors or pipe failures if not in "interactive mode"
 if ! ${interactive}; then set -eo pipefail; fi
 
 #  Set the path to the "scripts" directory
-if ${interactive}; then
+if ${interactive:-false}; then
     ## WARNING: If 'interactive=true', change path as needed ##
     dir_scr="${HOME}/repos/protocol_chipseq_signal_norm/scripts"
 else
@@ -37,7 +37,7 @@ dir_fnc="${dir_scr}/functions"
 }
 
 
-#  Set up paths, values, and parameters for interactive mode
+#  Set paths, values, arguments, etc. for interactive mode
 set_interactive() {
     #  Set hardcoded paths, values, etc.
     ## WARNING: If interactive=true, change values as needed ##
@@ -152,7 +152,7 @@ if [[ -z "${1:-}" || "${1}" == "-h" || "${1}" == "--help" ]]; then
     if ! ${interactive}; then exit 0; fi
 fi
 
-if ${interactive}; then
+if ${interactive:-false}; then
     set_interactive
 else
     while [[ "$#" -gt 0 ]]; do
@@ -167,7 +167,7 @@ else
             -cc|--chk_con) chk_con=true;   shift 1 ;;
             -ce|--chk_exc) chk_exc=true;   shift 1 ;;
             *)
-                echo "## Unknown parameter passed: ${1} ##" >&2
+                echo "## Unknown parameter passed: '${1}' ##" >&2
                 echo "" >&2
                 echo "${show_help}" >&2
                 exit 1

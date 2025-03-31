@@ -34,8 +34,8 @@ Description:
 
 Positional parameters:
   1, fil_in (str): Path to the BEDGRAPH file (can be '.gz' compressed).
-  2, rng_gt (flt): Lower bound for unity check (default: ${rng_gt}).
-  3, rng_lt (flt): Upper bound for unity check (default: ${rng_lt}).
+  2, rng_gt (flt): Lower bound for unity check (default: '${rng_gt}').
+  3, rng_lt (flt): Upper bound for unity check (default: '${rng_lt}').
 
 Returns:
   0 if the sum is within the defined range, 1 and error message otherwise.
@@ -68,9 +68,9 @@ EOM
     val_pos_flt "${rng_gt}" "rng_gt" || return 1
     val_pos_flt "${rng_lt}" "rng_lt" || return 1
 
-    #  Determine whether to read file with 'zcat' or 'cat'
+    #  Determine whether to read file with 'gunzip -cd' or 'cat'
     if [[ "${fil_in}" == *.gz ]]; then
-        reader="zcat"
+        reader="gunzip -cd"
     else
         reader="cat"
     fi

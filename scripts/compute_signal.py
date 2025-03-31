@@ -97,7 +97,7 @@ from collections import defaultdict
 from concurrent.futures import ProcessPoolExecutor
 
 
-#  Run script in interactive/test mode (True) or command-line mode (False)
+#  Run script in interactive mode (true) or command-line mode (false)
 interactive = False
 
 #  Define dictionary to map Roman numerals to integers for sorting

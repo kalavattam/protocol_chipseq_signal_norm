@@ -23,8 +23,8 @@
 #
 #     While we allow users to do so, we note that it is not appropriate to
 #     scale 'alpha' values in this way since they represent physical quantities
-#     of chromatin, whereas 'sf' values are arbitrary units ('scaled
-#     coverage').
+#     of chromatin, whereas 'sf' values are arbitrary units ('spike-in scaled
+#     signal').
 #
 # Usage:
 #     python relativize_scaling_factors.py [--input] --infile <input.tsv>
@@ -56,7 +56,7 @@ import pandas as pd
 import sys
 
 
-#  Run script in interactive/test mode (True) or command-line mode (False)
+#  Run script in interactive mode (true) or command-line mode (false)
 interactive = False
 
 

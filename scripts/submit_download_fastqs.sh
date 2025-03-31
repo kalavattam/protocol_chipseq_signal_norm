@@ -6,22 +6,25 @@
 
 #  Define the help message
 show_help=$(cat << EOM
-\${1}=srr      # NCBI SRA database run accession code.
-\${2}=url_1    # URL (FTP or HTTPS) for FASTQ file.
-\${3}=url_2    # Second FASTQ URL for PE data ("#N/A" for SE).
-\${4}=dir_out  # Directory to save FASTQ file(s).
-\${5}=dir_sym  # Directory for symlink(s) to FASTQ file(s).
-\${6}=nam_cus  # Custom name for symlink(s).
-\${7}=err_out  # Directory to store stderr and stdout output files.
-\${8}=nam_job  # Job name.
+\${1}=srr      # str: NCBI SRA database run accession code
+\${2}=url_1    # str: URL (FTP or HTTPS) for FASTQ file
+\${3}=url_2    # str: Second FASTQ URL for PE data ("#N/A" for SE)
+\${4}=dir_out  # str: Directory to save FASTQ file(s)
+\${5}=dir_sym  # str: Directory for symlink(s) to FASTQ file(s)
+\${6}=nam_cus  # str: Custom name for symlink(s)
+\${7}=err_out  # str: Directory for stderr and stdout files
+\${8}=nam_job  # str: Job name
 EOM
 )
 
 #  Display help message if a help option or no arguments are given
 if [[ -z "${1}" || "${1}" == "-h" || "${1}" == "--help" ]]; then
     cat << EOM
-$(basename "${0}") requires 8 positional arguments:
+'$(basename "${0}")' requires 8 positional arguments:
+
+The necessary positional arguments:
 ${show_help}
+
 EOM
     exit 0
 fi
@@ -31,10 +34,11 @@ if [[ $# -ne 8 ]]; then
     msg="but $# were supplied."
     [[ $# -eq 1 ]] && msg="but only $# was supplied."
     cat << EOM
-Error: $(basename "${0}") requires 8 positional arguments, ${msg}
+Error: '$(basename "${0}")' requires 8 positional arguments, ${msg}
 
 The necessary positional arguments:
 ${show_help}
+
 EOM
     exit 1
 fi

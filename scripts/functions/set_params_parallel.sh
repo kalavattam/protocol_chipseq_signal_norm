@@ -2,7 +2,7 @@
 
 #  Function to determine the number of available CPU cores
 function determine_cores() {
-    local cores
+    local cores  # Number of CPU cores available on system
 
     if command -v nproc &> /dev/null; then
         cores=$(nproc)
@@ -25,10 +25,10 @@ function determine_cores() {
 
 #  Function to determine parallelization parameters for running GNU Parallel
 function set_params_parallel() {
-    local threads="${1}"
-    local max_job="${2}"
-    local par_job="${3}"
-    local n_cores
+    local threads="${1}"  # Number of threads requested per job
+    local max_job="${2}"  # Maximum number of jobs allowed
+    local par_job="${3}"  # Number of parallel jobs to execute
+    local n_cores         # Total available CPU cores on system
 
     #  Get system CPU core count
     n_cores=$(determine_cores) || return 1

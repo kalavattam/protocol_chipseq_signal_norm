@@ -29,7 +29,7 @@ function print_parallel_info() {
     debug_array_contents "$@"
 
     #  Return relevant info
-    if ${slurm}; then
+    if ${slurm:-false}; then
         echo "  - Max concurrent jobs (SLURM): ${max_job}"
     elif [[ "${par_job}" -gt 1 ]]; then
         echo "  - Max concurrent jobs (GNU Parallel): ${par_job}"

@@ -20,7 +20,7 @@ EOM
 
 if [[ -z "${1:-}" || "${1}" == "-h" || "${1}" == "--help" ]]; then
     cat << EOM
-$(basename "${0}") requires 7 positional arguments:
+'$(basename "${0}")' requires 7 positional arguments:
 ${show_help}
 EOM
     exit 0
@@ -31,7 +31,7 @@ if [[ $# -ne 7 ]]; then
     msg="but $# were supplied."
     [[ $# -eq 1 ]] && msg="but only $# was supplied."
     cat << EOM
-Error: $(basename "${0}") requires 7 positional arguments, ${msg}
+Error: '$(basename "${0}")' requires 7 positional arguments, ${msg}
 
 The necessary positional arguments:
 ${show_help}
@@ -49,7 +49,7 @@ err_out="${6}"
 nam_job="${7}"
 
 #  Debug positional argument assignments
-if ${debug}; then
+if ${debug:-false}; then
     echo "\${env_nam}=${env_nam}"
     echo ""
     echo "\${threads}=${threads}"
@@ -130,7 +130,7 @@ fi
 
 #  Debug output to check the task ID/array index, number of array elements, and
 #+ array element values
-if ${debug}; then
+if ${debug:-false}; then
     echo "SLURM_ARRAY_TASK_ID=${id_tsk}"
     echo ""
     echo "\${#arr_infiles[@]}=${#arr_infiles[@]}"
@@ -147,7 +147,7 @@ infile="${arr_infiles[idx]}"
 outfile="${dir_out}/$(basename "${infile}" ".bam")"
 
 #  Debug variable assignments from reconstructed array
-if ${debug}; then
+if ${debug:-false}; then
     echo "infile=${infile}"
     echo ""
     echo "outfile=${outfile}"
@@ -173,7 +173,7 @@ fi
 samp="$(basename "${outfile}")"
 
 #  Debug sample name
-if ${debug}; then
+if ${debug:-false}; then
     echo "samp=${samp}"
     echo ""
 fi

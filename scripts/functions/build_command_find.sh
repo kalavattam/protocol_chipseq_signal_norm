@@ -97,7 +97,7 @@ EOM
             -in|--include) include="${2}"; shift 2 ;;
             -ex|--exclude) exclude="${2}"; shift 2 ;;
             *)
-                echo "## Unknown parameter passed: ${1} ##" >&2
+                echo "## Unknown parameter passed: '${1}' ##" >&2
                 echo "" >&2
                 echo "${show_help}" >&2
                 return 1

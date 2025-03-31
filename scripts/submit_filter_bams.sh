@@ -181,18 +181,18 @@ nam_job=""
 
 #  Define the help message
 show_help=$(cat << EOM
-$(basename "${0}") takes the following keyword arguments:
-  -en, --env_nam     Conda/Mamba environment to activate.
-  -sf, --scr_fnc     Path and name of function to source and submit to SLURM.
-   -t, --threads     Number of threads to use.
-   -i, --str_infile  Comma-separated serialized string of BAM infiles.
-  -do, --dir_out     Directory to write BAM outfiles.
-   -m, --mito        (flag) Retain mitochondrial chromosome in BAM outfiles.
-  -tg, --tg          (flag) Retain SP_II_TG chromosome in BAM outfiles.
-  -mr, --mtr         (flag) Retain SP_MTR chromosome in BAM outfiles.
-  -cc, --chk_chr     (flag) Check chromosomes in BAM outfiles.
-  -eo, --err_out     Directory to store stderr and stdout outfiles.
-  -nj, --nam_job     Name of job.
+'$(basename "${0}")' takes the following keyword arguments:
+  -en, --env_nam     # str: Conda/Mamba environment to activate
+  -sf, --scr_fnc     # str: Function to source and submit to SLURM
+   -t, --threads     # str: Number of threads to use
+   -i, --str_infile  # str: Comma-separated string of BAM files (str)
+  -do, --dir_out     # str: Directory to write BAM files
+   -m, --mito        # flg: Retain mitochondrial chromosome in BAM files
+  -tg, --tg          # flg: Retain SP_II_TG chromosome in BAM files
+  -mr, --mtr         # flg: Retain SP_MTR chromosome in BAM files
+  -cc, --chk_chr     # flg: Check chromosomes in BAM files
+  -eo, --err_out     # str: Directory for stderr and stdout files
+  -nj, --nam_job     # str: Name of job
 
 All arguments are required with the following notes and exceptions:
   - '--env_nam' defaults to 'env_nam=${env_nam}' if not specified.
@@ -204,6 +204,7 @@ EOM
 #  Display help message if a help option or no arguments are given
 if [[ -z "${1}" || "${1}" == "-h" || "${1}" == "--help" ]]; then
     echo "${show_help}"
+    echo ""
     exit 0
 fi
 
@@ -222,7 +223,7 @@ while [[ "$#" -gt 0 ]]; do
         -eo|--err_out)    err_out="${2}";    shift 2 ;;
         -nj|--nam_job)    nam_job="${2}";    shift 2 ;;
         *)
-            echo "## Unknown parameter passed: ${1} ##" >&2
+            echo "## Unknown parameter passed: '${1}' ##" >&2
             echo "" >&2
             echo "${show_help}" >&2
             exit 1
@@ -275,7 +276,7 @@ if [[ -n "${SLURM_ARRAY_TASK_ID:-}" ]]; then
     id_tsk="${SLURM_ARRAY_TASK_ID}"
 
     if [[ "${id_tsk}" -lt 1 ]]; then
-        echo "Error: SLURM task ID is invalid: ${id_tsk}" >&2
+        echo "Error: SLURM task ID is invalid: '${id_tsk}'." >&2
         exit 1
     else
         idx=$(( id_tsk - 1 ))

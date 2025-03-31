@@ -76,7 +76,7 @@ EOM
 
 if [[ -z "${1:-}" || "${1}" == "-h" || "${1}" == "--help" ]]; then
     cat << EOM
-$(basename "${0}") requires 12 positional arguments:
+'$(basename "${0}")' requires 12 positional arguments:
 ${show_help}
 EOM
     exit 0
@@ -87,7 +87,7 @@ if [[ $# -ne 12 ]]; then
     msg="but $# were supplied."
     if [[ $# -eq 1 ]]; then msg="but only $# was supplied."; fi
     cat << EOM
-Error: $(basename "${0}") requires 12 positional arguments, ${msg}
+Error: '$(basename "${0}")' requires 12 positional arguments, ${msg}
 
 The necessary positional arguments:
 ${show_help}
@@ -110,7 +110,7 @@ err_out="${11}"
 nam_job="${12}"
 
 #  Debug argument variable assignments
-if ${debug}; then
+if ${debug:-false}; then
     debug_var \
         "env_nam=${env_nam}"         "scr_cvg=${scr_cvg}" \
         "str_fil_ip=${str_fil_ip}"   "str_fil_in=${str_fil_in}" \
@@ -139,7 +139,7 @@ IFS=',' read -r -a arr_scl_fct <<< "${str_scl_fct}"
 IFS=',' read -r -a arr_dep_min <<< "${str_dep_min}"
 
 #  Debug output to check number of array elements and array element values
-if ${debug}; then
+if ${debug:-false}; then
     echo "\${#arr_fil_ip[@]}=${#arr_fil_ip[@]}"   && echo ""
     echo "arr_fil_ip=( ${arr_fil_ip[*]} )"        && echo ""
     echo "\${#arr_fil_in[@]}=${#arr_fil_in[@]}"   && echo ""
@@ -166,7 +166,7 @@ if [[ -n "${SLURM_ARRAY_TASK_ID:-}" ]]; then
     dep_min="${arr_dep_min[idx]}"
 
     #  Debug and validate variable assignments
-    if ${debug}; then
+    if ${debug:-false}; then
         debug_var \
             "fil_ip=${fil_ip}" "fil_in=${fil_in}" "fil_out=${fil_out}" \
             "scl_fct=${scl_fct}" "dep_min=${dep_min}"
@@ -186,7 +186,7 @@ if [[ -n "${SLURM_ARRAY_TASK_ID:-}" ]]; then
     samp="${samp%.bg.gz}"
 
     #  Debug sample name
-    if ${debug}; then echo "samp=${samp}" && echo ""; fi
+    if ${debug:-false}; then echo "samp=${samp}" && echo ""; fi
 
     #  Run subroutine to set SLURM and symlinked/better named log files
     set_logs "${id_job}" "${id_tsk}" "${samp}" "${err_out}"
@@ -198,7 +198,7 @@ if [[ -n "${SLURM_ARRAY_TASK_ID:-}" ]]; then
     echo "set_args_opt(): optional=( ${optional[*]} )"
     echo ""
 
-    if ${debug}; then
+    if ${debug:-false}; then
         echo "python ${scr_cvg} \\"
         echo "    --verbose \\"
         echo "    --fil_ip ${fil_ip} \\"

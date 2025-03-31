@@ -43,7 +43,7 @@ import re
 import sys
 
 
-#  Run script in interactive/test mode (True) or command-line mode (False)
+#  Run script in interactive mode (true) or command-line mode (false)
 interactive = False
 
 #  Define a dictionary of alternative names for each column

@@ -45,7 +45,7 @@ This notebook provides a guide to the ChIP-seq data processing workflow detailed
         1. [1. Construct sample table recording siQ-ChIP $\alpha$ scaling factors.](#1-construct-sample-table-recording-siq-chip-%24alpha%24-scaling-factors)
             1. [Text](#text-4)
             1. [Bash code](#bash-code-2)
-        1. [2. Construct sample table recording spike-in $\gamma$ scaling factors.](#2-construct-sample-table-recording-spike-in-%24gamma%24-scaling-factors)
+        1. [2. Construct sample table recording spike-in scaling factors.](#2-construct-sample-table-recording-spike-in-scaling-factors)
             1. [Text](#text-5)
             1. [Bash code](#bash-code-3)
     1. [H. Compute log2 ratios of IP to input normalized coverage.](#h-compute-log2-ratios-of-ip-to-input-normalized-coverage)
@@ -1391,6 +1391,7 @@ typ_sig="norm"
 err_out="${dir_log}"
 nam_job="compute_signal_${typ_sig}"
 max_job=2
+slurm=false
 
 if ${debug:-false}; then
     echo "##########################"
@@ -1439,6 +1440,7 @@ if ${debug:-false}; then
     echo "err_out=${err_out}"
     echo "nam_job=${nam_job}"
     echo "max_job=${max_job}"
+    echo "slurm=${slurm}"
     echo ""
     echo ""
 fi
@@ -1542,7 +1544,7 @@ bash "${scr_exc}" \
         2>> >(tee -a "${log_exc}.stderr.txt")
 
 #  Check that each normalized coverage file sums to unity
-if ${debug:-false}; then
+if ${debug:-false} && [[ "${typ_sig}" == "norm" ]]; then
     echo "#######################################################"
     echo "## Check that normalized coverage files sum to unity ##"
     echo "#######################################################"
@@ -1592,51 +1594,52 @@ bash "${dir_scr}/compress_remove_files.sh" --dir_fnd "${err_out}"
 #  Define variables -----------------------------------------------------------
 debug=true
 
-#  Set hardcoded paths, values, etc.
+#  Set base repository paths
 dir_bas="${HOME}/repos"  ## WARNING: Change as needed ##
 dir_rep="${dir_bas}/protocol_chipseq_signal_norm"
 dir_scr="${dir_rep}/scripts"
 dir_fnc="${dir_scr}/functions"
-dir_dat="${dir_rep}/data"
-dir_pro="${dir_dat}/processed"
 
+#  Set alignment parameters
 aligner="bowtie2"
 a_type="global"
 req_flg=true
 flag="$(if ${req_flg}; then echo "2"; else echo "NA"; fi)"
 mapq=1
-details="${aligner}_${a_type}_flag-${flag}_mapq-${mapq}"
+prm_aln="${aligner}_${a_type}_flag-${flag}_mapq-${mapq}"
 
-dir_aln="${dir_pro}/align_reads/${details}"
+#  Define data directories
+dir_dat="${dir_rep}/data"
+dir_pro="${dir_dat}/processed"
+dir_aln="${dir_pro}/align_fastqs/${prm_aln}"
 dir_bam="${dir_aln}/sc"
-dir_cvg="${dir_pro}/compute_signal/${details}"
+dir_cvg="${dir_pro}/compute_signal/${prm_aln}"
+
+#  Set output directories
 dir_tbl="${dir_cvg}/tables"
 dir_log="${dir_tbl}/logs"
+
+#  Set execution parameters and related variables
 typ_sig="alpha"
-
-pattern="*.bam"
-include="IP*"
-exclude="*Brn1*"
-
 env_nam="env_protocol"
 scr_exc="${dir_scr}/execute_calculate_scaling_factor_${typ_sig}.sh"
-day="$(date '+%Y-%m%d')"
-log_exc="${dir_log}/${day}.$(basename "${scr_exc}" ".sh")"
+log_exc="${dir_log}/$(date '+%Y-%m%d').$(basename "${scr_exc}" ".sh")"
 
-#  Set hardcoded argument assignments
-threads=8
+threads=6
 ser_ip="$(  ## WARNING: Change search parameters as needed ##
     bash "${dir_scr}/find_files.sh" \
         --dir_fnd "${dir_bam}" \
-        --pattern "${pattern}" \
-        --include "${include}" \
-        --exclude "${exclude}"
+        --pattern "*.bam" \
+        --include "IP*" \
+        --exclude "*Brn1*"
 )"
-ser_in="$(sed 's:\/IP:\/in:g' < <(echo "${ser_ip}"))"
+ser_in="$(sed 's:\/IP:\/in:g' <<< "${ser_ip}")"
 tbl_met="${dir_dat}/raw/docs/measurements_siqchip.tsv"
 eqn="6nd"
 fil_out="${dir_tbl}/ChIP_WT_G1-G2M-Q_Hho1-Hmo1_${typ_sig}.tsv"
 err_out="${dir_log}"
+max_job=2
+slurm=false
 
 if ${debug:-false}; then
     echo "##########################"
@@ -1645,34 +1648,35 @@ if ${debug:-false}; then
     echo ""
     echo "debug=${debug}"
     echo ""
+    echo "#  Set base repository paths"
     echo "dir_bas=${dir_bas}"
     echo "dir_rep=${dir_rep}"
     echo "dir_scr=${dir_scr}"
     echo "dir_fnc=${dir_fnc}"
-    echo "dir_dat=${dir_dat}"
-    echo "dir_pro=${dir_pro}"
     echo ""
+    echo "#  Set alignment parameters"
     echo "aligner=${aligner}"
     echo "a_type=${a_type}"
     echo "req_flg=${req_flg}"
     echo "flag=${flag}"
     echo "mapq=${mapq}"
-    echo "details=${details}"
+    echo "prm_aln=${prm_aln}"
     echo ""
+    echo "#  Define data directories"
+    echo "dir_dat=${dir_dat}"
+    echo "dir_pro=${dir_pro}"
     echo "dir_aln=${dir_aln}"
     echo "dir_bam=${dir_bam}"
     echo "dir_cvg=${dir_cvg}"
+    echo ""
+    echo "#  Set output directories"
     echo "dir_tbl=${dir_tbl}"
     echo "dir_log=${dir_log}"
+    echo ""
+    echo "#  Set execution parameters and related variables"
     echo "typ_sig=${typ_sig}"
-    echo ""
-    echo "pattern=${pattern}"
-    echo "include=${include}"
-    echo "exclude=${exclude}"
-    echo ""
     echo "env_nam=${env_nam}"
     echo "scr_exc=${scr_exc}"
-    echo "day=${day}"
     echo "log_exc=${log_exc}"
     echo ""
     echo "threads=${threads}"
@@ -1682,6 +1686,8 @@ if ${debug:-false}; then
     echo "eqn=${eqn}"
     echo "fil_out=${fil_out}"
     echo "err_out=${err_out}"
+    echo "max_job=${max_job}"
+    echo "slurm=${slurm}"
     echo ""
     echo ""
 fi
@@ -1798,12 +1804,12 @@ bash "${dir_scr}/compress_remove_files.sh" --dir_fnd "${err_out}"
 </details>
 <br />
 
-<a id="2-construct-sample-table-recording-spike-in-%24gamma%24-scaling-factors"></a>
-#### 2. Construct sample table recording spike-in $\gamma$ scaling factors.
+<a id="2-construct-sample-table-recording-spike-in-scaling-factors"></a>
+#### 2. Construct sample table recording spike-in scaling factors.
 <a id="text-5"></a>
 ##### Text
 <details>
-<summary><i>Text: Construct sample table recording spike-in $\gamma$ scaling factors.</i></summary>
+<summary><i>Text: Construct sample table recording spike-in scaling factors.</i></summary>
 <br />
 
 `#TODO`
@@ -1813,7 +1819,7 @@ bash "${dir_scr}/compress_remove_files.sh" --dir_fnd "${err_out}"
 <a id="bash-code-3"></a>
 ##### Bash code
 <details>
-<summary><i>Bash code: Construct sample table recording spike-in $\gamma$ scaling factors.</i></summary>
+<summary><i>Bash code: Construct sample table recording spike-in scaling factors.</i></summary>
 
 ```bash
 #!/bin/bash
@@ -1840,7 +1846,7 @@ flag="$(if ${req_flg}; then echo "2"; else echo "NA"; fi)"
 mapq=1
 details="${aligner}_${a_type}_flag-${flag}_mapq-${mapq}"
 
-dir_aln="${dir_pro}/align_reads/${details}"
+dir_aln="${dir_pro}/align_fastqs/${details}"
 dir_bam="${dir_aln}/sc"
 dir_cvg="${dir_pro}/compute_signal/${details}"
 dir_tbl="${dir_cvg}/tables"
@@ -1865,9 +1871,9 @@ ser_mip="$(  ## WARNING: Change search parameters as needed ##
         --include "${include}" \
         --exclude "${exclude}"
 )"
-ser_sip="$(sed 's:sc:sp:g' < <(echo "${ser_mip}"))"
-ser_min="$(sed 's:\/IP:\/in:g' < <(echo "${ser_mip}"))"
-ser_sin="$(sed 's:\/IP:\/in:g' < <(echo "${ser_sip}"))"
+ser_sip="$(sed 's:sc:sp:g' <<< "${ser_mip}")"
+ser_min="$(sed 's:\/IP:\/in:g' <<< "${ser_mip}")"
+ser_sin="$(sed 's:\/IP:\/in:g' <<< "${ser_sip}")"
 fil_out="${dir_tbl}/ChIP_WT_G1-G2M-Q_Hho1-Hmo1_${typ_sig}.tsv"
 err_out="${dir_log}"
 
@@ -2092,7 +2098,7 @@ flg="$(if ${req_flg}; then echo "2"; else echo "NA"; fi)"
 mapq=1
 details="${aligner}_${a_type}_flag-${flg}_mapq-${mapq}"
 
-dir_aln="${dir_pro}/align_reads/${details}"
+dir_aln="${dir_pro}/align_fastqs/${details}"
 dir_bam="${dir_aln}/sc"
 dir_cvg="${dir_pro}/compute_signal/${details}"
 dir_nrm="${dir_cvg}/norm"
@@ -2380,7 +2386,7 @@ flg="$(if ${req_flg}; then echo "2"; else echo "NA"; fi)"
 mapq=1
 details="${aligner}_${a_type}_flag-${flg}_mapq-${mapq}"
 
-dir_aln="${dir_pro}/align_reads/${details}"
+dir_aln="${dir_pro}/align_fastqs/${details}"
 dir_bam="${dir_aln}/sc"
 dir_cvg="${dir_pro}/compute_signal/${details}"
 dir_nrm="${dir_cvg}/norm"
@@ -2640,7 +2646,7 @@ flg="$(if ${req_flg}; then echo "2"; else echo "NA"; fi)"
 mapq=1
 details="${aligner}_${a_type}_flag-${flg}_mapq-${mapq}"
 
-dir_aln="${dir_pro}/align_reads/${details}"
+dir_aln="${dir_pro}/align_fastqs/${details}"
 dir_bam="${dir_aln}/sc"
 dir_cvg="${dir_pro}/compute_signal/${details}"
 dir_nrm="${dir_cvg}/norm"

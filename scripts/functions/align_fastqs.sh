@@ -135,7 +135,7 @@ EOM
              -o|--outfile) outfile="${2}"; shift 2 ;;
             -qn|--qname)   qname=true;     shift 1 ;;
             *)
-                echo "## Unknown parameter passed: ${1} ##" >&2
+                echo "## Unknown parameter passed: '${1}' ##" >&2
                 echo "" >&2
                 show_help >&2
                 return 1

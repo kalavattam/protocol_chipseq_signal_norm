@@ -4,7 +4,7 @@
 #  KA
 
 
-#  Run script in interactive/test mode (true) or command-line mode (false)
+#  Run script in interactive mode (true) or command-line mode (false)
 interactive=false
 
 #  Exit on errors, unset variables, or pipe failures if not in "interactive
@@ -12,7 +12,7 @@ interactive=false
 if ! ${interactive}; then set -euo pipefail; fi
 
 #  Set the path to the "scripts" directory
-if ${interactive}; then
+if ${interactive:-false}; then
     ## WARNING: If 'interactive=true', change path as needed ##
     dir_scr="${HOME}/repos/protocol_chipseq_signal_norm/scripts"
 else
@@ -41,7 +41,7 @@ do
 done
 
 
-#  Set up paths, values, and parameters for interactive mode
+#  Set paths, values, arguments, etc. for interactive mode
 function set_interactive() {
     ## WARNING: If interactive=true, change values as needed ##
     #  Set hardcoded paths, values, etc.
@@ -51,7 +51,7 @@ function set_interactive() {
     dir_raw="${dir_dat}/raw"
     dir_doc="${dir_raw}/docs"
     dir_log="${dir_raw}/logs"
-    pth_tsv="${dir_doc}/test_3.tsv"
+    pth_tsv="${dir_doc}/datasets_dropbox.tsv"
 
     #  Set hardcoded argument assignments
     verbose=true
@@ -169,7 +169,7 @@ if [[ -z "${1:-}" || "${1}" == "-h" || "${1}" == "--help" ]]; then
     exit_0
 fi
 
-if ${interactive}; then
+if ${interactive:-false}; then
     set_interactive
 else
     while [[ "$#" -gt 0 ]]; do
@@ -389,7 +389,7 @@ if [[ "${threads}" -gt 1 ]]; then
 fi
 
 #  Execute download and symlink creation based on SLURM flag and thread count
-if ${slurm}; then
+if ${slurm:-false}; then
     if [[ "${threads}" -gt 1 ]]; then
         #  Submit jobs to SLURM using GNU Parallel within a single SLURM job
         sbatch \

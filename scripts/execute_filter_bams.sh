@@ -4,7 +4,7 @@
 #  KA
 
 
-#  Run script in interactive/test mode (true) or command-line mode (false)
+#  Run script in interactive mode (true) or command-line mode (false)
 interactive=false
 
 #  Exit on errors, unset variables, or pipe failures if not in "interactive
@@ -12,7 +12,7 @@ interactive=false
 if ! ${interactive}; then set -euo pipefail; fi
 
 #  Set the path to the "scripts" directory
-if ${interactive}; then
+if ${interactive:-false}; then
     ## WARNING: If 'interactive=true', change path as needed ##
     dir_scr="${HOME}/repos/protocol_chipseq_signal_norm/scripts"
 else
@@ -47,7 +47,7 @@ done
 unset fnc
 
 
-#  Set up paths, values, and parameters for interactive mode
+#  Set paths, values, arguments, etc. for interactive mode
 function set_interactive() {
     #  Set base repository paths
     dir_bas="${HOME}/repos"  ## WARNING: Change as needed ##
@@ -215,7 +215,7 @@ if [[ -z "${1:-}" || "${1}" == "-h" || "${1}" == "--help" ]]; then
     exit_0
 fi
 
-if ${interactive}; then
+if ${interactive:-false}; then
     set_interactive
 else
     while [[ "$#" -gt 0 ]]; do
@@ -300,7 +300,7 @@ done
 
 
 #  Parse job execution parameters ---------------------------------------------
-if ${slurm}; then
+if ${slurm:-false}; then
     check_supplied_arg -a "${max_job}" -n "max_job"
     check_int_pos "${max_job}" "max_job"
 
@@ -334,7 +334,7 @@ check_program_path mv
 check_program_path rm
 check_program_path samtools
 
-if ${slurm}; then
+if ${slurm:-false}; then
     check_program_path sbatch
 elif [[ ${par_job} -gt 1 ]]; then
     check_program_path parallel
@@ -384,7 +384,7 @@ if ${verbose}; then
 fi
 
 # shellcheck disable=SC1083,SC2157
-if ${slurm}; then
+if ${slurm:-false}; then
     #  If --slurm was specified, run jobs in parallel via SLURM
     if ${dry_run} || ${verbose}; then
         echo "######################"

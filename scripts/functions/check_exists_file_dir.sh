@@ -61,7 +61,7 @@ EOM
     #  Validate variable type
     if [[ "${type}" != "f" && "${type}" != "d" ]]; then
         echo \
-            "Error: Positionl parameter 1, type, is invalid: '${type}'." \
+            "Error: Positionl parameter 1, 'type', is invalid: '${type}'." \
             "Expected 'f' for file or 'd' for directory." >&2
         echo "" >&2
         return 1
@@ -70,7 +70,7 @@ EOM
     #  Check that variable item is defined and not empty
     if [[ -z "${item}" ]]; then
         echo \
-            "Error: Positional parameter 2, item, is not defined or is" \
+            "Error: Positional parameter 2, 'item', is not defined or is" \
             "empty." >&2
         echo "" >&2
         return 1
@@ -89,11 +89,11 @@ EOM
     fi
 
     if [[ -n "${name}" ]]; then
-        not_exist_msg="${item_type} associated with --${name} does not exist"
+        not_exist_msg="${item_type} associated with '--${name}' does not exist"
     fi
 
     if ! eval "[[ ${check_flag} \"${item}\" ]]"; then
-        echo "Error: ${not_exist_msg}: ${item}." >&2
+        echo "Error: ${not_exist_msg}: '${item}'." >&2
         return 1
     fi
 }

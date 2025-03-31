@@ -273,7 +273,7 @@ while [[ "$#" -gt 0 ]]; do
         -eo|--err_out)    err_out="${2}";    shift 2 ;;
         -nj|--nam_job)    nam_job="${2}";    shift 2 ;;
         *)
-            echo "## Unknown parameter passed: ${1} ##" >&2
+            echo "## Unknown parameter passed: '${1}' ##" >&2
             echo "" >&2
             echo "${show_help}" >&2
             exit 1
@@ -282,7 +282,7 @@ while [[ "$#" -gt 0 ]]; do
 done
 
 #  Debug argument variable assignments
-if ${debug}; then
+if ${debug:-false}; then
     debug_var \
         "env_nam=${env_nam}" \
         "scr_fnc=${scr_fnc}" \
@@ -310,7 +310,7 @@ IFS=';' read -r -a arr_infile <<< "${str_infile}"
 unset IFS
 
 #  Debug output to check number of array elements and array element values
-if ${debug}; then
+if ${debug:-false}; then
     echo "\${#arr_infile[@]}=${#arr_infile[@]}" && echo ""
     echo "arr_infile=( ${arr_infile[*]} )"      && echo ""
 fi
@@ -330,7 +330,7 @@ if [[ -n "${SLURM_ARRAY_TASK_ID:-}" ]]; then
     id_tsk="${SLURM_ARRAY_TASK_ID}"
 
     if [[ "${id_tsk}" -lt 1 ]]; then
-        echo "Error: SLURM task ID is invalid: ${id_tsk}" >&2
+        echo "Error: SLURM task ID is invalid: '${id_tsk}'." >&2
         exit 1
     else
         idx=$(( id_tsk - 1 ))
@@ -340,7 +340,7 @@ if [[ -n "${SLURM_ARRAY_TASK_ID:-}" ]]; then
     #+ array
     infile="${arr_infile[idx]}"
 
-    if ${debug}; then debug_var "infile=${infile}"; fi
+    if ${debug:-false}; then debug_var "infile=${infile}"; fi
 
     #  Run function to debug and validate 'infile', using it to assign values
     #+ to variables 'fq_1', 'fq_2', 'samp', and 'outfile'
@@ -349,7 +349,7 @@ if [[ -n "${SLURM_ARRAY_TASK_ID:-}" ]]; then
     ) || exit 1
     unset IFS
 
-    if ${debug}; then
+    if ${debug:-false}; then
         debug_var \
             "fq_1=${fq_1}" \
             "fq_2=${fq_2}" \
@@ -364,7 +364,7 @@ if [[ -n "${SLURM_ARRAY_TASK_ID:-}" ]]; then
     ) || exit 1
     unset IFS
 
-    if ${debug}; then
+    if ${debug:-false}; then
         debug_var \
             "err_ini=${err_ini}" \
             "out_ini=${out_ini}" \
@@ -392,7 +392,7 @@ else
         #+ file array
         infile="${arr_infile[idx]}"
 
-        if ${debug}; then debug_var "infile=${infile}"; fi
+        if ${debug:-false}; then debug_var "infile=${infile}"; fi
 
         #  Run function to debug and validate 'infile', using it to assign
         #+ values to variables 'fq_1', 'fq_2', 'samp', and 'outfile'
@@ -401,7 +401,7 @@ else
         ) || exit 1
         unset IFS
 
-        if ${debug}; then
+        if ${debug:-false}; then
             debug_var \
                 "fq_1=${fq_1}" \
                 "fq_2=${fq_2}" \
