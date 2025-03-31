@@ -4,7 +4,7 @@
 #  KA
 
 
-#  Run script in interactive/test mode (true) or command-line mode (false)
+#  Run script in interactive mode (true) or command-line mode (false)
 interactive=false
 
 #  Exit on errors, unset variables, or pipe failures if not in "interactive
@@ -12,7 +12,7 @@ interactive=false
 if ! ${interactive}; then set -euo pipefail; fi
 
 #  Set the path to the "scripts" directory
-if ${interactive}; then
+if ${interactive:-false}; then
     ## WARNING: If 'interactive=true', change path as needed ##
     dir_scr="${HOME}/repos/protocol_chipseq_signal_norm/scripts"
 else
@@ -40,7 +40,7 @@ dir_fnc="${dir_scr}/functions"
 }
 
 
-#  Set up paths, values, and parameters for interactive mode
+#  Set paths, values, arguments, etc. for interactive mode
 function set_interactive() {
     #  Set hardcoded paths, values, etc.
     ## WARNING: If interactive=true, change values as needed ##
@@ -220,7 +220,7 @@ if [[ -z "${1:-}" || "${1}" == "-h" || "${1}" == "--help" ]]; then
     exit_0
 fi
 
-if ${interactive}; then
+if ${interactive:-false}; then
     set_interactive
 else
     while [[ "$#" -gt 0 ]]; do
@@ -240,7 +240,7 @@ else
             -mj|--max_job) max_job="${2}"; shift 2 ;;
             -tm|--time)    time="${2}";    shift 2 ;;
             *)
-                echo "## Unknown parameter passed: ${1} ##" >&2
+                echo "## Unknown parameter passed: '${1}' ##" >&2
                 echo "" >&2
                 echo "${show_help}" >&2
                 exit_1
@@ -291,7 +291,7 @@ fi
 
 check_supplied_arg -a "${nam_job}" -n "nam_job"
 
-if ${slurm}; then
+if ${slurm:-false}; then
     check_supplied_arg -a "${max_job}" -n "max_job"
     check_int_pos "${max_job}" "max_job"
     
@@ -315,7 +315,7 @@ check_program_path awk
 if ! ${slurm} && [[ ${threads} -gt 1 ]]; then check_program_path parallel; fi
 check_program_path python
 check_program_path samtools
-if ${slurm}; then check_program_path sbatch; fi
+if ${slurm:-false}; then check_program_path sbatch; fi
 
 #  Parse the '--ser_mip', etc. arguments into arrays, then validate the file
 #+ value assignments
@@ -334,7 +334,7 @@ done
 unset file
 
 #  Reset 'max_job' if it is greater than the array lengths
-if ${slurm}; then
+if ${slurm:-false}; then
     max_job=$(reset_max_job "${max_job}" "${#arr_mip[@]}")
     #FIXME: Error when 'max_job' is unset or empty
 fi
@@ -438,7 +438,7 @@ fi
 
 
 # shellcheck disable=SC1083,SC2157,SC2046,SC2086
-if ${slurm}; then
+if ${slurm:-false}; then
     #  If --slurm was specified, run jobs in parallel via individual job
     #+ submissions to SLURM
     if ${dry_run} || ${verbose}; then
