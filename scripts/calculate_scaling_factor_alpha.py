@@ -32,8 +32,7 @@
 #         --rnd <int>
 #
 # Arguments:
-#     -eq, --eqn       (str): Equation to compute. Options: '5', '5nd', '6', or
-#                             '6nd'.
+#     -eq, --eqn       (str): Equation to compute: '5', '5nd', '6', or '6nd'.
 #     -mp, --mass_ip (float): Mass of the IP sample.
 #     -mn, --mass_in (float): Mass of the input sample.
 #     -va, --vol_all (float): Volume of sample before removal of input.
@@ -81,7 +80,7 @@ import argparse
 import sys
 
 
-#  Run script in interactive/test mode (True) or command-line mode (False)
+#  Run script in interactive mode (true) or command-line mode (false)
 interactive = False
 
 
@@ -182,7 +181,7 @@ def calculate_alpha(
         if vol_all <= vol_in:
             raise ValueError(
                 f"For 'eqn={eqn}', 'vol_all' must be greater than 'vol_in'. "
-                f"Received: 'vol_all={vol_all}', 'vol_in={vol_in}'."
+                f"Received: 'vol_all={vol_all}' and 'vol_in={vol_in}'."
             )
         if eqn == '6':
             #  Equation 6: Compute concentrations c_IP and c_in and use their
@@ -220,9 +219,9 @@ def parse_args():
         -va, --vol_all (float): Volume of sample before removal of input.
         -vn, --vol_in  (float): Volume of the input sample.
         -dp, --dep_ip    (int): Sequencing depth of the IP sample (required for
-                                --eqn 5 or --eqn 6; otherwise ignored).
+                                '--eqn 5' or '--eqn 6'; otherwise ignored).
         -dn, --dep_in    (int): Sequencing depth of the input sample (required
-                                for --eqn 5 or --eqn 6; otherwise ignored).
+                                for '--eqn 5' or '--eqn 6'; otherwise ignored).
         -lp, --len_ip  (float): Mean fragment length of the IP sample.
         -ln, --len_in  (float): Mean fragment length of the input sample.
          -r, --rnd       (int): Number of decimal places for rounding alpha.
@@ -276,8 +275,8 @@ def parse_args():
         type=int,
         required=False,
         help=(
-            'Sequencing depth of IP sample (required for --eqn \'5\' or --eqn'
-            '\'6\').'
+            'Sequencing depth of IP sample (required for \'--eqn 5\' or '
+            '\'--eqn 6\').'
         )
     )
     parser.add_argument(
@@ -285,8 +284,8 @@ def parse_args():
         type=int,
         required=False,
         help=(
-            'Sequencing depth of input sample (required for --eqn \'5\' or '
-            '--eqn \'6\').'
+            'Sequencing depth of input sample (required for \'--eqn 5\' or '
+            '\'--eqn 6\').'
         )
     )
     parser.add_argument(
