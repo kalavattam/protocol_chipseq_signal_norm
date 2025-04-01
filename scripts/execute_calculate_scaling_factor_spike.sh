@@ -9,7 +9,7 @@ interactive=false
 
 #  Exit on errors, unset variables, or pipe failures if not in "interactive
 #+ mode"
-if ! ${interactive}; then set -euo pipefail; fi
+if ! ${interactive:-false}; then set -euo pipefail; fi
 
 #  Set the path to the "scripts" directory
 if ${interactive:-false}; then

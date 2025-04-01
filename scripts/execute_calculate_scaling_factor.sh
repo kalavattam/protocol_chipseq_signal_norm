@@ -5,11 +5,11 @@
 
 
 #  Run script in interactive mode (true) or command-line mode (false)
-interactive=false
+interactive=true
 
 #  Exit on errors, unset variables, or pipe failures if not in "interactive
 #+ mode"
-if ! ${interactive}; then set -euo pipefail; fi
+if ! ${interactive:-false}; then set -euo pipefail; fi
 
 #  Set the path to the "scripts" directory
 if ${interactive:-false}; then
@@ -116,7 +116,7 @@ function set_interactive() {
     env_nam="env_protocol"
     dir_scr="${dir_scr}"
     scr_hdr="${dir_scr}/write_header.sh"
-    scr_sub="${dir_scr}/submit_calculate_scaling_factor.sh"  #TODO: Get rid of '_alpha'
+    scr_sub="${dir_scr}/submit_calculate_scaling_factor.sh"
     par_job=""
 }
 
@@ -154,14 +154,13 @@ Description:
 
   For alpha scaling factors, this involves... #TODO
 
-  For spike-in scaling factors, this involves counting alignments in "main" (S.
-  cerevisiae) and spike-in (S. pombe) BAM files, calculating scaling
-  coefficients using a custom Python script, and outputting results to a
-  specified table file.
+  For spike-in scaling factors, this involves counting alignments in "main" or
+  "experimental" (e.g., S. cerevisiae) and "spike-in" (e.g., S. pombe) BAM
+  files, calculating scaling coefficients using custom Python scripts, and
+  outputting results to a specified tab-delimited table file.
 
-  Facilitates parallelized job submission with either SLURM or GNU
-  Parallel, or serialized job submission.
-  
+  Facilitates parallelized job submission with either SLURM or GNU Parallel, or
+  serialized job submission.
 
 Arguments:
    -h, --help     Display this help message and exit
@@ -175,7 +174,7 @@ Arguments:
   -sp, --ser_sip  Comma-separated string of "spike-in" organism IP BAM files
                   (required if '--mode spike', ignored if not)
   -sn, --ser_sin  Comma-separated string of "spike-in" organism input BAM files
-                  (required if '--mode spike', ignored if not).
+                  (required if '--mode spike', ignored if not)
   -tb, --tbl_met  Tab-delimited input file of siQ-ChIP metadata metrics
                   (required if '--mode alpha', ignored if not)
   -eq, --eqn      Alpha equation to compute: '5', '5nd', '6', '6nd' (required
@@ -469,7 +468,7 @@ if ${verbose}; then
     echo ""
 fi
 
-#TODO: Do this in 'workflow.md', outside of '{execute|submit}' scripting
+#TODO: Do this in 'workflow.md', outside of 'execute' or 'submit' scripting
 # if [[ -f "${fil_out}" ]]; then rm "${fil_out}"; fi
 # touch "${fil_out}" || {
 #     echo_error "Failed to create output file for scaling factors, etc."

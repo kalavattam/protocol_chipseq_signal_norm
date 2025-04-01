@@ -295,8 +295,8 @@ if [[ -n "${SLURM_ARRAY_TASK_ID:-}" ]]; then
 
     #  Run processing function for scaling factor
     case "${mode}" in
-        alpha) process_smp_alpha "${idx}" ;;
-        spike) process_smp_spike "${idx}" ;;
+        alpha) process_samp_alpha "${idx}" ;;
+        spike) process_samp_spike "${idx}" ;;
     esac
 
     #  Remove the initial SLURM stderr and stdout TXT outfiles
@@ -306,8 +306,8 @@ else
     for idx in "${!arr_mip[@]}"; do
         #  Run processing function for scaling factor
         case "${mode}" in
-            alpha) process_smp_alpha "${idx}" ;;
-            spike) process_smp_spike "${idx}" ;;
+            alpha) process_samp_alpha "${idx}" ;;
+            spike) process_samp_spike "${idx}" ;;
         esac
     done
 fi

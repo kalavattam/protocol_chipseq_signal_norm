@@ -55,9 +55,9 @@ function count_align_bam() {
     local show_help           # Help message/documentation
 
     show_help=$(cat << EOM
--------------
+---------------
 count_align_bam
--------------
+---------------
 
 Description:
   Counts the number of alignments in a BAM file based on whether the data is 
@@ -400,7 +400,7 @@ function generate_fmt_str() {
 #+ siQ-ChIP metadata from a TSV table, computes alignment counts and average
 #+ fragment lengths, and minimum input depth values
 # shellcheck disable=SC2154
-function process_smp_alpha() {
+function process_samp_alpha() {
     #TODO: Write, return 'show_help' when called without argument or with '-h'
     local idx="${1}"  # Array sample index
 
@@ -481,7 +481,7 @@ function process_smp_alpha() {
 #+ Workflow function that processes a sample using global variables; computes
 #+ computes alignment counts and minimum input depth values
 # shellcheck disable=SC2154
-function process_smp_spike() {
+function process_samp_spike() {
     #TODO: Write, return 'show_help' when called without argument or with '-h'
     local idx="${1}"  # Array sample index
 
@@ -528,7 +528,7 @@ function process_smp_spike() {
             --rnd     "${rnd}"
     ) || return 1
 
-    #  Compute minimum inputh depth values
+    #  Compute minimum input depth values
     IFS="," read -r -a arr_dm < <(
         compute_dep_all "${num_mn}" "${rnd}"
     ) || return 1
@@ -539,7 +539,7 @@ function process_smp_spike() {
     #  Print results using dynamically generated format string
     # shellcheck disable=SC2059
     {
-        IFS=$' \t\n'  # Ensure deafult setting for IFS
+        IFS=$' \t\n'  # Ensure default setting for IFS
         printf "${fmt_str}\n" \
             "${mp}" "${sp}" "${mn}" "${sn}" "${sf}" \
             "${num_mp}" "${num_sp}" "${num_mn}" "${num_sn}" \
