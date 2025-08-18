@@ -14,9 +14,11 @@
 #     factor can also be applied.
 #
 #     The output format is determined by the '--outfile' extension:
-#         - '.bdg', '.bg', '.bedgraph' outputs signal in BEDGRAPH format
-#         - '.bed' outputs processed alignments, not signal, in BED format
-#         - '.gz' (e.g., '.bdg.gz', '.bed.gz') performs gzip compression
+#         - '.bedgraph', '.bedgraph.gz', '.bdg', '.bdg.gz', '.bg', '.bg.gz'
+#           outputs signal in BEDGRAPH format
+#         - '.bed', '.bed.gz' outputs processed alignments, not signal, in BED
+#           format
+#         - '.gz' performs additional gzip compression
 #
 #     If '.bed' is specified, the script outputs a BED file of processed
 #     alignments instead of computing signal.
@@ -26,9 +28,9 @@
 #
 # Usage:
 #     python compute_signal.py \
-#         [--verbose] --infile <str> --outfile <str> --siz_bin <posint>
-#         [--scl_fct <flt>] [--typ_sig <option>] [--usr_frg <posint>]
-#         [--rnd <posint>]
+#         [--verbose] --threads <int> --infile <str> --outfile <str>
+#         --siz_bin <int> [--scl_fct <flt>] [--method <opt>] [--usr_frg <int>]
+#         [--rnd <int>]
 #
 # Arguments:
 #      -v, --verbose  Run script in 'verbose mode'.
@@ -39,7 +41,7 @@
 #                     '.gz' versions for compression.
 #     -sb, --siz_bin  Bin size for signal calculation in base pairs (default:
 #                     10). Ignored for BED output.
-#     -tv, --typ_sig  Specify signal calculation type (default: 'norm').
+#     -me, --method   Specify signal calculation type (default: 'norm').
 #                     Options:
 #                       - 'raw', 'unadj', 'unadjusted': Compute unadjusted
 #                         signal.
@@ -48,9 +50,10 @@
 #                       - 'norm', 'normalized': Normalize signal by both
 #                         fragment length and total fragments such that
 #                         coverage sums to unity, i.e., "normalized coverage".
-#                       - '--typ_sig' is ignored for BED output.
+#                       - '--method' is ignored for BED fragment coordinate
+#                         output.
 #     -sf, --scl_fct  Optional scaling factor to apply to the signal. Can be
-#                     used with any '--typ_sig' mode. Ignored for BED output.
+#                     used with any '--method' method. Ignored for BED output.
 #     -uf, --usr_frg  Optional fixed fragment length instead of the BAM query
 #                     (read) or template (fragment) lengths. Ignored for BED
 #                     output.
@@ -65,7 +68,7 @@
 #         --infile sample.bam \
 #         --outfile sample_signal.bdg.gz \
 #         --siz_bin 5 \
-#         --typ_sig norm \
+#         --method norm \
 #         --rnd 6
 #     ```
 #
@@ -75,7 +78,7 @@
 #         + Uses '--rnd' for decimal precision.
 #     - BED ('.bed'):
 #         + Contains processed alignments **instead of signal**.
-#         + Ignores '--siz_bin', '--typ_sig', '--scl_fct', '--usr_frg', and
+#         + Ignores '--siz_bin', '--method', '--scl_fct', '--usr_frg', and
 #           '--rnd'.
 #     - Compression: If '.gz' is in the filename, output is gzip-compressed.
 #
@@ -485,17 +488,17 @@ def parse_args():
         -t, --threads   Number of threads for parallel processing (default: 1).
         -i, --infile    Path to input BAM file.
         -o, --outfile   Path to output file. The extension determines format:
-                          + '.bdg', '.bg', '.bedgraph': BEDGRAPH of binned
+                          - '.bdg', '.bg', '.bedgraph': BEDGRAPH of binned
                             signal.
-                          + '.bed': BED of fragment coordinates, not signal.
-                          + '.gz' (e.g., 'output.bdg.gz'): gzip-compressed
+                          - '.bed': BED of fragment coordinates, not signal.
+                          - '.gz' (e.g., 'output.bdg.gz'): gzip-compressed
                             output.
         -sb, --siz_bin  Bin size in base pairs (default: 10). Ignored for
                         '.bed'.
-        -tv, --typ_sig  Signal calculation type (default: 'norm'):
-                          + 'raw': Unadjusted signal.
-                          + 'frag': Normalize by fragment length.
-                          + 'norm': Normalize by both fragment length and total
+        -me, --method   Signal calculation method (default: 'norm'):
+                          - 'undaj': Unadjusted signal.
+                          - 'len': Normalize by fragment length.
+                          - 'norm': Normalize by both fragment length and total
                             fragments.
         -sf, --scl_fct  Optional scaling factor. Ignored for '.bed'.
         -uf, --usr_frg  Fixed fragment length instead of read/template lengths.
@@ -547,7 +550,7 @@ def parse_args():
             "'bedgraph', 'bdg', 'bg', and 'bed'. Append '.gz' for gzip "
             "compression, e.g., 'output.bdg.gz'. Note: Use 'bed' to output "
             "alignment coordinates in a BED-like format. Using 'bed' results "
-            "in arguments such as '--siz_bin', '--typ_sig', '--scl_fct', and "
+            "in arguments such as '--siz_bin', '--method', '--scl_fct', and "
             "'--usr_frg' being ignored)."
         )
     )
@@ -561,7 +564,7 @@ def parse_args():
         )
     )
     parser.add_argument(
-        "-ts", "--typ_sig",
+        "-me", "--method",
         choices=[
             'raw', 'unadj', 'unadjusted', 'frag', 'len_frag', 'norm',
             'normalized'
@@ -619,9 +622,12 @@ def main():
     #  Use command line arguments or interactive setup based on 'interactive'
     args = set_interactive() if interactive else parse_args()
 
-    #  Determine whether to normalize based on 'typ_sig'
-    is_len = args.typ_sig in {'frag', 'len_frag'}
-    is_norm = args.typ_sig in {'norm', 'normalized'}
+    #  Validate and parse output file
+    outfile, out_fmt, is_gz = validate_outfile(args.outfile)
+    
+    #  Determine whether to normalize based on 'method'
+    is_len = args.method in {'frag', 'len_frag'}
+    is_norm = args.method in {'norm', 'normalized'}
 
     #  Print verbose output
     if args.verbose:
@@ -633,17 +639,21 @@ def main():
         print(f"--threads {args.threads}")
         print(f"--infile  {args.infile}")
         print(f"--outfile {args.outfile}")
-        print(f"--siz_bin {args.siz_bin}")
-        print(f"--typ_sig {args.typ_sig}")
-        print(f"--scl_fct {args.scl_fct}")
-        print(f"--usr_frg {args.usr_frg}")
-        print(f"--rnd     {args.rnd}")
+        if out_fmt == "bed":
+            print("(BED output mode: signal computation arguments ignored)")
+            print(f"--usr_frg {args.usr_frg}")
+        else:
+            print(f"--siz_bin {args.siz_bin}")
+            print(f"--method  {args.method}")
+            print(f"--scl_fct {args.scl_fct}")
+            print(f"--usr_frg {args.usr_frg}")
+            print(f"--rnd     {args.rnd}")
         print("")
         print("")
 
     #  Parse and process BAM file
     frg_tup = parse_bam(args.infile, args.usr_frg)
-    outfile, out_fmt, is_gz = validate_outfile(args.outfile)
+
     if out_fmt == 'bed':
         #  Write alignments processed by parse_bam() in a BED-like format
         with (

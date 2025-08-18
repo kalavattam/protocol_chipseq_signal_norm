@@ -213,9 +213,8 @@ def calculate_ratio_bin(sig_ip, sig_in, scl_fct, dep_min, log2):
         try:
             ratio = math.log2(ratio)  # Allow log2 calculation
         except ValueError:  # Otherwise, handle log2(0), log2 of negative value
-            #  If log2(0), return '-inf' (note: previously used -10 as
-            #  placeholder value); if log2 of a negative number occurs, return
-            #  NaN (not a number)
+            #  If log2(0), return '-inf'; if log2 of a negative number occurs,
+            #  return NaN (not a number)
             return float("-inf") if ratio == 0 else float("nan")
 
     #  Apply scaling factor if provided
