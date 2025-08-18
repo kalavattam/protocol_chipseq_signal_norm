@@ -51,13 +51,13 @@ This notebook provides a guide to the ChIP-seq data processing workflow detailed
     1. [H. Compute log2 ratios of IP to input normalized coverage.](#h-compute-log2-ratios-of-ip-to-input-normalized-coverage)
         1. [Text](#text-6)
         1. [Bash code](#bash-code-4)
-    1. [I. Compute coverage with the siQ-ChIP method.](#i-compute-coverage-with-the-siq-chip-method)
+    1. [I. Compute signal with the siQ-ChIP method.](#i-compute-signal-with-the-siq-chip-method)
         1. [Text](#text-7)
             1. [Overview](#overview)
             1. [Steps performed in code chunk](#steps-performed-in-code-chunk)
             1. [Important note](#important-note)
         1. [Bash code](#bash-code-5)
-    1. [J. Compute coverage with the spike-in method.](#j-compute-coverage-with-the-spike-in-method)
+    1. [J. Compute signal with the spike-in method.](#j-compute-signal-with-the-spike-in-method)
         1. [Text](#text-8)
         1. [Bash code](#bash-code-6)
 
@@ -1502,7 +1502,7 @@ elif [[ "${threads}" -gt 1 ]]; then
 fi
 
 
-#  Compute coverage -----------------------------------------------------------
+#  Compute normalized coverage ------------------------------------------------
 if ${debug:-false}; then
     echo "###########################"
     echo "## Call to driver script ##"
@@ -2252,7 +2252,7 @@ elif [[ "${threads}" -gt 1 ]]; then
 fi
 
 
-#  Generate log2(IP/input) coverage tracks ------------------------------------
+#  Generate log2(IP/input) normalized coverage tracks -------------------------
 if ${debug:-false}; then
     echo "#####################################################"
     echo "## Call to driver script with '--dep_min' argument ##"
@@ -2315,23 +2315,23 @@ bash "${dir_scr}/compress_remove_files.sh" --dir_fnd "${dir_log}"
 </details>
 <br />
 
-<a id="i-compute-coverage-with-the-siq-chip-method"></a>
-### I. Compute coverage with the siQ-ChIP method.
+<a id="i-compute-signal-with-the-siq-chip-method"></a>
+### I. Compute signal with the siQ-ChIP method.
 <a id="text-7"></a>
 #### Text
 <details>
-<summary><i>Text: Compute coverage with the siQ-ChIP method.</i></summary>
+<summary><i>Text: Compute signal with the siQ-ChIP method.</i></summary>
 
 <a id="overview"></a>
 ##### Overview
-This section describes the steps to compute ChIP-seq coverage normalized using the siQ-ChIP method. For more details, see the introduction to [Section G](#g-construct-sample-tables-recording-computed-scaling-factors-for-normalization). The procedure makes use of utility scripts and functions, environment handling, and parallel processing where applicable.
+This section describes the steps to compute ChIP-seq signal normalized using the siQ-ChIP method. For more details, see the introduction to [Section G](#g-construct-sample-tables-recording-computed-scaling-factors-for-normalization). The procedure makes use of utility scripts and functions, environment handling, and parallel processing where applicable.
 
 ---
 
 <a id="steps-performed-in-code-chunk"></a>
 ##### Steps performed in code chunk
-1. *Set up directories and paths:* Define variables for key directories, data locations, and output destinations.
-2. *Activate environment and check dependencies:* Load the necessary computational environment and ensure essential dependencies are available.
+1. *Set up directories and paths:* Define variables for key directories, data locations, and output locations.
+2. *Activate environment and check dependencies:* Load the necessary computational environment and ensure dependencies are available.
 3. *Calculate alpha scaling factors:* Use the driver script to compute siQ-ChIP alpha scaling factors and save the sample-specific values to a TSV file. The script can utilize SLURM for job scheduling if available; otherwise, it will use GNU Parallel for parallel processing.
 4. *Sort and update output:* Sort the generated output file, replacing it with the sorted version.
 5. *Optional cleanup:* Compress large log files and remove empty log files.
@@ -2340,7 +2340,7 @@ This section describes the steps to compute ChIP-seq coverage normalized using t
 
 <a id="important-note"></a>
 ##### Important note
-- The [`execute_calculate_scaling_factor_alpha.sh`](https://github.com/kalavattam/protocol_chipseq_signal_norm/blob/main/scripts/execute_calculate_scaling_factor_alpha.sh) script in this code chunk requires that *S. cerevisiae* IP BAM files follow a specific naming convention as described in the protocol manuscript. The expected filename format:
+- The [`execute_calculate_scaling_factor.sh`](https://github.com/kalavattam/protocol_chipseq_signal_norm/blob/main/scripts/execute_calculate_scaling_factor.sh) script in this code chunk requires that *S. cerevisiae* IP BAM files follow a specific naming convention as described in the protocol manuscript. The expected filename format:
     ```txt
     assay_genotype_state_treatment_factor_strain/replicate.
     ```
@@ -2359,7 +2359,7 @@ This section describes the steps to compute ChIP-seq coverage normalized using t
 <a id="bash-code-5"></a>
 #### Bash code
 <details>
-<summary><i>Bash code: Compute coverage with the siQ-ChIP method.</i></summary>
+<summary><i>Bash code: Compute signal with the siQ-ChIP method.</i></summary>
 
 ```bash
 #!/bin/bash
@@ -2542,7 +2542,7 @@ elif [[ "${threads}" -gt 1 ]]; then
 fi
 
 
-#  Generate siQ-ChIP alpha-scaled coverage tracks -----------------------------
+#  Generate siQ-ChIP alpha-scaled signal tracks -----------------------------
 if ${debug:-false}; then
     echo "#####################################################"
     echo "## Call to driver script with '--dep_min' argument ##"
@@ -2604,22 +2604,22 @@ bash "${dir_scr}/compress_remove_files.sh" --dir_fnd "${dir_log}"
 </details>
 <br />
 
-<a id="j-compute-coverage-with-the-spike-in-method"></a>
-### J. Compute coverage with the spike-in method.
+<a id="j-compute-signal-with-the-spike-in-method"></a>
+### J. Compute signal with the spike-in method.
 <a id="text-8"></a>
 #### Text
 <details>
-<summary><i>Text: Compute coverage with the spike-in method.</i></summary>
+<summary><i>Text: Compute signal with the spike-in method.</i></summary>
 <br />
 
-This section describes the steps to calculate spike-in normalized ChIP-seq coverage. For more details, see the introduction to [Section G](#g-construct-sample-tables-recording-computed-scaling-factors-for-normalization). The procedure makes use of utility scripts and functions, environment handling, and parallel processing where applicable.
+This section describes the steps to calculate spike-in normalized ChIP-seq signal. For more details, see the introduction to [Section G](#g-construct-sample-tables-recording-computed-scaling-factors-for-normalization). The procedure makes use of utility scripts and functions, environment handling, and parallel processing where applicable.
 </details>
 <br />
 
 <a id="bash-code-6"></a>
 #### Bash code
 <details>
-<summary><i>Bash code: Compute coverage with the spike-in method.</i></summary>
+<summary><i>Bash code: Compute signal with the spike-in method.</i></summary>
 
 ```bash
 #!/bin/bash
@@ -2802,7 +2802,7 @@ elif [[ "${threads}" -gt 1 ]]; then
 fi
 
 
-#  Generate spike-in scaled coverage tracks -----------------------------------
+#  Generate spike-in scaled signal tracks -------------------------------------
 if ${debug:-false}; then
     echo "#####################################################"
     echo "## Call to driver script with '--dep_min' argument ##"
