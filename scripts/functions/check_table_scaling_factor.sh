@@ -39,9 +39,9 @@ function check_table_scaling_factor() {
         return 1
     fi
 
-    if [[ "${type}" == "string" && "${scl_fct}" == "#N/A" ]]; then
+    if [[ "${type}" == "string" && "${scl_fct}" == "NA" ]]; then
         echo \
-            "Error: Positional parameter 3, 'scl_fct', is assigned '#N/A'," \
+            "Error: Positional parameter 3, 'scl_fct', is assigned 'NA'," \
             "which is invalid for type (positional parameter 1) 'string'." >&2
         return 1
     fi  #TODO: Not sure if this is needed...

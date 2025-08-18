@@ -83,7 +83,7 @@ function check_string_fastqs() {
             unset IFS
         else
             fq_1="${fq}"
-            fq_2="#N/A"
+            fq_2="NA"
         fi
 
         #  Ensure FASTQ file(s) exist
@@ -93,7 +93,7 @@ function check_string_fastqs() {
         fi
 
         #  Validate suffix for SE FASTQ file
-        if [[ "${fq_2}" == "#N/A" && "${fq_1}" != *"${sfx_se}" ]]; then
+        if [[ "${fq_2}" == "NA" && "${fq_1}" != *"${sfx_se}" ]]; then
             echo \
                 "Error: SE file '${fq_1}' does not match expected suffix:" \
                 "'${sfx_se}'." >&2
@@ -101,7 +101,7 @@ function check_string_fastqs() {
         fi
 
         #  Validate suffix for FASTQ #1 of PE FASTQ file pair
-        if [[ "${fq_2}" != "#N/A" && "${fq_1}" != *"${sfx_pe}" ]]; then
+        if [[ "${fq_2}" != "NA" && "${fq_1}" != *"${sfx_pe}" ]]; then
             echo \
                 "Error: PE file '${fq_1}' does not match expected suffix:" \
                 "'${sfx_pe}'." >&2
@@ -109,7 +109,7 @@ function check_string_fastqs() {
         fi
 
         #  If PE, dynamically derive 'fq_2' and check file existence
-        if [[ "${fq_2}" != "#N/A" ]]; then
+        if [[ "${fq_2}" != "NA" ]]; then
             der_2="$(get_paired_suffix "${fq_1}" "${sfx_pe}")"
             fq_2="${fq_1/${sfx_pe}/${der_2}}"
             

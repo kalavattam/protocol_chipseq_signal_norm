@@ -1,24 +1,18 @@
 #!/bin/bash
 
 function align_fastqs() {
-    local threads=1
-    local aligner="bowtie2"
-    local a_type="end-to-end"
-    local mapq=0
-    local req_flg=false
-    local index
-    local fq_1
-    local fq_2
-    local outfile
-    local qname=false
-    local args_sam
-    local args_bt2
-    local args_bwa
-    local bam_qnam
-    local bam_mate
-    local bam_coor
-    local bam_mark
+    local threads aligner a_type mapq req_flg index fq_1 fq_2 outfile qname
+    local args_sam args_bt2 args_bwa
+    local bam_qnam bam_mate bam_coor bam_mark
     local show_help
+
+    #  Assign default positional parameter values
+    threads=1
+    aligner="bowtie2"
+    a_type="end-to-end"
+    mapq=0
+    req_flg=false
+    qname=false
 
     show_help=$(cat << EOM
 ------------
@@ -35,14 +29,14 @@ Description:
 
 Keyword parameters:
    -t, --threads  (int):  Number of threads to use (required; default:
-                          ${threads}).
+                          "${threads}").
    -a, --aligner  (str):  Alignment program to use (required: 'bowtie2' or
-                          'bwa'; default: ${aligner}).
+                          'bwa'; default: "${aligner}").
   -at, --a_type   (str):  Alignment type for Bowtie 2 (required if using
                           Bowtie 2, ignored if using BWA: 'local', 'global',
-                          or 'end-to-end'; default: ${a_type}).
+                          or 'end-to-end'; default: "${a_type}").
   -mq, --mapq     (int):  MAPQ threshold for filtering the BAM outfile
-                          (required; default: ${mapq}).
+                          (required; default: "${mapq}").
   -rf, --req_flg (flag):  Require flag bit 2, signifying that paired-end
                           alignments are indeed properly paired, for
                           filtering the BAM outfile (optional; ignored if
@@ -160,9 +154,9 @@ EOM
         bowtie2)
             case "${a_type}" in
                 local|global|end-to-end) : ;;
-                "#N/A")
+                "NA")
                     echo \
-                        "Error: '--a_type' cannot be '#N/A' when using Bowtie" \
+                        "Error: '--a_type' cannot be 'NA' when using Bowtie" \
                         "2." >&2
                     return 1
                     ;;
@@ -176,9 +170,9 @@ EOM
             esac
             ;;
         bwa)
-            if [[ "${a_type}" != "#N/A" ]]; then
+            if [[ "${a_type}" != "NA" ]]; then
                 echo \
-                    "Error: '--a_type' should be '#N/A' when using 'bwa'," \
+                    "Error: '--a_type' should be 'NA' when using 'bwa'," \
                     "but was assigned '${a_type}'." >&2
                 return 1
             fi

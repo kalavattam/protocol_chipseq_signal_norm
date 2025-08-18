@@ -399,6 +399,7 @@ function generate_fmt_str() {
 #+ Workflow function that processes a sample using global variables; extracts
 #+ siQ-ChIP metadata from a TSV table, computes alignment counts and average
 #+ fragment lengths, and minimum input depth values
+#+ #TODO: Delineate variables expected to be assigned and available globally
 # shellcheck disable=SC2154
 function process_samp_alpha() {
     #TODO: Write, return 'show_help' when called without argument or with '-h'
@@ -480,6 +481,7 @@ function process_samp_alpha() {
 #+ 
 #+ Workflow function that processes a sample using global variables; computes
 #+ computes alignment counts and minimum input depth values
+#+ #TODO: Delineate variables expected to be assigned and available globally
 # shellcheck disable=SC2154
 function process_samp_spike() {
     #TODO: Write, return 'show_help' when called without argument or with '-h'

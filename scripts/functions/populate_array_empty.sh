@@ -1,6 +1,6 @@
 #!/bin/bash
 
-#  Function to populate array with '#N/A' if it is empty
+#  Function to populate array with 'NA' if it is empty
 function populate_array_empty() {
     local arr_nam="${1}"
     local target="${2}"
@@ -11,7 +11,7 @@ function populate_array_empty() {
     # shellcheck disable=SC2154
     if [[ "${arr_siz}" -eq 0 ]]; then
         for ((i = 0; i < target; i++)); do
-            eval "${arr_nam}+=( \"#N/A\" )"
+            eval "${arr_nam}+=( \"NA\" )"
         done
     fi
 }
