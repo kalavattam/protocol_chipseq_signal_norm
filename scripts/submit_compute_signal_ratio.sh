@@ -41,17 +41,17 @@ function set_args_opt() {
     unset optional && typeset -g -a optional
     if ${track}; then optional+=( --track ); fi
 
-    if [[ -n "${scl_fct}" && "${scl_fct}" != "#N/A" ]]; then
+    if [[ -n "${scl_fct}" && "${scl_fct}" != "NA" ]]; then
         optional+=( --scl_fct "${scl_fct}" )
     fi
 
-    if [[ -n "${dep_min}" && "${dep_min}" != "#N/A" ]]; then
+    if [[ -n "${dep_min}" && "${dep_min}" != "NA" ]]; then
         optional+=( --dep_min "${dep_min}" )
     fi
 
     if ${log2}; then optional+=( --log2 ); fi
 
-    if [[ -n "${rnd}" && "${rnd}" != "#N/A" ]]; then
+    if [[ -n "${rnd}" && "${rnd}" != "NA" ]]; then
         optional+=( --rnd "${rnd}" )
     fi
 }

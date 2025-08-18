@@ -8,7 +8,7 @@
 show_help=$(cat << EOM
 \${1}=srr      # str: NCBI SRA database run accession code
 \${2}=url_1    # str: URL (FTP or HTTPS) for FASTQ file
-\${3}=url_2    # str: Second FASTQ URL for PE data ("#N/A" for SE)
+\${3}=url_2    # str: Second FASTQ URL for PE data ("NA" for SE)
 \${4}=dir_out  # str: Directory to save FASTQ file(s)
 \${5}=dir_sym  # str: Directory for symlink(s) to FASTQ file(s)
 \${6}=nam_cus  # str: Custom name for symlink(s)
@@ -57,7 +57,7 @@ nam_job="${8}"
 
 #  Download FASTQ file(s)
 echo "Downloading ${srr} from ${url_1}."
-if [[ "${url_2}" != "#N/A" ]]; then
+if [[ "${url_2}" != "NA" ]]; then
     wget --progress=dot:mega -O "${dir_out}/${srr}_R1.fastq.gz" "${url_1}" \
          > "${err_out}/${nam_job}.${srr}_R1.stdout.txt" \
         2> "${err_out}/${nam_job}.${srr}_R1.stderr.txt" ||
@@ -86,7 +86,7 @@ fi
 
 #  Create symlinks to the downloaded file(s) using the custom name
 echo "Symlinking ${srr} to ${nam_cus}."
-if [[ "${url_2}" != "#N/A" ]]; then
+if [[ "${url_2}" != "NA" ]]; then
     ln -sf \
         "${dir_out}/${srr}_R1.fastq.gz" \
         "${dir_sym}/${nam_cus}_R1.fastq.gz" ||

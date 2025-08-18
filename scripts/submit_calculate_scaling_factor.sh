@@ -61,7 +61,7 @@ function set_interactive() {
 #  Parse keyword arguments, assigning them to variables
 #+ 
 #+ Most of the argument inputs are not checked, as this is performed by
-#+ 'execute_*.sh' and, to a certain extent, by the scripts submitted to SLURM
+#+ 'execute_*.sh' and, to a certain extent, the script(s) submitted to SLURM
 dir_scr="${HOME}/repos/protocol_chipseq_signal_norm/scripts"
 env_nam="env_protocol"
 threads=1
@@ -85,11 +85,11 @@ show_help=$(cat << EOM
   -en, --env_nam  Mamba environment to activate (default: '${env_nam}')
    -t, --threads  Number of threads to use (default: '${threads}')
    -m, --mode     Scaling factor mode: 'alpha' or 'spike' (default: '${mode}')
-  -mp, --ser_mip  Comma-separated string of sample "main" IP BAM files
-  -mn, --ser_min  Comma-separated string of sample "main" input BAM files
-  -sp, --ser_sip  Comma-separated string of sample "spike-in" IP BAM files
+  -mp, --ser_mip  Comma-separated list of sample "main" IP BAM files
+  -mn, --ser_min  Comma-separated list of sample "main" input BAM files
+  -sp, --ser_sip  Comma-separated list of sample "spike-in" IP BAM files
                   (required if '--mode spike', ignored if not)
-  -sn, --ser_sin  Comma-separated string of sample "spike-in" input BAM files
+  -sn, --ser_sin  Comma-separated list of sample "spike-in" input BAM files
                   (required if '--mode spike', ignored if not)
   -tm, --tbl_met  Tab-delimited input file of siQ-ChIP metadata metrics
                   (required if '--mode alpha', ignored if not)

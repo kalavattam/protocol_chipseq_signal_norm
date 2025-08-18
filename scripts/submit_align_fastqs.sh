@@ -102,7 +102,7 @@ function process_infile() {
     local sfx_pe="${3}"   # Suffix for PE FASTQ files (FASTQ #1)
     local dir_out="${4}"  # Directory for output files
     local fq_1     # FASTQ file #1 (SE or PE read 1)
-    local fq_2     # FASTQ file #2 (PE read #2; '#N/A' if SE)
+    local fq_2     # FASTQ file #2 (PE read #2; 'NA' if SE)
     local samp     # Sample name derived from FASTQ filename
     local outfile  # Output file
 
@@ -119,14 +119,14 @@ function process_infile() {
         samp="$(basename "${fq_1%%"${sfx_pe}"}")"
     else
         fq_1="${infile}"
-        fq_2="#N/A"
+        fq_2="NA"
         samp="$(basename "${fq_1%%"${sfx_se}"}")"
     fi
 
     #  Validate parsed FASTQ file paths
     validate_var "fq_1" "${fq_1}" || return 1
     
-    if [[ "${fq_2}" != "#N/A" ]]; then
+    if [[ "${fq_2}" != "NA" ]]; then
         validate_var "fq_2" "${fq_2}" || return 1
     fi
 
@@ -143,7 +143,7 @@ function run_alignment() {
     local scr_fnc="${1}"   # Script containing the function to execute
     local threads="${2}"   # Number of threads
     local aligner="${3}"   # Aligner program: 'bowtie2' or 'bwa'
-    local a_type="${4}"    # Alignment type: 'local', 'global', '#N/A'
+    local a_type="${4}"    # Alignment type: 'local', 'global', 'NA'
     local mapq="${5}"      # MAPQ threshold
     local req_flg="${6}"   # Flag: Require flag bit 2 (properly paired reads)
     local index="${7}"     # Index path
@@ -176,7 +176,7 @@ function run_alignment() {
             --index "${index}" \
             --fq_1 "${fq_1}" \
             $(
-                if [[ "${fq_2}" != "#N/A" ]]; then
+                if [[ "${fq_2}" != "NA" ]]; then
                     echo "--fq_2 ${fq_2}"
                 fi
             ) \

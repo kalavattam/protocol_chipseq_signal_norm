@@ -82,7 +82,7 @@ function process_infile() {
     local sfx_se="${2}"  # Suffix for SE FASTQ files
     local sfx_pe="${3}"  # Suffix for PE FASTQ files (FASTQ #1)
     local fq_1  # FASTQ file #1 (SE or PE read 1)
-    local fq_2  # FASTQ file #2 (PE read #2; '#N/A' if SE)
+    local fq_2  # FASTQ file #2 (PE read #2; 'NA' if SE)
     local samp  # Sample name derived from FASTQ filename
 
     #  Validate input arguments
@@ -97,14 +97,14 @@ function process_infile() {
         samp="$(basename "${fq_1%%"${sfx_pe}"}")"
     else
         fq_1="${infile}"
-        fq_2="#N/A"
+        fq_2="NA"
         samp="$(basename "${fq_1%%"${sfx_se}"}")"
     fi
 
     #  Validate parsed FASTQ file paths
     validate_var "fq_1" "${fq_1}" || return 1
 
-    if [[ "${fq_2}" != "#N/A" ]]; then
+    if [[ "${fq_2}" != "NA" ]]; then
         validate_var "fq_2" "${fq_2}" || return 1
     fi
 
@@ -134,7 +134,7 @@ function run_atria() {
     atria \
         -t "${threads}" \
         -r "${fq_1}" \
-        $(if [[ "${fq_2}" != "#N/A" ]]; then echo "-R ${fq_2}"; fi) \
+        $(if [[ "${fq_2}" != "NA" ]]; then echo "-R ${fq_2}"; fi) \
         -o "${dir_out}" \
         --length-range 35:500 \
              > "${log_out}" \
