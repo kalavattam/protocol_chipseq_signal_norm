@@ -1,7 +1,7 @@
 #!/bin/bash
 
 #  Function to summarize resolved argument states
-function summarize_sig_nrm() {
+function summarize_sig_norm() {
     local typ_sig="${1}"  # Type of signal computation
     local scl_fct="${2}"  # Scaling factor
 
@@ -9,19 +9,19 @@ function summarize_sig_nrm() {
     case "${typ_sig}" in
         raw|unadj|unadjusted)
             mth_nrm="No normalization; returning unadjusted signal:"
-            mth_nrm+=" '--typ_sig ${typ_sig}'."
+            mth_nrm+=" '--method ${typ_sig}'."
             ;;
         len|len_frag)
             mth_nrm="Performing fragment-length normalization:"
-            mth_nrm+=" '--typ_sig ${typ_sig}'."
+            mth_nrm+=" '--method ${typ_sig}'."
             ;;
         norm|normalized)
             mth_nrm="Generating normalized coverage (Dickson et al., Sci Rep"
-            mth_nrm+=" 2023): '--typ_sig ${typ_sig}'."
+            mth_nrm+=" 2023): '--method ${typ_sig}'."
             ;;
         *)
             #  Should not be possible to see this
-            mth_nrm="Unknown normalization method: '--typ_sig ${typ_sig}'."
+            mth_nrm="Unknown normalization method: '--method ${typ_sig}'."
             ;;
     esac
 
