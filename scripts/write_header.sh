@@ -68,7 +68,7 @@ fil_out=""
 #  Assign variable for help message
 show_help=$(cat << EOM
 Usage:
-  write_header_alpha.sh [--verbose] [--dry-run] --mode <str> --fil_out <str>
+  write_header.sh [--verbose] [--dry-run] --mode <str> --fil_out <str>
 
 Description:
   Writes a predefined tab-delimited header to the specified output file.
@@ -136,7 +136,7 @@ check_exists_file_dir "f" "${fil_out}" "fil_out"
 
 #  Do the main work ===========================================================
 #  Define the header column names as an array
-case "${type}" in
+case "${mode}" in
     alpha)
         nam_col=(
             "fil_ip" "fil_in" "alpha" "eqn"
