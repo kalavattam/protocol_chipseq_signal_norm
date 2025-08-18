@@ -64,15 +64,8 @@ Arguments:
   -y, --yes      Automatically answer yes to mamba prompts (optional).
 
 Dependencies:
-  - Programs
-    + Bash or Zsh
-    + Conda or Mamba
-  - Functions
-    + check_installed_env
-    + check_installed_mamba
-    + echo_error
-    + echo_warning
-    + handle_env_deactivate
+  - Bash or Zsh
+  - Conda or Mamba
 
 Notes:
   - The call to 'mamba' will be adapted to allow Rosetta translation if the
@@ -144,6 +137,8 @@ Notes:
       - fastqc
       - gawk
       - ipython
+      - matplotlib
+      - multiqc
       - parallel
       - pbzip2
       - pigz
@@ -245,9 +240,9 @@ esac
 handle_env_deactivate
 
 #  Construct the mamba command
-cmd_mamba="mamba create -n ${env_nam}"
+cmd="mamba create -n ${env_nam}"
 
-if ${yes}; then cmd_mamba+=" --yes"; fi
+if ${yes}; then cmd+=" --yes"; fi
 
 #  Assign an array of packages to install
 if [[ "${env_nam}" == "env_align" ]]; then
@@ -321,6 +316,7 @@ elif [[ "${env_nam}" == "env_protocol" ]]; then
         fastqc
         gawk
         ipython
+        matplotlib
         multiqc
         parallel
         pbzip2
@@ -349,7 +345,7 @@ elif [[ "${env_nam}" == "env_siqchip" ]]; then
 fi
 
 #  Run the mamba environment installation
-if ! eval "${cmd_mamba} ${packages[*]}"; then
+if ! eval "${cmd} ${packages[*]}"; then
     echo_error \
         "Failed to create environment '${env_nam}'. Please check the error" \
         "message(s) above."

@@ -78,6 +78,7 @@ def set_interactive():
 def load_tsv(file_path):
     """Load a TSV file into a pandas DataFrame."""
     return pd.read_csv(file_path, sep='\t')
+    # TODO: Remove Pandas as a dependency
 
 
 def determine_scaling_column(df):
@@ -160,10 +161,9 @@ def parse_args():
         required=True,
         help=(
             "Path to the input TSV file containing ChIP-seq metrics from "
-            "running, e.g., execute_calculate_scaling_factor_spike.sh or "
-            "execute_calculate_scaling_factor_alpha.sh. The file must "
-            "contain either an 'alpha' or 'sf' column, and the script will "
-            "use one of these to calculate scaled values."
+            "running, e.g., execute_calculate_scaling_factor.sh. The file "
+            "must contain either an 'alpha' or 'sf' column, and the script "
+            "will use one of these to calculate scaled values."
         )
     )
     parser.add_argument(

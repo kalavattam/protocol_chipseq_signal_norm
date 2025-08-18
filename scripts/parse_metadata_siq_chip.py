@@ -381,6 +381,7 @@ def main():
         print(f"len_ip: {row['len_ip']}")
         print(f"dep_in: {row.get('dep_in', 'N/A')}")
         print(f"dep_ip: {row.get('dep_ip', 'N/A')}")
+        # TODO: Change 'N/A' to 'NA' here and above, and in script using output
 
 
 if __name__ == "__main__":
