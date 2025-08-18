@@ -299,7 +299,7 @@ case "${aligner}" in
                 ;;
         esac
         ;;
-    bwa) a_type="#N/A" ;;
+    bwa) a_type="NA" ;;
     *)
         echo_error \
             "Selection associated with '--aligner' is not valid: "\
@@ -323,12 +323,10 @@ check_exists_file_dir "d" "${dir_out}" "dir_out"
 check_supplied_arg -a "${sfx_se}" -n "sfx_se"
 check_supplied_arg -a "${sfx_pe}" -n "sfx_pe"
 
-if [[ -n "${err_out}" ]]; then
-    check_exists_file_dir "d" "${err_out}" "err_out"
-elif [[ -z "${err_out}" ]]; then
+if [[ -z "${err_out}" ]]; then
     err_out="${dir_out}/err_out"
-    check_exists_file_dir "d" "${err_out}" "err_out"
 fi
+check_exists_file_dir "d" "${err_out}" "err_out"
 
 check_supplied_arg -a "${nam_job}" -n "nam_job"
 
@@ -361,7 +359,7 @@ fi
 #  Debug parallelization information
 if ${verbose}; then
     print_parallel_info \
-        "${slurm}" "${max_job:-#N/A}" "${par_job}" "${threads}" "arr_infile"
+        "${slurm}" "${max_job:-UNSET}" "${par_job}" "${threads}" "arr_infile"
 fi
 
 
@@ -391,7 +389,7 @@ if ${verbose}; then
     echo "env_nam=${env_nam}"
     echo "scr_sub=${scr_sub}"
     echo "scr_fnc=${scr_fnc}"
-    echo "par_job=${par_job:-#N/A}"
+    echo "par_job=${par_job:-UNSET}"
     echo ""
     echo ""
     echo "###################################"
@@ -413,9 +411,9 @@ if ${verbose}; then
     echo "sfx_pe=${sfx_pe}"
     echo "err_out=${err_out}"
     echo "nam_job=${nam_job}"
-    echo "max_job=${max_job:-#N/A}"
+    echo "max_job=${max_job:-UNSET}"
     echo "slurm=${slurm}"
-    echo "time=${time:-#N/A}"
+    echo "time=${time:-UNSET}"
     echo ""
     echo ""
     echo "#################################"

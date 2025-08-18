@@ -5,7 +5,7 @@
 
 
 #  Run script in interactive mode (true) or command-line mode (false)
-interactive=true
+interactive=false
 
 #  Exit on errors, unset variables, or pipe failures if not in "interactive
 #+ mode"
@@ -77,7 +77,7 @@ function set_interactive() {
     verbose=true
     dry_run=true
     threads=6
-    mode="spike"
+    mode="alpha"
     ser_mip="$(  ## WARNING: Change search parameters as needed ##
         bash "${dir_scr}/find_files.sh" \
             --dir_fnd "${dir_bam}" \
@@ -331,12 +331,10 @@ check_exists_file_dir "d" "$(dirname "${fil_out}")" "fil_out"
 check_supplied_arg -a "${rnd}" -n "rnd"
 check_int_pos "${rnd}" "rnd"
 
-if [[ -n "${err_out}" ]]; then
-    check_exists_file_dir "d" "${err_out}" "err_out"
-elif [[ -z "${err_out}" ]]; then
+if [[ -z "${err_out}" ]]; then
     err_out="${dir_out}/err_out"
-    check_exists_file_dir "d" "${err_out}" "err_out"
 fi
+check_exists_file_dir "d" "${err_out}" "err_out"
 
 check_supplied_arg -a "${nam_job}" -n "nam_job"
 
@@ -393,7 +391,7 @@ if [[ "${mode}" == "spike" ]]; then
 fi
 
 print_parallel_info \
-    "${slurm}" "${max_job:-#N/A}" "${par_job}" "${threads}" \
+    "${slurm}" "${max_job:-UNSET}" "${par_job}" "${threads}" \
     "arr_mip" "arr_min" "${extra[@]}"
 
 if [[ "${mode}" == "spike" ]]; then unset extra; fi
@@ -424,7 +422,7 @@ if ${verbose}; then
     echo "dir_scr=${dir_scr}"
     echo "scr_sub=${scr_sub}"
     echo "scr_hdr=${scr_hdr}"
-    echo "par_job=${par_job:-#N/A}"
+    echo "par_job=${par_job:-UNSET}"
     echo ""
     echo ""
     echo "###################################"
@@ -436,17 +434,17 @@ if ${verbose}; then
     echo "threads=${threads}"
     echo "ser_mip=${ser_mip}"
     echo "ser_min=${ser_min}"
-    echo "ser_sip=${ser_sip:-#N/A}"
-    echo "ser_sin=${ser_sin:-#N/A}"
-    echo "tbl_met=${tbl_met:-#N/A}"
-    echo "eqn=${eqn:-#N/A}"
+    echo "ser_sip=${ser_sip:-UNSET}"
+    echo "ser_sin=${ser_sin:-UNSET}"
+    echo "tbl_met=${tbl_met:-UNSET}"
+    echo "eqn=${eqn:-UNSET}"
     echo "fil_out=${fil_out}"
     echo "rnd=${rnd}"
     echo "err_out=${err_out}"
     echo "nam_job=${nam_job}"
-    echo "max_job=${max_job:-#N/A}"
+    echo "max_job=${max_job:-UNSET}"
     echo "slurm=${slurm}"
-    echo "time=${time:-#N/A}"
+    echo "time=${time:-UNSET}"
     echo ""
     echo ""
     echo "###################################"

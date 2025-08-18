@@ -282,12 +282,10 @@ check_exists_file_dir "d" "$(dirname "${fil_out}")" "fil_out"
 check_supplied_arg -a "${rnd}" -n "rnd"
 check_int_pos "${rnd}" "rnd"
 
-if [[ -n "${err_out}" ]]; then
-    check_exists_file_dir "d" "${err_out}" "err_out"
-elif [[ -z "${err_out}" ]]; then
+if [[ -z "${err_out}" ]]; then
     err_out="${dir_out}/err_out"
-    check_exists_file_dir "d" "${err_out}" "err_out"
 fi
+check_exists_file_dir "d" "${err_out}" "err_out"
 
 check_supplied_arg -a "${nam_job}" -n "nam_job"
 
@@ -351,7 +349,7 @@ if ${verbose}; then
     echo "dir_scr=${dir_scr}"
     echo "scr_sub=${scr_sub}"
     echo "denom=${denom}"
-    echo "par_job=${par_job:-#N/A}"
+    echo "par_job=${par_job:-UNSET}"
     echo ""
     echo ""
     echo "###################################"

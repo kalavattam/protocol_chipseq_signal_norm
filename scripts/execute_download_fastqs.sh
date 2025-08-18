@@ -208,12 +208,10 @@ check_exists_file_dir "d" "${dir_sym}" "dir_sym"
 
 check_supplied_arg -a "${nam_job}" -n "nam_job"
 
-if [[ -n "${err_out}" ]]; then
-    check_exists_file_dir "d" "${err_out}" "err_out"
-elif [[ -z "${err_out}" ]]; then
+if [[ -z "${err_out}" ]]; then
     err_out="${dir_out}/err_out"
-    check_exists_file_dir "d" "${err_out}" "err_out"
 fi
+check_exists_file_dir "d" "${err_out}" "err_out"
 
 if "${slurm}"; then
     check_supplied_arg -a "${time}" -n "time"
@@ -296,7 +294,7 @@ while IFS=$'\t' read -r line; do
     urls=$(echo "${line}" | cut -f $(( url_col_idx + 1 )))
 
     #  Handle missing run_acc entries
-    if [[ -z "${run_acc}" || "${run_acc}" == "#N/A" ]]; then
+    if [[ -z "${run_acc}" || "${run_acc}" == "NA" ]]; then
         run_acc="SRR_undefined_${iter}"
     fi
     
@@ -310,7 +308,7 @@ while IFS=$'\t' read -r line; do
     #  For single-end data
     if [[ ${#fastq_urls[@]} -eq 1 ]]; then
         list_url_1+=( "${fastq_urls[0]}" )
-        list_url_2+=( "#N/A" )  # No second URL for single-end data
+        list_url_2+=( "NA" )  # No second URL for single-end data
     #  For paired-end data
     elif [[ ${#fastq_urls[@]} -eq 2 ]]; then
         list_url_1+=( "${fastq_urls[0]}" )

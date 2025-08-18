@@ -317,12 +317,10 @@ if [[ -n "${dep_min}" ]]; then check_str_delim "dep_min" "${dep_min}"; fi
 check_supplied_arg -a "${rnd}" -n "rnd"
 check_int_pos "${rnd}" "rnd"
 
-if [[ -n "${err_out}" ]]; then
-    check_exists_file_dir "d" "${err_out}" "err_out"
-elif [[ -z "${err_out}" ]]; then
+if [[ -z "${err_out}" ]]; then
     err_out="${dir_out}/err_out"
-    check_exists_file_dir "d" "${err_out}" "err_out"
 fi
+check_exists_file_dir "d" "${err_out}" "err_out"
 
 check_supplied_arg -a "${nam_job}" -n "nam_job"
 
@@ -400,7 +398,7 @@ else
 fi
 
 for s in "${arr_scl_fct[@]}"; do
-    if [[ "${s}" != "#N/A" ]]; then check_flt_pos "${s}" "scl_fct"; fi
+    if [[ "${s}" != "NA" ]]; then check_flt_pos "${s}" "scl_fct"; fi
 done
 unset s
 
@@ -412,7 +410,7 @@ else
 fi
 
 for d in "${arr_dep_min[@]}"; do
-    if [[ "${d}" != "#N/A" ]]; then check_flt_pos "${d}" "dep_min"; fi
+    if [[ "${d}" != "NA" ]]; then check_flt_pos "${d}" "dep_min"; fi
 done
 unset d
 
@@ -451,7 +449,7 @@ if ${verbose}; then
     echo "env_nam=${env_nam}"
     echo "scr_sub=${scr_sub}"
     echo "scr_cvg=${scr_cvg}"
-    echo "par_job=${par_job:-#N/A}"
+    echo "par_job=${par_job:-UNSET}"
     echo ""
     echo ""
     echo "###################################"
