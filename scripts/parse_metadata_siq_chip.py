@@ -136,81 +136,273 @@ def set_interactive():
     )
 
 
-def parse_bam_filename(filename):
+def eprint(*args, **kwargs):
+    print(*args, file=sys.stderr, **kwargs)
+
+
+# ###############################
+# ##  Start: Work in progress  ##
+# ###############################
+
+# OLD
+# def parse_bam_filename(filename):
+#     """
+#     Parse a BAM filename into its components based on the naming scheme.
+# 
+#     The expected filename format is as follows:
+#         assay_genotype_state_treatment_factor_strain/replicate.
+# 
+#     Required filename components:
+#         - assay: Must be 'IP' or 'in' and is always present. It must be
+#                  followed by an underscore.
+#         - factor: A required component preceded by an underscore.
+#         - strain/replicate: A required component preceded by an underscore;
+#                             it marks the end of the pattern.
+# 
+#     Optional filename components:
+#         - genotype: If present, must be preceded by an underscore.
+#         - state: An optional component with preferred values (e.g., 'G1',
+#                  'G2M', 'log', or 'Q'), but can also be flexible. If present,
+#                  it must be preceded by an underscore.
+#         - treatment: An optional component preceded by an underscore if
+#                      present.
+# 
+#     Args:
+#         filename (str): Path to the BAM file.
+# 
+#     Returns:
+#         dict: Parsed components as a dictionary with keys 'assay',
+#               'genotype', 'state', 'treatment', 'factor', and 'strain'.
+#     """
+#     nam_bas = os.path.basename(filename)
+#     bam_id = nam_bas.split('.')[0]  # Remove extension
+# 
+#     #  Define regex pattern to match the filename structure
+#     pattern = (
+#         r'^(?P<assay>IP|in)'                    # assay: mandatory (IP or in)
+#         r'(?:_(?P<genotype>[^_]+))?'            # genotype: optional
+#         r'(?:_(?P<state>G1|G2M|log|Q|[^_]+))?'  # state: optional (flexible)
+#         r'(?:_(?P<treatment>[^_]+))?'           # treatment: optional
+#         r'_(?P<factor>[^_]+)'                   # factor: mandatory
+#         r'_(?P<strain>[^_]+)$'                  # strain/replicate: mandatory
+#     )
+# 
+#     match = re.match(pattern, bam_id)
+# 
+#     if not match:
+#         raise ValueError(
+#             f"Filename '{filename}' does not match the expected pattern."
+#         )
+# 
+#     #  Extract matched groups as a dictionary
+#     comp = match.groupdict()
+#     return comp
+
+# "Parsed BAM filename components:\n",
+# f"  - eqn={args.eqn}\n",
+# f"  - assay={assay}\n",
+# f"  - genotype={genotype}\n",
+# f"  - state={state}\n",
+# f"  - treatment={treatment}\n",
+# f"  - factor={factor}\n",
+# f"  - strain/replicate={strain}"
+
+# NEW
+def parse_bam_filename(filename, verbose=False):
     """
-    Parse a BAM filename into its components based on the naming scheme.
+    Parse a BAM filename into its components.
 
-    The expected filename format is as follows:
-        assay_genotype_state_treatment_factor_strain/replicate.
-    
-    Required filename components:
-        - assay: Must be 'IP' or 'in' and is always present. It must be
-                 followed by an underscore.
-        - factor: A required component preceded by an underscore.
-        - strain/replicate: A required component preceded by an underscore; it
-                            marks the end of the pattern.
-
-    Optional filename components:
-        - genotype: If present, must be preceded by an underscore.
-        - state: An optional component with preferred values (e.g., 'G1',
-                 'G2M', 'log', or 'Q'), but can also be flexible. If present,
-                 it must be preceded by an underscore.
-        - treatment: An optional component preceded by an underscore if
-                     present.
-
-    Args:
-        filename (str): Path to the BAM file.
-
-    Returns:
-        dict: Parsed components as a dictionary with keys 'assay', 'genotype',
-              'state', 'treatment', 'factor', and 'strain'.
+    Expected tokens (underscored):
+    assay _ [genotype] _ ... (state/factor in any order) ... [treatment?] _ strain
     """
     nam_bas = os.path.basename(filename)
-    bam_id = nam_bas.split('.')[0]  # Remove extension
 
-    #  Define regex pattern to match the filename structure
-    pattern = (
-        r'^(?P<assay>IP|in)'                    # assay: mandatory (IP or in)
-        r'(?:_(?P<genotype>[^_]+))?'            # genotype: optional
-        r'(?:_(?P<state>G1|G2M|log|Q|[^_]+))?'  # state: optional (flexible)
-        r'(?:_(?P<treatment>[^_]+))?'           # treatment: optional
-        r'_(?P<factor>[^_]+)'                   # factor: mandatory
-        r'_(?P<strain>[^_]+)$'                  # strain/replicate: mandatory
-    )
+    #  Strip BAM/CRAM/SAM and an extra trailing tag like ".sc"
+    stem = nam_bas
+    for ext in ('.bam', '.cram', '.sam'):
+        if stem.endswith(ext):
+            stem = stem[: -len(ext)]
+            break
+    stem = re.sub(r'\.[^.]+$', '', stem)
 
-    match = re.match(pattern, bam_id)
+    toks = stem.split('_')
+    if len(toks) < 3:
+        raise ValueError(f"Filename '{filename}' is too short to parse.")
 
-    if not match:
+    assay = toks[0]
+    if assay not in ('IP', 'in'):
         raise ValueError(
-            f"Filename '{filename}' does not match the expected pattern."
+            f"Assay must be 'IP' or 'in' (got '{assay}') in '{filename}'."
         )
 
-    #  Extract matched groups as a dictionary
-    comp = match.groupdict()
-    return comp
+    strain = toks[-1]
+    mid = toks[1:-1]  # everything between assay and strain
+
+    # Known states; extend if needed.
+    STATES = {'G1', 'G2M', 'log', 'Q'}
+
+    def is_state(tok: str) -> bool:
+        return tok in STATES
+
+    # Accept common histone marks, "*-flag" proteins, or whitelisted proteins.
+    def is_factor(tok: str) -> bool:
+        return bool(re.match(
+            r'^(?:'
+            r'H[1-4](?:[A-Za-z0-9]+)?'  # H2B, H3, H4K20...
+            r'|[A-Za-z0-9]+-flag'       # Isw1-flag, Swr1-flag, Htz1-flag
+            r'|Hmo1|Hho1'
+            r')$',
+            tok
+        ))
+
+    # Genotype heuristics:
+    # - 'WT' is a genotype
+    # - token ending with '-KO' (case-insensitive) is a genotype
+    # - explicitly NOT tokens ending with '-flag' (those are factors)
+    def is_genotype(tok: str) -> bool:
+        if tok == 'WT':
+            return True
+        if tok.lower().endswith('-ko'):
+            return True
+        if tok.lower().endswith('-flag'):
+            return False
+        return False
+
+    genotype = 'N/A'
+    state = 'N/A'
+    factor = None
+    treatment = 'N/A'
+
+    if verbose:
+        eprint(f"[parse] tokens={toks}  mid={mid}")
+
+    # 1) Pull off genotype if present at the front of mid.
+    cand = mid[:]
+    if cand:
+        if is_genotype(cand[0]):
+            genotype = cand.pop(0)
+            if verbose:
+                eprint(f"[parse] genotype={genotype}, remaining={cand}")
+
+    # 2) Find state and factor anywhere in remaining tokens (prefer first hits).
+    state_idx = next((i for i, t in enumerate(cand) if is_state(t)), None)
+    factor_idx = next((i for i, t in enumerate(cand) if is_factor(t)), None)
+
+    # If ambiguous ordering caused wrong picks, try to favor a legit pair.
+    if state_idx is not None and factor_idx is not None:
+        # both found—good
+        state = cand[state_idx]
+        factor = cand[factor_idx]
+        # 3) Anything left (other than those indices) could be treatment
+        rest = [t for i, t in enumerate(cand) if i not in {state_idx, factor_idx}]
+        if rest:
+            treatment = rest[0]
+    else:
+        # Fallback heuristics similar to your original logic.
+        if len(cand) == 1:
+            t = cand[0]
+            if is_state(t):
+                state = t
+            elif is_factor(t):
+                factor = t
+        elif len(cand) >= 2:
+            a, b = cand[0], cand[1]
+            rest = cand[2:]
+            if is_state(a) and is_factor(b):
+                state, factor = a, b
+            elif is_factor(a) and is_state(b):
+                factor, state = a, b
+            else:
+                if is_state(a):
+                    state = a
+                if is_state(b) and state == 'N/A':
+                    state = b
+                if is_factor(a) and factor is None:
+                    factor = a
+                if is_factor(b) and factor is None:
+                    factor = b
+            if rest:
+                treatment = rest[0]
+
+    if verbose:
+        eprint(
+            "[parse] resolved:",
+            f"assay={assay} genotype={genotype} state={state} "
+            f"factor={factor} treatment={treatment} strain={strain}"
+        )
+
+    if factor is None:
+        raise ValueError(
+            f"Could not determine factor from filename '{filename}'. "
+            f"Parsed: assay={assay}, genotype={genotype}, state={state}, "
+            f"strain={strain}"
+        )
+
+    return {
+        'assay': assay,
+        'genotype': genotype,
+        'state': state,
+        'treatment': treatment,
+        'factor': factor,
+        'strain': strain,
+    }
 
 
-def load_file(file_path):
-    """
-    Load CSV/TSV file as a list of dictionaries, standardizing column names.
-    """
+# OLD
+# def load_file(file_path):
+#     """
+#     Load CSV/TSV file as a list of dictionaries, standardizing column names.
+#     """
+#     if file_path.endswith('.csv'):
+#         delm = ','
+#     elif file_path.endswith(('.tsv', '.txt')):
+#         delm = '\t'
+#     else:
+#         raise ValueError("Input file must be a CSV, TSV, or TXT file.")
+# 
+#     with open(file_path, newline='', encoding='utf-8') as file:
+#         reader = csv.DictReader(file, delimiter=delm)
+# 
+#         # Standardize column names
+#         standardized_columns = {
+#             col: std_col for std_col, alt_nam in col_nam_map.items()
+#             for col in reader.fieldnames if col in alt_nam
+#         }
+# 
+#         # Rename columns and store as a list of dictionaries
+#         data = []
+#         for row in reader:
+#             standardized_row = {
+#                 standardized_columns.get(k, k): v for k, v in row.items()
+#             }
+#             data.append(standardized_row)
+# 
+#     return data
+
+
+# NEW
+def load_file(file_path, verbose=False):
     if file_path.endswith('.csv'):
         delm = ','
     elif file_path.endswith(('.tsv', '.txt')):
         delm = '\t'
     else:
-        raise ValueError("Input file must be a CSV, TSV, or TXT file.")
-    
+        raise ValueError(
+            "Input file must be a CSV, TSV, or tab-separated TXT file."
+        )
+
     with open(file_path, newline='', encoding='utf-8') as file:
         reader = csv.DictReader(file, delimiter=delm)
-        
-        # Standardize column names
+        header = reader.fieldnames or []
         standardized_columns = {
-            col: std_col for std_col, alt_nam in col_nam_map.items()
-            for col in reader.fieldnames if col in alt_nam
+            col: std_col
+            for std_col, alt_nam in col_nam_map.items()
+            for col in header if col in alt_nam
         }
+        if verbose:
+            eprint("[load] header:", header)
+            eprint("[load] standardization map:", standardized_columns)
 
-        # Rename columns and store as a list of dictionaries
         data = []
         for row in reader:
             standardized_row = {
@@ -218,34 +410,93 @@ def load_file(file_path):
             }
             data.append(standardized_row)
 
+    if verbose:
+        eprint(f"[load] rows loaded: {len(data)}")
     return data
 
 
-def find_matching_row(data, factor, strain, genotype='N/A', state='N/A'):
+# OLD
+# def find_matching_row(data, factor, strain, genotype='N/A', state='N/A'):
+#     """
+#     Find a row in the data list matching factor, strain, and optional
+#     genotype/state.
+#     """
+#     for row in data:
+#         if (
+#             row.get('factor', '').lower() == factor.lower()
+#             and row.get('strain', '').lower() == strain.lower()
+#             and (
+#                 genotype == 'N/A' 
+#                 or row.get('genotype', '').lower() == genotype.lower()
+#             )
+#             and (
+#                 state == 'N/A' 
+#                 or row.get('state', '').lower() == state.lower()
+#             )
+#         ):
+#             return row
+# 
+#     raise ValueError(
+#         f"No matching row found for state '{state}', factor '{factor}', "
+#         f"strain '{strain}', genotype '{genotype}'."
+#     )
+
+
+# NEW
+def find_matching_row(data, factor, strain, genotype='N/A', state='N/A',
+                      verbose=False):
     """
-    Find a row in the data list matching factor, strain, and optional
+    Find a metadata row by (factor or factor_abbrev), strain, and optional
     genotype/state.
     """
+    def norm(s):
+        return (s or "").strip().lower()
+
+    nf, ns, ng, nst = map(norm, (factor, strain, genotype, state))
+    if verbose:
+        eprint(f"[match] want: factor={nf} strain={ns} "
+               f"genotype={ng or 'n/a'} state={nst or 'n/a'}")
+
+    def row_matches(row, fac, st):
+        rfac = norm(row.get('factor'))
+        rfab = norm(row.get('factor_abbrev'))
+        rstr = norm(row.get('strain'))
+        rgen = norm(row.get('genotype'))
+        rstate = norm(row.get('state'))
+
+        fac_ok = (fac == rfac) or (fac == rfab)
+        gen_ok = (ng == 'n/a') or (ng == rgen)
+        st_ok = (nst == 'n/a') or (st == rstate)
+
+        if verbose and (rstr == ns):
+            eprint(f"[match] row strain={rstr} fac=({rfac}|{rfab}) "
+                   f"gen={rgen} state={rstate} → "
+                   f"fac_ok={fac_ok} gen_ok={gen_ok} st_ok={st_ok}")
+        return fac_ok and (ns == rstr) and gen_ok and st_ok
+
+    # Pass 1: direct factor/state
     for row in data:
-        if (
-            row.get('factor', '').lower() == factor.lower()
-            and row.get('strain', '').lower() == strain.lower()
-            and (
-                genotype == 'N/A' 
-                or row.get('genotype', '').lower() == genotype.lower()
-            )
-            and (
-                state == 'N/A' 
-                or row.get('state', '').lower() == state.lower()
-            )
-        ):
+        if row_matches(row, nf, nst):
+            if verbose:
+                eprint("[match] PASS1 matched")
+            return row
+
+    # Pass 2: swap factor/state if filename order fooled upstream logic
+    for row in data:
+        if row_matches(row, nst, nf):
+            if verbose:
+                eprint("[match] PASS2 matched with swapped factor/state")
             return row
 
     raise ValueError(
-        f"No matching row found for state '{state}', factor '{factor}', "
-        f"strain '{strain}', genotype '{genotype}'."
+        f"No matching row found for state '{state or 'N/A'}', "
+        f"factor '{factor}', strain '{strain}', genotype '{genotype or 'N/A'}'."
     )
 
+
+# ##############################
+# ##  Stop: Work in progress  ##
+# ##############################
 
 def output_for_shell(**kwargs):
     """Print the extracted values in a shell-parseable format."""
@@ -323,7 +574,7 @@ def main():
         raise ValueError(f"Invalid equation selection: {args.eqn}")
 
     #  Parse the BAM filename
-    comp = parse_bam_filename(args.bam)
+    comp = parse_bam_filename(args.bam, verbose=args.verbose)
     assay = comp['assay']
     genotype = comp.get('genotype', 'N/A')
     state = comp.get('state', 'N/A')
@@ -332,27 +583,29 @@ def main():
     strain = comp['strain']
 
     if args.verbose:
-        print(
-            "Parsed BAM filename components:\n",
-            f"  - eqn={args.eqn}\n",
-            f"  - assay={assay}\n",
-            f"  - genotype={genotype}\n",
-            f"  - state={state}\n",
-            f"  - treatment={treatment}\n",
-            f"  - factor={factor}\n",
+        eprint(
+            "Parsed BAM filename components:\n"
+            f"  - eqn={args.eqn}\n"
+            f"  - assay={assay}\n"
+            f"  - genotype={genotype}\n"
+            f"  - state={state}\n"
+            f"  - treatment={treatment}\n"
+            f"  - factor={factor}\n"
             f"  - strain/replicate={strain}"
         )
 
     #  Load the TSV/CSV file
-    data = load_file(args.tbl_met)
+    data = load_file(args.tbl_met, verbose=args.verbose)
 
     #  Find the matching row
     try:
-        row = find_matching_row(data, factor, strain, genotype, state)
+        row = find_matching_row(
+            data, factor, strain, genotype, state, verbose=args.verbose
+        )
         if args.verbose:
-            print(f"Matching row found:\n{row}")
+            eprint(f"Matching row found:\n{row}")
     except ValueError as e:
-        print(e, file=sys.stderr)
+        eprint(e)
         sys.exit(1)
 
     #  Output based on --shell flag
