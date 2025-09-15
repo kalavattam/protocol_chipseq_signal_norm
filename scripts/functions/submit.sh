@@ -7,7 +7,7 @@
 
 
 #  Print variable assignment(s)
-function debug_var() { printf "%s\n\n" "$@"; }
+function debug_var() { printf "%s\n\n" "$@" >&2; }
 
 
 #  Activate user-supplied Conda/Mamba environment
@@ -32,7 +32,7 @@ function activate_env() {
 }
 
 
-#  Set up SLURM log file paths and create symlinked log files
+#  Set up SLURM log file paths and create hard-linked log files
 function set_logs_slurm() {
     local id_job="${1}"    # SLURM job ID
     local id_tsk="${2}"    # SLURM task ID within the job array
@@ -40,7 +40,7 @@ function set_logs_slurm() {
     local err_out="${4}"   # Directory for stderr and stdout log files
     local nam_job="${5}"   # Name of the job (used in log file naming)
     local err_ini out_ini  # SLURM initial stderr and stdout log files
-    local err_dsc out_dsc  # Symlinked stderr and stdout with descriptive names
+    local err_dsc out_dsc  # Hard-linked stderr and stdout with descriptive names
 
     #  Check required inputs
     for var in id_job id_tsk samp err_out nam_job; do
@@ -64,12 +64,12 @@ function set_logs_slurm() {
     err_dsc="${err_out}/${nam_job}.${samp}.${id_job}-${id_tsk}.stderr.txt"
     out_dsc="${err_out}/${nam_job}.${samp}.${id_job}-${id_tsk}.stdout.txt"
 
-    #  Create symlinked log files
+    #  Create hard-linked log files
     if ! \
         ln -f "${err_ini}" "${err_dsc}"
     then
         echo \
-            "Error: Failed to create symlink: '${err_ini}' to" \
+            "Error: Failed to create hard link: '${err_ini}' to" \
             "'${err_dsc}'." >&2
         return 1
     fi
@@ -78,7 +78,7 @@ function set_logs_slurm() {
         ln -f "${out_ini}" "${out_dsc}"
     then
         echo \
-            "Error: Failed to create symlink: '${out_ini}' to" \
+            "Error: Failed to create hard link: '${out_ini}' to" \
             "'${out_dsc}'." >&2
         return 1
     fi
