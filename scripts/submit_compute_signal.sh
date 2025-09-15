@@ -22,13 +22,13 @@ unit=false
 #  Function to debug, validate, and parse input and output files, returning
 #+ a sample name and output file descriptor
 function process_io() {
-    local mode=""
-    local infile_1=""
-    local infile_2=""
-    local outfile=""
-    local scl_fct=""
-    local opt_var=""
-    local help samp dsc
+    local mode=""        # Computation mode: 'signal', 'ratio', or 'coord'
+    local infile_1=""    # 1° input: BAM (signal/coord) or IP bedGraph (ratio)
+    local infile_2=""    # 2° input: input bedGraph (ratio only)
+    local outfile=""     # Output file path (bedGraph/bedGraph.gz)
+    local scl_fct=""     # Optional scaling factor, e.g., 'alpha' or 'spike'
+    local opt_var=""     # Optional: 'frg_len' (signal), 'dep_min' (ratio)
+    local help samp dsc  # Help text; sample name; output descriptor
 
     help=$(cat << EOM
 Usage:
@@ -101,7 +101,7 @@ EOM
     done
     unset ext
 
-    echo "${samp};${dsc}"
+    echo "${samp},${dsc}"
 }
 
 
@@ -157,6 +157,72 @@ function set_args_opt() {
 }
 
 
+######################
+## Work in progress ##
+######################
+
+#  Helper function: When debugging or dry-running, print an array-built
+#+ command; otherwise execute it
+function run_dry_or_wet() {
+    local arr_nam="${1}"   # Name of the command array
+    local log_out="${2}"   # Path to file for stdout redirection
+    local log_err="${3}"   # Path to file for stderr redirection
+    local dir_out dir_err  # Derived dirs for std(out|err) files
+    local -a commnd        # Local copy of the command array
+    local arr_len=0        # Preset local array length
+
+    #  Check that array exists
+    if ! eval 'declare -p '"${arr_nam}"' >/dev/null 2>&1'; then
+        echo "Error: command array '${arr_nam}' is unset." >&2
+        return 1
+    fi
+
+    #  Get array length and refuse to run if empty
+    eval 'arr_len=${#'"${arr_nam}"'[@]}'
+    if (( arr_len == 0 )); then
+        echo "## WARNING: run_dry_or_wet received an empty command array ##" >&2
+        return 1
+    fi
+
+    #  Make a safe local copy of the array, preserving element boundaries
+    eval 'commnd=( "${'"${arr_nam}"'[@]}" )'
+
+    #  Refuse to run if log dirs are neither existent nor writable
+    dir_out="$(dirname "${log_out}")"
+    dir_err="$(dirname "${log_err}")"
+
+    if [[ ! -d "${dir_out}" || ! -d "${dir_err}" ]]; then
+        echo "Error: Log directory missing: '${dir_out}' or '${dir_err}'." >&2
+        return 1
+    fi
+
+    if [[ ! -w "${dir_out}" || ! -w "${dir_err}" ]]; then
+        echo "Error: Log directory not writable: '${dir_out}' or '${dir_err}'." >&2
+        return 1
+    fi
+
+    #  In debug or dry-run mode, show the exact command and redirections
+    if [[ "${debug}" == "true" || "${dry_run}" == "true" ]]; then
+        printf '%q ' "${commnd[@]}" >&2
+        echo ">> ${log_out} 2>> ${log_err}" >&2
+        echo "" >&2
+        echo "" >&2
+    fi
+
+    #  Execute the command with logging when not in dry-run mode
+    if [[ "${dry_run}" == "false" ]]; then
+        "${commnd[@]}" >> "${log_out}" 2>> "${log_err}"
+        return $?
+    fi
+
+    return 0
+}
+
+######################
+## Work in progress ##
+######################
+
+
 #  Helper function to run 'compute_signal.py'
 function run_comp_signal() {
     local debug="${1}"     # Print 'debug' statements: 'true' or 'false'
@@ -171,7 +237,8 @@ function run_comp_signal() {
     local err_out="${10}"  # Directory for stdout and stderr
     local nam_job="${11}"  # Job name
     local dsc="${12}"      # Descriptor for log file naming
-    local log_out log_err cmd
+    local log_out log_err  # Explicit local variable declarations
+    local -a optional cmd  # Explicit local array declarations
 
     #  Generate optional arguments array dynamically
     IFS="," read -r -a optional <<< "$(
@@ -180,8 +247,8 @@ function run_comp_signal() {
 
     #  Debug array of optional arguments
     if [[ "${debug}" == "true" ]]; then
-        echo "set_args_opt(): optional=( ${optional[*]} )"
-        echo ""
+        echo "set_args_opt(): optional=( ${optional[*]} )" >&2
+        echo "" >&2
     fi
 
     #  Define paths for log output files
@@ -200,18 +267,8 @@ function run_comp_signal() {
     if [[ -n "${method}" ]]; then cmd+=( --method "${method}" ); fi
     cmd+=( "${optional[@]}" )
 
-    #  Debug call to 'compute_signal.py'
-    if [[ "${debug}" == "true" || "${dry_run}" == "true" ]]; then
-        printf '%q ' "${cmd[@]}"
-        echo ">> ${log_out} 2>> ${log_err}"
-        echo ""
-        echo ""
-    fi
-
-    #  Execute 'compute_signal.py', writing stdout and stderr to log files
-    if [[ "${dry_run}" == "false" ]]; then
-        "${cmd[@]}" >> "${log_out}" 2>> "${log_err}"
-    fi
+    #  Debug or execute call to 'compute_signal.py'
+    run_dry_or_wet cmd "${log_out}" "${log_err}" || return 1  # Fail fast
 }
 
 
@@ -229,7 +286,9 @@ function run_comp_ratio() {
     local err_out="${10}"  # Directory for log file output (stderr, stdout)
     local nam_job="${11}"  # Job name used in log filenames
     local dsc="${12}"      # Descriptor string for logs
-    
+    local log_out log_err  # Explicit local variable declarations
+    local -a optional cmd  # Explicit local array declarations
+
     #  Generate optional arguments array dynamically
     IFS="," read -r -a optional <<< "$(
         set_args_opt "ratio" \
@@ -238,205 +297,141 @@ function run_comp_ratio() {
 
     #  Debug array of optional arguments
     if [[ "${debug}" == "true" ]]; then
-        echo "set_args_opt(): optional=( ${optional[*]} )"
-        echo ""
+        echo "set_args_opt(): optional=( ${optional[*]} )" >&2
+        echo "" >&2
     fi
 
     #  Define paths for log output files
     log_out="${err_out}/${nam_job}.${dsc}.stdout.txt"
     log_err="${err_out}/${nam_job}.${dsc}.stderr.txt"
 
-    #  Debug call to 'compute_signal_ratio.py'
-    if [[ "${debug}" == "true" || ${dry_run} == "true" ]]; then
-        echo "python ${scr_rat} \\"
-        echo "    --verbose \\"
-        echo "    --fil_ip ${fil_ip} \\"
-        echo "    --fil_in ${fil_in} \\"
-        echo "    --fil_out ${outfile} \\"
-        echo "    ${optional[*]} \\"
-        echo "        >> ${log_out} \\"
-        echo "       2>> ${log_err}"
-        echo ""
-    fi
+    #  Build call to 'compute_signal_ratio.py'
+    cmd=(
+        python "${scr_rat}"
+            --verbose
+            --fil_ip "${fil_ip}"
+            --fil_in "${fil_in}"
+            --fil_out "${outfile}"
+            "${optional[@]}"
+    )
 
-    #  Execute 'compute_signal_ratio.py', writing stdout and stderr to log
-    #+ files
-    if [[ ${dry_run} == "false" ]]; then
-        python "${scr_rat}" \
-            --verbose \
-            --fil_ip "${fil_ip}" \
-            --fil_in "${fil_in}" \
-            --fil_out "${outfile}" \
-            "${optional[@]}" \
-                 >> "${log_out}" \
-                2>> "${log_err}"
-    fi
+    #  Debug or execute call to 'compute_signal_ratio.py'
+    run_dry_or_wet cmd "${log_out}" "${log_err}" || return 1  # Fail fast
 }
 
 
-#  Helper function to run SLURM or non-SLURM signal computation jobs
-function run_task_signal() {
-    local idx="${1}"
+######################
+## Work in progress ##
+######################
 
-    infile="${arr_infile[idx]}"
-    outfile="${arr_outfile[idx]}"
-    scl_fct="${arr_scl_fct[idx]}"
-    usr_frg="${arr_usr_frg[idx]}"
+#  Function to print an element from an indexed array by its name and index to
+#+ stdout
+function get_arr_elem() {
+    # ${1}: array name
+    # ${2}: index
+    eval 'declare -p '"${1}"' >/dev/null 2>&1' || {
+        echo "Error: array '${1}' is unset." >&2
+        return 1
+    }
+    eval 'printf "%s\n" "${'"${1}"'['"${2}"']}"'
+}
 
-    if [[ "${debug}" == "true" ]]; then
-        debug_var \
-            "infile=${infile}" \
-            "outfile=${outfile}" \
-            "scl_fct=${scl_fct}" \
-            "usr_frg=${usr_frg}"
+
+#  Prepare per-task inputs and logging info used by all run_task_* helper
+#+ functions
+#+   - Pulls array elements by name (infile(s), outfile, optional vars)
+#+   - Emits debug snapshots
+#+   - Calls process_io to derive sample (samp) and descriptor (dsc)
+#+   - If under SLURM, obtains init/descriptor log paths via set_logs_slurm
+#+ 
+#+ Returns a comma-separated line:
+#+   infile_1,infile_2?,outfile,samp,dsc,err_ini?,out_ini?,err_dsc?,out_dsc?
+function task_prelude() {
+    local mode="${1}"     # Mode: 'signal', 'ratio', or 'coord'
+    local idx="${2}"      # Array index (integer ≥ 0)
+    local arr_in1="${3}"  # Array name: 'infile_1'
+    local arr_in2="${4}"  # Array name: 'infile_2'
+    local arr_out="${5}"  # Array name: 'outfile'
+    local arr_scl="${6}"  # Array name: 'scl_fct'
+    local arr_opt="${7}"  # Array name: 'opt_var' ("" if unused)
+    local infile_1 infile_2 outfile scl_fct opt_var samp dsc 
+    local err_ini out_ini err_dsc out_dsc
+
+    infile_1="$(get_arr_elem "${arr_in1}"   "${idx}")"
+
+    if [[ -n "${arr_in2}"  ]]; then
+       infile_2="$(get_arr_elem "${arr_in2}"  "${idx}")"
     fi
 
-    IFS=';' read -r samp dsc < <(
-        process_io \
-             -m "${mode}"    -i1 "${infile}"  \
-             -o "${outfile}" -sf "${scl_fct}" \
-            -ov "${usr_frg}"
-    ) || return 1
+    outfile="$(get_arr_elem "${arr_out}" "${idx}")"
 
-    if [[ "${debug}" == "true" ]]; then
-        debug_var \
-            "samp=${samp}" \
-            "dsc=${dsc}"
+    if [[ -n "${arr_scl}" ]] ; then
+       scl_fct="$(get_arr_elem "${arr_scl}"  "${idx}")"
     fi
 
-    #  Set up log files if using SLURM
-    if [[ -n "${SLURM_ARRAY_TASK_ID:-}" ]]; then
-        IFS=';' read -r err_ini out_ini err_dsc out_dsc < <(
-            set_logs_slurm \
-            "${id_job}" "${id_tsk}" "${samp}" "${err_out}" "${nam_job}"
-        ) || return 1
+    if [[ -n "${arr_opt}" ]] ; then
+       opt_var="$(get_arr_elem "${arr_opt}" "${idx}")"
+    fi
 
-        if [[ "${debug}" == "true" ]]; then
+    #  Debug inputs
+    if [[ "${debug}" == "true" ]]; then
+        if [[ "${mode}" == "signal" ]]; then
             debug_var \
-                "err_ini=${err_ini}" \
-                "out_ini=${out_ini}" \
-                "err_dsc=${err_dsc}" \
-                "out_dsc=${out_dsc}"
+                "infile=${infile_1}" \
+                "outfile=${outfile}" \
+                "scl_fct=${scl_fct}" \
+                "usr_frg=${opt_var}"
+        elif [[ "${mode}" == "ratio" ]]; then
+            debug_var \
+                "fil_ip=${infile_1}" \
+                "fil_in=${infile_2}" \
+                "outfile=${outfile}" \
+                "scl_fct=${scl_fct}" \
+                "dep_min=${opt_var}"
+        else
+            debug_var \
+                "infile=${infile_1}" \
+                "outfile=${outfile}"
         fi
     fi
 
-    #  Run 'compute_signal.py'
-    run_comp_signal \
-        "${debug}" \
-        "${threads}" \
-        "${infile}" \
-        "${outfile}" \
-        "${siz_bin}" \
-        "${method}" \
-        "${scl_fct}" \
-        "${usr_frg}" \
-        "${rnd}" \
-        "${err_out}" \
-        "${nam_job}" \
-        "${dsc}"
-
-    if [[ -n "${SLURM_ARRAY_TASK_ID:-}" && "${dry_run}" == "false" ]]; then
-        rm "${err_ini}" "${out_ini}"
-    fi
-}
-
-
-#  Helper function to run SLURM or non-SLURM ratio computation jobs
-function run_task_ratio() {
-    local idx="${1}"
-
-    fil_ip="${arr_fil_ip[idx]}"
-    fil_in="${arr_fil_in[idx]}"
-    outfile="${arr_outfile[idx]}"
-    scl_fct="${arr_scl_fct[idx]}"
-    dep_min="${arr_dep_min[idx]}"
-
-    if [[ "${debug}" == "true" ]]; then
-        debug_var \
-            "fil_ip=${fil_ip}" \
-            "fil_in=${fil_in}" \
-            "outfile=${outfile}" \
-            "scl_fct=${scl_fct}" \
-            "dep_min=${dep_min}"
-    fi
-
-    IFS=';' read -r samp dsc < <(
-        process_io \
-             -m "${mode}"    -i1 "${fil_ip}"  \
-            -i2 "${fil_in}"   -o "${outfile}" \
-            -sf "${scl_fct}" -ov "${dep_min}"
-    ) || return 1
-
-    if [[ "${debug}" == "true" ]]; then
-        debug_var \
-            "samp=${samp}" \
-            "dsc=${dsc}"
-    fi
-
-    #  Set up log files if using SLURM
-    if [[ -n "${SLURM_ARRAY_TASK_ID:-}" ]]; then
-        IFS=';' read -r err_ini out_ini err_dsc out_dsc < <(
-            set_logs_slurm \
-            "${id_job}" "${id_tsk}" "${samp}" "${err_out}" "${nam_job}"
+    #  Derive sample ('samp') and descriptor ('dsc') via process_io
+    if [[ "${mode}" == "ratio" ]]; then
+        IFS=',' read -r samp dsc < <(
+            process_io \
+                 -m "${mode}" \
+                -i1 "${infile_1}" \
+                -i2 "${infile_2}" \
+                 -o "${outfile}" \
+                -sf "${scl_fct:-NA}" \
+                -ov "${opt_var:-NA}"
         ) || return 1
-
-        if [[ "${debug}" == "true" ]]; then
-            debug_var \
-                "err_ini=${err_ini}" \
-                "out_ini=${out_ini}" \
-                "err_dsc=${err_dsc}" \
-                "out_dsc=${out_dsc}"
-        fi
+    elif [[ "${mode}" == "signal" ]]; then
+        IFS=',' read -r samp dsc < <(
+            process_io \
+                 -m "${mode}" \
+                -i1 "${infile_1}" \
+                 -o "${outfile}" \
+                -sf "${scl_fct:-NA}" \
+                -ov "${opt_var:-NA}"
+        ) || return 1
+    else
+        IFS=',' read -r samp dsc < <(
+            process_io \
+                 -m "${mode}" \
+                -i1 "${infile_1}" \
+                 -o "${outfile}"
+        ) || return 1
     fi
 
-    #  Run 'compute_signal_ratio.py'
-    run_comp_ratio \
-        "${debug}" \
-        "${fil_ip}" \
-        "${fil_in}" \
-        "${outfile}" \
-        "${scl_fct}" \
-        "${dep_min}" \
-        "${rnd}" \
-        "${track}" \
-        "${log2}" \
-        "${err_out}" \
-        "${nam_job}" \
-        "${dsc}"
-
-    if [[ -n "${SLURM_ARRAY_TASK_ID:-}" && "${dry_run}" == "false" ]]; then
-        rm "${err_ini}" "${out_ini}"
-    fi
-}
-
-
-#  Helper function to run SLURM or non-SLURM fragment coordinate extraction
-#+ jobs
-function run_task_coord() {
-    local idx="${1}"
-
-    infile="${arr_infile[idx]}"
-    outfile="${arr_outfile[idx]}"
-
+    #  Debug 'samp' and 'dsc' output by process_io
     if [[ "${debug}" == "true" ]]; then
-        debug_var \
-            "infile=${infile}" \
-            "outfile=${outfile}"
+        debug_var "samp=${samp}" "dsc=${dsc}"
     fi
 
-    IFS=';' read -r samp dsc < <(
-        process_io \
-            -m "${mode}" -i1 "${infile}" -o "${outfile}"
-    ) || return 1
-
-    if [[ "${debug}" == "true" ]]; then
-        debug_var \
-            "samp=${samp}" \
-            "dsc=${dsc}"
-    fi
-
+    #  If using SLURM, request initial and descriptor log paths
     if [[ -n "${SLURM_ARRAY_TASK_ID:-}" ]]; then
-        IFS=';' read -r err_ini out_ini err_dsc out_dsc < <(
+        IFS=',' read -r err_ini out_ini err_dsc out_dsc < <(
             set_logs_slurm \
                 "${id_job}" "${id_tsk}" "${samp}" "${err_out}" "${nam_job}"
         ) || return 1
@@ -450,7 +445,108 @@ function run_task_coord() {
         fi
     fi
 
-    #  Call 'run_comp_signal' with stub arguments
+    #  Return all values for one of the task callers to parse
+    echo "${infile_1},${infile_2:-},${outfile},${samp},${dsc},${err_ini:-},${out_ini:-},${err_dsc:-},${out_dsc:-}"
+}
+
+
+#  Remove initial SLURM logs only if not in dry-run mode; used by all
+#+ run_task_* helper functions
+function task_epilogue() {
+    if [[ -n "${SLURM_ARRAY_TASK_ID:-}" ]]; then
+        local err_ini="${1}"
+        local out_ini="${2}"
+
+        if [[ -n "${err_ini}" && -f "${err_ini}" ]]; then
+            rm -f "${err_ini}"
+        fi
+
+        if [[ -n "${out_ini}" && -f "${out_ini}" ]]; then
+            rm -f "${out_ini}"
+        fi
+    fi
+}
+
+
+#  Helper function to run SLURM or non-SLURM signal computation jobs
+function run_task_signal() {
+    local idx="${1}"
+    local infile unused outfile samp dsc err_ini out_ini err_dsc out_dsc
+
+    # shellcheck disable=SC2034
+    IFS=',' read -r \
+        infile unused outfile samp dsc \
+        err_ini out_ini err_dsc out_dsc \
+    < <(
+        task_prelude "signal" "${idx}" \
+            "arr_infile" "" "arr_outfile" "arr_scl_fct" "arr_usr_frg"
+    ) || return 1
+
+    run_comp_signal \
+        "${debug}" \
+        "${threads}" \
+        "${infile}" \
+        "${outfile}" \
+        "${siz_bin}" \
+        "${method}" \
+        "$(get_arr_elem arr_scl_fct "${idx}")" \
+        "$(get_arr_elem arr_usr_frg "${idx}")" \
+        "${rnd}" \
+        "${err_out}" \
+        "${nam_job}" \
+        "${dsc}"
+
+    task_epilogue "${err_ini}" "${out_ini}"
+}
+
+
+#  Helper function to run SLURM or non-SLURM ratio computation jobs
+function run_task_ratio() {
+    local idx="${1}"
+    local fil_ip fil_in outfile samp dsc err_ini out_ini err_dsc out_dsc
+
+    IFS=',' read -r \
+        fil_ip fil_in outfile samp dsc \
+        err_ini out_ini err_dsc out_dsc \
+    < <(
+        task_prelude "ratio" "${idx}" \
+            "arr_fil_ip" "arr_fil_in" "arr_outfile" "arr_scl_fct" "arr_dep_min"
+    ) || return 1
+
+    run_comp_ratio \
+        "${debug}" \
+        "${fil_ip}" \
+        "${fil_in}" \
+        "${outfile}" \
+        "$(get_arr_elem arr_scl_fct "${idx}")" \
+        "$(get_arr_elem arr_dep_min "${idx}")" \
+        "${rnd}" \
+        "${track}" \
+        "${log2}" \
+        "${err_out}" \
+        "${nam_job}" \
+        "${dsc}"
+
+    task_epilogue "${err_ini}" "${out_ini}"
+}
+
+
+#  Helper function to run SLURM or non-SLURM fragment coordinate extraction
+#+ jobs
+function run_task_coord() {
+    local idx="${1}"
+    local infile unused outfile samp dsc err_ini out_ini err_dsc out_dsc
+
+    # shellcheck disable=SC2034
+    IFS=',' read -r \
+        infile unused outfile samp dsc \
+        err_ini out_ini err_dsc out_dsc \
+    < <(
+        task_prelude "coord" "${idx}" \
+            "arr_infile" "" "arr_outfile" "" ""
+    ) || return 1
+
+    #  Use stub parameters per your original coord behavior
     run_comp_signal \
         "${debug}" \
         1 \
@@ -465,10 +561,12 @@ function run_task_coord() {
         "${nam_job}" \
         "${dsc}"
 
-    if [[ -n "${SLURM_ARRAY_TASK_ID:-}" && "${dry_run}" == "false" ]]; then
-        rm "${err_ini}" "${out_ini}"
-    fi
+    task_epilogue "${err_ini}" "${out_ini}"
 }
+
+######################
+## Work in progress ##
+######################
 
 
 #  Extract values from a specified field from a delimited text table (e.g.,
@@ -759,7 +857,7 @@ Arguments:
   -me, --method       <str>  Computation subtype (ignored if '--mode coord'; default: "${method}"):
                                - 'unadj', 'frag', 'norm' ('--mode signal')
                                - 'unadj', 'log2' ('--mode ratio')
-  -si, --ser_infile   <str>  Comma-separated list of BAM files ('--mode signal', '--mode coord') <element: str>
+   -i, --ser_infile   <str>  Comma-separated list of BAM files ('--mode signal', '--mode coord') <element: str>
   -ip, --ser_fil_ip   <str>  Comma-separated list of IP bedGraph files ('--mode ratio') <element: str>
   -in, --ser_fil_in   <str>  Comma-separated list of input bedGraph files ('--mode ratio') <element: str>
    -o, --ser_outfile  <str>  Comma-separated list of output file stems <element: str>
@@ -957,31 +1055,31 @@ IFS=$' \t\n'
 #  Debug output to check number of array elements and array element values
 if [[ "${debug}" == "true" ]]; then
     if [[ "${mode}" =~ ^(signal|coord)$ ]]; then
-        echo "\${#arr_infile[@]}=${#arr_infile[@]}"       && echo ""
-        echo "arr_infile=( ${arr_infile[*]} )"            && echo ""
+        echo "\${#arr_infile[@]}=${#arr_infile[@]}" >&2       && echo "" >&2
+        echo "arr_infile=( ${arr_infile[*]} )" >&2            && echo "" >&2
         
         if [[ "${mode}" == "signal" ]]; then
-            echo "\${#arr_usr_frg[@]}=${#arr_usr_frg[@]}" && echo ""
-            echo "arr_usr_frg=( ${arr_usr_frg[*]} )"      && echo ""
+            echo "\${#arr_usr_frg[@]}=${#arr_usr_frg[@]}" >&2 && echo "" >&2
+            echo "arr_usr_frg=( ${arr_usr_frg[*]} )" >&2      && echo "" >&2
         fi
     fi
 
     if [[ "${mode}" == "ratio" ]]; then
-        echo "\${#arr_fil_ip[@]}=${#arr_fil_ip[@]}"       && echo ""
-        echo "arr_fil_ip=( ${arr_fil_ip[*]} )"            && echo ""
-        echo "\${#arr_fil_in[@]}=${#arr_fil_in[@]}"       && echo ""
-        echo "arr_fil_in=( ${arr_fil_in[*]} )"            && echo ""
-        echo "\${#arr_dep_min[@]}=${#arr_dep_min[@]}"     && echo ""
-        echo "arr_dep_min=( ${arr_dep_min[*]} )"          && echo ""
+        echo "\${#arr_fil_ip[@]}=${#arr_fil_ip[@]}" >&2       && echo "" >&2
+        echo "arr_fil_ip=( ${arr_fil_ip[*]} )" >&2            && echo "" >&2
+        echo "\${#arr_fil_in[@]}=${#arr_fil_in[@]}" >&2       && echo "" >&2
+        echo "arr_fil_in=( ${arr_fil_in[*]} )" >&2            && echo "" >&2
+        echo "\${#arr_dep_min[@]}=${#arr_dep_min[@]}" >&2     && echo "" >&2
+        echo "arr_dep_min=( ${arr_dep_min[*]} )" >&2          && echo "" >&2
     fi
 
     if [[ "${mode}" != "coord" ]]; then
-        echo "\${#arr_scl_fct[@]}=${#arr_scl_fct[@]}"     && echo ""
-        echo "arr_scl_fct=( ${arr_scl_fct[*]} )"          && echo ""
+        echo "\${#arr_scl_fct[@]}=${#arr_scl_fct[@]}" >&2     && echo "" >&2
+        echo "arr_scl_fct=( ${arr_scl_fct[*]} )" >&2          && echo "" >&2
     fi
 
-    echo "\${#arr_outfile[@]}=${#arr_outfile[@]}"         && echo ""
-    echo "arr_outfile=( ${arr_outfile[*]} )"              && echo ""
+    echo "\${#arr_outfile[@]}=${#arr_outfile[@]}" >&2         && echo "" >&2
+    echo "arr_outfile=( ${arr_outfile[*]} )" >&2              && echo "" >&2
 fi
 
 #  Determine and run mode: SLURM or GNU Parallel/serial

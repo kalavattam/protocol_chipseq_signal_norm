@@ -235,16 +235,16 @@ unset IFS
 
 #  Debug output to check number of array elements and array element values
 if ${debug:-false}; then
-    echo "\${#arr_mip[@]}=${#arr_mip[@]}" && echo ""
-    echo "arr_mip=( ${arr_mip[*]} )"      && echo ""
-    echo "\${#arr_min[@]}=${#arr_min[@]}" && echo ""
-    echo "arr_min=( ${arr_min[*]} )"      && echo ""
+    echo "\${#arr_mip[@]}=${#arr_mip[@]}" >&2 && echo "" >&2
+    echo "arr_mip=( ${arr_mip[*]} )" >&2      && echo "" >&2
+    echo "\${#arr_min[@]}=${#arr_min[@]}" >&2 && echo "" >&2
+    echo "arr_min=( ${arr_min[*]} )" >&2      && echo "" >&2
     
     if [[ "${mode}" == "spike" ]]; then
-        echo "\${#arr_sip[@]}=${#arr_sip[@]}" && echo ""
-        echo "arr_sip=( ${arr_sip[*]} )"      && echo ""
-        echo "\${#arr_sin[@]}=${#arr_sin[@]}" && echo ""
-        echo "arr_sin=( ${arr_sin[*]} )"      && echo ""
+        echo "\${#arr_sip[@]}=${#arr_sip[@]}" >&2 && echo "" >&2
+        echo "arr_sip=( ${arr_sip[*]} )" >&2      && echo "" >&2
+        echo "\${#arr_sin[@]}=${#arr_sin[@]}" >&2 && echo "" >&2
+        echo "arr_sin=( ${arr_sin[*]} )" >&2      && echo "" >&2
     fi
 fi
 
@@ -281,7 +281,7 @@ if [[ -n "${SLURM_ARRAY_TASK_ID:-}" ]]; then
     if ${debug:-false}; then debug_var "samp=${samp}"; fi
 
     #  Run function to set SLURM and symlinked log files
-    IFS=';' read -r err_ini out_ini err_dsc out_dsc < <(
+    IFS=',' read -r err_ini out_ini err_dsc out_dsc < <(
         set_logs_slurm \
             "${id_job}" "${id_tsk}" "${samp}" "${err_out}" "${nam_job}"
     ) || exit 1
