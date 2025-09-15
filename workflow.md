@@ -2,7 +2,7 @@
 ChIP-seq Protocol Workflow
 ==========================
 
-**Supporting code and documentation for the *Bio-protocol* manuscript "ChIP-seq data processing and relative and quantitative signal normalization for *Saccharomyces cerevisiae*."**
+**Supporting code and documentation for the [manuscript](https://www.researchgate.net/publication/390849439_ChIP-seq_Data_Processing_and_Relative_and_Quantitative_Signal_Normalization_for_Saccharomyces_cerevisiae) "ChIP-seq Data Processing and Relative and Quantitative Signal Normalization for *Saccharomyces cerevisiae*," published 2025-05-05 in [*Bio-protocol* (volume 15, issue 9)](https://bio-protocol.org/en/archive?vol=15&issid=1370).**
 
 **Author:** *Kris Alavattam*
 
@@ -1014,7 +1014,7 @@ if ${debug:-false}; then
     echo "    --dir_out ${dir_trm} \\"
     echo "    --err_out ${dir_trm}/logs \\"
     echo "    --max_job ${max_job} \\"
-    echo "$(if ${slurm:-false}; then echo "$(if ${slurm:-false}; then echo "    --slurm \\"; fi)"; fi)"
+    echo "$(if ${slurm:-false}; then echo "    --slurm \\"; fi)"
     echo "         > >(tee -a ${dir_trm}/logs/${day}.execute.stdout.txt) \\"
     echo "        2> >(tee -a ${dir_trm}/logs/${day}.execute.stderr.txt)"
 fi
@@ -1236,6 +1236,28 @@ fi
 
 #  Do the main work -----------------------------------------------------------
 #  Run the driver script to align and post-process FASTQ files
+if ${debug:-false}; then
+    echo "###########################"
+    echo "## Call to driver script ##"
+    echo "###########################"
+    echo ""
+    echo "bash "${dir_scr}/execute_align_fastqs.sh" \\"
+    echo "    --verbose \\"
+    echo "    --threads ${threads} \\"
+    echo "    --aligner ${aligner} \\"
+    echo "    --a_type ${a_type} \\"
+    echo "    --mapq ${mapq} \\"
+    echo "    $(if ${req_flg:-false}; then echo --req_flg; fi) \\"
+    echo "    --index ${stm_idx} \\"
+    echo "    --infiles ${infiles} \\"
+    echo "    --dir_out ${dir_out}/init \\"
+    echo "    --err_out ${dir_out}/init/logs \\"
+    echo "    --max_job ${max_job} \\"
+    echo "    $(if ${slurm:-false}; then echo --slurm; fi) \\"
+    echo "         >> >(tee -a ${dir_out}/init/logs/${day}.execute.stdout.txt) \\"
+    echo "        2>> >(tee -a ${dir_out}/init/logs/${day}.execute.stderr.txt)"
+fi
+
 bash "${dir_scr}/execute_align_fastqs.sh" \
     --verbose \
     --threads "${threads}" \
@@ -1262,6 +1284,24 @@ infiles="$(  ## WARNING: Change search parameters as needed ##
 
 #  Run the driver script to filter BAM files for S. cerevisiae ("sc")
 #+ alignments (i.e., the "main" alignments)
+if ${debug:-false}; then
+    echo "###########################"
+    echo "## Call to driver script ##"
+    echo "###########################"
+    echo ""
+    echo "bash ${dir_scr}/execute_filter_bams.sh \\"
+    echo "    --verbose \\"
+    echo "    --threads ${threads} \\"
+    echo "    --infiles ${infiles} \\"
+    echo "    --dir_out ${dir_out}/sc \\"
+    echo "    --retain sc \\"
+    echo "    --err_out ${dir_out}/sc/logs \\"
+    echo "    --max_job ${max_job} \\"
+    echo "    $(if ${slurm:-false}; then echo --slurm; fi) \\"
+    echo "         >> >(tee -a ${dir_out}/sc/logs/${day}.execute.stdout.txt) \\"
+    echo "        2>> >(tee -a ${dir_out}/sc/logs/${day}.execute.stderr.txt)"
+fi
+
 bash "${dir_scr}/execute_filter_bams.sh" \
     --verbose \
     --threads "${threads}" \
@@ -1276,6 +1316,24 @@ bash "${dir_scr}/execute_filter_bams.sh" \
 
 #  Run the driver script to filter BAM files for S. pombe ("sp") alignments
 #+ (i.e., the "spike-in" alignments)
+if ${debug:-false}; then
+    echo "###########################"
+    echo "## Call to driver script ##"
+    echo "###########################"
+    echo ""
+    echo "bash ${dir_scr}/execute_filter_bams.sh \\"
+    echo "    --verbose \\"
+    echo "    --threads ${threads} \\"
+    echo "    --infiles ${infiles} \\"
+    echo "    --dir_out ${dir_out}/sp \\"
+    echo "    --retain sp \\"
+    echo "    --err_out ${dir_out}/sp/logs \\"
+    echo "    --max_job ${max_job} \\"
+    echo "    $(if ${slurm:-false}; then echo --slurm; fi) \\"
+    echo "         >> >(tee -a ${dir_out}/sp/logs/${day}.execute.stdout.txt) \\"
+    echo "        2>> >(tee -a ${dir_out}/sp/logs/${day}.execute.stderr.txt)"
+fi
+
 bash "${dir_scr}/execute_filter_bams.sh" \
     --verbose \
     --threads "${threads}" \
@@ -1295,9 +1353,9 @@ bash "${dir_scr}/compress_remove_files.sh" --dir_fnd "${dir_out}/init/logs"
 bash "${dir_scr}/compress_remove_files.sh" --dir_fnd "${dir_out}/sc/logs"
 bash "${dir_scr}/compress_remove_files.sh" --dir_fnd "${dir_out}/sp/logs"
 
-# ls -lhaFG "${dir_trm}/init/logs"  ## Uncomment to check log directory ##
-# ls -lhaFG "${dir_trm}/sc/logs"    ## Uncomment to check log directory ##
-# ls -lhaFG "${dir_trm}/sp/logs"    ## Uncomment to check log directory ##
+# ls -lhaFG "${dir_out}/init/logs"  ## Uncomment to check log directory ##
+# ls -lhaFG "${dir_out}/sc/logs"    ## Uncomment to check log directory ##
+# ls -lhaFG "${dir_out}/sp/logs"    ## Uncomment to check log directory ##
 ```
 </details>
 <br />

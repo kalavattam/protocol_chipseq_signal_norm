@@ -2,7 +2,7 @@
 Workflow: Validate New siQ-ChIP Implementation with the Original
 ================================================================
 
-**Instructions to install and run the [original siQ-ChIP implementation](https://github.com/kalavattam/siQ-ChIP/tree/cerevisiae) by Brad Dickson. Outputs from the original implementation (e.g., $\alpha$ values, normalized coverage, siQ-ChIP-scaled coverage) serve as validation standards to confirm the accuracy/reproducibility of the [newly implemented siQ-ChIP computations](https://github.com/kalavattam/protocol_chipseq_signal_norm).**
+**Instructions to install and run the [original siQ-ChIP implementation](https://github.com/kalavattam/siQ-ChIP/tree/cerevisiae) by Brad Dickson. Outputs from this implementation (e.g., $\alpha$ values, normalized coverage, siQ-ChIP-scaled coverage) serve as validation standards to confirm the accuracy and reproducibility of the [Python siQ-ChIP implementation used in this protcol](https://github.com/kalavattam/protocol_chipseq_signal_norm).**
 
 **Author:** *Kris Alavattam*  
 

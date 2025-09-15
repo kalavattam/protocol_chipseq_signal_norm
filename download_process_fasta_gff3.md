@@ -2,7 +2,7 @@
 Downloading, Processing, and Concatenating *S. cerevisiae* and *S. pombe* Genome Files
 ======================================================================================
 
-**Supporting code and documentation for the *Bio-protocol* manuscript "ChIP-seq Data Processing and Relative and Quantitative Signal Normalization for *Saccharomyces cerevisiae*."**
+**Supporting code and documentation for the [manuscript](./docs/protocol_chipseq_signal_norm.pdf) "ChIP-seq Data Processing and Relative and Quantitative Signal Normalization for *Saccharomyces cerevisiae*," published 2025-05-05 in [*Bio-protocol* (volume 15, issue 9)](https://bio-protocol.org/en/archive?vol=15&issid=1370).**
 
 **Author:** *Kris Alavattam*
 
@@ -242,7 +242,7 @@ zcat "${dir_sc_g3_un}/${fil_sc_g3_un}" \
             #  Convert URL-encoded characters in $9
             gsub(/%20/, " ", $9)
             gsub(/%2C/, ",", $9)
-            gsub(/%3B/, ",", $9)  #TODO: Write a general note
+            gsub(/%3B/, ",", $9)
             gsub(/%28/, "(", $9)
             gsub(/%29/, ")", $9)
 
