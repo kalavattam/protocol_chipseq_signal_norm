@@ -131,7 +131,8 @@ case "${mode}" in
         ;;
 esac
 
-check_exists_file_dir "f" "${fil_out}" "fil_out"
+# check_exists_file_dir "f" "${fil_out}" "fil_out"
+check_exists_file_dir "d" "$(dirname "${fil_out}")" "dir_out"
 
 
 #  Do the main work ===========================================================
@@ -149,7 +150,7 @@ case "${mode}" in
         )
         ;;
         spike) nam_col=(
-            "main_ip" "spike_ip" "main_in" "spike_in" "sf"
+            "main_ip" "spike_ip" "main_in" "spike_in" "spike"
             "num_mp" "num_sp" "num_mn" "num_sn"
             "dm_fr_1" "dm_fr_5" "dm_fr_10" "dm_fr_20" "dm_fr_30" "dm_fr_40"
             "dm_fr_50"
@@ -178,5 +179,18 @@ if ${dry_run} || ${verbose}; then
     echo ""
 fi
 
-#  Write the header to the file (if not in dry-run mode)
-if ! ${dry_run}; then echo "${header}" > "${fil_out}"; fi
+#  Prepend the header (only if not already present); create file if missing
+if ! ${dry_run}; then
+    tmp="${fil_out}.tmp.$$"
+    if [[ -f "${fil_out}" ]]; then
+        first_line="$(head -n1 "${fil_out}")"
+        if [[ "${first_line}" == "${header%$'\n'}" ]]; then
+            :  # Header already present; do nothing
+        else
+            { printf '%s\n' "${header%$'\n'}"; cat "${fil_out}"; } \
+                > "${tmp}" && mv "${tmp}" "${fil_out}"
+        fi
+    else
+        printf '%s\n' "${header%$'\n'}" > "${tmp}" && mv "${tmp}" "${fil_out}"
+    fi
+fi
