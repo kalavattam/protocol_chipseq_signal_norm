@@ -5,7 +5,7 @@
 
 
 #  Run script in interactive mode (true) or command-line mode (false)
-interactive=true  ## WARNING: User should change needed ##
+interactive=false  ## WARNING: User should change needed ##
 
 #  Exit on errors, unset variables, or pipe failures if not in "interactive
 #+ mode"
@@ -82,14 +82,20 @@ function build_cmd() {
     local infile fil_ip fil_in outfile scl_fct usr_frg dep_min
     local cmd wrap base
 
-    #  Assign default local values from global variables or arrays
-    infile="${ser_infile}"
-    fil_ip="${ser_fil_ip}"
-    fil_in="${ser_fil_in}"
-    outfile="${ser_outfile}"
-    scl_fct="${ser_scl_fct}"
-    usr_frg="${ser_usr_frg}"
-    dep_min="${ser_dep_min}"
+    #  Assign default local values from global variables or arrays, but only
+    #+ for the active mode
+    if [[ "${mode}" == "signal" || "${mode}" == "coord" ]]; then
+        infile="${ser_infile-}"
+        outfile="${ser_outfile-}"
+        scl_fct="${ser_scl_fct-}"
+        usr_frg="${ser_usr_frg-}"
+    elif [[ "${mode}" == "ratio" ]]; then
+        fil_ip="${ser_fil_ip-}"
+        fil_in="${ser_fil_in-}"
+        outfile="${ser_outfile-}"
+        scl_fct="${ser_scl_fct-}"
+        dep_min="${ser_dep_min-}"
+    fi
 
     if [[ "${idx}" != "UNSET" ]]; then
         infile="${arr_infile[idx]}"
@@ -524,7 +530,7 @@ Dependencies:
 Notes:
   - BAM and bedGraph input files must be coordinate-sorted.
   - If applicable, use consistent file ordering between IP and input files.
-  - '--typ_out' must be compatible with selected '--mode'; otherwise, an error is thrown.  ## TODO: Is this true? Check this... ##
+  - '--typ_out' must be compatible with selected '--mode'; otherwise, an error is thrown.  ## #TODO: Is this true? Check this... ##
   - Output filenames are derived from BAM or bedGraph input files and the value associated with '--typ_out'.
   - BED-like files of fragment coordinates are, e.g., used as input to the original siQ-ChIP implementation (Dickson et al., JBC 2020; Dickson et al., Sci Rep
     2023).
@@ -675,6 +681,9 @@ case "${mode}" in
     c|coord|coordinates)
         mode="coord"
 
+        # #MAYBE: 'siz_bin' not applicable in coord mode; silently unset
+        # unset siz_bin
+        
         if [[ -n "${method}" ]]; then
             echo_warning \
                 "Argument '--method' is not applicable with '--mode" \
@@ -722,6 +731,7 @@ if [[ "${mode}" =~ ^(s|sig|signal|r|rat|ratio)$ ]]; then
         check_supplied_arg -a "${siz_bin}" -n "siz_bin"
         check_int_pos "${siz_bin}" "siz_bin"
     else
+        #FIXME: May want to change this, b/c of default 'siz_bin=10'
         if [[ -n "${siz_bin}" ]]; then
             echo_warning \
                 "Argument '--siz_bin' is not applicable with '--mode ${mode}'." \
@@ -892,16 +902,20 @@ else
     done
     unset d
 
-    check_arrays_lengths "fil_in"  arr_fil_in  "fil_ip" arr_fil_ip
-    check_arrays_lengths "outfile" arr_outfile "fil_ip" arr_fil_ip
-    check_arrays_lengths "scl_fct" arr_scl_fct "fil_ip" arr_fil_ip
-    check_arrays_lengths "dep_min" arr_dep_min "fil_ip" arr_fil_ip
+    check_arrays_lengths "arr_fil_in"  "arr_fil_ip"
+    check_arrays_lengths "arr_outfile" "arr_fil_ip"
+    check_arrays_lengths "arr_scl_fct" "arr_fil_ip"
+    check_arrays_lengths "arr_dep_min" "arr_fil_ip"
 fi
 
 
 #  Parse job execution parameters ---------------------------------------------
 if [[ "${slurm}" == "true" ]]; then
-    max_job=$(reset_max_job "${max_job}" "${#arr_infile[@]}")
+    if [[ "${mode}" == "ratio" ]]; then
+        max_job=$(reset_max_job "${max_job}" "${#arr_outfile[@]}")
+    else
+        max_job=$(reset_max_job "${max_job}" "${#arr_infile[@]}")
+    fi
     
     check_supplied_arg -a "${time}" -n "time"
     check_format_time "${time}"
@@ -961,7 +975,7 @@ if [[ "${verbose}" == "true" ]]; then
     echo "method=${method}"
     echo "infiles=${infiles:-UNSET}"
     echo "fil_ip=${fil_ip:-UNSET}"
-    echo "fil_ip=${fil_in:-UNSET}"
+    echo "fil_in=${fil_in:-UNSET}"
     echo "dir_out=${dir_out}"
     echo "typ_out=${typ_out}"
     echo "prefix=${prefix:-UNSET}"
@@ -1011,13 +1025,18 @@ if [[ "${verbose}" == "true" ]]; then
     echo ""
 fi
 
-ser_infile=$(echo "${arr_infile[*]}"  | tr ' ' ',')
-ser_fil_ip=$(echo "${arr_fil_ip[*]}"  | tr ' ' ',')
-ser_fil_in=$(echo "${arr_fil_in[*]}"  | tr ' ' ',')
-ser_outfile=$(echo "${arr_outfile[*]}" | tr ' ' ',')
-ser_scl_fct=$(echo "${arr_scl_fct[*]}" | tr ' ' ',')
-ser_usr_frg=$(echo "${arr_usr_frg[*]}" | tr ' ' ',')
-ser_dep_min=$(echo "${arr_dep_min[*]}" | tr ' ' ',')
+if [[ "${mode}" =~ ^(signal|coord)$ ]]; then
+    ser_infile=$(echo "${arr_infile[*]}"  | tr ' ' ',')
+    ser_outfile=$(echo "${arr_outfile[*]}" | tr ' ' ',')
+    ser_scl_fct=$(echo "${arr_scl_fct[*]}" | tr ' ' ',')
+    ser_usr_frg=$(echo "${arr_usr_frg[*]}" | tr ' ' ',')
+elif [[ "${mode}" == "ratio" ]]; then
+    ser_fil_ip=$(echo "${arr_fil_ip[*]}"  | tr ' ' ',')
+    ser_fil_in=$(echo "${arr_fil_in[*]}"  | tr ' ' ',')
+    ser_outfile=$(echo "${arr_outfile[*]}" | tr ' ' ',')
+    ser_scl_fct=$(echo "${arr_scl_fct[*]}" | tr ' ' ',')
+    ser_dep_min=$(echo "${arr_dep_min[*]}" | tr ' ' ',')
+fi
 
 if [[ "${verbose}" == "true" ]]; then
     echo "##################################################"
@@ -1067,7 +1086,7 @@ if [[ "${slurm}" == "true" ]]; then
         echo ""
     fi
 
-    if [[ "${dry_run}" == "false" ]]; then eval "$(build_cmd "NA")"; fi
+    if [[ "${dry_run}" == "false" ]]; then eval "$(build_cmd)"; fi
 else
     #  GNU Parallel execution
     if [[ ${threads} -gt 1 ]]; then
