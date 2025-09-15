@@ -40,6 +40,7 @@ for fnc in \
     filter_bam_sp \
     handle_env \
     print_parallel_info \
+    reset_max_job \
     set_params_parallel
 do
     source "${dir_fnc}/${fnc}.sh"
@@ -398,16 +399,17 @@ if ${slurm:-false}; then
         echo "    --output=${err_out}/${nam_job}.%A-%a.stdout.txt \\"
         echo "    --array=1-${#arr_infile[@]}%${max_job} \\"
         echo "    ${scr_sub} \\"
-        echo "        --scr_fnc ${scr_fnc} \\"
-        echo "        --threads ${threads} \\"
-        echo "        --infiles ${infiles} \\"
-        echo "        --dir_out ${dir_out} \\"
-        echo "        $(if ${mito}; then echo "--mito"; fi) \\"
-        echo "        $(if ${tg}; then echo "--tg"; fi) \\"
-        echo "        $(if ${mtr}; then echo "--mtr"; fi) \\"
-        echo "        $(if ${chk_chr}; then echo "--chk_chr"; fi) \\"
-        echo "        --err_out ${err_out} \\"
-        echo "        --nam_job ${nam_job}"
+        echo "        -en ${env_nam} \\"
+        echo "        -sf ${scr_fnc} \\"
+        echo "         -t ${threads} \\"
+        echo "         -i ${infiles} \\"
+        echo "        -do ${dir_out} \\"
+        echo "        $(if ${mito}; then echo "-m"; fi) \\"
+        echo "        $(if ${tg}; then echo "-tg"; fi) \\"
+        echo "        $(if ${mtr}; then echo "-mr"; fi) \\"
+        echo "        $(if ${chk_chr}; then echo "-cc"; fi) \\"
+        echo "        -eo ${err_out} \\"
+        echo "        -nj ${nam_job}"
         echo ""
         echo ""
     fi

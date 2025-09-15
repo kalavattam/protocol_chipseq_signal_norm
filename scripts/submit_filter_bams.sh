@@ -67,7 +67,7 @@ function source_function() {
 }
 
 
-#  Function to set up SLURM log file paths and create symlinked log files
+#  Function to set up SLURM log file paths and create hardlinked log files
 function set_logs_slurm() {
     local id_job="${1}"   # SLURM job ID
     local id_tsk="${2}"   # SLURM task ID within the job array
@@ -76,8 +76,8 @@ function set_logs_slurm() {
     local nam_job="${5}"  # Name of the job (used in log file naming)
     local err_ini  # SLURM initial stderr log 
     local out_ini  # SLURM initial stdout log 
-    local err_dsc  # Symlinked stderr log with descriptive name
-    local out_dsc  # Symlinked stdout log with descriptive name
+    local err_dsc  # Hardlinked stderr log with descriptive name
+    local out_dsc  # Hardlinked stdout log with descriptive name
 
     #  Set log paths
     err_ini="${err_out}/${nam_job}.${id_job}-${id_tsk}.stderr.txt"
@@ -85,12 +85,12 @@ function set_logs_slurm() {
     err_dsc="${err_out}/${nam_job}.${samp}.${id_job}-${id_tsk}.stderr.txt"
     out_dsc="${err_out}/${nam_job}.${samp}.${id_job}-${id_tsk}.stdout.txt"
 
-    #  Create symlinked log files
+    #  Create hardlinked log files
     ln -f "${err_ini}" "${err_dsc}"
     ln -f "${out_ini}" "${out_dsc}"
 
     #  Return values
-    echo "${err_ini};${out_ini};${err_dsc};${out_dsc}"
+    echo "${err_ini},${out_ini},${err_dsc},${out_dsc}"
 }
 
 
@@ -124,7 +124,7 @@ function process_infile_function() {
     fi
 
     #  Return values
-    echo "${samp};${nam_fnc};${outfile}"
+    echo "${samp},${nam_fnc},${outfile}"
 }
 
 
@@ -185,7 +185,7 @@ show_help=$(cat << EOM
   -en, --env_nam     # str: Conda/Mamba environment to activate
   -sf, --scr_fnc     # str: Function to source and submit to SLURM
    -t, --threads     # str: Number of threads to use
-   -i, --str_infile  # str: Comma-separated string of BAM files (str)
+   -i, --str_infile  # str: Comma-separated string of BAM files
   -do, --dir_out     # str: Directory to write BAM files
    -m, --mito        # flg: Retain mitochondrial chromosome in BAM files
   -tg, --tg          # flg: Retain SP_II_TG chromosome in BAM files
@@ -197,7 +197,7 @@ show_help=$(cat << EOM
 All arguments are required with the following notes and exceptions:
   - '--env_nam' defaults to 'env_nam=${env_nam}' if not specified.
   - '--threads' default to 'threads=${threads}' if not specified.
-  - '--mito', '--tg', '--mtr', and --chk_chr are optional.
+  - '--mito', '--tg', '--mtr', and '--chk_chr' are optional.
 EOM
 )
 
@@ -252,8 +252,7 @@ activate_env "${env_nam}" || exit 1
 
 #  Reconstruct array from serialized string
 validate_var "str_infile" "${str_infile}" || exit 1
-IFS=';' read -r -a arr_infile <<< "${str_infile}"
-unset IFS
+IFS=',' read -r -a arr_infile <<< "${str_infile}"
 
 #  Debug output to check number of array elements and array element values
 if ${debug:-false}; then
@@ -290,10 +289,9 @@ if [[ -n "${SLURM_ARRAY_TASK_ID:-}" ]]; then
 
     #  Run function to debug and validate 'infile', using it with 'scr_fnc' to
     #+ assign values to variables 'samp', 'nam_fnc', and 'outfile'
-    IFS=';' read -r samp nam_fnc outfile < <(
+    IFS=',' read -r samp nam_fnc outfile < <(
         process_infile_function "${infile}" "${scr_fnc}" "${dir_out}"
     ) || exit 1
-    unset IFS
 
     if ${debug:-false}; then
         debug_var \
@@ -302,12 +300,11 @@ if [[ -n "${SLURM_ARRAY_TASK_ID:-}" ]]; then
             "outfile=${outfile}"
     fi
 
-    #  Run function to set SLURM and symlinked log files
-    IFS=';' read -r err_ini out_ini err_dsc out_dsc < <(
+    #  Run function to set SLURM and hardlinked log files
+    IFS=',' read -r err_ini out_ini err_dsc out_dsc < <(
         set_logs_slurm \
-        "${id_job}" "${id_tsk}" "${samp}" "${err_out}" "${nam_job}"
+            "${id_job}" "${id_tsk}" "${samp}" "${err_out}" "${nam_job}"
     ) || exit 1
-    unset IFS
 
     if ${debug:-false}; then
         debug_var \
@@ -340,10 +337,9 @@ else
 
         #  Run function to debug and validate 'infile', using it with 'scr_fnc'
         #+ to assign values to variables 'samp', 'nam_fnc', and 'outfile'
-        IFS=';' read -r samp nam_fnc outfile < <(
+        IFS=',' read -r samp nam_fnc outfile < <(
             process_infile_function "${infile}" "${scr_fnc}" "${dir_out}"
         ) || exit 1
-        unset IFS
 
         if ${debug:-false}; then
             debug_var \
