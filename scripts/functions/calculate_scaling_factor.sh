@@ -16,6 +16,7 @@ function parse_metadata() {
     if ! \
         eval "$(
             python "${scr_met}" \
+                --verbose \
                 --tbl_met "${tbl_met}" \
                 --eqn "${eqn}" \
                 --bam "${fil_bam}" \
@@ -322,6 +323,13 @@ EOM
         ")
     fi
 
+    #  Add leading zero if bc returns .ddd or -.ddd
+    if [[ "${fct_dep}" =~ ^\.[0-9] ]]; then
+        fct_dep="0${fct_dep}"
+    elif [[ "${fct_dep}" =~ ^-\.[0-9] ]]; then
+        fct_dep="-0${fct_dep:1}"
+    fi
+
     echo "${fct_dep}"
 }
 
@@ -460,20 +468,22 @@ function process_samp_alpha() {
     ) || return 1
 
     #  Dynamically construct string for output formatting
-    fmt_str=$(generate_fmt_str 13)
+    fmt_str=$(generate_fmt_str $((12 + ${#arr_dm[@]})))
 
-    #  Print results using dynamically generated format string
-    # shellcheck disable=SC2059
+    #  Build a row of results, printing them tab-separated with no trailing tab
     {
-        IFS=$' \t\n'  # Ensure deafult setting for IFS
-        printf "${fmt_str}\n" \
+        IFS=$' \t\n'  # reset to default
+        fields=( \
             "${fil_ip}" "${fil_in}" "${alpha}" "${eqn}" \
             "${mass_ip}" "${mass_in}" "${vol_all}" "${vol_in}" \
             "${dep_ip}" "${dep_in}" "${len_ip}" "${len_in}" \
-            "${arr_dm[*]}" \
-        | sed 's:\t$::' \
-            >> "${fil_out}"
-    }
+        )
+        fields+=( "${arr_dm[@]}" )
+
+        printf '%s' "${fields[0]}"
+        for v in "${fields[@]:1}"; do printf '\t%s' "${v}"; done
+        printf '\n'
+    } >> "${fil_out}"
 }
 
 
@@ -536,17 +546,19 @@ function process_samp_spike() {
     ) || return 1
 
     #  Dynamically construct string for output formatting
-    fmt_str=$(generate_fmt_str 10)
+    fmt_str=$(generate_fmt_str $((9 + ${#arr_dm[@]})))
 
-    #  Print results using dynamically generated format string
-    # shellcheck disable=SC2059
+    #  Build a row of results, printing them tab-separated with no trailing tab
     {
-        IFS=$' \t\n'  # Ensure default setting for IFS
-        printf "${fmt_str}\n" \
+        IFS=$' \t\n'  # reset to default
+        fields=( \
             "${mp}" "${sp}" "${mn}" "${sn}" "${sf}" \
             "${num_mp}" "${num_sp}" "${num_mn}" "${num_sn}" \
-            "${arr_dm[*]}" \
-        | sed 's:\t$::' \
-            >> "${fil_out}"
-    }
+        )
+        fields+=( "${arr_dm[@]}" )
+
+        printf '%s' "${fields[0]}"
+        for v in "${fields[@]:1}"; do printf '\t%s' "$v"; done
+        printf '\n'
+    } >> "${fil_out}"
 }
