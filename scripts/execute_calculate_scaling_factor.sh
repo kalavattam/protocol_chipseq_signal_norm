@@ -241,6 +241,7 @@ else
              -v|--verbose) verbose=true;   shift 1 ;;
             -dr|--dry_run) dry_run=true;   shift 1 ;;
              -t|--threads) threads="${2}"; shift 2 ;;
+             -m|--mode)    mode="${2}";    shift 2 ;;
             -mp|--ser_mip) ser_mip="${2}"; shift 2 ;;
             -mn|--ser_min) ser_min="${2}"; shift 2 ;;
             -sp|--ser_sip) ser_sip="${2}"; shift 2 ;;
@@ -465,15 +466,6 @@ if ${verbose}; then
     echo ""
     echo ""
 fi
-
-#TODO: Do this in 'workflow.md', outside of 'execute' or 'submit' scripting
-# if [[ -f "${fil_out}" ]]; then rm "${fil_out}"; fi
-# touch "${fil_out}" || {
-#     echo_error "Failed to create output file for scaling factors, etc."
-#     exit_1
-# }
-#
-# bash "${scr_hdr}" -v -t "${mode}" -fo "${fil_out}"
 
 # shellcheck disable=SC1083,SC2157,SC2046,SC2086
 if ${slurm:-false}; then
