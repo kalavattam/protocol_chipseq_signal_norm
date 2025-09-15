@@ -88,12 +88,14 @@ import os
 import re
 import sys
 
+from contextlib import redirect_stdout
+
 
 def open_file(pth_fil, mode="rt"):
     """
     Open a file normally or as a gzip depending on extension.
     """
-    if pth_fil.endswith(".gz"):
+    if pth_fil.endswith(".gz"):  # TODO: Handle ".bgz"
         return gzip.open(pth_fil, mode)
     else:
         return open(pth_fil, mode)
@@ -110,10 +112,10 @@ def check_bin_size(fil_ip, fil_in):
     Raises:
         ValueError: If the bin sizes differ between the two files.
     """
-    with open_file(fil_ip) as ip_f, open_file(fil_in) as in_f:
+    with open_file(fil_ip) as opn_ip, open_file(fil_in) as opn_in:
         for _ in range(5):  # Check the first 5 bins
-            lin_ip = ip_f.readline().strip()
-            lin_in = in_f.readline().strip()
+            lin_ip = opn_ip.readline().strip()
+            lin_in = opn_in.readline().strip()
 
             if not lin_ip or not lin_in:
                 continue
@@ -121,7 +123,7 @@ def check_bin_size(fil_ip, fil_in):
             fld_ip = lin_ip.split()
             fld_in = lin_in.split()
 
-            # Extract bin sizes
+            #  Extract bin sizes
             bin_ip = int(fld_ip[2]) - int(fld_ip[1])
             bin_in = int(fld_in[2]) - int(fld_in[1])
 
@@ -261,8 +263,8 @@ def compute_signal_ratio(
 
     #  Open input and output files safely
     with (
-        open_file(fil_ip) as ip_f,
-        open_file(fil_in) as in_f,
+        open_file(fil_ip) as opn_ip,
+        open_file(fil_in) as opn_in,
         (gzip.open(fil_out, "wt") if gz_out else open(fil_out, "w")) as f_out
     ):
         f_trk = None
@@ -272,8 +274,8 @@ def compute_signal_ratio(
             else:
                 open(fil_trk, "w")
         
-        lin_ip = ip_f.readline().strip()
-        lin_in = in_f.readline().strip()
+        lin_ip = opn_ip.readline().strip()
+        lin_in = opn_in.readline().strip()
 
         while lin_ip or lin_in:  # Continue until both files are exhausted
             fld_ip = lin_ip.split() if lin_ip else None
@@ -305,8 +307,8 @@ def compute_signal_ratio(
                     f_trk.write(f_lin)
 
                 #  Read next entries from both files
-                lin_ip = ip_f.readline().strip()
-                lin_in = in_f.readline().strip()
+                lin_ip = opn_ip.readline().strip()
+                lin_in = opn_in.readline().strip()
 
             elif (
                 chr_ip is None or
@@ -326,7 +328,7 @@ def compute_signal_ratio(
                 if track and f_trk and not re.search(r"-inf|nan", f_lin):
                     f_trk.write(f_lin)
 
-                lin_in = in_f.readline().strip()
+                lin_in = opn_in.readline().strip()
 
             else:
                 #  IP file is behind: Treat input as 0 and move IP forward
@@ -340,7 +342,7 @@ def compute_signal_ratio(
                 if track and f_trk and not re.search(r"-inf|nan", f_lin):
                     f_trk.write(f_lin)
 
-                lin_ip = ip_f.readline().strip()
+                lin_ip = opn_ip.readline().strip()
 
 
 def parse_args():
@@ -411,10 +413,10 @@ def parse_args():
         help=(
             "Compute 'log2(sig_ip/sig_in)', ensuring that division-by-zero "
             "and log(0) errors are handled. If '--dep_min' is provided, the "
-            "denominator is set to 'max(sig_in, dep_min)' to prevent extreme "
-            "values. If 'sig_ip' is zero, 'log2(sig_ip/sig_in)' is set to "
-            "negative infinity ('-inf'). The scaling factor ('--scl_fct') is "
-            "applied after the log2 transformation."
+            "per-bin denominator is set to 'max(sig_in, dep_min)' to prevent "
+            "extreme values. If 'sig_ip' is zero, 'log2(sig_ip/sig_in)' is "
+            "set to negative infinity ('-inf'). The scaling factor "
+            "('--scl_fct') is applied after the log2 transformation."
         )
     )
     parser.add_argument(
@@ -481,20 +483,21 @@ def main():
 
     #  Print verbose output
     if args.verbose:
-        print("#############################################")
-        print("## Arguments for compute_signal_ratio.py ##")
-        print("#############################################")
-        print("")
-        print(f"--fil_ip  {args.fil_ip}")
-        print(f"--fil_in  {args.fil_in}")
-        print(f"--fil_out {args.fil_out}")
-        print(f"--track   {args.track}")
-        scl_fct is not None and print(f"--scl_fct {scl_fct}")
-        dep_min is not None and print(f"--dep_min {dep_min}")
-        print(f"--log2    {args.log2}")
-        print(f"--rnd     {args.rnd}")
-        print("")
-        print("")
+        with redirect_stdout(sys.stderr):
+            print("###########################################")
+            print("## Arguments for compute_signal_ratio.py ##")
+            print("###########################################")
+            print("")
+            print(f"--fil_ip  {args.fil_ip}")
+            print(f"--fil_in  {args.fil_in}")
+            print(f"--fil_out {args.fil_out}")
+            print(f"--track   {args.track}")
+            scl_fct is not None and print(f"--scl_fct {scl_fct}")
+            dep_min is not None and print(f"--dep_min {dep_min}")
+            print(f"--log2    {args.log2}")
+            print(f"--rnd     {args.rnd}")
+            print("")
+            print("")
 
     compute_signal_ratio(
         args.fil_ip, args.fil_in, args.fil_out, scl_fct, dep_min,
