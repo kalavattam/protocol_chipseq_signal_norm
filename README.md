@@ -7,11 +7,13 @@
 
 ***Note:** The protocol has changed substantially since version 1; much of the code no longer implements what is described there.*
 <br />
+<br />
 
 ## Repository status
 ***This codebase is being tested, extended, and refined.*** If you use this repository, run `git pull` regularly to stay up to date with improvements and fixes.
 
 ***If you cloned this repo before 2025-02-19, please clone it again.*** This is because large and otherwise unnecessary files were purged from the commit history, altering commit hashes. These changes prevent `git pull` from resolving updates correctly.
+<br />
 <br />
 
 ## Workflow documentation
@@ -26,6 +28,7 @@
 
 ***Note:** SLURM job execution has undergone the most testing and is currently the most stable. Local and remote execution of parallelized (via [GNU Parallel](https://www.gnu.org/software/parallel/)) and serial jobs are still being refactored and tested.*
 <br />
+<br />
 
 ## Citation and licenses
 If you use this repository or the associated protocol in your work, please cite the following:
@@ -34,13 +37,13 @@ Alavattam KG, Dickson BM, Hirano R, Dell R, Tsukiyama T. ChIP-seq Data Processin
 
 The preprint and published protocols are available under the [CC BY-NC 4.0 license](https://creativecommons.org/licenses/by-nc/4.0/). All code, scripts, and documentation in this repository are provided under the [MIT License](./LICENSE).
 <br />
+<br />
 
 ## Support
 ### Emails
-- Dry-lab workflow (this repository): Kris Alavattam at <i>kalavat&#8203;tam (at) g&#8203;mail (dot) c&#8203;om</i>.
+- Dry-lab workflow (this repository): Kris Alavattam at <i>kalavat&#8203;tam (at) g&#8203;mail (dot) c&#8203;om</i> or <i>kal&#8203;avatt (at) fre&#8203;dhutch (dot) o&#8203;rg</i>.
 - General siQ-ChIP information and the [original implementation](https://github.com/BradleyDickson/siQ-ChIP): Brad Dickson at <i>br&#8203;adley (dot) dick&#8203;son (at) va&#8203;i (dot) or&#8203;g</i>.
 - Benchwork, yeast strains, and other materials: Toshi Tsukiyama at <i>tts&#8203;ukiya (at) fredhut&#8203;ch (dot) o&#8203;rg</i>.
-<br />
 
 ### Issues
 If you encounter an issue (bugs, broken code, broken links, unexpected behavior, unclear writing, etc.), please open a [GitHub Issue](https://github.com/kalavattam/protocol_chipseq_signal_norm/issues).
