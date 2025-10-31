@@ -1,7 +1,13 @@
 #!/bin/bash
-
-#  install_envs.sh
-#  KA
+# -*- coding: utf-8 -*-
+# 
+# Copyright 2024-2025 by Kris Alavattam
+# Email: kalavattam@gmail.com
+# 
+# Distributed under the MIT license.
+#
+# Script: install_envs.sh
+# Description: Sets up Mamba environments used in the workflow.
 
 
 #  Run script in interactive mode (true) or command-line mode (false)
@@ -30,7 +36,8 @@ for script in \
     check_installed_mamba.sh \
     echo_error.sh \
     echo_warning.sh \
-    handle_env.sh
+    handle_env.sh \
+    help/help_install_envs.sh
 do
     source "${dir_fnc}/${script}"
 done
@@ -49,136 +56,9 @@ function set_interactive() {
 env_nam=""
 yes=false
 
-show_help=$(cat << EOM
-install_envs.sh
-  --env_nam <str> [--yes]
-
-Description:
-  Sets up one of multiple Mamba environments with necessary programs and
-  dependencies used in this project. For more details, see "Notes" below.
-
-Arguments:
-  -h, --help     Display this help message and exit.
- -en, --env_nam  Mamba environment to create: 'env_align', 'env_analyze',
-                 'env_protocol', or 'env_siqchip'.
-  -y, --yes      Automatically answer yes to mamba prompts (optional).
-
-Dependencies:
-  - Bash or Zsh
-  - Conda or Mamba
-
-Notes:
-  - The call to 'mamba' will be adapted to allow Rosetta translation if the
-    script detects that the system has "arm64" architecture.
-  - The following packages are installed via a call to 'mamba' create:
-    + env_align
-      - bamtools
-      - bbmap
-      - bedtools
-      - bowtie2
-      - bwa
-      - fastqc
-      - macs3
-      - minimap
-      - mosdepth
-      - parallel
-      - picard
-      - preseq
-      - rename
-      - samtools
-      - subread
-      - ucsc-bedgraphtobigwig
-      - ucsc-bedsort
-      - ucsc-facount
-      - wget
-    + env_analyze
-      - bioconductor-annotationdbi
-      - bioconductor-chipqc
-      - bioconductor-chipseeker
-      - bioconductor-clusterprofiler
-      - bioconductor-deseq2
-      - bioconductor-diffbind
-      - bioconductor-edger
-      - bioconductor-enhancedvolcano
-      - bioconductor-genomicfeatures
-      - bioconductor-genomicranges
-      - bioconductor-ihw
-      - bioconductor-iranges
-      - bioconductor-pcatools
-      - bioconductor-sva
-      - deeptools
-      - ipython
-      - pandas
-      - parallel
-      - pbzip2
-      - phantompeakqualtools
-      - pigz
-      - r-argparse
-      - r-dendextend
-      - r-devtools
-      - r-ggalt
-      - r-ggpubr
-      - r-ggrepel
-      - r-ggsci
-      - r-pheatmap
-      - r-plotly
-      - r-readxl
-      - r-rjson
-      - r-tidyverse
-      - r-upsetr
-      - r-venneuler
-      - r-writexl
-      - r-xml2
-      - rename
-      - tree
-    + env_protocol
-      - bc
-      - bowtie2
-      - fastqc
-      - gawk
-      - ipython
-      - matplotlib
-      - multiqc
-      - parallel
-      - pbzip2
-      - pigz
-      - pysam
-      - python=3.11  # Restrict to version 3.11 for 'sequali' installation
-      - r-argparse
-      - r-plotly
-      - r-ggsci
-      - rename
-      - samtools
-      - sequali
-      - wget
-    + env_siqchip
-      - bc
-      - bedtools
-      - gfortran
-      - gnuplot
-      - parallel
-      - samtools
-      - ucsc-bedgraphtobigwig
-      - ucsc-bedclip
-  - Given that >100 packages and dependencies may be installed depending on
-    the environment specified, the execution and completion of the 'mamba
-    create' operation will take >10 minutes if making use of cached packages
-    from previous installations/separate environments. If this is a fresh
-    installation that does not make use of cached packages, then the creation 
-    of the environment may take even longer: e.g., more than 20 or 30 minutes.
-
-Example:
-  \`\`\`
-  bash install_envs.sh
-      --env_nam "env_protocol"
-      --yes
-  \`\`\`
-EOM
-)
-
 #  Parse arguments
 if [[ -z "${1:-}" || "${1}" == "-h" || "${1}" == "--help" ]]; then
-    echo "${show_help}"
+    help_install_envs
     if ! ${interactive}; then exit 0; fi
 fi
 
@@ -188,11 +68,11 @@ else
     while [[ "$#" -gt 0 ]]; do
         case "${1}" in
            -en|--env_nam) env_nam="${2}"; shift 2 ;;
-            -y|--yes)      yes=true;        shift 1 ;;
+            -y|--yes)     yes=true;       shift 1 ;;
             *)
                 echo "## Unknown parameter passed: '${1}' ##" >&2
                 echo "" >&2
-                echo "${show_help}" >&2
+                help_install_envs >&2
                 exit 1
                 ;;
         esac
@@ -206,11 +86,12 @@ if [[ -z "${env_nam}" ]]; then
 fi
 
 case "${env_nam}" in
-    env_align|env_analyze|env_protocol|env_siqchip) : ;;
-    *) 
+    env_align|env_analyze|env_protocol|env_repro|env_siqchip) : ;;
+    *)
+        ## NOTE: 'env_align' and 'env_repro' are not exposed to users ##
         echo_error \
-            "Invalid environment name specified. Must be 'env_align', " \
-            "'env_analyze', 'env_protocol', or 'env_siqchip'."
+            "Invalid environment name specified. Must be 'env_analyze'," \
+            "'env_protocol', or 'env_siqchip'."
         ;;
 esac
 
@@ -232,7 +113,7 @@ case "${env_nam}" in
             "Creating '${env_nam}' will take some time given the >100" \
             "packages to install. Don't worry if this script is still" \
             "running without any apparent progress after 10, 20, or even 30" \
-            "minutes: It will eventually complete."
+            "minutes. It will eventually complete."
     ;;
 esac
 
@@ -246,12 +127,13 @@ if ${yes}; then cmd+=" --yes"; fi
 
 #  Assign an array of packages to install
 if [[ "${env_nam}" == "env_align" ]]; then
-    packages=(
+    packages=(  ## NOTE: For old work; not exposing this in the docs ##
         bamtools
         bbmap
         bedtools
         bowtie2
         bwa
+        datamash
         fastqc
         macs3
         minimap
@@ -262,6 +144,7 @@ if [[ "${env_nam}" == "env_align" ]]; then
         rename
         samtools
         subread
+        tree
         ucsc-bedgraphtobigwig
         ucsc-bedsort
         ucsc-facount
@@ -283,8 +166,9 @@ elif [[ "${env_nam}" == "env_analyze" ]]; then
         bioconductor-iranges
         bioconductor-pcatools
         bioconductor-sva
-        ipython
+        datamash
         deeptools
+        ipython
         pandas
         parallel
         pbzip2
@@ -313,6 +197,7 @@ elif [[ "${env_nam}" == "env_protocol" ]]; then
     packages=(
         bc
         bowtie2
+        datamash  ## NOTE: Added since publication in Bio-protocol ##
         fastqc
         gawk
         ipython
@@ -324,23 +209,42 @@ elif [[ "${env_nam}" == "env_protocol" ]]; then
         pysam
         python=3.11  # Restrict to version 3.11 for 'sequali' installation
         r-argparse
-        r-plotly
         r-ggsci
+        r-plotly
         rename
         samtools
         sequali
+        tree  ## NOTE: Added since publication in Bio-protocol ##
+        wget
+    )
+elif [[ "${env_nam}" == "env_repro" ]]; then
+    packages=(  ## NOTE: Not exposing this to users in the docs ##
+        bc
+        bowtie2=2.3.4.2  ## NOTE: Explicitly pinning old version ##
+        deeptools=3.3.1  ## NOTE: Explicitly pinning old version ##
+        gawk
+        ipython
+        parallel
+        pbzip2
+        pigz
+        python=3.6       ## NOTE: Explicitly pinning old version ##
+        rename
+        samtools=1.9     ## NOTE: Explicitly pinning old version ##
+        tree
         wget
     )
 elif [[ "${env_nam}" == "env_siqchip" ]]; then
     packages=(
         bc
         bedtools
+        datamash
         gfortran
         gnuplot
         parallel
         samtools
-        ucsc-bedgraphtobigwig
+        tree
         ucsc-bedclip
+        ucsc-bedgraphtobigwig
     )
 fi
 
