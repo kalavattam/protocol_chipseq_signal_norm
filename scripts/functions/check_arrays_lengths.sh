@@ -1,10 +1,9 @@
 #!/bin/bash
 
-#  Function to validate that two indexed arrays have matching lengths (usable
-#+ with Bash ≥3.2)
+#  Check that two indexed arrays have matching lengths (usable with Bash >=3.2)
 function check_arrays_lengths() {
-    local arr_nam_1="${1}"
-    local arr_nam_2="${2}"
+    local arr_nam_1="${1:-}"
+    local arr_nam_2="${2:-}"
     local arr_siz_1 arr_siz_2
 
     #  Ensure array names are valid
@@ -53,9 +52,8 @@ function check_arrays_lengths() {
     # shellcheck disable=SC2154
     if [[ "${arr_siz_1}" -ne "${arr_siz_2}" ]]; then
         echo \
-            "Error: '${arr_nam_1}' must match the number of '${arr_nam_2}'." \
-            "Got '${arr_siz_1}' for '${arr_nam_1}' but '${arr_siz_2}' for" \
-            "'${arr_nam_2}'." >&2
+            "Error: Array length mismatch. '${arr_nam_1}' has '${arr_siz_1}'" \
+            "element(s), whereas '${arr_nam_2}' has '${arr_siz_2}'." >&2
         return 1
     fi
 

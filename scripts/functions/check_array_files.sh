@@ -1,24 +1,31 @@
 #!/bin/bash
 
-#  Function to validate existence of files in arrays
+#  Check that all supplied file paths exist
 function check_array_files() {
-    local desc="${1}"
+    local desc="${1:-}"
+    local file
+
+    #  Check that 'desc' input is not empty
+    if [[ -z "${desc}" ]]; then
+        echo "Error: Positional argument 1, 'desc', is required." >&2
+        return 1
+    fi
+
     shift
 
-    #  Check that files are supplied
-    if [[ "$#" -eq 0 ]]; then
-        echo "Error: No files supplied to validate for ${desc}." >&2
+    #  Check that files were supplied
+    if (( $# < 1 )); then
+        echo "Error: No files supplied to validate for '${desc}'." >&2
         return 1
     fi
     
-    #  Iterate through the supplied files and check their existence
+    #  Check each supplied file path
     for file in "$@"; do
         if [[ ! -f "${file}" ]]; then
-            echo "Error: ${desc} file does not exist: '${file}'." >&2
+            echo "Error: '${desc}' file does not exist: '${file}'." >&2
             return 1
         fi
     done
 
-    #  If all files exist, return success
     return 0
 }

@@ -1,6 +1,17 @@
 #!/bin/bash
+# -*- coding: utf-8 -*-
+# 
+# Script: check_inputs.sh
+#
+# Copyright 2024-2026 by Kris Alavattam
+# Email: kalavattam@gmail.com
+#
+# OpenAI ChatGPT (GPT-4- and GPT-5-series models) was used in development.
+# 
+# Distributed under the MIT license.
 
-function check_exists_file_dir() {
+
+function check_file_dir_exists() {
     local type="${1}"
     local item="${2}"
     local name="${3}"
@@ -10,51 +21,43 @@ function check_exists_file_dir() {
     local show_help
 
 show_help=$(cat << EOM
----------------------
-check_exists_file_dir
----------------------
+Usage:
+  check_file_dir_exists type item [name]
 
 Description:
-  check_exists_file_dir checks the existence of a file or directory based on
-  the provided type (positional parameter 1: 'f' for file, 'd' for directory).
-  If the specified file or directory (positional parameter 2) does not exist,
-  an error message is returned along with exit code 1.
+  Check the existence of a file or directory based on the provided type.
 
-Positional parameters:
-  1, type (str): The type to check for existence. Use 'f' for file or 'd' for
-                 directory (required).
-  2, item (str): The file or directory, including its path, to check
-                 (required).
-  3, name (str): The name to associate with the item for error messages
-                 (optional).
+Positional arguments:
+  1  type  <str>  The type to check for existence. Use 'f' for file or 'd' for directory (required).
+  2  item  <str>  The file or directory, including its path, to check (required).
+  3  name  <str>  The name to associate with the item for error messages (optional).
 
 Returns:
-  0 if the file or directory exists; otherwise, prints an error message and
-  returns exit code 1.
+  0 if the file or directory exists; otherwise, 1 and an error message.
 
 Dependencies:
-  - Bash or Zsh
+  - Bash
 
 Examples:
-  \`\`\`
+  '''bash
   #  Check if a file exists
-  check_exists_file_dir "f" "/path/to/file.txt"
+  check_file_dir_exists "f" "/path/to/file.txt"
 
   #  Check if a directory exists
-  check_exists_file_dir "d" "/path/to/directory"
+  check_file_dir_exists "d" "/path/to/directory"
 
   #  Check if a file exists with an associated name for error message
-  check_exists_file_dir "f" "/path/to/file.txt" "infile"
+  check_file_dir_exists "f" "/path/to/file.txt" "infile"
 
   #  Check if a directory exists with an associated name for error message
-  check_exists_file_dir "d" "/path/to/directory" "outdir"
-  \`\`\`
+  check_file_dir_exists "d" "/path/to/directory" "outdir"
+  '''
 EOM
     )
 
     #  Parse and check function parameters
-    if [[ -z "${1}" || "${1}" == "-h" || "${1}" == "--help" ]]; then
-        echo "${show_help}"
+    if [[ -z "${1:-}" || "${1}" =~ ^(-h|--h[e]?lp)$ ]]; then
+        echo "${show_help}" >&2
         return 0
     fi
 
@@ -96,4 +99,128 @@ EOM
         echo "Error: ${not_exist_msg}: '${item}'." >&2
         return 1
     fi
+}
+
+
+#  Check that all supplied file paths exist
+function check_array_files() {
+    local desc="${1:-}"
+    local file
+
+    #  Check that 'desc' input is not empty
+    if [[ -z "${desc}" ]]; then
+        echo "Error: Positional argument 1, 'desc', is required." >&2
+        return 1
+    fi
+
+    shift
+
+    #  Check that files were supplied
+    if (( $# < 1 )); then
+        echo "Error: No files supplied to validate for '${desc}'." >&2
+        return 1
+    fi
+    
+    #  Check each supplied file path
+    for file in "$@"; do
+        if [[ ! -f "${file}" ]]; then
+            echo "Error: '${desc}' file does not exist: '${file}'." >&2
+            return 1
+        fi
+    done
+
+    return 0
+}
+
+
+#  Check that two indexed arrays have matching lengths (usable with Bash >=3.2)
+function check_arrays_lengths() {
+    local arr_nam_1="${1:-}"
+    local arr_nam_2="${2:-}"
+    local arr_siz_1 arr_siz_2
+
+    #  Ensure array names are valid
+    if [[
+           ! "${arr_nam_1}" =~ ^[a-zA-Z_][a-zA-Z0-9_]*$ \
+        || ! "${arr_nam_2}" =~ ^[a-zA-Z_][a-zA-Z0-9_]*$
+    ]]; then
+        echo "Error: Invalid array name '${arr_nam_1}' and/or '${arr_nam_2}'." >&2
+        return 1
+    fi
+
+    #  Ensure both names refer to arrays
+    if ! \
+        eval 'declare -p '"${arr_nam_1}"' &>/dev/null'
+    then
+        echo "Error: '${arr_nam_1}' is unset." >&2
+        return 1
+    fi
+
+    if ! \
+        eval 'declare -p '"${arr_nam_2}"' &>/dev/null'
+    then
+        echo "Error: '${arr_nam_2}' is unset." >&2
+        return 1
+    fi
+
+    if ! \
+        eval 'declare -p '"${arr_nam_1}"' 2>/dev/null | grep -q "^declare \-a "'
+    then
+        echo "Error: '${arr_nam_1}' is not an indexed array." >&2
+        return 1
+    fi
+
+    if ! \
+        eval 'declare -p '"${arr_nam_2}"' 2>/dev/null | grep -q "^declare \-a "'
+    then
+        echo "Error: '${arr_nam_2}' is not an indexed array." >&2
+        return 1
+    fi
+
+    #  Get array sizes using indirect references
+    eval "arr_siz_1=\${#${arr_nam_1}[@]}"
+    eval "arr_siz_2=\${#${arr_nam_2}[@]}"
+
+    #  Check that array sizes match
+    # shellcheck disable=SC2154
+    if [[ "${arr_siz_1}" -ne "${arr_siz_2}" ]]; then
+        echo \
+            "Error: Array length mismatch. '${arr_nam_1}' has '${arr_siz_1}'" \
+            "element(s), whereas '${arr_nam_2}' has '${arr_siz_2}'." >&2
+        return 1
+    fi
+
+    return 0
+}
+
+
+#  Debug array contents (usable with Bash >=3.2)
+function debug_array_contents() {
+    local arr_nam
+    local -a arr
+
+    for arr_nam in "$@"; do
+        #  Skip invalid variable names
+        if ! [[ "${arr_nam}" =~ ^[a-zA-Z_][a-zA-Z0-9_]*$ ]]; then
+            continue
+        fi
+
+        #  Check array exists (if unset / not an array, behavior can get messy)
+        if ! eval 'declare -p '"${arr_nam}"' >/dev/null 2>&1'; then
+            continue
+        fi
+
+        #  Skip non-indexed variables
+        if ! eval '
+            declare -p '"${arr_nam}"' 2>/dev/null | grep -q "^declare \-a "
+        '; then
+            continue
+        fi
+
+        #  Access the array indirectly using eval
+        eval "arr=( \"\${${arr_nam}[@]}\" )"
+        if [[ -n "${arr[*]}" ]]; then
+            echo "  - ${arr_nam}=( ${arr[*]} )"
+        fi
+    done
 }
