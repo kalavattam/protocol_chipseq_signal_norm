@@ -36,37 +36,37 @@ Usage:
   check_scl_fct "\${scl_fct}"
 
 Examples:
-  \`\`\`
-  scl_fct=0.5,1.2:3,.65
-  check_scl_fct \${scl_fct}
+  '''txt
+  ❯ scl_fct=0.5,1.2:3,.65
+  ❯ check_scl_fct \${scl_fct}
   0.5:1,1.2:3,0.65:1
 
-  scl_fct=0.00456,0.00789
-  check_scl_fct \${scl_fct}
+  ❯ scl_fct=0.00456,0.00789
+  ❯ check_scl_fct \${scl_fct}
   0.00456:1,0.00789:1
 
-  scl_fct="num:den"
-  check_scl_fct \${scl_fct}
+  ❯ scl_fct="num:den"
+  ❯ check_scl_fct \${scl_fct}
   Error: Invalid 'num' in 'num:den' (must be a positive float).
 
-  scl_fct="0.33:den"
-  check_scl_fct \${scl_fct}
+  ❯ scl_fct="0.33:den"
+  ❯ check_scl_fct \${scl_fct}
   Error: Invalid 'den' in '0.33:den' (must be a positive float).
 
-  scl_fct=0.5,1.2a,.65
-  check_scl_fct \${scl_fct}
+  ❯ scl_fct=0.5,1.2a,.65
+  ❯ check_scl_fct \${scl_fct}
   Error: Invalid numerator-only scaling factor '1.2a' (must be a positive float).
 
-  scl_fct=hotdog
-  check_scl_fct \${scl_fct}
+  ❯ scl_fct=hotdog
+  ❯ check_scl_fct \${scl_fct}
   Error: Invalid numerator-only scaling factor 'hotdog' (must be a positive float)
-  \`\`\`
+  '''
 EOM
     )
 
     #  Parse and check function parameter
-    if [[ -z "${1}" || "${1}" == "-h" || "${1}" == "--help" ]]; then
-        echo "${show_help}"
+    if [[ -z "${1:-}" || "${1}" =~ ^(-h|--h[e]?lp)$ ]]; then
+        echo "${show_help}" >&2
         return 0
     fi
 

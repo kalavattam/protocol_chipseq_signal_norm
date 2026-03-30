@@ -1,23 +1,31 @@
 #!/bin/bash
+# -*- coding: utf-8 -*-
+# 
+# Script: check_int_nonneg.sh
+#
+# Copyright 2024-2026 by Kris Alavattam
+# Email: kalavattam@gmail.com
+#
+# OpenAI ChatGPT (GPT-4- and GPT-5-series models) was used in development.
+# 
+# Distributed under the MIT license.
+
 
 function check_int_nonneg() {
-    local value="${1}"
-    local name="${2}"
+    local val="${1:-}"
+    local nam="${2:-}"
     local show_help
 
     show_help=$(cat << EOM
-----------------
-check_int_nonneg
-----------------
+Usage:
+  check_int_nonneg [-h|--hlp|--help] val [nam]
 
 Description:
-  'check_int_nonneg' checks that a value is a non-negative integer, i.e., an
-  integer greater than or equal (gte) to 0.
+  Check that a value is an integer greater than or equal (gte) to 0, i.e., a non-negative integer.
 
-Positional parameters:
-  1, value (int): The value to check (required).
-  2, name  (str): Name of argument or variable associated with the value
-                  (optional).
+Positional arguments:
+  1  val  <int>  The value to check.
+  2  nam  <str>  Name of argument or variable associated with the value (optional).
 
 Returns:
   0 if the check passes, otherwise returns an error message and exit code 1.
@@ -25,43 +33,56 @@ Returns:
 Dependencies:
   - Bash or Zsh
 
-Example:
-  Check that the value assigned to the argument '--threads' is a non-negative
-  integer:
-  \`\`\`
+Examples:
+  #TODO: Brief description of this example
+  '''bash
   ❯ check_int_nonneg 4 "threads"  # Returns 0
-  
-  ❯ check_int_nonneg a "threads"  # Returns 1 and the below message
-  Error: --threads was assigned 'a' but must be a non-negative integer.
+  '''
 
-  ❯ check_int_nonneg -2  # Returns 1 and the below message
-  Error: -2 is not a non-negative integer.
-  \`\`\`
+  '''txt
+  0 ❯
+  '''
+
+  #TODO: Brief description of this example
+  '''bash
+  check_int_nonneg a "threads"  # Returns 1 and the below message
+  '''
+
+  '''txt
+  1 ❯ Error: --threads was assigned 'a' but must be a non-negative integer.
+  '''
+
+  #TODO: Brief description of this example
+  '''bash
+  check_int_nonneg -2  # Returns 1 and the below message
+  '''
+
+  '''txt
+  1 ❯ Error: -2 is not a non-negative integer.
+  '''
 EOM
     )
 
-    #  Parse and check function parameters
-    if [[ -z "${1}" || "${1}" == "-h" || "${1}" == "--help" ]]; then
-        echo "${show_help}"
+    #  Parse and check function arguments, printing help message as appropriate
+    if [[ "${val}" =~ ^(-h|--h[e]?lp)$ ]]; then
+        echo "${show_help}" >&2
         return 0
-    fi
-
-    if [[ -z "${value}" ]]; then
-        echo "Error: Positional parameter 1, value, is missing." >&2
-        echo "" >&2
+    elif [[ -z "${val}" ]]; then
+        echo "Error: Positional argument 1, 'val', is missing." >&2
+        echo >&2
         echo "${show_help}" >&2
         return 1
     fi
 
     #  Perform the check and return an error message if it fails
-    if ! [[ "${value}" =~ ^[0-9]+$ ]]; then
-        if [[ -n "${name}" ]]; then
+    if ! [[ "${val}" =~ ^[0-9]+$ ]]; then
+        if [[ -n "${nam}" ]]; then
             echo \
-                "Error: --${name} was assigned '${value}' but must be a" \
+                "Error: '--${nam}' was assigned '${val}' but must be a" \
                 "non-negative integer." >&2
         else
             echo \
-                "Error: ${value} is not a non-negative integer." >&2
+                "Error: '${val}' is not a non-negative integer." >&2
         fi
         return 1
     fi
