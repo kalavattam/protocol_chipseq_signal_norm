@@ -11,25 +11,24 @@ function filter_bam_sp() {
     local show_help
 
     show_help=$(cat << EOM
--------------
-filter_bam_sp
--------------
+Usage:
+  filter_bam_sp
+    [--help] [--threads <int>] --infile <str> --outfile <str> [--mito] [--tg] [--mtr] [--chk_chr]
 
 Description:
   Filter and reheader a BAM file for S. pombe chromosomes.
 
-Keyword parameters:
-   -t, --threads  (int): Number of threads to use (default: '${threads}').
-   -i, --infile   (str): Coordinate-sorted BAM infile.
-   -o, --outfile  (str): Filtered BAM outfile.
-   -m, --mito    (flag): Retain SP_Mito chromosome (optional).
-  -tg, --tg      (flag): Retain SP_II_TG chromosome (optional).
-  -mr, --mtr     (flag): Retain SP_MTR chromosome (optional).
-  -cc, --chk_chr (flag): Check chromosomes in filtered BAM outfile (optional).
+Keyword arguments:
+   -t, --threads  <int>  Number of threads to use (default: ${threads}).
+   -i, --infile   <str>  Coordinate-sorted BAM infile.
+   -o, --outfile  <str>  Filtered BAM outfile.
+   -m, --mito     <flg>  Retain SP_Mito chromosome (optional).
+  -tg, --tg       <flg>  Retain SP_II_TG chromosome (optional).
+  -mr, --mtr      <flg>  Retain SP_MTR chromosome (optional).
+  -cc, --chk_chr  <flg>  Check chromosomes in filtered BAM outfile (optional).
 
 Returns:
-  Creates a BAM outfile filtered and reheadered for S. pombe chromosomes at the
-  specified path.
+  Creates a BAM outfile filtered and reheadered for S. pombe chromosomes at the specified path.
 
 Dependencies:
   - Programs
@@ -40,16 +39,21 @@ Dependencies:
     + rm
     + Samtools
 
-Example:
-  \`\`\`
+Examples:
+  '''bash
   #TODO
-  \`\`\`
+  '''
+
+#TODO:
+  - Somewhere and somehow, need to handle more than S. pombe as "spike-in" organism.
+  - The filter activity needs to be recorded in the BAM header.
+  - Support for SAM and CRAM too.
 EOM
     )
 
-    #  Parse keyword parameters
-    if [[ -z "${1:-}" || "${1}" == "-h" || "${1}" == "--help" ]]; then
-        echo "${show_help}"
+    #  Parse keyword arguments
+    if [[ -z "${1:-}" || "${1}" =~ ^(-h|--h[e]?lp)$ ]]; then
+        echo "${show_help}" >&2
         return 0
     fi
 
@@ -63,15 +67,15 @@ EOM
             -mr|--mtr)     mtr=true;       shift 1 ;;
             -cc|--chk_chr) chk_chr=true;   shift 1 ;;
             *)
-                echo "## Unknown parameter passed: '${1}' ##" >&2
+                echo "## Unknown argument passed: '${1}' ##" >&2
                 echo "" >&2
-                show_help >&2
+                echo "${show_help}" >&2
                 exit 1
                 ;;
         esac
     done
 
-    #  Validate keyword parameters
+    #  Validate keyword arguments
     if [[ -z "${threads}" ]]; then
         echo "Error: '--threads' is required." >&2
         return 1
@@ -85,7 +89,7 @@ EOM
     fi
 
     if [[ -z "${infile}" ]]; then
-        echo "Error: '--infile' is a required parameter." >&2
+        echo "Error: '--infile' is a required argument." >&2
         return 1
     fi
 
@@ -97,7 +101,7 @@ EOM
     fi
 
     if [[ -z "${outfile}" ]]; then
-        echo "Error: '--outfile' is a required parameter." >&2
+        echo "Error: '--outfile' is a required argument." >&2
         return 1
     fi
 
@@ -109,6 +113,7 @@ EOM
     fi
 
     #  Do the main work
+    #TODO: initialize local variables first
     #  Set the chromosomes to retain
     chromosomes="SP_I SP_II SP_III"
     if ${tg};   then chromosomes="SP_II_TG ${chromosomes}"; fi
@@ -183,7 +188,7 @@ EOM
     #     echo "Error: Failed to generate ${pth_out}." >&2
     #     return 1
     # fi
-    #TODO: The above only works with GNU Bash but is fast; need fast for BSD
+    #TODO: The above only works with GNU Bash but is (relatively) fast; need fast for BSD
 
     #  Filter pertinent lines from the SAM header and body following these
     #+ conditions:
@@ -222,7 +227,7 @@ EOM
         echo "Error: Failed to generate ${pth_out}." >&2
         return 1
     fi
-    #TODO: The above is portable (both GNU and BSD) but slow
+    #TODO: The above is portable (both GNU and BSD) but (relatively) slow
 
     #  Perform SAM-to-BAM conversion for filtered, reheadered alignment
     #+ information
