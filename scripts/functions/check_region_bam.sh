@@ -1,10 +1,10 @@
 #!/bin/bash
 
-#  Function to check that a region is within the bounds of the reference genome
-#+ based on information encoded in a BAM file; dependency: Samtools
+#  Check that a region is within the bounds of the reference genome based on
+#+ information encoded in a BAM file; dependency: Samtools
 function check_region_bam() {
-    local bam="${1}"
-    local region="${2}"
+    local bam="${1:-}"
+    local region="${2:-}"
 
     #  Check that positional parameters are supplied
     if [[ -z "${bam}" ]]; then
