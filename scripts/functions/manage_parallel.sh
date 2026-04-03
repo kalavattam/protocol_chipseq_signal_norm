@@ -11,16 +11,13 @@
 # Distributed under the MIT license.
 
 
-#  Debug array contents
-function debug_array_contents() {
-    for arr_nam in "$@"; do
-        #  Access the array indirectly using eval
-        eval "arr=( \"\${${arr_nam}[@]}\" )"
-        if [[ -n "${arr[*]}" ]]; then
-            echo "  - ${arr_nam}=( ${arr[*]} )"
-        fi
-    done
-}
+#  'print_parallel_info' requires 'debug_array_contents' from 'check_inputs.sh'
+# shellcheck disable=SC1091
+if ! declare -F debug_array_contents > /dev/null 2>&1; then
+    dir_src="$(cd "$(dirname "${BASH_SOURCE[0]}")" > /dev/null 2>&1 && pwd)"
+    source "${dir_src}/check_inputs.sh"
+    unset dir_src
+fi
 
 
 #  Determine number of available CPU cores
@@ -47,6 +44,8 @@ function determine_cores() {
 
 
 #  Print parsed vector(s) and arguments for parallelization
+#+ 
+#+ Requires 'debug_array_contents' from 'check_inputs.sh'
 function print_parallel_info() {
     local slurm="${1:-}"    # Boolean flag for SLURM: 'true' or 'false'
     local max_job="${2:-}"  # No. concurrent jobs: SLURM
