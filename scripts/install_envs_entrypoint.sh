@@ -22,7 +22,7 @@ Description:
 
   This script is intended to be invokable from various user shell environments (e.g., terminals used with 'zsh', 'csh', 'fish', etc.) and systems before a modern Bash environment has been set up.
 
-  If Bash >= 5 is already available in PATH, this script hands off directly to 'install_envs.sh'.
+  If Bash >= 5 is already available in PATH, and Conda or Mamba is also available in PATH, this script hands off directly to 'install_envs.sh'.
 
   If Bash >= 5 is not available, this script prints guidance for the next step. If Conda or Mamba is available, it explains how to install Bash >= 5 in the current environment. If Conda or Mamba is not available, it explains that Miniforge should be installed and initialized first.
 
@@ -32,6 +32,7 @@ Returns:
 Notes:
   - This script is POSIX-sh compatible.
   - Repository-specific installation logic is in 'install_envs.sh'.
+  - This script performs lightweight argument validation before handing off to 'install_envs.sh'.
 EOM
 }
 
@@ -84,7 +85,9 @@ print_guidance_bash() {
     cat << EOM >&2
 Bash >= 5 was not found in PATH.
 
-If Bash >= 5 is already installed, then make sure it is available in PATH, for example by activating the appropriate Conda/Mamba environment or adjusting shell initialization.
+If Bash >= 5 is already installed, then make sure it is available in PATH, for example by activating the appropriate environment or adjusting shell initialization.
+
+Conda or Mamba must also be available in PATH before this entrypoint can hand off to 'install_envs.sh'.
 
 If Bash >= 5 is not installed, then install it in the current Conda/Mamba context, e.g.,
 
@@ -138,7 +141,7 @@ If neither Conda nor Mamba is installed, Miniforge (https://github.com/conda-for
 
 (For more information, see the Tsukiyama Lab Bio-protocol manuscript [PMID 40364978].)
 
-After Conda and/or Mamba has been installed and initialized, install Bash >= 5, e.g.,
+After Conda and/or Mamba have been installed and initialized, install Bash >= 5, e.g.,
 
   mamba install -c conda-forge bash
 
@@ -154,11 +157,7 @@ EOM
 }
 
 
-main() {
-    argv="$*"
-
-    #  Parse arguments lightly so that help requests and clearly unexpected
-    #+ options can be handled even before Bash >= 5 is available
+check_args_light() {
     while [ "$#" -gt 0 ]; do
         case "${1}" in
             -h|--hlp|--help)
@@ -191,6 +190,11 @@ main() {
                 ;;
         esac
     done
+}
+
+
+main() {
+    check_args_light "$@"
 
     dir_scr=$(
         CDPATH=
@@ -214,8 +218,19 @@ main() {
     fi
 
     if pth_bash="$(find_bash_5)"; then
-        # shellcheck disable=SC2086
-        exec "${pth_bash}" "${pth_main}" ${argv}
+        if (
+               command -v conda >/dev/null 2>&1 \
+            || command -v mamba >/dev/null 2>&1
+        ); then
+            exec "${pth_bash}" "${pth_main}" "$@"
+        fi
+
+        err \
+            "Bash >= 5 was found in PATH, but neither 'conda' nor 'mamba'" \
+            "is currently available in PATH."
+        echo >&2
+        print_guidance_miniforge
+        exit 1
     fi
 
     if ! (
