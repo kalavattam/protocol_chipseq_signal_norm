@@ -1,61 +1,69 @@
 #!/bin/bash
+# -*- coding: utf-8 -*-
+#
+# Script: write_header.sh
+#
+# Copyright 2025-2026 by Kris Alavattam
+# Email: kalavattam@gmail.com
+#
+# OpenAI ChatGPT (GPT-4- and GPT-5-series models) was used in development.
+#
+# Distributed under the MIT license.
 
-#  write_header.sh
-#  KA
 
-#  Run script in interactive mode (true) or command-line mode (false)
-interactive=false
-
-#  Exit on errors, unset variables, or pipe failures if not in "interactive
-#+ mode"
-if ! ${interactive:-false}; then set -euo pipefail; fi
-
-#  Set the path to the "scripts" directory
-if ${interactive:-false}; then
-    ## WARNING: If 'interactive=true', change path as needed ##
-    dir_scr="${HOME}/repos/protocol_chipseq_signal_norm/scripts"
-else
-    dir_scr="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+#  Require Bash >= 4.4 before doing any work
+if [[ -z "${BASH_VERSION:-}" ]]; then
+    echo "error(shell):" \
+        "this script must be run under Bash >= 4.4." >&2
+    exit 1
+elif ((
+    BASH_VERSINFO[0] < 4 || ( BASH_VERSINFO[0] == 4 && BASH_VERSINFO[1] < 4 )
+)); then
+    echo "error($(basename "${BASH_SOURCE[0]}")):" \
+        "this script requires Bash >= 4.4; current version is" \
+        "'${BASH_VERSION}'." >&2
+    exit 1
 fi
+
+#  Run in safe mode, exiting on errors, unset variables, and pipe failures
+set -euo pipefail
+
+#  Set path to the 'scripts' directory
+dir_scr="$(cd "$(dirname "${BASH_SOURCE[0]}")" > /dev/null 2>&1 && pwd)"
 
 
 #  Source and define functions ================================================
-#  Set the path to the "functions" directory
+# arr_fnc=(  #TODO: record in help documentation before deleting
+#     check_file_dir_exists  ## check_inputs ##
+#     echo_err               ## format_outputs ##
+#     echo_warn              ## format_outputs ##  ## NOTE: not here now ##
+# )
+
 dir_fnc="${dir_scr}/functions"
+fnc_src="${dir_fnc}/source_helpers.sh"
+
+if [[ ! -f "${fnc_src}" ]]; then
+    echo "error($(basename "${BASH_SOURCE[0]}")):" \
+        "script not found: '${fnc_src}'." >&2
+    exit 1
+fi
 
 # shellcheck disable=SC1090
-for fnc in check_exists_file_dir echo_error echo_warning exit_0 exit_1; do
-    source "${dir_fnc}/${fnc}.sh"
-done
-unset fnc
-
-
-#  Set paths, values, arguments, etc. for interactive mode
-function set_interactive() {
-    #  Set base repository paths
-    dir_bas="${HOME}/repos"  ## WARNING: Change as needed ##
-    dir_rep="${dir_bas}/protocol_chipseq_signal_norm"
-    dir_scr="${dir_rep}/scripts"
-
-    #  Set alignment parameters
-    aligner="bowtie2"
-    a_type="global"
-    req_flg=true
-    flg="$(if ${req_flg}; then echo "2"; else echo "NA"; fi)"
-    mapq=1
-    str_det="${aligner}_${a_type}_flag-${flg}_mapq-${mapq}"
-
-    #  Set output directories
-    dir_dat="${dir_rep}/data"
-    dir_pro="${dir_dat}/processed"
-    dir_out="${dir_pro}/compute_signal/${str_det}/tables"
-
-    #  Set hardcoded argument assignments
-    verbose=true
-    dry_run=true
-    mode="spike"
-    fil_out="${dir_out}/ChIP_WT_G1-G2M-Q_Hho1-Hmo1_${mode}_6nd.tsv"
+source "${fnc_src}" || {
+    echo "error($(basename "${BASH_SOURCE[0]}")):" \
+        "failed to source '${fnc_src}'." >&2
+    exit 1
 }
+
+source_helpers "${dir_fnc}" \
+    check_args \
+    check_inputs \
+    format_outputs \
+    || {
+        echo "error($(basename "${BASH_SOURCE[0]}")):" \
+            "failed to source required helper scripts." >&2
+        exit 1
+    }
 
 
 #  Initialize argument variables, check and parse arguments, etc. =============
@@ -68,71 +76,91 @@ fil_out=""
 #  Assign variable for help message
 show_help=$(cat << EOM
 Usage:
-  write_header.sh [--verbose] [--dry-run] --mode <str> --fil_out <str>
+  write_header.sh [--help] [--verbose] [--dry-run] [--mode <str>] --fil_out <str>
 
 Description:
-  Writes a predefined tab-delimited header to the specified output file.
-  Implemented to pre-write the header before running SLURM jobs, preventing
-  race conditions that occurred when header-writing logic was in 'submit'
-  scripts.
+  Write a predefined tab-delimited header to the specified output file.
 
 Options:
    -h, --help     Display this help message and exit.
    -v, --verbose  Print the header before writing.
   -dr, --dry-run  Print the header but do not write to a file.
-   -m, --mode     Type of header to write: 'alpha' or 'spike' (default:
-                  '${mode}').
+  -md, --mode     Type of header to write: 'alpha' or 'spike' (default: '${mode}').
   -fo, --fil_out  Output file where the header should be written.
 
 Dependencies:
-  - Bash
-  - echo
-  - printf
+  - Bash >= 4.4
 
 Example:
-  \`\`\`
-  write_header.sh -v -t alpha -o results/ChIP_samples_alpha_6nd.tsv
-  \`\`\`
+  '''bash
+  write_header.sh -v -t -md alpha -o results/ChIP_samples_alpha_6nd.tsv
+  '''
+
+Note:
+  - Script was implemented to pre-write the header before running Slurm jobs, preventing race conditions that occurred when header-writing logic was previously in 'submit' scripts.
 EOM
 )
 
 #  Parse arguments
-if [[ -z "${1:-}" || "${1}" == "-h" || "${1}" == "--help" ]]; then
-    echo "${show_help}"
-    exit_0
+if [[ -z "${1:-}" || "${1}" =~ ^(-h|--h[e]?lp)$ ]]; then
+    echo "${show_help}" >&2
+    exit 0
 fi
 
-if ${interactive:-false}; then
-    set_interactive
-else
-    while [[ "$#" -gt 0 ]]; do
-        case "${1}" in
-             -v|--verbose) verbose=true;   shift 1 ;;
-            -dr|--dry-run) dry_run=true;   shift 1 ;;
-             -m|--mode)    mode="${2}";    shift 2 ;;
-            -fo|--fil_out) fil_out="${2}"; shift 2 ;;
-            *)
-                echo "## Unknown parameter passed: '${1}' ##" >&2
+while [[ "$#" -gt 0 ]]; do
+    case "${1}" in
+        -v|--verbose)
+            verbose=true
+            shift 1
+            ;;
+
+        -dr|--dry|--dry[_-]run)
+            dry_run=true
+            shift 1
+            ;;
+
+        -md|--mode)
+            require_optarg "${1}" "${2:-}" "main" || {
+                echo >&2
                 echo "${show_help}" >&2
-                exit_1
-                ;;
-        esac
-    done
-fi
+                exit 1
+            }
+            mode="${2}"
+            shift 2
+            ;;
+
+        -fo|--fil[_-]out)
+            require_optarg "${1}" "${2:-}" "main" || {
+                echo >&2
+                echo "${show_help}" >&2
+                exit 1
+            }
+            fil_out="${2}"
+            shift 2
+            ;;
+
+        *)
+            echo_err "unknown option/parameter passed: '${1}'."
+            echo >&2
+            echo "${show_help}" >&2
+            exit 1
+            ;;
+    esac
+done
 
 #  Check arguments
 case "${mode}" in
     alpha|spike) : ;;
     *)
-        echo_error \
-            "Header mode ('--mode') was assigned '${mode}' but must be" \
+        echo_err \
+            "header mode ('--mode') was assigned '${mode}' but must be" \
             "'alpha' or 'spike'."
-        exit_1
+        exit 1
         ;;
 esac
 
-# check_exists_file_dir "f" "${fil_out}" "fil_out"
-check_exists_file_dir "d" "$(dirname "${fil_out}")" "dir_out"
+validate_var "fil_out" "${fil_out}"
+validate_var_dir "dir_out" "$(dirname "${fil_out}")"
 
 
 #  Do the main work ===========================================================
@@ -149,7 +177,8 @@ case "${mode}" in
             "dm_nm_50"
         )
         ;;
-        spike) nam_col=(
+
+    spike) nam_col=(
             "main_ip" "spike_ip" "main_in" "spike_in" "spike"
             "num_mp" "num_sp" "num_mn" "num_sn"
             "dm_fr_1" "dm_fr_5" "dm_fr_10" "dm_fr_20" "dm_fr_30" "dm_fr_40"
@@ -169,26 +198,26 @@ fmt_str="${fmt_str%$'\t'}\n"  # Remove trailing tab and add newline
 header=$(printf "${fmt_str}" "${nam_col[@]}")
 
 #  Print the header (if in dry-run or verbose modes)
-if ${dry_run} || ${verbose}; then
+if [[ "${dry_run}" == "true" ]] || [[ "${verbose}" == "true" ]]; then
     echo "##################"
     echo "## Table header ##"
     echo "##################"
-    echo ""
+    echo
     echo "${header}"
-    echo ""
-    echo ""
+    echo
+    echo
 fi
 
 #  Prepend the header (only if not already present); create file if missing
-if ! ${dry_run}; then
+if [[ "${dry_run}" == "false" ]]; then
     tmp="${fil_out}.tmp.$$"
     if [[ -f "${fil_out}" ]]; then
-        first_line="$(head -n1 "${fil_out}")"
-        if [[ "${first_line}" == "${header%$'\n'}" ]]; then
-            :  # Header already present; do nothing
+        lin_fst="$(head -n1 "${fil_out}")"
+        if [[ "${lin_fst}" == "${header%$'\n'}" ]]; then
+            :  # Header already present, so do nothing
         else
-            { printf '%s\n' "${header%$'\n'}"; cat "${fil_out}"; } \
-                > "${tmp}" && mv "${tmp}" "${fil_out}"
+            { printf '%s\n' "${header%$'\n'}"; cat "${fil_out}"; } > "${tmp}" \
+                && mv "${tmp}" "${fil_out}"
         fi
     else
         printf '%s\n' "${header%$'\n'}" > "${tmp}" && mv "${tmp}" "${fil_out}"

@@ -1,133 +1,237 @@
 #!/bin/bash
 # -*- coding: utf-8 -*-
-# 
-# Copyright 2024-2025 by Kris Alavattam
-# Email: kalavattam@gmail.com
-# 
-# Distributed under the MIT license.
 #
 # Script: install_envs.sh
-# Description: Sets up Mamba environments used in the workflow.
+#
+# Copyright 2024-2026 by Kris Alavattam
+# Email: kalavattam@gmail.com
+#
+# OpenAI ChatGPT (GPT-4- and GPT-5-series models) was used in development.
+#
+# Distributed under the MIT license.
 
 
-#  Run script in interactive mode (true) or command-line mode (false)
-interactive=false
-
-#  Exit on errors, unset variables, or pipe failures if not in "interactive
-#+ mode"
-if ! ${interactive:-false}; then set -euo pipefail; fi
-
-#  Set the path to the "scripts" directory
-if ${interactive:-false}; then
-    ## WARNING: If 'interactive=true', change path as needed ##
-    dir_scr="${HOME}/repos/protocol_chipseq_signal_norm/scripts"
-else
-    dir_scr="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+#  Require Bash >= 5 before doing any work
+if [[ -z "${BASH_VERSION:-}" ]]; then
+    echo "error(shell):" \
+        "this script must be run under Bash >= 5." >&2
+    exit 1
+elif (( BASH_VERSINFO[0] < 5 )); then
+    echo "error($(basename "${BASH_SOURCE[0]}")):" \
+        "this script requires Bash >= 5; current version is" \
+        "'${BASH_VERSION}'." >&2
+    exit 1
 fi
+
+#  Run in safe mode, exiting on errors, unset variables, and pipe failures
+set -euo pipefail
+
+#  Set path to the 'scripts' directory
+dir_scr="$(cd "$(dirname "${BASH_SOURCE[0]}")" > /dev/null 2>&1 && pwd)"
 
 
 #  Source and define functions ================================================
-#  Set the path to the "functions" directory
+# arr_fnc=(  #TODO: record in 'help_install_envs' before deleting
+#     check_env
+#     format_outputs
+#     handle_env
+#     help/help_install_envs
+#     # check_env_installed  ## check_env ##
+#     # echo_err           ## format_outputs ##
+#     # echo_warn         ## format_outputs ##
+#     # handle_env           ## handle_env ##
+#     # help/help_install_envs
+# )
+
 dir_fnc="${dir_scr}/functions"
+fnc_src="${dir_fnc}/source_helpers.sh"
+
+if [[ ! -f "${fnc_src}" ]]; then
+    echo "error($(basename "${BASH_SOURCE[0]}")):" \
+        "script not found: '${fnc_src}'." >&2
+    exit 1
+fi
 
 # shellcheck disable=SC1090
-for script in \
-    check_installed_env.sh \
-    check_installed_mamba.sh \
-    echo_error.sh \
-    echo_warning.sh \
-    handle_env.sh \
-    help/help_install_envs.sh
-do
-    source "${dir_fnc}/${script}"
-done
+source "${fnc_src}" || {
+    echo "error($(basename "${BASH_SOURCE[0]}")):" \
+        "failed to source '${fnc_src}'." >&2
+    exit 1
+}
+
+source_helpers "${dir_fnc}" \
+    check_args \
+    check_env \
+    check_inputs \
+    format_outputs \
+    handle_env \
+    help/help_install_envs \
+    || {
+        echo "error($(basename "${BASH_SOURCE[0]}")):" \
+            "failed to source required helper scripts." >&2
+        exit 1
+    }
+
+unset fnc_src
 
 
-#  Set values for interactive mode
-function set_interactive() {
-    #  Hardcoded argument assignments
-    env_nam="env_align"
-    yes=false
+# shellcheck disable=SC2120
+function check_pkg_mgr() {
+    local arg="${1:-}"
+    local show_help
+
+    show_help=$(cat << EOM
+Usage:
+  check_pkg_mgr [-h|--hlp|--help]
+
+Description:
+  Check that either Mamba or Conda is installed and available in PATH.
+
+Returns:
+  0 if Mamba or Conda is available; otherwise, 1 and an error message.
+
+Dependency:
+  Bash >= 5
+EOM
+    )
+
+    if [[ "${arg}" =~ ^(-h|--h[e]?lp)$ ]]; then
+        echo "${show_help}" >&2
+        return 0
+    elif [[ -n "${arg}" ]]; then
+        echo \
+            "Error: Unexpected argument to 'check_pkg_mgr()':" \
+            "'${arg}'." >&2
+        echo >&2
+        echo "${show_help}" >&2
+        return 1
+    fi
+
+    if command -v mamba >/dev/null 2>&1; then
+        return 0
+    elif command -v conda >/dev/null 2>&1; then
+        return 0
+    else
+        echo "Error: Neither Mamba nor Conda is installed on the system." >&2
+        echo >&2
+        echo \
+            "Mamba is a package manager that makes package installations" \
+            "faster and more reliable in comparison to Conda." >&2
+        echo >&2
+        echo \
+            "For Mamba installation instructions, please check the following" \
+            "link: https://github.com/mamba-org/mamba#installation" >&2
+
+        return 1
+    fi
 }
 
 
 #  Parse arguments ============================================================
 #  Initialize variables along with default assignments
+dry_run=false
 env_nam=""
 yes=false
 
 #  Parse arguments
-if [[ -z "${1:-}" || "${1}" == "-h" || "${1}" == "--help" ]]; then
-    help_install_envs
-    if ! ${interactive}; then exit 0; fi
+if [[ -z "${1:-}" || "${1}" =~ ^(-h|--h[e]?lp)$ ]]; then
+    help_install_envs >&2
+    exit 0
 fi
 
-if ${interactive:-false}; then
-    set_interactive
-else
-    while [[ "$#" -gt 0 ]]; do
-        case "${1}" in
-           -en|--env_nam) env_nam="${2}"; shift 2 ;;
-            -y|--yes)     yes=true;       shift 1 ;;
-            *)
-                echo "## Unknown parameter passed: '${1}' ##" >&2
-                echo "" >&2
+while [[ "$#" -gt 0 ]]; do
+    case "${1}" in
+        -dr|--dry|--dry[_-]run)
+            dry_run=true
+            shift 1
+            ;;
+
+        -en|--env|--env[_-]nam)
+            require_optarg "${1}" "${2:-}" "main" || {
+                echo >&2
                 help_install_envs >&2
                 exit 1
-                ;;
-        esac
-    done
-fi
+            }
+            env_nam="${2}"
+            shift 2
+            ;;
+
+        -y|--yes)
+            yes=true
+            shift 1
+            ;;
+
+        *)
+            echo_err "unknown option/parameter passed: '${1}'."
+            echo >&2
+            help_install_envs >&2
+            exit 1
+            ;;
+    esac
+done
 
 
 #  Check that required arguments are provided, appropriate, formatted, etc.
-if [[ -z "${env_nam}" ]]; then
-    echo_error "Environment name was not specified."
-fi
+validate_var "env_nam" "${env_nam}"
 
 case "${env_nam}" in
     env_align|env_analyze|env_protocol|env_repro|env_siqchip) : ;;
     *)
         ## NOTE: 'env_align' and 'env_repro' are not exposed to users ##
-        echo_error \
-            "Invalid environment name specified. Must be 'env_analyze'," \
+        echo_err \
+            "invalid environment name specified. Must be 'env_analyze'," \
             "'env_protocol', or 'env_siqchip'."
+        exit 1
         ;;
 esac
 
-if check_installed_env "${env_nam}"; then
-    echo_error \
-        "An environment with the name '${env_nam}' is already installed."
+if \
+    check_env_installed "${env_nam}" "true"
+then
+    echo_err \
+        "an environment with the name '${env_nam}' is already installed."
+    exit 1
 fi
 
-#  Check that dependencies are in PATH
-check_installed_mamba
+#  Check that supported package manager is in PATH
+# shellcheck disable=SC2119
+check_pkg_mgr || exit 1
 
 
 #  Do the main work ===========================================================
 echo "Creating environment '${env_nam}'."
 
+#  Warn about potentially time-consuming installations
 case "${env_nam}" in
     env_align|env_analyze)
-        echo_warning \
-            "Creating '${env_nam}' will take some time given the >100" \
-            "packages to install. Don't worry if this script is still" \
-            "running without any apparent progress after 10, 20, or even 30" \
-            "minutes. It will eventually complete."
+        echo_warn \
+            "creating '${env_nam}' may take some time given the large number" \
+            "of packages to install. Do not worry if little or no apparent" \
+            "progress is shown after 10, 20, or even 30 minutes. The" \
+            "installation should eventually complete."
     ;;
 esac
 
-#  If not in base environment, then deactivate current environment
-handle_env_deactivate
+#  If not in base environment, deactivate current environment
+_handle_env_deactivate  #MAYBE: change function from "private" to "public"
 
-#  Construct the mamba command
-cmd="mamba create -n ${env_nam}"
+#  Construct the package manager command
+declare -a cmd packages
 
-if ${yes}; then cmd+=" --yes"; fi
+if command -v mamba >/dev/null 2>&1; then
+    cmd=( mamba create -n "${env_nam}" )
+else
+    cmd=( conda create -n "${env_nam}" )
+fi
+
+if [[ "${yes}" == "true" ]]; then
+    cmd+=( --yes )
+fi
 
 #  Assign an array of packages to install
+#TODO: switch to external YAML files for env package lists
 if [[ "${env_nam}" == "env_align" ]]; then
-    packages=(  ## NOTE: For old work; not exposing this in the docs ##
+    packages=(  ## NOTE: Retained for old work; not exposed in the docs ##
         bamtools
         bbmap
         bedtools
@@ -135,6 +239,8 @@ if [[ "${env_nam}" == "env_align" ]]; then
         bwa
         datamash
         fastqc
+        gawk
+        gnuplot
         macs3
         minimap
         mosdepth
@@ -168,6 +274,8 @@ elif [[ "${env_nam}" == "env_analyze" ]]; then
         bioconductor-sva
         datamash
         deeptools
+        gawk
+        gnuplot
         ipython
         pandas
         parallel
@@ -195,11 +303,16 @@ elif [[ "${env_nam}" == "env_analyze" ]]; then
     )
 elif [[ "${env_nam}" == "env_protocol" ]]; then
     packages=(
+        asciigenome  ## NOTE: Added since publication in Bio-protocol ##
+        bash         ## NOTE: Added since publication in Bio-protocol ##
         bc
         bowtie2
-        datamash  ## NOTE: Added since publication in Bio-protocol ##
+        bwa          ## NOTE: Added since publication in Bio-protocol ##
+        bwa-mem2     ## NOTE: Added since publication in Bio-protocol ##
+        datamash     ## NOTE: Added since publication in Bio-protocol ##
         fastqc
         gawk
+        gnuplot      ## NOTE: Added since publication in Bio-protocol ## ## TODO: remove from 'env_protocol' ##
         ipython
         matplotlib
         multiqc
@@ -207,14 +320,15 @@ elif [[ "${env_nam}" == "env_protocol" ]]; then
         pbzip2
         pigz
         pysam
-        python=3.11  # Restrict to version 3.11 for 'sequali' installation
+        python=3.11  ## NOTE: Restrict to v3.11 for 'sequali' installation ##
+        pyyaml       ## NOTE: Made explicit since Bio-protocol publication ##
         r-argparse
         r-ggsci
         r-plotly
         rename
         samtools
         sequali
-        tree  ## NOTE: Added since publication in Bio-protocol ##
+        tree         ## NOTE: Added since publication in Bio-protocol ##
         wget
     )
 elif [[ "${env_nam}" == "env_repro" ]]; then
@@ -248,10 +362,23 @@ elif [[ "${env_nam}" == "env_siqchip" ]]; then
     )
 fi
 
-#  Run the mamba environment installation
-if ! eval "${cmd} ${packages[*]}"; then
-    echo_error \
-        "Failed to create environment '${env_nam}'. Please check the error" \
+#  In dry-run mode, print resolved command and exit without installing
+if [[ "${dry_run}" == "true" ]]; then
+    echo "Dry run: would create environment '${env_nam}'."
+
+    printf 'Command:'
+    for tok in "${cmd[@]}" "${packages[@]}"; do
+        printf ' %q' "${tok}"
+    done
+    printf '\n'
+
+    exit 0
+fi
+
+#  Run the environment installation
+if ! "${cmd[@]}" "${packages[@]}"; then
+    echo_err \
+        "failed to create environment '${env_nam}'. Please check the error" \
         "message(s) above."
     exit 1
 fi
