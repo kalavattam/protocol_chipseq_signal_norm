@@ -3,7 +3,7 @@
 #
 # Copyright 2024-2025 by Kris Alavattam
 # Email: kalavattam@gmail.com
-# 
+#
 # Distributed under the MIT license.
 
 """
@@ -41,21 +41,40 @@ python -m scripts.calculate_scaling_factor_siq_chip \
 
 Arguments
 ---------
- -v, --verbose  Increase output verbosity.
--eq, --eqn      Equation to compute: '5', '5nd', '6', or '6nd' (default: 6nd).
--mp, --mass_ip  Mass of the IP sample (ng).
--mn, --mass_in  Mass of the input sample (ng).
--va, --vol_all  Volume of sample before removal of input (µL).
--vn, --vol_in   Volume of the input sample (µL).
--dp, --dep_ip   Sequencing depth (in the form of, ideally, alignment-inferred
-                fragments) of the IP sample. Required for '--eqn 5' or
-                '--eqn 6'; otherwise, ignored.
--dn, --dep_in   Sequencing depth (in the form of, ideally, alignment-inferred
-                fragments) of the input sample. Required for '--eqn 5' or
-                '--eqn 6'; otherwise, ignored.
--lp, --len_ip   Summary fragment length of the IP sample (bp).
--ln, --len_in   Summary fragment length of the input sample (bp).
- -r, --rnd      Number of decimal places for rounding alpha (default: 24).
+ -v, --verbose
+    Increase output verbosity.
+
+-eq, --eqn
+    Equation to compute: '5', '5nd', '6', or '6nd' (default: 6nd).
+
+-mp, --mass_ip
+    Mass of the IP sample (ng).
+
+-mn, --mass_in
+    Mass of the input sample (ng).
+
+-va, --vol_all
+    Volume of sample before removal of input (µL).
+
+-vn, --vol_in
+    Volume of the input sample (µL).
+
+-di, --dep_ip
+    Sequencing depth (in the form of, ideally, alignment-inferred fragments) of
+    the IP sample. Required for '--eqn 5' or '--eqn 6'; otherwise, ignored.
+
+-dn, --dep_in
+    Sequencing depth (in the form of, ideally, alignment-inferred fragments) of
+    the input sample. Required for '--eqn 5' or '--eqn 6'; otherwise, ignored.
+
+-lp, --len_ip
+    Summary fragment length of the IP sample (bp).
+
+-ln, --len_in
+    Summary fragment length of the input sample (bp).
+
+-dp, --dp, --rnd, --round, --decimals, --digits
+    Number of decimal places for rounding alpha (default: 24).
 
 
 Output
@@ -276,11 +295,11 @@ def calculate_alpha(
 ) -> float:
     """
     Calculate a siQ-ChIP α (alpha) scaling factor using the provided values.
-    
+
     This function computes the scaling factor α for siQ-ChIP experiments based
     on the selected equation. It supports equations 5 and 6 (PMID: 37160995)
     with or without sequencing depth terms (denoted as "nd" for "no depth").
-    
+
     Args:
         eqn : str
             Alpha equation to compute. Options:
@@ -312,7 +331,7 @@ def calculate_alpha(
     Returns:
         alpha : float
             The calculated alpha scaling factor.
-    
+
     Raises:
         ValueError
             If an unsupported equation is provided, or if constraints required
@@ -380,12 +399,14 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     add_help_cap(parser)
     parser.add_argument(
         "-v", "--verbose",
+        dest="verbose",
         action="store_true",
         default=False,
         help="Increase output verbosity.\n\n"
     )
     parser.add_argument(
-        "-eq", "--eqn",
+        "-eq", "--eqn", "--equation",
+        dest="eqn",
         type=str,
         choices=["5", "5nd", "6", "6nd"],
         default="6nd",
@@ -406,30 +427,35 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     )
     parser.add_argument(
         "-mp", "--mass_ip",
+        dest="mass_ip",
         type=float,
         required=True,
         help="Mass of IP sample (ng).\n\n"
     )
     parser.add_argument(
         "-mn", "--mass_in",
+        dest="mass_in",
         type=float,
         required=True,
         help="Mass of input sample (ng).\n\n"
     )
     parser.add_argument(
         "-va", "--vol_all",
+        dest="vol_all",
         type=float,
         required=True,
         help="Volume of sample before removal of input (µL).\n\n"
     )
     parser.add_argument(
         "-vn", "--vol_in",
+        dest="vol_in",
         type=float,
         required=True,
         help="Volume of input sample (µL).\n\n"
     )
     parser.add_argument(
-        "-dp", "--dep_ip",
+        "-di", "--dep_ip",
+        dest="dep_ip",
         type=int,
         required=False,
         help=(
@@ -439,6 +465,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     )
     parser.add_argument(
         "-dn", "--dep_in",
+        dest="dep_in",
         type=int,
         required=False,
         help=(
@@ -448,18 +475,21 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     )
     parser.add_argument(
         "-lp", "--len_ip",
+        dest="len_ip",
         type=float,
         required=True,
         help="Summary fragment length of IP sample (bp).\n\n"
     )
     parser.add_argument(
         "-ln", "--len_in",
+        dest="len_in",
         type=float,
         required=True,
         help="Summary fragment length of input sample (bp).\n\n"
     )
     parser.add_argument(
-        "-r", "--rnd",
+        "-dp", "--dp", "--rnd", "--round", "--decimals", "--digits",
+        dest="rnd",
         type=int,
         default=24,
         required=False,
@@ -529,14 +559,14 @@ def main(argv: list[str] | None = None) -> None:
             print(f"--mass_in {args.mass_in}")
             print(f"--vol_all {args.vol_all}")
             print(f"--vol_in  {args.vol_in}")
-            
+
             #  Safely handle optional/possibly-absent attributes
             dep_ip = getattr(args, "dep_ip", None)
             dep_in = getattr(args, "dep_in", None)
             if dep_ip is not None or dep_in is not None:
                 print(f"--dep_ip  {dep_ip}")
                 print(f"--dep_in  {dep_in}")
-            
+
             print(f"--len_ip  {args.len_ip}")
             print(f"--len_in  {args.len_in}")
             print(f"--rnd     {args.rnd}")

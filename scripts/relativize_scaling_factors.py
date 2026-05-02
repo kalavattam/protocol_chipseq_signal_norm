@@ -15,7 +15,7 @@
 #     normalizing data across ChIP-seq samples for purposes of comparison.
 #
 #     By default, input (i.e., 'in_*') samples are excluded from the
-#     normalization, and only IP (i.e., 'IP_*') samples are scaled by the 
+#     normalization, and only IP (i.e., 'IP_*') samples are scaled by the
 #     maximum IP sample value. However, when the --input flag is used, input
 #     samples are also scaled, but they are scaled by the largest value found
 #     among the IP samples. For more details, see the following Biostars
@@ -52,11 +52,11 @@
 
 #  Import libraries
 import argparse
-import pandas as pd
+import pandas as pd  # TODO: Get rid of this; use 'csv' or something like that
 import sys
 
 
-#  Run script in interactive mode (true) or command-line mode (false)
+#  Run script in “interactive mode” (true) or “CLI mode” (false)
 interactive = False
 
 
@@ -191,7 +191,7 @@ def parse_args():
             "is 6 decimal places."
         )
     )
-    
+
     #  Display help and exit if no arguments were provided
     if len(sys.argv) == 1:
         parser.print_help(sys.stderr)
