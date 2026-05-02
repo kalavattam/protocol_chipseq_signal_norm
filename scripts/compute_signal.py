@@ -1,482 +1,414 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 #
-# Copyright 2024-2025 by Kris Alavattam
-# Email: kalavattam@gmail.com
-#
 # Script: compute_signal.py
 #
-# Description:
-#     'compute_signal.py' calculates binned signal from a BAM file and outputs
-#     it in BEDGRAPH format. Users can specify whether to compute raw signal,
-#     normalize by fragment length, or apply full normalization (fragment
-#     length and total fragment count, i.e., "normalized coverage"). A scaling
-#     factor can also be applied.
+# Copyright 2024-2026 by Kris Alavattam
+# Email: kalavattam@gmail.com
 #
-#     The output format is determined by the '--outfile' extension:
-#         - '.bedgraph', '.bedgraph.gz', '.bdg', '.bdg.gz', '.bg', '.bg.gz'
-#           outputs signal in BEDGRAPH format
-#         - '.bed', '.bed.gz' outputs processed alignments, not signal, in BED
-#           format
-#         - '.gz' performs additional gzip compression
+# OpenAI ChatGPT (GPT-4- and GPT-5-series models) was used in development.
 #
-#     If '.bed' is specified, the script outputs a BED file of processed
-#     alignments instead of computing signal.
-#
-#     The script supports parallel processing, with per-chromosome signal
-#     calculations distributed across multiple CPU threads.
-#
-# Usage:
-#     python compute_signal.py \
-#         [--verbose] --threads <int> --infile <str> --outfile <str>
-#         --siz_bin <int> [--scl_fct <flt>] [--method <opt>] [--usr_frg <int>]
-#         [--rnd <int>]
-#
-# Arguments:
-#      -v, --verbose  Run script in 'verbose mode'.
-#      -t, --threads  Number of threads for parallel processing (default: 1)
-#      -i, --infile   Path to the BAM infile.
-#      -o, --outfile  Path to the output file with extension. Supported
-#                     formats: '.bdg', '.bg', '.bedgraph', '.bed' and their
-#                     '.gz' versions for compression.
-#     -sb, --siz_bin  Bin size for signal calculation in base pairs (default:
-#                     10). Ignored for BED output.
-#     -me, --method   Specify signal calculation type (default: 'norm').
-#                     Options:
-#                       - 'raw', 'unadj', 'unadjusted': Compute unadjusted
-#                         signal.
-#                       - 'frag', 'frag_len': Normalize signal by fragment
-#                         length.
-#                       - 'norm', 'normalized': Normalize signal by both
-#                         fragment length and total fragments such that
-#                         coverage sums to unity, i.e., "normalized coverage".
-#                       - '--method' is ignored for BED fragment coordinate
-#                         output.
-#     -sf, --scl_fct  Optional scaling factor to apply to the signal. Can be
-#                     used with any '--method' method. Ignored for BED output.
-#     -uf, --usr_frg  Optional fixed fragment length instead of the BAM query
-#                     (read) or template (fragment) lengths. Ignored for BED
-#                     output.
-#      -r, --rnd      Number of decimal places for rounding BEDGRAPH values
-#                     (default: 24). Ignored for BED output.
-#
-# Example:
-#     ```
-#     python compute_signal.py \
-#         --verbose \
-#         --threads 4 \
-#         --infile sample.bam \
-#         --outfile sample_signal.bdg.gz \
-#         --siz_bin 5 \
-#         --method norm \
-#         --rnd 6
-#     ```
-#
-# Output:
-#     - BEDGRAPH ('.bdg', '.bg', '.bedgraph'):
-#         + Contains binned signal values.
-#         + Uses '--rnd' for decimal precision.
-#     - BED ('.bed'):
-#         + Contains processed alignments **instead of signal**.
-#         + Ignores '--siz_bin', '--method', '--scl_fct', '--usr_frg', and
-#           '--rnd'.
-#     - Compression: If '.gz' is in the filename, output is gzip-compressed.
-#
-# TODO:
-#    - Remove BIGWIG file writing until I have time to optimize it
-#
-# License:
-#     Distributed under the MIT license.
+# Distributed under the MIT license.
 
-#  Import libraries, etc.
-import argparse
-import gzip
-import os
-# import pyBigWig
-import pysam
-import sys
+
+"""
+Script
+------
+compute_signal.py
+
+
+Description
+-----------
+Calculates binned signal from a BAM file, typically outputting bedGraph
+signal tracks. Users can compute raw (unadjusted) signal, signal normalized by
+fragment length (as in PMID 37160995), or "normalized coverage" (i.e., signal
+adjusted for both fragment length and total fragment count, as in PMID
+37160995). An optional scaling factor can also be applied.
+
+The output format is determined by the '--outfile' extension when '--outfile'
+is a real path:
+    - extensions '.bedGraph', '.bedGraph.gz', '.bedgraph', '.bedgraph.gz',
+      '.bdg', '.bdg.gz', '.bg', and '.bg.gz' result in bedGraph-formatted
+      output.
+    - extensions '.bed' and '.bed.gz' output processed fragment coordinates,
+      not signal, in BED-like format.
+    - extension '.gz' results in additional gzip compression.
+
+When '--outfile -' (stdout) is used, '--outfmt' is required to tell the script
+which format to emit: 'bedGraph', 'bedgraph', 'bdg', 'bg', or 'bed'. (This
+stdout workflow is intended for direct use of 'compute_signal.py'; the higher-
+level Shell wrappers do not support stdout output.)
+
+BED output is useful when generating fragment-coordinate input for the original
+siQ-ChIP implementation: https://github.com/BradleyDickson/siQ-ChIP.
+
+The script supports parallel processing, with per-chromosome signal
+calculations distributed across multiple CPU threads.
+
+
+Usage
+-----
+python -m scripts.compute_signal \
+    [--help] [--verbose] \
+    [--threads <int_no_cores>] \
+    --infile <str_file.bam|-> \
+    --outfile <str_file.(bedGraph|bedgraph|bdg|bg|bed)(.gz)|-> \
+    [--outfmt {bedGraph,bedgraph,bdg,bg,bed}] \
+    [--method <str_method>] \
+    [--siz_bin <int_bin_size_bp>] \
+    [--scl_fct <flt_scale_factor>] \
+    [--usr_frg <int_frag_len_bp>] \
+    [--rnd <int_decimals>]
+
+
+Arguments
+---------
+ -v, --verbose
+    Run script in verbose mode (stderr banner of parsed args).
+
+ -t, --threads <int>
+    Number of threads for parallel processing (default: 1).
+
+ -i, --infile <str>
+    Path to the input BAM file, or '-' to read from stdin.
+
+ -o, --outfile <str>
+    Path to the output file, or '-' to write to stdout. Supported formats are
+    '.bedGraph', '.bedgraph', '.bdg', '.bg', and '.bed', each optionally with a
+    '.gz' suffix for gzip compression. (stdout output is intended for direct
+    use of 'compute_signal.py'; the higher-level Shell wrappers do not support
+    this mode.)
+
+-of, --outfmt {(bedGraph|bedgraph|bdg|bg),bed}
+    Output format hint used only when '--outfile -' (stdout). Must be one of
+    'bedGraph', 'bedgraph', 'bdg', 'bg', or 'bed'. Ignored when '--outfile' is
+    a real path, in which case the format is inferred from the outfile
+    extension. (This option is mainly for direct use of 'compute_signal.py',
+    since the higher-level Shell wrappers do not support stdout output.)
+
+-me, --method {...}
+    Specify signal calculation type (default: 'norm'). Options:
+        - 'r', 'raw', 'u', 'unadj', 'unadjusted', 's', 'smp', 'simple': Compute
+          unadjusted signal. Internally, all of these values are standardized
+          to 'method=unadj'.
+        - 'f', 'frg', 'frag', 'frg_len', 'frag_len', 'l', 'len', 'len_frg',
+          'len_frag': Normalize signal by fragment length (as described in PMID
+          37160995). Internally, all of these values are standardized to
+          'method=frag'.
+        - 'n', 'nrm', 'norm', 'normalized': Normalize signal by fragment length
+          and total fragment count so that the genome-wide summed signal is
+          approximately 1 (up to small floating-point error), i.e., "normalized
+          coverage" (as described in PMID 37160995). Internally, all of these
+          values are standardized to 'method=norm'.
+        - '--method' is ignored for BED fragment coordinate output.
+
+-sb, --siz_bin <int>
+    Bin size for signal calculation in base pairs (default: 10). Ignored for
+    BED output.
+
+-sf, --scl_fct <flt>
+    Optional scaling factor to apply to the signal. Can be used with any
+    '--method'. Ignored for BED output.
+
+-uf, --usr_frg <int>
+    Optional fixed fragment length to use instead of (a) BAM query alignment
+    lengths for single-end alignments or (b) template lengths for paired-end
+    alignments. Affects both bedGraph and BED outputs. For single-end data,
+    '--usr_frg' is generally the preferred way to obtain fragment-length-aware
+    signal.
+
+-dp, --dp, --rnd, --round, --decimals, --digits <int>
+    Maximum number of decimal places retained for bedGraph values (default:
+    24). After rounding, non-informative trailing zeros are stripped. Ignored
+    for BED output.
+
+
+Output
+------
+- bedGraph ('.bedGraph', '.bedGraph.gz', '.bedgraph', '.bedgraph.gz', '.bdg',
+  '.bdg.gz', '.bg', '.bg.gz'):
+    + Contains binned signal values.
+    + Uses '--rnd' as the maximum decimal precision for finite values.
+    + After rounding, non-informative trailing zeros are stripped.
+- BED ('.bed', '.bed.gz'):
+    + Contains processed fragment coordinates instead of binned signal.
+    + Ignores '--siz_bin', '--method', '--scl_fct', and '--rnd'.
+    + Honors '--usr_frg' (affects interval lengths/positions).
+    + Column 4 contains the fragment length used for that interval.
+- Compression: If '.gz' is in the filename, output is automatically
+  gzip-compressed.
+
+
+Examples
+--------
+1. Compute normalized coverage at 10 bp bins, gzipping bedGraph output
+'''bash
+python -m scripts.compute_signal \
+    -i sample.bam \
+    -o sample.bdg.gz \
+    -sb 10 \
+    -me norm
+'''
+
+2. Compute fragment-length normalized signal, 25-bp bins, scaled by 1.732
+'''bash
+python -m scripts.compute_signal \
+    -i sample.bam \
+    -o sample.bedgraph \
+    -sb 25 \
+    -me frag \
+    -sf 1.732
+'''
+
+3. Compute raw (unadjusted) signal, 50-bp bins, with fixed fragment length 150
+'''bash
+python -m scripts.compute_signal \
+    -i sample.bam \
+    -o sample.bg \
+    -sb 50 \
+    -me unadj \
+    -uf 150
+'''
+
+4. Export processed fragment coordinates in BED format for use with siQ-ChIP
+'''bash
+python -m scripts.compute_signal -i sample.bam -o sample.bed.gz
+'''
+
+5. Stream BAM from samtools and write bedGraph of normalized coverage to
+   stdout (then gzip; not supported by Shell wrappers)
+'''bash
+samtools view -b input.bam \
+    | python -m scripts.compute_signal -i - -o - --outfmt bdg -sb 10 -me norm \
+    | gzip > sample.norm.bdg.gz
+'''
+
+6. Write BED to stdout (not supported by Shell wrappers)
+'''bash
+python -m scripts.compute_signal -i sample.bam -o - --outfmt bed -uf 150 \
+    > sample.bed
+'''
+
+
+General notes
+-------------
+- The input BAM file does not need to be coordinate-sorted or queryname-sorted,
+  as read order is not relevant for the parsing implemented here.
+    + No BAM index is required (streaming is handled with
+      'pysam.fetch(until_eof=True)'); random access is not used.
+    + '--infile -' is also supported and behaves the same way.
+    + For paired-end data, fragments are inferred from leftmost mates with
+      TLEN > 0; for single-end data, intervals are extended from the 5' ends
+      of alignments.
+    + Binning accumulates fragments into per-chromosome dict buckets, and
+      sorting occurs at emit.
+- Coordinates are 0-based, half-open [start, end) in both BED and bedGraph.
+- Chromosome naming is preserved from the BAM.
+- Roman numeral sorting is applied when emitting both BED and bedGraph (I..XVI
+  first), reflecting that this code was written with S. cerevisiae and S. pombe
+  ChIP-seq data in mind.
+    + After Roman numerals, purely numeric names, then mitochondrial aliases,
+      then lexical scaffolds are used; within each chromosome, records are
+      sorted by start.
+- For single-end read alignments, using '--usr_frg' yields aligner/read-length-
+  agnostic coverage analogous to '--extendReads' in deepTools.
+- bedGraph output rounds finite values to at most '--rnd' decimal places, then
+  strips non-informative trailing zeros and any trailing decimal point.
+
+
+Performance notes
+-----------------
+- When '--threads > 1', work is per-chromosome via 'ProcessPoolExecutor'.
+- I/O dominates for large BAMs.
+    + Placing BAM and output on fast local storage can help with this.
+    + Too many threads can increase contention on slow disks.
+- Memory use scales with the number of fragments retained per chromosome; for
+  very dense chromosome data, chunked processing may be worth implementing.
+
+
+#TODO
+-----
+- May implement chunked processing; it may be faster than the current
+  per-chromosome approach and may also help reduce memory use for large,
+  data-dense chromosomes.
+- May reimplement the core algorithm in a compiled language.
+- Currently, bins can extend beyond chromosome ends. This can cause problems in
+  downstream analyses (e.g., conversion of bedGraph to bigWig with Kent tools)
+  and should be addressed by trimming bins to chromosome boundaries.
+- Test with model organisms with non-Roman-numeral chromosome names, both with
+  and without 'chr' prefixes.
+"""
+
+from __future__ import annotations
 
 from collections import defaultdict
 from concurrent.futures import ProcessPoolExecutor
+from contextlib import redirect_stdout
 
-assert sys.version_info >= (3, 10), "Python >= 3.10 for PEP 604 union types."
+from scripts.functions.utils_bdg import write_bdg
+from scripts.functions.utils_check import (
+    ALLOWED,
+    check_cmp,
+    check_exists,
+    check_parse_outfile,
+    check_writable
+)
+from scripts.functions.utils_chrom import sort_chrom
+from scripts.functions.utils_cli import (
+    add_help_cap,
+    CapArgumentParser
+)
+from scripts.functions.utils_io import open_out
 
+import argparse
+import os
+import pysam
+import signal
+import sys
 
-#  Run script in interactive mode (true) or command-line mode (false)
-interactive = False
+try:
+    signal.signal(signal.SIGPIPE, signal.SIG_DFL)
+except (AttributeError, ValueError):
+    pass
 
-#  Define dictionary to map Roman numerals to integers for sorting
-roman_to_int = {
-    "I": 1, "II": 2, "III": 3, "IV": 4, "V": 5, "VI": 6, "VII": 7, 
-    "VIII": 8, "IX": 9, "X": 10, "XI": 11, "XII": 12, "XIII": 13, 
-    "XIV": 14, "XV": 15, "XVI": 16
+assert sys.version_info >= (3, 10), "Python >= 3.10 required."
+
+#  Accepted '--method' values and their canonical internal names
+METHOD_CANON = {
+    #  Unadjusted signal
+    "r": "unadj",
+    "raw": "unadj",
+    "u": "unadj",
+    "unadj": "unadj",
+    "unadjusted": "unadj",
+    "s": "unadj",
+    "smp": "unadj",
+    "simple": "unadj",
+
+    #  Fragment-length-normalized signal
+    "f": "frag",
+    "frg": "frag",
+    "frag": "frag",
+    "frg_len": "frag",
+    "frag_len": "frag",
+    "l": "frag",
+    "len": "frag",
+    "len_frg": "frag",
+    "len_frag": "frag",
+
+    #  Fragment-length-and-depth-normalized signal ("normalized coverage")
+    "n": "norm",
+    "nrm": "norm",
+    "norm": "norm",
+    "normalized": "norm",
 }
-
-
-#  Define functions
-def set_interactive(echo: bool = False):
-    """
-    Set paths and parameters for interactive mode.
-    """
-    #  Set general paths
-    dir_bas = "/home/kalavatt/tsukiyamalab/Kris"  # WARNING: Change as needed #
-    dir_rep = f"{dir_bas}/protocol_chipseq_signal_norm"
-    dir_dat = f"{dir_rep}/data"
-    dir_pro = f"{dir_dat}/processed"
-    dir_exp = f"{dir_pro}/2025-08-19"
-    dir_aln = f"{dir_exp}/align_fastqs"
-
-    aln = "bowtie2"
-    atp = "global"
-    flg = 2
-    mpq = 1
-    det = f"{aln}_{atp}_flag-{flg}_mapq-{mpq}"
-    spc = "sc"
-    sig = "norm"  # "alpha", "norm", "raw", or "spike"
-
-    dir_bam = f"{dir_aln}/{det}/{spc}"
-    fil_bam = "IP_WT_H3_Q_5781.sc.bam"  # WARNING: Change as needed #
-    pth_bam = f"{dir_bam}/{fil_bam}"
-    
-    dir_sig = f"{dir_exp}/compute_signal/{det}/{sig}"
-    dir_trk = f"{dir_sig}/2025-09-14"
-    fil_trk = f"{os.path.splitext(fil_bam)[0]}.bdg.gz"
-    pth_trk = f"{dir_trk}/{fil_trk}"
-    
-    #  Check that paths exist (optional for debugging/development purposes)
-    assert os.path.exists(dir_bam), f"No indir: {dir_bam}."
-    assert os.path.exists(dir_trk), f"No outdir: {dir_trk}."
-    assert os.path.exists(pth_bam), f"No infile: {os.path.basename(pth_bam)}."
-
-    #  Set argument values
-    verbose = True
-    threads = 8
-    infile = pth_bam
-    outfile = pth_trk
-    siz_bin = 10
-    method = "norm"
-    scl_fct = None
-    usr_frg = None
-    rnd = 24
-
-    #  Wrap the arguments in argparse.Namespace
-    ns = argparse.Namespace(
-        verbose=verbose,
-        threads=threads,
-        infile=infile,
-        outfile=outfile,
-        siz_bin=siz_bin,
-        method=method,
-        scl_fct=scl_fct,
-        usr_frg=usr_frg,
-        rnd=rnd
-    )
-
-    #  Optionally “echo” the interactive argument assignments
-    if echo:
-        def echo_block(title, d):
-            w = max(len(k) for k in d)
-            print(f"\n[{title}]")
-            for k in sorted(d):
-                print(f"{k:<{w}} = {d[k]}")
-        echo_block("paths", {
-            "dir_bas": dir_bas, "dir_rep": dir_rep, "dir_dat": dir_dat,
-            "dir_pro": dir_pro, "dir_exp": dir_exp, "dir_aln": dir_aln,
-            "dir_bam": dir_bam, "fil_bam": fil_bam, "pth_bam": pth_bam,
-            "dir_sig": dir_sig, "dir_trk": dir_trk, "fil_trk": fil_trk,
-            "pth_trk": pth_trk,
-        })
-        echo_block("args", vars(ns))
-
-    #  Return the argparse.Namespace-wrapped arguments
-    return ns
-
-
-def sort_chrom_roman_arabic(chrom):
-    """
-    Map Roman numerals to integer values, otherwise return as is.
-    """
-    return roman_to_int.get(chrom, chrom)
-
-
-def validate_outfile(value):
-    """
-    Validates that '--outfile' has a valid extension and determines whether
-    to gzip the output based on the file extension.
-
-    Returns:
-        str: Validated output filename (including extension).
-        str: Output format ('bedgraph', 'bdg', 'bg', or 'bed').
-        bol: Whether the output should be gzip-compressed.
-    """
-    allowed = {"bedgraph", "bdg", "bg", "bed"}
-
-    #  Check if the extension is '.gz'
-    is_gz = value.endswith(".gz")
-
-    #  If extension is '.gz', remove '.gz' and extract the base extension
-    base = value[:-3] if is_gz else value
-    base, ext = os.path.splitext(base)
-
-    ext = ext.lstrip('.').lower()
-
-    if ext not in allowed:
-        raise argparse.ArgumentTypeError(
-            f"Invalid extension '{ext}'. Allowed: {', '.join(allowed)}."
-        )
-
-    #  Reconstruct the final output filename
-    outfile = f"{base}.{ext}.gz" if is_gz else f"{base}.{ext}"
-
-    return outfile, ext, is_gz
-
-
-# def parse_bam(path_bam, usr_frg=None):
-#     """
-#     Reads a BAM file and returns a dictionary of lists, where each key is a
-#     chromosome (chrom), and each value is a list of tuples representing
-#     fragments. Each tuple contains: (start, end, len_frag), where 'start'
-#     and 'end' define the fragment's coordinates, and 'len_frag' is the
-#     fragment's length.
-# 
-#     For paired-end alignments, the function processes fragments based on
-#     properly paired reads, using FLAGs 99 or 1123 (forward strand) and
-#     163 or 1187 (reverse strand). For single-end alignments, the function
-#     estimates fragments using, by default, the read length and considers FLAGs
-#     0 or 1024 (forward strand) and 16 or 1040 (reverse strand). If 'usr_frg', a
-#     user-defined fragment length, is provided, then this value is used instead
-#     of 'template_length' for paired-end alignments or 'query_length' (i.e.,
-#     read length) for single-end alignments.
-#     """
-#     frg_tup = defaultdict(list)
-#     try:
-#         with pysam.AlignmentFile(path_bam, 'rb') as bam_file:
-#             for read in bam_file.fetch():
-#                 #  Run paired-end logic: Work with properly paired alignments
-#                 #  with FLAGs 99 or 1123, or 163 or 1187
-#                 if read.flag in {99, 163, 1123, 1187}:
-#                     chrom = bam_file.get_reference_name(read.reference_id)
-#                     start = read.reference_start
-#                     end = start + (
-#                         usr_frg if usr_frg else read.template_length
-#                     )
-#                     len_frag = usr_frg if usr_frg else read.template_length
-#                     frg_tup[chrom].append((start, end, len_frag))
-# 
-#                 #  Run single-end logic: Work with alignments with FLAGs 0 or
-#                 #  1024 (forward strand), or 16 or 1040 (reverse strand)
-#                 elif read.flag in {0, 16, 1024, 1040}:
-#                     chrom = bam_file.get_reference_name(read.reference_id)
-#                     start = read.reference_start
-#                     end = start + (usr_frg if usr_frg else read.query_length)
-#                     len_frag = usr_frg if usr_frg else read.query_length
-#                     frg_tup[chrom].append((start, end, len_frag))
-#     except FileNotFoundError:
-#         print(
-#             f"Error: BAM file '{path_bam}' not found.",
-#             file=sys.stderr
-#         )
-#         sys.exit(1)
-#     except ValueError as e:
-#         print(
-#             f"Error processing BAM file '{path_bam}': {e}",
-#             file=sys.stderr
-#         )
-#         sys.exit(1)
-#     except Exception as e:
-#         print(
-#             f"Unexpected error with BAM file '{path_bam}': {e}",
-#             file=sys.stderr
-#         )
-#         sys.exit(1)
-# 
-#     return frg_tup
-
-
-# def parse_bam(path_bam, usr_frg=None):
-#     """
-#     Reads a BAM file and returns a dictionary of lists, where each key is a
-#     chromosome (chrom), and each value is a list of tuples representing
-#     fragments. Each tuple contains: (start, end, frg_len), where 'start'
-#     and 'end' define the fragment's coordinates, and 'frg_len' is the
-#     fragment's length.
-# 
-#     For paired-end alignments, the function processes fragments based on
-#     properly paired reads, using FLAGs 99 or 1123 (leftmost alignment, forward
-#     strand in 99/147) and 163 or 1187 (leftmost alignment, forward strand in
-#     83/163). For single-end alignments, the function estimates fragments using,
-#     by default, the read length and considers FLAGs 0 or 1024 (forward strand)
-#     and 16 or 1040 (reverse strand). If 'usr_frg', a user-defined fragment
-#     length, is provided, then this value is used instead of 'template_length'
-#     for paired-end alignments or 'query_length' (i.e., read length) for single-
-#     end alignments.
-# 
-#     Note that the overriding of paired-end alignment template lengths by user-
-#     defined fragment lengths is not the logic used in deepTools signal
-#     computation (i.e., bamCoverage, bamCompare), where paired-end alignment
-#     template lengths always (silently) override user-defined fragment lengths.
-#     """
-#     #  Accept leftmost PE anchors; with 1024, 1040, etc., we include duplicates
-#     keep_PE = {99, 163, 1123, 1187}
-#     keep_SE = {0, 16, 1024, 1040}
-# 
-#     frg_tup = defaultdict(list)
-#     try:
-#         with pysam.AlignmentFile(path_bam, 'rb') as bam_file:
-#             for read in bam_file.fetch():
-#                 #  Run paired-end logic: Work with properly paired alignments
-#                 #  with FLAGs 99 or 1123, or 163 or 1187
-#                 if read.flag in keep_PE:
-#                     chrom = bam_file.get_reference_name(read.reference_id)
-#                     start = read.reference_start
-#                     tlen = read.template_length
-# 
-#                     if usr_frg is None and tlen <= 0:
-#                         raise ValueError(
-#                             "Encountered TLEN <= 0 for a leftmost PE anchor: "
-#                             f"qname={read.query_name}, flag={read.flag}, "
-#                             f"chrom={chrom}, pos={start}, TLEN={tlen}. "
-#                             "Upstream filtering should restrict to 99/163 "
-#                             "(and optionally 1123/1187) so TLEN > 0 is "
-#                             "guaranteed."
-#                         )
-# 
-#                     # NOTE: This 'usr_frg' behavior differs from deepTools
-#                     frg_len = (usr_frg if usr_frg is not None else tlen)
-#                     end = start + frg_len
-#                     frg_tup[chrom].append((start, end, frg_len))
-# 
-#                 #  Run single-end logic: Work with alignments with FLAGs 0 or
-#                 #  1024 (forward strand), or 16 or 1040 (reverse strand)
-#                 elif read.flag in keep_SE:
-#                     chrom = bam_file.get_reference_name(read.reference_id)
-#                     start = read.reference_start
-#                     frg_len = (
-#                         usr_frg if usr_frg is not None else read.query_length
-#                     )
-#                     end = start + frg_len
-#                     frg_tup[chrom].append((start, end, frg_len))
-#     except FileNotFoundError:
-#         print(
-#             f"Error: BAM file '{path_bam}' not found.",
-#             file=sys.stderr
-#         )
-#         sys.exit(1)
-#     except ValueError as e:
-#         print(
-#             f"Error processing BAM file '{path_bam}': {e}",
-#             file=sys.stderr
-#         )
-#         sys.exit(1)
-#     except Exception as e:
-#         print(
-#             f"Unexpected error with BAM file '{path_bam}': {e}",
-#             file=sys.stderr
-#         )
-#         sys.exit(1)
-# 
-#     return frg_tup
+METHOD_CHOICES = tuple(METHOD_CANON.keys())
 
 
 def parse_bam(
-    path_bam,
+    path_bam: str,
     usr_frg: int | None = None,
     allow_sec: bool = True,
     allow_sup: bool = False,
-    allow_dup: bool = True,
-):
+    allow_dup: bool = True
+) -> dict[str, list[tuple[int, int, int]]]:
     """
-    Parse a BAM into fragment intervals.
+    Parse a BAM into chromosome-grouped fragment intervals.
 
-    Returns
-    -------
-    dict[str, list[tuple[int, int, int]]]
-        A dictionary mapping chromosomes to lists of (start, end, frg_len),
-        where [start, end) is a half-open interval in 0-based coordinates and
-        frg_len is the fragment length used for that interval.
+    Args:
+        path_bam : str
+            Input BAM path.
+        usr_frg : int | None
+            Optional fixed fragment length override. If provided:
+                - paired-end read alignments: overrides TLEN for leftmost
+                                              anchors.
+                - single-end read alignments: used for both strands from the 5’
+                                              end.
+        allow_sec : bool
+            Include secondary (multi-mapping) alignments. Default True.
+        allow_sup : bool
+            Include supplementary alignments. Default False.
+        allow_dup : bool
+            Include duplicate-marked alignments. Default True.
 
-    Policy & Semantics
-    ------------------
-    - One fragment per proper PE pair, anchored on the **leftmost** mate:
-        + A read is considered a leftmost PE anchor iff:
-              read.is_paired
-          and read.is_proper_pair
-          and read.reference_id == read.next_reference_id
-          and read.template_length > 0
-        + For such reads, the fragment starts at read.reference_start and has
-          length frg_len = TLEN unless overridden by usr_frg.
-        + If usr_frg is None and TLEN <= 0 is encountered for a leftmost
-          anchor, this is treated as an input invariant violation and raises
-          ValueError (fail-fast).
+    Returns:
+        frg_tup : dict[str, list[tuple[int, int, int]]]
+            A dictionary mapping chromosomes to lists of (start, end, frg_len),
+            where [start, end) is a half-open interval in 0-based coordinates
+            and frg_len is the fragment length used for that interval.
 
-        NOTE: This intentionally differs from deepTools, where proper pairs
-              always use the observed TLEN (and deepTools applies a distance
-              guard). Here, the user may override TLEN with usr_frg by
-              design (and no distance guard is in place).
+    Raises:
+        FileNotFoundError
+            If 'path_bam' does not exist.
+        ValueError
+            If 'usr_frg' is provided but is <= 0 for paired-end or single-end
+            extension.
 
-    - Single-end reads (read.is_paired == False) are extended **strand-aware
-      from the 5′ end** to length frg_len, where frg_len = usr_frg if
-      provided else read.query_length
-        + Forward strand (not read.is_reverse):
-              [start, end) = [reference_start, reference_start + frg_len)
-        + Reverse strand (read.is_reverse):
-              [start, end) = [reference_end - frg_len, reference_end)
+    Notes:
+        The output uses half-open intervals; downstream binning iterates
+        positions in [start, end) (i.e., range(start, end)).
 
-        NOTE: Using query_length as the SE default reproduces the literal
-              read span (including soft clips). If you prefer strictly aligned
-              bases, use read.query_alignment_length instead. deepTools’
-              --extendReads for SE extends from the 5’ end to a fixed fragment
-              length (user-supplied).
+    Policies, semantics:
+        - One fragment per proper paired-end alignment pair, anchored on the
+          leftmost mate:
+            + A read alignment is treated as a leftmost paired-end anchor iff
+              all of the following are true:
+              '''
+                  read.is_paired
+              and read.is_proper_pair
+              and read.reference_id == read.next_reference_id
+              and read.template_length > 0
+              '''
+            + For such reads, the fragment starts at 'read.reference_start',
+              and the fragment length is TLEN unless overridden by 'usr_frg'.
+            + In the current implementation, only leftmost proper-pair anchors
+              with 'TLEN > 0' are treated as paired-end fragment anchors.
 
-    - Filtering toggles:
-        + allow_sec : include/exclude secondary alignments (multi-mappers).
-        + allow_sup : include/exclude supplementary alignments.
-        + allow_dup : include/exclude duplicate-marked alignments.
+            NOTE: This intentionally differs from deepTools, where proper pairs
+                  always use the observed TLEN (also, deepTools applies a
+                  distance guard). Here, the user may override TLEN with
+                  'usr_frg' by design (also, no distance guard is in place).
 
-        These toggles apply uniformly to both PE and SE reads. Keeping
-        allow_dup=True retains 1123/1187 in yeast rDNA data (duplicate bit
-        added to 99/163). If the current datasets lack secondaries, setting
-        allow_sec=True is harmless.
+        - Single-end read alignments ('read.is_paired == False') are extended
+          strand-aware from the 5’ end to length 'frg_len', where
+          'frg_len = usr_frg' if provided, else 'read.query_alignment_length'.
+            + Forward strand (not 'read.is_reverse'):
+                  [start, end) = [reference_start, reference_start + frg_len)
+            + Reverse strand ('read.is_reverse'):
+                  [start, end) = [reference_end - frg_len, reference_end)
 
-    - Coordinate hygiene:
-        Intervals are clamped to chromosome bounds [0, chrom_len]. Zero- or
-        negative-length intervals after clamping are skipped.
+            NOTE: A fixed fragment length ('usr_frg') is preferred, mirroring
+                  deepTools’ '--extendReads', as it produces aligner- and read-
+                  length–independent coverage. However, we do not enforce this;
+                  when 'usr_frg' is not provided, we fall back to
+                  'read.query_alignment_length' (aligned span excluding soft
+                  clips) and extend from the 5’ end.
 
-    Differences vs deepTools (by design)
-    ------------------------------------
-    1. Proper pairs: the user may override TLEN with usr_frg; deepTools does
-       not.
-    2. Distance guard: not applied here (deepTools treats far/discordant pairs
-       as SE with a fixed L).
-    3. SE default length: you use read length unless usr_frg is provided;
-       deepTools’ extend mode requires a fixed length.
+        - Filtering toggles:
+            + allow_sec: Include/exclude secondary alignments (multi-mappers).
+            + allow_sup: Include/exclude supplementary alignments.
+            + allow_dup: Include/exclude duplicate-marked alignments.
 
-    Parameters
-    ----------
-    path_bam : str
-        Input BAM path.
-    usr_frg : int | None
-        Optional fixed fragment length override. If provided:
-        - PE: overrides TLEN for leftmost anchors.
-        - SE: used for both strands from the 5′ end.
-    allow_sec : bool
-        Include secondary (multi-mapping) alignments. Default True.
-    allow_sup : bool
-        Include supplementary alignments. Default False.
-    allow_dup : bool
-        Include duplicate-marked alignments. Default True.
+            These toggles apply uniformly to both paired-end and single-end
+            alignments. Keeping 'allow_dup=True' retains duplicate-marked
+            proper-pair alignments (e.g., FLAGs 1123 and 1187, which correspond
+            to duplicate-marked versions of 99 and 163). If the current data
+            lack secondary alignments (which is expected in alignment output
+            from the Tsukiyama Lab Bio-protocol workflow), setting
+            'allow_sec=True' does nothing.
 
-    Raises
-    ------
-    FileNotFoundError
-        If path_bam does not exist.
-    ValueError
-        If a leftmost PE anchor has TLEN <= 0 when usr_frg is not provided.
+        - Coordinate handling:
+            Intervals are clamped to chromosome bounds '[0, chrom_len]'; zero-
+            or negative-length intervals after clamping are skipped.
 
-    Notes
-    -----
-    The output uses half-open intervals; downstream binning should iterate
-    positions in [start, end) (i.e., range(start, end)), not end + 1.
+    Intentional differences from deepTools:
+        1. Proper pairs: the user may override TLEN with 'usr_frg'; deepTools
+           does not allow this.
+        2. No distance guard is applied here, whereas deepTools can fall back
+           to single-end-style extension for far or discordant pairs.
+        3. Default length for single-end alignments: use
+           'read.query_alignment_length' unless 'usr_frg' is provided;
+           deepTools’ “extend mode” requires a fixed length.
     """
     frg_tup = defaultdict(list)
 
@@ -484,12 +416,13 @@ def parse_bam(
         with pysam.AlignmentFile(path_bam, "rb") as bam_file:
             chrom_sizes = dict(zip(bam_file.references, bam_file.lengths))
 
-            for read in bam_file.fetch():
-                #  Basic exclusions
+            #  Stream the entire file; works for stdin (no index available)
+            for read in bam_file.fetch(until_eof=True):
+                #  Handle basic exclusions
                 if read.is_unmapped or read.reference_id < 0:
                     continue
 
-                #  Policy toggles
+                #  Handle policy toggles
                 if not allow_sec and read.is_secondary:
                     continue
                 if not allow_sup and read.is_supplementary:
@@ -500,7 +433,8 @@ def parse_bam(
                 chrom = bam_file.get_reference_name(read.reference_id)
                 chrom_len = chrom_sizes.get(chrom, None)
 
-                #  Leftmost proper-pair anchor means one fragment per PE pair
+                #  Handle paired-end alignments: one fragment is emitted per
+                #  leftmost anchor in a proper pair
                 is_leftmost_pe = (
                     read.is_paired
                     and read.is_proper_pair
@@ -512,16 +446,9 @@ def parse_bam(
                     start = read.reference_start
                     tlen = read.template_length
 
-                    if usr_frg is None and tlen <= 0:
-                        raise ValueError(
-                            "Leftmost PE anchor has TLEN <= 0: "
-                            f"qname={read.query_name}, flag={read.flag}, "
-                            f"chrom={chrom}, pos={start}, TLEN={tlen}"
-                        )
-
                     frg_len = usr_frg if usr_frg is not None else tlen
 
-                    #  User-specified length must be > 0
+                    #  Enforce that user-specified length must be > 0
                     if usr_frg is not None and frg_len <= 0:
                         raise ValueError(
                             "usr_frg must be > 0 for paired-end extension."
@@ -530,16 +457,17 @@ def parse_bam(
                     frg_start = start
                     frg_end = start + frg_len
 
-                #  Single-end: extend from the 5′ end, strand-aware
+                #  Handle single-end alignments: strand-aware extension from
+                #  the 5’ end
                 elif not read.is_paired:
                     frg_len = (
                         usr_frg
                         if usr_frg is not None
                         else read.query_alignment_length
-                    )  # query_alignment_length: strictly aligned bases
+                    )  # 'query_alignment_length': strictly aligned bases
 
-                    #  User-specified fragment length must be > 0, and derived
-                    #  zero-length reads get skipped
+                    #  Enforce that user-specified fragment length must be > 0,
+                    #  and derived zero-length reads get skipped
                     if usr_frg is not None and frg_len <= 0:
                         raise ValueError(
                             "usr_frg must be > 0 for single-end extension."
@@ -548,7 +476,7 @@ def parse_bam(
                         continue  # Rare: align w/no reference-consuming ops
 
                     if read.is_reverse:
-                        # 5’ end is at reference_end on reverse strand
+                        #  5’ end is at 'reference_end' on reverse strand
                         ref_end = (
                             read.reference_end
                             if read.reference_end is not None
@@ -560,7 +488,8 @@ def parse_bam(
                         frg_start = read.reference_start
                         frg_end = frg_start + frg_len
                 else:
-                    #  Non-leftmost mate of a PE pair: ignored by design
+                    #  Non-leftmost mate of a paired-end pair is ignored by
+                    #  design
                     continue
 
                 #  Clamp to contig bounds (if known)
@@ -580,7 +509,7 @@ def parse_bam(
         print(f"Error: BAM file '{path_bam}' not found.", file=sys.stderr)
         raise
     except ValueError:
-        #  Let caller or the outer wrapper handle ValueError details
+        #  Let caller or outer wrapper handle ValueError details
         raise
     except Exception as e:
         print(
@@ -592,288 +521,287 @@ def parse_bam(
     return frg_tup
 
 
-def calculate_sig_chrom(
-    chrom, frg_tup, frg_tot, siz_bin, is_len, is_norm, scl_fct=None
-):
+def calc_sig_chrom(
+    chrom: str,
+    frg_tup: list[tuple[int, int, int]],
+    frg_tot: int,
+    siz_bin: int,
+    is_len: bool,
+    is_norm: bool,
+    scl_fct: float | None = None
+) -> dict[tuple[str, int], float]:
     """
-    Compute binned signal for a chromosome.
+    Compute binned signal for one chromosome using exact fragment–bin overlap.
+
+    Function respects half-open '[start, end)' fragments and avoids per-base
+    loops. Overlap is measured in bases, and output is per-bin sums of per-base
+    contributions.
+
+    If provided, 'scl_fct' is applied after any optional normalization.
+    ('scl_fct > 0' is required to avoid silent zeroing.)
 
     Args:
-        chrom   (str)  Chromosome name.
-        frg_tup (lst)  List of fragment tuples (start, end, frg_len).
-        frg_tot (int)  Total number of fragments (for normalization).
-        siz_bin (int)  Bin size in base pairs.
-        is_len  (bol)  If 'True', normalize by fragment length.
-        is_norm (bol)  If 'True', normalize by both fragment length and total
-                       fragments (summing to unity).
-        scl_fct (flt)  Scaling factor applied to signal (optional).
+        chrom : str
+            Chromosome name.
+        frg_tup : list[tuple[int, int, int]]
+            List of fragment tuples '(start, end, frg_len)'.
+        frg_tot : int
+            Total number of fragments (used when 'is_norm=True').
+        siz_bin : int
+            Bin size in base pairs.
+        is_len : bool
+            If 'True', normalize by fragment length.
+        is_norm : bool
+            If 'True', normalize by both fragment length and total fragment
+            count so that the genome-wide summed signal is approximately 1.
+        scl_fct : float | None
+            Optional scaling factor applied to signal.
 
     Returns:
-        dict : Binned signal data, where keys are (chrom, bin_start) and 
-               values are signal scores.
+        sig_bin : dict[tuple[str, int], float]
+            A dictionary of binned signal data, where keys are
+            '(chrom, bin_start)' and values are per-bin signal scores.
+
+    Raises:
+        ValueError
+            - If 'siz_bin' <= 0.
+            - If 'is_len' or 'is_norm' is True and any 'frg_len' <= 0.
+            - If 'is_norm' is True and 'frg_tot' <= 0.
+            - If a provided 'scl_fct' <= 0.
 
     Notes:
         - If 'is_len=True' or 'is_norm=True', each fragment contributes
-          '1 / frg_len' to signal (fragment-length normalization).
-        - If 'is_norm=True', signal is divided by 'frg_tot' (unity
-          normalization).
+          '1 / frg_len' per covered base.
+        - If 'is_norm=True', signal is additionally divided by 'frg_tot' so
+          that genome-wide summed signal is approximately 1.
         - If 'scl_fct' is provided, signal values are scaled accordingly.
-        - Binning aggregates signal in intervals of 'siz_bin' base pairs.
+        - Signal is accumulated per bin according to the number of overlapping
+          bases contributed by each fragment.
     """
     #  Check for invalid bin size
-    if siz_bin <= 0:
-        raise ValueError("'--siz_bin' must be greater than 0.")
+    check_cmp(siz_bin, "gt", 0, "siz_bin", allow_none=False)
 
-    #  Proceed with signal calculation
-    signal = defaultdict(float)
-    for start, end, frg_len in frg_tup:
-        #  Normalize by fragment length if specified
-        contribution = (1 / frg_len) if (is_len or is_norm) else 1
+    sig_bin = defaultdict(float)
 
-        #  Add the contribution across the span of the fragment
-        for pos in range(start, end + 1):
-            signal[(chrom, pos)] += contribution
+    #  Accumulate by overlap with each bin
+    for frg_start, frg_end, frg_len in frg_tup:
+        if frg_end <= frg_start:
+            continue  # Already filtered upstream, but be safe
 
-    #  Normalize by total fragments if 'is_norm' is true
+        if (is_len or is_norm) and frg_len <= 0:
+            #  This shouldn't happen given earlier guards, but fail-fast if it
+            #  does
+            raise ValueError("'frg_len' must be > 0 when using normalization.")
+
+        #  Compute per-base contribution
+        per_bas = (1.0 / frg_len) if (is_len or is_norm) else 1.0
+
+        #  Determine first and last bins “touched” by a half-open fragment:
+        #  [frag_start, frag_end)
+        fst_bin_start = (frg_start // siz_bin) * siz_bin
+        lst_bin_start = ((frg_end - 1) // siz_bin) * siz_bin
+
+        #  Iterate over every bin intersecting [frg_start, frg_end); fst/lst
+        #  are bin anchors (multiples of siz_bin, lst inclusive)
+        for bin_start in range(fst_bin_start, lst_bin_start + 1, siz_bin):
+            bin_end = bin_start + siz_bin
+            overlap = min(frg_end, bin_end) - max(frg_start, bin_start)
+            if overlap > 0:
+                sig_bin[(chrom, bin_start)] += per_bas * overlap
+
+    # #  Optional signal-conservation sanity check
+    # if False:  # MAYBE: change to a flag like 'if off_by_one:'
+    #     total = sum(sig_bin.values())
+    #     expected = (
+    #         #  Each fragment should contribute exactly 1 before '÷ frg_tot'
+    #         len(frg_tup) if (is_len or is_norm)
+    #         #  Otherwise, compute sum of fragment lengths
+    #         else sum(e - s for s, e, _ in frg_tup)
+    #     )
+    #
+    #     #  Allow tiny amount of float jitter
+    #     assert \
+    #         abs(total - expected) < 1e-6 * max(1.0, expected), \
+    #         (total, expected)
+
+    #  If requested, divide by total fragment count so that genome-wide summed
+    #  signal is approximately 1
     if is_norm:
-        for key in signal:
-            signal[key] /= frg_tot
+        if frg_tot <= 0:
+            raise ValueError(
+                "Normalization requires non-zero total fragments."
+            )
+        for k in sig_bin:
+            sig_bin[k] /= frg_tot
 
     #  Apply scaling factor if specified
     if scl_fct is not None:
-        if scl_fct <= 0:
-            raise ValueError("'--scl_fct' must be greater than 0.")
-        for key in signal:
-            signal[key] *= scl_fct
+        check_cmp(scl_fct, "gt", 0, "scl_fct")
+        for k in sig_bin:
+            sig_bin[k] *= scl_fct
 
-    #  Bin the signal data
-    signal_bin = defaultdict(float)
-    for (chrom, pos), value in signal.items():
-        bin_strt = (pos // siz_bin) * siz_bin
-        signal_bin[(chrom, bin_strt)] += value
-
-    return signal_bin
+    return sig_bin
 
 
-def calculate_sig_task(data):
-    return calculate_sig_chrom(*data)
-
-
-# def write_bigwig(signal, outfile, siz_bin, chrom_siz):
-#     """
-#     Write the binned signal data to a BIGWIG file.
-#     """
-#     #  Create a dictionary of chromosome sizes
-#     dict_size = {chrom: size for chrom, size in chrom_siz.items()}
-#
-#     #  Open a BIGWIG file for writing
-#     bw = pyBigWig.open(outfile, 'w')
-#
-#     #  Add the chromosome sizes to the BIGWIG header
-#     bw.addHeader(list(dict_size.items()))
-#
-#     #  Initialize empty lists to store chromosomes, start positions, end
-#     #  positions, and signal values
-#     chroms = []
-#     starts = []
-#     ends = []
-#     values = []
-#
-#     #  Iterate over the signal data, sorted by chromosome (with
-#     #  Roman-to-Arabic numeral conversion) and bin start position
-#     for (chrom, bin_start), value in sorted(
-#         signal.items(), key=lambda x: (
-#             sort_chrom_roman_arabic(x[0][0]), x[0][1]
-#         )
-#     ):
-#         #  Append the current chromosome, start position, end position
-#         #  (start + bin size), and value to respective lists
-#         chroms.append(chrom)
-#         starts.append(bin_start)
-#         ends.append(bin_start + siz_bin)
-#         values.append(value)
-#
-#     #  Write the chromosome, start, end, and value lists to the BIGWIG file
-#     bw.addEntries(chroms, starts, ends=ends, values=values)
-#
-#     #  Close the BIGWIG file
-#     bw.close()
-
-
-# def write_chrom_bigwig(data):
-#     """
-#     # TODO: Description of function.
-#     """
-#     chrom, chrom_signal, siz_bin, outfile = data
-#     with pyBigWig.open(outfile, 'w') as bw:
-#         chrom_signal.sort(key=lambda x: x[0])  # Sort by start position
-#         starts, ends, values = zip(*chrom_signal)
-#         bw.addEntries(
-#             [chrom] * len(starts), starts, ends=ends, values=values
-#         )
-
-
-# def write_bigwig_parallel(signal, outfile, siz_bin, chrom_siz, threads):
-#     """
-#     Parallelized BIGWIG writing by chromosome.
-#     """
-#     #  Prepare data for each chromosome
-#     tasks = []
-#     for chrom in sorted(chrom_siz.keys(), key=sort_chrom_roman_arabic):
-#         chrom_signal = [
-#             (start, start + siz_bin, signal[(chrom, start)])
-#             for (chrom_name, start) in signal.keys()
-#             if chrom_name == chrom
-#         ]
-#         tasks.append(
-#             (chrom, chrom_signal, siz_bin, f"{outfile}.{chrom}.tmp.bw")
-#         )
-#
-#     #  Process chromosomes in parallel
-#     with ProcessPoolExecutor(max_workers=threads) as executor:
-#         executor.map(write_chrom_bigwig, tasks)
-#
-#     #  Merge temporary BIGWIG files into one (requires pyBigWig or similar
-#     #  tool)
-#     with pyBigWig.open(outfile, 'w') as bw:
-#         bw.addHeader(list(chrom_siz.items()))
-#         for task in tasks:
-#             tmp_file = task[3]
-#             with pyBigWig.open(tmp_file, 'r') as tmp_bw:
-#                 for chrom in tmp_bw.chroms():
-#                     for entry in tmp_bw.entries(chrom):
-#                         bw.addEntries(
-#                             [chrom], entry[0], ends=entry[1], values=entry[2]
-#                         )
-#             os.remove(tmp_file)
-
-
-def write_bedgraph(cvg, fil_out, siz_bin, rnd, is_gz=False):
+def calc_sig_task(data):
     """
-    Write binned signal data to a BEDGRAPH file.
-
-    Args:
-        cvg     (dct)  Binned signal data, where keys are (chrom, bin_start)
-                       and values are signal (signal scores).
-        fil_out (str)  Path to the output file. Should have a '.bg', '.bdg', or 
-                       '.bedgraph' extension.
-        siz_bin (int)  Bin size in base pairs.
-        rnd     (int)  Number of decimal places for rounding signal values.
-        is_gz   (bol)  If 'True', output is gzip-compressed ('.gz' extension 
-                       expected).
-
-    Notes:
-        - signal values are rounded to 'rnd' decimal places.
-        - If 'is_gz=True', output is written in gzip format.
-        - BEDGRAPH format: 'chrom  start  end  signal'
+    Unpack one worker-task tuple and dispatch to 'calc_sig_chrom()'.
     """
-    #  Open a gzip-compressed BEDGRAPH file for writing
-    fnc_opn = gzip.open if is_gz else open
-    mode = "wt" if is_gz else "w"
-
-    with fnc_opn(fil_out, mode) as fil_out:
-        #  Initialize lists to store chromosomes, start positions, end
-        #  positions, and signal values
-        chroms = []
-        starts = []
-        ends = []
-        values = []
-
-        #  Iterate over the signal data, sorted by chromosome (using
-        #  Roman-to-Arabic numeral conversion) and bin start position
-        for (chrom, bin_start), value in sorted(
-            cvg.items(), key=lambda x: (
-                sort_chrom_roman_arabic(x[0][0]), x[0][1]
-            )
-        ):
-            #  Append the current chromosome, start position, end position
-            #  (start + bin size), and value to respective lists
-            chroms.append(chrom)
-            starts.append(bin_start)
-            ends.append(bin_start + siz_bin)
-            values.append(value)
-
-        #  Write the contents of chroms, starts, ends, and values to the
-        #  BEDGRAPH file
-        for chrom, start, end, value in zip(chroms, starts, ends, values):
-            #  Format each line as per BEDGRAPH requirements
-            lin_out = f"{chrom}\t{start}\t{end}\t{value:.{rnd}f}\n"
-            fil_out.write(lin_out)
+    return calc_sig_chrom(*data)
 
 
-def parse_args():
+def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     """
     Parse command-line arguments for computing binned signal from a BAM file.
 
     Args:
-        -v, --verbose   Enable verbose output.
-        -t, --threads   Number of threads for parallel processing (default: 1).
-        -i, --infile    Path to input BAM file.
-        -o, --outfile   Path to output file. The extension determines format:
-                          - '.bdg', '.bg', '.bedgraph': BEDGRAPH of binned
-                            signal.
-                          - '.bed': BED of fragment coordinates, not signal.
-                          - '.gz' (e.g., 'output.bdg.gz'): gzip-compressed
-                            output.
-        -sb, --siz_bin  Bin size in base pairs (default: 10). Ignored for
-                        '.bed'.
-        -me, --method   Signal calculation method (default: 'norm'):
-                          - 'undaj': Unadjusted signal.
-                          - 'len': Normalize by fragment length.
-                          - 'norm': Normalize by both fragment length and total
-                            fragments.
-        -sf, --scl_fct  Optional scaling factor. Ignored for '.bed'.
-        -uf, --usr_frg  Fixed fragment length instead of read/template lengths.
-         -r, --rnd      Decimal places for rounding BEDGRAPH values (default:
-                        24). Ignored for '.bed'.
+        argv : list[str] | None
+            Optional argument vector to parse. If None, use 'sys.argv[1:]'.
 
     Returns:
-        argparse.Namespace: Parsed command-line arguments.
+        argparse.Namespace
+            Parsed command-line arguments.
+
+    Raises:
+        SystemExit
+            Raised by argparse when '--help' is shown or when required
+            arguments or valid choices are missing.
 
     Notes:
-        - Output format is determined by '--outfile' extension.
-        - '.bed' outputs fragment coordinates, not signal.
-        - Including '.gz' compresses the output.
+        - Supported CLI options:
+            -v, --verbose
+                Enable verbose output.
+            -t, --threads
+                Number of threads for parallel processing (default: 1).
+            -i, --infile
+                Path to input BAM file or '-'.
+            -o, --outfile
+                Path to output file or '-'. The extension determines format:
+                    - '.bdg', '.bg', '.bedgraph': bedGraph of binned signal.
+                    - '.bed': BED-like output of processed fragment
+                      coordinates, not signal.
+                    - Adding '.gz' to either output type requests gzip-
+                      compressed output (e.g., 'output.bdg.gz',
+                      'output.bed.gz').
+            -of, --outfmt
+                Output format hint used only when '--outfile -' (stdout). Must
+                be one of 'bedGraph', 'bedgraph', 'bdg', 'bg', or 'bed'.
+                Ignored when '--outfile' is a real path, in which case the
+                format is inferred from the outfile extension. (This option is
+                for direct use of 'compute_signal.py', since the Shell wrappers
+                do not support stdout output.)
+            -me, --method
+                Signal calculation method (default: 'norm'):
+                    - unadjusted aliases: 'r', 'raw', 'unadj', 'u',
+                      'unadjusted', 's', 'smp', 'simple'
+                    - fragment-length-normalized aliases: 'f', 'frg', 'frag',
+                      'frg_len', 'frag_len', 'l', 'len', 'len_frg', 'len_frag'
+                    - normalized-coverage aliases: 'n', 'nrm', 'norm',
+                      'normalized'
+                Internally, these are standardized to 'unadj', 'frag', or
+                'norm'. Ignored for '.bed'.
+            -sb, --siz_bin
+                Bin size in base pairs (default: 10). Ignored for '.bed'.
+            -sf, --scl_fct
+                Optional scaling factor. Ignored for '.bed'.
+            -uf, --usr_frg
+                Fixed fragment length instead of read/template lengths.
+            -dp, --dp, --rnd, --round, --decimals, --digits
+                Maximum decimal places retained for finite bedGraph values
+                (default: 24). After rounding, non-informative trailing zeros
+                are stripped. Ignored for '.bed'.
+        - Output format behavior:
+            - '.bedGraph', '.bedgraph', '.bdg', and '.bg', optionally followed
+              by '.gz', produce bedGraph output.
+            - '.bed', optionally followed by '.gz', produces BED-like processed
+              fragment-coordinate output rather than bedGraph signal.
+            - When '--outfile -' is used, '--outfmt' must be provided because
+              the output format cannot be inferred from a filename extension.
     """
-    parser = argparse.ArgumentParser(
+    parser = CapArgumentParser(
         description=(
-            "Compute binned signal from a BAM file in BEDGRAPH format, "
-            "optionally applying normalization. Alternatively, extract and "
-            "output processed alignment coordinates in a BED-like format."
-        ),
-        argument_default=argparse.SUPPRESS
+            "Compute binned signal from a BAM file in bedGraph format, "
+            "optionally applying normalization.\n"
+            "\n"
+            "Alternatively, extract and output processed fragment coordinates "
+            "in a BED-like format, which can be used as input to the original "
+            "implementation of siQ-ChIP "
+            "(https://github.com/BradleyDickson/siQ-ChIP) or one updated for "
+            "use with S. cerevisiae data "
+            "(https://github.com/kalavattam/siQ-ChIP/tree/protocol)."
+        )
     )
+    add_help_cap(parser)
     parser.add_argument(
         "-v", "--verbose",
         action="store_true",
         default=False,
-        help="Increase output verbosity."
+        help="Increase output verbosity (stderr banner of parsed args).\n\n"
     )
     parser.add_argument(
         "-t", "--threads",
         type=int,
         default=1,
         help=(
-            "Number of threads for parallel processing (default: "
-            "%(default)s). Each thread processes a different chromosome's "
-            "signal in parallel."
+            "Number of threads for parallel processing (>= 1; default: "
+            "%(default)s).\n"
+            "\n"
+            "When '--threads > 1', different chromosomes are processed in "
+            "parallel.\n\n"
         )
     )
     parser.add_argument(
-        "-i", "--infile",
+        "-i", "-f", "--infile", "--file",
+        dest="infile",
         required=True,
-        help="Path to the BAM infile."
+        help="Path to the input BAM file, or '-' for stdin.\n\n"
     )
     parser.add_argument(
-        "-o", "--outfile",
+        "-o", "-fo", "--outfile", "--fil_out",
+        dest="outfile",
         required=True,
         help=(
-            "Path to the output file with extension. Supported formats: "
-            "'bedgraph', 'bdg', 'bg', and 'bed'. Append '.gz' for gzip "
-            "compression, e.g., 'output.bdg.gz'. Note: Use 'bed' to output "
-            "alignment coordinates in a BED-like format. Using 'bed' results "
-            "in arguments such as '--siz_bin', '--method', '--scl_fct', and "
-            "'--usr_frg' being ignored)."
+            "Path to the output file with extension, or '-' for stdout. "
+            "Supported output types are bedGraph ('bedGraph', 'bedgraph', "
+            "'bdg', 'bg') and BED ('bed').\n"
+            "\n"
+            "Append '.gz' for gzip compression, e.g., 'output.bdg.gz'.\n"
+            "\n"
+            "Note: requesting BED output causes the script to write processed "
+            "fragment coordinates in a BED-like format, and '--siz_bin', "
+            "'--method', '--scl_fct', and '--rnd' are ignored.\n\n"
+        )
+    )
+    parser.add_argument(
+        "-of", "--outfmt",
+        choices=["bedGraph", "bedgraph", "bdg", "bg", "bed"],
+        default=None,
+        help=(
+            "Output format hint. Required only when '--outfile -' (stdout). "
+            "Choose 'bedGraph', 'bedgraph', 'bdg', 'bg', or 'bed'.\n"
+            "\n"
+            "Note: stdout output ('--outfile -') is supported only when "
+            "calling 'compute_signal.py' directly; the Shell wrappers do not "
+            "support this mode.\n\n"
+        ),
+    )
+    parser.add_argument(
+        "-me", "--method",
+        choices=METHOD_CHOICES,
+        default='norm',
+        help=(
+            "Specify signal calculation type (default: '%(default)s').\n"
+            "  - Unadjusted aliases: 'r', 'raw', 'u', 'unadj', 'unadjusted', "
+            "'s', 'smp', 'simple'. Internally standardized to 'unadj'.\n"
+            "  - Fragment-length-normalized aliases: 'f', 'frg', 'frag', "
+            "'frg_len', 'frag_len', 'l', 'len', 'len_frg', 'len_frag'. "
+            "Internally standardized to 'frag'.\n"
+            "  - Normalized-coverage aliases: 'n', 'nrm', 'norm', "
+            "'normalized'. Internally standardized to 'norm'.\n"
+            "\n"
+            "Note: 'norm' normalizes for both fragment length and total "
+            "fragment count so that the genome-wide summed signal is "
+            "approximately 1.\n\n"
         )
     )
     parser.add_argument(
@@ -882,25 +810,7 @@ def parse_args():
         default=10,
         help=(
             "Bin size for signal calculation in base pairs (default: "
-            "%(default)s)."
-        )
-    )
-    parser.add_argument(
-        "-me", "--method",
-        choices=[
-            'raw', 'unadj', 'unadjusted', 'frag', 'frag_len', 'norm',
-            'normalized'
-        ],
-        default='norm',
-        help=(
-            "Specify signal calculation type. Options: 'raw', 'unadj', "
-            "'unadjusted', 'frag', 'frag_len', 'norm', 'normalized' (default: "
-            "'%(default)s'). Use 'raw', 'unadj', or 'unadjusted' to calculate "
-            "unadjusted signal. Use 'frag' or 'frag_len' to normalize signal "
-            "by fragment length. Use 'norm' or 'normalized' to compute "
-            "'normalized coverage' (PMID: 37160995), i.e., signal normalized "
-            "for both fragment length and total fragments such that coverage "
-            "sums to unity."
+            "%(default)s).\n\n"
         )
     )
     parser.add_argument(
@@ -909,7 +819,7 @@ def parse_args():
         default=None,
         help=(
             "Optional scaling factor to apply to the signal (default: "
-            "%(default)s)."
+            "%(default)s).\n\n"
         )
     )
     parser.add_argument(
@@ -917,118 +827,237 @@ def parse_args():
         type=int,
         default=None,
         help=(
-            "Optional user-specified fixed fragment length to use instead of "
-            "read lengths (single-end alignments) or template lengths "
-            "(paired-end alignments; default: %(default)s)."
+            "Optional fixed fragment length to use instead of read lengths "
+            "(single-end alignments) or template lengths (paired-end "
+            "alignments; default: %(default)s).\n\n"
         )
     )
     parser.add_argument(
-        "-r", "--rnd",
+        "-dp", "--dp", "--rnd", "--round", "--decimals", "--digits",
+        dest="rnd",
         type=int,
         default=24,
         help=(
-            "Number of decimal places for rounding binned signal values "
-            "(default: %(default)s)."
+            "Maximum number of decimal places retained for binned signal "
+            "values (default: %(default)s). After rounding, non-informative "
+            "trailing zeros are stripped.\n\n"
         )
     )
 
-    #  Display help and exit if no arguments were provided
-    if len(sys.argv) == 1:
+    #  If no arguments are provided, display help and exit
+    argv_parse = sys.argv[1:] if argv is None else argv
+    if not argv_parse:
         parser.print_help(sys.stderr)
         sys.exit(0)
 
-    return parser.parse_args()
+    return parser.parse_args(argv_parse)
 
 
-def main():
-    #  Use command line arguments or interactive setup based on 'interactive'
-    args = set_interactive() if interactive else parse_args()
+def main(argv: list[str] | None = None) -> int:
+    """
+    Execute the primary control flow for the script.
 
-    #  Validate and parse output file
-    outfile, out_fmt, is_gz = validate_outfile(args.outfile)
-    
-    #  Determine whether to normalize based on 'method'
-    is_len = args.method in {'frag', 'frag_len'}
-    is_norm = args.method in {'norm', 'normalized'}
+    Args:
+        argv : list[str] | None
+            Optional list of command-line arguments. When None (the default),
+            'sys.argv[1:]' is used.
+
+    Returns:
+        int.
+            On success, returns 0 and writes either a bedGraph of binned signal
+            or a BED-like file of processed fragment coordinates (optionally
+            gzipped) to '--outfile'.
+
+    Side effects:
+        - If '--verbose' is set, prints a human-readable banner of the parsed
+          arguments to stderr.
+        - Prints human-readable error messages to stderr on validation or I/O
+          failures.
+
+    Exits:
+        - 0 on success or when showing help with no arguments.
+        - 1 on validation or computation errors, including (non-exhaustive):
+            + '--siz_bin <= 0' or '--usr_frg <= 0',
+            + unsupported/invalid '--outfile' extension,
+            + normalization requested with zero fragments,
+            + provided '--scl_fct <= 0', and
+            + BAM parsing errors (file not found/unreadable).
+    """
+    #  Parse CLI arguments
+    args = parse_args(argv)
+
+    #  Check that input BAM exists
+    try:
+        if args.infile != "-":
+            check_exists(args.infile, kind="file", label="BAM")
+    except FileNotFoundError as e:
+        #  Print a one-line message and exit cleanly
+        raise SystemExit(str(e))
+
+    #  Check and parse output file
+    if args.outfile == "-":
+        if not args.outfmt:
+            raise SystemExit(
+                "When '--outfile -' is used, '--outfmt' must also be provided "
+                "('bedGraph', 'bedgraph', 'bdg', 'bg', or 'bed')."
+            )
+        if args.outfmt not in ALLOWED:
+            raise SystemExit(
+                "Invalid '--outfmt'; choose one of 'bedGraph', 'bedgraph', "
+                "'bdg', 'bg', or 'bed'."
+            )
+        out_fmt = args.outfmt
+        outfile = "-"  # Pass through to writers (uncompressed)
+    else:
+        try:
+            #  Parse output path and validate extension
+            outfile, out_fmt, _ = check_parse_outfile(args.outfile, ALLOWED)
+
+            #  Check file creatability/writability
+            check_writable(outfile, "file")
+        except (
+            ValueError, FileNotFoundError, PermissionError, IsADirectoryError
+        ) as e:
+            raise SystemExit(str(e))
+
+    #  Check numeric arguments
+    try:
+        #  Check threads >= 1
+        check_cmp(args.threads, "ge", 1, "threads", allow_none=False)
+
+        #  Only require bin size and rounding for bedGraph paths
+        if out_fmt != "bed":
+            check_cmp(args.siz_bin, "gt", 0, "siz_bin", allow_none=False)
+            check_cmp(args.rnd, "ge", 0, "rnd", allow_none=False)
+
+        #  Handle optional scalars: allow None but must be > 0 when provided
+        check_cmp(args.scl_fct, "gt", 0, "scl_fct", allow_none=True)
+        check_cmp(args.usr_frg, "gt", 0, "usr_frg", allow_none=True)
+
+    except ValueError as e:
+        raise SystemExit(str(e))
+
+    #  Preserve the user-supplied '--method' token, then standardize it to the
+    #  canonical internal name
+    mthd_in = args.method
+    args.method = METHOD_CANON[args.method]
+
+    #  Determine whether to normalize based on canonicalized method
+    is_len = (args.method == "frag")
+    is_norm = (args.method == "norm")
 
     #  Print verbose output
     if args.verbose:
-        print("#######################################")
-        print("## Arguments for 'compute_signal.py' ##")
-        print("#######################################")
-        print("")
-        print(f"--verbose {args.verbose}")
-        print(f"--threads {args.threads}")
-        print(f"--infile  {args.infile}")
-        print(f"--outfile {args.outfile}")
-        if out_fmt == "bed":
-            print("(BED output mode: signal computation arguments ignored)")
-            print(f"--usr_frg {args.usr_frg}")
-        else:
-            print(f"--siz_bin {args.siz_bin}")
-            print(f"--method  {args.method}")
-            print(f"--scl_fct {args.scl_fct}")
-            print(f"--usr_frg {args.usr_frg}")
-            print(f"--rnd     {args.rnd}")
-        print("")
-        print("")
+        with redirect_stdout(sys.stderr):
+            print("")
+            print("####################################")
+            print("## Arguments for 'compute_signal' ##")
+            print("####################################")
+            print("")
+            print("--verbose")
+            print(f"--threads {args.threads}")
+            print(f"--infile  {args.infile}")
+            print(f"--outfile {outfile}")
+            if outfile == "-":
+                print(f"--outfmt  {out_fmt}")
+            if out_fmt == "bed":
+                print(f"--usr_frg {args.usr_frg}")
+                print(
+                    "\n\n(BED output mode: signal computation arguments "
+                    "ignored)\n"
+                )
+            else:
+                if mthd_in != args.method:
+                    print(
+                        f"--method  {mthd_in}  (standardized internally to "
+                        f"{args.method})"
+                    )
+                else:
+                    print(f"--method  {args.method}")
+                print(f"--siz_bin {args.siz_bin}")
+                print(f"--scl_fct {args.scl_fct}")
+                print(f"--usr_frg {args.usr_frg}")
+                print(f"--rnd     {args.rnd}")
+            print("")
+            print("")
 
     #  Parse and process BAM file
-    frg_tup = parse_bam(args.infile, args.usr_frg)
+    try:
+        frg_tup = parse_bam(args.infile, args.usr_frg)
+    except FileNotFoundError:
+        raise SystemExit(f"BAM not found: {args.infile}")
+    except ValueError as e:
+        raise SystemExit(str(e))
+    except OSError as e:
+        raise SystemExit(f"I/O error while reading BAM: {e}")
 
-    if out_fmt == 'bed':
-        #  Write alignments processed by parse_bam() in a BED-like format
-        with (
-            gzip.open(outfile, "wt") if is_gz else open(outfile, "w")
-        ) as bed_file:
-            for chrom, fragments in frg_tup.items():
-                for start, end, length in fragments:
-                    bed_file.write(f"{chrom}\t{start}\t{end}\t{length}\n")
-        return  # Omit signal calculations, etc.
+    try:
+        if out_fmt == 'bed':
+            #  Write fragments processed by 'parse_bam()' in a BED-like format,
+            #  omitting signal calculations, etc.
+            with open_out(outfile) as bed_file:
+                for chrom in sorted(frg_tup.keys(), key=sort_chrom):
+                    for start, end, length in sorted(
+                        frg_tup[chrom], key=lambda t: t[0]
+                    ):
+                        bed_file.write(f"{chrom}\t{start}\t{end}\t{length}\n")
+            return 0
 
-    frg_tot = sum(len(entries) for entries in frg_tup.values())
-    if is_norm and frg_tot == 0:
-        raise ValueError(
-            "Normalization requires non-zero total fragments. Check the BAM "
-            "file."
-        )
+        #  Otherwise, compute and write bedGraph signal from fragments
+        #  processed by 'parse_bam()'
+        frg_tot = sum(len(entries) for entries in frg_tup.values())
+        if is_norm and frg_tot == 0:
+            raise ValueError(
+                "Normalization requires non-zero total fragments. Check the "
+                "BAM file."
+            )
 
-    # #  Collect chromosome sizes from BAM file
-    # with pysam.AlignmentFile(args.infile, 'rb') as bam_file:
-    #     chrom_siz = {seq['SN']: seq['LN'] for seq in bam_file.header['SQ']}
+        #  Prepare and execute parallel tasks (when '--threads > 1')
+        tsk_dat = [
+            (
+                chrom, entries, frg_tot, args.siz_bin, is_len, is_norm,
+                args.scl_fct
+            )
+            for chrom, entries in frg_tup.items()
+        ]
 
-    #  Prepare and execute parallel tasks
-    tsk_dat = [
-        (chrom, entries, frg_tot, args.siz_bin, is_len, is_norm, args.scl_fct)
-        for chrom, entries in frg_tup.items()
-    ]
+        #  Compute per-chromosome signal, in parallel if '--threads > 1'
+        if args.threads == 1:
+            results = (calc_sig_task(d) for d in tsk_dat)
+        else:
+            with ProcessPoolExecutor(
+                max_workers=min(args.threads, os.cpu_count() or 1)
+            ) as executor:
+                results = executor.map(calc_sig_task, tsk_dat)
 
-    with ProcessPoolExecutor(max_workers=args.threads) as executor:
-        results = executor.map(calculate_sig_task, tsk_dat)
+        #  Combine results from all processes
+        sig_cmb = defaultdict(float)
+        for result in results:
+            for key, value in result.items():
+                sig_cmb[key] += value
 
-    #  Combine results from all processes
-    sig_cmb = defaultdict(float)
-    for result in results:
-        for key, value in result.items():
-            sig_cmb[key] += value
+        #  Write bedGraph output
+        write_bdg(sig_cmb, outfile, args.siz_bin, args.rnd)
 
-    #  Write outfile based on user-specified format
-    if out_fmt in ['bedgraph', 'bdg', 'bg']:
-        write_bedgraph(sig_cmb, outfile, args.siz_bin, args.rnd, is_gz)
+        return 0
 
-    # if args.typ_out in ['bigwig', 'bw', 'both']:
-    #     #  Write output to BIGWIG file
-    #     write_bigwig(
-    #         sig_cmb, f"{args.outfile}.bw", args.siz_bin, chrom_siz
-    #     )
+    except ValueError as e:
+        raise SystemExit(str(e))
 
-    # if args.typ_out in ['bigwig', 'both']:
-    #     #  Write output to BIGWIG file using the parallel implementation
-    #     write_bigwig_parallel(
-    #         sig_cmb, f"{args.outfile}.bw", args.siz_bin, chrom_siz,
-    #         args.threads
-    #     )
+    except OSError as e:
+        raise SystemExit(f"I/O error: {e}")
 
 
 if __name__ == "__main__":
-    main()
+    try:
+        sys.exit(main())
+    except BrokenPipeError:
+        try:
+            sys.stdout.close()
+        except Exception:
+            pass
+        try:
+            sys.stderr.close()
+        except Exception:
+            pass
+        sys.exit(0)
