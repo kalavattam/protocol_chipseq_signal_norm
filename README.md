@@ -10,14 +10,14 @@
 <br />
 
 ## Repository status
-***This codebase is being tested, extended, and refined.*** If you use this repository, run `git pull` regularly to stay up to date with improvements and fixes.
+***This codebase is being tested, extended, and refined.***
 
 ***If you cloned this repo before 2025-02-19, please clone it again.*** This is because large and otherwise unnecessary files were purged from the commit history, altering commit hashes. These changes prevent `git pull` from resolving updates correctly.
 <br />
 <br />
 
 ## Workflow documentation
-- Regularly updated workflow details: [`workflow.md`](./workflow.md).
+- Workflow details: [`workflow.md`](./workflow.md).
 - Genome file processing: [`download_process_fasta_gff3.md`](./download_process_fasta_gff3.md).
 - Validation of the Python implementation of siQ-ChIP (in progress): [`validate_siq_chip.md`](./validate_siq_chip.md).
     + [ ] Notebook needs cleanup and clearer documentation.
@@ -27,6 +27,25 @@
         - [Adapted for *S. cerevisiae*](https://github.com/kalavattam/siQ-ChIP/tree/protocol).
 
 ***Note:** SLURM job execution has undergone the most testing and is currently the most stable. Local and remote execution of parallelized (via [GNU Parallel](https://www.gnu.org/software/parallel/)) and serial jobs are still being refactored and tested.*
+<br />
+<br />
+
+## Initial setup
+To set up repository environments, start with:
+```sh
+sh scripts/install_envs_entrypoint.sh [keyword arguments]
+```
+
+This POSIX-compatible entrypoint is intended to be runnable from various shell environments, including cases where Bash >= 5 is not yet available in `PATH`.
+
+If Bash >= 5 is already available in `PATH` and Conda or Mamba is also available in `PATH`, `install_envs_entrypoint.sh` will hand off to `install_envs.sh`.
+
+If Bash >= 5 is not yet available, or if Conda or Mamba is not available in `PATH`, `install_envs_entrypoint.sh` will print guidance for the next setup step, including installing Miniforge when needed.
+
+After Bash >= 5 has been installed and is available in `PATH`, along with Conda or Mamba, repository environments can be installed directly with:
+```bash
+bash scripts/install_envs.sh [keyword arguments]
+```
 <br />
 <br />
 
@@ -81,5 +100,5 @@ If you encounter an issue (bugs, broken code, broken links, unexpected behavior,
 **If it’s not about code**
 - Broken link: Mention the file/section where you found it, and provide the correct link (if you know).
 - Unclear writing: Point to the section, sentence, or phrase, with a quick note about what is unclear.
-- Unexpected behavior/output: Screenshots or copy-paste snippets are helpful.
+- Unexpected behavior/output: Screenshots and/or copy-paste snippets are helpful.
 </details>

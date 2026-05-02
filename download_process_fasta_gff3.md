@@ -2,7 +2,7 @@
 Downloading, Processing, and Concatenating *S. cerevisiae* and *S. pombe* Genome Files
 ======================================================================================
 
-**Supporting code and documentation for the [manuscript](./docs/protocol_chipseq_signal_norm.pdf) "ChIP-seq Data Processing and Relative and Quantitative Signal Normalization for *Saccharomyces cerevisiae*," published 2025-05-05 in [*Bio-protocol* (volume 15, issue 9)](https://bio-protocol.org/en/archive?vol=15&issid=1370).**
+**Supporting code and documentation for the [manuscript](./docs/protocol_chipseq_signal_norm.pdf) “ChIP-seq Data Processing and Relative and Quantitative Signal Normalization for *Saccharomyces cerevisiae*,” published 2025-05-05 in [*Bio-protocol* (volume 15, issue 9)](https://bio-protocol.org/en/archive?vol=15&issid=1370).**
 
 **Author:** *Kris Alavattam*
 
@@ -279,7 +279,7 @@ zcat "${dir_sc_g3_pr}/${fil_sc_g3_pr}" \
             #  If a "gene=" field exists in $9, extract the gene name
             if (match($9, /gene=[^;]+/)) {
                 nam_gen = substr($9, RSTART + 5, RLENGTH - 5)
-                
+
                 #  Replace the "Name=" field in $9 with the extracted gene
                 #+ name
                 sub(/Name=[^;]+/, "Name=" nam_gen, $9)
@@ -313,7 +313,7 @@ zcat "${dir_sc_g3_pr}/${fil_sc_g3_pr}" \
 <summary><i>Text: Prepare </i>S. pombe<i> FASTA file for concatenation</i></summary>
 <br />
 
-This step standardizes *S. pombe* chromosome names by prefixing them with "SP_" and simplifying longer names. These modifications ensure that *S. pombe* alignments are distinguishable from *S. cerevisiae* alignments after Bowtie2 mapping&mdash;which is essential for computing spike-in scaling factors.
+This step standardizes *S. pombe* chromosome names by prefixing them with "SP_" and simplifying longer names. These modifications ensure that *S. pombe* alignments are distinguishable from *S. cerevisiae* alignments after `bowtie2` alignment&mdash;which is essential for computing spike-in scaling factors.
 </details>
 <br />
 
@@ -387,7 +387,7 @@ zcat "${dir_sp_g3_un}/${fil_sp_g3_un}" \
 <summary><i>Text: Concatenate the processed FASTA and GFF3 files</i></summary>
 <br />
 
-This final step concatenates the processed *S. cerevisiae* and *S. pombe* FASTA and GFF3 files into unified files for downstream data processing and analyses. The concatenated FASTA file supports Bowtie2 index generation, alignment, and IGV visualization, while the combined GFF3 file provides consistent, interpretable genome annotations for IGV.
+This final step concatenates the processed *S. cerevisiae* and *S. pombe* FASTA and GFF3 files into unified files for downstream data processing and analyses. The concatenated FASTA file supports `bowtie2` index generation, alignment, and IGV visualization, while the combined GFF3 file provides consistent, interpretable genome annotations for IGV.
 </details>
 <br />
 
