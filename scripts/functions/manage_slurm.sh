@@ -1,62 +1,152 @@
-#!/bin/bash
+#!/usr/bin/env bash
+# -*- coding: utf-8 -*-
+#
+# Script: manage_slurm.sh
+#
+# Copyright 2025-2026 by Kris Alavattam
+# Email: kalavattam@gmail.com
+#
+# OpenAI ChatGPT (GPT-5-series models) was used in development.
+#
+# Distributed under the MIT license.
 
-#  submit.sh
-#  KA
 
-#  Support functions for various 'submit' scripts
+# set_logs_slurm
 
 
-#  Print variable assignment(s)
-function debug_var() { printf "%s\n\n" "$@" >&2; }
+#  Require Bash >= 4.4 before defining functions
+if [[ -z "${BASH_VERSION:-}" ]]; then
+    echo "error(shell):" \
+        "this script must be sourced or run under Bash >= 4.4." >&2
 
-
-#  Activate user-supplied Conda/Mamba environment
-function activate_env() {
-    local env_nam="${1}"  # Name of environment to activate
-    if [[ "${CONDA_DEFAULT_ENV}" != "${env_nam}" ]]; then
-        # shellcheck disable=SC1091
-        if ! \
-            source "$(conda info --base)/etc/profile.d/conda.sh"
-        then
-            echo "Error: Failed to source 'conda.sh'." >&2
-            return 1
-        fi
-
-        if ! \
-            conda activate "${env_nam}"
-        then
-            echo "Error: Failed to activate environment: '${env_nam}'." >&2
-            return 1
-        fi
+    if [[ "${BASH_SOURCE[0]}" != "${0}" ]]; then
+        return 1
+    else
+        exit 1
     fi
+elif ((
+    BASH_VERSINFO[0] < 4 || ( BASH_VERSINFO[0] == 4 && BASH_VERSINFO[1] < 4 )
+)); then
+    echo "error($(basename "${BASH_SOURCE[0]}")):" \
+        "this script requires Bash >= 4.4; current version is" \
+        "'${BASH_VERSION}'." >&2
+
+    if [[ "${BASH_SOURCE[0]}" != "${0}" ]]; then
+        return 1
+    else
+        exit 1
+    fi
+fi
+
+#  Source required helper functions if needed
+# shellcheck disable=SC1091
+{
+    _dir_src_slurm="$(
+        cd "$(dirname "${BASH_SOURCE[0]}")" > /dev/null 2>&1 && pwd
+    )"
+
+    source "${_dir_src_slurm}/source_helpers.sh" || {
+        echo "error($(basename "${BASH_SOURCE[0]}")):" \
+            "failed to source '${_dir_src_slurm}/source_helpers.sh'." >&2
+
+        if [[ "${BASH_SOURCE[0]}" != "${0}" ]]; then
+            return 1
+        else
+            exit 1
+        fi
+    }
+
+    source_helpers "${_dir_src_slurm}" \
+        check_inputs check_source format_outputs || {
+            echo "error($(basename "${BASH_SOURCE[0]}")):" \
+                "failed to source required helper dependencies." >&2
+
+            if [[ "${BASH_SOURCE[0]}" != "${0}" ]]; then
+                return 1
+            else
+                exit 1
+            fi
+        }
+
+    unset _dir_src_slurm
 }
 
 
-#  Set up SLURM log file paths and create hard-linked log files
+#  Derive Slurm log-file paths and create descriptive hard-linked log names
 function set_logs_slurm() {
-    local id_job="${1}"    # SLURM job ID
-    local id_tsk="${2}"    # SLURM task ID within the job array
-    local samp="${3}"      # Sample name associated with log files
-    local err_out="${4}"   # Directory for stderr and stdout log files
-    local nam_job="${5}"   # Name of the job (used in log file naming)
-    local err_ini out_ini  # SLURM initial stderr and stdout log files
-    local err_dsc out_dsc  # Hard-linked stderr and stdout with descriptive names
+    local id_job="${1:-}"    # Slurm job ID
+    local id_tsk="${2:-}"    # Slurm task ID within the job array
+    local samp="${3:-}"      # Sample name associated with log files
+    local err_out="${4:-}"   # Directory for stderr and stdout log files
+    local nam_job="${5:-}"   # Name of the job (used in log file naming)
+    local err_ini out_ini    # Slurm initial stderr and stdout log files
+    local err_dsc out_dsc    # Hard-linked stderr/stdout with descriptive names
+    local show_help          # Help message
 
-    #  Check required inputs
-    for var in id_job id_tsk samp err_out nam_job; do
-        if [[ -z "${!var}" ]]; then
-            echo "Error: '${var}' is required but is unset or empty." >&2
-            return 1
-        fi
-    done
+    show_help=$(cat << EOM
+Usage:
+  set_logs_slurm
+    [-h|--hlp|--help] id_job id_tsk samp err_out nam_job
 
-    #  Check that 'err_out' directory exists and is writable
-    if [[ ! -d "${err_out}" || ! -w "${err_out}" ]]; then
-        echo \
-            "Error: Log directory does not exist or is not writable:" \
-            "'${err_out}'." >&2
+Description:
+  Derive initial and descriptive Slurm log-file paths and create hard-linked descriptive log names.
+
+Positional arguments:
+  1  id_job   <int>  Slurm job ID.
+  2  id_tsk   <int>  Slurm task ID within the job array.
+  3  samp     <str>  Sample name associated with the log files.
+  4  err_out  <str>  Directory for stderr/stdout log files.
+  5  nam_job  <str>  Job name used in log-file naming.
+
+Returns:
+  Prints a comma-delimited record to stdout:
+
+    err_ini,out_ini,err_dsc,out_dsc
+
+Notes:
+  - Initial log names follow the form:
+      \${err_out}/\${nam_job}.\${id_job}-\${id_tsk}.stderr.txt
+      \${err_out}/\${nam_job}.\${id_job}-\${id_tsk}.stdout.txt
+  - Descriptive hard-linked names additionally include '\${samp}'.
+EOM
+    )
+
+    if [[ "${id_job}" =~ ^(-h|--h[e]?lp)$ ]]; then
+        echo "${show_help}" >&2
+        return 0
+    elif [[ -z "${id_job}" ]]; then
+        echo_err_func "${FUNCNAME[0]}" \
+            "positional argument 1, 'id_job', is missing."
+        echo >&2
+        echo "${show_help}" >&2
+        return 1
+    elif [[ -z "${id_tsk}" ]]; then
+        echo_err_func "${FUNCNAME[0]}" \
+            "positional argument 2, 'id_tsk', is missing."
+        echo >&2
+        echo "${show_help}" >&2
+        return 1
+    elif [[ -z "${samp}" ]]; then
+        echo_err_func "${FUNCNAME[0]}" \
+            "positional argument 3, 'samp', is missing."
+        echo >&2
+        echo "${show_help}" >&2
+        return 1
+    elif [[ -z "${err_out}" ]]; then
+        echo_err_func "${FUNCNAME[0]}" \
+            "positional argument 4, 'err_out', is missing."
+        echo >&2
+        echo "${show_help}" >&2
+        return 1
+    elif [[ -z "${nam_job}" ]]; then
+        echo_err_func "${FUNCNAME[0]}" \
+            "positional argument 5, 'nam_job', is missing."
+        echo >&2
+        echo "${show_help}" >&2
         return 1
     fi
+
+    validate_var_dir "err_out" "${err_out}" || return 1
 
     #  Set log paths
     err_ini="${err_out}/${nam_job}.${id_job}-${id_tsk}.stderr.txt"
@@ -68,18 +158,16 @@ function set_logs_slurm() {
     if ! \
         ln -f "${err_ini}" "${err_dsc}"
     then
-        echo \
-            "Error: Failed to create hard link: '${err_ini}' to" \
-            "'${err_dsc}'." >&2
+        echo_err_func "${FUNCNAME[0]}" \
+            "failed to create hard link: '${err_ini}' to '${err_dsc}'."
         return 1
     fi
 
     if ! \
         ln -f "${out_ini}" "${out_dsc}"
     then
-        echo \
-            "Error: Failed to create hard link: '${out_ini}' to" \
-            "'${out_dsc}'." >&2
+        echo_err_func "${FUNCNAME[0]}" \
+            "failed to create hard link: '${out_ini}' to '${out_dsc}'."
         return 1
     fi
 
@@ -88,74 +176,7 @@ function set_logs_slurm() {
 }
 
 
-#  Check that a variable is not empty or unset
-function validate_var() {
-    local var_nam="${1}"   # Variable name (for error messages)
-    local var_val="${2-}"  # Value to check for emptiness/unset state
-    local idx="${3:-0}"    # Optional index (for arrays); defaults to '0'
-
-    if [[ -z "${var_val}" ]]; then
-        if [[ "${idx}" -ne 0 ]]; then
-            echo \
-                "Error: '${var_nam}' is empty or unset for array index" \
-                "'${idx}'." >&2
-        else
-            echo "Error: '${var_nam}' is empty or unset." >&2
-        fi
-        return 1
-    fi
-}
-
-
-#  Check that a file assigned to a varibale exists
-function validate_file() {
-    local var_nam="${1}"  # Variable name (for error messages)
-    local var_val="${2}"  # Value (file) to check for existence
-    local idx="${3:-0}"   # Optional index (for arrays); defaults to '0'
-
-    if [[ ! -f "${var_val}" ]]; then
-        if [[ "${idx}" -ne 0 ]]; then
-            echo \
-                "Error: '${var_nam}' does not exist for array index" \
-                "'${idx}'." >&2
-        else
-            echo \
-                "Error: '${var_nam}' does not exist." >&2
-        fi
-        return 1
-    fi
-}
-
-
-#  Check that a file exists
-function validate_var_file() {
-    local var_nam="${1}"  # Name of variable to validate
-    local pth_fil="${2}"  # File to check for existence
-    local idx="${3:-0}"   # Optional index (for arrays); defaults to '0'
-
-    if ! \
-        validate_var "${var_nam}" "${pth_fil}" "${idx}"
-    then
-        if [[ "${idx}" -ne 0 ]]; then
-            echo "Error: '${var_nam}' is unset or empty at index '${idx}'." >&2
-        else
-            echo "Error: '${var_nam}' is unset or empty." >&2
-        fi
-        return 1
-    fi
-
-    if ! \
-        validate_file "${var_nam}" "${pth_fil}" "${idx}"
-    then
-        if [[ "${idx}" -ne 0 ]]; then
-            echo \
-                "Error: '${pth_fil}' does not exist for variable" \
-                "'${var_nam}', index '${idx}'." >&2
-        else
-            echo \
-                "Error: '${pth_fil}' does not exist for variable" \
-                "'${var_nam}'." >&2
-        fi
-        return 1
-    fi
-}
+#  Print an error message when function script is executed directly
+if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+    err_source_only "${BASH_SOURCE[0]}"
+fi

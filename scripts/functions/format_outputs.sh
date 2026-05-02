@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # -*- coding: utf-8 -*-
 #
 # Script: format_outputs.sh
@@ -7,21 +7,120 @@
 # Email: kalavattam@gmail.com
 #
 # OpenAI ChatGPT (GPT-4- and GPT-5-series models) was used in development.
-# 
+#
 # Distributed under the MIT license.
 
 
-#  Write an error message to stderr and return code 1
-function echo_error() { echo "Error: $*" >&2; return 1; }
+# echo_err
+# echo_err_func
+# echo_warn
+# echo_warn_func
+# format_print_cmd
+# print_banner_pretty
+# print_cmd_array
+# print_cmd_pretty
+# summarize_sig_norm
 
 
-#  Write a warning message to stderr and return code 0
-function echo_warning() { echo "Warning: $*" >&2; }
+#  Require Bash >= 4.4 before defining functions
+if [[ -z "${BASH_VERSION:-}" ]]; then
+    echo "error(shell):" \
+        "this script must be sourced or run under Bash >= 4.4." >&2
+
+    if [[ "${BASH_SOURCE[0]}" != "${0}" ]]; then
+        return 1
+    else
+        exit 1
+    fi
+elif ((
+    BASH_VERSINFO[0] < 4 || ( BASH_VERSINFO[0] == 4 && BASH_VERSINFO[1] < 4 )
+)); then
+    echo "error($(basename "${BASH_SOURCE[0]}")):" \
+        "this script requires Bash >= 4.4; current version is" \
+        "'${BASH_VERSION}'." >&2
+
+    if [[ "${BASH_SOURCE[0]}" != "${0}" ]]; then
+        return 1
+    else
+        exit 1
+    fi
+fi
+
+#  Source required helper functions if needed
+# shellcheck disable=SC1091
+{
+    _dir_src_fmt="$(
+        cd "$(dirname "${BASH_SOURCE[0]}")" > /dev/null 2>&1 && pwd
+    )"
+
+    source "${_dir_src_fmt}/source_helpers.sh" || {
+        echo "error($(basename "${BASH_SOURCE[0]}")):" \
+            "failed to source '${_dir_src_fmt}/source_helpers.sh'." >&2
+
+        if [[ "${BASH_SOURCE[0]}" != "${0}" ]]; then
+            return 1
+        else
+            exit 1
+        fi
+    }
+
+    source_helpers "${_dir_src_fmt}" \
+        check_args check_source || {
+            echo "error($(basename "${BASH_SOURCE[0]}")):" \
+                "failed to source required helper dependencies." >&2
+
+            if [[ "${BASH_SOURCE[0]}" != "${0}" ]]; then
+                return 1
+            else
+                exit 1
+            fi
+        }
+
+    unset _dir_src_fmt
+}
+
+
+#TODO: remove the following functions after they are refactored away in scripts
+# #  Write an error message to stderr and return code 1
+# function echo_error() { echo "Error: $*" >&2; return 1; }
+#
+#
+# #  Write a warning message to stderr and return code 0
+# function echo_warning() { echo "Warning: $*" >&2; }
+
+
+#  Write a script-level error message to stderr
+function echo_err() {
+    echo "error($(basename "${0}")): $*" >&2
+}
+
+
+#  Write a function-level error message to stderr
+function echo_err_func() {
+    local func="${1:-${FUNCNAME[1]:-main}}"
+    shift || true
+    echo "error($(basename "${0}")::${func}): $*" >&2
+}
+
+
+#  Write a script-level warning message to stderr
+function echo_warn() {
+    echo "warning($(basename "${0}")): $*" >&2
+}
+
+
+#  Write a function-level warning message to stderr
+function echo_warn_func() {
+    local func="${1:-${FUNCNAME[1]:-main}}"
+    shift || true
+    echo "warning($(basename "${0}")::${func}): $*" >&2
+}
 
 
 function format_print_cmd() {
-    local slurm="${1:-}"  # Boolean: whether or not 'sbatch' SLURM command
-    local scr="${2:-}"    # Script path for 'sbatch' SLURM command
+    local slurm="${1:-}"  # Boolean-like: Slurm 'sbatch' command or not
+    local scr="${2:-}"    # Script path for Slurm 'sbatch' command
+    local slurm_lc
     local show_help       # Help message
 
     show_help=$(cat << EOM
@@ -29,12 +128,14 @@ Usage:
   format_print_cmd [-h|--hlp|--help] slurm [scr]
 
 Description:
-  Format and pretty-print a single command line with indentation and line breaks. Intended to be used with function 'build_cmd' by piping its output into this function.
+  Format and pretty-print a single command line for display, with indentation and line breaks.
+
+  This helper is intended to be used with function 'build_cmd' by piping its output into this function.
 
 Positional arguments:
-  1  slurm  <bol>  "true" / "t" or "false" / "f":
-                     - "true" / "t": treat the input as an 'sbatch' command and format sbatch flags and script arguments separately.
-                     - "false" / "f": treat the input as a plain script call.
+  1  slurm  <bol>  Boolean-like string: "true", "t", "false", or "f":
+                     - "true" or "t": treat the input as an 'sbatch' command and format sbatch flags and script arguments separately.
+                     - "false" or "f": treat the input as a plain script call.
   2  scr    <str>  Script path as it appears in the 'sbatch' command. Required when 'slurm=true', otherwise ignored.
 
 Examples:
@@ -42,20 +143,21 @@ Examples:
   #  Plain command
   build_cmd ... | format_print_cmd false
 
-  #  SLURM sbatch command invoking 'execute_compute_signal.sh'
+  #  Slurm sbatch command invoking 'execute_compute_signal.sh'
   build_cmd ...
       | format_print_cmd true "\${dir_rep}/scripts/execute_compute_signal.sh"
   '''
 
 Notes:
-- For non-SLURM commands, the function does the following:
+  - This function is display-oriented only. It does not perform robust shell parsing and should not be used to reconstruct or re-execute commands.
+  - For non-Slurm commands, the function does the following:
     + Reads a single-line command string from stdin.
     + Breaks before each '--' and indents the resulting lines.
-- For SLURM-wrapped commands ('sbatch ... <script> ...'), the function:
+  - For Slurm-wrapped commands ('sbatch ... <script> ...'), the function:
     + Splits the command into three visual sections:
-        - The leading 'sbatch \' line.
-        - Indented sbatch flags (e.g., '--cpus-per-task', '--time', etc.).
-        - The script path plus its arguments, further indented.
+      - The leading 'sbatch \' line.
+      - Indented sbatch flags (e.g., '--cpus-per-task', '--time', etc.).
+      - The script path plus its arguments, further indented.
     + Prints a backslash at the end of each non-final line.
 EOM
     )
@@ -65,31 +167,34 @@ EOM
         echo "${show_help}" >&2
         return 0
     elif [[ -z "${slurm}" ]]; then
-        echo "Error: Positional argument 1, 'slurm', is missing." >&2
+        echo_err_func "${FUNCNAME[0]}" \
+            "positional argument 1, 'slurm', is missing."
         echo >&2
         echo "${show_help}" >&2
         return 1
     fi
 
-    #  Lower-case flag 'slurm' in a Bash-3.2-safe way
-    local slurm_lc
-    slurm_lc=$(printf '%s' "${slurm}" | tr '[:upper:]' '[:lower:]')
+    slurm_lc="${slurm,,}"
 
     if [[ "${slurm_lc}" =~ ^(false|f)$ ]]; then
-        #  For non-SLURM commands, break before each '--' and indent
+        #  For non-Slurm commands, break before each '--' and indent
         sed -E 's| --| \\\n    --|g'  # Only as robust as incoming command str
     elif [[ "${slurm_lc}" =~ ^(true|t)$ ]]; then
-        #  For SLURM commands, require a script path
+        #  For Slurm commands, require a script path
         if [[ -z "${scr}" ]]; then
-            echo \
-                "Error in 'format_print_cmd': script path 'scr' (positional" \
-                "argument 2) must be supplied when 'slurm=true' or" \
-                "'slurm=t'." >&2
+            echo_err_func "${FUNCNAME[0]}" \
+                "positional argument 2, 'scr', is missing when 'slurm=true'" \
+                "or 'slurm=t'."
+            echo >&2
+            echo "${show_help}" >&2
             return 1
         fi
 
-        #  ...and perform more complicated logic; formatter expects current
-        #+ string layout emitted by 'build_cmd'
+        #  Perform display-oriented formatting; this logic expects the current
+        #+ single-line command layout emitted by 'build_cmd'
+        #+
+        #+ Standard AWK features are in use here, so 'awk' (rather than 'gawk')
+        #+ is used intentionally
         awk \
             -v scr="${scr}" '
             BEGIN {
@@ -134,9 +239,9 @@ EOM
                 }
             }'
     else
-        echo \
-            "Error in 'format_print_cmd': unknown 'slurm' value '${slurm}';" \
-            "expected 'true' / 't' or 'false' / 'f'." >&2
+        echo_err_func "${FUNCNAME[0]}" \
+            "unknown 'slurm' value '${slurm}'; expected 'true' / 't' or" \
+            "'false' / 'f'."
         return 1
     fi
 }
@@ -151,16 +256,17 @@ function print_banner_pretty() {
 
     show_help=$(cat << EOM
 Usage:
-  print_banner_pretty [<empty>|-h|--hlp|--help] -t|--text <str> [-w|--wrap <str>] [-p|--pad <int>] [-c|--cols <int>]
+  print_banner_pretty
+    [-h|--hlp|--help] -tx|--text <str> [-w|--wrap <str>] [--pad <int>] [-cw|--cols <int>]
 
 Description:
   Pretty-print a single-line banner around user-provided text.
 
 Keyword arguments:
-  -t, --text  <str>  Text to wrap (required). If omitted, any trailing positional arguments will be joined with single spaces and used as text.
-  -w, --wrap  <str>  Wrapping character; only the first character is used (default: '${wrap}').
-  -p, --pad   <int>  Number of spaces between the side markers and the text on each side (default: '${pad}').
-  -c, --cols  <int>  Maximum text width per line before wrapping. If 0, the text is not wrapped and is printed on a single line (default: '${cols}').
+  -tx, --text  <str>  Text to wrap. If omitted, trailing positional arguments are joined with single spaces and used as text.
+   -w, --wrap  <str>  Wrapping character; only the first character is used (default: '${wrap}').
+  -pd, --pad   <int>  Number of spaces between the side markers and the text on each side (default: '${pad}').
+  -cw, --cols  <int>  Maximum text width per line before wrapping. If 0, the text is not wrapped and is printed on a single line (default: '${cols}').
 
 Notes:
   - '--wrap' uses only the first character of its value.
@@ -179,7 +285,7 @@ Examples:
   ## This is the text that will be wrapped. ##
   ############################################
   '''
-  
+
   Example 2:
   '''bash
   print_banner_pretty
@@ -197,11 +303,6 @@ Examples:
   %%  will be wrapped across multiple lines.   %%
   %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
   '''
-
-#TODO:
-  - The parser does not check for missing values after options '--text', '--wrap', '--pad', and '--cols'.
-    + For example, 'print_banner_pretty --pad' will silently assign an empty value and later fail.
-    + This needs to be fixed by adding (i) empty-call help behavior and (ii) stricter missing-argument checks.
 EOM
     )
 
@@ -211,19 +312,59 @@ EOM
         return 0
     fi
 
-    while (( $# )); do
-        case "$1" in
-            -t|--text) text="${2:-}";  shift 2      ;;
-            -w|--wrap) wrap="${2:-#}"; shift 2      ;;
-            -p|--pad)  pad="${2:-1}";  shift 2      ;;
-            -c|--cols) cols="${2:-0}"; shift 2      ;;
-            --)                        shift; break ;;
+    while (( $# > 0 )); do
+        case "${1}" in
+            -tx|--txt|--text)
+                require_optarg "${1}" "${2:-}" "${FUNCNAME[0]}" || {
+                    echo >&2
+                    echo "${show_help}" >&2
+                    return 1
+                }
+                text="${2}"
+                shift 2
+                ;;
+
+            -w|--wrp|--wrap)
+                require_optarg "${1}" "${2:-}" "${FUNCNAME[0]}" || {
+                    echo >&2
+                    echo "${show_help}" >&2
+                    return 1
+                }
+                wrap="${2}"
+                shift 2
+                ;;
+
+            -pd|--pad)
+                require_optarg "${1}" "${2:-}" "${FUNCNAME[0]}" || {
+                    echo >&2
+                    echo "${show_help}" >&2
+                    return 1
+                }
+                pad="${2}"
+                shift 2
+                ;;
+
+            -cw|--col|--cols)
+                require_optarg "${1}" "${2:-}" "${FUNCNAME[0]}" || {
+                    echo >&2
+                    echo "${show_help}" >&2
+                    return 1
+                }
+                cols="${2}"
+                shift 2
+                ;;
+
+            --)
+                shift
+                break
+                ;;
+
             *)
                 #  Treat any leftover args as part of the text
                 if [[ -z "${text}" ]]; then
                     text="${1}"
                 else
-                    text="${text} ${1}"
+                    text+=" ${1}"
                 fi
                 shift
                 ;;
@@ -232,23 +373,30 @@ EOM
 
     #  Require text
     if [[ -z "${text}" ]]; then
-        echo \
-            "Error: '--text' is required (or supply text as trailing" \
-            "args). For more information, run 'print_banner_pretty -h'." >&2
+        echo_err_func "${FUNCNAME[0]}" \
+            "'--text' is required (or supply text as trailing args). For" \
+            "more information, run 'print_banner_pretty -h'."
+        return 1
+    fi
+
+    #  Require wrap character
+    if [[ -z "${wrap}" ]]; then
+        echo_err_func "${FUNCNAME[0]}" \
+            "'--wrap' must not be empty."
         return 1
     fi
 
     #  Check 'pad'
     if ! [[ ${pad} =~ ^[0-9]+$ ]]; then
-        echo "Error: '--pad' must be a non-negative integer, got '${pad}'." >&2
+        echo_err_func "${FUNCNAME[0]}" \
+            "'--pad' must be a non-negative integer, but got '${pad}'."
         return 1
     fi
 
     #  Check 'cols' (if set)
     if ! [[ ${cols} =~ ^[0-9]+$ ]]; then
-        echo \
-            "Error: '--cols' must be a non-negative integer, got" \
-            "'${cols}'." >&2
+        echo_err_func "${FUNCNAME[0]}" \
+            "'--cols' must be a non-negative integer, but got '${cols}'."
         return 1
     fi
 
@@ -294,7 +442,7 @@ EOM
     done
 
     #  Compute full banner width:
-    #      2 (side) + pad + len_max + pad + 2 (side)
+    #+     2 (side) + pad + len_max + pad + 2 (side)
     local width=$(( len_max + 2 * pad + 4 ))
 
     #  Build border line
@@ -334,22 +482,91 @@ EOM
 }
 
 
+function print_cmd_array() {
+    local arr_nam="${1:-}"  # Name of command array to print
+    local decl              # Output from 'declare -p' for array validation
+    local show_help         # Help message
+
+    show_help=$(cat << EOM
+Usage:
+  print_cmd_array [-h|--hlp|--help] arr_nam
+
+Description:
+  Pretty-print a command array as a shell-escaped single-line command.
+
+Positional arguments:
+  1  arr_nam  <str>  Name of the indexed array variable to print.
+
+Returns:
+  0 after printing the shell-escaped array contents to stdout; 1 if 'arr_nam' is missing, invalid, unset, or not an indexed array.
+
+Examples:
+  '''bash
+  print_cmd_array "arr_cmd"
+  '''
+EOM
+    )
+
+    if [[ "${arr_nam}" =~ ^(-h|--h[e]?lp)$ ]]; then
+        echo "${show_help}" >&2
+        return 0
+    elif [[ -z "${arr_nam}" ]]; then
+        echo_err_func "${FUNCNAME[0]}" \
+            "positional argument 1, 'arr_nam', is missing."
+        echo >&2
+        echo "${show_help}" >&2
+        return 1
+    fi
+
+    if ! [[ "${arr_nam}" =~ ^[a-zA-Z_][a-zA-Z0-9_]*$ ]]; then
+        echo_err_func "${FUNCNAME[0]}" \
+            "invalid array name '${arr_nam}'."
+        return 1
+    fi
+
+    if ! decl="$(declare -p "${arr_nam}" 2> /dev/null)"; then
+        echo_err_func "${FUNCNAME[0]}" \
+            "array '${arr_nam}' is unset."
+        return 1
+    elif [[ "${decl}" != declare\ -a* ]]; then
+        echo_err_func "${FUNCNAME[0]}" \
+            "'${arr_nam}' is not an indexed array."
+        return 1
+    fi
+
+    local -n arr_cmd_ref="${arr_nam}"
+
+    if (( ${#arr_cmd_ref[@]} == 0 )); then
+        echo_err_func "${FUNCNAME[0]}" \
+            "array '${arr_nam}' is empty."
+        return 1
+    fi
+
+    printf '%q ' "${arr_cmd_ref[@]}"
+    printf '\n'
+
+    return 0
+}
+
+
 function print_cmd_pretty() {
     local first_n=2       # Number of tokens on first line
-    local pair_flg=false  # Boolean: print flag token plus next token
-    local indent=""       # Extra indenation
+    local pair_flg=false  # Boolean-like: print flag token plus next token
+    local indent=""       # Extra indentation
     local cont="    "     # Extra indentation: continuation lines
     local show_help       # Help message
 
     show_help=$(cat << EOM
 Usage:
-  print_cmd_pretty [<empty>|-h|--hlp|--help] [-hd|--head <int>|--head=<int>] [-pf|--pair_flg|--pair-flg] [-it|--indent] cmd arg1 arg2 ...
+  print_cmd_pretty
+    [-h|--hlp|--help] [-hd|--head <int>] [-pf|--pair_flg|--pair-flg] [-it|--indent]
+    cmd arg1 arg2 ...
 
 Description:
   Pretty-print a command in a readable, multi-line form.
 
 Options:
-  -hd <int> / -hd=<int>, --head <int> / --head=<int>
+  -hd, --head  <int>
     Number of tokens to keep on the first line (default: ${first_n}).
 
   -pf, --pair_flg, --pair-flg
@@ -364,13 +581,13 @@ Examples:
   '''
 
   '''bash
-  print_cmd_pretty --pair-flg --indent --head=1 \\
-      sbatch \\
-          --account tsukiyama \\
-          --time 12:00:00 \\
-          --cpus-per-task 4 \\
-              ./submit_compute_signal.sh \\
-              --mode signal \\
+  print_cmd_pretty --pair-flg --indent --head=1
+      sbatch
+          --account tsukiyama
+          --time 12:00:00
+          --cpus-per-task 4
+              ./submit_compute_signal.sh
+              --mode signal
               --method norm
   '''
 EOM
@@ -382,26 +599,16 @@ EOM
         return 0
     fi
 
-    while (( $# )); do
+    while (( $# > 0 )); do
         case "${1}" in
-            -hd|--head|--head=*)
-                local val
-                if [[ ${1} =~ ^(-hd|--head)$ ]]; then
-                    if (( $# < 2 )); then
-                        echo "Error: '--head' requires an argument." >&2
-                        return 1
-                    fi
-                    val=${2}
-                    shift 2
-                else
-                    if [[ "${1}" == -hd=* ]]; then
-                        val=${1#-hd=}
-                    else
-                        val=${1#--head=}
-                    fi
-                    shift
-                fi
-                first_n="${val}"
+            -hd|--hd|--head)
+                require_optarg "${1}" "${2:-}" "${FUNCNAME[0]}" || {
+                    echo >&2
+                    echo "${show_help}" >&2
+                    return 1
+                }
+                first_n="${2}"
+                shift 2
                 ;;
 
             -pf|--pair[_-]flg)
@@ -409,7 +616,7 @@ EOM
                 shift
                 ;;
 
-            -it|--indent)
+            -it|--indnt|--indent)
                 indent="  "
                 cont="      "
                 shift
@@ -421,6 +628,13 @@ EOM
                 ;;
 
             *)
+                if [[ "${1}" == -* ]]; then
+                    echo "## Unknown argument passed: '${1}' ##" >&2
+                    echo >&2
+                    echo "${show_help}" >&2
+                    return 1
+                fi
+
                 #  First non-option is the command
                 break
                 ;;
@@ -429,9 +643,9 @@ EOM
 
     #  Check that 'first_n' is a non-negative integer
     if ! [[ ${first_n} =~ ^[0-9]+$ ]]; then
-        echo \
-            "Error: 'first_n' ('--head <int>') must be a non-negative integer," \
-            "but got '${first_n}'." >&2
+        echo_err_func "${FUNCNAME[0]}" \
+            "'first_n' ('--head <int>') must be a non-negative integer, but" \
+            "got '${first_n}'."
         return 1
     elif (( first_n < 1 )); then
         #  Handle 'first_n=0'
@@ -441,7 +655,13 @@ EOM
     #  Handle remaining args, which are the actual command
     local cmd=( "$@" )
     local n=${#cmd[@]}
-    if (( n == 0 )); then return 0; fi
+    if (( n == 0 )); then
+        echo_err_func "${FUNCNAME[0]}" \
+            "a command must be supplied after any formatting options."
+        echo >&2
+        echo "${show_help}" >&2
+        return 1
+    fi
 
     # Clamp 'first_n' so that it never exceeds the number of tokens
     if (( first_n > n )); then first_n=${n}; fi
@@ -469,12 +689,12 @@ EOM
             #+     - current token starts with '-' or '--'
             #+     - there is a next token
             #+     - the next token does not start with '-'
-            if \
+            if (
                    [[ ${pair_flg} == "true" ]] \
                 && [[ ${cmd[start_i]} == -* ]] \
                 && (( start_i + 1 < n )) \
                 && [[ ${cmd[start_i+1]} != -* ]]
-            then
+            ); then
                 end_i=$(( start_i + 1 ))
             fi
 
@@ -499,6 +719,8 @@ EOM
 }
 
 
+#MAYBE: 'format_outputs.sh' may not be the best place for this function
+#MAYBE: make this function "private", i.e., '_summarize_sig_norm'
 function summarize_sig_norm() {
     local typ_sig="${1:-}"  # Type of signal computation
     local scl_fct="${2:-}"  # Scaling factor
@@ -521,7 +743,7 @@ Positional arguments:
   2  scl_fct  <str>  Scaling factor string (optional). If empty, assumes no explicit '--scl_fct' was supplied.
 
 Returns:
-  0 after printing the summary to stdout; 1 if required positional argument 1, 'typ_sig', is missing.
+  0 after printing the summary to stdout; otherwise 1 if positional argument 1, 'typ_sig', is missing.
 
 Examples:
   1. Summarize normalized coverage with no scaling factors
@@ -541,14 +763,15 @@ EOM
         echo "${show_help}" >&2
         return 0
     elif [[ -z "${typ_sig}" ]]; then
-        echo "Error: Positional argument 1, 'typ_sig', is missing." >&2
+        echo_err_func "${FUNCNAME[0]}" \
+            "positional argument 1, 'typ_sig', is missing."
         echo >&2
         echo "${show_help}" >&2
         return 1
     fi
 
     #  Lowercase-convert signal-type input so case matching is case-insensitive
-    typ_sig_lc=$(printf '%s' "${typ_sig}" | tr '[:upper:]' '[:lower:]')
+    typ_sig_lc="${typ_sig,,}"
 
     #  Determine normalization method message
     case "${typ_sig_lc}" in
@@ -557,7 +780,7 @@ EOM
             mth_nrm+=" '--method ${typ_sig}'."
             ;;
 
-        f|frg|frag|frg_len|frag_len|l|len|len_frg|len_frag)
+        f|frg|frag|frg[_-]len|frag[_-]len|l|len|len[_-]frg|len[_-]frag)
             mth_nrm="Performing fragment-length normalization:"
             mth_nrm+=" '--method ${typ_sig}'."
             ;;
@@ -590,3 +813,9 @@ EOM
     echo
     echo
 }
+
+
+#  Print an error message when function script is executed directly
+if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+    err_source_only "${BASH_SOURCE[0]}"
+fi
