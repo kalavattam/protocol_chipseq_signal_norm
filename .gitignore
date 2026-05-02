@@ -1,5 +1,22 @@
-#  Ignore everything in 'scraps/', where temporary scratch work is stored
+#  Wholesale-ignore PDF files as well as gzip-compressed files
+*.gz
+*.pdf
+
+#  Ignore root '__init__.py'
+/__init__.py
+
+#  Ignore everything in 'analysis/', 'docs/img/', 'docs/xml/', 'scraps/' (where
+#+ temporary scratch work is stored), and 'tmp/'
+analysis/
+docs/img
+docs/xml
 scraps/
+tmp/
+
+#  Ignore specific directories under 'scripts/'
+scripts/__pycache__/
+scripts/blog/
+scripts/functions/__pycache__/
 
 #  Ignore everything in 'data/{genomes,processed,raw,symlinked,tracks}/'
 data/genomes/
@@ -8,13 +25,18 @@ data/raw/
 data/symlinked/
 data/tracks/
 
-#  Re-allow everything in 'data/raw/docs/', except specific files
+#  Re-allow certain files in 'data/raw/docs/', continuing to exclude other
+#+ files
 !data/raw/docs/
 data/raw/docs/measurements_siqchip_all.tsv
 data/raw/docs/SRR_custom.tsv
 data/raw/docs/test*
 
 #  Re-allow everything in the 'tables/' subdirectory under
-#+ 'data/processed/compute_signal/' for manuscript-specific alignment and
-#+ filtering parameters
+#+ 'data/processed/compute_signal/' for Bio-protocol manuscript-specific
+#+ alignment and filtering parameters
 !data/processed/compute_signal/bowtie2_global_flag-2_mapq-1/tables/
+
+#  Ignore everything in 'tests/' except 'tests/scripts/'
+!tests/scripts/
+tests/
