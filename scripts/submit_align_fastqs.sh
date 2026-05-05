@@ -170,13 +170,13 @@ Positional arguments:
    3  bt2_aln   <str>  Bowtie 2 alignment type.
    4  bwa_alg   <str>  BWA algorithm: 'mem' or 'aln'.
    5  mapq      <int>  MAPQ threshold. If 'mapq > 0', '--mapq' is passed to 'align_fastqs'; otherwise it is omitted.
-   6  req_flg   <flg>  If 'true', pass '--req_flg' to require flag bit 2.
+   6  req_flg   <flag>  If 'true', pass '--req_flg' to require flag bit 2.
    7  index     <str>  Path/prefix for the alignment index.
    8  ref_fa    <str>  Reference FASTA for CRAM output; ignored for BAM output.
    9  fq_1      <str>  FASTQ file #1.
   10  fq_2      <str>  FASTQ file #2 or, for SE data, 'NA'.
   11  outfile   <str>  Output alignment file; must end in '.bam' or '.cram'.
-  12  qname     <flg>  If 'true', pass '--qname' to retain a queryname-sorted intermediate.
+  12  qname     <flag>  If 'true', pass '--qname' to retain a queryname-sorted intermediate.
   13  err_out   <str>  Directory for stderr/stdout log files.
   14  nam_job   <str>  Job name used in log file naming.
   15  samp      <str>  Sample name used in log file naming.
@@ -674,7 +674,7 @@ Keyword arguments:
   -mq, --mapq  <int>
     MAPQ threshold for filtering alignment outfiles.
 
-  -rf, --req_flg  <flg>
+  -rf, --req_flg  <flag>
     Require flag bit 2 (proper PE alignments) for filtering alignment outfiles.
 
   -ix, --index  <str>
@@ -694,7 +694,7 @@ Keyword arguments:
   -ox, --out_ext  <str>
     Final alignment output extension: 'bam' or 'cram'.
 
-  -qn, --qname  <flg>
+  -qn, --qname  <flag>
     Retain queryname-sorted intermediate BAM files.
 
   -sxs, --sfx_se, --suffix_se  <str>

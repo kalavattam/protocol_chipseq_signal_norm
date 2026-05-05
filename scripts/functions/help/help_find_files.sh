@@ -70,8 +70,8 @@ Dependencies:
     + check_int_pos          ## check_numbers ##
     + check_pgrm_path        ## check_env ##
     + construct_find         ## construct_find ##
-    + echo_error             ## format_outputs ##
-    + echo_warning           ## format_outputs ##
+    + echo_err               ## format_outputs ##
+    + echo_warn              ## format_outputs ##
     + help/help_find_files
     + pair_fastqs            ## process_sequences ##
     + print_banner_pretty    ## format_outputs ##

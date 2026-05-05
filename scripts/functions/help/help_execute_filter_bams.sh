@@ -109,8 +109,8 @@ Dependencies:
         + filter_bam_sc
         + filter_bam_sp
     - format_outputs.sh
-        + echo_error
-        + echo_warning
+        + echo_err
+        + echo_warn
     - handle_env.sh
         + handle_env
     - help/help_execute_filter_bams.sh

@@ -21,10 +21,10 @@ Description:
   Create symbolic links for a comma-separated list of input files.
 
 Keyword arguments:
-  -h, --hlp, --help  <flg>
+  -h, --hlp, --help  <flag>
     Print this help message and exit.
 
-  -dr, --dry, --dry_run  <flg>
+  -dr, --dry, --dry_run  <flag>
     Validate inputs, print planned link commands, and exit.
 
   -i, --csv_infile  <str>
@@ -40,10 +40,10 @@ Keyword arguments:
   -do, --dir_out  <str>
     Output directory. If used, output links are named using the basenames of '--csv_infile'.
 
-  -nf, --no_force  <flg>
+  -nf, --no_force  <flag>
     Refuse to replace existing destination symlinks.
 
-  -q, --quiet  <flg>
+  -q, --quiet  <flag>
     Suppress the final stderr summary line.
 
 Notes:

@@ -628,10 +628,10 @@ Usage:
   submit_calculate_scaling_factor.sh
     [--help] [--env_nam <str>] --dir_scr <str> [--threads <int>]
     [--mode {siq,spike}] [--method {fractional,chiprx_alpha_ratio,chiprx_alpha_ip,chiprx_alpha_in,rxinput_alpha}]
-    --csv_mip <mlt> --csv_min <mlt> [--csv_sip <mlt>] [--csv_sin <mlt>] [--aln_typ {pe,se,auto}] --fil_out <str>
+    --csv_mip <csv:file> --csv_min <csv:file> [--csv_sip <csv:file>] [--csv_sin <csv:file>] [--aln_typ {pe,se,auto}] --fil_out <str>
     [--tbl_met <str>] [--cfg_met <str>] [--eqn {5,5nd,6,6nd}]
-    [--len_def <int>] [--len_mip <mlt>] [--len_min <mlt>] [--dep_mip <mlt>] [--dep_min <mlt>] [--dep_sip <mlt>] [--dep_sin <mlt>]
-    [--rnd <int>] --err_out <str> [--nam_job <str>]
+    [--len_def <int>] [--len_mip <csv:int>] [--len_min <csv:int>] [--dep_mip <csv:int>] [--dep_min <csv:int>] [--dep_sip <csv:int>] [--dep_sin <csv:int>]
+    [--dp <int>] --err_out <str> [--nam_job <str>]
 
 
 Description:
@@ -639,17 +639,17 @@ Description:
 
 
 Keyword arguments:
-    -h, --help     <flg>  Print this help message and exit
+    -h, --help     <flag>  Print this help message and exit
    -en, --env_nam  <str>  Mamba environment to activate (default: ${env_nam})
    -ds, --dir_scr  <str>  Directory containing scripts and functions
     -t, --threads  <int>  Number of threads for BAM-processing steps (default: ${threads})
 
    -md, --mode     <str>  Scaling-factor framework: 'siq' or 'spike' (default: ${mode})
    -me, --method   <str>  Spike-in coefficient to compute: 'fractional', 'chiprx_alpha_ratio', 'chiprx_alpha_ip', 'chiprx_alpha_in', 'rxinput_alpha', or aliases ('--mode spike'; default: fractional)
-   -mp, --csv_mip  <mlt>  Comma-separated list of main IP BAM files                                                <element: str>
-   -mn, --csv_min  <mlt>  Comma-separated list of main input BAM files                                             <element: str>
-   -sp, --csv_sip  <mlt>  Comma-separated list of spike-in IP BAM files ('--mode spike')                           <element: str>
-   -sn, --csv_sin  <mlt>  Comma-separated list of spike-in input BAM files ('--mode spike')                        <element: str>
+   -mp, --csv_mip  <csv:file>  Comma-separated list of main IP BAM files                                                <element: str>
+   -mn, --csv_min  <csv:file>  Comma-separated list of main input BAM files                                             <element: str>
+   -sp, --csv_sip  <csv:file>  Comma-separated list of spike-in IP BAM files ('--mode spike')                           <element: str>
+   -sn, --csv_sin  <csv:file>  Comma-separated list of spike-in input BAM files ('--mode spike')                        <element: str>
 
    -at, --aln_typ, --align_typ  <str>
       Library type override: 'pe', 'se', or 'auto' (default: ${aln_typ}).
@@ -661,12 +661,12 @@ Keyword arguments:
    -eq, --eqn      <str>  siQ-ChIP equation: '5', '5nd', '6', or '6nd' ('--mode siq'; default: ${eqn})
 
    -ld, --len_def  <int>  Default fragment length for SE libraries when no per-sample override is provided
-  -lmp, --len_mip  <mlt>  Optional comma-separated list of precomputed fragment lengths for main IP BAM files      <element: int>
-  -lmn, --len_min  <mlt>  Optional comma-separated list of precomputed fragment lengths for main input BAM files   <element: int>
-  -dmp, --dep_mip  <mlt>  Optional comma-separated list of precomputed alignment counts for main IP BAM files      <element: int>
-  -dmn, --dep_min  <mlt>  Optional comma-separated list of precomputed alignment counts for main input BAM files   <element: int>
-  -dsp, --dep_sip  <mlt>  Optional comma-separated list of precomputed alignment counts for spike IP BAM files     <element: int>
-  -dsn, --dep_sin  <mlt>  Optional comma-separated list of precomputed alignment counts for spike input BAM files  <element: int>
+  -lmp, --len_mip  <csv:int>  Optional comma-separated list of precomputed fragment lengths for main IP BAM files      <element: int>
+  -lmn, --len_min  <csv:int>  Optional comma-separated list of precomputed fragment lengths for main input BAM files   <element: int>
+  -dmp, --dep_mip  <csv:int>  Optional comma-separated list of precomputed alignment counts for main IP BAM files      <element: int>
+  -dmn, --dep_min  <csv:int>  Optional comma-separated list of precomputed alignment counts for main input BAM files   <element: int>
+  -dsp, --dep_sip  <csv:int>  Optional comma-separated list of precomputed alignment counts for spike IP BAM files     <element: int>
+  -dsn, --dep_sin  <csv:int>  Optional comma-separated list of precomputed alignment counts for spike input BAM files  <element: int>
 
    -dp, --dp, --rnd, --round, --decimals, --digits  <int>
       Maximum number of decimal places retained for computed values (default: ${rnd})

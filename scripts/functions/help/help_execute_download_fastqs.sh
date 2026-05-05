@@ -26,13 +26,13 @@ Description:
   The script can execute jobs in parallel using GNU Parallel, optionally with Slurm, or run them serially.
 
 Arguments:
-   -h, --help  <flg>
+   -h, --help  <flag>
        Display this help message and exit.
 
-   -v, --verbose  <flg>
+   -v, --verbose  <flag>
        Run script in 'verbose' mode.
 
-  -dr, --dry, --dry_run, --dry-run  <flg>
+  -dr, --dry, --dry_run, --dry-run  <flag>
        Print commands without running them.
 
    -t, --thr, --threads  <int>
@@ -53,7 +53,7 @@ Arguments:
   -eo, --err_out, --err-out  <str>
        The directory to store stderr and stdout TXT outfiles (default: \${dir_out}/logs).
 
-  -sl, --slurm  <flg>
+  -sl, --slurm  <flag>
        Submit jobs to the Slurm scheduler (optional; see 'Notes' below).
 
   -tm, --time  <str>

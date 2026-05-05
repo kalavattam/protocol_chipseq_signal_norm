@@ -63,10 +63,10 @@ Description:
 
 Usage:
   process_io
-    [--help] --mode <str> (--infile <str> | --fil_A <str> --fil_B <str>) --outfile <str> [--scl_fct <mlt>] [--opt_var <mlt>]
+    [--help] --mode <str> (--infile <str> | --fil_A <str> --fil_B <str>) --outfile <str> [--scl_fct <num>] [--opt_var <num>]
 
 Arguments:
-  -h, --hlp, --help  <flg>
+  -h, --hlp, --help  <flag>
     Print this help message and return 0.
 
   -md, --mode  <str>
@@ -84,10 +84,10 @@ Arguments:
   -o, --outfile  <str>
     Output file (bedGraph[.gz] for 'mode={signal,ratio}', BED[.gz] for 'mode=coord').
 
-  -sf, --scl_fct  <mlt>
+  -sf, --scl_fct  <num>
     Optional scaling factor (<flt>) or sentinel (NA) ('mode=signal' or 'mode=ratio').
 
-  -ov, --opt_var  <mlt>
+  -ov, --opt_var  <num>
     Optional variable: fragment length (<int>, 'mode=signal') or minimum input depth (<flt>, 'mode=ratio').
 EOM
     )
@@ -245,13 +245,13 @@ Usage:
 
 Positional arguments:
   1  mode     <str>  Mode: 'signal' or 'ratio'.
-  2  scl_fct  <mlt>  Scaling factor/coefficient (<flt>) or sentinel (NA).
-  3  opt_var  <mlt>  'usr_frg' ('compute_signal', <int>) or 'dep_min' ('compute_signal_ratio', <flt>) or sentinel (NA).
+  2  scl_fct  <num>  Scaling factor/coefficient (<flt>) or sentinel (NA).
+  3  opt_var  <num>  'usr_frg' ('compute_signal', <int>) or 'dep_min' ('compute_signal_ratio', <flt>) or sentinel (NA).
   4  rnd      <int>  Maximum number of decimal places retained for finite emitted values.
   5  track    <bol>  Mode 'ratio': return track sans '-inf', 'nan' (default: false).
-  6  pseudo   <mlt>  Mode 'ratio': per-sample pseudocount spec 'A[:B]' (<str>) or sentinel (NA; default: NA).
-  7  eps      <mlt>  Mode 'ratio': zero-tolerance epsilon (<flt>) or sentinel (NA; default: NA).
-  8  skip_00  <mlt>  Mode 'ratio': zero-zero skip mode ('pre_scale' or 'post_scale') or sentinel (NA; default: NA).
+  6  pseudo   <spec>  Mode 'ratio': per-sample pseudocount spec 'A[:B]' (<str>) or sentinel (NA; default: NA).
+  7  eps      <flt>  Mode 'ratio': zero-tolerance epsilon (<flt>) or sentinel (NA; default: NA).
+  8  skip_00  <enum:pre_scale,post_scale>  Mode 'ratio': zero-zero skip mode ('pre_scale' or 'post_scale') or sentinel (NA; default: NA).
   9  drp_nan  <bol>  Mode 'ratio': drop non-finite values (default: false).
 
 Notes:
@@ -441,9 +441,9 @@ Positional arguments:
    3  infile   <str>  Input BAM file.
    4  outfile  <str>  Output filename.
    5  siz_bin  <int>  Bin size in base pairs.
-   6  method   <mlt>  Type of signal computation (<str>) or empty sentinel ("").
-   7  scl_fct  <mlt>  Scaling factor/coefficient (<flt>) or sentinel (NA).
-   8  usr_frg  <mlt>  Fragment length (<int>) or sentinel (NA).
+   6  method   <str>  Type of signal computation (<str>) or empty sentinel ("").
+   7  scl_fct  <num>  Scaling factor/coefficient (<flt>) or sentinel (NA).
+   8  usr_frg  <int>  Fragment length (<int>) or sentinel (NA).
    9  rnd      <int>  Maximum number of decimal places retained for finite emitted values.
   10  err_out  <str>  Directory for stdout and stderr.
   11  nam_job  <str>  Job name.
@@ -540,15 +540,15 @@ Positional arguments:
    3  fil_B    <str>  Denominator bedGraph file.
    4  outfile  <str>  Output ratio bedGraph file.
    5  method   <str>  Ratio method: 'unadj', 'log2', 'unadj_r', 'log2_r'.
-   6  scl_fct  <mlt>  Optional scaling factor/coefficient (<flt>) or sentinel (NA).
-   7  dep_min  <mlt>  Optional minimum input depth (<flt>) or sentinel (NA).
+   6  scl_fct  <num>  Optional scaling factor/coefficient (<flt>) or sentinel (NA).
+   7  dep_min  <flt>  Optional minimum input depth (<flt>) or sentinel (NA).
    8  rnd      <int>  Maximum number of decimal places retained for finite emitted values.
    9  track    <bol>  Emit companion '.track' file.
-  10  pseudo   <mlt>  Per-sample pseudocount spec 'A[:B]' (<str>) or sentinel (NA).
-  11  eps      <mlt>  Shared epsilon (<flt>) or sentinel (NA).
-  12  skip_00  <mlt>  Shared zero-zero skip mode ('pre_scale' or 'post_scale') or sentinel (NA).
+  10  pseudo   <spec>  Per-sample pseudocount spec 'A[:B]' (<str>) or sentinel (NA).
+  11  eps      <flt>  Shared epsilon (<flt>) or sentinel (NA).
+  12  skip_00  <enum:pre_scale,post_scale>  Shared zero-zero skip mode ('pre_scale' or 'post_scale') or sentinel (NA).
   13  drp_nan  <bol>  Drop non-finite values from main output.
-  14  skp_pfx  <mlt>  Shared skip-prefix string (<str>) or sentinel (NA).
+  14  skp_pfx  <str>  Shared skip-prefix string (<str>) or sentinel (NA).
   15  err_out  <str>  Directory for log file output.
   16  nam_job  <str>  Job name used in log filenames.
   17  dsc      <str>  Descriptor string for logs.
@@ -1570,14 +1570,14 @@ Usage:
     [--method {unadj,frag,norm,log2,unadj_r,log2_r,...}]
     (--csv_infile <bam1,bam2,...> | --csv_fil_A <IP1.bdg[.gz],IP2.bdg[.gz],...> --csv_fil_B <in1.bdg[.gz],in2.bdg[.gz],...>)
     --csv_outfile <out1.bdg[.gz],out2.bdg[.gz],...> [--track] [--drp_nan]
-    [--siz_bin <int>] [--csv_scl_fct <mlt1,mlt2,...>] [--csv_usr_frg <mlt1,mlt2,...>] [--csv_dep_min <mlt1,mlt2,...>] [--csv_pseudo <mlt1,mlt2,...>]
-    [--eps <mlt>] [--skip_00 <mlt>] [--skp_pfx <mlt>] [--rnd <int>] --err_out <str> [--nam_job <str>]
+    [--siz_bin <int>] [--csv_scl_fct <csv:num>] [--csv_usr_frg <csv:int>] [--csv_dep_min <csv:num>] [--csv_pseudo <csv:str>]
+    [--eps <flt>] [--skip_00 <enum:pre_scale,post_scale>] [--skp_pfx <str>] [--dp <int>] --err_out <str> [--nam_job <str>]
 
 Description:
   Submit per-sample signal, ratio, or fragment-coordinate jobs from comma-separated file lists to 'compute_signal.py' or 'compute_signal_ratio.py' under Slurm, GNU Parallel, or serial execution.
 
 Keyword arguments:
-  -h, --hlp, --help  <flg>
+  -h, --hlp, --help  <flag>
       Print this help message and exit.
 
   -en, --env_nam  <str>
@@ -1604,45 +1604,45 @@ Keyword arguments:
           + 'ur', 'unadj_r', 'unadjusted_r', 'sr', 'smp_r', 'simple_r', 'rr', 'raw_r'
           + '2r', 'l2r', 'l2_r', 'lg2_r', 'log2_r'
 
-  -i, -fi, -ci, --infile, --infiles, --fil_in, --csv_infile, --csv_infiles  <mlt>  <element: str>
+  -i, -fi, -ci, --infile, --infiles, --fil_in, --csv_infile, --csv_infiles  <csv:file>  <element: str>
       Comma-separated list of BAM files ('--mode signal', '--mode coord').
 
-  -fA, -f1, -cA, -c1, --fil_A, --fil_1, --csv_A, --csv_1, --csv_fil_A, --csv_fil_IP  <mlt>  <element: str>
+  -fA, -f1, -cA, -c1, --fil_A, --fil_1, --csv_A, --csv_1, --csv_fil_A, --csv_fil_IP  <csv:file>  <element: str>
       Comma-separated list of numerator (i.e., "file A"; e.g., IP) bedGraph files ('--mode ratio').
 
-  -fB, -f2, -cB, -c2, --fil_B, --fil_2, --csv_B, --csv_2, --csv_fil_B, --csv_fil_input  <mlt>  <element: str>
+  -fB, -f2, -cB, -c2, --fil_B, --fil_2, --csv_B, --csv_2, --csv_fil_B, --csv_fil_input  <csv:file>  <element: str>
       Comma-separated list of denominator (i.e., "file B"; e.g., input) bedGraph files ('--mode ratio').
 
-  -o, -fo, -co, --outfile, --outfiles, --fil_out, --csv_outfile, --csv_outfiles  <mlt>  <element: str>
+  -o, -fo, -co, --outfile, --outfiles, --fil_out, --csv_outfile, --csv_outfiles  <csv:file>  <element: str>
       Comma-separated list of output files (e.g., full bedGraph[.gz] or BED[.gz] paths).
 
-  -tr, --track  <flg>
+  -tr, --track  <flag>
       Output a companion bedGraph without '-inf' or 'nan' rows ('--mode ratio').
 
   -sb, --siz_bin  <int>
       Bin size in base pairs for signal computation ('--mode signal'; default: ${siz_bin}).
 
-  -sf, --csv_scl_fct  <mlt>  <element: str>
+  -sf, --csv_scl_fct  <csv:num>  <element: str>
       Optional comma-separated list of scaling factors or sentinels ('--mode signal', '--mode ratio').
 
       Compatibility aliases include '--scale' and '--scl_fct'.
 
-  -uf, --csv_usr_frg  <mlt>  <element: str>
+  -uf, --csv_usr_frg  <csv:int>  <element: str>
       Optional comma-separated list of fragment lengths or sentinels ('--mode signal', '--mode coord').
 
       Compatibility alias: '--usr_frg'.
 
-  -dm, --csv_dep_min  <mlt>  <element: str>
+  -dm, --csv_dep_min  <csv:num>  <element: str>
       Optional comma-separated list of minimum input depth values or sentinels ('--mode ratio').
 
       Compatibility aliases include '--dep_min' and '--depth_min'.
 
-  -ps, --csv_pseudo  <mlt>  <element: str>
+  -ps, --csv_pseudo  <csv:str>  <element: str>
       Optional comma-separated list of per-sample pseudocount specs 'A[:B]' or sentinels ('--mode ratio').
 
       Compatibility aliases include '--pseudo' and '--pseudocount'.
 
-   -e, --eps  <mlt>
+   -e, --eps  <flt>
       Shared epsilon for zero checks in ratio mode (<flt>) or sentinel (NA).
 
   -s0, --skip_00  <str>
@@ -1651,7 +1651,7 @@ Keyword arguments:
   -dn, --drp_nan  <str>
       Drop 'nan', 'inf', and '-inf' rows from the main ratio output.
 
-  -sk, --skp_pfx, --skip_pfx, --skip_prefix  <mlt>
+  -sk, --skp_pfx, --skip_pfx, --skip_prefix  <str>
       Shared comma-separated bedGraph header prefixes to skip in ratio mode (<str>) or sentinel (NA).
 
   -dp, --dp, --rnd, --round, --decimals, --digits  <int>

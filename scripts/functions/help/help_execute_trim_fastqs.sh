@@ -25,13 +25,13 @@ Description:
   Perform read-adapter and quality trimming with the program Atria, working with either single- or paired-end FASTQ files.
 
 Arguments:
-  -h, --help  <flg>
+  -h, --help  <flag>
     Display this help message and exit.
 
-  -v, --verbose  <flg>
+  -v, --verbose  <flag>
     Run script in 'verbose' mode .
 
-  -dr, --dry_run  <flg>
+  -dr, --dry_run  <flag>
     Run the command in check mode.
 
   -t, --thr, --threads  <int>
@@ -64,7 +64,7 @@ Arguments:
         + If 'max_job' is greater than 1, jobs run in parallel via GNU Parallel.
         + If 'max_job' is 1, jobs run sequentially (serial mode).
 
-  -sl, --slurm  <flg>
+  -sl, --slurm  <flag>
     Submit jobs to the Slurm scheduler; otherwise, run them in serial (optional).
 
   -tm, --time
@@ -92,8 +92,8 @@ Dependencies:
         + check_format_time
         + check_int_pos
     - format_outputs.sh
-        + echo_error
-        + echo_warning
+        + echo_err
+        + echo_warn
     - handle_env.sh
         + handle_env
     - help/help_execute_trim_fastqs.sh

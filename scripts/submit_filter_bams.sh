@@ -151,10 +151,10 @@ Positional arguments:
    2  threads   <int>  Number of threads.
    3  infile    <str>  Input BAM file.
    4  outfile   <str>  Output BAM file.
-   5  mito      <flg>  If 'true', pass '--mito'.
-   6  tg        <flg>  If 'true', pass '--tg'.
-   7  mtr       <flg>  If 'true', pass '--mtr'.
-   8  chk_chr   <flg>  If 'true', pass '--chk_chr'.
+   5  mito      <flag>  If 'true', pass '--mito'.
+   6  tg        <flag>  If 'true', pass '--tg'.
+   7  mtr       <flag>  If 'true', pass '--mtr'.
+   8  chk_chr   <flag>  If 'true', pass '--chk_chr'.
    9  err_out   <str>  Directory for stderr/stdout log files.
   10  nam_job   <str>  Job name used in log-file naming.
   11  samp      <str>  Sample name used in log-file naming.
@@ -534,16 +534,16 @@ Keyword arguments:
   -rt, --retain  <str>
     Species chromosomes to retain: 'sc' or 'sp'.
 
-  -m, --mito  <flg>
+  -m, --mito  <flag>
     If supplied, retain the mitochondrial chromosome.
 
-  -tg, --tg  <flg>
+  -tg, --tg  <flag>
     If supplied, retain chromosome 'SP_II_TG'.
 
-  -mr, --mtr  <flg>
+  -mr, --mtr  <flag>
     If supplied, retain chromosome 'SP_MTR'.
 
-  -cc, --chk_chr  <flg>
+  -cc, --chk_chr  <flag>
     If supplied, check chromosomes in output BAM files.
 
   -eo, --err_out  <str>
