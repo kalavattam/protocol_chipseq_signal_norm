@@ -29,8 +29,8 @@ while IFS= read -r file; do
     # shellcheck disable=SC2016
     if \
         run_capture \
-            "source ${rel}" "${log}" "${TEST_BASH}" -c 'source "$1"' _ \
-            "${file}"
+            "source ${rel}" "${log}" \
+            "${TEST_BASH}" -c 'source "$1"' _ "${file}"
     then
         rec_pass "source ${rel}"
     else

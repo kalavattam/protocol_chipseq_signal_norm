@@ -50,7 +50,8 @@ while IFS= read -r file; do
         PYTHONPYCACHEPREFIX="${TEST_DIR_OUT}/pycache" \
         PYTHONPATH="${ROOT_REPO}" \
         run_capture \
-            "python compile ${rel}" "${log}" "${py}" -m py_compile "${file}"
+            "python compile ${rel}" "${log}" \
+            "${py}" -m py_compile "${file}"
     then
         rec_pass "python syntax ${rel}"
     else
@@ -79,9 +80,11 @@ safe_help=(
 rec_skip \
     "python --help skipped for scripts/compute_signal.py because it imports" \
     "pysam at startup"
+
 rec_skip \
     "python --help skipped for scripts/parse_metadata_siq_chip.py because it" \
     "imports yaml at startup"
+
 rec_skip \
     "python --help skipped for scripts/relativize_scaling_factors.py because" \
     "it imports pandas at startup"
@@ -94,10 +97,13 @@ for rel in "${safe_help[@]}"; do
     }
 
     log="${TEST_DIR_LOG}/python_help/${rel//\//__}.log"
-    if PYTHONDONTWRITEBYTECODE=1 \
+    if \
+        PYTHONDONTWRITEBYTECODE=1 \
         PYTHONPYCACHEPREFIX="${TEST_DIR_OUT}/pycache" \
         PYTHONPATH="${ROOT_REPO}" \
-        run_capture "python help ${rel}" "${log}" "${py}" "${file}" --help
+        run_capture \
+            "python help ${rel}" "${log}" \
+            "${py}" "${file}" --help
     then
         rec_pass "python --help ${rel}"
     else

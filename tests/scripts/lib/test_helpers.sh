@@ -62,7 +62,7 @@ function rec_relpath() {
 }
 
 
-#  Print a smoke-test rec_section heading
+#  Print a smoke-test section heading
 function rec_section() {
     printf '\n-- %s --\n' "${1:-${TEST_NAME}}"
 }
@@ -157,7 +157,7 @@ function assert_grep_pattern() {
 }
 
 
-#  Warn when a help-output rec_section is missing
+#  Warn when a help-output section is missing
 function warn_grep_help() {
     local file="${1:-}"
     local pattern="${2:-}"
@@ -176,7 +176,7 @@ function warn_grep_help() {
 #  Print and return the final status for one smoke-test group
 function finish() {
     printf \
-        '\nSummary for %s: rec_pass=%d fail=%d warn=%d skip=%d\n' \
+        '\nSummary for %s: pass=%d fail=%d warn=%d skip=%d\n' \
         "${TEST_NAME}" "${TEST_PASS}" "${TEST_FAIL}" "${TEST_WARN}" \
         "${TEST_SKIP}"
 

@@ -28,17 +28,30 @@ while IFS= read -r file; do
 
     if \
         run_capture \
-            "help ${rel}" "${log}" "${TEST_BASH}" "${file}" --help
+            "help ${rel}" "${log}" \
+            "${TEST_BASH}" "${file}" --help
     then
         rec_pass "--help exits 0 for ${rel}"
+
         warn_grep_help \
-            "${log}" '^Usage:' "${rel} help has Usage:"
+            "${log}" \
+            '^Usage:' \
+            "${rel} help has Usage:"
+
         warn_grep_help \
-            "${log}" '^Description:' "${rel} help has Description:"
+            "${log}" \
+            '^Description:' \
+            "${rel} help has Description:"
+
         warn_grep_help \
-            "${log}" '^Arguments:' "${rel} help has Arguments:"
+            "${log}" \
+            '^\(Arguments\|Positional arguments\|Keyword arguments\):' \
+            "${rel} help has an argument section"
+
         warn_grep_help \
-            "${log}" '^Notes:' "${rel} help has Notes:"
+            "${log}" \
+            '^Notes:' \
+            "${rel} help has Notes:"
     else
         rec_fail "--help failed for ${rel}; see $(rec_relpath "${log}")"
         continue
@@ -50,22 +63,40 @@ while IFS= read -r file; do
         dlog="${TEST_DIR_LOG}/help/${rel//\//__}.details.log"
         if \
             run_capture \
-                "details ${rel}" "${dlog}" "${TEST_BASH}" "${file}" \
-                --details
+                "details ${rel}" "${dlog}" \
+                "${TEST_BASH}" "${file}" --details
         then
             rec_pass "--details exits 0 for ${rel}"
+
             warn_grep_help \
-                "${dlog}" '^Usage:' "${rel} details has Usage:"
+                "${dlog}" \
+                '^Usage:' \
+                "${rel} details has Usage:"
+
             warn_grep_help \
-                "${dlog}" '^Description:' "${rel} details has Description:"
+                "${dlog}" \
+                '^Description:' \
+                "${rel} details has Description:"
+
             warn_grep_help \
-                "${dlog}" '^Arguments:' "${rel} details has Arguments:"
+                "${dlog}" \
+                '^\(Arguments\|Positional arguments\|Keyword arguments\):' \
+                "${rel} details has an argument section"
+
             warn_grep_help \
-                "${dlog}" '^Dependencies:' "${rel} details has Dependencies:"
+                "${dlog}" \
+                '^Dependencies:' \
+                "${rel} details has Dependencies:"
+
             warn_grep_help \
-                "${dlog}" '^Notes:' "${rel} details has Notes:"
+                "${dlog}" \
+                '^Notes:' \
+                "${rel} details has Notes:"
+
             warn_grep_help \
-                "${dlog}" '^Examples:' "${rel} details has Examples:"
+                "${dlog}" \
+                '^Examples:' \
+                "${rel} details has Examples:"
         else
             rec_warn \
                 "--details advertised but failed for ${rel}; see" \

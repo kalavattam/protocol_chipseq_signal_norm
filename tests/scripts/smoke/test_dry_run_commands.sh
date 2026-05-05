@@ -29,7 +29,8 @@ printf 'smoke\n' > "${tmp}/in/sample.txt"
 
 log="${TEST_DIR_LOG}/dry_run/symlink_files.log"
 if \
-    run_capture "symlink dry-run" "${log}" \
+    run_capture \
+        "symlink dry-run" "${log}" \
         "${TEST_BASH}" "${ROOT_REPO}/scripts/symlink_files.sh" \
             --dry_run \
             --csv_infile "${tmp}/in/sample.txt" \
@@ -43,7 +44,8 @@ fi
 #  Check that write_header.sh dry-run reports work without writing output
 log="${TEST_DIR_LOG}/dry_run/write_header.log"
 if \
-    run_capture "write_header dry-run" "${log}" \
+    run_capture \
+        "write_header dry-run" "${log}" \
         "${TEST_BASH}" "${ROOT_REPO}/scripts/write_header.sh" \
             --dry_run \
             --mode siq \
@@ -73,7 +75,9 @@ then
     rec_fail "symlink_files.sh missing required args unexpectedly succeeded"
 else
     assert_grep_pattern \
-        "${log}" 'error' "symlink_files.sh missing args emits useful error"
+        "${log}" \
+        'error' \
+        "symlink_files.sh missing args emits useful error"
 fi
 
 log="${TEST_DIR_LOG}/expected_fail/find_missing_args.log"
@@ -85,12 +89,16 @@ then
     rec_fail "find_files.sh missing required args unexpectedly succeeded"
 else
     assert_grep_pattern \
-        "${log}" 'error' "find_files.sh missing args emits useful error"
+        "${log}" \
+        'error' \
+        "find_files.sh missing args emits useful error"
 fi
 
+#TODO: write tests for these after codifying and implementing updates
 rec_skip \
     "execute_* dry-run wrappers require realistic files and/or environment" \
     "checks; covered later by integration fixtures"
+
 rec_skip \
     "submit_* dry-run wrappers may activate Conda/Mamba or require Slurm" \
     "context; covered later by integration fixtures"

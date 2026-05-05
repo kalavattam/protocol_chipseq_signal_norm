@@ -27,7 +27,9 @@ while IFS= read -r file; do
     log="${TEST_DIR_LOG}/shell_syntax/${rel//\//__}.log"
 
     if \
-        run_capture "bash -n ${rel}" "${log}" "${TEST_BASH}" -n "${file}"
+        run_capture \
+            "bash -n ${rel}" "${log}" \
+            "${TEST_BASH}" -n "${file}"
     then
         rec_pass "bash -n ${rel}"
     else
