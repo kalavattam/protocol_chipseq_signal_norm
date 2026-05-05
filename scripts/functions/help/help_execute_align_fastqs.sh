@@ -26,7 +26,7 @@ Description:
 
   Jobs may be run through Slurm ('--slurm'), GNU Parallel, or serial execution, depending on user arguments and the resolved number of jobs.
 
-Keyword arguments, flags:
+Keyword arguments:
   -h, --hlp, --help
     Display this help message and exit (0).
 

@@ -33,6 +33,13 @@ debug=true
 
 #  Display help message if no arguments or help option is given
 show_help=$(cat << EOM
+Usage:
+  submit_convert_bam_bed_slurm.sh env_nam threads csv_infile pth_scr dir_out err_out nam_job use_awk
+
+Description:
+  Convert BAM input files to BED output files under a Slurm array task.
+
+Positional arguments:
 \${1}=env_nam     <str>  Name of Conda/Mamba environment to activate.
 \${2}=threads     <int>  Number of threads to use.
 \${3}=csv_infile  <str>  Comma-separated list of QNAME-sorted BAM infiles (assumed PE for AWK processing code; use Python if data are SE).

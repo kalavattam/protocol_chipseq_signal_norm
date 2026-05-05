@@ -26,6 +26,13 @@ Description:
 
   If Bash >= 5 is not available, this script prints guidance for the next step. If Conda or Mamba is available, it explains how to install Bash >= 5 in the current environment. If Conda or Mamba is not available, it explains that Miniforge should be installed and initialized first.
 
+Keyword arguments:
+  -h, --hlp, --help
+    Display this help message and exit.
+
+  [keyword arguments for install_envs.sh]
+    Forwarded to 'install_envs.sh' after the environment entrypoint checks pass.
+
 Returns:
   0 on success; non-zero on error.
 

@@ -33,12 +33,22 @@ debug=true
 
 #  Display help message if no arguments or help option is given
 show_help=$(cat << EOM
+Usage:
+  submit_qsort_bam_slurm.sh env_nam threads csv_infile dir_out err_out nam_job
+
+Description:
+  Sort BAM input files by query name under a Slurm array task.
+
+Positional arguments:
 \${1}=env_nam     <str>  Name of Conda/Mamba environment to activate.
 \${2}=threads     <int>  Number of threads to use.
 \${3}=csv_infile  <str>  Comma-separated list of BAM infiles.
 \${4}=dir_out     <str>  Directory to save QNAME-sorted BAM outfiles.
 \${5}=err_out     <str>  Directory for stdout and stderr files.
 \${6}=nam_job     <str>  Name of job.
+
+Notes:
+  - This script is intended to run as a Slurm array task.
 EOM
 )
 

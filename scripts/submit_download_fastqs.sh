@@ -30,6 +30,13 @@ set -euo pipefail
 
 #  Define the help message
 show_help=$(cat << EOM
+Usage:
+  submit_download_fastqs.sh srr url_1 url_2 dir_out dir_sym nam_cus err_out nam_job
+
+Description:
+  Download one single-end or paired-end FASTQ entry and create custom symlink(s).
+
+Positional arguments:
 \${1}=srr      <str>  NCBI SRA database run accession code.
 \${2}=url_1    <str>  URL (FTP or HTTPS) for FASTQ file.
 \${3}=url_2    <str>  Second FASTQ URL for PE data ("NA" for SE).
@@ -38,6 +45,9 @@ show_help=$(cat << EOM
 \${6}=nam_cus  <str>  Custom name for symlink(s).
 \${7}=err_out  <str>  Directory for stderr and stdout files.
 \${8}=nam_job  <str>  Job name.
+
+Notes:
+  - Use 'NA' for 'url_2' when processing single-end data.
 EOM
 )
 
