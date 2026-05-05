@@ -33,12 +33,6 @@ dir_scr="$(cd "$(dirname "${BASH_SOURCE[0]}")" > /dev/null 2>&1 && pwd)"
 
 
 #  Source and define functions ================================================
-# arr_fnc=(  #TODO: record in help documentation before deleting
-#     check_file_dir_exists  ## check_inputs ##
-#     echo_err               ## format_outputs ##
-#     echo_warn              ## format_outputs ##  ## NOTE: not here now ##
-# )
-
 dir_fnc="${dir_scr}/functions"
 fnc_src="${dir_fnc}/source_helpers.sh"
 
@@ -70,34 +64,78 @@ source_helpers "${dir_fnc}" \
 #  Initialize argument variables, assigning default values where applicable
 verbose=false
 dry_run=false
-mode="alpha"
+mode="siq"
 fil_out=""
 
 #  Assign variable for help message
 show_help=$(cat << EOM
 Usage:
-  write_header.sh [--help] [--verbose] [--dry-run] [--mode <str>] --fil_out <str>
+  write_header.sh [--help] [--verbose] [--dry_run] [--mode <enum:siq,spike>] --fil_out <file>
+
 
 Description:
   Write a predefined tab-delimited header to the specified output file.
 
-Options:
-   -h, --help     Display this help message and exit.
-   -v, --verbose  Print the header before writing.
-  -dr, --dry-run  Print the header but do not write to a file.
-  -md, --mode     Type of header to write: 'alpha' or 'spike' (default: '${mode}').
-  -fo, --fil_out  Output file where the header should be written.
+
+Arguments:
+  -h, --help  <flag>
+    Display this help message and exit.
+
+  -v, --verbose  <flag>
+    Print the header before writing.
+
+  -dr, --dry, --dry_run  <flag>
+    Print the header and planned file action without creating or modifying a file.
+
+  -md, --mode  <enum:siq,spike>
+    Type of header to write: 'siq' or 'spike' (default: '${mode}').
+
+  -o, -fo, --outfile, --fil_out  <file>
+    Output file where the header should be written.
+
 
 Dependencies:
-  - Bash >= 4.4
+  External programs:
+    - Bash >= 4.4
+    - cat
+    - head
+    - mv
 
-Example:
-  '''bash
-  write_header.sh -v -t -md alpha -o results/ChIP_samples_alpha_6nd.tsv
-  '''
+  Sourced function scripts:
+    - source_helpers.sh
+      + source_helpers
+    - check_args.sh
+      + require_optarg
+    - check_inputs.sh
+      + validate_var
+      + validate_var_dir
+    - format_outputs.sh
+      + echo_err
 
-Note:
-  - Script was implemented to pre-write the header before running Slurm jobs, preventing race conditions that occurred when header-writing logic was previously in 'submit' scripts.
+
+Notes:
+  - The script pre-writes scaling-factor table headers before Slurm jobs run, preventing race conditions that occurred when header-writing logic was previously handled inside submit scripts.
+  - If the output file already begins with the expected header, the file is left unchanged.
+  - If the output file exists but does not begin with the expected header, the header is prepended.
+  - If the output file does not exist, it is created with the header only.
+  - If '--dry_run' is enabled, the script validates arguments and reports the planned action without creating or modifying the output file.
+
+
+Examples:
+  1. Write a siQ-ChIP-mode (siq-mode) header
+    '''bash
+    bash write_header.sh
+      --mode siq
+      --fil_out results/ChIP_samples_siq_6nd.tsv
+    '''
+
+  2. Preview a spike-mode header without modifying the output file
+    '''bash
+    bash write_header.sh
+      --dry_run
+      --mode spike
+      --fil_out results/ChIP_samples_spike.tsv
+    '''
 EOM
 )
 
@@ -129,7 +167,7 @@ while [[ "$#" -gt 0 ]]; do
             shift 2
             ;;
 
-        -fo|--fil[_-]out)
+        -o|-fo|--outfile|--fil[_-]out)
             require_optarg "${1}" "${2:-}" "main" || {
                 echo >&2
                 echo "${show_help}" >&2
@@ -150,11 +188,11 @@ done
 
 #  Check arguments
 case "${mode}" in
-    alpha|spike) : ;;
+    siq|spike) : ;;
     *)
         echo_err \
             "header mode ('--mode') was assigned '${mode}' but must be" \
-            "'alpha' or 'spike'."
+            "'siq' or 'spike'."
         exit 1
         ;;
 esac
@@ -166,9 +204,9 @@ validate_var_dir "dir_out" "$(dirname "${fil_out}")"
 #  Do the main work ===========================================================
 #  Define the header column names as an array
 case "${mode}" in
-    alpha)
+    siq)
         nam_col=(
-            "fil_ip" "fil_in" "alpha" "eqn"
+            "fil_ip" "fil_in" "siq" "eqn"
             "mass_ip" "mass_in" "vol_all" "vol_in" "dep_ip" "dep_in"
             "len_ip" "len_in"
             "dm_fr_1" "dm_fr_5" "dm_fr_10" "dm_fr_20" "dm_fr_30" "dm_fr_40"
@@ -178,7 +216,8 @@ case "${mode}" in
         )
         ;;
 
-    spike) nam_col=(
+    spike)
+        nam_col=(
             "main_ip" "spike_ip" "main_in" "spike_in" "spike"
             "num_mp" "num_sp" "num_mn" "num_sn"
             "dm_fr_1" "dm_fr_5" "dm_fr_10" "dm_fr_20" "dm_fr_30" "dm_fr_40"
@@ -196,6 +235,25 @@ fmt_str="${fmt_str%$'\t'}\n"  # Remove trailing tab and add newline
 #  Print the formatted header line
 # shellcheck disable=SC2059
 header=$(printf "${fmt_str}" "${nam_col[@]}")
+
+#  Report the planned file action if in dry-run mode
+if [[ "${dry_run}" == "true" ]]; then
+    if [[ -f "${fil_out}" ]]; then
+        lin_fst="$(head -n1 "${fil_out}")"
+
+        if [[ "${lin_fst}" == "${header%$'\n'}" ]]; then
+            msg="Dry run: header already present; would not modify"
+            msg+=" '${fil_out}'."
+        else
+            msg="Dry run: would prepend header to existing file '${fil_out}'."
+        fi
+    else
+        msg="Dry run: would create '${fil_out}' and write the header."
+    fi
+
+    echo "${msg}" >&2
+    echo >&2
+fi
 
 #  Print the header (if in dry-run or verbose modes)
 if [[ "${dry_run}" == "true" ]] || [[ "${verbose}" == "true" ]]; then
@@ -223,3 +281,6 @@ if [[ "${dry_run}" == "false" ]]; then
         printf '%s\n' "${header%$'\n'}" > "${tmp}" && mv "${tmp}" "${fil_out}"
     fi
 fi
+
+unset fmt_str header nam_col
+unset lin_fst msg tmp

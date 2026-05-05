@@ -40,14 +40,13 @@ else
     rec_fail "symlink_files.sh minimal --dry_run; see $(rec_relpath "${log}")"
 fi
 
-#  Keep the write_header.sh dry-run expectation visible while production
-#+ support is still being validated across local checkouts
+#  Check that write_header.sh dry-run reports work without writing output
 log="${TEST_DIR_LOG}/dry_run/write_header.log"
 if \
     run_capture "write_header dry-run" "${log}" \
         "${TEST_BASH}" "${ROOT_REPO}/scripts/write_header.sh" \
             --dry_run \
-            --mode alpha \
+            --mode siq \
             --fil_out "${tmp}/out/header.tsv"
 then
     if [[ -e "${tmp}/out/header.tsv" ]]; then
@@ -55,12 +54,13 @@ then
             "write_header.sh --dry_run created an output file; see" \
             "$(rec_relpath "${log}")"
     else
-        rec_pass "write_header.sh minimal --dry_run"
+        assert_grep_pattern \
+            "${log}" \
+            "Dry run: would create" \
+            "write_header.sh minimal --dry_run"
     fi
 else
-    rec_skip \
-        "write_header.sh minimal --dry_run pending production support; see" \
-        "$(rec_relpath "${log}")"
+    rec_fail "write_header.sh minimal --dry_run; see $(rec_relpath "${log}")"
 fi
 
 #  Check that selected wrappers fail clearly when required arguments are absent
