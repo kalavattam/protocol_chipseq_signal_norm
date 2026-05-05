@@ -193,7 +193,7 @@ EOM
     #  Parse keyword arguments
     while (( $# > 0 )); do
         case "${1}" in
-             -t|--thr|--threads)
+            -t|--thr|--threads)
                 require_optarg "${1}" "${2:-}" "${FUNCNAME[0]}" || {
                     echo >&2
                     echo "${show_help}" >&2
@@ -202,7 +202,7 @@ EOM
                 threads="${2:-}"
                 shift 2
                 ;;
-             -a|--aln|--aligner)
+            -a|--aln|--aligner)
                 require_optarg "${1}" "${2:-}" "${FUNCNAME[0]}" || {
                     echo >&2
                     echo "${show_help}" >&2
@@ -278,7 +278,7 @@ EOM
                 fq_2="${2:-}"
                 shift 2
                 ;;
-             -o|-fo|--outfile|--fil[_-]out)
+            -o|-fo|--outfile|--fil[_-]out)
                 require_optarg "${1}" "${2:-}" "${FUNCNAME[0]}" || {
                     echo >&2
                     echo "${show_help}" >&2
