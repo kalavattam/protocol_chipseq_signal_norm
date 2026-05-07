@@ -60,7 +60,7 @@ fi
     }
 
     source_helpers "${_dir_src_parl}" \
-        check_inputs check_source format_outputs || {
+        check_args check_inputs check_source format_outputs || {
             echo "error($(basename "${BASH_SOURCE[0]}")):" \
                 "failed to source required helper dependencies." >&2
 
@@ -143,11 +143,20 @@ Description:
   Print parsed array contents and resolved parallelization settings.
 
 Positional arguments:
-  1  slurm    <bol>  Whether Slurm mode is active: 'true'/'t' or 'false'/'f'.
-  2  max_job  <int>  Maximum concurrent jobs for Slurm mode.
-  3  par_job  <int>  Maximum concurrent jobs for GNU Parallel or serial mode.
-  4  threads  <int>  Threads per job.
-  5+ arr_nam  <str>  Optional names of indexed arrays to print via 'debug_arr_contents'.
+  1  slurm  <bool>
+    Whether Slurm mode is active.
+
+  2  max_job  <int>
+    Maximum concurrent jobs for Slurm mode.
+
+  3  par_job  <int>
+    Maximum concurrent jobs for GNU Parallel or serial mode.
+
+  4  threads  <int>
+    Threads per job.
+
+  5+ arr_nam  <str>
+    Optional names of indexed arrays to print via 'debug_arr_contents'.
 
 Returns:
   0 after printing the summary; otherwise 1.
@@ -186,16 +195,7 @@ EOM
         return 1
     fi
 
-    case "${slurm,,}" in
-        t|true|1)   slurm=true  ;;
-        f|false|0)  slurm=false ;;
-        *)
-            echo_err_func "${FUNCNAME[0]}" \
-                "positional argument 1, 'slurm', must be 'true', 't'," \
-                "'false', or 'f': '${slurm}'."
-            return 1
-            ;;
-    esac
+    slurm="$(normalize_bool "${slurm}" "slurm")" || return 1
 
     if ! [[ "${max_job}" =~ ^[0-9]+$ ]]; then
         echo_err_func "${FUNCNAME[0]}" \
@@ -254,8 +254,11 @@ Description:
   Cap the requested Slurm maximum concurrent job count at the number of input files.
 
 Positional arguments:
-  1  max_job  <int>  Requested maximum number of concurrent jobs.
-  2  num_fil  <int>  Number of input files/jobs available.
+  1  max_job  <int>
+    Requested maximum number of concurrent jobs.
+
+  2  num_fil  <int>
+    Number of input files/jobs available.
 
 Returns:
   Prints the resolved maximum concurrent job count to stdout; otherwise 1.
@@ -316,8 +319,11 @@ Description:
   For the non-Slurm path, determine a safe combination of threads per job and GNU Parallel job count from a requested total thread budget and maximum job count.
 
 Positional arguments:
-  1  threads  <int>  Requested total local CPU/thread budget.
-  2  max_job  <int>  Maximum number of concurrent jobs allowed.
+  1  threads  <int>
+    Requested total local CPU/thread budget.
+
+  2  max_job  <int>
+    Maximum number of concurrent jobs allowed.
 
 Returns:
   Prints '<threads_per_job>;<par_job>' to stdout; otherwise 1.

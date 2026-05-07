@@ -120,7 +120,6 @@ function echo_warn_func() {
 function format_print_cmd() {
     local slurm="${1:-}"  # Boolean-like: Slurm 'sbatch' command or not
     local scr="${2:-}"    # Script path for Slurm 'sbatch' command
-    local slurm_lc
     local show_help       # Help message
 
     show_help=$(cat << EOM
@@ -133,10 +132,13 @@ Description:
   This helper is intended to be used with function 'build_cmd' by piping its output into this function.
 
 Positional arguments:
-  1  slurm  <bol>  Boolean-like string: "true", "t", "false", or "f":
-                     - "true" or "t": treat the input as an 'sbatch' command and format sbatch flags and script arguments separately.
-                     - "false" or "f": treat the input as a plain script call.
-  2  scr    <str>  Script path as it appears in the 'sbatch' command. Required when 'slurm=true', otherwise ignored.
+  1  slurm  <bool>
+    Boolean-like string:
+      - true-like: treat the input as an 'sbatch' command and format sbatch flags and script arguments separately.
+      - false-like: treat the input as a plain script call.
+
+  2  scr  <str>
+    Script path as it appears in the 'sbatch' command. Required when 'slurm=true', otherwise ignored.
 
 Examples:
   '''bash
@@ -174,17 +176,17 @@ EOM
         return 1
     fi
 
-    slurm_lc="${slurm,,}"
+    slurm="$(normalize_bool "${slurm}" "slurm")" || return 1
 
-    if [[ "${slurm_lc}" =~ ^(false|f)$ ]]; then
+    if [[ "${slurm}" == "false" ]]; then
         #  For non-Slurm commands, break before each '--' and indent
         sed -E 's| --| \\\n    --|g'  # Only as robust as incoming command str
-    elif [[ "${slurm_lc}" =~ ^(true|t)$ ]]; then
+    elif [[ "${slurm}" == "true" ]]; then
         #  For Slurm commands, require a script path
         if [[ -z "${scr}" ]]; then
             echo_err_func "${FUNCNAME[0]}" \
-                "positional argument 2, 'scr', is missing when 'slurm=true'" \
-                "or 'slurm=t'."
+                "positional argument 2, 'scr', is missing when 'slurm' is" \
+                "true-like."
             echo >&2
             echo "${show_help}" >&2
             return 1
@@ -238,11 +240,6 @@ EOM
                     }
                 }
             }'
-    else
-        echo_err_func "${FUNCNAME[0]}" \
-            "unknown 'slurm' value '${slurm}'; expected 'true' / 't' or" \
-            "'false' / 'f'."
-        return 1
     fi
 }
 
@@ -263,10 +260,17 @@ Description:
   Pretty-print a single-line banner around user-provided text.
 
 Keyword arguments:
-  -tx, --text  <str>  Text to wrap. If omitted, trailing positional arguments are joined with single spaces and used as text.
-   -w, --wrap  <str>  Wrapping character; only the first character is used (default: '${wrap}').
-  -pd, --pad   <int>  Number of spaces between the side markers and the text on each side (default: '${pad}').
-  -cw, --cols  <int>  Maximum text width per line before wrapping. If 0, the text is not wrapped and is printed on a single line (default: '${cols}').
+  -tx, --text  <str>
+    Text to wrap. If omitted, trailing positional arguments are joined with single spaces and used as text.
+
+  -w, --wrap  <str>
+     Wrapping character; only the first character is used (default: '${wrap}').
+
+  -pd, --pad  <int>
+    Number of spaces between the side markers and the text on each side (default: '${pad}').
+
+  -cw, --cols  <int>
+    Maximum text width per line before wrapping. If 0, the text is not wrapped and is printed on a single line (default: '${cols}').
 
 Notes:
   - '--wrap' uses only the first character of its value.
@@ -495,7 +499,8 @@ Description:
   Pretty-print a command array as a shell-escaped single-line command.
 
 Positional arguments:
-  1  arr_nam  <str>  Name of the indexed array variable to print.
+  1  arr_nam  <str>
+    Name of the indexed array variable to print.
 
 Returns:
   0 after printing the shell-escaped array contents to stdout; 1 if 'arr_nam' is missing, invalid, unset, or not an indexed array.
@@ -565,14 +570,14 @@ Usage:
 Description:
   Pretty-print a command in a readable, multi-line form.
 
-Options:
+Keyword arguments:
   -hd, --head  <int>
     Number of tokens to keep on the first line (default: ${first_n}).
 
-  -pf, --pair_flg, --pair-flg
+  -pf, --pair_flg  <flag>
     On continuation lines, if the first token starts with '-' or '--', print that token plus the next token on the same line.
 
-  -it, --indent
+  -it, --indent  <flag>
     Use extra indentation suitable for, e.g., embedding inside a "Command:" block.
 
 Examples:
@@ -739,8 +744,11 @@ Description:
   Prints a short human-readable summary indicating (i) what normalization mode is implied by 'typ_sig' and (ii) whether multiplicative scaling factors were supplied.
 
 Positional arguments:
-  1  typ_sig  <str>  Type of signal computation; e.g., 'unadj', 'frag', or 'norm' (aliases accepted).
-  2  scl_fct  <str>  Scaling factor string (optional). If empty, assumes no explicit '--scl_fct' was supplied.
+  1  typ_sig  <str>
+    Type of signal computation; e.g., 'unadj', 'frag', or 'norm' (aliases accepted).
+
+  2  scl_fct  <str>
+    Scaling factor string (optional). If empty, assumes no explicit '--scl_fct' was supplied.
 
 Returns:
   0 after printing the summary to stdout; otherwise 1 if positional argument 1, 'typ_sig', is missing.

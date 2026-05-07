@@ -11,6 +11,7 @@
 # Distributed under the MIT license.
 
 
+# normalize_bool
 # require_optarg
 # check_arg_supplied
 # check_args_mut_excl
@@ -77,6 +78,61 @@ fi
 }
 
 
+#  Normalize a Boolean-like value to 'true' or 'false'
+function normalize_bool() {
+    local val="${1:-}"
+    local nam="${2:-bool}"
+    local val_lc
+    local show_help
+
+    show_help=$(cat << EOM
+Usage:
+  normalize_bool [-h|--hlp|--help] val [nam]
+
+Description:
+  Normalize a Boolean-like value to exactly 'true' or 'false'.
+
+Positional arguments:
+  1  val  <bool>
+    Boolean-like value to normalize.
+
+  2  nam  <str>
+    Optional argument name or context for error messages.
+
+Returns:
+  Prints 'true' or 'false' to stdout; otherwise returns 1.
+
+Notes:
+  - True-like values are: true, t, yes, y, 1.
+  - False-like values are: false, f, no, n, 0.
+  - Matching is case-insensitive.
+EOM
+    )
+
+    if (( $# == 1 )) && [[ "${val}" =~ ^(-h|--h[e]?lp)$ ]]; then
+        echo "${show_help}" >&2
+        return 0
+    elif [[ -z "${val}" ]]; then
+        echo_err_func "${FUNCNAME[0]}" \
+            "argument '${nam}' must be Boolean-like and non-empty."
+        return 1
+    fi
+
+    val_lc="${val,,}"
+
+    case "${val_lc}" in
+        true|t|yes|y|1) echo "true"  ;;
+        false|f|no|n|0) echo "false" ;;
+        *)
+            echo_err_func "${FUNCNAME[0]}" \
+                "argument '${nam}' must be Boolean-like: true/t/yes/y/1 or" \
+                "false/f/no/n/0: '${val}'."
+            return 1
+            ;;
+    esac
+}
+
+
 #  Require that an option be followed by a non-empty value that is not another
 #+ option-like token
 function require_optarg() {
@@ -93,9 +149,14 @@ Description:
   Check that an option requiring an argument is followed by a usable value.
 
 Positional arguments:
-  1  opt   <str>  Option token being checked (for example, '--threads').
-  2  val   <str>  Candidate value following the option.
-  3  func  <str>  Optional function name to use in the error message.
+  1  opt  <str>
+    Option token being checked (for example, '--threads').
+
+  2  val  <str>
+    Candidate value following the option.
+
+  3  func  <str>
+    Optional function name to use in the error message.
 
 Returns:
   0 if 'val' is present, non-empty, and not option-like; otherwise 1.
@@ -227,10 +288,17 @@ Description:
   Checks that two mutually exclusive arguments are not specified at the same time. If both are specified or neither is specified, an error is returned.
 
 Positional arguments:
-  1  nam_1  <str>  Name of the first argument (e.g., "norm").
-  2  val_1  <str>  Value of the first argument.
-  3  nam_2  <str>  Name of the second argument (e.g., "raw").
-  4  val_2  <str>  Value of the second argument.
+  1  nam_1  <str>
+    Name of the first argument (e.g., "norm").
+
+  2  val_1  <str>
+    Value of the first argument.
+
+  3  nam_2  <str>
+    Name of the second argument (e.g., "raw").
+
+  4  val_2  <str>
+    Value of the second argument.
 
 Returns:
   0 if the arguments are mutually exclusive and valid, 1 and an error message if both arguments are specified or neither is specified.
@@ -279,7 +347,6 @@ function check_flags_mut_excl() {
     local nam_1="${2:-}"
     local flg_2="${3:-}"
     local nam_2="${4:-}"
-    local flg_1_lc flg_2_lc
     local show_help
 
     show_help=$(cat << EOM
@@ -290,10 +357,18 @@ Description:
   Checks that two mutually exclusive flags are not specified at the same time. If both are specified or neither is specified, an error is returned.
 
 Positional arguments:
-  1  flg_1  <bol>  The first flag to check. Boolean-like string required.
-  2  nam_1  <str>  The name of the first flag.
-  3  flg_2  <bol>  The second flag to check. Boolean-like string required.
-  4  nam_2  <str>  The name of the second flag.
+  1  flg_1  <bool>
+    The first flag to check. Boolean-like string required.
+
+  2  nam_1  <str>
+    The name of the first flag.
+
+  3  flg_2  <bool>
+    The second flag to check. Boolean-like string required.
+
+  4  nam_2  <str>
+    The name of the second flag.
+
 
 Returns:
   0 if the arguments are mutually exclusive and valid, 1 and an error message if both arguments are specified or neither is specified.
@@ -343,30 +418,8 @@ EOM
         return 1
     fi
 
-    flg_1_lc="${flg_1,,}"
-    flg_2_lc="${flg_2,,}"
-
-    case "${flg_1_lc}" in
-        t|true)   flg_1=true  ;;
-        f|false)  flg_1=false ;;
-        *)
-            echo_err_func "${FUNCNAME[0]}" \
-                "positional argument 1, 'flg_1', must be 'true', 't'," \
-                "'false', or 'f': '${flg_1}'."
-            return 1
-            ;;
-    esac
-
-    case "${flg_2_lc}" in
-        t|true)   flg_2=true  ;;
-        f|false)  flg_2=false ;;
-        *)
-            echo_err_func "${FUNCNAME[0]}" \
-                "positional argument 3, 'flg_2', must be 'true', 't'," \
-                "'false', or 'f': '${flg_2}'."
-            return 1
-            ;;
-    esac
+    flg_1="$(normalize_bool "${flg_1}" "flg_1")" || return 1
+    flg_2="$(normalize_bool "${flg_2}" "flg_2")" || return 1
 
     #  Perform the checks
     if [[ "${flg_1}" == "true" && "${flg_2}" == "true" ]]; then
@@ -398,10 +451,17 @@ Description:
   Check that two values match, such as values associated with paired files or numerator/denominator inputs.
 
 Positional arguments:
-  1  var_dsc  <str>  Description of the value being compared.
-  2  val_num  <str>  First value to compare.
-  3  val_den  <str>  Second value to compare.
-  4  out_nam  <str>  Optional output variable name to assign if values match.
+  1  var_dsc  <str>
+    Description of the value being compared.
+
+  2  val_num  <str>
+    First value to compare.
+
+  3  val_den  <str>
+    Second value to compare.
+
+  4  out_nam  <str>
+    Optional output variable name to assign if values match.
 
 Returns:
   0 if the values match; otherwise 1.
@@ -475,8 +535,11 @@ Description:
   Checks that a string value does not contain improperly formatted comma or semicolon delimiters, including consecutive, leading, or trailing delimiters, mixed delimiters (e.g., ",;" or ";,"), or spaces before/after delimiters. Additionally, ensures the string is not empty.
 
 Positional arguments:
-  1  nam  <str>  Name or description of string to be checked (e.g., "infiles", "scl_fct").
-  2  val  <str>  String value to validate.
+  1  nam  <str>
+    Name or description of string to be checked (e.g., "infiles", "scl_fct").
+
+  2  val  <str>
+    String value to validate.
 
 Returns:
   0 if the string passes all checks; 1 and an error message if the string fails any of the checks.

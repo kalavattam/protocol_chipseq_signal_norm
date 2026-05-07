@@ -58,7 +58,7 @@ fi
     }
 
     source_helpers "${_dir_src_env_chk}" \
-        check_source format_outputs || {
+        check_args check_source format_outputs || {
             echo "error($(basename "${BASH_SOURCE[0]}")):" \
                 "failed to source required helper dependencies." >&2
 
@@ -76,7 +76,6 @@ fi
 function check_env_installed() {
     local env_nam="${1:-}"
     local quiet="${2:-false}"
-    local quiet_lc
     local show_help
 
     show_help=$(cat << EOM
@@ -87,19 +86,22 @@ Description:
   Check that a specific Conda (or Mamba) environment is installed.
 
 Positional arguments:
-  1  env_nam  <str>  Name of Conda (or Mamba) environment to check.
-  2  quiet    <bol>  If 'true' or 't', suppress expected "not installed" error messages and return status only (default: 'false').
+  1  env_nam  <str>
+    Name of Conda (or Mamba) environment to check.
+
+  2  quiet  <bool>
+    If true-like, suppress expected "not installed" error messages and return status only (default: 'false').
 
 Returns:
   0 if the environment is installed; otherwise 1 and, unless 'quiet' is true-like, an error message.
 
 Dependencies:
-  - Bash >= 5
+  - Bash >= 4.4
   - Conda
 
 Notes:
   - Quiet mode does not suppress the "'conda' is not available in PATH" message.
-  - Quiet mode accepts 'true', 't', 'false', or 'f' in any letter case.
+  - Quiet mode accepts true/t/yes/y/1 or false/f/no/n/0 in any letter case.
 
 Examples:
   1. Check that environment "env_protocol" is installed
@@ -139,21 +141,11 @@ EOM
         return 1
     fi
 
-    #  Lowercase-convert 'quiet' assignment
-    quiet_lc="${quiet,,}"
-
-    case "${quiet_lc}" in
-        t|true)  quiet=true  ;;
-        f|false) quiet=false ;;
-        *)
-            echo_err_func "${FUNCNAME[0]}" \
-                "positional argument 2, 'quiet', must be Boolean-like" \
-                "'true', 't', 'false', or 'f': '${quiet}'."
-            echo >&2
-            echo "${show_help}" >&2
-            return 1
-            ;;
-    esac
+    quiet="$(normalize_bool "${quiet}" "quiet")" || {
+        echo >&2
+        echo "${show_help}" >&2
+        return 1
+    }
 
     #  Check availability of 'conda'
     if ! command -v conda >/dev/null 2>&1; then
@@ -189,7 +181,8 @@ Description:
   Checks that a given program is available in PATH.
 
 Positional argument:
-  1  prog  <str>  Name of program to check.
+  1  prog  <str>
+    Name of program to check.
 
 Returns:
   0 if program is found in PATH; otherwise, 1 with an error message.

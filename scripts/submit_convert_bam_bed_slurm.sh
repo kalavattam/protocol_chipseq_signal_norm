@@ -34,20 +34,36 @@ debug=true
 #  Display help message if no arguments or help option is given
 show_help=$(cat << EOM
 Usage:
-  submit_convert_bam_bed_slurm.sh env_nam threads csv_infile pth_scr dir_out err_out nam_job use_awk
+  submit_convert_bam_bed_slurm.sh
+    env_nam threads csv_infile pth_scr dir_out err_out nam_job use_awk
 
 Description:
   Convert BAM input files to BED output files under a Slurm array task.
 
 Positional arguments:
-\${1}=env_nam     <str>  Name of Conda/Mamba environment to activate.
-\${2}=threads     <int>  Number of threads to use.
-\${3}=csv_infile  <str>  Comma-separated list of QNAME-sorted BAM infiles (assumed PE for AWK processing code; use Python if data are SE).
-\${4}=pth_scr     <str>  Path to 'compute_signal.py' or compatible BAM-to-BED script.
-\${5}=dir_out     <str>  Directory to save BED outfiles.
-\${6}=err_out     <str>  Directory for stdout and stderr files.
-\${7}=nam_job     <str>  Name of job.
-\${8}=use_awk     <bol>  Run the AWK processing code rather than the Python script (do not use with SE data). Boolean-like strings accepted: 'true' or 'false'.
+  1  env_nam  <str>
+    Name of Conda/Mamba environment to activate.
+
+  2  threads  <int>
+    Number of threads to use.
+
+  3  csv_infile  <str>
+    Comma-separated list of QNAME-sorted BAM infiles (assumed PE for AWK processing code; use Python if data are SE).
+
+  4  pth_scr  <str>
+    Path to 'compute_signal.py' or compatible BAM-to-BED script.
+
+  5  dir_out  <str>
+    Directory to save BED outfiles.
+
+  6  err_out  <str>
+    Directory for stdout and stderr files.
+
+  7  nam_job  <str>
+    Name of job.
+
+  8  use_awk  <bool>
+    Run the AWK processing code rather than the Python script (do not use with SE data).
 
 Notes:
 - The AWK and Python branches are not equivalent.
@@ -102,6 +118,20 @@ if [[ "${debug:-false}" == "true" ]]; then
         >&2
 fi
 
+#  Source required helper functions
+dir_scr="$(
+    cd "$(dirname "${BASH_SOURCE[0]}")" > /dev/null 2>&1 && pwd
+)"
+
+# shellcheck disable=SC1091
+source "${dir_scr}/functions/check_args.sh" || {
+    echo "error($(basename "${BASH_SOURCE[0]}")):" \
+        "failed to source '${dir_scr}/functions/check_args.sh'." >&2
+    exit 1
+}
+
+unset dir_scr
+
 #  Validate number of threads
 if ! [[ "${threads}" =~ ^[1-9][0-9]*$ ]]; then
     echo "error($(basename "${BASH_SOURCE[0]}")):" \
@@ -110,14 +140,7 @@ if ! [[ "${threads}" =~ ^[1-9][0-9]*$ ]]; then
 fi
 
 #  Validate AWK/Python selector
-case "${use_awk}" in
-    true|false) : ;;
-    *)
-        echo "error($(basename "${BASH_SOURCE[0]}")):" \
-            "'use_awk' argument must be 'true' or 'false': '${use_awk}'." >&2
-        exit 1
-        ;;
-esac
+use_awk="$(normalize_bool "${use_awk}" "use_awk")" || exit 1
 
 #  Validate Python script for BAM-to-BED conversion
 if [[ "${use_awk}" == "false" && ! -f "${pth_scr}" ]]; then

@@ -169,7 +169,7 @@ Description:
 
 Positional arguments:
   1   dir_fnc  <str>  Base function directory.
-  2+  helper   <mlt>  Helper names or relative paths.
+  2+  helper   <str>  Helper names or relative paths.
 
 Example:
   source_helpers "${dir_fnc}" \

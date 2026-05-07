@@ -248,11 +248,11 @@ Positional arguments:
   2  scl_fct  <num>  Scaling factor/coefficient (<flt>) or sentinel (NA).
   3  opt_var  <num>  'usr_frg' ('compute_signal', <int>) or 'dep_min' ('compute_signal_ratio', <flt>) or sentinel (NA).
   4  rnd      <int>  Maximum number of decimal places retained for finite emitted values.
-  5  track    <bol>  Mode 'ratio': return track sans '-inf', 'nan' (default: false).
+  5  track    <bool>  Mode 'ratio': return track sans '-inf', 'nan' (default: false).
   6  pseudo   <spec>  Mode 'ratio': per-sample pseudocount spec 'A[:B]' (<str>) or sentinel (NA; default: NA).
   7  eps      <flt>  Mode 'ratio': zero-tolerance epsilon (<flt>) or sentinel (NA; default: NA).
   8  skip_00  <enum:pre_scale,post_scale>  Mode 'ratio': zero-zero skip mode ('pre_scale' or 'post_scale') or sentinel (NA; default: NA).
-  9  drp_nan  <bol>  Mode 'ratio': drop non-finite values (default: false).
+  9  drp_nan  <bool>  Mode 'ratio': drop non-finite values (default: false).
 
 Notes:
   - Returns optional arguments as a single comma-delimited line on stdout.
@@ -436,7 +436,7 @@ Usage:
     [-h|--hlp|--help] debug threads infile outfile siz_bin method scl_fct usr_frg rnd err_out nam_job dsc
 
 Positional arguments:
-   1  debug    <bol>  Print debug messages or not.
+   1  debug    <bool>  Print debug messages or not.
    2  threads  <int>  Number of threads to use.
    3  infile   <str>  Input BAM file.
    4  outfile  <str>  Output filename.
@@ -535,7 +535,7 @@ Usage:
     [-h|--hlp|--help] debug fil_A fil_B outfile method scl_fct dep_min rnd track pseudo eps skip_00 drp_nan skp_pfx err_out nam_job dsc
 
 Positional arguments:
-   1  debug    <bol>  Print debug messages or not.
+   1  debug    <bool>  Print debug messages or not.
    2  fil_A    <str>  Numerator bedGraph file.
    3  fil_B    <str>  Denominator bedGraph file.
    4  outfile  <str>  Output ratio bedGraph file.
@@ -543,11 +543,11 @@ Positional arguments:
    6  scl_fct  <num>  Optional scaling factor/coefficient (<flt>) or sentinel (NA).
    7  dep_min  <flt>  Optional minimum input depth (<flt>) or sentinel (NA).
    8  rnd      <int>  Maximum number of decimal places retained for finite emitted values.
-   9  track    <bol>  Emit companion '.track' file.
+   9  track    <bool>  Emit companion '.track' file.
   10  pseudo   <spec>  Per-sample pseudocount spec 'A[:B]' (<str>) or sentinel (NA).
   11  eps      <flt>  Shared epsilon (<flt>) or sentinel (NA).
   12  skip_00  <enum:pre_scale,post_scale>  Shared zero-zero skip mode ('pre_scale' or 'post_scale') or sentinel (NA).
-  13  drp_nan  <bol>  Drop non-finite values from main output.
+  13  drp_nan  <bool>  Drop non-finite values from main output.
   14  skp_pfx  <str>  Shared skip-prefix string (<str>) or sentinel (NA).
   15  err_out  <str>  Directory for log file output.
   16  nam_job  <str>  Job name used in log filenames.

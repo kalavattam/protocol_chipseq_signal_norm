@@ -90,10 +90,17 @@ Description:
   Check whether the sum of column 4 in a bedGraph file is approximately 1 (unity), which is expected for "normalized coverage" (PMID 37160995). The input file may be plain text or gzipped.
 
 Positional arguments:
-  1  fil_in  <str>  Path to input bedGraph file ('.gz' OK).
-  2  bnd_gt  <flt>  Lower bound for unity check (default: ${bnd_gt}).
-  3  bnd_lt  <flt>  Upper bound for unity check (default: ${bnd_lt}).
-  4  quiet   <bol>  Suppress success message if true; accepted values are case-insensitive Boolean-like strings 'true', 't', 'false', and 'f' (default: ${quiet}).
+  1  fil_in  <str>
+    Path to input bedGraph file ('.gz' OK).
+
+  2  bnd_gt  <flt>
+    Lower bound for unity check (default: ${bnd_gt}).
+
+  3  bnd_lt  <flt>
+    Upper bound for unity check (default: ${bnd_lt}).
+
+  4  quiet  <bool>
+    Suppress success message if true-like; accepted values are case-insensitive Boolean-like strings (default: ${quiet}).
 
 Returns:
   0 if the sum is within the specified bounds; otherwise, 1 and an error message.
@@ -151,16 +158,7 @@ EOM
         return 1
     fi
 
-    case "${quiet,,}" in
-        true|t)  quiet=true ;;
-        false|f) quiet=false ;;
-        *)
-            echo_err_func "${FUNCNAME[0]}" \
-                "positional argument 4, 'quiet', must be one of: 'true'," \
-                "'t', 'false', or 'f' (case-insensitive)."
-            return 1
-            ;;
-    esac
+    quiet="$(normalize_bool "${quiet}" "quiet")" || return 1
 
     #  Record whether the caller already had 'pipefail' enabled, as gzip-stream
     #+ failures should propagate when reading compressed input

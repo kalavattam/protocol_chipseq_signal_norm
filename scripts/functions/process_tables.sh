@@ -15,7 +15,7 @@
 # check_table_column
 # check_table_scaling_factor
 # extract_field_str
-# _validate_arg_csl
+# _validate_arg_csv
 # _validate_args_table
 # _parse_table_core
 # parse_table
@@ -65,7 +65,7 @@ fi
     }
 
     source_helpers "${_dir_src_tbls}" \
-        check_inputs check_numbers check_source format_outputs || {
+        check_args check_inputs check_numbers check_source format_outputs || {
             echo "error($(basename "${BASH_SOURCE[0]}")):" \
                 "failed to source required helper dependencies." >&2
 
@@ -93,7 +93,8 @@ Description:
   Check that a table file exists, is readable, non-empty, and contains at least one non-blank line.
 
 Positional argument:
-  1  table  <str>  Path to the table file.
+  1  table  <str>
+    Path to the table file.
 
 Returns:
   0 if the table is usable; otherwise 1.
@@ -144,8 +145,11 @@ Description:
   Check that a specified column name is present in the header row of a tab-delimited table.
 
 Positional arguments:
-  1  table   <str>  Path to the table file.
-  2  column  <str>  Column name to look for in the header row.
+  1  table  <str>
+    Path to the table file.
+
+  2  column  <str>
+    Column name to look for in the header row.
 
 Returns:
   0 if the column is present; otherwise 1.
@@ -209,10 +213,17 @@ Description:
   Check table-related scaling-factor or Boolean-like input and, when applicable, print a note describing how command-line values interact with table-derived values.
 
 Positional arguments:
-  1  type     <str>  Expected value type: 'str', 'string', 'bol', 'bool', 'boolean', 'flg', or 'flag'.
-  2  table    <str>  Path to the table file.
-  3  scl_fct  <str>  Scaling-factor string or Boolean-like value ('true', 't', 'false', 'f') to check.
-  4  name     <str>  Option name being checked, such as 'scl_fct' or 'typ_cvg'.
+  1  type  <str>
+    Expected value type: 'str', 'string', 'bol', 'bool', 'boolean', 'flg', or 'flag'.
+
+  2  table  <str>
+    Path to the table file.
+
+  3  scl_fct  <str>
+    Scaling-factor string or Boolean-like value to check.
+
+  4  name  <str>
+    Option name being checked, such as 'scl_fct' or 'typ_cvg'.
 
 Returns:
   0 if the input is valid; otherwise 1.
@@ -259,7 +270,7 @@ EOM
             type_lc="str"
             ;;
         bol|bool|boolean|flg|flag)
-            type_lc="bol"
+            type_lc="bool"
             ;;
         *)
             echo_err_func "${FUNCNAME[0]}" \
@@ -278,17 +289,8 @@ EOM
         return 1
     fi
 
-    if [[ "${type_lc}" == "bol" ]]; then
-        case "${scl_fct_lc}" in
-            true|t|false|f) : ;;
-            *)
-                echo_err_func "${FUNCNAME[0]}" \
-                    "positional argument 3, 'scl_fct', must be 'true', 't'," \
-                    "'false', or 'f' when positional argument 1, 'type'" \
-                    "resolves to 'boolean': '${scl_fct}'."
-                return 1
-                ;;
-        esac
+    if [[ "${type_lc}" == "bool" ]]; then
+        scl_fct="$(normalize_bool "${scl_fct}" "scl_fct")" || return 1
     fi
 
     #NOTE: string, instead of array, accumulation is fine here
@@ -311,7 +313,6 @@ function extract_field_str() {
     local tbl="${1:-}"       # Path to the TSV file
     local fld="${2:-}"       # 1-based index of the column to extract
     local hdr="${3:-false}"  # Skip header (true/false)
-    local hdr_lc             # Lowercase-converted skip-header Boolean
     local num_fld            # No. tab-delimited fields in first data line
     local show_help          # Help message
 
@@ -327,9 +328,14 @@ Description:
   The function also checks that the specified field index is within the valid range of columns.
 
 Positional arguments:
-  1  tbl  <str>  Path to the TSV file.
-  2  fld  <int>  The 1-based index of the column to extract.
-  3  hdr  <bol>  'true' to skip header, 'false' to include it (default: ${hdr}).
+  1  tbl  <str>
+    Path to the TSV file.
+
+  2  fld  <int>
+    The 1-based index of the column to extract.
+
+  3  hdr  <bool>
+    True-like values skip the header; false-like values include it (default: ${hdr}).
 
 Returns:
   Prints a comma-separated list (<str>) containing the values from the specified column and returns 0; otherwise returns 1.
@@ -374,21 +380,7 @@ EOM
     #  Validate 'fld' is a positive integer
     check_int_pos "${fld}" "fld" || return 1
 
-    #  Convert 'hdr' to lowercase letters so Boolean matching accepts values
-    #+ like 'T' / 'tRuE' / 'False' / 'FALSE' / etc
-    hdr_lc="${hdr,,}"
-
-    #  Check that 'hdr' is a properly formatted Boolean
-    case "${hdr_lc}" in
-        t|true)  hdr=true  ;;
-        f|false) hdr=false ;;
-        *)
-            echo_err_func "${FUNCNAME[0]}" \
-                "positional argument 3, 'hdr', is '${hdr}' but must be" \
-                "'t', 'true', 'f', or 'false'."
-            return 1
-            ;;
-    esac
+    hdr="$(normalize_bool "${hdr}" "hdr")" || return 1
 
     #  Check that the table has enough data rows: 1 or more lines, or header
     #+ and one or more lines
@@ -452,7 +444,7 @@ EOM
 
 #MAYBE: move into 'check_inputs.sh'?
 #MAYBE: 'validate' should be 'check'?
-function _validate_arg_csl() {
+function _validate_arg_csv() {
     local value="${1:-}"
     local valid="${2:-}"
     local name="${3:-}"
@@ -464,15 +456,20 @@ function _validate_arg_csl() {
 
     show_help=$(cat << EOM
 Usage:
-  _validate_arg_csl [-h|--hlp|--help] value valid name
+  _validate_arg_csv [-h|--hlp|--help] value valid name
 
 Description:
   Validate that a value matches one member of a comma-delimited set of allowed values.
 
 Positional arguments:
-  1  value  <str>  Value to check.
-  2  valid  <str>  Comma-delimited string of allowed values.
-  3  name   <str>  Argument/option name associated with 'value'.
+  1  value  <str>
+    Value to check.
+
+  2  valid  <str>
+    Comma-delimited string of allowed values.
+
+  3  name  <str>
+    Argument/option name associated with 'value'.
 
 Returns:
   0 if 'value' matches one of the allowed values; otherwise 1.
@@ -482,8 +479,8 @@ Note:
 
 Examples:
   '''bash
-  _validate_arg_csl sf "sf,scl,scaled,alpha,alf,spike,spk,spike-in,si,siq,siq_chip,siq-chip" "tbl_col"
-  _validate_arg_csl TRUE "true,false,t,f" "norm"
+  _validate_arg_csv sf "sf,scl,scaled,alpha,alf,spike,spk,spike-in,si,siq,siq_chip,siq-chip" "tbl_col"
+  _validate_arg_csv TRUE "true,false,t,f,yes,no,y,n,1,0" "norm"
   '''
 EOM
     )
@@ -547,13 +544,20 @@ Description:
   Validate the common positional arguments used by the 'parse_table' family of functions.
 
 Positional arguments:
-  1  table    <str>  Path to a TSV table file.
-  2  tbl_col  <str>  Table column name for scaling factors; must belong to one of these families:
-                       - generic ('sf', 'scl', 'scaled', 'alpha', 'alf'),
-                       - spike-in ('spike', 'spk', 'spike-in', 'si'), or
-                       - siQ-ChIP ('siq', 'siq_chip', 'siq-chip').
-  3  norm     <str>  Normalized-coverage flag; accepts Boolean-like 'true', 'false', 't', or 'f' in any letter case.
-  4  raw      <str>  Raw/unadjusted-coverage flag; accepts Boolean-like 'true', 'false', 't', or 'f' in any letter case.
+  1  table  <str>
+    Path to a TSV table file.
+
+  2  tbl_col  <str>
+    Table column name for scaling factors; must belong to one of these families:
+       - generic ('sf', 'scl', 'scaled', 'alpha', 'alf'),
+       - spike-in ('spike', 'spk', 'spike-in', 'si'), or
+       - siQ-ChIP ('siq', 'siq_chip', 'siq-chip').
+
+  3  norm  <bool>
+    Normalized-coverage flag.
+
+  4  raw  <bool>
+    Raw/unadjusted-coverage flag.
 
 Returns:
   0 if all parameters are valid; otherwise 1.
@@ -598,13 +602,13 @@ EOM
     validate_var_file "table" "${table}" || return 1
     check_table "${table}" || return 1
 
-    _validate_arg_csl \
+    _validate_arg_csv \
         "${tbl_col}" \
         "sf,scl,scaled,alpha,alf,spike,spk,spike-in,si,siq,siq_chip,siq-chip" \
         "tbl_col" \
         || return 1
-    _validate_arg_csl "${norm}" "true,false,t,f" "norm" || return 1
-    _validate_arg_csl "${raw}"  "true,false,t,f" "raw"  || return 1
+    normalize_bool "${norm}" "norm" >/dev/null || return 1
+    normalize_bool "${raw}"  "raw"  >/dev/null || return 1
 }
 
 
@@ -614,7 +618,7 @@ function _parse_table_core() {
     local tbl_col="${3:-}"
     local norm="${4:-}"
     local raw="${5:-}"
-    local norm_lc raw_lc header
+    local header
     local i
     local show_help
 
@@ -649,14 +653,23 @@ Description:
   Internal helper for parsing tab-delimited tables in either 'simple' or 'complex' mode.
 
 Positional arguments:
-  1  mode     <str>  Parsing mode: 'simple' or 'complex'.
-  2  table    <str>  Path to a TSV table file.
-  3  tbl_col  <str>  Table column name for scaling factors; must belong to one of these families:
-                       - generic ('sf', 'scl', 'scaled', 'alpha', 'alf'),
-                       - spike-in ('spike', 'spk', 'spike-in', 'si'), or
-                       - siQ-ChIP ('siq', 'siq_chip', 'siq-chip').
-  4  norm     <bol>  Normalized-coverage flag; accepts Boolean-like 'true', 'false', 't', or 'f' in any letter case.
-  5  raw      <bol>  Raw/unadjusted-coverage flag; accepts Boolean-like 'true', 'false', 't', or 'f' in any letter case.
+  1  mode  <str>
+    Parsing mode: 'simple' or 'complex'.
+
+  2  table  <str>
+    Path to a TSV table file.
+
+  3  tbl_col  <str>
+    Table column name for scaling factors; must belong to one of these families:
+      - generic ('sf', 'scl', 'scaled', 'alpha', 'alf'),
+      - spike-in ('spike', 'spk', 'spike-in', 'si'), or
+      - siQ-ChIP ('siq', 'siq_chip', 'siq-chip').
+
+  4  norm  <bool>
+    Normalized-coverage flag.
+
+  5  raw  <bool>
+    Raw/unadjusted-coverage flag.
 
 Returns:
   Prints 'declare -p' declarations for parsed arrays to stdout; otherwise 1.
@@ -719,18 +732,8 @@ EOM
     fi
 
     tbl_col="${tbl_col,,}"
-    norm_lc="${norm,,}"
-    raw_lc="${raw,,}"
-
-    case "${norm_lc}" in
-        t|true)  norm=true  ;;
-        f|false) norm=false ;;
-    esac
-
-    case "${raw_lc}" in
-        t|true)  raw=true  ;;
-        f|false) raw=false ;;
-    esac
+    norm="$(normalize_bool "${norm}" "norm")" || return 1
+    raw="$(normalize_bool "${raw}" "raw")" || return 1
 
     header="$(awk 'NR == 1 { print; exit }' "${table}")"
     IFS=$'\t' read -r -a arr_header <<< "${header}"
@@ -813,6 +816,7 @@ EOM
                 return 1
             fi
             ;;
+
         spike)
             if (( idx_spike == -1 )); then
                 echo_err_func "${FUNCNAME[0]}" \
@@ -821,6 +825,7 @@ EOM
                 return 1
             fi
             ;;
+
         siq)
             if (( idx_siq == -1 )); then
                 echo_err_func "${FUNCNAME[0]}" \
@@ -930,13 +935,20 @@ Description:
   Parse a tab-delimited table and extract supported columns into shell arrays.
 
 Positional arguments:
-  1  table    <str>  Path to a TSV table file.
-  2  tbl_col  <str>  Table column name for scaling factors; must belong to one of these families:
-                       - generic ('sf', 'scl', 'scaled', 'alpha', 'alf'),
-                       - spike-in ('spike', 'spk', 'spike-in', 'si'), or
-                       - siQ-ChIP ('siq', 'siq_chip', 'siq-chip').
-  3  norm     <bol>  Normalized-coverage flag; accepts Boolean-like 'true', 'false', 't', or 'f' in any letter case.
-  4  raw      <bol>  Raw/unadjusted-coverage flag; accepts Boolean-like 'true', 'false', 't', or 'f' in any letter case.
+  1  table  <str>
+    Path to a TSV table file.
+
+  2  tbl_col  <str>
+    Table column name for scaling factors; must belong to one of these families:
+      - generic ('sf', 'scl', 'scaled', 'alpha', 'alf'),
+      - spike-in ('spike', 'spk', 'spike-in', 'si'), or
+      - siQ-ChIP ('siq', 'siq_chip', 'siq-chip').
+
+  3  norm  <bool>
+    Normalized-coverage flag.
+
+  4  raw  <bool>
+    Raw/unadjusted-coverage flag.
 
 Returns:
   Prints 'declare -p' declarations for parsed arrays to stdout; otherwise 1.
@@ -1033,13 +1045,20 @@ Description:
   Parse a tab-delimited table and extract only the sample column together with one table-derived scaling-factor array.
 
 Positional arguments:
-  1  table    <str>  Path to a TSV table file.
-  2  tbl_col  <str>  Table column name for scaling factors; must belong to one of these families:
-                       - generic ('sf', 'scl', 'scaled', 'alpha', 'alf'),
-                       - spike-in ('spike', 'spk', 'spike-in', 'si'), or
-                       - siQ-ChIP ('siq', 'siq_chip', 'siq-chip').
-  3  norm     <bol>  Normalized-coverage flag; accepts Boolean-like 'true', 'false', 't', or 'f' in any letter case.
-  4  raw      <bol>  Raw/unadjusted-coverage flag; accepts Boolean-like 'true', 'false', 't', or 'f' in any letter case.
+  1  table  <str>
+    Path to a TSV table file.
+
+  2  tbl_col  <str>
+    Table column name for scaling factors; must belong to one of these families:
+      - generic ('sf', 'scl', 'scaled', 'alpha', 'alf'),
+      - spike-in ('spike', 'spk', 'spike-in', 'si'), or
+      - siQ-ChIP ('siq', 'siq_chip', 'siq-chip').
+
+  3  norm  <bool>
+    Normalized-coverage flag.
+
+  4  raw  <bool>
+    Raw/unadjusted-coverage flag.
 
 Returns:
   Prints 'declare -p' declarations for 'arr_infiles' and 'arr_scl_fct' to stdout; otherwise 1.

@@ -149,7 +149,7 @@ Positional arguments:
   1  var_nam  <str>  Variable name to use in error messages.
   2  var_val  <str>  File path to check.
   3  idx      <int>  Optional array index for error messages (default: 0).
-  4  chk_r    <bol>  Whether to require readability: case-insensitive Boolean-like true|t|yes|y|1 or false|f|no|n|0 (default: false).
+  4  chk_r    <bool>  Whether to require readability: case-insensitive Boolean-like true|t|yes|y|1 or false|f|no|n|0 (default: false).
 
 Returns:
   0 if 'var_val' exists as a regular file and, when 'chk_r=true', is readable; otherwise 1.
@@ -226,7 +226,7 @@ Positional arguments:
   1  var_nam  <str>  Variable name to use in error messages.
   2  var_val  <str>  Directory path to check.
   3  idx      <int>  Optional array index for error messages (default: 0).
-  4  chk_w    <bol>  Whether to require writability: case-insensitive Boolean-like true|t|yes|y|1 or false|f|no|n|0 (default: true).
+  4  chk_w    <bool>  Whether to require writability: case-insensitive Boolean-like true|t|yes|y|1 or false|f|no|n|0 (default: true).
 
 Returns:
   0 if 'var_val' exists as a directory and, when 'chk_w=true', is writable; otherwise 1.
@@ -305,7 +305,7 @@ Positional arguments:
   1  var_nam  <str>  Variable name to use in error messages.
   2  pth_fil  <str>  File path to validate.
   3  idx      <int>  Optional array index for error messages (default: 0).
-  4  chk_r    <bol>  Whether to require readability: case-insensitive Boolean-like true|t|yes|y|1 or false|f|no|n|0 (default: false).
+  4  chk_r    <bool>  Whether to require readability: case-insensitive Boolean-like true|t|yes|y|1 or false|f|no|n|0 (default: false).
 
 Returns:
   0 if the value is non-empty and the file exists as a regular file and, when 'chk_r=true', is readable; otherwise 1.
@@ -352,7 +352,7 @@ Positional arguments:
   1  var_nam  <str>  Variable name to use in error messages.
   2  pth_dir  <str>  Directory path to validate.
   3  idx      <int>  Optional array index for error messages (default: 0).
-  4  chk_w    <bol>  Whether to require writability: case-insensitive Boolean-like true|t|yes|y|1 or false|f|no|n|0 (default: true).
+  4  chk_w    <bool>  Whether to require writability: case-insensitive Boolean-like true|t|yes|y|1 or false|f|no|n|0 (default: true).
 
 Returns:
   0 if the value is non-empty and the directory exists and, when 'chk_w=true', is writable; otherwise 1.
@@ -400,7 +400,7 @@ Description:
 Positional arguments:
   1   desc   <str>  Short description of the file group being validated; used in error messages.
   2   file1  <str>  First file path to validate.
-  3+  file2  <mlt>  Additional file path(s) to validate.
+  3+  file2  <file>  Additional file path(s) to validate.
 
 Returns:
   0 if all supplied files exist; otherwise 1.
@@ -663,7 +663,7 @@ Description:
 
 Positional arguments:
   1   arr1  <str>  Name of the first indexed array to inspect.
-  2+  arr2  <mlt>  Name(s) of additional indexed arrays to inspect.
+  2+  arr2  <str>  Name(s) of additional indexed arrays to inspect.
 
 Returns:
   0; invalid, unset, or non-indexed variables are skipped silently.
@@ -794,7 +794,7 @@ Description:
 Positional arguments:
   1   n_req  <int>  Required full length for per-sample arrays.
   2   arr1   <str>  Name of the first array variable to check.
-  3+  arr2   <mlt>  Name(s) of additional array variable(s) to check.
+  3+  arr2   <str>  Name(s) of additional array variable(s) to check.
 
 Returns:
   0 if every named array has length 0, 1, or 'n_req'; 1 if argument parsing fails or if any array has an invalid length.
