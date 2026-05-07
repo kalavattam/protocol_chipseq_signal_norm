@@ -11,6 +11,14 @@
 # Distributed under the MIT license.
 
 
+#TODO:
+#+ - detect generic `Arguments:` where only `Keyword arguments:` or only `Positional arguments:` would clearly be more specific
+#+   + the generic `Arguments:` check is hard to detect reliably without false positives; make it WARN-only forever
+#+ - detect `Options:` as a stale synonym
+#+ - detect missing two-blank-line separators before major headings
+#+ - detect `--dry-run` documented when `--dry_run` should be canonical
+
+
 TEST_NAME="help style"
 
 #  Source shared smoke-test helpers
