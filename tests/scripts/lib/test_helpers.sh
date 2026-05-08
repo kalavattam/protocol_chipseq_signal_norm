@@ -102,6 +102,55 @@ function check_cmd_exists() {
 }
 
 
+#  Resolve the active project environment or require a named fallback
+function require_env_project() {
+    local env_ref="${1:-env_nam}"
+    local env_fallback="${2:-env_protocol}"
+
+    if [[ -n "${CONDA_DEFAULT_ENV:-}" && "${CONDA_DEFAULT_ENV}" != "base" ]]; then
+        printf -v "${env_ref}" '%s' "${CONDA_DEFAULT_ENV}"
+        return 0
+    fi
+
+    if ! \
+        check_cmd_exists conda
+    then
+        rec_fail \
+            "setup requires active project env or conda to activate" \
+            "'${env_fallback}'"
+        return 1
+    fi
+
+    if ! \
+        conda env list 2> /dev/null \
+            | awk -v env="${env_fallback}" '
+                $1 == env { found = 1 } END { exit !found }
+            '
+    then
+        rec_fail "setup requires Conda/Mamba environment '${env_fallback}'"
+        return 1
+    fi
+
+    printf -v "${env_ref}" '%s' "${env_fallback}"
+}
+
+
+#  Require one or more fixture files to exist and be non-empty
+function require_files_exist() {
+    local file=""
+    local rc=0
+
+    for file in "$@"; do
+        if [[ ! -s "${file}" ]]; then
+            rec_fail "missing fixture $(rec_relpath "${file}")"
+            rc=1
+        fi
+    done
+
+    return "${rc}"
+}
+
+
 #  Find a usable Python command
 function find_python() {
     if check_cmd_exists python; then
@@ -153,6 +202,19 @@ function assert_grep_pattern() {
         rec_pass "${label}"
     else
         rec_fail "${label}; see $(rec_relpath "${file}")"
+    fi
+}
+
+
+#  Assert that a generated output file exists and is non-empty
+function assert_file_nonempty() {
+    local file="${1:-}"
+    local label="${2:-output}"
+
+    if [[ -s "${file}" ]]; then
+        rec_pass "${label} exists and is non-empty"
+    else
+        rec_fail "${label} missing or empty: $(rec_relpath "${file}")"
     fi
 }
 

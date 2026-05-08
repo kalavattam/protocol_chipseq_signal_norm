@@ -34,59 +34,14 @@ dir_log="${TEST_DIR_LOG}/compute_signal"
 rm -rf "${tmp}"
 mkdir -p "${dir_out}" "${dir_err}" "${dir_log}"
 
-#  Use the active project environment when available; otherwise require the
-#+ conventional env_protocol environment so the wrapper can activate it
-if [[ -n "${CONDA_DEFAULT_ENV:-}" && "${CONDA_DEFAULT_ENV}" != "base" ]]; then
-    env_nam="${CONDA_DEFAULT_ENV}"
-else
-    env_nam="env_protocol"
-
-    if ! \
-        check_cmd_exists conda
-    then
-        rec_fail \
-            "setup requires active project env or conda to activate" \
-            "'env_protocol'"
-        finish
-        exit $?
-    fi
-
-    if ! \
-        conda env list 2> /dev/null \
-            | awk -v env="${env_nam}" '
-                $1 == env { found = 1 } END { exit !found }
-            '
-    then
-        rec_fail "setup requires Conda/Mamba environment '${env_nam}'"
-        finish
-        exit $?
-    fi
-fi
-
-if [[ ! -s "${infile_se}" ]]; then
-    rec_fail "missing fixture $(rec_relpath "${infile_se}")"
-fi
-
-if [[ ! -s "${infile_pe}" ]]; then
-    rec_fail "missing fixture $(rec_relpath "${infile_pe}")"
-fi
-
-if (( TEST_FAIL > 0 )); then
+require_env_project env_nam || {
     finish
     exit $?
-fi
+}
 
-
-#  Assert that a generated output file exists and is non-empty
-function assert_file_nonempty() {
-    local file="${1:-}"
-    local label="${2:-output}"
-
-    if [[ -s "${file}" ]]; then
-        rec_pass "${label} exists and is non-empty"
-    else
-        rec_fail "${label} missing or empty: $(rec_relpath "${file}")"
-    fi
+require_files_exist "${infile_se}" "${infile_pe}" || {
+    finish
+    exit $?
 }
 
 
@@ -100,6 +55,7 @@ function run_case_bam() {
 
     shift 5
 
+    # shellcheck disable=SC2154
     if \
         run_capture \
             "submit compute-signal BAM ${nam_case}" "${log_lcl}" \
