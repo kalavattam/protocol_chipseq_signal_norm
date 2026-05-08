@@ -44,6 +44,7 @@ tests=(
     "${dir_run}/smoke/test_help_output.sh"
     "${dir_run}/smoke/test_startup_sources.sh"
     "${dir_run}/smoke/test_dry_run_commands.sh"
+    "${dir_run}/smoke/test_submit_compute_signal_ratio.sh"
     "${dir_run}/smoke/test_help_style.sh"
 )
 

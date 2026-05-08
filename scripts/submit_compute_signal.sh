@@ -687,13 +687,13 @@ EOM
 
 
 function task_pro() {
-    local mode="${1}"       # Mode: 'signal', 'ratio', or 'coord'
-    local idx="${2}"        # Array index (integer ≥ 0)
-    local arr_fil_A="${3}"  # Array name for scalar infile or file A
-    local arr_fil_B="${4}"  # Array name for scalar file B; empty if unused
-    local arr_out="${5}"    # Array name for scalar outfile
-    local arr_scl="${6}"    # Array name for scalar scl_fct; empty if unused
-    local arr_opt="${7}"    # Array name for scalar opt_var; empty if unused
+    local mode="${1}"           # Mode: 'signal', 'ratio', or 'coord'
+    local idx="${2}"            # Array index (integer >= 0)
+    local nam_arr_fil_A="${3}"  # Array name for scalar infile or file A
+    local nam_arr_fil_B="${4}"  # Array name for scalar file B; empty if unused
+    local nam_arr_out="${5}"    # Array name for scalar outfile
+    local nam_arr_scl="${6}"    # Array name for scalar scl_fct; empty if unused
+    local nam_arr_opt="${7}"    # Array name for scalar opt_var; empty if unused
     local fil_A fil_B outfile scl_fct opt_var samp dsc
     local err_ini out_ini err_dsc out_dsc
     local show_help
@@ -707,13 +707,13 @@ Usage:
     [-h|--hlp|--help] mode idx arr_fil_A arr_fil_B arr_out arr_scl arr_opt
 
 Positional arguments:
-  1  mode       <str>  'signal', 'ratio', or 'coord'.
-  2  idx        <int>  Zero-based task index.
-  3  arr_fil_A  <str>  Array name for scalar infile or file A.
-  4  arr_fil_B  <str>  Array name for scalar file B; "" if unused.
-  5  arr_out    <str>  Array name for scalar outfile.
-  6  arr_scl    <str>  Array name for scalar scl_fct; "" if unused.
-  7  arr_opt    <str>  Array name for scalar opt_var; "" if unused.
+  1  mode           <str>  'signal', 'ratio', or 'coord'.
+  2  idx            <int>  Zero-based task index.
+  3  nam_arr_fil_A  <str>  Array name for scalar infile or file A.
+  4  nam_arr_fil_B  <str>  Array name for scalar file B; "" if unused.
+  5  nam_arr_out    <str>  Array name for scalar outfile.
+  6  nam_arr_scl    <str>  Array name for scalar scl_fct; "" if unused.
+  7  nam_arr_opt    <str>  Array name for scalar opt_var; "" if unused.
 
 Behavior:
   - Pulls per-task values from arrays by name.
@@ -737,20 +737,20 @@ EOM
         return 1
     fi
 
-    fil_A="$(get_arr_elem "${arr_fil_A}" "${idx}")" || return 1
+    fil_A="$(get_arr_elem "${nam_arr_fil_A}" "${idx}")" || return 1
 
-    if [[ -n "${arr_fil_B}" ]]; then
-        fil_B="$(get_arr_elem "${arr_fil_B}" "${idx}")" || return 1
+    if [[ -n "${nam_arr_fil_B}" ]]; then
+        fil_B="$(get_arr_elem "${nam_arr_fil_B}" "${idx}")" || return 1
     fi
 
-    outfile="$(get_arr_elem "${arr_out}" "${idx}")" || return 1
+    outfile="$(get_arr_elem "${nam_arr_out}" "${idx}")" || return 1
 
-    if [[ -n "${arr_scl}" ]]; then
-        scl_fct="$(get_arr_elem "${arr_scl}" "${idx}")" || return 1
+    if [[ -n "${nam_arr_scl}" ]]; then
+        scl_fct="$(get_arr_elem "${nam_arr_scl}" "${idx}")" || return 1
     fi
 
-    if [[ -n "${arr_opt}" ]]; then
-        opt_var="$(get_arr_elem "${arr_opt}" "${idx}")" || return 1
+    if [[ -n "${nam_arr_opt}" ]]; then
+        opt_var="$(get_arr_elem "${nam_arr_opt}" "${idx}")" || return 1
     fi
 
     #  Debug inputs
