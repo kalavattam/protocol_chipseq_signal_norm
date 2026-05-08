@@ -19,7 +19,7 @@ compute_signal.py
 
 Description
 -----------
-Calculates binned signal from a BAM file, typically outputting bedGraph
+Calculates binned signal from a BAM or CRAM file, typically outputting bedGraph
 signal tracks. Users can compute raw (unadjusted) signal, signal normalized by
 fragment length (as in PMID 37160995), or "normalized coverage" (i.e., signal
 adjusted for both fragment length and total fragment count, as in PMID
@@ -51,7 +51,8 @@ Usage
 python -m scripts.compute_signal \
     [--help] [--verbose] \
     [--threads <int_no_cores>] \
-    --infile <str_file.bam|-> \
+    --infile <str_file.(bam|cram)|-> \
+    [--ref_fa <str_file.(fa|fasta)>] \
     --outfile <str_file.(bedGraph|bedgraph|bdg|bg|bed)(.gz)|-> \
     [--outfmt {bedGraph,bedgraph,bdg,bg,bed}] \
     [--method <str_method>] \
@@ -70,7 +71,10 @@ Arguments
     Number of threads for parallel processing (default: 1).
 
  -i, --infile <str>
-    Path to the input BAM file, or '-' to read from stdin.
+    Path to the input BAM or CRAM file, or '-' to read from stdin.
+
+ -r, --ref, --ref_fa, --reference <str>
+    Optional reference FASTA path for CRAM decoding.
 
  -o, --outfile <str>
     Path to the output file, or '-' to write to stdout. Supported formats are
@@ -111,11 +115,11 @@ Arguments
     '--method'. Ignored for BED output.
 
 -uf, --usr_frg <int>
-    Optional fixed fragment length to use instead of (a) BAM query alignment
-    lengths for single-end alignments or (b) template lengths for paired-end
-    alignments. Affects both bedGraph and BED outputs. For single-end data,
-    '--usr_frg' is generally the preferred way to obtain fragment-length-aware
-    signal.
+    Optional fixed fragment length to use instead of (a) BAM or CRAM query
+    alignment lengths for single-end alignments or (b) template lengths for
+    paired-end alignments. Affects both bedGraph and BED outputs. For single-
+    end data, '--usr_frg' is generally the preferred way to obtain fragment-
+    length-aware signal.
 
 -dp, --dp, --rnd, --round, --decimals, --digits <int>
     Maximum number of decimal places retained for bedGraph values (default:
@@ -192,9 +196,10 @@ python -m scripts.compute_signal -i sample.bam -o - --outfmt bed -uf 150 \
 
 General notes
 -------------
-- The input BAM file does not need to be coordinate-sorted or queryname-sorted,
-  as read order is not relevant for the parsing implemented here.
-    + No BAM index is required (streaming is handled with
+- The input BAM or CRAM file does not need to be coordinate-sorted or
+  queryname-sorted, as read order is not relevant for the parsing implemented
+  here.
+    + No BAM or CRAM index is required (streaming is handled with
       'pysam.fetch(until_eof=True)'); random access is not used.
     + '--infile -' is also supported and behaves the same way.
     + For paired-end data, fragments are inferred from leftmost mates with
@@ -203,7 +208,7 @@ General notes
     + Binning accumulates fragments into per-chromosome dict buckets, and
       sorting occurs at emit.
 - Coordinates are 0-based, half-open [start, end) in both BED and bedGraph.
-- Chromosome naming is preserved from the BAM.
+- Chromosome naming is preserved from the BAM or CRAM.
 - Roman numeral sorting is applied when emitting both BED and bedGraph (I..XVI
   first), reflecting that this code was written with S. cerevisiae and S. pombe
   ChIP-seq data in mind.
@@ -219,8 +224,8 @@ General notes
 Performance notes
 -----------------
 - When '--threads > 1', work is per-chromosome via 'ProcessPoolExecutor'.
-- I/O dominates for large BAMs.
-    + Placing BAM and output on fast local storage can help with this.
+- I/O dominates for large BAM or CRAM files.
+    + Placing BAM or CRAM and output on fast local storage can help with this.
     + Too many threads can increase contention on slow disks.
 - Memory use scales with the number of fragments retained per chromosome; for
   very dense chromosome data, chunked processing may be worth implementing.
@@ -308,22 +313,25 @@ METHOD_CHOICES = tuple(METHOD_CANON.keys())
 def parse_bam(
     path_bam: str,
     usr_frg: int | None = None,
+    ref_fa: str | None = None,
     allow_sec: bool = True,
     allow_sup: bool = False,
     allow_dup: bool = True
 ) -> dict[str, list[tuple[int, int, int]]]:
     """
-    Parse a BAM into chromosome-grouped fragment intervals.
+    Parse a BAM or CRAM into chromosome-grouped fragment intervals.
 
     Args:
         path_bam : str
-            Input BAM path.
+            Input BAM or CRAM path.
         usr_frg : int | None
             Optional fixed fragment length override. If provided:
                 - paired-end read alignments: overrides TLEN for leftmost
                                               anchors.
                 - single-end read alignments: used for both strands from the 5’
                                               end.
+        ref_fa : str | None
+            Optional reference FASTA path for CRAM decoding.
         allow_sec : bool
             Include secondary (multi-mapping) alignments. Default True.
         allow_sup : bool
@@ -413,7 +421,11 @@ def parse_bam(
     frg_tup = defaultdict(list)
 
     try:
-        with pysam.AlignmentFile(path_bam, "rb") as bam_file:
+        kwargs = {}
+        if ref_fa is not None:
+            kwargs["reference_filename"] = ref_fa
+
+        with pysam.AlignmentFile(path_bam, "rb", **kwargs) as bam_file:
             chrom_sizes = dict(zip(bam_file.references, bam_file.lengths))
 
             #  Stream the entire file; works for stdin (no index available)
@@ -506,14 +518,17 @@ def parse_bam(
                 frg_tup[chrom].append((frg_start, frg_end, frg_len))
 
     except FileNotFoundError:
-        print(f"Error: BAM file '{path_bam}' not found.", file=sys.stderr)
+        print(
+            f"Error: BAM or CRAM file '{path_bam}' not found.",
+            file=sys.stderr
+        )
         raise
     except ValueError:
         #  Let caller or outer wrapper handle ValueError details
         raise
     except Exception as e:
         print(
-            f"Unexpected error with BAM file '{path_bam}': {e}",
+            f"Unexpected error with BAM or CRAM file '{path_bam}': {e}",
             file=sys.stderr
         )
         raise
@@ -652,7 +667,8 @@ def calc_sig_task(data):
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     """
-    Parse command-line arguments for computing binned signal from a BAM file.
+    Parse command-line arguments for computing binned signal from a BAM or CRAM
+    file.
 
     Args:
         argv : list[str] | None
@@ -674,7 +690,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
             -t, --threads
                 Number of threads for parallel processing (default: 1).
             -i, --infile
-                Path to input BAM file or '-'.
+                Path to input BAM or CRAM file, or '-'.
             -o, --outfile
                 Path to output file or '-'. The extension determines format:
                     - '.bdg', '.bg', '.bedgraph': bedGraph of binned signal.
@@ -720,8 +736,8 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     """
     parser = CapArgumentParser(
         description=(
-            "Compute binned signal from a BAM file in bedGraph format, "
-            "optionally applying normalization.\n"
+            "Compute binned signal from a BAM or CRAM file in bedGraph "
+            "format, optionally applying normalization.\n"
             "\n"
             "Alternatively, extract and output processed fragment coordinates "
             "in a BED-like format, which can be used as input to the original "
@@ -751,10 +767,20 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         )
     )
     parser.add_argument(
-        "-i", "-f", "--infile", "--file",
+        "-i", "-f", "--infile", "--file",  # TODO: "-fi", "--fil_in"
         dest="infile",
         required=True,
-        help="Path to the input BAM file, or '-' for stdin.\n\n"
+        help="Path to the input BAM or CRAM file, or '-' for stdin.\n\n"
+    )
+    parser.add_argument(
+        "-r", "--ref", "--ref_fa", "--reference",
+        dest="ref_fa",
+        default=None,
+        help=(
+            "Optional reference FASTA path for CRAM decoding. Required for "
+            "CRAM inputs unless the reference is otherwise available to "
+            "htslib/pysam.\n\n"
+        )
     )
     parser.add_argument(
         "-o", "-fo", "--outfile", "--fil_out",
@@ -881,15 +907,17 @@ def main(argv: list[str] | None = None) -> int:
             + unsupported/invalid '--outfile' extension,
             + normalization requested with zero fragments,
             + provided '--scl_fct <= 0', and
-            + BAM parsing errors (file not found/unreadable).
+            + BAM or CRAM parsing errors (file not found/unreadable).
     """
     #  Parse CLI arguments
     args = parse_args(argv)
 
-    #  Check that input BAM exists
+    #  Check that input alignment/reference files exist
     try:
         if args.infile != "-":
-            check_exists(args.infile, kind="file", label="BAM")
+            check_exists(args.infile, kind="file", label="Alignment file")
+        if args.ref_fa is not None:
+            check_exists(args.ref_fa, kind="file", label="Reference FASTA")
     except FileNotFoundError as e:
         #  Print a one-line message and exit cleanly
         raise SystemExit(str(e))
@@ -957,6 +985,7 @@ def main(argv: list[str] | None = None) -> int:
             print("--verbose")
             print(f"--threads {args.threads}")
             print(f"--infile  {args.infile}")
+            print(f"--ref_fa  {args.ref_fa}")
             print(f"--outfile {outfile}")
             if outfile == "-":
                 print(f"--outfmt  {out_fmt}")
@@ -981,15 +1010,15 @@ def main(argv: list[str] | None = None) -> int:
             print("")
             print("")
 
-    #  Parse and process BAM file
+    #  Parse and process BAM or CRAM file
     try:
-        frg_tup = parse_bam(args.infile, args.usr_frg)
+        frg_tup = parse_bam(args.infile, args.usr_frg, args.ref_fa)
     except FileNotFoundError:
-        raise SystemExit(f"BAM not found: {args.infile}")
+        raise SystemExit(f"Alignment file not found: {args.infile}")
     except ValueError as e:
         raise SystemExit(str(e))
     except OSError as e:
-        raise SystemExit(f"I/O error while reading BAM: {e}")
+        raise SystemExit(f"I/O error while reading BAM or CRAM: {e}")
 
     try:
         if out_fmt == 'bed':
@@ -1009,7 +1038,7 @@ def main(argv: list[str] | None = None) -> int:
         if is_norm and frg_tot == 0:
             raise ValueError(
                 "Normalization requires non-zero total fragments. Check the "
-                "BAM file."
+                "BAM or CRAM file."
             )
 
         #  Prepare and execute parallel tasks (when '--threads > 1')

@@ -420,9 +420,10 @@ function run_comp_sig() {
     local scl_fct="${7}"
     local usr_frg="${8}"
     local rnd="${9}"
-    local err_out="${10}"
-    local nam_job="${11}"
-    local dsc="${12}"
+    local ref_fa="${10}"
+    local err_out="${11}"
+    local nam_job="${12}"
+    local dsc="${13}"
     local log_out log_err  # Explicit local variable declarations
     local -a optional cmd  # Optional arguments and command array
     local show_help        # Help text
@@ -433,21 +434,22 @@ Description:
 
 Usage:
   run_comp_sig
-    [-h|--hlp|--help] debug threads infile outfile siz_bin method scl_fct usr_frg rnd err_out nam_job dsc
+    [-h|--hlp|--help] debug threads infile outfile siz_bin method scl_fct usr_frg rnd ref_fa err_out nam_job dsc
 
 Positional arguments:
    1  debug    <bool>  Print debug messages or not.
    2  threads  <int>  Number of threads to use.
-   3  infile   <str>  Input BAM file.
+   3  infile   <str>  Input BAM or CRAM file.
    4  outfile  <str>  Output filename.
    5  siz_bin  <int>  Bin size in base pairs.
    6  method   <str>  Type of signal computation (<str>) or empty sentinel ("").
    7  scl_fct  <num>  Scaling factor/coefficient (<flt>) or sentinel (NA).
    8  usr_frg  <int>  Fragment length (<int>) or sentinel (NA).
    9  rnd      <int>  Maximum number of decimal places retained for finite emitted values.
-  10  err_out  <str>  Directory for stdout and stderr.
-  11  nam_job  <str>  Job name.
-  12  dsc      <str>  Descriptor for log file naming.
+  10  ref_fa   <str>  Reference FASTA for CRAM input or empty string.
+  11  err_out  <str>  Directory for stdout and stderr.
+  12  nam_job  <str>  Job name.
+  13  dsc      <str>  Descriptor for log file naming.
 
 Notes:
   - Optional CLI arguments are derived via 'set_args_opt'.
@@ -458,9 +460,9 @@ EOM
     if [[ "${1}" =~ ^(-h|--h[e]?lp)$ ]]; then
         echo "${show_help}" >&2
         return 0
-    elif [[ $# -ne 12 ]]; then
+    elif [[ $# -ne 13 ]]; then
         echo_err_func "${FUNCNAME[0]}" \
-            "'run_comp_sig()' expects 12 arguments, but got $#."
+            "'run_comp_sig()' expects 13 arguments, but got $#."
         echo >&2
         echo "${show_help}" >&2
         return 1
@@ -493,6 +495,10 @@ EOM
 
     if [[ -n "${method}" ]]; then
         cmd+=( --method "${method}" )
+    fi
+
+    if [[ -n "${ref_fa}" ]]; then
+        cmd+=( --ref_fa "${ref_fa}" )
     fi
 
     if [[ "${#optional[@]}" -gt 0 && -n "${optional[0]}" ]]; then
@@ -936,6 +942,7 @@ EOM
         "$(get_arr_elem arr_scl_fct "${idx}")" \
         "$(get_arr_elem arr_usr_frg "${idx}")" \
         "${rnd}" \
+        "${ref_fa}" \
         "${err_out}" \
         "${nam_job}" \
         "${dsc}"
@@ -1070,6 +1077,7 @@ EOM
         "NA" \
         "$(get_arr_elem arr_usr_frg "${idx}")" \
         1 \
+        "${ref_fa}" \
         "${err_out}" \
         "${nam_job}" \
         "${dsc}"
@@ -1266,6 +1274,16 @@ function parse_args() {
                     return 1
                 }
                 csv_outfile="${2}"
+                shift 2
+                ;;
+
+            -r|--ref|--ref[_-]fa|--reference)
+                require_optarg "${1}" "${2:-}" "main" || {
+                    echo >&2
+                    show_help_main
+                    return 1
+                }
+                ref_fa="${2}"
                 shift 2
                 ;;
 
@@ -1547,6 +1565,7 @@ csv_infile=""
 csv_fil_A=""
 csv_fil_B=""
 csv_outfile=""
+ref_fa=""
 track=false
 siz_bin=10
 csv_scl_fct=""
@@ -1568,9 +1587,9 @@ Usage:
   submit_compute_signal.sh
     [--help] [--env_nam <str>] --dir_scr <str> [--threads <int>] [--mode {signal,ratio,coord}]
     [--method {unadj,frag,norm,log2,unadj_r,log2_r,...}]
-    (--csv_infile <bam1,bam2,...> | --csv_fil_A <IP1.bdg[.gz],IP2.bdg[.gz],...> --csv_fil_B <in1.bdg[.gz],in2.bdg[.gz],...>)
+    (--csv_infile <bam1.bam,bam2.cram,...> | --csv_fil_A <IP1.bdg[.gz],IP2.bdg[.gz],...> --csv_fil_B <in1.bdg[.gz],in2.bdg[.gz],...>)
     --csv_outfile <out1.bdg[.gz],out2.bdg[.gz],...> [--track] [--drp_nan]
-    [--siz_bin <int>] [--csv_scl_fct <csv:num>] [--csv_usr_frg <csv:int>] [--csv_dep_min <csv:num>] [--csv_pseudo <csv:str>]
+    [--ref_fa <file>] [--siz_bin <int>] [--csv_scl_fct <csv:num>] [--csv_usr_frg <csv:int>] [--csv_dep_min <csv:num>] [--csv_pseudo <csv:str>]
     [--eps <flt>] [--skip_00 <enum:pre_scale,post_scale>] [--skp_pfx <str>] [--dp <int>] --err_out <str> [--nam_job <str>]
 
 Description:
@@ -1605,7 +1624,7 @@ Keyword arguments:
           + '2r', 'l2r', 'l2_r', 'lg2_r', 'log2_r'
 
   -i, -fi, -ci, --infile, --infiles, --fil_in, --csv_infile, --csv_infiles  <csv:file>  <element: str>
-      Comma-separated list of BAM files ('--mode signal', '--mode coord').
+      Comma-separated list of BAM or CRAM files ('--mode signal', '--mode coord').
 
   -fA, -f1, -cA, -c1, --fil_A, --fil_1, --csv_A, --csv_1, --csv_fil_A, --csv_fil_IP  <csv:file>  <element: str>
       Comma-separated list of numerator (i.e., "file A"; e.g., IP) bedGraph files ('--mode ratio').
@@ -1615,6 +1634,9 @@ Keyword arguments:
 
   -o, -fo, -co, --outfile, --outfiles, --fil_out, --csv_outfile, --csv_outfiles  <csv:file>  <element: str>
       Comma-separated list of output files (e.g., full bedGraph[.gz] or BED[.gz] paths).
+
+  -r, --ref, --ref_fa, --reference  <file>
+      Reference FASTA for CRAM input files ('--mode signal', '--mode coord'). Required when '--csv_infile' contains '.cram'.
 
   -tr, --track  <flag>
       Output a companion bedGraph without '-inf' or 'nan' rows ('--mode ratio').
@@ -1664,7 +1686,8 @@ Keyword arguments:
       Prefix for job names (default depends on resolved '--mode' and '--method'; e.g., 'compute_signal_norm', 'compute_ratio_unadj', or 'compute_coord').
 
 Notes:
-  - BAM and bedGraph input files must be coordinate-sorted.
+  - g and bedGraph input files must be coordinate-sorted.
+  - CRAM inputs in '--mode signal' or '--mode coord' require '--ref_fa'.
   - Input and output paths supplied to this wrapper interface must not contain spaces, commas, or semicolons.
   - This wrapper does not support '-' for stdin/stdout. Use the underlying Python scripts directly for streaming input/output workflows.
   - If and where applicable, use consistent file ordering in- and outfiles, and between IP (file A) and input (file B) files.
@@ -1729,7 +1752,8 @@ function main() {
 
         if [[ "${mode}" != "ratio" ]]; then
             debug_var \
-                "csv_infile=${csv_infile}"
+                "csv_infile=${csv_infile}" \
+                "ref_fa=${ref_fa:-UNSET}"
         elif [[ "${mode}" == "ratio" ]]; then
             debug_var \
                 "csv_fil_A=${csv_fil_A}" \
@@ -1885,6 +1909,32 @@ function main() {
         fi
     done
     unset outfile
+
+    #  Require a reference FASTA for CRAM inputs; validate it when supplied
+    if [[ "${mode}" =~ ^(signal|coord)$ ]]; then
+        need_ref=false
+
+        for infile in "${arr_infile[@]}"; do
+            if [[ "${infile,,}" == *.cram ]]; then
+                need_ref=true
+                break
+            fi
+        done
+        unset infile
+
+        if [[ "${need_ref}" == "true" && -z "${ref_fa}" ]]; then
+            echo_err \
+                "'--ref_fa' is required when '--csv_infile' contains CRAM" \
+                "input."
+            exit 1
+        fi
+
+        if [[ -n "${ref_fa}" ]]; then
+            validate_var_file "ref_fa" "${ref_fa}" 0 true || exit 1
+        fi
+
+        unset need_ref
+    fi
 
     #  Check input files
     if [[ "${mode}" =~ ^(signal|coord)$ ]]; then
