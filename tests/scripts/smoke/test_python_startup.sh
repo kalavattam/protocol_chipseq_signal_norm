@@ -21,21 +21,59 @@ source "$(
 
 rec_section "${TEST_NAME}"
 
-#  Skip Python checks cleanly when Python is unavailable or too old
-if ! \
-    py="$(find_python)"
-then
-    rec_skip "python/python3 unavailable; skipping Python smoke checks"
+#  Resolve the project environment locally for dependency-backed Python checks
+require_env_project env_nam || {
     finish
     exit $?
+}
+
+if [[ -n "${CONDA_DEFAULT_ENV:-}" && "${CONDA_DEFAULT_ENV}" != "base" ]]; then
+    if ! \
+        py="$(find_python)"
+    then
+        rec_fail "active project environment has no python/python3 on PATH"
+        finish
+        exit $?
+    fi
+
+    py_cmd=( "${py}" )
+else
+    log="${TEST_DIR_LOG}/python_startup/resolve_env_python.log"
+
+    # shellcheck disable=SC2154
+    if \
+        run_capture \
+            "resolve env python" "${log}" \
+            conda run -n "${env_nam}" python -c \
+                'import sys; print(sys.executable)'
+    then
+        IFS= read -r py < "${log}"
+    else
+        rec_fail \
+            "failed to resolve python from '${env_nam}'; see" \
+            "$(rec_relpath "${log}")"
+        finish
+        exit $?
+    fi
+
+    if [[ -z "${py}" || ! -x "${py}" ]]; then
+        rec_fail \
+            "resolved python is not executable; see $(rec_relpath "${log}")"
+        finish
+        exit $?
+    fi
+
+    py_cmd=( "${py}" )
 fi
 
 if ! \
-    check_python_ge_310 "${py}"
+    "${py_cmd[@]}" - << PY
+import sys
+raise SystemExit(0 if sys.version_info >= (3, 10) else 1)
+PY
 then
-    rec_skip \
-        "$("${py}" --version 2>&1) is older than Python 3.10; skipping" \
-        "Python smoke checks"
+    rec_fail \
+        "$("${py_cmd[@]}" --version 2>&1) is older than Python 3.10"
     finish
     exit $?
 fi
@@ -51,7 +89,7 @@ while IFS= read -r file; do
         PYTHONPATH="${ROOT_REPO}" \
         run_capture \
             "python compile ${rel}" "${log}" \
-            "${py}" -m py_compile "${file}"
+            "${py_cmd[@]}" -m py_compile "${file}"
     then
         rec_pass "python syntax ${rel}"
     else
@@ -59,37 +97,27 @@ while IFS= read -r file; do
     fi
 done < <(
     find "${ROOT_REPO}/scripts" \
-        -path "${ROOT_REPO}/scripts/blog" -prune -o \
-        -type f -name '*.py' -print \
+        -path "${ROOT_REPO}/scripts/blog" \
+        -prune -o -type f -name '*.py' -print \
         | sort
 )
 
-#  Run --help only for Python scripts known to be safe in a bare environment
-safe_help=(
+#  Run --help with the project environment so dependency imports are available
+hlp_scr=(
     "scripts/add_coeffs_namespaced.py"
     "scripts/calculate_scaling_factor_siq_chip.py"
     "scripts/calculate_scaling_factor_spike.py"
     "scripts/compute_input_floor.py"
     "scripts/compute_pseudo.py"
+    "scripts/compute_signal.py"
     "scripts/compute_signal_ratio.py"
     "scripts/merge_bins_bdg.py"
+    "scripts/parse_metadata_siq_chip.py"
+    "scripts/relativize_scaling_factors.py"
     "scripts/sum_bdg.py"
 )
 
-#  Keep optional-dependency startup imports visible as skips
-rec_skip \
-    "python --help skipped for scripts/compute_signal.py because it imports" \
-    "pysam at startup"
-
-rec_skip \
-    "python --help skipped for scripts/parse_metadata_siq_chip.py because it" \
-    "imports yaml at startup"
-
-rec_skip \
-    "python --help skipped for scripts/relativize_scaling_factors.py because" \
-    "it imports pandas at startup"
-
-for rel in "${safe_help[@]}"; do
+for rel in "${hlp_scr[@]}"; do
     file="${ROOT_REPO}/${rel}"
     [[ -f "${file}" ]] || {
         rec_skip "python --help ${rel}: file not present"
@@ -103,7 +131,7 @@ for rel in "${safe_help[@]}"; do
         PYTHONPATH="${ROOT_REPO}" \
         run_capture \
             "python help ${rel}" "${log}" \
-            "${py}" "${file}" --help
+            "${py_cmd[@]}" "${file}" --help
     then
         rec_pass "python --help ${rel}"
     else
