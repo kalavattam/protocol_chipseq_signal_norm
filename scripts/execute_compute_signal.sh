@@ -178,7 +178,7 @@ Expected globals:
     scr_sub dir_scr env_nam threads mode rnd err_out nam_job
 
   Additional scalar globals:
-    method siz_bin eps skip_00 drp_nan skp_pfx track
+    method siz_bin eps skip_00 drp_nan skp_pfx track ref_fa
 
   Required scalar serialized inputs:
     For 'signal' or 'coord':
@@ -267,6 +267,10 @@ EOM
 
     if [[ "${mode}" =~ ^(signal|coord)$ ]]; then
         cmd_bld+=( --csv_infile "${infile}" )
+
+        if [[ -n "${ref_fa}" ]]; then
+            cmd_bld+=( --ref_fa "${ref_fa}" )
+        fi
     else
         cmd_bld+=( --csv_fil_A "${fil_A}" --csv_fil_B "${fil_B}" )
     fi
@@ -330,6 +334,7 @@ threads=4
 mode="signal"
 method=""
 csv_infile=""
+ref_fa=""  #TODO: determine best place for this; where is it in 'submit'?
 csv_fil_A=""
 csv_fil_B=""
 dir_out=""
@@ -417,6 +422,17 @@ while [[ "$#" -gt 0 ]]; do
                 exit 1
             }
             csv_infile="${2}"
+            shift 2
+            ;;
+
+        #TODO: determine best place for this; where is it in 'submit'?
+        -r|--ref|--ref[_-]fa|--reference)
+            require_optarg "${1}" "${2:-}" "main" || {
+                echo >&2
+                help_execute_compute_signal >&2
+                exit 1
+            }
+            ref_fa="${2}"
             shift 2
             ;;
 
@@ -820,6 +836,11 @@ if [[ -n "${csv_pseudo}" ]]; then
     check_str_delim "csv_pseudo" "${csv_pseudo}"
 fi
 
+#TODO: determine best place for this
+if [[ -n "${ref_fa}" ]]; then
+    validate_var_file "ref_fa" "${ref_fa}"
+fi
+
 if [[ "${mode}" == "ratio" ]]; then
     if [[ -n "${eps}" ]]; then check_flt_nonneg "${eps}" "eps"; fi
 
@@ -877,7 +898,9 @@ if [[ "${mode}" =~ ^(signal|coord)$ ]]; then
 
     unset arr_outfile && declare -a arr_outfile
     for i in "${arr_infile[@]}"; do
-        base="$(basename "${i}" .bam)"
+        base="$(basename "${i}")"
+        base="${base%.bam}"
+        base="${base%.cram}"
 
         if [[ -n "${prefix}" ]]; then
             if [[ "${base}" =~ ^IP_ ]]; then
@@ -898,6 +921,16 @@ if [[ "${mode}" =~ ^(signal|coord)$ ]]; then
     done
 
     check_arr_lengths "arr_outfile" "arr_infile"
+
+    for infile in "${arr_infile[@]}"; do
+        if [[ "${infile,,}" == *.cram && -z "${ref_fa}" ]]; then
+            echo_err \
+                "'--ref_fa' is required when '--csv_infile' contains CRAM" \
+                "input: '${infile}'."
+            exit 1
+        fi
+    done
+    unset infile
 
     #  Scaling factors are only used for '--mode signal'
     if [[ "${mode}" == "signal" ]]; then
@@ -1136,6 +1169,7 @@ if [[ "${verbose}" == "true" ]]; then
     echo "mode=${mode}"
     echo "method=${method:-UNSET}"
     echo "csv_infile=${csv_infile:-UNSET}"
+    echo "ref_fa=${ref_fa:-UNSET}"  #TODO: determine best place for this; where is it in 'submit'?
     echo "csv_fil_A=${csv_fil_A:-UNSET}"
     echo "csv_fil_B=${csv_fil_B:-UNSET}"
     echo "dir_out=${dir_out}"
@@ -1218,6 +1252,8 @@ if [[ "${verbose}" == "true" ]]; then
 
     if [[ "${mode}" =~ ^(signal|coord)$ ]]; then
         echo "csv_infile=\"${csv_infile}\""
+        echo
+        echo "ref_fa=\"${ref_fa:-UNSET}\""  #TODO: this spot is fine, I think
         echo
     elif [[ "${mode}" == "ratio" ]]; then
         echo "csv_fil_A=\"${csv_fil_A}\""

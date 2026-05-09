@@ -17,7 +17,7 @@ Usage:
     [--help] [--details] [--all_hlp] [--verbose] [--dry_run]
     [--threads <int>]
     [--mode <enum:signal,ratio,coord>] [--method <enum:unadj,frag,norm,log2,unadj_r,log2_r>]
-    (--csv_infile <csv:file> | --csv_fil_A <csv:file> --csv_fil_B <csv:file>)
+    (--csv_infile <csv:file> [--ref_fa <file>] | --csv_fil_A <csv:file> --csv_fil_B <csv:file>)
     --dir_out <dir> [--typ_out <enum:bedGraph|bedgraph|bdg|bg|bed[.gz]>] [--prefix <str>]
     [--siz_bin <int>] [--csv_usr_frg <csv:int>] [--csv_scl_fct <csv:num>]
     [--csv_dep_min <csv:num>] [--csv_pseudo <csv:spec>] [--eps <num>] [--skip_00 <enum:pre_scale|post_scale>] [--drp_nan] [--skp_pfx <csv:str>] [--track]
@@ -34,7 +34,7 @@ ${usage}
 
 
 Description:
-  Coordinate and automate the computation of signal tracks, ratio tracks, or fragment-coordinate files from BAM or bedGraph input files. Supports multiple normalization strategies and runs computations in serial or parallel via GNU Parallel or Slurm.
+  Coordinate and automate the computation of signal tracks, ratio tracks, or fragment-coordinate files from BAM/CRAM or bedGraph input files. Supports multiple normalization strategies and runs computations in serial or parallel via GNU Parallel or Slurm.
 
   For more details on what this script can do, including notes and usage examples, run either of the following:
     '''bash
@@ -84,7 +84,10 @@ Arguments:
     See '--details' for full synonym lists and references.
 
   -i, -fi, -ci, --infile, --infiles, --fil_in, --csv_infile, --csv_infiles  <csv:file>
-    Comma-separated list of coordinate-sorted BAM files (used only with '--mode signal' or '--mode coord').
+    Comma-separated list of coordinate-sorted BAM/CRAM files (used only with '--mode signal' or '--mode coord').
+
+  -r, --ref, --ref_fa, --reference  <file>
+    Reference FASTA file for CRAM input files (required if any '--csv_infile' element ends in '.cram'; used only with '--mode signal' or '--mode coord').
 
   -fA, -f1, -cA, -c1, --fil_A, --fil_1, --csv_A, --csv_1, --csv_fil_A  <csv:file>
     Comma-separated list of coordinate-sorted numerator bedGraph files (i.e. "file A"; e.g., for IP signal; used only with '--mode ratio').
@@ -159,7 +162,8 @@ Arguments:
 
 
 Notes:
-  - BAM and bedGraph input files must be coordinate-sorted.
+  - BAM/CRAM and bedGraph input files must be coordinate-sorted.
+  - CRAM inputs require '--ref_fa'.
   - Input and output paths supplied to this wrapper interface must not contain spaces, commas, or semicolons.
   - See 'execute_compute_signal.sh --details' for more notes.
 EOM
@@ -180,7 +184,7 @@ EOM
 
 cat << EOM
 Description:
-  Driver script automating the computations of bedGraph signal or ratio tracks, or BED-like fragment coordinate files, from BAM (for signal tracks or fragment coordinate files) or bedGraph (for ratio tracks) input files.
+  Driver script automating the computations of bedGraph signal or ratio tracks, or BED-like fragment coordinate files, from BAM/CRAM (for signal tracks or fragment coordinate files) or bedGraph (for ratio tracks) input files.
 
   Supports multiple signal normalization strategies, including
     - unadjusted (raw) signal (i.e., per-bin totals with no fragment-length and/or library-size adjustments)
@@ -216,7 +220,7 @@ Arguments:
   -md, --mode  <enum:signal,ratio,coord>
     Type of computation to perform: 'signal', 'ratio', or 'coord' (default: '${mode}'). Available options:
       - 's', 'sig', 'signal':
-        + Compute signal tracks directly from BAM input files.
+        + Compute signal tracks directly from BAM/CRAM input files.
         + Supports unadjusted signal, fragment-length-adjusted signal, or normalized coverage.
         + See '--method' for calculation styles.
         + Use this option with appropriately computed scaling factors ('--scl_fct') to compute unmodified ChIP-Rx (Orlando et al., Cell Rep 2014) spike-in-normalized signal.
@@ -230,7 +234,7 @@ Arguments:
         + If 'r' or 'rat' are supplied, variable 'mode' is set to "ratio".
 
       - 'c', 'coord', 'coordinates':
-        + Instead of computing signal or ratio tracks, output fragment coordinates in BED-like format from BAM input files.
+        + Instead of computing signal or ratio tracks, output fragment coordinates in BED-like format from BAM/CRAM input files.
         + Use this option to prepare input files for the original siQ-ChIP implementation (Dickson et al., JBC 2020; Dickson et al., Sci Rep 2023).
         + For more details, see github.com/BradleyDickson/siQ-ChIP or github.com/kalavattam/siQ-ChIP.
         + This mode disables '--siz_bin' and '--method', and sets '--typ_out' to 'bed.gz' by default (or 'bed' if '--typ_out bed' is specified).
@@ -271,9 +275,14 @@ Arguments:
           - Internally, all of these values are standardized to 'method=log2_r'.
 
   -i, -fi, -ci, --infile, --infiles, --fil_in, --csv_infile, --csv_infiles  <csv:file>
-    Comma-separated list of coordinate-sorted BAM infiles.
+    Comma-separated list of coordinate-sorted BAM/CRAM infiles.
 
     Required when '--mode signal' or '--mode coord'. Ignored for '--mode ratio'.
+
+  -r, --ref, --ref_fa, --reference  <file>
+    Reference FASTA file for CRAM input files.
+
+    Required when any '--csv_infile' element ends in '.cram'. Used only with '--mode signal' or '--mode coord'; ignored for '--mode ratio'.
 
   -fA, -f1, -cA, -c1, --fil_A, --fil_1, --csv_A, --csv_1, --csv_fil_A  <csv:file>
     Comma-separated list of coordinate-sorted numerator bedGraph files (i.e. "file A"; e.g., representing ChIP IP signal tracks).
@@ -315,7 +324,7 @@ Arguments:
     When '--mode signal' or '--mode coord':
       - If not specified, no prefix is added.
       - If specified, the prefix is prepended to the base filename, and any leading 'IP_' or 'in_' in that base filename is stripped before applying it.
-      - Note: If you use the same '--prefix' for both IP and input BAMs in the same output directory, stripping 'IP_'/ 'in_' may cause filename collisions.
+      - Note: If you use the same '--prefix' for both IP and input BAMs/CRAMs in the same output directory, stripping 'IP_'/ 'in_' may cause filename collisions.
         + In that case, prefer distinct prefixes (e.g., 'IP', 'in').
 
     When '--mode ratio':
@@ -496,7 +505,8 @@ Dependencies:
 
 
 Notes:
-  - BAM and bedGraph input files must be coordinate-sorted.
+  - BAM/CRAM and bedGraph input files must be coordinate-sorted.
+  - CRAM inputs require '--ref_fa'.
   - Input and output paths supplied to this wrapper interface must not contain spaces, commas, or semicolons.
     + Commas are used internally as list delimiters.
     + Semicolons are also considered unsafe in this wrapper workflow.
@@ -505,7 +515,7 @@ Notes:
   - '--typ_out' must be compatible with the selected '--mode'.
     + With '--mode signal' or '--mode ratio', bedGraph-style values ('bedGraph', 'bedgraph', 'bdg', and 'bg', and their '.gz' variants) are allowed; 'bed'/'bed.gz' are accepted but are automatically converted to 'bdg.gz' with a warning.
     + With '--mode coord', 'bed'/'bed.gz' are allowed; bedGraph-style values are accepted but are automatically converted to 'bed.gz' with a warning.
-  - Output filenames are derived from BAM or bedGraph input files and the value associated with '--typ_out'.
+  - Output filenames are derived from BAM/CRAM or bedGraph input files and the value associated with '--typ_out'.
   - For bedGraph-style output, '--rnd' sets the maximum number of decimal places retained for finite emitted values; after rounding, non-informative trailing zeros and any trailing decimal point are stripped.
   - BED-like files of fragment coordinates are, e.g., used as input to the original siQ-ChIP implementation (Dickson et al., JBC 2020; Dickson et al., Sci Rep 2023).
   - Job execution mode (serial, GNU Parallel, or Slurm array) is chosen automatically from '--slurm', '--threads', and '--max_job':
