@@ -26,7 +26,7 @@ dir_fx="${ROOT_REPO}/tests/compute_signal/fixtures/bam"
 infile_se="${dir_fx}/tiny_se.bam"
 infile_pe="${dir_fx}/tiny_pe.bam"
 
-tmp="${TEST_DIR_TMP}/compute_signal_bam"
+tmp="${TEST_DIR_TMP}/submit_compute_signal_bam"
 dir_out="${tmp}/out"
 dir_err="${tmp}/logs"
 dir_log="${TEST_DIR_LOG}/compute_signal"

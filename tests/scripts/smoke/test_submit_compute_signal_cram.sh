@@ -27,7 +27,7 @@ infile_se="${dir_fx}/cram/tiny_se.cram"
 infile_pe="${dir_fx}/cram/tiny_pe.cram"
 ref_fa="${dir_fx}/reference/tiny.fa"
 
-tmp="${TEST_DIR_TMP}/compute_signal_cram"
+tmp="${TEST_DIR_TMP}/submit_compute_signal_cram"
 dir_out="${tmp}/out"
 dir_err="${tmp}/logs"
 dir_log="${TEST_DIR_LOG}/compute_signal"

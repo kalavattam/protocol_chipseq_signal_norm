@@ -77,7 +77,7 @@ fi
 #MAYBE: make function "private"?
 # shellcheck disable=SC2120
 function determine_cores() {
-    local cores      # Number of CPU cores available on system
+    local cores=""   # Number of CPU cores available on system
     local show_help  # Help message
 
     show_help=$(cat << EOM
@@ -91,8 +91,8 @@ Returns:
   Prints a positive integer core count to stdout; otherwise returns 1.
 
 Notes:
-  - Uses 'nproc' when available.
-  - Otherwise falls back to 'sysctl -n hw.ncpu'.
+  - Uses 'nproc' when available and valid.
+  - Otherwise falls back to 'sysctl -n hw.ncpu' when available and valid.
 EOM
     )
 
@@ -107,20 +107,23 @@ EOM
         return 1
     fi
 
-    if command -v nproc > /dev/null 2>&1; then
-        cores=$(nproc)
-    elif command -v sysctl > /dev/null 2>&1; then
-        cores=$(sysctl -n hw.ncpu 2> /dev/null)
-    else
-        echo_err_func "${FUNCNAME[0]}" \
-            "unable to determine the number of CPU cores."
-        return 1
+    if \
+        command -v nproc > /dev/null 2>&1
+    then
+        cores="$(nproc 2> /dev/null || true)"
     fi
 
-    #  Check that output is a valid integer
+    if ! \
+           [[ "${cores}" =~ ^[1-9][0-9]*$ ]] \
+        && command -v sysctl > /dev/null 2>&1
+    then
+        cores="$(sysctl -n hw.ncpu 2> /dev/null || true)"
+    fi
+
     if ! [[ "${cores}" =~ ^[1-9][0-9]*$ ]]; then
         echo_err_func "${FUNCNAME[0]}" \
-            "failed to retrieve a valid core count."
+            "unable to determine a valid CPU core count using 'nproc' or" \
+            "'sysctl -n hw.ncpu'."
         return 1
     fi
 

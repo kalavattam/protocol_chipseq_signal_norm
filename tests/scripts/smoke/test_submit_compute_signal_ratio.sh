@@ -26,7 +26,7 @@ dir_fx="${ROOT_REPO}/tests/compute_signal/fixtures/bedgraph"
 fil_A="${dir_fx}/ratio_A.bdg"
 fil_B="${dir_fx}/ratio_B.bdg"
 
-tmp="${TEST_DIR_TMP}/compute_signal_ratio"
+tmp="${TEST_DIR_TMP}/submit_compute_signal_ratio"
 dir_out="${tmp}/out"
 dir_err="${tmp}/logs"
 dir_log="${TEST_DIR_LOG}/compute_signal"

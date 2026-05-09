@@ -1285,6 +1285,8 @@ else
 
         for idx in "${!arr_outfile[@]}"; do
             build_cmd "${idx}"
+            cmd_bld=( "${BASH}" "${cmd_bld[@]}" )
+
             IFS=';' read -r log_out log_err < <(
                 get_submit_logs "${arr_outfile[idx]}"
             )
@@ -1315,22 +1317,27 @@ else
 
             for idx in "${!arr_outfile[@]}"; do
                 build_cmd "${idx}"
+                cmd_bld=( "${BASH}" "${cmd_bld[@]}" )
+
                 IFS=';' read -r log_out log_err < <(
                     get_submit_logs "${arr_outfile[idx]}"
                 )
+
                 print_built_cmd "${log_out}" "${log_err}"
                 echo
             done
-
             echo
         fi
 
         if [[ "${dry_run}" == "false" ]]; then
             for idx in "${!arr_outfile[@]}"; do
                 build_cmd "${idx}"
+                cmd_bld=( "${BASH}" "${cmd_bld[@]}" )
+
                 IFS=';' read -r log_out log_err < <(
                     get_submit_logs "${arr_outfile[idx]}"
                 )
+
                 "${cmd_bld[@]}" >> "${log_out}" 2>> "${log_err}"
             done
         fi
