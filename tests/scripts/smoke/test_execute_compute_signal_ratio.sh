@@ -45,35 +45,113 @@ require_files_exist "${fil_A}" "${fil_B}" || {
 }
 
 
-#  Run the execute wrapper through submit_compute_signal.sh into Python
+#  Assert that a file does not contain a matching row
+function assert_no_grep_pattern() {
+    local file="${1:-}"
+    local pattern="${2:-}"
+    local label="${3:-${pattern}}"
+
+    if \
+        grep -q -- "${pattern}" "${file}"
+    then
+        rec_fail "${label}; see $(rec_relpath "${file}")"
+    else
+        rec_pass "${label}"
+    fi
+}
+
+
+#  Run a local serial execute-wrapper ratio case through submit and Python
+function run_case_ratio() {
+    local nam_case="${1:-}"
+    local log_lcl="${2:-}"
+    local pfx_lcl="${3:-exec}"
+
+    shift 3
+
+    # shellcheck disable=SC2154
+    if \
+        run_capture \
+            "execute compute-signal ratio ${nam_case}" "${log_lcl}" \
+            "${TEST_BASH}" "${ROOT_REPO}/scripts/execute_compute_signal.sh" \
+                --threads 1 \
+                --mode ratio \
+                --method unadj \
+                --csv_fil_A "${fil_A}" \
+                --csv_fil_B "${fil_B}" \
+                --dir_out "${dir_out}" \
+                --typ_out bdg \
+                --prefix "${pfx_lcl}" \
+                --eps 0 \
+                --dp 3 \
+                --err_out "${dir_err}" \
+                --nam_job "test_execute_compute_ratio_${nam_case}" \
+                --max_job 1 \
+                "$@"
+    then
+        rec_pass "execute_compute_signal.sh ratio ${nam_case} exits 0"
+    else
+        rec_fail \
+            "execute_compute_signal.sh ratio ${nam_case} failed; see" \
+            "$(rec_relpath "${log_lcl}")"
+    fi
+}
+
+
+#  Require GNU Parallel in the same project environment used by wrappers
+function require_parallel_project_env() {
+    local log_lcl="${dir_log}/execute_compute_signal_ratio_parallel_env.log"
+    local rc=0
+
+    {
+        echo "Current shell:"
+        echo "SHELL=${SHELL:-UNSET}"
+        echo "BASH=${BASH:-UNSET}"
+        echo "PATH=${PATH:-UNSET}"
+        echo "CONDA_DEFAULT_ENV=${CONDA_DEFAULT_ENV:-UNSET}"
+        echo "CONDA_PREFIX=${CONDA_PREFIX:-UNSET}"
+        echo
+
+        # shellcheck disable=SC2016,SC2154
+        if [[ "${CONDA_DEFAULT_ENV:-}" == "${env_nam}" ]]; then
+            echo "Project environment '${env_nam}' is already active."
+            echo
+            echo "command -v parallel:"
+            command -v parallel
+        elif check_cmd_exists conda; then
+            echo "Checking project environment '${env_nam}' with conda run."
+            echo
+            conda run -n "${env_nam}" bash -lc '
+                echo "CONDA_DEFAULT_ENV=${CONDA_DEFAULT_ENV:-UNSET}"
+                echo "CONDA_PREFIX=${CONDA_PREFIX:-UNSET}"
+                echo "PATH=${PATH:-UNSET}"
+                echo
+                echo "command -v parallel:"
+                command -v parallel
+            '
+        else
+            echo "conda is unavailable; cannot inspect '${env_nam}'."
+            rc=1
+        fi
+    } > "${log_lcl}" 2>&1 || rc=1
+
+    if (( rc == 0 )); then
+        rec_pass "GNU Parallel is available in project environment"
+        return 0
+    fi
+
+    rec_fail \
+        "GNU Parallel unavailable in project environment; see" \
+        "$(rec_relpath "${log_lcl}")"
+    return 1
+}
+
+
+#  Baseline unadjusted ratio with three-decimal rounding
 outfile="${dir_out}/exec_ratio_A.bdg"
 log="${dir_log}/execute_compute_signal_ratio_unadj.log"
 
-# shellcheck disable=SC2154
-if \
-    run_capture \
-        "execute compute-signal ratio unadj" "${log}" \
-        "${TEST_BASH}" "${ROOT_REPO}/scripts/execute_compute_signal.sh" \
-            --threads 1 \
-            --mode ratio \
-            --method unadj \
-            --csv_fil_A "${fil_A}" \
-            --csv_fil_B "${fil_B}" \
-            --dir_out "${dir_out}" \
-            --typ_out bdg \
-            --prefix exec \
-            --eps 0 \
-            --dp 3 \
-            --err_out "${dir_err}" \
-            --nam_job "test_execute_compute_ratio" \
-            --max_job 1
-then
-    rec_pass "execute_compute_signal.sh ratio exits 0"
-else
-    rec_fail \
-        "execute_compute_signal.sh ratio failed; see" \
-        "$(rec_relpath "${log}")"
-fi
+run_case_ratio "unadj" "${log}" "exec"
 
 assert_file_nonempty "${outfile}" "execute ratio output"
 
@@ -88,6 +166,136 @@ if [[ -s "${outfile}" ]]; then
         "execute ratio output has I:60-70 = 0.333"
     assert_grep_pattern "${outfile}" $'^I\t70\t80\t1$' \
         "execute ratio output has I:70-80 = 1"
+fi
+
+
+#  Denominator floor: B=0.04 is floored to 0.1, so 1 / 0.1 = 10
+outfile="${dir_out}/exec_dep_min_ratio_A.bdg"
+log="${dir_log}/execute_compute_signal_ratio_dep_min.log"
+
+run_case_ratio "dep_min" "${log}" "exec_dep_min" --csv_dep_min 0.1
+
+assert_file_nonempty "${outfile}" "execute dep_min ratio output"
+
+if [[ -s "${outfile}" ]]; then
+    assert_grep_pattern "${outfile}" $'^I\t50\t60\t10$' \
+        "execute dep_min ratio output has I:50-60 = 10"
+fi
+
+
+#  Pseudocounts: (0 + 1) / (2 + 1) = 0.333 at three decimals
+outfile="${dir_out}/exec_pseudo_ratio_A.bdg"
+log="${dir_log}/execute_compute_signal_ratio_pseudo.log"
+
+run_case_ratio "pseudo" "${log}" "exec_pseudo" --csv_pseudo 1:1
+
+assert_file_nonempty "${outfile}" "execute pseudo ratio output"
+
+if [[ -s "${outfile}" ]]; then
+    assert_grep_pattern "${outfile}" $'^I\t10\t20\t0.333$' \
+        "execute pseudo ratio output has I:10-20 = 0.333"
+fi
+
+
+#  Drop non-finite rows while preserving finite ratio rows
+outfile="${dir_out}/exec_drp_nan_ratio_A.bdg"
+log="${dir_log}/execute_compute_signal_ratio_drp_nan.log"
+
+run_case_ratio "drp_nan" "${log}" "exec_drp_nan" --drp_nan
+
+assert_file_nonempty "${outfile}" "execute drp_nan ratio output"
+
+if [[ -s "${outfile}" ]]; then
+    assert_grep_pattern "${outfile}" $'^I\t0\t10\t2$' \
+        "execute drp_nan ratio output retains I:0-10 = 2"
+    assert_grep_pattern "${outfile}" $'^I\t60\t70\t0.333$' \
+        "execute drp_nan ratio output retains I:60-70 = 0.333"
+    assert_no_grep_pattern "${outfile}" $'^I\t20\t30\t' \
+        "execute drp_nan ratio output omits I:20-30"
+    assert_no_grep_pattern "${outfile}" $'^I\t30\t40\t' \
+        "execute drp_nan ratio output omits I:30-40"
+fi
+
+
+#  Zero-zero skipping before scaling removes the A=0, B=0 bin
+outfile="${dir_out}/exec_skip_00_ratio_A.bdg"
+log="${dir_log}/execute_compute_signal_ratio_skip_00.log"
+
+run_case_ratio "skip_00" "${log}" "exec_skip_00" --skip_00 pre_scale
+
+assert_file_nonempty "${outfile}" "execute skip_00 ratio output"
+
+if [[ -s "${outfile}" ]]; then
+    assert_no_grep_pattern "${outfile}" $'^I\t30\t40\t' \
+        "execute skip_00 ratio output omits I:30-40"
+fi
+
+
+#  Track sidecar should be generated and should omit non-finite rows
+outfile="${dir_out}/exec_track_ratio_A.bdg"
+trackfile="${dir_out}/exec_track_ratio_A.track.bdg"
+log="${dir_log}/execute_compute_signal_ratio_track.log"
+
+run_case_ratio "track" "${log}" "exec_track" --track
+
+assert_file_nonempty "${outfile}" "execute track main ratio output"
+assert_file_nonempty "${trackfile}" "execute track sidecar output"
+
+if [[ -s "${trackfile}" ]]; then
+    assert_grep_pattern "${trackfile}" $'^I\t0\t10\t2$' \
+        "execute track sidecar retains I:0-10 = 2"
+    assert_grep_pattern "${trackfile}" $'^I\t60\t70\t0.333$' \
+        "execute track sidecar retains I:60-70 = 0.333"
+    assert_no_grep_pattern "${trackfile}" $'^I\t20\t30\t' \
+        "execute track sidecar omits I:20-30"
+    assert_no_grep_pattern "${trackfile}" $'^I\t30\t40\t' \
+        "execute track sidecar omits I:30-40"
+fi
+
+
+#  GNU Parallel dry-run config should invoke non-executable submit scripts
+#+ through Bash
+require_parallel_project_env || {
+    finish
+    exit $?
+}
+
+config="${dir_err}/test_execute_compute_ratio_parallel.config_parallel.txt"
+log="${dir_log}/execute_compute_signal_ratio_parallel_dry_run.log"
+
+if \
+    run_capture \
+        "execute compute-signal ratio parallel dry-run" "${log}" \
+        "${TEST_BASH}" "${ROOT_REPO}/scripts/execute_compute_signal.sh" \
+            --dry_run \
+            --threads 2 \
+            --mode ratio \
+            --method unadj \
+            --csv_fil_A "${fil_A}" \
+            --csv_fil_B "${fil_B}" \
+            --dir_out "${dir_out}" \
+            --typ_out bdg \
+            --prefix exec_parallel \
+            --eps 0 \
+            --dp 3 \
+            --err_out "${dir_err}" \
+            --nam_job "test_execute_compute_ratio_parallel" \
+            --max_job 2
+then
+    rec_pass "execute_compute_signal.sh ratio GNU Parallel dry-run exits 0"
+else
+    rec_fail \
+        "execute_compute_signal.sh ratio GNU Parallel dry-run failed; see" \
+        "$(rec_relpath "${log}")"
+fi
+
+assert_file_nonempty "${config}" "execute ratio GNU Parallel config"
+
+if [[ -s "${config}" ]]; then
+    assert_grep_pattern \
+        "${config}" \
+        "${TEST_BASH} ${ROOT_REPO}/scripts/submit_compute_signal.sh" \
+        "execute ratio GNU Parallel config uses Bash-prefixed submit command"
 fi
 
 finish
