@@ -51,6 +51,8 @@ tests=(
     "${dir_run}/smoke/test_execute_compute_signal_cram.sh"
     "${dir_run}/smoke/test_submit_compute_signal_bam.sh"
     "${dir_run}/smoke/test_submit_compute_signal_cram.sh"
+    "${dir_run}/smoke/test_submit_filter_bams_bam.sh"
+    "${dir_run}/smoke/test_execute_filter_bams_bam.sh"
     "${dir_run}/smoke/test_help_style.sh"
 )
 

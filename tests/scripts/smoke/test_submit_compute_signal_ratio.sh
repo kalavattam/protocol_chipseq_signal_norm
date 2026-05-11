@@ -50,8 +50,9 @@ function run_case_ratio() {
     local nam_case="${1:-}"
     local outfile_lcl="${2:-}"
     local log_lcl="${3:-}"
+    local method="${4:-unadj}"
 
-    shift 3
+    shift 4
 
     # shellcheck disable=SC2154
     if \
@@ -62,7 +63,7 @@ function run_case_ratio() {
                 --dir_scr "${ROOT_REPO}/scripts" \
                 --threads 1 \
                 --mode ratio \
-                --method unadj \
+                --method "${method}" \
                 --csv_fil_A "${fil_A}" \
                 --csv_fil_B "${fil_B}" \
                 --csv_outfile "${outfile_lcl}" \
@@ -84,7 +85,7 @@ outfile="${dir_out}/ratio_unadj.dp3.bdg"
 log="${dir_log}/submit_compute_signal_ratio_unadj.log"
 
 run_case_ratio \
-    "unadj" "${outfile}" "${log}" \
+    "unadj" "${outfile}" "${log}" "unadj" \
     --csv_scl_fct NA \
     --csv_dep_min NA \
     --csv_pseudo NA \
@@ -108,12 +109,87 @@ if [[ -s "${outfile}" ]]; then
 fi
 
 
+#  Log2 ratio: log2(4 / 2) = 1 and log2(2 / 0.5) = 2
+outfile="${dir_out}/ratio_log2.dp3.bdg"
+log="${dir_log}/submit_compute_signal_ratio_log2.log"
+
+run_case_ratio \
+    "log2" "${outfile}" "${log}" "log2" \
+    --csv_scl_fct NA \
+    --csv_dep_min NA \
+    --csv_pseudo NA \
+    --eps 0 \
+    --skip_00 NA \
+    --dp 3
+
+assert_file_nonempty "${outfile}" "log2 ratio output"
+
+if [[ -s "${outfile}" ]]; then
+    assert_grep_pattern "${outfile}" $'^I\t0\t10\t1$' \
+        "log2 ratio output has I:0-10 = 1"
+    assert_grep_pattern "${outfile}" $'^I\t40\t50\t2$' \
+        "log2 ratio output has I:40-50 = 2"
+    assert_grep_pattern "${outfile}" $'^I\t60\t70\t-1.585$' \
+        "log2 ratio output has I:60-70 = -1.585"
+fi
+
+
+#  Reciprocal ratio: B / A gives 0.5, 0.25, and 3 for selected rows
+outfile="${dir_out}/ratio_unadj_r.dp3.bdg"
+log="${dir_log}/submit_compute_signal_ratio_unadj_r.log"
+
+run_case_ratio \
+    "unadj_r" "${outfile}" "${log}" "unadj_r" \
+    --csv_scl_fct NA \
+    --csv_dep_min NA \
+    --csv_pseudo NA \
+    --eps 0 \
+    --skip_00 NA \
+    --dp 3
+
+assert_file_nonempty "${outfile}" "reciprocal ratio output"
+
+if [[ -s "${outfile}" ]]; then
+    assert_grep_pattern "${outfile}" $'^I\t0\t10\t0.5$' \
+        "reciprocal ratio output has I:0-10 = 0.5"
+    assert_grep_pattern "${outfile}" $'^I\t40\t50\t0.25$' \
+        "reciprocal ratio output has I:40-50 = 0.25"
+    assert_grep_pattern "${outfile}" $'^I\t60\t70\t3$' \
+        "reciprocal ratio output has I:60-70 = 3"
+fi
+
+
+#  Reciprocal log2 ratio: log2(B / A)
+outfile="${dir_out}/ratio_log2_r.dp3.bdg"
+log="${dir_log}/submit_compute_signal_ratio_log2_r.log"
+
+run_case_ratio \
+    "log2_r" "${outfile}" "${log}" "log2_r" \
+    --csv_scl_fct NA \
+    --csv_dep_min NA \
+    --csv_pseudo NA \
+    --eps 0 \
+    --skip_00 NA \
+    --dp 3
+
+assert_file_nonempty "${outfile}" "reciprocal log2 ratio output"
+
+if [[ -s "${outfile}" ]]; then
+    assert_grep_pattern "${outfile}" $'^I\t0\t10\t-1$' \
+        "reciprocal log2 ratio output has I:0-10 = -1"
+    assert_grep_pattern "${outfile}" $'^I\t40\t50\t-2$' \
+        "reciprocal log2 ratio output has I:40-50 = -2"
+    assert_grep_pattern "${outfile}" $'^I\t60\t70\t1.585$' \
+        "reciprocal log2 ratio output has I:60-70 = 1.585"
+fi
+
+
 #  Denominator floor: B=0.04 is floored to 0.1, so 1 / 0.1 = 10
 outfile="${dir_out}/ratio_dep_min_0p1.dp3.bdg"
 log="${dir_log}/submit_compute_signal_ratio_dep_min.log"
 
 run_case_ratio \
-    "dep_min" "${outfile}" "${log}" \
+    "dep_min" "${outfile}" "${log}" "unadj" \
     --csv_scl_fct NA \
     --csv_dep_min 0.1 \
     --csv_pseudo NA \
@@ -134,7 +210,7 @@ outfile="${dir_out}/ratio_pseudo_1_1.dp3.bdg"
 log="${dir_log}/submit_compute_signal_ratio_pseudo.log"
 
 run_case_ratio \
-    "pseudo" "${outfile}" "${log}" \
+    "pseudo" "${outfile}" "${log}" "unadj" \
     --csv_scl_fct NA \
     --csv_dep_min NA \
     --csv_pseudo 1:1 \
@@ -155,7 +231,7 @@ outfile="${dir_out}/ratio_drp_nan.dp3.bdg"
 log="${dir_log}/submit_compute_signal_ratio_drp_nan.log"
 
 run_case_ratio \
-    "drp_nan" "${outfile}" "${log}" \
+    "drp_nan" "${outfile}" "${log}" "unadj" \
     --csv_scl_fct NA \
     --csv_dep_min NA \
     --csv_pseudo NA \
@@ -183,7 +259,7 @@ outfile="${dir_out}/ratio_skip_00_pre_scale.dp3.bdg"
 log="${dir_log}/submit_compute_signal_ratio_skip_00.log"
 
 run_case_ratio \
-    "skip_00" "${outfile}" "${log}" \
+    "skip_00" "${outfile}" "${log}" "unadj" \
     --csv_scl_fct NA \
     --csv_dep_min NA \
     --csv_pseudo NA \
@@ -205,7 +281,7 @@ trackfile="${dir_out}/ratio_track.dp3.track.bdg"
 log="${dir_log}/submit_compute_signal_ratio_track.log"
 
 run_case_ratio \
-    "track" "${outfile}" "${log}" \
+    "track" "${outfile}" "${log}" "unadj" \
     --csv_scl_fct NA \
     --csv_dep_min NA \
     --csv_pseudo NA \
@@ -234,7 +310,7 @@ outfile="${dir_out}/ratio_rnd_alias.dp2.bdg"
 log="${dir_log}/submit_compute_signal_ratio_rnd_alias.log"
 
 run_case_ratio \
-    "rnd_alias" "${outfile}" "${log}" \
+    "rnd_alias" "${outfile}" "${log}" "unadj" \
     --csv_scl_fct NA \
     --csv_dep_min NA \
     --csv_pseudo NA \

@@ -50,8 +50,9 @@ function run_case_ratio() {
     local nam_case="${1:-}"
     local log_lcl="${2:-}"
     local pfx_lcl="${3:-exec}"
+    local method="${4:-unadj}"
 
-    shift 3
+    shift 4
 
     # shellcheck disable=SC2154
     if \
@@ -60,7 +61,7 @@ function run_case_ratio() {
             "${TEST_BASH}" "${ROOT_REPO}/scripts/execute_compute_signal.sh" \
                 --threads 1 \
                 --mode ratio \
-                --method unadj \
+                --method "${method}" \
                 --csv_fil_A "${fil_A}" \
                 --csv_fil_B "${fil_B}" \
                 --dir_out "${dir_out}" \
@@ -86,7 +87,7 @@ function run_case_ratio() {
 outfile="${dir_out}/exec_ratio_A.bdg"
 log="${dir_log}/execute_compute_signal_ratio_unadj.log"
 
-run_case_ratio "unadj" "${log}" "exec"
+run_case_ratio "unadj" "${log}" "exec" "unadj"
 
 assert_file_nonempty "${outfile}" "execute ratio output"
 
@@ -104,11 +105,65 @@ if [[ -s "${outfile}" ]]; then
 fi
 
 
+#  Log2 ratio: log2(4 / 2) = 1 and log2(2 / 0.5) = 2
+outfile="${dir_out}/exec_log2_ratio_A.bdg"
+log="${dir_log}/execute_compute_signal_ratio_log2.log"
+
+run_case_ratio "log2" "${log}" "exec_log2" "log2"
+
+assert_file_nonempty "${outfile}" "execute log2 ratio output"
+
+if [[ -s "${outfile}" ]]; then
+    assert_grep_pattern "${outfile}" $'^I\t0\t10\t1$' \
+        "execute log2 ratio output has I:0-10 = 1"
+    assert_grep_pattern "${outfile}" $'^I\t40\t50\t2$' \
+        "execute log2 ratio output has I:40-50 = 2"
+    assert_grep_pattern "${outfile}" $'^I\t60\t70\t-1.585$' \
+        "execute log2 ratio output has I:60-70 = -1.585"
+fi
+
+
+#  Reciprocal ratio: B / A gives 0.5, 0.25, and 3 for selected rows
+outfile="${dir_out}/exec_unadj_r_ratio_A.bdg"
+log="${dir_log}/execute_compute_signal_ratio_unadj_r.log"
+
+run_case_ratio "unadj_r" "${log}" "exec_unadj_r" "unadj_r"
+
+assert_file_nonempty "${outfile}" "execute reciprocal ratio output"
+
+if [[ -s "${outfile}" ]]; then
+    assert_grep_pattern "${outfile}" $'^I\t0\t10\t0.5$' \
+        "execute reciprocal ratio output has I:0-10 = 0.5"
+    assert_grep_pattern "${outfile}" $'^I\t40\t50\t0.25$' \
+        "execute reciprocal ratio output has I:40-50 = 0.25"
+    assert_grep_pattern "${outfile}" $'^I\t60\t70\t3$' \
+        "execute reciprocal ratio output has I:60-70 = 3"
+fi
+
+
+#  Reciprocal log2 ratio: log2(B / A)
+outfile="${dir_out}/exec_log2_r_ratio_A.bdg"
+log="${dir_log}/execute_compute_signal_ratio_log2_r.log"
+
+run_case_ratio "log2_r" "${log}" "exec_log2_r" "log2_r"
+
+assert_file_nonempty "${outfile}" "execute reciprocal log2 ratio output"
+
+if [[ -s "${outfile}" ]]; then
+    assert_grep_pattern "${outfile}" $'^I\t0\t10\t-1$' \
+        "execute reciprocal log2 ratio output has I:0-10 = -1"
+    assert_grep_pattern "${outfile}" $'^I\t40\t50\t-2$' \
+        "execute reciprocal log2 ratio output has I:40-50 = -2"
+    assert_grep_pattern "${outfile}" $'^I\t60\t70\t1.585$' \
+        "execute reciprocal log2 ratio output has I:60-70 = 1.585"
+fi
+
+
 #  Denominator floor: B=0.04 is floored to 0.1, so 1 / 0.1 = 10
 outfile="${dir_out}/exec_dep_min_ratio_A.bdg"
 log="${dir_log}/execute_compute_signal_ratio_dep_min.log"
 
-run_case_ratio "dep_min" "${log}" "exec_dep_min" --csv_dep_min 0.1
+run_case_ratio "dep_min" "${log}" "exec_dep_min" "unadj" --csv_dep_min 0.1
 
 assert_file_nonempty "${outfile}" "execute dep_min ratio output"
 
@@ -122,7 +177,7 @@ fi
 outfile="${dir_out}/exec_pseudo_ratio_A.bdg"
 log="${dir_log}/execute_compute_signal_ratio_pseudo.log"
 
-run_case_ratio "pseudo" "${log}" "exec_pseudo" --csv_pseudo 1:1
+run_case_ratio "pseudo" "${log}" "exec_pseudo" "unadj" --csv_pseudo 1:1
 
 assert_file_nonempty "${outfile}" "execute pseudo ratio output"
 
@@ -136,7 +191,7 @@ fi
 outfile="${dir_out}/exec_drp_nan_ratio_A.bdg"
 log="${dir_log}/execute_compute_signal_ratio_drp_nan.log"
 
-run_case_ratio "drp_nan" "${log}" "exec_drp_nan" --drp_nan
+run_case_ratio "drp_nan" "${log}" "exec_drp_nan" "unadj" --drp_nan
 
 assert_file_nonempty "${outfile}" "execute drp_nan ratio output"
 
@@ -156,7 +211,7 @@ fi
 outfile="${dir_out}/exec_skip_00_ratio_A.bdg"
 log="${dir_log}/execute_compute_signal_ratio_skip_00.log"
 
-run_case_ratio "skip_00" "${log}" "exec_skip_00" --skip_00 pre_scale
+run_case_ratio "skip_00" "${log}" "exec_skip_00" "unadj" --skip_00 pre_scale
 
 assert_file_nonempty "${outfile}" "execute skip_00 ratio output"
 
@@ -171,7 +226,7 @@ outfile="${dir_out}/exec_track_ratio_A.bdg"
 trackfile="${dir_out}/exec_track_ratio_A.track.bdg"
 log="${dir_log}/execute_compute_signal_ratio_track.log"
 
-run_case_ratio "track" "${log}" "exec_track" --track
+run_case_ratio "track" "${log}" "exec_track" "unadj" --track
 
 assert_file_nonempty "${outfile}" "execute track main ratio output"
 assert_file_nonempty "${trackfile}" "execute track sidecar output"
