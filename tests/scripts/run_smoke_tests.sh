@@ -46,6 +46,7 @@ tests=(
     "${dir_run}/smoke/test_dry_run_commands.sh"
     "${dir_run}/smoke/test_submit_compute_signal_ratio.sh"
     "${dir_run}/smoke/test_execute_compute_signal_ratio.sh"
+    "${dir_run}/smoke/test_execute_compute_signal_parallel.sh"
     "${dir_run}/smoke/test_execute_compute_signal_bam.sh"
     "${dir_run}/smoke/test_execute_compute_signal_cram.sh"
     "${dir_run}/smoke/test_submit_compute_signal_bam.sh"

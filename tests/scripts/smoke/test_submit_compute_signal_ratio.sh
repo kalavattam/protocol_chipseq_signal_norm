@@ -45,22 +45,6 @@ require_files_exist "${fil_A}" "${fil_B}" || {
 }
 
 
-#  Assert that a file does not contain a matching row
-function assert_no_grep_pattern() {
-    local file="${1:-}"
-    local pattern="${2:-}"
-    local label="${3:-${pattern}}"
-
-    if \
-        grep -q -- "${pattern}" "${file}"
-    then
-        rec_fail "${label}; see $(rec_relpath "${file}")"
-    else
-        rec_pass "${label}"
-    fi
-}
-
-
 #  Run a local serial submit-wrapper ratio case into compute_signal_ratio.py
 function run_case_ratio() {
     local nam_case="${1:-}"

@@ -45,22 +45,6 @@ require_files_exist "${fil_A}" "${fil_B}" || {
 }
 
 
-#  Assert that a file does not contain a matching row
-function assert_no_grep_pattern() {
-    local file="${1:-}"
-    local pattern="${2:-}"
-    local label="${3:-${pattern}}"
-
-    if \
-        grep -q -- "${pattern}" "${file}"
-    then
-        rec_fail "${label}; see $(rec_relpath "${file}")"
-    else
-        rec_pass "${label}"
-    fi
-}
-
-
 #  Run a local serial execute-wrapper ratio case through submit and Python
 function run_case_ratio() {
     local nam_case="${1:-}"
@@ -95,55 +79,6 @@ function run_case_ratio() {
             "execute_compute_signal.sh ratio ${nam_case} failed; see" \
             "$(rec_relpath "${log_lcl}")"
     fi
-}
-
-
-#  Require GNU Parallel in the same project environment used by wrappers
-function require_parallel_project_env() {
-    local log_lcl="${dir_log}/execute_compute_signal_ratio_parallel_env.log"
-    local rc=0
-
-    {
-        echo "Current shell:"
-        echo "SHELL=${SHELL:-UNSET}"
-        echo "BASH=${BASH:-UNSET}"
-        echo "PATH=${PATH:-UNSET}"
-        echo "CONDA_DEFAULT_ENV=${CONDA_DEFAULT_ENV:-UNSET}"
-        echo "CONDA_PREFIX=${CONDA_PREFIX:-UNSET}"
-        echo
-
-        # shellcheck disable=SC2016,SC2154
-        if [[ "${CONDA_DEFAULT_ENV:-}" == "${env_nam}" ]]; then
-            echo "Project environment '${env_nam}' is already active."
-            echo
-            echo "command -v parallel:"
-            command -v parallel
-        elif check_cmd_exists conda; then
-            echo "Checking project environment '${env_nam}' with conda run."
-            echo
-            conda run -n "${env_nam}" bash -lc '
-                echo "CONDA_DEFAULT_ENV=${CONDA_DEFAULT_ENV:-UNSET}"
-                echo "CONDA_PREFIX=${CONDA_PREFIX:-UNSET}"
-                echo "PATH=${PATH:-UNSET}"
-                echo
-                echo "command -v parallel:"
-                command -v parallel
-            '
-        else
-            echo "conda is unavailable; cannot inspect '${env_nam}'."
-            rc=1
-        fi
-    } > "${log_lcl}" 2>&1 || rc=1
-
-    if (( rc == 0 )); then
-        rec_pass "GNU Parallel is available in project environment"
-        return 0
-    fi
-
-    rec_fail \
-        "GNU Parallel unavailable in project environment; see" \
-        "$(rec_relpath "${log_lcl}")"
-    return 1
 }
 
 
@@ -252,50 +187,5 @@ if [[ -s "${trackfile}" ]]; then
         "execute track sidecar omits I:30-40"
 fi
 
-
-#  GNU Parallel dry-run config should invoke non-executable submit scripts
-#+ through Bash
-require_parallel_project_env || {
-    finish
-    exit $?
-}
-
-config="${dir_err}/test_execute_compute_ratio_parallel.config_parallel.txt"
-log="${dir_log}/execute_compute_signal_ratio_parallel_dry_run.log"
-
-if \
-    run_capture \
-        "execute compute-signal ratio parallel dry-run" "${log}" \
-        "${TEST_BASH}" "${ROOT_REPO}/scripts/execute_compute_signal.sh" \
-            --dry_run \
-            --threads 2 \
-            --mode ratio \
-            --method unadj \
-            --csv_fil_A "${fil_A}" \
-            --csv_fil_B "${fil_B}" \
-            --dir_out "${dir_out}" \
-            --typ_out bdg \
-            --prefix exec_parallel \
-            --eps 0 \
-            --dp 3 \
-            --err_out "${dir_err}" \
-            --nam_job "test_execute_compute_ratio_parallel" \
-            --max_job 2
-then
-    rec_pass "execute_compute_signal.sh ratio GNU Parallel dry-run exits 0"
-else
-    rec_fail \
-        "execute_compute_signal.sh ratio GNU Parallel dry-run failed; see" \
-        "$(rec_relpath "${log}")"
-fi
-
-assert_file_nonempty "${config}" "execute ratio GNU Parallel config"
-
-if [[ -s "${config}" ]]; then
-    assert_grep_pattern \
-        "${config}" \
-        "${TEST_BASH} ${ROOT_REPO}/scripts/submit_compute_signal.sh" \
-        "execute ratio GNU Parallel config uses Bash-prefixed submit command"
-fi
 
 finish

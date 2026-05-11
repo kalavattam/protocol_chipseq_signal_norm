@@ -102,6 +102,69 @@ function check_cmd_exists() {
 }
 
 
+#  Check whether optional integration checks were explicitly requested
+function is_integration() {
+    [[ \
+           "${RUN_INTEGRATION:-0}"       == "1" \
+        || "${RUN_CONDA_INTEGRATION:-0}" == "1" \
+    ]]
+}
+
+
+#  Require GNU Parallel in the requested project environment
+function require_parallel_env() {
+    local env_nam="${1:-env_protocol}"
+    local log_lcl="${2:-${TEST_DIR_LOG}/parallel_project_env.log}"
+    local rc=0
+
+    mkdir -p "$(dirname "${log_lcl}")"
+
+    {
+        echo "Current shell:"
+        echo "SHELL=${SHELL:-UNSET}"
+        echo "BASH=${BASH:-UNSET}"
+        echo "PATH=${PATH:-UNSET}"
+        echo "CONDA_DEFAULT_ENV=${CONDA_DEFAULT_ENV:-UNSET}"
+        echo "CONDA_PREFIX=${CONDA_PREFIX:-UNSET}"
+        echo "MAMBA_EXE=${MAMBA_EXE:-UNSET}"
+        echo
+
+        echo "Current shell command -v parallel:"
+        command -v parallel || true
+        echo
+
+        if [[ "${CONDA_DEFAULT_ENV:-}" == "${env_nam}" ]]; then
+            echo "Project-env command -v parallel:"
+            command -v parallel
+        elif check_cmd_exists conda; then
+            echo "Project-env command -v parallel via Conda activation:"
+            ENV_NAM="${env_nam}" bash -lc '
+                eval "$(conda shell.bash hook)"
+                conda activate "${ENV_NAM}"
+                echo "CONDA_DEFAULT_ENV=${CONDA_DEFAULT_ENV:-UNSET}"
+                echo "CONDA_PREFIX=${CONDA_PREFIX:-UNSET}"
+                echo "PATH=${PATH:-UNSET}"
+                echo
+                command -v parallel
+            '
+        else
+            echo "conda is unavailable; cannot inspect '${env_nam}'."
+            rc=1
+        fi
+    } > "${log_lcl}" 2>&1 || rc=1
+
+    if (( rc == 0 )); then
+        rec_pass "GNU Parallel is available in project environment"
+        return 0
+    fi
+
+    rec_fail \
+        "GNU Parallel unavailable in project environment; see" \
+        "$(rec_relpath "${log_lcl}")"
+    return 1
+}
+
+
 #  Resolve the active project environment or require a named fallback
 function require_env_project() {
     local env_ref="${1:-env_nam}"
@@ -202,6 +265,22 @@ function assert_grep_pattern() {
         rec_pass "${label}"
     else
         rec_fail "${label}; see $(rec_relpath "${file}")"
+    fi
+}
+
+
+#  Assert that a log or output file does not contain a pattern
+function assert_no_grep_pattern() {
+    local file="${1:-}"
+    local pattern="${2:-}"
+    local label="${3:-${pattern}}"
+
+    if \
+        grep -q -- "${pattern}" "${file}"
+    then
+        rec_fail "${label}; see $(rec_relpath "${file}")"
+    else
+        rec_pass "${label}"
     fi
 }
 
