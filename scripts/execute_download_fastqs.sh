@@ -502,6 +502,7 @@ if [[ "${threads}" -gt 1 ]]; then
 
     for i in "${!list_acc[@]}"; do
         build_cmd "${i}"
+        cmd_bld=( "${BASH}" "${cmd_bld[@]}" )
 
         {
             print_built_cmd
@@ -573,6 +574,7 @@ else
     else
         for i in "${!list_acc[@]}"; do
             build_cmd "${i}"
+            cmd_bld=( "${BASH}" "${cmd_bld[@]}" )
 
             if [[ "${dry_run}" == "true" || "${verbose}" == "true" ]]; then
                 print_banner_pretty "Serial execution"

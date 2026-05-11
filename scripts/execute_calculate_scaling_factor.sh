@@ -1052,6 +1052,8 @@ else
 
         for idx in "${!arr_mip[@]}"; do
             build_cmd "${idx}"
+            cmd_bld=( "${BASH}" "${cmd_bld[@]}" )
+
             IFS=';' read -r log_out log_err < <(
                 get_submit_logs "${arr_mip[idx]}"
             )
@@ -1082,6 +1084,8 @@ else
 
             for idx in "${!arr_mip[@]}"; do
                 build_cmd "${idx}"
+                cmd_bld=( "${BASH}" "${cmd_bld[@]}" )
+
                 IFS=';' read -r log_out log_err < <(
                     get_submit_logs "${arr_mip[idx]}"
                 )
@@ -1095,6 +1099,8 @@ else
         if [[ "${dry_run}" == "false" ]]; then
             for idx in "${!arr_mip[@]}"; do
                 build_cmd "${idx}"
+                cmd_bld=( "${BASH}" "${cmd_bld[@]}" )
+
                 IFS=';' read -r log_out log_err < <(
                     get_submit_logs "${arr_mip[idx]}"
                 )

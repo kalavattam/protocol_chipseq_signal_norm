@@ -513,6 +513,7 @@ else
 
         for idx in "${!arr_infile[@]}"; do
             build_cmd "${idx}"
+            cmd_bld=( "${BASH}" "${cmd_bld[@]}" )
 
             IFS=';' read -r log_out log_err < <(
                 get_submit_logs "${arr_infile[idx]}"
@@ -540,6 +541,7 @@ else
     else
         #  Serial execution
         build_cmd "UNSET"
+        cmd_bld=( "${BASH}" "${cmd_bld[@]}" )
 
         log_out="${err_out}/${nam_job}_ser.stdout.txt"
         log_err="${err_out}/${nam_job}_ser.stderr.txt"
