@@ -157,4 +157,110 @@ if [[ -s "${outfile}" ]]; then
         "PE coord output has chromosome-I fragment I:40-60"
 fi
 
+
+#  Scaling factor and prefix propagation: raw 10-bp SE bins scaled by 2
+outfile="${dir_out}/tiny_se_signal_scaled.bdg"
+log="${dir_log}/submit_compute_signal_bam_se_signal_scaled.log"
+
+run_case_bam \
+    "se_signal_scaled" "signal" "${infile_se}" "${outfile}" "${log}" \
+    --method unadj \
+    --siz_bin 10 \
+    --csv_scl_fct 2 \
+    --dp 3
+
+assert_file_nonempty "${outfile}" "scaled SE signal output"
+
+if [[ -s "${outfile}" ]]; then
+    assert_grep_pattern "${outfile}" $'^I\t0\t10\t20$' \
+        "scaled SE signal output has I:0-10 = 20"
+    assert_grep_pattern "${outfile}" $'^I\t20\t30\t20$' \
+        "scaled SE signal output has I:20-30 = 20"
+fi
+
+
+#  Fragment-length normalization: each 10-bp SE fragment contributes 1
+outfile="${dir_out}/tiny_se_signal_frag.bdg"
+log="${dir_log}/submit_compute_signal_bam_se_signal_frag.log"
+
+run_case_bam \
+    "se_signal_frag" "signal" "${infile_se}" "${outfile}" "${log}" \
+    --method frag \
+    --siz_bin 10 \
+    --csv_scl_fct NA \
+    --dp 3
+
+assert_file_nonempty "${outfile}" "frag-normalized SE signal output"
+
+if [[ -s "${outfile}" ]]; then
+    assert_grep_pattern "${outfile}" $'^I\t0\t10\t1$' \
+        "frag-normalized SE signal output has I:0-10 = 1"
+    assert_grep_pattern "${outfile}" $'^I\t20\t30\t1$' \
+        "frag-normalized SE signal output has I:20-30 = 1"
+fi
+
+
+#  Normalized coverage divides fragment-normalized signal by total fragments
+outfile="${dir_out}/tiny_se_signal_norm.bdg"
+log="${dir_log}/submit_compute_signal_bam_se_signal_norm.log"
+
+run_case_bam \
+    "se_signal_norm" "signal" "${infile_se}" "${outfile}" "${log}" \
+    --method norm \
+    --siz_bin 10 \
+    --csv_scl_fct NA \
+    --dp 3
+
+assert_file_nonempty "${outfile}" "norm SE signal output"
+
+if [[ -s "${outfile}" ]]; then
+    assert_grep_pattern "${outfile}" $'^I\t0\t10\t0.5$' \
+        "norm SE signal output has I:0-10 = 0.5"
+    assert_grep_pattern "${outfile}" $'^I\t20\t30\t0.5$' \
+        "norm SE signal output has I:20-30 = 0.5"
+fi
+
+
+#  Fixed SE fragment length extends reads to 20 bp in signal mode
+outfile="${dir_out}/tiny_se_signal_usr_frg.bdg"
+log="${dir_log}/submit_compute_signal_bam_se_signal_usr_frg.log"
+
+run_case_bam \
+    "se_signal_usr_frg" "signal" "${infile_se}" "${outfile}" "${log}" \
+    --method unadj \
+    --siz_bin 10 \
+    --csv_scl_fct NA \
+    --csv_usr_frg 20 \
+    --dp 3
+
+assert_file_nonempty "${outfile}" "usr_frg SE signal output"
+
+if [[ -s "${outfile}" ]]; then
+    assert_grep_pattern "${outfile}" $'^I\t0\t10\t10$' \
+        "usr_frg SE signal output has I:0-10 = 10"
+    assert_grep_pattern "${outfile}" $'^I\t10\t20\t20$' \
+        "usr_frg SE signal output has I:10-20 = 20"
+    assert_grep_pattern "${outfile}" $'^I\t20\t30\t10$' \
+        "usr_frg SE signal output has I:20-30 = 10"
+fi
+
+
+#  Fixed SE fragment length is reflected in coord-mode BED intervals
+outfile="${dir_out}/tiny_se_coord_usr_frg.bed"
+log="${dir_log}/submit_compute_signal_bam_se_coord_usr_frg.log"
+
+run_case_bam \
+    "se_coord_usr_frg" "coord" "${infile_se}" "${outfile}" "${log}" \
+    --csv_usr_frg 20 \
+    --dp 3
+
+assert_file_nonempty "${outfile}" "usr_frg SE coord output"
+
+if [[ -s "${outfile}" ]]; then
+    assert_grep_pattern "${outfile}" $'^I\t0\t20\t20$' \
+        "usr_frg SE coord output has chromosome-I fragment I:0-20"
+    assert_grep_pattern "${outfile}" $'^I\t10\t30\t20$' \
+        "usr_frg SE coord output has chromosome-I fragment I:10-30"
+fi
+
 finish
