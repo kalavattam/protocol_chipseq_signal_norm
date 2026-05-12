@@ -29,12 +29,15 @@ fil_hdr_A="${dir_fx}/ratio_headers_A.bdg"
 fil_hdr_B="${dir_fx}/ratio_headers_B.bdg"
 
 tmp="${TEST_DIR_TMP}/execute_compute_signal_ratio"
+dir_in="${tmp}/in"
 dir_out="${tmp}/out"
 dir_err="${tmp}/logs"
 dir_log="${TEST_DIR_LOG}/compute_signal"
+fil_gz_A="${dir_in}/ratio_A.bdg.gz"
+fil_gz_B="${dir_in}/ratio_B.bdg.gz"
 
 rm -rf "${tmp}"
-mkdir -p "${dir_out}" "${dir_err}" "${dir_log}"
+mkdir -p "${dir_in}" "${dir_out}" "${dir_err}" "${dir_log}"
 
 require_env_project env_nam || {
     finish
@@ -42,6 +45,20 @@ require_env_project env_nam || {
 }
 
 require_files_exist "${fil_A}" "${fil_B}" "${fil_hdr_A}" "${fil_hdr_B}" || {
+    finish
+    exit $?
+}
+
+if ! check_cmd_exists gzip; then
+    rec_fail "gzip is required for ratio gzip I/O coverage"
+    finish
+    exit $?
+fi
+
+gzip -c "${fil_A}" > "${fil_gz_A}"
+gzip -c "${fil_B}" > "${fil_gz_B}"
+
+require_files_exist "${fil_gz_A}" "${fil_gz_B}" || {
     finish
     exit $?
 }
@@ -303,6 +320,60 @@ if [[ -s "${trackfile}" ]]; then
         "execute track sidecar omits I:20-30"
     assert_no_grep_pattern "${trackfile}" $'^I\t30\t40\t' \
         "execute track sidecar omits I:30-40"
+fi
+
+
+#  Gzipped bedGraph input and output should round-trip through execute mode
+outfile="${dir_out}/exec_gzip_io_ratio_A.bdg.gz"
+outfile_txt="${dir_out}/exec_gzip_io_ratio_A.bdg"
+log="${dir_log}/execute_compute_signal_ratio_gzip_io.log"
+
+if \
+    run_capture \
+        "execute compute-signal ratio gzip_io" "${log}" \
+        "${TEST_BASH}" "${ROOT_REPO}/scripts/execute_compute_signal.sh" \
+            --threads 1 \
+            --mode ratio \
+            --method unadj \
+            --csv_fil_A "${fil_gz_A}" \
+            --csv_fil_B "${fil_gz_B}" \
+            --dir_out "${dir_out}" \
+            --typ_out bdg.gz \
+            --prefix "exec_gzip_io" \
+            --eps 0 \
+            --dp 3 \
+            --err_out "${dir_err}" \
+            --nam_job "test_execute_compute_ratio_gzip_io" \
+            --max_job 1 \
+            --csv_scl_fct NA \
+            --csv_dep_min NA \
+            --csv_pseudo NA
+then
+    rec_pass "execute_compute_signal.sh ratio gzip_io exits 0"
+else
+    rec_fail \
+        "execute_compute_signal.sh ratio gzip_io failed; see" \
+        "$(rec_relpath "${log}")"
+fi
+
+assert_file_nonempty "${outfile}" "execute gzip ratio output"
+
+if [[ -s "${outfile}" ]]; then
+    if gzip -t "${outfile}"; then
+        rec_pass "execute gzip ratio output passes gzip integrity check"
+        gzip -cd "${outfile}" > "${outfile_txt}"
+    else
+        rec_fail "execute gzip ratio output fails gzip integrity check"
+    fi
+fi
+
+if [[ -s "${outfile_txt}" ]]; then
+    assert_grep_pattern "${outfile_txt}" $'^I\t0\t10\t2$' \
+        "execute gzip ratio output has I:0-10 = 2"
+    assert_grep_pattern "${outfile_txt}" $'^I\t40\t50\t4$' \
+        "execute gzip ratio output has I:40-50 = 4"
+    assert_grep_pattern "${outfile_txt}" $'^I\t60\t70\t0.333$' \
+        "execute gzip ratio output has I:60-70 = 0.333"
 fi
 
 
