@@ -42,6 +42,8 @@ dir_cram="${dir_fix}/cram"
 
 fil_bg_A="${dir_bdg}/ratio_A.bdg"
 fil_bg_B="${dir_bdg}/ratio_B.bdg"
+fil_bg_hdr_A="${dir_bdg}/ratio_headers_A.bdg"
+fil_bg_hdr_B="${dir_bdg}/ratio_headers_B.bdg"
 
 fil_ref="${dir_ref}/tiny.fa"
 fil_sam_se="${dir_sam}/tiny_se.sam"
@@ -98,6 +100,38 @@ mkdir -p \
     printf "I\t60\t70\t3\n"
     printf "I\t70\t80\t1\n"
 } > "${fil_bg_B}"
+
+{
+    printf "track type=bedGraph name=\"ratio_A\"\n"
+    printf "browser position I:0-80\n"
+    printf "# comment in A\n"
+    printf "customHeader sample=A\n"
+    printf "I\t0\t10\t4\n"
+    printf "I\t10\t20\t0\n"
+    printf "  customHeader indented=A\n"
+    printf "I\t20\t30\t5\n"
+    printf "I\t30\t40\t0\n"
+    printf "I\t40\t50\t2\n"
+    printf "I\t50\t60\t1\n"
+    printf "I\t60\t70\t1\n"
+    printf "I\t70\t80\t1\n"
+} > "${fil_bg_hdr_A}"
+
+{
+    printf "track type=bedGraph name=\"ratio_B\"\n"
+    printf "browser position I:0-80\n"
+    printf "# comment in B\n"
+    printf "customHeader sample=B\n"
+    printf "I\t0\t10\t2\n"
+    printf "I\t10\t20\t2\n"
+    printf "  customHeader indented=B\n"
+    printf "I\t20\t30\t0\n"
+    printf "I\t30\t40\t0\n"
+    printf "I\t40\t50\t0.5\n"
+    printf "I\t50\t60\t0.04\n"
+    printf "I\t60\t70\t3\n"
+    printf "I\t70\t80\t1\n"
+} > "${fil_bg_hdr_B}"
 
 
 #  Write tiny reference FASTA used for BAM/CRAM fixture generation
@@ -171,8 +205,12 @@ The first fixture batch focuses on ratio-mode tests using plain text bedGraph fi
 Files:
 - `bedgraph/ratio_A.bdg`
 - `bedgraph/ratio_B.bdg`
+- `bedgraph/ratio_headers_A.bdg`
+- `bedgraph/ratio_headers_B.bdg`
 
-Both files are plain 4-column bedGraph files with matching bins and no header lines. Header/prefix handling should be tested later with separate fixtures.
+The `ratio_A.bdg` and `ratio_B.bdg` files are plain 4-column bedGraph files with matching bins and no header lines.
+
+The `ratio_headers_A.bdg` and `ratio_headers_B.bdg` files preserve the same data rows, but include header-like lines for `--skp_pfx` coverage. They include default skipped prefixes (`track`, `browser`, and `#`) plus the custom prefix `customHeader`.
 
 <br />
 

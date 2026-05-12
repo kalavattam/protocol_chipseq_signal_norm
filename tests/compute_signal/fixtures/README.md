@@ -1,7 +1,7 @@
 # Compute-signal test fixtures
 These fixtures are synthetic micro-fixtures for fast, deterministic tests of the compute-signal workflow.
 
-They are intentionally small, hand-checkable, and version-controlled directly in Git. Running `scripts/make_fixtures.sh` regenerates the fixture set deterministically.
+They are intentionally small, hand-checkable, and version-controlled directly in Git. Running `scripts/make_fixtures.sh` from `env_protocol` regenerates the fixture set deterministically.
 
 The first fixture batch focuses on ratio-mode tests using plain text bedGraph files. These fixtures are not derived from real sequencing data. They were written by hand so that the expected behavior of each row is easy to inspect and reason about.
 
@@ -11,8 +11,12 @@ The first fixture batch focuses on ratio-mode tests using plain text bedGraph fi
 Files:
 - `bedgraph/ratio_A.bdg`
 - `bedgraph/ratio_B.bdg`
+- `bedgraph/ratio_headers_A.bdg`
+- `bedgraph/ratio_headers_B.bdg`
 
-Both files are plain 4-column bedGraph files with matching bins and no header lines. Header/prefix handling should be tested later with separate fixtures.
+The `ratio_A.bdg` and `ratio_B.bdg` files are plain 4-column bedGraph files with matching bins and no header lines.
+
+The `ratio_headers_A.bdg` and `ratio_headers_B.bdg` files preserve the same data rows, but include header-like lines for `--skp_pfx` coverage. They include default skipped prefixes (`track`, `browser`, and `#`) plus the custom prefix `customHeader`.
 
 <br />
 
