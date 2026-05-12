@@ -1589,7 +1589,7 @@ Usage:
     [--method {unadj,frag,norm,log2,unadj_r,log2_r,...}]
     (--csv_infile <bam1.bam,bam2.cram,...> | --csv_fil_A <IP1.bdg[.gz],IP2.bdg[.gz],...> --csv_fil_B <in1.bdg[.gz],in2.bdg[.gz],...>)
     --csv_outfile <out1.bdg[.gz],out2.bdg[.gz],...> [--track] [--drp_nan]
-    [--ref_fa <file>] [--siz_bin <int>] [--csv_scl_fct <csv:num>] [--csv_usr_frg <csv:int>] [--csv_dep_min <csv:num>] [--csv_pseudo <csv:str>]
+    [--ref_fa <file>] [--siz_bin <int>] [--csv_scl_fct <csv:spec>] [--csv_usr_frg <csv:int>] [--csv_dep_min <csv:num>] [--csv_pseudo <csv:str>]
     [--eps <flt>] [--skip_00 <enum:pre_scale,post_scale>] [--skp_pfx <str>] [--dp <int>] --err_out <str> [--nam_job <str>]
 
 Description:
@@ -1644,10 +1644,12 @@ Keyword arguments:
   -sb, --siz_bin  <int>
       Bin size in base pairs for signal computation ('--mode signal'; default: ${siz_bin}).
 
-  -sf, --csv_scl_fct  <csv:num>  <element: str>
+  -sf, --scale, --scl_fct, --csv_scl_fct  <csv:spec>  <element: str>
       Optional comma-separated list of scaling factors or sentinels ('--mode signal', '--mode ratio').
 
-      Compatibility aliases include '--scale' and '--scl_fct'.
+      For '--mode signal', each element must be 'NA' or a positive scalar float.
+
+      For '--mode ratio', each element may be 'NA', a positive scalar float, or a positive 'A:B' spec, where A scales '--csv_fil_A' and B scales '--csv_fil_B' before ratio calculation.
 
   -uf, --csv_usr_frg  <csv:int>  <element: str>
       Optional comma-separated list of fragment lengths or sentinels ('--mode signal', '--mode coord').

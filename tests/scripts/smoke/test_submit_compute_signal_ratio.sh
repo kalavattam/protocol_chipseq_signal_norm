@@ -111,6 +111,31 @@ if [[ -s "${outfile}" ]]; then
 fi
 
 
+#  Scaling factors are applied before ratio calculation: (2 * A) / (1 * B)
+outfile="${dir_out}/ratio_scl_fct_2_1.dp3.bdg"
+log="${dir_log}/submit_compute_signal_ratio_scl_fct.log"
+
+run_case_ratio \
+    "scl_fct" "${outfile}" "${log}" "unadj" \
+    --csv_scl_fct 2:1 \
+    --csv_dep_min NA \
+    --csv_pseudo NA \
+    --eps 0 \
+    --skip_00 NA \
+    --dp 3
+
+assert_file_nonempty "${outfile}" "scaling-factor ratio output"
+
+if [[ -s "${outfile}" ]]; then
+    assert_grep_pattern "${outfile}" $'^I\t0\t10\t4$' \
+        "scaling-factor ratio output has I:0-10 = 4"
+    assert_grep_pattern "${outfile}" $'^I\t40\t50\t8$' \
+        "scaling-factor ratio output has I:40-50 = 8"
+    assert_grep_pattern "${outfile}" $'^I\t60\t70\t0.667$' \
+        "scaling-factor ratio output has I:60-70 = 0.667"
+fi
+
+
 #  Log2 ratio: log2(4 / 2) = 1 and log2(2 / 0.5) = 2
 outfile="${dir_out}/ratio_log2.dp3.bdg"
 log="${dir_log}/submit_compute_signal_ratio_log2.log"

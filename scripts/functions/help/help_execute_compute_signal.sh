@@ -19,7 +19,7 @@ Usage:
     [--mode <enum:signal,ratio,coord>] [--method <enum:unadj,frag,norm,log2,unadj_r,log2_r>]
     (--csv_infile <csv:file> [--ref_fa <file>] | --csv_fil_A <csv:file> --csv_fil_B <csv:file>)
     --dir_out <dir> [--typ_out <enum:bedGraph|bedgraph|bdg|bg|bed[.gz]>] [--prefix <str>]
-    [--siz_bin <int>] [--csv_usr_frg <csv:int>] [--csv_scl_fct <csv:num>]
+    [--siz_bin <int>] [--csv_usr_frg <csv:int>] [--csv_scl_fct <csv:spec>]
     [--csv_dep_min <csv:num>] [--csv_pseudo <csv:spec>] [--eps <num>] [--skip_00 <enum:pre_scale|post_scale>] [--drp_nan] [--skp_pfx <csv:str>] [--track]
     [--dp <int>]
     [--err_out <dir>] [--nam_job <str>] [--max_job <int>] [--slurm] [--time <time>]
@@ -113,8 +113,12 @@ Arguments:
   -sb, --siz_bin  <int>
     Bin size in base pairs for signal computation (used only with '--mode signal'; default: 10).
 
-  -sf, --scale, --scl_fct, --csv_scl_fct  <csv:num>
+  -sf, --scale, --scl_fct, --csv_scl_fct  <csv:spec>
     Comma-separated list of scaling factors or sentinels (optional; used only with '--mode signal' or '--mode ratio').
+
+    For '--mode signal', each element must be 'NA' or a positive scalar float.
+
+    For '--mode ratio', each element may be 'NA', a positive scalar float, or a positive 'A:B' spec, where A scales '--csv_fil_A' and B scales '--csv_fil_B' before ratio calculation.
 
   -uf, --usr_frg, --csv_usr_frg  <csv:int>
     Comma-separated list of fragment lengths or sentinels (optional; used with '--mode signal' or '--mode coord').
@@ -345,12 +349,18 @@ Arguments:
 
     Used only with '--mode signal' (default: 10); ignored otherwise.
 
-  -sf, --scale, --scl_fct, --csv_scl_fct  <csv:num>
+  -sf, --scale, --scl_fct, --csv_scl_fct  <csv:spec>
     Comma-separated list of scaling factors or sentinels to apply to signal or ratio values.
 
     Used with either '--mode signal' or '--mode ratio'; ignored otherwise.
 
     List size must match the number of input files via '--csv_infile' or '--csv_fil_A'/'--csv_fil_B'.
+
+    For '--mode signal', each non-sentinel element must be a positive scalar float.
+
+    For '--mode ratio', each non-sentinel element may be either:
+      - 'A'    Scale file A by A and file B by 1.0.
+      - 'A:B'  Scale file A by A and file B by B.
 
   -uf, --usr_frg, --csv_usr_frg  <csv:int>
     Comma-separated list of fragment lengths or sentinels to use instead of read lengths (single-end alignments) or template lengths (paired-end alignments; optional).

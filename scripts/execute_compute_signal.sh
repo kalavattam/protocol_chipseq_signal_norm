@@ -149,6 +149,64 @@ EOM
 }
 
 
+function check_scl_fct_ratio() {
+    local scl_fct="${1:-}"
+    local scl_A scl_B
+    local show_help
+
+    show_help=$(cat << EOM
+Usage:
+  check_scl_fct_ratio [-h|--hlp|--help] scl_fct
+
+Description:
+  Validate one ratio-mode scaling-factor element.
+
+Positional arguments:
+  1  scl_fct  <spec>  Either 'NA', a positive scalar float, or a positive 'A:B' scaling-factor spec.
+
+Notes:
+  - Scalar 'A' means scale file A by A and file B by 1.0.
+  - Spec 'A:B' means scale file A by A and file B by B.
+EOM
+    )
+
+    if [[ "${scl_fct}" =~ ^(-h|--h[e]?lp)$ ]]; then
+        echo "${show_help}" >&2
+        return 0
+    elif [[ -z "${scl_fct}" ]]; then
+        echo_err_func "${FUNCNAME[0]}" \
+            "missing required scaling-factor element."
+        echo >&2
+        echo "${show_help}" >&2
+        return 1
+    fi
+
+    if [[ "${scl_fct}" == "NA" ]]; then
+        return 0
+    elif [[ "${scl_fct}" != *:* ]]; then
+        check_flt_pos "${scl_fct}" "csv_scl_fct" || return 1
+        return 0
+    elif [[ "${scl_fct}" == *:*:* ]]; then
+        echo_err_func "${FUNCNAME[0]}" \
+            "invalid scaling-factor spec in '--csv_scl_fct': '${scl_fct}'." \
+            "Expected 'A' or 'A:B'."
+        return 1
+    fi
+
+    IFS=':' read -r scl_A scl_B <<< "${scl_fct}"
+
+    if [[ -z "${scl_A}" || -z "${scl_B}" ]]; then
+        echo_err_func "${FUNCNAME[0]}" \
+            "invalid scaling-factor spec in '--csv_scl_fct': '${scl_fct}'." \
+            "Expected 'A' or 'A:B'."
+        return 1
+    fi
+
+    check_flt_pos "${scl_A}" "csv_scl_fct" || return 1
+    check_flt_pos "${scl_B}" "csv_scl_fct" || return 1
+}
+
+
 function build_cmd() {
     local idx="${1:-}"
     local infile fil_A fil_B outfile
@@ -1024,7 +1082,7 @@ else
     fi
 
     for s in "${arr_scl_fct[@]}"; do
-        if [[ "${s}" != "NA" ]]; then check_flt_pos "${s}" "csv_scl_fct"; fi
+        check_scl_fct_ratio "${s}"
     done
     unset s
 
