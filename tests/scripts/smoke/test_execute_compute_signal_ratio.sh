@@ -49,7 +49,7 @@ require_files_exist "${fil_A}" "${fil_B}" "${fil_hdr_A}" "${fil_hdr_B}" || {
 
 #  Run a local serial execute-wrapper ratio case through submit and Python
 function run_case_ratio() {
-    local nam_case="${1:-}"
+    local cas_nam="${1:-}"
     local log_lcl="${2:-}"
     local pfx_lcl="${3:-exec}"
     local method="${4:-unadj}"
@@ -59,7 +59,7 @@ function run_case_ratio() {
     # shellcheck disable=SC2154
     if \
         run_capture \
-            "execute compute-signal ratio ${nam_case}" "${log_lcl}" \
+            "execute compute-signal ratio ${cas_nam}" "${log_lcl}" \
             "${TEST_BASH}" "${ROOT_REPO}/scripts/execute_compute_signal.sh" \
                 --threads 1 \
                 --mode ratio \
@@ -72,14 +72,14 @@ function run_case_ratio() {
                 --eps 0 \
                 --dp 3 \
                 --err_out "${dir_err}" \
-                --nam_job "test_execute_compute_ratio_${nam_case}" \
+                --nam_job "test_execute_compute_ratio_${cas_nam}" \
                 --max_job 1 \
                 "$@"
     then
-        rec_pass "execute_compute_signal.sh ratio ${nam_case} exits 0"
+        rec_pass "execute_compute_signal.sh ratio ${cas_nam} exits 0"
     else
         rec_fail \
-            "execute_compute_signal.sh ratio ${nam_case} failed; see" \
+            "execute_compute_signal.sh ratio ${cas_nam} failed; see" \
             "$(rec_relpath "${log_lcl}")"
     fi
 }
@@ -258,6 +258,29 @@ assert_file_nonempty "${outfile}" "execute skip_00 ratio output"
 if [[ -s "${outfile}" ]]; then
     assert_no_grep_pattern "${outfile}" $'^I\t30\t40\t' \
         "execute skip_00 ratio output omits I:30-40"
+fi
+
+
+#  Post-scale zero-zero skipping can remove bins that are non-zero before
+#+ scaling: I:50-60 has A=1 and B=0.04, then scales to 0.001 and 0.004
+outfile="${dir_out}/exec_skip_00_post_scale_ratio_A.bdg"
+log="${dir_log}/execute_compute_signal_ratio_skip_00_post_scale.log"
+
+run_case_ratio \
+    "skip_00_post_scale" "${log}" "exec_skip_00_post_scale" "unadj" \
+    --csv_scl_fct 0.001:0.1 \
+    --eps 0.005 \
+    --skip_00 post_scale
+
+assert_file_nonempty "${outfile}" "execute skip_00 post_scale ratio output"
+
+if [[ -s "${outfile}" ]]; then
+    assert_grep_pattern "${outfile}" $'^I\t0\t10\t0.02$' \
+        "execute skip_00 post_scale ratio output has I:0-10 = 0.02"
+    assert_grep_pattern "${outfile}" $'^I\t40\t50\t0.04$' \
+        "execute skip_00 post_scale ratio output has I:40-50 = 0.04"
+    assert_no_grep_pattern "${outfile}" $'^I\t50\t60\t' \
+        "execute skip_00 post_scale ratio output omits scaled zero-zero I:50-60"
 fi
 
 

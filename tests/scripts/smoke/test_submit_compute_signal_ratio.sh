@@ -49,8 +49,8 @@ require_files_exist "${fil_A}" "${fil_B}" "${fil_hdr_A}" "${fil_hdr_B}" || {
 
 #  Run a local serial submit-wrapper ratio case into compute_signal_ratio.py
 function run_case_ratio() {
-    local nam_case="${1:-}"
-    local outfile_lcl="${2:-}"
+    local cas_nam="${1:-}"
+    local out_lcl="${2:-}"
     local log_lcl="${3:-}"
     local method="${4:-unadj}"
 
@@ -59,7 +59,7 @@ function run_case_ratio() {
     # shellcheck disable=SC2154
     if \
         run_capture \
-            "submit compute-signal ratio ${nam_case}" "${log_lcl}" \
+            "submit compute-signal ratio ${cas_nam}" "${log_lcl}" \
             "${TEST_BASH}" "${ROOT_REPO}/scripts/submit_compute_signal.sh" \
                 --env_nam "${env_nam}" \
                 --dir_scr "${ROOT_REPO}/scripts" \
@@ -68,15 +68,15 @@ function run_case_ratio() {
                 --method "${method}" \
                 --csv_fil_A "${fil_A}" \
                 --csv_fil_B "${fil_B}" \
-                --csv_outfile "${outfile_lcl}" \
+                --csv_outfile "${out_lcl}" \
                 --err_out "${dir_err}" \
-                --nam_job "test_compute_ratio_${nam_case}" \
+                --nam_job "test_submit_compute_ratio_${cas_nam}" \
                 "$@"
     then
-        rec_pass "submit_compute_signal.sh ratio ${nam_case} exits 0"
+        rec_pass "submit_compute_signal.sh ratio ${cas_nam} exits 0"
     else
         rec_fail \
-            "submit_compute_signal.sh ratio ${nam_case} failed; see" \
+            "submit_compute_signal.sh ratio ${cas_nam} failed; see" \
             "$(rec_relpath "${log_lcl}")"
     fi
 }
@@ -324,6 +324,32 @@ assert_file_nonempty "${outfile}" "skip_00 ratio output"
 if [[ -s "${outfile}" ]]; then
     assert_no_grep_pattern "${outfile}" $'^I\t30\t40\t' \
         "skip_00 ratio output omits I:30-40"
+fi
+
+
+#  Post-scale zero-zero skipping can remove bins that are non-zero before
+#+ scaling: I:50-60 has A=1 and B=0.04, then scales to 0.001 and 0.004
+outfile="${dir_out}/ratio_skip_00_post_scale.dp3.bdg"
+log="${dir_log}/submit_compute_signal_ratio_skip_00_post_scale.log"
+
+run_case_ratio \
+    "skip_00_post_scale" "${outfile}" "${log}" "unadj" \
+    --csv_scl_fct 0.001:0.1 \
+    --csv_dep_min NA \
+    --csv_pseudo NA \
+    --eps 0.005 \
+    --skip_00 post_scale \
+    --dp 3
+
+assert_file_nonempty "${outfile}" "skip_00 post_scale ratio output"
+
+if [[ -s "${outfile}" ]]; then
+    assert_grep_pattern "${outfile}" $'^I\t0\t10\t0.02$' \
+        "skip_00 post_scale ratio output has I:0-10 = 0.02"
+    assert_grep_pattern "${outfile}" $'^I\t40\t50\t0.04$' \
+        "skip_00 post_scale ratio output has I:40-50 = 0.04"
+    assert_no_grep_pattern "${outfile}" $'^I\t50\t60\t' \
+        "skip_00 post_scale ratio output omits scaled zero-zero I:50-60"
 fi
 
 
