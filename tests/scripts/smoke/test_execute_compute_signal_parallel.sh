@@ -35,12 +35,15 @@ fil_A="${dir_fx}/ratio_A.bdg"
 fil_B="${dir_fx}/ratio_B.bdg"
 
 tmp="${TEST_DIR_TMP}/execute_compute_signal_parallel"
+dir_in="${tmp}/in"
 dir_out="${tmp}/out"
 dir_err="${tmp}/logs"
 dir_log="${TEST_DIR_LOG}/compute_signal"
+fil_A_1="${dir_in}/ratio_A_1.bdg"
+fil_A_2="${dir_in}/ratio_A_2.bdg"
 
 rm -rf "${tmp}"
-mkdir -p "${dir_out}" "${dir_err}" "${dir_log}"
+mkdir -p "${dir_in}" "${dir_out}" "${dir_err}" "${dir_log}"
 
 require_env_project env_nam || {
     finish
@@ -48,6 +51,14 @@ require_env_project env_nam || {
 }
 
 require_files_exist "${fil_A}" "${fil_B}" || {
+    finish
+    exit $?
+}
+
+cp "${fil_A}" "${fil_A_1}"
+cp "${fil_A}" "${fil_A_2}"
+
+require_files_exist "${fil_A_1}" "${fil_A_2}" || {
     finish
     exit $?
 }
@@ -101,5 +112,50 @@ if [[ -s "${config}" ]]; then
         "${TEST_BASH} ${ROOT_REPO}/scripts/submit_compute_signal.sh" \
         "execute GNU Parallel config uses Bash-prefixed submit command"
 fi
+
+
+#  Real GNU Parallel execution should produce one output per ratio job
+outfile_1="${dir_out}/exec_parallel_wet_ratio_A_1.bdg"
+outfile_2="${dir_out}/exec_parallel_wet_ratio_A_2.bdg"
+log="${dir_log}/execute_compute_signal_parallel_wet_run.log"
+
+if \
+    run_capture \
+        "execute compute-signal GNU Parallel wet run" "${log}" \
+        "${TEST_BASH}" "${ROOT_REPO}/scripts/execute_compute_signal.sh" \
+            --threads 2 \
+            --mode ratio \
+            --method unadj \
+            --csv_fil_A "${fil_A_1},${fil_A_2}" \
+            --csv_fil_B "${fil_B},${fil_B}" \
+            --dir_out "${dir_out}" \
+            --typ_out bdg \
+            --prefix exec_parallel_wet \
+            --eps 0 \
+            --dp 3 \
+            --err_out "${dir_err}" \
+            --nam_job "test_execute_compute_parallel_wet" \
+            --max_job 2
+then
+    rec_pass "execute_compute_signal.sh GNU Parallel wet run exits 0"
+else
+    rec_fail \
+        "execute_compute_signal.sh GNU Parallel wet run failed; see" \
+        "$(rec_relpath "${log}")"
+fi
+
+assert_file_nonempty "${outfile_1}" "execute GNU Parallel wet output 1"
+assert_file_nonempty "${outfile_2}" "execute GNU Parallel wet output 2"
+
+for outfile in "${outfile_1}" "${outfile_2}"; do
+    if [[ -s "${outfile}" ]]; then
+        assert_grep_pattern "${outfile}" $'^I\t0\t10\t2$' \
+            "$(basename "${outfile}") has I:0-10 = 2"
+        assert_grep_pattern "${outfile}" $'^I\t40\t50\t4$' \
+            "$(basename "${outfile}") has I:40-50 = 4"
+        assert_grep_pattern "${outfile}" $'^I\t60\t70\t0.333$' \
+            "$(basename "${outfile}") has I:60-70 = 0.333"
+    fi
+done
 
 finish
