@@ -159,4 +159,42 @@ if [[ -s "${outfile}" ]]; then
         "CRAM PE coord output has chromosome-I fragment I:40-60"
 fi
 
+
+#  CRAM input without a reference FASTA should fail clearly in the wrapper
+outfile="${dir_out}/tiny_se_missing_ref.bdg"
+log="${dir_log}/submit_compute_signal_cram_missing_ref.log"
+
+if \
+    run_capture \
+        "submit compute-signal CRAM missing_ref" "${log}" \
+        "${TEST_BASH}" "${ROOT_REPO}/scripts/submit_compute_signal.sh" \
+            --env_nam "${env_nam}" \
+            --dir_scr "${ROOT_REPO}/scripts" \
+            --threads 1 \
+            --mode signal \
+            --csv_infile "${infile_se}" \
+            --csv_outfile "${outfile}" \
+            --csv_usr_frg NA \
+            --err_out "${dir_err}" \
+            --nam_job "test_compute_cram_missing_ref" \
+            --method unadj \
+            --siz_bin 10 \
+            --csv_scl_fct NA \
+            --dp 3
+then
+    rec_fail "submit_compute_signal.sh CRAM without --ref_fa unexpectedly passed"
+else
+    rec_pass "submit_compute_signal.sh CRAM without --ref_fa fails"
+fi
+
+assert_grep_pattern "${log}" \
+    "'--ref_fa' is required when '--csv_infile' contains CRAM" \
+    "submit CRAM missing-ref error mentions --ref_fa"
+
+if [[ ! -s "${outfile}" ]]; then
+    rec_pass "submit CRAM missing-ref output is absent or empty"
+else
+    rec_fail "submit CRAM missing-ref output was unexpectedly written"
+fi
+
 finish
