@@ -232,6 +232,31 @@ if [[ -s "${outfile}" ]]; then
 fi
 
 
+#  Epsilon guards denominator values at or below eps: B=0.04 <= 0.05 -> nan
+outfile="${dir_out}/ratio_eps_0p05.dp3.bdg"
+log="${dir_log}/submit_compute_signal_ratio_eps.log"
+
+run_case_ratio \
+    "eps" "${outfile}" "${log}" "unadj" \
+    --csv_scl_fct NA \
+    --csv_dep_min NA \
+    --csv_pseudo NA \
+    --eps 0.05 \
+    --skip_00 NA \
+    --dp 3
+
+assert_file_nonempty "${outfile}" "eps ratio output"
+
+if [[ -s "${outfile}" ]]; then
+    assert_grep_pattern "${outfile}" $'^I\t0\t10\t2$' \
+        "eps ratio output retains I:0-10 = 2"
+    assert_grep_pattern "${outfile}" $'^I\t50\t60\tnan$' \
+        "eps ratio output has I:50-60 = nan"
+    assert_grep_pattern "${outfile}" $'^I\t60\t70\t0.333$' \
+        "eps ratio output retains I:60-70 = 0.333"
+fi
+
+
 #  Pseudocounts: (0 + 1) / (2 + 1) = 0.333 at three decimals
 outfile="${dir_out}/ratio_pseudo_1_1.dp3.bdg"
 log="${dir_log}/submit_compute_signal_ratio_pseudo.log"
