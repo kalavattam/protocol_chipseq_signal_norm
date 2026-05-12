@@ -105,6 +105,9 @@ function align_fastqs() {
     ref_fa=""
     mapq=0
     req_flg=false
+    fq_1=""
+    fq_2=""
+    outfile=""
     qname=false
 
     show_help=$(cat << EOM
