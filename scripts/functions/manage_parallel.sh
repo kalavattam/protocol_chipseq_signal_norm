@@ -93,6 +93,7 @@ Returns:
 Notes:
   - Uses 'nproc' when available and valid.
   - Otherwise falls back to 'sysctl -n hw.ncpu' when available and valid.
+  - Otherwise falls back to 'getconf _NPROCESSORS_ONLN' when available and valid.
 EOM
     )
 
@@ -120,10 +121,17 @@ EOM
         cores="$(sysctl -n hw.ncpu 2> /dev/null || true)"
     fi
 
+    if ! \
+           [[ "${cores}" =~ ^[1-9][0-9]*$ ]] \
+        && command -v getconf > /dev/null 2>&1
+    then
+        cores="$(getconf _NPROCESSORS_ONLN 2> /dev/null || true)"
+    fi
+
     if ! [[ "${cores}" =~ ^[1-9][0-9]*$ ]]; then
         echo_err_func "${FUNCNAME[0]}" \
-            "unable to determine a valid CPU core count using 'nproc' or" \
-            "'sysctl -n hw.ncpu'."
+            "unable to determine a valid CPU core count using 'nproc'," \
+            "'sysctl -n hw.ncpu', or 'getconf _NPROCESSORS_ONLN'."
         return 1
     fi
 
