@@ -493,6 +493,10 @@ if [[ "${slurm}" == "true" ]]; then
 
     validate_var "time" "${time}"
     check_format_time "${time}"
+elif [[ "${max_job}" -le 1 ]]; then
+    #  Serial local execution does not require parallel job detection
+    par_job=1
+    unset max_job time
 else
     IFS=';' read -r threads par_job < <(
         set_params_parallel "${threads}" "${max_job}"
