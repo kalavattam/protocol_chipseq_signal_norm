@@ -3,7 +3,7 @@ These fixtures are synthetic micro-fixtures for fast, deterministic tests of the
 
 They are intentionally small, hand-checkable, and version-controlled directly in Git. Running `scripts/make_fixtures.sh` from `env_protocol` regenerates the fixture set deterministically.
 
-The fixture set focuses on single-end and paired-end Bowtie2 alignment to BAM output. These fixtures are not derived from real sequencing data. The reference sequence and FASTQ records are encoded directly in `scripts/make_fixtures.sh` so that the expected mapped reads are easy to inspect.
+The fixture set focuses on single-end and paired-end Bowtie2 alignment to BAM and CRAM output. These fixtures are not derived from real sequencing data. The reference sequence and FASTQ records are encoded directly in `scripts/make_fixtures.sh` so that the expected read alignments are easy to inspect.
 
 <br />
 
@@ -38,7 +38,7 @@ The single-end FASTQ fixture contains one read:
 |:---              |:---                              |:---                |
 | `tiny_se_read_1` | `ACGTTGACCGTTAACGATCGTAGCTAGGAT` | `I`                |
 
-Bowtie2 should align this read to chromosome `I` in the tiny reference. Smoke tests should verify that wrapper-generated BAM files and BAM indexes exist, pass `samtools quickcheck`, report one mapped read on `I` with `samtools idxstats`, and contain the expected read name.
+Bowtie2 should align this read to chromosome `I` in the tiny reference. Smoke tests should verify that wrapper-generated BAM/CRAM files and indexes exist, pass `samtools quickcheck`, report or count one read alignment on `I`, and contain the expected read name. CRAM checks should read with `samtools view -T reference/tiny.fa`.
 
 The paired-end FASTQ fixtures contain one read pair:
 
@@ -47,9 +47,9 @@ The paired-end FASTQ fixtures contain one read pair:
 | `tiny_pe_pair_1` | R1   | `ACGTTGACCGTTAACGATCGTAGCTAGGAT` | `I`                | 17             |
 | `tiny_pe_pair_1` | R2   | `CCTTAGCCGATTAGCCTAAGCTTGATCCGG` | `I`                | 70             |
 
-R1 matches chromosome `I` in forward orientation. R2 is the reverse complement of positions 70-99 on chromosome `I`, so Bowtie2 should report the pair in FR orientation with proper-pair flags. Smoke tests should verify that wrapper-generated BAM files and BAM indexes exist, pass `samtools quickcheck`, report two mapped reads on `I` with `samtools idxstats`, contain the expected paired read name, and include the expected proper-pair flag records.
+R1 matches chromosome `I` in forward orientation. R2 is the reverse complement of positions 70-99 on chromosome `I`, so Bowtie2 should report the pair in FR orientation with proper-pair flags. Smoke tests should verify that wrapper-generated BAM/CRAM files and indexes exist, pass `samtools quickcheck`, report or count two read alignments on `I`, contain the expected paired read name, and include the expected proper-pair flag records. CRAM checks should read with `samtools view -T reference/tiny.fa`.
 
 <br />
 
 ## Deferred fixture batches
-Later align-fastqs batches should add CRAM/reference-propagation coverage, BWA MEM indexes, bwa-mem2 MEM indexes, BWA ALN indexes, and local GNU Parallel coverage.
+Later align-fastqs batches should add BWA MEM indexes, bwa-mem2 MEM indexes, BWA ALN indexes, and local GNU Parallel coverage.
