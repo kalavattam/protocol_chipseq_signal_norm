@@ -41,6 +41,10 @@ dir_bt2="${dir_fix}/bowtie2"
 fil_ref="${dir_ref}/tiny.fa"
 fil_fq_se="${dir_fq}/tiny_se.atria.fastq"
 fil_fq_se_gz="${fil_fq_se}.gz"
+fil_fq_pe_1="${dir_fq}/tiny_pe_R1.atria.fastq"
+fil_fq_pe_2="${dir_fq}/tiny_pe_R2.atria.fastq"
+fil_fq_pe_1_gz="${fil_fq_pe_1}.gz"
+fil_fq_pe_2_gz="${fil_fq_pe_2}.gz"
 idx_bt2="${dir_bt2}/tiny"
 fil_read="${dir_fix}/README.md"
 
@@ -93,6 +97,25 @@ EOM
 gzip -n -c "${fil_fq_se}" > "${fil_fq_se_gz}"
 
 
+#  Write tiny paired-end FASTQ provenance and compressed input fixtures
+cat > "${fil_fq_pe_1}" << 'EOM'
+@tiny_pe_pair_1
+ACGTTGACCGTTAACGATCGTAGCTAGGAT
++
+IIIIIIIIIIIIIIIIIIIIIIIIIIIIII
+EOM
+
+cat > "${fil_fq_pe_2}" << 'EOM'
+@tiny_pe_pair_1
+CCTTAGCCGATTAGCCTAAGCTTGATCCGG
++
+IIIIIIIIIIIIIIIIIIIIIIIIIIIIII
+EOM
+
+gzip -n -c "${fil_fq_pe_1}" > "${fil_fq_pe_1_gz}"
+gzip -n -c "${fil_fq_pe_2}" > "${fil_fq_pe_2_gz}"
+
+
 #  Generate and validate Bowtie2 index files
 rm -f "${idx_bt2}".*.bt2 "${idx_bt2}".*.bt2l
 bowtie2-build "${fil_ref}" "${idx_bt2}" > /dev/null
@@ -106,6 +129,19 @@ bowtie2 \
         > /dev/null \
         2> /dev/null
 
+bowtie2 \
+    -x "${idx_bt2}" \
+    --very-sensitive \
+    --no-mixed \
+    --no-discordant \
+    --no-overlap \
+    --no-dovetail \
+    -1 "${fil_fq_pe_1_gz}" \
+    -2 "${fil_fq_pe_2_gz}" \
+    -S /dev/null \
+        > /dev/null \
+        2> /dev/null
+
 
 #  Write fixture documentation
 cat > "${fil_read}" << 'EOM'
@@ -114,7 +150,7 @@ These fixtures are synthetic micro-fixtures for fast, deterministic tests of the
 
 They are intentionally small, hand-checkable, and version-controlled directly in Git. Running `scripts/make_fixtures.sh` from `env_protocol` regenerates the fixture set deterministically.
 
-The first fixture batch focuses on single-end Bowtie2 alignment to BAM output. These fixtures are not derived from real sequencing data. The reference and FASTQ provenance were written by hand so that the expected mapped read is easy to inspect.
+The fixture set focuses on single-end and paired-end Bowtie2 alignment to BAM output. These fixtures are not derived from real sequencing data. The reference and FASTQ provenance were written by hand so that the expected mapped reads are easy to inspect.
 
 <br />
 
@@ -122,9 +158,13 @@ The first fixture batch focuses on single-end Bowtie2 alignment to BAM output. T
 Readable provenance:
 - `reference/tiny.fa`
 - `fastq/tiny_se.atria.fastq`
+- `fastq/tiny_pe_R1.atria.fastq`
+- `fastq/tiny_pe_R2.atria.fastq`
 
 Compressed FASTQ input:
 - `fastq/tiny_se.atria.fastq.gz`
+- `fastq/tiny_pe_R1.atria.fastq.gz`
+- `fastq/tiny_pe_R2.atria.fastq.gz`
 
 Bowtie2 index:
 - `bowtie2/tiny.1.bt2`
@@ -147,10 +187,19 @@ The single-end FASTQ fixture contains one read:
 
 Bowtie2 should align this read to chromosome `I` in the tiny reference. Smoke tests should verify that wrapper-generated BAM files and BAM indexes exist, pass `samtools quickcheck`, report one mapped read on `I` with `samtools idxstats`, and contain the expected read name.
 
+The paired-end FASTQ fixtures contain one read pair:
+
+| Read name        | Mate | Sequence                         | Expected reference | Expected start |
+|:---              |:---  |:---                              |:---                |:---            |
+| `tiny_pe_pair_1` | R1   | `ACGTTGACCGTTAACGATCGTAGCTAGGAT` | `I`                | 17             |
+| `tiny_pe_pair_1` | R2   | `CCTTAGCCGATTAGCCTAAGCTTGATCCGG` | `I`                | 70             |
+
+R1 matches chromosome `I` in forward orientation. R2 is the reverse complement of positions 70-99 on chromosome `I`, so Bowtie2 should report the pair in FR orientation with proper-pair flags. Smoke tests should verify that wrapper-generated BAM files and BAM indexes exist, pass `samtools quickcheck`, report two mapped reads on `I` with `samtools idxstats`, contain the expected paired read name, and include the expected proper-pair flag records.
+
 <br />
 
 ## Deferred fixture batches
-Later align-fastqs batches should add paired-end FASTQ fixtures, CRAM/reference-propagation coverage, BWA MEM indexes, bwa-mem2 MEM indexes, BWA ALN indexes, and local GNU Parallel coverage.
+Later align-fastqs batches should add CRAM/reference-propagation coverage, BWA MEM indexes, bwa-mem2 MEM indexes, BWA ALN indexes, and local GNU Parallel coverage.
 EOM
 
 echo "success($(basename "${BASH_SOURCE[0]}")):" \

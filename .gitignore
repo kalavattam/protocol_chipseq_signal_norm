@@ -38,4 +38,5 @@ data/raw/docs/test*
 !data/processed/compute_signal/bowtie2_global_flag-2_mapq-1/tables/
 
 #  Ignore generated smoke-test output
+!tests/align_fastqs/fixtures/fastq/*.fastq.gz
 tests/output/
