@@ -46,6 +46,8 @@ tests=(
     "${dir_run}/smoke/test_dry_run_commands.sh"
     "${dir_run}/smoke/test_submit_align_fastqs_bowtie2.sh"
     "${dir_run}/smoke/test_execute_align_fastqs_bowtie2.sh"
+    "${dir_run}/smoke/test_submit_align_fastqs_bwa_mem.sh"
+    "${dir_run}/smoke/test_execute_align_fastqs_bwa_mem.sh"
     "${dir_run}/smoke/test_submit_compute_signal_ratio.sh"
     "${dir_run}/smoke/test_execute_compute_signal_ratio.sh"
     "${dir_run}/smoke/test_execute_compute_signal_parallel.sh"
