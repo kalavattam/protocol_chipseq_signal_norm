@@ -210,14 +210,17 @@ EOM
     #+ appended without word splitting paths or option values
     cmd_aln=(
         align_fastqs
-        --threads "${threads}"
-        --aligner "${aligner}"
-        --bt2_aln "${bt2_aln}"
-        --bwa_alg "${bwa_alg}"
-        --index "${index}"
-        --fq_1 "${fq_1}"
-        --outfile "${outfile}"
+            --threads "${threads}"
+            --aligner "${aligner}"
+            --index "${index}"
+            --fq_1 "${fq_1}"
+            --outfile "${outfile}"
     )
+
+    case "${aligner}" in
+        bowtie2) cmd_aln+=( --bt2_aln "${bt2_aln}" ) ;;
+        bwa)     cmd_aln+=( --bwa_alg "${bwa_alg}" ) ;;
+    esac
 
     if [[ "${mapq}" -gt 0 ]]; then
         cmd_aln+=( --mapq "${mapq}" )

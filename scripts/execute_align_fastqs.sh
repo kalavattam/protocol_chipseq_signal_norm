@@ -129,8 +129,6 @@ EOM
             --dir_scr "${dir_scr}"
             --threads "${threads}"
             --aligner "${aligner}"
-            --bt2_aln "${bt2_aln}"
-            --bwa_alg "${bwa_alg}"
             --mapq "${mapq}"
             --index "${index}"
             --csv_infile "${infile_i}"
@@ -141,6 +139,11 @@ EOM
             --err_out "${err_out}"
             --nam_job "${nam_job}"
     )
+
+    case "${aligner}" in
+        bowtie2) cmd_bld+=( --bt2_aln "${bt2_aln}" ) ;;
+        bwa)     cmd_bld+=( --bwa_alg "${bwa_alg}" ) ;;
+    esac
 
     if [[ "${req_flg}" == "true" ]]; then
         cmd_bld+=( --req_flg )
