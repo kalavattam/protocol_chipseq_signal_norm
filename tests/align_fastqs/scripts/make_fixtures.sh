@@ -39,16 +39,52 @@ dir_fq="${dir_fix}/fastq"
 dir_bt2="${dir_fix}/bowtie2"
 
 fil_ref="${dir_ref}/tiny.fa"
-fil_fq_se="${dir_fq}/tiny_se.atria.fastq"
-fil_fq_se_gz="${fil_fq_se}.gz"
-fil_fq_pe_1="${dir_fq}/tiny_pe_R1.atria.fastq"
-fil_fq_pe_2="${dir_fq}/tiny_pe_R2.atria.fastq"
-fil_fq_pe_1_gz="${fil_fq_pe_1}.gz"
-fil_fq_pe_2_gz="${fil_fq_pe_2}.gz"
+fil_fq_se_tmp="${dir_fq}/tiny_se.atria.fastq.tmp"
+fil_fq_pe_1_tmp="${dir_fq}/tiny_pe_R1.atria.fastq.tmp"
+fil_fq_pe_2_tmp="${dir_fq}/tiny_pe_R2.atria.fastq.tmp"
+
+fil_fq_se_gz="${dir_fq}/tiny_se.atria.fastq.gz"
+fil_fq_pe_1_gz="${dir_fq}/tiny_pe_R1.atria.fastq.gz"
+fil_fq_pe_2_gz="${dir_fq}/tiny_pe_R2.atria.fastq.gz"
 idx_bt2="${dir_bt2}/tiny"
 fil_read="${dir_fix}/README.md"
 
 env_req="env_protocol"
+
+
+#  Remove a generated fixture file only if it is inside the fixture directory
+function rm_fixture_file() {
+    local file="${1:-}"
+
+    if [[ -z "${file}" ]]; then
+        echo "error($(basename "${BASH_SOURCE[0]}")):" \
+            "refusing to remove an empty file path." >&2
+        exit 1
+    elif [[ "${file}" != "${dir_fix}/"* ]]; then
+        echo "error($(basename "${BASH_SOURCE[0]}")):" \
+            "refusing to remove path outside fixture directory:" \
+            "'${file}'." >&2
+        exit 1
+    elif [[ -d "${file}" ]]; then
+        echo "error($(basename "${BASH_SOURCE[0]}")):" \
+            "refusing to remove directory:" \
+            "'${file}'." >&2
+        exit 1
+    fi
+
+    rm -f -- "${file}"
+}
+
+
+#  Remove temporary FASTQ intermediates on normal exit or failure
+function cleanup_tmp_fastqs() {
+    rm_fixture_file "${fil_fq_se_tmp}"
+    rm_fixture_file "${fil_fq_pe_1_tmp}"
+    rm_fixture_file "${fil_fq_pe_2_tmp}"
+}
+
+
+trap cleanup_tmp_fastqs EXIT
 
 
 #  Check that the project environment is active before writing fixtures
@@ -78,6 +114,12 @@ mkdir -p \
     "${dir_fq}" \
     "${dir_bt2}"
 
+#  Remove obsolete uncompressed FASTQ fixtures and stale temp intermediates
+rm_fixture_file "${dir_fq}/tiny_se.atria.fastq"
+rm_fixture_file "${dir_fq}/tiny_pe_R1.atria.fastq"
+rm_fixture_file "${dir_fq}/tiny_pe_R2.atria.fastq"
+cleanup_tmp_fastqs
+
 
 #  Write tiny reference FASTA used for Bowtie2 alignment tests
 cat > "${fil_ref}" << 'EOM'
@@ -87,38 +129,63 @@ EOM
 
 
 #  Write tiny single-end FASTQ provenance and compressed input fixture
-cat > "${fil_fq_se}" << 'EOM'
+cat > "${fil_fq_se_tmp}" << 'EOM'
 @tiny_se_read_1
 ACGTTGACCGTTAACGATCGTAGCTAGGAT
 +
 IIIIIIIIIIIIIIIIIIIIIIIIIIIIII
 EOM
 
-gzip -n -c "${fil_fq_se}" > "${fil_fq_se_gz}"
+gzip -n -c "${fil_fq_se_tmp}" > "${fil_fq_se_gz}"
+rm_fixture_file "${fil_fq_se_tmp}"
 
 
 #  Write tiny paired-end FASTQ provenance and compressed input fixtures
-cat > "${fil_fq_pe_1}" << 'EOM'
+cat > "${fil_fq_pe_1_tmp}" << 'EOM'
 @tiny_pe_pair_1
 ACGTTGACCGTTAACGATCGTAGCTAGGAT
 +
 IIIIIIIIIIIIIIIIIIIIIIIIIIIIII
 EOM
 
-cat > "${fil_fq_pe_2}" << 'EOM'
+cat > "${fil_fq_pe_2_tmp}" << 'EOM'
 @tiny_pe_pair_1
 CCTTAGCCGATTAGCCTAAGCTTGATCCGG
 +
 IIIIIIIIIIIIIIIIIIIIIIIIIIIIII
 EOM
 
-gzip -n -c "${fil_fq_pe_1}" > "${fil_fq_pe_1_gz}"
-gzip -n -c "${fil_fq_pe_2}" > "${fil_fq_pe_2_gz}"
+gzip -n -c "${fil_fq_pe_1_tmp}" > "${fil_fq_pe_1_gz}"
+gzip -n -c "${fil_fq_pe_2_tmp}" > "${fil_fq_pe_2_gz}"
+
+rm_fixture_file "${fil_fq_pe_1_tmp}"
+rm_fixture_file "${fil_fq_pe_2_tmp}"
 
 
 #  Generate and validate Bowtie2 index files
-rm -f "${idx_bt2}".*.bt2 "${idx_bt2}".*.bt2l
-bowtie2-build "${fil_ref}" "${idx_bt2}" > /dev/null
+rm_fixture_file "${idx_bt2}.1.bt2"
+rm_fixture_file "${idx_bt2}.2.bt2"
+rm_fixture_file "${idx_bt2}.3.bt2"
+rm_fixture_file "${idx_bt2}.4.bt2"
+rm_fixture_file "${idx_bt2}.rev.1.bt2"
+rm_fixture_file "${idx_bt2}.rev.2.bt2"
+rm_fixture_file "${idx_bt2}.1.bt2l"
+rm_fixture_file "${idx_bt2}.2.bt2l"
+rm_fixture_file "${idx_bt2}.3.bt2l"
+rm_fixture_file "${idx_bt2}.4.bt2l"
+rm_fixture_file "${idx_bt2}.rev.1.bt2l"
+rm_fixture_file "${idx_bt2}.rev.2.bt2l"
+
+log_bt2="${dir_bt2}/bowtie2-build.log"
+
+if ! \
+    bowtie2-build "${fil_ref}" "${idx_bt2}" > "${log_bt2}" 2>&1
+then
+    cat "${log_bt2}" >&2
+    exit 1
+fi
+
+rm_fixture_file "${log_bt2}"
 
 bowtie2-inspect -n "${idx_bt2}" > /dev/null
 
@@ -150,16 +217,16 @@ These fixtures are synthetic micro-fixtures for fast, deterministic tests of the
 
 They are intentionally small, hand-checkable, and version-controlled directly in Git. Running `scripts/make_fixtures.sh` from `env_protocol` regenerates the fixture set deterministically.
 
-The fixture set focuses on single-end and paired-end Bowtie2 alignment to BAM output. These fixtures are not derived from real sequencing data. The reference and FASTQ provenance were written by hand so that the expected mapped reads are easy to inspect.
+The fixture set focuses on single-end and paired-end Bowtie2 alignment to BAM output. These fixtures are not derived from real sequencing data. The reference sequence and FASTQ records are encoded directly in `scripts/make_fixtures.sh` so that the expected mapped reads are easy to inspect.
 
 <br />
 
 ## Files
 Readable provenance:
 - `reference/tiny.fa`
-- `fastq/tiny_se.atria.fastq`
-- `fastq/tiny_pe_R1.atria.fastq`
-- `fastq/tiny_pe_R2.atria.fastq`
+- `scripts/make_fixtures.sh`
+
+The FASTQ records are generated deterministically by `scripts/make_fixtures.sh` and committed only as compressed workflow inputs. The compressed FASTQ files can be inspected with `gzip -cd`.
 
 Compressed FASTQ input:
 - `fastq/tiny_se.atria.fastq.gz`
@@ -174,7 +241,7 @@ Bowtie2 index:
 - `bowtie2/tiny.rev.1.bt2`
 - `bowtie2/tiny.rev.2.bt2`
 
-The compressed FASTQ and Bowtie2 index files are generated by `scripts/make_fixtures.sh`. They are committed because align/trim/download workflows commonly operate on compressed FASTQ inputs and real aligner indexes.
+The compressed FASTQ and Bowtie2 index files are generated by `scripts/make_fixtures.sh`. They are committed because align/trim/download workflows commonly operate on compressed FASTQ inputs and real aligner indexes. The uncompressed FASTQ files are not committed; use `gzip -cd` to inspect the compressed inputs.
 
 <br />
 
