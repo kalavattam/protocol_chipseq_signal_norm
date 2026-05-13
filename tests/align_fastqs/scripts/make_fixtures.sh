@@ -44,18 +44,22 @@ ref="${dir_ref}/tiny.fa"
 ref_bwa="${dir_bwa}/tiny.fa"
 ref_bm2="${dir_bm2}/tiny.fa"
 tmp_fq_se="${dir_fq}/tiny_se.atria.fastq.tmp"
-tmp_fq_pe_1="${dir_fq}/tiny_pe_R1.atria.fastq.tmp"
-tmp_fq_pe_2="${dir_fq}/tiny_pe_R2.atria.fastq.tmp"
+tmp_fq_p1="${dir_fq}/tiny_pe_R1.atria.fastq.tmp"
+tmp_fq_p2="${dir_fq}/tiny_pe_R2.atria.fastq.tmp"
 
 gz_fq_se="${dir_fq}/tiny_se.atria.fastq.gz"
-gz_fq_pe_1="${dir_fq}/tiny_pe_R1.atria.fastq.gz"
-gz_fq_pe_2="${dir_fq}/tiny_pe_R2.atria.fastq.gz"
+gz_fq_p1="${dir_fq}/tiny_pe_R1.atria.fastq.gz"
+gz_fq_p2="${dir_fq}/tiny_pe_R2.atria.fastq.gz"
 
 idx_bt2="${dir_bt2}/tiny"
 idx_bwa="${ref_bwa}"
 idx_bm2="${ref_bm2}"
 
-fil_read="${dir_fix}/README.md"
+tmp_bln_se="${dir_bwa}/tiny_se.sai"
+tmp_bln_p1="${dir_bwa}/tiny_pe_R1.sai"
+tmp_bln_p2="${dir_bwa}/tiny_pe_R2.sai"
+
+fil_rdm="${dir_fix}/README.md"
 
 env_req="env_protocol"
 
@@ -70,13 +74,11 @@ function rm_fixture_file() {
         exit 1
     elif [[ "${file}" != "${dir_fix}/"* ]]; then
         echo "error($(basename "${BASH_SOURCE[0]}")):" \
-            "refusing to remove path outside fixture directory:" \
-            "'${file}'." >&2
+            "refusing to remove path outside fixture directory: '${file}'." >&2
         exit 1
     elif [[ -d "${file}" ]]; then
         echo "error($(basename "${BASH_SOURCE[0]}")):" \
-            "refusing to remove directory:" \
-            "'${file}'." >&2
+            "refusing to remove directory: '${file}'." >&2
         exit 1
     fi
 
@@ -87,8 +89,11 @@ function rm_fixture_file() {
 #  Remove temporary FASTQ intermediates on normal exit or failure
 function cleanup_tmp_fastqs() {
     rm_fixture_file "${tmp_fq_se}"
-    rm_fixture_file "${tmp_fq_pe_1}"
-    rm_fixture_file "${tmp_fq_pe_2}"
+    rm_fixture_file "${tmp_fq_p1}"
+    rm_fixture_file "${tmp_fq_p2}"
+    rm_fixture_file "${tmp_bln_se}"
+    rm_fixture_file "${tmp_bln_p1}"
+    rm_fixture_file "${tmp_bln_p2}"
 }
 
 
@@ -132,7 +137,7 @@ cleanup_tmp_fastqs
 
 
 #  Write tiny reference FASTA used for Bowtie2 alignment tests
-cat > "${ref}" << 'EOM'
+cat > "${ref}" << EOM
 >I
 GATCGTACCTAGGCTAACGTTGACCGTTAACGATCGTAGCTAGGATCCGTTACGATCGATGCTAGCTTACCGGATCAAGCTTAGGCTAATCGGCTAAGGTTCCGATTA
 EOM
@@ -142,7 +147,7 @@ cp "${ref}" "${ref_bm2}"
 
 
 #  Write tiny single-end FASTQ provenance and compressed input fixture
-cat > "${tmp_fq_se}" << 'EOM'
+cat > "${tmp_fq_se}" << EOM
 @tiny_se_read_1
 ACGTTGACCGTTAACGATCGTAGCTAGGAT
 +
@@ -154,25 +159,25 @@ rm_fixture_file "${tmp_fq_se}"
 
 
 #  Write tiny paired-end FASTQ provenance and compressed input fixtures
-cat > "${tmp_fq_pe_1}" << 'EOM'
+cat > "${tmp_fq_p1}" << EOM
 @tiny_pe_pair_1
 ACGTTGACCGTTAACGATCGTAGCTAGGAT
 +
 IIIIIIIIIIIIIIIIIIIIIIIIIIIIII
 EOM
 
-cat > "${tmp_fq_pe_2}" << 'EOM'
+cat > "${tmp_fq_p2}" << EOM
 @tiny_pe_pair_1
 CCTTAGCCGATTAGCCTAAGCTTGATCCGG
 +
 IIIIIIIIIIIIIIIIIIIIIIIIIIIIII
 EOM
 
-gzip -n -c "${tmp_fq_pe_1}" > "${gz_fq_pe_1}"
-gzip -n -c "${tmp_fq_pe_2}" > "${gz_fq_pe_2}"
+gzip -n -c "${tmp_fq_p1}" > "${gz_fq_p1}"
+gzip -n -c "${tmp_fq_p2}" > "${gz_fq_p2}"
 
-rm_fixture_file "${tmp_fq_pe_1}"
-rm_fixture_file "${tmp_fq_pe_2}"
+rm_fixture_file "${tmp_fq_p1}"
+rm_fixture_file "${tmp_fq_p2}"
 
 
 #  Generate and validate Bowtie2 index files
@@ -216,8 +221,8 @@ bowtie2 \
     --no-discordant \
     --no-overlap \
     --no-dovetail \
-    -1 "${gz_fq_pe_1}" \
-    -2 "${gz_fq_pe_2}" \
+    -1 "${gz_fq_p1}" \
+    -2 "${gz_fq_p2}" \
     -S /dev/null \
         > /dev/null \
         2> /dev/null
@@ -242,12 +247,32 @@ fi
 rm_fixture_file "${log_bwa}"
 
 bwa mem "${idx_bwa}" "${gz_fq_se}" \
-        > /dev/null \
-        2> /dev/null
+    > /dev/null 2> /dev/null
 
-bwa mem "${idx_bwa}" "${gz_fq_pe_1}" "${gz_fq_pe_2}" \
-        > /dev/null \
-        2> /dev/null
+bwa mem "${idx_bwa}" "${gz_fq_p1}" "${gz_fq_p2}" \
+    > /dev/null 2> /dev/null
+
+bwa aln -t 1 "${idx_bwa}" "${gz_fq_se}" \
+    > "${tmp_bln_se}" 2> /dev/null
+
+bwa samse "${idx_bwa}" "${tmp_bln_se}" "${gz_fq_se}" \
+    > /dev/null 2> /dev/null
+
+rm_fixture_file "${tmp_bln_se}"
+
+bwa aln -t 1 "${idx_bwa}" "${gz_fq_p1}" \
+    > "${tmp_bln_p1}" 2> /dev/null
+
+bwa aln -t 1 "${idx_bwa}" "${gz_fq_p2}" \
+    > "${tmp_bln_p2}" 2> /dev/null
+
+bwa sampe \
+    "${idx_bwa}" "${tmp_bln_p1}" "${tmp_bln_p2}" \
+    "${gz_fq_p1}" "${gz_fq_p2}" \
+        > /dev/null 2> /dev/null
+
+rm_fixture_file "${tmp_bln_p1}"
+rm_fixture_file "${tmp_bln_p2}"
 
 
 #  Generate and validate BWA-MEM2 index files
@@ -271,18 +296,18 @@ rm_fixture_file "${log_bm2}"
 bwa-mem2 mem "${idx_bm2}" "${gz_fq_se}" \
     > /dev/null 2> /dev/null
 
-bwa-mem2 mem "${idx_bm2}" "${gz_fq_pe_1}" "${gz_fq_pe_2}" \
+bwa-mem2 mem "${idx_bm2}" "${gz_fq_p1}" "${gz_fq_p2}" \
     > /dev/null 2> /dev/null
 
 
 #  Write fixture documentation
-cat > "${fil_read}" << 'EOM'
+cat > "${fil_rdm}" << 'EOM'
 # Align-fastqs test fixtures
 These fixtures are synthetic micro-fixtures for fast, deterministic tests of the align-fastqs workflow.
 
 They are intentionally small, hand-checkable, and version-controlled directly in Git. Running `scripts/make_fixtures.sh` from `env_protocol` regenerates the fixture set deterministically.
 
-The fixture set focuses on single-end and paired-end Bowtie2 alignment to BAM and CRAM output, plus BWA MEM and bwa-mem2 MEM alignment to BAM output. These fixtures are not derived from real sequencing data. The reference sequence and FASTQ records are encoded directly in `scripts/make_fixtures.sh` so that the expected read alignments are easy to inspect.
+The fixture set focuses on single-end and paired-end Bowtie2 alignment to BAM and CRAM output, plus BWA MEM, BWA ALN, and bwa-mem2 MEM alignment to BAM output. These fixtures are not derived from real sequencing data. The reference sequence and FASTQ records are encoded directly in `scripts/make_fixtures.sh` so that the expected read alignments are easy to inspect.
 
 <br />
 
@@ -306,7 +331,7 @@ Bowtie2 index:
 - `bowtie2/tiny.rev.1.bt2`
 - `bowtie2/tiny.rev.2.bt2`
 
-BWA MEM index:
+BWA index:
 - `bwa/tiny.fa`
 - `bwa/tiny.fa.amb`
 - `bwa/tiny.fa.ann`
@@ -322,7 +347,7 @@ bwa-mem2 MEM index:
 - `bwa-mem2/tiny.fa.bwt.2bit.64`
 - `bwa-mem2/tiny.fa.pac`
 
-The compressed FASTQ, Bowtie2 index, BWA index, and bwa-mem2 index files are generated by `scripts/make_fixtures.sh`. They are committed because align/trim/download workflows commonly operate on compressed FASTQ inputs and real aligner indexes. The uncompressed FASTQ files are not committed; use `gzip -cd` to inspect the compressed inputs.
+The compressed FASTQ, Bowtie2 index, BWA index, and bwa-mem2 index files are generated by `scripts/make_fixtures.sh`. They are committed because align/trim/download workflows commonly operate on compressed FASTQ inputs and real aligner indexes. The BWA index supports both BWA MEM and BWA ALN. The uncompressed FASTQ files are not committed; use `gzip -cd` to inspect the compressed inputs.
 
 <br />
 
@@ -333,7 +358,7 @@ The single-end FASTQ fixture contains one read:
 |:---              |:---                              |:---                |
 | `tiny_se_read_1` | `ACGTTGACCGTTAACGATCGTAGCTAGGAT` | `I`                |
 
-Bowtie2, BWA MEM, and bwa-mem2 MEM should align this read to chromosome `I` in the tiny reference. Smoke tests should verify that wrapper-generated BAM/CRAM files and indexes exist, pass `samtools quickcheck`, report or count one read alignment on `I`, and contain the expected read name. CRAM checks should read with `samtools view -T reference/tiny.fa`.
+Bowtie2, BWA MEM, BWA ALN, and bwa-mem2 MEM should align this read to chromosome `I` in the tiny reference. Smoke tests should verify that wrapper-generated BAM/CRAM files and indexes exist, pass `samtools quickcheck`, report or count one read alignment on `I`, and contain the expected read name. CRAM checks should read with `samtools view -T reference/tiny.fa`.
 
 The paired-end FASTQ fixtures contain one read pair:
 
@@ -342,12 +367,12 @@ The paired-end FASTQ fixtures contain one read pair:
 | `tiny_pe_pair_1` | R1   | `ACGTTGACCGTTAACGATCGTAGCTAGGAT` | `I`                | 17             |
 | `tiny_pe_pair_1` | R2   | `CCTTAGCCGATTAGCCTAAGCTTGATCCGG` | `I`                | 70             |
 
-R1 matches chromosome `I` in forward orientation. R2 is the reverse complement of positions 70-99 on chromosome `I`, so Bowtie2, BWA MEM, and bwa-mem2 MEM should report the pair in FR orientation. Smoke tests should verify that wrapper-generated BAM/CRAM files and indexes exist, pass `samtools quickcheck`, report or count two read alignments on `I`, contain the expected paired read name, and include proper-pair flag records when the aligner reports stable proper-pair flags. CRAM checks should read with `samtools view -T reference/tiny.fa`.
+R1 matches chromosome `I` in forward orientation. R2 is the reverse complement of positions 70-99 on chromosome `I`, so Bowtie2, BWA MEM, BWA ALN, and bwa-mem2 MEM should report the pair in FR orientation. Smoke tests should verify that wrapper-generated BAM/CRAM files and indexes exist, pass `samtools quickcheck`, report or count two read alignments on `I`, contain the expected paired read name, and include proper-pair flag records when the aligner reports stable proper-pair flags. CRAM checks should read with `samtools view -T reference/tiny.fa`.
 
 <br />
 
 ## Deferred fixture batches
-Later align-fastqs batches should add BWA ALN indexes and local GNU Parallel coverage.
+Later align-fastqs batches should add local GNU Parallel coverage and remote Slurm coverage.
 EOM
 
 echo "success($(basename "${BASH_SOURCE[0]}")):" \

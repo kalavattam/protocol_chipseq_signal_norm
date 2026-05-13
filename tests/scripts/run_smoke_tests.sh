@@ -50,6 +50,8 @@ tests=(
     "${dir_run}/smoke/test_execute_align_fastqs_bwa_mem.sh"
     "${dir_run}/smoke/test_submit_align_fastqs_bwa_mem2.sh"
     "${dir_run}/smoke/test_execute_align_fastqs_bwa_mem2.sh"
+    "${dir_run}/smoke/test_submit_align_fastqs_bwa_aln.sh"
+    "${dir_run}/smoke/test_execute_align_fastqs_bwa_aln.sh"
     "${dir_run}/smoke/test_submit_compute_signal_ratio.sh"
     "${dir_run}/smoke/test_execute_compute_signal_ratio.sh"
     "${dir_run}/smoke/test_execute_compute_signal_parallel.sh"
