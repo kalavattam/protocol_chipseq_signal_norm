@@ -1,0 +1,862 @@
+#!/usr/bin/env bash
+# -*- coding: utf-8 -*-
+#
+# Script: install_atria.sh
+#
+# Copyright 2026 by Kris Alavattam
+# Email: kalavattam@gmail.com
+#
+# OpenAI ChatGPT (GPT-5.5) was used in development.
+#
+# Distributed under the MIT license.
+
+
+#  Require Bash >= 4.4 before doing any work
+if [[ -z "${BASH_VERSION:-}" ]]; then
+    echo "error(shell): this script must be run under Bash >= 4.4." >&2
+    exit 1
+elif ((
+    BASH_VERSINFO[0] < 4 || ( BASH_VERSINFO[0] == 4 && BASH_VERSINFO[1] < 4 )
+)); then
+    echo "error($(basename "${BASH_SOURCE[0]}")):" \
+        "this script requires Bash >= 4.4; current version is" \
+        "'${BASH_VERSION}'." >&2
+    exit 1
+fi
+
+#  Run in safe mode, exiting on errors, unset variables, and pipe failures
+set -euo pipefail
+
+
+#  Resolve path to the 'scripts' directory
+dir_scr="$(cd "$(dirname "${BASH_SOURCE[0]}")" > /dev/null 2>&1 && pwd)"
+
+
+#  Source and define functions ================================================
+dir_fnc="${dir_scr}/functions"
+fnc_src="${dir_fnc}/source_helpers.sh"
+
+if [[ ! -f "${fnc_src}" ]]; then
+    echo "error($(basename "${BASH_SOURCE[0]}")):" \
+        "script not found: '${fnc_src}'." >&2
+    exit 1
+fi
+
+# shellcheck disable=SC1090
+source "${fnc_src}" || {
+    echo "error($(basename "${BASH_SOURCE[0]}")):" \
+        "failed to source '${fnc_src}'." >&2
+    exit 1
+}
+
+source_helpers "${dir_fnc}" \
+    check_args \
+    check_env \
+    check_inputs \
+    format_outputs \
+    handle_env \
+    || {
+        echo "error($(basename "${BASH_SOURCE[0]}")):" \
+            "failed to source required helper scripts." >&2
+        exit 1
+    }
+
+unset fnc_src
+
+
+#  Initialize argument variables ==============================================
+dry_run=false
+env_nam="env_protocol"
+dir_inl="${HOME}"
+dir_tmp=""
+tmp_auto=false
+v_julia="1.8.5"
+v_atria="4.1.4"
+pth_snp=""
+sha_cmd=""
+
+
+#  Define help text -----------------------------------------------------------
+function help_install_atria() {
+    cat << EOM >&2
+Usage:
+  install_atria.sh
+    [--help] [--dry_run] [--env_nam <str>] [--dir_inl <dir>] [--dir_tmp <dir>] [--v_julia <str>] [--v_atria <str>] [--pth_snp <file>]
+
+Description:
+  Install Julia and Atria into a user-controlled directory without 'sudo'.
+
+  The protocol-tested/default Julia version is 1.8.5. Upstream Atria docs describe Atria as tested with Julia 1.8 and 1.9, and recommend Julia 1.8.5 for speed relative to Julia 1.9.
+
+Keyword arguments:
+  -h, --hlp, --help  <flag>
+    Show this help message and exit.
+
+  -dr, --dry, --dry_run  <flag>
+    Print planned actions, derived paths, and URLs without downloading, extracting, cloning, building, or writing a PATH snippet.
+
+  -en, --env, --env_nam  <str>
+    Conda/Mamba environment to activate before checking Atria runtime dependencies and building Atria (default: '${env_nam}').
+
+  -di, --dir_inl, --dir_instl, --dir_install  <dir>
+    User-controlled installation directory for Julia and Atria (default: '${dir_inl}').
+
+  -dt, --tmp, --dir_tmp  <dir>
+    Working directory for downloaded files. If unset, a temporary directory is created under the system temp location and cleaned up on exit.
+
+  -vj, --v_julia, --julia_version  <str>
+    Julia version to install (default: '${v_julia}'). Verified SHA-256 mappings are bundled for Julia 1.8.0-1.8.5 and 1.9.0-1.9.4 on supported Linux/macOS x86_64/aarch64 targets.
+
+  -va, --v_atria, --atria_version  <str>
+    Atria version to install (default: '${v_atria}'; the corresponding Git tag is expected to be 'v${v_atria}').
+
+  -ps, --pth_snp, --pth_snippet, --path_snp, --path_snippet  <file>
+    Append PATH export lines to the requested snippet file. Shell "rc" files are never modified unless explicitly supplied here. Without this option, the PATH lines are printed at the end.
+
+Notes:
+  - Supported Julia archive targets:
+    + Linux glibc x86_64
+    + Linux glibc aarch64 / arm64
+    + macOS x86_64
+    + macOS arm64 / aarch64
+  - A non-dry run requires network access to download Julia and clone/fetch Atria.
+EOM
+}
+
+
+#  Define utility functions ---------------------------------------------------
+function echo_dry() {
+    echo "dryrun($(basename "${BASH_SOURCE[0]}")):" "$@"
+}
+
+
+function run_or_print() {
+    if [[ "${dry_run}" == "true" ]]; then
+        printf 'dryrun(%s):' "$(basename "${BASH_SOURCE[0]}")"
+        printf ' %q' "$@"
+        printf '\n'
+    else
+        "$@"
+    fi
+}
+
+
+function check_pkg_mgr() {
+    if command -v mamba > /dev/null 2>&1; then
+        return 0
+    elif command -v conda > /dev/null 2>&1; then
+        return 0
+    fi
+
+    echo_err "neither 'mamba' nor 'conda' is available in PATH."
+    return 1
+}
+
+
+function select_sha_cmd() {
+    if command -v sha256sum > /dev/null 2>&1; then
+        sha_cmd="sha256sum"
+    elif command -v shasum > /dev/null 2>&1; then
+        sha_cmd="shasum"
+    else
+        echo_err "neither 'sha256sum' nor 'shasum' is available in PATH."
+        return 1
+    fi
+}
+
+
+function verify_sha256() {
+    local file="${1:-}"
+    local expect="${2:-}"
+
+    validate_var "file" "${file}" || return 1
+    validate_var "expect" "${expect}" || return 1
+
+    case "${sha_cmd}" in
+        sha256sum)
+            (
+                cd "$(dirname "${file}")"
+                printf '%s  %s\n' "${expect}" "$(basename "${file}")" \
+                    | sha256sum -c -
+            )
+            ;;
+
+        shasum)
+            (
+                cd "$(dirname "${file}")"
+                printf '%s  %s\n' "${expect}" "$(basename "${file}")" \
+                    | shasum -a 256 -c -
+            )
+            ;;
+
+        *)
+            echo_err "unsupported SHA-256 command '${sha_cmd}'."
+            return 1
+            ;;
+    esac
+}
+
+
+#  Intentionally set global Julia target variables used by later installer
+#+ steps
+function map_julia_target() {
+    sys_os="$(uname -s)"
+    sys_ar="$(uname -m)"
+
+    jul_os=""
+    jul_ar_dir=""
+    jul_ar_fil=""
+    jul_256=""
+
+    case "${sys_os}:${sys_ar}" in
+        Linux:x86_64|Linux:amd64)
+            jul_os="linux"
+            jul_ar_dir="x64"
+            jul_ar_fil="x86_64"
+            ;;
+
+        Linux:aarch64|Linux:arm64)
+            jul_os="linux"
+            jul_ar_dir="aarch64"
+            jul_ar_fil="aarch64"
+            ;;
+
+        Darwin:x86_64)
+            jul_os="mac"
+            jul_ar_dir="x64"
+            jul_ar_fil="mac64"
+            ;;
+
+        Darwin:arm64|Darwin:aarch64)
+            jul_os="mac"
+            jul_ar_dir="aarch64"
+            jul_ar_fil="macaarch64"
+            ;;
+
+        *)
+            echo_err \
+                "unsupported OS/architecture for Julia archive mapping:" \
+                "'${sys_os}:${sys_ar}'. Supported targets are Linux x86_64," \
+                "Linux aarch64/arm64, macOS x86_64, and macOS arm64/aarch64."
+            return 1
+            ;;
+    esac
+
+    v_min="${v_julia%.*}"
+
+    case "${jul_os}" in
+        linux) jul_tar="julia-${v_julia}-${jul_os}-${jul_ar_fil}.tar.gz" ;;
+        mac)   jul_tar="julia-${v_julia}-${jul_ar_fil}.tar.gz"           ;;
+        *)
+            echo_err "unsupported Julia OS token '${jul_os}'."
+            return 1
+            ;;
+    esac
+
+    jul_url="https://julialang-s3.julialang.org/bin/${jul_os}/${jul_ar_dir}/${v_min}/${jul_tar}"
+
+    case "${v_julia}:${jul_os}:${jul_ar_fil}" in
+        1.9.4:linux:x86_64)   jul_256="07d20c4c2518833e2265ca0acee15b355463361aa4efdab858dad826cf94325c" ;;
+        1.9.4:linux:aarch64)  jul_256="541d0c5a9378f8d2fc384bb8595fc6ffe20d61054629a6e314fb2f8dfe2f2ade" ;;
+        1.9.4:mac:mac64)      jul_256="67eec264f6afc9e9bf72c0f62c84d91c2ebdfaed6a0aa11606e3c983d278b441" ;;
+        1.9.4:mac:macaarch64) jul_256="67542975e86102eec95bc4bb7c30c5d8c7ea9f9a0b388f0e10f546945363b01a" ;;
+
+        1.9.3:linux:x86_64)   jul_256="d76670cc9ba3e0fd4c1545dd3d00269c0694976a1176312795ebce1692d323d1" ;;
+        1.9.3:linux:aarch64)  jul_256="55437879f6b98470d96c4048b922501b643dfffb8865abeb90c7333a83df7524" ;;
+        1.9.3:mac:mac64)      jul_256="6eea87748424488226090d1e7d553e72ab106a873d63c732fc710a3d080abb97" ;;
+        1.9.3:mac:macaarch64) jul_256="f518e38d7bd5b37766fb051916bd295993aa4b52a47018f4c98b5fde721ced87" ;;
+
+        1.9.2:linux:x86_64)   jul_256="4c2d799f442d7fe718827b19da2bacb72ea041b9ce55f24eee7b1313f57c4383" ;;
+        1.9.2:linux:aarch64)  jul_256="682397f8895149f0e283f0b27bffc6694033bdfb19f9366c80f6efdf3685f27c" ;;
+        1.9.2:mac:mac64)      jul_256="a2e8eb31a89b26e4a99349303aeff8e8ee780144bbdb1f7eda6f41024d42cadb" ;;
+        1.9.2:mac:macaarch64) jul_256="77c71ff8cb1fcdb84097e86a9fb579a8b34d8e7fd8e24d43107042e0fb988b76" ;;
+
+        1.9.1:linux:x86_64)   jul_256="cde14a58f899251f30cfced87055626f44845780659ebe8d50cbc4c67b31997c" ;;
+        1.9.1:linux:aarch64)  jul_256="b643ccd3e2a5960f7ce7055243743d0a39badda3974bce3d77861dd363badd10" ;;
+        1.9.1:mac:mac64)      jul_256="49368ddaef4e37ed606808a6ca58ba0f1a4451a27b8201aed4d9d7b24c276817" ;;
+        1.9.1:mac:macaarch64) jul_256="9e3e02ca6546513dce265379abe957cb2b5b0ccf4066219486da0eb872ddcebc" ;;
+
+        1.9.0:linux:x86_64)   jul_256="00c614466ef9809c2eb23480e38d196a2c577fff2730c4f83d135b913d473359" ;;
+        1.9.0:linux:aarch64)  jul_256="0a14315b53acd97f22d26d4a8fd2c237e524e95c3bec98d2d78b54d80c2bc364" ;;
+        1.9.0:mac:mac64)      jul_256="00bc4c27eeb1bebd350597312ff0919176315fd3199c63ec963fb41e3b04bfaf" ;;
+        1.9.0:mac:macaarch64) jul_256="53e62770a6990d5a89e7a001ef68aa25de25126a3be838200c4c9a705daea37c" ;;
+
+        1.8.5:linux:x86_64)   jul_256="e71a24816e8fe9d5f4807664cbbb42738f5aa9fe05397d35c81d4c5d649b9d05" ;;
+        1.8.5:linux:aarch64)  jul_256="a1f637b44c71ea9bc96d7c3ef347724c054a1e5227b980adebfc33599e5153a4" ;;
+        1.8.5:mac:mac64)      jul_256="a1a859eda7fb41a0b55467339a11c3c1c0df78b27d1e160e80bc6758b3d8dae0" ;;
+        1.8.5:mac:macaarch64) jul_256="ea85e0489c36324c4da62163aa1b82fcf2f52f72d173ee7dd213a3a92992cab7" ;;
+
+        1.8.4:linux:x86_64)   jul_256="f0427a4d7910c47dc7c31f65ba7ecaafedbbc0eceb39c320a37fa33598004fd5" ;;
+        1.8.4:linux:aarch64)  jul_256="dc4798c1ce8768fa35972e8b149ca3a85fc69e1074b609a72b2cfed5c4aa7050" ;;
+        1.8.4:mac:mac64)      jul_256="597d4ec4f12241e78c75e220cebd455fe2af935a36f276d222a419616553663a" ;;
+        1.8.4:mac:macaarch64) jul_256="06e81151d76ccd5ec0bd59cd51dde49cc1a15b1386624b4a61557cdbc5ae6d09" ;;
+
+        1.8.3:linux:x86_64)   jul_256="33c3b09356ffaa25d3331c3646b1f2d4b09944e8f93fcb994957801b8bbf58a9" ;;
+        1.8.3:linux:aarch64)  jul_256="dbffb134a413b712d4a8e1ee8e665ea55edb0865719a1bad9979123d6433acc9" ;;
+        1.8.3:mac:mac64)      jul_256="f3367de05f681b884219854c304f1a85420000c8c137a98cd358b7fe5070dc84" ;;
+        1.8.3:mac:macaarch64) jul_256="f57acd021e7e7c0a40d29967a0f680ca77c5988d856e1cc220982c6bfa3964ff" ;;
+
+        1.8.2:linux:x86_64)   jul_256="671cf3a450b63a717e1eedd7f69087e3856f015b2e146cb54928f19a3c05e796" ;;
+        1.8.2:linux:aarch64)  jul_256="f91c276428ffb30acc209e0eb3e70b1c91260e887e11d4b66f5545084b530547" ;;
+        1.8.2:mac:mac64)      jul_256="7395f1c49e3c4dbc3714aef2c6cf310addd4c1072a12a8c4ca7f568c67acb15d" ;;
+        1.8.2:mac:macaarch64) jul_256="a4fc5caa5bf2ac353f779c177a9a72ee91497a092959d58a16263041a68b92d3" ;;
+
+        1.8.1:linux:x86_64)   jul_256="33054ee647ee8a4fb54fc05110e07e0b53e04591fe53d0a4cb4c7ed7a05e91f1" ;;
+        1.8.1:linux:aarch64)  jul_256="ba06837ac2899547bbb799989f11464fecd6782226871c3b7a48619481042679" ;;
+        1.8.1:mac:mac64)      jul_256="a1cc8dbd2a02b7ef436ca1450bab831a68b74ce2431c2e1043dc3354780e0bb2" ;;
+        1.8.1:mac:macaarch64) jul_256="5a0f49416fd40760cd188d90db9742087fd3d2f86e725b5d31ed8ce91a2331ce" ;;
+
+        1.8.0:linux:x86_64)   jul_256="e80d732ccb7f79e000d798cb8b656dc3641ab59516d6e4e52e16765017892a00" ;;
+        1.8.0:linux:aarch64)  jul_256="e003cfb8680af1a65c3be55b53a48cc5186300adaaba8926209800b4d1f4ca7a" ;;
+        1.8.0:mac:mac64)      jul_256="a77055e5005d05d43fce4dc51e78f664b4802138a432ab84c0adecc453dc88a5" ;;
+        1.8.0:mac:macaarch64) jul_256="9c911f93405445ee71f6ebfef2b00f9ed9d4880b4bfa6c36fe865b75c2a46fbd" ;;
+    esac
+}
+
+
+function check_julia_version() {
+    case "${v_julia}" in
+        1.8.5)
+            return 0
+            ;;
+
+        1.8.[0-4])
+            echo_warn \
+                "Julia ${v_julia} was requested. The protocol-tested/default" \
+                "version is 1.8.5."
+            return 0
+            ;;
+
+        1.9.[0-4])
+            echo_warn \
+                "Julia ${v_julia} was requested. Upstream Atria docs report" \
+                "Julia 1.8.5 is faster than Julia 1.9.x; this protocol" \
+                "defaults to Julia 1.8.5."
+            return 0
+            ;;
+
+        *)
+            echo_err \
+                "unsupported Julia version ${v_julia}. This installer" \
+                "currently supports Julia 1.8.0-1.8.5 and 1.9.0-1.9.4," \
+                "with Julia 1.8.5 as the protocol-tested/default version."
+            return 1
+            ;;
+    esac
+}
+
+
+#  Intentionally sets global Atria tag variables used by later installer steps
+function map_atria_tag() {
+    if [[ "${v_atria}" == v* ]]; then
+        tag_atr="${v_atria}"
+        v_atria="${v_atria#v}"
+    else
+        tag_atr="v${v_atria}"
+    fi
+}
+
+
+function check_req_cmd() {
+    local cmd=""
+    local rc=0
+
+    #  Use 'curl' here because it is available by default on macOS and common
+    #+ on Linux
+    for cmd in cp curl find git grep head mkdir mktemp rm sort tail tar; do
+        if ! command -v "${cmd}" > /dev/null 2>&1; then
+            echo_err "required command '${cmd}' is not available in PATH."
+            rc=1
+        fi
+    done
+
+    return "${rc}"
+}
+
+
+function prepare_tmp_dir() {
+    if [[ -n "${dir_tmp}" ]]; then
+        mkdir -p "${dir_tmp}"
+        tmp_auto=false
+    else
+        dir_tmp="$(mktemp -d "${TMPDIR:-/tmp}/install_atria.XXXXXX")"
+        tmp_auto=true
+    fi
+}
+
+
+function cleanup_tmp_dir() {
+    if [[
+        "${tmp_auto}" == "true" && -n "${dir_tmp}" && -d "${dir_tmp}"
+    ]]; then
+        rm -rf "${dir_tmp}"
+    fi
+}
+
+
+function install_julia() {
+    jul_dir="${dir_inl}/julia-${v_julia}"
+    jul_bin="${jul_dir}/bin/julia"
+    jul_tar_path="${dir_tmp}/${jul_tar}"
+
+    if [[ -d "${jul_dir}" ]]; then
+        echo "Julia install directory already exists; reusing '${jul_dir}'."
+    else
+        if [[ -z "${jul_256}" ]]; then
+            echo_err \
+                "no bundled SHA-256 mapping for Julia ${v_julia} on" \
+                "'${sys_os}:${sys_ar}'. Refusing to download without a" \
+                "known checksum."
+            return 1
+        fi
+
+        if [[ ! -s "${jul_tar_path}" ]]; then
+            run_or_print curl -L --fail -o "${jul_tar_path}" "${jul_url}"
+        else
+            echo "Julia tarball already exists; verifying '${jul_tar_path}'."
+        fi
+
+        verify_sha256 "${jul_tar_path}" "${jul_256}"
+        run_or_print tar -xzf "${jul_tar_path}" -C "${dir_inl}"
+    fi
+
+    validate_var_file "jul_bin" "${jul_bin}" || return 1
+
+    "${jul_bin}" --version
+}
+
+
+function checkout_atria() {
+    dir_rep="${dir_inl}/repos"
+    dir_atr="${dir_rep}/Atria"
+
+    mkdir -p "${dir_rep}"
+
+    if [[ -d "${dir_atr}/.git" ]]; then
+        echo "Atria repository already exists; reusing '${dir_atr}'."
+    elif [[ -e "${dir_atr}" ]]; then
+        echo_err \
+            "Atria install path exists but is not a Git repository:" \
+            "'${dir_atr}'. Move it aside or choose another '--dir_inl'."
+        return 1
+    else
+        run_or_print git clone "https://github.com/cihga39871/Atria.git" \
+            "${dir_atr}"
+    fi
+
+    if [[ "${dry_run}" == "true" ]]; then
+        echo_dry "would check out Atria tag '${tag_atr}'."
+        return 0
+    fi
+
+    (
+        cd "${dir_atr}"
+        git fetch --tags
+
+        if \
+            git rev-parse --verify --quiet "refs/tags/${tag_atr}" > /dev/null
+        then
+            git checkout --detach "${tag_atr}"
+        else
+            echo_err "could not find Atria tag '${tag_atr}'."
+            return 1
+        fi
+    )
+}
+
+
+function copy_suitesparse() {
+    local dir_src="${jul_dir}/lib/julia"
+    local dir_dst="${dir_bld}/lib/julia"
+    local lib=""
+    local stem=""
+
+    if [[ ! -d "${dir_dst}" ]]; then
+        echo_err \
+            "could not find Atria 'lib/julia' directory: '${dir_dst}'."
+        return 1
+    fi
+
+    for stem in \
+        libamd \
+        libbtf \
+        libcamd \
+        libccolamd \
+        libcholmod \
+        libcolamd \
+        libklu \
+        libldl \
+        librbio \
+        libspqr \
+        libsuitesparseconfig \
+        libumfpack
+    do
+        for lib in "${dir_src}/${stem}".*; do
+            [[ -e "${lib}" ]] || continue
+            cp -p "${lib}" "${dir_dst}/"
+        done
+    done
+}
+
+
+function find_atria_dir() {
+    dir_bld="$(
+        find "${dir_atr}" \
+            -maxdepth 1 \
+            -type d \
+            -name "atria-${v_atria}_*" \
+            -print \
+            | sort \
+            | tail -n 1
+    )"
+
+    if [[ -z "${dir_bld}" ]]; then
+        dir_bld="${dir_atr}/atria-${v_atria}"
+    fi
+
+    if [[ ! -d "${dir_bld}" ]]; then
+        echo_err \
+            "failed to locate Atria build directory under '${dir_atr}'."
+        return 1
+    fi
+}
+
+
+function build_atria() {
+    if [[ "${dry_run}" == "true" ]]; then
+        echo_dry \
+            "would build Atria with '${jul_bin}' build_atria.jl."
+        pth_bin="${dir_atr}/atria-${v_atria}/bin"
+        return 0
+    fi
+
+    (
+        cd "${dir_atr}"
+        "${jul_bin}" build_atria.jl
+    )
+
+    find_atria_dir
+    copy_suitesparse
+
+    for stem in libamd libcholmod libsuitesparseconfig; do
+        if ! find "${dir_bld}/lib/julia" \
+            -name "${stem}*" \
+            -print \
+            -quit \
+            | grep -q .
+        then
+            echo_err \
+                "failed to copy '${stem}' libraries into the Atria build."
+            return 1
+        fi
+    done
+
+    pth_atr="${dir_bld}/bin/atria"
+
+    if [[ ! -f "${pth_atr}" ]]; then
+        echo_err \
+            "failed to locate built Atria executable under '${dir_atr}'."
+        return 1
+    fi
+
+    pth_bin="$(dirname "${pth_atr}")"
+
+    tmp_chk="$(mktemp "${TMPDIR:-/tmp}/atria_check.XXXXXX")"
+
+    if "${pth_atr}" --version > "${tmp_chk}" 2>&1; then
+        if \
+            grep -qiE 'error|could not load library|library not loaded' "${tmp_chk}"
+        then
+            cat "${tmp_chk}" >&2
+            rm -f "${tmp_chk}"
+            echo_err "Atria emitted an error during '--version' verification."
+            return 1
+        fi
+        cat "${tmp_chk}"
+    elif "${pth_atr}" --help > "${tmp_chk}" 2>&1; then
+        if \
+            grep -qiE 'error|could not load library|library not loaded' "${tmp_chk}"
+        then
+            cat "${tmp_chk}" >&2
+            rm -f "${tmp_chk}"
+            echo_err "Atria emitted an error during '--help' verification."
+            return 1
+        fi
+        echo "Atria executable responds to '--help': '${pth_atr}'."
+    else
+        cat "${tmp_chk}" >&2
+        rm -f "${tmp_chk}"
+        echo_err "Atria verification failed for '${pth_atr}'."
+        return 1
+    fi
+
+    rm -f "${tmp_chk}"
+}
+
+
+function print_write_pth_snp() {
+    local snippet
+
+    snippet="$(
+        cat << EOM
+#  Julia
+export PATH="\${PATH}:${jul_dir}/bin"
+
+#  Atria
+export PATH="\${PATH}:${pth_bin}"
+EOM
+    )"
+
+    echo
+    echo "Add the following lines to your shell configuration or a sourced snippet:"
+    echo
+    printf '%s\n' "${snippet}"
+
+    if [[ -n "${pth_snp}" ]]; then
+        if [[ "${dry_run}" == "true" ]]; then
+            echo
+            echo_dry \
+                "would append PATH snippet to '${pth_snp}'."
+        else
+            mkdir -p "$(dirname "${pth_snp}")"
+            {
+                echo
+                printf '%s\n' "${snippet}"
+            } >> "${pth_snp}"
+            echo
+            echo "PATH snippet appended to '${pth_snp}'."
+        fi
+    fi
+}
+
+
+#  Parse arguments =============================================================
+if [[ -z "${1:-}" || "${1}" =~ ^(-h|--h[e]?lp)$ ]]; then
+    help_install_atria >&2
+    exit 0
+fi
+
+while [[ "$#" -gt 0 ]]; do
+    case "${1}" in
+        -h|--hlp|--help)
+            help_install_atria
+            exit 0
+            ;;
+
+        -dr|--dry|--dry[_-]run)
+            dry_run=true
+            shift 1
+            ;;
+
+        -en|--env|--env[_-]nam)
+            require_optarg "${1}" "${2:-}" "main" || {
+                echo >&2
+                help_install_atria
+                exit 1
+            }
+            env_nam="${2}"
+            shift 2
+            ;;
+
+        -di|--dir[_-]inl|--dir[_-]instl|--dir[_-]install)
+            require_optarg "${1}" "${2:-}" "main" || {
+                echo >&2
+                help_install_atria
+                exit 1
+            }
+            dir_inl="${2}"
+            shift 2
+            ;;
+
+        -dt|--tmp|--dir[_-]tmp)
+            require_optarg "${1}" "${2:-}" "main" || {
+                echo >&2
+                help_install_atria
+                exit 1
+            }
+            dir_tmp="${2}"
+            shift 2
+            ;;
+
+        -vj|--v[_-]julia|--julia[_-]version)
+            require_optarg "${1}" "${2:-}" "main" || {
+                echo >&2
+                help_install_atria
+                exit 1
+            }
+            v_julia="${2}"
+            shift 2
+            ;;
+
+        -va|--v[_-]atria|--atria[_-]version)
+            require_optarg "${1}" "${2:-}" "main" || {
+                echo >&2
+                help_install_atria
+                exit 1
+            }
+            v_atria="${2}"
+            shift 2
+            ;;
+
+        -ps|--pth[_-]snp|--pth[_-]snippet|--path[_-]snp|--path[_-]snippet)
+            require_optarg "${1}" "${2:-}" "main" || {
+                echo >&2
+                help_install_atria
+                exit 1
+            }
+            pth_snp="${2}"
+            shift 2
+            ;;
+
+        *)
+            echo_err "unknown option/parameter passed: '${1}'."
+            echo >&2
+            help_install_atria
+            exit 1
+            ;;
+    esac
+done
+
+
+#  Validate arguments and derive installation metadata ------------------------
+validate_var "env_nam" "${env_nam}"
+validate_var "dir_inl" "${dir_inl}"
+validate_var "v_julia" "${v_julia}"
+validate_var "v_atria" "${v_atria}"
+
+if [[ "${dry_run}" == "false" && ! -d "${dir_inl}" ]]; then
+    mkdir -p "${dir_inl}"
+fi
+
+if [[ "${dry_run}" == "true" ]]; then
+    # dir_inl="$(
+    #     cd "$(dirname "${dir_inl}")" > /dev/null 2>&1 && pwd
+    # )/$(basename "${dir_inl}")"
+    dir_inl="${dir_inl/#\~/${HOME}}"
+else
+    validate_var_dir "dir_inl" "${dir_inl}"
+    dir_inl="$(cd "${dir_inl}" > /dev/null 2>&1 && pwd)"
+fi
+
+check_julia_version
+map_atria_tag
+map_julia_target
+
+if [[ "${dry_run}" == "true" ]]; then
+    echo_dry \
+        "no downloads, extraction, cloning, building, or PATH snippet writes" \
+        "will be performed."
+fi
+
+echo
+echo "Resolved installation plan:"
+echo "  - env_nam=${env_nam}"
+echo "  - dir_inl=${dir_inl}"
+echo "  - dir_tmp=${dir_tmp:-AUTO}"
+echo "  - sys_os=${sys_os}"
+echo "  - sys_ar=${sys_ar}"
+echo "  - v_julia=${v_julia}"
+echo "  - v_min=${v_min}"
+echo "  - jul_os=${jul_os}"
+echo "  - jul_ar_dir=${jul_ar_dir}"
+echo "  - jul_ar_fil=${jul_ar_fil}"
+echo "  - jul_tar=${jul_tar}"
+echo "  - jul_url=${jul_url}"
+echo "  - jul_256=${jul_256:-UNSET}"
+echo "  - v_atria=${v_atria}"
+echo "  - tag_atr=${tag_atr}"
+echo "  - dir_atr=${dir_inl}/repos/Atria"
+echo "  - pth_snp=${pth_snp:-UNSET}"
+echo
+
+if [[ -z "${jul_256}" ]]; then
+    if [[ "${dry_run}" == "true" ]]; then
+        echo_warn \
+            "no bundled SHA-256 mapping was found for Julia ${v_julia} on" \
+            "'${sys_os}:${sys_ar}'. A non-dry run will refuse to download" \
+            "Julia until the checksum mapping is added."
+    else
+        echo_err \
+            "no bundled SHA-256 mapping was found for Julia ${v_julia} on" \
+            "'${sys_os}:${sys_ar}'. Refusing to download Julia without" \
+            "a known checksum."
+        exit 1
+    fi
+fi
+
+if [[ "${dry_run}" == "false" ]]; then
+    check_pkg_mgr || exit 1
+
+    if ! check_env_installed "${env_nam}"; then
+        echo_err \
+            "environment '${env_nam}' appears not to be installed. Install" \
+            "or update the project environment before installing Atria."
+        exit 1
+    fi
+
+    handle_env "${env_nam}" || exit 1
+    check_pgrm_path pigz || {
+        echo_err \
+            "'pigz' is missing from '${env_nam}'. Install/update the project" \
+            "environment; this script does not install pigz with a system" \
+            "package manager."
+        exit 1
+    }
+    check_pgrm_path pbzip2 || {
+        echo_err \
+            "'pbzip2' is missing from '${env_nam}'. Install/update the" \
+            "project environment; this script does not install pbzip2 with" \
+            "a system package manager."
+        exit 1
+    }
+    check_req_cmd || exit 1
+    select_sha_cmd || exit 1
+else
+    echo_dry "would confirm 'mamba' or 'conda' is available."
+    echo_dry "would confirm environment '${env_nam}' exists and activate it."
+    echo_dry "would confirm 'pigz' and 'pbzip2' are available in '${env_nam}'."
+    echo_dry \
+        "would confirm 'curl', 'git', 'grep', 'sort', and 'tar', among other" \
+        "programs, are available."
+    echo_dry "would select 'sha256sum' or 'shasum' for SHA-256 verification."
+fi
+
+if [[ "${dry_run}" == "true" ]]; then
+    jul_dir="${dir_inl}/julia-${v_julia}"
+    jul_bin="${jul_dir}/bin/julia"
+    dir_rep="${dir_inl}/repos"
+    dir_atr="${dir_rep}/Atria"
+    pth_bin="${dir_atr}/atria-${v_atria}/bin"
+
+    echo_dry "would use working directory '${dir_tmp:-AUTO}'."
+
+    if [[ -n "${jul_256}" ]]; then
+        echo_dry "would download and verify '${jul_url}'."
+        echo_dry "would extract Julia under '${dir_inl}'."
+    else
+        echo_dry \
+            "would refuse non-dry-run download of '${jul_url}' until a" \
+            "SHA-256 mapping is added."
+    fi
+
+    echo_dry \
+        "would discover the final Atria bin path after build; provisional" \
+        "path is '${pth_bin}'."
+    echo_dry "would clone Atria under '${dir_atr}'."
+    echo_dry "would check out Atria tag '${tag_atr}'."
+    echo_dry "would build Atria using '${jul_bin}'."
+    print_write_pth_snp
+    exit 0
+fi
+
+prepare_tmp_dir
+trap cleanup_tmp_dir EXIT
+
+install_julia
+checkout_atria
+build_atria
+print_write_pth_snp
+
+echo
+echo "success($(basename "${BASH_SOURCE[0]}")):" \
+    "installed/verified Julia ${v_julia} and Atria ${v_atria}."
