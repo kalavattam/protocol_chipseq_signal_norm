@@ -111,7 +111,7 @@ Keyword arguments:
     Atria version to install (default: '${v_atria}'; the corresponding Git tag is expected to be 'v${v_atria}').
 
   -ps, --pth_snp, --pth_snippet, --path_snp, --path_snippet  <file>
-    Append PATH export lines to the requested snippet file. Shell "rc" files are never modified unless explicitly supplied here. Without this option, the PATH lines are printed at the end.
+    Append PATH export lines to the requested file. This may be a shell configuration file such as '${HOME}/.bashrc' or '${HOME}/.zshrc', or a temporary snippet file for, e.g., testing. Without this option, the PATH lines are printed at the end.
 
 Notes:
   - Supported Julia archive targets:
@@ -397,7 +397,7 @@ function cleanup_tmp_dir() {
 function install_julia() {
     jul_dir="${dir_inl}/julia-${v_julia}"
     jul_bin="${jul_dir}/bin/julia"
-    jul_tar_path="${dir_tmp}/${jul_tar}"
+    jul_tar_pth="${dir_tmp}/${jul_tar}"
 
     if [[ -d "${jul_dir}" ]]; then
         echo "Julia install directory already exists; reusing '${jul_dir}'."
@@ -410,14 +410,14 @@ function install_julia() {
             return 1
         fi
 
-        if [[ ! -s "${jul_tar_path}" ]]; then
-            run_or_print curl -L --fail -o "${jul_tar_path}" "${jul_url}"
+        if [[ ! -s "${jul_tar_pth}" ]]; then
+            run_or_print curl -L --fail -o "${jul_tar_pth}" "${jul_url}"
         else
-            echo "Julia tarball already exists; verifying '${jul_tar_path}'."
+            echo "Julia tarball already exists; verifying '${jul_tar_pth}'."
         fi
 
-        verify_sha256 "${jul_tar_path}" "${jul_256}"
-        run_or_print tar -xzf "${jul_tar_path}" -C "${dir_inl}"
+        verify_sha256 "${jul_tar_pth}" "${jul_256}"
+        run_or_print tar -xzf "${jul_tar_pth}" -C "${dir_inl}"
     fi
 
     validate_var_file "jul_bin" "${jul_bin}" || return 1
@@ -427,7 +427,7 @@ function install_julia() {
 
 
 function checkout_atria() {
-    dir_rep="${dir_inl}/repos"
+    dir_rep="${dir_inl}"
     dir_atr="${dir_rep}/Atria"
 
     mkdir -p "${dir_rep}"
@@ -765,7 +765,7 @@ echo "  - jul_url=${jul_url}"
 echo "  - jul_256=${jul_256:-UNSET}"
 echo "  - v_atria=${v_atria}"
 echo "  - tag_atr=${tag_atr}"
-echo "  - dir_atr=${dir_inl}/repos/Atria"
+echo "  - dir_atr=${dir_inl}/Atria"
 echo "  - pth_snp=${pth_snp:-UNSET}"
 echo
 
@@ -824,7 +824,7 @@ fi
 if [[ "${dry_run}" == "true" ]]; then
     jul_dir="${dir_inl}/julia-${v_julia}"
     jul_bin="${jul_dir}/bin/julia"
-    dir_rep="${dir_inl}/repos"
+    dir_rep="${dir_inl}"
     dir_atr="${dir_rep}/Atria"
     pth_bin="${dir_atr}/atria-${v_atria}/bin"
 
