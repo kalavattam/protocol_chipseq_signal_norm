@@ -21,10 +21,10 @@ source "$(
 
 rec_section "${TEST_NAME}"
 
-if ! is_integration; then
+if ! is_parallel_enabled; then
     rec_skip \
-        "GNU Parallel align-fastqs integration check disabled;" \
-        "set RUN_INTEGRATION=1 or RUN_CONDA_INTEGRATION=1 to enable"
+        "GNU Parallel align-fastqs check disabled;" \
+        "set RUN_PARALLEL=1 to enable"
     finish
     exit $?
 fi
@@ -90,17 +90,6 @@ then
     finish
     exit $?
 fi
-
-
-#  Run samtools from the active shell or the resolved project environment
-# shellcheck disable=SC2154
-function run_samtools() {
-    if check_cmd_exists samtools; then
-        samtools "$@"
-    else
-        conda run -n "${env_nam}" samtools "$@"
-    fi
-}
 
 
 #  Run execute_align_fastqs.sh through local GNU Parallel for two SE inputs

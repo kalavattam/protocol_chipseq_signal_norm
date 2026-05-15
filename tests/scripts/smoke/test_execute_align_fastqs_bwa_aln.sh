@@ -65,17 +65,6 @@ require_files_exist \
     }
 
 
-#  Run samtools from the active shell or the resolved project environment
-# shellcheck disable=SC2154
-function run_samtools() {
-    if check_cmd_exists samtools; then
-        samtools "$@"
-    else
-        conda run -n "${env_nam}" samtools "$@"
-    fi
-}
-
-
 #  Run execute_align_fastqs.sh through submit_align_fastqs.sh for SE input
 log="${dir_log}/execute_align_fastqs_bwa_aln_se.log"
 

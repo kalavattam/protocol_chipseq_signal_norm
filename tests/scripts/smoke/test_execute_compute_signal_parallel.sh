@@ -21,10 +21,10 @@ source "$(
 
 rec_section "${TEST_NAME}"
 
-if ! is_integration; then
+if ! is_parallel_enabled; then
     rec_skip \
-        "GNU Parallel dry-run/config integration check disabled;" \
-        "set RUN_INTEGRATION=1 or RUN_CONDA_INTEGRATION=1 to enable"
+        "GNU Parallel compute-signal check disabled;" \
+        "set RUN_PARALLEL=1 to enable"
     finish
     exit $?
 fi

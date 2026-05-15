@@ -46,16 +46,6 @@ require_files_exist "${in_sam}" || {
 }
 
 
-#  Run samtools from the active shell or the resolved project environment
-function run_samtools() {
-    if check_cmd_exists samtools; then
-        samtools "$@"
-    else
-        conda run -n "${env_nam}" samtools "$@"
-    fi
-}
-
-
 #  Build a deterministic BAM input from the committed SAM fixture
 log="${dir_log}/execute_filter_bams_prepare_bam.log"
 if \

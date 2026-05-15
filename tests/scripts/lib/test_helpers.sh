@@ -102,12 +102,75 @@ function check_cmd_exists() {
 }
 
 
-#  Check whether optional integration checks were explicitly requested
-function is_integration() {
-    [[ \
-           "${RUN_INTEGRATION:-0}"       == "1" \
-        || "${RUN_CONDA_INTEGRATION:-0}" == "1" \
-    ]]
+#  Check whether GNU Parallel smoke tests were explicitly requested
+function is_parallel_enabled() {
+    [[ "${RUN_PARALLEL:-0}" == "1" ]]
+}
+
+
+#  Check whether Atria smoke tests were explicitly requested
+function is_atria_enabled() {
+    [[ "${RUN_ATRIA:-0}" == "1" ]]
+}
+
+
+#  Require Atria and compression helpers in the requested project environment
+function require_atria_env() {
+    local env_nam="${1:-env_protocol}"
+    local log_lcl="${2:-${TEST_DIR_LOG}/atria_project_env.log}"
+    local rc=0
+
+    mkdir -p "$(dirname "${log_lcl}")"
+
+    {
+        echo "Current shell:"
+        echo "SHELL=${SHELL:-UNSET}"
+        echo "BASH=${BASH:-UNSET}"
+        echo "PATH=${PATH:-UNSET}"
+        echo "CONDA_DEFAULT_ENV=${CONDA_DEFAULT_ENV:-UNSET}"
+        echo "CONDA_PREFIX=${CONDA_PREFIX:-UNSET}"
+        echo
+
+        echo "Current shell command checks:"
+        for cmd in atria pigz pbzip2 gzip; do
+            printf '%s: ' "${cmd}"
+            command -v "${cmd}" || true
+        done
+        echo
+
+        if [[ "${CONDA_DEFAULT_ENV:-}" == "${env_nam}" ]]; then
+            echo "Project-env command checks:"
+            for cmd in atria pigz pbzip2 gzip; do
+                command -v "${cmd}"
+            done
+        elif check_cmd_exists conda; then
+            echo "Project-env command checks via Conda activation:"
+            ENV_NAM="${env_nam}" bash -lc '
+                eval "$(conda shell.bash hook)"
+                conda activate "${ENV_NAM}"
+                echo "CONDA_DEFAULT_ENV=${CONDA_DEFAULT_ENV:-UNSET}"
+                echo "CONDA_PREFIX=${CONDA_PREFIX:-UNSET}"
+                echo "PATH=${PATH:-UNSET}"
+                echo
+                for cmd in atria pigz pbzip2 gzip; do
+                    command -v "${cmd}"
+                done
+            '
+        else
+            echo "conda is unavailable; cannot inspect '${env_nam}'."
+            rc=1
+        fi
+    } > "${log_lcl}" 2>&1 || rc=1
+
+    if (( rc == 0 )); then
+        rec_pass "Atria trim dependencies are available in project environment"
+        return 0
+    fi
+
+    rec_fail \
+        "Atria trim dependencies unavailable in project environment; see" \
+        "$(rec_relpath "${log_lcl}")"
+    return 1
 }
 
 
@@ -211,6 +274,54 @@ function require_files_exist() {
     done
 
     return "${rc}"
+}
+
+
+#  Assert one predictable output file exists, without requiring non-emptiness
+function assert_file_exists() {
+    local file="${1:-}"
+    local label="${2:-file exists}"
+
+    if [[ -f "${file}" ]]; then
+        rec_pass "${label}"
+    else
+        rec_fail "${label}; missing $(rec_relpath "${file}")"
+    fi
+}
+
+
+#  Assert exactly one path was found by a caller-specific search
+function assert_one_path_found() {
+    local arr_ref="${1:-}"
+    local label="${2:-path}"
+    local dir_search="${3:-}"
+    local out_ref="${4:-}"
+    local path_found=""
+
+    local -n arr_lcl="${arr_ref}"
+
+    if (( ${#arr_lcl[@]} == 1 )); then
+        path_found="${arr_lcl[0]}"
+        printf -v "${out_ref}" '%s' "${path_found}"
+        rec_pass "one ${label} found"
+    else
+        printf -v "${out_ref}" ''
+        rec_fail \
+            "expected exactly one ${label} in" \
+            "$(rec_relpath "${dir_search}"), found ${#arr_lcl[@]}"
+    fi
+}
+
+
+#  Run samtools from the active shell or the resolved project environment
+function run_samtools() {
+    local env_lcl="${env_nam:-env_protocol}"
+
+    if check_cmd_exists samtools; then
+        samtools "$@"
+    else
+        conda run -n "${env_lcl}" samtools "$@"
+    fi
 }
 
 

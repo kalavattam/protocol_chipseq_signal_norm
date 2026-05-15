@@ -99,17 +99,6 @@ else
 fi
 
 
-#  Run samtools from the active shell or the resolved project environment
-# shellcheck disable=SC2154
-function run_samtools() {
-    if check_cmd_exists samtools; then
-        samtools "$@"
-    else
-        conda run -n "${env_nam}" samtools "$@"
-    fi
-}
-
-
 #  Submit execute_align_fastqs.sh as a two-task Slurm array
 log="${dir_log}/execute_align_fastqs_slurm_bowtie2.log"
 

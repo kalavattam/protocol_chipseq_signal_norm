@@ -65,17 +65,6 @@ require_files_exist \
     }
 
 
-#  Run samtools from the active shell or the resolved project environment
-# shellcheck disable=SC2154
-function run_samtools() {
-    if check_cmd_exists samtools; then
-        samtools "$@"
-    else
-        conda run -n "${env_nam}" samtools "$@"
-    fi
-}
-
-
 #  Align one SE FASTQ fixture with BWA ALN and emit BAM
 log="${dir_log}/submit_align_fastqs_bwa_aln_se.log"
 
