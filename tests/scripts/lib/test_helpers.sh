@@ -228,6 +228,66 @@ function require_parallel_env() {
 }
 
 
+#  Require wget and gzip in the requested project environment
+function require_download_env() {
+    local env_nam="${1:-env_protocol}"
+    local log_lcl="${2:-${TEST_DIR_LOG}/download_fastqs_project_env.log}"
+    local rc=0
+
+    mkdir -p "$(dirname "${log_lcl}")"
+
+    {
+        echo "Current shell:"
+        echo "SHELL=${SHELL:-UNSET}"
+        echo "BASH=${BASH:-UNSET}"
+        echo "PATH=${PATH:-UNSET}"
+        echo "CONDA_DEFAULT_ENV=${CONDA_DEFAULT_ENV:-UNSET}"
+        echo "CONDA_PREFIX=${CONDA_PREFIX:-UNSET}"
+        echo
+
+        echo "Current shell command checks:"
+        for cmd in wget gzip; do
+            printf '%s: ' "${cmd}"
+            command -v "${cmd}" || true
+        done
+        echo
+
+        if [[ "${CONDA_DEFAULT_ENV:-}" == "${env_nam}" ]]; then
+            echo "Project-env command checks:"
+            for cmd in wget gzip; do
+                command -v "${cmd}"
+            done
+        elif check_cmd_exists conda; then
+            echo "Project-env command checks via Conda activation:"
+            ENV_NAM="${env_nam}" bash -lc '
+                eval "$(conda shell.bash hook)"
+                conda activate "${ENV_NAM}"
+                echo "CONDA_DEFAULT_ENV=${CONDA_DEFAULT_ENV:-UNSET}"
+                echo "CONDA_PREFIX=${CONDA_PREFIX:-UNSET}"
+                echo "PATH=${PATH:-UNSET}"
+                echo
+                for cmd in wget gzip; do
+                    command -v "${cmd}"
+                done
+            '
+        else
+            echo "conda is unavailable; cannot inspect '${env_nam}'."
+            rc=1
+        fi
+    } > "${log_lcl}" 2>&1 || rc=1
+
+    if (( rc == 0 )); then
+        rec_pass "download dependencies are available in project environment"
+        return 0
+    fi
+
+    rec_fail \
+        "download dependencies unavailable in project environment; see" \
+        "$(rec_relpath "${log_lcl}")"
+    return 1
+}
+
+
 #  Resolve the active project environment or require a named fallback
 function require_env_project() {
     local env_ref="${1:-env_nam}"
@@ -337,6 +397,61 @@ function find_python() {
 }
 
 
+#  Find an available loopback TCP port for local HTTP smoke tests
+function find_free_port() {
+    local py="${1:-}"
+
+    "${py}" - << PY
+import socket
+with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+    sock.bind(("127.0.0.1", 0))
+    print(sock.getsockname()[1])
+PY
+}
+
+
+#  Wait until a local HTTP server is reachable
+function wait_for_local_http() {
+    local py="${1:-}"
+    local url="${2:-}"
+    local tries="${3:-50}"
+    local i=0
+
+    for (( i = 1; i <= tries; i++ )); do
+        if \
+            URL_LCL="${url}" "${py}" - << PY
+import os
+import urllib.request
+
+url = os.environ["URL_LCL"]
+try:
+    with urllib.request.urlopen(url, timeout=0.5) as response:
+        raise SystemExit(0 if response.status == 200 else 1)
+except Exception:
+    raise SystemExit(1)
+PY
+        then
+            return 0
+        fi
+
+        sleep 0.1
+    done
+
+    return 1
+}
+
+
+#  Stop a local HTTP server by PID
+function cleanup_http_server() {
+    local pid="${1:-}"
+
+    if [[ -n "${pid}" ]] && kill -0 "${pid}" > /dev/null 2>&1; then
+        kill "${pid}" > /dev/null 2>&1 || true
+        wait "${pid}" > /dev/null 2>&1 || true
+    fi
+}
+
+
 #  Check whether Python is at least version 3.10
 function check_python_ge_310() {
     local py="${1:-}"
@@ -405,6 +520,64 @@ function assert_file_nonempty() {
         rec_pass "${label} exists and is non-empty"
     else
         rec_fail "${label} missing or empty: $(rec_relpath "${file}")"
+    fi
+}
+
+
+#  Assert a downloaded gzip FASTQ matches its source and expected content
+function assert_downloaded_fastq() {
+    local source_fastq="${1:-}"
+    local outfile="${2:-}"
+    local label="${3:-downloaded FASTQ}"
+    local read_pattern="${4:-}"
+    local view_fastq="${5:-}"
+    local count_reads="${6:-}"
+
+    assert_file_nonempty "${outfile}" "${label}"
+
+    if [[ -s "${outfile}" ]]; then
+        if cmp -s "${source_fastq}" "${outfile}"; then
+            rec_pass "${label} matches source fixture byte-for-byte"
+        else
+            rec_fail "${label} differs from source fixture"
+        fi
+
+        if gzip -t "${outfile}"; then
+            rec_pass "${label} passes gzip integrity"
+        else
+            rec_fail "${label} fails gzip integrity"
+        fi
+
+        if gzip -cd "${outfile}" > "${view_fastq}"; then
+            rec_pass "${label} can be decompressed"
+        else
+            rec_fail "${label} cannot be decompressed"
+        fi
+
+        if [[ -s "${view_fastq}" ]]; then
+            assert_grep_pattern "${view_fastq}" "${read_pattern}" \
+                "${label} contains expected read name"
+
+            awk 'NR % 4 == 1 { n++ } END { print n + 0 }' \
+                "${view_fastq}" > "${count_reads}"
+            assert_grep_pattern "${count_reads}" '^1$' \
+                "${label} contains one read"
+        fi
+    fi
+}
+
+
+#  Assert a custom FASTQ path exists and is represented as a symlink
+function assert_custom_symlink() {
+    local symlink="${1:-}"
+    local label="${2:-custom symlink}"
+
+    assert_file_nonempty "${symlink}" "${label} target"
+
+    if [[ -L "${symlink}" ]]; then
+        rec_pass "${label} path is a symlink"
+    else
+        rec_fail "${label} path is not a symlink"
     fi
 }
 
