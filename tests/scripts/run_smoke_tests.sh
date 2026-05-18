@@ -69,6 +69,7 @@ tests=(
     "${dir_run}/smoke/test_execute_download_fastqs_se_local.sh"
     "${dir_run}/smoke/test_execute_download_fastqs_pe_local.sh"
     "${dir_run}/smoke/test_execute_download_fastqs_mixed_local.sh"
+    "${dir_run}/smoke/test_execute_download_fastqs_parallel.sh"
     "${dir_run}/smoke/test_submit_filter_bams_bam.sh"
     "${dir_run}/smoke/test_execute_filter_bams_bam.sh"
     "${dir_run}/smoke/test_help_style.sh"
