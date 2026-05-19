@@ -33,11 +33,12 @@ debug=true
 
 
 #  Define functions
-#  Parse a BAM input entry into 'samp', 'nam_fnc', and 'outfile'
+#  Parse a BAM/CRAM input entry into 'samp', 'nam_fnc', and 'outfile'
 function parse_filter_bam_entry() {
-    local infile="${1:-}"   # Input BAM file
+    local infile="${1:-}"   # Input BAM/CRAM file
     local retain="${2:-}"   # Species selector
     local dir_out="${3:-}"  # Directory for output BAM files
+    local out_ext="${4:-bam}" # Output extension
     local samp      # Sample name derived from infile
     local nam_fnc   # Function name derived from 'retain'
     local outfile   # Output BAM file
@@ -46,17 +47,18 @@ function parse_filter_bam_entry() {
     show_help=$(cat << EOM
 Usage:
   parse_filter_bam_entry
-    [-h|--hlp|--help] infile retain dir_out
+    [-h|--hlp|--help] infile retain dir_out [out_ext]
 
 Description:
-  Parse one BAM input entry into 'samp', 'nam_fnc', and 'outfile'.
+  Parse one BAM or CRAM input entry into 'samp', 'nam_fnc', and 'outfile'.
 
-  This helper derives the sample name from the BAM filename, determines which downstream filtering function to use based on '--retain', and constructs the corresponding output BAM path.
+  This helper derives the sample name from the BAM/CRAM filename, determines which downstream filtering function to use based on '--retain', and constructs the corresponding output path.
 
 Positional arguments:
-  1  infile   <str>  Input BAM file.
+  1  infile   <str>  Input BAM or CRAM file.
   2  retain   <str>  Species selector; must be 'sc' or 'sp'.
-  3  dir_out  <str>  Output directory for filtered BAM files.
+  3  dir_out  <str>  Output directory for filtered alignment files.
+  4  out_ext  <str>  Output extension: 'bam' or 'cram' (default: bam).
 
 Returns:
   Prints a comma-delimited record to stdout:
@@ -64,14 +66,14 @@ Returns:
     samp,nam_fnc,outfile
 
   where:
-    - 'samp' is derived from the BAM basename without trailing '.bam'
+    - 'samp' is derived from the alignment basename without trailing '.bam' or '.cram'
     - 'nam_fnc' is 'filter_bam_sc' or 'filter_bam_sp'
-    - 'outfile' is the filtered BAM path in 'dir_out'
+    - 'outfile' is the filtered path in 'dir_out'
 
 Notes:
   - This helper validates required inputs with 'validate_var'.
-  - If 'retain=sc', the output BAM path is '\${dir_out}/\${samp}.sc.bam'.
-  - If 'retain=sp', the output BAM path is '\${dir_out}/\${samp}.sp.bam'.
+  - If 'retain=sc', the output path is '\${dir_out}/\${samp}.sc.\${out_ext}'.
+  - If 'retain=sp', the output path is '\${dir_out}/\${samp}.sp.\${out_ext}'.
 EOM
     )
 
@@ -90,19 +92,31 @@ EOM
     validate_var "infile"  "${infile}"  || return 1
     validate_var "retain"  "${retain}"  || return 1
     validate_var "dir_out" "${dir_out}" || return 1
+    validate_var "out_ext" "${out_ext}" || return 1
+
+    case "${out_ext}" in
+        bam|cram) : ;;
+        *)
+            echo_err_func "${FUNCNAME[0]}" \
+                "'out_ext' must be 'bam' or 'cram': '${out_ext}'."
+            return 1
+            ;;
+    esac
 
     #  Extract sample and function names from input values, and assign outfile
     #+ name based on species selector
-    samp="$(basename "${infile}" ".bam")"
+    samp="$(basename "${infile}")"
+    samp="${samp%.bam}"
+    samp="${samp%.cram}"
 
     case "${retain}" in
         sc)
             nam_fnc="filter_bam_sc"
-            outfile="${dir_out}/${samp}.sc.bam"
+            outfile="${dir_out}/${samp}.sc.${out_ext}"
             ;;
         sp)
             nam_fnc="filter_bam_sp"
-            outfile="${dir_out}/${samp}.sp.bam"
+            outfile="${dir_out}/${samp}.sp.${out_ext}"
             ;;
         *)
             echo_err_func "${FUNCNAME[0]}" \
@@ -121,7 +135,7 @@ function run_filtering() {
     local nam_fnc="${1:-}"   # Name of function to run
     local threads="${2:-}"   # Number of threads
     local infile="${3:-}"    # Input BAM file
-    local outfile="${4:-}"   # Output BAM file
+    local outfile="${4:-}"   # Output alignment file
     local mito="${5:-}"      # Retain mito. chr. (true/false)
     local tg="${6:-}"        # Retain SP_II_TG chr. (true/false)
     local mtr="${7:-}"       # Retain SP_MTR chr. (true/false)
@@ -129,13 +143,15 @@ function run_filtering() {
     local err_out="${9:-}"   # Directory for stderr and stdout logs
     local nam_job="${10:-}"  # Job name for log file naming
     local samp="${11:-}"     # Sample name for log file naming
+    local ref_fa="${12:-}"   # Reference FASTA for CRAM input
     local log_out log_err    # 'nam_fnc' stdout and stderr log files
+    local -a cmd_filter      # Command array for filtering function
     local show_help          # Help message
 
     show_help=$(cat << EOM
 Usage:
   run_filtering
-    [-h|--hlp|--help] nam_fnc threads infile outfile mito tg mtr chk_chr err_out nam_job samp
+    [-h|--hlp|--help] nam_fnc threads infile outfile mito tg mtr chk_chr err_out nam_job samp [ref_fa]
 
 Description:
   Execute the specified BAM-filtering function and write stdout/stderr logs to
@@ -149,8 +165,8 @@ Description:
 Positional arguments:
    1  nam_fnc   <str>  Name of downstream filtering function to run.
    2  threads   <int>  Number of threads.
-   3  infile    <str>  Input BAM file.
-   4  outfile   <str>  Output BAM file.
+   3  infile    <str>  Input BAM or CRAM file.
+   4  outfile   <str>  Output BAM or CRAM file.
    5  mito      <flag>  If 'true', pass '--mito'.
    6  tg        <flag>  If 'true', pass '--tg'.
    7  mtr       <flag>  If 'true', pass '--mtr'.
@@ -158,6 +174,7 @@ Positional arguments:
    9  err_out   <str>  Directory for stderr/stdout log files.
   10  nam_job   <str>  Job name used in log-file naming.
   11  samp      <str>  Sample name used in log-file naming.
+  12  ref_fa    <str>  Reference FASTA for CRAM input, or empty string.
 
 Notes:
   - This helper is a thin wrapper around either 'filter_bam_sc' or 'filter_bam_sp'.
@@ -180,20 +197,35 @@ EOM
     log_out="${err_out}/${nam_job}.${samp}.stdout.txt"
     log_err="${err_out}/${nam_job}.${samp}.stderr.txt"
 
+    cmd_filter=(
+        "${nam_fnc}"
+            --threads "${threads}"
+            --infile "${infile}"
+            --outfile "${outfile}"
+    )
+
+    if [[ -n "${ref_fa}" ]]; then
+        cmd_filter+=( --ref_fa "${ref_fa}" )
+    fi
+
+    if [[ "${mito}" == "true" ]]; then
+        cmd_filter+=( --mito )
+    fi
+
+    if [[ "${tg}" == "true" ]]; then
+        cmd_filter+=( --tg )
+    fi
+
+    if [[ "${mtr}" == "true" ]]; then
+        cmd_filter+=( --mtr )
+    fi
+
+    if [[ "${chk_chr}" == "true" ]]; then
+        cmd_filter+=( --chk_chr )
+    fi
+
     #  Run the filtering function and capture logs
-    # shellcheck disable=SC2046
-    if ! \
-        "${nam_fnc}" \
-            --threads "${threads}" \
-            --infile "${infile}" \
-            --outfile "${outfile}" \
-            $(if [[ "${mito}" == "true" ]]; then echo "--mito"; fi) \
-            $(if [[ "${tg}" == "true" ]]; then echo "--tg"; fi) \
-            $(if [[ "${mtr}" == "true" ]]; then echo "--mtr"; fi) \
-            $(if [[ "${chk_chr}" == "true" ]]; then echo "--chk_chr"; fi) \
-                 > "${log_out}" \
-                2> "${log_err}"
-    then
+    if ! "${cmd_filter[@]}" > "${log_out}" 2> "${log_err}"; then
         echo_err_func "${FUNCNAME[0]}" \
             "filtering failed for sample '${samp}'. See log: '${log_err}'."
         return 1
@@ -361,6 +393,26 @@ function parse_args() {
                 shift 2
                 ;;
 
+            -r|--ref|--ref[_-]fa|--reference)
+                require_optarg "${1}" "${2:-}" "main" || {
+                    echo >&2
+                    show_help_main
+                    return 1
+                }
+                ref_fa="${2}"
+                shift 2
+                ;;
+
+            -ox|--out[_-]ext)
+                require_optarg "${1}" "${2:-}" "main" || {
+                    echo >&2
+                    show_help_main
+                    return 1
+                }
+                out_ext="$(printf '%s\n' "${2}" | tr '[:upper:]' '[:lower:]')"
+                shift 2
+                ;;
+
             -m|--mito)
                 mito=true
                 shift 1
@@ -421,6 +473,19 @@ function validate_args() {
     validate_var_dir "dir_out"    "${dir_out}"         || return 1
     validate_var_dir "err_out"    "${err_out}"         || return 1
     validate_var     "nam_job"    "${nam_job}"         || return 1
+    validate_var     "out_ext"    "${out_ext}"         || return 1
+
+    if [[ -n "${ref_fa}" ]]; then
+        validate_var_file "ref_fa" "${ref_fa}" || return 1
+    fi
+
+    case "${out_ext}" in
+        bam|cram) : ;;
+        *)
+            echo_err "'--out_ext' must be 'bam' or 'cram': '${out_ext}'."
+            return 1
+            ;;
+    esac
 
     case "${retain}" in
         sc|sp) : ;;
@@ -443,10 +508,12 @@ function print_debug_args() {
             "threads=${threads}" \
             "csv_infile=${csv_infile}" \
             "dir_out=${dir_out}" \
+            "out_ext=${out_ext}" \
             "mito=${mito}" \
             "tg=${tg}" \
             "mtr=${mtr}" \
             "chk_chr=${chk_chr}" \
+            "ref_fa=${ref_fa:-UNSET}" \
             "err_out=${err_out}" \
             "nam_job=${nam_job}"
     fi
@@ -482,10 +549,12 @@ retain="sc"
 threads=4
 csv_infile=""
 dir_out=""
+out_ext="bam"
 mito=false
 tg=false
 mtr=false
 chk_chr=false
+ref_fa=""
 err_out=""
 nam_job="filter_bams"
 
@@ -495,20 +564,20 @@ function show_help_main() {
 Usage:
   submit_filter_bams.sh
     [-h|--hlp|--help] [-en|--env_nam <str>] -ds|--dir_scr <str> [-t|--threads <int>]
-    -i|--csv_infile <str> -do|--dir_out <str>
-    [-rt|--retain <str>] [-m|--mito] [-tg|--tg] [-mr|--mtr]
+    -i|--csv_infile <str> -do|--dir_out <str> [-ox|--out_ext <str>]
+    [-rt|--retain <str>] [-r|--ref_fa <file>] [-m|--mito] [-tg|--tg] [-mr|--mtr]
     [-cc|--chk_chr] -eo|--err_out <str> [-nj|--nam_job <str>]
 
 Description:
   Submit or execute one or more BAM-filtering jobs by calling downstream functions 'filter_bam_sc' or 'filter_bam_sp'.
 
   This wrapper
-    - parses a comma-delimited list of BAM input files,
+    - parses a comma-delimited list of BAM or CRAM input files,
     - determines which downstream filtering function to run based on '--retain',
     - activates the requested Conda/Mamba environment, and then
     - runs filtering either under Slurm array execution or by serial/GNU-Parallel-style iteration, depending on how the script is invoked.
 
-  For each input BAM file, this script writes log files to:
+  For each input BAM or CRAM file, this script writes BAM or CRAM output and log files to:
 
     \${err_out}/\${nam_job}.\${samp}.stdout.txt
     \${err_out}/\${nam_job}.\${samp}.stderr.txt
@@ -524,15 +593,21 @@ Keyword arguments:
     Number of threads to use.
 
   -i, --csv_infile  <str>
-    Comma-delimited list of input BAM files.
+    Comma-delimited list of input BAM or CRAM files.
 
     Compatibility aliases include '--infile', '--infiles', '--fil_in', and '--csv_infiles'.
 
   -do, --dir_out  <str>
-    Directory in which filtered BAM files will be written.
+    Directory in which filtered alignment files will be written.
+
+  -ox, --out_ext  <str>
+    Filtered output extension: 'bam' or 'cram' (default: '${out_ext}').
 
   -rt, --retain  <str>
     Species chromosomes to retain: 'sc' or 'sp'.
+
+  -r, --ref_fa  <file>
+    Reference FASTA required when any input file is CRAM or '--out_ext cram'.
 
   -m, --mito  <flag>
     If supplied, retain the mitochondrial chromosome.
@@ -544,7 +619,7 @@ Keyword arguments:
     If supplied, retain chromosome 'SP_MTR'.
 
   -cc, --chk_chr  <flag>
-    If supplied, check chromosomes in output BAM files.
+    If supplied, check chromosomes in output alignment files.
 
   -eo, --err_out  <str>
     Directory in which stderr/stdout log files will be written.
@@ -557,6 +632,8 @@ Notes:
     + '--env_nam' defaults to 'env_nam=${env_nam}' if not specified.
     + '--retain' defaults to 'retain=${retain}' if not specified.
     + '--threads' defaults to 'threads=${threads}' if not specified.
+    + '--out_ext' defaults to 'out_ext=${out_ext}' if not specified.
+    + '--ref_fa' is required when '--csv_infile' contains CRAM input or '--out_ext cram'.
     + '--mito', '--tg', '--mtr', and '--chk_chr' are optional flags.
     + '--tg' and '--mtr' are only meaningful when '--retain sp' is used; if supplied with '--retain sc', they are ignored with a warning.
     + '--nam_job' defaults to 'nam_job=${nam_job}' if not specified.
@@ -597,6 +674,21 @@ function main() {
     IFS=',' read -r -a arr_infile <<< "${csv_infile}"
     check_arr_nonempty "arr_infile" "csv_infile" || exit 1
 
+    for infile in "${arr_infile[@]}"; do
+        if [[ "${infile,,}" == *.cram && -z "${ref_fa}" ]]; then
+            echo_err \
+                "'--ref_fa' is required when '--csv_infile' contains CRAM" \
+                "input: '${infile}'."
+            exit 1
+        fi
+    done
+    unset infile
+
+    if [[ "${out_ext}" == "cram" && -z "${ref_fa}" ]]; then
+        echo_err "'--ref_fa' is required when '--out_ext cram'."
+        exit 1
+    fi
+
     #  Debug output to check number of array elements and array element values
     if [[ "${debug}" == "true" ]]; then
         echo "\${#arr_infile[@]}=${#arr_infile[@]}" && echo
@@ -626,7 +718,8 @@ function main() {
         if [[ "${debug}" == "true" ]]; then debug_var "infile=${infile}"; fi
 
         IFS=',' read -r samp nam_fnc outfile < <(
-            parse_filter_bam_entry "${infile}" "${retain}" "${dir_out}"
+            parse_filter_bam_entry \
+                "${infile}" "${retain}" "${dir_out}" "${out_ext}"
         ) || exit 1
 
         if [[ "${debug}" == "true" ]]; then
@@ -653,7 +746,7 @@ function main() {
             run_filtering \
                 "${nam_fnc}" "${threads}" "${infile}" "${outfile}" "${mito}" \
                 "${tg}" "${mtr}" "${chk_chr}" "${err_out}" "${nam_job}" \
-                "${samp}"
+                "${samp}" "${ref_fa}"
         then
             echo_err "failed to filter BAM file: '${infile}'."
             exit 1
@@ -668,7 +761,8 @@ function main() {
             if [[ "${debug}" == "true" ]]; then debug_var "infile=${infile}"; fi
 
             IFS=',' read -r samp nam_fnc outfile < <(
-                parse_filter_bam_entry "${infile}" "${retain}" "${dir_out}"
+                parse_filter_bam_entry \
+                    "${infile}" "${retain}" "${dir_out}" "${out_ext}"
             ) || exit 1
 
             if [[ "${debug}" == "true" ]]; then
@@ -682,7 +776,7 @@ function main() {
                 run_filtering \
                     "${nam_fnc}" "${threads}" "${infile}" "${outfile}" \
                     "${mito}" "${tg}" "${mtr}" "${chk_chr}" "${err_out}" \
-                    "${nam_job}" "${samp}"
+                    "${nam_job}" "${samp}" "${ref_fa}"
             then
                 echo_err "failed to filter BAM file: '${infile}'."
                 exit 1

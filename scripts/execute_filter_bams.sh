@@ -90,7 +90,7 @@ Positional argument:
                        If supplied, construct a per-entry command using 'arr_infile[idx]'.
 
 Expected globals:
-  scr_sub env_nam dir_scr retain threads csv_infile dir_out mito tg mtr chk_chr err_out nam_job
+  scr_sub env_nam dir_scr retain threads csv_infile dir_out out_ext mito tg mtr chk_chr ref_fa err_out nam_job
 
 Returns:
   0 if 'cmd_bld' is constructed successfully; otherwise 1.
@@ -101,7 +101,7 @@ Notes:
   - On index handling:
 
     idx=UNSET  ->  --csv_infile "\${csv_infile}"          # Full serialized list
-    idx=0..n   ->  --csv_infile "\${arr_infile[idx]}"  # One BAM entry
+    idx=0..n   ->  --csv_infile "\${arr_infile[idx]}"  # One BAM/CRAM entry
 EOM
     )
 
@@ -130,6 +130,7 @@ EOM
             --threads "${threads}"
             --csv_infile "${infile_i}"
             --dir_out "${dir_out}"
+            --out_ext "${out_ext}"
             --err_out "${err_out}"
             --nam_job "${nam_job}"
     )
@@ -149,6 +150,10 @@ EOM
     if [[ "${chk_chr}" == "true" ]]; then
         cmd_bld+=( --chk_chr )
     fi
+
+    if [[ -n "${ref_fa}" ]]; then
+        cmd_bld+=( --ref_fa "${ref_fa}" )
+    fi
 }
 
 
@@ -164,11 +169,13 @@ dry_run=false
 threads=1
 csv_infile=""
 dir_out=""
+out_ext="bam"
 retain="sc"
 mito=false
 tg=false
 mtr=false
 chk_chr=false
+ref_fa=""
 err_out=""
 nam_job="filter_bams"
 max_job=6
@@ -223,6 +230,16 @@ while [[ "$#" -gt 0 ]]; do
             shift 2
             ;;
 
+        -ox|--out[_-]ext)
+            require_optarg "${1}" "${2:-}" "main" || {
+                echo >&2
+                help_execute_filter_bams >&2
+                exit 1
+            }
+            out_ext="${2,,}"
+            shift 2
+            ;;
+
         -rt|--retain)
             require_optarg "${1}" "${2:-}" "main" || {
                 echo >&2
@@ -251,6 +268,16 @@ while [[ "$#" -gt 0 ]]; do
         -cc|--chk[_-]chr)
             chk_chr=true
             shift 1
+            ;;
+
+        -r|--ref|--ref[_-]fa|--reference)
+            require_optarg "${1}" "${2:-}" "main" || {
+                echo >&2
+                help_execute_filter_bams >&2
+                exit 1
+            }
+            ref_fa="${2}"
+            shift 2
             ;;
 
         -eo|--err[_-]out)
@@ -325,6 +352,15 @@ check_str_delim "csv_infile" "${csv_infile}"
 
 validate_var_dir "dir_out" "${dir_out}"
 
+validate_var "out_ext" "${out_ext}"
+case "${out_ext}" in
+    bam|cram) : ;;
+    *)
+        echo_err "'--out_ext' must be 'bam' or 'cram': '${out_ext}'."
+        exit 1
+        ;;
+esac
+
 case "${retain}" in
     sc|sp) : ;;
     *)
@@ -370,6 +406,25 @@ for infile in "${arr_infile[@]}"; do
     validate_var_file "infile" "${infile}"
 done
 unset infile
+
+for infile in "${arr_infile[@]}"; do
+    if [[ "${infile,,}" == *.cram && -z "${ref_fa}" ]]; then
+        echo_err \
+            "'--ref_fa' is required when '--csv_infile' contains CRAM" \
+            "input: '${infile}'."
+        exit 1
+    fi
+done
+unset infile
+
+if [[ -n "${ref_fa}" ]]; then
+    validate_var_file "ref_fa" "${ref_fa}"
+fi
+
+if [[ "${out_ext}" == "cram" && -z "${ref_fa}" ]]; then
+    echo_err "'--ref_fa' is required when '--out_ext cram'."
+    exit 1
+fi
 
 
 #  Parse job execution parameters ---------------------------------------------
@@ -461,11 +516,13 @@ if [[ "${verbose}" == "true" ]]; then
     echo "threads=${threads}"
     echo "csv_infile=${csv_infile}"
     echo "dir_out=${dir_out}"
+    echo "out_ext=${out_ext}"
     echo "retain=${retain}"
     echo "mito=${mito}"
     echo "tg=${tg}"
     echo "mtr=${mtr}"
     echo "chk_chr=${chk_chr}"
+    echo "ref_fa=${ref_fa:-UNSET}"
     echo "err_out=${err_out}"
     echo "nam_job=${nam_job}"
     echo "max_job=${max_job:-UNSET}"

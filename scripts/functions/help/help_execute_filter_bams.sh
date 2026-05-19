@@ -17,14 +17,14 @@ function help_execute_filter_bams() {
 Usage:
   execute_filter_bams.sh
     [--help] [--verbose] [--dry_run]
-    --threads <int> --csv_infile <str> --dir_out <str>
-    --retain <str> [--mito] [--tg] [--mtr] [--chk_chr] --err_out <str>
+    --threads <int> --csv_infile <str> --dir_out <str> [--out_ext <str>]
+    --retain <str> [--ref_fa <file>] [--mito] [--tg] [--mtr] [--chk_chr] --err_out <str>
     --nam_job <str> --max_job <int> [--slurm] [--time <str>]
 
 Description:
-  Filter BAM infiles to retain species-specific chromosomes for S. cerevisiae ("main" or "experimental" alignments) or S. pombe ("spike-in" alignments).
+  Filter BAM or CRAM infiles retaining species-specific chromosomes for S. cerevisiae ("main" or "experimental" alignments) or S. pombe ("spike-in" alignments). Output defaults to BAM and can be set to CRAM with '--out_ext cram'.
 
-  Optional features include retaining mitochondrial (S. cerevisiae and S. pombe: '--mito') and additional chromosomes (S. pombe: '--tg', '--mtr'), and performing checks on chromosomes in filtered BAM outfiles ('--chk_chr').
+  Optional features include retaining mitochondrial (S. cerevisiae and S. pombe: '--mito') and additional chromosomes (S. pombe: '--tg', '--mtr'), and performing checks on chromosomes in filtered outfiles ('--chk_chr'). CRAM input or output requires an explicit reference FASTA via '--ref_fa'.
 
   The script supports parallel execution via Slurm or GNU Parallel, or can run serially.
 
@@ -42,15 +42,21 @@ Arguments:
     Number of threads to use (default: '${threads}').
 
    -i, --csv_infile
-    Comma-delimited serialized string of coordinate-sorted BAM input files.
+    Comma-delimited serialized string of coordinate-sorted BAM or CRAM input files.
 
     Compatibility aliases include '--infile', '--infiles', '--fil_in', and '--csv_infiles'.
 
   -do, --dir_out
-    The directory to store species-filtered and -reheadered BAM output files.
+    The directory to store species-filtered and -reheadered output files.
+
+  -ox, --out_ext
+    Filtered output extension: 'bam' or 'cram' (default: '${out_ext}').
 
   -rt, --retain
     Specify species chromosomes to retain: S. cerevisiae, "sc"; S. pombe, "sp" (default: '${retain}').
+
+   -r, --ref_fa
+    Reference FASTA required when '--csv_infile' contains CRAM input or '--out_ext cram'.
 
    -m, --mito
     Retain mitochondrial chromosome.
@@ -62,7 +68,7 @@ Arguments:
     Retain SP_MTR chromosome (sp only).
 
   -cc, --chk_chr
-    Check chromosomes in filtered BAM outfile (optional)
+    Check chromosomes in filtered outfile (optional)
 
   -eo, --err_out
     The directory to store stderr and stdout TXT outfiles (default: '\${dir_out}/err_out').
@@ -111,7 +117,7 @@ Dependencies:
     - format_outputs.sh
         + echo_err
         + echo_warn
-    - handle_env.sh
+  - handle_env.sh
         + handle_env
     - help/help_execute_filter_bams.sh
         + help_execute_filter_bams
@@ -122,7 +128,9 @@ Dependencies:
 
 Notes:
   - When the '--slurm' flag is used, jobs are parallelized via Slurm array tasks; otherwise, if multiple jobs are to be run, they are parallelized locally via GNU Parallel; if only one job is to be run, execution is serial.
-  - BAM infiles must be coordinate-sorted.
+  - BAM and CRAM infiles must be coordinate-sorted.
+  - '--out_ext' defaults to 'bam'.
+  - CRAM input or CRAM output requires '--ref_fa'.
   - Flag '--mito' applies to either S. cerevisiae or S. pombe data.
   - Flags '--tg' and '--mtr' apply only to S. pombe data; if supplied with '--retain sc', they are ignored with a warning.
 

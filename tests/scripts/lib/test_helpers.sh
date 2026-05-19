@@ -524,6 +524,42 @@ function assert_file_nonempty() {
 }
 
 
+#  Assert that a CRAM index exists using common Samtools naming variants
+function assert_cram_index() {
+    local cram="${1:-}"
+    local label="${2:-CRAM index}"
+    local idx_1="${cram}.crai"
+    local idx_2="${cram%.cram}.crai"
+
+    if [[ -s "${idx_1}" ]]; then
+        rec_pass "${label} exists and is non-empty at $(rec_relpath "${idx_1}")"
+    elif [[ -s "${idx_2}" ]]; then
+        rec_pass "${label} exists and is non-empty at $(rec_relpath "${idx_2}")"
+    else
+        rec_fail \
+            "${label} missing or empty; checked $(rec_relpath "${idx_1}") and" \
+            "$(rec_relpath "${idx_2}")"
+    fi
+}
+
+
+#  Assert a reference-backed CRAM read count for one contig
+function assert_cram_count() {
+    local cram="${1:-}"
+    local ref_fa="${2:-}"
+    local contig="${3:-}"
+    local expected="${4:-}"
+    local label="${5:-CRAM count}"
+    local count_file="${6:-}"
+
+    run_capture \
+        "${label}" "${count_file}" \
+        run_samtools view -T "${ref_fa}" -c "${cram}" "${contig}"
+
+    assert_grep_pattern "${count_file}" "^${expected}$" "${label}"
+}
+
+
 #  Assert a downloaded gzip FASTQ matches its source and expected content
 function assert_downloaded_fastq() {
     local source_fastq="${1:-}"

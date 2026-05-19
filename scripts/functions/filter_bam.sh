@@ -98,8 +98,9 @@ function _parse_args_filter_bam() {
     local tg_ref="${5:-}"
     local mtr_ref="${6:-}"
     local chk_chr_ref="${7:-}"
-    local show_help="${8:-}"
-    shift 8
+    local ref_fa_ref="${8:-}"
+    local show_help="${9:-}"
+    shift 9
 
     #  Parse arguments, assigning parsed values back to caller variables whose
     #+ names are passed in
@@ -151,6 +152,16 @@ function _parse_args_filter_bam() {
                 shift 1
                 ;;
 
+            -r|--ref|--ref[_-]fa|--reference)
+                require_optarg "${1}" "${2:-}" "${func}" || {
+                    echo >&2
+                    echo "${show_help}" >&2
+                    return 1
+                }
+                printf -v "${ref_fa_ref}" '%s' "${2}"
+                shift 2
+                ;;
+
             -tg|--tg)
                 if [[ "${chr_nam}" != "sp" ]]; then
                     echo_err_func "${func}" \
@@ -191,6 +202,7 @@ function _validate_args_filter_bam() {
     local threads="${2:-}"
     local infile="${3:-}"
     local outfile="${4:-}"
+    local ref_fa="${5:-}"
     local outdir
 
     if [[ -z "${threads}" ]]; then
@@ -219,6 +231,25 @@ function _validate_args_filter_bam() {
         return 1
     fi
 
+    case "${outfile,,}" in
+        *.bam|*.cram) : ;;
+        *)
+            echo_err_func "${func}" \
+                "'--outfile' must end in '.bam' or '.cram': '${outfile}'."
+            return 1
+            ;;
+    esac
+
+    if [[ "${infile,,}" == *.cram || "${outfile,,}" == *.cram ]]; then
+        if [[ -z "${ref_fa}" ]]; then
+            echo_err_func "${func}" \
+                "'--ref_fa' is required when input or output is CRAM."
+            return 1
+        fi
+
+        validate_var_file "ref_fa" "${ref_fa}" || return 1
+    fi
+
     outdir="$(dirname "${outfile}")"
     if [[ ! -d "${outdir}" ]]; then
         echo_err_func "${func}" \
@@ -235,10 +266,17 @@ function _validate_args_filter_bam() {
 #+ - Used for optional post-filter chromosome checking
 function _check_chr_bam() {
     local outfile="${1:-}"
+    local ref_fa="${2:-}"
+    local -a ref_arg=()
 
     validate_var_file "outfile" "${outfile}" || return 1
 
-    samtools view -h "${outfile}" \
+    if [[ "${outfile,,}" == *.cram ]]; then
+        validate_var_file "ref_fa" "${ref_fa}" || return 1
+        ref_arg=( -T "${ref_fa}" )
+    fi
+
+    samtools view -h "${ref_arg[@]}" "${outfile}" \
         | awk '!/^@/ { print $3 }' \
         | sort \
         | uniq
@@ -252,11 +290,12 @@ function _finalize_bam_filter() {
     local threads="${1:-}"
     local outfile="${2:-}"
     local chk_chr="${3:-false}"
+    local ref_fa="${4:-}"
 
     samtools index -@ "${threads}" "${outfile}" || return 1
 
     if [[ "${chk_chr}" == "true" ]]; then
-        _check_chr_bam "${outfile}" || return 1
+        _check_chr_bam "${outfile}" "${ref_fa}" || return 1
     fi
 }
 
@@ -363,27 +402,30 @@ function filter_bam_sc() {
     local tg=false
     local mtr=false
     local chk_chr=false
+    local ref_fa=""
     local chrs pattern
-    local outdir outbam bam_rh_init bam_rh_sort
+    local outdir outbam bam_filter bam_rh_init bam_rh_sort
+    local -a ref_arg=()
     local show_help
 
     show_help=$(cat << EOM
 Usage:
   filter_bam_sc
-    [--help] [--threads <int>] --infile <str> --outfile <str> [--mito] [--chk_chr]
+    [--help] [--threads <int>] --infile <str> --outfile <str> [--ref_fa <str>] [--mito] [--chk_chr]
 
 Description:
-  Filter and reheader a BAM file for S. cerevisiae chromosomes.
+  Filter and reheader a BAM or CRAM file for S. cerevisiae chromosomes, writing BAM or CRAM output.
 
 Keyword arguments:
    -t, --threads  <int>  Number of threads to use (default: ${threads}).
-   -i, --infile   <str>  Coordinate-sorted BAM infile.
-   -o, --outfile  <str>  Filtered BAM outfile.
+   -i, --infile   <str>  Coordinate-sorted BAM or CRAM infile.
+   -o, --outfile  <str>  Filtered BAM or CRAM outfile.
+   -r, --ref_fa   <str>  Reference FASTA required when input or output is CRAM.
    -m, --mito     <flg>  Retain mitochondrial chromosome (optional).
   -cc, --chk_chr  <flg>  Check chromosomes in filtered BAM outfile (optional).
 
 Returns:
-  Creates a BAM outfile filtered and reheadered for S. cerevisiae chromosomes at the specified path.
+  Creates a BAM or CRAM outfile filtered and reheadered for S. cerevisiae chromosomes at the specified path.
 
 Dependencies:
   - Programs
@@ -397,6 +439,18 @@ Examples:
       --threads 4
       --infile "sample.bam"
       --outfile "sample.sc.bam"
+
+  filter_bam_sc
+      --threads 4
+      --infile "sample.cram"
+      --outfile "sample.sc.bam"
+      --ref_fa "reference.fa"
+
+  filter_bam_sc
+      --threads 4
+      --infile "sample.bam"
+      --outfile "sample.sc.cram"
+      --ref_fa "reference.fa"
 
   filter_bam_sc
       --threads 4
@@ -421,7 +475,7 @@ EOM
     _parse_args_filter_bam \
         "${FUNCNAME[0]}" \
         "sc" \
-        threads infile outfile mito tg mtr chk_chr \
+        threads infile outfile mito tg mtr chk_chr ref_fa \
         "${show_help}" \
         "$@" \
         || return $?
@@ -431,7 +485,12 @@ EOM
         "${threads}" \
         "${infile}" \
         "${outfile}" \
+        "${ref_fa}" \
         || return 1
+
+    if [[ "${infile,,}" == *.cram ]]; then
+        ref_arg=( -T "${ref_fa}" )
+    fi
 
     chrs="I II III IV V VI VII VIII IX X XI XII XIII XIV XV XVI"
     if [[ "${mito}" == "true" ]]; then
@@ -442,15 +501,23 @@ EOM
 
     outdir="$(dirname "${outfile}")"
     outbam="$(basename "${outfile}")"
-    bam_rh_init="${outdir}/rehead.${outbam}"
-    bam_rh_sort="${outdir}/txt_rh_sort.${outbam}"
+    if [[ "${outfile,,}" == *.cram ]]; then
+        bam_filter="${outdir}/tmp.${outbam%.cram}.filter.bam"
+        bam_rh_init="${outdir}/tmp.${outbam%.cram}.rehead.bam"
+        bam_rh_sort="${outdir}/tmp.${outbam%.cram}.sort.bam"
+    else
+        bam_filter="${outfile}"
+        bam_rh_init="${outdir}/rehead.${outbam}"
+        bam_rh_sort="${outdir}/txt_rh_sort.${outbam}"
+    fi
 
     # shellcheck disable=SC2086
     if ! \
         samtools view \
             -@ "${threads}" \
             -b \
-            -o "${outfile}" \
+            -o "${bam_filter}" \
+            "${ref_arg[@]}" \
             "${infile}" \
             ${chrs}
     then
@@ -462,12 +529,16 @@ EOM
     if ! \
         samtools reheader \
             -c "grep -E '${pattern}'" \
-            "${outfile}" \
+            "${bam_filter}" \
                 > "${bam_rh_init}"
     then
         echo_err_func "${FUNCNAME[0]}" \
-            "failed to reheader '${outfile}'."
-        rm -f "${bam_rh_init}" "${bam_rh_sort}"
+            "failed to reheader '${bam_filter}'."
+        if [[ "${outfile,,}" == *.cram ]]; then
+            rm -f "${bam_filter}" "${bam_rh_init}" "${bam_rh_sort}"
+        else
+            rm -f "${bam_rh_init}" "${bam_rh_sort}"
+        fi
         return 1
     fi
 
@@ -479,24 +550,51 @@ EOM
     then
         echo_err_func "${FUNCNAME[0]}" \
             "failed to sort reheadered BAM intermediate."
-        rm -f "${bam_rh_init}" "${bam_rh_sort}"
+        if [[ "${outfile,,}" == *.cram ]]; then
+            rm -f "${bam_filter}" "${bam_rh_init}" "${bam_rh_sort}"
+        else
+            rm -f "${bam_rh_init}" "${bam_rh_sort}"
+        fi
         return 1
     fi
 
-    if ! mv -f "${bam_rh_sort}" "${outfile}"; then
-        echo_err_func "${FUNCNAME[0]}" \
-            "failed to rename sorted reheadered BAM file."
-        rm -f "${bam_rh_init}" "${bam_rh_sort}"
-        return 1
+    if [[ "${outfile,,}" == *.cram ]]; then
+        if ! \
+            samtools view \
+                -@ "${threads}" \
+                -C \
+                -T "${ref_fa}" \
+                -o "${outfile}" \
+                "${bam_rh_sort}"
+        then
+            echo_err_func "${FUNCNAME[0]}" \
+                "failed to convert filtered BAM intermediate to CRAM."
+            rm -f "${bam_filter}" "${bam_rh_init}" "${bam_rh_sort}"
+            return 1
+        fi
+    else
+        if ! mv -f "${bam_rh_sort}" "${outfile}"; then
+            echo_err_func "${FUNCNAME[0]}" \
+                "failed to rename sorted reheadered BAM file."
+            rm -f "${bam_rh_init}" "${bam_rh_sort}"
+            return 1
+        fi
     fi
 
-    if ! rm -f "${bam_rh_init}"; then
+    if [[ "${outfile,,}" == *.cram ]]; then
+        if ! rm -f "${bam_filter}" "${bam_rh_init}" "${bam_rh_sort}"; then
+            echo_err_func "${FUNCNAME[0]}" \
+                "failed to delete filter BAM intermediates."
+            return 1
+        fi
+    elif ! rm -f "${bam_rh_init}"; then
         echo_err_func "${FUNCNAME[0]}" \
             "failed to delete reheader BAM intermediate."
         return 1
     fi
 
-    _finalize_bam_filter "${threads}" "${outfile}" "${chk_chr}" || return 1
+    _finalize_bam_filter "${threads}" "${outfile}" "${chk_chr}" "${ref_fa}" \
+        || return 1
 }
 
 
@@ -512,29 +610,32 @@ function filter_bam_sp() {
     local tg=false
     local mtr=false
     local chk_chr=false
+    local ref_fa=""
     local chrs
-    local outdir insam outsam pth_in pth_out
+    local outdir outbase pth_in pth_out
+    local -a ref_arg=()
     local show_help
 
     show_help=$(cat << EOM
 Usage:
   filter_bam_sp
-    [--help] [--threads <int>] --infile <str> --outfile <str> [--mito] [--tg] [--mtr] [--chk_chr]
+    [--help] [--threads <int>] --infile <str> --outfile <str> [--ref_fa <str>] [--mito] [--tg] [--mtr] [--chk_chr]
 
 Description:
-  Filter and reheader a BAM file for S. pombe chromosomes.
+  Filter and reheader a BAM or CRAM file for S. pombe chromosomes, writing BAM or CRAM output.
 
 Keyword arguments:
    -t, --threads  <int>  Number of threads to use (default: ${threads}).
-   -i, --infile   <str>  Coordinate-sorted BAM infile.
-   -o, --outfile  <str>  Filtered BAM outfile.
+   -i, --infile   <str>  Coordinate-sorted BAM or CRAM infile.
+   -o, --outfile  <str>  Filtered BAM or CRAM outfile.
+   -r, --ref_fa   <str>  Reference FASTA required when input or output is CRAM.
    -m, --mito     <flg>  Retain SP_Mito chromosome.
   -tg, --tg       <flg>  Retain SP_II_TG chromosome.
   -mr, --mtr      <flg>  Retain SP_MTR chromosome.
   -cc, --chk_chr  <flg>  Check chromosomes in filtered BAM outfile.
 
 Returns:
-  Creates a BAM outfile filtered and reheadered for S. pombe chromosomes at the specified path.
+  Creates a BAM or CRAM outfile filtered and reheadered for S. pombe chromosomes at the specified path.
 
 Dependencies:
   - Programs
@@ -548,6 +649,18 @@ Examples:
       --threads 4
       --infile "sample.bam"
       --outfile "sample.sp.bam"
+
+  filter_bam_sp
+      --threads 4
+      --infile "sample.cram"
+      --outfile "sample.sp.bam"
+      --ref_fa "reference.fa"
+
+  filter_bam_sp
+      --threads 4
+      --infile "sample.bam"
+      --outfile "sample.sp.cram"
+      --ref_fa "reference.fa"
 
   filter_bam_sp
       --threads 4
@@ -574,7 +687,7 @@ EOM
     _parse_args_filter_bam \
         "${FUNCNAME[0]}" \
         "sp" \
-        threads infile outfile mito tg mtr chk_chr \
+        threads infile outfile mito tg mtr chk_chr ref_fa \
         "${show_help}" \
         "$@" \
         || return $?
@@ -584,7 +697,12 @@ EOM
         "${threads}" \
         "${infile}" \
         "${outfile}" \
+        "${ref_fa}" \
         || return 1
+
+    if [[ "${infile,,}" == *.cram ]]; then
+        ref_arg=( -T "${ref_fa}" )
+    fi
 
     chrs="SP_I SP_II SP_III"
     if [[ "${tg}" == "true" ]]; then
@@ -600,10 +718,11 @@ EOM
     fi
 
     outdir="$(dirname "${outfile}")"
-    insam="$(basename "${infile/.bam/.sam}")"
-    outsam="$(basename "${outfile/.bam/.sam}")"
-    pth_in="${outdir}/${insam}"
-    pth_out="${outdir}/${outsam}"
+    outbase="$(basename "${outfile}")"
+    outbase="${outbase%.bam}"
+    outbase="${outbase%.cram}"
+    pth_in="${outdir}/tmp.${outbase}.in.sam"
+    pth_out="${outdir}/tmp.${outbase}.out.sam"
 
     # shellcheck disable=SC2086
     if ! \
@@ -611,6 +730,7 @@ EOM
             -@ "${threads}" \
             -h \
             -o "${pth_in}" \
+            "${ref_arg[@]}" \
             "${infile}"
     then
         echo_err_func "${FUNCNAME[0]}" \
@@ -630,19 +750,35 @@ EOM
         return 1
     fi
 
-    if ! \
-        samtools view -b "${pth_out}" > "${outfile}"
-    then
-        echo_err_func "${FUNCNAME[0]}" \
-            "failed to generate '${outfile}'."
-        _cleanup_filter_bam_tmp "${pth_in}" "${pth_out}"
-        return 1
+    if [[ "${outfile,,}" == *.cram ]]; then
+        if ! \
+            samtools view \
+                -C \
+                -T "${ref_fa}" \
+                -o "${outfile}" \
+                "${pth_out}"
+        then
+            echo_err_func "${FUNCNAME[0]}" \
+                "failed to generate '${outfile}'."
+            _cleanup_filter_bam_tmp "${pth_in}" "${pth_out}"
+            return 1
+        fi
+    else
+        if ! \
+            samtools view -b "${pth_out}" > "${outfile}"
+        then
+            echo_err_func "${FUNCNAME[0]}" \
+                "failed to generate '${outfile}'."
+            _cleanup_filter_bam_tmp "${pth_in}" "${pth_out}"
+            return 1
+        fi
     fi
 
     #  Remove intermediates immediately on success
     _cleanup_filter_bam_tmp "${pth_in}" "${pth_out}"
 
-    _finalize_bam_filter "${threads}" "${outfile}" "${chk_chr}" || return 1
+    _finalize_bam_filter "${threads}" "${outfile}" "${chk_chr}" "${ref_fa}" \
+        || return 1
 }
 
 
