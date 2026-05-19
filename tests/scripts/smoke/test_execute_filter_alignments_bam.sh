@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # -*- coding: utf-8 -*-
 #
-# Script: test_execute_filter_bams_bam.sh
+# Script: test_execute_filter_alignments_bam.sh
 #
 # Copyright 2026 by Kris Alavattam
 # Email: kalavattam@gmail.com
@@ -11,7 +11,7 @@
 # Distributed under the MIT license.
 
 
-TEST_NAME="execute filter-bams BAM"
+TEST_NAME="execute filter-alignments BAM"
 
 #  Source shared smoke-test helpers
 # shellcheck disable=SC1091
@@ -22,14 +22,14 @@ source "$(
 rec_section "${TEST_NAME}"
 
 #  Define fixture and output paths for the execute-to-submit BAM filter path
-dir_fx="${ROOT_REPO}/tests/filter_bams/fixtures/sam"
+dir_fx="${ROOT_REPO}/tests/filter_alignments/fixtures/sam"
 in_sam="${dir_fx}/filter_sc_sp.sam"
 
-tmp="${TEST_DIR_TMP}/execute_filter_bams_bam"
+tmp="${TEST_DIR_TMP}/execute_filter_alignments_bam"
 dir_in="${tmp}/input"
 dir_out="${tmp}/out"
 dir_err="${tmp}/logs"
-dir_log="${TEST_DIR_LOG}/filter_bams"
+dir_log="${TEST_DIR_LOG}/filter_alignments"
 in_bam="${dir_in}/filter_sc_sp.bam"
 
 rm -rf "${tmp}"
@@ -47,17 +47,17 @@ require_files_exist "${in_sam}" || {
 
 
 #  Build a deterministic BAM input from the committed SAM fixture
-log="${dir_log}/execute_filter_bams_prepare_bam.log"
+log="${dir_log}/execute_filter_alignments_prepare_bam.log"
 if ! \
-    prepare_filter_bams_bam_fixture \
-        "${in_sam}" "${in_bam}" "${log}" "execute filter-bams BAM fixture"
+    prepare_filter_alignments_bam_fixture \
+        "${in_sam}" "${in_bam}" "${log}" "execute filter-alignments BAM fixture"
 then
     finish
     exit $?
 fi
 
 
-#  Run execute_filter_bams.sh for one retain mode through submit_filter_bams.sh
+#  Run execute_filter_alignments.sh for one retain mode through submit_filter_alignments.sh
 function run_case_filter() {
     local retain="${1:-}"
     local nam_case="${2:-}"
@@ -67,21 +67,21 @@ function run_case_filter() {
 
     if \
         run_capture \
-            "execute filter-bams ${nam_case}" "${log_lcl}" \
-            "${TEST_BASH}" "${ROOT_REPO}/scripts/execute_filter_bams.sh" \
+            "execute filter-alignments ${nam_case}" "${log_lcl}" \
+            "${TEST_BASH}" "${ROOT_REPO}/scripts/execute_filter_alignments.sh" \
                 --threads 1 \
                 --csv_infile "${in_bam}" \
                 --dir_out "${dir_out}" \
                 --retain "${retain}" \
                 --err_out "${dir_err}" \
-                --nam_job "test_execute_filter_bams_${nam_case}" \
+                --nam_job "test_execute_filter_alignments_${nam_case}" \
                 --max_job 1 \
                 "$@"
     then
-        rec_pass "execute_filter_bams.sh retain=${retain} ${nam_case} exits 0"
+        rec_pass "execute_filter_alignments.sh retain=${retain} ${nam_case} exits 0"
     else
         rec_fail \
-            "execute_filter_bams.sh retain=${retain} ${nam_case} failed; see" \
+            "execute_filter_alignments.sh retain=${retain} ${nam_case} failed; see" \
             "$(rec_relpath "${log_lcl}")"
     fi
 }
@@ -90,7 +90,7 @@ function run_case_filter() {
 #  S. cerevisiae filtering should retain only canonical SC chromosomes
 outfile="${dir_out}/filter_sc_sp.sc.bam"
 idxstats="${dir_out}/filter_sc_sp.sc.idxstats.txt"
-log="${dir_log}/execute_filter_bams_sc.log"
+log="${dir_log}/execute_filter_alignments_sc.log"
 
 run_case_filter "sc" "sc" "${log}"
 
@@ -99,7 +99,7 @@ assert_file_nonempty "${outfile}.bai" "execute retain=sc BAM index"
 
 if [[ -s "${outfile}" ]]; then
     run_capture \
-        "idxstats execute filter-bams sc" "${idxstats}" \
+        "idxstats execute filter-alignments sc" "${idxstats}" \
         run_samtools idxstats "${outfile}"
 
     assert_grep_pattern "${idxstats}" $'^I\t100\t1\t0$' \
@@ -114,7 +114,7 @@ fi
 #  S. pombe filtering should honor optional TG, MTR, and mito contigs
 outfile="${dir_out}/filter_sc_sp.sp.bam"
 idxstats="${dir_out}/filter_sc_sp.sp.idxstats.txt"
-log="${dir_log}/execute_filter_bams_sp.log"
+log="${dir_log}/execute_filter_alignments_sp.log"
 
 run_case_filter "sp" "sp" "${log}" --tg --mtr --mito
 
@@ -123,7 +123,7 @@ assert_file_nonempty "${outfile}.bai" "execute retain=sp BAM index"
 
 if [[ -s "${outfile}" ]]; then
     run_capture \
-        "idxstats execute filter-bams sp" "${idxstats}" \
+        "idxstats execute filter-alignments sp" "${idxstats}" \
         run_samtools idxstats "${outfile}"
 
     assert_grep_pattern "${idxstats}" $'^SP_I\t100\t1\t0$' \

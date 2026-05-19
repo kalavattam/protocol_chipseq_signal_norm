@@ -386,11 +386,11 @@ function run_samtools() {
 
 
 #  Build and index a BAM input fixture from a committed SAM fixture
-function prepare_filter_bams_bam_fixture() {
+function prepare_filter_alignments_bam_fixture() {
     local in_sam="${1:-}"
     local out_bam="${2:-}"
     local log_lcl="${3:-}"
-    local label="${4:-filter BAM input fixture}"
+    local label="${4:-BAM input fixture}"
 
     if \
         run_capture \
@@ -410,7 +410,7 @@ function prepare_filter_bams_bam_fixture() {
 
 
 #  Build and index a CRAM input fixture from committed SAM/reference fixtures
-function prepare_filter_bams_cram_fixture() {
+function prepare_filter_alignments_cram_fixture() {
     local in_sam="${1:-}"
     local ref_fa="${2:-}"
     local out_cram="${3:-}"
@@ -609,15 +609,15 @@ function assert_cram_count() {
 }
 
 
-#  Assert filter_bams @PG provenance in a BAM or CRAM header
-function assert_filter_bams_pg_header() {
+#  Assert filter_alignments @PG provenance in a BAM or CRAM header
+function assert_filter_alignments_pg_header() {
     local infile="${1:-}"
     local ref_fa="${2:-}"
     local pg_id="${3:-}"
     local retain="${4:-}"
     local out_ext="${5:-}"
     local header_file="${6:-}"
-    local label="${7:-filter_bams @PG header}"
+    local label="${7:-filter_alignments @PG header}"
     local -a ref_arg=()
 
     if [[ "${infile,,}" == *.cram ]]; then
@@ -638,7 +638,7 @@ function assert_filter_bams_pg_header() {
     if [[ -s "${header_file}" ]]; then
         assert_grep_pattern \
             "${header_file}" \
-            $'^@PG\tID:'"${pg_id}"$'\tPN:filter_bams\tCL:'"${pg_id} retain=${retain}" \
+            $'^@PG\tID:'"${pg_id}"$'\tPN:filter_alignments\tCL:'"${pg_id} retain=${retain}" \
             "${label} contains ${pg_id} @PG record"
         assert_grep_pattern \
             "${header_file}" \

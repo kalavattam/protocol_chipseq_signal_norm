@@ -1,12 +1,12 @@
-# filter_bams fixtures
+# filter_alignments fixtures
 
-These fixtures exercise `submit_filter_bams.sh` and `execute_filter_bams.sh`
+These fixtures exercise `submit_filter_alignments.sh` and `execute_filter_alignments.sh`
 with tiny deterministic alignment inputs.
 
 Regenerate them from the repository root with:
 
 ```bash
-bash tests/filter_bams/scripts/make_fixtures.sh
+bash tests/filter_alignments/scripts/make_fixtures.sh
 ```
 
 ## Files

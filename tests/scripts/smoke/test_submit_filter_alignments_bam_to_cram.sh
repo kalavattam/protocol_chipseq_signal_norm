@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # -*- coding: utf-8 -*-
 #
-# Script: test_submit_filter_bams_bam_to_cram.sh
+# Script: test_submit_filter_alignments_bam_to_cram.sh
 #
 # Copyright 2026 by Kris Alavattam
 # Email: kalavattam@gmail.com
@@ -11,7 +11,7 @@
 # Distributed under the MIT license.
 
 
-TEST_NAME="submit filter-bams BAM to CRAM"
+TEST_NAME="submit filter-alignments BAM to CRAM"
 
 #  Source shared smoke-test helpers
 # shellcheck disable=SC1091
@@ -21,17 +21,17 @@ source "$(
 
 rec_section "${TEST_NAME}"
 
-dir_fx="${ROOT_REPO}/tests/filter_bams/fixtures"
+dir_fx="${ROOT_REPO}/tests/filter_alignments/fixtures"
 in_sam="${dir_fx}/sam/filter_sc_sp.sam"
 ref_fa="${dir_fx}/reference/filter_sc_sp.fa"
 ref_fai="${ref_fa}.fai"
 
-tmp="${TEST_DIR_TMP}/submit_filter_bams_bam_to_cram"
+tmp="${TEST_DIR_TMP}/submit_filter_alignments_bam_to_cram"
 dir_in="${tmp}/input"
 dir_out="${tmp}/out"
 dir_err="${tmp}/logs"
 dir_missing="${tmp}/missing_ref"
-dir_log="${TEST_DIR_LOG}/filter_bams"
+dir_log="${TEST_DIR_LOG}/filter_alignments"
 in_bam="${dir_in}/filter_sc_sp.bam"
 
 rm -rf "${tmp}"
@@ -49,11 +49,11 @@ require_files_exist "${in_sam}" "${ref_fa}" "${ref_fai}" || {
 
 
 #  Build deterministic BAM input from committed SAM fixture
-log="${dir_log}/submit_filter_bams_prepare_bam_to_cram.log"
+log="${dir_log}/submit_filter_alignments_prepare_bam_to_cram.log"
 if ! \
-    prepare_filter_bams_bam_fixture \
+    prepare_filter_alignments_bam_fixture \
         "${in_sam}" "${in_bam}" "${log}" \
-        "submit filter-bams BAM fixture for CRAM output"
+        "submit filter-alignments BAM fixture for CRAM output"
 then
     finish
     exit $?
@@ -70,8 +70,8 @@ function run_case_filter() {
     # shellcheck disable=SC2154
     if \
         run_capture \
-            "submit filter-bams BAM to CRAM ${nam_case}" "${log_lcl}" \
-            "${TEST_BASH}" "${ROOT_REPO}/scripts/submit_filter_bams.sh" \
+            "submit filter-alignments BAM to CRAM ${nam_case}" "${log_lcl}" \
+            "${TEST_BASH}" "${ROOT_REPO}/scripts/submit_filter_alignments.sh" \
                 --env_nam "${env_nam}" \
                 --dir_scr "${ROOT_REPO}/scripts" \
                 --threads 1 \
@@ -81,24 +81,24 @@ function run_case_filter() {
                 --retain "${retain}" \
                 --ref_fa "${ref_fa}" \
                 --err_out "${dir_err}" \
-                --nam_job "test_submit_filter_bams_bam_to_cram_${nam_case}" \
+                --nam_job "test_submit_filter_alignments_bam_to_cram_${nam_case}" \
                 "$@"
     then
-        rec_pass "submit_filter_bams.sh BAM to CRAM retain=${retain} ${nam_case} exits 0"
+        rec_pass "submit_filter_alignments.sh BAM to CRAM retain=${retain} ${nam_case} exits 0"
     else
         rec_fail \
-            "submit_filter_bams.sh BAM to CRAM retain=${retain} ${nam_case} failed; see" \
+            "submit_filter_alignments.sh BAM to CRAM retain=${retain} ${nam_case} failed; see" \
             "$(rec_relpath "${log_lcl}")"
     fi
 }
 
 
 #  CRAM output without --ref_fa should fail clearly
-log="${dir_log}/submit_filter_bams_bam_to_cram_missing_ref.log"
+log="${dir_log}/submit_filter_alignments_bam_to_cram_missing_ref.log"
 if \
     run_capture \
-        "submit filter-bams BAM to CRAM missing ref" "${log}" \
-        "${TEST_BASH}" "${ROOT_REPO}/scripts/submit_filter_bams.sh" \
+        "submit filter-alignments BAM to CRAM missing ref" "${log}" \
+        "${TEST_BASH}" "${ROOT_REPO}/scripts/submit_filter_alignments.sh" \
             --env_nam "${env_nam}" \
             --dir_scr "${ROOT_REPO}/scripts" \
             --threads 1 \
@@ -107,11 +107,11 @@ if \
             --out_ext cram \
             --retain sc \
             --err_out "${dir_err}" \
-            --nam_job "test_submit_filter_bams_bam_to_cram_missing_ref"
+            --nam_job "test_submit_filter_alignments_bam_to_cram_missing_ref"
 then
-    rec_fail "submit_filter_bams.sh --out_ext cram without --ref_fa unexpectedly passed"
+    rec_fail "submit_filter_alignments.sh --out_ext cram without --ref_fa unexpectedly passed"
 else
-    rec_pass "submit_filter_bams.sh --out_ext cram without --ref_fa fails"
+    rec_pass "submit_filter_alignments.sh --out_ext cram without --ref_fa fails"
 fi
 
 assert_grep_pattern "${log}" "'--ref_fa' is required" \
@@ -120,28 +120,28 @@ assert_grep_pattern "${log}" "'--ref_fa' is required" \
 
 #  S. cerevisiae filtering should retain only canonical SC chromosomes
 outfile="${dir_out}/filter_sc_sp.sc.cram"
-log="${dir_log}/submit_filter_bams_bam_to_cram_sc.log"
+log="${dir_log}/submit_filter_alignments_bam_to_cram_sc.log"
 
 run_case_filter "sc" "sc" "${log}"
 
 assert_file_nonempty "${outfile}" "submit retain=sc CRAM output"
 assert_cram_index "${outfile}" "submit retain=sc CRAI index"
-assert_filter_bams_pg_header \
-    "${outfile}" "${ref_fa}" filter_bam_sc sc cram \
+assert_filter_alignments_pg_header \
+    "${outfile}" "${ref_fa}" filter_alignment_sc sc cram \
     "${dir_out}/filter_sc_sp.sc.header.txt" \
     "submit retain=sc CRAM output"
 assert_file_exists \
-    "${dir_err}/test_submit_filter_bams_bam_to_cram_sc.filter_sc_sp.stdout.txt" \
+    "${dir_err}/test_submit_filter_alignments_bam_to_cram_sc.filter_sc_sp.stdout.txt" \
     "submit retain=sc CRAM stdout log"
 assert_file_exists \
-    "${dir_err}/test_submit_filter_bams_bam_to_cram_sc.filter_sc_sp.stderr.txt" \
+    "${dir_err}/test_submit_filter_alignments_bam_to_cram_sc.filter_sc_sp.stderr.txt" \
     "submit retain=sc CRAM stderr log"
 
 if [[ -s "${outfile}" ]]; then
     if \
         run_capture \
-            "quickcheck submit filter-bams BAM to CRAM sc" \
-            "${dir_log}/submit_filter_bams_bam_to_cram_sc_quickcheck.log" \
+            "quickcheck submit filter-alignments BAM to CRAM sc" \
+            "${dir_log}/submit_filter_alignments_bam_to_cram_sc_quickcheck.log" \
             run_samtools quickcheck "${outfile}"
     then
         rec_pass "submit retain=sc CRAM passes samtools quickcheck"
@@ -163,28 +163,28 @@ fi
 
 #  S. pombe filtering should honor optional TG, MTR, and mito contigs
 outfile="${dir_out}/filter_sc_sp.sp.cram"
-log="${dir_log}/submit_filter_bams_bam_to_cram_sp.log"
+log="${dir_log}/submit_filter_alignments_bam_to_cram_sp.log"
 
 run_case_filter "sp" "sp" "${log}" --tg --mtr --mito
 
 assert_file_nonempty "${outfile}" "submit retain=sp CRAM output"
 assert_cram_index "${outfile}" "submit retain=sp CRAI index"
-assert_filter_bams_pg_header \
-    "${outfile}" "${ref_fa}" filter_bam_sp sp cram \
+assert_filter_alignments_pg_header \
+    "${outfile}" "${ref_fa}" filter_alignment_sp sp cram \
     "${dir_out}/filter_sc_sp.sp.header.txt" \
     "submit retain=sp CRAM output"
 assert_file_exists \
-    "${dir_err}/test_submit_filter_bams_bam_to_cram_sp.filter_sc_sp.stdout.txt" \
+    "${dir_err}/test_submit_filter_alignments_bam_to_cram_sp.filter_sc_sp.stdout.txt" \
     "submit retain=sp CRAM stdout log"
 assert_file_exists \
-    "${dir_err}/test_submit_filter_bams_bam_to_cram_sp.filter_sc_sp.stderr.txt" \
+    "${dir_err}/test_submit_filter_alignments_bam_to_cram_sp.filter_sc_sp.stderr.txt" \
     "submit retain=sp CRAM stderr log"
 
 if [[ -s "${outfile}" ]]; then
     if \
         run_capture \
-            "quickcheck submit filter-bams BAM to CRAM sp" \
-            "${dir_log}/submit_filter_bams_bam_to_cram_sp_quickcheck.log" \
+            "quickcheck submit filter-alignments BAM to CRAM sp" \
+            "${dir_log}/submit_filter_alignments_bam_to_cram_sp_quickcheck.log" \
             run_samtools quickcheck "${outfile}"
     then
         rec_pass "submit retain=sp CRAM passes samtools quickcheck"

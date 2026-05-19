@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # -*- coding: utf-8 -*-
 #
-# Script: test_execute_filter_bams_bam_to_cram.sh
+# Script: test_execute_filter_alignments_bam_to_cram.sh
 #
 # Copyright 2026 by Kris Alavattam
 # Email: kalavattam@gmail.com
@@ -11,7 +11,7 @@
 # Distributed under the MIT license.
 
 
-TEST_NAME="execute filter-bams BAM to CRAM"
+TEST_NAME="execute filter-alignments BAM to CRAM"
 
 #  Source shared smoke-test helpers
 # shellcheck disable=SC1091
@@ -21,16 +21,16 @@ source "$(
 
 rec_section "${TEST_NAME}"
 
-dir_fx="${ROOT_REPO}/tests/filter_bams/fixtures"
+dir_fx="${ROOT_REPO}/tests/filter_alignments/fixtures"
 in_sam="${dir_fx}/sam/filter_sc_sp.sam"
 ref_fa="${dir_fx}/reference/filter_sc_sp.fa"
 ref_fai="${ref_fa}.fai"
 
-tmp="${TEST_DIR_TMP}/execute_filter_bams_bam_to_cram"
+tmp="${TEST_DIR_TMP}/execute_filter_alignments_bam_to_cram"
 dir_in="${tmp}/input"
 dir_out="${tmp}/out"
 dir_err="${tmp}/logs"
-dir_log="${TEST_DIR_LOG}/filter_bams"
+dir_log="${TEST_DIR_LOG}/filter_alignments"
 in_bam="${dir_in}/filter_sc_sp.bam"
 
 rm -rf "${tmp}"
@@ -48,11 +48,11 @@ require_files_exist "${in_sam}" "${ref_fa}" "${ref_fai}" || {
 
 
 #  Build deterministic BAM input from committed SAM fixture
-log="${dir_log}/execute_filter_bams_prepare_bam_to_cram.log"
+log="${dir_log}/execute_filter_alignments_prepare_bam_to_cram.log"
 if ! \
-    prepare_filter_bams_bam_fixture \
+    prepare_filter_alignments_bam_fixture \
         "${in_sam}" "${in_bam}" "${log}" \
-        "execute filter-bams BAM fixture for CRAM output"
+        "execute filter-alignments BAM fixture for CRAM output"
 then
     finish
     exit $?
@@ -68,8 +68,8 @@ function run_case_filter() {
 
     if \
         run_capture \
-            "execute filter-bams BAM to CRAM ${nam_case}" "${log_lcl}" \
-            "${TEST_BASH}" "${ROOT_REPO}/scripts/execute_filter_bams.sh" \
+            "execute filter-alignments BAM to CRAM ${nam_case}" "${log_lcl}" \
+            "${TEST_BASH}" "${ROOT_REPO}/scripts/execute_filter_alignments.sh" \
                 --threads 1 \
                 --csv_infile "${in_bam}" \
                 --dir_out "${dir_out}" \
@@ -77,14 +77,14 @@ function run_case_filter() {
                 --retain "${retain}" \
                 --ref_fa "${ref_fa}" \
                 --err_out "${dir_err}" \
-                --nam_job "test_execute_filter_bams_bam_to_cram_${nam_case}" \
+                --nam_job "test_execute_filter_alignments_bam_to_cram_${nam_case}" \
                 --max_job 1 \
                 "$@"
     then
-        rec_pass "execute_filter_bams.sh BAM to CRAM retain=${retain} ${nam_case} exits 0"
+        rec_pass "execute_filter_alignments.sh BAM to CRAM retain=${retain} ${nam_case} exits 0"
     else
         rec_fail \
-            "execute_filter_bams.sh BAM to CRAM retain=${retain} ${nam_case} failed; see" \
+            "execute_filter_alignments.sh BAM to CRAM retain=${retain} ${nam_case} failed; see" \
             "$(rec_relpath "${log_lcl}")"
     fi
 }
@@ -92,30 +92,30 @@ function run_case_filter() {
 
 #  S. cerevisiae filtering should retain only canonical SC chromosomes
 outfile="${dir_out}/filter_sc_sp.sc.cram"
-log="${dir_log}/execute_filter_bams_bam_to_cram_sc.log"
+log="${dir_log}/execute_filter_alignments_bam_to_cram_sc.log"
 
 run_case_filter "sc" "sc" "${log}"
 
 assert_file_nonempty "${outfile}" "execute retain=sc CRAM output"
 assert_cram_index "${outfile}" "execute retain=sc CRAI index"
 assert_file_exists \
-    "${dir_err}/test_execute_filter_bams_bam_to_cram_sc_ser.stdout.txt" \
+    "${dir_err}/test_execute_filter_alignments_bam_to_cram_sc_ser.stdout.txt" \
     "execute retain=sc serial stdout log"
 assert_file_exists \
-    "${dir_err}/test_execute_filter_bams_bam_to_cram_sc_ser.stderr.txt" \
+    "${dir_err}/test_execute_filter_alignments_bam_to_cram_sc_ser.stderr.txt" \
     "execute retain=sc serial stderr log"
 assert_file_exists \
-    "${dir_err}/test_execute_filter_bams_bam_to_cram_sc.filter_sc_sp.stdout.txt" \
+    "${dir_err}/test_execute_filter_alignments_bam_to_cram_sc.filter_sc_sp.stdout.txt" \
     "execute retain=sc submit stdout log"
 assert_file_exists \
-    "${dir_err}/test_execute_filter_bams_bam_to_cram_sc.filter_sc_sp.stderr.txt" \
+    "${dir_err}/test_execute_filter_alignments_bam_to_cram_sc.filter_sc_sp.stderr.txt" \
     "execute retain=sc submit stderr log"
 
 if [[ -s "${outfile}" ]]; then
     if \
         run_capture \
-            "quickcheck execute filter-bams BAM to CRAM sc" \
-            "${dir_log}/execute_filter_bams_bam_to_cram_sc_quickcheck.log" \
+            "quickcheck execute filter-alignments BAM to CRAM sc" \
+            "${dir_log}/execute_filter_alignments_bam_to_cram_sc_quickcheck.log" \
             run_samtools quickcheck "${outfile}"
     then
         rec_pass "execute retain=sc CRAM passes samtools quickcheck"
@@ -137,30 +137,30 @@ fi
 
 #  S. pombe filtering should honor optional TG, MTR, and mito contigs
 outfile="${dir_out}/filter_sc_sp.sp.cram"
-log="${dir_log}/execute_filter_bams_bam_to_cram_sp.log"
+log="${dir_log}/execute_filter_alignments_bam_to_cram_sp.log"
 
 run_case_filter "sp" "sp" "${log}" --tg --mtr --mito
 
 assert_file_nonempty "${outfile}" "execute retain=sp CRAM output"
 assert_cram_index "${outfile}" "execute retain=sp CRAI index"
 assert_file_exists \
-    "${dir_err}/test_execute_filter_bams_bam_to_cram_sp_ser.stdout.txt" \
+    "${dir_err}/test_execute_filter_alignments_bam_to_cram_sp_ser.stdout.txt" \
     "execute retain=sp serial stdout log"
 assert_file_exists \
-    "${dir_err}/test_execute_filter_bams_bam_to_cram_sp_ser.stderr.txt" \
+    "${dir_err}/test_execute_filter_alignments_bam_to_cram_sp_ser.stderr.txt" \
     "execute retain=sp serial stderr log"
 assert_file_exists \
-    "${dir_err}/test_execute_filter_bams_bam_to_cram_sp.filter_sc_sp.stdout.txt" \
+    "${dir_err}/test_execute_filter_alignments_bam_to_cram_sp.filter_sc_sp.stdout.txt" \
     "execute retain=sp submit stdout log"
 assert_file_exists \
-    "${dir_err}/test_execute_filter_bams_bam_to_cram_sp.filter_sc_sp.stderr.txt" \
+    "${dir_err}/test_execute_filter_alignments_bam_to_cram_sp.filter_sc_sp.stderr.txt" \
     "execute retain=sp submit stderr log"
 
 if [[ -s "${outfile}" ]]; then
     if \
         run_capture \
-            "quickcheck execute filter-bams BAM to CRAM sp" \
-            "${dir_log}/execute_filter_bams_bam_to_cram_sp_quickcheck.log" \
+            "quickcheck execute filter-alignments BAM to CRAM sp" \
+            "${dir_log}/execute_filter_alignments_bam_to_cram_sp_quickcheck.log" \
             run_samtools quickcheck "${outfile}"
     then
         rec_pass "execute retain=sp CRAM passes samtools quickcheck"

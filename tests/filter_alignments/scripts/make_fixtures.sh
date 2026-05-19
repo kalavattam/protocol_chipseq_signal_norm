@@ -81,15 +81,15 @@ r_other	0	chrUn	1	60	10M	*	0	0	ACGTACGTAA	FFFFFFFFFF
 SAM
 
 cat > "${readme}" << 'README'
-# filter_bams fixtures
+# filter_alignments fixtures
 
-These fixtures exercise `submit_filter_bams.sh` and `execute_filter_bams.sh`
+These fixtures exercise `submit_filter_alignments.sh` and `execute_filter_alignments.sh`
 with tiny deterministic alignment inputs.
 
 Regenerate them from the repository root with:
 
 ```bash
-bash tests/filter_bams/scripts/make_fixtures.sh
+bash tests/filter_alignments/scripts/make_fixtures.sh
 ```
 
 ## Files
@@ -125,4 +125,4 @@ bash tests/filter_bams/scripts/make_fixtures.sh
   and produce indexed CRAM output.
 README
 
-printf 'Wrote filter_bams fixtures under %s\n' "${dir_fx}"
+printf 'Wrote filter_alignments fixtures under %s\n' "${dir_fx}"

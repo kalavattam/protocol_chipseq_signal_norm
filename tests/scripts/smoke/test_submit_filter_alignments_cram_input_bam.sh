@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # -*- coding: utf-8 -*-
 #
-# Script: test_submit_filter_bams_cram_input_bam.sh
+# Script: test_submit_filter_alignments_cram_input_bam.sh
 #
 # Copyright 2026 by Kris Alavattam
 # Email: kalavattam@gmail.com
@@ -11,7 +11,7 @@
 # Distributed under the MIT license.
 
 
-TEST_NAME="submit filter-bams CRAM input BAM output"
+TEST_NAME="submit filter-alignments CRAM input BAM output"
 
 #  Source shared smoke-test helpers
 # shellcheck disable=SC1091
@@ -21,17 +21,17 @@ source "$(
 
 rec_section "${TEST_NAME}"
 
-dir_fx="${ROOT_REPO}/tests/filter_bams/fixtures"
+dir_fx="${ROOT_REPO}/tests/filter_alignments/fixtures"
 in_sam="${dir_fx}/sam/filter_sc_sp.sam"
 ref_fa="${dir_fx}/reference/filter_sc_sp.fa"
 ref_fai="${ref_fa}.fai"
 
-tmp="${TEST_DIR_TMP}/submit_filter_bams_cram_input_bam"
+tmp="${TEST_DIR_TMP}/submit_filter_alignments_cram_input_bam"
 dir_in="${tmp}/input"
 dir_out="${tmp}/out"
 dir_err="${tmp}/logs"
 dir_missing="${tmp}/missing_ref"
-dir_log="${TEST_DIR_LOG}/filter_bams"
+dir_log="${TEST_DIR_LOG}/filter_alignments"
 in_cram="${dir_in}/filter_sc_sp.cram"
 
 rm -rf "${tmp}"
@@ -49,11 +49,11 @@ require_files_exist "${in_sam}" "${ref_fa}" "${ref_fai}" || {
 
 
 #  Build deterministic CRAM input from committed SAM and reference fixtures
-log="${dir_log}/submit_filter_bams_prepare_cram.log"
+log="${dir_log}/submit_filter_alignments_prepare_cram.log"
 if ! \
-    prepare_filter_bams_cram_fixture \
+    prepare_filter_alignments_cram_fixture \
         "${in_sam}" "${ref_fa}" "${in_cram}" "${log}" \
-        "submit filter-bams CRAM fixture"
+        "submit filter-alignments CRAM fixture"
 then
     finish
     exit $?
@@ -70,8 +70,8 @@ function run_case_filter() {
     # shellcheck disable=SC2154
     if \
         run_capture \
-            "submit filter-bams CRAM ${nam_case}" "${log_lcl}" \
-            "${TEST_BASH}" "${ROOT_REPO}/scripts/submit_filter_bams.sh" \
+            "submit filter-alignments CRAM ${nam_case}" "${log_lcl}" \
+            "${TEST_BASH}" "${ROOT_REPO}/scripts/submit_filter_alignments.sh" \
                 --env_nam "${env_nam}" \
                 --dir_scr "${ROOT_REPO}/scripts" \
                 --threads 1 \
@@ -80,24 +80,24 @@ function run_case_filter() {
                 --retain "${retain}" \
                 --ref_fa "${ref_fa}" \
                 --err_out "${dir_err}" \
-                --nam_job "test_submit_filter_bams_cram_${nam_case}" \
+                --nam_job "test_submit_filter_alignments_cram_${nam_case}" \
                 "$@"
     then
-        rec_pass "submit_filter_bams.sh CRAM retain=${retain} ${nam_case} exits 0"
+        rec_pass "submit_filter_alignments.sh CRAM retain=${retain} ${nam_case} exits 0"
     else
         rec_fail \
-            "submit_filter_bams.sh CRAM retain=${retain} ${nam_case} failed; see" \
+            "submit_filter_alignments.sh CRAM retain=${retain} ${nam_case} failed; see" \
             "$(rec_relpath "${log_lcl}")"
     fi
 }
 
 
 #  CRAM input without --ref_fa should fail clearly
-log="${dir_log}/submit_filter_bams_cram_missing_ref.log"
+log="${dir_log}/submit_filter_alignments_cram_missing_ref.log"
 if \
     run_capture \
-        "submit filter-bams CRAM missing ref" "${log}" \
-        "${TEST_BASH}" "${ROOT_REPO}/scripts/submit_filter_bams.sh" \
+        "submit filter-alignments CRAM missing ref" "${log}" \
+        "${TEST_BASH}" "${ROOT_REPO}/scripts/submit_filter_alignments.sh" \
             --env_nam "${env_nam}" \
             --dir_scr "${ROOT_REPO}/scripts" \
             --threads 1 \
@@ -105,11 +105,11 @@ if \
             --dir_out "${dir_missing}" \
             --retain sc \
             --err_out "${dir_err}" \
-            --nam_job "test_submit_filter_bams_cram_missing_ref"
+            --nam_job "test_submit_filter_alignments_cram_missing_ref"
 then
-    rec_fail "submit_filter_bams.sh CRAM without --ref_fa unexpectedly passed"
+    rec_fail "submit_filter_alignments.sh CRAM without --ref_fa unexpectedly passed"
 else
-    rec_pass "submit_filter_bams.sh CRAM without --ref_fa fails"
+    rec_pass "submit_filter_alignments.sh CRAM without --ref_fa fails"
 fi
 
 assert_grep_pattern "${log}" "'--ref_fa' is required" \
@@ -119,28 +119,28 @@ assert_grep_pattern "${log}" "'--ref_fa' is required" \
 #  S. cerevisiae filtering should retain only canonical SC chromosomes
 outfile="${dir_out}/filter_sc_sp.sc.bam"
 idxstats="${dir_out}/filter_sc_sp.sc.idxstats.txt"
-log="${dir_log}/submit_filter_bams_cram_sc.log"
+log="${dir_log}/submit_filter_alignments_cram_sc.log"
 
 run_case_filter "sc" "sc" "${log}"
 
 assert_file_nonempty "${outfile}" "submit CRAM retain=sc BAM output"
 assert_file_nonempty "${outfile}.bai" "submit CRAM retain=sc BAM index"
-assert_filter_bams_pg_header \
-    "${outfile}" "" filter_bam_sc sc bam \
+assert_filter_alignments_pg_header \
+    "${outfile}" "" filter_alignment_sc sc bam \
     "${dir_out}/filter_sc_sp.sc.header.txt" \
     "submit CRAM retain=sc BAM output"
 assert_file_exists \
-    "${dir_err}/test_submit_filter_bams_cram_sc.filter_sc_sp.stdout.txt" \
+    "${dir_err}/test_submit_filter_alignments_cram_sc.filter_sc_sp.stdout.txt" \
     "submit CRAM retain=sc stdout log"
 assert_file_exists \
-    "${dir_err}/test_submit_filter_bams_cram_sc.filter_sc_sp.stderr.txt" \
+    "${dir_err}/test_submit_filter_alignments_cram_sc.filter_sc_sp.stderr.txt" \
     "submit CRAM retain=sc stderr log"
 
 if [[ -s "${outfile}" ]]; then
     if \
         run_capture \
-            "quickcheck submit filter-bams CRAM sc" \
-            "${dir_log}/submit_filter_bams_cram_sc_quickcheck.log" \
+            "quickcheck submit filter-alignments CRAM sc" \
+            "${dir_log}/submit_filter_alignments_cram_sc_quickcheck.log" \
             run_samtools quickcheck "${outfile}"
     then
         rec_pass "submit CRAM retain=sc BAM passes samtools quickcheck"
@@ -149,7 +149,7 @@ if [[ -s "${outfile}" ]]; then
     fi
 
     run_capture \
-        "idxstats submit filter-bams CRAM sc" "${idxstats}" \
+        "idxstats submit filter-alignments CRAM sc" "${idxstats}" \
         run_samtools idxstats "${outfile}"
 
     assert_grep_pattern "${idxstats}" $'^I\t100\t1\t0$' \
@@ -164,28 +164,28 @@ fi
 #  S. pombe filtering should honor optional TG, MTR, and mito contigs
 outfile="${dir_out}/filter_sc_sp.sp.bam"
 idxstats="${dir_out}/filter_sc_sp.sp.idxstats.txt"
-log="${dir_log}/submit_filter_bams_cram_sp.log"
+log="${dir_log}/submit_filter_alignments_cram_sp.log"
 
 run_case_filter "sp" "sp" "${log}" --tg --mtr --mito
 
 assert_file_nonempty "${outfile}" "submit CRAM retain=sp BAM output"
 assert_file_nonempty "${outfile}.bai" "submit CRAM retain=sp BAM index"
-assert_filter_bams_pg_header \
-    "${outfile}" "" filter_bam_sp sp bam \
+assert_filter_alignments_pg_header \
+    "${outfile}" "" filter_alignment_sp sp bam \
     "${dir_out}/filter_sc_sp.sp.header.txt" \
     "submit CRAM retain=sp BAM output"
 assert_file_exists \
-    "${dir_err}/test_submit_filter_bams_cram_sp.filter_sc_sp.stdout.txt" \
+    "${dir_err}/test_submit_filter_alignments_cram_sp.filter_sc_sp.stdout.txt" \
     "submit CRAM retain=sp stdout log"
 assert_file_exists \
-    "${dir_err}/test_submit_filter_bams_cram_sp.filter_sc_sp.stderr.txt" \
+    "${dir_err}/test_submit_filter_alignments_cram_sp.filter_sc_sp.stderr.txt" \
     "submit CRAM retain=sp stderr log"
 
 if [[ -s "${outfile}" ]]; then
     if \
         run_capture \
-            "quickcheck submit filter-bams CRAM sp" \
-            "${dir_log}/submit_filter_bams_cram_sp_quickcheck.log" \
+            "quickcheck submit filter-alignments CRAM sp" \
+            "${dir_log}/submit_filter_alignments_cram_sp_quickcheck.log" \
             run_samtools quickcheck "${outfile}"
     then
         rec_pass "submit CRAM retain=sp BAM passes samtools quickcheck"
@@ -194,7 +194,7 @@ if [[ -s "${outfile}" ]]; then
     fi
 
     run_capture \
-        "idxstats submit filter-bams CRAM sp" "${idxstats}" \
+        "idxstats submit filter-alignments CRAM sp" "${idxstats}" \
         run_samtools idxstats "${outfile}"
 
     assert_grep_pattern "${idxstats}" $'^SP_I\t100\t1\t0$' \
