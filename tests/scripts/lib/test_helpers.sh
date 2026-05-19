@@ -385,6 +385,55 @@ function run_samtools() {
 }
 
 
+#  Build and index a BAM input fixture from a committed SAM fixture
+function prepare_filter_bams_bam_fixture() {
+    local in_sam="${1:-}"
+    local out_bam="${2:-}"
+    local log_lcl="${3:-}"
+    local label="${4:-filter BAM input fixture}"
+
+    if \
+        run_capture \
+            "prepare ${label}" "${log_lcl}" \
+            run_samtools view -bS -o "${out_bam}" "${in_sam}" \
+        && run_capture \
+            "index ${label}" "${log_lcl}.index" \
+            run_samtools index "${out_bam}"
+    then
+        rec_pass "${label} is prepared"
+        return 0
+    fi
+
+    rec_fail "failed to prepare ${label}; see $(rec_relpath "${log_lcl}")"
+    return 1
+}
+
+
+#  Build and index a CRAM input fixture from committed SAM/reference fixtures
+function prepare_filter_bams_cram_fixture() {
+    local in_sam="${1:-}"
+    local ref_fa="${2:-}"
+    local out_cram="${3:-}"
+    local log_lcl="${4:-}"
+    local label="${5:-filter CRAM input fixture}"
+
+    if \
+        run_capture \
+            "prepare ${label}" "${log_lcl}" \
+            run_samtools view -C -T "${ref_fa}" -o "${out_cram}" "${in_sam}" \
+        && run_capture \
+            "index ${label}" "${log_lcl}.index" \
+            run_samtools index "${out_cram}"
+    then
+        rec_pass "${label} is prepared"
+        return 0
+    fi
+
+    rec_fail "failed to prepare ${label}; see $(rec_relpath "${log_lcl}")"
+    return 1
+}
+
+
 #  Find a usable Python command
 function find_python() {
     if check_cmd_exists python; then
@@ -557,6 +606,45 @@ function assert_cram_count() {
         run_samtools view -T "${ref_fa}" -c "${cram}" "${contig}"
 
     assert_grep_pattern "${count_file}" "^${expected}$" "${label}"
+}
+
+
+#  Assert filter_bams @PG provenance in a BAM or CRAM header
+function assert_filter_bams_pg_header() {
+    local infile="${1:-}"
+    local ref_fa="${2:-}"
+    local pg_id="${3:-}"
+    local retain="${4:-}"
+    local out_ext="${5:-}"
+    local header_file="${6:-}"
+    local label="${7:-filter_bams @PG header}"
+    local -a ref_arg=()
+
+    if [[ "${infile,,}" == *.cram ]]; then
+        ref_arg=( -T "${ref_fa}" )
+    fi
+
+    if \
+        run_capture \
+            "header ${label}" "${header_file}" \
+            run_samtools view -H "${ref_arg[@]}" "${infile}"
+    then
+        rec_pass "${label} header can be read"
+    else
+        rec_fail "${label} header cannot be read; see $(rec_relpath "${header_file}")"
+        return 1
+    fi
+
+    if [[ -s "${header_file}" ]]; then
+        assert_grep_pattern \
+            "${header_file}" \
+            $'^@PG\tID:'"${pg_id}"$'\tPN:filter_bams\tCL:'"${pg_id} retain=${retain}" \
+            "${label} contains ${pg_id} @PG record"
+        assert_grep_pattern \
+            "${header_file}" \
+            "out_ext=${out_ext}" \
+            "${label} records out_ext=${out_ext}"
+    fi
 }
 
 

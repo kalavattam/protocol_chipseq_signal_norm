@@ -48,17 +48,10 @@ require_files_exist "${in_sam}" || {
 
 #  Build a deterministic BAM input from the committed SAM fixture
 log="${dir_log}/execute_filter_bams_prepare_bam.log"
-if \
-    run_capture \
-        "prepare execute filter-bams BAM fixture" "${log}" \
-        run_samtools view -bS -o "${in_bam}" "${in_sam}" \
-    && run_capture \
-        "index execute filter-bams BAM fixture" "${log}.index" \
-        run_samtools index "${in_bam}"
+if ! \
+    prepare_filter_bams_bam_fixture \
+        "${in_sam}" "${in_bam}" "${log}" "execute filter-bams BAM fixture"
 then
-    rec_pass "filter BAM input fixture is prepared"
-else
-    rec_fail "failed to prepare filter BAM fixture; see $(rec_relpath "${log}")"
     finish
     exit $?
 fi

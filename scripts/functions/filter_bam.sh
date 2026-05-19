@@ -15,6 +15,9 @@
 # _validate_args_filter_bam
 # _check_chr_bam
 # _finalize_bam_filter
+# _sanitize_pg_value
+# _build_filter_pg_cl
+# _filter_sam_header_chr
 # _filter_sam_chr
 # _cleanup_filter_bam_tmp
 # filter_bam_sc
@@ -262,7 +265,7 @@ function _validate_args_filter_bam() {
 }
 
 
-#  Print unique reference-sequence names present in a BAM file
+#  Print unique reference-sequence names present in an alignment file
 #+ - Used for optional post-filter chromosome checking
 function _check_chr_bam() {
     local outfile="${1:-}"
@@ -284,8 +287,8 @@ function _check_chr_bam() {
 #MAYBE: move to a shared helper script later if reused elsewhere
 
 
-#  "Finalize" a filtered BAM file
-#+ - Index the BAM and optionally print retained chromosome names
+#  "Finalize" a filtered alignment file
+#+ - Index the output and optionally print retained chromosome names
 function _finalize_bam_filter() {
     local threads="${1:-}"
     local outfile="${2:-}"
@@ -300,6 +303,157 @@ function _finalize_bam_filter() {
 }
 
 
+#  Sanitize one value for inclusion in a SAM @PG field
+function _sanitize_pg_value() {
+    local value="${1:-}"
+
+    value="${value//$'\t'/ }"
+    value="${value//$'\r'/ }"
+    value="${value//$'\n'/ }"
+
+    printf '%s' "${value}"
+}
+
+
+#  Build the @PG CL field describing one filter_bams operation
+function _build_filter_pg_cl() {
+    local func="${1:-}"
+    local retain="${2:-}"
+    local infile="${3:-}"
+    local outfile="${4:-}"
+    local mito="${5:-false}"
+    local tg="${6:-false}"
+    local mtr="${7:-false}"
+    local chk_chr="${8:-false}"
+    local ref_fa="${9:-}"
+    local out_ext="${outfile##*.}"
+    local cl
+
+    cl="$(_sanitize_pg_value "${func}")"
+    cl+=" retain=$(_sanitize_pg_value "${retain}")"
+    cl+=" infile=$(_sanitize_pg_value "${infile}")"
+    cl+=" outfile=$(_sanitize_pg_value "${outfile}")"
+    cl+=" mito=$(_sanitize_pg_value "${mito}")"
+
+    if [[ "${retain}" == "sp" ]]; then
+        cl+=" tg=$(_sanitize_pg_value "${tg}")"
+        cl+=" mtr=$(_sanitize_pg_value "${mtr}")"
+    fi
+
+    cl+=" chk_chr=$(_sanitize_pg_value "${chk_chr}")"
+    cl+=" out_ext=$(_sanitize_pg_value "${out_ext}")"
+
+    if [[ -n "${ref_fa}" ]]; then
+        cl+=" ref_fa=$(_sanitize_pg_value "${ref_fa}")"
+    fi
+
+    printf '%s' "${cl}"
+}
+
+
+#  Filter SAM header lines and append a valid filter_bams @PG record
+function _filter_sam_header_chr() {
+    local func="${1:-}"
+    local chrs="${2:-}"
+    local pg_id="${3:-}"
+    local pg_pn="${4:-filter_bams}"
+    local pg_cl="${5:-}"
+
+    if [[ -z "${func}" ]]; then
+        echo_err_func "${FUNCNAME[0]}" \
+            "positional argument 1, 'func', is missing."
+        return 1
+    elif [[ -z "${chrs}" ]]; then
+        echo_err_func "${FUNCNAME[0]}" \
+            "positional argument 2, 'chrs', is missing."
+        return 1
+    fi
+
+    awk \
+        -v chrs="${chrs}" \
+        -v pg_id="${pg_id}" \
+        -v pg_pn="${pg_pn}" \
+        -v pg_cl="${pg_cl}" \
+        '
+            BEGIN {
+                split(chrs, arr_chrs, " ")
+                for (i in arr_chrs) {
+                    chrom_map[arr_chrs[i]] = 1
+                }
+            }
+
+            function keep_sq_line(line, a, b, sn) {
+                if (line !~ /SN:/) {
+                    return 0
+                }
+
+                split(line, a, /SN:/)
+                split(a[2], b, /[ \t]/)
+                sn = b[1]
+
+                return (sn in chrom_map)
+            }
+
+            function pg_tag_value(line, tag, fields, i, n) {
+                n = split(line, fields, "\t")
+                for (i = 1; i <= n; i++) {
+                    if (fields[i] ~ "^" tag ":") {
+                        return substr(fields[i], length(tag) + 2)
+                    }
+                }
+
+                return ""
+            }
+
+            function emit_pg(    id, i) {
+                if (pg_id == "" || pg_done) {
+                    return
+                }
+
+                id = pg_id
+                i = 1
+                while (id in pg_ids) {
+                    id = pg_id "." i
+                    i++
+                }
+
+                print "@PG\tID:" id "\tPN:" pg_pn "\tCL:" pg_cl
+                pg_done = 1
+            }
+
+            /^@HD/ {
+                print
+                next
+            }
+
+            /^@SQ/ {
+                if (keep_sq_line($0)) {
+                    print
+                }
+                next
+            }
+
+            /^@PG/ {
+                id = pg_tag_value($0, "ID")
+                if (id != "") {
+                    pg_ids[id] = 1
+                }
+                print
+                next
+            }
+
+            /^@/ {
+                print
+                next
+            }
+
+            END {
+                emit_pg()
+            }
+        '
+}
+
+
 #  Filter a SAM file by retained reference-sequence names
 #+ - Keep non-'@SQ' header lines, retain only matching '@SQ' lines, and keep
 #+   only alignments whose reference sequence is in the supplied chromosome set
@@ -310,6 +464,9 @@ function _filter_sam_chr() {
     local infile="${2:-}"
     local outfile="${3:-}"
     local chrs="${4:-}"
+    local pg_id="${5:-}"
+    local pg_pn="${6:-filter_bams}"
+    local pg_cl="${7:-}"
 
     if [[ -z "${func}" ]]; then
         echo_err_func "${FUNCNAME[0]}" \
@@ -333,7 +490,12 @@ function _filter_sam_chr() {
 
     #TODO: explicitly use 'gawk'?
     if ! \
-        awk -v chrs="${chrs}" '
+        awk \
+            -v chrs="${chrs}" \
+            -v pg_id="${pg_id}" \
+            -v pg_pn="${pg_pn}" \
+            -v pg_cl="${pg_cl}" \
+            '
             BEGIN {
                 split(chrs, arr_chrs, " ")
                 for (i in arr_chrs) {
@@ -353,10 +515,46 @@ function _filter_sam_chr() {
                 return (sn in chrom_map)
             }
 
+            function pg_tag_value(line, tag, fields, i, n) {
+                n = split(line, fields, "\t")
+                for (i = 1; i <= n; i++) {
+                    if (fields[i] ~ "^" tag ":") {
+                        return substr(fields[i], length(tag) + 2)
+                    }
+                }
+
+                return ""
+            }
+
+            function emit_pg(    id, i) {
+                if (pg_id == "" || pg_done) {
+                    return
+                }
+
+                id = pg_id
+                i = 1
+                while (id in pg_ids) {
+                    id = pg_id "." i
+                    i++
+                }
+
+                print "@PG\tID:" id "\tPN:" pg_pn "\tCL:" pg_cl
+                pg_done = 1
+            }
+
             /^@SQ/ {
                 if (keep_sq_line($0)) {
                     print
                 }
+                next
+            }
+
+            /^@PG/ {
+                id = pg_tag_value($0, "ID")
+                if (id != "") {
+                    pg_ids[id] = 1
+                }
+                print
                 next
             }
 
@@ -366,7 +564,12 @@ function _filter_sam_chr() {
             }
 
             ($3 in chrom_map) {
+                emit_pg()
                 print
+            }
+
+            END {
+                emit_pg()
             }
         ' "${infile}" \
             > "${outfile}"
@@ -391,9 +594,9 @@ function _cleanup_filter_bam_tmp() {
 }
 
 
-#  Filter and reheader a BAM file for S. cerevisiae chromosomes
-#+ - Public entry-point function for main-organism yeast BAM filtering
-#+ - Uses direct BAM filtering followed by BAM reheadering
+#  Filter and reheader a BAM or CRAM file for S. cerevisiae chromosomes
+#+ - Public entry-point function for main-organism yeast alignment filtering
+#+ - Uses direct filtering followed by reheadering
 function filter_bam_sc() {
     local threads=1
     local infile=""
@@ -403,8 +606,8 @@ function filter_bam_sc() {
     local mtr=false
     local chk_chr=false
     local ref_fa=""
-    local chrs pattern
-    local outdir outbam bam_filter bam_rh_init bam_rh_sort
+    local chrs
+    local outdir outbam hdr_rh bam_filter bam_rh_init bam_rh_sort pg_cl
     local -a ref_arg=()
     local show_help
 
@@ -422,7 +625,7 @@ Keyword arguments:
    -o, --outfile  <str>  Filtered BAM or CRAM outfile.
    -r, --ref_fa   <str>  Reference FASTA required when input or output is CRAM.
    -m, --mito     <flg>  Retain mitochondrial chromosome (optional).
-  -cc, --chk_chr  <flg>  Check chromosomes in filtered BAM outfile (optional).
+  -cc, --chk_chr  <flg>  Check chromosomes in filtered outfile (optional).
 
 Returns:
   Creates a BAM or CRAM outfile filtered and reheadered for S. cerevisiae chromosomes at the specified path.
@@ -462,8 +665,7 @@ Examples:
 
 #TODO:
   - Somewhere and somehow, need to handle more than S. cerevisiae as "main" organism.
-  - The filter activity needs to be recorded in the BAM header.
-  - Support SAM and CRAM too.
+  - Support SAM input too.
 EOM
     )
 
@@ -497,15 +699,28 @@ EOM
         chrs="${chrs} Mito"
     fi
 
-    pattern="^@HD|^@SQ.*SN:($(echo "${chrs}" | tr ' ' '|'))|^@PG"
+    pg_cl="$(
+        _build_filter_pg_cl \
+            "${FUNCNAME[0]}" \
+            sc \
+            "${infile}" \
+            "${outfile}" \
+            "${mito}" \
+            false \
+            false \
+            "${chk_chr}" \
+            "${ref_fa}"
+    )"
 
     outdir="$(dirname "${outfile}")"
     outbam="$(basename "${outfile}")"
     if [[ "${outfile,,}" == *.cram ]]; then
+        hdr_rh="${outdir}/tmp.${outbam%.cram}.header.sam"
         bam_filter="${outdir}/tmp.${outbam%.cram}.filter.bam"
         bam_rh_init="${outdir}/tmp.${outbam%.cram}.rehead.bam"
         bam_rh_sort="${outdir}/tmp.${outbam%.cram}.sort.bam"
     else
+        hdr_rh="${outdir}/tmp.${outbam%.bam}.header.sam"
         bam_filter="${outfile}"
         bam_rh_init="${outdir}/rehead.${outbam}"
         bam_rh_sort="${outdir}/txt_rh_sort.${outbam}"
@@ -527,17 +742,34 @@ EOM
     fi
 
     if ! \
-        samtools reheader \
-            -c "grep -E '${pattern}'" \
-            "${bam_filter}" \
-                > "${bam_rh_init}"
+        samtools view -H "${bam_filter}" \
+            | _filter_sam_header_chr \
+                "${FUNCNAME[0]}" \
+                "${chrs}" \
+                "${FUNCNAME[0]}" \
+                "filter_bams" \
+                "${pg_cl}" \
+                > "${hdr_rh}"
+    then
+        echo_err_func "${FUNCNAME[0]}" \
+            "failed to build filtered header for '${bam_filter}'."
+        if [[ "${outfile,,}" == *.cram ]]; then
+            rm -f "${hdr_rh}" "${bam_filter}" "${bam_rh_init}" "${bam_rh_sort}"
+        else
+            rm -f "${hdr_rh}" "${bam_rh_init}" "${bam_rh_sort}"
+        fi
+        return 1
+    fi
+
+    if ! \
+        samtools reheader "${hdr_rh}" "${bam_filter}" > "${bam_rh_init}"
     then
         echo_err_func "${FUNCNAME[0]}" \
             "failed to reheader '${bam_filter}'."
         if [[ "${outfile,,}" == *.cram ]]; then
-            rm -f "${bam_filter}" "${bam_rh_init}" "${bam_rh_sort}"
+            rm -f "${hdr_rh}" "${bam_filter}" "${bam_rh_init}" "${bam_rh_sort}"
         else
-            rm -f "${bam_rh_init}" "${bam_rh_sort}"
+            rm -f "${hdr_rh}" "${bam_rh_init}" "${bam_rh_sort}"
         fi
         return 1
     fi
@@ -551,9 +783,9 @@ EOM
         echo_err_func "${FUNCNAME[0]}" \
             "failed to sort reheadered BAM intermediate."
         if [[ "${outfile,,}" == *.cram ]]; then
-            rm -f "${bam_filter}" "${bam_rh_init}" "${bam_rh_sort}"
+            rm -f "${hdr_rh}" "${bam_filter}" "${bam_rh_init}" "${bam_rh_sort}"
         else
-            rm -f "${bam_rh_init}" "${bam_rh_sort}"
+            rm -f "${hdr_rh}" "${bam_rh_init}" "${bam_rh_sort}"
         fi
         return 1
     fi
@@ -569,25 +801,25 @@ EOM
         then
             echo_err_func "${FUNCNAME[0]}" \
                 "failed to convert filtered BAM intermediate to CRAM."
-            rm -f "${bam_filter}" "${bam_rh_init}" "${bam_rh_sort}"
+            rm -f "${hdr_rh}" "${bam_filter}" "${bam_rh_init}" "${bam_rh_sort}"
             return 1
         fi
     else
         if ! mv -f "${bam_rh_sort}" "${outfile}"; then
             echo_err_func "${FUNCNAME[0]}" \
                 "failed to rename sorted reheadered BAM file."
-            rm -f "${bam_rh_init}" "${bam_rh_sort}"
+            rm -f "${hdr_rh}" "${bam_rh_init}" "${bam_rh_sort}"
             return 1
         fi
     fi
 
     if [[ "${outfile,,}" == *.cram ]]; then
-        if ! rm -f "${bam_filter}" "${bam_rh_init}" "${bam_rh_sort}"; then
+        if ! rm -f "${hdr_rh}" "${bam_filter}" "${bam_rh_init}" "${bam_rh_sort}"; then
             echo_err_func "${FUNCNAME[0]}" \
                 "failed to delete filter BAM intermediates."
             return 1
         fi
-    elif ! rm -f "${bam_rh_init}"; then
+    elif ! rm -f "${hdr_rh}" "${bam_rh_init}"; then
         echo_err_func "${FUNCNAME[0]}" \
             "failed to delete reheader BAM intermediate."
         return 1
@@ -598,8 +830,8 @@ EOM
 }
 
 
-#  Filter and reheader a BAM file for S. pombe chromosomes
-#+ - Public entry-point function for spike-in-organism yeast BAM filtering
+#  Filter and reheader a BAM or CRAM file for S. pombe chromosomes
+#+ - Public entry-point function for spike-in-organism yeast alignment filtering
 #+ - Uses SAM-level rewriting because retained references may include optional
 #+   contigs that are easier to handle through header/body filtering
 function filter_bam_sp() {
@@ -612,7 +844,7 @@ function filter_bam_sp() {
     local chk_chr=false
     local ref_fa=""
     local chrs
-    local outdir outbase pth_in pth_out
+    local outdir outbase pth_in pth_out pg_cl
     local -a ref_arg=()
     local show_help
 
@@ -632,7 +864,7 @@ Keyword arguments:
    -m, --mito     <flg>  Retain SP_Mito chromosome.
   -tg, --tg       <flg>  Retain SP_II_TG chromosome.
   -mr, --mtr      <flg>  Retain SP_MTR chromosome.
-  -cc, --chk_chr  <flg>  Check chromosomes in filtered BAM outfile.
+  -cc, --chk_chr  <flg>  Check chromosomes in filtered outfile.
 
 Returns:
   Creates a BAM or CRAM outfile filtered and reheadered for S. pombe chromosomes at the specified path.
@@ -674,8 +906,7 @@ Examples:
 
 #TODO:
   - Somewhere and somehow, need to handle more than S. pombe as "spike-in" organism.
-  - #IMPORTANT: The filter activity needs to be recorded in the BAM header.
-  - Support SAM and CRAM too.
+  - Support SAM input too.
 EOM
     )
 
@@ -717,6 +948,19 @@ EOM
         chrs="${chrs} SP_Mito"
     fi
 
+    pg_cl="$(
+        _build_filter_pg_cl \
+            "${FUNCNAME[0]}" \
+            sp \
+            "${infile}" \
+            "${outfile}" \
+            "${mito}" \
+            "${tg}" \
+            "${mtr}" \
+            "${chk_chr}" \
+            "${ref_fa}"
+    )"
+
     outdir="$(dirname "${outfile}")"
     outbase="$(basename "${outfile}")"
     outbase="${outbase%.bam}"
@@ -744,7 +988,10 @@ EOM
             "${FUNCNAME[0]}" \
             "${pth_in}" \
             "${pth_out}" \
-            "${chrs}"
+            "${chrs}" \
+            "${FUNCNAME[0]}" \
+            "filter_bams" \
+            "${pg_cl}"
     then
         _cleanup_filter_bam_tmp "${pth_in}" "${pth_out}"
         return 1

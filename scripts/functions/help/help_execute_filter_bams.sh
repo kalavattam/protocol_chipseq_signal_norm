@@ -71,7 +71,7 @@ Arguments:
     Check chromosomes in filtered outfile (optional)
 
   -eo, --err_out
-    The directory to store stderr and stdout TXT outfiles (default: '\${dir_out}/err_out').
+    The directory to store stderr and stdout TXT outfiles (default: '\${dir_out}/logs').
 
   -nj, --nam_job
     The name of the job, which is used when writing stderr and stdout TXT files (default: '${nam_job}').
@@ -117,7 +117,7 @@ Dependencies:
     - format_outputs.sh
         + echo_err
         + echo_warn
-  - handle_env.sh
+    - handle_env.sh
         + handle_env
     - help/help_execute_filter_bams.sh
         + help_execute_filter_bams
@@ -135,7 +135,7 @@ Notes:
   - Flags '--tg' and '--mtr' apply only to S. pombe data; if supplied with '--retain sc', they are ignored with a warning.
 
 Examples:
-  1. Use Slurm to filter BAM files for S. cerevisiae ("sc") chromosomes (i.e., "main" alignments)
+  1. Use Slurm to filter alignment files for S. cerevisiae ("sc") chromosomes (i.e., "main" alignments)
   '''bash
   retain="sc"
   bash "\${dir_scr}/execute_filter_bams.sh"
@@ -148,7 +148,7 @@ Examples:
       --slurm
   '''
 
-  2. Use GNU Parallel to filter BAM files for S. pombe ("sp") chromosomes (i.e., "spike-in" alignments)
+  2. Use GNU Parallel to filter alignment files for S. pombe ("sp") chromosomes (i.e., "spike-in" alignments)
   '''bash
   retain="sp"
   bash "\${dir_scr}/execute_filter_bams.sh"

@@ -48,17 +48,10 @@ require_files_exist "${in_sam}" || {
 
 #  Build a deterministic BAM input from the committed SAM fixture
 log="${dir_log}/submit_filter_bams_prepare_bam.log"
-if \
-    run_capture \
-        "prepare submit filter-bams BAM fixture" "${log}" \
-        run_samtools view -bS -o "${in_bam}" "${in_sam}" \
-    && run_capture \
-        "index submit filter-bams BAM fixture" "${log}.index" \
-        run_samtools index "${in_bam}"
+if ! \
+    prepare_filter_bams_bam_fixture \
+        "${in_sam}" "${in_bam}" "${log}" "submit filter-bams BAM fixture"
 then
-    rec_pass "filter BAM input fixture is prepared"
-else
-    rec_fail "failed to prepare filter BAM fixture; see $(rec_relpath "${log}")"
     finish
     exit $?
 fi
@@ -105,6 +98,10 @@ run_case_filter "sc" "sc" "${log}"
 
 assert_file_nonempty "${outfile}" "submit retain=sc BAM output"
 assert_file_nonempty "${outfile}.bai" "submit retain=sc BAM index"
+assert_filter_bams_pg_header \
+    "${outfile}" "" filter_bam_sc sc bam \
+    "${dir_out}/filter_sc_sp.sc.header.txt" \
+    "submit retain=sc BAM output"
 
 if [[ -s "${outfile}" ]]; then
     run_capture \
@@ -129,6 +126,10 @@ run_case_filter "sp" "sp" "${log}" --tg --mtr --mito
 
 assert_file_nonempty "${outfile}" "submit retain=sp BAM output"
 assert_file_nonempty "${outfile}.bai" "submit retain=sp BAM index"
+assert_filter_bams_pg_header \
+    "${outfile}" "" filter_bam_sp sp bam \
+    "${dir_out}/filter_sc_sp.sp.header.txt" \
+    "submit retain=sp BAM output"
 
 if [[ -s "${outfile}" ]]; then
     run_capture \

@@ -116,7 +116,7 @@ EOM
         #  Use the full serialized input list for Slurm or whole-wrapper calls
         infile_i="${csv_infile}"
     else
-        #  Use one parsed BAM path for per-sample local/parallel calls
+        #  Use one parsed alignment path for per-sample local/parallel calls
         check_int_nonneg "${idx}" "idx" || return 1
         infile_i="${arr_infile[idx]}"
     fi

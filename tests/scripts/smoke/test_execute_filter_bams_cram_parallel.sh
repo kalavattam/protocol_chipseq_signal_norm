@@ -76,33 +76,21 @@ fi
 
 #  Build two deterministic CRAM inputs with distinct basenames
 log="${dir_log}/execute_filter_bams_cram_parallel_prepare_1.log"
-if \
-    run_capture \
-        "prepare execute filter-bams GNU Parallel CRAM fixture 1" "${log}" \
-        run_samtools view -C -T "${ref_fa}" -o "${in_cram_1}" "${in_sam}" \
-    && run_capture \
-        "index execute filter-bams GNU Parallel CRAM fixture 1" "${log}.index" \
-        run_samtools index "${in_cram_1}"
+if ! \
+    prepare_filter_bams_cram_fixture \
+        "${in_sam}" "${ref_fa}" "${in_cram_1}" "${log}" \
+        "execute filter-bams GNU Parallel CRAM fixture 1"
 then
-    rec_pass "filter CRAM input fixture 1 is prepared"
-else
-    rec_fail "failed to prepare filter CRAM fixture 1; see $(rec_relpath "${log}")"
     finish
     exit $?
 fi
 
 log="${dir_log}/execute_filter_bams_cram_parallel_prepare_2.log"
-if \
-    run_capture \
-        "prepare execute filter-bams GNU Parallel CRAM fixture 2" "${log}" \
-        run_samtools view -C -T "${ref_fa}" -o "${in_cram_2}" "${in_sam}" \
-    && run_capture \
-        "index execute filter-bams GNU Parallel CRAM fixture 2" "${log}.index" \
-        run_samtools index "${in_cram_2}"
+if ! \
+    prepare_filter_bams_cram_fixture \
+        "${in_sam}" "${ref_fa}" "${in_cram_2}" "${log}" \
+        "execute filter-bams GNU Parallel CRAM fixture 2"
 then
-    rec_pass "filter CRAM input fixture 2 is prepared"
-else
-    rec_fail "failed to prepare filter CRAM fixture 2; see $(rec_relpath "${log}")"
     finish
     exit $?
 fi

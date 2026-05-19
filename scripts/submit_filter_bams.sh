@@ -37,11 +37,11 @@ debug=true
 function parse_filter_bam_entry() {
     local infile="${1:-}"   # Input BAM/CRAM file
     local retain="${2:-}"   # Species selector
-    local dir_out="${3:-}"  # Directory for output BAM files
+    local dir_out="${3:-}"  # Directory for output alignment files
     local out_ext="${4:-bam}" # Output extension
     local samp      # Sample name derived from infile
     local nam_fnc   # Function name derived from 'retain'
-    local outfile   # Output BAM file
+    local outfile   # Output alignment file
     local show_help # Help message
 
     show_help=$(cat << EOM
@@ -134,7 +134,7 @@ EOM
 function run_filtering() {
     local nam_fnc="${1:-}"   # Name of function to run
     local threads="${2:-}"   # Number of threads
-    local infile="${3:-}"    # Input BAM file
+    local infile="${3:-}"    # Input BAM/CRAM file
     local outfile="${4:-}"   # Output alignment file
     local mito="${5:-}"      # Retain mito. chr. (true/false)
     local tg="${6:-}"        # Retain SP_II_TG chr. (true/false)
@@ -143,7 +143,7 @@ function run_filtering() {
     local err_out="${9:-}"   # Directory for stderr and stdout logs
     local nam_job="${10:-}"  # Job name for log file naming
     local samp="${11:-}"     # Sample name for log file naming
-    local ref_fa="${12:-}"   # Reference FASTA for CRAM input
+    local ref_fa="${12:-}"   # Reference FASTA for CRAM input/output
     local log_out log_err    # 'nam_fnc' stdout and stderr log files
     local -a cmd_filter      # Command array for filtering function
     local show_help          # Help message
@@ -154,8 +154,8 @@ Usage:
     [-h|--hlp|--help] nam_fnc threads infile outfile mito tg mtr chk_chr err_out nam_job samp [ref_fa]
 
 Description:
-  Execute the specified BAM-filtering function and write stdout/stderr logs to
-  sample-specific files.
+  Execute the specified alignment-filtering function and write stdout/stderr
+  logs to sample-specific files.
 
   Log files are written to:
 
@@ -174,7 +174,7 @@ Positional arguments:
    9  err_out   <str>  Directory for stderr/stdout log files.
   10  nam_job   <str>  Job name used in log-file naming.
   11  samp      <str>  Sample name used in log-file naming.
-  12  ref_fa    <str>  Reference FASTA for CRAM input, or empty string.
+  12  ref_fa    <str>  Reference FASTA for CRAM input/output, or empty string.
 
 Notes:
   - This helper is a thin wrapper around either 'filter_bam_sc' or 'filter_bam_sp'.
@@ -569,7 +569,7 @@ Usage:
     [-cc|--chk_chr] -eo|--err_out <str> [-nj|--nam_job <str>]
 
 Description:
-  Submit or execute one or more BAM-filtering jobs by calling downstream functions 'filter_bam_sc' or 'filter_bam_sp'.
+  Submit or execute one or more alignment-filtering jobs by calling downstream functions 'filter_bam_sc' or 'filter_bam_sp'.
 
   This wrapper
     - parses a comma-delimited list of BAM or CRAM input files,
@@ -748,7 +748,7 @@ function main() {
                 "${tg}" "${mtr}" "${chk_chr}" "${err_out}" "${nam_job}" \
                 "${samp}" "${ref_fa}"
         then
-            echo_err "failed to filter BAM file: '${infile}'."
+            echo_err "failed to filter alignment file: '${infile}'."
             exit 1
         fi
 
@@ -778,7 +778,7 @@ function main() {
                     "${mito}" "${tg}" "${mtr}" "${chk_chr}" "${err_out}" \
                     "${nam_job}" "${samp}" "${ref_fa}"
             then
-                echo_err "failed to filter BAM file: '${infile}'."
+                echo_err "failed to filter alignment file: '${infile}'."
                 exit 1
             fi
         done

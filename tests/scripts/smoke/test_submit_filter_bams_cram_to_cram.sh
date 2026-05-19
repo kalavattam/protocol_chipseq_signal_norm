@@ -49,17 +49,11 @@ require_files_exist "${in_sam}" "${ref_fa}" "${ref_fai}" || {
 
 #  Build deterministic CRAM input from committed SAM and reference fixtures
 log="${dir_log}/submit_filter_bams_prepare_cram_to_cram.log"
-if \
-    run_capture \
-        "prepare submit filter-bams CRAM fixture for CRAM output" "${log}" \
-        run_samtools view -C -T "${ref_fa}" -o "${in_cram}" "${in_sam}" \
-    && run_capture \
-        "index submit filter-bams CRAM fixture for CRAM output" "${log}.index" \
-        run_samtools index "${in_cram}"
+if ! \
+    prepare_filter_bams_cram_fixture \
+        "${in_sam}" "${ref_fa}" "${in_cram}" "${log}" \
+        "submit filter-bams CRAM fixture for CRAM output"
 then
-    rec_pass "filter CRAM input fixture is prepared"
-else
-    rec_fail "failed to prepare filter CRAM fixture; see $(rec_relpath "${log}")"
     finish
     exit $?
 fi
@@ -106,6 +100,10 @@ run_case_filter "sc" "sc" "${log}"
 
 assert_file_nonempty "${outfile}" "submit CRAM-to-CRAM retain=sc output"
 assert_cram_index "${outfile}" "submit CRAM-to-CRAM retain=sc CRAI index"
+assert_filter_bams_pg_header \
+    "${outfile}" "${ref_fa}" filter_bam_sc sc cram \
+    "${dir_out}/filter_sc_sp.sc.header.txt" \
+    "submit CRAM-to-CRAM retain=sc output"
 assert_file_exists \
     "${dir_err}/test_submit_filter_bams_cram_to_cram_sc.filter_sc_sp.stdout.txt" \
     "submit CRAM-to-CRAM retain=sc stdout log"
@@ -145,6 +143,10 @@ run_case_filter "sp" "sp" "${log}" --tg --mtr --mito
 
 assert_file_nonempty "${outfile}" "submit CRAM-to-CRAM retain=sp output"
 assert_cram_index "${outfile}" "submit CRAM-to-CRAM retain=sp CRAI index"
+assert_filter_bams_pg_header \
+    "${outfile}" "${ref_fa}" filter_bam_sp sp cram \
+    "${dir_out}/filter_sc_sp.sp.header.txt" \
+    "submit CRAM-to-CRAM retain=sp output"
 assert_file_exists \
     "${dir_err}/test_submit_filter_bams_cram_to_cram_sp.filter_sc_sp.stdout.txt" \
     "submit CRAM-to-CRAM retain=sp stdout log"
