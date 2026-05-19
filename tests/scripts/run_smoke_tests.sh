@@ -78,6 +78,7 @@ tests=(
     "${dir_run}/smoke/test_execute_filter_bams_bam_to_cram.sh"
     "${dir_run}/smoke/test_submit_filter_bams_cram_to_cram.sh"
     "${dir_run}/smoke/test_execute_filter_bams_cram_to_cram.sh"
+    "${dir_run}/smoke/test_execute_filter_bams_cram_parallel.sh"
     "${dir_run}/smoke/test_help_style.sh"
 )
 
