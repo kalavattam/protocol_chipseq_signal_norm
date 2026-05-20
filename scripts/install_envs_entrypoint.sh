@@ -15,31 +15,43 @@ show_help() {
     cat << EOM >&2
 Usage:
   install_envs_entrypoint.sh [-h|--hlp|--help]
-  install_envs_entrypoint.sh [keyword arguments for install_envs.sh]
+  install_envs_entrypoint.sh --env_nam ENV_NAME [--dry_run] [--yes]
 
 Description:
-  POSIX entrypoint for repository environment setup.
+  POSIX entrypoint for repository environment setup. The examples use Bash, but this entrypoint can also be invoked with 'sh' or run directly. It will locate an appropriate Bash for the handoff to 'install_envs.sh'.
 
-  This script is intended to be invokable from various user shell environments (e.g., terminals used with 'zsh', 'csh', 'fish', etc.) and systems before a modern Bash environment has been set up.
+Recommended first-time command:
+  bash scripts/install_envs_entrypoint.sh --env_nam env_protocol --yes
 
-  If Bash >= 5 is already available in PATH, and Conda or Mamba is also available in PATH, this script hands off directly to 'install_envs.sh'.
+Environment names:
+  env_protocol  Main workflow environment.
+  env_analyze   Analysis environment.
+  env_siqchip   siQ-ChIP environment.
 
-  If Bash >= 5 is not available, this script prints guidance for the next step. If Conda or Mamba is available, it explains how to install Bash >= 5 in the current environment. If Conda or Mamba is not available, it explains that Miniforge should be installed and initialized first.
-
-Keyword arguments:
-  -h, --hlp, --help
+Options:
+  -h, --hlp, --help  <flag>
     Display this help message and exit.
 
-  [keyword arguments for install_envs.sh]
-    Forwarded to 'install_envs.sh' after the environment entrypoint checks pass.
+  -dr, --dry, --dry_run  <flag>
+    Print the resolved installation command without creating an environment.
+
+  -en, --env, --env_nam  <spec>
+    Environment to create: 'env_protocol', 'env_analyze', or 'env_siqchip'.
+
+  -y, --yes  <flag>
+    Automatically answer yes to package-manager prompts.
+
+Notes:
+  - Mamba is preferred and will be used by 'install_envs.sh' when available.
+  - Old Conda/Anaconda installations may be slow. Miniforge is recommended for a current Conda/Mamba setup.
+  - Invoke this script with 'bash', 'sh', or as an executable script. Do not force another interpreter such as 'zsh'.
+  - This entrypoint requires Mamba or Conda and a Bash >= 4.4 handoff interpreter.
+  - Full package details are available with:
+
+      bash scripts/install_envs.sh --help
 
 Returns:
   0 on success; non-zero on error.
-
-Notes:
-  - This script is POSIX-sh compatible.
-  - Repository-specific installation logic is in 'install_envs.sh'.
-  - This script performs lightweight argument validation before handing off to 'install_envs.sh'.
 EOM
 }
 
@@ -53,12 +65,14 @@ err() { printf '%s\n' "error(install_envs_entrypoint.sh): $*" >&2; }
 # info() { printf '%s\n' "info(install_envs_entrypoint.sh): $*" >&2; }
 
 
-find_bash_5() {
-    #  Prefer an already-available 'bash' if it is Bash >= 5
+find_bash_required() {
+    #  Prefer an already-available 'bash' if it is Bash >= 4.4
     if command -v bash >/dev/null 2>&1; then
         if bash -c '
             [ -n "${BASH_VERSION:-}" ] || exit 1
-            [ "${BASH_VERSINFO[0]:-0}" -ge 5 ] || exit 1
+            major="${BASH_VERSINFO[0]:-0}"
+            minor="${BASH_VERSINFO[1]:-0}"
+            [ "${major}" -gt 4 ] || { [ "${major}" -eq 4 ] && [ "${minor}" -ge 4 ]; }
         ' >/dev/null 2>&1; then
             command -v bash
             return 0
@@ -76,7 +90,9 @@ find_bash_5() {
             # shellcheck disable=SC2016
             if "${pth_bash}" -c '
                 [ -n "${BASH_VERSION:-}" ] || exit 1
-                [ "${BASH_VERSINFO[0]:-0}" -ge 5 ] || exit 1
+                major="${BASH_VERSINFO[0]:-0}"
+                minor="${BASH_VERSINFO[1]:-0}"
+                [ "${major}" -gt 4 ] || { [ "${major}" -eq 4 ] && [ "${minor}" -ge 4 ]; }
             ' >/dev/null 2>&1; then
                 printf '%s\n' "${pth_bash}"
                 return 0
@@ -90,13 +106,13 @@ find_bash_5() {
 
 print_guidance_bash() {
     cat << EOM >&2
-Bash >= 5 was not found in PATH.
+Bash >= 4.4 was not found in PATH.
 
-If Bash >= 5 is already installed, then make sure it is available in PATH, for example by activating the appropriate environment or adjusting shell initialization.
+If Bash >= 4.4 is already installed, then make sure it is available in PATH, for example by activating the appropriate environment or adjusting shell initialization.
 
 Conda or Mamba must also be available in PATH before this entrypoint can hand off to 'install_envs.sh'.
 
-If Bash >= 5 is not installed, then install it in the current Conda/Mamba context, e.g.,
+If Bash >= 4.4 is not installed, then install it in the current Conda/Mamba context, e.g.,
 
   mamba install -c conda-forge bash
 
@@ -110,11 +126,11 @@ Then verify it, e.g.,
 
 After that, rerun
 
-  sh install_envs_entrypoint.sh [arguments]
+  sh scripts/install_envs_entrypoint.sh [arguments]
 
 or run 'install_envs.sh' directly with the newer Bash, e.g.,
 
-  /path/to/bash install_envs.sh [arguments]
+  /path/to/bash scripts/install_envs.sh [arguments]
 
 EOM
 }
@@ -148,7 +164,7 @@ If neither Conda nor Mamba is installed, Miniforge (https://github.com/conda-for
 
 (For more information, see the Tsukiyama Lab Bio-protocol manuscript [PMID 40364978].)
 
-After Conda and/or Mamba have been installed and initialized, install Bash >= 5, e.g.,
+After Conda and/or Mamba have been installed and initialized, install Bash >= 4.4, e.g.,
 
   mamba install -c conda-forge bash
 
@@ -158,7 +174,7 @@ or
 
 Then rerun
 
-  sh install_envs_entrypoint.sh [keyword arguments]
+  sh scripts/install_envs_entrypoint.sh [keyword arguments]
 
 EOM
 }
@@ -171,11 +187,15 @@ check_args_light() {
                 show_help
                 exit 0
                 ;;
-            -dr|--dry_run|--dry-run|-y|--yes)
+            -dr|--dry|--dry_run|--dry-run|-y|--yes)
                 shift 1
                 ;;
-            -en|--env_nam|--env-nam)
-                if [ "$#" -lt 2 ] || [ -z "${2}" ] || [ "${2#-}" != "${2}" ]; then
+            -en|--env|--env_nam|--env-nam)
+                if \
+                       [ "$#" -lt 2 ] \
+                    || [ -z "${2}" ]  \
+                    || [ "${2#-}" != "${2}" ]
+                then
                     err "option '${1}' requires a value."
                     echo >&2
                     show_help
@@ -201,16 +221,23 @@ check_args_light() {
 
 
 main() {
+    if [ "$#" -eq 0 ]; then
+        show_help
+        exit 0
+    fi
+
     check_args_light "$@"
 
+    dir_nam=$(dirname "$0")
     dir_scr=$(
         CDPATH=
-        cd -- "$(dirname -- "$0")" 2>/dev/null || exit 1
+        cd "${dir_nam}" 2>/dev/null || exit 1
         pwd
     ) || {
         err "failed to determine script directory."
         exit 1
     }
+    unset dir_nam
 
     pth_main="${dir_scr}/install_envs.sh"
 
@@ -224,7 +251,7 @@ main() {
         exit 1
     fi
 
-    if pth_bash="$(find_bash_5)"; then
+    if pth_bash="$(find_bash_required)"; then
         if (
                command -v conda >/dev/null 2>&1 \
             || command -v mamba >/dev/null 2>&1
@@ -233,7 +260,7 @@ main() {
         fi
 
         err \
-            "Bash >= 5 was found in PATH, but neither 'conda' nor 'mamba'" \
+            "Bash >= 4.4 was found in PATH, but neither 'conda' nor 'mamba'" \
             "is currently available in PATH."
         echo >&2
         print_guidance_miniforge
@@ -245,14 +272,14 @@ main() {
         || command -v mamba >/dev/null 2>&1
     ); then
         err \
-            "Bash >= 5 was not found in PATH, and neither 'conda' nor" \
+            "Bash >= 4.4 was not found in PATH, and neither 'conda' nor" \
             "'mamba' is currently available in PATH."
         echo >&2
         print_guidance_miniforge
         exit 1
     fi
 
-    err "Bash >= 5 was not found in PATH."
+    err "Bash >= 4.4 was not found in PATH."
     echo >&2
     print_guidance_bash
     exit 1

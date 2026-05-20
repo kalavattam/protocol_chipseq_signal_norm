@@ -11,14 +11,14 @@
 # Distributed under the MIT license.
 
 
-#  Require Bash >= 5 before doing any work
+#  Require Bash >= 4.4 before doing any work
 if [[ -z "${BASH_VERSION:-}" ]]; then
     echo "error(shell):" \
-        "this script must be run under Bash >= 5." >&2
+        "this script must be run under Bash >= 4.4." >&2
     exit 1
-elif (( BASH_VERSINFO[0] < 5 )); then
+elif (( BASH_VERSINFO[0] < 4 || (BASH_VERSINFO[0] == 4 && BASH_VERSINFO[1] < 4) )); then
     echo "error($(basename "${BASH_SOURCE[0]}")):" \
-        "this script requires Bash >= 5; current version is" \
+        "this script requires Bash >= 4.4; current version is" \
         "'${BASH_VERSION}'." >&2
     exit 1
 fi
@@ -91,7 +91,7 @@ Returns:
   0 if Mamba or Conda is available; otherwise, 1 and an error message.
 
 Dependency:
-  Bash >= 5
+  Bash >= 4.4
 EOM
     )
 
