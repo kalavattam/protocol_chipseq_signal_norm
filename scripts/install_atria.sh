@@ -113,6 +113,42 @@ Keyword arguments:
   -ps, --pth_snp, --pth_snippet, --path_snp, --path_snippet  <file>
     Append PATH export lines to the requested file. This may be a shell configuration file such as '${HOME}/.bashrc' or '${HOME}/.zshrc', or a temporary snippet file for, e.g., testing. Without this option, the PATH lines are printed at the end.
 
+Dependencies:
+  External programs:
+    - Bash >= 4.4
+    - cp
+    - curl
+    - find
+    - git
+    - grep
+    - head
+    - mkdir
+    - mktemp
+    - pbzip2
+    - pigz
+    - rm
+    - Rscript
+    - sort
+    - tail
+    - tar
+
+  Sourced function scripts:
+    - source_helpers.sh
+    - check_args.sh
+      + require_optarg
+    - check_env.sh
+      + check_env_installed
+      + check_pgrm_path
+    - check_inputs.sh
+      + validate_var
+      + validate_var_dir
+      + validate_var_file
+    - format_outputs.sh
+      + echo_err
+      + echo_warn
+    - handle_env.sh
+      + handle_env
+
 Notes:
   - Supported Julia archive targets:
     + Linux glibc x86_64
@@ -120,6 +156,8 @@ Notes:
     + macOS x86_64
     + macOS arm64 / aarch64
   - A non-dry run requires network access to download Julia and clone/fetch Atria.
+  - BSD tar, which is commonly installed by default on macOS systems, is acceptable; extraction is verified by checking the expected Julia executable afterward.
+  - Rscript, pigz, and pbzip2 are expected to come from the active project environment.
 EOM
 }
 
@@ -194,6 +232,43 @@ function verify_sha256() {
             return 1
             ;;
     esac
+}
+
+
+function extract_julia_tar() {
+    local tarball="${1:-}"
+    local dir_dst="${2:-}"
+    local log_tar=""
+
+    validate_var_file "tarball" "${tarball}" || return 1
+    validate_var_dir  "dir_dst" "${dir_dst}" || return 1
+
+    log_tar="$(mktemp "${TMPDIR:-/tmp}/install_atria_tar.XXXXXX")"
+
+    if \
+        tar -xzf "${tarball}" -C "${dir_dst}" > "${log_tar}" 2>&1
+    then
+        rm -f "${log_tar}"
+        return 0
+    fi
+
+    if [[ -x "${jul_bin}" ]]; then
+        echo_warn \
+            "tar returned a non-zero exit status while extracting Julia, but" \
+            "the expected Julia executable was found: '${jul_bin}'."
+        echo_warn \
+            "Continuing because older macOS bsdtar versions may warn about" \
+            "malformed pax extended attributes after otherwise successful" \
+            "extraction."
+        cat "${log_tar}" >&2
+        rm -f "${log_tar}"
+        return 0
+    fi
+
+    cat "${log_tar}" >&2
+    rm -f "${log_tar}"
+    echo_err "failed to extract Julia archive '${tarball}'."
+    return 1
 }
 
 
@@ -363,12 +438,22 @@ function check_req_cmd() {
 
     #  Use 'curl' here because it is available by default on macOS and common
     #+ on Linux
-    for cmd in cp curl find git grep head mkdir mktemp rm sort tail tar; do
+    for cmd in cp curl find git grep head mkdir mktemp rm sort tail; do
         if ! command -v "${cmd}" > /dev/null 2>&1; then
             echo_err "required command '${cmd}' is not available in PATH."
             rc=1
         fi
     done
+
+    if ! command -v tar > /dev/null 2>&1; then
+        echo_err \
+            "required command 'tar' is not available in PATH. This script" \
+            "uses 'tar' to extract the Julia archive. BSD tar, which is" \
+            "commonly installed by default on macOS systems, is acceptable;" \
+            "extraction is verified by checking the expected Julia" \
+            "executable afterward."
+        rc=1
+    fi
 
     return "${rc}"
 }
@@ -417,7 +502,7 @@ function install_julia() {
         fi
 
         verify_sha256 "${jul_tar_pth}" "${jul_256}"
-        run_or_print tar -xzf "${jul_tar_pth}" -C "${dir_inl}"
+        extract_julia_tar "${jul_tar_pth}" "${dir_inl}"
     fi
 
     validate_var_file "jul_bin" "${jul_bin}" || return 1
@@ -785,16 +870,24 @@ if [[ -z "${jul_256}" ]]; then
 fi
 
 if [[ "${dry_run}" == "false" ]]; then
-    check_pkg_mgr || exit 1
+    if [[ "${CONDA_DEFAULT_ENV:-}" == "${env_nam}" ]]; then
+        echo "Environment '${env_nam}' is already active; reusing it."
+    else
+        check_pkg_mgr || exit 1
 
-    if ! check_env_installed "${env_nam}"; then
-        echo_err \
-            "environment '${env_nam}' appears not to be installed. Install" \
-            "or update the project environment before installing Atria."
-        exit 1
+        if ! \
+            check_env_installed "${env_nam}"
+        then
+            echo_err \
+                "environment '${env_nam}' appears not to be installed." \
+                "Install or update the project environment before installing" \
+                "Atria."
+            exit 1
+        fi
+
+        handle_env "${env_nam}" || exit 1
     fi
 
-    handle_env "${env_nam}" || exit 1
     check_pgrm_path pigz || {
         echo_err \
             "'pigz' is missing from '${env_nam}'. Install/update the project" \
@@ -809,12 +902,21 @@ if [[ "${dry_run}" == "false" ]]; then
             "a system package manager."
         exit 1
     }
+    check_pgrm_path Rscript || {
+        echo_err \
+            "'Rscript' is missing from '${env_nam}'. Install/update the" \
+            "project environment; this script expects R support from the" \
+            "active project environment."
+        exit 1
+    }
     check_req_cmd || exit 1
     select_sha_cmd || exit 1
 else
     echo_dry "would confirm 'mamba' or 'conda' is available."
     echo_dry "would confirm environment '${env_nam}' exists and activate it."
-    echo_dry "would confirm 'pigz' and 'pbzip2' are available in '${env_nam}'."
+    echo_dry \
+        "would confirm 'pigz', 'pbzip2', and 'Rscript' are available in" \
+        "'${env_nam}'."
     echo_dry \
         "would confirm 'curl', 'git', 'grep', 'sort', and 'tar', among other" \
         "programs, are available."
