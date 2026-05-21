@@ -73,6 +73,7 @@ tmp_auto=false
 v_julia="1.8.5"
 v_atria="4.1.4"
 pth_snp=""
+if_exis="fail"
 sha_cmd=""
 
 
@@ -81,7 +82,7 @@ function help_install_atria() {
     cat << EOM >&2
 Usage:
   install_atria.sh
-    [--help] [--dry_run] [--env_nam <str>] [--dir_inl <dir>] [--dir_tmp <dir>] [--v_julia <str>] [--v_atria <str>] [--pth_snp <file>]
+    [--help] [--dry_run] [--env_nam <str>] [--dir_inl <dir>] [--dir_tmp <dir>] [--v_julia <spec>] [--v_atria <str>] [--pth_snp <file>] [--if_exis <spec>]
 
 Description:
   Install Julia and Atria into a user-controlled directory without 'sudo'.
@@ -104,7 +105,7 @@ Keyword arguments:
   -dt, --tmp, --dir_tmp  <dir>
     Working directory for downloaded files. If unset, a temporary directory is created under the system temp location and cleaned up on exit.
 
-  -vj, --v_julia, --julia_version  <str>
+  -vj, --v_julia, --julia_version  <spec>
     Julia version to install (default: '${v_julia}'). Verified SHA-256 mappings are bundled for Julia 1.8.0-1.8.5 and 1.9.0-1.9.4 on supported Linux/macOS x86_64/aarch64 targets.
 
   -va, --v_atria, --atria_version  <str>
@@ -112,6 +113,9 @@ Keyword arguments:
 
   -ps, --pth_snp, --pth_snippet, --path_snp, --path_snippet  <file>
     Append PATH export lines to the requested file. This may be a shell configuration file such as '${HOME}/.bashrc' or '${HOME}/.zshrc', or a temporary snippet file for, e.g., testing. Without this option, the PATH lines are printed at the end.
+
+  -ie, --if_ex, --if_exis --if_exists  <spec>
+    What to do if Julia and/or Atria already exist in the requested installation directory: 'fail' or 'reuse' (default: '${if_exis}').
 
 Dependencies:
   External programs:
@@ -480,12 +484,31 @@ function cleanup_tmp_dir() {
 
 
 function install_julia() {
+    local jul_ver=""
+
+    #  Allow global variable initialization here
+    #FIXME #MAYBE: 'jul_tar_pth' does not need to be global?
     jul_dir="${dir_inl}/julia-${v_julia}"
     jul_bin="${jul_dir}/bin/julia"
     jul_tar_pth="${dir_tmp}/${jul_tar}"
 
     if [[ -d "${jul_dir}" ]]; then
-        echo "Julia install directory already exists; reusing '${jul_dir}'."
+        case "${if_exis}" in
+            fail)
+                echo_err \
+                    "Julia install directory already exists: '${jul_dir}'."
+                echo_err \
+                    "Nothing was changed. To reuse it, rerun with '--if_exis" \
+                    "reuse'."
+                return 1
+                ;;
+
+            reuse)
+                echo \
+                    "Julia install directory already exists; verifying and" \
+                    "reusing '${jul_dir}'." >&2
+                ;;
+        esac
     else
         if [[ -z "${jul_256}" ]]; then
             echo_err \
@@ -507,7 +530,17 @@ function install_julia() {
 
     validate_var_file "jul_bin" "${jul_bin}" || return 1
 
-    "${jul_bin}" --version
+    jul_ver="$("${jul_bin}" --version)"
+    echo "${jul_ver}"
+
+    if [[ "${jul_ver}" != "julia version ${v_julia}" ]]; then
+        echo_err \
+            "Julia executable exists at '${jul_bin}', but it does not match" \
+            "the requested version '${v_julia}'. Reported version:" \
+            "'${jul_ver}'. Move the existing Julia directory aside or choose" \
+            "a matching '--v_julia'."
+        return 1
+    fi
 }
 
 
@@ -518,15 +551,30 @@ function checkout_atria() {
     mkdir -p "${dir_rep}"
 
     if [[ -d "${dir_atr}/.git" ]]; then
-        echo "Atria repository already exists; reusing '${dir_atr}'."
+        case "${if_exis}" in
+            fail)
+                echo_err \
+                    "Atria repository already exists: '${dir_atr}'."
+                echo_err \
+                    "Nothing was changed. To reuse it, rerun with '--if_exis" \
+                    "reuse'."
+                return 1
+                ;;
+
+            reuse)
+                echo \
+                    "Atria repository already exists; verifying and reusing" \
+                    "'${dir_atr}'." >&2
+                ;;
+        esac
     elif [[ -e "${dir_atr}" ]]; then
         echo_err \
             "Atria install path exists but is not a Git repository:" \
             "'${dir_atr}'. Move it aside or choose another '--dir_inl'."
         return 1
     else
-        run_or_print git clone "https://github.com/cihga39871/Atria.git" \
-            "${dir_atr}"
+        run_or_print \
+            git clone "https://github.com/cihga39871/Atria.git" "${dir_atr}"
     fi
 
     if [[ "${dry_run}" == "true" ]]; then
@@ -607,12 +655,85 @@ function find_atria_dir() {
 }
 
 
+function verify_atria_exec() {
+    local pth_atr="${1:-}"
+    local tmp_chk=""
+
+    validate_var_file "pth_atr" "${pth_atr}" || return 1
+
+    tmp_chk="$(mktemp "${TMPDIR:-/tmp}/atria_check.XXXXXX")"
+
+    if \
+        "${pth_atr}" --version > "${tmp_chk}" 2>&1
+    then
+        if \
+            grep -qiE \
+                'error|could not load library|library not loaded' \
+                "${tmp_chk}"
+        then
+            cat "${tmp_chk}" >&2
+            rm -f "${tmp_chk}"
+            echo_err "Atria emitted an error during '--version' verification."
+            return 1
+        fi
+        cat "${tmp_chk}"
+        rm -f "${tmp_chk}"
+        return 0
+    fi
+
+    if \
+        "${pth_atr}" --help > "${tmp_chk}" 2>&1
+    then
+        if \
+            grep -qiE 'error|could not load library|library not loaded' \
+                "${tmp_chk}"
+        then
+            cat "${tmp_chk}" >&2
+            rm -f "${tmp_chk}"
+            echo_err "Atria emitted an error during '--help' verification."
+            return 1
+        fi
+        echo "Atria executable responds to '--help': '${pth_atr}'."
+        rm -f "${tmp_chk}"
+        return 0
+    fi
+
+    cat "${tmp_chk}" >&2
+    rm -f "${tmp_chk}"
+    echo_err "Atria verification failed for '${pth_atr}'."
+    return 1
+}
+
+
 function build_atria() {
     if [[ "${dry_run}" == "true" ]]; then
         echo_dry \
             "would build Atria with '${jul_bin}' build_atria.jl."
         pth_bin="${dir_atr}/atria-${v_atria}/bin"
         return 0
+    fi
+
+    if \
+        find_atria_dir > /dev/null 2>&1
+    then
+        pth_atr="${dir_bld}/bin/atria"
+
+        if [[ -f "${pth_atr}" ]]; then
+            pth_bin="$(dirname "${pth_atr}")"
+
+            if \
+                verify_atria_exec "${pth_atr}"
+            then
+                echo \
+                    "Atria executable already exists and verifies; reusing" \
+                    "'${pth_atr}'."
+                return 0
+            fi
+
+            echo_warn \
+                "existing Atria executable failed verification; rebuilding" \
+                "Atria under '${dir_atr}'."
+        fi
     fi
 
     (
@@ -645,37 +766,7 @@ function build_atria() {
     fi
 
     pth_bin="$(dirname "${pth_atr}")"
-
-    tmp_chk="$(mktemp "${TMPDIR:-/tmp}/atria_check.XXXXXX")"
-
-    if "${pth_atr}" --version > "${tmp_chk}" 2>&1; then
-        if \
-            grep -qiE 'error|could not load library|library not loaded' "${tmp_chk}"
-        then
-            cat "${tmp_chk}" >&2
-            rm -f "${tmp_chk}"
-            echo_err "Atria emitted an error during '--version' verification."
-            return 1
-        fi
-        cat "${tmp_chk}"
-    elif "${pth_atr}" --help > "${tmp_chk}" 2>&1; then
-        if \
-            grep -qiE 'error|could not load library|library not loaded' "${tmp_chk}"
-        then
-            cat "${tmp_chk}" >&2
-            rm -f "${tmp_chk}"
-            echo_err "Atria emitted an error during '--help' verification."
-            return 1
-        fi
-        echo "Atria executable responds to '--help': '${pth_atr}'."
-    else
-        cat "${tmp_chk}" >&2
-        rm -f "${tmp_chk}"
-        echo_err "Atria verification failed for '${pth_atr}'."
-        return 1
-    fi
-
-    rm -f "${tmp_chk}"
+    verify_atria_exec "${pth_atr}" || return 1
 }
 
 
@@ -704,12 +795,22 @@ EOM
                 "would append PATH snippet to '${pth_snp}'."
         else
             mkdir -p "$(dirname "${pth_snp}")"
-            {
+
+            if \
+                   [[ -f "${pth_snp}" ]] \
+                && grep -Fq "${jul_dir}/bin" "${pth_snp}" \
+                && grep -Fq "${pth_bin}" "${pth_snp}"
+            then
                 echo
-                printf '%s\n' "${snippet}"
-            } >> "${pth_snp}"
-            echo
-            echo "PATH snippet appended to '${pth_snp}'."
+                echo "PATH snippet already appears to exist in '${pth_snp}'."
+            else
+                {
+                    echo
+                    printf '%s\n' "${snippet}"
+                } >> "${pth_snp}"
+                echo
+                echo "PATH snippet appended to '${pth_snp}'."
+            fi
         fi
     fi
 }
@@ -793,6 +894,16 @@ while [[ "$#" -gt 0 ]]; do
             shift 2
             ;;
 
+        -ie|--if[_-]ex|--if[_-]exis|--if[_-]exists)
+            require_optarg "${1}" "${2:-}" "main" || {
+                echo >&2
+                help_install_atria
+                exit 1
+            }
+            if_exis="${2}"
+            shift 2
+            ;;
+
         *)
             echo_err "unknown option/parameter passed: '${1}'."
             echo >&2
@@ -808,6 +919,17 @@ validate_var "env_nam" "${env_nam}"
 validate_var "dir_inl" "${dir_inl}"
 validate_var "v_julia" "${v_julia}"
 validate_var "v_atria" "${v_atria}"
+validate_var "if_exis" "${if_exis}"
+
+case "${if_exis}" in
+    fail|reuse) : ;;
+    *)
+        echo_err \
+            "invalid '--if_exis' value: '${if_exis}'. Must be 'fail' or" \
+            "'reuse'."
+        exit 1
+        ;;
+esac
 
 if [[ "${dry_run}" == "false" && ! -d "${dir_inl}" ]]; then
     mkdir -p "${dir_inl}"
@@ -852,6 +974,7 @@ echo "  - v_atria=${v_atria}"
 echo "  - tag_atr=${tag_atr}"
 echo "  - dir_atr=${dir_inl}/Atria"
 echo "  - pth_snp=${pth_snp:-UNSET}"
+echo "  - if_exis=${if_exis}"
 echo
 
 if [[ -z "${jul_256}" ]]; then
@@ -944,7 +1067,9 @@ if [[ "${dry_run}" == "true" ]]; then
     echo_dry \
         "would discover the final Atria bin path after build; provisional" \
         "path is '${pth_bin}'."
-    echo_dry "would clone Atria under '${dir_atr}'."
+    echo_dry \
+        "would clone Atria under '${dir_atr}', or reuse it if it already" \
+        "exists and '--if_exis reuse' was specified."
     echo_dry "would check out Atria tag '${tag_atr}'."
     echo_dry "would build Atria using '${jul_bin}'."
     print_write_pth_snp

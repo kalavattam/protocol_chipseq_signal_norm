@@ -37,8 +37,8 @@ dir_scr="$(cd "$(dirname "${BASH_SOURCE[0]}")" > /dev/null 2>&1 && pwd)"
 #     handle_env
 #     help/help_install_envs
 #     # check_env_installed  ## check_env ##
-#     # echo_err           ## format_outputs ##
-#     # echo_warn         ## format_outputs ##
+#     # echo_err             ## format_outputs ##
+#     # echo_warn            ## format_outputs ##
 #     # handle_env           ## handle_env ##
 #     # help/help_install_envs
 # )
@@ -99,9 +99,7 @@ EOM
         echo "${show_help}" >&2
         return 0
     elif [[ -n "${arg}" ]]; then
-        echo \
-            "Error: Unexpected argument to 'check_pkg_mgr()':" \
-            "'${arg}'." >&2
+        echo_err "unexpected argument to 'check_pkg_mgr()': '${arg}'."
         echo >&2
         echo "${show_help}" >&2
         return 1
@@ -112,7 +110,7 @@ EOM
     elif command -v conda >/dev/null 2>&1; then
         return 0
     else
-        echo "Error: Neither Mamba nor Conda is installed on the system." >&2
+        echo_err "neither Mamba nor Conda is installed on the system."
         echo >&2
         echo \
             "Mamba is a package manager that makes package installations" \
@@ -131,6 +129,7 @@ EOM
 #  Initialize variables along with default assignments
 dry_run=false
 env_nam=""
+if_exis="fail"
 yes=false
 
 #  Parse arguments
@@ -156,6 +155,16 @@ while [[ "$#" -gt 0 ]]; do
             shift 2
             ;;
 
+        -ie|--if[_-]ex|--if[_-]exis|--if[_-]exists)
+            require_optarg "${1}" "${2:-}" "main" || {
+                echo >&2
+                help_install_envs >&2
+                exit 1
+            }
+            if_exis="${2}"
+            shift 2
+            ;;
+
         -y|--yes)
             yes=true
             shift 1
@@ -173,6 +182,17 @@ done
 
 #  Check that required arguments are provided, appropriate, formatted, etc.
 validate_var "env_nam" "${env_nam}"
+validate_var "if_exis" "${if_exis}"
+
+case "${if_exis}" in
+    fail|reuse) : ;;
+    *)
+        echo_err \
+            "invalid '--if_exis' value: '${if_exis}'. Must be 'fail' or" \
+            "'reuse'."
+        exit 1
+        ;;
+esac
 
 case "${env_nam}" in
     env_align|env_analyze|env_protocol|env_repro|env_siqchip) : ;;
@@ -188,9 +208,33 @@ esac
 if \
     check_env_installed "${env_nam}" "true"
 then
-    echo_err \
-        "an environment with the name '${env_nam}' is already installed."
-    exit 1
+    case "${if_exis}" in
+        fail)
+            echo_err \
+                "an environment with the name '${env_nam}' is already" \
+                "installed."
+            echo >&2
+            echo \
+                "Nothing was changed. To reuse the existing environment," \
+                "rerun with '--if_exis reuse'." >&2
+            echo >&2
+            echo \
+                "To rebuild '${env_nam}', remove the existing environment" \
+                "first, then rerun this script." >&2
+            echo >&2
+            echo \
+                "For example, run 'mamba env remove -n \"${env_nam}\"'" \
+                "prior to rerunning the script." >&2
+            exit 1
+            ;;
+
+        reuse)
+            echo \
+                "Environment '${env_nam}' already exists; reusing it because" \
+                "'--if_exis reuse' was specified."
+            exit 0
+            ;;
+    esac
 fi
 
 #  Check that supported package manager is in PATH

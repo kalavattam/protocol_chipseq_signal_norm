@@ -15,7 +15,7 @@ function help_install_envs() {
     cat << EOM
 Usage:
   install_envs.sh
-    [--help] [--dry_run] --env_nam {env_analyze,env_protocol,env_siqchip} [--yes]
+    [--help] [--dry_run] --env_nam {env_analyze,env_protocol,env_siqchip} [--if_exis {fail,reuse}] [--yes]
 
 Description:
     Use Mamba (preferred) or Conda to set up one of a few environments containing the programs and dependencies used in this project. See "Notes" for more details.
@@ -29,6 +29,9 @@ Arguments:
 
   -en, --env, --env_nam  <spec>
     Package manager environment to create: 'env_analyze', 'env_protocol', or 'env_siqchip'.
+
+  -ie, --if_ex, --if_exis, --if_exists  <spec>
+    What to do if the requested environment already exists: 'fail' or 'reuse' (default: 'fail').
 
   -y, --yes  <flag>
     Automatically answer yes to package-manager prompts.
@@ -123,6 +126,7 @@ Notes:
       - ucsc-bedclip
       - ucsc-bedgraphtobigwig
   - Depending on the specified environment, a large number of packages and dependencies may need to be installed. As a result, the 'mamba create' or 'conda create' operation can take more than 10 minutes, especially for a fresh installation that does not make use of cached packages. In such cases, environment creation may take even longer (e.g., more than 20 or 30 minutes).
+  - With '--if_exis reuse', this script exits successfully when the requested environment already exists. It does not validate that all expected packages are installed.
 
 Examples:
   The following examples assume the current working directory is the 'protocol_chipseq_signal_norm' base directory.
