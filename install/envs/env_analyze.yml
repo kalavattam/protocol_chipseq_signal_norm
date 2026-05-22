@@ -1,0 +1,48 @@
+name: env_analyze
+channels:
+  - conda-forge
+  - bioconda
+dependencies:
+  - bioconductor-annotationdbi
+  - bioconductor-chipqc
+  - bioconductor-chipseeker
+  - bioconductor-clusterprofiler
+  - bioconductor-deseq2
+  - bioconductor-diffbind
+  - bioconductor-edger
+  - bioconductor-enhancedvolcano
+  - bioconductor-genomicfeatures
+  - bioconductor-genomicranges
+  - bioconductor-ihw
+  - bioconductor-iranges
+  - bioconductor-pcatools
+  - bioconductor-sva
+  - datamash
+  - deeptools
+  - gawk
+  - gnuplot
+  - ipython
+  - pandas
+  - parallel
+  - pbzip2
+  - phantompeakqualtools
+  - pigz
+  - r-argparse
+  - r-dendextend
+  - r-devtools
+  - r-ggalt
+  - r-ggpubr
+  - r-ggrepel
+  - r-ggsci
+  - r-pheatmap
+  - r-plotly
+  - r-readxl
+  - r-rjson
+  - r-tidyverse
+  - r-upsetr
+  - r-venneuler
+  - r-writexl
+  - r-xml2
+  - rename
+  - tree
+

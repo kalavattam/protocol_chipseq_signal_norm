@@ -14,11 +14,11 @@
 function help_install_envs() {
     cat << EOM
 Usage:
-  install_envs.sh
-    [--help] [--dry_run] --env_nam {env_analyze,env_protocol,env_siqchip} [--if_exis {fail,reuse}] [--yes]
+  install/scripts/install_envs.sh
+    [--help] [--dry_run] --env_nam {env_analyze,env_protocol,env_siqchip} [--if_exis {fail,reuse}] [--channels <csv:str>] [--override_channels] [--yes]
 
 Description:
-    Use Mamba (preferred) or Conda to set up one of a few environments containing the programs and dependencies used in this project. See "Notes" for more details.
+    Use Mamba (preferred) or Conda to create repository environments from YAML files under 'install/envs/'. See "Notes" for more details.
 
 Arguments:
   -h, --hlp, --help  <flag>
@@ -32,6 +32,12 @@ Arguments:
 
   -ie, --if_ex, --if_exis, --if_exists  <spec>
     What to do if the requested environment already exists: 'fail' or 'reuse' (default: 'fail').
+
+  -ch, --channels  <csv:str>
+    Comma-delimited package-manager channels to append to the environment creation command.
+
+  -oc, --override_channels  <flag>
+    Add '--override-channels' to the package-manager command.
 
   -y, --yes  <flag>
     Automatically answer yes to package-manager prompts.
@@ -59,7 +65,8 @@ Dependencies:
       + help_install_envs
 
 Notes:
-  - The following packages are installed via a call to 'mamba create' (preferred) or 'conda create':
+  - User-facing environments are created from YAML files under 'install/envs/' via 'mamba env create -f <yaml>' (preferred) or 'conda env create -f <yaml>'.
+  - The following package lists summarize the current YAML definitions:
     + env_analyze
       - bioconductor-annotationdbi
       - bioconductor-chipqc
@@ -142,30 +149,41 @@ Notes:
       - tree
       - ucsc-bedclip
       - ucsc-bedgraphtobigwig
-  - Depending on the specified environment, a large number of packages and dependencies may need to be installed. As a result, the 'mamba create' or 'conda create' operation can take more than 10 minutes, especially for a fresh installation that does not make use of cached packages. In such cases, environment creation may take even longer (e.g., more than 20 or 30 minutes).
+  - Depending on the specified environment, a large number of packages and dependencies may need to be installed. As a result, the 'mamba env create' or 'conda env create' operation can take more than 10 minutes, especially for a fresh installation that does not make use of cached packages. In such cases, environment creation may take even longer (e.g., more than 20 or 30 minutes).
   - With '--if_exis reuse', this script exits successfully when the requested environment already exists. It does not validate that all expected packages are installed.
+  - Use '--channels' and '--override_channels' to apply site-specific channels, such as institutional mirrors, in place of or in addition to channels listed in the YAML files.
 
 Examples:
   The following examples assume the current working directory is the 'protocol_chipseq_signal_norm' base directory.
 
   1. Dry-run environment installation for the main workflow, including '--yes' in the resolved package-manager command
   '''bash
-  bash scripts/install_envs.sh
+  bash install/scripts/install_envs.sh
     --dry_run
     --env_nam "env_protocol"
     --yes
   '''
 
-  2. Run environment installation for the main workflow, using '--yes' to automatically confirm package-manager prompts
+  2. Dry-run environment installation using site-specific channels
   '''bash
-  bash scripts/install_envs.sh
+  bash install/scripts/install_envs.sh
+    --dry_run
+    --env_nam "env_protocol"
+    --channels "fhcc-main,fhcc-bioconda"
+    --override_channels
+    --yes
+  '''
+
+  3. Run environment installation for the main workflow, using '--yes' to automatically confirm package-manager prompts
+  '''bash
+  bash install/scripts/install_envs.sh
     --env_nam "env_protocol"
     --yes
   '''
 
-  3. Install environment needed to run siQ-ChIP (see github.com/BradleyDickson/siQ-ChIP or github.com/kalavattam/siQ-ChIP/tree/protocol)
+  4. Install environment needed to run siQ-ChIP (see github.com/BradleyDickson/siQ-ChIP or github.com/kalavattam/siQ-ChIP/tree/protocol)
   '''bash
-  bash scripts/install_envs.sh --env_nam "env_siqchip"
+  bash install/scripts/install_envs.sh --env_nam "env_siqchip"
   '''
 EOM
 }

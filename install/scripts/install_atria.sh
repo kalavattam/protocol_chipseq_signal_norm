@@ -28,12 +28,14 @@ fi
 set -euo pipefail
 
 
-#  Resolve path to the 'scripts' directory
+#  Resolve paths to installation support and repository directories
 dir_scr="$(cd "$(dirname "${BASH_SOURCE[0]}")" > /dev/null 2>&1 && pwd)"
+dir_ins="$(cd "${dir_scr}/.." > /dev/null 2>&1 && pwd)"
+dir_rep="$(cd "${dir_ins}/.." > /dev/null 2>&1 && pwd)"
 
 
 #  Source and define functions ================================================
-dir_fnc="${dir_scr}/functions"
+dir_fnc="${dir_rep}/scripts/functions"
 fnc_src="${dir_fnc}/source_helpers.sh"
 
 if [[ ! -f "${fnc_src}" ]]; then
@@ -575,8 +577,8 @@ function install_julia() {
 function checkout_atria() {
     local pth_path_atr=""
 
-    dir_rep="${dir_inl}"
-    dir_atr="${dir_rep}/Atria"
+    dir_prg="${dir_inl}"
+    dir_atr="${dir_prg}/Atria"
 
     if [[ "${if_exis}" == "reuse" && ! -e "${dir_atr}" ]]; then
         if pth_path_atr="$(command -v atria 2>/dev/null)"; then
@@ -591,7 +593,7 @@ function checkout_atria() {
         fi
     fi
 
-    mkdir -p "${dir_rep}"
+    mkdir -p "${dir_prg}"
 
     if [[ -d "${dir_atr}/.git" ]]; then
         case "${if_exis}" in
@@ -1107,8 +1109,8 @@ fi
 if [[ "${dry_run}" == "true" ]]; then
     jul_dir="${dir_inl}/julia-${v_julia}"
     jul_bin="${jul_dir}/bin/julia"
-    dir_rep="${dir_inl}"
-    dir_atr="${dir_rep}/Atria"
+    dir_prg="${dir_inl}"
+    dir_atr="${dir_prg}/Atria"
     pth_bin="${dir_atr}/atria-${v_atria}/bin"
 
     echo_dry "would use working directory '${dir_tmp:-AUTO}'."

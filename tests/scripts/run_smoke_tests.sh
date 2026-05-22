@@ -44,6 +44,7 @@ tests=(
     "${dir_run}/smoke/test_help_output.sh"
     "${dir_run}/smoke/test_startup_sources.sh"
     "${dir_run}/smoke/test_dry_run_commands.sh"
+    "${dir_run}/smoke/test_install_envs_layout.sh"
     "${dir_run}/smoke/test_submit_align_fastqs_bowtie2.sh"
     "${dir_run}/smoke/test_execute_align_fastqs_bowtie2.sh"
     "${dir_run}/smoke/test_submit_align_fastqs_bwa_mem.sh"

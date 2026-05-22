@@ -15,14 +15,14 @@ show_help_entrypoint() {
     cat << EOM >&2
 Usage:
   install_envs_entrypoint.sh [-h|--hlp|--help]
-  install_envs_entrypoint.sh --env_nam <spec> [--dry_run] [--if_exis <spec>] [--yes]
+  install_envs_entrypoint.sh --env_nam <spec> [--dry_run] [--if_exis <spec>] [--channels <csv:str>] [--override_channels] [--yes]
 
 Description:
   POSIX entrypoint for repository environment setup. The examples use Bash, but this entrypoint can also be invoked with 'sh' or run directly. It will attempt to locate an appropriate Bash for the handoff to 'install_envs.sh'.
 
 Recommended first-time command:
   '''bash
-  bash scripts/install_envs_entrypoint.sh --env_nam env_protocol --yes
+  bash install/scripts/install_envs_entrypoint.sh --env_nam env_protocol --yes
   '''
 
 Environment names:
@@ -43,6 +43,12 @@ Keyword arguments:
   -ie, --if_ex, --if_exis, --if_exists  <spec>
     What to do if the requested environment already exists: 'fail' or 'reuse' (default: 'fail').
 
+  -ch, --channels  <csv:str>
+    Comma-delimited channel list to pass to the package manager.
+
+  -oc, --override_channels  <flag>
+    Override channels from the selected environment YAML.
+
   -y, --yes  <flag>
     Automatically answer yes to package-manager prompts.
 
@@ -53,7 +59,7 @@ Notes:
   - This entrypoint requires Mamba or Conda and a Bash >= 4.4 handoff interpreter.
   - Full package details are available with:
     '''bash
-    bash scripts/install_envs.sh --help
+    bash install/scripts/install_envs.sh --help
     '''
 
 Returns:
@@ -132,11 +138,11 @@ Then verify it, e.g.,
 
 After that, rerun
 
-  sh scripts/install_envs_entrypoint.sh [arguments]
+  sh install/scripts/install_envs_entrypoint.sh [arguments]
 
 or run 'install_envs.sh' directly with the newer Bash, e.g.,
 
-  /path/to/bash scripts/install_envs.sh [arguments]
+  /path/to/bash install/scripts/install_envs.sh [arguments]
 
 EOM
 }
@@ -180,7 +186,7 @@ or
 
 Then rerun
 
-  sh scripts/install_envs_entrypoint.sh [keyword arguments]
+  sh install/scripts/install_envs_entrypoint.sh [keyword arguments]
 
 EOM
 }
@@ -193,10 +199,10 @@ check_args_light() {
                 show_help_entrypoint
                 exit 0
                 ;;
-            -dr|--dry|--dry_run|--dry-run|-y|--yes)
+            -dr|--dry|--dry_run|--dry-run|-oc|--override_channel|--override-channel|--override_channels|--override-channels|-y|--yes)
                 shift 1
                 ;;
-            -en|--env|--env_nam|--env-nam)
+            -en|--env|--env_nam|--env-nam|-ch|--channel|--channels|--channel_list|--channel-list)
                 if \
                        [ "$#" -lt 2 ] \
                     || [ -z "${2}" ]  \
@@ -271,15 +277,15 @@ main() {
     }
     unset dir_nam
 
-    pth_main="${dir_scr}/install_envs.sh"
+    pth_inl="${dir_scr}/install_envs.sh"
 
-    if [ ! -f "${pth_main}" ]; then
-        err "required handoff script does not exist: '${pth_main}'."
+    if [ ! -f "${pth_inl}" ]; then
+        err "required handoff script does not exist: '${pth_inl}'."
         exit 1
     fi
 
-    if [ ! -r "${pth_main}" ]; then
-        err "required handoff script is not readable: '${pth_main}'."
+    if [ ! -r "${pth_inl}" ]; then
+        err "required handoff script is not readable: '${pth_inl}'."
         exit 1
     fi
 
@@ -288,7 +294,7 @@ main() {
                command -v conda >/dev/null 2>&1 \
             || command -v mamba >/dev/null 2>&1
         ); then
-            exec "${pth_bash}" "${pth_main}" "$@"
+            exec "${pth_bash}" "${pth_inl}" "$@"
         fi
 
         err \

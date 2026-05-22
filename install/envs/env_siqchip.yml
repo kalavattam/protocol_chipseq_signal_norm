@@ -1,0 +1,16 @@
+name: env_siqchip
+channels:
+  - conda-forge
+  - bioconda
+dependencies:
+  - bc
+  - bedtools
+  - datamash
+  - gfortran
+  - gnuplot
+  - parallel
+  - samtools
+  - tree
+  - ucsc-bedclip
+  - ucsc-bedgraphtobigwig
+

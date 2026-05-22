@@ -1,0 +1,33 @@
+name: env_protocol
+channels:
+  - conda-forge
+  - bioconda
+dependencies:
+  - asciigenome  ## NOTE: Added since publication in Bio-protocol ##
+  - bash         ## NOTE: Added since publication in Bio-protocol ##
+  - bc
+  - bowtie2
+  - bwa          ## NOTE: Added since publication in Bio-protocol ##
+  - bwa-mem2     ## NOTE: Added since publication in Bio-protocol ##
+  - datamash     ## NOTE: Added since publication in Bio-protocol ##
+  - fastqc
+  - gawk
+  - gnuplot      ## NOTE: Added since publication in Bio-protocol ## ## TODO: remove from 'env_protocol' ##
+  - ipython
+  - matplotlib
+  - multiqc
+  - parallel
+  - pbzip2
+  - pigz
+  - pysam
+  - python=3.11  ## NOTE: Restrict to v3.11 for 'sequali' installation ##
+  - pyyaml       ## NOTE: Made explicit since Bio-protocol publication ##
+  - r-argparse
+  - r-ggsci
+  - r-plotly
+  - rename
+  - samtools
+  - sequali
+  - tree         ## NOTE: Added since publication in Bio-protocol ##
+  - wget
+

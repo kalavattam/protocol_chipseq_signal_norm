@@ -30,22 +30,79 @@
 <br />
 <br />
 
-## Initial setup
-To set up repository environments, start with:
+## Installation
+Installation support files are organized under [`install/`](./install/). Environment YAML files are stored in [`install/envs/`](./install/envs/), and installation scripts are stored in [`install/scripts/`](./install/scripts/).
+
+To set up the main repository environment, start with the following:
 ```sh
-sh scripts/install_envs_entrypoint.sh [keyword arguments]
+#  After cloning/fetching the repo and cd’ing into it
+sh install/scripts/install_envs_entrypoint.sh --env_nam env_protocol --yes
 ```
 
-This POSIX-compatible entrypoint is intended to be runnable from various shell environments, including cases where Bash >= 5 is not yet available in `PATH`.
+<details>
+<summary><i>(Click to view the rest.)</i></summary>
+<br />
 
-If Bash >= 5 is already available in `PATH` and Conda or Mamba is also available in `PATH`, `install_envs_entrypoint.sh` will hand off to `install_envs.sh`.
+This POSIX-compatible entrypoint is intended to be runnable from various shell environments, including cases where the required Bash >= 4.4 is not yet available in `PATH`.
 
-If Bash >= 5 is not yet available, or if Conda or Mamba is not available in `PATH`, `install_envs_entrypoint.sh` will print guidance for the next setup step, including installing Miniforge when needed.
+If Bash >= 4.4 is already available in `PATH` and Conda or Mamba is also available in `PATH`, `install_envs_entrypoint.sh` will hand off to `install_envs.sh`.
 
-After Bash >= 5 has been installed and is available in `PATH`, along with Conda or Mamba, repository environments can be installed directly with:
+If Bash >= 4.4 is not yet available, or if Conda or Mamba is not available in `PATH`, `install_envs_entrypoint.sh` will print guidance for the next setup step, including installing [Miniforge](https://github.com/conda-forge/miniforge) when needed.
+
+After Bash >= 4.4 has been installed and is available in `PATH`, along with Conda or Mamba, repository environments can also be installed directly with:
 ```bash
-bash scripts/install_envs.sh [keyword arguments]
+bash install/scripts/install_envs.sh --env_nam env_protocol --yes
 ```
+
+User-facing environments currently supported by `install_envs.sh` are `env_protocol`, `env_analyze`, and `env_siqchip`. By default, these are created from the corresponding YAML files in `install/envs/`.
+
+For institutional or site-specific channel configurations, such as systems that use mirrored Conda channels, pass channels directly to the installer:
+```bash
+bash install/scripts/install_envs.sh \
+    --env_nam env_protocol \
+    --channels "mirror-conda-forge,mirror-bioconda" \
+    --override_channels \
+    --yes
+```
+
+The `--if_exis reuse` option exits successfully if the requested environment already exists. It does not validate that all expected packages are installed:
+```bash
+bash install/scripts/install_envs.sh \
+    --env_nam env_protocol \
+    --if_exis reuse
+```
+</details>
+<br />
+
+After `env_protocol` has been created, Julia and Atria can be installed with:
+```bash
+bash install/scripts/install_atria.sh --if_exis reuse
+```
+
+<details>
+<summary><i>(Click to view the rest.)</i></summary>
+<br />
+
+By default, `install_atria.sh` installs Julia 1.8.5 and Atria 4.1.4 under a user-controlled installation directory. It checks the active project environment for Atria runtime dependencies such as `pigz`, `pbzip2`, and `Rscript`, verifies Julia archive checksums, and can reuse matching existing Julia or Atria installations when `--if_exis reuse` is specified.
+
+To print the resolved installation plan without downloading, cloning, building, or writing `PATH` snippets, run:
+```bash
+bash install/scripts/install_atria.sh --dry_run --if_exis reuse
+```
+
+To append Julia and Atria `PATH` lines to a shell configuration or snippet file, use `--pth_snp`:
+```bash
+bash install/scripts/install_atria.sh \
+    --if_exis reuse \
+    --pth_snp "${HOME}/.bash_profile"
+```
+
+Use `--help` with either installer for the full list of supported options:
+```bash
+bash install/scripts/install_envs.sh --help
+bash install/scripts/install_atria.sh --help
+```
+</details>
 <br />
 <br />
 
@@ -68,7 +125,7 @@ The preprint and published protocols are available under the [CC BY-NC 4.0 licen
 If you encounter an issue (bugs, broken code, broken links, unexpected behavior, unclear writing, etc.), please open a [GitHub Issue](https://github.com/kalavattam/protocol_chipseq_signal_norm/issues).
 
 <details>
-<summary><i>Details and tips for filing an issue</i></summary>
+<summary><i>(Click to see details and tips for filing an issue.)</i></summary>
 <br />
 
 **Before filing**
