@@ -37,9 +37,26 @@ Arguments:
     Automatically answer yes to package-manager prompts.
 
 Dependencies:
-  - Bash >= 4.4
-  - Conda
-  - Mamba (optional, preferred)
+  External programs:
+    - Bash >= 4.4
+    - Conda
+    - Mamba (optional, preferred)
+
+  Sourced function scripts:
+    - source_helpers.sh
+    - check_args.sh
+      + require_optarg
+    - check_env.sh
+      + check_env_installed
+    - check_inputs.sh
+      + validate_var
+    - format_outputs.sh
+      + echo_err
+      + echo_warn
+    - handle_env.sh
+      + _handle_env_deactivate
+    - help/help_install_envs.sh
+      + help_install_envs
 
 Notes:
   - The following packages are installed via a call to 'mamba create' (preferred) or 'conda create':

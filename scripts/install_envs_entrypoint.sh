@@ -11,24 +11,26 @@
 # Distributed under the MIT license.
 
 
-show_help() {
+show_help_entrypoint() {
     cat << EOM >&2
 Usage:
   install_envs_entrypoint.sh [-h|--hlp|--help]
-  install_envs_entrypoint.sh --env_nam ENV_NAME [--dry_run] [--yes]
+  install_envs_entrypoint.sh --env_nam <spec> [--dry_run] [--if_exis <spec>] [--yes]
 
 Description:
-  POSIX entrypoint for repository environment setup. The examples use Bash, but this entrypoint can also be invoked with 'sh' or run directly. It will locate an appropriate Bash for the handoff to 'install_envs.sh'.
+  POSIX entrypoint for repository environment setup. The examples use Bash, but this entrypoint can also be invoked with 'sh' or run directly. It will attempt to locate an appropriate Bash for the handoff to 'install_envs.sh'.
 
 Recommended first-time command:
+  '''bash
   bash scripts/install_envs_entrypoint.sh --env_nam env_protocol --yes
+  '''
 
 Environment names:
   env_protocol  Main workflow environment.
   env_analyze   Analysis environment.
   env_siqchip   siQ-ChIP environment.
 
-Options:
+Keyword arguments:
   -h, --hlp, --help  <flag>
     Display this help message and exit.
 
@@ -37,6 +39,9 @@ Options:
 
   -en, --env, --env_nam  <spec>
     Environment to create: 'env_protocol', 'env_analyze', or 'env_siqchip'.
+
+  -ie, --if_ex, --if_exis, --if_exists  <spec>
+    What to do if the requested environment already exists: 'fail' or 'reuse' (default: 'fail').
 
   -y, --yes  <flag>
     Automatically answer yes to package-manager prompts.
@@ -47,8 +52,9 @@ Notes:
   - Invoke this script with 'bash', 'sh', or as an executable script. Do not force another interpreter such as 'zsh'.
   - This entrypoint requires Mamba or Conda and a Bash >= 4.4 handoff interpreter.
   - Full package details are available with:
-
-      bash scripts/install_envs.sh --help
+    '''bash
+    bash scripts/install_envs.sh --help
+    '''
 
 Returns:
   0 on success; non-zero on error.
@@ -184,7 +190,7 @@ check_args_light() {
     while [ "$#" -gt 0 ]; do
         case "${1}" in
             -h|--hlp|--help)
-                show_help
+                show_help_entrypoint
                 exit 0
                 ;;
             -dr|--dry|--dry_run|--dry-run|-y|--yes)
@@ -198,21 +204,47 @@ check_args_light() {
                 then
                     err "option '${1}' requires a value."
                     echo >&2
-                    show_help
+                    show_help_entrypoint
                     exit 1
                 fi
+                shift 2
+                ;;
+            -ie|--if_ex|--if-ex|--if_exis|--if-exis|--if_exists|--if-exists)
+                if \
+                       [ "$#" -lt 2 ] \
+                    || [ -z "${2}" ]  \
+                    || [ "${2#-}" != "${2}" ]
+                then
+                    err "option '${1}' requires a value."
+                    echo >&2
+                    show_help_entrypoint
+                    exit 1
+                fi
+
+                case "${2}" in
+                    fail|reuse) : ;;
+                    *)
+                        err \
+                            "invalid value for '${1}': '${2}'. Must be" \
+                            "'fail' or 'reuse'."
+                        echo >&2
+                        show_help_entrypoint
+                        exit 1
+                        ;;
+                esac
+
                 shift 2
                 ;;
             -*)
                 echo "## Unknown keyword argument passed: '${1}' ##" >&2
                 echo >&2
-                show_help
+                show_help_entrypoint
                 exit 1
                 ;;
             *)
                 echo "## Unknown positional argument passed: '${1}' ##" >&2
                 echo >&2
-                show_help
+                show_help_entrypoint
                 exit 1
                 ;;
         esac
@@ -222,7 +254,7 @@ check_args_light() {
 
 main() {
     if [ "$#" -eq 0 ]; then
-        show_help
+        show_help_entrypoint
         exit 0
     fi
 

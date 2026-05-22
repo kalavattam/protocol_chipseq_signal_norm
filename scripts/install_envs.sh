@@ -31,18 +31,6 @@ dir_scr="$(cd "$(dirname "${BASH_SOURCE[0]}")" > /dev/null 2>&1 && pwd)"
 
 
 #  Source and define functions ================================================
-# arr_fnc=(  #TODO: record in 'help_install_envs' before deleting
-#     check_env
-#     format_outputs
-#     handle_env
-#     help/help_install_envs
-#     # check_env_installed  ## check_env ##
-#     # echo_err             ## format_outputs ##
-#     # echo_warn            ## format_outputs ##
-#     # handle_env           ## handle_env ##
-#     # help/help_install_envs
-# )
-
 dir_fnc="${dir_scr}/functions"
 fnc_src="${dir_fnc}/source_helpers.sh"
 
@@ -205,6 +193,10 @@ case "${env_nam}" in
         ;;
 esac
 
+#  Check that supported package manager is in PATH
+# shellcheck disable=SC2119
+check_pkg_mgr || exit 1
+
 if \
     check_env_installed "${env_nam}" "true"
 then
@@ -214,14 +206,25 @@ then
                 "an environment with the name '${env_nam}' is already" \
                 "installed."
             echo >&2
+
+            if [[ "${dry_run}" == "true" ]]; then
+                echo "dryrun($(basename "${BASH_SOURCE[0]}")):" \
+                    "a non-dry run would stop here unless '--if_exis reuse'" \
+                    "was specified." >&2
+                echo >&2
+                exit 0
+            fi
+
             echo \
                 "Nothing was changed. To reuse the existing environment," \
                 "rerun with '--if_exis reuse'." >&2
             echo >&2
+
             echo \
                 "To rebuild '${env_nam}', remove the existing environment" \
                 "first, then rerun this script." >&2
             echo >&2
+
             echo \
                 "For example, run 'mamba env remove -n \"${env_nam}\"'" \
                 "prior to rerunning the script." >&2
@@ -236,10 +239,6 @@ then
             ;;
     esac
 fi
-
-#  Check that supported package manager is in PATH
-# shellcheck disable=SC2119
-check_pkg_mgr || exit 1
 
 
 #  Do the main work ===========================================================
@@ -408,7 +407,8 @@ fi
 
 #  In dry-run mode, print resolved command and exit without installing
 if [[ "${dry_run}" == "true" ]]; then
-    echo "Dry run: would create environment '${env_nam}'."
+    echo "dryrun($(basename "${BASH_SOURCE[0]}")):" \
+        "would create environment '${env_nam}'."
 
     printf 'Command:'
     for tok in "${cmd[@]}" "${packages[@]}"; do

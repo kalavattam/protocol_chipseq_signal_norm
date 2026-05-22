@@ -114,7 +114,7 @@ Keyword arguments:
   -ps, --pth_snp, --pth_snippet, --path_snp, --path_snippet  <file>
     Append PATH export lines to the requested file. This may be a shell configuration file such as '${HOME}/.bashrc' or '${HOME}/.zshrc', or a temporary snippet file for, e.g., testing. Without this option, the PATH lines are printed at the end.
 
-  -ie, --if_ex, --if_exis --if_exists  <spec>
+  -ie, --if_ex, --if_exis, --if_exists  <spec>
     What to do if Julia and/or Atria already exist in the requested installation directory: 'fail' or 'reuse' (default: '${if_exis}').
 
 Dependencies:
@@ -273,6 +273,25 @@ function extract_julia_tar() {
     rm -f "${log_tar}"
     echo_err "failed to extract Julia archive '${tarball}'."
     return 1
+}
+
+
+function verify_julia_exec() {
+    local pth_jul="${1:-}"
+    local jul_ver=""
+
+    validate_var_file "pth_jul" "${pth_jul}" || return 1
+
+    jul_ver="$("${pth_jul}" --version)"
+    echo "${jul_ver}"
+
+    if [[ "${jul_ver}" != "julia version ${v_julia}" ]]; then
+        echo_err \
+            "Julia executable exists at '${pth_jul}', but it does not match" \
+            "the requested version '${v_julia}'. Reported version:" \
+            "'${jul_ver}'."
+        return 1
+    fi
 }
 
 
@@ -484,10 +503,9 @@ function cleanup_tmp_dir() {
 
 
 function install_julia() {
-    local jul_ver=""
+    local pth_path_jul=""
 
     #  Allow global variable initialization here
-    #FIXME #MAYBE: 'jul_tar_pth' does not need to be global?
     jul_dir="${dir_inl}/julia-${v_julia}"
     jul_bin="${jul_dir}/bin/julia"
     jul_tar_pth="${dir_tmp}/${jul_tar}"
@@ -507,46 +525,71 @@ function install_julia() {
                 echo \
                     "Julia install directory already exists; verifying and" \
                     "reusing '${jul_dir}'." >&2
+                verify_julia_exec "${jul_bin}" || return 1
+                return 0
                 ;;
         esac
-    else
-        if [[ -z "${jul_256}" ]]; then
-            echo_err \
-                "no bundled SHA-256 mapping for Julia ${v_julia} on" \
-                "'${sys_os}:${sys_ar}'. Refusing to download without a" \
-                "known checksum."
-            return 1
-        fi
-
-        if [[ ! -s "${jul_tar_pth}" ]]; then
-            run_or_print curl -L --fail -o "${jul_tar_pth}" "${jul_url}"
-        else
-            echo "Julia tarball already exists; verifying '${jul_tar_pth}'."
-        fi
-
-        verify_sha256 "${jul_tar_pth}" "${jul_256}"
-        extract_julia_tar "${jul_tar_pth}" "${dir_inl}"
     fi
 
-    validate_var_file "jul_bin" "${jul_bin}" || return 1
+    if [[ "${if_exis}" == "reuse" ]]; then
+        if pth_path_jul="$(command -v julia 2>/dev/null)"; then
+            if \
+                verify_julia_exec "${pth_path_jul}"
+            then
+                jul_bin="${pth_path_jul}"
+                jul_dir="$(cd "$(dirname "${jul_bin}")/.." && pwd)"
+                echo \
+                    "Matching Julia executable found on PATH; reusing" \
+                    "'${jul_bin}'." >&2
+                return 0
+            fi
 
-    jul_ver="$("${jul_bin}" --version)"
-    echo "${jul_ver}"
+            echo_warn \
+                "Julia was found on PATH, but it does not match the" \
+                "requested version '${v_julia}'; installing Julia under" \
+                "'${dir_inl}'."
+        fi
+    fi
 
-    if [[ "${jul_ver}" != "julia version ${v_julia}" ]]; then
+    if [[ -z "${jul_256}" ]]; then
         echo_err \
-            "Julia executable exists at '${jul_bin}', but it does not match" \
-            "the requested version '${v_julia}'. Reported version:" \
-            "'${jul_ver}'. Move the existing Julia directory aside or choose" \
-            "a matching '--v_julia'."
+            "no bundled SHA-256 mapping for Julia ${v_julia} on" \
+            "'${sys_os}:${sys_ar}'. Refusing to download without a" \
+            "known checksum."
         return 1
     fi
+
+    if [[ ! -s "${jul_tar_pth}" ]]; then
+        run_or_print curl -L --fail -o "${jul_tar_pth}" "${jul_url}"
+    else
+        echo "Julia tarball already exists; verifying '${jul_tar_pth}'."
+    fi
+
+    verify_sha256 "${jul_tar_pth}" "${jul_256}"
+    extract_julia_tar "${jul_tar_pth}" "${dir_inl}"
+
+    verify_julia_exec "${jul_bin}" || return 1
 }
 
 
 function checkout_atria() {
+    local pth_path_atr=""
+
     dir_rep="${dir_inl}"
     dir_atr="${dir_rep}/Atria"
+
+    if [[ "${if_exis}" == "reuse" && ! -e "${dir_atr}" ]]; then
+        if pth_path_atr="$(command -v atria 2>/dev/null)"; then
+            if verify_atria_exec "${pth_path_atr}"; then
+                pth_atr="${pth_path_atr}"
+                pth_bin="$(dirname "${pth_atr}")"
+                echo \
+                    "Matching Atria executable found on PATH; skipping" \
+                    "repository checkout for '${dir_atr}'." >&2
+                return 0
+            fi
+        fi
+    fi
 
     mkdir -p "${dir_rep}"
 
@@ -664,7 +707,8 @@ function verify_atria_exec() {
     tmp_chk="$(mktemp "${TMPDIR:-/tmp}/atria_check.XXXXXX")"
 
     if \
-        "${pth_atr}" --version > "${tmp_chk}" 2>&1
+           "${pth_atr}" --version > "${tmp_chk}" 2>&1 \
+        || "${pth_atr}" --help    > "${tmp_chk}" 2>&1
     then
         if \
             grep -qiE \
@@ -673,27 +717,20 @@ function verify_atria_exec() {
         then
             cat "${tmp_chk}" >&2
             rm -f "${tmp_chk}"
-            echo_err "Atria emitted an error during '--version' verification."
+            echo_err "Atria emitted an error during executable verification."
             return 1
         fi
-        cat "${tmp_chk}"
-        rm -f "${tmp_chk}"
-        return 0
-    fi
 
-    if \
-        "${pth_atr}" --help > "${tmp_chk}" 2>&1
-    then
-        if \
-            grep -qiE 'error|could not load library|library not loaded' \
-                "${tmp_chk}"
-        then
+        if ! grep -Fq "v${v_atria}" "${tmp_chk}"; then
             cat "${tmp_chk}" >&2
             rm -f "${tmp_chk}"
-            echo_err "Atria emitted an error during '--help' verification."
+            echo_err \
+                "Atria executable exists at '${pth_atr}', but it does not" \
+                "appear to match requested version '${v_atria}'."
             return 1
         fi
-        echo "Atria executable responds to '--help': '${pth_atr}'."
+
+        cat "${tmp_chk}"
         rm -f "${tmp_chk}"
         return 0
     fi
@@ -736,6 +773,26 @@ function build_atria() {
         fi
     fi
 
+    if [[ "${if_exis}" == "reuse" ]]; then
+        if \
+            pth_atr="$(command -v atria 2>/dev/null)"
+        then
+            if \
+                verify_atria_exec "${pth_atr}"
+            then
+                pth_bin="$(dirname "${pth_atr}")"
+                echo \
+                    "Matching Atria executable found on PATH; reusing" \
+                    "'${pth_atr}'."
+                return 0
+            fi
+
+            echo_warn \
+                "Atria was found on PATH, but it did not verify as version" \
+                "'${v_atria}'; rebuilding Atria under '${dir_atr}'."
+        fi
+    fi
+
     (
         cd "${dir_atr}"
         "${jul_bin}" build_atria.jl
@@ -745,11 +802,12 @@ function build_atria() {
     copy_suitesparse
 
     for stem in libamd libcholmod libsuitesparseconfig; do
-        if ! find "${dir_bld}/lib/julia" \
-            -name "${stem}*" \
-            -print \
-            -quit \
-            | grep -q .
+        if ! \
+            find "${dir_bld}/lib/julia" \
+                -name "${stem}*" \
+                -print \
+                -quit \
+                | grep -q .
         then
             echo_err \
                 "failed to copy '${stem}' libraries into the Atria build."
@@ -1057,7 +1115,9 @@ if [[ "${dry_run}" == "true" ]]; then
 
     if [[ -n "${jul_256}" ]]; then
         echo_dry "would download and verify '${jul_url}'."
-        echo_dry "would extract Julia under '${dir_inl}'."
+        echo_dry \
+            "would extract Julia under '${dir_inl}', or reuse matching Julia" \
+            "from '${jul_dir}' or PATH if '--if_exis reuse' was specified."
     else
         echo_dry \
             "would refuse non-dry-run download of '${jul_url}' until a" \
@@ -1068,8 +1128,9 @@ if [[ "${dry_run}" == "true" ]]; then
         "would discover the final Atria bin path after build; provisional" \
         "path is '${pth_bin}'."
     echo_dry \
-        "would clone Atria under '${dir_atr}', or reuse it if it already" \
-        "exists and '--if_exis reuse' was specified."
+        "would clone Atria under '${dir_atr}', or reuse a matching existing" \
+        "Atria install under '${dir_atr}' or on PATH if '--if_exis reuse'" \
+        "was specified."
     echo_dry "would check out Atria tag '${tag_atr}'."
     echo_dry "would build Atria using '${jul_bin}'."
     print_write_pth_snp
