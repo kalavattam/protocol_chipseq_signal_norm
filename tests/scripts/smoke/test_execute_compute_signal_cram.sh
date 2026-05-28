@@ -19,12 +19,12 @@ source "$(
     cd "$(dirname "${BASH_SOURCE[0]}")/.." > /dev/null 2>&1 && pwd
 )/lib/test_helpers.sh"
 
-rec_section "${TEST_NAME}"
+print_section "${TEST_NAME}"
 
 #  Define fixture and output paths for the execute-to-submit CRAM path
 dir_fx="${ROOT_REPO}/tests/compute_signal/fixtures"
-infile_se="${dir_fx}/cram/tiny_se.cram"
-infile_pe="${dir_fx}/cram/tiny_pe.cram"
+in_se="${dir_fx}/cram/tiny_se.cram"
+in_pe="${dir_fx}/cram/tiny_pe.cram"
 ref_fa="${dir_fx}/reference/tiny.fa"
 
 tmp="${TEST_DIR_TMP}/execute_compute_signal_cram"
@@ -40,134 +40,161 @@ require_env_project env_nam || {
     exit $?
 }
 
-require_files_exist "${infile_se}" "${infile_pe}" "${ref_fa}" || {
+require_files_nonempty \
+    "${in_se}" \
+    "${in_pe}" \
+    "${ref_fa}" || {
     finish
     exit $?
 }
 
 
-#  Run the execute wrapper through submit_compute_signal.sh into Python
-function run_case_cram() {
-    local nam_case="${1:-}"
-    local mode="${2:-}"
-    local infile_lcl="${3:-}"
-    local typ_out="${4:-}"
-    local log_lcl="${5:-}"
-
-    shift 5
-
-    # shellcheck disable=SC2154
-    if \
-        run_capture \
-            "execute compute-signal CRAM ${nam_case}" "${log_lcl}" \
-            "${TEST_BASH}" "${ROOT_REPO}/scripts/execute_compute_signal.sh" \
-                --threads 1 \
-                --mode "${mode}" \
-                --csv_infile "${infile_lcl}" \
-                --dir_out "${dir_out}" \
-                --typ_out "${typ_out}" \
-                --ref_fa "${ref_fa}" \
-                --csv_usr_frg NA \
-                --dp 3 \
-                --err_out "${dir_err}" \
-                --nam_job "test_execute_compute_cram_${nam_case}" \
-                --max_job 1 \
-                "$@"
-    then
-        rec_pass "execute_compute_signal.sh ${mode} ${nam_case} exits 0"
-    else
-        rec_fail \
-            "execute_compute_signal.sh ${mode} ${nam_case} failed; see" \
-            "$(rec_relpath "${log_lcl}")"
-    fi
-}
-
-
 #  Signal mode: two 10-bp SE alignments produce chromosome-I bedGraph bins
-outfile="${dir_out}/tiny_se.bdg"
+fil_out="${dir_out}/tiny_se.bdg"
 log="${dir_log}/execute_compute_signal_cram_se_signal.log"
 
-run_case_cram \
-    "se_signal" "signal" "${infile_se}" "bdg" "${log}" \
+run_case_compute_signal \
+    execute \
+    cram \
+    "se_signal" \
+    "signal" \
+    "${in_se}" \
+    "bdg" \
+    "${log}" \
+    "${dir_out}" \
+    "${dir_err}" \
+    "${ref_fa}" \
     --method unadj \
     --siz_bin 10 \
     --csv_scl_fct NA
 
-assert_file_nonempty "${outfile}" "execute CRAM SE signal bedGraph output"
+assert_file_nonempty \
+    "${fil_out}" \
+    "execute CRAM SE signal bedGraph output"
 
-if [[ -s "${outfile}" ]]; then
-    assert_grep_pattern "${outfile}" $'^I\t0\t10\t10$' \
+if [[ -s "${fil_out}" ]]; then
+    assert_pattern_found \
+        "${fil_out}" \
+        $'^I\t0\t10\t10$' \
         "execute CRAM SE signal output has chromosome-I bin I:0-10"
-    assert_grep_pattern "${outfile}" $'^I\t20\t30\t10$' \
+    assert_pattern_found \
+        "${fil_out}" \
+        $'^I\t20\t30\t10$' \
         "execute CRAM SE signal output has chromosome-I bin I:20-30"
 fi
 
 
 #  Coord mode: the same SE alignments emit BED-like processed fragments
-outfile="${dir_out}/tiny_se.bed"
+fil_out="${dir_out}/tiny_se.bed"
 log="${dir_log}/execute_compute_signal_cram_se_coord.log"
 
-run_case_cram \
-    "se_coord" "coord" "${infile_se}" "bed" "${log}"
+run_case_compute_signal \
+    execute \
+    cram \
+    "se_coord" \
+    "coord" \
+    "${in_se}" \
+    "bed" \
+    "${log}" \
+    "${dir_out}" \
+    "${dir_err}" \
+    "${ref_fa}"
 
-assert_file_nonempty "${outfile}" "execute CRAM SE coord BED output"
+assert_file_nonempty \
+    "${fil_out}" \
+    "execute CRAM SE coord BED output"
 
-if [[ -s "${outfile}" ]]; then
-    assert_grep_pattern "${outfile}" $'^I\t0\t10\t10$' \
+if [[ -s "${fil_out}" ]]; then
+    assert_pattern_found \
+        "${fil_out}" \
+        $'^I\t0\t10\t10$' \
         "execute CRAM SE coord output has chromosome-I fragment I:0-10"
-    assert_grep_pattern "${outfile}" $'^I\t20\t30\t10$' \
+    assert_pattern_found \
+        "${fil_out}" \
+        $'^I\t20\t30\t10$' \
         "execute CRAM SE coord output has chromosome-I fragment I:20-30"
 fi
 
 
 #  Signal mode: two PE fragments cover bins from I:10-60
-outfile="${dir_out}/tiny_pe.bdg"
+fil_out="${dir_out}/tiny_pe.bdg"
 log="${dir_log}/execute_compute_signal_cram_pe_signal.log"
 
-run_case_cram \
-    "pe_signal" "signal" "${infile_pe}" "bdg" "${log}" \
+run_case_compute_signal \
+    execute \
+    cram \
+    "pe_signal" \
+    "signal" \
+    "${in_pe}" \
+    "bdg" \
+    "${log}" \
+    "${dir_out}" \
+    "${dir_err}" \
+    "${ref_fa}" \
     --method unadj \
     --siz_bin 10 \
     --csv_scl_fct NA
 
-assert_file_nonempty "${outfile}" "execute CRAM PE signal bedGraph output"
+assert_file_nonempty \
+    "${fil_out}" \
+    "execute CRAM PE signal bedGraph output"
 
-if [[ -s "${outfile}" ]]; then
-    assert_grep_pattern "${outfile}" $'^I\t10\t20\t10$' \
+if [[ -s "${fil_out}" ]]; then
+    assert_pattern_found \
+        "${fil_out}" \
+        $'^I\t10\t20\t10$' \
         "execute CRAM PE signal output has chromosome-I bin I:10-20"
-    assert_grep_pattern "${outfile}" $'^I\t40\t50\t10$' \
+    assert_pattern_found \
+        "${fil_out}" \
+        $'^I\t40\t50\t10$' \
         "execute CRAM PE signal output has chromosome-I bin I:40-50"
 fi
 
 
 #  Coord mode: PE output emits one BED-like row per leftmost proper pair
-outfile="${dir_out}/tiny_pe.bed"
+fil_out="${dir_out}/tiny_pe.bed"
 log="${dir_log}/execute_compute_signal_cram_pe_coord.log"
 
-run_case_cram \
-    "pe_coord" "coord" "${infile_pe}" "bed" "${log}"
+run_case_compute_signal \
+    execute \
+    cram \
+    "pe_coord" \
+    "coord" \
+    "${in_pe}" \
+    "bed" \
+    "${log}" \
+    "${dir_out}" \
+    "${dir_err}" \
+    "${ref_fa}"
 
-assert_file_nonempty "${outfile}" "execute CRAM PE coord BED output"
+assert_file_nonempty \
+    "${fil_out}" \
+    "execute CRAM PE coord BED output"
 
-if [[ -s "${outfile}" ]]; then
-    assert_grep_pattern "${outfile}" $'^I\t10\t40\t30$' \
+if [[ -s "${fil_out}" ]]; then
+    assert_pattern_found \
+        "${fil_out}" \
+        $'^I\t10\t40\t30$' \
         "execute CRAM PE coord output has chromosome-I fragment I:10-40"
-    assert_grep_pattern "${outfile}" $'^I\t40\t60\t20$' \
+    assert_pattern_found \
+        "${fil_out}" \
+        $'^I\t40\t60\t20$' \
         "execute CRAM PE coord output has chromosome-I fragment I:40-60"
 fi
 
 
 #  CRAM input without a reference FASTA should fail clearly in the wrapper
-outfile="${dir_out}/tiny_se_missing_ref.bdg"
+fil_out="${dir_out}/tiny_se_missing_ref.bdg"
 log="${dir_log}/execute_compute_signal_cram_missing_ref.log"
 
 if \
     run_capture \
-        "execute compute-signal CRAM missing_ref" "${log}" \
+        "execute compute-signal CRAM missing_ref" \
+        "${log}" \
         "${TEST_BASH}" "${ROOT_REPO}/scripts/execute_compute_signal.sh" \
             --threads 1 \
             --mode signal \
-            --csv_infile "${infile_se}" \
+            --csv_infile "${in_se}" \
             --dir_out "${dir_out}" \
             --typ_out bdg \
             --csv_usr_frg NA \
@@ -179,19 +206,21 @@ if \
             --siz_bin 10 \
             --csv_scl_fct NA
 then
-    rec_fail "execute_compute_signal.sh CRAM without --ref_fa unexpectedly passed"
+    record_fail \
+        "execute_compute_signal.sh CRAM without --ref_fa unexpectedly passed"
 else
-    rec_pass "execute_compute_signal.sh CRAM without --ref_fa fails"
+    record_pass "execute_compute_signal.sh CRAM without --ref_fa fails"
 fi
 
-assert_grep_pattern "${log}" \
+assert_pattern_found \
+    "${log}" \
     "'--ref_fa' is required when '--csv_infile' contains CRAM" \
     "execute CRAM missing-ref error mentions --ref_fa"
 
-if [[ ! -s "${outfile}" ]]; then
-    rec_pass "execute CRAM missing-ref output is absent or empty"
+if [[ ! -s "${fil_out}" ]]; then
+    record_pass "execute CRAM missing-ref output is absent or empty"
 else
-    rec_fail "execute CRAM missing-ref output was unexpectedly written"
+    record_fail "execute CRAM missing-ref output was unexpectedly written"
 fi
 
 finish

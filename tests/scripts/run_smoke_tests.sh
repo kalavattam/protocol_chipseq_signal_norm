@@ -38,7 +38,7 @@ mkdir -p "${dir_log}"
 
 
 #  Define smoke-test groups ===================================================
-tests=(
+arr_tst=(
     "${dir_run}/smoke/test_shell_syntax.sh"
     "${dir_run}/smoke/test_python_startup.sh"
     "${dir_run}/smoke/test_help_output.sh"
@@ -85,20 +85,22 @@ tests=(
 
 n_pass=0
 n_fail=0
-n_total=0
+n_totl=0
 
 
 #  Run smoke-test groups ======================================================
 printf 'Running smoke tests from %s\n' "${dir_rep}"
 printf 'Logs: %s\n\n\n' "${dir_log}"
 
-for scr_tst in "${tests[@]}"; do
-    n_total=$(( n_total + 1 ))
+for scr_tst in "${arr_tst[@]}"; do
+    n_totl=$(( n_totl + 1 ))
     name="$(basename "${scr_tst}" .sh)"
     log="${dir_log}/${name}.log"
 
     printf '%s\n' "==== ${name} ===="
-    if "${BASH}" "${scr_tst}" > "${log}" 2>&1; then
+    if \
+        "${BASH}" "${scr_tst}" > "${log}" 2>&1
+    then
         cat "${log}"
         printf 'GROUP PASS: %s\n\n\n' "${name}"
         n_pass=$(( n_pass + 1 ))
@@ -112,7 +114,7 @@ done
 
 #  Summarize results ==========================================================
 printf '==== Smoke Test Summary ====\n'
-printf 'Groups run:    %d\n' "${n_total}"
+printf 'Groups run:    %d\n' "${n_totl}"
 printf 'Groups passed: %d\n' "${n_pass}"
 printf 'Groups failed: %d\n' "${n_fail}"
 

@@ -19,12 +19,14 @@ source "$(
     cd "$(dirname "${BASH_SOURCE[0]}")/.." > /dev/null 2>&1 && pwd
 )/lib/test_helpers.sh"
 
-rec_section "${TEST_NAME}"
+print_section "${TEST_NAME}"
 
-if ! is_parallel_enabled; then
-    rec_skip \
-        "GNU Parallel compute-signal check disabled;" \
-        "set RUN_PARALLEL=1 to enable"
+if ! \
+    is_parallel_enabled
+then
+    record_skip \
+        "GNU Parallel compute-signal check disabled; set RUN_PARALLEL=1 to" \
+        "enable"
     finish
     exit $?
 fi
@@ -50,7 +52,9 @@ require_env_project env_nam || {
     exit $?
 }
 
-require_files_exist "${fil_A}" "${fil_B}" || {
+require_files_nonempty \
+    "${fil_A}" \
+    "${fil_B}" || {
     finish
     exit $?
 }
@@ -58,7 +62,9 @@ require_files_exist "${fil_A}" "${fil_B}" || {
 cp "${fil_A}" "${fil_A_1}"
 cp "${fil_A}" "${fil_A_2}"
 
-require_files_exist "${fil_A_1}" "${fil_A_2}" || {
+require_files_nonempty \
+    "${fil_A_1}" \
+    "${fil_A_2}" || {
     finish
     exit $?
 }
@@ -67,7 +73,7 @@ require_files_exist "${fil_A_1}" "${fil_A_2}" || {
 #+ through Bash
 # shellcheck disable=SC2154
 if ! \
-    require_parallel_env \
+    require_env_parallel \
         "${env_nam}" \
         "${dir_log}/execute_compute_signal_parallel_env.log"
 then
@@ -75,12 +81,13 @@ then
     exit $?
 fi
 
-config="${dir_err}/test_execute_compute_parallel.config_parallel.txt"
+cfg="${dir_err}/test_execute_compute_parallel.config_parallel.txt"
 log="${dir_log}/execute_compute_signal_parallel_dry_run.log"
 
 if \
     run_capture \
-        "execute compute-signal GNU Parallel dry-run" "${log}" \
+        "execute compute-signal GNU Parallel dry-run" \
+        "${log}" \
         "${TEST_BASH}" "${ROOT_REPO}/scripts/execute_compute_signal.sh" \
             --dry_run \
             --threads 2 \
@@ -97,31 +104,34 @@ if \
             --nam_job "test_execute_compute_parallel" \
             --max_job 2
 then
-    rec_pass "execute_compute_signal.sh GNU Parallel dry-run exits 0"
+    record_pass "execute_compute_signal.sh GNU Parallel dry-run exits 0"
 else
-    rec_fail \
+    record_fail \
         "execute_compute_signal.sh GNU Parallel dry-run failed; see" \
-        "$(rec_relpath "${log}")"
+        "$(print_relpath "${log}")"
 fi
 
-assert_file_nonempty "${config}" "execute GNU Parallel config"
+assert_file_nonempty \
+    "${cfg}" \
+    "execute GNU Parallel config"
 
-if [[ -s "${config}" ]]; then
-    assert_grep_pattern \
-        "${config}" \
+if [[ -s "${cfg}" ]]; then
+    assert_pattern_found \
+        "${cfg}" \
         "${TEST_BASH} ${ROOT_REPO}/scripts/submit_compute_signal.sh" \
         "execute GNU Parallel config uses Bash-prefixed submit command"
 fi
 
 
 #  Real GNU Parallel execution should produce one output per ratio job
-outfile_1="${dir_out}/exec_parallel_wet_ratio_A_1.bdg"
-outfile_2="${dir_out}/exec_parallel_wet_ratio_A_2.bdg"
+in_1="${dir_out}/exec_parallel_wet_ratio_A_1.bdg"
+in_2="${dir_out}/exec_parallel_wet_ratio_A_2.bdg"
 log="${dir_log}/execute_compute_signal_parallel_wet_run.log"
 
 if \
     run_capture \
-        "execute compute-signal GNU Parallel wet run" "${log}" \
+        "execute compute-signal GNU Parallel wet run" \
+        "${log}" \
         "${TEST_BASH}" "${ROOT_REPO}/scripts/execute_compute_signal.sh" \
             --threads 2 \
             --mode ratio \
@@ -137,24 +147,34 @@ if \
             --nam_job "test_execute_compute_parallel_wet" \
             --max_job 2
 then
-    rec_pass "execute_compute_signal.sh GNU Parallel wet run exits 0"
+    record_pass "execute_compute_signal.sh GNU Parallel wet run exits 0"
 else
-    rec_fail \
+    record_fail \
         "execute_compute_signal.sh GNU Parallel wet run failed; see" \
-        "$(rec_relpath "${log}")"
+        "$(print_relpath "${log}")"
 fi
 
-assert_file_nonempty "${outfile_1}" "execute GNU Parallel wet output 1"
-assert_file_nonempty "${outfile_2}" "execute GNU Parallel wet output 2"
+assert_file_nonempty \
+    "${in_1}" \
+    "execute GNU Parallel wet output 1"
+assert_file_nonempty \
+    "${in_2}" \
+    "execute GNU Parallel wet output 2"
 
-for outfile in "${outfile_1}" "${outfile_2}"; do
-    if [[ -s "${outfile}" ]]; then
-        assert_grep_pattern "${outfile}" $'^I\t0\t10\t2$' \
-            "$(basename "${outfile}") has I:0-10 = 2"
-        assert_grep_pattern "${outfile}" $'^I\t40\t50\t4$' \
-            "$(basename "${outfile}") has I:40-50 = 4"
-        assert_grep_pattern "${outfile}" $'^I\t60\t70\t0.333$' \
-            "$(basename "${outfile}") has I:60-70 = 0.333"
+for out in "${in_1}" "${in_2}"; do
+    if [[ -s "${out}" ]]; then
+        assert_pattern_found \
+            "${out}" \
+            $'^I\t0\t10\t2$' \
+            "$(basename "${out}") has I:0-10 = 2"
+        assert_pattern_found \
+            "${out}" \
+            $'^I\t40\t50\t4$' \
+            "$(basename "${out}") has I:40-50 = 4"
+        assert_pattern_found \
+            "${out}" \
+            $'^I\t60\t70\t0.333$' \
+            "$(basename "${out}") has I:60-70 = 0.333"
     fi
 done
 

@@ -19,27 +19,28 @@ source "$(
     cd "$(dirname "${BASH_SOURCE[0]}")/.." > /dev/null 2>&1 && pwd
 )/lib/test_helpers.sh"
 
-rec_section "${TEST_NAME}"
+print_section "${TEST_NAME}"
 
 #  Define fixture and output paths for execute-to-submit BWA ALN alignment
 dir_fx="${ROOT_REPO}/tests/align_fastqs/fixtures"
-infile_se="${dir_fx}/fastq/tiny_se.atria.fastq.gz"
-infile_pe_1="${dir_fx}/fastq/tiny_pe_R1.atria.fastq.gz"
-infile_pe_2="${dir_fx}/fastq/tiny_pe_R2.atria.fastq.gz"
-infile_pe="${infile_pe_1},${infile_pe_2}"
-index="${dir_fx}/bwa/tiny.fa"
+in_se="${dir_fx}/fastq/tiny_se.atria.fastq.gz"
+in_pe_1="${dir_fx}/fastq/tiny_pe_R1.atria.fastq.gz"
+in_pe_2="${dir_fx}/fastq/tiny_pe_R2.atria.fastq.gz"
+in_pe="${in_pe_1},${in_pe_2}"
+idx="${dir_fx}/bwa/tiny.fa"
 
 tmp="${TEST_DIR_TMP}/execute_align_fastqs_bwa_aln"
 dir_out="${tmp}/out"
 dir_err="${tmp}/logs"
 dir_log="${TEST_DIR_LOG}/align_fastqs"
 
-outfile_se="${dir_out}/tiny_se.bam"
-idxstats_se="${dir_out}/tiny_se.idxstats.txt"
-view_se="${dir_out}/tiny_se.view.txt"
-outfile_pe="${dir_out}/tiny_pe.bam"
-idxstats_pe="${dir_out}/tiny_pe.idxstats.txt"
-view_pe="${dir_out}/tiny_pe.view.txt"
+out_se="${dir_out}/tiny_se.bam"
+stat_se="${dir_out}/tiny_se.idxstats.txt"
+vw_se="${dir_out}/tiny_se.view.txt"
+
+out_pe="${dir_out}/tiny_pe.bam"
+stat_pe="${dir_out}/tiny_pe.idxstats.txt"
+vw_pe="${dir_out}/tiny_pe.view.txt"
 
 rm -rf "${tmp}"
 mkdir -p "${dir_out}" "${dir_err}" "${dir_log}"
@@ -49,16 +50,16 @@ require_env_project env_nam || {
     exit $?
 }
 
-require_files_exist \
-    "${infile_se}" \
-    "${infile_pe_1}" \
-    "${infile_pe_2}" \
-    "${index}" \
-    "${index}.amb" \
-    "${index}.ann" \
-    "${index}.bwt" \
-    "${index}.pac" \
-    "${index}.sa" \
+require_files_nonempty \
+    "${in_se}" \
+    "${in_pe_1}" \
+    "${in_pe_2}" \
+    "${idx}" \
+    "${idx}.amb" \
+    "${idx}.ann" \
+    "${idx}.bwt" \
+    "${idx}.pac" \
+    "${idx}.sa" \
     || {
         finish
         exit $?
@@ -70,14 +71,15 @@ log="${dir_log}/execute_align_fastqs_bwa_aln_se.log"
 
 if \
     run_capture \
-        "execute align-fastqs bwa aln se" "${log}" \
+        "execute align-fastqs bwa aln se" \
+        "${log}" \
         "${TEST_BASH}" "${ROOT_REPO}/scripts/execute_align_fastqs.sh" \
             --threads 1 \
             --aligner bwa \
             --bwa_alg aln \
             --mapq 0 \
-            --index "${index}" \
-            --csv_infile "${infile_se}" \
+            --index "${idx}" \
+            --csv_infile "${in_se}" \
             --dir_out "${dir_out}" \
             --out_ext bam \
             --sfx_se ".atria.fastq.gz" \
@@ -86,37 +88,48 @@ if \
             --nam_job "test_execute_align_bwa_aln_se" \
             --max_job 1
 then
-    rec_pass "execute_align_fastqs.sh BWA ALN SE BAM exits 0"
+    record_pass "execute_align_fastqs.sh BWA ALN SE BAM exits 0"
 else
-    rec_fail \
+    record_fail \
         "execute_align_fastqs.sh BWA ALN SE BAM failed; see" \
-        "$(rec_relpath "${log}")"
+        "$(print_relpath "${log}")"
 fi
 
-assert_file_nonempty "${outfile_se}" "execute BWA ALN SE BAM output"
-assert_file_nonempty "${outfile_se}.bai" "execute BWA ALN SE BAM index"
+assert_file_nonempty \
+    "${out_se}" \
+    "execute BWA ALN SE BAM output"
+assert_file_nonempty \
+    "${out_se}.bai" \
+    "execute BWA ALN SE BAM index"
 
-if [[ -s "${outfile_se}" ]]; then
-    if run_capture \
-        "quickcheck execute align-fastqs BWA ALN SE BAM" \
-        "${dir_log}/execute_align_fastqs_bwa_aln_se_quickcheck.log" \
-        run_samtools quickcheck "${outfile_se}"
+if [[ -s "${out_se}" ]]; then
+    if \
+        run_capture \
+            "quickcheck execute align-fastqs BWA ALN SE BAM" \
+            "${dir_log}/execute_align_fastqs_bwa_aln_se_quickcheck.log" \
+            run_samtools quickcheck "${out_se}"
     then
-        rec_pass "execute BWA ALN SE BAM passes samtools quickcheck"
+        record_pass "execute BWA ALN SE BAM passes samtools quickcheck"
     else
-        rec_fail "execute BWA ALN SE BAM fails samtools quickcheck"
+        record_fail "execute BWA ALN SE BAM fails samtools quickcheck"
     fi
 
     run_capture \
-        "idxstats execute align-fastqs BWA ALN SE BAM" "${idxstats_se}" \
-        run_samtools idxstats "${outfile_se}"
+        "idxstats execute align-fastqs BWA ALN SE BAM" \
+        "${stat_se}" \
+        run_samtools idxstats "${out_se}"
     run_capture \
-        "view execute align-fastqs BWA ALN SE BAM" "${view_se}" \
-        run_samtools view "${outfile_se}"
+        "view execute align-fastqs BWA ALN SE BAM" \
+        "${vw_se}" \
+        run_samtools view "${out_se}"
 
-    assert_grep_pattern "${idxstats_se}" $'^I\t108\t1\t0$' \
+    assert_pattern_found \
+        "${stat_se}" \
+        $'^I\t108\t1\t0$' \
         "execute BWA ALN SE BAM has one mapped read on chromosome I"
-    assert_grep_pattern "${view_se}" $'^tiny_se_read_1\t' \
+    assert_pattern_found \
+        "${vw_se}" \
+        $'^tiny_se_read_1\t' \
         "execute BWA ALN SE BAM contains expected read name"
 fi
 
@@ -126,14 +139,15 @@ log="${dir_log}/execute_align_fastqs_bwa_aln_pe.log"
 
 if \
     run_capture \
-        "execute align-fastqs bwa aln pe" "${log}" \
+        "execute align-fastqs bwa aln pe" \
+        "${log}" \
         "${TEST_BASH}" "${ROOT_REPO}/scripts/execute_align_fastqs.sh" \
             --threads 1 \
             --aligner bwa \
             --bwa_alg aln \
             --mapq 0 \
-            --index "${index}" \
-            --csv_infile "${infile_pe}" \
+            --index "${idx}" \
+            --csv_infile "${in_pe}" \
             --dir_out "${dir_out}" \
             --out_ext bam \
             --sfx_se ".atria.fastq.gz" \
@@ -142,41 +156,56 @@ if \
             --nam_job "test_execute_align_bwa_aln_pe" \
             --max_job 1
 then
-    rec_pass "execute_align_fastqs.sh BWA ALN PE BAM exits 0"
+    record_pass "execute_align_fastqs.sh BWA ALN PE BAM exits 0"
 else
-    rec_fail \
+    record_fail \
         "execute_align_fastqs.sh BWA ALN PE BAM failed; see" \
-        "$(rec_relpath "${log}")"
+        "$(print_relpath "${log}")"
 fi
 
-assert_file_nonempty "${outfile_pe}" "execute BWA ALN PE BAM output"
-assert_file_nonempty "${outfile_pe}.bai" "execute BWA ALN PE BAM index"
+assert_file_nonempty \
+    "${out_pe}" \
+    "execute BWA ALN PE BAM output"
+assert_file_nonempty \
+    "${out_pe}.bai" \
+    "execute BWA ALN PE BAM index"
 
-if [[ -s "${outfile_pe}" ]]; then
-    if run_capture \
-        "quickcheck execute align-fastqs BWA ALN PE BAM" \
-        "${dir_log}/execute_align_fastqs_bwa_aln_pe_quickcheck.log" \
-        run_samtools quickcheck "${outfile_pe}"
+if [[ -s "${out_pe}" ]]; then
+    if \
+        run_capture \
+            "quickcheck execute align-fastqs BWA ALN PE BAM" \
+            "${dir_log}/execute_align_fastqs_bwa_aln_pe_quickcheck.log" \
+            run_samtools quickcheck "${out_pe}"
     then
-        rec_pass "execute BWA ALN PE BAM passes samtools quickcheck"
+        record_pass "execute BWA ALN PE BAM passes samtools quickcheck"
     else
-        rec_fail "execute BWA ALN PE BAM fails samtools quickcheck"
+        record_fail "execute BWA ALN PE BAM fails samtools quickcheck"
     fi
 
     run_capture \
-        "idxstats execute align-fastqs BWA ALN PE BAM" "${idxstats_pe}" \
-        run_samtools idxstats "${outfile_pe}"
+        "idxstats execute align-fastqs BWA ALN PE BAM" \
+        "${stat_pe}" \
+        run_samtools idxstats "${out_pe}"
     run_capture \
-        "view execute align-fastqs BWA ALN PE BAM" "${view_pe}" \
-        run_samtools view "${outfile_pe}"
+        "view execute align-fastqs BWA ALN PE BAM" \
+        "${vw_pe}" \
+        run_samtools view "${out_pe}"
 
-    assert_grep_pattern "${idxstats_pe}" $'^I\t108\t2\t0$' \
+    assert_pattern_found \
+        "${stat_pe}" \
+        $'^I\t108\t2\t0$' \
         "execute BWA ALN PE BAM has two mapped reads on chromosome I"
-    assert_grep_pattern "${view_pe}" $'^tiny_pe_pair_1\t' \
+    assert_pattern_found \
+        "${vw_pe}" \
+        $'^tiny_pe_pair_1\t' \
         "execute BWA ALN PE BAM contains expected read name"
-    assert_grep_pattern "${view_pe}" $'^tiny_pe_pair_1\t99\tI\t17\t' \
+    assert_pattern_found \
+        "${vw_pe}" \
+        $'^tiny_pe_pair_1\t99\tI\t17\t' \
         "execute BWA ALN PE BAM has proper-pair R1 flag and start"
-    assert_grep_pattern "${view_pe}" $'^tiny_pe_pair_1\t147\tI\t70\t' \
+    assert_pattern_found \
+        "${vw_pe}" \
+        $'^tiny_pe_pair_1\t147\tI\t70\t' \
         "execute BWA ALN PE BAM has proper-pair R2 flag and start"
 fi
 

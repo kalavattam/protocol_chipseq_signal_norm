@@ -19,7 +19,7 @@ source "$(
     cd "$(dirname "${BASH_SOURCE[0]}")/.." > /dev/null 2>&1 && pwd
 )/lib/test_helpers.sh"
 
-rec_section "${TEST_NAME}"
+print_section "${TEST_NAME}"
 
 #  Resolve the project environment locally for dependency-backed Python checks
 require_env_project env_nam || {
@@ -31,7 +31,7 @@ if [[ -n "${CONDA_DEFAULT_ENV:-}" && "${CONDA_DEFAULT_ENV}" != "base" ]]; then
     if ! \
         py="$(find_python)"
     then
-        rec_fail "active project environment has no python/python3 on PATH"
+        record_fail "active project environment has no python/python3 on PATH"
         finish
         exit $?
     fi
@@ -43,22 +43,23 @@ else
     # shellcheck disable=SC2154
     if \
         run_capture \
-            "resolve env python" "${log}" \
+            "resolve env python" \
+            "${log}" \
             conda run -n "${env_nam}" python -c \
                 'import sys; print(sys.executable)'
     then
         IFS= read -r py < "${log}"
     else
-        rec_fail \
+        record_fail \
             "failed to resolve python from '${env_nam}'; see" \
-            "$(rec_relpath "${log}")"
+            "$(print_relpath "${log}")"
         finish
         exit $?
     fi
 
     if [[ -z "${py}" || ! -x "${py}" ]]; then
-        rec_fail \
-            "resolved python is not executable; see $(rec_relpath "${log}")"
+        record_fail \
+            "resolved python is not executable; see $(print_relpath "${log}")"
         finish
         exit $?
     fi
@@ -72,7 +73,7 @@ import sys
 raise SystemExit(0 if sys.version_info >= (3, 10) else 1)
 PY
 then
-    rec_fail \
+    record_fail \
         "$("${py_cmd[@]}" --version 2>&1) is older than Python 3.10"
     finish
     exit $?
@@ -80,7 +81,7 @@ fi
 
 #  Run lightweight Python syntax checks without writing pycache in-place
 while IFS= read -r file; do
-    rel="$(rec_relpath "${file}")"
+    rel="$(print_relpath "${file}")"
     log="${TEST_DIR_LOG}/python_compile/${rel//\//__}.log"
 
     if \
@@ -88,12 +89,13 @@ while IFS= read -r file; do
         PYTHONPYCACHEPREFIX="${TEST_DIR_OUT}/pycache" \
         PYTHONPATH="${ROOT_REPO}" \
         run_capture \
-            "python compile ${rel}" "${log}" \
+            "python compile ${rel}" \
+            "${log}" \
             "${py_cmd[@]}" -m py_compile "${file}"
     then
-        rec_pass "python syntax ${rel}"
+        record_pass "python syntax ${rel}"
     else
-        rec_fail "python syntax ${rel}; see $(rec_relpath "${log}")"
+        record_fail "python syntax ${rel}; see $(print_relpath "${log}")"
     fi
 done < <(
     find "${ROOT_REPO}/scripts" \
@@ -112,7 +114,7 @@ hlp_scr=(
     "scripts/compute_signal.py"
     "scripts/compute_signal_ratio.py"
     "scripts/merge_bins_bdg.py"
-    "scripts/parse_metadata_siq_chip.py"
+    "scripts/parse_meta_siq_chip.py"
     "scripts/relativize_scaling_factors.py"
     "scripts/sum_bdg.py"
 )
@@ -120,7 +122,7 @@ hlp_scr=(
 for rel in "${hlp_scr[@]}"; do
     file="${ROOT_REPO}/${rel}"
     [[ -f "${file}" ]] || {
-        rec_skip "python --help ${rel}: file not present"
+        record_skip "python --help ${rel}: file not present"
         continue
     }
 
@@ -130,12 +132,14 @@ for rel in "${hlp_scr[@]}"; do
         PYTHONPYCACHEPREFIX="${TEST_DIR_OUT}/pycache" \
         PYTHONPATH="${ROOT_REPO}" \
         run_capture \
-            "python help ${rel}" "${log}" \
+            "python help ${rel}" \
+            "${log}" \
             "${py_cmd[@]}" "${file}" --help
     then
-        rec_pass "python --help ${rel}"
+        record_pass "python --help ${rel}"
     else
-        rec_warn "python --help ${rel} failed; see $(rec_relpath "${log}")"
+        record_warn \
+            "python --help ${rel} failed; see $(print_relpath "${log}")"
     fi
 done
 

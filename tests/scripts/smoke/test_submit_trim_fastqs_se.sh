@@ -19,12 +19,13 @@ source "$(
     cd "$(dirname "${BASH_SOURCE[0]}")/.." > /dev/null 2>&1 && pwd
 )/lib/test_helpers.sh"
 
-rec_section "${TEST_NAME}"
+print_section "${TEST_NAME}"
 
-if ! is_atria_enabled; then
-    rec_skip \
-        "Atria trim-fastqs SE check disabled;" \
-        "set RUN_ATRIA=1 to enable"
+if ! \
+    is_atria_enabled
+then
+    record_skip \
+        "Atria trim-fastqs SE check disabled; set RUN_ATRIA=1 to enable"
     finish
     exit $?
 fi
@@ -32,14 +33,14 @@ fi
 
 #  Define fixture and output paths for a minimal submit-layer Atria wet run
 dir_fx="${ROOT_REPO}/tests/trim_fastqs/fixtures"
-infile_se="${dir_fx}/fastq/tiny_se.fastq.gz"
+in_se="${dir_fx}/fastq/tiny_se.fastq.gz"
 
 tmp="${TEST_DIR_TMP}/submit_trim_fastqs_se"
 dir_out="${tmp}/out"
 dir_err="${tmp}/logs"
 dir_log="${TEST_DIR_LOG}/trim_fastqs"
-view_fastq="${dir_out}/tiny_se.trimmed.fastq"
-count_reads="${dir_out}/tiny_se.read_count.txt"
+vw_fq="${dir_out}/tiny_se.trimmed.fastq"
+cnt="${dir_out}/tiny_se.read_count.txt"
 
 rm -rf "${tmp}"
 mkdir -p "${dir_out}" "${dir_err}" "${dir_log}"
@@ -49,14 +50,15 @@ require_env_project env_nam || {
     exit $?
 }
 
-require_files_exist "${infile_se}" || {
+require_files_nonempty \
+    "${in_se}" || {
     finish
     exit $?
 }
 
 # shellcheck disable=SC2154
 if ! \
-    require_atria_env \
+    require_env_atria \
         "${env_nam}" \
         "${dir_log}/submit_trim_fastqs_se_env.log"
 then
@@ -70,56 +72,70 @@ log="${dir_log}/submit_trim_fastqs_se.log"
 
 if \
     run_capture \
-        "submit trim-fastqs SE Atria wet run" "${log}" \
+        "submit trim-fastqs SE Atria wet run" \
+        "${log}" \
         "${TEST_BASH}" "${ROOT_REPO}/scripts/submit_trim_fastqs.sh" \
             --env_nam "${env_nam}" \
             --dir_scr "${ROOT_REPO}/scripts" \
             --threads 1 \
-            --csv_infile "${infile_se}" \
+            --csv_infile "${in_se}" \
             --dir_out "${dir_out}" \
             --sfx_se ".fastq.gz" \
             --sfx_pe "_R1.fastq.gz" \
             --err_out "${dir_err}" \
             --nam_job "test_submit_trim_se"
 then
-    rec_pass "submit_trim_fastqs.sh SE Atria wet run exits 0"
+    record_pass "submit_trim_fastqs.sh SE Atria wet run exits 0"
 else
-    rec_fail \
+    record_fail \
         "submit_trim_fastqs.sh SE Atria wet run failed; see" \
-        "$(rec_relpath "${log}")"
+        "$(print_relpath "${log}")"
 fi
 
+# shellcheck disable=SC2034
 mapfile -t trimmed_outputs < <(
     find "${dir_out}" -maxdepth 1 -type f \
         \( -name 'tiny_se*.fastq.gz' -o -name 'tiny_se*.fq.gz' \) \
         | sort
 )
 
-assert_one_path_found \
-    trimmed_outputs "compressed SE trimmed FASTQ output" "${dir_out}" outfile
+assert_path_found \
+    trimmed_outputs \
+    "compressed SE trimmed FASTQ output" \
+    "${dir_out}" \
+    outfile
 
-if [[ -n "${outfile}" ]]; then
-    assert_file_nonempty "${outfile}" "submit trim-fastqs SE FASTQ output"
+if [[ -n "${fil_out}" ]]; then
+    assert_file_nonempty \
+        "${fil_out}" \
+        "submit trim-fastqs SE FASTQ output"
 
-    if gzip -t "${outfile}"; then
-        rec_pass "submit trim-fastqs SE FASTQ output passes gzip integrity"
+    if \
+        gzip -t "${fil_out}"
+    then
+        record_pass "submit trim-fastqs SE FASTQ output passes gzip integrity"
     else
-        rec_fail "submit trim-fastqs SE FASTQ output fails gzip integrity"
+        record_fail "submit trim-fastqs SE FASTQ output fails gzip integrity"
     fi
 
-    if gzip -cd "${outfile}" > "${view_fastq}"; then
-        rec_pass "submit trim-fastqs SE FASTQ output can be decompressed"
+    if \
+        gzip -cd "${fil_out}" > "${vw_fq}"
+    then
+        record_pass "submit trim-fastqs SE FASTQ output can be decompressed"
     else
-        rec_fail "submit trim-fastqs SE FASTQ output cannot be decompressed"
+        record_fail "submit trim-fastqs SE FASTQ output cannot be decompressed"
     fi
 
-    if [[ -s "${view_fastq}" ]]; then
-        assert_grep_pattern "${view_fastq}" '^@tiny_trim_se_read_1$' \
+    if [[ -s "${vw_fq}" ]]; then
+        assert_pattern_found \
+            "${vw_fq}" \
+            '^@tiny_trim_se_read_1$' \
             "submit trim-fastqs SE FASTQ contains expected read name"
 
-        awk 'NR % 4 == 1 { n++ } END { print n + 0 }' \
-            "${view_fastq}" > "${count_reads}"
-        assert_grep_pattern "${count_reads}" '^1$' \
+        awk 'NR % 4 == 1 { n++ } END { print n + 0 }' "${vw_fq}" > "${cnt}"
+        assert_pattern_found \
+            "${cnt}" \
+            '^1$' \
             "submit trim-fastqs SE FASTQ contains one read"
     fi
 fi

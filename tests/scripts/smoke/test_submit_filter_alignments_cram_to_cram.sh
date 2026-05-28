@@ -19,12 +19,23 @@ source "$(
     cd "$(dirname "${BASH_SOURCE[0]}")/.." > /dev/null 2>&1 && pwd
 )/lib/test_helpers.sh"
 
-rec_section "${TEST_NAME}"
+print_section "${TEST_NAME}"
 
 dir_fx="${ROOT_REPO}/tests/filter_alignments/fixtures"
 in_sam="${dir_fx}/sam/filter_sc_sp.sam"
 ref_fa="${dir_fx}/reference/filter_sc_sp.fa"
 ref_fai="${ref_fa}.fai"
+
+# shellcheck disable=SC2034
+{
+    arr_rgn_i=( I )
+    arr_rgn_mito=( Mito )
+    arr_rgn_sp_i=( SP_I )
+    arr_rgn_sp_ii_tg=( SP_II_TG )
+    arr_rgn_sp_mtr=( SP_MTR )
+    arr_rgn_sp_mito=( SP_Mito )
+    arr_rgn_chrun=( chrUn )
+}
 
 tmp="${TEST_DIR_TMP}/submit_filter_alignments_cram_to_cram"
 dir_in="${tmp}/input"
@@ -41,7 +52,28 @@ require_env_project env_nam || {
     exit $?
 }
 
-require_files_exist "${in_sam}" "${ref_fa}" "${ref_fai}" || {
+# shellcheck disable=SC2034
+{
+    arr_cmd_filter=(
+        "${TEST_BASH}" "${ROOT_REPO}/scripts/submit_filter_alignments.sh"
+            --env_nam "${env_nam}"
+            --dir_scr "${ROOT_REPO}/scripts"
+            --threads 1
+            --csv_infile "${in_cram}"
+            --dir_out "${dir_out}"
+            --out_ext cram
+            --ref_fa "${ref_fa}"
+            --err_out "${dir_err}"
+    )
+    nam_job_pfx="test_submit_filter_alignments_cram_to_cram"
+    arr_arg_nil=()
+    arr_arg_sp=( --tg --mtr --mito )
+}
+
+require_files_nonempty \
+    "${in_sam}" \
+    "${ref_fa}" \
+    "${ref_fai}" || {
     finish
     exit $?
 }
@@ -50,8 +82,11 @@ require_files_exist "${in_sam}" "${ref_fa}" "${ref_fai}" || {
 #  Build deterministic CRAM input from committed SAM and reference fixtures
 log="${dir_log}/submit_filter_alignments_prepare_cram_to_cram.log"
 if ! \
-    prepare_filter_alignments_cram_fixture \
-        "${in_sam}" "${ref_fa}" "${in_cram}" "${log}" \
+    build_filter_alignments_cram_fixture \
+        "${in_sam}" \
+        "${ref_fa}" \
+        "${in_cram}" \
+        "${log}" \
         "submit filter-alignments CRAM fixture for CRAM output"
 then
     finish
@@ -59,49 +94,31 @@ then
 fi
 
 
-function run_case_filter() {
-    local retain="${1:-}"
-    local nam_case="${2:-}"
-    local log_lcl="${3:-}"
-
-    shift 3
-
-    # shellcheck disable=SC2154
-    if \
-        run_capture \
-            "submit filter-alignments CRAM to CRAM ${nam_case}" "${log_lcl}" \
-            "${TEST_BASH}" "${ROOT_REPO}/scripts/submit_filter_alignments.sh" \
-                --env_nam "${env_nam}" \
-                --dir_scr "${ROOT_REPO}/scripts" \
-                --threads 1 \
-                --csv_infile "${in_cram}" \
-                --dir_out "${dir_out}" \
-                --out_ext cram \
-                --retain "${retain}" \
-                --ref_fa "${ref_fa}" \
-                --err_out "${dir_err}" \
-                --nam_job "test_submit_filter_alignments_cram_to_cram_${nam_case}" \
-                "$@"
-    then
-        rec_pass "submit_filter_alignments.sh CRAM to CRAM retain=${retain} ${nam_case} exits 0"
-    else
-        rec_fail \
-            "submit_filter_alignments.sh CRAM to CRAM retain=${retain} ${nam_case} failed; see" \
-            "$(rec_relpath "${log_lcl}")"
-    fi
-}
-
-
 #  S. cerevisiae filtering should retain only canonical SC chromosomes
-outfile="${dir_out}/filter_sc_sp.sc.cram"
+fil_out="${dir_out}/filter_sc_sp.sc.cram"
 log="${dir_log}/submit_filter_alignments_cram_to_cram_sc.log"
 
-run_case_filter "sc" "sc" "${log}"
+run_case_filter \
+    sc \
+    sc \
+    "${log}" \
+    arr_cmd_filter \
+    "${nam_job_pfx}" \
+    arr_arg_nil \
+    "submit_filter_alignments.sh CRAM to CRAM retain=sc sc"
 
-assert_file_nonempty "${outfile}" "submit CRAM-to-CRAM retain=sc output"
-assert_cram_index "${outfile}" "submit CRAM-to-CRAM retain=sc CRAI index"
+assert_file_nonempty \
+    "${fil_out}" \
+    "submit CRAM-to-CRAM retain=sc output"
+assert_cram_index \
+    "${fil_out}" \
+    "submit CRAM-to-CRAM retain=sc CRAI index"
 assert_filter_alignments_pg_header \
-    "${outfile}" "${ref_fa}" filter_alignment_sc sc cram \
+    "${fil_out}" \
+    "${ref_fa}" \
+    filter_alignment_sc \
+    sc \
+    cram \
     "${dir_out}/filter_sc_sp.sc.header.txt" \
     "submit CRAM-to-CRAM retain=sc output"
 assert_file_exists \
@@ -111,40 +128,67 @@ assert_file_exists \
     "${dir_err}/test_submit_filter_alignments_cram_to_cram_sc.filter_sc_sp.stderr.txt" \
     "submit CRAM-to-CRAM retain=sc stderr log"
 
-if [[ -s "${outfile}" ]]; then
+if [[ -s "${fil_out}" ]]; then
     if \
         run_capture \
             "quickcheck submit filter-alignments CRAM to CRAM sc" \
             "${dir_log}/submit_filter_alignments_cram_to_cram_sc_quickcheck.log" \
-            run_samtools quickcheck "${outfile}"
+            run_samtools quickcheck "${fil_out}"
     then
-        rec_pass "submit CRAM-to-CRAM retain=sc passes samtools quickcheck"
+        record_pass "submit CRAM-to-CRAM retain=sc passes samtools quickcheck"
     else
-        rec_fail "submit CRAM-to-CRAM retain=sc fails samtools quickcheck"
+        record_fail "submit CRAM-to-CRAM retain=sc fails samtools quickcheck"
     fi
 
-    assert_cram_count "${outfile}" "${ref_fa}" I 1 \
-        "submit CRAM-to-CRAM retain=sc has one read on chromosome I" \
-        "${dir_out}/filter_sc_sp.sc.I.count.txt"
-    assert_cram_count "${outfile}" "${ref_fa}" Mito 0 \
-        "submit CRAM-to-CRAM retain=sc omits Mito without --mito" \
-        "${dir_out}/filter_sc_sp.sc.Mito.count.txt"
-    assert_cram_count "${outfile}" "${ref_fa}" SP_I 0 \
-        "submit CRAM-to-CRAM retain=sc omits S. pombe chromosomes" \
-        "${dir_out}/filter_sc_sp.sc.SP_I.count.txt"
+    assert_cram_count \
+        "${fil_out}" \
+        "${ref_fa}" \
+        1 \
+        "${dir_out}/filter_sc_sp.sc.I.count.txt" \
+        arr_rgn_i \
+        "submit CRAM-to-CRAM retain=sc has one read on chromosome I"
+    assert_cram_count \
+        "${fil_out}" \
+        "${ref_fa}" \
+        0 \
+        "${dir_out}/filter_sc_sp.sc.Mito.count.txt" \
+        arr_rgn_mito \
+        "submit CRAM-to-CRAM retain=sc omits Mito without --mito"
+    assert_cram_count \
+        "${fil_out}" \
+        "${ref_fa}" \
+        0 \
+        "${dir_out}/filter_sc_sp.sc.SP_I.count.txt" \
+        arr_rgn_sp_i \
+        "submit CRAM-to-CRAM retain=sc omits S. pombe chromosomes"
 fi
 
 
 #  S. pombe filtering should honor optional TG, MTR, and mito contigs
-outfile="${dir_out}/filter_sc_sp.sp.cram"
+fil_out="${dir_out}/filter_sc_sp.sp.cram"
 log="${dir_log}/submit_filter_alignments_cram_to_cram_sp.log"
 
-run_case_filter "sp" "sp" "${log}" --tg --mtr --mito
+run_case_filter \
+    sp \
+    sp \
+    "${log}" \
+    arr_cmd_filter \
+    "${nam_job_pfx}" \
+    arr_arg_sp \
+    "submit_filter_alignments.sh CRAM to CRAM retain=sp sp"
 
-assert_file_nonempty "${outfile}" "submit CRAM-to-CRAM retain=sp output"
-assert_cram_index "${outfile}" "submit CRAM-to-CRAM retain=sp CRAI index"
+assert_file_nonempty \
+    "${fil_out}" \
+    "submit CRAM-to-CRAM retain=sp output"
+assert_cram_index \
+    "${fil_out}" \
+    "submit CRAM-to-CRAM retain=sp CRAI index"
 assert_filter_alignments_pg_header \
-    "${outfile}" "${ref_fa}" filter_alignment_sp sp cram \
+    "${fil_out}" \
+    "${ref_fa}" \
+    filter_alignment_sp \
+    sp \
+    cram \
     "${dir_out}/filter_sc_sp.sp.header.txt" \
     "submit CRAM-to-CRAM retain=sp output"
 assert_file_exists \
@@ -154,36 +198,60 @@ assert_file_exists \
     "${dir_err}/test_submit_filter_alignments_cram_to_cram_sp.filter_sc_sp.stderr.txt" \
     "submit CRAM-to-CRAM retain=sp stderr log"
 
-if [[ -s "${outfile}" ]]; then
+if [[ -s "${fil_out}" ]]; then
     if \
         run_capture \
             "quickcheck submit filter-alignments CRAM to CRAM sp" \
             "${dir_log}/submit_filter_alignments_cram_to_cram_sp_quickcheck.log" \
-            run_samtools quickcheck "${outfile}"
+            run_samtools quickcheck "${fil_out}"
     then
-        rec_pass "submit CRAM-to-CRAM retain=sp passes samtools quickcheck"
+        record_pass "submit CRAM-to-CRAM retain=sp passes samtools quickcheck"
     else
-        rec_fail "submit CRAM-to-CRAM retain=sp fails samtools quickcheck"
+        record_fail "submit CRAM-to-CRAM retain=sp fails samtools quickcheck"
     fi
 
-    assert_cram_count "${outfile}" "${ref_fa}" SP_I 1 \
-        "submit CRAM-to-CRAM retain=sp keeps SP_I" \
-        "${dir_out}/filter_sc_sp.sp.SP_I.count.txt"
-    assert_cram_count "${outfile}" "${ref_fa}" SP_II_TG 1 \
-        "submit CRAM-to-CRAM retain=sp keeps SP_II_TG" \
-        "${dir_out}/filter_sc_sp.sp.SP_II_TG.count.txt"
-    assert_cram_count "${outfile}" "${ref_fa}" SP_MTR 1 \
-        "submit CRAM-to-CRAM retain=sp keeps SP_MTR" \
-        "${dir_out}/filter_sc_sp.sp.SP_MTR.count.txt"
-    assert_cram_count "${outfile}" "${ref_fa}" SP_Mito 1 \
-        "submit CRAM-to-CRAM retain=sp keeps SP_Mito" \
-        "${dir_out}/filter_sc_sp.sp.SP_Mito.count.txt"
-    assert_cram_count "${outfile}" "${ref_fa}" I 0 \
-        "submit CRAM-to-CRAM retain=sp omits S. cerevisiae chromosomes" \
-        "${dir_out}/filter_sc_sp.sp.I.count.txt"
-    assert_cram_count "${outfile}" "${ref_fa}" chrUn 0 \
-        "submit CRAM-to-CRAM retain=sp omits unrelated contigs" \
-        "${dir_out}/filter_sc_sp.sp.chrUn.count.txt"
+    assert_cram_count \
+        "${fil_out}" \
+        "${ref_fa}" \
+        1 \
+        "${dir_out}/filter_sc_sp.sp.SP_I.count.txt" \
+        arr_rgn_sp_i \
+        "submit CRAM-to-CRAM retain=sp keeps SP_I"
+    assert_cram_count \
+        "${fil_out}" \
+        "${ref_fa}" \
+        1 \
+        "${dir_out}/filter_sc_sp.sp.SP_II_TG.count.txt" \
+        arr_rgn_sp_ii_tg \
+        "submit CRAM-to-CRAM retain=sp keeps SP_II_TG"
+    assert_cram_count \
+        "${fil_out}" \
+        "${ref_fa}" \
+        1 \
+        "${dir_out}/filter_sc_sp.sp.SP_MTR.count.txt" \
+        arr_rgn_sp_mtr \
+        "submit CRAM-to-CRAM retain=sp keeps SP_MTR"
+    assert_cram_count \
+        "${fil_out}" \
+        "${ref_fa}" \
+        1 \
+        "${dir_out}/filter_sc_sp.sp.SP_Mito.count.txt" \
+        arr_rgn_sp_mito \
+        "submit CRAM-to-CRAM retain=sp keeps SP_Mito"
+    assert_cram_count \
+        "${fil_out}" \
+        "${ref_fa}" \
+        0 \
+        "${dir_out}/filter_sc_sp.sp.I.count.txt" \
+        arr_rgn_i \
+        "submit CRAM-to-CRAM retain=sp omits S. cerevisiae chromosomes"
+    assert_cram_count \
+        "${fil_out}" \
+        "${ref_fa}" \
+        0 \
+        "${dir_out}/filter_sc_sp.sp.chrUn.count.txt" \
+        arr_rgn_chrun \
+        "submit CRAM-to-CRAM retain=sp omits unrelated contigs"
 fi
 
 finish

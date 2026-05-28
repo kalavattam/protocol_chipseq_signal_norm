@@ -111,7 +111,9 @@ fi
 
 #  Require alignment tools used to generate and validate fixtures
 for cmd in bowtie2 bowtie2-build bowtie2-inspect bwa bwa-mem2 gzip samtools; do
-    if ! command -v "${cmd}" > /dev/null 2>&1; then
+    if ! \
+        command -v "${cmd}" > /dev/null 2>&1
+    then
         echo "error($(basename "${BASH_SOURCE[0]}")):" \
             "'${cmd}' must be available in '${env_req}' to generate" \
             "align-fastqs fixtures." >&2

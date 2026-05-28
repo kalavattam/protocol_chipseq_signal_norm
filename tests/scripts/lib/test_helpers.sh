@@ -29,7 +29,9 @@ fi
 #  Set paths used by smoke-test scripts =======================================
 # shellcheck disable=SC2034
 {
-    TEST_DIR_LIB="$(cd "$(dirname "${BASH_SOURCE[0]}")" > /dev/null 2>&1 && pwd)"
+    TEST_DIR_LIB="$(
+        cd "$(dirname "${BASH_SOURCE[0]}")" > /dev/null 2>&1 && pwd
+    )"
     TEST_DIR_SCR="$(cd "${TEST_DIR_LIB}/.." > /dev/null 2>&1 && pwd)"
     TEST_DIR="$(cd "${TEST_DIR_SCR}/.." > /dev/null 2>&1 && pwd)"
     ROOT_REPO="$(cd "${TEST_DIR}/.." > /dev/null 2>&1 && pwd)"
@@ -51,7 +53,7 @@ TEST_NAME="${TEST_NAME:-$(basename "${0}")}"
 
 
 #  Print a repository-relative path when possible
-function rec_relpath() {
+function print_relpath() {
     local path="${1:-}"
 
     if [[ "${path}" == "${ROOT_REPO}"/* ]]; then
@@ -63,34 +65,34 @@ function rec_relpath() {
 
 
 #  Print a smoke-test section heading
-function rec_section() {
+function print_section() {
     printf '\n-- %s --\n' "${1:-${TEST_NAME}}"
 }
 
 
 #  Record a passing assertion
-function rec_pass() {
+function record_pass() {
     TEST_PASS=$(( TEST_PASS + 1 ))
     printf 'PASS: %s\n' "$*"
 }
 
 
 #  Record a failing assertion
-function rec_fail() {
+function record_fail() {
     TEST_FAIL=$(( TEST_FAIL + 1 ))
     printf 'FAIL: %s\n' "$*" >&2
 }
 
 
 #  Record a non-fatal warning
-function rec_warn() {
+function record_warn() {
     TEST_WARN=$(( TEST_WARN + 1 ))
     printf 'WARN: %s\n' "$*" >&2
 }
 
 
 #  Record a skipped check
-function rec_skip() {
+function record_skip() {
     TEST_SKIP=$(( TEST_SKIP + 1 ))
     printf 'SKIP: %s\n' "$*"
 }
@@ -114,176 +116,147 @@ function is_atria_enabled() {
 }
 
 
+#TODO: is_slurm_enabled and is_slurm_wait
+# function is_slurm_enabled() {
+#     [[ "${RUN_SLURM:-0}" == "1" ]]
+# }
+#
+#
+# function is_slurm_wait() {
+#     [[ "${SLURM_WAIT:-0}" == "1" || "${WAIT_SLURM:-0}" == "1" ]]
+# }
+
+
+#  Log command availability in the current shell and project environment
+function check_env_cmds() {
+    local env_nam="${1:-env_protocol}"
+    shift || true
+
+    local -a arr_cmd=( "$@" )
+    local cmd=""
+
+    echo "Current shell:"
+    echo "SHELL=${SHELL:-UNSET}"
+    echo "BASH=${BASH:-UNSET}"
+    echo "PATH=${PATH:-UNSET}"
+    echo "CONDA_DEFAULT_ENV=${CONDA_DEFAULT_ENV:-UNSET}"
+    echo "CONDA_PREFIX=${CONDA_PREFIX:-UNSET}"
+    echo "MAMBA_EXE=${MAMBA_EXE:-UNSET}"
+    echo
+
+    echo "Current shell command checks:"
+    for cmd in "${arr_cmd[@]}"; do
+        printf '%s: ' "${cmd}"
+        command -v "${cmd}" || true
+    done
+    echo
+
+    if [[ "${CONDA_DEFAULT_ENV:-}" == "${env_nam}" ]]; then
+        echo "Project-env command checks:"
+        for cmd in "${arr_cmd[@]}"; do
+            printf '%s: ' "${cmd}"
+            command -v "${cmd}"
+        done
+    elif \
+        check_cmd_exists conda
+    then
+        echo "Project-env command checks via Conda activation:"
+        ENV_NAM="${env_nam}" \
+        CMD_LCL="${arr_cmd[*]}" \
+        bash -lc '
+            eval "$(conda shell.bash hook)"
+            conda activate "${ENV_NAM}"
+            echo "CONDA_DEFAULT_ENV=${CONDA_DEFAULT_ENV:-UNSET}"
+            echo "CONDA_PREFIX=${CONDA_PREFIX:-UNSET}"
+            echo "PATH=${PATH:-UNSET}"
+            echo
+
+            read -r -a arr_cmd <<< "${CMD_LCL}"
+            for cmd in "${arr_cmd[@]}"; do
+                printf "%s: " "${cmd}"
+                command -v "${cmd}"
+            done
+        '
+    else
+        echo "conda is unavailable; cannot inspect '${env_nam}'."
+        return 1
+    fi
+}
+
+
 #  Require Atria and compression helpers in the requested project environment
-function require_atria_env() {
+function require_env_atria() {
     local env_nam="${1:-env_protocol}"
     local log_lcl="${2:-${TEST_DIR_LOG}/atria_project_env.log}"
     local rc=0
 
     mkdir -p "$(dirname "${log_lcl}")"
 
-    {
-        echo "Current shell:"
-        echo "SHELL=${SHELL:-UNSET}"
-        echo "BASH=${BASH:-UNSET}"
-        echo "PATH=${PATH:-UNSET}"
-        echo "CONDA_DEFAULT_ENV=${CONDA_DEFAULT_ENV:-UNSET}"
-        echo "CONDA_PREFIX=${CONDA_PREFIX:-UNSET}"
-        echo
-
-        echo "Current shell command checks:"
-        for cmd in atria pigz pbzip2 gzip; do
-            printf '%s: ' "${cmd}"
-            command -v "${cmd}" || true
-        done
-        echo
-
-        if [[ "${CONDA_DEFAULT_ENV:-}" == "${env_nam}" ]]; then
-            echo "Project-env command checks:"
-            for cmd in atria pigz pbzip2 gzip; do
-                command -v "${cmd}"
-            done
-        elif check_cmd_exists conda; then
-            echo "Project-env command checks via Conda activation:"
-            ENV_NAM="${env_nam}" bash -lc '
-                eval "$(conda shell.bash hook)"
-                conda activate "${ENV_NAM}"
-                echo "CONDA_DEFAULT_ENV=${CONDA_DEFAULT_ENV:-UNSET}"
-                echo "CONDA_PREFIX=${CONDA_PREFIX:-UNSET}"
-                echo "PATH=${PATH:-UNSET}"
-                echo
-                for cmd in atria pigz pbzip2 gzip; do
-                    command -v "${cmd}"
-                done
-            '
-        else
-            echo "conda is unavailable; cannot inspect '${env_nam}'."
-            rc=1
-        fi
-    } > "${log_lcl}" 2>&1 || rc=1
+    check_env_cmds \
+        "${env_nam}" \
+        atria pigz pbzip2 gzip \
+        > "${log_lcl}" 2>&1 || rc=1
 
     if (( rc == 0 )); then
-        rec_pass "Atria trim dependencies are available in project environment"
+        record_pass \
+            "Atria trim dependencies are available in project environment"
         return 0
     fi
 
-    rec_fail \
+    record_fail \
         "Atria trim dependencies unavailable in project environment; see" \
-        "$(rec_relpath "${log_lcl}")"
+        "$(print_relpath "${log_lcl}")"
     return 1
 }
 
 
 #  Require GNU Parallel in the requested project environment
-function require_parallel_env() {
+function require_env_parallel() {
     local env_nam="${1:-env_protocol}"
     local log_lcl="${2:-${TEST_DIR_LOG}/parallel_project_env.log}"
     local rc=0
 
     mkdir -p "$(dirname "${log_lcl}")"
 
-    {
-        echo "Current shell:"
-        echo "SHELL=${SHELL:-UNSET}"
-        echo "BASH=${BASH:-UNSET}"
-        echo "PATH=${PATH:-UNSET}"
-        echo "CONDA_DEFAULT_ENV=${CONDA_DEFAULT_ENV:-UNSET}"
-        echo "CONDA_PREFIX=${CONDA_PREFIX:-UNSET}"
-        echo "MAMBA_EXE=${MAMBA_EXE:-UNSET}"
-        echo
-
-        echo "Current shell command -v parallel:"
-        command -v parallel || true
-        echo
-
-        if [[ "${CONDA_DEFAULT_ENV:-}" == "${env_nam}" ]]; then
-            echo "Project-env command -v parallel:"
-            command -v parallel
-        elif check_cmd_exists conda; then
-            echo "Project-env command -v parallel via Conda activation:"
-            ENV_NAM="${env_nam}" bash -lc '
-                eval "$(conda shell.bash hook)"
-                conda activate "${ENV_NAM}"
-                echo "CONDA_DEFAULT_ENV=${CONDA_DEFAULT_ENV:-UNSET}"
-                echo "CONDA_PREFIX=${CONDA_PREFIX:-UNSET}"
-                echo "PATH=${PATH:-UNSET}"
-                echo
-                command -v parallel
-            '
-        else
-            echo "conda is unavailable; cannot inspect '${env_nam}'."
-            rc=1
-        fi
-    } > "${log_lcl}" 2>&1 || rc=1
+    check_env_cmds \
+        "${env_nam}" \
+        parallel \
+        > "${log_lcl}" 2>&1 || rc=1
 
     if (( rc == 0 )); then
-        rec_pass "GNU Parallel is available in project environment"
+        record_pass "GNU Parallel is available in project environment"
         return 0
     fi
 
-    rec_fail \
+    record_fail \
         "GNU Parallel unavailable in project environment; see" \
-        "$(rec_relpath "${log_lcl}")"
+        "$(print_relpath "${log_lcl}")"
     return 1
 }
 
 
 #  Require wget and gzip in the requested project environment
-function require_download_env() {
+function require_env_download() {
     local env_nam="${1:-env_protocol}"
     local log_lcl="${2:-${TEST_DIR_LOG}/download_fastqs_project_env.log}"
     local rc=0
 
     mkdir -p "$(dirname "${log_lcl}")"
 
-    {
-        echo "Current shell:"
-        echo "SHELL=${SHELL:-UNSET}"
-        echo "BASH=${BASH:-UNSET}"
-        echo "PATH=${PATH:-UNSET}"
-        echo "CONDA_DEFAULT_ENV=${CONDA_DEFAULT_ENV:-UNSET}"
-        echo "CONDA_PREFIX=${CONDA_PREFIX:-UNSET}"
-        echo
-
-        echo "Current shell command checks:"
-        for cmd in wget gzip; do
-            printf '%s: ' "${cmd}"
-            command -v "${cmd}" || true
-        done
-        echo
-
-        if [[ "${CONDA_DEFAULT_ENV:-}" == "${env_nam}" ]]; then
-            echo "Project-env command checks:"
-            for cmd in wget gzip; do
-                command -v "${cmd}"
-            done
-        elif check_cmd_exists conda; then
-            echo "Project-env command checks via Conda activation:"
-            ENV_NAM="${env_nam}" bash -lc '
-                eval "$(conda shell.bash hook)"
-                conda activate "${ENV_NAM}"
-                echo "CONDA_DEFAULT_ENV=${CONDA_DEFAULT_ENV:-UNSET}"
-                echo "CONDA_PREFIX=${CONDA_PREFIX:-UNSET}"
-                echo "PATH=${PATH:-UNSET}"
-                echo
-                for cmd in wget gzip; do
-                    command -v "${cmd}"
-                done
-            '
-        else
-            echo "conda is unavailable; cannot inspect '${env_nam}'."
-            rc=1
-        fi
-    } > "${log_lcl}" 2>&1 || rc=1
+    check_env_cmds \
+        "${env_nam}" \
+        wget gzip \
+        > "${log_lcl}" 2>&1 || rc=1
 
     if (( rc == 0 )); then
-        rec_pass "download dependencies are available in project environment"
+        record_pass \
+            "download dependencies are available in project environment"
         return 0
     fi
 
-    rec_fail \
+    record_fail \
         "download dependencies unavailable in project environment; see" \
-        "$(rec_relpath "${log_lcl}")"
+        "$(print_relpath "${log_lcl}")"
     return 1
 }
 
@@ -291,9 +264,11 @@ function require_download_env() {
 #  Resolve the active project environment or require a named fallback
 function require_env_project() {
     local env_ref="${1:-env_nam}"
-    local env_fallback="${2:-env_protocol}"
+    local env_fb="${2:-env_protocol}"
 
-    if [[ -n "${CONDA_DEFAULT_ENV:-}" && "${CONDA_DEFAULT_ENV}" != "base" ]]; then
+    if [[
+        -n "${CONDA_DEFAULT_ENV:-}" && "${CONDA_DEFAULT_ENV}" != "base"
+    ]]; then
         printf -v "${env_ref}" '%s' "${CONDA_DEFAULT_ENV}"
         return 0
     fi
@@ -301,34 +276,34 @@ function require_env_project() {
     if ! \
         check_cmd_exists conda
     then
-        rec_fail \
+        record_fail \
             "setup requires active project env or conda to activate" \
-            "'${env_fallback}'"
+            "'${env_fb}'"
         return 1
     fi
 
     if ! \
         conda env list 2> /dev/null \
-            | awk -v env="${env_fallback}" '
+            | awk -v env="${env_fb}" '
                 $1 == env { found = 1 } END { exit !found }
             '
     then
-        rec_fail "setup requires Conda/Mamba environment '${env_fallback}'"
+        record_fail "setup requires Conda/Mamba environment '${env_fb}'"
         return 1
     fi
 
-    printf -v "${env_ref}" '%s' "${env_fallback}"
+    printf -v "${env_ref}" '%s' "${env_fb}"
 }
 
 
 #  Require one or more fixture files to exist and be non-empty
-function require_files_exist() {
+function require_files_nonempty() {
     local file=""
     local rc=0
 
     for file in "$@"; do
         if [[ ! -s "${file}" ]]; then
-            rec_fail "missing fixture $(rec_relpath "${file}")"
+            record_fail "missing fixture $(print_relpath "${file}")"
             rc=1
         fi
     done
@@ -340,35 +315,37 @@ function require_files_exist() {
 #  Assert one predictable output file exists, without requiring non-emptiness
 function assert_file_exists() {
     local file="${1:-}"
-    local label="${2:-file exists}"
+    shift || true
+
+    local lbl="${*:-file exists}"
 
     if [[ -f "${file}" ]]; then
-        rec_pass "${label}"
+        record_pass "${lbl}"
     else
-        rec_fail "${label}; missing $(rec_relpath "${file}")"
+        record_fail "${lbl}; missing $(print_relpath "${file}")"
     fi
 }
 
 
 #  Assert exactly one path was found by a caller-specific search
-function assert_one_path_found() {
+function assert_path_found() {
     local arr_ref="${1:-}"
-    local label="${2:-path}"
-    local dir_search="${3:-}"
+    local lbl="${2:-path}"
+    local dir_srch="${3:-}"
     local out_ref="${4:-}"
-    local path_found=""
+    local pth_fnd=""
 
     local -n arr_lcl="${arr_ref}"
 
     if (( ${#arr_lcl[@]} == 1 )); then
-        path_found="${arr_lcl[0]}"
-        printf -v "${out_ref}" '%s' "${path_found}"
-        rec_pass "one ${label} found"
+        pth_fnd="${arr_lcl[0]}"
+        printf -v "${out_ref}" '%s' "${pth_fnd}"
+        record_pass "one ${lbl} found"
     else
         printf -v "${out_ref}" ''
-        rec_fail \
-            "expected exactly one ${label} in" \
-            "$(rec_relpath "${dir_search}"), found ${#arr_lcl[@]}"
+        record_fail \
+            "expected exactly one ${lbl} in $(print_relpath "${dir_srch}")," \
+            "found ${#arr_lcl[@]}"
     fi
 }
 
@@ -377,7 +354,9 @@ function assert_one_path_found() {
 function run_samtools() {
     local env_lcl="${env_nam:-env_protocol}"
 
-    if check_cmd_exists samtools; then
+    if \
+        check_cmd_exists samtools
+    then
         samtools "$@"
     else
         conda run -n "${env_lcl}" samtools "$@"
@@ -386,59 +365,67 @@ function run_samtools() {
 
 
 #  Build and index a BAM input fixture from a committed SAM fixture
-function prepare_filter_alignments_bam_fixture() {
+function build_filter_alignments_bam_fixture() {
     local in_sam="${1:-}"
     local out_bam="${2:-}"
     local log_lcl="${3:-}"
-    local label="${4:-BAM input fixture}"
+    shift 3 || true
+
+    local lbl="${*:-BAM input fixture}"
 
     if \
         run_capture \
-            "prepare ${label}" "${log_lcl}" \
+            "prepare ${lbl}" "${log_lcl}" \
             run_samtools view -bS -o "${out_bam}" "${in_sam}" \
         && run_capture \
-            "index ${label}" "${log_lcl}.index" \
+            "index ${lbl}" "${log_lcl}.index" \
             run_samtools index "${out_bam}"
     then
-        rec_pass "${label} is prepared"
+        record_pass "${lbl} is prepared"
         return 0
     fi
 
-    rec_fail "failed to prepare ${label}; see $(rec_relpath "${log_lcl}")"
+    record_fail "failed to prepare ${lbl}; see $(print_relpath "${log_lcl}")"
     return 1
 }
 
 
 #  Build and index a CRAM input fixture from committed SAM/reference fixtures
-function prepare_filter_alignments_cram_fixture() {
+function build_filter_alignments_cram_fixture() {
     local in_sam="${1:-}"
     local ref_fa="${2:-}"
     local out_cram="${3:-}"
     local log_lcl="${4:-}"
-    local label="${5:-filter CRAM input fixture}"
+    shift 4 || true
+
+    local lbl="${*:-filter CRAM input fixture}"
 
     if \
         run_capture \
-            "prepare ${label}" "${log_lcl}" \
+            "prepare ${lbl}" "${log_lcl}" \
             run_samtools view -C -T "${ref_fa}" -o "${out_cram}" "${in_sam}" \
         && run_capture \
-            "index ${label}" "${log_lcl}.index" \
+            "index ${lbl}" "${log_lcl}.index" \
             run_samtools index "${out_cram}"
     then
-        rec_pass "${label} is prepared"
+        record_pass "${lbl} is prepared"
         return 0
     fi
 
-    rec_fail "failed to prepare ${label}; see $(rec_relpath "${log_lcl}")"
+    record_fail "failed to prepare ${lbl}; see $(print_relpath "${log_lcl}")"
     return 1
 }
 
 
 #  Find a usable Python command
 function find_python() {
-    if check_cmd_exists python; then
+    if \
+        check_cmd_exists python
+    then
         command -v python
-    elif check_cmd_exists python3; then
+    elif \
+        check_cmd_exists python3
+    then
         command -v python3
     else
         return 1
@@ -447,7 +434,7 @@ function find_python() {
 
 
 #  Find an available loopback TCP port for local HTTP smoke tests
-function find_free_port() {
+function find_port_free() {
     local py="${1:-}"
 
     "${py}" - << PY
@@ -460,13 +447,13 @@ PY
 
 
 #  Wait until a local HTTP server is reachable
-function wait_for_local_http() {
+function wait_http_local() {
     local py="${1:-}"
     local url="${2:-}"
-    local tries="${3:-50}"
+    local try="${3:-50}"
     local i=0
 
-    for (( i = 1; i <= tries; i++ )); do
+    for (( i = 1; i <= try; i++ )); do
         if \
             URL_LCL="${url}" "${py}" - << PY
 import os
@@ -491,7 +478,7 @@ PY
 
 
 #  Stop a local HTTP server by PID
-function cleanup_http_server() {
+function cleanup_server_http() {
     local pid="${1:-}"
 
     if [[ -n "${pid}" ]] && kill -0 "${pid}" > /dev/null 2>&1; then
@@ -514,48 +501,265 @@ PY
 
 #  Run a command and capture stdout/stderr in a log file
 function run_capture() {
-    local name="${1:-command}"
-    local outfile="${2:-}"
+    local nam="${1:-command}"
+    local out="${2:-}"
 
     shift 2
 
-    if [[ -z "${outfile}" ]]; then
-        outfile="${TEST_DIR_LOG}/${name//[^A-Za-z0-9_.-]/_}.log"
+    if [[ -z "${out}" ]]; then
+        out="${TEST_DIR_LOG}/${nam//[^A-Za-z0-9_.-]/_}.log"
     fi
 
-    mkdir -p "$(dirname "${outfile}")"
-    "$@" > "${outfile}" 2>&1
+    mkdir -p "$(dirname "${out}")"
+    "$@" > "${out}" 2>&1
+}
+
+
+#  Run one filter-alignments retain-mode wrapper case
+function run_case_filter() {
+    local retain="${1:-}"
+    local nam_cas="${2:-}"
+    local log_lcl="${3:-}"
+    local arr_cmd_ref="${4:-}"
+    local nam_job_pfx="${5:-}"
+    local arr_arg_ref="${6:-}"
+    shift 6 || true
+
+    local lbl="${*:-filter-alignments retain=${retain} ${nam_cas}}"
+
+    if [[ -z "${arr_cmd_ref}" ]]; then
+        record_fail "${lbl}; missing command array reference"
+        return 1
+    fi
+
+    if [[ -z "${nam_job_pfx}" ]]; then
+        record_fail "${lbl}; missing job-name prefix"
+        return 1
+    fi
+
+    if [[ -z "${arr_arg_ref}" ]]; then
+        record_fail "${lbl}; missing argument array reference"
+        return 1
+    fi
+
+    # shellcheck disable=SC2178
+    local -n arr_cmd="${arr_cmd_ref}"
+    local -n arr_arg="${arr_arg_ref}"
+
+    if (( ${#arr_cmd[@]} == 0 )); then
+        record_fail "${lbl}; command array is empty"
+        return 1
+    fi
+
+    if \
+        run_capture \
+            "${lbl}" "${log_lcl}" \
+            "${arr_cmd[@]}" \
+                --retain "${retain}" \
+                --nam_job "${nam_job_pfx}_${nam_cas}" \
+                "${arr_arg[@]}"
+    then
+        record_pass "${lbl} exits 0"
+    else
+        record_fail "${lbl} failed; see $(print_relpath "${log_lcl}")"
+    fi
+}
+
+
+#  Run one compute-signal wrapper case
+function run_case_compute_signal() {
+    local wrap="${1:-}"
+    local fmt_in="${2:-}"
+    local nam_cas="${3:-}"
+    local mode="${4:-}"
+    local in_lcl="${5:-}"
+    local out_spc="${6:-}"
+    local log_lcl="${7:-}"
+    local dir_out_lcl="${8:-}"
+    local dir_err_lcl="${9:-}"
+    local ref_fa_lcl="${10:-}"
+
+    shift 10 || true
+
+    local fmt_up="${fmt_in^^}"
+    local script="${ROOT_REPO}/scripts/${wrap}_compute_signal.sh"
+    local nam_job=""
+    local -a arr_cmd=()
+
+    case "${wrap}" in
+        submit)
+            nam_job="test_compute_${fmt_in}_${nam_cas}"
+            # shellcheck disable=SC2154
+            arr_cmd=(
+                "${TEST_BASH}" "${script}"
+                    --env_nam "${env_nam}"
+                    --dir_scr "${ROOT_REPO}/scripts"
+                    --threads 1
+                    --mode "${mode}"
+                    --csv_infile "${in_lcl}"
+                    --csv_outfile "${out_spc}"
+            )
+            ;;
+        execute)
+            nam_job="test_execute_compute_${fmt_in}_${nam_cas}"
+            arr_cmd=(
+                "${TEST_BASH}" "${script}"
+                    --threads 1
+                    --mode "${mode}"
+                    --csv_infile "${in_lcl}"
+                    --dir_out "${dir_out_lcl}"
+                    --typ_out "${out_spc}"
+            )
+            ;;
+        *)
+            record_fail "unknown compute-signal wrapper '${wrap}'"
+            return 1
+            ;;
+    esac
+
+    if [[ -n "${ref_fa_lcl}" ]]; then
+        arr_cmd+=( --ref_fa "${ref_fa_lcl}" )
+    fi
+
+    arr_cmd+=(
+        --csv_usr_frg NA
+    )
+
+    if [[ "${wrap}" == "execute" ]]; then
+        arr_cmd+=( --dp 3 )
+    fi
+
+    arr_cmd+=(
+        --err_out "${dir_err_lcl}"
+        --nam_job "${nam_job}"
+    )
+
+    if [[ "${wrap}" == "execute" ]]; then
+        arr_cmd+=( --max_job 1 )
+    fi
+
+    if \
+        run_capture \
+            "${wrap} compute-signal ${fmt_up} ${nam_cas}" \
+            "${log_lcl}" \
+            "${arr_cmd[@]}" \
+            "$@"
+    then
+        record_pass "${wrap}_compute_signal.sh ${mode} ${nam_cas} exits 0"
+    else
+        record_fail \
+            "${wrap}_compute_signal.sh ${mode} ${nam_cas} failed; see" \
+            "$(print_relpath "${log_lcl}")"
+    fi
+}
+
+
+#  Run one compute-signal ratio wrapper case
+function run_case_compute_signal_ratio() {
+    local wrap="${1:-}"
+    local cas_nam="${2:-}"
+    local out_spec="${3:-}"
+    local log_lcl="${4:-}"
+    local method="${5:-unadj}"
+    local fil_A="${6:-}"
+    local fil_B="${7:-}"
+    local dir_out_lcl="${8:-}"
+    local dir_err_lcl="${9:-}"
+
+    shift 9 || true
+
+    local script="${ROOT_REPO}/scripts/${wrap}_compute_signal.sh"
+    local -a arr_cmd=()
+
+    case "${wrap}" in
+        submit)
+            # shellcheck disable=SC2154
+            arr_cmd=(
+                "${TEST_BASH}" "${script}"
+                --env_nam "${env_nam}"
+                --dir_scr "${ROOT_REPO}/scripts"
+                --threads 1
+                --mode ratio
+                --method "${method}"
+                --csv_fil_A "${fil_A}"
+                --csv_fil_B "${fil_B}"
+                --csv_outfile "${out_spec}"
+                --err_out "${dir_err_lcl}"
+                --nam_job "test_submit_compute_ratio_${cas_nam}"
+            )
+            ;;
+        execute)
+            arr_cmd=(
+                "${TEST_BASH}" "${script}"
+                --threads 1
+                --mode ratio
+                --method "${method}"
+                --csv_fil_A "${fil_A}"
+                --csv_fil_B "${fil_B}"
+                --dir_out "${dir_out_lcl}"
+                --typ_out bdg
+                --prefix "${out_spec}"
+                --eps 0
+                --dp 3
+                --err_out "${dir_err_lcl}"
+                --nam_job "test_execute_compute_ratio_${cas_nam}"
+                --max_job 1
+            )
+            ;;
+        *)
+            record_fail "unknown compute-signal ratio wrapper '${wrap}'"
+            return 1
+            ;;
+    esac
+
+    if \
+        run_capture \
+            "${wrap} compute-signal ratio ${cas_nam}" \
+            "${log_lcl}" \
+            "${arr_cmd[@]}" \
+            "$@"
+    then
+        record_pass "${wrap}_compute_signal.sh ratio ${cas_nam} exits 0"
+    else
+        record_fail \
+            "${wrap}_compute_signal.sh ratio ${cas_nam} failed; see" \
+            "$(print_relpath "${log_lcl}")"
+    fi
 }
 
 
 #  Assert that a log file contains a pattern
-function assert_grep_pattern() {
+function assert_pattern_found() {
     local file="${1:-}"
-    local pattern="${2:-}"
-    local label="${3:-${pattern}}"
+    local patn="${2:-}"
+    shift 2 || true
+
+    local lbl="${*:-${patn}}"
 
     if \
-        grep -q -- "${pattern}" "${file}"
+        grep -q -- "${patn}" "${file}"
     then
-        rec_pass "${label}"
+        record_pass "${lbl}"
     else
-        rec_fail "${label}; see $(rec_relpath "${file}")"
+        record_fail "${lbl}; see $(print_relpath "${file}")"
     fi
 }
 
 
 #  Assert that a log or output file does not contain a pattern
-function assert_no_grep_pattern() {
+function assert_pattern_absent() {
     local file="${1:-}"
-    local pattern="${2:-}"
-    local label="${3:-${pattern}}"
+    local patn="${2:-}"
+    shift 2 || true
+
+    local lbl="${*:-${patn}}"
 
     if \
-        grep -q -- "${pattern}" "${file}"
+        grep -q -- "${patn}" "${file}"
     then
-        rec_fail "${label}; see $(rec_relpath "${file}")"
+        record_fail "${lbl}; see $(print_relpath "${file}")"
     else
-        rec_pass "${label}"
+        record_pass "${lbl}"
     fi
 }
 
@@ -563,12 +767,14 @@ function assert_no_grep_pattern() {
 #  Assert that a generated output file exists and is non-empty
 function assert_file_nonempty() {
     local file="${1:-}"
-    local label="${2:-output}"
+    shift || true
+
+    local lbl="${*:-output}"
 
     if [[ -s "${file}" ]]; then
-        rec_pass "${label} exists and is non-empty"
+        record_pass "${lbl} exists and is non-empty"
     else
-        rec_fail "${label} missing or empty: $(rec_relpath "${file}")"
+        record_fail "${lbl} missing or empty: $(print_relpath "${file}")"
     fi
 }
 
@@ -576,36 +782,57 @@ function assert_file_nonempty() {
 #  Assert that a CRAM index exists using common Samtools naming variants
 function assert_cram_index() {
     local cram="${1:-}"
-    local label="${2:-CRAM index}"
+    shift || true
+
+    local lbl="${*:-CRAM index}"
     local idx_1="${cram}.crai"
     local idx_2="${cram%.cram}.crai"
 
     if [[ -s "${idx_1}" ]]; then
-        rec_pass "${label} exists and is non-empty at $(rec_relpath "${idx_1}")"
+        record_pass \
+            "${lbl} exists and is non-empty at $(print_relpath "${idx_1}")"
     elif [[ -s "${idx_2}" ]]; then
-        rec_pass "${label} exists and is non-empty at $(rec_relpath "${idx_2}")"
+        record_pass \
+            "${lbl} exists and is non-empty at $(print_relpath "${idx_2}")"
     else
-        rec_fail \
-            "${label} missing or empty; checked $(rec_relpath "${idx_1}") and" \
-            "$(rec_relpath "${idx_2}")"
+        record_fail \
+            "${lbl} missing or empty; checked $(print_relpath "${idx_1}")" \
+            "and $(print_relpath "${idx_2}")"
     fi
 }
 
 
-#  Assert a reference-backed CRAM read count for one contig
+#  Assert a reference-backed CRAM read count for one or more regions
 function assert_cram_count() {
     local cram="${1:-}"
     local ref_fa="${2:-}"
-    local contig="${3:-}"
-    local expected="${4:-}"
-    local label="${5:-CRAM count}"
-    local count_file="${6:-}"
+    local exp="${3:-}"
+    local fil_cnt="${4:-}"
+    local arr_ref="${5:-}"
+    shift 5 || true
+
+    local lbl="${*:-CRAM count}"
+
+    if [[ -z "${arr_ref}" ]]; then
+        record_fail "${lbl}; missing region array reference"
+        return 1
+    fi
+
+    local -n arr_rgn="${arr_ref}"
+
+    if (( ${#arr_rgn[@]} == 0 )); then
+        record_fail "${lbl}; region array is empty"
+        return 1
+    fi
 
     run_capture \
-        "${label}" "${count_file}" \
-        run_samtools view -T "${ref_fa}" -c "${cram}" "${contig}"
+        "${lbl}" "${fil_cnt}" \
+        run_samtools view -T "${ref_fa}" -c "${cram}" "${arr_rgn[@]}"
 
-    assert_grep_pattern "${count_file}" "^${expected}$" "${label}"
+    assert_pattern_found \
+        "${fil_cnt}" \
+        "^${exp}$" \
+        "${lbl}"
 }
 
 
@@ -617,7 +844,9 @@ function assert_filter_alignments_pg_header() {
     local retain="${4:-}"
     local out_ext="${5:-}"
     local header_file="${6:-}"
-    local label="${7:-filter_alignments @PG header}"
+    shift 6 || true
+
+    local lbl="${*:-filter_alignments @PG header}"
     local -a ref_arg=()
 
     if [[ "${infile,,}" == *.cram ]]; then
@@ -626,98 +855,125 @@ function assert_filter_alignments_pg_header() {
 
     if \
         run_capture \
-            "header ${label}" "${header_file}" \
+            "header ${lbl}" "${header_file}" \
             run_samtools view -H "${ref_arg[@]}" "${infile}"
     then
-        rec_pass "${label} header can be read"
+        record_pass "${lbl} header can be read"
     else
-        rec_fail "${label} header cannot be read; see $(rec_relpath "${header_file}")"
+        record_fail \
+            "${lbl} header cannot be read; see" \
+            "$(print_relpath "${header_file}")"
         return 1
     fi
 
     if [[ -s "${header_file}" ]]; then
-        assert_grep_pattern \
+        assert_pattern_found \
             "${header_file}" \
             $'^@PG\tID:'"${pg_id}"$'\tPN:filter_alignments\tCL:'"${pg_id} retain=${retain}" \
-            "${label} contains ${pg_id} @PG record"
-        assert_grep_pattern \
+            "${lbl} contains ${pg_id} @PG record"
+        assert_pattern_found \
             "${header_file}" \
             "out_ext=${out_ext}" \
-            "${label} records out_ext=${out_ext}"
+            "${lbl} records out_ext=${out_ext}"
     fi
 }
 
 
-#  Assert a downloaded gzip FASTQ matches its source and expected content
-function assert_downloaded_fastq() {
-    local source_fastq="${1:-}"
-    local outfile="${2:-}"
-    local label="${3:-downloaded FASTQ}"
-    local read_pattern="${4:-}"
-    local view_fastq="${5:-}"
-    local count_reads="${6:-}"
+#  Assert a gzip FASTQ exists and has expected read content
+function assert_fastq_gzip() {
+    local fil_out="${1:-}"
+    local rd_patn="${2:-}"
+    local fq_vw="${3:-}"
+    local rd_cnt="${4:-}"
+    local fq_src="${5:-}"
+    shift 5 || true
 
-    assert_file_nonempty "${outfile}" "${label}"
+    local lbl="${*:-gzip FASTQ}"
 
-    if [[ -s "${outfile}" ]]; then
-        if cmp -s "${source_fastq}" "${outfile}"; then
-            rec_pass "${label} matches source fixture byte-for-byte"
+    if [[ -z "${fil_out}" ]]; then
+        return 0
+    fi
+
+    assert_file_nonempty \
+        "${fil_out}" \
+        "${lbl}"
+
+    if [[ -s "${fil_out}" && -n "${fq_src}" ]]; then
+        if \
+            cmp -s "${fq_src}" "${fil_out}"
+        then
+            record_pass "${lbl} matches source fixture byte-for-byte"
         else
-            rec_fail "${label} differs from source fixture"
+            record_fail "${lbl} differs from source fixture"
         fi
+    fi
 
-        if gzip -t "${outfile}"; then
-            rec_pass "${label} passes gzip integrity"
-        else
-            rec_fail "${label} fails gzip integrity"
-        fi
+    if \
+        gzip -t "${fil_out}"
+    then
+        record_pass "${lbl} passes gzip integrity"
+    else
+        record_fail "${lbl} fails gzip integrity"
+    fi
 
-        if gzip -cd "${outfile}" > "${view_fastq}"; then
-            rec_pass "${label} can be decompressed"
-        else
-            rec_fail "${label} cannot be decompressed"
-        fi
+    if \
+        gzip -cd "${fil_out}" > "${fq_vw}"
+    then
+        record_pass "${lbl} can be decompressed"
+    else
+        record_fail "${lbl} cannot be decompressed"
+    fi
 
-        if [[ -s "${view_fastq}" ]]; then
-            assert_grep_pattern "${view_fastq}" "${read_pattern}" \
-                "${label} contains expected read name"
+    if [[ -s "${fq_vw}" ]]; then
+        assert_pattern_found \
+            "${fq_vw}" \
+            "${rd_patn}" \
+            "${lbl} contains expected read name"
 
-            awk 'NR % 4 == 1 { n++ } END { print n + 0 }' \
-                "${view_fastq}" > "${count_reads}"
-            assert_grep_pattern "${count_reads}" '^1$' \
-                "${label} contains one read"
-        fi
+        awk 'NR % 4 == 1 { n++ } END { print n + 0 }' "${fq_vw}" > "${rd_cnt}"
+
+        assert_pattern_found \
+            "${rd_cnt}" \
+            '^1$' \
+            "${lbl} contains one read"
     fi
 }
 
 
 #  Assert a custom FASTQ path exists and is represented as a symlink
 function assert_custom_symlink() {
-    local symlink="${1:-}"
-    local label="${2:-custom symlink}"
+    local sym="${1:-}"
+    shift || true
 
-    assert_file_nonempty "${symlink}" "${label} target"
+    local lbl="${*:-custom symlink}"
 
-    if [[ -L "${symlink}" ]]; then
-        rec_pass "${label} path is a symlink"
+    assert_file_nonempty \
+        "${sym}" \
+        "${lbl}" \
+        "target"
+
+    if [[ -L "${sym}" ]]; then
+        record_pass "${lbl} path is a symlink"
     else
-        rec_fail "${label} path is not a symlink"
+        record_fail "${lbl} path is not a symlink"
     fi
 }
 
 
 #  Warn when a help-output section is missing
-function warn_grep_help() {
+function warn_help_pattern_missing() {
     local file="${1:-}"
-    local pattern="${2:-}"
-    local label="${3:-${pattern}}"
+    local patn="${2:-}"
+    shift 2 || true
+
+    local lbl="${*:-${patn}}"
 
     if \
-        grep -q -- "${pattern}" "${file}"
+        grep -q -- "${patn}" "${file}"
     then
-        rec_pass "${label}"
+        record_pass "${lbl}"
     else
-        rec_warn "${label}; see $(rec_relpath "${file}")"
+        record_warn "${lbl}; see $(print_relpath "${file}")"
     fi
 }
 

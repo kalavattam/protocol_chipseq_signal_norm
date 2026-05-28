@@ -19,7 +19,7 @@ source "$(
     cd "$(dirname "${BASH_SOURCE[0]}")/.." > /dev/null 2>&1 && pwd
 )/lib/test_helpers.sh"
 
-rec_section "${TEST_NAME}"
+print_section "${TEST_NAME}"
 
 
 #  Run Bash syntax checks over one shell-script group
@@ -34,17 +34,18 @@ function check_group_shell_syntax() {
     printf '\n%s:\n' "${nam_grp}"
 
     for file in "$@"; do
-        rel="$(rec_relpath "${file}")"
+        rel="$(print_relpath "${file}")"
         log="${TEST_DIR_LOG}/shell_syntax/${rel//\//__}.log"
 
         if \
             run_capture \
-                "bash -n ${rel}" "${log}" \
+                "bash -n ${rel}" \
+                "${log}" \
                 "${TEST_BASH}" -n "${file}"
         then
-            rec_pass "bash -n ${rel}"
+            record_pass "bash -n ${rel}"
         else
-            rec_fail "bash -n ${rel}; see $(rec_relpath "${log}")"
+            record_fail "bash -n ${rel}; see $(print_relpath "${log}")"
         fi
     done
 }

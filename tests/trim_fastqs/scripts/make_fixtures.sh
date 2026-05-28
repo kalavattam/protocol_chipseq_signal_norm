@@ -31,8 +31,8 @@ set -euo pipefail
 
 #  Resolve paths relative to 'tests/trim_fastqs/scripts'
 dir_scr="$(cd "$(dirname "${BASH_SOURCE[0]}")" > /dev/null 2>&1 && pwd)"
-dir_trim="$(cd "${dir_scr}/.." > /dev/null 2>&1 && pwd)"
-dir_fix="${dir_trim}/fixtures"
+dir_trm="$(cd "${dir_scr}/.." > /dev/null 2>&1 && pwd)"
+dir_fix="${dir_trm}/fixtures"
 dir_fq="${dir_fix}/fastq"
 
 tmp_fq_se="${dir_fq}/tiny_se.fastq.tmp"
@@ -78,7 +78,9 @@ trap cleanup_tmp_fastqs EXIT
 
 
 #  Require gzip for deterministic compressed workflow inputs
-if ! command -v gzip > /dev/null 2>&1; then
+if ! \
+    command -v gzip > /dev/null 2>&1
+then
     echo "error($(basename "${BASH_SOURCE[0]}")):" \
         "'gzip' must be available to generate trim-fastqs fixtures." >&2
     exit 1
@@ -161,16 +163,16 @@ The compressed FASTQ files are generated with \`gzip -n -c\` so gzip headers do 
 ## Expected trimming behavior
 The single-end FASTQ fixture contains one clean 64 bp read:
 
-| Read name             | Sequence                                                         |
-|:---                   |:---                                                             |
+| Read name               | Sequence                                                             |
+|:---                     |:---                                                                  |
 | \`tiny_trim_se_read_1\` | \`ACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGT\` |
 
 \`submit_trim_fastqs.sh\` currently calls Atria with \`--length-range 35:500\`, so this read is intentionally longer than the minimum length filter. The submit-level smoke test should verify that Atria-backed trimming produces a non-empty gzip FASTQ output and preserves the expected read name.
 
 The paired-end FASTQ fixtures contain one clean 64 bp read pair:
 
-| Read name                | Mate | Sequence                                                         |
-|:---                      |:---  |:---                                                             |
+| Read name                 | Mate | Sequence                                                             |
+|:---                       |:---  |:---                                                                  |
 | \`tiny_trim_pe_pair_1/1\` | R1   | \`ACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGT\` |
 | \`tiny_trim_pe_pair_1/2\` | R2   | \`TGCATGCATGCATGCATGCATGCATGCATGCATGCATGCATGCATGCATGCATGCATGCATGCA\` |
 

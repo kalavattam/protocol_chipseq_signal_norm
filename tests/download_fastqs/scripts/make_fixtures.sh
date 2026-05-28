@@ -82,7 +82,9 @@ trap cleanup_tmp_fastqs EXIT
 
 
 #  Require gzip for deterministic compressed workflow inputs
-if ! command -v gzip > /dev/null 2>&1; then
+if ! \
+    command -v gzip > /dev/null 2>&1
+then
     echo "error($(basename "${BASH_SOURCE[0]}")):" \
         "'gzip' must be available to generate download-fastqs fixtures." >&2
     exit 1

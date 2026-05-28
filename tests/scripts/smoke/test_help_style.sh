@@ -12,8 +12,10 @@
 
 
 #TODO:
-#+ - detect generic `Arguments:` where only `Keyword arguments:` or only `Positional arguments:` would clearly be more specific
-#+   + the generic `Arguments:` check is hard to detect reliably without false positives; make it WARN-only forever
+#+ - detect generic `Arguments:` where only `Keyword arguments:` or only
+#+   `Positional arguments:` would clearly be more specific
+#+   + the generic `Arguments:` check is hard to detect reliably without false
+#+     positives; make it WARN-only forever
 #+ - detect `Options:` as a stale synonym
 #+ - detect missing two-blank-line separators before major headings
 #+ - detect `--dry-run` documented when `--dry_run` should be canonical
@@ -27,7 +29,7 @@ source "$(
     cd "$(dirname "${BASH_SOURCE[0]}")/.." > /dev/null 2>&1 && pwd
 )/lib/test_helpers.sh"
 
-rec_section "${TEST_NAME}"
+print_section "${TEST_NAME}"
 
 #  Scan top-level script help text and extracted help files for style drift
 files=()
@@ -41,9 +43,9 @@ done < <(
 )
 
 #  Restrict example line-continuation checks to extracted help files for now
-help_files=()
+fil_hlp=()
 while IFS= read -r file; do
-    help_files+=( "${file}" )
+    fil_hlp+=( "${file}" )
 done < <(
     find "${ROOT_REPO}/scripts/functions/help" \
         -type f -name '*.sh' -print \
@@ -53,34 +55,34 @@ done < <(
 
 #  Scan a caller-supplied file list for a fixed pattern
 function scan_fixed_files() {
-    local label="${1:-}"
-    local pattern="${2:-}"
+    local lbl="${1:-}"
+    local ptn="${2:-}"
 
     shift 2
 
-    local scan_files=( "$@" )
+    local fil_scn=( "$@" )
     local found=0
     local file line
 
-    for file in "${scan_files[@]}"; do
+    for file in "${fil_scn[@]}"; do
         while IFS= read -r line; do
             found=1
-            rec_warn "${label}: $(rec_relpath "${file}"):${line}"
-        done < <(grep -n -- "${pattern}" "${file}" || true)
+            record_warn "${lbl}: $(print_relpath "${file}"):${line}"
+        done < <(grep -n -- "${ptn}" "${file}" || true)
     done
 
     if (( found == 0 )); then
-        rec_pass "no ${label} findings"
+        record_pass "no ${lbl} findings"
     fi
 }
 
 
 #  Scan the default style-check file set for a fixed pattern
 function scan_fixed() {
-    local label="${1:-}"
-    local pattern="${2:-}"
+    local lbl="${1:-}"
+    local ptn="${2:-}"
 
-    scan_fixed_files "${label}" "${pattern}" "${files[@]}"
+    scan_fixed_files "${lbl}" "${ptn}" "${files[@]}"
 }
 
 
@@ -92,12 +94,12 @@ function scan_tabs() {
     for file in "${files[@]}"; do
         while IFS= read -r line; do
             found=1
-            rec_warn "hard tab: $(rec_relpath "${file}"):${line}"
+            record_warn "hard tab: $(print_relpath "${file}"):${line}"
         done < <(grep -n $'\t' "${file}" || true)
     done
 
     if (( found == 0 )); then
-        rec_pass "no hard tab findings"
+        record_pass "no hard tab findings"
     fi
 }
 
@@ -110,7 +112,8 @@ function scan_usage_rnd() {
     for file in "${files[@]}"; do
         while IFS= read -r line; do
             found=1
-            rec_warn "--rnd in Usage block: $(rec_relpath "${file}"):${line}"
+            record_warn \
+                "--rnd in Usage block: $(print_relpath "${file}"):${line}"
         done < <(
             awk '
                 /^Usage:/ { in_usage = 1 }
@@ -121,7 +124,7 @@ function scan_usage_rnd() {
     done
 
     if (( found == 0 )); then
-        rec_pass "no --rnd canonical Usage findings"
+        record_pass "no --rnd canonical Usage findings"
     fi
 }
 
@@ -134,8 +137,8 @@ scan_fixed "Markdown triple-backtick fence" '```'
 scan_fixed_files \
     "possible shell line continuation in sourced help text" \
     '\\$' \
-    "${help_files[@]}"
-rec_skip \
+    "${fil_hlp[@]}"
+record_skip \
     "script-local heredoc/example backslash parsing is a future help-style" \
     "enhancement"
 scan_usage_rnd

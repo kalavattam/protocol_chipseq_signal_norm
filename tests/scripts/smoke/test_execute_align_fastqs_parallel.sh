@@ -19,20 +19,22 @@ source "$(
     cd "$(dirname "${BASH_SOURCE[0]}")/.." > /dev/null 2>&1 && pwd
 )/lib/test_helpers.sh"
 
-rec_section "${TEST_NAME}"
+print_section "${TEST_NAME}"
 
-if ! is_parallel_enabled; then
-    rec_skip \
-        "GNU Parallel align-fastqs check disabled;" \
-        "set RUN_PARALLEL=1 to enable"
+if ! \
+    is_parallel_enabled
+then
+    record_skip \
+        "GNU Parallel align-fastqs check disabled; set RUN_PARALLEL=1 to" \
+        "enable"
     finish
     exit $?
 fi
 
 #  Define fixture and output paths for a local GNU Parallel Bowtie2 wet run
 dir_fx="${ROOT_REPO}/tests/align_fastqs/fixtures"
-infile_se="${dir_fx}/fastq/tiny_se.atria.fastq.gz"
-index="${dir_fx}/bowtie2/tiny"
+in_se="${dir_fx}/fastq/tiny_se.atria.fastq.gz"
+idx="${dir_fx}/bowtie2/tiny"
 
 tmp="${TEST_DIR_TMP}/execute_align_fastqs_parallel"
 dir_in="${tmp}/in"
@@ -40,17 +42,17 @@ dir_out="${tmp}/out"
 dir_err="${tmp}/logs"
 dir_log="${TEST_DIR_LOG}/align_fastqs"
 
-infile_1="${dir_in}/tiny_se_1.atria.fastq.gz"
-infile_2="${dir_in}/tiny_se_2.atria.fastq.gz"
-csv_infile="${infile_1};${infile_2}"
+in_1="${dir_in}/tiny_se_1.atria.fastq.gz"
+in_2="${dir_in}/tiny_se_2.atria.fastq.gz"
+csv_in="${in_1};${in_2}"
 
-outfile_1="${dir_out}/tiny_se_1.bam"
-outfile_2="${dir_out}/tiny_se_2.bam"
-idxstats_1="${dir_out}/tiny_se_1.idxstats.txt"
-idxstats_2="${dir_out}/tiny_se_2.idxstats.txt"
-view_1="${dir_out}/tiny_se_1.view.txt"
-view_2="${dir_out}/tiny_se_2.view.txt"
-config="${dir_err}/test_execute_align_parallel.config_parallel.txt"
+out_1="${dir_out}/tiny_se_1.bam"
+out_2="${dir_out}/tiny_se_2.bam"
+stat_1="${dir_out}/tiny_se_1.idxstats.txt"
+stat_2="${dir_out}/tiny_se_2.idxstats.txt"
+vw_1="${dir_out}/tiny_se_1.view.txt"
+vw_2="${dir_out}/tiny_se_2.view.txt"
+cfg="${dir_err}/test_execute_align_parallel.config_parallel.txt"
 
 rm -rf "${tmp}"
 mkdir -p "${dir_in}" "${dir_out}" "${dir_err}" "${dir_log}"
@@ -60,30 +62,32 @@ require_env_project env_nam || {
     exit $?
 }
 
-require_files_exist \
-    "${infile_se}" \
-    "${index}.1.bt2" \
-    "${index}.2.bt2" \
-    "${index}.3.bt2" \
-    "${index}.4.bt2" \
-    "${index}.rev.1.bt2" \
-    "${index}.rev.2.bt2" \
+require_files_nonempty \
+    "${in_se}" \
+    "${idx}.1.bt2" \
+    "${idx}.2.bt2" \
+    "${idx}.3.bt2" \
+    "${idx}.4.bt2" \
+    "${idx}.rev.1.bt2" \
+    "${idx}.rev.2.bt2" \
     || {
         finish
         exit $?
     }
 
-cp "${infile_se}" "${infile_1}"
-cp "${infile_se}" "${infile_2}"
+cp "${in_se}" "${in_1}"
+cp "${in_se}" "${in_2}"
 
-require_files_exist "${infile_1}" "${infile_2}" || {
+require_files_nonempty \
+    "${in_1}" \
+    "${in_2}" || {
     finish
     exit $?
 }
 
 # shellcheck disable=SC2154
 if ! \
-    require_parallel_env \
+    require_env_parallel \
         "${env_nam}" \
         "${dir_log}/execute_align_fastqs_parallel_env.log"
 then
@@ -97,14 +101,15 @@ log="${dir_log}/execute_align_fastqs_parallel_bowtie2.log"
 
 if \
     run_capture \
-        "execute align-fastqs GNU Parallel Bowtie2 wet run" "${log}" \
+        "execute align-fastqs GNU Parallel Bowtie2 wet run" \
+        "${log}" \
         "${TEST_BASH}" "${ROOT_REPO}/scripts/execute_align_fastqs.sh" \
             --threads 2 \
             --aligner bowtie2 \
             --bt2_aln global \
             --mapq 0 \
-            --index "${index}" \
-            --csv_infile "${csv_infile}" \
+            --index "${idx}" \
+            --csv_infile "${csv_in}" \
             --dir_out "${dir_out}" \
             --out_ext bam \
             --sfx_se ".atria.fastq.gz" \
@@ -113,75 +118,102 @@ if \
             --nam_job "test_execute_align_parallel" \
             --max_job 2
 then
-    rec_pass "execute_align_fastqs.sh GNU Parallel Bowtie2 wet run exits 0"
+    record_pass "execute_align_fastqs.sh GNU Parallel Bowtie2 wet run exits 0"
 else
-    rec_fail \
+    record_fail \
         "execute_align_fastqs.sh GNU Parallel Bowtie2 wet run failed; see" \
-        "$(rec_relpath "${log}")"
+        "$(print_relpath "${log}")"
 fi
 
-assert_file_nonempty "${config}" "execute align-fastqs GNU Parallel config"
-assert_file_nonempty "${outfile_1}" "execute GNU Parallel Bowtie2 BAM output 1"
-assert_file_nonempty "${outfile_1}.bai" \
+assert_file_nonempty \
+    "${cfg}" \
+    "execute align-fastqs GNU Parallel config"
+assert_file_nonempty \
+    "${out_1}" \
+    "execute GNU Parallel Bowtie2 BAM output 1"
+assert_file_nonempty \
+    "${out_1}.bai" \
     "execute GNU Parallel Bowtie2 BAM index 1"
-assert_file_nonempty "${outfile_2}" "execute GNU Parallel Bowtie2 BAM output 2"
-assert_file_nonempty "${outfile_2}.bai" \
+assert_file_nonempty \
+    "${out_2}" \
+    "execute GNU Parallel Bowtie2 BAM output 2"
+assert_file_nonempty \
+    "${out_2}.bai" \
     "execute GNU Parallel Bowtie2 BAM index 2"
 
-if [[ -s "${config}" ]]; then
-    assert_grep_pattern \
-        "${config}" \
+if [[ -s "${cfg}" ]]; then
+    assert_pattern_found \
+        "${cfg}" \
         "${TEST_BASH} ${ROOT_REPO}/scripts/submit_align_fastqs.sh" \
-        "execute align-fastqs GNU Parallel config uses Bash-prefixed submit command"
+        "execute align-fastqs GNU Parallel config uses Bash-prefixed submit" \
+        "command"
 fi
 
-if [[ -s "${outfile_1}" ]]; then
-    if run_capture \
-        "quickcheck execute align-fastqs GNU Parallel Bowtie2 BAM 1" \
-        "${dir_log}/execute_align_fastqs_parallel_bam_1_quickcheck.log" \
-        run_samtools quickcheck "${outfile_1}"
+if [[ -s "${out_1}" ]]; then
+    if \
+        run_capture \
+            "quickcheck execute align-fastqs GNU Parallel Bowtie2 BAM 1" \
+            "${dir_log}/execute_align_fastqs_parallel_bam_1_quickcheck.log" \
+            run_samtools quickcheck "${out_1}"
     then
-        rec_pass "execute GNU Parallel Bowtie2 BAM 1 passes samtools quickcheck"
+        record_pass \
+            "execute GNU Parallel Bowtie2 BAM 1 passes samtools quickcheck"
     else
-        rec_fail "execute GNU Parallel Bowtie2 BAM 1 fails samtools quickcheck"
+        record_fail \
+            "execute GNU Parallel Bowtie2 BAM 1 fails samtools quickcheck"
     fi
 
     run_capture \
         "idxstats execute align-fastqs GNU Parallel Bowtie2 BAM 1" \
-        "${idxstats_1}" \
-        run_samtools idxstats "${outfile_1}"
+        "${stat_1}" \
+        run_samtools idxstats "${out_1}"
     run_capture \
-        "view execute align-fastqs GNU Parallel Bowtie2 BAM 1" "${view_1}" \
-        run_samtools view "${outfile_1}"
+        "view execute align-fastqs GNU Parallel Bowtie2 BAM 1" \
+        "${vw_1}" \
+        run_samtools view "${out_1}"
 
-    assert_grep_pattern "${idxstats_1}" $'^I\t108\t1\t0$' \
-        "execute GNU Parallel Bowtie2 BAM 1 has one mapped read on chromosome I"
-    assert_grep_pattern "${view_1}" $'^tiny_se_read_1\t' \
+    assert_pattern_found \
+        "${stat_1}" \
+        $'^I\t108\t1\t0$' \
+        "execute GNU Parallel Bowtie2 BAM 1 has one mapped read on" \
+        "chromosome I"
+    assert_pattern_found \
+        "${vw_1}" \
+        $'^tiny_se_read_1\t' \
         "execute GNU Parallel Bowtie2 BAM 1 contains expected read name"
 fi
 
-if [[ -s "${outfile_2}" ]]; then
-    if run_capture \
-        "quickcheck execute align-fastqs GNU Parallel Bowtie2 BAM 2" \
-        "${dir_log}/execute_align_fastqs_parallel_bam_2_quickcheck.log" \
-        run_samtools quickcheck "${outfile_2}"
+if [[ -s "${out_2}" ]]; then
+    if \
+        run_capture \
+            "quickcheck execute align-fastqs GNU Parallel Bowtie2 BAM 2" \
+            "${dir_log}/execute_align_fastqs_parallel_bam_2_quickcheck.log" \
+            run_samtools quickcheck "${out_2}"
     then
-        rec_pass "execute GNU Parallel Bowtie2 BAM 2 passes samtools quickcheck"
+        record_pass \
+            "execute GNU Parallel Bowtie2 BAM 2 passes samtools quickcheck"
     else
-        rec_fail "execute GNU Parallel Bowtie2 BAM 2 fails samtools quickcheck"
+        record_fail \
+            "execute GNU Parallel Bowtie2 BAM 2 fails samtools quickcheck"
     fi
 
     run_capture \
         "idxstats execute align-fastqs GNU Parallel Bowtie2 BAM 2" \
-        "${idxstats_2}" \
-        run_samtools idxstats "${outfile_2}"
+        "${stat_2}" \
+        run_samtools idxstats "${out_2}"
     run_capture \
-        "view execute align-fastqs GNU Parallel Bowtie2 BAM 2" "${view_2}" \
-        run_samtools view "${outfile_2}"
+        "view execute align-fastqs GNU Parallel Bowtie2 BAM 2" \
+        "${vw_2}" \
+        run_samtools view "${out_2}"
 
-    assert_grep_pattern "${idxstats_2}" $'^I\t108\t1\t0$' \
-        "execute GNU Parallel Bowtie2 BAM 2 has one mapped read on chromosome I"
-    assert_grep_pattern "${view_2}" $'^tiny_se_read_1\t' \
+    assert_pattern_found \
+        "${stat_2}" \
+        $'^I\t108\t1\t0$' \
+        "execute GNU Parallel Bowtie2 BAM 2 has one mapped read on" \
+        "chromosome I"
+    assert_pattern_found \
+        "${vw_2}" \
+        $'^tiny_se_read_1\t' \
         "execute GNU Parallel Bowtie2 BAM 2 contains expected read name"
 fi
 
