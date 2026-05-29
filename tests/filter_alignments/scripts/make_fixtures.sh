@@ -11,29 +11,55 @@
 # Distributed under the MIT license.
 
 
+#  Require Bash >= 4.4 before doing any work
+if [[ -z "${BASH_VERSION:-}" ]]; then
+    echo "error(shell):" \
+        "this script must be run under Bash >= 4.4." >&2
+    exit 1
+elif ((
+    BASH_VERSINFO[0] < 4 || ( BASH_VERSINFO[0] == 4 && BASH_VERSINFO[1] < 4 )
+)); then
+    echo "error($(basename "${BASH_SOURCE[0]}")):" \
+        "this script requires Bash >= 4.4; current version is" \
+        "'${BASH_VERSION}'." >&2
+    exit 1
+fi
+
+#  Run in safe mode, exiting on errors, unset variables, and pipe failures
 set -euo pipefail
 
-dir_scr="$(cd "$(dirname "${BASH_SOURCE[0]}")" > /dev/null 2>&1 && pwd)"
-dir_fx="$(cd "${dir_scr}/../fixtures" > /dev/null 2>&1 && pwd)"
-dir_sam="${dir_fx}/sam"
-dir_ref="${dir_fx}/reference"
 
-mkdir -p "${dir_sam}" "${dir_ref}"
+#  Resolve paths relative to 'tests/filter_alignments/scripts'
+dir_scr="$(cd "$(dirname "${BASH_SOURCE[0]}")" > /dev/null 2>&1 && pwd)"
+dir_flt="$(cd "${dir_scr}/.." > /dev/null 2>&1 && pwd)"
+dir_fix="${dir_flt}/fixtures"
+
+#  Source shared fixture-generation helpers
+# shellcheck disable=SC1091
+source "${dir_scr}/../../scripts/lib/fixture_helpers.sh"
+
+
+#  Define fixture paths, contig names, and the shared reference sequence
+dir_sam="${dir_fix}/sam"
+dir_ref="${dir_fix}/reference"
 
 sam="${dir_sam}/filter_sc_sp.sam"
 ref="${dir_ref}/filter_sc_sp.fa"
 fai="${ref}.fai"
-readme="${dir_fx}/README.md"
 
 contigs=(
-    I II III IV V VI VII VIII IX X XI XII XIII XIV XV XVI
-    Mito
+    I II III IV V VI VII VIII IX X XI XII XIII XIV XV XVI Mito
     SP_I SP_II SP_III SP_II_TG SP_MTR SP_Mito
     chrUn
 )
 
 seq_100="ACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGT"
 
+
+#  Create fixture output directories
+mkdirs "${dir_sam}" "${dir_ref}"
+
+#  Write the tiny reference FASTA and matching FASTA index
 : > "${ref}"
 : > "${fai}"
 offset=0
@@ -45,84 +71,42 @@ for contig in "${contigs[@]}"; do
     offset=$(( offset + 100 + 1 ))
 done
 
-cat > "${sam}" << 'SAM'
-@HD	VN:1.6	SO:coordinate
-@SQ	SN:I	LN:100
-@SQ	SN:II	LN:100
-@SQ	SN:III	LN:100
-@SQ	SN:IV	LN:100
-@SQ	SN:V	LN:100
-@SQ	SN:VI	LN:100
-@SQ	SN:VII	LN:100
-@SQ	SN:VIII	LN:100
-@SQ	SN:IX	LN:100
-@SQ	SN:X	LN:100
-@SQ	SN:XI	LN:100
-@SQ	SN:XII	LN:100
-@SQ	SN:XIII	LN:100
-@SQ	SN:XIV	LN:100
-@SQ	SN:XV	LN:100
-@SQ	SN:XVI	LN:100
-@SQ	SN:Mito	LN:100
-@SQ	SN:SP_I	LN:100
-@SQ	SN:SP_II	LN:100
-@SQ	SN:SP_III	LN:100
-@SQ	SN:SP_II_TG	LN:100
-@SQ	SN:SP_MTR	LN:100
-@SQ	SN:SP_Mito	LN:100
-@SQ	SN:chrUn	LN:100
-r_sc_I	0	I	1	60	10M	*	0	0	ACGTACGTAA	FFFFFFFFFF
-r_sc_mito	0	Mito	1	60	10M	*	0	0	ACGTACGTAA	FFFFFFFFFF
-r_sp_i	0	SP_I	1	60	10M	*	0	0	ACGTACGTAA	FFFFFFFFFF
-r_sp_tg	0	SP_II_TG	1	60	10M	*	0	0	ACGTACGTAA	FFFFFFFFFF
-r_sp_mtr	0	SP_MTR	1	60	10M	*	0	0	ACGTACGTAA	FFFFFFFFFF
-r_sp_mito	0	SP_Mito	1	60	10M	*	0	0	ACGTACGTAA	FFFFFFFFFF
-r_other	0	chrUn	1	60	10M	*	0	0	ACGTACGTAA	FFFFFFFFFF
-SAM
+#  Write SAM headers and one representative read per retained/dropped class
+{
+    write_sam_line '@HD' 'VN:1.6' 'SO:coordinate'
 
-cat > "${readme}" << 'README'
-# filter_alignments fixtures
+    for contig in "${contigs[@]}"; do
+        write_sam_line '@SQ' "SN:${contig}" 'LN:100'
+    done
 
-These fixtures exercise `submit_filter_alignments.sh` and `execute_filter_alignments.sh`
-with tiny deterministic alignment inputs.
+    write_sam_line \
+        'r_sc_I' '0' 'I' '1' '60' '10M' \
+        '*' '0' '0' 'ACGTACGTAA' 'FFFFFFFFFF'
 
-Regenerate them from the repository root with:
+    write_sam_line \
+        'r_sc_mito' '0' 'Mito' '1' '60' '10M' \
+        '*' '0' '0' 'ACGTACGTAA' 'FFFFFFFFFF'
 
-```bash
-bash tests/filter_alignments/scripts/make_fixtures.sh
-```
+    write_sam_line \
+        'r_sp_i' '0' 'SP_I' '1' '60' '10M' \
+        '*' '0' '0' 'ACGTACGTAA' 'FFFFFFFFFF'
 
-## Files
+    write_sam_line \
+        'r_sp_tg' '0' 'SP_II_TG' '1' '60' '10M' \
+        '*' '0' '0' 'ACGTACGTAA' 'FFFFFFFFFF'
 
-- `sam/filter_sc_sp.sam`
-  - Coordinate-sorted SAM with one read each on `I`, `Mito`, `SP_I`,
-    `SP_II_TG`, `SP_MTR`, `SP_Mito`, and `chrUn`.
-  - Used by BAM smoke tests to build BAM input at test runtime.
-  - Used by CRAM smoke tests to build CRAM input at test runtime.
+    write_sam_line \
+        'r_sp_mtr' '0' 'SP_MTR' '1' '60' '10M' \
+        '*' '0' '0' 'ACGTACGTAA' 'FFFFFFFFFF'
 
-- `reference/filter_sc_sp.fa`
-  - Tiny reference FASTA with all contigs present in the SAM header.
-  - Every contig is 100 bp.
-  - Required for deterministic CRAM input generation, CRAM reading, and CRAM
-    output writing.
+    write_sam_line \
+        'r_sp_mito' '0' 'SP_Mito' '1' '60' '10M' \
+        '*' '0' '0' 'ACGTACGTAA' 'FFFFFFFFFF'
 
-- `reference/filter_sc_sp.fa.fai`
-  - Deterministic FASTA index for `reference/filter_sc_sp.fa`.
-  - Generated directly by this script because the reference uses fixed
-    one-line contigs.
+    write_sam_line \
+        'r_other' '0' 'chrUn' '1' '60' '10M' \
+        '*' '0' '0' 'ACGTACGTAA' 'FFFFFFFFFF'
+} > "${sam}"
 
-## Expected smoke-test behavior
 
-- `retain=sc` keeps chromosome `I` and drops `Mito` unless `--mito` is used.
-- `retain=sc` drops S. pombe contigs such as `SP_I`.
-- `retain=sp --tg --mtr --mito` keeps `SP_I`, `SP_II_TG`, `SP_MTR`, and
-  `SP_Mito`.
-- `retain=sp` drops S. cerevisiae contigs such as `I` and unrelated contigs
-  such as `chrUn`.
-- CRAM input tests must pass `--ref_fa reference/filter_sc_sp.fa` and still
-  produce BAM output.
-- CRAM output tests must pass `--out_ext cram --ref_fa reference/filter_sc_sp.fa`
-  and produce indexed CRAM output.
-README
-
-printf 'Wrote filter_alignments fixtures under %s\n' "${dir_fx}"
+succeed "generated filter-alignments fixtures under ${dir_fix}"

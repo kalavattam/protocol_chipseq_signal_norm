@@ -34,6 +34,12 @@ dir_scr="$(cd "$(dirname "${BASH_SOURCE[0]}")" > /dev/null 2>&1 && pwd)"
 dir_sig="$(cd "${dir_scr}/.." > /dev/null 2>&1 && pwd)"
 dir_fix="${dir_sig}/fixtures"
 
+#  Source shared fixture-generation helpers
+# shellcheck disable=SC1091
+source "${dir_scr}/../../scripts/lib/fixture_helpers.sh"
+
+
+#  Define fixture directories, bedGraph paths, and alignment paths
 dir_bdg="${dir_fix}/bedgraph"
 dir_ref="${dir_fix}/reference"
 dir_sam="${dir_fix}/sam"
@@ -55,30 +61,21 @@ fil_bam_pe="${dir_bam}/tiny_pe.bam"
 fil_cram_se="${dir_cram}/tiny_se.cram"
 fil_cram_pe="${dir_cram}/tiny_pe.cram"
 
-fil_read="${dir_fix}/README.md"
-
 env_req="env_protocol"
 
 
-#  Check that the project environment is active before writing fixtures
-if [[ "${CONDA_DEFAULT_ENV:-}" != "${env_req}" ]]; then
-    echo "error($(basename "${BASH_SOURCE[0]}")):" \
-        "activate '${env_req}' before generating compute-signal fixtures;" \
-        "current environment: '${CONDA_DEFAULT_ENV:-none}'." >&2
-    exit 1
-fi
-
+#  Require the project environment for samtools-backed fixtures
+require_env "${env_req}" "for compute-signal fixtures."
 
 #  Create fixture output directories
-mkdir -p \
+mkdirs \
     "${dir_bdg}" \
     "${dir_ref}" \
     "${dir_sam}" \
     "${dir_bam}" \
     "${dir_cram}"
 
-
-#  Write tiny bedGraph fixtures for ratio-mode tests
+#  Write tiny bedGraph fixtures for ratio-mode edge cases
 {
     printf "I\t0\t10\t4\n"
     printf "I\t10\t20\t0\n"
@@ -101,6 +98,7 @@ mkdir -p \
     printf "I\t70\t80\t1\n"
 } > "${fil_bg_B}"
 
+#  Write bedGraph fixtures with skippable header/comment lines
 {
     printf "track type=bedGraph name=\"ratio_A\"\n"
     printf "browser position I:0-80\n"
@@ -133,56 +131,69 @@ mkdir -p \
     printf "I\t70\t80\t1\n"
 } > "${fil_bg_hdr_B}"
 
-
 #  Write tiny reference FASTA used for BAM/CRAM fixture generation
 cat > "${fil_ref}" << 'EOM'
 >I
 ACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGT
 EOM
 
-#  Write tiny single-end SAM provenance fixture
+#  Write single-end SAM records for forward and reverse fragments
 {
-    printf "@HD\tVN:1.6\tSO:coordinate\n"
-    printf "@SQ\tSN:I\tLN:80\n"
-    printf "se_fwd\t0\tI\t1\t60\t10M\t*\t0\t0\tACGTACGTAC\tFFFFFFFFFF\n"
-    printf "se_rev\t16\tI\t21\t60\t10M\t*\t0\t0\tACGTACGTAC\tFFFFFFFFFF\n"
+    write_sam_line '@HD' 'VN:1.6' 'SO:coordinate'
+    write_sam_line '@SQ' 'SN:I' 'LN:80'
+
+    write_sam_line \
+        'se_fwd' '0' 'I' '1' '60' '10M' \
+        '*' '0' '0' 'ACGTACGTAC' 'FFFFFFFFFF'
+
+    write_sam_line \
+        'se_rev' '16' 'I' '21' '60' '10M' \
+        '*' '0' '0' 'ACGTACGTAC' 'FFFFFFFFFF'
 } > "${fil_sam_se}"
 
-#  Write tiny paired-end SAM provenance fixture
+#  Write paired-end SAM records for two fragment positions
 {
-    printf "@HD\tVN:1.6\tSO:coordinate\n"
-    printf "@SQ\tSN:I\tLN:80\n"
-    printf "pe_1\t99\tI\t11\t60\t10M\t=\t31\t30\tACGTACGTAC\tFFFFFFFFFF\n"
-    printf "pe_1\t147\tI\t31\t60\t10M\t=\t11\t-30\tACGTACGTAC\tFFFFFFFFFF\n"
-    printf "pe_2\t99\tI\t41\t60\t10M\t=\t51\t20\tACGTACGTAC\tFFFFFFFFFF\n"
-    printf "pe_2\t147\tI\t51\t60\t10M\t=\t41\t-20\tACGTACGTAC\tFFFFFFFFFF\n"
+    write_sam_line '@HD' 'VN:1.6' 'SO:coordinate'
+    write_sam_line '@SQ' 'SN:I' 'LN:80'
+
+    write_sam_line \
+        'pe_1' '99' 'I' '11' '60' '10M' \
+        '=' '31' '30' 'ACGTACGTAC' 'FFFFFFFFFF'
+
+    write_sam_line \
+        'pe_1' '147' 'I' '31' '60' '10M' \
+        '=' '11' '-30' 'ACGTACGTAC' 'FFFFFFFFFF'
+
+    write_sam_line \
+        'pe_2' '99' 'I' '41' '60' '10M' \
+        '=' '51' '20' 'ACGTACGTAC' 'FFFFFFFFFF'
+
+    write_sam_line \
+        'pe_2' '147' 'I' '51' '60' '10M' \
+        '=' '41' '-20' 'ACGTACGTAC' 'FFFFFFFFFF'
 } > "${fil_sam_pe}"
 
+#  Require samtools for indexed FASTA, BAM, and CRAM generation
+require_cmd samtools "in '${env_req}' to generate BAM/CRAM fixtures."
 
-#  Generate FASTA index, BAM, BAM indexes, CRAM, and CRAM indexes
-if ! \
-    command -v samtools > /dev/null 2>&1
-then
-    echo "error($(basename "${BASH_SOURCE[0]}")):" \
-        "'samtools' must be available in '${env_req}' to generate BAM/CRAM" \
-        "fixtures." >&2
-    exit 1
-fi
-
+#  Index the tiny reference for CRAM generation and reading
 samtools faidx "${fil_ref}"
 
+#  Generate sorted and indexed BAM fixtures from SAM provenance
 samtools view -bS "${fil_sam_se}" | samtools sort -o "${fil_bam_se}"
 samtools index "${fil_bam_se}"
 
 samtools view -bS "${fil_sam_pe}" | samtools sort -o "${fil_bam_pe}"
 samtools index "${fil_bam_pe}"
 
+#  Generate indexed CRAM fixtures from the BAM fixtures
 samtools view -C -T "${fil_ref}" -o "${fil_cram_se}" "${fil_bam_se}"
 samtools index "${fil_cram_se}"
 
 samtools view -C -T "${fil_ref}" -o "${fil_cram_pe}" "${fil_bam_pe}"
 samtools index "${fil_cram_pe}"
 
+#  Validate the generated alignment fixtures
 samtools quickcheck \
     "${fil_bam_se}" \
     "${fil_bam_pe}" \
@@ -190,75 +201,4 @@ samtools quickcheck \
     "${fil_cram_pe}"
 
 
-#  Write fixture documentation
-cat > "${fil_read}" << 'EOM'
-# Compute-signal test fixtures
-These fixtures are synthetic micro-fixtures for fast, deterministic tests of the compute-signal workflow.
-
-They are intentionally small, hand-checkable, and version-controlled directly in Git. Running `scripts/make_fixtures.sh` from `env_protocol` regenerates the fixture set deterministically.
-
-The first fixture batch focuses on ratio-mode tests using plain text bedGraph files. These fixtures are not derived from real sequencing data. They were written by hand so that the expected behavior of each row is easy to inspect and reason about.
-
-<br />
-
-## Ratio bedGraph fixtures
-Files:
-- `bedgraph/ratio_A.bdg`
-- `bedgraph/ratio_B.bdg`
-- `bedgraph/ratio_headers_A.bdg`
-- `bedgraph/ratio_headers_B.bdg`
-
-The `ratio_A.bdg` and `ratio_B.bdg` files are plain 4-column bedGraph files with matching bins and no header lines.
-
-The `ratio_headers_A.bdg` and `ratio_headers_B.bdg` files preserve the same data rows, but include header-like lines for `--skp_pfx` coverage. They include default skipped prefixes (`track`, `browser`, and `#`) plus the custom prefix `customHeader`.
-
-<br />
-
-## Row-level expected behavior
-| Bin       | A  | B    | Purpose |
-|:---       |:---|:---  |:---     |
-| `I:0-10`  | 4  | 2    | Simple unadjusted ratio: `A / B = 2`.                                               |
-| `I:10-20` | 0  | 2    | Zero numerator: unadjusted ratio is `0`; with pseudocounts `1:1`, ratio is `1 / 3`. |
-| `I:20-30` | 5  | 0    | Zero denominator: test non-finite, stabilized, or filtered behavior.                |
-| `I:30-40` | 0  | 0    | Zero-zero bin for `skip_00` behavior before or after scaling.                       |
-| `I:40-50` | 2  | 0.5  | Scaling-sensitive finite bin: baseline ratio is `4`.                                |
-| `I:50-60` | 1  | 0.04 | Denominator-floor case: with `dep_min = 0.1`, ratio is `10`.                        |
-| `I:60-70` | 1  | 3    | Decimal-rounding case: with `dp = 3`, ratio is `0.333`.                             |
-| `I:70-80` | 1  | 1    | Stable finite row: ratio is `1`.                                                    |
-
-<br />
-
-## Alignment fixtures
-Signal-mode and coord-mode tests will use tiny SAM/BAM/CRAM fixtures generated from synthetic SAM and FASTA provenance files.
-
-Files:
-- `reference/tiny.fa`
-- `reference/tiny.fa.fai`
-- `sam/tiny_se.sam`
-- `sam/tiny_pe.sam`
-- `bam/tiny_se.bam`
-- `bam/tiny_se.bam.bai`
-- `bam/tiny_pe.bam`
-- `bam/tiny_pe.bam.bai`
-- `cram/tiny_se.cram`
-- `cram/tiny_se.cram.crai`
-- `cram/tiny_pe.cram`
-- `cram/tiny_pe.cram.crai`
-
-The SAM and FASTA files are committed as readable provenance. The FASTA index, BAM files, BAM indexes, CRAM files, and CRAM indexes are generated with `samtools` by `scripts/make_fixtures.sh`.
-
-These binary fixtures should be small enough to commit directly unless they unexpectedly grow large enough to justify Git LFS.
-
-CRAM support should not be treated as a distant optional feature. If the current compute-signal path cannot pass a reference FASTA cleanly to every layer that needs it, that gap should be exposed by the tiny CRAM fixture tests and addressed as part of the compute-signal testing/refactor work.
-
-<br />
-
-## First intended test
-The first wet wrapper-to-Python ratio test should call `submit_compute_signal.sh` in local serial ratio mode and verify that a bedGraph output is created with expected finite rows.
-
-Golden output files are intentionally deferred until the wrapper command shape and decimal formatting are stable.
-
-EOM
-
-echo "success($(basename "${BASH_SOURCE[0]}")):" \
-    "generated compute-signal fixtures under '${dir_fix}'."
+succeed "generated compute-signal fixtures under '${dir_fix}'."

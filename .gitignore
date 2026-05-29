@@ -37,6 +37,27 @@ data/raw/docs/test*
 #+ alignment and filtering parameters
 !data/processed/compute_signal/bowtie2_global_flag-2_mapq-1/tables/
 
+#  Ignore generated test fixture outputs in 'tests/'; however, retain
+#+ hand-written fixture docs
+tests/align_fastqs/fixtures/**
+!tests/align_fastqs/fixtures/
+!tests/align_fastqs/fixtures/README.md
+
+tests/compute_signal/fixtures/**
+!tests/compute_signal/fixtures/
+!tests/compute_signal/fixtures/README.md
+
+tests/download_fastqs/fixtures/**
+!tests/download_fastqs/fixtures/
+!tests/download_fastqs/fixtures/README.md
+
+tests/filter_alignments/fixtures/**
+!tests/filter_alignments/fixtures/
+!tests/filter_alignments/fixtures/README.md
+
+tests/trim_fastqs/fixtures/**
+!tests/trim_fastqs/fixtures/
+!tests/trim_fastqs/fixtures/README.md
+
 #  Ignore generated smoke-test output
-!tests/align_fastqs/fixtures/fastq/*.fastq.gz
 tests/output/

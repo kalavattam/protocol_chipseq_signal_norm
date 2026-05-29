@@ -1,20 +1,48 @@
 # Compute-signal test fixtures
 These fixtures are synthetic micro-fixtures for fast, deterministic tests of the compute-signal workflow.
 
-They are intentionally small, hand-checkable, and version-controlled directly in Git. Running `scripts/make_fixtures.sh` from `env_protocol` regenerates the fixture set deterministically.
+They are intentionally small and hand-checkable. Running `scripts/make_fixtures.sh` from `env_protocol` regenerates the fixture set deterministically.
 
-The first fixture batch focuses on ratio-mode tests using plain text bedGraph files. These fixtures are not derived from real sequencing data. They were written by hand so that the expected behavior of each row is easy to inspect and reason about.
+Regenerate fixtures from the repository root with:
+```bash
+source activate env_protocol
+bash tests/compute_signal/scripts/make_fixtures.sh
+```
+
+For now, tests assume these fixtures are already present. A later test-runner refactor will allow `tests/scripts/run_smoke_tests.sh` to generate missing fixtures automatically when required inputs are not detected (`#TODO`).
+
+The fixture set covers ratio-mode tests with plain text bedGraph files and signal/coordinate-mode tests with tiny BAM and CRAM files. These fixtures are not derived from real sequencing data. They were written by hand so that expected behavior is easy to inspect and reason about.
 
 <br />
 
-## Ratio bedGraph fixtures
-Files:
+## Files
+Readable provenance:
+- `scripts/make_fixtures.sh`
+- `reference/tiny.fa`
+- `sam/tiny_se.sam`
+- `sam/tiny_pe.sam`
+
+Ratio bedGraph:
 - `bedgraph/ratio_A.bdg`
 - `bedgraph/ratio_B.bdg`
 - `bedgraph/ratio_headers_A.bdg`
 - `bedgraph/ratio_headers_B.bdg`
 
-The `ratio_A.bdg` and `ratio_B.bdg` files are plain 4-column bedGraph files with matching bins and no header lines.
+Alignment fixtures:
+- `reference/tiny.fa`
+- `reference/tiny.fa.fai`
+- `sam/tiny_se.sam`
+- `sam/tiny_pe.sam`
+- `bam/tiny_se.bam`
+- `bam/tiny_se.bam.bai`
+- `bam/tiny_pe.bam`
+- `bam/tiny_pe.bam.bai`
+- `cram/tiny_se.cram`
+- `cram/tiny_se.cram.crai`
+- `cram/tiny_pe.cram`
+- `cram/tiny_pe.cram.crai`
+
+The `ratio_A.bdg` and `ratio_B.bdg` files are plain four-column bedGraph files with matching bins and no header lines.
 
 The `ratio_headers_A.bdg` and `ratio_headers_B.bdg` files preserve the same data rows, but include header-like lines for `--skp_pfx` coverage. They include default skipped prefixes (`track`, `browser`, and `#`) plus the custom prefix `customHeader`.
 
@@ -35,32 +63,18 @@ The `ratio_headers_A.bdg` and `ratio_headers_B.bdg` files preserve the same data
 <br />
 
 ## Alignment fixtures
-Signal-mode and coord-mode tests will use tiny SAM/BAM/CRAM fixtures generated from synthetic SAM and FASTA provenance files.
+`signal`-mode and `coord`-mode tests use tiny SAM/BAM/CRAM fixtures generated from synthetic SAM and FASTA provenance files.
 
-Files:
-- `reference/tiny.fa`
-- `reference/tiny.fa.fai`
-- `sam/tiny_se.sam`
-- `sam/tiny_pe.sam`
-- `bam/tiny_se.bam`
-- `bam/tiny_se.bam.bai`
-- `bam/tiny_pe.bam`
-- `bam/tiny_pe.bam.bai`
-- `cram/tiny_se.cram`
-- `cram/tiny_se.cram.crai`
-- `cram/tiny_pe.cram`
-- `cram/tiny_pe.cram.crai`
-
-The SAM and FASTA files are committed as readable provenance. The FASTA index, BAM files, BAM indexes, CRAM files, and CRAM indexes are generated with `samtools` by `scripts/make_fixtures.sh`.
-
-These binary fixtures should be small enough to commit directly unless they unexpectedly grow large enough to justify Git LFS.
+The SAM and FASTA files serve as readable provenance. The FASTA index, BAM files, BAM indexes, CRAM files, and CRAM indexes are generated with `samtools` by `scripts/make_fixtures.sh`.
 
 CRAM support should not be treated as a distant optional feature. If the current compute-signal path cannot pass a reference FASTA cleanly to every layer that needs it, that gap should be exposed by the tiny CRAM fixture tests and addressed as part of the compute-signal testing/refactor work.
 
 <br />
 
-## First intended test
-The first wet wrapper-to-Python ratio test should call `submit_compute_signal.sh` in local serial ratio mode and verify that a bedGraph output is created with expected finite rows.
+## Expected smoke-test behavior
+Smoke tests should use these fixtures to verify ratio outputs, BAM-backed signal output, CRAM-backed signal output with an explicit reference FASTA, and local GNU Parallel behavior where gated by `RUN_PARALLEL=1`.
 
-Golden output files are intentionally deferred until the wrapper command shape and decimal formatting are stable.
+<br />
 
+## Deferred fixture batches
+`#TODO`: Later compute-signal batches should add...
