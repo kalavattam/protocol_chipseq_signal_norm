@@ -103,7 +103,7 @@ assert_path_found \
     trimmed_outputs \
     "compressed SE trimmed FASTQ output" \
     "${dir_out}" \
-    outfile
+    fil_out
 
 if [[ -n "${fil_out}" ]]; then
     assert_file_nonempty \
