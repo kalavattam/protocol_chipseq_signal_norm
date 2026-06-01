@@ -28,7 +28,110 @@ fi
 #  Run with unset-variable checking while still collecting failed groups
 set -u
 
-#  Set paths for the smoke-test runner
+
+#  Define functions ==========================================================
+#  Print a smoke-test runner note
+function runner_note() {
+    echo "note(run_smoke_tests.sh):" "$@" >&2
+}
+
+
+#  Print a smoke-test runner error and stop
+function runner_die() {
+    echo "error(run_smoke_tests.sh):" "$@" >&2
+    exit 1
+}
+
+
+#  Check whether each required fixture file exists and is non-empty
+function has_fixture_set() {
+    local arr_ref="${1:-}"
+    local file=""
+
+    if [[ -z "${arr_ref}" ]]; then
+        runner_die "'has_fixture_set' requires an array reference."
+    fi
+
+    local -n arr_file="${arr_ref}"
+
+    for file in "${arr_file[@]}"; do
+        if [[ ! -s "${file}" ]]; then
+            return 1
+        fi
+    done
+}
+
+
+#  Run one fixture generator
+function run_fixture_generator() {
+    local label="${1:-fixture}"
+    local script="${2:-}"
+    local env_req="${3:-}"
+    local -a arr_cmd=()
+
+    if [[ ! -r "${script}" ]]; then
+        runner_die "${label} generator is not readable: '${script}'."
+    fi
+
+    runner_note "generating missing ${label} fixtures."
+
+    if [[ -z "${env_req}" || "${CONDA_DEFAULT_ENV:-}" == "${env_req}" ]]; then
+        arr_cmd=( "${BASH}" "${script}" )
+    elif \
+        command -v conda > /dev/null 2>&1
+    then
+        arr_cmd=( conda run -n "${env_req}" bash "${script}" )
+    else
+        runner_die \
+            "${label} fixture generation requires active environment" \
+            "'${env_req}' or Conda in PATH."
+    fi
+
+    if ! \
+        "${arr_cmd[@]}"
+    then
+        runner_die "${label} fixture generation failed: '${script}'."
+    fi
+}
+
+
+#  Generate one fixture set only when required files are missing
+function ensure_fixture_set() {
+    local label="${1:-fixture}"
+    local script="${2:-}"
+    local arr_ref="${3:-}"
+    local env_req="${4:-}"
+    local file=""
+
+    if \
+        has_fixture_set "${arr_ref}"
+    then
+        runner_note "using existing ${label} fixtures."
+        return 0
+    fi
+
+    local -n arr_file="${arr_ref}"
+
+    runner_note "missing required ${label} fixture files:"
+    for file in "${arr_file[@]}"; do
+        if [[ ! -s "${file}" ]]; then
+            printf '  %s\n' "${file}" >&2
+        fi
+    done
+
+    run_fixture_generator "${label}" "${script}" "${env_req}"
+
+    if ! \
+        has_fixture_set "${arr_ref}"
+    then
+        runner_die "${label} fixture generation did not create required files."
+    fi
+
+    runner_note "generated ${label} fixtures."
+}
+
+
+#  Set paths for the smoke-test runner ========================================
 dir_run="$(cd "$(dirname "${BASH_SOURCE[0]}")" > /dev/null 2>&1 && pwd)"
 dir_rep="$(cd "${dir_run}/../.." > /dev/null 2>&1 && pwd)"
 dir_out="${dir_rep}/tests/output"
@@ -36,6 +139,78 @@ dir_log="${dir_out}/logs"
 
 mkdir -p "${dir_log}"
 
+
+#  Define fixture sets generated automatically when missing ==================
+# shellcheck disable=SC2034
+{
+    dir_fix_aln="${dir_rep}/tests/align_fastqs/fixtures"
+    arr_fix_aln=(
+        "${dir_fix_aln}/reference/tiny.fa"
+        "${dir_fix_aln}/fastq/tiny_se.atria.fastq.gz"
+        "${dir_fix_aln}/fastq/tiny_pe_R1.atria.fastq.gz"
+        "${dir_fix_aln}/fastq/tiny_pe_R2.atria.fastq.gz"
+        "${dir_fix_aln}/bowtie2/tiny.1.bt2"
+        "${dir_fix_aln}/bowtie2/tiny.2.bt2"
+        "${dir_fix_aln}/bowtie2/tiny.3.bt2"
+        "${dir_fix_aln}/bowtie2/tiny.4.bt2"
+        "${dir_fix_aln}/bowtie2/tiny.rev.1.bt2"
+        "${dir_fix_aln}/bowtie2/tiny.rev.2.bt2"
+        "${dir_fix_aln}/bwa/tiny.fa"
+        "${dir_fix_aln}/bwa/tiny.fa.amb"
+        "${dir_fix_aln}/bwa/tiny.fa.ann"
+        "${dir_fix_aln}/bwa/tiny.fa.bwt"
+        "${dir_fix_aln}/bwa/tiny.fa.pac"
+        "${dir_fix_aln}/bwa/tiny.fa.sa"
+        "${dir_fix_aln}/bwa-mem2/tiny.fa"
+        "${dir_fix_aln}/bwa-mem2/tiny.fa.0123"
+        "${dir_fix_aln}/bwa-mem2/tiny.fa.amb"
+        "${dir_fix_aln}/bwa-mem2/tiny.fa.ann"
+        "${dir_fix_aln}/bwa-mem2/tiny.fa.bwt.2bit.64"
+        "${dir_fix_aln}/bwa-mem2/tiny.fa.pac"
+    )
+
+    dir_fix_sig="${dir_rep}/tests/compute_signal/fixtures"
+    arr_fix_sig=(
+        "${dir_fix_sig}/bedgraph/ratio_A.bdg"
+        "${dir_fix_sig}/bedgraph/ratio_B.bdg"
+        "${dir_fix_sig}/bedgraph/ratio_headers_A.bdg"
+        "${dir_fix_sig}/bedgraph/ratio_headers_B.bdg"
+        "${dir_fix_sig}/reference/tiny.fa"
+        "${dir_fix_sig}/reference/tiny.fa.fai"
+        "${dir_fix_sig}/bam/tiny_se.bam"
+        "${dir_fix_sig}/bam/tiny_se.bam.bai"
+        "${dir_fix_sig}/bam/tiny_pe.bam"
+        "${dir_fix_sig}/bam/tiny_pe.bam.bai"
+        "${dir_fix_sig}/cram/tiny_se.cram"
+        "${dir_fix_sig}/cram/tiny_se.cram.crai"
+        "${dir_fix_sig}/cram/tiny_pe.cram"
+        "${dir_fix_sig}/cram/tiny_pe.cram.crai"
+    )
+
+    dir_fix_dwn="${dir_rep}/tests/download_fastqs/fixtures"
+    arr_fix_dwn=(
+        "${dir_fix_dwn}/source/tiny_download_se.fastq.gz"
+        "${dir_fix_dwn}/source/tiny_download_pe_R1.fastq.gz"
+        "${dir_fix_dwn}/source/tiny_download_pe_R2.fastq.gz"
+        "${dir_fix_dwn}/metadata/local_se.template.tsv"
+        "${dir_fix_dwn}/metadata/local_pe.template.tsv"
+        "${dir_fix_dwn}/metadata/local_mixed.template.tsv"
+    )
+
+    dir_fix_flt="${dir_rep}/tests/filter_alignments/fixtures"
+    arr_fix_flt=(
+        "${dir_fix_flt}/sam/filter_sc_sp.sam"
+        "${dir_fix_flt}/reference/filter_sc_sp.fa"
+        "${dir_fix_flt}/reference/filter_sc_sp.fa.fai"
+    )
+
+    dir_fix_trm="${dir_rep}/tests/trim_fastqs/fixtures"
+    arr_fix_trm=(
+        "${dir_fix_trm}/fastq/tiny_se.fastq.gz"
+        "${dir_fix_trm}/fastq/tiny_pe_R1.fastq.gz"
+        "${dir_fix_trm}/fastq/tiny_pe_R2.fastq.gz"
+    )
+}
 
 #  Define smoke-test groups ===================================================
 arr_tst=(
@@ -86,6 +261,37 @@ arr_tst=(
 n_pass=0
 n_fail=0
 n_totl=0
+
+
+#  Generate missing fixture sets =============================================
+ensure_fixture_set \
+    "align-fastqs" \
+    "${dir_rep}/tests/align_fastqs/scripts/make_fixtures.sh" \
+    arr_fix_aln \
+    env_protocol
+
+ensure_fixture_set \
+    "compute-signal" \
+    "${dir_rep}/tests/compute_signal/scripts/make_fixtures.sh" \
+    arr_fix_sig \
+    env_protocol
+
+ensure_fixture_set \
+    "download-fastqs" \
+    "${dir_rep}/tests/download_fastqs/scripts/make_fixtures.sh" \
+    arr_fix_dwn
+
+ensure_fixture_set \
+    "filter-alignments" \
+    "${dir_rep}/tests/filter_alignments/scripts/make_fixtures.sh" \
+    arr_fix_flt
+
+if [[ "${RUN_ATRIA:-0}" == "1" ]]; then
+    ensure_fixture_set \
+        "trim-fastqs" \
+        "${dir_rep}/tests/trim_fastqs/scripts/make_fixtures.sh" \
+        arr_fix_trm
+fi
 
 
 #  Run smoke-test groups ======================================================

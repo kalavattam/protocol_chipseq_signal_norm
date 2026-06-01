@@ -114,7 +114,7 @@ hlp_scr=(
     "scripts/compute_signal.py"
     "scripts/compute_signal_ratio.py"
     "scripts/merge_bins_bdg.py"
-    "scripts/parse_meta_siq_chip.py"
+    "scripts/parse_metadata_siq_chip.py"
     "scripts/relativize_scaling_factors.py"
     "scripts/sum_bdg.py"
 )
