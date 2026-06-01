@@ -51,34 +51,31 @@ function check_group_shell_syntax() {
 }
 
 
-#  Collect active production shell scripts
+#  Collect active production and installation shell scripts
 arr_scr=()
 while IFS= read -r file; do
     arr_scr+=( "${file}" )
 done < <(
-    find "${ROOT_REPO}/scripts" \
-        -path "${ROOT_REPO}/scripts/blog" -prune -o \
-        -type f -name '*.sh' -print \
+    {
+        find "${ROOT_REPO}/scripts" \
+            -path "${ROOT_REPO}/scripts/blog" -prune -o \
+            -type f -name '*.sh' -print
+        find "${ROOT_REPO}/install/scripts" \
+            -type f -name '*.sh' -print
+    } \
         | sort
 )
 
 
-#  Collect smoke-test harness scripts
-arr_test=(
-    "${ROOT_REPO}/tests/scripts/run_smoke_tests.sh"
-    "${ROOT_REPO}/tests/scripts/lib/test_helpers.sh"
-)
-
+#  Collect test harness and fixture-generation shell scripts
+arr_test=()
 while IFS= read -r file; do
     arr_test+=( "${file}" )
 done < <(
-    find "${ROOT_REPO}/tests/scripts/smoke" \
+    find "${ROOT_REPO}/tests" \
+        -path "${ROOT_REPO}/tests/output" -prune -o \
         -type f -name '*.sh' -print \
         | sort
-)
-
-arr_test+=(
-    "${ROOT_REPO}/tests/compute_signal/scripts/make_fixtures.sh"
 )
 
 
