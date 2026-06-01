@@ -10,7 +10,7 @@ Regenerate fixtures from the repository root with:
 bash tests/download_fastqs/scripts/make_fixtures.sh
 ```
 
-For now, tests assume these fixtures are already present. A later test-runner refactor will allow `tests/scripts/run_smoke_tests.sh` to generate missing fixtures automatically when required inputs are not detected (`#TODO`).
+Generated fixture outputs are ignored by Git. When required inputs are missing, `tests/scripts/run_smoke_tests.sh` regenerates this fixture set automatically.
 
 The fixture set currently focuses on single-end and paired-end local-download smoke tests. The FASTQ records and metadata templates are encoded directly in `scripts/make_fixtures.sh` so that the expected read names, sequences, and table shape are easy to inspect.
 

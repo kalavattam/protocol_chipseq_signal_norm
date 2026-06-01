@@ -9,7 +9,7 @@ source activate env_protocol
 bash tests/align_fastqs/scripts/make_fixtures.sh
 ```
 
-For now, tests assume these fixtures are already present. A later test-runner refactor will allow `tests/scripts/run_smoke_tests.sh` to generate missing fixtures automatically when required inputs are not detected (`#TODO`).
+Generated fixture outputs are ignored by Git. When required inputs are missing, `tests/scripts/run_smoke_tests.sh` regenerates this fixture set automatically.
 
 The fixture set focuses on single-end and paired-end Bowtie2 alignment to BAM and CRAM output, plus BWA MEM, BWA ALN, and bwa-mem2 MEM alignment to BAM output. These fixtures are not derived from real sequencing data. The reference sequence and FASTQ records are encoded directly in `scripts/make_fixtures.sh` so that the expected read alignments are easy to inspect.
 

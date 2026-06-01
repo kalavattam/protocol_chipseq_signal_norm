@@ -9,7 +9,7 @@ source activate env_protocol
 bash tests/compute_signal/scripts/make_fixtures.sh
 ```
 
-For now, tests assume these fixtures are already present. A later test-runner refactor will allow `tests/scripts/run_smoke_tests.sh` to generate missing fixtures automatically when required inputs are not detected (`#TODO`).
+Generated fixture outputs are ignored by Git. When required inputs are missing, `tests/scripts/run_smoke_tests.sh` regenerates this fixture set automatically.
 
 The fixture set covers ratio-mode tests with plain text bedGraph files and signal/coordinate-mode tests with tiny BAM and CRAM files. These fixtures are not derived from real sequencing data. They were written by hand so that expected behavior is easy to inspect and reason about.
 
