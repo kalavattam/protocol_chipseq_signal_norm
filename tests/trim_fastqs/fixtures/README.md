@@ -37,7 +37,7 @@ The single-end FASTQ fixture contains one clean 64-bp read:
 |:---                   |:---                                                                |
 | `tiny_trim_se_read_1` | `ACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGT` |
 
-`submit_trim_fastqs.sh` currently calls Atria with `--length-range 35:500`, so this read is intentionally longer than the minimum length filter. The submit-level smoke test should verify that Atria-backed trimming produces a non-empty `gzip` FASTQ output and preserves the expected read name.
+`submit_trim_fastqs.sh` currently calls Atria with `--length-range 35:500`, so this read is intentionally longer than the minimum length filter. Submit- and execute-layer smoke tests should verify that Atria-backed trimming produces a non-empty `gzip` FASTQ output and preserves the expected read name.
 
 The paired-end FASTQ fixtures contain one clean 64-bp read pair:
 
@@ -46,9 +46,11 @@ The paired-end FASTQ fixtures contain one clean 64-bp read pair:
 | `tiny_trim_pe_pair_1/1` | R1   | `ACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGT` |
 | `tiny_trim_pe_pair_1/2` | R2   | `TGCATGCATGCATGCATGCATGCATGCATGCATGCATGCATGCATGCATGCATGCATGCATGCA` |
 
-The paired-end submit-level smoke test should pass the two compressed inputs as one comma-delimited `--csv_infile` entry, verify that Atria-backed trimming produces non-empty gzip FASTQ outputs for R1 and R2, and confirm that each output contains the expected paired read name prefix.
+The paired-end submit- and execute-layer smoke tests should pass the two compressed inputs as one comma-delimited `--csv_infile` entry, verify that Atria-backed trimming produces non-empty gzip FASTQ outputs for R1 and R2, and confirm that each output contains the expected paired read name prefix.
 
 <br />
 
-## Deferred fixture batches
-Later trim-fastqs batches should add execute-level SE/PE coverage, local GNU Parallel coverage, and remote Slurm coverage.
+## Current and deferred smoke-test coverage
+The smoke suite covers submit- and execute-layer single-end and paired-end Atria trimming when gated by `RUN_ATRIA=1`. It also covers local GNU Parallel dispatch when gated by `RUN_ATRIA=1 RUN_PARALLEL=1`.
+
+`#TODO`: Add remote Slurm coverage gated by `RUN_SLURM=1`.

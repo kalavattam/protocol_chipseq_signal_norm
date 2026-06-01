@@ -75,5 +75,7 @@ R1 matches chromosome `I` in forward orientation. R2 is the reverse complement o
 
 <br />
 
-## Deferred fixture batches
-Later align-fastqs batches should add local GNU Parallel coverage and remote Slurm coverage.
+## Current and deferred smoke-test coverage
+The smoke suite covers submit- and execute-layer single-end and paired-end alignment, a local Bowtie2 GNU Parallel path gated by `RUN_PARALLEL=1`, and a remote Slurm submission path gated by `RUN_SLURM=1`. Set `SLURM_WAIT=1` with `RUN_SLURM=1` to poll for expected Slurm outputs.
+
+`#TODO`: Consider extending GNU Parallel coverage to additional aligners and CRAM output where that broader matrix provides useful regression protection.

@@ -12,7 +12,7 @@ bash tests/download_fastqs/scripts/make_fixtures.sh
 
 Generated fixture outputs are ignored by Git. When required inputs are missing, `tests/scripts/run_smoke_tests.sh` regenerates this fixture set automatically.
 
-The fixture set currently focuses on single-end and paired-end local-download smoke tests. The FASTQ records and metadata templates are encoded directly in `scripts/make_fixtures.sh` so that the expected read names, sequences, and table shape are easy to inspect.
+The fixture set currently supports single-end, paired-end, and mixed-metadata local-download smoke tests. The FASTQ records and metadata templates are encoded directly in `scripts/make_fixtures.sh` so that the expected read names, sequences, and table shape are easy to inspect.
 
 <br />
 
@@ -66,5 +66,7 @@ The paired-end FASTQ sources contain one clean 64-bp read pair:
 
 <br />
 
-## Deferred fixture batches
-Later download-fastqs batches should add execute-level multiple-record metadata coverage, local GNU Parallel coverage, Slurm coverage, and external-network coverage gated by `RUN_NETWORK=1`.
+## Current and deferred smoke-test coverage
+The smoke suite covers local single-end, paired-end, and mixed-metadata downloads over loopback HTTP. It also covers local GNU Parallel dispatch for mixed metadata when gated by `RUN_PARALLEL=1`.
+
+`#TODO`: Add Slurm coverage. Consider an optional external-network smoke test gated by a future `RUN_NETWORK=1` flag.

@@ -40,5 +40,7 @@ Generated fixture outputs are ignored by Git. When required inputs are missing, 
 
 <br />
 
-## Deferred fixture batches
-`#TODO`: Later filter-alignments batches should add...
+## Current and deferred smoke-test coverage
+The smoke suite covers submit- and execute-layer BAM-to-BAM, CRAM-to-BAM, BAM-to-CRAM, and CRAM-to-CRAM paths. It also covers CRAM-to-CRAM GNU Parallel dispatch for `retain=sc` and `retain=sp` when gated by `RUN_PARALLEL=1`.
+
+`#TODO`: Add Slurm coverage. Consider extending GNU Parallel coverage to additional input/output format combinations where that broader matrix provides useful regression protection.
