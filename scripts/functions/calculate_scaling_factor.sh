@@ -13,6 +13,7 @@
 
 # _get_len_idx
 # _get_dep_idx
+# _set_ref_arg_cram
 # _detect_typ_bam
 # _resolve_typ_fil
 # _get_expr_filter
@@ -21,10 +22,10 @@
 # _compute_scl_fct
 # _import_shell_asgmt
 # _parse_metadata
-# _calculate_dep_fct
-# _calculate_dep_arr
-# _compute_dep_all
-# _generate_fmt_str
+# _calculate_dep_fct   #LEGACY
+# _calculate_dep_arr   #LEGACY
+# _compute_dep_all     #LEGACY
+# _generate_fmt_str    #LEGACY
 # _get_fil_out_part
 # process_samp_siq
 # process_samp_spike
@@ -53,10 +54,6 @@ elif ((
         exit 1
     fi
 fi
-
-#  Set default bin sizes for minimum input depth calculations
-DEP_BINS_DFLT="${DEP_BINS_DFLT:-1,5,10,20,30,40,50}"
-
 
 #  Source required helper functions
 _dir_src_sf="$(
@@ -280,11 +277,34 @@ EOM
 }
 
 
+#  Set Samtools reference arguments for one BAM or CRAM input
+function _set_ref_arg_cram() {
+    local fil_aln="${1:-}"
+    local arr_ref_nam="${2:-}"
+    local -n arr_ref="${arr_ref_nam}"
+
+    arr_ref=()
+
+    if [[ "${fil_aln,,}" != *.cram ]]; then
+        return 0
+    elif [[ -z "${ref_fa:-}" ]]; then
+        echo_err_func "${FUNCNAME[0]}" \
+            "global variable 'ref_fa' is required for CRAM input:" \
+            "'${fil_aln}'."
+        return 1
+    fi
+
+    validate_var_file "ref_fa" "${ref_fa}" || return 1
+    arr_ref=( -T "${ref_fa}" )
+}
+
+
 function _detect_typ_bam() {
     local bam="${1:-}"
     local n="${2:-200000}"
     local flag
     local seen=false
+    local -a ref_arg=()
     local show_help
 
     show_help=$(cat << EOM
@@ -292,12 +312,12 @@ Usage:
   _detect_typ_bam [-h|--hlp|--help] bam [n]
 
 Description:
-  Detect whether a BAM file appears to contain paired-end ("pe") or single-end ("se") alignments by sampling up to 'n' FLAG values from the file.
+  Detect whether a BAM or CRAM file appears to contain paired-end ("pe") or single-end ("se") alignments by sampling up to 'n' FLAG values from the file.
 
   If any sampled alignment has bit 0x1 set, the file is treated as paired-end; otherwise it is treated as single-end.
 
 Positional arguments:
-  1  bam  <str>  Input BAM file.
+  1  bam  <str>  Input BAM or CRAM file.
   2  n    <int>  Maximum number of alignments to sample (default: 200000).
 
 Returns:
@@ -340,20 +360,22 @@ EOM
         return 1
     fi
 
+    _set_ref_arg_cram "${bam}" ref_arg || return 1
+
     while IFS= read -r flag; do
         [[ "${flag}" =~ ^[0-9]+$ ]] || continue
         seen=true
 
         if (( flag & 1 )); then echo "pe" && return 0; fi
     done < <(
-        samtools view "${bam}" 2>/dev/null \
+        samtools view "${ref_arg[@]}" "${bam}" 2>/dev/null \
             | head -n "${n}" \
             | cut -f 2
     )
 
     if [[ "${seen}" != "true" ]]; then
         echo_err_func "${FUNCNAME[0]}" \
-            "failed to read usable FLAG values from BAM '${bam}'."
+            "failed to read usable FLAG values from alignment file '${bam}'."
         return 1
     fi
 
@@ -372,10 +394,10 @@ Usage:
   _resolve_typ_fil [-h|--hlp|--help] bam [pref]
 
 Description:
-  Resolve the desired library end type for a BAM file. If 'pref' is 'pe'/'paired' or 'se'/'single', that choice is returned directly. If 'pref' is 'auto' (or empty), the function calls '_detect_typ_bam' to infer the type from the BAM file.
+  Resolve the desired library end type for a BAM or CRAM file. If 'pref' is 'pe'/'paired' or 'se'/'single', that choice is returned directly. If 'pref' is 'auto' (or empty), the function calls '_detect_typ_bam' to infer the type from the alignment file.
 
 Positional arguments:
-  1  bam   <str>  Input BAM file.
+  1  bam   <str>  Input BAM or CRAM file.
   2  pref  <str>  Preferred library type; must be 'pe', 'paired', 'se', 'single', 'auto', or empty (default: \${aln_typ:-auto}).
 
 Returns:
@@ -410,7 +432,8 @@ EOM
         auto|"")
             typ="$(_detect_typ_bam "${bam}")" || {
                 echo_err_func "${FUNCNAME[0]}" \
-                    "failed to auto-detect library type for BAM '${bam}'."
+                    "failed to auto-detect library type for alignment file" \
+                    "'${bam}'."
                 return 1
             }
 
@@ -418,7 +441,8 @@ EOM
                 pe|se) echo "${typ}" ;;
                 *)
                     echo_err_func "${FUNCNAME[0]}" \
-                        "unexpected detected library type '${typ}' for BAM" \
+                        "unexpected detected library type '${typ}' for" \
+                        "alignment file" \
                         "'${bam}'."
                     return 1
                 ;;
@@ -499,6 +523,7 @@ function _count_align_bam() {
     local fil_bam="${2:-}"    # Input (not IP) BAM file
     local aln_typ="${3:-pe}"  # "paired", "pe", "single", "se" (default: "pe")
     local expr                # Samtools filtration expression
+    local -a ref_arg=()       # Samtools CRAM reference arguments
     local show_help           # Help message/documentation
 
     show_help=$(cat << EOM
@@ -506,11 +531,11 @@ Usage:
   _count_align_bam [-h|--hlp|--help] threads fil_bam [aln_typ]
 
 Description:
-  Counts the number of alignments in a BAM file based on whether the data is made up of paired- ("paired" or "pe") or single-end ("single" or "se") sequenced read alignments. Uses 'samtools view' with filtering expressions to count specific alignment flags.
+  Counts the number of alignments in a BAM or CRAM file based on whether the data is made up of paired- ("paired" or "pe") or single-end ("single" or "se") sequenced read alignments. Uses 'samtools view' with filtering expressions to count specific alignment flags.
 
 Positional arguments:
   1  threads  <int>  Number of threads for 'samtools view' decompression.
-  2  fil_bam  <str>  BAM infile for which to count alignments.
+  2  fil_bam  <str>  BAM or CRAM infile for which to count alignments.
   3  aln_typ  <str>  Alignment type; options: 'paired', 'pe', 'single', or 'se' (default: ${aln_typ}).
 
 Returns:
@@ -575,9 +600,16 @@ EOM
 
     #  Determine filtering flags based on alignment type
     expr="$(_get_expr_filter "${aln_typ}")" || return 1
+    _set_ref_arg_cram "${fil_bam}" ref_arg || return 1
 
     #  Count alignments based on alignment type
-    samtools view -@ "${threads}" -c --expr "${expr}" "${fil_bam}" || {
+    samtools view \
+        -@ "${threads}" \
+        "${ref_arg[@]}" \
+        -c \
+        --expr "${expr}" \
+        "${fil_bam}" \
+        || {
         echo_err_func "${FUNCNAME[0]}" \
             "'samtools view' failed for '${fil_bam}' with type '${aln_typ}'" \
             "and expression '${expr}'."
@@ -592,6 +624,7 @@ function _calculate_frag_avg() {
     local aln_typ="${3:-pe}"  # "paired", "pe", "single", "se"
     local len_lcl="${4:-}"    # Optional default length for SE libraries
     local expr=""             # Samtools filtration expression
+    local -a ref_arg=()       # Samtools CRAM reference arguments
     local show_help           # Help message/documentation
 
     show_help=$(cat << EOM
@@ -599,11 +632,11 @@ Usage:
   _calculate_frag_avg [-h|--hlp|--help] threads fil_bam [aln_typ] [len_lcl]
 
 Description:
-  Computes the average fragment length from a BAM file based on whether the data is paired-end ("paired" or "pe") or single-end ("single" or "se"). Uses 'samtools view' with filtering expressions and 'awk' to process fragment lengths.
+  Computes the average fragment length from a BAM or CRAM file based on whether the data is paired-end ("paired" or "pe") or single-end ("single" or "se"). Uses 'samtools view' with filtering expressions and 'awk' to process fragment lengths.
 
 Positional arguments:
   1  threads  <int>  Number of threads for 'samtools view' decompression.
-  2  fil_bam  <str>  BAM infile for which to compute fragment lengths.
+  2  fil_bam  <str>  BAM or CRAM infile for which to compute fragment lengths.
   3  aln_typ  <str>  Alignment type; options: 'paired', 'pe', 'single', or 'se' (default: 'pe').
   4  len_lcl  <int>  Default fragment length to use for single-end libraries when TLEN is not meaningful.
 
@@ -704,9 +737,10 @@ EOM
 
     #  Determine filtering flags based on alignment type
     expr="$(_get_expr_filter "${aln_typ}")" || return 1
+    _set_ref_arg_cram "${fil_bam}" ref_arg || return 1
 
     #  Compute average fragment length using samtools and awk
-    samtools view -@ "${threads}" --expr "${expr}" "${fil_bam}" \
+    samtools view -@ "${threads}" "${ref_arg[@]}" --expr "${expr}" "${fil_bam}" \
         | awk '{
             if ($9 > 0) { sum += $9; count++ }
         } END {
@@ -719,7 +753,7 @@ EOM
             }
         }' || {
             echo_err_func "${FUNCNAME[0]}" \
-                "failed for BAM '${fil_bam}' with type '${aln_typ}'."
+            "failed for alignment file '${fil_bam}' with type '${aln_typ}'."
             return 1
         }
 }
@@ -1031,15 +1065,17 @@ EOM
     # fi
 
     # shellcheck disable=SC2034
-    if ! mapfile -t arr_shell < <(
-        run_py "${scr_met}" \
-            --verbose \
-            --bam "${fil_bam}" \
-            --tbl_met "${tbl_met}" \
-            --cfg "${cfg_met}" \
-            --eqn "${eqn}" \
-            --shell
-    ); then
+    if ! \
+        mapfile -t arr_shell < <(
+            run_py "${scr_met}" \
+                --verbose \
+                --bam "${fil_bam}" \
+                --tbl_met "${tbl_met}" \
+                --cfg "${cfg_met}" \
+                --eqn "${eqn}" \
+                --shell
+        )
+    then
         echo_err_func "${FUNCNAME[0]}" \
             "failed to use script '${scr_met}' with configuration" \
             "'${cfg_met}' to parse siQ-ChIP metadata in '${tbl_met}' for" \
@@ -1055,6 +1091,66 @@ EOM
         conc_in conc_ip len_in len_ip dep_in dep_ip \
         || return 1
 }
+
+
+function _get_fil_out_part() {
+    local fil_out="${1:-}"
+    local idx="${2:-}"
+    local idx_pad
+    local show_help
+
+    show_help=$(cat << EOM
+Usage:
+  _get_fil_out_part [-h|--hlp|--help] fil_out idx
+
+Description:
+  Construct the per-sample part-file path derived from a base output-table path.
+
+Positional arguments:
+  1  fil_out  <str>  Base output-table path.
+  2  idx      <int>  Zero-based, zero-padded sample index.
+
+Returns:
+  Prints a path of the form:
+
+      <fil_out>.part.<idx>
+
+Examples:
+  '''bash
+  _get_fil_out_part results.tsv 0
+  _get_fil_out_part results.tsv 12
+  '''
+EOM
+    )
+
+    if [[ "${fil_out}" =~ ^(-h|--h[e]?lp)$ ]]; then
+        echo "${show_help}" >&2
+        echo >&2
+        return 0
+    elif [[ -z "${fil_out}" ]]; then
+        echo_err_func "${FUNCNAME[0]}" \
+            "positional argument 1, 'fil_out', is missing."
+        return 1
+    elif [[ -z "${idx}" ]]; then
+        echo_err_func "${FUNCNAME[0]}" \
+            "positional argument 2, 'idx', is missing."
+        return 1
+    elif [[ ! "${idx}" =~ ^[0-9]+$ ]]; then
+        echo_err_func "${FUNCNAME[0]}" \
+            "positional argument 2, 'idx', must be a non-negative integer:" \
+            "'${idx}'."
+        return 1
+    fi
+
+    printf -v idx_pad '%06d' "${idx}"
+    printf '%s.part.%s\n' "${fil_out}" "${idx_pad}"
+}
+
+
+#LEGACY: The following global variable and four functions are retained for
+#+       reference and, e.g., future comparisons with Python helpers; they are
+#+       no longer called by the production scaling-factor row writers
+DEP_BINS_DFLT="${DEP_BINS_DFLT:-1,5,10,20,30,40,50}"
 
 
 function _calculate_dep_fct() {
@@ -1412,68 +1508,11 @@ EOM
 }
 
 
-function _get_fil_out_part() {
-    local fil_out="${1:-}"
-    local idx="${2:-}"
-    local tag="${3:-part}"
-    local idx_pad
-    local show_help
-
-    show_help=$(cat << EOM
-Usage:
-  _get_fil_out_part [-h|--hlp|--help] fil_out idx [tag]
-
-Description:
-  Construct the per-sample part-file path derived from a base output-table path.
-
-Positional arguments:
-  1  fil_out  <str>  Base output-table path.
-  2  idx      <int>  Zero-based sample index.
-  3  tag      <str>  Label inserted into the part-file name (default: ${tag}).
-
-Returns:
-  Prints a path of the form:
-
-      <fil_out>.part.<tag>.<zero-padded idx>
-
-Examples:
-  '''bash
-  _get_fil_out_part results.tsv 0
-  _get_fil_out_part results.tsv 12 siq
-  _get_fil_out_part results.tsv 12 spike
-  '''
-EOM
-    )
-
-    if [[ "${fil_out}" =~ ^(-h|--h[e]?lp)$ ]]; then
-        echo "${show_help}" >&2
-        echo >&2
-        return 0
-    elif [[ -z "${fil_out}" ]]; then
-        echo_err_func "${FUNCNAME[0]}" \
-            "positional argument 1, 'fil_out', is missing."
-        return 1
-    elif [[ -z "${idx}" ]]; then
-        echo_err_func "${FUNCNAME[0]}" \
-            "positional argument 2, 'idx', is missing."
-        return 1
-    elif [[ ! "${idx}" =~ ^[0-9]+$ ]]; then
-        echo_err_func "${FUNCNAME[0]}" \
-            "positional argument 2, 'idx', must be a non-negative integer:" \
-            "'${idx}'."
-        return 1
-    fi
-
-    printf -v idx_pad '%06d' "${idx}"
-    printf '%s.part.%s.%s\n' "${fil_out}" "${tag}" "${idx_pad}"
-}
-
-
 #  Compute siQ-ChIP alpha scaling factor and related values for a sample
 #+
 #+ Workflow function that processes a sample using global variables; extracts
-#+ siQ-ChIP metadata from a TSV table, computes alignment counts and average
-#+ fragment lengths, and minimum input depth values
+#+ siQ-ChIP metadata from a TSV table, computes alignment counts, and computes
+#+ average fragment lengths
 #+
 # shellcheck disable=SC2154
 function process_samp_siq() {
@@ -1484,7 +1523,7 @@ function process_samp_siq() {
     local typ_ip typ_in dep_ip dep_in len_ip len_in v
     # local fmt_str  # Reserved in case formatted output generation is revived
     local len_ip_ovrd len_in_ovrd fil_out_part
-    local -a fields arr_dm
+    local -a fields
     local show_help
 
     show_help=$(cat << 'EOM'
@@ -1494,12 +1533,11 @@ Usage:
 Description:
   Processes a single sample (array index 'idx') to compute the siQ-ChIP alpha scaling factor and related QC values.
 
-  For the IP/input BAM pair at 'idx', this function
+  For the IP/input alignment-file pair at 'idx', this function
     - parses siQ-ChIP metadata,
-    - detects PE/SE for each BAM,
+    - detects PE/SE for each alignment file,
     - counts alignments,
     - computes average fragment lengths (PE only; SE uses a provided default),
-    - computes minimum input depth values across the currently configured default bin sizes, and
     - writes a per-sample tab-separated results row.
 
 Positional argument:
@@ -1507,20 +1545,22 @@ Positional argument:
 
 Expected global variables:
   Read:
-    arr_mip, arr_min                Sample BAM arrays for IP and input
+    arr_mip, arr_min                Sample alignment-file arrays for IP and input
     scr_met, cfg_met, tbl_met, eqn  siQ-ChIP metadata parser, YAML configuration, table, and equation
     threads                         Samtools decompression threads
+    ref_fa                          Reference FASTA required for CRAM input
     len_def                         Default fragment length to use for SE libraries
     aln_typ                         Optional override: 'pe', 'se', or 'auto' (default: auto)
     scr_siq, scr_spk                Python entry points for scaling-factor calculation
-    rnd                             Rounding precision for depth-factor outputs
+    rnd                             Rounding precision for the scaling factor
     debug                           If 'true', prints 'debug_var' lines
+    idx_out                         Optional output-part index override
 
   Write:
     fil_out                         Base path used to derive the per-sample results file
 
 Output row fields (in order):
-  fil_ip, fil_in, siq, eqn, mass_ip, mass_in, vol_all, vol_in, dep_ip, dep_in, len_ip, len_in, <depth factors for bins 1,5,10,20,30,40,50 for frag and norm modes>
+  fil_ip, fil_in, siq, eqn, mass_ip, mass_in, vol_all, vol_in, dep_ip, dep_in, len_ip, len_in
 
 Dependencies:
   This function expects 'validate_var_file' and 'debug_var' to be available in the current shell via the helper-layer sourcing block above.
@@ -1529,12 +1569,8 @@ Notes:
   - For single-end libraries, TLEN is not meaningful; this function requires 'len_def' (or an optional 4th positional argument, 'len_lcl') to supply a fixed fragment length.
   - End-type detection is per-file in case of mixed inputs.
   - Individual alignment files are expected to be a single input type: either entirely PE or entirely SE.
-  - Minimum input depth values are currently computed only for the default bin sizes 1,5,10,20,30,40,50. The workflow helper does not yet expose a way to pass custom bin sizes through to '_compute_dep_all'.
 EOM
     )
-    #TODO: if custom bin sizes are threaded through to this function, the
-    #+     output-column semantics will no longer necessarily correspond to
-    #+     the fixed default bin sequence 1,5,10,20,30,40,50
 
     if [[ "${idx}" =~ ^(-h|--h[e]?lp)$ ]]; then
         echo "${show_help}" >&2
@@ -1555,11 +1591,11 @@ EOM
         return 1
     fi
 
-    #  Assign BAM files based on sample index
+    #  Assign alignment files based on sample index
     fil_ip="${arr_mip[idx]}"
     fil_in="${arr_min[idx]}"
 
-    #  Check that BAM files exist
+    #  Check that alignment files exist
     validate_var_file "fil_ip" "${fil_ip}" "${idx}" || return 1
     validate_var_file "fil_in" "${fil_in}" "${idx}" || return 1
 
@@ -1571,11 +1607,12 @@ EOM
     _parse_metadata \
         "${scr_met}" "${fil_ip}" "${tbl_met}" "${cfg_met}" "${eqn}" || {
             echo_err_func "${FUNCNAME[0]}" \
-                "failed while running '_parse_metadata' for IP BAM '${fil_ip}'."
+                "failed while running '_parse_metadata' for IP alignment" \
+                "file '${fil_ip}'."
             return 1
         }
 
-    #  Determine end type per BAM (robust if inputs ever mix)
+    #  Determine end type per alignment file (robust if inputs ever mix)
     typ_ip="$(_resolve_typ_fil "${fil_ip}")" || {
         echo_err_func "${FUNCNAME[0]}" \
             "failed while resolving 'typ_ip'."
@@ -1587,12 +1624,12 @@ EOM
         return 1
     }
 
-    #  Count alignments in BAM files
+    #  Count alignments in alignment files
     dep_ip="$(_get_dep_idx mip "${idx}")"
     if [[ -z "${dep_ip}" ]]; then
         dep_ip="$(_count_align_bam "${threads}" "${fil_ip}" "${typ_ip}")" || {
             echo_err_func "${FUNCNAME[0]}" \
-                "failed while counting alignments for IP BAM '${fil_ip}'" \
+                "failed while counting alignments for IP file '${fil_ip}'" \
                 "with type '${typ_ip}'."
             return 1
         }
@@ -1602,13 +1639,13 @@ EOM
     if [[ -z "${dep_in}" ]]; then
         dep_in="$(_count_align_bam "${threads}" "${fil_in}" "${typ_in}")" || {
             echo_err_func "${FUNCNAME[0]}" \
-                "failed while counting alignments for input BAM '${fil_in}'" \
+                "failed while counting alignments for input file '${fil_in}'" \
                 "with type '${typ_in}'."
             return 1
         }
     fi
 
-    #  Compute average fragment lengths for BAM files; overrides take
+    #  Compute average fragment lengths for alignment files; overrides take
     #+ precedence over TLEN or 'len_def'
     len_ip_ovrd="$(_get_len_idx mip "${idx}")"
     len_in_ovrd="$(_get_len_idx min "${idx}")"
@@ -1621,7 +1658,7 @@ EOM
                 "${threads}" "${fil_ip}" "${typ_ip}" "${len_def:-}"
         )" || {
             echo_err_func "${FUNCNAME[0]}" \
-                "failed while computing average fragment length for IP BAM" \
+                "failed while computing average fragment length for IP file" \
                 "'${fil_ip}' with type '${typ_ip}'."
             return 1
         }
@@ -1636,7 +1673,7 @@ EOM
         )" || {
             echo_err_func "${FUNCNAME[0]}" \
                 "failed while computing average fragment length for input" \
-                "BAM '${fil_in}' with type '${typ_in}'."
+                "file '${fil_in}' with type '${typ_in}'."
             return 1
         }
     fi
@@ -1661,25 +1698,6 @@ EOM
             --len_ip  "${len_ip}"  --len_in  "${len_in}"
     ) || return 1
 
-    #  Compute minimum input depth values
-    #TODO: thread custom bin sizes through this call when the higher-level
-    #+     interface exposes them
-    IFS="," read -r -a arr_dm < <(
-        _compute_dep_all "${dep_in}" "${rnd}"
-    ) || return 1
-    #TODO: add regression tests for process-substitution patterns of the form
-    #+
-    #+         read ... < <(producer_cmd ...) || return 1
-    #+
-    #+     across the codebase; confirm, for representative producer failures,
-    #+     that stderr/error messages still appear and that failure status is
-    #+     handled the way the surrounding code expects
-
-    # #  Dynamically construct string for output formatting
-    # #TODO: 'fmt_str' is computed but never used; is this dead code now? Can I
-    # #+     still make use of this? Do I even need to?
-    # fmt_str=$( _generate_fmt_str $((12 + ${#arr_dm[@]})) )
-
     #  Build a row of results, printing them tab-separated with no trailing tab
     if [[ -z "${fil_out:-}" ]]; then
         echo_err_func "${FUNCNAME[0]}" \
@@ -1695,7 +1713,7 @@ EOM
     fi
 
     fil_out_part="$(
-        _get_fil_out_part "${fil_out}" "${idx}" "siq"
+        _get_fil_out_part "${fil_out}" "${idx_out:-${idx}}"
     )" || return 1
 
     if ! {
@@ -1704,7 +1722,6 @@ EOM
                 "${mass_ip}" "${mass_in}" "${vol_all}" "${vol_in}"
                 "${dep_ip}" "${dep_in}" "${len_ip}" "${len_in}"
             )
-            fields+=( "${arr_dm[@]}" )
 
             printf '%s' "${fields[0]}"
             for v in "${fields[@]:1}"; do printf '\t%s' "${v}"; done
@@ -1715,15 +1732,15 @@ EOM
             "failed to write per-sample results file '${fil_out_part}'."
         return 1
     fi
-    #TODO: concatenate per-sample part files deterministically in the higher-
-    #+     level driver instead of writing directly to shared 'fil_out'
+    #  The execute-layer driver combines per-sample part files deterministically
+    #+ after all workers finish successfully.
 }
 
 
 #  Compute spike-in scaling factor and related values for a sample
 #+
 #+ Workflow function that processes a sample using global variables; computes
-#+ alignment counts and minimum input depth values
+#+ alignment counts and a requested scaling-factor coefficient
 #+
 # shellcheck disable=SC2154
 function process_samp_spike() {
@@ -1733,7 +1750,7 @@ function process_samp_spike() {
     local mp mn sp sn typ_mp typ_sp typ_mn typ_sn
     local num_mp num_sp num_mn num_sn coef_lcl coef_val v fil_out_part
     # local fmt_str  # Reserved in case formatted output generation is revived
-    local -a fields arr_dm
+    local -a fields
     local show_help
 
     show_help=$(cat << 'EOM'
@@ -1743,26 +1760,28 @@ Usage:
 Description:
   Processes a single sample (array index 'idx') to compute a spike-in scaling factor and related QC values.
 
-  For the main/spike IP and input BAMs at 'idx', this function detects paired- or single-end sequenced read alignment status per BAM, counts alignments, computes minimum input depth values across common bin sizes, and writes a per-sample tab-separated results row.
+  For the main/spike IP and input alignment files at 'idx', this function detects paired- or single-end sequenced read alignment status per file, counts alignments, computes the requested scaling-factor coefficient, and writes a per-sample tab-separated results row.
 
 Positional argument:
   1  idx  <int>  Zero-based array index into arrays: arr_mip (main IP), arr_sip (spike IP), arr_min (main input), arr_sin (spike input)
 
 Expected global variables:
   Read:
-    arr_mip, arr_sip, arr_min, arr_sin   Sample BAM arrays
+    arr_mip, arr_sip, arr_min, arr_sin   Sample alignment-file arrays
     threads                              Samtools decompression threads
+    ref_fa                               Reference FASTA required for CRAM input
     aln_typ                              Optional override: 'pe', 'se', or 'auto' (default: auto)
     scr_siq, scr_spk                     Python entry points for scaling-factor calculation
-    coef_spk                             Spike-in coefficient to request from 'calculate_scaling_factor_spike.py' (default: fractional)
-    rnd                                  Rounding precision for depth-factor outputs
+    coef_spk                             Spike-in coefficient to request from 'calculate_scaling_factor_spike.py' (default: chiprx_alpha_ratio)
+    rnd                                  Rounding precision for the coefficient
     debug                                If 'true', prints 'debug_var' lines
+    idx_out                              Optional output-part index override
 
   Write:
     fil_out                              Base path used to derive the per-sample results file
 
 Output row fields (in order):
-  mp, sp, mn, sn, coef_val, num_mp, num_sp, num_mn, num_sn, <depth factors for bins 1,5,10,20,30,40,50 for frag and norm modes>
+  mp, sp, mn, sn, coef_val, coef_lcl, num_mp, num_sp, num_mn, num_sn
 
 Dependencies:
   This function expects 'validate_var_file' and 'debug_var' to be available in the current shell via the helper-layer sourcing block above.
@@ -1770,12 +1789,8 @@ Dependencies:
 Notes:
   - End-type detection is per-file in case of mixed inputs.
   - Individual alignment files are expected to be a single input type: either entirely PE or entirely SE.
-  - Minimum input depth values are currently computed only for the default bin sizes 1,5,10,20,30,40,50. The workflow helper does not yet expose a way to pass custom bin sizes through to '_compute_dep_all'.
 EOM
     )
-    #TODO: if custom bin sizes are threaded through to this function, the
-    #+     output-column semantics will no longer necessarily correspond to
-    #+     the fixed default bin sequence 1,5,10,20,30,40,50
 
     if [[ "${idx}" =~ ^(-h|--h[e]?lp)$ ]]; then
         echo "${show_help}" >&2
@@ -1796,13 +1811,13 @@ EOM
         return 1
     fi
 
-    #  Assign BAM files based on sample index
+    #  Assign alignment files based on sample index
     mp="${arr_mip[idx]}"
     mn="${arr_min[idx]}"
     sp="${arr_sip[idx]}"
     sn="${arr_sin[idx]}"
 
-    #  Check that BAM files exist
+    #  Check that alignment files exist
     validate_var_file "mp" "${mp}" "${idx}" || return 1
     validate_var_file "sp" "${sp}" "${idx}" || return 1
     validate_var_file "mn" "${mn}" "${idx}" || return 1
@@ -1812,7 +1827,7 @@ EOM
         debug_var "idx=${idx}" "mp=${mp}" "mn=${mn}" "sp=${sp}" "sn=${sn}"
     fi
 
-    #  Determine end type per BAM
+    #  Determine end type per alignment file
     typ_mp="$(_resolve_typ_fil "${mp}")" || {
         echo_err_func "${FUNCNAME[0]}" \
             "failed while resolving 'typ_mp'."
@@ -1840,12 +1855,12 @@ EOM
             "typ_mn=${typ_mn}" "typ_sn=${typ_sn}"
     fi
 
-    #  Count alignments in BAM files
+    #  Count alignments in alignment files
     num_mp="$(_get_dep_idx mip "${idx}")"
     if [[ -z "${num_mp}" ]]; then
         num_mp="$(_count_align_bam "${threads}" "${mp}" "${typ_mp}")" || {
             echo_err_func "${FUNCNAME[0]}" \
-                "failed while counting alignments for main IP BAM '${mp}'" \
+                "failed while counting alignments for main IP file '${mp}'" \
                 "with type '${typ_mp}'."
             return 1
         }
@@ -1855,7 +1870,7 @@ EOM
     if [[ -z "${num_mn}" ]]; then
         num_mn="$(_count_align_bam "${threads}" "${mn}" "${typ_mn}")" || {
             echo_err_func "${FUNCNAME[0]}" \
-                "failed while counting alignments for main input BAM '${mn}'" \
+                "failed while counting alignments for main input file '${mn}'" \
                 "with type '${typ_mn}'."
             return 1
         }
@@ -1865,7 +1880,7 @@ EOM
     if [[ -z "${num_sp}" ]]; then
         num_sp="$(_count_align_bam "${threads}" "${sp}" "${typ_sp}")" || {
             echo_err_func "${FUNCNAME[0]}" \
-                "failed while counting alignments for spike IP BAM '${sp}'" \
+                "failed while counting alignments for spike IP file '${sp}'" \
                 "with type '${typ_sp}'."
             return 1
         }
@@ -1875,13 +1890,13 @@ EOM
     if [[ -z "${num_sn}" ]]; then
         num_sn="$(_count_align_bam "${threads}" "${sn}" "${typ_sn}")" || {
             echo_err_func "${FUNCNAME[0]}" \
-                "failed while counting alignments for spike input BAM" \
+                "failed while counting alignments for spike input file" \
                 "'${sn}' with type '${typ_sn}'."
             return 1
         }
     fi
 
-    coef_lcl="${coef_spk:-fractional}"
+    coef_lcl="${coef_spk:-chiprx_alpha_ratio}"
 
     if [[ "${coef_lcl}" =~ ^([Aa][Ll][Ll])$ ]]; then
         echo_err_func "${FUNCNAME[0]}" \
@@ -1913,25 +1928,6 @@ EOM
         return 1
     }
 
-    #  Compute minimum input depth values
-    #TODO: thread custom bin sizes through this call when the higher-level
-    #+     interface exposes them
-    IFS="," read -r -a arr_dm < <(
-        _compute_dep_all "${num_mn}" "${rnd}"
-    ) || return 1
-    #TODO: add regression tests for process-substitution patterns of the form
-    #+
-    #+         read ... < <(producer_cmd ...) || return 1
-    #+
-    #+     across the codebase; confirm, for representative producer failures,
-    #+     that stderr/error messages still appear and that failure status is
-    #+     handled the way the surrounding code expects
-
-    # #  Dynamically construct string for output formatting
-    # #TODO: 'fmt_str' is computed but never used; is this dead code now? Can I
-    # #+     still make use of this? Do I even need to?
-    # fmt_str=$( _generate_fmt_str $((9 + ${#arr_dm[@]})) )
-
     #  Build a row of results, printing them tab-separated with no trailing tab
     if [[ -z "${fil_out:-}" ]]; then
         echo_err_func "${FUNCNAME[0]}" \
@@ -1947,15 +1943,14 @@ EOM
     fi
 
     fil_out_part="$(
-        _get_fil_out_part "${fil_out}" "${idx}" "spike"
+        _get_fil_out_part "${fil_out}" "${idx_out:-${idx}}"
     )" || return 1
 
     if ! {
             fields=(
-                "${mp}" "${sp}" "${mn}" "${sn}" "${coef_val}"
+                "${mp}" "${sp}" "${mn}" "${sn}" "${coef_val}" "${coef_lcl}"
                 "${num_mp}" "${num_sp}" "${num_mn}" "${num_sn}"
             )
-            fields+=( "${arr_dm[@]}" )
 
             printf '%s' "${fields[0]}"
             for v in "${fields[@]:1}"; do printf '\t%s' "${v}"; done
@@ -1966,8 +1961,8 @@ EOM
             "failed to write per-sample results file '${fil_out_part}'."
         return 1
     fi
-    #TODO: concatenate per-sample part files deterministically in the higher-
-    #+     level driver instead of writing directly to shared 'fil_out'
+    #  The execute-layer driver combines per-sample part files deterministically
+    #+ after all workers finish successfully.
 }
 
 

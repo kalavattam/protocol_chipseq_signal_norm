@@ -8,7 +8,7 @@
 #
 # Description:
 #     This script reads a TSV file containing ChIP-seq metrics and calculates
-#     a 'scaled' column by dividing each 'alpha' or 'sf' value by the maximum
+#     a 'scaled' column by dividing each scaling-factor value by the maximum
 #     'IP_*' value in the dataset, optionally including 'in_*' samples if the
 #     --input flag is set. The scaled values represent a relative percentage,
 #     with the largest 'IP_*' value set to 1. This script may be useful for
@@ -22,9 +22,8 @@
 #     comment: biostars.org/p/9572653/#9572962.
 #
 #     While we allow users to do so, we note that it is not appropriate to
-#     scale 'alpha' values in this way since they represent physical quantities
-#     of chromatin, whereas 'sf' values are arbitrary units ('spike-in scaled
-#     signal').
+#     scale siQ-ChIP values in this way since they represent physical
+#     quantities of chromatin, whereas spike-in values are arbitrary units.
 #
 # Usage:
 #     python relativize_scaling_factors.py [--input] --infile <input.tsv>
@@ -82,15 +81,15 @@ def load_tsv(file_path):
 
 
 def determine_scaling_column(df):
-    """Determine if 'alpha' or 'sf' should be used for scaling."""
-    if 'alpha' in df.columns:
-        return 'alpha'
-    elif 'sf' in df.columns:
-        return 'sf'
-    else:
-        raise ValueError(
-            "Neither 'alpha' nor 'sf' columns are present in the file."
-        )
+    """Determine which supported scaling-factor column should be used."""
+    for column in ("siq", "spike"):
+        if column in df.columns:
+            return column
+
+    raise ValueError(
+        "No supported scaling-factor column is present in the file: "
+        "'siq' or 'spike'."
+    )
 
 
 def relativize(df, scaling_col, include_input, round_digits):
@@ -130,7 +129,7 @@ def relativize(df, scaling_col, include_input, round_digits):
             axis=1
         )
 
-    #  Dynamically reorder columns to place 'scaled' after 'alpha' or 'sf'
+    #  Dynamically reorder columns to place 'scaled' after the scaling factor
     cols = df.columns.tolist()
     scaling_index = cols.index(scaling_col) + 1
     reordered_cols = cols[:scaling_index] + ['scaled'] + cols[scaling_index:-1]
@@ -149,7 +148,7 @@ def parse_args():
     parser = argparse.ArgumentParser(
         description=(
             "This script reads a TSV file containing ChIP-seq metrics and "
-            "calculates a 'scaled' column by dividing each 'alpha' or 'sf' "
+            "calculates a 'scaled' column by dividing each scaling-factor "
             "value by the maximum 'IP_*' value in the dataset. It allows "
             "optional inclusion of 'in_*' input samples in the scaling using "
             "the --input flag."
@@ -162,8 +161,8 @@ def parse_args():
         help=(
             "Path to the input TSV file containing ChIP-seq metrics from "
             "running, e.g., execute_calculate_scaling_factor.sh. The file "
-            "must contain either an 'alpha' or 'sf' column, and the script "
-            "will use one of these to calculate scaled values."
+            "must contain a supported scaling-factor column: 'siq' or "
+            "'spike'."
         )
     )
     parser.add_argument(
@@ -210,7 +209,7 @@ def main():
     #  Load the input TSV file
     df = load_tsv(args.infile)
 
-    #  Determine whether to scale by 'alpha' or 'sf'
+    #  Determine which scaling-factor column to use
     scaling_col = determine_scaling_column(df)
 
     #  Calculate scaled values

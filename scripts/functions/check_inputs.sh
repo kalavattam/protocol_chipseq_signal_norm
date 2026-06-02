@@ -846,7 +846,12 @@ EOM
         fi
 
         local -n arr_ref="${arr_nam}"
-        arr_len="${#arr_ref[@]}"
+
+        if [[ -v "arr_ref[@]" ]]; then
+            arr_len="${#arr_ref[@]}"
+        else
+            arr_len=0
+        fi
 
         if (( arr_len != 0 && arr_len != 1 && arr_len != n_req )); then
             echo_err_func "${FUNCNAME[0]}" \

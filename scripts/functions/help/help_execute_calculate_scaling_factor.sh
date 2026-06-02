@@ -16,10 +16,10 @@ function help_execute_calculate_scaling_factor() {
     cat << EOM
 Usage:
   execute_calculate_scaling_factor.sh
-    [--help] [--verbose] [--dry_run]
+    [--help] [--verbose] [--dry_run] [--force] [--no_parts]
     [--threads <int>]
     [--mode <enum:siq,spike>] [--method <enum:fractional,chiprx_alpha_ratio,chiprx_alpha_ip,chiprx_alpha_in,rxinput_alpha>]
-    --csv_mip <csv:file> --csv_min <csv:file> [--csv_sip <csv:file>] [--csv_sin <csv:file>] [--aln_typ <enum:pe,se,auto>]
+    --csv_mip <csv:file> --csv_min <csv:file> [--csv_sip <csv:file>] [--csv_sin <csv:file>] [--aln_typ <enum:pe,se,auto>] [--ref_fa <file>]
     --fil_out <file>
     [--tbl_met <file>] [--cfg_met <file>] [--eqn <enum:5,5nd,6,6nd>]
     [--len_def <int>] [--len_mip <csv:num>] [--len_min <csv:num>] [--dep_mip <csv:int>] [--dep_min <csv:int>] [--dep_sip <csv:int>] [--dep_sin <csv:int>]
@@ -34,7 +34,7 @@ Description:
 
   In 'spike' mode, the script uses main-organism and spike-in-organism IP and input alignment files to calculate spike-in scaling factors via the downstream 'submit_calculate_scaling_factor.sh' wrapper and the associated Python/helper-script workflow, including 'calculate_scaling_factor_spike.py' and supporting shell/Python utilities for obtaining fragment-length and alignment-depth values when needed.
 
-  Jobs may be run through Slurm, GNU Parallel, or serial execution, depending on user arguments and the resolved number of jobs.
+  Jobs may be run through Slurm, GNU Parallel, or serial execution, depending on user arguments and the resolved number of jobs. After successful worker completion, the script combines deterministic per-sample part files into the requested final TSV.
 
 
 Arguments:
@@ -47,6 +47,12 @@ Arguments:
   -dr, --dry, --dry_run  <flag>
     Print commands that would be executed without running them.
 
+  -f, --force  <flag>
+    Replace an existing final TSV after successful part-file assembly.
+
+  -np, --no_parts  <flag>
+    Remove per-sample part files after successful final-table assembly.
+
   -t, --thr, --threads  <int>
     Number of threads to use (default: ${threads}).
 
@@ -54,7 +60,7 @@ Arguments:
     Scaling-factor mode to run: 'siq' or 'spike' (default: '${mode}').
 
   -me, --method  <enum:fractional,chiprx_alpha_ratio,chiprx_alpha_ip,chiprx_alpha_in,rxinput_alpha>
-    Spike-in scaling method to compute when '--mode spike' is active (default if '--mode spike': 'fractional'; no default if '--mode siq').
+    Spike-in scaling method to compute when '--mode spike' is active (default if '--mode spike': 'chiprx_alpha_ratio'; no default if '--mode siq').
 
     List of accepted canonical method names (first), aliases (subsequent), and calculations:
       - fractional | bioprotocol | bio_protocol
@@ -72,6 +78,9 @@ Arguments:
 
   -at, --aln_typ, --align_typ  <enum:pe,paired,se,single,auto>
     Alignment layout type for input alignment files: 'pe' / 'paired', 'se' / 'single', or 'auto' (default: '${aln_typ}').
+
+  -r, --ref, --ref_fa, --reference  <file>
+    Reference FASTA required when any input alignment file is CRAM.
 
   -mp, --csv_mip  <csv:file>
     Comma-separated list of main-organism IP alignment files.
@@ -156,6 +165,7 @@ Dependencies:
     - sbatch, when '--slurm'
 
   Shell scripts:
+    - combine_parts_scaling_factor.sh
     - submit_calculate_scaling_factor.sh
 
   Python scripts:
@@ -207,15 +217,21 @@ Dependencies:
 Notes:
   - In 'spike' mode, '--method' is normalized internally to one of the supported spike-in calculation modes.
   - In 'siq' mode, '--method' is not used.
+  - CRAM inputs require '--ref_fa'.
   - For required per-sample input vectors, reconstructed arrays must be non-empty and of matching length.
   - Optional override vectors such as '--len_mip' or '--dep_min' may contain either:
     1. no value,
     2. one broadcast value, or
     3. one value per sample.
   - When '--slurm' is used, execution is parallelized via Slurm array tasks.
+    + A dependent combiner job is submitted with 'afterok:<array_job_id>'.
   - When '--slurm' is not used:
     + if the resolved local job count is greater than 1, execution uses GNU Parallel;
     + otherwise, execution is serial.
+  - The final TSV is assembled automatically after all workers finish.
+  - Existing final TSVs are replaced only when '--force' is supplied.
+  - Per-sample part files are retained unless '--no_parts' is supplied.
+  - Compute downstream denominator floors separately with 'python -m scripts.compute_input_floor'.
   - If '--dry_run' is enabled, commands are printed but not executed.
 
 
@@ -246,8 +262,5 @@ Examples:
 
 #TODO:
   - Add examples making use of optional arguments, including value overrides.
-  - Hardcoded variable 'scr_hdr' is defined and validated, but not directly used in the top-level driver script:
-    + remove 'scr_hdr' from this wrapper if unused or
-    + pass it downstream if the submit script expects it.
 EOM
 }

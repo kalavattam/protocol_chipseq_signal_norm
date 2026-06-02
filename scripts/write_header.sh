@@ -114,7 +114,8 @@ Dependencies:
 
 
 Notes:
-  - The script pre-writes scaling-factor table headers before Slurm jobs run, preventing race conditions that occurred when header-writing logic was previously handled inside submit scripts.
+  - The script writes or prepends the selected core scaling-factor header.
+  - 'combine_parts_scaling_factor.sh' calls this script while assembling a final table from deterministic part files.
   - If the output file already begins with the expected header, the file is left unchanged.
   - If the output file exists but does not begin with the expected header, the header is prepended.
   - If the output file does not exist, it is created with the header only.
@@ -209,21 +210,13 @@ case "${mode}" in
             "fil_ip" "fil_in" "siq" "eqn"
             "mass_ip" "mass_in" "vol_all" "vol_in" "dep_ip" "dep_in"
             "len_ip" "len_in"
-            "dm_fr_1" "dm_fr_5" "dm_fr_10" "dm_fr_20" "dm_fr_30" "dm_fr_40"
-            "dm_fr_50"
-            "dm_nm_1" "dm_nm_5" "dm_nm_10" "dm_nm_20" "dm_nm_30" "dm_nm_40"
-            "dm_nm_50"
         )
         ;;
 
     spike)
         nam_col=(
-            "main_ip" "spike_ip" "main_in" "spike_in" "spike"
+            "main_ip" "spike_ip" "main_in" "spike_in" "spike" "coef"
             "num_mp" "num_sp" "num_mn" "num_sn"
-            "dm_fr_1" "dm_fr_5" "dm_fr_10" "dm_fr_20" "dm_fr_30" "dm_fr_40"
-            "dm_fr_50"
-            "dm_nm_1" "dm_nm_5" "dm_nm_10" "dm_nm_20" "dm_nm_30" "dm_nm_40"
-            "dm_nm_50"
         )
         ;;
 esac

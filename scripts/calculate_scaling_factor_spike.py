@@ -62,7 +62,7 @@ python -m scripts.calculate_scaling_factor_spike \\
     Increase output verbosity.
 
  -c, --coef, --coefficient
-    Which coefficient to output (default: fractional).
+    Which coefficient to output (default: chiprx_alpha_ratio).
 
 -ft, --fmt, --format
     Output format (default: plain).
@@ -80,7 +80,7 @@ python -m scripts.calculate_scaling_factor_spike \\
     Number of spike-in alignments in input sample.
 
 -dp, --dp, --rnd, --round, --decimals, --digits
-    Decimal precision for rounding coefficient(s) (default: 24).
+    Maximum decimal precision for rounding coefficient(s) (default: 24).
 
 
 %%%%%%%%%%%%%%%%%%%%%%
@@ -89,7 +89,7 @@ python -m scripts.calculate_scaling_factor_spike \\
 
 - -c, --coef, --coefficient {fractional,chiprx_alpha_ip,chiprx_alpha_in,
   chiprx_alpha_ratio,rxinput_alpha,all}
-    Select which coefficient to output (default: fractional).
+    Select which coefficient to output (default: chiprx_alpha_ratio).
 
     Accepted values and aliases (case-insensitive):
         + fractional | bioprotocol | bio_protocol
@@ -134,7 +134,8 @@ python -m scripts.calculate_scaling_factor_spike \\
             fractional, chiprx_alpha_ip, chiprx_alpha_in, chiprx_alpha_ratio,
             rxinput_alpha.
 
-        Values are rounded using '--rnd'.
+        Values are rounded to at most '--rnd' decimals. Non-informative
+        trailing zeros and any trailing decimal point are stripped.
 
     + 'fmt=json'
         stdout: a JSON object mapping coefficient names to values.
@@ -154,7 +155,8 @@ python -m scripts.calculate_scaling_factor_spike \\
 
 - Rounding
     '--rnd' applies to all numeric outputs in all formats and controls the
-    number of decimal places used when printing.
+    maximum number of decimal places used when printing. Plain and TSV output
+    strip non-informative trailing zeros and any trailing decimal point.
 
 
 ############
@@ -165,7 +167,7 @@ Output depends on '--coef' and '--format':
     - If '--coef' is a single coefficient (not 'all'):
         + 'fmt=plain':
             stdout: a single floating-point number with no label and a trailing
-            newline (rounded to '--rnd' decimals).
+            newline (rounded to at most '--rnd' decimals).
         + 'fmt=tsv':
             stdout: a header line followed by one row:
                 coef    value
@@ -202,16 +204,18 @@ Non-zero exit on error:
 ##############
 
 1a. Compute the “fractional” coefficient from the Bio-protocol manuscript
-    (defaults: '--coef fractional', '--format plain') as a single plain number;
+    explicitly as a single plain number;
     use short-form arguments
 '''bash
 python -m scripts.calculate_scaling_factor_spike \
+    -c fractional \
     -mp 100000 -sp 5000 -mn 90000 -sn 4500
 '''
 
 1b. Same as the above, but use long-form arguments
 '''bash
 python -m scripts.calculate_scaling_factor_spike \
+    --coef fractional \
     --main_ip 100000 --spike_ip 5000 \
     --main_in 90000  --spike_in 4500
 '''
@@ -569,6 +573,7 @@ from scripts.functions.utils_cli import (
     add_help_cap,
     CapArgumentParser
 )
+from scripts.functions.utils_format import format_value
 
 try:
     signal.signal(signal.SIGPIPE, signal.SIG_DFL)
@@ -688,11 +693,11 @@ def emit_output(
         key = coef
         v = round_value(vals[key], rnd)
         if fmt == "plain":
-            print(f"{v:.{rnd}f}")
+            print(format_value(v, rnd))
             return
         if fmt == "tsv":
             print("coef\tvalue")
-            print(f"{key}\t{v:.{rnd}f}")
+            print(f"{key}\t{format_value(v, rnd)}")
             return
         if fmt == "json":
             print(json.dumps({key: v}, sort_keys=False))
@@ -703,7 +708,7 @@ def emit_output(
         print("coef\tvalue")
         for k in COEF_ORDER:
             v = round_value(vals[k], rnd)
-            print(f"{k}\t{v:.{rnd}f}")
+            print(f"{k}\t{format_value(v, rnd)}")
         return
 
     if fmt == "json":
@@ -885,7 +890,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         dest="coef",
         type=str,
         required=False,
-        default="fractional",
+        default="chiprx_alpha_ratio",
         help=(
             "Which coefficient to output (case-insensitive; default: "
             "%(default)s).\n\n"
@@ -966,8 +971,9 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         default=24,
         required=False,
         help=(
-            "Number of decimal places for rounding emitted coefficient "
-            "values (default: %(default)s).\n\n"
+            "Maximum number of decimal places for rounding emitted "
+            "coefficient values. Plain and TSV output strip "
+            "non-informative trailing zeros (default: %(default)s).\n\n"
         )
     )
 
@@ -1102,14 +1108,15 @@ def main(argv: list[str] | None = None) -> int:
                     print(f"{lbl} {dots} {value}")
 
                 print_dotted(
-                    "IP spike-in fraction", f"{ratio_ip:.{args.rnd}f}"
+                    "IP spike-in fraction", format_value(ratio_ip, args.rnd)
                 )
                 print_dotted(
-                    "input spike-in fraction", f"{ratio_in:.{args.rnd}f}"
+                    "input spike-in fraction",
+                    format_value(ratio_in, args.rnd)
                 )
 
                 for k in coef_lbls:
-                    print_dotted(k, f"{vals[k]:.{args.rnd}f}")
+                    print_dotted(k, format_value(vals[k], args.rnd))
 
                 print("")
                 print("")

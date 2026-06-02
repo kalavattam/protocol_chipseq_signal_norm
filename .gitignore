@@ -35,6 +35,12 @@ data/raw/docs/test*
 #  Re-allow everything in the 'tables/' subdirectory under
 #+ 'data/processed/compute_signal/' for Bio-protocol manuscript-specific
 #+ alignment and filtering parameters
+!data/processed/
+data/processed/*
+!data/processed/compute_signal/
+data/processed/compute_signal/*
+!data/processed/compute_signal/bowtie2_global_flag-2_mapq-1/
+data/processed/compute_signal/bowtie2_global_flag-2_mapq-1/*
 !data/processed/compute_signal/bowtie2_global_flag-2_mapq-1/tables/
 
 #  Ignore generated test fixture outputs in 'tests/'; however, retain
@@ -42,6 +48,10 @@ data/raw/docs/test*
 tests/align_fastqs/fixtures/**
 !tests/align_fastqs/fixtures/
 !tests/align_fastqs/fixtures/README.md
+
+tests/calculate_scaling_factor/fixtures/**
+!tests/calculate_scaling_factor/fixtures/
+!tests/calculate_scaling_factor/fixtures/README.md
 
 tests/compute_signal/fixtures/**
 !tests/compute_signal/fixtures/

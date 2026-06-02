@@ -18,13 +18,14 @@ Logs and temporary products are written under `tests/output/`. The default suite
 Fixture recipes live under workflow-specific directories:
 ```text
 tests/align_fastqs/scripts/make_fixtures.sh
+tests/calculate_scaling_factor/scripts/make_fixtures.sh
 tests/compute_signal/scripts/make_fixtures.sh
 tests/download_fastqs/scripts/make_fixtures.sh
 tests/filter_alignments/scripts/make_fixtures.sh
 tests/trim_fastqs/scripts/make_fixtures.sh
 ```
 
-`tests/scripts/run_smoke_tests.sh` detects missing required fixtures and regenerates them automatically. By default, it prepares `align_fastqs`, `compute_signal`, `download_fastqs`, and `filter_alignments` fixtures. It prepares `trim_fastqs` fixtures only when `RUN_ATRIA=1` is set (see below).
+`tests/scripts/run_smoke_tests.sh` detects missing required fixtures and regenerates them automatically. By default, it prepares `align_fastqs`, `calculate_scaling_factor`, `compute_signal`, `download_fastqs`, and `filter_alignments` fixtures. It prepares `trim_fastqs` fixtures only when `RUN_ATRIA=1` is set (see below).
 
 Generated fixture outputs are ignored by Git and are not to be committed. Each `tests/*/fixtures/README.md` file is tracked documentation for its fixture set.
 
@@ -71,7 +72,9 @@ Use Bash >= 4.4. The default fixture-backed suite expects `env_protocol` to be a
 
 Smoke groups cover:
 - shell syntax, Python startup, help output/style, installation layout, and cleanup dry-runs;
+- direct spike-in and siQ-ChIP scaling-factor part-file combination and serial
+  execute-layer spike-in assembly;
 - local `download_fastqs`, `trim_fastqs`, `align_fastqs`, `filter_alignments`, and `compute_signal` wrapper paths;
 - selected GNU Parallel paths and one remote Slurm submission path.
 
-Fixture details and expected products are documented in each `tests/*/fixtures/README.md`. Wrapper-backed `calculate_scaling_factor` smoke coverage is still pending.
+Fixture details and expected products are documented in each `tests/*/fixtures/README.md`. Broader `calculate_scaling_factor` coverage for siQ-ChIP, GNU Parallel, and Slurm paths is still pending.

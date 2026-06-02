@@ -169,6 +169,45 @@ mkdir -p "${dir_log}"
         "${dir_fix_aln}/bwa-mem2/tiny.fa.pac"
     )
 
+    dir_fix_scl="${dir_rep}/tests/calculate_scaling_factor/fixtures"
+    arr_fix_scl=(
+        "${dir_fix_scl}/bam/IP_A.sc.bam"
+        "${dir_fix_scl}/bam/IP_B.sc.bam"
+        "${dir_fix_scl}/bam/in_A.sc.bam"
+        "${dir_fix_scl}/bam/in_B.sc.bam"
+        "${dir_fix_scl}/bam/IP_A.sp.bam"
+        "${dir_fix_scl}/bam/IP_B.sp.bam"
+        "${dir_fix_scl}/bam/in_A.sp.bam"
+        "${dir_fix_scl}/bam/in_B.sp.bam"
+        "${dir_fix_scl}/reference/tiny.fa"
+        "${dir_fix_scl}/reference/tiny.fa.fai"
+        "${dir_fix_scl}/bam/pe/IP_A.sc.bam"
+        "${dir_fix_scl}/bam/pe/IP_B.sc.bam"
+        "${dir_fix_scl}/bam/pe/in_A.sc.bam"
+        "${dir_fix_scl}/bam/pe/in_B.sc.bam"
+        "${dir_fix_scl}/bam/pe/IP_A.sp.bam"
+        "${dir_fix_scl}/bam/pe/IP_B.sp.bam"
+        "${dir_fix_scl}/bam/pe/in_A.sp.bam"
+        "${dir_fix_scl}/bam/pe/in_B.sp.bam"
+        "${dir_fix_scl}/cram/se/IP_A.sc.cram"
+        "${dir_fix_scl}/cram/se/IP_B.sc.cram"
+        "${dir_fix_scl}/cram/se/in_A.sc.cram"
+        "${dir_fix_scl}/cram/se/in_B.sc.cram"
+        "${dir_fix_scl}/cram/se/IP_A.sp.cram"
+        "${dir_fix_scl}/cram/se/IP_B.sp.cram"
+        "${dir_fix_scl}/cram/se/in_A.sp.cram"
+        "${dir_fix_scl}/cram/se/in_B.sp.cram"
+        "${dir_fix_scl}/cram/pe/IP_B.sc.cram"
+        "${dir_fix_scl}/cram/pe/in_B.sc.cram"
+        "${dir_fix_scl}/cram/pe/IP_B.sp.cram"
+        "${dir_fix_scl}/cram/pe/in_B.sp.cram"
+        "${dir_fix_scl}/parts/example_scaling_factors.spike.tsv.part.000000"
+        "${dir_fix_scl}/parts/example_scaling_factors.spike.tsv.part.000002"
+        "${dir_fix_scl}/parts/example_scaling_factors.siq.tsv.part.000000"
+        "${dir_fix_scl}/parts/example_scaling_factors.siq.tsv.part.000002"
+        "${dir_fix_scl}/parts/malformed_scaling_factors.spike.tsv.part.000003"
+    )
+
     dir_fix_sig="${dir_rep}/tests/compute_signal/fixtures"
     arr_fix_sig=(
         "${dir_fix_sig}/bedgraph/ratio_A.bdg"
@@ -219,6 +258,8 @@ arr_tst=(
     "${dir_run}/smoke/test_help_output.sh"
     "${dir_run}/smoke/test_startup_sources.sh"
     "${dir_run}/smoke/test_dry_run_commands.sh"
+    "${dir_run}/smoke/test_combine_parts_scaling_factor.sh"
+    "${dir_run}/smoke/test_execute_calculate_scaling_factor_spike.sh"
     "${dir_run}/smoke/test_clean_test_outputs.sh"
     "${dir_run}/smoke/test_install_envs_layout.sh"
     "${dir_run}/smoke/test_submit_align_fastqs_bowtie2.sh"
@@ -269,6 +310,12 @@ ensure_fixture_set \
     "align-fastqs" \
     "${dir_rep}/tests/align_fastqs/scripts/make_fixtures.sh" \
     arr_fix_aln \
+    env_protocol
+
+ensure_fixture_set \
+    "calculate-scaling-factor" \
+    "${dir_rep}/tests/calculate_scaling_factor/scripts/make_fixtures.sh" \
+    arr_fix_scl \
     env_protocol
 
 ensure_fixture_set \

@@ -85,11 +85,12 @@ Description:
   Construct the command array 'cmd_bld' for one call to 'submit_calculate_scaling_factor.sh'.
 
 Positional arguments:
-  1  idx  <int|UNSET>  Optional zero-based sample index.
+  1  idx  <int|UNSET>
+    Optional zero-based sample index.
 
-                       If omitted or set to 'UNSET', construct a non-indexed command using the current scalar/global argument values.
+    If omitted or set to 'UNSET', construct a non-indexed command using the current scalar/global argument values.
 
-                       If an index is supplied, construct a per-sample command using indexed values from reconstructed input arrays and broadcastable override arrays.
+    If an index is supplied, construct a per-sample command using indexed values from reconstructed input arrays and broadcastable override arrays.
 
 Expected globals:
   Required scalar globals:
@@ -102,7 +103,7 @@ Expected globals:
       tbl_met cfg_met eqn
 
   Optional scalar override globals:
-    len_def len_mip len_min dep_mip dep_min dep_sip dep_sin
+    ref_fa len_def len_mip len_min dep_mip dep_min dep_sip dep_sin
 
   Required reconstructed arrays for indexed calls:
     arr_mip arr_min
@@ -233,6 +234,14 @@ EOM
         --fil_out "${fil_out}"
     )
 
+    if [[ -n "${ref_fa}" ]]; then
+        cmd_bld+=( --ref_fa "${ref_fa}" )
+    fi
+
+    if [[ "${idx}" != "UNSET" ]]; then
+        cmd_bld+=( --idx_out "${idx}" )
+    fi
+
     if [[ "${mode}" == "siq" ]]; then
         cmd_bld+=(
             --tbl_met "${tbl_met}"
@@ -272,25 +281,81 @@ EOM
 }
 
 
+#  Build the ordered part-file vector and final-table combiner command
+function build_cmd_cmb() {
+    local idx idx_pad
+
+    unset arr_prt arr_arg_cmb cmd_cmb
+    declare -ga arr_prt arr_arg_cmb cmd_cmb
+
+    for idx in "${!arr_mip[@]}"; do
+        printf -v idx_pad '%06d' "${idx}"
+        arr_prt+=( "${fil_out}.part.${idx_pad}" )
+    done
+
+    csv_prt="$(IFS=','; echo "${arr_prt[*]}")"
+
+    arr_arg_cmb=(
+        --mode "${mode}"
+        --csv_infile "${csv_prt}"
+        --fil_out "${fil_out}"
+    )
+
+    if [[ "${force}" == "true" ]]; then
+        arr_arg_cmb+=( --force )
+    fi
+
+    if [[ "${no_parts}" == "true" ]]; then
+        arr_arg_cmb+=( --no_parts )
+    fi
+
+    cmd_cmb=( "${BASH}" "${scr_cmb}" "${arr_arg_cmb[@]}" )
+}
+
+
+#  Build the Slurm command for dependent final-table assembly
+function build_cmd_slurm_cmb() {
+    local id_dep="${1:-}"
+
+    if [[ -z "${id_dep}" ]]; then
+        echo_err "missing Slurm dependency job ID for part-file combination."
+        return 1
+    fi
+
+    unset cmd_slurm_cmb && declare -ga cmd_slurm_cmb
+    cmd_slurm_cmb=(
+        sbatch
+        --parsable
+        --job-name="${nam_job}_combine"
+        --nodes=1
+        --cpus-per-task=1
+        --time="${time}"
+        --output="${err_out}/${nam_job}_combine.%j.stdout.txt"
+        --error="${err_out}/${nam_job}_combine.%j.stderr.txt"
+        --dependency="afterok:${id_dep}"
+        "${scr_cmb}"
+        "${arr_arg_cmb[@]}"
+    )
+}
+
+
 #  Initialize argument variables, check and parse arguments, etc. =============
 #  Initialize hardcoded argument variables
 # shellcheck disable=SC2269
 {
     env_nam="env_protocol"
     dir_scr="${dir_scr}"
-    scr_hdr="${dir_scr}/write_header.sh"
+    scr_cmb="${dir_scr}/combine_parts_scaling_factor.sh"
     scr_sub="${dir_scr}/submit_calculate_scaling_factor.sh"
     par_job=""
 }
-#TODO: 'scr_hdr' is defined and validated, but not directly used in the top-level
-#+     script:
-#+       - remove 'scr_hdr' from this wrapper if unused or
-#+       - implement its use
 
 
 #  Initialize argument variables, assigning default values where applicable
 verbose=false
 dry_run=false
+force=false
+no_parts=false
 
 threads=1
 
@@ -302,6 +367,7 @@ csv_min=""
 csv_sip=""
 csv_sin=""
 aln_typ="auto"
+ref_fa=""
 
 fil_out=""
 
@@ -341,6 +407,16 @@ while [[ "$#" -gt 0 ]]; do
 
         -dr|--dry|--dry[_-]run)
             dry_run=true
+            shift 1
+            ;;
+
+        -f|--force)
+            force=true
+            shift 1
+            ;;
+
+        -np|--no[_-]parts)
+            no_parts=true
             shift 1
             ;;
 
@@ -421,6 +497,16 @@ while [[ "$#" -gt 0 ]]; do
                 exit 1
             }
             aln_typ="${2,,}"
+            shift 2
+            ;;
+
+        -r|--ref|--ref[_-]fa|--reference)
+            require_optarg "${1}" "${2:-}" "main" || {
+                echo >&2
+                help_execute_calculate_scaling_factor >&2
+                exit 1
+            }
+            ref_fa="${2}"
             shift 2
             ;;
 
@@ -604,7 +690,7 @@ check_env_installed "${env_nam}"
 
 validate_var_dir  "dir_scr" "${dir_scr}" 0 false
 
-validate_var_file "scr_hdr" "${scr_hdr}"
+validate_var_file "scr_cmb" "${scr_cmb}"
 
 validate_var_file "scr_sub" "${scr_sub}"
 
@@ -612,10 +698,7 @@ validate_var "threads" "${threads}"
 check_int_pos "${threads}" "threads"
 
 case "${mode}" in
-    siq|alpha)
-        #TODO: Phase out 'alpha' as an alias for 'siq'; 'alpha' is ambiguous
-        #+     because it is used for both spike-in and siQ-ChIP coefficients
-        #+     in the literature.
+    siq)
         mode="siq"
 
         if [[ -n "${method}" ]]; then
@@ -629,7 +712,7 @@ case "${mode}" in
         mode="spike"
 
         if [[ -z "${method}" ]]; then
-            method="fractional"
+            method="chiprx_alpha_ratio"
         fi
 
         case "${method}" in
@@ -709,8 +792,14 @@ if [[ "${fil_out}" == "-" ]]; then
     exit 1
 fi
 
-validate_var_dir "fil_out parent directory" \
-    "$(dirname "${fil_out}")"
+validate_var_dir "fil_out parent directory" "$(dirname "${fil_out}")"
+
+if [[ -e "${fil_out}" && "${force}" == "false" ]]; then
+    echo_err \
+        "output file already exists: '${fil_out}'." \
+        "Supply '--force' to replace it."
+    exit 1
+fi
 
 if [[ "${mode}" == "siq" ]]; then
     validate_var_file "tbl_met" "${tbl_met}"
@@ -795,13 +884,38 @@ if [[ "${mode}" == "spike" ]]; then
     unset file
 fi
 
+need_ref=false
+arr_aln=( "${arr_mip[@]}" "${arr_min[@]}" )
+
+if [[ "${mode}" == "spike" ]]; then
+    arr_aln+=( "${arr_sip[@]}" "${arr_sin[@]}" )
+fi
+
+for file in "${arr_aln[@]}"; do
+    if [[ "${file,,}" == *.cram ]]; then
+        need_ref=true
+        break
+    fi
+done
+unset arr_aln file
+
+if [[ "${need_ref}" == "true" && -z "${ref_fa}" ]]; then
+    echo_err "'--ref_fa' is required when an input alignment file is CRAM."
+    exit 1
+fi
+
+if [[ -n "${ref_fa}" ]]; then
+    validate_var_file "ref_fa" "${ref_fa}"
+fi
+unset need_ref
+
 #  Parse optional override vectors
 unset \
     arr_len_mip arr_len_min \
     arr_dep_mip arr_dep_min arr_dep_sip arr_dep_sin
 declare -a \
-    arr_len_mip arr_len_min \
-    arr_dep_mip arr_dep_min arr_dep_sip arr_dep_sin
+    arr_len_mip=() arr_len_min=() \
+    arr_dep_mip=() arr_dep_min=() arr_dep_sip=() arr_dep_sin=()
 
 if [[ -n "${len_mip}" ]]; then
     IFS=',' read -r -a arr_len_mip <<< "${len_mip}"
@@ -864,6 +978,9 @@ if [[ "${mode}" == "spike" ]]; then
         check_arr_int_pos arr_dep_sin dep_sin
     fi
 fi
+
+#  Build the final-table combination command from expected part-file paths
+build_cmd_cmb
 
 
 #  Parse job execution parameters ---------------------------------------------
@@ -946,7 +1063,7 @@ if [[ "${verbose}" == "true" ]]; then
     echo "env_nam=${env_nam}"
     echo "dir_scr=${dir_scr}"
     echo "scr_sub=${scr_sub}"
-    echo "scr_hdr=${scr_hdr}"
+    echo "scr_cmb=${scr_cmb}"
     echo "par_job=${par_job:-UNSET}"
     echo
     echo
@@ -955,6 +1072,8 @@ if [[ "${verbose}" == "true" ]]; then
     echo
     echo "verbose=${verbose}"
     echo "dry_run=${dry_run}"
+    echo "force=${force}"
+    echo "no_parts=${no_parts}"
     echo "threads=${threads}"
     echo
     echo "mode=${mode}"
@@ -965,6 +1084,7 @@ if [[ "${verbose}" == "true" ]]; then
     echo "csv_sip=${csv_sip:-UNSET}"
     echo "csv_sin=${csv_sin:-UNSET}"
     echo "aln_typ=${aln_typ}"
+    echo "ref_fa=${ref_fa:-UNSET}"
     echo "fil_out=${fil_out}"
     echo
     echo "tbl_met=${tbl_met:-UNSET}"
@@ -1018,6 +1138,9 @@ if [[ "${verbose}" == "true" ]]; then
         echo
     fi
 
+    echo "arr_prt=( ${arr_prt[*]} )"
+    echo
+
     echo
 fi
 
@@ -1028,6 +1151,7 @@ if [[ "${slurm}" == "true" ]]; then
     unset cmd_slurm && declare -a cmd_slurm
     cmd_slurm=(
         sbatch
+        --parsable
         --job-name="${nam_job}"
         --nodes=1
         --cpus-per-task="${threads}"
@@ -1047,7 +1171,60 @@ if [[ "${slurm}" == "true" ]]; then
     fi
 
     if [[ "${dry_run}" == "false" ]]; then
-        "${cmd_slurm[@]}"
+        if ! raw_job="$("${cmd_slurm[@]}")"; then
+            echo_err "failed to submit scaling-factor Slurm array."
+            exit 1
+        fi
+
+        id_job="${raw_job%%;*}"
+
+        if ! [[ "${id_job}" =~ ^[1-9][0-9]*$ ]]; then
+            echo_err \
+                "could not resolve Slurm array job ID from sbatch output:" \
+                "'${raw_job}'."
+            exit 1
+        fi
+
+        echo "Submitted batch job ${id_job}"
+
+        build_cmd_slurm_cmb "${id_job}"
+
+        if [[ "${verbose}" == "true" ]]; then
+            print_banner_pretty "Call to dependent combiner 'sbatch'"
+            echo
+            printf '%q ' "${cmd_slurm_cmb[@]}"
+            echo
+            echo
+        fi
+
+        if ! raw_cmb="$("${cmd_slurm_cmb[@]}")"; then
+            echo_err \
+                "submitted scaling-factor Slurm array '${id_job}' but failed" \
+                "to submit its dependent combiner job."
+            echo "Run the combiner manually after array completion:" >&2
+            printf '  %q ' "${cmd_cmb[@]}" >&2
+            echo >&2
+            exit 1
+        fi
+
+        id_cmb="${raw_cmb%%;*}"
+
+        if ! [[ "${id_cmb}" =~ ^[1-9][0-9]*$ ]]; then
+            echo_err \
+                "could not resolve dependent combiner job ID from sbatch" \
+                "output: '${raw_cmb}'."
+            exit 1
+        fi
+
+        echo "Submitted dependent combiner job ${id_cmb}"
+    else
+        build_cmd_slurm_cmb "<array_job_id>"
+
+        print_banner_pretty "Call to dependent combiner 'sbatch'"
+        echo
+        printf '%q ' "${cmd_slurm_cmb[@]}"
+        echo
+        echo
     fi
 else
     #  Non-Slurm execution: GNU Parallel ('par_job > 1') or serial
@@ -1114,5 +1291,17 @@ else
                 "${cmd_bld[@]}" >> "${log_out}" 2>> "${log_err}"
             done
         fi
+    fi
+
+    if [[ "${dry_run}" == "true" || "${verbose}" == "true" ]]; then
+        print_banner_pretty "Scaling-factor part combination"
+        echo
+        printf '%q ' "${cmd_cmb[@]}"
+        echo
+        echo
+    fi
+
+    if [[ "${dry_run}" == "false" ]]; then
+        "${cmd_cmb[@]}"
     fi
 fi

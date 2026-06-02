@@ -143,4 +143,29 @@ for rel in "${hlp_scr[@]}"; do
     fi
 done
 
+#  Confirm the direct spike-in calculator defaults to the ChIP-Rx ratio
+log="${TEST_DIR_LOG}/python_startup/calculate_scaling_factor_spike_default.log"
+if \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONPYCACHEPREFIX="${TEST_DIR_OUT}/pycache" \
+    PYTHONPATH="${ROOT_REPO}" \
+    run_capture \
+        "python calculate-scaling-factor spike default" \
+        "${log}" \
+        "${py_cmd[@]}" -m scripts.calculate_scaling_factor_spike \
+            --main_ip 100 \
+            --spike_ip 10 \
+            --main_in 100 \
+            --spike_in 20
+then
+    assert_pattern_found \
+        "${log}" \
+        '^2$' \
+        "calculate_scaling_factor_spike.py defaults to chiprx_alpha_ratio"
+else
+    record_fail \
+        "calculate_scaling_factor_spike.py default calculation failed; see" \
+        "$(print_relpath "${log}")"
+fi
+
 finish

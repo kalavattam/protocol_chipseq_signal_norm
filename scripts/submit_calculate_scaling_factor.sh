@@ -43,34 +43,36 @@ pc_only=false
 
 #  Define script-specific functions
 function derive_samp_sf() {
-    local bam="${1:-}"
+    local fil_aln="${1:-}"
     local samp=""
     local show_help
 
     show_help=$(cat << EOM
 Usage:
-  derive_samp_sf [-h|--hlp|--help] bam
+  derive_samp_sf [-h|--hlp|--help] fil_aln
 
 Description:
-  Derive a sample name from a BAM path for logging.
+  Derive a sample name from a BAM or CRAM path for logging.
 
 Positional argument:
-  1  bam  <str>  BAM path from which to derive the sample name.
+  1  fil_aln  <str>  Alignment path from which to derive the sample name.
 
 Returns:
   Prints the derived sample name to stdout; returns 1 if argument parsing fails.
 EOM
     )
 
-    if [[ "${bam}" =~ ^(-h|--h[e]?lp)$ ]]; then
+    if [[ "${fil_aln}" =~ ^(-h|--h[e]?lp)$ ]]; then
         echo "${show_help}" >&2
         return 0
-    elif [[ -z "${bam}" ]]; then
-        echo "error(derive_samp_sf): requires a BAM path." >&2
+    elif [[ -z "${fil_aln}" ]]; then
+        echo "error(derive_samp_sf): requires an alignment path." >&2
         return 1
     fi
 
-    samp="$(basename "${bam}" ".bam")"
+    samp="$(basename "${fil_aln}")"
+    samp="${samp%.bam}"
+    samp="${samp%.cram}"
     samp="${samp#IP_}"
     samp="${samp#in_}"
     samp="${samp//./_}"
@@ -81,14 +83,14 @@ EOM
 
 #  Resolve '--dir_scr' before sourced parser helpers are available
 function resolve_dir_scr() {
-    local script="${1:-}"
+    local scr="${1:-}"
     shift
 
     local -a args=( "$@" )
     local i=0
 
-    if [[ -z "${script}" ]]; then
-        script="unknown_script"
+    if [[ -z "${scr}" ]]; then
+        scr="unknown_script"
     fi
 
     for (( i = 0; i < ${#args[@]}; i++ )); do
@@ -97,7 +99,7 @@ function resolve_dir_scr() {
                 if (( i + 1 >= ${#args[@]} )) \
                     || [[ -z "${args[i + 1]:-}" || "${args[i + 1]}" == -* ]]
                 then
-                    echo "error(${script}):" \
+                    echo "error(${scr}):" \
                         "option '${args[i]}' requires a value." >&2
                     echo >&2
                     show_help_main
@@ -110,7 +112,7 @@ function resolve_dir_scr() {
         esac
     done
 
-    echo "error(${script}):" \
+    echo "error(${scr}):" \
         "required option '--dir_scr' was not supplied." >&2
     echo >&2
     show_help_main
@@ -120,32 +122,32 @@ function resolve_dir_scr() {
 
 #  Source 'source_helpers.sh' and requested helper scripts from 'dir_scr'
 function source_submit_helpers() {
-    local script="${1:-}"
+    local scr="${1:-}"
     local dir_scr_arg="${2:-}"
     local fnc_src
 
     if (( $# < 2 )); then
-        echo "error(${script:-unknown_script}):" \
+        echo "error(${scr:-unknown_script}):" \
             "expected at least two arguments: 'script' and 'dir_scr_arg'." >&2
         return 1
     fi
 
     shift 2
 
-    if [[ -z "${script}" ]]; then
-        script="unknown_script"
+    if [[ -z "${scr}" ]]; then
+        scr="unknown_script"
     fi
 
     if [[ -z "${dir_scr_arg}" ]]; then
-        echo "error(${script}):" \
+        echo "error(${scr}):" \
             "positional argument 2, 'dir_scr_arg', is missing." >&2
         return 1
     elif [[ ! -d "${dir_scr_arg}" ]]; then
-        echo "error(${script}):" \
+        echo "error(${scr}):" \
             "script directory not found: '${dir_scr_arg}'." >&2
         return 1
     elif (( $# < 1 )); then
-        echo "error(${script}):" \
+        echo "error(${scr}):" \
             "at least one helper script name must be supplied." >&2
         return 1
     fi
@@ -154,20 +156,20 @@ function source_submit_helpers() {
     fnc_src="${dir_fnc}/source_helpers.sh"
 
     if [[ ! -f "${fnc_src}" ]]; then
-        echo "error(${script}):" \
+        echo "error(${scr}):" \
             "script not found: '${fnc_src}'." >&2
         return 1
     fi
 
     # shellcheck disable=SC1090
     source "${fnc_src}" || {
-        echo "error(${script}):" \
+        echo "error(${scr}):" \
             "failed to source '${fnc_src}'." >&2
         return 1
     }
 
     source_helpers "${dir_fnc}" "$@" || {
-        echo "error(${script}):" \
+        echo "error(${scr}):" \
             "failed to source required helper scripts." >&2
         return 1
     }
@@ -278,6 +280,16 @@ function parse_args() {
                 shift 2
                 ;;
 
+            -r|--ref|--ref[_-]fa|--reference)
+                require_optarg "${1}" "${2:-}" "main" || {
+                    echo >&2
+                    show_help_main
+                    return 1
+                }
+                ref_fa="${2}"
+                shift 2
+                ;;
+
             -fo|--fil[_-]out)
                 require_optarg "${1}" "${2:-}" "main" || {
                     echo >&2
@@ -285,6 +297,16 @@ function parse_args() {
                     return 1
                 }
                 fil_out="${2}"
+                shift 2
+                ;;
+
+            -io|--idx[_-]out)
+                require_optarg "${1}" "${2:-}" "main" || {
+                    echo >&2
+                    show_help_main
+                    return 1
+                }
+                idx_out="${2}"
                 shift 2
                 ;;
 
@@ -432,7 +454,7 @@ function parse_args() {
 #  Canonicalize mode, method, alignment type, coefficient name, and job name
 function canonicalize_args() {
     case "${mode}" in
-        siq|alpha)
+        siq)
             mode="siq"
 
             if [[ -n "${method}" ]]; then
@@ -447,7 +469,7 @@ function canonicalize_args() {
             mode="spike"
 
             if [[ -z "${method}" ]]; then
-                method="fractional"
+                method="chiprx_alpha_ratio"
             fi
 
             case "${method}" in
@@ -537,6 +559,10 @@ function validate_args() {
     validate_var_dir "fil_out parent directory" "$(dirname "${fil_out}")" \
         || return 1
 
+    if [[ -n "${idx_out}" ]]; then
+        check_int_nonneg "${idx_out}" "idx_out" || return 1
+    fi
+
     if [[ "${mode}" == "spike" ]]; then
         validate_var "csv_sip" "${csv_sip}" || return 1
         validate_var "csv_sin" "${csv_sin}" || return 1
@@ -603,7 +629,9 @@ csv_min=""
 csv_sip=""
 csv_sin=""
 aln_typ="auto"  # paired | pe | single | se | auto
+ref_fa=""
 fil_out=""
+idx_out=""
 
 tbl_met=""
 cfg_met=""
@@ -628,54 +656,97 @@ Usage:
   submit_calculate_scaling_factor.sh
     [--help] [--env_nam <str>] --dir_scr <str> [--threads <int>]
     [--mode {siq,spike}] [--method {fractional,chiprx_alpha_ratio,chiprx_alpha_ip,chiprx_alpha_in,rxinput_alpha}]
-    --csv_mip <csv:file> --csv_min <csv:file> [--csv_sip <csv:file>] [--csv_sin <csv:file>] [--aln_typ {pe,se,auto}] --fil_out <str>
+    --csv_mip <csv:file> --csv_min <csv:file> [--csv_sip <csv:file>] [--csv_sin <csv:file>] [--aln_typ {pe,se,auto}] [--ref_fa <file>] --fil_out <str> [--idx_out <int>]
     [--tbl_met <str>] [--cfg_met <str>] [--eqn {5,5nd,6,6nd}]
     [--len_def <int>] [--len_mip <csv:int>] [--len_min <csv:int>] [--dep_mip <csv:int>] [--dep_min <csv:int>] [--dep_sip <csv:int>] [--dep_sin <csv:int>]
     [--dp <int>] --err_out <str> [--nam_job <str>]
 
 
 Description:
-  Compute per-sample siQ-ChIP or spike-in scaling factors from comma-separated BAM lists using Slurm array job submission or local serial execution.
+  Compute one per-sample siQ-ChIP or spike-in scaling-factor row from comma-separated BAM/CRAM lists and write it to a deterministic part file.
 
 
 Keyword arguments:
-    -h, --help     <flag>  Print this help message and exit
-   -en, --env_nam  <str>  Mamba environment to activate (default: ${env_nam})
-   -ds, --dir_scr  <str>  Directory containing scripts and functions
-    -t, --threads  <int>  Number of threads for BAM-processing steps (default: ${threads})
+  -h, --hlp, --help  <flag>
+    Print this help message and exit.
 
-   -md, --mode     <str>  Scaling-factor framework: 'siq' or 'spike' (default: ${mode})
-   -me, --method   <str>  Spike-in coefficient to compute: 'fractional', 'chiprx_alpha_ratio', 'chiprx_alpha_ip', 'chiprx_alpha_in', 'rxinput_alpha', or aliases ('--mode spike'; default: fractional)
-   -mp, --csv_mip  <csv:file>  Comma-separated list of main IP BAM files                                                <element: str>
-   -mn, --csv_min  <csv:file>  Comma-separated list of main input BAM files                                             <element: str>
-   -sp, --csv_sip  <csv:file>  Comma-separated list of spike-in IP BAM files ('--mode spike')                           <element: str>
-   -sn, --csv_sin  <csv:file>  Comma-separated list of spike-in input BAM files ('--mode spike')                        <element: str>
+  -en, --env, --env_nam  <str>
+    Mamba environment to activate (default: ${env_nam}).
 
-   -at, --aln_typ, --align_typ  <str>
-      Library type override: 'pe', 'se', or 'auto' (default: ${aln_typ}).
+  -ds, --dir_scr  <str>
+    Directory containing scripts and functions.
 
-   -fo, --fil_out  <str>  Output TSV file
+  -t, --thr, --threads  <int>
+    Number of threads for alignment-processing steps (default: ${threads}).
 
-   -tb, --tbl_met  <str>  siQ-ChIP metadata table ('--mode siq')
-   -cm, --cfg_met  <str>  YAML configuration for 'parse_metadata_siq_chip.py' ('--mode siq')
-   -eq, --eqn      <str>  siQ-ChIP equation: '5', '5nd', '6', or '6nd' ('--mode siq'; default: ${eqn})
+  -md, --mode  <str>
+    Scaling-factor framework: 'siq' or 'spike' (default: ${mode}).
 
-   -ld, --len_def  <int>  Default fragment length for SE libraries when no per-sample override is provided
-  -lmp, --len_mip  <csv:int>  Optional comma-separated list of precomputed fragment lengths for main IP BAM files      <element: int>
-  -lmn, --len_min  <csv:int>  Optional comma-separated list of precomputed fragment lengths for main input BAM files   <element: int>
-  -dmp, --dep_mip  <csv:int>  Optional comma-separated list of precomputed alignment counts for main IP BAM files      <element: int>
-  -dmn, --dep_min  <csv:int>  Optional comma-separated list of precomputed alignment counts for main input BAM files   <element: int>
-  -dsp, --dep_sip  <csv:int>  Optional comma-separated list of precomputed alignment counts for spike IP BAM files     <element: int>
-  -dsn, --dep_sin  <csv:int>  Optional comma-separated list of precomputed alignment counts for spike input BAM files  <element: int>
+  -me, --method  <str>
+    Spike-in coefficient to compute: 'fractional', 'chiprx_alpha_ratio', 'chiprx_alpha_ip', 'chiprx_alpha_in', 'rxinput_alpha', or aliases ('--mode spike'; default: chiprx_alpha_ratio).
 
-   -dp, --dp, --rnd, --round, --decimals, --digits  <int>
-      Maximum number of decimal places retained for computed values (default: ${rnd})
+  -mp, --csv_mip  <csv:file>
+    Comma-separated list of main IP BAM or CRAM files.
 
-   -eo, --err_out  <str>
-      Directory for stderr/stdout log files
+  -mn, --csv_min  <csv:file>
+    Comma-separated list of main input BAM or CRAM files.
 
-   -nj, --nam_job  <str>
-      Job-name prefix (default depends on resolved mode/method)
+  -sp, --csv_sip  <csv:file>
+    Comma-separated list of spike-in IP BAM or CRAM files ('--mode spike').
+
+  -sn, --csv_sin  <csv:file>
+    Comma-separated list of spike-in input BAM or CRAM files ('--mode spike').
+
+  -at, --aln_typ, --align_typ  <str>
+    Library type override: 'pe', 'se', or 'auto' (default: ${aln_typ}).
+
+  -r, --ref, --ref_fa, --reference  <file>
+    Reference FASTA required when any input alignment file is CRAM.
+
+  -fo, --fil_out  <str>
+    Base output TSV path used to derive '<fil_out>.part.<idx>'.
+
+  -io, --idx_out  <int>
+    Optional output-part index override for execute-layer local dispatch.
+
+  -tb, --tbl_met  <str>
+    siQ-ChIP metadata table ('--mode siq').
+
+  -cm, --cfg_met  <str>
+    YAML configuration for 'parse_metadata_siq_chip.py' ('--mode siq').
+
+  -eq, --eqn  <str>
+    siQ-ChIP equation: '5', '5nd', '6', or '6nd' ('--mode siq'; default: ${eqn}).
+
+  -ld, --len_def  <int>
+    Default fragment length for SE libraries when no per-sample override is provided.
+
+  -lmp, --len_mip  <csv:int>
+    Optional comma-separated list of precomputed fragment lengths for main IP alignment files.
+
+  -lmn, --len_min  <csv:int>
+    Optional comma-separated list of precomputed fragment lengths for main input alignment files.
+
+  -dmp, --dep_mip  <csv:int>
+    Optional comma-separated list of precomputed alignment counts for main IP alignment files.
+
+  -dmn, --dep_min  <csv:int>
+    Optional comma-separated list of precomputed alignment counts for main input alignment files.
+
+  -dsp, --dep_sip  <csv:int>
+    Optional comma-separated list of precomputed alignment counts for spike IP alignment files.
+
+  -dsn, --dep_sin  <csv:int>
+    Optional comma-separated list of precomputed alignment counts for spike input alignment files.
+
+  -dp, --dp, --rnd, --round, --decimals, --digits  <int>
+    Maximum number of decimal places retained for computed values (default: ${rnd}).
+
+  -eo, --err_out  <str>
+    Directory for stderr/stdout log files.
+
+  -nj, --nam_job  <str>
+    Job-name prefix (default depends on resolved mode/method).
 
 
 Dependencies:
@@ -706,11 +777,14 @@ Dependencies:
 
 
 Notes:
-  - Input BAM paths supplied to this wrapper should not contain spaces, commas, or semicolons.
-  - This wrapper expects coordinate-sorted BAM files.
+  - Input alignment paths supplied to this wrapper should not contain spaces, commas, or semicolons.
+  - This wrapper expects coordinate-sorted BAM or CRAM files.
+  - CRAM inputs require '--ref_fa'.
   - Optional override vectors may be omitted, may contain a single broadcast value, or may contain one value per sample.
   - For '--mode siq' with SE data, '--len_def' or both '--len_mip' and '--len_min' must be supplied.
-  - The current workflow computes minimum input depth values only for the default bin sizes handled by 'compute_dep_all'.
+  - This worker writes one '<fil_out>.part.<idx>' row. The execute-layer wrapper combines successful part files into the final TSV.
+  - '--idx_out' is an internal execute-layer coordination option. Omit it for direct multi-sample submit calls and Slurm array tasks.
+  - Compute downstream denominator floors separately with 'python -m scripts.compute_input_floor'.
   - To run in "debug mode", set hardcoded variable 'debug=true'                   [debug=${debug:-UNSET}]
   - To run in "parse-only mode", set hardcoded variable 'p_only=true'             [p_only=${p_only:-UNSET}]
   - To run in "parse-and-check-only mode", set hardcoded variable 'pc_only=true'  [pc_only=${pc_only:-UNSET}]
@@ -797,7 +871,9 @@ function main() {
 
         debug_var \
             "aln_typ=${aln_typ}" \
-            "fil_out=${fil_out}"
+            "ref_fa=${ref_fa:-UNSET}" \
+            "fil_out=${fil_out}" \
+            "idx_out=${idx_out:-UNSET}"
 
         if [[ "${mode}" == "siq" ]]; then
             debug_var \
@@ -834,41 +910,66 @@ function main() {
         check_arr_nonempty "arr_sin" "csv_sin" || exit 1
     fi
 
+    need_ref=false
+    arr_aln=( "${arr_mip[@]}" "${arr_min[@]}" )
+
+    if [[ "${mode}" == "spike" ]]; then
+        arr_aln+=( "${arr_sip[@]}" "${arr_sin[@]}" )
+    fi
+
+    for fil_aln in "${arr_aln[@]}"; do
+        if [[ "${fil_aln,,}" == *.cram ]]; then
+            need_ref=true
+            break
+        fi
+    done
+    unset arr_aln fil_aln
+
+    if [[ "${need_ref}" == "true" && -z "${ref_fa}" ]]; then
+        echo_err "'--ref_fa' is required when an input alignment file is CRAM."
+        exit 1
+    fi
+
+    if [[ -n "${ref_fa}" ]]; then
+        validate_var_file "ref_fa" "${ref_fa}" || exit 1
+    fi
+    unset need_ref
+
     #  Reconstruct optional length/depth arrays
     if [[ -n "${len_mip}" ]]; then
         IFS=',' read -r -a arr_len_mip <<< "${len_mip}"
     else
-        unset arr_len_mip && declare -a arr_len_mip
+        unset arr_len_mip && declare -a arr_len_mip=()
     fi
 
     if [[ -n "${len_min}" ]]; then
         IFS=',' read -r -a arr_len_min <<< "${len_min}"
     else
-        unset arr_len_min && declare -a arr_len_min
+        unset arr_len_min && declare -a arr_len_min=()
     fi
 
     if [[ -n "${dep_mip}" ]]; then
         IFS=',' read -r -a arr_dep_mip <<< "${dep_mip}"
     else
-        unset arr_dep_mip && declare -a arr_dep_mip
+        unset arr_dep_mip && declare -a arr_dep_mip=()
     fi
 
     if [[ -n "${dep_min}" ]]; then
         IFS=',' read -r -a arr_dep_min <<< "${dep_min}"
     else
-        unset arr_dep_min && declare -a arr_dep_min
+        unset arr_dep_min && declare -a arr_dep_min=()
     fi
 
     if [[ -n "${dep_sip}" ]]; then
         IFS=',' read -r -a arr_dep_sip <<< "${dep_sip}"
     else
-        unset arr_dep_sip && declare -a arr_dep_sip
+        unset arr_dep_sip && declare -a arr_dep_sip=()
     fi
 
     if [[ -n "${dep_sin}" ]]; then
         IFS=',' read -r -a arr_dep_sin <<< "${dep_sin}"
     else
-        unset arr_dep_sin && declare -a arr_dep_sin
+        unset arr_dep_sin && declare -a arr_dep_sin=()
     fi
 
     #  Check required-array lengths

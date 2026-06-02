@@ -199,6 +199,7 @@ function clean_paths() {
 #  Define repository-relative cleanup targets ================================
 arr_fix=(
     tests/align_fastqs/fixtures
+    tests/calculate_scaling_factor/fixtures
     tests/compute_signal/fixtures
     tests/download_fastqs/fixtures
     tests/filter_alignments/fixtures
@@ -254,8 +255,8 @@ done
 if [[ "${cln_fix}" == "false" && "${cln_out}" == "false" ]]; then
     if [[ "${dry_run}" == "true" ]]; then
         warn \
-            "'--dry_run' was specified without a cleanup target;" \
-            "showing what '-dr -a' would do."
+            "'--dry_run' was specified without a cleanup target; showing" \
+            "what '--dry_run --all' would do."
         cln_fix=true
         cln_out=true
         shw_hlp_cln=true

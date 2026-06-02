@@ -74,7 +74,7 @@ Arguments
     Summary fragment length of the input sample (bp).
 
 -dp, --dp, --rnd, --round, --decimals, --digits
-    Number of decimal places for rounding alpha (default: 24).
+    Maximum number of decimal places for rounding alpha (default: 24).
 
 
 Output
@@ -130,6 +130,8 @@ General notes
   (approximately 660 g × mol⁻¹ × bp⁻¹).
 - Alpha is dimensionless. Use consistent units across IP and input (e.g., ng
   for mass and µL for volume); the “660” factor cancels in the ratio.
+- Alpha is printed with at most '--rnd' decimal places. Non-informative
+  trailing zeros and any trailing decimal point are stripped.
 
 
 Performance notes
@@ -155,6 +157,7 @@ from scripts.functions.utils_cli import (
     add_help_cap,
     CapArgumentParser
 )
+from scripts.functions.utils_format import format_value
 from scripts.functions.utils_interactive import (
     echo_block,
     get_args_interactive
@@ -166,6 +169,7 @@ except (AttributeError, ValueError):
     pass
 
 assert sys.version_info >= (3, 10), "Python >= 3.10 required."
+
 
 #  Run script in “interactive mode” (true) or “CLI mode” (false)
 interactive = False
@@ -494,8 +498,8 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         default=24,
         required=False,
         help=(
-            "Number of decimal places for rounding alpha (default: "
-            "%(default)s).\n\n"
+            "Maximum number of decimal places for rounding alpha. Output "
+            "strips non-informative trailing zeros (default: %(default)s).\n\n"
         )
     )
 
@@ -591,10 +595,7 @@ def main(argv: list[str] | None = None) -> None:
             args.len_ip, args.len_in
         )
 
-        out = round(alpha, args.rnd)
-        if out == 0.0:  # Avoid printing “-0.0”
-            out = 0.0
-        print(f"{out:.{args.rnd}f}")
+        print(format_value(alpha, args.rnd))
     except (ValueError, TypeError, ZeroDivisionError) as e:
         raise SystemExit(str(e))
 
