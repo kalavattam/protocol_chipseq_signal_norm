@@ -29,8 +29,8 @@ trap 'cleanup_server_http "${svr_pid:-}"' EXIT
 dir_fx="${ROOT_REPO}/tests/download_fastqs/fixtures"
 dir_src="${dir_fx}/source"
 mta_tpl="${dir_fx}/metadata/local_pe.template.tsv"
-src_r1="${dir_src}/tiny_download_pe_R1.fastq.gz"
-src_r2="${dir_src}/tiny_download_pe_R2.fastq.gz"
+src_r1="${dir_src}/pe/tiny_download_pe_R1.fastq.gz"
+src_r2="${dir_src}/pe/tiny_download_pe_R2.fastq.gz"
 
 tmp="${TEST_DIR_TMP}/execute_download_fastqs_pe_local"
 dir_out="${tmp}/out"
@@ -76,16 +76,18 @@ then
 fi
 
 if ! \
-    py="$(find_python)"
+    py="$(find_python_loopback)"
 then
-    record_fail "local HTTP fixture server requires python or python3 on PATH"
+    record_fail \
+        "local HTTP fixture server requires a Python that can bind loopback" \
+        "sockets"
     finish
     exit $?
 fi
 
 port="$(find_port_free "${py}")"
 url_bas="http://127.0.0.1:${port}"
-url_src="${url_bas}/tiny_download_pe_R1.fastq.gz"
+url_src="${url_bas}/pe/tiny_download_pe_R1.fastq.gz"
 
 (
     cd "${dir_src}" || exit 1

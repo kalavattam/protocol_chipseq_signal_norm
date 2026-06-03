@@ -313,8 +313,20 @@ function build_cmd_cmb() {
 }
 
 
+#  Build the final-table header command
+function build_cmd_hdr() {
+    unset cmd_hdr && declare -ga cmd_hdr
+
+    cmd_hdr=(
+        "${BASH}" "${scr_hdr}"
+            --mode "${mode}"
+            --fil_out "${fil_out}"
+    )
+}
+
+
 #  Build the Slurm command for dependent final-table assembly
-function build_cmd_slurm_cmb() {
+function build_cmd_cmb_slurm() {
     local id_dep="${1:-}"
 
     if [[ -z "${id_dep}" ]]; then
@@ -322,19 +334,46 @@ function build_cmd_slurm_cmb() {
         return 1
     fi
 
-    unset cmd_slurm_cmb && declare -ga cmd_slurm_cmb
-    cmd_slurm_cmb=(
+    unset cmd_cmb_slurm && declare -ga cmd_cmb_slurm
+    cmd_cmb_slurm=(
         sbatch
-        --parsable
-        --job-name="${nam_job}_combine"
-        --nodes=1
-        --cpus-per-task=1
-        --time="${time}"
-        --output="${err_out}/${nam_job}_combine.%j.stdout.txt"
-        --error="${err_out}/${nam_job}_combine.%j.stderr.txt"
-        --dependency="afterok:${id_dep}"
-        "${scr_cmb}"
-        "${arr_arg_cmb[@]}"
+            --parsable
+            --job-name="${nam_job}_combine"
+            --nodes=1
+            --cpus-per-task=1
+            --time="${time}"
+            --output="${err_out}/${nam_job}_combine.%j.stdout.txt"
+            --error="${err_out}/${nam_job}_combine.%j.stderr.txt"
+            --dependency="afterok:${id_dep}"
+            "${scr_cmb}"
+                "${arr_arg_cmb[@]}"
+    )
+}
+
+
+#  Build the Slurm command for dependent final-table header insertion
+function build_cmd_hdr_slurm() {
+    local id_dep="${1:-}"
+
+    if [[ -z "${id_dep}" ]]; then
+        echo_err "missing Slurm dependency job ID for header insertion."
+        return 1
+    fi
+
+    unset cmd_hdr_slurm && declare -ga cmd_hdr_slurm
+    cmd_hdr_slurm=(
+        sbatch
+            --parsable
+            --job-name="${nam_job}_header"
+            --nodes=1
+            --cpus-per-task=1
+            --time="${time}"
+            --output="${err_out}/${nam_job}_header.%j.stdout.txt"
+            --error="${err_out}/${nam_job}_header.%j.stderr.txt"
+            --dependency="afterok:${id_dep}"
+            "${scr_hdr}"
+                --mode "${mode}"
+                --fil_out "${fil_out}"
     )
 }
 
@@ -346,6 +385,7 @@ function build_cmd_slurm_cmb() {
     env_nam="env_protocol"
     dir_scr="${dir_scr}"
     scr_cmb="${dir_scr}/combine_parts_scaling_factor.sh"
+    scr_hdr="${dir_scr}/write_header.sh"
     scr_sub="${dir_scr}/submit_calculate_scaling_factor.sh"
     par_job=""
 }
@@ -356,6 +396,7 @@ verbose=false
 dry_run=false
 force=false
 no_parts=false
+no_header=false
 
 threads=1
 
@@ -407,16 +448,6 @@ while [[ "$#" -gt 0 ]]; do
 
         -dr|--dry|--dry[_-]run)
             dry_run=true
-            shift 1
-            ;;
-
-        -f|--force)
-            force=true
-            shift 1
-            ;;
-
-        -np|--no[_-]parts)
-            no_parts=true
             shift 1
             ;;
 
@@ -518,6 +549,21 @@ while [[ "$#" -gt 0 ]]; do
             }
             fil_out="${2}"
             shift 2
+            ;;
+
+        -f|--force)
+            force=true
+            shift 1
+            ;;
+
+        -np|--no[_-]parts)
+            no_parts=true
+            shift 1
+            ;;
+
+        -nh|--no[_-]header)
+            no_header=true
+            shift 1
             ;;
 
         -tb|--tbl[_-]met)
@@ -691,6 +737,8 @@ check_env_installed "${env_nam}"
 validate_var_dir  "dir_scr" "${dir_scr}" 0 false
 
 validate_var_file "scr_cmb" "${scr_cmb}"
+
+validate_var_file "scr_hdr" "${scr_hdr}"
 
 validate_var_file "scr_sub" "${scr_sub}"
 
@@ -981,6 +1029,7 @@ fi
 
 #  Build the final-table combination command from expected part-file paths
 build_cmd_cmb
+build_cmd_hdr
 
 
 #  Parse job execution parameters ---------------------------------------------
@@ -1064,6 +1113,7 @@ if [[ "${verbose}" == "true" ]]; then
     echo "dir_scr=${dir_scr}"
     echo "scr_sub=${scr_sub}"
     echo "scr_cmb=${scr_cmb}"
+    echo "scr_hdr=${scr_hdr}"
     echo "par_job=${par_job:-UNSET}"
     echo
     echo
@@ -1072,8 +1122,6 @@ if [[ "${verbose}" == "true" ]]; then
     echo
     echo "verbose=${verbose}"
     echo "dry_run=${dry_run}"
-    echo "force=${force}"
-    echo "no_parts=${no_parts}"
     echo "threads=${threads}"
     echo
     echo "mode=${mode}"
@@ -1086,6 +1134,9 @@ if [[ "${verbose}" == "true" ]]; then
     echo "aln_typ=${aln_typ}"
     echo "ref_fa=${ref_fa:-UNSET}"
     echo "fil_out=${fil_out}"
+    echo "force=${force}"
+    echo "no_parts=${no_parts}"
+    echo "no_header=${no_header}"
     echo
     echo "tbl_met=${tbl_met:-UNSET}"
     echo "cfg_met=${cfg_met:-UNSET}"
@@ -1187,17 +1238,17 @@ if [[ "${slurm}" == "true" ]]; then
 
         echo "Submitted batch job ${id_job}"
 
-        build_cmd_slurm_cmb "${id_job}"
+        build_cmd_cmb_slurm "${id_job}"
 
         if [[ "${verbose}" == "true" ]]; then
             print_banner_pretty "Call to dependent combiner 'sbatch'"
             echo
-            printf '%q ' "${cmd_slurm_cmb[@]}"
+            printf '%q ' "${cmd_cmb_slurm[@]}"
             echo
             echo
         fi
 
-        if ! raw_cmb="$("${cmd_slurm_cmb[@]}")"; then
+        if ! raw_cmb="$("${cmd_cmb_slurm[@]}")"; then
             echo_err \
                 "submitted scaling-factor Slurm array '${id_job}' but failed" \
                 "to submit its dependent combiner job."
@@ -1217,14 +1268,57 @@ if [[ "${slurm}" == "true" ]]; then
         fi
 
         echo "Submitted dependent combiner job ${id_cmb}"
+
+        if [[ "${no_header}" == "false" ]]; then
+            build_cmd_hdr_slurm "${id_cmb}"
+
+            if [[ "${verbose}" == "true" ]]; then
+                print_banner_pretty "Call to dependent header 'sbatch'"
+                echo
+                printf '%q ' "${cmd_hdr_slurm[@]}"
+                echo
+                echo
+            fi
+
+            if ! raw_hdr="$("${cmd_hdr_slurm[@]}")"; then
+                echo_err \
+                    "submitted dependent combiner job '${id_cmb}' but failed" \
+                    "to submit its dependent header job."
+                echo "Write the header manually after combiner completion:" >&2
+                printf '  %q ' "${cmd_hdr[@]}" >&2
+                echo >&2
+                exit 1
+            fi
+
+            id_hdr="${raw_hdr%%;*}"
+
+            if ! [[ "${id_hdr}" =~ ^[1-9][0-9]*$ ]]; then
+                echo_err \
+                    "could not resolve dependent header job ID from sbatch" \
+                    "output: '${raw_hdr}'."
+                exit 1
+            fi
+
+            echo "Submitted dependent header job ${id_hdr}"
+        fi
     else
-        build_cmd_slurm_cmb "<array_job_id>"
+        build_cmd_cmb_slurm "<array_job_id>"
 
         print_banner_pretty "Call to dependent combiner 'sbatch'"
         echo
-        printf '%q ' "${cmd_slurm_cmb[@]}"
+        printf '%q ' "${cmd_cmb_slurm[@]}"
         echo
         echo
+
+        if [[ "${no_header}" == "false" ]]; then
+            build_cmd_hdr_slurm "<combine_job_id>"
+
+            print_banner_pretty "Call to dependent header 'sbatch'"
+            echo
+            printf '%q ' "${cmd_hdr_slurm[@]}"
+            echo
+            echo
+        fi
     fi
 else
     #  Non-Slurm execution: GNU Parallel ('par_job > 1') or serial
@@ -1299,9 +1393,21 @@ else
         printf '%q ' "${cmd_cmb[@]}"
         echo
         echo
+
+        if [[ "${no_header}" == "false" ]]; then
+            print_banner_pretty "Scaling-factor header insertion"
+            echo
+            printf '%q ' "${cmd_hdr[@]}"
+            echo
+            echo
+        fi
     fi
 
     if [[ "${dry_run}" == "false" ]]; then
         "${cmd_cmb[@]}"
+
+        if [[ "${no_header}" == "false" ]]; then
+            "${cmd_hdr[@]}"
+        fi
     fi
 fi

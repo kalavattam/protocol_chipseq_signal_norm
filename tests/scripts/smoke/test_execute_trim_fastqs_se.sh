@@ -34,7 +34,7 @@ fi
 
 #  Define fixture and output paths for local serial execute-layer Atria run
 dir_fx="${ROOT_REPO}/tests/trim_fastqs/fixtures"
-in_se="${dir_fx}/fastq/tiny_se.fastq.gz"
+in_se="${dir_fx}/fastq/se/tiny_se.fastq.gz"
 
 tmp="${TEST_DIR_TMP}/execute_trim_fastqs_se"
 dir_out="${tmp}/out"

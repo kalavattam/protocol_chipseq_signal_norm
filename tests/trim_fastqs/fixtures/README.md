@@ -22,9 +22,9 @@ Readable provenance:
 The FASTQ records are generated deterministically by `scripts/make_fixtures.sh` as compressed workflow inputs that can be inspected with `gzip -cd`.
 
 Compressed FASTQ input:
-- `fastq/tiny_se.fastq.gz`
-- `fastq/tiny_pe_R1.fastq.gz`
-- `fastq/tiny_pe_R2.fastq.gz`
+- `fastq/se/tiny_se.fastq.gz`
+- `fastq/pe/tiny_pe_R1.fastq.gz`
+- `fastq/pe/tiny_pe_R2.fastq.gz`
 
 The compressed FASTQ files are generated with `gzip -n -c` so gzip headers do not encode timestamps or source filenames.
 

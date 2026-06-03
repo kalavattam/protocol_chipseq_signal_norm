@@ -35,7 +35,7 @@ fi
     TEST_DIR_SCR="$(cd "${TEST_DIR_LIB}/.." > /dev/null 2>&1 && pwd)"
     TEST_DIR="$(cd "${TEST_DIR_SCR}/.." > /dev/null 2>&1 && pwd)"
     ROOT_REPO="$(cd "${TEST_DIR}/.." > /dev/null 2>&1 && pwd)"
-    TEST_DIR_OUT="${ROOT_REPO}/tests/output"
+    TEST_DIR_OUT="${ROOT_REPO}/tests/outputs"
     TEST_DIR_TMP="${TEST_DIR_OUT}/tmp"
     TEST_DIR_LOG="${TEST_DIR_OUT}/logs"
     TEST_BASH="${BASH}"
@@ -430,6 +430,40 @@ function find_python() {
     else
         return 1
     fi
+}
+
+
+#  Find a Python command that can bind loopback sockets
+function find_python_loopback() {
+    local py=""
+    local -a arr_py=()
+
+    if check_cmd_exists python; then
+        arr_py+=( "$(command -v python)" )
+    fi
+
+    if check_cmd_exists python3; then
+        arr_py+=( "$(command -v python3)" )
+    fi
+
+    if [[ -x /usr/bin/python3 ]]; then
+        arr_py+=( /usr/bin/python3 )
+    fi
+
+    for py in "${arr_py[@]}"; do
+        if \
+            "${py}" - << PY > /dev/null 2>&1
+import socket
+with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+    sock.bind(("127.0.0.1", 0))
+PY
+        then
+            printf '%s\n' "${py}"
+            return 0
+        fi
+    done
+
+    return 1
 }
 
 

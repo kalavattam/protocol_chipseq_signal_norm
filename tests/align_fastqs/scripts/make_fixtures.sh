@@ -55,6 +55,8 @@ function cleanup_tmp_fastqs() {
 #  Define fixture directories, reference paths, FASTQ paths, and index prefixes
 dir_ref="${dir_fix}/reference"
 dir_fq="${dir_fix}/fastq"
+dir_fq_se="${dir_fq}/se"
+dir_fq_pe="${dir_fq}/pe"
 dir_bt2="${dir_fix}/bowtie2"
 dir_bwa="${dir_fix}/bwa"
 dir_bm2="${dir_fix}/bwa-mem2"
@@ -62,13 +64,13 @@ dir_bm2="${dir_fix}/bwa-mem2"
 ref="${dir_ref}/tiny.fa"
 ref_bwa="${dir_bwa}/tiny.fa"
 ref_bm2="${dir_bm2}/tiny.fa"
-fq_se_tmp="${dir_fq}/tiny_se.atria.fastq.tmp"
-fq_r1_tmp="${dir_fq}/tiny_pe_R1.atria.fastq.tmp"
-fq_r2_tmp="${dir_fq}/tiny_pe_R2.atria.fastq.tmp"
+fq_se_tmp="${dir_fq_se}/tiny_se.atria.fastq.tmp"
+fq_r1_tmp="${dir_fq_pe}/tiny_pe_R1.atria.fastq.tmp"
+fq_r2_tmp="${dir_fq_pe}/tiny_pe_R2.atria.fastq.tmp"
 
-fq_se_gz="${dir_fq}/tiny_se.atria.fastq.gz"
-fq_r1_gz="${dir_fq}/tiny_pe_R1.atria.fastq.gz"
-fq_r2_gz="${dir_fq}/tiny_pe_R2.atria.fastq.gz"
+fq_se_gz="${dir_fq_se}/tiny_se.atria.fastq.gz"
+fq_r1_gz="${dir_fq_pe}/tiny_pe_R1.atria.fastq.gz"
+fq_r2_gz="${dir_fq_pe}/tiny_pe_R2.atria.fastq.gz"
 
 idx_bt2="${dir_bt2}/tiny"
 idx_bwa="${ref_bwa}"
@@ -102,14 +104,13 @@ require_cmds \
 mkdirs \
     "${dir_ref}" \
     "${dir_fq}" \
+    "${dir_fq_se}" \
+    "${dir_fq_pe}" \
     "${dir_bt2}" \
     "${dir_bwa}" \
     "${dir_bm2}"
 
-#  Remove obsolete FASTQ outputs and stale temporary intermediates
-rm_file "${dir_fix}" "${dir_fq}/tiny_se.atria.fastq"
-rm_file "${dir_fix}" "${dir_fq}/tiny_pe_R1.atria.fastq"
-rm_file "${dir_fix}" "${dir_fq}/tiny_pe_R2.atria.fastq"
+#  Remove stale temporary intermediates
 cleanup_tmp_fastqs
 
 

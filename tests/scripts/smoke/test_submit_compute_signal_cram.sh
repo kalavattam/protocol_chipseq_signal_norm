@@ -23,8 +23,8 @@ print_section "${TEST_NAME}"
 
 #  Define fixture and output paths for local serial CRAM-backed smoke tests
 dir_fx="${ROOT_REPO}/tests/compute_signal/fixtures"
-in_se="${dir_fx}/cram/tiny_se.cram"
-in_pe="${dir_fx}/cram/tiny_pe.cram"
+in_se="${dir_fx}/cram/se/tiny_se.cram"
+in_pe="${dir_fx}/cram/pe/tiny_pe.cram"
 ref_fa="${dir_fx}/reference/tiny.fa"
 
 tmp="${TEST_DIR_TMP}/submit_compute_signal_cram"

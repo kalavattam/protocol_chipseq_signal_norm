@@ -16,11 +16,11 @@ function help_execute_calculate_scaling_factor() {
     cat << EOM
 Usage:
   execute_calculate_scaling_factor.sh
-    [--help] [--verbose] [--dry_run] [--force] [--no_parts]
+    [--help] [--verbose] [--dry_run]
     [--threads <int>]
     [--mode <enum:siq,spike>] [--method <enum:fractional,chiprx_alpha_ratio,chiprx_alpha_ip,chiprx_alpha_in,rxinput_alpha>]
     --csv_mip <csv:file> --csv_min <csv:file> [--csv_sip <csv:file>] [--csv_sin <csv:file>] [--aln_typ <enum:pe,se,auto>] [--ref_fa <file>]
-    --fil_out <file>
+    --fil_out <file> [--force] [--no_parts] [--no_header]
     [--tbl_met <file>] [--cfg_met <file>] [--eqn <enum:5,5nd,6,6nd>]
     [--len_def <int>] [--len_mip <csv:num>] [--len_min <csv:num>] [--dep_mip <csv:int>] [--dep_min <csv:int>] [--dep_sip <csv:int>] [--dep_sin <csv:int>]
     [--dp <int>]
@@ -34,7 +34,7 @@ Description:
 
   In 'spike' mode, the script uses main-organism and spike-in-organism IP and input alignment files to calculate spike-in scaling factors via the downstream 'submit_calculate_scaling_factor.sh' wrapper and the associated Python/helper-script workflow, including 'calculate_scaling_factor_spike.py' and supporting shell/Python utilities for obtaining fragment-length and alignment-depth values when needed.
 
-  Jobs may be run through Slurm, GNU Parallel, or serial execution, depending on user arguments and the resolved number of jobs. After successful worker completion, the script combines deterministic per-sample part files into the requested final TSV.
+  Jobs may be run through Slurm, GNU Parallel, or serial execution, depending on user arguments and the resolved number of jobs. After successful worker completion, the script combines deterministic per-sample part files into the requested final TSV, then writes the mode-specific header unless '--no_header' is supplied.
 
 
 Arguments:
@@ -46,12 +46,6 @@ Arguments:
 
   -dr, --dry, --dry_run  <flag>
     Print commands that would be executed without running them.
-
-  -f, --force  <flag>
-    Replace an existing final TSV after successful part-file assembly.
-
-  -np, --no_parts  <flag>
-    Remove per-sample part files after successful final-table assembly.
 
   -t, --thr, --threads  <int>
     Number of threads to use (default: ${threads}).
@@ -131,6 +125,15 @@ Arguments:
   -fo, --fil_out  <file>
     Tab-delimited output file to which scaling factors and related values are written.
 
+  -f, --force  <flag>
+    Replace an existing final TSV after successful part-file assembly.
+
+  -np, --no_parts  <flag>
+    Remove per-sample part files after successful final-table assembly.
+
+  -nh, --no_header  <flag>
+    Leave the final TSV data-only instead of prepending the mode-specific header.
+
   -dp, --dp, --rnd, --round, --decimals, --digits  <int>
     Number of decimal places used when rounding output values (default: ${dp}).
 
@@ -167,6 +170,7 @@ Dependencies:
   Shell scripts:
     - combine_parts_scaling_factor.sh
     - submit_calculate_scaling_factor.sh
+    - write_header.sh
 
   Python scripts:
     - calculate_scaling_factor_siq_chip.py, via submit_calculate_scaling_factor.sh
@@ -225,10 +229,12 @@ Notes:
     3. one value per sample.
   - When '--slurm' is used, execution is parallelized via Slurm array tasks.
     + A dependent combiner job is submitted with 'afterok:<array_job_id>'.
+    + Unless '--no_header' is supplied, a dependent header job is submitted with 'afterok:<combiner_job_id>'.
   - When '--slurm' is not used:
     + if the resolved local job count is greater than 1, execution uses GNU Parallel;
     + otherwise, execution is serial.
   - The final TSV is assembled automatically after all workers finish.
+  - The final TSV receives a mode-specific header unless '--no_header' is supplied.
   - Existing final TSVs are replaced only when '--force' is supplied.
   - Per-sample part files are retained unless '--no_parts' is supplied.
   - Compute downstream denominator floors separately with 'python -m scripts.compute_input_floor'.

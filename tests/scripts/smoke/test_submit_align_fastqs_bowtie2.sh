@@ -24,9 +24,9 @@ print_section "${TEST_NAME}"
 #  Define fixture and output paths for Bowtie2 alignment
 dir_fx="${ROOT_REPO}/tests/align_fastqs/fixtures"
 ref_src="${dir_fx}/reference/tiny.fa"
-in_se="${dir_fx}/fastq/tiny_se.atria.fastq.gz"
-in_pe_1="${dir_fx}/fastq/tiny_pe_R1.atria.fastq.gz"
-in_pe_2="${dir_fx}/fastq/tiny_pe_R2.atria.fastq.gz"
+in_se="${dir_fx}/fastq/se/tiny_se.atria.fastq.gz"
+in_pe_1="${dir_fx}/fastq/pe/tiny_pe_R1.atria.fastq.gz"
+in_pe_2="${dir_fx}/fastq/pe/tiny_pe_R2.atria.fastq.gz"
 in_pe="${in_pe_1},${in_pe_2}"
 idx="${dir_fx}/bowtie2/tiny"
 

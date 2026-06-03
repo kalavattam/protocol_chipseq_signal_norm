@@ -51,14 +51,16 @@ function cleanup_tmp_fastqs() {
 
 #  Define fixture directories and FASTQ paths
 dir_fq="${dir_fix}/fastq"
+dir_fq_se="${dir_fq}/se"
+dir_fq_pe="${dir_fq}/pe"
 
-fq_se_tmp="${dir_fq}/tiny_se.fastq.tmp"
-fq_r1_tmp="${dir_fq}/tiny_pe_R1.fastq.tmp"
-fq_r2_tmp="${dir_fq}/tiny_pe_R2.fastq.tmp"
+fq_se_tmp="${dir_fq_se}/tiny_se.fastq.tmp"
+fq_r1_tmp="${dir_fq_pe}/tiny_pe_R1.fastq.tmp"
+fq_r2_tmp="${dir_fq_pe}/tiny_pe_R2.fastq.tmp"
 
-fq_se_gz="${dir_fq}/tiny_se.fastq.gz"
-fq_r1_gz="${dir_fq}/tiny_pe_R1.fastq.gz"
-fq_r2_gz="${dir_fq}/tiny_pe_R2.fastq.gz"
+fq_se_gz="${dir_fq_se}/tiny_se.fastq.gz"
+fq_r1_gz="${dir_fq_pe}/tiny_pe_R1.fastq.gz"
+fq_r2_gz="${dir_fq_pe}/tiny_pe_R2.fastq.gz"
 
 
 #  Register cleanup of temporary FASTQ intermediates on exit
@@ -68,7 +70,7 @@ register_cleanup cleanup_tmp_fastqs
 require_cmd gzip "to generate trim-fastqs fixtures."
 
 #  Create fixture output directories
-mkdirs "${dir_fq}"
+mkdirs "${dir_fq}" "${dir_fq_se}" "${dir_fq_pe}"
 
 #  Remove stale temporary intermediates
 cleanup_tmp_fastqs

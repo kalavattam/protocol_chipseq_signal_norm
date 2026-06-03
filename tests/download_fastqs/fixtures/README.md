@@ -21,9 +21,9 @@ Readable provenance:
 - `scripts/make_fixtures.sh`
 
 Compressed source FASTQ:
-- `source/tiny_download_se.fastq.gz`
-- `source/tiny_download_pe_R1.fastq.gz`
-- `source/tiny_download_pe_R2.fastq.gz`
+- `source/se/tiny_download_se.fastq.gz`
+- `source/pe/tiny_download_pe_R1.fastq.gz`
+- `source/pe/tiny_download_pe_R2.fastq.gz`
 
 Metadata template:
 - `metadata/local_se.template.tsv`
@@ -36,8 +36,8 @@ The metadata template uses the columns required by `execute_download_fastqs.sh`:
 
 ```text
 run_accession	custom_name	fastq_https
-SRR_LOCAL_SE	tiny_download_se	__BASE_URL__/tiny_download_se.fastq.gz
-SRR_LOCAL_PE	tiny_download_pe	__BASE_URL__/tiny_download_pe_R1.fastq.gz;__BASE_URL__/tiny_download_pe_R2.fastq.gz
+SRR_LOCAL_SE	tiny_download_se	__BASE_URL__/se/tiny_download_se.fastq.gz
+SRR_LOCAL_PE	tiny_download_pe	__BASE_URL__/pe/tiny_download_pe_R1.fastq.gz;__BASE_URL__/pe/tiny_download_pe_R2.fastq.gz
 ```
 
 The smoke test replaces `__BASE_URL__` at runtime with a loopback HTTP URL served from `127.0.0.1`. This keeps the wrapper-backed download test no-network while still exercising real `wget` download behavior.
@@ -69,4 +69,4 @@ The paired-end FASTQ sources contain one clean 64-bp read pair:
 ## Current and deferred smoke-test coverage
 The smoke suite covers local single-end, paired-end, and mixed-metadata downloads over loopback HTTP. It also covers local GNU Parallel dispatch for mixed metadata when gated by `RUN_PARALLEL=1`.
 
-`#TODO`: Add Slurm coverage. Consider an optional external-network smoke test gated by a future `RUN_NETWORK=1` flag.
+`#TODO`: Add Slurm coverage. Consider an optional external-network smoke test gated by a future `RUN_NETWORK=1` flag. Handle issues when running tests while `env_protocol` is active.

@@ -78,7 +78,7 @@ Description:
 
 
 Arguments:
-  -h, --help  <flag>
+  -h, --hlp, --help  <flag>
     Display this help message and exit.
 
   -v, --verbose  <flag>
@@ -88,7 +88,7 @@ Arguments:
     Print the header and planned file action without creating or modifying a file.
 
   -md, --mode  <enum:siq,spike>
-    Type of header to write: 'siq' or 'spike' (default: '${mode}').
+    Type of header to write: 'siq' (siQ-ChIP normalization) or 'spike' (normalization with a spike-in coefficient) (default: '${mode}').
 
   -o, -fo, --outfile, --fil_out  <file>
     Output file where the header should be written.
@@ -115,7 +115,7 @@ Dependencies:
 
 Notes:
   - The script writes or prepends the selected core scaling-factor header.
-  - 'combine_parts_scaling_factor.sh' calls this script while assembling a final table from deterministic part files.
+  - 'execute_calculate_scaling_factor.sh' calls this script after successful part-file combination unless '--no_header' is supplied there.
   - If the output file already begins with the expected header, the file is left unchanged.
   - If the output file exists but does not begin with the expected header, the header is prepended.
   - If the output file does not exist, it is created with the header only.

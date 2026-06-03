@@ -61,6 +61,7 @@ function write_bam_fixture_se() {
     } > "${sam}"
 
     samtools view -bS "${sam}" | samtools sort -o "${bam}"
+    samtools index "${bam}"
 }
 
 
@@ -92,6 +93,7 @@ function write_bam_fixture_pe() {
     } > "${sam}"
 
     samtools view -bS "${sam}" | samtools sort -o "${bam}"
+    samtools index "${bam}"
 }
 
 
@@ -109,7 +111,9 @@ function write_cram_fixture() {
 #  Define fixture directories and scaling-factor part-file paths
 dir_ref="${dir_fix}/reference"
 dir_sam="${dir_fix}/sam"
+dir_sam_se="${dir_sam}/se"
 dir_bam="${dir_fix}/bam"
+dir_bam_se="${dir_bam}/se"
 dir_sam_pe="${dir_sam}/pe"
 dir_bam_pe="${dir_bam}/pe"
 dir_cram="${dir_fix}/cram"
@@ -119,23 +123,23 @@ dir_prt="${dir_fix}/parts"
 
 ref_fa="${dir_ref}/tiny.fa"
 
-sam_mip_0="${dir_sam}/IP_A.sc.sam"
-sam_mip_1="${dir_sam}/IP_B.sc.sam"
-sam_min_0="${dir_sam}/in_A.sc.sam"
-sam_min_1="${dir_sam}/in_B.sc.sam"
-sam_sip_0="${dir_sam}/IP_A.sp.sam"
-sam_sip_1="${dir_sam}/IP_B.sp.sam"
-sam_sin_0="${dir_sam}/in_A.sp.sam"
-sam_sin_1="${dir_sam}/in_B.sp.sam"
+sam_mip_0="${dir_sam_se}/IP_A.sc.sam"
+sam_mip_1="${dir_sam_se}/IP_B.sc.sam"
+sam_min_0="${dir_sam_se}/in_A.sc.sam"
+sam_min_1="${dir_sam_se}/in_B.sc.sam"
+sam_sip_0="${dir_sam_se}/IP_A.sp.sam"
+sam_sip_1="${dir_sam_se}/IP_B.sp.sam"
+sam_sin_0="${dir_sam_se}/in_A.sp.sam"
+sam_sin_1="${dir_sam_se}/in_B.sp.sam"
 
-bam_mip_0="${dir_bam}/IP_A.sc.bam"
-bam_mip_1="${dir_bam}/IP_B.sc.bam"
-bam_min_0="${dir_bam}/in_A.sc.bam"
-bam_min_1="${dir_bam}/in_B.sc.bam"
-bam_sip_0="${dir_bam}/IP_A.sp.bam"
-bam_sip_1="${dir_bam}/IP_B.sp.bam"
-bam_sin_0="${dir_bam}/in_A.sp.bam"
-bam_sin_1="${dir_bam}/in_B.sp.bam"
+bam_mip_0="${dir_bam_se}/IP_A.sc.bam"
+bam_mip_1="${dir_bam_se}/IP_B.sc.bam"
+bam_min_0="${dir_bam_se}/in_A.sc.bam"
+bam_min_1="${dir_bam_se}/in_B.sc.bam"
+bam_sip_0="${dir_bam_se}/IP_A.sp.bam"
+bam_sip_1="${dir_bam_se}/IP_B.sp.bam"
+bam_sin_0="${dir_bam_se}/in_A.sp.bam"
+bam_sin_1="${dir_bam_se}/in_B.sp.bam"
 
 sam_pe_mip_0="${dir_sam_pe}/IP_A.sc.sam"
 sam_pe_mip_1="${dir_sam_pe}/IP_B.sc.sam"
@@ -190,7 +194,9 @@ require_cmd samtools "in '${env_req}' to generate BAM/CRAM fixtures."
 mkdirs \
     "${dir_ref}" \
     "${dir_sam}" \
+    "${dir_sam_se}" \
     "${dir_bam}" \
+    "${dir_bam_se}" \
     "${dir_sam_pe}" \
     "${dir_bam_pe}" \
     "${dir_cram_se}" \

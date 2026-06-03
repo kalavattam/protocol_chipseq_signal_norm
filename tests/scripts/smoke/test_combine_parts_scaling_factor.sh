@@ -53,10 +53,9 @@ function assert_combined_mode() {
     local mode="${1:-}"
     local csv_in="${2:-}"
     local fil_out="${3:-}"
-    local hdr="${4:-}"
-    local row_1="${5:-}"
-    local row_2="${6:-}"
-    local fil_log="${7:-}"
+    local row_1="${4:-}"
+    local row_2="${5:-}"
+    local fil_log="${6:-}"
 
     if \
         run_capture \
@@ -79,13 +78,6 @@ function assert_combined_mode() {
         "${fil_out}" \
         "combined scaling-factor ${mode} TSV"
 
-    if [[ "$(grep -c "^${hdr}" "${fil_out}")" -eq 1 ]]; then
-        record_pass "combined scaling-factor ${mode} TSV has one header"
-    else
-        record_fail \
-            "combined scaling-factor ${mode} TSV header count is not one"
-    fi
-
     assert_pattern_found \
         "${fil_out}" \
         "^${row_1}" \
@@ -96,14 +88,14 @@ function assert_combined_mode() {
         "^${row_2}" \
         "combined scaling-factor ${mode} TSV has second numeric-index row"
 
-    if [[ "$(sed -n '2p' "${fil_out}")" == "${row_1}"$'\t'* ]]; then
+    if [[ "$(sed -n '1p' "${fil_out}")" == "${row_1}"$'\t'* ]]; then
         record_pass "combined scaling-factor ${mode} TSV sorts first row"
     else
         record_fail \
             "combined scaling-factor ${mode} TSV first row is unsorted"
     fi
 
-    if [[ "$(sed -n '3p' "${fil_out}")" == "${row_2}"$'\t'* ]]; then
+    if [[ "$(sed -n '2p' "${fil_out}")" == "${row_2}"$'\t'* ]]; then
         record_pass "combined scaling-factor ${mode} TSV sorts second row"
     else
         record_fail \
@@ -118,7 +110,6 @@ assert_combined_mode \
     spike \
     "${spk_2},${spk_0}" \
     "${fil_out_spk}" \
-    $'main_ip\tspike_ip\tmain_in\tspike_in\tspike\tcoef\tnum_mp\tnum_sp\tnum_mn\tnum_sn$' \
     '/path/to/IP_WT_G1_Hho1_6336.sc.bam' \
     '/path/to/IP_WT_G1_Hho1_6337.sc.bam' \
     "${dir_log}/spike.log"
@@ -128,15 +119,24 @@ assert_pattern_found \
     $'\t2.145085661466039\tfractional\t13492920\t217340\t12851824\t452406$' \
     "combined scaling-factor spike TSV records fractional coefficient"
 
+assert_pattern_absent \
+    "${fil_out_spk}" \
+    $'^main_ip\tspike_ip\tmain_in\tspike_in\tspike\tcoef' \
+    "combined scaling-factor spike TSV stays data-only"
+
 fil_out_siq="${tmp}/out/scaling.siq.tsv"
 assert_combined_mode \
     siq \
     "${siq_2},${siq_0}" \
     "${fil_out_siq}" \
-    $'fil_ip\t' \
     '/path/to/IP_WT_G1_Hho1_6336.sc.bam' \
     '/path/to/IP_WT_G1_Hho1_6337.sc.bam' \
     "${dir_log}/siq.log"
+
+assert_pattern_absent \
+    "${fil_out_siq}" \
+    $'^fil_ip\tfil_in\tsiq\teqn\tmass_ip\tmass_in' \
+    "combined scaling-factor siq TSV stays data-only"
 
 
 #  Confirm part files are retained by default

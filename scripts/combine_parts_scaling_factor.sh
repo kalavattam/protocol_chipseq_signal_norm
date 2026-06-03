@@ -72,11 +72,12 @@ fil_out=""
 #  Assign variable for help message
 show_help=$(cat << 'EOM'
 Usage:
-  combine_parts_scaling_factor.sh [--help] [--dry_run] [--force] [--no_parts] --mode <enum:siq,spike> --csv_infile <csv:file> --fil_out <file>
+  combine_parts_scaling_factor.sh
+    [--help] [--dry_run] [--force] [--no_parts] --mode <enum:siq,spike> --csv_infile <csv:file> --fil_out <file>
 
 
 Description:
-  Combine generated calculate_scaling_factor part files into one final tab-delimited output table.
+  Combine generated calculate_scaling_factor part files into one data-only tab-delimited output table.
 
 
 Arguments:
@@ -115,9 +116,6 @@ Dependencies:
     - sed
     - sort
 
-  Scripts:
-    - write_header.sh
-
   Sourced function scripts:
     - source_helpers.sh
       + source_helpers
@@ -135,6 +133,7 @@ Notes:
   - Each input must contain exactly one non-empty core scaling-factor row.
   - Core rows contain 12 fields for 'siq' and 10 fields for 'spike'.
   - Rows are ordered by numeric part-file index, not by input-list order.
+  - This script does not write a header; use 'write_header.sh' separately or let 'execute_calculate_scaling_factor.sh' orchestrate header insertion.
   - Duplicate paths, duplicate indexes, and header rows are rejected.
   - Existing output files are replaced only when '--force' is supplied.
   - Validated part files are retained unless '--no_parts' is supplied.
@@ -230,10 +229,10 @@ validate_var_dir "fil_out parent directory" "$(dirname "${fil_out}")"
 
 case "${mode}" in
     spike)
-        num_fld_exp=10
+        num_exp=10
         ;;
     siq)
-        num_fld_exp=12
+        num_exp=12
         ;;
     *)
         echo_err "'--mode' must be 'siq' or 'spike', but got '${mode}'."
@@ -328,10 +327,10 @@ for fil_in in "${arr_infile[@]}"; do
     esac
 
     num_fld="$(awk -F '\t' 'NR == 1 { print NF }' "${fil_in}")"
-    if [[ "${num_fld}" -ne "${num_fld_exp}" ]]; then
+    if [[ "${num_fld}" -ne "${num_exp}" ]]; then
         echo_err \
             "input part file has '${num_fld}' fields; expected" \
-            "'${num_fld_exp}' for mode '${mode}': '${fil_in}'."
+            "'${num_exp}' for mode '${mode}': '${fil_in}'."
         exit 1
     fi
 
@@ -361,10 +360,6 @@ fi
 
 tmp="$(mktemp "${fil_out}.tmp.XXXXXX")"
 trap 'rm -f "${tmp:-}"' EXIT
-
-"${BASH}" "${dir_scr}/write_header.sh" \
-    --mode "${mode}" \
-    --fil_out "${tmp}"
 
 for fil_in in "${arr_in_ord[@]}"; do
     cat "${fil_in}" >> "${tmp}"

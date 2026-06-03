@@ -70,4 +70,4 @@ tests/trim_fastqs/fixtures/**
 !tests/trim_fastqs/fixtures/README.md
 
 #  Ignore generated smoke-test output
-tests/output/
+tests/outputs/

@@ -54,7 +54,7 @@ Arguments:
     Remove ignored generated files under tests/*/fixtures.
 
   -o, --out, --outputs  <flag>
-    Remove ignored generated files under tests/output.
+    Remove ignored generated files under tests/outputs.
 
   -a, --all  <flag>
     Remove both generated fixtures and smoke-test outputs.
@@ -147,22 +147,25 @@ function check_fixture_safe() {
 }
 
 
-#  Require the smoke-test output directory to contain no tracked files
+#  Require smoke-test output directories to contain no tracked files
 function check_output_safe() {
     local -a arr_tracked=()
+    local dir_out=""
     local file=""
 
-    mapfile -t arr_tracked < <(
-        git -C "${dir_rep}" ls-files -- "${dir_out}"
-    )
+    for dir_out in "${arr_out[@]}"; do
+        mapfile -t arr_tracked < <(
+            git -C "${dir_rep}" ls-files -- "${dir_out}"
+        )
 
-    if (( ${#arr_tracked[@]} > 0 )); then
-        error "refusing output cleanup; tracked paths found:"
-        for file in "${arr_tracked[@]}"; do
-            printf '  %s\n' "${file}" >&2
-        done
-        exit 1
-    fi
+        if (( ${#arr_tracked[@]} > 0 )); then
+            error "refusing output cleanup; tracked paths found:"
+            for file in "${arr_tracked[@]}"; do
+                printf '  %s\n' "${file}" >&2
+            done
+            exit 1
+        fi
+    done
 }
 
 
@@ -206,7 +209,7 @@ arr_fix=(
     tests/trim_fastqs/fixtures
 )
 
-dir_out="tests/output"
+arr_out=( tests/outputs )
 
 
 #  Parse arguments ============================================================
@@ -281,7 +284,7 @@ fi
 
 if [[ "${cln_out}" == "true" ]]; then
     check_output_safe
-    arr_tgt+=( "${dir_out}" )
+    arr_tgt+=( "${arr_out[@]}" )
 fi
 
 print_targets

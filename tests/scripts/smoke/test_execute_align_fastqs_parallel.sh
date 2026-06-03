@@ -33,7 +33,7 @@ fi
 
 #  Define fixture and output paths for a local GNU Parallel Bowtie2 wet run
 dir_fx="${ROOT_REPO}/tests/align_fastqs/fixtures"
-in_se="${dir_fx}/fastq/tiny_se.atria.fastq.gz"
+in_se="${dir_fx}/fastq/se/tiny_se.atria.fastq.gz"
 idx="${dir_fx}/bowtie2/tiny"
 
 tmp="${TEST_DIR_TMP}/execute_align_fastqs_parallel"

@@ -73,7 +73,7 @@ while IFS= read -r file; do
     arr_test+=( "${file}" )
 done < <(
     find "${ROOT_REPO}/tests" \
-        -path "${ROOT_REPO}/tests/output" -prune -o \
+        -path "${ROOT_REPO}/tests/outputs" -prune -o \
         -type f -name '*.sh' -print \
         | sort
 )

@@ -10,7 +10,7 @@ Run the default suite from the repository root:
 bash tests/scripts/run_smoke_tests.sh
 ```
 
-Logs and temporary products are written under `tests/output/`. The default suite exercises local serial workflow paths and default-safe parser, syntax, help, and installation-layout checks.
+Logs and temporary products are written under `tests/outputs/`. The default suite exercises local serial workflow paths and default-safe parser, syntax, help, and installation-layout checks.
 
 <br />
 

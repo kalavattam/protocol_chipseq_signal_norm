@@ -23,9 +23,9 @@ Readable provenance:
 The FASTQ records are generated deterministically by `scripts/make_fixtures.sh` as compressed workflow inputs and can be inspected with `gzip -cd`.
 
 Compressed FASTQ input:
-- `fastq/tiny_se.atria.fastq.gz`
-- `fastq/tiny_pe_R1.atria.fastq.gz`
-- `fastq/tiny_pe_R2.atria.fastq.gz`
+- `fastq/se/tiny_se.atria.fastq.gz`
+- `fastq/pe/tiny_pe_R1.atria.fastq.gz`
+- `fastq/pe/tiny_pe_R2.atria.fastq.gz`
 
 Bowtie2 index:
 - `bowtie2/tiny.1.bt2`

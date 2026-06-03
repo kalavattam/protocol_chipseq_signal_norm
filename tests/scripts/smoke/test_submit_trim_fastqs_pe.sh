@@ -33,8 +33,8 @@ fi
 
 #  Define fixture and output paths for a minimal submit-layer Atria wet run
 dir_fx="${ROOT_REPO}/tests/trim_fastqs/fixtures"
-in_r1="${dir_fx}/fastq/tiny_pe_R1.fastq.gz"
-in_r2="${dir_fx}/fastq/tiny_pe_R2.fastq.gz"
+in_r1="${dir_fx}/fastq/pe/tiny_pe_R1.fastq.gz"
+in_r2="${dir_fx}/fastq/pe/tiny_pe_R2.fastq.gz"
 csv_in="${in_r1},${in_r2}"
 
 tmp="${TEST_DIR_TMP}/submit_trim_fastqs_pe"

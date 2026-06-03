@@ -19,8 +19,8 @@ The fixture set covers ratio-mode tests with plain text bedGraph files and signa
 Readable provenance:
 - `scripts/make_fixtures.sh`
 - `reference/tiny.fa`
-- `sam/tiny_se.sam`
-- `sam/tiny_pe.sam`
+- `sam/se/tiny_se.sam`
+- `sam/pe/tiny_pe.sam`
 
 Ratio bedGraph:
 - `bedgraph/ratio_A.bdg`
@@ -31,16 +31,16 @@ Ratio bedGraph:
 Alignment fixtures:
 - `reference/tiny.fa`
 - `reference/tiny.fa.fai`
-- `sam/tiny_se.sam`
-- `sam/tiny_pe.sam`
-- `bam/tiny_se.bam`
-- `bam/tiny_se.bam.bai`
-- `bam/tiny_pe.bam`
-- `bam/tiny_pe.bam.bai`
-- `cram/tiny_se.cram`
-- `cram/tiny_se.cram.crai`
-- `cram/tiny_pe.cram`
-- `cram/tiny_pe.cram.crai`
+- `sam/se/tiny_se.sam`
+- `sam/pe/tiny_pe.sam`
+- `bam/se/tiny_se.bam`
+- `bam/se/tiny_se.bam.bai`
+- `bam/pe/tiny_pe.bam`
+- `bam/pe/tiny_pe.bam.bai`
+- `cram/se/tiny_se.cram`
+- `cram/se/tiny_se.cram.crai`
+- `cram/pe/tiny_pe.cram`
+- `cram/pe/tiny_pe.cram.crai`
 
 The `ratio_A.bdg` and `ratio_B.bdg` files are plain four-column bedGraph files with matching bins and no header lines.
 
@@ -67,8 +67,6 @@ The `ratio_headers_A.bdg` and `ratio_headers_B.bdg` files preserve the same data
 
 The SAM and FASTA files serve as readable provenance. The FASTA index, BAM files, BAM indexes, CRAM files, and CRAM indexes are generated with `samtools` by `scripts/make_fixtures.sh`.
 
-CRAM support should not be treated as a distant optional feature. If the current compute-signal path cannot pass a reference FASTA cleanly to every layer that needs it, that gap should be exposed by the tiny CRAM fixture tests and addressed as part of the compute-signal testing/refactor work.
-
 <br />
 
 ## Expected smoke-test behavior
@@ -79,4 +77,4 @@ Smoke tests should use these fixtures to verify ratio outputs, BAM-backed signal
 ## Current and deferred smoke-test coverage
 The smoke suite covers submit- and execute-layer ratio mode, BAM-backed signal and coordinate output, and CRAM-backed signal and coordinate output with an explicit reference FASTA. It also covers local GNU Parallel ratio dispatch when gated by `RUN_PARALLEL=1`.
 
-`#TODO`: Add Slurm coverage. Consider extending GNU Parallel coverage to BAM- and CRAM-backed signal paths where that broader matrix provides useful regression protection.
+`#TODO`: Add Slurm coverage. Consider extending GNU Parallel coverage to BAM- and CRAM-backed signal paths where that broader matrix provides useful regression protection. Add direct shell- and Python-script coverage where applicable.

@@ -41,15 +41,17 @@ source "${dir_scr}/../../scripts/lib/fixture_helpers.sh"
 
 #  Define fixture directories, FASTQ paths, and metadata templates
 dir_src="${dir_fix}/source"
+dir_src_se="${dir_src}/se"
+dir_src_pe="${dir_src}/pe"
 dir_mtd="${dir_fix}/metadata"
 
-fq_se_tmp="${dir_src}/tiny_download_se.fastq.tmp"
-fq_r1_tmp="${dir_src}/tiny_download_pe_R1.fastq.tmp"
-fq_r2_tmp="${dir_src}/tiny_download_pe_R2.fastq.tmp"
+fq_se_tmp="${dir_src_se}/tiny_download_se.fastq.tmp"
+fq_r1_tmp="${dir_src_pe}/tiny_download_pe_R1.fastq.tmp"
+fq_r2_tmp="${dir_src_pe}/tiny_download_pe_R2.fastq.tmp"
 
-fq_se_gz="${dir_src}/tiny_download_se.fastq.gz"
-fq_r1_gz="${dir_src}/tiny_download_pe_R1.fastq.gz"
-fq_r2_gz="${dir_src}/tiny_download_pe_R2.fastq.gz"
+fq_se_gz="${dir_src_se}/tiny_download_se.fastq.gz"
+fq_r1_gz="${dir_src_pe}/tiny_download_pe_R1.fastq.gz"
+fq_r2_gz="${dir_src_pe}/tiny_download_pe_R2.fastq.gz"
 
 tpl_se="${dir_mtd}/local_se.template.tsv"
 tpl_pe="${dir_mtd}/local_pe.template.tsv"
@@ -73,7 +75,7 @@ register_cleanup cleanup_tmp_fastqs
 require_cmd gzip "to generate download-fastqs fixtures."
 
 #  Create fixture output directories
-mkdirs "${dir_src}" "${dir_mtd}"
+mkdirs "${dir_src}" "${dir_src_se}" "${dir_src_pe}" "${dir_mtd}"
 
 #  Remove stale temporary intermediates
 cleanup_tmp_fastqs
@@ -126,7 +128,7 @@ rm_file "${dir_fix}" "${fq_r2_tmp}"
     write_tsv_row \
         'SRR_LOCAL_SE' \
         'tiny_download_se' \
-        '__BASE_URL__/tiny_download_se.fastq.gz'
+        '__BASE_URL__/se/tiny_download_se.fastq.gz'
 } > "${tpl_se}"
 
 {
@@ -138,7 +140,7 @@ rm_file "${dir_fix}" "${fq_r2_tmp}"
     write_tsv_row \
         'SRR_LOCAL_PE' \
         'tiny_download_pe' \
-        '__BASE_URL__/tiny_download_pe_R1.fastq.gz;__BASE_URL__/tiny_download_pe_R2.fastq.gz'
+        '__BASE_URL__/pe/tiny_download_pe_R1.fastq.gz;__BASE_URL__/pe/tiny_download_pe_R2.fastq.gz'
 } > "${tpl_pe}"
 
 {
@@ -150,12 +152,12 @@ rm_file "${dir_fix}" "${fq_r2_tmp}"
     write_tsv_row \
         'SRR_LOCAL_SE' \
         'tiny_download_se' \
-        '__BASE_URL__/tiny_download_se.fastq.gz'
+        '__BASE_URL__/se/tiny_download_se.fastq.gz'
 
     write_tsv_row \
         'SRR_LOCAL_PE' \
         'tiny_download_pe' \
-        '__BASE_URL__/tiny_download_pe_R1.fastq.gz;__BASE_URL__/tiny_download_pe_R2.fastq.gz'
+        '__BASE_URL__/pe/tiny_download_pe_R1.fastq.gz;__BASE_URL__/pe/tiny_download_pe_R2.fastq.gz'
 } > "${tpl_mix}"
 
 

@@ -22,9 +22,9 @@ source "$(
 print_section "${TEST_NAME}"
 
 #  Define fixture and output paths for local serial BAM-backed smoke tests
-dir_fx="${ROOT_REPO}/tests/compute_signal/fixtures/bam"
-in_se="${dir_fx}/tiny_se.bam"
-in_pe="${dir_fx}/tiny_pe.bam"
+dir_fx="${ROOT_REPO}/tests/compute_signal/fixtures"
+in_se="${dir_fx}/bam/se/tiny_se.bam"
+in_pe="${dir_fx}/bam/pe/tiny_pe.bam"
 
 tmp="${TEST_DIR_TMP}/submit_compute_signal_bam"
 dir_out="${tmp}/out"

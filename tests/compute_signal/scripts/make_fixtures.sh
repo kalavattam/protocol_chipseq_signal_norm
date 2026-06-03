@@ -43,8 +43,14 @@ source "${dir_scr}/../../scripts/lib/fixture_helpers.sh"
 dir_bdg="${dir_fix}/bedgraph"
 dir_ref="${dir_fix}/reference"
 dir_sam="${dir_fix}/sam"
+dir_sam_se="${dir_sam}/se"
+dir_sam_pe="${dir_sam}/pe"
 dir_bam="${dir_fix}/bam"
+dir_bam_se="${dir_bam}/se"
+dir_bam_pe="${dir_bam}/pe"
 dir_cram="${dir_fix}/cram"
+dir_cram_se="${dir_cram}/se"
+dir_cram_pe="${dir_cram}/pe"
 
 fil_bg_A="${dir_bdg}/ratio_A.bdg"
 fil_bg_B="${dir_bdg}/ratio_B.bdg"
@@ -52,14 +58,14 @@ fil_bg_hdr_A="${dir_bdg}/ratio_headers_A.bdg"
 fil_bg_hdr_B="${dir_bdg}/ratio_headers_B.bdg"
 
 fil_ref="${dir_ref}/tiny.fa"
-fil_sam_se="${dir_sam}/tiny_se.sam"
-fil_sam_pe="${dir_sam}/tiny_pe.sam"
+fil_sam_se="${dir_sam_se}/tiny_se.sam"
+fil_sam_pe="${dir_sam_pe}/tiny_pe.sam"
 
-fil_bam_se="${dir_bam}/tiny_se.bam"
-fil_bam_pe="${dir_bam}/tiny_pe.bam"
+fil_bam_se="${dir_bam_se}/tiny_se.bam"
+fil_bam_pe="${dir_bam_pe}/tiny_pe.bam"
 
-fil_cram_se="${dir_cram}/tiny_se.cram"
-fil_cram_pe="${dir_cram}/tiny_pe.cram"
+fil_cram_se="${dir_cram_se}/tiny_se.cram"
+fil_cram_pe="${dir_cram_pe}/tiny_pe.cram"
 
 env_req="env_protocol"
 
@@ -72,8 +78,14 @@ mkdirs \
     "${dir_bdg}" \
     "${dir_ref}" \
     "${dir_sam}" \
+    "${dir_sam_se}" \
+    "${dir_sam_pe}" \
     "${dir_bam}" \
-    "${dir_cram}"
+    "${dir_bam_se}" \
+    "${dir_bam_pe}" \
+    "${dir_cram}" \
+    "${dir_cram_se}" \
+    "${dir_cram_pe}"
 
 #  Write tiny bedGraph fixtures for ratio-mode edge cases
 {
