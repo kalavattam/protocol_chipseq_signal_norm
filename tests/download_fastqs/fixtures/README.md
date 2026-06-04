@@ -67,6 +67,6 @@ The paired-end FASTQ sources contain one clean 64-bp read pair:
 <br />
 
 ## Current and deferred smoke-test coverage
-The smoke suite covers local single-end, paired-end, and mixed-metadata downloads over loopback HTTP. It also covers local GNU Parallel dispatch for mixed metadata when gated by `RUN_PARALLEL=1`.
+The smoke suite covers local single-end, paired-end, and mixed-metadata downloads over loopback HTTP when gated by `RUN_DOWNLOAD=1`. It also covers local GNU Parallel dispatch for mixed metadata when gated by both `RUN_DOWNLOAD=1` and `RUN_PARALLEL=1`.
 
 `#TODO`: Add Slurm coverage. Consider an optional external-network smoke test gated by a future `RUN_NETWORK=1` flag. Handle issues when running tests while `env_protocol` is active.

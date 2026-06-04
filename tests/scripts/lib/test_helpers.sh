@@ -116,6 +116,12 @@ function is_atria_enabled() {
 }
 
 
+#  Check whether download smoke tests were explicitly requested
+function is_download_enabled() {
+    [[ "${RUN_DOWNLOAD:-0}" == "1" ]]
+}
+
+
 #TODO: is_slurm_enabled and is_slurm_wait
 # function is_slurm_enabled() {
 #     [[ "${RUN_SLURM:-0}" == "1" ]]

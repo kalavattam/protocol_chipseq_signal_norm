@@ -21,6 +21,16 @@ source "$(
 
 print_section "${TEST_NAME}"
 
+if ! \
+    is_download_enabled
+then
+    record_skip \
+        "download-fastqs SE local check disabled; set RUN_DOWNLOAD=1 to" \
+        "enable"
+    finish
+    exit $?
+fi
+
 
 trap 'cleanup_server_http "${svr_pid:-}"' EXIT
 

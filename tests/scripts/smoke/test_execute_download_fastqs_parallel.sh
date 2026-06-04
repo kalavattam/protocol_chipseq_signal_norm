@@ -21,12 +21,12 @@ source "$(
 
 print_section "${TEST_NAME}"
 
-if ! \
-    is_parallel_enabled
-then
+if ! {
+    is_download_enabled && is_parallel_enabled
+}; then
     record_skip \
-        "GNU Parallel download-fastqs check disabled; set RUN_PARALLEL=1 to" \
-        "enable"
+        "GNU Parallel download-fastqs check disabled; set RUN_DOWNLOAD=1" \
+        "RUN_PARALLEL=1 to enable"
     finish
     exit $?
 fi

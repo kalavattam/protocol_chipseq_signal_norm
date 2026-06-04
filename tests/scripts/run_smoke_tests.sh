@@ -351,12 +351,10 @@ ensure_fixture_set \
     "${dir_rep}/tests/filter_alignments/scripts/make_fixtures.sh" \
     arr_fix_flt
 
-if [[ "${RUN_ATRIA:-0}" == "1" ]]; then
-    ensure_fixture_set \
-        "trim-fastqs" \
-        "${dir_rep}/tests/trim_fastqs/scripts/make_fixtures.sh" \
-        arr_fix_trm
-fi
+ensure_fixture_set \
+    "trim-fastqs" \
+    "${dir_rep}/tests/trim_fastqs/scripts/make_fixtures.sh" \
+    arr_fix_trm
 
 
 #  Run smoke-test groups ======================================================

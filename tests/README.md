@@ -25,7 +25,7 @@ tests/filter_alignments/scripts/make_fixtures.sh
 tests/trim_fastqs/scripts/make_fixtures.sh
 ```
 
-`tests/scripts/run_smoke_tests.sh` detects missing required fixtures and regenerates them automatically. By default, it prepares `align_fastqs`, `calculate_scaling_factor`, `compute_signal`, `download_fastqs`, and `filter_alignments` fixtures. It prepares `trim_fastqs` fixtures only when `RUN_ATRIA=1` is set (see below).
+`tests/scripts/run_smoke_tests.sh` detects missing required fixtures and regenerates them automatically. Fixture bootstrap is runner setup and is not controlled by smoke-test execution gates. Individual smoke scripts decide whether to run or skip based on their required gates.
 
 Generated fixture outputs are ignored by Git and are not to be committed. Each `tests/*/fixtures/README.md` file is tracked documentation for its fixture set.
 
@@ -52,18 +52,20 @@ The cleaner uses scoped `git clean -dX` commands and will not remove tracked fix
 Optional dependency classes are enabled explicitly:
 ```bash
 RUN_ATRIA=1 bash tests/scripts/run_smoke_tests.sh
+RUN_DOWNLOAD=1 bash tests/scripts/run_smoke_tests.sh
 RUN_PARALLEL=1 bash tests/scripts/run_smoke_tests.sh
 RUN_SLURM=1 bash tests/scripts/run_smoke_tests.sh
 RUN_SLURM=1 SLURM_WAIT=1 bash tests/scripts/run_smoke_tests.sh
 ```
 | gate             | function                                                                              | todo                                                                                                |
 | :----            | :----                                                                                 | :----                                                                                               |
-| `RUN_ATRIA=1`    | Enables Atria-backed `trim_fastqs` tests and fixture bootstrap.                       | -                                                                                                   |
+| `RUN_ATRIA=1`    | Enables Atria-backed `trim_fastqs` tests.                                             | -                                                                                                   |
+| `RUN_DOWNLOAD=1` | Enables local no-external-network `download_fastqs` tests.                            | Add optional external-network coverage with a separate gate (e.g., `RUN_NETWORK=1`).                |
 | `RUN_PARALLEL=1` | Enables local GNU Parallel tests.                                                     | -                                                                                                   |
 | `RUN_SLURM=1`    | Enables the Slurm-backed `align_fastqs` smoke test. Run it on a Slurm-capable system. | Add Slurm coverage for `trim_fastqs`, `download_fastqs`, `filter_alignments`, and `compute_signal`. |
 | `SLURM_WAIT=1`   | Makes the Slurm test poll for expected outputs after submission.                      | Rename to verb-first `WAIT_SLURM=1`.                                                                |
 
-Tests that require multiple dependency classes require all relevant gates, such as `RUN_ATRIA=1 RUN_PARALLEL=1` for parallel trimming.
+Tests that require multiple dependency classes require all relevant gates, such as `RUN_ATRIA=1 RUN_PARALLEL=1` for parallel trimming or `RUN_DOWNLOAD=1 RUN_PARALLEL=1` for parallel downloading.
 
 <br />
 
