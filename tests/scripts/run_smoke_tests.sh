@@ -226,6 +226,9 @@ mkdir -p "${dir_log}"
         "${dir_fix_scl}/parts/example_scaling_factors.siq.tsv.part.000000"
         "${dir_fix_scl}/parts/example_scaling_factors.siq.tsv.part.000002"
         "${dir_fix_scl}/parts/malformed_scaling_factors.spike.tsv.part.000003"
+        "${dir_fix_scl}/parts/header_scaling_factors.spike.tsv.part.000004"
+        "${dir_fix_scl}/parts/duplicate_index_A.spike.tsv.part.000005"
+        "${dir_fix_scl}/parts/duplicate_index_B.spike.tsv.part.000005"
     )
 
     dir_fix_sig="${dir_rep}/tests/compute_signal/fixtures"

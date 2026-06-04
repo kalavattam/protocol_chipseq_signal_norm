@@ -59,8 +59,11 @@ siQ-ChIP scaling-factor part files:
 
 Malformed negative-test part file:
 - `parts/malformed_scaling_factors.spike.tsv.part.000003`
+- `parts/header_scaling_factors.spike.tsv.part.000004`
+- `parts/duplicate_index_A.spike.tsv.part.000005`
+- `parts/duplicate_index_B.spike.tsv.part.000005`
 
-The nonconsecutive numeric suffixes exercise deterministic numeric ordering when input paths are supplied in reverse order. The malformed part contains too few fields and exercises combiner validation.
+The nonconsecutive numeric suffixes exercise deterministic numeric ordering when input paths are supplied in reverse order. The malformed part contains too few fields and exercises combiner validation. The header-looking part and duplicate-index pair exercise additional combiner validation without creating those static inputs inside smoke tests.
 
 <br />
 

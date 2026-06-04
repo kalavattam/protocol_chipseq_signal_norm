@@ -182,6 +182,9 @@ spk_2="${dir_prt}/example_scaling_factors.spike.tsv.part.000002"
 siq_0="${dir_prt}/example_scaling_factors.siq.tsv.part.000000"
 siq_2="${dir_prt}/example_scaling_factors.siq.tsv.part.000002"
 bad_fld="${dir_prt}/malformed_scaling_factors.spike.tsv.part.000003"
+bad_hdr="${dir_prt}/header_scaling_factors.spike.tsv.part.000004"
+dup_idx_a="${dir_prt}/duplicate_index_A.spike.tsv.part.000005"
+dup_idx_b="${dir_prt}/duplicate_index_B.spike.tsv.part.000005"
 
 env_req="env_protocol"
 
@@ -291,7 +294,10 @@ rm_files \
     "${spk_2}" \
     "${siq_0}" \
     "${siq_2}" \
-    "${bad_fld}"
+    "${bad_fld}" \
+    "${bad_hdr}" \
+    "${dup_idx_a}" \
+    "${dup_idx_b}"
 
 #  Write realistic spike-in scaling-factor part files
 write_tsv_row \
@@ -338,6 +344,41 @@ write_tsv_row \
     '/path/to/IP_WT_G1_bad.sc.bam' \
     '/path/to/IP_WT_G1_bad.sp.bam' \
     > "${bad_fld}"
+
+#  Write one header-looking part file for negative validation
+write_tsv_row \
+    'main_ip' \
+    'spike_ip' \
+    'main_in' \
+    'spike_in' \
+    'spike' \
+    'coef' \
+    'num_mp' \
+    'num_sp' \
+    'num_mn' \
+    'num_sn' \
+    > "${bad_hdr}"
+
+#  Write duplicate-index part files for negative validation
+write_tsv_row \
+    '/path/to/IP_WT_G1_dupA.sc.bam' \
+    '/path/to/IP_WT_G1_dupA.sp.bam' \
+    '/path/to/in_WT_G1_dupA.sc.bam' \
+    '/path/to/in_WT_G1_dupA.sp.bam' \
+    '1.25' \
+    'chiprx_alpha_ratio' \
+    '100' '80' '200' '64' \
+    > "${dup_idx_a}"
+
+write_tsv_row \
+    '/path/to/IP_WT_G1_dupB.sc.bam' \
+    '/path/to/IP_WT_G1_dupB.sp.bam' \
+    '/path/to/in_WT_G1_dupB.sc.bam' \
+    '/path/to/in_WT_G1_dupB.sp.bam' \
+    '0.75' \
+    'chiprx_alpha_ratio' \
+    '100' '60' '200' '80' \
+    > "${dup_idx_b}"
 
 
 succeed "generated calculate-scaling-factor fixtures under ${dir_fix}"
