@@ -13,7 +13,7 @@ Generated fixture outputs are ignored by Git. When required inputs are missing, 
 
 The fixture rows are adapted from tracked example scaling-factor tables under `data/processed/compute_signal/`. They preserve realistic file naming, core table shapes, scaling values, and alignment depths. Synthetic role-specific SAM, BAM, and CRAM fixtures exercise Samtools-backed alignment counting.
 
-Spike-in rows also record the canonical coefficient method  (e.g., `chiprx_alpha_ratio`), alongside the computed value.
+Spike-in rows also record the canonical coefficient method used alongside the computed value. The default fixture examples use `chiprx_alpha_ratio`.
 
 <br />
 

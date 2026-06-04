@@ -123,23 +123,23 @@ dir_prt="${dir_fix}/parts"
 
 ref_fa="${dir_ref}/tiny.fa"
 
-sam_mip_0="${dir_sam_se}/IP_A.sc.sam"
-sam_mip_1="${dir_sam_se}/IP_B.sc.sam"
-sam_min_0="${dir_sam_se}/in_A.sc.sam"
-sam_min_1="${dir_sam_se}/in_B.sc.sam"
-sam_sip_0="${dir_sam_se}/IP_A.sp.sam"
-sam_sip_1="${dir_sam_se}/IP_B.sp.sam"
-sam_sin_0="${dir_sam_se}/in_A.sp.sam"
-sam_sin_1="${dir_sam_se}/in_B.sp.sam"
+sam_se_mip_0="${dir_sam_se}/IP_A.sc.sam"
+sam_se_mip_1="${dir_sam_se}/IP_B.sc.sam"
+sam_se_min_0="${dir_sam_se}/in_A.sc.sam"
+sam_se_min_1="${dir_sam_se}/in_B.sc.sam"
+sam_se_sip_0="${dir_sam_se}/IP_A.sp.sam"
+sam_se_sip_1="${dir_sam_se}/IP_B.sp.sam"
+sam_se_sin_0="${dir_sam_se}/in_A.sp.sam"
+sam_se_sin_1="${dir_sam_se}/in_B.sp.sam"
 
-bam_mip_0="${dir_bam_se}/IP_A.sc.bam"
-bam_mip_1="${dir_bam_se}/IP_B.sc.bam"
-bam_min_0="${dir_bam_se}/in_A.sc.bam"
-bam_min_1="${dir_bam_se}/in_B.sc.bam"
-bam_sip_0="${dir_bam_se}/IP_A.sp.bam"
-bam_sip_1="${dir_bam_se}/IP_B.sp.bam"
-bam_sin_0="${dir_bam_se}/in_A.sp.bam"
-bam_sin_1="${dir_bam_se}/in_B.sp.bam"
+bam_se_mip_0="${dir_bam_se}/IP_A.sc.bam"
+bam_se_mip_1="${dir_bam_se}/IP_B.sc.bam"
+bam_se_min_0="${dir_bam_se}/in_A.sc.bam"
+bam_se_min_1="${dir_bam_se}/in_B.sc.bam"
+bam_se_sip_0="${dir_bam_se}/IP_A.sp.bam"
+bam_se_sip_1="${dir_bam_se}/IP_B.sp.bam"
+bam_se_sin_0="${dir_bam_se}/in_A.sp.bam"
+bam_se_sin_1="${dir_bam_se}/in_B.sp.bam"
 
 sam_pe_mip_0="${dir_sam_pe}/IP_A.sc.sam"
 sam_pe_mip_1="${dir_sam_pe}/IP_B.sc.sam"
@@ -212,14 +212,14 @@ EOM
 samtools faidx "${ref_fa}"
 
 #  Generate role-specific SE BAM fixtures with known alignment counts
-write_bam_fixture_se "${sam_mip_0}" "${bam_mip_0}" mip_A 3
-write_bam_fixture_se "${sam_mip_1}" "${bam_mip_1}" mip_B 2
-write_bam_fixture_se "${sam_min_0}" "${bam_min_0}" min_A 2
-write_bam_fixture_se "${sam_min_1}" "${bam_min_1}" min_B 3
-write_bam_fixture_se "${sam_sip_0}" "${bam_sip_0}" sip_A 1
-write_bam_fixture_se "${sam_sip_1}" "${bam_sip_1}" sip_B 2
-write_bam_fixture_se "${sam_sin_0}" "${bam_sin_0}" sin_A 2
-write_bam_fixture_se "${sam_sin_1}" "${bam_sin_1}" sin_B 1
+write_bam_fixture_se "${sam_se_mip_0}" "${bam_se_mip_0}" mip_A 3
+write_bam_fixture_se "${sam_se_mip_1}" "${bam_se_mip_1}" mip_B 2
+write_bam_fixture_se "${sam_se_min_0}" "${bam_se_min_0}" min_A 2
+write_bam_fixture_se "${sam_se_min_1}" "${bam_se_min_1}" min_B 3
+write_bam_fixture_se "${sam_se_sip_0}" "${bam_se_sip_0}" sip_A 1
+write_bam_fixture_se "${sam_se_sip_1}" "${bam_se_sip_1}" sip_B 2
+write_bam_fixture_se "${sam_se_sin_0}" "${bam_se_sin_0}" sin_A 2
+write_bam_fixture_se "${sam_se_sin_1}" "${bam_se_sin_1}" sin_B 1
 
 #  Generate role-specific PE BAM fixtures with matching fragment counts
 write_bam_fixture_pe "${sam_pe_mip_0}" "${bam_pe_mip_0}" mip_A 3
@@ -232,14 +232,14 @@ write_bam_fixture_pe "${sam_pe_sin_0}" "${bam_pe_sin_0}" sin_A 2
 write_bam_fixture_pe "${sam_pe_sin_1}" "${bam_pe_sin_1}" sin_B 1
 
 #  Generate SE and PE CRAM fixtures from the role-specific BAM fixtures
-write_cram_fixture "${bam_mip_0}" "${cram_se_mip_0}" "${ref_fa}"
-write_cram_fixture "${bam_mip_1}" "${cram_se_mip_1}" "${ref_fa}"
-write_cram_fixture "${bam_min_0}" "${cram_se_min_0}" "${ref_fa}"
-write_cram_fixture "${bam_min_1}" "${cram_se_min_1}" "${ref_fa}"
-write_cram_fixture "${bam_sip_0}" "${cram_se_sip_0}" "${ref_fa}"
-write_cram_fixture "${bam_sip_1}" "${cram_se_sip_1}" "${ref_fa}"
-write_cram_fixture "${bam_sin_0}" "${cram_se_sin_0}" "${ref_fa}"
-write_cram_fixture "${bam_sin_1}" "${cram_se_sin_1}" "${ref_fa}"
+write_cram_fixture "${bam_se_mip_0}" "${cram_se_mip_0}" "${ref_fa}"
+write_cram_fixture "${bam_se_mip_1}" "${cram_se_mip_1}" "${ref_fa}"
+write_cram_fixture "${bam_se_min_0}" "${cram_se_min_0}" "${ref_fa}"
+write_cram_fixture "${bam_se_min_1}" "${cram_se_min_1}" "${ref_fa}"
+write_cram_fixture "${bam_se_sip_0}" "${cram_se_sip_0}" "${ref_fa}"
+write_cram_fixture "${bam_se_sip_1}" "${cram_se_sip_1}" "${ref_fa}"
+write_cram_fixture "${bam_se_sin_0}" "${cram_se_sin_0}" "${ref_fa}"
+write_cram_fixture "${bam_se_sin_1}" "${cram_se_sin_1}" "${ref_fa}"
 
 write_cram_fixture "${bam_pe_mip_0}" "${cram_pe_mip_0}" "${ref_fa}"
 write_cram_fixture "${bam_pe_mip_1}" "${cram_pe_mip_1}" "${ref_fa}"
@@ -251,14 +251,14 @@ write_cram_fixture "${bam_pe_sin_0}" "${cram_pe_sin_0}" "${ref_fa}"
 write_cram_fixture "${bam_pe_sin_1}" "${cram_pe_sin_1}" "${ref_fa}"
 
 samtools quickcheck \
-    "${bam_mip_0}" \
-    "${bam_mip_1}" \
-    "${bam_min_0}" \
-    "${bam_min_1}" \
-    "${bam_sip_0}" \
-    "${bam_sip_1}" \
-    "${bam_sin_0}" \
-    "${bam_sin_1}" \
+    "${bam_se_mip_0}" \
+    "${bam_se_mip_1}" \
+    "${bam_se_min_0}" \
+    "${bam_se_min_1}" \
+    "${bam_se_sip_0}" \
+    "${bam_se_sip_1}" \
+    "${bam_se_sin_0}" \
+    "${bam_se_sin_1}" \
     "${bam_pe_mip_0}" \
     "${bam_pe_mip_1}" \
     "${bam_pe_min_0}" \
@@ -299,8 +299,8 @@ write_tsv_row \
     '/path/to/IP_WT_G1_Hho1_6336.sp.bam' \
     '/path/to/in_WT_G1_Hho1_6336.sc.bam' \
     '/path/to/in_WT_G1_Hho1_6336.sp.bam' \
-    '2.145085661466039' \
-    'fractional' \
+    '2.081558847888101748679901' \
+    'chiprx_alpha_ratio' \
     '13492920' '217340' '12851824' '452406' \
     > "${spk_0}"
 
@@ -309,8 +309,8 @@ write_tsv_row \
     '/path/to/IP_WT_G1_Hho1_6337.sp.bam' \
     '/path/to/in_WT_G1_Hho1_6337.sc.bam' \
     '/path/to/in_WT_G1_Hho1_6337.sp.bam' \
-    '3.228015767161274' \
-    'fractional' \
+    '2.898996981538645822951139' \
+    'chiprx_alpha_ratio' \
     '13655994' '116947' '12030091' '339029' \
     > "${spk_2}"
 

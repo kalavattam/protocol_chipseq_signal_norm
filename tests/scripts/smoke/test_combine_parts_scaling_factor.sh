@@ -116,8 +116,13 @@ assert_combined_mode \
 
 assert_pattern_found \
     "${fil_out_spk}" \
-    $'\t2.145085661466039\tfractional\t13492920\t217340\t12851824\t452406$' \
-    "combined scaling-factor spike TSV records fractional coefficient"
+    $'\t2.081558847888101748679901\tchiprx_alpha_ratio\t13492920\t217340\t12851824\t452406$' \
+    "combined scaling-factor spike TSV records first default coefficient"
+
+assert_pattern_found \
+    "${fil_out_spk}" \
+    $'\t2.898996981538645822951139\tchiprx_alpha_ratio\t13655994\t116947\t12030091\t339029$' \
+    "combined scaling-factor spike TSV records second default coefficient"
 
 assert_pattern_absent \
     "${fil_out_spk}" \

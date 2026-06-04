@@ -36,36 +36,40 @@ dir_out="${tmp}/out"
 dir_err="${tmp}/logs"
 dir_log="${TEST_DIR_LOG}/calculate_scaling_factor"
 
-mip_0="${dir_bam_se}/IP_A.sc.bam"
-mip_1="${dir_bam_se}/IP_B.sc.bam"
-min_0="${dir_bam_se}/in_A.sc.bam"
-min_1="${dir_bam_se}/in_B.sc.bam"
-sip_0="${dir_bam_se}/IP_A.sp.bam"
-sip_1="${dir_bam_se}/IP_B.sp.bam"
-sin_0="${dir_bam_se}/in_A.sp.bam"
-sin_1="${dir_bam_se}/in_B.sp.bam"
+bam_se_mip_0="${dir_bam_se}/IP_A.sc.bam"
+bam_se_mip_1="${dir_bam_se}/IP_B.sc.bam"
+bam_se_min_0="${dir_bam_se}/in_A.sc.bam"
+bam_se_min_1="${dir_bam_se}/in_B.sc.bam"
+bam_se_sip_0="${dir_bam_se}/IP_A.sp.bam"
+bam_se_sip_1="${dir_bam_se}/IP_B.sp.bam"
+bam_se_sin_0="${dir_bam_se}/in_A.sp.bam"
+bam_se_sin_1="${dir_bam_se}/in_B.sp.bam"
 
-pe_mip_0="${dir_bam_pe}/IP_A.sc.bam"
-pe_mip_1="${dir_bam_pe}/IP_B.sc.bam"
-pe_min_0="${dir_bam_pe}/in_A.sc.bam"
-pe_min_1="${dir_bam_pe}/in_B.sc.bam"
-pe_sip_0="${dir_bam_pe}/IP_A.sp.bam"
-pe_sip_1="${dir_bam_pe}/IP_B.sp.bam"
-pe_sin_0="${dir_bam_pe}/in_A.sp.bam"
-pe_sin_1="${dir_bam_pe}/in_B.sp.bam"
+bam_pe_mip_0="${dir_bam_pe}/IP_A.sc.bam"
+bam_pe_mip_1="${dir_bam_pe}/IP_B.sc.bam"
+bam_pe_min_0="${dir_bam_pe}/in_A.sc.bam"
+bam_pe_min_1="${dir_bam_pe}/in_B.sc.bam"
+bam_pe_sip_0="${dir_bam_pe}/IP_A.sp.bam"
+bam_pe_sip_1="${dir_bam_pe}/IP_B.sp.bam"
+bam_pe_sin_0="${dir_bam_pe}/in_A.sp.bam"
+bam_pe_sin_1="${dir_bam_pe}/in_B.sp.bam"
 
-cram_mip_0="${dir_cram_se}/IP_A.sc.cram"
-cram_mip_1="${dir_cram_se}/IP_B.sc.cram"
-cram_min_0="${dir_cram_se}/in_A.sc.cram"
-cram_min_1="${dir_cram_se}/in_B.sc.cram"
-cram_sip_0="${dir_cram_se}/IP_A.sp.cram"
-cram_sip_1="${dir_cram_se}/IP_B.sp.cram"
-cram_sin_0="${dir_cram_se}/in_A.sp.cram"
-cram_sin_1="${dir_cram_se}/in_B.sp.cram"
+cram_se_mip_0="${dir_cram_se}/IP_A.sc.cram"
+cram_se_mip_1="${dir_cram_se}/IP_B.sc.cram"
+cram_se_min_0="${dir_cram_se}/in_A.sc.cram"
+cram_se_min_1="${dir_cram_se}/in_B.sc.cram"
+cram_se_sip_0="${dir_cram_se}/IP_A.sp.cram"
+cram_se_sip_1="${dir_cram_se}/IP_B.sp.cram"
+cram_se_sin_0="${dir_cram_se}/in_A.sp.cram"
+cram_se_sin_1="${dir_cram_se}/in_B.sp.cram"
 
+cram_pe_mip_0="${dir_cram_pe}/IP_A.sc.cram"
 cram_pe_mip_1="${dir_cram_pe}/IP_B.sc.cram"
+cram_pe_min_0="${dir_cram_pe}/in_A.sc.cram"
 cram_pe_min_1="${dir_cram_pe}/in_B.sc.cram"
+cram_pe_sip_0="${dir_cram_pe}/IP_A.sp.cram"
 cram_pe_sip_1="${dir_cram_pe}/IP_B.sp.cram"
+cram_pe_sin_0="${dir_cram_pe}/in_A.sp.cram"
 cram_pe_sin_1="${dir_cram_pe}/in_B.sp.cram"
 
 rm -rf "${tmp}"
@@ -78,28 +82,30 @@ require_env_project env_nam || {
 
 if ! \
     require_files_nonempty \
-        "${mip_0}" "${mip_1}" \
-        "${mip_0}.bai" "${mip_1}.bai" \
-        "${min_0}" "${min_1}" \
-        "${min_0}.bai" "${min_1}.bai" \
-        "${sip_0}" "${sip_1}" \
-        "${sip_0}.bai" "${sip_1}.bai" \
-        "${sin_0}" "${sin_1}" \
-        "${sin_0}.bai" "${sin_1}.bai" \
-        "${pe_mip_0}" "${pe_mip_1}" \
-        "${pe_mip_0}.bai" "${pe_mip_1}.bai" \
-        "${pe_min_0}" "${pe_min_1}" \
-        "${pe_min_0}.bai" "${pe_min_1}.bai" \
-        "${pe_sip_0}" "${pe_sip_1}" \
-        "${pe_sip_0}.bai" "${pe_sip_1}.bai" \
-        "${pe_sin_0}" "${pe_sin_1}" \
-        "${pe_sin_0}.bai" "${pe_sin_1}.bai" \
-        "${cram_mip_0}" "${cram_mip_1}" \
-        "${cram_min_0}" "${cram_min_1}" \
-        "${cram_sip_0}" "${cram_sip_1}" \
-        "${cram_sin_0}" "${cram_sin_1}" \
-        "${cram_pe_mip_1}" "${cram_pe_min_1}" \
-        "${cram_pe_sip_1}" "${cram_pe_sin_1}" \
+        "${bam_se_mip_0}" "${bam_se_mip_1}" \
+        "${bam_se_mip_0}.bai" "${bam_se_mip_1}.bai" \
+        "${bam_se_min_0}" "${bam_se_min_1}" \
+        "${bam_se_min_0}.bai" "${bam_se_min_1}.bai" \
+        "${bam_se_sip_0}" "${bam_se_sip_1}" \
+        "${bam_se_sip_0}.bai" "${bam_se_sip_1}.bai" \
+        "${bam_se_sin_0}" "${bam_se_sin_1}" \
+        "${bam_se_sin_0}.bai" "${bam_se_sin_1}.bai" \
+        "${bam_pe_mip_0}" "${bam_pe_mip_1}" \
+        "${bam_pe_mip_0}.bai" "${bam_pe_mip_1}.bai" \
+        "${bam_pe_min_0}" "${bam_pe_min_1}" \
+        "${bam_pe_min_0}.bai" "${bam_pe_min_1}.bai" \
+        "${bam_pe_sip_0}" "${bam_pe_sip_1}" \
+        "${bam_pe_sip_0}.bai" "${bam_pe_sip_1}.bai" \
+        "${bam_pe_sin_0}" "${bam_pe_sin_1}" \
+        "${bam_pe_sin_0}.bai" "${bam_pe_sin_1}.bai" \
+        "${cram_se_mip_0}" "${cram_se_mip_1}" \
+        "${cram_se_min_0}" "${cram_se_min_1}" \
+        "${cram_se_sip_0}" "${cram_se_sip_1}" \
+        "${cram_se_sin_0}" "${cram_se_sin_1}" \
+        "${cram_pe_mip_0}" "${cram_pe_mip_1}" \
+        "${cram_pe_min_0}" "${cram_pe_min_1}" \
+        "${cram_pe_sip_0}" "${cram_pe_sip_1}" \
+        "${cram_pe_sin_0}" "${cram_pe_sin_1}" \
         "${ref_fa}"
 then
     finish
@@ -107,14 +113,14 @@ then
 fi
 
 # shellcheck disable=2054
-arr_cmd_se=(
+arr_cmd_bam_se=(
     "${TEST_BASH}" "${scr_exe}"
         --threads 1
         --mode spike
-        --csv_mip "${mip_0},${mip_1}"
-        --csv_min "${min_0},${min_1}"
-        --csv_sip "${sip_0},${sip_1}"
-        --csv_sin "${sin_0},${sin_1}"
+        --csv_mip "${bam_se_mip_0},${bam_se_mip_1}"
+        --csv_min "${bam_se_min_0},${bam_se_min_1}"
+        --csv_sip "${bam_se_sip_0},${bam_se_sip_1}"
+        --csv_sin "${bam_se_sin_0},${bam_se_sin_1}"
         --aln_typ auto
         --err_out "${dir_err}"
         --max_job 1
@@ -122,54 +128,68 @@ arr_cmd_se=(
 
 # shellcheck disable=2034
 {
-    arr_cmd_pe=(
+    arr_cmd_bam_pe=(
         "${TEST_BASH}" "${scr_exe}"
             --threads 1
             --mode spike
-            --csv_mip "${pe_mip_0},${pe_mip_1}"
-            --csv_min "${pe_min_0},${pe_min_1}"
-            --csv_sip "${pe_sip_0},${pe_sip_1}"
-            --csv_sin "${pe_sin_0},${pe_sin_1}"
+            --csv_mip "${bam_pe_mip_0},${bam_pe_mip_1}"
+            --csv_min "${bam_pe_min_0},${bam_pe_min_1}"
+            --csv_sip "${bam_pe_sip_0},${bam_pe_sip_1}"
+            --csv_sin "${bam_pe_sin_0},${bam_pe_sin_1}"
             --aln_typ auto
             --err_out "${dir_err}"
             --max_job 1
     )
 
-    arr_cmd_cram=(
+    arr_cmd_cram_se=(
         "${TEST_BASH}" "${scr_exe}"
             --threads 1
             --mode spike
-            --csv_mip "${cram_mip_0},${cram_mip_1}"
-            --csv_min "${cram_min_0},${cram_min_1}"
-            --csv_sip "${cram_sip_0},${cram_sip_1}"
-            --csv_sin "${cram_sin_0},${cram_sin_1}"
+            --csv_mip "${cram_se_mip_0},${cram_se_mip_1}"
+            --csv_min "${cram_se_min_0},${cram_se_min_1}"
+            --csv_sip "${cram_se_sip_0},${cram_se_sip_1}"
+            --csv_sin "${cram_se_sin_0},${cram_se_sin_1}"
             --aln_typ auto
             --ref_fa "${ref_fa}"
             --err_out "${dir_err}"
             --max_job 1
     )
 
-    arr_cmd_lay_mx=(
+    arr_cmd_cram_pe=(
         "${TEST_BASH}" "${scr_exe}"
             --threads 1
             --mode spike
-            --csv_mip "${mip_0},${pe_mip_1}"
-            --csv_min "${min_0},${pe_min_1}"
-            --csv_sip "${sip_0},${pe_sip_1}"
-            --csv_sin "${sin_0},${pe_sin_1}"
+            --csv_mip "${cram_pe_mip_0},${cram_pe_mip_1}"
+            --csv_min "${cram_pe_min_0},${cram_pe_min_1}"
+            --csv_sip "${cram_pe_sip_0},${cram_pe_sip_1}"
+            --csv_sin "${cram_pe_sin_0},${cram_pe_sin_1}"
+            --aln_typ auto
+            --ref_fa "${ref_fa}"
+            --err_out "${dir_err}"
+            --max_job 1
+    )
+
+    arr_cmd_mix_lyt_bam=(
+        "${TEST_BASH}" "${scr_exe}"
+            --threads 1
+            --mode spike
+            --csv_mip "${bam_se_mip_0},${bam_pe_mip_1}"
+            --csv_min "${bam_se_min_0},${bam_pe_min_1}"
+            --csv_sip "${bam_se_sip_0},${bam_pe_sip_1}"
+            --csv_sin "${bam_se_sin_0},${bam_pe_sin_1}"
             --aln_typ auto
             --err_out "${dir_err}"
             --max_job 1
     )
 
-    arr_cmd_fmt_mx=(
+    arr_cmd_mix_fmt_bam_se_cram_pe=(
         "${TEST_BASH}" "${scr_exe}"
             --threads 1
             --mode spike
-            --csv_mip "${mip_0},${cram_pe_mip_1}"
-            --csv_min "${min_0},${cram_pe_min_1}"
-            --csv_sip "${sip_0},${cram_pe_sip_1}"
-            --csv_sin "${sin_0},${cram_pe_sin_1}"
+            --csv_mip "${bam_se_mip_0},${cram_pe_mip_1}"
+            --csv_min "${bam_se_min_0},${cram_pe_min_1}"
+            --csv_sip "${bam_se_sip_0},${cram_pe_sip_1}"
+            --csv_sin "${bam_se_sin_0},${cram_pe_sin_1}"
             --aln_typ auto
             --ref_fa "${ref_fa}"
             --err_out "${dir_err}"
@@ -177,20 +197,23 @@ arr_cmd_se=(
     )
 }
 
-row_se_0="${mip_0}"$'\t'"${sip_0}"$'\t'"${min_0}"$'\t'"${sin_0}"
-row_se_1="${mip_1}"$'\t'"${sip_1}"$'\t'"${min_1}"$'\t'"${sin_1}"
+row_bam_se_0="${bam_se_mip_0}"$'\t'"${bam_se_sip_0}"$'\t'"${bam_se_min_0}"$'\t'"${bam_se_sin_0}"
+row_bam_se_1="${bam_se_mip_1}"$'\t'"${bam_se_sip_1}"$'\t'"${bam_se_min_1}"$'\t'"${bam_se_sin_1}"
 
-row_pe_0="${pe_mip_0}"$'\t'"${pe_sip_0}"$'\t'"${pe_min_0}"$'\t'"${pe_sin_0}"
-row_pe_1="${pe_mip_1}"$'\t'"${pe_sip_1}"$'\t'"${pe_min_1}"$'\t'"${pe_sin_1}"
+row_bam_pe_0="${bam_pe_mip_0}"$'\t'"${bam_pe_sip_0}"$'\t'"${bam_pe_min_0}"$'\t'"${bam_pe_sin_0}"
+row_bam_pe_1="${bam_pe_mip_1}"$'\t'"${bam_pe_sip_1}"$'\t'"${bam_pe_min_1}"$'\t'"${bam_pe_sin_1}"
 
-row_cram_0="${cram_mip_0}"$'\t'"${cram_sip_0}"$'\t'"${cram_min_0}"$'\t'"${cram_sin_0}"
-row_cram_1="${cram_mip_1}"$'\t'"${cram_sip_1}"$'\t'"${cram_min_1}"$'\t'"${cram_sin_1}"
+row_cram_se_0="${cram_se_mip_0}"$'\t'"${cram_se_sip_0}"$'\t'"${cram_se_min_0}"$'\t'"${cram_se_sin_0}"
+row_cram_se_1="${cram_se_mip_1}"$'\t'"${cram_se_sip_1}"$'\t'"${cram_se_min_1}"$'\t'"${cram_se_sin_1}"
 
-row_lay_mx_0="${row_se_0}"
-row_lay_mx_1="${row_pe_1}"
+row_cram_pe_0="${cram_pe_mip_0}"$'\t'"${cram_pe_sip_0}"$'\t'"${cram_pe_min_0}"$'\t'"${cram_pe_sin_0}"
+row_cram_pe_1="${cram_pe_mip_1}"$'\t'"${cram_pe_sip_1}"$'\t'"${cram_pe_min_1}"$'\t'"${cram_pe_sin_1}"
 
-row_fmt_mx_0="${row_se_0}"
-row_fmt_mx_1="${cram_pe_mip_1}"$'\t'"${cram_pe_sip_1}"$'\t'"${cram_pe_min_1}"$'\t'"${cram_pe_sin_1}"
+row_mix_lyt_bam_0="${row_bam_se_0}"
+row_mix_lyt_bam_1="${row_bam_pe_1}"
+
+row_mix_fmt_bam_se_cram_pe_0="${row_bam_se_0}"
+row_mix_fmt_bam_se_cram_pe_1="${cram_pe_mip_1}"$'\t'"${cram_pe_sip_1}"$'\t'"${cram_pe_min_1}"$'\t'"${cram_pe_sin_1}"
 
 
 #  Run one serial spike-in calculation case and assert its assembled table
@@ -287,7 +310,7 @@ if \
     run_capture \
         "execute calculate-scaling-factor spike dry-run" \
         "${log}" \
-        "${arr_cmd_se[@]}" \
+        "${arr_cmd_bam_se[@]}" \
         --fil_out "${fil_out_dry}" \
         --nam_job test_execute_calculate_scaling_factor_spike_dry \
         --dry_run
@@ -340,18 +363,18 @@ assert_pattern_found \
 #  Default method should use alignment-derived counts and automatic SE detection
 run_case_spike \
     default \
-    arr_cmd_se \
-    "${row_se_0}" \
-    "${row_se_1}" \
+    arr_cmd_bam_se \
+    "${row_bam_se_0}" \
+    "${row_bam_se_1}" \
     "" \
     $'2\tchiprx_alpha_ratio\t3\t1\t2\t2' \
     $'0.5\tchiprx_alpha_ratio\t2\t2\t3\t1'
 
 run_case_spike \
     no_header \
-    arr_cmd_se \
-    "${row_se_0}" \
-    "${row_se_1}" \
+    arr_cmd_bam_se \
+    "${row_bam_se_0}" \
+    "${row_bam_se_1}" \
     "" \
     $'2\tchiprx_alpha_ratio\t3\t1\t2\t2' \
     $'0.5\tchiprx_alpha_ratio\t2\t2\t3\t1' \
@@ -421,45 +444,45 @@ assert_pattern_found \
 #  Canonical spike-in methods and one accepted alias should propagate to TSVs
 run_case_spike \
     fractional \
-    arr_cmd_se \
-    "${row_se_0}" \
-    "${row_se_1}" \
+    arr_cmd_bam_se \
+    "${row_bam_se_0}" \
+    "${row_bam_se_1}" \
     fractional \
     $'2\tfractional\t3\t1\t2\t2' \
     $'0.5\tfractional\t2\t2\t3\t1'
 
 run_case_spike \
     ratio_alias \
-    arr_cmd_se \
-    "${row_se_0}" \
-    "${row_se_1}" \
+    arr_cmd_bam_se \
+    "${row_bam_se_0}" \
+    "${row_bam_se_1}" \
     chiprx_ratio \
     $'2\tchiprx_alpha_ratio\t3\t1\t2\t2' \
     $'0.5\tchiprx_alpha_ratio\t2\t2\t3\t1'
 
 run_case_spike \
     alpha_ip \
-    arr_cmd_se \
-    "${row_se_0}" \
-    "${row_se_1}" \
+    arr_cmd_bam_se \
+    "${row_bam_se_0}" \
+    "${row_bam_se_1}" \
     chiprx_alpha_ip \
     $'1000000\tchiprx_alpha_ip\t3\t1\t2\t2' \
     $'500000\tchiprx_alpha_ip\t2\t2\t3\t1'
 
 run_case_spike \
     alpha_in \
-    arr_cmd_se \
-    "${row_se_0}" \
-    "${row_se_1}" \
+    arr_cmd_bam_se \
+    "${row_bam_se_0}" \
+    "${row_bam_se_1}" \
     chiprx_alpha_in \
     $'500000\tchiprx_alpha_in\t3\t1\t2\t2' \
     $'1000000\tchiprx_alpha_in\t2\t2\t3\t1'
 
 run_case_spike \
     rxinput \
-    arr_cmd_se \
-    "${row_se_0}" \
-    "${row_se_1}" \
+    arr_cmd_bam_se \
+    "${row_bam_se_0}" \
+    "${row_bam_se_1}" \
     rxinput_alpha \
     $'500000\trxinput_alpha\t3\t1\t2\t2' \
     $'125000\trxinput_alpha\t2\t2\t3\t1'
@@ -468,9 +491,9 @@ run_case_spike \
 #  Alignment variants should preserve counts under automatic type detection
 run_case_spike \
     pe_bam \
-    arr_cmd_pe \
-    "${row_pe_0}" \
-    "${row_pe_1}" \
+    arr_cmd_bam_pe \
+    "${row_bam_pe_0}" \
+    "${row_bam_pe_1}" \
     "" \
     $'2\tchiprx_alpha_ratio\t3\t1\t2\t2' \
     $'0.5\tchiprx_alpha_ratio\t2\t2\t3\t1'
@@ -490,9 +513,9 @@ assert_pattern_found \
 
 run_case_spike \
     se_cram \
-    arr_cmd_cram \
-    "${row_cram_0}" \
-    "${row_cram_1}" \
+    arr_cmd_cram_se \
+    "${row_cram_se_0}" \
+    "${row_cram_se_1}" \
     "" \
     $'2\tchiprx_alpha_ratio\t3\t1\t2\t2' \
     $'0.5\tchiprx_alpha_ratio\t2\t2\t3\t1'
@@ -505,10 +528,32 @@ assert_pattern_found \
     "execute scaling-factor spike SE CRAM auto-detects first main IP as SE"
 
 run_case_spike \
+    pe_cram \
+    arr_cmd_cram_pe \
+    "${row_cram_pe_0}" \
+    "${row_cram_pe_1}" \
+    "" \
+    $'2\tchiprx_alpha_ratio\t3\t1\t2\t2' \
+    $'0.5\tchiprx_alpha_ratio\t2\t2\t3\t1'
+
+log_err_0="${dir_err}/test_execute_calculate_scaling_factor_spike_pe_cram.IP_A.sc.stderr.txt"
+log_err_1="${dir_err}/test_execute_calculate_scaling_factor_spike_pe_cram.IP_B.sc.stderr.txt"
+
+assert_pattern_found \
+    "${log_err_0}" \
+    'typ_mp=pe' \
+    "execute scaling-factor spike PE CRAM auto-detects first main IP as PE"
+
+assert_pattern_found \
+    "${log_err_1}" \
+    'typ_mp=pe' \
+    "execute scaling-factor spike PE CRAM auto-detects second main IP as PE"
+
+run_case_spike \
     mixed_layout \
-    arr_cmd_lay_mx \
-    "${row_lay_mx_0}" \
-    "${row_lay_mx_1}" \
+    arr_cmd_mix_lyt_bam \
+    "${row_mix_lyt_bam_0}" \
+    "${row_mix_lyt_bam_1}" \
     "" \
     $'2\tchiprx_alpha_ratio\t3\t1\t2\t2' \
     $'0.5\tchiprx_alpha_ratio\t2\t2\t3\t1'
@@ -528,9 +573,9 @@ assert_pattern_found \
 
 run_case_spike \
     mixed_format \
-    arr_cmd_fmt_mx \
-    "${row_fmt_mx_0}" \
-    "${row_fmt_mx_1}" \
+    arr_cmd_mix_fmt_bam_se_cram_pe \
+    "${row_mix_fmt_bam_se_cram_pe_0}" \
+    "${row_mix_fmt_bam_se_cram_pe_1}" \
     "" \
     $'2\tchiprx_alpha_ratio\t3\t1\t2\t2' \
     $'0.5\tchiprx_alpha_ratio\t2\t2\t3\t1'
@@ -549,16 +594,17 @@ if \
     run_capture \
         "execute calculate-scaling-factor spike CRAM missing reference" \
         "${log}" \
-        "${arr_cmd_se[@]}" \
-        --csv_mip "${cram_mip_0},${cram_mip_1}" \
-        --csv_min "${cram_min_0},${cram_min_1}" \
-        --csv_sip "${cram_sip_0},${cram_sip_1}" \
-        --csv_sin "${cram_sin_0},${cram_sin_1}" \
+        "${arr_cmd_bam_se[@]}" \
+        --csv_mip "${cram_se_mip_0},${cram_se_mip_1}" \
+        --csv_min "${cram_se_min_0},${cram_se_min_1}" \
+        --csv_sip "${cram_se_sip_0},${cram_se_sip_1}" \
+        --csv_sin "${cram_se_sin_0},${cram_se_sin_1}" \
         --fil_out "${dir_out}/scaling.cram_missing_ref.spike.tsv" \
         --nam_job test_execute_calculate_scaling_factor_spike_cram_missing_ref
 then
     record_fail \
-        "execute_calculate_scaling_factor.sh CRAM without ref unexpectedly pass"
+        "execute_calculate_scaling_factor.sh CRAM without ref unexpectedly" \
+        "pass"
 else
     assert_pattern_found \
         "${log}" \
@@ -570,9 +616,9 @@ fi
 #  Broadcast depth overrides should replace per-file Samtools counts
 run_case_spike \
     dep_broadcast \
-    arr_cmd_se \
-    "${row_se_0}" \
-    "${row_se_1}" \
+    arr_cmd_bam_se \
+    "${row_bam_se_0}" \
+    "${row_bam_se_1}" \
     fractional \
     $'1\tfractional\t10\t2\t20\t4' \
     $'1\tfractional\t10\t2\t20\t4' \
@@ -588,7 +634,7 @@ if \
     run_capture \
         "execute calculate-scaling-factor spike invalid method" \
         "${log}" \
-        "${arr_cmd_se[@]}" \
+        "${arr_cmd_bam_se[@]}" \
         --method not_a_method \
         --fil_out "${dir_out}/scaling.invalid_method.spike.tsv" \
         --nam_job test_execute_calculate_scaling_factor_spike_invalid_method
@@ -609,7 +655,7 @@ if \
     run_capture \
         "execute calculate-scaling-factor spike existing output" \
         "${log}" \
-        "${arr_cmd_se[@]}" \
+        "${arr_cmd_bam_se[@]}" \
         --fil_out "${fil_out}" \
         --nam_job "${nam_job}"
 then
@@ -630,7 +676,7 @@ if \
     run_capture \
         "execute calculate-scaling-factor spike force no-parts" \
         "${log}" \
-        "${arr_cmd_se[@]}" \
+        "${arr_cmd_bam_se[@]}" \
         --fil_out "${fil_out}" \
         --nam_job "${nam_job}" \
         --force \
