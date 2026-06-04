@@ -229,6 +229,10 @@ mkdir -p "${dir_log}"
         "${dir_fix_scl}/parts/header_scaling_factors.spike.tsv.part.000004"
         "${dir_fix_scl}/parts/duplicate_index_A.spike.tsv.part.000005"
         "${dir_fix_scl}/parts/duplicate_index_B.spike.tsv.part.000005"
+        "${dir_fix_scl}/metadata/measurements_siqchip.tsv"
+        "${dir_fix_scl}/metadata/measurements_siqchip_aliases.tsv"
+        "${dir_fix_scl}/metadata/measurements_siqchip_missing_required.tsv"
+        "${dir_fix_scl}/metadata/measurements_siqchip_unsupported_alias.tsv"
     )
 
     dir_fix_sig="${dir_rep}/tests/compute_signal/fixtures"
@@ -282,6 +286,7 @@ arr_tst=(
     "${dir_run}/smoke/test_startup_sources.sh"
     "${dir_run}/smoke/test_dry_run_commands.sh"
     "${dir_run}/smoke/test_calculate_scaling_factor_spike_python.sh"
+    "${dir_run}/smoke/test_calculate_scaling_factor_siq_python.sh"
     "${dir_run}/smoke/test_combine_parts_scaling_factor.sh"
     "${dir_run}/smoke/test_write_header.sh"
     "${dir_run}/smoke/test_submit_calculate_scaling_factor_spike.sh"

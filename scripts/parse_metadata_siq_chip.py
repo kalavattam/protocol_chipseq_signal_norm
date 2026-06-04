@@ -763,6 +763,35 @@ def standardize_header(
     return std_map
 
 
+def format_missing_required(
+    missing: list[str],
+    cfg: dict,
+    max_alias: int = 12,
+) -> str:
+    """
+    Format a missing-column message with accepted aliases for each field.
+    """
+    col_map = cfg.get("columns", {})
+    msg = "Missing required column(s) in matched row: " + ", ".join(missing)
+    parts = []
+
+    for canon in missing:
+        aliases = [canon] + list(col_map.get(canon, []))
+        aliases = list(dict.fromkeys(str(alias) for alias in aliases))
+        shown = aliases[:max_alias]
+        extra = len(aliases) - len(shown)
+
+        txt = f"{canon}: " + ", ".join(shown)
+        if extra > 0:
+            txt += f", ... ({extra} more)"
+        parts.append(txt)
+
+    if parts:
+        msg += ". Accepted aliases include: " + "; ".join(parts)
+
+    return msg
+
+
 def load_table(
     path: str,
     skp_pfx: tuple[str, ...],
@@ -1044,9 +1073,13 @@ def main(argv: list[str] | None = None) -> int:
         return 1
 
     #  Perform BAM, metadata table, configuration YAML existence checks
-    check_exists(args.bam, "--bam")
-    check_exists(args.tbl_met, "--tbl_met")
-    check_exists(args.cfg, "--cfg")
+    try:
+        check_exists(args.bam, kind="file", label="--bam")
+        check_exists(args.tbl_met, kind="file", label="--tbl_met")
+        check_exists(args.cfg, kind="file", label="--cfg")
+    except (FileNotFoundError, ValueError) as e:
+        print(str(e), file=sys.stderr)
+        return 1
 
     #  Load and validate YAML configuration
     try:
@@ -1153,8 +1186,7 @@ def main(argv: list[str] | None = None) -> int:
     ]
     if missing:
         print(
-            "Missing required column(s) in matched row: "
-            + ", ".join(missing),
+            format_missing_required(missing, cfg),
             file=sys.stderr
         )
         return 1

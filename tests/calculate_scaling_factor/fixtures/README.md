@@ -15,6 +15,8 @@ The fixture rows are adapted from tracked example scaling-factor tables under `d
 
 Spike-in rows also record the canonical coefficient method used alongside the computed value. The default fixture examples use `chiprx_alpha_ratio`.
 
+Minimal siQ-ChIP metadata tables exercise `parse_metadata_siq_chip.py` with the production parsing YAML in `data/raw/docs/parse_metadata_siq_chip.yaml`. These tables are intentionally small and cover canonical column names, a curated alias subset, and malformed negative cases.
+
 <br />
 
 ## Files
@@ -31,11 +33,7 @@ Role-specific SE alignment fixtures:
 - `sam/se/in_B.sc.sam`, `bam/se/in_B.sc.bam`, `bam/se/in_B.sc.bam.bai`
 - `sam/se/in_B.sp.sam`, `bam/se/in_B.sp.bam`, `bam/se/in_B.sp.bam.bai`
 
-Reference FASTA:
-- `reference/tiny.fa`
-- `reference/tiny.fa.fai`
-
-Role-specific PE BAM fixtures:
+Role-specific PE alignment fixtures:
 - `sam/pe/IP_A.sc.sam`, `bam/pe/IP_A.sc.bam`, `bam/pe/IP_A.sc.bam.bai`
 - `sam/pe/IP_A.sp.sam`, `bam/pe/IP_A.sp.bam`, `bam/pe/IP_A.sp.bam.bai`
 - `sam/pe/in_A.sc.sam`, `bam/pe/in_A.sc.bam`, `bam/pe/in_A.sc.bam.bai`
@@ -44,6 +42,10 @@ Role-specific PE BAM fixtures:
 - `sam/pe/IP_B.sp.sam`, `bam/pe/IP_B.sp.bam`, `bam/pe/IP_B.sp.bam.bai`
 - `sam/pe/in_B.sc.sam`, `bam/pe/in_B.sc.bam`, `bam/pe/in_B.sc.bam.bai`
 - `sam/pe/in_B.sp.sam`, `bam/pe/in_B.sp.bam`, `bam/pe/in_B.sp.bam.bai`
+
+Reference FASTA:
+- `reference/tiny.fa`
+- `reference/tiny.fa.fai`
 
 Reference-backed CRAM fixtures:
 - `cram/se/*.cram`, `cram/se/*.cram.crai`
@@ -57,11 +59,17 @@ siQ-ChIP scaling-factor part files:
 - `parts/example_scaling_factors.siq.tsv.part.000000`
 - `parts/example_scaling_factors.siq.tsv.part.000002`
 
-Malformed negative-test part file:
+Spike-in malformed negative-test part file:
 - `parts/malformed_scaling_factors.spike.tsv.part.000003`
 - `parts/header_scaling_factors.spike.tsv.part.000004`
 - `parts/duplicate_index_A.spike.tsv.part.000005`
 - `parts/duplicate_index_B.spike.tsv.part.000005`
+
+siQ-ChIP metadata parser fixtures:
+- `metadata/measurements_siqchip.tsv`
+- `metadata/measurements_siqchip_aliases.tsv`
+- `metadata/measurements_siqchip_missing_required.tsv`
+- `metadata/measurements_siqchip_unsupported_alias.tsv`
 
 The nonconsecutive numeric suffixes exercise deterministic numeric ordering when input paths are supplied in reverse order. The malformed part contains too few fields and exercises combiner validation. The header-looking part and duplicate-index pair exercise additional combiner validation without creating those static inputs inside smoke tests.
 
@@ -78,8 +86,8 @@ The serial execute-layer smoke test uses these generated alignment files directl
 <br />
 
 ## Current and deferred smoke-test coverage
-The smoke suite covers direct spike-in and siQ-ChIP part-file combination, numeric ordering, dry-run behavior, malformed input rejection, overwrite protection, explicit part-file cleanup, and serial execute-layer spike-in assembly. Serial spike-in coverage exercises every canonical coefficient, accepted alias normalization, alignment-derived counts, automatic SE/PE detection, BAM/CRAM input, mixed input lists, and broadcast depth overrides.
+The smoke suite covers direct spike-in and siQ-ChIP part-file combination, numeric ordering, dry-run behavior, malformed input rejection, overwrite protection, explicit part-file cleanup, direct spike-in and siQ-ChIP Python calculator behavior, siQ-ChIP metadata parsing, and serial execute-layer spike-in assembly. Serial spike-in coverage exercises every canonical coefficient, accepted alias normalization, alignment-derived counts, automatic SE/PE detection, BAM/CRAM input, mixed input lists, and broadcast depth overrides.
 
 The scaling-factor rows intentionally contain only core workflow values. Compute downstream denominator floors separately with `python -m scripts.compute_input_floor`.
 
-`#TODO`: Add siQ-ChIP wrapper coverage, direct submit-worker coverage, direct Python-script coverage, GNU Parallel coverage, and Slurm coverage.
+`#TODO`: Add siQ-ChIP submit/execute wrapper coverage, GNU Parallel coverage, and Slurm coverage.

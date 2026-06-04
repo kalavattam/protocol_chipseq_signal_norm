@@ -82,7 +82,7 @@ function require_env() {
     if [[ "${CONDA_DEFAULT_ENV:-}" != "${env_nam}" ]]; then
         die \
             "activate '${env_nam}' before generating fixtures;" \
-            "current environment: '${CONDA_DEFAULT_ENV:-none}'." \
+            "current environment: '${CONDA_DEFAULT_ENV:-none}'" \
             "$@"
     fi
 }

@@ -120,6 +120,7 @@ dir_cram="${dir_fix}/cram"
 dir_cram_se="${dir_cram}/se"
 dir_cram_pe="${dir_cram}/pe"
 dir_prt="${dir_fix}/parts"
+dir_met="${dir_fix}/metadata"
 
 ref_fa="${dir_ref}/tiny.fa"
 
@@ -185,6 +186,10 @@ bad_fld="${dir_prt}/malformed_scaling_factors.spike.tsv.part.000003"
 bad_hdr="${dir_prt}/header_scaling_factors.spike.tsv.part.000004"
 dup_idx_a="${dir_prt}/duplicate_index_A.spike.tsv.part.000005"
 dup_idx_b="${dir_prt}/duplicate_index_B.spike.tsv.part.000005"
+met_siq="${dir_met}/measurements_siqchip.tsv"
+met_siq_als="${dir_met}/measurements_siqchip_aliases.tsv"
+met_siq_mis="${dir_met}/measurements_siqchip_missing_required.tsv"
+met_siq_uns="${dir_met}/measurements_siqchip_unsupported_alias.tsv"
 
 env_req="env_protocol"
 
@@ -204,7 +209,8 @@ mkdirs \
     "${dir_bam_pe}" \
     "${dir_cram_se}" \
     "${dir_cram_pe}" \
-    "${dir_prt}"
+    "${dir_prt}" \
+    "${dir_met}"
 
 #  Write and index the tiny reference used for CRAM fixtures
 cat > "${ref_fa}" << 'EOM'
@@ -297,7 +303,11 @@ rm_files \
     "${bad_fld}" \
     "${bad_hdr}" \
     "${dup_idx_a}" \
-    "${dup_idx_b}"
+    "${dup_idx_b}" \
+    "${met_siq}" \
+    "${met_siq_als}" \
+    "${met_siq_mis}" \
+    "${met_siq_uns}"
 
 #  Write realistic spike-in scaling-factor part files
 write_tsv_row \
@@ -379,6 +389,68 @@ write_tsv_row \
     'chiprx_alpha_ratio' \
     '100' '60' '200' '80' \
     > "${dup_idx_b}"
+
+#  Write minimal siQ-ChIP metadata fixtures for production-YAML parsing tests
+{
+    write_tsv_row \
+        'genotype_full' 'genotype' 'state' 'factor' 'strain_full' 'strain' \
+        'volume_in' 'volume_all' 'mass_in' 'mass_ip' \
+        'conc_in' 'conc_ip' 'length_in' 'length_ip'
+
+    write_tsv_row \
+        'HHO1-2L-3FLAG' 'WT' 'G1' 'Hho1' 'yTT6336' '6336' \
+        '20' '300' '72.5' '2.7' \
+        '6.04' '0.224' '450' '626'
+
+    write_tsv_row \
+        'HHO1-2L-3FLAG' 'WT' 'G1' 'Hho1' 'yTT6337' '6337' \
+        '20' '300' '81.1' '5' \
+        '6.76' '0.42' '437' '663'
+
+    write_tsv_row \
+        'HHO1-2L-3FLAG' 'WT' 'G2M' 'Hho1' 'yTT6336' '6336' \
+        '20' '300' '104.9' '6.6' \
+        '8.74' '0.55' '450' '667'
+
+    write_tsv_row \
+        'HMO1-2L-3FLAG' 'WT' 'G1' 'Hmo1' 'yTT7750' '7750' \
+        '20' '300' '79.9' '8.4' \
+        '6.66' '0.704' '450' '499'
+} > "${met_siq}"
+
+{
+    write_tsv_row \
+        'protein' 'gt' 'cc' 'sample' \
+        'input volume' 'total volume' 'input mass' 'IP mass' \
+        'fragment length input' 'fragment length IP'
+
+    write_tsv_row \
+        'Hho1' 'WT' 'G1' '6336' \
+        '20' '300' '72.5' '2.7' \
+        '450' '626'
+} > "${met_siq_als}"
+
+{
+    write_tsv_row \
+        'genotype' 'state' 'factor' 'strain' \
+        'volume_in' 'volume_all' 'mass_in' 'mass_ip' 'length_in'
+
+    write_tsv_row \
+        'WT' 'G1' 'Hho1' '6336' \
+        '20' '300' '72.5' '2.7' '450'
+} > "${met_siq_mis}"
+
+{
+    write_tsv_row \
+        'genotype' 'state' 'factor' 'strain' \
+        'input_volume_unknown' 'volume_all' 'mass_in' 'mass_ip' \
+        'length_in' 'length_ip'
+
+    write_tsv_row \
+        'WT' 'G1' 'Hho1' '6336' \
+        '20' '300' '72.5' '2.7' \
+        '450' '626'
+} > "${met_siq_uns}"
 
 
 succeed "generated calculate-scaling-factor fixtures under ${dir_fix}"
