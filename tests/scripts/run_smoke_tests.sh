@@ -281,6 +281,7 @@ arr_tst=(
     "${dir_run}/smoke/test_help_output.sh"
     "${dir_run}/smoke/test_startup_sources.sh"
     "${dir_run}/smoke/test_dry_run_commands.sh"
+    "${dir_run}/smoke/test_calculate_scaling_factor_spike_python.sh"
     "${dir_run}/smoke/test_combine_parts_scaling_factor.sh"
     "${dir_run}/smoke/test_write_header.sh"
     "${dir_run}/smoke/test_submit_calculate_scaling_factor_spike.sh"

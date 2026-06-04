@@ -19,6 +19,8 @@ source "$(
     cd "$(dirname "${BASH_SOURCE[0]}")/.." > /dev/null 2>&1 && pwd
 )/lib/test_helpers.sh"
 
+print_section "${TEST_NAME}"
+
 scr_cmb="${ROOT_REPO}/scripts/combine_parts_scaling_factor.sh"
 dir_fix="${ROOT_REPO}/tests/calculate_scaling_factor/fixtures"
 dir_prt="${dir_fix}/parts"
@@ -117,8 +119,6 @@ function assert_combine_fails() {
     fi
 }
 
-
-print_section "${TEST_NAME}"
 
 mkdir -p "${tmp}/out" "${dir_log}"
 rm -f "${tmp}/out/"*
