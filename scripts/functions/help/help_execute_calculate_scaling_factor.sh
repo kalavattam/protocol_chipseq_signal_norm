@@ -30,7 +30,7 @@ Usage:
 Description:
   Coordinate calculation of siQ-ChIP or spike-in scaling factors for ChIP-seq data across one or more samples.
 
-  In 'siq' mode, the script uses main-organism IP and input alignment files, together with a metadata table and YAML configuration file, to calculate siQ-ChIP alpha scaling factors via the downstream 'submit_calculate_scaling_factor.sh' wrapper and the Python helper scripts 'calculate_scaling_factor_siq_chip.py' and 'parse_metadata_siq_chip.py'. This workflow uses 'parse_metadata_siq_chip.yaml', which must be configured appropriately if input filenames do not follow the filename conventions described in the Tsukiyama Lab Bio-protocol manuscript.
+  In 'siq' mode, the script uses main-organism IP and input alignment files, together with a metadata table and YAML configuration file, to calculate siQ-ChIP alpha scaling factors via the downstream 'submit_calculate_scaling_factor.sh' wrapper and the Python helper scripts 'calculate_scaling_factor_siqchip.py' and 'parse_metadata_siqchip.py'. This workflow uses 'parse_metadata_siqchip.yml', which must be configured appropriately if input filenames do not follow the filename conventions described in the Tsukiyama Lab Bio-protocol manuscript.
 
   In 'spike' mode, the script uses main-organism and spike-in-organism IP and input alignment files to calculate spike-in scaling factors via the downstream 'submit_calculate_scaling_factor.sh' wrapper and the associated Python/helper-script workflow, including 'calculate_scaling_factor_spike.py' and supporting shell/Python utilities for obtaining fragment-length and alignment-depth values when needed.
 
@@ -173,12 +173,12 @@ Dependencies:
     - write_header.sh
 
   Python scripts:
-    - calculate_scaling_factor_siq_chip.py, via submit_calculate_scaling_factor.sh
-    - parse_metadata_siq_chip.py, via submit_calculate_scaling_factor.sh
+    - calculate_scaling_factor_siqchip.py, via submit_calculate_scaling_factor.sh
+    - parse_metadata_siqchip.py, via submit_calculate_scaling_factor.sh
     - calculate_scaling_factor_spike.py, via submit_calculate_scaling_factor.sh
 
   Configuration files:
-    - parse_metadata_siq_chip.yaml, when '--mode siq'
+    - parse_metadata_siqchip.yml, when '--mode siq'
 
   Sourced function scripts:
     - source_helpers.sh
@@ -261,7 +261,7 @@ Examples:
       --csv_mip IP1.sc.bam,IP2.sc.bam
       --csv_min in1.sc.bam,in2.sc.bam
       --tbl_met metadata.tsv
-      --cfg_met parse_metadata_siq_chip.yaml
+      --cfg_met parse_metadata_siqchip.yml
       --eqn 6nd
       --fil_out scaling_factors.siq.tsv
     '''

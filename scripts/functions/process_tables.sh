@@ -479,7 +479,7 @@ Note:
 
 Examples:
   '''bash
-  _validate_arg_csv sf "sf,scl,scaled,alpha,alf,spike,spk,spike-in,si,siq,siq_chip,siq-chip" "tbl_col"
+  _validate_arg_csv sf "sf,scl,scaled,alpha,alf,spike,spk,spike-in,si,siq,siqchip,siq_chip,siq-chip" "tbl_col"
   _validate_arg_csv TRUE "true,false,t,f,yes,no,y,n,1,0" "norm"
   '''
 EOM
@@ -551,7 +551,7 @@ Positional arguments:
     Table column name for scaling factors; must belong to one of these families:
        - generic ('sf', 'scl', 'scaled', 'alpha', 'alf'),
        - spike-in ('spike', 'spk', 'spike-in', 'si'), or
-       - siQ-ChIP ('siq', 'siq_chip', 'siq-chip').
+       - siQ-ChIP ('siq', 'siqchip', 'siq_chip', 'siq-chip').
 
   3  norm  <bool>
     Normalized-coverage flag.
@@ -604,7 +604,7 @@ EOM
 
     _validate_arg_csv \
         "${tbl_col}" \
-        "sf,scl,scaled,alpha,alf,spike,spk,spike-in,si,siq,siq_chip,siq-chip" \
+        "sf,scl,scaled,alpha,alf,spike,spk,spike-in,si,siq,siqchip,siq_chip,siq-chip" \
         "tbl_col" \
         || return 1
     normalize_bool "${norm}" "norm" >/dev/null || return 1
@@ -663,7 +663,7 @@ Positional arguments:
     Table column name for scaling factors; must belong to one of these families:
       - generic ('sf', 'scl', 'scaled', 'alpha', 'alf'),
       - spike-in ('spike', 'spk', 'spike-in', 'si'), or
-      - siQ-ChIP ('siq', 'siq_chip', 'siq-chip').
+      - siQ-ChIP ('siq', 'siqchip', 'siq_chip', 'siq-chip').
 
   4  norm  <bool>
     Normalized-coverage flag.
@@ -755,7 +755,7 @@ EOM
                 idx_spike=${i}
                 n_spike=$(( n_spike + 1 ))
                 ;;
-            siq|siq_chip|siq-chip)
+            siq|siqchip|siq_chip|siq-chip)
                 idx_siq=${i}
                 n_siq=$(( n_siq + 1 ))
                 ;;
@@ -791,7 +791,7 @@ EOM
     if (( n_siq > 1 )); then
         echo_err_func "${FUNCNAME[0]}" \
             "table '${table}' contains more than one siQ-ChIP scaling-factor" \
-            "column synonym (e.g., 'siq', 'siq_chip', 'siq-chip')."
+            "column synonym (e.g., 'siq', 'siqchip', 'siq_chip', 'siq-chip')."
         return 1
     fi
 
@@ -804,7 +804,7 @@ EOM
     case "${tbl_col}" in
         sf|scl|scaled|alpha|alf) tbl_col="scl"   ;;
         spike|spk|spike-in|si)   tbl_col="spike" ;;
-        siq|siq_chip|siq-chip)   tbl_col="siq"   ;;
+        siq|siqchip|siq_chip|siq-chip)   tbl_col="siq"   ;;
     esac
 
     case "${tbl_col}" in
@@ -942,7 +942,7 @@ Positional arguments:
     Table column name for scaling factors; must belong to one of these families:
       - generic ('sf', 'scl', 'scaled', 'alpha', 'alf'),
       - spike-in ('spike', 'spk', 'spike-in', 'si'), or
-      - siQ-ChIP ('siq', 'siq_chip', 'siq-chip').
+      - siQ-ChIP ('siq', 'siqchip', 'siq_chip', 'siq-chip').
 
   3  norm  <bool>
     Normalized-coverage flag.
@@ -967,7 +967,7 @@ Recognized scaling-factor column names:
   - Spike-in scaling-factor family:
       'spike', 'spk', 'spike-in', 'si'       ->  arr_spike
   - siQ-ChIP scaling-factor family:
-      'siq', 'siq_chip', 'siq-chip'          ->  arr_siq
+      'siq', 'siqchip', 'siq_chip', 'siq-chip' ->  arr_siq
 
 Recognized non-scaling-factor column aliases:
   - 'main_ip',   'mip'            ->  arr_main_ip
@@ -1052,7 +1052,7 @@ Positional arguments:
     Table column name for scaling factors; must belong to one of these families:
       - generic ('sf', 'scl', 'scaled', 'alpha', 'alf'),
       - spike-in ('spike', 'spk', 'spike-in', 'si'), or
-      - siQ-ChIP ('siq', 'siq_chip', 'siq-chip').
+      - siQ-ChIP ('siq', 'siqchip', 'siq_chip', 'siq-chip').
 
   3  norm  <bool>
     Normalized-coverage flag.

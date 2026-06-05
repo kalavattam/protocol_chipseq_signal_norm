@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 #
-# Script: parse_metadata_siq_chip.py
+# Script: parse_metadata_siqchip.py
 #
 # Copyright 2024-2026 by Kris Alavattam
 # Email: kalavattam@gmail.com
@@ -13,7 +13,7 @@
 """
 Script
 -----
-parse_metadata_siq_chip.py
+parse_metadata_siqchip.py
 
 
 Description
@@ -27,11 +27,11 @@ them to a metadata table row.
 
 Usage
 -----
-python parse_metadata_siq_chip.py \\
+python parse_metadata_siqchip.py \\
     [--verbose] \\
     --bam sample.bam \\
     --tbl_met table.tsv[.gz] \\
-    --cfg parse_metadata_siq_chip.yaml \\
+    --cfg parse_metadata_siqchip.yml \\
     [--eqn {5,5nd,6,6nd}] \\
     [--shell] \\
     [--skp_pfx "#,//"]
@@ -74,7 +74,7 @@ Examples
 --------
 1. Export shell-ready values
 '''bash
-python -m parse_metadata_siq_chip \
+python -m parse_metadata_siqchip \
     --tbl_met "${HOME}/path/to/table.tsv" \
     --bam "${HOME}/path/to/sample.bam" \
     --shell
@@ -82,7 +82,7 @@ python -m parse_metadata_siq_chip \
 
 2. Return non-shell output with an explicit equation
 '''bash
-python -m parse_metadata_siq_chip \
+python -m parse_metadata_siqchip \
     --tbl_met table.csv \
     --bam IP_WT_G1_Isw1-flag_S288C.bam \
     --eqn 5
@@ -139,7 +139,7 @@ try:
     import yaml
 except ImportError as e:
     raise ImportError(
-        "PyYAML is required for 'parse_metadata_siq_chip.py' configuration "
+        "PyYAML is required for 'parse_metadata_siqchip.py' configuration "
         "support. Add it to the environment or install with, e.g., 'mamba "
         "install conda-forge::pyyaml'."
     ) from e
@@ -1098,7 +1098,7 @@ def main(argv: list[str] | None = None) -> int:
     if args.verbose:
         with redirect_stdout(sys.stderr):
             print("#############################################")
-            print("## Arguments for 'parse_metadata_siq_chip' ##")
+            print("## Arguments for 'parse_metadata_siqchip' ##")
             print("#############################################")
             print("")
             print("--verbose")

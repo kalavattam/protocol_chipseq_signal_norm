@@ -790,13 +790,13 @@ Examples (do not run):
   '''bash
   _compute_scl_fct
       siq
-      path/to/calculate_scaling_factor_siq_chip.py
+      path/to/calculate_scaling_factor_siqchip.py
       path/to/calculate_scaling_factor_spike.py
       --eqn 6
 
   _compute_scl_fct
       spike
-      path/to/calculate_scaling_factor_siq_chip.py
+      path/to/calculate_scaling_factor_siqchip.py
       path/to/calculate_scaling_factor_spike.py
       --coef fractional
   '''

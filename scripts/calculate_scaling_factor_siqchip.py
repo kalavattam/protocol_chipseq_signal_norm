@@ -9,7 +9,7 @@
 """
 Script
 ------
-calculate_scaling_factor_siq_chip.py
+calculate_scaling_factor_siqchip.py
 
 
 Description
@@ -29,7 +29,7 @@ See also the documentation in the following GitHub repository:
 
 Usage
 -----
-python -m scripts.calculate_scaling_factor_siq_chip \
+python -m scripts.calculate_scaling_factor_siqchip \
     [--help] [--verbose] \
     --eqn <str> \
     --mass_ip <float_ng> --mass_in <float_ng> \
@@ -92,7 +92,7 @@ Examples
 1. Workflow to compute alpha for normalized coverage (uses equation '6nd',
    which omits depth terms)
 '''bash
-python -m scripts.calculate_scaling_factor_siq_chip \
+python -m scripts.calculate_scaling_factor_siqchip \
     --eqn '6nd' \
     --mass_ip 10.5 \
     --mass_in 8.0 \
@@ -106,7 +106,7 @@ python -m scripts.calculate_scaling_factor_siq_chip \
 2. Workflow to compute alpha for fragment length-adjusted raw signal (uses
    equation '6', which includes depth terms)
 '''bash
-python -m scripts.calculate_scaling_factor_siq_chip \
+python -m scripts.calculate_scaling_factor_siqchip \
     --eqn '6' \
     --mass_ip 10.5 \
     --mass_in 8.0 \
@@ -554,7 +554,7 @@ def main(argv: list[str] | None = None) -> None:
         with redirect_stdout(sys.stderr):
             print("")
             print("#######################################################")
-            print("## Arguments for 'calculate_scaling_factor_siq_chip' ##")
+            print("## Arguments for 'calculate_scaling_factor_siqchip' ##")
             print("#######################################################")
             print("")
             print("--verbose")

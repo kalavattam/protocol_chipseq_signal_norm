@@ -21,9 +21,9 @@ source "$(
 
 print_section "${TEST_NAME}"
 
-scr_clc="${ROOT_REPO}/scripts/calculate_scaling_factor_siq_chip.py"
-scr_prs="${ROOT_REPO}/scripts/parse_metadata_siq_chip.py"
-cfg_met="${ROOT_REPO}/data/raw/docs/parse_metadata_siq_chip.yaml"
+scr_clc="${ROOT_REPO}/scripts/calculate_scaling_factor_siqchip.py"
+scr_prs="${ROOT_REPO}/scripts/parse_metadata_siqchip.py"
+cfg_met="${ROOT_REPO}/data/raw/docs/parse_metadata_siqchip.yml"
 dir_fix="${ROOT_REPO}/tests/calculate_scaling_factor/fixtures"
 dir_met="${dir_fix}/metadata"
 dir_tmp="${TEST_DIR_TMP}/calculate_scaling_factor_siq_python"
@@ -120,7 +120,7 @@ function run_parse_success() {
         "${label}" \
         "${fil_log}" \
         '^export eqn=6nd$' \
-        -m scripts.parse_metadata_siq_chip \
+        -m scripts.parse_metadata_siqchip \
             --bam "${bam_lcl}" \
             --tbl_met "${tbl_lcl}" \
             --cfg "${cfg_met}" \
@@ -298,7 +298,7 @@ run_siq_failure \
     "rejects stdin BAM placeholder" \
     "${dir_log}/parse_stdin_bam.log" \
     "'--bam -' not supported" \
-    -m scripts.parse_metadata_siq_chip \
+    -m scripts.parse_metadata_siqchip \
         --bam - \
         --tbl_met "${tbl_met}" \
         --cfg "${cfg_met}" \
@@ -308,7 +308,7 @@ run_siq_failure \
     "rejects unparseable filename" \
     "${dir_log}/parse_bad_filename.log" \
     "Could not parse filename" \
-    -m scripts.parse_metadata_siq_chip \
+    -m scripts.parse_metadata_siqchip \
         --bam "${bam_bad}" \
         --tbl_met "${tbl_met}" \
         --cfg "${cfg_met}" \
@@ -318,7 +318,7 @@ run_siq_failure \
     "rejects unmatched metadata row" \
     "${dir_log}/parse_no_match.log" \
     "No matching row found" \
-    -m scripts.parse_metadata_siq_chip \
+    -m scripts.parse_metadata_siqchip \
         --bam "${bam_bad_match}" \
         --tbl_met "${tbl_met}" \
         --cfg "${cfg_met}" \
@@ -328,7 +328,7 @@ run_siq_failure \
     "rejects unsupported assay token" \
     "${dir_log}/parse_bad_assay.log" \
     "expected field 'assay'" \
-    -m scripts.parse_metadata_siq_chip \
+    -m scripts.parse_metadata_siqchip \
         --bam "${bam_bad_assay}" \
         --tbl_met "${tbl_met}" \
         --cfg "${cfg_met}" \
@@ -338,7 +338,7 @@ run_siq_failure \
     "reports missing required field" \
     "${dir_log}/parse_missing_required.log" \
     "Missing required column.*len_ip" \
-    -m scripts.parse_metadata_siq_chip \
+    -m scripts.parse_metadata_siqchip \
         --bam "${bam_ip_hho1_g1}" \
         --tbl_met "${tbl_mis}" \
         --cfg "${cfg_met}" \
@@ -353,7 +353,7 @@ run_siq_failure \
     "rejects unsupported required-column alias" \
     "${dir_log}/parse_unsupported_alias.log" \
     "Missing required column.*vol_in" \
-    -m scripts.parse_metadata_siq_chip \
+    -m scripts.parse_metadata_siqchip \
         --bam "${bam_ip_hho1_g1}" \
         --tbl_met "${tbl_uns}" \
         --cfg "${cfg_met}" \
@@ -370,7 +370,7 @@ run_siq_success \
     "computes equation 5" \
     "${dir_log}/calc_eq5.log" \
     '^0.002974551063126584012769$' \
-    -m scripts.calculate_scaling_factor_siq_chip \
+    -m scripts.calculate_scaling_factor_siqchip \
         --eqn 5 \
         "${calc_arg[@]}" \
         --dep_ip 3 \
@@ -380,7 +380,7 @@ run_siq_success \
     "computes equation 5nd" \
     "${dir_log}/calc_eq5nd.log" \
     '^0.001784730637875950407661$' \
-    -m scripts.calculate_scaling_factor_siq_chip \
+    -m scripts.calculate_scaling_factor_siqchip \
         --eqn 5nd \
         "${calc_arg[@]}"
 
@@ -388,7 +388,7 @@ run_siq_success \
     "computes equation 6" \
     "${dir_log}/calc_eq6.log" \
     '^0.003187018996207053710829$' \
-    -m scripts.calculate_scaling_factor_siq_chip \
+    -m scripts.calculate_scaling_factor_siqchip \
         --eqn 6 \
         "${calc_arg[@]}" \
         --dep_ip 3 \
@@ -398,7 +398,7 @@ run_siq_success \
     "computes equation 6nd" \
     "${dir_log}/calc_eq6nd.log" \
     '^0.001912211397724232486706$' \
-    -m scripts.calculate_scaling_factor_siq_chip \
+    -m scripts.calculate_scaling_factor_siqchip \
         --eqn 6nd \
         "${calc_arg[@]}"
 
@@ -406,7 +406,7 @@ run_siq_success \
     "strips trailing zeros after rounding" \
     "${dir_log}/calc_rounding.log" \
     '^0.002$' \
-    -m scripts.calculate_scaling_factor_siq_chip \
+    -m scripts.calculate_scaling_factor_siqchip \
         --eqn 6nd \
         "${calc_arg[@]}" \
         --rnd 3
@@ -417,7 +417,7 @@ run_siq_failure \
     "rejects missing depths for equation 5" \
     "${dir_log}/calc_eq5_missing_depth.log" \
     "require both '--dep_ip' and '--dep_in'" \
-    -m scripts.calculate_scaling_factor_siq_chip \
+    -m scripts.calculate_scaling_factor_siqchip \
         --eqn 5 \
         "${calc_arg[@]}"
 
@@ -425,7 +425,7 @@ run_siq_failure \
     "rejects invalid volume relation" \
     "${dir_log}/calc_bad_volume.log" \
     "vol_all.*must be greater than.*vol_in" \
-    -m scripts.calculate_scaling_factor_siq_chip \
+    -m scripts.calculate_scaling_factor_siqchip \
         --eqn 6nd \
         --mass_ip 2.7 \
         --mass_in 72.5 \
@@ -438,7 +438,7 @@ run_siq_failure \
     "rejects nonpositive mass" \
     "${dir_log}/calc_bad_mass.log" \
     "mass_ip.*> 0" \
-    -m scripts.calculate_scaling_factor_siq_chip \
+    -m scripts.calculate_scaling_factor_siqchip \
         --eqn 6nd \
         --mass_ip 0 \
         --mass_in 72.5 \
@@ -451,7 +451,7 @@ run_siq_failure \
     "rejects invalid equation" \
     "${dir_log}/calc_bad_eqn.log" \
     "invalid choice" \
-    -m scripts.calculate_scaling_factor_siq_chip \
+    -m scripts.calculate_scaling_factor_siqchip \
         --eqn bogus \
         "${calc_arg[@]}"
 

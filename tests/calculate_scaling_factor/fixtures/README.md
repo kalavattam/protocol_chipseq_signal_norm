@@ -15,7 +15,7 @@ The fixture rows are adapted from tracked example scaling-factor tables under `d
 
 Spike-in rows also record the canonical coefficient method used alongside the computed value. The default fixture examples use `chiprx_alpha_ratio`.
 
-Minimal siQ-ChIP metadata tables exercise `parse_metadata_siq_chip.py` with the production parsing YAML in `data/raw/docs/parse_metadata_siq_chip.yaml`. These tables are intentionally small and cover canonical column names, a curated alias subset, and malformed negative cases.
+Minimal siQ-ChIP metadata tables exercise `parse_metadata_siqchip.py` with the production parsing YAML in `data/raw/docs/parse_metadata_siqchip.yml`. These tables are intentionally small and cover canonical column names, a curated alias subset, and malformed negative cases.
 
 <br />
 

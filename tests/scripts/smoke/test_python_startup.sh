@@ -107,14 +107,14 @@ done < <(
 #  Run --help with the project environment so dependency imports are available
 hlp_scr=(
     "scripts/add_coeffs_namespaced.py"
-    "scripts/calculate_scaling_factor_siq_chip.py"
+    "scripts/calculate_scaling_factor_siqchip.py"
     "scripts/calculate_scaling_factor_spike.py"
     "scripts/compute_input_floor.py"
     "scripts/compute_pseudo.py"
     "scripts/compute_signal.py"
     "scripts/compute_signal_ratio.py"
     "scripts/merge_bins_bdg.py"
-    "scripts/parse_metadata_siq_chip.py"
+    "scripts/parse_metadata_siqchip.py"
     "scripts/relativize_scaling_factors.py"
     "scripts/sum_bdg.py"
 )

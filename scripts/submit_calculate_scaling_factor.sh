@@ -606,8 +606,8 @@ function resolve_script_paths() {
 
     dir_rep="$(cd "${dir_scr}/.." && pwd)"
 
-    scr_met="${dir_scr}/parse_metadata_siq_chip.py"
-    scr_siq="${dir_scr}/calculate_scaling_factor_siq_chip.py"
+    scr_met="${dir_scr}/parse_metadata_siqchip.py"
+    scr_siq="${dir_scr}/calculate_scaling_factor_siqchip.py"
     scr_spk="${dir_scr}/calculate_scaling_factor_spike.py"
 
     validate_var_file "scr_met" "${scr_met}" || return 1
@@ -713,7 +713,7 @@ Keyword arguments:
     siQ-ChIP metadata table ('--mode siq').
 
   -cm, --cfg_met  <str>
-    YAML configuration for 'parse_metadata_siq_chip.py' ('--mode siq').
+    YAML configuration for 'parse_metadata_siqchip.py' ('--mode siq').
 
   -eq, --eqn  <str>
     siQ-ChIP equation: '5', '5nd', '6', or '6nd' ('--mode siq'; default: ${eqn}).
@@ -759,12 +759,12 @@ Dependencies:
     - Slurm
 
   Python scripts:
-    - calculate_scaling_factor_siq_chip.py
+    - calculate_scaling_factor_siqchip.py
     - calculate_scaling_factor_spike.py
-    - parse_metadata_siq_chip.py
+    - parse_metadata_siqchip.py
 
   Configuration file:
-    - parse_metadata_siq_chip.yaml
+    - parse_metadata_siqchip.yml
 
   Sourced function scripts:
     - calculate_scaling_factor.sh
