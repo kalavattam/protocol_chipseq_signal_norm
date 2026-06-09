@@ -281,6 +281,7 @@ mkdir -p "${dir_log}"
 #  Define smoke-test groups ===================================================
 arr_tst=(
     "${dir_run}/smoke/test_shell_syntax.sh"
+    "${dir_run}/smoke/test_shell_line_length.sh"
     "${dir_run}/smoke/test_python_startup.sh"
     "${dir_run}/smoke/test_help_output.sh"
     "${dir_run}/smoke/test_startup_sources.sh"
