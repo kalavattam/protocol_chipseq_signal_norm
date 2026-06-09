@@ -29,21 +29,6 @@ fi
 set -euo pipefail
 
 
-#  Set hardcoded arguments
-## WARNING: Do not change unless testing/stepping through ##
-#  If true, print verbose/debug Bash-level logging
-debug=true
-
-#  If true, dry-run script
-dry_run=false
-
-#  If true, parse arguments and exit before validation or job submission
-p_only=false
-
-#  If true, parse and check arguments, then exit before execution
-pc_only=false
-
-
 #  Define script-specific functions
 function process_io() {
     local mode=""
@@ -58,12 +43,12 @@ function process_io() {
     local -a exts        # Recognized output/input extensions
 
     show_help=$(cat << EOM
-Description:
-  Check and parse input/output file arguments for downstream processing, returning a sample name and output descriptor.
-
 Usage:
   process_io
     [--help] --mode <str> (--infile <str> | --fil_A <str> --fil_B <str>) --outfile <str> [--scl_fct <num>] [--opt_var <num>]
+
+Description:
+  Check and parse input/output file arguments for downstream processing, returning a sample name and output descriptor.
 
 Arguments:
   -h, --hlp, --help  <flag>
@@ -73,7 +58,7 @@ Arguments:
     Computation mode: 'signal', 'ratio', or 'coord'.
 
   -i, --infile  <str>
-    Scalar BAM input file ('mode=signal' or 'mode=coord').  #TODO: SAM and CRAM, or at least just CRAM, support
+    Scalar BAM or CRAM input file ('mode=signal' or 'mode=coord').
 
   -fA, --fil_A  <str>
     Scalar numerator bedGraph[.gz] file ('mode=ratio'; e.g., IP).
@@ -89,6 +74,9 @@ Arguments:
 
   -ov, --opt_var  <num>
     Optional variable: fragment length (<int>, 'mode=signal') or minimum input depth (<flt>, 'mode=ratio').
+
+Returns:
+  Prints a comma-delimited sample name and output descriptor to stdout.
 EOM
     )
 
@@ -207,7 +195,9 @@ EOM
             samp="${samp%."${ext}"}"
         done
     else
-        samp="$(basename "${infile}" ".bam")"
+        samp="$(basename "${infile}")"
+        samp="${samp%.bam}"
+        samp="${samp%.cram}"
     fi
 
     exts+=( bed bed.gz )
@@ -223,39 +213,59 @@ EOM
 
 
 function set_args_opt() {
-    local mode="${1}"
-    local scl_fct="${2}"
-    local opt_var="${3}"
-    local rnd="${4}"
+    local mode="${1:-}"
+    local scl_fct="${2:-}"
+    local opt_var="${3:-}"
+    local rnd="${4:-}"
     local track="${5:-false}"
     local pseudo="${6:-NA}"
     local eps="${7:-NA}"
     local skip_00="${8:-NA}"
     local drp_nan="${9:-false}"
-    local -a optional             # Optional CLI arguments
-    local show_help               # Help text
+    local -a optional            # Optional CLI arguments
+    local show_help              # Help text
 
     show_help=$(cat << EOM
-Description:
-  Build a comma-delimited list of optional CLI arguments for 'compute_signal.py' ('mode=signal') or 'compute_signal_ratio.py' ('mode=ratio').
-
 Usage:
   set_args_opt
     [-h|--hlp|--help] mode scl_fct opt_var rnd [track] [pseudo] [eps] [skip_00] [drp_nan]
 
+Description:
+  Build a comma-delimited list of optional CLI arguments for 'compute_signal.py' ('mode=signal') or 'compute_signal_ratio.py' ('mode=ratio').
+
 Positional arguments:
-  1  mode     <str>  Mode: 'signal' or 'ratio'.
-  2  scl_fct  <num>  Scaling factor/coefficient (<flt>) or sentinel (NA).
-  3  opt_var  <num>  'usr_frg' ('compute_signal', <int>) or 'dep_min' ('compute_signal_ratio', <flt>) or sentinel (NA).
-  4  rnd      <int>  Maximum number of decimal places retained for finite emitted values.
-  5  track    <bool>  Mode 'ratio': return track sans '-inf', 'nan' (default: false).
-  6  pseudo   <spec>  Mode 'ratio': per-sample pseudocount spec 'A[:B]' (<str>) or sentinel (NA; default: NA).
-  7  eps      <flt>  Mode 'ratio': zero-tolerance epsilon (<flt>) or sentinel (NA; default: NA).
-  8  skip_00  <enum:pre_scale,post_scale>  Mode 'ratio': zero-zero skip mode ('pre_scale' or 'post_scale') or sentinel (NA; default: NA).
-  9  drp_nan  <bool>  Mode 'ratio': drop non-finite values (default: false).
+  1  mode  <str>
+    Mode: 'signal' or 'ratio'.
+
+  2  scl_fct  <num>
+    Scaling factor/coefficient (<flt>) or sentinel (NA).
+
+  3  opt_var  <num>
+    'usr_frg' ('compute_signal', <int>) or 'dep_min' ('compute_signal_ratio', <flt>) or sentinel (NA).
+
+  4  rnd  <int>
+    Maximum number of decimal places retained for finite emitted values.
+
+  5  track  <bool>
+    Mode 'ratio': return track sans '-inf', 'nan' (default: false).
+
+  6  pseudo  <spec>
+    Mode 'ratio': per-sample pseudocount spec 'A[:B]' (<str>) or sentinel (NA; default: NA).
+
+  7  eps  <flt>
+    Mode 'ratio': zero-tolerance epsilon (<flt>) or sentinel (NA; default: NA).
+
+  8  skip_00  <enum:pre_scale,post_scale>
+    Mode 'ratio': zero-zero skip mode ('pre_scale' or 'post_scale') or sentinel (NA; default: NA).
+
+  9  drp_nan  <bool>
+    Mode 'ratio': drop non-finite values (default: false).
+
+Returns:
+  - Prints optional arguments as a single comma-delimited line to stdout.
+  - Returns 0 when optional arguments are built successfully; 1 otherwise.
 
 Notes:
-  - Returns optional arguments as a single comma-delimited line on stdout.
   - For 'mode=signal', 'opt_var' maps to '--usr_frg'.
   - For 'mode=ratio',  'opt_var' maps to '--dep_min'.
 EOM
@@ -315,23 +325,32 @@ function run_dry_or_wet() {
     local arr_nam="${1:-}"
     local log_out="${2:-}"
     local log_err="${3:-}"
-    local dir_out dir_err decl  # Derived dirs and declaration metadata
+    local dir_out dir_err decl  # Derived directories and declaration metadata
     local -a cmd_cpy            # Local copy of the command array
     local show_help             # Help text
 
 
     show_help=$(cat << EOM
-Description:
-  Print or execute a command stored in an array variable, with stdout/stderr redirected to log files.
-
 Usage:
   run_dry_or_wet
     [-h|--hlp|--help] arr_nam log_out log_err
 
+Description:
+  Print or execute a command stored in an array variable, with stdout/stderr redirected to log files.
+
 Positional arguments:
-  1  arr_nam  <str>  Name of the command array.
-  2  log_out  <str>  Path to file for stdout redirection.
-  3  log_err  <str>  Path to file for stderr redirection.
+  1  arr_nam  <str>
+    Name of the command array.
+
+  2  log_out  <str>
+    Path to file for stdout redirection.
+
+  3  log_err  <str>
+    Path to file for stderr redirection.
+
+Returns:
+  - Returns 0 for successful dry runs and the command exit status for wet runs.
+  - Returns 1 if command-array or log-path validation fails.
 
 Notes:
   - In debug or dry-run mode, prints the fully quoted command plus redirections.
@@ -411,45 +430,73 @@ EOM
 
 
 function run_comp_sig() {
-    local debug="${1}"
-    local threads="${2}"
-    local infile="${3}"
-    local outfile="${4}"
-    local siz_bin="${5}"
-    local method="${6}"
-    local scl_fct="${7}"
-    local usr_frg="${8}"
-    local rnd="${9}"
-    local ref_fa="${10}"
-    local err_out="${11}"
-    local nam_job="${12}"
-    local dsc="${13}"
+    local debug="${1:-}"
+    local threads="${2:-}"
+    local infile="${3:-}"
+    local outfile="${4:-}"
+    local siz_bin="${5:-}"
+    local method="${6:-}"
+    local scl_fct="${7:-}"
+    local usr_frg="${8:-}"
+    local rnd="${9:-}"
+    local ref_fa="${10:-}"
+    local err_out="${11:-}"
+    local nam_job="${12:-}"
+    local dsc="${13:-}"
     local log_out log_err  # Explicit local variable declarations
     local -a optional cmd  # Optional arguments and command array
     local show_help        # Help text
 
     show_help=$(cat << EOM
-Description:
-  Build and run the per-sample call to 'compute_signal.py'.
-
 Usage:
   run_comp_sig
     [-h|--hlp|--help] debug threads infile outfile siz_bin method scl_fct usr_frg rnd ref_fa err_out nam_job dsc
 
+Description:
+  Build and run the per-sample call to 'compute_signal.py'.
+
 Positional arguments:
-   1  debug    <bool>  Print debug messages or not.
-   2  threads  <int>  Number of threads to use.
-   3  infile   <str>  Input BAM or CRAM file.
-   4  outfile  <str>  Output filename.
-   5  siz_bin  <int>  Bin size in base pairs.
-   6  method   <str>  Type of signal computation (<str>) or empty sentinel ("").
-   7  scl_fct  <num>  Scaling factor/coefficient (<flt>) or sentinel (NA).
-   8  usr_frg  <int>  Fragment length (<int>) or sentinel (NA).
-   9  rnd      <int>  Maximum number of decimal places retained for finite emitted values.
-  10  ref_fa   <str>  Reference FASTA for CRAM input or empty string.
-  11  err_out  <str>  Directory for stdout and stderr.
-  12  nam_job  <str>  Job name.
-  13  dsc      <str>  Descriptor for log file naming.
+  01  debug  <bool>
+    Print debug messages or not.
+
+  02  threads  <int>
+    Number of threads to use.
+
+  03  infile  <str>
+    Input BAM or CRAM file.
+
+  04  outfile  <str>
+    Output filename.
+
+  05  siz_bin  <int>
+    Bin size in base pairs.
+
+  06  method  <str>
+    Type of signal computation (<str>) or empty sentinel ("").
+
+  07  scl_fct  <num>
+    Scaling factor/coefficient (<flt>) or sentinel (NA).
+
+  08  usr_frg  <int>
+    Fragment length (<int>) or sentinel (NA).
+
+  09  rnd  <int>
+    Maximum number of decimal places retained for finite emitted values.
+
+  10  ref_fa  <str>
+    Reference FASTA for CRAM input or empty string.
+
+  11  err_out  <str>
+    Directory for stdout and stderr.
+
+  12  nam_job  <str>
+    Job name.
+
+  13  dsc  <str>
+    Descriptor for log file naming.
+
+Returns:
+  Returns 0 when the per-sample signal command succeeds; 1 otherwise.
 
 Notes:
   - Optional CLI arguments are derived via 'set_args_opt'.
@@ -511,53 +558,89 @@ EOM
 
 
 function run_comp_rat() {
-    local debug="${1}"
-    local fil_A="${2}"
-    local fil_B="${3}"
-    local outfile="${4}"
-    local method="${5}"
-    local scl_fct="${6}"
-    local dep_min="${7}"
-    local rnd="${8}"
-    local track="${9}"
-    local pseudo="${10}"
-    local eps="${11}"
-    local skip_00="${12}"
-    local drp_nan="${13}"
-    local skp_pfx="${14}"
-    local err_out="${15}"
-    local nam_job="${16}"
-    local dsc="${17}"
+    local debug="${1:-}"
+    local fil_A="${2:-}"
+    local fil_B="${3:-}"
+    local outfile="${4:-}"
+    local method="${5:-}"
+    local scl_fct="${6:-}"
+    local dep_min="${7:-}"
+    local rnd="${8:-}"
+    local track="${9:-}"
+    local pseudo="${10:-}"
+    local eps="${11:-}"
+    local skip_00="${12:-}"
+    local drp_nan="${13:-}"
+    local skp_pfx="${14:-}"
+    local err_out="${15:-}"
+    local nam_job="${16:-}"
+    local dsc="${17:-}"
     local log_out log_err  # Local variable declarations
     local -a optional cmd  # Local array declarations
     local show_help        # Help text
 
     show_help=$(cat << EOM
-Description:
-  Build and run the per-sample call to 'compute_signal_ratio.py'.
-
 Usage:
   run_comp_rat
     [-h|--hlp|--help] debug fil_A fil_B outfile method scl_fct dep_min rnd track pseudo eps skip_00 drp_nan skp_pfx err_out nam_job dsc
 
+Description:
+  Build and run the per-sample call to 'compute_signal_ratio.py'.
+
 Positional arguments:
-   1  debug    <bool>  Print debug messages or not.
-   2  fil_A    <str>  Numerator bedGraph file.
-   3  fil_B    <str>  Denominator bedGraph file.
-   4  outfile  <str>  Output ratio bedGraph file.
-   5  method   <str>  Ratio method: 'unadj', 'log2', 'unadj_r', 'log2_r'.
-   6  scl_fct  <num>  Optional scaling factor/coefficient (<flt>) or sentinel (NA).
-   7  dep_min  <flt>  Optional minimum input depth (<flt>) or sentinel (NA).
-   8  rnd      <int>  Maximum number of decimal places retained for finite emitted values.
-   9  track    <bool>  Emit companion '.track' file.
-  10  pseudo   <spec>  Per-sample pseudocount spec 'A[:B]' (<str>) or sentinel (NA).
-  11  eps      <flt>  Shared epsilon (<flt>) or sentinel (NA).
-  12  skip_00  <enum:pre_scale,post_scale>  Shared zero-zero skip mode ('pre_scale' or 'post_scale') or sentinel (NA).
-  13  drp_nan  <bool>  Drop non-finite values from main output.
-  14  skp_pfx  <str>  Shared skip-prefix string (<str>) or sentinel (NA).
-  15  err_out  <str>  Directory for log file output.
-  16  nam_job  <str>  Job name used in log filenames.
-  17  dsc      <str>  Descriptor string for logs.
+  01  debug  <bool>
+    Print debug messages or not.
+
+  02  fil_A  <str>
+    Numerator bedGraph file.
+
+  03  fil_B  <str>
+    Denominator bedGraph file.
+
+  04  outfile  <str>
+    Output ratio bedGraph file.
+
+  05  method  <str>
+    Ratio method: 'unadj', 'log2', 'unadj_r', 'log2_r'.
+
+  06  scl_fct  <num>
+    Optional scaling factor/coefficient (<flt>) or sentinel (NA).
+
+  07  dep_min  <flt>
+    Optional minimum input depth (<flt>) or sentinel (NA).
+
+  08  rnd  <int>
+    Maximum number of decimal places retained for finite emitted values.
+
+  09  track  <bool>
+    Emit companion '.track' file.
+
+  10  pseudo  <spec>
+    Per-sample pseudocount spec 'A[:B]' (<str>) or sentinel (NA).
+
+  11  eps  <flt>
+    Shared epsilon (<flt>) or sentinel (NA).
+
+  12  skip_00  <enum:pre_scale,post_scale>
+    Shared zero-zero skip mode ('pre_scale' or 'post_scale') or sentinel (NA).
+
+  13  drp_nan  <bool>
+    Drop non-finite values from main output.
+
+  14  skp_pfx  <str>
+    Shared skip-prefix string (<str>) or sentinel (NA).
+
+  15  err_out  <str>
+    Directory for log file output.
+
+  16  nam_job  <str>
+    Job name used in log filenames.
+
+  17  dsc  <str>
+    Descriptor string for logs.
+
+Returns:
+  Returns 0 when the per-sample ratio command succeeds; 1 otherwise.
 
 Notes:
   - Optional CLI arguments are derived via 'set_args_opt'.
@@ -639,8 +722,15 @@ Description:
   Print one element from a named indexed array.
 
 Positional arguments:
-  1  arr_nam  <str>  Name of indexed array.
-  2  idx      <int>  Zero-based array index.
+  1  arr_nam  <str>
+    Name of indexed array.
+
+  2  idx  <int>
+    Zero-based array index.
+
+Returns:
+  - Prints the selected array element to stdout.
+  - Returns 0 when the element is found; 1 otherwise.
 EOM
     )
 
@@ -693,42 +783,57 @@ EOM
 
 
 function task_pro() {
-    local mode="${1}"           # Mode: 'signal', 'ratio', or 'coord'
-    local idx="${2}"            # Array index (integer >= 0)
-    local nam_arr_fil_A="${3}"  # Array name for scalar infile or file A
-    local nam_arr_fil_B="${4}"  # Array name for scalar file B; empty if unused
-    local nam_arr_out="${5}"    # Array name for scalar outfile
-    local nam_arr_scl="${6}"    # Array name for scalar scl_fct; empty if unused
-    local nam_arr_opt="${7}"    # Array name for scalar opt_var; empty if unused
+    local mode="${1:-}"           # Mode: 'signal', 'ratio', or 'coord'
+    local idx="${2:-}"            # Array index (integer >= 0)
+    local nam_arr_fil_A="${3:-}"  # Array name for scalar infile or file A
+    local nam_arr_fil_B="${4:-}"  # Array name for scalar file B; empty if unused
+    local nam_arr_out="${5:-}"    # Array name for scalar outfile
+    local nam_arr_scl="${6:-}"    # Array name for scalar scl_fct; empty if unused
+    local nam_arr_opt="${7:-}"    # Array name for scalar opt_var; empty if unused
     local fil_A fil_B outfile scl_fct opt_var samp dsc
     local err_ini out_ini err_dsc out_dsc
     local show_help
 
     show_help=$(cat << EOM
-Description:
-  Prepare per-task inputs and logging metadata for the 'run_task_*' helpers ("pro" is "prologue").
-
 Usage:
   task_pro
     [-h|--hlp|--help] mode idx arr_fil_A arr_fil_B arr_out arr_scl arr_opt
 
-Positional arguments:
-  1  mode           <str>  'signal', 'ratio', or 'coord'.
-  2  idx            <int>  Zero-based task index.
-  3  nam_arr_fil_A  <str>  Array name for scalar infile or file A.
-  4  nam_arr_fil_B  <str>  Array name for scalar file B; "" if unused.
-  5  nam_arr_out    <str>  Array name for scalar outfile.
-  6  nam_arr_scl    <str>  Array name for scalar scl_fct; "" if unused.
-  7  nam_arr_opt    <str>  Array name for scalar opt_var; "" if unused.
+Description:
+  Prepare per-task inputs and logging metadata for the 'run_task_*' helpers ("pro" is "prologue").
 
-Behavior:
+Positional arguments:
+  1  mode  <str>
+    'signal', 'ratio', or 'coord'.
+
+  2  idx  <int>
+    Zero-based task index.
+
+  3  nam_arr_fil_A  <str>
+    Array name for scalar infile or file A.
+
+  4  nam_arr_fil_B  <str>
+    Array name for scalar file B; "" if unused.
+
+  5  nam_arr_out  <str>
+    Array name for scalar outfile.
+
+  6  nam_arr_scl  <str>
+    Array name for scalar scl_fct; "" if unused.
+
+  7  nam_arr_opt  <str>
+    Array name for scalar opt_var; "" if unused.
+
+Returns:
+  - Prints one comma-delimited task metadata line to stdout:
+    fil_A,fil_B?,outfile,samp,dsc,err_ini?,out_ini?,err_dsc?,out_dsc?
+  - Returns 0 when task metadata are prepared successfully; 1 otherwise.
+
+Notes:
   - Pulls per-task values from arrays by name.
   - Emits debug snapshots when 'debug=true'.
   - Calls 'process_io' to derive sample ('samp') and descriptor ('dsc').
   - Under Slurm, also derives initial log paths via 'set_logs_slurm'.
-
-Returns one comma-delimited line on stdout:
-  fil_A,fil_B?,outfile,samp,dsc,err_ini?,out_ini?,err_dsc?,out_dsc?
 EOM
     )
 
@@ -843,16 +948,22 @@ function task_epi() {
     local show_help
 
     show_help=$(cat << EOM
-Description:
-  Remove initial Slurm-generated log files after a task completes ("epi" is "epilogue").
-
 Usage:
   task_epi
     [-h|--hlp|--help] err_ini out_ini
 
+Description:
+  Remove initial Slurm-generated log files after a task completes ("epi" is "epilogue").
+
 Positional arguments:
-  1  err_ini  <str>  Initial stderr log path.
-  2  out_ini  <str>  Initial stdout log path.
+  1  err_ini  <str>
+    Initial stderr log path.
+
+  2  out_ini  <str>
+    Initial stdout log path.
+
+Returns:
+  Returns 0 when initial log cleanup succeeds or no cleanup is needed; 1 when argument validation fails.
 
 Notes:
   - No action is taken outside Slurm array tasks.
@@ -889,21 +1000,25 @@ EOM
 
 
 function run_task_sig() {
-    local idx="${1}"
+    local idx="${1:-}"
     local infile unused outfile samp dsc err_ini out_ini err_dsc out_dsc
     local rc=0
     local show_help
 
     show_help=$(cat << EOM
-Description:
-  Run one signal-computation task, either under Slurm-array execution or in local GNU Parallel / serial iteration.
-
 Usage:
   run_task_sig
     [-h|--hlp|--help] idx
 
-Positional argument:
-  1  idx  <int>  Zero-based task index into 'arr_infile', 'arr_outfile', 'arr_scl_fct', and 'arr_usr_frg'.
+Description:
+  Run one signal-computation task, either under Slurm-array execution or in local GNU Parallel / serial iteration.
+
+Positional arguments:
+  1  idx  <int>
+    Zero-based task index into 'arr_infile', 'arr_outfile', 'arr_scl_fct', and 'arr_usr_frg'.
+
+Returns:
+  Returns the exit status from 'run_comp_sig', or 1 if task setup fails.
 
 Notes:
   - Uses 'task_pro' to derive task-specific inputs and logging metadata.
@@ -954,21 +1069,25 @@ EOM
 
 
 function run_task_rat() {
-    local idx="${1}"
+    local idx="${1:-}"
     local fil_A fil_B outfile samp dsc err_ini out_ini err_dsc out_dsc
     local rc=0
     local show_help
 
     show_help=$(cat << EOM
-Description:
-  Run one ratio-computation task, either under Slurm-array execution or in local GNU Parallel / serial iteration.
-
 Usage:
   run_task_rat
     [-h|--hlp|--help] idx
 
-Positional argument:
-  1  idx  <int>  Zero-based task index into 'arr_fil_A', 'arr_fil_B', 'arr_outfile', 'arr_scl_fct', 'arr_dep_min', and 'arr_pseudo'.
+Description:
+  Run one ratio-computation task, either under Slurm-array execution or in local GNU Parallel / serial iteration.
+
+Positional arguments:
+  1  idx  <int>
+    Zero-based task index into 'arr_fil_A', 'arr_fil_B', 'arr_outfile', 'arr_scl_fct', 'arr_dep_min', and 'arr_pseudo'.
+
+Returns:
+  Returns the exit status from 'run_comp_rat', or 1 if task setup fails.
 
 Notes:
   - Uses 'task_pro' to derive task-specific inputs and logging metadata.
@@ -1022,21 +1141,25 @@ EOM
 
 
 function run_task_coord() {
-    local idx="${1}"
+    local idx="${1:-}"
     local infile unused outfile samp dsc err_ini out_ini err_dsc out_dsc
     local rc=0
     local show_help
 
     show_help=$(cat << EOM
-Description:
-  Run one fragment-coordinate extraction task, either under Slurm-array execution or in local GNU Parallel / serial iteration.
-
 Usage:
   run_task_coord
     [-h|--hlp|--help] idx
 
-Positional argument:
-  1  idx  <int>  Zero-based task index into 'arr_infile', 'arr_outfile', and 'arr_usr_frg'.
+Description:
+  Run one fragment-coordinate extraction task, either under Slurm-array execution or in local GNU Parallel / serial iteration.
+
+Positional arguments:
+  1  idx  <int>
+    Zero-based task index into 'arr_infile', 'arr_outfile', and 'arr_usr_frg'.
+
+Returns:
+  Returns the exit status from the coordinate extraction command, or 1 if task setup fails.
 
 Notes:
   - Uses 'task_pro' to derive task-specific inputs and logging metadata.
@@ -1183,6 +1306,191 @@ function source_submit_helpers() {
 }
 
 
+#  Initialize hardcoded arguments
+function init_args_hardcoded() {
+    #  WARNING: Do not change unless testing/stepping through.
+    #  If true, print verbose/debug Bash-level logging
+    debug=true
+
+    #  If true, dry-run script
+    dry_run=false
+
+    #  If true, parse arguments and exit before validation or job submission
+    p_only=false
+
+    #  If true, parse and check arguments, then exit before execution
+    pc_only=false
+}
+
+
+#  Initialize argument variables, assigning default values where applicable
+function init_arg_defs() {
+    env_nam="env_protocol"
+    dir_scr=""
+    threads=4
+    mode="signal"
+    method=""
+    csv_infile=""
+    csv_fil_A=""
+    csv_fil_B=""
+    csv_outfile=""
+    ref_fa=""
+    track=false
+    siz_bin=10
+    csv_scl_fct=""
+    csv_usr_frg=""
+    csv_dep_min=""
+    csv_pseudo=""
+    eps="NA"
+    skip_00="NA"
+    drp_nan=false
+    skp_pfx="NA"
+    rnd=24
+    err_out=""
+    nam_job=""
+}
+
+
+#  Initialize hardcoded arguments and user-facing argument defaults
+function init_defs() {
+    init_args_hardcoded
+    init_arg_defs
+}
+
+
+#  Define the help message
+function show_help_main() {
+    cat << EOM >&2
+Usage:
+  submit_compute_signal.sh
+    [--help] [--env_nam <str>] --dir_scr <str> [--threads <int>] [--mode {signal,ratio,coord}]
+    [--method {unadj,frag,norm,log2,unadj_r,log2_r,...}]
+    (--csv_infile <bam1.bam,bam2.cram,...> | --csv_fil_A <IP1.bdg[.gz],IP2.bdg[.gz],...> --csv_fil_B <in1.bdg[.gz],in2.bdg[.gz],...>) [--ref_fa <file>]
+    --csv_outfile <out1.bdg[.gz],out2.bdg[.gz],...> [--track] [--drp_nan]
+    [--siz_bin <int>] [--csv_scl_fct <csv:spec>] [--csv_usr_frg <csv:int>] [--csv_dep_min <csv:num>] [--csv_pseudo <csv:str>]
+    [--eps <flt>] [--skip_00 <enum:pre_scale,post_scale>] [--skp_pfx <str>] [--dp <int>] --err_out <str> [--nam_job <str>]
+
+Description:
+  Submit per-sample signal, ratio, or fragment-coordinate jobs from comma-separated file lists to 'compute_signal.py' or 'compute_signal_ratio.py' under Slurm, GNU Parallel, or serial execution.
+
+Keyword arguments:
+  -h, --hlp, --help  <flag>
+      Print this help message and exit.
+
+  -en, --env_nam  <str>
+      Mamba environment to activate (default: ${env_nam}).
+
+  -ds, --dir_scr  <str>
+      Directory containing scripts and functions.
+
+  -t, --thr, --threads  <int>
+      Number of threads to use per job (default: ${threads}).
+
+  -md, --mode  <str>
+      Type of computation: 'signal', 'ratio', or 'coord' (default: ${mode});
+
+  -me, --method <str>
+      Computation subtype (ignored if '--mode coord'; default if '--mode signal': norm; default if '--mode ratio': unadj):
+        - For '--mode signal':
+          + 'u', 'unadj', 'unadjusted', 's', 'smp', 'simple', 'r', 'raw'
+          + 'f', 'frg', 'frag', 'frg_len', 'frag_len', 'l', 'len', 'len_frg', 'len_frag'
+          + 'n', 'nrm', 'norm', 'normalized'
+        - For '--mode ratio':
+          + 'u', 'unadj', 'unadjusted', 's', 'smp', 'simple', 'r', 'raw'
+          + '2', 'l2', 'lg2', 'log2'
+          + 'ur', 'unadj_r', 'unadjusted_r', 'sr', 'smp_r', 'simple_r', 'rr', 'raw_r'
+          + '2r', 'l2r', 'l2_r', 'lg2_r', 'log2_r'
+
+  -i, -fi, -ci, --infile, --infiles, --fil_in, --csv_infile, --csv_infiles  <csv:file>  <element: str>
+      Comma-separated list of BAM or CRAM files ('--mode signal', '--mode coord').
+
+  -r, --ref, --ref_fa, --reference  <file>
+      Reference FASTA for CRAM input files ('--mode signal', '--mode coord'). Required when '--csv_infile' contains '.cram'.
+
+  -fA, -f1, -cA, -c1, --fil_A, --fil_1, --csv_A, --csv_1, --csv_fil_A, --csv_fil_IP  <csv:file>  <element: str>
+      Comma-separated list of numerator (i.e., "file A"; e.g., IP) bedGraph files ('--mode ratio').
+
+  -fB, -f2, -cB, -c2, --fil_B, --fil_2, --csv_B, --csv_2, --csv_fil_B, --csv_fil_input  <csv:file>  <element: str>
+      Comma-separated list of denominator (i.e., "file B"; e.g., input) bedGraph files ('--mode ratio').
+
+  -o, -fo, -co, --outfile, --outfiles, --fil_out, --csv_outfile, --csv_outfiles  <csv:file>  <element: str>
+      Comma-separated list of output files (e.g., full bedGraph[.gz] or BED[.gz] paths).
+
+  -tr, --track  <flag>
+      Output a companion bedGraph without '-inf' or 'nan' rows ('--mode ratio').
+
+  -sb, --siz_bin  <int>
+      Bin size in base pairs for signal computation ('--mode signal'; default: ${siz_bin}).
+
+  -sf, --scale, --scl_fct, --csv_scl_fct  <csv:spec>  <element: str>
+      Optional comma-separated list of scaling factors or sentinels ('--mode signal', '--mode ratio').
+
+      For '--mode signal', each element must be 'NA' or a positive scalar float.
+
+      For '--mode ratio', each element may be 'NA', a positive scalar float, or a positive 'A:B' spec, where A scales '--csv_fil_A' and B scales '--csv_fil_B' before ratio calculation.
+
+  -uf, --csv_usr_frg  <csv:int>  <element: str>
+      Optional comma-separated list of fragment lengths or sentinels ('--mode signal', '--mode coord').
+
+      Compatibility alias: '--usr_frg'.
+
+  -dm, --csv_dep_min  <csv:num>  <element: str>
+      Optional comma-separated list of minimum input depth values or sentinels ('--mode ratio').
+
+      Compatibility aliases include '--dep_min' and '--depth_min'.
+
+  -ps, --csv_pseudo  <csv:str>  <element: str>
+      Optional comma-separated list of per-sample pseudocount specs 'A[:B]' or sentinels ('--mode ratio').
+
+      Compatibility aliases include '--pseudo' and '--pseudocount'.
+
+   -e, --eps  <flt>
+      Shared epsilon for zero checks in ratio mode (<flt>) or sentinel (NA).
+
+  -s0, --skip_00  <str>
+      Shared zero-zero skip mode in ratio mode ('pre_scale' or 'post_scale') or sentinel (NA).
+
+  -dn, --drp_nan  <str>
+      Drop 'nan', 'inf', and '-inf' rows from the main ratio output.
+
+  -sk, --skp_pfx, --skip_pfx, --skip_prefix  <str>
+      Shared comma-separated bedGraph header prefixes to skip in ratio mode (<str>) or sentinel (NA).
+
+  -dp, --dp, --rnd, --round, --decimals, --digits  <int>
+      Maximum number of decimal places retained for finite output signal or ratio values (default: ${rnd}).
+
+  -eo, --err_out  <str>
+      Directory for stderr and stdout logs.
+
+  -nj, --nam_job  <str>
+      Prefix for job names (default depends on resolved '--mode' and '--method'; e.g., 'compute_signal_norm', 'compute_ratio_unadj', or 'compute_coord').
+
+Notes:
+  - g and bedGraph input files must be coordinate-sorted.
+  - CRAM inputs in '--mode signal' or '--mode coord' require '--ref_fa'.
+  - Input and output paths supplied to this wrapper interface must not contain spaces, commas, or semicolons.
+  - This wrapper does not support '-' for stdin/stdout. Use the underlying Python scripts directly for streaming input/output workflows.
+  - If and where applicable, use consistent file ordering in- and outfiles, and between IP (file A) and input (file B) files.
+  - To run in "debug mode", set hardcoded variable 'debug=true'                   [debug=${debug:-UNSET}]
+  - To run in "dry-run mode", set hardcoded variable 'dry_run=true'               [dry_run=${dry_run:-UNSET}]
+  - To run in "parse-only mode", set hardcoded variable 'p_only=true'             [p_only=${p_only:-UNSET}]
+  - To run in "parse-and-check-only mode", set hardcoded variable 'pc_only=true'  [pc_only=${pc_only:-UNSET}]
+EOM
+}
+
+
+#TODO: the following needs to be incorporated into the help docs
+#+   Sourced function scripts:
+#+     - check_args.sh
+#+     - check_inputs.sh
+#+     - check_numbers.sh
+#+     - format_outputs.sh
+#+     - handle_env.sh
+#+     - manage_slurm.sh
+#+     - populate_array_empty.sh
+#+     - run_python.sh
+
+
 #  Parse keyword arguments after helper scripts have been sourced
 function parse_args() {
     while [[ "$#" -gt 0 ]]; do
@@ -1247,6 +1555,16 @@ function parse_args() {
                 shift 2
                 ;;
 
+            -r|--ref|--ref[_-]fa|--reference)
+                require_optarg "${1}" "${2:-}" "main" || {
+                    echo >&2
+                    show_help_main
+                    return 1
+                }
+                ref_fa="${2}"
+                shift 2
+                ;;
+
             -fA|-f1|-cA|-c1|--fil[_-]A|--fil[_-]1|--csv[_-]A|--csv[_-]1|--csv[_-]fil[_-]A|--csv[_-]fil[_-]IP)
                 require_optarg "${1}" "${2:-}" "main" || {
                     echo >&2
@@ -1274,16 +1592,6 @@ function parse_args() {
                     return 1
                 }
                 csv_outfile="${2}"
-                shift 2
-                ;;
-
-            -r|--ref|--ref[_-]fa|--reference)
-                require_optarg "${1}" "${2:-}" "main" || {
-                    echo >&2
-                    show_help_main
-                    return 1
-                }
-                ref_fa="${2}"
                 shift 2
                 ;;
 
@@ -1543,7 +1851,7 @@ function validate_args() {
 
 
 #  Resolve script paths after 'dir_scr' has been validated and helpers sourced
-function resolve_script_paths() {
+function resolve_paths_scrs() {
     validate_var_dir "dir_scr" "${dir_scr}" 0 false || return 1
 
     dir_rep="$(cd "${dir_scr}/.." && pwd)"
@@ -1555,171 +1863,333 @@ function resolve_script_paths() {
 }
 
 
-#  Initialize argument variables, assigning default values where applicable
-env_nam="env_protocol"
-dir_scr=""
-threads=4
-mode="signal"
-method=""
-csv_infile=""
-csv_fil_A=""
-csv_fil_B=""
-csv_outfile=""
-ref_fa=""
-track=false
-siz_bin=10
-csv_scl_fct=""
-csv_usr_frg=""
-csv_dep_min=""
-csv_pseudo=""
-eps="NA"
-skip_00="NA"
-drp_nan=false
-skp_pfx="NA"
-rnd=24
-err_out=""
-nam_job=""
+#  Print parsed scalar arguments when debugging is enabled
+function print_state_debug() {
+    if [[ "${debug}" != "true" ]]; then
+        return 0
+    fi
 
-#  Define the help message
-function show_help_main() {
-    cat << EOM >&2
-Usage:
-  submit_compute_signal.sh
-    [--help] [--env_nam <str>] --dir_scr <str> [--threads <int>] [--mode {signal,ratio,coord}]
-    [--method {unadj,frag,norm,log2,unadj_r,log2_r,...}]
-    (--csv_infile <bam1.bam,bam2.cram,...> | --csv_fil_A <IP1.bdg[.gz],IP2.bdg[.gz],...> --csv_fil_B <in1.bdg[.gz],in2.bdg[.gz],...>)
-    --csv_outfile <out1.bdg[.gz],out2.bdg[.gz],...> [--track] [--drp_nan]
-    [--ref_fa <file>] [--siz_bin <int>] [--csv_scl_fct <csv:spec>] [--csv_usr_frg <csv:int>] [--csv_dep_min <csv:num>] [--csv_pseudo <csv:str>]
-    [--eps <flt>] [--skip_00 <enum:pre_scale,post_scale>] [--skp_pfx <str>] [--dp <int>] --err_out <str> [--nam_job <str>]
+    debug_var \
+        "env_nam=${env_nam}" \
+        "dir_scr=${dir_scr}" \
+        "threads=${threads}" \
+        "mode=${mode}" \
+        "method=${method:-UNSET}"
 
-Description:
-  Submit per-sample signal, ratio, or fragment-coordinate jobs from comma-separated file lists to 'compute_signal.py' or 'compute_signal_ratio.py' under Slurm, GNU Parallel, or serial execution.
+    if [[ "${mode}" != "ratio" ]]; then
+        debug_var \
+            "csv_infile=${csv_infile}" \
+            "ref_fa=${ref_fa:-UNSET}"
+    elif [[ "${mode}" == "ratio" ]]; then
+        debug_var \
+            "csv_fil_A=${csv_fil_A}" \
+            "csv_fil_B=${csv_fil_B}"
+    fi
 
-Keyword arguments:
-  -h, --hlp, --help  <flag>
-      Print this help message and exit.
+    debug_var "csv_outfile=${csv_outfile}"
 
-  -en, --env_nam  <str>
-      Mamba environment to activate (default: ${env_nam}).
+    if [[ "${mode}" == "ratio" ]]; then
+        debug_var \
+            "track=${track}" \
+            "csv_dep_min=${csv_dep_min}" \
+            "csv_pseudo=${csv_pseudo}" \
+            "eps=${eps}" \
+            "skip_00=${skip_00}" \
+            "drp_nan=${drp_nan}" \
+            "skp_pfx=${skp_pfx}"
+    fi
 
-  -ds, --dir_scr  <str>
-      Directory containing scripts and functions.
+    if [[ "${mode}" == "signal" ]]; then
+        debug_var \
+            "siz_bin=${siz_bin}" \
+            "csv_usr_frg=${csv_usr_frg}"
+    fi
 
-  -t, --thr, --threads  <int>
-      Number of threads to use per job (default: ${threads}).
+    if [[ "${mode}" != "coord" ]]; then
+        debug_var \
+            "csv_scl_fct=${csv_scl_fct}" \
+            "rnd=${rnd}"
+    fi
 
-  -md, --mode  <str>
-      Type of computation: 'signal', 'ratio', or 'coord' (default: ${mode});
-
-  -me, --method <str>
-      Computation subtype (ignored if '--mode coord'; default if '--mode signal': norm; default if '--mode ratio': unadj):
-        - For '--mode signal':
-          + 'u', 'unadj', 'unadjusted', 's', 'smp', 'simple', 'r', 'raw'
-          + 'f', 'frg', 'frag', 'frg_len', 'frag_len', 'l', 'len', 'len_frg', 'len_frag'
-          + 'n', 'nrm', 'norm', 'normalized'
-        - For '--mode ratio':
-          + 'u', 'unadj', 'unadjusted', 's', 'smp', 'simple', 'r', 'raw'
-          + '2', 'l2', 'lg2', 'log2'
-          + 'ur', 'unadj_r', 'unadjusted_r', 'sr', 'smp_r', 'simple_r', 'rr', 'raw_r'
-          + '2r', 'l2r', 'l2_r', 'lg2_r', 'log2_r'
-
-  -i, -fi, -ci, --infile, --infiles, --fil_in, --csv_infile, --csv_infiles  <csv:file>  <element: str>
-      Comma-separated list of BAM or CRAM files ('--mode signal', '--mode coord').
-
-  -fA, -f1, -cA, -c1, --fil_A, --fil_1, --csv_A, --csv_1, --csv_fil_A, --csv_fil_IP  <csv:file>  <element: str>
-      Comma-separated list of numerator (i.e., "file A"; e.g., IP) bedGraph files ('--mode ratio').
-
-  -fB, -f2, -cB, -c2, --fil_B, --fil_2, --csv_B, --csv_2, --csv_fil_B, --csv_fil_input  <csv:file>  <element: str>
-      Comma-separated list of denominator (i.e., "file B"; e.g., input) bedGraph files ('--mode ratio').
-
-  -o, -fo, -co, --outfile, --outfiles, --fil_out, --csv_outfile, --csv_outfiles  <csv:file>  <element: str>
-      Comma-separated list of output files (e.g., full bedGraph[.gz] or BED[.gz] paths).
-
-  -r, --ref, --ref_fa, --reference  <file>
-      Reference FASTA for CRAM input files ('--mode signal', '--mode coord'). Required when '--csv_infile' contains '.cram'.
-
-  -tr, --track  <flag>
-      Output a companion bedGraph without '-inf' or 'nan' rows ('--mode ratio').
-
-  -sb, --siz_bin  <int>
-      Bin size in base pairs for signal computation ('--mode signal'; default: ${siz_bin}).
-
-  -sf, --scale, --scl_fct, --csv_scl_fct  <csv:spec>  <element: str>
-      Optional comma-separated list of scaling factors or sentinels ('--mode signal', '--mode ratio').
-
-      For '--mode signal', each element must be 'NA' or a positive scalar float.
-
-      For '--mode ratio', each element may be 'NA', a positive scalar float, or a positive 'A:B' spec, where A scales '--csv_fil_A' and B scales '--csv_fil_B' before ratio calculation.
-
-  -uf, --csv_usr_frg  <csv:int>  <element: str>
-      Optional comma-separated list of fragment lengths or sentinels ('--mode signal', '--mode coord').
-
-      Compatibility alias: '--usr_frg'.
-
-  -dm, --csv_dep_min  <csv:num>  <element: str>
-      Optional comma-separated list of minimum input depth values or sentinels ('--mode ratio').
-
-      Compatibility aliases include '--dep_min' and '--depth_min'.
-
-  -ps, --csv_pseudo  <csv:str>  <element: str>
-      Optional comma-separated list of per-sample pseudocount specs 'A[:B]' or sentinels ('--mode ratio').
-
-      Compatibility aliases include '--pseudo' and '--pseudocount'.
-
-   -e, --eps  <flt>
-      Shared epsilon for zero checks in ratio mode (<flt>) or sentinel (NA).
-
-  -s0, --skip_00  <str>
-      Shared zero-zero skip mode in ratio mode ('pre_scale' or 'post_scale') or sentinel (NA).
-
-  -dn, --drp_nan  <str>
-      Drop 'nan', 'inf', and '-inf' rows from the main ratio output.
-
-  -sk, --skp_pfx, --skip_pfx, --skip_prefix  <str>
-      Shared comma-separated bedGraph header prefixes to skip in ratio mode (<str>) or sentinel (NA).
-
-  -dp, --dp, --rnd, --round, --decimals, --digits  <int>
-      Maximum number of decimal places retained for finite output signal or ratio values (default: ${rnd}).
-
-  -eo, --err_out  <str>
-      Directory for stderr and stdout logs.
-
-  -nj, --nam_job  <str>
-      Prefix for job names (default depends on resolved '--mode' and '--method'; e.g., 'compute_signal_norm', 'compute_ratio_unadj', or 'compute_coord').
-
-Notes:
-  - g and bedGraph input files must be coordinate-sorted.
-  - CRAM inputs in '--mode signal' or '--mode coord' require '--ref_fa'.
-  - Input and output paths supplied to this wrapper interface must not contain spaces, commas, or semicolons.
-  - This wrapper does not support '-' for stdin/stdout. Use the underlying Python scripts directly for streaming input/output workflows.
-  - If and where applicable, use consistent file ordering in- and outfiles, and between IP (file A) and input (file B) files.
-  - To run in "debug mode", set hardcoded variable 'debug=true'                   [debug=${debug:-UNSET}]
-  - To run in "dry-run mode", set hardcoded variable 'dry_run=true'               [dry_run=${dry_run:-UNSET}]
-  - To run in "parse-only mode", set hardcoded variable 'p_only=true'             [p_only=${p_only:-UNSET}]
-  - To run in "parse-and-check-only mode", set hardcoded variable 'pc_only=true'  [pc_only=${pc_only:-UNSET}]
-EOM
+    debug_var \
+        "err_out=${err_out}" \
+        "nam_job=${nam_job}"
 }
-#TODO: the following needs to be incorporated into the help docs
-#+   Sourced function scripts:
-#+     - check_args.sh
-#+     - check_inputs.sh
-#+     - check_numbers.sh
-#+     - format_outputs.sh
-#+     - handle_env.sh
-#+     - manage_slurm.sh
-#+     - populate_array_empty.sh
-#+     - run_python.sh
+
+
+#  Reconstruct mode-dependent arrays from serialized argument strings
+function prepare_vecs() {
+    if [[ "${mode}" =~ ^(signal|coord)$ ]]; then
+        IFS=',' read -r -a arr_infile <<< "${csv_infile}"
+        IFS=',' read -r -a arr_outfile <<< "${csv_outfile}"
+
+        check_arr_nonempty "arr_infile"  "csv_infile"  || return 1
+        check_arr_nonempty "arr_outfile" "csv_outfile" || return 1
+
+        if [[ -n "${csv_usr_frg}" ]]; then
+            IFS=',' read -r -a arr_usr_frg <<< "${csv_usr_frg}"
+        else
+            unset arr_usr_frg && declare -ga arr_usr_frg
+            populate_array_empty arr_usr_frg "${#arr_infile[@]}"
+        fi
+
+        if [[ "${mode}" == "signal" ]]; then
+            if [[ -n "${csv_scl_fct}" ]]; then
+                IFS=',' read -r -a arr_scl_fct <<< "${csv_scl_fct}"
+            else
+                unset arr_scl_fct && declare -ga arr_scl_fct
+                populate_array_empty arr_scl_fct "${#arr_infile[@]}"
+            fi
+        fi
+    elif [[ "${mode}" == "ratio" ]]; then
+        IFS=',' read -r -a arr_fil_A   <<< "${csv_fil_A}"
+        IFS=',' read -r -a arr_fil_B   <<< "${csv_fil_B}"
+        IFS=',' read -r -a arr_outfile <<< "${csv_outfile}"
+
+        check_arr_nonempty "arr_fil_A"   "csv_fil_A"   || return 1
+        check_arr_nonempty "arr_fil_B"   "csv_fil_B"   || return 1
+        check_arr_nonempty "arr_outfile" "csv_outfile" || return 1
+
+        if [[ -n "${csv_scl_fct}" ]]; then
+            IFS=',' read -r -a arr_scl_fct <<< "${csv_scl_fct}"
+        else
+            unset arr_scl_fct && declare -ga arr_scl_fct
+            populate_array_empty arr_scl_fct "${#arr_fil_A[@]}"
+        fi
+
+        if [[ -n "${csv_dep_min}" ]]; then
+            IFS=',' read -r -a arr_dep_min <<< "${csv_dep_min}"
+        else
+            unset arr_dep_min && declare -ga arr_dep_min
+            populate_array_empty arr_dep_min "${#arr_fil_A[@]}"
+        fi
+
+        if [[ -n "${csv_pseudo}" ]]; then
+            IFS=',' read -r -a arr_pseudo <<< "${csv_pseudo}"
+        else
+            unset arr_pseudo && declare -ga arr_pseudo
+            populate_array_empty arr_pseudo "${#arr_fil_A[@]}"
+        fi
+    fi
+}
+
+
+#  Validate vector lengths, sentinels, CRAM reference needs, and input files
+function validate_vecs() {
+    local idx infile outfile need_ref
+
+    if [[ "${mode}" == "signal" ]]; then
+        check_arr_lengths "arr_infile" "arr_outfile" || return 1
+        check_arr_lengths "arr_infile" "arr_scl_fct" || return 1
+        check_arr_lengths "arr_infile" "arr_usr_frg" || return 1
+    elif [[ "${mode}" == "ratio" ]]; then
+        check_arr_lengths "arr_fil_A" "arr_fil_B"    || return 1
+        check_arr_lengths "arr_fil_A" "arr_outfile"  || return 1
+        check_arr_lengths "arr_fil_A" "arr_scl_fct"  || return 1
+        check_arr_lengths "arr_fil_A" "arr_dep_min"  || return 1
+        check_arr_lengths "arr_fil_A" "arr_pseudo"   || return 1
+    elif [[ "${mode}" == "coord" ]]; then
+        check_arr_lengths "arr_infile" "arr_outfile" || return 1
+        check_arr_lengths "arr_infile" "arr_usr_frg" || return 1
+    fi
+
+    if [[ "${mode}" =~ ^(signal|coord)$ ]]; then
+        for infile in "${arr_infile[@]}"; do
+            if [[ "${infile}" == "-" ]]; then
+                echo_err \
+                    "'-' is not allowed in '--csv_infile' for" \
+                    "'submit_compute_signal.sh'. Use the underlying Python" \
+                    "script directly for stdin input."
+                return 1
+            fi
+        done
+    elif [[ "${mode}" == "ratio" ]]; then
+        for infile in "${arr_fil_A[@]}"; do
+            if [[ "${infile}" == "-" ]]; then
+                echo_err \
+                    "'-' is not allowed in '--csv_fil_A' for" \
+                    "'submit_compute_signal.sh'. Use the underlying Python" \
+                    "script directly for stdin input."
+                return 1
+            fi
+        done
+
+        for infile in "${arr_fil_B[@]}"; do
+            if [[ "${infile}" == "-" ]]; then
+                echo_err \
+                    "'-' is not allowed in '--csv_fil_B' for" \
+                    "'submit_compute_signal.sh'. Use the underlying Python" \
+                    "script directly for stdin input."
+                return 1
+            fi
+        done
+    fi
+
+    for outfile in "${arr_outfile[@]}"; do
+        if [[ "${outfile}" == "-" ]]; then
+            echo_err \
+                "'-' is not allowed in '--csv_outfile' for" \
+                "'submit_compute_signal.sh'. Use the underlying Python" \
+                "script directly for stdout output."
+            return 1
+        fi
+    done
+
+    if [[ "${mode}" =~ ^(signal|coord)$ ]]; then
+        need_ref=false
+
+        for infile in "${arr_infile[@]}"; do
+            if [[ "${infile,,}" == *.cram ]]; then
+                need_ref=true
+                break
+            fi
+        done
+
+        if [[ "${need_ref}" == "true" && -z "${ref_fa}" ]]; then
+            echo_err \
+                "'--ref_fa' is required when '--csv_infile' contains CRAM" \
+                "input."
+            return 1
+        fi
+
+        if [[ -n "${ref_fa}" ]]; then
+            validate_var_file "ref_fa" "${ref_fa}" 0 true || return 1
+        fi
+    fi
+
+    if [[ "${mode}" =~ ^(signal|coord)$ ]]; then
+        for idx in "${!arr_infile[@]}"; do
+            validate_var_file "arr_infile" "${arr_infile[${idx}]}" "${idx}" \
+                || return 1
+        done
+    elif [[ "${mode}" == "ratio" ]]; then
+        for idx in "${!arr_fil_A[@]}"; do
+            validate_var_file "arr_fil_A" "${arr_fil_A[${idx}]}" "${idx}" \
+                || return 1
+        done
+
+        for idx in "${!arr_fil_B[@]}"; do
+            validate_var_file "arr_fil_B" "${arr_fil_B[${idx}]}" "${idx}" \
+                || return 1
+        done
+    fi
+}
+
+
+#  Print reconstructed array values when debugging is enabled
+function print_vecs_debug() {
+    if [[ "${debug}" != "true" ]]; then
+        return 0
+    fi
+
+    if [[ "${mode}" =~ ^(signal|coord)$ ]]; then
+        debug_var \
+            "\${#arr_infile[@]}=${#arr_infile[@]}" \
+            "\${#arr_usr_frg[@]}=${#arr_usr_frg[@]}"
+        echo "arr_infile=( ${arr_infile[*]} )"   >&2 && echo >&2
+        echo "arr_usr_frg=( ${arr_usr_frg[*]} )" >&2 && echo >&2
+    fi
+
+    if [[ "${mode}" == "ratio" ]]; then
+        debug_var \
+            "\${#arr_fil_A[@]}=${#arr_fil_A[@]}" \
+            "\${#arr_fil_B[@]}=${#arr_fil_B[@]}" \
+            "\${#arr_dep_min[@]}=${#arr_dep_min[@]}" \
+            "\${#arr_pseudo[@]}=${#arr_pseudo[@]}"
+        echo "arr_fil_A=( ${arr_fil_A[*]} )"     >&2 && echo >&2
+        echo "arr_fil_B=( ${arr_fil_B[*]} )"     >&2 && echo >&2
+        echo "arr_dep_min=( ${arr_dep_min[*]} )" >&2 && echo >&2
+        echo "arr_pseudo=( ${arr_pseudo[*]} )"   >&2 && echo >&2
+    fi
+
+    if [[ "${mode}" != "coord" ]]; then
+        debug_var "\${#arr_scl_fct[@]}=${#arr_scl_fct[@]}"
+        echo "arr_scl_fct=( ${arr_scl_fct[*]} )" >&2 && echo >&2
+    fi
+
+    debug_var "\${#arr_outfile[@]}=${#arr_outfile[@]}"
+    echo "arr_outfile=( ${arr_outfile[*]} )"     >&2 && echo >&2
+}
+
+
+#  Activate the environment and ensure project imports are discoverable
+function setup_env() {
+    handle_env "${env_nam}" || return 1
+
+    #  For 'scripts.*' imports, ensure project root is on 'PYTHONPATH'
+    if [[ -z "${PYTHONPATH:-}" ]]; then
+        export PYTHONPATH="${dir_rep}"
+    else
+        export PYTHONPATH="${dir_rep}:${PYTHONPATH}"
+    fi
+}
+
+
+#  Dispatch Slurm-array, GNU Parallel, or serial work
+function run_jobs() {
+    local id_job id_tsk idx
+
+    if [[ -n "${SLURM_ARRAY_TASK_ID:-}" ]]; then
+        id_job=${SLURM_ARRAY_JOB_ID}
+        id_tsk=${SLURM_ARRAY_TASK_ID}
+
+        if ! [[ "${id_tsk}" =~ ^[1-9][0-9]*$ ]]; then
+            echo_err "Slurm task ID is invalid: '${id_tsk}'."
+            return 1
+        elif [[
+            "${mode}" == "ratio" && "${id_tsk}" -gt "${#arr_fil_A[@]}"
+        ]]; then
+            echo_err \
+                "Slurm task ID '${id_tsk}' exceeds number of ratio entries:" \
+                "'${#arr_fil_A[@]}'."
+            return 1
+        elif [[
+            "${mode}" != "ratio" && "${id_tsk}" -gt "${#arr_infile[@]}"
+        ]]; then
+            echo_err \
+                "Slurm task ID '${id_tsk}' exceeds number of input entries:" \
+                "'${#arr_infile[@]}'."
+            return 1
+        else
+            idx=$(( id_tsk - 1 ))
+        fi
+
+        if [[ "${mode}" == "signal" ]]; then
+            run_task_sig "${idx}"   || return 1
+        elif [[ "${mode}" == "ratio" ]]; then
+            run_task_rat "${idx}"   || return 1
+        else
+            run_task_coord "${idx}" || return 1
+        fi
+    else
+        if [[ "${mode}" == "signal" ]]; then
+            for idx in "${!arr_infile[@]}"; do
+                run_task_sig "${idx}"   || return 1
+            done
+        elif [[ "${mode}" == "ratio" ]]; then
+            for idx in "${!arr_fil_A[@]}"; do
+                run_task_rat "${idx}"   || return 1
+            done
+        else
+            for idx in "${!arr_infile[@]}"; do
+                run_task_coord "${idx}" || return 1
+            done
+        fi
+    fi
+}
 
 
 #  Main script execution
 function main() {
+    init_defs
+
     if [[ -z "${1:-}" || "${1}" =~ ^(-h|--h[e]?lp)$ ]]; then
         show_help_main
         echo >&2
-        exit 0
+        return 0
     fi
 
-    dir_scr="$(resolve_dir_scr "${0##*/}" "$@")" || exit 1
+    dir_scr="$(resolve_dir_scr "${0##*/}" "$@")" || return 1
 
     source_submit_helpers "${0##*/}" "${dir_scr}" \
         check_args \
@@ -1730,335 +2200,30 @@ function main() {
         manage_slurm \
         populate_array_empty \
         run_python \
-        || exit 1
+        || return 1
 
-    parse_args "$@"       || exit 1
+    parse_args "$@"       || return 1
 
     if [[ "${p_only}" == "true" ]]; then
         if [[ "${debug}" == "true" ]]; then debug_var "p_only=true"; fi
-        exit 0
+        return 0
     fi
 
-    canonicalize_args     || exit 1
-    validate_args         || exit 1
-    resolve_script_paths  || exit 1
+    canonicalize_args     || return 1
+    validate_args         || return 1
+    resolve_paths_scrs || return 1
+    print_state_debug
+    prepare_vecs          || return 1
+    validate_vecs         || return 1
+    print_vecs_debug
 
-    #  Debug argument variable assignments
-    if [[ "${debug}" == "true" ]]; then
-        debug_var \
-            "env_nam=${env_nam}" \
-            "dir_scr=${dir_scr}" \
-            "threads=${threads}" \
-            "mode=${mode}" \
-            "method=${method:-UNSET}"
-
-        if [[ "${mode}" != "ratio" ]]; then
-            debug_var \
-                "csv_infile=${csv_infile}" \
-                "ref_fa=${ref_fa:-UNSET}"
-        elif [[ "${mode}" == "ratio" ]]; then
-            debug_var \
-                "csv_fil_A=${csv_fil_A}" \
-                "csv_fil_B=${csv_fil_B}"
-        fi
-
-        debug_var "csv_outfile=${csv_outfile}"
-
-        if [[ "${mode}" == "ratio" ]]; then
-            debug_var \
-                "track=${track}" \
-                "csv_dep_min=${csv_dep_min}" \
-                "csv_pseudo=${csv_pseudo}" \
-                "eps=${eps}" \
-                "skip_00=${skip_00}" \
-                "drp_nan=${drp_nan}" \
-                "skp_pfx=${skp_pfx}"
-        fi
-
-        if [[ "${mode}" == "signal" ]]; then
-            debug_var \
-                "siz_bin=${siz_bin}" \
-                "csv_usr_frg=${csv_usr_frg}"
-        fi
-
-        if [[ "${mode}" != "coord" ]]; then
-            debug_var \
-                "csv_scl_fct=${csv_scl_fct}" \
-                "rnd=${rnd}"
-        fi
-
-        debug_var \
-            "err_out=${err_out}" \
-            "nam_job=${nam_job}"
-    fi
-
-    #  Perform mode-dependent array reconstruction from serialized strings
-    #+
-    #+ Reconstruct required arrays first, then auto-populate omitted optional
-    #+ per-sample arrays with 'NA' sentinels so this script is standalone-ready
-    if [[ "${mode}" =~ ^(signal|coord)$ ]]; then
-        IFS=',' read -r -a arr_infile <<< "${csv_infile}"
-        IFS=',' read -r -a arr_outfile <<< "${csv_outfile}"
-
-        check_arr_nonempty "arr_infile"  "csv_infile"  || exit 1
-        check_arr_nonempty "arr_outfile" "csv_outfile" || exit 1
-
-        if [[ -n "${csv_usr_frg}" ]]; then
-            IFS=',' read -r -a arr_usr_frg <<< "${csv_usr_frg}"
-        else
-            unset arr_usr_frg && declare -a arr_usr_frg
-            populate_array_empty arr_usr_frg "${#arr_infile[@]}"
-        fi
-
-        if [[ "${mode}" == "signal" ]]; then
-            if [[ -n "${csv_scl_fct}" ]]; then
-                IFS=',' read -r -a arr_scl_fct <<< "${csv_scl_fct}"
-            else
-                unset arr_scl_fct && declare -a arr_scl_fct
-                populate_array_empty arr_scl_fct "${#arr_infile[@]}"
-            fi
-        fi
-    elif [[ "${mode}" == "ratio" ]]; then
-        IFS=',' read -r -a arr_fil_A   <<< "${csv_fil_A}"
-        IFS=',' read -r -a arr_fil_B   <<< "${csv_fil_B}"
-        IFS=',' read -r -a arr_outfile <<< "${csv_outfile}"
-
-        check_arr_nonempty "arr_fil_A"   "csv_fil_A"   || exit 1
-        check_arr_nonempty "arr_fil_B"   "csv_fil_B"   || exit 1
-        check_arr_nonempty "arr_outfile" "csv_outfile" || exit 1
-
-        if [[ -n "${csv_scl_fct}" ]]; then
-            IFS=',' read -r -a arr_scl_fct <<< "${csv_scl_fct}"
-        else
-            unset arr_scl_fct && declare -a arr_scl_fct
-            populate_array_empty arr_scl_fct "${#arr_fil_A[@]}"
-        fi
-
-        if [[ -n "${csv_dep_min}" ]]; then
-            IFS=',' read -r -a arr_dep_min <<< "${csv_dep_min}"
-        else
-            unset arr_dep_min && declare -a arr_dep_min
-            populate_array_empty arr_dep_min "${#arr_fil_A[@]}"
-        fi
-
-        if [[ -n "${csv_pseudo}" ]]; then
-            IFS=',' read -r -a arr_pseudo <<< "${csv_pseudo}"
-        else
-            unset arr_pseudo && declare -a arr_pseudo
-            populate_array_empty arr_pseudo "${#arr_fil_A[@]}"
-        fi
-    fi
-
-    #  Check final array lengths after any auto-population of optional vectors
-    if [[ "${mode}" == "signal" ]]; then
-        check_arr_lengths "arr_infile" "arr_outfile" || exit 1
-        check_arr_lengths "arr_infile" "arr_scl_fct" || exit 1
-        check_arr_lengths "arr_infile" "arr_usr_frg" || exit 1
-    elif [[ "${mode}" == "ratio" ]]; then
-        check_arr_lengths "arr_fil_A" "arr_fil_B"    || exit 1
-        check_arr_lengths "arr_fil_A" "arr_outfile"  || exit 1
-        check_arr_lengths "arr_fil_A" "arr_scl_fct"  || exit 1
-        check_arr_lengths "arr_fil_A" "arr_dep_min"  || exit 1
-        check_arr_lengths "arr_fil_A" "arr_pseudo"   || exit 1
-    elif [[ "${mode}" == "coord" ]]; then
-        check_arr_lengths "arr_infile" "arr_outfile" || exit 1
-        check_arr_lengths "arr_infile" "arr_usr_frg" || exit 1
-    fi
-
-    #  Reject stdin input in this wrapper; use the Python scripts directly
-    if [[ "${mode}" =~ ^(signal|coord)$ ]]; then
-        for infile in "${arr_infile[@]}"; do
-            if [[ "${infile}" == "-" ]]; then
-                echo_err \
-                    "'-' is not allowed in '--csv_infile' for" \
-                    "'submit_compute_signal.sh'. Use the underlying Python" \
-                    "script directly for stdin input."
-                exit 1
-            fi
-        done
-        unset infile
-    elif [[ "${mode}" == "ratio" ]]; then
-        for infile in "${arr_fil_A[@]}"; do
-            if [[ "${infile}" == "-" ]]; then
-                echo_err \
-                    "'-' is not allowed in '--csv_fil_A' for" \
-                    "'submit_compute_signal.sh'. Use the underlying Python" \
-                    "script directly for stdin input."
-                exit 1
-            fi
-        done
-
-        for infile in "${arr_fil_B[@]}"; do
-            if [[ "${infile}" == "-" ]]; then
-                echo_err \
-                    "'-' is not allowed in '--csv_fil_B' for" \
-                    "'submit_compute_signal.sh'. Use the underlying Python" \
-                    "script directly for stdin input."
-                exit 1
-            fi
-        done
-        unset infile
-    fi
-
-    #  Reject stdout output in this wrapper; use the Python scripts directly
-    for outfile in "${arr_outfile[@]}"; do
-        if [[ "${outfile}" == "-" ]]; then
-            echo_err \
-                "'-' is not allowed in '--csv_outfile' for" \
-                "'submit_compute_signal.sh'. Use the underlying Python" \
-                "script directly for stdout output."
-            exit 1
-        fi
-    done
-    unset outfile
-
-    #  Require a reference FASTA for CRAM inputs; validate it when supplied
-    if [[ "${mode}" =~ ^(signal|coord)$ ]]; then
-        need_ref=false
-
-        for infile in "${arr_infile[@]}"; do
-            if [[ "${infile,,}" == *.cram ]]; then
-                need_ref=true
-                break
-            fi
-        done
-        unset infile
-
-        if [[ "${need_ref}" == "true" && -z "${ref_fa}" ]]; then
-            echo_err \
-                "'--ref_fa' is required when '--csv_infile' contains CRAM" \
-                "input."
-            exit 1
-        fi
-
-        if [[ -n "${ref_fa}" ]]; then
-            validate_var_file "ref_fa" "${ref_fa}" 0 true || exit 1
-        fi
-
-        unset need_ref
-    fi
-
-    #  Check input files
-    if [[ "${mode}" =~ ^(signal|coord)$ ]]; then
-        for idx in "${!arr_infile[@]}"; do
-            validate_var_file "arr_infile" "${arr_infile[${idx}]}" "${idx}" \
-                || exit 1
-        done
-    elif [[ "${mode}" == "ratio" ]]; then
-        for idx in "${!arr_fil_A[@]}"; do
-            validate_var_file "arr_fil_A" "${arr_fil_A[${idx}]}" "${idx}" \
-                || exit 1
-        done
-
-        for idx in "${!arr_fil_B[@]}"; do
-            validate_var_file "arr_fil_B" "${arr_fil_B[${idx}]}" "${idx}" \
-                || exit 1
-        done
-    fi
-
-    #  Debug number of array elements and array element values
-    if [[ "${debug}" == "true" ]]; then
-        if [[ "${mode}" =~ ^(signal|coord)$ ]]; then
-            debug_var \
-                "\${#arr_infile[@]}=${#arr_infile[@]}" \
-                "\${#arr_usr_frg[@]}=${#arr_usr_frg[@]}"
-            echo "arr_infile=( ${arr_infile[*]} )"   >&2 && echo >&2
-            echo "arr_usr_frg=( ${arr_usr_frg[*]} )" >&2 && echo >&2
-        fi
-
-        if [[ "${mode}" == "ratio" ]]; then
-            debug_var \
-                "\${#arr_fil_A[@]}=${#arr_fil_A[@]}" \
-                "\${#arr_fil_B[@]}=${#arr_fil_B[@]}" \
-                "\${#arr_dep_min[@]}=${#arr_dep_min[@]}" \
-                "\${#arr_pseudo[@]}=${#arr_pseudo[@]}"
-            echo "arr_fil_A=( ${arr_fil_A[*]} )"     >&2 && echo >&2
-            echo "arr_fil_B=( ${arr_fil_B[*]} )"     >&2 && echo >&2
-            echo "arr_dep_min=( ${arr_dep_min[*]} )" >&2 && echo >&2
-            echo "arr_pseudo=( ${arr_pseudo[*]} )"   >&2 && echo >&2
-        fi
-
-        if [[ "${mode}" != "coord" ]]; then
-            debug_var "\${#arr_scl_fct[@]}=${#arr_scl_fct[@]}"
-            echo "arr_scl_fct=( ${arr_scl_fct[*]} )" >&2 && echo >&2
-        fi
-
-        debug_var "\${#arr_outfile[@]}=${#arr_outfile[@]}"
-        echo "arr_outfile=( ${arr_outfile[*]} )"     >&2 && echo >&2
-    fi
-
-    #  Exit after parsing and validation/checking, but before execution
     if [[ "${pc_only}" == "true" ]]; then
         if [[ "${debug}" == "true" ]]; then debug_var "pc_only=true"; fi
-        exit 0
+        return 0
     fi
 
-
-    #  Do the main work -----------------------------------------------------------
-    #  Activate environment
-    handle_env "${env_nam}" || exit 1
-
-    #  For 'scripts.*' imports, ensure project root is on 'PYTHONPATH' (exported
-    #+ after environment activation to prevent clobbering)
-    #+
-    #+ Note: 'run_py' handles 'PYTHONPATH' when 'PY_INVOKE=module', so this is
-    #+ redundant but also harmless
-    if [[ -z "${PYTHONPATH:-}" ]]; then
-        export PYTHONPATH="${dir_rep}"
-    else
-        export PYTHONPATH="${dir_rep}:${PYTHONPATH}"
-    fi
-
-    #  Determine and run mode: Slurm or GNU Parallel/serial
-    if [[ -n "${SLURM_ARRAY_TASK_ID:-}" ]]; then
-        #  Job submission type: Slurm
-        id_job=${SLURM_ARRAY_JOB_ID}
-        id_tsk=${SLURM_ARRAY_TASK_ID}
-
-        if ! [[ "${id_tsk}" =~ ^[1-9][0-9]*$ ]]; then
-            echo_err "Slurm task ID is invalid: '${id_tsk}'."
-            exit 1
-        elif [[
-            "${mode}" == "ratio" && "${id_tsk}" -gt "${#arr_fil_A[@]}"
-        ]]; then
-            echo_err \
-                "Slurm task ID '${id_tsk}' exceeds number of ratio entries:" \
-                "'${#arr_fil_A[@]}'."
-            exit 1
-        elif [[
-            "${mode}" != "ratio" && "${id_tsk}" -gt "${#arr_infile[@]}"
-        ]]; then
-            echo_err \
-                "Slurm task ID '${id_tsk}' exceeds number of input entries:" \
-                "'${#arr_infile[@]}'."
-            exit 1
-        else
-            idx=$(( id_tsk - 1 ))
-        fi
-
-        if [[ "${mode}" == "signal" ]]; then
-            run_task_sig "${idx}"   || exit 1
-        elif [[ "${mode}" == "ratio" ]]; then
-            run_task_rat "${idx}"   || exit 1
-        else
-            run_task_coord "${idx}" || exit 1
-        fi
-    else
-        #  Job submission type: GNU Parallel or serial
-        if [[ "${mode}" == "signal" ]]; then
-            for idx in "${!arr_infile[@]}"; do
-                run_task_sig "${idx}"   || exit 1
-            done
-        elif [[ "${mode}" == "ratio" ]]; then
-            for idx in "${!arr_fil_A[@]}"; do
-                run_task_rat "${idx}"   || exit 1
-            done
-        else
-            for idx in "${!arr_infile[@]}"; do
-                run_task_coord "${idx}" || exit 1
-            done
-        fi
-    fi
+    setup_env || return 1
+    run_jobs  || return 1
 }
 
 

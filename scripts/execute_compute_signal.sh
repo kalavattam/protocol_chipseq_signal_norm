@@ -71,7 +71,7 @@ unset fnc_src
 
 #  Auto-generate prefix for ratio track filenames based on 'method' and
 #+ 'scl_fct'
-function generate_prefix() {
+function generate_pfx() {
     local method="${1:-}"
     local scl_fct="${2:-}"
     local pfx
@@ -80,7 +80,7 @@ function generate_prefix() {
 
     show_help=$(cat << EOM
 Usage:
-  generate_prefix [-h|--hlp|--help] [method] [scl_fct]
+  generate_pfx [-h|--hlp|--help] [method] [scl_fct]
 
 Description:
   Generate a default output filename prefix for ratio tracks based on the resolved ratio method and whether scaling is in effect.
@@ -162,7 +162,11 @@ Description:
   Validate one ratio-mode scaling-factor element.
 
 Positional arguments:
-  1  scl_fct  <spec>  Either 'NA', a positive scalar float, or a positive 'A:B' scaling-factor spec.
+  1  scl_fct  <spec>
+    Either 'NA', a positive scalar float, or a positive 'A:B' scaling-factor spec.
+
+Returns:
+  0 if the scaling-factor element is valid; 1 otherwise.
 
 Notes:
   - Scalar 'A' means scale file A by A and file B by 1.0.
@@ -379,469 +383,502 @@ EOM
 }
 
 
-#  Initialize argument variables, check and parse arguments, etc. =============
 #  Initialize hardcoded argument variables
-env_nam="env_protocol"
-scr_sub="${dir_scr}/submit_compute_signal.sh"
-par_job=""
+function init_args_hardcoded() {
+    env_nam="env_protocol"
+    scr_sub="${dir_scr}/submit_compute_signal.sh"
+    par_job=""
+}
+
 
 #  Initialize argument variables, assigning default values where applicable
-verbose=false
-dry_run=false
-threads=4
-mode="signal"
-method=""
-csv_infile=""
-ref_fa=""  #TODO: determine best place for this; where is it in 'submit'?
-csv_fil_A=""
-csv_fil_B=""
-dir_out=""
-typ_out="bedGraph.gz"
-prefix=""
-track=false
-siz_bin=""
-csv_scl_fct=""
-csv_usr_frg=""
-csv_dep_min=""
-csv_pseudo=""
-eps=""
-skip_00=""
-drp_nan=false
-skp_pfx=""
-rnd=24
-err_out=""
-nam_job=""
-max_job=6
-slurm=false
-time="0:30:00"
-
-#  Parse arguments
-if [[ -z "${1:-}" || "${1}" =~ ^(-h|--h[e]?lp)$ ]]; then
-    help_execute_compute_signal >&2
-    exit 0
-else
-    if [[ "${1}" =~ ^(-d|--det(ail)?(s)?)$ ]]; then
-        detail_execute_compute_signal >&2
-        exit 0
-    elif [[ "${1}" =~ ^(-ah|--all(_|-)?h[e]?lp)$ ]]; then
-        help_execute_compute_signal >&2
-        echo >&2
-        detail_execute_compute_signal "--no-usage" >&2
-        exit 0
-    fi
-fi
-
-while [[ "$#" -gt 0 ]]; do
-    case "${1}" in
-        -v|--verbose)
-            verbose=true
-            shift 1
-            ;;
-
-        -dr|--dry|--dry[_-]run)
-            dry_run=true
-            shift 1
-            ;;
-
-        -t|--thr|--threads)
-            require_optarg "${1}" "${2:-}" "main" || {
-                echo >&2
-                help_execute_compute_signal >&2
-                exit 1
-            }
-            threads="${2}"
-            shift 2
-            ;;
-
-        -md|--mode)
-            require_optarg "${1}" "${2:-}" "main" || {
-                echo >&2
-                help_execute_compute_signal >&2
-                exit 1
-            }
-            mode="${2,,}"
-            shift 2
-            ;;
-
-        -me|--method)
-            require_optarg "${1}" "${2:-}" "main" || {
-                echo >&2
-                help_execute_compute_signal >&2
-                exit 1
-            }
-            method="${2,,}"
-            shift 2
-            ;;
-
-        -i|-fi|-ci|--infile|--infiles|--fil[_-]in|--csv[_-]infile|--csv[_-]infiles)
-            require_optarg "${1}" "${2:-}" "main" || {
-                echo >&2
-                help_execute_compute_signal >&2
-                exit 1
-            }
-            csv_infile="${2}"
-            shift 2
-            ;;
-
-        #TODO: determine best place for this; where is it in 'submit'?
-        -r|--ref|--ref[_-]fa|--reference)
-            require_optarg "${1}" "${2:-}" "main" || {
-                echo >&2
-                help_execute_compute_signal >&2
-                exit 1
-            }
-            ref_fa="${2}"
-            shift 2
-            ;;
-
-        -fA|-f1|-cA|-c1|--fil[_-]A|--fil[_-]1|--csv[_-]A|--csv[_-]1|--csv[_-]fil[_-]A)
-            require_optarg "${1}" "${2:-}" "main" || {
-                echo >&2
-                help_execute_compute_signal >&2
-                exit 1
-            }
-            csv_fil_A="${2}"
-            shift 2
-            ;;
-
-        -fB|-f2|-cB|-c2|--fil[_-]B|--fil[_-]2|--csv[_-]B|--csv[_-]2|--csv[_-]fil[_-]B)
-            require_optarg "${1}" "${2:-}" "main" || {
-                echo >&2
-                help_execute_compute_signal >&2
-                exit 1
-            }
-            csv_fil_B="${2}"
-            shift 2
-            ;;
-
-        -do|--dir[_-]out)
-            require_optarg "${1}" "${2:-}" "main" || {
-                echo >&2
-                help_execute_compute_signal >&2
-                exit 1
-            }
-            dir_out="${2}"
-            shift 2
-            ;;
-
-        -to|--typ[_-]out)
-            require_optarg "${1}" "${2:-}" "main" || {
-                echo >&2
-                help_execute_compute_signal >&2
-                exit 1
-            }
-            typ_out="${2}"
-            shift 2
-            ;;
-
-        -px|-pr|--pfx|--prfx|--prefix)
-            require_optarg "${1}" "${2:-}" "main" || {
-                echo >&2
-                help_execute_compute_signal >&2
-                exit 1
-            }
-            prefix="${2}"
-            shift 2
-            ;;
-
-        -tr|--trk|--track)
-            track=true
-            shift 1
-            ;;
-
-        -sb|--siz[_-]bin)
-            require_optarg "${1}" "${2:-}" "main" || {
-                echo >&2
-                help_execute_compute_signal >&2
-                exit 1
-            }
-            siz_bin="${2}"
-            shift 2
-            ;;
-
-        -sf|--scale|--scl[_-]fct|--csv[_-]scl[_-]fct)
-            require_optarg "${1}" "${2:-}" "main" || {
-                echo >&2
-                help_execute_compute_signal >&2
-                exit 1
-            }
-            csv_scl_fct="${2}"
-            shift 2
-            ;;
-
-        -uf|--usr[_-]frg|--csv[_-]usr[_-]frg)
-            require_optarg "${1}" "${2:-}" "main" || {
-                echo >&2
-                help_execute_compute_signal >&2
-                exit 1
-            }
-            csv_usr_frg="${2}"
-            shift 2
-            ;;
-
-        -dm|--dep[_-]min|--depth[_-]min|--csv[_-]dep[_-]min)
-            require_optarg "${1}" "${2:-}" "main" || {
-                echo >&2
-                help_execute_compute_signal >&2
-                exit 1
-            }
-            csv_dep_min="${2}"
-            shift 2
-            ;;
-
-        -ps|--pseudo|--pseudocount|--csv[_-]pseudo)
-            require_optarg "${1}" "${2:-}" "main" || {
-                echo >&2
-                help_execute_compute_signal >&2
-                exit 1
-            }
-            csv_pseudo="${2}"
-            shift 2
-            ;;
-
-        -e|--eps)
-            require_optarg "${1}" "${2:-}" "main" || {
-                echo >&2
-                help_execute_compute_signal >&2
-                exit 1
-            }
-            eps="${2}"
-            shift 2
-            ;;
-
-        -s0|--skp_00|--skip[_-]00)
-            require_optarg "${1}" "${2:-}" "main" || {
-                echo >&2
-                help_execute_compute_signal >&2
-                exit 1
-            }
-            skip_00="${2,,}"
-            shift 2
-            ;;
-
-        -dn|--drp[_-]nan|--drop[_-]nan)
-            drp_nan=true
-            shift 1
-            ;;
-
-        -sk|--skp[_-]pfx|--skip[_-]pfx|--skip[_-]prefix)
-            require_optarg "${1}" "${2:-}" "main" || {
-                echo >&2
-                help_execute_compute_signal >&2
-                exit 1
-            }
-            skp_pfx="${2}"
-            shift 2
-            ;;
-
-        -dp|--dp|--rnd|--round|--decimals|--digits)
-            require_optarg "${1}" "${2:-}" "main" || {
-                echo >&2
-                help_execute_compute_signal >&2
-                exit 1
-            }
-            rnd="${2}"
-            shift 2
-            ;;
-
-        -eo|--err[_-]out)
-            require_optarg "${1}" "${2:-}" "main" || {
-                echo >&2
-                help_execute_compute_signal >&2
-                exit 1
-            }
-            err_out="${2}"
-            shift 2
-            ;;
-
-        -nj|--nam[_-]job|--name[_-]job)
-            require_optarg "${1}" "${2:-}" "main" || {
-                echo >&2
-                help_execute_compute_signal >&2
-                exit 1
-            }
-            nam_job="${2}"
-            shift 2
-            ;;
-
-        -mj|--max[_-]job)
-            require_optarg "${1}" "${2:-}" "main" || {
-                echo >&2
-                help_execute_compute_signal >&2
-                exit 1
-            }
-            max_job="${2}"
-            shift 2
-            ;;
-
-        -sl|--slurm)
-            slurm=true
-            shift 1
-            ;;
-
-        -tm|--time)
-            require_optarg "${1}" "${2:-}" "main" || {
-                echo >&2
-                help_execute_compute_signal >&2
-                exit 1
-            }
-            time="${2}"
-            shift 2
-            ;;
-
-        *)
-            echo_err "unknown option/parameter passed: '${1}'."
-            echo >&2
-            help_execute_compute_signal >&2
-            exit 1
-            ;;
-    esac
-done
+function init_arg_defs() {
+    verbose=false
+    dry_run=false
+    threads=4
+    mode="signal"
+    method=""
+    csv_infile=""
+    ref_fa=""
+    csv_fil_A=""
+    csv_fil_B=""
+    dir_out=""
+    typ_out="bedGraph.gz"
+    prefix=""
+    track=false
+    siz_bin=""
+    csv_scl_fct=""
+    csv_usr_frg=""
+    csv_dep_min=""
+    csv_pseudo=""
+    eps=""
+    skip_00=""
+    drp_nan=false
+    skp_pfx=""
+    rnd=24
+    err_out=""
+    nam_job=""
+    max_job=6
+    slurm=false
+    time="0:30:00"
+}
 
 
-#  Check arguments ------------------------------------------------------------
-validate_var "env_nam" "${env_nam}"
-check_env_installed "${env_nam}"
+#  Initialize hardcoded arguments and user-facing argument defaults
+function init_defs() {
+    init_args_hardcoded
+    init_arg_defs
+}
 
-validate_var_dir  "dir_scr" "${dir_scr}" 0 false
 
-validate_var_file "scr_sub" "${scr_sub}"
-
-validate_var "threads" "${threads}"
-check_int_pos "${threads}" "threads"
-
-case "${mode}" in
-    s|sig|signal)
-        mode="signal"
-
-        if [[ -z "${method}" ]]; then
-            method="norm"
-        fi
-
-        case "${method}" in
-            u|unadj|unadjusted|s|smp|simple|r|raw)
-                method="unadj"
+#  Parse keyword arguments
+function parse_args() {
+    while [[ "$#" -gt 0 ]]; do
+        case "${1}" in
+            -v|--verbose)
+                verbose=true
+                shift 1
                 ;;
-            f|frg|frag|frg[_-]len|frag[_-]len|l|len|len[_-]frg|len[_-]frag)
-                method="frag"
+
+            -dr|--dry|--dry[_-]run)
+                dry_run=true
+                shift 1
                 ;;
-            n|nrm|norm|normalized)
+
+            -t|--thr|--threads)
+                require_optarg "${1}" "${2:-}" "main" || {
+                    echo >&2
+                    help_execute_compute_signal >&2
+                    return 1
+                }
+                threads="${2}"
+                shift 2
+                ;;
+
+            -md|--mode)
+                require_optarg "${1}" "${2:-}" "main" || {
+                    echo >&2
+                    help_execute_compute_signal >&2
+                    return 1
+                }
+                mode="${2,,}"
+                shift 2
+                ;;
+
+            -me|--method)
+                require_optarg "${1}" "${2:-}" "main" || {
+                    echo >&2
+                    help_execute_compute_signal >&2
+                    return 1
+                }
+                method="${2,,}"
+                shift 2
+                ;;
+
+            -i|-fi|-ci|--infile|--infiles|--fil[_-]in|--csv[_-]infile|--csv[_-]infiles)
+                require_optarg "${1}" "${2:-}" "main" || {
+                    echo >&2
+                    help_execute_compute_signal >&2
+                    return 1
+                }
+                csv_infile="${2}"
+                shift 2
+                ;;
+
+            -r|--ref|--ref[_-]fa|--reference)
+                require_optarg "${1}" "${2:-}" "main" || {
+                    echo >&2
+                    help_execute_compute_signal >&2
+                    return 1
+                }
+                ref_fa="${2}"
+                shift 2
+                ;;
+
+            -fA|-f1|-cA|-c1|--fil[_-]A|--fil[_-]1|--csv[_-]A|--csv[_-]1|--csv[_-]fil[_-]A)
+                require_optarg "${1}" "${2:-}" "main" || {
+                    echo >&2
+                    help_execute_compute_signal >&2
+                    return 1
+                }
+                csv_fil_A="${2}"
+                shift 2
+                ;;
+
+            -fB|-f2|-cB|-c2|--fil[_-]B|--fil[_-]2|--csv[_-]B|--csv[_-]2|--csv[_-]fil[_-]B)
+                require_optarg "${1}" "${2:-}" "main" || {
+                    echo >&2
+                    help_execute_compute_signal >&2
+                    return 1
+                }
+                csv_fil_B="${2}"
+                shift 2
+                ;;
+
+            -do|--dir[_-]out)
+                require_optarg "${1}" "${2:-}" "main" || {
+                    echo >&2
+                    help_execute_compute_signal >&2
+                    return 1
+                }
+                dir_out="${2}"
+                shift 2
+                ;;
+
+            -to|--typ[_-]out)
+                require_optarg "${1}" "${2:-}" "main" || {
+                    echo >&2
+                    help_execute_compute_signal >&2
+                    return 1
+                }
+                typ_out="${2}"
+                shift 2
+                ;;
+
+            -px|-pr|--pfx|--prfx|--prefix)
+                require_optarg "${1}" "${2:-}" "main" || {
+                    echo >&2
+                    help_execute_compute_signal >&2
+                    return 1
+                }
+                prefix="${2}"
+                shift 2
+                ;;
+
+            -tr|--trk|--track)
+                track=true
+                shift 1
+                ;;
+
+            -sb|--siz[_-]bin)
+                require_optarg "${1}" "${2:-}" "main" || {
+                    echo >&2
+                    help_execute_compute_signal >&2
+                    return 1
+                }
+                siz_bin="${2}"
+                shift 2
+                ;;
+
+            -sf|--scale|--scl[_-]fct|--csv[_-]scl[_-]fct)
+                require_optarg "${1}" "${2:-}" "main" || {
+                    echo >&2
+                    help_execute_compute_signal >&2
+                    return 1
+                }
+                csv_scl_fct="${2}"
+                shift 2
+                ;;
+
+            -uf|--usr[_-]frg|--csv[_-]usr[_-]frg)
+                require_optarg "${1}" "${2:-}" "main" || {
+                    echo >&2
+                    help_execute_compute_signal >&2
+                    return 1
+                }
+                csv_usr_frg="${2}"
+                shift 2
+                ;;
+
+            -dm|--dep[_-]min|--depth[_-]min|--csv[_-]dep[_-]min)
+                require_optarg "${1}" "${2:-}" "main" || {
+                    echo >&2
+                    help_execute_compute_signal >&2
+                    return 1
+                }
+                csv_dep_min="${2}"
+                shift 2
+                ;;
+
+            -ps|--pseudo|--pseudocount|--csv[_-]pseudo)
+                require_optarg "${1}" "${2:-}" "main" || {
+                    echo >&2
+                    help_execute_compute_signal >&2
+                    return 1
+                }
+                csv_pseudo="${2}"
+                shift 2
+                ;;
+
+            -e|--eps)
+                require_optarg "${1}" "${2:-}" "main" || {
+                    echo >&2
+                    help_execute_compute_signal >&2
+                    return 1
+                }
+                eps="${2}"
+                shift 2
+                ;;
+
+            -s0|--skp_00|--skip[_-]00)
+                require_optarg "${1}" "${2:-}" "main" || {
+                    echo >&2
+                    help_execute_compute_signal >&2
+                    return 1
+                }
+                skip_00="${2,,}"
+                shift 2
+                ;;
+
+            -dn|--drp[_-]nan|--drop[_-]nan)
+                drp_nan=true
+                shift 1
+                ;;
+
+            -sk|--skp[_-]pfx|--skip[_-]pfx|--skip[_-]prefix)
+                require_optarg "${1}" "${2:-}" "main" || {
+                    echo >&2
+                    help_execute_compute_signal >&2
+                    return 1
+                }
+                skp_pfx="${2}"
+                shift 2
+                ;;
+
+            -dp|--dp|--rnd|--round|--decimals|--digits)
+                require_optarg "${1}" "${2:-}" "main" || {
+                    echo >&2
+                    help_execute_compute_signal >&2
+                    return 1
+                }
+                rnd="${2}"
+                shift 2
+                ;;
+
+            -eo|--err[_-]out)
+                require_optarg "${1}" "${2:-}" "main" || {
+                    echo >&2
+                    help_execute_compute_signal >&2
+                    return 1
+                }
+                err_out="${2}"
+                shift 2
+                ;;
+
+            -nj|--nam[_-]job|--name[_-]job)
+                require_optarg "${1}" "${2:-}" "main" || {
+                    echo >&2
+                    help_execute_compute_signal >&2
+                    return 1
+                }
+                nam_job="${2}"
+                shift 2
+                ;;
+
+            -mj|--max[_-]job)
+                require_optarg "${1}" "${2:-}" "main" || {
+                    echo >&2
+                    help_execute_compute_signal >&2
+                    return 1
+                }
+                max_job="${2}"
+                shift 2
+                ;;
+
+            -sl|--slurm)
+                slurm=true
+                shift 1
+                ;;
+
+            -tm|--time)
+                require_optarg "${1}" "${2:-}" "main" || {
+                    echo >&2
+                    help_execute_compute_signal >&2
+                    return 1
+                }
+                time="${2}"
+                shift 2
+                ;;
+
+            *)
+                echo_err "unknown option/parameter passed: '${1}'."
+                echo >&2
+                help_execute_compute_signal >&2
+                return 1
+                ;;
+        esac
+    done
+}
+
+
+#  Canonicalize mode and method aliases
+function canonicalize_args() {
+    case "${mode}" in
+        s|sig|signal)
+            mode="signal"
+
+            if [[ -z "${method}" ]]; then
                 method="norm"
-                ;;
-            *)
-                echo_err \
-                    "invalid value for '--method': '${method}'. Expected" \
-                    "'u', 'unadj', 'unadjusted', 's', 'smp', 'simple', 'r'," \
-                    "or 'raw' ('method=unadj'); 'f', 'frg', 'frag', 'l'," \
-                    "'len', 'len_frg', or 'len_frag' ('method=frag'); 'n'," \
-                    "'nrm', 'norm', or 'normalized' ('method=norm')."
-                exit 1
-                ;;
-        esac
+            fi
 
-        validate_var "csv_infile" "${csv_infile}"
-        validate_var_dir "csv_infile parent directory" \
-            "$(dirname "${csv_infile%%[,;]*}")" 0 false
-        check_str_delim "csv_infile" "${csv_infile}"
-        ;;
+            case "${method}" in
+                u|unadj|unadjusted|s|smp|simple|r|raw)
+                    method="unadj"
+                    ;;
+                f|frg|frag|frg[_-]len|frag[_-]len|l|len|len[_-]frg|len[_-]frag)
+                    method="frag"
+                    ;;
+                n|nrm|norm|normalized)
+                    method="norm"
+                    ;;
+                *)
+                    echo_err \
+                        "invalid value for '--method': '${method}'. Expected" \
+                        "'u', 'unadj', 'unadjusted', 's', 'smp', 'simple'," \
+                        "'r', or 'raw' ('method=unadj'); 'f', 'frg', 'frag'," \
+                        "'l', 'len', 'len_frg', or 'len_frag'" \
+                        "('method=frag'); 'n', 'nrm', 'norm', or" \
+                        "'normalized' ('method=norm')."
+                    return 1
+                    ;;
+            esac
 
-    r|rat|ratio)
-        mode="ratio"
+            validate_var "csv_infile" "${csv_infile}"
+            validate_var_dir "csv_infile parent directory" \
+                "$(dirname "${csv_infile%%[,;]*}")" 0 false
+            check_str_delim "csv_infile" "${csv_infile}"
+            ;;
 
-        if [[ -z "${method}" ]]; then
-            method="unadj"
-        fi
+        r|rat|ratio)
+            mode="ratio"
 
-        case "${method}" in
-            u|unadj|unadjusted|s|smp|simple|r|raw)
+            if [[ -z "${method}" ]]; then
                 method="unadj"
-                ;;
-            2|l2|lg2|log2)
-                method="log2"
-                ;;
-            ur|unadj[_-]r|unadjusted[_-]r|sr|smp[_-]r|simple[_-]r|rr|raw[_-]r)
-                method="unadj_r"
-                ;;
-            2r|l2r|l2[_-]r|lg2[_-]r|log2[_-]r)
-                method="log2_r"
-                ;;
-            *)
-                echo_err \
-                    "invalid value for '--method': '${method}'. Expected" \
-                    "'u', 'unadj', 'unadjusted', 's', 'smp', 'simple', 'r'," \
-                    "or 'raw' ('method=unadj'); '2', 'l2', 'lg2', or 'log2'" \
-                    " ('method=log2'); 'ur', 'unadj_r', 'unadjusted_r', 'sr'," \
-                    "'smp_r', 'simple_r', 'rr', or 'raw_r'" \
-                    " ('method=unadj_r'); or '2r', 'l2r', 'l2_r', 'lg2_r'," \
-                    " or 'log2_r' ('method=log2_r')."
-                exit 1
-                ;;
+            fi
 
-        esac
+            case "${method}" in
+                u|unadj|unadjusted|s|smp|simple|r|raw)
+                    method="unadj"
+                    ;;
+                2|l2|lg2|log2)
+                    method="log2"
+                    ;;
+                ur|unadj[_-]r|unadjusted[_-]r|sr|smp[_-]r|simple[_-]r|rr|raw[_-]r)
+                    method="unadj_r"
+                    ;;
+                2r|l2r|l2[_-]r|lg2[_-]r|log2[_-]r)
+                    method="log2_r"
+                    ;;
+                *)
+                    echo_err \
+                        "invalid value for '--method': '${method}'. Expected" \
+                        "'u', 'unadj', 'unadjusted', 's', 'smp', 'simple', 'r'," \
+                        "or 'raw' ('method=unadj'); '2', 'l2', 'lg2', or 'log2'" \
+                        " ('method=log2'); 'ur', 'unadj_r', 'unadjusted_r', 'sr'," \
+                        "'smp_r', 'simple_r', 'rr', or 'raw_r'" \
+                        " ('method=unadj_r'); or '2r', 'l2r', 'l2_r', 'lg2_r'," \
+                        " or 'log2_r' ('method=log2_r')."
+                    return 1
+                    ;;
+            esac
 
-        validate_var "csv_fil_A" "${csv_fil_A}"
-        validate_var_dir "csv_fil_A parent directory" \
-            "$(dirname "${csv_fil_A%%[,;]*}")" 0 false
-        check_str_delim "csv_fil_A" "${csv_fil_A}"
+            validate_var "csv_fil_A" "${csv_fil_A}"
+            validate_var_dir "csv_fil_A parent directory" \
+                "$(dirname "${csv_fil_A%%[,;]*}")" 0 false
+            check_str_delim "csv_fil_A" "${csv_fil_A}"
 
-        validate_var "csv_fil_B" "${csv_fil_B}"
-        validate_var_dir "csv_fil_B parent directory" \
-            "$(dirname "${csv_fil_B%%[,;]*}")" 0 false
-        check_str_delim "csv_fil_B" "${csv_fil_B}"
-        ;;
+            validate_var "csv_fil_B" "${csv_fil_B}"
+            validate_var_dir "csv_fil_B parent directory" \
+                "$(dirname "${csv_fil_B%%[,;]*}")" 0 false
+            check_str_delim "csv_fil_B" "${csv_fil_B}"
+            ;;
 
-    c|coord|coordinates)
-        mode="coord"
+        c|coord|coordinates)
+            mode="coord"
 
-        if [[ -n "${method}" ]]; then
-            echo_warn \
-                "argument '--method' is not applicable with '--mode" \
-                "coord'. Ignoring/unsetting 'method=${method}'."
-        fi
-        unset method
+            if [[ -n "${method}" ]]; then
+                echo_warn \
+                    "argument '--method' is not applicable with '--mode" \
+                    "coord'. Ignoring/unsetting 'method=${method}'."
+            fi
+            unset method
 
-        validate_var "csv_infile" "${csv_infile}"
-        validate_var_dir "csv_infile parent directory" \
-            "$(dirname "${csv_infile%%[,;]*}")" 0 false
-        check_str_delim "csv_infile" "${csv_infile}"
-        ;;
+            validate_var "csv_infile" "${csv_infile}"
+            validate_var_dir "csv_infile parent directory" \
+                "$(dirname "${csv_infile%%[,;]*}")" 0 false
+            check_str_delim "csv_infile" "${csv_infile}"
+            ;;
 
-    *)
-        echo_err \
-            "invalid value for '--mode': '${mode}'. Expected 's', 'sig'," \
-            "'signal', 'r', 'rat', 'ratio', 'c', 'coord', or 'coordinates'."
-        exit 1
-        ;;
-esac
-
-validate_var_dir "dir_out" "${dir_out}"
-
-if [[ "${mode}" =~ ^(signal|ratio)$ ]]; then
-    validate_var "typ_out" "${typ_out}"
-    case "${typ_out}" in
-        bedGraph|bedGraph.gz|bedgraph|bedgraph.gz|bdg|bdg.gz|bg|bg.gz) : ;;
         *)
-            echo_warn \
-                "unsupported value for '--typ_out' with '--mode ${mode}':" \
-                "'${typ_out}'. Coercing '--typ_out' to 'bedGraph.gz'."
-            typ_out="bedGraph.gz"
+            echo_err \
+                "invalid value for '--mode': '${mode}'. Expected 's', 'sig'," \
+                "'signal', 'r', 'rat', 'ratio', 'c', 'coord', or 'coordinates'."
+            return 1
             ;;
     esac
+}
 
-    if [[ -n "${prefix}" && ! "${prefix}" =~ ^[a-zA-Z0-9._-]+$ ]]; then
-        echo_warn \
-            "user-supplied '--prefix' contains unusual characters:" \
-            "'${prefix}'. Proceeding, but this may result in malformed" \
-            "filenames or other issues."
-    fi
 
-    if [[ "${mode}" == "signal" ]]; then
-        #  If user didn’t supply '--siz_bin', apply a hardcoded default: 10 bp
-        if [[ -z "${siz_bin}" ]]; then siz_bin=10; fi
+#  Validate scalar arguments and assign derived scalar defaults
+function validate_args() {
+    validate_var "env_nam" "${env_nam}"
+    check_env_installed "${env_nam}"
 
-        check_int_pos "${siz_bin}" "siz_bin"
+    validate_var_dir  "dir_scr" "${dir_scr}" 0 false
+
+    validate_var_file "scr_sub" "${scr_sub}"
+
+    validate_var "threads" "${threads}"
+    check_int_pos "${threads}" "threads"
+
+    validate_var_dir "dir_out" "${dir_out}"
+
+    if [[ "${mode}" =~ ^(signal|ratio)$ ]]; then
+        validate_var "typ_out" "${typ_out}"
+        case "${typ_out}" in
+            bedGraph|bedGraph.gz|bedgraph|bedgraph.gz|bdg|bdg.gz|bg|bg.gz) : ;;
+            *)
+                echo_warn \
+                    "unsupported value for '--typ_out' with '--mode ${mode}':" \
+                    "'${typ_out}'. Coercing '--typ_out' to 'bedGraph.gz'."
+                typ_out="bedGraph.gz"
+                ;;
+        esac
+
+        if [[ -n "${prefix}" && ! "${prefix}" =~ ^[a-zA-Z0-9._-]+$ ]]; then
+            echo_warn \
+                "user-supplied '--prefix' contains unusual characters:" \
+                "'${prefix}'. Proceeding, but this may result in malformed" \
+                "filenames or other issues."
+        fi
+
+        if [[ "${mode}" == "signal" ]]; then
+            #  If user didn’t supply '--siz_bin', apply a hardcoded default:
+            #+ 10 bp
+            if [[ -z "${siz_bin}" ]]; then siz_bin=10; fi
+
+            check_int_pos "${siz_bin}" "siz_bin"
+        else
+            #  For 'mode=ratio', ignore '--siz_bin' if the user supplied it
+            if [[ -n "${siz_bin}" ]]; then
+                echo_warn \
+                    "argument '--siz_bin' is not applicable with '--mode" \
+                    "${mode}'. Ignoring/unsetting '--siz_bin ${siz_bin}'."
+                unset siz_bin
+            fi
+        fi
     else
-        #  For 'mode=ratio', ignore '--siz_bin' if the user tried to supply it
+        validate_var "typ_out" "${typ_out}"
+        case "${typ_out}" in
+            bedGraph|bedGraph.gz|bedgraph|bedgraph.gz|bdg|bdg.gz|bg|bg.gz)
+                echo_warn \
+                    "unsupported value for '--typ_out' with '--mode ${mode}':" \
+                    "'${typ_out}'. Coercing '--typ_out' to 'bed.gz'."
+                typ_out="bed.gz"
+                ;;
+
+            bed|bed.gz) : ;;
+
+            *)
+                echo_err \
+                    "invalid value for '--typ_out': '${typ_out}'. Expected" \
+                    "'bed' or 'bed.gz'."
+                return 1
+                ;;
+        esac
+
+        #  '--siz_bin' is not applicable with 'mode=coord', so ignore if
+        #+ supplied
         if [[ -n "${siz_bin}" ]]; then
             echo_warn \
                 "argument '--siz_bin' is not applicable with '--mode ${mode}'." \
@@ -849,588 +886,568 @@ if [[ "${mode}" =~ ^(signal|ratio)$ ]]; then
             unset siz_bin
         fi
     fi
-else
-    validate_var "typ_out" "${typ_out}"
-    case "${typ_out}" in
-        bedGraph|bedGraph.gz|bedgraph|bedgraph.gz|bdg|bdg.gz|bg|bg.gz)
+
+    if [[ -n "${csv_scl_fct}" ]]; then
+        check_str_delim "csv_scl_fct" "${csv_scl_fct}"
+    fi
+
+    if [[ -n "${csv_usr_frg}" ]]; then
+        check_str_delim "csv_usr_frg" "${csv_usr_frg}"
+    fi
+
+    if [[ -n "${csv_dep_min}" ]]; then
+        check_str_delim "csv_dep_min" "${csv_dep_min}"
+    fi
+
+    if [[ -n "${csv_pseudo}" ]]; then
+        check_str_delim "csv_pseudo" "${csv_pseudo}"
+    fi
+
+    #TODO: determine best place for this
+    if [[ -n "${ref_fa}" ]]; then
+        validate_var_file "ref_fa" "${ref_fa}"
+    fi
+
+    if [[ "${mode}" == "ratio" ]]; then
+        if [[ -n "${eps}" ]]; then check_flt_nonneg "${eps}" "eps"; fi
+
+        if [[ -n "${skip_00}" ]]; then
+            case "${skip_00}" in
+                pre_scale|post_scale) : ;;
+                *)
+                    echo_err \
+                        "invalid value for '--skip_00': '${skip_00}'." \
+                        "Expected 'pre_scale' or 'post_scale'."
+                    return 1
+                    ;;
+            esac
+        fi
+
+        if [[ -n "${csv_dep_min}" && -n "${csv_pseudo}" ]]; then
             echo_warn \
-                "unsupported value for '--typ_out' with '--mode ${mode}':" \
-                "'${typ_out}'. Coercing '--typ_out' to 'bed.gz'."
-            typ_out="bed.gz"
-            ;;
-
-        bed|bed.gz) : ;;
-
-        *)
-            echo_err \
-                "invalid value for '--typ_out': '${typ_out}'. Expected" \
-                "'bed' or 'bed.gz'."
-            exit 1
-            ;;
-    esac
-
-    #  '--siz_bin' is not applicable with 'mode=coord', so ignore if supplied
-    if [[ -n "${siz_bin}" ]]; then
-        echo_warn \
-            "argument '--siz_bin' is not applicable with '--mode ${mode}'." \
-            "Ignoring/unsetting '--siz_bin ${siz_bin}'."
-        unset siz_bin
-    fi
-fi
-
-if [[ -n "${csv_scl_fct}" ]]; then
-    check_str_delim "csv_scl_fct" "${csv_scl_fct}"
-fi
-
-if [[ -n "${csv_usr_frg}" ]]; then
-    check_str_delim "csv_usr_frg" "${csv_usr_frg}"
-fi
-
-if [[ -n "${csv_dep_min}" ]]; then
-    check_str_delim "csv_dep_min" "${csv_dep_min}"
-fi
-
-if [[ -n "${csv_pseudo}" ]]; then
-    check_str_delim "csv_pseudo" "${csv_pseudo}"
-fi
-
-#TODO: determine best place for this
-if [[ -n "${ref_fa}" ]]; then
-    validate_var_file "ref_fa" "${ref_fa}"
-fi
-
-if [[ "${mode}" == "ratio" ]]; then
-    if [[ -n "${eps}" ]]; then check_flt_nonneg "${eps}" "eps"; fi
-
-    if [[ -n "${skip_00}" ]]; then
-        case "${skip_00}" in
-            pre_scale|post_scale) : ;;
-            *)
-                echo_err \
-                    "invalid value for '--skip_00': '${skip_00}'." \
-                    "Expected 'pre_scale' or 'post_scale'."
-                exit 1
-                ;;
-        esac
+                "both '--csv_dep_min' and '--csv_pseudo' were supplied for" \
+                "'--mode ratio'. This is allowed, but interpretability may be" \
+                "reduced because both arguments stabilize low-depth ratio" \
+                "behavior in different ways."
+        fi
     fi
 
-    if [[ -n "${csv_dep_min}" && -n "${csv_pseudo}" ]]; then
-        echo_warn \
-            "both '--csv_dep_min' and '--csv_pseudo' were supplied for" \
-            "'--mode ratio'. This is allowed, but interpretability may be" \
-            "reduced because both arguments stabilize low-depth ratio" \
-            "behavior in different ways."
+    validate_var "rnd" "${rnd}"
+    check_int_pos "${rnd}" "rnd"
+
+    if [[ -z "${err_out}" ]]; then err_out="${dir_out}/logs"; fi
+    validate_var_dir "err_out" "${err_out}"
+
+    if [[ -z "${nam_job}" ]]; then
+        if [[ "${mode}" == "coord" ]]; then
+            nam_job="compute_${mode}"
+        else
+            nam_job="compute_${mode}_${method}"
+        fi
     fi
-fi
-
-validate_var "rnd" "${rnd}"
-check_int_pos "${rnd}" "rnd"
-
-if [[ -z "${err_out}" ]]; then err_out="${dir_out}/logs"; fi
-validate_var_dir "err_out" "${err_out}"
-
-if [[ -z "${nam_job}" ]]; then
-    if [[ "${mode}" == "coord" ]]; then
-        nam_job="compute_${mode}"
-    else
-        nam_job="compute_${mode}_${method}"
-    fi
-fi
-validate_var "nam_job" "${nam_job}"
+    validate_var "nam_job" "${nam_job}"
+}
 
 
-#  Parse and validate input vector elements -----------------------------------
-if [[ "${mode}" =~ ^(signal|coord)$ ]]; then
-    if [[ -n "${csv_infile}" ]]; then
-        IFS=',' read -r -a arr_infile <<< "${csv_infile}"
-        check_arr_nonempty "arr_infile" "csv_infile"
+#  Parse input vectors, derive outputs, and validate per-element values
+function prepare_vecs() {
+    if [[ "${mode}" =~ ^(signal|coord)$ ]]; then
+        if [[ -n "${csv_infile}" ]]; then
+            IFS=',' read -r -a arr_infile <<< "${csv_infile}"
+            check_arr_nonempty "arr_infile" "csv_infile"
+
+            for infile in "${arr_infile[@]}"; do
+                validate_var_file "infile" "${infile}"
+            done
+            unset infile
+        else
+            echo_err "variable 'csv_infile' unexpectedly empty."
+            return 1
+        fi
+
+        unset arr_outfile && declare -ga arr_outfile
+        for i in "${arr_infile[@]}"; do
+            base="$(basename "${i}")"
+            base="${base%.bam}"
+            base="${base%.cram}"
+
+            if [[ -n "${prefix}" ]]; then
+                if [[ "${base}" =~ ^IP_ ]]; then
+                    echo_warn \
+                        "filename '${base}' starts with 'IP_'. Stripping" \
+                        "this prefix before applying custom '--prefix" \
+                        "${prefix}'."
+                    base="${base#IP_}"
+                elif [[ "${base}" =~ ^in_ ]]; then
+                    echo_warn \
+                        "filename '${base}' starts with 'in_'. Stripping" \
+                        "this prefix before applying custom '--prefix" \
+                        "${prefix}'."
+                    base="${base#in_}"
+                fi
+                arr_outfile+=( "${dir_out}/${prefix}.${base}.${typ_out}" )
+            else
+                arr_outfile+=( "${dir_out}/${base}.${typ_out}" )
+            fi
+        done
+
+        check_arr_lengths "arr_outfile" "arr_infile"
 
         for infile in "${arr_infile[@]}"; do
-            validate_var_file "infile" "${infile}"
+            if [[ "${infile,,}" == *.cram && -z "${ref_fa}" ]]; then
+                echo_err \
+                    "'--ref_fa' is required when '--csv_infile' contains CRAM" \
+                    "input: '${infile}'."
+                return 1
+            fi
         done
         unset infile
-    else
-        echo_err "variable 'csv_infile' unexpectedly empty."
-        exit 1
-    fi
 
-    unset arr_outfile && declare -a arr_outfile
-    for i in "${arr_infile[@]}"; do
-        base="$(basename "${i}")"
-        base="${base%.bam}"
-        base="${base%.cram}"
-
-        if [[ -n "${prefix}" ]]; then
-            if [[ "${base}" =~ ^IP_ ]]; then
-                echo_warn \
-                    "filename '${base}' starts with 'IP_'. Stripping this" \
-                    "prefix before applying custom '--prefix ${prefix}'."
-                base="${base#IP_}"
-            elif [[ "${base}" =~ ^in_ ]]; then
-                echo_warn \
-                    "filename '${base}' starts with 'in_'. Stripping this" \
-                    "prefix before applying custom '--prefix ${prefix}'."
-                base="${base#in_}"
+        #  Scaling factors are only used for '--mode signal'
+        if [[ "${mode}" == "signal" ]]; then
+            if [[ -z "${csv_scl_fct}" ]]; then
+                unset arr_scl_fct && declare -ga arr_scl_fct
+                populate_array_empty arr_scl_fct "${#arr_infile[@]}"
+            else
+                IFS=',' read -r -a arr_scl_fct <<< "${csv_scl_fct}"
             fi
-            arr_outfile+=( "${dir_out}/${prefix}.${base}.${typ_out}" )
+
+            for s in "${arr_scl_fct[@]}"; do
+                if [[ "${s}" != "NA" ]]; then
+                    check_flt_pos "${s}" "csv_scl_fct"
+                fi
+            done
+            unset s
+
+            check_arr_lengths "arr_scl_fct" "arr_infile"
+        fi
+
+        #  User-supplied fragment lengths are allowed for both 'signal' and
+        #+ 'coord'
+        if [[ -z "${csv_usr_frg}" ]]; then
+            unset arr_usr_frg && declare -ga arr_usr_frg
+            populate_array_empty arr_usr_frg "${#arr_infile[@]}"
         else
-            arr_outfile+=( "${dir_out}/${base}.${typ_out}" )
+            IFS=',' read -r -a arr_usr_frg <<< "${csv_usr_frg}"
         fi
-    done
 
-    check_arr_lengths "arr_outfile" "arr_infile"
+        for u in "${arr_usr_frg[@]}"; do
+            if [[ "${u}" != "NA" ]]; then check_flt_pos "${u}" "csv_usr_frg"; fi
+        done
+        unset u
 
-    for infile in "${arr_infile[@]}"; do
-        if [[ "${infile,,}" == *.cram && -z "${ref_fa}" ]]; then
-            echo_err \
-                "'--ref_fa' is required when '--csv_infile' contains CRAM" \
-                "input: '${infile}'."
-            exit 1
+        check_arr_lengths "arr_usr_frg" "arr_infile"
+    else
+        if [[ -n "${csv_fil_A}" ]]; then
+            IFS=',' read -r -a arr_fil_A <<< "${csv_fil_A}"
+            check_arr_nonempty "arr_fil_A" "csv_fil_A"
+
+            for file in "${arr_fil_A[@]}"; do
+                validate_var_file "csv_fil_A" "${file}"
+            done
+            unset file
+        else
+            echo_err "variable 'csv_fil_A' unexpectedly empty."
+            return 1
         fi
-    done
-    unset infile
 
-    #  Scaling factors are only used for '--mode signal'
-    if [[ "${mode}" == "signal" ]]; then
+        if [[ -n "${csv_fil_B}" ]]; then
+            IFS=',' read -r -a arr_fil_B <<< "${csv_fil_B}"
+            check_arr_nonempty "arr_fil_B" "csv_fil_B"
+
+            for file in "${arr_fil_B[@]}"; do
+                validate_var_file "csv_fil_B" "${file}"
+            done
+            unset file
+        else
+            echo_err "variable 'csv_fil_B' unexpectedly empty."
+            return 1
+        fi
+
+        pfx_lcl="${prefix}"
+        exts=( bedGraph bedGraph.gz bedgraph bedgraph.gz bdg bdg.gz bg bg.gz )
+        unset arr_outfile && declare -ga arr_outfile
+        for i in "${arr_fil_A[@]}"; do
+            base=$(basename "${i}")
+
+            #  Strip 'IP_' prefix (if present)
+            base="${base#IP_}"
+
+            #  If not user-assigned, determine filename 'prefix' based on
+            #+ provided arguments
+            if [[ -z "${pfx_lcl}" ]]; then
+                pfx_lcl="$(generate_pfx "${method}" "${csv_scl_fct}")"
+            fi
+
+            #  Remove file extensions
+            for ext in "${exts[@]}"; do
+                base="${base%."${ext}"}"
+            done
+            unset ext
+
+            arr_outfile+=( "${dir_out}/${pfx_lcl}_${base}.${typ_out}" )
+        done
+        unset i base pfx_lcl exts
+
         if [[ -z "${csv_scl_fct}" ]]; then
-            unset arr_scl_fct && declare -a arr_scl_fct
-            populate_array_empty arr_scl_fct "${#arr_infile[@]}"
+            #  Produce per-sample sentinel entries ("NA")
+            unset arr_scl_fct && declare -ga arr_scl_fct
+            populate_array_empty arr_scl_fct "${#arr_fil_A[@]}"
         else
             IFS=',' read -r -a arr_scl_fct <<< "${csv_scl_fct}"
         fi
 
         for s in "${arr_scl_fct[@]}"; do
-            if [[ "${s}" != "NA" ]]; then check_flt_pos "${s}" "csv_scl_fct"; fi
+            check_scl_fct_ratio "${s}"
         done
         unset s
 
-        check_arr_lengths "arr_scl_fct" "arr_infile"
-    fi
+        if [[ -z "${csv_dep_min}" ]]; then
+            #  Produce per-sample sentinel entries ("NA")
+            unset arr_dep_min && declare -ga arr_dep_min
+            populate_array_empty arr_dep_min "${#arr_fil_A[@]}"
+        else
+            IFS=',' read -r -a arr_dep_min <<< "${csv_dep_min}"
+        fi
 
-    #  User-supplied fragment lengths are allowed for both 'signal' and 'coord'
-    if [[ -z "${csv_usr_frg}" ]]; then
-        unset arr_usr_frg && declare -a arr_usr_frg
-        populate_array_empty arr_usr_frg "${#arr_infile[@]}"
-    else
-        IFS=',' read -r -a arr_usr_frg <<< "${csv_usr_frg}"
-    fi
+        if [[ -z "${csv_pseudo}" ]]; then
+            #  Produce per-sample sentinel entries ("NA")
+            unset arr_pseudo && declare -ga arr_pseudo
+            populate_array_empty arr_pseudo "${#arr_fil_A[@]}"
+        else
+            IFS=',' read -r -a arr_pseudo <<< "${csv_pseudo}"
+        fi
 
-    for u in "${arr_usr_frg[@]}"; do
-        if [[ "${u}" != "NA" ]]; then check_flt_pos "${u}" "csv_usr_frg"; fi
-    done
-    unset u
+        for p in "${arr_pseudo[@]}"; do
+            if [[ "${p}" == "NA" ]]; then continue; fi
 
-    check_arr_lengths "arr_usr_frg" "arr_infile"
-else
-    if [[ -n "${csv_fil_A}" ]]; then
-        IFS=',' read -r -a arr_fil_A <<< "${csv_fil_A}"
-        check_arr_nonempty "arr_fil_A" "csv_fil_A"
+            if [[ "${p}" != *:* ]]; then
+                check_flt_nonneg "${p}" "csv_pseudo"
+                continue
+            fi
 
-        for file in "${arr_fil_A[@]}"; do
-            validate_var_file "csv_fil_A" "${file}"
+            if [[ "${p}" == *:*:* ]]; then
+                echo_err \
+                    "invalid pseudocount spec in '--csv_pseudo': '${p}'." \
+                    "Expected 'A' or 'A:B'."
+                return 1
+            fi
+
+            IFS=':' read -r pseudo_A pseudo_B <<< "${p}"
+
+            if [[ -z "${pseudo_A}" || -z "${pseudo_B}" ]]; then
+                echo_err \
+                    "invalid pseudocount spec in '--csv_pseudo': '${p}'." \
+                    "Expected 'A' or 'A:B'."
+                return 1
+            fi
+
+            check_flt_nonneg "${pseudo_A}" "csv_pseudo"
+            check_flt_nonneg "${pseudo_B}" "csv_pseudo"
         done
-        unset file
-    else
-        echo_err "variable 'csv_fil_A' unexpectedly empty."
-        exit 1
-    fi
+        unset p pseudo_A pseudo_B
 
-    if [[ -n "${csv_fil_B}" ]]; then
-        IFS=',' read -r -a arr_fil_B <<< "${csv_fil_B}"
-        check_arr_nonempty "arr_fil_B" "csv_fil_B"
-
-        for file in "${arr_fil_B[@]}"; do
-            validate_var_file "csv_fil_B" "${file}"
+        for d in "${arr_dep_min[@]}"; do
+            if [[ "${d}" != "NA" ]]; then check_flt_pos "${d}" "csv_dep_min"; fi
         done
-        unset file
-    else
-        echo_err "variable 'csv_fil_B' unexpectedly empty."
-        exit 1
+        unset d
+
+        check_arr_lengths "arr_fil_B"   "arr_fil_A"
+        check_arr_lengths "arr_outfile" "arr_fil_A"
+        check_arr_lengths "arr_scl_fct" "arr_fil_A"
+        check_arr_lengths "arr_dep_min" "arr_fil_A"
+        check_arr_lengths "arr_pseudo"  "arr_fil_A"
     fi
-
-    pfx_lcl="${prefix}"
-    exts=( bedGraph bedGraph.gz bedgraph bedgraph.gz bdg bdg.gz bg bg.gz )
-    unset arr_outfile && declare -a arr_outfile
-    for i in "${arr_fil_A[@]}"; do
-        base=$(basename "${i}")
-
-        #  Strip 'IP_' prefix (if present)
-        base="${base#IP_}"
-
-        #  If not user-assigned, determine filename 'prefix' based on provided
-        #+ arguments
-        if [[ -z "${pfx_lcl}" ]]; then
-            pfx_lcl="$(generate_prefix "${method}" "${csv_scl_fct}")"
-        fi
-
-        #  Remove file extensions
-        for ext in "${exts[@]}"; do
-            base="${base%."${ext}"}"
-        done
-        unset ext
-
-        arr_outfile+=( "${dir_out}/${pfx_lcl}_${base}.${typ_out}" )
-    done
-    unset i base pfx_lcl exts
-
-    if [[ -z "${csv_scl_fct}" ]]; then
-        #  Produce per-sample sentinel entries ("NA")
-        unset arr_scl_fct && declare -a arr_scl_fct
-        populate_array_empty arr_scl_fct "${#arr_fil_A[@]}"
-    else
-        IFS=',' read -r -a arr_scl_fct <<< "${csv_scl_fct}"
-    fi
-
-    for s in "${arr_scl_fct[@]}"; do
-        check_scl_fct_ratio "${s}"
-    done
-    unset s
-
-    if [[ -z "${csv_dep_min}" ]]; then
-        #  Produce per-sample sentinel entries ("NA")
-        unset arr_dep_min && declare -a arr_dep_min
-        populate_array_empty arr_dep_min "${#arr_fil_A[@]}"
-    else
-        IFS=',' read -r -a arr_dep_min <<< "${csv_dep_min}"
-    fi
-
-    if [[ -z "${csv_pseudo}" ]]; then
-        #  Produce per-sample sentinel entries ("NA")
-        unset arr_pseudo && declare -a arr_pseudo
-        populate_array_empty arr_pseudo "${#arr_fil_A[@]}"
-    else
-        IFS=',' read -r -a arr_pseudo <<< "${csv_pseudo}"
-    fi
-
-    for p in "${arr_pseudo[@]}"; do
-        if [[ "${p}" == "NA" ]]; then continue; fi
-
-        if [[ "${p}" != *:* ]]; then
-            check_flt_nonneg "${p}" "csv_pseudo"
-            continue
-        fi
-
-        if [[ "${p}" == *:*:* ]]; then
-            echo_err \
-                "invalid pseudocount spec in '--csv_pseudo': '${p}'." \
-                "Expected 'A' or 'A:B'."
-            exit 1
-        fi
-
-        IFS=':' read -r pseudo_A pseudo_B <<< "${p}"
-
-        if [[ -z "${pseudo_A}" || -z "${pseudo_B}" ]]; then
-            echo_err \
-                "invalid pseudocount spec in '--csv_pseudo': '${p}'." \
-                "Expected 'A' or 'A:B'."
-            exit 1
-        fi
-
-        check_flt_nonneg "${pseudo_A}" "csv_pseudo"
-        check_flt_nonneg "${pseudo_B}" "csv_pseudo"
-    done
-    unset p pseudo_A pseudo_B
-
-    for d in "${arr_dep_min[@]}"; do
-        if [[ "${d}" != "NA" ]]; then check_flt_pos "${d}" "csv_dep_min"; fi
-    done
-    unset d
-
-    check_arr_lengths "arr_fil_B"   "arr_fil_A"
-    check_arr_lengths "arr_outfile" "arr_fil_A"
-    check_arr_lengths "arr_scl_fct" "arr_fil_A"
-    check_arr_lengths "arr_dep_min" "arr_fil_A"
-    check_arr_lengths "arr_pseudo"  "arr_fil_A"
-fi
+}
 
 
-#  Parse job execution parameters ---------------------------------------------
-validate_var "max_job" "${max_job}"
-check_int_pos "${max_job}" "max_job"
-
-if [[ "${slurm}" == "true" ]]; then
-    if [[ "${mode}" == "ratio" ]]; then
-        max_job=$(reset_max_job "${max_job}" "${#arr_outfile[@]}")
-    else
-        max_job=$(reset_max_job "${max_job}" "${#arr_infile[@]}")
-    fi
-
-    validate_var "time" "${time}"
-    check_format_time "${time}"
-elif [[ "${max_job}" -le 1 ]]; then
-    #  Serial local execution does not require parallel job detection
-    par_job=1
-    unset time
-
-    validate_var "par_job" "${par_job}"
-    check_int_pos "${par_job}" "par_job"
-else
-    IFS=';' read -r threads par_job < <(
-        set_params_parallel "${threads}" "${max_job}"
-    )
-    unset time
-
-    validate_var "par_job" "${par_job}"
-    check_int_pos "${par_job}" "par_job"
-fi
-
-#  Debug parallelization information and summary output of resolved states
-print_parallel_info \
-    "${slurm}" "${max_job:-UNSET}" "${par_job:-UNSET}" "${threads}" \
-    "arr_infile" "arr_fil_A" "arr_fil_B" "arr_outfile" \
-    "arr_scl_fct" "arr_usr_frg" "arr_dep_min" "arr_pseudo"
-
-if [[ "${mode}" == "signal" ]]; then
-    summarize_sig_norm "${method}" "${csv_scl_fct}"
-fi
-
-
-#  Activate environment and check that dependencies are in PATH ---------------
-#TODO: this env activation block is repeated verbatim many times: modularize?
-env_msg=(
-    "'handle_env' failed for 'env_nam=${env_nam}'. Check that Conda/Mamba are"
-    "available and that the environment exists."
-)
-
-if [[ "${verbose}" == "true" ]]; then
-    if out="$(handle_env "${env_nam}")"; then
-        print_banner_pretty -tx "${out:-"${env_nam} already active."}" -w "%"
-        echo
-        echo
-    else
-        echo_err "${env_msg[*]}"
-        exit 1
-    fi
-else
-    if ! handle_env "${env_nam}" > /dev/null 2>&1; then
-        echo_err "${env_msg[*]}"
-        exit 1
-    fi
-fi
-
-check_pgrm_path python
-
-if [[ "${slurm}" == "true" ]]; then
-    check_pgrm_path sbatch
-elif [[ "${par_job}" -gt 1 ]]; then
-    check_pgrm_path parallel
-fi
-
-
-#  Do the main work ===========================================================
-if [[ "${verbose}" == "true" ]]; then
-    print_banner_pretty "Hardcoded variable assignments"
-    echo
-    echo "env_nam=${env_nam}"
-    echo "scr_sub=${scr_sub}"
-    echo "par_job=${par_job:-UNSET}"
-    echo
-    echo
-    print_banner_pretty "Argument variable assignments"
-    echo
-    echo "verbose=${verbose}"
-    echo "dry_run=${dry_run}"
-    echo "threads=${threads}"
-    echo "mode=${mode}"
-    echo "method=${method:-UNSET}"
-    echo "csv_infile=${csv_infile:-UNSET}"
-    echo "ref_fa=${ref_fa:-UNSET}"  #TODO: determine best place for this; where is it in 'submit'?
-    echo "csv_fil_A=${csv_fil_A:-UNSET}"
-    echo "csv_fil_B=${csv_fil_B:-UNSET}"
-    echo "dir_out=${dir_out}"
-    echo "typ_out=${typ_out}"
-    echo "prefix=${prefix:-UNSET}"
-    echo "track=${track}"
-    echo "siz_bin=${siz_bin:-UNSET}"
-    echo "csv_scl_fct=${csv_scl_fct:-UNSET}"
-    echo "csv_usr_frg=${csv_usr_frg:-UNSET}"
-    echo "csv_dep_min=${csv_dep_min:-UNSET}"
-    echo "csv_pseudo=${csv_pseudo:-UNSET}"
-    echo "eps=${eps:-UNSET}"
-    echo "skip_00=${skip_00:-UNSET}"
-    echo "drp_nan=${drp_nan}"
-    echo "skp_pfx=${skp_pfx:-UNSET}"
-    echo "rnd=${rnd}"
-    echo "err_out=${err_out}"
-    echo "nam_job=${nam_job}"
-    echo "max_job=${max_job:-UNSET}"
-    echo "slurm=${slurm}"
-    echo "time=${time:-UNSET}"
-    echo
-    echo
-    print_banner_pretty "Arrays derived from variables"
-    echo
-
-    if [[ "${mode}" =~ ^(signal|coord)$ ]]; then
-        echo "arr_infile=( ${arr_infile[*]} )"
-        echo
-    elif [[ "${mode}" == "ratio" ]]; then
-        echo "arr_fil_A=( ${arr_fil_A[*]} )"
-        echo
-        echo "arr_fil_B=( ${arr_fil_B[*]} )"
-        echo
-    fi
-
-    echo "arr_outfile=( ${arr_outfile[*]} )"
-    echo
-
+#  Validate final vector shapes after preparation and auto-population
+function validate_vecs() {
     if [[ "${mode}" == "signal" ]]; then
-        echo "arr_scl_fct=( ${arr_scl_fct[*]} )"
-        echo
-        echo "arr_usr_frg=( ${arr_usr_frg[*]} )"
-        echo
+        check_arr_lengths "arr_infile" "arr_outfile" || return 1
+        check_arr_lengths "arr_infile" "arr_scl_fct" || return 1
+        check_arr_lengths "arr_infile" "arr_usr_frg" || return 1
     elif [[ "${mode}" == "coord" ]]; then
-        echo "arr_usr_frg=( ${arr_usr_frg[*]} )"
-        echo
-    elif [[ "${mode}" == "ratio" ]]; then
-        echo "arr_scl_fct=( ${arr_scl_fct[*]} )"
-        echo
-        echo "arr_dep_min=( ${arr_dep_min[*]} )"
-        echo
-        echo "arr_pseudo=( ${arr_pseudo[*]} )"
-        echo
+        check_arr_lengths "arr_infile" "arr_outfile" || return 1
+        check_arr_lengths "arr_infile" "arr_usr_frg" || return 1
+    else
+        check_arr_lengths "arr_fil_A" "arr_fil_B"    || return 1
+        check_arr_lengths "arr_fil_A" "arr_outfile"  || return 1
+        check_arr_lengths "arr_fil_A" "arr_scl_fct"  || return 1
+        check_arr_lengths "arr_fil_A" "arr_dep_min"  || return 1
+        check_arr_lengths "arr_fil_A" "arr_pseudo"   || return 1
+    fi
+}
+
+
+#  Configure Slurm, GNU Parallel, or serial execution parameters
+function config_exec() {
+    validate_var "max_job" "${max_job}"
+    check_int_pos "${max_job}" "max_job"
+
+    if [[ "${slurm}" == "true" ]]; then
+        if [[ "${mode}" == "ratio" ]]; then
+            max_job=$(reset_max_job "${max_job}" "${#arr_outfile[@]}")
+        else
+            max_job=$(reset_max_job "${max_job}" "${#arr_infile[@]}")
+        fi
+
+        validate_var "time" "${time}"
+        check_format_time "${time}"
+    elif [[ "${max_job}" -le 1 ]]; then
+        #  Serial local execution does not require parallel job detection
+        par_job=1
+        unset time
+
+        validate_var "par_job" "${par_job}"
+        check_int_pos "${par_job}" "par_job"
+    else
+        IFS=';' read -r threads par_job < <(
+            set_params_parallel "${threads}" "${max_job}"
+        )
+        unset time
+
+        validate_var "par_job" "${par_job}"
+        check_int_pos "${par_job}" "par_job"
     fi
 
-    echo
-fi
-
-if [[ "${mode}" =~ ^(signal|coord)$ ]]; then
-    csv_infile=$(echo "${arr_infile[*]}"  | tr ' ' ',')
-    csv_outfile=$(echo "${arr_outfile[*]}" | tr ' ' ',')
-    csv_usr_frg=$(echo "${arr_usr_frg[*]}" | tr ' ' ',')
+    #  Debug parallelization information and summary output of resolved states
+    print_parallel_info \
+        "${slurm}" "${max_job:-UNSET}" "${par_job:-UNSET}" "${threads}" \
+        "arr_infile" "arr_fil_A" "arr_fil_B" "arr_outfile" \
+        "arr_scl_fct" "arr_usr_frg" "arr_dep_min" "arr_pseudo"
 
     if [[ "${mode}" == "signal" ]]; then
-        csv_scl_fct=$(echo "${arr_scl_fct[*]}" | tr ' ' ',')
+        summarize_sig_norm "${method}" "${csv_scl_fct}"
     fi
-elif [[ "${mode}" == "ratio" ]]; then
-    csv_fil_A=$(echo "${arr_fil_A[*]}"  | tr ' ' ',')
-    csv_fil_B=$(echo "${arr_fil_B[*]}"  | tr ' ' ',')
-    csv_outfile=$(echo "${arr_outfile[*]}" | tr ' ' ',')
-    csv_scl_fct=$(echo "${arr_scl_fct[*]}" | tr ' ' ',')
-    csv_dep_min=$(echo "${arr_dep_min[*]}" | tr ' ' ',')
-    csv_pseudo=$(echo "${arr_pseudo[*]}" | tr ' ' ',')
-fi
+}
 
-if [[ "${verbose}" == "true" ]]; then
-    print_banner_pretty "Variable assignments constructed from arrays"
-    echo
 
-    if [[ "${mode}" =~ ^(signal|coord)$ ]]; then
-        echo "csv_infile=\"${csv_infile}\""
-        echo
-        echo "ref_fa=\"${ref_fa:-UNSET}\""  #TODO: this spot is fine, I think
-        echo
-    elif [[ "${mode}" == "ratio" ]]; then
-        echo "csv_fil_A=\"${csv_fil_A}\""
-        echo
-        echo "csv_fil_B=\"${csv_fil_B}\""
-        echo
-    fi
+#  Activate environment and check that dependencies are in PATH
+function setup_env() {
+    local out
+    local -a env_msg
 
-    echo "csv_outfile=\"${csv_outfile}\""
-    echo
-
-    if [[ "${mode}" != "coord" ]]; then
-        echo "csv_scl_fct=\"${csv_scl_fct}\""
-        echo
-    fi
-
-    if [[ "${mode}" =~ ^(signal|coord)$ ]]; then
-        echo "csv_usr_frg=\"${csv_usr_frg}\""
-        echo
-    elif [[ "${mode}" == "ratio" ]]; then
-        echo "csv_dep_min=\"${csv_dep_min}\""
-        echo
-        echo "csv_pseudo=\"${csv_pseudo}\""
-        echo
-    fi
-
-    echo
-fi
-
-if [[ "${slurm}" == "true" ]]; then
-    #  Slurm execution
-    build_cmd "UNSET"
-
-    unset cmd_slurm && declare -a cmd_slurm
-    cmd_slurm=(
-        sbatch
-        --job-name="${nam_job}"
-        --nodes=1
-        --cpus-per-task="${threads}"
-        --time="${time}"
-        --output="${err_out}/${nam_job}.%A-%a.stdout.txt"
-        --error="${err_out}/${nam_job}.%A-%a.stderr.txt"
-        --array="1-${#arr_outfile[@]}%${max_job}"
-        "${cmd_bld[@]}"
+    #TODO: this environment activation block is repeated verbatim many times in
+    #+     'execute_*.sh' scripts: modularize?
+    env_msg=(
+        "'handle_env' failed for 'env_nam=${env_nam}'. Check that Conda/Mamba"
+        "are available and that the environment exists."
     )
 
-    if [[ "${dry_run}" == "true" || "${verbose}" == "true" ]]; then
-        print_banner_pretty "Call to 'sbatch'"
-        echo
-        printf '%q ' "${cmd_slurm[@]}"
-        echo
-        echo
-    fi
-
-    if [[ "${dry_run}" == "false" ]]; then
-        "${cmd_slurm[@]}"
-    fi
-else
-    #  Non-Slurm execution: GNU Parallel ('par_job > 1') or serial
-    #+ ('par_job == 1')
-    if [[ "${par_job}" -gt 1 ]]; then
-        config="${err_out}/${nam_job}.config_parallel.txt"
-
-        if [[ -f "${config}" ]]; then rm "${config}"; fi
-
-        for idx in "${!arr_outfile[@]}"; do
-            build_cmd "${idx}"
-            cmd_bld=( "${BASH}" "${cmd_bld[@]}" )
-
-            IFS=';' read -r log_out log_err < <(
-                get_submit_logs "${arr_outfile[idx]}"
-            )
-
-            {
-                print_built_cmd "${log_out}" "${log_err}"
-            } >> "${config}" || {
-                echo_err "failed to write command, index no. '${idx}'."
-                exit 1
-            }
-        done
-
-        if [[ "${dry_run}" == "true" || "${verbose}" == "true" ]]; then
-            print_banner_pretty "GNU Parallel execution"
-            echo
-            parallel --jobs "${par_job}" --dryrun < "${config}"
+    if [[ "${verbose}" == "true" ]]; then
+        if out="$(handle_env "${env_nam}")"; then
+            print_banner_pretty \
+                -tx "${out:-"${env_nam} already active."}" \
+                -w "%"
             echo
             echo
-        fi
-
-        if [[ "${dry_run}" == "false" ]]; then
-            parallel --jobs "${par_job}" < "${config}"
+        else
+            echo_err "${env_msg[*]}"
+            return 1
         fi
     else
-        if [[ "${dry_run}" == "true" || "${verbose}" == "true" ]]; then
-            print_banner_pretty "Serial execution"
+        if ! \
+            handle_env "${env_nam}" > /dev/null 2>&1
+        then
+            echo_err "${env_msg[*]}"
+            return 1
+        fi
+    fi
+
+    check_pgrm_path python || return 1
+
+    if [[ "${slurm}" == "true" ]]; then
+        check_pgrm_path sbatch || return 1
+    elif [[ "${par_job}" -gt 1 ]]; then
+        check_pgrm_path parallel || return 1
+    fi
+}
+
+
+#  Print hardcoded defaults, argument values, and prepared arrays
+function print_state_debug() {
+    if [[ "${verbose}" == "true" ]]; then
+        print_banner_pretty "Hardcoded variable assignments"
+        echo
+        echo "env_nam=${env_nam}"
+        echo "scr_sub=${scr_sub}"
+        echo "par_job=${par_job:-UNSET}"
+        echo
+        echo
+        print_banner_pretty "Argument variable assignments"
+        echo
+        echo "verbose=${verbose}"
+        echo "dry_run=${dry_run}"
+        echo "threads=${threads}"
+        echo "mode=${mode}"
+        echo "method=${method:-UNSET}"
+        echo "csv_infile=${csv_infile:-UNSET}"
+        echo "ref_fa=${ref_fa:-UNSET}"
+        echo "csv_fil_A=${csv_fil_A:-UNSET}"
+        echo "csv_fil_B=${csv_fil_B:-UNSET}"
+        echo "dir_out=${dir_out}"
+        echo "typ_out=${typ_out}"
+        echo "prefix=${prefix:-UNSET}"
+        echo "track=${track}"
+        echo "siz_bin=${siz_bin:-UNSET}"
+        echo "csv_scl_fct=${csv_scl_fct:-UNSET}"
+        echo "csv_usr_frg=${csv_usr_frg:-UNSET}"
+        echo "csv_dep_min=${csv_dep_min:-UNSET}"
+        echo "csv_pseudo=${csv_pseudo:-UNSET}"
+        echo "eps=${eps:-UNSET}"
+        echo "skip_00=${skip_00:-UNSET}"
+        echo "drp_nan=${drp_nan}"
+        echo "skp_pfx=${skp_pfx:-UNSET}"
+        echo "rnd=${rnd}"
+        echo "err_out=${err_out}"
+        echo "nam_job=${nam_job}"
+        echo "max_job=${max_job:-UNSET}"
+        echo "slurm=${slurm}"
+        echo "time=${time:-UNSET}"
+        echo
+        echo
+        print_banner_pretty "Arrays derived from variables"
+        echo
+
+        if [[ "${mode}" =~ ^(signal|coord)$ ]]; then
+            echo "arr_infile=( ${arr_infile[*]} )"
             echo
+        elif [[ "${mode}" == "ratio" ]]; then
+            echo "arr_fil_A=( ${arr_fil_A[*]} )"
+            echo
+            echo "arr_fil_B=( ${arr_fil_B[*]} )"
+            echo
+        fi
 
-            for idx in "${!arr_outfile[@]}"; do
-                build_cmd "${idx}"
-                cmd_bld=( "${BASH}" "${cmd_bld[@]}" )
+        echo "arr_outfile=( ${arr_outfile[*]} )"
+        echo
 
-                IFS=';' read -r log_out log_err < <(
-                    get_submit_logs "${arr_outfile[idx]}"
-                )
+        if [[ "${mode}" == "signal" ]]; then
+            echo "arr_scl_fct=( ${arr_scl_fct[*]} )"
+            echo
+            echo "arr_usr_frg=( ${arr_usr_frg[*]} )"
+            echo
+        elif [[ "${mode}" == "coord" ]]; then
+            echo "arr_usr_frg=( ${arr_usr_frg[*]} )"
+            echo
+        elif [[ "${mode}" == "ratio" ]]; then
+            echo "arr_scl_fct=( ${arr_scl_fct[*]} )"
+            echo
+            echo "arr_dep_min=( ${arr_dep_min[*]} )"
+            echo
+            echo "arr_pseudo=( ${arr_pseudo[*]} )"
+            echo
+        fi
 
-                print_built_cmd "${log_out}" "${log_err}"
-                echo
-            done
+        echo
+    fi
+}
+
+
+#  Serialize prepared arrays into comma-delimited submit-wrapper arguments
+function serialize_vecs() {
+    if [[ "${mode}" =~ ^(signal|coord)$ ]]; then
+        csv_infile=$(echo "${arr_infile[*]}"  | tr ' ' ',')
+        csv_outfile=$(echo "${arr_outfile[*]}" | tr ' ' ',')
+        csv_usr_frg=$(echo "${arr_usr_frg[*]}" | tr ' ' ',')
+
+        if [[ "${mode}" == "signal" ]]; then
+            csv_scl_fct=$(echo "${arr_scl_fct[*]}" | tr ' ' ',')
+        fi
+    elif [[ "${mode}" == "ratio" ]]; then
+        csv_fil_A=$(echo "${arr_fil_A[*]}"  | tr ' ' ',')
+        csv_fil_B=$(echo "${arr_fil_B[*]}"  | tr ' ' ',')
+        csv_outfile=$(echo "${arr_outfile[*]}" | tr ' ' ',')
+        csv_scl_fct=$(echo "${arr_scl_fct[*]}" | tr ' ' ',')
+        csv_dep_min=$(echo "${arr_dep_min[*]}" | tr ' ' ',')
+        csv_pseudo=$(echo "${arr_pseudo[*]}" | tr ' ' ',')
+    fi
+}
+
+
+#  Print serialized variables used for submit-wrapper command construction
+function print_vecs_serialized() {
+    if [[ "${verbose}" == "true" ]]; then
+        print_banner_pretty "Variable assignments constructed from arrays"
+        echo
+
+        if [[ "${mode}" =~ ^(signal|coord)$ ]]; then
+            echo "csv_infile=\"${csv_infile}\""
+            echo
+            echo "ref_fa=\"${ref_fa:-UNSET}\""
+            echo
+        elif [[ "${mode}" == "ratio" ]]; then
+            echo "csv_fil_A=\"${csv_fil_A}\""
+            echo
+            echo "csv_fil_B=\"${csv_fil_B}\""
+            echo
+        fi
+
+        echo "csv_outfile=\"${csv_outfile}\""
+        echo
+
+        if [[ "${mode}" != "coord" ]]; then
+            echo "csv_scl_fct=\"${csv_scl_fct}\""
+            echo
+        fi
+
+        if [[ "${mode}" =~ ^(signal|coord)$ ]]; then
+            echo "csv_usr_frg=\"${csv_usr_frg}\""
+            echo
+        elif [[ "${mode}" == "ratio" ]]; then
+            echo "csv_dep_min=\"${csv_dep_min}\""
+            echo
+            echo "csv_pseudo=\"${csv_pseudo}\""
+            echo
+        fi
+
+        echo
+    fi
+}
+
+
+#  Dispatch Slurm, GNU Parallel, or serial work
+function run_jobs() {
+    local config idx log_out log_err
+    local -a cmd_slurm
+
+    if [[ "${slurm}" == "true" ]]; then
+        #  Slurm execution
+        build_cmd "UNSET"
+
+        unset cmd_slurm && declare -a cmd_slurm
+        cmd_slurm=(
+            sbatch
+            --job-name="${nam_job}"
+            --nodes=1
+            --cpus-per-task="${threads}"
+            --time="${time}"
+            --output="${err_out}/${nam_job}.%A-%a.stdout.txt"
+            --error="${err_out}/${nam_job}.%A-%a.stderr.txt"
+            --array="1-${#arr_outfile[@]}%${max_job}"
+            "${cmd_bld[@]}"
+        )
+
+        if [[ "${dry_run}" == "true" || "${verbose}" == "true" ]]; then
+            print_banner_pretty "Call to 'sbatch'"
+            echo
+            printf '%q ' "${cmd_slurm[@]}"
+            echo
             echo
         fi
 
         if [[ "${dry_run}" == "false" ]]; then
+            "${cmd_slurm[@]}"
+        fi
+    else
+        #  Non-Slurm execution: GNU Parallel ('par_job > 1') or serial
+        #+ ('par_job == 1')
+        if [[ "${par_job}" -gt 1 ]]; then
+            config="${err_out}/${nam_job}.config_parallel.txt"
+
+            if [[ -f "${config}" ]]; then rm "${config}"; fi
+
             for idx in "${!arr_outfile[@]}"; do
                 build_cmd "${idx}"
                 cmd_bld=( "${BASH}" "${cmd_bld[@]}" )
@@ -1439,8 +1456,90 @@ else
                     get_submit_logs "${arr_outfile[idx]}"
                 )
 
-                "${cmd_bld[@]}" >> "${log_out}" 2>> "${log_err}"
+                {
+                    print_built_cmd "${log_out}" "${log_err}"
+                } >> "${config}" || {
+                    echo_err "failed to write command, index no. '${idx}'."
+                    return 1
+                }
             done
+
+            if [[ "${dry_run}" == "true" || "${verbose}" == "true" ]]; then
+                print_banner_pretty "GNU Parallel execution"
+                echo
+                parallel --jobs "${par_job}" --dryrun < "${config}"
+                echo
+                echo
+            fi
+
+            if [[ "${dry_run}" == "false" ]]; then
+                parallel --jobs "${par_job}" < "${config}"
+            fi
+        else
+            if [[ "${dry_run}" == "true" || "${verbose}" == "true" ]]; then
+                print_banner_pretty "Serial execution"
+                echo
+
+                for idx in "${!arr_outfile[@]}"; do
+                    build_cmd "${idx}"
+                    cmd_bld=( "${BASH}" "${cmd_bld[@]}" )
+
+                    IFS=';' read -r log_out log_err < <(
+                        get_submit_logs "${arr_outfile[idx]}"
+                    )
+
+                    print_built_cmd "${log_out}" "${log_err}"
+                    echo
+                done
+                echo
+            fi
+
+            if [[ "${dry_run}" == "false" ]]; then
+                for idx in "${!arr_outfile[@]}"; do
+                    build_cmd "${idx}"
+                    cmd_bld=( "${BASH}" "${cmd_bld[@]}" )
+
+                    IFS=';' read -r log_out log_err < <(
+                        get_submit_logs "${arr_outfile[idx]}"
+                    )
+
+                    "${cmd_bld[@]}" >> "${log_out}" 2>> "${log_err}"
+                done
+            fi
         fi
     fi
-fi
+}
+
+
+#  Main script execution
+function main() {
+    init_defs
+
+    if [[ -z "${1:-}" || "${1}" =~ ^(-h|--h[e]?lp)$ ]]; then
+        help_execute_compute_signal >&2
+        return 0
+    elif [[ "${1}" =~ ^(-d|--det(ail)?(s)?)$ ]]; then
+        detail_execute_compute_signal >&2
+        return 0
+    elif [[ "${1}" =~ ^(-ah|--all(_|-)?h[e]?lp)$ ]]; then
+        help_execute_compute_signal >&2
+        echo >&2
+        detail_execute_compute_signal "--no-usage" >&2
+        return 0
+    fi
+
+    parse_args "$@"       || return 1
+    canonicalize_args     || return 1
+    validate_args         || return 1
+    prepare_vecs          || return 1
+    validate_vecs         || return 1
+    config_exec           || return 1
+    setup_env             || return 1
+    print_state_debug
+    serialize_vecs        || return 1
+    print_vecs_serialized
+    run_jobs              || return 1
+}
+
+
+main "$@"

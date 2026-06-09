@@ -73,6 +73,16 @@ assert_file_nonempty \
     "${fil_out}" \
     "CRAM SE signal bedGraph output"
 
+assert_pattern_found \
+    "${log}" \
+    "samp=tiny_se" \
+    "submit CRAM SE signal strips .cram from sample name"
+
+assert_pattern_absent \
+    "${log}" \
+    "samp=tiny_se.cram" \
+    "submit CRAM SE signal sample name omits .cram suffix"
+
 if [[ -s "${fil_out}" ]]; then
     assert_pattern_found \
         "${fil_out}" \
