@@ -70,9 +70,9 @@ unset fnc_src
 
 function build_cmd() {
     local idx="${1:-}"
-    local csv_mip_i csv_min_i csv_sip_i csv_sin_i
+    local csv_mip_i csv_min_i csv_sip_i="" csv_sin_i=""
     local len_mip_i len_min_i
-    local dep_mip_i dep_min_i dep_sip_i dep_sin_i
+    local dep_mip_i dep_min_i dep_sip_i="" dep_sin_i=""
     local show_help
 
     unset cmd_bld && declare -ga cmd_bld
@@ -137,15 +137,18 @@ EOM
 
     csv_mip_i="${csv_mip}"
     csv_min_i="${csv_min}"
-    csv_sip_i="${csv_sip}"
-    csv_sin_i="${csv_sin}"
 
     len_mip_i="${len_mip}"
     len_min_i="${len_min}"
     dep_mip_i="${dep_mip}"
     dep_min_i="${dep_min}"
-    dep_sip_i="${dep_sip}"
-    dep_sin_i="${dep_sin}"
+
+    if [[ "${mode}" == "spike" ]]; then
+        csv_sip_i="${csv_sip}"
+        csv_sin_i="${csv_sin}"
+        dep_sip_i="${dep_sip}"
+        dep_sin_i="${dep_sin}"
+    fi
 
     if [[ "${idx}" != "UNSET" ]]; then
         csv_mip_i="${arr_mip[idx]}"

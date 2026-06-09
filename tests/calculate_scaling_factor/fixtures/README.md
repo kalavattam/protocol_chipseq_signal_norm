@@ -13,6 +13,8 @@ Generated fixture outputs are ignored by Git. When required inputs are missing, 
 
 The fixture rows are adapted from tracked example scaling-factor tables under `data/processed/compute_signal/`. They preserve realistic file naming, core table shapes, scaling values, and alignment depths. Synthetic role-specific SAM, BAM, and CRAM fixtures exercise Samtools-backed alignment counting.
 
+Alignment fixture basenames are biologically minded because siQ-ChIP tests exercise production filename parsing. PE fixtures use Hho1-like names, and SE fixtures use Brn1-like names.
+
 Spike-in rows also record the canonical coefficient method used alongside the computed value. The default fixture examples use `chiprx_alpha_ratio`.
 
 Minimal siQ-ChIP metadata tables exercise `parse_metadata_siqchip.py` with the production parsing YAML in `data/raw/docs/parse_metadata_siqchip.yml`. These tables are intentionally small and cover canonical column names, a curated alias subset, and malformed negative cases.
@@ -24,24 +26,24 @@ Readable provenance:
 - `scripts/make_fixtures.sh`
 
 Role-specific SE alignment fixtures:
-- `sam/se/IP_A.sc.sam`, `bam/se/IP_A.sc.bam`, `bam/se/IP_A.sc.bam.bai`
-- `sam/se/IP_A.sp.sam`, `bam/se/IP_A.sp.bam`, `bam/se/IP_A.sp.bam.bai`
-- `sam/se/in_A.sc.sam`, `bam/se/in_A.sc.bam`, `bam/se/in_A.sc.bam.bai`
-- `sam/se/in_A.sp.sam`, `bam/se/in_A.sp.bam`, `bam/se/in_A.sp.bam.bai`
-- `sam/se/IP_B.sc.sam`, `bam/se/IP_B.sc.bam`, `bam/se/IP_B.sc.bam.bai`
-- `sam/se/IP_B.sp.sam`, `bam/se/IP_B.sp.bam`, `bam/se/IP_B.sp.bam.bai`
-- `sam/se/in_B.sc.sam`, `bam/se/in_B.sc.bam`, `bam/se/in_B.sc.bam.bai`
-- `sam/se/in_B.sp.sam`, `bam/se/in_B.sp.bam`, `bam/se/in_B.sp.bam.bai`
+- `sam/se/IP_WT_log_Brn1_rep1.sc.sam`, `bam/se/IP_WT_log_Brn1_rep1.sc.bam`, `bam/se/IP_WT_log_Brn1_rep1.sc.bam.bai`
+- `sam/se/IP_WT_log_Brn1_rep1.sp.sam`, `bam/se/IP_WT_log_Brn1_rep1.sp.bam`, `bam/se/IP_WT_log_Brn1_rep1.sp.bam.bai`
+- `sam/se/in_WT_log_Brn1_rep1.sc.sam`, `bam/se/in_WT_log_Brn1_rep1.sc.bam`, `bam/se/in_WT_log_Brn1_rep1.sc.bam.bai`
+- `sam/se/in_WT_log_Brn1_rep1.sp.sam`, `bam/se/in_WT_log_Brn1_rep1.sp.bam`, `bam/se/in_WT_log_Brn1_rep1.sp.bam.bai`
+- `sam/se/IP_WT_log_Brn1_rep2.sc.sam`, `bam/se/IP_WT_log_Brn1_rep2.sc.bam`, `bam/se/IP_WT_log_Brn1_rep2.sc.bam.bai`
+- `sam/se/IP_WT_log_Brn1_rep2.sp.sam`, `bam/se/IP_WT_log_Brn1_rep2.sp.bam`, `bam/se/IP_WT_log_Brn1_rep2.sp.bam.bai`
+- `sam/se/in_WT_log_Brn1_rep2.sc.sam`, `bam/se/in_WT_log_Brn1_rep2.sc.bam`, `bam/se/in_WT_log_Brn1_rep2.sc.bam.bai`
+- `sam/se/in_WT_log_Brn1_rep2.sp.sam`, `bam/se/in_WT_log_Brn1_rep2.sp.bam`, `bam/se/in_WT_log_Brn1_rep2.sp.bam.bai`
 
 Role-specific PE alignment fixtures:
-- `sam/pe/IP_A.sc.sam`, `bam/pe/IP_A.sc.bam`, `bam/pe/IP_A.sc.bam.bai`
-- `sam/pe/IP_A.sp.sam`, `bam/pe/IP_A.sp.bam`, `bam/pe/IP_A.sp.bam.bai`
-- `sam/pe/in_A.sc.sam`, `bam/pe/in_A.sc.bam`, `bam/pe/in_A.sc.bam.bai`
-- `sam/pe/in_A.sp.sam`, `bam/pe/in_A.sp.bam`, `bam/pe/in_A.sp.bam.bai`
-- `sam/pe/IP_B.sc.sam`, `bam/pe/IP_B.sc.bam`, `bam/pe/IP_B.sc.bam.bai`
-- `sam/pe/IP_B.sp.sam`, `bam/pe/IP_B.sp.bam`, `bam/pe/IP_B.sp.bam.bai`
-- `sam/pe/in_B.sc.sam`, `bam/pe/in_B.sc.bam`, `bam/pe/in_B.sc.bam.bai`
-- `sam/pe/in_B.sp.sam`, `bam/pe/in_B.sp.bam`, `bam/pe/in_B.sp.bam.bai`
+- `sam/pe/IP_WT_G1_Hho1_6336.sc.sam`, `bam/pe/IP_WT_G1_Hho1_6336.sc.bam`, `bam/pe/IP_WT_G1_Hho1_6336.sc.bam.bai`
+- `sam/pe/IP_WT_G1_Hho1_6336.sp.sam`, `bam/pe/IP_WT_G1_Hho1_6336.sp.bam`, `bam/pe/IP_WT_G1_Hho1_6336.sp.bam.bai`
+- `sam/pe/in_WT_G1_Hho1_6336.sc.sam`, `bam/pe/in_WT_G1_Hho1_6336.sc.bam`, `bam/pe/in_WT_G1_Hho1_6336.sc.bam.bai`
+- `sam/pe/in_WT_G1_Hho1_6336.sp.sam`, `bam/pe/in_WT_G1_Hho1_6336.sp.bam`, `bam/pe/in_WT_G1_Hho1_6336.sp.bam.bai`
+- `sam/pe/IP_WT_G1_Hho1_6337.sc.sam`, `bam/pe/IP_WT_G1_Hho1_6337.sc.bam`, `bam/pe/IP_WT_G1_Hho1_6337.sc.bam.bai`
+- `sam/pe/IP_WT_G1_Hho1_6337.sp.sam`, `bam/pe/IP_WT_G1_Hho1_6337.sp.bam`, `bam/pe/IP_WT_G1_Hho1_6337.sp.bam.bai`
+- `sam/pe/in_WT_G1_Hho1_6337.sc.sam`, `bam/pe/in_WT_G1_Hho1_6337.sc.bam`, `bam/pe/in_WT_G1_Hho1_6337.sc.bam.bai`
+- `sam/pe/in_WT_G1_Hho1_6337.sp.sam`, `bam/pe/in_WT_G1_Hho1_6337.sp.bam`, `bam/pe/in_WT_G1_Hho1_6337.sp.bam.bai`
 
 Reference FASTA:
 - `reference/tiny.fa`
@@ -86,8 +88,8 @@ The serial execute-layer smoke test uses these generated alignment files directl
 <br />
 
 ## Current and deferred smoke-test coverage
-The smoke suite covers direct spike-in and siQ-ChIP part-file combination, numeric ordering, dry-run behavior, malformed input rejection, overwrite protection, explicit part-file cleanup, direct spike-in and siQ-ChIP Python calculator behavior, siQ-ChIP metadata parsing, and serial execute-layer spike-in assembly. Serial spike-in coverage exercises every canonical coefficient, accepted alias normalization, alignment-derived counts, automatic SE/PE detection, BAM/CRAM input, mixed input lists, and broadcast depth overrides.
+The smoke suite covers direct spike-in and siQ-ChIP part-file combination, numeric ordering, dry-run behavior, malformed input rejection, overwrite protection, explicit part-file cleanup, direct spike-in and siQ-ChIP Python calculator behavior, siQ-ChIP metadata parsing, serial submit/execute-layer siQ-ChIP behavior, and serial execute-layer spike-in assembly. Serial spike-in coverage exercises every canonical coefficient, accepted alias normalization, alignment-derived counts, automatic SE/PE detection, BAM/CRAM input, mixed input lists, and broadcast depth overrides.
 
 The scaling-factor rows intentionally contain only core workflow values. Compute downstream denominator floors separately with `python -m scripts.compute_input_floor`.
 
-`#TODO`: Add siQ-ChIP submit/execute wrapper coverage, GNU Parallel coverage, and Slurm coverage.
+`#TODO`: Add calculate-scaling-factor GNU Parallel and Slurm coverage.

@@ -960,7 +960,7 @@ EOM
             return 1
         fi
 
-        stmt="declare -- ${nam}=${rhs}"
+        stmt="${nam}=${rhs}"
 
         if ! eval "${stmt}"; then
             echo_err_func "${func}" \
@@ -1683,6 +1683,7 @@ EOM
             "eqn=${eqn}"         "rnd=${rnd}" \
             "mass_ip=${mass_ip}" "mass_in=${mass_in}" \
             "vol_all=${vol_all}" "vol_in=${vol_in}" \
+            "typ_ip=${typ_ip}"   "typ_in=${typ_in}" \
             "dep_ip=${dep_ip}"   "dep_in=${dep_in}" \
             "len_ip=${len_ip}"   "len_in=${len_in}"
     fi

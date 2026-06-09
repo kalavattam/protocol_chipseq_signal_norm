@@ -36,41 +36,41 @@ dir_out="${tmp}/out"
 dir_err="${tmp}/logs"
 dir_log="${TEST_DIR_LOG}/calculate_scaling_factor"
 
-bam_se_mip_0="${dir_bam_se}/IP_A.sc.bam"
-bam_se_mip_1="${dir_bam_se}/IP_B.sc.bam"
-bam_se_min_0="${dir_bam_se}/in_A.sc.bam"
-bam_se_min_1="${dir_bam_se}/in_B.sc.bam"
-bam_se_sip_0="${dir_bam_se}/IP_A.sp.bam"
-bam_se_sip_1="${dir_bam_se}/IP_B.sp.bam"
-bam_se_sin_0="${dir_bam_se}/in_A.sp.bam"
-bam_se_sin_1="${dir_bam_se}/in_B.sp.bam"
+bam_se_mip_0="${dir_bam_se}/IP_WT_log_Brn1_rep1.sc.bam"
+bam_se_mip_1="${dir_bam_se}/IP_WT_log_Brn1_rep2.sc.bam"
+bam_se_min_0="${dir_bam_se}/in_WT_log_Brn1_rep1.sc.bam"
+bam_se_min_1="${dir_bam_se}/in_WT_log_Brn1_rep2.sc.bam"
+bam_se_sip_0="${dir_bam_se}/IP_WT_log_Brn1_rep1.sp.bam"
+bam_se_sip_1="${dir_bam_se}/IP_WT_log_Brn1_rep2.sp.bam"
+bam_se_sin_0="${dir_bam_se}/in_WT_log_Brn1_rep1.sp.bam"
+bam_se_sin_1="${dir_bam_se}/in_WT_log_Brn1_rep2.sp.bam"
 
-bam_pe_mip_0="${dir_bam_pe}/IP_A.sc.bam"
-bam_pe_mip_1="${dir_bam_pe}/IP_B.sc.bam"
-bam_pe_min_0="${dir_bam_pe}/in_A.sc.bam"
-bam_pe_min_1="${dir_bam_pe}/in_B.sc.bam"
-bam_pe_sip_0="${dir_bam_pe}/IP_A.sp.bam"
-bam_pe_sip_1="${dir_bam_pe}/IP_B.sp.bam"
-bam_pe_sin_0="${dir_bam_pe}/in_A.sp.bam"
-bam_pe_sin_1="${dir_bam_pe}/in_B.sp.bam"
+bam_pe_mip_0="${dir_bam_pe}/IP_WT_G1_Hho1_6336.sc.bam"
+bam_pe_mip_1="${dir_bam_pe}/IP_WT_G1_Hho1_6337.sc.bam"
+bam_pe_min_0="${dir_bam_pe}/in_WT_G1_Hho1_6336.sc.bam"
+bam_pe_min_1="${dir_bam_pe}/in_WT_G1_Hho1_6337.sc.bam"
+bam_pe_sip_0="${dir_bam_pe}/IP_WT_G1_Hho1_6336.sp.bam"
+bam_pe_sip_1="${dir_bam_pe}/IP_WT_G1_Hho1_6337.sp.bam"
+bam_pe_sin_0="${dir_bam_pe}/in_WT_G1_Hho1_6336.sp.bam"
+bam_pe_sin_1="${dir_bam_pe}/in_WT_G1_Hho1_6337.sp.bam"
 
-cram_se_mip_0="${dir_cram_se}/IP_A.sc.cram"
-cram_se_mip_1="${dir_cram_se}/IP_B.sc.cram"
-cram_se_min_0="${dir_cram_se}/in_A.sc.cram"
-cram_se_min_1="${dir_cram_se}/in_B.sc.cram"
-cram_se_sip_0="${dir_cram_se}/IP_A.sp.cram"
-cram_se_sip_1="${dir_cram_se}/IP_B.sp.cram"
-cram_se_sin_0="${dir_cram_se}/in_A.sp.cram"
-cram_se_sin_1="${dir_cram_se}/in_B.sp.cram"
+cram_se_mip_0="${dir_cram_se}/IP_WT_log_Brn1_rep1.sc.cram"
+cram_se_mip_1="${dir_cram_se}/IP_WT_log_Brn1_rep2.sc.cram"
+cram_se_min_0="${dir_cram_se}/in_WT_log_Brn1_rep1.sc.cram"
+cram_se_min_1="${dir_cram_se}/in_WT_log_Brn1_rep2.sc.cram"
+cram_se_sip_0="${dir_cram_se}/IP_WT_log_Brn1_rep1.sp.cram"
+cram_se_sip_1="${dir_cram_se}/IP_WT_log_Brn1_rep2.sp.cram"
+cram_se_sin_0="${dir_cram_se}/in_WT_log_Brn1_rep1.sp.cram"
+cram_se_sin_1="${dir_cram_se}/in_WT_log_Brn1_rep2.sp.cram"
 
-cram_pe_mip_0="${dir_cram_pe}/IP_A.sc.cram"
-cram_pe_mip_1="${dir_cram_pe}/IP_B.sc.cram"
-cram_pe_min_0="${dir_cram_pe}/in_A.sc.cram"
-cram_pe_min_1="${dir_cram_pe}/in_B.sc.cram"
-cram_pe_sip_0="${dir_cram_pe}/IP_A.sp.cram"
-cram_pe_sip_1="${dir_cram_pe}/IP_B.sp.cram"
-cram_pe_sin_0="${dir_cram_pe}/in_A.sp.cram"
-cram_pe_sin_1="${dir_cram_pe}/in_B.sp.cram"
+cram_pe_mip_0="${dir_cram_pe}/IP_WT_G1_Hho1_6336.sc.cram"
+cram_pe_mip_1="${dir_cram_pe}/IP_WT_G1_Hho1_6337.sc.cram"
+cram_pe_min_0="${dir_cram_pe}/in_WT_G1_Hho1_6336.sc.cram"
+cram_pe_min_1="${dir_cram_pe}/in_WT_G1_Hho1_6337.sc.cram"
+cram_pe_sip_0="${dir_cram_pe}/IP_WT_G1_Hho1_6336.sp.cram"
+cram_pe_sip_1="${dir_cram_pe}/IP_WT_G1_Hho1_6337.sp.cram"
+cram_pe_sin_0="${dir_cram_pe}/in_WT_G1_Hho1_6336.sp.cram"
+cram_pe_sin_1="${dir_cram_pe}/in_WT_G1_Hho1_6337.sp.cram"
 
 rm -rf "${tmp}"
 mkdir -p "${dir_out}" "${dir_err}" "${dir_log}"
@@ -384,10 +384,10 @@ fil_out="${dir_out}/scaling.default.spike.tsv"
 prt_0="${fil_out}.part.000000"
 prt_1="${fil_out}.part.000001"
 nam_job="test_execute_calculate_scaling_factor_spike_default"
-log_out_0="${dir_err}/${nam_job}.IP_A.sc.stdout.txt"
-log_err_0="${dir_err}/${nam_job}.IP_A.sc.stderr.txt"
-log_out_1="${dir_err}/${nam_job}.IP_B.sc.stdout.txt"
-log_err_1="${dir_err}/${nam_job}.IP_B.sc.stderr.txt"
+log_out_0="${dir_err}/${nam_job}.IP_WT_log_Brn1_rep1.sc.stdout.txt"
+log_err_0="${dir_err}/${nam_job}.IP_WT_log_Brn1_rep1.sc.stderr.txt"
+log_out_1="${dir_err}/${nam_job}.IP_WT_log_Brn1_rep2.sc.stdout.txt"
+log_err_1="${dir_err}/${nam_job}.IP_WT_log_Brn1_rep2.sc.stderr.txt"
 
 assert_file_exists \
     "${log_out_0}" \
@@ -498,8 +498,8 @@ run_case_spike \
     $'2\tchiprx_alpha_ratio\t3\t1\t2\t2' \
     $'0.5\tchiprx_alpha_ratio\t2\t2\t3\t1'
 
-log_err_0="${dir_err}/test_execute_calculate_scaling_factor_spike_pe_bam.IP_A.sc.stderr.txt"
-log_err_1="${dir_err}/test_execute_calculate_scaling_factor_spike_pe_bam.IP_B.sc.stderr.txt"
+log_err_0="${dir_err}/test_execute_calculate_scaling_factor_spike_pe_bam.IP_WT_G1_Hho1_6336.sc.stderr.txt"
+log_err_1="${dir_err}/test_execute_calculate_scaling_factor_spike_pe_bam.IP_WT_G1_Hho1_6337.sc.stderr.txt"
 
 assert_pattern_found \
     "${log_err_0}" \
@@ -520,7 +520,7 @@ run_case_spike \
     $'2\tchiprx_alpha_ratio\t3\t1\t2\t2' \
     $'0.5\tchiprx_alpha_ratio\t2\t2\t3\t1'
 
-log_err_0="${dir_err}/test_execute_calculate_scaling_factor_spike_se_cram.IP_A.sc.stderr.txt"
+log_err_0="${dir_err}/test_execute_calculate_scaling_factor_spike_se_cram.IP_WT_log_Brn1_rep1.sc.stderr.txt"
 
 assert_pattern_found \
     "${log_err_0}" \
@@ -536,8 +536,8 @@ run_case_spike \
     $'2\tchiprx_alpha_ratio\t3\t1\t2\t2' \
     $'0.5\tchiprx_alpha_ratio\t2\t2\t3\t1'
 
-log_err_0="${dir_err}/test_execute_calculate_scaling_factor_spike_pe_cram.IP_A.sc.stderr.txt"
-log_err_1="${dir_err}/test_execute_calculate_scaling_factor_spike_pe_cram.IP_B.sc.stderr.txt"
+log_err_0="${dir_err}/test_execute_calculate_scaling_factor_spike_pe_cram.IP_WT_G1_Hho1_6336.sc.stderr.txt"
+log_err_1="${dir_err}/test_execute_calculate_scaling_factor_spike_pe_cram.IP_WT_G1_Hho1_6337.sc.stderr.txt"
 
 assert_pattern_found \
     "${log_err_0}" \
@@ -558,8 +558,8 @@ run_case_spike \
     $'2\tchiprx_alpha_ratio\t3\t1\t2\t2' \
     $'0.5\tchiprx_alpha_ratio\t2\t2\t3\t1'
 
-log_err_0="${dir_err}/test_execute_calculate_scaling_factor_spike_mixed_layout.IP_A.sc.stderr.txt"
-log_err_1="${dir_err}/test_execute_calculate_scaling_factor_spike_mixed_layout.IP_B.sc.stderr.txt"
+log_err_0="${dir_err}/test_execute_calculate_scaling_factor_spike_mixed_layout.IP_WT_log_Brn1_rep1.sc.stderr.txt"
+log_err_1="${dir_err}/test_execute_calculate_scaling_factor_spike_mixed_layout.IP_WT_G1_Hho1_6337.sc.stderr.txt"
 
 assert_pattern_found \
     "${log_err_0}" \
@@ -580,7 +580,7 @@ run_case_spike \
     $'2\tchiprx_alpha_ratio\t3\t1\t2\t2' \
     $'0.5\tchiprx_alpha_ratio\t2\t2\t3\t1'
 
-log_err_1="${dir_err}/test_execute_calculate_scaling_factor_spike_mixed_format.IP_B.sc.stderr.txt"
+log_err_1="${dir_err}/test_execute_calculate_scaling_factor_spike_mixed_format.IP_WT_G1_Hho1_6337.sc.stderr.txt"
 
 assert_pattern_found \
     "${log_err_1}" \

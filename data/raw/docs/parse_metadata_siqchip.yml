@@ -134,6 +134,7 @@ filename:
         #+ Tsukiyama Lab samples)
         whitelist:
             - "Chd1"
+            - "Brn1"
             - "Hho1"
             - "Hmo1"
             - "Ino80"
