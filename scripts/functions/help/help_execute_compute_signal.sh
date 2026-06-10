@@ -6,7 +6,8 @@
 # Copyright 2024-2026 by Kris Alavattam
 # Email: kalavattam@gmail.com
 #
-# OpenAI ChatGPT (GPT-4- and GPT-5-series models) was used in development.
+# OpenAI ChatGPT and Codex (GPT-4- and GPT-5-series models) were used in
+# development.
 #
 # Distributed under the MIT license.
 
@@ -14,14 +15,13 @@
 usage=$(cat << EOM
 Usage:
   execute_compute_signal.sh
-    [--help] [--details] [--all_hlp] [--verbose] [--dry_run]
-    [--threads <int>]
-    [--mode <enum:signal,ratio,coord>] [--method <enum:unadj,frag,norm,log2,unadj_r,log2_r>]
+    [--help] [--details] [--all_hlp] [--verbose] [--dry_run] [--threads <int>]
+    [--mode <enum:signal|ratio|coord>] [--method <enum:unadj|frag|norm|log2|unadj_r|log2_r>]
     (--csv_infile <csv:file> [--ref_fa <file>] | --csv_fil_A <csv:file> --csv_fil_B <csv:file>)
     --dir_out <dir> [--typ_out <enum:bedGraph|bedgraph|bdg|bg|bed[.gz]>] [--prefix <str>]
     [--siz_bin <int>] [--csv_usr_frg <csv:int>] [--csv_scl_fct <csv:spec>]
-    [--csv_dep_min <csv:num>] [--csv_pseudo <csv:spec>] [--eps <num>] [--skip_00 <enum:pre_scale|post_scale>] [--drp_nan] [--skp_pfx <csv:str>] [--track]
-    [--dp <int>]
+    [--csv_dep_min <csv:num>] [--csv_pseudo <csv:spec>] [--eps <num>] [--skip_00 <enum:pre_scale|post_scale>] [--drp_nan] [--skp_pfx <csv:str>]
+    [--track] [--dp <int>]
     [--err_out <dir>] [--nam_job <str>] [--max_job <int>] [--slurm] [--time <time>]
 
 EOM
@@ -145,7 +145,7 @@ Arguments:
     If '--mode ratio', also write a companion bedGraph with all non-finite rows ('inf', '-inf', and 'nan') removed (optional).
 
   -dp, --dp, --rnd, --round, --decimals, --digits  <int>
-    Maximum number of decimal places retained for finite emitted signal or ratio values (default: ${rnd}).
+    Maximum number of decimal places retained for finite emitted values (default: ${rnd}).
 
     After rounding, non-informative trailing zeros are stripped.
 
@@ -427,7 +427,7 @@ Arguments:
     This cleaned version is ideal for visualization in genome browsers such as IGV, avoiding issues caused by 'inf', '-inf' or 'nan' values.
 
   -dp, --dp, --rnd, --round, --decimals, --digits  <int>
-    Maximum number of decimal places retained for finite emitted signal or ratio values (default: ${rnd}).
+    Maximum number of decimal places retained for finite emitted values (default: ${rnd}).
 
     After rounding, non-informative trailing zeros are stripped.
 

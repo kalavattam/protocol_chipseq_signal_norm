@@ -55,7 +55,7 @@ Arguments:
   -h, --hlp, --help  <flag>
     Print this help message and return 0.
 
-  -md, --mode  <str>
+  -md, --mode  <enum:signal|ratio|coord>
     Computation mode: 'signal', 'ratio', or 'coord'.
 
   -i, --infile  <str>
@@ -350,8 +350,7 @@ Positional arguments:
     Path to file for stderr redirection.
 
 Returns:
-  - Returns 0 for successful dry runs and the command exit status for wet runs.
-  - Returns 1 if command-array or log-path validation fails.
+  0 for successful dry runs and the command exit status for wet runs; 1 if command-array or log-path validation fails.
 
 Notes:
   - In debug or dry-run mode, prints the fully quoted command plus redirections.
@@ -1364,132 +1363,126 @@ function show_help_main() {
     cat << EOM >&2
 Usage:
   submit_compute_signal.sh
-    [--help] [--env_nam <str>] --dir_scr <str> [--threads <int>] [--mode {signal,ratio,coord}]
-    [--method {unadj,frag,norm,log2,unadj_r,log2_r,...}]
-    (--csv_infile <bam1.bam,bam2.cram,...> | --csv_fil_A <IP1.bdg[.gz],IP2.bdg[.gz],...> --csv_fil_B <in1.bdg[.gz],in2.bdg[.gz],...>) [--ref_fa <file>]
-    --csv_outfile <out1.bdg[.gz],out2.bdg[.gz],...> [--track] [--drp_nan]
-    [--siz_bin <int>] [--csv_scl_fct <csv:spec>] [--csv_usr_frg <csv:int>] [--csv_dep_min <csv:num>] [--csv_pseudo <csv:str>]
-    [--eps <flt>] [--skip_00 <enum:pre_scale,post_scale>] [--skp_pfx <str>] [--dp <int>] --err_out <str> [--nam_job <str>]
+    [--help] [--env_nam <str>] --dir_scr <dir> [--threads <int>]
+    [--mode <enum:signal|ratio|coord>] [--method <enum:unadj|frag|norm|log2|unadj_r|log2_r>]
+    (--csv_infile <csv:file> [--ref_fa <file>] | --csv_fil_A <csv:file> --csv_fil_B <csv:file>)
+    --csv_outfile <csv:file>
+    [--siz_bin <int>] [--csv_scl_fct <csv:spec>] [--csv_usr_frg <csv:int>]
+    [--csv_dep_min <csv:num>] [--csv_pseudo <csv:spec>] [--eps <flt>] [--skip_00 <enum:pre_scale|post_scale>] [--drp_nan]
+    [--skp_pfx <csv:str>] [--track] [--dp <int>]
+    --err_out <dir> [--nam_job <str>]
 
 Description:
-  Submit per-sample signal, ratio, or fragment-coordinate jobs from comma-separated file lists to 'compute_signal.py' or 'compute_signal_ratio.py' under Slurm, GNU Parallel, or serial execution.
+  Submit per-sample signal, ratio, or fragment-coordinate jobs from comma-separated file lists to 'compute_signal.py' or 'compute_signal_ratio.py'.
 
 Keyword arguments:
   -h, --hlp, --help  <flag>
-      Print this help message and exit.
+    Print this help message and exit.
 
-  -en, --env_nam  <str>
-      Mamba environment to activate (default: ${env_nam}).
+  -en, --env, --env_nam  <str>
+    Mamba environment to activate (default: '${env_nam}').
 
-  -ds, --dir_scr  <str>
-      Directory containing scripts and functions.
+  -ds, --dir_scr  <dir>
+    Directory containing scripts and functions.
 
   -t, --thr, --threads  <int>
-      Number of threads to use per job (default: ${threads}).
+    Number of threads to use per job (default: ${threads}).
 
-  -md, --mode  <str>
-      Type of computation: 'signal', 'ratio', or 'coord' (default: ${mode});
+  -md, --mode  <enum:signal|ratio|coord>
+    Type of computation: 'signal', 'ratio', or 'coord' (default: '${mode}').
 
-  -me, --method <str>
-      Computation subtype (ignored if '--mode coord'; default if '--mode signal': norm; default if '--mode ratio': unadj):
-        - For '--mode signal':
-          + 'u', 'unadj', 'unadjusted', 's', 'smp', 'simple', 'r', 'raw'
-          + 'f', 'frg', 'frag', 'frg_len', 'frag_len', 'l', 'len', 'len_frg', 'len_frag'
-          + 'n', 'nrm', 'norm', 'normalized'
-        - For '--mode ratio':
-          + 'u', 'unadj', 'unadjusted', 's', 'smp', 'simple', 'r', 'raw'
-          + '2', 'l2', 'lg2', 'log2'
-          + 'ur', 'unadj_r', 'unadjusted_r', 'sr', 'smp_r', 'simple_r', 'rr', 'raw_r'
-          + '2r', 'l2r', 'l2_r', 'lg2_r', 'log2_r'
+  -me, --method  <enum:unadj|frag|norm|log2|unadj_r|log2_r>
+    Computation subtype.
 
-  -i, -fi, -ci, --infile, --infiles, --fil_in, --csv_infile, --csv_infiles  <csv:file>  <element: str>
-      Comma-separated list of BAM or CRAM files ('--mode signal', '--mode coord').
+    If '--mode signal', defaults to 'norm'. If '--mode ratio', defaults to 'unadj'. If '--mode coord', this argument is ignored.
+
+  -i, -fi, -ci, --infile, --infiles, --fil_in, --csv_infile, --csv_infiles  <csv:file>
+    Comma-separated list of BAM or CRAM files.
+
+    Used with '--mode signal' or '--mode coord'.
 
   -r, --ref, --ref_fa, --reference  <file>
-      Reference FASTA for CRAM input files ('--mode signal', '--mode coord'). Required when '--csv_infile' contains '.cram'.
+    Reference FASTA for CRAM input files.
 
-  -fA, -f1, -cA, -c1, --fil_A, --fil_1, --csv_A, --csv_1, --csv_fil_A, --csv_fil_IP  <csv:file>  <element: str>
-      Comma-separated list of numerator (i.e., "file A"; e.g., IP) bedGraph files ('--mode ratio').
+    Required when '--csv_infile' contains CRAM input.
 
-  -fB, -f2, -cB, -c2, --fil_B, --fil_2, --csv_B, --csv_2, --csv_fil_B, --csv_fil_input  <csv:file>  <element: str>
-      Comma-separated list of denominator (i.e., "file B"; e.g., input) bedGraph files ('--mode ratio').
+  -fA, -f1, -cA, -c1, --fil_A, --fil_1, --csv_A, --csv_1, --csv_fil_A, --csv_fil_IP  <csv:file>
+    Comma-separated list of numerator bedGraph files.
 
-  -o, -fo, -co, --outfile, --outfiles, --fil_out, --csv_outfile, --csv_outfiles  <csv:file>  <element: str>
-      Comma-separated list of output files (e.g., full bedGraph[.gz] or BED[.gz] paths).
+    Used with '--mode ratio'.
+
+  -fB, -f2, -cB, -c2, --fil_B, --fil_2, --csv_B, --csv_2, --csv_fil_B, --csv_fil_in  <csv:file>
+    Comma-separated list of denominator bedGraph files.
+
+    Used with '--mode ratio'.
+
+  -o, -fo, -co, --outfile, --outfiles, --fil_out, --csv_outfile, --csv_outfiles  <csv:file>
+    Comma-separated list of output files.
 
   -tr, --track  <flag>
-      Output a companion bedGraph without '-inf' or 'nan' rows ('--mode ratio').
+    If '--mode ratio', write a companion bedGraph without non-finite rows.
 
   -sb, --siz_bin  <int>
-      Bin size in base pairs for signal computation ('--mode signal'; default: ${siz_bin}).
+    Bin size in base pairs for signal computation (default: ${siz_bin}).
 
-  -sf, --scale, --scl_fct, --csv_scl_fct  <csv:spec>  <element: str>
-      Optional comma-separated list of scaling factors or sentinels ('--mode signal', '--mode ratio').
+    Used with '--mode signal'.
 
-      For '--mode signal', each element must be 'NA' or a positive scalar float.
+  -sf, --scale, --scl_fct, --csv_scl_fct  <csv:spec>
+    Optional comma-separated list of scaling factors or sentinels.
 
-      For '--mode ratio', each element may be 'NA', a positive scalar float, or a positive 'A:B' spec, where A scales '--csv_fil_A' and B scales '--csv_fil_B' before ratio calculation.
+    Used with '--mode signal' or '--mode ratio'.
 
-  -uf, --csv_usr_frg  <csv:int>  <element: str>
-      Optional comma-separated list of fragment lengths or sentinels ('--mode signal', '--mode coord').
+  -uf, --usr_frg, --csv_usr_frg  <csv:int>
+    Optional comma-separated list of fragment lengths or sentinels.
 
-      Compatibility alias: '--usr_frg'.
+    Used with '--mode signal' or '--mode coord'.
 
-  -dm, --csv_dep_min  <csv:num>  <element: str>
-      Optional comma-separated list of minimum input depth values or sentinels ('--mode ratio').
+  -dm, --dep_min, --depth_min, --csv_dep_min  <csv:num>
+    Optional comma-separated list of minimum input depth values or sentinels.
 
-      Compatibility aliases include '--dep_min' and '--depth_min'.
+    Used with '--mode ratio'.
 
-  -ps, --csv_pseudo  <csv:str>  <element: str>
-      Optional comma-separated list of per-sample pseudocount specs 'A[:B]' or sentinels ('--mode ratio').
+  -ps, --pseudo, --pseudocount, --csv_pseudo  <csv:spec>
+    Optional comma-separated list of per-sample pseudocount specs 'A[:B]'.
 
-      Compatibility aliases include '--pseudo' and '--pseudocount'.
+    Used with '--mode ratio'.
 
-   -e, --eps  <flt>
-      Shared epsilon for zero checks in ratio mode (<flt>) or sentinel (NA).
+  -e, --eps  <flt>
+    Shared epsilon or sentinel used for ratio-mode zero checks.
 
-  -s0, --skip_00  <str>
-      Shared zero-zero skip mode in ratio mode ('pre_scale' or 'post_scale') or sentinel (NA).
+  -s0, --skip_00  <enum:pre_scale|post_scale>
+    Shared zero-zero skip mode or sentinel for ratio computation.
 
-  -dn, --drp_nan  <str>
-      Drop 'nan', 'inf', and '-inf' rows from the main ratio output.
+    Accepted zero-zero skip modes are 'pre_scale' and 'post_scale'.
 
-  -sk, --skp_pfx, --skip_pfx, --skip_prefix  <str>
-      Shared comma-separated bedGraph header prefixes to skip in ratio mode (<str>) or sentinel (NA).
+  -dn, --drp_nan  <flag>
+    Drop non-finite rows from the main ratio output.
+
+  -sk, --skp_pfx, --skip_pfx, --skip_prefix  <csv:str>
+    Shared comma-separated bedGraph header prefixes or sentinel to skip.
 
   -dp, --dp, --rnd, --round, --decimals, --digits  <int>
-      Maximum number of decimal places retained for finite output signal or ratio values (default: ${rnd}).
+    Maximum number of decimal places retained for finite emitted values (default: ${rnd}).
 
-  -eo, --err_out  <str>
-      Directory for stderr and stdout logs.
+  -eo, --err_out  <dir>
+    Directory for stderr and stdout logs.
 
   -nj, --nam_job  <str>
-      Prefix for job names (default depends on resolved '--mode' and '--method'; e.g., 'compute_signal_norm', 'compute_ratio_unadj', or 'compute_coord').
+    Prefix for job names (default: 'compute_\${mode}_\${method}' for '--mode signal' and '--mode ratio'; 'compute_\${mode}' for '--mode coord').
 
 Notes:
-  - g and bedGraph input files must be coordinate-sorted.
+  - BAM/CRAM and bedGraph input files must be coordinate-sorted.
   - CRAM inputs in '--mode signal' or '--mode coord' require '--ref_fa'.
   - Input and output paths supplied to this wrapper interface must not contain spaces, commas, or semicolons.
   - This wrapper does not support '-' for stdin/stdout. Use the underlying Python scripts directly for streaming input/output workflows.
-  - If and where applicable, use consistent file ordering in- and outfiles, and between IP (file A) and input (file B) files.
-  - To run in "debug mode", set hardcoded variable 'debug=true'                   [debug=${debug:-UNSET}]
-  - To run in "dry-run mode", set hardcoded variable 'dry_run=true'               [dry_run=${dry_run:-UNSET}]
-  - To run in "parse-only mode", set hardcoded variable 'p_only=true'             [p_only=${p_only:-UNSET}]
-  - To run in "parse-and-check-only mode", set hardcoded variable 'pc_only=true'  [pc_only=${pc_only:-UNSET}]
+  - Use consistent file ordering in input and output lists.
+  - For ratio mode, keep numerator and denominator files in corresponding order.
+  - To run in debug mode, set hardcoded variable 'debug=true'.
+  - To run in dry-run mode, set hardcoded variable 'dry_run=true'.
+  - To run in parse-only mode, set hardcoded variable 'p_only=true'.
+  - To run in parse-and-check-only mode, set hardcoded variable 'pc_only=true'.
 EOM
 }
-
-
-#TODO: the following needs to be incorporated into the help docs
-#+   Sourced function scripts:
-#+     - check_args.sh
-#+     - check_inputs.sh
-#+     - check_numbers.sh
-#+     - format_outputs.sh
-#+     - handle_env.sh
-#+     - manage_slurm.sh
-#+     - populate_array_empty.sh
-#+     - run_python.sh
 
 
 #  Parse keyword arguments after helper scripts have been sourced
@@ -2210,13 +2203,13 @@ function main() {
         return 0
     fi
 
-    canonicalize_args     || return 1
-    validate_args         || return 1
+    canonicalize_args  || return 1
+    validate_args      || return 1
     resolve_paths_scrs || return 1
-    print_state_debug
-    prepare_vecs          || return 1
-    validate_vecs         || return 1
-    print_vecs_debug
+    print_state_debug  || return 1
+    prepare_vecs       || return 1
+    validate_vecs      || return 1
+    print_vecs_debug   || return 1
 
     if [[ "${pc_only}" == "true" ]]; then
         if [[ "${debug}" == "true" ]]; then debug_var "pc_only=true"; fi

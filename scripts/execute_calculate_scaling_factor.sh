@@ -1205,15 +1205,15 @@ if [[ "${slurm}" == "true" ]]; then
     unset cmd_slurm && declare -a cmd_slurm
     cmd_slurm=(
         sbatch
-        --parsable
-        --job-name="${nam_job}"
-        --nodes=1
-        --cpus-per-task="${threads}"
-        --time="${time}"
-        --output="${err_out}/${nam_job}.%A-%a.stdout.txt"
-        --error="${err_out}/${nam_job}.%A-%a.stderr.txt"
-        --array="1-${#arr_mip[@]}%${max_job}"
-        "${cmd_bld[@]}"
+            --parsable
+            --job-name="${nam_job}"
+            --nodes=1
+            --cpus-per-task="${threads}"
+            --time="${time}"
+            --output="${err_out}/${nam_job}.%A-%a.stdout.txt"
+            --error="${err_out}/${nam_job}.%A-%a.stderr.txt"
+            --array="1-${#arr_mip[@]}%${max_job}"
+            "${cmd_bld[@]}"
     )
 
     if [[ "${dry_run}" == "true" || "${verbose}" == "true" ]]; then

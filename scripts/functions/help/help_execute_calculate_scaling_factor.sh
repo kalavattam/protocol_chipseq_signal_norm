@@ -16,12 +16,11 @@ function help_execute_calculate_scaling_factor() {
     cat << EOM
 Usage:
   execute_calculate_scaling_factor.sh
-    [--help] [--verbose] [--dry_run]
-    [--threads <int>]
-    [--mode <enum:siq,spike>] [--method <enum:fractional,chiprx_alpha_ratio,chiprx_alpha_ip,chiprx_alpha_in,rxinput_alpha>]
-    --csv_mip <csv:file> --csv_min <csv:file> [--csv_sip <csv:file>] [--csv_sin <csv:file>] [--aln_typ <enum:pe,se,auto>] [--ref_fa <file>]
+    [--help] [--verbose] [--dry_run] [--threads <int>]
+    [--mode <enum:siq|spike>] [--method <enum:fractional|chiprx_alpha_ratio|chiprx_alpha_ip|chiprx_alpha_in|rxinput_alpha>]
+    --csv_mip <csv:file> --csv_min <csv:file> [--csv_sip <csv:file>] [--csv_sin <csv:file>] [--aln_typ <enum:pe|se|auto>] [--ref_fa <file>]
     --fil_out <file> [--force] [--no_parts] [--no_header]
-    [--tbl_met <file>] [--cfg_met <file>] [--eqn <enum:5,5nd,6,6nd>]
+    [--tbl_met <file>] [--cfg_met <file>] [--eqn <enum:5|5nd|6|6nd>]
     [--len_def <int>] [--len_mip <csv:num>] [--len_min <csv:num>] [--dep_mip <csv:int>] [--dep_min <csv:int>] [--dep_sip <csv:int>] [--dep_sin <csv:int>]
     [--dp <int>]
     [--err_out <dir>] [--nam_job <str>] [--max_job <int>] [--slurm] [--time <time>]
@@ -135,7 +134,7 @@ Arguments:
     Leave the final TSV data-only instead of prepending the mode-specific header.
 
   -dp, --dp, --rnd, --round, --decimals, --digits  <int>
-    Number of decimal places used when rounding output values (default: ${dp}).
+    Maximum number of decimal places retained for finite emitted values (default: ${dp}).
 
   -eo, --err_out  <dir>
     Directory in which wrapper-level stdout/stderr logs are written for local GNU Parallel or serial execution (default: '\$(dirname "\${fil_out}")/logs').

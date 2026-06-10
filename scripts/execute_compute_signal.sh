@@ -901,7 +901,6 @@ function validate_args() {
         check_str_delim "csv_pseudo" "${csv_pseudo}"
     fi
 
-    #TODO: determine best place for this
     if [[ -n "${ref_fa}" ]]; then
         validate_var_file "ref_fa" "${ref_fa}"
     fi
@@ -1417,14 +1416,14 @@ function run_jobs() {
         unset cmd_slurm && declare -a cmd_slurm
         cmd_slurm=(
             sbatch
-            --job-name="${nam_job}"
-            --nodes=1
-            --cpus-per-task="${threads}"
-            --time="${time}"
-            --output="${err_out}/${nam_job}.%A-%a.stdout.txt"
-            --error="${err_out}/${nam_job}.%A-%a.stderr.txt"
-            --array="1-${#arr_outfile[@]}%${max_job}"
-            "${cmd_bld[@]}"
+                --job-name="${nam_job}"
+                --nodes=1
+                --cpus-per-task="${threads}"
+                --time="${time}"
+                --output="${err_out}/${nam_job}.%A-%a.stdout.txt"
+                --error="${err_out}/${nam_job}.%A-%a.stderr.txt"
+                --array="1-${#arr_outfile[@]}%${max_job}"
+                "${cmd_bld[@]}"
         )
 
         if [[ "${dry_run}" == "true" || "${verbose}" == "true" ]]; then
@@ -1533,9 +1532,9 @@ function main() {
     validate_vecs         || return 1
     config_exec           || return 1
     setup_env             || return 1
-    print_state_debug
+    print_state_debug     || return 1
     serialize_vecs        || return 1
-    print_vecs_serialized
+    print_vecs_serialized || return 1
     run_jobs              || return 1
 }
 
