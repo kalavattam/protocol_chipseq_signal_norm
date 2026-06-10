@@ -472,47 +472,6 @@ Dependencies:
   Shell scripts:
     - submit_compute_signal.sh
 
-  Sourced function scripts:
-    - source_helpers.sh
-      + source_helpers
-    - check_args.sh
-      + require_optarg
-      + check_str_delim
-    - check_env.sh
-      + check_env_installed
-      + check_pgrm_path
-    - check_inputs.sh
-      + validate_var
-      + validate_var_dir
-      + validate_var_file
-      + check_arr_nonempty
-      + check_arr_lengths
-    - check_numbers.sh
-      + check_flt_nonneg
-      + check_flt_pos
-      + check_format_time
-      + check_int_pos
-      + check_int_nonneg
-    - format_outputs.sh
-      + echo_err
-      + echo_warn
-      + print_banner_pretty
-      + summarize_sig_norm
-    - handle_env.sh
-      + handle_env
-    - help/help_execute_compute_signal.sh
-      + help_execute_compute_signal
-      + detail_execute_compute_signal
-    - manage_parallel.sh
-      + print_parallel_info
-      + reset_max_job
-      + set_params_parallel
-    - populate_array_empty.sh
-      + populate_array_empty
-    - wrap_cmd.sh
-      + get_submit_logs
-      + print_built_cmd
-
 
 Notes:
   - BAM/CRAM and bedGraph input files must be coordinate-sorted.

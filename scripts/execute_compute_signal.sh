@@ -6,7 +6,8 @@
 # Copyright 2024-2026 by Kris Alavattam
 # Email: kalavattam@gmail.com
 #
-# OpenAI ChatGPT (GPT-4- and GPT-5-series models) was used in development.
+# OpenAI ChatGPT and Codex (GPT-4- and GPT-5-series models) were used in
+# development.
 #
 # Distributed under the MIT license.
 
@@ -32,7 +33,7 @@ set -euo pipefail
 dir_scr="$(cd "$(dirname "${BASH_SOURCE[0]}")" > /dev/null 2>&1 && pwd)"
 
 
-#  Source and define functions ================================================
+#  Source and define functions
 dir_fnc="${dir_scr}/functions"
 fnc_src="${dir_fnc}/source_helpers.sh"
 
@@ -69,8 +70,6 @@ source_helpers "${dir_fnc}" \
 unset fnc_src
 
 
-#  Auto-generate prefix for ratio track filenames based on 'method' and
-#+ 'scl_fct'
 function generate_pfx() {
     local method="${1:-}"
     local scl_fct="${2:-}"
@@ -262,7 +261,7 @@ Returns:
   0 if 'cmd_bld' is constructed successfully; 1 if argument parsing fails.
 
 Notes:
-  - 'cmd_bld' is written as a global indexed array.
+  'cmd_bld' is written as a global indexed array.
 EOM
     )
 
@@ -707,9 +706,7 @@ function canonicalize_args() {
         s|sig|signal)
             mode="signal"
 
-            if [[ -z "${method}" ]]; then
-                method="norm"
-            fi
+            if [[ -z "${method}" ]]; then method="norm"; fi
 
             case "${method}" in
                 u|unadj|unadjusted|s|smp|simple|r|raw)
@@ -742,9 +739,7 @@ function canonicalize_args() {
         r|rat|ratio)
             mode="ratio"
 
-            if [[ -z "${method}" ]]; then
-                method="unadj"
-            fi
+            if [[ -z "${method}" ]]; then method="unadj"; fi
 
             case "${method}" in
                 u|unadj|unadjusted|s|smp|simple|r|raw)
@@ -762,12 +757,12 @@ function canonicalize_args() {
                 *)
                     echo_err \
                         "invalid value for '--method': '${method}'. Expected" \
-                        "'u', 'unadj', 'unadjusted', 's', 'smp', 'simple', 'r'," \
-                        "or 'raw' ('method=unadj'); '2', 'l2', 'lg2', or 'log2'" \
-                        " ('method=log2'); 'ur', 'unadj_r', 'unadjusted_r', 'sr'," \
-                        "'smp_r', 'simple_r', 'rr', or 'raw_r'" \
-                        " ('method=unadj_r'); or '2r', 'l2r', 'l2_r', 'lg2_r'," \
-                        " or 'log2_r' ('method=log2_r')."
+                        "'u', 'unadj', 'unadjusted', 's', 'smp', 'simple'," \
+                        "'r', or 'raw' ('method=unadj'); '2', 'l2', 'lg2'," \
+                        "or 'log2' ('method=log2'); 'ur', 'unadj_r'," \
+                        "'unadjusted_r', 'sr', 'smp_r', 'simple_r', 'rr', or" \
+                        "'raw_r' ('method=unadj_r'); or '2r', 'l2r', 'l2_r'," \
+                        "'lg2_r', or 'log2_r' ('method=log2_r')."
                     return 1
                     ;;
             esac
@@ -802,7 +797,8 @@ function canonicalize_args() {
         *)
             echo_err \
                 "invalid value for '--mode': '${mode}'. Expected 's', 'sig'," \
-                "'signal', 'r', 'rat', 'ratio', 'c', 'coord', or 'coordinates'."
+                "'signal', 'r', 'rat', 'ratio', 'c', 'coord', or" \
+                "'coordinates'."
             return 1
             ;;
     esac
@@ -829,8 +825,9 @@ function validate_args() {
             bedGraph|bedGraph.gz|bedgraph|bedgraph.gz|bdg|bdg.gz|bg|bg.gz) : ;;
             *)
                 echo_warn \
-                    "unsupported value for '--typ_out' with '--mode ${mode}':" \
-                    "'${typ_out}'. Coercing '--typ_out' to 'bedGraph.gz'."
+                    "unsupported value for '--typ_out' with" \
+                    "'--mode ${mode}': '${typ_out}'. Coercing '--typ_out' to" \
+                    "'bedGraph.gz'."
                 typ_out="bedGraph.gz"
                 ;;
         esac
@@ -862,8 +859,9 @@ function validate_args() {
         case "${typ_out}" in
             bedGraph|bedGraph.gz|bedgraph|bedgraph.gz|bdg|bdg.gz|bg|bg.gz)
                 echo_warn \
-                    "unsupported value for '--typ_out' with '--mode ${mode}':" \
-                    "'${typ_out}'. Coercing '--typ_out' to 'bed.gz'."
+                    "unsupported value for '--typ_out' with" \
+                    "'--mode ${mode}': '${typ_out}'. Coercing '--typ_out' to" \
+                    "'bed.gz'."
                 typ_out="bed.gz"
                 ;;
 
@@ -881,8 +879,8 @@ function validate_args() {
         #+ supplied
         if [[ -n "${siz_bin}" ]]; then
             echo_warn \
-                "argument '--siz_bin' is not applicable with '--mode ${mode}'." \
-                "Ignoring/unsetting '--siz_bin ${siz_bin}'."
+                "argument '--siz_bin' is not applicable with" \
+                "'--mode ${mode}'. Ignoring/unsetting '--siz_bin ${siz_bin}'."
             unset siz_bin
         fi
     fi
@@ -926,8 +924,8 @@ function validate_args() {
         if [[ -n "${csv_dep_min}" && -n "${csv_pseudo}" ]]; then
             echo_warn \
                 "both '--csv_dep_min' and '--csv_pseudo' were supplied for" \
-                "'--mode ratio'. This is allowed, but interpretability may be" \
-                "reduced because both arguments stabilize low-depth ratio" \
+                "'--mode ratio'. This is allowed, but interpretability may" \
+                "be reduced because both arguments stabilize low-depth ratio" \
                 "behavior in different ways."
         fi
     fi
@@ -1228,8 +1226,8 @@ function setup_env() {
     local out
     local -a env_msg
 
-    #TODO: this environment activation block is repeated verbatim many times in
-    #+     'execute_*.sh' scripts: modularize?
+    #TODO: this environment activation block is repeated verbatim many across
+    #+     the 'execute_*.sh' scripts: modularize
     env_msg=(
         "'handle_env' failed for 'env_nam=${env_nam}'. Check that Conda/Mamba"
         "are available and that the environment exists."

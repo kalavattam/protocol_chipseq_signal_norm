@@ -6,7 +6,8 @@
 # Copyright 2024-2026 by Kris Alavattam
 # Email: kalavattam@gmail.com
 #
-# OpenAI ChatGPT (GPT-4- and GPT-5-series models) was used in development.
+# OpenAI ChatGPT and Codex (GPT-4- and GPT-5-series models) were used in
+# development.
 #
 # Distributed under the MIT license.
 
@@ -38,9 +39,9 @@ function process_io() {
     local outfile=""
     local scl_fct=""
     local opt_var=""
-    local show_help      # Help text
-    local samp dsc ext   # Sample name, output descriptor, and loop variable
-    local -a exts        # Recognized output/input extensions
+    local show_help     # Help text
+    local samp dsc ext  # Sample name, output descriptor, and loop variable
+    local -a exts       # Recognized output/input extensions
 
     show_help=$(cat << EOM
 Usage:
@@ -222,8 +223,8 @@ function set_args_opt() {
     local eps="${7:-NA}"
     local skip_00="${8:-NA}"
     local drp_nan="${9:-false}"
-    local -a optional            # Optional CLI arguments
-    local show_help              # Help text
+    local -a optional  # Optional CLI arguments
+    local show_help    # Help text
 
     show_help=$(cat << EOM
 Usage:
@@ -1213,14 +1214,14 @@ EOM
 
 #  Resolve '--dir_scr' before sourced parser helpers are available
 function resolve_dir_scr() {
-    local script="${1:-}"
+    local scr="${1:-}"
     shift
 
     local -a args=( "$@" )
     local i=0
 
-    if [[ -z "${script}" ]]; then
-        script="unknown_script"
+    if [[ -z "${scr}" ]]; then
+        scr="unknown_script"
     fi
 
     for (( i = 0; i < ${#args[@]}; i++ )); do
@@ -1229,7 +1230,7 @@ function resolve_dir_scr() {
                 if (( i + 1 >= ${#args[@]} )) \
                     || [[ -z "${args[i + 1]:-}" || "${args[i + 1]}" == -* ]]
                 then
-                    echo "error(${script}):" \
+                    echo "error(${scr}):" \
                         "option '${args[i]}' requires a value." >&2
                     echo >&2
                     show_help_main
@@ -1242,7 +1243,7 @@ function resolve_dir_scr() {
         esac
     done
 
-    echo "error(${script}):" \
+    echo "error(${scr}):" \
         "required option '--dir_scr' was not supplied." >&2
     echo >&2
     show_help_main
@@ -1252,32 +1253,32 @@ function resolve_dir_scr() {
 
 #  Source 'source_helpers.sh' and requested helper scripts from 'dir_scr'
 function source_submit_helpers() {
-    local script="${1:-}"
+    local scr="${1:-}"
     local dir_scr_arg="${2:-}"
     local fnc_src
 
     if (( $# < 2 )); then
-        echo "error(${script:-unknown_script}):" \
-            "expected at least two arguments: 'script' and 'dir_scr_arg'." >&2
+        echo "error(${scr:-unknown_script}):" \
+            "expected at least two arguments: 'scr' and 'dir_scr_arg'." >&2
         return 1
     fi
 
     shift 2
 
-    if [[ -z "${script}" ]]; then
-        script="unknown_script"
+    if [[ -z "${scr}" ]]; then
+        scr="unknown_script"
     fi
 
     if [[ -z "${dir_scr_arg}" ]]; then
-        echo "error(${script}):" \
+        echo "error(${scr}):" \
             "positional argument 2, 'dir_scr_arg', is missing." >&2
         return 1
     elif [[ ! -d "${dir_scr_arg}" ]]; then
-        echo "error(${script}):" \
+        echo "error(${scr}):" \
             "script directory not found: '${dir_scr_arg}'." >&2
         return 1
     elif (( $# < 1 )); then
-        echo "error(${script}):" \
+        echo "error(${scr}):" \
             "at least one helper script name must be supplied." >&2
         return 1
     fi
@@ -1286,20 +1287,20 @@ function source_submit_helpers() {
     fnc_src="${dir_fnc}/source_helpers.sh"
 
     if [[ ! -f "${fnc_src}" ]]; then
-        echo "error(${script}):" \
+        echo "error(${scr}):" \
             "script not found: '${fnc_src}'." >&2
         return 1
     fi
 
     # shellcheck disable=SC1090
     source "${fnc_src}" || {
-        echo "error(${script}):" \
+        echo "error(${scr}):" \
             "failed to source '${fnc_src}'." >&2
         return 1
     }
 
     source_helpers "${dir_fnc}" "$@" || {
-        echo "error(${script}):" \
+        echo "error(${scr}):" \
             "failed to source required helper scripts." >&2
         return 1
     }
