@@ -47,6 +47,19 @@ If an argument consumes no value, use `<flag>` and still keep two spaces before 
     Display this help message and exit.
 ```
 
+For positional-argument sections, put the argument number, name, and type on one line. Put the description on the next line, indented one additional level, and separate entries with one blank line:
+```txt
+  01  arg_name  <type>
+    Description text.
+
+  02  next_arg  <type>
+    Description text.
+```
+
+If a function has 10 or more positional arguments, zero-pad argument numbers 1-9. For example, use `01` through `09`, then `10`, `11`, and so on.
+
+Nontrivial shell-function help docs should include a `Returns:` section.
+
 Within nested sections such as `Dependencies:`, use this format:
 ```txt
 Dependencies:
@@ -161,6 +174,25 @@ Examples:
 ### Argument ordering rules
 Use the same argument order in `Usage:`, short argument sections, and detailed argument sections.
 
+In `Usage:` blocks, group continuation lines by workflow role rather than by
+source-code line length. User-facing help is exempt from the 80-character
+source-code preference, so keep a semantic group on one line when that is
+clearer.
+
+In `Usage:` blocks, show required options without square brackets and
+optional, defaulted, or conditional options with square brackets:
+```txt
+--dir_out <dir>       # Required
+[--threads <int>]    # Optional or has a default
+[--ref_fa <file>]    # Conditional; explain condition in the argument body
+```
+
+Use parentheses for required mutually exclusive groups, and keep optional
+members bracketed inside the group:
+```txt
+(--csv_infile <csv:file> [--ref_fa <file>] | --csv_fil_A <csv:file> --csv_fil_B <csv:file>)
+```
+
 Order arguments by workflow role:
 1. Help and reporting flags.
 2. Execution controls.
@@ -174,6 +206,20 @@ Order arguments by workflow role:
 10. Scheduler and parallelization options.
 
 Within each group, keep closely related arguments together, and keep flags near the values they modify when this improves readability.
+
+For example:
+```txt
+Usage:
+  example.sh
+    [--help] [--verbose] [--dry_run] [--threads <int>]
+    [--mode <enum:a|b>] [--method <enum:x|y>]
+    (--csv_infile <csv:file> [--ref_fa <file>] | --csv_fil_A <csv:file> --csv_fil_B <csv:file>)
+    --dir_out <dir> [--prefix <str>]
+    [--csv_scl_fct <csv:spec>]
+    [--dp <int>]
+    --err_out <dir> [--nam_job <str>]
+    [--max_job <int>] [--slurm] [--time <time>]
+```
 
 <br />
 
@@ -204,7 +250,12 @@ When both underscore and hyphen forms are accepted by the parser, document only 
 Prefer --dp as the canonical option for decimal precision. Continue accepting and documenting legacy aliases on the same argument line:
 ```txt
   -dp, --dp, --rnd, --round, --decimals, --digits  <int>
+    Maximum number of decimal places retained for finite emitted values (default: ${dp_or_rnd}).
 ```
+
+Use the script's current internal default variable in this text. Use `${dp}`
+in scripts that have migrated to `dp`, and use `${rnd}` in scripts that still
+use `rnd`.
 
 <br />
 

@@ -41,6 +41,17 @@ arr_cmd=(
 )
 ```
 
+For `sbatch` command arrays, `sbatch` is the invoked command:
+```bash
+cmd_slurm=(
+    sbatch
+        --job-name="${nam_job}"
+        --nodes=1
+        --cpus-per-task="${threads}"
+        "${cmd_bld[@]}"
+)
+```
+
 Indent `case` patterns one level under the `case ... in` line, and indent each pattern body one additional level:
 ```bash
 case "${mode}" in
@@ -52,6 +63,25 @@ case "${mode}" in
         ;;
 esac
 ```
+
+<br />
+
+## Heredocs
+Use `EOM` as the standard delimiter for Bash heredocs:
+```bash
+cat << EOM
+literal text
+EOM
+```
+
+Quoted forms are fine when expansion should be disabled:
+```bash
+cat << 'EOM'
+literal text
+EOM
+```
+
+Interpreter stdin heredocs may use a language-specific delimiter when that is clearer. For example, use `PY` for Python code passed to Python stdin.
 
 <br />
 
@@ -81,7 +111,7 @@ Order shell functions from low-level helpers toward lifecycle orchestration. Put
 
 Keep `main()` as lifecycle orchestration. When setup, validation, debug printing, environment activation, vector reconstruction, or execution dispatch becomes nontrivial, extract those blocks into named helpers and have `main()` call them in order.
 
-Helpers should return nonzero on failure. `main()` should decide whether to return or exit.
+Inside functions, including `main()`, prefer `return 0` and `return 1` over `exit`. Reserve `exit` for top-level code outside functions, especially Bash-version guards and fatal bootstrap checks before `main()` is available. Let the final top-level `main "$@"` call propagate the returned status under `set -euo pipefail`.
 
 Submit wrappers may need a small bootstrap exception before the ordinary lifecycle when parser helpers depend on a user-supplied scripts directory. In that case, use narrowly named bootstrap helpers, such as `resolve_dir_scr()` and `source_submit_helpers()`, before normal argument parsing.
 
