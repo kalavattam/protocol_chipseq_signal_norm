@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # -*- coding: utf-8 -*-
 #
-# Script: test_submit_filter_alignments_bam.sh
+# Script: test_submit_filter_alignments_bam_to_bam.sh
 #
 # Copyright 2026 by Kris Alavattam
 # Email: kalavattam@gmail.com
@@ -11,7 +11,7 @@
 # Distributed under the MIT license.
 
 
-TEST_NAME="submit filter-alignments BAM"
+TEST_NAME="submit filter-alignments BAM to BAM"
 
 #  Source shared smoke-test helpers
 # shellcheck disable=SC1091
@@ -25,7 +25,7 @@ print_section "${TEST_NAME}"
 dir_fx="${ROOT_REPO}/tests/filter_alignments/fixtures/sam"
 in_sam="${dir_fx}/filter_sc_sp.sam"
 
-tmp="${TEST_DIR_TMP}/submit_filter_alignments_bam"
+tmp="${TEST_DIR_TMP}/submit_filter_alignments_bam_to_bam"
 dir_in="${tmp}/input"
 dir_out="${tmp}/out"
 dir_err="${tmp}/logs"
@@ -52,7 +52,7 @@ require_env_project env_nam || {
             --dir_out "${dir_out}"
             --err_out "${dir_err}"
     )
-    nam_job_pfx="test_submit_filter_alignments"
+    nam_job_pfx="test_submit_filter_alignments_bam_to_bam"
     arr_arg_nil=()
     arr_arg_sp=( --tg --mtr --mito )
 }
@@ -64,13 +64,13 @@ require_files_nonempty \
 }
 
 #  Build a deterministic BAM input from the committed SAM fixture
-log="${dir_log}/submit_filter_alignments_prepare_bam.log"
+log="${dir_log}/submit_filter_alignments_prepare_bam_to_bam.log"
 if ! \
     build_filter_alignments_bam_fixture \
         "${in_sam}" \
         "${in_bam}" \
         "${log}" \
-        "submit filter-alignments BAM fixture"
+        "submit filter-alignments BAM-to-BAM fixture"
 then
     finish
     exit $?
@@ -80,7 +80,7 @@ fi
 #  S. cerevisiae filtering should retain only canonical SC chromosomes
 fil_out="${dir_out}/filter_sc_sp.sc.bam"
 stat="${dir_out}/filter_sc_sp.sc.idxstats.txt"
-log="${dir_log}/submit_filter_alignments_sc.log"
+log="${dir_log}/submit_filter_alignments_bam_to_bam_sc.log"
 
 run_case_filter \
     sc \
@@ -89,14 +89,14 @@ run_case_filter \
     arr_cmd_filter \
     "${nam_job_pfx}" \
     arr_arg_nil \
-    "submit_filter_alignments.sh retain=sc sc"
+    "submit_filter_alignments.sh BAM to BAM retain=sc sc"
 
 assert_file_nonempty \
     "${fil_out}" \
-    "submit retain=sc BAM output"
+    "submit BAM to BAM retain=sc BAM output"
 assert_file_nonempty \
     "${fil_out}.bai" \
-    "submit retain=sc BAM index"
+    "submit BAM to BAM retain=sc BAM index"
 assert_filter_alignments_pg_header \
     "${fil_out}" \
     "" \
@@ -104,33 +104,33 @@ assert_filter_alignments_pg_header \
     sc \
     bam \
     "${dir_out}/filter_sc_sp.sc.header.txt" \
-    "submit retain=sc BAM output"
+    "submit BAM to BAM retain=sc BAM output"
 
 if [[ -s "${fil_out}" ]]; then
     run_capture \
-        "idxstats submit filter-alignments sc" \
+        "idxstats submit filter-alignments BAM to BAM sc" \
         "${stat}" \
         run_samtools idxstats "${fil_out}"
 
     assert_pattern_found \
         "${stat}" \
         $'^I\t100\t1\t0$' \
-        "submit retain=sc output keeps chromosome I"
+        "submit BAM to BAM retain=sc output keeps chromosome I"
     assert_pattern_absent \
         "${stat}" \
         $'^Mito\t' \
-        "submit retain=sc output omits Mito without --mito"
+        "submit BAM to BAM retain=sc output omits Mito without --mito"
     assert_pattern_absent \
         "${stat}" \
         $'^SP_I\t' \
-        "submit retain=sc output omits S. pombe chromosomes"
+        "submit BAM to BAM retain=sc output omits S. pombe chromosomes"
 fi
 
 
 #  S. pombe filtering should honor optional TG, MTR, and mito contigs
 fil_out="${dir_out}/filter_sc_sp.sp.bam"
 stat="${dir_out}/filter_sc_sp.sp.idxstats.txt"
-log="${dir_log}/submit_filter_alignments_sp.log"
+log="${dir_log}/submit_filter_alignments_bam_to_bam_sp.log"
 
 run_case_filter \
     sp \
@@ -139,14 +139,14 @@ run_case_filter \
     arr_cmd_filter \
     "${nam_job_pfx}" \
     arr_arg_sp \
-    "submit_filter_alignments.sh retain=sp sp"
+    "submit_filter_alignments.sh BAM to BAM retain=sp sp"
 
 assert_file_nonempty \
     "${fil_out}" \
-    "submit retain=sp BAM output"
+    "submit BAM to BAM retain=sp BAM output"
 assert_file_nonempty \
     "${fil_out}.bai" \
-    "submit retain=sp BAM index"
+    "submit BAM to BAM retain=sp BAM index"
 assert_filter_alignments_pg_header \
     "${fil_out}" \
     "" \
@@ -154,38 +154,38 @@ assert_filter_alignments_pg_header \
     sp \
     bam \
     "${dir_out}/filter_sc_sp.sp.header.txt" \
-    "submit retain=sp BAM output"
+    "submit BAM to BAM retain=sp BAM output"
 
 if [[ -s "${fil_out}" ]]; then
     run_capture \
-        "idxstats submit filter-alignments sp" \
+        "idxstats submit filter-alignments BAM to BAM sp" \
         "${stat}" \
         run_samtools idxstats "${fil_out}"
 
     assert_pattern_found \
         "${stat}" \
         $'^SP_I\t100\t1\t0$' \
-        "submit retain=sp output keeps SP_I"
+        "submit BAM to BAM retain=sp output keeps SP_I"
     assert_pattern_found \
         "${stat}" \
         $'^SP_II_TG\t100\t1\t0$' \
-        "submit retain=sp output keeps SP_II_TG"
+        "submit BAM to BAM retain=sp output keeps SP_II_TG"
     assert_pattern_found \
         "${stat}" \
         $'^SP_MTR\t100\t1\t0$' \
-        "submit retain=sp output keeps SP_MTR"
+        "submit BAM to BAM retain=sp output keeps SP_MTR"
     assert_pattern_found \
         "${stat}" \
         $'^SP_Mito\t100\t1\t0$' \
-        "submit retain=sp output keeps SP_Mito"
+        "submit BAM to BAM retain=sp output keeps SP_Mito"
     assert_pattern_absent \
         "${stat}" \
         $'^I\t' \
-        "submit retain=sp output omits S. cerevisiae chromosomes"
+        "submit BAM to BAM retain=sp output omits S. cerevisiae chromosomes"
     assert_pattern_absent \
         "${stat}" \
         $'^chrUn\t' \
-        "submit retain=sp output omits unrelated contigs"
+        "submit BAM to BAM retain=sp output omits unrelated contigs"
 fi
 
 finish

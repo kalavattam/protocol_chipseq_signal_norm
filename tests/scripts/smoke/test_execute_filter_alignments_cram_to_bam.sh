@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # -*- coding: utf-8 -*-
 #
-# Script: test_execute_filter_alignments_cram_input_bam.sh
+# Script: test_execute_filter_alignments_cram_to_bam.sh
 #
 # Copyright 2026 by Kris Alavattam
 # Email: kalavattam@gmail.com
@@ -11,7 +11,7 @@
 # Distributed under the MIT license.
 
 
-TEST_NAME="execute filter-alignments CRAM input BAM output"
+TEST_NAME="execute filter-alignments CRAM to BAM"
 
 #  Source shared smoke-test helpers
 # shellcheck disable=SC1091
@@ -26,7 +26,7 @@ in_sam="${dir_fx}/sam/filter_sc_sp.sam"
 ref_fa="${dir_fx}/reference/filter_sc_sp.fa"
 ref_fai="${ref_fa}.fai"
 
-tmp="${TEST_DIR_TMP}/execute_filter_alignments_cram_input_bam"
+tmp="${TEST_DIR_TMP}/execute_filter_alignments_cram_to_bam"
 dir_in="${tmp}/input"
 dir_out="${tmp}/out"
 dir_err="${tmp}/logs"
@@ -44,7 +44,7 @@ in_cram="${dir_in}/filter_sc_sp.cram"
             --err_out "${dir_err}"
             --max_job 1
     )
-    nam_job_pfx="test_execute_filter_alignments_cram"
+    nam_job_pfx="test_execute_filter_alignments_cram_to_bam"
     arr_arg_nil=()
     arr_arg_sp=( --tg --mtr --mito )
 }
@@ -67,14 +67,14 @@ require_files_nonempty \
 
 
 #  Build deterministic CRAM input from committed SAM and reference fixtures
-log="${dir_log}/execute_filter_alignments_prepare_cram.log"
+log="${dir_log}/execute_filter_alignments_prepare_cram_to_bam.log"
 if ! \
     build_filter_alignments_cram_fixture \
         "${in_sam}" \
         "${ref_fa}" \
         "${in_cram}" \
         "${log}" \
-        "execute filter-alignments CRAM fixture"
+        "execute filter-alignments CRAM-to-BAM fixture"
 then
     finish
     exit $?
@@ -84,7 +84,7 @@ fi
 #  S. cerevisiae filtering should retain only canonical SC chromosomes
 fil_out="${dir_out}/filter_sc_sp.sc.bam"
 stat="${dir_out}/filter_sc_sp.sc.idxstats.txt"
-log="${dir_log}/execute_filter_alignments_cram_sc.log"
+log="${dir_log}/execute_filter_alignments_cram_to_bam_sc.log"
 
 run_case_filter \
     sc \
@@ -93,63 +93,63 @@ run_case_filter \
     arr_cmd_filter \
     "${nam_job_pfx}" \
     arr_arg_nil \
-    "execute_filter_alignments.sh CRAM retain=sc sc"
+    "execute_filter_alignments.sh CRAM to BAM retain=sc sc"
 
 assert_file_nonempty \
     "${fil_out}" \
-    "execute CRAM retain=sc BAM output"
+    "execute CRAM to BAM retain=sc BAM output"
 assert_file_nonempty \
     "${fil_out}.bai" \
-    "execute CRAM retain=sc BAM index"
+    "execute CRAM to BAM retain=sc BAM index"
 assert_file_exists \
-    "${dir_err}/test_execute_filter_alignments_cram_sc_ser.stdout.txt" \
-    "execute CRAM retain=sc serial stdout log"
+    "${dir_err}/test_execute_filter_alignments_cram_to_bam_sc_ser.stdout.txt" \
+    "execute CRAM to BAM retain=sc serial stdout log"
 assert_file_exists \
-    "${dir_err}/test_execute_filter_alignments_cram_sc_ser.stderr.txt" \
-    "execute CRAM retain=sc serial stderr log"
+    "${dir_err}/test_execute_filter_alignments_cram_to_bam_sc_ser.stderr.txt" \
+    "execute CRAM to BAM retain=sc serial stderr log"
 assert_file_exists \
-    "${dir_err}/test_execute_filter_alignments_cram_sc.filter_sc_sp.stdout.txt" \
-    "execute CRAM retain=sc submit stdout log"
+    "${dir_err}/test_execute_filter_alignments_cram_to_bam_sc.filter_sc_sp.stdout.txt" \
+    "execute CRAM to BAM retain=sc submit stdout log"
 assert_file_exists \
-    "${dir_err}/test_execute_filter_alignments_cram_sc.filter_sc_sp.stderr.txt" \
-    "execute CRAM retain=sc submit stderr log"
+    "${dir_err}/test_execute_filter_alignments_cram_to_bam_sc.filter_sc_sp.stderr.txt" \
+    "execute CRAM to BAM retain=sc submit stderr log"
 
 if [[ -s "${fil_out}" ]]; then
     if \
         run_capture \
-            "quickcheck execute filter-alignments CRAM sc" \
-            "${dir_log}/execute_filter_alignments_cram_sc_quickcheck.log" \
+            "quickcheck execute filter-alignments CRAM to BAM sc" \
+            "${dir_log}/execute_filter_alignments_cram_to_bam_sc_quickcheck.log" \
             run_samtools quickcheck "${fil_out}"
     then
-        record_pass "execute CRAM retain=sc BAM passes samtools quickcheck"
+        record_pass "execute CRAM to BAM retain=sc BAM passes samtools quickcheck"
     else
-        record_fail "execute CRAM retain=sc BAM fails samtools quickcheck"
+        record_fail "execute CRAM to BAM retain=sc BAM fails samtools quickcheck"
     fi
 
     run_capture \
-        "idxstats execute filter-alignments CRAM sc" \
+        "idxstats execute filter-alignments CRAM to BAM sc" \
         "${stat}" \
         run_samtools idxstats "${fil_out}"
 
     assert_pattern_found \
         "${stat}" \
         $'^I\t100\t1\t0$' \
-        "execute CRAM retain=sc output keeps chromosome I"
+        "execute CRAM to BAM retain=sc output keeps chromosome I"
     assert_pattern_absent \
         "${stat}" \
         $'^Mito\t' \
-        "execute CRAM retain=sc output omits Mito without --mito"
+        "execute CRAM to BAM retain=sc output omits Mito without --mito"
     assert_pattern_absent \
         "${stat}" \
         $'^SP_I\t' \
-        "execute CRAM retain=sc output omits S. pombe chromosomes"
+        "execute CRAM to BAM retain=sc output omits S. pombe chromosomes"
 fi
 
 
 #  S. pombe filtering should honor optional TG, MTR, and mito contigs
 fil_out="${dir_out}/filter_sc_sp.sp.bam"
 stat="${dir_out}/filter_sc_sp.sp.idxstats.txt"
-log="${dir_log}/execute_filter_alignments_cram_sp.log"
+log="${dir_log}/execute_filter_alignments_cram_to_bam_sp.log"
 
 run_case_filter \
     sp \
@@ -158,68 +158,68 @@ run_case_filter \
     arr_cmd_filter \
     "${nam_job_pfx}" \
     arr_arg_sp \
-    "execute_filter_alignments.sh CRAM retain=sp sp"
+    "execute_filter_alignments.sh CRAM to BAM retain=sp sp"
 
 assert_file_nonempty \
     "${fil_out}" \
-    "execute CRAM retain=sp BAM output"
+    "execute CRAM to BAM retain=sp BAM output"
 assert_file_nonempty \
     "${fil_out}.bai" \
-    "execute CRAM retain=sp BAM index"
+    "execute CRAM to BAM retain=sp BAM index"
 assert_file_exists \
-    "${dir_err}/test_execute_filter_alignments_cram_sp_ser.stdout.txt" \
-    "execute CRAM retain=sp serial stdout log"
+    "${dir_err}/test_execute_filter_alignments_cram_to_bam_sp_ser.stdout.txt" \
+    "execute CRAM to BAM retain=sp serial stdout log"
 assert_file_exists \
-    "${dir_err}/test_execute_filter_alignments_cram_sp_ser.stderr.txt" \
-    "execute CRAM retain=sp serial stderr log"
+    "${dir_err}/test_execute_filter_alignments_cram_to_bam_sp_ser.stderr.txt" \
+    "execute CRAM to BAM retain=sp serial stderr log"
 assert_file_exists \
-    "${dir_err}/test_execute_filter_alignments_cram_sp.filter_sc_sp.stdout.txt" \
-    "execute CRAM retain=sp submit stdout log"
+    "${dir_err}/test_execute_filter_alignments_cram_to_bam_sp.filter_sc_sp.stdout.txt" \
+    "execute CRAM to BAM retain=sp submit stdout log"
 assert_file_exists \
-    "${dir_err}/test_execute_filter_alignments_cram_sp.filter_sc_sp.stderr.txt" \
-    "execute CRAM retain=sp submit stderr log"
+    "${dir_err}/test_execute_filter_alignments_cram_to_bam_sp.filter_sc_sp.stderr.txt" \
+    "execute CRAM to BAM retain=sp submit stderr log"
 
 if [[ -s "${fil_out}" ]]; then
     if \
         run_capture \
-            "quickcheck execute filter-alignments CRAM sp" \
-            "${dir_log}/execute_filter_alignments_cram_sp_quickcheck.log" \
+            "quickcheck execute filter-alignments CRAM to BAM sp" \
+            "${dir_log}/execute_filter_alignments_cram_to_bam_sp_quickcheck.log" \
             run_samtools quickcheck "${fil_out}"
     then
-        record_pass "execute CRAM retain=sp BAM passes samtools quickcheck"
+        record_pass "execute CRAM to BAM retain=sp BAM passes samtools quickcheck"
     else
-        record_fail "execute CRAM retain=sp BAM fails samtools quickcheck"
+        record_fail "execute CRAM to BAM retain=sp BAM fails samtools quickcheck"
     fi
 
     run_capture \
-        "idxstats execute filter-alignments CRAM sp" \
+        "idxstats execute filter-alignments CRAM to BAM sp" \
         "${stat}" \
         run_samtools idxstats "${fil_out}"
 
     assert_pattern_found \
         "${stat}" \
         $'^SP_I\t100\t1\t0$' \
-        "execute CRAM retain=sp output keeps SP_I"
+        "execute CRAM to BAM retain=sp output keeps SP_I"
     assert_pattern_found \
         "${stat}" \
         $'^SP_II_TG\t100\t1\t0$' \
-        "execute CRAM retain=sp output keeps SP_II_TG"
+        "execute CRAM to BAM retain=sp output keeps SP_II_TG"
     assert_pattern_found \
         "${stat}" \
         $'^SP_MTR\t100\t1\t0$' \
-        "execute CRAM retain=sp output keeps SP_MTR"
+        "execute CRAM to BAM retain=sp output keeps SP_MTR"
     assert_pattern_found \
         "${stat}" \
         $'^SP_Mito\t100\t1\t0$' \
-        "execute CRAM retain=sp output keeps SP_Mito"
+        "execute CRAM to BAM retain=sp output keeps SP_Mito"
     assert_pattern_absent \
         "${stat}" \
         $'^I\t' \
-        "execute CRAM retain=sp output omits S. cerevisiae chromosomes"
+        "execute CRAM to BAM retain=sp output omits S. cerevisiae chromosomes"
     assert_pattern_absent \
         "${stat}" \
         $'^chrUn\t' \
-        "execute CRAM retain=sp output omits unrelated contigs"
+        "execute CRAM to BAM retain=sp output omits unrelated contigs"
 fi
 
 finish

@@ -6,7 +6,8 @@
 # Copyright 2024-2026 by Kris Alavattam
 # Email: kalavattam@gmail.com
 #
-# OpenAI ChatGPT (GPT-4- and GPT-5-series models) was used in development.
+# OpenAI ChatGPT and Codex (GPT-4- and GPT-5-series models) were used in
+# development.
 #
 # Distributed under the MIT license.
 
@@ -16,10 +17,11 @@ function help_execute_filter_alignments() {
     cat << EOM
 Usage:
   execute_filter_alignments.sh
-    [--help] [--verbose] [--dry_run]
-    --threads <int> --csv_infile <str> --dir_out <str> [--out_ext <str>]
-    --retain <str> [--ref_fa <file>] [--mito] [--tg] [--mtr] [--chk_chr] --err_out <str>
-    --nam_job <str> --max_job <int> [--slurm] [--time <str>]
+    [--help] [--verbose] [--dry_run] [--threads <int>]
+    --csv_infile <csv:file> [--ref_fa <file>]
+    --dir_out <dir> [--out_ext <enum:bam|cram>]
+    [--retain <enum:sc|sp>] [--mito] [--tg] [--mtr] [--chk_chr]
+    [--err_out <dir>] [--nam_job <str>] [--max_job <int>] [--slurm] [--time <time>]
 
 Description:
   Filter BAM or CRAM infiles retaining species-specific chromosomes for S. cerevisiae ("main" or "experimental" alignments) or S. pombe ("spike-in" alignments). Output defaults to BAM and can be set to CRAM with '--out_ext cram'.
@@ -29,102 +31,77 @@ Description:
   The script supports parallel execution via Slurm or GNU Parallel, or can run serially.
 
 Arguments:
-   -h, --help
+  -h, --hlp, --help  <flag>
     Print this help message and exit.
 
-   -v, --verbose
+  -v, --verbose  <flag>
     Run script in "verbose" mode.
 
-  -dr, --dry_run
+  -dr, --dry, --dry_run  <flag>
     Run the command in "check" mode.
 
-   -t, --threads
+  -t, --thr, --threads  <int>
     Number of threads to use (default: '${threads}').
 
-   -i, --csv_infile
+  -i, -fi, -ci, --infile, --infiles, --fil_in, --csv_infile, --csv_infiles  <csv:file>
     Comma-delimited serialized string of coordinate-sorted BAM or CRAM input files.
 
-    Compatibility aliases include '--infile', '--infiles', '--fil_in', and '--csv_infiles'.
-
-  -do, --dir_out
-    The directory to store species-filtered and -reheadered output files.
-
-  -ox, --out_ext
-    Filtered output extension: 'bam' or 'cram' (default: '${out_ext}').
-
-  -rt, --retain
-    Specify species chromosomes to retain: S. cerevisiae, "sc"; S. pombe, "sp" (default: '${retain}').
-
-   -r, --ref_fa
+  -r, --ref, --ref_fa, --reference  <file>
     Reference FASTA required when '--csv_infile' contains CRAM input or '--out_ext cram'.
 
-   -m, --mito
+  -do, --dir_out  <dir>
+    The directory to store species-filtered and -reheadered output files.
+
+  -ox, --out_ext  <enum:bam|cram>
+    Filtered output extension: 'bam' or 'cram' (default: '${out_ext}').
+
+  -rt, --retain  <enum:sc|sp>
+    Specify species chromosomes to retain: S. cerevisiae, "sc"; S. pombe, "sp" (default: '${retain}').
+
+  -m, --mito  <flag>
     Retain mitochondrial chromosome.
 
-  -tg, --tg
+  -tg, --tg  <flag>
     Retain SP_II_TG chromosome (sp only).
 
-  -mr, --mtr
+  -mr, --mtr  <flag>
     Retain SP_MTR chromosome (sp only).
 
-  -cc, --chk_chr
-    Check chromosomes in filtered outfile (optional)
+  -cc, --chk_chr  <flag>
+    Check chromosomes in filtered outfile.
 
-  -eo, --err_out
+  -eo, --err_out  <dir>
     The directory to store stderr and stdout TXT outfiles (default: '\${dir_out}/logs').
 
-  -nj, --nam_job
+  -nj, --nam_job  <str>
     The name of the job, which is used when writing stderr and stdout TXT files (default: '${nam_job}').
 
-  -mj, --max_job
+  -mj, --max_job  <int>
     Maximum number of jobs to run concurrently (default: '${max_job}').
       - If '--slurm' is specified, controls Slurm array tasks.
       - If '--slurm' is not specified:
         + If 'max_job' is greater than 1, jobs run in parallel via GNU Parallel.
         + If 'max_job' is 1, jobs run sequentially (serial mode).
 
-  -sl, --slurm
+  -sl, --slurm  <flag>
     Submit jobs to the Slurm scheduler; otherwise, run them in serial.
 
-  -tm, --time
+  -tm, --time  <time>
     The length of time, in 'h:mm:ss' format, for the Slurm job (required if '--slurm' is specified, ignored if not; default: '${time}').
 
 Dependencies:
   External programs:
-    - AWK
-    - Bash
-    - GNU Parallel (when '--slurm' is not specified and multiple jobs are run)
+    - awk
+    - Bash >= 4.4
+    - GNU Parallel, when '--slurm' is not specified and multiple jobs are run
     - grep
-    - Samtools
-    - Slurm (when '--slurm' is specified)
+    - mv
+    - rm
+    - samtools
+    - Slurm, when '--slurm' is specified
 
-  Sourced function scripts:
-    - check_args.sh
-        + check_arg_supplied
-        + check_str_delim
-    - check_env.sh
-        + check_env_installed
-        + check_pgrm_path
-    - check_inputs.sh
-        + check_file_dir_exists
-        + debug_arr_contents (used by print_parallel_info)
-    - check_numbers.sh
-        + check_format_time
-        + check_int_pos
-    - filter_alignment.sh
-        + filter_alignment_sc
-        + filter_alignment_sp
-    - format_outputs.sh
-        + echo_err
-        + echo_warn
-    - handle_env.sh
-        + handle_env
-    - help/help_execute_filter_alignments.sh
-        + help_execute_filter_alignments
-    - manage_parallel.sh
-        + print_parallel_info
-        + reset_max_job
-        + set_params_parallel
+  Shell scripts:
+    - submit_filter_alignments.sh
 
 Notes:
   - When the '--slurm' flag is used, jobs are parallelized via Slurm array tasks; otherwise, if multiple jobs are to be run, they are parallelized locally via GNU Parallel; if only one job is to be run, execution is serial.
@@ -135,29 +112,29 @@ Notes:
   - Flags '--tg' and '--mtr' apply only to S. pombe data; if supplied with '--retain sc', they are ignored with a warning.
 
 Examples:
-  1. Use Slurm to filter alignment files for S. cerevisiae ("sc") chromosomes (i.e., "main" alignments)
-  '''bash
-  retain="sc"
-  bash "\${dir_scr}/execute_filter_alignments.sh"
+  1. Use Slurm to filter S. cerevisiae alignments.
+    '''bash
+    retain="sc"
+    bash "\${dir_scr}/execute_filter_alignments.sh"
       --verbose
       --threads "\${threads}"
       --csv_infile "\${csv_infile}"
       --dir_out "\${dir_out}/\${retain}"
       --err_out "\${dir_out}/\${retain}/logs"
-      --retain  "\${retain}"
+      --retain "\${retain}"
       --slurm
-  '''
+    '''
 
-  2. Use GNU Parallel to filter alignment files for S. pombe ("sp") chromosomes (i.e., "spike-in" alignments)
-  '''bash
-  retain="sp"
-  bash "\${dir_scr}/execute_filter_alignments.sh"
+  2. Use GNU Parallel to filter S. pombe alignments.
+    '''bash
+    retain="sp"
+    bash "\${dir_scr}/execute_filter_alignments.sh"
       --verbose
       --threads "\${threads}"
       --csv_infile "\${csv_infile}"
       --dir_out "\${dir_out}/\${retain}"
       --err_out "\${dir_out}/\${retain}/logs"
-      --retain  "\${retain}"
-  '''
+      --retain "\${retain}"
+    '''
 EOM
 }

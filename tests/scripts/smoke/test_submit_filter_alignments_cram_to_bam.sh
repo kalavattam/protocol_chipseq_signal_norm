@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # -*- coding: utf-8 -*-
 #
-# Script: test_submit_filter_alignments_cram_input_bam.sh
+# Script: test_submit_filter_alignments_cram_to_bam.sh
 #
 # Copyright 2026 by Kris Alavattam
 # Email: kalavattam@gmail.com
@@ -11,7 +11,7 @@
 # Distributed under the MIT license.
 
 
-TEST_NAME="submit filter-alignments CRAM input BAM output"
+TEST_NAME="submit filter-alignments CRAM to BAM"
 
 #  Source shared smoke-test helpers
 # shellcheck disable=SC1091
@@ -26,7 +26,7 @@ in_sam="${dir_fx}/sam/filter_sc_sp.sam"
 ref_fa="${dir_fx}/reference/filter_sc_sp.fa"
 ref_fai="${ref_fa}.fai"
 
-tmp="${TEST_DIR_TMP}/submit_filter_alignments_cram_input_bam"
+tmp="${TEST_DIR_TMP}/submit_filter_alignments_cram_to_bam"
 dir_in="${tmp}/input"
 dir_out="${tmp}/out"
 dir_err="${tmp}/logs"
@@ -54,7 +54,7 @@ require_env_project env_nam || {
             --ref_fa "${ref_fa}"
             --err_out "${dir_err}"
     )
-    nam_job_pfx="test_submit_filter_alignments_cram"
+    nam_job_pfx="test_submit_filter_alignments_cram_to_bam"
     arr_arg_nil=()
     arr_arg_sp=( --tg --mtr --mito )
 }
@@ -69,14 +69,14 @@ require_files_nonempty \
 
 
 #  Build deterministic CRAM input from committed SAM and reference fixtures
-log="${dir_log}/submit_filter_alignments_prepare_cram.log"
+log="${dir_log}/submit_filter_alignments_prepare_cram_to_bam.log"
 if ! \
     build_filter_alignments_cram_fixture \
         "${in_sam}" \
         "${ref_fa}" \
         "${in_cram}" \
         "${log}" \
-        "submit filter-alignments CRAM fixture"
+        "submit filter-alignments CRAM-to-BAM fixture"
 then
     finish
     exit $?
@@ -84,10 +84,10 @@ fi
 
 
 #  CRAM input without --ref_fa should fail clearly
-log="${dir_log}/submit_filter_alignments_cram_missing_ref.log"
+log="${dir_log}/submit_filter_alignments_cram_to_bam_missing_ref.log"
 if \
     run_capture \
-        "submit filter-alignments CRAM missing ref" \
+        "submit filter-alignments CRAM to BAM missing ref" \
         "${log}" \
         "${TEST_BASH}" "${ROOT_REPO}/scripts/submit_filter_alignments.sh" \
             --env_nam "${env_nam}" \
@@ -97,23 +97,23 @@ if \
             --dir_out "${dir_missing}" \
             --retain sc \
             --err_out "${dir_err}" \
-            --nam_job "test_submit_filter_alignments_cram_missing_ref"
+            --nam_job "test_submit_filter_alignments_cram_to_bam_missing_ref"
 then
-    record_fail "submit_filter_alignments.sh CRAM without --ref_fa unexpectedly passed"
+    record_fail "submit_filter_alignments.sh CRAM to BAM without --ref_fa unexpectedly passed"
 else
-    record_pass "submit_filter_alignments.sh CRAM without --ref_fa fails"
+    record_pass "submit_filter_alignments.sh CRAM to BAM without --ref_fa fails"
 fi
 
 assert_pattern_found \
     "${log}" \
     "'--ref_fa' is required" \
-    "submit CRAM missing-ref error mentions --ref_fa"
+    "submit CRAM to BAM missing-ref error mentions --ref_fa"
 
 
 #  S. cerevisiae filtering should retain only canonical SC chromosomes
 fil_out="${dir_out}/filter_sc_sp.sc.bam"
 stat="${dir_out}/filter_sc_sp.sc.idxstats.txt"
-log="${dir_log}/submit_filter_alignments_cram_sc.log"
+log="${dir_log}/submit_filter_alignments_cram_to_bam_sc.log"
 
 run_case_filter \
     sc \
@@ -122,14 +122,14 @@ run_case_filter \
     arr_cmd_filter \
     "${nam_job_pfx}" \
     arr_arg_nil \
-    "submit_filter_alignments.sh CRAM retain=sc sc"
+    "submit_filter_alignments.sh CRAM to BAM retain=sc sc"
 
 assert_file_nonempty \
     "${fil_out}" \
-    "submit CRAM retain=sc BAM output"
+    "submit CRAM to BAM retain=sc BAM output"
 assert_file_nonempty \
     "${fil_out}.bai" \
-    "submit CRAM retain=sc BAM index"
+    "submit CRAM to BAM retain=sc BAM index"
 assert_filter_alignments_pg_header \
     "${fil_out}" \
     "" \
@@ -137,50 +137,50 @@ assert_filter_alignments_pg_header \
     sc \
     bam \
     "${dir_out}/filter_sc_sp.sc.header.txt" \
-    "submit CRAM retain=sc BAM output"
+    "submit CRAM to BAM retain=sc BAM output"
 assert_file_exists \
-    "${dir_err}/test_submit_filter_alignments_cram_sc.filter_sc_sp.stdout.txt" \
-    "submit CRAM retain=sc stdout log"
+    "${dir_err}/test_submit_filter_alignments_cram_to_bam_sc.filter_sc_sp.stdout.txt" \
+    "submit CRAM to BAM retain=sc stdout log"
 assert_file_exists \
-    "${dir_err}/test_submit_filter_alignments_cram_sc.filter_sc_sp.stderr.txt" \
-    "submit CRAM retain=sc stderr log"
+    "${dir_err}/test_submit_filter_alignments_cram_to_bam_sc.filter_sc_sp.stderr.txt" \
+    "submit CRAM to BAM retain=sc stderr log"
 
 if [[ -s "${fil_out}" ]]; then
     if \
         run_capture \
-            "quickcheck submit filter-alignments CRAM sc" \
-            "${dir_log}/submit_filter_alignments_cram_sc_quickcheck.log" \
+            "quickcheck submit filter-alignments CRAM to BAM sc" \
+            "${dir_log}/submit_filter_alignments_cram_to_bam_sc_quickcheck.log" \
             run_samtools quickcheck "${fil_out}"
     then
-        record_pass "submit CRAM retain=sc BAM passes samtools quickcheck"
+        record_pass "submit CRAM to BAM retain=sc BAM passes samtools quickcheck"
     else
-        record_fail "submit CRAM retain=sc BAM fails samtools quickcheck"
+        record_fail "submit CRAM to BAM retain=sc BAM fails samtools quickcheck"
     fi
 
     run_capture \
-        "idxstats submit filter-alignments CRAM sc" \
+        "idxstats submit filter-alignments CRAM to BAM sc" \
         "${stat}" \
         run_samtools idxstats "${fil_out}"
 
     assert_pattern_found \
         "${stat}" \
         $'^I\t100\t1\t0$' \
-        "submit CRAM retain=sc output keeps chromosome I"
+        "submit CRAM to BAM retain=sc output keeps chromosome I"
     assert_pattern_absent \
         "${stat}" \
         $'^Mito\t' \
-        "submit CRAM retain=sc output omits Mito without --mito"
+        "submit CRAM to BAM retain=sc output omits Mito without --mito"
     assert_pattern_absent \
         "${stat}" \
         $'^SP_I\t' \
-        "submit CRAM retain=sc output omits S. pombe chromosomes"
+        "submit CRAM to BAM retain=sc output omits S. pombe chromosomes"
 fi
 
 
 #  S. pombe filtering should honor optional TG, MTR, and mito contigs
 fil_out="${dir_out}/filter_sc_sp.sp.bam"
 stat="${dir_out}/filter_sc_sp.sp.idxstats.txt"
-log="${dir_log}/submit_filter_alignments_cram_sp.log"
+log="${dir_log}/submit_filter_alignments_cram_to_bam_sp.log"
 
 run_case_filter \
     sp \
@@ -189,14 +189,14 @@ run_case_filter \
     arr_cmd_filter \
     "${nam_job_pfx}" \
     arr_arg_sp \
-    "submit_filter_alignments.sh CRAM retain=sp sp"
+    "submit_filter_alignments.sh CRAM to BAM retain=sp sp"
 
 assert_file_nonempty \
     "${fil_out}" \
-    "submit CRAM retain=sp BAM output"
+    "submit CRAM to BAM retain=sp BAM output"
 assert_file_nonempty \
     "${fil_out}.bai" \
-    "submit CRAM retain=sp BAM index"
+    "submit CRAM to BAM retain=sp BAM index"
 assert_filter_alignments_pg_header \
     "${fil_out}" \
     "" \
@@ -204,55 +204,55 @@ assert_filter_alignments_pg_header \
     sp \
     bam \
     "${dir_out}/filter_sc_sp.sp.header.txt" \
-    "submit CRAM retain=sp BAM output"
+    "submit CRAM to BAM retain=sp BAM output"
 assert_file_exists \
-    "${dir_err}/test_submit_filter_alignments_cram_sp.filter_sc_sp.stdout.txt" \
-    "submit CRAM retain=sp stdout log"
+    "${dir_err}/test_submit_filter_alignments_cram_to_bam_sp.filter_sc_sp.stdout.txt" \
+    "submit CRAM to BAM retain=sp stdout log"
 assert_file_exists \
-    "${dir_err}/test_submit_filter_alignments_cram_sp.filter_sc_sp.stderr.txt" \
-    "submit CRAM retain=sp stderr log"
+    "${dir_err}/test_submit_filter_alignments_cram_to_bam_sp.filter_sc_sp.stderr.txt" \
+    "submit CRAM to BAM retain=sp stderr log"
 
 if [[ -s "${fil_out}" ]]; then
     if \
         run_capture \
-            "quickcheck submit filter-alignments CRAM sp" \
-            "${dir_log}/submit_filter_alignments_cram_sp_quickcheck.log" \
+            "quickcheck submit filter-alignments CRAM to BAM sp" \
+            "${dir_log}/submit_filter_alignments_cram_to_bam_sp_quickcheck.log" \
             run_samtools quickcheck "${fil_out}"
     then
-        record_pass "submit CRAM retain=sp BAM passes samtools quickcheck"
+        record_pass "submit CRAM to BAM retain=sp BAM passes samtools quickcheck"
     else
-        record_fail "submit CRAM retain=sp BAM fails samtools quickcheck"
+        record_fail "submit CRAM to BAM retain=sp BAM fails samtools quickcheck"
     fi
 
     run_capture \
-        "idxstats submit filter-alignments CRAM sp" \
+        "idxstats submit filter-alignments CRAM to BAM sp" \
         "${stat}" \
         run_samtools idxstats "${fil_out}"
 
     assert_pattern_found \
         "${stat}" \
         $'^SP_I\t100\t1\t0$' \
-        "submit CRAM retain=sp output keeps SP_I"
+        "submit CRAM to BAM retain=sp output keeps SP_I"
     assert_pattern_found \
         "${stat}" \
         $'^SP_II_TG\t100\t1\t0$' \
-        "submit CRAM retain=sp output keeps SP_II_TG"
+        "submit CRAM to BAM retain=sp output keeps SP_II_TG"
     assert_pattern_found \
         "${stat}" \
         $'^SP_MTR\t100\t1\t0$' \
-        "submit CRAM retain=sp output keeps SP_MTR"
+        "submit CRAM to BAM retain=sp output keeps SP_MTR"
     assert_pattern_found \
         "${stat}" \
         $'^SP_Mito\t100\t1\t0$' \
-        "submit CRAM retain=sp output keeps SP_Mito"
+        "submit CRAM to BAM retain=sp output keeps SP_Mito"
     assert_pattern_absent \
         "${stat}" \
         $'^I\t' \
-        "submit CRAM retain=sp output omits S. cerevisiae chromosomes"
+        "submit CRAM to BAM retain=sp output omits S. cerevisiae chromosomes"
     assert_pattern_absent \
         "${stat}" \
         $'^chrUn\t' \
-        "submit CRAM retain=sp output omits unrelated contigs"
+        "submit CRAM to BAM retain=sp output omits unrelated contigs"
 fi
 
 finish

@@ -6,7 +6,8 @@
 # Copyright 2024-2026 by Kris Alavattam
 # Email: kalavattam@gmail.com
 #
-# OpenAI ChatGPT (GPT-4- and GPT-5-series models) was used in development.
+# OpenAI ChatGPT and Codex (GPT-4- and GPT-5-series models) were used in
+# development.
 #
 # Distributed under the MIT license.
 
@@ -28,21 +29,17 @@ fi
 #  Run in safe mode, exiting on errors, unset variables, and pipe failures
 set -euo pipefail
 
-#  If true, run script in debug mode
-debug=true
-
 
 #  Define functions
-#  Parse a BAM/CRAM input entry into 'samp', 'nam_fnc', and 'outfile'
 function parse_filter_alignment_entry() {
-    local infile="${1:-}"   # Input BAM/CRAM file
-    local retain="${2:-}"   # Species selector
-    local dir_out="${3:-}"  # Directory for output alignment files
+    local infile="${1:-}"     # Input BAM/CRAM file
+    local retain="${2:-}"     # Species selector
+    local dir_out="${3:-}"    # Directory for output alignment files
     local out_ext="${4:-bam}" # Output extension
-    local samp      # Sample name derived from infile
-    local nam_fnc   # Function name derived from 'retain'
-    local outfile   # Output alignment file
-    local show_help # Help message
+    local samp                # Sample name derived from infile
+    local nam_fnc             # Function name derived from 'retain'
+    local outfile             # Output alignment file
+    local show_help           # Help message
 
     show_help=$(cat << EOM
 Usage:
@@ -55,10 +52,17 @@ Description:
   This helper derives the sample name from the BAM/CRAM filename, determines which downstream filtering function to use based on '--retain', and constructs the corresponding output path.
 
 Positional arguments:
-  1  infile   <str>  Input BAM or CRAM file.
-  2  retain   <str>  Species selector; must be 'sc' or 'sp'.
-  3  dir_out  <str>  Output directory for filtered alignment files.
-  4  out_ext  <str>  Output extension: 'bam' or 'cram' (default: bam).
+  1  infile  <str>
+    Input BAM or CRAM file.
+
+  2  retain  <str>
+    Species selector; must be 'sc' or 'sp'.
+
+  3  dir_out  <str>
+    Output directory for filtered alignment files.
+
+  4  out_ext  <str>
+    Output extension: 'bam' or 'cram' (default: bam).
 
 Returns:
   Prints a comma-delimited record to stdout:
@@ -154,8 +158,7 @@ Usage:
     [-h|--hlp|--help] nam_fnc threads infile outfile mito tg mtr chk_chr err_out nam_job samp [ref_fa]
 
 Description:
-  Execute the specified alignment-filtering function and write stdout/stderr
-  logs to sample-specific files.
+  Execute the specified alignment-filtering function and write stdout/stderr logs to sample-specific files.
 
   Log files are written to:
 
@@ -163,18 +166,44 @@ Description:
     \${err_out}/\${nam_job}.\${samp}.stderr.txt
 
 Positional arguments:
-   1  nam_fnc   <str>  Name of downstream filtering function to run.
-   2  threads   <int>  Number of threads.
-   3  infile    <str>  Input BAM or CRAM file.
-   4  outfile   <str>  Output BAM or CRAM file.
-   5  mito      <flag>  If 'true', pass '--mito'.
-   6  tg        <flag>  If 'true', pass '--tg'.
-   7  mtr       <flag>  If 'true', pass '--mtr'.
-   8  chk_chr   <flag>  If 'true', pass '--chk_chr'.
-   9  err_out   <str>  Directory for stderr/stdout log files.
-  10  nam_job   <str>  Job name used in log-file naming.
-  11  samp      <str>  Sample name used in log-file naming.
-  12  ref_fa    <str>  Reference FASTA for CRAM input/output, or empty string.
+  01  nam_fnc  <str>
+    Name of downstream filtering function to run.
+
+  02  threads  <int>
+    Number of threads.
+
+  03  infile  <str>
+    Input BAM or CRAM file.
+
+  04  outfile  <str>
+    Output BAM or CRAM file.
+
+  05  mito  <flag>
+    If 'true', pass '--mito'.
+
+  06  tg  <flag>
+    If 'true', pass '--tg'.
+
+  07  mtr  <flag>
+    If 'true', pass '--mtr'.
+
+  08  chk_chr  <flag>
+    If 'true', pass '--chk_chr'.
+
+  09  err_out  <str>
+    Directory for stderr/stdout log files.
+
+  10  nam_job  <str>
+    Job name used in log-file naming.
+
+  11  samp  <str>
+    Sample name used in log-file naming.
+
+  12  ref_fa  <str>
+    Reference FASTA for CRAM input/output, or empty string.
+
+Returns:
+  Returns 0 when filtering finishes successfully; 1 otherwise.
 
 Notes:
   - This helper is a thin wrapper around either 'filter_alignment_sc' or 'filter_alignment_sp'.
@@ -388,8 +417,7 @@ function parse_args() {
                     show_help_main
                     return 1
                 }
-                #TODO: take advantage of Bash 4.4, i.e., "${2,,}"
-                retain="$(printf '%s\n' "${2}" | tr '[:upper:]' '[:lower:]')"
+                retain="${2}"
                 shift 2
                 ;;
 
@@ -409,7 +437,7 @@ function parse_args() {
                     show_help_main
                     return 1
                 }
-                out_ext="$(printf '%s\n' "${2}" | tr '[:upper:]' '[:lower:]')"
+                out_ext="${2}"
                 shift 2
                 ;;
 
@@ -464,6 +492,13 @@ function parse_args() {
 }
 
 
+#  Canonicalize scalar argument aliases
+function canonicalize_args() {
+    retain="${retain,,}"
+    out_ext="${out_ext,,}"
+}
+
+
 #  Validate required arguments and paths
 function validate_args() {
     validate_var     "env_nam"    "${env_nam}"         || return 1
@@ -498,7 +533,7 @@ function validate_args() {
 
 
 #  Print debug argument variable assignments
-function print_debug_args() {
+function print_state_debug() {
     if [[ "${debug}" == "true" ]]; then
         echo
         debug_var \
@@ -525,8 +560,8 @@ function normalize_flags() {
     if [[ "${retain}" == "sc" ]]; then
         if [[ "${tg}" == "true" && "${mtr}" == "true" ]]; then
             echo_warn \
-                "'--tg' and '--mtr' were supplied with '--retain sc' and will be" \
-                "ignored."
+                "'--tg' and '--mtr' were supplied with '--retain sc' and" \
+                "will be ignored."
             tg=false
             mtr=false
         elif [[ "${tg}" == "true" ]]; then
@@ -542,31 +577,48 @@ function normalize_flags() {
 }
 
 
+#  Initialize hardcoded argument variables
+function init_args_hardcoded() {
+    #  If true, run script in debug mode
+    debug=true
+}
+
+
 #  Initialize argument variables, assigning default values where applicable
-env_nam="env_protocol"
-dir_scr=""
-retain="sc"
-threads=4
-csv_infile=""
-dir_out=""
-out_ext="bam"
-mito=false
-tg=false
-mtr=false
-chk_chr=false
-ref_fa=""
-err_out=""
-nam_job="filter_alignments"
+function init_arg_defs() {
+    env_nam="env_protocol"
+    dir_scr=""
+    retain="sc"
+    threads=4
+    csv_infile=""
+    dir_out=""
+    out_ext="bam"
+    mito=false
+    tg=false
+    mtr=false
+    chk_chr=false
+    ref_fa=""
+    err_out=""
+    nam_job="filter_alignments"
+}
+
+
+#  Initialize hardcoded arguments and user-facing argument defaults
+function init_defs() {
+    init_args_hardcoded
+    init_arg_defs
+}
 
 
 function show_help_main() {
     cat << EOM >&2
 Usage:
   submit_filter_alignments.sh
-    [-h|--hlp|--help] [-en|--env_nam <str>] -ds|--dir_scr <str> [-t|--threads <int>]
-    -i|--csv_infile <str> -do|--dir_out <str> [-ox|--out_ext <str>]
-    [-rt|--retain <str>] [-r|--ref_fa <file>] [-m|--mito] [-tg|--tg] [-mr|--mtr]
-    [-cc|--chk_chr] -eo|--err_out <str> [-nj|--nam_job <str>]
+    [--help] [--env_nam <str>] --dir_scr <dir> [--threads <int>]
+    --csv_infile <csv:file> [--ref_fa <file>]
+    --dir_out <dir> [--out_ext <enum:bam|cram>]
+    [--retain <enum:sc|sp>] [--mito] [--tg] [--mtr] [--chk_chr]
+    --err_out <dir> [--nam_job <str>]
 
 Description:
   Submit or execute one or more alignment-filtering jobs by calling downstream functions 'filter_alignment_sc' or 'filter_alignment_sp'.
@@ -575,7 +627,7 @@ Description:
     - parses a comma-delimited list of BAM or CRAM input files,
     - determines which downstream filtering function to run based on '--retain',
     - activates the requested Conda/Mamba environment, and then
-    - runs filtering either under Slurm array execution or by serial/GNU-Parallel-style iteration, depending on how the script is invoked.
+    - runs filtering either under Slurm array execution or by serial or GNU-Parallel iteration, depending on how the script is invoked.
 
   For each input BAM or CRAM file, this script writes BAM or CRAM output and log files to:
 
@@ -583,28 +635,26 @@ Description:
     \${err_out}/\${nam_job}.\${samp}.stderr.txt
 
 Keyword arguments:
-  -en, --env_nam  <str>
-    Conda/Mamba environment to activate.
+  -en, --env, --env_nam  <str>
+    Conda/Mamba environment to activate (default: '${env_nam}').
 
-  -ds, --dir_scr  <str>
+  -ds, --dir_scr  <dir>
     Directory containing scripts and functions.
 
   -t, --threads  <int>
-    Number of threads to use.
+    Number of threads to use (default: ${threads}).
 
-  -i, --csv_infile  <str>
+  -i, -fi, -ci, --infile, --infiles, --fil_in, --csv_infile, --csv_infiles  <csv:file>
     Comma-delimited list of input BAM or CRAM files.
 
-    Compatibility aliases include '--infile', '--infiles', '--fil_in', and '--csv_infiles'.
-
-  -do, --dir_out  <str>
+  -do, --dir_out  <dir>
     Directory in which filtered alignment files will be written.
 
-  -ox, --out_ext  <str>
+  -ox, --out_ext  <enum:bam|cram>
     Filtered output extension: 'bam' or 'cram' (default: '${out_ext}').
 
-  -rt, --retain  <str>
-    Species chromosomes to retain: 'sc' or 'sp'.
+  -rt, --retain  <enum:sc|sp>
+    Species chromosomes to retain: 'sc' or 'sp' (default: '${retain}').
 
   -r, --ref_fa  <file>
     Reference FASTA required when any input file is CRAM or '--out_ext cram'.
@@ -621,81 +671,74 @@ Keyword arguments:
   -cc, --chk_chr  <flag>
     If supplied, check chromosomes in output alignment files.
 
-  -eo, --err_out  <str>
+  -eo, --err_out  <dir>
     Directory in which stderr/stdout log files will be written.
 
   -nj, --nam_job  <str>
-    Job name used in log-file naming.
+    Job name used in log-file naming (default: '${nam_job}').
 
 Notes:
-  - All arguments are required with the following notes and exceptions:
-    + '--env_nam' defaults to 'env_nam=${env_nam}' if not specified.
-    + '--retain' defaults to 'retain=${retain}' if not specified.
-    + '--threads' defaults to 'threads=${threads}' if not specified.
-    + '--out_ext' defaults to 'out_ext=${out_ext}' if not specified.
-    + '--ref_fa' is required when '--csv_infile' contains CRAM input or '--out_ext cram'.
-    + '--mito', '--tg', '--mtr', and '--chk_chr' are optional flags.
-    + '--tg' and '--mtr' are only meaningful when '--retain sp' is used; if supplied with '--retain sc', they are ignored with a warning.
-    + '--nam_job' defaults to 'nam_job=${nam_job}' if not specified.
+  - BAM/CRAM input files must be coordinate-sorted.
+  - CRAM inputs require '--ref_fa'.
+  - Input and output paths supplied to this wrapper interface must not contain spaces, commas, or semicolons.
+  - This wrapper does not support '-' for stdin/stdout. Use the underlying Python scripts directly for streaming input/output workflows.
+  - Use consistent file ordering in input and output lists.
+  - To run in debug mode, set hardcoded variable 'debug=true'.
+  - Flags '--tg' and '--mtr' are only meaningful with '--retain sp'; if supplied with '--retain sc', they are ignored with a warning.
 EOM
 }
 
 
-#  Main script execution
-function main() {
-    #  Display help message if a help option or no arguments are given
-    if [[ -z "${1:-}" || "${1}" =~ ^(-h|--h[e]?lp)$ ]]; then
-        show_help_main
-        echo >&2
-        exit 0
-    fi
-
-    #  First-pass parse: resolve 'dir_scr' before using sourced parser helpers
-    dir_scr="$(resolve_dir_scr "${0##*/}" "$@")" || exit 1
-
-    source_submit_helpers "${0##*/}" "${dir_scr}" \
-        check_args \
-        check_inputs \
-        filter_alignment \
-        format_outputs \
-        handle_env \
-        manage_slurm \
-        || exit 1
-
-    parse_args "$@"  || exit 1
-    validate_args    || exit 1
-    normalize_flags  || exit 1
-    print_debug_args || exit 1
-
-    #  Activate environment
-    handle_env "${env_nam}" || exit 1
-
-    #  Reconstruct array from serialized string
+#  Reconstruct array from serialized inputs
+function prepare_vecs() {
+    unset arr_infile && declare -ga arr_infile
     IFS=',' read -r -a arr_infile <<< "${csv_infile}"
-    check_arr_nonempty "arr_infile" "csv_infile" || exit 1
+}
+
+
+#  Validate reconstructed input arrays
+function validate_vecs() {
+    local infile
+
+    check_arr_nonempty "arr_infile" "csv_infile" || return 1
 
     for infile in "${arr_infile[@]}"; do
         if [[ "${infile,,}" == *.cram && -z "${ref_fa}" ]]; then
             echo_err \
                 "'--ref_fa' is required when '--csv_infile' contains CRAM" \
                 "input: '${infile}'."
-            exit 1
+            return 1
         fi
     done
     unset infile
 
     if [[ "${out_ext}" == "cram" && -z "${ref_fa}" ]]; then
         echo_err "'--ref_fa' is required when '--out_ext cram'."
-        exit 1
+        return 1
     fi
+}
 
-    #  Debug output to check number of array elements and array element values
+
+#  Activate environment
+function setup_env() {
+    handle_env "${env_nam}"
+}
+
+
+#  Print debug output for reconstructed input arrays
+function print_vecs_debug() {
     if [[ "${debug}" == "true" ]]; then
         echo "\${#arr_infile[@]}=${#arr_infile[@]}" && echo
         echo "arr_infile=( ${arr_infile[*]} )"      && echo
     fi
+}
 
-    #  Determine and run mode: Slurm or GNU Parallel/serial
+
+#  Dispatch Slurm-array or local worker jobs
+function run_jobs() {
+    local err_dsc err_ini id_job id_tsk idx infile nam_fnc out_dsc out_ini
+    local outfile samp
+
     if [[ -n "${SLURM_ARRAY_TASK_ID:-}" ]]; then
         #  Mode: Slurm
         id_job="${SLURM_ARRAY_JOB_ID}"
@@ -703,12 +746,12 @@ function main() {
 
         if ! [[ "${id_tsk}" =~ ^[1-9][0-9]*$ ]]; then
             echo_err "Slurm task ID is invalid: '${id_tsk}'."
-            exit 1
+            return 1
         elif (( id_tsk > ${#arr_infile[@]} )); then
             echo_err \
                 "Slurm task ID '${id_tsk}' exceeds number of BAM entries:" \
                 "'${#arr_infile[@]}'."
-            exit 1
+            return 1
         else
             idx=$(( id_tsk - 1 ))
         fi
@@ -720,7 +763,7 @@ function main() {
         IFS=',' read -r samp nam_fnc outfile < <(
             parse_filter_alignment_entry \
                 "${infile}" "${retain}" "${dir_out}" "${out_ext}"
-        ) || exit 1
+        ) || return 1
 
         if [[ "${debug}" == "true" ]]; then
             debug_var \
@@ -732,7 +775,7 @@ function main() {
         IFS=',' read -r err_ini out_ini err_dsc out_dsc < <(
             set_logs_slurm \
                 "${id_job}" "${id_tsk}" "${samp}" "${err_out}" "${nam_job}"
-        ) || exit 1
+        ) || return 1
 
         if [[ "${debug}" == "true" ]]; then
             debug_var \
@@ -749,7 +792,7 @@ function main() {
                 "${samp}" "${ref_fa}"
         then
             echo_err "failed to filter alignment file: '${infile}'."
-            exit 1
+            return 1
         fi
 
         rm "${err_ini}" "${out_ini}"
@@ -763,7 +806,7 @@ function main() {
             IFS=',' read -r samp nam_fnc outfile < <(
                 parse_filter_alignment_entry \
                     "${infile}" "${retain}" "${dir_out}" "${out_ext}"
-            ) || exit 1
+            ) || return 1
 
             if [[ "${debug}" == "true" ]]; then
                 debug_var \
@@ -779,10 +822,45 @@ function main() {
                     "${nam_job}" "${samp}" "${ref_fa}"
             then
                 echo_err "failed to filter alignment file: '${infile}'."
-                exit 1
+                return 1
             fi
         done
     fi
+}
+
+
+#  Main script execution
+function main() {
+    init_defs
+
+    if [[ -z "${1:-}" || "${1}" =~ ^(-h|--h[e]?lp)$ ]]; then
+        show_help_main
+        echo >&2
+        return 0
+    fi
+
+    #  First-pass parse: resolve 'dir_scr' before using sourced parser helpers
+    dir_scr="$(resolve_dir_scr "${0##*/}" "$@")" || return 1
+
+    source_submit_helpers "${0##*/}" "${dir_scr}" \
+        check_args \
+        check_inputs \
+        filter_alignment \
+        format_outputs \
+        handle_env \
+        manage_slurm \
+        || return 1
+
+    parse_args "$@"   || return 1
+    canonicalize_args || return 1
+    validate_args     || return 1
+    normalize_flags   || return 1
+    print_state_debug || return 1
+    setup_env         || return 1
+    prepare_vecs      || return 1
+    validate_vecs     || return 1
+    print_vecs_debug  || return 1
+    run_jobs          || return 1
 }
 
 
