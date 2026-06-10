@@ -17,7 +17,7 @@ Dependencies:
   Shell scripts:             # if applicable
   Python scripts:            # if applicable
   Configuration files:       # if applicable
-  Sourced function scripts:
+  Sourced function scripts:  # only in maintainer-facing docs
 Returns:                     # if applicable
 Notes:
 Examples:
@@ -52,9 +52,8 @@ Within nested sections such as `Dependencies:`, use this format:
 Dependencies:
   External programs:
     - program
-  Sourced function scripts:
+  Shell scripts:
     - script_name.sh
-      + function_name
 ```
 
 If a `Returns:` section has multiple distinct items, format it as a hyphen list:
@@ -83,6 +82,15 @@ Use `Keyword arguments:` when documenting flags/options such as `--help`, `--mod
 Use `Positional arguments:` when documenting positional `$1`, `$2`, etc. arguments.
 
 Use `Arguments:` only when a help block combines positional and keyword arguments in one section, or when the script/function has a simple mixed interface where splitting the section would be unnecessary.
+
+<br />
+
+## Help audiences
+Write user-facing script help for users running the command. It should explain accepted options, required inputs, generated outputs, user-actionable dependencies, important modes, and practical examples.
+
+Write local shell-function help for maintainers reading the implementation. It may describe expected globals, generated globals, stdout/stderr behavior, mutation of shared state, and return status.
+
+Keep exhaustive sourced-helper inventories out of user-facing help. If those inventories are useful, put them in maintainer-facing documentation or deterministic audit tooling.
 
 <br />
 
@@ -115,6 +123,15 @@ Examples:
 ```
 
 Detailed help can include synonym lists, mode-specific behavior, edge cases, references, and examples. There is no cap on description length.
+
+<br />
+
+### Local shell-function help
+Use local function help for nontrivial helpers whose behavior is not obvious from the function name and body. This is especially useful for helpers that parse their own arguments, read several globals, write generated globals, print structured output, or return nonzero for recoverable validation failures.
+
+For helpers that read important shared state, add `Expected globals:`. For helpers that write important shared state, add `Generated globals:` or describe the mutation in `Notes:`.
+
+For helpers that print to stdout or stderr, say so in `Returns:` or `Notes:`. For helpers that write a global array, such as `cmd_bld`, prefer `Generated globals:` plus a short note about the array shape.
 
 <br />
 
@@ -226,7 +243,7 @@ Use a small fixed vocabulary and avoid inventing a new identifier for each argum
 
 Recommended set:
 ```txt
-<flag>       Boolean flag; no value consumed.
+<flag>      Boolean flag; no value consumed.
 <str>       General string.
 <bool>      Boolean-like string. Accepted true values: true, t, yes, y, 1. Accepted false values: false, f, no, n, 0. Values are case-insensitive and should be standardized internally to true or false.
 <int>       Integer.
@@ -256,7 +273,9 @@ Avoid adding secondary element annotations such as `<element:str>` after the mai
 <br />
 
 ## Dependency documentation rules
-Before editing dependency lists, inspect the relevant top-level executable directly. Do not infer dependency lists from grep output alone. For each top-level executable, inspect directly invoked commands, project scripts passed downstream, directly called helper functions, helper scripts listed in `source_helpers`, and code sourced and/or called by the script when needed to understand the top-level workflow.
+Before editing dependency lists, inspect the relevant top-level executable directly. Do not infer dependency lists from grep output alone. For each top-level executable, inspect directly invoked commands, project scripts passed downstream, and code called by the script when needed to understand the user-facing workflow.
+
+User-facing help should list dependencies users may need to install, provide, or understand. Do not maintain exhaustive sourced-helper inventories in user-facing CLI help. Those inventories are maintainer-facing and should live in developer docs or deterministic audit tooling if needed.
 
 <br />
 
@@ -276,172 +295,11 @@ Before editing dependency lists, inspect the relevant top-level executable direc
 
 ### Shell scripts:
 - List project shell scripts that are directly executed, submitted, or passed to an executor by the top-level executable workflow.
-- Do not list sourced function scripts under `Shell scripts:`; list those under `Sourced function scripts:`.
+- Do not list sourced function scripts under `Shell scripts:`.
 
 <br />
 
 ### Sourced function scripts:
-- List each sourced function script required by the top-level executable workflow.
-- Under each script, list only the helper functions from that script that are directly called by the top-level executable.
-- Do not list transitive helper calls made internally by sourced helper functions.
-- If the top-level executable sources helper scripts through `source_helpers.sh`, list `source_helpers.sh` and `source_helpers`.
-- If a sourced function script is loaded but none of its functions are directly called by the top-level executable, treat that as a cleanup finding. Remove that script from the sourcing list unless there is a documented reason to keep it.
-
-<br />
-
-## Functions within shell function scripts
-The inventory below is reference material for looking up which helper functions are provided by each script; it does not prescribe emitted help-text indentation.
-```txt
-align_fastqs.sh
-  - _check_path_whitespace
-  - align_fastqs
-
-calculate_scaling_factor.sh
-  - _get_len_idx
-  - _get_dep_idx
-  - _detect_typ_bam
-  - _resolve_typ_fil
-  - _get_expr_filter
-  - _count_align_bam
-  - _calculate_frag_avg
-  - _compute_scl_fct
-  - _import_shell_asgmt
-  - _parse_metadata
-  - _calculate_dep_fct
-  - _calculate_dep_arr
-  - _compute_dep_all
-  - _generate_fmt_str
-  - _get_fil_out_part
-  - process_samp_siq
-  - process_samp_spike
-
-check_args.sh
-  - require_optarg
-  - check_arg_supplied
-  - check_args_mut_excl
-  - check_flags_mut_excl
-  - check_match
-  - check_str_delim
-
-check_env.sh
-  - check_env_installed
-  - check_pgrm_path
-
-check_inputs.sh
-  - validate_var
-  - validate_file
-  - validate_dir
-  - validate_var_file
-  - validate_var_dir
-  - debug_var
-  - check_arr_files
-  - check_arr_lengths
-  - check_file_dir_exists
-  - debug_arr_contents
-  - check_arr_nonempty
-  - check_arr_len_bcst
-
-check_numbers.sh
-  - check_flt_nonneg
-  - check_flt_pos
-  - check_format_time
-  - check_int_nonneg
-  - check_int_pos
-  - check_arr_int_pos
-  - check_arr_num_pos
-  - check_scl_fct
-
-check_source.sh
-  - err_source_only
-
-check_unity.sh
-  - check_unity
-
-construct_find.sh
-  - construct_find
-
-filter_bam.sh
-  - _parse_args_filter_bam
-  - _validate_args_filter_bam
-  - _check_chr_bam
-  - _finalize_bam_filter
-  - _filter_sam_chr
-  - _cleanup_filter_bam_tmp
-  - filter_bam_sc
-  - filter_bam_sp
-
-format_outputs.sh
-  - echo_err
-  - echo_err_func
-  - echo_warn
-  - echo_warn_func
-  - format_print_cmd
-  - print_banner_pretty
-  - print_cmd_array
-  - print_cmd_pretty
-  - summarize_sig_norm
-
-handle_env.sh
-  - activate_env
-  - _current_errexit_nounset
-  - _restore_errexit_nounset
-  - _handle_env_deactivate
-  - _handle_env_activate_success
-  - _handle_env_activate
-  - handle_env
-
-handle_exit_interactive.sh
-  - exit_0
-  - exit_1
-
-manage_parallel.sh
-  - determine_cores
-  - print_parallel_info
-  - reset_max_job
-  - set_params_parallel
-
-manage_slurm.sh
-  - set_logs_slurm
-
-populate_array_empty.sh
-  - populate_array_empty
-
-process_region.sh
-  - check_region
-  - check_region_bam
-  - check_region_bdg
-
-process_sequences.sh
-  - check_seq_type
-  - check_string_fastqs
-  - get_paired_suffix
-  - parse_fastq_entry
-  - pair_fastqs
-  - pair_fqs
-
-process_tables.sh
-  - check_table
-  - check_table_column
-  - check_table_scaling_factor
-  - extract_field_str
-  - _validate_arg_csl
-  - _validate_args_table
-  - _parse_table_core
-  - parse_table
-  - parse_table_simple
-
-run_python.sh
-  - _resolve_dir_rep_run_py
-  - to_module
-  - run_py
-
-source_helpers.sh
-  - _source_helper_err
-  - _source_helper_resolve
-  - source_once
-  - source_helpers
-
-wrap_cmd.sh
-  - get_submit_logs
-  - print_built_cmd
-```
+- Use this section only in maintainer-facing documentation.
+- Do not include sourced helper scripts or helper-function inventories in normal user-facing CLI help.
+- If maintainer-facing dependency documentation lists sourced helpers, list only directly sourced scripts and directly called functions. Do not list transitive helper calls made internally by sourced helper functions.
