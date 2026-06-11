@@ -6,7 +6,7 @@
 # Copyright 2026 by Kris Alavattam
 # Email: kalavattam@gmail.com
 #
-# OpenAI ChatGPT (GPT-5.5) was used in development.
+# OpenAI ChatGPT and Codex (GPT-5.5) were used in development.
 #
 # Distributed under the MIT license.
 
@@ -816,6 +816,189 @@ function assert_file_nonempty() {
     else
         record_fail "${lbl} missing or empty: $(print_relpath "${file}")"
     fi
+}
+
+
+#  Assert that a file contains exactly one expected line
+function assert_file_exact_line() {
+    local file="${1:-}"
+    local expected="${2:-}"
+    shift 2 || true
+
+    local lbl="${*:-output line}"
+    local observed
+    local n_line
+
+    if [[ ! -s "${file}" ]]; then
+        record_fail "${lbl} missing or empty: $(print_relpath "${file}")"
+        return 1
+    fi
+
+    n_line="$(wc -l < "${file}")"
+    if [[ "${n_line}" -eq 1 ]]; then
+        record_pass "${lbl} has one row"
+    else
+        record_fail "${lbl} has unexpected row count; see $(print_relpath "${file}")"
+    fi
+
+    observed="$(cat "${file}")"
+    if [[ "${observed}" == "${expected}" ]]; then
+        record_pass "${lbl} has expected row"
+    else
+        record_fail "${lbl} differs from expected; see $(print_relpath "${file}")"
+    fi
+}
+
+
+#  Assert whether a scaling-factor output contains an expected header
+function assert_scaling_factor_header() {
+    local file="${1:-}"
+    local header="${2:-}"
+    local expect="${3:-true}"
+    shift 3 || true
+
+    local lbl="${*:-scaling-factor header}"
+
+    if [[ "${expect}" == "true" ]]; then
+        assert_pattern_found "${file}" "${header}" "${lbl} has core header"
+    else
+        assert_pattern_absent "${file}" "${header}" "${lbl} omits core header"
+    fi
+}
+
+
+#  Run one execute-level calculate-scaling-factor two-row case
+function run_case_scaling_factor_execute() {
+    local cas="${1:-}"
+    local mode="${2:-}"
+    local arr_cmd_nam="${3:-}"
+    local dir_out_lcl="${4:-}"
+    local dir_log_lcl="${5:-}"
+    local out_suffix="${6:-}"
+    local job_prefix="${7:-}"
+    local header="${8:-}"
+    local row_0="${9:-}"
+    local row_1="${10:-}"
+    local tail_0="${11:-}"
+    local tail_1="${12:-}"
+    shift 12 || true
+
+    local -n arr_cmd_ref="${arr_cmd_nam}"
+
+    local expect_header=true
+    local fil_out="${dir_out_lcl}/scaling.${cas}.${out_suffix}.tsv"
+    local prt_0="${fil_out}.part.000000"
+    local prt_1="${fil_out}.part.000001"
+    local nam_job="${job_prefix}_${cas}"
+    local log="${dir_log_lcl}/execute_${out_suffix}_${cas}.log"
+    local -a arr_case=(
+        "${arr_cmd_ref[@]}"
+        --fil_out "${fil_out}"
+        --nam_job "${nam_job}"
+    )
+
+    for arg in "$@"; do
+        if [[ "${arg}" =~ ^--no[_-]header$ ]]; then
+            expect_header=false
+        fi
+    done
+
+    arr_case+=( "$@" )
+
+    if \
+        run_capture \
+            "execute calculate-scaling-factor ${mode} ${cas}" \
+            "${log}" \
+            "${arr_case[@]}"
+    then
+        record_pass "execute_calculate_scaling_factor.sh ${mode} ${cas} exits 0"
+    else
+        record_fail \
+            "execute_calculate_scaling_factor.sh ${mode} ${cas} failed; see" \
+            "$(print_relpath "${log}")"
+    fi
+
+    assert_file_nonempty \
+        "${fil_out}" \
+        "execute scaling-factor ${mode} ${cas} final TSV"
+
+    assert_file_nonempty \
+        "${prt_0}" \
+        "execute scaling-factor ${mode} ${cas} first retained part"
+
+    assert_file_nonempty \
+        "${prt_1}" \
+        "execute scaling-factor ${mode} ${cas} second retained part"
+
+    assert_scaling_factor_header \
+        "${fil_out}" \
+        "${header}" \
+        "${expect_header}" \
+        "execute scaling-factor ${mode} ${cas} final TSV"
+
+    assert_pattern_found \
+        "${fil_out}" \
+        "^${row_0}"$'\t'"${tail_0}"'$' \
+        "execute scaling-factor ${mode} ${cas} final TSV has first row"
+
+    assert_pattern_found \
+        "${fil_out}" \
+        "^${row_1}"$'\t'"${tail_1}"'$' \
+        "execute scaling-factor ${mode} ${cas} final TSV has second row"
+}
+
+
+#  Run one submit-level calculate-scaling-factor one-part case
+function run_case_scaling_factor_submit_part() {
+    local cas="${1:-}"
+    local mode="${2:-}"
+    local arr_cmd_nam="${3:-}"
+    local fil_out="${4:-}"
+    local idx_out="${5:-}"
+    local fil_log="${6:-}"
+    local row_exp="${7:-}"
+    local header="${8:-}"
+    shift 8 || true
+
+    local -n arr_cmd_ref="${arr_cmd_nam}"
+
+    local fil_prt="${fil_out}.part.$(printf '%06d' "${idx_out}")"
+
+    if \
+        run_capture \
+            "submit calculate-scaling-factor ${mode} ${cas}" \
+            "${fil_log}" \
+            "${arr_cmd_ref[@]}" \
+            "$@"
+    then
+        record_pass "submit_calculate_scaling_factor.sh ${mode} ${cas} exits 0"
+    else
+        record_fail \
+            "submit_calculate_scaling_factor.sh ${mode} ${cas} failed; see" \
+            "$(print_relpath "${fil_log}")"
+    fi
+
+    assert_file_nonempty \
+        "${fil_prt}" \
+        "submit scaling-factor ${mode} ${cas} indexed part"
+
+    if [[ -n "${header}" ]]; then
+        assert_pattern_absent \
+            "${fil_prt}" \
+            "${header}" \
+            "submit scaling-factor ${mode} ${cas} part stays data-only"
+    fi
+
+    if [[ ! -e "${fil_out}" ]]; then
+        record_pass "submit_calculate_scaling_factor.sh ${mode} ${cas} writes no final TSV"
+    else
+        record_fail "submit_calculate_scaling_factor.sh ${mode} ${cas} wrote final TSV"
+    fi
+
+    assert_file_exact_line \
+        "${fil_prt}" \
+        "${row_exp}" \
+        "submit scaling-factor ${mode} ${cas} part"
 }
 
 

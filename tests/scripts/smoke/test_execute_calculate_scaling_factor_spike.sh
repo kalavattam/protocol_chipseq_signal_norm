@@ -227,79 +227,24 @@ function run_case_spike() {
     local tail_1="${7:-}"
     shift 7 || true
 
-    local -n arr_cmd_ref="${arr_cmd_nam}"
-
-    local expt_hdr=true
-    local fil_out="${dir_out}/scaling.${cas}.spike.tsv"
-    local prt_0="${fil_out}.part.000000"
-    local prt_1="${fil_out}.part.000001"
-    local nam_job="test_execute_calculate_scaling_factor_spike_${cas}"
-    local log="${dir_log}/execute_spike_${cas}.log"
-    local -a arr_case=(
-        "${arr_cmd_ref[@]}"
-        --fil_out "${fil_out}"
-        --nam_job "${nam_job}"
-    )
-
     if [[ -n "${method}" ]]; then
-        arr_case+=( --method "${method}" )
+        set -- --method "${method}" "$@"
     fi
 
-    for arg in "$@"; do
-        if [[ "${arg}" =~ ^--no[_-]header$ ]]; then
-            expt_hdr=false
-        fi
-    done
-
-    arr_case+=( "$@" )
-
-    if \
-        run_capture \
-            "execute calculate-scaling-factor spike ${cas}" \
-            "${log}" \
-            "${arr_case[@]}"
-    then
-        record_pass \
-            "execute_calculate_scaling_factor.sh spike ${cas} exits 0"
-    else
-        record_fail \
-            "execute_calculate_scaling_factor.sh spike ${cas} failed; see" \
-            "$(print_relpath "${log}")"
-    fi
-
-    assert_file_nonempty \
-        "${fil_out}" \
-        "execute scaling-factor spike ${cas} final TSV"
-
-    assert_file_nonempty \
-        "${prt_0}" \
-        "execute scaling-factor spike ${cas} first retained part"
-
-    assert_file_nonempty \
-        "${prt_1}" \
-        "execute scaling-factor spike ${cas} second retained part"
-
-    if [[ "${expt_hdr}" == "true" ]]; then
-        assert_pattern_found \
-            "${fil_out}" \
-            $'^main_ip\tspike_ip\tmain_in\tspike_in\tspike\tcoef\tnum_mp\tnum_sp\tnum_mn\tnum_sn$' \
-            "execute scaling-factor spike ${cas} final TSV has core header"
-    else
-        assert_pattern_absent \
-            "${fil_out}" \
-            $'^main_ip\tspike_ip\tmain_in\tspike_in\tspike\tcoef\tnum_mp\tnum_sp\tnum_mn\tnum_sn$' \
-            "execute scaling-factor spike ${cas} final TSV omits core header"
-    fi
-
-    assert_pattern_found \
-        "${fil_out}" \
-        "^${row_0}"$'\t'"${tail_0}"'$' \
-        "execute scaling-factor spike ${cas} final TSV has first row"
-
-    assert_pattern_found \
-        "${fil_out}" \
-        "^${row_1}"$'\t'"${tail_1}"'$' \
-        "execute scaling-factor spike ${cas} final TSV has second row"
+    run_case_scaling_factor_execute \
+        "${cas}" \
+        spike \
+        "${arr_cmd_nam}" \
+        "${dir_out}" \
+        "${dir_log}" \
+        spike \
+        test_execute_calculate_scaling_factor_spike \
+        $'^main_ip\tspike_ip\tmain_in\tspike_in\tspike\tcoef\tnum_mp\tnum_sp\tnum_mn\tnum_sn$' \
+        "${row_0}" \
+        "${row_1}" \
+        "${tail_0}" \
+        "${tail_1}" \
+        "$@"
 }
 
 

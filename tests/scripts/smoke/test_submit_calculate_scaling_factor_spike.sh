@@ -24,9 +24,15 @@ print_section "${TEST_NAME}"
 #  Define fixture and output paths for the direct submit-worker smoke test
 scr_sub="${ROOT_REPO}/scripts/submit_calculate_scaling_factor.sh"
 dir_fix="${ROOT_REPO}/tests/calculate_scaling_factor/fixtures"
+dir_bam_se="${dir_fix}/bam/se"
 dir_bam_pe="${dir_fix}/bam/pe"
 dir_cram_pe="${dir_fix}/cram/pe"
 ref_fa="${dir_fix}/reference/tiny.fa"
+
+bam_se_mip="${dir_bam_se}/IP_WT_log_Brn1_rep1.sc.bam"
+bam_se_min="${dir_bam_se}/in_WT_log_Brn1_rep1.sc.bam"
+bam_se_sip="${dir_bam_se}/IP_WT_log_Brn1_rep1.sp.bam"
+bam_se_sin="${dir_bam_se}/in_WT_log_Brn1_rep1.sp.bam"
 
 bam_pe_mip="${dir_bam_pe}/IP_WT_G1_Hho1_6336.sc.bam"
 bam_pe_min="${dir_bam_pe}/in_WT_G1_Hho1_6336.sc.bam"
@@ -53,6 +59,14 @@ require_env_project env_nam || {
 
 if ! \
     require_files_nonempty \
+        "${bam_se_mip}" \
+        "${bam_se_mip}.bai" \
+        "${bam_se_min}" \
+        "${bam_se_min}.bai" \
+        "${bam_se_sip}" \
+        "${bam_se_sip}.bai" \
+        "${bam_se_sin}" \
+        "${bam_se_sin}.bai" \
         "${bam_pe_mip}" \
         "${bam_pe_mip}.bai" \
         "${bam_pe_min}" \
@@ -70,6 +84,61 @@ then
     finish
     exit $?
 fi
+
+
+#  Run one direct submit-worker spike case and assert its part row
+function run_submit_spike_case() {
+    local cas="${1:-}"
+    local idx_out="${2:-}"
+    local mip="${3:-}"
+    local min="${4:-}"
+    local sip="${5:-}"
+    local sin="${6:-}"
+    local method="${7:-}"
+    local row_exp="${8:-}"
+    local typ_exp="${9:-}"
+    shift 9 || true
+
+    local fil_out="${dir_out}/scaling.submit.${cas}.spike.tsv"
+    local fil_log="${dir_log}/submit_spike_${cas}.log"
+    local -a arr_cmd=(
+        "${TEST_BASH}" "${scr_sub}"
+            --env_nam "${env_nam}"
+            --dir_scr "${ROOT_REPO}/scripts"
+            --threads 1
+            --mode spike
+            --csv_mip "${mip}"
+            --csv_min "${min}"
+            --csv_sip "${sip}"
+            --csv_sin "${sin}"
+            --aln_typ auto
+            --fil_out "${fil_out}"
+            --idx_out "${idx_out}"
+            --err_out "${dir_err}"
+            --nam_job "test_submit_calculate_scaling_factor_spike_${cas}"
+    )
+
+    if [[ -n "${method}" ]]; then
+        arr_cmd+=( --method "${method}" )
+    fi
+
+    arr_cmd+=( "$@" )
+
+    run_case_scaling_factor_submit_part \
+        "${cas}" \
+        spike \
+        arr_cmd \
+        "${fil_out}" \
+        "${idx_out}" \
+        "${fil_log}" \
+        "${row_exp}" \
+        $'^main_ip\tspike_ip\tmain_in\tspike_in\tspike\tcoef'
+
+    assert_pattern_found \
+        "${fil_log}" \
+        "typ_mp=${typ_exp}" \
+        "submit scaling-factor spike ${cas} auto-detects main IP as ${typ_exp}"
+}
 
 
 #  Direct submit-worker execution should write one indexed, data-only part row
@@ -313,5 +382,153 @@ else
         "'--ref_fa' is required" \
         "submit_calculate_scaling_factor.sh rejects CRAM without ref_fa"
 fi
+
+
+#  SE BAM input should be accepted and auto-detected by the submit wrapper
+printf -v row_exp '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s' \
+    "${bam_se_mip}" \
+    "${bam_se_sip}" \
+    "${bam_se_min}" \
+    "${bam_se_sin}" \
+    2 \
+    chiprx_alpha_ratio \
+    3 \
+    1 \
+    2 \
+    2
+
+run_submit_spike_case \
+    se_default \
+    9 \
+    "${bam_se_mip}" \
+    "${bam_se_min}" \
+    "${bam_se_sip}" \
+    "${bam_se_sin}" \
+    "" \
+    "${row_exp}" \
+    se
+
+
+#  Canonical spike-in methods should produce expected submit-worker rows
+printf -v row_exp '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s' \
+    "${bam_se_mip}" \
+    "${bam_se_sip}" \
+    "${bam_se_min}" \
+    "${bam_se_sin}" \
+    2 \
+    fractional \
+    3 \
+    1 \
+    2 \
+    2
+
+run_submit_spike_case \
+    se_fractional \
+    10 \
+    "${bam_se_mip}" \
+    "${bam_se_min}" \
+    "${bam_se_sip}" \
+    "${bam_se_sin}" \
+    fractional \
+    "${row_exp}" \
+    se
+
+printf -v row_exp '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s' \
+    "${bam_se_mip}" \
+    "${bam_se_sip}" \
+    "${bam_se_min}" \
+    "${bam_se_sin}" \
+    1000000 \
+    chiprx_alpha_ip \
+    3 \
+    1 \
+    2 \
+    2
+
+run_submit_spike_case \
+    se_alpha_ip \
+    11 \
+    "${bam_se_mip}" \
+    "${bam_se_min}" \
+    "${bam_se_sip}" \
+    "${bam_se_sin}" \
+    chiprx_alpha_ip \
+    "${row_exp}" \
+    se
+
+printf -v row_exp '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s' \
+    "${bam_se_mip}" \
+    "${bam_se_sip}" \
+    "${bam_se_min}" \
+    "${bam_se_sin}" \
+    500000 \
+    chiprx_alpha_in \
+    3 \
+    1 \
+    2 \
+    2
+
+run_submit_spike_case \
+    se_alpha_in \
+    12 \
+    "${bam_se_mip}" \
+    "${bam_se_min}" \
+    "${bam_se_sip}" \
+    "${bam_se_sin}" \
+    chiprx_alpha_in \
+    "${row_exp}" \
+    se
+
+printf -v row_exp '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s' \
+    "${bam_se_mip}" \
+    "${bam_se_sip}" \
+    "${bam_se_min}" \
+    "${bam_se_sin}" \
+    500000 \
+    rxinput_alpha \
+    3 \
+    1 \
+    2 \
+    2
+
+run_submit_spike_case \
+    se_rxinput \
+    13 \
+    "${bam_se_mip}" \
+    "${bam_se_min}" \
+    "${bam_se_sip}" \
+    "${bam_se_sin}" \
+    rxinput_alpha \
+    "${row_exp}" \
+    se
+
+
+#  Explicit depth overrides should replace alignment-derived counts
+printf -v row_exp '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s' \
+    "${bam_se_mip}" \
+    "${bam_se_sip}" \
+    "${bam_se_min}" \
+    "${bam_se_sin}" \
+    1 \
+    fractional \
+    10 \
+    2 \
+    20 \
+    4
+
+run_submit_spike_case \
+    se_depth_override \
+    14 \
+    "${bam_se_mip}" \
+    "${bam_se_min}" \
+    "${bam_se_sip}" \
+    "${bam_se_sin}" \
+    fractional \
+    "${row_exp}" \
+    se \
+    --dep_mip 10 \
+    --dep_min 20 \
+    --dep_sip 2 \
+    --dep_sin 4
 
 finish
