@@ -74,9 +74,8 @@ Use Bash >= 4.4. The default fixture-backed suite expects `env_protocol` to be a
 
 Smoke groups cover:
 - shell syntax, Python startup, help output/style, installation layout, and cleanup dry-runs;
-- direct spike-in and siQ-ChIP scaling-factor part-file combination, serial
-  siQ-ChIP wrapper behavior, and serial execute-layer spike-in assembly;
+- direct spike-in and siQ-ChIP scaling-factor calculators, part-file combination, submit/execute wrappers, expected failures, and gated local GNU Parallel wet execution;
 - local `download_fastqs`, `trim_fastqs`, `align_fastqs`, `filter_alignments`, and `compute_signal` wrapper paths;
 - selected GNU Parallel paths and one remote Slurm submission path.
 
-Fixture details and expected products are documented in each `tests/*/fixtures/README.md`. Broader `calculate_scaling_factor` coverage for GNU Parallel and Slurm paths is still pending.
+Fixture details and expected products are documented in each `tests/*/fixtures/README.md`. Broader `calculate_scaling_factor` Slurm coverage is still pending.

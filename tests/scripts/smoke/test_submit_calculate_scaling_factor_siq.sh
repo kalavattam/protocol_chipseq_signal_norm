@@ -947,4 +947,71 @@ else
         "submit_calculate_scaling_factor.sh rejects SE siQ without length"
 fi
 
+
+#  Invalid equation identifiers should fail before processing
+fil_log="${dir_log}/submit_siq_invalid_eqn.log"
+if \
+    run_capture \
+        "submit calculate-scaling-factor siQ invalid equation" \
+        "${fil_log}" \
+        "${TEST_BASH}" "${scr_sub}" \
+            --env_nam "${env_nam}" \
+            --dir_scr "${ROOT_REPO}/scripts" \
+            --threads 1 \
+            --mode siq \
+            --csv_mip "${bam_pe_mip}" \
+            --csv_min "${bam_pe_min}" \
+            --aln_typ auto \
+            --fil_out "${dir_out}/scaling.submit.invalid_eqn.siq.tsv" \
+            --idx_out 12 \
+            --tbl_met "${tbl_met}" \
+            --cfg_met "${cfg_met}" \
+            --eqn 7 \
+            --err_out "${dir_err}" \
+            --nam_job test_submit_calculate_scaling_factor_siq_invalid_eqn
+then
+    record_fail \
+        "submit_calculate_scaling_factor.sh siQ invalid equation" \
+        "unexpectedly passed"
+else
+    assert_pattern_found \
+        "${fil_log}" \
+        "'--eqn' must be '5', '5nd', '6', or '6nd'" \
+        "submit_calculate_scaling_factor.sh rejects invalid siQ equation"
+fi
+
+
+#  Spike-in method arguments are invalid in siQ mode
+fil_log="${dir_log}/submit_siq_method_not_applicable.log"
+if \
+    run_capture \
+        "submit calculate-scaling-factor siQ method not applicable" \
+        "${fil_log}" \
+        "${TEST_BASH}" "${scr_sub}" \
+            --env_nam "${env_nam}" \
+            --dir_scr "${ROOT_REPO}/scripts" \
+            --threads 1 \
+            --mode siq \
+            --method fractional \
+            --csv_mip "${bam_pe_mip}" \
+            --csv_min "${bam_pe_min}" \
+            --aln_typ auto \
+            --fil_out "${dir_out}/scaling.submit.method_not_applicable.siq.tsv" \
+            --idx_out 13 \
+            --tbl_met "${tbl_met}" \
+            --cfg_met "${cfg_met}" \
+            --eqn 6nd \
+            --err_out "${dir_err}" \
+            --nam_job test_submit_calculate_scaling_factor_siq_method_not_applicable
+then
+    record_fail \
+        "submit_calculate_scaling_factor.sh siQ method argument" \
+        "unexpectedly passed"
+else
+    assert_pattern_found \
+        "${fil_log}" \
+        "'--method' is valid only when '--mode spike'" \
+        "submit_calculate_scaling_factor.sh rejects method under siQ mode"
+fi
+
 finish

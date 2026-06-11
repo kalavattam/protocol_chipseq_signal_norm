@@ -106,8 +106,8 @@ The serial execute-layer smoke test uses these generated alignment files directl
 <br />
 
 ## Current and deferred smoke-test coverage
-The smoke suite covers direct spike-in and siQ-ChIP part-file combination, numeric ordering, dry-run behavior, malformed input rejection, overwrite protection, explicit part-file cleanup, direct spike-in and siQ-ChIP Python calculator behavior, siQ-ChIP metadata parsing, serial submit/execute-layer siQ-ChIP behavior, and serial execute-layer spike-in assembly. Metadata parser coverage includes compressed tables, skip prefixes, alias normalization and collision rejection, ambiguous-match rejection, regex-mode parsing, and treatment-aware matching. Serial spike-in coverage exercises every canonical coefficient, accepted alias normalization, alignment-derived counts, automatic SE/PE detection, BAM/CRAM input, mixed input lists, and broadcast depth overrides.
+The smoke suite covers direct spike-in and siQ-ChIP part-file combination, numeric ordering, dry-run behavior, malformed input rejection, overwrite protection, explicit part-file cleanup, direct spike-in and siQ-ChIP Python calculator behavior, siQ-ChIP metadata parsing, serial submit/execute wrapper behavior for both scaling-factor branches, and gated local GNU Parallel wet execution. Metadata parser coverage includes compressed tables, skip prefixes, alias normalization and collision rejection, ambiguous-match rejection, regex-mode parsing, and treatment-aware matching. Wrapper coverage exercises expected failures, CRAM/reference behavior, mixed SE/PE layouts, mixed BAM/CRAM inputs, siQ equation validation, spike-in method validation, alignment-derived counts, automatic SE/PE detection, every canonical spike-in coefficient, accepted alias normalization, and broadcast depth overrides.
 
 The scaling-factor rows intentionally contain only core workflow values. Compute downstream denominator floors separately with `python -m scripts.compute_input_floor`.
 
-`#TODO`: Add calculate-scaling-factor GNU Parallel and Slurm coverage.
+`#TODO`: Add calculate-scaling-factor Slurm coverage.

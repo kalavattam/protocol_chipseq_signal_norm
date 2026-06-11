@@ -309,6 +309,7 @@ arr_tst=(
     "${dir_run}/smoke/test_execute_calculate_scaling_factor_spike.sh"
     "${dir_run}/smoke/test_submit_calculate_scaling_factor_siq.sh"
     "${dir_run}/smoke/test_execute_calculate_scaling_factor_siq.sh"
+    "${dir_run}/smoke/test_execute_calculate_scaling_factor_parallel.sh"
     "${dir_run}/smoke/test_clean_test_outputs.sh"
     "${dir_run}/smoke/test_install_envs_layout.sh"
     "${dir_run}/smoke/test_submit_align_fastqs_bowtie2.sh"

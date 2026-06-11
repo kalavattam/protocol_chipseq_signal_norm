@@ -384,6 +384,59 @@ else
 fi
 
 
+#  Invalid equation identifiers should fail before processing
+log="${dir_log}/execute_siq_invalid_eqn.log"
+if \
+    run_capture \
+        "execute calculate-scaling-factor siQ invalid equation" \
+        "${log}" \
+        "${TEST_BASH}" "${scr_exe}" \
+            --threads 1 \
+            --mode siq \
+            --csv_mip "${bam_pe_mip_0},${bam_pe_mip_1}" \
+            --csv_min "${bam_pe_min_0},${bam_pe_min_1}" \
+            --aln_typ auto \
+            --tbl_met "${tbl_met}" \
+            --cfg_met "${cfg_met}" \
+            --eqn 7 \
+            --fil_out "${dir_out}/scaling.invalid_eqn.siq.tsv" \
+            --err_out "${dir_err}" \
+            --nam_job test_execute_calculate_scaling_factor_siq_invalid_eqn \
+            --max_job 1
+then
+    record_fail \
+        "execute_calculate_scaling_factor.sh siQ invalid equation" \
+        "unexpectedly passed"
+else
+    assert_pattern_found \
+        "${log}" \
+        "equation ('--eqn') was assigned '7'" \
+        "execute_calculate_scaling_factor.sh rejects invalid siQ equation"
+fi
+
+
+#  Spike-in method arguments are invalid in siQ mode
+log="${dir_log}/execute_siq_method_not_applicable.log"
+if \
+    run_capture \
+        "execute calculate-scaling-factor siQ method not applicable" \
+        "${log}" \
+        "${arr_cmd_bam_pe[@]}" \
+        --method fractional \
+        --fil_out "${dir_out}/scaling.method_not_applicable.siq.tsv" \
+        --nam_job test_execute_calculate_scaling_factor_siq_method_not_applicable
+then
+    record_fail \
+        "execute_calculate_scaling_factor.sh siQ method argument" \
+        "unexpectedly passed"
+else
+    assert_pattern_found \
+        "${log}" \
+        "'--method' may be used only when '--mode spike' is active" \
+        "execute_calculate_scaling_factor.sh rejects method under siQ mode"
+fi
+
+
 #  Mixed SE/PE BAM lists should keep per-file auto-detection
 run_case_siq \
     mixed_layout \

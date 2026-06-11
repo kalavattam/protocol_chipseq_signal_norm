@@ -1055,7 +1055,7 @@ else
     IFS=';' read -r threads par_job < <(
         set_params_parallel "${threads}" "${max_job}"
     ) || exit 1
-    unset max_job time
+    unset time
 
     validate_var "par_job" "${par_job}"
     check_int_pos "${par_job}" "par_job"

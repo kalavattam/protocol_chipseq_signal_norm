@@ -384,6 +384,39 @@ else
 fi
 
 
+#  Unknown spike-in methods should fail before worker execution
+fil_log="${dir_log}/submit_spike_invalid_method.log"
+if \
+    run_capture \
+        "submit calculate-scaling-factor spike invalid method" \
+        "${fil_log}" \
+        "${TEST_BASH}" "${scr_sub}" \
+            --env_nam "${env_nam}" \
+            --dir_scr "${ROOT_REPO}/scripts" \
+            --threads 1 \
+            --mode spike \
+            --method not_a_method \
+            --csv_mip "${bam_pe_mip}" \
+            --csv_min "${bam_pe_min}" \
+            --csv_sip "${bam_pe_sip}" \
+            --csv_sin "${bam_pe_sin}" \
+            --aln_typ auto \
+            --fil_out "${dir_out}/scaling.invalid_method.spike.tsv" \
+            --idx_out 4 \
+            --err_out "${dir_err}" \
+            --nam_job test_submit_calculate_scaling_factor_spike_invalid_method
+then
+    record_fail \
+        "submit_calculate_scaling_factor.sh spike invalid method" \
+        "unexpectedly passed"
+else
+    assert_pattern_found \
+        "${fil_log}" \
+        "invalid '--method' value" \
+        "submit_calculate_scaling_factor.sh rejects invalid spike method"
+fi
+
+
 #  SE BAM input should be accepted and auto-detected by the submit wrapper
 printf -v row_exp '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s' \
     "${bam_se_mip}" \
