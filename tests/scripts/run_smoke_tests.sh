@@ -6,7 +6,7 @@
 # Copyright 2026 by Kris Alavattam
 # Email: kalavattam@gmail.com
 #
-# OpenAI ChatGPT (GPT-5.5) was used in development.
+# OpenAI ChatGPT and Codex (GPT-5.5) were used in development.
 #
 # Distributed under the MIT license.
 
@@ -197,6 +197,14 @@ mkdir -p "${dir_log}"
         "${dir_fix_scl}/bam/pe/in_WT_G1_Hho1_6336.sc.bam.bai"
         "${dir_fix_scl}/bam/pe/in_WT_G1_Hho1_6337.sc.bam"
         "${dir_fix_scl}/bam/pe/in_WT_G1_Hho1_6337.sc.bam.bai"
+        "${dir_fix_scl}/bam/pe/IP_WT_G1_HU_Hho1_6336.sc.bam"
+        "${dir_fix_scl}/bam/pe/IP_WT_G1_HU_Hho1_6336.sc.bam.bai"
+        "${dir_fix_scl}/bam/pe/IP_WT_G1_HU_Hho1_6337.sc.bam"
+        "${dir_fix_scl}/bam/pe/IP_WT_G1_HU_Hho1_6337.sc.bam.bai"
+        "${dir_fix_scl}/bam/pe/in_WT_G1_HU_Hho1_6336.sc.bam"
+        "${dir_fix_scl}/bam/pe/in_WT_G1_HU_Hho1_6336.sc.bam.bai"
+        "${dir_fix_scl}/bam/pe/in_WT_G1_HU_Hho1_6337.sc.bam"
+        "${dir_fix_scl}/bam/pe/in_WT_G1_HU_Hho1_6337.sc.bam.bai"
         "${dir_fix_scl}/bam/pe/IP_WT_G1_Hho1_6336.sp.bam"
         "${dir_fix_scl}/bam/pe/IP_WT_G1_Hho1_6336.sp.bam.bai"
         "${dir_fix_scl}/bam/pe/IP_WT_G1_Hho1_6337.sp.bam"
@@ -230,9 +238,16 @@ mkdir -p "${dir_log}"
         "${dir_fix_scl}/parts/duplicate_index_A.spike.tsv.part.000005"
         "${dir_fix_scl}/parts/duplicate_index_B.spike.tsv.part.000005"
         "${dir_fix_scl}/metadata/measurements_siqchip.tsv"
+        "${dir_fix_scl}/metadata/measurements_siqchip.tsv.gz"
         "${dir_fix_scl}/metadata/measurements_siqchip_aliases.tsv"
         "${dir_fix_scl}/metadata/measurements_siqchip_missing_required.tsv"
         "${dir_fix_scl}/metadata/measurements_siqchip_unsupported_alias.tsv"
+        "${dir_fix_scl}/metadata/measurements_siqchip_skip_prefixes.tsv"
+        "${dir_fix_scl}/metadata/measurements_siqchip_alias_collision.tsv"
+        "${dir_fix_scl}/metadata/measurements_siqchip_duplicate_match.tsv"
+        "${dir_fix_scl}/metadata/measurements_siqchip_treatment.tsv"
+        "${dir_fix_scl}/config/parse_metadata_siqchip_regex.yml"
+        "${dir_fix_scl}/config/parse_metadata_siqchip_match_treatment.yml"
     )
 
     dir_fix_sig="${dir_rep}/tests/compute_signal/fixtures"

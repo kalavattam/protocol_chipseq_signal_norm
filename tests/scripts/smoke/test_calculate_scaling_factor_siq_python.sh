@@ -6,7 +6,7 @@
 # Copyright 2026 by Kris Alavattam
 # Email: kalavattam@gmail.com
 #
-# OpenAI ChatGPT (GPT-5.5) was used in development.
+# OpenAI ChatGPT and Codex (GPT-5.5) were used in development.
 #
 # Distributed under the MIT license.
 
@@ -24,21 +24,31 @@ print_section "${TEST_NAME}"
 scr_clc="${ROOT_REPO}/scripts/calculate_scaling_factor_siqchip.py"
 scr_prs="${ROOT_REPO}/scripts/parse_metadata_siqchip.py"
 cfg_met="${ROOT_REPO}/data/raw/docs/parse_metadata_siqchip.yml"
+
 dir_fix="${ROOT_REPO}/tests/calculate_scaling_factor/fixtures"
 dir_met="${dir_fix}/metadata"
 dir_tmp="${TEST_DIR_TMP}/calculate_scaling_factor_siq_python"
 dir_log="${TEST_DIR_LOG}/calculate_scaling_factor_siq_python"
 
 tbl_met="${dir_met}/measurements_siqchip.tsv"
+tbl_gz="${dir_met}/measurements_siqchip.tsv.gz"
 tbl_als="${dir_met}/measurements_siqchip_aliases.tsv"
 tbl_mis="${dir_met}/measurements_siqchip_missing_required.tsv"
 tbl_uns="${dir_met}/measurements_siqchip_unsupported_alias.tsv"
+tbl_pfx="${dir_met}/measurements_siqchip_skip_prefixes.tsv"
+tbl_col="${dir_met}/measurements_siqchip_alias_collision.tsv"
+tbl_dup="${dir_met}/measurements_siqchip_duplicate_match.tsv"
+tbl_trt="${dir_met}/measurements_siqchip_treatment.tsv"
+
+cfg_rgx="${dir_fix}/config/parse_metadata_siqchip_regex.yml"
+cfg_trt="${dir_fix}/config/parse_metadata_siqchip_match_treatment.yml"
 
 bam_ip_hho1_g1="${dir_tmp}/IP_WT_G1_Hho1_6336.sc.bam"
 bam_in_hho1_g1="${dir_tmp}/in_WT_G1_Hho1_6336.sc.bam"
 cram_ip_hho1_g1="${dir_tmp}/IP_WT_G1_Hho1_6336.sp.cram"
 bam_ip_hho1_g2m="${dir_tmp}/IP_WT_G2M_Hho1_6336.sc.bam"
 bam_ip_hmo1_g1="${dir_tmp}/IP_WT_G1_Hmo1_7750.sc.bam"
+bam_ip_hho1_hu="${dir_tmp}/IP_WT_G1_HU_Hho1_6336.sc.bam"
 bam_bad="${dir_tmp}/bad.bam"
 bam_bad_match="${dir_tmp}/IP_WT_Q_Hho1_9999.sc.bam"
 bam_bad_assay="${dir_tmp}/FLAGIP_WT_G1_Hho1_6336.sc.bam"
@@ -114,7 +124,13 @@ function run_parse_success() {
     local fil_log="${2:-}"
     local tbl_lcl="${3:-}"
     local bam_lcl="${4:-}"
-    shift 4 || true
+    local cfg_lcl="${5:-${cfg_met}}"
+
+    if (( $# >= 5 )); then
+        shift 5 || true
+    else
+        shift 4 || true
+    fi
 
     run_siq_success \
         "${label}" \
@@ -123,7 +139,7 @@ function run_parse_success() {
         -m scripts.parse_metadata_siqchip \
             --bam "${bam_lcl}" \
             --tbl_met "${tbl_lcl}" \
-            --cfg "${cfg_met}" \
+            --cfg "${cfg_lcl}" \
             --eqn 6nd \
             --shell \
             "$@"
@@ -139,6 +155,7 @@ touch \
     "${cram_ip_hho1_g1}" \
     "${bam_ip_hho1_g2m}" \
     "${bam_ip_hmo1_g1}" \
+    "${bam_ip_hho1_hu}" \
     "${bam_bad}" \
     "${bam_bad_match}" \
     "${bam_bad_assay}"
@@ -147,10 +164,17 @@ require_files_nonempty \
     "${scr_clc}" \
     "${scr_prs}" \
     "${cfg_met}" \
+    "${cfg_rgx}" \
+    "${cfg_trt}" \
     "${tbl_met}" \
+    "${tbl_gz}" \
     "${tbl_als}" \
     "${tbl_mis}" \
-    "${tbl_uns}" || {
+    "${tbl_uns}" \
+    "${tbl_pfx}" \
+    "${tbl_col}" \
+    "${tbl_dup}" \
+    "${tbl_trt}" || {
         finish
         exit $?
     }
@@ -292,6 +316,55 @@ assert_pattern_found \
     '^export len_ip=626$' \
     "siQ metadata parser normalizes length IP alias"
 
+run_parse_success \
+    "parses gzipped metadata table" \
+    "${dir_log}/parse_gzip.log" \
+    "${tbl_gz}" \
+    "${bam_ip_hho1_g1}"
+
+assert_pattern_found \
+    "${dir_log}/parse_gzip.log" \
+    '^export mass_ip=2.7$' \
+    "siQ metadata parser reads gzipped metadata"
+
+run_parse_success \
+    "skips configured metadata prefixes" \
+    "${dir_log}/parse_skip_prefixes.log" \
+    "${tbl_pfx}" \
+    "${bam_ip_hho1_g1}"
+
+run_parse_success \
+    "skips explicit metadata prefixes" \
+    "${dir_log}/parse_skip_prefixes_explicit.log" \
+    "${tbl_pfx}" \
+    "${bam_ip_hho1_g1}" \
+    "${cfg_met}" \
+    --skp_pfx '#,//'
+
+run_parse_success \
+    "parses regex-mode config" \
+    "${dir_log}/parse_regex_config.log" \
+    "${tbl_met}" \
+    "${bam_ip_hho1_g1}" \
+    "${cfg_rgx}"
+
+assert_pattern_found \
+    "${dir_log}/parse_regex_config.log" \
+    '^export mass_ip=2.7$' \
+    "siQ metadata parser resolves regex-mode config"
+
+run_parse_success \
+    "matches treatment-aware metadata row" \
+    "${dir_log}/parse_treatment.log" \
+    "${tbl_trt}" \
+    "${bam_ip_hho1_hu}" \
+    "${cfg_trt}"
+
+assert_pattern_found \
+    "${dir_log}/parse_treatment.log" \
+    '^export mass_ip=9.9$' \
+    "siQ metadata parser matches treatment-specific row"
+
 
 #  Metadata parser failures should be clear and targeted
 run_siq_failure \
@@ -348,6 +421,26 @@ assert_pattern_found \
     "${dir_log}/parse_missing_required.log" \
     "Accepted aliases include: len_ip:" \
     "siQ metadata parser lists accepted aliases for missing field"
+
+run_siq_failure \
+    "rejects duplicate normalized metadata columns" \
+    "${dir_log}/parse_alias_collision.log" \
+    "multiple columns that normalize to the same canonical name" \
+    -m scripts.parse_metadata_siqchip \
+        --bam "${bam_ip_hho1_g1}" \
+        --tbl_met "${tbl_col}" \
+        --cfg "${cfg_met}" \
+        --shell
+
+run_siq_failure \
+    "rejects ambiguous metadata match" \
+    "${dir_log}/parse_duplicate_match.log" \
+    "Multiple matching rows found" \
+    -m scripts.parse_metadata_siqchip \
+        --bam "${bam_ip_hho1_g1}" \
+        --tbl_met "${tbl_dup}" \
+        --cfg "${cfg_met}" \
+        --shell
 
 run_siq_failure \
     "rejects unsupported required-column alias" \

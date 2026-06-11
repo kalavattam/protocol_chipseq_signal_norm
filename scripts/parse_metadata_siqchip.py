@@ -6,7 +6,8 @@
 # Copyright 2024-2026 by Kris Alavattam
 # Email: kalavattam@gmail.com
 #
-# OpenAI ChatGPT (GPT-4- and GPT-5-series models) was used in development.
+# OpenAI ChatGPT and Codex (GPT-4- and GPT-5-series models) were used in
+# development.
 #
 # Distributed under the MIT license.
 
@@ -936,22 +937,35 @@ def find_matching_row(
 
         return fac_ok and (ss == rstr) and gen_ok and st_ok and trt_ok
 
-    for row in data:
-        if row_matches(row, sf, sst):
-            if verbose:
-                with redirect_stdout(sys.stderr):
-                    print("'find_matching_row' status: Pass 1 matched")
-            return row
+    matches = [row for row in data if row_matches(row, sf, sst)]
+    if len(matches) == 1:
+        if verbose:
+            with redirect_stdout(sys.stderr):
+                print("'find_matching_row' status: Pass 1 matched")
+        return matches[0]
+    if len(matches) > 1:
+        raise ValueError(
+            f"Multiple matching rows found for state '{state or 'NA'}', "
+            f"factor '{factor}', strain '{strain}', genotype "
+            f"'{genotype or 'NA'}', treatment '{treatment or 'NA'}'."
+        )
 
-    for row in data:
-        if row_matches(row, sst, sf):
-            if verbose:
-                with redirect_stdout(sys.stderr):
-                    print(
-                        "'find_matching_row' status: Pass 2 matched with "
-                        "swapped factor/state"
-                    )
-            return row
+    matches = [row for row in data if row_matches(row, sst, sf)]
+    if len(matches) == 1:
+        if verbose:
+            with redirect_stdout(sys.stderr):
+                print(
+                    "'find_matching_row' status: Pass 2 matched with "
+                    "swapped factor/state"
+                )
+        return matches[0]
+    if len(matches) > 1:
+        raise ValueError(
+            "Multiple matching rows found for swapped state/factor search: "
+            f"state '{state or 'NA'}', factor '{factor}', strain '{strain}', "
+            f"genotype '{genotype or 'NA'}', treatment "
+            f"'{treatment or 'NA'}'."
+        )
 
     raise ValueError(
         f"No matching row found for state '{state or 'NA'}', "

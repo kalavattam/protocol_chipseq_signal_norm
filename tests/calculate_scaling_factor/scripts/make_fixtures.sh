@@ -6,7 +6,7 @@
 # Copyright 2026 by Kris Alavattam
 # Email: kalavattam@gmail.com
 #
-# OpenAI ChatGPT (GPT-5.5) was used in development.
+# OpenAI ChatGPT and Codex (GPT-5.5) were used in development.
 #
 # Distributed under the MIT license.
 
@@ -121,6 +121,7 @@ dir_cram_se="${dir_cram}/se"
 dir_cram_pe="${dir_cram}/pe"
 dir_prt="${dir_fix}/parts"
 dir_met="${dir_fix}/metadata"
+dir_cfg="${dir_fix}/config"
 
 ref_fa="${dir_ref}/tiny.fa"
 
@@ -155,6 +156,10 @@ bam_pe_mip_0="${dir_bam_pe}/IP_WT_G1_Hho1_6336.sc.bam"
 bam_pe_mip_1="${dir_bam_pe}/IP_WT_G1_Hho1_6337.sc.bam"
 bam_pe_min_0="${dir_bam_pe}/in_WT_G1_Hho1_6336.sc.bam"
 bam_pe_min_1="${dir_bam_pe}/in_WT_G1_Hho1_6337.sc.bam"
+bam_pe_mip_hu_0="${dir_bam_pe}/IP_WT_G1_HU_Hho1_6336.sc.bam"
+bam_pe_mip_hu_1="${dir_bam_pe}/IP_WT_G1_HU_Hho1_6337.sc.bam"
+bam_pe_min_hu_0="${dir_bam_pe}/in_WT_G1_HU_Hho1_6336.sc.bam"
+bam_pe_min_hu_1="${dir_bam_pe}/in_WT_G1_HU_Hho1_6337.sc.bam"
 bam_pe_sip_0="${dir_bam_pe}/IP_WT_G1_Hho1_6336.sp.bam"
 bam_pe_sip_1="${dir_bam_pe}/IP_WT_G1_Hho1_6337.sp.bam"
 bam_pe_sin_0="${dir_bam_pe}/in_WT_G1_Hho1_6336.sp.bam"
@@ -173,6 +178,10 @@ cram_pe_mip_0="${dir_cram_pe}/IP_WT_G1_Hho1_6336.sc.cram"
 cram_pe_mip_1="${dir_cram_pe}/IP_WT_G1_Hho1_6337.sc.cram"
 cram_pe_min_0="${dir_cram_pe}/in_WT_G1_Hho1_6336.sc.cram"
 cram_pe_min_1="${dir_cram_pe}/in_WT_G1_Hho1_6337.sc.cram"
+cram_pe_mip_hu_0="${dir_cram_pe}/IP_WT_G1_HU_Hho1_6336.sc.cram"
+cram_pe_mip_hu_1="${dir_cram_pe}/IP_WT_G1_HU_Hho1_6337.sc.cram"
+cram_pe_min_hu_0="${dir_cram_pe}/in_WT_G1_HU_Hho1_6336.sc.cram"
+cram_pe_min_hu_1="${dir_cram_pe}/in_WT_G1_HU_Hho1_6337.sc.cram"
 cram_pe_sip_0="${dir_cram_pe}/IP_WT_G1_Hho1_6336.sp.cram"
 cram_pe_sip_1="${dir_cram_pe}/IP_WT_G1_Hho1_6337.sp.cram"
 cram_pe_sin_0="${dir_cram_pe}/in_WT_G1_Hho1_6336.sp.cram"
@@ -187,9 +196,16 @@ bad_hdr="${dir_prt}/header_scaling_factors.spike.tsv.part.000004"
 dup_idx_a="${dir_prt}/duplicate_index_A.spike.tsv.part.000005"
 dup_idx_b="${dir_prt}/duplicate_index_B.spike.tsv.part.000005"
 met_siq="${dir_met}/measurements_siqchip.tsv"
+met_siq_gz="${dir_met}/measurements_siqchip.tsv.gz"
 met_siq_als="${dir_met}/measurements_siqchip_aliases.tsv"
 met_siq_mis="${dir_met}/measurements_siqchip_missing_required.tsv"
 met_siq_uns="${dir_met}/measurements_siqchip_unsupported_alias.tsv"
+met_siq_pfx="${dir_met}/measurements_siqchip_skip_prefixes.tsv"
+met_siq_col="${dir_met}/measurements_siqchip_alias_collision.tsv"
+met_siq_dup="${dir_met}/measurements_siqchip_duplicate_match.tsv"
+met_siq_trt="${dir_met}/measurements_siqchip_treatment.tsv"
+cfg_rgx="${dir_cfg}/parse_metadata_siqchip_regex.yml"
+cfg_trt="${dir_cfg}/parse_metadata_siqchip_match_treatment.yml"
 
 env_req="env_protocol"
 
@@ -197,6 +213,7 @@ env_req="env_protocol"
 #  Require the project environment and Samtools for alignment fixtures
 require_env "${env_req}" "for calculate-scaling-factor fixtures."
 require_cmd samtools "in '${env_req}' to generate BAM/CRAM fixtures."
+require_cmd gzip "in '${env_req}' to generate compressed metadata fixtures."
 
 #  Create fixture output directories
 mkdirs \
@@ -210,7 +227,8 @@ mkdirs \
     "${dir_cram_se}" \
     "${dir_cram_pe}" \
     "${dir_prt}" \
-    "${dir_met}"
+    "${dir_met}" \
+    "${dir_cfg}"
 
 #  Write and index the tiny reference used for CRAM fixtures
 cat > "${ref_fa}" << 'EOM'
@@ -240,6 +258,16 @@ write_bam_fixture_pe "${sam_pe_sip_1}" "${bam_pe_sip_1}" sip_B 2
 write_bam_fixture_pe "${sam_pe_sin_0}" "${bam_pe_sin_0}" sin_A 2
 write_bam_fixture_pe "${sam_pe_sin_1}" "${bam_pe_sin_1}" sin_B 1
 
+#  Duplicate PE main-alignment fixtures under treatment-aware siQ basenames
+cp "${bam_pe_mip_0}"     "${bam_pe_mip_hu_0}"
+cp "${bam_pe_mip_0}.bai" "${bam_pe_mip_hu_0}.bai"
+cp "${bam_pe_mip_1}"     "${bam_pe_mip_hu_1}"
+cp "${bam_pe_mip_1}.bai" "${bam_pe_mip_hu_1}.bai"
+cp "${bam_pe_min_0}"     "${bam_pe_min_hu_0}"
+cp "${bam_pe_min_0}.bai" "${bam_pe_min_hu_0}.bai"
+cp "${bam_pe_min_1}"     "${bam_pe_min_hu_1}"
+cp "${bam_pe_min_1}.bai" "${bam_pe_min_hu_1}.bai"
+
 #  Generate SE and PE CRAM fixtures from the role-specific BAM fixtures
 write_cram_fixture "${bam_se_mip_0}" "${cram_se_mip_0}" "${ref_fa}"
 write_cram_fixture "${bam_se_mip_1}" "${cram_se_mip_1}" "${ref_fa}"
@@ -254,6 +282,10 @@ write_cram_fixture "${bam_pe_mip_0}" "${cram_pe_mip_0}" "${ref_fa}"
 write_cram_fixture "${bam_pe_mip_1}" "${cram_pe_mip_1}" "${ref_fa}"
 write_cram_fixture "${bam_pe_min_0}" "${cram_pe_min_0}" "${ref_fa}"
 write_cram_fixture "${bam_pe_min_1}" "${cram_pe_min_1}" "${ref_fa}"
+write_cram_fixture "${bam_pe_mip_hu_0}" "${cram_pe_mip_hu_0}" "${ref_fa}"
+write_cram_fixture "${bam_pe_mip_hu_1}" "${cram_pe_mip_hu_1}" "${ref_fa}"
+write_cram_fixture "${bam_pe_min_hu_0}" "${cram_pe_min_hu_0}" "${ref_fa}"
+write_cram_fixture "${bam_pe_min_hu_1}" "${cram_pe_min_hu_1}" "${ref_fa}"
 write_cram_fixture "${bam_pe_sip_0}" "${cram_pe_sip_0}" "${ref_fa}"
 write_cram_fixture "${bam_pe_sip_1}" "${cram_pe_sip_1}" "${ref_fa}"
 write_cram_fixture "${bam_pe_sin_0}" "${cram_pe_sin_0}" "${ref_fa}"
@@ -272,6 +304,10 @@ samtools quickcheck \
     "${bam_pe_mip_1}" \
     "${bam_pe_min_0}" \
     "${bam_pe_min_1}" \
+    "${bam_pe_mip_hu_0}" \
+    "${bam_pe_mip_hu_1}" \
+    "${bam_pe_min_hu_0}" \
+    "${bam_pe_min_hu_1}" \
     "${bam_pe_sip_0}" \
     "${bam_pe_sip_1}" \
     "${bam_pe_sin_0}" \
@@ -288,6 +324,10 @@ samtools quickcheck \
     "${cram_pe_mip_1}" \
     "${cram_pe_min_0}" \
     "${cram_pe_min_1}" \
+    "${cram_pe_mip_hu_0}" \
+    "${cram_pe_mip_hu_1}" \
+    "${cram_pe_min_hu_0}" \
+    "${cram_pe_min_hu_1}" \
     "${cram_pe_sip_0}" \
     "${cram_pe_sip_1}" \
     "${cram_pe_sin_0}" \
@@ -305,9 +345,16 @@ rm_files \
     "${dup_idx_a}" \
     "${dup_idx_b}" \
     "${met_siq}" \
+    "${met_siq_gz}" \
     "${met_siq_als}" \
     "${met_siq_mis}" \
-    "${met_siq_uns}"
+    "${met_siq_uns}" \
+    "${met_siq_pfx}" \
+    "${met_siq_col}" \
+    "${met_siq_dup}" \
+    "${met_siq_trt}" \
+    "${cfg_rgx}" \
+    "${cfg_trt}"
 
 #  Write realistic spike-in scaling-factor part files
 write_tsv_row \
@@ -428,6 +475,8 @@ write_tsv_row \
         '6.25' '0.417' '150' '150'
 } > "${met_siq}"
 
+gzip_n "${met_siq}" "${met_siq_gz}"
+
 {
     write_tsv_row \
         'protein' 'gt' 'cc' 'sample' \
@@ -438,6 +487,11 @@ write_tsv_row \
         'Hho1' 'WT' 'G1' '6336' \
         '20' '300' '72.5' '2.7' \
         '450' '626'
+
+    write_tsv_row \
+        'Hho1' 'WT' 'G1' '6337' \
+        '20' '300' '81.1' '5' \
+        '437' '663'
 } > "${met_siq_als}"
 
 {
@@ -461,6 +515,213 @@ write_tsv_row \
         '20' '300' '72.5' '2.7' \
         '450' '626'
 } > "${met_siq_uns}"
+
+{
+    printf '# Comment line skipped by default parser config\n'
+    printf '// Alternate comment line skipped by default parser config\n'
+
+    write_tsv_row \
+        'genotype' 'state' 'factor' 'strain' \
+        'volume_in' 'volume_all' 'mass_in' 'mass_ip' \
+        'length_in' 'length_ip'
+
+    write_tsv_row \
+        'WT' 'G1' 'Hho1' '6336' \
+        '20' '300' '72.5' '2.7' \
+        '450' '626'
+
+    write_tsv_row \
+        'WT' 'G1' 'Hho1' '6337' \
+        '20' '300' '81.1' '5' \
+        '437' '663'
+} > "${met_siq_pfx}"
+
+{
+    write_tsv_row \
+        'factor' 'fct' 'strain' 'genotype' 'state' \
+        'volume_in' 'volume_all' 'mass_in' 'mass_ip' \
+        'length_in' 'length_ip'
+
+    write_tsv_row \
+        'Hho1' 'Hho1' '6336' 'WT' 'G1' \
+        '20' '300' '72.5' '2.7' \
+        '450' '626'
+} > "${met_siq_col}"
+
+{
+    write_tsv_row \
+        'genotype' 'state' 'factor' 'strain' \
+        'volume_in' 'volume_all' 'mass_in' 'mass_ip' \
+        'length_in' 'length_ip'
+
+    write_tsv_row \
+        'WT' 'G1' 'Hho1' '6336' \
+        '20' '300' '72.5' '2.7' \
+        '450' '626'
+
+    write_tsv_row \
+        'WT' 'G1' 'Hho1' '6336' \
+        '20' '300' '73.5' '3.7' \
+        '450' '626'
+} > "${met_siq_dup}"
+
+{
+    write_tsv_row \
+        'genotype' 'state' 'treatment' 'factor' 'strain' \
+        'volume_in' 'volume_all' 'mass_in' 'mass_ip' \
+        'length_in' 'length_ip'
+
+    write_tsv_row \
+        'WT' 'G1' 'DMSO' 'Hho1' '6336' \
+        '20' '300' '72.5' '2.7' \
+        '450' '626'
+
+    write_tsv_row \
+        'WT' 'G1' 'HU' 'Hho1' '6336' \
+        '20' '300' '88.8' '9.9' \
+        '450' '626'
+
+    write_tsv_row \
+        'WT' 'G1' 'HU' 'Hho1' '6337' \
+        '20' '300' '99.9' '11.1' \
+        '437' '663'
+} > "${met_siq_trt}"
+
+cat > "${cfg_rgx}" << 'EOM'
+filename:
+    delimiter: "_"
+    strip_extensions: [".bam", ".cram", ".sam"]
+    strip_trailing_tag_regex: '\.[^.]+$'
+    assay_tokens: ["IP", "in"]
+    states: ["G1", "G2M", "log", "Q"]
+    pattern: '^(?P<assay>IP|in)_(?P<genotype>[^_]+)_(?P<state>[^_]+)_(?P<factor>[^_]+)_(?P<strain>[^_]+)$'
+    pattern_group_defaults:
+        genotype: "NA"
+        state: "NA"
+        treatment: "NA"
+    layouts: []
+    genotype:
+        exact: ["WT"]
+        suffixes: ["-KO"]
+        exclude_suffixes: ["-flag"]
+    factor:
+        regex:
+            - '^H[1-4](?:[A-Za-z0-9]+)?$'
+            - '^[A-Za-z0-9]+-flag$'
+        whitelist: ["Brn1", "Hho1", "Hmo1"]
+
+matching:
+    factor_uses_abbrev: true
+    match_treatment: false
+    wildcard_values: ["", "NA", "N/A"]
+
+table:
+    skip_prefixes: ["#", "//"]
+
+columns:
+    factor: ["factor", "fct"]
+    factor_abbrev: ["factor_abbrev"]
+    strain: ["strain", "sample"]
+    genotype: ["genotype", "gt"]
+    state: ["state", "cc"]
+    treatment: ["treatment", "trt"]
+    vol_in: ["vol_in", "volume_in", "input volume"]
+    vol_all: ["vol_all", "volume_all", "total volume"]
+    mass_in: ["mass_in", "input mass"]
+    mass_ip: ["mass_ip", "IP mass"]
+    conc_in: ["conc_in"]
+    conc_ip: ["conc_ip"]
+    len_in: ["len_in", "length_in", "fragment length input"]
+    len_ip: ["len_ip", "length_ip", "fragment length IP"]
+    dep_in: ["dep_in"]
+    dep_ip: ["dep_ip"]
+
+required_keys:
+    - vol_in
+    - vol_all
+    - mass_in
+    - mass_ip
+    - len_in
+    - len_ip
+
+optional_keys:
+    - conc_in
+    - conc_ip
+    - dep_in
+    - dep_ip
+EOM
+
+cat > "${cfg_trt}" << 'EOM'
+filename:
+    delimiter: "_"
+    strip_extensions: [".bam", ".cram", ".sam"]
+    strip_trailing_tag_regex: '\.[^.]+$'
+    assay_tokens: ["IP", "in"]
+    states: ["G1", "G2M", "log", "Q"]
+    pattern: null
+    pattern_group_defaults:
+        genotype: "NA"
+        state: "NA"
+        treatment: "NA"
+    layouts:
+        - name: treatment
+          fields:
+              - {name: assay,     required: true,  position: first}
+              - {name: genotype,  required: false}
+              - {name: state,     required: false}
+              - {name: treatment, required: false}
+              - {name: factor,    required: true}
+              - {name: strain,    required: true,  position: last}
+    genotype:
+        exact: ["WT"]
+        suffixes: ["-KO"]
+        exclude_suffixes: ["-flag"]
+    factor:
+        regex:
+            - '^H[1-4](?:[A-Za-z0-9]+)?$'
+            - '^[A-Za-z0-9]+-flag$'
+        whitelist: ["Brn1", "Hho1", "Hmo1"]
+
+matching:
+    factor_uses_abbrev: true
+    match_treatment: true
+    wildcard_values: ["", "NA", "N/A"]
+
+table:
+    skip_prefixes: ["#", "//"]
+
+columns:
+    factor: ["factor", "fct"]
+    factor_abbrev: ["factor_abbrev"]
+    strain: ["strain", "sample"]
+    genotype: ["genotype", "gt"]
+    state: ["state", "cc"]
+    treatment: ["treatment", "trt"]
+    vol_in: ["vol_in", "volume_in", "input volume"]
+    vol_all: ["vol_all", "volume_all", "total volume"]
+    mass_in: ["mass_in", "input mass"]
+    mass_ip: ["mass_ip", "IP mass"]
+    conc_in: ["conc_in"]
+    conc_ip: ["conc_ip"]
+    len_in: ["len_in", "length_in", "fragment length input"]
+    len_ip: ["len_ip", "length_ip", "fragment length IP"]
+    dep_in: ["dep_in"]
+    dep_ip: ["dep_ip"]
+
+required_keys:
+    - vol_in
+    - vol_all
+    - mass_in
+    - mass_ip
+    - len_in
+    - len_ip
+
+optional_keys:
+    - conc_in
+    - conc_ip
+    - dep_in
+    - dep_ip
+EOM
 
 
 succeed "generated calculate-scaling-factor fixtures under ${dir_fix}"
