@@ -5,11 +5,12 @@
 #  Ignore root '__init__.py'
 /__init__.py
 
-#  Ignore everything in 'analysis/', 'docs/img/', 'docs/xml/', 'scraps/' (where
-#+ temporary scratch work is stored), and 'tmp/'
+#  Ignore everything in 'analysis/', 'docs/dev/', 'docs/img/', 'docs/xml/',
+#+ 'scraps/' (where temporary scratch work is stored), and 'tmp/'
 analysis/
-docs/img
-docs/xml
+docs/dev/
+docs/img/
+docs/xml/
 scraps/
 tmp/
 
