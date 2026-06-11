@@ -459,6 +459,9 @@ Arguments:
 
 
 Dependencies:
+  Recommended environment:
+    - env_protocol (or renamed equivalent)
+
   External programs:
     - Bash >= 4.4
     - basename

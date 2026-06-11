@@ -90,6 +90,9 @@ Arguments:
     The length of time, in 'h:mm:ss' format, for the Slurm job (required if '--slurm' is specified, ignored if not; default: '${time}').
 
 Dependencies:
+  Recommended environment:
+    - env_protocol (or renamed equivalent)
+
   External programs:
     - awk
     - Bash >= 4.4
@@ -98,7 +101,7 @@ Dependencies:
     - mv
     - rm
     - samtools
-    - Slurm, when '--slurm' is specified
+    - sbatch, when '--slurm' is specified
 
   Shell scripts:
     - submit_filter_alignments.sh

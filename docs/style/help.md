@@ -13,6 +13,7 @@ Usage:
 Description:
 Arguments: / Positional arguments: / Keyword arguments:
 Dependencies:
+  Recommended environment:   # if applicable
   External programs:
   Shell scripts:             # if applicable
   Python scripts:            # if applicable
@@ -63,8 +64,12 @@ Nontrivial shell-function help docs should include a `Returns:` section.
 Within nested sections such as `Dependencies:`, use this format:
 ```txt
 Dependencies:
+  Recommended environment:
+    - env_protocol
+
   External programs:
     - program
+
   Shell scripts:
     - script_name.sh
 ```
@@ -326,13 +331,24 @@ Avoid adding secondary element annotations such as `<element:str>` after the mai
 ## Dependency documentation rules
 Before editing dependency lists, inspect the relevant top-level executable directly. Do not infer dependency lists from grep output alone. For each top-level executable, inspect directly invoked commands, project scripts passed downstream, and code called by the script when needed to understand the user-facing workflow.
 
+Use the ordering principle “recommended environment first; dependency details second.” When `env_protocol` or another repository environment is the recommended installation path, list that environment first, then list external programs as transparency and troubleshooting information.
+
 User-facing help should list dependencies users may need to install, provide, or understand. Do not maintain exhaustive sourced-helper inventories in user-facing CLI help. Those inventories are maintainer-facing and should live in developer docs or deterministic audit tooling if needed.
+
+<br />
+
+### Recommended environment:
+- Include this subsection when a script is normally run from a project Conda/Mamba environment.
+- List the recommended environment by name, e.g., `env_protocol`.
+- Do not use the recommended environment as a reason to hide tool-level dependencies. Users still need external-program lists for debugging missing commands, module-based systems, manual environment recreation, and incomplete environment checks.
 
 <br />
 
 ### External programs:
 - List every external program directly invoked by the top-level executable workflow.
 - Include programs used only in conditional branches, but mark the condition.
+- Include optional execution tools such as GNU Parallel and Slurm when they affect a user-visible execution path.
+- Include tools required for format-specific paths such as CRAM handling, alignment, trimming, compression, or scheduler submission.
 - Do not list shell keywords, shell builtins, helper functions, or programs used only internally by sourced helper functions.
   - Do not list shell keywords or builtins such as `case`, `if`, `for`, `while`, `echo`, `printf`, `source`, `declare`, `typeset`, `local`, `shift`, `return`, `exit`, or `unset` as external dependencies.
   - `cat` is an external program, not a Bash builtin, but avoid listing ubiquitous shell-plumbing commands such as `cat` unless the top-level executable meaningfully depends on their external behavior.
@@ -346,6 +362,7 @@ User-facing help should list dependencies users may need to install, provide, or
 
 ### Shell scripts:
 - List project shell scripts that are directly executed, submitted, or passed to an executor by the top-level executable workflow.
+- Include downstream entrypoint scripts when the wrapper dispatches them in a user-visible way.
 - Do not list sourced function scripts under `Shell scripts:`.
 
 <br />

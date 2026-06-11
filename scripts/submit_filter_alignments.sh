@@ -677,6 +677,18 @@ Keyword arguments:
   -nj, --nam_job  <str>
     Job name used in log-file naming (default: '${nam_job}').
 
+Dependencies:
+  Recommended environment:
+    - env_protocol (or renamed equivalent)
+
+  External programs:
+    - awk
+    - Bash >= 4.4
+    - grep
+    - mv
+    - rm
+    - samtools
+
 Notes:
   - BAM/CRAM input files must be coordinate-sorted.
   - CRAM inputs require '--ref_fa'.

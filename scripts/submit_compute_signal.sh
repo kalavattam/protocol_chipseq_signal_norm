@@ -1470,6 +1470,18 @@ Keyword arguments:
   -nj, --nam_job  <str>
     Prefix for job names (default: 'compute_\${mode}_\${method}' for '--mode signal' and '--mode ratio'; 'compute_\${mode}' for '--mode coord').
 
+Dependencies:
+  Recommended environment:
+    - env_protocol (or renamed equivalent)
+
+  External programs:
+    - Bash >= 4.4
+    - python
+
+  Python scripts:
+    - compute_signal.py
+    - compute_signal_ratio.py
+
 Notes:
   - BAM/CRAM and bedGraph input files must be coordinate-sorted.
   - CRAM inputs in '--mode signal' or '--mode coord' require '--ref_fa'.
