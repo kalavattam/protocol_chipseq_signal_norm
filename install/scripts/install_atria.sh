@@ -73,7 +73,7 @@ dir_inl="${HOME}"
 dir_tmp=""
 tmp_auto=false
 v_julia="1.8.5"
-v_atria="4.1.4"
+v_atria="4.1.5"
 pth_snp=""
 if_exis="fail"
 sha_cmd=""
@@ -682,7 +682,11 @@ function find_atria_dir() {
         find "${dir_atr}" \
             -maxdepth 1 \
             -type d \
-            -name "atria-${v_atria}_*" \
+            \( \
+                -name "atria-${v_atria}" \
+                -o -name "atria-${v_atria}-*" \
+                -o -name "atria-${v_atria}_*" \
+            \) \
             -print \
             | sort \
             | tail -n 1
@@ -700,51 +704,140 @@ function find_atria_dir() {
 }
 
 
+function has_atria_library_error() {
+    local file="${1:-}"
+    local patn="cholmod|suitesparse|libcholmod|libamd"
+
+    patn="${patn}|could not load library|library not loaded"
+
+    validate_var_file "file" "${file}" || return 1
+
+    grep -qiE "${patn}" "${file}"
+}
+
+
 function verify_atria_exec() {
     local pth_atr="${1:-}"
-    local tmp_chk=""
+    local log_chk="${2:-}"
+    local tmp_hlp=""
+    local tmp_ver=""
+    local use_tmp_log=false
 
     validate_var_file "pth_atr" "${pth_atr}" || return 1
 
-    tmp_chk="$(mktemp "${TMPDIR:-/tmp}/atria_check.XXXXXX")"
-
-    if \
-           "${pth_atr}" --version > "${tmp_chk}" 2>&1 \
-        || "${pth_atr}" --help    > "${tmp_chk}" 2>&1
-    then
-        if \
-            grep -qiE \
-                'error|could not load library|library not loaded' \
-                "${tmp_chk}"
-        then
-            cat "${tmp_chk}" >&2
-            rm -f "${tmp_chk}"
-            echo_err "Atria emitted an error during executable verification."
-            return 1
-        fi
-
-        if ! grep -Fq "v${v_atria}" "${tmp_chk}"; then
-            cat "${tmp_chk}" >&2
-            rm -f "${tmp_chk}"
-            echo_err \
-                "Atria executable exists at '${pth_atr}', but it does not" \
-                "appear to match requested version '${v_atria}'."
-            return 1
-        fi
-
-        cat "${tmp_chk}"
-        rm -f "${tmp_chk}"
-        return 0
+    if [[ -z "${log_chk}" ]]; then
+        log_chk="$(mktemp "${TMPDIR:-/tmp}/atria_check.XXXXXX")"
+        use_tmp_log=true
+    else
+        : > "${log_chk}"
     fi
 
-    cat "${tmp_chk}" >&2
-    rm -f "${tmp_chk}"
-    echo_err "Atria verification failed for '${pth_atr}'."
-    return 1
+    tmp_ver="$(mktemp "${TMPDIR:-/tmp}/atria_version.XXXXXX")"
+    tmp_hlp="$(mktemp "${TMPDIR:-/tmp}/atria_help.XXXXXX")"
+
+    if ! "${pth_atr}" --version > "${tmp_ver}" 2>&1; then
+        cat "${tmp_ver}" > "${log_chk}"
+        cat "${tmp_ver}" >&2
+        rm -f "${tmp_ver}" "${tmp_hlp}"
+        [[ "${use_tmp_log}" == "true" ]] && rm -f "${log_chk}"
+        echo_err "Atria '--version' failed for '${pth_atr}'."
+        return 1
+    fi
+
+    cat "${tmp_ver}" > "${log_chk}"
+
+    if \
+        grep -qi 'error' "${tmp_ver}" \
+        || has_atria_library_error "${tmp_ver}"
+    then
+        cat "${tmp_ver}" >&2
+        rm -f "${tmp_ver}" "${tmp_hlp}"
+        [[ "${use_tmp_log}" == "true" ]] && rm -f "${log_chk}"
+        echo_err "Atria emitted an error during executable verification."
+        return 1
+    fi
+
+    if ! grep -Fq "v${v_atria}" "${tmp_ver}"; then
+        cat "${tmp_ver}" >&2
+        rm -f "${tmp_ver}" "${tmp_hlp}"
+        [[ "${use_tmp_log}" == "true" ]] && rm -f "${log_chk}"
+        echo_err \
+            "Atria executable exists at '${pth_atr}', but it does not" \
+            "appear to match requested version '${v_atria}'."
+        return 1
+    fi
+
+    if ! "${pth_atr}" --help > "${tmp_hlp}" 2>&1; then
+        {
+            echo
+            cat "${tmp_hlp}"
+        } >> "${log_chk}"
+        cat "${tmp_hlp}" >&2
+        rm -f "${tmp_ver}" "${tmp_hlp}"
+        [[ "${use_tmp_log}" == "true" ]] && rm -f "${log_chk}"
+        echo_err "Atria '--help' failed for '${pth_atr}'."
+        return 1
+    fi
+
+    if has_atria_library_error "${tmp_hlp}"; then
+        {
+            echo
+            cat "${tmp_hlp}"
+        } >> "${log_chk}"
+        cat "${tmp_hlp}" >&2
+        rm -f "${tmp_ver}" "${tmp_hlp}"
+        [[ "${use_tmp_log}" == "true" ]] && rm -f "${log_chk}"
+        echo_err "Atria emitted a library error during help verification."
+        return 1
+    fi
+
+    cat "${tmp_ver}"
+    rm -f "${tmp_ver}" "${tmp_hlp}"
+    [[ "${use_tmp_log}" == "true" ]] && rm -f "${log_chk}"
+    return 0
+}
+
+
+function retry_suitesparse_fallback() {
+    local log_chk="${1:-}"
+    local stem=""
+
+    validate_var_file "log_chk" "${log_chk}" || return 1
+
+    if [[ "${sys_os}" != "Darwin" ]]; then
+        return 1
+    fi
+
+    if ! has_atria_library_error "${log_chk}"; then
+        return 1
+    fi
+
+    echo_warn \
+        "Atria verification reported a macOS SuiteSparse/CHOLMOD library" \
+        "error. Copying Julia SuiteSparse libraries into the Atria build and" \
+        "retrying verification."
+
+    copy_suitesparse || return 1
+
+    for stem in libamd libcholmod libsuitesparseconfig; do
+        if ! \
+            find "${dir_bld}/lib/julia" \
+                -name "${stem}*" \
+                -print \
+                -quit \
+                | grep -q .
+        then
+            echo_err \
+                "failed to copy '${stem}' libraries into the Atria build."
+            return 1
+        fi
+    done
 }
 
 
 function build_atria() {
+    local log_chk=""
+
     if [[ "${dry_run}" == "true" ]]; then
         echo_dry \
             "would build Atria with '${jul_bin}' build_atria.jl."
@@ -801,21 +894,6 @@ function build_atria() {
     )
 
     find_atria_dir
-    copy_suitesparse
-
-    for stem in libamd libcholmod libsuitesparseconfig; do
-        if ! \
-            find "${dir_bld}/lib/julia" \
-                -name "${stem}*" \
-                -print \
-                -quit \
-                | grep -q .
-        then
-            echo_err \
-                "failed to copy '${stem}' libraries into the Atria build."
-            return 1
-        fi
-    done
 
     pth_atr="${dir_bld}/bin/atria"
 
@@ -826,7 +904,21 @@ function build_atria() {
     fi
 
     pth_bin="$(dirname "${pth_atr}")"
-    verify_atria_exec "${pth_atr}" || return 1
+    log_chk="$(mktemp "${TMPDIR:-/tmp}/atria_check.XXXXXX")"
+
+    if verify_atria_exec "${pth_atr}" "${log_chk}"; then
+        rm -f "${log_chk}"
+        return 0
+    fi
+
+    if retry_suitesparse_fallback "${log_chk}"; then
+        rm -f "${log_chk}"
+        verify_atria_exec "${pth_atr}" || return 1
+        return 0
+    fi
+
+    rm -f "${log_chk}"
+    return 1
 }
 
 

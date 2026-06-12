@@ -26,6 +26,7 @@ mkdir -p "${dir_log}"
 
 scr_inl="${ROOT_REPO}/install/scripts/install_envs.sh"
 scr_ent="${ROOT_REPO}/install/scripts/install_envs_entrypoint.sh"
+scr_atr="${ROOT_REPO}/install/scripts/install_atria.sh"
 scr_hlp="${ROOT_REPO}/scripts/functions/help/help_install_envs.sh"
 yml_anl="${ROOT_REPO}/install/envs/env_analyze.yml"
 yml_prt="${ROOT_REPO}/install/envs/env_protocol.yml"
@@ -78,6 +79,7 @@ function assert_install_dry_run() {
 for spec in \
     "bash -n install_envs:${TEST_BASH}:${scr_inl}" \
     "sh -n install_envs_entrypoint:sh:${scr_ent}" \
+    "bash -n install_atria:${TEST_BASH}:${scr_atr}" \
     "bash -n help_install_envs:${TEST_BASH}:${scr_hlp}"
 do
     label="${spec%%:*}"
@@ -100,7 +102,8 @@ done
 
 for spec in \
     "install_envs help:${TEST_BASH}:${scr_inl}" \
-    "install_envs_entrypoint help:sh:${scr_ent}"
+    "install_envs_entrypoint help:sh:${scr_ent}" \
+    "install_atria help:${TEST_BASH}:${scr_atr}"
 do
     label="${spec%%:*}"
     rest="${spec#*:}"
@@ -123,6 +126,33 @@ do
         record_fail "${label} failed; see $(print_relpath "${log}")"
     fi
 done
+
+log="${dir_log}/install_atria_dry_run.log"
+if \
+    run_capture \
+        "install_atria dry-run" \
+        "${log}" \
+        "${TEST_BASH}" "${scr_atr}" \
+            --dry_run \
+            --if_exis reuse \
+            --dir_inl "${TEST_DIR_TMP}/install_atria_layout"
+then
+    record_pass "install_atria.sh dry-run exits 0"
+    assert_pattern_found \
+        "${log}" \
+        "v_atria=4.1.5" \
+        "install_atria.sh dry-run reports Atria 4.1.5"
+    assert_pattern_found \
+        "${log}" \
+        "tag_atr=v4.1.5" \
+        "install_atria.sh dry-run maps Atria tag v4.1.5"
+    assert_pattern_found \
+        "${log}" \
+        "atria-4.1.5/bin" \
+        "install_atria.sh dry-run reports provisional Atria bin path"
+else
+    record_fail "install_atria.sh dry-run failed; see $(print_relpath "${log}")"
+fi
 
 assert_readable_yaml "${yml_anl}" "env_analyze YAML"
 assert_readable_yaml "${yml_prt}" "env_protocol YAML"
