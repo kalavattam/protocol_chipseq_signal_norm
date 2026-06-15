@@ -85,7 +85,7 @@ Description:
   Generate a default output filename prefix for ratio tracks based on the resolved ratio method and whether scaling is in effect.
 
 Positional arguments:
-  1  method   <str|UNSET>
+  1  method  <str|UNSET>
     Ratio method name.
 
     Recognized values:
@@ -993,8 +993,8 @@ function prepare_vecs() {
         for infile in "${arr_infile[@]}"; do
             if [[ "${infile,,}" == *.cram && -z "${ref_fa}" ]]; then
                 echo_err \
-                    "'--ref_fa' is required when '--csv_infile' contains CRAM" \
-                    "input: '${infile}'."
+                    "'--ref_fa' is required when '--csv_infile' contains" \
+                    "CRAM input: '${infile}'."
                 return 1
             fi
         done
@@ -1029,7 +1029,9 @@ function prepare_vecs() {
         fi
 
         for u in "${arr_usr_frg[@]}"; do
-            if [[ "${u}" != "NA" ]]; then check_flt_pos "${u}" "csv_usr_frg"; fi
+            if [[ "${u}" != "NA" ]]; then
+                check_flt_pos "${u}" "csv_usr_frg"
+            fi
         done
         unset u
 
@@ -1220,7 +1222,7 @@ function config_exec() {
 }
 
 
-#  Activate environment and check that dependencies are in PATH
+#  Activate environment
 function setup_env() {
     local out
     local -a env_msg
@@ -1233,7 +1235,9 @@ function setup_env() {
     )
 
     if [[ "${verbose}" == "true" ]]; then
-        if out="$(handle_env "${env_nam}")"; then
+        if \
+            out="$(handle_env "${env_nam}")"
+        then
             print_banner_pretty \
                 -tx "${out:-"${env_nam} already active."}" \
                 -w "%"
@@ -1251,7 +1255,11 @@ function setup_env() {
             return 1
         fi
     fi
+}
 
+
+#  Check tools needed by the selected dispatch mode
+function check_tools_runtime() {
     check_pgrm_path python || return 1
 
     if [[ "${slurm}" == "true" ]]; then
@@ -1532,6 +1540,7 @@ function main() {
     validate_vecs         || return 1
     config_exec           || return 1
     setup_env             || return 1
+    check_tools_runtime   || return 1
     print_state_debug     || return 1
     serialize_vecs        || return 1
     print_vecs_serialized || return 1
