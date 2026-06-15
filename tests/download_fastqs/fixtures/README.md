@@ -28,6 +28,9 @@ Compressed source FASTQ:
 Metadata template:
 - `metadata/local_se.template.tsv`
 - `metadata/local_pe.template.tsv`
+- `metadata/local_pe_duplicate.template.tsv`
+- `metadata/local_pe_duplicate_custom.template.tsv`
+- `metadata/local_pe_conflicting_accession.template.tsv`
 - `metadata/local_mixed.template.tsv`
 
 The compressed FASTQ files are generated with `gzip -n -c` so gzip headers do not encode timestamps or source filenames.
@@ -43,6 +46,8 @@ SRR_LOCAL_PE	tiny_download_pe	__BASE_URL__/pe/tiny_download_pe_R1.fastq.gz;__BAS
 The smoke test replaces `__BASE_URL__` at runtime with a loopback HTTP URL served from `127.0.0.1`. This keeps the wrapper-backed download test no-network while still exercising real `wget` download behavior.
 
 `metadata/local_mixed.template.tsv` contains both rows in one table to exercise the case where users provide a metadata TSV containing SE and PE data.
+
+`metadata/local_pe_duplicate.template.tsv` repeats one accession/URL pair with distinct custom names. It exercises duplicate-aware download planning: one raw accession download is reused for multiple logical custom-name symlinks. The malformed duplicate templates exercise pre-download rejection for duplicate custom names and one accession paired with conflicting URLs.
 
 <br />
 
@@ -62,7 +67,14 @@ The paired-end FASTQ sources contain one clean 64-bp read pair:
 | `tiny_download_pe_pair_1/1` | R1   | `ACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGT` |
 | `tiny_download_pe_pair_1/2` | R2   | `TGCATGCATGCATGCATGCATGCATGCATGCATGCATGCATGCATGCATGCATGCATGCATGCA` |
 
-`execute_download_fastqs.sh` should parse the semicolon-delimited PE URL field, download the sources to `SRR_LOCAL_PE_R1.fastq.gz` and `SRR_LOCAL_PE_R2.fastq.gz`, create custom symlinks `tiny_download_pe_R1.fastq.gz` and `tiny_download_pe_R2.fastq.gz`, preserve `gzip` integrity, and preserve the expected mate-specific read names.
+`execute_download_fastqs.sh` should
+- parse the semicolon-delimited PE URL field,
+- download the sources to `SRR_LOCAL_PE_R1.fastq.gz` and `SRR_LOCAL_PE_R2.fastq.gz`,
+- create custom symlinks `tiny_download_pe_R1.fastq.gz` and `tiny_download_pe_R2.fastq.gz`,
+- preserve `gzip` integrity, and
+- preserve the expected mate-specific read names.
+
+When the same accession/URL pair appears more than once with different custom names, it should download the raw accession FASTQs once and create every requested custom-name symlink.
 
 <br />
 

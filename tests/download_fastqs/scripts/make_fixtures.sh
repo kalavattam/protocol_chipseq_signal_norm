@@ -55,6 +55,9 @@ fq_r2_gz="${dir_src_pe}/tiny_download_pe_R2.fastq.gz"
 
 tpl_se="${dir_mtd}/local_se.template.tsv"
 tpl_pe="${dir_mtd}/local_pe.template.tsv"
+tpl_pe_dup="${dir_mtd}/local_pe_duplicate.template.tsv"
+tpl_pe_dup_cus="${dir_mtd}/local_pe_duplicate_custom.template.tsv"
+tpl_pe_cnfl="${dir_mtd}/local_pe_conflicting_accession.template.tsv"
 tpl_mix="${dir_mtd}/local_mixed.template.tsv"
 
 
@@ -142,6 +145,57 @@ rm_file "${dir_fix}" "${fq_r2_tmp}"
         'tiny_download_pe' \
         '__BASE_URL__/pe/tiny_download_pe_R1.fastq.gz;__BASE_URL__/pe/tiny_download_pe_R2.fastq.gz'
 } > "${tpl_pe}"
+
+{
+    write_tsv_row \
+        'run_accession' \
+        'custom_name' \
+        'fastq_https'
+
+    write_tsv_row \
+        'SRR_LOCAL_PE' \
+        'tiny_download_pe_h3k18' \
+        '__BASE_URL__/pe/tiny_download_pe_R1.fastq.gz;__BASE_URL__/pe/tiny_download_pe_R2.fastq.gz'
+
+    write_tsv_row \
+        'SRR_LOCAL_PE' \
+        'tiny_download_pe_h3k27' \
+        '__BASE_URL__/pe/tiny_download_pe_R1.fastq.gz;__BASE_URL__/pe/tiny_download_pe_R2.fastq.gz'
+} > "${tpl_pe_dup}"
+
+{
+    write_tsv_row \
+        'run_accession' \
+        'custom_name' \
+        'fastq_https'
+
+    write_tsv_row \
+        'SRR_LOCAL_PE_DUP_CUS_A' \
+        'tiny_download_pe_duplicate' \
+        '__BASE_URL__/pe/tiny_download_pe_R1.fastq.gz;__BASE_URL__/pe/tiny_download_pe_R2.fastq.gz'
+
+    write_tsv_row \
+        'SRR_LOCAL_PE_DUP_CUS_B' \
+        'tiny_download_pe_duplicate' \
+        '__BASE_URL__/pe/tiny_download_pe_R1.fastq.gz;__BASE_URL__/pe/tiny_download_pe_R2.fastq.gz'
+} > "${tpl_pe_dup_cus}"
+
+{
+    write_tsv_row \
+        'run_accession' \
+        'custom_name' \
+        'fastq_https'
+
+    write_tsv_row \
+        'SRR_LOCAL_PE_CONFLICT' \
+        'tiny_download_pe_conflict_a' \
+        '__BASE_URL__/pe/tiny_download_pe_R1.fastq.gz;__BASE_URL__/pe/tiny_download_pe_R2.fastq.gz'
+
+    write_tsv_row \
+        'SRR_LOCAL_PE_CONFLICT' \
+        'tiny_download_pe_conflict_b' \
+        '__BASE_URL__/pe/tiny_download_pe_R1.fastq.gz;__BASE_URL__/pe/missing_R2.fastq.gz'
+} > "${tpl_pe_cnfl}"
 
 {
     write_tsv_row \

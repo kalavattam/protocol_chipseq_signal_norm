@@ -131,7 +131,7 @@ if \
             --infile "${mta}" \
             --dir_out "${dir_out}" \
             --dir_sym "${dir_sym}" \
-            --err_out "${dir_err}" \
+            --dir_eo "${dir_err}" \
             --nam_job "test_execute_download_se_local"
 then
     record_pass "execute_download_fastqs.sh SE local HTTP wet run exits 0"
