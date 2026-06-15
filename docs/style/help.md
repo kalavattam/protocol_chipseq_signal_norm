@@ -34,7 +34,7 @@ Markdown prose in this file and other style docs is not subject to the source-co
 
 Shell help text is also not subject to the source-code 80-character wrapping preference. Wrap help text for readability, structure, and user comprehension, not to satisfy code line-length limits. Preserve clear argument tables, examples, and prose when a longer line is easier to read.
 
-Separate major help sections with two blank lines. That is, place two empty lines before each new top-level section heading such as `Description:`, an argument-section heading, `Dependencies:`, `Returns:`, `Notes:`, `Examples:`, and `#TODO:`.
+Separate major help sections with one blank line. That is, place one empty line before each new top-level section heading such as `Description:`, an argument-section heading, `Dependencies:`, `Returns:`, `Notes:`, `Examples:`, and `#TODO:`.
 
 In argument sections, use this format:
 ```txt
@@ -216,13 +216,14 @@ For example:
 ```txt
 Usage:
   example.sh
-    [--help] [--verbose] [--dry_run] [--threads <int>]
+    [--help] [--verbose] [--dry_run]
+    [--threads <int>]
     [--mode <enum:a|b>] [--method <enum:x|y>]
     (--csv_infile <csv:file> [--ref_fa <file>] | --csv_fil_A <csv:file> --csv_fil_B <csv:file>)
     --dir_out <dir> [--prefix <str>]
     [--csv_scl_fct <csv:spec>]
     [--dp <int>]
-    --err_out <dir> [--nam_job <str>]
+    --dir_eo <dir> [--nam_job <str>]
     [--max_job <int>] [--slurm] [--time <time>]
 ```
 

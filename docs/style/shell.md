@@ -10,7 +10,9 @@ Target Bash >= 4.4. Use `set -euo pipefail` where appropriate.
 
 Use four-space indentation for shell code. Shell help text is the explicit indentation exception: help heredocs follow `docs/style/help.md`, which uses two spaces per indentation level.
 
-Use `snake_case` variables and functions. Prefer existing short variable idioms where clear, such as `fil_in`, `fil_out`, `dir_out`, `arr_*`, `nam_job`, and `idx`.
+Use `snake_case` variables and functions. Prefer existing short variable idioms where clear, such as `fil_in`, `fil_out`, `dir_out`, `dir_eo`, `arr_*`, `nam_job`, and `idx`.
+
+Use `dir_eo` for directories that collect stderr/stdout logs, paired with the user-facing option `--dir_eo`. The short option may remain `-eo`. Older `err_out` names may still exist in scripts that have not yet been migrated, but new or actively refactored wrappers should prefer `dir_eo`.
 
 Use two empty lines between shell function definitions.
 
