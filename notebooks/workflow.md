@@ -1678,9 +1678,9 @@ dir_tbl="${dir_cvg}/tables"
 dir_log="${dir_tbl}/logs"
 
 #  Set execution parameters and related variables
-typ_sig="alpha"
+typ_sig="siq"
 env_nam="env_protocol"
-scr_exc="${dir_scr}/execute_calculate_scaling_factor_${typ_sig}.sh"
+scr_exc="${dir_scr}/execute_calculate_scaling_factor.sh"
 log_exc="${dir_log}/$(date '+%Y-%m%d').$(basename "${scr_exc}" ".sh")"
 
 threads=6
@@ -1815,6 +1815,7 @@ if ${debug:-false}; then
     echo ""
     echo "bash \"${scr_exc}\" \\"
     echo "    --verbose \\"
+    echo "    --mode ${typ_sig} \\"
     echo "    --threads ${threads} \\"
     echo "    --ser_ip \"${ser_ip}\" \\"
     echo "    --ser_in \"${ser_in}\" \\"
@@ -1833,6 +1834,7 @@ fi
 #+ executing commands
 bash "${scr_exc}" \
     --verbose \
+    --mode "${typ_sig}" \
     --threads ${threads} \
     --ser_ip "${ser_ip}" \
     --ser_in "${ser_in}" \
@@ -1916,7 +1918,7 @@ include="IP*"
 exclude="*Brn1*"
 
 env_nam="env_protocol"
-scr_exc="${dir_scr}/execute_calculate_scaling_factor_${typ_sig}.sh"
+scr_exc="${dir_scr}/execute_calculate_scaling_factor.sh"
 day="$(date '+%Y-%m%d')"
 log_exc="${dir_log}/${day}.$(basename "${scr_exc}" ".sh")"
 
@@ -2048,6 +2050,7 @@ if ${debug:-false}; then
     echo ""
     echo "bash \"${scr_exc}\" \\"
     echo "    --verbose \\"
+    echo "    --mode ${typ_sig} \\"
     echo "    --threads ${threads} \\"
     echo "    --ser_mip \"${ser_mip}\" \\"
     echo "    --ser_sip \"${ser_sip}\" \\"
@@ -2066,6 +2069,7 @@ fi
 #+ executing commands
 bash "${scr_exc}" \
     --verbose \
+    --mode "${typ_sig}" \
     --threads ${threads} \
     --ser_mip "${ser_mip}" \
     --ser_sip "${ser_sip}" \
@@ -2169,28 +2173,36 @@ scr_exc="execute_compute_signal_ratio.sh"
 day="$(date '+%Y-%m%d')"
 log_exc="${dir_log}/${day}.$(basename "${scr_exc}" ".sh")"
 
-typ_sig="log2"  ## NOTE: Use samples from either the alpha or spike table ##
-tbl_lg2="${dir_tbl}/ChIP_WT_G1-G2M-Q_Hho1-Hmo1_alpha.tsv"
+typ_sig="log2"  ## NOTE: Use samples from either the siQ or spike table ##
+tbl_lg2="${dir_tbl}/ChIP_WT_G1-G2M-Q_Hho1-Hmo1_siq.tsv"
 
 #  Set hardcoded argument assignments
 # shellcheck disable=SC1091
-source "${dir_fnc}/extract_fld_str.sh"
+source "${dir_fnc}/source_helpers.sh"
+source_helpers "${dir_fnc}" process_tables
 
 typ_out="bdg.gz"
+siz_bin=30
+siz_gen=12157105
 fil_ip=$(
     sed \
         -e "s:${dir_bam}:${dir_nrm}:g" \
         -e "s:.bam:.${typ_out}:g" \
-        < <(extract_fld_str 1 "${tbl_lg2}")
+        < <(extract_field_str "${tbl_lg2}" 1 true)
 )
 fil_in=$(
     sed \
         -e "s:${dir_bam}:${dir_nrm}:g" \
         -e "s:.bam:.${typ_out}:g" \
-        < <(extract_fld_str 2 "${tbl_lg2}")
+        < <(extract_field_str "${tbl_lg2}" 2 true)
 )
 dir_out="${dir_lg2}"
-dep_min="$(extract_fld_str 24 "${tbl_lg2}")"  ## WARNING: See description ##
+dep_min="$(
+    PYTHONPATH="${dir_rep}" python -m scripts.compute_input_floor \
+        --siz_bin "${siz_bin}" \
+        --siz_gen "${siz_gen}" \
+        --mode norm
+)"
 err_out="${dir_log}"
 nam_job="compute_signal_ratio_${typ_sig}"
 
@@ -2458,28 +2470,36 @@ day="$(date '+%Y-%m%d')"
 log_exc="${dir_log}/${day}.$(basename "${scr_exc}" ".sh")"
 
 typ_sig="alpha"
-tbl_alf="${dir_tbl}/ChIP_WT_G1-G2M-Q_Hho1-Hmo1_${typ_sig}.tsv"
+tbl_alf="${dir_tbl}/ChIP_WT_G1-G2M-Q_Hho1-Hmo1_siq.tsv"
 
 #  Set hardcoded argument assignments
 # shellcheck disable=SC1091
-source "${dir_fnc}/extract_fld_str.sh"  ## NOTE: Use to parse sample table ##
+source "${dir_fnc}/source_helpers.sh"
+source_helpers "${dir_fnc}" process_tables
 
 typ_out="bdg.gz"
+siz_bin=30
+siz_gen=12157105
 fil_ip=$(
     sed \
         -e "s:${dir_bam}:${dir_nrm}:g" \
         -e "s:.bam:.${typ_out}:g" \
-        < <(extract_fld_str 1 "${tbl_alf}")
+        < <(extract_field_str "${tbl_alf}" 1 true)
 )
 fil_in=$(
     sed \
         -e "s:${dir_bam}:${dir_nrm}:g" \
         -e "s:.bam:.${typ_out}:g" \
-        < <(extract_fld_str 2 "${tbl_alf}")
+        < <(extract_field_str "${tbl_alf}" 2 true)
 )
 dir_out="${dir_alf}"
-scl_fct="$(extract_fld_str  3 "${tbl_alf}")"
-dep_min="$(extract_fld_str 24 "${tbl_alf}")"  ## WARNING: See description ##
+scl_fct="$(extract_field_str "${tbl_alf}" 3 true)"
+dep_min="$(
+    PYTHONPATH="${dir_rep}" python -m scripts.compute_input_floor \
+        --siz_bin "${siz_bin}" \
+        --siz_gen "${siz_gen}" \
+        --mode norm
+)"
 err_out="${dir_log}"
 nam_job="compute_signal_ratio_${typ_sig}"
 
@@ -2722,24 +2742,32 @@ tbl_spk="${dir_tbl}/ChIP_WT_G1-G2M-Q_Hho1-Hmo1_${typ_sig}.tsv"
 
 #  Set hardcoded argument assignments
 # shellcheck disable=SC1091
-source "${dir_fnc}/extract_fld_str.sh"  ## NOTE: Use to parse sample table ##
+source "${dir_fnc}/source_helpers.sh"
+source_helpers "${dir_fnc}" process_tables
 
 typ_out="bdg.gz"
+siz_bin=30
+siz_gen=12157105
 fil_ip=$(
     sed \
         -e "s:${dir_bam}:${dir_nrm}:g" \
         -e "s:.bam:.${typ_out}:g" \
-        < <(extract_fld_str 1 "${tbl_spk}")
+        < <(extract_field_str "${tbl_spk}" 1 true)
 )
 fil_in=$(
     sed \
         -e "s:${dir_bam}:${dir_nrm}:g" \
         -e "s:.bam:.${typ_out}:g" \
-        < <(extract_fld_str 3 "${tbl_spk}")
+        < <(extract_field_str "${tbl_spk}" 3 true)
 )
 dir_out="${dir_spk}"
-scl_fct="$(extract_fld_str  5 "${tbl_spk}")"
-dep_min="$(extract_fld_str 21 "${tbl_spk}")"  ## WARNING: See description ##
+scl_fct="$(extract_field_str "${tbl_spk}" 5 true)"
+dep_min="$(
+    PYTHONPATH="${dir_rep}" python -m scripts.compute_input_floor \
+        --siz_bin "${siz_bin}" \
+        --siz_gen "${siz_gen}" \
+        --mode norm
+)"
 err_out="${dir_log}"
 nam_job="compute_signal_ratio_${typ_sig}"
 

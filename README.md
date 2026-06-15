@@ -11,16 +11,15 @@
 <br />
 
 ## Workflow documentation
-- Workflow details: [`workflow.md`](./workflow.md).
-- Genome file processing: [`download_process_fasta_gff3.md`](./download_process_fasta_gff3.md).
-- Validation of the Python implementation of siQ-ChIP (in progress): [`validate_siq_chip.md`](./validate_siq_chip.md).
+- Running the workflow: [`notebooks/workflow.md`](./notebooks/workflow.md).
+- Genome file processing: [`notebooks/download_process_fasta_gff3.md`](./notebooks/download_process_fasta_gff3.md).
+- Validation of the Python implementation of siQ-ChIP (in progress): [`notebooks/validate_siqchip.md`](./notebooks/validate_siqchip.md).
     + [ ] Notebook needs cleanup and clearer documentation.
     + [ ] Rough figures will be added.
     + [x] Reference implementations:
         - [Original implementation](https://github.com/BradleyDickson/siQ-ChIP).
         - [Adapted for *S. cerevisiae*](https://github.com/kalavattam/siQ-ChIP/tree/protocol).
-
-***Note:** SLURM job execution has undergone the most testing and is currently the most stable. Local and remote execution of parallelized (via [GNU Parallel](https://www.gnu.org/software/parallel/)) and serial jobs are still being refactored and tested.*
+- Validation of the ChIP-Rx implementation is planned.
 <br />
 <br />
 
@@ -29,7 +28,7 @@ Installation support files are organized under [`install/`](./install/). Environ
 
 To set up the main repository environment, start with the following:
 ```sh
-#  After cloning/fetching the repo and cd’ing into it
+#  After cloning/fetching the repo and cd'ing into it
 sh install/scripts/install_envs_entrypoint.sh --env_nam env_protocol --yes
 ```
 
@@ -59,35 +58,35 @@ sh install/scripts/install_envs_entrypoint.sh --env_nam env_protocol --yes
 >     --yes
 > ```
 >
-> The `--if_exis reuse` option exits successfully if the requested environment already exists. It does not validate that all expected packages are installed:
+> The `--if_exists reuse` option exits successfully if the requested environment already exists. It does not validate that all expected packages are installed:
 > ```bash
 > bash install/scripts/install_envs.sh \
 >     --env_nam env_protocol \
->     --if_exis reuse
+>     --if_exists reuse
 > ```
 </details>
 <br />
 
 After `env_protocol` has been created, Julia and Atria can be installed with:
 ```bash
-bash install/scripts/install_atria.sh --if_exis reuse
+bash install/scripts/install_atria.sh --if_exists reuse
 ```
 
 <details>
 <summary><i>(Click to view <code>install_atria.sh</code> details.)</i></summary>
 <br />
 
-> By default, `install_atria.sh` installs Julia 1.8.5 and Atria 4.1.4 under a user-controlled installation directory. It checks the active project environment for Atria runtime dependencies such as `pigz`, `pbzip2`, and `Rscript`, verifies Julia archive checksums, and can reuse matching existing Julia or Atria installations when `--if_exis reuse` is specified.
+> By default, `install_atria.sh` installs Julia 1.8.5 and Atria 4.1.5 under a user-controlled installation directory. It checks the active project environment for Atria runtime dependencies such as `pigz`, `pbzip2`, and `Rscript`, verifies Julia archive checksums, and can reuse matching existing Julia or Atria installations when `--if_exists reuse` is specified.
 >
 > To print the resolved installation plan without downloading, cloning, building, or writing `PATH` snippets, run:
 > ```bash
-> bash install/scripts/install_atria.sh --dry_run --if_exis reuse
+> bash install/scripts/install_atria.sh --dry_run --if_exists reuse
 > ```
 >
 > To append Julia and Atria `PATH` lines to a shell configuration or snippet file, use `--pth_snp`:
 > ```bash
 > bash install/scripts/install_atria.sh \
->     --if_exis reuse \
+>     --if_exists reuse \
 >     --pth_snp "${HOME}/.bash_profile"
 > ```
 >
@@ -97,6 +96,58 @@ bash install/scripts/install_atria.sh --if_exis reuse
 > bash install/scripts/install_atria.sh --help
 > ```
 </details>
+<br />
+<br />
+
+## Testing
+Run the default smoke-test suite from the repository root:
+```bash
+bash tests/scripts/run_smoke_tests.sh
+```
+
+Many workflow smoke tests expect `env_protocol`, the canonical project environment. If that environment or a required dependency is unavailable, the affected tests skip with an explicit message. To run through the environment without relying on shell activation:
+```bash
+#  With Conda
+conda run -n env_protocol bash tests/scripts/run_smoke_tests.sh
+
+#  With Mamba
+mamba run -n env_protocol bash tests/scripts/run_smoke_tests.sh
+```
+
+Interactive shell activation also works:
+```bash
+conda activate env_protocol
+bash tests/scripts/run_smoke_tests.sh
+```
+
+The runner
+- bootstraps missing generated fixtures,
+- writes logs and temporary products under `tests/outputs/`, and
+- leaves generated fixture outputs ignored by Git.
+
+See [`tests/README.md`](./tests/README.md) for
+- fixture policy,
+- cleanup commands,
+- optional gates, and
+- coverage details.
+
+Optional dependency classes are enabled explicitly:
+```bash
+RUN_ATRIA=1 conda run -n env_protocol bash tests/scripts/run_smoke_tests.sh
+RUN_DOWNLOAD=1 conda run -n env_protocol bash tests/scripts/run_smoke_tests.sh
+RUN_PARALLEL=1 conda run -n env_protocol bash tests/scripts/run_smoke_tests.sh
+RUN_SLURM=1 conda run -n env_protocol bash tests/scripts/run_smoke_tests.sh
+```
+
+For a broader local run with common non-Slurm optional gates:
+```bash
+RUN_ATRIA=1 RUN_DOWNLOAD=1 RUN_PARALLEL=1 conda run -n env_protocol bash tests/scripts/run_smoke_tests.sh
+```
+
+For example, to time a broader local run without the GNU Parallel-gated tests while running through the environment with Mamba:
+```bash
+time RUN_DOWNLOAD=1 RUN_ATRIA=1 mamba run -n env_protocol bash tests/scripts/run_smoke_tests.sh
+```
 <br />
 <br />
 
@@ -115,6 +166,8 @@ The preprint and published protocols are available under the [CC BY-NC 4.0 licen
 - General siQ-ChIP information and the [original implementation](https://github.com/BradleyDickson/siQ-ChIP): Brad Dickson at <i>br&#8203;adley (dot) dick&#8203;son (at) va&#8203;i (dot) or&#8203;g</i>.
 - Benchwork, yeast strains, and other materials: Toshi Tsukiyama at <i>tts&#8203;ukiya (at) fredhut&#8203;ch (dot) o&#8203;rg</i>.
 
+<br />
+
 ### Issues
 If you encounter an issue (bugs, broken code, broken links, unexpected behavior, unclear writing, etc.), please open a [GitHub Issue](https://github.com/kalavattam/protocol_chipseq_signal_norm/issues).
 
@@ -124,8 +177,8 @@ If you encounter an issue (bugs, broken code, broken links, unexpected behavior,
 
 > **Before filing**
 > - Make sure you've pulled the latest code: `git pull`.
-> - Try again with `--dry-run` and/or `--verbose`.
-> - Check [`workflow.md`](./workflow.md) and [existing issues](https://github.com/kalavattam/protocol_chipseq_signal_norm/issues) for known problems.
+> - Try again in dry-run mode and/or with `--verbose`.
+> - Check [`notebooks/workflow.md`](./notebooks/workflow.md) and [existing issues](https://github.com/kalavattam/protocol_chipseq_signal_norm/issues) for known problems.
 > <br />
 >
 > **When filing, it’s good to include/do the following:**
@@ -136,7 +189,7 @@ If you encounter an issue (bugs, broken code, broken links, unexpected behavior,
 >     + Conda and/or Mamba version info (include both if you have them installed)
 >     + Output of `conda list` or `mamba list` (or equivalent) showing installed packages and versions
 >     + Tools (`samtools`, `python`, etc.), including version info (particularly if not covered above)
->     + Whether you ran locally [serial or with GNU Parallel (with version info)] or on SLURM (with version info)
+>     + Whether you ran locally [serial or with GNU Parallel (with version info)] or on Slurm (with version info)
 >     + Etc.
 > - For readability, please format code (or any plain text such as command outputs) with a Markdown or HTML method so that it renders in a [fixed-width font](https://en.wikipedia.org/wiki/Monospaced_font). For example:
 >     + Format [inline code](https://www.markdownguide.org/basic-syntax/#code) with single backticks (\`).
@@ -145,7 +198,7 @@ If you encounter an issue (bugs, broken code, broken links, unexpected behavior,
 >
 > **Optional (but helpful)**
 > - Minimal test data or recipe to reproduce *(but please don’t upload large, sensitive, and/or proprietary data; use downsampled, public, and/or synthetic data instead)*
-> - `--dry-run` output for the same command
+> - Dry-run mode output for the same command
 > <br />
 >
 > **If it’s not about code**
@@ -156,8 +209,8 @@ If you encounter an issue (bugs, broken code, broken links, unexpected behavior,
 <br />
 <br />
 
-## Code/Documentation Authorship and AI/LLM Disclosure
-- Human author and maintainer: Kris Alavattam.
+## Code/documentation authorship and AI/LLM disclosure
+- Human author, director, and maintainer: Kris Alavattam.
 - OpenAI ChatGPT and Codex were used in development and documentation.
     + ChatGPT: GPT-4- and GPT-5-series models.
     + Codex: GPT-5.4 and GPT-5.5 models.
