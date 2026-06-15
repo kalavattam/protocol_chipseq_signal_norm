@@ -6,7 +6,7 @@
 # Copyright 2026 by Kris Alavattam
 # Email: kalavattam@gmail.com
 #
-# OpenAI ChatGPT (GPT-5.5) was used in development.
+# OpenAI ChatGPT and Codex (GPT-5.5) were used in development.
 #
 # Distributed under the MIT license.
 
@@ -144,7 +144,7 @@ mkdirs \
 } > "${fil_bg_hdr_B}"
 
 #  Write tiny reference FASTA used for BAM/CRAM fixture generation
-cat > "${fil_ref}" << 'EOM'
+cat > "${fil_ref}" << EOM
 >I
 ACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGT
 EOM

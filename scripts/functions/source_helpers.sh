@@ -6,7 +6,7 @@
 # Copyright 2026 by Kris Alavattam
 # Email: kalavattam@gmail.com
 #
-# OpenAI ChatGPT (GPT-5.5) was used in development.
+# OpenAI ChatGPT and Codex (GPT-5.5) were used in development.
 #
 # Distributed under the MIT license.
 
@@ -106,7 +106,7 @@ function source_once() {
     local path=""
 
     if [[ "${helper}" =~ ^(-h|--h[e]?lp)$ ]]; then
-        cat >&2 <<'EOM'
+        cat >&2 << EOM
 Usage:
   source_once helper [dir_fnc]
 
@@ -160,7 +160,7 @@ function source_helpers() {
     local helper=""
 
     if [[ "${dir_fnc}" =~ ^(-h|--h[e]?lp)$ ]]; then
-        cat >&2 <<'EOM'
+        cat >&2 << EOM
 Usage:
   source_helpers dir_fnc helper1 [helper2 ...]
 
