@@ -14,10 +14,10 @@
 # _get_len_idx
 # _get_dep_idx
 # _set_ref_arg_cram
-# _detect_typ_bam
+# _detect_typ_aln
 # _resolve_typ_fil
 # _get_expr_filter
-# _count_align_bam
+# _count_alignments
 # _calculate_frag_avg
 # _compute_scl_fct
 # _import_shell_asgmt
@@ -299,8 +299,8 @@ function _set_ref_arg_cram() {
 }
 
 
-function _detect_typ_bam() {
-    local bam="${1:-}"
+function _detect_typ_aln() {
+    local fil_aln="${1:-}"
     local n="${2:-200000}"
     local flag
     local seen=false
@@ -309,16 +309,16 @@ function _detect_typ_bam() {
 
     show_help=$(cat << EOM
 Usage:
-  _detect_typ_bam [-h|--hlp|--help] bam [n]
+  _detect_typ_aln [-h|--hlp|--help] fil_aln [n]
 
 Description:
-  Detect whether a BAM or CRAM file appears to contain paired-end ("pe") or single-end ("se") alignments by sampling up to 'n' FLAG values from the file.
+  Detect whether a BAM or CRAM alignment file appears to contain paired-end ("pe") or single-end ("se") alignments by sampling up to 'n' FLAG values from the file.
 
   If any sampled alignment has bit 0x1 set, the file is treated as paired-end; otherwise it is treated as single-end.
 
 Positional arguments:
-  1  bam  <str>  Input BAM or CRAM file.
-  2  n    <int>  Maximum number of alignments to sample (default: 200000).
+  1  fil_aln  <str>  Input BAM or CRAM alignment file.
+  2  n        <int>  Maximum number of alignments to sample (default: 200000).
 
 Returns:
   Prints 'pe' or 'se'.
@@ -328,25 +328,25 @@ Dependency:
 
 Examples:
   '''bash
-  _detect_typ_bam sample.bam
-  _detect_typ_bam sample.bam 50000
+  _detect_typ_aln sample.bam
+  _detect_typ_aln sample.cram 50000
   '''
 EOM
     )
 
-    if [[ "${bam}" =~ ^(-h|--h[e]?lp)$ ]]; then
+    if [[ "${fil_aln}" =~ ^(-h|--h[e]?lp)$ ]]; then
         echo "${show_help}" >&2
         echo >&2
         return 0
-    elif [[ -z "${bam}" ]]; then
+    elif [[ -z "${fil_aln}" ]]; then
         echo_err_func "${FUNCNAME[0]}" \
-            "positional argument 1, 'bam', is missing."
+            "positional argument 1, 'fil_aln', is missing."
         echo >&2
         echo "${show_help}" >&2
         return 1
     fi
 
-    validate_var_file "bam" "${bam}" || return 1
+    validate_var_file "fil_aln" "${fil_aln}" || return 1
 
     if ! command -v samtools > /dev/null 2>&1; then
         echo_err_func "${FUNCNAME[0]}" \
@@ -360,7 +360,7 @@ EOM
         return 1
     fi
 
-    _set_ref_arg_cram "${bam}" ref_arg || return 1
+    _set_ref_arg_cram "${fil_aln}" ref_arg || return 1
 
     while IFS= read -r flag; do
         [[ "${flag}" =~ ^[0-9]+$ ]] || continue
@@ -368,14 +368,15 @@ EOM
 
         if (( flag & 1 )); then echo "pe" && return 0; fi
     done < <(
-        samtools view "${ref_arg[@]}" "${bam}" 2>/dev/null \
+        samtools view "${ref_arg[@]}" "${fil_aln}" 2>/dev/null \
             | head -n "${n}" \
             | cut -f 2
     )
 
     if [[ "${seen}" != "true" ]]; then
         echo_err_func "${FUNCNAME[0]}" \
-            "failed to read usable FLAG values from alignment file '${bam}'."
+            "failed to read usable FLAG values from alignment file" \
+            "'${fil_aln}'."
         return 1
     fi
 
@@ -384,21 +385,21 @@ EOM
 
 
 function _resolve_typ_fil() {
-    local bam="${1:-}"
+    local fil_aln="${1:-}"
     local pref="${2:-${aln_typ:-auto}}"
     local typ
     local show_help
 
     show_help=$(cat << EOM
 Usage:
-  _resolve_typ_fil [-h|--hlp|--help] bam [pref]
+  _resolve_typ_fil [-h|--hlp|--help] fil_aln [pref]
 
 Description:
-  Resolve the desired library end type for a BAM or CRAM file. If 'pref' is 'pe'/'paired' or 'se'/'single', that choice is returned directly. If 'pref' is 'auto' (or empty), the function calls '_detect_typ_bam' to infer the type from the alignment file.
+  Resolve the desired library end type for a BAM or CRAM file. If 'pref' is 'pe'/'paired' or 'se'/'single', that choice is returned directly. If 'pref' is 'auto' (or empty), the function calls '_detect_typ_aln' to infer the type from the alignment file.
 
 Positional arguments:
-  1  bam   <str>  Input BAM or CRAM file.
-  2  pref  <str>  Preferred library type; must be 'pe', 'paired', 'se', 'single', 'auto', or empty (default: \${aln_typ:-auto}).
+  1  fil_aln  <str>  Input BAM or CRAM alignment file.
+  2  pref     <str>  Preferred library type; must be 'pe', 'paired', 'se', 'single', 'auto', or empty (default: \${aln_typ:-auto}).
 
 Returns:
   Prints 'pe' or 'se'.
@@ -412,28 +413,28 @@ Examples:
 EOM
     )
 
-    if [[ "${bam}" =~ ^(-h|--h[e]?lp)$ ]]; then
+    if [[ "${fil_aln}" =~ ^(-h|--h[e]?lp)$ ]]; then
         echo "${show_help}" >&2
         echo >&2
         return 0
-    elif [[ -z "${bam}" ]]; then
+    elif [[ -z "${fil_aln}" ]]; then
         echo_err_func "${FUNCNAME[0]}" \
-            "positional argument 1, 'bam', is missing."
+            "positional argument 1, 'fil_aln', is missing."
         echo >&2
         echo "${show_help}" >&2
         return 1
     fi
 
-    validate_var_file "bam" "${bam}" || return 1
+    validate_var_file "fil_aln" "${fil_aln}" || return 1
 
     case "${pref}" in
         pe|paired) echo "pe" ;;
         se|single) echo "se" ;;
         auto|"")
-            typ="$(_detect_typ_bam "${bam}")" || {
+            typ="$(_detect_typ_aln "${fil_aln}")" || {
                 echo_err_func "${FUNCNAME[0]}" \
                     "failed to auto-detect library type for alignment file" \
-                    "'${bam}'."
+                    "'${fil_aln}'."
                 return 1
             }
 
@@ -443,7 +444,7 @@ EOM
                     echo_err_func "${FUNCNAME[0]}" \
                         "unexpected detected library type '${typ}' for" \
                         "alignment file" \
-                        "'${bam}'."
+                        "'${fil_aln}'."
                     return 1
                 ;;
             esac
@@ -518,9 +519,9 @@ EOM
 }
 
 
-function _count_align_bam() {
+function _count_alignments() {
     local threads="${1:-}"    # No. threads for parallelization
-    local fil_bam="${2:-}"    # Input (not IP) BAM file
+    local fil_aln="${2:-}"    # Input BAM or CRAM alignment file
     local aln_typ="${3:-pe}"  # "paired", "pe", "single", "se" (default: "pe")
     local expr                # Samtools filtration expression
     local -a ref_arg=()       # Samtools CRAM reference arguments
@@ -528,14 +529,14 @@ function _count_align_bam() {
 
     show_help=$(cat << EOM
 Usage:
-  _count_align_bam [-h|--hlp|--help] threads fil_bam [aln_typ]
+  _count_alignments [-h|--hlp|--help] threads fil_aln [aln_typ]
 
 Description:
-  Counts the number of alignments in a BAM or CRAM file based on whether the data is made up of paired- ("paired" or "pe") or single-end ("single" or "se") sequenced read alignments. Uses 'samtools view' with filtering expressions to count specific alignment flags.
+  Count alignments in a BAM or CRAM file based on whether the data is made up of paired- ("paired" or "pe") or single-end ("single" or "se") sequenced read alignments. Uses 'samtools view' with filtering expressions to count specific alignment flags.
 
 Positional arguments:
   1  threads  <int>  Number of threads for 'samtools view' decompression.
-  2  fil_bam  <str>  BAM or CRAM infile for which to count alignments.
+  2  fil_aln  <str>  BAM or CRAM alignment file for which to count alignments.
   3  aln_typ  <str>  Alignment type; options: 'paired', 'pe', 'single', or 'se' (default: ${aln_typ}).
 
 Returns:
@@ -546,11 +547,11 @@ Dependency:
 
 Examples:
   '''bash
-  #  Count alignments in a BAM file of paired-end alignments using 8 threads
-  _count_align_bam 8 sample.bam paired
+  #  Count alignments in a paired-end BAM file using 8 threads
+  _count_alignments 8 sample.bam paired
 
-  #  Count alignments in a BAM file of single-end alignments using 4 threads
-  _count_align_bam 4 sample.bam single
+  #  Count alignments in a single-end CRAM file using 4 threads
+  _count_alignments 4 sample.cram single
   '''
 EOM
     )
@@ -565,9 +566,9 @@ EOM
         echo >&2
         echo "${show_help}" >&2
         return 1
-    elif [[ -z "${fil_bam}" ]]; then
+    elif [[ -z "${fil_aln}" ]]; then
         echo_err_func "${FUNCNAME[0]}" \
-            "positional argument 2, 'fil_bam', is missing."
+            "positional argument 2, 'fil_aln', is missing."
         echo >&2
         echo "${show_help}" >&2
         return 1
@@ -580,7 +581,7 @@ EOM
         return 1
     fi
 
-    validate_var_file "fil_bam" "${fil_bam}" || return 1
+    validate_var_file "fil_aln" "${fil_aln}" || return 1
 
     if ! command -v samtools > /dev/null 2>&1; then
         echo_err_func "${FUNCNAME[0]}" \
@@ -600,7 +601,7 @@ EOM
 
     #  Determine filtering flags based on alignment type
     expr="$(_get_expr_filter "${aln_typ}")" || return 1
-    _set_ref_arg_cram "${fil_bam}" ref_arg || return 1
+    _set_ref_arg_cram "${fil_aln}" ref_arg || return 1
 
     #  Count alignments based on alignment type
     samtools view \
@@ -608,10 +609,10 @@ EOM
         "${ref_arg[@]}" \
         -c \
         --expr "${expr}" \
-        "${fil_bam}" \
+        "${fil_aln}" \
         || {
         echo_err_func "${FUNCNAME[0]}" \
-            "'samtools view' failed for '${fil_bam}' with type '${aln_typ}'" \
+            "'samtools view' failed for '${fil_aln}' with type '${aln_typ}'" \
             "and expression '${expr}'."
         return 1
     }
@@ -620,7 +621,7 @@ EOM
 
 function _calculate_frag_avg() {
     local threads="${1:-}"    # No. threads for parallelization
-    local fil_bam="${2:-}"    # BAM infile
+    local fil_aln="${2:-}"    # Input BAM or CRAM alignment file
     local aln_typ="${3:-pe}"  # "paired", "pe", "single", "se"
     local len_lcl="${4:-}"    # Optional default length for SE libraries
     local expr=""             # Samtools filtration expression
@@ -629,14 +630,14 @@ function _calculate_frag_avg() {
 
     show_help=$(cat << EOM
 Usage:
-  _calculate_frag_avg [-h|--hlp|--help] threads fil_bam [aln_typ] [len_lcl]
+  _calculate_frag_avg [-h|--hlp|--help] threads fil_aln [aln_typ] [len_lcl]
 
 Description:
   Computes the average fragment length from a BAM or CRAM file based on whether the data is paired-end ("paired" or "pe") or single-end ("single" or "se"). Uses 'samtools view' with filtering expressions and 'awk' to process fragment lengths.
 
 Positional arguments:
   1  threads  <int>  Number of threads for 'samtools view' decompression.
-  2  fil_bam  <str>  BAM or CRAM infile for which to compute fragment lengths.
+  2  fil_aln  <str>  BAM or CRAM alignment file for which to compute fragment lengths.
   3  aln_typ  <str>  Alignment type; options: 'paired', 'pe', 'single', or 'se' (default: 'pe').
   4  len_lcl  <int>  Default fragment length to use for single-end libraries when TLEN is not meaningful.
 
@@ -671,9 +672,9 @@ EOM
         echo >&2
         echo "${show_help}" >&2
         return 1
-    elif [[ -z "${fil_bam}" ]]; then
+    elif [[ -z "${fil_aln}" ]]; then
         echo_err_func "${FUNCNAME[0]}" \
-            "positional argument 2, 'fil_bam', is missing."
+            "positional argument 2, 'fil_aln', is missing."
         echo >&2
         echo "${show_help}" >&2
         return 1
@@ -686,7 +687,7 @@ EOM
         return 1
     fi
 
-    validate_var_file "fil_bam" "${fil_bam}" || return 1
+    validate_var_file "fil_aln" "${fil_aln}" || return 1
 
     if ! command -v samtools > /dev/null 2>&1; then
         echo_err_func "${FUNCNAME[0]}" \
@@ -737,10 +738,10 @@ EOM
 
     #  Determine filtering flags based on alignment type
     expr="$(_get_expr_filter "${aln_typ}")" || return 1
-    _set_ref_arg_cram "${fil_bam}" ref_arg || return 1
+    _set_ref_arg_cram "${fil_aln}" ref_arg || return 1
 
     #  Compute average fragment length using samtools and awk
-    samtools view -@ "${threads}" "${ref_arg[@]}" --expr "${expr}" "${fil_bam}" \
+    samtools view -@ "${threads}" "${ref_arg[@]}" --expr "${expr}" "${fil_aln}" \
         | awk '{
             if ($9 > 0) { sum += $9; count++ }
         } END {
@@ -753,7 +754,7 @@ EOM
             }
         }' || {
             echo_err_func "${FUNCNAME[0]}" \
-            "failed for alignment file '${fil_bam}' with type '${aln_typ}'."
+            "failed for alignment file '${fil_aln}' with type '${aln_typ}'."
             return 1
         }
 }
@@ -1627,7 +1628,7 @@ EOM
     #  Count alignments in alignment files
     dep_ip="$(_get_dep_idx mip "${idx}")"
     if [[ -z "${dep_ip}" ]]; then
-        dep_ip="$(_count_align_bam "${threads}" "${fil_ip}" "${typ_ip}")" || {
+        dep_ip="$(_count_alignments "${threads}" "${fil_ip}" "${typ_ip}")" || {
             echo_err_func "${FUNCNAME[0]}" \
                 "failed while counting alignments for IP file '${fil_ip}'" \
                 "with type '${typ_ip}'."
@@ -1637,7 +1638,7 @@ EOM
 
     dep_in="$(_get_dep_idx min "${idx}")"
     if [[ -z "${dep_in}" ]]; then
-        dep_in="$(_count_align_bam "${threads}" "${fil_in}" "${typ_in}")" || {
+        dep_in="$(_count_alignments "${threads}" "${fil_in}" "${typ_in}")" || {
             echo_err_func "${FUNCNAME[0]}" \
                 "failed while counting alignments for input file '${fil_in}'" \
                 "with type '${typ_in}'."
@@ -1859,7 +1860,7 @@ EOM
     #  Count alignments in alignment files
     num_mp="$(_get_dep_idx mip "${idx}")"
     if [[ -z "${num_mp}" ]]; then
-        num_mp="$(_count_align_bam "${threads}" "${mp}" "${typ_mp}")" || {
+        num_mp="$(_count_alignments "${threads}" "${mp}" "${typ_mp}")" || {
             echo_err_func "${FUNCNAME[0]}" \
                 "failed while counting alignments for main IP file '${mp}'" \
                 "with type '${typ_mp}'."
@@ -1869,7 +1870,7 @@ EOM
 
     num_mn="$(_get_dep_idx min "${idx}")"
     if [[ -z "${num_mn}" ]]; then
-        num_mn="$(_count_align_bam "${threads}" "${mn}" "${typ_mn}")" || {
+        num_mn="$(_count_alignments "${threads}" "${mn}" "${typ_mn}")" || {
             echo_err_func "${FUNCNAME[0]}" \
                 "failed while counting alignments for main input file '${mn}'" \
                 "with type '${typ_mn}'."
@@ -1879,7 +1880,7 @@ EOM
 
     num_sp="$(_get_dep_idx sip "${idx}")"
     if [[ -z "${num_sp}" ]]; then
-        num_sp="$(_count_align_bam "${threads}" "${sp}" "${typ_sp}")" || {
+        num_sp="$(_count_alignments "${threads}" "${sp}" "${typ_sp}")" || {
             echo_err_func "${FUNCNAME[0]}" \
                 "failed while counting alignments for spike IP file '${sp}'" \
                 "with type '${typ_sp}'."
@@ -1889,7 +1890,7 @@ EOM
 
     num_sn="$(_get_dep_idx sin "${idx}")"
     if [[ -z "${num_sn}" ]]; then
-        num_sn="$(_count_align_bam "${threads}" "${sn}" "${typ_sn}")" || {
+        num_sn="$(_count_alignments "${threads}" "${sn}" "${typ_sn}")" || {
             echo_err_func "${FUNCNAME[0]}" \
                 "failed while counting alignments for spike input file" \
                 "'${sn}' with type '${typ_sn}'."
