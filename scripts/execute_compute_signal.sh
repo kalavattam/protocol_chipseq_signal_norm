@@ -1259,7 +1259,7 @@ function setup_env() {
 
 
 #  Check tools needed by the selected dispatch mode
-function check_tools_runtime() {
+function check_tools() {
     check_pgrm_path python || return 1
 
     if [[ "${slurm}" == "true" ]]; then
@@ -1540,7 +1540,7 @@ function main() {
     validate_vecs         || return 1
     config_exec           || return 1
     setup_env             || return 1
-    check_tools_runtime   || return 1
+    check_tools           || return 1
     print_state_debug     || return 1
     serialize_vecs        || return 1
     print_vecs_serialized || return 1

@@ -1,3 +1,4 @@
+
 # Shell Style Guide
 This file owns detailed Bash style rules for this repository. `AGENTS.md` is the top-level repository guide.
 
@@ -120,6 +121,19 @@ Submit wrappers may need a small bootstrap exception before the ordinary lifecyc
 Do not place live default/global assignments between function definitions. Prefer setting defaults in `init_defs()` and calling it at the start of `main()` before help output or argument parsing. Define `init_defs()` near the argument lifecycle functions, before `parse_args()` when practical. For very small scripts, a compact default block immediately before `main "$@"` is acceptable.
 
 When a wrapper has both hardcoded execution controls and user-facing argument defaults, split them into `init_args_hardcoded()` and `init_arg_defs()`, with `init_defs()` calling both in that order.
+
+Top-level indexed arrays declared with `declare -a` must become `declare -ga` when moved into a function (lifecycle or otherwise) if later helpers need to read or mutate them. Use plain `declare -a` only for arrays that are intentionally function-local.
+
+Use stable lifecycle helper names when the behavior exists:
+- `config_exec` configures serial, GNU Parallel, or Slurm execution.
+- `setup_env` activates the requested environment and updates environment variables such as `PYTHONPATH`.
+- `check_tools` checks executable dependencies required by the selected execution path.
+- `print_state_debug` and `print_vecs_debug` print scalar and vector state without mutating it.
+- `prepare_vecs` reconstructs or derives arrays from scalar inputs.
+- `validate_vecs` validates reconstructed arrays and cross-array constraints.
+- `run_jobs` is the final dispatch step.
+
+Keep public API renames separate from structure-only lifecycle refactors. For example, do not migrate `--err_out` to `--dir_eo` in the same patch unless the user explicitly asks for an option rename. *(`#TODO`: come back to adjust this rule later.)*
 
 <br />
 

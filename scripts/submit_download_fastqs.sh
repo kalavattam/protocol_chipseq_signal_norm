@@ -41,28 +41,28 @@ Description:
   Download one single-end or paired-end FASTQ entry and create custom symlink(s).
 
 Positional arguments:
-  01  srr  <str>
+  1  srr  <str>
     NCBI SRA database run accession code.
 
-  02  url_1  <str>
+  2  url_1  <str>
     URL (FTP or HTTPS) for FASTQ file.
 
-  03  url_2  <str>
+  3  url_2  <str>
     Second FASTQ URL for paired-end data ("NA" for single-end data).
 
-  04  dir_out  <dir>
+  4  dir_out  <dir>
     Directory to save FASTQ file(s).
 
-  05  dir_sym  <dir>
+  5  dir_sym  <dir>
     Directory for symlink(s) to FASTQ file(s).
 
-  06  nam_cus  <str>
+  6  nam_cus  <str>
     Custom name for symlink(s).
 
-  07  dir_eo  <dir>
+  7  dir_eo  <dir>
     Directory for stderr and stdout files.
 
-  08  nam_job  <str>
+  8  nam_job  <str>
     Job name.
 
 Notes:

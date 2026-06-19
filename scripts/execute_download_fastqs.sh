@@ -382,7 +382,7 @@ function setup_env() {
 
 
 #  Check tools needed by the selected dispatch mode
-function check_tools_runtime() {
+function check_tools() {
     check_pgrm_path cut  || return 1
     check_pgrm_path wget || return 1
 
@@ -753,7 +753,7 @@ function main() {
     parse_args "$@"         || return 1
     validate_args           || return 1
     setup_env               || return 1
-    check_tools_runtime     || return 1
+    check_tools             || return 1
     parse_tbl_dl            || return 1
     validate_vecs_dl        || return 1
     parse_jobs_uniq         || return 1
