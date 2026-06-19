@@ -29,18 +29,6 @@ fi
 set -euo pipefail
 
 
-#  Set hardcoded arguments
-## WARNING: Do not change unless testing/stepping through ##
-#  If true, print verbose/debug Bash-level logging
-debug=true
-
-#  If true, parse arguments and exit before validation or execution
-p_only=false
-
-#  If true, parse and check arguments, then exit before execution
-pc_only=false
-
-
 #  Define script-specific functions
 function derive_samp_sf() {
     local fil_aln="${1:-}"
@@ -49,7 +37,7 @@ function derive_samp_sf() {
 
     show_help=$(cat << EOM
 Usage:
-  derive_samp_sf [-h|--hlp|--help] fil_aln
+  derive_samp_sf [--help] fil_aln
 
 Description:
   Derive a sample name from a BAM or CRAM path for logging.
@@ -616,38 +604,68 @@ function resolve_script_paths() {
 }
 
 
+#  Initialize hardcoded argument variables
+function init_args_hardcoded() {
+    #  If true, print verbose/debug Bash-level logging
+    debug=true
+
+    #  If true, parse arguments and exit before validation or execution
+    p_only=false
+
+    #  If true, parse and check arguments, then exit before execution
+    pc_only=false
+}
+
+
 #  Initialize argument variables, assigning default values where applicable
-env_nam="env_protocol"
-dir_scr=""
-threads=1
+function init_arg_defs() {
+    env_nam="env_protocol"
+    dir_scr=""
+    threads=1
 
-mode="spike"    # siq | spike
-method=""       # chiprx_alpha_ratio | fractional | rxinput_alpha | ...
+    mode="spike"    # siq | spike
+    method=""       # chiprx_alpha_ratio | fractional | rxinput_alpha | ...
 
-csv_mip=""
-csv_min=""
-csv_sip=""
-csv_sin=""
-aln_typ="auto"  # paired | pe | single | se | auto
-ref_fa=""
-fil_out=""
-idx_out=""
+    csv_mip=""
+    csv_min=""
+    csv_sip=""
+    csv_sin=""
+    aln_typ="auto"  # paired | pe | single | se | auto
+    ref_fa=""
+    fil_out=""
+    idx_out=""
 
-tbl_met=""
-cfg_met=""
-eqn="6nd"
+    tbl_met=""
+    cfg_met=""
+    eqn="6nd"
 
-len_def=""      # SE fallback length (bp)
-len_mip=""      # Precomputed lengths: main IP
-len_min=""      # Precomputed lengths: main input
-dep_mip=""      # Precomputed counts: main IP
-dep_min=""      # Precomputed counts: main input
-dep_sip=""      # Precomputed counts: spike IP
-dep_sin=""      # Precomputed counts: spike input
+    len_def=""      # SE fallback length (bp)
+    len_mip=""      # Precomputed lengths: main IP
+    len_min=""      # Precomputed lengths: main input
+    dep_mip=""      # Precomputed counts: main IP
+    dep_min=""      # Precomputed counts: main input
+    dep_sip=""      # Precomputed counts: spike IP
+    dep_sin=""      # Precomputed counts: spike input
 
-rnd=24
-err_out=""
-nam_job=""
+    rnd=24
+    err_out=""
+    nam_job=""
+
+    unset arr_mip arr_min arr_sip arr_sin
+    unset arr_len_mip arr_len_min
+    unset arr_dep_mip arr_dep_min arr_dep_sip arr_dep_sin
+
+    declare -ga arr_mip arr_min arr_sip arr_sin
+    declare -ga arr_len_mip arr_len_min
+    declare -ga arr_dep_mip arr_dep_min arr_dep_sip arr_dep_sin
+}
+
+
+#  Initialize hardcoded arguments and user-facing argument defaults
+function init_defs() {
+    init_args_hardcoded
+    init_arg_defs
+}
 
 #  Define the help message
 function show_help_main() {
@@ -815,38 +833,8 @@ EOM
 }
 
 
-#  Main script execution
-function main() {
-    if [[ -z "${1:-}" || "${1}" =~ ^(-h|--h[e]?lp)$ ]]; then
-        show_help_main
-        echo >&2
-        exit 0
-    fi
-
-    dir_scr="$(resolve_dir_scr "${0##*/}" "$@")" || exit 1
-
-    source_submit_helpers "${0##*/}" "${dir_scr}" \
-        calculate_scaling_factor \
-        check_args \
-        check_inputs \
-        check_numbers \
-        format_outputs \
-        handle_env \
-        manage_slurm \
-        || exit 1
-
-    parse_args "$@" || exit 1
-
-    if [[ "${p_only}" == "true" ]]; then
-        if [[ "${debug}" == "true" ]]; then debug_var "p_only=true"; fi
-        exit 0
-    fi
-
-    canonicalize_args    || exit 1
-    validate_args        || exit 1
-    resolve_script_paths || exit 1
-
-    #  Debug argument assignments
+#  Print parsed scalar arguments when debugging is enabled
+function print_state_debug() {
     if [[ "${debug}" == "true" ]]; then
         debug_var \
             "env_nam=${env_nam}" \
@@ -894,23 +882,70 @@ function main() {
             "err_out=${err_out}" \
             "nam_job=${nam_job}"
     fi
+}
 
-    #  Reconstruct required arrays from serialized strings
+
+#  Reconstruct required and optional arrays from serialized argument strings
+function prepare_vecs() {
     IFS=',' read -r -a arr_mip <<< "${csv_mip}"
     IFS=',' read -r -a arr_min <<< "${csv_min}"
-
-    check_arr_nonempty "arr_mip" "csv_mip" || exit 1
-    check_arr_nonempty "arr_min" "csv_min" || exit 1
 
     if [[ "${mode}" == "spike" ]]; then
         IFS=',' read -r -a arr_sip <<< "${csv_sip}"
         IFS=',' read -r -a arr_sin <<< "${csv_sin}"
-
-        check_arr_nonempty "arr_sip" "csv_sip" || exit 1
-        check_arr_nonempty "arr_sin" "csv_sin" || exit 1
     fi
 
-    need_ref=false
+    if [[ -n "${len_mip}" ]]; then
+        IFS=',' read -r -a arr_len_mip <<< "${len_mip}"
+    else
+        unset arr_len_mip && declare -ga arr_len_mip=()
+    fi
+
+    if [[ -n "${len_min}" ]]; then
+        IFS=',' read -r -a arr_len_min <<< "${len_min}"
+    else
+        unset arr_len_min && declare -ga arr_len_min=()
+    fi
+
+    if [[ -n "${dep_mip}" ]]; then
+        IFS=',' read -r -a arr_dep_mip <<< "${dep_mip}"
+    else
+        unset arr_dep_mip && declare -ga arr_dep_mip=()
+    fi
+
+    if [[ -n "${dep_min}" ]]; then
+        IFS=',' read -r -a arr_dep_min <<< "${dep_min}"
+    else
+        unset arr_dep_min && declare -ga arr_dep_min=()
+    fi
+
+    if [[ -n "${dep_sip}" ]]; then
+        IFS=',' read -r -a arr_dep_sip <<< "${dep_sip}"
+    else
+        unset arr_dep_sip && declare -ga arr_dep_sip=()
+    fi
+
+    if [[ -n "${dep_sin}" ]]; then
+        IFS=',' read -r -a arr_dep_sin <<< "${dep_sin}"
+    else
+        unset arr_dep_sin && declare -ga arr_dep_sin=()
+    fi
+}
+
+
+#  Validate vector lengths, sentinels, CRAM reference needs, and values
+function validate_vecs() {
+    local fil_aln need_ref=false n_samp
+    local -a arr_aln
+
+    check_arr_nonempty "arr_mip" "csv_mip" || return 1
+    check_arr_nonempty "arr_min" "csv_min" || return 1
+
+    if [[ "${mode}" == "spike" ]]; then
+        check_arr_nonempty "arr_sip" "csv_sip" || return 1
+        check_arr_nonempty "arr_sin" "csv_sin" || return 1
+    fi
+
     arr_aln=( "${arr_mip[@]}" "${arr_min[@]}" )
 
     if [[ "${mode}" == "spike" ]]; then
@@ -923,100 +958,61 @@ function main() {
             break
         fi
     done
-    unset arr_aln fil_aln
 
     if [[ "${need_ref}" == "true" && -z "${ref_fa}" ]]; then
         echo_err "'--ref_fa' is required when an input alignment file is CRAM."
-        exit 1
+        return 1
     fi
 
     if [[ -n "${ref_fa}" ]]; then
-        validate_var_file "ref_fa" "${ref_fa}" || exit 1
-    fi
-    unset need_ref
-
-    #  Reconstruct optional length/depth arrays
-    if [[ -n "${len_mip}" ]]; then
-        IFS=',' read -r -a arr_len_mip <<< "${len_mip}"
-    else
-        unset arr_len_mip && declare -a arr_len_mip=()
+        validate_var_file "ref_fa" "${ref_fa}" || return 1
     fi
 
-    if [[ -n "${len_min}" ]]; then
-        IFS=',' read -r -a arr_len_min <<< "${len_min}"
-    else
-        unset arr_len_min && declare -a arr_len_min=()
-    fi
-
-    if [[ -n "${dep_mip}" ]]; then
-        IFS=',' read -r -a arr_dep_mip <<< "${dep_mip}"
-    else
-        unset arr_dep_mip && declare -a arr_dep_mip=()
-    fi
-
-    if [[ -n "${dep_min}" ]]; then
-        IFS=',' read -r -a arr_dep_min <<< "${dep_min}"
-    else
-        unset arr_dep_min && declare -a arr_dep_min=()
-    fi
-
-    if [[ -n "${dep_sip}" ]]; then
-        IFS=',' read -r -a arr_dep_sip <<< "${dep_sip}"
-    else
-        unset arr_dep_sip && declare -a arr_dep_sip=()
-    fi
-
-    if [[ -n "${dep_sin}" ]]; then
-        IFS=',' read -r -a arr_dep_sin <<< "${dep_sin}"
-    else
-        unset arr_dep_sin && declare -a arr_dep_sin=()
-    fi
-
-    #  Check required-array lengths
     if [[ "${mode}" == "siq" ]]; then
-        check_arr_lengths "arr_mip" "arr_min" || exit 1
+        check_arr_lengths "arr_mip" "arr_min" || return 1
         n_samp="${#arr_mip[@]}"
     else
-        check_arr_lengths "arr_mip" "arr_min" || exit 1
-        check_arr_lengths "arr_mip" "arr_sip" || exit 1
-        check_arr_lengths "arr_mip" "arr_sin" || exit 1
+        check_arr_lengths "arr_mip" "arr_min" || return 1
+        check_arr_lengths "arr_mip" "arr_sip" || return 1
+        check_arr_lengths "arr_mip" "arr_sin" || return 1
         n_samp="${#arr_mip[@]}"
     fi
 
-    #  Check optional-array lengths under broadcast semantics
     check_arr_len_bcst \
         "${n_samp}" \
         arr_len_mip arr_len_min \
         arr_dep_mip arr_dep_min \
         arr_dep_sip arr_dep_sin \
-        || exit 1
+        || return 1
 
-    #  Check optional-array values after broadcast-compatible lengths are known
     if (( ${#arr_len_mip[@]} > 0 )); then
-        check_arr_num_pos arr_len_mip len_mip || exit 1
+        check_arr_num_pos arr_len_mip len_mip || return 1
     fi
 
     if (( ${#arr_len_min[@]} > 0 )); then
-        check_arr_num_pos arr_len_min len_min || exit 1
+        check_arr_num_pos arr_len_min len_min || return 1
     fi
 
     if (( ${#arr_dep_mip[@]} > 0 )); then
-        check_arr_int_pos arr_dep_mip dep_mip || exit 1
+        check_arr_int_pos arr_dep_mip dep_mip || return 1
     fi
 
     if (( ${#arr_dep_min[@]} > 0 )); then
-        check_arr_int_pos arr_dep_min dep_min || exit 1
+        check_arr_int_pos arr_dep_min dep_min || return 1
     fi
 
     if (( ${#arr_dep_sip[@]} > 0 )); then
-        check_arr_int_pos arr_dep_sip dep_sip || exit 1
+        check_arr_int_pos arr_dep_sip dep_sip || return 1
     fi
 
     if (( ${#arr_dep_sin[@]} > 0 )); then
-        check_arr_int_pos arr_dep_sin dep_sin || exit 1
+        check_arr_int_pos arr_dep_sin dep_sin || return 1
     fi
+}
 
-    #  Debug array contents
+
+#  Print reconstructed array values when debugging is enabled
+function print_vecs_debug() {
     if [[ "${debug}" == "true" ]]; then
         debug_var \
             "\${#arr_mip[@]}=${#arr_mip[@]}" \
@@ -1042,51 +1038,57 @@ function main() {
             echo "arr_dep_sin=( ${arr_dep_sin[*]} )" >&2 && echo >&2
         fi
     fi
+}
 
-    #  Check required input files
+
+#  Validate required input alignment files
+function validate_input_files() {
+    local idx
+
     for idx in "${!arr_mip[@]}"; do
-        validate_var_file "arr_mip" "${arr_mip[${idx}]}" "${idx}" || exit 1
-        validate_var_file "arr_min" "${arr_min[${idx}]}" "${idx}" || exit 1
+        validate_var_file "arr_mip" "${arr_mip[${idx}]}" "${idx}" || return 1
+        validate_var_file "arr_min" "${arr_min[${idx}]}" "${idx}" || return 1
     done
 
     if [[ "${mode}" == "spike" ]]; then
         for idx in "${!arr_sip[@]}"; do
             validate_var_file "arr_sip" "${arr_sip[${idx}]}" "${idx}" \
-                || exit 1
+                || return 1
             validate_var_file "arr_sin" "${arr_sin[${idx}]}" "${idx}" \
-                || exit 1
+                || return 1
         done
     fi
+}
 
-    #  Exit after parsing and validation/checking, but before execution
-    if [[ "${pc_only}" == "true" ]]; then
-        if [[ "${debug}" == "true" ]]; then debug_var "pc_only=true"; fi
-        exit 0
-    fi
 
-    #  Activate environment
-    handle_env "${env_nam}" || exit 1
+#  Activate the environment and ensure project imports are discoverable
+function setup_env() {
+    handle_env "${env_nam}" || return 1
 
-    #  For 'scripts.*' imports, ensure project root is on 'PYTHONPATH'
     if [[ -z "${PYTHONPATH:-}" ]]; then
         export PYTHONPATH="${dir_rep}"
     else
         export PYTHONPATH="${dir_rep}:${PYTHONPATH}"
     fi
+}
 
-    #  Determine and run mode: Slurm or serial
+
+#  Dispatch Slurm-array or serial work
+function run_jobs() {
+    local err_dsc err_ini id_job id_tsk idx out_dsc out_ini samp
+
     if [[ -n "${SLURM_ARRAY_TASK_ID:-}" ]]; then
         id_job=${SLURM_ARRAY_JOB_ID}
         id_tsk=${SLURM_ARRAY_TASK_ID}
 
         if ! [[ "${id_tsk}" =~ ^[1-9][0-9]*$ ]]; then
             echo_err "Slurm task ID is invalid: '${id_tsk}'."
-            exit 1
+            return 1
         elif [[ "${id_tsk}" -gt "${#arr_mip[@]}" ]]; then
             echo_err \
                 "Slurm task ID '${id_tsk}' exceeds number of samples:" \
                 "'${#arr_mip[@]}'."
-            exit 1
+            return 1
         else
             idx=$(( id_tsk - 1 ))
         fi
@@ -1095,14 +1097,14 @@ function main() {
             debug_var "id_job=${id_job}" "id_tsk=${id_tsk}" "idx=${idx}"
         fi
 
-        samp="$(derive_samp_sf "${arr_mip[idx]}")" || exit 1
+        samp="$(derive_samp_sf "${arr_mip[idx]}")" || return 1
 
         if [[ "${debug}" == "true" ]]; then debug_var "samp=${samp}"; fi
 
         IFS=',' read -r err_ini out_ini err_dsc out_dsc < <(
             set_logs_slurm \
                 "${id_job}" "${id_tsk}" "${samp}" "${err_out}" "${nam_job}"
-        ) || exit 1
+        ) || return 1
         unset IFS
 
         if [[ "${debug}" == "true" ]]; then
@@ -1112,8 +1114,8 @@ function main() {
         fi
 
         case "${mode}" in
-            siq)   process_samp_siq   "${idx}" || exit 1 ;;
-            spike) process_samp_spike "${idx}" || exit 1 ;;
+            siq)   process_samp_siq   "${idx}" || return 1 ;;
+            spike) process_samp_spike "${idx}" || return 1 ;;
         esac
 
         rm -f "${err_ini}" "${out_ini}" || {
@@ -1124,11 +1126,59 @@ function main() {
     else
         for idx in "${!arr_mip[@]}"; do
             case "${mode}" in
-                siq)   process_samp_siq   "${idx}" || exit 1 ;;
-                spike) process_samp_spike "${idx}" || exit 1 ;;
+                siq)   process_samp_siq   "${idx}" || return 1 ;;
+                spike) process_samp_spike "${idx}" || return 1 ;;
             esac
         done
     fi
+}
+
+
+#  Main script execution
+function main() {
+    init_defs
+
+    if [[ -z "${1:-}" || "${1}" =~ ^(-h|--h[e]?lp)$ ]]; then
+        show_help_main
+        echo >&2
+        return 0
+    fi
+
+    dir_scr="$(resolve_dir_scr "${0##*/}" "$@")" || return 1
+
+    source_submit_helpers "${0##*/}" "${dir_scr}" \
+        calculate_scaling_factor \
+        check_args \
+        check_inputs \
+        check_numbers \
+        format_outputs \
+        handle_env \
+        manage_slurm \
+        || return 1
+
+    parse_args "$@" || return 1
+
+    if [[ "${p_only}" == "true" ]]; then
+        if [[ "${debug}" == "true" ]]; then debug_var "p_only=true"; fi
+        return 0
+    fi
+
+    canonicalize_args    || return 1
+    validate_args        || return 1
+    resolve_script_paths || return 1
+    print_state_debug    || return 1
+    prepare_vecs         || return 1
+    validate_vecs        || return 1
+    print_vecs_debug     || return 1
+    validate_input_files || return 1
+
+    if [[ "${pc_only}" == "true" ]]; then
+        if [[ "${debug}" == "true" ]]; then debug_var "pc_only=true"; fi
+        return 0
+    fi
+
+    setup_env || return 1
+    run_jobs  || return 1
 }
 
 

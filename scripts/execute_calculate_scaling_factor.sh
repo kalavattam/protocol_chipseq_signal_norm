@@ -383,12 +383,10 @@ function build_cmd_hdr_slurm() {
 }
 
 
-#  Initialize argument variables, check and parse arguments, etc. =============
 #  Initialize hardcoded argument variables
-# shellcheck disable=SC2269
-{
+function init_args_hardcoded() {
     env_nam="env_protocol"
-    dir_scr="${dir_scr}"
+    dir_scr="${dir_scr}"  #TODO: SC2269
     scr_cmb="${dir_scr}/combine_parts_scaling_factor.sh"
     scr_hdr="${dir_scr}/write_header.sh"
     scr_sub="${dir_scr}/submit_calculate_scaling_factor.sh"
@@ -397,1022 +395,1107 @@ function build_cmd_hdr_slurm() {
 
 
 #  Initialize argument variables, assigning default values where applicable
-verbose=false
-dry_run=false
-force=false
-no_parts=false
-no_header=false
+function init_arg_defs() {
+    verbose=false
+    dry_run=false
+    force=false
+    no_parts=false
+    no_header=false
 
-threads=1
+    threads=1
 
-mode="spike"
-method=""
+    mode="spike"
+    method=""
 
-csv_mip=""
-csv_min=""
-csv_sip=""
-csv_sin=""
-aln_typ="auto"
-ref_fa=""
+    csv_mip=""
+    csv_min=""
+    csv_sip=""
+    csv_sin=""
+    aln_typ="auto"
+    ref_fa=""
 
-fil_out=""
+    fil_out=""
 
-tbl_met=""
-cfg_met=""
-eqn="6nd"
+    tbl_met=""
+    cfg_met=""
+    eqn="6nd"
 
-len_def=""
-len_mip=""
-len_min=""
-dep_mip=""
-dep_min=""
-dep_sip=""
-dep_sin=""
+    len_def=""
+    len_mip=""
+    len_min=""
+    dep_mip=""
+    dep_min=""
+    dep_sip=""
+    dep_sin=""
 
-dp=24
+    dp=24
 
-err_out=""
-nam_job=""
-max_job=6
-slurm=false
-time="0:30:00"
+    err_out=""
+    nam_job=""
+    max_job=6
+    slurm=false
+    time="0:30:00"
+
+    unset arr_mip arr_min arr_sip arr_sin arr_len_mip arr_len_min
+    unset arr_dep_mip arr_dep_min arr_dep_sip arr_dep_sin
+    unset arr_prt arr_arg_cmb cmd_bld cmd_cmb cmd_hdr
+
+    declare -ga arr_mip arr_min arr_sip arr_sin
+    declare -ga arr_len_mip arr_len_min
+    declare -ga arr_dep_mip arr_dep_min arr_dep_sip arr_dep_sin
+    declare -ga arr_prt arr_arg_cmb cmd_bld cmd_cmb cmd_hdr
+}
+
+
+#  Initialize hardcoded arguments and user-facing argument defaults
+function init_defs() {
+    init_args_hardcoded
+    init_arg_defs
+}
 
 
 #  Parse arguments
-if [[ -z "${1:-}" || "${1}" =~ ^(-h|--h[e]?lp)$ ]]; then
-    help_execute_calculate_scaling_factor >&2
-    exit 0
-fi
-
-while [[ "$#" -gt 0 ]]; do
-    case "${1}" in
-        -v|--verbose)
-            verbose=true
-            shift 1
-            ;;
-
-        -dr|--dry|--dry[_-]run)
-            dry_run=true
-            shift 1
-            ;;
-
-        -t|--thr|--threads)
-            require_optarg "${1}" "${2:-}" "main" || {
-                echo >&2
-                help_execute_calculate_scaling_factor >&2
-                exit 1
-            }
-            threads="${2}"
-            shift 2
-            ;;
-
-        -md|--mode)
-            require_optarg "${1}" "${2:-}" "main" || {
-                echo >&2
-                help_execute_calculate_scaling_factor >&2
-                exit 1
-            }
-            mode="${2,,}"
-            shift 2
-            ;;
-
-        -me|--method)
-            require_optarg "${1}" "${2:-}" "main" || {
-                echo >&2
-                help_execute_calculate_scaling_factor >&2
-                exit 1
-            }
-            method="${2,,}"
-            shift 2
-            ;;
-
-        -mp|--csv[_-]mip)
-            require_optarg "${1}" "${2:-}" "main" || {
-                echo >&2
-                help_execute_calculate_scaling_factor >&2
-                exit 1
-            }
-            csv_mip="${2}"
-            shift 2
-            ;;
-
-        -mn|--csv[_-]min)
-            require_optarg "${1}" "${2:-}" "main" || {
-                echo >&2
-                help_execute_calculate_scaling_factor >&2
-                exit 1
-            }
-            csv_min="${2}"
-            shift 2
-            ;;
-
-        -sp|--csv[_-]sip)
-            require_optarg "${1}" "${2:-}" "main" || {
-                echo >&2
-                help_execute_calculate_scaling_factor >&2
-                exit 1
-            }
-            csv_sip="${2}"
-            shift 2
-            ;;
-
-        -sn|--csv[_-]sin)
-            require_optarg "${1}" "${2:-}" "main" || {
-                echo >&2
-                help_execute_calculate_scaling_factor >&2
-                exit 1
-            }
-            csv_sin="${2}"
-            shift 2
-            ;;
-
-        -at|--aln[_-]typ|--align[_-]typ)
-            require_optarg "${1}" "${2:-}" "main" || {
-                echo >&2
-                help_execute_calculate_scaling_factor >&2
-                exit 1
-            }
-            aln_typ="${2,,}"
-            shift 2
-            ;;
-
-        -r|--ref|--ref[_-]fa|--reference)
-            require_optarg "${1}" "${2:-}" "main" || {
-                echo >&2
-                help_execute_calculate_scaling_factor >&2
-                exit 1
-            }
-            ref_fa="${2}"
-            shift 2
-            ;;
-
-        -fo|--fil[_-]out)
-            require_optarg "${1}" "${2:-}" "main" || {
-                echo >&2
-                help_execute_calculate_scaling_factor >&2
-                exit 1
-            }
-            fil_out="${2}"
-            shift 2
-            ;;
-
-        -f|--force)
-            force=true
-            shift 1
-            ;;
-
-        -np|--no[_-]parts)
-            no_parts=true
-            shift 1
-            ;;
-
-        -nh|--no[_-]header)
-            no_header=true
-            shift 1
-            ;;
-
-        -tb|--tbl[_-]met)
-            require_optarg "${1}" "${2:-}" "main" || {
-                echo >&2
-                help_execute_calculate_scaling_factor >&2
-                exit 1
-            }
-            tbl_met="${2}"
-            shift 2
-            ;;
-
-        -cm|--cfg[_-]met)
-            require_optarg "${1}" "${2:-}" "main" || {
-                echo >&2
-                help_execute_calculate_scaling_factor >&2
-                exit 1
-            }
-            cfg_met="${2}"
-            shift 2
-            ;;
-
-        -eq|--eqn)
-            require_optarg "${1}" "${2:-}" "main" || {
-                echo >&2
-                help_execute_calculate_scaling_factor >&2
-                exit 1
-            }
-            eqn="${2,,}"
-            shift 2
-            ;;
-
-        -ld|--len[_-]def)
-            require_optarg "${1}" "${2:-}" "main" || {
-                echo >&2
-                help_execute_calculate_scaling_factor >&2
-                exit 1
-            }
-            len_def="${2}"
-            shift 2
-            ;;
-
-        -lmp|--len[_-]mip)
-            require_optarg "${1}" "${2:-}" "main" || {
-                echo >&2
-                help_execute_calculate_scaling_factor >&2
-                exit 1
-            }
-            len_mip="${2}"
-            shift 2
-            ;;
-
-        -lmn|--len[_-]min)
-            require_optarg "${1}" "${2:-}" "main" || {
-                echo >&2
-                help_execute_calculate_scaling_factor >&2
-                exit 1
-            }
-            len_min="${2}"
-            shift 2
-            ;;
-
-        -dmp|--dep[_-]mip)
-            require_optarg "${1}" "${2:-}" "main" || {
-                echo >&2
-                help_execute_calculate_scaling_factor >&2
-                exit 1
-            }
-            dep_mip="${2}"
-            shift 2
-            ;;
-
-        -dmn|--dep[_-]min)
-            require_optarg "${1}" "${2:-}" "main" || {
-                echo >&2
-                help_execute_calculate_scaling_factor >&2
-                exit 1
-            }
-            dep_min="${2}"
-            shift 2
-            ;;
-
-        -dsp|--dep[_-]sip)
-            require_optarg "${1}" "${2:-}" "main" || {
-                echo >&2
-                help_execute_calculate_scaling_factor >&2
-                exit 1
-            }
-            dep_sip="${2}"
-            shift 2
-            ;;
-
-        -dsn|--dep[_-]sin)
-            require_optarg "${1}" "${2:-}" "main" || {
-                echo >&2
-                help_execute_calculate_scaling_factor >&2
-                exit 1
-            }
-            dep_sin="${2}"
-            shift 2
-            ;;
-
-        -dp|--dp|--rnd|--round|--decimals|--digits)
-            require_optarg "${1}" "${2:-}" "main" || {
-                echo >&2
-                help_execute_calculate_scaling_factor >&2
-                exit 1
-            }
-            dp="${2}"
-            shift 2
-            ;;
-
-        -eo|--err[_-]out)
-            require_optarg "${1}" "${2:-}" "main" || {
-                echo >&2
-                help_execute_calculate_scaling_factor >&2
-                exit 1
-            }
-            err_out="${2}"
-            shift 2
-            ;;
-
-        -nj|--nam[_-]job)
-            require_optarg "${1}" "${2:-}" "main" || {
-                echo >&2
-                help_execute_calculate_scaling_factor >&2
-                exit 1
-            }
-            nam_job="${2}"
-            shift 2
-            ;;
-
-        -mj|--max[_-]job)
-            require_optarg "${1}" "${2:-}" "main" || {
-                echo >&2
-                help_execute_calculate_scaling_factor >&2
-                exit 1
-            }
-            max_job="${2}"
-            shift 2
-            ;;
-
-        -sl|--slurm)
-            slurm=true
-            shift 1
-            ;;
-
-        -tm|--time)
-            require_optarg "${1}" "${2:-}" "main" || {
-                echo >&2
-                help_execute_calculate_scaling_factor >&2
-                exit 1
-            }
-            time="${2}"
-            shift 2
-            ;;
-
-        *)
-            echo_err "unknown option/parameter passed: '${1}'."
-            echo >&2
-            help_execute_calculate_scaling_factor >&2
-            exit 1
-            ;;
-    esac
-done
-
-#  Check arguments
-validate_var "env_nam" "${env_nam}"
-check_env_installed "${env_nam}"
-
-validate_var_dir  "dir_scr" "${dir_scr}" 0 false
-
-validate_var_file "scr_cmb" "${scr_cmb}"
-
-validate_var_file "scr_hdr" "${scr_hdr}"
-
-validate_var_file "scr_sub" "${scr_sub}"
-
-validate_var "threads" "${threads}"
-check_int_pos "${threads}" "threads"
-
-case "${mode}" in
-    siq)
-        mode="siq"
-
-        if [[ -n "${method}" ]]; then
-            echo_err \
-                "'--method' may be used only when '--mode spike' is active."
-            exit 1
-        fi
-        ;;
-
-    spike|spk)
-        mode="spike"
-
-        if [[ -z "${method}" ]]; then
-            method="chiprx_alpha_ratio"
-        fi
-
-        case "${method}" in
-            fractional|bioprotocol|bio_protocol|s)
-                #TODO: Phase out hidden test alias 's' unless it remains useful
-                #+     for manuscript/blog drafting.
-                method="fractional"
+function parse_args() {
+    while [[ "$#" -gt 0 ]]; do
+        case "${1}" in
+            -v|--verbose)
+                verbose=true
+                shift 1
                 ;;
-            chiprx_alpha_ratio|alpha_chiprx_ratio|chiprx_ratio|r)
-                #TODO: Decide whether to keep hidden test alias 'r'.
-                method="chiprx_alpha_ratio"
+
+            -dr|--dry|--dry[_-]run)
+                dry_run=true
+                shift 1
                 ;;
-            chiprx_alpha_ip|alpha_chiprx_ip|chiprx_ip)
-                method="chiprx_alpha_ip"
+
+            -t|--thr|--threads)
+                require_optarg "${1}" "${2:-}" "main" || {
+                    echo >&2
+                    help_execute_calculate_scaling_factor >&2
+                    return 1
+                }
+                threads="${2}"
+                shift 2
                 ;;
-            chiprx_alpha_in|alpha_chiprx_in|chiprx_in)
-                method="chiprx_alpha_in"
+
+            -md|--mode)
+                require_optarg "${1}" "${2:-}" "main" || {
+                    echo >&2
+                    help_execute_calculate_scaling_factor >&2
+                    return 1
+                }
+                mode="${2,,}"
+                shift 2
                 ;;
-            rxinput_alpha|alpha_rxinput|rxi_alpha|alpha_rxi|rxinput|rxi)
-                method="rxinput_alpha"
+
+            -me|--method)
+                require_optarg "${1}" "${2:-}" "main" || {
+                    echo >&2
+                    help_execute_calculate_scaling_factor >&2
+                    return 1
+                }
+                method="${2,,}"
+                shift 2
                 ;;
+
+            -mp|--csv[_-]mip)
+                require_optarg "${1}" "${2:-}" "main" || {
+                    echo >&2
+                    help_execute_calculate_scaling_factor >&2
+                    return 1
+                }
+                csv_mip="${2}"
+                shift 2
+                ;;
+
+            -mn|--csv[_-]min)
+                require_optarg "${1}" "${2:-}" "main" || {
+                    echo >&2
+                    help_execute_calculate_scaling_factor >&2
+                    return 1
+                }
+                csv_min="${2}"
+                shift 2
+                ;;
+
+            -sp|--csv[_-]sip)
+                require_optarg "${1}" "${2:-}" "main" || {
+                    echo >&2
+                    help_execute_calculate_scaling_factor >&2
+                    return 1
+                }
+                csv_sip="${2}"
+                shift 2
+                ;;
+
+            -sn|--csv[_-]sin)
+                require_optarg "${1}" "${2:-}" "main" || {
+                    echo >&2
+                    help_execute_calculate_scaling_factor >&2
+                    return 1
+                }
+                csv_sin="${2}"
+                shift 2
+                ;;
+
+            -at|--aln[_-]typ|--align[_-]typ)
+                require_optarg "${1}" "${2:-}" "main" || {
+                    echo >&2
+                    help_execute_calculate_scaling_factor >&2
+                    return 1
+                }
+                aln_typ="${2,,}"
+                shift 2
+                ;;
+
+            -r|--ref|--ref[_-]fa|--reference)
+                require_optarg "${1}" "${2:-}" "main" || {
+                    echo >&2
+                    help_execute_calculate_scaling_factor >&2
+                    return 1
+                }
+                ref_fa="${2}"
+                shift 2
+                ;;
+
+            -fo|--fil[_-]out)
+                require_optarg "${1}" "${2:-}" "main" || {
+                    echo >&2
+                    help_execute_calculate_scaling_factor >&2
+                    return 1
+                }
+                fil_out="${2}"
+                shift 2
+                ;;
+
+            -f|--force)
+                force=true
+                shift 1
+                ;;
+
+            -np|--no[_-]parts)
+                no_parts=true
+                shift 1
+                ;;
+
+            -nh|--no[_-]header)
+                no_header=true
+                shift 1
+                ;;
+
+            -tb|--tbl[_-]met)
+                require_optarg "${1}" "${2:-}" "main" || {
+                    echo >&2
+                    help_execute_calculate_scaling_factor >&2
+                    return 1
+                }
+                tbl_met="${2}"
+                shift 2
+                ;;
+
+            -cm|--cfg[_-]met)
+                require_optarg "${1}" "${2:-}" "main" || {
+                    echo >&2
+                    help_execute_calculate_scaling_factor >&2
+                    return 1
+                }
+                cfg_met="${2}"
+                shift 2
+                ;;
+
+            -eq|--eqn)
+                require_optarg "${1}" "${2:-}" "main" || {
+                    echo >&2
+                    help_execute_calculate_scaling_factor >&2
+                    return 1
+                }
+                eqn="${2,,}"
+                shift 2
+                ;;
+
+            -ld|--len[_-]def)
+                require_optarg "${1}" "${2:-}" "main" || {
+                    echo >&2
+                    help_execute_calculate_scaling_factor >&2
+                    return 1
+                }
+                len_def="${2}"
+                shift 2
+                ;;
+
+            -lmp|--len[_-]mip)
+                require_optarg "${1}" "${2:-}" "main" || {
+                    echo >&2
+                    help_execute_calculate_scaling_factor >&2
+                    return 1
+                }
+                len_mip="${2}"
+                shift 2
+                ;;
+
+            -lmn|--len[_-]min)
+                require_optarg "${1}" "${2:-}" "main" || {
+                    echo >&2
+                    help_execute_calculate_scaling_factor >&2
+                    return 1
+                }
+                len_min="${2}"
+                shift 2
+                ;;
+
+            -dmp|--dep[_-]mip)
+                require_optarg "${1}" "${2:-}" "main" || {
+                    echo >&2
+                    help_execute_calculate_scaling_factor >&2
+                    return 1
+                }
+                dep_mip="${2}"
+                shift 2
+                ;;
+
+            -dmn|--dep[_-]min)
+                require_optarg "${1}" "${2:-}" "main" || {
+                    echo >&2
+                    help_execute_calculate_scaling_factor >&2
+                    return 1
+                }
+                dep_min="${2}"
+                shift 2
+                ;;
+
+            -dsp|--dep[_-]sip)
+                require_optarg "${1}" "${2:-}" "main" || {
+                    echo >&2
+                    help_execute_calculate_scaling_factor >&2
+                    return 1
+                }
+                dep_sip="${2}"
+                shift 2
+                ;;
+
+            -dsn|--dep[_-]sin)
+                require_optarg "${1}" "${2:-}" "main" || {
+                    echo >&2
+                    help_execute_calculate_scaling_factor >&2
+                    return 1
+                }
+                dep_sin="${2}"
+                shift 2
+                ;;
+
+            -dp|--dp|--rnd|--round|--decimals|--digits)
+                require_optarg "${1}" "${2:-}" "main" || {
+                    echo >&2
+                    help_execute_calculate_scaling_factor >&2
+                    return 1
+                }
+                dp="${2}"
+                shift 2
+                ;;
+
+            -eo|--err[_-]out)
+                require_optarg "${1}" "${2:-}" "main" || {
+                    echo >&2
+                    help_execute_calculate_scaling_factor >&2
+                    return 1
+                }
+                err_out="${2}"
+                shift 2
+                ;;
+
+            -nj|--nam[_-]job)
+                require_optarg "${1}" "${2:-}" "main" || {
+                    echo >&2
+                    help_execute_calculate_scaling_factor >&2
+                    return 1
+                }
+                nam_job="${2}"
+                shift 2
+                ;;
+
+            -mj|--max[_-]job)
+                require_optarg "${1}" "${2:-}" "main" || {
+                    echo >&2
+                    help_execute_calculate_scaling_factor >&2
+                    return 1
+                }
+                max_job="${2}"
+                shift 2
+                ;;
+
+            -sl|--slurm)
+                slurm=true
+                shift 1
+                ;;
+
+            -tm|--time)
+                require_optarg "${1}" "${2:-}" "main" || {
+                    echo >&2
+                    help_execute_calculate_scaling_factor >&2
+                    return 1
+                }
+                time="${2}"
+                shift 2
+                ;;
+
             *)
-                echo_err \
-                    "spike method ('--method') was assigned '${method}' but" \
-                    "is not recognized."
-                exit 1
+                echo_err "unknown option/parameter passed: '${1}'."
+                echo >&2
+                help_execute_calculate_scaling_factor >&2
+                return 1
                 ;;
         esac
-        ;;
+    done
+}
 
-    *)
-        echo_err \
-            "scaling-factor mode ('--mode') was assigned '${mode}' but must" \
-            "be 'siq' or 'spike'."
-        exit 1
-        ;;
-esac
+#  Canonicalize mode and method aliases
+function canonicalize_args() {
+    case "${mode}" in
+        siq)
+            mode="siq"
 
-validate_var "csv_mip" "${csv_mip}"
-validate_var_dir "csv_mip parent directory" \
-    "$(dirname "${csv_mip%%[,;]*}")" 0 false
-check_str_delim "csv_mip" "${csv_mip}"
+            if [[ -n "${method}" ]]; then
+                echo_err \
+                    "'--method' may be used only when '--mode spike' is" \
+                    "active."
+                return 1
+            fi
+            ;;
 
-validate_var "csv_min" "${csv_min}"
-validate_var_dir "csv_min parent directory" \
-    "$(dirname "${csv_min%%[,;]*}")" 0 false
-check_str_delim "csv_min" "${csv_min}"
+        spike|spk)
+            mode="spike"
 
-if [[ "${mode}" == "spike" ]]; then
-    validate_var "csv_sip" "${csv_sip}"
-    validate_var_dir "csv_sip parent directory" \
-        "$(dirname "${csv_sip%%[,;]*}")" 0 false
-    check_str_delim "csv_sip" "${csv_sip}"
+            if [[ -z "${method}" ]]; then
+                method="chiprx_alpha_ratio"
+            fi
 
-    validate_var "csv_sin" "${csv_sin}"
-    validate_var_dir "csv_sin parent directory" \
-        "$(dirname "${csv_sin%%[,;]*}")" 0 false
-    check_str_delim "csv_sin" "${csv_sin}"
-fi
+            case "${method}" in
+                fractional|bioprotocol|bio_protocol|s)
+                    #TODO: Phase out hidden test alias 's' unless it remains
+                    #+     useful for manuscript/blog drafting
+                    method="fractional"
+                    ;;
+                chiprx_alpha_ratio|alpha_chiprx_ratio|chiprx_ratio|r)
+                    #TODO: Decide whether to keep hidden test alias 'r'
+                    method="chiprx_alpha_ratio"
+                    ;;
+                chiprx_alpha_ip|alpha_chiprx_ip|chiprx_ip)
+                    method="chiprx_alpha_ip"
+                    ;;
+                chiprx_alpha_in|alpha_chiprx_in|chiprx_in)
+                    method="chiprx_alpha_in"
+                    ;;
+                rxinput_alpha|alpha_rxinput|rxi_alpha|alpha_rxi|rxinput|rxi)
+                    method="rxinput_alpha"
+                    ;;
+                *)
+                    echo_err \
+                        "spike method ('--method') was assigned '${method}'" \
+                        "but is not recognized."
+                    return 1
+                    ;;
+            esac
+            ;;
 
-case "${aln_typ}" in
-    pe|paired) aln_typ="pe" ;;
-    se|single) aln_typ="se" ;;
-    auto) : ;;
-    *)
-        echo_err \
-            "alignment type ('--aln_typ') was assigned '${aln_typ}' but" \
-            "must be 'pe', 'se', or 'auto'."
-        exit 1
-        ;;
-esac
-
-validate_var "fil_out" "${fil_out}"
-
-if [[ "${fil_out}" == "-" ]]; then
-    echo_err "'-' is not allowed for '--fil_out' in this wrapper."
-    exit 1
-fi
-
-validate_var_dir "fil_out parent directory" "$(dirname "${fil_out}")"
-
-if [[ -e "${fil_out}" && "${force}" == "false" ]]; then
-    echo_err \
-        "output file already exists: '${fil_out}'." \
-        "Supply '--force' to replace it."
-    exit 1
-fi
-
-if [[ "${mode}" == "siq" ]]; then
-    validate_var_file "tbl_met" "${tbl_met}"
-
-    validate_var_file "cfg_met" "${cfg_met}"
-
-    validate_var "eqn" "${eqn}"
-
-    case "${eqn}" in
-        5|5nd|6|6nd) : ;;
         *)
             echo_err \
-                "equation ('--eqn') was assigned '${eqn}' but must be '5'," \
-                "'5nd', '6', or '6nd'."
-            exit 1
+                "scaling-factor mode ('--mode') was assigned '${mode}' but" \
+                "must be 'siq' or 'spike'."
+            return 1
             ;;
     esac
 
-    if [[
-             "${aln_typ}" == "se" \
-        &&   -z "${len_def}" \
-        && ( -z "${len_mip}" || -z "${len_min}" )
-    ]]; then
+    case "${aln_typ}" in
+        pe|paired) aln_typ="pe" ;;
+        se|single) aln_typ="se" ;;
+        auto) : ;;
+        *)
+            echo_err \
+                "alignment type ('--aln_typ') was assigned '${aln_typ}'" \
+                "but must be 'pe', 'se', or 'auto'."
+            return 1
+            ;;
+    esac
+}
+
+
+#  Validate scalar arguments and assign derived scalar defaults
+function validate_args() {
+    validate_var "env_nam" "${env_nam}" || return 1
+    check_env_installed "${env_nam}" || return 1
+
+    validate_var_dir  "dir_scr" "${dir_scr}" 0 false || return 1
+
+    validate_var_file "scr_cmb" "${scr_cmb}" || return 1
+
+    validate_var_file "scr_hdr" "${scr_hdr}" || return 1
+
+    validate_var_file "scr_sub" "${scr_sub}" || return 1
+
+    validate_var "threads" "${threads}" || return 1
+    check_int_pos "${threads}" "threads" || return 1
+
+    validate_var "csv_mip" "${csv_mip}" || return 1
+    validate_var_dir "csv_mip parent directory" \
+        "$(dirname "${csv_mip%%[,;]*}")" 0 false || return 1
+    check_str_delim "csv_mip" "${csv_mip}" || return 1
+
+    validate_var "csv_min" "${csv_min}" || return 1
+    validate_var_dir "csv_min parent directory" \
+        "$(dirname "${csv_min%%[,;]*}")" 0 false || return 1
+    check_str_delim "csv_min" "${csv_min}" || return 1
+
+    if [[ "${mode}" == "spike" ]]; then
+        validate_var "csv_sip" "${csv_sip}" || return 1
+        validate_var_dir "csv_sip parent directory" \
+            "$(dirname "${csv_sip%%[,;]*}")" 0 false || return 1
+        check_str_delim "csv_sip" "${csv_sip}" || return 1
+
+        validate_var "csv_sin" "${csv_sin}" || return 1
+        validate_var_dir "csv_sin parent directory" \
+            "$(dirname "${csv_sin%%[,;]*}")" 0 false || return 1
+        check_str_delim "csv_sin" "${csv_sin}" || return 1
+    fi
+
+    validate_var "fil_out" "${fil_out}" || return 1
+
+    if [[ "${fil_out}" == "-" ]]; then
+        echo_err "'-' is not allowed for '--fil_out' in this wrapper."
+        return 1
+    fi
+
+    validate_var_dir "fil_out parent directory" "$(dirname "${fil_out}")" \
+        || return 1
+
+    if [[ -e "${fil_out}" && "${force}" == "false" ]]; then
         echo_err \
-            "for '--mode siq' with SE data, supply '--len_def' or both" \
-            "'--len_mip' and '--len_min'."
-        exit 1
+            "output file already exists: '${fil_out}'." \
+            "Supply '--force' to replace it."
+        return 1
     fi
 
-    unset csv_sip csv_sin dep_sip dep_sin
-else
-    unset tbl_met cfg_met eqn
-fi
-
-if [[ -n "${len_def}" ]]; then check_int_pos "${len_def}" "len_def"; fi
-
-validate_var "dp" "${dp}"
-check_int_pos "${dp}" "dp"
-
-if [[ -z "${err_out}" ]]; then err_out="$(dirname "${fil_out}")/logs"; fi
-validate_var_dir "err_out" "${err_out}"
-
-if [[ -z "${nam_job}" ]]; then
     if [[ "${mode}" == "siq" ]]; then
-        nam_job="calc_sf_siq_${eqn}"
+        validate_var_file "tbl_met" "${tbl_met}" || return 1
+
+        validate_var_file "cfg_met" "${cfg_met}" || return 1
+
+        validate_var "eqn" "${eqn}" || return 1
+
+        case "${eqn}" in
+            5|5nd|6|6nd) : ;;
+            *)
+                echo_err \
+                    "equation ('--eqn') was assigned '${eqn}' but must be" \
+                    "'5', '5nd', '6', or '6nd'."
+                return 1
+                ;;
+        esac
+
+        if [[
+                 "${aln_typ}" == "se" \
+            &&   -z "${len_def}" \
+            && ( -z "${len_mip}" || -z "${len_min}" )
+        ]]; then
+            echo_err \
+                "for '--mode siq' with SE data, supply '--len_def' or both" \
+                "'--len_mip' and '--len_min'."
+            return 1
+        fi
+
+        unset csv_sip csv_sin dep_sip dep_sin
     else
-        nam_job="calc_sf_spike_${method}"
+        unset tbl_met cfg_met eqn
     fi
-fi
 
-validate_var "nam_job" "${nam_job}"
+    if [[ -n "${len_def}" ]]; then
+        check_int_pos "${len_def}" "len_def" || return 1
+    fi
+
+    validate_var "dp" "${dp}" || return 1
+    check_int_pos "${dp}" "dp" || return 1
+
+    if [[ -z "${err_out}" ]]; then err_out="$(dirname "${fil_out}")/logs"; fi
+    validate_var_dir "err_out" "${err_out}" || return 1
+
+    if [[ -z "${nam_job}" ]]; then
+        if [[ "${mode}" == "siq" ]]; then
+            nam_job="calc_sf_siq_${eqn}"
+        else
+            nam_job="calc_sf_spike_${method}"
+        fi
+    fi
+
+    validate_var "nam_job" "${nam_job}" || return 1
+}
 
 
-#  Parse and validate input vector elements -----------------------------------
-unset arr_mip arr_min && declare -a arr_mip arr_min
-IFS=',' read -r -a arr_mip <<< "${csv_mip}"
-IFS=',' read -r -a arr_min <<< "${csv_min}"
+#  Parse input and optional override vectors
+function prepare_vecs() {
+    unset arr_mip arr_min && declare -ga arr_mip arr_min
+    IFS=',' read -r -a arr_mip <<< "${csv_mip}"
+    IFS=',' read -r -a arr_min <<< "${csv_min}"
 
-check_arr_nonempty "arr_mip" "csv_mip"
-check_arr_nonempty "arr_min" "csv_min"
-check_arr_lengths  "arr_mip" "arr_min"
+    if [[ "${mode}" == "spike" ]]; then
+        unset arr_sip arr_sin && declare -ga arr_sip arr_sin
 
-for file in "${arr_mip[@]}" "${arr_min[@]}"; do
-    validate_var_file "file" "${file}"
-done
-unset file
+        IFS=',' read -r -a arr_sip <<< "${csv_sip}"
+        IFS=',' read -r -a arr_sin <<< "${csv_sin}"
+    fi
 
-if [[ "${mode}" == "spike" ]]; then
-    unset arr_sip arr_sin && declare -a arr_sip arr_sin
+    #  Parse optional override vectors
+    unset \
+        arr_len_mip arr_len_min \
+        arr_dep_mip arr_dep_min arr_dep_sip arr_dep_sin
+    declare -ga \
+        arr_len_mip=() arr_len_min=() \
+        arr_dep_mip=() arr_dep_min=() arr_dep_sip=() arr_dep_sin=()
 
-    IFS=',' read -r -a arr_sip <<< "${csv_sip}"
-    IFS=',' read -r -a arr_sin <<< "${csv_sin}"
+    if [[ -n "${len_mip}" ]]; then
+        IFS=',' read -r -a arr_len_mip <<< "${len_mip}"
+    fi
 
-    check_arr_nonempty "arr_sip" "csv_sip"
-    check_arr_nonempty "arr_sin" "csv_sin"
-    check_arr_lengths  "arr_sip" "arr_sin"
-    check_arr_lengths  "arr_sip" "arr_mip"
+    if [[ -n "${len_min}" ]]; then
+        IFS=',' read -r -a arr_len_min <<< "${len_min}"
+    fi
 
-    for file in "${arr_sip[@]}" "${arr_sin[@]}"; do
-        validate_var_file "file" "${file}"
+    if [[ -n "${dep_mip}" ]]; then
+        IFS=',' read -r -a arr_dep_mip <<< "${dep_mip}"
+    fi
+
+    if [[ -n "${dep_min}" ]]; then
+        IFS=',' read -r -a arr_dep_min <<< "${dep_min}"
+    fi
+
+    if [[ "${mode}" == "spike" && -n "${dep_sip}" ]]; then
+        IFS=',' read -r -a arr_dep_sip <<< "${dep_sip}"
+    fi
+
+    if [[ "${mode}" == "spike" && -n "${dep_sin}" ]]; then
+        IFS=',' read -r -a arr_dep_sin <<< "${dep_sin}"
+    fi
+}
+
+
+#  Validate prepared input and override vectors
+function validate_vecs() {
+    check_arr_nonempty "arr_mip" "csv_mip" || return 1
+    check_arr_nonempty "arr_min" "csv_min" || return 1
+    check_arr_lengths  "arr_mip" "arr_min" || return 1
+
+    for file in "${arr_mip[@]}" "${arr_min[@]}"; do
+        validate_var_file "file" "${file}" || return 1
     done
     unset file
-fi
 
-need_ref=false
-arr_aln=( "${arr_mip[@]}" "${arr_min[@]}" )
+    if [[ "${mode}" == "spike" ]]; then
+        check_arr_nonempty "arr_sip" "csv_sip" || return 1
+        check_arr_nonempty "arr_sin" "csv_sin" || return 1
+        check_arr_lengths  "arr_sip" "arr_sin" || return 1
+        check_arr_lengths  "arr_sip" "arr_mip" || return 1
 
-if [[ "${mode}" == "spike" ]]; then
-    arr_aln+=( "${arr_sip[@]}" "${arr_sin[@]}" )
-fi
-
-for file in "${arr_aln[@]}"; do
-    if [[ "${file,,}" == *.cram ]]; then
-        need_ref=true
-        break
+        for file in "${arr_sip[@]}" "${arr_sin[@]}"; do
+            validate_var_file "file" "${file}" || return 1
+        done
+        unset file
     fi
-done
-unset arr_aln file
 
-if [[ "${need_ref}" == "true" && -z "${ref_fa}" ]]; then
-    echo_err "'--ref_fa' is required when an input alignment file is CRAM."
-    exit 1
-fi
+    need_ref=false
+    arr_aln=( "${arr_mip[@]}" "${arr_min[@]}" )
 
-if [[ -n "${ref_fa}" ]]; then
-    validate_var_file "ref_fa" "${ref_fa}"
-fi
-unset need_ref
+    if [[ "${mode}" == "spike" ]]; then
+        arr_aln+=( "${arr_sip[@]}" "${arr_sin[@]}" )
+    fi
 
-#  Parse optional override vectors
-unset \
-    arr_len_mip arr_len_min \
-    arr_dep_mip arr_dep_min arr_dep_sip arr_dep_sin
-declare -a \
-    arr_len_mip=() arr_len_min=() \
-    arr_dep_mip=() arr_dep_min=() arr_dep_sip=() arr_dep_sin=()
+    for file in "${arr_aln[@]}"; do
+        if [[ "${file,,}" == *.cram ]]; then
+            need_ref=true
+            break
+        fi
+    done
+    unset arr_aln file
 
-if [[ -n "${len_mip}" ]]; then
-    IFS=',' read -r -a arr_len_mip <<< "${len_mip}"
-fi
+    if [[ "${need_ref}" == "true" && -z "${ref_fa}" ]]; then
+        echo_err "'--ref_fa' is required when an input alignment file is CRAM."
+        return 1
+    fi
 
-if [[ -n "${len_min}" ]]; then
-    IFS=',' read -r -a arr_len_min <<< "${len_min}"
-fi
+    if [[ -n "${ref_fa}" ]]; then
+        validate_var_file "ref_fa" "${ref_fa}" || return 1
+    fi
+    unset need_ref
 
-if [[ -n "${dep_mip}" ]]; then
-    IFS=',' read -r -a arr_dep_mip <<< "${dep_mip}"
-fi
-
-if [[ -n "${dep_min}" ]]; then
-    IFS=',' read -r -a arr_dep_min <<< "${dep_min}"
-fi
-
-if [[ "${mode}" == "spike" && -n "${dep_sip}" ]]; then
-    IFS=',' read -r -a arr_dep_sip <<< "${dep_sip}"
-fi
-
-if [[ "${mode}" == "spike" && -n "${dep_sin}" ]]; then
-    IFS=',' read -r -a arr_dep_sin <<< "${dep_sin}"
-fi
-
-check_arr_len_bcst \
-    "${#arr_mip[@]}" \
-    arr_len_mip arr_len_min arr_dep_mip arr_dep_min
-
-if [[ "${mode}" == "spike" ]]; then
     check_arr_len_bcst \
         "${#arr_mip[@]}" \
-        arr_dep_sip arr_dep_sin
-fi
+        arr_len_mip arr_len_min arr_dep_mip arr_dep_min \
+        || return 1
 
-#  Check optional override-vector values after broadcast-compatible lengths are
-#+ known
-if (( ${#arr_len_mip[@]} > 0 )); then
-    check_arr_num_pos arr_len_mip len_mip
-fi
-
-if (( ${#arr_len_min[@]} > 0 )); then
-    check_arr_num_pos arr_len_min len_min
-fi
-
-if (( ${#arr_dep_mip[@]} > 0 )); then
-    check_arr_int_pos arr_dep_mip dep_mip
-fi
-
-if (( ${#arr_dep_min[@]} > 0 )); then
-    check_arr_int_pos arr_dep_min dep_min
-fi
-
-if [[ "${mode}" == "spike" ]]; then
-    if (( ${#arr_dep_sip[@]} > 0 )); then
-        check_arr_int_pos arr_dep_sip dep_sip
+    if [[ "${mode}" == "spike" ]]; then
+        check_arr_len_bcst \
+            "${#arr_mip[@]}" \
+            arr_dep_sip arr_dep_sin \
+            || return 1
     fi
 
-    if (( ${#arr_dep_sin[@]} > 0 )); then
-        check_arr_int_pos arr_dep_sin dep_sin
+    #  Check optional override-vector values after broadcast-compatible lengths
+    #+ are known
+    if (( ${#arr_len_mip[@]} > 0 )); then
+        check_arr_num_pos arr_len_mip len_mip || return 1
     fi
-fi
 
-#  Build the final-table combination command from expected part-file paths
-build_cmd_cmb
-build_cmd_hdr
+    if (( ${#arr_len_min[@]} > 0 )); then
+        check_arr_num_pos arr_len_min len_min || return 1
+    fi
 
+    if (( ${#arr_dep_mip[@]} > 0 )); then
+        check_arr_int_pos arr_dep_mip dep_mip || return 1
+    fi
 
-#  Parse job execution parameters ---------------------------------------------
-validate_var "max_job" "${max_job}"
-check_int_pos "${max_job}" "max_job"
+    if (( ${#arr_dep_min[@]} > 0 )); then
+        check_arr_int_pos arr_dep_min dep_min || return 1
+    fi
 
-if [[ "${slurm}" == "true" ]]; then
-    max_job="$(reset_max_job "${max_job}" "${#arr_mip[@]}")"
+    if [[ "${mode}" == "spike" ]]; then
+        if (( ${#arr_dep_sip[@]} > 0 )); then
+            check_arr_int_pos arr_dep_sip dep_sip || return 1
+        fi
 
-    validate_var "time" "${time}"
-    check_format_time "${time}"
-elif [[ "${max_job}" -le 1 ]]; then
-    #  Serial local execution does not require parallel job detection
-    par_job=1
-    unset time
-
-    validate_var "par_job" "${par_job}"
-    check_int_pos "${par_job}" "par_job"
-else
-    IFS=';' read -r threads par_job < <(
-        set_params_parallel "${threads}" "${max_job}"
-    ) || exit 1
-    unset time
-
-    validate_var "par_job" "${par_job}"
-    check_int_pos "${par_job}" "par_job"
-fi
-
-#  Debug parallelization information
-if [[ "${mode}" == "spike" ]]; then
-    unset extra && typeset -a extra
-    extra=( "arr_sip" "arr_sin" )
-fi
-
-print_parallel_info \
-    "${slurm}" "${max_job:-UNSET}" "${par_job}" "${threads}" \
-    "arr_mip" "arr_min" "${extra[@]}"
-
-if [[ "${mode}" == "spike" ]]; then unset extra; fi
+        if (( ${#arr_dep_sin[@]} > 0 )); then
+            check_arr_int_pos arr_dep_sin dep_sin || return 1
+        fi
+    fi
+}
 
 
-#  Activate environment and check that dependencies are in PATH ---------------
-env_msg=(
-    "'handle_env' failed for 'env_nam=${env_nam}'. Check that Conda/Mamba are"
-    "available and that the environment exists."
-)
+#  Build final-table combination and header commands
+function build_final_cmds() {
+    build_cmd_cmb || return 1
+    build_cmd_hdr || return 1
+}
 
-if [[ "${verbose}" == "true" ]]; then
-    if out="$(handle_env "${env_nam}")"; then
-        print_banner_pretty -tx "${out:-"${env_nam} already active."}" -w "%"
-        echo
-        echo
+
+#  Configure local, GNU Parallel, or Slurm execution
+function config_exec() {
+    validate_var "max_job" "${max_job}" || return 1
+    check_int_pos "${max_job}" "max_job" || return 1
+
+    if [[ "${slurm}" == "true" ]]; then
+        max_job="$(reset_max_job "${max_job}" "${#arr_mip[@]}")"
+
+        validate_var "time" "${time}" || return 1
+        check_format_time "${time}" || return 1
+    elif [[ "${max_job}" -le 1 ]]; then
+        #  Serial local execution does not require parallel job detection
+        par_job=1
+        unset time
+
+        validate_var "par_job" "${par_job}" || return 1
+        check_int_pos "${par_job}" "par_job" || return 1
     else
-        echo_err "${env_msg[*]}"
-        exit 1
+        IFS=';' read -r threads par_job < <(
+            set_params_parallel "${threads}" "${max_job}"
+        ) || return 1
+        unset time
+
+        validate_var "par_job" "${par_job}" || return 1
+        check_int_pos "${par_job}" "par_job" || return 1
     fi
-else
-    if ! handle_env "${env_nam}" > /dev/null 2>&1; then
-        echo_err "${env_msg[*]}"
-        exit 1
-    fi
-fi
 
-check_pgrm_path awk
-check_pgrm_path python
-check_pgrm_path samtools
-
-if [[ "${slurm}" == "true" ]]; then
-    check_pgrm_path sbatch
-elif [[ "${par_job}" -gt 1 ]]; then
-    check_pgrm_path parallel
-fi
-
-
-#  Do the main work ===========================================================
-#  Report argument variable assignments if in "verbose mode"
-if [[ "${verbose}" == "true" ]]; then
-    print_banner_pretty "Hardcoded variable assignments"
-    echo
-    echo "env_nam=${env_nam}"
-    echo "dir_scr=${dir_scr}"
-    echo "scr_sub=${scr_sub}"
-    echo "scr_cmb=${scr_cmb}"
-    echo "scr_hdr=${scr_hdr}"
-    echo "par_job=${par_job:-UNSET}"
-    echo
-    echo
-
-    print_banner_pretty "Argument variable assignments"
-    echo
-    echo "verbose=${verbose}"
-    echo "dry_run=${dry_run}"
-    echo "threads=${threads}"
-    echo
-    echo "mode=${mode}"
-    echo "method=${method:-UNSET}"
-    echo
-    echo "csv_mip=${csv_mip}"
-    echo "csv_min=${csv_min}"
-    echo "csv_sip=${csv_sip:-UNSET}"
-    echo "csv_sin=${csv_sin:-UNSET}"
-    echo "aln_typ=${aln_typ}"
-    echo "ref_fa=${ref_fa:-UNSET}"
-    echo "fil_out=${fil_out}"
-    echo "force=${force}"
-    echo "no_parts=${no_parts}"
-    echo "no_header=${no_header}"
-    echo
-    echo "tbl_met=${tbl_met:-UNSET}"
-    echo "cfg_met=${cfg_met:-UNSET}"
-    echo "eqn=${eqn:-UNSET}"
-    echo
-    echo "len_def=${len_def:-UNSET}"
-    echo "len_mip=${len_mip:-UNSET}"
-    echo "len_min=${len_min:-UNSET}"
-    echo "dep_mip=${dep_mip:-UNSET}"
-    echo "dep_min=${dep_min:-UNSET}"
-    echo "dep_sip=${dep_sip:-UNSET}"
-    echo "dep_sin=${dep_sin:-UNSET}"
-    echo
-    echo "dp=${dp}"
-    echo "err_out=${err_out}"
-    echo "nam_job=${nam_job}"
-    echo "max_job=${max_job:-UNSET}"
-    echo "slurm=${slurm}"
-    echo "time=${time:-UNSET}"
-    echo
-    echo
-
-    print_banner_pretty "Arrays derived from variables"
-    echo
-    echo "arr_mip=( ${arr_mip[*]} )"
-    echo
-    echo "arr_min=( ${arr_min[*]} )"
-    echo
-
+    #  Debug parallelization information
     if [[ "${mode}" == "spike" ]]; then
-        echo "arr_sip=( ${arr_sip[*]} )"
-        echo
-        echo "arr_sin=( ${arr_sin[*]} )"
-        echo
+        unset extra && typeset -a extra
+        extra=( "arr_sip" "arr_sin" )
     fi
 
-    echo "arr_len_mip=( ${arr_len_mip[*]} )"
-    echo
-    echo "arr_len_min=( ${arr_len_min[*]} )"
-    echo
-    echo "arr_dep_mip=( ${arr_dep_mip[*]} )"
-    echo
-    echo "arr_dep_min=( ${arr_dep_min[*]} )"
-    echo
+    print_parallel_info \
+        "${slurm}" "${max_job:-UNSET}" "${par_job}" "${threads}" \
+        "arr_mip" "arr_min" "${extra[@]}" \
+        || return 1
 
-    if [[ "${mode}" == "spike" ]]; then
-        echo "arr_dep_sip=( ${arr_dep_sip[*]} )"
-        echo
-        echo "arr_dep_sin=( ${arr_dep_sin[*]} )"
-        echo
-    fi
+    if [[ "${mode}" == "spike" ]]; then unset extra; fi
+}
 
-    echo "arr_prt=( ${arr_prt[*]} )"
-    echo
 
-    echo
-fi
+#  Activate environment
+function setup_env() {
+    local msg_env out
+    local -a env_msg
 
-if [[ "${slurm}" == "true" ]]; then
-    #  Slurm execution
-    build_cmd "UNSET"
-
-    unset cmd_slurm && declare -a cmd_slurm
-    cmd_slurm=(
-        sbatch
-            --parsable
-            --job-name="${nam_job}"
-            --nodes=1
-            --cpus-per-task="${threads}"
-            --time="${time}"
-            --output="${err_out}/${nam_job}.%A-%a.stdout.txt"
-            --error="${err_out}/${nam_job}.%A-%a.stderr.txt"
-            --array="1-${#arr_mip[@]}%${max_job}"
-            "${cmd_bld[@]}"
+    env_msg=(
+        "'handle_env' failed for 'env_nam=${env_nam}'. Check that"
+        "Conda/Mamba are available and that the environment exists."
     )
 
-    if [[ "${dry_run}" == "true" || "${verbose}" == "true" ]]; then
-        print_banner_pretty "Call to 'sbatch'"
+    if [[ "${verbose}" == "true" ]]; then
+        if out="$(handle_env "${env_nam}")"; then
+            msg_env="${out:-"${env_nam} already active."}"
+            print_banner_pretty -tx "${msg_env}" -w "%"
+            echo
+            echo
+        else
+            echo_err "${env_msg[*]}"
+            return 1
+        fi
+    else
+        if ! handle_env "${env_nam}" > /dev/null 2>&1; then
+            echo_err "${env_msg[*]}"
+            return 1
+        fi
+    fi
+}
+
+
+#  Check tools needed by the selected dispatch mode
+function check_tools() {
+    check_pgrm_path awk || return 1
+    check_pgrm_path python || return 1
+    check_pgrm_path samtools || return 1
+
+    if [[ "${slurm}" == "true" ]]; then
+        check_pgrm_path sbatch || return 1
+    elif [[ "${par_job}" -gt 1 ]]; then
+        check_pgrm_path parallel || return 1
+    fi
+}
+
+
+#  Report argument variable assignments if in verbose mode
+function print_state_debug() {
+    if [[ "${verbose}" == "true" ]]; then
+        print_banner_pretty "Hardcoded variable assignments"
         echo
-        printf '%q ' "${cmd_slurm[@]}"
+        echo "env_nam=${env_nam}"
+        echo "dir_scr=${dir_scr}"
+        echo "scr_sub=${scr_sub}"
+        echo "scr_cmb=${scr_cmb}"
+        echo "scr_hdr=${scr_hdr}"
+        echo "par_job=${par_job:-UNSET}"
         echo
+        echo
+
+        print_banner_pretty "Argument variable assignments"
+        echo
+        echo "verbose=${verbose}"
+        echo "dry_run=${dry_run}"
+        echo "threads=${threads}"
+        echo
+        echo "mode=${mode}"
+        echo "method=${method:-UNSET}"
+        echo
+        echo "csv_mip=${csv_mip}"
+        echo "csv_min=${csv_min}"
+        echo "csv_sip=${csv_sip:-UNSET}"
+        echo "csv_sin=${csv_sin:-UNSET}"
+        echo "aln_typ=${aln_typ}"
+        echo "ref_fa=${ref_fa:-UNSET}"
+        echo "fil_out=${fil_out}"
+        echo "force=${force}"
+        echo "no_parts=${no_parts}"
+        echo "no_header=${no_header}"
+        echo
+        echo "tbl_met=${tbl_met:-UNSET}"
+        echo "cfg_met=${cfg_met:-UNSET}"
+        echo "eqn=${eqn:-UNSET}"
+        echo
+        echo "len_def=${len_def:-UNSET}"
+        echo "len_mip=${len_mip:-UNSET}"
+        echo "len_min=${len_min:-UNSET}"
+        echo "dep_mip=${dep_mip:-UNSET}"
+        echo "dep_min=${dep_min:-UNSET}"
+        echo "dep_sip=${dep_sip:-UNSET}"
+        echo "dep_sin=${dep_sin:-UNSET}"
+        echo
+        echo "dp=${dp}"
+        echo "err_out=${err_out}"
+        echo "nam_job=${nam_job}"
+        echo "max_job=${max_job:-UNSET}"
+        echo "slurm=${slurm}"
+        echo "time=${time:-UNSET}"
+        echo
+        echo
+
+        print_banner_pretty "Arrays derived from variables"
+        echo
+        echo "arr_mip=( ${arr_mip[*]} )"
+        echo
+        echo "arr_min=( ${arr_min[*]} )"
+        echo
+
+        if [[ "${mode}" == "spike" ]]; then
+            echo "arr_sip=( ${arr_sip[*]} )"
+            echo
+            echo "arr_sin=( ${arr_sin[*]} )"
+            echo
+        fi
+
+        echo "arr_len_mip=( ${arr_len_mip[*]} )"
+        echo
+        echo "arr_len_min=( ${arr_len_min[*]} )"
+        echo
+        echo "arr_dep_mip=( ${arr_dep_mip[*]} )"
+        echo
+        echo "arr_dep_min=( ${arr_dep_min[*]} )"
+        echo
+
+        if [[ "${mode}" == "spike" ]]; then
+            echo "arr_dep_sip=( ${arr_dep_sip[*]} )"
+            echo
+            echo "arr_dep_sin=( ${arr_dep_sin[*]} )"
+            echo
+        fi
+
+        echo "arr_prt=( ${arr_prt[*]} )"
+        echo
+
         echo
     fi
+}
 
-    if [[ "${dry_run}" == "false" ]]; then
-        if ! raw_job="$("${cmd_slurm[@]}")"; then
-            echo_err "failed to submit scaling-factor Slurm array."
-            exit 1
+
+#  Dispatch Slurm, GNU Parallel, or serial jobs
+function run_jobs() {
+    if [[ "${slurm}" == "true" ]]; then
+        #  Slurm execution
+        build_cmd "UNSET" || return 1
+
+        unset cmd_slurm && declare -a cmd_slurm
+        cmd_slurm=(
+            sbatch
+                --parsable
+                --job-name="${nam_job}"
+                --nodes=1
+                --cpus-per-task="${threads}"
+                --time="${time}"
+                --output="${err_out}/${nam_job}.%A-%a.stdout.txt"
+                --error="${err_out}/${nam_job}.%A-%a.stderr.txt"
+                --array="1-${#arr_mip[@]}%${max_job}"
+                "${cmd_bld[@]}"
+        )
+
+        if [[ "${dry_run}" == "true" || "${verbose}" == "true" ]]; then
+            print_banner_pretty "Call to 'sbatch'"
+            echo
+            printf '%q ' "${cmd_slurm[@]}"
+            echo
+            echo
         fi
 
-        id_job="${raw_job%%;*}"
+        if [[ "${dry_run}" == "false" ]]; then
+            if ! raw_job="$("${cmd_slurm[@]}")"; then
+                echo_err "failed to submit scaling-factor Slurm array."
+                return 1
+            fi
 
-        if ! [[ "${id_job}" =~ ^[1-9][0-9]*$ ]]; then
-            echo_err \
-                "could not resolve Slurm array job ID from sbatch output:" \
-                "'${raw_job}'."
-            exit 1
-        fi
+            id_job="${raw_job%%;*}"
 
-        echo "Submitted batch job ${id_job}"
+            if ! [[ "${id_job}" =~ ^[1-9][0-9]*$ ]]; then
+                echo_err \
+                    "could not resolve Slurm array job ID from sbatch output:" \
+                    "'${raw_job}'."
+                return 1
+            fi
 
-        build_cmd_cmb_slurm "${id_job}"
+            echo "Submitted batch job ${id_job}"
 
-        if [[ "${verbose}" == "true" ]]; then
+            build_cmd_cmb_slurm "${id_job}" || return 1
+
+            if [[ "${verbose}" == "true" ]]; then
+                print_banner_pretty "Call to dependent combiner 'sbatch'"
+                echo
+                printf '%q ' "${cmd_cmb_slurm[@]}"
+                echo
+                echo
+            fi
+
+            if ! raw_cmb="$("${cmd_cmb_slurm[@]}")"; then
+                echo_err \
+                    "submitted scaling-factor Slurm array '${id_job}' but" \
+                    "failed to submit its dependent combiner job."
+                echo "Run the combiner manually after array completion:" >&2
+                printf '  %q ' "${cmd_cmb[@]}" >&2
+                echo >&2
+                return 1
+            fi
+
+            id_cmb="${raw_cmb%%;*}"
+
+            if ! [[ "${id_cmb}" =~ ^[1-9][0-9]*$ ]]; then
+                echo_err \
+                    "could not resolve dependent combiner job ID from sbatch" \
+                    "output: '${raw_cmb}'."
+                return 1
+            fi
+
+            echo "Submitted dependent combiner job ${id_cmb}"
+
+            if [[ "${no_header}" == "false" ]]; then
+                build_cmd_hdr_slurm "${id_cmb}" || return 1
+
+                if [[ "${verbose}" == "true" ]]; then
+                    print_banner_pretty "Call to dependent header 'sbatch'"
+                    echo
+                    printf '%q ' "${cmd_hdr_slurm[@]}"
+                    echo
+                    echo
+                fi
+
+                if ! raw_hdr="$("${cmd_hdr_slurm[@]}")"; then
+                    echo_err \
+                        "submitted dependent combiner job '${id_cmb}' but" \
+                        "failed to submit its dependent header job."
+                    echo \
+                        "Write the header manually after combiner completion:" \
+                        >&2
+                    printf '  %q ' "${cmd_hdr[@]}" >&2
+                    echo >&2
+                    return 1
+                fi
+
+                id_hdr="${raw_hdr%%;*}"
+
+                if ! [[ "${id_hdr}" =~ ^[1-9][0-9]*$ ]]; then
+                    echo_err \
+                        "could not resolve dependent header job ID from" \
+                        "sbatch output: '${raw_hdr}'."
+                    return 1
+                fi
+
+                echo "Submitted dependent header job ${id_hdr}"
+            fi
+        else
+            build_cmd_cmb_slurm "<array_job_id>" || return 1
+
             print_banner_pretty "Call to dependent combiner 'sbatch'"
             echo
             printf '%q ' "${cmd_cmb_slurm[@]}"
             echo
             echo
-        fi
 
-        if ! raw_cmb="$("${cmd_cmb_slurm[@]}")"; then
-            echo_err \
-                "submitted scaling-factor Slurm array '${id_job}' but failed" \
-                "to submit its dependent combiner job."
-            echo "Run the combiner manually after array completion:" >&2
-            printf '  %q ' "${cmd_cmb[@]}" >&2
-            echo >&2
-            exit 1
-        fi
+            if [[ "${no_header}" == "false" ]]; then
+                build_cmd_hdr_slurm "<combine_job_id>" || return 1
 
-        id_cmb="${raw_cmb%%;*}"
-
-        if ! [[ "${id_cmb}" =~ ^[1-9][0-9]*$ ]]; then
-            echo_err \
-                "could not resolve dependent combiner job ID from sbatch" \
-                "output: '${raw_cmb}'."
-            exit 1
-        fi
-
-        echo "Submitted dependent combiner job ${id_cmb}"
-
-        if [[ "${no_header}" == "false" ]]; then
-            build_cmd_hdr_slurm "${id_cmb}"
-
-            if [[ "${verbose}" == "true" ]]; then
                 print_banner_pretty "Call to dependent header 'sbatch'"
                 echo
                 printf '%q ' "${cmd_hdr_slurm[@]}"
                 echo
                 echo
             fi
-
-            if ! raw_hdr="$("${cmd_hdr_slurm[@]}")"; then
-                echo_err \
-                    "submitted dependent combiner job '${id_cmb}' but failed" \
-                    "to submit its dependent header job."
-                echo "Write the header manually after combiner completion:" >&2
-                printf '  %q ' "${cmd_hdr[@]}" >&2
-                echo >&2
-                exit 1
-            fi
-
-            id_hdr="${raw_hdr%%;*}"
-
-            if ! [[ "${id_hdr}" =~ ^[1-9][0-9]*$ ]]; then
-                echo_err \
-                    "could not resolve dependent header job ID from sbatch" \
-                    "output: '${raw_hdr}'."
-                exit 1
-            fi
-
-            echo "Submitted dependent header job ${id_hdr}"
         fi
     else
-        build_cmd_cmb_slurm "<array_job_id>"
+        #  Non-Slurm execution: GNU Parallel ('par_job > 1') or serial
+        #+ ('par_job == 1')
+        if [[ "${par_job}" -gt 1 ]]; then
+            config="${err_out}/${nam_job}.config_parallel.txt"
 
-        print_banner_pretty "Call to dependent combiner 'sbatch'"
-        echo
-        printf '%q ' "${cmd_cmb_slurm[@]}"
-        echo
-        echo
-
-        if [[ "${no_header}" == "false" ]]; then
-            build_cmd_hdr_slurm "<combine_job_id>"
-
-            print_banner_pretty "Call to dependent header 'sbatch'"
-            echo
-            printf '%q ' "${cmd_hdr_slurm[@]}"
-            echo
-            echo
-        fi
-    fi
-else
-    #  Non-Slurm execution: GNU Parallel ('par_job > 1') or serial
-    #+ ('par_job == 1')
-    if [[ "${par_job}" -gt 1 ]]; then
-        config="${err_out}/${nam_job}.config_parallel.txt"
-
-        if [[ -f "${config}" ]]; then rm "${config}"; fi
-
-        for idx in "${!arr_mip[@]}"; do
-            build_cmd "${idx}"
-            cmd_bld=( "${BASH}" "${cmd_bld[@]}" )
-
-            IFS=';' read -r log_out log_err < <(
-                get_submit_logs "${arr_mip[idx]}"
-            )
-
-            {
-                print_built_cmd "${log_out}" "${log_err}"
-            } >> "${config}" || {
-                echo_err "failed to write command, index no. '${idx}'."
-                exit 1
-            }
-        done
-
-        if [[ "${dry_run}" == "true" || "${verbose}" == "true" ]]; then
-            print_banner_pretty "GNU Parallel execution"
-            echo
-            parallel --jobs "${par_job}" --dryrun < "${config}"
-            echo
-            echo
-        fi
-
-        if [[ "${dry_run}" == "false" ]]; then
-            parallel --jobs "${par_job}" < "${config}"
-        fi
-    else
-        if [[ "${dry_run}" == "true" || "${verbose}" == "true" ]]; then
-            print_banner_pretty "Serial execution"
-            echo
+            if [[ -f "${config}" ]]; then rm "${config}"; fi
 
             for idx in "${!arr_mip[@]}"; do
-                build_cmd "${idx}"
+                build_cmd "${idx}" || return 1
                 cmd_bld=( "${BASH}" "${cmd_bld[@]}" )
 
                 IFS=';' read -r log_out log_err < <(
                     get_submit_logs "${arr_mip[idx]}"
                 )
-                print_built_cmd "${log_out}" "${log_err}"
+
+                {
+                    print_built_cmd "${log_out}" "${log_err}"
+                } >> "${config}" || {
+                    echo_err "failed to write command, index no. '${idx}'."
+                    return 1
+                }
+            done
+
+            if [[ "${dry_run}" == "true" || "${verbose}" == "true" ]]; then
+                print_banner_pretty "GNU Parallel execution"
                 echo
-            done
+                parallel --jobs "${par_job}" --dryrun < "${config}" || return 1
+                echo
+                echo
+            fi
 
+            if [[ "${dry_run}" == "false" ]]; then
+                parallel --jobs "${par_job}" < "${config}" || return 1
+            fi
+        else
+            if [[ "${dry_run}" == "true" || "${verbose}" == "true" ]]; then
+                print_banner_pretty "Serial execution"
+                echo
+
+                for idx in "${!arr_mip[@]}"; do
+                    build_cmd "${idx}" || return 1
+                    cmd_bld=( "${BASH}" "${cmd_bld[@]}" )
+
+                    IFS=';' read -r log_out log_err < <(
+                        get_submit_logs "${arr_mip[idx]}"
+                    )
+                    print_built_cmd "${log_out}" "${log_err}"
+                    echo
+                done
+
+                echo
+            fi
+
+            if [[ "${dry_run}" == "false" ]]; then
+                for idx in "${!arr_mip[@]}"; do
+                    build_cmd "${idx}" || return 1
+                    cmd_bld=( "${BASH}" "${cmd_bld[@]}" )
+
+                    IFS=';' read -r log_out log_err < <(
+                        get_submit_logs "${arr_mip[idx]}"
+                    )
+                    "${cmd_bld[@]}" >> "${log_out}" 2>> "${log_err}" \
+                        || return 1
+                done
+            fi
+        fi
+
+        if [[ "${dry_run}" == "true" || "${verbose}" == "true" ]]; then
+            print_banner_pretty "Scaling-factor part combination"
             echo
+            printf '%q ' "${cmd_cmb[@]}"
+            echo
+            echo
+
+            if [[ "${no_header}" == "false" ]]; then
+                print_banner_pretty "Scaling-factor header insertion"
+                echo
+                printf '%q ' "${cmd_hdr[@]}"
+                echo
+                echo
+            fi
         fi
 
         if [[ "${dry_run}" == "false" ]]; then
-            for idx in "${!arr_mip[@]}"; do
-                build_cmd "${idx}"
-                cmd_bld=( "${BASH}" "${cmd_bld[@]}" )
+            "${cmd_cmb[@]}" || return 1
 
-                IFS=';' read -r log_out log_err < <(
-                    get_submit_logs "${arr_mip[idx]}"
-                )
-                "${cmd_bld[@]}" >> "${log_out}" 2>> "${log_err}"
-            done
+            if [[ "${no_header}" == "false" ]]; then
+                "${cmd_hdr[@]}" || return 1
+            fi
         fi
     fi
+}
 
-    if [[ "${dry_run}" == "true" || "${verbose}" == "true" ]]; then
-        print_banner_pretty "Scaling-factor part combination"
-        echo
-        printf '%q ' "${cmd_cmb[@]}"
-        echo
-        echo
 
-        if [[ "${no_header}" == "false" ]]; then
-            print_banner_pretty "Scaling-factor header insertion"
-            echo
-            printf '%q ' "${cmd_hdr[@]}"
-            echo
-            echo
-        fi
+#  Main script execution
+function main() {
+    init_defs
+
+    if [[ -z "${1:-}" || "${1}" =~ ^(-h|--h[e]?lp)$ ]]; then
+        help_execute_calculate_scaling_factor >&2
+        return 0
     fi
 
-    if [[ "${dry_run}" == "false" ]]; then
-        "${cmd_cmb[@]}"
+    parse_args "$@"   || return 1
+    canonicalize_args || return 1
+    validate_args     || return 1
+    prepare_vecs      || return 1
+    validate_vecs     || return 1
+    build_final_cmds  || return 1
+    config_exec       || return 1
+    setup_env         || return 1
+    check_tools       || return 1
+    print_state_debug || return 1
+    run_jobs          || return 1
+}
 
-        if [[ "${no_header}" == "false" ]]; then
-            "${cmd_hdr[@]}"
-        fi
-    fi
-fi
+
+main "$@"
