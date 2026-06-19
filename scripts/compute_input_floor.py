@@ -362,10 +362,6 @@ from scripts.functions.utils_cli import (
     add_help_cap,
     CapArgumentParser,
 )
-from scripts.functions.utils_interactive import (
-    echo_block,
-    get_args_interactive,
-)
 from scripts.functions.utils_io import (
     DEF_SKP_PFX,
     is_header,
@@ -388,103 +384,6 @@ assert sys.version_info >= (3, 10), "Python >= 3.10 required."
 #  Define global default SAM FLAG values
 FLG_PE = {99, 1123, 163, 1187}  # Proper paired-end alignments
 FLG_SE = {0, 16, 1024, 1040}    # Single-end alignments
-
-#  Run script in “interactive mode” (true) or “CLI mode” (false)
-interactive = False
-
-
-def set_interactive(
-    echo: bool = False, ensure: bool = False
-) -> argparse.Namespace:
-    """
-    Return a pre-filled argument namespace for interactive runs.
-
-    Args:
-        echo : bool
-            If True, echo chosen parameters to stderr.
-        ensure : bool
-            If True, perform light validation of the interactive defaults
-            before returning.
-
-    Returns:
-        argparse.Namespace
-            Namespace mirroring the CLI options.
-    """
-
-    #  Set general paths
-    dir_bas = "/home/kalavatt/tsukiyamalab/Kris"
-    dir_rep = f"{dir_bas}/protocol_chipseq_signal_norm"
-    dir_dat = f"{dir_rep}/data"
-    dir_pro = f"{dir_dat}/processed"
-    dir_exp = f"{dir_pro}/2025-08-19"
-    dir_aln = f"{dir_exp}/align_fastqs"
-
-    aln = "bowtie2"
-    atp = "global"
-    flg = 2
-    mpq = 1
-    det = f"{aln}_{atp}_flag-{flg}_mapq-{mpq}"
-    spc = "sc"
-
-    dir_bam = f"{dir_aln}/{det}/{spc}"
-    fil_bam = "in_WT_H3_Q_5781.sc.bam"
-    pth_bam = f"{dir_bam}/{fil_bam}"
-
-    #  Set argument values
-    verbose = True
-    infile = pth_bam
-    infmt = None
-    siz_bin = 10
-    siz_gen = 12157105  # Match 'parse_args' default
-    flags_pe = None
-    flags_se = None
-    mode = "frag"       # "norm" or "dist"
-
-    #  Distribution-mode knobs (used only when 'mode=dist')
-    method = "qntl_nz"
-    qntl_nz = 1.0
-    coef = None
-    floor = 0.0
-    eps = 0.0
-    mode_nz = "closed"
-
-    dp = 24            # Match 'parse_args' default
-    skp_pfx = None
-
-    #  Wrap the arguments in argparse.Namespace
-    ns = argparse.Namespace(
-        verbose=verbose,
-        infile=infile,
-        infmt=infmt,
-        siz_bin=siz_bin,
-        siz_gen=siz_gen,
-        flags_pe=flags_pe,
-        flags_se=flags_se,
-        mode=mode,
-
-        #  'mode=dist' args
-        method=method,
-        qntl_nz=qntl_nz,
-        coef=coef,
-        floor=floor,
-        eps=eps,
-        mode_nz=mode_nz,
-
-        dp=dp,
-        skp_pfx=skp_pfx
-    )
-
-    #  “Echo” the interactive argument assignments (etc.) if specified
-    if echo:
-        echo_block("paths, etc.", {
-            "dir_bas": dir_bas, "dir_rep": dir_rep, "dir_dat": dir_dat,
-            "dir_pro": dir_pro, "dir_exp": dir_exp, "dir_aln": dir_aln,
-            "dir_bam": dir_bam, "fil_bam": fil_bam, "pth_bam": pth_bam
-        })
-        echo_block("args", vars(ns))
-
-    #  Return the argparse.Namespace-wrapped arguments
-    return ns
 
 
 def note_ignored(opt: str, reason: str, val) -> None:
@@ -1331,12 +1230,8 @@ def main(argv: list[str] | None = None) -> int:
         - Prints human-readable error messages to stderr on failure.
         - BrokenPipeError is handled in the '__main__' wrapper.
     """
-    #  Handle interactive or CLI arguments
-    args, early_exit = get_args_interactive(
-        argv, interactive, set_interactive, parse_args
-    )
-    if early_exit:
-        return 0
+    #  Parse CLI arguments
+    args = parse_args(argv)
 
     #  Check arguments
     try:

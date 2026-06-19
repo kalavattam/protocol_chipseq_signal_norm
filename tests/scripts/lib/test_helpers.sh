@@ -728,6 +728,7 @@ function run_case_compute_signal_ratio() {
                 --nam_job "test_submit_compute_ratio_${cas_nam}"
             )
             ;;
+
         execute)
             arr_cmd=(
                 "${TEST_BASH}" "${script}"
@@ -746,6 +747,7 @@ function run_case_compute_signal_ratio() {
                 --max_job 1
             )
             ;;
+
         *)
             record_fail "unknown compute-signal ratio wrapper '${wrap}'"
             return 1
@@ -846,6 +848,24 @@ function assert_file_exact_line() {
         record_pass "${lbl} has expected row"
     else
         record_fail "${lbl} differs from expected; see $(print_relpath "${file}")"
+    fi
+}
+
+
+#  Assert that two files have exactly identical contents
+function assert_files_equal() {
+    local observed="${1:-}"
+    local expected="${2:-}"
+    shift 2 || true
+
+    local lbl="${*:-file content}"
+
+    if \
+        cmp -s "${observed}" "${expected}"
+    then
+        record_pass "${lbl}"
+    else
+        record_fail "${lbl}; see $(print_relpath "${observed}")"
     fi
 }
 
@@ -962,6 +982,7 @@ function run_case_scaling_factor_submit_part() {
 
     local -n arr_cmd_ref="${arr_cmd_nam}"
 
+    #TODO: handle SC2155 here
     local fil_prt="${fil_out}.part.$(printf '%06d' "${idx_out}")"
 
     if \

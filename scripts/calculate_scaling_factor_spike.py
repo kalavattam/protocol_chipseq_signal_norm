@@ -1,10 +1,13 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 #
+# Script: calculate_scaling_factor_spike.py
+#
 # Copyright 2024-2026 by Kris Alavattam
 # Email: kalavattam@gmail.com
 #
-# OpenAI ChatGPT (GPT-4- and GPT-5-series models) was used in development.
+# OpenAI ChatGPT and Codex (GPT-4- and GPT-5-series models) were used in
+# development.
 #
 # Distributed under the MIT license.
 

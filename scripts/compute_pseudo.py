@@ -190,10 +190,6 @@ from scripts.functions.utils_cli import (
     add_help_cap,
     CapArgumentParser,
 )
-from scripts.functions.utils_interactive import (
-    echo_block,
-    get_args_interactive,
-)
 from scripts.functions.utils_io import (
     DEF_SKP_PFX,
     ensure_single_stdin,
@@ -212,80 +208,6 @@ except (AttributeError, ValueError):
     pass
 
 assert sys.version_info >= (3, 10), "Python >= 3.10 required."
-
-#  Run script in “interactive mode” (true) or “CLI mode” (false)
-interactive = False
-
-
-#  Define functions
-def set_interactive(
-    echo: bool = False, ensure: bool = False
-) -> argparse.Namespace:
-    """
-    Set paths and parameters for interactive mode.
-    """
-    #  Set general paths
-    dir_bas = "/home/kalavatt/tsukiyamalab/Kris"
-    dir_rep = f"{dir_bas}/protocol_chipseq_signal_norm"
-    dir_dat = f"{dir_rep}/data"
-    dir_pro = f"{dir_dat}/processed"
-    dir_exp = f"{dir_pro}/2025-09-01"
-    dir_sig = f"{dir_exp}/compute_signal"
-
-    aln = "bowtie2"
-    atp = "global"
-    flg = 2
-    mpq = 1
-    det = f"{aln}_{atp}_flag-{flg}_mapq-{mpq}"
-    sig = "norm"  # "alpha", "norm", "raw", or "spike"
-    spc = "sc"
-    ext = "bdg.gz"
-
-    dir_nrm = f"{dir_sig}/{det}/{sig}"
-    fil_A = f"IP_SIR2-Mcm4-flag_H3_G1-1st_7562.{spc}.{ext}"
-    fil_B = f"in_SIR2-Mcm4-flag_H3_G1-1st_7562.{spc}.{ext}"
-    pth_A = f"{dir_nrm}/{fil_A}"
-    pth_B = f"{dir_nrm}/{fil_B}"
-
-    #  Check that paths exist (optional for debugging/development purposes)
-    if ensure:
-        check_exists(dir_nrm, kind="dir")
-        check_exists(pth_A, kind="file")
-        if pth_B is not None:
-            check_exists(pth_B, kind="file")
-
-    #  Set argument values wrapped in argparse.Namespace
-    ns = argparse.Namespace(
-        verbose=True,
-        fil_A=pth_A,
-        fil_B=pth_B,          # Optional second track, e.g., for per-track
-                              # stats and/or true cross-track symmetrization
-                              # via '--sym'
-        method="frc_mdn_nz",  # Default method: 'frc_mdn_nz'
-        qntl_nz=1.0,          # Only used if '--method qntl_nz'
-        coef=None,            # Let script pick 0.01 or 1.0 (method-dep.)
-        floor=0.0,            # Lower bound on pseudo; set >0 to avoid 0
-        eps=0.0,              # Consider a tiny ε to tolerate float noise
-        mode_nz="closed",     # Epsilon/zero-handling mode
-        sym="none",           # Symmetrization; 'none' keeps A/B separate
-        rnd=24,               # Decimal precision for computed pseudo
-        skp_pfx=",".join(DEF_SKP_PFX),  # bedGraph header/comments to skip
-        prt_jsn=False         # Set True to also emit a JSON summary line
-    )
-
-    #  “Echo” the interactive argument assignments (etc.) if specified
-    if echo:
-        echo_block("paths, etc.", {
-            "dir_bas": dir_bas, "dir_rep": dir_rep, "dir_dat": dir_dat,
-            "dir_pro": dir_pro, "dir_exp": dir_exp, "dir_sig": dir_sig,
-            "dir_nrm": dir_nrm,
-            "fil_A":   fil_A,   "fil_B":   fil_B,
-            "pth_A":   pth_A,   "pth_B":   pth_B,
-        })
-        echo_block("args", vars(ns))
-
-    #  Return the argparse.Namespace-wrapped arguments
-    return ns
 
 
 def combine_pseudo_sym(
@@ -564,7 +486,7 @@ def main(argv: list[str] | None = None) -> None:
             + Strict JSON serialization failure when '--prt_jsn' is set
 
     Behavior:
-        - Parses arguments (or uses interactive defaults if enabled).
+        - Parses CLI arguments.
         - Validates numeric options ('--coef', '--floor', '--eps';
           non-negative).
         - Reads bedGraph(s), extracting column 4 values with optional header
@@ -582,12 +504,8 @@ def main(argv: list[str] | None = None) -> None:
         - Warnings to stderr for empty/non-finite inputs, zero pseudocounts,
           and incompatible symmetrization cases.
     """
-    #  Handle interactive or CLI arguments
-    args, early_exit = get_args_interactive(
-        argv, interactive, set_interactive, parse_args
-    )
-    if early_exit:
-        return
+    #  Parse CLI arguments
+    args = parse_args(argv)
 
     #  Check input file(s) and stdin usage
     paths = [

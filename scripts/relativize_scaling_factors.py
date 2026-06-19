@@ -1,11 +1,16 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 #
-# Copyright 2024 by Kris Alavattam
-# Email: kalavattam@gmail.com
-#
 # Script: relativize_scaling_factors.py
 #
+# Copyright 2024-2026 by Kris Alavattam
+# Email: kalavattam@gmail.com
+#
+# OpenAI ChatGPT and Codex (GPT-4- and GPT-5-series models) were used in
+# development.
+#
+# Distributed under the MIT license.
+
 # Description:
 #     This script reads a TSV file containing ChIP-seq metrics and calculates
 #     a 'scaled' column by dividing each scaling-factor value by the maximum
@@ -49,41 +54,39 @@
 # License:
 #     Distributed under terms of the MIT license.
 
-#  Import libraries
 import argparse
-import pandas as pd  # TODO: Get rid of this; use 'csv' or something like that
+import csv
 import sys
 
 
-#  Run script in “interactive mode” (true) or “CLI mode” (false)
-interactive = False
+def format_scaled(value: float, round_digits: int) -> str:
+    """Format a rounded scaled value without non-informative trailing zeros."""
+    text = f"{round(value, round_digits):.{round_digits}f}"
+    return text.rstrip("0").rstrip(".") if "." in text else text
 
 
-def set_interactive():
-    """Set parameters for interactive mode."""
-    infile = ...  # TODO
-    input = False
-    round = 6
-
-    #  Return the arguments wrapped in argparse.Namespace
-    return argparse.Namespace(
-        infile=infile,
-        input=input,
-        round=round
-    )
-
-
-#  Define functions
 def load_tsv(file_path):
-    """Load a TSV file into a pandas DataFrame."""
-    return pd.read_csv(file_path, sep='\t')
-    # TODO: Remove Pandas as a dependency
+    """Load a TSV file into a header list and row dictionaries."""
+    with open(file_path, "rt", encoding="utf-8", newline="") as fh:
+        reader = csv.DictReader(fh, delimiter="\t")
+        header = reader.fieldnames or []
+        rows = [dict(row) for row in reader]
+
+    if not header:
+        raise ValueError(f"Input TSV has no header: '{file_path}'.")
+
+    if len(set(header)) != len(header):
+        raise ValueError(
+            f"Input TSV has duplicate column names: '{file_path}'."
+        )
+
+    return header, rows
 
 
-def determine_scaling_column(df):
+def determine_scaling_column(header):
     """Determine which supported scaling-factor column should be used."""
     for column in ("siq", "spike"):
-        if column in df.columns:
+        if column in header:
             return column
 
     raise ValueError(
@@ -92,50 +95,85 @@ def determine_scaling_column(df):
     )
 
 
-def relativize(df, scaling_col, include_input, round_digits):
+def relativize(header, rows, scaling_col, include_input, round_digits):
     """
     Calculate the relativized values. If include_input is True, scale 'in_*'
     samples by the largest 'IP_*' value; otherwise, exclude 'in_*' samples from
     the scaling.
     """
+    if "sample" not in header:
+        raise ValueError("Input TSV is missing required column 'sample'.")
+
+    vals_ip = []
+    has_input = False
+
     #  Find the maximum value among 'IP_*' samples (i.e., samples that do not
     #  start with 'in_')
-    ip_samples = df[~df['sample'].str.startswith('in_')]
-    max_value = ip_samples[scaling_col].max()
+    for idx, row in enumerate(rows, start=2):
+        sample = row.get("sample", "")
+        if sample.startswith("in_"):
+            has_input = True
+            continue
+
+        raw = row.get(scaling_col, "")
+        try:
+            vals_ip.append(float(raw))
+        except ValueError as e:
+            raise ValueError(
+                f"Non-numeric '{scaling_col}' value on row {idx}: '{raw}'."
+            ) from e
+
+    if not vals_ip:
+        raise ValueError("Input TSV contains no IP samples to define scaling.")
+
+    max_value = max(vals_ip)
+    if max_value == 0:
+        raise ValueError(
+            "Maximum IP scaling value is zero; cannot relativize."
+        )
 
     #  Check for condition in which --input flag is set and  there are no
     #  'in_*' samples in the TSV table
-    if include_input and df['sample'].str.startswith('in_').sum() == 0:
+    if include_input and not has_input:
         sys.stderr.write(
             "Warning: No 'in_*' samples found in the dataset, "
             "scaling only IP samples.\n"
         )
 
-    if include_input:
-        #  Scale all samples by the largest 'IP_*' value, including 'in_*'
-        #  samples
-        df['scaled'] = df.apply(
-            lambda row: round(row[scaling_col] / max_value, round_digits),
-            axis=1
-        )
-    else:
-        #  Scale only non-input samples by the largest 'IP_*' value
-        df['scaled'] = df.apply(
-            lambda row: (
-                round(row[scaling_col] / max_value, round_digits)
-                if not row['sample'].startswith('in_')
-                else 1
-            ),
-            axis=1
-        )
+    for idx, row in enumerate(rows, start=2):
+        sample = row.get("sample", "")
+        if sample.startswith("in_") and not include_input:
+            row["scaled"] = "1"
+            continue
+
+        raw = row.get(scaling_col, "")
+        try:
+            scaled = float(raw) / max_value
+        except ValueError as e:
+            raise ValueError(
+                f"Non-numeric '{scaling_col}' value on row {idx}: '{raw}'."
+            ) from e
+
+        row["scaled"] = format_scaled(scaled, round_digits)
 
     #  Dynamically reorder columns to place 'scaled' after the scaling factor
-    cols = df.columns.tolist()
-    scaling_index = cols.index(scaling_col) + 1
-    reordered_cols = cols[:scaling_index] + ['scaled'] + cols[scaling_index:-1]
-    df = df[reordered_cols]
+    scaling_index = header.index(scaling_col) + 1
+    header = header[:scaling_index] + ["scaled"] + header[scaling_index:]
 
-    return df
+    return header, rows
+
+
+def write_tsv(header, rows) -> None:
+    """Write row dictionaries as TSV to stdout."""
+    writer = csv.DictWriter(
+        sys.stdout,
+        fieldnames=header,
+        delimiter="\t",
+        lineterminator="\n",
+        extrasaction="ignore",
+    )
+    writer.writeheader()
+    writer.writerows(rows)
 
 
 def parse_args():
@@ -200,23 +238,25 @@ def parse_args():
 
 
 def main():
-    #  Use command line arguments or interactive setup based on `interactive`
-    if interactive:
-        args = set_interactive()
-    else:
+    try:
+        #  Parse CLI arguments
         args = parse_args()
 
-    #  Load the input TSV file
-    df = load_tsv(args.infile)
+        #  Load the input TSV file
+        header, rows = load_tsv(args.infile)
 
-    #  Determine which scaling-factor column to use
-    scaling_col = determine_scaling_column(df)
+        #  Determine which scaling-factor column to use
+        scaling_col = determine_scaling_column(header)
 
-    #  Calculate scaled values
-    df = relativize(df, scaling_col, args.input, args.round)
+        #  Calculate scaled values
+        header, rows = relativize(
+            header, rows, scaling_col, args.input, args.round
+        )
 
-    #  Output the DataFrame with scaled values
-    print(df.to_csv(sep='\t', index=False))
+        #  Output the table with scaled values
+        write_tsv(header, rows)
+    except (OSError, ValueError) as e:
+        raise SystemExit(str(e))
 
 
 if __name__ == "__main__":
