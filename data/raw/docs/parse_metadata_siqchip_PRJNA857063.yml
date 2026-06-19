@@ -1,8 +1,8 @@
-#  Deterministic metadata parser configuration for siQ-ChIP samples
+#  Deterministic siQ-ChIP metadata parser configuration for PRJNA857063
 #+
-#+ The parser strips one alignment extension, strips one configured trailing
-#+ sample suffix, splits the remaining basename on "_", assigns tokens to the
-#+ declared fields, and matches only the fields listed under 'matching.fields'
+#+ This reference expects factor-tagged logical input names such as
+#+ 'in_HeLa_DMSO_H3K18ac_rep1.hs.bam' so shared input runs can be paired with
+#+ factor-specific IP measurements
 #+
 #+ For filename-to-metadata-table matching, users should customize
 #+ - 'filename.fields'
@@ -13,7 +13,7 @@
 #+ so users should customize only the right-side metadata TSV column names
 
 version: 2
-profile: "siqchip-deterministic-default"
+profile: "prjna857063-deterministic"
 
 filename:
     delimiter: "_"
@@ -22,24 +22,23 @@ filename:
         - ".cram"
         - ".sam"
     strip_suffixes:
-        - ".sc"
-        - ".sp"
+        - ".hs"
+        - ".dm"
     fields:
         - assay
-        - genotype
-        - state
+        - cell
+        - treatment
         - factor
         - id
 
 matching:
     fields:
-        - genotype
-        - state
+        - cell
+        - treatment
         - factor
-        - id
 
 field_to_column:
-    id: strain  # 'id' in filename maps to 'strain' in metadata TSV
+    id: replicate  # Parsed but not matched for this no-replicate study
 
 table:
     skip_prefixes:

@@ -6,7 +6,8 @@
 # Copyright 2025-2026 by Kris Alavattam
 # Email: kalavattam@gmail.com
 #
-# OpenAI ChatGPT (GPT-4- and GPT-5-series models) was used in development.
+# OpenAI ChatGPT and Codex (GPT-4- and GPT-5-series models) were used in
+# development.
 #
 # Distributed under the MIT license.
 
@@ -95,14 +96,19 @@ function _get_len_idx() {
 
     show_help=$(cat << EOM
 Usage:
-  _get_len_idx [-h|--hlp|--help] key idx
+  _get_len_idx [--help] key idx
 
 Description:
-  Return the per-sample fragment-length override for a given key and sample index. If the corresponding override array contains exactly one value, that value is broadcast to all sample indices.
+  Return the per-sample fragment-length override for a given key and sample index.
+
+  If the corresponding override array contains exactly one value, that value is broadcast to all sample indices.
 
 Positional arguments:
-  1  key  <str>  Key for which to retrieve the override; must be 'mip' or 'min'.
-  2  idx  <int>  Zero-based sample index.
+  1  key  <str>
+    Key for which to retrieve the override; must be 'mip' or 'min'.
+
+  2  idx  <int>
+    Zero-based sample index.
 
 Returns:
   Prints the matching override value if present and valid.
@@ -182,14 +188,19 @@ function _get_dep_idx() {
 
     show_help=$(cat << EOM
 Usage:
-  _get_dep_idx [-h|--hlp|--help] key idx
+  _get_dep_idx [--help] key idx
 
 Description:
-  Return the per-sample alignment-depth override for a given key and sample index. If the corresponding override array contains exactly one value, that value is broadcast to all sample indices.
+  Return the per-sample alignment-depth override for a given key and sample index.
+
+  If the corresponding override array contains exactly one value, that value is broadcast to all sample indices.
 
 Positional arguments:
-  1  key  <str>  Key for which to retrieve the override; must be 'mip', 'min', 'sip', or 'sin'.
-  2  idx  <int>  Zero-based sample index.
+  1  key  <str>
+    Key for which to retrieve the override; must be 'mip', 'min', 'sip', or 'sin'.
+
+  2  idx  <int>
+    Zero-based sample index.
 
 Returns:
   Prints the matching override value if present and valid.
@@ -295,6 +306,7 @@ function _set_ref_arg_cram() {
     fi
 
     validate_var_file "ref_fa" "${ref_fa}" || return 1
+    # shellcheck disable=SC2034
     arr_ref=( -T "${ref_fa}" )
 }
 
@@ -309,7 +321,7 @@ function _detect_typ_aln() {
 
     show_help=$(cat << EOM
 Usage:
-  _detect_typ_aln [-h|--hlp|--help] fil_aln [n]
+  _detect_typ_aln [--help] fil_aln [n]
 
 Description:
   Detect whether a BAM or CRAM alignment file appears to contain paired-end ("pe") or single-end ("se") alignments by sampling up to 'n' FLAG values from the file.
@@ -317,8 +329,11 @@ Description:
   If any sampled alignment has bit 0x1 set, the file is treated as paired-end; otherwise it is treated as single-end.
 
 Positional arguments:
-  1  fil_aln  <str>  Input BAM or CRAM alignment file.
-  2  n        <int>  Maximum number of alignments to sample (default: 200000).
+  1  fil_aln  <str>
+    Input BAM or CRAM alignment file.
+
+  2  n  <int>
+    Maximum number of alignments to sample (default: 200000).
 
 Returns:
   Prints 'pe' or 'se'.
@@ -392,14 +407,17 @@ function _resolve_typ_fil() {
 
     show_help=$(cat << EOM
 Usage:
-  _resolve_typ_fil [-h|--hlp|--help] fil_aln [pref]
+  _resolve_typ_fil [--help] fil_aln [pref]
 
 Description:
   Resolve the desired library end type for a BAM or CRAM file. If 'pref' is 'pe'/'paired' or 'se'/'single', that choice is returned directly. If 'pref' is 'auto' (or empty), the function calls '_detect_typ_aln' to infer the type from the alignment file.
 
 Positional arguments:
-  1  fil_aln  <str>  Input BAM or CRAM alignment file.
-  2  pref     <str>  Preferred library type; must be 'pe', 'paired', 'se', 'single', 'auto', or empty (default: \${aln_typ:-auto}).
+  1  fil_aln  <str>
+    Input BAM or CRAM alignment file.
+
+  2  pref  <str>
+    Preferred library type; must be 'pe', 'paired', 'se', 'single', 'auto', or empty (default: \${aln_typ:-auto}).
 
 Returns:
   Prints 'pe' or 'se'.
@@ -465,13 +483,14 @@ function _get_expr_filter() {
 
     show_help=$(cat << EOM
 Usage:
-  _get_expr_filter [-h|--hlp|--help] [aln_typ]
+  _get_expr_filter [--help] [aln_typ]
 
 Description:
   Return the 'samtools view --expr' filtering expression corresponding to the requested alignment type.
 
 Positional argument:
-  1  aln_typ  <str>  Alignment type; use 'paired', 'pe', 'single', or 'se' (default: 'pe').
+  1  aln_typ  <str>
+    Alignment type; use 'paired', 'pe', 'single', or 'se' (default: 'pe').
 
 Returns:
   Prints the filtering expression for the requested alignment type.
@@ -529,15 +548,20 @@ function _count_alignments() {
 
     show_help=$(cat << EOM
 Usage:
-  _count_alignments [-h|--hlp|--help] threads fil_aln [aln_typ]
+  _count_alignments [--help] threads fil_aln [aln_typ]
 
 Description:
   Count alignments in a BAM or CRAM file based on whether the data is made up of paired- ("paired" or "pe") or single-end ("single" or "se") sequenced read alignments. Uses 'samtools view' with filtering expressions to count specific alignment flags.
 
 Positional arguments:
-  1  threads  <int>  Number of threads for 'samtools view' decompression.
-  2  fil_aln  <str>  BAM or CRAM alignment file for which to count alignments.
-  3  aln_typ  <str>  Alignment type; options: 'paired', 'pe', 'single', or 'se' (default: ${aln_typ}).
+  1  threads  <int>
+    Number of threads for 'samtools view' decompression.
+
+  2  fil_aln  <str>
+    BAM or CRAM alignment file for which to count alignments.
+
+  3  aln_typ  <str>
+    Alignment type; options: 'paired', 'pe', 'single', or 'se' (default: ${aln_typ}).
 
 Returns:
   An integer representing the count of alignments matching the given type.
@@ -630,16 +654,23 @@ function _calculate_frag_avg() {
 
     show_help=$(cat << EOM
 Usage:
-  _calculate_frag_avg [-h|--hlp|--help] threads fil_aln [aln_typ] [len_lcl]
+  _calculate_frag_avg [--help] threads fil_aln [aln_typ] [len_lcl]
 
 Description:
   Computes the average fragment length from a BAM or CRAM file based on whether the data is paired-end ("paired" or "pe") or single-end ("single" or "se"). Uses 'samtools view' with filtering expressions and 'awk' to process fragment lengths.
 
 Positional arguments:
-  1  threads  <int>  Number of threads for 'samtools view' decompression.
-  2  fil_aln  <str>  BAM or CRAM alignment file for which to compute fragment lengths.
-  3  aln_typ  <str>  Alignment type; options: 'paired', 'pe', 'single', or 'se' (default: 'pe').
-  4  len_lcl  <int>  Default fragment length to use for single-end libraries when TLEN is not meaningful.
+  1  threads  <int>
+    Number of threads for 'samtools view' decompression.
+
+  2  fil_aln  <str>
+    BAM or CRAM alignment file for which to compute fragment lengths.
+
+  3  aln_typ  <str>
+    Alignment type; options: 'paired', 'pe', 'single', or 'se' (default: 'pe').
+
+  4  len_lcl  <int>
+    Default fragment length to use for single-end libraries when TLEN is not meaningful.
 
 Optional global variable:
   Read:
@@ -748,8 +779,8 @@ EOM
             if (count > 0) { print sum / count }
             else {
                 print \
-                    "error(_calculate_frag_avg): no valid fragment " \
-                    "lengths found." > "/dev/stderr"
+                    "error(_calculate_frag_avg): "
+                        "no valid fragment lengths found." > "/dev/stderr"
                 exit 1
             }
         }' || {
@@ -768,7 +799,7 @@ function _compute_scl_fct() {
 
     show_help=$(cat << EOM
 Usage:
-  _compute_scl_fct [-h|--hlp|--help] mode scr_siq scr_spk [args...]
+  _compute_scl_fct [--help] mode scr_siq scr_spk [args...]
 
 Description:
   Compute a scaling coefficient by dispatching to the appropriate Python entry point.
@@ -776,10 +807,17 @@ Description:
   If 'mode' is 'siq', the function runs 'scr_siq'. If 'mode' is 'spike', the function runs 'scr_spk'. Any additional arguments are passed through unchanged to the selected Python script.
 
 Positional arguments:
-  1  mode     <str>  Coefficient family; must be 'siq' or 'spike'.
-  2  scr_siq  <str>  Python entry point for siQ-ChIP coefficient calculation.
-  3  scr_spk  <str>  Python entry point for spike-in coefficient calculation.
-  4+ args     <...>  Additional arguments passed to the selected Python entry point.
+  1  mode  <str>
+    Coefficient family; must be 'siq' or 'spike'.
+
+  2  scr_siq  <str>
+    Python entry point for siQ-ChIP coefficient calculation.
+
+  3  scr_spk  <str>
+    Python entry point for spike-in coefficient calculation.
+
+  4+ args  <...>
+    Additional arguments passed to the selected Python entry point.
 
 Returns:
   Prints the output produced by the selected Python script.
@@ -787,7 +825,7 @@ Returns:
 Note:
   - 'scr_siq' and 'scr_spk' must exist as readable Python entry-point files.
 
-Examples (do not run):
+Examples:
   '''bash
   _compute_scl_fct
       siq
@@ -861,17 +899,16 @@ EOM
 
 function _import_shell_asgmt() {
     local func="${1:-}"
-    local arr_ref="${2:-}"
+    local arr_ref_nam="${2:-}"
     shift 2
 
-    local -n arr_lines="${arr_ref}"
     local -A allowed=()
     local line nam rhs stmt
     local show_help
 
     show_help=$(cat << EOM
 Usage:
-  _import_shell_asgmt [-h|--hlp|--help] func arr_ref allowed_name [allowed_name ...]
+  _import_shell_asgmt [--help] func arr_ref allowed_name [allowed_name ...]
 
 Description:
   Import validated shell assignments from an array of Python-emitted lines.
@@ -883,9 +920,14 @@ Description:
   Only variable names explicitly listed in the allowed-name argument list are accepted.
 
 Positional arguments:
-  1  func          <str>  Calling-function name for error reporting.
-  2  arr_ref       <str>  Name of array variable containing shell-assignment lines.
-  3+ allowed_name  <str>  One or more allowed variable names.
+  1  func  <str>
+    Calling-function name for error reporting.
+
+  2  arr_ref  <str>
+    Name of array variable containing shell-assignment lines.
+
+  3+ allowed_name  <str>
+    One or more allowed variable names.
 
 Returns:
   Assigns validated values into the current shell and returns 0 on success.
@@ -909,15 +951,22 @@ EOM
         echo_err_func "${FUNCNAME[0]}" \
             "positional argument 1, 'func', is missing."
         return 1
-    elif [[ -z "${arr_ref}" ]]; then
+    elif [[ -z "${arr_ref_nam}" ]]; then
         echo_err_func "${FUNCNAME[0]}" \
             "positional argument 2, 'arr_ref', is missing."
+        return 1
+    elif [[ ! "${arr_ref_nam}" =~ ^[A-Za-z_][A-Za-z0-9_]*$ ]]; then
+        echo_err_func "${FUNCNAME[0]}" \
+            "positional argument 2, 'arr_ref', is not a valid shell" \
+            "identifier: '${arr_ref_nam}'."
         return 1
     elif [[ "$#" -eq 0 ]]; then
         echo_err_func "${FUNCNAME[0]}" \
             "at least one allowed variable name must be supplied."
         return 1
     fi
+
+    local -n arr_lines_ref="${arr_ref_nam}"
 
     for nam in "$@"; do
         if [[ ! "${nam}" =~ ^[A-Za-z_][A-Za-z0-9_]*$ ]]; then
@@ -929,7 +978,7 @@ EOM
         allowed["${nam}"]=1
     done
 
-    for line in "${arr_lines[@]}"; do
+    for line in "${arr_lines_ref[@]}"; do
         [[ -z "${line}" ]] && continue
 
         if [[
@@ -963,7 +1012,9 @@ EOM
 
         stmt="${nam}=${rhs}"
 
-        if ! eval "${stmt}"; then
+        if ! \
+            eval "${stmt}"
+        then
             echo_err_func "${func}" \
                 "failed to import parsed metadata assignment for variable" \
                 "'${nam}'."
@@ -975,33 +1026,38 @@ EOM
 
 function _parse_metadata() {
     local scr_met="${1:-}"  # Python script for parsing metadata
-    local fil_bam="${2:-}"  # BAM file to process
+    local fil_aln="${2:-}"  # Alignment file to process
     local tbl_met="${3:-}"  # siQ-ChIP metadata table
     local cfg_met="${4:-}"  # YAML configuration for metadata parsing
-    local eqn="${5:-}"      # Equation included with parsing
     local -a arr_shell      # Python-emitted shell assignment lines
     local show_help
 
     show_help=$(cat << EOM
 Usage:
-  _parse_metadata [-h|--hlp|--help] scr_met fil_bam tbl_met cfg_met eqn
+  _parse_metadata [--help] scr_met fil_aln tbl_met cfg_met
 
 Description:
-  Use the siQ-ChIP metadata Python parser to extract metadata values for a BAM file and assign them in the current shell.
+  Use the siQ-ChIP metadata Python parser to extract metadata values for an alignment file and assign them in the current shell.
 
 Positional arguments:
-  1  scr_met  <str>  Python entry point for parsing siQ-ChIP metadata.
-  2  fil_bam  <str>  BAM file for which metadata should be retrieved.
-  3  tbl_met  <str>  siQ-ChIP metadata table.
-  4  cfg_met  <str>  YAML configuration file for metadata parsing.
-  5  eqn      <str>  Equation identifier included with parsed metadata.
+  1  scr_met  <str>
+    Python entry point for parsing siQ-ChIP metadata.
+
+  2  fil_aln  <str>
+    Alignment file for which metadata should be retrieved.
+
+  3  tbl_met  <str>
+    siQ-ChIP metadata table.
+
+  4  cfg_met  <str>
+    YAML configuration file for metadata parsing.
 
 Returns:
   Assigns parsed metadata variables in the current shell environment from validated 'export key=value' lines emitted by the Python helper.
 
 Example:
   '''bash
-  _parse_metadata "\${scr_met}" "\${fil_bam}" "\${tbl_met}" "\${cfg_met}" "\${eqn}"
+  _parse_metadata "\${scr_met}" "\${fil_aln}" "\${tbl_met}" "\${cfg_met}"
   '''
 EOM
     )
@@ -1016,9 +1072,9 @@ EOM
         echo >&2
         echo "${show_help}" >&2
         return 1
-    elif [[ -z "${fil_bam}" ]]; then
+    elif [[ -z "${fil_aln}" ]]; then
         echo_err_func "${FUNCNAME[0]}" \
-            "positional argument 2, 'fil_bam', is missing."
+            "positional argument 2, 'fil_aln', is missing."
         echo >&2
         echo "${show_help}" >&2
         return 1
@@ -1034,62 +1090,36 @@ EOM
         echo >&2
         echo "${show_help}" >&2
         return 1
-    elif [[ -z "${eqn}" ]]; then
-        echo_err_func "${FUNCNAME[0]}" \
-            "positional argument 5, 'eqn', is missing."
-        echo >&2
-        echo "${show_help}" >&2
-        return 1
     fi
 
     validate_var_file "scr_met" "${scr_met}" || return 1
-    validate_var_file "fil_bam" "${fil_bam}" || return 1
+    validate_var_file "fil_aln" "${fil_aln}" || return 1
     validate_var_file "tbl_met" "${tbl_met}" || return 1
     validate_var_file "cfg_met" "${cfg_met}" || return 1
-
-    # if ! \
-    #     eval "$(
-    #         run_py "${scr_met}" \
-    #             --verbose \
-    #             --bam "${fil_bam}" \
-    #             --tbl_met "${tbl_met}" \
-    #             --cfg "${cfg_met}" \
-    #             --eqn "${eqn}" \
-    #             --shell
-    #     )"
-    # then
-    #     echo_err_func "${FUNCNAME[0]}" \
-    #         "failed to use script '${scr_met}' with configuration" \
-    #         "'${cfg_met}' to parse siQ-ChIP metadata in '${tbl_met}' for" \
-    #         "file '${fil_bam}'."
-    #     return 1
-    # fi
 
     # shellcheck disable=SC2034
     if ! \
         mapfile -t arr_shell < <(
             run_py "${scr_met}" \
                 --verbose \
-                --bam "${fil_bam}" \
+                --alignment "${fil_aln}" \
                 --tbl_met "${tbl_met}" \
                 --cfg "${cfg_met}" \
-                --eqn "${eqn}" \
                 --shell
         )
     then
         echo_err_func "${FUNCNAME[0]}" \
             "failed to use script '${scr_met}' with configuration" \
             "'${cfg_met}' to parse siQ-ChIP metadata in '${tbl_met}' for" \
-            "file '${fil_bam}'."
+            "file '${fil_aln}'."
         return 1
     fi
 
     _import_shell_asgmt \
         "${FUNCNAME[0]}" \
         arr_shell \
-        eqn \
         vol_in vol_all mass_in mass_ip \
-        conc_in conc_ip len_in len_ip dep_in dep_ip \
+        conc_in conc_ip len_in len_ip lib_vol_in lib_vol_ip dep_in dep_ip \
         || return 1
 }
 
@@ -1102,14 +1132,17 @@ function _get_fil_out_part() {
 
     show_help=$(cat << EOM
 Usage:
-  _get_fil_out_part [-h|--hlp|--help] fil_out idx
+  _get_fil_out_part [--help] fil_out idx
 
 Description:
   Construct the per-sample part-file path derived from a base output-table path.
 
 Positional arguments:
-  1  fil_out  <str>  Base output-table path.
-  2  idx      <int>  Zero-based, zero-padded sample index.
+  1  fil_out  <str>
+    Base output-table path.
+
+  2  idx  <int>
+    Zero-based, zero-padded sample index.
 
 Returns:
   Prints a path of the form:
@@ -1148,9 +1181,10 @@ EOM
 }
 
 
-#LEGACY: The following global variable and four functions are retained for
-#+       reference and, e.g., future comparisons with Python helpers; they are
-#+       no longer called by the production scaling-factor row writers
+# ------------------------------ Begin #LEGACY ------------------------------ #
+#  The following global variable and four functions are retained for reference
+#+ and, e.g., future comparisons with Python helpers; they are no longer called
+#+ by the production scaling-factor row writers
 DEP_BINS_DFLT="${DEP_BINS_DFLT:-1,5,10,20,30,40,50}"
 
 
@@ -1165,17 +1199,26 @@ function _calculate_dep_fct() {
 
     show_help=$(cat << EOM
 Usage:
-  _calculate_dep_fct [-h|--hlp|--help] n_in [siz_bin] [siz_gen] [mode] [rnd]
+  _calculate_dep_fct [--help] n_in [siz_bin] [siz_gen] [mode] [rnd]
 
 Description:
   Computes a minimum input depth factor from an input-alignment count, bin size, and effective genome size.
 
 Positional arguments:
-  1  n_in     <int>  Input-alignment count.
-  2  siz_bin  <int>  Bin size (in base pairs; default: ${siz_bin}).
-  3  siz_gen  <int>  Effective genome size (in base pairs; default: ${siz_gen} [appropriate for S. cerevisiae]).
-  4  mode     <str>  Mode of calculation; options: "frag" or "norm" (default: ${mode}).
-  5  rnd      <int>  Number of decimal places for rounding (default: ${rnd}).
+  1  n_in  <int>
+    Input-alignment count.
+
+  2  siz_bin  <int>
+    Bin size (in base pairs; default: ${siz_bin}).
+
+  3  siz_gen  <int>
+    Effective genome size (in base pairs; default: ${siz_gen} [appropriate for S. cerevisiae]).
+
+  4  mode  <str>
+    Mode of calculation; options: "frag" or "norm" (default: '${mode}').
+
+  5  rnd  <int>
+    Number of decimal places for rounding (default: ${rnd}).
 
 Returns:
   The computed depth factor.
@@ -1268,17 +1311,26 @@ function _calculate_dep_arr() {
 
     show_help=$(cat << EOM
 Usage:
-  _calculate_dep_arr dep [mod] [egs] [rnd] [csv_bin]
+  _calculate_dep_arr [--help] dep [mod] [egs] [rnd] [csv_bin]
 
 Description:
   Compute a comma-delimited series of minimum input depth values across one or more bin sizes for either fragment-length-adjusted signal ('frag') or "normalized coverage" ('norm'), following Dickson et al., Sci Rep 2023.
 
 Positional arguments:
-  1  dep      <int>  Number of mapped reads/alignments in the sample.
-  2  mod      <str>  Data transformation mode; must be 'frag' or 'norm' (default: ${mod}).
-  3  egs      <int>  Effective genome size (default: ${egs} [appropriate for S. cerevisiae]).
-  4  rnd      <int>  Number of decimal places to round to (default: ${rnd}).
-  5  csv_bin  <str>  Comma-separated list of bin sizes to use (default: ${csv_bin}).
+  1  dep  <int>
+    Number of mapped reads/alignments in the sample.
+
+  2  mod  <str>
+    Data transformation mode; must be 'frag' or 'norm' (default: ${mod}).
+
+  3  egs  <int>
+    Effective genome size (default: ${egs} [appropriate for S. cerevisiae]).
+
+  4  rnd  <int>
+    Number of decimal places to round to (default: ${rnd}).
+
+  5  csv_bin  <str>
+    Comma-separated list of bin sizes to use (default: ${csv_bin}).
 
 Returns:
   Prints a comma-delimited list of depth values, one per bin size, in the order given by 'csv_bin'.
@@ -1384,7 +1436,7 @@ function _compute_dep_all() {
 
     show_help=$(cat << EOM
 Usage:
-  _compute_dep_all dep [rnd] [csv_bin]
+  _compute_dep_all [--help] dep [rnd] [csv_bin]
 
 Description:
   Compute minimum input depth values needed downstream for both fragment-length-adjusted signal ('frag') and "normalized coverage" ('norm'), following Dickson et al., Sci Rep 2023.
@@ -1392,9 +1444,14 @@ Description:
   Internally, this function calls '_calculate_dep_arr' twice and concatenates the two comma-delimited outputs.
 
 Positional arguments:
-  1  dep      <int>  Number of mapped reads/alignments in the sample.
-  2  rnd      <int>  Number of decimal places to round to (default: ${rnd}).
-  3  csv_bin  <str>  Comma-separated list of bin sizes to use (default: ${csv_bin}).
+  1  dep  <int>
+    Number of mapped reads/alignments in the sample.
+
+  2  rnd  <int>
+    Number of decimal places to round to (default: ${rnd}).
+
+  3  csv_bin  <str>
+    Comma-separated list of bin sizes to use (default: ${csv_bin}).
 
 Returns:
   Prints one comma-delimited string containing the 'frag' depth values followed by the 'norm' depth values, each in the order given by 'csv_bin'.
@@ -1466,13 +1523,14 @@ function _generate_fmt_str() {
 
     show_help=$(cat << EOM
 Usage:
-  _generate_fmt_str num_fld
+  _generate_fmt_str [--help] num_fld
 
 Description:
   Construct a tab-delimited 'printf' format string containing 'num_fld' '%s' fields and no trailing tab.
 
 Positional argument:
-  1  num_fld  <int>  Number of fields in the output row.
+  1  num_fld  <int>
+    Number of fields in the output row.
 
 Returns:
   Prints a format string suitable for tab-delimited row output.
@@ -1507,6 +1565,7 @@ EOM
     for ((i = 1; i <= num_fld; i++)); do fmt_str+="%s\t"; done
     printf "%s\n" "${fmt_str%$'\t'}"
 }
+# ------------------------------- End #LEGACY ------------------------------- #
 
 
 #  Compute siQ-ChIP alpha scaling factor and related values for a sample
@@ -1521,15 +1580,17 @@ function process_samp_siq() {
 
     #  Declare local variables
     local fil_ip fil_in siq mass_ip mass_in vol_all vol_in
+    local lib_vol_ip lib_vol_in
     local typ_ip typ_in dep_ip dep_in len_ip len_in v
+    local dep_ip_met dep_in_met len_ip_met len_in_met
     # local fmt_str  # Reserved in case formatted output generation is revived
     local len_ip_ovrd len_in_ovrd fil_out_part
-    local -a fields
+    local -a fields arr_arg_siq
     local show_help
 
-    show_help=$(cat << 'EOM'
+    show_help=$(cat << EOM
 Usage:
-  process_samp_siq [-h|--hlp|--help] idx
+  process_samp_siq [--help] idx
 
 Description:
   Processes a single sample (array index 'idx') to compute the siQ-ChIP alpha scaling factor and related QC values.
@@ -1546,22 +1607,43 @@ Positional argument:
 
 Expected global variables:
   Read:
-    arr_mip, arr_min                Sample alignment-file arrays for IP and input
-    scr_met, cfg_met, tbl_met, eqn  siQ-ChIP metadata parser, YAML configuration, table, and equation
-    threads                         Samtools decompression threads
-    ref_fa                          Reference FASTA required for CRAM input
-    len_def                         Default fragment length to use for SE libraries
-    aln_typ                         Optional override: 'pe', 'se', or 'auto' (default: auto)
-    scr_siq, scr_spk                Python entry points for scaling-factor calculation
-    rnd                             Rounding precision for the scaling factor
-    debug                           If 'true', prints 'debug_var' lines
-    idx_out                         Optional output-part index override
+    arr_mip, arr_min
+      Sample alignment-file arrays for IP and input.
+
+    scr_met, cfg_met, tbl_met, eqn
+      siQ-ChIP metadata parser, YAML configuration, table, and equation.
+
+    threads
+      Samtools decompression threads.
+
+    ref_fa
+      Reference FASTA required for CRAM input.
+
+    len_def
+      Default fragment length to use for SE libraries.
+
+    aln_typ
+      Optional override: 'pe', 'se', or 'auto' (default: auto).
+
+    scr_siq, scr_spk
+      Python entry points for scaling-factor calculation.
+
+    rnd
+      Rounding precision for the scaling factor.
+
+    debug
+      If 'true', prints 'debug_var' lines.
+
+    idx_out
+      Optional output-part index override.
 
   Write:
-    fil_out                         Base path used to derive the per-sample results file
+    fil_out
+      Base path used to derive the per-sample results file.
 
 Output row fields (in order):
   fil_ip, fil_in, siq, eqn, mass_ip, mass_in, vol_all, vol_in, dep_ip, dep_in, len_ip, len_in
+  If metadata supplies a library-volume correction, append lib_vol_ip, lib_vol_in.
 
 Dependencies:
   This function expects 'validate_var_file' and 'debug_var' to be available in the current shell via the helper-layer sourcing block above.
@@ -1606,12 +1688,19 @@ EOM
 
     #  Parse siQ-ChIP metadata, assigning global variables
     _parse_metadata \
-        "${scr_met}" "${fil_ip}" "${tbl_met}" "${cfg_met}" "${eqn}" || {
+        "${scr_met}" "${fil_ip}" "${tbl_met}" "${cfg_met}" || {
             echo_err_func "${FUNCNAME[0]}" \
                 "failed while running '_parse_metadata' for IP alignment" \
                 "file '${fil_ip}'."
             return 1
         }
+
+    dep_ip_met="${dep_ip:-}"
+    dep_in_met="${dep_in:-}"
+    len_ip_met="${len_ip:-}"
+    len_in_met="${len_in:-}"
+    lib_vol_ip="${lib_vol_ip:-NA}"
+    lib_vol_in="${lib_vol_in:-NA}"
 
     #  Determine end type per alignment file (robust if inputs ever mix)
     typ_ip="$(_resolve_typ_fil "${fil_ip}")" || {
@@ -1628,31 +1717,41 @@ EOM
     #  Count alignments in alignment files
     dep_ip="$(_get_dep_idx mip "${idx}")"
     if [[ -z "${dep_ip}" ]]; then
-        dep_ip="$(_count_alignments "${threads}" "${fil_ip}" "${typ_ip}")" || {
-            echo_err_func "${FUNCNAME[0]}" \
-                "failed while counting alignments for IP file '${fil_ip}'" \
-                "with type '${typ_ip}'."
-            return 1
-        }
+        if [[ -n "${dep_ip_met}" && "${dep_ip_met}" != "NA" ]]; then
+            dep_ip="${dep_ip_met}"
+        else
+            dep_ip="$(_count_alignments "${threads}" "${fil_ip}" "${typ_ip}")" || {
+                echo_err_func "${FUNCNAME[0]}" \
+                    "failed while counting alignments for IP file '${fil_ip}'" \
+                    "with type '${typ_ip}'."
+                return 1
+            }
+        fi
     fi
 
     dep_in="$(_get_dep_idx min "${idx}")"
     if [[ -z "${dep_in}" ]]; then
-        dep_in="$(_count_alignments "${threads}" "${fil_in}" "${typ_in}")" || {
-            echo_err_func "${FUNCNAME[0]}" \
-                "failed while counting alignments for input file '${fil_in}'" \
-                "with type '${typ_in}'."
-            return 1
-        }
+        if [[ -n "${dep_in_met}" && "${dep_in_met}" != "NA" ]]; then
+            dep_in="${dep_in_met}"
+        else
+            dep_in="$(_count_alignments "${threads}" "${fil_in}" "${typ_in}")" || {
+                echo_err_func "${FUNCNAME[0]}" \
+                    "failed while counting alignments for input file '${fil_in}'" \
+                    "with type '${typ_in}'."
+                return 1
+            }
+        fi
     fi
 
     #  Compute average fragment lengths for alignment files; overrides take
-    #+ precedence over TLEN or 'len_def'
+    #+ precedence over metadata, TLEN, or 'len_def'
     len_ip_ovrd="$(_get_len_idx mip "${idx}")"
     len_in_ovrd="$(_get_len_idx min "${idx}")"
 
     if [[ -n "${len_ip_ovrd}" ]]; then
         len_ip="${len_ip_ovrd}"
+    elif [[ -n "${len_ip_met}" && "${len_ip_met}" != "NA" ]]; then
+        len_ip="${len_ip_met}"
     else
         len_ip="$(
             _calculate_frag_avg \
@@ -1667,6 +1766,8 @@ EOM
 
     if [[ -n "${len_in_ovrd}" ]]; then
         len_in="${len_in_ovrd}"
+    elif [[ -n "${len_in_met}" && "${len_in_met}" != "NA" ]]; then
+        len_in="${len_in_met}"
     else
         len_in="$(
             _calculate_frag_avg \
@@ -1686,18 +1787,30 @@ EOM
             "vol_all=${vol_all}" "vol_in=${vol_in}" \
             "typ_ip=${typ_ip}"   "typ_in=${typ_in}" \
             "dep_ip=${dep_ip}"   "dep_in=${dep_in}" \
-            "len_ip=${len_ip}"   "len_in=${len_in}"
+            "len_ip=${len_ip}"   "len_in=${len_in}" \
+            "lib_vol_ip=${lib_vol_ip}" "lib_vol_in=${lib_vol_in}"
     fi
 
     #  Compute siQ-ChIP alpha scaling factor
+    arr_arg_siq=(
+        --eqn     "${eqn}"     --rnd     "${rnd}"
+        --mass_ip "${mass_ip}" --mass_in "${mass_in}"
+        --vol_all "${vol_all}" --vol_in  "${vol_in}"
+        --dep_ip  "${dep_ip}"  --dep_in  "${dep_in}"
+        --len_ip  "${len_ip}"  --len_in  "${len_in}"
+    )
+
+    if [[ "${lib_vol_ip}" != "NA" && "${lib_vol_in}" != "NA" ]]; then
+        arr_arg_siq+=(
+            --lib_vol_ip "${lib_vol_ip}"
+            --lib_vol_in "${lib_vol_in}"
+        )
+    fi
+
     siq=$(
         _compute_scl_fct \
             "siq" "${scr_siq}" "${scr_spk}" \
-            --eqn     "${eqn}"     --rnd     "${rnd}" \
-            --mass_ip "${mass_ip}" --mass_in "${mass_in}" \
-            --vol_all "${vol_all}" --vol_in  "${vol_in}" \
-            --dep_ip  "${dep_ip}"  --dep_in  "${dep_in}" \
-            --len_ip  "${len_ip}"  --len_in  "${len_in}"
+            "${arr_arg_siq[@]}"
     ) || return 1
 
     #  Build a row of results, printing them tab-separated with no trailing tab
@@ -1724,6 +1837,10 @@ EOM
                 "${mass_ip}" "${mass_in}" "${vol_all}" "${vol_in}"
                 "${dep_ip}" "${dep_in}" "${len_ip}" "${len_in}"
             )
+
+            if [[ "${lib_vol_ip}" != "NA" && "${lib_vol_in}" != "NA" ]]; then
+                fields+=( "${lib_vol_ip}" "${lib_vol_in}" )
+            fi
 
             printf '%s' "${fields[0]}"
             for v in "${fields[@]:1}"; do printf '\t%s' "${v}"; done
@@ -1755,9 +1872,9 @@ function process_samp_spike() {
     local -a fields
     local show_help
 
-    show_help=$(cat << 'EOM'
+    show_help=$(cat << EOM
 Usage:
-  process_samp_spike [-h|--hlp|--help] idx
+  process_samp_spike [--help] idx
 
 Description:
   Processes a single sample (array index 'idx') to compute a spike-in scaling factor and related QC values.
@@ -1765,22 +1882,41 @@ Description:
   For the main/spike IP and input alignment files at 'idx', this function detects paired- or single-end sequenced read alignment status per file, counts alignments, computes the requested scaling-factor coefficient, and writes a per-sample tab-separated results row.
 
 Positional argument:
-  1  idx  <int>  Zero-based array index into arrays: arr_mip (main IP), arr_sip (spike IP), arr_min (main input), arr_sin (spike input)
+  1  idx  <int>
+    Zero-based array index into arrays: arr_mip (main IP), arr_sip (spike IP), arr_min (main input), arr_sin (spike input).
 
 Expected global variables:
   Read:
-    arr_mip, arr_sip, arr_min, arr_sin   Sample alignment-file arrays
-    threads                              Samtools decompression threads
-    ref_fa                               Reference FASTA required for CRAM input
-    aln_typ                              Optional override: 'pe', 'se', or 'auto' (default: auto)
-    scr_siq, scr_spk                     Python entry points for scaling-factor calculation
-    coef_spk                             Spike-in coefficient to request from 'calculate_scaling_factor_spike.py' (default: chiprx_alpha_ratio)
-    rnd                                  Rounding precision for the coefficient
-    debug                                If 'true', prints 'debug_var' lines
-    idx_out                              Optional output-part index override
+    arr_mip, arr_sip, arr_min, arr_sin
+      Sample alignment-file arrays.
+
+    threads
+      Samtools decompression threads.
+
+    ref_fa
+      Reference FASTA required for CRAM input.
+
+    aln_typ
+      Optional override: 'pe', 'se', or 'auto' (default: auto).
+
+    scr_siq, scr_spk
+      Python entry points for scaling-factor calculation.
+
+    coef_spk
+      Spike-in coefficient to request from 'calculate_scaling_factor_spike.py' (default: chiprx_alpha_ratio).
+
+    rnd
+      Rounding precision for the coefficient.
+
+    debug
+      If 'true', prints 'debug_var' lines.
+
+    idx_out
+      Optional output-part index override.
 
   Write:
-    fil_out                              Base path used to derive the per-sample results file
+    fil_out
+      Base path used to derive the per-sample results file.
 
 Output row fields (in order):
   mp, sp, mn, sn, coef_val, coef_lcl, num_mp, num_sp, num_mn, num_sn

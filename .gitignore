@@ -8,7 +8,8 @@
 #  Ignore everything in 'analysis/', 'docs/dev/', 'docs/img/', 'docs/xml/',
 #+ 'scraps/' (where temporary scratch work is stored), and 'tmp/'
 analysis/
-docs/dev/
+docs/dev/*
+!docs/dev/parse_metadata_siqchip.md
 docs/img/
 docs/xml/
 scraps/
@@ -32,7 +33,11 @@ data/raw/*
 data/raw/docs/*
 !data/raw/docs/measurements_siqchip.tsv
 !data/raw/docs/measurements_siqchip_initial.tsv
+!data/raw/docs/measurements_siqchip_PRJNA857063.tsv
 !data/raw/docs/parse_metadata_siqchip.yml
+!data/raw/docs/parse_metadata_siqchip_PRJNA857063.yml
+!data/raw/docs/parse_metadata_siqchip_reference.md
+!data/raw/docs/parse_metadata_siqchip_strict.yml
 data/raw/docs/measurements_siqchip_all.tsv
 data/raw/docs/SRR_custom.tsv
 data/raw/docs/test*
@@ -48,8 +53,7 @@ data/processed/compute_signal/*
 data/processed/compute_signal/bowtie2_global_flag-2_mapq-1/*
 !data/processed/compute_signal/bowtie2_global_flag-2_mapq-1/tables/
 
-#  Ignore generated test fixture outputs in 'tests/'; however, retain
-#+ hand-written fixture docs
+#  Ignore generated test fixture outputs in 'tests/' but retain fixture docs
 tests/align_fastqs/fixtures/**
 !tests/align_fastqs/fixtures/
 !tests/align_fastqs/fixtures/README.md

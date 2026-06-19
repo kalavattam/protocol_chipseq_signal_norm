@@ -6,7 +6,7 @@
 # Copyright 2026 by Kris Alavattam
 # Email: kalavattam@gmail.com
 #
-# OpenAI ChatGPT (GPT-5.5) was used in development.
+# OpenAI ChatGPT and Codex (GPT-5.5) were used in development.
 #
 # Distributed under the MIT license.
 
@@ -282,6 +282,11 @@ assert_pattern_found \
     "${log}" \
     'write_header.sh' \
     "execute_calculate_scaling_factor.sh --dry_run reports header command"
+
+assert_pattern_found \
+    "${log}" \
+    'write_header.sh.*--fil_in.*--in_place' \
+    "execute_calculate_scaling_factor.sh --dry_run reports in-place headering"
 
 assert_pattern_found \
     "${log}" \

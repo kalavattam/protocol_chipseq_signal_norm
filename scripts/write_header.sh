@@ -6,7 +6,8 @@
 # Copyright 2025-2026 by Kris Alavattam
 # Email: kalavattam@gmail.com
 #
-# OpenAI ChatGPT (GPT-4- and GPT-5-series models) was used in development.
+# OpenAI ChatGPT and Codex (GPT-4- and GPT-5-series models) were used in
+# development.
 #
 # Distributed under the MIT license.
 
@@ -64,18 +65,19 @@ source_helpers "${dir_fnc}" \
 #  Initialize argument variables, assigning default values where applicable
 verbose=false
 dry_run=false
+in_place=false
 mode="siq"
+fil_in=""
 fil_out=""
 
 #  Assign variable for help message
 show_help=$(cat << EOM
 Usage:
-  write_header.sh [--help] [--verbose] [--dry_run] [--mode <enum:siq,spike>] --fil_out <file>
-
+  write_header.sh
+    [--help] [--verbose] [--dry_run] [--mode <enum:siq,spike>] [--fil_in <file>] [--fil_out <file>] [--in_place]
 
 Description:
-  Write a predefined tab-delimited header to the specified output file.
-
+  Create a header-only scaling-factor table, write a headered copy of a data table, or add a header to a data table in place.
 
 Arguments:
   -h, --hlp, --help  <flag>
@@ -90,9 +92,14 @@ Arguments:
   -md, --mode  <enum:siq,spike>
     Type of header to write: 'siq' (siQ-ChIP normalization) or 'spike' (normalization with a spike-in coefficient) (default: '${mode}').
 
-  -o, -fo, --outfile, --fil_out  <file>
-    Output file where the header should be written.
+  -i, -fi, --infile, --fil_in  <file>
+    Input data table to header. If omitted, '--fil_out' creates a header-only utility table.
 
+  -o, -fo, --outfile, --fil_out  <file>
+    Output file to create. With '--fil_in', writes a headered copy. Without '--fil_in', writes a header-only table.
+
+  --in_place, --in-place, --inplace  <flag>
+    Modify '--fil_in' in place instead of writing a separate output file.
 
 Dependencies:
   External programs:
@@ -112,30 +119,37 @@ Dependencies:
     - format_outputs.sh
       + echo_err
 
-
 Notes:
-  - The script writes or prepends the selected core scaling-factor header.
-  - 'execute_calculate_scaling_factor.sh' calls this script after successful part-file combination unless '--no_header' is supplied there.
-  - If the output file already begins with the expected header, the file is left unchanged.
-  - If the output file exists but does not begin with the expected header, the header is prepended.
-  - If the output file does not exist, it is created with the header only.
-  - If '--dry_run' is enabled, the script validates arguments and reports the planned action without creating or modifying the output file.
-
+  - The script writes the selected core scaling-factor header.
+  - 'execute_calculate_scaling_factor.sh' calls this script with '--fil_in <final_table> --in_place' after successful part-file combination unless '--no_header' is supplied there.
+  - If '--fil_in' already begins with the expected header, the copy or in-place operation does not duplicate the header.
+  - If '--fil_in' is data-only, the selected header is prepended.
+  - If '--fil_in' is omitted, '--fil_out' creates a header-only utility table.
+  - If '--dry_run' is enabled, the script validates arguments and reports the planned action without creating or modifying files.
 
 Examples:
-  1. Write a siQ-ChIP-mode (siq-mode) header
+  1. Create a header-only siQ-ChIP-mode utility table
     '''bash
     bash write_header.sh
       --mode siq
-      --fil_out results/ChIP_samples_siq_6nd.tsv
+      --fil_out results/header.siq.tsv
     '''
 
-  2. Preview a spike-mode header without modifying the output file
+  2. Add a spike-mode header to a data-only table in place
+    '''bash
+    bash write_header.sh
+      --mode spike
+      --fil_in results/ChIP_samples_spike.tsv
+      --in_place
+    '''
+
+  3. Preview writing a headered siQ-ChIP copy
     '''bash
     bash write_header.sh
       --dry_run
-      --mode spike
-      --fil_out results/ChIP_samples_spike.tsv
+      --mode siq
+      --fil_in results/ChIP_samples_siq_6nd.data.tsv
+      --fil_out results/ChIP_samples_siq_6nd.tsv
     '''
 EOM
 )
@@ -168,6 +182,16 @@ while [[ "$#" -gt 0 ]]; do
             shift 2
             ;;
 
+        -i|-fi|--infile|--fil[_-]in)
+            require_optarg "${1}" "${2:-}" "main" || {
+                echo >&2
+                echo "${show_help}" >&2
+                exit 1
+            }
+            fil_in="${2}"
+            shift 2
+            ;;
+
         -o|-fo|--outfile|--fil[_-]out)
             require_optarg "${1}" "${2:-}" "main" || {
                 echo >&2
@@ -176,6 +200,11 @@ while [[ "$#" -gt 0 ]]; do
             }
             fil_out="${2}"
             shift 2
+            ;;
+
+        --in[_-]place|--inplace)
+            in_place=true
+            shift 1
             ;;
 
         *)
@@ -198,19 +227,103 @@ case "${mode}" in
         ;;
 esac
 
-validate_var "fil_out" "${fil_out}"
-validate_var_dir "dir_out" "$(dirname "${fil_out}")"
+if [[ -n "${fil_in}" ]]; then
+    validate_var_file "fil_in" "${fil_in}"
+fi
+
+if [[ -n "${fil_out}" ]]; then
+    validate_var_dir "dir_out" "$(dirname "${fil_out}")"
+fi
+
+if [[ -z "${fil_in}" && -n "${fil_out}" && -e "${fil_out}" ]]; then
+    echo_err \
+        "'--fil_out' already exists in header-only mode: '${fil_out}'. Use" \
+        "'--fil_in' with '--fil_out' or '--in_place' to header an existing" \
+        "table."
+    exit 1
+fi
+
+if [[ "${in_place}" == "true" && -z "${fil_in}" ]]; then
+    echo_err "'--in_place' requires '--fil_in'."
+    exit 1
+fi
+
+if [[ -z "${fil_in}" && -z "${fil_out}" ]]; then
+    echo_err \
+        "either '--fil_out' or '--fil_in' with an output mode is required."
+    exit 1
+fi
+
+if [[ "${in_place}" == "true" && -n "${fil_out}" ]]; then
+    echo_err "use either '--fil_out' or '--in_place', not both."
+    exit 1
+fi
+
+if [[ -n "${fil_in}" && -z "${fil_out}" && "${in_place}" == "false" ]]; then
+    echo_err "'--fil_in' requires either '--fil_out' or '--in_place'."
+    exit 1
+fi
+
+if [[ -n "${fil_in}" && -n "${fil_out}" ]]; then
+    fil_in_abs="$(cd "$(dirname "${fil_in}")" > /dev/null 2>&1 && pwd)/$(
+        basename "${fil_in}"
+    )"
+    fil_out_abs="$(cd "$(dirname "${fil_out}")" > /dev/null 2>&1 && pwd)/$(
+        basename "${fil_out}"
+    )"
+
+    if [[ "${fil_in_abs}" == "${fil_out_abs}" ]]; then
+        echo_err \
+            "'--fil_in' and '--fil_out' refer to the same path; use" \
+            "'--in_place'."
+        exit 1
+    fi
+fi
+
+if [[ "${in_place}" == "true" ]]; then
+    fil_dst="${fil_in}"
+elif [[ -n "${fil_out}" ]]; then
+    fil_dst="${fil_out}"
+else
+    fil_dst=""
+fi
 
 
 #  Do the main work ===========================================================
 #  Define the header column names as an array
 case "${mode}" in
     siq)
-        nam_col=(
-            "fil_ip" "fil_in" "siq" "eqn"
-            "mass_ip" "mass_in" "vol_all" "vol_in" "dep_ip" "dep_in"
-            "len_ip" "len_in"
-        )
+        if [[ -n "${fil_in}" ]]; then
+            num_fld="$(awk -F '\t' 'NF > 0 { print NF; exit }' "${fil_in}")"
+        else
+            num_fld=12
+        fi
+
+        case "${num_fld}" in
+            12)
+                nam_col=(
+                    "fil_ip" "fil_in" "siq" "eqn"
+                    "mass_ip" "mass_in" "vol_all" "vol_in"
+                    "dep_ip" "dep_in" "len_ip" "len_in"
+                )
+                ;;
+
+            14)
+                nam_col=(
+                    "fil_ip" "fil_in" "siq" "eqn"
+                    "mass_ip" "mass_in" "vol_all" "vol_in"
+                    "dep_ip" "dep_in" "len_ip" "len_in"
+                    "lib_vol_ip" "lib_vol_in"
+                )
+                ;;
+
+            *)
+                echo_err \
+                    "cannot choose siQ header for '${fil_in}': first data" \
+                    "row has '${num_fld}' fields, but expected 12 or 14."
+                exit 1
+                ;;
+        esac
         ;;
 
     spike)
@@ -231,14 +344,24 @@ header=$(printf "${fmt_str}" "${nam_col[@]}")
 
 #  Report the planned file action if in dry-run mode
 if [[ "${dry_run}" == "true" ]]; then
-    if [[ -f "${fil_out}" ]]; then
-        lin_fst="$(head -n1 "${fil_out}")"
+    if [[ -n "${fil_in}" ]]; then
+        lin_fst="$(head -n1 "${fil_in}")"
 
         if [[ "${lin_fst}" == "${header%$'\n'}" ]]; then
-            msg="Dry run: header already present; would not modify"
-            msg+=" '${fil_out}'."
+            if [[ "${in_place}" == "true" ]]; then
+                msg="Dry run: header already present; would not modify"
+                msg+=" '${fil_in}'."
+            else
+                msg="Dry run: header already present; would copy"
+                msg+=" '${fil_in}' to '${fil_out}'."
+            fi
         else
-            msg="Dry run: would prepend header to existing file '${fil_out}'."
+            if [[ "${in_place}" == "true" ]]; then
+                msg="Dry run: would prepend header to '${fil_in}' in place."
+            else
+                msg="Dry run: would prepend header from '${fil_in}' to"
+                msg+=" '${fil_out}'."
+            fi
         fi
     else
         msg="Dry run: would create '${fil_out}' and write the header."
@@ -259,21 +382,23 @@ if [[ "${dry_run}" == "true" ]] || [[ "${verbose}" == "true" ]]; then
     echo
 fi
 
-#  Prepend the header (only if not already present); create file if missing
+#  Prepend the header, copy a headered input, or create a header-only output
 if [[ "${dry_run}" == "false" ]]; then
-    tmp="${fil_out}.tmp.$$"
-    if [[ -f "${fil_out}" ]]; then
-        lin_fst="$(head -n1 "${fil_out}")"
+    tmp="${fil_dst}.tmp.$$"
+    if [[ -n "${fil_in}" ]]; then
+        lin_fst="$(head -n1 "${fil_in}")"
         if [[ "${lin_fst}" == "${header%$'\n'}" ]]; then
-            :  # Header already present, so do nothing
+            if [[ "${in_place}" == "false" ]]; then
+                cat "${fil_in}" > "${tmp}" && mv "${tmp}" "${fil_dst}"
+            fi
         else
-            { printf '%s\n' "${header%$'\n'}"; cat "${fil_out}"; } > "${tmp}" \
-                && mv "${tmp}" "${fil_out}"
+            { printf '%s\n' "${header%$'\n'}"; cat "${fil_in}"; } > "${tmp}" \
+                && mv "${tmp}" "${fil_dst}"
         fi
     else
-        printf '%s\n' "${header%$'\n'}" > "${tmp}" && mv "${tmp}" "${fil_out}"
+        printf '%s\n' "${header%$'\n'}" > "${tmp}" && mv "${tmp}" "${fil_dst}"
     fi
 fi
 
 unset fmt_str header nam_col
-unset lin_fst msg tmp
+unset fil_dst fil_in_abs fil_out_abs lin_fst msg tmp

@@ -6,7 +6,7 @@
 # Copyright 2026 by Kris Alavattam
 # Email: kalavattam@gmail.com
 #
-# OpenAI ChatGPT (GPT-5.5) was used in development.
+# OpenAI ChatGPT and Codex (GPT-5.5) were used in development.
 #
 # Distributed under the MIT license.
 
@@ -70,15 +70,13 @@ csv_infile=""
 fil_out=""
 
 #  Assign variable for help message
-show_help=$(cat << 'EOM'
+show_help=$(cat << EOM
 Usage:
   combine_parts_scaling_factor.sh
     [--help] [--dry_run] [--force] [--no_parts] --mode <enum:siq,spike> --csv_infile <csv:file> --fil_out <file>
 
-
 Description:
   Combine generated calculate_scaling_factor part files into one data-only tab-delimited output table.
-
 
 Arguments:
   -h, --hlp, --help  <flag>
@@ -101,7 +99,6 @@ Arguments:
 
   -o, -fo, --outfile, --fil_out  <file>
     Final tab-delimited output table. Required.
-
 
 Dependencies:
   External programs:
@@ -127,17 +124,15 @@ Dependencies:
     - format_outputs.sh
       + echo_err
 
-
 Notes:
   - Input basenames must end in '.part.<digits>'.
   - Each input must contain exactly one non-empty core scaling-factor row.
-  - Core rows contain 12 fields for 'siq' and 10 fields for 'spike'.
+  - Core rows contain 12 or 14 fields for 'siq' and 10 fields for 'spike'.
   - Rows are ordered by numeric part-file index, not by input-list order.
   - This script does not write a header; use 'write_header.sh' separately or let 'execute_calculate_scaling_factor.sh' orchestrate header insertion.
   - Duplicate paths, duplicate indexes, and header rows are rejected.
   - Existing output files are replaced only when '--force' is supplied.
   - Validated part files are retained unless '--no_parts' is supplied.
-
 
 Examples:
   1. Combine spike-in scaling-factor parts.
@@ -260,10 +255,11 @@ unset fil_seen idx_seen
 declare -A fil_seen idx_seen
 unset arr_ord
 declare -a arr_ord
+num_max_siq=0
 
-fil_out_abs="$(cd "$(dirname "${fil_out}")" > /dev/null 2>&1 && pwd)/$(
-    basename "${fil_out}"
-)"
+fil_out_abs="$(
+    cd "$(dirname "${fil_out}")" > /dev/null 2>&1 && pwd
+)/$(basename "${fil_out}")"
 
 for fil_in in "${arr_infile[@]}"; do
     if [[ -z "${fil_in}" ]]; then
@@ -327,11 +323,21 @@ for fil_in in "${arr_infile[@]}"; do
     esac
 
     num_fld="$(awk -F '\t' 'NR == 1 { print NF }' "${fil_in}")"
-    if [[ "${num_fld}" -ne "${num_exp}" ]]; then
-        echo_err \
-            "input part file has '${num_fld}' fields; expected" \
-            "'${num_exp}' for mode '${mode}': '${fil_in}'."
-        exit 1
+    if [[ "${mode}" == "siq" ]]; then
+        if [[ "${num_fld}" -ne 12 && "${num_fld}" -ne 14 ]]; then
+            echo_err \
+                "input part file has '${num_fld}' fields; expected 12 or 14" \
+                "for mode '${mode}': '${fil_in}'."
+            exit 1
+        fi
+        if (( num_fld > num_max_siq )); then
+            num_max_siq="${num_fld}"
+        fi
+    elif [[ "${num_fld}" -ne "${num_exp}" ]]; then
+            echo_err \
+                "input part file has '${num_fld}' fields; expected" \
+                "'${num_exp}' for mode '${mode}': '${fil_in}'."
+            exit 1
     fi
 
     arr_ord+=( "${idx_norm}"$'\t'"${fil_in_abs}" )
@@ -362,7 +368,16 @@ tmp="$(mktemp "${fil_out}.tmp.XXXXXX")"
 trap 'rm -f "${tmp:-}"' EXIT
 
 for fil_in in "${arr_in_ord[@]}"; do
-    cat "${fil_in}" >> "${tmp}"
+    if [[ "${mode}" == "siq" && "${num_max_siq}" -eq 14 ]]; then
+        awk -F '\t' '
+            BEGIN { OFS = "\t" }
+            NF == 12 { print $0, "NA", "NA"; next }
+            { print }
+        ' \
+            "${fil_in}" >> "${tmp}"
+    else
+        cat "${fil_in}" >> "${tmp}"
+    fi
 done
 
 mv "${tmp}" "${fil_out}"

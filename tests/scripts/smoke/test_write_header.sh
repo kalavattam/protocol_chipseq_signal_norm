@@ -6,7 +6,7 @@
 # Copyright 2026 by Kris Alavattam
 # Email: kalavattam@gmail.com
 #
-# OpenAI ChatGPT (GPT-5.5) was used in development.
+# OpenAI ChatGPT and Codex (GPT-5.5) were used in development.
 #
 # Distributed under the MIT license.
 
@@ -22,378 +22,392 @@ source "$(
 print_section "${TEST_NAME}"
 
 scr_hdr="${ROOT_REPO}/scripts/write_header.sh"
-tmp="${TEST_DIR_TMP}/write_header"
+
+dir_tmp="${TEST_DIR_TMP}/write_header"
 dir_log="${TEST_DIR_LOG}/write_header"
-mkdir -p "${tmp}/out" "${dir_log}"
-rm -f "${tmp}/out/"*
+dir_in="${dir_tmp}/in"
+dir_out="${dir_tmp}/out"
 
-hdr_spk=$'main_ip\tspike_ip\tmain_in\tspike_in\tspike\tcoef\tnum_mp\tnum_sp\tnum_mn\tnum_sn'
-hdr_siq=$'fil_ip\tfil_in\tsiq\teqn\tmass_ip\tmass_in\tvol_all\tvol_in\tdep_ip\tdep_in\tlen_ip\tlen_in'
+fil_spk_new="${dir_out}/spike.header_only.tsv"
+fil_spk_vrb="${dir_out}/spike.verbose.tsv"
+fil_spk_hdr="${dir_out}/spike.headered.tsv"
 
-row_spk=$'/path/IP.sc.bam\t/path/IP.sp.bam\t/path/in.sc.bam\t/path/in.sp.bam\tchiprx_alpha_ratio\t2\t10\t5\t20\t10'
-row_siq=$'/path/IP.sc.bam\t/path/in.sc.bam\t0.5\t6nd\t2.7\t72.5\t300\t20\t10\t20\t100\t100'
+fil_siq_def="${dir_out}/siq.default.tsv"
+fil_siq_dat="${dir_in}/siq.data.tsv"
+fil_siq_cpy="${dir_out}/siq.copy.tsv"
+fil_siq_inp="${dir_out}/siq.in_place.tsv"
+
+fil_dry="${dir_out}/dry.tsv"
+fil_dry_hdr="${dir_out}/dry.headered.tsv"
+fil_dry_dat="${dir_in}/dry.data.tsv"
+fil_dry_out="${dir_out}/dry.copy.tsv"
+
+fil_old_amb="${dir_out}/old_ambiguous.tsv"
 
 
-#  Assert write_header.sh creates or prepends one expected header
-function assert_write_header() {
-    local mode="${1:-}"
-    local fil_out="${2:-}"
-    local header="${3:-}"
-    local label="${4:-}"
-    local log="${5:-}"
-    local num_hdr=""
+function run_header_success() {
+    local label="${1:-success}"
+    local log="${2:-}"
+    shift 2
 
     if \
         run_capture \
-            "write ${mode} scaling-factor header" \
+            "write scaling-factor header ${label}" \
             "${log}" \
-            "${TEST_BASH}" "${scr_hdr}" \
-                --mode "${mode}" \
-                --fil_out "${fil_out}"
+            "${TEST_BASH}" "${scr_hdr}" "$@"
     then
         record_pass "write_header.sh ${label} exits 0"
     else
         record_fail \
             "write_header.sh ${label} failed; see" \
             "$(print_relpath "${log}")"
-        return
     fi
+}
+
+
+function run_header_failure() {
+    local label="${1:-failure}"
+    local log="${2:-}"
+    local patn="${3:-Error}"
+    shift 3
+
+    if \
+        run_capture \
+            "write scaling-factor header ${label}" \
+            "${log}" \
+            "${TEST_BASH}" "${scr_hdr}" "$@"
+    then
+        record_fail "write_header.sh ${label} unexpectedly succeeded"
+    else
+        assert_pattern_found \
+            "${log}" \
+            "${patn}" \
+            "write_header.sh ${label}"
+    fi
+}
+
+
+function assert_header_once() {
+    local file="${1:-}"
+    local header="${2:-}"
+    local label="${3:-}"
+    local num_hdr=""
 
     assert_file_nonempty \
-        "${fil_out}" \
+        "${file}" \
         "write_header.sh ${label} output"
 
     assert_pattern_found \
-        "${fil_out}" \
+        "${file}" \
         "^${header}$" \
         "write_header.sh ${label} writes expected header"
 
-    num_hdr="$(grep -c "^${header}$" "${fil_out}" || true)"
+    num_hdr="$(grep -c "^${header}$" "${file}" || true)"
     if [[ "${num_hdr}" -eq 1 ]]; then
         record_pass "write_header.sh ${label} writes one header"
     else
         record_fail "write_header.sh ${label} header count is not one"
     fi
+
+    if [[ "$(sed -n '1p' "${file}")" == "${header}" ]]; then
+        record_pass "write_header.sh ${label} puts header first"
+    else
+        record_fail "write_header.sh ${label} did not put header first"
+    fi
 }
 
 
-#  Create a header-only spike table when the output does not exist
-fil_spk_new="${tmp}/out/spike.header_only.tsv"
-assert_write_header \
-    spike \
+rm -rf "${dir_tmp}"
+mkdir -p "${dir_in}" "${dir_out}" "${dir_log}"
+
+require_files_nonempty "${scr_hdr}" || {
+    finish
+    exit $?
+}
+
+printf -v hdr_spk \
+    '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s' \
+    "main_ip" "spike_ip" "main_in" "spike_in" "spike" "coef" \
+    "num_mp" "num_sp" "num_mn" "num_sn"
+
+printf -v hdr_siq \
+    '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s' \
+    "fil_ip" "fil_in" "siq" "eqn" "mass_ip" "mass_in" \
+    "vol_all" "vol_in" "dep_ip" "dep_in" "len_ip" "len_in"
+
+printf -v row_spk \
+    '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s' \
+    "/path/IP.sc.bam" "/path/IP.sp.bam" \
+    "/path/in.sc.bam" "/path/in.sp.bam" \
+    "chiprx_alpha_ratio" "2" "10" "5" "20" "10"
+
+printf -v row_siq \
+    '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s' \
+    "/path/IP.sc.bam" "/path/in.sc.bam" "0.5" "6nd" \
+    "2.7" "72.5" "300" "20" "10" "20" "100" "100"
+
+
+#  Header-only utility mode remains supported when no input is supplied
+run_header_success \
+    header_only \
+    "${dir_log}/header_only.log" \
+    --mode spike \
+    --fil_out "${fil_spk_new}"
+
+assert_header_once \
     "${fil_spk_new}" \
     "${hdr_spk}" \
-    "spike header-only" \
-    "${dir_log}/spike_header_only.log"
+    "header_only"
 
 if [[ "$(wc -l < "${fil_spk_new}")" -eq 1 ]]; then
-    record_pass "write_header.sh spike header-only output has one line"
+    record_pass "write_header.sh header_only output has one line"
 else
-    record_fail "write_header.sh spike header-only output has extra lines"
+    record_fail "write_header.sh header_only output has extra lines"
 fi
 
-
-#  Help should print usage and exit cleanly
-log="${dir_log}/help.log"
-if \
-    run_capture \
-        "write scaling-factor header help" \
-        "${log}" \
-        "${TEST_BASH}" "${scr_hdr}" --help
-then
-    record_pass "write_header.sh --help exits 0"
-    assert_pattern_found \
-        "${log}" \
-        '^Usage:' \
-        "write_header.sh --help prints usage"
-else
-    record_fail "write_header.sh --help failed; see $(print_relpath "${log}")"
-fi
-
-
-#  Default mode should write a siQ-ChIP header
-fil_siq_def="${tmp}/out/siq.default.tsv"
-log="${dir_log}/siq_def.log"
-if \
-    run_capture \
-        "write default scaling-factor header" \
-        "${log}" \
-        "${TEST_BASH}" "${scr_hdr}" \
-            --fil_out "${fil_siq_def}"
-then
-    record_pass "write_header.sh default mode exits 0"
-else
-    record_fail \
-        "write_header.sh default mode failed; see $(print_relpath "${log}")"
-fi
+run_header_success \
+    help \
+    "${dir_log}/help.log" \
+    --help
 
 assert_pattern_found \
+    "${dir_log}/help.log" \
+    '^Usage:' \
+    "write_header.sh help prints usage"
+
+run_header_success \
+    default \
+    "${dir_log}/default.log" \
+    --fil_out "${fil_siq_def}"
+
+assert_header_once \
     "${fil_siq_def}" \
-    "^${hdr_siq}$" \
-    "write_header.sh default mode writes siq header"
+    "${hdr_siq}" \
+    "default"
 
+run_header_success \
+    verbose \
+    "${dir_log}/verbose.log" \
+    --verbose \
+    --mode spike \
+    --fil_out "${fil_spk_vrb}"
 
-#  Verbose mode should print the selected header while writing output
-fil_spk_verbose="${tmp}/out/spike.verbose.tsv"
-log="${dir_log}/spike_verbose.log"
-if \
-    run_capture \
-        "write scaling-factor header verbose" \
-        "${log}" \
-        "${TEST_BASH}" "${scr_hdr}" \
-            --verbose \
-            --mode spike \
-            --fil_out "${fil_spk_verbose}"
-then
-    record_pass "write_header.sh --verbose exits 0"
-else
-    record_fail \
-        "write_header.sh --verbose failed; see $(print_relpath "${log}")"
-fi
+assert_header_once \
+    "${fil_spk_vrb}" \
+    "${hdr_spk}" \
+    "verbose"
 
 assert_pattern_found \
-    "${fil_spk_verbose}" \
+    "${dir_log}/verbose.log" \
     "^${hdr_spk}$" \
-    "write_header.sh --verbose writes spike header"
-
-assert_pattern_found \
-    "${log}" \
-    "^${hdr_spk}$" \
-    "write_header.sh --verbose prints spike header"
+    "write_header.sh verbose prints spike header"
 
 
-#  Prepend a siQ-ChIP header to an existing data-only table
-fil_siq_dat="${tmp}/out/siq.data.tsv"
+#  Explicit input/output and in-place modes
 printf '%s\n' "${row_siq}" > "${fil_siq_dat}"
 
-assert_write_header \
-    siq \
-    "${fil_siq_dat}" \
+run_header_success \
+    siq_copy \
+    "${dir_log}/siq_copy.log" \
+    --mode siq \
+    --fil_in "${fil_siq_dat}" \
+    --fil_out "${fil_siq_cpy}"
+
+assert_header_once \
+    "${fil_siq_cpy}" \
     "${hdr_siq}" \
-    "siq prepend" \
-    "${dir_log}/siq_prepend.log"
+    "siq_copy"
 
 assert_pattern_found \
-    "${fil_siq_dat}" \
+    "${fil_siq_cpy}" \
     "^${row_siq}$" \
-    "write_header.sh siq prepend keeps data row"
+    "write_header.sh siq_copy keeps data row"
 
-if [[ "$(sed -n '1p' "${fil_siq_dat}")" == "${hdr_siq}" ]]; then
-    record_pass "write_header.sh siq prepend puts header first"
+if [[ "$(sed -n '1p' "${fil_siq_dat}")" == "${row_siq}" ]]; then
+    record_pass "write_header.sh siq_copy leaves input unchanged"
 else
-    record_fail "write_header.sh siq prepend did not put header first"
+    record_fail "write_header.sh siq_copy modified input"
 fi
 
+printf '%s\n' "${row_siq}" > "${fil_siq_inp}"
 
-#  Leave an already headered spike table unchanged instead of duplicating header
-fil_spk_hdr="${tmp}/out/spike.headered.tsv"
+run_header_success \
+    siq_in_place \
+    "${dir_log}/siq_in_place.log" \
+    --mode siq \
+    --fil_in "${fil_siq_inp}" \
+    --in_place
+
+assert_header_once \
+    "${fil_siq_inp}" \
+    "${hdr_siq}" \
+    "siq_in_place"
+
+assert_pattern_found \
+    "${fil_siq_inp}" \
+    "^${row_siq}$" \
+    "write_header.sh siq_in_place keeps data row"
+
 {
     printf '%s\n' "${hdr_spk}"
     printf '%s\n' "${row_spk}"
 } > "${fil_spk_hdr}"
 
-assert_write_header \
-    spike \
+run_header_success \
+    spike_idempotent \
+    "${dir_log}/spike_idempotent.log" \
+    --mode spike \
+    --fil_in "${fil_spk_hdr}" \
+    --in_place
+
+assert_header_once \
     "${fil_spk_hdr}" \
     "${hdr_spk}" \
-    "spike idempotent" \
-    "${dir_log}/spike_idempotent.log"
+    "spike_idempotent"
 
 if [[ "$(wc -l < "${fil_spk_hdr}")" -eq 2 ]]; then
-    record_pass "write_header.sh spike idempotent output has two lines"
+    record_pass "write_header.sh spike_idempotent output has two lines"
 else
-    record_fail "write_header.sh spike idempotent output changed line count"
+    record_fail "write_header.sh spike_idempotent output changed line count"
 fi
 
 
-#  Dry-run reports the planned action without creating an output file
-fil_dry="${tmp}/out/dry.tsv"
-log="${dir_log}/dry_run.log"
-if \
-    run_capture \
-        "write scaling-factor header dry-run" \
-        "${log}" \
-        "${TEST_BASH}" "${scr_hdr}" \
-            --dry_run \
-            --mode spike \
-            --fil_out "${fil_dry}"
-then
-    record_pass "write_header.sh --dry_run exits 0"
-else
-    record_fail "write_header.sh --dry_run failed; see $(print_relpath "${log}")"
-fi
+#  Dry-run modes report planned work without writing or modifying files
+run_header_success \
+    dry_header_only \
+    "${dir_log}/dry_header_only.log" \
+    --dry_run \
+    --mode spike \
+    --fil_out "${fil_dry}"
 
 if [[ ! -e "${fil_dry}" ]]; then
-    record_pass "write_header.sh --dry_run writes no output"
+    record_pass "write_header.sh dry_header_only writes no output"
 else
-    record_fail "write_header.sh --dry_run wrote output"
+    record_fail "write_header.sh dry_header_only wrote output"
 fi
 
 assert_pattern_found \
-    "${log}" \
-    'Dry run:' \
-    "write_header.sh --dry_run reports planned action"
+    "${dir_log}/dry_header_only.log" \
+    'would create' \
+    "write_header.sh dry_header_only reports planned creation"
 
-
-#  Dry-run should not modify an existing headered file
-fil_dry_hdr="${tmp}/out/dry.headered.tsv"
-log="${dir_log}/dry_run_headered.log"
 {
     printf '%s\n' "${hdr_spk}"
     printf '%s\n' "${row_spk}"
 } > "${fil_dry_hdr}"
-
-if \
-    run_capture \
-        "write scaling-factor header dry-run already headered" \
-        "${log}" \
-        "${TEST_BASH}" "${scr_hdr}" \
-            --dry_run \
-            --mode spike \
-            --fil_out "${fil_dry_hdr}"
-then
-    record_pass "write_header.sh --dry_run headered exits 0"
-else
-    record_fail \
-        "write_header.sh --dry_run headered failed; see" \
-        "$(print_relpath "${log}")"
-fi
-
+run_header_success \
+    dry_in_place \
+    "${dir_log}/dry_in_place.log" \
+    --dry_run \
+    --mode spike \
+    --fil_in "${fil_dry_hdr}" \
+    --in_place
 assert_pattern_found \
-    "${log}" \
+    "${dir_log}/dry_in_place.log" \
     'header already present' \
-    "write_header.sh --dry_run detects existing header"
+    "write_header.sh dry_in_place detects existing header"
 
 if [[ "$(wc -l < "${fil_dry_hdr}")" -eq 2 ]]; then
-    record_pass "write_header.sh --dry_run headered preserves line count"
+    record_pass "write_header.sh dry_in_place preserves line count"
 else
-    record_fail "write_header.sh --dry_run headered changed line count"
+    record_fail "write_header.sh dry_in_place changed line count"
 fi
 
-
-#  Dry-run should not modify an existing data-only file
-fil_dry_dat="${tmp}/out/dry.data.tsv"
-log="${dir_log}/dry_run_data.log"
 printf '%s\n' "${row_siq}" > "${fil_dry_dat}"
-
-if \
-    run_capture \
-        "write scaling-factor header dry-run data-only" \
-        "${log}" \
-        "${TEST_BASH}" "${scr_hdr}" \
-            --dry_run \
-            --mode siq \
-            --fil_out "${fil_dry_dat}"
-then
-    record_pass "write_header.sh --dry_run data-only exits 0"
-else
-    record_fail \
-        "write_header.sh --dry_run data-only failed; see" \
-        "$(print_relpath "${log}")"
-fi
-
+run_header_success \
+    dry_copy \
+    "${dir_log}/dry_copy.log" \
+    --dry_run \
+    --mode siq \
+    --fil_in "${fil_dry_dat}" \
+    --fil_out "${fil_dry_out}"
 assert_pattern_found \
-    "${log}" \
+    "${dir_log}/dry_copy.log" \
     'would prepend header' \
-    "write_header.sh --dry_run reports header prepend"
+    "write_header.sh dry_copy reports headered copy"
+
+if [[ ! -e "${fil_dry_out}" ]]; then
+    record_pass "write_header.sh dry_copy writes no output"
+else
+    record_fail "write_header.sh dry_copy wrote output"
+fi
 
 if [[ "$(sed -n '1p' "${fil_dry_dat}")" == "${row_siq}" ]]; then
-    record_pass "write_header.sh --dry_run data-only preserves first row"
+    record_pass "write_header.sh dry_copy preserves input"
 else
-    record_fail "write_header.sh --dry_run data-only modified first row"
+    record_fail "write_header.sh dry_copy modified input"
 fi
 
 
-#  Invalid mode fails clearly
-log="${dir_log}/invalid_mode.log"
-if \
-    run_capture \
-        "write scaling-factor header invalid mode" \
-        "${log}" \
-        "${TEST_BASH}" "${scr_hdr}" \
-            --mode bogus \
-            --fil_out "${tmp}/out/bogus.tsv"
-then
-    record_fail "write_header.sh invalid mode unexpectedly succeeded"
-else
-    assert_pattern_found \
-        "${log}" \
-        "must be.*'siq' or 'spike'" \
-        "write_header.sh rejects invalid mode"
-fi
+#  Invalid mode and invalid argument combinations should fail clearly
+run_header_failure \
+    invalid_mode \
+    "${dir_log}/invalid_mode.log" \
+    "must be.*'siq' or 'spike'" \
+    --mode bogus \
+    --fil_out "${dir_out}/bogus.tsv"
 
+run_header_failure \
+    missing_output_mode \
+    "${dir_log}/missing_output_mode.log" \
+    "requires either '--fil_out' or '--in_place'" \
+    --mode spike \
+    --fil_in "${fil_spk_hdr}"
 
-#  Missing required arguments and invalid options should fail clearly
-log="${dir_log}/missing_fil_out.log"
-if \
-    run_capture \
-        "write scaling-factor header missing output" \
-        "${log}" \
-        "${TEST_BASH}" "${scr_hdr}" \
-            --mode spike
-then
-    record_fail "write_header.sh missing --fil_out unexpectedly succeeded"
-else
-    assert_pattern_found \
-        "${log}" \
-        "'fil_out' is empty or unset" \
-        "write_header.sh rejects missing fil_out"
-fi
+run_header_failure \
+    in_place_without_input \
+    "${dir_log}/in_place_without_input.log" \
+    "'--in_place' requires '--fil_in'" \
+    --mode spike \
+    --in_place
 
-log="${dir_log}/missing_mode_value.log"
-if \
-    run_capture \
-        "write scaling-factor header missing mode value" \
-        "${log}" \
-        "${TEST_BASH}" "${scr_hdr}" \
-            --mode
-then
-    record_fail "write_header.sh missing --mode value unexpectedly succeeded"
-else
-    assert_pattern_found \
-        "${log}" \
-        "option '--mode' requires a value" \
-        "write_header.sh rejects missing mode value"
+run_header_failure \
+    output_and_in_place \
+    "${dir_log}/output_and_in_place.log" \
+    "use either '--fil_out' or '--in_place'" \
+    --mode spike \
+    --fil_in "${fil_spk_hdr}" \
+    --fil_out "${dir_out}/both.tsv" \
+    --in_place
 
-    assert_pattern_found \
-        "${log}" \
-        '^Usage:' \
-        "write_header.sh missing mode value prints usage"
-fi
+run_header_failure \
+    same_input_output \
+    "${dir_log}/same_input_output.log" \
+    "same path; use '--in_place'" \
+    --mode spike \
+    --fil_in "${fil_spk_hdr}" \
+    --fil_out "${fil_spk_hdr}"
 
-log="${dir_log}/unknown_option.log"
-if \
-    run_capture \
-        "write scaling-factor header unknown option" \
-        "${log}" \
-        "${TEST_BASH}" "${scr_hdr}" \
-            --bogus \
-            --fil_out "${tmp}/out/unknown.tsv"
-then
-    record_fail "write_header.sh unknown option unexpectedly succeeded"
-else
-    assert_pattern_found \
-        "${log}" \
-        "unknown option/parameter passed: '--bogus'" \
-        "write_header.sh rejects unknown option"
-fi
+printf '%s\n' "${row_spk}" > "${fil_old_amb}"
+run_header_failure \
+    old_fil_out_existing \
+    "${dir_log}/old_fil_out_existing.log" \
+    "already exists in header-only mode" \
+    --mode spike \
+    --fil_out "${fil_old_amb}"
 
-log="${dir_log}/missing_output_dir.log"
-if \
-    run_capture \
-        "write scaling-factor header missing output directory" \
-        "${log}" \
-        "${TEST_BASH}" "${scr_hdr}" \
-            --mode spike \
-            --fil_out "${tmp}/missing/spike.tsv"
-then
-    record_fail \
-        "write_header.sh missing output directory unexpectedly succeeded"
-else
-    assert_pattern_found \
-        "${log}" \
-        "directory for 'dir_out' does not exist" \
-        "write_header.sh rejects missing output directory"
-fi
+run_header_failure \
+    missing_mode_value \
+    "${dir_log}/missing_mode_value.log" \
+    "option '--mode' requires a value" \
+    --mode
+assert_pattern_found \
+    "${dir_log}/missing_mode_value.log" \
+    '^Usage:' \
+    "write_header.sh missing mode value prints usage"
+
+run_header_failure \
+    unknown_option \
+    "${dir_log}/unknown_option.log" \
+    "unknown option/parameter passed: '--bogus'" \
+    --bogus \
+    --fil_out "${dir_out}/unknown.tsv"
+
+run_header_failure \
+    missing_output_dir \
+    "${dir_log}/missing_output_dir.log" \
+    "directory for 'dir_out' does not exist" \
+    --mode spike \
+    --fil_out "${dir_tmp}/missing/spike.tsv"
 
 finish

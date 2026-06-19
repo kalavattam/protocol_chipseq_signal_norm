@@ -1,0 +1,7 @@
+cell	genotype_full	genotype	state	treatment	factor	strain_full	strain	replicate	volume_in	volume_all	mass_in	mass_ip	conc_in	conc_ip	length_in	length_ip	lib_vol_in	lib_vol_ip	alpha_reported
+HeLa	NA	NA	NA	DMSO	H3K18ac	NA	NA	rep1	50	250	98.7	22.68	183.5	144.2	382	499	4	2	0.08795463
+HeLa	NA	NA	NA	DMSO	H3K27ac	NA	NA	rep1	50	250	98.7	3.81	183.5	150.2	382	432	4	2	0.017067
+HeLa	NA	NA	NA	CBP30	H3K18ac	NA	NA	rep1	50	250	102.9	16.8	167.8	151.9	355	440	4	2	0.065863
+HeLa	NA	NA	NA	CBP30	H3K27ac	NA	NA	rep1	50	250	102.9	2.052	167.8	136.7	355	397	4	2	0.008916
+HeLa	NA	NA	NA	A485	H3K18ac	NA	NA	rep1	50	250	114.3	3.72	190.6	137.2	357	446	4	2	0.0130257
+HeLa	NA	NA	NA	A485	H3K27ac	NA	NA	rep1	50	250	114.3	0.78	190.6	76.4	357	391	4	2	0.0031154

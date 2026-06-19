@@ -35,13 +35,9 @@ dir_met="${dir_fix}/metadata"
 
 tbl_met="${dir_met}/measurements_siqchip.tsv"
 tbl_gz="${dir_met}/measurements_siqchip.tsv.gz"
-tbl_als="${dir_met}/measurements_siqchip_aliases.tsv"
-tbl_pfx="${dir_met}/measurements_siqchip_skip_prefixes.tsv"
-tbl_col="${dir_met}/measurements_siqchip_alias_collision.tsv"
+tbl_lib="${dir_met}/measurements_siqchip_lib_volume.tsv"
 tbl_dup="${dir_met}/measurements_siqchip_duplicate_match.tsv"
-tbl_trt="${dir_met}/measurements_siqchip_treatment.tsv"
-cfg_rgx="${dir_fix}/config/parse_metadata_siqchip_regex.yml"
-cfg_trt="${dir_fix}/config/parse_metadata_siqchip_match_treatment.yml"
+tbl_pre="${dir_met}/measurements_siqchip_precomputed.tsv"
 ref_fa="${dir_fix}/reference/tiny.fa"
 
 tmp="${TEST_DIR_TMP}/execute_calculate_scaling_factor_siq"
@@ -80,15 +76,11 @@ if ! \
     require_files_nonempty \
         "${scr_exe}" \
         "${cfg_met}" \
-        "${cfg_rgx}" \
-        "${cfg_trt}" \
         "${tbl_met}" \
         "${tbl_gz}" \
-        "${tbl_als}" \
-        "${tbl_pfx}" \
-        "${tbl_col}" \
+        "${tbl_lib}" \
         "${tbl_dup}" \
-        "${tbl_trt}" \
+        "${tbl_pre}" \
         "${bam_pe_mip_0}" \
         "${bam_pe_mip_0}.bai" \
         "${bam_pe_mip_1}" \
@@ -169,6 +161,20 @@ arr_cmd_bam_pe=(
             --max_job 1
     )
 
+    arr_cmd_lib=(
+        "${TEST_BASH}" "${scr_exe}"
+            --threads 1
+            --mode siq
+            --csv_mip "${bam_pe_mip_0},${bam_pe_mip_1}"
+            --csv_min "${bam_pe_min_0},${bam_pe_min_1}"
+            --aln_typ auto
+            --tbl_met "${tbl_lib}"
+            --cfg_met "${cfg_met}"
+            --eqn 6nd
+            --err_out "${dir_err}"
+            --max_job 1
+    )
+
     arr_cmd_mxd_lyt=(
         "${TEST_BASH}" "${scr_exe}"
             --threads 1
@@ -198,26 +204,10 @@ arr_cmd_bam_pe=(
             --err_out "${dir_err}"
             --max_job 1
     )
-
-    arr_cmd_trt=(
-        "${TEST_BASH}" "${scr_exe}"
-            --threads 1
-            --mode siq
-            --csv_mip "${hu_pe_mip_0},${hu_pe_mip_1}"
-            --csv_min "${hu_pe_min_0},${hu_pe_min_1}"
-            --aln_typ auto
-            --tbl_met "${tbl_trt}"
-            --cfg_met "${cfg_trt}"
-            --eqn 6nd
-            --err_out "${dir_err}"
-            --max_job 1
-    )
 }
 
 row_bam_pe_0="${bam_pe_mip_0}"$'\t'"${bam_pe_min_0}"
 row_bam_pe_1="${bam_pe_mip_1}"$'\t'"${bam_pe_min_1}"
-row_hu_pe_0="${hu_pe_mip_0}"$'\t'"${hu_pe_min_0}"
-row_hu_pe_1="${hu_pe_mip_1}"$'\t'"${hu_pe_min_1}"
 row_cram_pe_0="${cram_pe_mip_0}"$'\t'"${cram_pe_min_0}"
 row_cram_pe_1="${cram_pe_mip_1}"$'\t'"${cram_pe_min_1}"
 row_bam_se_0="${bam_se_mip_0}"$'\t'"${bam_se_min_0}"
@@ -288,6 +278,11 @@ assert_pattern_found \
 
 assert_pattern_found \
     "${log}" \
+    'write_header.sh.*--fil_in.*--in_place' \
+    "execute_calculate_scaling_factor.sh siQ --dry_run reports in-place headering"
+
+assert_pattern_found \
+    "${log}" \
     "${TEST_BASH} ${ROOT_REPO}/scripts/submit_calculate_scaling_factor.sh" \
     "execute_calculate_scaling_factor.sh siQ --dry_run reports submit"
 
@@ -308,8 +303,8 @@ run_case_siq \
     arr_cmd_bam_pe \
     "${row_bam_pe_0}" \
     "${row_bam_pe_1}" \
-    $'0.002660098522167487697376\t6nd\t2.7\t72.5\t300\t20\t3\t2\t20\t20' \
-    $'0.00440373436674299824356\t6nd\t5\t81.1\t300\t20\t2\t3\t20\t20'
+    $'0.001912211397724232486706\t6nd\t2.7\t72.5\t300\t20\t3\t2\t626\t450' \
+    $'0.002902612244746139314594\t6nd\t5\t81.1\t300\t20\t2\t3\t663\t437'
 
 fil_out="${dir_out}/scaling.pe_bam.siq.tsv"
 prt_0="${fil_out}.part.000000"
@@ -329,14 +324,30 @@ assert_pattern_found \
     "execute scaling-factor siQ PE BAM auto-detects second IP as PE"
 
 
+#  Metadata library-loading volumes should correct alpha through execute
+run_case_scaling_factor_execute \
+    pe_lib_volume \
+    siQ \
+    arr_cmd_lib \
+    "${dir_out}" \
+    "${dir_log}" \
+    siq \
+    test_execute_calculate_scaling_factor_siq \
+    $'^fil_ip\tfil_in\tsiq\teqn\tmass_ip\tmass_in\tvol_all\tvol_in\tdep_ip\tdep_in\tlen_ip\tlen_in\tlib_vol_ip\tlib_vol_in$' \
+    "${row_bam_pe_0}" \
+    "${row_bam_pe_1}" \
+    $'0.003824422795448464973411\t6nd\t2.7\t72.5\t300\t20\t3\t2\t626\t450\t2\t4' \
+    $'0.005805224489492278629188\t6nd\t5\t81.1\t300\t20\t2\t3\t663\t437\t2\t4'
+
+
 #  PE CRAM input should work when an explicit reference is supplied
 run_case_siq \
     pe_cram \
     arr_cmd_cram_pe \
     "${row_cram_pe_0}" \
     "${row_cram_pe_1}" \
-    $'0.002660098522167487697376\t6nd\t2.7\t72.5\t300\t20\t3\t2\t20\t20' \
-    $'0.00440373436674299824356\t6nd\t5\t81.1\t300\t20\t2\t3\t20\t20'
+    $'0.001912211397724232486706\t6nd\t2.7\t72.5\t300\t20\t3\t2\t626\t450' \
+    $'0.002902612244746139314594\t6nd\t5\t81.1\t300\t20\t2\t3\t663\t437'
 
 nam_job="test_execute_calculate_scaling_factor_siq_pe_cram"
 log_err_0="${dir_err}/${nam_job}.IP_WT_G1_Hho1_6336.sc.stderr.txt"
@@ -444,7 +455,7 @@ run_case_siq \
     "${row_bam_se_0}" \
     "${row_bam_pe_1}" \
     $'0.004761904761904762334312\t6nd\t4\t60\t300\t20\t3\t2\t150\t150' \
-    $'0.00440373436674299824356\t6nd\t5\t81.1\t300\t20\t2\t3\t20\t20'
+    $'0.002902612244746139314594\t6nd\t5\t81.1\t300\t20\t2\t3\t663\t437'
 
 nam_job="test_execute_calculate_scaling_factor_siq_mixed_layout"
 log_err_0="${dir_err}/${nam_job}.IP_WT_log_Brn1_rep1.sc.stderr.txt"
@@ -467,8 +478,8 @@ run_case_siq \
     arr_cmd_mxd_fmt \
     "${row_bam_pe_0}" \
     "${row_cram_pe_1}" \
-    $'0.002660098522167487697376\t6nd\t2.7\t72.5\t300\t20\t3\t2\t20\t20' \
-    $'0.00440373436674299824356\t6nd\t5\t81.1\t300\t20\t2\t3\t20\t20'
+    $'0.001912211397724232486706\t6nd\t2.7\t72.5\t300\t20\t3\t2\t626\t450' \
+    $'0.002902612244746139314594\t6nd\t5\t81.1\t300\t20\t2\t3\t663\t437'
 
 nam_job="test_execute_calculate_scaling_factor_siq_mixed_format"
 log_err_1="${dir_err}/${nam_job}.IP_WT_G1_Hho1_6337.sc.stderr.txt"
@@ -485,76 +496,9 @@ run_case_siq \
     arr_cmd_bam_pe \
     "${row_bam_pe_0}" \
     "${row_bam_pe_1}" \
-    $'0.002660098522167487697376\t6nd\t2.7\t72.5\t300\t20\t3\t2\t20\t20' \
-    $'0.00440373436674299824356\t6nd\t5\t81.1\t300\t20\t2\t3\t20\t20' \
+    $'0.001912211397724232486706\t6nd\t2.7\t72.5\t300\t20\t3\t2\t626\t450' \
+    $'0.002902612244746139314594\t6nd\t5\t81.1\t300\t20\t2\t3\t663\t437' \
     --tbl_met "${tbl_gz}"
-
-run_case_siq \
-    alias_metadata \
-    arr_cmd_bam_pe \
-    "${row_bam_pe_0}" \
-    "${row_bam_pe_1}" \
-    $'0.002660098522167487697376\t6nd\t2.7\t72.5\t300\t20\t3\t2\t20\t20' \
-    $'0.00440373436674299824356\t6nd\t5\t81.1\t300\t20\t2\t3\t20\t20' \
-    --tbl_met "${tbl_als}"
-
-run_case_siq \
-    skip_prefixes \
-    arr_cmd_bam_pe \
-    "${row_bam_pe_0}" \
-    "${row_bam_pe_1}" \
-    $'0.002660098522167487697376\t6nd\t2.7\t72.5\t300\t20\t3\t2\t20\t20' \
-    $'0.00440373436674299824356\t6nd\t5\t81.1\t300\t20\t2\t3\t20\t20' \
-    --tbl_met "${tbl_pfx}"
-
-run_case_siq \
-    regex_config \
-    arr_cmd_bam_pe \
-    "${row_bam_pe_0}" \
-    "${row_bam_pe_1}" \
-    $'0.002660098522167487697376\t6nd\t2.7\t72.5\t300\t20\t3\t2\t20\t20' \
-    $'0.00440373436674299824356\t6nd\t5\t81.1\t300\t20\t2\t3\t20\t20' \
-    --cfg_met "${cfg_rgx}"
-
-run_case_siq \
-    treatment \
-    arr_cmd_trt \
-    "${row_hu_pe_0}" \
-    "${row_hu_pe_1}" \
-    $'0.007963320463320463019063\t6nd\t9.9\t88.8\t300\t20\t3\t2\t20\t20' \
-    $'0.007936507936507936067372\t6nd\t11.1\t99.9\t300\t20\t2\t3\t20\t20'
-
-
-#  Metadata parser failures should propagate through execute-layer logs
-log="${dir_log}/execute_siq_alias_collision.log"
-fil_err="${dir_err}/test_execute_calculate_scaling_factor_siq_alias_collision.IP_WT_G1_Hho1_6336.sc.stderr.txt"
-if \
-    run_capture \
-        "execute calculate-scaling-factor siQ alias collision" \
-        "${log}" \
-        "${TEST_BASH}" "${scr_exe}" \
-            --threads 1 \
-            --mode siq \
-            --csv_mip "${bam_pe_mip_0}" \
-            --csv_min "${bam_pe_min_0}" \
-            --aln_typ auto \
-            --tbl_met "${tbl_col}" \
-            --cfg_met "${cfg_met}" \
-            --eqn 6nd \
-            --fil_out "${dir_out}/scaling.alias_collision.siq.tsv" \
-            --err_out "${dir_err}" \
-            --nam_job test_execute_calculate_scaling_factor_siq_alias_collision \
-            --max_job 1
-then
-    record_fail \
-        "execute_calculate_scaling_factor.sh siQ alias collision" \
-        "unexpectedly passed"
-else
-    assert_pattern_found \
-        "${fil_err}" \
-        "multiple columns that normalize to the same canonical name" \
-        "execute_calculate_scaling_factor.sh siQ alias collision fails clearly"
-fi
 
 log="${dir_log}/execute_siq_duplicate_match.log"
 fil_err="${dir_err}/test_execute_calculate_scaling_factor_siq_duplicate_match.IP_WT_G1_Hho1_6336.sc.stderr.txt"
@@ -582,7 +526,7 @@ then
 else
     assert_pattern_found \
         "${fil_err}" \
-        "Multiple matching rows found" \
+        "Multiple metadata rows matched" \
         "execute_calculate_scaling_factor.sh siQ duplicate match fails clearly"
 fi
 
@@ -593,8 +537,8 @@ run_case_siq \
     arr_cmd_bam_pe \
     "${row_bam_pe_0}" \
     "${row_bam_pe_1}" \
-    $'0.001655172413793103407958\t5\t2.7\t72.5\t300\t20\t3\t2\t20\t20' \
-    $'0.006165228113440198234874\t5\t5\t81.1\t300\t20\t2\t3\t20\t20' \
+    $'0.001189820425250633388267\t5\t2.7\t72.5\t300\t20\t3\t2\t626\t450' \
+    $'0.004063657142644594953695\t5\t5\t81.1\t300\t20\t2\t3\t663\t437' \
     --eqn 5
 
 run_case_siq \
@@ -602,8 +546,8 @@ run_case_siq \
     arr_cmd_bam_pe \
     "${row_bam_pe_0}" \
     "${row_bam_pe_1}" \
-    $'0.002482758620689655328778\t5nd\t2.7\t72.5\t300\t20\t3\t2\t20\t20' \
-    $'0.004110152075626798823249\t5nd\t5\t81.1\t300\t20\t2\t3\t20\t20' \
+    $'0.001784730637875950407661\t5nd\t2.7\t72.5\t300\t20\t3\t2\t626\t450' \
+    $'0.002709104761763063591584\t5nd\t5\t81.1\t300\t20\t2\t3\t663\t437' \
     --eqn 5nd
 
 run_case_siq \
@@ -611,8 +555,8 @@ run_case_siq \
     arr_cmd_bam_pe \
     "${row_bam_pe_0}" \
     "${row_bam_pe_1}" \
-    $'0.001773399014778325203864\t6\t2.7\t72.5\t300\t20\t3\t2\t20\t20' \
-    $'0.00660560155011449736534\t6\t5\t81.1\t300\t20\t2\t3\t20\t20' \
+    $'0.001274807598482821657804\t6\t2.7\t72.5\t300\t20\t3\t2\t626\t450' \
+    $'0.004353918367119209188731\t6\t5\t81.1\t300\t20\t2\t3\t663\t437' \
     --eqn 6
 
 
@@ -632,8 +576,8 @@ run_case_siq \
     arr_cmd_bam_pe \
     "${row_bam_pe_0}" \
     "${row_bam_pe_1}" \
-    $'0.005320197044334976262114\t6\t2.7\t72.5\t300\t20\t10\t20\t20\t20' \
-    $'0.00880746873348599648712\t6\t5\t81.1\t300\t20\t10\t20\t20\t20' \
+    $'0.00382442279544846453973\t6\t2.7\t72.5\t300\t20\t10\t20\t626\t450' \
+    $'0.005805224489492278629188\t6\t5\t81.1\t300\t20\t10\t20\t663\t437' \
     --eqn 6 \
     --dep_mip 10 \
     --dep_min 20
@@ -667,8 +611,8 @@ run_case_siq \
     arr_cmd_bam_pe \
     "${row_bam_pe_0}" \
     "${row_bam_pe_1}" \
-    $'0.002660098522167487697376\t6nd\t2.7\t72.5\t300\t20\t3\t2\t20\t20' \
-    $'0.00440373436674299824356\t6nd\t5\t81.1\t300\t20\t2\t3\t20\t20' \
+    $'0.001912211397724232486706\t6nd\t2.7\t72.5\t300\t20\t3\t2\t626\t450' \
+    $'0.002902612244746139314594\t6nd\t5\t81.1\t300\t20\t2\t3\t663\t437' \
     --no_header
 
 

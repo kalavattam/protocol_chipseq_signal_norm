@@ -323,7 +323,8 @@ function build_cmd_hdr() {
     cmd_hdr=(
         "${BASH}" "${scr_hdr}"
             --mode "${mode}"
-            --fil_out "${fil_out}"
+            --fil_in "${fil_out}"
+            --in_place
     )
 }
 
@@ -376,7 +377,8 @@ function build_cmd_hdr_slurm() {
             --dependency="afterok:${id_dep}"
             "${scr_hdr}"
                 --mode "${mode}"
-                --fil_out "${fil_out}"
+                --fil_in "${fil_out}"
+                --in_place
     )
 }
 

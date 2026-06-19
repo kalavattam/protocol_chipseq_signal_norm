@@ -197,15 +197,13 @@ dup_idx_a="${dir_prt}/duplicate_index_A.spike.tsv.part.000005"
 dup_idx_b="${dir_prt}/duplicate_index_B.spike.tsv.part.000005"
 met_siq="${dir_met}/measurements_siqchip.tsv"
 met_siq_gz="${dir_met}/measurements_siqchip.tsv.gz"
-met_siq_als="${dir_met}/measurements_siqchip_aliases.tsv"
+met_siq_lib="${dir_met}/measurements_siqchip_lib_volume.tsv"
+met_siq_lib_one="${dir_met}/measurements_siqchip_lib_volume_one_sided.tsv"
+met_siq_lib_zero="${dir_met}/measurements_siqchip_lib_volume_zero.tsv"
 met_siq_mis="${dir_met}/measurements_siqchip_missing_required.tsv"
-met_siq_uns="${dir_met}/measurements_siqchip_unsupported_alias.tsv"
-met_siq_pfx="${dir_met}/measurements_siqchip_skip_prefixes.tsv"
-met_siq_col="${dir_met}/measurements_siqchip_alias_collision.tsv"
 met_siq_dup="${dir_met}/measurements_siqchip_duplicate_match.tsv"
-met_siq_trt="${dir_met}/measurements_siqchip_treatment.tsv"
-cfg_rgx="${dir_cfg}/parse_metadata_siqchip_regex.yml"
-cfg_trt="${dir_cfg}/parse_metadata_siqchip_match_treatment.yml"
+met_siq_pre="${dir_met}/measurements_siqchip_precomputed.tsv"
+cfg_map="${dir_cfg}/parse_metadata_siqchip_field_to_column.yml"
 
 env_req="env_protocol"
 
@@ -333,7 +331,8 @@ samtools quickcheck \
     "${cram_pe_sin_0}" \
     "${cram_pe_sin_1}"
 
-#  Remove stale generated fixture outputs
+#  Remove stale generated fixture outputs. Broad metadata/config cleanup clears
+#+ ignored legacy parser fixtures from earlier generator versions.
 rm_files \
     "${dir_fix}" \
     "${spk_0}" \
@@ -343,18 +342,12 @@ rm_files \
     "${bad_fld}" \
     "${bad_hdr}" \
     "${dup_idx_a}" \
-    "${dup_idx_b}" \
-    "${met_siq}" \
-    "${met_siq_gz}" \
-    "${met_siq_als}" \
-    "${met_siq_mis}" \
-    "${met_siq_uns}" \
-    "${met_siq_pfx}" \
-    "${met_siq_col}" \
-    "${met_siq_dup}" \
-    "${met_siq_trt}" \
-    "${cfg_rgx}" \
-    "${cfg_trt}"
+    "${dup_idx_b}"
+
+rm -f -- \
+    "${dir_met}"/measurements_siqchip*.tsv \
+    "${dir_met}"/measurements_siqchip.tsv.gz \
+    "${dir_cfg}"/parse_metadata_siqchip*.yml
 
 #  Write realistic spike-in scaling-factor part files
 write_tsv_row \
@@ -384,7 +377,7 @@ write_tsv_row \
     '0.0023106316806475436' \
     '6nd' \
     '2.7' '72.5' '300' '20' \
-    '13492920' '12851824' '227.009' '197.186' \
+    '13492920' '12851824' '227.009' '197.186' 'NA' 'NA' \
     > "${siq_0}"
 
 write_tsv_row \
@@ -393,7 +386,7 @@ write_tsv_row \
     '0.003816492180174805' \
     '6nd' \
     '5' '81.1' '300' '20' \
-    '13655994' '12030091' '230.767' '199.994' \
+    '13655994' '12030091' '230.767' '199.994' 'NA' 'NA' \
     > "${siq_2}"
 
 #  Write one malformed part file for negative validation
@@ -479,74 +472,54 @@ gzip_n "${met_siq}" "${met_siq_gz}"
 
 {
     write_tsv_row \
-        'protein' 'gt' 'cc' 'sample' \
-        'input volume' 'total volume' 'input mass' 'IP mass' \
-        'fragment length input' 'fragment length IP'
+        'factor' 'genotype' 'state' 'strain' \
+        'volume_in' 'volume_all' 'mass_in' 'mass_ip' \
+        'length_in' 'length_ip' 'lib_vol_in' 'lib_vol_ip'
 
     write_tsv_row \
         'Hho1' 'WT' 'G1' '6336' \
         '20' '300' '72.5' '2.7' \
-        '450' '626'
+        '450' '626' '4' '2'
 
     write_tsv_row \
         'Hho1' 'WT' 'G1' '6337' \
         '20' '300' '81.1' '5' \
-        '437' '663'
-} > "${met_siq_als}"
+        '437' '663' '4' '2'
+} > "${met_siq_lib}"
+
+{
+    write_tsv_row \
+        'factor' 'genotype' 'state' 'strain' \
+        'volume_in' 'volume_all' 'mass_in' 'mass_ip' \
+        'length_in' 'length_ip' 'lib_vol_in'
+
+    write_tsv_row \
+        'Hho1' 'WT' 'G1' '6336' \
+        '20' '300' '72.5' '2.7' \
+        '450' '626' '4'
+} > "${met_siq_lib_one}"
+
+{
+    write_tsv_row \
+        'factor' 'genotype' 'state' 'strain' \
+        'volume_in' 'volume_all' 'mass_in' 'mass_ip' \
+        'length_in' 'length_ip' 'lib_vol_in' 'lib_vol_ip'
+
+    write_tsv_row \
+        'Hho1' 'WT' 'G1' '6336' \
+        '20' '300' '72.5' '2.7' \
+        '450' '626' '0' '2'
+} > "${met_siq_lib_zero}"
 
 {
     write_tsv_row \
         'genotype' 'state' 'factor' 'strain' \
-        'volume_in' 'volume_all' 'mass_in' 'mass_ip' 'length_in'
+        'volume_in' 'volume_all' 'mass_in' 'length_in' 'length_ip'
 
     write_tsv_row \
         'WT' 'G1' 'Hho1' '6336' \
-        '20' '300' '72.5' '2.7' '450'
+        '20' '300' '72.5' '450' '626'
 } > "${met_siq_mis}"
-
-{
-    write_tsv_row \
-        'genotype' 'state' 'factor' 'strain' \
-        'input_volume_unknown' 'volume_all' 'mass_in' 'mass_ip' \
-        'length_in' 'length_ip'
-
-    write_tsv_row \
-        'WT' 'G1' 'Hho1' '6336' \
-        '20' '300' '72.5' '2.7' \
-        '450' '626'
-} > "${met_siq_uns}"
-
-{
-    printf '# Comment line skipped by default parser config\n'
-    printf '// Alternate comment line skipped by default parser config\n'
-
-    write_tsv_row \
-        'genotype' 'state' 'factor' 'strain' \
-        'volume_in' 'volume_all' 'mass_in' 'mass_ip' \
-        'length_in' 'length_ip'
-
-    write_tsv_row \
-        'WT' 'G1' 'Hho1' '6336' \
-        '20' '300' '72.5' '2.7' \
-        '450' '626'
-
-    write_tsv_row \
-        'WT' 'G1' 'Hho1' '6337' \
-        '20' '300' '81.1' '5' \
-        '437' '663'
-} > "${met_siq_pfx}"
-
-{
-    write_tsv_row \
-        'factor' 'fct' 'strain' 'genotype' 'state' \
-        'volume_in' 'volume_all' 'mass_in' 'mass_ip' \
-        'length_in' 'length_ip'
-
-    write_tsv_row \
-        'Hho1' 'Hho1' '6336' 'WT' 'G1' \
-        '20' '300' '72.5' '2.7' \
-        '450' '626'
-} > "${met_siq_col}"
 
 {
     write_tsv_row \
@@ -567,161 +540,65 @@ gzip_n "${met_siq}" "${met_siq_gz}"
 
 {
     write_tsv_row \
-        'genotype' 'state' 'treatment' 'factor' 'strain' \
+        'genotype' 'state' 'factor' 'strain' \
         'volume_in' 'volume_all' 'mass_in' 'mass_ip' \
-        'length_in' 'length_ip'
+        'length_in' 'length_ip' 'dep_in' 'dep_ip'
 
     write_tsv_row \
-        'WT' 'G1' 'DMSO' 'Hho1' '6336' \
+        'WT' 'G1' 'Hho1' '6336' \
         '20' '300' '72.5' '2.7' \
-        '450' '626'
+        '123' '456' '2222' '3333'
+} > "${met_siq_pre}"
 
-    write_tsv_row \
-        'WT' 'G1' 'HU' 'Hho1' '6336' \
-        '20' '300' '88.8' '9.9' \
-        '450' '626'
+cat > "${cfg_map}" << EOM
+version: 2
+profile: "fixture-field-to-column"
 
-    write_tsv_row \
-        'WT' 'G1' 'HU' 'Hho1' '6337' \
-        '20' '300' '99.9' '11.1' \
-        '437' '663'
-} > "${met_siq_trt}"
-
-cat > "${cfg_rgx}" << 'EOM'
 filename:
     delimiter: "_"
-    strip_extensions: [".bam", ".cram", ".sam"]
-    strip_trailing_tag_regex: '\.[^.]+$'
-    assay_tokens: ["IP", "in"]
-    states: ["G1", "G2M", "log", "Q"]
-    pattern: '^(?P<assay>IP|in)_(?P<genotype>[^_]+)_(?P<state>[^_]+)_(?P<factor>[^_]+)_(?P<strain>[^_]+)$'
-    pattern_group_defaults:
-        genotype: "NA"
-        state: "NA"
-        treatment: "NA"
-    layouts: []
-    genotype:
-        exact: ["WT"]
-        suffixes: ["-KO"]
-        exclude_suffixes: ["-flag"]
-    factor:
-        regex:
-            - '^H[1-4](?:[A-Za-z0-9]+)?$'
-            - '^[A-Za-z0-9]+-flag$'
-        whitelist: ["Brn1", "Hho1", "Hmo1"]
+    strip_extensions:
+        - ".bam"
+        - ".cram"
+        - ".sam"
+    strip_suffixes:
+        - ".sc"
+        - ".sp"
+    fields:
+        - assay
+        - genotype
+        - state
+        - factor
+        - id
 
 matching:
-    factor_uses_abbrev: true
-    match_treatment: false
-    wildcard_values: ["", "NA", "N/A"]
+    fields:
+        - genotype
+        - state
+        - factor
+        - id
+
+field_to_column:
+    id: strain
 
 table:
-    skip_prefixes: ["#", "//"]
+    skip_prefixes:
+        - "#"
+        - "//"
 
-columns:
-    factor: ["factor", "fct"]
-    factor_abbrev: ["factor_abbrev"]
-    strain: ["strain", "sample"]
-    genotype: ["genotype", "gt"]
-    state: ["state", "cc"]
-    treatment: ["treatment", "trt"]
-    vol_in: ["vol_in", "volume_in", "input volume"]
-    vol_all: ["vol_all", "volume_all", "total volume"]
-    mass_in: ["mass_in", "input mass"]
-    mass_ip: ["mass_ip", "IP mass"]
-    conc_in: ["conc_in"]
-    conc_ip: ["conc_ip"]
-    len_in: ["len_in", "length_in", "fragment length input"]
-    len_ip: ["len_ip", "length_ip", "fragment length IP"]
-    dep_in: ["dep_in"]
-    dep_ip: ["dep_ip"]
-
-required_keys:
-    - vol_in
-    - vol_all
-    - mass_in
-    - mass_ip
-    - len_in
-    - len_ip
-
-optional_keys:
-    - conc_in
-    - conc_ip
-    - dep_in
-    - dep_ip
+calculator_inputs:
+    siqchip:
+        required:
+            vol_in: volume_in
+            vol_all: volume_all
+            mass_in: mass_in
+            mass_ip: mass_ip
+        optional:
+            len_in: length_in
+            len_ip: length_ip
+            dep_in: dep_in
+            dep_ip: dep_ip
+            lib_vol_in: lib_vol_in
+            lib_vol_ip: lib_vol_ip
 EOM
-
-cat > "${cfg_trt}" << 'EOM'
-filename:
-    delimiter: "_"
-    strip_extensions: [".bam", ".cram", ".sam"]
-    strip_trailing_tag_regex: '\.[^.]+$'
-    assay_tokens: ["IP", "in"]
-    states: ["G1", "G2M", "log", "Q"]
-    pattern: null
-    pattern_group_defaults:
-        genotype: "NA"
-        state: "NA"
-        treatment: "NA"
-    layouts:
-        - name: treatment
-          fields:
-              - {name: assay,     required: true,  position: first}
-              - {name: genotype,  required: false}
-              - {name: state,     required: false}
-              - {name: treatment, required: false}
-              - {name: factor,    required: true}
-              - {name: strain,    required: true,  position: last}
-    genotype:
-        exact: ["WT"]
-        suffixes: ["-KO"]
-        exclude_suffixes: ["-flag"]
-    factor:
-        regex:
-            - '^H[1-4](?:[A-Za-z0-9]+)?$'
-            - '^[A-Za-z0-9]+-flag$'
-        whitelist: ["Brn1", "Hho1", "Hmo1"]
-
-matching:
-    factor_uses_abbrev: true
-    match_treatment: true
-    wildcard_values: ["", "NA", "N/A"]
-
-table:
-    skip_prefixes: ["#", "//"]
-
-columns:
-    factor: ["factor", "fct"]
-    factor_abbrev: ["factor_abbrev"]
-    strain: ["strain", "sample"]
-    genotype: ["genotype", "gt"]
-    state: ["state", "cc"]
-    treatment: ["treatment", "trt"]
-    vol_in: ["vol_in", "volume_in", "input volume"]
-    vol_all: ["vol_all", "volume_all", "total volume"]
-    mass_in: ["mass_in", "input mass"]
-    mass_ip: ["mass_ip", "IP mass"]
-    conc_in: ["conc_in"]
-    conc_ip: ["conc_ip"]
-    len_in: ["len_in", "length_in", "fragment length input"]
-    len_ip: ["len_ip", "length_ip", "fragment length IP"]
-    dep_in: ["dep_in"]
-    dep_ip: ["dep_ip"]
-
-required_keys:
-    - vol_in
-    - vol_all
-    - mass_in
-    - mass_ip
-    - len_in
-    - len_ip
-
-optional_keys:
-    - conc_in
-    - conc_ip
-    - dep_in
-    - dep_ip
-EOM
-
 
 succeed "generated calculate-scaling-factor fixtures under ${dir_fix}"

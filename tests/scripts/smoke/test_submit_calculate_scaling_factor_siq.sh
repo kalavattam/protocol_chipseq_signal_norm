@@ -24,6 +24,8 @@ print_section "${TEST_NAME}"
 #  Define fixture and output paths for the direct submit-worker smoke test
 scr_sub="${ROOT_REPO}/scripts/submit_calculate_scaling_factor.sh"
 cfg_met="${ROOT_REPO}/data/raw/docs/parse_metadata_siqchip.yml"
+cfg_p857="${ROOT_REPO}/data/raw/docs/parse_metadata_siqchip_PRJNA857063.yml"
+tbl_p857="${ROOT_REPO}/data/raw/docs/measurements_siqchip_PRJNA857063.tsv"
 
 dir_fix="${ROOT_REPO}/tests/calculate_scaling_factor/fixtures"
 dir_bam="${dir_fix}/bam"
@@ -35,13 +37,10 @@ dir_met="${dir_fix}/metadata"
 
 tbl_met="${dir_met}/measurements_siqchip.tsv"
 tbl_gz="${dir_met}/measurements_siqchip.tsv.gz"
-tbl_als="${dir_met}/measurements_siqchip_aliases.tsv"
-tbl_pfx="${dir_met}/measurements_siqchip_skip_prefixes.tsv"
-tbl_col="${dir_met}/measurements_siqchip_alias_collision.tsv"
+tbl_lib="${dir_met}/measurements_siqchip_lib_volume.tsv"
+tbl_lib_one="${dir_met}/measurements_siqchip_lib_volume_one_sided.tsv"
 tbl_dup="${dir_met}/measurements_siqchip_duplicate_match.tsv"
-tbl_trt="${dir_met}/measurements_siqchip_treatment.tsv"
-cfg_rgx="${dir_fix}/config/parse_metadata_siqchip_regex.yml"
-cfg_trt="${dir_fix}/config/parse_metadata_siqchip_match_treatment.yml"
+tbl_pre="${dir_met}/measurements_siqchip_precomputed.tsv"
 ref_fa="${dir_fix}/reference/tiny.fa"
 
 bam_pe_mip="${dir_bam_pe}/IP_WT_G1_Hho1_6336.sc.bam"
@@ -57,9 +56,10 @@ tmp="${TEST_DIR_TMP}/submit_calculate_scaling_factor_siq"
 dir_out="${tmp}/out"
 dir_err="${tmp}/logs"
 dir_log="${TEST_DIR_LOG}/calculate_scaling_factor"
+dir_prj="${tmp}/prjna857063"
 
 rm -rf "${tmp}"
-mkdir -p "${dir_out}" "${dir_err}" "${dir_log}"
+mkdir -p "${dir_out}" "${dir_err}" "${dir_log}" "${dir_prj}"
 
 require_env_project env_nam || {
     finish
@@ -70,15 +70,14 @@ if ! \
     require_files_nonempty \
         "${scr_sub}" \
         "${cfg_met}" \
-        "${cfg_rgx}" \
-        "${cfg_trt}" \
+        "${cfg_p857}" \
+        "${tbl_p857}" \
         "${tbl_met}" \
         "${tbl_gz}" \
-        "${tbl_als}" \
-        "${tbl_pfx}" \
-        "${tbl_col}" \
+        "${tbl_lib}" \
+        "${tbl_lib_one}" \
         "${tbl_dup}" \
-        "${tbl_trt}" \
+        "${tbl_pre}" \
         "${bam_pe_mip}" \
         "${bam_pe_mip}.bai" \
         "${bam_pe_min}" \
@@ -98,6 +97,17 @@ then
     finish
     exit $?
 fi
+
+
+function link_prjna857063_bam_pair() {
+    local mip="${1:-}"
+    local min="${2:-}"
+
+    ln -s "${bam_pe_mip}" "${mip}"
+    ln -s "${bam_pe_mip}.bai" "${mip}.bai"
+    ln -s "${bam_pe_min}" "${min}"
+    ln -s "${bam_pe_min}.bai" "${min}.bai"
+}
 
 
 #  Run one PE siQ submit-worker case and assert the exact part row
@@ -145,8 +155,8 @@ function run_submit_pe_siq() {
         '20' \
         '3' \
         '2' \
-        '20' \
-        '20'
+        '626' \
+        '450'
 
     run_case_scaling_factor_submit_part \
         "${cas}" \
@@ -161,12 +171,80 @@ function run_submit_pe_siq() {
 }
 
 
+#  Run one PRJNA857063-shaped submit-worker case and assert the exact part row
+#shellcheck disable=SC2034
+function run_submit_prjna857063_siq() {
+    local cas="${1:-}"
+    local mip="${2:-}"
+    local min="${3:-}"
+    local idx="${4:-}"
+    local alpha="${5:-}"
+    local mass_ip="${6:-}"
+    local mass_in="${7:-}"
+    local len_ip="${8:-}"
+    local len_in="${9:-}"
+    shift 9 || true
+
+    local fil_out="${dir_out}/scaling.submit.${cas}.siq.tsv"
+    local fil_log="${dir_log}/submit_siq_${cas}.log"
+    local row_exp
+    local -a arr_cmd=(
+        "${TEST_BASH}" "${scr_sub}"
+            --env_nam "${env_nam}"
+            --dir_scr "${ROOT_REPO}/scripts"
+            --threads 1
+            --mode siq
+            --csv_mip "${mip}"
+            --csv_min "${min}"
+            --aln_typ auto
+            --fil_out "${fil_out}"
+            --idx_out "${idx}"
+            --tbl_met "${tbl_p857}"
+            --cfg_met "${cfg_p857}"
+            --eqn 6nd
+            --rnd 8
+            --len_mip "${len_ip}"
+            --len_min "${len_in}"
+            --err_out "${dir_err}"
+            --nam_job "test_submit_calculate_scaling_factor_siq_${cas}"
+    )
+
+    printf -v row_exp '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s' \
+        "${mip}" \
+        "${min}" \
+        "${alpha}" \
+        '6nd' \
+        "${mass_ip}" \
+        "${mass_in}" \
+        '250' \
+        '50' \
+        '3' \
+        '2' \
+        "${len_ip}" \
+        "${len_in}" \
+        '2' \
+        '4'
+
+    run_case_scaling_factor_submit_part \
+        "${cas}" \
+        siQ \
+        arr_cmd \
+        "${fil_out}" \
+        "${idx}" \
+        "${fil_log}" \
+        "${row_exp}" \
+        $'^fil_ip\tfil_in\tsiq\teqn\tmass_ip\tmass_in\tvol_all\tvol_in\tdep_ip\tdep_in\tlen_ip\tlen_in\tlib_vol_ip\tlib_vol_in$' \
+        "$@"
+}
+
+
 #  Run one PE siQ submit-worker case that should fail during metadata parsing
 function run_submit_pe_siq_failure() {
     local cas="${1:-}"
     local tbl="${2:-}"
     local patn="${3:-}"
     local idx="${4:-}"
+    local cfg="${5:-${cfg_met}}"
     local fil_log="${dir_log}/submit_siq_${cas}.log"
 
     if \
@@ -184,7 +262,7 @@ function run_submit_pe_siq_failure() {
                 --fil_out "${dir_out}/scaling.submit.${cas}.siq.tsv" \
                 --idx_out "${idx}" \
                 --tbl_met "${tbl}" \
-                --cfg_met "${cfg_met}" \
+                --cfg_met "${cfg}" \
                 --eqn 6nd \
                 --err_out "${dir_err}" \
                 --nam_job "test_submit_calculate_scaling_factor_siq_${cas}"
@@ -209,7 +287,7 @@ fil_log="${dir_log}/submit_siq_pe.log"
 printf -v row_exp '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s' \
     "${bam_pe_mip}" \
     "${bam_pe_min}" \
-    '0.002660098522167487697376' \
+    '0.001912211397724232486706' \
     '6nd' \
     '2.7' \
     '72.5' \
@@ -217,8 +295,8 @@ printf -v row_exp '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s' \
     '20' \
     '3' \
     '2' \
-    '20' \
-    '20'
+    '626' \
+    '450'
 
 # shellcheck disable=SC2154
 if \
@@ -293,13 +371,13 @@ assert_pattern_found \
 
 assert_pattern_found \
     "${fil_log}" \
-    'len_ip=20' \
-    "submit scaling-factor siQ PE computes IP fragment length"
+    'len_ip=626' \
+    "submit scaling-factor siQ PE uses metadata IP fragment length"
 
 assert_pattern_found \
     "${fil_log}" \
-    'len_in=20' \
-    "submit scaling-factor siQ PE computes input fragment length"
+    'len_in=450' \
+    "submit scaling-factor siQ PE uses metadata input fragment length"
 
 
 #  PE CRAM input should compute when an explicit reference is supplied
@@ -310,7 +388,7 @@ fil_log="${dir_log}/submit_siq_pe_cram.log"
 printf -v row_exp '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s' \
     "${cram_pe_mip}" \
     "${cram_pe_min}" \
-    '0.002660098522167487697376' \
+    '0.001912211397724232486706' \
     '6nd' \
     '2.7' \
     '72.5' \
@@ -318,8 +396,8 @@ printf -v row_exp '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s' \
     '20' \
     '3' \
     '2' \
-    '20' \
-    '20'
+    '626' \
+    '450'
 
 if \
     run_capture \
@@ -405,15 +483,15 @@ else
 fi
 
 
-#  PE BAM input should also work with accepted metadata column aliases
-fil_out="${dir_out}/scaling.submit.pe_aliases.siq.tsv"
-fil_prt="${fil_out}.part.000012"
-fil_log="${dir_log}/submit_siq_pe_aliases.log"
+#  Metadata library-loading volumes should correct alpha and remain auditable
+fil_out="${dir_out}/scaling.submit.pe_lib_volume.siq.tsv"
+fil_prt="${fil_out}.part.000014"
+fil_log="${dir_log}/submit_siq_pe_lib_volume.log"
 
-printf -v row_exp '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s' \
+printf -v row_exp '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s' \
     "${bam_pe_mip}" \
     "${bam_pe_min}" \
-    '0.002660098522167487697376' \
+    '0.003824422795448464973411' \
     '6nd' \
     '2.7' \
     '72.5' \
@@ -421,12 +499,14 @@ printf -v row_exp '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s' \
     '20' \
     '3' \
     '2' \
-    '20' \
-    '20'
+    '626' \
+    '450' \
+    '2' \
+    '4'
 
 if \
     run_capture \
-        "submit calculate-scaling-factor siQ PE metadata aliases" \
+        "submit calculate-scaling-factor siQ PE library-volume correction" \
         "${fil_log}" \
         "${TEST_BASH}" "${scr_sub}" \
             --env_nam "${env_nam}" \
@@ -437,36 +517,119 @@ if \
             --csv_min "${bam_pe_min}" \
             --aln_typ auto \
             --fil_out "${fil_out}" \
-            --idx_out 12 \
-            --tbl_met "${tbl_als}" \
+            --idx_out 14 \
+            --tbl_met "${tbl_lib}" \
             --cfg_met "${cfg_met}" \
             --eqn 6nd \
             --err_out "${dir_err}" \
-            --nam_job test_submit_calculate_scaling_factor_siq_pe_aliases
+            --nam_job test_submit_calculate_scaling_factor_siq_pe_lib_volume
 then
-    record_pass "submit_calculate_scaling_factor.sh siQ PE aliases exits 0"
+    record_pass "submit_calculate_scaling_factor.sh siQ PE library volumes exits 0"
 else
     record_fail \
-        "submit_calculate_scaling_factor.sh siQ PE aliases failed; see" \
-        "$(print_relpath "${fil_log}")"
+        "submit_calculate_scaling_factor.sh siQ PE library volumes failed;" \
+        "see $(print_relpath "${fil_log}")"
 fi
 
-assert_file_nonempty \
+assert_file_exact_line \
     "${fil_prt}" \
-    "submit scaling-factor siQ PE aliases indexed part"
+    "${row_exp}" \
+    "submit scaling-factor siQ PE library volumes part"
 
-if [[ "$(cat "${fil_prt}")" == "${row_exp}" ]]; then
-    record_pass "submit scaling-factor siQ PE aliases part has expected row"
-else
-    record_fail \
-        "submit scaling-factor siQ PE aliases part has unexpected row; see" \
-        "$(print_relpath "${fil_prt}")"
-fi
+run_submit_pe_siq_failure \
+    pe_lib_volume_one_sided \
+    "${tbl_lib_one}" \
+    "lib_vol_ip.*lib_vol_in.*provided together" \
+    26
 
-assert_pattern_found \
-    "${fil_log}" \
-    'mass_ip=2.7' \
-    "submit scaling-factor siQ PE aliases propagates metadata aliases"
+
+#  PRJNA857063 study metadata should reproduce all SI-table alpha values when
+#+ supplied the reported fragment lengths and library-loading volumes.
+p857_dmso_18_mip="${dir_prj}/IP_HeLa_DMSO_H3K18ac_rep1.hs.bam"
+p857_dmso_18_min="${dir_prj}/in_HeLa_DMSO_H3K18ac_rep1.hs.bam"
+p857_dmso_27_mip="${dir_prj}/IP_HeLa_DMSO_H3K27ac_rep1.hs.bam"
+p857_dmso_27_min="${dir_prj}/in_HeLa_DMSO_H3K27ac_rep1.hs.bam"
+p857_cbp30_18_mip="${dir_prj}/IP_HeLa_CBP30_H3K18ac_rep1.hs.bam"
+p857_cbp30_18_min="${dir_prj}/in_HeLa_CBP30_H3K18ac_rep1.hs.bam"
+p857_cbp30_27_mip="${dir_prj}/IP_HeLa_CBP30_H3K27ac_rep1.hs.bam"
+p857_cbp30_27_min="${dir_prj}/in_HeLa_CBP30_H3K27ac_rep1.hs.bam"
+p857_a485_18_mip="${dir_prj}/IP_HeLa_A485_H3K18ac_rep1.hs.bam"
+p857_a485_18_min="${dir_prj}/in_HeLa_A485_H3K18ac_rep1.hs.bam"
+p857_a485_27_mip="${dir_prj}/IP_HeLa_A485_H3K27ac_rep1.hs.bam"
+p857_a485_27_min="${dir_prj}/in_HeLa_A485_H3K27ac_rep1.hs.bam"
+
+link_prjna857063_bam_pair "${p857_dmso_18_mip}" "${p857_dmso_18_min}"
+link_prjna857063_bam_pair "${p857_dmso_27_mip}" "${p857_dmso_27_min}"
+link_prjna857063_bam_pair "${p857_cbp30_18_mip}" "${p857_cbp30_18_min}"
+link_prjna857063_bam_pair "${p857_cbp30_27_mip}" "${p857_cbp30_27_min}"
+link_prjna857063_bam_pair "${p857_a485_18_mip}" "${p857_a485_18_min}"
+link_prjna857063_bam_pair "${p857_a485_27_mip}" "${p857_a485_27_min}"
+
+run_submit_prjna857063_siq \
+    prjna857063_dmso_h3k18ac \
+    "${p857_dmso_18_mip}" \
+    "${p857_dmso_18_min}" \
+    30 \
+    '0.08795463' \
+    '22.68' \
+    '98.7' \
+    '499' \
+    '382'
+
+run_submit_prjna857063_siq \
+    prjna857063_dmso_h3k27ac \
+    "${p857_dmso_27_mip}" \
+    "${p857_dmso_27_min}" \
+    31 \
+    '0.01706701' \
+    '3.81' \
+    '98.7' \
+    '432' \
+    '382'
+
+run_submit_prjna857063_siq \
+    prjna857063_cbp30_h3k18ac \
+    "${p857_cbp30_18_mip}" \
+    "${p857_cbp30_18_min}" \
+    32 \
+    '0.06586271' \
+    '16.8' \
+    '102.9' \
+    '440' \
+    '355'
+
+run_submit_prjna857063_siq \
+    prjna857063_cbp30_h3k27ac \
+    "${p857_cbp30_27_mip}" \
+    "${p857_cbp30_27_min}" \
+    33 \
+    '0.008916' \
+    '2.052' \
+    '102.9' \
+    '397' \
+    '355'
+
+run_submit_prjna857063_siq \
+    prjna857063_a485_h3k18ac \
+    "${p857_a485_18_mip}" \
+    "${p857_a485_18_min}" \
+    34 \
+    '0.01302567' \
+    '3.72' \
+    '114.3' \
+    '446' \
+    '357'
+
+run_submit_prjna857063_siq \
+    prjna857063_a485_h3k27ac \
+    "${p857_a485_27_mip}" \
+    "${p857_a485_27_min}" \
+    35 \
+    '0.00311537' \
+    '0.78' \
+    '114.3' \
+    '391' \
+    '357'
 
 
 #  Metadata parser variants should propagate through the submit wrapper
@@ -477,53 +640,14 @@ run_submit_pe_siq \
     "${tbl_gz}" \
     "${cfg_met}" \
     19 \
-    '0.002660098522167487697376' \
+    '0.001912211397724232486706' \
     '2.7' \
     '72.5'
-
-run_submit_pe_siq \
-    pe_skip_prefixes \
-    "${bam_pe_mip}" \
-    "${bam_pe_min}" \
-    "${tbl_pfx}" \
-    "${cfg_met}" \
-    20 \
-    '0.002660098522167487697376' \
-    '2.7' \
-    '72.5'
-
-run_submit_pe_siq \
-    pe_regex_config \
-    "${bam_pe_mip}" \
-    "${bam_pe_min}" \
-    "${tbl_met}" \
-    "${cfg_rgx}" \
-    21 \
-    '0.002660098522167487697376' \
-    '2.7' \
-    '72.5'
-
-run_submit_pe_siq \
-    pe_treatment \
-    "${hu_pe_mip}" \
-    "${hu_pe_min}" \
-    "${tbl_trt}" \
-    "${cfg_trt}" \
-    22 \
-    '0.007963320463320463019063' \
-    '9.9' \
-    '88.8'
-
-run_submit_pe_siq_failure \
-    pe_alias_collision \
-    "${tbl_col}" \
-    "multiple columns that normalize to the same canonical name" \
-    23
 
 run_submit_pe_siq_failure \
     pe_duplicate_match \
     "${tbl_dup}" \
-    "Multiple matching rows found" \
+    "Multiple metadata rows matched" \
     24
 
 
@@ -535,7 +659,7 @@ fil_log="${dir_log}/submit_siq_pe_eqn5.log"
 printf -v row_exp '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s' \
     "${bam_pe_mip}" \
     "${bam_pe_min}" \
-    '0.001655172413793103407958' \
+    '0.001189820425250633388267' \
     '5' \
     '2.7' \
     '72.5' \
@@ -543,8 +667,8 @@ printf -v row_exp '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s' \
     '20' \
     '3' \
     '2' \
-    '20' \
-    '20'
+    '626' \
+    '450'
 
 if \
     run_capture \
@@ -594,7 +718,7 @@ fil_log="${dir_log}/submit_siq_pe_eqn5nd.log"
 printf -v row_exp '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s' \
     "${bam_pe_mip}" \
     "${bam_pe_min}" \
-    '0.002482758620689655328778' \
+    '0.001784730637875950407661' \
     '5nd' \
     '2.7' \
     '72.5' \
@@ -602,8 +726,8 @@ printf -v row_exp '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s' \
     '20' \
     '3' \
     '2' \
-    '20' \
-    '20'
+    '626' \
+    '450'
 
 if \
     run_capture \
@@ -650,7 +774,7 @@ fil_log="${dir_log}/submit_siq_pe_eqn6.log"
 printf -v row_exp '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s' \
     "${bam_pe_mip}" \
     "${bam_pe_min}" \
-    '0.001773399014778325203864' \
+    '0.001274807598482821657804' \
     '6' \
     '2.7' \
     '72.5' \
@@ -658,8 +782,8 @@ printf -v row_exp '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s' \
     '20' \
     '3' \
     '2' \
-    '20' \
-    '20'
+    '626' \
+    '450'
 
 if \
     run_capture \
@@ -771,7 +895,7 @@ fil_log="${dir_log}/submit_siq_pe_dep_override.log"
 printf -v row_exp '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s' \
     "${bam_pe_mip}" \
     "${bam_pe_min}" \
-    '0.005320197044334976262114' \
+    '0.00382442279544846453973' \
     '6' \
     '2.7' \
     '72.5' \
@@ -779,8 +903,8 @@ printf -v row_exp '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s' \
     '20' \
     '10' \
     '20' \
-    '20' \
-    '20'
+    '626' \
+    '450'
 
 if \
     run_capture \

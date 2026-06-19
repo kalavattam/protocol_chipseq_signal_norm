@@ -18,7 +18,19 @@ Alignment fixture basenames are biologically minded because siQ-ChIP tests exerc
 
 Spike-in rows also record the canonical coefficient method used alongside the computed value. The default fixture examples use `chiprx_alpha_ratio`.
 
-Minimal siQ-ChIP metadata tables exercise `parse_metadata_siqchip.py` with the production parsing YAML in `data/raw/docs/parse_metadata_siqchip.yml`. These tables are intentionally small and cover canonical column names, compressed input, skip-prefix handling, curated aliases, ambiguous matches, treatment-aware matching, and malformed negative cases.
+Minimal siQ-ChIP metadata tables exercise `parse_metadata_siqchip.py` with the deterministic production parsing YAML in `data/raw/docs/parse_metadata_siqchip.yml`. These tables are intentionally small and cover
+- exact filename-token parsing,
+- configured `matching.fields`,
+- explicit `field_to_column` mapping,
+- gzip-compressed metadata input,
+- duplicate-match rejection,
+- missing required calculator inputs,
+- optional precomputed `dep_*` and `len_*` values, and
+- optional paired library-loading volume correction.
+
+The parser fixture config `config/parse_metadata_siqchip_field_to_column.yml` proves that filename field names do not need to match metadata table column names when an explicit mapping is supplied.
+
+The production reference config `data/raw/docs/parse_metadata_siqchip_PRJNA857063.yml` and table `data/raw/docs/measurements_siqchip_PRJNA857063.tsv` model factor-tagged logical input names from the human siQ-ChIP paper metadata for future reanalysis readiness without downloading reads.
 
 <br />
 
@@ -52,7 +64,7 @@ Treatment-name PE alignment variants:
 - `bam/pe/IP_WT_G1_HU_Hho1_6337.sc.bam`, `bam/pe/IP_WT_G1_HU_Hho1_6337.sc.bam.bai`
 - `bam/pe/in_WT_G1_HU_Hho1_6337.sc.bam`, `bam/pe/in_WT_G1_HU_Hho1_6337.sc.bam.bai`
 
-The treatment-name variants copy the generated PE main-alignment fixtures under filenames that include a treatment token. They are used only to exercise treatment-aware metadata parsing through the submit and execute wrappers.
+The treatment-name variants copy the generated PE main-alignment fixtures under filenames that include a treatment token. They remain available as alignment fixtures, but the deterministic parser tests now use the configured `matching.fields` contract rather than a treatment-specific parser mode.
 
 Reference FASTA:
 - `reference/tiny.fa`
@@ -76,22 +88,39 @@ Spike-in malformed negative-test part file:
 - `parts/duplicate_index_A.spike.tsv.part.000005`
 - `parts/duplicate_index_B.spike.tsv.part.000005`
 
-siQ-ChIP metadata parser fixtures:
+siQ-ChIP deterministic metadata parser fixtures:
 - `metadata/measurements_siqchip.tsv`
 - `metadata/measurements_siqchip.tsv.gz`
-- `metadata/measurements_siqchip_aliases.tsv`
+- `metadata/measurements_siqchip_lib_volume.tsv`
+- `metadata/measurements_siqchip_lib_volume_one_sided.tsv`
+- `metadata/measurements_siqchip_lib_volume_zero.tsv`
 - `metadata/measurements_siqchip_missing_required.tsv`
-- `metadata/measurements_siqchip_unsupported_alias.tsv`
-- `metadata/measurements_siqchip_skip_prefixes.tsv`
-- `metadata/measurements_siqchip_alias_collision.tsv`
 - `metadata/measurements_siqchip_duplicate_match.tsv`
-- `metadata/measurements_siqchip_treatment.tsv`
+- `metadata/measurements_siqchip_precomputed.tsv`
 
 siQ-ChIP metadata parser config fixtures:
-- `config/parse_metadata_siqchip_regex.yml`
-- `config/parse_metadata_siqchip_match_treatment.yml`
+- `config/parse_metadata_siqchip_field_to_column.yml`
 
-The nonconsecutive numeric suffixes exercise deterministic numeric ordering when input paths are supplied in reverse order. The malformed part contains too few fields and exercises combiner validation. The header-looking part and duplicate-index pair exercise additional combiner validation without creating those static inputs inside smoke tests.
+The siQ metadata fixtures cover
+- the production deterministic parser config,
+- explicit field-to-column mapping,
+- gzip input,
+- duplicate matches,
+- optional library-loading volume correction,
+- precomputed depth and fragment-length values, and
+- malformed metadata tables.
+
+Library-volume fixtures exercise
+- the valid paired correction path and
+- malformed one-sided, zero, and nonnumeric values.
+
+The nonconsecutive numeric suffixes exercise deterministic numeric ordering when input paths are supplied in reverse order.
+
+The malformed part contains too few fields and exercises combiner validation.
+
+The header-looking part and duplicate-index pair exercise additional combiner validation without creating those static inputs inside smoke tests.
+
+siQ-ChIP part files may include optional `lib_vol_ip` and `lib_vol_in` fields. Output headers include those columns only when at least one combined part row supplies the paired library-loading volume correction.
 
 <br />
 
@@ -106,7 +135,40 @@ The serial execute-layer smoke test uses these generated alignment files directl
 <br />
 
 ## Current and deferred smoke-test coverage
-The smoke suite covers direct spike-in and siQ-ChIP part-file combination, numeric ordering, dry-run behavior, malformed input rejection, overwrite protection, explicit part-file cleanup, direct spike-in and siQ-ChIP Python calculator behavior, siQ-ChIP metadata parsing, serial submit/execute wrapper behavior for both scaling-factor branches, and gated local GNU Parallel wet execution. Metadata parser coverage includes compressed tables, skip prefixes, alias normalization and collision rejection, ambiguous-match rejection, regex-mode parsing, and treatment-aware matching. Wrapper coverage exercises expected failures, CRAM/reference behavior, mixed SE/PE layouts, mixed BAM/CRAM inputs, siQ equation validation, spike-in method validation, alignment-derived counts, automatic SE/PE detection, every canonical spike-in coefficient, accepted alias normalization, and broadcast depth overrides.
+The smoke suite covers
+- direct spike-in and siQ-ChIP part-file combination,
+- numeric ordering,
+- dry-run behavior,
+- malformed input rejection,
+- overwrite protection,
+- explicit part-file cleanup,
+- direct spike-in and siQ-ChIP Python calculator behavior,
+- siQ-ChIP metadata parsing,
+- serial submit/execute wrapper behavior for both scaling-factor branches, and
+- gated local GNU Parallel wet execution.
+
+Metadata parser coverage includes
+- compressed tables,
+- deterministic filename token parsing,
+- configured matching fields,
+- explicit field-to-column mapping,
+- ambiguous-match rejection,
+- zero-match rejection,
+- missing required metadata rejection,
+- precomputed `dep_*` and `len_*` values, and
+- paired library-volume validation.
+
+Wrapper coverage exercises
+- expected failures,
+- CRAM/reference behavior,
+- mixed SE/PE layouts,
+- mixed BAM/CRAM inputs,
+- siQ equation validation,
+- spike-in method validation,
+- alignment-derived counts,
+- automatic SE/PE detection,
+- every canonical spike-in coefficient, and
+- broadcast depth overrides.
 
 The scaling-factor rows intentionally contain only core workflow values. Compute downstream denominator floors separately with `python -m scripts.compute_input_floor`.
 

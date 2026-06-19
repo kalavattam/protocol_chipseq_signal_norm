@@ -1,8 +1,13 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 #
-# Copyright 2024-2025 by Kris Alavattam
+# Script: calculate_scaling_factor_siqchip.py
+#
+# Copyright 2024-2026 by Kris Alavattam
 # Email: kalavattam@gmail.com
+#
+# OpenAI ChatGPT and Codex (GPT-4- and GPT-5-series models) were used in
+# development.
 #
 # Distributed under the MIT license.
 
@@ -36,6 +41,7 @@ python -m scripts.calculate_scaling_factor_siqchip \
     --vol_all <float_µL> --vol_in <float_µL> \
     [--dep_ip <int_fragments>] [--dep_in <int_fragments>] \
     --len_ip <float_bp> --len_in <float_bp> \
+    [--lib_vol_ip <float_µL> --lib_vol_in <float_µL>] \
     [--rnd <int>]
 
 
@@ -72,6 +78,14 @@ Arguments
 
 -ln, --len_in
     Summary fragment length of the input sample (bp).
+
+-lvp, --lib_vol_ip
+    Volume of normalized IP library loaded into the sequencer (µL). Optional;
+    if supplied, '--lib_vol_in' must also be supplied.
+
+-lvn, --lib_vol_in
+    Volume of normalized input library loaded into the sequencer (µL).
+    Optional; if supplied, '--lib_vol_ip' must also be supplied.
 
 -dp, --dp, --rnd, --round, --decimals, --digits
     Maximum number of decimal places for rounding alpha (default: 24).
@@ -130,6 +144,9 @@ General notes
   (approximately 660 g × mol⁻¹ × bp⁻¹).
 - Alpha is dimensionless. Use consistent units across IP and input (e.g., ng
   for mass and µL for volume); the “660” factor cancels in the ratio.
+- If unequal normalized library volumes were loaded into the sequencer, provide
+  both '--lib_vol_ip' and '--lib_vol_in'. Alpha is then multiplied by
+  'lib_vol_in / lib_vol_ip'. If neither is provided, this multiplier is 1.
 - Alpha is printed with at most '--rnd' decimal places. Non-informative
   trailing zeros and any trailing decimal point are stripped.
 
@@ -158,10 +175,6 @@ from scripts.functions.utils_cli import (
     CapArgumentParser
 )
 from scripts.functions.utils_format import format_value
-from scripts.functions.utils_interactive import (
-    echo_block,
-    get_args_interactive
-)
 
 try:
     signal.signal(signal.SIGPIPE, signal.SIG_DFL)
@@ -169,64 +182,6 @@ except (AttributeError, ValueError):
     pass
 
 assert sys.version_info >= (3, 10), "Python >= 3.10 required."
-
-
-#  Run script in “interactive mode” (true) or “CLI mode” (false)
-interactive = False
-
-
-def set_interactive(
-    echo: bool = False, ensure: bool = False
-) -> argparse.Namespace:
-    """
-    Set paths and parameters for interactive mode.
-
-    Notes:
-        This module does not create or check any filesystem paths, so 'ensure'
-        does nothing here. Passing 'ensure=True' is allowed but has no effect
-        beyond emitting a warning.
-    """
-    if ensure:
-        print(
-            "Warning: 'set_interactive(ensure=True)' has no effect in this "
-            "module, as no paths are created or checked.",
-            file=sys.stderr
-        )
-
-    #  Set argument values
-    verbose = True
-    eqn = '5'          # '5nd' '6' '6nd'
-    mass_ip = 3.575
-    mass_in = 44.72
-    vol_all = 300
-    vol_in = 20
-    dep_ip = 8491709   # ...
-    dep_in = 11543808  # ...
-    len_ip = 192.419   # 380
-    len_in = 169.744   # 348
-    rnd = 24
-
-    #  Wrap the arguments in argparse.Namespace
-    ns = argparse.Namespace(
-        verbose=verbose,
-        eqn=eqn,
-        mass_ip=mass_ip,
-        mass_in=mass_in,
-        vol_all=vol_all,
-        vol_in=vol_in,
-        dep_ip=dep_ip,
-        dep_in=dep_in,
-        len_ip=len_ip,
-        len_in=len_in,
-        rnd=rnd
-    )
-
-    #  “Echo” the interactive argument assignments (etc.) if specified
-    if echo:
-        echo_block("args", vars(ns))
-
-    #  Return the argparse.Namespace-wrapped arguments
-    return ns
 
 
 def check_val_pos(args: argparse.Namespace) -> None:
@@ -267,6 +222,24 @@ def check_val_pos(args: argparse.Namespace) -> None:
     #  Check that '--rnd' >= 0
     check_cmp(args.rnd, "ge", 0, "rnd", allow_none=False)
 
+    #  Library-loading volumes are optional as a pair
+    #
+    #  Unequal normalized library loading is a benchwork reality (e.g., see
+    #  PRJNA857063), so reject one-sided metadata instead of silently treating
+    #  a missing side as 1
+    lib_vol_ip = getattr(args, "lib_vol_ip", None)
+    lib_vol_in = getattr(args, "lib_vol_in", None)
+
+    if (lib_vol_ip is None) != (lib_vol_in is None):
+        raise ValueError(
+            "Library-loading volume correction requires both '--lib_vol_ip' "
+            "and '--lib_vol_in', or neither."
+        )
+
+    if lib_vol_ip is not None and lib_vol_in is not None:
+        check_cmp(lib_vol_ip, "gt", 0.0, "lib_vol_ip", allow_none=False)
+        check_cmp(lib_vol_in, "gt", 0.0, "lib_vol_in", allow_none=False)
+
     #  Check depth only for '--eqn 5' or '--eqn 6' (>0)
     if args.eqn in {"5", "6"}:
         dep_ip = getattr(args, "dep_ip", None)
@@ -296,6 +269,8 @@ def calculate_alpha(
     dep_in: int | None,
     len_ip: float,
     len_in: float,
+    lib_vol_ip: float | None = None,
+    lib_vol_in: float | None = None,
 ) -> float:
     """
     Calculate a siQ-ChIP α (alpha) scaling factor using the provided values.
@@ -331,6 +306,10 @@ def calculate_alpha(
             Summary fragment length of the IP sample (bp).
         len_in : float
             Summary fragment length of the input sample (bp).
+        lib_vol_ip : float | None
+            Volume of normalized IP library loaded into the sequencer (µL).
+        lib_vol_in : float | None
+            Volume of normalized input library loaded into the sequencer (µL).
 
     Returns:
         alpha : float
@@ -388,6 +367,9 @@ def calculate_alpha(
     else:
         #  Raise an error for unsupported equations.
         raise ValueError(f"Unsupported equation specified: '{eqn}'")
+
+    if lib_vol_ip is not None and lib_vol_in is not None:
+        alpha *= lib_vol_in / lib_vol_ip
 
     return alpha
 
@@ -492,6 +474,32 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         help="Summary fragment length of input sample (bp).\n\n"
     )
     parser.add_argument(
+        "-lvp", "--lib_vol_ip", "--lib-vol-ip",
+        dest="lib_vol_ip",
+        type=float,
+        required=False,
+        default=None,
+        help=(
+            "Volume of normalized IP library loaded into the sequencer (µL). "
+            "Optional; if supplied, '--lib_vol_in' must also be supplied. "
+            "When both library-loading volumes are supplied, alpha is "
+            "multiplied by 'lib_vol_in / lib_vol_ip'.\n\n"
+        )
+    )
+    parser.add_argument(
+        "-lvn", "--lib_vol_in", "--lib-vol-in",
+        dest="lib_vol_in",
+        type=float,
+        required=False,
+        default=None,
+        help=(
+            "Volume of normalized input library loaded into the sequencer "
+            "(µL). Optional; if supplied, '--lib_vol_ip' must also be "
+            "supplied. When both library-loading volumes are supplied, alpha "
+            "is multiplied by 'lib_vol_in / lib_vol_ip'.\n\n"
+        )
+    )
+    parser.add_argument(
         "-dp", "--dp", "--rnd", "--round", "--decimals", "--digits",
         dest="rnd",
         type=int,
@@ -533,12 +541,8 @@ def main(argv: list[str] | None = None) -> None:
         computation errors (e.g., invalid/negative inputs, missing depths for
         eqn 5/6, vol_all <= vol_in for eqn 6/6nd, unsupported equation).
     """
-    #  Handle interactive or CLI arguments
-    args, early_exit = get_args_interactive(
-        argv, interactive, set_interactive, parse_args
-    )
-    if early_exit:
-        return 0
+    #  Parse CLI arguments
+    args = parse_args(argv)
 
     #  Warn if input fraction looks unexpectedly/unusually large
     if args.eqn in {'5', '5nd'}:
@@ -573,6 +577,8 @@ def main(argv: list[str] | None = None) -> None:
 
             print(f"--len_ip  {args.len_ip}")
             print(f"--len_in  {args.len_in}")
+            print(f"--lib_vol_ip {args.lib_vol_ip}")
+            print(f"--lib_vol_in {args.lib_vol_in}")
             print(f"--rnd     {args.rnd}")
             print("")
             print("")
@@ -592,7 +598,8 @@ def main(argv: list[str] | None = None) -> None:
             args.mass_ip, args.mass_in,
             args.vol_all, args.vol_in,
             dep_ip, dep_in,
-            args.len_ip, args.len_in
+            args.len_ip, args.len_in,
+            args.lib_vol_ip, args.lib_vol_in
         )
 
         print(format_value(alpha, args.rnd))
