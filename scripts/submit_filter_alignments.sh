@@ -733,7 +733,7 @@ function validate_vecs() {
 
 #  Activate environment
 function setup_env() {
-    handle_env "${env_nam}"
+    handle_env "${env_nam}" || return 1
 }
 
 

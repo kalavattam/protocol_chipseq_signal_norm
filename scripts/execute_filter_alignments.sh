@@ -493,7 +493,7 @@ function config_exec() {
 }
 
 
-#  Activate environment and check that dependencies are available
+#  Activate environment
 function setup_env() {
     local -a env_msg
 
@@ -515,7 +515,11 @@ function setup_env() {
             return 1
         fi
     fi
+}
 
+
+#  Check tools needed by the selected dispatch mode
+function check_tools() {
     check_pgrm_path awk      || return 1
     check_pgrm_path grep     || return 1
     check_pgrm_path mv       || return 1
@@ -671,6 +675,7 @@ function main() {
     validate_vecs     || return 1
     config_exec       || return 1
     setup_env         || return 1
+    check_tools       || return 1
     print_state_debug || return 1
     run_jobs          || return 1
 }
