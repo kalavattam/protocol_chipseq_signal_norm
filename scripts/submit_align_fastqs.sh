@@ -6,7 +6,8 @@
 # Copyright 2024-2026 by Kris Alavattam
 # Email: kalavattam@gmail.com
 #
-# OpenAI ChatGPT (GPT-4- and GPT-5-series models) was used in development.
+# OpenAI ChatGPT and Codex (GPT-4- and GPT-5-series models) were used in
+# development.
 #
 # Distributed under the MIT license.
 
@@ -28,9 +29,6 @@ fi
 #  Run in safe mode, exiting on errors, unset variables, and pipe failures
 set -euo pipefail
 
-#  If true, run script in debug mode
-debug=true
-
 
 #  Define functions
 #  Parse one FASTQ entry into 'fq_1', 'fq_2', 'samp', and alignment 'outfile'
@@ -49,7 +47,7 @@ function parse_entry_align_fastq() {
     show_help=$(cat << EOM
 Usage:
   parse_entry_align_fastq
-    [-h|--hlp|--help] infile sfx_se sfx_pe dir_out [out_ext]
+    [--help] infile sfx_se sfx_pe dir_out [out_ext]
 
 Description:
   Parse one FASTQ input entry into 'fq_1', 'fq_2', 'samp', and alignment 'outfile'.
@@ -63,18 +61,24 @@ Description:
     \${dir_out}/\${samp}.\${out_ext}
 
 Positional arguments:
-  1  infile   <str>  FASTQ input entry. For SE data, this is one FASTQ file. For PE data, this is a comma-delimited FASTQ pair.
-  2  sfx_se   <str>  Suffix to strip from SE FASTQ filenames when deriving the sample name.
-  3  sfx_pe   <str>  Suffix to strip from PE FASTQ read-1 filenames when deriving the sample name.
-  4  dir_out  <str>  Output directory used to construct the alignment outfile path.
-  5  out_ext  <str>  Final alignment output extension: 'bam' or 'cram' (default: bam).
+  1  infile  <str>
+    FASTQ input entry. For single-end data, this is one FASTQ file. For paired-end data, this is a comma-delimited FASTQ pair.
+
+  2  sfx_se  <str>
+    Suffix to strip from single-end FASTQ filenames when deriving the sample name.
+
+  3  sfx_pe  <str>
+    Suffix to strip from paired-end FASTQ read-1 filenames when deriving the sample name.
+
+  4  dir_out  <dir>
+    Output directory used to construct the alignment outfile path.
+
+  5  out_ext  <spec>
+    Final alignment output extension: 'bam' or 'cram' (default: bam).
 
 Returns:
-  Prints a semicolon-delimited record to stdout:
-
-    fq_1;fq_2;samp;outfile
-
-  where 'fq_2' is 'NA' for SE data.
+  - Prints 'fq_1;fq_2;samp;outfile' to stdout, where 'fq_2' is 'NA' for single-end data.
+  - Returns 0 when the FASTQ entry is parsed successfully; 1 otherwise.
 
 Notes:
   - This helper validates required inputs with 'validate_var'.
@@ -153,8 +157,7 @@ function run_alignment() {
     show_help=$(cat << EOM
 Usage:
   run_alignment
-    [-h|--hlp|--help] threads aligner bt2_aln bwa_alg mapq req_flg index ref_fa
-    fq_1 fq_2 outfile qname err_out nam_job samp
+    [--help] threads aligner bt2_aln bwa_alg mapq req_flg index ref_fa fq_1 fq_2 outfile qname err_out nam_job samp
 
 Description:
   Construct log-file paths and then run 'align_fastqs.sh::align_fastqs', writing stdout to
@@ -166,21 +169,54 @@ Description:
     \${err_out}/\${nam_job}.\${samp}.stderr.txt
 
 Positional arguments:
-   1  threads   <int>  Number of threads.
-   2  aligner   <str>  Aligner program: 'bowtie2', 'bwa', or 'bwa-mem2'.
-   3  bt2_aln   <str>  Bowtie 2 alignment type.
-   4  bwa_alg   <str>  BWA algorithm: 'mem' or 'aln'.
-   5  mapq      <int>  MAPQ threshold. If 'mapq > 0', '--mapq' is passed to 'align_fastqs'; otherwise it is omitted.
-   6  req_flg   <flag>  If 'true', pass '--req_flg' to require flag bit 2.
-   7  index     <str>  Path/prefix for the alignment index.
-   8  ref_fa    <str>  Reference FASTA for CRAM output; ignored for BAM output.
-   9  fq_1      <str>  FASTQ file #1.
-  10  fq_2      <str>  FASTQ file #2 or, for SE data, 'NA'.
-  11  outfile   <str>  Output alignment file; must end in '.bam' or '.cram'.
-  12  qname     <flag>  If 'true', pass '--qname' to retain a queryname-sorted intermediate.
-  13  err_out   <str>  Directory for stderr/stdout log files.
-  14  nam_job   <str>  Job name used in log file naming.
-  15  samp      <str>  Sample name used in log file naming.
+  01  threads  <int>
+    Number of threads.
+
+  02  aligner  <spec>
+    Aligner program: 'bowtie2', 'bwa', or 'bwa-mem2'.
+
+  03  bt2_aln  <spec>
+    Bowtie 2 alignment type.
+
+  04  bwa_alg  <spec>
+    BWA algorithm: 'mem' or 'aln'.
+
+  05  mapq  <int>
+    MAPQ threshold. If 'mapq > 0', '--mapq' is passed to 'align_fastqs'; otherwise, it is omitted.
+
+  06  req_flg  <flag>
+    If 'true', pass '--req_flg' to require flag bit 2.
+
+  07  index  <str>
+    Path or prefix for the alignment index.
+
+  08  ref_fa  <file>
+    Reference FASTA for CRAM output; ignored for BAM output.
+
+  09  fq_1  <file>
+    FASTQ file #1.
+
+  10  fq_2  <file|NA>
+    FASTQ file #2 or, for single-end data, 'NA'.
+
+  11  outfile  <file>
+    Output alignment file; must end in '.bam' or '.cram'.
+
+  12  qname  <flag>
+    If 'true', pass '--qname' to retain a queryname-sorted intermediate.
+
+  13  err_out  <dir>
+    Directory for stderr/stdout log files.
+
+  14  nam_job  <str>
+    Job name used in log-file naming.
+
+  15  samp  <str>
+    Sample name used in log-file naming.
+
+Returns:
+  - Writes alignment stdout and stderr to per-sample log files.
+  - Returns 0 when alignment completes successfully; 1 otherwise.
 
 Notes:
   - This helper is a thin wrapper around 'align_fastqs'.
@@ -345,6 +381,154 @@ function source_submit_helpers() {
             "failed to source required helper scripts." >&2
         return 1
     }
+}
+
+
+#  Initialize hardcoded argument variables
+function init_args_hardcoded() {
+    #  If true, run script in debug mode
+    debug=true
+}
+
+
+#  Initialize argument variables, assigning default values where applicable
+function init_arg_defs() {
+    env_nam="env_protocol"
+    dir_scr=""
+    threads=4
+    aligner="bowtie2"
+    bt2_aln="end-to-end"
+    bwa_alg="mem"
+    ref_fa=""
+    out_ext="bam"
+    mapq=0
+    req_flg=false
+    index=""
+    csv_infile=""
+    dir_out=""
+    qname=false
+    sfx_se=""
+    sfx_pe=""
+    err_out=""
+    nam_job="align_fastqs"
+
+    unset arr_infile
+    declare -ga arr_infile
+}
+
+
+#  Initialize hardcoded arguments and user-facing argument defaults
+function init_defs() {
+    init_args_hardcoded
+    init_arg_defs
+}
+
+
+function show_help_main() {
+    cat << EOM >&2
+Usage:
+  submit_align_fastqs.sh
+    [--help] [--env_nam <str>] --dir_scr <dir>
+    [--threads <int>]
+    [--aligner <spec>] [--bt2_aln <spec>] [--bwa_alg <spec>] [--mapq <int>] [--req_flg]
+    --index <str> --csv_infile <spec> [--ref <file>]
+    --dir_out <dir> [--out_ext <spec>]
+    [--qname] --sfx_se <str> --sfx_pe <str>
+    --err_out <dir> [--nam_job <str>]
+
+Description:
+  Submit or execute one or more FASTQ-alignment jobs by calling the downstream
+  function 'align_fastqs'.
+
+  This wrapper
+    - parses a semicolon-delimited list of FASTQ input entries,
+    - derives sample names and alignment outfile paths,
+    - activates the requested Conda/Mamba environment, and then
+    - runs alignment either under Slurm array execution or by serial/local
+      iteration, depending on how the script is invoked.
+
+  For each input entry, this script writes log files to:
+
+    \${err_out}/\${nam_job}.\${samp}.stdout.txt
+    \${err_out}/\${nam_job}.\${samp}.stderr.txt
+
+Keyword arguments:
+  -h, --hlp, --help  <flag>
+    Display this help message and exit.
+
+  -en, --env, --env_nam  <str>
+    Conda/Mamba environment to activate (default: '${env_nam}').
+
+  -ds, --dir_scr  <dir>
+    Directory containing scripts and functions.
+
+  -t, --thr, --threads  <int>
+    Number of threads to use (default: ${threads}).
+
+  -a, --aln, --aligner  <spec>
+    Alignment program to use: 'bowtie2', 'bwa', or 'bwa-mem2'
+    (default: '${aligner}').
+
+  -2a, -bn, --bt2_aln, --bt2_mode, --bowtie2_aln, --bowtie2_mode  <spec>
+    Bowtie 2 alignment type: 'local', 'global', or 'end-to-end'
+    (default: '${bt2_aln}').
+
+  -ba, --bwa_alg  <spec>
+    BWA algorithm when '--aligner bwa': 'mem' or 'aln'
+    (default: '${bwa_alg}').
+
+  -mq, --mapq  <int>
+    MAPQ threshold for filtering alignment outfiles (default: ${mapq}).
+
+  -rf, --req_flg  <flag>
+    Require flag bit 2 for proper paired-end alignments.
+
+  -ix, --index  <str>
+    Path to the aligner index/reference.
+
+  -i, -fi, -ci, --infile, --infiles, --fil_in, --csv_infile, --csv_infiles  <spec>
+    Semicolon-delimited serialized string of FASTQ input entries. For
+    single-end data, each entry is one FASTQ file. For paired-end data, each
+    entry contains a comma-delimited FASTQ pair.
+
+  -r, --ref  <file>
+    Reference FASTA path required when '--out_ext cram'.
+
+  -do, --dir_out  <dir>
+    Directory to write alignment outfiles.
+
+  -ox, --out_ext  <spec>
+    Final alignment output extension: 'bam' or 'cram' (default: '${out_ext}').
+
+  -qn, --qnam, --qname  <flag>
+    Retain queryname-sorted intermediate BAM files.
+
+  -sxs, --sfx_se, --suffix_se  <str>
+    Suffix to strip from single-end FASTQ files.
+
+  -sxp, --sfx_pe, --suffix_pe  <str>
+    Suffix to strip from paired-end FASTQ files.
+
+  -eo, --err_out  <dir>
+    Directory to store stderr and stdout outfiles.
+
+  -nj, --nam, --name, --nam_job, --name_job  <str>
+    Name of job (default: '${nam_job}').
+
+Dependencies:
+  Recommended environment:
+    - env_protocol
+
+  External programs:
+    - Bash >= 4.4
+    - Bowtie 2, BWA, or BWA-MEM2, depending on '--aligner'
+    - Samtools
+    - Slurm environment variables, when run as a Slurm array task
+
+Notes:
+  - '--ref' is required when '--out_ext cram'.
+  - '--req_flg' and '--qname' are optional flags.
+EOM
 }
 
 
@@ -603,7 +787,7 @@ function validate_args() {
 
 
 #  Print debug argument variable assignments
-function print_debug_args() {
+function print_state_debug() {
     if [[ "${debug}" == "true" ]]; then
         echo
         debug_var \
@@ -629,120 +813,171 @@ function print_debug_args() {
 }
 
 
-#  Initialize argument variables, assigning default values where applicable
-env_nam="env_protocol"
-dir_scr=""
-threads=4
-aligner="bowtie2"
-bt2_aln="end-to-end"
-bwa_alg="mem"
-ref_fa=""
-out_ext="bam"
-mapq=0
-req_flg=false
-index=""
-csv_infile=""
-dir_out=""
-qname=false
-sfx_se=""
-sfx_pe=""
-err_out=""
-nam_job="align_fastqs"
+#  Activate environment
+function setup_env() {
+    handle_env "${env_nam}" || return 1
+}
 
 
-function show_help_main() {
-    cat << EOM >&2
-Usage:
-  submit_align_fastqs.sh
-    [-h|--hlp|--help] [-en|--env_nam <str>] -ds|--dir_scr <str>
-    [-t|--threads <int>] [-a|--aligner <str>] [-2a|-bn|--bt2_aln <str>] [-ba|--bwa_alg <str>] [-mq|--mapq <int>] [-rf|--req_flg] -ix|--index <str> [-r|--ref <str>]
-    -i|--csv_infile <str> -do|--dir_out <str> [-ox|--out_ext <str>] [-qn|--qname] -sxs|--sfx_se <str> -sxp|--sfx_pe <str> -eo|--err_out <str> [-nj|--nam_job <str>]
+#  Reconstruct input FASTQ vector
+function prepare_vecs() {
+    unset arr_infile && declare -ga arr_infile
+    IFS=';' read -r -a arr_infile <<< "${csv_infile}"
+}
 
-Description:
-  Submit or execute one or more FASTQ-alignment jobs by calling the downstream function 'align_fastqs'.
 
-  This wrapper
-    - parses a semicolon-delimited list of FASTQ input entries,
-    - derives sample names and alignment outfile paths,
-    - activates the requested Conda/Mamba environment, and then
-    - runs alignment either under Slurm array execution or by serial/GNU-Parallel-style iteration, depending on how the script is invoked.
+#  Validate reconstructed input FASTQ vector
+function validate_vecs() {
+    check_arr_nonempty "arr_infile" "csv_infile" || return 1
+}
 
-  For each input entry, this script writes log files to:
 
-    \${err_out}/\${nam_job}.\${samp}.stdout.txt
-    \${err_out}/\${nam_job}.\${samp}.stderr.txt
+#  Print debug vector assignments
+function print_vecs_debug() {
+    if [[ "${debug}" == "true" ]]; then
+        echo "\${#arr_infile[@]}=${#arr_infile[@]}" && echo
+        echo "arr_infile=( ${arr_infile[*]} )"      && echo
+    fi
+}
 
-Keyword arguments:
-  -en, --env, --env_nam  <str>
-    Conda/Mamba environment to activate (default: '${env_nam}').
 
-  -ds, --dir_scr  <str>
-    Directory containing scripts and functions.
+#  Parse one input entry and run one alignment
+function run_job() {
+    local infile="${1:-}"
+    local fq_1 fq_2 samp outfile
 
-  -t, --thr, --threads  <int>
-    Number of threads to use (default: ${threads}).
+    if [[ -z "${infile}" ]]; then
+        echo_err_func "${FUNCNAME[0]}" \
+            "positional argument 1, 'infile', is missing."
+        return 1
+    fi
 
-  -a, --aln, --aligner  <str>
-    Alignment program to use: 'bowtie2', 'bwa', or 'bwa-mem2' (default: '${aligner}').
+    if [[ "${debug}" == "true" ]]; then debug_var "infile=${infile}"; fi
 
-  -2a, -bn, --bt2_aln, --bt2_mode, --bowtie2_aln, --bowtie2_mode  <str>
-    Bowtie 2 alignment type: 'local', 'global', or 'end-to-end' (default: '${bt2_aln}').
+    IFS=';' read -r fq_1 fq_2 samp outfile < <(
+        parse_entry_align_fastq \
+            "${infile}" "${sfx_se}" "${sfx_pe}" "${dir_out}" "${out_ext}"
+    ) || return 1
 
-  -ba, --bwa_alg  <str>
-    BWA algorithm when '--aligner bwa': 'mem' or 'aln' (default: '${bwa_alg}').
+    if [[ "${debug}" == "true" ]]; then
+        debug_var \
+            "fq_1=${fq_1}" \
+            "fq_2=${fq_2}" \
+            "samp=${samp}" \
+            "outfile=${outfile}"
+    fi
 
-  -mq, --mapq  <int>
-    MAPQ threshold for filtering alignment outfiles (default: ${mapq}).
+    if ! \
+        run_alignment \
+            "${threads}" "${aligner}" "${bt2_aln}" "${bwa_alg}" \
+            "${mapq}"    "${req_flg}" "${index}"   "${ref_fa}" \
+            "${fq_1}"    "${fq_2}"    "${outfile}" "${qname}" \
+            "${err_out}" "${nam_job}" "${samp}"
+    then
+        echo_err "failed to perform alignment."
+        return 1
+    fi
+}
 
-  -rf, --req_flg  <flag>
-    Require flag bit 2 (proper PE alignments) for filtering alignment outfiles.
 
-  -ix, --index  <str>
-    Path to the aligner index/reference.
+#  Parse Slurm task state and run one array task
+function run_job_slurm() {
+    local err_dsc err_ini id_job id_tsk idx infile out_dsc out_ini
+    local fq_1 fq_2 samp outfile
 
-  -i, -fi, -ci, --infile, --infiles, --fil_in, --csv_infile, --csv_infiles  <spec>
-    Semicolon-delimited serialized string of FASTQ input entries. For single-end data, each entry is one FASTQ file. For paired-end data, each entry contains a comma-delimited FASTQ pair.
+    id_job="${SLURM_ARRAY_JOB_ID:-}"
+    id_tsk="${SLURM_ARRAY_TASK_ID:-}"
 
-  -do, --dir_out  <str>
-    Directory to write alignment outfiles.
+    if [[ -z "${id_job}" ]]; then
+        echo_err "Slurm array job ID is missing."
+        return 1
+    elif ! [[ "${id_tsk}" =~ ^[1-9][0-9]*$ ]]; then
+        echo_err "Slurm task ID is invalid: '${id_tsk}'."
+        return 1
+    elif (( id_tsk > ${#arr_infile[@]} )); then
+        echo_err \
+            "Slurm task ID '${id_tsk}' exceeds number of FASTQ entries:" \
+            "'${#arr_infile[@]}'."
+        return 1
+    else
+        idx=$(( id_tsk - 1 ))
+    fi
 
-  -ox, --out_ext  <str>
-    Final alignment output extension: 'bam' or 'cram' (default: '${out_ext}').
+    infile="${arr_infile[idx]}"
 
-  -r, --ref  <str>
-    Reference FASTA path required when '--out_ext cram'.
+    if [[ "${debug}" == "true" ]]; then debug_var "infile=${infile}"; fi
 
-  -qn, --qnam, --qname  <flag>
-    Retain queryname-sorted intermediate BAM files.
+    IFS=';' read -r fq_1 fq_2 samp outfile < <(
+        parse_entry_align_fastq \
+            "${infile}" "${sfx_se}" "${sfx_pe}" "${dir_out}" "${out_ext}"
+    ) || return 1
 
-  -sxs, --sfx_se, --suffix_se  <str>
-    Suffix to strip from SE FASTQ files.
+    if [[ "${debug}" == "true" ]]; then
+        debug_var \
+            "fq_1=${fq_1}" \
+            "fq_2=${fq_2}" \
+            "samp=${samp}" \
+            "outfile=${outfile}"
+    fi
 
-  -sxp, --sfx_pe, --suffix_pe  <str>
-    Suffix to strip from PE FASTQ files.
+    IFS=',' read -r err_ini out_ini err_dsc out_dsc < <(
+        set_logs_slurm \
+            "${id_job}" "${id_tsk}" "${samp}" "${err_out}" "${nam_job}"
+    ) || return 1
 
-  -eo, --err_out  <str>
-    Directory to store stderr and stdout outfiles.
+    if [[ "${debug}" == "true" ]]; then
+        debug_var \
+            "err_ini=${err_ini}" \
+            "out_ini=${out_ini}" \
+            "err_dsc=${err_dsc}" \
+            "out_dsc=${out_dsc}"
+    fi
 
-  -nj, --nam, --name, --nam_job, --name_job  <str>
-    Name of job (default: '${nam_job}').
+    if ! \
+        run_alignment \
+            "${threads}" "${aligner}" "${bt2_aln}" "${bwa_alg}" \
+            "${mapq}"    "${req_flg}" "${index}"   "${ref_fa}" \
+            "${fq_1}"    "${fq_2}"    "${outfile}" "${qname}" \
+            "${err_out}" "${nam_job}" "${samp}"
+    then
+        echo_err "failed to perform alignment."
+        return 1
+    fi
 
-Notes:
-  - '--ref' is required when '--out_ext cram'.
-  - '--req_flg' and '--qname' are optional flags.
-EOM
+    rm -f -- "${err_ini}" "${out_ini}" || {
+        echo_warn \
+            "failed to remove initial Slurm log files:" \
+            "'${err_ini}', '${out_ini}'."
+    }
+}
+
+
+#  Dispatch one Slurm array task or local loop over input entries
+function run_jobs() {
+    local idx infile
+
+    if [[ -n "${SLURM_ARRAY_TASK_ID:-}" ]]; then
+        run_job_slurm || return 1
+    else
+        for idx in "${!arr_infile[@]}"; do
+            infile="${arr_infile[idx]}"
+            run_job "${infile}" || return 1
+        done
+    fi
 }
 
 
 #  Main script execution
 function main() {
+    init_defs
+
     if [[ -z "${1:-}" || "${1}" =~ ^(-h|--h[e]?lp)$ ]]; then
         show_help_main
         echo >&2
-        exit 0
+        return 0
     fi
 
-    dir_scr="$(resolve_dir_scr "${0##*/}" "$@")" || exit 1
+    dir_scr="$(resolve_dir_scr "${0##*/}" "$@")" || return 1
 
     source_submit_helpers "${0##*/}" "${dir_scr}" \
         align_fastqs \
@@ -753,117 +988,16 @@ function main() {
         handle_env \
         manage_slurm \
         process_sequences \
-        || exit 1
+        || return 1
 
-    parse_args "$@"  || exit 1
-    validate_args    || exit 1
-    print_debug_args || exit 1
-
-    #  Activate environment
-    handle_env "${env_nam}" || exit 1
-
-    IFS=';' read -r -a arr_infile <<< "${csv_infile}"
-    check_arr_nonempty "arr_infile" "csv_infile" || exit 1
-
-    if [[ "${debug}" == "true" ]]; then
-        echo "\${#arr_infile[@]}=${#arr_infile[@]}" && echo
-        echo "arr_infile=( ${arr_infile[*]} )"      && echo
-    fi
-
-    if [[ -n "${SLURM_ARRAY_TASK_ID:-}" ]]; then
-        id_job="${SLURM_ARRAY_JOB_ID}"
-        id_tsk="${SLURM_ARRAY_TASK_ID}"
-
-        if ! [[ "${id_tsk}" =~ ^[1-9][0-9]*$ ]]; then
-            echo_err "Slurm task ID is invalid: '${id_tsk}'."
-            exit 1
-        elif (( id_tsk > ${#arr_infile[@]} )); then
-            echo_err \
-                "Slurm task ID '${id_tsk}' exceeds number of FASTQ entries:" \
-                "'${#arr_infile[@]}'."
-            exit 1
-        else
-            idx=$(( id_tsk - 1 ))
-        fi
-
-        infile="${arr_infile[idx]}"
-
-        if [[ "${debug}" == "true" ]]; then debug_var "infile=${infile}"; fi
-
-        IFS=';' read -r fq_1 fq_2 samp outfile < <(
-            parse_entry_align_fastq \
-                "${infile}" "${sfx_se}" "${sfx_pe}" "${dir_out}" "${out_ext}"
-        ) || exit 1
-
-        if [[ "${debug}" == "true" ]]; then
-            debug_var \
-                "fq_1=${fq_1}" \
-                "fq_2=${fq_2}" \
-                "samp=${samp}" \
-                "outfile=${outfile}"
-        fi
-
-        IFS=',' read -r err_ini out_ini err_dsc out_dsc < <(
-            set_logs_slurm \
-                "${id_job}" "${id_tsk}" "${samp}" "${err_out}" "${nam_job}"
-        ) || exit 1
-
-        if [[ "${debug}" == "true" ]]; then
-            debug_var \
-                "err_ini=${err_ini}" \
-                "out_ini=${out_ini}" \
-                "err_dsc=${err_dsc}" \
-                "out_dsc=${out_dsc}"
-        fi
-
-        if ! \
-            run_alignment \
-                "${threads}" "${aligner}" "${bt2_aln}" "${bwa_alg}" \
-                "${mapq}"    "${req_flg}" "${index}"   "${ref_fa}" \
-                "${fq_1}"    "${fq_2}"    "${outfile}" "${qname}" \
-                "${err_out}" "${nam_job}" "${samp}"
-        then
-            echo_err "failed to perform alignment."
-            exit 1
-        fi
-
-        rm -f -- "${err_ini}" "${out_ini}" || {
-            echo_warn \
-                "failed to remove initial Slurm log files:" \
-                "'${err_ini}', '${out_ini}'."
-        }
-    else
-        for idx in "${!arr_infile[@]}"; do
-            infile="${arr_infile[idx]}"
-
-            if [[ "${debug}" == "true" ]]; then debug_var "infile=${infile}"; fi
-
-            IFS=';' read -r fq_1 fq_2 samp outfile < <(
-                parse_entry_align_fastq \
-                    "${infile}" "${sfx_se}" "${sfx_pe}" "${dir_out}" \
-                    "${out_ext}"
-            ) || exit 1
-
-            if [[ "${debug}" == "true" ]]; then
-                debug_var \
-                    "fq_1=${fq_1}" \
-                    "fq_2=${fq_2}" \
-                    "samp=${samp}" \
-                    "outfile=${outfile}"
-            fi
-
-            if ! \
-                run_alignment \
-                    "${threads}" "${aligner}" "${bt2_aln}" "${bwa_alg}" \
-                    "${mapq}"    "${req_flg}" "${index}"   "${ref_fa}" \
-                    "${fq_1}"    "${fq_2}"    "${outfile}" "${qname}" \
-                    "${err_out}" "${nam_job}" "${samp}"
-            then
-                echo_err "failed to perform alignment."
-                exit 1
-            fi
-        done
-    fi
+    parse_args "$@"   || return 1
+    validate_args     || return 1
+    print_state_debug || return 1
+    setup_env         || return 1
+    prepare_vecs      || return 1
+    validate_vecs     || return 1
+    print_vecs_debug  || return 1
+    run_jobs          || return 1
 }
 
 

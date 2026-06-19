@@ -146,6 +146,8 @@ Execute wrappers should prepare and validate vectors before dispatch, then seria
 
 Submit wrappers should reconstruct comma-delimited inputs into arrays, validate direct worker inputs, and handle worker-specific context such as `SLURM_ARRAY_TASK_ID`.
 
+Submit wrappers that support both Slurm-array task execution and local iteration should keep worker dispatch in `run_jobs`; `main()` should call that helper after parsing, validation, setup, and vector reconstruction.
+
 Build commands as arrays, keep dry-run output explicit, and avoid reading mode-specific globals unless that mode is active under `set -u`.
 
 Keep wrapper changes surgical: preserve existing `submit_` / `execute_` boundaries and source shared helpers instead of duplicating logic.

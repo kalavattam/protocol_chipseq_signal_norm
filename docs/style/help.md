@@ -32,7 +32,9 @@ Use 2 spaces per indentation level in help text.
 
 Markdown prose in this file and other style docs is not subject to the source-code 80-character preference. Do not hard-wrap Markdown prose solely for line length; use natural paragraphs and let the renderer or editor wrap text. Preserve intentional line breaks in code fences, help-output examples, tables, lists, and other structured Markdown.
 
-Shell help text is also not subject to the source-code 80-character wrapping preference. Wrap help text for readability, structure, and user comprehension, not to satisfy code line-length limits. Preserve clear argument tables, examples, and prose when a longer line is easier to read.
+Shell help-documentation heredoc prose is also exempt from the source-code 80-character preference. Do not wrap a help-prose sentence only because the Bash source line is longer than 80 characters. Instead, choose line breaks based on how the help text reads when printed in the terminal: keep related prose together when that is clearer, and split text when it improves scanning, section structure, tables, or lists.
+
+This exemption applies to prose, argument descriptions, `Usage:` groups, notes, and dependency text. It does not apply to code examples inside help heredocs. Code examples are still code examples and should generally follow source-code line-length preferences where practical.
 
 Separate major help sections with one blank line. That is, place one empty line before each new top-level section heading such as `Description:`, an argument-section heading, `Dependencies:`, `Returns:`, `Notes:`, `Examples:`, and `#TODO:`.
 
@@ -165,6 +167,8 @@ Examples:
     '''
 ```
 
+Use more than one numbered example when the script or function has multiple important modes, input shapes, or execution contexts. Examples should be representative, not exhaustive.
+
 <br />
 
 ### Rules:
@@ -172,6 +176,7 @@ Examples:
 - Do not include a blank line between the numbered example description and `'''bash`.
 - Do not use shell line-continuation backslashes in examples.
 - Examples do not need to be directly copy-paste runnable. They should be easy to read and sufficient for the user to understand the command structure.
+- Code examples inside help heredocs are still code examples. They should generally follow source-code line-length preferences where practical.
 - Use 2-space indentation steps inside examples.
 
 <br />
@@ -179,21 +184,16 @@ Examples:
 ### Argument ordering rules
 Use the same argument order in `Usage:`, short argument sections, and detailed argument sections.
 
-In `Usage:` blocks, group continuation lines by workflow role rather than by
-source-code line length. User-facing help is exempt from the 80-character
-source-code preference, so keep a semantic group on one line when that is
-clearer.
+In `Usage:` blocks, group continuation lines by workflow role rather than by source-code line length. User-facing help is exempt from the 80-character source-code preference, so keep a semantic group on one line when that is clearer. Use the generic ordering below as the default, but tailor group names to the workflow when that improves readability. For example, align-fastqs wrappers may use an aligner-controls group between execution controls and input files.
 
-In `Usage:` blocks, show required options without square brackets and
-optional, defaulted, or conditional options with square brackets:
+In `Usage:` blocks, show required options without square brackets and optional, defaulted, or conditional options with square brackets:
 ```txt
---dir_out <dir>       # Required
+--dir_out <dir>      # Required
 [--threads <int>]    # Optional or has a default
 [--ref_fa <file>]    # Conditional; explain condition in the argument body
 ```
 
-Use parentheses for required mutually exclusive groups, and keep optional
-members bracketed inside the group:
+Use parentheses for required mutually exclusive groups, and keep optional members bracketed inside the group:
 ```txt
 (--csv_infile <csv:file> [--ref_fa <file>] | --csv_fil_A <csv:file> --csv_fil_B <csv:file>)
 ```
