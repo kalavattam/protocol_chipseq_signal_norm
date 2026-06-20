@@ -89,26 +89,30 @@ Interpreter stdin heredocs may use a language-specific delimiter when that is cl
 <br />
 
 ## Wrapper Structure
-Bash wrappers should use explicit entrypoint functions. Keep argument parsing in `parse_args()` and final control flow in `main()`.
+Bash wrappers and nontrivial utility scripts should use explicit entrypoint functions. Keep argument parsing in `parse_args()` and final control flow in `main()`.
 
 Use the compute-signal wrappers as the current template for complex `execute_*.sh` and `submit_*.sh` scripts. Do not force tiny helper scripts into the full wrapper shape when a compact structure is clearer.
 
-Prefer this sequence:
+Prefer this bootstrap and lifecycle sequence:
 ```txt
-version guard
+Bash version guard
 safe mode
-path resolution and helper sourcing
+path resolution
+minimal bootstrap parsing only if needed
+helper sourcing
 local helper functions
-init_defs
-parse_args
-canonicalize_args
-validate_args
-vector preparation and validation
+default initialization
+argument parsing
+canonicalization
+validation
+preparation
 execution setup
 environment activation
 dispatch
 main
 ```
+
+Use only the lifecycle helpers that correspond to real work in the script. Do not add empty `canonicalize_args()`, `config_exec()`, `setup_env()`, or similar functions just to satisfy the template.
 
 Order shell functions from low-level helpers toward lifecycle orchestration. Put script-local help near `init_defs()` and `parse_args()`, keep runtime helpers after validation and preparation helpers, and keep `main()` last.
 
@@ -117,6 +121,8 @@ Keep `main()` as lifecycle orchestration. When setup, validation, debug printing
 Inside functions, including `main()`, prefer `return 0` and `return 1` over `exit`. Reserve `exit` for top-level code outside functions, especially Bash-version guards and fatal bootstrap checks before `main()` is available. Let the final top-level `main "$@"` call propagate the returned status under `set -euo pipefail`.
 
 Submit wrappers may need a small bootstrap exception before the ordinary lifecycle when parser helpers depend on a user-supplied scripts directory. In that case, use narrowly named bootstrap helpers, such as `resolve_dir_scr()` and `source_submit_helpers()`, before normal argument parsing.
+
+Keep bootstrap parsing minimal. It should only collect information required to source helpers or establish the script environment, such as `--dir_scr`; ordinary options belong in `parse_args()`.
 
 Do not place live default/global assignments between function definitions. Prefer setting defaults in `init_defs()` and calling it at the start of `main()` before help output or argument parsing. Define `init_defs()` near the argument lifecycle functions, before `parse_args()` when practical. For very small scripts, a compact default block immediately before `main "$@"` is acceptable.
 
