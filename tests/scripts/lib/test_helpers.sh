@@ -371,7 +371,7 @@ function run_samtools() {
 
 
 #  Build and index a BAM input fixture from a committed SAM fixture
-function build_filter_alignments_bam_fixture() {
+function build_filter_alignments_fixture_bam() {
     local in_sam="${1:-}"
     local out_bam="${2:-}"
     local log_lcl="${3:-}"
@@ -397,7 +397,7 @@ function build_filter_alignments_bam_fixture() {
 
 
 #  Build and index a CRAM input fixture from committed SAM/reference fixtures
-function build_filter_alignments_cram_fixture() {
+function build_filter_alignments_fixture_cram() {
     local in_sam="${1:-}"
     local ref_fa="${2:-}"
     local out_cram="${3:-}"

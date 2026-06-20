@@ -6,7 +6,7 @@
 # Copyright 2026 by Kris Alavattam
 # Email: kalavattam@gmail.com
 #
-# OpenAI ChatGPT (GPT-5.5) was used in development.
+# OpenAI ChatGPT and Codex (GPT-5.5) were used in development.
 #
 # Distributed under the MIT license.
 
@@ -71,7 +71,7 @@ require_files_nonempty \
 #  Build deterministic CRAM input from committed SAM and reference fixtures
 log="${dir_log}/submit_filter_alignments_prepare_cram_to_bam.log"
 if ! \
-    build_filter_alignments_cram_fixture \
+    build_filter_alignments_fixture_cram \
         "${in_sam}" \
         "${ref_fa}" \
         "${in_cram}" \

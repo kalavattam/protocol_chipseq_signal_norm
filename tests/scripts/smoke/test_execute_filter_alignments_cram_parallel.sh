@@ -6,7 +6,7 @@
 # Copyright 2026 by Kris Alavattam
 # Email: kalavattam@gmail.com
 #
-# OpenAI ChatGPT (GPT-5.5) was used in development.
+# OpenAI ChatGPT and Codex (GPT-5.5) were used in development.
 #
 # Distributed under the MIT license.
 
@@ -93,7 +93,7 @@ fi
 #  Build two deterministic CRAM inputs with distinct basenames
 log="${dir_log}/execute_filter_alignments_cram_parallel_prepare_1.log"
 if ! \
-    build_filter_alignments_cram_fixture \
+    build_filter_alignments_fixture_cram \
         "${in_sam}" \
         "${ref_fa}" \
         "${in_cram_1}" \
@@ -106,7 +106,7 @@ fi
 
 log="${dir_log}/execute_filter_alignments_cram_parallel_prepare_2.log"
 if ! \
-    build_filter_alignments_cram_fixture \
+    build_filter_alignments_fixture_cram \
         "${in_sam}" \
         "${ref_fa}" \
         "${in_cram_2}" \
