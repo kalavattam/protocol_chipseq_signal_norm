@@ -524,7 +524,7 @@ function parse_jobs_uniq() {
     has_dup_dl=false
 
     for i in "${!list_acc[@]}"; do
-        key="${list_url_1[i]}	${list_url_2[i]}"
+        key="${list_url_1[i]}"$'\t'"${list_url_2[i]}"
 
         if [[ -n "${seen_cus[${list_cus[i]}]:-}" ]]; then
             echo_err "duplicate custom_name in input TSV: '${list_cus[i]}'."
