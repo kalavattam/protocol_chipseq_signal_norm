@@ -334,6 +334,8 @@ arr_tst=(
     "${dir_run}/smoke/test_execute_compute_signal_cram.sh"
     "${dir_run}/smoke/test_submit_compute_signal_bam.sh"
     "${dir_run}/smoke/test_submit_compute_signal_cram.sh"
+    "${dir_run}/smoke/test_submit_qsort_bam_slurm.sh"
+    "${dir_run}/smoke/test_submit_convert_bam_bed_slurm.sh"
     "${dir_run}/smoke/test_execute_download_fastqs_se_local.sh"
     "${dir_run}/smoke/test_execute_download_fastqs_pe_local.sh"
     "${dir_run}/smoke/test_execute_download_fastqs_mixed_local.sh"
