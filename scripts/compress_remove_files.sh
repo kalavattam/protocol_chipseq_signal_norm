@@ -70,206 +70,228 @@ function source_helpers_script() {
 }
 
 
-source_helpers_script || exit 1
+function init_args_hardcoded() {
+    env_nam="env_protocol"
+}
 
-#  Initialize argument variables, check and parse arguments, etc. =============
-#  Initialize hardcoded argument variables
-env_nam="env_protocol"
 
-#  Initialize variables along with default assignments
-threads=1
-dir_fnd=""
-pattern="*.std???.txt"
-size=1  # Default minimum size to compress: 1 kilobyte
-depth=""
-include=""
-exclude="*.gz"
-chk_con=false
-chk_exc=false
+function init_arg_defs() {
+    threads=1
+    dir_fnd=""
+    pattern="*.std???.txt"
+    size=1  # Default minimum size to compress: 1 kilobyte
+    depth=""
+    include=""
+    exclude="*.gz"
+    chk_con=false
+    chk_exc=false
 
-#  Parse arguments
-if [[ -z "${1:-}" || "${1}" =~ ^(-h|--h[e]?lp)$ ]]; then
-    help_compress_remove_files >&2
-    exit 0
-fi
+    unset arr_cmd_find arr_cmd_big arr_cmd_zero
+    declare -ga arr_cmd_find arr_cmd_big arr_cmd_zero
+}
 
-while [[ "$#" -gt 0 ]]; do
-    case "${1}" in
-        -t|--thr|--threads)
-            require_optarg "${1}" "${2:-}" "main" || {
+
+function init_defs() {
+    init_args_hardcoded
+    init_arg_defs
+}
+
+
+function parse_args() {
+    while [[ "$#" -gt 0 ]]; do
+        case "${1}" in
+            -t|--thr|--threads)
+                require_optarg "${1}" "${2:-}" "main" || {
+                    echo >&2
+                    help_compress_remove_files >&2
+                    return 1
+                }
+                threads="${2}"
+                shift 2
+                ;;
+
+            -df|--dir[_-]fnd)
+                require_optarg "${1}" "${2:-}" "main" || {
+                    echo >&2
+                    help_compress_remove_files >&2
+                    return 1
+                }
+                dir_fnd="${2}"
+                shift 2
+                ;;
+
+            -pa|--pttrn|--pattern)
+                require_optarg "${1}" "${2:-}" "main" || {
+                    echo >&2
+                    help_compress_remove_files >&2
+                    return 1
+                }
+                pattern="${2}"
+                shift 2
+                ;;
+
+            -sz|--size)
+                require_optarg "${1}" "${2:-}" "main" || {
+                    echo >&2
+                    help_compress_remove_files >&2
+                    return 1
+                }
+                size="${2}"
+                shift 2
+                ;;
+
+            -de|--dpth|--depth)
+                require_optarg "${1}" "${2:-}" "main" || {
+                    echo >&2
+                    help_compress_remove_files >&2
+                    return 1
+                }
+                depth="${2}"
+                shift 2
+                ;;
+
+            -in|--incld|--include)
+                require_optarg "${1}" "${2:-}" "main" || {
+                    echo >&2
+                    help_compress_remove_files >&2
+                    return 1
+                }
+                include="${2}"
+                shift 2
+                ;;
+
+            -ex|--excld|--exclude)
+                require_optarg "${1}" "${2:-}" "main" || {
+                    echo >&2
+                    help_compress_remove_files >&2
+                    return 1
+                }
+                exclude="${2}"
+                shift 2
+                ;;
+
+            -cn|--chk[_-]con)
+                chk_con=true
+                shift 1
+                ;;
+
+            -ce|-cu|--chk[_-]exc|--chk[_-]exu)
+                chk_exc=true
+                shift 1
+                ;;
+
+            *)
+                echo_err "unknown option/parameter passed: '${1}'."
                 echo >&2
                 help_compress_remove_files >&2
-                exit 1
-            }
-            threads="${2}"
-            shift 2
-            ;;
-
-        -df|--dir[_-]fnd)
-            require_optarg "${1}" "${2:-}" "main" || {
-                echo >&2
-                help_compress_remove_files >&2
-                exit 1
-            }
-            dir_fnd="${2}"
-            shift 2
-            ;;
-
-        -pa|--pttrn|--pattern)
-            require_optarg "${1}" "${2:-}" "main" || {
-                echo >&2
-                help_compress_remove_files >&2
-                exit 1
-            }
-            pattern="${2}"
-            shift 2
-            ;;
-
-        -sz|--size)
-            require_optarg "${1}" "${2:-}" "main" || {
-                echo >&2
-                help_compress_remove_files >&2
-                exit 1
-            }
-            size="${2}"
-            shift 2
-            ;;
-
-        -de|--dpth|--depth)
-            require_optarg "${1}" "${2:-}" "main" || {
-                echo >&2
-                help_compress_remove_files >&2
-                exit 1
-            }
-            depth="${2}"
-            shift 2
-            ;;
-
-        -in|--incld|--include)
-            require_optarg "${1}" "${2:-}" "main" || {
-                echo >&2
-                help_compress_remove_files >&2
-                exit 1
-            }
-            include="${2}"
-            shift 2
-            ;;
-
-        -ex|--excld|--exclude)
-            require_optarg "${1}" "${2:-}" "main" || {
-                echo >&2
-                help_compress_remove_files >&2
-                exit 1
-            }
-            exclude="${2}"
-            shift 2
-            ;;
-
-        -cn|--chk[_-]con)
-            chk_con=true
-            shift 1
-            ;;
-
-        -ce|-cu|--chk[_-]exc|--chk[_-]exu)
-            chk_exc=true
-            shift 1
-            ;;
-
-        *)
-            echo_err "unknown option/parameter passed: '${1}'."
-            echo >&2
-            help_compress_remove_files >&2
-            exit 1
-            ;;
-    esac
-done
-
-#  Check arguments
-validate_var "env_nam" "${env_nam}"
-check_env_installed "${env_nam}"
-
-validate_var "threads" "${threads}"
-check_int_pos "${threads}" "threads"
-
-validate_var_dir "dir_fnd" "${dir_fnd}"
-
-dir_fnd_real="$(realpath "${dir_fnd}")"
-dir_pwd_real="$(realpath "${PWD}")"
-if \
-       [[ "${dir_pwd_real}" == "${dir_fnd_real}" ]] \
-    || [[ "${dir_pwd_real}" == "${dir_fnd_real}"/* ]]
-then
-    echo_err \
-        "'compress_remove_files.sh' cannot be run from the target directory" \
-        "being searched, or from one of its subdirectories. This restriction" \
-        "is kept as a conservative safety policy. Please run the script from" \
-        "a different directory. Currently, 'dir_fnd=${dir_fnd}' and" \
-        "'PWD=${PWD}'."
-    exit 1
-fi
-
-validate_var "pattern" "${pattern}"
-if compgen -G "${pattern}" > /dev/null; then
-    echo_warn \
-        "the specified pattern '${pattern}' matches one or more paths in the" \
-        "current working directory. This is no longer treated as a hard" \
-        "error, but it can still be a sign that the script is being run from" \
-        "an inconvenient location. Current 'PWD=${PWD}'."
-fi
-
-validate_var "size" "${size}"
-check_int_pos "${size}" "size"
-
-if [[ -n "${depth}" ]]; then check_int_pos "${depth}" "depth"; fi
-
-check_flags_mut_excl ${chk_con} "chk_con" ${chk_exc} "chk_exc"
-
-#  Activate environment and check that dependencies are in PATH
-env_msg=(
-    "'handle_env' failed for 'env_nam=${env_nam}'. Check that Conda/Mamba are"
-    "available and that the environment exists."
-)
-
-if ! handle_env "${env_nam}" > /dev/null 2>&1; then
-    echo_err "${env_msg[*]}"
-    exit 1
-fi
-
-check_pgrm_path find
-check_pgrm_path gzip
-if [[ "${threads}" -gt 1 ]]; then check_pgrm_path parallel; fi
-check_pgrm_path sort
+                return 1
+                ;;
+        esac
+    done
+}
 
 
-#  Do the main work ===========================================================
-#  Build base 'find' command as an array
-unset arr_cmd_find && declare -a arr_cmd_find
+function validate_args() {
+    local dir_fnd_real
+    local dir_pwd_real
 
-arr_build=(
-    --arr_nam arr_cmd_find
-    --dir_fnd "${dir_fnd}"
-    --pattern "${pattern}"
-)
+    validate_var "env_nam" "${env_nam}"
+    check_env_installed "${env_nam}"
 
-if [[ -n "${depth}" ]]; then
-    arr_build+=( --depth "${depth}" )
-fi
+    validate_var "threads" "${threads}"
+    check_int_pos "${threads}" "threads"
 
-if [[ -n "${include}" ]]; then
-    arr_build+=( --include "${include}" )
-fi
+    validate_var_dir "dir_fnd" "${dir_fnd}"
 
-if [[ -n "${exclude}" ]]; then
-    arr_build+=( --exclude "${exclude}" )
-fi
+    dir_fnd_real="$(realpath "${dir_fnd}")"
+    dir_pwd_real="$(realpath "${PWD}")"
+    if \
+           [[ "${dir_pwd_real}" == "${dir_fnd_real}" ]] \
+        || [[ "${dir_pwd_real}" == "${dir_fnd_real}"/* ]]
+    then
+        echo_err \
+            "'compress_remove_files.sh' cannot be run from the target" \
+            "directory being searched, or from one of its subdirectories." \
+            "This restriction is kept as a conservative safety policy." \
+            "Please run the script from a different directory. Currently," \
+            "'dir_fnd=${dir_fnd}' and 'PWD=${PWD}'."
+        return 1
+    fi
 
-construct_find "${arr_build[@]}"
-unset arr_build
+    validate_var "pattern" "${pattern}"
+    if compgen -G "${pattern}" > /dev/null; then
+        echo_warn \
+            "the specified pattern '${pattern}' matches one or more paths in" \
+            "the current working directory. This is no longer treated as a" \
+            "hard error, but it can still be a sign that the script is being" \
+            "run from an inconvenient location. Current 'PWD=${PWD}'."
+    fi
 
-arr_cmd_big=( "${arr_cmd_find[@]}" -size "+${size}k" )
-arr_cmd_zero=( "${arr_cmd_find[@]}" -size 0 )
+    validate_var "size" "${size}"
+    check_int_pos "${size}" "size"
 
-if [[ "${chk_con}" == "true" || "${chk_exc}" == "true" ]]; then
+    if [[ -n "${depth}" ]]; then check_int_pos "${depth}" "depth"; fi
+
+    check_flags_mut_excl ${chk_con} "chk_con" ${chk_exc} "chk_exc"
+}
+
+
+function setup_env() {
+    local -a env_msg
+
+    env_msg=(
+        "'handle_env' failed for 'env_nam=${env_nam}'. Check that"
+        "Conda/Mamba are available and that the environment exists."
+    )
+
+    if ! handle_env "${env_nam}" > /dev/null 2>&1; then
+        echo_err "${env_msg[*]}"
+        return 1
+    fi
+}
+
+
+function check_tools() {
+    check_pgrm_path find || return 1
+    check_pgrm_path gzip || return 1
+    if [[ "${threads}" -gt 1 ]]; then check_pgrm_path parallel; fi
+    check_pgrm_path sort || return 1
+}
+
+
+function build_find_cmds() {
+    local -a arr_build
+
+    arr_build=(
+        --arr_nam arr_cmd_find
+        --dir_fnd "${dir_fnd}"
+        --pattern "${pattern}"
+    )
+
+    if [[ -n "${depth}" ]]; then
+        arr_build+=( --depth "${depth}" )
+    fi
+
+    if [[ -n "${include}" ]]; then
+        arr_build+=( --include "${include}" )
+    fi
+
+    if [[ -n "${exclude}" ]]; then
+        arr_build+=( --exclude "${exclude}" )
+    fi
+
+    construct_find "${arr_build[@]}"
+
+    arr_cmd_big=( "${arr_cmd_find[@]}" -size "+${size}k" )
+    arr_cmd_zero=( "${arr_cmd_find[@]}" -size 0 )
+}
+
+
+function report_plan() {
+    if [[ "${chk_con}" == "false" && "${chk_exc}" == "false" ]]; then
+        return 0
+    fi
+
     echo "## Call to find for files larger than ${size}k ##"
     print_cmd_array arr_cmd_big
     echo
@@ -319,11 +341,14 @@ EOM
 
 EOM
     fi
-fi
+}
 
-if [[ "${chk_con}" == "true" ]]; then exit 0; fi
 
-if [[ "${chk_exc}" == "true" ]]; then
+function report_results() {
+    if [[ "${chk_exc}" == "false" ]]; then
+        return 0
+    fi
+
     echo "## Results of find command for files larger than ${size}k ##"
     "${arr_cmd_big[@]}" | sort
     echo
@@ -333,19 +358,49 @@ if [[ "${chk_exc}" == "true" ]]; then
     "${arr_cmd_zero[@]}" | sort
     echo
     echo
-fi
+}
 
-if [[ "${chk_exc}" == "true" ]]; then exit 0; fi
 
-if [[ "${threads}" -gt 1 ]]; then
-    "${arr_cmd_big[@]}" \
-        | sort \
-        | parallel -j "${threads}" gzip
+function run_jobs() {
+    if [[ "${threads}" -gt 1 ]]; then
+        "${arr_cmd_big[@]}" \
+            | sort \
+            | parallel -j "${threads}" gzip || return 1
 
-    "${arr_cmd_zero[@]}" \
-        | sort \
-        | parallel -j "${threads}" rm -- {}
-else
-    "${arr_cmd_big[@]}" -exec gzip '{}' \;
-    "${arr_cmd_zero[@]}" -delete
-fi
+        "${arr_cmd_zero[@]}" \
+            | sort \
+            | parallel -j "${threads}" rm -- {} || return 1
+    else
+        "${arr_cmd_big[@]}" -exec gzip '{}' \; || return 1
+        "${arr_cmd_zero[@]}" -delete || return 1
+    fi
+}
+
+
+function main() {
+    init_defs
+    source_helpers_script || return 1
+
+    if [[ -z "${1:-}" || "${1}" =~ ^(-h|--h[e]?lp)$ ]]; then
+        help_compress_remove_files >&2
+        return 0
+    fi
+
+    parse_args "$@"   || return 1
+    validate_args     || return 1
+    setup_env         || return 1
+    check_tools       || return 1
+    build_find_cmds   || return 1
+    report_plan       || return 1
+
+    if [[ "${chk_con}" == "true" ]]; then return 0; fi
+
+    report_results || return 1
+
+    if [[ "${chk_exc}" == "true" ]]; then return 0; fi
+
+    run_jobs || return 1
+}
+
+
+main "$@"
