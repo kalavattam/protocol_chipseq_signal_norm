@@ -40,7 +40,7 @@ Separate major help sections with one blank line. That is, place one empty line 
 
 In argument sections, use this format:
 ```txt
-  -x, --example  <type>
+  -ex, --example  <type>
     Description text.
 ```
 
@@ -52,10 +52,10 @@ If an argument consumes no value, use `<flag>` and still keep two spaces before 
 
 For positional-argument sections, put the argument number, name, and type on one line. Put the description on the next line, indented one additional level, and separate entries with one blank line:
 ```txt
-  01  arg_name  <type>
+  1  arg_name  <type>
     Description text.
 
-  02  next_arg  <type>
+  2  next_arg  <type>
     Description text.
 ```
 

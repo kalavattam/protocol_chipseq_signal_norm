@@ -146,7 +146,7 @@ Keep public API renames separate from structure-only lifecycle refactors. For ex
 ## Execute and Submit Boundaries
 Keep `execute_*.sh` responsible for orchestration: deriving output paths, splitting work, and dispatching serial, GNU Parallel, or Slurm jobs.
 
-Keep `submit_*.sh` responsible for worker-level execution: validating direct inputs, constructing Python/tool calls, and writing per-task logs.
+Keep `submit_*.sh` responsible for worker-level execution: validating direct inputs, selecting a processing primitive, and writing per-task logs.
 
 Execute wrappers should prepare and validate vectors before dispatch, then serialize arrays to comma-delimited values only when constructing downstream submit commands.
 
@@ -157,6 +157,49 @@ Submit wrappers that support both Slurm-array task execution and local iteration
 Build commands as arrays, keep dry-run output explicit, and avoid reading mode-specific globals unless that mode is active under `set -u`.
 
 Keep wrapper changes surgical: preserve existing `submit_` / `execute_` boundaries and source shared helpers instead of duplicating logic.
+
+<br />
+
+## Wrapper and Processing Boundaries
+Wrappers orchestrate work. Sourced functions perform substantive processing. This is the practical version of "no processing logic in `execute` or `submit`."
+
+Wrappers may:
+- parse, canonicalize, and validate arguments;
+- derive output paths, sample names, log paths, and task indexes;
+- reconstruct or serialize vectors;
+- activate environments and check tools;
+- choose which named processing primitive to call;
+- call Python entrypoints, external tools, or helper functions through a sourced function;
+- handle wrapper-level success, failure, dry-run, and dispatch behavior.
+
+Wrappers should not embed:
+- substantive domain algorithms;
+- long pipelines such as `samtools | awk | sort | gzip`;
+- inline AWK, Python, R, or Perl programs;
+- multi-step file transformations with temporary files;
+- BAM/CRAM, FASTQ, bedGraph, TSV, or metadata-processing logic that can be named and tested as a helper.
+
+Use `scripts/functions/` for processing primitives. Good candidates include alignment sorting, filtering, format conversion, counting, table transformation, and domain-specific calculations. Prefer explicit helper arguments over hidden globals. Pass paths such as `fil_in`, `fil_out`, `ref_fa`, `log_out`, and `log_err` directly when the helper owns command execution or redirection.
+
+A tiny wrapper-local command is acceptable only when it is pure dispatch glue and has no domain behavior beyond invoking a named entrypoint. If the command needs mode branching, format-specific BAM/CRAM handling, temporary files, pipes, an embedded program, or nontrivial cleanup, move it to a sourced function.
+
+For example, do not keep a paired-fragment conversion pipeline inside `submit_*::run_job()`:
+```bash
+samtools view ... | awk '...' | sort ... | gzip > "${fil_out}"
+```
+
+Prefer a named processing primitive:
+```bash
+convert_alignment_to_bed_awk \
+    "${threads}" \
+    "${fil_in}" \
+    "${fil_out}" \
+    "${ref_fa}" \
+    "${log_out}" \
+    "${log_err}"
+```
+
+The wrapper remains responsible for deciding that the AWK branch is active, deriving the output and log paths, and reporting wrapper-level failure context.
 
 <br />
 

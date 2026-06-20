@@ -209,8 +209,12 @@ If you encounter an issue (bugs, broken code, broken links, unexpected behavior,
 <br />
 <br />
 
-## Code/documentation authorship and AI/LLM disclosure
-- Human author, director, and maintainer: Kris Alavattam.
-- OpenAI ChatGPT and Codex were used in development and documentation.
+
+## Authorship of code and documentation
+- Director, author responsible for the work, and maintainer: Kris Alavattam.
+- Code and documentation were planned, developed, reviewed, and revised using ChatGPT and Codex (OpenAI).
     + ChatGPT: GPT-4- and GPT-5-series models.
     + Codex: GPT-5.4 and GPT-5.5 models.
+- Ongoing maintenance is performed using Codex (GPT-5.5).
+
+*This repository comes from a human-directed, AI-supported development process. The goal is to improve clarity, reproducibility, maintainability, and scientific usefulness of the code and documentation.*
