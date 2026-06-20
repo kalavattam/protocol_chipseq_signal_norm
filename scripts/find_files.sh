@@ -33,41 +33,43 @@ set -euo pipefail
 dir_scr="$(cd "$(dirname "${BASH_SOURCE[0]}")" > /dev/null 2>&1 && pwd)"
 
 
-#  Source and define functions ================================================
-dir_fnc="${dir_scr}/functions"
-fnc_src="${dir_fnc}/source_helpers.sh"
+#  Source shared helpers
+function source_helpers_script() {
+    local fnc_src
 
-if [[ ! -f "${fnc_src}" ]]; then
-    echo "error($(basename "${BASH_SOURCE[0]}")):" \
-        "script not found: '${fnc_src}'." >&2
-    exit 1
-fi
+    dir_fnc="${dir_scr}/functions"
+    fnc_src="${dir_fnc}/source_helpers.sh"
 
-# shellcheck disable=SC1090
-source "${fnc_src}" || {
-    echo "error($(basename "${BASH_SOURCE[0]}")):" \
-        "failed to source '${fnc_src}'." >&2
-    exit 1
-}
-
-#TODO: source function to normalize Boolean strings (do not rely on just
-#+     "true", "false")
-source_helpers "${dir_fnc}" \
-    check_args \
-    check_env \
-    check_inputs \
-    check_numbers \
-    construct_find \
-    format_outputs \
-    help/help_find_files \
-    process_sequences \
-    || {
+    if [[ ! -f "${fnc_src}" ]]; then
         echo "error($(basename "${BASH_SOURCE[0]}")):" \
-            "failed to source required helper scripts." >&2
-        exit 1
+            "script not found: '${fnc_src}'." >&2
+        return 1
+    fi
+
+    # shellcheck disable=SC1090
+    source "${fnc_src}" || {
+        echo "error($(basename "${BASH_SOURCE[0]}")):" \
+            "failed to source '${fnc_src}'." >&2
+        return 1
     }
 
-unset fnc_src
+    #TODO: source function to normalize Boolean strings (do not rely on just
+    #+     "true", "false")
+    source_helpers "${dir_fnc}" \
+        check_args \
+        check_env \
+        check_inputs \
+        check_numbers \
+        construct_find \
+        format_outputs \
+        help/help_find_files \
+        process_sequences \
+        || {
+            echo "error($(basename "${BASH_SOURCE[0]}")):" \
+                "failed to source required helper scripts." >&2
+            return 1
+        }
+}
 
 
 function init_arg_defs() {
@@ -308,6 +310,7 @@ function run_find() {
 
 function main() {
     init_arg_defs
+    source_helpers_script || return 1
 
     if [[ -z "${1:-}" || "${1}" =~ ^(-h|--h[e]?lp)$ ]]; then
         help_find_files >&2

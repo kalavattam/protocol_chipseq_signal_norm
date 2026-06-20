@@ -1,7 +1,7 @@
 #!/bin/bash
 # -*- coding: utf-8 -*-
 #
-# Script: submit_filter_bams.sh
+# Script: execute_filter_crams.sh
 #
 # Copyright 2024-2026 by Kris Alavattam
 # Email: kalavattam@gmail.com
@@ -17,4 +17,4 @@ set -euo pipefail
 
 dir_scr="$(cd "$(dirname "${BASH_SOURCE[0]}")" > /dev/null 2>&1 && pwd)"
 
-exec "${BASH}" "${dir_scr}/submit_filter_alignments.sh" "$@"
+exec "${BASH}" "${dir_scr}/execute_filter_alignments.sh" "$@"

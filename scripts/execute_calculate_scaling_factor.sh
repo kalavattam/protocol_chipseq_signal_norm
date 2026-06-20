@@ -6,7 +6,8 @@
 # Copyright 2024-2026 by Kris Alavattam
 # Email: kalavattam@gmail.com
 #
-# OpenAI ChatGPT (GPT-4- and GPT-5-series models) was used in development.
+# OpenAI ChatGPT and Codex (GPT-4- and GPT-5-series models) were used in
+# development.
 #
 # Distributed under the MIT license.
 
@@ -32,40 +33,42 @@ set -euo pipefail
 dir_scr="$(cd "$(dirname "${BASH_SOURCE[0]}")" > /dev/null 2>&1 && pwd)"
 
 
-#  Source and define functions ================================================
-dir_fnc="${dir_scr}/functions"
-fnc_src="${dir_fnc}/source_helpers.sh"
+#  Source shared helpers
+function source_helpers_execute() {
+    local fnc_src
 
-if [[ ! -f "${fnc_src}" ]]; then
-    echo "error($(basename "${BASH_SOURCE[0]}")):" \
-        "script not found: '${fnc_src}'." >&2
-    exit 1
-fi
+    dir_fnc="${dir_scr}/functions"
+    fnc_src="${dir_fnc}/source_helpers.sh"
 
-# shellcheck disable=SC1090
-source "${fnc_src}" || {
-    echo "error($(basename "${BASH_SOURCE[0]}")):" \
-        "failed to source '${fnc_src}'." >&2
-    exit 1
-}
-
-source_helpers "${dir_fnc}" \
-    check_args \
-    check_env \
-    check_inputs \
-    check_numbers \
-    format_outputs \
-    handle_env \
-    help/help_execute_calculate_scaling_factor \
-    manage_parallel \
-    wrap_cmd \
-    || {
+    if [[ ! -f "${fnc_src}" ]]; then
         echo "error($(basename "${BASH_SOURCE[0]}")):" \
-            "failed to source required helper scripts." >&2
-        exit 1
+            "script not found: '${fnc_src}'." >&2
+        return 1
+    fi
+
+    # shellcheck disable=SC1090
+    source "${fnc_src}" || {
+        echo "error($(basename "${BASH_SOURCE[0]}")):" \
+            "failed to source '${fnc_src}'." >&2
+        return 1
     }
 
-unset fnc_src
+    source_helpers "${dir_fnc}" \
+        check_args \
+        check_env \
+        check_inputs \
+        check_numbers \
+        format_outputs \
+        handle_env \
+        help/help_execute_calculate_scaling_factor \
+        manage_parallel \
+        wrap_cmd \
+        || {
+            echo "error($(basename "${BASH_SOURCE[0]}")):" \
+                "failed to source required helper scripts." >&2
+            return 1
+        }
+}
 
 
 function build_cmd() {
@@ -1478,6 +1481,7 @@ function run_jobs() {
 #  Main script execution
 function main() {
     init_defs
+    source_helpers_execute || return 1
 
     if [[ -z "${1:-}" || "${1}" =~ ^(-h|--h[e]?lp)$ ]]; then
         help_execute_calculate_scaling_factor >&2

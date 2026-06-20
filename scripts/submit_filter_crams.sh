@@ -1,7 +1,7 @@
 #!/bin/bash
 # -*- coding: utf-8 -*-
 #
-# Script: submit_filter_bams.sh
+# Script: submit_filter_crams.sh
 #
 # Copyright 2024-2026 by Kris Alavattam
 # Email: kalavattam@gmail.com

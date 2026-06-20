@@ -87,7 +87,7 @@ function init_defs() {
 
 
 #  Source shared helpers after help-only handling
-function source_submit_helpers() {
+function source_helpers_submit() {
     local fnc_src
 
     dir_scr="$(cd "$(dirname "${BASH_SOURCE[0]}")" > /dev/null 2>&1 && pwd)"
@@ -249,7 +249,7 @@ EOM
         return 0
     fi
 
-    source_submit_helpers || return 1
+    source_helpers_submit || return 1
     parse_args "$@"       || return 1
     validate_args         || return 1
     run_downloads         || return 1

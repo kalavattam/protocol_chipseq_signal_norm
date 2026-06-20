@@ -120,7 +120,14 @@ Keep `main()` as lifecycle orchestration. When setup, validation, debug printing
 
 Inside functions, including `main()`, prefer `return 0` and `return 1` over `exit`. Reserve `exit` for top-level code outside functions, especially Bash-version guards and fatal bootstrap checks before `main()` is available. Let the final top-level `main "$@"` call propagate the returned status under `set -euo pipefail`.
 
-Submit wrappers may need a small bootstrap exception before the ordinary lifecycle when parser helpers depend on a user-supplied scripts directory. In that case, use narrowly named bootstrap helpers, such as `resolve_dir_scr()` and `source_submit_helpers()`, before normal argument parsing.
+Put helper sourcing in a named helper for executable scripts:
+- use `source_helpers_execute()` in `execute_*.sh` wrappers,
+- use `source_helpers_submit()` in `submit_*.sh` wrappers, and
+- use `source_helpers_script()` in utility scripts.
+
+Submit wrappers may need a small bootstrap exception before the ordinary lifecycle when parser helpers depend on a user-supplied scripts directory. In that case, use narrowly named bootstrap helpers, such as `resolve_dir_scr()` and `source_helpers_submit()`, before normal argument parsing.
+
+Execute wrappers usually source help functions from `scripts/functions/help/`, so call `source_helpers_execute()` near the start of `main()` before help handling, normal argument parsing, and validation. Utility scripts may call `source_helpers_script()` before help handling when help or parser helpers are sourced.
 
 Keep bootstrap parsing minimal. It should only collect information required to source helpers or establish the script environment, such as `--dir_scr`; ordinary options belong in `parse_args()`.
 

@@ -156,7 +156,7 @@ function resolve_dir_scr() {
 
 
 #  Source 'source_helpers.sh' and requested helper scripts from 'dir_scr'
-function source_submit_helpers() {
+function source_helpers_submit() {
     local scr="${1:-}"
     local dir_scr_arg="${2:-}"
     local fnc_src
@@ -544,7 +544,7 @@ function main() {
 
     dir_scr="$(resolve_dir_scr "${0##*/}" "$@")" || return 1
 
-    source_submit_helpers "${0##*/}" "${dir_scr}" \
+    source_helpers_submit "${0##*/}" "${dir_scr}" \
         check_args \
         check_env \
         check_inputs \

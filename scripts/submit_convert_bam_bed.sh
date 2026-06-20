@@ -73,7 +73,7 @@ Usage:
   submit_convert_bam_bed.sh
     [--help] [--env_nam <str>] [--dir_scr <dir>] [--threads <int>]
     --csv_infile <csv:file> [--ref_fa <file>]
-    [--pth_scr_py <file> | --use_awk]
+    [(--pth_scr_py <file> | --use_awk)]
     --dir_out <dir> --dir_eo <dir> [--nam_job <str>]
 
 Description:
@@ -103,6 +103,9 @@ Keyword arguments:
   -pp, --pth_scr_py  <file>
     Path to a custom Python BAM/CRAM-to-BED script (default: '\${dir_scr}/compute_signal.py'). Mutually exclusive with '--use_awk'.
 
+  -awk, --use_awk  <flag>
+    Run AWK processing code rather than the Python script. Mutually exclusive with explicit '--pth_scr_py'. Do not use with single-end data.
+
   -do, --dir_out  <dir>
     Directory to save BED output files.
 
@@ -111,9 +114,6 @@ Keyword arguments:
 
   -nj, --nam, --name, --nam_job, --name_job  <str>
     Name of job (default: '${nam_job}').
-
-  -awk, --use_awk  <flag>
-    Run AWK processing code rather than the Python script. Mutually exclusive with explicit '--pth_scr_py'. Do not use with single-end data.
 
 Dependencies:
   Recommended environment:
@@ -176,7 +176,7 @@ function resolve_dir_scr() {
 
 
 #  Source 'source_helpers.sh' and requested helper scripts from 'dir_scr'
-function source_submit_helpers() {
+function source_helpers_submit() {
     local scr="${1:-}"
     local dir_scr_arg="${2:-}"
     local fnc_src
@@ -633,7 +633,7 @@ function main() {
 
     dir_scr="$(resolve_dir_scr "${0##*/}" "$@")" || return 1
 
-    source_submit_helpers "${0##*/}" "${dir_scr}" \
+    source_helpers_submit "${0##*/}" "${dir_scr}" \
         check_args \
         check_env \
         check_inputs \

@@ -6,7 +6,8 @@
 # Copyright 2024-2026 by Kris Alavattam
 # Email: kalavattam@gmail.com
 #
-# OpenAI ChatGPT (GPT-4- and GPT-5-series models) was used in development.
+# OpenAI ChatGPT and Codex (GPT-4- and GPT-5-series models) were used in
+# development.
 #
 # Distributed under the MIT license.
 
@@ -230,7 +231,7 @@ function resolve_dir_scr() {
 
 
 #  Source 'source_helpers.sh' and requested helper scripts from 'dir_scr'
-function source_submit_helpers() {
+function source_helpers_submit() {
     local script="${1:-}"
     local dir_scr_arg="${2:-}"
     local fnc_src
@@ -507,7 +508,7 @@ function main() {
 
     dir_scr="$(resolve_dir_scr "${0##*/}" "$@")" || exit 1
 
-    source_submit_helpers "${0##*/}" "${dir_scr}" \
+    source_helpers_submit "${0##*/}" "${dir_scr}" \
         check_args \
         check_inputs \
         check_numbers \
