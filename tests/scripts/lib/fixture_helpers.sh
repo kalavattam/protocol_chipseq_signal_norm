@@ -6,7 +6,7 @@
 # Copyright 2026 by Kris Alavattam
 # Email: kalavattam@gmail.com
 #
-# OpenAI ChatGPT (GPT-5.5) was used in development.
+# OpenAI ChatGPT and Codex (GPT-5.5) were used in development.
 #
 # Distributed under the MIT license.
 
@@ -140,7 +140,9 @@ function register_cleanup() {
 
     if [[ -z "${fnc}" ]]; then
         die "register_cleanup requires a function name."
-    elif ! declare -F "${fnc}" > /dev/null; then
+    elif ! \
+        declare -F "${fnc}" > /dev/null
+    then
         die "cleanup function is not defined: '${fnc}'."
     fi
 

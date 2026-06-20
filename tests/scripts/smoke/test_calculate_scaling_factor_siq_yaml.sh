@@ -6,6 +6,8 @@
 # Copyright 2026 by Kris Alavattam
 # Email: kalavattam@gmail.com
 #
+# OpenAI ChatGPT and Codex (GPT-5.5) were used in development.
+#
 # Distributed under the MIT license.
 
 

@@ -640,6 +640,7 @@ function run_case_compute_signal() {
                     --csv_outfile "${out_spc}"
             )
             ;;
+
         execute)
             nam_job="test_execute_compute_${fmt_in}_${nam_cas}"
             arr_cmd=(
@@ -651,6 +652,7 @@ function run_case_compute_signal() {
                     --typ_out "${out_spc}"
             )
             ;;
+
         *)
             record_fail "unknown compute-signal wrapper '${wrap}'"
             return 1
@@ -716,35 +718,35 @@ function run_case_compute_signal_ratio() {
             # shellcheck disable=SC2154
             arr_cmd=(
                 "${TEST_BASH}" "${script}"
-                --env_nam "${env_nam}"
-                --dir_scr "${ROOT_REPO}/scripts"
-                --threads 1
-                --mode ratio
-                --method "${method}"
-                --csv_fil_A "${fil_A}"
-                --csv_fil_B "${fil_B}"
-                --csv_outfile "${out_spec}"
-                --err_out "${dir_err_lcl}"
-                --nam_job "test_submit_compute_ratio_${cas_nam}"
+                    --env_nam "${env_nam}"
+                    --dir_scr "${ROOT_REPO}/scripts"
+                    --threads 1
+                    --mode ratio
+                    --method "${method}"
+                    --csv_fil_A "${fil_A}"
+                    --csv_fil_B "${fil_B}"
+                    --csv_outfile "${out_spec}"
+                    --err_out "${dir_err_lcl}"
+                    --nam_job "test_submit_compute_ratio_${cas_nam}"
             )
             ;;
 
         execute)
             arr_cmd=(
                 "${TEST_BASH}" "${script}"
-                --threads 1
-                --mode ratio
-                --method "${method}"
-                --csv_fil_A "${fil_A}"
-                --csv_fil_B "${fil_B}"
-                --dir_out "${dir_out_lcl}"
-                --typ_out bdg
-                --prefix "${out_spec}"
-                --eps 0
-                --dp 3
-                --err_out "${dir_err_lcl}"
-                --nam_job "test_execute_compute_ratio_${cas_nam}"
-                --max_job 1
+                    --threads 1
+                    --mode ratio
+                    --method "${method}"
+                    --csv_fil_A "${fil_A}"
+                    --csv_fil_B "${fil_B}"
+                    --dir_out "${dir_out_lcl}"
+                    --typ_out bdg
+                    --prefix "${out_spec}"
+                    --eps 0
+                    --dp 3
+                    --err_out "${dir_err_lcl}"
+                    --nam_job "test_execute_compute_ratio_${cas_nam}"
+                    --max_job 1
             )
             ;;
 
@@ -766,123 +768,6 @@ function run_case_compute_signal_ratio() {
         record_fail \
             "${wrap}_compute_signal.sh ratio ${cas_nam} failed; see" \
             "$(print_relpath "${log_lcl}")"
-    fi
-}
-
-
-#  Assert that a log file contains a pattern
-function assert_pattern_found() {
-    local file="${1:-}"
-    local patn="${2:-}"
-    shift 2 || true
-
-    local lbl="${*:-${patn}}"
-
-    if \
-        grep -q -- "${patn}" "${file}"
-    then
-        record_pass "${lbl}"
-    else
-        record_fail "${lbl}; see $(print_relpath "${file}")"
-    fi
-}
-
-
-#  Assert that a log or output file does not contain a pattern
-function assert_pattern_absent() {
-    local file="${1:-}"
-    local patn="${2:-}"
-    shift 2 || true
-
-    local lbl="${*:-${patn}}"
-
-    if \
-        grep -q -- "${patn}" "${file}"
-    then
-        record_fail "${lbl}; see $(print_relpath "${file}")"
-    else
-        record_pass "${lbl}"
-    fi
-}
-
-
-#  Assert that a generated output file exists and is non-empty
-function assert_file_nonempty() {
-    local file="${1:-}"
-    shift || true
-
-    local lbl="${*:-output}"
-
-    if [[ -s "${file}" ]]; then
-        record_pass "${lbl} exists and is non-empty"
-    else
-        record_fail "${lbl} missing or empty: $(print_relpath "${file}")"
-    fi
-}
-
-
-#  Assert that a file contains exactly one expected line
-function assert_file_exact_line() {
-    local file="${1:-}"
-    local expected="${2:-}"
-    shift 2 || true
-
-    local lbl="${*:-output line}"
-    local observed
-    local n_line
-
-    if [[ ! -s "${file}" ]]; then
-        record_fail "${lbl} missing or empty: $(print_relpath "${file}")"
-        return 1
-    fi
-
-    n_line="$(wc -l < "${file}")"
-    if [[ "${n_line}" -eq 1 ]]; then
-        record_pass "${lbl} has one row"
-    else
-        record_fail "${lbl} has unexpected row count; see $(print_relpath "${file}")"
-    fi
-
-    observed="$(cat "${file}")"
-    if [[ "${observed}" == "${expected}" ]]; then
-        record_pass "${lbl} has expected row"
-    else
-        record_fail "${lbl} differs from expected; see $(print_relpath "${file}")"
-    fi
-}
-
-
-#  Assert that two files have exactly identical contents
-function assert_files_equal() {
-    local observed="${1:-}"
-    local expected="${2:-}"
-    shift 2 || true
-
-    local lbl="${*:-file content}"
-
-    if \
-        cmp -s "${observed}" "${expected}"
-    then
-        record_pass "${lbl}"
-    else
-        record_fail "${lbl}; see $(print_relpath "${observed}")"
-    fi
-}
-
-
-#  Assert whether a scaling-factor output contains an expected header
-function assert_scaling_factor_header() {
-    local file="${1:-}"
-    local header="${2:-}"
-    local expect="${3:-true}"
-    shift 3 || true
-
-    local lbl="${*:-scaling-factor header}"
-
-    if [[ "${expect}" == "true" ]]; then
-        assert_pattern_found "${file}" "${header}" "${lbl} has core header"
-    else
-        assert_pattern_absent "${file}" "${header}" "${lbl} omits core header"
     fi
 }
 
@@ -931,7 +816,8 @@ function run_case_scaling_factor_execute() {
             "${log}" \
             "${arr_case[@]}"
     then
-        record_pass "execute_calculate_scaling_factor.sh ${mode} ${cas} exits 0"
+        record_pass \
+            "execute_calculate_scaling_factor.sh ${mode} ${cas} exits 0"
     else
         record_fail \
             "execute_calculate_scaling_factor.sh ${mode} ${cas} failed; see" \
@@ -1011,15 +897,143 @@ function run_case_scaling_factor_submit_part() {
     fi
 
     if [[ ! -e "${fil_out}" ]]; then
-        record_pass "submit_calculate_scaling_factor.sh ${mode} ${cas} writes no final TSV"
+        record_pass \
+            "submit_calculate_scaling_factor.sh ${mode} ${cas} writes no" \
+            "final TSV"
     else
-        record_fail "submit_calculate_scaling_factor.sh ${mode} ${cas} wrote final TSV"
+        record_fail \
+            "submit_calculate_scaling_factor.sh ${mode} ${cas} wrote final TSV"
     fi
 
     assert_file_exact_line \
         "${fil_prt}" \
         "${row_exp}" \
         "submit scaling-factor ${mode} ${cas} part"
+}
+
+
+#  Assert that a log file contains a pattern
+function assert_pattern_found() {
+    local file="${1:-}"
+    local patn="${2:-}"
+    shift 2 || true
+
+    local lbl="${*:-${patn}}"
+
+    if \
+        grep -q -- "${patn}" "${file}"
+    then
+        record_pass "${lbl}"
+    else
+        record_fail "${lbl}; see $(print_relpath "${file}")"
+    fi
+}
+
+
+#  Assert that a log or output file does not contain a pattern
+function assert_pattern_absent() {
+    local file="${1:-}"
+    local patn="${2:-}"
+    shift 2 || true
+
+    local lbl="${*:-${patn}}"
+
+    if \
+        grep -q -- "${patn}" "${file}"
+    then
+        record_fail "${lbl}; see $(print_relpath "${file}")"
+    else
+        record_pass "${lbl}"
+    fi
+}
+
+
+#  Assert that a generated output file exists and is non-empty
+function assert_file_nonempty() {
+    local file="${1:-}"
+    shift || true
+
+    local lbl="${*:-output}"
+
+    if [[ -s "${file}" ]]; then
+        record_pass "${lbl} exists and is non-empty"
+    else
+        record_fail "${lbl} missing or empty: $(print_relpath "${file}")"
+    fi
+}
+
+
+#  Assert that a file contains exactly one expected line
+function assert_file_exact_line() {
+    local file="${1:-}"
+    local expected="${2:-}"
+    shift 2 || true
+
+    local lbl="${*:-output line}"
+    local observed
+    local n_line
+
+    if [[ ! -s "${file}" ]]; then
+        record_fail "${lbl} missing or empty: $(print_relpath "${file}")"
+        return 1
+    fi
+
+    n_line="$(wc -l < "${file}")"
+    if [[ "${n_line}" -eq 1 ]]; then
+        record_pass "${lbl} has one row"
+    else
+        record_fail \
+            "${lbl} has unexpected row count; see $(print_relpath "${file}")"
+    fi
+
+    observed="$(cat "${file}")"
+    if [[ "${observed}" == "${expected}" ]]; then
+        record_pass "${lbl} has expected row"
+    else
+        record_fail \
+            "${lbl} differs from expected; see $(print_relpath "${file}")"
+    fi
+}
+
+
+#  Assert that two files have exactly identical contents
+function assert_files_equal() {
+    local observed="${1:-}"
+    local expected="${2:-}"
+    shift 2 || true
+
+    local lbl="${*:-file content}"
+
+    if \
+        cmp -s "${observed}" "${expected}"
+    then
+        record_pass "${lbl}"
+    else
+        record_fail "${lbl}; see $(print_relpath "${observed}")"
+    fi
+}
+
+
+#  Assert whether a scaling-factor output contains an expected header
+function assert_scaling_factor_header() {
+    local file="${1:-}"
+    local header="${2:-}"
+    local expect="${3:-true}"
+    shift 3 || true
+
+    local lbl="${*:-scaling-factor header}"
+
+    if [[ "${expect}" == "true" ]]; then
+        assert_pattern_found \
+            "${file}" \
+            "${header}" \
+            "${lbl} has core header"
+    else
+        assert_pattern_absent \
+            "${file}" \
+            "${header}" \
+            "${lbl} omits core header"
+    fi
 }
 
 
