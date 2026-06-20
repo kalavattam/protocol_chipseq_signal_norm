@@ -159,7 +159,7 @@ infiles="$(  ## WARNING: Change search parameters as needed ##
         --depth ${depth}
 )"
 
-scr_sub="${dir_scr}/submit_convert_bam_bed_slurm.sh"
+scr_sub="${dir_scr}/submit_convert_bam_bed.sh"
 scr_cnv="${dir_scr}/compute_coverage.py"
 env_nam="env_analyze"
 dir_out="${dir_bam}_bed"

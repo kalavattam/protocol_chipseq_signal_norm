@@ -1,7 +1,7 @@
 #!/bin/bash
 # -*- coding: utf-8 -*-
 #
-# Script: submit_qsort_bam_slurm.sh
+# Script: submit_qsort_bam.sh
 #
 # Copyright 2024-2026 by Kris Alavattam
 # Email: kalavattam@gmail.com
@@ -66,7 +66,7 @@ function init_defs() {
 function show_help_main() {
     cat << EOM
 Usage:
-  submit_qsort_bam_slurm.sh
+  submit_qsort_bam.sh
     [--help] [--env_nam <str>] [--dir_scr <dir>] [--threads <int>]
     --csv_infile <csv:file> [--ref_fa <file>]
     --dir_out <dir> --dir_eo <dir> [--nam_job <str>]

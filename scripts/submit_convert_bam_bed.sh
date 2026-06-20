@@ -1,7 +1,7 @@
 #!/bin/bash
 # -*- coding: utf-8 -*-
 #
-# Script: submit_convert_bam_bed_slurm.sh
+# Script: submit_convert_bam_bed.sh
 #
 # Copyright 2024-2026 by Kris Alavattam
 # Email: kalavattam@gmail.com
@@ -70,7 +70,7 @@ function init_defs() {
 function show_help_main() {
     cat << EOM
 Usage:
-  submit_convert_bam_bed_slurm.sh
+  submit_convert_bam_bed.sh
     [--help] [--env_nam <str>] [--dir_scr <dir>] [--threads <int>]
     --csv_infile <csv:file> [--ref_fa <file>]
     [--pth_scr_py <file> | --use_awk]

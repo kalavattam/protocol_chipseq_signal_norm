@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # -*- coding: utf-8 -*-
 #
-# Script: test_submit_convert_bam_bed_slurm.sh
+# Script: test_submit_convert_bam_bed.sh
 #
 # Copyright 2026 by Kris Alavattam
 # Email: kalavattam@gmail.com
@@ -27,7 +27,7 @@ in_bam="${dir_fx}/bam/pe/IP_WT_G1_Hho1_6336.sc.bam"
 in_cram="${dir_fx}/cram/pe/IP_WT_G1_Hho1_6337.sc.cram"
 ref_fa="${dir_fx}/reference/tiny.fa"
 
-tmp="${TEST_DIR_TMP}/submit_convert_bam_bed_slurm"
+tmp="${TEST_DIR_TMP}/submit_convert_bam_bed"
 dir_qsort="${tmp}/qsort"
 dir_out="${tmp}/out"
 dir_err="${tmp}/logs"
@@ -51,31 +51,31 @@ require_files_nonempty \
 
 
 #  Help should exit successfully
-log="${dir_log}/submit_convert_bam_bed_slurm_help.log"
+log="${dir_log}/submit_convert_bam_bed_help.log"
 if \
     run_capture \
-        "submit_convert_bam_bed_slurm.sh --help" \
+        "submit_convert_bam_bed.sh --help" \
         "${log}" \
         "${TEST_BASH}" \
-        "${ROOT_REPO}/scripts/submit_convert_bam_bed_slurm.sh" \
+        "${ROOT_REPO}/scripts/submit_convert_bam_bed.sh" \
             --help
 then
-    record_pass "submit_convert_bam_bed_slurm.sh --help exits 0"
+    record_pass "submit_convert_bam_bed.sh --help exits 0"
 else
     record_fail \
-        "submit_convert_bam_bed_slurm.sh --help failed;" \
+        "submit_convert_bam_bed.sh --help failed;" \
         "see $(print_relpath "${log}")"
 fi
 
 
 #  Old positional invocation should fail after the keyarg migration
-log="${dir_log}/submit_convert_bam_bed_slurm_positional_fails.log"
+log="${dir_log}/submit_convert_bam_bed_positional_fails.log"
 if \
     run_capture \
-        "submit_convert_bam_bed_slurm.sh positional invocation fails" \
+        "submit_convert_bam_bed.sh positional invocation fails" \
         "${log}" \
         "${TEST_BASH}" \
-        "${ROOT_REPO}/scripts/submit_convert_bam_bed_slurm.sh" \
+        "${ROOT_REPO}/scripts/submit_convert_bam_bed.sh" \
             "${env_nam}" \
             1 \
             "${in_bam}" \
@@ -86,37 +86,37 @@ if \
             false
 then
     record_fail \
-        "submit_convert_bam_bed_slurm.sh positional invocation passed"
+        "submit_convert_bam_bed.sh positional invocation passed"
 else
     record_pass \
-        "submit_convert_bam_bed_slurm.sh positional invocation fails"
+        "submit_convert_bam_bed.sh positional invocation fails"
 fi
 
 
 #  Unknown option should fail clearly
-log="${dir_log}/submit_convert_bam_bed_slurm_unknown_option.log"
+log="${dir_log}/submit_convert_bam_bed_unknown_option.log"
 if \
     run_capture \
-        "submit_convert_bam_bed_slurm.sh unknown option fails" \
+        "submit_convert_bam_bed.sh unknown option fails" \
         "${log}" \
         "${TEST_BASH}" \
-        "${ROOT_REPO}/scripts/submit_convert_bam_bed_slurm.sh" \
+        "${ROOT_REPO}/scripts/submit_convert_bam_bed.sh" \
             --not_an_option
 then
-    record_fail "submit_convert_bam_bed_slurm.sh unknown option passed"
+    record_fail "submit_convert_bam_bed.sh unknown option passed"
 else
-    record_pass "submit_convert_bam_bed_slurm.sh unknown option fails"
+    record_pass "submit_convert_bam_bed.sh unknown option fails"
 fi
 
 
 #  CRAM input without a reference should fail before execution
-log="${dir_log}/submit_convert_bam_bed_slurm_cram_missing_ref.log"
+log="${dir_log}/submit_convert_bam_bed_cram_missing_ref.log"
 if \
     run_capture \
-        "submit_convert_bam_bed_slurm.sh CRAM missing ref fails" \
+        "submit_convert_bam_bed.sh CRAM missing ref fails" \
         "${log}" \
         "${TEST_BASH}" \
-        "${ROOT_REPO}/scripts/submit_convert_bam_bed_slurm.sh" \
+        "${ROOT_REPO}/scripts/submit_convert_bam_bed.sh" \
             --env_nam "${env_nam}" \
             --dir_scr "${ROOT_REPO}/scripts" \
             --threads 1 \
@@ -126,21 +126,21 @@ if \
             --nam_job test_submit_convert_cram_missing_ref
 then
     record_fail \
-        "submit_convert_bam_bed_slurm.sh CRAM without --ref_fa passed"
+        "submit_convert_bam_bed.sh CRAM without --ref_fa passed"
 else
     record_pass \
-        "submit_convert_bam_bed_slurm.sh CRAM without --ref_fa fails"
+        "submit_convert_bam_bed.sh CRAM without --ref_fa fails"
 fi
 
 
 #  Explicit Python script and AWK branch are mutually exclusive
-log="${dir_log}/submit_convert_bam_bed_slurm_py_and_awk.log"
+log="${dir_log}/submit_convert_bam_bed_py_and_awk.log"
 if \
     run_capture \
-        "submit_convert_bam_bed_slurm.sh Python and AWK conflict" \
+        "submit_convert_bam_bed.sh Python and AWK conflict" \
         "${log}" \
         "${TEST_BASH}" \
-        "${ROOT_REPO}/scripts/submit_convert_bam_bed_slurm.sh" \
+        "${ROOT_REPO}/scripts/submit_convert_bam_bed.sh" \
             --env_nam "${env_nam}" \
             --dir_scr "${ROOT_REPO}/scripts" \
             --threads 1 \
@@ -152,20 +152,20 @@ if \
             --use_awk
 then
     record_fail \
-        "submit_convert_bam_bed_slurm.sh --pth_scr_py with --use_awk passed"
+        "submit_convert_bam_bed.sh --pth_scr_py with --use_awk passed"
 else
     record_pass \
-        "submit_convert_bam_bed_slurm.sh --pth_scr_py with --use_awk fails"
+        "submit_convert_bam_bed.sh --pth_scr_py with --use_awk fails"
 fi
 
 
 #  Prepare qname-sorted temporary inputs for conversion tests
-log="${dir_log}/submit_convert_bam_bed_slurm_prepare_qsort.log"
+log="${dir_log}/submit_convert_bam_bed_prepare_qsort.log"
 if \
     run_capture \
         "prepare qname-sorted BAM/CRAM conversion inputs" \
         "${log}" \
-        "${TEST_BASH}" "${ROOT_REPO}/scripts/submit_qsort_bam_slurm.sh" \
+        "${TEST_BASH}" "${ROOT_REPO}/scripts/submit_qsort_bam.sh" \
             --env_nam "${env_nam}" \
             --dir_scr "${ROOT_REPO}/scripts" \
             --threads 1 \
@@ -194,13 +194,13 @@ require_files_nonempty \
 
 
 #  Serial Python conversion should write BED.GZ output for BAM and CRAM inputs
-log="${dir_log}/submit_convert_bam_bed_slurm_python_serial.log"
+log="${dir_log}/submit_convert_bam_bed_python_serial.log"
 if \
     run_capture \
-        "submit_convert_bam_bed_slurm.sh Python BAM/CRAM" \
+        "submit_convert_bam_bed.sh Python BAM/CRAM" \
         "${log}" \
         "${TEST_BASH}" \
-        "${ROOT_REPO}/scripts/submit_convert_bam_bed_slurm.sh" \
+        "${ROOT_REPO}/scripts/submit_convert_bam_bed.sh" \
             --env_nam "${env_nam}" \
             --dir_scr "${ROOT_REPO}/scripts" \
             --threads 1 \
@@ -211,10 +211,10 @@ if \
             --dir_eo "${dir_err}" \
             --nam_job test_submit_convert_python
 then
-    record_pass "submit_convert_bam_bed_slurm.sh Python BAM/CRAM exits 0"
+    record_pass "submit_convert_bam_bed.sh Python BAM/CRAM exits 0"
 else
     record_fail \
-        "submit_convert_bam_bed_slurm.sh Python BAM/CRAM failed;" \
+        "submit_convert_bam_bed.sh Python BAM/CRAM failed;" \
         "see $(print_relpath "${log}")"
 fi
 
@@ -271,14 +271,14 @@ fi
 
 #  AWK branch should also handle qname-sorted PE BAM input
 rm -f "${out_bam_bed}"
-log="${dir_log}/submit_convert_bam_bed_slurm_awk_bam.log"
+log="${dir_log}/submit_convert_bam_bed_awk_bam.log"
 
 if \
     run_capture \
-        "submit_convert_bam_bed_slurm.sh AWK BAM" \
+        "submit_convert_bam_bed.sh AWK BAM" \
         "${log}" \
         "${TEST_BASH}" \
-        "${ROOT_REPO}/scripts/submit_convert_bam_bed_slurm.sh" \
+        "${ROOT_REPO}/scripts/submit_convert_bam_bed.sh" \
             --env_nam "${env_nam}" \
             --dir_scr "${ROOT_REPO}/scripts" \
             --threads 1 \
@@ -288,10 +288,10 @@ if \
             --nam_job test_submit_convert_awk \
             --use_awk
 then
-    record_pass "submit_convert_bam_bed_slurm.sh AWK BAM exits 0"
+    record_pass "submit_convert_bam_bed.sh AWK BAM exits 0"
 else
     record_fail \
-        "submit_convert_bam_bed_slurm.sh AWK BAM failed;" \
+        "submit_convert_bam_bed.sh AWK BAM failed;" \
         "see $(print_relpath "${log}")"
 fi
 
