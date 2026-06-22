@@ -6,10 +6,13 @@
 # Copyright 2026 by Kris Alavattam
 # Email: kalavattam@gmail.com
 #
-# OpenAI ChatGPT and Codex (GPT-5.5) were used in development.
+# OpenAI ChatGPT and Codex (GPT-5.5) were used in development and
+# documentation.
 #
 # Distributed under the MIT license.
 
+
+set -euo pipefail
 
 TEST_NAME="submit convert BAM/CRAM to BED"
 
@@ -33,6 +36,25 @@ dir_out="${tmp}/out"
 dir_err="${tmp}/logs"
 dir_log="${TEST_DIR_LOG}/convert_bam_bed"
 
+q_bam="${dir_qsort}/IP_WT_G1_Hho1_6336.sc.qnam.bam"
+q_cram="${dir_qsort}/IP_WT_G1_Hho1_6337.sc.qnam.cram"
+
+out_bam_bed="${dir_out}/IP_WT_G1_Hho1_6336.sc.bed.gz"
+out_cram_bed="${dir_out}/IP_WT_G1_Hho1_6337.sc.bed.gz"
+
+vw_bam_bed="${dir_out}/IP_WT_G1_Hho1_6336.sc.bed.txt"
+vw_cram_bed="${dir_out}/IP_WT_G1_Hho1_6337.sc.bed.txt"
+vw_awk_bam_bed="${dir_out}/IP_WT_G1_Hho1_6336.sc.awk.bed.txt"
+
+log_help="${dir_log}/submit_convert_bam_bed_help.log"
+log_positional="${dir_log}/submit_convert_bam_bed_positional_fails.log"
+log_unknown="${dir_log}/submit_convert_bam_bed_unknown_option.log"
+log_missing_ref="${dir_log}/submit_convert_bam_bed_cram_missing_ref.log"
+log_py_awk="${dir_log}/submit_convert_bam_bed_py_and_awk.log"
+log_prepare="${dir_log}/submit_convert_bam_bed_prepare_qsort.log"
+log_python="${dir_log}/submit_convert_bam_bed_python_serial.log"
+log_awk="${dir_log}/submit_convert_bam_bed_awk_bam.log"
+
 rm -rf "${tmp}"
 mkdir -p "${dir_qsort}" "${dir_out}" "${dir_err}" "${dir_log}"
 
@@ -51,11 +73,10 @@ require_files_nonempty \
 
 
 #  Help should exit successfully
-log="${dir_log}/submit_convert_bam_bed_help.log"
 if \
     run_capture \
         "submit_convert_bam_bed.sh --help" \
-        "${log}" \
+        "${log_help}" \
         "${TEST_BASH}" \
         "${ROOT_REPO}/scripts/submit_convert_bam_bed.sh" \
             --help
@@ -64,16 +85,16 @@ then
 else
     record_fail \
         "submit_convert_bam_bed.sh --help failed;" \
-        "see $(print_relpath "${log}")"
+        "see $(print_relpath "${log_help}")"
 fi
 
 
 #  Old positional invocation should fail after the keyarg migration
-log="${dir_log}/submit_convert_bam_bed_positional_fails.log"
+# shellcheck disable=SC2154
 if \
     run_capture \
         "submit_convert_bam_bed.sh positional invocation fails" \
-        "${log}" \
+        "${log_positional}" \
         "${TEST_BASH}" \
         "${ROOT_REPO}/scripts/submit_convert_bam_bed.sh" \
             "${env_nam}" \
@@ -94,11 +115,10 @@ fi
 
 
 #  Unknown option should fail clearly
-log="${dir_log}/submit_convert_bam_bed_unknown_option.log"
 if \
     run_capture \
         "submit_convert_bam_bed.sh unknown option fails" \
-        "${log}" \
+        "${log_unknown}" \
         "${TEST_BASH}" \
         "${ROOT_REPO}/scripts/submit_convert_bam_bed.sh" \
             --not_an_option
@@ -110,11 +130,10 @@ fi
 
 
 #  CRAM input without a reference should fail before execution
-log="${dir_log}/submit_convert_bam_bed_cram_missing_ref.log"
 if \
     run_capture \
         "submit_convert_bam_bed.sh CRAM missing ref fails" \
-        "${log}" \
+        "${log_missing_ref}" \
         "${TEST_BASH}" \
         "${ROOT_REPO}/scripts/submit_convert_bam_bed.sh" \
             --env_nam "${env_nam}" \
@@ -134,11 +153,10 @@ fi
 
 
 #  Explicit Python script and AWK branch are mutually exclusive
-log="${dir_log}/submit_convert_bam_bed_py_and_awk.log"
 if \
     run_capture \
         "submit_convert_bam_bed.sh Python and AWK conflict" \
-        "${log}" \
+        "${log_py_awk}" \
         "${TEST_BASH}" \
         "${ROOT_REPO}/scripts/submit_convert_bam_bed.sh" \
             --env_nam "${env_nam}" \
@@ -160,11 +178,10 @@ fi
 
 
 #  Prepare qname-sorted temporary inputs for conversion tests
-log="${dir_log}/submit_convert_bam_bed_prepare_qsort.log"
 if \
     run_capture \
         "prepare qname-sorted BAM/CRAM conversion inputs" \
-        "${log}" \
+        "${log_prepare}" \
         "${TEST_BASH}" "${ROOT_REPO}/scripts/submit_qsort_bam.sh" \
             --env_nam "${env_nam}" \
             --dir_scr "${ROOT_REPO}/scripts" \
@@ -179,11 +196,8 @@ then
 else
     record_fail \
         "failed to prepare qname-sorted conversion inputs;" \
-        "see $(print_relpath "${log}")"
+        "see $(print_relpath "${log_prepare}")"
 fi
-
-q_bam="${dir_qsort}/IP_WT_G1_Hho1_6336.sc.qnam.bam"
-q_cram="${dir_qsort}/IP_WT_G1_Hho1_6337.sc.qnam.cram"
 
 require_files_nonempty \
     "${q_bam}" \
@@ -194,11 +208,10 @@ require_files_nonempty \
 
 
 #  Serial Python conversion should write BED.GZ output for BAM and CRAM inputs
-log="${dir_log}/submit_convert_bam_bed_python_serial.log"
 if \
     run_capture \
         "submit_convert_bam_bed.sh Python BAM/CRAM" \
-        "${log}" \
+        "${log_python}" \
         "${TEST_BASH}" \
         "${ROOT_REPO}/scripts/submit_convert_bam_bed.sh" \
             --env_nam "${env_nam}" \
@@ -215,26 +228,22 @@ then
 else
     record_fail \
         "submit_convert_bam_bed.sh Python BAM/CRAM failed;" \
-        "see $(print_relpath "${log}")"
+        "see $(print_relpath "${log_python}")"
 fi
-
-out_bam_bed="${dir_out}/IP_WT_G1_Hho1_6336.sc.bed.gz"
-out_cram_bed="${dir_out}/IP_WT_G1_Hho1_6337.sc.bed.gz"
 
 assert_file_nonempty \
     "${out_bam_bed}" \
     "convert BAM BED.GZ output"
+
 assert_file_nonempty \
     "${out_cram_bed}" \
     "convert CRAM BED.GZ output"
 
 if [[ -s "${out_bam_bed}" ]]; then
-    vw="${dir_out}/IP_WT_G1_Hho1_6336.sc.bed.txt"
-
     if \
         run_capture \
             "gzip view convert BAM BED.GZ" \
-            "${vw}" \
+            "${vw_bam_bed}" \
             gzip -cd "${out_bam_bed}"
     then
         record_pass "convert BAM BED.GZ decompresses"
@@ -243,18 +252,16 @@ if [[ -s "${out_bam_bed}" ]]; then
     fi
 
     assert_pattern_found \
-        "${vw}" \
+        "${vw_bam_bed}" \
         $'^[^\t][^\t]*\t[0-9][0-9]*\t[0-9][0-9]*\t[0-9][0-9]*$' \
         "convert BAM BED.GZ has BED-like rows"
 fi
 
 if [[ -s "${out_cram_bed}" ]]; then
-    vw="${dir_out}/IP_WT_G1_Hho1_6337.sc.bed.txt"
-
     if \
         run_capture \
             "gzip view convert CRAM BED.GZ" \
-            "${vw}" \
+            "${vw_cram_bed}" \
             gzip -cd "${out_cram_bed}"
     then
         record_pass "convert CRAM BED.GZ decompresses"
@@ -263,7 +270,7 @@ if [[ -s "${out_cram_bed}" ]]; then
     fi
 
     assert_pattern_found \
-        "${vw}" \
+        "${vw_cram_bed}" \
         $'^[^\t][^\t]*\t[0-9][0-9]*\t[0-9][0-9]*\t[0-9][0-9]*$' \
         "convert CRAM BED.GZ has BED-like rows"
 fi
@@ -271,12 +278,10 @@ fi
 
 #  AWK branch should also handle qname-sorted PE BAM input
 rm -f "${out_bam_bed}"
-log="${dir_log}/submit_convert_bam_bed_awk_bam.log"
-
 if \
     run_capture \
         "submit_convert_bam_bed.sh AWK BAM" \
-        "${log}" \
+        "${log_awk}" \
         "${TEST_BASH}" \
         "${ROOT_REPO}/scripts/submit_convert_bam_bed.sh" \
             --env_nam "${env_nam}" \
@@ -292,7 +297,7 @@ then
 else
     record_fail \
         "submit_convert_bam_bed.sh AWK BAM failed;" \
-        "see $(print_relpath "${log}")"
+        "see $(print_relpath "${log_awk}")"
 fi
 
 assert_file_nonempty \
@@ -300,12 +305,10 @@ assert_file_nonempty \
     "convert AWK BAM BED.GZ output"
 
 if [[ -s "${out_bam_bed}" ]]; then
-    vw="${dir_out}/IP_WT_G1_Hho1_6336.sc.awk.bed.txt"
-
     if \
         run_capture \
             "gzip view convert AWK BAM BED.GZ" \
-            "${vw}" \
+            "${vw_awk_bam_bed}" \
             gzip -cd "${out_bam_bed}"
     then
         record_pass "convert AWK BAM BED.GZ decompresses"
@@ -314,7 +317,7 @@ if [[ -s "${out_bam_bed}" ]]; then
     fi
 
     assert_pattern_found \
-        "${vw}" \
+        "${vw_awk_bam_bed}" \
         $'^[^\t][^\t]*\t[0-9][0-9]*\t[0-9][0-9]*\t[0-9][0-9]*$' \
         "convert AWK BAM BED.GZ has BED-like rows"
 fi

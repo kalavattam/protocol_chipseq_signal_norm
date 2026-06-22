@@ -644,16 +644,16 @@ function main() {
         process_alignments \
         || return 1
 
-    parse_args "$@"      || return 1
-    resolve_paths_scrs   || return 1
-    validate_args        || return 1
-    print_state_debug    || return 1
-    setup_env            || return 1
-    check_tools          || return 1
-    prepare_vecs         || return 1
-    validate_vecs        || return 1
-    print_vecs_debug     || return 1
-    run_jobs             || return 1
+    parse_args "$@"    || return 1
+    resolve_paths_scrs || return 1
+    validate_args      || return 1
+    print_state_debug  || return 1
+    setup_env          || return 1
+    check_tools        || return 1
+    prepare_vecs       || return 1
+    validate_vecs      || return 1
+    print_vecs_debug   || return 1
+    run_jobs           || return 1
 }
 
 
