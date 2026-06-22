@@ -6,10 +6,14 @@
 # Copyright 2026 by Kris Alavattam
 # Email: kalavattam@gmail.com
 #
-# OpenAI ChatGPT and Codex (GPT-5.5) were used in development.
+# OpenAI ChatGPT and Codex (GPT-5.5) were used in development and
+# documentation.
 #
 # Distributed under the MIT license.
 
+
+#TODO: refactor for lifecycle-function formatting
+#TODO: sorting for like with like below
 
 #  Require Bash >= 4.4 before doing any work
 if [[ -z "${BASH_VERSION:-}" ]]; then
@@ -214,21 +218,37 @@ mkdir -p "${dir_log}"
         "${dir_fix_scl}/bam/pe/in_WT_G1_Hho1_6337.sp.bam"
         "${dir_fix_scl}/bam/pe/in_WT_G1_Hho1_6337.sp.bam.bai"
         "${dir_fix_scl}/cram/se/IP_WT_log_Brn1_rep1.sc.cram"
+        "${dir_fix_scl}/cram/se/IP_WT_log_Brn1_rep1.sc.cram.crai"
         "${dir_fix_scl}/cram/se/IP_WT_log_Brn1_rep2.sc.cram"
+        "${dir_fix_scl}/cram/se/IP_WT_log_Brn1_rep2.sc.cram.crai"
         "${dir_fix_scl}/cram/se/in_WT_log_Brn1_rep1.sc.cram"
+        "${dir_fix_scl}/cram/se/in_WT_log_Brn1_rep1.sc.cram.crai"
         "${dir_fix_scl}/cram/se/in_WT_log_Brn1_rep2.sc.cram"
+        "${dir_fix_scl}/cram/se/in_WT_log_Brn1_rep2.sc.cram.crai"
         "${dir_fix_scl}/cram/se/IP_WT_log_Brn1_rep1.sp.cram"
+        "${dir_fix_scl}/cram/se/IP_WT_log_Brn1_rep1.sp.cram.crai"
         "${dir_fix_scl}/cram/se/IP_WT_log_Brn1_rep2.sp.cram"
+        "${dir_fix_scl}/cram/se/IP_WT_log_Brn1_rep2.sp.cram.crai"
         "${dir_fix_scl}/cram/se/in_WT_log_Brn1_rep1.sp.cram"
+        "${dir_fix_scl}/cram/se/in_WT_log_Brn1_rep1.sp.cram.crai"
         "${dir_fix_scl}/cram/se/in_WT_log_Brn1_rep2.sp.cram"
+        "${dir_fix_scl}/cram/se/in_WT_log_Brn1_rep2.sp.cram.crai"
         "${dir_fix_scl}/cram/pe/IP_WT_G1_Hho1_6336.sc.cram"
+        "${dir_fix_scl}/cram/pe/IP_WT_G1_Hho1_6336.sc.cram.crai"
         "${dir_fix_scl}/cram/pe/in_WT_G1_Hho1_6336.sc.cram"
+        "${dir_fix_scl}/cram/pe/in_WT_G1_Hho1_6336.sc.cram.crai"
         "${dir_fix_scl}/cram/pe/IP_WT_G1_Hho1_6336.sp.cram"
+        "${dir_fix_scl}/cram/pe/IP_WT_G1_Hho1_6336.sp.cram.crai"
         "${dir_fix_scl}/cram/pe/in_WT_G1_Hho1_6336.sp.cram"
+        "${dir_fix_scl}/cram/pe/in_WT_G1_Hho1_6336.sp.cram.crai"
         "${dir_fix_scl}/cram/pe/IP_WT_G1_Hho1_6337.sc.cram"
+        "${dir_fix_scl}/cram/pe/IP_WT_G1_Hho1_6337.sc.cram.crai"
         "${dir_fix_scl}/cram/pe/in_WT_G1_Hho1_6337.sc.cram"
+        "${dir_fix_scl}/cram/pe/in_WT_G1_Hho1_6337.sc.cram.crai"
         "${dir_fix_scl}/cram/pe/IP_WT_G1_Hho1_6337.sp.cram"
+        "${dir_fix_scl}/cram/pe/IP_WT_G1_Hho1_6337.sp.cram.crai"
         "${dir_fix_scl}/cram/pe/in_WT_G1_Hho1_6337.sp.cram"
+        "${dir_fix_scl}/cram/pe/in_WT_G1_Hho1_6337.sp.cram.crai"
         "${dir_fix_scl}/parts/example_scaling_factors.spike.tsv.part.000000"
         "${dir_fix_scl}/parts/example_scaling_factors.spike.tsv.part.000002"
         "${dir_fix_scl}/parts/example_scaling_factors.siq.tsv.part.000000"

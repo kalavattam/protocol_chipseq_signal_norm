@@ -6,10 +6,13 @@
 # Copyright 2026 by Kris Alavattam
 # Email: kalavattam@gmail.com
 #
-# OpenAI ChatGPT (GPT-5.5) was used in development.
+# OpenAI ChatGPT and Codex (GPT-5.5) were used in development and
+# documentation.
 #
 # Distributed under the MIT license.
 
+
+#TODO: refactor for lifecycle-function formatting
 
 #  Require Bash >= 4.4 before doing any work
 if [[ -z "${BASH_VERSION:-}" ]]; then

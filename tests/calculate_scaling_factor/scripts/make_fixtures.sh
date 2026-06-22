@@ -6,7 +6,8 @@
 # Copyright 2026 by Kris Alavattam
 # Email: kalavattam@gmail.com
 #
-# OpenAI ChatGPT and Codex (GPT-5.5) were used in development.
+# OpenAI ChatGPT and Codex (GPT-5.5) were used in development and
+# documentation.
 #
 # Distributed under the MIT license.
 
@@ -40,7 +41,7 @@ source "${dir_scr}/../../scripts/lib/fixture_helpers.sh"
 
 
 #  Generate one sorted SE BAM fixture with a known alignment count
-function write_bam_fixture_se() {
+function write_fixture_bam_se() {
     local sam="${1:-}"
     local bam="${2:-}"
     local pfx="${3:-read}"
@@ -66,7 +67,7 @@ function write_bam_fixture_se() {
 
 
 #  Generate one sorted PE BAM fixture with a known fragment count
-function write_bam_fixture_pe() {
+function write_fixture_bam_pe() {
     local sam="${1:-}"
     local bam="${2:-}"
     local pfx="${3:-read}"
@@ -237,24 +238,24 @@ EOM
 samtools faidx "${ref_fa}"
 
 #  Generate role-specific SE BAM fixtures with known alignment counts
-write_bam_fixture_se "${sam_se_mip_0}" "${bam_se_mip_0}" mip_A 3
-write_bam_fixture_se "${sam_se_mip_1}" "${bam_se_mip_1}" mip_B 2
-write_bam_fixture_se "${sam_se_min_0}" "${bam_se_min_0}" min_A 2
-write_bam_fixture_se "${sam_se_min_1}" "${bam_se_min_1}" min_B 3
-write_bam_fixture_se "${sam_se_sip_0}" "${bam_se_sip_0}" sip_A 1
-write_bam_fixture_se "${sam_se_sip_1}" "${bam_se_sip_1}" sip_B 2
-write_bam_fixture_se "${sam_se_sin_0}" "${bam_se_sin_0}" sin_A 2
-write_bam_fixture_se "${sam_se_sin_1}" "${bam_se_sin_1}" sin_B 1
+write_fixture_bam_se "${sam_se_mip_0}" "${bam_se_mip_0}" mip_A 3
+write_fixture_bam_se "${sam_se_mip_1}" "${bam_se_mip_1}" mip_B 2
+write_fixture_bam_se "${sam_se_min_0}" "${bam_se_min_0}" min_A 2
+write_fixture_bam_se "${sam_se_min_1}" "${bam_se_min_1}" min_B 3
+write_fixture_bam_se "${sam_se_sip_0}" "${bam_se_sip_0}" sip_A 1
+write_fixture_bam_se "${sam_se_sip_1}" "${bam_se_sip_1}" sip_B 2
+write_fixture_bam_se "${sam_se_sin_0}" "${bam_se_sin_0}" sin_A 2
+write_fixture_bam_se "${sam_se_sin_1}" "${bam_se_sin_1}" sin_B 1
 
 #  Generate role-specific PE BAM fixtures with matching fragment counts
-write_bam_fixture_pe "${sam_pe_mip_0}" "${bam_pe_mip_0}" mip_A 3
-write_bam_fixture_pe "${sam_pe_mip_1}" "${bam_pe_mip_1}" mip_B 2
-write_bam_fixture_pe "${sam_pe_min_0}" "${bam_pe_min_0}" min_A 2
-write_bam_fixture_pe "${sam_pe_min_1}" "${bam_pe_min_1}" min_B 3
-write_bam_fixture_pe "${sam_pe_sip_0}" "${bam_pe_sip_0}" sip_A 1
-write_bam_fixture_pe "${sam_pe_sip_1}" "${bam_pe_sip_1}" sip_B 2
-write_bam_fixture_pe "${sam_pe_sin_0}" "${bam_pe_sin_0}" sin_A 2
-write_bam_fixture_pe "${sam_pe_sin_1}" "${bam_pe_sin_1}" sin_B 1
+write_fixture_bam_pe "${sam_pe_mip_0}" "${bam_pe_mip_0}" mip_A 3
+write_fixture_bam_pe "${sam_pe_mip_1}" "${bam_pe_mip_1}" mip_B 2
+write_fixture_bam_pe "${sam_pe_min_0}" "${bam_pe_min_0}" min_A 2
+write_fixture_bam_pe "${sam_pe_min_1}" "${bam_pe_min_1}" min_B 3
+write_fixture_bam_pe "${sam_pe_sip_0}" "${bam_pe_sip_0}" sip_A 1
+write_fixture_bam_pe "${sam_pe_sip_1}" "${bam_pe_sip_1}" sip_B 2
+write_fixture_bam_pe "${sam_pe_sin_0}" "${bam_pe_sin_0}" sin_A 2
+write_fixture_bam_pe "${sam_pe_sin_1}" "${bam_pe_sin_1}" sin_B 1
 
 #  Duplicate PE main-alignment fixtures under treatment-aware siQ basenames
 cp "${bam_pe_mip_0}"     "${bam_pe_mip_hu_0}"
@@ -330,6 +331,56 @@ samtools quickcheck \
     "${cram_pe_sip_1}" \
     "${cram_pe_sin_0}" \
     "${cram_pe_sin_1}"
+
+for idx in \
+    "${bam_se_mip_0}.bai" \
+    "${bam_se_mip_1}.bai" \
+    "${bam_se_min_0}.bai" \
+    "${bam_se_min_1}.bai" \
+    "${bam_se_sip_0}.bai" \
+    "${bam_se_sip_1}.bai" \
+    "${bam_se_sin_0}.bai" \
+    "${bam_se_sin_1}.bai" \
+    "${bam_pe_mip_0}.bai" \
+    "${bam_pe_mip_1}.bai" \
+    "${bam_pe_min_0}.bai" \
+    "${bam_pe_min_1}.bai" \
+    "${bam_pe_mip_hu_0}.bai" \
+    "${bam_pe_mip_hu_1}.bai" \
+    "${bam_pe_min_hu_0}.bai" \
+    "${bam_pe_min_hu_1}.bai" \
+    "${bam_pe_sip_0}.bai" \
+    "${bam_pe_sip_1}.bai" \
+    "${bam_pe_sin_0}.bai" \
+    "${bam_pe_sin_1}.bai"
+do
+    [[ -s "${idx}" ]] || die "BAM index missing or empty: '${idx}'."
+done
+
+for idx in \
+    "${cram_se_mip_0}.crai" \
+    "${cram_se_mip_1}.crai" \
+    "${cram_se_min_0}.crai" \
+    "${cram_se_min_1}.crai" \
+    "${cram_se_sip_0}.crai" \
+    "${cram_se_sip_1}.crai" \
+    "${cram_se_sin_0}.crai" \
+    "${cram_se_sin_1}.crai" \
+    "${cram_pe_mip_0}.crai" \
+    "${cram_pe_mip_1}.crai" \
+    "${cram_pe_min_0}.crai" \
+    "${cram_pe_min_1}.crai" \
+    "${cram_pe_mip_hu_0}.crai" \
+    "${cram_pe_mip_hu_1}.crai" \
+    "${cram_pe_min_hu_0}.crai" \
+    "${cram_pe_min_hu_1}.crai" \
+    "${cram_pe_sip_0}.crai" \
+    "${cram_pe_sip_1}.crai" \
+    "${cram_pe_sin_0}.crai" \
+    "${cram_pe_sin_1}.crai"
+do
+    [[ -s "${idx}" ]] || die "CRAM index missing or empty: '${idx}'."
+done
 
 #  Remove stale generated fixture outputs. Broad metadata/config cleanup clears
 #+ ignored legacy parser fixtures from earlier generator versions.

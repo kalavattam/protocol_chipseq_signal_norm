@@ -6,7 +6,8 @@
 # Copyright 2026 by Kris Alavattam
 # Email: kalavattam@gmail.com
 #
-# OpenAI ChatGPT and Codex (GPT-5.5) were used in development.
+# OpenAI ChatGPT and Codex (GPT-5.5) were used in development and
+# documentation.
 #
 # Distributed under the MIT license.
 
@@ -868,8 +869,11 @@ function run_case_scaling_factor_submit_part() {
 
     local -n arr_cmd_ref="${arr_cmd_nam}"
 
-    #TODO: handle SC2155 here
-    local fil_prt="${fil_out}.part.$(printf '%06d' "${idx_out}")"
+    local idx_fmt=""
+    local fil_prt=""
+
+    printf -v idx_fmt '%06d' "${idx_out}"
+    fil_prt="${fil_out}.part.${idx_fmt}"
 
     if \
         run_capture \
@@ -1105,7 +1109,11 @@ function assert_filter_alignments_pg_header() {
     shift 6 || true
 
     local lbl="${*:-filter_alignments @PG header}"
+    local patn_pg=""
     local -a ref_arg=()
+
+    patn_pg=$'^@PG\tID:'"${pg_id}"$'\tPN:filter_alignments\tCL:'
+    patn_pg+="${pg_id} retain=${retain}"
 
     if [[ "${infile,,}" == *.cram ]]; then
         ref_arg=( -T "${ref_fa}" )
@@ -1127,8 +1135,9 @@ function assert_filter_alignments_pg_header() {
     if [[ -s "${header_file}" ]]; then
         assert_pattern_found \
             "${header_file}" \
-            $'^@PG\tID:'"${pg_id}"$'\tPN:filter_alignments\tCL:'"${pg_id} retain=${retain}" \
+            "${patn_pg}" \
             "${lbl} contains ${pg_id} @PG record"
+
         assert_pattern_found \
             "${header_file}" \
             "out_ext=${out_ext}" \

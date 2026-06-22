@@ -6,7 +6,8 @@
 # Copyright 2026 by Kris Alavattam
 # Email: kalavattam@gmail.com
 #
-# OpenAI ChatGPT (GPT-5.5) was used in development.
+# OpenAI ChatGPT and Codex (GPT-5.5) were used in development and
+# documentation.
 #
 # Distributed under the MIT license.
 
@@ -39,6 +40,16 @@ dir_fix="${dir_dwn}/fixtures"
 source "${dir_scr}/../../scripts/lib/fixture_helpers.sh"
 
 
+#  Remove temporary FASTQ intermediates on exit or failure
+function cleanup_fastqs_tmp() {
+    rm_files \
+        "${dir_fix}" \
+        "${fq_se_tmp}" \
+        "${fq_r1_tmp}" \
+        "${fq_r2_tmp}"
+}
+
+
 #  Define fixture directories, FASTQ paths, and metadata templates
 dir_src="${dir_fix}/source"
 dir_src_se="${dir_src}/se"
@@ -61,18 +72,8 @@ tpl_pe_cnfl="${dir_mtd}/local_pe_conflicting_accession.template.tsv"
 tpl_mix="${dir_mtd}/local_mixed.template.tsv"
 
 
-#  Remove temporary FASTQ intermediates on exit or failure
-function cleanup_tmp_fastqs() {
-    rm_files \
-        "${dir_fix}" \
-        "${fq_se_tmp}" \
-        "${fq_r1_tmp}" \
-        "${fq_r2_tmp}"
-}
-
-
 #  Register cleanup of temporary FASTQ intermediates on exit
-register_cleanup cleanup_tmp_fastqs
+register_cleanup cleanup_fastqs_tmp
 
 #  Require gzip for deterministic compressed workflow inputs
 require_cmd gzip "to generate download-fastqs fixtures."
@@ -81,7 +82,7 @@ require_cmd gzip "to generate download-fastqs fixtures."
 mkdirs "${dir_src}" "${dir_src_se}" "${dir_src_pe}" "${dir_mtd}"
 
 #  Remove stale temporary intermediates
-cleanup_tmp_fastqs
+cleanup_fastqs_tmp
 
 #  Write tiny single-end FASTQ provenance and compressed source fixture
 cat > "${fq_se_tmp}" << EOM
