@@ -17,6 +17,7 @@
 # parse_fastq_entry
 # pair_fastqs
 # pair_fqs
+# trim_fastqs_atria
 
 
 #  Require Bash >= 4.4 before defining functions
@@ -430,6 +431,141 @@ EOM
     validate_var "samp" "${samp}" || return 1
 
     echo "${fq_1};${fq_2};${samp}"
+}
+
+
+#  Trim one FASTQ input entry with Atria
+function trim_fastqs_atria() {
+    local threads="${1:-}"  # Number of threads to use
+    local fq_1="${2:-}"     # FASTQ file #1
+    local fq_2="${3:-}"     # FASTQ file #2, or 'NA' for SE data
+    local dir_out="${4:-}"  # Output directory for trimmed FASTQs
+    local log_out="${5:-}"  # Stdout log file
+    local log_err="${6:-}"  # Stderr log file
+    local samp="${7:-}"     # Sample name for error reporting
+    local show_help         # Help message
+    local -a cmd_atria      # Atria command array
+
+    show_help=$(cat << EOM
+Usage:
+  trim_fastqs_atria
+    [-h|--hlp|--help] threads fq_1 fq_2 dir_out log_out log_err samp
+
+Description:
+  Trim one single-end or paired-end FASTQ input entry with Atria.
+
+Positional arguments:
+  1  threads  <int>
+    Number of threads to use.
+
+  2  fq_1  <file>
+    FASTQ file #1.
+
+  3  fq_2  <file|NA>
+    FASTQ file #2, or 'NA' for single-end data.
+
+  4  dir_out  <dir>
+    Output directory for trimmed FASTQ files.
+
+  5  log_out  <file>
+    Stdout log file.
+
+  6  log_err  <file>
+    Stderr log file.
+
+  7  samp  <str>
+    Sample name used in error messages.
+
+Returns:
+  Runs Atria, writing stdout and stderr to the supplied log files. Returns 0
+  when trimming completes successfully; otherwise 1.
+
+Notes:
+  - '-R <fq_2>' is passed only when 'fq_2 != NA'.
+  - Atria is always called with '--length-range 35:500'.
+EOM
+    )
+
+    if [[ "${threads}" =~ ^(-h|--h[e]?lp)$ ]]; then
+        echo "${show_help}" >&2
+        return 0
+    elif [[ -z "${threads}" ]]; then
+        echo_err_func "${FUNCNAME[0]}" \
+            "positional argument 1, 'threads', is missing."
+        echo >&2
+        echo "${show_help}" >&2
+        return 1
+    elif [[ -z "${fq_1}" ]]; then
+        echo_err_func "${FUNCNAME[0]}" \
+            "positional argument 2, 'fq_1', is missing."
+        echo >&2
+        echo "${show_help}" >&2
+        return 1
+    elif [[ -z "${fq_2}" ]]; then
+        echo_err_func "${FUNCNAME[0]}" \
+            "positional argument 3, 'fq_2', is missing."
+        echo >&2
+        echo "${show_help}" >&2
+        return 1
+    elif [[ -z "${dir_out}" ]]; then
+        echo_err_func "${FUNCNAME[0]}" \
+            "positional argument 4, 'dir_out', is missing."
+        echo >&2
+        echo "${show_help}" >&2
+        return 1
+    elif [[ -z "${log_out}" ]]; then
+        echo_err_func "${FUNCNAME[0]}" \
+            "positional argument 5, 'log_out', is missing."
+        echo >&2
+        echo "${show_help}" >&2
+        return 1
+    elif [[ -z "${log_err}" ]]; then
+        echo_err_func "${FUNCNAME[0]}" \
+            "positional argument 6, 'log_err', is missing."
+        echo >&2
+        echo "${show_help}" >&2
+        return 1
+    elif [[ -z "${samp}" ]]; then
+        echo_err_func "${FUNCNAME[0]}" \
+            "positional argument 7, 'samp', is missing."
+        echo >&2
+        echo "${show_help}" >&2
+        return 1
+    fi
+
+    validate_var_file "fq_1" "${fq_1}" || return 1
+
+    if [[ "${fq_2}" != "NA" ]]; then
+        validate_var_file "fq_2" "${fq_2}" || return 1
+    fi
+
+    validate_var_dir "dir_out" "${dir_out}" || return 1
+    validate_var_dir "log_out parent directory" "$(dirname "${log_out}")" \
+        || return 1
+    validate_var_dir "log_err parent directory" "$(dirname "${log_err}")" \
+        || return 1
+
+    cmd_atria=(
+        atria
+            -t "${threads}"
+            -r "${fq_1}"
+    )
+
+    if [[ "${fq_2}" != "NA" ]]; then
+        cmd_atria+=( -R "${fq_2}" )
+    fi
+
+    cmd_atria+=(
+            -o "${dir_out}"
+            --length-range 35:500
+    )
+
+    if ! "${cmd_atria[@]}" > "${log_out}" 2> "${log_err}"; then
+        echo_err_func "${FUNCNAME[0]}" \
+            "read trimming failed for sample '${samp}'. See log:" \
+            "'${log_err}'."
+        return 1
+    fi
 }
 
 
