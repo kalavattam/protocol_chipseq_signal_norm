@@ -6,10 +6,13 @@
 # Copyright 2026 by Kris Alavattam
 # Email: kalavattam@gmail.com
 #
-# OpenAI ChatGPT (GPT-5.5) was used in development.
+# OpenAI ChatGPT and Codex (GPT-5.5) were used in development and
+# documentation.
 #
 # Distributed under the MIT license.
 
+
+set -euo pipefail
 
 TEST_NAME="submit trim-fastqs SE"
 
@@ -39,8 +42,14 @@ tmp="${TEST_DIR_TMP}/submit_trim_fastqs_se"
 dir_out="${tmp}/out"
 dir_err="${tmp}/logs"
 dir_log="${TEST_DIR_LOG}/trim_fastqs"
+
 vw_fq="${dir_out}/tiny_se.trimmed.fastq"
 cnt="${dir_out}/tiny_se.read_count.txt"
+
+log_env="${dir_log}/submit_trim_fastqs_se_env.log"
+log_run="${dir_log}/submit_trim_fastqs_se.log"
+log_out_se="${dir_err}/test_submit_trim_se.tiny_se.stdout.txt"
+log_err_se="${dir_err}/test_submit_trim_se.tiny_se.stderr.txt"
 
 rm -rf "${tmp}"
 mkdir -p "${dir_out}" "${dir_err}" "${dir_log}"
@@ -60,7 +69,7 @@ require_files_nonempty \
 if ! \
     require_env_atria \
         "${env_nam}" \
-        "${dir_log}/submit_trim_fastqs_se_env.log"
+        "${log_env}"
 then
     finish
     exit $?
@@ -68,12 +77,10 @@ fi
 
 
 #  Run submit_trim_fastqs.sh on one SE FASTQ fixture through real Atria
-log="${dir_log}/submit_trim_fastqs_se.log"
-
 if \
     run_capture \
         "submit trim-fastqs SE Atria wet run" \
-        "${log}" \
+        "${log_run}" \
         "${TEST_BASH}" "${ROOT_REPO}/scripts/submit_trim_fastqs.sh" \
             --env_nam "${env_nam}" \
             --dir_scr "${ROOT_REPO}/scripts" \
@@ -89,7 +96,7 @@ then
 else
     record_fail \
         "submit_trim_fastqs.sh SE Atria wet run failed; see" \
-        "$(print_relpath "${log}")"
+        "$(print_relpath "${log_run}")"
 fi
 
 # shellcheck disable=SC2034
@@ -141,10 +148,11 @@ if [[ -n "${fil_out}" ]]; then
 fi
 
 assert_file_exists \
-    "${dir_err}/test_submit_trim_se.tiny_se.stdout.txt" \
+    "${log_out_se}" \
     "submit trim-fastqs SE stdout log exists"
+
 assert_file_exists \
-    "${dir_err}/test_submit_trim_se.tiny_se.stderr.txt" \
+    "${log_err_se}" \
     "submit trim-fastqs SE stderr log exists"
 
 finish

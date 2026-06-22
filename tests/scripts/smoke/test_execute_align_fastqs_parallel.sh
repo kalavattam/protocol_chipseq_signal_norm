@@ -6,10 +6,13 @@
 # Copyright 2026 by Kris Alavattam
 # Email: kalavattam@gmail.com
 #
-# OpenAI ChatGPT (GPT-5.5) was used in development.
+# OpenAI ChatGPT and Codex (GPT-5.5) were used in development and
+# documentation.
 #
 # Distributed under the MIT license.
 
+
+set -euo pipefail
 
 TEST_NAME="execute align-fastqs GNU Parallel"
 
@@ -34,7 +37,7 @@ fi
 #  Define fixture and output paths for a local GNU Parallel Bowtie2 wet run
 dir_fx="${ROOT_REPO}/tests/align_fastqs/fixtures"
 in_se="${dir_fx}/fastq/se/tiny_se.atria.fastq.gz"
-idx="${dir_fx}/bowtie2/tiny"
+idx_bt2="${dir_fx}/bowtie2/tiny"
 
 tmp="${TEST_DIR_TMP}/execute_align_fastqs_parallel"
 dir_in="${tmp}/in"
@@ -48,11 +51,18 @@ csv_in="${in_1};${in_2}"
 
 out_1="${dir_out}/tiny_se_1.bam"
 out_2="${dir_out}/tiny_se_2.bam"
+bai_1="${out_1}.bai"
+bai_2="${out_2}.bai"
 stat_1="${dir_out}/tiny_se_1.idxstats.txt"
 stat_2="${dir_out}/tiny_se_2.idxstats.txt"
 vw_1="${dir_out}/tiny_se_1.view.txt"
 vw_2="${dir_out}/tiny_se_2.view.txt"
 cfg="${dir_err}/test_execute_align_parallel.config_parallel.txt"
+
+log_env_parallel="${dir_log}/execute_align_fastqs_parallel_env.log"
+log_run="${dir_log}/execute_align_fastqs_parallel_bowtie2.log"
+log_qc_1="${dir_log}/execute_align_fastqs_parallel_bam_1_quickcheck.log"
+log_qc_2="${dir_log}/execute_align_fastqs_parallel_bam_2_quickcheck.log"
 
 rm -rf "${tmp}"
 mkdir -p "${dir_in}" "${dir_out}" "${dir_err}" "${dir_log}"
@@ -64,12 +74,12 @@ require_env_project env_nam || {
 
 require_files_nonempty \
     "${in_se}" \
-    "${idx}.1.bt2" \
-    "${idx}.2.bt2" \
-    "${idx}.3.bt2" \
-    "${idx}.4.bt2" \
-    "${idx}.rev.1.bt2" \
-    "${idx}.rev.2.bt2" \
+    "${idx_bt2}.1.bt2" \
+    "${idx_bt2}.2.bt2" \
+    "${idx_bt2}.3.bt2" \
+    "${idx_bt2}.4.bt2" \
+    "${idx_bt2}.rev.1.bt2" \
+    "${idx_bt2}.rev.2.bt2" \
     || {
         finish
         exit $?
@@ -89,7 +99,7 @@ require_files_nonempty \
 if ! \
     require_env_parallel \
         "${env_nam}" \
-        "${dir_log}/execute_align_fastqs_parallel_env.log"
+        "${log_env_parallel}"
 then
     finish
     exit $?
@@ -97,18 +107,16 @@ fi
 
 
 #  Run execute_align_fastqs.sh through local GNU Parallel for two SE inputs
-log="${dir_log}/execute_align_fastqs_parallel_bowtie2.log"
-
 if \
     run_capture \
         "execute align-fastqs GNU Parallel Bowtie2 wet run" \
-        "${log}" \
+        "${log_run}" \
         "${TEST_BASH}" "${ROOT_REPO}/scripts/execute_align_fastqs.sh" \
             --threads 2 \
             --aligner bowtie2 \
             --bt2_aln global \
             --mapq 0 \
-            --index "${idx}" \
+            --index "${idx_bt2}" \
             --csv_infile "${csv_in}" \
             --dir_out "${dir_out}" \
             --out_ext bam \
@@ -122,23 +130,27 @@ then
 else
     record_fail \
         "execute_align_fastqs.sh GNU Parallel Bowtie2 wet run failed; see" \
-        "$(print_relpath "${log}")"
+        "$(print_relpath "${log_run}")"
 fi
 
 assert_file_nonempty \
     "${cfg}" \
     "execute align-fastqs GNU Parallel config"
+
 assert_file_nonempty \
     "${out_1}" \
     "execute GNU Parallel Bowtie2 BAM output 1"
+
 assert_file_nonempty \
-    "${out_1}.bai" \
+    "${bai_1}" \
     "execute GNU Parallel Bowtie2 BAM index 1"
+
 assert_file_nonempty \
     "${out_2}" \
     "execute GNU Parallel Bowtie2 BAM output 2"
+
 assert_file_nonempty \
-    "${out_2}.bai" \
+    "${bai_2}" \
     "execute GNU Parallel Bowtie2 BAM index 2"
 
 if [[ -s "${cfg}" ]]; then
@@ -153,7 +165,7 @@ if [[ -s "${out_1}" ]]; then
     if \
         run_capture \
             "quickcheck execute align-fastqs GNU Parallel Bowtie2 BAM 1" \
-            "${dir_log}/execute_align_fastqs_parallel_bam_1_quickcheck.log" \
+            "${log_qc_1}" \
             run_samtools quickcheck "${out_1}"
     then
         record_pass \
@@ -167,6 +179,7 @@ if [[ -s "${out_1}" ]]; then
         "idxstats execute align-fastqs GNU Parallel Bowtie2 BAM 1" \
         "${stat_1}" \
         run_samtools idxstats "${out_1}"
+
     run_capture \
         "view execute align-fastqs GNU Parallel Bowtie2 BAM 1" \
         "${vw_1}" \
@@ -177,6 +190,7 @@ if [[ -s "${out_1}" ]]; then
         $'^I\t108\t1\t0$' \
         "execute GNU Parallel Bowtie2 BAM 1 has one mapped read on" \
         "chromosome I"
+
     assert_pattern_found \
         "${vw_1}" \
         $'^tiny_se_read_1\t' \
@@ -187,7 +201,7 @@ if [[ -s "${out_2}" ]]; then
     if \
         run_capture \
             "quickcheck execute align-fastqs GNU Parallel Bowtie2 BAM 2" \
-            "${dir_log}/execute_align_fastqs_parallel_bam_2_quickcheck.log" \
+            "${log_qc_2}" \
             run_samtools quickcheck "${out_2}"
     then
         record_pass \
@@ -201,6 +215,7 @@ if [[ -s "${out_2}" ]]; then
         "idxstats execute align-fastqs GNU Parallel Bowtie2 BAM 2" \
         "${stat_2}" \
         run_samtools idxstats "${out_2}"
+
     run_capture \
         "view execute align-fastqs GNU Parallel Bowtie2 BAM 2" \
         "${vw_2}" \
@@ -211,6 +226,7 @@ if [[ -s "${out_2}" ]]; then
         $'^I\t108\t1\t0$' \
         "execute GNU Parallel Bowtie2 BAM 2 has one mapped read on" \
         "chromosome I"
+
     assert_pattern_found \
         "${vw_2}" \
         $'^tiny_se_read_1\t' \

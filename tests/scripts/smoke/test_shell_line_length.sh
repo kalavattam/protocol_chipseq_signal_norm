@@ -6,10 +6,13 @@
 # Copyright 2026 by Kris Alavattam
 # Email: kalavattam@gmail.com
 #
-# OpenAI ChatGPT (GPT-5.5) was used in development.
+# OpenAI ChatGPT and Codex (GPT-5.5) were used in development and
+# documentation.
 #
 # Distributed under the MIT license.
 
+
+set -euo pipefail
 
 TEST_NAME="shell line length"
 
@@ -18,8 +21,6 @@ TEST_NAME="shell line length"
 source "$(
     cd "$(dirname "${BASH_SOURCE[0]}")/.." > /dev/null 2>&1 && pwd
 )/lib/test_helpers.sh"
-
-print_section "${TEST_NAME}"
 
 
 #  Check one shell script for long non-heredoc lines
@@ -72,6 +73,8 @@ function check_line_length_shell() {
     fi
 }
 
+
+print_section "${TEST_NAME}"
 
 #  Collect production, installation, test harness, and fixture scripts
 arr_fil=()

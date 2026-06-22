@@ -6,10 +6,13 @@
 # Copyright 2026 by Kris Alavattam
 # Email: kalavattam@gmail.com
 #
-# OpenAI ChatGPT (GPT-5.5) was used in development.
+# OpenAI ChatGPT and Codex (GPT-5.5) were used in development and
+# documentation.
 #
 # Distributed under the MIT license.
 
+
+set -euo pipefail
 
 TEST_NAME="execute download-fastqs SE local"
 
@@ -32,9 +35,6 @@ then
 fi
 
 
-trap 'cleanup_server_http "${svr_pid:-}"' EXIT
-
-
 #  Define fixture and output paths for a no-network loopback HTTP download
 dir_fx="${ROOT_REPO}/tests/download_fastqs/fixtures"
 dir_src="${dir_fx}/source"
@@ -46,13 +46,20 @@ dir_out="${tmp}/out"
 dir_sym="${tmp}/links"
 dir_err="${tmp}/logs"
 dir_log="${TEST_DIR_LOG}/download_fastqs"
+
 mta="${tmp}/local_se.tsv"
 vw_fq="${tmp}/SRR_LOCAL_SE.fastq"
 cnt="${tmp}/SRR_LOCAL_SE.read_count.txt"
-fil_out="${dir_out}/SRR_LOCAL_SE.fastq.gz"
+fil_out_se="${dir_out}/SRR_LOCAL_SE.fastq.gz"
 sym="${dir_sym}/tiny_download_se.fastq.gz"
+
 log_svr="${dir_log}/execute_download_fastqs_se_local_http.log"
 log_run="${dir_log}/execute_download_fastqs_se_local.log"
+log_env="${dir_log}/execute_download_fastqs_se_local_env.log"
+log_out_se="${dir_err}/test_execute_download_se_local.SRR_LOCAL_SE.stdout.txt"
+log_err_se="${dir_err}/test_execute_download_se_local.SRR_LOCAL_SE.stderr.txt"
+
+trap 'cleanup_server_http "${svr_pid:-}"' EXIT
 
 rm -rf "${tmp}"
 mkdir -p "${dir_out}" "${dir_sym}" "${dir_err}" "${dir_log}"
@@ -73,7 +80,7 @@ require_files_nonempty \
 if ! \
     require_env_download \
         "${env_nam}" \
-        "${dir_log}/execute_download_fastqs_se_local_env.log"
+        "${log_env}"
 then
     finish
     exit $?
@@ -142,7 +149,7 @@ else
 fi
 
 assert_fastq_gzip \
-    "${fil_out}" \
+    "${fil_out_se}" \
     '^@tiny_download_se_read_1$' \
     "${vw_fq}" \
     "${cnt}" \
@@ -154,10 +161,11 @@ assert_custom_symlink \
     "execute download-fastqs local custom FASTQ"
 
 assert_file_exists \
-    "${dir_err}/test_execute_download_se_local.SRR_LOCAL_SE.stdout.txt" \
+    "${log_out_se}" \
     "execute download-fastqs local wget stdout log exists"
+
 assert_file_exists \
-    "${dir_err}/test_execute_download_se_local.SRR_LOCAL_SE.stderr.txt" \
+    "${log_err_se}" \
     "execute download-fastqs local wget stderr log exists"
 
 finish

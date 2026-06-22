@@ -6,10 +6,13 @@
 # Copyright 2026 by Kris Alavattam
 # Email: kalavattam@gmail.com
 #
-# OpenAI ChatGPT (GPT-5.5) was used in development.
+# OpenAI ChatGPT and Codex (GPT-5.5) were used in development and
+# documentation.
 #
 # Distributed under the MIT license.
 
+
+set -euo pipefail
 
 TEST_NAME="execute compute-signal ratio"
 
@@ -35,6 +38,39 @@ dir_err="${tmp}/logs"
 dir_log="${TEST_DIR_LOG}/compute_signal"
 fil_A_gz="${dir_in}/ratio_A.bdg.gz"
 fil_B_gz="${dir_in}/ratio_B.bdg.gz"
+
+fil_out_unadj="${dir_out}/exec_ratio_A.bdg"
+fil_out_scl_fct="${dir_out}/exec_scl_fct_ratio_A.bdg"
+fil_out_log2="${dir_out}/exec_log2_ratio_A.bdg"
+fil_out_unadj_r="${dir_out}/exec_unadj_r_ratio_A.bdg"
+fil_out_log2_r="${dir_out}/exec_log2_r_ratio_A.bdg"
+fil_out_dep_min="${dir_out}/exec_dep_min_ratio_A.bdg"
+fil_out_eps="${dir_out}/exec_eps_ratio_A.bdg"
+fil_out_pseudo="${dir_out}/exec_pseudo_ratio_A.bdg"
+fil_out_drp_nan="${dir_out}/exec_drp_nan_ratio_A.bdg"
+fil_out_skip_00="${dir_out}/exec_skip_00_ratio_A.bdg"
+fil_out_skip_00_post_scale="${dir_out}/exec_skip_00_post_scale_ratio_A.bdg"
+fil_out_track="${dir_out}/exec_track_ratio_A.bdg"
+fil_out_gzip_io="${dir_out}/exec_gzip_io_ratio_A.bdg.gz"
+fil_out_skp_pfx="${dir_out}/exec_skp_pfx_ratio_headers_A.bdg"
+
+trackfile_track="${dir_out}/exec_track_ratio_A.track.bdg"
+outfile_txt_gzip_io="${dir_out}/exec_gzip_io_ratio_A.bdg"
+
+log_unadj="${dir_log}/execute_compute_signal_ratio_unadj.log"
+log_scl_fct="${dir_log}/execute_compute_signal_ratio_scl_fct.log"
+log_log2="${dir_log}/execute_compute_signal_ratio_log2.log"
+log_unadj_r="${dir_log}/execute_compute_signal_ratio_unadj_r.log"
+log_log2_r="${dir_log}/execute_compute_signal_ratio_log2_r.log"
+log_dep_min="${dir_log}/execute_compute_signal_ratio_dep_min.log"
+log_eps="${dir_log}/execute_compute_signal_ratio_eps.log"
+log_pseudo="${dir_log}/execute_compute_signal_ratio_pseudo.log"
+log_drp_nan="${dir_log}/execute_compute_signal_ratio_drp_nan.log"
+log_skip_00="${dir_log}/execute_compute_signal_ratio_skip_00.log"
+log_skip_00_post_scale="${dir_log}/execute_compute_signal_ratio_skip_00_post_scale.log"
+log_track="${dir_log}/execute_compute_signal_ratio_track.log"
+log_gzip_io="${dir_log}/execute_compute_signal_ratio_gzip_io.log"
+log_skp_pfx="${dir_log}/execute_compute_signal_ratio_skp_pfx.log"
 
 rm -rf "${tmp}"
 mkdir -p "${dir_in}" "${dir_out}" "${dir_err}" "${dir_log}"
@@ -74,14 +110,11 @@ require_files_nonempty \
 
 
 #  Baseline unadjusted ratio with three-decimal rounding
-fil_out="${dir_out}/exec_ratio_A.bdg"
-log="${dir_log}/execute_compute_signal_ratio_unadj.log"
-
 run_case_compute_signal_ratio \
     execute \
     "unadj" \
     "exec" \
-    "${log}" \
+    "${log_unadj}" \
     "unadj" \
     "${fil_A}" \
     "${fil_B}" \
@@ -89,42 +122,43 @@ run_case_compute_signal_ratio \
     "${dir_err}"
 
 assert_file_nonempty \
-    "${fil_out}" \
+    "${fil_out_unadj}" \
     "execute ratio output"
 
-if [[ -s "${fil_out}" ]]; then
+if [[ -s "${fil_out_unadj}" ]]; then
     assert_pattern_found \
-        "${fil_out}" \
+        "${fil_out_unadj}" \
         $'^I\t0\t10\t2$' \
         "execute ratio output has I:0-10 = 2"
+
     assert_pattern_found \
-        "${fil_out}" \
+        "${fil_out_unadj}" \
         $'^I\t10\t20\t0$' \
         "execute ratio output has I:10-20 = 0"
+
     assert_pattern_found \
-        "${fil_out}" \
+        "${fil_out_unadj}" \
         $'^I\t40\t50\t4$' \
         "execute ratio output has I:40-50 = 4"
+
     assert_pattern_found \
-        "${fil_out}" \
+        "${fil_out_unadj}" \
         $'^I\t60\t70\t0.333$' \
         "execute ratio output has I:60-70 = 0.333"
+
     assert_pattern_found \
-        "${fil_out}" \
+        "${fil_out_unadj}" \
         $'^I\t70\t80\t1$' \
         "execute ratio output has I:70-80 = 1"
 fi
 
 
 #  Scaling factors are applied before ratio calculation: (2 * A) / (1 * B)
-fil_out="${dir_out}/exec_scl_fct_ratio_A.bdg"
-log="${dir_log}/execute_compute_signal_ratio_scl_fct.log"
-
 run_case_compute_signal_ratio \
     execute \
     "scl_fct" \
     "exec_scl_fct" \
-    "${log}" \
+    "${log_scl_fct}" \
     "unadj" \
     "${fil_A}" \
     "${fil_B}" \
@@ -134,34 +168,33 @@ run_case_compute_signal_ratio \
     2:1
 
 assert_file_nonempty \
-    "${fil_out}" \
+    "${fil_out_scl_fct}" \
     "execute scaling-factor ratio output"
 
-if [[ -s "${fil_out}" ]]; then
+if [[ -s "${fil_out_scl_fct}" ]]; then
     assert_pattern_found \
-        "${fil_out}" \
+        "${fil_out_scl_fct}" \
         $'^I\t0\t10\t4$' \
         "execute scaling-factor ratio output has I:0-10 = 4"
+
     assert_pattern_found \
-        "${fil_out}" \
+        "${fil_out_scl_fct}" \
         $'^I\t40\t50\t8$' \
         "execute scaling-factor ratio output has I:40-50 = 8"
+
     assert_pattern_found \
-        "${fil_out}" \
+        "${fil_out_scl_fct}" \
         $'^I\t60\t70\t0.667$' \
         "execute scaling-factor ratio output has I:60-70 = 0.667"
 fi
 
 
 #  Log2 ratio: log2(4 / 2) = 1 and log2(2 / 0.5) = 2
-fil_out="${dir_out}/exec_log2_ratio_A.bdg"
-log="${dir_log}/execute_compute_signal_ratio_log2.log"
-
 run_case_compute_signal_ratio \
     execute \
     "log2" \
     "exec_log2" \
-    "${log}" \
+    "${log_log2}" \
     "log2" \
     "${fil_A}" \
     "${fil_B}" \
@@ -169,34 +202,33 @@ run_case_compute_signal_ratio \
     "${dir_err}"
 
 assert_file_nonempty \
-    "${fil_out}" \
+    "${fil_out_log2}" \
     "execute log2 ratio output"
 
-if [[ -s "${fil_out}" ]]; then
+if [[ -s "${fil_out_log2}" ]]; then
     assert_pattern_found \
-        "${fil_out}" \
+        "${fil_out_log2}" \
         $'^I\t0\t10\t1$' \
         "execute log2 ratio output has I:0-10 = 1"
+
     assert_pattern_found \
-        "${fil_out}" \
+        "${fil_out_log2}" \
         $'^I\t40\t50\t2$' \
         "execute log2 ratio output has I:40-50 = 2"
+
     assert_pattern_found \
-        "${fil_out}" \
+        "${fil_out_log2}" \
         $'^I\t60\t70\t-1.585$' \
         "execute log2 ratio output has I:60-70 = -1.585"
 fi
 
 
 #  Reciprocal ratio: B / A gives 0.5, 0.25, and 3 for selected rows
-fil_out="${dir_out}/exec_unadj_r_ratio_A.bdg"
-log="${dir_log}/execute_compute_signal_ratio_unadj_r.log"
-
 run_case_compute_signal_ratio \
     execute \
     "unadj_r" \
     "exec_unadj_r" \
-    "${log}" \
+    "${log_unadj_r}" \
     "unadj_r" \
     "${fil_A}" \
     "${fil_B}" \
@@ -204,34 +236,33 @@ run_case_compute_signal_ratio \
     "${dir_err}"
 
 assert_file_nonempty \
-    "${fil_out}" \
+    "${fil_out_unadj_r}" \
     "execute reciprocal ratio output"
 
-if [[ -s "${fil_out}" ]]; then
+if [[ -s "${fil_out_unadj_r}" ]]; then
     assert_pattern_found \
-        "${fil_out}" \
+        "${fil_out_unadj_r}" \
         $'^I\t0\t10\t0.5$' \
         "execute reciprocal ratio output has I:0-10 = 0.5"
+
     assert_pattern_found \
-        "${fil_out}" \
+        "${fil_out_unadj_r}" \
         $'^I\t40\t50\t0.25$' \
         "execute reciprocal ratio output has I:40-50 = 0.25"
+
     assert_pattern_found \
-        "${fil_out}" \
+        "${fil_out_unadj_r}" \
         $'^I\t60\t70\t3$' \
         "execute reciprocal ratio output has I:60-70 = 3"
 fi
 
 
 #  Reciprocal log2 ratio: log2(B / A)
-fil_out="${dir_out}/exec_log2_r_ratio_A.bdg"
-log="${dir_log}/execute_compute_signal_ratio_log2_r.log"
-
 run_case_compute_signal_ratio \
     execute \
     "log2_r" \
     "exec_log2_r" \
-    "${log}" \
+    "${log_log2_r}" \
     "log2_r" \
     "${fil_A}" \
     "${fil_B}" \
@@ -239,34 +270,33 @@ run_case_compute_signal_ratio \
     "${dir_err}"
 
 assert_file_nonempty \
-    "${fil_out}" \
+    "${fil_out_log2_r}" \
     "execute reciprocal log2 ratio output"
 
-if [[ -s "${fil_out}" ]]; then
+if [[ -s "${fil_out_log2_r}" ]]; then
     assert_pattern_found \
-        "${fil_out}" \
+        "${fil_out_log2_r}" \
         $'^I\t0\t10\t-1$' \
         "execute reciprocal log2 ratio output has I:0-10 = -1"
+
     assert_pattern_found \
-        "${fil_out}" \
+        "${fil_out_log2_r}" \
         $'^I\t40\t50\t-2$' \
         "execute reciprocal log2 ratio output has I:40-50 = -2"
+
     assert_pattern_found \
-        "${fil_out}" \
+        "${fil_out_log2_r}" \
         $'^I\t60\t70\t1.585$' \
         "execute reciprocal log2 ratio output has I:60-70 = 1.585"
 fi
 
 
 #  Denominator floor: B=0.04 is floored to 0.1, so 1 / 0.1 = 10
-fil_out="${dir_out}/exec_dep_min_ratio_A.bdg"
-log="${dir_log}/execute_compute_signal_ratio_dep_min.log"
-
 run_case_compute_signal_ratio \
     execute \
     "dep_min" \
     "exec_dep_min" \
-    "${log}" \
+    "${log_dep_min}" \
     "unadj" \
     "${fil_A}" \
     "${fil_B}" \
@@ -276,26 +306,23 @@ run_case_compute_signal_ratio \
     0.1
 
 assert_file_nonempty \
-    "${fil_out}" \
+    "${fil_out_dep_min}" \
     "execute dep_min ratio output"
 
-if [[ -s "${fil_out}" ]]; then
+if [[ -s "${fil_out_dep_min}" ]]; then
     assert_pattern_found \
-        "${fil_out}" \
+        "${fil_out_dep_min}" \
         $'^I\t50\t60\t10$' \
         "execute dep_min ratio output has I:50-60 = 10"
 fi
 
 
 #  Epsilon guards denominator values at or below eps: B=0.04 <= 0.05 -> nan
-fil_out="${dir_out}/exec_eps_ratio_A.bdg"
-log="${dir_log}/execute_compute_signal_ratio_eps.log"
-
 run_case_compute_signal_ratio \
     execute \
     "eps" \
     "exec_eps" \
-    "${log}" \
+    "${log_eps}" \
     "unadj" \
     "${fil_A}" \
     "${fil_B}" \
@@ -305,34 +332,33 @@ run_case_compute_signal_ratio \
     0.05
 
 assert_file_nonempty \
-    "${fil_out}" \
+    "${fil_out_eps}" \
     "execute eps ratio output"
 
-if [[ -s "${fil_out}" ]]; then
+if [[ -s "${fil_out_eps}" ]]; then
     assert_pattern_found \
-        "${fil_out}" \
+        "${fil_out_eps}" \
         $'^I\t0\t10\t2$' \
         "execute eps ratio output retains I:0-10 = 2"
+
     assert_pattern_found \
-        "${fil_out}" \
+        "${fil_out_eps}" \
         $'^I\t50\t60\tnan$' \
         "execute eps ratio output has I:50-60 = nan"
+
     assert_pattern_found \
-        "${fil_out}" \
+        "${fil_out_eps}" \
         $'^I\t60\t70\t0.333$' \
         "execute eps ratio output retains I:60-70 = 0.333"
 fi
 
 
 #  Pseudocounts: (0 + 1) / (2 + 1) = 0.333 at three decimals
-fil_out="${dir_out}/exec_pseudo_ratio_A.bdg"
-log="${dir_log}/execute_compute_signal_ratio_pseudo.log"
-
 run_case_compute_signal_ratio \
     execute \
     "pseudo" \
     "exec_pseudo" \
-    "${log}" \
+    "${log_pseudo}" \
     "unadj" \
     "${fil_A}" \
     "${fil_B}" \
@@ -342,26 +368,23 @@ run_case_compute_signal_ratio \
     1:1
 
 assert_file_nonempty \
-    "${fil_out}" \
+    "${fil_out_pseudo}" \
     "execute pseudo ratio output"
 
-if [[ -s "${fil_out}" ]]; then
+if [[ -s "${fil_out_pseudo}" ]]; then
     assert_pattern_found \
-        "${fil_out}" \
+        "${fil_out_pseudo}" \
         $'^I\t10\t20\t0.333$' \
         "execute pseudo ratio output has I:10-20 = 0.333"
 fi
 
 
 #  Drop non-finite rows while preserving finite ratio rows
-fil_out="${dir_out}/exec_drp_nan_ratio_A.bdg"
-log="${dir_log}/execute_compute_signal_ratio_drp_nan.log"
-
 run_case_compute_signal_ratio \
     execute \
     "drp_nan" \
     "exec_drp_nan" \
-    "${log}" \
+    "${log_drp_nan}" \
     "unadj" \
     "${fil_A}" \
     "${fil_B}" \
@@ -370,38 +393,38 @@ run_case_compute_signal_ratio \
     --drp_nan
 
 assert_file_nonempty \
-    "${fil_out}" \
+    "${fil_out_drp_nan}" \
     "execute drp_nan ratio output"
 
-if [[ -s "${fil_out}" ]]; then
+if [[ -s "${fil_out_drp_nan}" ]]; then
     assert_pattern_found \
-        "${fil_out}" \
+        "${fil_out_drp_nan}" \
         $'^I\t0\t10\t2$' \
         "execute drp_nan ratio output retains I:0-10 = 2"
+
     assert_pattern_found \
-        "${fil_out}" \
+        "${fil_out_drp_nan}" \
         $'^I\t60\t70\t0.333$' \
         "execute drp_nan ratio output retains I:60-70 = 0.333"
+
     assert_pattern_absent \
-        "${fil_out}" \
+        "${fil_out_drp_nan}" \
         $'^I\t20\t30\t' \
         "execute drp_nan ratio output omits I:20-30"
+
     assert_pattern_absent \
-        "${fil_out}" \
+        "${fil_out_drp_nan}" \
         $'^I\t30\t40\t' \
         "execute drp_nan ratio output omits I:30-40"
 fi
 
 
 #  Zero-zero skipping before scaling removes the A=0, B=0 bin
-fil_out="${dir_out}/exec_skip_00_ratio_A.bdg"
-log="${dir_log}/execute_compute_signal_ratio_skip_00.log"
-
 run_case_compute_signal_ratio \
     execute \
     "skip_00" \
     "exec_skip_00" \
-    "${log}" \
+    "${log_skip_00}" \
     "unadj" \
     "${fil_A}" \
     "${fil_B}" \
@@ -411,12 +434,12 @@ run_case_compute_signal_ratio \
     pre_scale
 
 assert_file_nonempty \
-    "${fil_out}" \
+    "${fil_out_skip_00}" \
     "execute skip_00 ratio output"
 
-if [[ -s "${fil_out}" ]]; then
+if [[ -s "${fil_out_skip_00}" ]]; then
     assert_pattern_absent \
-        "${fil_out}" \
+        "${fil_out_skip_00}" \
         $'^I\t30\t40\t' \
         "execute skip_00 ratio output omits I:30-40"
 fi
@@ -424,14 +447,11 @@ fi
 
 #  Post-scale zero-zero skipping can remove bins that are non-zero before
 #+ scaling: I:50-60 has A=1 and B=0.04, then scales to 0.001 and 0.004
-fil_out="${dir_out}/exec_skip_00_post_scale_ratio_A.bdg"
-log="${dir_log}/execute_compute_signal_ratio_skip_00_post_scale.log"
-
 run_case_compute_signal_ratio \
     execute \
     "skip_00_post_scale" \
     "exec_skip_00_post_scale" \
-    "${log}" \
+    "${log_skip_00_post_scale}" \
     "unadj" \
     "${fil_A}" \
     "${fil_B}" \
@@ -445,35 +465,33 @@ run_case_compute_signal_ratio \
     post_scale
 
 assert_file_nonempty \
-    "${fil_out}" \
+    "${fil_out_skip_00_post_scale}" \
     "execute skip_00 post_scale ratio output"
 
-if [[ -s "${fil_out}" ]]; then
+if [[ -s "${fil_out_skip_00_post_scale}" ]]; then
     assert_pattern_found \
-        "${fil_out}" \
+        "${fil_out_skip_00_post_scale}" \
         $'^I\t0\t10\t0.02$' \
         "execute skip_00 post_scale ratio output has I:0-10 = 0.02"
+
     assert_pattern_found \
-        "${fil_out}" \
+        "${fil_out_skip_00_post_scale}" \
         $'^I\t40\t50\t0.04$' \
         "execute skip_00 post_scale ratio output has I:40-50 = 0.04"
+
     assert_pattern_absent \
-        "${fil_out}" \
+        "${fil_out_skip_00_post_scale}" \
         $'^I\t50\t60\t' \
         "execute skip_00 post_scale ratio output omits scaled zero-zero I:50-60"
 fi
 
 
 #  Track sidecar should be generated and should omit non-finite rows
-fil_out="${dir_out}/exec_track_ratio_A.bdg"
-trackfile="${dir_out}/exec_track_ratio_A.track.bdg"
-log="${dir_log}/execute_compute_signal_ratio_track.log"
-
 run_case_compute_signal_ratio \
     execute \
     "track" \
     "exec_track" \
-    "${log}" \
+    "${log_track}" \
     "unadj" \
     "${fil_A}" \
     "${fil_B}" \
@@ -482,41 +500,41 @@ run_case_compute_signal_ratio \
     --track
 
 assert_file_nonempty \
-    "${fil_out}" \
+    "${fil_out_track}" \
     "execute track main ratio output"
+
 assert_file_nonempty \
-    "${trackfile}" \
+    "${trackfile_track}" \
     "execute track sidecar output"
 
-if [[ -s "${trackfile}" ]]; then
+if [[ -s "${trackfile_track}" ]]; then
     assert_pattern_found \
-        "${trackfile}" \
+        "${trackfile_track}" \
         $'^I\t0\t10\t2$' \
         "execute track sidecar retains I:0-10 = 2"
+
     assert_pattern_found \
-        "${trackfile}" \
+        "${trackfile_track}" \
         $'^I\t60\t70\t0.333$' \
         "execute track sidecar retains I:60-70 = 0.333"
+
     assert_pattern_absent \
-        "${trackfile}" \
+        "${trackfile_track}" \
         $'^I\t20\t30\t' \
         "execute track sidecar omits I:20-30"
+
     assert_pattern_absent \
-        "${trackfile}" \
+        "${trackfile_track}" \
         $'^I\t30\t40\t' \
         "execute track sidecar omits I:30-40"
 fi
 
 
 #  Gzipped bedGraph input and output should round-trip through execute mode
-fil_out="${dir_out}/exec_gzip_io_ratio_A.bdg.gz"
-outfile_txt="${dir_out}/exec_gzip_io_ratio_A.bdg"
-log="${dir_log}/execute_compute_signal_ratio_gzip_io.log"
-
 if \
     run_capture \
         "execute compute-signal ratio gzip_io" \
-        "${log}" \
+        "${log_gzip_io}" \
         "${TEST_BASH}" "${ROOT_REPO}/scripts/execute_compute_signal.sh" \
             --threads 1 \
             --mode ratio \
@@ -539,48 +557,47 @@ then
 else
     record_fail \
         "execute_compute_signal.sh ratio gzip_io failed; see" \
-        "$(print_relpath "${log}")"
+        "$(print_relpath "${log_gzip_io}")"
 fi
 
 assert_file_nonempty \
-    "${fil_out}" \
+    "${fil_out_gzip_io}" \
     "execute gzip ratio output"
 
-if [[ -s "${fil_out}" ]]; then
+if [[ -s "${fil_out_gzip_io}" ]]; then
     if \
-        gzip -t "${fil_out}"
+        gzip -t "${fil_out_gzip_io}"
     then
         record_pass "execute gzip ratio output passes gzip integrity check"
-        gzip -cd "${fil_out}" > "${outfile_txt}"
+        gzip -cd "${fil_out_gzip_io}" > "${outfile_txt_gzip_io}"
     else
         record_fail "execute gzip ratio output fails gzip integrity check"
     fi
 fi
 
-if [[ -s "${outfile_txt}" ]]; then
+if [[ -s "${outfile_txt_gzip_io}" ]]; then
     assert_pattern_found \
-        "${outfile_txt}" \
+        "${outfile_txt_gzip_io}" \
         $'^I\t0\t10\t2$' \
         "execute gzip ratio output has I:0-10 = 2"
+
     assert_pattern_found \
-        "${outfile_txt}" \
+        "${outfile_txt_gzip_io}" \
         $'^I\t40\t50\t4$' \
         "execute gzip ratio output has I:40-50 = 4"
+
     assert_pattern_found \
-        "${outfile_txt}" \
+        "${outfile_txt_gzip_io}" \
         $'^I\t60\t70\t0.333$' \
         "execute gzip ratio output has I:60-70 = 0.333"
 fi
 
 
 #  Header/prefix skipping should propagate through execute to submit/Python
-fil_out="${dir_out}/exec_skp_pfx_ratio_headers_A.bdg"
-log="${dir_log}/execute_compute_signal_ratio_skp_pfx.log"
-
 if \
     run_capture \
         "execute compute-signal ratio skp_pfx" \
-        "${log}" \
+        "${log_skp_pfx}" \
         "${TEST_BASH}" "${ROOT_REPO}/scripts/execute_compute_signal.sh" \
             --threads 1 \
             --mode ratio \
@@ -604,40 +621,46 @@ then
 else
     record_fail \
         "execute_compute_signal.sh ratio skp_pfx failed; see" \
-        "$(print_relpath "${log}")"
+        "$(print_relpath "${log_skp_pfx}")"
 fi
 
 assert_file_nonempty \
-    "${fil_out}" \
+    "${fil_out_skp_pfx}" \
     "execute skp_pfx ratio output"
 
-if [[ -s "${fil_out}" ]]; then
+if [[ -s "${fil_out_skp_pfx}" ]]; then
     assert_pattern_found \
-        "${fil_out}" \
+        "${fil_out_skp_pfx}" \
         $'^I\t0\t10\t2$' \
         "execute skp_pfx ratio output has I:0-10 = 2"
+
     assert_pattern_found \
-        "${fil_out}" \
+        "${fil_out_skp_pfx}" \
         $'^I\t40\t50\t4$' \
         "execute skp_pfx ratio output has I:40-50 = 4"
+
     assert_pattern_found \
-        "${fil_out}" \
+        "${fil_out_skp_pfx}" \
         $'^I\t60\t70\t0.333$' \
         "execute skp_pfx ratio output has I:60-70 = 0.333"
+
     assert_pattern_absent \
-        "${fil_out}" \
+        "${fil_out_skp_pfx}" \
         '^track' \
         "execute skp_pfx ratio output omits track headers"
+
     assert_pattern_absent \
-        "${fil_out}" \
+        "${fil_out_skp_pfx}" \
         '^browser' \
         "execute skp_pfx ratio output omits browser headers"
+
     assert_pattern_absent \
-        "${fil_out}" \
+        "${fil_out_skp_pfx}" \
         '^customHeader' \
         "execute skp_pfx ratio output omits custom headers"
+
     assert_pattern_absent \
-        "${fil_out}" \
+        "${fil_out_skp_pfx}" \
         '^#' \
         "execute skp_pfx ratio output omits comment headers"
 fi

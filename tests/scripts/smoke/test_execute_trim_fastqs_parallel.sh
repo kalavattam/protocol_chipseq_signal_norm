@@ -6,10 +6,13 @@
 # Copyright 2026 by Kris Alavattam
 # Email: kalavattam@gmail.com
 #
-# OpenAI ChatGPT (GPT-5.5) was used in development.
+# OpenAI ChatGPT and Codex (GPT-5.5) were used in development and
+# documentation.
 #
 # Distributed under the MIT license.
 
+
+set -euo pipefail
 
 TEST_NAME="execute trim-fastqs GNU Parallel"
 
@@ -54,6 +57,14 @@ cnt_se="${dir_out}/tiny_se.read_count.txt"
 cnt_r1="${dir_out}/tiny_pe_R1.read_count.txt"
 cnt_r2="${dir_out}/tiny_pe_R2.read_count.txt"
 
+log_env_atria="${dir_log}/execute_trim_fastqs_parallel_atria_env.log"
+log_env_parallel="${dir_log}/execute_trim_fastqs_parallel_parallel_env.log"
+log_run="${dir_log}/execute_trim_fastqs_parallel.log"
+log_out_se="${dir_err}/test_execute_trim_parallel.tiny_se.stdout.txt"
+log_err_se="${dir_err}/test_execute_trim_parallel.tiny_se.stderr.txt"
+log_out_pe="${dir_err}/test_execute_trim_parallel.tiny_pe.stdout.txt"
+log_err_pe="${dir_err}/test_execute_trim_parallel.tiny_pe.stderr.txt"
+
 rm -rf "${tmp}"
 mkdir -p "${dir_out}" "${dir_err}" "${dir_log}"
 
@@ -68,7 +79,7 @@ require_files_nonempty \
 if ! \
     require_env_atria \
         "env_protocol" \
-        "${dir_log}/execute_trim_fastqs_parallel_atria_env.log"
+        "${log_env_atria}"
 then
     finish
     exit $?
@@ -77,7 +88,7 @@ fi
 if ! \
     require_env_parallel \
         "env_protocol" \
-        "${dir_log}/execute_trim_fastqs_parallel_parallel_env.log"
+        "${log_env_parallel}"
 then
     finish
     exit $?
@@ -88,12 +99,10 @@ fi
 #+ input entry; with two entries and '--max_job 2', the execute wrapper writes
 #+ a GNU Parallel config and dispatches the per-entry submit commands through
 #+ 'parallel' instead of the serial branch
-log="${dir_log}/execute_trim_fastqs_parallel.log"
-
 if \
     run_capture \
         "execute trim-fastqs GNU Parallel Atria wet run" \
-        "${log}" \
+        "${log_run}" \
         "${TEST_BASH}" "${ROOT_REPO}/scripts/execute_trim_fastqs.sh" \
             --threads 2 \
             --csv_infile "${csv_in}" \
@@ -108,7 +117,7 @@ then
 else
     record_fail \
         "execute_trim_fastqs.sh GNU Parallel Atria wet run failed; see" \
-        "$(print_relpath "${log}")"
+        "$(print_relpath "${log_run}")"
 fi
 
 assert_file_nonempty \
@@ -129,11 +138,13 @@ fi
             \( -name 'tiny_se*.fastq.gz' -o -name 'tiny_se*.fq.gz' \) \
             | sort
     )
+
     mapfile -t trimmed_outputs_r1 < <(
         find "${dir_out}" -maxdepth 1 -type f \
             \( -name 'tiny_pe*R1*.fastq.gz' -o -name 'tiny_pe*R1*.fq.gz' \) \
             | sort
     )
+
     mapfile -t trimmed_outputs_r2 < <(
         find "${dir_out}" -maxdepth 1 -type f \
             \( -name 'tiny_pe*R2*.fastq.gz' -o -name 'tiny_pe*R2*.fq.gz' \) \
@@ -146,11 +157,13 @@ assert_path_found \
     "compressed SE trimmed FASTQ output" \
     "${dir_out}" \
     out_se
+
 assert_path_found \
     trimmed_outputs_r1 \
     "compressed PE R1 trimmed FASTQ output" \
     "${dir_out}" \
     out_r1
+
 assert_path_found \
     trimmed_outputs_r2 \
     "compressed PE R2 trimmed FASTQ output" \
@@ -166,6 +179,7 @@ assert_path_found \
         "${cnt_se}" \
         "" \
         "execute trim-fastqs GNU Parallel SE FASTQ output"
+
     assert_fastq_gzip \
         "${out_r1}" \
         '^@tiny_trim_pe_pair_1' \
@@ -173,6 +187,7 @@ assert_path_found \
         "${cnt_r1}" \
         "" \
         "execute trim-fastqs GNU Parallel PE R1 FASTQ output"
+
     assert_fastq_gzip \
         "${out_r2}" \
         '^@tiny_trim_pe_pair_1' \
@@ -183,16 +198,19 @@ assert_path_found \
 }
 
 assert_file_exists \
-    "${dir_err}/test_execute_trim_parallel.tiny_se.stdout.txt" \
+    "${log_out_se}" \
     "execute trim-fastqs GNU Parallel SE submit stdout log exists"
+
 assert_file_exists \
-    "${dir_err}/test_execute_trim_parallel.tiny_se.stderr.txt" \
+    "${log_err_se}" \
     "execute trim-fastqs GNU Parallel SE submit stderr log exists"
+
 assert_file_exists \
-    "${dir_err}/test_execute_trim_parallel.tiny_pe.stdout.txt" \
+    "${log_out_pe}" \
     "execute trim-fastqs GNU Parallel PE submit stdout log exists"
+
 assert_file_exists \
-    "${dir_err}/test_execute_trim_parallel.tiny_pe.stderr.txt" \
+    "${log_err_pe}" \
     "execute trim-fastqs GNU Parallel PE submit stderr log exists"
 
 finish

@@ -6,10 +6,13 @@
 # Copyright 2026 by Kris Alavattam
 # Email: kalavattam@gmail.com
 #
-# OpenAI ChatGPT (GPT-5.5) was used in development.
+# OpenAI ChatGPT and Codex (GPT-5.5) were used in development and
+# documentation.
 #
 # Distributed under the MIT license.
 
+
+set -euo pipefail
 
 TEST_NAME="execute trim-fastqs PE"
 
@@ -42,10 +45,18 @@ tmp="${TEST_DIR_TMP}/execute_trim_fastqs_pe"
 dir_out="${tmp}/out"
 dir_err="${tmp}/logs"
 dir_log="${TEST_DIR_LOG}/trim_fastqs"
+
 vw_r1="${dir_out}/tiny_pe_R1.trimmed.fastq"
 vw_r2="${dir_out}/tiny_pe_R2.trimmed.fastq"
 cnt_r1="${dir_out}/tiny_pe_R1.read_count.txt"
 cnt_r2="${dir_out}/tiny_pe_R2.read_count.txt"
+
+log_env="${dir_log}/execute_trim_fastqs_pe_env.log"
+log_run="${dir_log}/execute_trim_fastqs_pe.log"
+log_out_ser="${dir_err}/test_execute_trim_pe_ser.stdout.txt"
+log_err_ser="${dir_err}/test_execute_trim_pe_ser.stderr.txt"
+log_out_pe="${dir_err}/test_execute_trim_pe.tiny_pe.stdout.txt"
+log_err_pe="${dir_err}/test_execute_trim_pe.tiny_pe.stderr.txt"
 
 rm -rf "${tmp}"
 mkdir -p "${dir_out}" "${dir_err}" "${dir_log}"
@@ -60,7 +71,7 @@ require_files_nonempty \
 if ! \
     require_env_atria \
         "env_protocol" \
-        "${dir_log}/execute_trim_fastqs_pe_env.log"
+        "${log_env}"
 then
     finish
     exit $?
@@ -68,12 +79,10 @@ fi
 
 
 #  Run execute_trim_fastqs.sh serially on one PE FASTQ pair
-log="${dir_log}/execute_trim_fastqs_pe.log"
-
 if \
     run_capture \
         "execute trim-fastqs PE Atria wet run" \
-        "${log}" \
+        "${log_run}" \
         "${TEST_BASH}" "${ROOT_REPO}/scripts/execute_trim_fastqs.sh" \
             --threads 1 \
             --csv_infile "${csv_in}" \
@@ -88,7 +97,7 @@ then
 else
     record_fail \
         "execute_trim_fastqs.sh PE Atria wet run failed; see" \
-        "$(print_relpath "${log}")"
+        "$(print_relpath "${log_run}")"
 fi
 
 # shellcheck disable=SC2034
@@ -110,6 +119,7 @@ assert_path_found \
     "compressed PE R1 trimmed FASTQ output" \
     "${dir_out}" \
     out_r1
+
 assert_path_found \
     trimmed_outputs_r2 \
     "compressed PE R2 trimmed FASTQ output" \
@@ -125,6 +135,7 @@ assert_path_found \
         "${cnt_r1}" \
         "" \
         "execute trim-fastqs PE R1 FASTQ output"
+
     assert_fastq_gzip \
         "${out_r2}" \
         '^@tiny_trim_pe_pair_1' \
@@ -135,16 +146,19 @@ assert_path_found \
 }
 
 assert_file_exists \
-    "${dir_err}/test_execute_trim_pe_ser.stdout.txt" \
+    "${log_out_ser}" \
     "execute trim-fastqs PE serial stdout log exists"
+
 assert_file_exists \
-    "${dir_err}/test_execute_trim_pe_ser.stderr.txt" \
+    "${log_err_ser}" \
     "execute trim-fastqs PE serial stderr log exists"
+
 assert_file_exists \
-    "${dir_err}/test_execute_trim_pe.tiny_pe.stdout.txt" \
+    "${log_out_pe}" \
     "execute trim-fastqs PE submit stdout log exists"
+
 assert_file_exists \
-    "${dir_err}/test_execute_trim_pe.tiny_pe.stderr.txt" \
+    "${log_err_pe}" \
     "execute trim-fastqs PE submit stderr log exists"
 
 finish

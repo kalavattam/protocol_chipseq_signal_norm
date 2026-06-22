@@ -6,10 +6,13 @@
 # Copyright 2026 by Kris Alavattam
 # Email: kalavattam@gmail.com
 #
-# OpenAI ChatGPT and Codex (GPT-5.5) were used in development.
+# OpenAI ChatGPT and Codex (GPT-5.5) were used in development and
+# documentation.
 #
 # Distributed under the MIT license.
 
+
+set -euo pipefail
 
 TEST_NAME="execute calculate-scaling-factor siQ"
 
@@ -18,6 +21,33 @@ TEST_NAME="execute calculate-scaling-factor siQ"
 source "$(
     cd "$(dirname "${BASH_SOURCE[0]}")/.." > /dev/null 2>&1 && pwd
 )/lib/test_helpers.sh"
+
+function run_case_siq() {
+    local cas="${1:-}"
+    local arr_cmd_nam="${2:-}"
+    local row_0="${3:-}"
+    local row_1="${4:-}"
+    local tail_0="${5:-}"
+    local tail_1="${6:-}"
+    shift 6 || true
+
+    run_case_scaling_factor_execute \
+        "${cas}" \
+        siQ \
+        "${arr_cmd_nam}" \
+        "${dir_out}" \
+        "${dir_log}" \
+        siq \
+        test_execute_calculate_scaling_factor_siq \
+        $'^fil_ip\tfil_in\tsiq\teqn\tmass_ip\tmass_in\tvol_all\tvol_in\tdep_ip\tdep_in\tlen_ip\tlen_in$' \
+        "${row_0}" \
+        "${row_1}" \
+        "${tail_0}" \
+        "${tail_1}" \
+        "$@"
+}
+
+
 
 print_section "${TEST_NAME}"
 
@@ -49,71 +79,88 @@ bam_pe_mip_0="${dir_bam_pe}/IP_WT_G1_Hho1_6336.sc.bam"
 bam_pe_mip_1="${dir_bam_pe}/IP_WT_G1_Hho1_6337.sc.bam"
 bam_pe_min_0="${dir_bam_pe}/in_WT_G1_Hho1_6336.sc.bam"
 bam_pe_min_1="${dir_bam_pe}/in_WT_G1_Hho1_6337.sc.bam"
-hu_pe_mip_0="${dir_bam_pe}/IP_WT_G1_HU_Hho1_6336.sc.bam"
-hu_pe_mip_1="${dir_bam_pe}/IP_WT_G1_HU_Hho1_6337.sc.bam"
-hu_pe_min_0="${dir_bam_pe}/in_WT_G1_HU_Hho1_6336.sc.bam"
-hu_pe_min_1="${dir_bam_pe}/in_WT_G1_HU_Hho1_6337.sc.bam"
 
-cram_pe_mip_0="${dir_cram_pe}/IP_WT_G1_Hho1_6336.sc.cram"
-cram_pe_mip_1="${dir_cram_pe}/IP_WT_G1_Hho1_6337.sc.cram"
-cram_pe_min_0="${dir_cram_pe}/in_WT_G1_Hho1_6336.sc.cram"
-cram_pe_min_1="${dir_cram_pe}/in_WT_G1_Hho1_6337.sc.cram"
+bai_pe_mip_0="${bam_pe_mip_0}.bai"
+bai_pe_mip_1="${bam_pe_mip_1}.bai"
+bai_pe_min_0="${bam_pe_min_0}.bai"
+bai_pe_min_1="${bam_pe_min_1}.bai"
+
+bam_pe_mip_0_hu="${dir_bam_pe}/IP_WT_G1_HU_Hho1_6336.sc.bam"
+bam_pe_mip_1_hu="${dir_bam_pe}/IP_WT_G1_HU_Hho1_6337.sc.bam"
+bam_pe_min_0_hu="${dir_bam_pe}/in_WT_G1_HU_Hho1_6336.sc.bam"
+bam_pe_min_1_hu="${dir_bam_pe}/in_WT_G1_HU_Hho1_6337.sc.bam"
+
+bai_pe_mip_0_hu="${bam_pe_mip_0_hu}.bai"
+bai_pe_mip_1_hu="${bam_pe_mip_1_hu}.bai"
+bai_pe_min_0_hu="${bam_pe_min_0_hu}.bai"
+bai_pe_min_1_hu="${bam_pe_min_1_hu}.bai"
 
 bam_se_mip_0="${dir_bam_se}/IP_WT_log_Brn1_rep1.sc.bam"
 bam_se_mip_1="${dir_bam_se}/IP_WT_log_Brn1_rep2.sc.bam"
 bam_se_min_0="${dir_bam_se}/in_WT_log_Brn1_rep1.sc.bam"
 bam_se_min_1="${dir_bam_se}/in_WT_log_Brn1_rep2.sc.bam"
 
-rm -rf "${tmp}"
-mkdir -p "${dir_out}" "${dir_err}" "${dir_log}"
+bai_se_mip_0="${bam_se_mip_0}.bai"
+bai_se_mip_1="${bam_se_mip_1}.bai"
+bai_se_min_0="${bam_se_min_0}.bai"
+bai_se_min_1="${bam_se_min_1}.bai"
 
-require_env_project env_nam || {
-    finish
-    exit $?
-}
+cram_pe_mip_0="${dir_cram_pe}/IP_WT_G1_Hho1_6336.sc.cram"
+cram_pe_mip_1="${dir_cram_pe}/IP_WT_G1_Hho1_6337.sc.cram"
+cram_pe_min_0="${dir_cram_pe}/in_WT_G1_Hho1_6336.sc.cram"
+cram_pe_min_1="${dir_cram_pe}/in_WT_G1_Hho1_6337.sc.cram"
 
-if ! \
-    require_files_nonempty \
-        "${scr_exe}" \
-        "${cfg_met}" \
-        "${tbl_met}" \
-        "${tbl_gz}" \
-        "${tbl_lib}" \
-        "${tbl_dup}" \
-        "${tbl_pre}" \
-        "${bam_pe_mip_0}" \
-        "${bam_pe_mip_0}.bai" \
-        "${bam_pe_mip_1}" \
-        "${bam_pe_mip_1}.bai" \
-        "${bam_pe_min_0}" \
-        "${bam_pe_min_0}.bai" \
-        "${bam_pe_min_1}" \
-        "${bam_pe_min_1}.bai" \
-        "${hu_pe_mip_0}" \
-        "${hu_pe_mip_0}.bai" \
-        "${hu_pe_mip_1}" \
-        "${hu_pe_mip_1}.bai" \
-        "${hu_pe_min_0}" \
-        "${hu_pe_min_0}.bai" \
-        "${hu_pe_min_1}" \
-        "${hu_pe_min_1}.bai" \
-        "${cram_pe_mip_0}" \
-        "${cram_pe_mip_1}" \
-        "${cram_pe_min_0}" \
-        "${cram_pe_min_1}" \
-        "${ref_fa}" \
-        "${bam_se_mip_0}" \
-        "${bam_se_mip_0}.bai" \
-        "${bam_se_mip_1}" \
-        "${bam_se_mip_1}.bai" \
-        "${bam_se_min_0}" \
-        "${bam_se_min_0}.bai" \
-        "${bam_se_min_1}" \
-        "${bam_se_min_1}.bai"
-then
-    finish
-    exit $?
-fi
+crai_pe_mip_0="${cram_pe_mip_0}.crai"
+crai_pe_mip_1="${cram_pe_mip_1}.crai"
+crai_pe_min_0="${cram_pe_min_0}.crai"
+crai_pe_min_1="${cram_pe_min_1}.crai"
+
+fil_out_dry="${dir_out}/scaling.dry.siq.tsv"
+fil_out_pe_bam="${dir_out}/scaling.pe_bam.siq.tsv"
+fil_out_cram_missing_ref="${dir_out}/scaling.cram_missing_ref.siq.tsv"
+fil_out_invalid_eqn="${dir_out}/scaling.invalid_eqn.siq.tsv"
+fil_out_method_not_applicable="${dir_out}/scaling.method_not_applicable.siq.tsv"
+fil_out_duplicate_match="${dir_out}/scaling.duplicate_match.siq.tsv"
+
+prt_pe_bam_0="${fil_out_pe_bam}.part.000000"
+prt_pe_bam_1="${fil_out_pe_bam}.part.000001"
+
+nam_job_dry="test_execute_calculate_scaling_factor_siq_dry"
+nam_job_pe_bam="test_execute_calculate_scaling_factor_siq_pe_bam"
+nam_job_pe_cram="test_execute_calculate_scaling_factor_siq_pe_cram"
+nam_job_cram_missing_ref="test_execute_calculate_scaling_factor_siq_cram_missing_ref"
+nam_job_invalid_eqn="test_execute_calculate_scaling_factor_siq_invalid_eqn"
+nam_job_method_not_applicable="test_execute_calculate_scaling_factor_siq_method_not_applicable"
+nam_job_mixed_layout="test_execute_calculate_scaling_factor_siq_mixed_layout"
+nam_job_mixed_format="test_execute_calculate_scaling_factor_siq_mixed_format"
+nam_job_duplicate_match="test_execute_calculate_scaling_factor_siq_duplicate_match"
+nam_job_se_bam="test_execute_calculate_scaling_factor_siq_se_bam"
+
+log_dry="${dir_log}/execute_siq_dry_run.log"
+log_cram_missing_ref="${dir_log}/execute_siq_cram_missing_ref.log"
+log_invalid_eqn="${dir_log}/execute_siq_invalid_eqn.log"
+log_method_not_applicable="${dir_log}/execute_siq_method_not_applicable.log"
+log_duplicate_match="${dir_log}/execute_siq_duplicate_match.log"
+log_existing="${dir_log}/execute_siq_existing.log"
+log_force_no_parts="${dir_log}/execute_siq_force_no_parts.log"
+
+log_err_pe_bam_0="${dir_err}/${nam_job_pe_bam}.IP_WT_G1_Hho1_6336.sc.stderr.txt"
+log_err_pe_bam_1="${dir_err}/${nam_job_pe_bam}.IP_WT_G1_Hho1_6337.sc.stderr.txt"
+log_err_pe_cram_0="${dir_err}/${nam_job_pe_cram}.IP_WT_G1_Hho1_6336.sc.stderr.txt"
+log_err_pe_cram_1="${dir_err}/${nam_job_pe_cram}.IP_WT_G1_Hho1_6337.sc.stderr.txt"
+log_err_mixed_layout_0="${dir_err}/${nam_job_mixed_layout}.IP_WT_log_Brn1_rep1.sc.stderr.txt"
+log_err_mixed_layout_1="${dir_err}/${nam_job_mixed_layout}.IP_WT_G1_Hho1_6337.sc.stderr.txt"
+log_err_mixed_format_1="${dir_err}/${nam_job_mixed_format}.IP_WT_G1_Hho1_6337.sc.stderr.txt"
+log_err_duplicate_match="${dir_err}/${nam_job_duplicate_match}.IP_WT_G1_Hho1_6336.sc.stderr.txt"
+log_err_se_bam_0="${dir_err}/${nam_job_se_bam}.IP_WT_log_Brn1_rep1.sc.stderr.txt"
+log_err_se_bam_1="${dir_err}/${nam_job_se_bam}.IP_WT_log_Brn1_rep2.sc.stderr.txt"
+
+row_bam_pe_0="${bam_pe_mip_0}"$'\t'"${bam_pe_min_0}"
+row_bam_pe_1="${bam_pe_mip_1}"$'\t'"${bam_pe_min_1}"
+row_cram_pe_0="${cram_pe_mip_0}"$'\t'"${cram_pe_min_0}"
+row_cram_pe_1="${cram_pe_mip_1}"$'\t'"${cram_pe_min_1}"
+row_bam_se_0="${bam_se_mip_0}"$'\t'"${bam_se_min_0}"
+row_bam_se_1="${bam_se_mip_1}"$'\t'"${bam_se_min_1}"
 
 arr_cmd_bam_pe=(
     "${TEST_BASH}" "${scr_exe}"
@@ -206,58 +253,78 @@ arr_cmd_bam_pe=(
     )
 }
 
-row_bam_pe_0="${bam_pe_mip_0}"$'\t'"${bam_pe_min_0}"
-row_bam_pe_1="${bam_pe_mip_1}"$'\t'"${bam_pe_min_1}"
-row_cram_pe_0="${cram_pe_mip_0}"$'\t'"${cram_pe_min_0}"
-row_cram_pe_1="${cram_pe_mip_1}"$'\t'"${cram_pe_min_1}"
-row_bam_se_0="${bam_se_mip_0}"$'\t'"${bam_se_min_0}"
-row_bam_se_1="${bam_se_mip_1}"$'\t'"${bam_se_min_1}"
+rm -rf "${tmp}"
+mkdir -p "${dir_out}" "${dir_err}" "${dir_log}"
+
+require_env_project env_nam || {
+    finish
+    exit $?
+}
+
+if ! \
+    require_files_nonempty \
+        "${scr_exe}" \
+        "${cfg_met}" \
+        "${tbl_met}" \
+        "${tbl_gz}" \
+        "${tbl_lib}" \
+        "${tbl_dup}" \
+        "${tbl_pre}" \
+        "${bam_pe_mip_0}" \
+        "${bai_pe_mip_0}" \
+        "${bam_pe_mip_1}" \
+        "${bai_pe_mip_1}" \
+        "${bam_pe_min_0}" \
+        "${bai_pe_min_0}" \
+        "${bam_pe_min_1}" \
+        "${bai_pe_min_1}" \
+        "${bam_pe_mip_0_hu}" \
+        "${bai_pe_mip_0_hu}" \
+        "${bam_pe_mip_1_hu}" \
+        "${bai_pe_mip_1_hu}" \
+        "${bam_pe_min_0_hu}" \
+        "${bai_pe_min_0_hu}" \
+        "${bam_pe_min_1_hu}" \
+        "${bai_pe_min_1_hu}" \
+        "${cram_pe_mip_0}" \
+        "${crai_pe_mip_0}" \
+        "${cram_pe_mip_1}" \
+        "${crai_pe_mip_1}" \
+        "${cram_pe_min_0}" \
+        "${crai_pe_min_0}" \
+        "${cram_pe_min_1}" \
+        "${crai_pe_min_1}" \
+        "${ref_fa}" \
+        "${bam_se_mip_0}" \
+        "${bai_se_mip_0}" \
+        "${bam_se_mip_1}" \
+        "${bai_se_mip_1}" \
+        "${bam_se_min_0}" \
+        "${bai_se_min_0}" \
+        "${bam_se_min_1}" \
+        "${bai_se_min_1}"
+then
+    finish
+    exit $?
+fi
 
 
 #  Run one serial siQ calculation case and assert its assembled table
-function run_case_siq() {
-    local cas="${1:-}"
-    local arr_cmd_nam="${2:-}"
-    local row_0="${3:-}"
-    local row_1="${4:-}"
-    local tail_0="${5:-}"
-    local tail_1="${6:-}"
-    shift 6 || true
-
-    run_case_scaling_factor_execute \
-        "${cas}" \
-        siQ \
-        "${arr_cmd_nam}" \
-        "${dir_out}" \
-        "${dir_log}" \
-        siq \
-        test_execute_calculate_scaling_factor_siq \
-        $'^fil_ip\tfil_in\tsiq\teqn\tmass_ip\tmass_in\tvol_all\tvol_in\tdep_ip\tdep_in\tlen_ip\tlen_in$' \
-        "${row_0}" \
-        "${row_1}" \
-        "${tail_0}" \
-        "${tail_1}" \
-        "$@"
-}
-
-
 #  Dry-run execution should report worker, combiner, and header commands
-fil_out_dry="${dir_out}/scaling.dry.siq.tsv"
-log="${dir_log}/execute_siq_dry_run.log"
 if \
     run_capture \
         "execute calculate-scaling-factor siQ dry-run" \
-        "${log}" \
+        "${log_dry}" \
         "${arr_cmd_bam_pe[@]}" \
         --fil_out "${fil_out_dry}" \
-        --nam_job test_execute_calculate_scaling_factor_siq_dry \
+        --nam_job "${nam_job_dry}" \
         --dry_run
 then
     record_pass "execute_calculate_scaling_factor.sh siQ --dry_run exits 0"
 else
     record_fail \
         "execute_calculate_scaling_factor.sh siQ --dry_run failed; see" \
-        "$(print_relpath "${log}")"
+        "$(print_relpath "${log_dry}")"
 fi
 
 if [[ ! -e "${fil_out_dry}" ]]; then
@@ -267,32 +334,32 @@ else
 fi
 
 assert_pattern_found \
-    "${log}" \
+    "${log_dry}" \
     'combine_parts_scaling_factor.sh' \
     "execute_calculate_scaling_factor.sh siQ --dry_run reports combiner"
 
 assert_pattern_found \
-    "${log}" \
+    "${log_dry}" \
     'write_header.sh' \
     "execute_calculate_scaling_factor.sh siQ --dry_run reports header"
 
 assert_pattern_found \
-    "${log}" \
+    "${log_dry}" \
     'write_header.sh.*--fil_in.*--in_place' \
     "execute_calculate_scaling_factor.sh siQ --dry_run reports in-place headering"
 
 assert_pattern_found \
-    "${log}" \
+    "${log_dry}" \
     "${TEST_BASH} ${ROOT_REPO}/scripts/submit_calculate_scaling_factor.sh" \
     "execute_calculate_scaling_factor.sh siQ --dry_run reports submit"
 
 assert_pattern_found \
-    "${log}" \
+    "${log_dry}" \
     '--idx_out 0' \
     "execute_calculate_scaling_factor.sh siQ --dry_run reports first index"
 
 assert_pattern_found \
-    "${log}" \
+    "${log_dry}" \
     '--idx_out 1' \
     "execute_calculate_scaling_factor.sh siQ --dry_run reports second index"
 
@@ -306,20 +373,13 @@ run_case_siq \
     $'0.001912211397724232486706\t6nd\t2.7\t72.5\t300\t20\t3\t2\t626\t450' \
     $'0.002902612244746139314594\t6nd\t5\t81.1\t300\t20\t2\t3\t663\t437'
 
-fil_out="${dir_out}/scaling.pe_bam.siq.tsv"
-prt_0="${fil_out}.part.000000"
-prt_1="${fil_out}.part.000001"
-nam_job="test_execute_calculate_scaling_factor_siq_pe_bam"
-log_err_0="${dir_err}/${nam_job}.IP_WT_G1_Hho1_6336.sc.stderr.txt"
-log_err_1="${dir_err}/${nam_job}.IP_WT_G1_Hho1_6337.sc.stderr.txt"
-
 assert_pattern_found \
-    "${log_err_0}" \
+    "${log_err_pe_bam_0}" \
     'typ_ip=pe' \
     "execute scaling-factor siQ PE BAM auto-detects first IP as PE"
 
 assert_pattern_found \
-    "${log_err_1}" \
+    "${log_err_pe_bam_1}" \
     'typ_ip=pe' \
     "execute scaling-factor siQ PE BAM auto-detects second IP as PE"
 
@@ -349,27 +409,22 @@ run_case_siq \
     $'0.001912211397724232486706\t6nd\t2.7\t72.5\t300\t20\t3\t2\t626\t450' \
     $'0.002902612244746139314594\t6nd\t5\t81.1\t300\t20\t2\t3\t663\t437'
 
-nam_job="test_execute_calculate_scaling_factor_siq_pe_cram"
-log_err_0="${dir_err}/${nam_job}.IP_WT_G1_Hho1_6336.sc.stderr.txt"
-log_err_1="${dir_err}/${nam_job}.IP_WT_G1_Hho1_6337.sc.stderr.txt"
-
 assert_pattern_found \
-    "${log_err_0}" \
+    "${log_err_pe_cram_0}" \
     'typ_ip=pe' \
     "execute scaling-factor siQ PE CRAM auto-detects first IP as PE"
 
 assert_pattern_found \
-    "${log_err_1}" \
+    "${log_err_pe_cram_1}" \
     "ref_fa=${ref_fa}" \
     "execute scaling-factor siQ PE CRAM forwards ref_fa"
 
 
 #  CRAM input should fail clearly when no reference is supplied
-log="${dir_log}/execute_siq_cram_missing_ref.log"
 if \
     run_capture \
         "execute calculate-scaling-factor siQ CRAM missing reference" \
-        "${log}" \
+        "${log_cram_missing_ref}" \
         "${TEST_BASH}" "${scr_exe}" \
             --threads 1 \
             --mode siq \
@@ -379,9 +434,9 @@ if \
             --tbl_met "${tbl_met}" \
             --cfg_met "${cfg_met}" \
             --eqn 6nd \
-            --fil_out "${dir_out}/scaling.cram_missing_ref.siq.tsv" \
+            --fil_out "${fil_out_cram_missing_ref}" \
             --err_out "${dir_err}" \
-            --nam_job test_execute_calculate_scaling_factor_siq_cram_missing_ref \
+            --nam_job "${nam_job_cram_missing_ref}" \
             --max_job 1
 then
     record_fail \
@@ -389,18 +444,17 @@ then
         "unexpectedly passed"
 else
     assert_pattern_found \
-        "${log}" \
+        "${log_cram_missing_ref}" \
         "'--ref_fa' is required" \
         "execute_calculate_scaling_factor.sh rejects CRAM without ref_fa"
 fi
 
 
 #  Invalid equation identifiers should fail before processing
-log="${dir_log}/execute_siq_invalid_eqn.log"
 if \
     run_capture \
         "execute calculate-scaling-factor siQ invalid equation" \
-        "${log}" \
+        "${log_invalid_eqn}" \
         "${TEST_BASH}" "${scr_exe}" \
             --threads 1 \
             --mode siq \
@@ -410,9 +464,9 @@ if \
             --tbl_met "${tbl_met}" \
             --cfg_met "${cfg_met}" \
             --eqn 7 \
-            --fil_out "${dir_out}/scaling.invalid_eqn.siq.tsv" \
+            --fil_out "${fil_out_invalid_eqn}" \
             --err_out "${dir_err}" \
-            --nam_job test_execute_calculate_scaling_factor_siq_invalid_eqn \
+            --nam_job "${nam_job_invalid_eqn}" \
             --max_job 1
 then
     record_fail \
@@ -420,29 +474,28 @@ then
         "unexpectedly passed"
 else
     assert_pattern_found \
-        "${log}" \
+        "${log_invalid_eqn}" \
         "equation ('--eqn') was assigned '7'" \
         "execute_calculate_scaling_factor.sh rejects invalid siQ equation"
 fi
 
 
 #  Spike-in method arguments are invalid in siQ mode
-log="${dir_log}/execute_siq_method_not_applicable.log"
 if \
     run_capture \
         "execute calculate-scaling-factor siQ method not applicable" \
-        "${log}" \
+        "${log_method_not_applicable}" \
         "${arr_cmd_bam_pe[@]}" \
         --method fractional \
-        --fil_out "${dir_out}/scaling.method_not_applicable.siq.tsv" \
-        --nam_job test_execute_calculate_scaling_factor_siq_method_not_applicable
+        --fil_out "${fil_out_method_not_applicable}" \
+        --nam_job "${nam_job_method_not_applicable}"
 then
     record_fail \
         "execute_calculate_scaling_factor.sh siQ method argument" \
         "unexpectedly passed"
 else
     assert_pattern_found \
-        "${log}" \
+        "${log_method_not_applicable}" \
         "'--method' may be used only when '--mode spike' is active" \
         "execute_calculate_scaling_factor.sh rejects method under siQ mode"
 fi
@@ -457,17 +510,13 @@ run_case_siq \
     $'0.004761904761904762334312\t6nd\t4\t60\t300\t20\t3\t2\t150\t150' \
     $'0.002902612244746139314594\t6nd\t5\t81.1\t300\t20\t2\t3\t663\t437'
 
-nam_job="test_execute_calculate_scaling_factor_siq_mixed_layout"
-log_err_0="${dir_err}/${nam_job}.IP_WT_log_Brn1_rep1.sc.stderr.txt"
-log_err_1="${dir_err}/${nam_job}.IP_WT_G1_Hho1_6337.sc.stderr.txt"
-
 assert_pattern_found \
-    "${log_err_0}" \
+    "${log_err_mixed_layout_0}" \
     'typ_ip=se' \
     "execute scaling-factor siQ mixed layout keeps first IP as SE"
 
 assert_pattern_found \
-    "${log_err_1}" \
+    "${log_err_mixed_layout_1}" \
     'typ_ip=pe' \
     "execute scaling-factor siQ mixed layout keeps second IP as PE"
 
@@ -481,11 +530,8 @@ run_case_siq \
     $'0.001912211397724232486706\t6nd\t2.7\t72.5\t300\t20\t3\t2\t626\t450' \
     $'0.002902612244746139314594\t6nd\t5\t81.1\t300\t20\t2\t3\t663\t437'
 
-nam_job="test_execute_calculate_scaling_factor_siq_mixed_format"
-log_err_1="${dir_err}/${nam_job}.IP_WT_G1_Hho1_6337.sc.stderr.txt"
-
 assert_pattern_found \
-    "${log_err_1}" \
+    "${log_err_mixed_format_1}" \
     "ref_fa=${ref_fa}" \
     "execute scaling-factor siQ mixed BAM/CRAM list forwards ref_fa"
 
@@ -500,12 +546,10 @@ run_case_siq \
     $'0.002902612244746139314594\t6nd\t5\t81.1\t300\t20\t2\t3\t663\t437' \
     --tbl_met "${tbl_gz}"
 
-log="${dir_log}/execute_siq_duplicate_match.log"
-fil_err="${dir_err}/test_execute_calculate_scaling_factor_siq_duplicate_match.IP_WT_G1_Hho1_6336.sc.stderr.txt"
 if \
     run_capture \
         "execute calculate-scaling-factor siQ duplicate match" \
-        "${log}" \
+        "${log_duplicate_match}" \
         "${TEST_BASH}" "${scr_exe}" \
             --threads 1 \
             --mode siq \
@@ -515,9 +559,9 @@ if \
             --tbl_met "${tbl_dup}" \
             --cfg_met "${cfg_met}" \
             --eqn 6nd \
-            --fil_out "${dir_out}/scaling.duplicate_match.siq.tsv" \
+            --fil_out "${fil_out_duplicate_match}" \
             --err_out "${dir_err}" \
-            --nam_job test_execute_calculate_scaling_factor_siq_duplicate_match \
+            --nam_job "${nam_job_duplicate_match}" \
             --max_job 1
 then
     record_fail \
@@ -525,7 +569,7 @@ then
         "unexpectedly passed"
 else
     assert_pattern_found \
-        "${fil_err}" \
+        "${log_err_duplicate_match}" \
         "Multiple metadata rows matched" \
         "execute_calculate_scaling_factor.sh siQ duplicate match fails clearly"
 fi
@@ -592,17 +636,13 @@ run_case_siq \
     $'0.004761904761904762334312\t6nd\t4\t60\t300\t20\t3\t2\t150\t150' \
     $'0.004761904761904761466951\t6nd\t5\t75\t300\t20\t2\t3\t150\t150'
 
-nam_job="test_execute_calculate_scaling_factor_siq_se_bam"
-log_err_0="${dir_err}/${nam_job}.IP_WT_log_Brn1_rep1.sc.stderr.txt"
-log_err_1="${dir_err}/${nam_job}.IP_WT_log_Brn1_rep2.sc.stderr.txt"
-
 assert_pattern_found \
-    "${log_err_0}" \
+    "${log_err_se_bam_0}" \
     'typ_ip=se' \
     "execute scaling-factor siQ SE BAM auto-detects first IP as SE"
 
 assert_pattern_found \
-    "${log_err_1}" \
+    "${log_err_se_bam_1}" \
     'typ_ip=se' \
     "execute scaling-factor siQ SE BAM auto-detects second IP as SE"
 
@@ -617,39 +657,33 @@ run_case_siq \
 
 
 #  Existing final output should fail unless '--force' is supplied
-fil_out="${dir_out}/scaling.pe_bam.siq.tsv"
-prt_0="${fil_out}.part.000000"
-prt_1="${fil_out}.part.000001"
-nam_job="test_execute_calculate_scaling_factor_siq_pe_bam"
-log="${dir_log}/execute_siq_existing.log"
 if \
     run_capture \
         "execute calculate-scaling-factor siQ existing output" \
-        "${log}" \
+        "${log_existing}" \
         "${arr_cmd_bam_pe[@]}" \
-        --fil_out "${fil_out}" \
-        --nam_job "${nam_job}"
+        --fil_out "${fil_out_pe_bam}" \
+        --nam_job "${nam_job_pe_bam}"
 then
     record_fail \
         "execute_calculate_scaling_factor.sh siQ existing output" \
         "unexpectedly passed"
 else
     assert_pattern_found \
-        "${log}" \
+        "${log_existing}" \
         'output file already exists' \
         "execute_calculate_scaling_factor.sh siQ rejects existing output"
 fi
 
 
 #  '--force' should replace output and '--no_parts' should remove worker parts
-log="${dir_log}/execute_siq_force_no_parts.log"
 if \
     run_capture \
         "execute calculate-scaling-factor siQ force no-parts" \
-        "${log}" \
+        "${log_force_no_parts}" \
         "${arr_cmd_bam_pe[@]}" \
-        --fil_out "${fil_out}" \
-        --nam_job "${nam_job}" \
+        --fil_out "${fil_out_pe_bam}" \
+        --nam_job "${nam_job_pe_bam}" \
         --force \
         --no_parts
 then
@@ -658,14 +692,14 @@ then
 else
     record_fail \
         "execute_calculate_scaling_factor.sh siQ --force --no_parts failed;" \
-        "see $(print_relpath "${log}")"
+        "see $(print_relpath "${log_force_no_parts}")"
 fi
 
 assert_file_nonempty \
-    "${fil_out}" \
+    "${fil_out_pe_bam}" \
     "execute scaling-factor siQ replaced final TSV"
 
-if [[ ! -e "${prt_0}" && ! -e "${prt_1}" ]]; then
+if [[ ! -e "${prt_pe_bam_0}" && ! -e "${prt_pe_bam_1}" ]]; then
     record_pass "execute scaling-factor siQ --no_parts removes worker parts"
 else
     record_fail "execute scaling-factor siQ --no_parts retained worker parts"

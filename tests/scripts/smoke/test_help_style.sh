@@ -6,7 +6,8 @@
 # Copyright 2026 by Kris Alavattam
 # Email: kalavattam@gmail.com
 #
-# OpenAI ChatGPT (GPT-5.5) was used in development.
+# OpenAI ChatGPT and Codex (GPT-5.5) were used in development and
+# documentation.
 #
 # Distributed under the MIT license.
 
@@ -20,6 +21,7 @@
 #+ - detect missing two-blank-line separators before major headings
 #+ - detect `--dry-run` documented when `--dry_run` should be canonical
 
+set -euo pipefail
 
 TEST_NAME="help style"
 
@@ -28,29 +30,6 @@ TEST_NAME="help style"
 source "$(
     cd "$(dirname "${BASH_SOURCE[0]}")/.." > /dev/null 2>&1 && pwd
 )/lib/test_helpers.sh"
-
-print_section "${TEST_NAME}"
-
-#  Scan top-level script help text and extracted help files for style drift
-files=()
-while IFS= read -r file; do
-    files+=( "${file}" )
-done < <(
-    {
-        find "${ROOT_REPO}/scripts" -maxdepth 1 -type f -name '*.sh' -print
-        find "${ROOT_REPO}/scripts/functions/help" -type f -name '*.sh' -print
-    } | sort
-)
-
-#  Restrict example line-continuation checks to extracted help files for now
-fil_hlp=()
-while IFS= read -r file; do
-    fil_hlp+=( "${file}" )
-done < <(
-    find "${ROOT_REPO}/scripts/functions/help" \
-        -type f -name '*.sh' -print \
-        | sort
-)
 
 
 #  Scan a caller-supplied file list for a fixed pattern
@@ -128,6 +107,29 @@ function scan_usage_rnd() {
     fi
 }
 
+
+print_section "${TEST_NAME}"
+
+#  Scan top-level script help text and extracted help files for style drift
+files=()
+while IFS= read -r file; do
+    files+=( "${file}" )
+done < <(
+    {
+        find "${ROOT_REPO}/scripts" -maxdepth 1 -type f -name '*.sh' -print
+        find "${ROOT_REPO}/scripts/functions/help" -type f -name '*.sh' -print
+    } | sort
+)
+
+#  Restrict example line-continuation checks to extracted help files for now
+fil_hlp=()
+while IFS= read -r file; do
+    fil_hlp+=( "${file}" )
+done < <(
+    find "${ROOT_REPO}/scripts/functions/help" \
+        -type f -name '*.sh' -print \
+        | sort
+)
 
 #  Run lightweight help-style scans ===========================================
 scan_tabs

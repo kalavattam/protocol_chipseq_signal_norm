@@ -6,10 +6,13 @@
 # Copyright 2026 by Kris Alavattam
 # Email: kalavattam@gmail.com
 #
-# OpenAI ChatGPT (GPT-5.5) was used in development.
+# OpenAI ChatGPT and Codex (GPT-5.5) were used in development and
+# documentation.
 #
 # Distributed under the MIT license.
 
+
+set -euo pipefail
 
 TEST_NAME="execute download-fastqs GNU Parallel"
 
@@ -39,6 +42,7 @@ trap 'cleanup_server_http "${svr_pid:-}"' EXIT
 dir_fx="${ROOT_REPO}/tests/download_fastqs/fixtures"
 dir_src="${dir_fx}/source"
 mta_tpl="${dir_fx}/metadata/local_mixed.template.tsv"
+
 src_se="${dir_src}/se/tiny_download_se.fastq.gz"
 src_r1="${dir_src}/pe/tiny_download_pe_R1.fastq.gz"
 src_r2="${dir_src}/pe/tiny_download_pe_R2.fastq.gz"
@@ -48,22 +52,36 @@ dir_out="${tmp}/out"
 dir_sym="${tmp}/links"
 dir_err="${tmp}/logs"
 dir_log="${TEST_DIR_LOG}/download_fastqs"
+
 mta="${tmp}/local_mixed.tsv"
+
 vw_se="${tmp}/SRR_LOCAL_SE.fastq"
 vw_r1="${tmp}/SRR_LOCAL_PE_R1.fastq"
 vw_r2="${tmp}/SRR_LOCAL_PE_R2.fastq"
+
 cnt_se="${tmp}/SRR_LOCAL_SE.read_count.txt"
 cnt_r1="${tmp}/SRR_LOCAL_PE_R1.read_count.txt"
 cnt_r2="${tmp}/SRR_LOCAL_PE_R2.read_count.txt"
+
 out_se="${dir_out}/SRR_LOCAL_SE.fastq.gz"
 out_r1="${dir_out}/SRR_LOCAL_PE_R1.fastq.gz"
 out_r2="${dir_out}/SRR_LOCAL_PE_R2.fastq.gz"
+
 sym_se="${dir_sym}/tiny_download_se.fastq.gz"
 sym_r1="${dir_sym}/tiny_download_pe_R1.fastq.gz"
 sym_r2="${dir_sym}/tiny_download_pe_R2.fastq.gz"
+
 cfg="${dir_err}/test_execute_download_parallel.config_parallel.txt"
 log_svr="${dir_log}/execute_download_fastqs_parallel_http.log"
 log_run="${dir_log}/execute_download_fastqs_parallel.log"
+log_env_download="${dir_log}/execute_download_fastqs_parallel_download_env.log"
+log_env_parallel="${dir_log}/execute_download_fastqs_parallel_parallel_env.log"
+log_out_se="${dir_err}/test_execute_download_parallel.SRR_LOCAL_SE.stdout.txt"
+log_err_se="${dir_err}/test_execute_download_parallel.SRR_LOCAL_SE.stderr.txt"
+log_out_r1="${dir_err}/test_execute_download_parallel.SRR_LOCAL_PE_R1.stdout.txt"
+log_err_r1="${dir_err}/test_execute_download_parallel.SRR_LOCAL_PE_R1.stderr.txt"
+log_out_r2="${dir_err}/test_execute_download_parallel.SRR_LOCAL_PE_R2.stdout.txt"
+log_err_r2="${dir_err}/test_execute_download_parallel.SRR_LOCAL_PE_R2.stderr.txt"
 
 rm -rf "${tmp}"
 mkdir -p "${dir_out}" "${dir_sym}" "${dir_err}" "${dir_log}"
@@ -86,7 +104,7 @@ require_files_nonempty \
 if ! \
     require_env_download \
         "${env_nam}" \
-        "${dir_log}/execute_download_fastqs_parallel_download_env.log"
+        "${log_env_download}"
 then
     finish
     exit $?
@@ -95,7 +113,7 @@ fi
 if ! \
     require_env_parallel \
         "${env_nam}" \
-        "${dir_log}/execute_download_fastqs_parallel_parallel_env.log"
+        "${log_env_parallel}"
 then
     finish
     exit $?
@@ -185,6 +203,7 @@ assert_fastq_gzip \
     "${cnt_se}" \
     "${src_se}" \
     "execute download-fastqs GNU Parallel SE accession FASTQ output"
+
 assert_fastq_gzip \
     "${out_r1}" \
     '^@tiny_download_pe_pair_1/1$' \
@@ -192,6 +211,7 @@ assert_fastq_gzip \
     "${cnt_r1}" \
     "${src_r1}" \
     "execute download-fastqs GNU Parallel PE R1 accession FASTQ output"
+
 assert_fastq_gzip \
     "${out_r2}" \
     '^@tiny_download_pe_pair_1/2$' \
@@ -203,30 +223,37 @@ assert_fastq_gzip \
 assert_custom_symlink \
     "${sym_se}" \
     "execute download-fastqs GNU Parallel SE custom FASTQ"
+
 assert_custom_symlink \
     "${sym_r1}" \
     "execute download-fastqs GNU Parallel PE R1 custom FASTQ"
+
 assert_custom_symlink \
     "${sym_r2}" \
     "execute download-fastqs GNU Parallel PE R2 custom FASTQ"
 
 assert_file_exists \
-    "${dir_err}/test_execute_download_parallel.SRR_LOCAL_SE.stdout.txt" \
+    "${log_out_se}" \
     "execute download-fastqs GNU Parallel SE wget stdout log exists"
+
 assert_file_exists \
-    "${dir_err}/test_execute_download_parallel.SRR_LOCAL_SE.stderr.txt" \
+    "${log_err_se}" \
     "execute download-fastqs GNU Parallel SE wget stderr log exists"
+
 assert_file_exists \
-    "${dir_err}/test_execute_download_parallel.SRR_LOCAL_PE_R1.stdout.txt" \
+    "${log_out_r1}" \
     "execute download-fastqs GNU Parallel PE R1 wget stdout log exists"
+
 assert_file_exists \
-    "${dir_err}/test_execute_download_parallel.SRR_LOCAL_PE_R1.stderr.txt" \
+    "${log_err_r1}" \
     "execute download-fastqs GNU Parallel PE R1 wget stderr log exists"
+
 assert_file_exists \
-    "${dir_err}/test_execute_download_parallel.SRR_LOCAL_PE_R2.stdout.txt" \
+    "${log_out_r2}" \
     "execute download-fastqs GNU Parallel PE R2 wget stdout log exists"
+
 assert_file_exists \
-    "${dir_err}/test_execute_download_parallel.SRR_LOCAL_PE_R2.stderr.txt" \
+    "${log_err_r2}" \
     "execute download-fastqs GNU Parallel PE R2 wget stderr log exists"
 
 finish

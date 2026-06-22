@@ -6,10 +6,13 @@
 # Copyright 2026 by Kris Alavattam
 # Email: kalavattam@gmail.com
 #
-# OpenAI ChatGPT (GPT-5.5) was used in development.
+# OpenAI ChatGPT and Codex (GPT-5.5) were used in development and
+# documentation.
 #
 # Distributed under the MIT license.
 
+
+set -euo pipefail
 
 TEST_NAME="shell syntax"
 
@@ -18,8 +21,6 @@ TEST_NAME="shell syntax"
 source "$(
     cd "$(dirname "${BASH_SOURCE[0]}")/.." > /dev/null 2>&1 && pwd
 )/lib/test_helpers.sh"
-
-print_section "${TEST_NAME}"
 
 
 #  Run Bash syntax checks over one shell-script group
@@ -51,16 +52,20 @@ function check_group_shell_syntax() {
 }
 
 
+print_section "${TEST_NAME}"
+
 #  Collect active production and installation shell scripts
 arr_scr=()
 while IFS= read -r file; do
     arr_scr+=( "${file}" )
 done < <(
     {
-        find "${ROOT_REPO}/scripts" \
-            -path "${ROOT_REPO}/scripts/blog" -prune -o \
-            -type f -name '*.sh' -print
-        find "${ROOT_REPO}/install/scripts" \
+        find \
+            "${ROOT_REPO}/scripts" \
+            -path "${ROOT_REPO}/scripts/blog" \
+            -prune -o -type f -name '*.sh' -print
+        find \
+            "${ROOT_REPO}/install/scripts" \
             -type f -name '*.sh' -print
     } \
         | sort

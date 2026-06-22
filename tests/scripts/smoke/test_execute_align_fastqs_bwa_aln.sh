@@ -6,10 +6,13 @@
 # Copyright 2026 by Kris Alavattam
 # Email: kalavattam@gmail.com
 #
-# OpenAI ChatGPT (GPT-5.5) was used in development.
+# OpenAI ChatGPT and Codex (GPT-5.5) were used in development and
+# documentation.
 #
 # Distributed under the MIT license.
 
+
+set -euo pipefail
 
 TEST_NAME="execute align-fastqs BWA ALN"
 
@@ -27,7 +30,7 @@ in_se="${dir_fx}/fastq/se/tiny_se.atria.fastq.gz"
 in_pe_1="${dir_fx}/fastq/pe/tiny_pe_R1.atria.fastq.gz"
 in_pe_2="${dir_fx}/fastq/pe/tiny_pe_R2.atria.fastq.gz"
 in_pe="${in_pe_1},${in_pe_2}"
-idx="${dir_fx}/bwa/tiny.fa"
+idx_bwa="${dir_fx}/bwa/tiny.fa"
 
 tmp="${TEST_DIR_TMP}/execute_align_fastqs_bwa_aln"
 dir_out="${tmp}/out"
@@ -35,12 +38,19 @@ dir_err="${tmp}/logs"
 dir_log="${TEST_DIR_LOG}/align_fastqs"
 
 out_se="${dir_out}/tiny_se.bam"
+bai_se="${out_se}.bai"
 stat_se="${dir_out}/tiny_se.idxstats.txt"
 vw_se="${dir_out}/tiny_se.view.txt"
 
 out_pe="${dir_out}/tiny_pe.bam"
+bai_pe="${out_pe}.bai"
 stat_pe="${dir_out}/tiny_pe.idxstats.txt"
 vw_pe="${dir_out}/tiny_pe.view.txt"
+
+log_se="${dir_log}/execute_align_fastqs_bwa_aln_se.log"
+log_pe="${dir_log}/execute_align_fastqs_bwa_aln_pe.log"
+log_se_qc="${dir_log}/execute_align_fastqs_bwa_aln_se_quickcheck.log"
+log_pe_qc="${dir_log}/execute_align_fastqs_bwa_aln_pe_quickcheck.log"
 
 rm -rf "${tmp}"
 mkdir -p "${dir_out}" "${dir_err}" "${dir_log}"
@@ -54,12 +64,12 @@ require_files_nonempty \
     "${in_se}" \
     "${in_pe_1}" \
     "${in_pe_2}" \
-    "${idx}" \
-    "${idx}.amb" \
-    "${idx}.ann" \
-    "${idx}.bwt" \
-    "${idx}.pac" \
-    "${idx}.sa" \
+    "${idx_bwa}" \
+    "${idx_bwa}.amb" \
+    "${idx_bwa}.ann" \
+    "${idx_bwa}.bwt" \
+    "${idx_bwa}.pac" \
+    "${idx_bwa}.sa" \
     || {
         finish
         exit $?
@@ -67,18 +77,16 @@ require_files_nonempty \
 
 
 #  Run execute_align_fastqs.sh through submit_align_fastqs.sh for SE input
-log="${dir_log}/execute_align_fastqs_bwa_aln_se.log"
-
 if \
     run_capture \
         "execute align-fastqs bwa aln se" \
-        "${log}" \
+        "${log_se}" \
         "${TEST_BASH}" "${ROOT_REPO}/scripts/execute_align_fastqs.sh" \
             --threads 1 \
             --aligner bwa \
             --bwa_alg aln \
             --mapq 0 \
-            --index "${idx}" \
+            --index "${idx_bwa}" \
             --csv_infile "${in_se}" \
             --dir_out "${dir_out}" \
             --out_ext bam \
@@ -92,21 +100,22 @@ then
 else
     record_fail \
         "execute_align_fastqs.sh BWA ALN SE BAM failed; see" \
-        "$(print_relpath "${log}")"
+        "$(print_relpath "${log_se}")"
 fi
 
 assert_file_nonempty \
     "${out_se}" \
     "execute BWA ALN SE BAM output"
+
 assert_file_nonempty \
-    "${out_se}.bai" \
+    "${bai_se}" \
     "execute BWA ALN SE BAM index"
 
 if [[ -s "${out_se}" ]]; then
     if \
         run_capture \
             "quickcheck execute align-fastqs BWA ALN SE BAM" \
-            "${dir_log}/execute_align_fastqs_bwa_aln_se_quickcheck.log" \
+            "${log_se_qc}" \
             run_samtools quickcheck "${out_se}"
     then
         record_pass "execute BWA ALN SE BAM passes samtools quickcheck"
@@ -118,6 +127,7 @@ if [[ -s "${out_se}" ]]; then
         "idxstats execute align-fastqs BWA ALN SE BAM" \
         "${stat_se}" \
         run_samtools idxstats "${out_se}"
+
     run_capture \
         "view execute align-fastqs BWA ALN SE BAM" \
         "${vw_se}" \
@@ -127,6 +137,7 @@ if [[ -s "${out_se}" ]]; then
         "${stat_se}" \
         $'^I\t108\t1\t0$' \
         "execute BWA ALN SE BAM has one mapped read on chromosome I"
+
     assert_pattern_found \
         "${vw_se}" \
         $'^tiny_se_read_1\t' \
@@ -135,18 +146,16 @@ fi
 
 
 #  Run execute_align_fastqs.sh through submit_align_fastqs.sh for PE input
-log="${dir_log}/execute_align_fastqs_bwa_aln_pe.log"
-
 if \
     run_capture \
         "execute align-fastqs bwa aln pe" \
-        "${log}" \
+        "${log_pe}" \
         "${TEST_BASH}" "${ROOT_REPO}/scripts/execute_align_fastqs.sh" \
             --threads 1 \
             --aligner bwa \
             --bwa_alg aln \
             --mapq 0 \
-            --index "${idx}" \
+            --index "${idx_bwa}" \
             --csv_infile "${in_pe}" \
             --dir_out "${dir_out}" \
             --out_ext bam \
@@ -160,21 +169,22 @@ then
 else
     record_fail \
         "execute_align_fastqs.sh BWA ALN PE BAM failed; see" \
-        "$(print_relpath "${log}")"
+        "$(print_relpath "${log_pe}")"
 fi
 
 assert_file_nonempty \
     "${out_pe}" \
     "execute BWA ALN PE BAM output"
+
 assert_file_nonempty \
-    "${out_pe}.bai" \
+    "${bai_pe}" \
     "execute BWA ALN PE BAM index"
 
 if [[ -s "${out_pe}" ]]; then
     if \
         run_capture \
             "quickcheck execute align-fastqs BWA ALN PE BAM" \
-            "${dir_log}/execute_align_fastqs_bwa_aln_pe_quickcheck.log" \
+            "${log_pe_qc}" \
             run_samtools quickcheck "${out_pe}"
     then
         record_pass "execute BWA ALN PE BAM passes samtools quickcheck"
@@ -186,6 +196,7 @@ if [[ -s "${out_pe}" ]]; then
         "idxstats execute align-fastqs BWA ALN PE BAM" \
         "${stat_pe}" \
         run_samtools idxstats "${out_pe}"
+
     run_capture \
         "view execute align-fastqs BWA ALN PE BAM" \
         "${vw_pe}" \
@@ -195,14 +206,17 @@ if [[ -s "${out_pe}" ]]; then
         "${stat_pe}" \
         $'^I\t108\t2\t0$' \
         "execute BWA ALN PE BAM has two mapped reads on chromosome I"
+
     assert_pattern_found \
         "${vw_pe}" \
         $'^tiny_pe_pair_1\t' \
         "execute BWA ALN PE BAM contains expected read name"
+
     assert_pattern_found \
         "${vw_pe}" \
         $'^tiny_pe_pair_1\t99\tI\t17\t' \
         "execute BWA ALN PE BAM has proper-pair R1 flag and start"
+
     assert_pattern_found \
         "${vw_pe}" \
         $'^tiny_pe_pair_1\t147\tI\t70\t' \

@@ -6,10 +6,13 @@
 # Copyright 2026 by Kris Alavattam
 # Email: kalavattam@gmail.com
 #
-# OpenAI ChatGPT and Codex (GPT-5.5) were used in development.
+# OpenAI ChatGPT and Codex (GPT-5.5) were used in development and
+# documentation.
 #
 # Distributed under the MIT license.
 
+
+set -euo pipefail
 
 TEST_NAME="write scaling-factor header"
 
@@ -18,31 +21,6 @@ TEST_NAME="write scaling-factor header"
 source "$(
     cd "$(dirname "${BASH_SOURCE[0]}")/.." > /dev/null 2>&1 && pwd
 )/lib/test_helpers.sh"
-
-print_section "${TEST_NAME}"
-
-scr_hdr="${ROOT_REPO}/scripts/write_header.sh"
-
-dir_tmp="${TEST_DIR_TMP}/write_header"
-dir_log="${TEST_DIR_LOG}/write_header"
-dir_in="${dir_tmp}/in"
-dir_out="${dir_tmp}/out"
-
-fil_spk_new="${dir_out}/spike.header_only.tsv"
-fil_spk_vrb="${dir_out}/spike.verbose.tsv"
-fil_spk_hdr="${dir_out}/spike.headered.tsv"
-
-fil_siq_def="${dir_out}/siq.default.tsv"
-fil_siq_dat="${dir_in}/siq.data.tsv"
-fil_siq_cpy="${dir_out}/siq.copy.tsv"
-fil_siq_inp="${dir_out}/siq.in_place.tsv"
-
-fil_dry="${dir_out}/dry.tsv"
-fil_dry_hdr="${dir_out}/dry.headered.tsv"
-fil_dry_dat="${dir_in}/dry.data.tsv"
-fil_dry_out="${dir_out}/dry.copy.tsv"
-
-fil_old_amb="${dir_out}/old_ambiguous.tsv"
 
 
 function run_header_success() {
@@ -117,6 +95,55 @@ function assert_header_once() {
 }
 
 
+print_section "${TEST_NAME}"
+
+scr_hdr="${ROOT_REPO}/scripts/write_header.sh"
+
+dir_tmp="${TEST_DIR_TMP}/write_header"
+dir_log="${TEST_DIR_LOG}/write_header"
+dir_in="${dir_tmp}/in"
+dir_out="${dir_tmp}/out"
+
+fil_spk_new="${dir_out}/spike.header_only.tsv"
+fil_spk_vrb="${dir_out}/spike.verbose.tsv"
+fil_spk_hdr="${dir_out}/spike.headered.tsv"
+
+fil_siq_def="${dir_out}/siq.default.tsv"
+fil_siq_dat="${dir_in}/siq.data.tsv"
+fil_siq_cpy="${dir_out}/siq.copy.tsv"
+fil_siq_inp="${dir_out}/siq.in_place.tsv"
+
+fil_dry="${dir_out}/dry.tsv"
+fil_dry_hdr="${dir_out}/dry.headered.tsv"
+fil_dry_dat="${dir_in}/dry.data.tsv"
+fil_dry_out="${dir_out}/dry.copy.tsv"
+
+fil_old_amb="${dir_out}/old_ambiguous.tsv"
+fil_bogus="${dir_out}/bogus.tsv"
+fil_both="${dir_out}/both.tsv"
+fil_unknown="${dir_out}/unknown.tsv"
+fil_missing_dir="${dir_tmp}/missing/spike.tsv"
+
+log_header_only="${dir_log}/header_only.log"
+log_help="${dir_log}/help.log"
+log_default="${dir_log}/default.log"
+log_verbose="${dir_log}/verbose.log"
+log_siq_copy="${dir_log}/siq_copy.log"
+log_siq_in_place="${dir_log}/siq_in_place.log"
+log_spike_idempotent="${dir_log}/spike_idempotent.log"
+log_dry_header_only="${dir_log}/dry_header_only.log"
+log_dry_in_place="${dir_log}/dry_in_place.log"
+log_dry_copy="${dir_log}/dry_copy.log"
+log_invalid_mode="${dir_log}/invalid_mode.log"
+log_missing_output_mode="${dir_log}/missing_output_mode.log"
+log_in_place_without_input="${dir_log}/in_place_without_input.log"
+log_output_and_in_place="${dir_log}/output_and_in_place.log"
+log_same_input_output="${dir_log}/same_input_output.log"
+log_old_fil_out_existing="${dir_log}/old_fil_out_existing.log"
+log_missing_mode_value="${dir_log}/missing_mode_value.log"
+log_unknown_option="${dir_log}/unknown_option.log"
+log_missing_output_dir="${dir_log}/missing_output_dir.log"
+
 rm -rf "${dir_tmp}"
 mkdir -p "${dir_in}" "${dir_out}" "${dir_log}"
 
@@ -150,7 +177,7 @@ printf -v row_siq \
 #  Header-only utility mode remains supported when no input is supplied
 run_header_success \
     header_only \
-    "${dir_log}/header_only.log" \
+    "${log_header_only}" \
     --mode spike \
     --fil_out "${fil_spk_new}"
 
@@ -167,17 +194,17 @@ fi
 
 run_header_success \
     help \
-    "${dir_log}/help.log" \
+    "${log_help}" \
     --help
 
 assert_pattern_found \
-    "${dir_log}/help.log" \
+    "${log_help}" \
     '^Usage:' \
     "write_header.sh help prints usage"
 
 run_header_success \
     default \
-    "${dir_log}/default.log" \
+    "${log_default}" \
     --fil_out "${fil_siq_def}"
 
 assert_header_once \
@@ -187,7 +214,7 @@ assert_header_once \
 
 run_header_success \
     verbose \
-    "${dir_log}/verbose.log" \
+    "${log_verbose}" \
     --verbose \
     --mode spike \
     --fil_out "${fil_spk_vrb}"
@@ -198,7 +225,7 @@ assert_header_once \
     "verbose"
 
 assert_pattern_found \
-    "${dir_log}/verbose.log" \
+    "${log_verbose}" \
     "^${hdr_spk}$" \
     "write_header.sh verbose prints spike header"
 
@@ -208,7 +235,7 @@ printf '%s\n' "${row_siq}" > "${fil_siq_dat}"
 
 run_header_success \
     siq_copy \
-    "${dir_log}/siq_copy.log" \
+    "${log_siq_copy}" \
     --mode siq \
     --fil_in "${fil_siq_dat}" \
     --fil_out "${fil_siq_cpy}"
@@ -233,7 +260,7 @@ printf '%s\n' "${row_siq}" > "${fil_siq_inp}"
 
 run_header_success \
     siq_in_place \
-    "${dir_log}/siq_in_place.log" \
+    "${log_siq_in_place}" \
     --mode siq \
     --fil_in "${fil_siq_inp}" \
     --in_place
@@ -255,7 +282,7 @@ assert_pattern_found \
 
 run_header_success \
     spike_idempotent \
-    "${dir_log}/spike_idempotent.log" \
+    "${log_spike_idempotent}" \
     --mode spike \
     --fil_in "${fil_spk_hdr}" \
     --in_place
@@ -275,7 +302,7 @@ fi
 #  Dry-run modes report planned work without writing or modifying files
 run_header_success \
     dry_header_only \
-    "${dir_log}/dry_header_only.log" \
+    "${log_dry_header_only}" \
     --dry_run \
     --mode spike \
     --fil_out "${fil_dry}"
@@ -287,7 +314,7 @@ else
 fi
 
 assert_pattern_found \
-    "${dir_log}/dry_header_only.log" \
+    "${log_dry_header_only}" \
     'would create' \
     "write_header.sh dry_header_only reports planned creation"
 
@@ -297,13 +324,14 @@ assert_pattern_found \
 } > "${fil_dry_hdr}"
 run_header_success \
     dry_in_place \
-    "${dir_log}/dry_in_place.log" \
+    "${log_dry_in_place}" \
     --dry_run \
     --mode spike \
     --fil_in "${fil_dry_hdr}" \
     --in_place
+
 assert_pattern_found \
-    "${dir_log}/dry_in_place.log" \
+    "${log_dry_in_place}" \
     'header already present' \
     "write_header.sh dry_in_place detects existing header"
 
@@ -316,13 +344,14 @@ fi
 printf '%s\n' "${row_siq}" > "${fil_dry_dat}"
 run_header_success \
     dry_copy \
-    "${dir_log}/dry_copy.log" \
+    "${log_dry_copy}" \
     --dry_run \
     --mode siq \
     --fil_in "${fil_dry_dat}" \
     --fil_out "${fil_dry_out}"
+
 assert_pattern_found \
-    "${dir_log}/dry_copy.log" \
+    "${log_dry_copy}" \
     'would prepend header' \
     "write_header.sh dry_copy reports headered copy"
 
@@ -342,37 +371,37 @@ fi
 #  Invalid mode and invalid argument combinations should fail clearly
 run_header_failure \
     invalid_mode \
-    "${dir_log}/invalid_mode.log" \
+    "${log_invalid_mode}" \
     "must be.*'siq' or 'spike'" \
     --mode bogus \
-    --fil_out "${dir_out}/bogus.tsv"
+    --fil_out "${fil_bogus}"
 
 run_header_failure \
     missing_output_mode \
-    "${dir_log}/missing_output_mode.log" \
+    "${log_missing_output_mode}" \
     "requires either '--fil_out' or '--in_place'" \
     --mode spike \
     --fil_in "${fil_spk_hdr}"
 
 run_header_failure \
     in_place_without_input \
-    "${dir_log}/in_place_without_input.log" \
+    "${log_in_place_without_input}" \
     "'--in_place' requires '--fil_in'" \
     --mode spike \
     --in_place
 
 run_header_failure \
     output_and_in_place \
-    "${dir_log}/output_and_in_place.log" \
+    "${log_output_and_in_place}" \
     "use either '--fil_out' or '--in_place'" \
     --mode spike \
     --fil_in "${fil_spk_hdr}" \
-    --fil_out "${dir_out}/both.tsv" \
+    --fil_out "${fil_both}" \
     --in_place
 
 run_header_failure \
     same_input_output \
-    "${dir_log}/same_input_output.log" \
+    "${log_same_input_output}" \
     "same path; use '--in_place'" \
     --mode spike \
     --fil_in "${fil_spk_hdr}" \
@@ -381,33 +410,34 @@ run_header_failure \
 printf '%s\n' "${row_spk}" > "${fil_old_amb}"
 run_header_failure \
     old_fil_out_existing \
-    "${dir_log}/old_fil_out_existing.log" \
+    "${log_old_fil_out_existing}" \
     "already exists in header-only mode" \
     --mode spike \
     --fil_out "${fil_old_amb}"
 
 run_header_failure \
     missing_mode_value \
-    "${dir_log}/missing_mode_value.log" \
+    "${log_missing_mode_value}" \
     "option '--mode' requires a value" \
     --mode
+
 assert_pattern_found \
-    "${dir_log}/missing_mode_value.log" \
+    "${log_missing_mode_value}" \
     '^Usage:' \
     "write_header.sh missing mode value prints usage"
 
 run_header_failure \
     unknown_option \
-    "${dir_log}/unknown_option.log" \
+    "${log_unknown_option}" \
     "unknown option/parameter passed: '--bogus'" \
     --bogus \
-    --fil_out "${dir_out}/unknown.tsv"
+    --fil_out "${fil_unknown}"
 
 run_header_failure \
     missing_output_dir \
-    "${dir_log}/missing_output_dir.log" \
+    "${log_missing_output_dir}" \
     "directory for 'dir_out' does not exist" \
     --mode spike \
-    --fil_out "${dir_tmp}/missing/spike.tsv"
+    --fil_out "${fil_missing_dir}"
 
 finish

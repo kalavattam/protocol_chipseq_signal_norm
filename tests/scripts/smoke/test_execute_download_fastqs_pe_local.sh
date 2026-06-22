@@ -6,10 +6,13 @@
 # Copyright 2026 by Kris Alavattam
 # Email: kalavattam@gmail.com
 #
-# OpenAI ChatGPT and Codex (GPT-5.5) were used in development.
+# OpenAI ChatGPT and Codex (GPT-5.5) were used in development and
+# documentation.
 #
 # Distributed under the MIT license.
 
+
+set -euo pipefail
 
 TEST_NAME="execute download-fastqs PE local"
 
@@ -30,9 +33,6 @@ then
     finish
     exit $?
 fi
-
-
-trap 'cleanup_server_http "${pid_srvr:-}"' EXIT
 
 
 #  Define fixture and output paths for a no-network loopback HTTP PE download
@@ -89,9 +89,16 @@ sym_dup_h27_r2="${dir_sym_dup}/tiny_download_pe_h3k27_R2.fastq.gz"
 
 log_srvr="${dir_log}/execute_download_fastqs_pe_local_http.log"
 log_run="${dir_log}/execute_download_fastqs_pe_local.log"
+
+trap 'cleanup_server_http "${pid_srvr:-}"' EXIT
 log_dup="${dir_log}/execute_download_fastqs_pe_local_duplicate.log"
 log_dup_cus="${dir_log}/execute_download_fastqs_pe_local_duplicate_custom.log"
 log_cnfl="${dir_log}/execute_download_fastqs_pe_local_conflicting_accession.log"
+log_env="${dir_log}/execute_download_fastqs_pe_local_env.log"
+log_out_r1="${dir_err}/test_execute_download_pe_local.SRR_LOCAL_PE_R1.stdout.txt"
+log_err_r1="${dir_err}/test_execute_download_pe_local.SRR_LOCAL_PE_R1.stderr.txt"
+log_out_r2="${dir_err}/test_execute_download_pe_local.SRR_LOCAL_PE_R2.stdout.txt"
+log_err_r2="${dir_err}/test_execute_download_pe_local.SRR_LOCAL_PE_R2.stderr.txt"
 
 rm -rf "${tmp}"
 mkdir -p \
@@ -120,7 +127,7 @@ require_files_nonempty \
 if ! \
     require_env_download \
         "${env_nam}" \
-        "${dir_log}/execute_download_fastqs_pe_local_env.log"
+        "${log_env}"
 then
     finish
     exit $?
@@ -160,10 +167,13 @@ fi
 
 sed "s#__BASE_URL__#${url_bas}#g" \
     "${mta_tpl}" > "${mta}"
+
 sed "s#__BASE_URL__#${url_bas}#g" \
     "${mta_tpl_dup}" > "${mta_dup}"
+
 sed "s#__BASE_URL__#${url_bas}#g" \
     "${mta_tpl_dup_cus}" > "${mta_dup_cus}"
+
 sed "s#__BASE_URL__#${url_bas}#g" \
     "${mta_tpl_cnfl}" > "${mta_cnfl}"
 
@@ -204,6 +214,7 @@ assert_fastq_gzip \
     "${cnt_r1}" \
     "${src_r1}" \
     "execute download-fastqs PE R1 accession FASTQ output"
+
 assert_fastq_gzip \
     "${out_r2}" \
     '^@tiny_download_pe_pair_1/2$' \
@@ -215,21 +226,25 @@ assert_fastq_gzip \
 assert_custom_symlink \
     "${sym_r1}" \
     "execute download-fastqs PE R1 custom FASTQ"
+
 assert_custom_symlink \
     "${sym_r2}" \
     "execute download-fastqs PE R2 custom FASTQ"
 
 assert_file_exists \
-    "${dir_err}/test_execute_download_pe_local.SRR_LOCAL_PE_R1.stdout.txt" \
+    "${log_out_r1}" \
     "execute download-fastqs PE R1 wget stdout log exists"
+
 assert_file_exists \
-    "${dir_err}/test_execute_download_pe_local.SRR_LOCAL_PE_R1.stderr.txt" \
+    "${log_err_r1}" \
     "execute download-fastqs PE R1 wget stderr log exists"
+
 assert_file_exists \
-    "${dir_err}/test_execute_download_pe_local.SRR_LOCAL_PE_R2.stdout.txt" \
+    "${log_out_r2}" \
     "execute download-fastqs PE R2 wget stdout log exists"
+
 assert_file_exists \
-    "${dir_err}/test_execute_download_pe_local.SRR_LOCAL_PE_R2.stderr.txt" \
+    "${log_err_r2}" \
     "execute download-fastqs PE R2 wget stderr log exists"
 
 #  Duplicate accession rows should download once and create all custom links
@@ -259,6 +274,7 @@ assert_fastq_gzip \
     "${cnt_dup_r1}" \
     "${src_r1}" \
     "execute download-fastqs duplicate PE R1 accession FASTQ output"
+
 assert_fastq_gzip \
     "${out_dup_r2}" \
     '^@tiny_download_pe_pair_1/2$' \
@@ -270,12 +286,15 @@ assert_fastq_gzip \
 assert_custom_symlink \
     "${sym_dup_h18_r1}" \
     "execute download-fastqs duplicate PE H3K18ac R1 custom FASTQ"
+
 assert_custom_symlink \
     "${sym_dup_h18_r2}" \
     "execute download-fastqs duplicate PE H3K18ac R2 custom FASTQ"
+
 assert_custom_symlink \
     "${sym_dup_h27_r1}" \
     "execute download-fastqs duplicate PE H3K27ac R1 custom FASTQ"
+
 assert_custom_symlink \
     "${sym_dup_h27_r2}" \
     "execute download-fastqs duplicate PE H3K27ac R2 custom FASTQ"

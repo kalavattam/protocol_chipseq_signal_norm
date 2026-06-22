@@ -6,10 +6,13 @@
 # Copyright 2026 by Kris Alavattam
 # Email: kalavattam@gmail.com
 #
-# OpenAI ChatGPT and Codex (GPT-5.5) were used in development.
+# OpenAI ChatGPT and Codex (GPT-5.5) were used in development and
+# documentation.
 #
 # Distributed under the MIT license.
 
+
+set -euo pipefail
 
 TEST_NAME="execute filter-alignments BAM to BAM"
 
@@ -31,6 +34,18 @@ dir_out="${tmp}/out"
 dir_err="${tmp}/logs"
 dir_log="${TEST_DIR_LOG}/filter_alignments"
 in_bam="${dir_in}/filter_sc_sp.bam"
+
+log_prep="${dir_log}/execute_filter_alignments_prepare_bam_to_bam.log"
+
+fil_out_sc="${dir_out}/filter_sc_sp.sc.bam"
+bai_sc="${fil_out_sc}.bai"
+stat_sc="${dir_out}/filter_sc_sp.sc.idxstats.txt"
+log_sc="${dir_log}/execute_filter_alignments_bam_to_bam_sc.log"
+
+fil_out_sp="${dir_out}/filter_sc_sp.sp.bam"
+bai_sp="${fil_out_sp}.bai"
+stat_sp="${dir_out}/filter_sc_sp.sp.idxstats.txt"
+log_sp="${dir_log}/execute_filter_alignments_bam_to_bam_sp.log"
 
 #  Configure execute_filter_alignments.sh for retain-mode cases
 # shellcheck disable=SC2034
@@ -64,12 +79,11 @@ require_files_nonempty \
 
 
 #  Build a deterministic BAM input from the committed SAM fixture
-log="${dir_log}/execute_filter_alignments_prepare_bam_to_bam.log"
 if ! \
     build_filter_alignments_fixture_bam \
         "${in_sam}" \
         "${in_bam}" \
-        "${log}" \
+        "${log_prep}" \
         "execute filter-alignments BAM-to-BAM fixture"
 then
     finish
@@ -78,96 +92,97 @@ fi
 
 
 #  S. cerevisiae filtering should retain only canonical SC chromosomes
-fil_out="${dir_out}/filter_sc_sp.sc.bam"
-stat="${dir_out}/filter_sc_sp.sc.idxstats.txt"
-log="${dir_log}/execute_filter_alignments_bam_to_bam_sc.log"
-
 run_case_filter \
     sc \
     sc \
-    "${log}" \
+    "${log_sc}" \
     arr_cmd_filter \
     "${nam_job_pfx}" \
     arr_arg_nil \
     "execute_filter_alignments.sh BAM to BAM retain=sc sc"
 
 assert_file_nonempty \
-    "${fil_out}" \
+    "${fil_out_sc}" \
     "execute BAM to BAM retain=sc BAM output"
+
 assert_file_nonempty \
-    "${fil_out}.bai" \
+    "${bai_sc}" \
     "execute BAM to BAM retain=sc BAM index"
 
-if [[ -s "${fil_out}" ]]; then
+if [[ -s "${fil_out_sc}" ]]; then
     run_capture \
         "idxstats execute filter-alignments BAM to BAM sc" \
-        "${stat}" \
-        run_samtools idxstats "${fil_out}"
+        "${stat_sc}" \
+        run_samtools idxstats "${fil_out_sc}"
 
     assert_pattern_found \
-        "${stat}" \
+        "${stat_sc}" \
         $'^I\t100\t1\t0$' \
         "execute BAM to BAM retain=sc output keeps chromosome I"
+
     assert_pattern_absent \
-        "${stat}" \
+        "${stat_sc}" \
         $'^Mito\t' \
         "execute BAM to BAM retain=sc output omits Mito without --mito"
+
     assert_pattern_absent \
-        "${stat}" \
+        "${stat_sc}" \
         $'^SP_I\t' \
         "execute BAM to BAM retain=sc output omits S. pombe chromosomes"
 fi
 
 
 #  S. pombe filtering should honor optional TG, MTR, and mito contigs
-fil_out="${dir_out}/filter_sc_sp.sp.bam"
-stat="${dir_out}/filter_sc_sp.sp.idxstats.txt"
-log="${dir_log}/execute_filter_alignments_bam_to_bam_sp.log"
-
 run_case_filter \
     sp \
     sp \
-    "${log}" \
+    "${log_sp}" \
     arr_cmd_filter \
     "${nam_job_pfx}" \
     arr_arg_sp \
     "execute_filter_alignments.sh BAM to BAM retain=sp sp"
 
 assert_file_nonempty \
-    "${fil_out}" \
+    "${fil_out_sp}" \
     "execute BAM to BAM retain=sp BAM output"
+
 assert_file_nonempty \
-    "${fil_out}.bai" \
+    "${bai_sp}" \
     "execute BAM to BAM retain=sp BAM index"
 
-if [[ -s "${fil_out}" ]]; then
+if [[ -s "${fil_out_sp}" ]]; then
     run_capture \
         "idxstats execute filter-alignments BAM to BAM sp" \
-        "${stat}" \
-        run_samtools idxstats "${fil_out}"
+        "${stat_sp}" \
+        run_samtools idxstats "${fil_out_sp}"
 
     assert_pattern_found \
-        "${stat}" \
+        "${stat_sp}" \
         $'^SP_I\t100\t1\t0$' \
         "execute BAM to BAM retain=sp output keeps SP_I"
+
     assert_pattern_found \
-        "${stat}" \
+        "${stat_sp}" \
         $'^SP_II_TG\t100\t1\t0$' \
         "execute BAM to BAM retain=sp output keeps SP_II_TG"
+
     assert_pattern_found \
-        "${stat}" \
+        "${stat_sp}" \
         $'^SP_MTR\t100\t1\t0$' \
         "execute BAM to BAM retain=sp output keeps SP_MTR"
+
     assert_pattern_found \
-        "${stat}" \
+        "${stat_sp}" \
         $'^SP_Mito\t100\t1\t0$' \
         "execute BAM to BAM retain=sp output keeps SP_Mito"
+
     assert_pattern_absent \
-        "${stat}" \
+        "${stat_sp}" \
         $'^I\t' \
         "execute BAM to BAM retain=sp output omits S. cerevisiae chromosomes"
+
     assert_pattern_absent \
-        "${stat}" \
+        "${stat_sp}" \
         $'^chrUn\t' \
         "execute BAM to BAM retain=sp output omits unrelated contigs"
 fi

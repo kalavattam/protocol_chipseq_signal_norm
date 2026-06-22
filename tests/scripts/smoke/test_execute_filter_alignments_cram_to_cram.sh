@@ -6,10 +6,13 @@
 # Copyright 2026 by Kris Alavattam
 # Email: kalavattam@gmail.com
 #
-# OpenAI ChatGPT and Codex (GPT-5.5) were used in development.
+# OpenAI ChatGPT and Codex (GPT-5.5) were used in development and
+# documentation.
 #
 # Distributed under the MIT license.
 
+
+set -euo pipefail
 
 TEST_NAME="execute filter-alignments CRAM to CRAM"
 
@@ -43,6 +46,39 @@ dir_out="${tmp}/out"
 dir_err="${tmp}/logs"
 dir_log="${TEST_DIR_LOG}/filter_alignments"
 in_cram="${dir_in}/filter_sc_sp.cram"
+
+log_prepare="${dir_log}/execute_filter_alignments_prepare_cram_to_cram.log"
+
+fil_out_sc="${dir_out}/filter_sc_sp.sc.cram"
+
+log_sc="${dir_log}/execute_filter_alignments_cram_to_cram_sc.log"
+log_quick_sc="${dir_log}/execute_filter_alignments_cram_to_cram_sc_quickcheck.log"
+log_pfx_sc="${dir_err}/test_execute_filter_alignments_cram_to_cram_sc"
+log_ser_out_sc="${log_pfx_sc}_ser.stdout.txt"
+log_ser_err_sc="${log_pfx_sc}_ser.stderr.txt"
+log_sub_out_sc="${log_pfx_sc}.filter_sc_sp.stdout.txt"
+log_sub_err_sc="${log_pfx_sc}.filter_sc_sp.stderr.txt"
+
+cnt_sc_i="${dir_out}/filter_sc_sp.sc.I.count.txt"
+cnt_sc_mito="${dir_out}/filter_sc_sp.sc.Mito.count.txt"
+cnt_sc_sp_i="${dir_out}/filter_sc_sp.sc.SP_I.count.txt"
+
+fil_out_sp="${dir_out}/filter_sc_sp.sp.cram"
+
+log_sp="${dir_log}/execute_filter_alignments_cram_to_cram_sp.log"
+log_quick_sp="${dir_log}/execute_filter_alignments_cram_to_cram_sp_quickcheck.log"
+log_pfx_sp="${dir_err}/test_execute_filter_alignments_cram_to_cram_sp"
+log_ser_out_sp="${log_pfx_sp}_ser.stdout.txt"
+log_ser_err_sp="${log_pfx_sp}_ser.stderr.txt"
+log_sub_out_sp="${log_pfx_sp}.filter_sc_sp.stdout.txt"
+log_sub_err_sp="${log_pfx_sp}.filter_sc_sp.stderr.txt"
+
+cnt_sp_i="${dir_out}/filter_sc_sp.sp.I.count.txt"
+cnt_sp_sp_i="${dir_out}/filter_sc_sp.sp.SP_I.count.txt"
+cnt_sp_sp_ii_tg="${dir_out}/filter_sc_sp.sp.SP_II_TG.count.txt"
+cnt_sp_sp_mtr="${dir_out}/filter_sc_sp.sp.SP_MTR.count.txt"
+cnt_sp_sp_mito="${dir_out}/filter_sc_sp.sp.SP_Mito.count.txt"
+cnt_sp_chrun="${dir_out}/filter_sc_sp.sp.chrUn.count.txt"
 
 # shellcheck disable=SC2034
 {
@@ -79,13 +115,12 @@ require_files_nonempty \
 
 
 #  Build deterministic CRAM input from committed SAM and reference fixtures
-log="${dir_log}/execute_filter_alignments_prepare_cram_to_cram.log"
 if ! \
     build_filter_alignments_fixture_cram \
         "${in_sam}" \
         "${ref_fa}" \
         "${in_cram}" \
-        "${log}" \
+        "${log_prepare}" \
         "execute filter-alignments CRAM fixture for CRAM output"
 then
     finish
@@ -94,43 +129,45 @@ fi
 
 
 #  S. cerevisiae filtering should retain only canonical SC chromosomes
-fil_out="${dir_out}/filter_sc_sp.sc.cram"
-log="${dir_log}/execute_filter_alignments_cram_to_cram_sc.log"
-
 run_case_filter \
     sc \
     sc \
-    "${log}" \
+    "${log_sc}" \
     arr_cmd_filter \
     "${nam_job_pfx}" \
     arr_arg_nil \
     "execute_filter_alignments.sh CRAM to CRAM retain=sc sc"
 
 assert_file_nonempty \
-    "${fil_out}" \
+    "${fil_out_sc}" \
     "execute CRAM-to-CRAM retain=sc output"
+
 assert_cram_index \
-    "${fil_out}" \
+    "${fil_out_sc}" \
     "execute CRAM-to-CRAM retain=sc CRAI index"
+
 assert_file_exists \
-    "${dir_err}/test_execute_filter_alignments_cram_to_cram_sc_ser.stdout.txt" \
+    "${log_ser_out_sc}" \
     "execute CRAM-to-CRAM retain=sc serial stdout log"
+
 assert_file_exists \
-    "${dir_err}/test_execute_filter_alignments_cram_to_cram_sc_ser.stderr.txt" \
+    "${log_ser_err_sc}" \
     "execute CRAM-to-CRAM retain=sc serial stderr log"
+
 assert_file_exists \
-    "${dir_err}/test_execute_filter_alignments_cram_to_cram_sc.filter_sc_sp.stdout.txt" \
+    "${log_sub_out_sc}" \
     "execute CRAM-to-CRAM retain=sc submit stdout log"
+
 assert_file_exists \
-    "${dir_err}/test_execute_filter_alignments_cram_to_cram_sc.filter_sc_sp.stderr.txt" \
+    "${log_sub_err_sc}" \
     "execute CRAM-to-CRAM retain=sc submit stderr log"
 
-if [[ -s "${fil_out}" ]]; then
+if [[ -s "${fil_out_sc}" ]]; then
     if \
         run_capture \
             "quickcheck execute filter-alignments CRAM to CRAM sc" \
-            "${dir_log}/execute_filter_alignments_cram_to_cram_sc_quickcheck.log" \
-            run_samtools quickcheck "${fil_out}"
+            "${log_quick_sc}" \
+            run_samtools quickcheck "${fil_out_sc}"
     then
         record_pass "execute CRAM-to-CRAM retain=sc passes samtools quickcheck"
     else
@@ -138,67 +175,71 @@ if [[ -s "${fil_out}" ]]; then
     fi
 
     assert_cram_count \
-        "${fil_out}" \
+        "${fil_out_sc}" \
         "${ref_fa}" \
         1 \
-        "${dir_out}/filter_sc_sp.sc.I.count.txt" \
+        "${cnt_sc_i}" \
         arr_rgn_i \
         "execute CRAM-to-CRAM retain=sc has one read on chromosome I"
+
     assert_cram_count \
-        "${fil_out}" \
+        "${fil_out_sc}" \
         "${ref_fa}" \
         0 \
-        "${dir_out}/filter_sc_sp.sc.Mito.count.txt" \
+        "${cnt_sc_mito}" \
         arr_rgn_mito \
         "execute CRAM-to-CRAM retain=sc omits Mito without --mito"
+
     assert_cram_count \
-        "${fil_out}" \
+        "${fil_out_sc}" \
         "${ref_fa}" \
         0 \
-        "${dir_out}/filter_sc_sp.sc.SP_I.count.txt" \
+        "${cnt_sc_sp_i}" \
         arr_rgn_sp_i \
         "execute CRAM-to-CRAM retain=sc omits S. pombe chromosomes"
 fi
 
 
 #  S. pombe filtering should honor optional TG, MTR, and mito contigs
-fil_out="${dir_out}/filter_sc_sp.sp.cram"
-log="${dir_log}/execute_filter_alignments_cram_to_cram_sp.log"
-
 run_case_filter \
     sp \
     sp \
-    "${log}" \
+    "${log_sp}" \
     arr_cmd_filter \
     "${nam_job_pfx}" \
     arr_arg_sp \
     "execute_filter_alignments.sh CRAM to CRAM retain=sp sp"
 
 assert_file_nonempty \
-    "${fil_out}" \
+    "${fil_out_sp}" \
     "execute CRAM-to-CRAM retain=sp output"
+
 assert_cram_index \
-    "${fil_out}" \
+    "${fil_out_sp}" \
     "execute CRAM-to-CRAM retain=sp CRAI index"
+
 assert_file_exists \
-    "${dir_err}/test_execute_filter_alignments_cram_to_cram_sp_ser.stdout.txt" \
+    "${log_ser_out_sp}" \
     "execute CRAM-to-CRAM retain=sp serial stdout log"
+
 assert_file_exists \
-    "${dir_err}/test_execute_filter_alignments_cram_to_cram_sp_ser.stderr.txt" \
+    "${log_ser_err_sp}" \
     "execute CRAM-to-CRAM retain=sp serial stderr log"
+
 assert_file_exists \
-    "${dir_err}/test_execute_filter_alignments_cram_to_cram_sp.filter_sc_sp.stdout.txt" \
+    "${log_sub_out_sp}" \
     "execute CRAM-to-CRAM retain=sp submit stdout log"
+
 assert_file_exists \
-    "${dir_err}/test_execute_filter_alignments_cram_to_cram_sp.filter_sc_sp.stderr.txt" \
+    "${log_sub_err_sp}" \
     "execute CRAM-to-CRAM retain=sp submit stderr log"
 
-if [[ -s "${fil_out}" ]]; then
+if [[ -s "${fil_out_sp}" ]]; then
     if \
         run_capture \
             "quickcheck execute filter-alignments CRAM to CRAM sp" \
-            "${dir_log}/execute_filter_alignments_cram_to_cram_sp_quickcheck.log" \
-            run_samtools quickcheck "${fil_out}"
+            "${log_quick_sp}" \
+            run_samtools quickcheck "${fil_out_sp}"
     then
         record_pass "execute CRAM-to-CRAM retain=sp passes samtools quickcheck"
     else
@@ -206,45 +247,50 @@ if [[ -s "${fil_out}" ]]; then
     fi
 
     assert_cram_count \
-        "${fil_out}" \
+        "${fil_out_sp}" \
         "${ref_fa}" \
         1 \
-        "${dir_out}/filter_sc_sp.sp.SP_I.count.txt" \
+        "${cnt_sp_sp_i}" \
         arr_rgn_sp_i \
         "execute CRAM-to-CRAM retain=sp keeps SP_I"
+
     assert_cram_count \
-        "${fil_out}" \
+        "${fil_out_sp}" \
         "${ref_fa}" \
         1 \
-        "${dir_out}/filter_sc_sp.sp.SP_II_TG.count.txt" \
+        "${cnt_sp_sp_ii_tg}" \
         arr_rgn_sp_ii_tg \
         "execute CRAM-to-CRAM retain=sp keeps SP_II_TG"
+
     assert_cram_count \
-        "${fil_out}" \
+        "${fil_out_sp}" \
         "${ref_fa}" \
         1 \
-        "${dir_out}/filter_sc_sp.sp.SP_MTR.count.txt" \
+        "${cnt_sp_sp_mtr}" \
         arr_rgn_sp_mtr \
         "execute CRAM-to-CRAM retain=sp keeps SP_MTR"
+
     assert_cram_count \
-        "${fil_out}" \
+        "${fil_out_sp}" \
         "${ref_fa}" \
         1 \
-        "${dir_out}/filter_sc_sp.sp.SP_Mito.count.txt" \
+        "${cnt_sp_sp_mito}" \
         arr_rgn_sp_mito \
         "execute CRAM-to-CRAM retain=sp keeps SP_Mito"
+
     assert_cram_count \
-        "${fil_out}" \
+        "${fil_out_sp}" \
         "${ref_fa}" \
         0 \
-        "${dir_out}/filter_sc_sp.sp.I.count.txt" \
+        "${cnt_sp_i}" \
         arr_rgn_i \
         "execute CRAM-to-CRAM retain=sp omits S. cerevisiae chromosomes"
+
     assert_cram_count \
-        "${fil_out}" \
+        "${fil_out_sp}" \
         "${ref_fa}" \
         0 \
-        "${dir_out}/filter_sc_sp.sp.chrUn.count.txt" \
+        "${cnt_sp_chrun}" \
         arr_rgn_chrun \
         "execute CRAM-to-CRAM retain=sp omits unrelated contigs"
 fi

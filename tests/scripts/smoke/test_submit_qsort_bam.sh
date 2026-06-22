@@ -6,10 +6,13 @@
 # Copyright 2026 by Kris Alavattam
 # Email: kalavattam@gmail.com
 #
-# OpenAI ChatGPT and Codex (GPT-5.5) were used in development.
+# OpenAI ChatGPT and Codex (GPT-5.5) were used in development and
+# documentation.
 #
 # Distributed under the MIT license.
 
+
+set -euo pipefail
 
 TEST_NAME="submit qsort BAM/CRAM"
 
@@ -32,6 +35,17 @@ dir_out="${tmp}/out"
 dir_err="${tmp}/logs"
 dir_log="${TEST_DIR_LOG}/qsort_bam"
 
+out_bam="${dir_out}/IP_WT_G1_Hho1_6336.sc.qnam.bam"
+out_cram="${dir_out}/IP_WT_G1_Hho1_6336.sc.qnam.cram"
+
+log_help="${dir_log}/submit_qsort_bam_help.log"
+log_positional="${dir_log}/submit_qsort_bam_positional_fails.log"
+log_unknown="${dir_log}/submit_qsort_bam_unknown_option.log"
+log_missing_ref="${dir_log}/submit_qsort_bam_cram_missing_ref.log"
+log_serial="${dir_log}/submit_qsort_bam_serial.log"
+log_qc_bam="${dir_log}/submit_qsort_bam_bam_quickcheck.log"
+log_qc_cram="${dir_log}/submit_qsort_bam_cram_quickcheck.log"
+
 rm -rf "${tmp}"
 mkdir -p "${dir_out}" "${dir_err}" "${dir_log}"
 
@@ -50,11 +64,10 @@ require_files_nonempty \
 
 
 #  Help should exit successfully
-log="${dir_log}/submit_qsort_bam_help.log"
 if \
     run_capture \
         "submit_qsort_bam.sh --help" \
-        "${log}" \
+        "${log_help}" \
         "${TEST_BASH}" "${ROOT_REPO}/scripts/submit_qsort_bam.sh" \
             --help
 then
@@ -62,16 +75,16 @@ then
 else
     record_fail \
         "submit_qsort_bam.sh --help failed;" \
-        "see $(print_relpath "${log}")"
+        "see $(print_relpath "${log_help}")"
 fi
 
 
 #  Old positional invocation should fail after the keyarg migration
-log="${dir_log}/submit_qsort_bam_positional_fails.log"
+# shellcheck disable=SC2154
 if \
     run_capture \
         "submit_qsort_bam.sh positional invocation fails" \
-        "${log}" \
+        "${log_positional}" \
         "${TEST_BASH}" "${ROOT_REPO}/scripts/submit_qsort_bam.sh" \
             "${env_nam}" \
             1 \
@@ -87,11 +100,10 @@ fi
 
 
 #  Unknown option should fail clearly
-log="${dir_log}/submit_qsort_bam_unknown_option.log"
 if \
     run_capture \
         "submit_qsort_bam.sh unknown option fails" \
-        "${log}" \
+        "${log_unknown}" \
         "${TEST_BASH}" "${ROOT_REPO}/scripts/submit_qsort_bam.sh" \
             --not_an_option
 then
@@ -102,11 +114,10 @@ fi
 
 
 #  CRAM input without a reference should fail before execution
-log="${dir_log}/submit_qsort_bam_cram_missing_ref.log"
 if \
     run_capture \
         "submit_qsort_bam.sh CRAM missing ref fails" \
-        "${log}" \
+        "${log_missing_ref}" \
         "${TEST_BASH}" "${ROOT_REPO}/scripts/submit_qsort_bam.sh" \
             --env_nam "${env_nam}" \
             --dir_scr "${ROOT_REPO}/scripts" \
@@ -123,11 +134,10 @@ fi
 
 
 #  Serial BAM and CRAM qsort should write one output per input
-log="${dir_log}/submit_qsort_bam_serial.log"
 if \
     run_capture \
         "submit_qsort_bam.sh serial BAM/CRAM" \
-        "${log}" \
+        "${log_serial}" \
         "${TEST_BASH}" "${ROOT_REPO}/scripts/submit_qsort_bam.sh" \
             --env_nam "${env_nam}" \
             --dir_scr "${ROOT_REPO}/scripts" \
@@ -142,25 +152,22 @@ then
 else
     record_fail \
         "submit_qsort_bam.sh serial BAM/CRAM failed;" \
-        "see $(print_relpath "${log}")"
+        "see $(print_relpath "${log_serial}")"
 fi
-
-out_bam="${dir_out}/IP_WT_G1_Hho1_6336.sc.qnam.bam"
-out_cram="${dir_out}/IP_WT_G1_Hho1_6336.sc.qnam.cram"
 
 assert_file_nonempty \
     "${out_bam}" \
     "qsort BAM output"
+
 assert_file_nonempty \
     "${out_cram}" \
     "qsort CRAM output"
 
 if [[ -s "${out_bam}" ]]; then
-    log="${dir_log}/submit_qsort_bam_bam_quickcheck.log"
     if \
         run_capture \
             "quickcheck qsort BAM output" \
-            "${log}" \
+            "${log_qc_bam}" \
             run_samtools quickcheck "${out_bam}"
     then
         record_pass "qsort BAM output passes samtools quickcheck"
@@ -170,11 +177,10 @@ if [[ -s "${out_bam}" ]]; then
 fi
 
 if [[ -s "${out_cram}" ]]; then
-    log="${dir_log}/submit_qsort_bam_cram_quickcheck.log"
     if \
         run_capture \
             "quickcheck qsort CRAM output" \
-            "${log}" \
+            "${log_qc_cram}" \
             run_samtools quickcheck "${out_cram}"
     then
         record_pass "qsort CRAM output passes samtools quickcheck"

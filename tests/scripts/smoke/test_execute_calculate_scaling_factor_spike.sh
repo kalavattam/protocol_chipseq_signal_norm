@@ -6,10 +6,13 @@
 # Copyright 2026 by Kris Alavattam
 # Email: kalavattam@gmail.com
 #
-# OpenAI ChatGPT and Codex (GPT-5.5) were used in development.
+# OpenAI ChatGPT and Codex (GPT-5.5) were used in development and
+# documentation.
 #
 # Distributed under the MIT license.
 
+
+set -euo pipefail
 
 TEST_NAME="execute calculate-scaling-factor spike"
 
@@ -18,6 +21,38 @@ TEST_NAME="execute calculate-scaling-factor spike"
 source "$(
     cd "$(dirname "${BASH_SOURCE[0]}")/.." > /dev/null 2>&1 && pwd
 )/lib/test_helpers.sh"
+
+function run_case_spike() {
+    local cas="${1:-}"
+    local arr_cmd_nam="${2:-}"
+    local row_0="${3:-}"
+    local row_1="${4:-}"
+    local method="${5:-}"
+    local tail_0="${6:-}"
+    local tail_1="${7:-}"
+    shift 7 || true
+
+    if [[ -n "${method}" ]]; then
+        set -- --method "${method}" "$@"
+    fi
+
+    run_case_scaling_factor_execute \
+        "${cas}" \
+        spike \
+        "${arr_cmd_nam}" \
+        "${dir_out}" \
+        "${dir_log}" \
+        spike \
+        test_execute_calculate_scaling_factor_spike \
+        $'^main_ip\tspike_ip\tmain_in\tspike_in\tspike\tcoef\tnum_mp\tnum_sp\tnum_mn\tnum_sn$' \
+        "${row_0}" \
+        "${row_1}" \
+        "${tail_0}" \
+        "${tail_1}" \
+        "$@"
+}
+
+
 
 print_section "${TEST_NAME}"
 
@@ -45,6 +80,15 @@ bam_se_sip_1="${dir_bam_se}/IP_WT_log_Brn1_rep2.sp.bam"
 bam_se_sin_0="${dir_bam_se}/in_WT_log_Brn1_rep1.sp.bam"
 bam_se_sin_1="${dir_bam_se}/in_WT_log_Brn1_rep2.sp.bam"
 
+bai_se_mip_0="${bam_se_mip_0}.bai"
+bai_se_mip_1="${bam_se_mip_1}.bai"
+bai_se_min_0="${bam_se_min_0}.bai"
+bai_se_min_1="${bam_se_min_1}.bai"
+bai_se_sip_0="${bam_se_sip_0}.bai"
+bai_se_sip_1="${bam_se_sip_1}.bai"
+bai_se_sin_0="${bam_se_sin_0}.bai"
+bai_se_sin_1="${bam_se_sin_1}.bai"
+
 bam_pe_mip_0="${dir_bam_pe}/IP_WT_G1_Hho1_6336.sc.bam"
 bam_pe_mip_1="${dir_bam_pe}/IP_WT_G1_Hho1_6337.sc.bam"
 bam_pe_min_0="${dir_bam_pe}/in_WT_G1_Hho1_6336.sc.bam"
@@ -53,6 +97,15 @@ bam_pe_sip_0="${dir_bam_pe}/IP_WT_G1_Hho1_6336.sp.bam"
 bam_pe_sip_1="${dir_bam_pe}/IP_WT_G1_Hho1_6337.sp.bam"
 bam_pe_sin_0="${dir_bam_pe}/in_WT_G1_Hho1_6336.sp.bam"
 bam_pe_sin_1="${dir_bam_pe}/in_WT_G1_Hho1_6337.sp.bam"
+
+bai_pe_mip_0="${bam_pe_mip_0}.bai"
+bai_pe_mip_1="${bam_pe_mip_1}.bai"
+bai_pe_min_0="${bam_pe_min_0}.bai"
+bai_pe_min_1="${bam_pe_min_1}.bai"
+bai_pe_sip_0="${bam_pe_sip_0}.bai"
+bai_pe_sip_1="${bam_pe_sip_1}.bai"
+bai_pe_sin_0="${bam_pe_sin_0}.bai"
+bai_pe_sin_1="${bam_pe_sin_1}.bai"
 
 cram_se_mip_0="${dir_cram_se}/IP_WT_log_Brn1_rep1.sc.cram"
 cram_se_mip_1="${dir_cram_se}/IP_WT_log_Brn1_rep2.sc.cram"
@@ -63,6 +116,15 @@ cram_se_sip_1="${dir_cram_se}/IP_WT_log_Brn1_rep2.sp.cram"
 cram_se_sin_0="${dir_cram_se}/in_WT_log_Brn1_rep1.sp.cram"
 cram_se_sin_1="${dir_cram_se}/in_WT_log_Brn1_rep2.sp.cram"
 
+crai_se_mip_0="${cram_se_mip_0}.crai"
+crai_se_mip_1="${cram_se_mip_1}.crai"
+crai_se_min_0="${cram_se_min_0}.crai"
+crai_se_min_1="${cram_se_min_1}.crai"
+crai_se_sip_0="${cram_se_sip_0}.crai"
+crai_se_sip_1="${cram_se_sip_1}.crai"
+crai_se_sin_0="${cram_se_sin_0}.crai"
+crai_se_sin_1="${cram_se_sin_1}.crai"
+
 cram_pe_mip_0="${dir_cram_pe}/IP_WT_G1_Hho1_6336.sc.cram"
 cram_pe_mip_1="${dir_cram_pe}/IP_WT_G1_Hho1_6337.sc.cram"
 cram_pe_min_0="${dir_cram_pe}/in_WT_G1_Hho1_6336.sc.cram"
@@ -72,45 +134,68 @@ cram_pe_sip_1="${dir_cram_pe}/IP_WT_G1_Hho1_6337.sp.cram"
 cram_pe_sin_0="${dir_cram_pe}/in_WT_G1_Hho1_6336.sp.cram"
 cram_pe_sin_1="${dir_cram_pe}/in_WT_G1_Hho1_6337.sp.cram"
 
-rm -rf "${tmp}"
-mkdir -p "${dir_out}" "${dir_err}" "${dir_log}"
+crai_pe_mip_0="${cram_pe_mip_0}.crai"
+crai_pe_mip_1="${cram_pe_mip_1}.crai"
+crai_pe_min_0="${cram_pe_min_0}.crai"
+crai_pe_min_1="${cram_pe_min_1}.crai"
+crai_pe_sip_0="${cram_pe_sip_0}.crai"
+crai_pe_sip_1="${cram_pe_sip_1}.crai"
+crai_pe_sin_0="${cram_pe_sin_0}.crai"
+crai_pe_sin_1="${cram_pe_sin_1}.crai"
 
-require_env_project env_nam || {
-    finish
-    exit $?
-}
+fil_out_dry="${dir_out}/scaling.dry.spike.tsv"
+fil_out_default="${dir_out}/scaling.default.spike.tsv"
+fil_out_cram_missing_ref="${dir_out}/scaling.cram_missing_ref.spike.tsv"
+fil_out_invalid_method="${dir_out}/scaling.invalid_method.spike.tsv"
 
-if ! \
-    require_files_nonempty \
-        "${bam_se_mip_0}" "${bam_se_mip_1}" \
-        "${bam_se_mip_0}.bai" "${bam_se_mip_1}.bai" \
-        "${bam_se_min_0}" "${bam_se_min_1}" \
-        "${bam_se_min_0}.bai" "${bam_se_min_1}.bai" \
-        "${bam_se_sip_0}" "${bam_se_sip_1}" \
-        "${bam_se_sip_0}.bai" "${bam_se_sip_1}.bai" \
-        "${bam_se_sin_0}" "${bam_se_sin_1}" \
-        "${bam_se_sin_0}.bai" "${bam_se_sin_1}.bai" \
-        "${bam_pe_mip_0}" "${bam_pe_mip_1}" \
-        "${bam_pe_mip_0}.bai" "${bam_pe_mip_1}.bai" \
-        "${bam_pe_min_0}" "${bam_pe_min_1}" \
-        "${bam_pe_min_0}.bai" "${bam_pe_min_1}.bai" \
-        "${bam_pe_sip_0}" "${bam_pe_sip_1}" \
-        "${bam_pe_sip_0}.bai" "${bam_pe_sip_1}.bai" \
-        "${bam_pe_sin_0}" "${bam_pe_sin_1}" \
-        "${bam_pe_sin_0}.bai" "${bam_pe_sin_1}.bai" \
-        "${cram_se_mip_0}" "${cram_se_mip_1}" \
-        "${cram_se_min_0}" "${cram_se_min_1}" \
-        "${cram_se_sip_0}" "${cram_se_sip_1}" \
-        "${cram_se_sin_0}" "${cram_se_sin_1}" \
-        "${cram_pe_mip_0}" "${cram_pe_mip_1}" \
-        "${cram_pe_min_0}" "${cram_pe_min_1}" \
-        "${cram_pe_sip_0}" "${cram_pe_sip_1}" \
-        "${cram_pe_sin_0}" "${cram_pe_sin_1}" \
-        "${ref_fa}"
-then
-    finish
-    exit $?
-fi
+prt_default_0="${fil_out_default}.part.000000"
+prt_default_1="${fil_out_default}.part.000001"
+
+nam_job_dry="test_execute_calculate_scaling_factor_spike_dry"
+nam_job_default="test_execute_calculate_scaling_factor_spike_default"
+nam_job_cram_missing_ref="test_execute_calculate_scaling_factor_spike_cram_missing_ref"
+nam_job_invalid_method="test_execute_calculate_scaling_factor_spike_invalid_method"
+
+log_dry="${dir_log}/execute_spike_dry_run.log"
+log_cram_missing_ref="${dir_log}/execute_spike_cram_missing_ref.log"
+log_invalid_method="${dir_log}/execute_spike_invalid_method.log"
+log_existing="${dir_log}/execute_spike_existing.log"
+log_force_no_parts="${dir_log}/execute_spike_force_no_parts.log"
+
+log_out_default_0="${dir_err}/${nam_job_default}.IP_WT_log_Brn1_rep1.sc.stdout.txt"
+log_err_default_0="${dir_err}/${nam_job_default}.IP_WT_log_Brn1_rep1.sc.stderr.txt"
+log_out_default_1="${dir_err}/${nam_job_default}.IP_WT_log_Brn1_rep2.sc.stdout.txt"
+log_err_default_1="${dir_err}/${nam_job_default}.IP_WT_log_Brn1_rep2.sc.stderr.txt"
+
+log_err_pe_bam_0="${dir_err}/test_execute_calculate_scaling_factor_spike_pe_bam.IP_WT_G1_Hho1_6336.sc.stderr.txt"
+log_err_pe_bam_1="${dir_err}/test_execute_calculate_scaling_factor_spike_pe_bam.IP_WT_G1_Hho1_6337.sc.stderr.txt"
+
+log_err_se_cram_0="${dir_err}/test_execute_calculate_scaling_factor_spike_se_cram.IP_WT_log_Brn1_rep1.sc.stderr.txt"
+
+log_err_pe_cram_0="${dir_err}/test_execute_calculate_scaling_factor_spike_pe_cram.IP_WT_G1_Hho1_6336.sc.stderr.txt"
+log_err_pe_cram_1="${dir_err}/test_execute_calculate_scaling_factor_spike_pe_cram.IP_WT_G1_Hho1_6337.sc.stderr.txt"
+
+log_err_mixed_layout_0="${dir_err}/test_execute_calculate_scaling_factor_spike_mixed_layout.IP_WT_log_Brn1_rep1.sc.stderr.txt"
+log_err_mixed_layout_1="${dir_err}/test_execute_calculate_scaling_factor_spike_mixed_layout.IP_WT_G1_Hho1_6337.sc.stderr.txt"
+log_err_mixed_format_1="${dir_err}/test_execute_calculate_scaling_factor_spike_mixed_format.IP_WT_G1_Hho1_6337.sc.stderr.txt"
+
+row_bam_se_0="${bam_se_mip_0}"$'\t'"${bam_se_sip_0}"$'\t'"${bam_se_min_0}"$'\t'"${bam_se_sin_0}"
+row_bam_se_1="${bam_se_mip_1}"$'\t'"${bam_se_sip_1}"$'\t'"${bam_se_min_1}"$'\t'"${bam_se_sin_1}"
+
+row_bam_pe_0="${bam_pe_mip_0}"$'\t'"${bam_pe_sip_0}"$'\t'"${bam_pe_min_0}"$'\t'"${bam_pe_sin_0}"
+row_bam_pe_1="${bam_pe_mip_1}"$'\t'"${bam_pe_sip_1}"$'\t'"${bam_pe_min_1}"$'\t'"${bam_pe_sin_1}"
+
+row_cram_se_0="${cram_se_mip_0}"$'\t'"${cram_se_sip_0}"$'\t'"${cram_se_min_0}"$'\t'"${cram_se_sin_0}"
+row_cram_se_1="${cram_se_mip_1}"$'\t'"${cram_se_sip_1}"$'\t'"${cram_se_min_1}"$'\t'"${cram_se_sin_1}"
+
+row_cram_pe_0="${cram_pe_mip_0}"$'\t'"${cram_pe_sip_0}"$'\t'"${cram_pe_min_0}"$'\t'"${cram_pe_sin_0}"
+row_cram_pe_1="${cram_pe_mip_1}"$'\t'"${cram_pe_sip_1}"$'\t'"${cram_pe_min_1}"$'\t'"${cram_pe_sin_1}"
+
+row_mix_lyt_bam_0="${row_bam_se_0}"
+row_mix_lyt_bam_1="${row_bam_pe_1}"
+
+row_mix_fmt_bam_se_cram_pe_0="${row_bam_se_0}"
+row_mix_fmt_bam_se_cram_pe_1="${cram_pe_mip_1}"$'\t'"${cram_pe_sip_1}"$'\t'"${cram_pe_min_1}"$'\t'"${cram_pe_sin_1}"
 
 # shellcheck disable=2054
 arr_cmd_bam_se=(
@@ -197,74 +282,71 @@ arr_cmd_bam_se=(
     )
 }
 
-row_bam_se_0="${bam_se_mip_0}"$'\t'"${bam_se_sip_0}"$'\t'"${bam_se_min_0}"$'\t'"${bam_se_sin_0}"
-row_bam_se_1="${bam_se_mip_1}"$'\t'"${bam_se_sip_1}"$'\t'"${bam_se_min_1}"$'\t'"${bam_se_sin_1}"
+rm -rf "${tmp}"
+mkdir -p "${dir_out}" "${dir_err}" "${dir_log}"
 
-row_bam_pe_0="${bam_pe_mip_0}"$'\t'"${bam_pe_sip_0}"$'\t'"${bam_pe_min_0}"$'\t'"${bam_pe_sin_0}"
-row_bam_pe_1="${bam_pe_mip_1}"$'\t'"${bam_pe_sip_1}"$'\t'"${bam_pe_min_1}"$'\t'"${bam_pe_sin_1}"
+require_env_project env_nam || {
+    finish
+    exit $?
+}
 
-row_cram_se_0="${cram_se_mip_0}"$'\t'"${cram_se_sip_0}"$'\t'"${cram_se_min_0}"$'\t'"${cram_se_sin_0}"
-row_cram_se_1="${cram_se_mip_1}"$'\t'"${cram_se_sip_1}"$'\t'"${cram_se_min_1}"$'\t'"${cram_se_sin_1}"
-
-row_cram_pe_0="${cram_pe_mip_0}"$'\t'"${cram_pe_sip_0}"$'\t'"${cram_pe_min_0}"$'\t'"${cram_pe_sin_0}"
-row_cram_pe_1="${cram_pe_mip_1}"$'\t'"${cram_pe_sip_1}"$'\t'"${cram_pe_min_1}"$'\t'"${cram_pe_sin_1}"
-
-row_mix_lyt_bam_0="${row_bam_se_0}"
-row_mix_lyt_bam_1="${row_bam_pe_1}"
-
-row_mix_fmt_bam_se_cram_pe_0="${row_bam_se_0}"
-row_mix_fmt_bam_se_cram_pe_1="${cram_pe_mip_1}"$'\t'"${cram_pe_sip_1}"$'\t'"${cram_pe_min_1}"$'\t'"${cram_pe_sin_1}"
+if ! \
+    require_files_nonempty \
+        "${bam_se_mip_0}" "${bam_se_mip_1}" \
+        "${bai_se_mip_0}" "${bai_se_mip_1}" \
+        "${bam_se_min_0}" "${bam_se_min_1}" \
+        "${bai_se_min_0}" "${bai_se_min_1}" \
+        "${bam_se_sip_0}" "${bam_se_sip_1}" \
+        "${bai_se_sip_0}" "${bai_se_sip_1}" \
+        "${bam_se_sin_0}" "${bam_se_sin_1}" \
+        "${bai_se_sin_0}" "${bai_se_sin_1}" \
+        "${bam_pe_mip_0}" "${bam_pe_mip_1}" \
+        "${bai_pe_mip_0}" "${bai_pe_mip_1}" \
+        "${bam_pe_min_0}" "${bam_pe_min_1}" \
+        "${bai_pe_min_0}" "${bai_pe_min_1}" \
+        "${bam_pe_sip_0}" "${bam_pe_sip_1}" \
+        "${bai_pe_sip_0}" "${bai_pe_sip_1}" \
+        "${bam_pe_sin_0}" "${bam_pe_sin_1}" \
+        "${bai_pe_sin_0}" "${bai_pe_sin_1}" \
+        "${cram_se_mip_0}" "${cram_se_mip_1}" \
+        "${crai_se_mip_0}" "${crai_se_mip_1}" \
+        "${cram_se_min_0}" "${cram_se_min_1}" \
+        "${crai_se_min_0}" "${crai_se_min_1}" \
+        "${cram_se_sip_0}" "${cram_se_sip_1}" \
+        "${crai_se_sip_0}" "${crai_se_sip_1}" \
+        "${cram_se_sin_0}" "${cram_se_sin_1}" \
+        "${crai_se_sin_0}" "${crai_se_sin_1}" \
+        "${cram_pe_mip_0}" "${cram_pe_mip_1}" \
+        "${crai_pe_mip_0}" "${crai_pe_mip_1}" \
+        "${cram_pe_min_0}" "${cram_pe_min_1}" \
+        "${crai_pe_min_0}" "${crai_pe_min_1}" \
+        "${cram_pe_sip_0}" "${cram_pe_sip_1}" \
+        "${crai_pe_sip_0}" "${crai_pe_sip_1}" \
+        "${cram_pe_sin_0}" "${cram_pe_sin_1}" \
+        "${crai_pe_sin_0}" "${crai_pe_sin_1}" \
+        "${ref_fa}"
+then
+    finish
+    exit $?
+fi
 
 
 #  Run one serial spike-in calculation case and assert its assembled table
-function run_case_spike() {
-    local cas="${1:-}"
-    local arr_cmd_nam="${2:-}"
-    local row_0="${3:-}"
-    local row_1="${4:-}"
-    local method="${5:-}"
-    local tail_0="${6:-}"
-    local tail_1="${7:-}"
-    shift 7 || true
-
-    if [[ -n "${method}" ]]; then
-        set -- --method "${method}" "$@"
-    fi
-
-    run_case_scaling_factor_execute \
-        "${cas}" \
-        spike \
-        "${arr_cmd_nam}" \
-        "${dir_out}" \
-        "${dir_log}" \
-        spike \
-        test_execute_calculate_scaling_factor_spike \
-        $'^main_ip\tspike_ip\tmain_in\tspike_in\tspike\tcoef\tnum_mp\tnum_sp\tnum_mn\tnum_sn$' \
-        "${row_0}" \
-        "${row_1}" \
-        "${tail_0}" \
-        "${tail_1}" \
-        "$@"
-}
-
-
 #  Dry-run execution should report assembly without writing a final table
-fil_out_dry="${dir_out}/scaling.dry.spike.tsv"
-log="${dir_log}/execute_spike_dry_run.log"
 if \
     run_capture \
         "execute calculate-scaling-factor spike dry-run" \
-        "${log}" \
+        "${log_dry}" \
         "${arr_cmd_bam_se[@]}" \
         --fil_out "${fil_out_dry}" \
-        --nam_job test_execute_calculate_scaling_factor_spike_dry \
+        --nam_job "${nam_job_dry}" \
         --dry_run
 then
     record_pass "execute_calculate_scaling_factor.sh --dry_run exits 0"
 else
     record_fail \
         "execute_calculate_scaling_factor.sh --dry_run failed; see" \
-        "$(print_relpath "${log}")"
+        "$(print_relpath "${log_dry}")"
 fi
 
 if [[ ! -e "${fil_out_dry}" ]]; then
@@ -274,38 +356,38 @@ else
 fi
 
 assert_pattern_found \
-    "${log}" \
+    "${log_dry}" \
     'combine_parts_scaling_factor.sh' \
     "execute_calculate_scaling_factor.sh --dry_run reports combiner command"
 
 assert_pattern_found \
-    "${log}" \
+    "${log_dry}" \
     'write_header.sh' \
     "execute_calculate_scaling_factor.sh --dry_run reports header command"
 
 assert_pattern_found \
-    "${log}" \
+    "${log_dry}" \
     'write_header.sh.*--fil_in.*--in_place' \
     "execute_calculate_scaling_factor.sh --dry_run reports in-place headering"
 
 assert_pattern_found \
-    "${log}" \
+    "${log_dry}" \
     "${TEST_BASH} ${ROOT_REPO}/scripts/submit_calculate_scaling_factor.sh" \
     "execute_calculate_scaling_factor.sh --dry_run reports Bash-prefixed" \
     "submit command"
 
 assert_pattern_found \
-    "${log}" \
+    "${log_dry}" \
     '--method chiprx_alpha_ratio' \
     "execute_calculate_scaling_factor.sh --dry_run resolves default method"
 
 assert_pattern_found \
-    "${log}" \
+    "${log_dry}" \
     '--idx_out 0' \
     "execute_calculate_scaling_factor.sh --dry_run reports first part index"
 
 assert_pattern_found \
-    "${log}" \
+    "${log_dry}" \
     '--idx_out 1' \
     "execute_calculate_scaling_factor.sh --dry_run reports second part index"
 
@@ -330,63 +412,54 @@ run_case_spike \
     $'0.5\tchiprx_alpha_ratio\t2\t2\t3\t1' \
     --no_header
 
-fil_out="${dir_out}/scaling.default.spike.tsv"
-prt_0="${fil_out}.part.000000"
-prt_1="${fil_out}.part.000001"
-nam_job="test_execute_calculate_scaling_factor_spike_default"
-log_out_0="${dir_err}/${nam_job}.IP_WT_log_Brn1_rep1.sc.stdout.txt"
-log_err_0="${dir_err}/${nam_job}.IP_WT_log_Brn1_rep1.sc.stderr.txt"
-log_out_1="${dir_err}/${nam_job}.IP_WT_log_Brn1_rep2.sc.stdout.txt"
-log_err_1="${dir_err}/${nam_job}.IP_WT_log_Brn1_rep2.sc.stderr.txt"
-
 assert_file_exists \
-    "${log_out_0}" \
+    "${log_out_default_0}" \
     "execute scaling-factor spike default first submit stdout log exists"
 
 assert_file_exists \
-    "${log_err_0}" \
+    "${log_err_default_0}" \
     "execute scaling-factor spike default first submit stderr log exists"
 
 assert_file_exists \
-    "${log_out_1}" \
+    "${log_out_default_1}" \
     "execute scaling-factor spike default second submit stdout log exists"
 
 assert_file_exists \
-    "${log_err_1}" \
+    "${log_err_default_1}" \
     "execute scaling-factor spike default second submit stderr log exists"
 
 assert_pattern_found \
-    "${log_err_0}" \
+    "${log_err_default_0}" \
     'idx_out=0' \
     "execute scaling-factor spike default first submit uses idx_out=0"
 
 assert_pattern_found \
-    "${log_err_1}" \
+    "${log_err_default_1}" \
     'idx_out=1' \
     "execute scaling-factor spike default second submit uses idx_out=1"
 
 assert_pattern_found \
-    "${log_err_0}" \
+    "${log_err_default_0}" \
     'typ_mp=se' \
     "execute scaling-factor spike default auto-detects first main IP as SE"
 
 assert_pattern_found \
-    "${log_err_0}" \
+    "${log_err_default_0}" \
     'num_mp=3' \
     "execute scaling-factor spike default counts first main IP alignments"
 
 assert_pattern_found \
-    "${log_err_0}" \
+    "${log_err_default_0}" \
     'num_sp=1' \
     "execute scaling-factor spike default counts first spike IP alignments"
 
 assert_pattern_found \
-    "${log_err_0}" \
+    "${log_err_default_0}" \
     'num_mn=2' \
     "execute scaling-factor spike default counts first main input alignments"
 
 assert_pattern_found \
-    "${log_err_0}" \
+    "${log_err_default_0}" \
     'num_sn=2' \
     "execute scaling-factor spike default counts first spike input alignments"
 
@@ -448,16 +521,13 @@ run_case_spike \
     $'2\tchiprx_alpha_ratio\t3\t1\t2\t2' \
     $'0.5\tchiprx_alpha_ratio\t2\t2\t3\t1'
 
-log_err_0="${dir_err}/test_execute_calculate_scaling_factor_spike_pe_bam.IP_WT_G1_Hho1_6336.sc.stderr.txt"
-log_err_1="${dir_err}/test_execute_calculate_scaling_factor_spike_pe_bam.IP_WT_G1_Hho1_6337.sc.stderr.txt"
-
 assert_pattern_found \
-    "${log_err_0}" \
+    "${log_err_pe_bam_0}" \
     'typ_mp=pe' \
     "execute scaling-factor spike PE BAM auto-detects first main IP as PE"
 
 assert_pattern_found \
-    "${log_err_1}" \
+    "${log_err_pe_bam_1}" \
     'typ_mp=pe' \
     "execute scaling-factor spike PE BAM auto-detects second main IP as PE"
 
@@ -470,10 +540,8 @@ run_case_spike \
     $'2\tchiprx_alpha_ratio\t3\t1\t2\t2' \
     $'0.5\tchiprx_alpha_ratio\t2\t2\t3\t1'
 
-log_err_0="${dir_err}/test_execute_calculate_scaling_factor_spike_se_cram.IP_WT_log_Brn1_rep1.sc.stderr.txt"
-
 assert_pattern_found \
-    "${log_err_0}" \
+    "${log_err_se_cram_0}" \
     'typ_mp=se' \
     "execute scaling-factor spike SE CRAM auto-detects first main IP as SE"
 
@@ -486,16 +554,13 @@ run_case_spike \
     $'2\tchiprx_alpha_ratio\t3\t1\t2\t2' \
     $'0.5\tchiprx_alpha_ratio\t2\t2\t3\t1'
 
-log_err_0="${dir_err}/test_execute_calculate_scaling_factor_spike_pe_cram.IP_WT_G1_Hho1_6336.sc.stderr.txt"
-log_err_1="${dir_err}/test_execute_calculate_scaling_factor_spike_pe_cram.IP_WT_G1_Hho1_6337.sc.stderr.txt"
-
 assert_pattern_found \
-    "${log_err_0}" \
+    "${log_err_pe_cram_0}" \
     'typ_mp=pe' \
     "execute scaling-factor spike PE CRAM auto-detects first main IP as PE"
 
 assert_pattern_found \
-    "${log_err_1}" \
+    "${log_err_pe_cram_1}" \
     'typ_mp=pe' \
     "execute scaling-factor spike PE CRAM auto-detects second main IP as PE"
 
@@ -508,16 +573,13 @@ run_case_spike \
     $'2\tchiprx_alpha_ratio\t3\t1\t2\t2' \
     $'0.5\tchiprx_alpha_ratio\t2\t2\t3\t1'
 
-log_err_0="${dir_err}/test_execute_calculate_scaling_factor_spike_mixed_layout.IP_WT_log_Brn1_rep1.sc.stderr.txt"
-log_err_1="${dir_err}/test_execute_calculate_scaling_factor_spike_mixed_layout.IP_WT_G1_Hho1_6337.sc.stderr.txt"
-
 assert_pattern_found \
-    "${log_err_0}" \
+    "${log_err_mixed_layout_0}" \
     'typ_mp=se' \
     "execute scaling-factor spike mixed layout keeps first main IP as SE"
 
 assert_pattern_found \
-    "${log_err_1}" \
+    "${log_err_mixed_layout_1}" \
     'typ_mp=pe' \
     "execute scaling-factor spike mixed layout keeps second main IP as PE"
 
@@ -530,34 +592,31 @@ run_case_spike \
     $'2\tchiprx_alpha_ratio\t3\t1\t2\t2' \
     $'0.5\tchiprx_alpha_ratio\t2\t2\t3\t1'
 
-log_err_1="${dir_err}/test_execute_calculate_scaling_factor_spike_mixed_format.IP_WT_G1_Hho1_6337.sc.stderr.txt"
-
 assert_pattern_found \
-    "${log_err_1}" \
+    "${log_err_mixed_format_1}" \
     'typ_mp=pe' \
     "execute scaling-factor spike mixed BAM/CRAM list reads PE CRAM input"
 
 
 #  CRAM input without a reference FASTA should fail before worker execution
-log="${dir_log}/execute_spike_cram_missing_ref.log"
 if \
     run_capture \
         "execute calculate-scaling-factor spike CRAM missing reference" \
-        "${log}" \
+        "${log_cram_missing_ref}" \
         "${arr_cmd_bam_se[@]}" \
         --csv_mip "${cram_se_mip_0},${cram_se_mip_1}" \
         --csv_min "${cram_se_min_0},${cram_se_min_1}" \
         --csv_sip "${cram_se_sip_0},${cram_se_sip_1}" \
         --csv_sin "${cram_se_sin_0},${cram_se_sin_1}" \
-        --fil_out "${dir_out}/scaling.cram_missing_ref.spike.tsv" \
-        --nam_job test_execute_calculate_scaling_factor_spike_cram_missing_ref
+        --fil_out "${fil_out_cram_missing_ref}" \
+        --nam_job "${nam_job_cram_missing_ref}"
 then
     record_fail \
         "execute_calculate_scaling_factor.sh CRAM without ref unexpectedly" \
         "pass"
 else
     assert_pattern_found \
-        "${log}" \
+        "${log_cram_missing_ref}" \
         "'--ref_fa' is required" \
         "execute_calculate_scaling_factor.sh rejects CRAM without ref_fa"
 fi
@@ -579,41 +638,39 @@ run_case_spike \
 
 
 #  Unknown spike-in method should fail before running workers
-log="${dir_log}/execute_spike_invalid_method.log"
 if \
     run_capture \
         "execute calculate-scaling-factor spike invalid method" \
-        "${log}" \
+        "${log_invalid_method}" \
         "${arr_cmd_bam_se[@]}" \
         --method not_a_method \
-        --fil_out "${dir_out}/scaling.invalid_method.spike.tsv" \
-        --nam_job test_execute_calculate_scaling_factor_spike_invalid_method
+        --fil_out "${fil_out_invalid_method}" \
+        --nam_job "${nam_job_invalid_method}"
 then
     record_fail \
         "execute_calculate_scaling_factor.sh invalid method unexpectedly pass"
 else
     assert_pattern_found \
-        "${log}" \
+        "${log_invalid_method}" \
         'is not recognized' \
         "execute_calculate_scaling_factor.sh rejects invalid spike method"
 fi
 
 
 #  Existing final output should fail unless '--force' is supplied
-log="${dir_log}/execute_spike_existing.log"
 if \
     run_capture \
         "execute calculate-scaling-factor spike existing output" \
-        "${log}" \
+        "${log_existing}" \
         "${arr_cmd_bam_se[@]}" \
-        --fil_out "${fil_out}" \
-        --nam_job "${nam_job}"
+        --fil_out "${fil_out_default}" \
+        --nam_job "${nam_job_default}"
 then
     record_fail \
         "execute_calculate_scaling_factor.sh existing output unexpectedly pass"
 else
     assert_pattern_found \
-        "${log}" \
+        "${log_existing}" \
         'output file already exists' \
         "execute_calculate_scaling_factor.sh rejects existing output"
 fi
@@ -621,14 +678,13 @@ fi
 
 #  '--force' should replace output and '--no_parts' should remove worker part
 #+ files
-log="${dir_log}/execute_spike_force_no_parts.log"
 if \
     run_capture \
         "execute calculate-scaling-factor spike force no-parts" \
-        "${log}" \
+        "${log_force_no_parts}" \
         "${arr_cmd_bam_se[@]}" \
-        --fil_out "${fil_out}" \
-        --nam_job "${nam_job}" \
+        --fil_out "${fil_out_default}" \
+        --nam_job "${nam_job_default}" \
         --force \
         --no_parts
 then
@@ -637,14 +693,14 @@ then
 else
     record_fail \
         "execute_calculate_scaling_factor.sh --force --no_parts failed; see" \
-        "$(print_relpath "${log}")"
+        "$(print_relpath "${log_force_no_parts}")"
 fi
 
 assert_file_nonempty \
-    "${fil_out}" \
+    "${fil_out_default}" \
     "execute scaling-factor spike replaced final TSV"
 
-if [[ ! -e "${prt_0}" && ! -e "${prt_1}" ]]; then
+if [[ ! -e "${prt_default_0}" && ! -e "${prt_default_1}" ]]; then
     record_pass "execute scaling-factor spike --no_parts removes worker parts"
 else
     record_fail "execute scaling-factor spike --no_parts retained worker parts"

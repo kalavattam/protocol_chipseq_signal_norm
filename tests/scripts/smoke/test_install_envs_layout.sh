@@ -6,10 +6,13 @@
 # Copyright 2026 by Kris Alavattam
 # Email: kalavattam@gmail.com
 #
-# OpenAI ChatGPT (GPT-5.5) was used in development.
+# OpenAI ChatGPT and Codex (GPT-5.5) were used in development and
+# documentation.
 #
 # Distributed under the MIT license.
 
+
+set -euo pipefail
 
 TEST_NAME="install envs layout"
 
@@ -18,19 +21,6 @@ TEST_NAME="install envs layout"
 source "$(
     cd "$(dirname "${BASH_SOURCE[0]}")/.." > /dev/null 2>&1 && pwd
 )/lib/test_helpers.sh"
-
-print_section "${TEST_NAME}"
-
-dir_log="${TEST_DIR_LOG}/install_envs"
-mkdir -p "${dir_log}"
-
-scr_inl="${ROOT_REPO}/install/scripts/install_envs.sh"
-scr_ent="${ROOT_REPO}/install/scripts/install_envs_entrypoint.sh"
-scr_atr="${ROOT_REPO}/install/scripts/install_atria.sh"
-scr_hlp="${ROOT_REPO}/scripts/functions/help/help_install_envs.sh"
-yml_anl="${ROOT_REPO}/install/envs/env_analyze.yml"
-yml_prt="${ROOT_REPO}/install/envs/env_protocol.yml"
-yml_siq="${ROOT_REPO}/install/envs/env_siqchip.yml"
 
 
 function assert_readable_yaml() {
@@ -69,12 +59,36 @@ function assert_install_dry_run() {
         "${log_lcl}" \
         "YAML: ${yml_lcl}" \
         "install_envs.sh ${env_lcl} dry-run reports YAML path"
+
     assert_pattern_found \
         "${log_lcl}" \
         "env create -f" \
         "install_envs.sh ${env_lcl} dry-run uses env create -f"
 }
 
+
+print_section "${TEST_NAME}"
+
+dir_log="${TEST_DIR_LOG}/install_envs"
+
+scr_inl="${ROOT_REPO}/install/scripts/install_envs.sh"
+scr_ent="${ROOT_REPO}/install/scripts/install_envs_entrypoint.sh"
+scr_atr="${ROOT_REPO}/install/scripts/install_atria.sh"
+scr_hlp="${ROOT_REPO}/scripts/functions/help/help_install_envs.sh"
+
+yml_anl="${ROOT_REPO}/install/envs/env_analyze.yml"
+yml_prt="${ROOT_REPO}/install/envs/env_protocol.yml"
+yml_siq="${ROOT_REPO}/install/envs/env_siqchip.yml"
+
+log_atria_dry_run="${dir_log}/install_atria_dry_run.log"
+log_siqchip_dry_run="${dir_log}/env_siqchip_dry_run.log"
+log_analyze_dry_run="${dir_log}/env_analyze_dry_run.log"
+log_protocol_channels_dry_run="${dir_log}/env_protocol_channels_dry_run.log"
+log_override_no_channels="${dir_log}/install_override_channels_no_channels.log"
+log_entrypoint_override_no_channels="${dir_log}/entrypoint_override_channels_no_channels.log"
+log_if_exis_bogus="${dir_log}/install_if_exis_bogus.log"
+
+mkdir -p "${dir_log}"
 
 for spec in \
     "bash -n install_envs:${TEST_BASH}:${scr_inl}" \
@@ -127,11 +141,10 @@ do
     fi
 done
 
-log="${dir_log}/install_atria_dry_run.log"
 if \
     run_capture \
         "install_atria dry-run" \
-        "${log}" \
+        "${log_atria_dry_run}" \
         "${TEST_BASH}" "${scr_atr}" \
             --dry_run \
             --if_exis reuse \
@@ -139,19 +152,23 @@ if \
 then
     record_pass "install_atria.sh dry-run exits 0"
     assert_pattern_found \
-        "${log}" \
+        "${log_atria_dry_run}" \
         "v_atria=4.1.5" \
         "install_atria.sh dry-run reports Atria 4.1.5"
+
     assert_pattern_found \
-        "${log}" \
+        "${log_atria_dry_run}" \
         "tag_atr=v4.1.5" \
         "install_atria.sh dry-run maps Atria tag v4.1.5"
+
     assert_pattern_found \
-        "${log}" \
+        "${log_atria_dry_run}" \
         "atria-4.1.5/bin" \
         "install_atria.sh dry-run reports provisional Atria bin path"
 else
-    record_fail "install_atria.sh dry-run failed; see $(print_relpath "${log}")"
+    record_fail \
+        "install_atria.sh dry-run failed; see" \
+        "$(print_relpath "${log_atria_dry_run}")"
 fi
 
 assert_readable_yaml "${yml_anl}" "env_analyze YAML"
@@ -161,46 +178,49 @@ assert_readable_yaml "${yml_siq}" "env_siqchip YAML"
 if \
     check_cmd_exists mamba || check_cmd_exists conda
 then
-    log="${dir_log}/env_siqchip_dry_run.log"
     assert_install_dry_run \
-        "env_siqchip" "${yml_siq}" "${log}" \
+        "env_siqchip" "${yml_siq}" "${log_siqchip_dry_run}" \
         --dry_run \
         --env_nam env_siqchip \
         --yes
+
     assert_pattern_found \
-        "${log}" \
+        "${log_siqchip_dry_run}" \
         "--yes" \
         "install_envs.sh env_siqchip dry-run includes --yes"
 
-    log="${dir_log}/env_analyze_dry_run.log"
     assert_install_dry_run \
-        "env_analyze" "${yml_anl}" "${log}" \
+        "env_analyze" "${yml_anl}" "${log_analyze_dry_run}" \
         --dry_run \
         --env_nam env_analyze \
         --yes
 
-    log="${dir_log}/env_protocol_channels_dry_run.log"
     assert_install_dry_run \
-        "env_protocol channels" "${yml_prt}" "${log}" \
+        "env_protocol channels" "${yml_prt}" \
+        "${log_protocol_channels_dry_run}" \
         --dry_run \
         --env_nam env_protocol \
         --channels fhcc-main,fhcc-bioconda \
         --override_channels \
         --yes
+
     assert_pattern_found \
-        "${log}" \
+        "${log_protocol_channels_dry_run}" \
         "--override-channels" \
         "install_envs.sh channel dry-run includes --override-channels"
+
     assert_pattern_found \
-        "${log}" \
+        "${log_protocol_channels_dry_run}" \
         "-c fhcc-main" \
         "install_envs.sh channel dry-run includes fhcc-main"
+
     assert_pattern_found \
-        "${log}" \
+        "${log_protocol_channels_dry_run}" \
         "-c fhcc-bioconda" \
         "install_envs.sh channel dry-run includes fhcc-bioconda"
+
     assert_pattern_found \
-        "${log}" \
+        "${log_protocol_channels_dry_run}" \
         "--yes" \
         "install_envs.sh channel dry-run includes --yes"
 else
@@ -209,11 +229,10 @@ else
         "conda on PATH"
 fi
 
-log="${dir_log}/install_override_channels_no_channels.log"
 if \
     run_capture \
         "install_envs override_channels without channels" \
-        "${log}" \
+        "${log_override_no_channels}" \
         "${TEST_BASH}" "${scr_inl}" \
             --dry_run \
             --env_nam env_protocol \
@@ -224,19 +243,18 @@ then
         "succeeded"
 else
     assert_pattern_found \
-        "${log}" \
+        "${log_override_no_channels}" \
         "--override_channels.*requires.*--channels" \
         "install_envs.sh rejects --override_channels without --channels"
 fi
 
-log="${dir_log}/entrypoint_override_channels_no_channels.log"
 if \
     check_cmd_exists mamba || check_cmd_exists conda
 then
     if \
         run_capture \
             "entrypoint override_channels without channels" \
-            "${log}" \
+            "${log_entrypoint_override_no_channels}" \
             sh "${scr_ent}" \
                 --dry_run \
                 --env_nam env_protocol \
@@ -248,7 +266,7 @@ then
             "unexpectedly succeeded"
     else
         assert_pattern_found \
-            "${log}" \
+            "${log_entrypoint_override_no_channels}" \
             "--override_channels.*requires.*--channels" \
             "install_envs_entrypoint.sh rejects --override_channels without --channels"
     fi
@@ -258,11 +276,10 @@ else
         "for handoff"
 fi
 
-log="${dir_log}/install_if_exis_bogus.log"
 if \
     run_capture \
         "install_envs invalid if_exis" \
-        "${log}" \
+        "${log_if_exis_bogus}" \
         "${TEST_BASH}" "${scr_inl}" \
             --dry_run \
             --env_nam env_protocol \
@@ -271,7 +288,7 @@ then
     record_fail "install_envs.sh invalid --if_exis unexpectedly succeeded"
 else
     assert_pattern_found \
-        "${log}" \
+        "${log_if_exis_bogus}" \
         "invalid '--if_exis' value" \
         "install_envs.sh rejects invalid --if_exis"
 fi

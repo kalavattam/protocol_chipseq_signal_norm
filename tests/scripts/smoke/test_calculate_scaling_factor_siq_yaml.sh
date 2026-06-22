@@ -6,10 +6,13 @@
 # Copyright 2026 by Kris Alavattam
 # Email: kalavattam@gmail.com
 #
-# OpenAI ChatGPT and Codex (GPT-5.5) were used in development.
+# OpenAI ChatGPT and Codex (GPT-5.5) were used in development and
+# documentation.
 #
 # Distributed under the MIT license.
 
+
+set -euo pipefail
 
 TEST_NAME="calculate scaling-factor siQ YAML"
 
@@ -17,34 +20,6 @@ TEST_NAME="calculate scaling-factor siQ YAML"
 source "$(
     cd "$(dirname "${BASH_SOURCE[0]}")/.." > /dev/null 2>&1 && pwd
 )/lib/test_helpers.sh"
-
-print_section "${TEST_NAME}"
-
-scr_prs="${ROOT_REPO}/scripts/parse_metadata_siqchip.py"
-cfg_met="${ROOT_REPO}/data/raw/docs/parse_metadata_siqchip.yml"
-cfg_p857="${ROOT_REPO}/data/raw/docs/parse_metadata_siqchip_PRJNA857063.yml"
-tbl_p857="${ROOT_REPO}/data/raw/docs/measurements_siqchip_PRJNA857063.tsv"
-
-dir_fix="${ROOT_REPO}/tests/calculate_scaling_factor/fixtures"
-dir_cfg="${dir_fix}/config"
-dir_met="${dir_fix}/metadata"
-dir_tmp="${TEST_DIR_TMP}/calculate_scaling_factor_siq_yaml"
-dir_log="${TEST_DIR_LOG}/calculate_scaling_factor_siq_yaml"
-
-tbl_met="${dir_met}/measurements_siqchip.tsv"
-tbl_gz="${dir_met}/measurements_siqchip.tsv.gz"
-tbl_dup="${dir_met}/measurements_siqchip_duplicate_match.tsv"
-tbl_mis="${dir_met}/measurements_siqchip_missing_required.tsv"
-tbl_lib="${dir_met}/measurements_siqchip_lib_volume.tsv"
-tbl_lib_one="${dir_met}/measurements_siqchip_lib_volume_one_sided.tsv"
-tbl_lib_zero="${dir_met}/measurements_siqchip_lib_volume_zero.tsv"
-tbl_pre="${dir_met}/measurements_siqchip_precomputed.tsv"
-cfg_map="${dir_cfg}/parse_metadata_siqchip_field_to_column.yml"
-
-bam_hho1="${dir_tmp}/IP_WT_G1_Hho1_6336.sc.bam"
-bam_hho1_bad="${dir_tmp}/IP_WT_G1_Hho1_9999.sc.bam"
-bam_extra="${dir_tmp}/IP_WT_G1_HU_Hho1_6336.sc.bam"
-bam_p857="${dir_tmp}/IP_HeLa_DMSO_H3K18ac_rep1.hs.bam"
 
 
 function run_parse_success() {
@@ -107,6 +82,48 @@ function run_parse_failure() {
 }
 
 
+print_section "${TEST_NAME}"
+
+scr_prs="${ROOT_REPO}/scripts/parse_metadata_siqchip.py"
+cfg_met="${ROOT_REPO}/data/raw/docs/parse_metadata_siqchip.yml"
+cfg_p857="${ROOT_REPO}/data/raw/docs/parse_metadata_siqchip_PRJNA857063.yml"
+tbl_p857="${ROOT_REPO}/data/raw/docs/measurements_siqchip_PRJNA857063.tsv"
+
+dir_fix="${ROOT_REPO}/tests/calculate_scaling_factor/fixtures"
+dir_cfg="${dir_fix}/config"
+dir_met="${dir_fix}/metadata"
+dir_tmp="${TEST_DIR_TMP}/calculate_scaling_factor_siq_yaml"
+dir_log="${TEST_DIR_LOG}/calculate_scaling_factor_siq_yaml"
+
+tbl_met="${dir_met}/measurements_siqchip.tsv"
+tbl_gz="${dir_met}/measurements_siqchip.tsv.gz"
+tbl_dup="${dir_met}/measurements_siqchip_duplicate_match.tsv"
+tbl_mis="${dir_met}/measurements_siqchip_missing_required.tsv"
+tbl_lib="${dir_met}/measurements_siqchip_lib_volume.tsv"
+tbl_lib_one="${dir_met}/measurements_siqchip_lib_volume_one_sided.tsv"
+tbl_lib_zer="${dir_met}/measurements_siqchip_lib_volume_zero.tsv"
+tbl_pre="${dir_met}/measurements_siqchip_precomputed.tsv"
+cfg_map="${dir_cfg}/parse_metadata_siqchip_field_to_column.yml"
+
+bam_hho1="${dir_tmp}/IP_WT_G1_Hho1_6336.sc.bam"
+bam_hho1_bad="${dir_tmp}/IP_WT_G1_Hho1_9999.sc.bam"
+bam_extra="${dir_tmp}/IP_WT_G1_HU_Hho1_6336.sc.bam"
+bam_p857="${dir_tmp}/IP_HeLa_DMSO_H3K18ac_rep1.hs.bam"
+
+log_env_py="${dir_log}/resolve_env_python.log"
+log_canonical="${dir_log}/canonical.log"
+log_gzip="${dir_log}/gzip.log"
+log_field_to_column="${dir_log}/field_to_column.log"
+log_precomputed="${dir_log}/precomputed.log"
+log_lib_volume="${dir_log}/lib_volume.log"
+log_prjna857063="${dir_log}/prjna857063.log"
+log_token_count="${dir_log}/token_count.log"
+log_zero_rows="${dir_log}/zero_rows.log"
+log_multiple_rows="${dir_log}/multiple_rows.log"
+log_missing_required="${dir_log}/missing_required.log"
+log_one_sided_lib_volume="${dir_log}/one_sided_lib_volume.log"
+log_nonpositive_lib_volume="${dir_log}/nonpositive_lib_volume.log"
+
 rm -rf "${dir_tmp}"
 mkdir -p "${dir_tmp}" "${dir_log}"
 touch "${bam_hho1}" "${bam_hho1_bad}" "${bam_extra}" "${bam_p857}"
@@ -122,7 +139,7 @@ require_files_nonempty \
     "${tbl_mis}" \
     "${tbl_lib}" \
     "${tbl_lib_one}" \
-    "${tbl_lib_zero}" \
+    "${tbl_lib_zer}" \
     "${tbl_pre}" \
     "${tbl_p857}" || {
         finish
@@ -138,15 +155,14 @@ require_env_project env_nam || {
 if [[ -n "${CONDA_DEFAULT_ENV:-}" && "${CONDA_DEFAULT_ENV}" != "base" ]]; then
     py_cmd=( "$(find_python)" )
 else
-    log="${dir_log}/resolve_env_python.log"
     if \
         run_capture \
             "resolve env python" \
-            "${log}" \
+            "${log_env_py}" \
             conda run -n "${env_nam}" python -c \
                 'import sys; print(sys.executable)'
     then
-        IFS= read -r py < "${log}"
+        IFS= read -r py < "${log_env_py}"
         py_cmd=( "${py}" )
     else
         record_fail "failed to resolve python from '${env_nam}'"
@@ -158,72 +174,110 @@ fi
 
 run_parse_success \
     canonical \
-    "${dir_log}/canonical.log" \
+    "${log_canonical}" \
     "${tbl_met}" \
     "${bam_hho1}"
 
-assert_pattern_found "${dir_log}/canonical.log" '^export mass_ip=2.7$' \
+assert_pattern_found \
+    "${log_canonical}" \
+    '^export mass_ip=2.7$' \
     "deterministic parser exports required mass_ip"
-assert_pattern_found "${dir_log}/canonical.log" '^export vol_in=20$' \
+
+assert_pattern_found \
+    "${log_canonical}" \
+    '^export vol_in=20$' \
     "deterministic parser maps volume_in to vol_in"
-assert_pattern_found "${dir_log}/canonical.log" '^export len_ip=626$' \
+
+assert_pattern_found \
+    "${log_canonical}" \
+    '^export len_ip=626$' \
     "deterministic parser maps length_ip to len_ip"
-assert_pattern_absent "${dir_log}/canonical.log" '^export eqn=' \
+
+assert_pattern_absent \
+    "${log_canonical}" \
+    '^export eqn=' \
     "deterministic parser does not export eqn"
 
 run_parse_success \
     gzip_metadata \
-    "${dir_log}/gzip.log" \
+    "${log_gzip}" \
     "${tbl_gz}" \
     "${bam_hho1}"
-assert_pattern_found "${dir_log}/gzip.log" '^export mass_in=72.5$' \
+
+assert_pattern_found \
+    "${log_gzip}" \
+    '^export mass_in=72.5$' \
     "deterministic parser reads gzipped metadata"
 
 run_parse_success \
     field_to_column \
-    "${dir_log}/field_to_column.log" \
+    "${log_field_to_column}" \
     "${tbl_met}" \
     "${bam_hho1}" \
     "${cfg_map}"
-assert_pattern_found "${dir_log}/field_to_column.log" '^export mass_ip=2.7$' \
+
+assert_pattern_found \
+    "${log_field_to_column}" \
+    '^export mass_ip=2.7$' \
     "deterministic parser maps filename id to strain column"
 
 run_parse_success \
     precomputed_values \
-    "${dir_log}/precomputed.log" \
+    "${log_precomputed}" \
     "${tbl_pre}" \
     "${bam_hho1}"
-assert_pattern_found "${dir_log}/precomputed.log" '^export dep_ip=3333$' \
+
+assert_pattern_found \
+    "${log_precomputed}" \
+    '^export dep_ip=3333$' \
     "deterministic parser exports precomputed dep_ip"
-assert_pattern_found "${dir_log}/precomputed.log" '^export dep_in=2222$' \
+
+assert_pattern_found \
+    "${log_precomputed}" \
+    '^export dep_in=2222$' \
     "deterministic parser exports precomputed dep_in"
-assert_pattern_found "${dir_log}/precomputed.log" '^export len_ip=456$' \
+
+assert_pattern_found \
+    "${log_precomputed}" \
+    '^export len_ip=456$' \
     "deterministic parser exports precomputed len_ip"
-assert_pattern_found "${dir_log}/precomputed.log" '^export len_in=123$' \
+
+assert_pattern_found \
+    "${log_precomputed}" \
+    '^export len_in=123$' \
     "deterministic parser exports precomputed len_in"
 
 run_parse_success \
     lib_volume \
-    "${dir_log}/lib_volume.log" \
+    "${log_lib_volume}" \
     "${tbl_lib}" \
     "${bam_hho1}"
-assert_pattern_found "${dir_log}/lib_volume.log" '^export lib_vol_ip=2$' \
+
+assert_pattern_found \
+    "${log_lib_volume}" \
+    '^export lib_vol_ip=2$' \
     "deterministic parser exports paired lib_vol_ip"
-assert_pattern_found "${dir_log}/lib_volume.log" '^export lib_vol_in=4$' \
+
+assert_pattern_found \
+    "${log_lib_volume}" \
+    '^export lib_vol_in=4$' \
     "deterministic parser exports paired lib_vol_in"
 
 run_parse_success \
     prjna857063 \
-    "${dir_log}/prjna857063.log" \
+    "${log_prjna857063}" \
     "${tbl_p857}" \
     "${bam_p857}" \
     "${cfg_p857}"
-assert_pattern_found "${dir_log}/prjna857063.log" '^export mass_ip=22.68$' \
+
+assert_pattern_found \
+    "${log_prjna857063}" \
+    '^export mass_ip=22.68$' \
     "deterministic parser resolves PRJNA857063 reference config"
 
 run_parse_failure \
     token_count \
-    "${dir_log}/token_count.log" \
+    "${log_token_count}" \
     "${tbl_met}" \
     "${bam_extra}" \
     "${cfg_met}" \
@@ -231,7 +285,7 @@ run_parse_failure \
 
 run_parse_failure \
     zero_rows \
-    "${dir_log}/zero_rows.log" \
+    "${log_zero_rows}" \
     "${tbl_met}" \
     "${bam_hho1_bad}" \
     "${cfg_met}" \
@@ -239,7 +293,7 @@ run_parse_failure \
 
 run_parse_failure \
     multiple_rows \
-    "${dir_log}/multiple_rows.log" \
+    "${log_multiple_rows}" \
     "${tbl_dup}" \
     "${bam_hho1}" \
     "${cfg_met}" \
@@ -247,7 +301,7 @@ run_parse_failure \
 
 run_parse_failure \
     missing_required \
-    "${dir_log}/missing_required.log" \
+    "${log_missing_required}" \
     "${tbl_mis}" \
     "${bam_hho1}" \
     "${cfg_met}" \
@@ -255,7 +309,7 @@ run_parse_failure \
 
 run_parse_failure \
     one_sided_lib_volume \
-    "${dir_log}/one_sided_lib_volume.log" \
+    "${log_one_sided_lib_volume}" \
     "${tbl_lib_one}" \
     "${bam_hho1}" \
     "${cfg_met}" \
@@ -263,8 +317,8 @@ run_parse_failure \
 
 run_parse_failure \
     nonpositive_lib_volume \
-    "${dir_log}/nonpositive_lib_volume.log" \
-    "${tbl_lib_zero}" \
+    "${log_nonpositive_lib_volume}" \
+    "${tbl_lib_zer}" \
     "${bam_hho1}" \
     "${cfg_met}" \
     "lib_vol_.*must be > 0"

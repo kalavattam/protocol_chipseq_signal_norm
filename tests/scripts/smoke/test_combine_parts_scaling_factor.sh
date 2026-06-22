@@ -6,10 +6,13 @@
 # Copyright 2026 by Kris Alavattam
 # Email: kalavattam@gmail.com
 #
-# OpenAI ChatGPT (GPT-5.5) was used in development.
+# OpenAI ChatGPT and Codex (GPT-5.5) were used in development and
+# documentation.
 #
 # Distributed under the MIT license.
 
+
+set -euo pipefail
 
 TEST_NAME="combine scaling-factor parts"
 
@@ -18,26 +21,6 @@ TEST_NAME="combine scaling-factor parts"
 source "$(
     cd "$(dirname "${BASH_SOURCE[0]}")/.." > /dev/null 2>&1 && pwd
 )/lib/test_helpers.sh"
-
-print_section "${TEST_NAME}"
-
-scr_cmb="${ROOT_REPO}/scripts/combine_parts_scaling_factor.sh"
-dir_fix="${ROOT_REPO}/tests/calculate_scaling_factor/fixtures"
-dir_prt="${dir_fix}/parts"
-dir_log="${TEST_DIR_LOG}/combine_parts_scaling_factor"
-tmp="${TEST_DIR_TMP}/combine_parts_scaling_factor"
-dir_prt_dry="${tmp}/parts_dry_no_parts"
-dir_prt_out="${tmp}/parts_output_input"
-dir_prt_tmp="${tmp}/parts_no_parts"
-
-spk_0="${dir_prt}/example_scaling_factors.spike.tsv.part.000000"
-spk_2="${dir_prt}/example_scaling_factors.spike.tsv.part.000002"
-siq_0="${dir_prt}/example_scaling_factors.siq.tsv.part.000000"
-siq_2="${dir_prt}/example_scaling_factors.siq.tsv.part.000002"
-fil_bad="${dir_prt}/malformed_scaling_factors.spike.tsv.part.000003"
-fil_hdr="${dir_prt}/header_scaling_factors.spike.tsv.part.000004"
-dup_idx_a="${dir_prt}/duplicate_index_A.spike.tsv.part.000005"
-dup_idx_b="${dir_prt}/duplicate_index_B.spike.tsv.part.000005"
 
 
 #  Assert one successful combination with reverse-ordered input files
@@ -120,8 +103,69 @@ function assert_combine_fails() {
 }
 
 
-mkdir -p "${tmp}/out" "${dir_log}"
-rm -f "${tmp}/out/"*
+print_section "${TEST_NAME}"
+
+scr_cmb="${ROOT_REPO}/scripts/combine_parts_scaling_factor.sh"
+dir_fix="${ROOT_REPO}/tests/calculate_scaling_factor/fixtures"
+dir_prt="${dir_fix}/parts"
+dir_log="${TEST_DIR_LOG}/combine_parts_scaling_factor"
+tmp="${TEST_DIR_TMP}/combine_parts_scaling_factor"
+dir_out="${tmp}/out"
+dir_prt_dry="${tmp}/parts_dry_no_parts"
+dir_prt_out="${tmp}/parts_output_input"
+dir_prt_tmp="${tmp}/parts_no_parts"
+
+spk_0="${dir_prt}/example_scaling_factors.spike.tsv.part.000000"
+spk_2="${dir_prt}/example_scaling_factors.spike.tsv.part.000002"
+siq_0="${dir_prt}/example_scaling_factors.siq.tsv.part.000000"
+siq_2="${dir_prt}/example_scaling_factors.siq.tsv.part.000002"
+fil_bad="${dir_prt}/malformed_scaling_factors.spike.tsv.part.000003"
+fil_hdr="${dir_prt}/header_scaling_factors.spike.tsv.part.000004"
+dup_idx_a="${dir_prt}/duplicate_index_A.spike.tsv.part.000005"
+dup_idx_b="${dir_prt}/duplicate_index_B.spike.tsv.part.000005"
+
+fil_out_spk="${dir_out}/scaling.spike.tsv"
+fil_out_siq="${dir_out}/scaling.siq.tsv"
+fil_out_one="${dir_out}/scaling.one_part.tsv"
+fil_out_dry="${dir_out}/scaling.dry.tsv"
+fil_out_dry_no_parts="${dir_out}/scaling.dry_no_parts.tsv"
+fil_out_missing_mode="${dir_out}/missing_mode.tsv"
+fil_out_invalid_mode="${dir_out}/invalid_mode.tsv"
+fil_out_missing_csv_infile="${dir_out}/missing_csv_infile.tsv"
+fil_out_unknown_option="${dir_out}/unknown_option.tsv"
+fil_out_duplicate_path="${dir_out}/duplicate_path.tsv"
+fil_out_duplicate_index="${dir_out}/duplicate_index.tsv"
+fil_out_header_row="${dir_out}/header_row.tsv"
+fil_out_malformed="${dir_out}/malformed.tsv"
+fil_out_nop="${dir_out}/scaling.no_parts.tsv"
+
+spk_dry_0="${dir_prt_dry}/scaling.spike.tsv.part.000000"
+spk_dry_2="${dir_prt_dry}/scaling.spike.tsv.part.000002"
+spk_out_in="${dir_prt_out}/scaling.out.spike.tsv.part.000006"
+spk_tmp_0="${dir_prt_tmp}/scaling.spike.tsv.part.000000"
+spk_tmp_2="${dir_prt_tmp}/scaling.spike.tsv.part.000002"
+
+fil_log_help="${dir_log}/help.log"
+fil_log_spike="${dir_log}/spike.log"
+fil_log_siq="${dir_log}/siq.log"
+fil_log_one_part="${dir_log}/one_part.log"
+fil_log_dry="${dir_log}/dry_run.log"
+fil_log_dry_no_parts="${dir_log}/dry_run_no_parts.log"
+fil_log_missing_mode="${dir_log}/missing_mode.log"
+fil_log_invalid_mode="${dir_log}/invalid_mode.log"
+fil_log_missing_csv_infile="${dir_log}/missing_csv_infile.log"
+fil_log_unknown_option="${dir_log}/unknown_option.log"
+fil_log_duplicate_input_path="${dir_log}/duplicate_input_path.log"
+fil_log_output_is_input="${dir_log}/output_is_input.log"
+fil_log_duplicate_numeric_index="${dir_log}/duplicate_numeric_index.log"
+fil_log_header_row="${dir_log}/header_row.log"
+fil_log_malformed_fields="${dir_log}/malformed_fields.log"
+fil_log_existing_output="${dir_log}/existing_output.log"
+fil_log_no_parts="${dir_log}/no_parts.log"
+fil_log_force="${dir_log}/force.log"
+
+mkdir -p "${dir_out}" "${dir_log}"
+rm -f "${dir_out}/"*
 rm -rf \
     "${dir_prt_dry}" \
     "${dir_prt_out}" \
@@ -144,34 +188,32 @@ fi
 
 
 #  Help should print usage and exit cleanly
-fil_log="${dir_log}/help.log"
 if \
     run_capture \
         "combine scaling-factor help" \
-        "${fil_log}" \
+        "${fil_log_help}" \
         "${TEST_BASH}" "${scr_cmb}" --help
 then
     record_pass "combine_parts_scaling_factor.sh --help exits 0"
     assert_pattern_found \
-        "${fil_log}" \
+        "${fil_log_help}" \
         '^Usage:' \
         "combine_parts_scaling_factor.sh --help prints usage"
 else
     record_fail \
         "combine_parts_scaling_factor.sh --help failed; see" \
-        "$(print_relpath "${fil_log}")"
+        "$(print_relpath "${fil_log_help}")"
 fi
 
 
 #  Combine spike-in and siQ-ChIP parts passed in reverse order
-fil_out_spk="${tmp}/out/scaling.spike.tsv"
 assert_combined_mode \
     spike \
     "${spk_2},${spk_0}" \
     "${fil_out_spk}" \
     '/path/to/IP_WT_G1_Hho1_6336.sc.bam' \
     '/path/to/IP_WT_G1_Hho1_6337.sc.bam' \
-    "${dir_log}/spike.log"
+    "${fil_log_spike}"
 
 assert_pattern_found \
     "${fil_out_spk}" \
@@ -188,14 +230,13 @@ assert_pattern_absent \
     $'^main_ip\tspike_ip\tmain_in\tspike_in\tspike\tcoef' \
     "combined scaling-factor spike TSV stays data-only"
 
-fil_out_siq="${tmp}/out/scaling.siq.tsv"
 assert_combined_mode \
     siq \
     "${siq_2},${siq_0}" \
     "${fil_out_siq}" \
     '/path/to/IP_WT_G1_Hho1_6336.sc.bam' \
     '/path/to/IP_WT_G1_Hho1_6337.sc.bam' \
-    "${dir_log}/siq.log"
+    "${fil_log_siq}"
 
 assert_pattern_absent \
     "${fil_out_siq}" \
@@ -204,11 +245,10 @@ assert_pattern_absent \
 
 
 #  Combine one spike-in part into a one-row table
-fil_out_one="${tmp}/out/scaling.one_part.tsv"
 if \
     run_capture \
         "combine scaling-factor one part" \
-        "${dir_log}/one_part.log" \
+        "${fil_log_one_part}" \
         "${TEST_BASH}" "${scr_cmb}" \
             --mode spike \
             --csv_infile "${spk_0}" \
@@ -218,7 +258,7 @@ then
 else
     record_fail \
         "combine_parts_scaling_factor.sh one-part failed; see" \
-        "$(print_relpath "${dir_log}/one_part.log")"
+        "$(print_relpath "${fil_log_one_part}")"
 fi
 
 assert_file_nonempty \
@@ -248,12 +288,10 @@ assert_file_nonempty \
 
 
 #  Confirm dry-run validation writes no final table
-fil_out_dry="${tmp}/out/scaling.dry.tsv"
-fil_log="${dir_log}/dry_run.log"
 if \
     run_capture \
         "combine scaling-factor dry-run" \
-        "${fil_log}" \
+        "${fil_log_dry}" \
         "${TEST_BASH}" "${scr_cmb}" \
             --dry_run \
             --mode spike \
@@ -264,7 +302,7 @@ then
 else
     record_fail \
         "combine_parts_scaling_factor.sh --dry_run failed; see" \
-        "$(print_relpath "${fil_log}")"
+        "$(print_relpath "${fil_log_dry}")"
 fi
 
 if [[ ! -e "${fil_out_dry}" ]]; then
@@ -277,32 +315,29 @@ fi
 #  Confirm dry-run no_parts reports removal but retains copied inputs
 mkdir -p "${dir_prt_dry}"
 
-spk_dry_0="${dir_prt_dry}/scaling.spike.tsv.part.000000"
-spk_dry_2="${dir_prt_dry}/scaling.spike.tsv.part.000002"
 cp "${spk_0}" "${spk_dry_0}"
 cp "${spk_2}" "${spk_dry_2}"
 
-fil_log="${dir_log}/dry_run_no_parts.log"
 if \
     run_capture \
         "combine scaling-factor dry-run no-parts" \
-        "${fil_log}" \
+        "${fil_log_dry_no_parts}" \
         "${TEST_BASH}" "${scr_cmb}" \
             --dry_run \
             --mode spike \
             --csv_infile "${spk_dry_2},${spk_dry_0}" \
-            --fil_out "${tmp}/out/scaling.dry_no_parts.tsv" \
+            --fil_out "${fil_out_dry_no_parts}" \
             --no_parts
 then
     record_pass "combine_parts_scaling_factor.sh --dry_run --no_parts exits 0"
 else
     record_fail \
         "combine_parts_scaling_factor.sh --dry_run --no_parts failed; see" \
-        "$(print_relpath "${fil_log}")"
+        "$(print_relpath "${fil_log_dry_no_parts}")"
 fi
 
 assert_pattern_found \
-    "${fil_log}" \
+    "${fil_log_dry_no_parts}" \
     'would remove validated part files' \
     "combine_parts_scaling_factor.sh --dry_run --no_parts reports removal"
 
@@ -316,51 +351,50 @@ fi
 #  Confirm invalid inputs fail clearly
 assert_combine_fails \
     "rejects missing mode" \
-    "${dir_log}/missing_mode.log" \
+    "${fil_log_missing_mode}" \
     "'mode' is empty or unset" \
     --csv_infile "${spk_0}" \
-    --fil_out "${tmp}/out/missing_mode.tsv"
+    --fil_out "${fil_out_missing_mode}"
 
 assert_combine_fails \
     "rejects invalid mode" \
-    "${dir_log}/invalid_mode.log" \
+    "${fil_log_invalid_mode}" \
     "'--mode' must be 'siq' or 'spike'" \
     --mode bogus \
     --csv_infile "${spk_0}" \
-    --fil_out "${tmp}/out/invalid_mode.tsv"
+    --fil_out "${fil_out_invalid_mode}"
 
 assert_combine_fails \
     "rejects missing csv_infile" \
-    "${dir_log}/missing_csv_infile.log" \
+    "${fil_log_missing_csv_infile}" \
     "'csv_infile' is empty or unset" \
     --mode spike \
-    --fil_out "${tmp}/out/missing_csv_infile.tsv"
+    --fil_out "${fil_out_missing_csv_infile}"
 
 assert_combine_fails \
     "rejects unknown option" \
-    "${dir_log}/unknown_option.log" \
+    "${fil_log_unknown_option}" \
     "unknown option/parameter passed: '--bogus'" \
     --bogus \
     --mode spike \
     --csv_infile "${spk_0}" \
-    --fil_out "${tmp}/out/unknown_option.tsv"
+    --fil_out "${fil_out_unknown_option}"
 
 assert_combine_fails \
     "rejects duplicate input path" \
-    "${dir_log}/duplicate_input_path.log" \
+    "${fil_log_duplicate_input_path}" \
     "duplicate input part file" \
     --mode spike \
     --csv_infile "${spk_0},${spk_0}" \
-    --fil_out "${tmp}/out/duplicate_path.tsv"
+    --fil_out "${fil_out_duplicate_path}"
 
 mkdir -p "${dir_prt_out}"
 
-spk_out_in="${dir_prt_out}/scaling.out.spike.tsv.part.000006"
 cp "${spk_0}" "${spk_out_in}"
 
 assert_combine_fails \
     "rejects output that is also input" \
-    "${dir_log}/output_is_input.log" \
+    "${fil_log_output_is_input}" \
     "'--fil_out' is also an input part file" \
     --mode spike \
     --csv_infile "${spk_out_in}" \
@@ -369,31 +403,31 @@ assert_combine_fails \
 
 assert_combine_fails \
     "rejects duplicate numeric index" \
-    "${dir_log}/duplicate_numeric_index.log" \
+    "${fil_log_duplicate_numeric_index}" \
     "duplicate numeric part index '5'" \
     --mode spike \
     --csv_infile "${dup_idx_a},${dup_idx_b}" \
-    --fil_out "${tmp}/out/duplicate_index.tsv"
+    --fil_out "${fil_out_duplicate_index}"
 
 assert_combine_fails \
     "rejects header row" \
-    "${dir_log}/header_row.log" \
+    "${fil_log_header_row}" \
     "appears to contain a header" \
     --mode spike \
     --csv_infile "${fil_hdr}" \
-    --fil_out "${tmp}/out/header_row.tsv"
+    --fil_out "${fil_out_header_row}"
 
 assert_combine_fails \
     "rejects malformed fields" \
-    "${dir_log}/malformed_fields.log" \
+    "${fil_log_malformed_fields}" \
     "expected '10' for mode 'spike'" \
     --mode spike \
     --csv_infile "${fil_bad}" \
-    --fil_out "${tmp}/out/malformed.tsv"
+    --fil_out "${fil_out_malformed}"
 
 assert_combine_fails \
     "rejects existing output without force" \
-    "${dir_log}/existing_output.log" \
+    "${fil_log_existing_output}" \
     'output file already exists' \
     --mode spike \
     --csv_infile "${spk_2},${spk_0}" \
@@ -403,17 +437,13 @@ assert_combine_fails \
 #  Confirm force replaces output and no_parts removes only validated inputs
 mkdir -p "${dir_prt_tmp}"
 
-spk_tmp_0="${dir_prt_tmp}/scaling.spike.tsv.part.000000"
-spk_tmp_2="${dir_prt_tmp}/scaling.spike.tsv.part.000002"
 cp "${spk_0}" "${spk_tmp_0}"
 cp "${spk_2}" "${spk_tmp_2}"
 
-fil_out_nop="${tmp}/out/scaling.no_parts.tsv"
-fil_log="${dir_log}/no_parts.log"
 if \
     run_capture \
         "combine scaling-factor no-parts" \
-        "${fil_log}" \
+        "${fil_log_no_parts}" \
         "${TEST_BASH}" "${scr_cmb}" \
             --mode spike \
             --csv_infile "${spk_tmp_2},${spk_tmp_0}" \
@@ -424,7 +454,7 @@ then
 else
     record_fail \
         "combine_parts_scaling_factor.sh --no_parts failed; see" \
-        "$(print_relpath "${fil_log}")"
+        "$(print_relpath "${fil_log_no_parts}")"
 fi
 
 assert_file_nonempty \
@@ -437,11 +467,10 @@ else
     record_fail "combine_parts_scaling_factor.sh --no_parts retained inputs"
 fi
 
-fil_log="${dir_log}/force.log"
 if \
     run_capture \
         "combine scaling-factor force" \
-        "${fil_log}" \
+        "${fil_log_force}" \
         "${TEST_BASH}" "${scr_cmb}" \
             --mode spike \
             --csv_infile "${spk_2},${spk_0}" \
@@ -452,7 +481,7 @@ then
 else
     record_fail \
         "combine_parts_scaling_factor.sh --force failed; see" \
-        "$(print_relpath "${fil_log}")"
+        "$(print_relpath "${fil_log_force}")"
 fi
 
 assert_pattern_found \

@@ -6,10 +6,13 @@
 # Copyright 2026 by Kris Alavattam
 # Email: kalavattam@gmail.com
 #
-# OpenAI ChatGPT and Codex (GPT-5.5) were used in development.
+# OpenAI ChatGPT and Codex (GPT-5.5) were used in development and
+# documentation.
 #
 # Distributed under the MIT license.
 
+
+set -euo pipefail
 
 TEST_NAME="calculate scaling-factor siQ Python"
 
@@ -17,22 +20,6 @@ TEST_NAME="calculate scaling-factor siQ Python"
 source "$(
     cd "$(dirname "${BASH_SOURCE[0]}")/.." > /dev/null 2>&1 && pwd
 )/lib/test_helpers.sh"
-
-print_section "${TEST_NAME}"
-
-scr_clc="${ROOT_REPO}/scripts/calculate_scaling_factor_siqchip.py"
-dir_log="${TEST_DIR_LOG}/calculate_scaling_factor_siq_python"
-mkdir -p "${dir_log}"
-
-calc_arg=(
-    --mass_ip 2.7
-    --mass_in 72.5
-    --vol_all 300
-    --vol_in 20
-    --len_ip 626
-    --len_in 450
-    --rnd 24
-)
 
 
 function run_siq_success() {
@@ -79,6 +66,37 @@ function run_siq_failure() {
 }
 
 
+print_section "${TEST_NAME}"
+
+scr_clc="${ROOT_REPO}/scripts/calculate_scaling_factor_siqchip.py"
+dir_log="${TEST_DIR_LOG}/calculate_scaling_factor_siq_python"
+
+log_env_py="${dir_log}/resolve_env_python.log"
+log_eq5="${dir_log}/calc_eq5.log"
+log_eq5nd="${dir_log}/calc_eq5nd.log"
+log_eq6="${dir_log}/calc_eq6.log"
+log_eq6nd="${dir_log}/calc_eq6nd.log"
+log_eq6nd_lib_volume="${dir_log}/calc_eq6nd_lib_volume.log"
+log_prjna857063_lib_volume="${dir_log}/calc_prjna857063_lib_volume.log"
+log_rounding="${dir_log}/calc_rounding.log"
+log_eq5_missing_depth="${dir_log}/calc_eq5_missing_depth.log"
+log_bad_volume="${dir_log}/calc_bad_volume.log"
+log_lib_volume_one_sided_input="${dir_log}/calc_lib_volume_one_sided_input.log"
+log_lib_volume_zero="${dir_log}/calc_lib_volume_zero.log"
+log_bad_eqn="${dir_log}/calc_bad_eqn.log"
+
+calc_arg=(
+    --mass_ip 2.7
+    --mass_in 72.5
+    --vol_all 300
+    --vol_in 20
+    --len_ip 626
+    --len_in 450
+    --rnd 24
+)
+
+mkdir -p "${dir_log}"
+
 require_files_nonempty "${scr_clc}" || {
     finish
     exit $?
@@ -92,15 +110,15 @@ require_env_project env_nam || {
 if [[ -n "${CONDA_DEFAULT_ENV:-}" && "${CONDA_DEFAULT_ENV}" != "base" ]]; then
     py_cmd=( "$(find_python)" )
 else
-    log="${dir_log}/resolve_env_python.log"
+    # shellcheck disable=SC2154
     if \
         run_capture \
             "resolve env python" \
-            "${log}" \
+            "${log_env_py}" \
             conda run -n "${env_nam}" python -c \
                 'import sys; print(sys.executable)'
     then
-        IFS= read -r py < "${log}"
+        IFS= read -r py < "${log_env_py}"
         py_cmd=( "${py}" )
     else
         record_fail "failed to resolve python from '${env_nam}'"
@@ -111,7 +129,7 @@ fi
 
 run_siq_success \
     "computes equation 5" \
-    "${dir_log}/calc_eq5.log" \
+    "${log_eq5}" \
     '^0.002974551063126584012769$' \
     -m scripts.calculate_scaling_factor_siqchip \
         --eqn 5 \
@@ -121,7 +139,7 @@ run_siq_success \
 
 run_siq_success \
     "computes equation 5nd" \
-    "${dir_log}/calc_eq5nd.log" \
+    "${log_eq5nd}" \
     '^0.001784730637875950407661$' \
     -m scripts.calculate_scaling_factor_siqchip \
         --eqn 5nd \
@@ -129,7 +147,7 @@ run_siq_success \
 
 run_siq_success \
     "computes equation 6" \
-    "${dir_log}/calc_eq6.log" \
+    "${log_eq6}" \
     '^0.003187018996207053710829$' \
     -m scripts.calculate_scaling_factor_siqchip \
         --eqn 6 \
@@ -139,7 +157,7 @@ run_siq_success \
 
 run_siq_success \
     "computes equation 6nd" \
-    "${dir_log}/calc_eq6nd.log" \
+    "${log_eq6nd}" \
     '^0.001912211397724232486706$' \
     -m scripts.calculate_scaling_factor_siqchip \
         --eqn 6nd \
@@ -147,7 +165,7 @@ run_siq_success \
 
 run_siq_success \
     "computes equation 6nd with library-volume correction" \
-    "${dir_log}/calc_eq6nd_lib_volume.log" \
+    "${log_eq6nd_lib_volume}" \
     '^0.003824422795448464973411$' \
     -m scripts.calculate_scaling_factor_siqchip \
         --eqn 6nd \
@@ -157,7 +175,7 @@ run_siq_success \
 
 run_siq_success \
     "computes PRJNA857063-like library-volume correction" \
-    "${dir_log}/calc_prjna857063_lib_volume.log" \
+    "${log_prjna857063_lib_volume}" \
     '^0.087954632669594509652988$' \
     -m scripts.calculate_scaling_factor_siqchip \
         --eqn 6nd \
@@ -173,7 +191,7 @@ run_siq_success \
 
 run_siq_success \
     "strips trailing zeros after rounding" \
-    "${dir_log}/calc_rounding.log" \
+    "${log_rounding}" \
     '^0.002$' \
     -m scripts.calculate_scaling_factor_siqchip \
         --eqn 6nd \
@@ -182,7 +200,7 @@ run_siq_success \
 
 run_siq_failure \
     "rejects missing depths for equation 5" \
-    "${dir_log}/calc_eq5_missing_depth.log" \
+    "${log_eq5_missing_depth}" \
     "require both '--dep_ip' and '--dep_in'" \
     -m scripts.calculate_scaling_factor_siqchip \
         --eqn 5 \
@@ -190,7 +208,7 @@ run_siq_failure \
 
 run_siq_failure \
     "rejects invalid volume relation" \
-    "${dir_log}/calc_bad_volume.log" \
+    "${log_bad_volume}" \
     "vol_all.*must be greater than.*vol_in" \
     -m scripts.calculate_scaling_factor_siqchip \
         --eqn 6nd \
@@ -203,7 +221,7 @@ run_siq_failure \
 
 run_siq_failure \
     "rejects one-sided input library volume" \
-    "${dir_log}/calc_lib_volume_one_sided_input.log" \
+    "${log_lib_volume_one_sided_input}" \
     "requires both '--lib_vol_ip' and '--lib_vol_in'" \
     -m scripts.calculate_scaling_factor_siqchip \
         --eqn 6nd \
@@ -212,7 +230,7 @@ run_siq_failure \
 
 run_siq_failure \
     "rejects zero library volume" \
-    "${dir_log}/calc_lib_volume_zero.log" \
+    "${log_lib_volume_zero}" \
     "lib_vol_in.*> 0" \
     -m scripts.calculate_scaling_factor_siqchip \
         --eqn 6nd \
@@ -222,7 +240,7 @@ run_siq_failure \
 
 run_siq_failure \
     "rejects invalid equation" \
-    "${dir_log}/calc_bad_eqn.log" \
+    "${log_bad_eqn}" \
     "invalid choice" \
     -m scripts.calculate_scaling_factor_siqchip \
         --eqn bogus \

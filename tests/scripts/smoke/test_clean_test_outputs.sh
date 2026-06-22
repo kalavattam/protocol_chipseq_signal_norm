@@ -6,10 +6,13 @@
 # Copyright 2026 by Kris Alavattam
 # Email: kalavattam@gmail.com
 #
-# OpenAI ChatGPT (GPT-5.5) was used in development.
+# OpenAI ChatGPT and Codex (GPT-5.5) were used in development and
+# documentation.
 #
 # Distributed under the MIT license.
 
+
+set -euo pipefail
 
 TEST_NAME="clean test outputs dry-run"
 
@@ -18,12 +21,6 @@ TEST_NAME="clean test outputs dry-run"
 source "$(
     cd "$(dirname "${BASH_SOURCE[0]}")/.." > /dev/null 2>&1 && pwd
 )/lib/test_helpers.sh"
-
-print_section "${TEST_NAME}"
-
-scr_cln="${ROOT_REPO}/tests/scripts/clean_test_outputs.sh"
-dir_log="${TEST_DIR_LOG}/clean_test_outputs"
-mkdir -p "${dir_log}"
 
 
 #  Assert one explicitly scoped cleanup dry-run exits successfully
@@ -52,52 +49,64 @@ function assert_clean_dry() {
 }
 
 
+print_section "${TEST_NAME}"
+
+scr_cln="${ROOT_REPO}/tests/scripts/clean_test_outputs.sh"
+dir_log="${TEST_DIR_LOG}/clean_test_outputs"
+
+log_help="${dir_log}/help.log"
+log_no_selector="${dir_log}/no_selector.log"
+log_opt_unknown="${dir_log}/unknown_option.log"
+log_dry_all="${dir_log}/all_dry_run.log"
+log_dry_fix="${dir_log}/fixtures_dry_run.log"
+log_dry_out="${dir_log}/outputs_dry_run.log"
+
+mkdir -p "${dir_log}"
+
 #  Check concise help output
-log="${dir_log}/help.log"
 if \
     run_capture \
         "clean_test_outputs help" \
-        "${log}" \
+        "${log_help}" \
         "${TEST_BASH}" "${scr_cln}" --help
 then
     record_pass "clean_test_outputs.sh --help exits 0"
     assert_pattern_found \
-        "${log}" \
+        "${log_help}" \
         '^Usage:' \
         "clean_test_outputs.sh --help prints Usage"
 else
     record_fail \
-        "clean_test_outputs.sh --help failed; see $(print_relpath "${log}")"
+        "clean_test_outputs.sh --help failed; see" \
+        "$(print_relpath "${log_help}")"
 fi
 
 
 #  Check selector validation and unknown-option handling
-log="${dir_log}/no_selector.log"
 if \
     run_capture \
         "clean_test_outputs no selector" \
-        "${log}" \
+        "${log_no_selector}" \
         "${TEST_BASH}" "${scr_cln}"
 then
     record_fail "clean_test_outputs.sh without selector unexpectedly succeeded"
 else
     assert_pattern_found \
-        "${log}" \
+        "${log_no_selector}" \
         "one of '--fixtures', '--outputs', or '--all' must be specified" \
         "clean_test_outputs.sh without selector emits useful error"
 fi
 
-log="${dir_log}/unknown_option.log"
 if \
     run_capture \
         "clean_test_outputs unknown option" \
-        "${log}" \
+        "${log_opt_unknown}" \
         "${TEST_BASH}" "${scr_cln}" --bogus
 then
     record_fail "clean_test_outputs.sh unknown option unexpectedly succeeded"
 else
     assert_pattern_found \
-        "${log}" \
+        "${log_opt_unknown}" \
         "unknown option/parameter passed: '--bogus'" \
         "clean_test_outputs.sh unknown option emits useful error"
 fi
@@ -106,19 +115,19 @@ fi
 #  Check explicitly scoped cleanup plans without deleting files
 assert_clean_dry \
     "all" \
-    "${dir_log}/all_dry_run.log" \
+    "${log_dry_all}" \
     --all \
     --dry_run
 
 assert_clean_dry \
     "fixtures" \
-    "${dir_log}/fixtures_dry_run.log" \
+    "${log_dry_fix}" \
     --fixtures \
     --dry_run
 
 assert_clean_dry \
     "outputs" \
-    "${dir_log}/outputs_dry_run.log" \
+    "${log_dry_out}" \
     --outputs \
     --dry_run
 

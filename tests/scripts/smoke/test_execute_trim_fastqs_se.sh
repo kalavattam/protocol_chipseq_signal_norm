@@ -6,10 +6,13 @@
 # Copyright 2026 by Kris Alavattam
 # Email: kalavattam@gmail.com
 #
-# OpenAI ChatGPT (GPT-5.5) was used in development.
+# OpenAI ChatGPT and Codex (GPT-5.5) were used in development and
+# documentation.
 #
 # Distributed under the MIT license.
 
+
+set -euo pipefail
 
 TEST_NAME="execute trim-fastqs SE"
 
@@ -25,8 +28,8 @@ if ! \
     is_atria_enabled
 then
     record_skip \
-        "Atria execute trim-fastqs SE check disabled;" \
-        "set RUN_ATRIA=1 to enable"
+        "Atria execute trim-fastqs SE check disabled; set RUN_ATRIA=1 to" \
+        "enable"
     finish
     exit $?
 fi
@@ -40,8 +43,16 @@ tmp="${TEST_DIR_TMP}/execute_trim_fastqs_se"
 dir_out="${tmp}/out"
 dir_err="${tmp}/logs"
 dir_log="${TEST_DIR_LOG}/trim_fastqs"
+
 vw_fq="${dir_out}/tiny_se.trimmed.fastq"
 cnt="${dir_out}/tiny_se.read_count.txt"
+
+log_env="${dir_log}/execute_trim_fastqs_se_env.log"
+log_run="${dir_log}/execute_trim_fastqs_se.log"
+log_out_ser="${dir_err}/test_execute_trim_se_ser.stdout.txt"
+log_err_ser="${dir_err}/test_execute_trim_se_ser.stderr.txt"
+log_out_se="${dir_err}/test_execute_trim_se.tiny_se.stdout.txt"
+log_err_se="${dir_err}/test_execute_trim_se.tiny_se.stderr.txt"
 
 rm -rf "${tmp}"
 mkdir -p "${dir_out}" "${dir_err}" "${dir_log}"
@@ -53,9 +64,7 @@ require_files_nonempty \
 }
 
 if ! \
-    require_env_atria \
-        "env_protocol" \
-        "${dir_log}/execute_trim_fastqs_se_env.log"
+    require_env_atria "env_protocol" "${log_env}"
 then
     finish
     exit $?
@@ -63,12 +72,10 @@ fi
 
 
 #  Run execute_trim_fastqs.sh serially on one SE FASTQ fixture
-log="${dir_log}/execute_trim_fastqs_se.log"
-
 if \
     run_capture \
         "execute trim-fastqs SE Atria wet run" \
-        "${log}" \
+        "${log_run}" \
         "${TEST_BASH}" "${ROOT_REPO}/scripts/execute_trim_fastqs.sh" \
             --threads 1 \
             --csv_infile "${in_se}" \
@@ -83,7 +90,7 @@ then
 else
     record_fail \
         "execute_trim_fastqs.sh SE Atria wet run failed; see" \
-        "$(print_relpath "${log}")"
+        "$(print_relpath "${log_run}")"
 fi
 
 # shellcheck disable=2034
@@ -136,16 +143,19 @@ if [[ -n "${fil_out}" ]]; then
 fi
 
 assert_file_exists \
-    "${dir_err}/test_execute_trim_se_ser.stdout.txt" \
+    "${log_out_ser}" \
     "execute trim-fastqs SE serial stdout log exists"
+
 assert_file_exists \
-    "${dir_err}/test_execute_trim_se_ser.stderr.txt" \
+    "${log_err_ser}" \
     "execute trim-fastqs SE serial stderr log exists"
+
 assert_file_exists \
-    "${dir_err}/test_execute_trim_se.tiny_se.stdout.txt" \
+    "${log_out_se}" \
     "execute trim-fastqs SE submit stdout log exists"
+
 assert_file_exists \
-    "${dir_err}/test_execute_trim_se.tiny_se.stderr.txt" \
+    "${log_err_se}" \
     "execute trim-fastqs SE submit stderr log exists"
 
 finish

@@ -6,10 +6,13 @@
 # Copyright 2026 by Kris Alavattam
 # Email: kalavattam@gmail.com
 #
-# OpenAI ChatGPT and Codex (GPT-5.5) were used in development.
+# OpenAI ChatGPT and Codex (GPT-5.5) were used in development and
+# documentation.
 #
 # Distributed under the MIT license.
 
+
+set -euo pipefail
 
 TEST_NAME="relativize scaling factors"
 
@@ -18,22 +21,6 @@ TEST_NAME="relativize scaling factors"
 source "$(
     cd "$(dirname "${BASH_SOURCE[0]}")/.." > /dev/null 2>&1 && pwd
 )/lib/test_helpers.sh"
-
-print_section "${TEST_NAME}"
-
-scr_rel="${ROOT_REPO}/scripts/relativize_scaling_factors.py"
-
-dir_tmp="${TEST_DIR_TMP}/relativize_scaling_factors"
-dir_log="${TEST_DIR_LOG}/relativize_scaling_factors"
-
-tbl_spike="${dir_tmp}/spike.tsv"
-tbl_siq="${dir_tmp}/siq.tsv"
-tbl_no_scl="${dir_tmp}/missing_scaling.tsv"
-tbl_no_sample="${dir_tmp}/missing_sample.tsv"
-
-exp_spike="${dir_tmp}/spike.expected.tsv"
-exp_spike_input="${dir_tmp}/spike_input.expected.tsv"
-exp_siq="${dir_tmp}/siq.expected.tsv"
 
 
 function run_relativize_success() {
@@ -82,6 +69,29 @@ function run_relativize_failure() {
 }
 
 
+print_section "${TEST_NAME}"
+
+scr_rel="${ROOT_REPO}/scripts/relativize_scaling_factors.py"
+
+dir_tmp="${TEST_DIR_TMP}/relativize_scaling_factors"
+dir_log="${TEST_DIR_LOG}/relativize_scaling_factors"
+
+tbl_spike="${dir_tmp}/spike.tsv"
+tbl_siq="${dir_tmp}/siq.tsv"
+tbl_no_scl="${dir_tmp}/missing_scaling.tsv"
+tbl_no_sample="${dir_tmp}/missing_sample.tsv"
+
+exp_spike="${dir_tmp}/spike.expected.tsv"
+exp_spike_input="${dir_tmp}/spike_input.expected.tsv"
+exp_siq="${dir_tmp}/siq.expected.tsv"
+
+out_spike_no_input="${dir_log}/spike_no_input.tsv"
+out_spike_with_input="${dir_log}/spike_with_input.tsv"
+out_siq_preferred="${dir_log}/siq_preferred.tsv"
+
+log_missing_scaling_column="${dir_log}/missing_scaling_column.err"
+log_missing_sample_column="${dir_log}/missing_sample_column.err"
+
 rm -rf "${dir_tmp}"
 mkdir -p "${dir_tmp}" "${dir_log}"
 
@@ -106,6 +116,7 @@ fi
     printf 'IP_b\t4\tb\n'
     printf 'in_a\t10\tc\n'
 } > "${tbl_spike}"
+
 {
     printf 'sample\tspike\tscaled\tother\n'
     printf 'IP_a\t2\t0.5\ta\n'
@@ -125,6 +136,7 @@ fi
     printf 'IP_a\t3\t100\n'
     printf 'IP_b\t6\t200\n'
 } > "${tbl_siq}"
+
 {
     printf 'sample\tsiq\tscaled\tspike\n'
     printf 'IP_a\t3\t0.5\t100\n'
@@ -144,41 +156,44 @@ fi
 
 run_relativize_success \
     spike_no_input \
-    "${dir_log}/spike_no_input.tsv" \
+    "${out_spike_no_input}" \
     "${tbl_spike}"
+
 assert_files_equal \
-    "${dir_log}/spike_no_input.tsv" \
+    "${out_spike_no_input}" \
     "${exp_spike}" \
     "relativize scaling factors spike_no_input has expected TSV"
 
 run_relativize_success \
     spike_with_input \
-    "${dir_log}/spike_with_input.tsv" \
+    "${out_spike_with_input}" \
     "${tbl_spike}" \
     --input
+
 assert_files_equal \
-    "${dir_log}/spike_with_input.tsv" \
+    "${out_spike_with_input}" \
     "${exp_spike_input}" \
     "relativize scaling factors spike_with_input has expected TSV"
 
 run_relativize_success \
     siq_preferred \
-    "${dir_log}/siq_preferred.tsv" \
+    "${out_siq_preferred}" \
     "${tbl_siq}"
+
 assert_files_equal \
-    "${dir_log}/siq_preferred.tsv" \
+    "${out_siq_preferred}" \
     "${exp_siq}" \
     "relativize scaling factors siq_preferred has expected TSV"
 
 run_relativize_failure \
     missing_scaling_column \
-    "${dir_log}/missing_scaling_column.err" \
+    "${log_missing_scaling_column}" \
     "${tbl_no_scl}" \
     "No supported scaling-factor column"
 
 run_relativize_failure \
     missing_sample_column \
-    "${dir_log}/missing_sample_column.err" \
+    "${log_missing_sample_column}" \
     "${tbl_no_sample}" \
     "missing required column 'sample'"
 

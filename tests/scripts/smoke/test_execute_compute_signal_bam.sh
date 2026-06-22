@@ -6,10 +6,13 @@
 # Copyright 2026 by Kris Alavattam
 # Email: kalavattam@gmail.com
 #
-# OpenAI ChatGPT (GPT-5.5) was used in development.
+# OpenAI ChatGPT and Codex (GPT-5.5) were used in development and
+# documentation.
 #
 # Distributed under the MIT license.
 
+
+set -euo pipefail
 
 TEST_NAME="execute compute-signal BAM"
 
@@ -31,6 +34,27 @@ dir_out="${tmp}/out"
 dir_err="${tmp}/logs"
 dir_log="${TEST_DIR_LOG}/compute_signal"
 
+fil_out_se_signal="${dir_out}/tiny_se.bdg"
+log_se_signal="${dir_log}/execute_compute_signal_bam_se_signal.log"
+
+fil_out_se_coord="${dir_out}/tiny_se.bed"
+log_se_coord="${dir_log}/execute_compute_signal_bam_se_coord.log"
+
+fil_out_pe_signal="${dir_out}/tiny_pe.bdg"
+log_pe_signal="${dir_log}/execute_compute_signal_bam_pe_signal.log"
+
+fil_out_pe_coord="${dir_out}/tiny_pe.bed"
+log_pe_coord="${dir_log}/execute_compute_signal_bam_pe_coord.log"
+
+fil_out_se_signal_scaled="${dir_out}/scaled.tiny_se.bdg"
+log_se_signal_scaled="${dir_log}/execute_compute_signal_bam_se_signal_scaled.log"
+
+fil_out_se_signal_usr_frg="${dir_out}/usr_frg_signal.tiny_se.bdg"
+log_se_signal_usr_frg="${dir_log}/execute_compute_signal_bam_se_signal_usr_frg.log"
+
+fil_out_se_coord_usr_frg="${dir_out}/usr_frg_coord.tiny_se.bed"
+log_se_coord_usr_frg="${dir_log}/execute_compute_signal_bam_se_coord_usr_frg.log"
+
 rm -rf "${tmp}"
 mkdir -p "${dir_out}" "${dir_err}" "${dir_log}"
 
@@ -48,9 +72,6 @@ require_files_nonempty \
 
 
 #  Signal mode: two 10-bp SE alignments produce chromosome-I bedGraph bins
-fil_out="${dir_out}/tiny_se.bdg"
-log="${dir_log}/execute_compute_signal_bam_se_signal.log"
-
 run_case_compute_signal \
     execute \
     bam \
@@ -58,7 +79,7 @@ run_case_compute_signal \
     "signal" \
     "${in_se}" \
     "bdg" \
-    "${log}" \
+    "${log_se_signal}" \
     "${dir_out}" \
     "${dir_err}" \
     "" \
@@ -67,25 +88,23 @@ run_case_compute_signal \
     --csv_scl_fct NA
 
 assert_file_nonempty \
-    "${fil_out}" \
+    "${fil_out_se_signal}" \
     "execute SE signal bedGraph output"
 
-if [[ -s "${fil_out}" ]]; then
+if [[ -s "${fil_out_se_signal}" ]]; then
     assert_pattern_found \
-        "${fil_out}" \
+        "${fil_out_se_signal}" \
         $'^I\t0\t10\t10$' \
         "execute SE signal output has chromosome-I bin I:0-10"
+
     assert_pattern_found \
-        "${fil_out}" \
+        "${fil_out_se_signal}" \
         $'^I\t20\t30\t10$' \
         "execute SE signal output has chromosome-I bin I:20-30"
 fi
 
 
 #  Coord mode: the same SE alignments emit BED-like processed fragments
-fil_out="${dir_out}/tiny_se.bed"
-log="${dir_log}/execute_compute_signal_bam_se_coord.log"
-
 run_case_compute_signal \
     execute \
     bam \
@@ -93,31 +112,29 @@ run_case_compute_signal \
     "coord" \
     "${in_se}" \
     "bed" \
-    "${log}" \
+    "${log_se_coord}" \
     "${dir_out}" \
     "${dir_err}" \
     ""
 
 assert_file_nonempty \
-    "${fil_out}" \
+    "${fil_out_se_coord}" \
     "execute SE coord BED output"
 
-if [[ -s "${fil_out}" ]]; then
+if [[ -s "${fil_out_se_coord}" ]]; then
     assert_pattern_found \
-        "${fil_out}" \
+        "${fil_out_se_coord}" \
         $'^I\t0\t10\t10$' \
         "execute SE coord output has chromosome-I fragment I:0-10"
+
     assert_pattern_found \
-        "${fil_out}" \
+        "${fil_out_se_coord}" \
         $'^I\t20\t30\t10$' \
         "execute SE coord output has chromosome-I fragment I:20-30"
 fi
 
 
 #  Signal mode: two PE fragments cover bins from I:10-60
-fil_out="${dir_out}/tiny_pe.bdg"
-log="${dir_log}/execute_compute_signal_bam_pe_signal.log"
-
 run_case_compute_signal \
     execute \
     bam \
@@ -125,7 +142,7 @@ run_case_compute_signal \
     "signal" \
     "${in_pe}" \
     "bdg" \
-    "${log}" \
+    "${log_pe_signal}" \
     "${dir_out}" \
     "${dir_err}" \
     "" \
@@ -134,25 +151,23 @@ run_case_compute_signal \
     --csv_scl_fct NA
 
 assert_file_nonempty \
-    "${fil_out}" \
+    "${fil_out_pe_signal}" \
     "execute PE signal bedGraph output"
 
-if [[ -s "${fil_out}" ]]; then
+if [[ -s "${fil_out_pe_signal}" ]]; then
     assert_pattern_found \
-        "${fil_out}" \
+        "${fil_out_pe_signal}" \
         $'^I\t10\t20\t10$' \
         "execute PE signal output has chromosome-I bin I:10-20"
+
     assert_pattern_found \
-        "${fil_out}" \
+        "${fil_out_pe_signal}" \
         $'^I\t40\t50\t10$' \
         "execute PE signal output has chromosome-I bin I:40-50"
 fi
 
 
 #  Coord mode: PE output emits one BED-like row per leftmost proper pair
-fil_out="${dir_out}/tiny_pe.bed"
-log="${dir_log}/execute_compute_signal_bam_pe_coord.log"
-
 run_case_compute_signal \
     execute \
     bam \
@@ -160,31 +175,29 @@ run_case_compute_signal \
     "coord" \
     "${in_pe}" \
     "bed" \
-    "${log}" \
+    "${log_pe_coord}" \
     "${dir_out}" \
     "${dir_err}" \
     ""
 
 assert_file_nonempty \
-    "${fil_out}" \
+    "${fil_out_pe_coord}" \
     "execute PE coord BED output"
 
-if [[ -s "${fil_out}" ]]; then
+if [[ -s "${fil_out_pe_coord}" ]]; then
     assert_pattern_found \
-        "${fil_out}" \
+        "${fil_out_pe_coord}" \
         $'^I\t10\t40\t30$' \
         "execute PE coord output has chromosome-I fragment I:10-40"
+
     assert_pattern_found \
-        "${fil_out}" \
+        "${fil_out_pe_coord}" \
         $'^I\t40\t60\t20$' \
         "execute PE coord output has chromosome-I fragment I:40-60"
 fi
 
 
 #  Scaling factor and prefix propagation: raw 10-bp SE bins scaled by 2
-fil_out="${dir_out}/scaled.tiny_se.bdg"
-log="${dir_log}/execute_compute_signal_bam_se_signal_scaled.log"
-
 run_case_compute_signal \
     execute \
     bam \
@@ -192,7 +205,7 @@ run_case_compute_signal \
     "signal" \
     "${in_se}" \
     "bdg" \
-    "${log}" \
+    "${log_se_signal_scaled}" \
     "${dir_out}" \
     "${dir_err}" \
     "" \
@@ -202,25 +215,23 @@ run_case_compute_signal \
     --prefix scaled
 
 assert_file_nonempty \
-    "${fil_out}" \
+    "${fil_out_se_signal_scaled}" \
     "execute scaled SE signal output"
 
-if [[ -s "${fil_out}" ]]; then
+if [[ -s "${fil_out_se_signal_scaled}" ]]; then
     assert_pattern_found \
-        "${fil_out}" \
+        "${fil_out_se_signal_scaled}" \
         $'^I\t0\t10\t20$' \
         "execute scaled SE signal output has I:0-10 = 20"
+
     assert_pattern_found \
-        "${fil_out}" \
+        "${fil_out_se_signal_scaled}" \
         $'^I\t20\t30\t20$' \
         "execute scaled SE signal output has I:20-30 = 20"
 fi
 
 
 #  Fixed SE fragment length extends reads to 20 bp in signal mode
-fil_out="${dir_out}/usr_frg_signal.tiny_se.bdg"
-log="${dir_log}/execute_compute_signal_bam_se_signal_usr_frg.log"
-
 run_case_compute_signal \
     execute \
     bam \
@@ -228,7 +239,7 @@ run_case_compute_signal \
     "signal" \
     "${in_se}" \
     "bdg" \
-    "${log}" \
+    "${log_se_signal_usr_frg}" \
     "${dir_out}" \
     "${dir_err}" \
     "" \
@@ -239,29 +250,28 @@ run_case_compute_signal \
     --prefix usr_frg_signal
 
 assert_file_nonempty \
-    "${fil_out}" \
+    "${fil_out_se_signal_usr_frg}" \
     "execute usr_frg SE signal output"
 
-if [[ -s "${fil_out}" ]]; then
+if [[ -s "${fil_out_se_signal_usr_frg}" ]]; then
     assert_pattern_found \
-        "${fil_out}" \
+        "${fil_out_se_signal_usr_frg}" \
         $'^I\t0\t10\t10$' \
         "execute usr_frg SE signal output has I:0-10 = 10"
+
     assert_pattern_found \
-        "${fil_out}" \
+        "${fil_out_se_signal_usr_frg}" \
         $'^I\t10\t20\t20$' \
         "execute usr_frg SE signal output has I:10-20 = 20"
+
     assert_pattern_found \
-        "${fil_out}" \
+        "${fil_out_se_signal_usr_frg}" \
         $'^I\t20\t30\t10$' \
         "execute usr_frg SE signal output has I:20-30 = 10"
 fi
 
 
 #  Fixed SE fragment length is reflected in coord-mode BED intervals
-fil_out="${dir_out}/usr_frg_coord.tiny_se.bed"
-log="${dir_log}/execute_compute_signal_bam_se_coord_usr_frg.log"
-
 run_case_compute_signal \
     execute \
     bam \
@@ -269,7 +279,7 @@ run_case_compute_signal \
     "coord" \
     "${in_se}" \
     "bed" \
-    "${log}" \
+    "${log_se_coord_usr_frg}" \
     "${dir_out}" \
     "${dir_err}" \
     "" \
@@ -277,16 +287,17 @@ run_case_compute_signal \
     --prefix usr_frg_coord
 
 assert_file_nonempty \
-    "${fil_out}" \
+    "${fil_out_se_coord_usr_frg}" \
     "execute usr_frg SE coord output"
 
-if [[ -s "${fil_out}" ]]; then
+if [[ -s "${fil_out_se_coord_usr_frg}" ]]; then
     assert_pattern_found \
-        "${fil_out}" \
+        "${fil_out_se_coord_usr_frg}" \
         $'^I\t0\t20\t20$' \
         "execute usr_frg SE coord output has chromosome-I fragment I:0-20"
+
     assert_pattern_found \
-        "${fil_out}" \
+        "${fil_out_se_coord_usr_frg}" \
         $'^I\t10\t30\t20$' \
         "execute usr_frg SE coord output has chromosome-I fragment I:10-30"
 fi
