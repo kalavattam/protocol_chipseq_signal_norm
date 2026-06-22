@@ -112,6 +112,38 @@ dispatch
 main
 ```
 
+For `execute_*.sh` wrappers, the usual `main()` order is:
+```txt
+init_defs
+source_helpers_execute
+help handling
+parse_args
+canonicalize_args, if needed
+validate_args
+prepare_vecs and validate_vecs, if needed
+config_exec, if needed
+setup_env
+check_tools
+debug/state printing, if enabled
+run_jobs
+```
+
+For `submit_*.sh` wrappers that need user-supplied `--dir_scr` before helpers can be sourced, keep the bootstrap path narrow:
+```txt
+init_defs
+early help handling
+resolve_dir_scr
+source_helpers_submit
+parse_args
+canonicalize_args, if needed
+validate_args
+prepare_vecs and validate_vecs, if needed
+debug/state printing, if enabled
+setup_env
+check_tools
+run_jobs
+```
+
 Use only the lifecycle helpers that correspond to real work in the script. Do not add empty `canonicalize_args()`, `config_exec()`, `setup_env()`, or similar functions just to satisfy the template.
 
 Order shell functions from low-level helpers toward lifecycle orchestration. Put script-local help near `init_defs()` and `parse_args()`, keep runtime helpers after validation and preparation helpers, and keep `main()` last.
@@ -161,6 +193,8 @@ Submit wrappers should reconstruct comma-delimited inputs into arrays, validate 
 
 Submit wrappers that support both Slurm-array task execution and local iteration should keep worker dispatch in `run_jobs`; `main()` should call that helper after parsing, validation, setup, and vector reconstruction.
 
+Wrappers should check user-visible tools required by the selected execution path, even when the actual external-tool command is assembled and run by a sourced processing helper.
+
 Build commands as arrays, keep dry-run output explicit, and avoid reading mode-specific globals unless that mode is active under `set -u`.
 
 Keep wrapper changes surgical: preserve existing `submit_` / `execute_` boundaries and source shared helpers instead of duplicating logic.
@@ -188,6 +222,8 @@ Wrappers should not embed:
 
 Use `scripts/functions/` for processing primitives. Good candidates include alignment sorting, filtering, format conversion, counting, table transformation, and domain-specific calculations. Prefer explicit helper arguments over hidden globals. Pass paths such as `fil_in`, `fil_out`, `ref_fa`, `log_out`, and `log_err` directly when the helper owns command execution or redirection.
 
+When a processing helper owns an external-tool call, it should own command-array construction and redirection. Have the wrapper pass explicit input, output, and log paths; the wrapper should not rely on the helper to reconstruct wrapper-local log names from globals. Append optional command arguments conditionally with arrays instead of command substitution, so paths with spaces remain safe.
+
 A tiny wrapper-local command is acceptable only when it is pure dispatch glue and has no domain behavior beyond invoking a named entrypoint. If the command needs mode branching, format-specific BAM/CRAM handling, temporary files, pipes, an embedded program, or nontrivial cleanup, move it to a sourced function.
 
 For example, do not keep a paired-fragment conversion pipeline inside `submit_*::run_job()`:
@@ -210,6 +246,53 @@ The wrapper remains responsible for deciding that the AWK branch is active, deri
 
 <br />
 
+## Shell Test Structure
+Shell smoke tests are usually executable recipes, not user-facing command-line programs. Do not force ordinary `test_*.sh` scripts into `main()`, `parse_args()`, or `validate_args()` solely for style.
+
+Every smoke-test script must enable safe mode with `set -euo pipefail`. Use
+this order for smoke tests unless a local script has a clear reason to differ:
+```txt
+shebang, attribution/header comments
+set -euo pipefail
+TEST_NAME and required test metadata
+source test helpers
+local helper functions
+print the test section/banner
+handle gates or clean skips
+static fixture/reference paths and arrays
+temporary, output, log, and input paths
+case-specific deterministic paths/logs/status files/job names/expected outputs
+deterministic expected values, such as rows, headers, regex tails, and fragments
+static arrays grouped by purpose, including command arrays and case arguments
+cleanup and mkdir
+environment and fixture validation
+runtime-dependent declarations immediately after the step that creates their required values, including arrays
+copied/runtime fixture preparation
+test cases
+assertions near the cases they validate
+finish
+```
+
+Deterministic top-level declarations should be grouped in the earliest valid declaration section before test execution begins. Like declarations belong with like, and distinct declaration groups should be separated by one blank line. Do not define deterministic top-level variables near first use in a test case when their values are knowable during setup. Deterministic case-specific assertion artifacts should also be declared in this section, including primary outputs, retained part-file paths, derived index files such as `bai_*` and `crai_*`, captured logs such as `log_*`, stats/count files, status files, and expected output paths. Expected headers, rows, regex tails, and output fragments are deterministic assertion artifacts. Do not place them between static arrays and cleanup or validation code. Fixture inputs are not assertion artifacts and do not need extra aliases solely for this rule.
+
+Static arrays are dependency consumers. Place scalar/path declarations and deterministic expected values before static arrays when the arrays and expected values use only earlier declarations. Static arrays should be grouped by purpose, such as fixture manifests, command arrays, case argument arrays, expected-file arrays, and skip lists. Like arrays belong with like arrays, and distinct static-array groups should be separated by one blank line.
+
+Use descriptive case-specific names instead of repeatedly reassigning generic names across cases. For example, prefer `fil_out_se_signal` and `log_se_signal` over reusing `fil_out` and `log` below a case comment. Case comments should remain near the test action, but deterministic variables should not be introduced under those comments unless they are genuinely runtime-derived. Keep assertion calls near the cases they validate. Do not separate an explanatory comment from the command or assertion it directly introduces. Blank lines separate declaration groups and major logical sections, not a case comment from its associated case action.
+
+Place declarations in the earliest section where all values they use have already been defined. Do not move a declaration above the runtime step that creates one of its values. For example, `require_env_project env_nam` defines `env_nam`, so submit-layer `arr_cmd_filter` arrays that include `--env_nam "${env_nam}"` must stay after that call.
+
+Function-local variables, loop/per-iteration variables, and values derived from runtime output may stay near the code that creates them. Within functions, define repeated or clarity-important derived values as `local` variables near the top of the function. This includes paths, labels, expected rows, log names, count files, and command fragments derived from function arguments. Do not repeatedly construct the same derived value inline throughout a function, and do not hoist function-argument-dependent values into top-level test sections.
+
+Local helper functions belong immediately after helper sourcing. Keep a helper local when it is used by one script and reduces repetition or clarifies assertions. If the same helper behavior appears in two or more scripts, promote it to a shared helper and source it from the appropriate helper library.
+
+Use `tests/scripts/lib/test_helpers.sh` for shared smoke-test behavior and `tests/scripts/lib/fixture_helpers.sh` for shared fixture-generation behavior. Do not create shared helpers for superficially similar snippets that have different meaning or different failure semantics.
+
+Use `main()` and phase functions for user-facing or complex test utilities, such as `run_smoke_tests.sh` and `clean_test_outputs.sh`. Consider `main()` for unusually large smoke tests with multiple modes, complex setup, or repeated phases, but keep simple smoke tests as top-to-bottom recipes.
+
+Fixture-generation scripts should follow a similar recipe: Bash guard, safe mode, path resolution, helper sourcing, local helpers, static fixture paths/content declarations, cleanup and directory creation, generation steps, validation, and final report.
+
+<br />
+
 ## State and Command Helpers
 Keep debug printing, state mutation, command construction, and job dispatch in separate helpers once each block becomes more than a few lines.
 
@@ -223,8 +306,8 @@ If a helper intentionally writes a global, document that contract in the helper 
 
 <br />
 
-## Smoke-Test Helper Calls
-For multiline smoke-test helper calls, put the helper name on its own line and give each helper positional argument its own line:
+## Test Helper Calls
+For multiline test helper calls, put the helper name on its own line and give each helper positional argument its own line:
 ```bash
 assert_pattern_found \
     "${file}" \
@@ -234,7 +317,9 @@ assert_pattern_found \
 
 For `run_capture`, split the label and log/output path onto separate lines; the captured command and its ordinary command arguments may stay grouped when that is clearer.
 
-Keep final human-readable labels as one quoted argument when reasonably short. Do not split command substitutions or variable expansions inside labels. Split long labels only at natural phrase boundaries for helpers that safely collect final label text with `$*`.
+Keep final human-readable labels as one quoted argument when reasonably short. Do not split command substitutions or variable expansions inside labels. Split long labels only at natural phrase boundaries for helpers that safely collect final label text with `$*`. Keep explanatory comments directly attached to the helper call or assertion they introduce.
+
+Treat multiline helper calls as block-like. Place one blank line between adjacent multiline helper-call blocks, but do not add blank lines inside shell control-flow conditions.
 
 <br />
 
@@ -245,10 +330,11 @@ For nontrivial shell-function help, prefer:
 ```txt
 Usage:
 Description:
-Keyword arguments: / Positional arguments:
+Arguments: / Keyword arguments: / Positional arguments:
 Expected globals: / Expected inputs:
 Returns:
 Notes:
+Examples:
 ```
 
 Use `Expected globals:` only for helpers that intentionally read or write important global state. Group entries by role, such as required scalar globals, optional scalar globals, reconstructed arrays, and generated global outputs.

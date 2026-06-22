@@ -151,7 +151,7 @@ Use local function help for nontrivial helpers whose behavior is not obvious fro
 
 For helpers that read important shared state, add `Expected globals:`. For helpers that write important shared state, add `Generated globals:` or describe the mutation in `Notes:`.
 
-For helpers that print to stdout or stderr, say so in `Returns:` or `Notes:`. For helpers that write a global array, such as `cmd_bld`, prefer `Generated globals:` plus a short note about the array shape.
+For helpers that print to stdout or stderr, say so in `Returns:` or `Notes:`. For helpers that run external tools and redirect stdout or stderr to explicit log files, mention the log-file behavior in `Returns:` or `Notes:`. For helpers that write a global array, such as `cmd_bld`, prefer `Generated globals:` plus a short note about the array shape.
 
 <br />
 
@@ -318,7 +318,6 @@ Recommended set:
 <csv:spec>  Comma-separated structured mini-syntax entries, with the element syntax explained in the argument body.
 <enum:...>  One value from a closed set.
 <spec>      Structured mini-syntax, explained in the argument body.
-<time>      Time string, e.g., h:mm:ss. (Subset of <str>.)
 <time>      Time string, e.g., h:mm:ss. (Subset of <str>.)
 <size>      Size threshold string, e.g., 1, 1k, 2M, 0.5G, depending on script support.
 ```

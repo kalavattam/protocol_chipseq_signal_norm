@@ -27,6 +27,7 @@ bash -n scripts/execute_align_fastqs.sh
 This file is the routing layer, not the full style manual. Use:
 - `docs/style/shell.md` for Bash structure, wrapper organization, and shell formatting.
 - `docs/style/help.md` for shell help text and heredoc-based CLI docs.
+- `docs/style/python.md` for Python script structure and output formatting.
 - `tests/README.md` for smoke-test structure, gates, fixtures, and generated output policy.
 
 Prefer deterministic checks over agent memory. When a style rule becomes important, document it in `docs/style/` and add an advisory or enforced check when practical. Keep Markdown prose natural; do not hard-wrap it only for source line-length preferences.
