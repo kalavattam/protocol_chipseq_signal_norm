@@ -1989,11 +1989,11 @@ function validate_vecs() {
         check_arr_lengths "arr_infile" "arr_scl_fct" || return 1
         check_arr_lengths "arr_infile" "arr_usr_frg" || return 1
     elif [[ "${mode}" == "ratio" ]]; then
-        check_arr_lengths "arr_fil_A" "arr_fil_B"    || return 1
-        check_arr_lengths "arr_fil_A" "arr_outfile"  || return 1
-        check_arr_lengths "arr_fil_A" "arr_scl_fct"  || return 1
-        check_arr_lengths "arr_fil_A" "arr_dep_min"  || return 1
-        check_arr_lengths "arr_fil_A" "arr_pseudo"   || return 1
+        check_arr_lengths "arr_fil_A"  "arr_fil_B"   || return 1
+        check_arr_lengths "arr_fil_A"  "arr_outfile" || return 1
+        check_arr_lengths "arr_fil_A"  "arr_scl_fct" || return 1
+        check_arr_lengths "arr_fil_A"  "arr_dep_min" || return 1
+        check_arr_lengths "arr_fil_A"  "arr_pseudo"  || return 1
     elif [[ "${mode}" == "coord" ]]; then
         check_arr_lengths "arr_infile" "arr_outfile" || return 1
         check_arr_lengths "arr_infile" "arr_usr_frg" || return 1
