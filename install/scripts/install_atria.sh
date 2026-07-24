@@ -6,7 +6,8 @@
 # Copyright 2026 by Kris Alavattam
 # Email: kalavattam@gmail.com
 #
-# OpenAI ChatGPT (GPT-5.5) was used in development.
+# OpenAI ChatGPT and Codex (GPT-5.5, GPT-5.6) were used in development and
+# documentation.
 #
 # Distributed under the MIT license.
 
@@ -34,141 +35,56 @@ dir_ins="$(cd "${dir_scr}/.." > /dev/null 2>&1 && pwd)"
 dir_rep="$(cd "${dir_ins}/.." > /dev/null 2>&1 && pwd)"
 
 
-#  Source and define functions ================================================
-dir_fnc="${dir_rep}/scripts/functions"
-fnc_src="${dir_fnc}/source_helpers.sh"
+#  Source shared helpers
+function source_helpers_script() {
+    local fnc_src
 
-if [[ ! -f "${fnc_src}" ]]; then
-    echo "error($(basename "${BASH_SOURCE[0]}")):" \
-        "script not found: '${fnc_src}'." >&2
-    exit 1
-fi
+    dir_fnc="${dir_rep}/lib/bash"
+    fnc_src="${dir_fnc}/core/source_helpers.sh"
 
-# shellcheck disable=SC1090
-source "${fnc_src}" || {
-    echo "error($(basename "${BASH_SOURCE[0]}")):" \
-        "failed to source '${fnc_src}'." >&2
-    exit 1
-}
-
-source_helpers "${dir_fnc}" \
-    check_args \
-    check_env \
-    check_inputs \
-    format_outputs \
-    handle_env \
-    || {
+    if [[ ! -f "${fnc_src}" ]]; then
         echo "error($(basename "${BASH_SOURCE[0]}")):" \
-            "failed to source required helper scripts." >&2
-        exit 1
+            "script not found: '${fnc_src}'." >&2
+        return 1
+    fi
+
+    # shellcheck disable=SC1090
+    source "${fnc_src}" || {
+        echo "error($(basename "${BASH_SOURCE[0]}")):" \
+            "failed to source '${fnc_src}'." >&2
+        return 1
     }
 
-unset fnc_src
-
-
-#  Initialize argument variables ==============================================
-dry_run=false
-env_nam="env_protocol"
-dir_inl="${HOME}"
-dir_tmp=""
-tmp_auto=false
-v_julia="1.8.5"
-v_atria="4.1.5"
-pth_snp=""
-if_exis="fail"
-sha_cmd=""
-
-
-#  Define help text -----------------------------------------------------------
-function help_install_atria() {
-    cat << EOM >&2
-Usage:
-  install_atria.sh
-    [--help] [--dry_run] [--env_nam <str>] [--dir_inl <dir>] [--dir_tmp <dir>] [--v_julia <spec>] [--v_atria <str>] [--pth_snp <file>] [--if_exis <spec>]
-
-Description:
-  Install Julia and Atria into a user-controlled directory without 'sudo'.
-
-  The protocol-tested/default Julia version is 1.8.5. Upstream Atria docs describe Atria as tested with Julia 1.8 and 1.9, and recommend Julia 1.8.5 for speed relative to Julia 1.9.
-
-Keyword arguments:
-  -h, --hlp, --help  <flag>
-    Show this help message and exit.
-
-  -dr, --dry, --dry_run  <flag>
-    Print planned actions, derived paths, and URLs without downloading, extracting, cloning, building, or writing a PATH snippet.
-
-  -en, --env, --env_nam  <str>
-    Conda/Mamba environment to activate before checking Atria runtime dependencies and building Atria (default: '${env_nam}').
-
-  -di, --dir_inl, --dir_instl, --dir_install  <dir>
-    User-controlled installation directory for Julia and Atria (default: '${dir_inl}').
-
-  -dt, --tmp, --dir_tmp  <dir>
-    Working directory for downloaded files. If unset, a temporary directory is created under the system temp location and cleaned up on exit.
-
-  -vj, --v_julia, --julia_version  <spec>
-    Julia version to install (default: '${v_julia}'). Verified SHA-256 mappings are bundled for Julia 1.8.0-1.8.5 and 1.9.0-1.9.4 on supported Linux/macOS x86_64/aarch64 targets.
-
-  -va, --v_atria, --atria_version  <str>
-    Atria version to install (default: '${v_atria}'; the corresponding Git tag is expected to be 'v${v_atria}').
-
-  -ps, --pth_snp, --pth_snippet, --path_snp, --path_snippet  <file>
-    Append PATH export lines to the requested file. This may be a shell configuration file such as '${HOME}/.bashrc' or '${HOME}/.zshrc', or a temporary snippet file for, e.g., testing. Without this option, the PATH lines are printed at the end.
-
-  -ie, --if_ex, --if_exis, --if_exists  <spec>
-    What to do if Julia and/or Atria already exist in the requested installation directory: 'fail' or 'reuse' (default: '${if_exis}').
-
-Dependencies:
-  External programs:
-    - Bash >= 4.4
-    - cp
-    - curl
-    - find
-    - git
-    - grep
-    - head
-    - mkdir
-    - mktemp
-    - pbzip2
-    - pigz
-    - rm
-    - Rscript
-    - sort
-    - tail
-    - tar
-
-  Sourced function scripts:
-    - source_helpers.sh
-    - check_args.sh
-      + require_optarg
-    - check_env.sh
-      + check_env_installed
-      + check_pgrm_path
-    - check_inputs.sh
-      + validate_var
-      + validate_var_dir
-      + validate_var_file
-    - format_outputs.sh
-      + echo_err
-      + echo_warn
-    - handle_env.sh
-      + handle_env
-
-Notes:
-  - Supported Julia archive targets:
-    + Linux glibc x86_64
-    + Linux glibc aarch64 / arm64
-    + macOS x86_64
-    + macOS arm64 / aarch64
-  - A non-dry run requires network access to download Julia and clone/fetch Atria.
-  - BSD tar, which is commonly installed by default on macOS systems, is acceptable; extraction is verified by checking the expected Julia executable afterward.
-  - Rscript, pigz, and pbzip2 are expected to come from the active project environment.
-EOM
+    source_helpers "${dir_fnc}" \
+        check_args \
+        check_env \
+        check_inputs \
+        format_outputs \
+        handle_env \
+        help/help_install_atria \
+        || {
+            echo "error($(basename "${BASH_SOURCE[0]}")):" \
+                "failed to source required helper scripts." >&2
+            return 1
+        }
 }
 
 
-#  Define utility functions ---------------------------------------------------
+function init_arg_defs() {
+    dry_run=false
+    env_nam="env_protocol"
+    dir_install="${HOME}"
+    dir_tmp=""
+    tmp_auto=false
+    v_julia="1.8.5"
+    v_atria="4.1.5"
+    path_snippet=""
+    if_exists="fail"
+    sha_cmd=""
+}
+
+
+#  Define utility functions
 function echo_dry() {
     echo "dryrun($(basename "${BASH_SOURCE[0]}")):" "$@"
 }
@@ -220,7 +136,10 @@ function verify_sha256() {
         sha256sum)
             (
                 cd "$(dirname "${file}")"
-                printf '%s  %s\n' "${expect}" "$(basename "${file}")" \
+                printf \
+                    '%s  %s\n' \
+                    "${expect}" \
+                    "$(basename "${file}")" \
                     | sha256sum -c -
             )
             ;;
@@ -228,7 +147,10 @@ function verify_sha256() {
         shasum)
             (
                 cd "$(dirname "${file}")"
-                printf '%s  %s\n' "${expect}" "$(basename "${file}")" \
+                printf \
+                    '%s  %s\n' \
+                    "${expect}" \
+                    "$(basename "${file}")" \
                     | shasum -a 256 -c -
             )
             ;;
@@ -508,17 +430,17 @@ function install_julia() {
     local pth_path_jul=""
 
     #  Allow global variable initialization here
-    jul_dir="${dir_inl}/julia-${v_julia}"
+    jul_dir="${dir_install}/julia-${v_julia}"
     jul_bin="${jul_dir}/bin/julia"
     jul_tar_pth="${dir_tmp}/${jul_tar}"
 
     if [[ -d "${jul_dir}" ]]; then
-        case "${if_exis}" in
+        case "${if_exists}" in
             fail)
                 echo_err \
                     "Julia install directory already exists: '${jul_dir}'."
                 echo_err \
-                    "Nothing was changed. To reuse it, rerun with '--if_exis" \
+                    "Nothing was changed. To reuse it, rerun with '--if_exists" \
                     "reuse'."
                 return 1
                 ;;
@@ -533,7 +455,7 @@ function install_julia() {
         esac
     fi
 
-    if [[ "${if_exis}" == "reuse" ]]; then
+    if [[ "${if_exists}" == "reuse" ]]; then
         if pth_path_jul="$(command -v julia 2>/dev/null)"; then
             if \
                 verify_julia_exec "${pth_path_jul}"
@@ -549,7 +471,7 @@ function install_julia() {
             echo_warn \
                 "Julia was found on PATH, but it does not match the" \
                 "requested version '${v_julia}'; installing Julia under" \
-                "'${dir_inl}'."
+                "'${dir_install}'."
         fi
     fi
 
@@ -568,7 +490,7 @@ function install_julia() {
     fi
 
     verify_sha256 "${jul_tar_pth}" "${jul_256}"
-    extract_julia_tar "${jul_tar_pth}" "${dir_inl}"
+    extract_julia_tar "${jul_tar_pth}" "${dir_install}"
 
     verify_julia_exec "${jul_bin}" || return 1
 }
@@ -577,10 +499,10 @@ function install_julia() {
 function checkout_atria() {
     local pth_path_atr=""
 
-    dir_prg="${dir_inl}"
+    dir_prg="${dir_install}"
     dir_atr="${dir_prg}/Atria"
 
-    if [[ "${if_exis}" == "reuse" && ! -e "${dir_atr}" ]]; then
+    if [[ "${if_exists}" == "reuse" && ! -e "${dir_atr}" ]]; then
         if pth_path_atr="$(command -v atria 2>/dev/null)"; then
             if verify_atria_exec "${pth_path_atr}"; then
                 pth_atr="${pth_path_atr}"
@@ -596,12 +518,12 @@ function checkout_atria() {
     mkdir -p "${dir_prg}"
 
     if [[ -d "${dir_atr}/.git" ]]; then
-        case "${if_exis}" in
+        case "${if_exists}" in
             fail)
                 echo_err \
                     "Atria repository already exists: '${dir_atr}'."
                 echo_err \
-                    "Nothing was changed. To reuse it, rerun with '--if_exis" \
+                    "Nothing was changed. To reuse it, rerun with '--if_exists" \
                     "reuse'."
                 return 1
                 ;;
@@ -615,7 +537,7 @@ function checkout_atria() {
     elif [[ -e "${dir_atr}" ]]; then
         echo_err \
             "Atria install path exists but is not a Git repository:" \
-            "'${dir_atr}'. Move it aside or choose another '--dir_inl'."
+            "'${dir_atr}'. Move it aside or choose another '--dir_install'."
         return 1
     else
         run_or_print \
@@ -868,7 +790,7 @@ function build_atria() {
         fi
     fi
 
-    if [[ "${if_exis}" == "reuse" ]]; then
+    if [[ "${if_exists}" == "reuse" ]]; then
         if \
             pth_atr="$(command -v atria 2>/dev/null)"
         then
@@ -922,7 +844,7 @@ function build_atria() {
 }
 
 
-function print_write_pth_snp() {
+function print_write_path_snippet() {
     local snippet
 
     snippet="$(
@@ -940,215 +862,239 @@ EOM
     echo
     printf '%s\n' "${snippet}"
 
-    if [[ -n "${pth_snp}" ]]; then
+    if [[ -n "${path_snippet}" ]]; then
         if [[ "${dry_run}" == "true" ]]; then
             echo
             echo_dry \
-                "would append PATH snippet to '${pth_snp}'."
+                "would append PATH snippet to '${path_snippet}'."
         else
-            mkdir -p "$(dirname "${pth_snp}")"
+            mkdir -p "$(dirname "${path_snippet}")"
 
             if \
-                   [[ -f "${pth_snp}" ]] \
-                && grep -Fq "${jul_dir}/bin" "${pth_snp}" \
-                && grep -Fq "${pth_bin}" "${pth_snp}"
+                   [[ -f "${path_snippet}" ]] \
+                && grep -Fq "${jul_dir}/bin" "${path_snippet}" \
+                && grep -Fq "${pth_bin}" "${path_snippet}"
             then
                 echo
-                echo "PATH snippet already appears to exist in '${pth_snp}'."
+                echo "PATH snippet already appears to exist in '${path_snippet}'."
             else
                 {
                     echo
                     printf '%s\n' "${snippet}"
-                } >> "${pth_snp}"
+                } >> "${path_snippet}"
                 echo
-                echo "PATH snippet appended to '${pth_snp}'."
+                echo "PATH snippet appended to '${path_snippet}'."
             fi
         fi
     fi
 }
 
 
-#  Parse arguments =============================================================
-if [[ -z "${1:-}" || "${1}" =~ ^(-h|--h[e]?lp)$ ]]; then
-    help_install_atria >&2
-    exit 0
-fi
+function parse_args() {
+    if [[ -z "${1:-}" || "${1}" =~ ^(-h|--h[e]?lp)$ ]]; then
+        help_install_atria >&2
+        return 2
+    fi
 
-while [[ "$#" -gt 0 ]]; do
-    case "${1}" in
-        -h|--hlp|--help)
-            help_install_atria
-            exit 0
-            ;;
+    while [[ "$#" -gt 0 ]]; do
+        case "${1}" in
+            -h|--hlp|--help)
+                help_install_atria
+                return 2
+                ;;
 
-        -dr|--dry|--dry[_-]run)
-            dry_run=true
-            shift 1
-            ;;
+            -dr|--dry|--dry[_-]run)
+                dry_run=true
+                shift 1
+                ;;
 
-        -en|--env|--env[_-]nam)
-            require_optarg "${1}" "${2:-}" "main" || {
+            -en|--env|--env[_-]nam)
+                require_optarg "${1}" "${2:-}" "main" || {
+                    echo >&2
+                    help_install_atria
+                    return 1
+                }
+                env_nam="${2}"
+                shift 2
+                ;;
+
+            -di|--dir[_-]install)
+                require_optarg "${1}" "${2:-}" "main" || {
+                    echo >&2
+                    help_install_atria
+                    return 1
+                }
+                dir_install="${2}"
+                shift 2
+                ;;
+
+            -dt|--tmp|--dir[_-]tmp)
+                require_optarg "${1}" "${2:-}" "main" || {
+                    echo >&2
+                    help_install_atria
+                    return 1
+                }
+                dir_tmp="${2}"
+                shift 2
+                ;;
+
+            -vj|--v[_-]julia|--julia[_-]version)
+                require_optarg "${1}" "${2:-}" "main" || {
+                    echo >&2
+                    help_install_atria
+                    return 1
+                }
+                v_julia="${2}"
+                shift 2
+                ;;
+
+            -va|--v[_-]atria|--atria[_-]version)
+                require_optarg "${1}" "${2:-}" "main" || {
+                    echo >&2
+                    help_install_atria
+                    return 1
+                }
+                v_atria="${2}"
+                shift 2
+                ;;
+
+            -ps|--path[_-]snippet)
+                require_optarg "${1}" "${2:-}" "main" || {
+                    echo >&2
+                    help_install_atria
+                    return 1
+                }
+                path_snippet="${2}"
+                shift 2
+                ;;
+
+            -ie|--if[_-]exists)
+                require_optarg "${1}" "${2:-}" "main" || {
+                    echo >&2
+                    help_install_atria
+                    return 1
+                }
+                if_exists="${2}"
+                shift 2
+                ;;
+
+            *)
+                echo_err "unknown option/parameter passed: '${1}'."
                 echo >&2
                 help_install_atria
-                exit 1
-            }
-            env_nam="${2}"
-            shift 2
-            ;;
+                return 1
+                ;;
+        esac
+    done
+}
 
-        -di|--dir[_-]inl|--dir[_-]instl|--dir[_-]install)
-            require_optarg "${1}" "${2:-}" "main" || {
-                echo >&2
-                help_install_atria
-                exit 1
-            }
-            dir_inl="${2}"
-            shift 2
-            ;;
 
-        -dt|--tmp|--dir[_-]tmp)
-            require_optarg "${1}" "${2:-}" "main" || {
-                echo >&2
-                help_install_atria
-                exit 1
-            }
-            dir_tmp="${2}"
-            shift 2
-            ;;
+function validate_args() {
+    validate_var "env_nam" "${env_nam}" || return 1
+    validate_var "dir_install" "${dir_install}" || return 1
+    validate_var "v_julia" "${v_julia}" || return 1
+    validate_var "v_atria" "${v_atria}" || return 1
+    validate_var "if_exists" "${if_exists}" || return 1
 
-        -vj|--v[_-]julia|--julia[_-]version)
-            require_optarg "${1}" "${2:-}" "main" || {
-                echo >&2
-                help_install_atria
-                exit 1
-            }
-            v_julia="${2}"
-            shift 2
-            ;;
-
-        -va|--v[_-]atria|--atria[_-]version)
-            require_optarg "${1}" "${2:-}" "main" || {
-                echo >&2
-                help_install_atria
-                exit 1
-            }
-            v_atria="${2}"
-            shift 2
-            ;;
-
-        -ps|--pth[_-]snp|--pth[_-]snippet|--path[_-]snp|--path[_-]snippet)
-            require_optarg "${1}" "${2:-}" "main" || {
-                echo >&2
-                help_install_atria
-                exit 1
-            }
-            pth_snp="${2}"
-            shift 2
-            ;;
-
-        -ie|--if[_-]ex|--if[_-]exis|--if[_-]exists)
-            require_optarg "${1}" "${2:-}" "main" || {
-                echo >&2
-                help_install_atria
-                exit 1
-            }
-            if_exis="${2}"
-            shift 2
-            ;;
-
+    case "${if_exists}" in
+        fail|reuse) : ;;
         *)
-            echo_err "unknown option/parameter passed: '${1}'."
-            echo >&2
-            help_install_atria
-            exit 1
+            echo_err \
+                "invalid '--if_exists' value: '${if_exists}'. Must be 'fail'" \
+                "or 'reuse'."
+            return 1
             ;;
     esac
-done
+
+    if [[ "${dry_run}" == "false" && ! -d "${dir_install}" ]]; then
+        mkdir -p "${dir_install}"
+    fi
+
+    if [[ "${dry_run}" == "true" ]]; then
+        dir_install="${dir_install/#\~/${HOME}}"
+    else
+        validate_var_dir "dir_install" "${dir_install}" || return 1
+        dir_install="$(cd "${dir_install}" > /dev/null 2>&1 && pwd)"
+    fi
+
+    check_julia_version
+    map_atria_tag
+    map_julia_target
+}
 
 
-#  Validate arguments and derive installation metadata ------------------------
-validate_var "env_nam" "${env_nam}"
-validate_var "dir_inl" "${dir_inl}"
-validate_var "v_julia" "${v_julia}"
-validate_var "v_atria" "${v_atria}"
-validate_var "if_exis" "${if_exis}"
+function report_plan() {
+    if [[ "${dry_run}" == "true" ]]; then
+        echo_dry \
+            "no downloads, extraction, cloning, building, or PATH snippet" \
+            "writes will be performed."
+    fi
 
-case "${if_exis}" in
-    fail|reuse) : ;;
-    *)
-        echo_err \
-            "invalid '--if_exis' value: '${if_exis}'. Must be 'fail' or" \
-            "'reuse'."
-        exit 1
-        ;;
-esac
+    echo
+    echo "Resolved installation plan:"
+    echo "  - env_nam=${env_nam}"
+    echo "  - dir_install=${dir_install}"
+    echo "  - dir_tmp=${dir_tmp:-AUTO}"
+    echo "  - sys_os=${sys_os}"
+    echo "  - sys_ar=${sys_ar}"
+    echo "  - v_julia=${v_julia}"
+    echo "  - v_min=${v_min}"
+    echo "  - jul_os=${jul_os}"
+    echo "  - jul_ar_dir=${jul_ar_dir}"
+    echo "  - jul_ar_fil=${jul_ar_fil}"
+    echo "  - jul_tar=${jul_tar}"
+    echo "  - jul_url=${jul_url}"
+    echo "  - jul_256=${jul_256:-UNSET}"
+    echo "  - v_atria=${v_atria}"
+    echo "  - tag_atr=${tag_atr}"
+    echo "  - dir_atr=${dir_install}/Atria"
+    echo "  - path_snippet=${path_snippet:-UNSET}"
+    echo "  - if_exists=${if_exists}"
+    echo
+}
 
-if [[ "${dry_run}" == "false" && ! -d "${dir_inl}" ]]; then
-    mkdir -p "${dir_inl}"
-fi
 
-if [[ "${dry_run}" == "true" ]]; then
-    # dir_inl="$(
-    #     cd "$(dirname "${dir_inl}")" > /dev/null 2>&1 && pwd
-    # )/$(basename "${dir_inl}")"
-    dir_inl="${dir_inl/#\~/${HOME}}"
-else
-    validate_var_dir "dir_inl" "${dir_inl}"
-    dir_inl="$(cd "${dir_inl}" > /dev/null 2>&1 && pwd)"
-fi
+function check_checksum_mapping() {
+    if [[ -n "${jul_256}" ]]; then
+        return 0
+    fi
 
-check_julia_version
-map_atria_tag
-map_julia_target
-
-if [[ "${dry_run}" == "true" ]]; then
-    echo_dry \
-        "no downloads, extraction, cloning, building, or PATH snippet writes" \
-        "will be performed."
-fi
-
-echo
-echo "Resolved installation plan:"
-echo "  - env_nam=${env_nam}"
-echo "  - dir_inl=${dir_inl}"
-echo "  - dir_tmp=${dir_tmp:-AUTO}"
-echo "  - sys_os=${sys_os}"
-echo "  - sys_ar=${sys_ar}"
-echo "  - v_julia=${v_julia}"
-echo "  - v_min=${v_min}"
-echo "  - jul_os=${jul_os}"
-echo "  - jul_ar_dir=${jul_ar_dir}"
-echo "  - jul_ar_fil=${jul_ar_fil}"
-echo "  - jul_tar=${jul_tar}"
-echo "  - jul_url=${jul_url}"
-echo "  - jul_256=${jul_256:-UNSET}"
-echo "  - v_atria=${v_atria}"
-echo "  - tag_atr=${tag_atr}"
-echo "  - dir_atr=${dir_inl}/Atria"
-echo "  - pth_snp=${pth_snp:-UNSET}"
-echo "  - if_exis=${if_exis}"
-echo
-
-if [[ -z "${jul_256}" ]]; then
     if [[ "${dry_run}" == "true" ]]; then
         echo_warn \
             "no bundled SHA-256 mapping was found for Julia ${v_julia} on" \
             "'${sys_os}:${sys_ar}'. A non-dry run will refuse to download" \
             "Julia until the checksum mapping is added."
-    else
-        echo_err \
-            "no bundled SHA-256 mapping was found for Julia ${v_julia} on" \
-            "'${sys_os}:${sys_ar}'. Refusing to download Julia without" \
-            "a known checksum."
-        exit 1
+        return 0
     fi
-fi
 
-if [[ "${dry_run}" == "false" ]]; then
+    echo_err \
+        "no bundled SHA-256 mapping was found for Julia ${v_julia} on" \
+        "'${sys_os}:${sys_ar}'. Refusing to download Julia without" \
+        "a known checksum."
+    return 1
+}
+
+
+function check_runtime_req() {
+    if [[ "${dry_run}" == "true" ]]; then
+        echo_dry "would confirm 'mamba' or 'conda' is available."
+        echo_dry \
+            "would confirm environment '${env_nam}' exists and activate it."
+        echo_dry \
+            "would confirm 'pigz', 'pbzip2', and 'Rscript' are available in" \
+            "'${env_nam}'."
+        echo_dry \
+            "would confirm 'curl', 'git', 'grep', 'sort', and 'tar', among" \
+            "other programs, are available."
+        echo_dry \
+            "would select 'sha256sum' or 'shasum' for SHA-256 verification."
+        return 0
+    fi
+
     if [[ "${CONDA_DEFAULT_ENV:-}" == "${env_nam}" ]]; then
         echo "Environment '${env_nam}' is already active; reusing it."
     else
-        check_pkg_mgr || exit 1
+        check_pkg_mgr || return 1
 
         if ! \
             check_env_installed "${env_nam}"
@@ -1157,10 +1103,10 @@ if [[ "${dry_run}" == "false" ]]; then
                 "environment '${env_nam}' appears not to be installed." \
                 "Install or update the project environment before installing" \
                 "Atria."
-            exit 1
+            return 1
         fi
 
-        handle_env "${env_nam}" || exit 1
+        handle_env "${env_nam}" || return 1
     fi
 
     check_pgrm_path pigz || {
@@ -1168,40 +1114,31 @@ if [[ "${dry_run}" == "false" ]]; then
             "'pigz' is missing from '${env_nam}'. Install/update the project" \
             "environment; this script does not install pigz with a system" \
             "package manager."
-        exit 1
+        return 1
     }
     check_pgrm_path pbzip2 || {
         echo_err \
             "'pbzip2' is missing from '${env_nam}'. Install/update the" \
             "project environment; this script does not install pbzip2 with" \
             "a system package manager."
-        exit 1
+        return 1
     }
     check_pgrm_path Rscript || {
         echo_err \
             "'Rscript' is missing from '${env_nam}'. Install/update the" \
             "project environment; this script expects R support from the" \
             "active project environment."
-        exit 1
+        return 1
     }
-    check_req_cmd || exit 1
-    select_sha_cmd || exit 1
-else
-    echo_dry "would confirm 'mamba' or 'conda' is available."
-    echo_dry "would confirm environment '${env_nam}' exists and activate it."
-    echo_dry \
-        "would confirm 'pigz', 'pbzip2', and 'Rscript' are available in" \
-        "'${env_nam}'."
-    echo_dry \
-        "would confirm 'curl', 'git', 'grep', 'sort', and 'tar', among other" \
-        "programs, are available."
-    echo_dry "would select 'sha256sum' or 'shasum' for SHA-256 verification."
-fi
+    check_req_cmd || return 1
+    select_sha_cmd || return 1
+}
 
-if [[ "${dry_run}" == "true" ]]; then
-    jul_dir="${dir_inl}/julia-${v_julia}"
+
+function report_dry_run_install() {
+    jul_dir="${dir_install}/julia-${v_julia}"
     jul_bin="${jul_dir}/bin/julia"
-    dir_prg="${dir_inl}"
+    dir_prg="${dir_install}"
     dir_atr="${dir_prg}/Atria"
     pth_bin="${dir_atr}/atria-${v_atria}/bin"
 
@@ -1210,8 +1147,9 @@ if [[ "${dry_run}" == "true" ]]; then
     if [[ -n "${jul_256}" ]]; then
         echo_dry "would download and verify '${jul_url}'."
         echo_dry \
-            "would extract Julia under '${dir_inl}', or reuse matching Julia" \
-            "from '${jul_dir}' or PATH if '--if_exis reuse' was specified."
+            "would extract Julia under '${dir_install}', or reuse matching" \
+            "Julia from '${jul_dir}' or PATH if '--if_exists reuse' was" \
+            "specified."
     else
         echo_dry \
             "would refuse non-dry-run download of '${jul_url}' until a" \
@@ -1223,22 +1161,54 @@ if [[ "${dry_run}" == "true" ]]; then
         "path is '${pth_bin}'."
     echo_dry \
         "would clone Atria under '${dir_atr}', or reuse a matching existing" \
-        "Atria install under '${dir_atr}' or on PATH if '--if_exis reuse'" \
+        "Atria install under '${dir_atr}' or on PATH if '--if_exists reuse'" \
         "was specified."
     echo_dry "would check out Atria tag '${tag_atr}'."
     echo_dry "would build Atria using '${jul_bin}'."
-    print_write_pth_snp
-    exit 0
-fi
+    print_write_path_snippet
+}
 
-prepare_tmp_dir
-trap cleanup_tmp_dir EXIT
 
-install_julia
-checkout_atria
-build_atria
-print_write_pth_snp
+function run_install() {
+    prepare_tmp_dir
+    trap cleanup_tmp_dir EXIT
 
-echo
-echo "success($(basename "${BASH_SOURCE[0]}")):" \
-    "installed/verified Julia ${v_julia} and Atria ${v_atria}."
+    install_julia
+    checkout_atria
+    build_atria
+    print_write_path_snippet
+
+    echo
+    echo "success($(basename "${BASH_SOURCE[0]}")):" \
+        "installed/verified Julia ${v_julia} and Atria ${v_atria}."
+}
+
+
+function main() {
+    local rc=0
+
+    source_helpers_script
+    init_arg_defs
+
+    parse_args "$@" || rc=$?
+    if (( rc == 2 )); then
+        return 0
+    elif (( rc != 0 )); then
+        return "${rc}"
+    fi
+
+    validate_args
+    report_plan
+    check_checksum_mapping
+    check_runtime_req
+
+    if [[ "${dry_run}" == "true" ]]; then
+        report_dry_run_install
+        return 0
+    fi
+
+    run_install
+}
+
+
+main "$@"

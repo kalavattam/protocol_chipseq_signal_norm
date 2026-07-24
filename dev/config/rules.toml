@@ -1,0 +1,2317 @@
+schema_version = 2
+
+[runner]
+timeout_seconds = 120
+max_output_bytes = 65536
+
+[artifacts]
+bytecode_globs = ["**/*.pyc", "**/__pycache__/**"]
+other_generated_globs = ["artifacts/tests/**", ".pytest_cache/**", ".DS_Store", "**/.DS_Store"]
+
+[audit_infrastructure]
+paths = ["dev/README.md", "dev/audit/**", "dev/config/**", "dev/schemas/**", "artifacts/dev/audit/.gitignore"]
+exclude = []
+
+[prompting]
+max_paths = 8
+max_findings = 20
+max_excerpt_chars = 12000
+max_rule_chars = 4000
+
+[[rule]]
+rule_id = "SHELL.SYNTAX"
+description = "Parse selected dirty Bash sources with env_protocol Bash and the POSIX bootstrap with sh."
+normative_document = "docs/standards/shell.md"
+normative_section = "Shell syntax and runtime (`SHELL.SYNTAX`)"
+owner_classification = "advisory"
+source_checker = "tests/contract/repository/test_shell_syntax.sh"
+execution_kind = "adapter"
+execution_role = "checker"
+coverage_relation = "subset"
+covered_scope = "Parse selected dirty Bash sources with env_protocol Bash and the POSIX bootstrap with sh."
+remaining_scope = "Review external shell-version behavior and constructs not exercised on all supported hosts."
+parity_test = "upstream Bash parser fixtures"
+scope = "per_path"
+batch_paths = true
+adapter = "shell_syntax_batch"
+command = ["conda", "run", "--no-capture-output", "-n", "env_protocol", "bash", "-n", "{path}"]
+applicable_paths = ["bin/**/*.sh", "lib/bash/**/*.sh", "install/scripts/**/*.sh", "tests/**/*.sh"]
+default_severity = "error"
+blocking = false
+semantic_review = false
+required_environment = "env_protocol"
+required_commands = ["conda", "sh"]
+known_side_effects = ["none"]
+output_paths = []
+output_parser = "bash_stderr"
+strict_availability = "safe_adapter"
+current_exclusions_or_allowlists = []
+
+[[rule]]
+rule_id = "GOV.OWNER.UNIQUE"
+description = "Enumerate maintained owner IDs and reject duplicate, missing, or mismatched ownership."
+normative_document = "docs/standards/governance.md"
+normative_section = "Authoritative ownership (`GOV.OWNER.UNIQUE`)"
+owner_classification = "advisory"
+source_checker = "dev/audit/standards_registry.py"
+execution_kind = "original"
+execution_role = "checker"
+coverage_relation = "subset"
+covered_scope = "H2 owner identity, maintained-index membership, and duplicate ownership outside fenced examples."
+remaining_scope = "Semantic equivalence between differently worded provisions remains review-owned."
+parity_test = "tests/unit/dev_audit/test_standards_registry.py"
+scope = "repository"
+command = ["python3", "-m", "dev.audit.standards_registry", "--root", "."]
+applicable_paths = ["docs/standards/**", "dev/config/rules.toml"]
+default_severity = "error"
+blocking = false
+semantic_review = true
+required_environment = "python>=3.11"
+required_commands = ["python3"]
+known_side_effects = ["none"]
+output_paths = []
+output_parser = "generic"
+strict_availability = "safe_adapter"
+current_exclusions_or_allowlists = []
+
+[[rule]]
+rule_id = "GOV.CLASSIFICATION"
+description = "Compare registered owner classifications with their canonical owner fields."
+normative_document = "docs/standards/governance.md"
+normative_section = "Rule classifications (`GOV.CLASSIFICATION`)"
+owner_classification = "advisory"
+source_checker = "dev/audit/standards_registry.py"
+execution_kind = "original"
+execution_role = "checker"
+coverage_relation = "subset"
+covered_scope = "Controlled owner-classification tokens and registry parity."
+remaining_scope = "Choosing the classification that matches a semantic decision boundary remains review-owned."
+parity_test = "tests/unit/dev_audit/test_standards_registry.py"
+scope = "repository"
+command = ["python3", "-m", "dev.audit.standards_registry", "--root", "."]
+applicable_paths = ["docs/standards/**", "dev/config/rules.toml"]
+default_severity = "error"
+blocking = false
+semantic_review = true
+required_environment = "python>=3.11"
+required_commands = ["python3"]
+known_side_effects = ["none"]
+output_paths = []
+output_parser = "generic"
+strict_availability = "safe_adapter"
+current_exclusions_or_allowlists = []
+
+[[rule]]
+rule_id = "GOV.COVERAGE.REPORT"
+description = "Produce the complete static owner-to-execution coverage inventory."
+normative_document = "docs/standards/governance.md"
+normative_section = "Coverage and reconciliation (`GOV.COVERAGE.REPORT`)"
+owner_classification = "advisory"
+source_checker = "dev/audit/standards_registry.py"
+execution_kind = "original"
+execution_role = "evidence_producer"
+coverage_relation = "subset"
+covered_scope = "Static owner, execution, diagnostic, migration, and coverage-metadata reconciliation."
+remaining_scope = "Checker execution, exception lifecycle, and semantic dispositions remain unproved."
+parity_test = "tests/unit/dev_audit/test_standards_registry.py"
+scope = "repository"
+command = ["python3", "-m", "dev.audit.standards_registry", "--root", "."]
+applicable_paths = ["docs/standards/**", "dev/config/rules.toml", "dev/audit/**", "tests/**"]
+default_severity = "advisory"
+blocking = false
+semantic_review = true
+required_environment = "python>=3.11"
+required_commands = ["python3"]
+known_side_effects = ["none unless --manifest-output is supplied"]
+output_paths = []
+output_parser = "generic"
+strict_availability = "safe_adapter"
+current_exclusions_or_allowlists = []
+
+[[rule]]
+rule_id = "GOV.EXCEPTION.OWNED"
+description = "Require an explicit owner marker on registered exclusions and allowlists."
+normative_document = "docs/standards/governance.md"
+normative_section = "Exceptions (`GOV.EXCEPTION.OWNED`)"
+owner_classification = "advisory"
+source_checker = "dev/audit/standards_registry.py"
+execution_kind = "original"
+execution_role = "checker"
+coverage_relation = "subset"
+covered_scope = "Every current_exclusions_or_allowlists entry in dev/config/rules.toml must contain an owner= marker."
+remaining_scope = "Exception rationale, affected symbol or role, approval, creation and expiry data, tracking record, and suppression narrowness remain review-owned."
+parity_test = "tests/unit/dev_audit/test_standards_registry.py"
+scope = "repository"
+command = ["python3", "-m", "dev.audit.standards_registry", "--root", "."]
+applicable_paths = ["dev/config/rules.toml", "docs/standards/governance.md"]
+default_severity = "error"
+blocking = false
+semantic_review = true
+required_environment = "python>=3.11"
+required_commands = ["python3"]
+known_side_effects = ["none"]
+output_paths = []
+output_parser = "generic"
+strict_availability = "safe_adapter"
+current_exclusions_or_allowlists = []
+
+[[rule]]
+rule_id = "LAYOUT.PRIVATE.FORBIDDEN"
+description = "Reject recognized private or disposable roots from the public production layout."
+normative_document = "docs/standards/repository_layout.md"
+normative_section = "Public and private material (`LAYOUT.PRIVATE.FORBIDDEN`)"
+owner_classification = "advisory"
+source_checker = "tests/contract/repository/test_repository_layout.sh"
+execution_kind = "original"
+execution_role = "checker"
+coverage_relation = "subset"
+covered_scope = "Enumerated prohibited public roots and private-runtime dependency checks."
+remaining_scope = "Classification of new analysis or scratch material remains review-owned."
+parity_test = "tests/contract/repository/test_repository_layout.sh"
+scope = "repository"
+command = ["bash", "tests/contract/repository/test_repository_layout.sh"]
+applicable_paths = ["**"]
+default_severity = "error"
+blocking = false
+semantic_review = true
+required_environment = "bash"
+required_commands = ["bash", "git"]
+known_side_effects = ["writes external TEST_ARTIFACT_ROOT when supplied"]
+output_paths = []
+output_parser = "smoke_summary"
+strict_availability = "safe_adapter"
+current_exclusions_or_allowlists = []
+
+[[rule]]
+rule_id = "LAYOUT.PRODUCTION.ROOTS"
+description = "Reject retired production roots and require the governed architecture."
+normative_document = "docs/standards/repository_layout.md"
+normative_section = "Production architecture (`LAYOUT.PRODUCTION.ROOTS`)"
+owner_classification = "deterministic"
+source_checker = "tests/contract/repository/test_repository_layout.sh"
+execution_kind = "original"
+execution_role = "checker"
+coverage_relation = "subset"
+covered_scope = "Current repository contract checks the enumerated required and prohibited roots and the discovered package set."
+remaining_scope = "Accepted and rejected fixtures do not yet prove every future production-root and package-discovery boundary."
+parity_test = "tests/contract/repository/test_repository_layout.sh"
+scope = "repository"
+command = ["bash", "tests/contract/repository/test_repository_layout.sh"]
+applicable_paths = ["bin/**", "lib/bash/**", "src/**", "docs/**"]
+default_severity = "error"
+blocking = false
+semantic_review = false
+required_environment = "bash"
+required_commands = ["bash", "git"]
+known_side_effects = ["none"]
+output_paths = []
+output_parser = "smoke_summary"
+strict_availability = "safe_adapter"
+current_exclusions_or_allowlists = []
+
+[[rule]]
+rule_id = "PY.PACKAGE.SRC"
+description = "Validate src-layout discovery, installed commands, and module parity."
+normative_document = "docs/standards/python.md"
+normative_section = "Package discovery and names (`PY.PACKAGE.SRC`, `PY.PACKAGE.NAMES`)"
+owner_classification = "deterministic"
+source_checker = "tests/contract/repository/test_python_package.sh"
+execution_kind = "original"
+execution_role = "checker"
+coverage_relation = "subset"
+covered_scope = "Validate src-layout discovery, installed commands, and module parity."
+remaining_scope = "Review whether a new package is a subdomain of the maintained API or a new governed distribution boundary."
+parity_test = "tests/contract/repository/test_python_package.sh"
+scope = "repository"
+command = ["bash", "tests/contract/repository/test_python_package.sh"]
+applicable_paths = ["pyproject.toml", "src/**/*.py", "bin/**/*.sh", "install/**"]
+default_severity = "error"
+blocking = false
+semantic_review = false
+required_environment = "env_protocol"
+required_commands = ["bash", "conda"]
+known_side_effects = ["writes package evidence below artifacts/tests/package"]
+output_paths = ["artifacts/tests/package/**"]
+output_parser = "smoke_summary"
+strict_availability = "unavailable"
+current_exclusions_or_allowlists = []
+
+[[rule]]
+rule_id = "MD.FENCE.CLOSED"
+description = "Check maintained Markdown fence closure and approved source conventions."
+normative_document = "docs/standards/markdown.md"
+normative_section = "Fenced code (`MD.FENCE.CLOSED`)"
+owner_classification = "deterministic"
+source_checker = "dev/audit/markdown_policy.py"
+execution_kind = "original"
+execution_role = "checker"
+coverage_relation = "subset"
+covered_scope = "Check maintained Markdown fence closure and approved source conventions."
+remaining_scope = "`None` for closure once container context is parsed."
+parity_test = "tests/unit/dev_audit/test_markdown_policy.py"
+scope = "repository"
+command = ["python", "-m", "dev.audit.markdown_policy", "--root", "."]
+applicable_paths = ["**/*.md"]
+default_severity = "error"
+blocking = true
+semantic_review = false
+required_environment = "python>=3.11"
+required_commands = ["python"]
+known_side_effects = ["none"]
+output_paths = []
+output_parser = "generic"
+strict_availability = "safe_adapter"
+current_exclusions_or_allowlists = ["owner=MD.TOOLING.EXPLICIT; tmp/** remains retained pending behavior disposition, idempotence evidence, and separate deletion authorization", "owner=MD.TOOLING.EXPLICIT; rejected and formatter-input Markdown fixtures are exercised by unit tests, not repository conformance"]
+
+[[rule]]
+rule_id = "PY.RUFF.POLICY"
+description = "Enforce the approved Ruff lint core without applying fixes."
+normative_document = "docs/standards/python.md"
+normative_section = "Ruff governance (`PY.RUFF.POLICY`)"
+owner_classification = "deterministic"
+source_checker = "ruff check --no-fix"
+execution_kind = "original"
+execution_role = "checker"
+coverage_relation = "subset"
+covered_scope = "Enforce the approved Ruff lint core without applying fixes."
+remaining_scope = "Future selection changes and deferred E501, D-rule, and formatter phases remain separately review-owned."
+parity_test = "upstream Ruff rule fixtures plus repository package and custom contracts"
+scope = "repository"
+command = ["conda", "run", "-n", "env_protocol", "ruff", "check", "--no-fix", "src", "tests", "dev"]
+applicable_paths = ["src/**/*.py", "tests/**/*.py", "dev/**/*.py"]
+default_severity = "error"
+blocking = true
+semantic_review = false
+required_environment = "env_protocol"
+required_commands = ["conda"]
+known_side_effects = ["none"]
+output_paths = []
+output_parser = "generic"
+strict_availability = "safe_adapter"
+current_exclusions_or_allowlists = ["owner=PY.RUFF.SUPPRESSIONS; E402 is ignored only for dev/**/*.py and tests/**/*.py role-based import setup", "owner=PY.RUFF.SELECTION; UP009, E501, and all D rules are deferred"]
+
+[[rule]]
+rule_id = "GOV.TRACE.EXACT"
+description = "Audit a deterministic subset of registry traceability."
+normative_document = "docs/standards/governance.md"
+normative_section = "Traceability (`GOV.TRACE.EXACT`)"
+owner_classification = "advisory"
+source_checker = "dev/audit/standards_registry.py"
+execution_kind = "original"
+execution_role = "checker"
+coverage_relation = "subset"
+covered_scope = "Across docs/standards owners and index, dev/config/rules.toml, dev/audit emitters, and tests, reconcile exact headings, IDs, diagnostics, migrations, classifications, roles, relations, and scope metadata."
+remaining_scope = "Determine whether coverage matches the owner's real scope, whether upstream evidence is sufficient, and whether advisory or semantic review evidence supports a recorded disposition."
+parity_test = "tests/unit/dev_audit/test_standards_registry.py"
+scope = "repository"
+command = ["python", "-m", "dev.audit.standards_registry", "--root", "."]
+applicable_paths = ["docs/standards/**", "dev/config/rules.toml", "dev/audit/**", "tests/**"]
+default_severity = "error"
+blocking = false
+semantic_review = true
+required_environment = "python>=3.11"
+required_commands = ["python"]
+known_side_effects = ["none"]
+output_paths = []
+output_parser = "generic"
+strict_availability = "safe_adapter"
+current_exclusions_or_allowlists = []
+
+[[rule]]
+rule_id = "SHELL.SUBMIT.BOOTSTRAP"
+description = "Enforce source-derived submit shebang, guard ordering, mode, and compatibility delegation policy."
+normative_document = "docs/standards/shell.md"
+normative_section = "Submit bootstrap (`SHELL.SUBMIT.BOOTSTRAP`)"
+owner_classification = "advisory"
+source_checker = "tests/contract/interfaces/test_submit_bootstrap.sh"
+execution_kind = "independent"
+execution_role = "checker"
+coverage_relation = "subset"
+covered_scope = "Enforce source-derived submit shebang, guard ordering, mode, and compatibility delegation policy."
+remaining_scope = "Review environment ordering, scheduler semantics, and whether a delegate remains justified."
+parity_test = "tests/unit/dev_audit/test_source_policy.py"
+scope = "repository"
+command = ["conda", "run", "-n", "env_protocol", "python", "dev/audit/source_policy.py", "--root", ".", "--submit-bootstrap"]
+applicable_paths = ["bin/submit_*.sh", "lib/bash/**/*.sh", "docs/standards/shell.md"]
+default_severity = "error"
+blocking = false
+semantic_review = false
+required_environment = "env_protocol"
+required_commands = ["conda"]
+known_side_effects = ["none"]
+output_paths = []
+output_parser = "git_diff_check"
+strict_availability = "safe_adapter"
+current_exclusions_or_allowlists = []
+diagnostic_ids = ["SHELL.SUBMIT.SHEBANG", "SHELL.SUBMIT.MODE", "SHELL.SUBMIT.SOURCE_CONTRACT", "SHELL.SUBMIT.COMPATIBILITY", "SHELL.SUBMIT.GUARD_ORDER", "SHELL.SUBMIT.GUARD_CONTRACT", "SHELL.SUBMIT.DIRECT_CONTRACT"]
+
+[[rule]]
+rule_id = "PY.TYPE.FLOOR"
+description = "Compile selected dirty Python files in env_protocol."
+normative_document = "docs/standards/python.md"
+normative_section = "Floor-compatible types and syntax (`PY.TYPE.FLOOR`)"
+owner_classification = "advisory"
+source_checker = "tests/contract/repository/test_python_startup.sh"
+execution_kind = "adapter"
+execution_role = "checker"
+coverage_relation = "subset"
+covered_scope = "Compile selected dirty Python files in env_protocol."
+remaining_scope = "Review annotation usefulness, runtime typing effects, and compatibility not covered by compilation."
+parity_test = "upstream Python compiler fixtures"
+scope = "per_path"
+batch_paths = true
+command = ["conda", "run", "-n", "env_protocol", "python", "-m", "py_compile", "{path}"]
+applicable_paths = ["**/*.py"]
+default_severity = "error"
+blocking = false
+semantic_review = false
+required_environment = "env_protocol"
+required_commands = ["conda"]
+known_side_effects = ["external temporary PYTHONPYCACHEPREFIX only"]
+output_paths = []
+output_parser = "python_compile_stderr"
+strict_availability = "safe_adapter"
+current_exclusions_or_allowlists = ["owner=PY.TEST.LAYERS; source checker also runs help and compatibility checks; adapter does not"]
+migrates_from = ["PYTHON.STARTUP_COMPILE"]
+
+[[rule]]
+rule_id = "TEST.PROOF.PROPORTIONAL"
+description = "Check unstaged and staged diffs for whitespace errors."
+normative_document = "docs/standards/testing.md"
+normative_section = "Proportional proof (`TEST.PROOF.PROPORTIONAL`)"
+owner_classification = "advisory"
+source_checker = "git diff --check"
+execution_kind = "independent"
+execution_role = "independent_evidence"
+coverage_relation = "independent"
+covered_scope = "Check unstaged and staged diffs for whitespace errors."
+remaining_scope = "Owner conformance remains unproved; this is separate supporting evidence."
+parity_test = "upstream Git whitespace fixtures"
+scope = "repository"
+commands = [{ id = "unstaged", argv = ["git", "diff", "--check"] }, { id = "staged", argv = ["git", "diff", "--cached", "--check"] }]
+applicable_paths = ["**"]
+default_severity = "error"
+blocking = false
+semantic_review = false
+required_environment = "git"
+required_commands = ["git"]
+known_side_effects = ["none"]
+output_paths = []
+output_parser = "git_diff_check"
+strict_availability = "safe_adapter"
+current_exclusions_or_allowlists = []
+migrates_from = ["GIT.DIFF.WHITESPACE"]
+
+[[rule]]
+rule_id = "HELP.RUNTIME.REQUIREMENTS"
+description = "Check the representation of runtime requirements in maintained shell help."
+normative_document = "docs/standards/help.md"
+normative_section = "Runtime requirements (`HELP.RUNTIME.REQUIREMENTS`)"
+owner_classification = "advisory"
+source_checker = "dev/audit/help_runtime_requirements.py"
+execution_kind = "original"
+execution_role = "checker"
+coverage_relation = "subset"
+covered_scope = "Check the representation of runtime requirements in maintained shell help."
+remaining_scope = "Determine reachability, user relevance, conditional sufficiency, and provider equivalence."
+parity_test = "tests/unit/dev_audit/test_help_runtime_requirements.py"
+scope = "repository"
+command = ["python3", "dev/audit/help_runtime_requirements.py", "--root", "."]
+applicable_paths = ["bin/**/*.sh", "lib/bash/**/*.sh"]
+default_severity = "advisory"
+blocking = false
+semantic_review = true
+required_environment = "python>=3.11"
+required_commands = ["python3"]
+known_side_effects = ["none"]
+output_paths = []
+output_parser = "generic"
+strict_availability = "safe_adapter"
+current_exclusions_or_allowlists = ["owner=HELP.RUNTIME.REQUIREMENTS; conceptual prose and semantic completeness remain review-owned"]
+migrates_from = ["HELP.COMMAND_REFERENCES.PILOT"]
+diagnostic_ids = ["HELP.RUNTIME.INDENT", "HELP.RUNTIME.STRUCTURE", "HELP.RUNTIME.REDUNDANT_PROGRAMS", "HELP.RUNTIME.EXACT_CALLABLE", "HELP.RUNTIME.CARDINALITY", "RUNTIME.OWNER.SECTION", "RUNTIME.GRAMMAR", "RUNTIME.CARDINALITY", "RUNTIME.CALLABLE", "RUNTIME.VERSION", "RUNTIME.CONDITION", "RUNTIME.MISSING", "RUNTIME.OVERCLAIM", "RUNTIME.INTERNAL_EXPOSED", "RUNTIME.ENV.DEFAULT_EXPOSED", "RUNTIME.PYTHON.MINIMUM", "RUNTIME.INLINE_API", "RUNTIME.CAPITALIZATION", "RUNTIME.TERMINAL_PUNCTUATION", "RUNTIME.CONDA_ENVIRONMENT", "RUNTIME.REDUNDANT_COMPOSITE", "RUNTIME.ORDER", "RUNTIME.SEMANTIC.UNKNOWN_CALLABLE"]
+
+[[rule]]
+rule_id = "HELP.ALIAS.PUBLIC"
+description = "Check that documented public aliases agree with maintained shell parsers."
+normative_document = "docs/standards/help.md"
+normative_section = "Public aliases (`HELP.ALIAS.PUBLIC`)"
+owner_classification = "advisory"
+source_checker = "dev/audit/help_aliases.py"
+execution_kind = "original"
+execution_role = "checker"
+coverage_relation = "subset"
+covered_scope = "Check that documented public aliases agree with maintained shell parsers."
+remaining_scope = "Decide whether an accepted spelling is public, compatibility-only, or retired."
+parity_test = "tests/unit/dev_audit/test_help_aliases.py"
+scope = "repository"
+command = ["python3", "dev/audit/help_aliases.py", "--root", "."]
+applicable_paths = ["bin/**/*.sh", "lib/bash/**/*.sh"]
+default_severity = "advisory"
+blocking = false
+semantic_review = true
+required_environment = "python>=3.11"
+required_commands = ["python3"]
+known_side_effects = ["none"]
+output_paths = []
+output_parser = "generic"
+strict_availability = "safe_adapter"
+current_exclusions_or_allowlists = ["owner=HELP.ALIAS.PUBLIC; extraction does not determine semantic appropriateness or behavior"]
+migrates_from = ["DOWNLOAD.INTERFACE.FACTS.PILOT"]
+diagnostic_ids = ["HELP.PARAMETER.ALIAS_SET", "HELP.PARAMETER.ALIAS_DUPLICATE"]
+
+[[rule]]
+rule_id = "SHELL.LINE_LENGTH"
+description = "Existing advisory shell line-length queue."
+normative_document = "docs/standards/shell.md"
+normative_section = "Shell line length (`SHELL.LINE_LENGTH`)"
+owner_classification = "advisory"
+source_checker = "tests/contract/repository/test_shell_line_length.sh"
+execution_kind = "original"
+execution_role = "checker"
+coverage_relation = "subset"
+covered_scope = "Across maintained **/*.sh files, report non-heredoc lines above 80 columns after bounded literal allowances, enforce the registered pilot paths, and inventory adjacent case-arm spacing."
+remaining_scope = "Decide whether a line is indivisible and whether a proposed split improves readability without changing quoting or execution."
+parity_test = "tests/contract/repository/test_shell_line_length.sh"
+scope = "repository"
+command = ["bash", "tests/contract/repository/test_shell_line_length.sh"]
+applicable_paths = ["**/*.sh"]
+default_severity = "advisory"
+blocking = false
+semantic_review = true
+required_environment = "bash"
+required_commands = ["bash"]
+known_side_effects = ["creates artifacts/tests/tmp and artifacts/tests/logs"]
+output_paths = ["artifacts/tests/**"]
+output_parser = "smoke_summary"
+strict_availability = "unavailable"
+current_exclusions_or_allowlists = ["owner=SHELL.LINE_LENGTH; repository-wide advisory behavior is preserved outside explicitly bounded pilot targets; heredocs, URLs, checksums, regexes, parser labels, fixture literals"]
+diagnostic_ids = ["SHELL.CASE_ARM.SPACING"]
+
+[[rule]]
+rule_id = "SHELL.WRAPPER_TOPOLOGY"
+description = "Existing shell wrapper topology checker."
+normative_document = "docs/standards/shell.md"
+normative_section = "Wrapper topology (`SHELL.WRAPPER_TOPOLOGY`)"
+owner_classification = "advisory"
+source_checker = "tests/contract/repository/test_shell_wrapper_style.sh"
+execution_kind = "original"
+execution_role = "checker"
+coverage_relation = "subset"
+covered_scope = "Across bin, lib/bash, and install/scripts, check externalized top-level help, submit --dir_scr policy, execute-to-submit delegation, and registered legacy-wrapper exclusions."
+remaining_scope = "Review responsibility placement, environment lifetime, dispatch equivalence, and behavior-sensitive command changes."
+parity_test = "tests/contract/repository/test_shell_wrapper_style.sh"
+scope = "repository"
+command = ["bash", "tests/contract/repository/test_shell_wrapper_style.sh"]
+applicable_paths = ["bin/**/*.sh", "lib/bash/**/*.sh", "install/scripts/**/*.sh"]
+default_severity = "error"
+blocking = false
+semantic_review = true
+required_environment = "bash"
+required_commands = ["bash"]
+known_side_effects = ["creates artifacts/tests/tmp and artifacts/tests/logs"]
+output_paths = ["artifacts/tests/**"]
+output_parser = "smoke_summary"
+strict_availability = "unavailable"
+current_exclusions_or_allowlists = ["owner=SHELL.WRAPPER_TOPOLOGY; install_envs_entrypoint and legacy filter wrappers"]
+migrates_from = ["SHELL.WRAPPER_TOPOLOGY.PILOT"]
+
+[[rule]]
+rule_id = "HELP.SOURCE_STYLE"
+description = "Existing source-level shell help style checker."
+normative_document = "docs/standards/help.md"
+normative_section = "Source help structure (`HELP.SOURCE_STYLE`)"
+owner_classification = "advisory"
+source_checker = "tests/contract/repository/test_help_style.sh"
+execution_kind = "original"
+execution_role = "checker"
+coverage_relation = "subset"
+covered_scope = "Across bin, lib/bash, standards prose, and shell tests, check canonical help ownership, section order, entry indentation and spacing, long-option spelling, heredoc source form, and bounded source reflow."
+remaining_scope = "Review readability, intentional rendered line breaks, appropriate grouping, and whether a row communicates the interface accurately."
+parity_test = "tests/contract/repository/test_help_style.sh"
+scope = "repository"
+command = ["bash", "tests/contract/repository/test_help_style.sh"]
+applicable_paths = ["bin/**/*.sh", "lib/bash/**/*.sh", "docs/standards/**/*.md", "tests/**/*.sh"]
+default_severity = "advisory"
+blocking = false
+semantic_review = true
+required_environment = "bash"
+required_commands = ["bash"]
+known_side_effects = ["creates artifacts/tests/tmp and artifacts/tests/logs"]
+output_paths = ["artifacts/tests/**"]
+output_parser = "smoke_summary"
+strict_availability = "unavailable"
+current_exclusions_or_allowlists = ["owner=HELP.SOURCE_STYLE; checker self-exclusions and warning-only hard-tab findings"]
+migrates_from = ["HELP.SOURCE_STYLE.PILOT"]
+diagnostic_ids = ["HELP.DOC.CANONICAL_HELP", "HELP.USAGE.STRUCTURE", "HELP.ENTRY.INDENT", "HELP.ENTRY.BLANK", "HELP.SECTION.INDENT", "HELP.SECTION.DUPLICATE", "HELP.SECTION.ORDER", "HELP.SECTION.REQUIRED", "HELP.NOTES.PSEUDO_HEADER_INDENT", "HELP.HEREDOC.SOURCE_REFLOW", "SHELL.HELP_SOURCE.SPACING"]
+
+[[rule]]
+rule_id = "HELP.RENDERED"
+description = "Existing rendered shell-help checker."
+normative_document = "docs/standards/help.md"
+normative_section = "Rendered help (`HELP.RENDERED`)"
+owner_classification = "advisory"
+source_checker = "tests/contract/interfaces/test_help_output.sh"
+execution_kind = "original"
+execution_role = "checker"
+coverage_relation = "subset"
+covered_scope = "For bin/*.sh, execute supported help modes and check status, required and duplicate sections, rendered TODO or helper leakage, examples fixtures, and advertised detailed-help behavior."
+remaining_scope = "Review completeness, clarity, audience fit, and whether implementation details are user-actionable."
+parity_test = "tests/contract/interfaces/test_help_output.sh"
+scope = "repository"
+command = ["bash", "tests/contract/interfaces/test_help_output.sh"]
+applicable_paths = ["bin/*.sh"]
+default_severity = "error"
+blocking = false
+semantic_review = true
+required_environment = "bash"
+required_commands = ["bash"]
+known_side_effects = ["creates artifacts/tests logs and executes wrapper help"]
+output_paths = ["artifacts/tests/**"]
+output_parser = "smoke_summary"
+strict_availability = "unavailable"
+current_exclusions_or_allowlists = ["owner=HELP.RENDERED; optional --details checks are warning/skip capable"]
+
+[[rule]]
+rule_id = "PY.CLI.PARSER"
+description = "Existing Python CLI and docstring style checker."
+normative_document = "docs/standards/python.md"
+normative_section = "CLI parsers (`PY.CLI.PARSER`)"
+owner_classification = "advisory"
+source_checker = "tests/contract/repository/test_python_style.sh"
+execution_kind = "original"
+execution_role = "checker"
+coverage_relation = "subset"
+covered_scope = "For src/**/*.py, inspect parser and typed-main signatures, option aliases and destinations, entrypoint guards, module and public-object docstrings, section forms, and configured compatibility allowances."
+remaining_scope = "Decide public visibility, alias compatibility, and whether a parser abstraction remains appropriate."
+parity_test = "tests/contract/repository/test_python_style.sh"
+scope = "repository"
+command = ["bash", "tests/contract/repository/test_python_style.sh"]
+applicable_paths = ["src/**/*.py"]
+default_severity = "advisory"
+blocking = false
+semantic_review = true
+required_environment = "python3"
+required_commands = ["bash", "python3"]
+known_side_effects = ["creates artifacts/tests logs"]
+output_paths = ["artifacts/tests/**"]
+output_parser = "smoke_summary"
+strict_availability = "unavailable"
+current_exclusions_or_allowlists = ["owner=PY.CLI.PARSER; hidden hyphenated compatibility aliases"]
+migrates_from = ["PYTHON.CLI_STYLE"]
+
+[[rule]]
+rule_id = "STARTUP.SOURCING"
+description = "Existing source-in-isolation checker."
+normative_document = "docs/standards/shell.md"
+normative_section = "Startup sourcing (`STARTUP.SOURCING`)"
+owner_classification = "advisory"
+source_checker = "tests/contract/repository/test_startup_sources.sh"
+execution_kind = "original"
+execution_role = "checker"
+coverage_relation = "subset"
+covered_scope = "For every lib/bash/**/*.sh source, load the file independently under managed Bash and require a successful source status without direct execution."
+remaining_scope = "Review global mutation, traps, option changes, expensive initialization, and side effects not detected by isolation loading."
+parity_test = "tests/contract/repository/test_startup_sources.sh"
+scope = "repository"
+command = ["bash", "tests/contract/repository/test_startup_sources.sh"]
+applicable_paths = ["lib/bash/**/*.sh"]
+default_severity = "error"
+blocking = false
+semantic_review = false
+required_environment = "bash"
+required_commands = ["bash"]
+known_side_effects = ["creates artifacts/tests logs"]
+output_paths = ["artifacts/tests/**"]
+output_parser = "smoke_summary"
+strict_availability = "unavailable"
+current_exclusions_or_allowlists = []
+
+[[rule]]
+rule_id = "SHELL.TEST.SOURCE_FORM"
+description = "Check source form for contract, local, Parallel, and ordinary Slurm shell tests."
+normative_document = "docs/standards/shell.md"
+normative_section = "Shell-test source form (`SHELL.TEST.SOURCE_FORM`)"
+owner_classification = "advisory"
+source_checker = "tests/contract/repository/test_test_layout.sh"
+execution_kind = "original"
+execution_role = "checker"
+coverage_relation = "subset"
+covered_scope = "Check source form for contract, local, Parallel, and ordinary Slurm shell tests."
+remaining_scope = "Review clarity, appropriate helper reuse, and intentional early-exit paths."
+parity_test = "tests/contract/repository/test_test_layout.sh"
+scope = "repository"
+command = ["bash", "tests/contract/repository/test_test_layout.sh"]
+applicable_paths = ["tests/contract/**/*.sh", "tests/integration/local/**/*.sh", "tests/integration/parallel/**/*.sh", "tests/integration/slurm/test_*.sh"]
+default_severity = "advisory"
+blocking = false
+semantic_review = true
+required_environment = "bash"
+required_commands = ["bash"]
+known_side_effects = ["creates artifacts/tests logs"]
+output_paths = ["artifacts/tests/**"]
+output_parser = "smoke_summary"
+strict_availability = "unavailable"
+current_exclusions_or_allowlists = []
+migrates_from = ["SMOKE.STRUCTURE"]
+
+[[rule]]
+rule_id = "DOC.COVERAGE"
+description = "Existing documentation coverage checker."
+normative_document = "docs/standards/help.md"
+normative_section = "Documentation coverage (`DOC.COVERAGE`)"
+owner_classification = "advisory"
+source_checker = "tests/contract/repository/test_doc_coverage.sh"
+execution_kind = "original"
+execution_role = "checker"
+coverage_relation = "subset"
+covered_scope = "Across bin, lib/bash, install/scripts, tests/support, and public src package objects, inventory missing centralized shell help and missing local documentation for nontrivial reusable helpers."
+remaining_scope = "Decide whether a helper is public or nontrivial enough to require local documentation and whether its help is useful."
+parity_test = "tests/contract/repository/test_doc_coverage.sh"
+scope = "repository"
+command = ["bash", "tests/contract/repository/test_doc_coverage.sh"]
+applicable_paths = ["bin/**", "lib/bash/**", "src/**", "tests/**"]
+default_severity = "advisory"
+blocking = false
+semantic_review = true
+required_environment = "python3"
+required_commands = ["bash", "python3"]
+known_side_effects = ["creates artifacts/tests logs"]
+output_paths = ["artifacts/tests/**"]
+output_parser = "smoke_summary"
+strict_availability = "unavailable"
+current_exclusions_or_allowlists = ["owner=DOC.COVERAGE; lifecycle, tiny helper, help-file, and complex-private helper exceptions"]
+
+[[rule]]
+rule_id = "HELP.SECTION.SCHEMA"
+description = "Existing style-document consistency checker."
+normative_document = "docs/standards/help.md"
+normative_section = "Shared section schema (`HELP.SECTION.SCHEMA`)"
+owner_classification = "advisory"
+source_checker = "tests/contract/repository/test_docs_consistency.sh"
+execution_kind = "original"
+execution_role = "checker"
+coverage_relation = "subset"
+covered_scope = "Across help.md, python.md, shell.md, and focused repository contracts, require the maintained documents and stable owner IDs and reject the retired centralized TODO notebook."
+remaining_scope = "Decide which optional sections materially help the audience and whether prose belongs in a shared or domain-specific section."
+parity_test = "tests/contract/repository/test_docs_consistency.sh"
+scope = "repository"
+command = ["bash", "tests/contract/repository/test_docs_consistency.sh"]
+applicable_paths = ["docs/standards/**/*.md", "tests/smoke/**/*.sh"]
+default_severity = "advisory"
+blocking = false
+semantic_review = true
+required_environment = "bash"
+required_commands = ["bash"]
+known_side_effects = ["creates artifacts/tests logs"]
+output_paths = ["artifacts/tests/**"]
+output_parser = "smoke_summary"
+strict_availability = "unavailable"
+current_exclusions_or_allowlists = ["owner=HELP.SECTION.SCHEMA; warning-only checker-vocabulary coverage"]
+migrates_from = ["DOC.CONSISTENCY"]
+diagnostic_ids = ["HELP.DOC.LONG_OPTIONS", "HELP.SECTION.UNSUPPORTED_DEPENDENCY"]
+
+[[rule]]
+rule_id = "PARAMETER.DESCRIPTIONS"
+description = "Existing parameter-description consistency checker."
+normative_document = "docs/standards/help.md"
+normative_section = "Canonical parameter descriptions (`PARAMETER.DESCRIPTIONS`)"
+owner_classification = "advisory"
+source_checker = "tests/contract/repository/test_parameter_docs_consistency.sh"
+execution_kind = "original"
+execution_role = "checker"
+coverage_relation = "subset"
+covered_scope = "Across bin, lib/bash, src, tests, and standards prose, compare registered same-name parameter descriptions, aliases, default wording, required/conditional clauses, and hidden-compatibility allowances."
+remaining_scope = "Review whether shared prose is integrated naturally and whether a same-name parameter truly has the shared meaning."
+parity_test = "tests/contract/repository/test_parameter_docs_consistency.sh"
+scope = "repository"
+command = ["bash", "tests/contract/repository/test_parameter_docs_consistency.sh"]
+applicable_paths = ["bin/**", "lib/bash/**", "src/**", "tests/**", "docs/standards/**/*.md"]
+default_severity = "advisory"
+blocking = false
+semantic_review = true
+required_environment = "python3"
+required_commands = ["bash", "python3"]
+known_side_effects = ["creates artifacts/tests logs"]
+output_paths = ["artifacts/tests/**"]
+output_parser = "smoke_summary"
+strict_availability = "unavailable"
+current_exclusions_or_allowlists = ["owner=PARAMETER.DESCRIPTIONS; hidden compatibility aliases and registered shared-description rules"]
+
+[[rule]]
+rule_id = "MD.HEADING.SPACING"
+description = "Check canonical formal and safely recognized informal heading spacing."
+normative_document = "docs/standards/markdown.md"
+normative_section = "Headings (`MD.HEADING.SPACING`)"
+owner_classification = "deterministic"
+source_checker = "dev/audit/markdown_policy.py"
+execution_kind = "original"
+execution_role = "checker"
+coverage_relation = "subset"
+covered_scope = "Check canonical formal-heading spacing and the optional-anchor relationship for safely recognized structural informal headings."
+remaining_scope = "Decide informal-heading intent outside safely recognized structural contexts; spacing is deterministic once a line is classified as a heading."
+parity_test = "tests/unit/dev_audit/test_markdown_policy.py"
+scope = "repository"
+command = ["python", "-m", "dev.audit.markdown_policy", "--root", "."]
+applicable_paths = ["**/*.md"]
+default_severity = "error"
+blocking = true
+semantic_review = false
+required_environment = "python>=3.11"
+required_commands = ["python"]
+known_side_effects = ["none"]
+output_paths = []
+output_parser = "generic"
+strict_availability = "safe_adapter"
+current_exclusions_or_allowlists = []
+
+[[rule]]
+rule_id = "MD.HEADING.INFORMAL"
+description = "Inventory ambiguous standalone emphasized lines for informal-heading review."
+normative_document = "docs/standards/markdown.md"
+normative_section = "Informal headings (`MD.HEADING.INFORMAL`)"
+owner_classification = "advisory"
+source_checker = "dev/audit/markdown_policy.py"
+execution_kind = "original"
+execution_role = "evidence_producer"
+coverage_relation = "subset"
+covered_scope = "Recognize safely structural H7/H8 contexts without requiring a conforming boundary and inventory otherwise ambiguous standalone emphasized-only lines."
+remaining_scope = "Decide whether an ambiguous emphasized-only line was intended as H7/H8 and whether its hierarchy is semantically correct."
+parity_test = "tests/unit/dev_audit/test_markdown_policy.py"
+scope = "repository"
+command = ["python3", "-m", "dev.audit.markdown_policy", "--root", ".", "--fail-on", "none"]
+applicable_paths = ["**/*.md"]
+default_severity = "advisory"
+blocking = false
+semantic_review = true
+required_environment = "python>=3.11"
+required_commands = ["python3"]
+known_side_effects = ["none"]
+output_paths = []
+output_parser = "generic"
+strict_availability = "safe_adapter"
+current_exclusions_or_allowlists = []
+
+[[rule]]
+rule_id = "MD.STANDARD.SECTION"
+description = "Inventory canonical fields and order in standards rule sections."
+normative_document = "docs/standards/markdown.md"
+normative_section = "Standards rule sections (`MD.STANDARD.SECTION`)"
+owner_classification = "advisory"
+source_checker = "dev/audit/markdown_policy.py"
+execution_kind = "original"
+execution_role = "checker"
+coverage_relation = "subset"
+covered_scope = "Inventory canonical fields and order in standards rule sections."
+remaining_scope = "Determine whether a section is normative, whether it owns the correct rule IDs, and whether each field accurately describes the rule's real boundary and implementation state."
+parity_test = "tests/unit/dev_audit/test_markdown_policy.py"
+scope = "repository"
+command = ["python", "-m", "dev.audit.markdown_policy", "--root", "."]
+applicable_paths = ["docs/standards/*.md"]
+default_severity = "advisory"
+blocking = false
+semantic_review = true
+required_environment = "python>=3.11"
+required_commands = ["python"]
+known_side_effects = ["none"]
+output_paths = []
+output_parser = "generic"
+strict_availability = "safe_adapter"
+current_exclusions_or_allowlists = []
+
+[[rule]]
+rule_id = "MD.COLON.STRUCTURE"
+description = "Inventory spacing before colon-introduced lists and fences."
+normative_document = "docs/standards/markdown.md"
+normative_section = "Colon-introduced structures (`MD.COLON.STRUCTURE`)"
+owner_classification = "deterministic"
+source_checker = "dev/audit/markdown_policy.py"
+execution_kind = "original"
+execution_role = "checker"
+coverage_relation = "subset"
+covered_scope = "Inventory spacing before colon-introduced lists and fences."
+remaining_scope = "`None` once the associated block is identified. Determining whether prose actually introduces a later, nonadjacent block requires review."
+parity_test = "tests/unit/dev_audit/test_markdown_policy.py"
+scope = "repository"
+command = ["python", "-m", "dev.audit.markdown_policy", "--root", "."]
+applicable_paths = ["**/*.md"]
+default_severity = "error"
+blocking = true
+semantic_review = true
+required_environment = "python>=3.11"
+required_commands = ["python"]
+known_side_effects = ["none"]
+output_paths = []
+output_parser = "generic"
+strict_availability = "safe_adapter"
+current_exclusions_or_allowlists = []
+
+[[rule]]
+rule_id = "MD.LIST.SPACING"
+description = "Inventory canonical simple-list peer spacing."
+normative_document = "docs/standards/markdown.md"
+normative_section = "Lists (`MD.LIST.SPACING`, `MD.LIST.INDENT`)"
+owner_classification = "advisory"
+source_checker = "dev/audit/markdown_policy.py"
+execution_kind = "original"
+execution_role = "checker"
+coverage_relation = "subset"
+covered_scope = "Inventory canonical simple-list peer spacing."
+remaining_scope = "Review intentional loose lists, multi-digit ordered containers, embedded blocks, and ambiguous indentation."
+parity_test = "tests/unit/dev_audit/test_markdown_policy.py"
+scope = "repository"
+command = ["python", "-m", "dev.audit.markdown_policy", "--root", "."]
+applicable_paths = ["**/*.md"]
+default_severity = "advisory"
+blocking = false
+semantic_review = true
+required_environment = "python>=3.11"
+required_commands = ["python"]
+known_side_effects = ["none"]
+output_paths = []
+output_parser = "generic"
+strict_availability = "safe_adapter"
+current_exclusions_or_allowlists = []
+
+[[rule]]
+rule_id = "MD.LIST.INDENT"
+description = "Inventory tabs and noncanonical simple-list indentation."
+normative_document = "docs/standards/markdown.md"
+normative_section = "Lists (`MD.LIST.SPACING`, `MD.LIST.INDENT`)"
+owner_classification = "advisory"
+source_checker = "dev/audit/markdown_policy.py"
+execution_kind = "original"
+execution_role = "checker"
+coverage_relation = "subset"
+covered_scope = "Inventory tabs and noncanonical simple-list indentation."
+remaining_scope = "Review intentional loose lists, multi-digit ordered containers, embedded blocks, and ambiguous indentation."
+parity_test = "tests/unit/dev_audit/test_markdown_policy.py"
+scope = "repository"
+command = ["python", "-m", "dev.audit.markdown_policy", "--root", "."]
+applicable_paths = ["**/*.md"]
+default_severity = "advisory"
+blocking = false
+semantic_review = true
+required_environment = "python>=3.11"
+required_commands = ["python"]
+known_side_effects = ["none"]
+output_paths = []
+output_parser = "generic"
+strict_availability = "safe_adapter"
+current_exclusions_or_allowlists = []
+
+[[rule]]
+rule_id = "MD.TABLE.CANONICAL"
+description = "Inventory supported noncanonical GFM pipe tables."
+normative_document = "docs/standards/markdown.md"
+normative_section = "GFM tables (`MD.TABLE.CANONICAL`)"
+owner_classification = "deterministic"
+source_checker = "dev/audit/markdown_policy.py"
+execution_kind = "original"
+execution_role = "checker"
+coverage_relation = "subset"
+covered_scope = "Inventory supported noncanonical GFM pipe tables."
+remaining_scope = "`None` for supported table source. Identifying whether malformed pipe-like text was intended as a table may require review."
+parity_test = "tests/unit/dev_audit/test_markdown_policy.py"
+scope = "repository"
+command = ["python", "-m", "dev.audit.markdown_policy", "--root", "."]
+applicable_paths = ["**/*.md"]
+default_severity = "error"
+blocking = true
+semantic_review = true
+required_environment = "python>=3.11"
+required_commands = ["python"]
+known_side_effects = ["none"]
+output_paths = []
+output_parser = "generic"
+strict_availability = "safe_adapter"
+current_exclusions_or_allowlists = []
+
+[[rule]]
+rule_id = "MD.PROSE.UNWRAP"
+description = "Inventory files whose natural prose may be safely unwrapped."
+normative_document = "docs/standards/markdown.md"
+normative_section = "Natural prose (`MD.PROSE.UNWRAP`)"
+owner_classification = "advisory"
+source_checker = "dev/audit/markdown_policy.py"
+execution_kind = "original"
+execution_role = "checker"
+coverage_relation = "subset"
+covered_scope = "Inventory files whose natural prose may be safely unwrapped."
+remaining_scope = "Review ambiguous inline HTML, reference definitions, container boundaries, and author-intended hard breaks."
+parity_test = "tests/unit/dev_audit/test_markdown_policy.py"
+scope = "repository"
+command = ["python", "-m", "dev.audit.markdown_policy", "--root", "."]
+applicable_paths = ["**/*.md"]
+default_severity = "advisory"
+blocking = false
+semantic_review = true
+required_environment = "python>=3.11"
+required_commands = ["python"]
+known_side_effects = ["none"]
+output_paths = []
+output_parser = "generic"
+strict_availability = "safe_adapter"
+current_exclusions_or_allowlists = []
+
+[[rule]]
+rule_id = "MD.DETAILS.HIERARCHY"
+description = "Exercise bounded details-heading rebasing and retain semantic overflow review."
+normative_document = "docs/standards/markdown.md"
+normative_section = "Details hierarchy (`MD.DETAILS.HIERARCHY`)"
+owner_classification = "advisory"
+source_checker = "tests/unit/dev_audit/test_markdown_policy.py"
+execution_kind = "independent"
+execution_role = "checker"
+coverage_relation = "subset"
+covered_scope = "Exercise bounded details-heading rebasing and retain semantic overflow review."
+remaining_scope = "Choose whether a hierarchy should use informal H7/H8, flatten, split, move, or otherwise be redesigned, especially when it would overflow H8."
+parity_test = "tests/unit/dev_audit/test_markdown_policy.py"
+scope = "repository"
+command = ["python", "-m", "pytest", "-q", "tests/unit/dev_audit/test_markdown_policy.py"]
+applicable_paths = ["**/*.md"]
+default_severity = "advisory"
+blocking = false
+semantic_review = true
+required_environment = "env_protocol"
+required_commands = ["python"]
+known_side_effects = ["none"]
+output_paths = []
+output_parser = "generic"
+strict_availability = "safe_adapter"
+current_exclusions_or_allowlists = []
+
+[[rule]]
+rule_id = "MD.TABLE.CONVERT"
+description = "Exercise explicit equal-width CSV and TSV conversion."
+normative_document = "docs/standards/markdown.md"
+normative_section = "Delimited-text conversion (`MD.TABLE.CONVERT`)"
+owner_classification = "deterministic"
+source_checker = "tests/unit/dev_audit/test_markdown_policy.py"
+execution_kind = "independent"
+execution_role = "checker"
+coverage_relation = "subset"
+covered_scope = "Exercise explicit equal-width CSV and TSV conversion."
+remaining_scope = "`None` for validated input."
+parity_test = "tests/unit/dev_audit/test_markdown_policy.py"
+scope = "repository"
+command = ["python", "-m", "pytest", "-q", "tests/unit/dev_audit/test_markdown_policy.py"]
+applicable_paths = ["dev/tools/markdown_format.py", "tests/fixtures/markdown/**"]
+default_severity = "error"
+blocking = true
+semantic_review = false
+required_environment = "env_protocol"
+required_commands = ["python"]
+known_side_effects = ["none"]
+output_paths = []
+output_parser = "generic"
+strict_availability = "safe_adapter"
+current_exclusions_or_allowlists = []
+
+[[rule]]
+rule_id = "MD.TOOLING.EXPLICIT"
+description = "Exercise nonmutating checks and explicit-write formatter behavior."
+normative_document = "docs/standards/markdown.md"
+normative_section = "Tooling and scope (`MD.TOOLING.EXPLICIT`)"
+owner_classification = "deterministic"
+source_checker = "tests/unit/dev_audit/test_markdown_policy.py"
+execution_kind = "independent"
+execution_role = "checker"
+coverage_relation = "subset"
+covered_scope = "Exercise shared fence-aware heading-unit and boundary classification, approved anchor-cluster repairs, repository no-write preview, explicit-write behavior, and formatter idempotence."
+remaining_scope = "Review ambiguous informal-heading and explicit-ID inbound-link intent and decide the deferred prose, details, marker, emoji, and complex-container behaviors."
+parity_test = "tests/unit/dev_audit/test_markdown_policy.py"
+scope = "repository"
+command = ["python", "-m", "pytest", "-q", "tests/unit/dev_audit/test_markdown_policy.py"]
+applicable_paths = ["dev/audit/markdown_policy.py", "dev/tools/markdown_format.py"]
+default_severity = "error"
+blocking = true
+semantic_review = true
+required_environment = "env_protocol"
+required_commands = ["python"]
+known_side_effects = ["none"]
+output_paths = []
+output_parser = "generic"
+strict_availability = "safe_adapter"
+current_exclusions_or_allowlists = ["owner=MD.TOOLING.EXPLICIT; proposed prose unwrapping and details rebasing remain preview-only and unapproved for write mode"]
+
+[[rule]]
+rule_id = "PY.RUFF.FORMAT"
+description = "Inventory Ruff formatter changes separately from lint."
+normative_document = "docs/standards/python.md"
+normative_section = "Ruff formatting (`PY.RUFF.FORMAT`)"
+owner_classification = "advisory"
+source_checker = "ruff format --check"
+execution_kind = "original"
+execution_role = "checker"
+coverage_relation = "subset"
+covered_scope = "Inventory Ruff formatter changes separately from lint."
+remaining_scope = "Approve formatter adoption and review representative changes."
+parity_test = "upstream Ruff formatter fixtures and repository idempotence contract"
+scope = "repository"
+command = ["conda", "run", "-n", "env_protocol", "ruff", "format", "--check", "src", "tests", "dev"]
+applicable_paths = ["src/**/*.py", "tests/**/*.py", "dev/**/*.py"]
+default_severity = "advisory"
+blocking = false
+semantic_review = true
+required_environment = "env_protocol"
+required_commands = ["conda"]
+known_side_effects = ["none"]
+output_paths = []
+output_parser = "generic"
+strict_availability = "safe_adapter"
+current_exclusions_or_allowlists = ["owner=PY.RUFF.FORMAT; repository-wide formatting was deferred at the 7j checkpoint"]
+
+[[rule]]
+rule_id = "PY.MODULE.LAYERS"
+description = "Reject retired imports and inverted CLI-to-utility layering."
+normative_document = "docs/standards/python.md"
+normative_section = "Module layering (`PY.MODULE.LAYERS`)"
+owner_classification = "advisory"
+source_checker = "tests/contract/repository/test_python_boundaries.sh"
+execution_kind = "original"
+execution_role = "checker"
+coverage_relation = "subset"
+covered_scope = "Reject retired imports and inverted CLI-to-utility layering."
+remaining_scope = "Decide whether behavior is orchestration, reusable domain logic, or an intentional shared dispatcher."
+parity_test = "tests/contract/repository/test_python_boundaries.sh"
+scope = "repository"
+command = ["bash", "tests/contract/repository/test_python_boundaries.sh"]
+applicable_paths = ["src/**/*.py"]
+default_severity = "error"
+blocking = false
+semantic_review = true
+required_environment = "python>=3.11"
+required_commands = ["bash", "python"]
+known_side_effects = ["none"]
+output_paths = []
+output_parser = "smoke_summary"
+strict_availability = "safe_adapter"
+current_exclusions_or_allowlists = []
+
+[[rule]]
+rule_id = "SOURCE.HEADER.STRUCTURE"
+description = "Validate source.header.structure source-header coverage."
+normative_document = "docs/standards/source_headers.md"
+normative_section = "Header structure and profiles (`SOURCE.HEADER.STRUCTURE`)"
+owner_classification = "advisory"
+source_checker = "dev/audit/ai_attribution.py"
+execution_kind = "original"
+execution_role = "checker"
+coverage_relation = "subset"
+covered_scope = "On registered Bash and Python paths, validate approved shebangs, base field order, no-AI and AI-assisted license placement, exact separators, and the two-blank-line body boundary."
+remaining_scope = "Determine whether a shebang-less file has a direct-execution contract and whether copied or generated material has been adopted as maintained source."
+parity_test = "tests/unit/dev_audit/test_ai_attribution.py"
+scope = "repository"
+command = ["python3", "dev/audit/ai_attribution.py", "--root", ".", "--current-year", "2026", "--rule", "SOURCE.HEADER.STRUCTURE"]
+applicable_paths = ["bin/**/*.sh", "lib/bash/**/*.sh", "install/scripts/**/*.sh", "src/**/*.py", "dev/**/*.py", "tests/**/*.py", "tests/**/*.sh"]
+default_severity = "advisory"
+blocking = false
+semantic_review = true
+required_environment = "python>=3.11"
+required_commands = ["python3"]
+known_side_effects = ["none"]
+output_paths = []
+output_parser = "generic"
+strict_availability = "safe_adapter"
+current_exclusions_or_allowlists = []
+
+[[rule]]
+rule_id = "SOURCE.HEADER.BASENAME"
+description = "Validate source.header.basename source-header coverage."
+normative_document = "docs/standards/source_headers.md"
+normative_section = "Script basename (`SOURCE.HEADER.BASENAME`)"
+owner_classification = "deterministic"
+source_checker = "dev/audit/ai_attribution.py"
+execution_kind = "original"
+execution_role = "checker"
+coverage_relation = "subset"
+covered_scope = "For discovered in-scope Bash and Python headers, compare the single bounded Script row with Path.name."
+remaining_scope = "Applicability and selection of the governing no-AI or AI-assisted header profile are established before the basename comparison."
+parity_test = "tests/unit/dev_audit/test_ai_attribution.py"
+scope = "repository"
+command = ["python3", "dev/audit/ai_attribution.py", "--root", ".", "--current-year", "2026", "--rule", "SOURCE.HEADER.BASENAME"]
+applicable_paths = ["bin/**/*.sh", "lib/bash/**/*.sh", "install/scripts/**/*.sh", "src/**/*.py", "dev/**/*.py", "tests/**/*.py", "tests/**/*.sh"]
+default_severity = "error"
+blocking = false
+semantic_review = false
+required_environment = "python>=3.11"
+required_commands = ["python3"]
+known_side_effects = ["none"]
+output_paths = []
+output_parser = "generic"
+strict_availability = "safe_adapter"
+current_exclusions_or_allowlists = []
+
+[[rule]]
+rule_id = "SOURCE.HEADER.WIDTH"
+description = "Validate source.header.width source-header coverage."
+normative_document = "docs/standards/source_headers.md"
+normative_section = "Header width (`SOURCE.HEADER.WIDTH`)"
+owner_classification = "deterministic"
+source_checker = "dev/audit/ai_attribution.py"
+execution_kind = "original"
+execution_role = "checker"
+coverage_relation = "subset"
+covered_scope = "Measure every physical line from the approved shebang through the bounded license row and reject lengths above 79 characters."
+remaining_scope = "Applicability, unrecognized header profiles, and disposition of an unrepresentable exact identity remain outside the measured subset."
+parity_test = "tests/unit/dev_audit/test_ai_attribution.py"
+scope = "repository"
+command = ["python3", "dev/audit/ai_attribution.py", "--root", ".", "--current-year", "2026", "--rule", "SOURCE.HEADER.WIDTH"]
+applicable_paths = ["bin/**/*.sh", "lib/bash/**/*.sh", "install/scripts/**/*.sh", "src/**/*.py", "dev/**/*.py", "tests/**/*.py", "tests/**/*.sh"]
+default_severity = "error"
+blocking = false
+semantic_review = false
+required_environment = "python>=3.11"
+required_commands = ["python3"]
+known_side_effects = ["none"]
+output_paths = []
+output_parser = "generic"
+strict_availability = "safe_adapter"
+current_exclusions_or_allowlists = []
+
+[[rule]]
+rule_id = "SOURCE.HEADER.YEAR"
+description = "Validate source.header.year source-header coverage."
+normative_document = "docs/standards/source_headers.md"
+normative_section = "Copyright years (`SOURCE.HEADER.YEAR`)"
+owner_classification = "advisory"
+source_checker = "dev/audit/ai_attribution.py"
+execution_kind = "original"
+execution_role = "checker"
+coverage_relation = "subset"
+covered_scope = "For selected changed-source headers, validate the canonical copyright row and its ending year against the explicit assessment year."
+remaining_scope = "Review whether history predates the current path because of a copy, import, or provenance boundary."
+parity_test = "tests/unit/dev_audit/test_ai_attribution.py"
+scope = "repository"
+command = ["python3", "dev/audit/ai_attribution.py", "--root", ".", "--current-year", "2026", "--rule", "SOURCE.HEADER.YEAR"]
+applicable_paths = ["bin/**/*.sh", "lib/bash/**/*.sh", "install/scripts/**/*.sh", "src/**/*.py", "dev/**/*.py", "tests/**/*.py", "tests/**/*.sh"]
+default_severity = "advisory"
+blocking = false
+semantic_review = true
+required_environment = "python>=3.11"
+required_commands = ["python3"]
+known_side_effects = ["none"]
+output_paths = []
+output_parser = "generic"
+strict_availability = "safe_adapter"
+current_exclusions_or_allowlists = []
+
+[[rule]]
+rule_id = "SOURCE.HEADER.AI_ATTRIBUTION"
+description = "Validate generic declared and explicitly required AI attribution."
+normative_document = "docs/standards/source_headers.md"
+normative_section = "AI attribution (`SOURCE.HEADER.AI_ATTRIBUTION`)"
+owner_classification = "advisory"
+source_checker = "dev/audit/ai_attribution.py"
+execution_kind = "original"
+execution_role = "checker"
+coverage_relation = "subset"
+covered_scope = "On registered source paths, validate bounded OpenAI tool, domain, and explicit-list or generic-series model grammar; report null observed attribution data for coherent no-AI profiles; and compare manifest-required exact models, tools, and contribution domains."
+remaining_scope = "Establish which tools and models contributed and whether the activity wording and retained attribution style are accurate."
+parity_test = "tests/unit/dev_audit/test_ai_attribution.py"
+scope = "repository"
+command = ["python3", "dev/audit/ai_attribution.py", "--root", ".", "--current-year", "2026", "--rule", "SOURCE.HEADER.AI_ATTRIBUTION"]
+applicable_paths = ["bin/**/*.sh", "lib/bash/**/*.sh", "install/scripts/**/*.sh", "src/**/*.py", "dev/**/*.py", "tests/**/*.py", "tests/**/*.sh"]
+default_severity = "advisory"
+blocking = false
+semantic_review = true
+required_environment = "python>=3.11"
+required_commands = ["python3"]
+known_side_effects = ["none"]
+output_paths = []
+output_parser = "generic"
+strict_availability = "safe_adapter"
+current_exclusions_or_allowlists = []
+migrates_from = ["SOURCE.HEADER.GPT56"]
+
+[[rule]]
+rule_id = "SOURCE.HEADER.AI_ATTRIBUTION.UNIQUE"
+description = "Validate uniqueness of declared and explicitly required AI attribution."
+normative_document = "docs/standards/source_headers.md"
+normative_section = "Unique AI attribution (`SOURCE.HEADER.AI_ATTRIBUTION.UNIQUE`)"
+owner_classification = "deterministic"
+source_checker = "dev/audit/ai_attribution.py"
+execution_kind = "original"
+execution_role = "checker"
+coverage_relation = "subset"
+covered_scope = "Within one bounded approved attribution block, count exact explicit, generic-series, repeatable required, and future model tokens and reject exact duplicates or duplicate blocks."
+remaining_scope = "Participation and applicability must be established before deterministic token and block uniqueness applies."
+parity_test = "tests/unit/dev_audit/test_ai_attribution.py"
+scope = "repository"
+command = ["python3", "dev/audit/ai_attribution.py", "--root", ".", "--current-year", "2026", "--rule", "SOURCE.HEADER.AI_ATTRIBUTION.UNIQUE"]
+applicable_paths = ["bin/**/*.sh", "lib/bash/**/*.sh", "install/scripts/**/*.sh", "src/**/*.py", "dev/**/*.py", "tests/**/*.py", "tests/**/*.sh"]
+default_severity = "error"
+blocking = false
+semantic_review = false
+required_environment = "python>=3.11"
+required_commands = ["python3"]
+known_side_effects = ["none"]
+output_paths = []
+output_parser = "generic"
+strict_availability = "safe_adapter"
+current_exclusions_or_allowlists = []
+migrates_from = ["SOURCE.HEADER.GPT56_DUPLICATE"]
+
+[[rule]]
+rule_id = "PY.VERSION.FLOOR"
+description = "Reconcile the Python 3.11 floor across metadata, environment, Ruff, source, guards, docs, and interpreter."
+normative_document = "docs/standards/python.md"
+normative_section = "Supported Python floor (`PY.VERSION.FLOOR`)"
+owner_classification = "deterministic"
+source_checker = "dev/audit/python_version_policy.py"
+execution_kind = "original"
+execution_role = "checker"
+coverage_relation = "subset"
+covered_scope = "Reconcile the Python 3.11 floor across metadata, environment, Ruff, source, guards, docs, and interpreter."
+remaining_scope = "Review dependency-level interpreter constraints and syntax not exercised by the configured floor interpreter."
+parity_test = "tests/unit/dev_audit/test_python_version_policy.py"
+scope = "repository"
+command = ["conda", "run", "-n", "env_protocol", "python", "dev/audit/python_version_policy.py", "--root", "."]
+applicable_paths = ["pyproject.toml", "install/envs/env_protocol.yml", "src/**/*.py", "tests/**/*.py", "dev/**/*.py", "docs/**/*.md"]
+default_severity = "error"
+blocking = false
+semantic_review = false
+required_environment = "env_protocol"
+required_commands = ["conda"]
+known_side_effects = ["none"]
+output_paths = []
+output_parser = "generic"
+strict_availability = "safe_adapter"
+current_exclusions_or_allowlists = []
+migrates_from = ["PYTHON.VERSION.INTERPRETER", "PYTHON.VERSION.DOCUMENTATION", "PYTHON.VERSION.ENVIRONMENT", "PYTHON.VERSION.GUARD", "PYTHON.VERSION.SOURCE"]
+
+[[rule]]
+rule_id = "SHELL.PARSER.UNKNOWN_OPTION"
+description = "Check role-appropriate unknown-option diagnostics, help, and status."
+normative_document = "docs/standards/shell.md"
+normative_section = "Unknown-option diagnostics (`SHELL.PARSER.UNKNOWN_OPTION`)"
+owner_classification = "deterministic"
+source_checker = "dev/audit/unknown_option_helpers.py"
+execution_kind = "original"
+execution_role = "checker"
+coverage_relation = "subset"
+covered_scope = "Check role-appropriate unknown-option diagnostics, help, and status."
+remaining_scope = "Identify forwarding and parser roles not represented by the recognized source forms."
+parity_test = "tests/unit/dev_audit/test_unknown_option_helpers.py"
+scope = "repository"
+command = ["python3", "dev/audit/unknown_option_helpers.py", "--root", "."]
+applicable_paths = ["bin/**/*.sh", "lib/bash/**/*.sh", "install/scripts/**/*.sh"]
+default_severity = "error"
+blocking = false
+semantic_review = false
+required_environment = "python>=3.11"
+required_commands = ["python3"]
+known_side_effects = ["none"]
+output_paths = []
+output_parser = "generic"
+strict_availability = "safe_adapter"
+current_exclusions_or_allowlists = []
+diagnostic_ids = ["SHELL.PARSER.UNKNOWN_ERROR", "SHELL.UNKNOWN_OPTION.MESSAGE", "SHELL.UNKNOWN_OPTION.HELPER", "SHELL.UNKNOWN_OPTION.FUNCNAME", "SHELL.UNKNOWN_OPTION.HELP", "SHELL.UNKNOWN_OPTION.STATUS"]
+
+[[rule]]
+rule_id = "TEST.RUNNER.SAFE"
+description = "List deduplicated safe-runner selection without executing tests."
+normative_document = "docs/standards/testing.md"
+normative_section = "Safe runner (`TEST.RUNNER.SAFE`)"
+owner_classification = "deterministic"
+source_checker = "tests/run_tests.sh"
+execution_kind = "original"
+execution_role = "checker"
+coverage_relation = "subset"
+covered_scope = "List deduplicated safe-runner selection without executing tests."
+remaining_scope = "`None` for discovery and deduplication."
+parity_test = "tests/contract/repository/test_runner_selection.sh"
+scope = "repository"
+command = ["bash", "tests/run_tests.sh", "--list", "all-safe"]
+applicable_paths = ["tests/run_tests.sh", "tests/unit/**", "tests/contract/**", "tests/integration/**"]
+default_severity = "error"
+blocking = false
+semantic_review = false
+required_environment = "bash"
+required_commands = ["bash"]
+known_side_effects = ["none"]
+output_paths = []
+output_parser = "generic"
+strict_availability = "safe_adapter"
+current_exclusions_or_allowlists = []
+
+[[rule]]
+rule_id = "TEST.GATES.OPTIONAL"
+description = "Audit normalized ordinary optional test gates."
+normative_document = "docs/standards/testing.md"
+normative_section = "Optional gates (`TEST.GATES.OPTIONAL`)"
+owner_classification = "deterministic"
+source_checker = "dev/audit/boolean_contracts.py"
+execution_kind = "original"
+execution_role = "checker"
+coverage_relation = "subset"
+covered_scope = "Audit normalized ordinary optional test gates."
+remaining_scope = "`None` for normalized values; deciding whether an integration should be optional remains test design."
+parity_test = "tests/unit/dev_audit/test_boolean_contracts.py"
+scope = "repository"
+command = ["python3", "dev/audit/boolean_contracts.py", "--root", "."]
+applicable_paths = ["tests/**/*.sh", "tests/**/*.py"]
+default_severity = "error"
+blocking = false
+semantic_review = false
+required_environment = "python>=3.11"
+required_commands = ["python3"]
+known_side_effects = ["none"]
+output_paths = []
+output_parser = "generic"
+strict_availability = "safe_adapter"
+current_exclusions_or_allowlists = []
+diagnostic_ids = ["BOOLEAN.ENVIRONMENT.CANONICAL", "BOOLEAN.ENVIRONMENT.DOCUMENTATION", "BOOLEAN.NORMALIZATION.HELPER_CONTRACT", "BOOLEAN.NORMALIZATION.MANUAL", "BOOLEAN.NORMALIZATION.NO_TRIM", "BOOLEAN.NORMALIZATION.REQUIRED"]
+
+[[rule]]
+rule_id = "PY.CLI.ENTRYPOINT"
+description = "Check a bounded py.cli.entrypoint subset."
+normative_document = "docs/standards/python.md"
+normative_section = "CLI registration (`PY.CLI.ENTRYPOINT`)"
+owner_classification = "deterministic"
+source_checker = "tests/contract/repository/test_python_style.sh"
+execution_kind = "original"
+execution_role = "checker"
+coverage_relation = "subset"
+covered_scope = "For src/**/*.py CLI modules, check the guarded raise-SystemExit main entrypoint form and registered console-to-module main identity."
+remaining_scope = "`None` for registered parity."
+parity_test = "tests/contract/repository/test_python_style.sh"
+scope = "repository"
+command = ["bash", "tests/contract/repository/test_python_style.sh"]
+applicable_paths = ["src/**/*.py"]
+default_severity = "advisory"
+blocking = false
+semantic_review = true
+required_environment = "python3"
+required_commands = ["bash", "python3"]
+known_side_effects = ["creates artifacts/tests logs"]
+output_paths = ["artifacts/tests/**"]
+output_parser = "smoke_summary"
+strict_availability = "unavailable"
+current_exclusions_or_allowlists = ["owner=PY.CLI.PARSER; hidden hyphenated compatibility aliases"]
+migrates_from = []
+
+[[rule]]
+rule_id = "PY.CLI.MAIN"
+description = "Check a bounded py.cli.main subset."
+normative_document = "docs/standards/python.md"
+normative_section = "Typed CLI main (`PY.CLI.MAIN`)"
+owner_classification = "deterministic"
+source_checker = "tests/contract/repository/test_python_style.sh"
+execution_kind = "original"
+execution_role = "checker"
+coverage_relation = "subset"
+covered_scope = "For src/**/*.py CLI modules, check main(argv: list[str] | None) -> int, explicit success return, and the bounded parser-to-main boundary."
+remaining_scope = "Review whether orchestration has leaked into parser or reusable helpers."
+parity_test = "tests/contract/repository/test_python_style.sh"
+scope = "repository"
+command = ["bash", "tests/contract/repository/test_python_style.sh"]
+applicable_paths = ["src/**/*.py"]
+default_severity = "advisory"
+blocking = false
+semantic_review = true
+required_environment = "python3"
+required_commands = ["bash", "python3"]
+known_side_effects = ["creates artifacts/tests logs"]
+output_paths = ["artifacts/tests/**"]
+output_parser = "smoke_summary"
+strict_availability = "unavailable"
+current_exclusions_or_allowlists = ["owner=PY.CLI.PARSER; hidden hyphenated compatibility aliases"]
+migrates_from = []
+
+[[rule]]
+rule_id = "PY.DOCSTRING.NUMPY"
+description = "Check a bounded py.docstring.numpy subset."
+normative_document = "docs/standards/python.md"
+normative_section = "Python docstrings (`PY.DOCSTRING.NUMPY`)"
+owner_classification = "advisory"
+source_checker = "tests/contract/repository/test_python_style.sh"
+execution_kind = "original"
+execution_role = "checker"
+coverage_relation = "subset"
+covered_scope = "For src/**/*.py modules and public objects, check docstring presence, NumPy-style section markers, CLI-inventory exclusion, and configured Google-style or no-op-section findings."
+remaining_scope = "Decide public applicability, useful content, and whether a section materially clarifies the contract."
+parity_test = "tests/contract/repository/test_python_style.sh"
+scope = "repository"
+command = ["bash", "tests/contract/repository/test_python_style.sh"]
+applicable_paths = ["src/**/*.py"]
+default_severity = "advisory"
+blocking = false
+semantic_review = true
+required_environment = "python3"
+required_commands = ["bash", "python3"]
+known_side_effects = ["creates artifacts/tests logs"]
+output_paths = ["artifacts/tests/**"]
+output_parser = "smoke_summary"
+strict_availability = "unavailable"
+current_exclusions_or_allowlists = ["owner=PY.CLI.PARSER; hidden hyphenated compatibility aliases"]
+migrates_from = []
+
+[[rule]]
+rule_id = "TEST.HARNESS.REPORTING"
+description = "Check shared shell-test reporting structure."
+normative_document = "docs/standards/testing.md"
+normative_section = "Shared harness reporting (`TEST.HARNESS.REPORTING`)"
+owner_classification = "deterministic"
+source_checker = "tests/contract/repository/test_test_layout.sh"
+execution_kind = "original"
+execution_role = "checker"
+coverage_relation = "subset"
+covered_scope = "Across contract, local, Parallel, and ordinary Slurm shell tests, require shared-helper sourcing, record_* reporting, one finish path, and recognized wet-coordinator exclusion."
+remaining_scope = "`None` for reporting mechanics."
+parity_test = "tests/contract/repository/test_test_layout.sh"
+scope = "repository"
+command = ["bash", "tests/contract/repository/test_test_layout.sh"]
+applicable_paths = ["tests/contract/**/*.sh", "tests/integration/local/**/*.sh", "tests/integration/parallel/**/*.sh", "tests/integration/slurm/test_*.sh"]
+default_severity = "advisory"
+blocking = false
+semantic_review = true
+required_environment = "bash"
+required_commands = ["bash"]
+known_side_effects = ["creates artifacts/tests logs"]
+output_paths = ["artifacts/tests/**"]
+output_parser = "smoke_summary"
+strict_availability = "unavailable"
+current_exclusions_or_allowlists = ["owner=TEST.HARNESS.REPORTING; the wet Slurm coordinator has workflow-specific reporting"]
+migrates_from = []
+
+[[rule]]
+rule_id = "HELP.EXAMPLES"
+description = "Audit help-example structure, ownership, aliases, and review candidates."
+normative_document = "docs/standards/help.md"
+normative_section = "Examples (`HELP.EXAMPLES`)"
+owner_classification = "advisory"
+source_checker = "dev/audit/help_examples.py"
+execution_kind = "original"
+execution_role = "checker"
+coverage_relation = "subset"
+covered_scope = "Audit help-example structure, ownership, aliases, and review candidates."
+remaining_scope = "Review usefulness, safety, material distinctness, and representativeness."
+parity_test = "tests/unit/dev_audit/test_help_examples.py"
+scope = "repository"
+command = ["python3", "dev/audit/help_examples.py", "--root", "."]
+applicable_paths = ["bin/**/*.sh", "lib/bash/**/*.sh"]
+default_severity = "advisory"
+blocking = false
+semantic_review = true
+required_environment = "python>=3.11"
+required_commands = ["python3"]
+known_side_effects = ["none unless explicit JSON output paths are supplied"]
+output_paths = []
+output_parser = "generic"
+strict_availability = "safe_adapter"
+current_exclusions_or_allowlists = []
+diagnostic_ids = ["HELP.EXAMPLES.ALIAS_ACCEPTANCE", "HELP.EXAMPLES.ALIAS_VISIBILITY", "HELP.EXAMPLES.CODE_BLOCK", "HELP.EXAMPLES.COMMAND.COLLAPSED", "HELP.EXAMPLES.COMMAND.FINAL_CONTINUATION", "HELP.EXAMPLES.COMMAND.INDENT", "HELP.EXAMPLES.COMMAND.RENDERED_STRUCTURE", "HELP.EXAMPLES.COMMAND.SOURCE_BACKSLASH", "HELP.EXAMPLES.COMMAND.TAB_INDENT", "HELP.EXAMPLES.COMMAND.TRAILING_WHITESPACE", "HELP.EXAMPLES.COUNT", "HELP.EXAMPLES.DUPLICATE", "HELP.EXAMPLES.ENTRY", "HELP.EXAMPLES.FENCE", "HELP.EXAMPLES.FINAL", "HELP.EXAMPLES.NUMBERING", "HELP.EXAMPLES.OWNERSHIP", "HELP.EXAMPLES.OWNER_INVOCATION", "HELP.EXAMPLES.REQUIRED", "HELP.EXAMPLES.REVIEW.INDIRECT_OWNER", "HELP.EXAMPLES.REVIEW.MATERIAL_DISTINCTNESS", "HELP.EXAMPLES.REVIEW.UNDISPOSITIONED", "HELP.EXAMPLES.REVIEW.UNSAFE", "HELP.EXAMPLES.SECTION_COUNT", "HELP.EXAMPLES.SIGNATURE_DUPLICATE", "HELP.EXAMPLES.STRUCTURAL_COMPLETE"]
+
+[[rule]]
+rule_id = "HELP.PARAMETER.VOCABULARY"
+description = "Audit shared help placeholders, grouped globals, defaults, and prose vocabulary."
+normative_document = "docs/standards/help.md"
+normative_section = "Parameter vocabulary (`HELP.PARAMETER.VOCABULARY`)"
+owner_classification = "advisory"
+source_checker = "dev/audit/help_style.py"
+execution_kind = "original"
+execution_role = "checker"
+coverage_relation = "subset"
+covered_scope = "Audit shared help placeholders, grouped globals, defaults, and prose vocabulary."
+remaining_scope = "Choose an accurate type, placeholder, and amount of syntax detail."
+parity_test = "tests/unit/dev_audit/test_help_style.py"
+scope = "repository"
+command = ["python3", "dev/audit/help_style.py", "--root", "."]
+applicable_paths = ["bin/**/*.sh", "lib/bash/**/*.sh", "src/**/*.py"]
+default_severity = "advisory"
+blocking = false
+semantic_review = true
+required_environment = "python>=3.11"
+required_commands = ["python3"]
+known_side_effects = ["none"]
+output_paths = []
+output_parser = "generic"
+strict_availability = "safe_adapter"
+current_exclusions_or_allowlists = []
+diagnostic_ids = ["BOOLEAN.DOCUMENTATION.EXACT_TOKENS", "BOOLEAN.PRESENCE_FLAG.VALUE_FREE", "HELP.GLOBAL.GROUP_SYNTAX", "HELP.GLOBAL.MAPPING_REVIEW", "HELP.GLOBAL.REPEATED_DESCRIPTION", "HELP.GLOBAL.SUBGROUP", "HELP.GLOBAL.TYPE", "HELP.PROSE.STRAIGHT_QUOTES"]
+
+[[rule]]
+rule_id = "HELP.DOCSTRING.SCHEMA"
+description = "Audit the bounded shared vocabulary and typography used by Python docstrings."
+normative_document = "docs/standards/help.md"
+normative_section = "Shared Python-docstring schema (`HELP.DOCSTRING.SCHEMA`)"
+owner_classification = "advisory"
+source_checker = "dev/audit/help_style.py"
+execution_kind = "original"
+execution_role = "checker"
+coverage_relation = "subset"
+covered_scope = "Audit the bounded shared vocabulary and typography used by Python docstrings."
+remaining_scope = "Review whether a shared concept maps cleanly to the Python object and audience."
+parity_test = "tests/unit/dev_audit/test_help_style.py"
+scope = "repository"
+command = ["python3", "dev/audit/help_style.py", "--root", "."]
+applicable_paths = ["src/**/*.py", "tests/**/*.py", "dev/**/*.py"]
+default_severity = "advisory"
+blocking = false
+semantic_review = true
+required_environment = "python>=3.11"
+required_commands = ["python3"]
+known_side_effects = ["none"]
+output_paths = []
+output_parser = "generic"
+strict_availability = "safe_adapter"
+current_exclusions_or_allowlists = []
+diagnostic_ids = ["PYTHON.DOCSTRING.STRAIGHT_QUOTES"]
+
+[[rule]]
+rule_id = "SHELL.SOURCE.DIRECTIVES"
+description = "Audit source roles, static ShellCheck mappings, and dynamic-source suppressions."
+normative_document = "docs/standards/shell.md"
+normative_section = "Source directives and roles (`SHELL.SOURCE.DIRECTIVES`)"
+owner_classification = "advisory"
+source_checker = "dev/audit/source_policy.py"
+execution_kind = "original"
+execution_role = "checker"
+coverage_relation = "subset"
+covered_scope = "Audit source roles, static ShellCheck mappings, and dynamic-source suppressions."
+remaining_scope = "Classify source-only versus dual-role intent and assess dynamic paths that static analysis cannot resolve."
+parity_test = "tests/unit/dev_audit/test_source_policy.py"
+scope = "repository"
+command = ["python3", "dev/audit/source_policy.py", "--root", "."]
+applicable_paths = ["bin/**/*.sh", "lib/bash/**/*.sh", "install/scripts/**/*.sh", "tests/**/*.sh"]
+default_severity = "advisory"
+blocking = false
+semantic_review = true
+required_environment = "python>=3.11"
+required_commands = ["python3"]
+known_side_effects = ["none"]
+output_paths = []
+output_parser = "generic"
+strict_availability = "safe_adapter"
+current_exclusions_or_allowlists = []
+
+[[rule]]
+rule_id = "MD.FILE.BOUNDARY"
+description = "Check canonical leading and terminal line-feed boundaries."
+normative_document = "docs/standards/markdown.md"
+normative_section = "File boundaries (`MD.FILE.BOUNDARY`)"
+owner_classification = "deterministic"
+source_checker = "dev/audit/markdown_policy.py"
+execution_kind = "original"
+execution_role = "checker"
+coverage_relation = "exact"
+covered_scope = "Check canonical leading and terminal line-feed boundaries, including an optional canonical anchor in the first heading unit."
+remaining_scope = "None"
+parity_test = "tests/unit/dev_audit/test_markdown_policy.py"
+scope = "repository"
+command = ["python3", "-m", "dev.audit.markdown_policy", "--root", "."]
+applicable_paths = ["**/*.md"]
+default_severity = "error"
+blocking = true
+semantic_review = false
+required_environment = "python>=3.11"
+required_commands = ["python3"]
+known_side_effects = ["none"]
+output_paths = []
+output_parser = "generic"
+strict_availability = "safe_adapter"
+current_exclusions_or_allowlists = []
+
+[[rule]]
+rule_id = "MD.ANCHOR.CANONICAL"
+description = "Check canonical explicit heading anchors and identified explicit-ID link targets."
+normative_document = "docs/standards/markdown.md"
+normative_section = "Explicit HTML heading anchors (`MD.ANCHOR.CANONICAL`)"
+owner_classification = "deterministic"
+source_checker = "dev/audit/markdown_policy.py"
+execution_kind = "original"
+execution_role = "checker"
+coverage_relation = "subset"
+covered_scope = "Check canonical explicit-anchor source, immediate heading binding, per-file decoded-ID uniqueness, anchor-transparent diagnostics, and exact cardinality for maintained fragments that decode to a present explicit ID."
+remaining_scope = "Review inbound links when an explicit ID is renamed, removed, or reused and distinguish intended explicit-ID links from renderer-generated heading fragments."
+parity_test = "tests/unit/dev_audit/test_markdown_policy.py"
+scope = "repository"
+command = ["python3", "-m", "dev.audit.markdown_policy", "--root", "."]
+applicable_paths = ["**/*.md"]
+default_severity = "error"
+blocking = true
+semantic_review = true
+required_environment = "python>=3.11"
+required_commands = ["python3"]
+known_side_effects = ["none"]
+output_paths = []
+output_parser = "generic"
+strict_availability = "safe_adapter"
+current_exclusions_or_allowlists = []
+
+[[rule]]
+rule_id = "MD.SECTION.BREAK"
+description = "Check canonical XHTML separators between headed sections."
+normative_document = "docs/standards/markdown.md"
+normative_section = "Section separators (`MD.SECTION.BREAK`)"
+owner_classification = "deterministic"
+source_checker = "dev/audit/markdown_policy.py"
+execution_kind = "original"
+execution_role = "checker"
+coverage_relation = "subset"
+covered_scope = "Exact deterministic classification of all three boundary forms for formal H1-H6 and safely recognized structural H7/H8 heading units, invariant under optional canonical or immediately adjacent noncanonical heading-anchor candidates."
+remaining_scope = "Decide whether an otherwise ambiguous emphasized-only line was intended as H7/H8 and, if so, review it against the same deterministic boundary forms."
+parity_test = "tests/unit/dev_audit/test_markdown_policy.py"
+scope = "repository"
+command = ["python3", "-m", "dev.audit.markdown_policy", "--root", "."]
+applicable_paths = ["**/*.md"]
+default_severity = "error"
+blocking = true
+semantic_review = true
+required_environment = "python>=3.11"
+required_commands = ["python3"]
+known_side_effects = ["none"]
+output_paths = []
+output_parser = "generic"
+strict_availability = "safe_adapter"
+current_exclusions_or_allowlists = []
+
+[[rule]]
+rule_id = "MD.INDENT.SPACES"
+description = "Check tabs outside literal fenced content."
+normative_document = "docs/standards/markdown.md"
+normative_section = "Structural indentation (`MD.INDENT.SPACES`)"
+owner_classification = "deterministic"
+source_checker = "dev/audit/markdown_policy.py"
+execution_kind = "original"
+execution_role = "checker"
+coverage_relation = "subset"
+covered_scope = "Check tabs outside literal fenced content."
+remaining_scope = "`None` after fenced and literal contexts are excluded."
+parity_test = "tests/unit/dev_audit/test_markdown_policy.py"
+scope = "repository"
+command = ["python3", "-m", "dev.audit.markdown_policy", "--root", "."]
+applicable_paths = ["**/*.md"]
+default_severity = "error"
+blocking = true
+semantic_review = true
+required_environment = "python>=3.11"
+required_commands = ["python3"]
+known_side_effects = ["none"]
+output_paths = []
+output_parser = "generic"
+strict_availability = "safe_adapter"
+current_exclusions_or_allowlists = []
+
+[[rule]]
+rule_id = "SHELL.SOURCE.FORM"
+description = "Check recognized shell naming, indentation, and heredoc forms."
+normative_document = "docs/standards/shell.md"
+normative_section = "Shell source form (`SHELL.SOURCE.FORM`)"
+owner_classification = "advisory"
+source_checker = "dev/audit/shell_source_form.py"
+execution_kind = "original"
+execution_role = "checker"
+coverage_relation = "subset"
+covered_scope = "Fixture-defined simple naming declarations, selected indentation, and ordinary heredoc delimiters."
+remaining_scope = "Arbitrary Bash layout, readability, quoting intent, and meaningful nonstandard heredoc delimiters remain unproved."
+parity_test = "tests/unit/dev_audit/test_shell_source_form.py"
+scope = "repository"
+command = ["python3", "dev/audit/shell_source_form.py", "--root", "."]
+applicable_paths = ["bin/**/*.sh", "lib/bash/**/*.sh", "install/scripts/**/*.sh", "tests/**/*.sh"]
+default_severity = "advisory"
+blocking = false
+semantic_review = true
+required_environment = "python>=3.11"
+required_commands = ["python3"]
+known_side_effects = ["none"]
+output_paths = []
+output_parser = "generic"
+strict_availability = "safe_adapter"
+current_exclusions_or_allowlists = []
+
+[[rule]]
+rule_id = "PY.PACKAGE.NAMES"
+description = "Check package and distribution names in current discovery and installed metadata."
+normative_document = "docs/standards/python.md"
+normative_section = "Package discovery and names (`PY.PACKAGE.SRC`, `PY.PACKAGE.NAMES`)"
+owner_classification = "deterministic"
+source_checker = "tests/contract/repository/test_python_package.sh"
+execution_kind = "original"
+execution_role = "checker"
+coverage_relation = "subset"
+covered_scope = "Current distribution, import-package, source-root, and installed-metadata names."
+remaining_scope = "Future governed package extensibility is outside the current-shape contract."
+parity_test = "tests/contract/repository/test_python_package.sh"
+scope = "repository"
+command = ["bash", "tests/contract/repository/test_python_package.sh"]
+applicable_paths = ["pyproject.toml", "src/**", "install/**"]
+default_severity = "error"
+blocking = false
+semantic_review = false
+required_environment = "env_protocol"
+required_commands = ["bash", "conda"]
+known_side_effects = ["writes external TEST_ARTIFACT_ROOT when supplied"]
+output_paths = []
+output_parser = "smoke_summary"
+strict_availability = "unavailable"
+current_exclusions_or_allowlists = []
+
+[[rule]]
+rule_id = "PY.IMPORT.SIDE_EFFECTS"
+description = "Probe selected maintained modules for import-time output and failure."
+normative_document = "docs/standards/python.md"
+normative_section = "Import safety (`PY.IMPORT.SIDE_EFFECTS`)"
+owner_classification = "advisory"
+source_checker = "tests/contract/repository/test_python_package.sh"
+execution_kind = "original"
+execution_role = "checker"
+coverage_relation = "subset"
+covered_scope = "Selected installed imports, captured output, and import success."
+remaining_scope = "Environment reads, registration, mutation, and expensive initialization outside probes remain review-owned."
+parity_test = "tests/contract/repository/test_python_package.sh"
+scope = "repository"
+command = ["bash", "tests/contract/repository/test_python_package.sh"]
+applicable_paths = ["src/**/*.py", "pyproject.toml"]
+default_severity = "advisory"
+blocking = false
+semantic_review = true
+required_environment = "env_protocol"
+required_commands = ["bash", "conda"]
+known_side_effects = ["writes external TEST_ARTIFACT_ROOT when supplied"]
+output_paths = []
+output_parser = "smoke_summary"
+strict_availability = "unavailable"
+current_exclusions_or_allowlists = []
+
+[[rule]]
+rule_id = "PY.ERROR.EXIT"
+description = "Exercise selected Python CLI diagnostic and exit-status paths."
+normative_document = "docs/standards/python.md"
+normative_section = "Error and status ownership (`PY.ERROR.EXIT`)"
+owner_classification = "advisory"
+source_checker = "tests/contract/repository/test_python_style.sh"
+execution_kind = "original"
+execution_role = "checker"
+coverage_relation = "subset"
+covered_scope = "Selected parser, validation, diagnostic, and status paths."
+remaining_scope = "Classification of anticipated user errors and programmer defects remains review-owned."
+parity_test = "tests/contract/repository/test_python_style.sh"
+scope = "repository"
+command = ["bash", "tests/contract/repository/test_python_style.sh"]
+applicable_paths = ["src/**/*.py", "pyproject.toml"]
+default_severity = "advisory"
+blocking = false
+semantic_review = true
+required_environment = "env_protocol"
+required_commands = ["bash", "conda"]
+known_side_effects = ["writes external TEST_ARTIFACT_ROOT when supplied"]
+output_paths = []
+output_parser = "smoke_summary"
+strict_availability = "unavailable"
+current_exclusions_or_allowlists = []
+
+[[rule]]
+rule_id = "PY.PACKAGE.DEPENDENCIES"
+description = "Compare selected package and environment dependency categories."
+normative_document = "docs/standards/python.md"
+normative_section = "Dependency categories (`PY.PACKAGE.DEPENDENCIES`)"
+owner_classification = "advisory"
+source_checker = "tests/contract/repository/test_python_package.sh"
+execution_kind = "original"
+execution_role = "checker"
+coverage_relation = "subset"
+covered_scope = "Registered runtime, build, and environment dependency metadata parity."
+remaining_scope = "Semantic classification of new dependencies remains review-owned."
+parity_test = "tests/contract/repository/test_python_package.sh"
+scope = "repository"
+command = ["bash", "tests/contract/repository/test_python_package.sh"]
+applicable_paths = ["pyproject.toml", "install/envs/env_protocol.yml", "src/**/*.py"]
+default_severity = "advisory"
+blocking = false
+semantic_review = true
+required_environment = "env_protocol"
+required_commands = ["bash", "conda"]
+known_side_effects = ["writes external TEST_ARTIFACT_ROOT when supplied"]
+output_paths = []
+output_parser = "smoke_summary"
+strict_availability = "unavailable"
+current_exclusions_or_allowlists = []
+
+[[rule]]
+rule_id = "PY.PACKAGE.METADATA"
+description = "Compare canonical project metadata with installed distribution metadata."
+normative_document = "docs/standards/python.md"
+normative_section = "Package metadata (`PY.PACKAGE.METADATA`)"
+owner_classification = "deterministic"
+source_checker = "tests/contract/repository/test_python_package.sh"
+execution_kind = "original"
+execution_role = "checker"
+coverage_relation = "subset"
+covered_scope = "Current project name, version, license, authorship, README, and installed metadata parity."
+remaining_scope = "Future release approval and descriptive changes are prospective decisions."
+parity_test = "tests/contract/repository/test_python_package.sh"
+scope = "repository"
+command = ["bash", "tests/contract/repository/test_python_package.sh"]
+applicable_paths = ["pyproject.toml", "README.md", "src/**"]
+default_severity = "error"
+blocking = false
+semantic_review = false
+required_environment = "env_protocol"
+required_commands = ["bash", "conda"]
+known_side_effects = ["writes external TEST_ARTIFACT_ROOT when supplied"]
+output_paths = []
+output_parser = "smoke_summary"
+strict_availability = "unavailable"
+current_exclusions_or_allowlists = []
+
+[[rule]]
+rule_id = "PY.INSTALL.EDITABLE"
+description = "Check managed create, reuse, update, dry-run, and editable-install construction."
+normative_document = "docs/standards/python.md"
+normative_section = "Editable installation (`PY.INSTALL.EDITABLE`)"
+owner_classification = "advisory"
+source_checker = "tests/contract/repository/test_install_envs_layout.sh"
+execution_kind = "original"
+execution_role = "checker"
+coverage_relation = "subset"
+covered_scope = "Installer command construction, reuse, managed update, and dry-run noninstallation."
+remaining_scope = "Package-manager provenance and live solver behavior outside the managed transaction remain review-owned."
+parity_test = "tests/contract/repository/test_install_envs_layout.sh"
+scope = "repository"
+command = ["bash", "tests/contract/repository/test_install_envs_layout.sh"]
+applicable_paths = ["install/**", "pyproject.toml"]
+default_severity = "advisory"
+blocking = false
+semantic_review = true
+required_environment = "env_protocol"
+required_commands = ["bash", "conda"]
+known_side_effects = ["writes external TEST_ARTIFACT_ROOT when supplied"]
+output_paths = []
+output_parser = "smoke_summary"
+strict_availability = "unavailable"
+current_exclusions_or_allowlists = []
+
+[[rule]]
+rule_id = "PY.RUNTIME.CWD"
+description = "Exercise selected installed imports and commands outside the checkout."
+normative_document = "docs/standards/python.md"
+normative_section = "Checkout-independent runtime (`PY.RUNTIME.CWD`, `PY.RESOURCE.ACCESS`)"
+owner_classification = "advisory"
+source_checker = "tests/contract/repository/test_python_package.sh"
+execution_kind = "original"
+execution_role = "checker"
+coverage_relation = "subset"
+covered_scope = "Selected installed import and console-command execution from external directories."
+remaining_scope = "Unexercised runtime paths and provenance boundaries remain review-owned."
+parity_test = "tests/contract/repository/test_python_package.sh"
+scope = "repository"
+command = ["bash", "tests/contract/repository/test_python_package.sh"]
+applicable_paths = ["src/**/*.py", "pyproject.toml"]
+default_severity = "advisory"
+blocking = false
+semantic_review = true
+required_environment = "env_protocol"
+required_commands = ["bash", "conda"]
+known_side_effects = ["writes external TEST_ARTIFACT_ROOT when supplied"]
+output_paths = []
+output_parser = "smoke_summary"
+strict_availability = "unavailable"
+current_exclusions_or_allowlists = []
+
+[[rule]]
+rule_id = "PY.RESOURCE.ACCESS"
+description = "Inspect selected package-resource and bundled-provenance boundaries."
+normative_document = "docs/standards/python.md"
+normative_section = "Checkout-independent runtime (`PY.RUNTIME.CWD`, `PY.RESOURCE.ACCESS`)"
+owner_classification = "advisory"
+source_checker = "tests/contract/repository/test_python_package.sh"
+execution_kind = "original"
+execution_role = "checker"
+coverage_relation = "subset"
+covered_scope = "Selected package resources, explicit runtime paths, and checkout-independent execution."
+remaining_scope = "Resource selection and provenance not represented by current fixtures remain review-owned."
+parity_test = "tests/contract/repository/test_python_package.sh"
+scope = "repository"
+command = ["bash", "tests/contract/repository/test_python_package.sh"]
+applicable_paths = ["src/**/*.py", "tests/integration/slurm/**"]
+default_severity = "advisory"
+blocking = false
+semantic_review = true
+required_environment = "env_protocol"
+required_commands = ["bash", "conda"]
+known_side_effects = ["writes external TEST_ARTIFACT_ROOT when supplied"]
+output_paths = []
+output_parser = "smoke_summary"
+strict_availability = "unavailable"
+current_exclusions_or_allowlists = []
+
+[[rule]]
+rule_id = "PY.FORMAT.LINE_LENGTH"
+description = "Produce the nonblocking Ruff E501 inventory for maintained Python."
+normative_document = "docs/standards/python.md"
+normative_section = "Python line length (`PY.FORMAT.LINE_LENGTH`)"
+owner_classification = "advisory"
+source_checker = "ruff check --no-fix --select E501"
+execution_kind = "original"
+execution_role = "evidence_producer"
+coverage_relation = "subset"
+covered_scope = "Configured E501 candidates in maintained src, tests, and dev Python paths."
+remaining_scope = "Indivisibility, readability, and enforcement approval remain review-owned."
+parity_test = "tests/contract/repository/test_ruff_inventory.sh"
+scope = "repository"
+command = ["conda", "run", "-n", "env_protocol", "ruff", "check", "--no-fix", "--select", "E501", "src", "tests", "dev"]
+applicable_paths = ["src/**/*.py", "tests/**/*.py", "dev/**/*.py"]
+default_severity = "advisory"
+blocking = false
+semantic_review = true
+required_environment = "env_protocol"
+required_commands = ["conda"]
+known_side_effects = ["none"]
+output_paths = []
+output_parser = "generic"
+strict_availability = "safe_adapter"
+current_exclusions_or_allowlists = []
+
+[[rule]]
+rule_id = "PY.RUFF.BOUNDARY"
+description = "Reconcile Ruff execution metadata with canonical Python owners."
+normative_document = "docs/standards/python.md"
+normative_section = "Ruff boundary (`PY.RUFF.BOUNDARY`)"
+owner_classification = "advisory"
+source_checker = "dev/audit/standards_registry.py"
+execution_kind = "original"
+execution_role = "checker"
+coverage_relation = "subset"
+covered_scope = "Static Ruff registry ownership, scope, relation, and overreach metadata."
+remaining_scope = "Semantic parity between upstream diagnostics and repository policy remains review-owned."
+parity_test = "tests/unit/dev_audit/test_standards_registry.py"
+scope = "repository"
+command = ["python3", "-m", "dev.audit.standards_registry", "--root", "."]
+applicable_paths = ["dev/config/rules.toml", "docs/standards/python.md"]
+default_severity = "advisory"
+blocking = false
+semantic_review = true
+required_environment = "python>=3.11"
+required_commands = ["python3"]
+known_side_effects = ["none"]
+output_paths = []
+output_parser = "generic"
+strict_availability = "safe_adapter"
+current_exclusions_or_allowlists = []
+
+[[rule]]
+rule_id = "PY.RUFF.SUPPRESSIONS"
+description = "Produce nonblocking Ruff ignore and suppression evidence."
+normative_document = "docs/standards/python.md"
+normative_section = "Ruff suppressions (`PY.RUFF.SUPPRESSIONS`)"
+owner_classification = "advisory"
+source_checker = "tests/contract/repository/test_ruff_inventory.sh"
+execution_kind = "original"
+execution_role = "evidence_producer"
+coverage_relation = "subset"
+covered_scope = "Configured ignores, recognized inline suppressions, and current Ruff findings."
+remaining_scope = "Rationale, narrowness, expiry, and false-positive review remain unproved."
+parity_test = "tests/contract/repository/test_ruff_inventory.sh"
+scope = "repository"
+command = ["bash", "tests/contract/repository/test_ruff_inventory.sh"]
+applicable_paths = ["pyproject.toml", "src/**/*.py", "tests/**/*.py", "dev/**/*.py"]
+default_severity = "advisory"
+blocking = false
+semantic_review = true
+required_environment = "env_protocol"
+required_commands = ["bash", "conda"]
+known_side_effects = ["writes external TEST_ARTIFACT_ROOT when supplied"]
+output_paths = []
+output_parser = "smoke_summary"
+strict_availability = "unavailable"
+current_exclusions_or_allowlists = []
+
+[[rule]]
+rule_id = "PY.RUFF.UPGRADE"
+description = "Record configured and installed Ruff version evidence."
+normative_document = "docs/standards/python.md"
+normative_section = "Ruff upgrades (`PY.RUFF.UPGRADE`)"
+owner_classification = "advisory"
+source_checker = "tests/contract/repository/test_ruff_inventory.sh"
+execution_kind = "original"
+execution_role = "evidence_producer"
+coverage_relation = "subset"
+covered_scope = "Configured and installed Ruff versions and current non-mutating inventory."
+remaining_scope = "Behavior changes, representative fixes, and rollout impact remain review-owned."
+parity_test = "tests/contract/repository/test_ruff_inventory.sh"
+scope = "repository"
+command = ["bash", "tests/contract/repository/test_ruff_inventory.sh"]
+applicable_paths = ["install/envs/env_protocol.yml", "pyproject.toml", "src/**/*.py", "tests/**/*.py", "dev/**/*.py"]
+default_severity = "advisory"
+blocking = false
+semantic_review = true
+required_environment = "env_protocol"
+required_commands = ["bash", "conda"]
+known_side_effects = ["writes external TEST_ARTIFACT_ROOT when supplied"]
+output_paths = []
+output_parser = "smoke_summary"
+strict_availability = "unavailable"
+current_exclusions_or_allowlists = []
+
+[[rule]]
+rule_id = "PY.TEST.LAYERS"
+description = "Run focused Python unit and package/CLI contract evidence."
+normative_document = "docs/standards/python.md"
+normative_section = "Python-specific tests (`PY.TEST.LAYERS`)"
+owner_classification = "advisory"
+source_checker = "tests/run_tests.sh"
+execution_kind = "independent"
+execution_role = "independent_evidence"
+coverage_relation = "independent"
+covered_scope = "Selected unit and contract execution for maintained Python packages and CLIs."
+remaining_scope = "Layer classification, representative cases, and proportional integration depth remain unproved."
+parity_test = "tests/contract/repository/test_runner_selection.sh"
+scope = "repository"
+command = ["bash", "tests/run_tests.sh", "unit", "contract"]
+applicable_paths = ["src/**/*.py", "tests/unit/**/*.py", "tests/contract/**"]
+default_severity = "advisory"
+blocking = false
+semantic_review = true
+required_environment = "env_protocol"
+required_commands = ["bash", "conda"]
+known_side_effects = ["writes TEST_ARTIFACT_ROOT"]
+output_paths = []
+output_parser = "smoke_summary"
+strict_availability = "unavailable"
+current_exclusions_or_allowlists = []
+
+[[rule]]
+rule_id = "PY.ARTIFACTS.LOCATION"
+description = "Check known Python cache and build paths remain outside maintained roots."
+normative_document = "docs/standards/python.md"
+normative_section = "Python-generated state (`PY.ARTIFACTS.LOCATION`)"
+owner_classification = "deterministic"
+source_checker = "tests/contract/repository/test_test_layout.sh"
+execution_kind = "original"
+execution_role = "checker"
+coverage_relation = "subset"
+covered_scope = "Known bytecode, cache, report, and test-artifact placement boundaries."
+remaining_scope = "Unknown future generated-product names remain outside the bounded inventory."
+parity_test = "tests/contract/repository/test_test_layout.sh"
+scope = "repository"
+command = ["bash", "tests/contract/repository/test_test_layout.sh"]
+applicable_paths = ["src/**", "tests/**", "dev/**", "artifacts/**"]
+default_severity = "error"
+blocking = false
+semantic_review = false
+required_environment = "bash"
+required_commands = ["bash", "git"]
+known_side_effects = ["writes external TEST_ARTIFACT_ROOT when supplied"]
+output_paths = []
+output_parser = "smoke_summary"
+strict_availability = "unavailable"
+current_exclusions_or_allowlists = []
+
+[[rule]]
+rule_id = "SHELL.RUNTIME.SAFE_MODE"
+description = "Check recognized safe-mode declarations, ordering, and named runner exceptions."
+normative_document = "docs/standards/shell.md"
+normative_section = "Safe-mode boundaries (`SHELL.RUNTIME.SAFE_MODE`)"
+owner_classification = "advisory"
+source_checker = "dev/audit/source_policy.py"
+execution_kind = "original"
+execution_role = "checker"
+coverage_relation = "subset"
+covered_scope = "Recognized direct-script safe-mode declarations, ordering, and named exceptions."
+remaining_scope = "Status-as-data commands and caller-inherited sourced behavior remain review-owned."
+parity_test = "tests/unit/dev_audit/test_source_policy.py"
+scope = "repository"
+command = ["python3", "dev/audit/source_policy.py", "--root", "."]
+applicable_paths = ["bin/**/*.sh", "lib/bash/**/*.sh", "install/scripts/**/*.sh", "tests/**/*.sh"]
+default_severity = "advisory"
+blocking = false
+semantic_review = true
+required_environment = "python>=3.11"
+required_commands = ["python3"]
+known_side_effects = ["none"]
+output_paths = []
+output_parser = "generic"
+strict_availability = "safe_adapter"
+current_exclusions_or_allowlists = []
+
+[[rule]]
+rule_id = "SHELL.PROCESSING.BOUNDARY"
+description = "Inspect recognized execute, submit-worker, and processor call direction."
+normative_document = "docs/standards/shell.md"
+normative_section = "Processing boundaries (`SHELL.PROCESSING.BOUNDARY`)"
+owner_classification = "advisory"
+source_checker = "tests/contract/repository/test_shell_wrapper_style.sh"
+execution_kind = "original"
+execution_role = "checker"
+coverage_relation = "subset"
+covered_scope = "Recognized execute-to-submit-to-processor calls and retired inverted topology."
+remaining_scope = "Dynamic dispatch, responsibility placement, and behavioral equivalence remain review-owned."
+parity_test = "tests/contract/repository/test_shell_wrapper_style.sh"
+scope = "repository"
+command = ["bash", "tests/contract/repository/test_shell_wrapper_style.sh"]
+applicable_paths = ["bin/**/*.sh", "lib/bash/**/*.sh"]
+default_severity = "advisory"
+blocking = false
+semantic_review = true
+required_environment = "bash"
+required_commands = ["bash", "git"]
+known_side_effects = ["writes external TEST_ARTIFACT_ROOT when supplied"]
+output_paths = []
+output_parser = "smoke_summary"
+strict_availability = "unavailable"
+current_exclusions_or_allowlists = []
+
+[[rule]]
+rule_id = "SHELL.STATIC_ANALYSIS"
+description = "Run the managed ShellCheck inventory with recorded executable provenance."
+normative_document = "docs/standards/shell.md"
+normative_section = "Shell static analysis (`SHELL.STATIC_ANALYSIS`)"
+owner_classification = "advisory"
+source_checker = "dev/audit/run_shellcheck.sh"
+execution_kind = "original"
+execution_role = "evidence_producer"
+coverage_relation = "subset"
+covered_scope = "For maintained bin, lib/bash, install/scripts, and tests shell paths, select env_protocol/bin/shellcheck explicitly, check Bash and the POSIX bootstrap separately with -x and the repository source path, and retain structured findings and counts."
+remaining_scope = "Dynamic-source intent, suppression rationale, false positives, portability, and enforcement remain review-owned."
+parity_test = "tests/contract/repository/test_shellcheck_inventory.sh"
+scope = "repository"
+command = ["conda", "run", "--no-capture-output", "-n", "env_protocol", "/bin/bash", "dev/audit/run_shellcheck.sh"]
+applicable_paths = ["bin/**/*.sh", "lib/bash/**/*.sh", "install/scripts/**/*.sh", "tests/**/*.sh"]
+default_severity = "advisory"
+blocking = false
+semantic_review = true
+required_environment = "env_protocol"
+required_commands = ["conda"]
+known_side_effects = ["writes raw and summary ShellCheck evidence below TEST_ARTIFACT_ROOT/shellcheck unless --output-dir is supplied"]
+output_paths = ["artifacts/tests/shellcheck/**"]
+output_parser = "generic"
+strict_availability = "unavailable"
+current_exclusions_or_allowlists = []
+
+[[rule]]
+rule_id = "TEST.LAYERS"
+description = "Check recognized unit, contract, integration, support, and fixture placement."
+normative_document = "docs/standards/testing.md"
+normative_section = "Test layers (`TEST.LAYERS`)"
+owner_classification = "advisory"
+source_checker = "tests/contract/repository/test_test_layout.sh"
+execution_kind = "original"
+execution_role = "checker"
+coverage_relation = "subset"
+covered_scope = "Recognized test-directory placement and test-only dependency boundaries."
+remaining_scope = "Whether assertions prove the claimed layer remains review-owned."
+parity_test = "tests/contract/repository/test_test_layout.sh"
+scope = "repository"
+command = ["bash", "tests/contract/repository/test_test_layout.sh"]
+applicable_paths = ["tests/**", "src/**"]
+default_severity = "advisory"
+blocking = false
+semantic_review = true
+required_environment = "bash"
+required_commands = ["bash", "git"]
+known_side_effects = ["writes external TEST_ARTIFACT_ROOT when supplied"]
+output_paths = []
+output_parser = "smoke_summary"
+strict_availability = "unavailable"
+current_exclusions_or_allowlists = []
+
+[[rule]]
+rule_id = "TEST.SLURM.WET"
+description = "Exercise wet Slurm gate order and categorical safe-runner exclusion without submission."
+normative_document = "docs/standards/testing.md"
+normative_section = "Wet Slurm workflow (`TEST.SLURM.WET`)"
+owner_classification = "advisory"
+source_checker = "tests/unit/slurm/test_coordinator.py"
+execution_kind = "original"
+execution_role = "checker"
+coverage_relation = "subset"
+covered_scope = "Exact confirmation gates, gate order, coordinator validation, and safe-runner exclusion."
+remaining_scope = "Scheduler availability, cost, account, partition, and per-run authorization remain review-owned."
+parity_test = "tests/unit/slurm/test_coordinator.py"
+scope = "repository"
+command = ["conda", "run", "-n", "env_protocol", "python", "-m", "pytest", "-q", "tests/unit/slurm/test_coordinator.py"]
+applicable_paths = ["tests/integration/slurm/**", "tests/run_tests.sh"]
+default_severity = "advisory"
+blocking = false
+semantic_review = true
+required_environment = "env_protocol"
+required_commands = ["conda"]
+known_side_effects = ["external pytest cache and bytecode when configured"]
+output_paths = []
+output_parser = "generic"
+strict_availability = "safe_adapter"
+current_exclusions_or_allowlists = []
+
+[[rule]]
+rule_id = "TEST.FIXTURES"
+description = "Check source-derived fixture recipes, tracked inputs, ignore boundaries, and production independence."
+normative_document = "docs/standards/testing.md"
+normative_section = "Fixtures (`TEST.FIXTURES`)"
+owner_classification = "advisory"
+source_checker = "tests/contract/repository/test_test_layout.sh"
+execution_kind = "original"
+execution_role = "checker"
+coverage_relation = "subset"
+covered_scope = "Discovered fixture README and recipe sources, ignored generated products, and production independence."
+remaining_scope = "Provenance, biological representativeness, and minimal sufficiency remain review-owned."
+parity_test = "tests/contract/repository/test_test_layout.sh"
+scope = "repository"
+command = ["bash", "tests/contract/repository/test_test_layout.sh"]
+applicable_paths = ["tests/fixtures/**", "src/**", "bin/**", "lib/bash/**"]
+default_severity = "advisory"
+blocking = false
+semantic_review = true
+required_environment = "bash"
+required_commands = ["bash", "git"]
+known_side_effects = ["writes external TEST_ARTIFACT_ROOT when supplied"]
+output_paths = []
+output_parser = "smoke_summary"
+strict_availability = "unavailable"
+current_exclusions_or_allowlists = []
+
+[[rule]]
+rule_id = "TEST.EVIDENCE"
+description = "Check canonical or external artifact roots and generated-state boundaries."
+normative_document = "docs/standards/testing.md"
+normative_section = "Generated evidence (`TEST.EVIDENCE`)"
+owner_classification = "advisory"
+source_checker = "tests/contract/repository/test_runner_selection.sh"
+execution_kind = "original"
+execution_role = "checker"
+coverage_relation = "subset"
+covered_scope = "Canonical ignored artifacts/tests selection, approved absolute external selection, exact bytecode and pytest-cache derivation, arbitrary repository-root rejection, symlink rejection, and list-mode isolation."
+remaining_scope = "Evidence sufficiency, reproducibility, observational status, and retention remain review-owned."
+parity_test = "tests/contract/repository/test_runner_selection.sh"
+scope = "repository"
+command = ["bash", "tests/contract/repository/test_runner_selection.sh"]
+applicable_paths = ["tests/run_tests.sh", "tests/support/**", "tests/**", "artifacts/**"]
+default_severity = "advisory"
+blocking = false
+semantic_review = true
+required_environment = "bash"
+required_commands = ["bash", "git"]
+known_side_effects = ["writes below the canonical artifact root by default or an approved external TEST_ARTIFACT_ROOT when supplied"]
+output_paths = []
+output_parser = "smoke_summary"
+strict_availability = "unavailable"
+current_exclusions_or_allowlists = []
+
+[[rule]]
+rule_id = "TEST.CLEANUP.SCOPED"
+description = "Prove scoped cleanup selection, confirmation, tracked-file guards, and ignored-only deletion in temporary repositories."
+normative_document = "docs/standards/testing.md"
+normative_section = "Scoped cleanup (`TEST.CLEANUP.SCOPED`)"
+owner_classification = "deterministic"
+source_checker = "tests/contract/repository/test_cleanup_contract.sh"
+execution_kind = "original"
+execution_role = "checker"
+coverage_relation = "subset"
+covered_scope = "Explicit selectors, dry-run behavior, exact confirmation, root verification, tracked guards, and ignored-only deletion."
+remaining_scope = "Future cleanup implementations and target classes remain outside the bounded contract."
+parity_test = "tests/contract/repository/test_cleanup_contract.sh"
+scope = "repository"
+command = ["bash", "tests/contract/repository/test_cleanup_contract.sh"]
+applicable_paths = ["tests/support/clean_artifacts.sh", "tests/contract/repository/test_cleanup_contract.sh"]
+default_severity = "error"
+blocking = false
+semantic_review = false
+required_environment = "bash"
+required_commands = ["bash", "git"]
+known_side_effects = ["creates and cleans isolated external temporary repositories"]
+output_paths = []
+output_parser = "smoke_summary"
+strict_availability = "safe_adapter"
+current_exclusions_or_allowlists = []

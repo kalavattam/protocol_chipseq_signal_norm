@@ -5,20 +5,21 @@
 #  Ignore root '__init__.py'
 /__init__.py
 
-#  Ignore everything in 'analysis/', 'docs/dev/', 'docs/img/', 'docs/xml/',
-#+ 'scraps/' (where temporary scratch work is stored), and 'tmp/'
-analysis/
-docs/dev/*
-!docs/dev/parse_metadata_siqchip.md
+#  Ignore everything in 'docs/img/', 'docs/xml/', and 'tmp/'
 docs/img/
 docs/xml/
-scraps/
 tmp/
 
-#  Ignore specific directories under 'scripts/'
-scripts/__pycache__/
-scripts/blog/
-scripts/functions/__pycache__/
+#  Ignore generated Python bytecode under maintained roots
+/.pytest_cache/
+src/**/__pycache__/
+src/**/*.py[cod]
+dev/**/__pycache__/
+dev/**/*.py[cod]
+
+#  Keep generated outputs in one repository-root artifact boundary
+/artifacts/*
+!/artifacts/README.md
 
 #  Ignore everything in 'data/{genomes,processed,raw,symlinked,tracks}/'
 data/genomes/
@@ -54,29 +55,32 @@ data/processed/compute_signal/bowtie2_global_flag-2_mapq-1/*
 !data/processed/compute_signal/bowtie2_global_flag-2_mapq-1/tables/
 
 #  Ignore generated test fixture outputs in 'tests/' but retain fixture docs
-tests/align_fastqs/fixtures/**
-!tests/align_fastqs/fixtures/
-!tests/align_fastqs/fixtures/README.md
+tests/fixtures/align_fastqs/**
+!tests/fixtures/align_fastqs/
+!tests/fixtures/align_fastqs/README.md
+!tests/fixtures/align_fastqs/make.sh
 
-tests/calculate_scaling_factor/fixtures/**
-!tests/calculate_scaling_factor/fixtures/
-!tests/calculate_scaling_factor/fixtures/README.md
+tests/fixtures/calculate_scaling_factor/**
+!tests/fixtures/calculate_scaling_factor/
+!tests/fixtures/calculate_scaling_factor/README.md
+!tests/fixtures/calculate_scaling_factor/make.sh
 
-tests/compute_signal/fixtures/**
-!tests/compute_signal/fixtures/
-!tests/compute_signal/fixtures/README.md
+tests/fixtures/compute_signal/**
+!tests/fixtures/compute_signal/
+!tests/fixtures/compute_signal/README.md
+!tests/fixtures/compute_signal/make.sh
 
-tests/download_fastqs/fixtures/**
-!tests/download_fastqs/fixtures/
-!tests/download_fastqs/fixtures/README.md
+tests/fixtures/download_fastqs/**
+!tests/fixtures/download_fastqs/
+!tests/fixtures/download_fastqs/README.md
+!tests/fixtures/download_fastqs/make.sh
 
-tests/filter_alignments/fixtures/**
-!tests/filter_alignments/fixtures/
-!tests/filter_alignments/fixtures/README.md
+tests/fixtures/filter_alignments/**
+!tests/fixtures/filter_alignments/
+!tests/fixtures/filter_alignments/README.md
+!tests/fixtures/filter_alignments/make.sh
 
-tests/trim_fastqs/fixtures/**
-!tests/trim_fastqs/fixtures/
-!tests/trim_fastqs/fixtures/README.md
-
-#  Ignore generated smoke-test output
-tests/outputs/
+tests/fixtures/trim_fastqs/**
+!tests/fixtures/trim_fastqs/
+!tests/fixtures/trim_fastqs/README.md
+!tests/fixtures/trim_fastqs/make.sh

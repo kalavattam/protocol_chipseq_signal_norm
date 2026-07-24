@@ -1,81 +1,57 @@
 
 # Test suite
-The repository uses Bash smoke tests to exercise wrapper startup, help output, fixture-backed local workflows, and selected optional execution paths.
+Test code is classified by what it proves, not by implementation language.
 
-<br />
-
-## Run smoke tests
-Run the default suite from the repository root:
-```bash
-bash tests/scripts/run_smoke_tests.sh
-```
-
-Logs and temporary products are written under `tests/outputs/`. The default suite exercises local serial workflow paths and default-safe parser, syntax, help, and installation-layout checks.
-
-<br />
-
-## Generated fixtures
-Fixture recipes live under workflow-specific directories:
 ```text
-tests/align_fastqs/scripts/make_fixtures.sh
-tests/calculate_scaling_factor/scripts/make_fixtures.sh
-tests/compute_signal/scripts/make_fixtures.sh
-tests/download_fastqs/scripts/make_fixtures.sh
-tests/filter_alignments/scripts/make_fixtures.sh
-tests/trim_fastqs/scripts/make_fixtures.sh
+tests/
+├── unit/                 isolated Python behavior
+├── contract/             repository and command-interface policy
+├── integration/
+│   ├── local/            fixture-backed local workflows
+│   ├── parallel/         gated GNU Parallel workflows
+│   └── slurm/            gated scheduler integration and wet coordinator
+├── fixtures/             tracked recipes/docs plus ignored generated data
+└── support/              shared test-only helpers and cleanup
 ```
 
-`tests/scripts/run_smoke_tests.sh` detects missing required fixtures and regenerates them automatically. Fixture bootstrap is runner setup and is not controlled by smoke-test execution gates. Individual smoke scripts decide whether to run or skip based on their required gates.
-
-Generated fixture outputs are ignored by Git and are not to be committed. Each `tests/*/fixtures/README.md` file is tracked documentation for its fixture set.
+Production entrypoints live in `bin/`, sourced Bash in `lib/bash/`, and Python package code in `src/`. Executable validation coordinators, assertions, fakes, and test harnesses belong under `tests/`.
 
 <br />
 
-## Clean generated artifacts
-Preview cleanup without deleting files:
+## Canonical runner
+Run the safe suite from the repository root:
 ```bash
-bash tests/scripts/clean_test_outputs.sh --dry_run --all
+bash tests/run_tests.sh
 ```
 
-Remove ignored generated fixtures, smoke-test outputs, or both:
+The default `all-safe` selection runs unit, contract, local integration, and parallel integration groups. Parallel scripts self-skip unless `RUN_PARALLEL=1`. Select groups explicitly when narrowing validation:
 ```bash
-bash tests/scripts/clean_test_outputs.sh --fixtures
-bash tests/scripts/clean_test_outputs.sh --outputs
-bash tests/scripts/clean_test_outputs.sh --all
+bash tests/run_tests.sh unit contract
+bash tests/run_tests.sh integration-local
+RUN_PARALLEL=1 bash tests/run_tests.sh integration-parallel
 ```
 
-The cleaner uses scoped `git clean -dX` commands and will not remove tracked fixture files.
+Inspect the exact, deduplicated discovery set without running it:
+```bash
+bash tests/run_tests.sh --list all-safe
+```
+
+Logs and temporary products default to `artifacts/tests/`. Set `TEST_ARTIFACT_ROOT` to an absolute path outside the repository for non-mutating validation. In-repository overrides are rejected. The runner discovers every selected shell test at most once and never discovers `tests/integration/slurm/run_wet_tests.sh`.
 
 <br />
 
-## Optional gates
-Optional dependency classes are enabled explicitly:
-```bash
-RUN_ATRIA=1 bash tests/scripts/run_smoke_tests.sh
-RUN_DOWNLOAD=1 bash tests/scripts/run_smoke_tests.sh
-RUN_PARALLEL=1 bash tests/scripts/run_smoke_tests.sh
-RUN_SLURM=1 bash tests/scripts/run_smoke_tests.sh
-RUN_SLURM=1 SLURM_WAIT=1 bash tests/scripts/run_smoke_tests.sh
-```
-| gate             | function                                                                              | todo                                                                                                |
-| :----            | :----                                                                                 | :----                                                                                               |
-| `RUN_ATRIA=1`    | Enables Atria-backed `trim_fastqs` tests.                                             | -                                                                                                   |
-| `RUN_DOWNLOAD=1` | Enables local no-external-network `download_fastqs` tests.                            | Add optional external-network coverage with a separate gate (e.g., `RUN_NETWORK=1`).                |
-| `RUN_PARALLEL=1` | Enables local GNU Parallel tests.                                                     | -                                                                                                   |
-| `RUN_SLURM=1`    | Enables the Slurm-backed `align_fastqs` smoke test. Run it on a Slurm-capable system. | Add Slurm coverage for `trim_fastqs`, `download_fastqs`, `filter_alignments`, and `compute_signal`. |
-| `SLURM_WAIT=1`   | Makes the Slurm test poll for expected outputs after submission.                      | Rename to verb-first `WAIT_SLURM=1`.                                                                |
+## Fixtures and cleanup
+Fixture recipes are `tests/fixtures/<workflow>/make.sh`. Generated fixture data is ignored; each tracked `README.md` describes provenance and expectations.
 
-Tests that require multiple dependency classes require all relevant gates, such as `RUN_ATRIA=1 RUN_PARALLEL=1` for parallel trimming or `RUN_DOWNLOAD=1 RUN_PARALLEL=1` for parallel downloading.
+```bash
+bash tests/support/clean_artifacts.sh --dry_run --all
+bash tests/support/clean_artifacts.sh --fixtures
+bash tests/support/clean_artifacts.sh --outputs
+```
 
 <br />
 
-## Tools and coverage
-Use Bash >= 4.4. The default fixture-backed suite expects `env_protocol` to be active or available through Conda. Depending on the workflow, it uses tools such as Python, Samtools, Bowtie2, BWA, bwa-mem2, `wget`, and `gzip`. Optional suites additionally require Atria with `pigz` and `pbzip2`, GNU Parallel, or a Slurm installation with `sbatch`.
+## Gates
+`RUN_ATRIA=1`, `RUN_DOWNLOAD=1`, and `RUN_PARALLEL=1` enable their bounded optional integrations. Scheduler submission is separate: the ordinary Slurm integration requires `RUN_SLURM=1`, while the checksummed two-job wet validation requires exact `RUN_SLURM=1 WAIT_SLURM=1 CONFIRM_SLURM_WET=1` gates and the workflow in [`integration/slurm/README.md`](integration/slurm/README.md). The wet runner interprets `WAIT_SLURM` as an exact confirmation; ordinary Boolean normalization does not apply to it.
 
-Smoke groups cover:
-- shell syntax, Python startup, help output/style, installation layout, and cleanup dry-runs;
-- direct spike-in and siQ-ChIP scaling-factor calculators, part-file combination, submit/execute wrappers, expected failures, and gated local GNU Parallel wet execution;
-- local `download_fastqs`, `trim_fastqs`, `align_fastqs`, `filter_alignments`, and `compute_signal` wrapper paths;
-- selected GNU Parallel paths and one remote Slurm submission path.
-
-Fixture details and expected products are documented in each `tests/*/fixtures/README.md`. Broader `calculate_scaling_factor` Slurm coverage is still pending.
+Boolean test gates accept true, t, yes, y, 1 and false, f, no, n, 0 case-insensitively. Unset or empty gates are disabled; surrounding whitespace and other nonempty values are invalid.

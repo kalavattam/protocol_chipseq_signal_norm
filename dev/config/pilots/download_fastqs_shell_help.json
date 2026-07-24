@@ -1,0 +1,127 @@
+{
+  "schema_version": 1,
+  "name": "download-fastqs-shell-help-pilot",
+  "interfaces": [
+    {
+      "path": "bin/execute_download_fastqs.sh",
+      "documentation_source": "lib/bash/help/help_execute_download_fastqs.sh",
+      "removed_aliases": ["-i", "--infile", "-eo"]
+    },
+    {
+      "path": "bin/submit_download_fastqs.sh",
+      "documentation_source": "lib/bash/help/help_submit_download_fastqs.sh",
+      "removed_aliases": []
+    }
+  ],
+  "targets": [
+    {"path": "bin/execute_download_fastqs.sh", "role": "primary"},
+    {"path": "bin/submit_download_fastqs.sh", "role": "primary"},
+    {"path": "lib/bash/help/help_execute_download_fastqs.sh", "role": "primary"},
+    {"path": "lib/bash/help/help_submit_download_fastqs.sh", "role": "primary"},
+    {"path": "tests/contract/interfaces/test_download_fastqs_interface.sh", "role": "supporting"},
+    {"path": "tests/integration/local/download_fastqs/test_execute_download_fastqs_se_local.sh", "role": "supporting"},
+    {"path": "tests/integration/local/download_fastqs/test_execute_download_fastqs_pe_local.sh", "role": "supporting"},
+    {"path": "tests/integration/local/download_fastqs/test_execute_download_fastqs_mixed_local.sh", "role": "supporting"},
+    {"path": "tests/integration/parallel/download_fastqs/test_execute_download_fastqs_parallel.sh", "role": "supporting"},
+    {
+      "path": "tests/integration/local/download_fastqs/test_submit_download_fastqs_local.sh",
+      "role": "supporting",
+      "evidence": {
+        "kind": "controlled_smoke_summary_v1",
+        "test_identifier": "submit download-fastqs local",
+        "command": {
+          "environment": {"RUN_DOWNLOAD": "1"},
+          "argv": ["bash", "{path}"]
+        },
+        "outer_context": {
+          "require_wget_absent": true,
+          "require_conda_available": true,
+          "require_inactive_project_environment": true
+        },
+        "source_dependencies": [
+          "bin/submit_download_fastqs.sh",
+          "lib/bash/help/help_submit_download_fastqs.sh"
+        ],
+        "source_assertion_groups": {
+          "canonical_dir_scr_se": [
+            "--dir_scr",
+            "submit canonical --dir_scr SE worker exits 0"
+          ],
+          "hidden_dir_scr_pe": [
+            "--dir-scr",
+            "submit hidden --dir-scr PE worker exits 0"
+          ],
+          "fixture_content": [
+            "submit canonical SE downloaded FASTQ",
+            "submit hidden PE R1 downloaded FASTQ",
+            "submit hidden PE R2 downloaded FASTQ"
+          ],
+          "symlinks": [
+            "submit canonical SE custom FASTQ",
+            "submit hidden PE R1 custom FASTQ",
+            "submit hidden PE R2 custom FASTQ"
+          ],
+          "worker_logs": [
+            "submit canonical SE wget stderr log",
+            "submit hidden PE R1 wget stderr log",
+            "submit hidden PE R2 wget stderr log"
+          ],
+          "loopback_only": [
+            "http://127.0.0.1:",
+            "loopback-only HTTP fixture server is reachable"
+          ]
+        },
+        "required_pass_groups": {
+          "canonical_dir_scr_se": [
+            "submit canonical --dir_scr SE worker exits 0",
+            "submit canonical SE downloaded FASTQ",
+            "submit canonical SE custom FASTQ"
+          ],
+          "hidden_dir_scr_pe": [
+            "submit hidden --dir-scr PE worker exits 0",
+            "submit hidden PE R1 downloaded FASTQ",
+            "submit hidden PE R2 downloaded FASTQ",
+            "submit hidden PE R1 custom FASTQ",
+            "submit hidden PE R2 custom FASTQ"
+          ],
+          "worker_logs": [
+            "submit canonical SE wget stderr log",
+            "submit hidden PE R1 wget stderr log",
+            "submit hidden PE R2 wget stderr log"
+          ],
+          "loopback_only": [
+            "loopback-only HTTP fixture server is reachable",
+            "loopback HTTP fixture server remains running",
+            "loopback HTTP server request log"
+          ]
+        },
+        "optional_observations": {
+          "fixture_server_python_selection": {
+            "pass_message": "host Python is usable for loopback fixture server",
+            "value": "host_python_selected"
+          },
+          "fixture_server_env_protocol_fallback": {
+            "pass_message": "env_protocol Python fallback not selected for fixture server",
+            "value": "not_selected"
+          },
+          "fixture_server_loopback_binding": {
+            "pass_message": "selected fixture-server Python can bind 127.0.0.1",
+            "value": "succeeded"
+          }
+        },
+        "limitation": "The controlled run proves the configured direct-submit assertions under the observed outer-shell branch, but does not independently establish broader host-versus-Conda inheritance or complete binary provenance."
+      }
+    }
+  ],
+  "context": [
+    "dev/config/command_names.json",
+    "docs/standards/help.md",
+    "docs/standards/shell.md",
+    "tests/run_tests.sh",
+    "tests/contract/repository/test_help_style.sh",
+    "tests/contract/interfaces/test_help_output.sh",
+    "tests/contract/repository/test_shell_wrapper_style.sh",
+    "tests/contract/repository/test_test_layout.sh",
+    "tests/contract/interfaces/test_dry_run_commands.sh"
+  ]
+}

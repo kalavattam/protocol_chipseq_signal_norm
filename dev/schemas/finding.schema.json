@@ -1,0 +1,47 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Cleanup audit finding",
+  "type": "object",
+  "additionalProperties": true,
+  "required": [
+    "run_id",
+    "rule_id",
+    "path",
+    "line",
+    "severity",
+    "confidence",
+    "message",
+    "evidence",
+    "checker",
+    "content_fingerprint",
+    "status"
+  ],
+  "properties": {
+    "run_id": {"type": "string", "minLength": 1},
+    "rule_id": {"type": "string", "minLength": 1},
+    "path": {"type": "string", "minLength": 1},
+    "line": {"type": ["integer", "null"], "minimum": 1},
+    "severity": {"enum": ["advisory", "warning", "error"]},
+    "confidence": {"enum": ["low", "medium", "high"]},
+    "message": {"type": "string", "minLength": 1},
+    "evidence": {
+      "type": "object",
+      "required": ["source", "text"],
+      "properties": {
+        "source": {"type": "string"},
+        "text": {"type": "string"}
+      }
+    },
+    "checker": {"type": "string", "minLength": 1},
+    "content_fingerprint": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "status": {
+      "enum": [
+        "open", "proposed", "approved", "fixed", "accepted", "deferred",
+        "false_positive", "superseded"
+      ]
+    }
+  }
+}

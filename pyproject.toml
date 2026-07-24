@@ -1,0 +1,80 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "protocol-chipseq-signal-norm"
+version = "0.1.0"
+description = "ChIP-seq signal-normalization workflow utilities"
+readme = "README.md"
+requires-python = ">=3.11"
+license = { file = "LICENSE" }
+authors = [
+  { name = "Kris Alavattam", email = "kalavattam@gmail.com" },
+]
+dependencies = [
+  "numpy",
+  "pysam",
+  "PyYAML",
+]
+
+[project.scripts]
+add_coeffs_namespaced = "protocol_chipseq_signal_norm.cli.add_coeffs_namespaced:main"
+calculate_scaling_factor_siqchip = "protocol_chipseq_signal_norm.cli.calculate_scaling_factor_siqchip:main"
+calculate_scaling_factor_spike = "protocol_chipseq_signal_norm.cli.calculate_scaling_factor_spike:main"
+compute_input_floor = "protocol_chipseq_signal_norm.cli.compute_input_floor:main"
+compute_pseudo = "protocol_chipseq_signal_norm.cli.compute_pseudo:main"
+compute_signal = "protocol_chipseq_signal_norm.cli.compute_signal:main"
+compute_signal_ratio = "protocol_chipseq_signal_norm.cli.compute_signal_ratio:main"
+merge_bins_bdg = "protocol_chipseq_signal_norm.cli.merge_bins_bdg:main"
+parse_metadata_siqchip = "protocol_chipseq_signal_norm.cli.parse_metadata_siqchip:main"
+relativize_scaling_factors = "protocol_chipseq_signal_norm.cli.relativize_scaling_factors:main"
+sum_bdg = "protocol_chipseq_signal_norm.cli.sum_bdg:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["protocol_chipseq_signal_norm*"]
+
+[tool.ruff]
+target-version = "py311"
+line-length = 79
+src = ["src", "tests", "dev"]
+include = ["src/**/*.py", "tests/**/*.py", "dev/**/*.py"]
+extend-exclude = [
+  "artifacts",
+  "tmp",
+]
+
+[tool.ruff.lint]
+# This explicit core was approved at the 7j standards checkpoint. E501,
+# docstring rules, UP009, and repository-wide formatting remain deferred.
+select = [
+  "E4", "E7", "E9", "F", "I001",
+  "UP006", "UP012", "UP015", "UP017", "UP022", "UP035",
+  "B007", "B023", "B904", "B905",
+  "C401", "C408", "C416",
+  "SIM102", "SIM103", "SIM105", "SIM114", "SIM115", "SIM117", "SIM300",
+  "RUF005", "RUF007", "RUF015", "RUF021", "RUF022", "RUF046", "RUF059",
+]
+ignore = [
+  # Reserved convention for the deferred docstring phase: D212, not D213.
+  "D213",
+  # Reserved convention for the deferred docstring phase: D211, not D203.
+  "D203",
+]
+
+[tool.ruff.lint.pydocstyle]
+convention = "numpy"
+
+[tool.ruff.lint.per-file-ignores]
+# Executable audit tools and tests intentionally establish repository imports
+# after locating the checkout or defining fixtures.
+"dev/**/*.py" = ["E402"]
+"tests/**/*.py" = ["E402"]
+
+[tool.ruff.format]
+docstring-code-format = false
+indent-style = "space"
+line-ending = "lf"
+quote-style = "double"
+skip-magic-trailing-comma = false

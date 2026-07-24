@@ -1,0 +1,31 @@
+#!/usr/bin/env bash
+set -u
+
+if [[ "${1:-}" == "--version" ]]; then
+    cat << 'EOM'
+ShellCheck - shell script analysis tool
+version: 0.10.0
+license: GNU General Public License, version 3
+website: https://www.shellcheck.net
+EOM
+    exit 0
+fi
+
+if [[ -n "${FAKE_SHELLCHECK_LOG:-}" ]]; then
+    printf '%s\n' "$*" >> "${FAKE_SHELLCHECK_LOG}"
+fi
+
+status="${FAKE_SHELLCHECK_STATUS:-0}"
+case "${status}" in
+    0)
+        printf '{"comments":[]}\n'
+        ;;
+    1)
+        printf '%s\n' \
+            '{"comments":[{"file":"fixture.sh","line":1,"column":1,"level":"warning","code":9999,"message":"fixture finding","fix":null}]}'
+        ;;
+    *)
+        echo "fixture infrastructure failure" >&2
+        ;;
+esac
+exit "${status}"

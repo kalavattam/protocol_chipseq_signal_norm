@@ -6,53 +6,64 @@
 # Copyright 2026 by Kris Alavattam
 # Email: kalavattam@gmail.com
 #
-# OpenAI ChatGPT (GPT-5.4) was used in development.
+# OpenAI ChatGPT and Codex (GPT-5.4, GPT-5.6) were used in development and
+# documentation.
 #
 # Distributed under the MIT license.
 
 
 show_help_entrypoint() {
     cat << EOM >&2
-Usage:
-  install_envs_entrypoint.sh [-h|--hlp|--help]
-  install_envs_entrypoint.sh --env_nam <spec> [--dry_run] [--if_exis <spec>] [--channels <csv:str>] [--override_channels] [--yes]
+Usage
+-----
+  install_envs_entrypoint.sh
+    [--help] --env_nam <spec> [--dry_run] [--if_exists <spec>] [--update_package <spec>] [--channels <csv>] [--override_channels] [--yes]
 
-Description:
   POSIX entrypoint for repository environment setup. The examples use Bash, but this entrypoint can also be invoked with 'sh' or run directly. It will attempt to locate an appropriate Bash for the handoff to 'install_envs.sh'.
 
-Recommended first-time command:
-  '''bash
-  bash install/scripts/install_envs_entrypoint.sh --env_nam env_protocol --yes
-  '''
-
-Environment names:
-  env_protocol  Main workflow environment.
-  env_analyze   Analysis environment.
-  env_siqchip   siQ-ChIP environment.
-
-Keyword arguments:
-  -h, --hlp, --help  <flag>
+Parameters
+----------
+  -h, --help : flag
     Display this help message and exit.
 
-  -dr, --dry, --dry_run  <flag>
+  -dr, --dry, --dry_run : flag
     Print the resolved installation command without creating an environment.
 
-  -en, --env, --env_nam  <spec>
+  -en, --env, --env_nam : {'env_protocol', 'env_analyze', 'env_siqchip'}
     Environment to create: 'env_protocol', 'env_analyze', or 'env_siqchip'.
 
-  -ie, --if_ex, --if_exis, --if_exists  <spec>
-    What to do if the requested environment already exists: 'fail' or 'reuse' (default: 'fail').
+  -ie, --if_exists : {'fail', 'reuse', 'update'}
+    What to do if the requested environment already exists. 'reuse' refreshes the editable repository package in 'env_protocol'; 'update' reconciles a YAML-backed environment before that refresh (default: 'fail').
 
-  -ch, --channels  <csv:str>
+  -up, --update_package : str
+    With '--if_exists update', install only this exact YAML-declared package specification. Repeat to select more than one package; omit to reconcile every declared dependency.
+
+  -ch, --channel, --channels, --channel_list : list of str
     Comma-delimited channel list to pass to the package manager.
 
-  -oc, --override_channels  <flag>
+  -oc, --override_channel, --override_channels : flag
     Override channels from the selected environment YAML.
 
-  -y, --yes  <flag>
+  -y, --yes : flag
     Automatically answer yes to package-manager prompts.
 
-Notes:
+Returns
+-------
+  0 on success; non-zero on error.
+
+Notes
+-----
+  Runtime requirements:
+    - bash >= 4.4
+    - mamba or conda
+
+  Environment names:
+    - 'env_protocol': main workflow environment.
+    - 'env_analyze': analysis environment.
+    - 'env_siqchip': Environment for
+      + original implementation of siQ-ChIP (https://github.com/BradleyDickson/siQ-ChIP) or
+      + fork of original implementation (https://github.com/kalavattam/siQ-ChIP).
+
   - Mamba is preferred and will be used by 'install_envs.sh' when available.
   - Old Conda/Anaconda installations may be slow. Miniforge is recommended for a current Conda/Mamba setup.
   - Invoke this script with 'bash', 'sh', or as an executable script. Do not force another interpreter such as 'zsh'.
@@ -62,8 +73,25 @@ Notes:
     bash install/scripts/install_envs.sh --help
     '''
 
-Returns:
-  0 on success; non-zero on error.
+Examples
+--------
+  1. Preview the Bash handoff for the main workflow environment.
+    '''bash
+    sh install/scripts/install_envs_entrypoint.sh \\
+        --dry_run \\
+        --env_nam env_protocol \\
+        --yes
+    '''
+
+  2. Preview a handoff that replaces YAML channels with site-specific mirrors.
+    '''bash
+    sh install/scripts/install_envs_entrypoint.sh \\
+        --dry_run \\
+        --env_nam env_protocol \\
+        --channels fhcc-main,fhcc-bioconda \\
+        --override_channels \\
+        --yes
+    '''
 EOM
 }
 
@@ -80,12 +108,14 @@ err() { printf '%s\n' "error(install_envs_entrypoint.sh): $*" >&2; }
 find_bash_required() {
     #  Prefer an already-available 'bash' if it is Bash >= 4.4
     if command -v bash >/dev/null 2>&1; then
-        if bash -c '
-            [ -n "${BASH_VERSION:-}" ] || exit 1
-            major="${BASH_VERSINFO[0]:-0}"
-            minor="${BASH_VERSINFO[1]:-0}"
-            [ "${major}" -gt 4 ] || { [ "${major}" -eq 4 ] && [ "${minor}" -ge 4 ]; }
-        ' >/dev/null 2>&1; then
+        if \
+            bash -c '
+                [ -n "${BASH_VERSION:-}" ] || exit 1
+                major="${BASH_VERSINFO[0]:-0}"
+                minor="${BASH_VERSINFO[1]:-0}"
+                [ "${major}" -gt 4 ] || { [ "${major}" -eq 4 ] && [ "${minor}" -ge 4 ]; }
+            ' >/dev/null 2>&1
+        then
             command -v bash
             return 0
         fi
@@ -100,12 +130,14 @@ find_bash_required() {
     do
         if [ -x "${pth_bash}" ]; then
             # shellcheck disable=SC2016
-            if "${pth_bash}" -c '
-                [ -n "${BASH_VERSION:-}" ] || exit 1
-                major="${BASH_VERSINFO[0]:-0}"
-                minor="${BASH_VERSINFO[1]:-0}"
-                [ "${major}" -gt 4 ] || { [ "${major}" -eq 4 ] && [ "${minor}" -ge 4 ]; }
-            ' >/dev/null 2>&1; then
+            if \
+                "${pth_bash}" -c '
+                    [ -n "${BASH_VERSION:-}" ] || exit 1
+                    major="${BASH_VERSINFO[0]:-0}"
+                    minor="${BASH_VERSINFO[1]:-0}"
+                    [ "${major}" -gt 4 ] || { [ "${major}" -eq 4 ] && [ "${minor}" -ge 4 ]; }
+                ' >/dev/null 2>&1
+            then
                 printf '%s\n' "${pth_bash}"
                 return 0
             fi
@@ -199,10 +231,12 @@ check_args_light() {
                 show_help_entrypoint
                 exit 0
                 ;;
+
             -dr|--dry|--dry_run|--dry-run|-oc|--override_channel|--override-channel|--override_channels|--override-channels|-y|--yes)
                 shift 1
                 ;;
-            -en|--env|--env_nam|--env-nam|-ch|--channel|--channels|--channel_list|--channel-list)
+
+            -en|--env|--env_nam|--env-nam|-up|--update_package|--update-package|-ch|--channel|--channels|--channel_list|--channel-list)
                 if \
                        [ "$#" -lt 2 ] \
                     || [ -z "${2}" ]  \
@@ -215,7 +249,8 @@ check_args_light() {
                 fi
                 shift 2
                 ;;
-            -ie|--if_ex|--if-ex|--if_exis|--if-exis|--if_exists|--if-exists)
+
+            -ie|--if[_-]exists)
                 if \
                        [ "$#" -lt 2 ] \
                     || [ -z "${2}" ]  \
@@ -228,11 +263,11 @@ check_args_light() {
                 fi
 
                 case "${2}" in
-                    fail|reuse) : ;;
+                    fail|reuse|update) : ;;
                     *)
                         err \
                             "invalid value for '${1}': '${2}'. Must be" \
-                            "'fail' or 'reuse'."
+                            "'fail', 'reuse', or 'update'."
                         echo >&2
                         show_help_entrypoint
                         exit 1
@@ -241,12 +276,14 @@ check_args_light() {
 
                 shift 2
                 ;;
+
             -*)
                 echo "## Unknown keyword argument passed: '${1}' ##" >&2
                 echo >&2
                 show_help_entrypoint
                 exit 1
                 ;;
+
             *)
                 echo "## Unknown positional argument passed: '${1}' ##" >&2
                 echo >&2
@@ -289,7 +326,9 @@ main() {
         exit 1
     fi
 
-    if pth_bash="$(find_bash_required)"; then
+    if \
+        pth_bash="$(find_bash_required)"
+    then
         if (
                command -v conda >/dev/null 2>&1 \
             || command -v mamba >/dev/null 2>&1

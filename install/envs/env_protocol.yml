@@ -12,22 +12,28 @@ dependencies:
   - datamash     ## NOTE: Added since publication in Bio-protocol ##
   - fastqc
   - gawk
-  - gnuplot      ## NOTE: Added since publication in Bio-protocol ## ## TODO: remove from 'env_protocol' ##
+  - gnuplot      ## NOTE: Added since publication in Bio-protocol ## ## MAYBE: remove from 'env_protocol' ##
   - ipython
   - matplotlib
   - multiqc
+  - numpy        ## NOTE: Required by 'src/protocol_chipseq_signal_norm/cli/compute_signal.py' ## ## TODO: pin version, and make 'scipy' explicit with a pinned version as well ##
   - parallel
   - pbzip2
   - pigz
+  - pip
+  - pytest       ## NOTE: Added since publication in Bio-protocol ##
   - pysam
-  - python=3.11  ## NOTE: Restrict to v3.11 for 'sequali' installation ##
+  - python=3.11  ## NOTE: Pinned to v3.11 for 'sequali' installation ##
   - pyyaml       ## NOTE: Made explicit since Bio-protocol publication ##
   - r-argparse
   - r-ggsci
   - r-plotly
+  - ruff=0.15.21      ## NOTE: Added since publication in Bio-protocol; pinned to the reviewed repository standard ##
+  - shellcheck=0.10.0 ## NOTE: Added since publication in Bio-protocol; pinned for repository static-analysis evidence ##
+  - setuptools
   - rename
   - samtools
   - sequali
   - tree         ## NOTE: Added since publication in Bio-protocol ##
   - wget
-
+  - wheel
