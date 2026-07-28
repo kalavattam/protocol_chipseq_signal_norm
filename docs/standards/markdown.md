@@ -341,13 +341,13 @@ Use backtick fences by default. A tilde fence is permitted only when the subject
 ## GFM tables (`MD.TABLE.CANONICAL`)
 **Classification:** `deterministic` for supported non-emoji tables.
 
-**Scope:** GFM pipe tables with a header row, delimiter row, and equal logical column counts.
+**Scope:** GFM pipe tables with a header row, delimiter row, and equal logical column counts in Markdown files, rendered help, language docstrings, and other user-facing documentation surfaces.
 
 Use leading and trailing pipes. Use `:---`, `---:`, and `:---:` for left, right, and center alignment, then pad cells for readable canonical source alignment. Escaped pipes and pipes inside matched inline-code spans are cell content rather than separators. Put exactly one blank line before a table when it follows a heading or colon-introduced sentence.
 
 Canonical alignment uses a deterministic display-width approximation for combining marks and East Asian wide or full-width code points. Emoji are prohibited in table cells because editor and renderer grapheme widths are not stable enough for canonical source padding. This prohibition does not apply to ordinary prose. If literal tabular source data contains emoji, preserve it in a fenced representation or obtain an explicit exception rather than deleting or silently replacing data.
 
-**Automation:** `MD.TABLE.CANONICAL` is registered with subset coverage. The current parser and formatter canonicalize supported pipe tables but do not reject emoji or all malformed table candidates.
+**Automation:** `dev/audit/markdown_policy.py` applies the shared parser and formatter to Markdown files. `dev/audit/help_style.py` applies the same primitives to recognized Shell help heredocs, rendered help, and Python docstrings. These adapters canonicalize supported pipe tables but do not reject emoji or every malformed pipe-like candidate.
 
 **Semantic remainder:** `None` for supported table source. Identifying whether malformed pipe-like text was intended as a table may require review.
 

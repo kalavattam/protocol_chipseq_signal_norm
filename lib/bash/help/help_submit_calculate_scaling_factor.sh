@@ -22,7 +22,9 @@ Usage
   submit_calculate_scaling_factor.sh
     [--help] [--env_nam <str>] --dir_scr <dir> [--threads <int>]
     [--mode <mode>] [--method <method>]
-    --csv_mip <csv> --csv_min <csv> [--csv_sip <csv>] [--csv_sin <csv>] [--aln_typ <layout>] [--ref_fa <file>] --fil_out <file> [--idx_out <int>]
+    [--aln_typ <layout>] [--ref_fa <file>]
+    --csv_mip <csv> --csv_min <csv> [--csv_sip <csv>] [--csv_sin <csv>]
+    --fil_out <file> [--idx_out <int>]
     [--tbl_met <file>] [--cfg_met <file>] [--eqn <equation>]
     [--len_def <int>] [--len_mip <csv>] [--len_min <csv>] [--dep_mip <csv>] [--dep_min <csv>] [--dep_sip <csv>] [--dep_sin <csv>]
     [--dp <int>] --dir_eo <dir> [--nam_job <str>]
@@ -51,6 +53,12 @@ Parameters
   -me, --method : {'fractional', 'chiprx_alpha_ratio', 'chiprx_alpha_ip', 'chiprx_alpha_in', 'rxinput_alpha'}
     Workflow method. Spike-in coefficient to compute: 'fractional', 'chiprx_alpha_ratio', 'chiprx_alpha_ip', 'chiprx_alpha_in', 'rxinput_alpha', or aliases ('--mode spike'; default: 'chiprx_alpha_ratio').
 
+  -at, --aln_typ, --align_typ : {'pe', 'se', 'auto'}
+    Alignment layout type for input alignment files: 'pe', 'se', or 'auto' (default: '${aln_typ}').
+
+  -rf, --ref_fa : file
+    Reference FASTA file. Reference FASTA required when any input alignment file is CRAM.
+
   -cmip, --csv_mip : list of file
     Comma-separated list of main IP alignment files (BAM or CRAM).
 
@@ -62,12 +70,6 @@ Parameters
 
   -csin, --csv_sin : list of file
     Comma-separated list of spike-in input alignment files (BAM or CRAM; '--mode spike').
-
-  -at, --aln_typ, --align_typ : {'pe', 'se', 'auto'}
-    Alignment layout type for input alignment files: 'pe', 'se', or 'auto' (default: '${aln_typ}').
-
-  -rf, --ref_fa : file
-    Reference FASTA file. Reference FASTA required when any input alignment file is CRAM.
 
   -fo, --fil_out : file
     Output file path. Base output TSV path used to derive '<fil_out>.part.<idx>'.
@@ -167,9 +169,9 @@ Examples
         --env_nam env_protocol \\
         --threads 4 \\
         --mode siq \\
+        --aln_typ pe \\
         --csv_mip \${HOME}/project/alignments/IP_sample.sc.bam \\
         --csv_min \${HOME}/project/alignments/in_sample.sc.bam \\
-        --aln_typ pe \\
         --fil_out \${HOME}/project/tables/siq_scaling.tsv \\
         --tbl_met \${HOME}/project/metadata/measurements.tsv \\
         --cfg_met \${HOME}/repos/protocol_chipseq_signal_norm/data/raw/docs/parse_metadata_siqchip.yml \\

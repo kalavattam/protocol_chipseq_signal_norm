@@ -43,7 +43,7 @@ Parameters
     Comma-delimited package-manager channels to append to the environment creation command.
 
   -oc, --override_channels : flag
-    Add '--override-channels' to the package-manager command.
+    Override channels declared by the selected environment YAML.
 
   -y, --yes : flag
     Automatically answer yes to package-manager prompts.
@@ -58,7 +58,7 @@ Notes
   - See the following YAML files for environment package lists:
 
       | environment  | file path                     |
-      | :----        | :----                         |
+      | :---         | :---                          |
       | env_analyze  | install/envs/env_analyze.yml  |
       | env_protocol | install/envs/env_protocol.yml |
       | env_siqchip  | install/envs/env_siqchip.yml  |

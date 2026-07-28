@@ -56,21 +56,8 @@ select = [
   "SIM102", "SIM103", "SIM105", "SIM114", "SIM115", "SIM117", "SIM300",
   "RUF005", "RUF007", "RUF015", "RUF021", "RUF022", "RUF046", "RUF059",
 ]
-ignore = [
-  # Reserved convention for the deferred docstring phase: D212, not D213.
-  "D213",
-  # Reserved convention for the deferred docstring phase: D211, not D203.
-  "D203",
-]
-
 [tool.ruff.lint.pydocstyle]
 convention = "numpy"
-
-[tool.ruff.lint.per-file-ignores]
-# Executable audit tools and tests intentionally establish repository imports
-# after locating the checkout or defining fixtures.
-"dev/**/*.py" = ["E402"]
-"tests/**/*.py" = ["E402"]
 
 [tool.ruff.format]
 docstring-code-format = false

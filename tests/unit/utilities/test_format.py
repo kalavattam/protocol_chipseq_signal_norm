@@ -15,10 +15,10 @@
 from protocol_chipseq_signal_norm.utilities.utils_format import format_value
 
 
-def test_format_value_strips_trailing_zeros():
+def test_format_value_strips_trailing_zeros() -> None:
     assert format_value(1.2300, 4) == "1.23"
     assert format_value(2.0, 4) == "2"
 
 
-def test_format_value_collapses_negative_zero():
+def test_format_value_collapses_negative_zero() -> None:
     assert format_value(-0.0001, 2) == "0"

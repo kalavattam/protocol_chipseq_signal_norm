@@ -15,7 +15,7 @@
 from protocol_chipseq_signal_norm.utilities.utils_chrom import sort_chrom
 
 
-def test_sort_chrom_orders_roman_numeric_mito_and_other():
+def test_sort_chrom_orders_roman_numeric_mito_and_other() -> None:
     chroms = ["scaffold", "chr2", "chrX", "chrI", "MT", "chr10"]
 
     assert sorted(chroms, key=sort_chrom) == [

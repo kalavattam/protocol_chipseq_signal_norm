@@ -88,7 +88,7 @@ if \
     "${TEST_BASH}" -c 'python="$1"; shift; "${python}" "$@"' \
         _ \
         "$(dirname "${TEST_BASH}")/python" \
-        "${ROOT_REPO}/dev/audit/source_policy.py" \
+        -m dev.audit.source_policy \
         --root "${ROOT_REPO}" \
         --submit-bootstrap \
         > "${log_audit}"

@@ -112,7 +112,7 @@ if \
     run_capture \
         "python version policy" \
         "${log_pol_py}" \
-        "${py_cmd[@]}" "${ROOT_REPO}/dev/audit/python_version_policy.py" \
+        "${py_cmd[@]}" -m dev.audit.python_version_policy \
             --root "${ROOT_REPO}" \
             --strict
 then

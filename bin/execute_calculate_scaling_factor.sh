@@ -292,6 +292,12 @@ EOM
         cmd_bld+=( --method "${method}" )
     fi
 
+    cmd_bld+=( --aln_typ "${aln_typ}" )
+
+    if [[ -n "${ref_fa}" ]]; then
+        cmd_bld+=( --ref_fa "${ref_fa}" )
+    fi
+
     cmd_bld+=(
         --csv_mip "${csv_mip_i}"
         --csv_min "${csv_min_i}"
@@ -304,14 +310,7 @@ EOM
         )
     fi
 
-    cmd_bld+=(
-        --aln_typ "${aln_typ}"
-        --fil_out "${fil_out}"
-    )
-
-    if [[ -n "${ref_fa}" ]]; then
-        cmd_bld+=( --ref_fa "${ref_fa}" )
-    fi
+    cmd_bld+=( --fil_out "${fil_out}" )
 
     if [[ "${idx}" != "UNSET" ]]; then
         cmd_bld+=( --idx_out "${idx}" )
@@ -478,12 +477,13 @@ function init_arg_defs() {
     mode="spike"
     method=""
 
+    aln_typ="auto"
+    ref_fa=""
+
     csv_mip=""
     csv_min=""
     csv_sip=""
     csv_sin=""
-    aln_typ="auto"
-    ref_fa=""
 
     fil_out=""
 
@@ -579,6 +579,26 @@ function parse_args() {
                 shift 2
                 ;;
 
+            -at|--aln[_-]typ|--align[_-]typ)
+                require_optarg "${1}" "${2:-}" "main" || {
+                    echo >&2
+                    help_execute_calculate_scaling_factor >&2
+                    return 1
+                }
+                aln_typ="${2,,}"
+                shift 2
+                ;;
+
+            -rf|--ref[_-]fa)
+                require_optarg "${1}" "${2:-}" "main" || {
+                    echo >&2
+                    help_execute_calculate_scaling_factor >&2
+                    return 1
+                }
+                ref_fa="${2}"
+                shift 2
+                ;;
+
             -cmip|--csv[_-]mip)
                 require_optarg "${1}" "${2:-}" "main" || {
                     echo >&2
@@ -616,26 +636,6 @@ function parse_args() {
                     return 1
                 }
                 csv_sin="${2}"
-                shift 2
-                ;;
-
-            -at|--aln[_-]typ|--align[_-]typ)
-                require_optarg "${1}" "${2:-}" "main" || {
-                    echo >&2
-                    help_execute_calculate_scaling_factor >&2
-                    return 1
-                }
-                aln_typ="${2,,}"
-                shift 2
-                ;;
-
-            -rf|--ref[_-]fa)
-                require_optarg "${1}" "${2:-}" "main" || {
-                    echo >&2
-                    help_execute_calculate_scaling_factor >&2
-                    return 1
-                }
-                ref_fa="${2}"
                 shift 2
                 ;;
 
@@ -1266,12 +1266,12 @@ function print_state_debug() {
         echo "mode=${mode}"
         echo "method=${method:-UNSET}"
         echo
+        echo "aln_typ=${aln_typ}"
+        echo "ref_fa=${ref_fa:-UNSET}"
         echo "csv_mip=${csv_mip}"
         echo "csv_min=${csv_min}"
         echo "csv_sip=${csv_sip:-UNSET}"
         echo "csv_sin=${csv_sin:-UNSET}"
-        echo "aln_typ=${aln_typ}"
-        echo "ref_fa=${ref_fa:-UNSET}"
         echo "fil_out=${fil_out}"
         echo "force=${force}"
         echo "no_parts=${no_parts}"

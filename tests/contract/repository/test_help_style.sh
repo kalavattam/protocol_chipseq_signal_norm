@@ -822,7 +822,7 @@ function scan_structural_help_style() {
 
     if output="$(
         PYTHONDONTWRITEBYTECODE=1 \
-            python3 "${ROOT_REPO}/dev/audit/help_style.py" \
+            python3 -m dev.audit.help_style \
                 --root "${ROOT_REPO}" 2>&1
     )"; then
         record_pass "${output}"
@@ -841,7 +841,7 @@ function scan_help_heredoc_source_reflow() {
 
     if output="$(
         PYTHONDONTWRITEBYTECODE=1 \
-            python3 "${ROOT_REPO}/dev/audit/help_heredoc_reflow.py" \
+            python3 -m dev.audit.help_heredoc_reflow \
                 --root "${ROOT_REPO}" 2>&1
     )"; then
         record_pass "${output}"
@@ -860,7 +860,7 @@ function scan_help_examples() {
 
     if output="$(
         PYTHONDONTWRITEBYTECODE=1 \
-            python3 "${ROOT_REPO}/dev/audit/help_examples.py" \
+            python3 -m dev.audit.help_examples \
                 --root "${ROOT_REPO}" 2>&1
     )"; then
         record_pass "${output}"
@@ -879,7 +879,7 @@ function scan_runtime_requirements() {
 
     if output="$(
         PYTHONDONTWRITEBYTECODE=1 \
-            python3 "${ROOT_REPO}/dev/audit/help_runtime_requirements.py" \
+            python3 -m dev.audit.help_runtime_requirements \
                 --root "${ROOT_REPO}" \
                 --strict 2>&1
     )"; then
@@ -899,7 +899,7 @@ function scan_parameter_alias_sets() {
 
     if output="$(
         PYTHONDONTWRITEBYTECODE=1 \
-            python3 "${ROOT_REPO}/dev/audit/help_aliases.py" \
+            python3 -m dev.audit.help_aliases \
                 --root "${ROOT_REPO}" "${files[@]}" 2>&1
     )"; then
         record_pass "${output}"
@@ -918,7 +918,7 @@ function scan_shellcheck_source_policy() {
 
     if output="$(
         PYTHONDONTWRITEBYTECODE=1 \
-            python3 "${ROOT_REPO}/dev/audit/source_policy.py" \
+            python3 -m dev.audit.source_policy \
                 --root "${ROOT_REPO}" 2>&1
     )"; then
         record_pass "${output}"
@@ -937,7 +937,7 @@ function scan_unknown_option_helpers() {
 
     if output="$(
         PYTHONDONTWRITEBYTECODE=1 \
-            python3 "${ROOT_REPO}/dev/audit/unknown_option_helpers.py" \
+            python3 -m dev.audit.unknown_option_helpers \
                 --root "${ROOT_REPO}" 2>&1
     )"; then
         record_pass "${output}"
@@ -956,7 +956,7 @@ function warn_submit_help_source_spacing() {
 
     output="$(
         PYTHONDONTWRITEBYTECODE=1 \
-            python3 "${ROOT_REPO}/dev/audit/source_policy.py" \
+            python3 -m dev.audit.source_policy \
                 --root "${ROOT_REPO}" --help-source-spacing
     )"
     record_warn "${output}"

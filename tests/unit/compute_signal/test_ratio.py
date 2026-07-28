@@ -13,6 +13,7 @@
 
 
 import math
+from pathlib import Path
 
 import pytest
 
@@ -23,7 +24,7 @@ from protocol_chipseq_signal_norm.cli.compute_signal_ratio import (
 )
 
 
-def test_parse_pair_accepts_single_or_pair_values():
+def test_parse_pair_accepts_single_or_pair_values() -> None:
     assert parse_pair("2", 1.0) == (2.0, 1.0)
     assert parse_pair("2:3.5", 1.0) == (2.0, 3.5)
 
@@ -31,24 +32,57 @@ def test_parse_pair_accepts_single_or_pair_values():
         parse_pair("2:3:4", 1.0)
 
 
-def test_calc_rat_bin_handles_scaling_pseudocounts_and_log_reciprocal():
-    assert calc_rat_bin(
-        4.0, 2.0, 2.0, 1.0, 1.0, 0.0, None, False, False, None
-    ) == 4.5
-    assert calc_rat_bin(
-        4.0, 2.0, None, None, None, None, None, True, True, None
-    ) == -1.0
+def test_calc_rat_bin_handles_scaling_and_log_reciprocal() -> None:
+    scaled = calc_rat_bin(
+        4.0,
+        2.0,
+        2.0,
+        1.0,
+        1.0,
+        0.0,
+        None,
+        False,
+        False,
+        None,
+    )
+    reciprocal = calc_rat_bin(
+        4.0,
+        2.0,
+        None,
+        None,
+        None,
+        None,
+        None,
+        True,
+        True,
+        None,
+    )
+
+    assert scaled == 4.5
+    assert reciprocal == -1.0
 
 
-def test_calc_rat_bin_zero_handling():
-    assert calc_rat_bin(0, 0, None, None, None, None, None, False, False,
-                        "pre_scale") is None
-    assert math.isnan(calc_rat_bin(
-        1, 0, None, None, None, None, None, False, False, None
-    ))
+def test_calc_rat_bin_zero_handling() -> None:
+    zero_result = calc_rat_bin(
+        0,
+        0,
+        None,
+        None,
+        None,
+        None,
+        None,
+        False,
+        False,
+        "pre_scale",
+    )
+
+    assert zero_result is None
+    assert math.isnan(
+        calc_rat_bin(1, 0, None, None, None, None, None, False, False, None),
+    )
 
 
-def test_comp_sig_rat_writes_small_bedgraph(tmp_path):
+def test_comp_sig_rat_writes_small_bedgraph(tmp_path: Path) -> None:
     fil_a = tmp_path / "a.bdg"
     fil_b = tmp_path / "b.bdg"
     fil_out = tmp_path / "ratio.bdg"
@@ -59,12 +93,12 @@ def test_comp_sig_rat_writes_small_bedgraph(tmp_path):
         str(fil_a),
         str(fil_b),
         str(fil_out),
-        scl_A=1.0,
-        scl_B=1.0,
-        psc_A=0.0,
-        psc_B=0.0,
+        scl_a=1.0,
+        scl_b=1.0,
+        psc_a=0.0,
+        psc_b=0.0,
         dep_min=None,
-        dp=3,
+        decimal_places=3,
         log2=False,
         recip=False,
         skip_00="pre_scale",
@@ -76,7 +110,7 @@ def test_comp_sig_rat_writes_small_bedgraph(tmp_path):
     assert fil_out.read_text(encoding="utf-8") == "chrI\t0\t10\t2\n"
 
 
-def test_comp_sig_rat_strict_bins_rejects_end_mismatch(tmp_path):
+def test_comp_sig_rat_strict_bins_rejects_end_mismatch(tmp_path: Path) -> None:
     fil_a = tmp_path / "a.bdg"
     fil_b = tmp_path / "b.bdg"
     fil_out = tmp_path / "ratio.bdg"
@@ -88,12 +122,12 @@ def test_comp_sig_rat_strict_bins_rejects_end_mismatch(tmp_path):
             str(fil_a),
             str(fil_b),
             str(fil_out),
-            scl_A=1.0,
-            scl_B=1.0,
-            psc_A=0.0,
-            psc_B=0.0,
+            scl_a=1.0,
+            scl_b=1.0,
+            psc_a=0.0,
+            psc_b=0.0,
             dep_min=None,
-            dp=3,
+            decimal_places=3,
             log2=False,
             recip=False,
             skip_00=None,
@@ -104,7 +138,9 @@ def test_comp_sig_rat_strict_bins_rejects_end_mismatch(tmp_path):
         )
 
 
-def test_comp_sig_rat_chr_sizes_rejects_out_of_bounds_input(tmp_path):
+def test_comp_sig_rat_chr_sizes_rejects_out_of_bounds_input(
+    tmp_path: Path,
+) -> None:
     fil_a = tmp_path / "a.bdg"
     fil_b = tmp_path / "b.bdg"
     fil_out = tmp_path / "ratio.bdg"
@@ -116,12 +152,12 @@ def test_comp_sig_rat_chr_sizes_rejects_out_of_bounds_input(tmp_path):
             str(fil_a),
             str(fil_b),
             str(fil_out),
-            scl_A=1.0,
-            scl_B=1.0,
-            psc_A=0.0,
-            psc_B=0.0,
+            scl_a=1.0,
+            scl_b=1.0,
+            psc_a=0.0,
+            psc_b=0.0,
             dep_min=None,
-            dp=3,
+            decimal_places=3,
             log2=False,
             recip=False,
             skip_00=None,
@@ -132,7 +168,7 @@ def test_comp_sig_rat_chr_sizes_rejects_out_of_bounds_input(tmp_path):
         )
 
 
-def test_comp_sig_rat_rejects_dash_io(tmp_path):
+def test_comp_sig_rat_rejects_dash_io(tmp_path: Path) -> None:
     fil_a = tmp_path / "a.bdg"
     fil_b = tmp_path / "b.bdg"
     fil_out = tmp_path / "ratio.bdg"
@@ -144,12 +180,12 @@ def test_comp_sig_rat_rejects_dash_io(tmp_path):
             "-",
             str(fil_b),
             str(fil_out),
-            scl_A=1.0,
-            scl_B=1.0,
-            psc_A=0.0,
-            psc_B=0.0,
+            scl_a=1.0,
+            scl_b=1.0,
+            psc_a=0.0,
+            psc_b=0.0,
             dep_min=None,
-            dp=3,
+            decimal_places=3,
             log2=False,
             recip=False,
             skip_00=None,

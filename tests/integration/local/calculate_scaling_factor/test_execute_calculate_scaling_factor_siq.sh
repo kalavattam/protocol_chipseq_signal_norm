@@ -164,9 +164,9 @@ arr_cmd_bam_pe=(
     "${TEST_BASH}" "${scr_exe}"
         --threads 1
         --mode siq
+        --aln_typ auto
         --csv_mip "${bam_pe_mip_0},${bam_pe_mip_1}"
         --csv_min "${bam_pe_min_0},${bam_pe_min_1}"
-        --aln_typ auto
         --tbl_met "${tbl_met}"
         --cfg_met "${cfg_met}"
         --eqn 6nd
@@ -180,9 +180,9 @@ arr_cmd_bam_pe=(
         "${TEST_BASH}" "${scr_exe}"
             --threads 1
             --mode siq
+            --aln_typ auto
             --csv_mip "${bam_se_mip_0},${bam_se_mip_1}"
             --csv_min "${bam_se_min_0},${bam_se_min_1}"
-            --aln_typ auto
             --len_def 150
             --tbl_met "${tbl_met}"
             --cfg_met "${cfg_met}"
@@ -195,10 +195,10 @@ arr_cmd_bam_pe=(
         "${TEST_BASH}" "${scr_exe}"
             --threads 1
             --mode siq
-            --csv_mip "${cram_pe_mip_0},${cram_pe_mip_1}"
-            --csv_min "${cram_pe_min_0},${cram_pe_min_1}"
             --aln_typ auto
             --ref_fa "${ref_fa}"
+            --csv_mip "${cram_pe_mip_0},${cram_pe_mip_1}"
+            --csv_min "${cram_pe_min_0},${cram_pe_min_1}"
             --tbl_met "${tbl_met}"
             --cfg_met "${cfg_met}"
             --eqn 6nd
@@ -210,9 +210,9 @@ arr_cmd_bam_pe=(
         "${TEST_BASH}" "${scr_exe}"
             --threads 1
             --mode siq
+            --aln_typ auto
             --csv_mip "${bam_pe_mip_0},${bam_pe_mip_1}"
             --csv_min "${bam_pe_min_0},${bam_pe_min_1}"
-            --aln_typ auto
             --tbl_met "${tbl_lib}"
             --cfg_met "${cfg_met}"
             --eqn 6nd
@@ -224,9 +224,9 @@ arr_cmd_bam_pe=(
         "${TEST_BASH}" "${scr_exe}"
             --threads 1
             --mode siq
+            --aln_typ auto
             --csv_mip "${bam_se_mip_0},${bam_pe_mip_1}"
             --csv_min "${bam_se_min_0},${bam_pe_min_1}"
-            --aln_typ auto
             --len_def 150
             --tbl_met "${tbl_met}"
             --cfg_met "${cfg_met}"
@@ -239,10 +239,10 @@ arr_cmd_bam_pe=(
         "${TEST_BASH}" "${scr_exe}"
             --threads 1
             --mode siq
-            --csv_mip "${bam_pe_mip_0},${cram_pe_mip_1}"
-            --csv_min "${bam_pe_min_0},${cram_pe_min_1}"
             --aln_typ auto
             --ref_fa "${ref_fa}"
+            --csv_mip "${bam_pe_mip_0},${cram_pe_mip_1}"
+            --csv_min "${bam_pe_min_0},${cram_pe_min_1}"
             --tbl_met "${tbl_met}"
             --cfg_met "${cfg_met}"
             --eqn 6nd
@@ -431,9 +431,9 @@ if \
             --env_nam "${env_nam}" \
             --threads 1 \
             --mode siq \
+            --aln_typ auto \
             --csv_mip "${cram_pe_mip_0},${cram_pe_mip_1}" \
             --csv_min "${cram_pe_min_0},${cram_pe_min_1}" \
-            --aln_typ auto \
             --tbl_met "${tbl_met}" \
             --cfg_met "${cfg_met}" \
             --eqn 6nd \
@@ -462,9 +462,9 @@ if \
             --env_nam "${env_nam}" \
             --threads 1 \
             --mode siq \
+            --aln_typ auto \
             --csv_mip "${bam_pe_mip_0},${bam_pe_mip_1}" \
             --csv_min "${bam_pe_min_0},${bam_pe_min_1}" \
-            --aln_typ auto \
             --tbl_met "${tbl_met}" \
             --cfg_met "${cfg_met}" \
             --eqn 7 \
@@ -559,9 +559,9 @@ if \
             --env_nam "${env_nam}" \
             --threads 1 \
             --mode siq \
+            --aln_typ auto \
             --csv_mip "${bam_pe_mip_0}" \
             --csv_min "${bam_pe_min_0}" \
-            --aln_typ auto \
             --tbl_met "${tbl_dup}" \
             --cfg_met "${cfg_met}" \
             --eqn 6nd \

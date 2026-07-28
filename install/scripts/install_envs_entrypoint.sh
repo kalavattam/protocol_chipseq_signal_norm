@@ -38,10 +38,10 @@ Parameters
   -up, --update_package : str
     With '--if_exists update', install only this exact YAML-declared package specification. Repeat to select more than one package; omit to reconcile every declared dependency.
 
-  -ch, --channel, --channels, --channel_list : list of str
+  -ch, --channels : list of str
     Comma-delimited channel list to pass to the package manager.
 
-  -oc, --override_channel, --override_channels : flag
+  -oc, --override_channels : flag
     Override channels from the selected environment YAML.
 
   -y, --yes : flag
@@ -232,11 +232,11 @@ check_args_light() {
                 exit 0
                 ;;
 
-            -dr|--dry|--dry_run|--dry-run|-oc|--override_channel|--override-channel|--override_channels|--override-channels|-y|--yes)
+            -dr|--dry|--dry[_-]run|-oc|--override[_-]channels|-y|--yes)
                 shift 1
                 ;;
 
-            -en|--env|--env_nam|--env-nam|-up|--update_package|--update-package|-ch|--channel|--channels|--channel_list|--channel-list)
+            -en|--env|--env_nam|--env-nam|-up|--update_package|--update-package|-ch|--channels)
                 if \
                        [ "$#" -lt 2 ] \
                     || [ -z "${2}" ]  \

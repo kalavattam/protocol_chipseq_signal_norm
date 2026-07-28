@@ -10,7 +10,7 @@ tests/
 │   ├── local/            fixture-backed local workflows
 │   ├── parallel/         gated GNU Parallel workflows
 │   └── slurm/            gated scheduler integration and wet coordinator
-├── fixtures/             tracked recipes/docs plus ignored generated data
+├── fixtures/             tracked static inputs/recipes/docs plus generated data
 └── support/              shared test-only helpers and cleanup
 ```
 
@@ -41,7 +41,7 @@ Logs and temporary products default to `artifacts/tests/`. Set `TEST_ARTIFACT_RO
 <br />
 
 ## Fixtures and cleanup
-Fixture recipes are `tests/fixtures/<workflow>/make.sh`. Generated fixture data is ignored; each tracked `README.md` describes provenance and expectations.
+Fixture recipes are `tests/fixtures/<workflow>/make.sh`. Generated fixture data is ignored; each tracked `README.md` describes provenance and expectations. A fixture README may instead declare a bounded tracked static-input cohort, which is validated in place and is not a cleanup target.
 
 ```bash
 bash tests/support/clean_artifacts.sh --dry_run --all

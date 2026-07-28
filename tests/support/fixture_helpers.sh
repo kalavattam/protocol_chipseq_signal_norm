@@ -65,6 +65,8 @@ Returns
 -------
   Returns 0 when the command is available. Exits through 'die' when the command name is missing or unavailable.
 
+Notes
+-----
   Runtime requirements:
     bash >= 4.4
 
@@ -137,6 +139,8 @@ Returns
 -------
   Returns 0 when all commands are available. Exits through 'die' if no command names are supplied or any command is unavailable.
 
+Notes
+-----
   Runtime requirements:
     bash >= 4.4
 
@@ -210,6 +214,8 @@ Returns
 -------
   Returns 0 when the requested environment is active. Exits through 'die' when the environment name is missing or the active environment differs.
 
+Notes
+-----
   Runtime requirements:
     bash >= 4.4
 
@@ -297,6 +303,8 @@ Returns
 -------
   Returns 0 after removal succeeds. Exits through 'die' if the path is empty, outside the fixture root, or a directory.
 
+Notes
+-----
   Runtime requirements:
     - bash >= 4.4
     - rm
@@ -376,6 +384,8 @@ Returns
 -------
   Returns 0 after all removals succeed. Exits through 'die' if no files are supplied or any path is invalid.
 
+Notes
+-----
   Runtime requirements:
     - bash >= 4.4
     - rm
@@ -452,6 +462,8 @@ Returns
 -------
   Returns 0 after registering the trap. Exits through 'die' when the function name is missing or undefined.
 
+Notes
+-----
   Runtime requirements:
     bash >= 4.4
 
@@ -520,6 +532,8 @@ Returns
 -------
   Writes one tab-delimited line to stdout. Exits through 'die' if no fields are supplied.
 
+Notes
+-----
   Runtime requirements:
     bash >= 4.4
 
@@ -600,6 +614,8 @@ Returns
 -------
   Returns the exit status of 'gzip -n -c'. Exits through 'die' if either path is missing.
 
+Notes
+-----
   Runtime requirements:
     - bash >= 4.4
     - gzip

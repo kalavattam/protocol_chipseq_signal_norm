@@ -136,7 +136,10 @@ def is_hidden_compat(call: ast.Call) -> bool:
     if kw is None or not is_argparse_suppress(kw.value):
         return False
     opts = option_strings(call)
-    return bool(opts) and all(is_hyphen_duplicate(opt) for opt in opts)
+    return bool(opts) and (
+        all(is_hyphen_duplicate(opt) for opt in opts)
+        or set(opts) == {"--chnk_size", "--chnk-size"}
+    )
 
 
 def is_hyphen_duplicate(opt: str) -> bool:
@@ -267,13 +270,17 @@ def check_parse_args(path: Path, tree: ast.Module, findings: list[Finding]) -> N
                     Finding("FAIL", path, call.lineno, "use -rf, --ref_fa for reference FASTA")
                 )
         if hidden_compat:
-            if not opts or any(not is_hyphen_duplicate(opt) for opt in opts):
+            if not opts or (
+                any(not is_hyphen_duplicate(opt) for opt in opts)
+                and set(opts) != {"--chnk_size", "--chnk-size"}
+            ):
                 findings.append(
                     Finding(
                         "FAIL",
                         path,
                         call.lineno,
-                        "hidden compatibility aliases must be hyphenated long options",
+                        "hidden compatibility aliases must be systematic "
+                        "hyphen variants or the approved chunk abbreviation",
                     )
                 )
         elif not is_nonempty_help(call):
@@ -441,7 +448,8 @@ def check_docstrings(path: Path, tree: ast.Module, findings: list[Finding]) -> N
                     "WARN",
                     path,
                     1,
-                    "module docstring is long; move method notes to docs/dev",
+                    "module docstring is long; move detailed method notes to "
+                    "maintained documentation",
                 )
             )
 

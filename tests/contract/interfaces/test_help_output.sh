@@ -124,7 +124,7 @@ function assert_rendered_help_structure() {
 
     if output="$(
         PYTHONDONTWRITEBYTECODE=1 \
-            python3 "${ROOT_REPO}/dev/audit/help_style.py" \
+            python3 -m dev.audit.help_style \
                 --root "${ROOT_REPO}" \
                 --rendered "${file}" 2>&1
     )"; then
@@ -147,7 +147,7 @@ function assert_combine_parts_examples_fixture() {
 
     if ! \
         PYTHONDONTWRITEBYTECODE=1 \
-            python3 "${ROOT_REPO}/dev/audit/help_heredoc_reflow.py" \
+            python3 -m dev.audit.help_heredoc_reflow \
                 --extract-rendered-examples "${file}" > "${observed}"
     then
         record_fail "could not extract combine_parts_scaling_factor.sh Examples"

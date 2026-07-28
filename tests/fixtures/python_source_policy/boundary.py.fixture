@@ -1,0 +1,27 @@
+"""
+Exercise exact deterministic source boundaries.
+"""
+
+
+def comments() -> None:
+    """
+    Exercise comment-width boundaries.
+    """
+
+    # This comment remains within the configured source-width boundary.
+    value = 1  # This inline comment uses the canonical spacing form.
+    _ = value
+
+
+def parameters(
+    first: int,
+    /,
+    second: int,
+    *,
+    third: int,
+) -> None:
+    """
+    Exercise parameter-list delimiter boundaries.
+    """
+
+    return None

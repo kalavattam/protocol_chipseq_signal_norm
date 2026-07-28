@@ -1,4 +1,6 @@
-"""ChIP-seq signal-normalization command-line and utility package."""
+"""
+ChIP-seq signal-normalization command-line and utility package.
+"""
 
 __version__ = "0.1.0"
 

@@ -1,1 +1,3 @@
-"""Reusable utilities for protocol-chipseq-signal-norm."""
+"""
+Reusable utilities for protocol-chipseq-signal-norm.
+"""

@@ -128,6 +128,12 @@ function check_fixtures() {
         fi
 
         while IFS= read -r generated; do
+            if [[ "${feature}" == "python_source_policy" && \
+                "${generated}" == *.py.fixture ]]
+            then
+                continue
+            fi
+
             if ! git -C "${ROOT_REPO}" check-ignore -q \
                 "${generated#"${ROOT_REPO}/"}"
             then

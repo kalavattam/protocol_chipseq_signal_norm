@@ -19,22 +19,24 @@ import pytest
 from protocol_chipseq_signal_norm.cli.compute_pseudo import combine_pseudo_sym
 
 
-def test_combine_pseudo_sym_returns_unmodified_for_none_mode():
+def test_combine_pseudo_sym_returns_unmodified_for_none_mode() -> None:
     assert combine_pseudo_sym(1.0, 2.0, "none") == (1.0, 2.0)
 
 
-def test_combine_pseudo_sym_applies_symmetric_modes():
+def test_combine_pseudo_sym_applies_symmetric_modes() -> None:
     assert combine_pseudo_sym(1.0, 3.0, "max") == (3.0, 3.0)
     assert combine_pseudo_sym(1.0, 3.0, "arith") == (2.0, 2.0)
     assert combine_pseudo_sym(1.0, 4.0, "geom") == (2.0, 2.0)
     assert combine_pseudo_sym(1.0, 4.0, "harm") == (1.6, 1.6)
 
 
-def test_combine_pseudo_sym_mirrors_single_finite_value(capsys):
+def test_combine_pseudo_sym_mirrors_single_finite_value(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
     assert combine_pseudo_sym(math.nan, 2.0, "max") == (2.0, 2.0)
     assert "nonfinite" in capsys.readouterr().err
 
 
-def test_combine_pseudo_sym_rejects_unknown_mode():
+def test_combine_pseudo_sym_rejects_unknown_mode() -> None:
     with pytest.raises(ValueError, match="Unknown"):
         combine_pseudo_sym(1.0, 2.0, "bad")

@@ -12,7 +12,9 @@
 # Distributed under the MIT license.
 
 
-"""Structural regressions for maintained workflow runbook fences."""
+"""
+Structural regressions for maintained workflow runbook fences.
+"""
 
 from __future__ import annotations
 
@@ -29,35 +31,53 @@ BASH_FENCE = re.compile(r"```bash\n(?P<body>.*?)\n```", re.DOTALL)
 
 
 def ratio_fences() -> dict[str, str]:
-    """Return the first Bash fence from each ratio workflow section."""
+    """
+    Return the first Bash fence from each ratio workflow section.
+    """
 
     text = WORKFLOW.read_text(encoding="utf-8")
     matches = list(SECTION.finditer(text))
     output: dict[str, str] = {}
+
     for index, match in enumerate(matches):
         end = matches[index + 1].start() if index + 1 < len(matches) else None
         fence = BASH_FENCE.search(text[match.end() : end])
+
         assert fence is not None
+
         output[match.group("label")] = fence.group("body")
+
     return output
 
 
 def workflow_fence(label: str) -> str:
-    """Return the first Bash fence from one lettered workflow section."""
+    """
+    Return the first Bash fence from one lettered workflow section.
+    """
 
     text = WORKFLOW.read_text(encoding="utf-8")
-    heading = rf"^### {re.escape(label)}\. Obtain and organize ChIP-seq FASTQ files\.$"
+    heading = (
+        rf"^### {re.escape(label)}\. Obtain and organize "
+        r"ChIP-seq FASTQ files\.$"
+    )
+
     start = re.search(heading, text, re.MULTILINE)
+
     assert start is not None
+
     end = re.search(r"^### [A-Z][0-9]?\.", text[start.end() :], re.MULTILINE)
     section_end = start.end() + end.start() if end is not None else None
     fence = BASH_FENCE.search(text[start.end() : section_end])
+
     assert fence is not None
+
     return fence.group("body")
 
 
 def test_download_fastqs_section_uses_current_interface() -> None:
-    """Keep Data C on maintained paths, helpers, and one command array."""
+    """
+    Keep Data C on maintained paths, helpers, and one command array.
+    """
 
     body = workflow_fence("C")
     required = [
@@ -72,7 +92,7 @@ def test_download_fastqs_section_uses_current_interface() -> None:
         '--fil_in "${pth_tsv}"',
         '--dir_eo "${dir_log}"',
         'cmd_download+=( --slurm --time "${time}" )',
-        'printf \'%q \' "${cmd_download[@]}"',
+        "printf '%q ' \"${cmd_download[@]}\"",
         '"${cmd_download[@]}"',
         'bash "${dir_bin}/compress_remove_files.sh"',
     ]
@@ -88,23 +108,28 @@ def test_download_fastqs_section_uses_current_interface() -> None:
 
     for value in required:
         assert value in body
+
     for value in retired:
         assert value not in body
+
     assert body.count('"${cmd_download[@]}"') == 2
 
 
 def test_download_fastqs_section_fails_closed() -> None:
-    """Require successful download before independently guarded cleanup."""
+    """
+    Require successful download before independently guarded cleanup.
+    """
 
     body = workflow_fence("C")
     download_guard = body.index('if ! \\\n    "${cmd_download[@]}" \\')
     download_error = body.index(
-        'echo "error(workflow): download_fastqs failed; '
-        'cleanup was not run." >&2',
+        'echo "error(workflow): download_fastqs failed; cleanup was not run." '
+        ">&2",
         download_guard,
     )
     download_exit = body.index("    exit 1", download_error)
     download_end = body.index("\nfi", download_exit)
+
     cleanup_guard = body.index(
         'if ! \\\n    bash "${dir_bin}/compress_remove_files.sh"',
         download_end,
@@ -135,12 +160,14 @@ def test_download_fastqs_section_fails_closed() -> None:
             cleanup_error,
             cleanup_exit,
             cleanup_end,
-        ]
+        ],
     )
 
 
 def test_download_fastqs_section_is_valid_bash() -> None:
-    """Keep the final Data C fence valid Bash."""
+    """
+    Keep the final Data C fence valid Bash.
+    """
 
     body = workflow_fence("C")
     subprocess.run(
@@ -156,14 +183,15 @@ def test_download_fastqs_section_is_valid_bash() -> None:
 def test_ratio_environment_precedes_installed_command_use(
     label: str,
 ) -> None:
-    """Require one H/I/J activation before table and floor commands."""
+    """
+    Require one H/I/J activation before table and floor commands.
+    """
 
     body = ratio_fences()[label]
     source = 'source "${dir_bash}/core/source_helpers.sh"'
     tables = 'source_helpers "${dir_bash}" workflows/process_tables'
     helpers = (
-        'source_helpers "${dir_bash}" '
-        "check_env format_outputs handle_env"
+        'source_helpers "${dir_bash}" check_env format_outputs handle_env'
     )
     activate = 'handle_env "${env_nam}"'
     verify = "check_pgrm_path compute_input_floor"
@@ -186,4 +214,5 @@ def test_ratio_environment_precedes_installed_command_use(
         body.index(extract),
         invoke.start(),
     ]
+
     assert ordered == sorted(ordered)

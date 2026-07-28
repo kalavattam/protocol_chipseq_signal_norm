@@ -1,0 +1,145 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Explicit Python semantic-review decisions",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "review_protocol",
+    "reviewed_source_fingerprint",
+    "decision_groups"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "review_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "review_protocol": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "status",
+        "hash_role",
+        "membership_rule",
+        "review_surfaces"
+      ],
+      "properties": {
+        "status": {
+          "enum": [
+            "provisional",
+            "reviewed"
+          ]
+        },
+        "hash_role": {
+          "type": "string",
+          "minLength": 1
+        },
+        "membership_rule": {
+          "type": "string",
+          "minLength": 1
+        },
+        "review_surfaces": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      }
+    },
+    "reviewed_source_fingerprint": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "supersedes": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "mechanism",
+        "reason"
+      ],
+      "properties": {
+        "mechanism": {
+          "type": "string",
+          "minLength": 1
+        },
+        "reason": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "decision_groups": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/decision_group"
+      }
+    }
+  },
+  "$defs": {
+    "decision_group": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "group_id",
+        "owner",
+        "disposition",
+        "rationale",
+        "reviewed_facts",
+        "members",
+        "membership_fingerprint"
+      ],
+      "properties": {
+        "group_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "owner": {
+          "type": "string",
+          "minLength": 1
+        },
+        "disposition": {
+          "enum": [
+            "changed",
+            "exception",
+            "omitted_by_role",
+            "refactored",
+            "retained",
+            "retained_coherent",
+            "retained_compact_guard",
+            "retained_indivisible"
+          ]
+        },
+        "rationale": {
+          "type": "string",
+          "minLength": 1
+        },
+        "reviewed_facts": {
+          "type": "object",
+          "minProperties": 1
+        },
+        "members": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "pattern": "^sha256:[0-9a-f]{64}$"
+          }
+        },
+        "membership_fingerprint": {
+          "type": "string",
+          "pattern": "^sha256:[0-9a-f]{64}$"
+        }
+      }
+    }
+  }
+}

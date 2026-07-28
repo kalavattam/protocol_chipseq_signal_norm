@@ -1,6 +1,6 @@
 
 # Shell standard
-This document owns maintained Bash runtime, source form, static analysis, execution semantics, sourcing, wrapper and processing topology, submit bootstrap, parser diagnostics, and shell-test source form. `help.md` owns help semantics, `source_headers.md` owns literal headers and shebang profiles, `testing.md` owns general test operations, and `repository_layout.md` owns placement.
+This document owns maintained Bash runtime, source-layout realization, source form, comments, static analysis, execution semantics, sourcing, wrapper and processing topology, submit bootstrap, parser diagnostics, and shell-test source form. Shared source-layout semantics belong to [`source_layout.md`](source_layout.md), help semantics to [`help.md`](help.md), literal headers and shebang profiles to [`source_headers.md`](source_headers.md), general test operations to [`testing.md`](testing.md), and placement to [`repository_layout.md`](repository_layout.md).
 
 <br />
 
@@ -45,7 +45,11 @@ The canonical test runner uses `set -u` and aggregates individual failures inten
 
 Use four-space code indentation and spaces rather than tabs. Put lifecycle and public functions before their invocation. Prefer `function name() {` for maintained Bash functions. Keep conditionals and continuations readable, quote expansions unless intentional splitting or globbing is documented, and use arrays for command construction rather than assembled command strings.
 
-Maintained function and variable names use `snake_case`. Arrays use the established `arr_*` convention where it clarifies type. Controlled project abbreviations remain acceptable; avoid introducing opaque abbreviations whose meaning is not local and evident.
+In argument-parsing `case` patterns, represent a deliberately supported underscore/hyphen spelling pair with one bounded `[_-]` form, such as `--chunk[_-]size`, rather than duplicating equivalent arms. Keep distinct semantic aliases explicit, and do not use broader `?` or `*` patterns that accept unintended near misses.
+
+Apply [`SOURCE.NAMING.SEMANTICS`](source_layout.md) using Shell-native forms. Maintained function names use `snake_case` verb phrases. Local and ordinary variables use `snake_case` noun phrases. Arrays use `snake_case`; retain the established `arr_*` form only where it materially clarifies type. Readonly semantic constants and exported environment contracts use `SCREAMING_SNAKE_CASE`; inherited external environment variables preserve their exact names. Do not use `lowerCamelCase` or `UpperCamelCase` for project-defined functions, variables, or filenames.
+
+Do not promote mutable globals to constant spelling. Controlled project, domain, and tool abbreviations remain acceptable when local and evident; opaque abbreviations remain review candidates. Shell source filenames use lowercase `snake_case`.
 
 Indent `case` patterns one level inside `case`, commands one level inside the pattern, and terminators with their pattern. Use one empty line between adjacent nontrivial arms when it improves scanning; bounded case-arm spacing remains advisory.
 
@@ -58,6 +62,76 @@ Diagnostics identify the failing script or function and direct errors to stderr.
 **Semantic remainder:** Review readability, quoting intent, complex continuations, heredoc semantics, and whether command construction preserves argument boundaries.
 
 **Exceptions:** Generated command fixtures and literal expected output preserve their owned representation.
+
+<br />
+
+## Shell diagnostic source form (`SHELL.DIAGNOSTIC.FORM`)
+**Classification:** `advisory` with deterministic recognized-source portions.
+
+**Scope:** Maintained direct `echo` diagnostics whose first argument begins with a repository message-type and script-or-function prefix.
+
+Put the complete `message_type(script_or_function):` prefix in the first double-quoted `echo` argument and put diagnostic prose in one or more following double-quoted arguments. Use a lowercase `snake_case` message type and a nonempty script or function identity. End the prefix line with `\`, indent each continuation argument one additional level, and keep stderr redirection on the final line when the diagnostic belongs on stderr.
+
+Keep every physical source line within 79 columns. Break prose at word boundaries into additional adjacent quoted arguments as needed. Do not embed leading or trailing whitespace in a prose argument: `echo` supplies the single separating space between arguments.
+
+```bash
+echo "error(test_helpers.sh):" \
+    "TEST_ARTIFACT_ROOT must be an absolute non-root path. This is" \
+    "additional text to make my point about breaking text across multiple" \
+    "lines. Let me know if you need more information." >&2
+```
+
+Use `printf` or a role-appropriate diagnostic helper when formatting, escaping, exact whitespace, or arbitrary content makes adjacent fixed `echo` arguments unsuitable. Preserve the same visible prefix and output-stream contract.
+
+**Automation:** `dev/audit/shell_source_form.py` reports recognized direct-`echo` prefix separation, continuation indentation and quoting, argument-edge whitespace, and 79-column source-width findings. Focused fixtures provide `subset` coverage. Repository-wide findings remain an advisory migration inventory until the bounded Shell source-policy migration is approved.
+
+**Semantic remainder:** Review message type, context identity, wording, output-stream ownership, whether content is truly fixed, and whether a shared helper or `printf` is clearer.
+
+**Exceptions:** Literal expected-output fixtures, heredoc bodies, and externally specified exact diagnostics retain their separately owned representation.
+
+<br />
+
+## Shell source layout (`SHELL.SOURCE.LAYOUT`)
+**Classification:** `semantic-only`.
+
+**Scope:** Maintained Shell commands, assignments, arrays, multiline invocations, pipelines, conditionals, loops, `case` arms, functions, heredocs, and result or status-transfer regions.
+
+Realize [`SOURCE.LAYOUT.PARAGRAPHS`](source_layout.md) with Shell syntax. Keep related assignments, validations, command-array construction, and short invocations contiguous. Put one blank line between distinct setup, acquisition, validation, transformation, side-effect, cleanup, dispatch, and result or status phases.
+
+Put a blank-line boundary before and after each noncompact sibling conditional, loop, or `case` dispatch. Keep `elif`, `else`, `fi`, `done`, individual `case` arm terminators, and `esac` attached to the construct they complete. A direct single-transfer guard may remain compact with a related validation sequence.
+
+Review multiline commands, command arrays, assignments, pipelines, and repeated `case` arms for both hyper-density and mechanical fragmentation. Preserve argument boundaries with arrays and quote expansions according to `SHELL.SOURCE.FORM`; Shell multiline arrays and invocations use continuation syntax and do not acquire a trailing comma. Break long invocations at semantic argument groups and use stable continuation indentation rather than visual alignment.
+
+Keep `if`/`elif`/`else`/`fi`, loops and `done`, `case` and `esac`, function declarations, and heredoc boundaries syntactically connected. Apply compact-guard and transfer semantics to `return`, `exit`, `break`, and `continue`, and separate a transfer after substantive diagnostics, mutation, cleanup, or result preparation.
+
+Use `echo` for one simple blank output line. Continue to use `printf` when formatting, escaping, exact data, or portability of arbitrary content matters; this narrow form does not convert every `printf '\n'` call.
+
+`X`, `Y`, and `Z` remain evidence concepts under [`SOURCE.LAYOUT.CANDIDATES`](source_layout.md). This standard establishes no numeric values before a representative Shell pilot that measures multiline commands, arrays, assignments, pipelines, and status-transfer regions.
+
+**Automation:** No Shell semantic-layout checker, density producer, candidate schema, threshold fixture, or registry entry currently implements this rule. Existing source-form, line-length, wrapper, and ShellCheck audits cover only their registered subsets.
+
+**Semantic remainder:** Review paragraph boundaries, pipeline and command grouping, guard compactness, transfer separation, quoting-sensitive wraps, and whether comments, arrays, intermediate state, or helper extraction best resolve a candidate.
+
+**Exceptions:** Shell-required connected syntax and literal heredoc bodies retain their owned form. Generated commands and fixtures require owned applicability exclusions; other deviations use the governed exception process.
+
+<br />
+
+## Shell comments (`SHELL.COMMENT.FORM`)
+**Classification:** `advisory` with deterministic marker, spacing, and attachment opportunities.
+
+**Scope:** Ordinary full-line, continuation, paragraph-separator, and inline comments in maintained Shell source outside literal heredoc bodies.
+
+Apply [`SOURCE.COMMENT.ATTACHMENT`](source_layout.md). Begin each nonempty ordinary comment line with `# ` and use exactly `#` for an empty separator inside a multiline comment. Use one blank line before a phase comment and no blank line between the comment and the paragraph it governs.
+
+Inline comments use two spaces before `#` and one space after it when Shell tokenization and the surrounding construct permit an inline comment. Keep them short; promote an overlong explanation to an attached preceding block or maintained documentation.
+
+Ordinary comment prose uses sentence capitalization, complete sentences, and terminal punctuation. Shebangs, source headers, ShellCheck directives, generated markers, parameter expansions, and literal fixtures retain their separately owned syntax. The current `#  ` and `#+ ` ordinary-comment forms are superseded and require a later bounded migration; they are not documentation markers or permanent compatibility forms.
+
+**Automation:** No dedicated checker or registry entry implements this complete Shell comment rule. No migration fixture set exists; current source-header, ShellCheck, and source-form audits cover only their registered subsets and do not establish ordinary-comment conformance.
+
+**Semantic remainder:** Review comment role, attachment, usefulness, directive boundaries, heredoc context, and whether the explanation belongs in help or maintained documentation.
+
+**Exceptions:** Separately owned shebangs, headers, directives, generated content, and literal heredocs or fixtures are applicability exclusions rather than ordinary-comment exceptions.
 
 <br />
 
@@ -102,7 +176,7 @@ Treat ShellCheck status 0 as a completed clean inventory and status 1 as a compl
 
 **Scope:** Maintained shell source outside exempt heredoc, URL, checksum, regex, parser-label, and fixture-literal contexts.
 
-Keep ordinary shell source within 79 columns when a readable split preserves behavior. Prefer semantic command-array and condition boundaries. Do not split indivisible URLs, checksums, regular expressions, diagnostics, or literal interface text merely to satisfy a count.
+Keep ordinary shell source within 79 columns when a readable split preserves behavior. Prefer semantic command-array and condition boundaries. Direct `echo` diagnostics follow `SHELL.DIAGNOSTIC.FORM`; do not split indivisible URLs, checksums, regular expressions, or literal interface text merely to satisfy a count.
 
 **Automation:** `tests/contract/repository/test_shell_line_length.sh` reports repository-wide candidates and strict bounded pilots. Coverage is `subset`, not `exact`.
 

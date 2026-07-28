@@ -20,7 +20,9 @@ from protocol_chipseq_signal_norm.utilities.utils_cli import (
 )
 
 
-def test_cap_argument_parser_uses_capitalized_usage(capsys):
+def test_cap_argument_parser_uses_capitalized_usage(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
     parser = CapArgumentParser(prog="tool", description="Demo.")
     add_help_cap(parser)
 
@@ -31,7 +33,7 @@ def test_cap_argument_parser_uses_capitalized_usage(capsys):
     assert "Usage:" in capsys.readouterr().out
 
 
-def test_cap_argument_parser_disables_abbreviation():
+def test_cap_argument_parser_disables_abbreviation() -> None:
     parser = CapArgumentParser(prog="tool")
     parser.add_argument("--sample-name")
 

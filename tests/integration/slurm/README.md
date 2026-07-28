@@ -114,7 +114,9 @@ Log in manually, then run the printed checksum and launch commands. Their shape 
 ssh FHCC_USER@RHINO_HOST_OR_ALIAS
 (cd protocol_chipseq_signal_norm_slurm_runs/7i-slurm-bundle-20260716/incoming && \
     sha256sum -c source.tar.gz.sha256)
-PYTHONDONTWRITEBYTECODE=1 RUN_SLURM=1 WAIT_SLURM=1 CONFIRM_SLURM_WET=1 \
+PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONPATH=protocol_chipseq_signal_norm_slurm_runs/7i-slurm-bundle-20260716/incoming/launcher/src \
+    RUN_SLURM=1 WAIT_SLURM=1 CONFIRM_SLURM_WET=1 \
     /absolute/path/to/env_protocol/bin/python3 \
         protocol_chipseq_signal_norm_slurm_runs/7i-slurm-bundle-20260716/incoming/launcher/tests/integration/slurm/coordinator.py \
         remote-launch \
@@ -133,7 +135,9 @@ Before submission, `preflight.json` records the hostname, operating system, Bash
 
 While logged in, inspect structured status with the exact command printed by `instructions`, or inspect files directly:
 ```bash
-/absolute/path/to/env_protocol/bin/python3 \
+PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONPATH=protocol_chipseq_signal_norm_slurm_runs/7i-slurm-bundle-20260716/incoming/launcher/src \
+    /absolute/path/to/env_protocol/bin/python3 \
     protocol_chipseq_signal_norm_slurm_runs/7i-slurm-bundle-20260716/incoming/launcher/tests/integration/slurm/coordinator.py \
     status \
     --session_dir protocol_chipseq_signal_norm_slurm_runs/7i-slurm-bundle-20260716

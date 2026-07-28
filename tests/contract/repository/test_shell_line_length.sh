@@ -147,7 +147,7 @@ function warn_case_arm_spacing() {
         fi
     done < <(
         PYTHONDONTWRITEBYTECODE=1 \
-            python3 "${ROOT_REPO}/dev/audit/help_style.py" \
+            python3 -m dev.audit.help_style \
                 --root "${ROOT_REPO}" \
                 --case-spacing
     )

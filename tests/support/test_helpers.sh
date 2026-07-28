@@ -38,20 +38,23 @@ fi
     ROOT_REPO="$(cd "${TEST_DIR}/.." > /dev/null 2>&1 && pwd)"
     TEST_DIR_OUT="${TEST_ARTIFACT_ROOT:-${ROOT_REPO}/artifacts/tests}"
     if [[ "${TEST_DIR_OUT}" != /* || "${TEST_DIR_OUT}" == "/" ]]; then
-        echo "error(test_helpers.sh): TEST_ARTIFACT_ROOT must be an absolute non-root path." >&2
+        echo "error(test_helpers.sh):" \
+            "TEST_ARTIFACT_ROOT must be an absolute non-root path." >&2
         exit 1
     fi
     TEST_OUT_PARENT="$(
         cd "$(dirname "${TEST_DIR_OUT}")" > /dev/null 2>&1 && pwd -P
     )" || {
-        echo "error(test_helpers.sh): TEST_ARTIFACT_ROOT parent does not exist." >&2
+        echo "error(test_helpers.sh):" \
+            "TEST_ARTIFACT_ROOT parent does not exist." >&2
         exit 1
     }
     TEST_DIR_OUT="${TEST_OUT_PARENT}/$(basename "${TEST_DIR_OUT}")"
     case "${TEST_DIR_OUT}/" in
         "${ROOT_REPO}/"*)
             if [[ "${TEST_DIR_OUT}" != "${ROOT_REPO}/artifacts/tests" ]]; then
-                echo "error(test_helpers.sh): TEST_ARTIFACT_ROOT must be outside the repository." >&2
+                echo "error(test_helpers.sh):" \
+                    "TEST_ARTIFACT_ROOT must be outside the repository." >&2
                 exit 1
             fi
             ;;
@@ -72,7 +75,8 @@ fi
                 CONDA_EXECUTABLE="$(command -v conda || true)"
             fi
             if [[ -z "${CONDA_EXECUTABLE}" ]]; then
-                echo "error(test_helpers.sh): Conda is required to resolve env_protocol." >&2
+                echo "error(test_helpers.sh):" \
+                    "Conda is required to resolve env_protocol." >&2
                 exit 1
             fi
             TEST_ENV_PREFIX="$(${CONDA_EXECUTABLE} run -n env_protocol \
@@ -82,7 +86,8 @@ fi
     TEST_BASH="${TEST_ENV_PREFIX}/bin/bash"
     TEST_PYTHON="${TEST_ENV_PREFIX}/bin/python"
     if [[ ! -x "${TEST_BASH}" || ! -x "${TEST_PYTHON}" ]]; then
-        echo "error(test_helpers.sh): env_protocol managed executables are unavailable." >&2
+        echo "error(test_helpers.sh):" \
+            "env_protocol managed executables are unavailable." >&2
         exit 1
     fi
     TEST_BASH_VERSION="$(
@@ -145,6 +150,8 @@ Returns
 -------
   Prints a display path to stdout and returns 0.
 
+Notes
+-----
   Runtime requirements:
     bash >= 4.4
 
@@ -309,6 +316,8 @@ Returns
 -------
   Prints diagnostic information to stdout. Returns 0 when commands can be inspected; returns 1 if Conda is unavailable for environment inspection.
 
+Notes
+-----
   Runtime requirements:
     - A compatible Conda environment
     - bash >= 4.4
@@ -421,6 +430,8 @@ Returns
 -------
   Records a pass/fail assertion and returns 0 when dependencies are available; otherwise records a failure and returns 1.
 
+Notes
+-----
   Runtime requirements:
     - A compatible Conda environment providing the listed tools
     - atria
@@ -511,6 +522,8 @@ Returns
 -------
   Records a pass/fail assertion and returns 0 when GNU Parallel is available; otherwise records a failure and returns 1.
 
+Notes
+-----
   Runtime requirements:
     - A compatible Conda environment providing parallel
     - bash >= 4.4
@@ -597,6 +610,8 @@ Returns
 -------
   Records a pass/fail assertion and returns 0 when dependencies are available; otherwise records a failure and returns 1.
 
+Notes
+-----
   Runtime requirements:
     - A compatible Conda environment providing the listed tools
     - bash >= 4.4
@@ -684,6 +699,8 @@ Returns
 -------
   Writes the resolved environment name to the caller variable. Returns 0 on success; records a failure and returns 1 when no usable environment exists.
 
+Notes
+-----
   Runtime requirements:
     - A compatible Conda environment
     - awk (when no non-base project environment is active)
@@ -773,6 +790,8 @@ Returns
 -------
   Records one failure per missing or empty file. Returns 0 when all files are non-empty; otherwise returns 1.
 
+Notes
+-----
   Runtime requirements:
     bash >= 4.4
 
@@ -848,6 +867,8 @@ Returns
 -------
   Records a pass when the file exists; otherwise records a failure.
 
+Notes
+-----
   Runtime requirements:
     bash >= 4.4
 
@@ -929,6 +950,8 @@ Returns
 -------
   Records a pass and writes the path when exactly one candidate exists; otherwise records a failure and clears the output variable.
 
+Notes
+-----
   Runtime requirements:
     bash >= 4.4
 
@@ -1002,6 +1025,8 @@ Returns
 -------
   Returns the exit status from the selected Samtools invocation.
 
+Notes
+-----
   Runtime requirements:
     - A compatible Conda environment providing samtools (when 'samtools' is unavailable)
     - bash >= 4.4
@@ -1077,6 +1102,8 @@ Returns
 -------
   Records a pass and returns 0 when conversion and indexing succeed; otherwise records a failure and returns 1.
 
+Notes
+-----
   Runtime requirements:
     - A compatible Conda environment providing samtools (when 'samtools' is unavailable)
     - bash >= 4.4
@@ -1181,6 +1208,8 @@ Returns
 -------
   Records a pass and returns 0 when conversion and indexing succeed; otherwise records a failure and returns 1.
 
+Notes
+-----
   Runtime requirements:
     - A compatible Conda environment providing samtools (when 'samtools' is unavailable)
     - bash >= 4.4
@@ -1268,6 +1297,8 @@ Returns
 -------
   Prints a Python executable path to stdout and returns 0 when found; otherwise returns 1.
 
+Notes
+-----
   Runtime requirements:
     - bash >= 4.4
     - python >= 3.11 or python3 >= 3.11
@@ -1336,6 +1367,8 @@ Returns
 -------
   Prints a Python executable path to stdout and returns 0 when found; otherwise returns 1.
 
+Notes
+-----
   Runtime requirements:
     - bash >= 4.4
     - python >= 3.11 or python3 >= 3.11, each with loopback socket support
@@ -1419,6 +1452,8 @@ Returns
 -------
   Prints an available port number to stdout. Returns the Python command's exit status.
 
+Notes
+-----
   Runtime requirements:
     - bash >= 4.4
     - Caller-supplied Python interpreter >= 3.11
@@ -1494,6 +1529,8 @@ Returns
 -------
   Returns 0 when the URL becomes reachable; otherwise returns 1 after all attempts are exhausted.
 
+Notes
+-----
   Runtime requirements:
     - bash >= 4.4
     - Caller-supplied Python interpreter >= 3.11 with 'urllib' support
@@ -1613,6 +1650,8 @@ Returns
 -------
   Returns the command exit status after writing stdout and stderr to the log.
 
+Notes
+-----
   Runtime requirements:
     - bash >= 4.4
     - Caller-supplied command executable
@@ -1713,6 +1752,8 @@ Returns
 -------
   Records a pass/fail assertion for the wrapper command. Returns 1 for missing array metadata or empty command arrays.
 
+Notes
+-----
   Runtime requirements:
     - bash >= 4.4
     - dirname
@@ -1860,6 +1901,8 @@ Returns
 -------
   Records a pass/fail assertion for the wrapper command.
 
+Notes
+-----
   Runtime requirements:
     - bash >= 4.4
     - dirname
@@ -2031,6 +2074,8 @@ Returns
 -------
   Records a pass/fail assertion for the wrapper command.
 
+Notes
+-----
   Runtime requirements:
     - bash >= 4.4
     - dirname
@@ -2201,6 +2246,8 @@ Returns
 -------
   Records command, file-existence, header, and row-content assertions.
 
+Notes
+-----
   Runtime requirements:
     - bash >= 4.4
     - dirname
@@ -2224,7 +2271,7 @@ Examples
     sip_1="${dir_fx}/IP_WT_log_Brn1_rep2.sp.bam"
     sin_0="${dir_fx}/in_WT_log_Brn1_rep1.sp.bam"
     sin_1="${dir_fx}/in_WT_log_Brn1_rep2.sp.bam"
-    cmd=( "${TEST_BASH}" bin/execute_calculate_scaling_factor.sh --threads 1 --mode spike --csv_mip "${mip_0},${mip_1}" --csv_min "${min_0},${min_1}" --csv_sip "${sip_0},${sip_1}" --csv_sin "${sin_0},${sin_1}" --aln_typ auto --dir_eo "${tmp}/logs" --max_job 1 )
+    cmd=( "${TEST_BASH}" bin/execute_calculate_scaling_factor.sh --threads 1 --mode spike --aln_typ auto --csv_mip "${mip_0},${mip_1}" --csv_min "${min_0},${min_1}" --csv_sip "${sip_0},${sip_1}" --csv_sin "${sin_0},${sin_1}" --dir_eo "${tmp}/logs" --max_job 1 )
     row_0="${mip_0}"$'\t'"${sip_0}"$'\t'"${min_0}"$'\t'"${sin_0}"
     row_1="${mip_1}"$'\t'"${sip_1}"$'\t'"${min_1}"$'\t'"${sin_1}"
     run_case_scaling_factor_execute default spike cmd "${tmp}/out" "${tmp}/logs" spike test_spike $'^main_ip\tspike_ip\tmain_in\tspike_in\tspike\tcoef\tnum_mp\tnum_sp\tnum_mn\tnum_sn$' "${row_0}" "${row_1}" $'2\tchiprx_alpha_ratio\t3\t1\t2\t2' $'0.5\tchiprx_alpha_ratio\t2\t2\t3\t1'
@@ -2242,7 +2289,7 @@ Examples
     mip_1="${dir_fx}/IP_WT_G1_Hho1_6337.sc.bam"
     min_0="${dir_fx}/in_WT_G1_Hho1_6336.sc.bam"
     min_1="${dir_fx}/in_WT_G1_Hho1_6337.sc.bam"
-    cmd=( "${TEST_BASH}" bin/execute_calculate_scaling_factor.sh --threads 1 --mode siq --csv_mip "${mip_0},${mip_1}" --csv_min "${min_0},${min_1}" --aln_typ auto --tbl_met tests/fixtures/calculate_scaling_factor/metadata/measurements_siqchip.tsv --cfg_met data/raw/docs/parse_metadata_siqchip.yml --eqn 6nd --dir_eo "${tmp}/logs" --max_job 1 )
+    cmd=( "${TEST_BASH}" bin/execute_calculate_scaling_factor.sh --threads 1 --mode siq --aln_typ auto --csv_mip "${mip_0},${mip_1}" --csv_min "${min_0},${min_1}" --tbl_met tests/fixtures/calculate_scaling_factor/metadata/measurements_siqchip.tsv --cfg_met data/raw/docs/parse_metadata_siqchip.yml --eqn 6nd --dir_eo "${tmp}/logs" --max_job 1 )
     row_0="${mip_0}"$'\t'"${min_0}"
     row_1="${mip_1}"$'\t'"${min_1}"
     run_case_scaling_factor_execute pe_bam siQ cmd "${tmp}/out" "${tmp}/logs" siq test_siq $'^fil_ip\tfil_in\tsiq\teqn\tmass_ip\tmass_in\tvol_all\tvol_in\tdep_ip\tdep_in\tlen_ip\tlen_in$' "${row_0}" "${row_1}" $'0.001912211397724232486706\t6nd\t2.7\t72.5\t300\t20\t3\t2\t626\t450' $'0.002902612244746139314594\t6nd\t5\t81.1\t300\t20\t2\t3\t663\t437' --no_header
@@ -2378,6 +2425,8 @@ Returns
 -------
   Records command, part-file, final-file, and row-content assertions.
 
+Notes
+-----
   Runtime requirements:
     - bash >= 4.4
     - cat
@@ -2400,7 +2449,7 @@ Examples
     sip="${dir_fx}/IP_WT_log_Brn1_rep1.sp.bam"
     sin="${dir_fx}/in_WT_log_Brn1_rep1.sp.bam"
     out="${tmp}/scaling.tsv"
-    cmd=( "${TEST_BASH}" bin/submit_calculate_scaling_factor.sh --env_nam "${env_nam}" --dir_scr scripts --threads 1 --mode spike --csv_mip "${mip}" --csv_min "${min}" --csv_sip "${sip}" --csv_sin "${sin}" --aln_typ auto --fil_out "${out}" --idx_out 0 --dir_eo "${tmp}/logs" --nam_job test_spike )
+    cmd=( "${TEST_BASH}" bin/submit_calculate_scaling_factor.sh --env_nam "${env_nam}" --dir_scr scripts --threads 1 --mode spike --aln_typ auto --csv_mip "${mip}" --csv_min "${min}" --csv_sip "${sip}" --csv_sin "${sin}" --fil_out "${out}" --idx_out 0 --dir_eo "${tmp}/logs" --nam_job test_spike )
     row="${mip}"$'\t'"${sip}"$'\t'"${min}"$'\t'"${sin}"$'\t2\tchiprx_alpha_ratio\t3\t1\t2\t2'
     run_case_scaling_factor_submit_part se_default spike cmd "${out}" 0 "${tmp}/submit.log" "${row}" $'^main_ip\tspike_ip\tmain_in\tspike_in\tspike\tcoef'
     rm -r -- "${tmp}"
@@ -2416,7 +2465,7 @@ Examples
     mip="${dir_fx}/IP_WT_G1_Hho1_6336.sc.bam"
     min="${dir_fx}/in_WT_G1_Hho1_6336.sc.bam"
     out="${tmp}/scaling.tsv"
-    cmd=( "${TEST_BASH}" bin/submit_calculate_scaling_factor.sh --env_nam "${env_nam}" --dir_scr scripts --threads 1 --mode siq --csv_mip "${mip}" --csv_min "${min}" --aln_typ auto --fil_out "${out}" --idx_out 19 --tbl_met tests/fixtures/calculate_scaling_factor/metadata/measurements_siqchip.tsv.gz --cfg_met data/raw/docs/parse_metadata_siqchip.yml --eqn 6nd --dir_eo "${tmp}/logs" --nam_job test_siq )
+    cmd=( "${TEST_BASH}" bin/submit_calculate_scaling_factor.sh --env_nam "${env_nam}" --dir_scr scripts --threads 1 --mode siq --aln_typ auto --csv_mip "${mip}" --csv_min "${min}" --fil_out "${out}" --idx_out 19 --tbl_met tests/fixtures/calculate_scaling_factor/metadata/measurements_siqchip.tsv.gz --cfg_met data/raw/docs/parse_metadata_siqchip.yml --eqn 6nd --dir_eo "${tmp}/logs" --nam_job test_siq )
     row="${mip}"$'\t'"${min}"$'\t0.001912211397724232486706\t6nd\t2.7\t72.5\t300\t20\t3\t2\t626\t450'
     run_case_scaling_factor_submit_part pe_gzip siQ cmd "${out}" 19 "${tmp}/submit.log" "${row}" $'^fil_ip\tfil_in\tsiq\teqn\tmass_ip\tmass_in' && assert_file_nonempty "${out}.part.000019"
     rm -r -- "${tmp}"
@@ -2512,6 +2561,8 @@ Returns
 -------
   Records a pass when the pattern is found; otherwise records a failure.
 
+Notes
+-----
   Runtime requirements:
     - bash >= 4.4
     - grep
@@ -2591,6 +2642,8 @@ Returns
 -------
   Records a pass when the pattern is absent; otherwise records a failure.
 
+Notes
+-----
   Runtime requirements:
     - bash >= 4.4
     - grep
@@ -2666,6 +2719,8 @@ Returns
 -------
   Records a pass when the file is non-empty; otherwise records a failure.
 
+Notes
+-----
   Runtime requirements:
     bash >= 4.4
 
@@ -2742,6 +2797,8 @@ Returns
 -------
   Records row-count and content assertions. Returns 1 immediately when the file is missing or empty.
 
+Notes
+-----
   Runtime requirements:
     - bash >= 4.4
     - cat
@@ -2837,6 +2894,8 @@ Returns
 -------
   Records a pass when files match byte-for-byte; otherwise records a failure.
 
+Notes
+-----
   Runtime requirements:
     - bash >= 4.4
     - cmp
@@ -2922,6 +2981,8 @@ Returns
 -------
   Delegates to pattern-present or pattern-absent assertions and records their result.
 
+Notes
+-----
   Runtime requirements:
     - bash >= 4.4
     - grep
@@ -3005,6 +3066,8 @@ Returns
 -------
   Records a pass when either '<cram>.crai' or '<stem>.crai' exists and is non-empty; otherwise records a failure.
 
+Notes
+-----
   Runtime requirements:
     bash >= 4.4
 
@@ -3103,6 +3166,8 @@ Returns
 -------
   Records failures for missing region metadata and records a pattern assertion for the observed count.
 
+Notes
+-----
   Runtime requirements:
     - A compatible Conda environment providing samtools (when 'samtools' is unavailable)
     - bash >= 4.4
@@ -3217,6 +3282,8 @@ Returns
 -------
   Records header-read, @PG-presence, and out_ext assertions.
 
+Notes
+-----
   Runtime requirements:
     - A compatible Conda environment providing samtools (when 'samtools' is unavailable)
     - bash >= 4.4
@@ -3342,6 +3409,8 @@ Returns
 -------
   Records file, gzip integrity, decompression, read-name, and read-count assertions. Returns 0 immediately if 'fil_out' is empty.
 
+Notes
+-----
   Runtime requirements:
     - awk
     - bash >= 4.4
@@ -3460,6 +3529,8 @@ Returns
 -------
   Records file-existence and symlink assertions.
 
+Notes
+-----
   Runtime requirements:
     bash >= 4.4
 
@@ -3542,6 +3613,8 @@ Returns
 -------
   Records a pass when the pattern is present; otherwise records a warning.
 
+Notes
+-----
   Runtime requirements:
     - bash >= 4.4
     - grep
@@ -3610,6 +3683,8 @@ Returns
 -------
   Prints the pass/fail/warn/skip summary. Returns 1 when any failures were recorded; otherwise returns 0.
 
+Notes
+-----
   Runtime requirements:
     bash >= 4.4
 

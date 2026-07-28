@@ -1,1 +1,3 @@
-"""Command-line entry points for protocol-chipseq-signal-norm."""
+"""
+Command-line entry points for protocol-chipseq-signal-norm.
+"""

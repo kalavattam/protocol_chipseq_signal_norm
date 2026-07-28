@@ -12,7 +12,9 @@
 # Distributed under the MIT license.
 
 
-"""Inventory and enforce source-derived Boolean-like contracts."""
+"""
+Inventory and enforce source-derived Boolean-like contracts.
+"""
 
 from __future__ import annotations
 
@@ -24,9 +26,9 @@ import re
 from collections import Counter
 from pathlib import Path
 
-from help_aliases import function_body_spans, parameter_rows
-from help_heredoc_reflow import extract_help_heredocs
-from help_style import PARAMETER_ENTRY, sections
+from dev.audit.help_aliases import function_body_spans, parameter_rows
+from dev.audit.help_heredoc_reflow import extract_help_heredocs
+from dev.audit.help_style import PARAMETER_ENTRY, sections
 
 TRUE_TOKENS = ("true", "t", "yes", "y", "1")
 FALSE_TOKENS = ("false", "f", "no", "n", "0")
@@ -55,23 +57,27 @@ MANUAL_TRUE = "true|t|yes|y|1"
 MANUAL_FALSE = "false|f|no|n|0"
 ENV_NAME = re.compile(r"\b(?:RUN_[A-Z0-9_]+|WAIT_SLURM)\b")
 RAW_ENV_BOOL = re.compile(
-    r'\$\{(?P<name>(?:RUN_[A-Z0-9_]+|WAIT_SLURM)):-0\}'
-    r'[^\n]*(?:==|!=)\s*"?1"?'
+    r"\$\{(?P<name>(?:RUN_[A-Z0-9_]+|WAIT_SLURM)):-0\}"
+    r'[^\n]*(?:==|!=)\s*"?1"?',
 )
 NORMALIZED_ENV = re.compile(
     r"\bnormalize_test_gate\s+"
-    r"(?P<name>(?:RUN_[A-Z0-9_]+|WAIT_SLURM))\b"
+    r"(?P<name>(?:RUN_[A-Z0-9_]+|WAIT_SLURM))\b",
 )
 NORMALIZE_CALL = re.compile(
     r"\bnormalize_bool\s+"
-    r'"?\$\{(?P<name>[A-Za-z_][A-Za-z0-9_]*)\}"?'
+    r'"?\$\{(?P<name>[A-Za-z_][A-Za-z0-9_]*)\}"?',
 )
-POSITIONAL_HEAD = re.compile(r"(?P<ordinal>\d+)\+?\s+(?P<name>[A-Za-z_][A-Za-z0-9_]*)$")
+POSITIONAL_HEAD = re.compile(
+    r"(?P<ordinal>\d+)\+?\s+(?P<name>[A-Za-z_][A-Za-z0-9_]*)$",
+)
 
 
 @dataclasses.dataclass(frozen=True)
 class Finding:
-    """One stable Boolean-contract violation."""
+    """
+    One stable Boolean-contract violation.
+    """
 
     rule_id: str
     path: str
@@ -80,7 +86,9 @@ class Finding:
     message: str
 
     def format(self) -> str:
-        """Render one deterministic line-oriented diagnostic."""
+        """
+        Render one deterministic line-oriented diagnostic.
+        """
 
         return (
             f"{self.rule_id}: {self.path}:{self.line}: "
@@ -90,7 +98,9 @@ class Finding:
 
 @dataclasses.dataclass(frozen=True)
 class Contract:
-    """One source-derived Boolean-like contract or reviewed adjacent mode."""
+    """
+    One source-derived Boolean-like contract or reviewed adjacent mode.
+    """
 
     owner_identity: str
     path: str
@@ -115,13 +125,17 @@ class Contract:
     proposed_disposition: str
 
     def as_dict(self) -> dict[str, object]:
-        """Return a JSON-ready inventory record."""
+        """
+        Return a JSON-ready inventory record.
+        """
 
         return dataclasses.asdict(self)
 
 
 def shell_sources(root: Path) -> list[Path]:
-    """Return maintained shell production and test/helper sources."""
+    """
+    Return maintained shell production and test/helper sources.
+    """
 
     candidates = [
         *(root / "bin").glob("*.sh"),
@@ -129,6 +143,7 @@ def shell_sources(root: Path) -> list[Path]:
         *(root / "install/scripts").glob("*.sh"),
         *(root / "tests").rglob("*.sh"),
     ]
+
     return sorted(
         path
         for path in set(candidates)
@@ -137,13 +152,16 @@ def shell_sources(root: Path) -> list[Path]:
 
 
 def python_sources(root: Path) -> list[Path]:
-    """Return maintained Python production and test/helper sources."""
+    """
+    Return maintained Python production and test/helper sources.
+    """
 
     candidates = [
         *(root / "src").rglob("*.py"),
         *(root / "dev").rglob("*.py"),
         *(root / "tests").rglob("*.py"),
     ]
+
     return sorted(
         path
         for path in set(candidates)
@@ -152,49 +170,67 @@ def python_sources(root: Path) -> list[Path]:
     )
 
 
-def descriptions_by_row(text: str) -> dict[tuple[str, int], tuple[str, str, str]]:
-    """Reuse recognized help sections to map typed rows to descriptions."""
+def descriptions_by_row(
+    text: str,
+) -> dict[tuple[str, int], tuple[str, str, str]]:
+    """
+    Reuse recognized help sections to map typed rows to descriptions.
+    """
 
     result: dict[tuple[str, int], tuple[str, str, str]] = {}
+
     for heredoc in extract_help_heredocs(text):
         for section in sections(heredoc):
             if section.name not in {"Parameters", "Expected globals"}:
                 continue
+
             body = list(section.lines)
+
             for index, (number, line) in enumerate(body):
                 match = PARAMETER_ENTRY.match(line)
+
                 if match is None and section.name == "Expected globals":
                     match = re.match(
-                        r"^(?P<indent> *)(?P<head>[A-Za-z_][A-Za-z0-9_]*"
-                        r"(?:, [A-Za-z_][A-Za-z0-9_]*)*)\s+:\s+"
+                        r"^(?P<indent> *)(?P<head>[A-Za-z_][A-Za-z0-9_]*(?:, "
+                        r"[A-Za-z_][A-Za-z0-9_]*)*)\s+:\s+"
                         r"(?P<type>\S.*)$",
                         line,
                     )
+
                 if match is None:
                     continue
+
                 description: list[str] = []
+
                 for _, candidate in body[index + 1 :]:
                     if not candidate.strip():
                         break
+
                     if PARAMETER_ENTRY.match(candidate):
                         break
+
                     description.append(candidate.strip())
+
                 result[(heredoc.owner, number)] = (
                     section.name,
                     match.group("head").strip(),
                     " ".join(description),
                 )
+
     return result
 
 
 def lexical_owner(text: str, line: int) -> str:
-    """Return the bounded function owner for one source line."""
+    """
+    Return the bounded function owner for one source line.
+    """
 
     candidates = [
         (name, start, end)
         for name, (start, end, _) in function_body_spans(text).items()
         if start <= line <= end
     ]
+
     return candidates[-1][0] if candidates else "<file>"
 
 
@@ -203,16 +239,22 @@ def function_normalizes(
     bodies: dict[str, str],
     seen: frozenset[str] = frozenset(),
 ) -> bool:
-    """Return whether an owner reaches the canonical helper in one file."""
+    """
+    Return whether an owner reaches the canonical helper in one file.
+    """
 
     if owner == "normalize_bool":
         return True
+
     if owner in seen or owner not in bodies:
         return False
+
     body = bodies[owner]
     if re.search(r"\bnormalize_bool\b", body):
         return True
+
     nested_seen = seen | {owner}
+
     return any(
         re.search(rf"(?m)^\s*{re.escape(candidate)}\b", body)
         and function_normalizes(candidate, bodies, nested_seen)
@@ -222,12 +264,16 @@ def function_normalizes(
 
 
 def public_status(path: str, owner: str) -> str:
-    """Classify repository interface visibility from its maintained location."""
+    """
+    Classify repository interface visibility from its maintained location.
+    """
 
     if owner.startswith("_"):
         return "internal"
+
     if path.startswith("lib/bash/") or path.startswith("tests/support/"):
         return "public"
+
     return "internal"
 
 
@@ -237,23 +283,34 @@ def call_sites(
     owner: str,
     own_identity: str,
 ) -> tuple[str, ...]:
-    """Return direct lexical callers of one shell function name."""
+    """
+    Return direct lexical callers of one shell function name.
+    """
 
     callers: set[str] = set()
     pattern = re.compile(rf"(?m)^\s*{re.escape(owner)}(?:\s|$)")
+
     for source in sources:
         text = source.read_text(encoding="utf-8")
         rel = str(source.relative_to(root))
+
         for match in pattern.finditer(text):
             line = text.count("\n", 0, match.start()) + 1
             identity = f"{rel}::{lexical_owner(text, line)}"
+
             if identity != own_identity:
                 callers.add(identity)
+
     return tuple(sorted(callers))
 
 
-def build_call_index(root: Path, sources: list[Path]) -> dict[str, tuple[str, ...]]:
-    """Index direct shell callers once for deterministic inventory reuse."""
+def build_call_index(
+    root: Path,
+    sources: list[Path],
+) -> dict[str, tuple[str, ...]]:
+    """
+    Index direct shell callers once for deterministic inventory reuse.
+    """
 
     cache = {
         str(source.relative_to(root)): source.read_text(encoding="utf-8")
@@ -264,16 +321,18 @@ def build_call_index(root: Path, sources: list[Path]) -> dict[str, tuple[str, ..
             owner
             for text in cache.values()
             for owner in function_body_spans(text)
-        }
+        },
     )
     callers: dict[str, set[str]] = {owner: set() for owner in known}
     known_set = set(known)
+
     for path, text in cache.items():
         spans = function_body_spans(text)
         regions = [
             ("<file>", text),
             *((owner, body) for owner, (_, _, body) in spans.items()),
         ]
+
         for lexical, body in regions:
             identity = f"{path}::{lexical}"
             invoked = {
@@ -284,8 +343,10 @@ def build_call_index(root: Path, sources: list[Path]) -> dict[str, tuple[str, ..
                 )
                 if match.group("name") in known_set
             }
+
             for owner in invoked - {lexical}:
                 callers[owner].add(identity)
+
     return {
         owner: tuple(sorted(identities))
         for owner, identities in callers.items()
@@ -293,7 +354,9 @@ def build_call_index(root: Path, sources: list[Path]) -> dict[str, tuple[str, ..
 
 
 def canonical_fields(classification: str) -> dict[str, object]:
-    """Return common contract fields for one classification."""
+    """
+    Return common contract fields for one classification.
+    """
 
     if classification == "presence-only flag":
         return {
@@ -308,6 +371,7 @@ def canonical_fields(classification: str) -> dict[str, object]:
             "normalization_helper": "none",
             "proposed_disposition": "retain as a value-free presence flag",
         }
+
     if classification == "internal already-canonical Boolean":
         return {
             "accepted_true_like": ("true",),
@@ -321,6 +385,7 @@ def canonical_fields(classification: str) -> dict[str, object]:
             "normalization_helper": "upstream presence/parser contract",
             "proposed_disposition": "retain as internal canonical transport",
         }
+
     if classification == "Boolean environment variable":
         return {
             "accepted_true_like": TRUE_TOKENS,
@@ -334,6 +399,7 @@ def canonical_fields(classification: str) -> dict[str, object]:
             "normalization_helper": "normalize_test_gate -> normalize_bool",
             "proposed_disposition": "normalize nonempty values canonically",
         }
+
     return {
         "accepted_true_like": TRUE_TOKENS,
         "accepted_false_like": FALSE_TOKENS,
@@ -342,18 +408,36 @@ def canonical_fields(classification: str) -> dict[str, object]:
         "empty_unset_behavior": "empty required value invalid",
         "invalid_value_behavior": "precise diagnostic and nonzero return",
         "canonical_output": "true or false",
-        "error_return_contract": "invalid value returns nonzero without fallback",
+        "error_return_contract": (
+            "invalid value returns nonzero without fallback"
+        ),
         "normalization_helper": "normalize_bool",
         "proposed_disposition": "route through canonical normalization",
     }
 
 
 def shell_inventory(root: Path, sources: list[Path]) -> list[Contract]:
-    """Build shell contracts from existing help and function parsers."""
+    """
+    Build shell contracts from existing help and function parsers.
+
+    Parameters
+    ----------
+    root : Path
+        Repository root used to resolve source identities.
+    sources : list[Path]
+        Maintained Shell sources to inspect.
+
+    Returns
+    -------
+    contracts : list[Contract]
+        Source-derived Boolean contract records.
+    """
 
     inventory: list[Contract] = []
     explicit_keys: set[tuple[str, str]] = set()
+
     caller_index = build_call_index(root, sources)
+
     for source in sources:
         path = str(source.relative_to(root))
         text = source.read_text(encoding="utf-8")
@@ -366,8 +450,11 @@ def shell_inventory(root: Path, sources: list[Path]) -> list[Contract]:
         for row in parameter_rows(text):
             if row.type_name.strip() != "flag":
                 continue
+
             owner_identity = f"{path}::{row.owner}"
-            help_text = descriptions.get((row.owner, row.line), ("", "", ""))[2]
+            help_text = descriptions.get((row.owner, row.line), ("", "", ""))[
+                2
+            ]
             fields = canonical_fields("presence-only flag")
             inventory.append(
                 Contract(
@@ -381,18 +468,23 @@ def shell_inventory(root: Path, sources: list[Path]) -> list[Contract]:
                     value_form="no-value flag",
                     direct_callers=caller_index.get(row.owner, ()),
                     current_help_text=help_text,
-                    relevant_tests=("tests/contract/repository/test_boolean_contracts.sh",),
+                    relevant_tests=(
+                        "tests/contract/repository/test_boolean_contracts.sh",
+                    ),
                     **fields,
-                )
+                ),
             )
 
         for heredoc in extract_help_heredocs(text):
             for section in sections(heredoc):
                 if section.name not in {"Parameters", "Expected globals"}:
                     continue
+
                 body = list(section.lines)
+
                 for _index, (line, source_line) in enumerate(body):
                     match = PARAMETER_ENTRY.match(source_line)
+
                     if match is None and section.name == "Expected globals":
                         match = re.match(
                             r"^(?P<indent> *)(?P<head>[A-Za-z_][A-Za-z0-9_]*"
@@ -400,18 +492,33 @@ def shell_inventory(root: Path, sources: list[Path]) -> list[Contract]:
                             r"(?P<type>\S.*)$",
                             source_line,
                         )
-                    if match is None or match.group("type").strip() not in {"bool", "flag"}:
+
+                    if match is None:
                         continue
+
+                    boolean_type = match.group("type").strip() in {
+                        "bool",
+                        "flag",
+                    }
+
+                    if not boolean_type:
+                        continue
+
                     head = match.group("head").strip()
                     if head.startswith("-"):
                         continue
-                    description = descriptions.get((heredoc.owner, line), ("", "", ""))[2]
+
+                    description = descriptions.get(
+                        (heredoc.owner, line),
+                        ("", "", ""),
+                    )[2]
                     positional = POSITIONAL_HEAD.match(head)
                     names = (
                         (positional.group("name"),)
                         if positional
                         else tuple(part.strip() for part in head.split(","))
                     )
+
                     normalizes = function_normalizes(heredoc.owner, bodies)
                     visibility = public_status(path, heredoc.owner)
                     explicit = (
@@ -424,6 +531,7 @@ def shell_inventory(root: Path, sources: list[Path]) -> list[Contract]:
                         if explicit
                         else "internal already-canonical Boolean"
                     )
+
                     for name in names:
                         owner_identity = f"{path}::{heredoc.owner}"
                         fields = canonical_fields(classification)
@@ -441,28 +549,39 @@ def shell_inventory(root: Path, sources: list[Path]) -> list[Contract]:
                                 name=name,
                                 classification=classification,
                                 value_form="explicit Boolean value",
-                                direct_callers=caller_index.get(heredoc.owner, ()),
+                                direct_callers=caller_index.get(
+                                    heredoc.owner,
+                                    (),
+                                ),
                                 current_help_text=description,
                                 relevant_tests=(
-                                    "tests/contract/repository/test_boolean_contracts.sh",
+                                    (
+                                        "tests/contract/repository/test_boolea"
+                                        "n_contracts.sh"
+                                    ),
                                 ),
                                 **fields,
-                            )
+                            ),
                         )
+
                         if explicit:
                             explicit_keys.add((owner_identity, name))
 
         for owner, body in bodies.items():
             if owner in {"normalize_bool", "normalize_test_gate"}:
                 continue
+
             for match in NORMALIZE_CALL.finditer(body):
                 name = match.group("name")
                 owner_identity = f"{path}::{owner}"
                 if (owner_identity, name) in explicit_keys:
                     continue
-                line = function_body_spans(text)[owner][0] + body.count(
-                    "\n", 0, match.start()
-                ) + 1
+
+                line = (
+                    function_body_spans(text)[owner][0]
+                    + body.count("\n", 0, match.start())
+                    + 1
+                )
                 fields = canonical_fields("Boolean positional argument")
                 inventory.append(
                     Contract(
@@ -470,15 +589,24 @@ def shell_inventory(root: Path, sources: list[Path]) -> list[Contract]:
                         path=path,
                         line=line,
                         public_status=public_status(path, owner),
-                        input_surface="conditional function positional argument",
+                        input_surface=(
+                            "conditional function positional argument"
+                        ),
                         name=name,
                         classification="Boolean positional argument",
                         value_form="explicit Boolean value",
                         direct_callers=caller_index.get(owner, ()),
-                        current_help_text="Boolean-like branch documented in owner help",
-                        relevant_tests=("tests/contract/repository/test_boolean_contracts.sh",),
+                        current_help_text=(
+                            "Boolean-like branch documented in owner help"
+                        ),
+                        relevant_tests=(
+                            (
+                                "tests/contract/repository/test_boolean_contra"
+                                "cts.sh"
+                            ),
+                        ),
                         **fields,
-                    )
+                    ),
                 )
                 explicit_keys.add((owner_identity, name))
 
@@ -486,20 +614,30 @@ def shell_inventory(root: Path, sources: list[Path]) -> list[Contract]:
 
 
 def python_flag_inventory(root: Path) -> list[Contract]:
-    """Inventory argparse presence flags without treating them as values."""
+    """
+    Inventory argparse presence flags without treating them as values.
+    """
 
     inventory: list[Contract] = []
+
     for source in python_sources(root):
         path = str(source.relative_to(root))
+
         try:
             tree = ast.parse(source.read_text(encoding="utf-8"))
         except SyntaxError:
             continue
+
         for node in ast.walk(tree):
             if not isinstance(node, ast.Call):
                 continue
-            if not isinstance(node.func, ast.Attribute) or node.func.attr != "add_argument":
+
+            if (
+                not isinstance(node.func, ast.Attribute)
+                or node.func.attr != "add_argument"
+            ):
                 continue
+
             action = next(
                 (
                     keyword.value.value
@@ -511,10 +649,12 @@ def python_flag_inventory(root: Path) -> list[Contract]:
             )
             if action not in {"store_true", "store_false"}:
                 continue
+
             aliases = tuple(
                 value.value
                 for value in node.args
-                if isinstance(value, ast.Constant) and isinstance(value.value, str)
+                if isinstance(value, ast.Constant)
+                and isinstance(value.value, str)
             )
             fields = canonical_fields("presence-only flag")
             inventory.append(
@@ -529,20 +669,27 @@ def python_flag_inventory(root: Path) -> list[Contract]:
                     value_form="no-value flag",
                     direct_callers=(f"{path}::main",),
                     current_help_text="argparse action=" + str(action),
-                    relevant_tests=("tests/contract/repository/test_boolean_contracts.sh",),
+                    relevant_tests=(
+                        "tests/contract/repository/test_boolean_contracts.sh",
+                    ),
                     **fields,
-                )
+                ),
             )
+
     return inventory
 
 
 def environment_inventory(root: Path, sources: list[Path]) -> list[Contract]:
-    """Inventory live Boolean test gates and their disabled empty state."""
+    """
+    Inventory live Boolean test gates and their disabled empty state.
+    """
 
     observed: dict[str, tuple[str, int, str]] = {}
+
     for source in sources:
         path = str(source.relative_to(root))
         text = source.read_text(encoding="utf-8")
+
         for pattern in (RAW_ENV_BOOL, NORMALIZED_ENV):
             for match in pattern.finditer(text):
                 name = match.group("name")
@@ -551,12 +698,19 @@ def environment_inventory(root: Path, sources: list[Path]) -> list[Contract]:
                     and path == "tests/integration/slurm/run_wet_tests.sh"
                 ):
                     continue
+
                 line = text.count("\n", 0, match.start()) + 1
                 if text.splitlines()[line - 1].lstrip().startswith("#"):
                     continue
-                observed.setdefault(name, (path, line, lexical_owner(text, line)))
+
+                observed.setdefault(
+                    name,
+                    (path, line, lexical_owner(text, line)),
+                )
+
     inventory: list[Contract] = []
     fields = canonical_fields("Boolean environment variable")
+
     for name, (path, line, owner) in sorted(observed.items()):
         inventory.append(
             Contract(
@@ -570,21 +724,28 @@ def environment_inventory(root: Path, sources: list[Path]) -> list[Contract]:
                 value_form="optional explicit Boolean value",
                 direct_callers=(),
                 current_help_text="documented test gate",
-                relevant_tests=("tests/contract/repository/test_boolean_contracts.sh",),
+                relevant_tests=(
+                    "tests/contract/repository/test_boolean_contracts.sh",
+                ),
                 **fields,
-            )
+            ),
         )
+
     return inventory
 
 
 def adjacent_mode_inventory(root: Path) -> list[Contract]:
-    """Disposition Boolean-adjacent generic selectors as non-Boolean modes."""
+    """
+    Disposition Boolean-adjacent generic selectors as non-Boolean modes.
+    """
 
     path = root / "lib/bash/workflows/process_tables.sh"
     if not path.is_file():
         return []
+
     text = path.read_text(encoding="utf-8")
     rows: list[Contract] = []
+
     for owner, name, marker in (
         ("check_table_scaling_factor", "type", "str|string"),
         ("_validate_arg_csv", "valid", "IFS=',' read"),
@@ -592,13 +753,17 @@ def adjacent_mode_inventory(root: Path) -> list[Contract]:
         span = function_body_spans(text).get(owner)
         if span is None or marker not in span[2]:
             continue
+
         rows.append(
             Contract(
-                owner_identity=f"lib/bash/workflows/process_tables.sh::{owner}",
+                owner_identity=(
+                    f"lib/bash/workflows/process_tables.sh::{owner}"
+                ),
                 path="lib/bash/workflows/process_tables.sh",
                 line=span[0],
                 public_status=public_status(
-                    "lib/bash/workflows/process_tables.sh", owner
+                    "lib/bash/workflows/process_tables.sh",
+                    owner,
                 ),
                 input_surface="function positional argument",
                 name=name,
@@ -617,13 +782,16 @@ def adjacent_mode_inventory(root: Path) -> list[Contract]:
                 current_help_text="generic selector, not a Boolean value",
                 relevant_tests=(),
                 proposed_disposition="exclude from Boolean normalization",
-            )
+            ),
         )
+
     return rows
 
 
 def inventory_repository(root: Path) -> list[Contract]:
-    """Return the complete deterministic source-derived inventory."""
+    """
+    Return the complete deterministic source-derived inventory.
+    """
 
     root = root.resolve()
     sources = shell_sources(root)
@@ -642,6 +810,7 @@ def inventory_repository(root: Path) -> list[Contract]:
         ): row
         for row in rows
     }
+
     return sorted(
         unique.values(),
         key=lambda row: (
@@ -655,10 +824,23 @@ def inventory_repository(root: Path) -> list[Contract]:
 
 
 def scan_repository(root: Path) -> tuple[list[Finding], list[Contract]]:
-    """Audit normalization, documentation, and classification contracts."""
+    """
+    Audit normalization, documentation, and classification contracts.
+
+    Parameters
+    ----------
+    root : Path
+        Repository root used to resolve maintained paths.
+
+    Returns
+    -------
+    ordered, inventory : tuple[list[Finding], list[Contract]]
+        Repository findings and supporting inventory.
+    """
 
     root = root.resolve()
     sources = shell_sources(root)
+
     inventory = inventory_repository(root)
     findings: list[Finding] = []
 
@@ -667,13 +849,18 @@ def scan_repository(root: Path) -> tuple[list[Finding], list[Contract]]:
         text = source.read_text(encoding="utf-8")
         spans = function_body_spans(text)
         bodies = {owner: body for owner, (_, _, body) in spans.items()}
+
         for owner, (start, _, body) in spans.items():
             if owner == "normalize_bool":
                 continue
+
             if MANUAL_TRUE in body or MANUAL_FALSE in body:
                 offset = min(
                     value
-                    for value in (body.find(MANUAL_TRUE), body.find(MANUAL_FALSE))
+                    for value in (
+                        body.find(MANUAL_TRUE),
+                        body.find(MANUAL_FALSE),
+                    )
                     if value >= 0
                 )
                 line = start + body.count("\n", 0, offset) + 1
@@ -684,12 +871,13 @@ def scan_repository(root: Path) -> tuple[list[Finding], list[Contract]]:
                         line,
                         owner,
                         "manual Boolean token cases must use normalize_bool",
-                    )
+                    ),
                 )
 
         for line, source_line in enumerate(text.splitlines(), 1):
             if "normalize_bool" not in source_line:
                 continue
+
             if re.search(r"\b(?:xargs|sed|awk|strip|trim)\b", source_line):
                 findings.append(
                     Finding(
@@ -697,22 +885,29 @@ def scan_repository(root: Path) -> tuple[list[Finding], list[Contract]]:
                         path,
                         line,
                         lexical_owner(text, line),
-                        "do not trim or transform whitespace before normalize_bool",
-                    )
+                        (
+                            "do not trim or transform whitespace before "
+                            "normalize_bool"
+                        ),
+                    ),
                 )
 
         for match in RAW_ENV_BOOL.finditer(text):
             line = text.count("\n", 0, match.start()) + 1
             if text.splitlines()[line - 1].lstrip().startswith("#"):
                 continue
+
             findings.append(
                 Finding(
                     RULE_ENVIRONMENT,
                     path,
                     line,
                     lexical_owner(text, line),
-                    f"{match.group('name')} accepts only numeric 1; use normalize_test_gate",
-                )
+                    (
+                        f"{match.group('name')} accepts only numeric 1; use "
+                        f"normalize_test_gate"
+                    ),
+                ),
             )
 
         for heredoc in extract_help_heredocs(text):
@@ -723,6 +918,7 @@ def scan_repository(root: Path) -> tuple[list[Finding], list[Contract]]:
                 if contract.owner_identity == f"{path}::{heredoc.owner}"
                 and contract.classification == "Boolean positional argument"
             ]
+
             if bool_rows and POLICY_TEXT not in body:
                 findings.append(
                     Finding(
@@ -730,16 +926,22 @@ def scan_repository(root: Path) -> tuple[list[Finding], list[Contract]]:
                         path,
                         bool_rows[0].line,
                         heredoc.owner,
-                        "explicit Boolean help must state the exact canonical policy",
-                    )
+                        (
+                            "explicit Boolean help must state the exact "
+                            "canonical policy"
+                        ),
+                    ),
                 )
 
         for contract in inventory:
             if contract.path != path:
                 continue
+
             if contract.classification != "Boolean positional argument":
                 continue
+
             owner = contract.owner_identity.rsplit("::", 1)[1]
+
             if owner in bodies and not function_normalizes(owner, bodies):
                 findings.append(
                     Finding(
@@ -747,12 +949,17 @@ def scan_repository(root: Path) -> tuple[list[Finding], list[Contract]]:
                         path,
                         contract.line,
                         owner,
-                        f"explicit Boolean '{contract.name}' does not reach normalize_bool",
-                    )
+                        (
+                            f"explicit Boolean '{contract.name}' does not "
+                            f"reach normalize_bool"
+                        ),
+                    ),
                 )
 
     helper = root / "lib/bash/core/check_args.sh"
-    helper_text = helper.read_text(encoding="utf-8") if helper.is_file() else ""
+    helper_text = (
+        helper.read_text(encoding="utf-8") if helper.is_file() else ""
+    )
     helper_span = function_body_spans(helper_text).get("normalize_bool")
     helper_body = helper_span[2] if helper_span else ""
     required_fragments = (
@@ -763,6 +970,7 @@ def scan_repository(root: Path) -> tuple[list[Finding], list[Contract]]:
         '[[ -z "${val}" ]]',
         'val_lc="${val,,}"',
     )
+
     for fragment in required_fragments:
         if fragment not in helper_body:
             findings.append(
@@ -771,9 +979,13 @@ def scan_repository(root: Path) -> tuple[list[Finding], list[Contract]]:
                     "lib/bash/core/check_args.sh",
                     helper_span[0] if helper_span else 1,
                     "normalize_bool",
-                    f"canonical helper contract missing source fragment: {fragment}",
-                )
+                    (
+                        f"canonical helper contract missing source fragment: "
+                        f"{fragment}"
+                    ),
+                ),
             )
+
     if POLICY_TEXT not in helper_text:
         findings.append(
             Finding(
@@ -781,12 +993,20 @@ def scan_repository(root: Path) -> tuple[list[Finding], list[Contract]]:
                 "lib/bash/core/check_args.sh",
                 helper_span[0] if helper_span else 1,
                 "normalize_bool",
-                "canonical helper help must state strict whitespace and output policy",
-            )
+                (
+                    "canonical helper help must state strict whitespace and "
+                    "output policy"
+                ),
+            ),
         )
 
     test_readme = root / "tests/README.md"
-    readme_text = test_readme.read_text(encoding="utf-8") if test_readme.is_file() else ""
+    readme_text = (
+        test_readme.read_text(encoding="utf-8")
+        if test_readme.is_file()
+        else ""
+    )
+
     if ENV_POLICY_TEXT not in readme_text:
         findings.append(
             Finding(
@@ -795,12 +1015,13 @@ def scan_repository(root: Path) -> tuple[list[Finding], list[Contract]]:
                 1,
                 "test gates",
                 "Boolean environment gates must document the canonical policy",
-            )
+            ),
         )
 
     for contract in inventory:
         if contract.classification != "presence-only flag":
             continue
+
         if contract.value_form != "no-value flag":
             findings.append(
                 Finding(
@@ -809,11 +1030,17 @@ def scan_repository(root: Path) -> tuple[list[Finding], list[Contract]]:
                     contract.line,
                     contract.owner_identity.rsplit("::", 1)[1],
                     "presence-only flag must not consume a Boolean value",
-                )
+                ),
             )
 
     unique = {
-        (finding.rule_id, finding.path, finding.line, finding.owner, finding.message): finding
+        (
+            finding.rule_id,
+            finding.path,
+            finding.line,
+            finding.owner,
+            finding.message,
+        ): finding
         for finding in findings
     }
     ordered = sorted(
@@ -826,40 +1053,77 @@ def scan_repository(root: Path) -> tuple[list[Finding], list[Contract]]:
             finding.message,
         ),
     )
+
     return ordered, inventory
 
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
-    """Parse Boolean-contract audit arguments."""
+    """
+    Parse Boolean-contract audit arguments.
+
+    Parameters
+    ----------
+    argv : list[str] | None
+        Explicit arguments, or None to read the process arguments.
+
+    Returns
+    -------
+    arguments : argparse.Namespace
+        Parsed repository and output options.
+    """
 
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--root", type=Path, default=Path.cwd())
     parser.add_argument("--inventory-json", action="store_true")
     parser.add_argument("--inventory-output", type=Path)
+
     return parser.parse_args(argv)
 
 
 def main(argv: list[str] | None = None) -> int:
-    """Print stable findings, inventory counts, and optional JSON."""
+    """
+    Print stable findings, inventory counts, and optional JSON.
+
+    Parameters
+    ----------
+    argv : list[str] | None
+        Explicit arguments, or None to read the process arguments.
+
+    Returns
+    -------
+    status : int
+        Zero when the audit passes and one when findings remain.
+    """
 
     args = parse_args(argv)
     findings, inventory = scan_repository(args.root)
     payload = [contract.as_dict() for contract in inventory]
+
     if args.inventory_output:
         args.inventory_output.write_text(
             json.dumps(payload, indent=2, sort_keys=True) + "\n",
             encoding="utf-8",
         )
+
     if args.inventory_json:
         print(json.dumps(payload, indent=2, sort_keys=True))
     else:
         for finding in findings:
             print(finding.format())
+
         counts = Counter(contract.classification for contract in inventory)
         print(f"BOOLEAN.CONTRACTS: total={len(inventory)}")
+
         for classification in sorted(counts):
-            print(f"BOOLEAN.CONTRACTS: {classification}={counts[classification]}")
+            print(
+                (
+                    f"BOOLEAN.CONTRACTS: "
+                    f"{classification}={counts[classification]}"
+                ),
+            )
+
         print(f"BOOLEAN.CONTRACTS: findings={len(findings)}")
+
     return 1 if findings else 0
 
 

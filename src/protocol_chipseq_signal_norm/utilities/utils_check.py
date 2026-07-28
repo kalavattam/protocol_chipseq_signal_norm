@@ -31,7 +31,7 @@ from typing import Any, Literal
 
 assert sys.version_info >= (3, 11), "Python >= 3.11 required."
 
-OPS: dict[str, tuple] = {
+COMPARISON_OPERATORS: dict[str, tuple] = {
     "gt": (operator.gt, ">"),
     "ge": (operator.ge, ">="),
     "lt": (operator.lt, "<"),
@@ -40,233 +40,305 @@ OPS: dict[str, tuple] = {
     "ne": (operator.ne, "!="),
 }
 
-ALLOWED: tuple[str, ...] = ("bedGraph", "bedgraph", "bdg", "bg", "bed")
+ALLOWED_OUTPUT_FORMATS: tuple[str, ...] = (
+    "bedGraph",
+    "bedgraph",
+    "bdg",
+    "bg",
+    "bed",
+)
 
 
-def fmt_label(label: str) -> str:
+def format_label(label: str) -> str:
     """
     Format CLI-style label for error messages.
+
+    Parameters
+    ----------
+    label : str
+        Human-readable diagnostic label.
+
+    Returns
+    -------
+    formatted : str
+        A display label suitable for diagnostics.
     """
+
     return label if label.startswith("--") else f"--{label}"
 
 
-def cap_first(s: str) -> str:
+def capitalize_first(value: str) -> str:
     """
-    Ensure the first letter in a string is capitalized
+    Ensure the first letter in a string is capitalized.
+
+    Parameters
+    ----------
+    value : str
+        String value to capitalize.
+
+    Returns
+    -------
+    capitalized : str
+        The value with its first character capitalized.
     """
-    return s[:1].upper() + s[1:]
+
+    return value[:1].upper() + value[1:]
 
 
-def as_iter(x: Any) -> tuple[Any, ...]:
+def as_tuple(value: Any) -> tuple[Any, ...]:
     """
-    Return a tuple for any non-string, non-bytes, non-PathLike iterable;
-    otherwise wrap as a 1-tuple. Guarantees stable container semantics for
-    broadcasting and avoids per-character iteration on strings.
-    """
-    #  Treat obvious scalars as scalars
-    if isinstance(x, (str, bytes, os.PathLike)):
-        return (x,)
+    Normalize a value to stable tuple semantics.
 
-    #  Is it iterable?
+    Strings, bytes, and path-like values remain scalar rather than being
+    iterated character by character.
+
+    Parameters
+    ----------
+    value : Any
+        Scalar or iterable value to normalize.
+
+    Returns
+    -------
+    values : tuple[Any, ...]
+        A tuple view of the supplied scalar or iterable value.
+    """
+
+    if isinstance(value, (str, bytes, os.PathLike)):
+        return (value,)
+
     try:
-        iter(x)
+        iter(value)
     except TypeError:
-        return (x,)
+        return (value,)
 
-    #  If it is iterable, coerce to tuple to stabilize broadcasting semantics
     try:
-        return tuple(x)
+        return tuple(value)
     except TypeError:
-        #  Fallback for rare non-reiterable iterables
-        return (x,)
+        return (value,)
 
 
-def pair_val_thresh(vals: Any, threshs: Any) -> list[tuple[Any, Any]]:
+def pair_values_and_thresholds(
+    values: Any,
+    thresholds: Any,
+) -> list[tuple[Any, Any]]:
     """
-    Broadcast a scalar threshold across values, or pair elementwise when both
-    are iterables of the same length. Raises on length mismatch.
+    Pair values with scalar or elementwise thresholds.
+
+    A single threshold is broadcast; other threshold collections must match
+    the number of values.
+
+    Parameters
+    ----------
+    values : Any
+        Values to pair with one or more thresholds.
+    thresholds : Any
+        Scalar or elementwise thresholds paired with the values.
+
+    Returns
+    -------
+    pairs : list[tuple[Any, Any]]
+        Values paired with their applicable thresholds.
+
+    Raises
+    ------
+    ValueError
+        If a supplied value violates the validated contract.
     """
-    vals = as_iter(vals)
-    threshs = as_iter(threshs)
 
-    if len(threshs) == 1:
-        threshs = threshs * len(vals)
-    elif len(threshs) != len(vals):
-        raise ValueError(f"Length mismatch: {len(vals)=} vs {len(threshs)=}.")
+    normalized_values = as_tuple(values)
+    normalized_thresholds = as_tuple(thresholds)
 
-    return list(zip(vals, threshs, strict=True))
+    if len(normalized_thresholds) == 1:
+        normalized_thresholds *= len(normalized_values)
+    elif len(normalized_thresholds) != len(normalized_values):
+        raise ValueError(
+            "Length mismatch: "
+            f"values={len(normalized_values)} vs "
+            f"thresholds={len(normalized_thresholds)}.",
+        )
+
+    return list(
+        zip(
+            normalized_values,
+            normalized_thresholds,
+            strict=True,
+        ),
+    )
 
 
-def check_cmp(
+def validate_comparison(
     value: int | float | Iterable[int | float | None],
-    comp: str,
-    thresh: int | float | Iterable[int | float],
+    comparison: str,
+    threshold: int | float | Iterable[int | float],
     label: str,
-    allow_none: bool = True
+    allow_none: bool = True,
 ) -> None:
     """
-    Check that value(s) satisfy a comparison against a threshold. Works with
-    scalars or iterables; thresholds can be scalar (broadcast) or iterable
-    (paired).
+    Check that value(s) satisfy a comparison against a threshold.
+
+    Scalar thresholds are broadcast. Iterable thresholds are paired.
 
     Parameters
     ----------
-        value : int | float | iterable[int|float|None]
-            The number (or numbers) to validate. Elements may be None when
-            'allow_none' is True; such entries are skipped.
-        comp : str
-            One of 'gt', 'ge', 'lt', 'le', 'eq', 'ne'.
-        thresh : int | float | iterable[int|float]
-            The comparison target (scalar or per-element thresholds).
-        label : str
-            Short name used in error text (e.g., 'eps' becomes "Error: '--eps'
-            ...").
-        allow_none : bool
-            If True, silently skip None values; if False, None triggers an
-            error.
-
-    Returns
-    -------
-        None.
+    value : int | float | Iterable[int | float | None]
+        The number (or numbers) to validate. Elements may be None when
+        'allow_none' is True; such entries are skipped.
+    comparison : str
+        One of 'gt', 'ge', 'lt', 'le', 'eq', 'ne'.
+    threshold : int | float | Iterable[int | float]
+        The comparison target (scalar or per-element thresholds).
+    label : str
+        Short name used in error text (e.g., 'eps' becomes "Error: '--eps'
+        ...").
+    allow_none : bool
+        If True, silently skip None values; if False, None triggers an
+        error.
 
     Raises
     ------
-        ValueError
-            If any value violates the comparison or if the comparison itself is
-            invalid.
+    ValueError
+        If any value violates the comparison or if the comparison itself is
+        invalid.
     """
+
     try:
-        op, sym = OPS[comp]
-    except KeyError as e:
+        operation, symbol = COMPARISON_OPERATORS[comparison]
+    except KeyError as error:
         raise ValueError(
-            f"Unknown comparison '{comp}'. Expected one of "
-            f"{', '.join(OPS.keys())}."
-        ) from e
+            f"Unknown comparison '{comparison}'. Expected one of "
+            f"{', '.join(COMPARISON_OPERATORS)}.",
+        ) from error
 
-    lbl = fmt_label(label)
+    formatted_label = format_label(label)
 
-    for val, thr in pair_val_thresh(value, thresh):
-        if val is None:
+    for candidate_value, threshold_value in pair_values_and_thresholds(
+        value,
+        threshold,
+    ):
+        if candidate_value is None:
             if allow_none:
                 continue
-            raise ValueError(f"'{lbl}' must be {sym} {thr}.")
-        if not op(val, thr):
-            raise ValueError(f"'{lbl}' must be {sym} {thr}.")
+
+            raise ValueError(
+                f"'{formatted_label}' must be {symbol} {threshold_value}.",
+            )
+
+        if not operation(candidate_value, threshold_value):
+            raise ValueError(
+                f"'{formatted_label}' must be {symbol} {threshold_value}.",
+            )
 
 
-def check_parse_fil_out(
+def validate_output_path(
     value: os.PathLike[str] | str,
-    allowed: Iterable[str] = ALLOWED
+    allowed: Iterable[str] = ALLOWED_OUTPUT_FORMATS,
 ) -> tuple[str, str, bool]:
     """
-    Check and parse an output path, inferring format and gzip compression from
-    the extension.
+    Validate an output path and infer its format and compression.
 
     Parameters
     ----------
-        value : os.PathLike[str] | str
-            Output path provided by the user. If it ends with ".gz", output is
-            gzip-compressed.
-        allowed : Iterable[str] = ALLOWED
-            Iterable of allowed base extensions. Exact lowercase spellings are
-            accepted, and exact camelCase spellings explicitly present in
-            'allowed' (e.g., 'bedGraph') are also accepted. Leading dots are
-            ignored.
+    value : os.PathLike[str] | str
+        Output path provided by the user. If it ends with ".gz", output is
+        gzip-compressed.
+    allowed : Iterable[str]
+        Iterable of allowed base extensions. Exact lowercase spellings are
+        accepted, and exact camelCase spellings explicitly present in
+        'allowed' (e.g., 'bedGraph') are also accepted. Leading dots are
+        ignored. Defaults to 'ALLOWED_OUTPUT_FORMATS'.
 
     Returns
     -------
-        fil_out : str
-            Validated output filename, preserving the accepted extension
-            spelling and optional '.gz'.
-        ext : str
-            Validated output format token. Returns 'bedGraph' when that exact
-            spelling is supplied and accepted; otherwise returns the accepted
-            lowercase form ('bedgraph', 'bdg', 'bg', or 'bed').
-        is_gz : bool
-            True if the filename ends with '.gz', else False.
+    output_path, extension, is_compressed : tuple[str, str, bool]
+        Validated output filename, preserving the accepted extension
+        spelling and optional '.gz'; validated output format token, which is
+        'bedGraph' when that exact
+        spelling is supplied and accepted; otherwise returns the accepted
+        lowercase form ('bedgraph', 'bdg', 'bg', or 'bed'); and whether the
+        filename ends with '.gz'.
 
     Raises
     ------
-        ValueError
-            If the base extension is not one of the allowed values.
+    ValueError
+        If the base extension is not one of the allowed values.
 
     Notes
     -----
-        Refactored out of 'compute_signal.py' for modularization.
+    Refactored out of 'compute_signal.py' for modularization.
     """
-    #  Coerce PathLike to str
+
     value = os.fspath(value)
 
-    #  Preserve exact allowed spellings (e.g., 'bedGraph') while also
-    #  recognizing lowercase canonical forms
-    allowed_exact = {ext.lstrip(".") for ext in allowed}
-    allowed_lower = {ext.lower() for ext in allowed_exact}
+    # Preserve exact spellings such as `bedGraph` while recognizing aliases.
+    allowed_exact = {extension.lstrip(".") for extension in allowed}
+    allowed_lower = {extension.lower() for extension in allowed_exact}
 
-    #  Check if the extension is '.gz'
-    is_gz = value.endswith(".gz")
+    is_compressed = value.endswith(".gz")
 
-    #  If extension is '.gz', remove '.gz' and extract the base extension
-    base = value[:-3] if is_gz else value
-    stem, ext_raw = os.path.splitext(base)
+    base = value[:-3] if is_compressed else value
+    stem, raw_extension = os.path.splitext(base)
 
-    ext_pres = ext_raw.lstrip(".")
-    ext_low = ext_pres.lower()
+    preserved_extension = raw_extension.lstrip(".")
+    lowercase_extension = preserved_extension.lower()
 
-    #  Accept either:
-    #    1. an exact allowed spelling (e.g., 'bedGraph'), or
-    #    2. an all-lowercase spelling whose lowercase form is allowed
     if not (
-        ext_pres in allowed_exact or
-        (ext_pres == ext_low and ext_low in allowed_lower)
+        preserved_extension in allowed_exact
+        or (
+            preserved_extension == lowercase_extension
+            and lowercase_extension in allowed_lower
+        )
     ):
-        allowed_ord = tuple(ext.lstrip(".") for ext in allowed)
-        allowed_lst = ", ".join(f".{e}" for e in allowed_ord)
-        raise ValueError(
-            f"Invalid extension '{ext_pres}'; allowed: {allowed_lst}."
+        allowed_ordered = tuple(extension.lstrip(".") for extension in allowed)
+        allowed_text = ", ".join(
+            f".{extension}" for extension in allowed_ordered
         )
 
-    #  Reconstruct the final output filename while preserving the accepted
-    #  extension spelling
-    fil_out = (
-        f"{stem}.{ext_pres}.gz"
-        if is_gz
-        else f"{stem}.{ext_pres}"
+        raise ValueError(
+            f"Invalid extension '{preserved_extension}'; allowed: "
+            f"{allowed_text}.",
+        )
+
+    output_path = (
+        f"{stem}.{preserved_extension}.gz"
+        if is_compressed
+        else f"{stem}.{preserved_extension}"
     )
 
-    ext = "bedGraph" if ext_pres == "bedGraph" else ext_low
+    extension = (
+        "bedGraph"
+        if preserved_extension == "bedGraph"
+        else lowercase_extension
+    )
 
-    return fil_out, ext, is_gz
+    return output_path, extension, is_compressed
 
 
 def check_exists(
     path: os.PathLike[str] | str,
     kind: Literal["file", "dir", "any"] = "any",
-    label: str | None = None
+    label: str | None = None,
 ) -> None:
     """
     Ensure 'path' exists, optionally as a specific kind.
 
     Parameters
     ----------
-        path : str
-            File or directory path.
-        kind : {'file', 'dir', 'any'}, default 'any'
-            - 'file': require an existing regular file
-            - 'dir' : require an existing directory
-            - 'any' : existence check only (file, dir, or other)
-        label : str | None = None
-            Optional label for clearer error text (e.g., "First file (A)").
-
-    Returns
-    -------
-        None
+    path : os.PathLike[str] | str
+        File or directory path.
+    kind : Literal["file", "dir", "any"], default "any"
+        - 'file': require an existing regular file
+        - 'dir' : require an existing directory
+        - 'any' : existence check only (file, dir, or other)
+    label : str | None = None
+        Optional label for clearer error text (e.g., "First file (A)").
 
     Raises
     ------
-        FileNotFoundError
-            If the required path does not exist or is not of the requested
-            kind.
+    FileNotFoundError
+        If the required path does not exist or is not of the requested
+        kind.
     """
+
     p = os.fspath(path)
 
     if kind == "file":
@@ -277,30 +349,28 @@ def check_exists(
         ok, want = os.path.exists(p), "path"
     else:
         raise ValueError(
-            f"Unknown kind: {kind!r} (expected 'file', 'dir', or 'any')."
+            f"Unknown kind: {kind!r} (expected 'file', 'dir', or 'any').",
         )
 
     if ok:
         return
 
-    #  Decide how to render the noun in the error message
     what = label or want
 
-    #  Special-case bedGraph labels: keep 'bedGraph' lowercase even at start
-    #  of the message, e.g. "bedGraph A not found: ..."
+    # Keep `bedGraph` lowercase when it begins a diagnostic.
     if what.lower().startswith("bedgraph"):
-        msg_what = what
+        target_description = what
     else:
-        msg_what = cap_first(what)
+        target_description = capitalize_first(what)
 
-    raise FileNotFoundError(f"{msg_what} not found: {p}")
+    raise FileNotFoundError(f"{target_description} not found: {p}")
 
 
 def check_writable(
     path: os.PathLike[str] | str,
     kind: Literal["file", "dir"] = "file",
     must_exist: bool = False,
-    label: str | None = None
+    label: str | None = None,
 ) -> None:
     """
     Ensure the writability of a file or directory.
@@ -312,62 +382,58 @@ def check_writable(
 
     Parameters
     ----------
-        path : str
-            Target file path ('kind="file"') or directory path ('kind="dir"').
-        kind : {'file', 'dir'}, default 'file'
-            What to validate.
-        must_exist : bool
-            When 'kind="file"' and the file already exists, require the file
-            itself to be writable (default: False).
-        label : str | None
-            Optional label for nicer error text.
-
-    Returns
-    -------
-        None.
+    path : os.PathLike[str] | str
+        Target file path ('kind="file"') or directory path ('kind="dir"').
+    kind : Literal["file", "dir"], default "file"
+        What to validate.
+    must_exist : bool
+        When 'kind="file"' and the file already exists, require the file
+        itself to be writable (default: False).
+    label : str | None
+        Optional label for nicer error text.
 
     Raises
     ------
-        FileNotFoundError
-            If the relevant directory (or the directory itself when
-            'kind="dir"') does not exist.
-        PermissionError
-            If the directory (or file, when 'must_exist=True') is not writable.
-        IsADirectoryError
-            If the path points to a directory when a file is expected.
+    FileNotFoundError
+        If the relevant directory (or the directory itself when
+        'kind="dir"') does not exist.
+    PermissionError
+        If the directory (or file, when 'must_exist=True') is not writable.
+    IsADirectoryError
+        If the path points to a directory when a file is expected.
     """
+
     p = os.fspath(path)
 
     if kind == "dir":
         dir_path = p
+
         if not os.path.isdir(dir_path):
             what = label or "directory"
             raise FileNotFoundError(
-                f"{cap_first(what)} does not exist: {dir_path}"
+                f"{capitalize_first(what)} does not exist: {dir_path}",
             )
-        #  To create files within directories, check for write and execute
-        #  permissions
+
         if not os.access(dir_path, os.W_OK | os.X_OK):
             what = label or "directory"
             raise PermissionError(
-                f"No write permission for {what.lower()}: {dir_path}"
+                f"No write permission for {what.lower()}: {dir_path}",
             )
+
         return
 
-    #  Otherwise, handle when 'kind == "file"'
     if os.path.isdir(p):
-        raise IsADirectoryError(
-            f"Path points to a directory, not a file: {p}"
-        )
+        raise IsADirectoryError(f"Path points to a directory, not a file: {p}")
 
     dir_path = os.path.dirname(p) or "."
     if not os.path.isdir(dir_path):
         raise FileNotFoundError(f"Output directory does not exist: {dir_path}")
+
     if not os.access(dir_path, os.W_OK | os.X_OK):
         raise PermissionError(
-            f"No write permission for output directory: {dir_path}"
+            f"No write permission for output directory: {dir_path}",
         )
 
     if must_exist and os.path.exists(p) and not os.access(p, os.W_OK):
         what = label or "file"
-        raise PermissionError(f"{cap_first(what)} is not writable: {p}")
+        raise PermissionError(f"{capitalize_first(what)} is not writable: {p}")

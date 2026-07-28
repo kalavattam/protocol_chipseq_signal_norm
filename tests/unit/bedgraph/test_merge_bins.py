@@ -28,7 +28,7 @@ def run_merge(
     tmp_path: Path,
     text: str,
     *,
-    dp: int | None = None,
+    decimal_places: int | None = None,
     eps: float | None = None,
     skp_pfx: tuple[str, ...] = DEF_SKP_PFX,
 ) -> str:
@@ -39,7 +39,7 @@ def run_merge(
     merge_bins(
         str(fil_in),
         str(fil_out),
-        dp=dp,
+        decimal_places=decimal_places,
         eps=eps,
         skp_pfx=skp_pfx,
     )
@@ -47,27 +47,27 @@ def run_merge(
     return fil_out.read_text(encoding="utf-8")
 
 
-def test_format_value_rounds_finite_values_and_suppresses_negative_zero():
+def test_format_value_rounds_and_suppresses_negative_zero() -> None:
     assert format_value("-0.0001", 2, -0.0001) == "0.00"
     assert format_value("1.234", 2, 1.234) == "1.23"
 
 
-def test_format_value_canonicalizes_nonfinite_tokens():
+def test_format_value_canonicalizes_nonfinite_tokens() -> None:
     assert format_value("NaN", None, None) == "nan"
     assert format_value("+Inf", None, None) == "inf"
     assert format_value("-INF", None, None) == "-inf"
 
 
-def test_format_value_preserves_unrounded_tokens():
+def test_format_value_preserves_unrounded_tokens() -> None:
     assert format_value("0.500000", None, 0.5) == "0.500000"
 
 
-def test_validate_merge_options_accepts_none_and_zero_values():
+def test_validate_merge_options_accepts_none_and_zero_values() -> None:
     validate_merge_options(None, None)
     validate_merge_options(0, 0.0)
 
 
-def test_merge_bins_exact_text_mode(tmp_path):
+def test_merge_bins_exact_text_mode(tmp_path: Path) -> None:
     observed = run_merge(
         tmp_path,
         "\n".join(
@@ -77,17 +77,14 @@ def test_merge_bins_exact_text_mode(tmp_path):
                 "chrI 20 30 1.0",
                 "chrI 30 40 1.0",
                 "",
-            ]
+            ],
         ),
     )
 
-    assert observed == (
-        "chrI\t0\t20\t1\n"
-        "chrI\t20\t40\t1.0\n"
-    )
+    assert observed == ("chrI\t0\t20\t1\nchrI\t20\t40\t1.0\n")
 
 
-def test_merge_bins_flushes_on_midstream_header(tmp_path):
+def test_merge_bins_flushes_on_midstream_header(tmp_path: Path) -> None:
     observed = run_merge(
         tmp_path,
         "\n".join(
@@ -98,18 +95,16 @@ def test_merge_bins_flushes_on_midstream_header(tmp_path):
                 "chrI 20 30 2",
                 "chrI 30 40 2",
                 "",
-            ]
+            ],
         ),
     )
 
     assert observed == (
-        "chrI\t0\t20\t2\n"
-        "track type=bedGraph\n"
-        "chrI\t20\t40\t2\n"
+        "chrI\t0\t20\t2\ntrack type=bedGraph\nchrI\t20\t40\t2\n"
     )
 
 
-def test_merge_bins_rounding_mode(tmp_path):
+def test_merge_bins_rounding_mode(tmp_path: Path) -> None:
     observed = run_merge(
         tmp_path,
         "\n".join(
@@ -118,18 +113,15 @@ def test_merge_bins_rounding_mode(tmp_path):
                 "chrI 10 20 1.002",
                 "chrI 20 30 1.014",
                 "",
-            ]
+            ],
         ),
-        dp=2,
+        decimal_places=2,
     )
 
-    assert observed == (
-        "chrI\t0\t20\t1.00\n"
-        "chrI\t20\t30\t1.01\n"
-    )
+    assert observed == ("chrI\t0\t20\t1.00\nchrI\t20\t30\t1.01\n")
 
 
-def test_merge_bins_epsilon_mode(tmp_path):
+def test_merge_bins_epsilon_mode(tmp_path: Path) -> None:
     observed = run_merge(
         tmp_path,
         "\n".join(
@@ -138,18 +130,15 @@ def test_merge_bins_epsilon_mode(tmp_path):
                 "chrI 10 20 1.0004",
                 "chrI 20 30 1.0020",
                 "",
-            ]
+            ],
         ),
         eps=0.001,
     )
 
-    assert observed == (
-        "chrI\t0\t20\t1.0000\n"
-        "chrI\t20\t30\t1.0020\n"
-    )
+    assert observed == ("chrI\t0\t20\t1.0000\nchrI\t20\t30\t1.0020\n")
 
 
-def test_merge_bins_rounding_plus_epsilon_mode(tmp_path):
+def test_merge_bins_rounding_plus_epsilon_mode(tmp_path: Path) -> None:
     observed = run_merge(
         tmp_path,
         "\n".join(
@@ -158,19 +147,16 @@ def test_merge_bins_rounding_plus_epsilon_mode(tmp_path):
                 "chrI 10 20 1.009",
                 "chrI 20 30 1.021",
                 "",
-            ]
+            ],
         ),
-        dp=2,
+        decimal_places=2,
         eps=0.01,
     )
 
-    assert observed == (
-        "chrI\t0\t20\t1.00\n"
-        "chrI\t20\t30\t1.02\n"
-    )
+    assert observed == ("chrI\t0\t20\t1.00\nchrI\t20\t30\t1.02\n")
 
 
-def test_merge_bins_never_merges_nonfinite_values(tmp_path):
+def test_merge_bins_never_merges_nonfinite_values(tmp_path: Path) -> None:
     observed = run_merge(
         tmp_path,
         "\n".join(
@@ -180,7 +166,7 @@ def test_merge_bins_never_merges_nonfinite_values(tmp_path):
                 "chrI 20 30 inf",
                 "chrI 30 40 inf",
                 "",
-            ]
+            ],
         ),
     )
 
@@ -192,21 +178,27 @@ def test_merge_bins_never_merges_nonfinite_values(tmp_path):
     )
 
 
-def test_merge_bins_rejects_malformed_rows(tmp_path):
+def test_merge_bins_rejects_malformed_rows(tmp_path: Path) -> None:
     with pytest.raises(ValueError, match="Malformed bedGraph line"):
         run_merge(tmp_path, "chrI 0 10\n")
 
 
-def test_merge_bins_rejects_nonpositive_intervals(tmp_path):
+def test_merge_bins_rejects_nonpositive_intervals(tmp_path: Path) -> None:
     with pytest.raises(ValueError, match="Non-positive interval width"):
         run_merge(tmp_path, "chrI 10 10 1\n")
 
 
-def test_merge_bins_rejects_negative_rounding_precision(tmp_path):
+def test_merge_bins_rejects_negative_rounding_precision(
+    tmp_path: Path,
+) -> None:
     with pytest.raises(ValueError, match="'--dp' must be >= 0"):
-        run_merge(tmp_path, "chrI 0 10 1\n", dp=-1)
+        run_merge(
+            tmp_path,
+            "chrI 0 10 1\n",
+            decimal_places=-1,
+        )
 
 
-def test_merge_bins_rejects_negative_epsilon(tmp_path):
+def test_merge_bins_rejects_negative_epsilon(tmp_path: Path) -> None:
     with pytest.raises(ValueError, match="'--eps' must be >= 0"):
         run_merge(tmp_path, "chrI 0 10 1\n", eps=-0.1)

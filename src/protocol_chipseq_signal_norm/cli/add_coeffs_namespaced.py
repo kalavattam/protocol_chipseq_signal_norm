@@ -15,24 +15,18 @@
 """
 Augment coefficient tables with namespaced raw and normalized columns.
 
-Usage
------
-python add_coeffs_namespaced.py <file> [--in_place | --fil_out <file>]
-
-Parameters
-----------
-Input table path, output path, in-place mode, and decimal precision are parsed
-by 'parse_args()'.
-
-Returns
--------
-Writes a headered TSV or TSV.GZ containing original coefficient values and
+The CLI accepts input and output paths, in-place mode, and decimal precision.
+It writes a headered TSV or TSV.GZ containing original coefficient values and
 values divided by reference statistics.
 
 Notes
 -----
 The script loads the coefficient table into memory and computes reference
 statistics across samples.
+
+Examples
+--------
+python add_coeffs_namespaced.py <file> [--in_place | --fil_out <file>]
 """
 
 from __future__ import annotations
@@ -42,119 +36,385 @@ import gzip
 import math
 import os
 import sys
+from typing import TextIO
 
 from protocol_chipseq_signal_norm.utilities.utils_cli import (
     CapArgumentParser,
     add_help_cap,
 )
 
+REFERENCE_KEYS = ("min", "median", "mean", "gmean", "hmean", "max")
+COEFFICIENT_NAMES = (
+    "pair_s",
+    "pair_alpha_rxinput",
+    "ip_alpha_ip",
+    "in_alpha_in",
+)
+
 
 # TODO: Integrate this script with the shared table/formatting modules where
-#       possible, then delete or move duplicated helper functions below.
-def open_maybe_gz_in(path: str):
+# possible, then delete or move duplicated helper functions below.
+def open_maybe_gzip_input(path: str) -> TextIO:
     """
     Open a text input file, transparently handling .gz paths.
     """
+
     if path.endswith(".gz"):
         return gzip.open(path, "rt", encoding="utf-8", newline="")
 
     return open(path, encoding="utf-8", newline="")
 
 
-def open_maybe_gz_out(path: str):
+def open_maybe_gzip_output(path: str) -> TextIO:
     """
     Open a text output file, transparently handling .gz paths.
     """
+
     if path.endswith(".gz"):
         return gzip.open(path, "wt", encoding="utf-8", newline="")
 
     return open(path, "w", encoding="utf-8", newline="")
 
 
-def median(xs: list[float]) -> float:
+def median(values: list[float]) -> float:
     """
     Return the median of a non-empty list of floats.
     """
-    ys = sorted(xs)
-    n = len(ys)
-    if n == 0:
+
+    ordered_values = sorted(values)
+    count = len(ordered_values)
+    if count == 0:
         raise ValueError("median(): empty list")
-    mid = n // 2
-    if n % 2 == 1:
-        return ys[mid]
 
-    return 0.5 * (ys[mid - 1] + ys[mid])
+    midpoint = count // 2
+    if count % 2 == 1:
+        return ordered_values[midpoint]
+
+    return 0.5 * (ordered_values[midpoint - 1] + ordered_values[midpoint])
 
 
-def gmean(xs: list[float]) -> float:
+def gmean(values: list[float]) -> float:
     """
     Return the geometric mean of positive floats.
     """
-    if any(x <= 0 for x in xs):
+
+    if any(value <= 0 for value in values):
         raise ValueError("gmean() requires all values > 0")
 
-    return math.exp(sum(math.log(x) for x in xs) / len(xs))
+    return math.exp(
+        sum(math.log(value) for value in values) / len(values),
+    )
 
 
-def hmean(xs: list[float]) -> float:
+def hmean(values: list[float]) -> float:
     """
     Return the harmonic mean of positive floats.
     """
-    if any(x <= 0 for x in xs):
+
+    if any(value <= 0 for value in values):
         raise ValueError("hmean() requires all values > 0")
 
-    return len(xs) / sum(1.0 / x for x in xs)
+    return len(values) / sum(1.0 / value for value in values)
 
 
-def safe_refs(xs: list[float], label: str) -> dict[str, float]:
+def safe_refs(values: list[float], label: str) -> dict[str, float]:
     """
-    Compute reference stats (min, median, mean, and max, plus optional gmean
-    and hmean).
+    Return conventional reference statistics for one float series.
     """
+
     refs: dict[str, float] = {}
-    refs["min"] = min(xs)
-    refs["median"] = median(xs)
-    refs["mean"] = sum(xs) / len(xs)
-    refs["max"] = max(xs)
+    refs["min"] = min(values)
+    refs["median"] = median(values)
+    refs["mean"] = sum(values) / len(values)
+    refs["max"] = max(values)
 
     try:
-        refs["gmean"] = gmean(xs)
+        refs["gmean"] = gmean(values)
     except ValueError as e:
         print(f"warning: {label}: gmean unavailable: {e}", file=sys.stderr)
 
     try:
-        refs["hmean"] = hmean(xs)
+        refs["hmean"] = hmean(values)
     except ValueError as e:
         print(f"warning: {label}: hmean unavailable: {e}", file=sys.stderr)
 
     return refs
 
 
+def _parse_tsv_rows(
+    handle: TextIO,
+) -> tuple[list[str], list[dict[str, str]]]:
+    """
+    Parse a headered TSV and reject malformed rows.
+
+    Parameters
+    ----------
+    handle : TextIO
+        Text stream positioned at the TSV header.
+
+    Returns
+    -------
+    fields, rows : tuple[list[str], list[dict[str, str]]]
+        Header fields and nonblank data rows keyed by those fields.
+
+    Raises
+    ------
+    ValueError
+        If the header is absent or a data row has the wrong field count.
+    """
+
+    header_line = handle.readline()
+
+    if not header_line:
+        raise ValueError("Input has no header.")
+
+    header_line = header_line.rstrip("\n").rstrip("\r")
+    fields = header_line.split("\t")
+
+    if not fields or any(field == "" for field in fields):
+        raise ValueError("Invalid header: empty field name found.")
+
+    rows: list[dict[str, str]] = []
+
+    for line in handle:
+        line = line.rstrip("\n").rstrip("\r")
+
+        if line == "":
+            continue
+
+        parts = line.split("\t")
+
+        if len(parts) != len(fields):
+            raise ValueError(
+                f"Malformed TSV row: expected {len(fields)} fileds, but "
+                f"got {len(parts)}: {line!r}.",
+            )
+
+        rows.append(dict(zip(fields, parts, strict=True)))
+
+    return fields, rows
+
+
+def _coefficient_columns(fields: list[str]) -> dict[str, str]:
+    """
+    Resolve canonical coefficient names to input columns.
+    """
+
+    field_names = set(fields)
+
+    if "sample" not in field_names:
+        raise ValueError("Missing required column: 'sample'.")
+
+    columns = {
+        "pair_s": "pair_s" if "pair_s" in field_names else "s",
+        "pair_alpha_rxinput": (
+            "pair_alpha_rxinput"
+            if "pair_alpha_rxinput" in field_names
+            else "alpha_rxinput"
+        ),
+        "ip_alpha_ip": (
+            "ip_alpha_ip" if "ip_alpha_ip" in field_names else "alpha_ip"
+        ),
+        "in_alpha_in": (
+            "in_alpha_in" if "in_alpha_in" in field_names else "alpha_in"
+        ),
+    }
+
+    for column in columns.values():
+        if column not in field_names:
+            raise ValueError(f"Missing required column: '{column}'.")
+
+    return columns
+
+
+def _column_as_floats(
+    rows: list[dict[str, str]],
+    column: str,
+) -> list[float]:
+    """
+    Return one whitespace-trimmed input column as floats.
+    """
+
+    return [float(row[column].strip()) for row in rows]
+
+
+def _reference_statistics(
+    rows: list[dict[str, str]],
+    columns: dict[str, str],
+) -> dict[str, dict[str, float]]:
+    """
+    Calculate available reference statistics for every coefficient family.
+    """
+
+    return {
+        name: safe_refs(_column_as_floats(rows, columns[name]), name)
+        for name in COEFFICIENT_NAMES
+    }
+
+
+def _output_fields() -> list[str]:
+    """
+    Return canonical output fields in rendering order.
+    """
+
+    fields = ["sample"]
+
+    for name in COEFFICIENT_NAMES:
+        fields.append(name)
+        fields.extend(f"{name}_{key}" for key in REFERENCE_KEYS)
+
+    return fields
+
+
+def _adjusted_value(
+    value: float,
+    references: dict[str, float],
+    key: str,
+    format_spec: str,
+) -> str:
+    """
+    Format one reference-adjusted value or an empty unavailable field.
+    """
+
+    reference = references.get(key)
+    if reference is None or reference == 0:
+        return ""
+
+    return format_spec.format(value / reference)
+
+
+def _augmented_rows(
+    rows: list[dict[str, str]],
+    columns: dict[str, str],
+    references: dict[str, dict[str, float]],
+    decimal_places: int,
+) -> list[dict[str, str]]:
+    """
+    Return namespaced raw and reference-adjusted output rows.
+    """
+
+    format_spec = f"{{:.{decimal_places}f}}"
+    output_rows: list[dict[str, str]] = []
+
+    for row in rows:
+        values = {
+            name: float(row[columns[name]]) for name in COEFFICIENT_NAMES
+        }
+        output_row: dict[str, str] = {"sample": row["sample"]}
+
+        for name in COEFFICIENT_NAMES:
+            output_row[name] = format_spec.format(values[name])
+
+            for key in REFERENCE_KEYS:
+                output_row[f"{name}_{key}"] = _adjusted_value(
+                    values[name],
+                    references[name],
+                    key,
+                    format_spec,
+                )
+
+        output_rows.append(output_row)
+
+    return output_rows
+
+
+def _write_tsv(
+    handle: TextIO,
+    fields: list[str],
+    rows: list[dict[str, str]],
+) -> None:
+    """
+    Write headered rows as a field-ordered TSV.
+    """
+
+    handle.write("\t".join(fields) + "\n")
+
+    for row in rows:
+        handle.write("\t".join(row.get(field, "") for field in fields) + "\n")
+
+
+def _write_output(
+    args: argparse.Namespace,
+    input_path: str,
+    fields: list[str],
+    rows: list[dict[str, str]],
+) -> None:
+    """
+    Write an augmented table to stdout, a selected path, or the input path.
+    """
+
+    if not args.in_place and args.fil_out is None:
+        _write_tsv(sys.stdout, fields, rows)
+
+        return
+
+    output_path = input_path if args.in_place else args.fil_out
+    if output_path is None:
+        raise AssertionError("an output path is required outside stdout mode")
+
+    if args.in_place:
+        temporary_path = (
+            f"{input_path}.tmp.gz"
+            if input_path.endswith(".gz")
+            else f"{input_path}.tmp"
+        )
+    else:
+        temporary_path = output_path
+
+    with open_maybe_gzip_output(temporary_path) as handle:
+        _write_tsv(handle, fields, rows)
+
+    if args.in_place:
+        os.replace(temporary_path, output_path)
+
+
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     """
     Parse CLI args for reading a coefficients TSV and writing an augmented TSV.
+
+    Parameters
+    ----------
+    argv : list[str] | None
+        Explicit arguments, or None to read the process arguments.
+
+    Returns
+    -------
+    arguments : argparse.Namespace
+        Parsed coefficient-input and output options.
+
+    Raises
+    ------
+    SystemExit
+        If argument parsing fails or help is requested.
     """
+
     p = CapArgumentParser()
     add_help_cap(p)
-    p.add_argument("fil_in", help="Input file path. coefficients.all.tsv[.gz]")
     p.add_argument(
-        "-fo", "--fil_out",
+        "fil_in",
+        help="Input file path: coefficients.all.tsv[.gz].",
+    )
+    p.add_argument(
+        "-fo",
+        "--fil_out",
         dest="fil_out",
         default=None,
         help=(
             "Output file path. Output path (supports .gz). If omitted, write "
             "to stdout."
-        )
+        ),
     )
     p.add_argument(
-        "-ip", "--in_place",
+        "-ip",
+        "--in_place",
         dest="in_place",
         action="store_true",
         default=False,
-        help="Overwrite fil_in (writes a temp file then replaces)."
+        help="Overwrite fil_in (writes a temp file then replaces).",
     )
     p.add_argument(
-        "-dp", "--dp",
+        "-dp",
+        "--dp",
         dest="dp",
         type=int,
         default=24,
@@ -162,244 +422,59 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
             "Maximum number of decimal places retained for finite emitted "
             "values. Decimal precision for emitted numeric fields (default: "
             "%(default)s)."
-        )
+        ),
     )
+
     return p.parse_args(argv)
 
 
 def main(argv: list[str] | None = None) -> int:
     """
     Read coefficient rows, add namespaced columns, and return an exit status.
+
+    Parameters
+    ----------
+    argv : list[str] | None
+        Explicit arguments, or None to read the process arguments.
+
+    Returns
+    -------
+    status : int
+        Zero after the augmented table is written successfully.
+
+    Raises
+    ------
+    ValueError
+        If the coefficient table or requested reference data are invalid.
     """
 
-    #  Resolve argv: default to CLI args (sys.argv[1:]) unless caller supplied
     argv_parse = sys.argv[1:] if argv is None else argv
+
     if not argv_parse:
-        #  No args: show help and exit cleanly
         parse_args(["-h"])
+
         return 0
 
-    #  Parse CLI options into an argparse.Namespace
     args = parse_args(argv_parse)
 
-    #  Validate assignment to args.dp
     if args.dp < 0:
         raise ValueError("'--dp' must be >= 0.")
 
-    #  Cache input path for readability, reuse
     in_path = args.fil_in
 
-    #  Disallow ambiguous output mode: can't request both in-place and fil_out
     if args.in_place and args.fil_out is not None:
         raise ValueError("Use either '--in_place' or '--fil_out', not both.")
 
-    #  If no fil_out and not in-place, write to stdout
-    write_stdout = (not args.in_place) and (args.fil_out is None)
+    with open_maybe_gzip_input(in_path) as handle:
+        input_fields, rows = _parse_tsv_rows(handle)
 
-    def parse_tsv_rows(handle) -> tuple[list[str], list[dict[str, str]]]:
-        """
-        Parse a headered TSV into (fields, rows) dicts; rejects malformed rows.
-        """
-        #  Read the header line (first row) to get column names
-        header_line = handle.readline()
-        if not header_line:
-            #  Error if empty file (or missing header)
-            raise ValueError("Input has no header.")
+    columns = _coefficient_columns(input_fields)
+    references = _reference_statistics(rows, columns)
 
-        #  Strip trailing newline(s) so split() doesn’t keep them
-        header_line = header_line.rstrip("\n").rstrip("\r")
+    output_fields = _output_fields()
+    output_rows = _augmented_rows(rows, columns, references, args.dp)
 
-        #  Split header into field names on tabs
-        fields = header_line.split("\t")
-
-        #  Do header validation: must have names, none can be empty
-        if not fields or any(f == "" for f in fields):
-            raise ValueError("Invalid header: empty field name found.")
-
-        #  Accumulate data rows as dicts keyed by header field names
-        rows: list[dict[str, str]] = []
-        for line in handle:
-            #  Strip trailing newline(s)
-            line = line.rstrip("\n").rstrip("\r")
-
-            #  Skip blank lines (defensive)
-            if line == "":
-                continue
-
-            #  Split row into tab-separated fields
-            parts = line.split("\t")
-
-            #  Enforce rectangular TSV: every row must have exactly len(fields)
-            #  cols
-            if len(parts) != len(fields):
-                raise ValueError(
-                    f"Malformed TSV row: expected {len(fields)} fileds, but "
-                    f"got {len(parts)}: {line!r}."
-                )
-
-            #  Convert the row into a dict: {field_name: value_string, ...}
-            rows.append(dict(zip(fields, parts, strict=True)))
-
-        #  Return header fields and all parsed row dicts
-        return fields, rows
-
-    #  Read and parse the entire input TSV into memory (header and row dicts)
-    with open_maybe_gz_in(in_path) as fh:
-        in_fields, rows = parse_tsv_rows(fh)
-
-    #  Convert header fields to a set for fast membership checks
-    fns = set(in_fields)
-
-    #  Ensure TSV has column 'sample', which is needed for indexing (row keys)
-    if "sample" not in fns:
-        raise ValueError("Missing required column: 'sample'.")
-
-    #  Prefer namespaced columns if present, else fall back to legacy names
-    col_s = "pair_s" if "pair_s" in fns else "s"
-
-    #  Choose rxinput column name (namespaced preferred; legacy fallback)
-    if "pair_alpha_rxinput" in fns:
-        col_arx = "pair_alpha_rxinput"
-    else:
-        col_arx = "alpha_rxinput"
-
-    #  Choose IP/input alpha columns (namespaced preferred; legacy fallback)
-    col_aip = "ip_alpha_ip" if "ip_alpha_ip" in fns else "alpha_ip"
-    col_ain = "in_alpha_in" if "in_alpha_in" in fns else "alpha_in"
-
-    #  Fail fast if any required coefficient column is missing
-    for col in (col_s, col_arx, col_aip, col_ain):
-        if col not in fns:
-            raise ValueError(f"Missing required column: '{col}'.")
-
-    def col_as_floats(col: str) -> list[float]:
-        """
-        Extract one column from rows as floats (whitespace-trimmed).
-        """
-        out: list[float] = []
-        for r in rows:
-            v = r[col].strip()
-            out.append(float(v))
-        return out
-
-    #  Pull each coefficient column as a float vector (one value per sample)
-    s_vals = col_as_floats(col_s)
-    arx_vals = col_as_floats(col_arx)
-    aip_vals = col_as_floats(col_aip)
-    ain_vals = col_as_floats(col_ain)
-
-    #  Compute reference stats per coefficient (min, median, means, and max,
-    #  etc.)
-    refs_pair_s = safe_refs(s_vals, "pair_s")
-    refs_pair_arx = safe_refs(arx_vals, "pair_alpha_rxinput")
-    refs_ip_aip = safe_refs(aip_vals, "ip_alpha_ip")
-    refs_in_ain = safe_refs(ain_vals, "in_alpha_in")
-
-    #  Define which reference stats to emit (and in what order) per coefficient
-    ref_keys = ["min", "median", "mean", "gmean", "hmean", "max"]
-
-    #  Build the output header fields in “like-with-like” grouped order
-    new_fields: list[str] = []
-    for name in (
-        "pair_s",
-        "pair_alpha_rxinput",
-        "ip_alpha_ip",
-        "in_alpha_in",
-    ):
-        #  Raw coefficient first, then its per-stat scaled variants
-        new_fields.append(name)
-        for k in ref_keys:
-            new_fields.append(f"{name}_{k}")
-
-    #  Final output header: sample id + all generated fields
-    out_fields = ["sample", *new_fields]
-
-    #  Cache decimal precision and build a reusable fixed-point format string
-    dp = args.dp
-    fmt = f"{{:.{dp}f}}"
-
-    def adj(x: float, ref: dict[str, float], key: str) -> str:
-        """
-        Return x/ref[key] as a formatted string, or "" if key missing/invalid.
-        """
-        if key not in ref:
-            return ""
-        r = ref[key]
-        if r == 0:
-            return ""
-        return fmt.format(x / r)
-
-    def write_tsv(
-        handle, fields: list[str], out_rows: list[dict[str, str]]
-    ) -> None:
-        """
-        Write header and rows as TSV in 'fields' order (missing keys: "").
-        """
-        handle.write("\t".join(fields) + "\n")
-        for rr in out_rows:
-            handle.write("\t".join(rr.get(f, "") for f in fields) + "\n")
-
-    #  Build output rows: one output dict per input sample
-    out_rows: list[dict[str, str]] = []
-    for r in rows:
-        #  Parse the four coefficient values for given sample row
-        s = float(r[col_s])
-        arx = float(r[col_arx])
-        aip = float(r[col_aip])
-        ain = float(r[col_ain])
-
-        #  Map coefficient names to values and to reference-stat dicts
-        vals = {
-            "pair_s": s,
-            "pair_alpha_rxinput": arx,
-            "ip_alpha_ip": aip,
-            "in_alpha_in": ain,
-        }
-        refs = {
-            "pair_s": refs_pair_s,
-            "pair_alpha_rxinput": refs_pair_arx,
-            "ip_alpha_ip": refs_ip_aip,
-            "in_alpha_in": refs_in_ain,
-        }
-
-        #  Fill one output row: sample id, raw coeffs, scaled-by-stat values
-        out_row: dict[str, str] = {"sample": r["sample"]}
-        for name in (
-            "pair_s",
-            "pair_alpha_rxinput",
-            "ip_alpha_ip",
-            "in_alpha_in",
-        ):
-            out_row[name] = fmt.format(vals[name])
-            for k in ref_keys:
-                out_row[f"{name}_{k}"] = adj(vals[name], refs[name], k)
-
-        #  Accumulate row dicts for writing
-        out_rows.append(out_row)
-
-    #  Write to stdout or to a file, optionally via a temp file for in-place
-    if write_stdout:
-        write_tsv(sys.stdout, out_fields, out_rows)
-    else:
-        #  Pick output path: in-place uses a temp file then atomic replace
-        if args.in_place:
-            if in_path.endswith(".gz"):
-                tmp_path = f"{in_path}.tmp.gz"
-            else:
-                tmp_path = f"{in_path}.tmp"
-            out_path = in_path
-        else:
-            tmp_path = args.fil_out  # args.fil_out guaranteed non-'None' here
-            out_path = args.fil_out
-
-        #  Write the TSV to the chosen destination (gzip if tmp_path endswith
-        #  .gz)
-        with open_maybe_gz_out(tmp_path) as out_fh:
-            write_tsv(out_fh, out_fields, out_rows)
-
-        #  If in-place mode, atomically replace the original with the temp file
-        if args.in_place:
-            os.replace(tmp_path, out_path)
+    _write_output(args, in_path, output_fields, output_rows)
 
     return 0
 

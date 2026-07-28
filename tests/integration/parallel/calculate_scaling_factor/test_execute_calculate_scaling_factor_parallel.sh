@@ -156,11 +156,11 @@ if \
             --env_nam "${env_nam}" \
             --threads 2 \
             --mode spike \
+            --aln_typ auto \
             --csv_mip "${bam_pe_mip_0},${bam_pe_mip_1}" \
             --csv_min "${bam_pe_min_0},${bam_pe_min_1}" \
             --csv_sip "${bam_pe_sip_0},${bam_pe_sip_1}" \
             --csv_sin "${bam_pe_sin_0},${bam_pe_sin_1}" \
-            --aln_typ auto \
             --fil_out "${fil_out_spk}" \
             --dir_eo "${dir_err}" \
             --nam_job "${nam_job_spk}" \
@@ -220,9 +220,9 @@ if \
             --env_nam "${env_nam}" \
             --threads 2 \
             --mode siq \
+            --aln_typ auto \
             --csv_mip "${bam_pe_mip_0},${bam_pe_mip_1}" \
             --csv_min "${bam_pe_min_0},${bam_pe_min_1}" \
-            --aln_typ auto \
             --tbl_met "${tbl_met}" \
             --cfg_met "${cfg_met}" \
             --eqn 6nd \

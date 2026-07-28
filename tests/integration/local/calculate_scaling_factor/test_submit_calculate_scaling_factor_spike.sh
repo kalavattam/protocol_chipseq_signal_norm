@@ -49,11 +49,11 @@ function run_submit_spike_case() {
             --dir_scr "${ROOT_REPO}/bin"
             --threads 1
             --mode spike
+            --aln_typ auto
             --csv_mip "${mip}"
             --csv_min "${min}"
             --csv_sip "${sip}"
             --csv_sin "${sin}"
-            --aln_typ auto
             --fil_out "${fil_out}"
             --idx_out "${idx_out}"
             --dir_eo "${dir_err}"
@@ -295,11 +295,11 @@ if \
             --dir_scr "${ROOT_REPO}/bin" \
             --threads 1 \
             --mode spike \
+            --aln_typ auto \
             --csv_mip "${bam_pe_mip}" \
             --csv_min "${bam_pe_min}" \
             --csv_sip "${bam_pe_sip}" \
             --csv_sin "${bam_pe_sin}" \
-            --aln_typ auto \
             --fil_out "${fil_out_pe_default}" \
             --idx_out 7 \
             --dir_eo "${dir_err}" \
@@ -388,12 +388,12 @@ if \
             --threads 1 \
             --mode spike \
             --method chiprx_ip \
+            --aln_typ auto \
+            --ref_fa "${ref_fa}" \
             --csv_mip "${cram_pe_mip}" \
             --csv_min "${cram_pe_min}" \
             --csv_sip "${cram_pe_sip}" \
             --csv_sin "${cram_pe_sin}" \
-            --aln_typ auto \
-            --ref_fa "${ref_fa}" \
             --fil_out "${fil_out_pe_cram_alpha_ip}" \
             --idx_out 8 \
             --dir_eo "${dir_err}" \
@@ -476,11 +476,11 @@ if \
             --dir_scr "${ROOT_REPO}/bin" \
             --threads 1 \
             --mode spike \
+            --aln_typ auto \
             --csv_mip "${cram_pe_mip}" \
             --csv_min "${cram_pe_min}" \
             --csv_sip "${cram_pe_sip}" \
             --csv_sin "${cram_pe_sin}" \
-            --aln_typ auto \
             --fil_out "${fil_out_cram_missing_ref}" \
             --idx_out 3 \
             --dir_eo "${dir_err}" \
@@ -507,11 +507,11 @@ if \
             --threads 1 \
             --mode spike \
             --method not_a_method \
+            --aln_typ auto \
             --csv_mip "${bam_pe_mip}" \
             --csv_min "${bam_pe_min}" \
             --csv_sip "${bam_pe_sip}" \
             --csv_sin "${bam_pe_sin}" \
-            --aln_typ auto \
             --fil_out "${fil_out_invalid_method}" \
             --idx_out 4 \
             --dir_eo "${dir_err}" \

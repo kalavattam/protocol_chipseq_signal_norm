@@ -261,6 +261,26 @@ function parse_args() {
                 shift 2
                 ;;
 
+            -at|--aln[_-]typ|--align[_-]typ)
+                require_optarg "${1}" "${2:-}" "main" || {
+                    echo >&2
+                    help_submit_calculate_scaling_factor
+                    return 1
+                }
+                aln_typ="$(printf '%s\n' "${2}" | tr '[:upper:]' '[:lower:]')"
+                shift 2
+                ;;
+
+            -rf|--ref[_-]fa)
+                require_optarg "${1}" "${2:-}" "main" || {
+                    echo >&2
+                    help_submit_calculate_scaling_factor
+                    return 1
+                }
+                ref_fa="${2}"
+                shift 2
+                ;;
+
             -cmip|--csv[_-]mip)
                 require_optarg "${1}" "${2:-}" "main" || {
                     echo >&2
@@ -298,26 +318,6 @@ function parse_args() {
                     return 1
                 }
                 csv_sin="${2}"
-                shift 2
-                ;;
-
-            -at|--aln[_-]typ|--align[_-]typ)
-                require_optarg "${1}" "${2:-}" "main" || {
-                    echo >&2
-                    help_submit_calculate_scaling_factor
-                    return 1
-                }
-                aln_typ="$(printf '%s\n' "${2}" | tr '[:upper:]' '[:lower:]')"
-                shift 2
-                ;;
-
-            -rf|--ref[_-]fa)
-                require_optarg "${1}" "${2:-}" "main" || {
-                    echo >&2
-                    help_submit_calculate_scaling_factor
-                    return 1
-                }
-                ref_fa="${2}"
                 shift 2
                 ;;
 
@@ -673,12 +673,13 @@ function init_arg_defs() {
     mode="spike"    # siq | spike
     method=""       # chiprx_alpha_ratio | fractional | rxinput_alpha | ...
 
+    aln_typ="auto"  # paired | pe | single | se | auto
+    ref_fa=""
+
     csv_mip=""
     csv_min=""
     csv_sip=""
     csv_sin=""
-    aln_typ="auto"  # paired | pe | single | se | auto
-    ref_fa=""
     fil_out=""
     idx_out=""
 
@@ -733,6 +734,8 @@ function print_state_debug() {
         fi
 
         debug_var \
+            "aln_typ=${aln_typ}" \
+            "ref_fa=${ref_fa:-UNSET}" \
             "csv_mip=${csv_mip}" \
             "csv_min=${csv_min}"
 
@@ -743,8 +746,6 @@ function print_state_debug() {
         fi
 
         debug_var \
-            "aln_typ=${aln_typ}" \
-            "ref_fa=${ref_fa:-UNSET}" \
             "fil_out=${fil_out}" \
             "idx_out=${idx_out:-UNSET}"
 

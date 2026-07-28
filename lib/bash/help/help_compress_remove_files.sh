@@ -20,11 +20,11 @@ function help_compress_remove_files() {
 Usage
 -----
   compress_remove_files.sh
-    [--help]
+    [--help] [--dry_run]
     [--threads <int>]
     --dir_fnd <dir> --pattern <str> --size <int>
     [--depth <int>] [--include <csv>] [--exclude <csv>]
-    [--chk_con] [--chk_exc]
+    [--chk_con]
 
 
   Find files in a specified directory that match the given pattern, compress files larger than the specified size, and delete files that are 0 in size.
@@ -36,6 +36,9 @@ Parameters
 ----------
   -h, --help : flag
     Display this help message and exit.
+
+  -dr, --dry_run : flag
+    Run script in dry-run mode. Show the constructed commands and list their matching files, then exit without compressing or deleting files.
 
   -t, --thr, --threads : int
     Number of threads to use (default: ${threads}).
@@ -60,10 +63,6 @@ Parameters
 
   -cn, --chk_con : flag
     Check the construction of the find command and exit.
-
-  -ce, -cu, -dr, --chk_exc, --chk_exu, --dry, --dry_run : flag
-    Run script in dry-run mode. Show the constructed commands and list their matching files, then exit without compressing or deleting files.
-
 
 Notes
 -----
@@ -110,6 +109,15 @@ Examples
         --dir_fnd "\${HOME}/path/to/dir_eo" \\
         --pattern "*" \\
         --size 2
+    '''
+
+  4. Preview matching files without compressing or deleting them.
+    '''bash
+    bash compress_remove_files.sh \\
+        --dir_fnd "\${HOME}/path/to/dir_eo" \\
+        --pattern "*" \\
+        --size 2 \\
+        --dry_run
     '''
 
 EOM

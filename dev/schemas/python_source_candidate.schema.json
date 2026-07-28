@@ -1,0 +1,758 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Python source-policy candidate report",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "producer",
+    "producer_version",
+    "configuration",
+    "paths",
+    "source_fingerprint",
+    "semantic_review",
+    "inventories",
+    "semantic_owner_counts",
+    "candidates",
+    "limitations"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": 2
+    },
+    "producer": {
+      "const": "python_source_evidence"
+    },
+    "producer_version": {
+      "type": "string",
+      "minLength": 1
+    },
+    "configuration": {
+      "type": "object"
+    },
+    "paths": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "uniqueItems": true
+    },
+    "source_fingerprint": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "semantic_review": {
+      "type": "object",
+      "required": [
+        "manifest_path",
+        "manifest_fingerprint",
+        "declared_group_count",
+        "applied_group_count",
+        "stale_group_count",
+        "current_record_count",
+        "explicit_decision_count",
+        "unresolved_record_count",
+        "complete",
+        "applied_groups",
+        "stale_groups",
+        "hash_role"
+      ],
+      "properties": {
+        "manifest_path": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "manifest_fingerprint": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "pattern": "^sha256:[0-9a-f]{64}$"
+        },
+        "declared_group_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "applied_group_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "stale_group_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "current_record_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "explicit_decision_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "unresolved_record_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "complete": {
+          "type": "boolean"
+        },
+        "applied_groups": {
+          "type": "array"
+        },
+        "stale_groups": {
+          "type": "array"
+        },
+        "hash_role": {
+          "type": "string"
+        }
+      }
+    },
+    "inventories": {
+      "type": "object",
+      "required": [
+        "repeated_statements",
+        "transfers"
+      ],
+      "properties": {
+        "repeated_statements": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/repeated_run"
+          }
+        },
+        "transfers": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/transfer"
+          }
+        }
+      }
+    },
+    "candidates": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "$ref": "#/$defs/candidate"
+      }
+    },
+    "semantic_owner_counts": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "required": [
+          "total",
+          "resolved",
+          "unresolved"
+        ],
+        "properties": {
+          "total": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "resolved": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "unresolved": {
+            "type": "integer",
+            "minimum": 0
+          }
+        }
+      }
+    },
+    "limitations": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    }
+  },
+  "$defs": {
+    "candidate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "signature",
+        "language",
+        "path",
+        "enclosing_object",
+        "line",
+        "end_line",
+        "column",
+        "construct",
+        "reason",
+        "parameter",
+        "metric",
+        "unit",
+        "measured_value",
+        "physical_span",
+        "logical_span",
+        "item_count",
+        "nesting",
+        "source_fingerprint",
+        "producer_version",
+        "configuration",
+        "disposition",
+        "disposition_reason",
+        "false_positive_risk",
+        "review_key",
+        "review_group"
+      ],
+      "properties": {
+        "signature": {
+          "type": "string",
+          "pattern": "^sha256:[0-9a-f]{64}$"
+        },
+        "language": {
+          "const": "python"
+        },
+        "path": {
+          "type": "string",
+          "minLength": 1
+        },
+        "enclosing_object": {
+          "type": "string",
+          "minLength": 1
+        },
+        "line": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "end_line": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "column": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "construct": {
+          "enum": [
+            "multiline_assignment",
+            "multiline_call",
+            "simple_assignment_run",
+            "terminal_transfer"
+          ]
+        },
+        "reason": {
+          "type": "string",
+          "minLength": 1
+        },
+        "parameter": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "name",
+            "value"
+          ],
+          "properties": {
+            "name": {
+              "enum": [
+                "X",
+                "Y",
+                "Z"
+              ]
+            },
+            "value": {
+              "type": "integer"
+            }
+          }
+        },
+        "metric": {
+          "enum": [
+            "compact_transfer_preparation",
+            "multiline_assignment_span",
+            "multiline_call_span",
+            "simple_assignment_run_length"
+          ]
+        },
+        "unit": {
+          "enum": [
+            "physical_lines",
+            "statements"
+          ]
+        },
+        "measured_value": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "physical_span": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "logical_span": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "item_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "nesting": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "source_fingerprint": {
+          "type": "string",
+          "pattern": "^sha256:[0-9a-f]{64}$"
+        },
+        "producer_version": {
+          "type": "string",
+          "minLength": 1
+        },
+        "configuration": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "x_multiline_call_span_thresholds",
+            "y_multiline_assignment_span_thresholds",
+            "y_simple_assignment_run_statement_thresholds",
+            "z_compact_transfer_preparatory_line_limit"
+          ],
+          "properties": {
+            "x_multiline_call_span_thresholds": {
+              "type": "array",
+              "items": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "uniqueItems": true
+            },
+            "y_multiline_assignment_span_thresholds": {
+              "type": "array",
+              "items": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "uniqueItems": true
+            },
+            "y_simple_assignment_run_statement_thresholds": {
+              "type": "array",
+              "items": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "uniqueItems": true
+            },
+            "z_compact_transfer_preparatory_line_limit": {
+              "type": "integer",
+              "minimum": 0
+            }
+          }
+        },
+        "disposition": {
+          "$ref": "#/$defs/disposition"
+        },
+        "disposition_reason": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "false_positive_risk": {
+          "type": "string",
+          "minLength": 1
+        },
+        "review_key": {
+          "type": "string",
+          "pattern": "^sha256:[0-9a-f]{64}$"
+        },
+        "review_group": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      }
+    },
+    "disposition": {
+      "enum": [
+        "unresolved",
+        "changed",
+        "retained",
+        "refactored",
+        "excepted",
+        "false_positive",
+        "exception",
+        "omitted_by_role",
+        "retained_coherent",
+        "retained_compact_guard",
+        "retained_indivisible"
+      ]
+    },
+    "repeated_member": {
+      "type": "object",
+      "required": [
+        "signature",
+        "member_index",
+        "line",
+        "end_line",
+        "physical_span",
+        "source_form",
+        "callee",
+        "targets",
+        "blank_line_count_before",
+        "x_thresholds_exceeded",
+        "y_assignment_span_thresholds_exceeded",
+        "y_simple_run_thresholds_exceeded",
+        "disposition",
+        "disposition_reason"
+      ],
+      "properties": {
+        "signature": {
+          "type": "string",
+          "pattern": "^sha256:[0-9a-f]{64}$"
+        },
+        "member_index": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "line": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "end_line": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "physical_span": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "source_form": {
+          "enum": [
+            "simple",
+            "multiline"
+          ]
+        },
+        "callee": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "targets": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "blank_line_count_before": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "x_thresholds_exceeded": {
+          "type": "array",
+          "items": {
+            "type": "integer"
+          }
+        },
+        "y_assignment_span_thresholds_exceeded": {
+          "type": "array",
+          "items": {
+            "type": "integer"
+          }
+        },
+        "y_simple_run_thresholds_exceeded": {
+          "type": "array",
+          "items": {
+            "type": "integer"
+          }
+        },
+        "disposition": {
+          "$ref": "#/$defs/disposition"
+        },
+        "disposition_reason": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      }
+    },
+    "repeated_run": {
+      "type": "object",
+      "required": [
+        "signature",
+        "path",
+        "enclosing_object",
+        "suite_owner",
+        "suite_field",
+        "line",
+        "end_line",
+        "kind",
+        "statement_count",
+        "source_fingerprint",
+        "producer_version",
+        "semantic_topic_disposition",
+        "disposition_reason",
+        "members"
+      ],
+      "properties": {
+        "signature": {
+          "type": "string",
+          "pattern": "^sha256:[0-9a-f]{64}$"
+        },
+        "path": {
+          "type": "string"
+        },
+        "enclosing_object": {
+          "type": "string"
+        },
+        "suite_owner": {
+          "type": "string"
+        },
+        "suite_field": {
+          "type": "string"
+        },
+        "line": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "end_line": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "kind": {
+          "enum": [
+            "assignment_run",
+            "call_run"
+          ]
+        },
+        "statement_count": {
+          "type": "integer",
+          "minimum": 2
+        },
+        "source_fingerprint": {
+          "type": "string",
+          "pattern": "^sha256:[0-9a-f]{64}$"
+        },
+        "producer_version": {
+          "type": "string"
+        },
+        "semantic_topic_disposition": {
+          "$ref": "#/$defs/disposition"
+        },
+        "disposition_reason": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "members": {
+          "type": "array",
+          "minItems": 2,
+          "items": {
+            "$ref": "#/$defs/repeated_member"
+          }
+        }
+      }
+    },
+    "transfer": {
+      "type": "object",
+      "required": [
+        "signature",
+        "path",
+        "enclosing_object",
+        "suite_owner",
+        "suite_field",
+        "line",
+        "end_line",
+        "column",
+        "transfer_kind",
+        "predecessor_kind",
+        "predecessor_line",
+        "predecessor_end_line",
+        "physical_preparation",
+        "preparation_statement_count",
+        "preparation_physical_line_count",
+        "preceding_phase_statement_count",
+        "preceding_phase_physical_line_count",
+        "preceding_phase_members",
+        "substantive_preceding_phase",
+        "blank_line_count_before",
+        "blank_line_state",
+        "z_applies",
+        "z_limit",
+        "z_exceeded",
+        "source_fingerprint",
+        "producer_version",
+        "disposition",
+        "disposition_reason"
+      ],
+      "properties": {
+        "signature": {
+          "type": "string",
+          "pattern": "^sha256:[0-9a-f]{64}$"
+        },
+        "path": {
+          "type": "string"
+        },
+        "enclosing_object": {
+          "type": "string"
+        },
+        "suite_owner": {
+          "type": "string"
+        },
+        "suite_field": {
+          "type": "string"
+        },
+        "line": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "end_line": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "column": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "transfer_kind": {
+          "enum": [
+            "break",
+            "continue",
+            "process_exit",
+            "raise",
+            "return",
+            "yield",
+            "yield_from"
+          ]
+        },
+        "predecessor_kind": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "predecessor_line": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "predecessor_end_line": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "physical_preparation": {
+          "type": "boolean"
+        },
+        "preparation_statement_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "preparation_physical_line_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "preceding_phase_statement_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "preceding_phase_physical_line_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "preceding_phase_members": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/transfer_phase_member"
+          }
+        },
+        "substantive_preceding_phase": {
+          "type": "boolean"
+        },
+        "blank_line_count_before": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "blank_line_state": {
+          "enum": [
+            "attached",
+            "no_predecessor",
+            "separated"
+          ]
+        },
+        "z_applies": {
+          "type": "boolean"
+        },
+        "z_limit": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "z_exceeded": {
+          "type": "boolean"
+        },
+        "source_fingerprint": {
+          "type": "string",
+          "pattern": "^sha256:[0-9a-f]{64}$"
+        },
+        "producer_version": {
+          "type": "string"
+        },
+        "disposition": {
+          "$ref": "#/$defs/disposition"
+        },
+        "disposition_reason": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      }
+    },
+    "transfer_phase_member": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "signature",
+        "member_index",
+        "kind",
+        "line",
+        "end_line",
+        "physical_span",
+        "source_fingerprint"
+      ],
+      "properties": {
+        "signature": {
+          "type": "string",
+          "pattern": "^sha256:[0-9a-f]{64}$"
+        },
+        "member_index": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "kind": {
+          "type": "string",
+          "minLength": 1
+        },
+        "line": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "end_line": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "physical_span": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "source_fingerprint": {
+          "type": "string",
+          "pattern": "^sha256:[0-9a-f]{64}$"
+        }
+      }
+    }
+  }
+}

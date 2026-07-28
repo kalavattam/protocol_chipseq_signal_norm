@@ -39,19 +39,17 @@ def open_in(path: str) -> AbstractContextManager[TextIO]:
 
     Parameters
     ----------
-        path : str
-            File path or '-' for stdin. '.gz' is auto-detected.
+    path : str
+        File path or '-' for standard input. A '.gz' suffix is
+        detected automatically.
 
     Returns
     -------
-        ContextManager[TextIO]
-            A context manager yielding a readable text stream. For '-',
-            returns a no-op context over 'sys.stdin' (not closed on exit).
-
-    Raises
-    ------
-        None.
+    manager : AbstractContextManager[TextIO]
+        Context manager yielding a readable text stream. For '-', the manager
+        wraps 'sys.stdin' without closing it on exit.
     """
+
     if path == "-":
         return nullcontext(sys.stdin)
 
@@ -67,20 +65,22 @@ def open_out(path: str) -> AbstractContextManager[TextIO]:
 
     Parameters
     ----------
-        path : str
-            File path or '-' for stdout. '.gz' is auto-detected.
+    path : str
+        File path or '-' for standard output. A '.gz' suffix is
+        detected automatically.
 
     Returns
     -------
-        ContextManager[TextIO]
-            A context manager yielding a writable text stream. For '-',
-            returns a no-op context over 'sys.stdout' (not closed on exit).
+    manager : AbstractContextManager[TextIO]
+        Context manager yielding a writable text stream. For '-', the manager
+        wraps 'sys.stdout' without closing it on exit.
 
     Raises
     ------
-        OSError
-            If the file cannot be opened for writing.
+    OSError
+        If the file cannot be opened for writing.
     """
+
     if path == "-":
         return nullcontext(sys.stdout)
 
@@ -91,31 +91,26 @@ def open_out(path: str) -> AbstractContextManager[TextIO]:
 
 
 def parse_skp_pfx(
-    csv: str | None, default: tuple[str, ...] = DEF_SKP_PFX
+    csv: str | None,
+    default: tuple[str, ...] = DEF_SKP_PFX,
 ) -> tuple[str, ...]:
     """
     Parse a comma-separated list of header prefixes.
 
     Parameters
     ----------
-        csv: str | None
-            Comma-delimited prefixes (e.g., "#,track,browser"). Special cases:
-                - None: use 'default'
-                - "" (empty string): disable skipping
-                - "__default__": use 'default'
-        default : tuple[str, ...] = DEF_SKP_PFX
-            Fallback tuple of prefixes when 'csv' is None or "__default__".
+    csv : str | None
+        Comma-delimited prefixes such as '#,track,browser'. 'None' and
+        '__default__' select 'default'; an empty string disables skipping.
+    default : tuple[str, ...], default=DEF_SKP_PFX
+        Fallback prefixes.
 
     Returns
     -------
-        tuple() | default | tuple(tok.strip() for tok in s.split(",")
-        if tok.strip())
-            The effective prefix tuple to use for header detection.
-
-    Raises
-    ------
-        None.
+    prefixes : tuple[str, ...]
+        Effective prefixes for header detection.
     """
+
     if csv is None:
         return default
 
@@ -126,7 +121,7 @@ def parse_skp_pfx(
     if s == "__default__":
         return default
 
-    return tuple(tok.strip() for tok in s.split(",") if tok.strip())
+    return tuple(token.strip() for token in s.split(",") if token.strip())
 
 
 def is_header(line: str, skp_pfx: tuple[str, ...] = DEF_SKP_PFX) -> bool:
@@ -135,67 +130,63 @@ def is_header(line: str, skp_pfx: tuple[str, ...] = DEF_SKP_PFX) -> bool:
 
     Parameters
     ----------
-        line : str
-            Raw input line (with or without trailing newline).
-        skp_pfx: tuple[str, ...] = DEF_SKP_PFX
-            Prefixes that mark a line as a header after left-stripping.
+    line : str
+        Raw input line, with or without a trailing newline.
+    skp_pfx : tuple[str, ...], default=DEF_SKP_PFX
+        Prefixes that mark a line as a header after left-stripping.
 
     Returns
     -------
-        bool
-            True for blank/whitespace lines or lines whose left-stripped
-            content starts with any prefix in 'skp_pfx'; otherwise False.
-
-    Raises
-    ------
-        None.
+    is_header : bool
+        'True' for blank lines or lines whose left-stripped content starts
+        with any configured prefix; otherwise, 'False'.
     """
-    s = line.lstrip()
-    return not s or s.startswith(skp_pfx)
+
+    stripped = line.lstrip()
+
+    return not stripped or stripped.startswith(skp_pfx)
 
 
 def read_data_line(
-    fh: TextIO,
-    skp_pfx: tuple[str, ...] = DEF_SKP_PFX
+    handle: TextIO,
+    skp_pfx: tuple[str, ...] = DEF_SKP_PFX,
 ) -> str:
     """
-    Return the next non-empty, non-header bedGraph line from an open text
-    stream. Lines beginning with any prefix in 'skp_pfx' (e.g., '#', 'track',
-    'browser') are skipped. Returns '' on EOF.
+    Return the next nonempty, non-header bedGraph line.
+
+    Lines beginning with a configured prefix are skipped. An empty string is
+    returned at end of file.
 
     Parameters
     ----------
-        fh : TextIO
-            Open text-mode handle positioned at the current read location.
-        skp_pfx : tuple[str, ...]
-            Prefixes to skip as bedGraph header/meta lines.
+    handle : TextIO
+        Open text-mode handle positioned at the current read location.
+    skp_pfx : tuple[str, ...], default=DEF_SKP_PFX
+        Prefixes to skip as bedGraph header or metadata lines.
 
     Returns
     -------
-        s : str
-            The next data line stripped of trailing newline or, at EOF, ''.
-
-    Raises
-    ------
-        None.
+    line : str
+        Next data line stripped of its trailing newline, or '' at end of file.
 
     Notes
     -----
-        Refactored out of 'compute_signal_ratio.py' for modularization.
+    This helper was extracted from 'compute_signal_ratio.py'.
     """
+
     while True:
-        lin = fh.readline()
-        if not lin:
+        line = handle.readline()
+        if not line:
             return ""
 
-        if is_header(lin, skp_pfx):
+        if is_header(line, skp_pfx):
             continue
 
-        s = lin.strip()
-        if not s:
+        stripped = line.strip()
+        if not stripped:
             continue
 
-        return s
+        return stripped
 
 
 def ensure_single_stdin(paths: list[str]) -> None:
@@ -204,17 +195,14 @@ def ensure_single_stdin(paths: list[str]) -> None:
 
     Parameters
     ----------
-        paths : list[str]
-            The positional path arguments provided by the user.
-
-    Returns
-    -------
-        None.
+    paths : list[str]
+        Positional path arguments provided by the user.
 
     Raises
     ------
-        ValueError
-            If more than one '-' is present.
+    ValueError
+        If more than one '-' is present.
     """
+
     if paths.count("-") > 1:
         raise ValueError("At most one '-' (stdin) path is allowed.")

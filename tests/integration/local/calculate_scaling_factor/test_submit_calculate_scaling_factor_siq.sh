@@ -62,9 +62,9 @@ function run_submit_siq_pe() {
             --dir_scr "${ROOT_REPO}/bin"
             --threads 1
             --mode siq
+            --aln_typ auto
             --csv_mip "${mip}"
             --csv_min "${min}"
-            --aln_typ auto
             --fil_out "${fil_out}"
             --idx_out "${idx}"
             --tbl_met "${tbl}"
@@ -133,9 +133,9 @@ function run_submit_siq_prjna857063() {
             --dir_scr "${ROOT_REPO}/bin"
             --threads 1
             --mode siq
+            --aln_typ auto
             --csv_mip "${mip}"
             --csv_min "${min}"
-            --aln_typ auto
             --fil_out "${fil_out}"
             --idx_out "${idx}"
             --tbl_met "${tbl_p857}"
@@ -203,9 +203,9 @@ function run_submit_siq_pe_failure() {
                 --dir_scr "${ROOT_REPO}/bin" \
                 --threads 1 \
                 --mode siq \
+                --aln_typ auto \
                 --csv_mip "${bam_pe_mip}" \
                 --csv_min "${bam_pe_min}" \
-                --aln_typ auto \
                 --fil_out "${fil_out}" \
                 --idx_out "${idx}" \
                 --tbl_met "${tbl}" \
@@ -530,9 +530,9 @@ if \
             --dir_scr "${ROOT_REPO}/bin" \
             --threads 1 \
             --mode siq \
+            --aln_typ auto \
             --csv_mip "${bam_pe_mip}" \
             --csv_min "${bam_pe_min}" \
-            --aln_typ auto \
             --fil_out "${fil_out_pe}" \
             --idx_out 9 \
             --tbl_met "${tbl_met}" \
@@ -612,10 +612,10 @@ if \
             --dir_scr "${ROOT_REPO}/bin" \
             --threads 1 \
             --mode siq \
-            --csv_mip "${cram_pe_mip}" \
-            --csv_min "${cram_pe_min}" \
             --aln_typ auto \
             --ref_fa "${ref_fa}" \
+            --csv_mip "${cram_pe_mip}" \
+            --csv_min "${cram_pe_min}" \
             --fil_out "${fil_out_pe_cram}" \
             --idx_out 13 \
             --tbl_met "${tbl_met}" \
@@ -664,9 +664,9 @@ if \
             --dir_scr "${ROOT_REPO}/bin" \
             --threads 1 \
             --mode siq \
+            --aln_typ auto \
             --csv_mip "${cram_pe_mip}" \
             --csv_min "${cram_pe_min}" \
-            --aln_typ auto \
             --fil_out "${fil_out_cram_missing_ref}" \
             --idx_out 14 \
             --tbl_met "${tbl_met}" \
@@ -696,9 +696,9 @@ if \
             --dir_scr "${ROOT_REPO}/bin" \
             --threads 1 \
             --mode siq \
+            --aln_typ auto \
             --csv_mip "${bam_pe_mip}" \
             --csv_min "${bam_pe_min}" \
-            --aln_typ auto \
             --fil_out "${fil_out_pe_lib_volume}" \
             --idx_out 14 \
             --tbl_met "${tbl_lib}" \
@@ -831,9 +831,9 @@ if \
             --dir_scr "${ROOT_REPO}/bin" \
             --threads 1 \
             --mode siq \
+            --aln_typ auto \
             --csv_mip "${bam_pe_mip}" \
             --csv_min "${bam_pe_min}" \
-            --aln_typ auto \
             --fil_out "${fil_out_pe_eqn5}" \
             --idx_out 15 \
             --tbl_met "${tbl_met}" \
@@ -872,9 +872,9 @@ if \
             --dir_scr "${ROOT_REPO}/bin" \
             --threads 1 \
             --mode siq \
+            --aln_typ auto \
             --csv_mip "${bam_pe_mip}" \
             --csv_min "${bam_pe_min}" \
-            --aln_typ auto \
             --fil_out "${fil_out_pe_eqn5nd}" \
             --idx_out 25 \
             --tbl_met "${tbl_met}" \
@@ -910,9 +910,9 @@ if \
             --dir_scr "${ROOT_REPO}/bin" \
             --threads 1 \
             --mode siq \
+            --aln_typ auto \
             --csv_mip "${bam_pe_mip}" \
             --csv_min "${bam_pe_min}" \
-            --aln_typ auto \
             --fil_out "${fil_out_pe_eqn6}" \
             --idx_out 16 \
             --tbl_met "${tbl_met}" \
@@ -951,9 +951,9 @@ if \
             --dir_scr "${ROOT_REPO}/bin" \
             --threads 1 \
             --mode siq \
+            --aln_typ auto \
             --csv_mip "${bam_pe_mip}" \
             --csv_min "${bam_pe_min}" \
-            --aln_typ auto \
             --fil_out "${fil_out_pe_len_override}" \
             --idx_out 17 \
             --tbl_met "${tbl_met}" \
@@ -997,9 +997,9 @@ if \
             --dir_scr "${ROOT_REPO}/bin" \
             --threads 1 \
             --mode siq \
+            --aln_typ auto \
             --csv_mip "${bam_pe_mip}" \
             --csv_min "${bam_pe_min}" \
-            --aln_typ auto \
             --fil_out "${fil_out_pe_dep_override}" \
             --idx_out 18 \
             --tbl_met "${tbl_met}" \
@@ -1043,9 +1043,9 @@ if \
             --dir_scr "${ROOT_REPO}/bin" \
             --threads 1 \
             --mode siq \
+            --aln_typ auto \
             --csv_mip "${bam_se_mip}" \
             --csv_min "${bam_se_min}" \
-            --aln_typ auto \
             --len_def 150 \
             --fil_out "${fil_out_se}" \
             --idx_out 10 \
@@ -1115,9 +1115,9 @@ if \
             --dir_scr "${ROOT_REPO}/bin" \
             --threads 1 \
             --mode siq \
+            --aln_typ se \
             --csv_mip "${bam_se_mip}" \
             --csv_min "${bam_se_min}" \
-            --aln_typ se \
             --fil_out "${fil_out_se_missing_length}" \
             --idx_out 11 \
             --tbl_met "${tbl_met}" \
@@ -1147,9 +1147,9 @@ if \
             --dir_scr "${ROOT_REPO}/bin" \
             --threads 1 \
             --mode siq \
+            --aln_typ auto \
             --csv_mip "${bam_pe_mip}" \
             --csv_min "${bam_pe_min}" \
-            --aln_typ auto \
             --fil_out "${fil_out_invalid_eqn}" \
             --idx_out 12 \
             --tbl_met "${tbl_met}" \
@@ -1180,9 +1180,9 @@ if \
             --threads 1 \
             --mode siq \
             --method fractional \
+            --aln_typ auto \
             --csv_mip "${bam_pe_mip}" \
             --csv_min "${bam_pe_min}" \
-            --aln_typ auto \
             --fil_out "${fil_out_method_not_applicable}" \
             --idx_out 13 \
             --tbl_met "${tbl_met}" \

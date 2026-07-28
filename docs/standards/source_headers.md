@@ -7,7 +7,7 @@ This document owns the logical source-header contract and approved Bash and Pyth
 ## Header structure and profiles (`SOURCE.HEADER.STRUCTURE`)
 **Classification:** `advisory` for applicability with a deterministic structural subset.
 
-**Scope:** Maintained changed Bash and Python sources that already bear a shebang or have a repository-owned direct-execution contract. Generated, vendored, copied third-party, fixture payload, and historical-evidence files are excluded unless explicitly adopted as maintained source.
+**Scope:** Maintained changed Bash and Python sources that already bear a shebang, have a repository-owned direct-execution contract, or are explicitly adopted as repository script sources. Generated, vendored, copied third-party, fixture payload, and historical-evidence files are excluded unless explicitly adopted as maintained source.
 
 All in-scope files use this exact base order:
 1. approved shebang;
@@ -63,7 +63,7 @@ Parse header fields only inside the bounded opening header. Body comments or lit
 
 **Automation:** `dev/audit/ai_attribution.py` discovers maintained changed sources and validates the selected no-AI or AI-assisted profile, ordered base fields, exact separators, and the body boundary. Standing discovery validates an existing block and reports attribution-like malformed header content but does not treat an absent block as participation evidence. Explicit applicability supplies the deterministic AI-assisted subset. Applicability and direct-execution intent retain semantic review.
 
-**Semantic remainder:** Determine whether a shebang-less file has a direct-execution contract and whether copied or generated material has been adopted as maintained source.
+**Semantic remainder:** Determine whether a shebang-less file has a direct-execution contract or an explicit repository script-source role, and whether copied or generated material has been adopted as maintained source.
 
 **Exceptions:** A language or bootstrap exception requires an approved profile naming its paths, shebang, comment syntax, and runtime owner before automated normalization.
 

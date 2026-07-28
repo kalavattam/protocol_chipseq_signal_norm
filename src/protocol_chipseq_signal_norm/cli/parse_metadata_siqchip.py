@@ -15,10 +15,8 @@
 """
 Parse one alignment filename against siQ-ChIP metadata.
 
-Returns
--------
-Prints configured metadata-derived calculator inputs for the uniquely matched
-metadata row.
+The CLI prints configured metadata-derived calculator inputs for the uniquely
+matched metadata row.
 
 See Also
 --------
@@ -54,15 +52,15 @@ try:
 except ImportError as e:
     raise ImportError(
         "PyYAML is required for parse_metadata_siqchip.py. Install it in the "
-        "project environment, e.g., with 'mamba install pyyaml'."
+        "project environment, e.g., with 'mamba install pyyaml'.",
     ) from e
 
 
 assert sys.version_info >= (3, 11), "Python >= 3.11 required."
 
 
-ID_RGX = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
-OPT_PAIRED = (
+IDENTIFIER_PATTERN = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
+PAIRED_OPTIONS = (
     ("dep_ip", "dep_in"),
     ("len_ip", "len_in"),
     ("lib_vol_ip", "lib_vol_in"),
@@ -73,230 +71,342 @@ def validate_id(name: str, label: str) -> None:
     """
     Validate that a configured name can be exported as a shell identifier.
     """
-    if not isinstance(name, str) or not ID_RGX.fullmatch(name):
+
+    if not isinstance(name, str) or not IDENTIFIER_PATTERN.fullmatch(name):
         raise ValueError(f"'{label}' must be a shell-safe identifier.")
 
 
-def require_mapping(obj: object, label: str) -> dict:
-    """Return a configuration section after confirming it is a mapping."""
+def require_mapping(obj: object, label: str) -> dict[object, object]:
+    """
+    Return a configuration section after confirming it is a mapping.
+    """
+
     if not isinstance(obj, dict):
         raise ValueError(f"Configuration section '{label}' must be a mapping.")
+
     return obj
 
 
 def require_list_string(
-    obj: object, label: str, allow_empty: bool = False
+    obj: object,
+    label: str,
+    allow_empty: bool = False,
 ) -> list[str]:
-    """Return a YAML list after confirming every item is a non-empty string."""
+    """
+    Return a YAML list after confirming every item is a non-empty string.
+
+    Parameters
+    ----------
+    obj : object
+        YAML-derived value expected to contain a list.
+    label : str
+        Configuration key used in validation diagnostics.
+    allow_empty : bool
+        Whether an empty list satisfies this field's contract.
+
+    Returns
+    -------
+    values : list[str]
+        Validated string values in configuration order.
+
+    Raises
+    ------
+    ValueError
+        If the value is not a permitted list of nonempty strings.
+    """
+
     if not isinstance(obj, list):
         raise ValueError(f"Configuration key '{label}' must be a YAML list.")
+
     if not allow_empty and not obj:
         raise ValueError(
-            f"Configuration key '{label}' must be a non-empty list."
+            f"Configuration key '{label}' must be a non-empty list.",
         )
-    out: list[str] = []
-    for i, val in enumerate(obj, start=1):
-        if not isinstance(val, str) or not val:
+
+    values: list[str] = []
+
+    for index, value in enumerate(obj, start=1):
+        if not isinstance(value, str) or not value:
+            item_description = f"Configuration key '{label}' item {index}"
+
             raise ValueError(
-                f"Configuration key '{label}' item {i} must be a non-empty "
-                "string."
+                f"{item_description} must be a non-empty string.",
             )
-        out.append(val)
-    return out
+
+        values.append(value)
+
+    return values
 
 
 def normalize_input_map(spec: object, label: str) -> dict[str, str]:
     """
     Normalize calculator input declarations to output-name -> metadata-column.
+
     Lists mean identity mappings. Mappings allow explicit exported names.
+
+    Parameters
+    ----------
+    spec : object
+        YAML-derived list, mapping, or null input declaration.
+    label : str
+        Configuration key used in validation diagnostics.
+
+    Returns
+    -------
+    inputs : dict[str, str]
+        Exported input names mapped to metadata column names.
+
+    Raises
+    ------
+    ValueError
+        If the declaration shape, identifier, or column name is invalid.
     """
-    out: dict[str, str] = {}
+
+    inputs: dict[str, str] = {}
+
     if spec is None:
-        return out
+        return inputs
 
     if isinstance(spec, list):
         for key in require_list_string(spec, label, allow_empty=True):
             validate_id(key, f"{label}.{key}")
-            out[key] = key
-        return out
+
+            inputs[key] = key
+
+        return inputs
 
     if isinstance(spec, dict):
-        for key, col in spec.items():
+        for key, column in spec.items():
             validate_id(str(key), f"{label}.{key}")
-            if not isinstance(col, str) or not col:
+
+            if not isinstance(column, str) or not column:
                 raise ValueError(
                     f"Configuration key '{label}.{key}' must name one "
-                    "metadata column."
+                    "metadata column.",
                 )
-            out[str(key)] = col
-        return out
+
+            inputs[str(key)] = column
+
+        return inputs
 
     raise ValueError(
-        f"Configuration key '{label}' must be a YAML list or mapping."
+        f"Configuration key '{label}' must be a YAML list or mapping.",
     )
 
 
-def load_cfg(path: str, verbose: bool = False) -> dict:
+def load_config(path: str, verbose: bool = False) -> dict:
     """
     Load and validate the siQ-ChIP metadata parser configuration.
-    """
-    with open(path, encoding="utf-8") as fh:
-        cfg = yaml.safe_load(fh) or {}
 
-    if not isinstance(cfg, dict):
+    Parameters
+    ----------
+    path : str
+        YAML configuration path.
+    verbose : bool
+        Whether to report the loaded configuration.
+
+    Returns
+    -------
+    configuration : dict
+        Normalized and validated configuration.
+
+    Raises
+    ------
+    ValueError
+        If required sections, fields, mappings, or identifiers are invalid.
+    """
+
+    with open(path, encoding="utf-8") as handle:
+        configuration = yaml.safe_load(handle) or {}
+
+    if not isinstance(configuration, dict):
         raise ValueError(
-            f"Configuration file '{path}' must contain a YAML mapping."
+            f"Configuration file '{path}' must contain a YAML mapping.",
         )
 
     for section in ("filename", "matching", "calculator_inputs"):
-        if section not in cfg:
+        if section not in configuration:
             raise ValueError(
                 "Configuration file is missing required top-level section "
-                f"'{section}'."
+                f"'{section}'.",
             )
 
-    cfg_fil = require_mapping(
-        cfg["filename"], "filename"
+    filename_config = require_mapping(
+        configuration["filename"],
+        "filename",
     )
-    cfg_mch = require_mapping(
-        cfg["matching"], "matching"
+    matching_config = require_mapping(
+        configuration["matching"],
+        "matching",
     )
-    cfg_clc = require_mapping(
-        cfg["calculator_inputs"], "calculator_inputs"
+    calculator_config = require_mapping(
+        configuration["calculator_inputs"],
+        "calculator_inputs",
     )
-    cfg_siq = require_mapping(
-        cfg_clc.get("siqchip"), "calculator_inputs.siqchip"
+    siq_config = require_mapping(
+        calculator_config.get("siqchip"),
+        "calculator_inputs.siqchip",
     )
 
-    delim = cfg_fil.get("delimiter", "_")
-    if not isinstance(delim, str) or delim == "":
+    delimiter = filename_config.get("delimiter", "_")
+
+    if not isinstance(delimiter, str) or delimiter == "":
         raise ValueError(
-            "Configuration key 'filename.delimiter' must be a string."
+            "Configuration key 'filename.delimiter' must be a string.",
         )
-    cfg_fil["delimiter"] = delim
 
-    cfg_fil["strip_extensions"] = require_list_string(
-        cfg_fil.get("strip_extensions", []),
+    filename_config["delimiter"] = delimiter
+
+    filename_config["strip_extensions"] = require_list_string(
+        filename_config.get("strip_extensions", []),
         "filename.strip_extensions",
         allow_empty=True,
     )
-    cfg_fil["strip_suffixes"] = require_list_string(
-        cfg_fil.get("strip_suffixes", []),
+    filename_config["strip_suffixes"] = require_list_string(
+        filename_config.get("strip_suffixes", []),
         "filename.strip_suffixes",
         allow_empty=True,
     )
-    flds = require_list_string(cfg_fil.get("fields"), "filename.fields")
-    seen: set[str] = set()
-    for fld in flds:
-        validate_id(fld, f"filename.fields.{fld}")
-        if fld in seen:
-            raise ValueError(
-                f"Configuration key 'filename.fields' repeats '{fld}'."
-            )
-        seen.add(fld)
-    cfg_fil["fields"] = flds
-
-    fld_mch = require_list_string(
-        cfg_mch.get("fields"), "matching.fields"
+    filename_fields = require_list_string(
+        filename_config.get("fields"),
+        "filename.fields",
     )
-    for fld in fld_mch:
-        validate_id(fld, f"matching.fields.{fld}")
-        if fld not in flds:
-            raise ValueError(
-                f"Configuration key 'matching.fields' references '{fld}', "
-                "which is not declared in 'filename.fields'."
-            )
-    cfg_mch["fields"] = fld_mch
+    seen: set[str] = set()
 
-    fld_col = cfg.get("field_to_column", {})
-    if fld_col is None:
-        fld_col = {}
-    fld_col = require_mapping(fld_col, "field_to_column")
-    for fld, col in fld_col.items():
-        validate_id(str(fld), f"field_to_column.{fld}")
-        if fld not in flds:
-            raise ValueError(
-                f"Configuration key 'field_to_column.{fld}' references a "
-                "field not declared in 'filename.fields'."
-            )
-        if not isinstance(col, str) or not col:
-            raise ValueError(
-                f"Configuration key 'field_to_column.{fld}' must name one "
-                "column."
-            )
-    cfg["field_to_column"] = fld_col
+    for field in filename_fields:
+        validate_id(field, f"filename.fields.{field}")
 
-    req = normalize_input_map(
-        cfg_siq.get("required", {}),
+        if field in seen:
+            raise ValueError(
+                f"Configuration key 'filename.fields' repeats '{field}'.",
+            )
+
+        seen.add(field)
+
+    filename_config["fields"] = filename_fields
+
+    matching_fields = require_list_string(
+        matching_config.get("fields"),
+        "matching.fields",
+    )
+
+    for field in matching_fields:
+        validate_id(field, f"matching.fields.{field}")
+
+        if field not in filename_fields:
+            raise ValueError(
+                f"Configuration key 'matching.fields' references '{field}', "
+                "which is not declared in 'filename.fields'.",
+            )
+
+    matching_config["fields"] = matching_fields
+
+    field_columns = configuration.get("field_to_column", {})
+
+    if field_columns is None:
+        field_columns = {}
+
+    field_columns = require_mapping(field_columns, "field_to_column")
+
+    for field, column in field_columns.items():
+        validate_id(str(field), f"field_to_column.{field}")
+
+        if field not in filename_fields:
+            raise ValueError(
+                f"Configuration key 'field_to_column.{field}' references a "
+                "field not declared in 'filename.fields'.",
+            )
+
+        if not isinstance(column, str) or not column:
+            raise ValueError(
+                f"Configuration key 'field_to_column.{field}' must name one "
+                "column.",
+            )
+
+    configuration["field_to_column"] = field_columns
+
+    required_inputs = normalize_input_map(
+        siq_config.get("required", {}),
         "calculator_inputs.siqchip.required",
     )
-    opt = normalize_input_map(
-        cfg_siq.get("optional", {}),
+    optional_inputs = normalize_input_map(
+        siq_config.get("optional", {}),
         "calculator_inputs.siqchip.optional",
     )
-    overlap = sorted(set(req) & set(opt))
+    overlap = sorted(set(required_inputs) & set(optional_inputs))
+
     if overlap:
         raise ValueError(
             "Calculator input(s) listed as both required and optional: "
-            + ", ".join(overlap)
+            + ", ".join(overlap),
         )
-    cfg_siq["required"] = req
-    cfg_siq["optional"] = opt
 
-    cfg_tbl = cfg.get("table", {})
-    if cfg_tbl is None:
-        cfg_tbl = {}
-    cfg_tbl = require_mapping(cfg_tbl, "table")
-    cfg_tbl["skip_prefixes"] = require_list_string(
-        cfg_tbl.get("skip_prefixes", ["#"]),
+    siq_config["required"] = required_inputs
+    siq_config["optional"] = optional_inputs
+
+    table_config = configuration.get("table", {})
+
+    if table_config is None:
+        table_config = {}
+
+    table_config = require_mapping(table_config, "table")
+    table_config["skip_prefixes"] = require_list_string(
+        table_config.get("skip_prefixes", ["#"]),
         "table.skip_prefixes",
         allow_empty=True,
     )
-    cfg["table"] = cfg_tbl
+    configuration["table"] = table_config
 
     if verbose:
         with redirect_stdout(sys.stderr):
             print(f"'load_cfg' path: {path}")
-            print(f"'load_cfg' cfg: {cfg}")
+            print(f"'load_cfg' cfg: {configuration}")
 
-    return cfg
+    return configuration
 
 
-def strip_filename(path: str, cfg: dict) -> str:
+def strip_filename(path: str, configuration: dict) -> str:
     """
     Remove configured extensions and suffixes from an alignment filename.
     """
+
     stem = os.path.basename(path)
-    for ext in cfg["filename"]["strip_extensions"]:
-        if stem.endswith(ext):
-            stem = stem[: -len(ext)]
+
+    for extension in configuration["filename"]["strip_extensions"]:
+        if stem.endswith(extension):
+            stem = stem[: -len(extension)]
             break
-    for sfx in cfg["filename"]["strip_suffixes"]:
-        if stem.endswith(sfx):
-            stem = stem[: -len(sfx)]
+
+    for suffix in configuration["filename"]["strip_suffixes"]:
+        if stem.endswith(suffix):
+            stem = stem[: -len(suffix)]
             break
+
     return stem
 
 
 def parse_filename(
-    path: str, cfg: dict, verbose: bool = False
+    path: str,
+    configuration: dict,
+    verbose: bool = False,
 ) -> dict[str, str]:
     """
     Parse an alignment filename into configured metadata fields.
     """
-    stem = strip_filename(path, cfg)
-    delim = cfg["filename"]["delimiter"]
-    flds = cfg["filename"]["fields"]
-    toks = stem.split(delim)
 
-    if len(toks) != len(flds):
+    stem = strip_filename(path, configuration)
+    delimiter = configuration["filename"]["delimiter"]
+    filename_fields = configuration["filename"]["fields"]
+    tokens = stem.split(delimiter)
+
+    if len(tokens) != len(filename_fields):
         raise ValueError(
-            f"Filename stem '{stem}' split into {len(toks)} token(s), but "
-            f"configuration declares {len(flds)} field(s): "
-            f"{', '.join(flds)}."
+            f"Filename stem '{stem}' split into {len(tokens)} token(s), but "
+            f"configuration declares {len(filename_fields)} field(s): "
+            f"{', '.join(filename_fields)}.",
         )
 
-    parsed = dict(zip(flds, toks, strict=True))
+    parsed = dict(zip(filename_fields, tokens, strict=True))
 
     if verbose:
         with redirect_stdout(sys.stderr):
@@ -307,146 +417,258 @@ def parse_filename(
 
 
 def load_table(
-    path: str, skp_pfx: tuple[str, ...], verbose: bool = False
+    path: str,
+    skp_pfx: tuple[str, ...],
+    verbose: bool = False,
 ) -> list[dict]:
     """
     Load a metadata table as dictionaries keyed by header names.
+
+    Parameters
+    ----------
+    path : str
+        Metadata TSV path.
+    skp_pfx : tuple[str, ...]
+        Prefixes identifying non-data rows.
+    verbose : bool
+        Whether to report table-loading details.
+
+    Returns
+    -------
+    rows : list[dict]
+        Metadata rows keyed by unique header names.
+
+    Raises
+    ------
+    ValueError
+        If the header is missing or duplicated, or no data rows remain.
     """
-    with open_in(path) as fh:
-        buf = fh.read()
+
+    with open_in(path) as handle:
+        text = handle.read()
 
     lines = [
-        line for line in buf.splitlines()
+        line
+        for line in text.splitlines()
         if line.strip() and not (skp_pfx and is_header(line, skp_pfx))
     ]
+
     if not lines:
         raise ValueError("No non-header rows found in metadata table.")
 
-    head = lines[0]
-    delim = "\t" if "\t" in head else ","
-    rdr = csv.DictReader(io.StringIO("\n".join(lines)), delimiter=delim)
-    hdr = rdr.fieldnames or []
-    if not hdr:
+    first_line = lines[0]
+    delimiter = "\t" if "\t" in first_line else ","
+    reader = csv.DictReader(
+        io.StringIO("\n".join(lines)),
+        delimiter=delimiter,
+    )
+    header = reader.fieldnames or []
+
+    if not header:
         raise ValueError("Metadata table is missing a header row.")
-    if len(set(hdr)) != len(hdr):
+
+    if len(set(header)) != len(header):
         raise ValueError("Metadata table contains duplicate header names.")
 
     rows = [
-        {k: (v.strip() if isinstance(v, str) else v) for k, v in row.items()}
-        for row in rdr
+        {
+            key: value.strip() if isinstance(value, str) else value
+            for key, value in row.items()
+        }
+        for row in reader
     ]
 
     if verbose:
         with redirect_stdout(sys.stderr):
-            print(f"'load_table' header={hdr}")
+            print(f"'load_table' header={header}")
             print(f"'load_table' rows loaded={len(rows)}")
 
     return rows
 
 
 def find_row_matching(
-    rows: list[dict], parsed: dict[str, str], cfg: dict
+    rows: list[dict],
+    parsed: dict[str, str],
+    configuration: dict,
 ) -> dict:
     """
     Return the single metadata row matching parsed filename fields.
+
+    Parameters
+    ----------
+    rows : list[dict]
+        Loaded metadata rows.
+    parsed : dict[str, str]
+        Field values parsed from the input filename.
+    configuration : dict
+        Validated matching configuration.
+
+    Returns
+    -------
+    row : dict
+        The unique matching metadata row.
+
+    Raises
+    ------
+    ValueError
+        If columns are missing or the match count is not exactly one.
     """
-    fld_col = cfg.get("field_to_column", {})
+
+    field_columns = configuration.get("field_to_column", {})
     criteria: dict[str, str] = {}
 
-    for fld in cfg["matching"]["fields"]:
-        col = fld_col.get(fld, fld)
-        criteria[col] = parsed[fld]
+    for field in configuration["matching"]["fields"]:
+        column = field_columns.get(field, field)
+        criteria[column] = parsed[field]
 
-    col_missing = sorted({
-        col for col in criteria
-        if not rows or col not in rows[0]
-    })
-    if col_missing:
+    missing_columns = sorted(
+        {column for column in criteria if not rows or column not in rows[0]},
+    )
+
+    if missing_columns:
         raise ValueError(
             "Metadata table is missing matching column(s): "
-            + ", ".join(col_missing)
+            + ", ".join(missing_columns),
         )
 
     matches = [
-        row for row in rows
-        if all(str(row.get(col, "")) == val for col, val in criteria.items())
+        row
+        for row in rows
+        if all(
+            str(row.get(column, "")) == value
+            for column, value in criteria.items()
+        )
     ]
 
-    desc = ", ".join(f"{col}={val!r}" for col, val in criteria.items())
+    description = ", ".join(
+        f"{column}={value!r}" for column, value in criteria.items()
+    )
+
     if len(matches) == 1:
         return matches[0]
+
     if not matches:
-        raise ValueError(f"No metadata row matched criteria: {desc}.")
-    raise ValueError(f"Multiple metadata rows matched criteria: {desc}.")
+        raise ValueError(
+            f"No metadata row matched criteria: {description}.",
+        )
+
+    raise ValueError(
+        f"Multiple metadata rows matched criteria: {description}.",
+    )
 
 
 def is_missing(value: object) -> bool:
-    """Return True when a metadata value is empty or an NA sentinel."""
+    """
+    Return True when a metadata value is empty or an NA sentinel.
+    """
+
     return value is None or str(value).strip() in {"", "NA", "N/A"}
 
 
-def collect_outputs(row: dict, cfg: dict) -> dict[str, str]:
-    """Collect configured calculator inputs from one matched metadata row."""
-    siq = cfg["calculator_inputs"]["siqchip"]
-    req: dict[str, str] = siq["required"]
-    opt: dict[str, str] = siq["optional"]
-    out: dict[str, str] = {}
+def collect_outputs(row: dict, configuration: dict) -> dict[str, str]:
+    """
+    Collect configured calculator inputs from one matched metadata row.
 
-    for key, col in req.items():
-        if col not in row or is_missing(row.get(col)):
+    Parameters
+    ----------
+    row : dict
+        Matched metadata row.
+    configuration : dict
+        Validated calculator-input configuration.
+
+    Returns
+    -------
+    outputs : dict[str, str]
+        Required and present optional calculator inputs.
+
+    Raises
+    ------
+    ValueError
+        If required values are absent or paired positive values are invalid.
+    """
+
+    siq_config = configuration["calculator_inputs"]["siqchip"]
+    required_inputs: dict[str, str] = siq_config["required"]
+    optional_inputs: dict[str, str] = siq_config["optional"]
+    outputs: dict[str, str] = {}
+
+    for key, column in required_inputs.items():
+        if column not in row or is_missing(row.get(column)):
             raise ValueError(
                 f"Matched metadata row is missing required calculator input "
-                f"'{key}' from column '{col}'."
+                f"'{key}' from column '{column}'.",
             )
-        out[key] = str(row[col])
 
-    for key, col in opt.items():
-        if col in row and not is_missing(row.get(col)):
-            out[key] = str(row[col])
+        outputs[key] = str(row[column])
+
+    for key, column in optional_inputs.items():
+        if column in row and not is_missing(row.get(column)):
+            outputs[key] = str(row[column])
         else:
-            out[key] = "NA"
+            outputs[key] = "NA"
 
-    for key_a, key_b in OPT_PAIRED:
-        if key_a in out or key_b in out:
-            miss_a = is_missing(out.get(key_a))
-            miss_b = is_missing(out.get(key_b))
-            if miss_a != miss_b:
+    for key_a, key_b in PAIRED_OPTIONS:
+        if key_a in outputs or key_b in outputs:
+            missing_a = is_missing(outputs.get(key_a))
+            missing_b = is_missing(outputs.get(key_b))
+
+            if missing_a != missing_b:
                 raise ValueError(
                     f"Optional metadata fields '{key_a}' and '{key_b}' must "
-                    "be provided together or omitted together."
+                    "be provided together or omitted together.",
                 )
-            if not miss_a:
+
+            if not missing_a:
                 for key in (key_a, key_b):
                     try:
-                        num = float(out[key])
-                    except ValueError as e:
+                        number = float(outputs[key])
+                    except ValueError as error:
                         raise ValueError(
                             f"Optional metadata field '{key}' must be a "
                             "positive number when supplied, but got "
-                            f"'{out[key]}'."
-                        ) from e
-                    if num <= 0:
+                            f"'{outputs[key]}'.",
+                        ) from error
+
+                    if number <= 0:
                         raise ValueError(
                             f"Optional metadata field '{key}' must be > 0 "
-                            f"when supplied, but got '{out[key]}'."
+                            f"when supplied, but got '{outputs[key]}'.",
                         )
 
-    return out
+    return outputs
 
 
 def output_shell(values: dict[str, str]) -> None:
     """
     Print shell export statements for configured metadata values.
     """
+
     for key in sorted(values):
         validate_id(key, key)
+
         print(f"export {key}={shlex.quote(str(values[key]))}")
 
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     """
     Parse command-line arguments for metadata row lookup.
+
+    Parameters
+    ----------
+    argv : list[str] | None
+        Explicit arguments, or None to read the process arguments.
+
+    Returns
+    -------
+    arguments : argparse.Namespace
+        Parsed configuration, alignment, and output-selection options.
+
+    Raises
+    ------
+    SystemExit
+        If argument parsing fails or help is requested.
     """
+
     parser = CapArgumentParser(
         description=(
             "Deterministically map an alignment filename to one siQ-ChIP "
@@ -456,44 +678,52 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     )
     add_help_cap(parser)
     parser.add_argument(
-        "-v", "--verbose",
+        "-v",
+        "--verbose",
         dest="verbose",
         action="store_true",
         default=False,
         help="Run script in verbose mode. Print parser diagnostics to stderr.",
     )
     parser.add_argument(
-        "-a", "--alignment",
+        "-a",
+        "--alignment",
         dest="alignment",
         help="Alignment file whose basename should be parsed.",
     )
     parser.add_argument(
-        "-tb", "--tbl_met",
+        "-tb",
+        "--tbl_met",
         dest="tbl_met",
         help="siQ-ChIP metadata table containing rows to match.",
     )
     parser.add_argument(
-        "-c", "--cfg", "--configure",
+        "-c",
+        "--cfg",
+        "--configure",
         dest="cfg",
         required=True,
         help="YAML parser configuration file.",
     )
     parser.add_argument(
-        "-vc", "--validate_cfg",
+        "-vc",
+        "--validate_cfg",
         dest="validate_cfg",
         action="store_true",
         default=False,
         help="Validate the configuration file and exit.",
     )
     parser.add_argument(
-        "-sh", "--shell",
+        "-sh",
+        "--shell",
         dest="shell",
         action="store_true",
         default=False,
         help="Emit shell export statements instead of key-value lines.",
     )
     parser.add_argument(
-        "-sp", "--skp_pfx",
+        "-sp",
+        "--skp_pfx",
         dest="skp_pfx",
         default=None,
         help=(
@@ -503,69 +733,97 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     )
 
     args = parser.parse_args(argv)
+
     if not args.validate_cfg:
         if not args.alignment:
             parser.error(
                 "'--alignment' is required unless '--validate_cfg' is "
-                "supplied."
+                "supplied.",
             )
+
         if not args.tbl_met:
             parser.error(
-                "'--tbl_met' is required unless '--validate_cfg' is supplied."
+                "'--tbl_met' is required unless '--validate_cfg' is supplied.",
             )
+
     return args
 
 
 def main(argv: list[str] | None = None) -> int:
-    """Run metadata lookup and return a process-style exit status."""
+    """
+    Run metadata lookup and return a process-style exit status.
+
+    Parameters
+    ----------
+    argv : list[str] | None
+        Explicit arguments, or None to read the process arguments.
+
+    Returns
+    -------
+    status : int
+        Zero on success and a stable nonzero status for anticipated failures.
+    """
+
     args = parse_args(argv)
 
     try:
         check_exists(args.cfg, kind="file", label="--cfg")
-        cfg = load_cfg(args.cfg, verbose=args.verbose)
-    except (OSError, FileNotFoundError, ValueError, yaml.YAMLError) as e:
-        print(str(e), file=sys.stderr)
+        configuration = load_config(args.cfg, verbose=args.verbose)
+    except (OSError, FileNotFoundError, ValueError, yaml.YAMLError) as error:
+        print(str(error), file=sys.stderr)
+
         return 1
 
     if args.validate_cfg:
         print(f"Configuration OK: {args.cfg}")
+
         return 0
 
     if args.alignment == "-":
         print("Error: '--alignment -' is not supported.", file=sys.stderr)
+
         return 1
 
     try:
         check_exists(args.alignment, kind="file", label="--alignment")
         check_exists(args.tbl_met, kind="file", label="--tbl_met")
-    except (FileNotFoundError, ValueError) as e:
-        print(str(e), file=sys.stderr)
+    except (FileNotFoundError, ValueError) as error:
+        print(str(error), file=sys.stderr)
+
         return 1
 
     skp_pfx = parse_skp_pfx(
         args.skp_pfx,
-        default=tuple(cfg.get("table", {}).get("skip_prefixes", [])),
+        default=tuple(
+            configuration.get("table", {}).get("skip_prefixes", []),
+        ),
     )
 
     try:
-        parsed = parse_filename(args.alignment, cfg, args.verbose)
+        parsed = parse_filename(
+            args.alignment,
+            configuration,
+            args.verbose,
+        )
         rows = load_table(args.tbl_met, skp_pfx=skp_pfx, verbose=args.verbose)
-        row = find_row_matching(rows, parsed, cfg)
-        out = collect_outputs(row, cfg)
-    except (OSError, ValueError) as e:
-        print(str(e), file=sys.stderr)
+        row = find_row_matching(rows, parsed, configuration)
+
+        outputs = collect_outputs(row, configuration)
+    except (OSError, ValueError) as error:
+        print(str(error), file=sys.stderr)
+
         return 1
 
     if args.verbose:
         with redirect_stdout(sys.stderr):
             print(f"'main' matched row={row}")
-            print(f"'main' exported values={out}")
+            print(f"'main' exported values={outputs}")
 
     if args.shell:
-        output_shell(out)
+        output_shell(outputs)
     else:
-        for key in sorted(out):
-            print(f"{key}: {out[key]}")
+        for key in sorted(outputs):
+            print(f"{key}: {outputs[key]}")
 
     return 0
 

@@ -201,11 +201,11 @@ arr_cmd_bam_se=(
     "${TEST_BASH}" "${scr_exe}"
         --threads 1
         --mode spike
+        --aln_typ auto
         --csv_mip "${bam_se_mip_0},${bam_se_mip_1}"
         --csv_min "${bam_se_min_0},${bam_se_min_1}"
         --csv_sip "${bam_se_sip_0},${bam_se_sip_1}"
         --csv_sin "${bam_se_sin_0},${bam_se_sin_1}"
-        --aln_typ auto
         --dir_eo "${dir_err}"
         --max_job 1
 )
@@ -216,11 +216,11 @@ arr_cmd_bam_se=(
         "${TEST_BASH}" "${scr_exe}"
             --threads 1
             --mode spike
+            --aln_typ auto
             --csv_mip "${bam_pe_mip_0},${bam_pe_mip_1}"
             --csv_min "${bam_pe_min_0},${bam_pe_min_1}"
             --csv_sip "${bam_pe_sip_0},${bam_pe_sip_1}"
             --csv_sin "${bam_pe_sin_0},${bam_pe_sin_1}"
-            --aln_typ auto
             --dir_eo "${dir_err}"
             --max_job 1
     )
@@ -229,12 +229,12 @@ arr_cmd_bam_se=(
         "${TEST_BASH}" "${scr_exe}"
             --threads 1
             --mode spike
+            --aln_typ auto
+            --ref_fa "${ref_fa}"
             --csv_mip "${cram_se_mip_0},${cram_se_mip_1}"
             --csv_min "${cram_se_min_0},${cram_se_min_1}"
             --csv_sip "${cram_se_sip_0},${cram_se_sip_1}"
             --csv_sin "${cram_se_sin_0},${cram_se_sin_1}"
-            --aln_typ auto
-            --ref_fa "${ref_fa}"
             --dir_eo "${dir_err}"
             --max_job 1
     )
@@ -243,12 +243,12 @@ arr_cmd_bam_se=(
         "${TEST_BASH}" "${scr_exe}"
             --threads 1
             --mode spike
+            --aln_typ auto
+            --ref_fa "${ref_fa}"
             --csv_mip "${cram_pe_mip_0},${cram_pe_mip_1}"
             --csv_min "${cram_pe_min_0},${cram_pe_min_1}"
             --csv_sip "${cram_pe_sip_0},${cram_pe_sip_1}"
             --csv_sin "${cram_pe_sin_0},${cram_pe_sin_1}"
-            --aln_typ auto
-            --ref_fa "${ref_fa}"
             --dir_eo "${dir_err}"
             --max_job 1
     )
@@ -257,11 +257,11 @@ arr_cmd_bam_se=(
         "${TEST_BASH}" "${scr_exe}"
             --threads 1
             --mode spike
+            --aln_typ auto
             --csv_mip "${bam_se_mip_0},${bam_pe_mip_1}"
             --csv_min "${bam_se_min_0},${bam_pe_min_1}"
             --csv_sip "${bam_se_sip_0},${bam_pe_sip_1}"
             --csv_sin "${bam_se_sin_0},${bam_pe_sin_1}"
-            --aln_typ auto
             --dir_eo "${dir_err}"
             --max_job 1
     )
@@ -270,12 +270,12 @@ arr_cmd_bam_se=(
         "${TEST_BASH}" "${scr_exe}"
             --threads 1
             --mode spike
+            --aln_typ auto
+            --ref_fa "${ref_fa}"
             --csv_mip "${bam_se_mip_0},${cram_pe_mip_1}"
             --csv_min "${bam_se_min_0},${cram_pe_min_1}"
             --csv_sip "${bam_se_sip_0},${cram_pe_sip_1}"
             --csv_sin "${bam_se_sin_0},${cram_pe_sin_1}"
-            --aln_typ auto
-            --ref_fa "${ref_fa}"
             --dir_eo "${dir_err}"
             --max_job 1
     )

@@ -1,0 +1,60 @@
+{
+  "schema_version": 2,
+  "pilot_id": "8b_interface_python_pilot",
+  "threshold_definitions": {
+    "X": "Maximum physical-line span for one multiline call before it becomes a semantic review candidate.",
+    "Y_assignment_span": "Maximum physical-line span for one multiline assignment before it becomes a semantic review candidate.",
+    "Y_simple_run_length": "Maximum statement count for one blank-line-delimited run of simple assignments before it becomes a semantic review candidate.",
+    "Z": "Maximum attached preparatory physical-line count allowed for a compact transfer in a primary guard, loop, or match-case body."
+  },
+  "pilot_paths": [
+    "src/protocol_chipseq_signal_norm/cli/parse_metadata_siqchip.py",
+    "src/protocol_chipseq_signal_norm/utilities/utils_io.py",
+    "dev/tools/markdown_format.py",
+    "tests/unit/metadata/test_parse_siqchip.py"
+  ],
+  "x_multiline_call_span_thresholds": [
+    5,
+    6,
+    7
+  ],
+  "y_multiline_assignment_span_thresholds": [
+    4,
+    5,
+    6
+  ],
+  "y_simple_assignment_run_statement_thresholds": [
+    4,
+    5,
+    6
+  ],
+  "z_compact_transfer_preparatory_line_limit": 1,
+  "selected_x_threshold": 6,
+  "selected_y_threshold": 6,
+  "line_length": 79,
+  "naming_length_thresholds": {
+    "production_callable": [
+      40,
+      48,
+      56
+    ],
+    "test_function": [
+      56,
+      64,
+      72
+    ],
+    "local_or_attribute": [
+      24,
+      32,
+      40
+    ],
+    "type": [
+      32,
+      40,
+      48
+    ]
+  },
+  "semantic_review_manifest": "artifacts/tests/python_source_migration_20260727_semantic_review/final/semantic_review_manifest.json",
+  "disposition": "unresolved",
+  "semantic_candidates_are_nonblocking": true
+}

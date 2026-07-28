@@ -63,17 +63,34 @@ Usage
 
 Use square brackets as the primary optionality signal. Unconditional required arguments are unbracketed; optional, defaulted, conditional, and mode-specific arguments are bracketed and their descriptions state defaults or conditions directly. Parenthesize required mutually exclusive branches and bracket the whole group when the choice itself is optional.
 
-Use the same argument order in `Usage` and `Parameters`. The default workflow order is help and reporting, execution controls, analysis mode, inputs, output location and naming, mode-specific options, output formatting, logging and job naming, then scheduler and Parallel controls. Adapt group names to the workflow without reordering the same interface differently across help surfaces.
+Use the same argument order in `Usage` and `Parameters`. The default workflow order is help and reporting, execution controls, analysis mode, inputs, output location and naming, mode-specific options, output formatting, logging and job naming, then scheduler and Parallel controls. Place dry-run immediately after help and other reporting controls such as verbose, and before environment, thread, workflow-input, and output options. Adapt group names to the workflow without reordering the same interface differently across help surfaces.
 
 Parameter and global entries use `name : type` followed by an indented description. Positional entries use `ordinal  name : type`; zero-pad ordinals when there are ten or more arguments. Separate logical entries with one blank line. Keep aliases for one option on one row, separated by comma and one space, followed by one shared type.
 
-Inside `Notes`, a pseudo-heading such as `Runtime requirements:` begins at normal section indentation and its content begins two spaces deeper. Structured commands, rows, lists, and examples retain their required lines. Ordinary prose is not reflowed merely to meet a source-width target.
+Inside `Notes`, a pseudo-heading such as `Runtime requirements:` begins at normal section indentation and its content begins two spaces deeper. `Runtime requirements:` is invalid outside the active top-level `Notes` section, even when its indentation and entries are otherwise correct. Structured commands, rows, lists, and examples retain their required lines. Ordinary prose is not reflowed merely to meet a source-width target.
 
 **Automation:** `dev/audit/help_style.py` and `dev/audit/help_heredoc_reflow.py` report source-shape facets and advisory reflow candidates. Registry coverage is `subset`.
 
 **Semantic remainder:** Review readability, intentional rendered line breaks, appropriate grouping, and whether a row communicates the interface accurately.
 
 **Exceptions:** Literal output and command examples preserve the structure required to demonstrate behavior.
+
+<br />
+
+## Complete help prose (`HELP.PROSE.SENTENCES`)
+**Classification:** `advisory` with deterministic recognized-literal portions.
+
+**Scope:** User-facing option and parameter descriptions in Shell, Python, R, Rust, and other maintained command-line interfaces.
+
+Write help prose as complete sentences. Begin each prose paragraph with sentence capitalization and end it with terminal punctuation. Preserve exact option names, paths, identifiers, case-sensitive values, and literal syntax within the sentence; a leading quoted literal does not change the capitalization requirement for the prose that follows it.
+
+This rule governs descriptions rather than usage synopses, metavariables, choice displays, tables, code blocks, machine-readable fragments, or exact external text. Language owners govern source quoting and wrapping while this shared owner governs the rendered prose contract.
+
+**Automation:** `dev/audit/python_source_policy.py` checks capitalization and terminal punctuation for recognized constant `help=` prose in the bounded four-file Python pilot. Shell help structure checks provide description boundaries but do not yet enforce this complete cross-language rule repository-wide. Coverage is `subset`.
+
+**Semantic remainder:** Decide whether text is prose, whether punctuation accurately ends the thought, and whether multiple sentences communicate one coherent option contract.
+
+**Exceptions:** Syntax-only fragments, literal choice displays, generated help, and externally owned exact text require a bounded applicability disposition rather than silent prose normalization.
 
 <br />
 
@@ -116,7 +133,7 @@ For a command with `--details`, that surface owns the required full document and
 
 **Scope:** Canonical option names, accepted public aliases, hidden compatibility aliases, and their appearance in help and examples.
 
-Parser acceptance alone does not make an alias public. A public alias is intentionally documented and covered as supported. `Usage` advertises canonical long options. `Parameters` lists each public short and long alias exactly once, with canonical spellings first.
+Parser acceptance alone does not make an alias public. A public alias is intentionally documented and covered as supported. `Usage` advertises canonical long options. `Parameters` lists each public short and long alias exactly once, with the public short before the canonical long spelling. A public dry-run interface provides `-dr` and canonical `--dry_run`; narrower compatibility decisions may retire other historical dry-run spellings but do not remove that public pair.
 
 Hidden compatibility aliases may remain accepted but do not appear in `Usage`, `Parameters`, examples, or ordinary prose. Retired semantic names are not compatibility aliases. Preserve established underscore options, the documented underscore/hyphen boundary, public CSV short aliases beginning with `-c`, and canonical `--dp`. Alias changes migrate parser, help, examples, and interface evidence together.
 
@@ -166,7 +183,7 @@ If implementation, callers, tests, and existing documentation do not establish t
 ## Runtime requirements (`HELP.RUNTIME.REQUIREMENTS`)
 **Classification:** `advisory` with deterministic grammar and source-evidence portions.
 
-**Scope:** User-facing runtime requirements rendered below `Notes`.
+**Scope:** User-facing runtime requirements rendered as a pseudo-heading inside the active top-level `Notes` section.
 
 Use one flat `Runtime requirements:` list. A singleton is unbulleted; two or more peers use bullets sorted by complete displayed text using case-folded comparison and exact text as a tie-breaker. Do not add category subheadings, continuation rows, helper inventories, or repository-local paths.
 
@@ -313,13 +330,13 @@ Use `fil_in`, `csv_fil_in`, `fil_out`, and `csv_fil_out` for canonical input and
 
 **Scope:** Cross-language section names and prose conventions used by Python docstrings.
 
-Python docstrings reuse shared concepts for parameters, returns, yields, raises, notes, references, examples, attributes, and methods. Use straight quotes in prose and avoid empty or name-repeating sections. Python applicability, public API stability, recursive coverage, and NumPy-specific semantics belong to `PY.DOCSTRING.NUMPY`.
+Python docstrings reuse shared concepts for parameters, returns, yields, raises, notes, references, examples, attributes, and methods. Delimit option names, paths, sentinels, API names, and other literal prose tokens with straight single quotes, such as `'--write'`; do not use Markdown single- or double-backtick prose delimiters. Backticks remain literal only inside `Examples`, doctest rows, or fenced literal content. Avoid empty or name-repeating sections. Python applicability, public API stability, recursive coverage, and NumPy-specific semantics belong to `PY.DOCSTRING.NUMPY`; exact Python delimiter, summary-line, prefix, closing-line, and post-docstring source form belongs to `PY.DOCSTRING.LAYOUT`.
 
-**Automation:** Shared documentation audits report vocabulary and straight-quote facets. Python-specific checks remain registered to the Python owner.
+**Automation:** `dev/audit/help_style.py` checks recognized Python docstrings for single- and double-backtick prose delimiters while excluding `Examples`, doctest rows, and fenced literal content. Other Python-specific checks remain registered to the Python owner.
 
 **Semantic remainder:** Review whether a shared concept maps cleanly to the Python object and audience.
 
-**Exceptions:** Python syntax, signatures, and types remain literal.
+**Exceptions:** Literal backtick syntax inside `Examples`, doctest rows, and fenced literal content remains unchanged. Python syntax, signatures, and types remain literal.
 
 <br />
 

@@ -27,11 +27,11 @@ conda run -n env_protocol ruff format --check src tests dev
 <br />
 
 ## Style and Tooling
-This file is the routing layer, not the full style manual. Use:
-- `docs/standards/shell.md` for Bash structure, wrapper organization, and shell formatting.
-- `docs/standards/help.md` for shell help text and heredoc-based CLI docs.
-- `docs/standards/python.md` for Python script structure and output formatting.
-- `docs/standards/testing.md` and `tests/README.md` for test taxonomy, gates, fixtures, and generated output policy.
+This file is the routing layer, not the full style manual. Start with the ordinary task router in `docs/standards/README.md`, then load only the owner sections and focused commands named for the task. Load a complete domain standard only when the work spans that complete domain or the router has no applicable task:
+- `docs/standards/shell.md` owns Bash structure, wrapper organization, and shell formatting.
+- `docs/standards/help.md` owns shared help and documentation semantics.
+- `docs/standards/python.md` owns Python-specific structure and source form.
+- `docs/standards/testing.md` and `tests/README.md` own test taxonomy, gates, fixtures, and generated output policy.
 
 Prefer deterministic checks over agent memory. When a style rule becomes important, document it in `docs/standards/` and add an advisory or enforced check when practical. Keep Markdown prose natural; do not hard-wrap it only for source line-length preferences.
 

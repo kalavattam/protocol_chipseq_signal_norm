@@ -1,0 +1,29 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+#
+# Script: exceptions.py
+#
+# Copyright 2026 by Kris Alavattam
+# Email: kalavattam@gmail.com
+#
+# Distributed under the MIT license.
+
+
+r"""
+Represent the literal \d regular-expression marker.
+"""
+
+
+def literal_values() -> tuple[str, str, str]:
+    """
+    Return bounded literal-content exceptions.
+    """
+
+    # noqa: RUF001
+    quoted = 'The value contains "double quotes".'
+    multiline = '''
+The literal contains a """ delimiter.
+'''
+    pattern = r"\d+"
+
+    return quoted, multiline, pattern

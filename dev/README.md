@@ -3,7 +3,7 @@
 Run the audit from the repository root with explicit public and private roots:
 ```bash
 PYTHONDONTWRITEBYTECODE=1 \
-    conda run -n env_protocol python dev/audit/run.py \
+    conda run -n env_protocol python -m dev.audit.run \
     --public-root "${PWD}" \
     --private-root ../protocol_chipseq_signal_norm_private
 ```

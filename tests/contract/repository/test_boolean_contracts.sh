@@ -206,7 +206,7 @@ else
         "status=${status} before=${before_fail} after=${TEST_FAIL}"
 fi
 
-if python3 "${ROOT_REPO}/dev/audit/boolean_contracts.py" \
+if python3 -m dev.audit.boolean_contracts \
     --root "${ROOT_REPO}" > "${log_audit}"
 then
     record_pass "repository Boolean-contract audit"

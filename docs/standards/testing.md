@@ -86,7 +86,7 @@ True-like variants are insufficient. The coordinator must verify the gates, inpu
 
 **Scope:** Tracked static fixtures, generated workflow fixtures, fixture recipes, provenance documentation, and fixture consumers.
 
-Every registered generated workflow fixture root contains a tracked `README.md` and `make.sh`. The source-derived fixture inventory, rather than a durable fixed count, owns the current set. The README records provenance, generation prerequisites, deterministic expectations, and ignored outputs. Generated data remains ignored; recipes and documentation remain tracked. Generated workflow roots are distinct from tracked static Slurm fixtures, which are not cleanup targets.
+Every registered generated workflow fixture root contains a tracked `README.md` and `make.sh`. The source-derived fixture inventory, rather than a durable fixed count, owns the current set. The README records provenance, generation prerequisites, deterministic expectations, and ignored outputs. Generated data remains ignored; recipes and documentation remain tracked. Generated workflow roots are distinct from documented tracked static fixtures, including Slurm fixtures and the text-only `python_source_policy` checker inputs, which are not cleanup targets.
 
 Retries must not hide nondeterministic failures. Control time, randomness, ordering, and concurrency inputs where practical. An intentionally observational test records its instability boundary and preserves the first failure rather than converting a later retry into unconditional success.
 

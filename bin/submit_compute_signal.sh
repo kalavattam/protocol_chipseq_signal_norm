@@ -1900,7 +1900,7 @@ function parse_args() {
                 shift 2
                 ;;
 
-            -ck|--chunk[_-]size)
+            -ck|--chunk[_-]size|--chnk[_-]size)
                 require_optarg "${1}" "${2:-}" "main" || {
                     echo >&2
                     help_submit_compute_signal

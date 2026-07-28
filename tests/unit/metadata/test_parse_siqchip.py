@@ -12,9 +12,11 @@
 # Distributed under the MIT license.
 
 
-import pytest
+"""
+Test siQ-ChIP metadata parsing helpers.
+"""
 
-pytest.importorskip("yaml")
+import pytest
 
 from protocol_chipseq_signal_norm.cli.parse_metadata_siqchip import (
     collect_outputs,
@@ -25,7 +27,16 @@ from protocol_chipseq_signal_norm.cli.parse_metadata_siqchip import (
 )
 
 
-def cfg_minimal():
+def minimal_configuration() -> dict[str, object]:
+    """
+    Return the minimal configuration needed by metadata helper tests.
+
+    Returns
+    -------
+    configuration : dict[str, object]
+        Nested filename, matching, and calculator-input settings.
+    """
+
     return {
         "filename": {
             "delimiter": "_",
@@ -42,29 +53,38 @@ def cfg_minimal():
                     "lib_vol_ip": "lib_vol_ip",
                     "lib_vol_in": "lib_vol_in",
                 },
-            }
+            },
         },
     }
 
 
-def test_parse_filename_strips_extension_and_suffix():
-    cfg = cfg_minimal()
+def test_parse_filename_strips_extension_and_suffix() -> None:
+    configuration = minimal_configuration()
 
-    assert parse_filename("IP_1.sc.bam", cfg) == {"sample": "IP", "rep": "1"}
+    assert parse_filename("IP_1.sc.bam", configuration) == {
+        "sample": "IP",
+        "rep": "1",
+    }
 
 
-def test_find_row_matching_returns_unique_match():
-    cfg = cfg_minimal()
+def test_find_row_matching_returns_unique_match() -> None:
+    configuration = minimal_configuration()
     rows = [
         {"sample": "IP", "rep": "1", "mass_ip": "2", "mass_in": "4"},
         {"sample": "IP", "rep": "2", "mass_ip": "3", "mass_in": "4"},
     ]
 
-    assert find_row_matching(rows, {"sample": "IP", "rep": "2"}, cfg) is rows[1]
+    matched = find_row_matching(
+        rows,
+        {"sample": "IP", "rep": "2"},
+        configuration,
+    )
+
+    assert matched is rows[1]
 
 
-def test_collect_outputs_requires_paired_optional_fields():
-    cfg = cfg_minimal()
+def test_collect_outputs_requires_paired_optional_fields() -> None:
+    configuration = minimal_configuration()
 
     with pytest.raises(ValueError, match="provided together"):
         collect_outputs(
@@ -74,13 +94,13 @@ def test_collect_outputs_requires_paired_optional_fields():
                 "lib_vol_ip": "10",
                 "lib_vol_in": "",
             },
-            cfg,
+            configuration,
         )
 
 
-def test_normalize_input_map_and_validate_id_reject_bad_names():
+def test_normalize_input_map_and_validate_id_reject_bad_names() -> None:
     assert normalize_input_map(["mass_ip"], "required") == {
-        "mass_ip": "mass_ip"
+        "mass_ip": "mass_ip",
     }
 
     with pytest.raises(ValueError, match="shell-safe"):

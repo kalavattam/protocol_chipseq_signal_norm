@@ -1,1 +1,3 @@
-"""Repository development and audit tooling."""
+"""
+Repository development and audit tooling.
+"""

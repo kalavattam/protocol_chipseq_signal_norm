@@ -12,6 +12,8 @@
 # Distributed under the MIT license.
 
 
+from pathlib import Path
+
 import pytest
 
 from protocol_chipseq_signal_norm.utilities.utils_bdg import (
@@ -20,7 +22,7 @@ from protocol_chipseq_signal_norm.utilities.utils_bdg import (
     check_size_bin,
     generate_name_track,
     iter_rows_bdg,
-    load_chr_sizes,
+    load_chromosome_sizes,
     try_float,
     validate_bounds_bdg,
     write_bdg,
@@ -31,7 +33,7 @@ from protocol_chipseq_signal_norm.utilities.utils_io import (
 )
 
 
-def test_canon_nonfinite_and_try_float():
+def test_canon_nonfinite_and_try_float() -> None:
     assert canon_nonfinite("+Inf") == "inf"
     assert canon_nonfinite("-INF") == "-inf"
     assert canon_nonfinite("1") is None
@@ -39,17 +41,19 @@ def test_canon_nonfinite_and_try_float():
     assert try_float("bad") is None
 
 
-def test_iter_rows_bdg_skips_headers_and_malformed_rows():
-    rows = list(iter_rows_bdg(
-        [
-            "track name=x\n",
-            "chrI 0 10 1\n",
-            "chrI 10 10 2\n",
-            "chrI a 20 3\n",
-            "chrI 20 30 NaN\n",
-        ],
-        lambda line: is_header(line, DEF_SKP_PFX),
-    ))
+def test_iter_rows_bdg_skips_headers_and_malformed_rows() -> None:
+    rows = list(
+        iter_rows_bdg(
+            [
+                "track name=x\n",
+                "chrI 0 10 1\n",
+                "chrI 10 10 2\n",
+                "chrI a 20 3\n",
+                "chrI 20 30 NaN\n",
+            ],
+            lambda line: is_header(line, DEF_SKP_PFX),
+        ),
+    )
 
     assert rows == [
         ("chrI", 0, 10, "1", 1.0),
@@ -57,7 +61,7 @@ def test_iter_rows_bdg_skips_headers_and_malformed_rows():
     ]
 
 
-def test_check_size_bin_rejects_mismatched_bins(tmp_path):
+def test_check_size_bin_rejects_mismatched_bins(tmp_path: Path) -> None:
     file_a = tmp_path / "a.bdg"
     file_b = tmp_path / "b.bdg"
     file_a.write_text("chrI 0 10 1\n", encoding="utf-8")
@@ -67,18 +71,17 @@ def test_check_size_bin_rejects_mismatched_bins(tmp_path):
         check_size_bin(str(file_a), str(file_b))
 
 
-def test_write_bdg_sorts_and_formats_values(tmp_path):
+def test_write_bdg_sorts_and_formats_values(tmp_path: Path) -> None:
     out = tmp_path / "signal.bdg"
 
     write_bdg({("chrII", 0): 1.2, ("chrI", 10): -0.0001}, str(out), 10, 2)
 
     assert out.read_text(encoding="utf-8") == (
-        "chrI\t10\t20\t0\n"
-        "chrII\t0\t10\t1.2\n"
+        "chrI\t10\t20\t0\nchrII\t0\t10\t1.2\n"
     )
 
 
-def test_write_bdg_clamps_final_bin_to_chromosome_size(tmp_path):
+def test_write_bdg_clamps_final_bin_to_chromosome_size(tmp_path: Path) -> None:
     out = tmp_path / "signal.bdg"
 
     write_bdg(
@@ -92,18 +95,23 @@ def test_write_bdg_clamps_final_bin_to_chromosome_size(tmp_path):
     assert out.read_text(encoding="utf-8") == "chrI\t70\t75\t1\n"
 
 
-def test_load_chr_sizes_parses_tsv_and_rejects_duplicates(tmp_path):
+def test_load_chromosome_sizes_parses_tsv_and_rejects_duplicates(
+    tmp_path: Path,
+) -> None:
     sizes = tmp_path / "chr.sizes"
     sizes.write_text("# comment\nchrI\t80\nchrII 120\n", encoding="utf-8")
 
-    assert load_chr_sizes(str(sizes)) == {"chrI": 80, "chrII": 120}
+    assert load_chromosome_sizes(str(sizes)) == {"chrI": 80, "chrII": 120}
 
     sizes.write_text("chrI\t80\nchrI\t90\n", encoding="utf-8")
+
     with pytest.raises(ValueError, match="Duplicate chromosome"):
-        load_chr_sizes(str(sizes))
+        load_chromosome_sizes(str(sizes))
 
 
-def test_validate_bounds_bdg_rejects_out_of_bounds_rows(tmp_path):
+def test_validate_bounds_bdg_rejects_out_of_bounds_rows(
+    tmp_path: Path,
+) -> None:
     bdg = tmp_path / "signal.bdg"
     bdg.write_text("chrI\t70\t81\t1\n", encoding="utf-8")
 
@@ -111,7 +119,7 @@ def test_validate_bounds_bdg_rejects_out_of_bounds_rows(tmp_path):
         validate_bounds_bdg(str(bdg), {"chrI": 80})
 
 
-def test_check_grid_bin_rejects_late_end_mismatch(tmp_path):
+def test_check_grid_bin_rejects_late_end_mismatch(tmp_path: Path) -> None:
     file_a = tmp_path / "a.bdg"
     file_b = tmp_path / "b.bdg"
     file_a.write_text(
@@ -127,7 +135,7 @@ def test_check_grid_bin_rejects_late_end_mismatch(tmp_path):
         check_grid_bin(str(file_a), str(file_b))
 
 
-def test_generate_name_track_preserves_gzip_suffix():
+def test_generate_name_track_preserves_gzip_suffix() -> None:
     assert generate_name_track("signal.bedGraph.gz") == (
         "signal.track.bedGraph.gz"
     )

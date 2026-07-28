@@ -87,6 +87,63 @@ function assert_install_dry_run() {
 }
 
 
+function assert_install_alias() {
+    local interface="${1:?}"
+    local shell_cmd="${2:?}"
+    local script_path="${3:?}"
+    local alias="${4:?}"
+    local value="${5:-}"
+    local accepted="${6:?}"
+    local safe_alias="${alias//[^A-Za-z0-9]/_}"
+    local log="${dir_log}/${interface}_${safe_alias}.log"
+    local -a arr_command=( "${shell_cmd}" "${script_path}" "${alias}" )
+
+    if [[ -n "${value}" ]]; then
+        arr_command+=( "${value}" )
+    fi
+    arr_command+=( --not_a_real_option )
+
+    run_capture \
+        "${interface} parser ${alias}" \
+        "${log}" \
+        "${arr_command[@]}" || true
+
+    if [[ "${accepted}" == "true" ]]; then
+        assert_pattern_found \
+            "${log}" \
+            "not_a_real_option" \
+            "${interface} accepts ${alias} before rejecting the sentinel"
+        assert_pattern_absent \
+            "${log}" \
+            "Unknown.*${alias}|unknown option/parameter passed: '${alias}'" \
+            "${interface} does not reject accepted alias ${alias}"
+    else
+        assert_pattern_found \
+            "${log}" \
+            "${alias}" \
+            "${interface} rejects retired alias ${alias}"
+        assert_pattern_absent \
+            "${log}" \
+            "not_a_real_option" \
+            "${interface} rejects ${alias} before the sentinel"
+    fi
+}
+
+
+function assert_help_alias_absent() {
+    local file="${1:?}"
+    local alias="${2:?}"
+
+    if grep -Eq -- "(^|[[:space:],])${alias}([,[:space:]]|$)" "${file}"
+    then
+        record_fail \
+            "$(print_relpath "${file}") unexpectedly exposes ${alias}"
+    else
+        record_pass "$(print_relpath "${file}") hides ${alias}"
+    fi
+}
+
+
 dir_log="${TEST_DIR_LOG}/install_envs"
 
 scr_inl="${ROOT_REPO}/install/scripts/install_envs.sh"
@@ -106,6 +163,8 @@ log_protocol_update_dry_run="${dir_log}/env_protocol_update_dry_run.log"
 log_override_no_channels="${dir_log}/install_override_channels_no_channels.log"
 log_entrypoint_override_no_channels="${dir_log}/entrypoint_override_channels_no_channels.log"
 log_if_exists_bogus="${dir_log}/install_if_exists_bogus.log"
+log_install_help="${dir_log}/install_envs_help_aliases.log"
+log_entrypoint_help="${dir_log}/install_envs_entrypoint_help_aliases.log"
 
 
 print_section "${TEST_NAME}"
@@ -161,6 +220,72 @@ do
     else
         record_fail "${label} failed; see $(print_relpath "${log}")"
     fi
+done
+
+run_capture \
+    "install_envs canonical help aliases" \
+    "${log_install_help}" \
+    "${TEST_BASH}" "${scr_inl}" --help || true
+run_capture \
+    "install_envs_entrypoint canonical help aliases" \
+    "${log_entrypoint_help}" \
+    sh "${scr_ent}" --help || true
+
+for log in "${log_install_help}" "${log_entrypoint_help}"; do
+    assert_pattern_found \
+        "${log}" \
+        '^  -ch, --channels : list of str$' \
+        "$(print_relpath "${log}") exposes canonical channel aliases"
+    assert_pattern_found \
+        "${log}" \
+        '^  -oc, --override_channels : flag$' \
+        "$(print_relpath "${log}") exposes canonical override aliases"
+    for alias in \
+        --channel \
+        --channel_list \
+        --channel-list \
+        --override_channel \
+        --override-channel \
+        --override-channels
+    do
+        assert_help_alias_absent "${log}" "${alias}"
+    done
+done
+
+for interface in bash entrypoint; do
+    if [[ "${interface}" == "bash" ]]; then
+        shell_cmd="${TEST_BASH}"
+        script_path="${scr_inl}"
+    else
+        shell_cmd="sh"
+        script_path="${scr_ent}"
+    fi
+
+    assert_install_alias \
+        "${interface}" "${shell_cmd}" "${script_path}" -ch conda-forge true
+    assert_install_alias \
+        "${interface}" "${shell_cmd}" "${script_path}" \
+        --channels conda-forge true
+    assert_install_alias \
+        "${interface}" "${shell_cmd}" "${script_path}" -oc "" true
+    assert_install_alias \
+        "${interface}" "${shell_cmd}" "${script_path}" \
+        --override_channels "" true
+    assert_install_alias \
+        "${interface}" "${shell_cmd}" "${script_path}" \
+        --override-channels "" true
+
+    for alias in \
+        --channel \
+        --channel_list \
+        --channel-list \
+        --override_channel \
+        --override-channel
+    do
+        assert_install_alias \
+            "${interface}" "${shell_cmd}" "${script_path}" \
+            "${alias}" "" false
+    done
 done
 
 if \

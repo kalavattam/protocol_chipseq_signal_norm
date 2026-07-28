@@ -12,7 +12,9 @@
 # Distributed under the MIT license.
 
 
-"""Compare bounded shell parser aliases with public Parameter rows."""
+"""
+Compare bounded shell parser aliases with public Parameter rows.
+"""
 
 from __future__ import annotations
 
@@ -24,26 +26,28 @@ import shlex
 import sys
 from pathlib import Path
 
-from help_heredoc_reflow import extract_help_heredocs, shell_paths
-from shell_help_pilot import expand_static_alias_pattern
+from dev.audit.help_heredoc_reflow import extract_help_heredocs, shell_paths
+from dev.audit.shell_help_pilot import expand_static_alias_pattern
 
 FUNCTION_START = re.compile(
-    r"^\s*(?:function\s+)?(?P<name>[A-Za-z_][A-Za-z0-9_]*)\s*\(\s*\)\s*\{"
+    r"^\s*(?:function\s+)?(?P<name>[A-Za-z_][A-Za-z0-9_]*)\s*\(\s*\)\s*\{",
 )
 OPTION_ARM = re.compile(r"^\s*(?P<pattern>-[^)]*)\)\s*$")
 PARAMETER_ROW = re.compile(
-    r"^(?P<indent>\s*)(?P<head>-[^:]+?)\s+:\s+(?P<type>\S.*)$"
+    r"^(?P<indent>\s*)(?P<head>-[^:]+?)\s+:\s+(?P<type>\S.*)$",
 )
 UNDERLINE = re.compile(r"^-{3,}$")
 COMPATIBILITY_EXEC = re.compile(
     r"exec\s+[^\n]*?/(?P<target>(?:execute|submit)_[A-Za-z0-9_]+\.sh)"
-    r"[^\n]*?\"?\$@\"?"
+    r"[^\n]*?\"?\$@\"?",
 )
 
 
 @dataclasses.dataclass(frozen=True)
 class AliasChunk:
-    """One bounded logical option group from a shell case arm."""
+    """
+    One bounded logical option group from a shell case arm.
+    """
 
     owner: str
     aliases: tuple[str, ...]
@@ -51,7 +55,9 @@ class AliasChunk:
 
 @dataclasses.dataclass(frozen=True)
 class ParameterRow:
-    """One documented logical option row."""
+    """
+    One documented logical option row.
+    """
 
     owner: str
     line: int
@@ -62,7 +68,9 @@ class ParameterRow:
 
 @dataclasses.dataclass(frozen=True)
 class Finding:
-    """One exact parser/documentation alias mismatch."""
+    """
+    One exact parser/documentation alias mismatch.
+    """
 
     path: str
     line: int
@@ -73,20 +81,28 @@ class Finding:
     message: str
 
     def format(self) -> str:
-        """Render one stable diagnostic."""
+        """
+        Render one stable diagnostic.
+        """
 
-        return (
+        location = (
             f"HELP.PARAMETER.ALIAS_SET: {self.path}:{self.line}: "
-            f"owner={self.owner}; {self.message}; "
-            f"documented={','.join(self.documented)}; "
-            f"expected={','.join(self.expected)}; "
-            f"hidden={','.join(self.hidden)}"
+            f"owner={self.owner}"
+        )
+        documented = f"documented={','.join(self.documented)}"
+        expected = f"expected={','.join(self.expected)}"
+        hidden = f"hidden={','.join(self.hidden)}"
+
+        return "; ".join(
+            (location, self.message, documented, expected, hidden),
         )
 
 
 @dataclasses.dataclass(frozen=True)
 class DelegatedParserBinding:
-    """One documented owner bound to option chunks parsed elsewhere."""
+    """
+    One documented owner bound to option chunks parsed elsewhere.
+    """
 
     documentation_path: str
     documented_owner: str
@@ -103,7 +119,9 @@ class DelegatedParserBinding:
 
 @dataclasses.dataclass(frozen=True)
 class DelegatedParserPolicy:
-    """Stable identity metadata for one source-reviewed conditional parser."""
+    """
+    Stable identity metadata for one source-reviewed conditional parser.
+    """
 
     documentation_path: str
     documented_owner: str
@@ -164,65 +182,88 @@ DELEGATED_PARSER_POLICIES = (
 def csv_short_alias_findings(
     inventory: list[dict[str, object]],
 ) -> list[Finding]:
-    """Require public shorts for canonical --csv_* options to start with -c."""
+    """
+    Require public shorts for canonical --csv_* options to start with -c.
+    """
 
     findings: list[Finding] = []
+
     for row in inventory:
         logical = str(row.get("logical_option", ""))
         if not logical.startswith("--csv_"):
             continue
+
         aliases = tuple(str(alias) for alias in row.get("public_aliases", []))
         shorts = tuple(
             alias
             for alias in aliases
             if alias.startswith("-") and not alias.startswith("--")
         )
-        invalid = tuple(alias for alias in shorts if not alias.startswith("-c"))
+        invalid = tuple(
+            alias for alias in shorts if not alias.startswith("-c")
+        )
         if not invalid:
             continue
+
+        invalid_text = ",".join(invalid)
         findings.append(
             Finding(
                 path=str(row.get("path", "<unknown>")),
                 line=int(row.get("line", 1)),
                 owner=str(row.get("owner", "<unknown>")),
                 documented=aliases,
-                expected=tuple(alias for alias in aliases if alias not in invalid),
+                expected=tuple(
+                    alias for alias in aliases if alias not in invalid
+                ),
                 hidden=(),
                 message=(
                     "public short aliases for canonical --csv_* options must "
-                    f"begin with -c; invalid={','.join(invalid)}"
+                    f"begin with -c; invalid={invalid_text}"
                 ),
-            )
+            ),
         )
+
     return findings
 
 
 def masked_source_lines(text: str) -> list[str]:
-    """Mask recognized help heredocs while preserving source line numbers."""
+    """
+    Mask recognized help heredocs while preserving source line numbers.
+    """
 
     lines = text.splitlines()
+
     for heredoc in extract_help_heredocs(text):
         for line_number in range(heredoc.start_line, heredoc.end_line + 1):
             lines[line_number - 1] = ""
+
     return lines
 
 
 def function_body_spans(text: str) -> dict[str, tuple[int, int, str]]:
-    """Return one-based source spans and bodies for bounded functions."""
+    """
+    Return one-based source spans and bodies for bounded functions.
+    """
 
     lines = masked_source_lines(text)
     result: dict[str, tuple[int, int, str]] = {}
     index = 0
+
     while index < len(lines):
         match = FUNCTION_START.match(lines[index])
+
         if match is None:
             index += 1
+
             continue
+
         depth = lines[index].count("{") - lines[index].count("}")
         end = index + 1
+
         while end < len(lines) and depth > 0:
             depth += lines[end].count("{") - lines[end].count("}")
             end += 1
+
         if depth == 0:
             result[match.group("name")] = (
                 index + 1,
@@ -232,11 +273,14 @@ def function_body_spans(text: str) -> dict[str, tuple[int, int, str]]:
             index = end
         else:
             index += 1
+
     return result
 
 
 def function_bodies(text: str) -> dict[str, str]:
-    """Return bounded function bodies while preserving nested brace blocks."""
+    """
+    Return bounded function bodies while preserving nested brace blocks.
+    """
 
     return {
         owner: body
@@ -245,37 +289,50 @@ def function_bodies(text: str) -> dict[str, str]:
 
 
 def split_logical_aliases(aliases: list[str]) -> list[tuple[str, ...]]:
-    """Split combined case arms at a short alias after observed long aliases."""
+    """
+    Split combined case arms at a short alias after observed long aliases.
+    """
 
     chunks: list[list[str]] = []
     current: list[str] = []
     saw_long = False
+
     for alias in aliases:
         is_short = alias.startswith("-") and not alias.startswith("--")
+
         if is_short and saw_long:
             chunks.append(current)
             current = []
             saw_long = False
+
         current.append(alias)
         saw_long = saw_long or alias.startswith("--")
+
     if current:
         chunks.append(current)
+
     return [tuple(chunk) for chunk in chunks]
 
 
 def _alias_chunks_from_body(owner: str, body: str) -> list[AliasChunk]:
-    """Extract bounded alias groups from one parser-bearing source body."""
+    """
+    Extract bounded alias groups from one parser-bearing source body.
+    """
 
     chunks: list[AliasChunk] = []
+
     for line in body.splitlines():
         match = OPTION_ARM.match(line)
         if match is None:
             continue
+
         expanded = expand_static_alias_pattern(match.group("pattern"))
         if expanded is None or expanded == ["-*"]:
             continue
+
         for aliases in split_logical_aliases(expanded):
             chunks.append(AliasChunk(owner=owner, aliases=aliases))
+
     regex_groups = (
         (r"-h\|--h\[e\]\?lp", ("-h", "--hlp", "--help")),
         (r"-d\|--details", ("-d", "--details")),
@@ -285,38 +342,55 @@ def _alias_chunks_from_body(owner: str, body: str) -> list[AliasChunk]:
         ),
     )
     observed = {chunk.aliases for chunk in chunks}
+
     for pattern, aliases in regex_groups:
         if re.search(pattern, body) and aliases not in observed:
             chunks.append(AliasChunk(owner=owner, aliases=aliases))
+
     return chunks
 
 
-def alias_chunks(text: str, owners: set[str] | None = None) -> list[AliasChunk]:
-    """Extract literal and underscore/hyphen option groups from functions."""
+def alias_chunks(
+    text: str,
+    owners: set[str] | None = None,
+) -> list[AliasChunk]:
+    """
+    Extract literal and underscore/hyphen option groups from functions.
+    """
 
     chunks: list[AliasChunk] = []
+
     for owner, body in function_bodies(text).items():
         if owners is not None and owner not in owners:
             continue
+
         chunks.extend(_alias_chunks_from_body(owner, body))
+
     return chunks
 
 
 def file_alias_chunks(text: str) -> list[AliasChunk]:
-    """Extract aliases from a top-level parser when no parser function exists."""
+    """
+    Extract aliases from a top-level parser when no parser function exists.
+    """
 
     return _alias_chunks_from_body("<file>", text)
 
 
 def parameter_rows(text: str) -> list[ParameterRow]:
-    """Extract option rows only from recognized Parameters sections."""
+    """
+    Extract option rows only from recognized Parameters sections.
+    """
 
     rows: list[ParameterRow] = []
+
     for heredoc in extract_help_heredocs(text):
         if heredoc.owner == "<file>":
             continue
+
         lines = list(heredoc.lines)
         in_parameters = False
+
         for index, (number, line) in enumerate(lines):
             if (
                 line.strip() == "Parameters"
@@ -325,6 +399,7 @@ def parameter_rows(text: str) -> list[ParameterRow]:
             ):
                 in_parameters = True
                 continue
+
             if (
                 in_parameters
                 and line.strip()
@@ -332,13 +407,19 @@ def parameter_rows(text: str) -> list[ParameterRow]:
                 and UNDERLINE.fullmatch(lines[index + 1][1].strip())
             ):
                 in_parameters = False
+
             if not in_parameters:
                 continue
+
             match = PARAMETER_ROW.match(line)
             if match is None:
                 continue
+
             aliases = tuple(
-                re.findall(r"--?[A-Za-z0-9][A-Za-z0-9_-]*", match.group("head"))
+                re.findall(
+                    r"--?[A-Za-z0-9][A-Za-z0-9_-]*",
+                    match.group("head"),
+                ),
             )
             rows.append(
                 ParameterRow(
@@ -347,20 +428,25 @@ def parameter_rows(text: str) -> list[ParameterRow]:
                     aliases=aliases,
                     indent=match.group("indent"),
                     type_name=match.group("type"),
-                )
+                ),
             )
+
     return rows
 
 
 def usage_aliases_by_owner(text: str) -> dict[str, tuple[str, ...]]:
-    """Return exact option spellings observed in recognized Usage sections."""
+    """
+    Return exact option spellings observed in recognized Usage sections.
+    """
 
     result: dict[str, tuple[str, ...]] = {}
     heredocs = extract_help_heredocs(text)
+
     for heredoc in heredocs:
         lines = list(heredoc.lines)
         aliases: list[str] = []
         in_usage = False
+
         for index, (_, line) in enumerate(lines):
             if (
                 line.strip() == "Usage"
@@ -369,6 +455,7 @@ def usage_aliases_by_owner(text: str) -> dict[str, tuple[str, ...]]:
             ):
                 in_usage = True
                 continue
+
             if (
                 in_usage
                 and line.strip()
@@ -376,29 +463,48 @@ def usage_aliases_by_owner(text: str) -> dict[str, tuple[str, ...]]:
                 and UNDERLINE.fullmatch(lines[index + 1][1].strip())
             ):
                 break
+
             if in_usage:
                 aliases.extend(
-                    re.findall(r"--?[A-Za-z0-9][A-Za-z0-9_-]*", line)
+                    re.findall(r"--?[A-Za-z0-9][A-Za-z0-9_-]*", line),
                 )
+
         result[heredoc.owner] = tuple(dict.fromkeys(aliases))
+
     shared = result.get("<file>", ())
+
     if shared:
         for heredoc in heredocs:
             if heredoc.owner == "<file>":
                 continue
+
             if any("${usage}" in line for _, line in heredoc.lines):
                 result[heredoc.owner] = shared
+
     return result
 
 
 def hidden_alias(alias: str, aliases: tuple[str, ...]) -> bool:
-    """Return whether settled repository convention makes an alias hidden."""
+    """
+    Return whether settled repository convention makes an alias hidden.
+    """
 
     if alias == "--hlp" or alias.endswith(("_hlp", "-hlp")):
         return True
+
+    chunk_size_is_public = "--chunk_size" in aliases
+    chunk_size_compatibility_alias = alias in {
+        "--chnk_size",
+        "--chnk-size",
+    }
+
+    if chunk_size_is_public and chunk_size_compatibility_alias:
+        return True
+
     if alias.startswith("--") and "-" in alias[2:]:
         underscore = "--" + alias[2:].replace("-", "_")
         return underscore in aliases
+
     return False
 
 
@@ -406,25 +512,32 @@ def expected_aliases(
     row: ParameterRow,
     chunk: AliasChunk,
 ) -> tuple[tuple[str, ...], tuple[str, ...]]:
-    """Return public parser spellings and deliberately hidden compatibility."""
+    """
+    Return public parser spellings and deliberately hidden compatibility.
+    """
 
     public: list[str] = []
     hidden: list[str] = []
+
     for alias in chunk.aliases:
         if hidden_alias(alias, chunk.aliases):
             hidden.append(alias)
         else:
             public.append(alias)
+
     return tuple(public), tuple(hidden)
 
 
 def logical_option(chunk: AliasChunk) -> str:
-    """Return the canonical public identity for one logical option chunk."""
+    """
+    Return the canonical public identity for one logical option chunk.
+    """
 
     public, _ = expected_aliases(
         ParameterRow(chunk.owner, 1, (), "  ", "option"),
         chunk,
     )
+
     return next(
         (alias for alias in reversed(public) if alias.startswith("--")),
         public[-1] if public else "",
@@ -435,26 +548,37 @@ def logical_shell_statements(
     body: str,
     body_start_line: int,
 ) -> list[tuple[int, str]]:
-    """Join explicit shell continuations into line-addressable statements."""
+    """
+    Join explicit shell continuations into line-addressable statements.
+    """
 
     statements: list[tuple[int, str]] = []
     parts: list[str] = []
     start = body_start_line
+
     for offset, line in enumerate(body.splitlines()):
         number = body_start_line + offset
         stripped = line.strip()
+
         if not parts:
             start = number
+
         if stripped.endswith("\\"):
             parts.append(stripped[:-1].rstrip())
+
             continue
+
         parts.append(stripped)
         statement = " ".join(part for part in parts if part)
+
         if statement:
             statements.append((start, statement))
+
         parts = []
+
     if parts:
         statements.append((start, " ".join(part for part in parts if part)))
+
     return statements
 
 
@@ -463,26 +587,40 @@ def parser_calls(
     caller: str,
     parser_owner: str,
 ) -> list[tuple[int, tuple[str, ...], str]]:
-    """Return direct calls from one function to one parser-bearing function."""
+    """
+    Return direct calls from one function to one parser-bearing function.
+    """
 
     span = function_body_spans(text).get(caller)
     if span is None:
         return []
+
     start_line, _, body = span
     calls: list[tuple[int, tuple[str, ...], str]] = []
+
     for line, statement in logical_shell_statements(body, start_line + 1):
         try:
             tokens = shlex.split(statement, comments=True, posix=True)
         except ValueError:
             tokens = statement.split()
-        indexes = [index for index, token in enumerate(tokens) if token == parser_owner]
+
+        indexes = [
+            index
+            for index, token in enumerate(tokens)
+            if token == parser_owner
+        ]
+
         for index in indexes:
             arguments: list[str] = []
+
             for token in tokens[index + 1 :]:
                 if token in {";", "&&", "||", "then", "do"}:
                     break
+
                 arguments.append(token)
+
             calls.append((line, tuple(arguments), statement))
+
     return calls
 
 
@@ -492,27 +630,28 @@ def policy_for_binding(
     parser_path: str,
     parser_owner: str,
 ) -> DelegatedParserPolicy | None:
-    """Return exact conditional-contract metadata for one stable identity."""
+    """
+    Return exact conditional-contract metadata for one stable identity.
+    """
 
-    return next(
-        (
-            policy
-            for policy in DELEGATED_PARSER_POLICIES
-            if (
-                policy.documentation_path,
-                policy.documented_owner,
-                policy.parser_path,
-                policy.parser_owner,
-            )
-            == (
-                documentation_path,
-                documented_owner,
-                parser_path,
-                parser_owner,
-            )
-        ),
-        None,
+    requested_identity = (
+        documentation_path,
+        documented_owner,
+        parser_path,
+        parser_owner,
     )
+
+    for policy in DELEGATED_PARSER_POLICIES:
+        policy_identity = (
+            policy.documentation_path,
+            policy.documented_owner,
+            policy.parser_path,
+            policy.parser_owner,
+        )
+        if policy_identity == requested_identity:
+            return policy
+
+    return None
 
 
 def _binding_for_call(
@@ -523,7 +662,9 @@ def _binding_for_call(
     parser_chunks: list[AliasChunk],
     call: tuple[int, tuple[str, ...], str],
 ) -> DelegatedParserBinding:
-    """Resolve one direct call through optional fixed-mode contract metadata."""
+    """
+    Resolve one direct call through optional fixed-mode contract metadata.
+    """
 
     line, arguments, statement = call
     policy = policy_for_binding(
@@ -537,6 +678,7 @@ def _binding_for_call(
     rejected: tuple[str, ...] = ()
     evidence = [f"{parser_path}:{line}: {statement}"]
     confidence = "high"
+
     if policy is not None:
         fixed_mode = (
             arguments[policy.mode_argument_index]
@@ -545,12 +687,16 @@ def _binding_for_call(
         )
         allowed = set(policy.applicable_logical_options)
         applicable = tuple(
-            chunk for chunk in parser_chunks if logical_option(chunk) in allowed
+            chunk
+            for chunk in parser_chunks
+            if logical_option(chunk) in allowed
         )
         rejected = policy.rejected_aliases
         evidence.append(policy.source_reference)
+
         if fixed_mode != policy.fixed_mode:
             confidence = "invalid_fixed_mode"
+
     return DelegatedParserBinding(
         documentation_path=documentation_path,
         documented_owner=documented_owner,
@@ -567,16 +713,20 @@ def _binding_for_call(
 
 
 def owning_source(root: Path, documentation_path: str) -> Path | None:
-    """Resolve one external help module to its top-level parser source."""
+    """
+    Resolve one external help module to its top-level parser source.
+    """
 
     name = Path(documentation_path).name
     if not name.startswith("help_"):
         return None
+
     script_name = name.removeprefix("help_")
     candidates = (
         root / "bin" / script_name,
         root / "install" / "scripts" / script_name,
     )
+
     return next((path for path in candidates if path.is_file()), None)
 
 
@@ -585,21 +735,47 @@ def delegated_parser_bindings(
     path: str,
     text: str,
 ) -> list[DelegatedParserBinding]:
-    """Discover high-confidence parser/help ownership across function bounds."""
+    """
+    Discover high-confidence parser/help ownership across function bounds.
+
+    Parameters
+    ----------
+    root : Path
+        Repository root containing help and parser sources.
+    path : str
+        Repository-relative documentation-source path.
+    text : str
+        Complete help source to associate with parser calls.
+
+    Returns
+    -------
+    bindings : list[DelegatedParserBinding]
+        Source-derived direct and centralized parser ownership bindings.
+    """
 
     bindings: list[DelegatedParserBinding] = []
     source = owning_source(root, path)
+
     if source is not None:
         source_path = str(source.relative_to(root))
         source_text = source.read_text(encoding="utf-8")
-        parser_owners = {"parse_args", "resolve_dir_scr", "check_args_light", "main"}
+        parser_owners = {
+            "parse_args",
+            "resolve_dir_scr",
+            "check_args_light",
+            "main",
+        }
         chunks_by_owner: dict[str, list[AliasChunk]] = {}
+
         for chunk in alias_chunks(source_text, parser_owners):
             chunks_by_owner.setdefault(chunk.owner, []).append(chunk)
+
         source_lines = source_text.splitlines()
+
         for heredoc in extract_help_heredocs(text):
             if heredoc.owner == "<file>":
                 continue
+
             call_line = next(
                 (
                     number
@@ -608,6 +784,7 @@ def delegated_parser_bindings(
                 ),
                 1,
             )
+
             for parser_owner, chunks in sorted(chunks_by_owner.items()):
                 bindings.append(
                     DelegatedParserBinding(
@@ -622,10 +799,15 @@ def delegated_parser_bindings(
                         applicable_chunks=tuple(chunks),
                         rejected_aliases=(),
                         source_evidence=(
-                            f"{source_path}:{call_line}: centralized help owner {heredoc.owner}",
+                            (
+                                f"{source_path}:{call_line}: centralized help "
+                                f"owner "
+                                f"{heredoc.owner}"
+                            ),
                         ),
-                    )
+                    ),
                 )
+
         return sorted(
             bindings,
             key=lambda item: (
@@ -638,19 +820,23 @@ def delegated_parser_bindings(
         )
 
     chunks_by_owner: dict[str, list[AliasChunk]] = {}
+
     for chunk in alias_chunks(text):
         chunks_by_owner.setdefault(chunk.owner, []).append(chunk)
+
     documented_owners = sorted(
         {
             heredoc.owner
             for heredoc in extract_help_heredocs(text)
             if heredoc.owner != "<file>"
-        }
+        },
     )
+
     for documented_owner in documented_owners:
         for parser_owner, chunks in sorted(chunks_by_owner.items()):
             if parser_owner == documented_owner:
                 continue
+
             policy = policy_for_binding(
                 path,
                 documented_owner,
@@ -662,6 +848,7 @@ def delegated_parser_bindings(
                 parser_owner,
             ):
                 continue
+
             for call in parser_calls(text, documented_owner, parser_owner):
                 bindings.append(
                     _binding_for_call(
@@ -671,7 +858,7 @@ def delegated_parser_bindings(
                         parser_owner,
                         chunks,
                         call,
-                    )
+                    ),
                 )
 
     return sorted(
@@ -691,17 +878,23 @@ def parser_chunks_for_document(
     path: str,
     text: str,
 ) -> tuple[list[AliasChunk], bool]:
-    """Return parser chunks and whether they come from an external owner."""
+    """
+    Return parser chunks and whether they come from an external owner.
+    """
 
     source = owning_source(root, path)
+
     if source is not None:
         owners = {"parse_args", "resolve_dir_scr", "check_args_light", "main"}
         return alias_chunks(source.read_text(encoding="utf-8"), owners), True
+
     if Path(path).name == "install_envs_entrypoint.sh":
         return alias_chunks(text, {"check_args_light"}), True
+
     chunks = alias_chunks(text)
     if chunks:
         return chunks, False
+
     return file_alias_chunks(text), True
 
 
@@ -711,12 +904,18 @@ def best_chunk(
     external: bool,
     delegated: tuple[AliasChunk, ...] = (),
 ) -> AliasChunk | None:
-    """Bind one row to the parser group with the strongest exact overlap."""
+    """
+    Bind one row to the parser group with the strongest exact overlap.
+    """
 
-    candidates = chunks if external else [
-        *[chunk for chunk in chunks if chunk.owner == row.owner],
-        *delegated,
-    ]
+    candidates = (
+        chunks
+        if external
+        else [
+            *[chunk for chunk in chunks if chunk.owner == row.owner],
+            *delegated,
+        ]
+    )
     ranked = sorted(
         (
             (len(set(row.aliases) & set(chunk.aliases)), chunk)
@@ -725,6 +924,7 @@ def best_chunk(
         key=lambda item: item[0],
         reverse=True,
     )
+
     return ranked[0][1] if ranked and ranked[0][0] else None
 
 
@@ -733,11 +933,30 @@ def check_document(
     path: str,
     text: str,
 ) -> tuple[list[Finding], dict[int, tuple[str, ...]]]:
-    """Return mismatches and safe normalized row heads for one source."""
+    """
+    Return mismatches and safe normalized row heads for one source.
+
+    Parameters
+    ----------
+    root : Path
+        Repository root used to resolve maintained paths.
+    path : str
+        Repository-relative path associated with the source.
+    text : str
+        Source text to inspect or normalize.
+
+    Returns
+    -------
+    findings, replacements : tuple[
+        list[Finding], dict[int, tuple[str, ...]]
+    ]
+        Alias-documentation findings for the selected owner.
+    """
 
     chunks, external = parser_chunks_for_document(root, path, text)
     bindings = delegated_parser_bindings(root, path, text)
     delegated_by_owner: dict[str, tuple[AliasChunk, ...]] = {}
+
     for owner in {binding.documented_owner for binding in bindings}:
         delegated_by_owner[owner] = tuple(
             chunk
@@ -745,6 +964,7 @@ def check_document(
             if binding.documented_owner == owner
             for chunk in binding.applicable_chunks
         )
+
     findings: list[Finding] = []
     replacements: dict[int, tuple[str, ...]] = {}
     usage_by_owner = usage_aliases_by_owner(text)
@@ -757,6 +977,7 @@ def check_document(
         )
         for binding in bindings
     }
+
     for policy in DELEGATED_PARSER_POLICIES:
         key = (
             policy.documentation_path,
@@ -764,7 +985,11 @@ def check_document(
             policy.parser_path,
             policy.parser_owner,
         )
-        if policy.documentation_path == path and key not in observed_binding_keys:
+
+        if (
+            policy.documentation_path == path
+            and key not in observed_binding_keys
+        ):
             findings.append(
                 Finding(
                     path,
@@ -773,17 +998,32 @@ def check_document(
                     (),
                     policy.applicable_logical_options,
                     (),
-                    "source-reviewed delegated parser call is missing or undiscoverable",
-                )
+                    (
+                        "source-reviewed delegated parser call is missing or "
+                        "undiscoverable"
+                    ),
+                ),
             )
+
     for row in parameter_rows(text):
         if len(row.aliases) != len(set(row.aliases)):
             findings.append(
-                Finding(path, row.line, row.owner, row.aliases, (), (), "duplicate alias")
+                Finding(
+                    path,
+                    row.line,
+                    row.owner,
+                    row.aliases,
+                    (),
+                    (),
+                    "duplicate alias",
+                ),
             )
+
             continue
+
         delegated = delegated_by_owner.get(row.owner, ())
         chunk = best_chunk(row, chunks, external, delegated)
+
         if chunk is None:
             rejected_bindings = [
                 binding
@@ -791,6 +1031,7 @@ def check_document(
                 if binding.documented_owner == row.owner
                 and set(row.aliases) & set(binding.rejected_aliases)
             ]
+
             if rejected_bindings:
                 findings.append(
                     Finding(
@@ -800,18 +1041,35 @@ def check_document(
                         row.aliases,
                         (),
                         (),
-                        "documented alias is rejected by delegated fixed-mode contract",
-                    )
+                        (
+                            "documented alias is rejected by delegated "
+                            "fixed-mode contract"
+                        ),
+                    ),
                 )
+
             continue
+
         expected, hidden = expected_aliases(row, chunk)
         documented = tuple(row.aliases)
-        advertised_hidden = tuple(alias for alias in documented if alias in hidden)
-        unaccepted = tuple(alias for alias in documented if alias not in chunk.aliases)
+        advertised_hidden = tuple(
+            alias for alias in documented if alias in hidden
+        )
+        unaccepted = tuple(
+            alias for alias in documented if alias not in chunk.aliases
+        )
+
         if documented != expected or advertised_hidden or unaccepted:
-            message = "public alias set differs from parser and visibility evidence"
+            message = (
+                "public alias set differs from parser and visibility evidence"
+            )
+
             if chunk in delegated:
-                message = "delegated public alias set differs from parser and visibility evidence"
+                message = (
+                    "delegated public alias set differs from parser and "
+                    "visibility evidence"
+                )
+
             if advertised_hidden:
                 message = (
                     "delegated hidden compatibility alias is documented"
@@ -820,15 +1078,33 @@ def check_document(
                 )
             elif unaccepted:
                 message = (
-                    "documented alias is not accepted by its delegated parser arm"
+                    (
+                        "documented alias is not accepted by its delegated "
+                        "parser arm"
+                    )
                     if chunk in delegated
                     else "documented alias is not accepted by its parser arm"
                 )
+
             findings.append(
-                Finding(path, row.line, row.owner, documented, expected, hidden, message)
+                Finding(
+                    path,
+                    row.line,
+                    row.owner,
+                    documented,
+                    expected,
+                    hidden,
+                    message,
+                ),
             )
-        if not advertised_hidden and not unaccepted and set(documented) <= set(expected):
+
+        if (
+            not advertised_hidden
+            and not unaccepted
+            and set(documented) <= set(expected)
+        ):
             replacements[row.line] = expected
+
         usage_aliases = tuple(
             alias
             for alias in usage_by_owner.get(row.owner, ())
@@ -845,6 +1121,7 @@ def check_document(
             for alias in usage_aliases
             if alias.startswith("--") and alias in expected
         )
+
         if usage_aliases and (invalid_usage or len(public_long_usage) != 1):
             findings.append(
                 Finding(
@@ -854,17 +1131,24 @@ def check_document(
                     usage_aliases,
                     public_long_usage[:1],
                     hidden,
-                    "Usage requires exactly one public canonical long spelling and no short or hidden aliases",
-                )
+                    (
+                        "Usage requires exactly one public canonical long "
+                        "spelling and no short or hidden aliases"
+                    ),
+                ),
             )
 
     rows_by_owner: dict[str, list[ParameterRow]] = {}
+
     for row in parameter_rows(text):
         rows_by_owner.setdefault(row.owner, []).append(row)
+
     for binding in bindings:
         if binding.relation != "direct_delegated_parser_call":
             continue
+
         owner_rows = rows_by_owner.get(binding.documented_owner, [])
+
         if binding.confidence != "high":
             findings.append(
                 Finding(
@@ -874,19 +1158,29 @@ def check_document(
                     (),
                     (),
                     (),
-                    "delegated parser fixed mode differs from stable source-reviewed contract",
-                )
+                    (
+                        "delegated parser fixed mode differs from stable "
+                        "source-reviewed contract"
+                    ),
+                ),
             )
+
             continue
+
         policy = policy_for_binding(
             binding.documentation_path,
             binding.documented_owner,
             binding.parser_path,
             binding.parser_owner,
         )
-        if policy is not None and tuple(
+        applicable_options = tuple(
             logical_option(chunk) for chunk in binding.applicable_chunks
-        ) != policy.applicable_logical_options:
+        )
+
+        if (
+            policy is not None
+            and applicable_options != policy.applicable_logical_options
+        ):
             findings.append(
                 Finding(
                     path,
@@ -895,13 +1189,19 @@ def check_document(
                     (),
                     policy.applicable_logical_options,
                     (),
-                    "delegated parser policy names a logical option absent from parser source",
-                )
+                    (
+                        "delegated parser policy names a logical option "
+                        "absent from parser source"
+                    ),
+                ),
             )
+
         seen: set[tuple[str, ...]] = set()
+
         for chunk in binding.applicable_chunks:
             if chunk.aliases in seen:
                 continue
+
             seen.add(chunk.aliases)
             expected, hidden = expected_aliases(
                 ParameterRow(
@@ -917,6 +1217,7 @@ def check_document(
                 set(row.aliases) & set(chunk.aliases) for row in owner_rows
             ):
                 continue
+
             findings.append(
                 Finding(
                     path,
@@ -926,24 +1227,29 @@ def check_document(
                     expected,
                     hidden,
                     "delegated public alias row is missing from Parameters",
-                )
+                ),
             )
 
     for heredoc in extract_help_heredocs(text):
         if heredoc.owner == "<file>":
             continue
-        candidates = chunks if external else [
-            chunk for chunk in chunks if chunk.owner == heredoc.owner
-        ]
+
+        candidates = (
+            chunks
+            if external
+            else [chunk for chunk in chunks if chunk.owner == heredoc.owner]
+        )
         help_chunk = next(
             (chunk for chunk in candidates if "--help" in chunk.aliases),
             None,
         )
         if help_chunk is None:
             continue
+
         owner_rows = rows_by_owner.get(heredoc.owner, [])
         if any("--help" in row.aliases for row in owner_rows):
             continue
+
         expected, hidden = expected_aliases(
             ParameterRow(heredoc.owner, heredoc.start_line, (), "  ", "flag"),
             help_chunk,
@@ -957,13 +1263,16 @@ def check_document(
                 expected,
                 hidden,
                 "accepted public help aliases are missing from Parameters",
-            )
+            ),
         )
+
     return findings, replacements
 
 
 def selected_documents(root: Path, paths: list[str] | None) -> list[str]:
-    """Return public production shell documents with recognized help."""
+    """
+    Return public production shell documents with recognized help.
+    """
 
     selected = paths or shell_paths(root)
     return [
@@ -977,7 +1286,9 @@ def selected_documents(root: Path, paths: list[str] | None) -> list[str]:
 
 
 def wrapper_documents(paths: list[str]) -> list[str]:
-    """Return only external help modules owned by execute/submit wrappers."""
+    """
+    Return only external help modules owned by execute/submit wrappers.
+    """
 
     return [
         path
@@ -989,17 +1300,26 @@ def wrapper_documents(paths: list[str]) -> list[str]:
     ]
 
 
-def normalize_document(text: str, replacements: dict[int, tuple[str, ...]]) -> str:
-    """Apply exact alias-head replacements without changing descriptions."""
+def normalize_document(
+    text: str,
+    replacements: dict[int, tuple[str, ...]],
+) -> str:
+    """
+    Apply exact alias-head replacements without changing descriptions.
+    """
 
     lines = text.splitlines()
+
     for number, aliases in replacements.items():
         match = PARAMETER_ROW.match(lines[number - 1])
         if match is None:
             continue
-        lines[number - 1] = (
-            f"{match.group('indent')}{', '.join(aliases)} : {match.group('type')}"
-        )
+
+        indentation = match.group("indent")
+        alias_head = ", ".join(aliases)
+        value_type = match.group("type")
+        lines[number - 1] = f"{indentation}{alias_head} : {value_type}"
+
     return "\n".join(lines) + ("\n" if text.endswith("\n") else "")
 
 
@@ -1008,49 +1328,64 @@ def insert_missing_help_rows(
     path: str,
     text: str,
 ) -> str:
-    """Insert the one settled public help row into documented parser owners."""
+    """
+    Insert the one settled public help row into documented parser owners.
+    """
 
     chunks, external = parser_chunks_for_document(root, path, text)
     documented = {
         row.owner for row in parameter_rows(text) if "--help" in row.aliases
     }
     insertions: list[tuple[int, tuple[str, ...]]] = []
+
     for heredoc in extract_help_heredocs(text):
         if heredoc.owner == "<file>":
             continue
+
         if heredoc.owner in documented:
             continue
-        candidates = chunks if external else [
-            chunk for chunk in chunks if chunk.owner == heredoc.owner
-        ]
+
+        candidates = (
+            chunks
+            if external
+            else [chunk for chunk in chunks if chunk.owner == heredoc.owner]
+        )
         help_chunk = next(
             (chunk for chunk in candidates if "--help" in chunk.aliases),
             None,
         )
         if help_chunk is None:
             continue
+
         expected, _ = expected_aliases(
             ParameterRow(heredoc.owner, heredoc.start_line, (), "  ", "flag"),
             help_chunk,
         )
         body = list(heredoc.lines)
+
         for index, (_, line) in enumerate(body[:-1]):
             if line.strip() != "Parameters" or not UNDERLINE.fullmatch(
-                body[index + 1][1].strip()
+                body[index + 1][1].strip(),
             ):
                 continue
+
             insertions.append((body[index + 1][0], expected))
+
             break
 
     lines = text.splitlines()
+
     for underline_line, aliases in sorted(insertions, reverse=True):
         insertion = [
             f"  {', '.join(aliases)} : flag",
             "    Display this help message and exit.",
         ]
+
         if underline_line >= len(lines) or lines[underline_line].strip():
             insertion.append("")
+
         lines[underline_line:underline_line] = insertion
+
     return "\n".join(lines) + ("\n" if text.endswith("\n") else "")
 
 
@@ -1058,25 +1393,44 @@ def delegated_parser_inventory(
     root: Path,
     paths: list[str] | None = None,
 ) -> list[dict[str, object]]:
-    """Return deterministic source-derived cross-function parser mappings."""
+    """
+    Return deterministic source-derived cross-function parser mappings.
+
+    Parameters
+    ----------
+    root : Path
+        Repository root containing parser and help sources.
+    paths : list[str] | None
+        Optional bounded document paths.
+
+    Returns
+    -------
+    records : list[dict[str, object]]
+        Delegated parser bindings with source-derived alias evidence.
+    """
 
     inventory: list[dict[str, object]] = []
+
     for path in selected_documents(root, paths):
         text = (root / path).read_text(encoding="utf-8")
         rows_by_owner: dict[str, list[ParameterRow]] = {}
+
         for row in parameter_rows(text):
             rows_by_owner.setdefault(row.owner, []).append(row)
+
         for binding in delegated_parser_bindings(root, path, text):
             accepted = tuple(
                 dict.fromkeys(
                     alias
                     for chunk in binding.applicable_chunks
                     for alias in chunk.aliases
-                )
+                ),
             )
+
             public: list[str] = []
             hidden: list[str] = []
             logical: list[str] = []
+
             for chunk in binding.applicable_chunks:
                 expected, hidden_chunk = expected_aliases(
                     ParameterRow(
@@ -1091,14 +1445,18 @@ def delegated_parser_inventory(
                 public.extend(expected)
                 hidden.extend(hidden_chunk)
                 logical.append(logical_option(chunk))
+
             public_tuple = tuple(dict.fromkeys(public))
             hidden_tuple = tuple(dict.fromkeys(hidden))
             related = set(accepted) | set(binding.rejected_aliases)
+
             documented_rows = rows_by_owner.get(binding.documented_owner, [])
+
             if binding.relation == "centralized_script_parser":
                 documented_rows = [
                     row for rows in rows_by_owner.values() for row in rows
                 ]
+
             documented = tuple(
                 alias
                 for row in documented_rows
@@ -1111,6 +1469,7 @@ def delegated_parser_inventory(
             overdocumented = tuple(
                 alias for alias in documented if alias not in public_tuple
             )
+
             inventory.append(
                 {
                     "documentation_path": binding.documentation_path,
@@ -1140,22 +1499,27 @@ def delegated_parser_inventory(
                             binding.parser_owner,
                         )
                         and not missing
-                        and not overdocumented
+                        and not overdocumented,
                     ),
-                }
+                },
             )
+
     if paths is None:
         canonical = list(inventory)
+
         for shim in sorted((root / "bin").glob("*.sh")):
             text = shim.read_text(encoding="utf-8")
             match = COMPATIBILITY_EXEC.search(text)
             if match is None:
                 continue
+
             target_path = f"bin/{match.group('target')}"
             call_line = text[: match.start()].count("\n") + 1
+
             for row in canonical:
                 if row["parser_path"] != target_path:
                     continue
+
                 copied = dict(row)
                 copied.update(
                     {
@@ -1167,29 +1531,35 @@ def delegated_parser_inventory(
                         "relation": "compatibility_script_delegator",
                         "source_evidence": [
                             f"{shim.relative_to(root)}:{call_line}: "
-                            f"exec delegates '$@' to {match.group('target')}"
+                            f"exec delegates '$@' to {match.group('target')}",
                         ],
                         "remediation_performed": False,
-                    }
+                    },
                 )
                 inventory.append(copied)
 
         forwarder = re.compile(
-            r"^(?P<target>[A-Za-z_][A-Za-z0-9_]*)\s+\"\$@\"$"
+            r"^(?P<target>[A-Za-z_][A-Za-z0-9_]*)\s+\"\$@\"$",
         )
+
         for relative in shell_paths(root):
             source = root / relative
             if not source.is_file():
                 continue
+
             text = source.read_text(encoding="utf-8")
+
             for owner, (start, _, body) in function_body_spans(text).items():
                 match = forwarder.fullmatch(body.strip())
                 if match is None:
                     continue
+
                 target = match.group("target")
+
                 for row in canonical:
                     if row["documented_owner"] != target:
                         continue
+
                     copied = dict(row)
                     copied.update(
                         {
@@ -1198,12 +1568,17 @@ def delegated_parser_inventory(
                             "source_call_location": f"{relative}:{start + 1}",
                             "relation": "compatibility_function_delegator",
                             "source_evidence": [
-                                f"{relative}:{start + 1}: {owner} forwards '$@' to {target}"
+                                (
+                                    f"{relative}:{start + 1}: {owner} "
+                                    f"forwards '$@' to "
+                                    f"{target}"
+                                ),
                             ],
                             "remediation_performed": False,
-                        }
+                        },
                     )
                     inventory.append(copied)
+
     return sorted(
         inventory,
         key=lambda row: (
@@ -1219,18 +1594,36 @@ def scan_repository(
     root: Path,
     paths: list[str] | None = None,
 ) -> tuple[list[Finding], list[dict[str, object]]]:
-    """Return findings plus a machine-readable row inventory."""
+    """
+    Return findings plus a machine-readable row inventory.
+
+    Parameters
+    ----------
+    root : Path
+        Repository root containing the selected help and parser sources.
+    paths : list[str] | None
+        Optional bounded help-document paths.
+
+    Returns
+    -------
+    findings, inventory : tuple[list[Finding], list[dict[str, object]]]
+        Alias findings and complete parser/help ownership inventory rows.
+    """
 
     findings: list[Finding] = []
     inventory: list[dict[str, object]] = []
+
     for path in selected_documents(root, paths):
         text = (root / path).read_text(encoding="utf-8")
         usage_by_owner = usage_aliases_by_owner(text)
+
         path_findings, _ = check_document(root, path, text)
         findings.extend(path_findings)
         chunks, external = parser_chunks_for_document(root, path, text)
+
         bindings = delegated_parser_bindings(root, path, text)
         delegated_by_owner: dict[str, tuple[AliasChunk, ...]] = {}
+
         for owner in {binding.documented_owner for binding in bindings}:
             delegated_by_owner[owner] = tuple(
                 chunk
@@ -1238,6 +1631,7 @@ def scan_repository(
                 if binding.documented_owner == owner
                 for chunk in binding.applicable_chunks
             )
+
         for row in parameter_rows(text):
             chunk = best_chunk(
                 row,
@@ -1247,20 +1641,72 @@ def scan_repository(
             )
             if chunk is None:
                 continue
+
             expected, hidden = expected_aliases(row, chunk)
             logical_option = next(
-                (alias for alias in reversed(expected) if alias.startswith("--")),
+                (
+                    alias
+                    for alias in reversed(expected)
+                    if alias.startswith("--")
+                ),
                 expected[-1] if expected else "",
             )
             rejected: list[str] = []
-            if path == "lib/bash/help/help_execute_download_fastqs.sh" and logical_option == "--fil_in":
+
+            if (
+                path == "lib/bash/help/help_execute_download_fastqs.sh"
+                and logical_option == "--fil_in"
+            ):
                 rejected.extend(["-i", "--infile"])
-            if path == "lib/bash/help/help_execute_download_fastqs.sh" and logical_option == "--dir_eo":
+
+            if (
+                path == "lib/bash/help/help_execute_download_fastqs.sh"
+                and logical_option == "--dir_eo"
+            ):
                 rejected.append("-eo")
-            if path == "lib/bash/core/check_args.sh" and logical_option == "--asgmt":
+
+            if (
+                path == "lib/bash/core/check_args.sh"
+                and logical_option == "--asgmt"
+            ):
                 rejected.append("--asmgt")
-            if path == "lib/bash/help/help_submit_compute_signal.sh" and logical_option == "--csv_usr_frg":
+
+            if (
+                path == "lib/bash/help/help_submit_compute_signal.sh"
+                and logical_option == "--csv_usr_frg"
+            ):
                 rejected.extend(["-uf", "--usr_frg", "--usr-frg"])
+
+            if (
+                path == "lib/bash/help/help_compress_remove_files.sh"
+                and logical_option == "--dry_run"
+            ):
+                rejected.extend(
+                    [
+                        "-ce",
+                        "-cu",
+                        "--chk_exc",
+                        "--chk-exc",
+                        "--chk_exu",
+                        "--chk-exu",
+                        "--dry",
+                        "--dry-run",
+                    ],
+                )
+
+            if path in {
+                "install/scripts/install_envs_entrypoint.sh",
+                "lib/bash/help/help_install_envs.sh",
+            }:
+                if logical_option == "--channels":
+                    rejected.extend(
+                        ["--channel", "--channel_list", "--channel-list"],
+                    )
+                elif logical_option == "--override_channels":
+                    rejected.extend(
+                        ["--override_channel", "--override-channel"],
+                    )
+
             inventory.append(
                 {
                     "path": path,
@@ -1281,14 +1727,28 @@ def scan_repository(
                     ],
                     "hidden_aliases": list(hidden),
                     "rejected_or_retired_aliases": sorted(set(rejected)),
-                }
+                },
             )
+
     findings.extend(csv_short_alias_findings(inventory))
+
     return findings, inventory
 
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
-    """Parse command-line arguments."""
+    """
+    Parse command-line arguments.
+
+    Parameters
+    ----------
+    argv : list[str] | None
+        Explicit arguments, or None to read the process arguments.
+
+    Returns
+    -------
+    arguments : argparse.Namespace
+        Parsed alias-audit and rewrite options.
+    """
 
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--root", type=Path, default=Path.cwd())
@@ -1299,17 +1759,32 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--delegated-inventory-output", type=Path)
     parser.add_argument("--wrapper-only", action="store_true")
     parser.add_argument("paths", nargs="*")
+
     return parser.parse_args(argv)
 
 
 def main(argv: list[str] | None = None) -> int:
-    """Check or normalize current-diff shell Parameter alias sets."""
+    """
+    Check or normalize current-diff shell Parameter alias sets.
+
+    Parameters
+    ----------
+    argv : list[str] | None
+        Explicit arguments, or None to read the process arguments.
+
+    Returns
+    -------
+    status : int
+        Zero when alias documentation is valid and one otherwise.
+    """
 
     args = parse_args(argv)
     root = args.root.resolve()
     selected = selected_documents(root, args.paths or None)
+
     if args.wrapper_only:
         selected = wrapper_documents(selected)
+
     if args.fix:
         for path in selected:
             target = root / path
@@ -1317,11 +1792,14 @@ def main(argv: list[str] | None = None) -> int:
             _, replacements = check_document(root, path, text)
             normalized = normalize_document(text, replacements)
             normalized = insert_missing_help_rows(root, path, normalized)
+
             if normalized != text:
                 target.write_text(normalized, encoding="utf-8")
+
     findings, inventory = scan_repository(root, selected)
     delegated_paths = selected if args.paths or args.wrapper_only else None
     delegated = delegated_parser_inventory(root, delegated_paths)
+
     if args.delegated_inventory_json:
         print(json.dumps(delegated, indent=2, sort_keys=True))
     elif args.inventory_json:
@@ -1329,22 +1807,28 @@ def main(argv: list[str] | None = None) -> int:
     else:
         for finding in findings:
             print(finding.format())
+
     if args.inventory_output is not None:
         args.inventory_output.write_text(
             json.dumps(inventory, indent=2, sort_keys=True) + "\n",
             encoding="utf-8",
         )
+
     if args.delegated_inventory_output is not None:
         args.delegated_inventory_output.write_text(
             json.dumps(delegated, indent=2, sort_keys=True) + "\n",
             encoding="utf-8",
         )
+
     if findings:
         if not args.inventory_json and not args.delegated_inventory_json:
             print(f"HELP.PARAMETER.ALIAS_SET: {len(findings)} violation(s)")
+
         return 1
+
     if not args.inventory_json and not args.delegated_inventory_json:
         print("HELP.PARAMETER.ALIAS_SET: pass (zero unexplained findings)")
+
     return 0
 
 

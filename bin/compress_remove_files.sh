@@ -84,7 +84,7 @@ function init_arg_defs() {
     include=""
     exclude="*.gz"
     chk_con=false
-    chk_exc=false
+    dry_run=false
 
     unset arr_cmd_find arr_cmd_big arr_cmd_zero
     declare -ga arr_cmd_find arr_cmd_big arr_cmd_zero
@@ -100,6 +100,11 @@ function init_defs() {
 function parse_args() {
     while [[ "$#" -gt 0 ]]; do
         case "${1}" in
+            -dr|--dry_run)
+                dry_run=true
+                shift 1
+                ;;
+
             -t|--thr|--threads)
                 require_optarg "${1}" "${2:-}" "main" || {
                     echo >&2
@@ -175,11 +180,6 @@ function parse_args() {
                 shift 1
                 ;;
 
-            -ce|-cu|-dr|--chk[_-]exc|--chk[_-]exu|--dry|--dry[_-]run)
-                chk_exc=true
-                shift 1
-                ;;
-
             *)
                 echo_err "unknown option/parameter passed: '${1}'."
                 echo >&2
@@ -232,7 +232,7 @@ function validate_args() {
 
     if [[ -n "${depth}" ]]; then check_int_pos "${depth}" "depth"; fi
 
-    check_flags_mut_excl ${chk_con} "chk_con" ${chk_exc} "chk_exc"
+    check_flags_mut_excl ${chk_con} "chk_con" ${dry_run} "dry_run"
 }
 
 
@@ -288,7 +288,7 @@ function build_find_cmds() {
 
 
 function report_plan() {
-    if [[ "${chk_con}" == "false" && "${chk_exc}" == "false" ]]; then
+    if [[ "${chk_con}" == "false" && "${dry_run}" == "false" ]]; then
         return 0
     fi
 
@@ -345,7 +345,7 @@ EOM
 
 
 function report_results() {
-    if [[ "${chk_exc}" == "false" ]]; then
+    if [[ "${dry_run}" == "false" ]]; then
         return 0
     fi
 
@@ -397,7 +397,7 @@ function main() {
 
     report_results || return 1
 
-    if [[ "${chk_exc}" == "true" ]]; then return 0; fi
+    if [[ "${dry_run}" == "true" ]]; then return 0; fi
 
     run_jobs || return 1
 }

@@ -32,28 +32,71 @@ class CapHelpFormatter(argparse.RawTextHelpFormatter):
     """
     RawText formatter with capitalized section headings and “Usage”.
     """
-    def add_usage(self, usage, actions, groups, prefix=None):
-        """Add parser usage with the repository's preferred heading."""
 
-        #  Have "Usage:" on its own line
+    def add_usage(
+        self,
+        usage: str | None,
+        actions: list[argparse.Action],
+        groups: list[argparse._MutuallyExclusiveGroup],
+        prefix: str | None = None,
+    ) -> None:
+        """
+        Add parser usage with the repository's preferred heading.
+
+        The formatter writes the usage block to its stream.
+
+        Parameters
+        ----------
+        usage : str | None
+            Usage text emitted by the customized formatter.
+        actions : list[argparse.Action]
+            Parser actions represented in the generated usage block.
+        groups : list[argparse._MutuallyExclusiveGroup]
+            Mutually exclusive parser groups represented in usage.
+        prefix : str | None
+            Usage-heading prefix, or None for the canonical heading.
+        """
+
         if prefix is None:
             prefix = "Usage:\n"
-        return super().add_usage(usage, actions, groups, prefix)
 
-    def start_section(self, heading):
-        """Start a help section after capitalizing its heading."""
+        super().add_usage(usage, actions, groups, prefix)
+
+    def start_section(self, heading: str | None) -> None:
+        """
+        Start a help section after capitalizing its heading.
+
+        The formatter writes the section heading to its stream.
+
+        Parameters
+        ----------
+        heading : str | None
+            Help-section heading to emit.
+        """
 
         if heading:
             heading = heading[:1].upper() + heading[1:]
-        return super().start_section(heading)
+
+        super().start_section(heading)
 
 
 class CapArgumentParser(argparse.ArgumentParser):
     """
-    Opinionated parser: capitalized help, RawText, suppress implicit defaults,
-    and no implicit '-h' / '--help'.
+    Provide capitalized raw-text help without implicit defaults or help flags.
     """
-    def __init__(self, *args, **kwargs):
+
+    def __init__(self, *args: object, **kwargs: object) -> None:
+        """
+        Initialize a parser with the repository's stable help defaults.
+
+        Parameters
+        ----------
+        *args : object
+            Positional arguments forwarded to 'argparse.ArgumentParser'.
+        **kwargs : object
+            Parser options, with repository defaults supplied when absent.
+        """
+
         kwargs.setdefault("formatter_class", CapHelpFormatter)
         kwargs.setdefault("argument_default", argparse.SUPPRESS)
         kwargs.setdefault("add_help", False)
@@ -64,9 +107,16 @@ class CapArgumentParser(argparse.ArgumentParser):
 def add_help_cap(parser: argparse.ArgumentParser) -> None:
     """
     Add a standard '-h' / '--help' with preferred wording and spacing.
+
+    Parameters
+    ----------
+    parser : argparse.ArgumentParser
+        Argument parser whose help behavior is extended.
     """
+
     parser.add_argument(
-        "-h", "--help",
+        "-h",
+        "--help",
         action="help",
         help="Show this help message and exit.\n\n",
     )

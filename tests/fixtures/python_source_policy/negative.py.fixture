@@ -1,0 +1,55 @@
+"""Reject noncanonical deterministic Python source forms."""
+
+import argparse
+
+def parse_args(argv):
+    '''Parse bad fixture arguments'''
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--output", "--outfile",
+        help=(
+            "Break this help prose "
+            "far too early for greedy wrapping."
+        )
+    )
+    parser.add_argument(
+        "--static",
+        help="This single static help literal is deliberately much too long for the governed source-width boundary.",
+    )
+    parser.add_argument("--incomplete", help="incomplete help text")
+    #  Bad marker.
+    value = 'plain'
+    return parser.parse_args(argv)
+
+
+def BadName() -> None:
+    """
+    Exercise a noncanonical callable name.
+    """
+
+    return None
+
+
+def bad_parameters(
+    first: int, second: int
+  ) -> None:
+    """
+        Exercise bad parameter and docstring indentation.
+        """
+
+    return None
+
+
+def bad_type_closer() -> tuple[int, str]:
+    """
+    Return one badly aligned result pair.
+
+    Returns
+    -------
+    result : tuple[
+        int, str
+        ]
+        Result values.
+    """
+
+    return 1, "value"

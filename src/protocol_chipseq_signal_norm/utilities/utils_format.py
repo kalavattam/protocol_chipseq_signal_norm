@@ -28,37 +28,40 @@ import sys
 assert sys.version_info >= (3, 11), "Python >= 3.11 required."
 
 
-def format_value(x: float, dp: int) -> str:
+def format_value(value: float, decimal_places: int) -> str:
     """
     Round and format a numeric value with no non-informative trailing zeros.
 
     Parameters
     ----------
-        x : float
-            Numeric value to format.
-        dp : int
-            Maximum number of decimal places to retain.
+    value : float
+        Numeric value to format.
+    decimal_places : int
+        Maximum number of decimal places to retain.
 
     Returns
     -------
-        str
-            Rounded value with trailing zeros and any trailing decimal point
-            stripped. Negative zero is returned as '0'.
-
-    Raises
-    ------
-        None.
+    text : str
+        Rounded value with trailing zeros and any trailing decimal point
+        stripped. Negative zero is returned as '0'.
 
     Notes
     -----
-        This helper expects callers to validate that 'dp' is non-negative.
+    This helper expects callers to validate that 'decimal_places' is
+    non-negative.
     """
-    y = round(x, dp)
-    if y == 0.0:
-        y = 0.0
-    s = f"{y:.{dp}f}"
-    if "." in s:
-        s = s.rstrip("0").rstrip(".")
-    if s == "-0":
-        s = "0"
-    return s
+
+    rounded_value = round(value, decimal_places)
+
+    if rounded_value == 0.0:
+        rounded_value = 0.0
+
+    rendered = f"{rounded_value:.{decimal_places}f}"
+
+    if "." in rendered:
+        rendered = rendered.rstrip("0").rstrip(".")
+
+    if rendered == "-0":
+        rendered = "0"
+
+    return rendered
