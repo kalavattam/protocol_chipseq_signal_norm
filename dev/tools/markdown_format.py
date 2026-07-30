@@ -33,6 +33,7 @@ ATX = re.compile(r"^(?P<indent> {0,3})(?P<marks>#{1,6})[ \t]+(?P<text>.*)$")
 SETEXT = re.compile(r"^ {0,3}(?P<marker>=+|-+)[ \t]*$")
 FENCE = re.compile(r"^ {0,3}(?P<marker>`{3,}|~{3,})(?P<info>.*)$")
 LIST = re.compile(r"^(?P<indent> *)(?:[-+*]|[0-9]{1,9}[.)])[ \t]+\S")
+BLOCKQUOTE = re.compile(r"^ {0,3}>[ \t]?\S")
 SEPARATOR = re.compile(r"^:?-{3,}:?$")
 DETAILS_OPEN = re.compile(r"^\s*<details(?:\s[^>]*)?>\s*$", re.IGNORECASE)
 DETAILS_CLOSE = re.compile(r"^\s*</details>\s*$", re.IGNORECASE)
@@ -733,10 +734,11 @@ def _canonicalize_deterministic_gaps(lines: list[str]) -> list[str]:
             table_follows = _table_starts(lines, following_index)
 
             if previous_index in heading_ends:
-                desired = 1 if table_follows or following == "<br />" else 0
+                desired = 1 if following == "<br />" else 0
             elif previous.rstrip().endswith(":") and (
                 LIST.match(following)
                 or FENCE.match(following)
+                or BLOCKQUOTE.match(following)
                 or table_follows
             ):
                 desired = 1 if table_follows else 0
@@ -1047,15 +1049,13 @@ def format_document(text: str) -> str:
 
         previous = compact[index - 1] if index else ""
         following = compact[index + 1] if index + 1 < len(compact) else ""
-        following_table = (
-            index + 2 < len(compact)
-            and parse_table(compact[index + 1 : index + 3]) is not None
-        )
-        if ATX.match(previous) and not following_table:
+        if ATX.match(previous):
             continue
 
         if previous.rstrip().endswith(":") and (
-            FENCE.match(following) or LIST.match(following)
+            FENCE.match(following)
+            or LIST.match(following)
+            or BLOCKQUOTE.match(following)
         ):
             continue
 
@@ -1063,6 +1063,8 @@ def format_document(text: str) -> str:
             continue
 
         spaced.append(line)
+
+    spaced = _canonicalize_deterministic_gaps(spaced)
 
     while spaced and not spaced[0]:
         spaced.pop(0)

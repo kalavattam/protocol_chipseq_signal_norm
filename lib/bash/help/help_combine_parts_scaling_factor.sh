@@ -17,7 +17,9 @@ function help_combine_parts_scaling_factor() {
 Usage
 -----
   combine_parts_scaling_factor.sh
-    [--help] [--dry_run] [--force] [--no_parts] --mode <mode> --csv_fil_in <csv> --fil_out <file>
+    [--help] [--dry_run]
+    --mode <mode> --csv_fil_in <csv> --fil_out <file>
+    [--force] [--no_parts]
 
   Combine generated calculate_scaling_factor part files into one data-only tab-delimited output table.
 
@@ -29,12 +31,6 @@ Parameters
   -dr, --dry, --dry_run : flag
     Run script in dry-run mode. Validate inputs and print the ordered combination plan without writing output.
 
-  -f, --force : flag
-    Replace an existing output file.
-
-  -np, --no_parts : flag
-    Remove validated part files after successfully writing the final table.
-
   -md, --mode : {'siq', 'spike'}
     Workflow mode. Scaling-factor part-file mode. Required.
 
@@ -43,6 +39,12 @@ Parameters
 
   -fo, --fil_out : file
     Output file path. Final tab-delimited output table. Required.
+
+  -f, --force : flag
+    Replace an existing output file only when this flag is supplied.
+
+  -np, --no_parts : flag
+    Retain validated part files by default; remove them after successfully writing the final table when this flag is supplied.
 
 Notes
 -----
@@ -64,8 +66,6 @@ Notes
   - Rows are ordered by numeric part-file index, not by input-list order.
   - This script does not write a header; use 'write_header.sh' separately or let 'execute_calculate_scaling_factor.sh' orchestrate header insertion.
   - Duplicate paths, duplicate indexes, and header rows are rejected.
-  - Existing output files are replaced only when '--force' is supplied.
-  - Validated part files are retained unless '--no_parts' is supplied.
 
 Examples
 --------

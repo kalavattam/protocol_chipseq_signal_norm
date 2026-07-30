@@ -125,7 +125,6 @@ siQ-ChIP part files may include optional `lib_vol_ip` and `lib_vol_in` fields. O
 <br />
 
 ## Alignment-backed spike-in expected behavior
-
 | sample | main IP | spike IP | main input | spike input | `chiprx_alpha_ratio` |
 | :---   | ---:    | ---:     | ---:       | ---:        | ---:                 |
 | `A`    | 3       | 1        | 2          | 2           | `2`                  |

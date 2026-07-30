@@ -9,3 +9,19 @@ Items:
 | Name | Value |
 | :--- | ---:  |
 | A    | 界    |
+
+<br />
+
+## Heading table
+| Name | Value |
+| :--- | :---  |
+| B    | C     |
+
+Introduced table:
+
+| Name | Value |
+| :--- | :---  |
+| D    | E     |
+
+Quoted note:
+> Attached after formatting.

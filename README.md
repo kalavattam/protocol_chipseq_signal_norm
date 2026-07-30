@@ -14,6 +14,7 @@
 
 ## Workflow documentation
 - Running the workflow: [`notebooks/workflows/workflow.md`](./notebooks/workflows/workflow.md).
+- [Input-floor command reference and design](./docs/design/compute_input_floor.md).
 - Genome file processing: [`notebooks/workflows/download_process_fasta_gff3.md`](./notebooks/workflows/download_process_fasta_gff3.md).
 - Validation of the Python implementation of siQ-ChIP (in progress): [`notebooks/validation/validate_siqchip.md`](./notebooks/validation/validate_siqchip.md).
     + [ ] Notebook needs cleanup and clearer documentation.

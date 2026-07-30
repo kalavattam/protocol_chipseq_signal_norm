@@ -26,7 +26,7 @@ End the file with exactly one terminal line feed after its final content and no 
 
 **Scope:** Formal H1-H6 headings and structural informal H7/H8 headings outside fenced code.
 
-Use ATX syntax with one space after the marker for formal H1-H6 headings. Put no blank line between any formal or informal heading and its first content block. Put exactly one blank line before a GFM table or the `<br />` row of an immediately following ordinary `MD.SECTION.BREAK` boundary.
+Use ATX syntax with one space after the marker for formal H1-H6 headings. Put no blank line between any formal or informal heading and its first paragraph, list, fence, blockquote, or GFM table. Put exactly one blank line before the `<br />` row of an immediately following ordinary `MD.SECTION.BREAK` boundary.
 
 For spacing checks, an optional canonical anchor belongs to the following heading unit; `MD.ANCHOR.CANONICAL` governs the anchor-to-heading edge. A contentless direct-child heading unit follows its parent heading with no intervening blank line. Anchor presence does not change spacing after the heading itself.
 
@@ -39,13 +39,12 @@ Canonical examples:
 Opening content begins immediately.
 
 ## Table section
-
 | Name | Value |
 | :--- | :---  |
 | A    | 1     |
 ````
 
-**Automation:** `dev/audit/markdown_policy.py` checks canonical formal-heading spacing, recognizes an optional anchor as part of the following heading unit, and applies the table and section-boundary spacing cases. The registered relation remains `subset` because informal-heading intent outside safely recognized structural contexts remains review-owned.
+**Automation:** `dev/audit/markdown_policy.py` checks canonical formal-heading spacing, recognizes an optional anchor as part of the following heading unit, and applies the first-content and section-boundary spacing cases. The registered relation remains `subset` because informal-heading intent outside safely recognized structural contexts remains review-owned.
 
 **Semantic remainder:** `None` for spacing once a line is classified as a heading. Choosing the correct formal or informal hierarchy remains semantic document design.
 
@@ -205,9 +204,9 @@ Automatic unwrapping is advisory until a parser proves that joining source lines
 ## Colon-introduced structures (`MD.COLON.STRUCTURE`)
 **Classification:** `deterministic`.
 
-**Scope:** A prose line ending in a colon whose immediately associated block is a list, fenced code block, or GFM table.
+**Scope:** A prose line ending in a colon whose immediately associated block is a list, fenced code block, blockquote, or GFM table.
 
-Put no blank line between the colon-introduced prose and an immediately associated list or fenced code block. Put exactly one blank line between the colon-introduced prose and a GFM table.
+Put no blank line between the colon-introduced prose and an immediately associated list, fenced code block, or blockquote. Put exactly one blank line between the colon-introduced prose and a GFM table.
 
 Canonical examples:
 `````markdown
@@ -227,9 +226,9 @@ Values:
 | A    | 1     |
 `````
 
-The distinction is source-canonical and parser-aware: lists and fenced code can interrupt the introducing paragraph, while the repository requires an explicit table boundary.
+The distinction is source-canonical and parser-aware: lists, fenced code, and blockquotes can interrupt the introducing paragraph, while the repository requires an explicit table boundary.
 
-**Automation:** `dev/audit/markdown_policy.py` checks no blank before immediately associated lists and fences and one blank before immediately associated tables. Focused fixtures establish `subset` coverage for recognized block forms.
+**Automation:** `dev/audit/markdown_policy.py` checks no blank before immediately associated lists, fences, and blockquotes and one blank before immediately associated tables. Focused fixtures establish `subset` coverage for recognized block forms.
 
 **Semantic remainder:** `None` once the associated block is identified. Determining whether prose actually introduces a later, nonadjacent block requires review.
 
@@ -343,7 +342,9 @@ Use backtick fences by default. A tilde fence is permitted only when the subject
 
 **Scope:** GFM pipe tables with a header row, delimiter row, and equal logical column counts in Markdown files, rendered help, language docstrings, and other user-facing documentation surfaces.
 
-Use leading and trailing pipes. Use `:---`, `---:`, and `:---:` for left, right, and center alignment, then pad cells for readable canonical source alignment. Escaped pipes and pipes inside matched inline-code spans are cell content rather than separators. Put exactly one blank line before a table when it follows a heading or colon-introduced sentence.
+Use leading and trailing pipes. Use `:---`, `---:`, and `:---:` for left, right, and center alignment, then pad cells for readable canonical source alignment. Escaped pipes and pipes inside matched inline-code spans are cell content rather than separators. Put no blank line between a heading and its first table. Put exactly one blank line between colon-introducing prose and its table.
+
+The heading relationship is enforced under `MD.HEADING.SPACING`, and the colon relationship is enforced under `MD.COLON.STRUCTURE`; this rule owns the supported table's canonical source form and records the same contextual split without emitting duplicate spacing diagnostics.
 
 Canonical alignment uses a deterministic display-width approximation for combining marks and East Asian wide or full-width code points. Emoji are prohibited in table cells because editor and renderer grapheme widths are not stable enough for canonical source padding. This prohibition does not apply to ordinary prose. If literal tabular source data contains emoji, preserve it in a fenced representation or obtain an explicit exception rather than deleting or silently replacing data.
 

@@ -41,8 +41,11 @@ from protocol_chipseq_signal_norm.utilities.utils_check import (
 )
 from protocol_chipseq_signal_norm.utilities.utils_cli import (
     CapArgumentParser,
+    _HelpExample,
+    _SectionedHelpConfig,
     add_help_cap,
 )
+from protocol_chipseq_signal_norm.utilities.utils_format import format_value
 from protocol_chipseq_signal_norm.utilities.utils_io import (
     DEF_SKP_PFX,
     is_header,
@@ -63,6 +66,16 @@ assert sys.version_info >= (3, 11), "Python >= 3.11 required."
 # These default SAM allowlists select paired-end and single-end alignments.
 PAIRED_FLAGS = {99, 1123, 163, 1187}
 SINGLE_FLAGS = {0, 16, 1024, 1040}
+
+_CANONICAL_INPUT_FORMATS = ("bam", "cram", "bed", "bedgraph")
+_FORMAT_HINT_ALIASES = {
+    "bam": "bam",
+    "cram": "cram",
+    "bed": "bed",
+    "bedgraph": "bedgraph",
+    "bdg": "bedgraph",
+    "bg": "bedgraph",
+}
 
 
 class InputFloorError(Exception):
@@ -87,10 +100,6 @@ class InputFloorValidationError(InputFloorError):
     """
     Represent an invalid input-floor computation request.
     """
-
-
-# TODO: Add unit tests for track/blank-line parsing, 'siz_bin >= siz_gen',
-# hexadecimal flag parsing, and deepTools-style normalization extensions.
 
 
 def _note_ignored(option: str, reason: str, value: object) -> None:
@@ -313,6 +322,30 @@ def _count_bed_records(bed_path: str, skp_pfx: tuple[str, ...]) -> int:
         ) from error
 
 
+def _canonicalize_input_format_hint(hint: str | None) -> str | None:
+    """
+    Canonicalize an explicit project-owned input-format hint.
+
+    Parameters
+    ----------
+    hint : str | None
+        Explicit format hint in any letter case.
+
+    Returns
+    -------
+    canonical_hint : str | None
+        One of 'bam', 'cram', 'bed', or 'bedgraph'. An unknown hint is
+        case-normalized for the parser or caller to reject.
+    """
+
+    if hint is None:
+        return None
+
+    lowercase_hint = hint.casefold()
+
+    return _FORMAT_HINT_ALIASES.get(lowercase_hint, lowercase_hint)
+
+
 def infer_input_format(path: str, hint: str | None = None) -> str:
     """
     Infer file format label from the path suffix.
@@ -320,33 +353,27 @@ def infer_input_format(path: str, hint: str | None = None) -> str:
     Parameters
     ----------
     path : str
-        Input file path. Path to the input file, or "-" for stdin.
-
-    hint : str | None = None
-        Optional format hint used only when 'path == "-"'. Must be one of
-        {'bam', 'cram', 'bed', 'bedGraph', 'bedgraph', 'bdg', 'bg'} if
-        provided.
+        Input file path, or '-' for standard input.
+    hint : str | None
+        Optional case-insensitive format hint used only when 'path == "-"' is
+        true. Accepts 'bam', 'cram', 'bed', 'bedGraph', 'bdg', or 'bg'.
 
     Returns
     -------
     format_name : str
-        - "bam" for bam.
-        - "cram" for cram.
-        - "bed" for bed (optionally with .gz).
-        - "bedgraph" for bedGraph, bedgraph, bdg, or bg (optionally with
-          .gz).
-        - "other" for otherwise.
-        - When 'path == "-"' and a valid 'hint' is given, the hint value is
-          returned.
+        Canonical 'bam', 'cram', 'bed', or 'bedgraph' for recognized input;
+        otherwise, 'other'.
     """
 
     if path == "-":
-        # Standard input requires a format hint.
-        if hint in {"bam", "cram", "bed"}:
-            return hint
+        canonical_hint = (
+            hint
+            if hint in _CANONICAL_INPUT_FORMATS
+            else _canonicalize_input_format_hint(hint)
+        )
 
-        if hint in {"bedgraph", "bedGraph", "bdg", "bg"}:
-            return "bedgraph"
+        if canonical_hint in _CANONICAL_INPUT_FORMATS:
+            return canonical_hint
 
     lowercase_path = path.lower()
     if lowercase_path.endswith(".bam"):
@@ -369,6 +396,79 @@ def infer_input_format(path: str, hint: str | None = None) -> str:
         return "bedgraph"
 
     return "other"
+
+
+def _validate_positive_mode_dimensions(
+    mode: str,
+    siz_bin: int,
+    siz_gen: int,
+) -> None:
+    """
+    Validate positive dimensions for fragment and normalized calculations.
+
+    Parameters
+    ----------
+    mode : str
+        Floor-computation mode.
+    siz_bin : int
+        Target signal-bin width in base pairs.
+    siz_gen : int
+        Effective genome size in base pairs.
+
+    Raises
+    ------
+    InputFloorValidationError
+        If a dimension used by 'frag' or 'norm' is nonpositive.
+    """
+
+    if mode not in {"frag", "norm"}:
+        return
+
+    if siz_bin <= 0:
+        raise InputFloorValidationError(
+            f"Error: 'siz_bin' must be positive (got siz_bin={siz_bin}).",
+        )
+
+    if siz_gen <= 0:
+        raise InputFloorValidationError(
+            f"Error: 'siz_gen' must be positive (got siz_gen={siz_gen}).",
+        )
+
+
+def _validate_mode_dimensions(
+    mode: str,
+    siz_bin: int,
+    siz_gen: int,
+) -> None:
+    """
+    Validate dimensions used by fragment and normalized floor calculations.
+
+    Parameters
+    ----------
+    mode : str
+        Floor-computation mode.
+    siz_bin : int
+        Target signal-bin width in base pairs.
+    siz_gen : int
+        Effective genome size in base pairs.
+
+    Raises
+    ------
+    InputFloorValidationError
+        If a dimension used by 'frag' or 'norm' is nonpositive, equal, or
+        reversed.
+    """
+
+    if mode not in {"frag", "norm"}:
+        return
+
+    _validate_positive_mode_dimensions(mode, siz_bin, siz_gen)
+
+    if siz_bin >= siz_gen:
+        raise InputFloorValidationError(
+            "Error: 'siz_bin' must be smaller than 'siz_gen' (got "
+            f"siz_bin={siz_bin}, siz_gen={siz_gen}).",
+        )
 
 
 def _validate_cram_reference(
@@ -424,142 +524,82 @@ def compute_input_floor(
     ref_fa: str | None = None,
 ) -> float:
     """
-    Compute depth factor for input normalization.
+    Compute a denominator floor for input normalization.
+
+    The 'mode' parameter selects 'dist', 'frag', or 'norm'. Use 'dist' for new
+    analyses. Use 'frag' or 'norm' when reproducing the fragment-normalization
+    or normalized-coverage floor calculations used in the Dickson/siQ-ChIP and
+    *Bio-protocol* workflows.
 
     Parameters
     ----------
     fil_in : str
-        Input file path. Path to input file:
-            - mode=dist  bedGraph-like (bedGraph, bedgraph, bdg, or bg,
-                         optionally with .gz)
-            - mode=frag  bam, cram, or bed/bed.gz
-            - mode=norm  fil_in is ignored
-
+        Input path. 'dist' accepts 'bedGraph', 'bdg', or 'bg', optionally with
+        '.gz'; 'frag' accepts 'bam', 'cram', 'bed', or 'bed.gz'; 'norm' ignores
+        'fil_in'. For 'dist' and 'frag', '-' reads standard input and requires
+        'infmt'.
     siz_bin : int
-        Output bin size in base pairs (i.e., the bedGraph bin width).
-
+        Target signal-bin width in base pairs. Used only by 'frag' and 'norm';
+        callers must supply a positive value smaller than 'siz_gen'.
     siz_gen : int
-        Effective genome size of the organism in base pairs.
-
+        Effective genome size in base pairs. Used only by 'frag' and 'norm';
+        callers must supply a positive value.
     mode : str
-        One of {'dist', 'frag', 'norm'}:
-
-            - dist:
-                Compute a distribution-based denominator floor from a
-                bedGraph-like input (column 4). Values are
-                    (1) filtered to finite values, then
-                    (2) filtered by 'eps'/'mode_nz', then
-                    (3) restricted to positive values only ('v_i > 0').
-
-                The final floor is selected by 'method' and optional knobs:
-                    + method=qntl_nz:
-
-                        dep_min = Q_q({v_i : v_i > 0}),
-
-                        where 'q' is '--qntl_nz' expressed as a fraction
-                        (qntl_nz/100). Quantile selection uses a simple,
-                        floor-based nearest-rank rule on sorted values:
-
-                            i = floor(q * (N - 1)) (clamped to [0, N - 1])
-                            dep_min = sorted_vals[i]
-
-                    + method=frc_mdn_nz:
-
-                        dep_min = coef × median({v_i : v_i > 0})
-
-                    + method=frc_avg_nz:
-
-                        dep_min = coef × mean({v_i : v_i > 0})
-
-                    + method=min_nz:
-
-                        dep_min = coef × min({v_i : v_i > 0})
-
-                After the method-specific value is computed ('mode=dist'):
-
-                    dep_min := max(dep_min, floor)
-
-            - frag:
-
-                dep_min = [(n * b) / g] / [1 - (b / g)],
-
-                where 'n' is the number of counted alignment records (bam,
-                cram, or bed/bed.gz). This matches the fragment-normalized
-                signal derivation used in the siQ-ChIP code paths.
-
-            - norm:
-
-                dep_min = (b / g) / [1 - (b / g)].
-
-                This matches “normalized coverage” derivations
-                (siQ-ChIP-style), and depends only on 'b' and 'g'; fil_in
-                is ignored.
-
+        One of 'dist', 'frag', or 'norm'. 'dist' reads bedGraph column four,
+        filters finite values, applies 'eps' and 'mode_nz', retains 'v_i > 0',
+        applies 'method', then applies 'dep_min := max(dep_min, floor)' without
+        using or validating 'siz_bin' or 'siz_gen'. 'frag' returns
+        '((n * b) / g) / (1 - (b / g))', where 'n' is the counted
+        alignment-record total. 'norm' returns '(b / g) / (1 - (b / g))'. Here,
+        'b = siz_bin' and 'g = siz_gen'.
     method : str
-        Distribution-based rule used only when mode='dist'. One of:
-        {'qntl_nz', 'frc_mdn_nz', 'frc_avg_nz', 'min_nz'}.
-
+        Distribution rule used only by 'dist'. 'qntl_nz' selects the quantile;
+        'frc_mdn_nz' returns 'coef * median(v_i)'; 'frc_avg_nz' returns
+        'coef * mean(v_i)'; and 'min_nz' returns 'coef * min(v_i)' over the
+        filtered positive values.
     qntl_nz : float
-        Quantile in percent (0..100) used only when mode='dist' and
-        method='qntl_nz'. The quantile is computed on positive values only
-        (v_i > 0) after eps/mode_nz filtering.
-
+        Quantile percentage in '[0, 100]', used only by 'dist/qntl_nz'. For
+        sorted filtered values and 'q = qntl_nz / 100', select
+        'i = floor(q * (N - 1))', clamped to '[0, N - 1]', then
+        'dep_min = sorted_vals[i]'.
     coef : float | None
-        Coefficient used only when mode='dist' and method is one of
-        {'frc_mdn_nz', 'frc_avg_nz', 'min_nz'}. If None, defaults match
-        compute_pseudo.py (0.01 for frc_*; 1.0 for min_nz). Ignored for
-        method='qntl_nz'.
-
+        Nonnegative coefficient for the three coefficient-based 'dist' methods.
+        'None' matches 'compute_pseudo.py' defaults: '0.01' for 'frc_*' and
+        '1.0' for 'min_nz'. Ignored by 'qntl_nz'.
     floor : float
-        Nonnegative lower bound applied after computing the method’s raw
-        value in mode='dist':
-            dep_min := max(dep_min, floor)
-
+        Nonnegative lower bound applied after the raw 'dist' statistic.
     eps : float
-        Zero tolerance epsilon used only in mode='dist' (see mode_nz).
-
+        Nonnegative zero tolerance used only by 'dist'.
     mode_nz : str
-        Epsilon/zero-handling mode used only in mode='dist':
-            - "closed"  drop values with |v_i| <= eps
-            - "open"    drop values with |v_i| <  eps
-            - "off"     disable epsilon-based filtering
-        After epsilon filtering, distribution-based methods are restricted
-        to positive values only (v_i > 0).
-
-
+        Epsilon rule used only by 'dist': 'closed' drops 'abs(v_i) <= eps';
+        'open' drops 'abs(v_i) < eps'; and 'off' disables epsilon filtering.
+        Positive-only filtering follows.
     paired_flags : set[int] | None
-        Optional allow-list of FLAG integers for paired-end “main”
-        alignments when counting a bam or cram. If None, defaults are used.
-
+        Optional paired-end main-alignment FLAG allowlist for BAM or CRAM
+        counting. 'None' uses the defaults.
     single_flags : set[int] | None
-        Optional allow-list of FLAG integers for single-end “main”
-        alignments when counting a bam or cram. If None, defaults are used.
-
+        Optional single-end main-alignment FLAG allowlist for BAM or CRAM
+        counting. 'None' uses the defaults.
     skp_pfx : tuple[str, ...]
-        Prefixes to skip as header/meta lines bed/bed.gz and bedGraph-like
-        inputs.
-
+        Prefixes skipped as header or metadata rows in BED and bedGraph inputs.
     infmt : str | None
-        Optional format hint forwarded to 'infer_input_format' when
-        'fil_in == "-".
-        Accepts "bam", "cram", "bed", or "bedgraph" (and bedGraph-like
-        aliases such as "bedGraph", "bdg", "bg"). Ignored otherwise.
+        Required case-insensitive format hint when 'fil_in' is '-'. Accepts
+        'bam', 'cram', 'bed', 'bedGraph', 'bdg', or 'bg' and resolves to a
+        canonical format; ignored for named paths.
     ref_fa : str | None
-        Reference FASTA required for CRAM decoding. Ignored for other input
-        formats.
+        Reference FASTA required for CRAM decoding and ignored otherwise.
 
     Returns
     -------
-    floor : float
-        Minimum denominator floor. Distribution mode applies the selected
-        statistic and lower bound; fragment and normalized modes apply their
-        documented bin-to-genome-size formulas.
+    dep_min : float
+        Unrounded denominator floor. Callers apply it as
+        'denominator := max(denominator, dep_min)'.
 
     Raises
     ------
     InputFloorValidationError
-        If the mode, dimensions, input format, filtered values, or computed
-        floor are invalid.
+        If the mode, 'frag'/'norm' dimensions, input format, filtered values,
+        or computed floor are invalid.
     AlignmentReadError
         If an alignment input cannot be read.
     """
@@ -569,22 +609,18 @@ def compute_input_floor(
             f"Error: Invalid mode '{mode}'. Use 'dist', 'frag', or 'norm'.",
         )
 
-    if siz_bin >= siz_gen:
-        raise InputFloorValidationError(
-            "Error: 'siz_bin' must be smaller than 'siz_gen' (got "
-            f"siz_bin={siz_bin}, siz_gen={siz_gen}).",
-        )
+    _validate_mode_dimensions(mode, siz_bin, siz_gen)
 
     if mode == "dist":
         format_name = infer_input_format(fil_in, infmt)
         if format_name != "bedgraph":
             raise InputFloorValidationError(
                 "Error: '--mode dist' requires a bedGraph-like input file "
-                "(bedGraph, bedgraph, bdg, or bg, optionally with .gz).",
+                "(bedGraph, bdg, or bg, optionally with .gz).",
             )
 
-        # Read values with “positive-only” nonzero policy.
-        # This keeps the floor in the same conceptual space as denominators.
+        # Ratio denominators occupy a positive domain, so the iterator policy
+        # and explicit guard retain only positive values for the floor.
         vals = list(
             iter_vals_bdg(
                 fil_in,
@@ -595,7 +631,6 @@ def compute_input_floor(
             ),
         )
 
-        # Positive-only bins keep `dep_min` in denominator units.
         vals = [v for v in vals if v > 0.0]
 
         if not vals:
@@ -680,20 +715,47 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
 
     parser = CapArgumentParser(
         description=(
-            "Compute the minimum input depth ('dep_min'), a “denominator "
-            "floor” used to avoid extreme or erroneous divisions when "
-            "normalizing by input (IP ÷ input).\n"
-            "\n"
-            "Downstream ratio code (e.g., 'compute_signal_ratio.py') can use "
-            "the computed value to “clamp” denominators below 'dep_min' up to "
-            "'dep_min'.\n"
-            "\n"
-            "Note the following variables in below equations and "
-            "expressions:\n"
-            "   - n: ...\n"
-            "   - g: ...\n"
-            "   - etc.\n"
-            "\n"
+            "Compute 'dep_min', a floor for positive input denominators that "
+            "helps prevent extreme or erroneous IP/input ratios. The current "
+            "repository consumer, 'compute_signal_ratio', applies it as "
+            "'denominator := max(denominator, dep_min)'. Use 'dist' for new "
+            "analyses. Use 'frag' or 'norm' when reproducing the "
+            "fragment-normalization or normalized-coverage floor calculations "
+            "used in the Dickson/siQ-ChIP and *Bio-protocol* workflows."
+        ),
+        prog="compute_input_floor",
+        _sectioned_help=_SectionedHelpConfig(
+            usage_rows=(
+                ("help", "verbose"),
+                ("mode",),
+                ("fil_in", "infmt", "ref_fa", "skp_pfx"),
+                ("method", "qntl_nz", "coef", "eps", "mode_nz", "floor"),
+                ("siz_bin", "siz_gen", "flags_pe", "flags_se"),
+                ("dp",),
+            ),
+            examples=(
+                _HelpExample(
+                    description=(
+                        "Compute a first-percentile floor from bedGraph values."
+                    ),
+                    command_lines=(
+                        "compute_input_floor",
+                        "--mode dist",
+                        "--fil_in signal.bdg",
+                        "--method qntl_nz",
+                        "--qntl_nz 1",
+                    ),
+                ),
+                _HelpExample(
+                    description=(
+                        "Compute a normalized floor from explicit dimensions."
+                    ),
+                    command_lines=(
+                        "compute_input_floor --mode norm --siz_bin 30 "
+                        "--siz_gen 12157105",
+                    ),
+                ),
+            ),
         ),
     )
     add_help_cap(parser)
@@ -703,7 +765,35 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         dest="verbose",
         action="store_true",
         default=False,
-        help="Run script in verbose mode.\n\n",
+        help="Run script in verbose mode.",
+    )
+
+    parser.add_argument(
+        "-md",
+        "--mode",
+        dest="mode",
+        choices=["dist", "frag", "norm"],
+        default="dist",
+        help=(
+            "Floor-computation mode (default: '%(default)s').\n"
+            "- dist: Recommended for new analyses. Read bedGraph column four, "
+            "skip non-data rows, filter to finite values, apply "
+            "'--eps'/'--mode_nz', retain 'v_i > 0' because ratio denominators "
+            "occupy a positive domain, and summarize with '--method'. This "
+            "mode does not use, validate, compare, infer, or warn about "
+            "'--siz_bin' or '--siz_gen'. See the method-specific options for "
+            "calculations and bounds.\n"
+            "- frag: Reproduce the fragment-normalization floor calculation "
+            "used in the Dickson/siQ-ChIP and *Bio-protocol* workflows. Count "
+            "BAM, CRAM, or BED alignment records and compute 'dep_min = ((n * "
+            "b) / g) / [1 - (b / g)]'. Here, 'n' is the counted-record total, "
+            "'b = siz_bin', and 'g = siz_gen'.\n"
+            "- norm: Reproduce the normalized-coverage floor calculation used "
+            "in the Dickson/siQ-ChIP and *Bio-protocol* workflows. Compute "
+            "'dep_min = (b / g) / [1 - (b / g)]' from 'b = siz_bin' and 'g = "
+            "siz_gen'; '--fil_in' is ignored. The command returns one scalar "
+            "'dep_min'."
+        ),
     )
 
     parser.add_argument(
@@ -714,24 +804,25 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         required=False,
         default=None,
         help=(
-            "Input file path. Path to input file, or use '-' for stdin.\n"
-            "    - '--mode dist' requires a bedGraph-like file: bedGraph, "
-            "bedgraph, bdg, or bg (optionally with .gz).\n"
-            "    - '--mode frag' requires bam, cram, or bed/bed.gz.\n"
-            "    - '--mode norm' fil_in is ignored.\n"
-            "\n"
+            "Input path. For 'dist', provide bedGraph, bdg, or bg, optionally "
+            "with '.gz'. For 'frag', provide BAM, CRAM, or BED/BED.GZ. For "
+            "'dist' and 'frag', '-' reads stdin and requires '--infmt'. "
+            "'norm' ignores '--fil_in'."
         ),
     )
     parser.add_argument(
         "-if",
         "--infmt",
         dest="infmt",
-        choices=["bam", "cram", "bed", "bedGraph", "bedgraph", "bdg", "bg"],
+        type=_canonicalize_input_format_hint,
+        choices=_CANONICAL_INPUT_FORMATS,
+        metavar="{bam,cram,bed,bedGraph,bdg,bg}",
         default=None,
         help=(
-            "Input format hint. Required only when '--fil_in -' (stdin). "
-            "Choose 'bam', 'cram', 'bed', 'bedGraph', 'bedgraph', 'bdg', or "
-            "'bg'.\n\n"
+            "Case-insensitive input-format hint for 'dist' or 'frag'. "
+            "Required when '--fil_in -' reads stdin and ignored for named "
+            "paths. Choose 'bam', 'cram', 'bed', 'bedGraph', 'bdg', or 'bg'; "
+            "accepted values resolve to 'bam', 'cram', 'bed', or 'bedgraph'."
         ),
     )
     parser.add_argument(
@@ -741,146 +832,20 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         default=None,
         help=(
             "Reference FASTA file required for CRAM decoding. Ignored for "
-            "other input formats.\n\n"
+            "other input formats."
         ),
     )
 
     parser.add_argument(
-        "-sb",
-        "--siz_bin",
-        dest="siz_bin",
-        type=int,
-        default=10,
-        help=(
-            "Bin size in base pairs for bedGraph input (default: %(default)s)."
-            "\n\n"
-        ),
-    )
-    parser.add_argument(
-        "-sg",
-        "--siz_gen",
-        dest="siz_gen",
-        type=int,
-        default=12157105,
-        help=(
-            "Effective genome size of the model organism (default: "
-            "%(default)s [which is appropriate for S. cerevisiae when "
-            "retaining multi-mapping alignments]).\n"
-            "\n"
-        ),
-    )
-
-    parser.add_argument(
-        "-fp",
-        "--flags-pe",
-        dest="flags_pe",
+        "-sp",
+        "--skp_pfx",
+        dest="skp_pfx",
         type=str,
+        default=",".join(DEF_SKP_PFX),
         help=(
-            "Comma-separated string of SAM FLAGs to count as paired-end main "
-            "alignments (default: 99,1123,163,1187). Accepts decimal or hex "
-            "(e.g., 0x63).\n"
-            "\n"
-        ),
-    )
-    parser.add_argument(
-        "-fs",
-        "--flags-se",
-        dest="flags_se",
-        type=str,
-        help=(
-            "Comma-separated string of SAM FLAGs to count as single-end main "
-            "alignments (default: 0,16,1024,1040). Accepts decimal or hex "
-            "(e.g., 0x400).\n"
-            "\n"
-        ),
-    )
-
-    parser.add_argument(
-        "-md",
-        "--mode",
-        dest="mode",
-        choices=["dist", "frag", "norm"],
-        default="dist",
-        help=(
-            "Workflow mode. Normalization mode (default: '%(default)s').\n"
-            "    - dist: Compute a distribution-based denominator floor from "
-            "a bedGraph-like input track (column 4). In this mode:\n"
-            "        + Values are restricted to finite values ('NaN' / 'inf' "
-            "ignored).\n"
-            "        + Values are filtered by '--eps' / '--mode_nz' to define "
-            "which bins are treated as “nonzero”.\n"
-            "        + Values are then restricted to positive-only bins ('v_i "
-            "> 0'), so the resulting floor is in the same conceptual space as "
-            "denominators in IP ÷ input.\n"
-            "        + '--method' selects how the filtered values are "
-            "summarized into a single 'dep_min'.\n"
-            "        + '--qntl_nz' is used only with '--method qntl_nz'.\n"
-            "        + '--coef' is used only with '--method frc_mdn_nz', "
-            "'--method frc_avg_nz', and '--method min_nz'.\n"
-            "        + '--floor' is a nonnegative lower bound applied after "
-            "the method-specific value is computed:\n"
-            "\n"
-            "              dep_min := max(dep_min, floor)\n"
-            "\n"
-            "    - frag: Compute a siQ-ChIP-style fragment-normalized factor "
-            "from an alignment-record file (bam, cram, or bed/bed.gz):\n"
-            "\n"
-            "        dep_min = ((n * b) / g) / [1 - (b / g)]\n"
-            "\n"
-            "    - norm: Compute a siQ-ChIP-style “normalized-coverage” "
-            "factor depending only on bin size ('b') and genome size ('g'):\n"
-            "\n"
-            "        dep_min = (b / g) / [1 - (b / g)],\n"
-            "\n"
-            "    The formula follows from this algebraic simplification.\n"
-            "\n"
-            "        ([(n * b) / g] / [1 - (b / g)]) / n = (b / g) / [1 - (b "
-            "/ g)].\n"
-            "\n"
-            "    Here, normalized coverage means the corresponding genome-"
-            "wide signal has been scaled so its integral (i.e., sum over all "
-            "bins) is 1. Under this convention, the expected per-bin depth "
-            "depends only on 'b' and 'g', so no input file is needed and "
-            "'--fil_in' is ignored.\n"
-            "\n"
-            "Summary of calculations:\n"
-            "    - dist (bedGraph column 4 values 'v_i'; computed on positive-"
-            "only bins):\n"
-            "        + method=qntl_nz\n"
-            "\n"
-            "            dep_min = q-th percentile of {v_i : v_i > 0}\n"
-            "\n"
-            "        + method=frc_mdn_nz\n"
-            "\n"
-            "            dep_min = coef × median({v_i : v_i > 0})\n"
-            "\n"
-            "        + method=frc_avg_nz\n"
-            "\n"
-            "            dep_min = coef × mean({v_i : v_i > 0})\n"
-            "\n"
-            "        + method=min_nz\n"
-            "\n"
-            "            dep_min = coef × min({v_i : v_i > 0})\n"
-            "\n"
-            "        + then\n"
-            "\n"
-            "            dep_min := max(dep_min, floor)\n"
-            "\n"
-            "    - frag:\n"
-            "\n"
-            "        dep_min = ((n * b) / g) / [1 - (b / g)]\n"
-            "\n"
-            "    - norm:\n"
-            "\n"
-            "        dep_min = (b / g) / [1 - (b / g)]\n"
-            "\n"
-            "Notes:\n"
-            "    - 'frag' and 'norm' are included here for consistency with "
-            "the siQ-ChIP derivations/code paths by Brad Dickson.\n"
-            "    - Intended downstream behavior:\n"
-            "\n"
-            "        denominator := max(denominator, dep_min)\n"
-            "\n"
+            "Comma-separated header prefixes skipped in BED/BED.GZ and "
+            "bedGraph-like input; an empty string disables skipping (default: "
+            "'%(default)s')."
         ),
     )
 
@@ -891,27 +856,14 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         choices=("qntl_nz", "frc_mdn_nz", "frc_avg_nz", "min_nz"),
         default="qntl_nz",
         help=(
-            "Workflow method. Distribution-based method used only in '--mode "
-            "dist' (default: %(default)s):\n"
-            "    - qntl_nz     dep_min = q-th percentile of positive bins\n"
-            "    - frc_mdn_nz  dep_min = coef × median of positive bins\n"
-            "    - frc_avg_nz  dep_min = coef × mean of positive bins\n"
-            "    - min_nz      dep_min = coef × minimum positive bin\n"
-            "\n"
-            "Notes:\n"
-            "    - The input distribution is taken from bedGraph column 4 "
-            "after skipping header/meta lines and non-data lines.\n"
-            "    - Values are filtered to finite values, filtered by '--eps' "
-            "/ '--mode_nz', then restricted to positive-only values ('v_i > "
-            "0').\n"
-            "    - '--qntl_nz' is used only with '--method qntl_nz'.\n"
-            "    - '--coef' is used only with the 'frc_*' and 'min_nz' "
-            "methods.\n"
-            "    - After the method value is computed in 'mode=dist', "
-            "'--floor' is applied as follows:\n"
-            "\n"
-            "        dep_min := max(dep_min, floor).\n"
-            "\n"
+            "Distribution method used only in '--mode dist' (default: "
+            "'%(default)s').\n"
+            "- qntl_nz: 'dep_min = Q_q({v_i : v_i > 0})'. See '--qntl_nz' for "
+            "the selection rule.\n"
+            "- frc_mdn_nz: 'dep_min = coef * median({v_i : v_i > 0})'.\n"
+            "- frc_avg_nz: 'dep_min = coef * mean({v_i : v_i > 0})'.\n"
+            "- min_nz: 'dep_min = coef * min({v_i : v_i > 0})'.\n"
+            "After this statistic, '--floor' applies the lower bound."
         ),
     )
     parser.add_argument(
@@ -921,8 +873,10 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         type=float,
         default=1.0,
         help=(
-            "Quantile in percent used only when '--mode dist' AND '--method "
-            "qntl_nz' (default: %(default)s).\n\n"
+            "Quantile percentage in '[0, 100]' used only by '--mode dist "
+            "--method qntl_nz'. For sorted filtered values and 'q = qntl_nz / "
+            "100', select 'i = floor(q * (N - 1))', clamped to '[0, N - 1]' "
+            "and then 'dep_min = sorted_vals[i]' (default: %(default)s)."
         ),
     )
     parser.add_argument(
@@ -932,20 +886,10 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         type=float,
         default=None,
         help=(
-            "Coefficient for '--method frc_mdn_nz', '--method frc_avg_nz', "
-            "and '--method min_nz'. If omitted, defaults match "
-            "'compute_pseudo.py' (0.01 for 'frc_*'; 1.0 for 'min_nz').\n\n"
-        ),
-    )
-    parser.add_argument(
-        "-f",
-        "--floor",
-        dest="floor",
-        type=float,
-        default=0.0,
-        help=(
-            "Lower bound applied to the computed floor in '--mode dist' "
-            "(default: %(default)s).\n\n"
+            "Nonnegative coefficient used only by the 'frc_mdn_nz', "
+            "'frc_avg_nz', and 'min_nz' distribution methods. If omitted, "
+            "defaults match 'compute_pseudo.py': 0.01 for 'frc_*' and 1.0 for "
+            "'min_nz'. The 'qntl_nz' method ignores it."
         ),
     )
     parser.add_argument(
@@ -955,8 +899,8 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         type=float,
         default=0.0,
         help=(
-            "Zero tolerance epsilon used only in '--mode dist' (default: "
-            "%(default)s).\n\n"
+            "Nonnegative zero tolerance used only in '--mode dist' (default: "
+            "%(default)s)."
         ),
     )
     parser.add_argument(
@@ -966,9 +910,84 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         choices=("closed", "open", "off"),
         default="closed",
         help=(
-            "Epsilon/zero-handling mode used only in '--mode dist' (default: "
-            "%(default)s).\n\n"
+            "Epsilon rule used only in '--mode dist': 'closed' drops "
+            "'abs(v_i) <= eps', 'open' drops 'abs(v_i) < eps', and 'off' "
+            "disables epsilon filtering. Positive-only filtering follows "
+            "(default: '%(default)s')."
         ),
+    )
+    parser.add_argument(
+        "-f",
+        "--floor",
+        dest="floor",
+        type=float,
+        default=0.0,
+        help=(
+            "Nonnegative lower bound applied after the raw '--mode dist' "
+            "statistic as 'dep_min := max(dep_min, floor)' (default: "
+            "%(default)s)."
+        ),
+    )
+
+    parser.add_argument(
+        "-sb",
+        "--siz_bin",
+        dest="siz_bin",
+        type=int,
+        default=10,
+        help=(
+            "Target signal-bin width in base pairs for 'frag' and 'norm'; it "
+            "must be positive and smaller than '--siz_gen'. 'dist' ignores "
+            "this value (default: %(default)s)."
+        ),
+    )
+    parser.add_argument(
+        "-sg",
+        "--siz_gen",
+        dest="siz_gen",
+        type=int,
+        default=12157105,
+        help=(
+            "Positive effective genome size in base pairs for 'frag' and "
+            "'norm'. 'dist' ignores this value (default: %(default)s, "
+            "appropriate for S. cerevisiae when retaining multi-mapping "
+            "alignments)."
+        ),
+    )
+
+    parser.add_argument(
+        "-fp",
+        "--flags_pe",
+        dest="flags_pe",
+        type=str,
+        help=(
+            "Comma-separated SAM FLAGs for paired-end main alignments in "
+            "'frag' BAM/CRAM input. BED input ignores them. Accepts decimal "
+            "or hexadecimal values (default: 99,1123,163,1187; e.g. 0x63)."
+        ),
+    )
+    parser.add_argument(
+        "--flags-pe",
+        dest="flags_pe",
+        type=str,
+        help=argparse.SUPPRESS,
+    )
+    parser.add_argument(
+        "-fs",
+        "--flags_se",
+        dest="flags_se",
+        type=str,
+        help=(
+            "Comma-separated SAM FLAGs for single-end main alignments in "
+            "'frag' BAM/CRAM input. BED input ignores them. Accepts decimal "
+            "or hexadecimal values (default: 0,16,1024,1040; e.g. 0x400)."
+        ),
+    )
+    parser.add_argument(
+        "--flags-se",
+        dest="flags_se",
+        type=str,
+        help=argparse.SUPPRESS,
     )
 
     parser.add_argument(
@@ -979,20 +998,9 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         default=24,
         help=(
             "Maximum number of decimal places retained for finite emitted "
-            "values. Number of decimal places for rounding result (default: "
-            "%(default)s).\n\n"
-        ),
-    )
-    parser.add_argument(
-        "-sp",
-        "--skp_pfx",
-        dest="skp_pfx",
-        type=str,
-        default=",".join(DEF_SKP_PFX),
-        help=(
-            "Comma-separated list of header prefixes to skip in bed/bed.gz or "
-            "bedGraph-like inputs; to disable skipping, pass an empty string "
-            "(default: %(default)s).\n\n"
+            "values. Non-informative trailing zeros and a trailing decimal "
+            "point are removed, and negative zero is emitted as '0' (default: "
+            "%(default)s)."
         ),
     )
 
@@ -1027,14 +1035,14 @@ def _validate_norm_arguments(
         ("--fil_in", args.fil_in, args.fil_in is not None),
         ("--infmt", args.infmt, args.infmt is not None),
         ("--ref_fa", args.ref_fa, args.ref_fa is not None),
-        ("--flags-pe", flags_pe, bool(flags_pe)),
-        ("--flags-se", flags_se, bool(flags_se)),
         ("--method", args.method, args.method != "qntl_nz"),
         ("--qntl_nz", args.qntl_nz, args.qntl_nz != 1.0),
         ("--coef", args.coef, args.coef is not None),
         ("--floor", args.floor, args.floor != 0.0),
         ("--eps", args.eps, args.eps != 0.0),
         ("--mode_nz", args.mode_nz, args.mode_nz != "closed"),
+        ("--flags_pe", flags_pe, bool(flags_pe)),
+        ("--flags_se", flags_se, bool(flags_se)),
     )
 
     for option, value, supplied in ignored:
@@ -1079,13 +1087,13 @@ def _validate_data_arguments(args: argparse.Namespace) -> str:
             if args.fil_in == "-":
                 message = (
                     "Error: When '--fil_in -' is used with '--mode dist', "
-                    "provide '--infmt {bedgraph,bedGraph,bdg,bg}'."
+                    "provide '--infmt {bedGraph,bdg,bg}'."
                 )
             else:
                 message = (
                     f"Error: Unsupported file type for '--mode dist': "
                     f"'{args.fil_in}'. Provide bedGraph-like input "
-                    "(bedgraph, bedGraph, bdg, or bg, optionally with .gz)."
+                    "(bedGraph, bdg, or bg, optionally with .gz)."
                 )
 
             raise InputFloorValidationError(message)
@@ -1158,8 +1166,12 @@ def _validate_input_floor_arguments(
         Canonical input format and raw paired- and single-end flag values.
     """
 
-    validate_comparison(args.siz_bin, "gt", 0, "siz_bin", allow_none=False)
-    validate_comparison(args.siz_gen, "gt", 0, "siz_gen", allow_none=False)
+    _validate_mode_dimensions(
+        args.mode,
+        args.siz_bin,
+        args.siz_gen,
+    )
+
     validate_comparison(args.dp, "ge", 0, "dp", allow_none=False)
 
     flags_pe = getattr(args, "flags_pe", None)
@@ -1202,16 +1214,16 @@ def _parse_fragment_flags(
 
     if args.mode == "frag":
         if flags_pe:
-            paired_flags = parse_flag_csv(flags_pe, "flags-pe")
+            paired_flags = parse_flag_csv(flags_pe, "flags_pe")
 
         if flags_se:
-            single_flags = parse_flag_csv(flags_se, "flags-se")
+            single_flags = parse_flag_csv(flags_se, "flags_se")
     else:
         if flags_pe:
-            _note_ignored("--flags-pe", "unless '--mode frag'", flags_pe)
+            _note_ignored("--flags_pe", "unless '--mode frag'", flags_pe)
 
         if flags_se:
-            _note_ignored("--flags-se", "unless '--mode frag'", flags_se)
+            _note_ignored("--flags_se", "unless '--mode frag'", flags_se)
 
     return paired_flags, single_flags
 
@@ -1257,6 +1269,7 @@ def _print_input_floor_arguments(
         print("####################################")
         print("")
         print("--verbose")
+        print(f"--mode {args.mode}")
         print(f"--fil_in {args.fil_in}")
 
         if args.infmt is not None:
@@ -1265,14 +1278,7 @@ def _print_input_floor_arguments(
         if args.ref_fa is not None:
             print(f"--ref_fa {args.ref_fa}")
 
-        print(f"--siz_bin {args.siz_bin}")
-        print(f"--siz_gen {args.siz_gen}")
-
-        if args.mode == "frag":
-            print(f"--flags-pe {paired_flags_text}")
-            print(f"--flags-se {single_flags_text}")
-
-        print(f"--mode {args.mode}")
+        print(f"--skp_pfx {skp_pfx}")
 
         if args.mode == "dist":
             print(f"--method {args.method}")
@@ -1281,12 +1287,18 @@ def _print_input_floor_arguments(
                 print(f"--qntl_nz {args.qntl_nz}")
 
             print(f"--coef {args.coef}")
-            print(f"--floor {args.floor}")
             print(f"--eps {args.eps}")
             print(f"--mode_nz {args.mode_nz}")
+            print(f"--floor {args.floor}")
+
+        print(f"--siz_bin {args.siz_bin}")
+        print(f"--siz_gen {args.siz_gen}")
+
+        if args.mode == "frag":
+            print(f"--flags_pe {paired_flags_text}")
+            print(f"--flags_se {single_flags_text}")
 
         print(f"--dp {args.dp}")
-        print(f"--skp_pfx {skp_pfx}")
         print("")
         print("")
 
@@ -1359,7 +1371,7 @@ def main(argv: list[str] | None = None) -> int:
 
     Notes
     -----
-    - Emits a note to stderr if '--flags-pe' / '--flags-se' are supplied
+    - Emits a note to stderr if '--flags_pe' / '--flags_se' are supplied
       for bed/bed.gz input (as flags are ignored for bed inputs).
     - Prints human-readable error messages to stderr on failure.
     - BrokenPipeError is handled in the '__main__' wrapper.
@@ -1380,7 +1392,7 @@ def main(argv: list[str] | None = None) -> int:
 
     skp_pfx = parse_skp_pfx(args.skp_pfx, default=DEF_SKP_PFX)
 
-    if args.siz_bin > (0.5 * args.siz_gen):
+    if args.mode in {"frag", "norm"} and args.siz_bin > (0.5 * args.siz_gen):
         print(
             "Warning: 'siz_bin' is a large fraction of 'siz_gen'; 'dep_min' "
             "may be very large.",
@@ -1402,7 +1414,7 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.mode == "frag" and format_name == "bed" and has_alignment_flags:
         print(
-            "Note: '--flags-pe' / '--flags-se' are ignored for bed inputs.",
+            "Note: '--flags_pe' / '--flags_se' are ignored for bed inputs.",
             file=sys.stderr,
         )
 
@@ -1431,7 +1443,7 @@ def main(argv: list[str] | None = None) -> int:
             file=sys.stderr,
         )
 
-    print(f"{dep_min:.{args.dp}f}")
+    print(format_value(dep_min, args.dp))
 
     return 0
 

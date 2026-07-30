@@ -34,7 +34,6 @@ The parser only exports values present in the matched metadata row. Some exporte
 <br />
 
 ### Important terms
-
 | Term                     | Definition                                                                                                                |
 | :---                     | :---                                                                                                                      |
 | Parsed fields            | Filename-derived values assigned positionally using `filename.fields`.                                                    |

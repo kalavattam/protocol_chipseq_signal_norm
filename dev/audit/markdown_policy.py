@@ -29,6 +29,7 @@ from urllib.parse import unquote, unquote_to_bytes
 from dev.tools.markdown_format import (
     ANCHOR_CANDIDATE,
     ATX,
+    BLOCKQUOTE,
     CANONICAL_ANCHOR,
     FENCE,
     LIST,
@@ -448,14 +449,10 @@ def _heading_spacing_findings(
             continue
 
         blanks, following = _blank_count(lines, unit.heading + 1)
-        table_follows = (
-            following + 1 < len(lines)
-            and parse_table(lines[following : following + 2]) is not None
-        )
         section_break_follows = (
             following < len(lines) and lines[following] == "<br />"
         )
-        expected = 1 if table_follows or section_break_follows else 0
+        expected = 1 if section_break_follows else 0
 
         if following < len(lines) and blanks != expected:
             findings.append(
@@ -463,8 +460,8 @@ def _heading_spacing_findings(
                     "MD.HEADING.SPACING",
                     unit.title + 1,
                     (
-                        "heading needs one blank before a table or ordinary "
-                        "section break and none otherwise"
+                        "heading needs one blank before an ordinary section "
+                        "break and none before its first content block"
                     ),
                 ),
             )
@@ -678,7 +675,8 @@ def check_text(text: str) -> list[Finding]:
             if following < len(lines):
                 list_or_fence = bool(
                     FENCE.match(lines[following])
-                    or LIST.match(lines[following]),
+                    or LIST.match(lines[following])
+                    or BLOCKQUOTE.match(lines[following])
                 )
                 table_follows = False
 
@@ -695,7 +693,7 @@ def check_text(text: str) -> list[Finding]:
                             index + 1,
                             (
                                 "colon needs one blank before a table and "
-                                "none before a list or fence"
+                                "none before a list, fence, or blockquote"
                             ),
                         ),
                     )

@@ -11,3 +11,19 @@ Items:
 | Name | Value |
 | :--- | :---  |
 | A    | 界    |
+
+<br />
+
+## Heading-attached table
+| Name | Value |
+| :--- | :---  |
+| B    | C     |
+
+Colon-introduced table:
+
+| Name | Value |
+| :--- | :---  |
+| D    | E     |
+
+Quoted note:
+> The blockquote remains attached.

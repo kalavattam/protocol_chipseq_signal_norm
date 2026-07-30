@@ -386,12 +386,84 @@ def test_colon_structure_finding_has_exact_owned_identity() -> None:
             rule_id="MD.COLON.STRUCTURE",
             line=3,
             message=(
-                "colon needs one blank before a table and none before a list "
-                "or fence"
+                "colon needs one blank before a table and none before a list, "
+                "fence, or blockquote"
             ),
             classification="deterministic",
         ),
     ]
+
+
+@pytest.mark.parametrize(
+    ("following", "blank_count"),
+    [
+        ("Paragraph.", 0),
+        ("- Item.", 0),
+        ("```text\nliteral\n```", 0),
+        ("> Quoted.", 0),
+        ("| A | B |\n| :--- | :--- |\n| C | D |", 0),
+    ],
+)
+def test_heading_first_content_has_no_blank(
+    following: str,
+    blank_count: int,
+) -> None:
+    gap = "\n" * (blank_count + 1)
+    source = f"\n# Title{gap}{following}\n"
+
+    assert not [
+        item
+        for item in check_text(source)
+        if item.rule_id == "MD.HEADING.SPACING"
+    ]
+
+
+@pytest.mark.parametrize(
+    ("following", "blank_count"),
+    [
+        ("- Item.", 0),
+        ("```text\nliteral\n```", 0),
+        ("> Quoted.", 0),
+        ("| A | B |\n| :--- | :--- |\n| C | D |", 1),
+    ],
+)
+def test_colon_structure_uses_block_specific_spacing(
+    following: str,
+    blank_count: int,
+) -> None:
+    gap = "\n" * (blank_count + 1)
+    source = f"\n# Title\nIntroduced:{gap}{following}\n"
+
+    assert not [
+        item
+        for item in check_text(source)
+        if item.rule_id == "MD.COLON.STRUCTURE"
+    ]
+
+
+def test_spacing_findings_keep_heading_colon_and_table_ownership_distinct() -> (
+    None
+):
+    heading_gap = (
+        "\n# Title\n\n| A    | B    |\n| :--- | :--- |\n| C    | D    |\n"
+    )
+    colon_gap = (
+        "\n# Title\nIntroduced:\n"
+        "| A    | B    |\n"
+        "| :--- | :--- |\n"
+        "| C    | D    |\n"
+    )
+
+    assert {
+        item.rule_id
+        for item in check_text(heading_gap)
+        if item.classification == "deterministic"
+    } == {"MD.HEADING.SPACING"}
+    assert {
+        item.rule_id
+        for item in check_text(colon_gap)
+        if item.classification == "deterministic"
+    } == {"MD.COLON.STRUCTURE"}
 
 
 @pytest.mark.parametrize(

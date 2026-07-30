@@ -50,7 +50,6 @@ The `ratio_headers_A.bdg` and `ratio_headers_B.bdg` files preserve the same data
 <br />
 
 ## Row-level expected behavior
-
 | Bin       | A    | B    | Purpose                                                                             |
 | :---      | :--- | :--- | :---                                                                                |
 | `I:0-10`  | 4    | 2    | Simple unadjusted ratio: `A / B = 2`.                                               |
