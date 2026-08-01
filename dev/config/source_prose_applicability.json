@@ -1,0 +1,45 @@
+{
+  "schema_version": 1,
+  "line_limit": 79,
+  "scopes": [
+    {
+      "language": "python",
+      "kind": "cli_help_literal",
+      "checker": "dev.audit.python_source_policy",
+      "formatter": "dev.tools.python_help_format",
+      "formatter_subset": "adjacent_constant_literals",
+      "status": "active"
+    },
+    {
+      "language": "python",
+      "kind": "comment",
+      "checker": "dev.audit.python_source_policy",
+      "formatter": null,
+      "status": "checker_evidence_first"
+    },
+    {
+      "language": "python",
+      "kind": "docstring",
+      "checker": "dev.audit.python_source_policy",
+      "formatter": null,
+      "status": "checker_evidence_first"
+    },
+    {
+      "language": "shell",
+      "kind": "comment",
+      "checker": null,
+      "formatter": null,
+      "status": "review_only"
+    }
+  ],
+  "excluded": [
+    "structure",
+    "literal",
+    "formula",
+    "url",
+    "directive",
+    "generated",
+    "dynamic",
+    "ambiguous"
+  ]
+}

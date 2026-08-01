@@ -35,6 +35,8 @@ if \
 from __future__ import annotations
 
 import ast
+import copy
+import json
 import os
 import re
 from collections import defaultdict
@@ -44,7 +46,15 @@ from pathlib import Path
 
 ROOT = Path(os.environ["ROOT_REPO"])
 DOC_HELP = ROOT / "docs" / "standards" / "help.md"
+CONTRACTS = ROOT / os.environ.get(
+    "HELP_CONTRACTS_CONFIG",
+    "dev/config/help_contracts.json",
+)
 SCAN_DIRS = [
+    ROOT / "bin",
+    ROOT / "lib",
+    ROOT / "install",
+    ROOT / "src",
     ROOT / "scripts",
     ROOT / "tests" / "scripts",
     ROOT / "docs" / "standards",
@@ -129,6 +139,7 @@ class ParamDoc:
     line: int
     key: str
     desc: str
+    symbol: str
 
 
 def rel(path: Path) -> str:
@@ -211,7 +222,7 @@ def canonical_from_row(head: str) -> str | None:
     return None
 
 
-def read_registry() -> dict[str, str]:
+def read_canonical_table() -> dict[str, str]:
     registry: dict[str, str] = {}
     lines = DOC_HELP.read_text(encoding="utf-8").splitlines()
     start = next(
@@ -236,6 +247,8 @@ def read_registry() -> dict[str, str]:
         len(lines),
     )
     for line in lines[start + 1:end]:
+        if line.startswith("Use `"):
+            break
         if not line.startswith("| `"):
             continue
         cells = [cell.strip() for cell in line.strip().strip("|").split("|")]
@@ -250,6 +263,139 @@ def read_registry() -> dict[str, str]:
             "PARAMETER.DESCRIPTIONS contains no canonical rows"
         )
     return registry
+
+
+def family_registry_findings(
+    table: dict[str, str],
+    families: list[dict[str, object]],
+) -> list[str]:
+    """
+    Return exact bidirectional canonical-table/family failures.
+    """
+
+    findings: list[str] = []
+    shared = [
+        family
+        for family in families
+        if family.get("status") == "registered_shared"
+    ]
+    local = [
+        family
+        for family in families
+        if family.get("status") == "non_applicable_same_name"
+    ]
+    by_parameter: dict[str, list[dict[str, object]]] = defaultdict(list)
+    for family in shared:
+        by_parameter[str(family.get("parameter", ""))].append(family)
+
+    for parameter, core in table.items():
+        matches = by_parameter.get(parameter, [])
+        if len(matches) != 1:
+            findings.append(
+                f"canonical row '{parameter}' maps to {len(matches)} "
+                "registered_shared families"
+            )
+            continue
+        if norm_desc(str(matches[0].get("canonical_core", ""))) != core:
+            findings.append(
+                f"canonical row '{parameter}' core differs from its family"
+            )
+
+    for parameter, matches in sorted(by_parameter.items()):
+        if len(matches) != 1:
+            findings.append(
+                f"registered_shared family '{parameter}' occurs "
+                f"{len(matches)} times"
+            )
+        if parameter not in table:
+            findings.append(
+                f"registered_shared family '{parameter}' has no canonical row"
+            )
+
+    for family in local:
+        parameter = str(family.get("parameter", ""))
+        if parameter in table:
+            findings.append(
+                f"non_applicable_same_name family '{parameter}' appears in "
+                "the canonical table"
+            )
+        meanings = family.get("local_meanings")
+        if not isinstance(meanings, list) or not meanings:
+            findings.append(
+                f"non_applicable_same_name family '{parameter}' lacks local "
+                "meaning evidence"
+            )
+
+    return findings
+
+
+def read_registered_families(
+    table: dict[str, str],
+) -> tuple[dict[str, str], list[dict[str, object]]]:
+    """
+    Load the shared family registry consumed by this semantic checker.
+    """
+
+    data = json.loads(CONTRACTS.read_text(encoding="utf-8"))
+    families = data.get("parameter_families")
+    if not isinstance(families, list):
+        raise RuntimeError("help contracts lack parameter_families")
+    for message in family_registry_findings(table, families):
+        print(f"FAIL:{rel(CONTRACTS)}:1:{message}")
+    registry = {
+        str(family["parameter"]): norm_desc(str(family["canonical_core"]))
+        for family in families
+        if family.get("status") == "registered_shared"
+    }
+    return registry, families
+
+
+def prove_family_fault_detection(
+    table: dict[str, str],
+    families: list[dict[str, object]],
+) -> None:
+    """
+    Prove the bidirectional connection rejects representative divergence.
+    """
+
+    shared_index = next(
+        index
+        for index, family in enumerate(families)
+        if family.get("status") == "registered_shared"
+    )
+    non_applicable_index = next(
+        index
+        for index, family in enumerate(families)
+        if family.get("status") == "non_applicable_same_name"
+    )
+    mutations: list[tuple[str, dict[str, str], list[dict[str, object]]]] = []
+
+    missing = copy.deepcopy(families)
+    del missing[shared_index]
+    mutations.append(("missing family", table, missing))
+
+    duplicate = copy.deepcopy(families)
+    duplicate.append(copy.deepcopy(duplicate[shared_index]))
+    mutations.append(("duplicate family", table, duplicate))
+
+    mismatched = copy.deepcopy(families)
+    mismatched[shared_index]["canonical_core"] = "Injected mismatch."
+    mutations.append(("core mismatch", table, mismatched))
+
+    promoted_table = dict(table)
+    local_parameter = str(families[non_applicable_index]["parameter"])
+    promoted_table[local_parameter] = "Injected shared meaning."
+    mutations.append(("non-applicable promotion", promoted_table, families))
+
+    for label, candidate_table, candidate_families in mutations:
+        if not family_registry_findings(
+            candidate_table,
+            candidate_families,
+        ):
+            print(
+                f"FAIL:{rel(CONTRACTS)}:1:fault injection was not detected: "
+                f"{label}"
+            )
 
 
 def iter_text_files() -> list[Path]:
@@ -327,7 +473,17 @@ def shell_param_docs(path: Path) -> list[ParamDoc]:
             j += 1
         if desc_lines:
             desc = norm_desc(" ".join(desc_lines))
-            docs.append(ParamDoc(path, i + 1, key, desc))
+            symbol = "<file>"
+            for prior in reversed(lines[:i + 1]):
+                match = re.match(
+                    r"(?:function\s+)?([A-Za-z_][A-Za-z0-9_]*)"
+                    r"\s*(?:\(\))?\s*\{",
+                    prior.strip(),
+                )
+                if match:
+                    symbol = match.group(1)
+                    break
+            docs.append(ParamDoc(path, i + 1, key, desc, symbol))
         i = max(j, i + 1)
     return docs
 
@@ -395,63 +551,37 @@ def python_param_docs(path: Path) -> list[ParamDoc]:
         desc = literal_str(help_kw.value)
         if desc is None or desc.strip() == "argparse.SUPPRESS":
             continue
-        docs.append(ParamDoc(path, node.lineno, key, norm_desc(desc)))
+        symbol = "<file>"
+        for candidate in ast.walk(tree):
+            if not isinstance(
+                candidate,
+                (ast.FunctionDef, ast.AsyncFunctionDef),
+            ):
+                continue
+            end_line = getattr(candidate, "end_lineno", candidate.lineno)
+            if candidate.lineno <= node.lineno <= end_line:
+                symbol = candidate.name
+                break
+        docs.append(
+            ParamDoc(path, node.lineno, key, norm_desc(desc), symbol)
+        )
     return docs
 
 
-def emit_registry_warnings(
-    registry: dict[str, str],
-    docs: list[ParamDoc],
-) -> None:
-    for doc in docs:
-        expected = registry.get(doc.key)
-        if expected is None:
-            continue
-        duplicated = duplicated_registered_core(doc.desc, expected)
-        if duplicated is not None:
-            print(
-                f"FAIL:{rel(doc.path)}:{doc.line}:malformed description for "
-                f"{doc.key}: {duplicated}"
-            )
-            continue
-        if not has_shared_core(doc.desc, expected):
-            print(
-                f"WARN:{rel(doc.path)}:{doc.line}:description drift for "
-                f"{doc.key}: expected shared core '{expected}' got '{doc.desc}'"
-            )
+def approved_realization(member: dict[str, object], fallback: str) -> str:
+    """Return the exact registered natural realization, never a name guess."""
+
+    explicit = member.get("approved_realization")
+    if isinstance(explicit, str) and explicit:
+        return norm_desc(explicit)
+    evidence = str(member.get("evidence", ""))
+    marker = ": "
+    return norm_desc(evidence.rsplit(marker, 1)[-1]) if marker in evidence else fallback
 
 
-def emit_same_name_warnings(
-    registry: dict[str, str],
-    docs: list[ParamDoc],
-) -> None:
-    grouped: dict[str, dict[str, list[ParamDoc]]] = defaultdict(
-        lambda: defaultdict(list)
-    )
-    for doc in docs:
-        if doc.key in registry:
-            continue
-        if doc.key not in SHARED_NAME_CANDIDATES:
-            continue
-        grouped[doc.key][norm_compare(doc.desc)].append(doc)
-    for key, by_desc in sorted(grouped.items()):
-        if len(by_desc) < 2:
-            continue
-        variants = []
-        for desc, desc_docs in by_desc.items():
-            first = desc_docs[0]
-            preview = desc[:96] + ("..." if len(desc) > 96 else "")
-            variants.append(
-                f"{rel(first.path)}:{first.line}='{preview}'"
-            )
-        print(
-            f"WARN:{variants[0].split('=')[0]}:shared-family drift for "
-            f"'{key}' has {len(by_desc)} descriptions: "
-            f"{'; '.join(variants[:4])}"
-        )
-
-
-registry = read_registry()
+canonical_table = read_canonical_table()
+registry, families = read_registered_families(canonical_table)
+prove_family_fault_detection(canonical_table, families)
 paths = iter_text_files()
 for finding in scan_retired_names(paths):
     print(finding)
@@ -463,8 +593,40 @@ for path in paths:
     elif path.suffix == ".sh":
         docs.extend(shell_param_docs(path))
 
-emit_registry_warnings(registry, docs)
-emit_same_name_warnings(registry, docs)
+for family in families:
+    if family.get("status") != "registered_shared":
+        continue
+    parameter = str(family["parameter"])
+    expected = registry[parameter]
+    for member in family.get("members", []):
+        member_path = ROOT / str(member["path"])
+        matching = [
+            doc
+            for doc in docs
+            if doc.path == member_path
+            and doc.key == parameter
+            and doc.symbol == str(member["symbol"])
+        ]
+        if len(matching) != 1:
+            print(
+                f"FAIL:{rel(CONTRACTS)}:1:registered member "
+                f"'{member['surface_id']}' maps to {len(matching)} "
+                "semantic parameter rows"
+            )
+        else:
+            approved = approved_realization(member, expected)
+            duplicated = duplicated_registered_core(matching[0].desc, approved)
+            if duplicated is not None:
+                print(
+                    f"FAIL:{rel(matching[0].path)}:{matching[0].line}:"
+                    f"malformed description for {parameter}: {duplicated}"
+                )
+            elif norm_compare(matching[0].desc) != norm_compare(approved):
+                print(
+                    f"WARN:{rel(matching[0].path)}:{matching[0].line}:"
+                    f"PARAMETER.DESCRIPTIONS registered-member divergence for "
+                    f"'{member['surface_id']}'"
+                )
 PY
 then
     while IFS=: read -r sev file line msg; do

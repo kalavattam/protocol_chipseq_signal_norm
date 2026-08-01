@@ -1,0 +1,12 @@
+function demo() {
+    cat << EOM
+Usage
+-----
+  demo [--dry_run]
+
+Parameters
+----------
+  -dr, --dry_run, --dry_run : flag
+    Run in dry-run mode.
+EOM
+}

@@ -63,14 +63,15 @@ RULE_SECTION_DUPLICATE = "HELP.SECTION.DUPLICATE"
 RULE_SECTION_ORDER = "HELP.SECTION.ORDER"
 RULE_SECTION_REQUIRED = "HELP.SECTION.REQUIRED"
 RULE_LONG_OPTIONS = "HELP.DOC.LONG_OPTIONS"
-RULE_PARAMETER_ALIAS_DUPLICATE = "HELP.PARAMETER.ALIAS_DUPLICATE"
 RULE_GLOBAL_SUBGROUP = "HELP.GLOBAL.SUBGROUP"
 RULE_GLOBAL_GROUP_SYNTAX = "HELP.GLOBAL.GROUP_SYNTAX"
 RULE_GLOBAL_REPEATED_DESCRIPTION = "HELP.GLOBAL.REPEATED_DESCRIPTION"
 RULE_GLOBAL_MAPPING_REVIEW = "HELP.GLOBAL.MAPPING_REVIEW"
 RULE_PROSE_QUOTES = "HELP.PROSE.STRAIGHT_QUOTES"
+RULE_TOKEN_QUOTING_SHELL = "HELP.TOKEN.QUOTING.SHELL"
 RULE_PARSER_UNKNOWN = "SHELL.PARSER.UNKNOWN_ERROR"
 RULE_PYTHON_PROSE_QUOTES = "PYTHON.DOCSTRING.STRAIGHT_QUOTES"
+RULE_TOKEN_QUOTING_PYTHON = "HELP.TOKEN.QUOTING.PYTHON"
 RULE_TABLE = "MD.TABLE.CANONICAL"
 
 FUNCTION_SECTION_ORDER = (
@@ -115,6 +116,10 @@ GLOBAL_SUBGROUP = re.compile(
     r"^(?:Read|Write|Required|Optional|Inputs?|Outputs?):$",
 )
 PROSE_BACKTICKS = re.compile(r"`[^`\n]+`")
+LEXICAL_OBJECT = re.compile(
+    r"^(?:--?[A-Za-z0-9][A-Za-z0-9_-]*"
+    r"(?:\s+[^`\s]+)*|[A-Za-z_][A-Za-z0-9_.-]*|[-+]?[0-9.]+)$",
+)
 CANONICAL_UNKNOWN = "echo_err \"unknown option/parameter passed: '${1}'.\""
 UNKNOWN_MESSAGE = re.compile(
     r"(?:Unknown argument passed|"
@@ -650,24 +655,6 @@ def check_entries(
                 ),
                 active_lines,
             )
-
-        if section.name == "Parameters" and match.group(
-            "head",
-        ).lstrip().startswith("-"):
-            aliases = re.findall(
-                r"--?[A-Za-z0-9][A-Za-z0-9_-]*",
-                match.group("head"),
-            )
-
-            if len(aliases) != len(set(aliases)):
-                add_finding(
-                    findings,
-                    RULE_PARAMETER_ALIAS_DUPLICATE,
-                    path,
-                    number,
-                    "a parameter row must list each alias exactly once",
-                    active_lines,
-                )
 
     row_indexes = {row[0] for row in rows}
 
@@ -1327,10 +1314,17 @@ def check_long_options_and_prose(
             continue
 
         for number, line in section.lines:
-            if PROSE_BACKTICKS.search(line):
+            match = PROSE_BACKTICKS.search(line)
+            if match:
+                content = match.group(0)[1:-1]
+                rule_id = (
+                    RULE_TOKEN_QUOTING_SHELL
+                    if LEXICAL_OBJECT.fullmatch(content)
+                    else RULE_PROSE_QUOTES
+                )
                 add_finding(
                     findings,
-                    RULE_PROSE_QUOTES,
+                    rule_id,
                     path,
                     number,
                     (
@@ -1480,10 +1474,23 @@ def check_python_docstrings(
             if in_examples or in_fence or stripped.startswith((">>>", "...")):
                 continue
 
-            if re.search(r"``[^`\n]+``|(?<!`)`[^`\n]+`(?!`)", line):
+            delimiter = re.search(
+                r"``(?P<double>[^`\n]+)``|"
+                r"(?<!`)`(?P<single>[^`\n]+)`(?!`)",
+                line,
+            )
+            if delimiter:
+                content = delimiter.group("double") or delimiter.group(
+                    "single"
+                )
+                rule_id = (
+                    RULE_TOKEN_QUOTING_PYTHON
+                    if LEXICAL_OBJECT.fullmatch(content)
+                    else RULE_PYTHON_PROSE_QUOTES
+                )
                 add_finding(
                     findings,
-                    RULE_PYTHON_PROSE_QUOTES,
+                    rule_id,
                     path,
                     number,
                     (

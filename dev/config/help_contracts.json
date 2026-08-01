@@ -1,0 +1,2922 @@
+{
+  "schema_version": 2,
+  "parameter_occurrence_dispositions": [
+    {"id": "download_dir_scr", "path": "lib/bash/help/help_submit_download_fastqs.sh", "symbol": "help_submit_download_fastqs", "parameter": "dir_scr", "disposition": "enrolled_member"},
+    {"id": "install_dry_run", "path": "install/scripts/install_envs_entrypoint.sh", "symbol": "<file>", "parameter": "dry_run", "disposition": "unresolved_review_candidate"},
+    {"id": "install_env_nam", "path": "install/scripts/install_envs_entrypoint.sh", "symbol": "<file>", "parameter": "env_nam", "disposition": "unresolved_review_candidate"},
+    {"id": "source_helpers_dir_fnc_88", "path": "lib/bash/core/source_helpers.sh", "symbol": "_source_helper_resolve", "parameter": "dir_fnc", "disposition": "non_applicable_same_name"},
+    {"id": "source_helpers_dir_fnc_276", "path": "lib/bash/core/source_helpers.sh", "symbol": "source_helpers", "parameter": "dir_fnc", "disposition": "enrolled_member"},
+    {"id": "align_dir_scr", "path": "lib/bash/help/help_submit_align_fastqs.sh", "symbol": "help_submit_align_fastqs", "parameter": "dir_scr", "disposition": "non_applicable_same_name"},
+    {"id": "calculate_dir_scr", "path": "lib/bash/help/help_submit_calculate_scaling_factor.sh", "symbol": "help_submit_calculate_scaling_factor", "parameter": "dir_scr", "disposition": "non_applicable_same_name"},
+    {"id": "compute_dir_scr", "path": "lib/bash/help/help_submit_compute_signal.sh", "symbol": "help_submit_compute_signal", "parameter": "dir_scr", "disposition": "non_applicable_same_name"},
+    {"id": "convert_dir_scr", "path": "lib/bash/help/help_submit_convert_bam_bed.sh", "symbol": "help_submit_convert_bam_bed", "parameter": "dir_scr", "disposition": "non_applicable_same_name"},
+    {"id": "filter_dir_scr", "path": "lib/bash/help/help_submit_filter_alignments.sh", "symbol": "help_submit_filter_alignments", "parameter": "dir_scr", "disposition": "non_applicable_same_name"},
+    {"id": "qsort_dir_scr", "path": "lib/bash/help/help_submit_qsort_bam.sh", "symbol": "help_submit_qsort_bam", "parameter": "dir_scr", "disposition": "non_applicable_same_name"},
+    {"id": "trim_dir_scr", "path": "lib/bash/help/help_submit_trim_fastqs.sh", "symbol": "help_submit_trim_fastqs", "parameter": "dir_scr", "disposition": "non_applicable_same_name"},
+    {"id": "floor_skp_pfx", "path": "src/protocol_chipseq_signal_norm/cli/compute_input_floor.py", "symbol": "parse_args", "parameter": "skp_pfx", "disposition": "non_applicable_same_name"},
+    {"id": "floor_qntl_nz", "path": "src/protocol_chipseq_signal_norm/cli/compute_input_floor.py", "symbol": "parse_args", "parameter": "qntl_nz", "disposition": "non_applicable_same_name"},
+    {"id": "floor_coef", "path": "src/protocol_chipseq_signal_norm/cli/compute_input_floor.py", "symbol": "parse_args", "parameter": "coef", "disposition": "non_applicable_same_name"},
+    {"id": "floor_eps", "path": "src/protocol_chipseq_signal_norm/cli/compute_input_floor.py", "symbol": "parse_args", "parameter": "eps", "disposition": "non_applicable_same_name"},
+    {"id": "floor_mode_nz", "path": "src/protocol_chipseq_signal_norm/cli/compute_input_floor.py", "symbol": "parse_args", "parameter": "mode_nz", "disposition": "non_applicable_same_name"},
+    {"id": "floor_floor", "path": "src/protocol_chipseq_signal_norm/cli/compute_input_floor.py", "symbol": "parse_args", "parameter": "floor", "disposition": "non_applicable_same_name"},
+    {"id": "floor_siz_bin", "path": "src/protocol_chipseq_signal_norm/cli/compute_input_floor.py", "symbol": "parse_args", "parameter": "siz_bin", "disposition": "non_applicable_same_name"},
+    {"id": "floor_siz_gen", "path": "src/protocol_chipseq_signal_norm/cli/compute_input_floor.py", "symbol": "parse_args", "parameter": "siz_gen", "disposition": "non_applicable_same_name"},
+    {"id": "merge_dp", "path": "src/protocol_chipseq_signal_norm/cli/merge_bins_bdg.py", "symbol": "parse_args", "parameter": "dp", "disposition": "unresolved_review_candidate"}
+  ],
+  "surfaces": [
+    {
+      "id": "compute_input_floor_cli",
+      "path": "src/protocol_chipseq_signal_norm/cli/compute_input_floor.py",
+      "symbol": "parse_args",
+      "language": "python",
+      "kind": "installed_help",
+      "audience": "command_user",
+      "availability": "installed",
+      "required_runtime_facts": "complete",
+      "status": "accepted_pilot"
+    },
+    {
+      "id": "compute_input_floor_callable",
+      "path": "src/protocol_chipseq_signal_norm/cli/compute_input_floor.py",
+      "symbol": "compute_input_floor",
+      "language": "python",
+      "kind": "callable_documentation",
+      "audience": "python_caller",
+      "availability": "installed",
+      "required_runtime_facts": "direct_call_contract",
+      "status": "accepted_pilot"
+    },
+    {
+      "id": "compute_input_floor_design",
+      "path": "docs/design/compute_input_floor.md",
+      "symbol": "document",
+      "language": "markdown",
+      "kind": "public_design",
+      "audience": "design_reviewer",
+      "availability": "public_repository",
+      "required_runtime_facts": "extended_derivation",
+      "status": "accepted_pilot"
+    },
+    {
+      "id": "combine_parts_scaling_factor_help",
+      "path": "lib/bash/help/help_combine_parts_scaling_factor.sh",
+      "symbol": "help_combine_parts_scaling_factor",
+      "language": "shell",
+      "kind": "installed_help",
+      "audience": "command_user",
+      "availability": "installed",
+      "required_runtime_facts": "complete",
+      "status": "accepted_pilot"
+    }
+  ],
+  "token_quoting": {
+    "languages": [
+      "python",
+      "shell"
+    ],
+    "included_contexts": [
+      "ordinary_explanatory_prose"
+    ],
+    "included_objects": [
+      "option",
+      "identifier",
+      "sentinel",
+      "value",
+      "complete_inline_interface_expression"
+    ],
+    "excluded_contexts": [
+      "usage",
+      "fenced_command",
+      "example",
+      "formula",
+      "structured_grammar"
+    ],
+    "ambiguous": "human_review",
+    "automatic_rewrite": false
+  },
+  "option_category_precedence": [
+    "help_reporting",
+    "preview_no_write",
+    "execution_environment_resources",
+    "operation_discriminant",
+    "inputs",
+    "output_targets",
+    "output_lifecycle_cleanup",
+    "mode_specific",
+    "formatting",
+    "logging_job_names",
+    "scheduler_parallel"
+  ],
+  "parameter_families": [
+    {
+      "id": "shared_csv_fil_in",
+      "parameter": "csv_fil_in",
+      "canonical_core": "Comma-separated list of input file paths.",
+      "members": [
+        {
+          "surface_id": "lib/bash/help/help_submit_compute_signal.sh::help_submit_compute_signal",
+          "path": "lib/bash/help/help_submit_compute_signal.sh",
+          "symbol": "help_submit_compute_signal",
+          "parameter": "csv_fil_in",
+          "owner": "PARAMETER.DESCRIPTIONS",
+          "evidence": "Parameters row at line 56: Comma-separated list of input file paths for BAM or CRAM files."
+        }
+      ],
+      "local_meanings": [],
+      "status": "registered_shared"
+    },
+    {
+      "id": "shared_fil_out",
+      "parameter": "fil_out",
+      "canonical_core": "Output file path.",
+      "members": [
+        {
+          "surface_id": "bin/submit_compute_signal.sh::run_comp_sig",
+          "path": "bin/submit_compute_signal.sh",
+          "symbol": "run_comp_sig",
+          "parameter": "fil_out",
+          "owner": "PARAMETER.DESCRIPTIONS",
+          "evidence": "Parameters row at line 571: Output file path. Output filename."
+        }
+      ],
+      "local_meanings": [],
+      "status": "registered_shared"
+    },
+    {
+      "id": "shared_csv_fil_out",
+      "parameter": "csv_fil_out",
+      "canonical_core": "Comma-separated list of output file paths.",
+      "members": [
+        {
+          "surface_id": "lib/bash/help/help_submit_compute_signal.sh::help_submit_compute_signal",
+          "path": "lib/bash/help/help_submit_compute_signal.sh",
+          "symbol": "help_submit_compute_signal",
+          "parameter": "csv_fil_out",
+          "owner": "PARAMETER.DESCRIPTIONS",
+          "evidence": "Parameters row at line 81: Comma-separated list of output file paths."
+        }
+      ],
+      "local_meanings": [],
+      "status": "registered_shared"
+    },
+    {
+      "id": "shared_dir_out",
+      "parameter": "dir_out",
+      "canonical_core": "Output directory.",
+      "members": [
+        {
+          "surface_id": "lib/bash/help/help_execute_compute_signal.sh::help_execute_compute_signal",
+          "path": "lib/bash/help/help_execute_compute_signal.sh",
+          "symbol": "help_execute_compute_signal",
+          "parameter": "dir_out",
+          "owner": "PARAMETER.DESCRIPTIONS",
+          "evidence": "Parameters row at line 110: Output directory for generated files."
+        }
+      ],
+      "local_meanings": [],
+      "status": "registered_shared"
+    },
+    {
+      "id": "shared_dir_eo",
+      "parameter": "dir_eo",
+      "canonical_core": "Directory for stderr and stdout log files.",
+      "members": [
+        {
+          "surface_id": "bin/submit_align_fastqs.sh::run_alignment",
+          "path": "bin/submit_align_fastqs.sh",
+          "symbol": "run_alignment",
+          "parameter": "dir_eo",
+          "owner": "PARAMETER.DESCRIPTIONS",
+          "evidence": "Parameters row at line 258: Directory for stderr and stdout log files."
+        }
+      ],
+      "local_meanings": [],
+      "status": "registered_shared"
+    },
+    {
+      "id": "shared_dir_scr",
+      "parameter": "dir_scr",
+      "canonical_core": "Maintained entrypoint directory used to resolve adjacent shared functions.",
+      "members": [
+        {
+          "surface_id": "lib/bash/help/help_submit_download_fastqs.sh::help_submit_download_fastqs",
+          "path": "lib/bash/help/help_submit_download_fastqs.sh",
+          "symbol": "help_submit_download_fastqs",
+          "parameter": "dir_scr",
+          "owner": "PARAMETER.DESCRIPTIONS",
+          "evidence": "Parameters row at line 31: Maintained entrypoint directory. Pass the repository 'bin' directory; shared libraries are resolved from adjacent 'lib/bash'.",
+          "approved_realization": "Maintained entrypoint directory. Pass the repository 'bin' directory; shared libraries are resolved from adjacent 'lib/bash'."
+        }
+      ],
+      "local_meanings": [],
+      "status": "registered_shared"
+    },
+    {
+      "id": "shared_env_nam",
+      "parameter": "env_nam",
+      "canonical_core": "Conda environment to activate.",
+      "members": [
+        {
+          "surface_id": "lib/bash/help/help_submit_trim_fastqs.sh::help_submit_trim_fastqs",
+          "path": "lib/bash/help/help_submit_trim_fastqs.sh",
+          "symbol": "help_submit_trim_fastqs",
+          "parameter": "env_nam",
+          "owner": "PARAMETER.DESCRIPTIONS",
+          "evidence": "Parameters row at line 46: Conda environment to activate."
+        }
+      ],
+      "local_meanings": [],
+      "status": "registered_shared"
+    },
+    {
+      "id": "shared_threads",
+      "parameter": "threads",
+      "canonical_core": "Number of threads to use.",
+      "members": [
+        {
+          "surface_id": "bin/submit_align_fastqs.sh::run_alignment",
+          "path": "bin/submit_align_fastqs.sh",
+          "symbol": "run_alignment",
+          "parameter": "threads",
+          "owner": "PARAMETER.DESCRIPTIONS",
+          "evidence": "Parameters row at line 222: Number of threads to use."
+        }
+      ],
+      "local_meanings": [],
+      "status": "registered_shared"
+    },
+    {
+      "id": "shared_ref_fa",
+      "parameter": "ref_fa",
+      "canonical_core": "Reference FASTA file.",
+      "members": [
+        {
+          "surface_id": "lib/bash/help/help_execute_compute_signal.sh::detail_execute_compute_signal",
+          "path": "lib/bash/help/help_execute_compute_signal.sh",
+          "symbol": "detail_execute_compute_signal",
+          "parameter": "ref_fa",
+          "owner": "PARAMETER.DESCRIPTIONS",
+          "evidence": "Parameters row at line 344: Reference FASTA file for CRAM input files."
+        }
+      ],
+      "local_meanings": [],
+      "status": "registered_shared"
+    },
+    {
+      "id": "shared_dp",
+      "parameter": "dp",
+      "canonical_core": "Maximum number of decimal places retained for finite emitted values.",
+      "members": [
+        {
+          "surface_id": "bin/submit_compute_signal.sh::set_args_opt",
+          "path": "bin/submit_compute_signal.sh",
+          "symbol": "set_args_opt",
+          "parameter": "dp",
+          "owner": "PARAMETER.DESCRIPTIONS",
+          "evidence": "Parameters row at line 295: Maximum number of decimal places retained for finite emitted values."
+        }
+      ],
+      "local_meanings": [],
+      "status": "registered_shared"
+    },
+    {
+      "id": "shared_verbose",
+      "parameter": "verbose",
+      "canonical_core": "Run script in verbose mode.",
+      "members": [
+        {
+          "surface_id": "lib/bash/help/help_execute_align_fastqs.sh::help_execute_align_fastqs",
+          "path": "lib/bash/help/help_execute_align_fastqs.sh",
+          "symbol": "help_execute_align_fastqs",
+          "parameter": "verbose",
+          "owner": "PARAMETER.DESCRIPTIONS",
+          "evidence": "Parameters row at line 38: Run script in verbose mode."
+        }
+      ],
+      "local_meanings": [],
+      "status": "registered_shared"
+    },
+    {
+      "id": "shared_dry_run",
+      "parameter": "dry_run",
+      "canonical_core": "Run script in dry-run mode.",
+      "members": [
+        {
+          "surface_id": "lib/bash/help/help_execute_compute_signal.sh::help_execute_compute_signal",
+          "path": "lib/bash/help/help_execute_compute_signal.sh",
+          "symbol": "help_execute_compute_signal",
+          "parameter": "dry_run",
+          "owner": "PARAMETER.DESCRIPTIONS",
+          "evidence": "Parameters row at line 63: Run script in dry-run mode."
+        }
+      ],
+      "local_meanings": [],
+      "status": "registered_shared"
+    },
+    {
+      "id": "shared_nam_job",
+      "parameter": "nam_job",
+      "canonical_core": "Job name.",
+      "members": [
+        {
+          "surface_id": "bin/submit_compute_signal.sh::run_comp_sig",
+          "path": "bin/submit_compute_signal.sh",
+          "symbol": "run_comp_sig",
+          "parameter": "nam_job",
+          "owner": "PARAMETER.DESCRIPTIONS",
+          "evidence": "Parameters row at line 604: Job name."
+        }
+      ],
+      "local_meanings": [],
+      "status": "registered_shared"
+    },
+    {
+      "id": "shared_max_job",
+      "parameter": "max_job",
+      "canonical_core": "Maximum number of jobs to run concurrently.",
+      "members": [
+        {
+          "surface_id": "lib/bash/dispatch/manage_parallel.sh::set_params_parallel",
+          "path": "lib/bash/dispatch/manage_parallel.sh",
+          "symbol": "set_params_parallel",
+          "parameter": "max_job",
+          "owner": "PARAMETER.DESCRIPTIONS",
+          "evidence": "Parameters row at line 416: Maximum number of jobs to run concurrently."
+        }
+      ],
+      "local_meanings": [],
+      "status": "registered_shared"
+    },
+    {
+      "id": "shared_slurm",
+      "parameter": "slurm",
+      "canonical_core": "Submit jobs to the Slurm scheduler.",
+      "members": [
+        {
+          "surface_id": "lib/bash/help/help_execute_compute_signal.sh::help_execute_compute_signal",
+          "path": "lib/bash/help/help_execute_compute_signal.sh",
+          "symbol": "help_execute_compute_signal",
+          "parameter": "slurm",
+          "owner": "PARAMETER.DESCRIPTIONS",
+          "evidence": "Parameters row at line 188: Submit jobs to the Slurm scheduler."
+        }
+      ],
+      "local_meanings": [],
+      "status": "registered_shared"
+    },
+    {
+      "id": "shared_time",
+      "parameter": "time",
+      "canonical_core": "Slurm job time limit.",
+      "members": [
+        {
+          "surface_id": "lib/bash/core/check_numbers.sh::check_format_time",
+          "path": "lib/bash/core/check_numbers.sh",
+          "symbol": "check_format_time",
+          "parameter": "time",
+          "owner": "PARAMETER.DESCRIPTIONS",
+          "evidence": "Parameters row at line 258: Slurm job time limit. The time string to check."
+        }
+      ],
+      "local_meanings": [],
+      "status": "registered_shared"
+    },
+    {
+      "id": "shared_out_ext",
+      "parameter": "out_ext",
+      "canonical_core": "Final output extension.",
+      "members": [
+        {
+          "surface_id": "bin/submit_filter_alignments.sh::parse_filter_alignment_entry",
+          "path": "bin/submit_filter_alignments.sh",
+          "symbol": "parse_filter_alignment_entry",
+          "parameter": "out_ext",
+          "owner": "PARAMETER.DESCRIPTIONS",
+          "evidence": "Parameters row at line 81: Final output extension: 'bam' or 'cram' (default: 'bam')."
+        }
+      ],
+      "local_meanings": [],
+      "status": "registered_shared"
+    },
+    {
+      "id": "shared_chr_sizes",
+      "parameter": "chr_sizes",
+      "canonical_core": "Chromosome sizes file.",
+      "members": [
+        {
+          "surface_id": "bin/submit_compute_signal.sh::run_comp_sig",
+          "path": "bin/submit_compute_signal.sh",
+          "symbol": "run_comp_sig",
+          "parameter": "chr_sizes",
+          "owner": "PARAMETER.DESCRIPTIONS",
+          "evidence": "Parameters row at line 592: Chromosome sizes file or empty string."
+        }
+      ],
+      "local_meanings": [],
+      "status": "registered_shared"
+    },
+    {
+      "id": "shared_engine",
+      "parameter": "engine",
+      "canonical_core": "Processing engine.",
+      "members": [
+        {
+          "surface_id": "bin/submit_compute_signal.sh::run_comp_sig",
+          "path": "bin/submit_compute_signal.sh",
+          "symbol": "run_comp_sig",
+          "parameter": "engine",
+          "owner": "PARAMETER.DESCRIPTIONS",
+          "evidence": "Parameters row at line 598: Processing engine. Signal-computation engine."
+        }
+      ],
+      "local_meanings": [],
+      "status": "registered_shared"
+    },
+    {
+      "id": "shared_chunk_size",
+      "parameter": "chunk_size",
+      "canonical_core": "Number of records to process per chunk.",
+      "members": [
+        {
+          "surface_id": "bin/submit_compute_signal.sh::run_comp_sig",
+          "path": "bin/submit_compute_signal.sh",
+          "symbol": "run_comp_sig",
+          "parameter": "chunk_size",
+          "owner": "PARAMETER.DESCRIPTIONS",
+          "evidence": "Parameters row at line 595: Number of records to process per chunk. Used by compute-signal engines."
+        }
+      ],
+      "local_meanings": [],
+      "status": "registered_shared"
+    },
+    {
+      "id": "shared_siz_bin",
+      "parameter": "siz_bin",
+      "canonical_core": "Bin size in base pairs.",
+      "members": [
+        {
+          "surface_id": "bin/submit_compute_signal.sh::run_comp_sig",
+          "path": "bin/submit_compute_signal.sh",
+          "symbol": "run_comp_sig",
+          "parameter": "siz_bin",
+          "owner": "PARAMETER.DESCRIPTIONS",
+          "evidence": "Parameters row at line 574: Bin size in base pairs."
+        }
+      ],
+      "local_meanings": [],
+      "status": "registered_shared"
+    },
+    {
+      "id": "shared_scl_fct",
+      "parameter": "scl_fct",
+      "canonical_core": "Scaling factor.",
+      "members": [
+        {
+          "surface_id": "bin/submit_compute_signal.sh::set_args_opt",
+          "path": "bin/submit_compute_signal.sh",
+          "symbol": "set_args_opt",
+          "parameter": "scl_fct",
+          "owner": "PARAMETER.DESCRIPTIONS",
+          "evidence": "Parameters row at line 289: Scaling factor. Use sentinel 'NA' to omit scaling."
+        }
+      ],
+      "local_meanings": [],
+      "status": "registered_shared"
+    },
+    {
+      "id": "shared_track",
+      "parameter": "track",
+      "canonical_core": "Write a companion track file.",
+      "members": [
+        {
+          "surface_id": "bin/submit_compute_signal.sh::run_comp_rat",
+          "path": "bin/submit_compute_signal.sh",
+          "symbol": "run_comp_rat",
+          "parameter": "track",
+          "owner": "PARAMETER.DESCRIPTIONS",
+          "evidence": "Parameters row at line 785: Write a companion track file. Emit companion '.track' file."
+        }
+      ],
+      "local_meanings": [],
+      "status": "registered_shared"
+    },
+    {
+      "id": "shared_strict_bins",
+      "parameter": "strict_bins",
+      "canonical_core": "Require strict bin compatibility.",
+      "members": [
+        {
+          "surface_id": "bin/submit_compute_signal.sh::run_comp_rat",
+          "path": "bin/submit_compute_signal.sh",
+          "symbol": "run_comp_rat",
+          "parameter": "strict_bins",
+          "owner": "PARAMETER.DESCRIPTIONS",
+          "evidence": "Parameters row at line 806: Require strict bin compatibility across identical ordered input bin grids."
+        }
+      ],
+      "local_meanings": [],
+      "status": "registered_shared"
+    },
+    {
+      "id": "shared_skip_00",
+      "parameter": "skip_00",
+      "canonical_core": "Skip rows where both compared values are zero.",
+      "members": [
+        {
+          "surface_id": "lib/bash/help/help_execute_compute_signal.sh::detail_execute_compute_signal",
+          "path": "lib/bash/help/help_execute_compute_signal.sh",
+          "symbol": "detail_execute_compute_signal",
+          "parameter": "skip_00",
+          "owner": "PARAMETER.DESCRIPTIONS",
+          "evidence": "Parameters row at line 459: Skip rows where both compared values are zero. Shared zero-zero skip mode or sentinel for ratio computation."
+        }
+      ],
+      "local_meanings": [],
+      "status": "registered_shared"
+    },
+    {
+      "id": "shared_skp_pfx",
+      "parameter": "skp_pfx",
+      "canonical_core": "Comma-separated list of header prefixes to skip.",
+      "members": [
+        {
+          "surface_id": "src/protocol_chipseq_signal_norm/cli/parse_metadata_siqchip.py::parse_args",
+          "path": "src/protocol_chipseq_signal_norm/cli/parse_metadata_siqchip.py",
+          "symbol": "parse_args",
+          "parameter": "skp_pfx",
+          "owner": "PARAMETER.DESCRIPTIONS",
+          "evidence": "Parameters row at line 724: Comma-separated list of header prefixes to skip in metadata lines."
+        }
+      ],
+      "local_meanings": [],
+      "status": "registered_shared"
+    },
+    {
+      "id": "shared_csv_fil_A",
+      "parameter": "csv_fil_A",
+      "canonical_core": "Comma-separated list of file A paths.",
+      "members": [
+        {
+          "surface_id": "lib/bash/help/help_submit_compute_signal.sh::help_submit_compute_signal",
+          "path": "lib/bash/help/help_submit_compute_signal.sh",
+          "symbol": "help_submit_compute_signal",
+          "parameter": "csv_fil_A",
+          "owner": "PARAMETER.DESCRIPTIONS",
+          "evidence": "Parameters row at line 71: Comma-separated list of file A paths for numerator bedGraph files."
+        }
+      ],
+      "local_meanings": [],
+      "status": "registered_shared"
+    },
+    {
+      "id": "shared_csv_fil_B",
+      "parameter": "csv_fil_B",
+      "canonical_core": "Comma-separated list of file B paths.",
+      "members": [
+        {
+          "surface_id": "lib/bash/help/help_submit_compute_signal.sh::help_submit_compute_signal",
+          "path": "lib/bash/help/help_submit_compute_signal.sh",
+          "symbol": "help_submit_compute_signal",
+          "parameter": "csv_fil_B",
+          "owner": "PARAMETER.DESCRIPTIONS",
+          "evidence": "Parameters row at line 76: Comma-separated list of file B paths for denominator bedGraph files."
+        }
+      ],
+      "local_meanings": [],
+      "status": "registered_shared"
+    },
+    {
+      "id": "shared_csv_scl_fct",
+      "parameter": "csv_scl_fct",
+      "canonical_core": "Comma-separated list of scaling factors.",
+      "members": [
+        {
+          "surface_id": "lib/bash/help/help_submit_compute_signal.sh::help_submit_compute_signal",
+          "path": "lib/bash/help/help_submit_compute_signal.sh",
+          "symbol": "help_submit_compute_signal",
+          "parameter": "csv_scl_fct",
+          "owner": "PARAMETER.DESCRIPTIONS",
+          "evidence": "Parameters row at line 106: Comma-separated list of scaling factors or sentinels."
+        }
+      ],
+      "local_meanings": [],
+      "status": "registered_shared"
+    },
+    {
+      "id": "shared_csv_dep_min",
+      "parameter": "csv_dep_min",
+      "canonical_core": "Comma-separated list of minimum-depth values.",
+      "members": [
+        {
+          "surface_id": "lib/bash/help/help_execute_compute_signal.sh::help_execute_compute_signal",
+          "path": "lib/bash/help/help_execute_compute_signal.sh",
+          "symbol": "help_execute_compute_signal",
+          "parameter": "csv_dep_min",
+          "owner": "PARAMETER.DESCRIPTIONS",
+          "evidence": "Parameters row at line 150: Comma-separated list of minimum-depth values or sentinels. Used only with '--mode ratio'."
+        }
+      ],
+      "local_meanings": [],
+      "status": "registered_shared"
+    },
+    {
+      "id": "shared_csv_pseudo",
+      "parameter": "csv_pseudo",
+      "canonical_core": "Comma-separated list of pseudocount values.",
+      "members": [
+        {
+          "surface_id": "lib/bash/help/help_execute_compute_signal.sh::detail_execute_compute_signal",
+          "path": "lib/bash/help/help_execute_compute_signal.sh",
+          "symbol": "detail_execute_compute_signal",
+          "parameter": "csv_pseudo",
+          "owner": "PARAMETER.DESCRIPTIONS",
+          "evidence": "Parameters row at line 439: Comma-separated list of pseudocount values or sentinels used during ratio computation."
+        }
+      ],
+      "local_meanings": [],
+      "status": "registered_shared"
+    },
+    {
+      "id": "shared_csv_usr_frg",
+      "parameter": "csv_usr_frg",
+      "canonical_core": "Comma-separated list of fixed fragment-length values.",
+      "members": [
+        {
+          "surface_id": "lib/bash/help/help_execute_compute_signal.sh::help_execute_compute_signal",
+          "path": "lib/bash/help/help_execute_compute_signal.sh",
+          "symbol": "help_execute_compute_signal",
+          "parameter": "csv_usr_frg",
+          "owner": "PARAMETER.DESCRIPTIONS",
+          "evidence": "Parameters row at line 147: Comma-separated list of fixed fragment-length values or sentinels. Used with '--mode signal' or '--mode coord'."
+        }
+      ],
+      "local_meanings": [],
+      "status": "registered_shared"
+    },
+    {
+      "id": "shared_aligner",
+      "parameter": "aligner",
+      "canonical_core": "Alignment program to use.",
+      "members": [
+        {
+          "surface_id": "bin/submit_align_fastqs.sh::run_alignment",
+          "path": "bin/submit_align_fastqs.sh",
+          "symbol": "run_alignment",
+          "parameter": "aligner",
+          "owner": "PARAMETER.DESCRIPTIONS",
+          "evidence": "Parameters row at line 225: Alignment program to use: 'bowtie2', 'bwa', or 'bwa-mem2'."
+        }
+      ],
+      "local_meanings": [],
+      "status": "registered_shared"
+    },
+    {
+      "id": "shared_bt2_mode",
+      "parameter": "bt2_mode",
+      "canonical_core": "Bowtie 2 alignment type.",
+      "members": [
+        {
+          "surface_id": "bin/submit_align_fastqs.sh::run_alignment",
+          "path": "bin/submit_align_fastqs.sh",
+          "symbol": "run_alignment",
+          "parameter": "bt2_mode",
+          "owner": "PARAMETER.DESCRIPTIONS",
+          "evidence": "Parameters row at line 228: Bowtie 2 alignment type when '--aligner bowtie2': 'local', 'global', or 'end-to-end'."
+        }
+      ],
+      "local_meanings": [],
+      "status": "registered_shared"
+    },
+    {
+      "id": "shared_bwa_alg",
+      "parameter": "bwa_alg",
+      "canonical_core": "BWA algorithm.",
+      "members": [
+        {
+          "surface_id": "bin/submit_align_fastqs.sh::run_alignment",
+          "path": "bin/submit_align_fastqs.sh",
+          "symbol": "run_alignment",
+          "parameter": "bwa_alg",
+          "owner": "PARAMETER.DESCRIPTIONS",
+          "evidence": "Parameters row at line 231: BWA algorithm when '--aligner bwa': 'mem' or 'aln'."
+        }
+      ],
+      "local_meanings": [],
+      "status": "registered_shared"
+    },
+    {
+      "id": "shared_mapq",
+      "parameter": "mapq",
+      "canonical_core": "MAPQ threshold.",
+      "members": [
+        {
+          "surface_id": "lib/bash/help/help_submit_align_fastqs.sh::help_submit_align_fastqs",
+          "path": "lib/bash/help/help_submit_align_fastqs.sh",
+          "symbol": "help_submit_align_fastqs",
+          "parameter": "mapq",
+          "owner": "PARAMETER.DESCRIPTIONS",
+          "evidence": "Parameters row at line 68: MAPQ threshold for filtering alignment output files (default: ${mapq})."
+        }
+      ],
+      "local_meanings": [],
+      "status": "registered_shared"
+    },
+    {
+      "id": "shared_req_flg",
+      "parameter": "req_flg",
+      "canonical_core": "Require SAM flag bit 2 for properly paired alignments.",
+      "members": [
+        {
+          "surface_id": "lib/bash/help/help_submit_align_fastqs.sh::help_submit_align_fastqs",
+          "path": "lib/bash/help/help_submit_align_fastqs.sh",
+          "symbol": "help_submit_align_fastqs",
+          "parameter": "req_flg",
+          "owner": "PARAMETER.DESCRIPTIONS",
+          "evidence": "Parameters row at line 71: Require SAM flag bit 2 for properly paired alignments."
+        }
+      ],
+      "local_meanings": [],
+      "status": "registered_shared"
+    },
+    {
+      "id": "shared_index",
+      "parameter": "index",
+      "canonical_core": "Path to the aligner index/reference.",
+      "members": [
+        {
+          "surface_id": "bin/submit_align_fastqs.sh::run_alignment",
+          "path": "bin/submit_align_fastqs.sh",
+          "symbol": "run_alignment",
+          "parameter": "index",
+          "owner": "PARAMETER.DESCRIPTIONS",
+          "evidence": "Parameters row at line 240: Path to the aligner index/reference."
+        }
+      ],
+      "local_meanings": [],
+      "status": "registered_shared"
+    },
+    {
+      "id": "shared_qname",
+      "parameter": "qname",
+      "canonical_core": "Retain queryname-sorted intermediate alignment files.",
+      "members": [
+        {
+          "surface_id": "lib/bash/help/help_execute_align_fastqs.sh::help_execute_align_fastqs",
+          "path": "lib/bash/help/help_execute_align_fastqs.sh",
+          "symbol": "help_execute_align_fastqs",
+          "parameter": "qname",
+          "owner": "PARAMETER.DESCRIPTIONS",
+          "evidence": "Parameters row at line 80: Retain queryname-sorted intermediate alignment files."
+        }
+      ],
+      "local_meanings": [],
+      "status": "registered_shared"
+    },
+    {
+      "id": "shared_align_typ",
+      "parameter": "align_typ",
+      "canonical_core": "Alignment layout type for input alignment files.",
+      "members": [
+        {
+          "surface_id": "lib/bash/help/help_submit_calculate_scaling_factor.sh::help_submit_calculate_scaling_factor",
+          "path": "lib/bash/help/help_submit_calculate_scaling_factor.sh",
+          "symbol": "help_submit_calculate_scaling_factor",
+          "parameter": "align_typ",
+          "owner": "PARAMETER.DESCRIPTIONS",
+          "evidence": "Parameters row at line 56: Alignment layout type for input alignment files: 'pe', 'se', or 'auto' (default: '${aln_typ}')."
+        }
+      ],
+      "local_meanings": [],
+      "status": "registered_shared"
+    },
+    {
+      "id": "shared_aln_typ",
+      "parameter": "aln_typ",
+      "canonical_core": "Alignment layout type for input alignment files.",
+      "members": [
+        {
+          "surface_id": "lib/bash/workflows/calculate_scaling_factor.sh::_get_expr_filter",
+          "path": "lib/bash/workflows/calculate_scaling_factor.sh",
+          "symbol": "_get_expr_filter",
+          "parameter": "aln_typ",
+          "owner": "PARAMETER.DESCRIPTIONS",
+          "evidence": "Parameters row at line 633: Alignment layout type for input alignment files: 'paired', 'pe', 'single', or 'se' (default: 'pe')."
+        }
+      ],
+      "local_meanings": [],
+      "status": "registered_shared"
+    },
+    {
+      "id": "shared_csv_mip",
+      "parameter": "csv_mip",
+      "canonical_core": "Comma-separated list of main IP alignment files.",
+      "members": [
+        {
+          "surface_id": "lib/bash/help/help_execute_calculate_scaling_factor.sh::help_execute_calculate_scaling_factor",
+          "path": "lib/bash/help/help_execute_calculate_scaling_factor.sh",
+          "symbol": "help_execute_calculate_scaling_factor",
+          "parameter": "csv_mip",
+          "owner": "PARAMETER.DESCRIPTIONS",
+          "evidence": "Parameters row at line 86: Comma-separated list of main IP alignment files."
+        }
+      ],
+      "local_meanings": [],
+      "status": "registered_shared"
+    },
+    {
+      "id": "shared_csv_min",
+      "parameter": "csv_min",
+      "canonical_core": "Comma-separated list of main input alignment files.",
+      "members": [
+        {
+          "surface_id": "lib/bash/help/help_execute_calculate_scaling_factor.sh::help_execute_calculate_scaling_factor",
+          "path": "lib/bash/help/help_execute_calculate_scaling_factor.sh",
+          "symbol": "help_execute_calculate_scaling_factor",
+          "parameter": "csv_min",
+          "owner": "PARAMETER.DESCRIPTIONS",
+          "evidence": "Parameters row at line 89: Comma-separated list of main input alignment files."
+        }
+      ],
+      "local_meanings": [],
+      "status": "registered_shared"
+    },
+    {
+      "id": "shared_csv_sip",
+      "parameter": "csv_sip",
+      "canonical_core": "Comma-separated list of spike-in IP alignment files.",
+      "members": [
+        {
+          "surface_id": "lib/bash/help/help_submit_calculate_scaling_factor.sh::help_submit_calculate_scaling_factor",
+          "path": "lib/bash/help/help_submit_calculate_scaling_factor.sh",
+          "symbol": "help_submit_calculate_scaling_factor",
+          "parameter": "csv_sip",
+          "owner": "PARAMETER.DESCRIPTIONS",
+          "evidence": "Parameters row at line 68: Comma-separated list of spike-in IP alignment files (BAM or CRAM; '--mode spike')."
+        }
+      ],
+      "local_meanings": [],
+      "status": "registered_shared"
+    },
+    {
+      "id": "shared_csv_sin",
+      "parameter": "csv_sin",
+      "canonical_core": "Comma-separated list of spike-in input alignment files.",
+      "members": [
+        {
+          "surface_id": "lib/bash/help/help_submit_calculate_scaling_factor.sh::help_submit_calculate_scaling_factor",
+          "path": "lib/bash/help/help_submit_calculate_scaling_factor.sh",
+          "symbol": "help_submit_calculate_scaling_factor",
+          "parameter": "csv_sin",
+          "owner": "PARAMETER.DESCRIPTIONS",
+          "evidence": "Parameters row at line 71: Comma-separated list of spike-in input alignment files (BAM or CRAM; '--mode spike')."
+        }
+      ],
+      "local_meanings": [],
+      "status": "registered_shared"
+    },
+    {
+      "id": "shared_tbl_met",
+      "parameter": "tbl_met",
+      "canonical_core": "siQ-ChIP metadata table.",
+      "members": [
+        {
+          "surface_id": "lib/bash/workflows/calculate_scaling_factor.sh::_parse_metadata",
+          "path": "lib/bash/workflows/calculate_scaling_factor.sh",
+          "symbol": "_parse_metadata",
+          "parameter": "tbl_met",
+          "owner": "PARAMETER.DESCRIPTIONS",
+          "evidence": "Parameters row at line 1260: siQ-ChIP metadata table."
+        }
+      ],
+      "local_meanings": [],
+      "status": "registered_shared"
+    },
+    {
+      "id": "shared_cfg_met",
+      "parameter": "cfg_met",
+      "canonical_core": "YAML configuration file for metadata parsing.",
+      "members": [
+        {
+          "surface_id": "lib/bash/workflows/calculate_scaling_factor.sh::_parse_metadata",
+          "path": "lib/bash/workflows/calculate_scaling_factor.sh",
+          "symbol": "_parse_metadata",
+          "parameter": "cfg_met",
+          "owner": "PARAMETER.DESCRIPTIONS",
+          "evidence": "Parameters row at line 1263: YAML configuration file for metadata parsing."
+        }
+      ],
+      "local_meanings": [],
+      "status": "registered_shared"
+    },
+    {
+      "id": "shared_eqn",
+      "parameter": "eqn",
+      "canonical_core": "siQ-ChIP alpha equation.",
+      "members": [
+        {
+          "surface_id": "lib/bash/help/help_submit_calculate_scaling_factor.sh::help_submit_calculate_scaling_factor",
+          "path": "lib/bash/help/help_submit_calculate_scaling_factor.sh",
+          "symbol": "help_submit_calculate_scaling_factor",
+          "parameter": "eqn",
+          "owner": "PARAMETER.DESCRIPTIONS",
+          "evidence": "Parameters row at line 86: siQ-ChIP alpha equation to compute when '--mode siq' is active: '5', '5nd', '6', or '6nd' (default: '${eqn}')."
+        }
+      ],
+      "local_meanings": [],
+      "status": "registered_shared"
+    },
+    {
+      "id": "shared_len_def",
+      "parameter": "len_def",
+      "canonical_core": "Default fragment length for single-end libraries.",
+      "members": [
+        {
+          "surface_id": "lib/bash/help/help_submit_calculate_scaling_factor.sh::help_submit_calculate_scaling_factor",
+          "path": "lib/bash/help/help_submit_calculate_scaling_factor.sh",
+          "symbol": "help_submit_calculate_scaling_factor",
+          "parameter": "len_def",
+          "owner": "PARAMETER.DESCRIPTIONS",
+          "evidence": "Parameters row at line 89: Default fragment length for single-end libraries when no per-sample override is provided."
+        }
+      ],
+      "local_meanings": [],
+      "status": "registered_shared"
+    },
+    {
+      "id": "shared_len_mip",
+      "parameter": "len_mip",
+      "canonical_core": "Fragment length value(s) for main IP alignment files.",
+      "members": [
+        {
+          "surface_id": "lib/bash/help/help_submit_calculate_scaling_factor.sh::help_submit_calculate_scaling_factor",
+          "path": "lib/bash/help/help_submit_calculate_scaling_factor.sh",
+          "symbol": "help_submit_calculate_scaling_factor",
+          "parameter": "len_mip",
+          "owner": "PARAMETER.DESCRIPTIONS",
+          "evidence": "Parameters row at line 92: Fragment length value(s) for main IP alignment files. Optional comma-separated list of precomputed fragment lengths."
+        }
+      ],
+      "local_meanings": [],
+      "status": "registered_shared"
+    },
+    {
+      "id": "shared_len_min",
+      "parameter": "len_min",
+      "canonical_core": "Fragment length value(s) for main input alignment files.",
+      "members": [
+        {
+          "surface_id": "lib/bash/help/help_submit_calculate_scaling_factor.sh::help_submit_calculate_scaling_factor",
+          "path": "lib/bash/help/help_submit_calculate_scaling_factor.sh",
+          "symbol": "help_submit_calculate_scaling_factor",
+          "parameter": "len_min",
+          "owner": "PARAMETER.DESCRIPTIONS",
+          "evidence": "Parameters row at line 95: Fragment length value(s) for main input alignment files. Optional comma-separated list of precomputed fragment lengths."
+        }
+      ],
+      "local_meanings": [],
+      "status": "registered_shared"
+    },
+    {
+      "id": "shared_dep_mip",
+      "parameter": "dep_mip",
+      "canonical_core": "Sequencing/alignment depth value(s) for main IP alignment files.",
+      "members": [
+        {
+          "surface_id": "lib/bash/help/help_submit_calculate_scaling_factor.sh::help_submit_calculate_scaling_factor",
+          "path": "lib/bash/help/help_submit_calculate_scaling_factor.sh",
+          "symbol": "help_submit_calculate_scaling_factor",
+          "parameter": "dep_mip",
+          "owner": "PARAMETER.DESCRIPTIONS",
+          "evidence": "Parameters row at line 98: Sequencing/alignment depth value(s) for main IP alignment files. Optional comma-separated list of precomputed alignment counts."
+        }
+      ],
+      "local_meanings": [],
+      "status": "registered_shared"
+    },
+    {
+      "id": "shared_dep_sip",
+      "parameter": "dep_sip",
+      "canonical_core": "Sequencing/alignment depth value(s) for spike-in IP alignment files.",
+      "members": [
+        {
+          "surface_id": "lib/bash/help/help_submit_calculate_scaling_factor.sh::help_submit_calculate_scaling_factor",
+          "path": "lib/bash/help/help_submit_calculate_scaling_factor.sh",
+          "symbol": "help_submit_calculate_scaling_factor",
+          "parameter": "dep_sip",
+          "owner": "PARAMETER.DESCRIPTIONS",
+          "evidence": "Parameters row at line 104: Sequencing/alignment depth value(s) for spike-in IP alignment files. Optional comma-separated list of precomputed alignment counts."
+        }
+      ],
+      "local_meanings": [],
+      "status": "registered_shared"
+    },
+    {
+      "id": "shared_dep_sin",
+      "parameter": "dep_sin",
+      "canonical_core": "Sequencing/alignment depth value(s) for spike-in input alignment files.",
+      "members": [
+        {
+          "surface_id": "lib/bash/help/help_submit_calculate_scaling_factor.sh::help_submit_calculate_scaling_factor",
+          "path": "lib/bash/help/help_submit_calculate_scaling_factor.sh",
+          "symbol": "help_submit_calculate_scaling_factor",
+          "parameter": "dep_sin",
+          "owner": "PARAMETER.DESCRIPTIONS",
+          "evidence": "Parameters row at line 107: Sequencing/alignment depth value(s) for spike-in input alignment files. Optional comma-separated list of precomputed alignment counts."
+        }
+      ],
+      "local_meanings": [],
+      "status": "registered_shared"
+    },
+    {
+      "id": "shared_fil_A",
+      "parameter": "fil_A",
+      "canonical_core": "First bedGraph input file, file A.",
+      "members": [
+        {
+          "surface_id": "bin/submit_compute_signal.sh::run_comp_rat",
+          "path": "bin/submit_compute_signal.sh",
+          "symbol": "run_comp_rat",
+          "parameter": "fil_A",
+          "owner": "PARAMETER.DESCRIPTIONS",
+          "evidence": "Parameters row at line 764: First bedGraph input file, file A."
+        }
+      ],
+      "local_meanings": [],
+      "status": "registered_shared"
+    },
+    {
+      "id": "shared_fil_B",
+      "parameter": "fil_B",
+      "canonical_core": "Second bedGraph input file, file B.",
+      "members": [
+        {
+          "surface_id": "bin/submit_compute_signal.sh::run_comp_rat",
+          "path": "bin/submit_compute_signal.sh",
+          "symbol": "run_comp_rat",
+          "parameter": "fil_B",
+          "owner": "PARAMETER.DESCRIPTIONS",
+          "evidence": "Parameters row at line 767: Second bedGraph input file, file B."
+        }
+      ],
+      "local_meanings": [],
+      "status": "registered_shared"
+    },
+    {
+      "id": "shared_pseudo",
+      "parameter": "pseudo",
+      "canonical_core": "Per-file pseudocount spec 'A[:B]'.",
+      "members": [
+        {
+          "surface_id": "bin/submit_compute_signal.sh::run_comp_rat",
+          "path": "bin/submit_compute_signal.sh",
+          "symbol": "run_comp_rat",
+          "parameter": "pseudo",
+          "owner": "PARAMETER.DESCRIPTIONS",
+          "evidence": "Parameters row at line 788: Per-file pseudocount spec 'A[:B]' or sentinel 'NA'."
+        }
+      ],
+      "local_meanings": [],
+      "status": "registered_shared"
+    },
+    {
+      "id": "shared_drp_nan",
+      "parameter": "drp_nan",
+      "canonical_core": "Drop non-finite values from main output.",
+      "members": [
+        {
+          "surface_id": "bin/submit_compute_signal.sh::run_comp_rat",
+          "path": "bin/submit_compute_signal.sh",
+          "symbol": "run_comp_rat",
+          "parameter": "drp_nan",
+          "owner": "PARAMETER.DESCRIPTIONS",
+          "evidence": "Parameters row at line 797: Drop non-finite values from main output."
+        }
+      ],
+      "local_meanings": [],
+      "status": "registered_shared"
+    },
+    {
+      "id": "shared_typ_out",
+      "parameter": "typ_out",
+      "canonical_core": "Output file format.",
+      "members": [
+        {
+          "surface_id": "lib/bash/help/help_execute_compute_signal.sh::help_execute_compute_signal",
+          "path": "lib/bash/help/help_execute_compute_signal.sh",
+          "symbol": "help_execute_compute_signal",
+          "parameter": "typ_out",
+          "owner": "PARAMETER.DESCRIPTIONS",
+          "evidence": "Parameters row at line 113: Output file format (default: '${typ_out}')."
+        }
+      ],
+      "local_meanings": [],
+      "status": "registered_shared"
+    },
+    {
+      "id": "shared_usr_frg",
+      "parameter": "usr_frg",
+      "canonical_core": "Fixed fragment length.",
+      "members": [
+        {
+          "surface_id": "bin/submit_compute_signal.sh::run_comp_sig",
+          "path": "bin/submit_compute_signal.sh",
+          "symbol": "run_comp_sig",
+          "parameter": "usr_frg",
+          "owner": "PARAMETER.DESCRIPTIONS",
+          "evidence": "Parameters row at line 583: Fixed fragment length or sentinel 'NA'."
+        }
+      ],
+      "local_meanings": [],
+      "status": "registered_shared"
+    },
+    {
+      "id": "shared_chk_chr",
+      "parameter": "chk_chr",
+      "canonical_core": "Check chromosomes in output alignment files.",
+      "members": [
+        {
+          "surface_id": "lib/bash/help/help_execute_filter_alignments.sh::help_execute_filter_alignments",
+          "path": "lib/bash/help/help_execute_filter_alignments.sh",
+          "symbol": "help_execute_filter_alignments",
+          "parameter": "chk_chr",
+          "owner": "PARAMETER.DESCRIPTIONS",
+          "evidence": "Parameters row at line 75: Check chromosomes in output alignment files."
+        }
+      ],
+      "local_meanings": [],
+      "status": "registered_shared"
+    },
+    {
+      "id": "shared_retain",
+      "parameter": "retain",
+      "canonical_core": "Species chromosomes to retain.",
+      "members": [
+        {
+          "surface_id": "bin/submit_filter_alignments.sh::parse_filter_alignment_entry",
+          "path": "bin/submit_filter_alignments.sh",
+          "symbol": "parse_filter_alignment_entry",
+          "parameter": "retain",
+          "owner": "PARAMETER.DESCRIPTIONS",
+          "evidence": "Parameters row at line 75: Species chromosomes to retain: 'sc' or 'sp'."
+        }
+      ],
+      "local_meanings": [],
+      "status": "registered_shared"
+    },
+    {
+      "id": "shared_mito",
+      "parameter": "mito",
+      "canonical_core": "Retain mitochondrial chromosome.",
+      "members": [
+        {
+          "surface_id": "lib/bash/help/help_execute_filter_alignments.sh::help_execute_filter_alignments",
+          "path": "lib/bash/help/help_execute_filter_alignments.sh",
+          "symbol": "help_execute_filter_alignments",
+          "parameter": "mito",
+          "owner": "PARAMETER.DESCRIPTIONS",
+          "evidence": "Parameters row at line 66: Retain mitochondrial chromosome."
+        }
+      ],
+      "local_meanings": [],
+      "status": "registered_shared"
+    },
+    {
+      "id": "shared_tg",
+      "parameter": "tg",
+      "canonical_core": "Retain SP_II_TG chromosome.",
+      "members": [
+        {
+          "surface_id": "lib/bash/help/help_submit_filter_alignments.sh::help_submit_filter_alignments",
+          "path": "lib/bash/help/help_submit_filter_alignments.sh",
+          "symbol": "help_submit_filter_alignments",
+          "parameter": "tg",
+          "owner": "PARAMETER.DESCRIPTIONS",
+          "evidence": "Parameters row at line 73: Retain SP_II_TG chromosome."
+        }
+      ],
+      "local_meanings": [],
+      "status": "registered_shared"
+    },
+    {
+      "id": "shared_mtr",
+      "parameter": "mtr",
+      "canonical_core": "Retain SP_MTR chromosome.",
+      "members": [
+        {
+          "surface_id": "lib/bash/help/help_submit_filter_alignments.sh::help_submit_filter_alignments",
+          "path": "lib/bash/help/help_submit_filter_alignments.sh",
+          "symbol": "help_submit_filter_alignments",
+          "parameter": "mtr",
+          "owner": "PARAMETER.DESCRIPTIONS",
+          "evidence": "Parameters row at line 76: Retain SP_MTR chromosome."
+        }
+      ],
+      "local_meanings": [],
+      "status": "registered_shared"
+    },
+    {
+      "id": "shared_fil_aln",
+      "parameter": "fil_aln",
+      "canonical_core": "Input BAM or CRAM alignment file.",
+      "members": [
+        {
+          "surface_id": "lib/bash/workflows/calculate_scaling_factor.sh::_set_ref_arg_cram",
+          "path": "lib/bash/workflows/calculate_scaling_factor.sh",
+          "symbol": "_set_ref_arg_cram",
+          "parameter": "fil_aln",
+          "owner": "PARAMETER.DESCRIPTIONS",
+          "evidence": "Parameters row at line 350: Input BAM or CRAM alignment file."
+        }
+      ],
+      "local_meanings": [],
+      "status": "registered_shared"
+    },
+    {
+      "id": "shared_fq_1",
+      "parameter": "fq_1",
+      "canonical_core": "First FASTQ input file.",
+      "members": [
+        {
+          "surface_id": "bin/submit_align_fastqs.sh::run_alignment",
+          "path": "bin/submit_align_fastqs.sh",
+          "symbol": "run_alignment",
+          "parameter": "fq_1",
+          "owner": "PARAMETER.DESCRIPTIONS",
+          "evidence": "Parameters row at line 246: First FASTQ input file."
+        }
+      ],
+      "local_meanings": [],
+      "status": "registered_shared"
+    },
+    {
+      "id": "shared_fq_2",
+      "parameter": "fq_2",
+      "canonical_core": "Second FASTQ input file.",
+      "members": [
+        {
+          "surface_id": "bin/submit_align_fastqs.sh::run_alignment",
+          "path": "bin/submit_align_fastqs.sh",
+          "symbol": "run_alignment",
+          "parameter": "fq_2",
+          "owner": "PARAMETER.DESCRIPTIONS",
+          "evidence": "Parameters row at line 249: Second FASTQ input file, or 'NA' for single-end data."
+        }
+      ],
+      "local_meanings": [],
+      "status": "registered_shared"
+    },
+    {
+      "id": "shared_sfx_se",
+      "parameter": "sfx_se",
+      "canonical_core": "Suffix to strip from single-end FASTQ filenames.",
+      "members": [
+        {
+          "surface_id": "bin/submit_trim_fastqs.sh::parse_entry_trim_fastq",
+          "path": "bin/submit_trim_fastqs.sh",
+          "symbol": "parse_entry_trim_fastq",
+          "parameter": "sfx_se",
+          "owner": "PARAMETER.DESCRIPTIONS",
+          "evidence": "Parameters row at line 366: Suffix to strip from single-end FASTQ filenames."
+        }
+      ],
+      "local_meanings": [],
+      "status": "registered_shared"
+    },
+    {
+      "id": "shared_sfx_pe",
+      "parameter": "sfx_pe",
+      "canonical_core": "Suffix to strip from paired-end FASTQ read-1 filenames.",
+      "members": [
+        {
+          "surface_id": "bin/submit_trim_fastqs.sh::parse_entry_trim_fastq",
+          "path": "bin/submit_trim_fastqs.sh",
+          "symbol": "parse_entry_trim_fastq",
+          "parameter": "sfx_pe",
+          "owner": "PARAMETER.DESCRIPTIONS",
+          "evidence": "Parameters row at line 369: Suffix to strip from paired-end FASTQ read-1 filenames."
+        }
+      ],
+      "local_meanings": [],
+      "status": "registered_shared"
+    },
+    {
+      "id": "shared_suffix_se",
+      "parameter": "suffix_se",
+      "canonical_core": "Suffix to strip from single-end FASTQ filenames.",
+      "members": [
+        {
+          "surface_id": "lib/bash/help/help_submit_align_fastqs.sh::help_submit_align_fastqs",
+          "path": "lib/bash/help/help_submit_align_fastqs.sh",
+          "symbol": "help_submit_align_fastqs",
+          "parameter": "suffix_se",
+          "owner": "PARAMETER.DESCRIPTIONS",
+          "evidence": "Parameters row at line 92: Suffix to strip from single-end FASTQ filenames."
+        }
+      ],
+      "local_meanings": [],
+      "status": "registered_shared"
+    },
+    {
+      "id": "shared_suffix_pe",
+      "parameter": "suffix_pe",
+      "canonical_core": "Suffix to strip from paired-end FASTQ read-1 filenames.",
+      "members": [
+        {
+          "surface_id": "lib/bash/help/help_submit_align_fastqs.sh::help_submit_align_fastqs",
+          "path": "lib/bash/help/help_submit_align_fastqs.sh",
+          "symbol": "help_submit_align_fastqs",
+          "parameter": "suffix_pe",
+          "owner": "PARAMETER.DESCRIPTIONS",
+          "evidence": "Parameters row at line 95: Suffix to strip from paired-end FASTQ read-1 filenames."
+        }
+      ],
+      "local_meanings": [],
+      "status": "registered_shared"
+    },
+    {
+      "id": "shared_log_out",
+      "parameter": "log_out",
+      "canonical_core": "Stdout log file.",
+      "members": [
+        {
+          "surface_id": "bin/submit_compute_signal.sh::run_dry_or_wet",
+          "path": "bin/submit_compute_signal.sh",
+          "symbol": "run_dry_or_wet",
+          "parameter": "log_out",
+          "owner": "PARAMETER.DESCRIPTIONS",
+          "evidence": "Parameters row at line 415: Stdout log file."
+        }
+      ],
+      "local_meanings": [],
+      "status": "registered_shared"
+    },
+    {
+      "id": "shared_log_err",
+      "parameter": "log_err",
+      "canonical_core": "Stderr log file.",
+      "members": [
+        {
+          "surface_id": "bin/submit_compute_signal.sh::run_dry_or_wet",
+          "path": "bin/submit_compute_signal.sh",
+          "symbol": "run_dry_or_wet",
+          "parameter": "log_err",
+          "owner": "PARAMETER.DESCRIPTIONS",
+          "evidence": "Parameters row at line 418: Stderr log file."
+        }
+      ],
+      "local_meanings": [],
+      "status": "registered_shared"
+    },
+    {
+      "id": "shared_dir_fnc",
+      "parameter": "dir_fnc",
+      "canonical_core": "Base function directory.",
+      "members": [
+        {
+          "surface_id": "lib/bash/core/source_helpers.sh::source_helpers",
+          "path": "lib/bash/core/source_helpers.sh",
+          "symbol": "source_helpers",
+          "parameter": "dir_fnc",
+          "owner": "PARAMETER.DESCRIPTIONS",
+          "evidence": "Parameters row at line 276: Base function directory."
+        }
+      ],
+      "local_meanings": [],
+      "status": "registered_shared"
+    },
+    {
+      "id": "shared_pth_scr_py",
+      "parameter": "pth_scr_py",
+      "canonical_core": "Python converter script.",
+      "members": [
+        {
+          "surface_id": "lib/bash/workflows/process_alignments.sh::convert_alignments_bed_python",
+          "path": "lib/bash/workflows/process_alignments.sh",
+          "symbol": "convert_alignments_bed_python",
+          "parameter": "pth_scr_py",
+          "owner": "PARAMETER.DESCRIPTIONS",
+          "evidence": "Parameters row at line 515: Python converter script."
+        }
+      ],
+      "local_meanings": [],
+      "status": "registered_shared"
+    },
+    {
+      "id": "shared_coef",
+      "parameter": "coef",
+      "canonical_core": "Coefficient.",
+      "members": [
+        {
+          "surface_id": "src/protocol_chipseq_signal_norm/cli/compute_pseudo.py::parse_args",
+          "path": "src/protocol_chipseq_signal_norm/cli/compute_pseudo.py",
+          "symbol": "parse_args",
+          "parameter": "coef",
+          "owner": "PARAMETER.DESCRIPTIONS",
+          "evidence": "Parameters row at line 267: Coefficient for median, mean, and min methods. If not specified, then defaults to 0.01 for '--method frc_mdn_nz' and '--method frc_avg_nz', or 1.0 for '--method min_nz'."
+        }
+      ],
+      "local_meanings": [],
+      "status": "registered_shared"
+    },
+    {
+      "id": "shared_floor",
+      "parameter": "floor",
+      "canonical_core": "Lower bound.",
+      "members": [
+        {
+          "surface_id": "src/protocol_chipseq_signal_norm/cli/compute_pseudo.py::parse_args",
+          "path": "src/protocol_chipseq_signal_norm/cli/compute_pseudo.py",
+          "symbol": "parse_args",
+          "parameter": "floor",
+          "owner": "PARAMETER.DESCRIPTIONS",
+          "evidence": "Parameters row at line 279: Lower bound for computation of pseudocount(s) (default: %(default)s)."
+        }
+      ],
+      "local_meanings": [],
+      "status": "registered_shared"
+    },
+    {
+      "id": "shared_eps",
+      "parameter": "eps",
+      "canonical_core": "Zero tolerance epsilon.",
+      "members": [
+        {
+          "surface_id": "bin/submit_compute_signal.sh::run_comp_rat",
+          "path": "bin/submit_compute_signal.sh",
+          "symbol": "run_comp_rat",
+          "parameter": "eps",
+          "owner": "PARAMETER.DESCRIPTIONS",
+          "evidence": "Parameters row at line 791: Zero tolerance epsilon or sentinel 'NA'."
+        }
+      ],
+      "local_meanings": [],
+      "status": "registered_shared"
+    },
+    {
+      "id": "shared_qntl_nz",
+      "parameter": "qntl_nz",
+      "canonical_core": "Quantile in percent.",
+      "members": [
+        {
+          "surface_id": "src/protocol_chipseq_signal_norm/cli/compute_pseudo.py::parse_args",
+          "path": "src/protocol_chipseq_signal_norm/cli/compute_pseudo.py",
+          "symbol": "parse_args",
+          "parameter": "qntl_nz",
+          "owner": "PARAMETER.DESCRIPTIONS",
+          "evidence": "Parameters row at line 255: Quantile in percent for '--method qntl_nz' (0..100). Decimals are allowed (e.g., 0.5 = 0.5th percentile). Ignored if '--method' is not 'qntl_nz' (default: %(default)s)."
+        }
+      ],
+      "local_meanings": [],
+      "status": "registered_shared"
+    },
+    {
+      "id": "shared_mode_nz",
+      "parameter": "mode_nz",
+      "canonical_core": "Epsilon/zero-handling mode.",
+      "members": [
+        {
+          "surface_id": "src/protocol_chipseq_signal_norm/cli/compute_pseudo.py::parse_args",
+          "path": "src/protocol_chipseq_signal_norm/cli/compute_pseudo.py",
+          "symbol": "parse_args",
+          "parameter": "mode_nz",
+          "owner": "PARAMETER.DESCRIPTIONS",
+          "evidence": "Parameters row at line 306: Epsilon/zero-handling mode for selecting 'nonzero' bins: - closed (default) drop values with '|x| <= eps'. - open drop values with '|x| < eps'. - off disable 'eps'-based zero filtering."
+        }
+      ],
+      "local_meanings": [],
+      "status": "registered_shared"
+    },
+    {
+      "id": "shared_siz_gen",
+      "parameter": "siz_gen",
+      "canonical_core": "Effective genome size.",
+      "members": [
+        {
+          "surface_id": "lib/bash/workflows/calculate_scaling_factor.sh::_calculate_dep_fct",
+          "path": "lib/bash/workflows/calculate_scaling_factor.sh",
+          "symbol": "_calculate_dep_fct",
+          "parameter": "siz_gen",
+          "owner": "PARAMETER.DESCRIPTIONS",
+          "evidence": "Parameters row at line 1470: Effective genome size (in base pairs; default: ${siz_gen} [appropriate for S. cerevisiae])."
+        }
+      ],
+      "local_meanings": [],
+      "status": "registered_shared"
+    },
+    {
+      "id": "local_input_meanings",
+      "parameter": "fil_in",
+      "canonical_core": null,
+      "members": [],
+      "local_meanings": [
+        {
+          "surface_id": "src/protocol_chipseq_signal_norm/cli/compute_input_floor.py::parse_args",
+          "path": "src/protocol_chipseq_signal_norm/cli/compute_input_floor.py",
+          "symbol": "parse_args",
+          "parameter": "fil_in",
+          "owner": "PARAMETER.DESCRIPTIONS",
+          "evidence": "argparse help beginning at line 799",
+          "meaning": "Signal or alignment input selected by computation mode; ignored by norm mode."
+        },
+        {
+          "surface_id": "lib/bash/help/help_execute_download_fastqs.sh::help_execute_download_fastqs",
+          "path": "lib/bash/help/help_execute_download_fastqs.sh",
+          "symbol": "help_execute_download_fastqs",
+          "parameter": "fil_in",
+          "owner": "PARAMETER.DESCRIPTIONS",
+          "evidence": "Parameters row beginning at line 49",
+          "meaning": "TSV metadata input containing accessions, custom names, and download URLs."
+        },
+        {
+          "surface_id": "lib/bash/help/help_write_header.sh::help_write_header",
+          "path": "lib/bash/help/help_write_header.sh",
+          "symbol": "help_write_header",
+          "parameter": "fil_in",
+          "owner": "PARAMETER.DESCRIPTIONS",
+          "evidence": "Parameters row beginning at line 40",
+          "meaning": "Optional scaling-factor data table to header."
+        }
+      ],
+      "status": "non_applicable_same_name"
+    },
+    {
+      "id": "local_mode_meanings",
+      "parameter": "mode",
+      "canonical_core": null,
+      "members": [],
+      "local_meanings": [
+        {
+          "surface_id": "src/protocol_chipseq_signal_norm/cli/compute_input_floor.py::parse_args",
+          "path": "src/protocol_chipseq_signal_norm/cli/compute_input_floor.py",
+          "symbol": "parse_args",
+          "parameter": "mode",
+          "owner": "PARAMETER.DESCRIPTIONS",
+          "evidence": "argparse choice definition beginning at line 771",
+          "meaning": "Input-floor computation mode: dist, frag, or norm."
+        },
+        {
+          "surface_id": "lib/bash/help/help_combine_parts_scaling_factor.sh::help_combine_parts_scaling_factor",
+          "path": "lib/bash/help/help_combine_parts_scaling_factor.sh",
+          "symbol": "help_combine_parts_scaling_factor",
+          "parameter": "mode",
+          "owner": "PARAMETER.DESCRIPTIONS",
+          "evidence": "Parameters row beginning at line 34",
+          "meaning": "Scaling-factor part-file mode: siq or spike."
+        }
+      ],
+      "status": "non_applicable_same_name"
+    },
+    {
+      "id": "local_method_meanings",
+      "parameter": "method",
+      "canonical_core": null,
+      "members": [],
+      "local_meanings": [
+        {
+          "surface_id": "src/protocol_chipseq_signal_norm/cli/compute_input_floor.py::parse_args",
+          "path": "src/protocol_chipseq_signal_norm/cli/compute_input_floor.py",
+          "symbol": "parse_args",
+          "parameter": "method",
+          "owner": "PARAMETER.DESCRIPTIONS",
+          "evidence": "argparse choice definition beginning at line 852",
+          "meaning": "Distribution summary used by dist mode."
+        },
+        {
+          "surface_id": "src/protocol_chipseq_signal_norm/cli/compute_pseudo.py::parse_args",
+          "path": "src/protocol_chipseq_signal_norm/cli/compute_pseudo.py",
+          "symbol": "parse_args",
+          "parameter": "method",
+          "owner": "PARAMETER.DESCRIPTIONS",
+          "evidence": "argparse method definition",
+          "meaning": "Pseudocount statistic selection."
+        }
+      ],
+      "status": "non_applicable_same_name"
+    }
+  ],
+  "examples": [
+    {
+      "surface_id": "compute_input_floor_cli",
+      "language": "python",
+      "owner": "compute_input_floor",
+      "example_form": "rendered_cli_invocation",
+      "representation_owner": "HELP.EXAMPLES",
+      "lifecycle": "active_enforced",
+      "deferred_record": null,
+      "disposition": "required_two",
+      "minimum_count": 2,
+      "existing_example_count": 2,
+      "example_fingerprints": [
+        "519668196e1f1f336341d3cb3e922616fef2f8234cc8e4405503f107db39da7b",
+        "0600b6200054914b88b37836ff48660e517b116673d86aa0d3a60b9003a0ebef"
+      ],
+      "preservation": "exact",
+      "authority": "accepted_phase_a_b"
+    },
+    {
+      "surface_id": "combine_parts_scaling_factor_help",
+      "language": "shell",
+      "owner": "combine_parts_scaling_factor.sh",
+      "example_form": "rendered_cli_invocation",
+      "representation_owner": "HELP.EXAMPLES",
+      "lifecycle": "active_enforced",
+      "deferred_record": null,
+      "disposition": "required_two",
+      "minimum_count": 2,
+      "existing_example_count": 2,
+      "example_fingerprints": [
+        "0ca21d7eb484214b4bce0ffd0782bb0b682ae1db364475584ee8c7481f4d97ca",
+        "eb4598f3aba974b18152b5ae30de4791d613ccead3cc3d5be68eb3f810ccca0e"
+      ],
+      "preservation": "exact",
+      "authority": "accepted_phase_a_b"
+    },
+    {
+      "surface_id": "compute_input_floor_callable",
+      "language": "python",
+      "owner": "compute_input_floor",
+      "example_form": "callable_source_language",
+      "representation_owner": "PY.DOCSTRING.NUMPY",
+      "lifecycle": "deferred_migration",
+      "deferred_record": "S3-MIG-001",
+      "disposition": "required_two",
+      "minimum_count": 2,
+      "existing_example_count": 0,
+      "example_fingerprints": [],
+      "preservation": "exact",
+      "authority": "semantic_reaudit_correction"
+    }
+  ],
+  "option_realizations": [
+    {
+      "surface_id": "compute_input_floor_cli",
+      "language": "python",
+      "status": "accepted_pilot",
+      "logical_order": [
+        "help",
+        "verbose",
+        "mode",
+        "fil_in",
+        "infmt",
+        "ref_fa",
+        "skp_pfx",
+        "method",
+        "qntl_nz",
+        "coef",
+        "eps",
+        "mode_nz",
+        "floor",
+        "siz_bin",
+        "siz_gen",
+        "flags_pe",
+        "flags_se",
+        "dp"
+      ],
+      "roles_reviewed": true,
+      "roles": {
+        "help": "help_reporting",
+        "verbose": "help_reporting",
+        "mode": "operation_discriminant",
+        "fil_in": "inputs",
+        "infmt": "inputs",
+        "ref_fa": "inputs",
+        "skp_pfx": "inputs",
+        "method": "mode_specific",
+        "qntl_nz": "mode_specific",
+        "coef": "mode_specific",
+        "eps": "mode_specific",
+        "mode_nz": "mode_specific",
+        "floor": "mode_specific",
+        "siz_bin": "mode_specific",
+        "siz_gen": "mode_specific",
+        "flags_pe": "mode_specific",
+        "flags_se": "mode_specific",
+        "dp": "formatting"
+      },
+      "usage_rows": [
+        {
+          "members": ["help", "verbose"],
+          "rationale": "Help and verbosity are the approved reporting controls."
+        },
+        {
+          "members": ["mode"],
+          "rationale": "The operation discriminant forms its own invocation row."
+        },
+        {
+          "members": ["fil_in", "infmt", "ref_fa", "skp_pfx"],
+          "rationale": "Input selection, format, reference, and prefix are one approved input group."
+        },
+        {
+          "members": ["method", "qntl_nz", "coef", "eps", "mode_nz", "floor"],
+          "rationale": "Distribution-method controls are one readable mode-specific group."
+        },
+        {
+          "members": ["siz_bin", "siz_gen", "flags_pe", "flags_se"],
+          "rationale": "Fragment and normalized-coverage controls are one readable mode-specific group."
+        },
+        {
+          "members": ["dp"],
+          "rationale": "The output-formatting control ends the projection."
+        }
+      ],
+      "surface_orders": {
+        "parser_registration": [
+          "help",
+          "verbose",
+          "mode",
+          "fil_in",
+          "infmt",
+          "ref_fa",
+          "skp_pfx",
+          "method",
+          "qntl_nz",
+          "coef",
+          "eps",
+          "mode_nz",
+          "floor",
+          "siz_bin",
+          "siz_gen",
+          "flags_pe",
+          "flags_se",
+          "dp"
+        ],
+        "usage": [
+          "help",
+          "verbose",
+          "mode",
+          "fil_in",
+          "infmt",
+          "ref_fa",
+          "skp_pfx",
+          "method",
+          "qntl_nz",
+          "coef",
+          "eps",
+          "mode_nz",
+          "floor",
+          "siz_bin",
+          "siz_gen",
+          "flags_pe",
+          "flags_se",
+          "dp"
+        ],
+        "options_parameters": [
+          "help",
+          "verbose",
+          "mode",
+          "fil_in",
+          "infmt",
+          "ref_fa",
+          "skp_pfx",
+          "method",
+          "qntl_nz",
+          "coef",
+          "eps",
+          "mode_nz",
+          "floor",
+          "siz_bin",
+          "siz_gen",
+          "flags_pe",
+          "flags_se",
+          "dp"
+        ],
+        "reporting_order": [
+          "verbose",
+          "mode",
+          "fil_in",
+          "infmt",
+          "ref_fa",
+          "skp_pfx",
+          "method",
+          "qntl_nz",
+          "coef",
+          "eps",
+          "mode_nz",
+          "floor",
+          "siz_bin",
+          "siz_gen",
+          "flags_pe",
+          "flags_se",
+          "dp"
+        ]
+      },
+      "relationships": [
+        {
+          "kind": "adjacent",
+          "members": [
+            "fil_in",
+            "infmt",
+            "ref_fa",
+            "skp_pfx"
+          ]
+        },
+        {
+          "kind": "contiguous",
+          "members": [
+            "method",
+            "qntl_nz",
+            "coef",
+            "eps",
+            "mode_nz",
+            "floor"
+          ]
+        },
+        {
+          "kind": "same_group",
+          "members": [
+            "siz_bin",
+            "siz_gen",
+            "flags_pe",
+            "flags_se"
+          ]
+        }
+      ],
+      "adapters": {
+        "parser": "python_argparse_ast_and_runtime_parser",
+        "parser_path": "src/protocol_chipseq_signal_norm/cli/compute_input_floor.py",
+        "rendered_help": "python_subprocess_help_sections",
+        "help_command": [
+          "{python}",
+          "src/protocol_chipseq_signal_norm/cli/compute_input_floor.py",
+          "--help"
+        ],
+        "reporting": "python_bounded_verbose_argument_probe",
+        "reporting_symbol": "_print_input_floor_arguments",
+        "reporting_probes": [
+          [
+            "--verbose",
+            "--mode",
+            "dist",
+            "--fil_in",
+            "signal.bdg",
+            "--infmt",
+            "bedgraph",
+            "--ref_fa",
+            "reference.fa",
+            "--skp_pfx",
+            "track",
+            "--method",
+            "qntl_nz",
+            "--qntl_nz",
+            "1",
+            "--coef",
+            "0.01",
+            "--eps",
+            "0",
+            "--mode_nz",
+            "closed",
+            "--floor",
+            "0",
+            "--siz_bin",
+            "10",
+            "--siz_gen",
+            "1000",
+            "--dp",
+            "6"
+          ],
+          [
+            "--verbose",
+            "--mode",
+            "frag",
+            "--fil_in",
+            "alignment.bam",
+            "--flags_pe",
+            "99",
+            "--flags_se",
+            "0",
+            "--siz_bin",
+            "10",
+            "--siz_gen",
+            "1000",
+            "--dp",
+            "6"
+          ]
+        ]
+      }
+    },
+    {
+      "surface_id": "combine_parts_scaling_factor_help",
+      "language": "shell",
+      "status": "accepted_pilot",
+      "logical_order": [
+        "help",
+        "dry_run",
+        "mode",
+        "csv_fil_in",
+        "fil_out",
+        "force",
+        "no_parts"
+      ],
+      "roles_reviewed": true,
+      "roles": {
+        "help": "help_reporting",
+        "dry_run": "preview_no_write",
+        "mode": "operation_discriminant",
+        "csv_fil_in": "inputs",
+        "fil_out": "output_targets",
+        "force": "output_lifecycle_cleanup",
+        "no_parts": "output_lifecycle_cleanup"
+      },
+      "usage_rows": [
+        {
+          "members": ["help", "dry_run"],
+          "rationale": "Help and no-write preview are the approved invocation controls."
+        },
+        {
+          "members": ["mode", "csv_fil_in", "fil_out"],
+          "rationale": "The workflow discriminant, part-file input list, and output target form the required execution tuple."
+        },
+        {
+          "members": ["force", "no_parts"],
+          "rationale": "The lifecycle controls remain together after the required execution tuple."
+        }
+      ],
+      "surface_orders": {
+        "parser_registration": [
+          "help",
+          "dry_run",
+          "mode",
+          "csv_fil_in",
+          "fil_out",
+          "force",
+          "no_parts"
+        ],
+        "usage": [
+          "help",
+          "dry_run",
+          "mode",
+          "csv_fil_in",
+          "fil_out",
+          "force",
+          "no_parts"
+        ],
+        "options_parameters": [
+          "help",
+          "dry_run",
+          "mode",
+          "csv_fil_in",
+          "fil_out",
+          "force",
+          "no_parts"
+        ],
+        "reporting_order": {
+          "status": "not_applicable",
+          "rationale": "report_plan reports ordered files and lifecycle effects, not a parameter-value banner"
+        }
+      },
+      "relationships": [
+        {
+          "kind": "adjacent",
+          "members": [
+            "fil_out",
+            "force",
+            "no_parts"
+          ]
+        }
+      ],
+      "adapters": {
+        "parser": "shell_case_acceptance_set_with_public_help_order",
+        "parser_path": "bin/combine_parts_scaling_factor.sh",
+        "rendered_help": "shell_subprocess_help_sections",
+        "help_command": [
+          "bash",
+          "bin/combine_parts_scaling_factor.sh",
+          "--help"
+        ],
+        "reporting": "not_applicable_no_parameter_reporting_surface",
+        "reporting_symbol": null,
+        "reporting_probes": []
+      }
+    }
+  ],
+  "format_vocabulary": [
+    {
+      "surface_id": "compute_input_floor_cli",
+      "parameter": "infmt",
+      "language": "python",
+      "displayed_choices": [
+        "bam",
+        "cram",
+        "bed",
+        "bedGraph",
+        "bdg",
+        "bg"
+      ],
+      "accepted_aliases": [
+        "bedgraph"
+      ],
+      "case_insensitive": true,
+      "canonical_values": {
+        "bed": "bed",
+        "bedgraph": "bedgraph",
+        "bdg": "bedgraph",
+        "bg": "bedgraph",
+        "bam": "bam",
+        "cram": "cram"
+      },
+      "recognized_suffixes": [
+        ".bedgraph.gz"
+      ],
+      "hint_applicability": "named_paths_ignore_hint"
+    }
+  ],
+  "checker_assignments": [
+    {
+      "diagnostic_id": "BOOLEAN.DOCUMENTATION.EXACT_TOKENS",
+      "owner": "HELP.PARAMETER.VOCABULARY",
+      "permitted_emitter": "dev.audit.help_style",
+      "prohibited_emitters": [
+        "dev.audit.help_aliases",
+        "dev.audit.help_contracts",
+        "dev.audit.help_examples",
+        "dev.audit.help_option_order",
+        "tests.contract.repository.test_parameter_docs_consistency"
+      ]
+    },
+    {
+      "diagnostic_id": "BOOLEAN.PRESENCE_FLAG.VALUE_FREE",
+      "owner": "HELP.PARAMETER.VOCABULARY",
+      "permitted_emitter": "dev.audit.help_style",
+      "prohibited_emitters": [
+        "dev.audit.help_aliases",
+        "dev.audit.help_contracts",
+        "dev.audit.help_examples",
+        "dev.audit.help_option_order",
+        "tests.contract.repository.test_parameter_docs_consistency"
+      ]
+    },
+    {
+      "diagnostic_id": "HELP.CONTRACT.APPLICABILITY",
+      "owner": "HELP.AUDIENCE",
+      "permitted_emitter": "dev.audit.help_contracts",
+      "prohibited_emitters": [
+        "dev.audit.help_aliases",
+        "dev.audit.help_examples",
+        "dev.audit.help_option_order",
+        "dev.audit.help_style",
+        "tests.contract.repository.test_parameter_docs_consistency"
+      ]
+    },
+    {
+      "diagnostic_id": "HELP.CONTRACT.REFERENCE",
+      "owner": "HELP.AUDIENCE",
+      "permitted_emitter": "dev.audit.help_contracts",
+      "prohibited_emitters": [
+        "dev.audit.help_aliases",
+        "dev.audit.help_examples",
+        "dev.audit.help_option_order",
+        "dev.audit.help_style",
+        "tests.contract.repository.test_parameter_docs_consistency"
+      ]
+    },
+    {
+      "diagnostic_id": "HELP.CONTRACT.SCHEMA",
+      "owner": "HELP.AUDIENCE",
+      "permitted_emitter": "dev.audit.help_contracts",
+      "prohibited_emitters": [
+        "dev.audit.help_aliases",
+        "dev.audit.help_examples",
+        "dev.audit.help_option_order",
+        "dev.audit.help_style",
+        "tests.contract.repository.test_parameter_docs_consistency"
+      ]
+    },
+    {
+      "diagnostic_id": "HELP.EXAMPLES.ALIAS_ACCEPTANCE",
+      "owner": "HELP.EXAMPLES",
+      "permitted_emitter": "dev.audit.help_examples",
+      "prohibited_emitters": [
+        "dev.audit.help_aliases",
+        "dev.audit.help_contracts",
+        "dev.audit.help_option_order",
+        "dev.audit.help_style",
+        "tests.contract.repository.test_parameter_docs_consistency"
+      ]
+    },
+    {
+      "diagnostic_id": "HELP.EXAMPLES.ALIAS_VISIBILITY",
+      "owner": "HELP.EXAMPLES",
+      "permitted_emitter": "dev.audit.help_examples",
+      "prohibited_emitters": [
+        "dev.audit.help_aliases",
+        "dev.audit.help_contracts",
+        "dev.audit.help_option_order",
+        "dev.audit.help_style",
+        "tests.contract.repository.test_parameter_docs_consistency"
+      ]
+    },
+    {
+      "diagnostic_id": "HELP.EXAMPLES.CODE_BLOCK",
+      "owner": "HELP.EXAMPLES",
+      "permitted_emitter": "dev.audit.help_examples",
+      "prohibited_emitters": [
+        "dev.audit.help_aliases",
+        "dev.audit.help_contracts",
+        "dev.audit.help_option_order",
+        "dev.audit.help_style",
+        "tests.contract.repository.test_parameter_docs_consistency"
+      ]
+    },
+    {
+      "diagnostic_id": "HELP.EXAMPLES.COMMAND.COLLAPSED",
+      "owner": "HELP.EXAMPLES",
+      "permitted_emitter": "dev.audit.help_examples",
+      "prohibited_emitters": [
+        "dev.audit.help_aliases",
+        "dev.audit.help_contracts",
+        "dev.audit.help_option_order",
+        "dev.audit.help_style",
+        "tests.contract.repository.test_parameter_docs_consistency"
+      ]
+    },
+    {
+      "diagnostic_id": "HELP.EXAMPLES.COMMAND.FINAL_CONTINUATION",
+      "owner": "HELP.EXAMPLES",
+      "permitted_emitter": "dev.audit.help_examples",
+      "prohibited_emitters": [
+        "dev.audit.help_aliases",
+        "dev.audit.help_contracts",
+        "dev.audit.help_option_order",
+        "dev.audit.help_style",
+        "tests.contract.repository.test_parameter_docs_consistency"
+      ]
+    },
+    {
+      "diagnostic_id": "HELP.EXAMPLES.COMMAND.INDENT",
+      "owner": "HELP.EXAMPLES",
+      "permitted_emitter": "dev.audit.help_examples",
+      "prohibited_emitters": [
+        "dev.audit.help_aliases",
+        "dev.audit.help_contracts",
+        "dev.audit.help_option_order",
+        "dev.audit.help_style",
+        "tests.contract.repository.test_parameter_docs_consistency"
+      ]
+    },
+    {
+      "diagnostic_id": "HELP.EXAMPLES.COMMAND.RENDERED_STRUCTURE",
+      "owner": "HELP.EXAMPLES",
+      "permitted_emitter": "dev.audit.help_examples",
+      "prohibited_emitters": [
+        "dev.audit.help_aliases",
+        "dev.audit.help_contracts",
+        "dev.audit.help_option_order",
+        "dev.audit.help_style",
+        "tests.contract.repository.test_parameter_docs_consistency"
+      ]
+    },
+    {
+      "diagnostic_id": "HELP.EXAMPLES.COMMAND.SOURCE_BACKSLASH",
+      "owner": "HELP.EXAMPLES",
+      "permitted_emitter": "dev.audit.help_examples",
+      "prohibited_emitters": [
+        "dev.audit.help_aliases",
+        "dev.audit.help_contracts",
+        "dev.audit.help_option_order",
+        "dev.audit.help_style",
+        "tests.contract.repository.test_parameter_docs_consistency"
+      ]
+    },
+    {
+      "diagnostic_id": "HELP.EXAMPLES.COMMAND.TAB_INDENT",
+      "owner": "HELP.EXAMPLES",
+      "permitted_emitter": "dev.audit.help_examples",
+      "prohibited_emitters": [
+        "dev.audit.help_aliases",
+        "dev.audit.help_contracts",
+        "dev.audit.help_option_order",
+        "dev.audit.help_style",
+        "tests.contract.repository.test_parameter_docs_consistency"
+      ]
+    },
+    {
+      "diagnostic_id": "HELP.EXAMPLES.COMMAND.TRAILING_WHITESPACE",
+      "owner": "HELP.EXAMPLES",
+      "permitted_emitter": "dev.audit.help_examples",
+      "prohibited_emitters": [
+        "dev.audit.help_aliases",
+        "dev.audit.help_contracts",
+        "dev.audit.help_option_order",
+        "dev.audit.help_style",
+        "tests.contract.repository.test_parameter_docs_consistency"
+      ]
+    },
+    {
+      "diagnostic_id": "HELP.EXAMPLES.COUNT",
+      "owner": "HELP.EXAMPLES",
+      "permitted_emitter": "dev.audit.help_examples",
+      "prohibited_emitters": [
+        "dev.audit.help_aliases",
+        "dev.audit.help_contracts",
+        "dev.audit.help_option_order",
+        "dev.audit.help_style",
+        "tests.contract.repository.test_parameter_docs_consistency"
+      ]
+    },
+    {
+      "diagnostic_id": "HELP.EXAMPLES.DUPLICATE",
+      "owner": "HELP.EXAMPLES",
+      "permitted_emitter": "dev.audit.help_examples",
+      "prohibited_emitters": [
+        "dev.audit.help_aliases",
+        "dev.audit.help_contracts",
+        "dev.audit.help_option_order",
+        "dev.audit.help_style",
+        "tests.contract.repository.test_parameter_docs_consistency"
+      ]
+    },
+    {
+      "diagnostic_id": "HELP.EXAMPLES.ENTRY",
+      "owner": "HELP.EXAMPLES",
+      "permitted_emitter": "dev.audit.help_examples",
+      "prohibited_emitters": [
+        "dev.audit.help_aliases",
+        "dev.audit.help_contracts",
+        "dev.audit.help_option_order",
+        "dev.audit.help_style",
+        "tests.contract.repository.test_parameter_docs_consistency"
+      ]
+    },
+    {
+      "diagnostic_id": "HELP.EXAMPLES.FENCE",
+      "owner": "HELP.EXAMPLES",
+      "permitted_emitter": "dev.audit.help_examples",
+      "prohibited_emitters": [
+        "dev.audit.help_aliases",
+        "dev.audit.help_contracts",
+        "dev.audit.help_option_order",
+        "dev.audit.help_style",
+        "tests.contract.repository.test_parameter_docs_consistency"
+      ]
+    },
+    {
+      "diagnostic_id": "HELP.EXAMPLES.FINAL",
+      "owner": "HELP.EXAMPLES",
+      "permitted_emitter": "dev.audit.help_examples",
+      "prohibited_emitters": [
+        "dev.audit.help_aliases",
+        "dev.audit.help_contracts",
+        "dev.audit.help_option_order",
+        "dev.audit.help_style",
+        "tests.contract.repository.test_parameter_docs_consistency"
+      ]
+    },
+    {
+      "diagnostic_id": "HELP.EXAMPLES.NUMBERING",
+      "owner": "HELP.EXAMPLES",
+      "permitted_emitter": "dev.audit.help_examples",
+      "prohibited_emitters": [
+        "dev.audit.help_aliases",
+        "dev.audit.help_contracts",
+        "dev.audit.help_option_order",
+        "dev.audit.help_style",
+        "tests.contract.repository.test_parameter_docs_consistency"
+      ]
+    },
+    {
+      "diagnostic_id": "HELP.EXAMPLES.OWNERSHIP",
+      "owner": "HELP.EXAMPLES",
+      "permitted_emitter": "dev.audit.help_examples",
+      "prohibited_emitters": [
+        "dev.audit.help_aliases",
+        "dev.audit.help_contracts",
+        "dev.audit.help_option_order",
+        "dev.audit.help_style",
+        "tests.contract.repository.test_parameter_docs_consistency"
+      ]
+    },
+    {
+      "diagnostic_id": "HELP.EXAMPLES.OWNER_INVOCATION",
+      "owner": "HELP.EXAMPLES",
+      "permitted_emitter": "dev.audit.help_examples",
+      "prohibited_emitters": [
+        "dev.audit.help_aliases",
+        "dev.audit.help_contracts",
+        "dev.audit.help_option_order",
+        "dev.audit.help_style",
+        "tests.contract.repository.test_parameter_docs_consistency"
+      ]
+    },
+    {
+      "diagnostic_id": "HELP.EXAMPLES.REQUIRED",
+      "owner": "HELP.EXAMPLES",
+      "permitted_emitter": "dev.audit.help_examples",
+      "prohibited_emitters": [
+        "dev.audit.help_aliases",
+        "dev.audit.help_contracts",
+        "dev.audit.help_option_order",
+        "dev.audit.help_style",
+        "tests.contract.repository.test_parameter_docs_consistency"
+      ]
+    },
+    {
+      "diagnostic_id": "HELP.EXAMPLES.REVIEW.INDIRECT_OWNER",
+      "owner": "HELP.EXAMPLES",
+      "permitted_emitter": "dev.audit.help_examples",
+      "prohibited_emitters": [
+        "dev.audit.help_aliases",
+        "dev.audit.help_contracts",
+        "dev.audit.help_option_order",
+        "dev.audit.help_style",
+        "tests.contract.repository.test_parameter_docs_consistency"
+      ]
+    },
+    {
+      "diagnostic_id": "HELP.EXAMPLES.REVIEW.MATERIAL_DISTINCTNESS",
+      "owner": "HELP.EXAMPLES",
+      "permitted_emitter": "dev.audit.help_examples",
+      "prohibited_emitters": [
+        "dev.audit.help_aliases",
+        "dev.audit.help_contracts",
+        "dev.audit.help_option_order",
+        "dev.audit.help_style",
+        "tests.contract.repository.test_parameter_docs_consistency"
+      ]
+    },
+    {
+      "diagnostic_id": "HELP.EXAMPLES.REVIEW.UNDISPOSITIONED",
+      "owner": "HELP.EXAMPLES",
+      "permitted_emitter": "dev.audit.help_examples",
+      "prohibited_emitters": [
+        "dev.audit.help_aliases",
+        "dev.audit.help_contracts",
+        "dev.audit.help_option_order",
+        "dev.audit.help_style",
+        "tests.contract.repository.test_parameter_docs_consistency"
+      ]
+    },
+    {
+      "diagnostic_id": "HELP.EXAMPLES.REVIEW.UNSAFE",
+      "owner": "HELP.EXAMPLES",
+      "permitted_emitter": "dev.audit.help_examples",
+      "prohibited_emitters": [
+        "dev.audit.help_aliases",
+        "dev.audit.help_contracts",
+        "dev.audit.help_option_order",
+        "dev.audit.help_style",
+        "tests.contract.repository.test_parameter_docs_consistency"
+      ]
+    },
+    {
+      "diagnostic_id": "HELP.EXAMPLES.SECTION_COUNT",
+      "owner": "HELP.EXAMPLES",
+      "permitted_emitter": "dev.audit.help_examples",
+      "prohibited_emitters": [
+        "dev.audit.help_aliases",
+        "dev.audit.help_contracts",
+        "dev.audit.help_option_order",
+        "dev.audit.help_style",
+        "tests.contract.repository.test_parameter_docs_consistency"
+      ]
+    },
+    {
+      "diagnostic_id": "HELP.EXAMPLES.SIGNATURE_DUPLICATE",
+      "owner": "HELP.EXAMPLES",
+      "permitted_emitter": "dev.audit.help_examples",
+      "prohibited_emitters": [
+        "dev.audit.help_aliases",
+        "dev.audit.help_contracts",
+        "dev.audit.help_option_order",
+        "dev.audit.help_style",
+        "tests.contract.repository.test_parameter_docs_consistency"
+      ]
+    },
+    {
+      "diagnostic_id": "HELP.EXAMPLES.STRUCTURAL_COMPLETE",
+      "owner": "HELP.EXAMPLES",
+      "permitted_emitter": "dev.audit.help_examples",
+      "prohibited_emitters": [
+        "dev.audit.help_aliases",
+        "dev.audit.help_contracts",
+        "dev.audit.help_option_order",
+        "dev.audit.help_style",
+        "tests.contract.repository.test_parameter_docs_consistency"
+      ]
+    },
+    {
+      "diagnostic_id": "HELP.GLOBAL.GROUP_SYNTAX",
+      "owner": "HELP.PARAMETER.VOCABULARY",
+      "permitted_emitter": "dev.audit.help_style",
+      "prohibited_emitters": [
+        "dev.audit.help_aliases",
+        "dev.audit.help_contracts",
+        "dev.audit.help_examples",
+        "dev.audit.help_option_order",
+        "tests.contract.repository.test_parameter_docs_consistency"
+      ]
+    },
+    {
+      "diagnostic_id": "HELP.GLOBAL.MAPPING_REVIEW",
+      "owner": "HELP.PARAMETER.VOCABULARY",
+      "permitted_emitter": "dev.audit.help_style",
+      "prohibited_emitters": [
+        "dev.audit.help_aliases",
+        "dev.audit.help_contracts",
+        "dev.audit.help_examples",
+        "dev.audit.help_option_order",
+        "tests.contract.repository.test_parameter_docs_consistency"
+      ]
+    },
+    {
+      "diagnostic_id": "HELP.GLOBAL.REPEATED_DESCRIPTION",
+      "owner": "HELP.PARAMETER.VOCABULARY",
+      "permitted_emitter": "dev.audit.help_style",
+      "prohibited_emitters": [
+        "dev.audit.help_aliases",
+        "dev.audit.help_contracts",
+        "dev.audit.help_examples",
+        "dev.audit.help_option_order",
+        "tests.contract.repository.test_parameter_docs_consistency"
+      ]
+    },
+    {
+      "diagnostic_id": "HELP.GLOBAL.SUBGROUP",
+      "owner": "HELP.PARAMETER.VOCABULARY",
+      "permitted_emitter": "dev.audit.help_style",
+      "prohibited_emitters": [
+        "dev.audit.help_aliases",
+        "dev.audit.help_contracts",
+        "dev.audit.help_examples",
+        "dev.audit.help_option_order",
+        "tests.contract.repository.test_parameter_docs_consistency"
+      ]
+    },
+    {
+      "diagnostic_id": "HELP.GLOBAL.TYPE",
+      "owner": "HELP.PARAMETER.VOCABULARY",
+      "permitted_emitter": "dev.audit.help_style",
+      "prohibited_emitters": [
+        "dev.audit.help_aliases",
+        "dev.audit.help_contracts",
+        "dev.audit.help_examples",
+        "dev.audit.help_option_order",
+        "tests.contract.repository.test_parameter_docs_consistency"
+      ]
+    },
+    {
+      "diagnostic_id": "HELP.OPTION.ORDER.ADJACENCY",
+      "owner": "HELP.OPTION.ORDER",
+      "permitted_emitter": "dev.audit.help_option_order",
+      "prohibited_emitters": [
+        "dev.audit.help_aliases",
+        "dev.audit.help_contracts",
+        "dev.audit.help_examples",
+        "dev.audit.help_style",
+        "tests.contract.repository.test_parameter_docs_consistency"
+      ]
+    },
+    {
+      "diagnostic_id": "HELP.OPTION.ORDER.CATEGORY",
+      "owner": "HELP.OPTION.ORDER",
+      "permitted_emitter": "dev.audit.help_option_order",
+      "prohibited_emitters": [
+        "dev.audit.help_aliases",
+        "dev.audit.help_contracts",
+        "dev.audit.help_examples",
+        "dev.audit.help_style",
+        "tests.contract.repository.test_parameter_docs_consistency"
+      ]
+    },
+    {
+      "diagnostic_id": "HELP.OPTION.ORDER.CONTIGUITY",
+      "owner": "HELP.OPTION.ORDER",
+      "permitted_emitter": "dev.audit.help_option_order",
+      "prohibited_emitters": [
+        "dev.audit.help_aliases",
+        "dev.audit.help_contracts",
+        "dev.audit.help_examples",
+        "dev.audit.help_style",
+        "tests.contract.repository.test_parameter_docs_consistency"
+      ]
+    },
+    {
+      "diagnostic_id": "HELP.OPTION.ORDER.GROUP",
+      "owner": "HELP.OPTION.ORDER",
+      "permitted_emitter": "dev.audit.help_option_order",
+      "prohibited_emitters": [
+        "dev.audit.help_aliases",
+        "dev.audit.help_contracts",
+        "dev.audit.help_examples",
+        "dev.audit.help_style",
+        "tests.contract.repository.test_parameter_docs_consistency"
+      ]
+    },
+    {
+      "diagnostic_id": "HELP.OPTION.ORDER.ROLE_UNREVIEWED",
+      "owner": "HELP.OPTION.ORDER",
+      "permitted_emitter": "dev.audit.help_option_order",
+      "prohibited_emitters": [
+        "dev.audit.help_aliases",
+        "dev.audit.help_contracts",
+        "dev.audit.help_examples",
+        "dev.audit.help_style",
+        "tests.contract.repository.test_parameter_docs_consistency"
+      ]
+    },
+    {
+      "diagnostic_id": "HELP.OPTION.ORDER.SURFACE_PARITY",
+      "owner": "HELP.OPTION.ORDER",
+      "permitted_emitter": "dev.audit.help_option_order",
+      "prohibited_emitters": [
+        "dev.audit.help_aliases",
+        "dev.audit.help_contracts",
+        "dev.audit.help_examples",
+        "dev.audit.help_style",
+        "tests.contract.repository.test_parameter_docs_consistency"
+      ]
+    },
+    {
+      "diagnostic_id": "HELP.PARAMETER.ALIAS_DUPLICATE",
+      "owner": "HELP.ALIAS.PUBLIC",
+      "permitted_emitter": "dev.audit.help_aliases",
+      "prohibited_emitters": [
+        "dev.audit.help_contracts",
+        "dev.audit.help_examples",
+        "dev.audit.help_option_order",
+        "dev.audit.help_style",
+        "tests.contract.repository.test_parameter_docs_consistency"
+      ]
+    },
+    {
+      "diagnostic_id": "HELP.PARAMETER.ALIAS_SET",
+      "owner": "HELP.ALIAS.PUBLIC",
+      "permitted_emitter": "dev.audit.help_aliases",
+      "prohibited_emitters": [
+        "dev.audit.help_contracts",
+        "dev.audit.help_examples",
+        "dev.audit.help_option_order",
+        "dev.audit.help_style",
+        "tests.contract.repository.test_parameter_docs_consistency"
+      ]
+    },
+    {
+      "diagnostic_id": "HELP.PROSE.STRAIGHT_QUOTES",
+      "owner": "HELP.PARAMETER.VOCABULARY",
+      "permitted_emitter": "dev.audit.help_style",
+      "prohibited_emitters": [
+        "dev.audit.help_aliases",
+        "dev.audit.help_contracts",
+        "dev.audit.help_examples",
+        "dev.audit.help_option_order",
+        "tests.contract.repository.test_parameter_docs_consistency"
+      ]
+    },
+    {
+      "diagnostic_id": "HELP.TOKEN.QUOTING.PYTHON",
+      "owner": "HELP.TOKEN.QUOTING",
+      "permitted_emitter": "dev.audit.help_style",
+      "prohibited_emitters": [
+        "dev.audit.help_aliases",
+        "dev.audit.help_contracts",
+        "dev.audit.help_examples",
+        "dev.audit.help_option_order",
+        "tests.contract.repository.test_parameter_docs_consistency"
+      ]
+    },
+    {
+      "diagnostic_id": "HELP.TOKEN.QUOTING.SHELL",
+      "owner": "HELP.TOKEN.QUOTING",
+      "permitted_emitter": "dev.audit.help_style",
+      "prohibited_emitters": [
+        "dev.audit.help_aliases",
+        "dev.audit.help_contracts",
+        "dev.audit.help_examples",
+        "dev.audit.help_option_order",
+        "tests.contract.repository.test_parameter_docs_consistency"
+      ]
+    }
+  ],
+  "checker_consumers": [
+    {
+      "checker": "dev.audit.help_aliases",
+      "config_use": "protected_external_inventory",
+      "diagnostic_scope": [
+        "HELP.PARAMETER.ALIAS_SET",
+        "HELP.PARAMETER.ALIAS_DUPLICATE"
+      ],
+      "prohibited_diagnostics": [
+        "BOOLEAN.DOCUMENTATION.EXACT_TOKENS",
+        "BOOLEAN.PRESENCE_FLAG.VALUE_FREE",
+        "HELP.CONTRACT.APPLICABILITY",
+        "HELP.CONTRACT.REFERENCE",
+        "HELP.CONTRACT.SCHEMA",
+        "HELP.EXAMPLES.ALIAS_ACCEPTANCE",
+        "HELP.EXAMPLES.ALIAS_VISIBILITY",
+        "HELP.EXAMPLES.CODE_BLOCK",
+        "HELP.EXAMPLES.COMMAND.COLLAPSED",
+        "HELP.EXAMPLES.COMMAND.FINAL_CONTINUATION",
+        "HELP.EXAMPLES.COMMAND.INDENT",
+        "HELP.EXAMPLES.COMMAND.RENDERED_STRUCTURE",
+        "HELP.EXAMPLES.COMMAND.SOURCE_BACKSLASH",
+        "HELP.EXAMPLES.COMMAND.TAB_INDENT",
+        "HELP.EXAMPLES.COMMAND.TRAILING_WHITESPACE",
+        "HELP.EXAMPLES.COUNT",
+        "HELP.EXAMPLES.DUPLICATE",
+        "HELP.EXAMPLES.ENTRY",
+        "HELP.EXAMPLES.FENCE",
+        "HELP.EXAMPLES.FINAL",
+        "HELP.EXAMPLES.NUMBERING",
+        "HELP.EXAMPLES.OWNERSHIP",
+        "HELP.EXAMPLES.OWNER_INVOCATION",
+        "HELP.EXAMPLES.REQUIRED",
+        "HELP.EXAMPLES.REVIEW.INDIRECT_OWNER",
+        "HELP.EXAMPLES.REVIEW.MATERIAL_DISTINCTNESS",
+        "HELP.EXAMPLES.REVIEW.UNDISPOSITIONED",
+        "HELP.EXAMPLES.REVIEW.UNSAFE",
+        "HELP.EXAMPLES.SECTION_COUNT",
+        "HELP.EXAMPLES.SIGNATURE_DUPLICATE",
+        "HELP.EXAMPLES.STRUCTURAL_COMPLETE",
+        "HELP.GLOBAL.GROUP_SYNTAX",
+        "HELP.GLOBAL.MAPPING_REVIEW",
+        "HELP.GLOBAL.REPEATED_DESCRIPTION",
+        "HELP.GLOBAL.SUBGROUP",
+        "HELP.GLOBAL.TYPE",
+        "HELP.OPTION.ORDER.ADJACENCY",
+        "HELP.OPTION.ORDER.CATEGORY",
+        "HELP.OPTION.ORDER.CONTIGUITY",
+        "HELP.OPTION.ORDER.GROUP",
+        "HELP.OPTION.ORDER.ROLE_UNREVIEWED",
+        "HELP.OPTION.ORDER.SURFACE_PARITY",
+        "HELP.PROSE.STRAIGHT_QUOTES",
+        "HELP.TOKEN.QUOTING.PYTHON",
+        "HELP.TOKEN.QUOTING.SHELL"
+      ]
+    },
+    {
+      "checker": "dev.audit.help_contracts",
+      "config_use": "direct_consumer",
+      "diagnostic_scope": [
+        "HELP.CONTRACT.SCHEMA",
+        "HELP.CONTRACT.REFERENCE",
+        "HELP.CONTRACT.APPLICABILITY"
+      ],
+      "prohibited_diagnostics": [
+        "BOOLEAN.DOCUMENTATION.EXACT_TOKENS",
+        "BOOLEAN.PRESENCE_FLAG.VALUE_FREE",
+        "HELP.EXAMPLES.ALIAS_ACCEPTANCE",
+        "HELP.EXAMPLES.ALIAS_VISIBILITY",
+        "HELP.EXAMPLES.CODE_BLOCK",
+        "HELP.EXAMPLES.COMMAND.COLLAPSED",
+        "HELP.EXAMPLES.COMMAND.FINAL_CONTINUATION",
+        "HELP.EXAMPLES.COMMAND.INDENT",
+        "HELP.EXAMPLES.COMMAND.RENDERED_STRUCTURE",
+        "HELP.EXAMPLES.COMMAND.SOURCE_BACKSLASH",
+        "HELP.EXAMPLES.COMMAND.TAB_INDENT",
+        "HELP.EXAMPLES.COMMAND.TRAILING_WHITESPACE",
+        "HELP.EXAMPLES.COUNT",
+        "HELP.EXAMPLES.DUPLICATE",
+        "HELP.EXAMPLES.ENTRY",
+        "HELP.EXAMPLES.FENCE",
+        "HELP.EXAMPLES.FINAL",
+        "HELP.EXAMPLES.NUMBERING",
+        "HELP.EXAMPLES.OWNERSHIP",
+        "HELP.EXAMPLES.OWNER_INVOCATION",
+        "HELP.EXAMPLES.REQUIRED",
+        "HELP.EXAMPLES.REVIEW.INDIRECT_OWNER",
+        "HELP.EXAMPLES.REVIEW.MATERIAL_DISTINCTNESS",
+        "HELP.EXAMPLES.REVIEW.UNDISPOSITIONED",
+        "HELP.EXAMPLES.REVIEW.UNSAFE",
+        "HELP.EXAMPLES.SECTION_COUNT",
+        "HELP.EXAMPLES.SIGNATURE_DUPLICATE",
+        "HELP.EXAMPLES.STRUCTURAL_COMPLETE",
+        "HELP.GLOBAL.GROUP_SYNTAX",
+        "HELP.GLOBAL.MAPPING_REVIEW",
+        "HELP.GLOBAL.REPEATED_DESCRIPTION",
+        "HELP.GLOBAL.SUBGROUP",
+        "HELP.GLOBAL.TYPE",
+        "HELP.OPTION.ORDER.ADJACENCY",
+        "HELP.OPTION.ORDER.CATEGORY",
+        "HELP.OPTION.ORDER.CONTIGUITY",
+        "HELP.OPTION.ORDER.GROUP",
+        "HELP.OPTION.ORDER.ROLE_UNREVIEWED",
+        "HELP.OPTION.ORDER.SURFACE_PARITY",
+        "HELP.PARAMETER.ALIAS_DUPLICATE",
+        "HELP.PARAMETER.ALIAS_SET",
+        "HELP.PROSE.STRAIGHT_QUOTES",
+        "HELP.TOKEN.QUOTING.PYTHON",
+        "HELP.TOKEN.QUOTING.SHELL"
+      ]
+    },
+    {
+      "checker": "dev.audit.help_examples",
+      "config_use": "direct_consumer",
+      "diagnostic_scope": [
+        "HELP.EXAMPLES.ALIAS_ACCEPTANCE",
+        "HELP.EXAMPLES.ALIAS_VISIBILITY",
+        "HELP.EXAMPLES.CODE_BLOCK",
+        "HELP.EXAMPLES.COMMAND.COLLAPSED",
+        "HELP.EXAMPLES.COMMAND.FINAL_CONTINUATION",
+        "HELP.EXAMPLES.COMMAND.INDENT",
+        "HELP.EXAMPLES.COMMAND.RENDERED_STRUCTURE",
+        "HELP.EXAMPLES.COMMAND.SOURCE_BACKSLASH",
+        "HELP.EXAMPLES.COMMAND.TAB_INDENT",
+        "HELP.EXAMPLES.COMMAND.TRAILING_WHITESPACE",
+        "HELP.EXAMPLES.COUNT",
+        "HELP.EXAMPLES.DUPLICATE",
+        "HELP.EXAMPLES.ENTRY",
+        "HELP.EXAMPLES.FENCE",
+        "HELP.EXAMPLES.FINAL",
+        "HELP.EXAMPLES.NUMBERING",
+        "HELP.EXAMPLES.OWNERSHIP",
+        "HELP.EXAMPLES.OWNER_INVOCATION",
+        "HELP.EXAMPLES.REQUIRED",
+        "HELP.EXAMPLES.REVIEW.INDIRECT_OWNER",
+        "HELP.EXAMPLES.REVIEW.MATERIAL_DISTINCTNESS",
+        "HELP.EXAMPLES.REVIEW.UNDISPOSITIONED",
+        "HELP.EXAMPLES.REVIEW.UNSAFE",
+        "HELP.EXAMPLES.SECTION_COUNT",
+        "HELP.EXAMPLES.SIGNATURE_DUPLICATE",
+        "HELP.EXAMPLES.STRUCTURAL_COMPLETE"
+      ],
+      "prohibited_diagnostics": [
+        "BOOLEAN.DOCUMENTATION.EXACT_TOKENS",
+        "BOOLEAN.PRESENCE_FLAG.VALUE_FREE",
+        "HELP.CONTRACT.APPLICABILITY",
+        "HELP.CONTRACT.REFERENCE",
+        "HELP.CONTRACT.SCHEMA",
+        "HELP.GLOBAL.GROUP_SYNTAX",
+        "HELP.GLOBAL.MAPPING_REVIEW",
+        "HELP.GLOBAL.REPEATED_DESCRIPTION",
+        "HELP.GLOBAL.SUBGROUP",
+        "HELP.GLOBAL.TYPE",
+        "HELP.OPTION.ORDER.ADJACENCY",
+        "HELP.OPTION.ORDER.CATEGORY",
+        "HELP.OPTION.ORDER.CONTIGUITY",
+        "HELP.OPTION.ORDER.GROUP",
+        "HELP.OPTION.ORDER.ROLE_UNREVIEWED",
+        "HELP.OPTION.ORDER.SURFACE_PARITY",
+        "HELP.PARAMETER.ALIAS_DUPLICATE",
+        "HELP.PARAMETER.ALIAS_SET",
+        "HELP.PROSE.STRAIGHT_QUOTES",
+        "HELP.TOKEN.QUOTING.PYTHON",
+        "HELP.TOKEN.QUOTING.SHELL"
+      ]
+    },
+    {
+      "checker": "dev.audit.help_option_order",
+      "config_use": "direct_consumer",
+      "diagnostic_scope": [
+        "HELP.OPTION.ORDER.CATEGORY",
+        "HELP.OPTION.ORDER.ADJACENCY",
+        "HELP.OPTION.ORDER.CONTIGUITY",
+        "HELP.OPTION.ORDER.GROUP",
+        "HELP.OPTION.ORDER.SURFACE_PARITY",
+        "HELP.OPTION.ORDER.ROLE_UNREVIEWED"
+      ],
+      "prohibited_diagnostics": [
+        "BOOLEAN.DOCUMENTATION.EXACT_TOKENS",
+        "BOOLEAN.PRESENCE_FLAG.VALUE_FREE",
+        "HELP.CONTRACT.APPLICABILITY",
+        "HELP.CONTRACT.REFERENCE",
+        "HELP.CONTRACT.SCHEMA",
+        "HELP.EXAMPLES.ALIAS_ACCEPTANCE",
+        "HELP.EXAMPLES.ALIAS_VISIBILITY",
+        "HELP.EXAMPLES.CODE_BLOCK",
+        "HELP.EXAMPLES.COMMAND.COLLAPSED",
+        "HELP.EXAMPLES.COMMAND.FINAL_CONTINUATION",
+        "HELP.EXAMPLES.COMMAND.INDENT",
+        "HELP.EXAMPLES.COMMAND.RENDERED_STRUCTURE",
+        "HELP.EXAMPLES.COMMAND.SOURCE_BACKSLASH",
+        "HELP.EXAMPLES.COMMAND.TAB_INDENT",
+        "HELP.EXAMPLES.COMMAND.TRAILING_WHITESPACE",
+        "HELP.EXAMPLES.COUNT",
+        "HELP.EXAMPLES.DUPLICATE",
+        "HELP.EXAMPLES.ENTRY",
+        "HELP.EXAMPLES.FENCE",
+        "HELP.EXAMPLES.FINAL",
+        "HELP.EXAMPLES.NUMBERING",
+        "HELP.EXAMPLES.OWNERSHIP",
+        "HELP.EXAMPLES.OWNER_INVOCATION",
+        "HELP.EXAMPLES.REQUIRED",
+        "HELP.EXAMPLES.REVIEW.INDIRECT_OWNER",
+        "HELP.EXAMPLES.REVIEW.MATERIAL_DISTINCTNESS",
+        "HELP.EXAMPLES.REVIEW.UNDISPOSITIONED",
+        "HELP.EXAMPLES.REVIEW.UNSAFE",
+        "HELP.EXAMPLES.SECTION_COUNT",
+        "HELP.EXAMPLES.SIGNATURE_DUPLICATE",
+        "HELP.EXAMPLES.STRUCTURAL_COMPLETE",
+        "HELP.GLOBAL.GROUP_SYNTAX",
+        "HELP.GLOBAL.MAPPING_REVIEW",
+        "HELP.GLOBAL.REPEATED_DESCRIPTION",
+        "HELP.GLOBAL.SUBGROUP",
+        "HELP.GLOBAL.TYPE",
+        "HELP.PARAMETER.ALIAS_DUPLICATE",
+        "HELP.PARAMETER.ALIAS_SET",
+        "HELP.PROSE.STRAIGHT_QUOTES",
+        "HELP.TOKEN.QUOTING.PYTHON",
+        "HELP.TOKEN.QUOTING.SHELL"
+      ]
+    },
+    {
+      "checker": "dev.audit.help_style",
+      "config_use": "direct_consumer",
+      "diagnostic_scope": [
+        "HELP.TOKEN.QUOTING.SHELL",
+        "HELP.TOKEN.QUOTING.PYTHON",
+        "BOOLEAN.DOCUMENTATION.EXACT_TOKENS",
+        "BOOLEAN.PRESENCE_FLAG.VALUE_FREE",
+        "HELP.GLOBAL.GROUP_SYNTAX",
+        "HELP.GLOBAL.MAPPING_REVIEW",
+        "HELP.GLOBAL.REPEATED_DESCRIPTION",
+        "HELP.GLOBAL.SUBGROUP",
+        "HELP.GLOBAL.TYPE",
+        "HELP.PROSE.STRAIGHT_QUOTES"
+      ],
+      "prohibited_diagnostics": [
+        "HELP.CONTRACT.APPLICABILITY",
+        "HELP.CONTRACT.REFERENCE",
+        "HELP.CONTRACT.SCHEMA",
+        "HELP.EXAMPLES.ALIAS_ACCEPTANCE",
+        "HELP.EXAMPLES.ALIAS_VISIBILITY",
+        "HELP.EXAMPLES.CODE_BLOCK",
+        "HELP.EXAMPLES.COMMAND.COLLAPSED",
+        "HELP.EXAMPLES.COMMAND.FINAL_CONTINUATION",
+        "HELP.EXAMPLES.COMMAND.INDENT",
+        "HELP.EXAMPLES.COMMAND.RENDERED_STRUCTURE",
+        "HELP.EXAMPLES.COMMAND.SOURCE_BACKSLASH",
+        "HELP.EXAMPLES.COMMAND.TAB_INDENT",
+        "HELP.EXAMPLES.COMMAND.TRAILING_WHITESPACE",
+        "HELP.EXAMPLES.COUNT",
+        "HELP.EXAMPLES.DUPLICATE",
+        "HELP.EXAMPLES.ENTRY",
+        "HELP.EXAMPLES.FENCE",
+        "HELP.EXAMPLES.FINAL",
+        "HELP.EXAMPLES.NUMBERING",
+        "HELP.EXAMPLES.OWNERSHIP",
+        "HELP.EXAMPLES.OWNER_INVOCATION",
+        "HELP.EXAMPLES.REQUIRED",
+        "HELP.EXAMPLES.REVIEW.INDIRECT_OWNER",
+        "HELP.EXAMPLES.REVIEW.MATERIAL_DISTINCTNESS",
+        "HELP.EXAMPLES.REVIEW.UNDISPOSITIONED",
+        "HELP.EXAMPLES.REVIEW.UNSAFE",
+        "HELP.EXAMPLES.SECTION_COUNT",
+        "HELP.EXAMPLES.SIGNATURE_DUPLICATE",
+        "HELP.EXAMPLES.STRUCTURAL_COMPLETE",
+        "HELP.OPTION.ORDER.ADJACENCY",
+        "HELP.OPTION.ORDER.CATEGORY",
+        "HELP.OPTION.ORDER.CONTIGUITY",
+        "HELP.OPTION.ORDER.GROUP",
+        "HELP.OPTION.ORDER.ROLE_UNREVIEWED",
+        "HELP.OPTION.ORDER.SURFACE_PARITY",
+        "HELP.PARAMETER.ALIAS_DUPLICATE",
+        "HELP.PARAMETER.ALIAS_SET"
+      ]
+    },
+    {
+      "checker": "tests.contract.repository.test_parameter_docs_consistency",
+      "config_use": "direct_consumer",
+      "diagnostic_scope": [
+        "PARAMETER.DESCRIPTIONS"
+      ],
+      "prohibited_diagnostics": [
+        "BOOLEAN.DOCUMENTATION.EXACT_TOKENS",
+        "BOOLEAN.PRESENCE_FLAG.VALUE_FREE",
+        "HELP.CONTRACT.APPLICABILITY",
+        "HELP.CONTRACT.REFERENCE",
+        "HELP.CONTRACT.SCHEMA",
+        "HELP.EXAMPLES.ALIAS_ACCEPTANCE",
+        "HELP.EXAMPLES.ALIAS_VISIBILITY",
+        "HELP.EXAMPLES.CODE_BLOCK",
+        "HELP.EXAMPLES.COMMAND.COLLAPSED",
+        "HELP.EXAMPLES.COMMAND.FINAL_CONTINUATION",
+        "HELP.EXAMPLES.COMMAND.INDENT",
+        "HELP.EXAMPLES.COMMAND.RENDERED_STRUCTURE",
+        "HELP.EXAMPLES.COMMAND.SOURCE_BACKSLASH",
+        "HELP.EXAMPLES.COMMAND.TAB_INDENT",
+        "HELP.EXAMPLES.COMMAND.TRAILING_WHITESPACE",
+        "HELP.EXAMPLES.COUNT",
+        "HELP.EXAMPLES.DUPLICATE",
+        "HELP.EXAMPLES.ENTRY",
+        "HELP.EXAMPLES.FENCE",
+        "HELP.EXAMPLES.FINAL",
+        "HELP.EXAMPLES.NUMBERING",
+        "HELP.EXAMPLES.OWNERSHIP",
+        "HELP.EXAMPLES.OWNER_INVOCATION",
+        "HELP.EXAMPLES.REQUIRED",
+        "HELP.EXAMPLES.REVIEW.INDIRECT_OWNER",
+        "HELP.EXAMPLES.REVIEW.MATERIAL_DISTINCTNESS",
+        "HELP.EXAMPLES.REVIEW.UNDISPOSITIONED",
+        "HELP.EXAMPLES.REVIEW.UNSAFE",
+        "HELP.EXAMPLES.SECTION_COUNT",
+        "HELP.EXAMPLES.SIGNATURE_DUPLICATE",
+        "HELP.EXAMPLES.STRUCTURAL_COMPLETE",
+        "HELP.GLOBAL.GROUP_SYNTAX",
+        "HELP.GLOBAL.MAPPING_REVIEW",
+        "HELP.GLOBAL.REPEATED_DESCRIPTION",
+        "HELP.GLOBAL.SUBGROUP",
+        "HELP.GLOBAL.TYPE",
+        "HELP.OPTION.ORDER.ADJACENCY",
+        "HELP.OPTION.ORDER.CATEGORY",
+        "HELP.OPTION.ORDER.CONTIGUITY",
+        "HELP.OPTION.ORDER.GROUP",
+        "HELP.OPTION.ORDER.ROLE_UNREVIEWED",
+        "HELP.OPTION.ORDER.SURFACE_PARITY",
+        "HELP.PARAMETER.ALIAS_DUPLICATE",
+        "HELP.PARAMETER.ALIAS_SET",
+        "HELP.PROSE.STRAIGHT_QUOTES",
+        "HELP.TOKEN.QUOTING.PYTHON",
+        "HELP.TOKEN.QUOTING.SHELL"
+      ]
+    }
+  ]
+}

@@ -34,6 +34,7 @@ SETEXT = re.compile(r"^ {0,3}(?P<marker>=+|-+)[ \t]*$")
 FENCE = re.compile(r"^ {0,3}(?P<marker>`{3,}|~{3,})(?P<info>.*)$")
 LIST = re.compile(r"^(?P<indent> *)(?:[-+*]|[0-9]{1,9}[.)])[ \t]+\S")
 BLOCKQUOTE = re.compile(r"^ {0,3}>[ \t]?\S")
+BLOCKQUOTE_LINE = re.compile(r"^(?P<indent> {0,3})(?P<body>>.*)$")
 SEPARATOR = re.compile(r"^:?-{3,}:?$")
 DETAILS_OPEN = re.compile(r"^\s*<details(?:\s[^>]*)?>\s*$", re.IGNORECASE)
 DETAILS_CLOSE = re.compile(r"^\s*</details>\s*$", re.IGNORECASE)
@@ -301,6 +302,32 @@ def convert_delimited(text: str, delimiter: str) -> str:
     return format_table(table)
 
 
+def _fence_step(
+    opened: tuple[str, int] | None,
+    line: str,
+) -> tuple[tuple[str, int] | None, bool]:
+    """
+    Advance one shared fenced-literal state machine.
+
+    A closing fence must use the opening delimiter character and a marker
+    run at least as long as the opener. Shorter or other-character markers
+    remain literal content while a fence is open.
+    """
+
+    match = FENCE.match(line)
+    if match is None:
+        return opened, False
+
+    marker = match.group("marker")
+    if opened is None:
+        return (marker[0], len(marker)), True
+
+    if marker[0] == opened[0] and len(marker) >= opened[1]:
+        return None, True
+
+    return opened, True
+
+
 def fence_errors(text: str) -> list[tuple[int, str]]:
     """
     Return unclosed or mismatched fenced-code diagnostics.
@@ -309,15 +336,17 @@ def fence_errors(text: str) -> list[tuple[int, str]]:
     opened: tuple[str, int, int] | None = None
 
     for number, line in enumerate(text.splitlines(), 1):
-        match = FENCE.match(line)
-        if match is None:
+        if opened is None:
+            state, is_fence = _fence_step(None, line)
+
+            if state is not None and is_fence:
+                opened = (*state, number)
+
             continue
 
-        marker = match.group("marker")
+        state, _ = _fence_step((opened[0], opened[1]), line)
 
-        if opened is None:
-            opened = (marker[0], len(marker), number)
-        elif marker[0] == opened[0] and len(marker) >= opened[1]:
+        if state is None:
             opened = None
 
     if opened is None:
@@ -342,6 +371,70 @@ def _plain_prose(line: str) -> bool:
     return not line.startswith(("    ", "\t"))
 
 
+def canonical_blockquote(line: str) -> str | None:
+    """
+    Return canonical marker spacing for one physical blockquote line.
+    """
+
+    match = BLOCKQUOTE_LINE.match(line)
+    if match is None:
+        return None
+
+    body = match.group("body")
+    levels = 0
+    position = 0
+    content = ""
+
+    while position < len(body) and body[position] == ">":
+        levels += 1
+        position += 1
+
+        if position == len(body):
+            break
+
+        if body[position] == ">":
+            continue
+
+        if body[position] in " \t":
+            if position + 1 < len(body) and body[position + 1] == ">":
+                position += 1
+
+                continue
+
+            content = body[position + 1 :]
+            break
+
+        content = body[position:]
+        break
+
+    markers = "> " * levels
+
+    if not content:
+        markers = markers.rstrip()
+
+    return match.group("indent") + markers + content
+
+
+def _format_blockquotes(lines: list[str]) -> list[str]:
+    """
+    Canonicalize recognized blockquote markers outside fenced literals.
+    """
+
+    literal = fenced_indexes(lines)
+    output = list(lines)
+
+    for index, line in enumerate(lines):
+        if index in literal:
+            continue
+
+        canonical = canonical_blockquote(line)
+
+        if canonical is not None:
+            output[index] = canonical
+
+    return output
+
+
 def _format_tables(lines: list[str]) -> list[str]:
     """
     Canonicalize complete tables while preserving fenced and malformed text.
@@ -362,16 +455,10 @@ def _format_tables(lines: list[str]) -> list[str]:
     opened: tuple[str, int] | None = None
 
     while index < len(lines):
-        fence = FENCE.match(lines[index])
+        opened_next, is_fence = _fence_step(opened, lines[index])
 
-        if fence is not None:
-            marker = fence.group("marker")
-
-            if opened is None:
-                opened = (marker[0], len(marker))
-            elif marker[0] == opened[0] and len(marker) >= opened[1]:
-                opened = None
-
+        if is_fence:
+            opened = opened_next
             output.append(lines[index])
             index += 1
 
@@ -417,24 +504,11 @@ def fenced_indexes(lines: Sequence[str]) -> set[int]:
     opened: tuple[str, int] | None = None
 
     for index, line in enumerate(lines):
-        fence = FENCE.match(line)
+        was_open = opened is not None
+        opened, is_fence = _fence_step(opened, line)
 
-        if opened is None:
-            if fence is not None:
-                marker = fence.group("marker")
-                opened = (marker[0], len(marker))
-                literal.add(index)
-
-            continue
-
-        literal.add(index)
-        if fence is None:
-            continue
-
-        marker = fence.group("marker")
-
-        if marker[0] == opened[0] and len(marker) >= opened[1]:
-            opened = None
+        if was_open or is_fence:
+            literal.add(index)
 
     return literal
 
@@ -675,6 +749,7 @@ def maintained_markdown(root: Path) -> list[Path]:
     excluded = {
         fixture_root / "format/input.md",
         *(fixture_root / "rejected").glob("*.md"),
+        *(fixture_root / "format").glob("*_input.md"),
     }
 
     return sorted(
@@ -873,7 +948,7 @@ def format_deterministic(text: str) -> str:
     Apply only approved, checker-recognized deterministic rewrites.
     """
 
-    lines = _format_tables(text.splitlines())
+    lines = _format_blockquotes(_format_tables(text.splitlines()))
 
     while lines and not lines[0].strip():
         lines.pop(0)
@@ -977,23 +1052,17 @@ def format_document(text: str) -> str:
     """
 
     # Reflow plain prose while preserving fenced and structured source.
-    lines = _rebase_details(_format_tables(text.splitlines()))
+    lines = _rebase_details(
+        _format_blockquotes(_format_tables(text.splitlines())),
+    )
+    literal = fenced_indexes(lines)
     output: list[str] = []
-    in_fence = False
     index = 0
 
     while index < len(lines):
         line = lines[index]
-        fence = FENCE.match(line)
 
-        if fence:
-            in_fence = not in_fence
-            output.append(line)
-            index += 1
-
-            continue
-
-        if in_fence:
+        if index in literal:
             output.append(line)
             index += 1
 
@@ -1017,32 +1086,20 @@ def format_document(text: str) -> str:
 
     # Collapse repeated blank lines outside fenced content.
     compact: list[str] = []
-    in_fence = False
+    literal = fenced_indexes(output)
 
-    for line in output:
-        if FENCE.match(line):
-            in_fence = not in_fence
-            compact.append(line)
-
-            continue
-
-        if not in_fence and not line and compact and not compact[-1]:
+    for index, line in enumerate(output):
+        if index not in literal and not line and compact and not compact[-1]:
             continue
 
         compact.append(line)
 
     # Canonicalize deterministic block gaps around recognized structures.
     spaced: list[str] = []
-    in_fence = False
+    literal = fenced_indexes(compact)
 
     for index, line in enumerate(compact):
-        if FENCE.match(line):
-            in_fence = not in_fence
-            spaced.append(line)
-
-            continue
-
-        if in_fence or line:
+        if index in literal or line:
             spaced.append(line)
 
             continue

@@ -1,0 +1,177 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "semantic_movement.schema.json",
+  "title": "Semantic movement record",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "capture_status",
+    "sources",
+    "record_id",
+    "rule_ids",
+    "old_owner",
+    "old_obligation",
+    "new_owner",
+    "source_anchor",
+    "destination_anchor",
+    "source_fingerprint",
+    "destination_fingerprint",
+    "old_to_new_complete",
+    "old_to_new_dispositions",
+    "new_to_old_sources",
+    "new_to_old_provenance",
+    "remaining_old_scope",
+    "audience_before",
+    "audience_after",
+    "availability_reduced",
+    "behavior_changed",
+    "consequential_delta",
+    "deltas",
+    "evidence_roles",
+    "llm_role",
+    "human_authorization"
+  ],
+  "properties": {
+    "schema_version": {"const": 1},
+    "capture_status": {"const": "reconstructed_after_fact"},
+    "sources": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["kind", "locator"],
+        "properties": {
+          "kind": {
+            "enum": [
+              "head_object",
+              "immutable_accepted_artifact",
+              "preserved_terminal_result",
+              "current_rerun",
+              "other_identified_evidence"
+            ]
+          },
+          "locator": {"type": "string", "minLength": 1},
+          "sha256": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "record_id": {"type": "string", "minLength": 1},
+    "rule_ids": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {"type": "string", "minLength": 1}
+    },
+    "old_owner": {"type": "string", "minLength": 1},
+    "old_obligation": {"type": "string", "minLength": 1},
+    "new_owner": {"type": "string", "minLength": 1},
+    "source_anchor": {"type": "string", "minLength": 1},
+    "destination_anchor": {"type": "string", "minLength": 1},
+    "source_fingerprint": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "destination_fingerprint": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "old_to_new_complete": {"const": true},
+    "old_to_new_dispositions": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["obligation", "disposition", "evidence"],
+        "properties": {
+          "obligation": {"type": "string", "minLength": 1},
+          "disposition": {
+            "enum": ["moved", "retained", "excluded_by_owner"]
+          },
+          "evidence": {"type": "string", "minLength": 1}
+        },
+        "additionalProperties": false
+      }
+    },
+    "new_to_old_sources": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {"type": "string", "minLength": 1}
+    },
+    "new_to_old_provenance": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["new_fact", "source"],
+        "properties": {
+          "new_fact": {"type": "string", "minLength": 1},
+          "source": {"type": "string", "minLength": 1}
+        },
+        "additionalProperties": false
+      }
+    },
+    "remaining_old_scope": {"type": "string"},
+    "audience_before": {"type": "string", "minLength": 1},
+    "audience_after": {"type": "string", "minLength": 1},
+    "availability_reduced": {"const": false},
+    "behavior_changed": {"const": false},
+    "consequential_delta": {"type": "boolean"},
+    "deltas": {
+      "type": "object",
+      "required": [
+        "behavior",
+        "interface",
+        "scientific",
+        "exception",
+        "information"
+      ],
+      "properties": {
+        "behavior": {"enum": ["none", "diagnostic_routing_only"]},
+        "interface": {"const": "none"},
+        "scientific": {"const": "none"},
+        "exception": {"enum": ["none", "ownership_boundary_only"]},
+        "information": {
+          "enum": ["none", "owner_movement_with_bidirectional_record"]
+        }
+      },
+      "additionalProperties": false
+    },
+    "evidence_roles": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["source", "role"],
+        "properties": {
+          "source": {"type": "string", "minLength": 1},
+          "role": {
+            "enum": [
+              "authoritative_human_decision",
+              "immutable_accepted_evidence",
+              "supporting_comparison",
+              "deterministic_validation"
+            ]
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "llm_role": {"const": "supporting_comparison"},
+    "human_authorization": {
+      "type": "object",
+      "required": ["required", "status", "reference"],
+      "properties": {
+        "required": {"type": "boolean"},
+        "status": {"enum": ["not_required", "approved", "pending"]},
+        "reference": {"type": "string"}
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

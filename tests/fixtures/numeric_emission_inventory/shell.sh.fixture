@@ -1,0 +1,3 @@
+emit() {
+    printf '%.*f\n' "${dp}" "${value}"
+}

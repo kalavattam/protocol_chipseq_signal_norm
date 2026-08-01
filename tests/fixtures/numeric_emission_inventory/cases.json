@@ -1,0 +1,30 @@
+{
+  "accepted": {
+    "post_round_value": "1.2300",
+    "dp": 4,
+    "output": "1.23"
+  },
+  "rejected": {
+    "post_round_value": "1.2300",
+    "dp": 4,
+    "output": "1.2300"
+  },
+  "boundary": {
+    "cases": [
+      "positive_tie_dp1",
+      "negative_tie_dp1",
+      "positive_tie_dp0",
+      "negative_tie_dp0",
+      "binary_sensitive_positive",
+      "binary_sensitive_negative",
+      "very_small_positive",
+      "very_small_negative",
+      "nonfinite"
+    ],
+    "status": "unresolved"
+  },
+  "non_applicable": {
+    "caller": "unenrolled",
+    "protocol_exception": "unresolved"
+  }
+}

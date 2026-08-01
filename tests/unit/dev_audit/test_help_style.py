@@ -129,7 +129,7 @@ Parameters
     Print the resolved command without running it.
 """.removesuffix("\n")
 
-        self.assertIn("HELP.PARAMETER.ALIAS_DUPLICATE", rule_ids(body))
+        self.assertNotIn("HELP.PARAMETER.ALIAS_DUPLICATE", rule_ids(body))
 
     def test_positional_parameter_row_is_unaffected_by_alias_rules(
         self,
@@ -1001,7 +1001,7 @@ Notes
   Use `module` mode for dotted imports.
 """.removesuffix("\n")
 
-        self.assertIn("HELP.PROSE.STRAIGHT_QUOTES", rule_ids(body))
+        self.assertIn("HELP.TOKEN.QUOTING.SHELL", rule_ids(body))
 
     def test_literal_backtick_in_examples_is_excluded(self) -> None:
         body = """

@@ -127,13 +127,13 @@ Use `CapArgumentParser` and `add_help_cap()`. Every visible optional argument ha
 
 **Scope:** Constant `help=` values built from one ordinary string literal or adjacent ordinary string literals inside maintained Python `parse_args()` functions.
 
-[`HELP.AUDIENCE`](help.md) owns which help surface and level of detail serves the user. [`SOURCE.DELIMITED.MULTILINE`](source_layout.md) owns the same wrapping and boundary semantics for constructed prose generally.
+[`HELP.AUDIENCE`](help.md) owns which help surface and level of detail serves the user. [`SOURCE.PROSE.WRAP`](source_layout.md) owns greedy source wrapping; this rule owns Python recognition and exact rendered-value preservation.
 
 Keep a help value on one source line when it fits. When prose requires adjacent literals, wrap greedily at whole-word boundaries: fill each physical source line through the last complete word that fits within 79 columns, and break only when the next complete prose word and its required separator would exceed that limit. Preserve explicit paragraph escapes such as `\n\n`, literal newlines, indivisible tokens, and deliberate semantic boundaries.
 
 Reflowing source literals must not change the rendered help value. Use one-line double-quoted literals under `PY.STRING.QUOTES`; do not use manual padding or trailing source whitespace to approach the limit.
 
-**Automation:** `dev/audit/python_source_policy.py` checks physical width for recognized static single literals and physical width plus premature word-boundary breaks for recognized adjacent-literal groups across maintained Python. It excludes dynamic expressions before inspecting contained tokens. Focused fixtures cover fitting and overlong single literals, greedy adjacent groups, exact boundaries, paragraph escapes, dynamic exclusions, and rendered-value preservation. Coverage is `subset`.
+**Automation:** `dev/audit/python_source_policy.py` checks physical width and premature word-boundary breaks for recognized static literals. `dev/tools/python_help_format.py` provides preview-by-default formatting for the proven adjacent-literal subset and rejects write operations outside it. Focused fixtures prove exact rendered values and idempotence. Coverage is `subset`.
 
 **Semantic remainder:** Decide whether a token is indivisible, an explicit break is meaningful, or clearer help prose should replace mechanical reflow.
 
@@ -364,13 +364,9 @@ Apply compact-guard and transfer semantics to `return`, `raise`, `yield`, `yield
 
 **Scope:** Ordinary full-line, continuation, paragraph-separator, and inline comments in maintained Python below `src/`, `tests/`, and `dev/`.
 
-[`SOURCE.COMMENT.ATTACHMENT`](source_layout.md) is the sole owner for attachment, prose, role, and usefulness. Python realizes it by beginning each nonempty ordinary full-line or continuation comment with `# ` and using exactly `#` for an empty separator inside a multiline comment.
+[`SOURCE.COMMENT.ATTACHMENT`](source_layout.md) is the sole owner for attachment, prose, role, and usefulness. Python realizes marker and separator form by beginning each nonempty ordinary full-line or continuation comment with `# ` and using exactly `#` for an empty separator inside a multiline comment. Inline comments use exactly two spaces before `#` and one space after it.
 
-Apply [`SOURCE.COMMENT.ATTACHMENT`](source_layout.md). Begin each nonempty ordinary full-line comment with `# ` and use exactly `#` for an empty separator inside a multiline comment. Use one blank line before a phase comment and no blank line between the comment and the paragraph it governs.
-
-Inline comments use exactly two spaces before `#` and one space after it. Keep them short and complete on one physical line; promote an overlong explanation to an attached preceding block or maintained documentation.
-
-Ordinary comment prose uses sentence capitalization, complete sentences, terminal punctuation, and one space between sentences. Keep the complete physical source line, including indentation and marker, within 79 columns. Wrap at word boundaries and do not hyphenate an ordinary word merely to satisfy the limit. Rewrite or disposition an indivisible overlength token through `PY.FORMAT.LINE_LENGTH`.
+Keep the complete physical source line, including indentation and marker, within 79 columns. Wrap at word boundaries and do not hyphenate an ordinary word merely to satisfy the limit. Rewrite or disposition an indivisible overlength token through `PY.FORMAT.LINE_LENGTH`.
 
 Shebangs, source headers, encoding rows, tool directives, coverage pragmas, type-checker directives, generated markers, and literal fixtures retain their separately owned syntax. The superseded `#  ` and `#+ ` proposal is not a permitted ordinary-comment form.
 

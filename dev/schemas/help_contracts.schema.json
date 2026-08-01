@@ -1,0 +1,705 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "help_contracts.schema.json",
+  "title": "Help contracts",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "parameter_occurrence_dispositions",
+    "surfaces",
+    "token_quoting",
+    "option_category_precedence",
+    "parameter_families",
+    "examples",
+    "option_realizations",
+    "format_vocabulary",
+    "checker_consumers",
+    "checker_assignments"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": 2
+    },
+    "parameter_occurrence_dispositions": {
+      "type": "array",
+      "minItems": 21,
+      "items": {
+        "type": "object",
+        "required": ["id", "path", "symbol", "parameter", "disposition"],
+        "properties": {
+          "id": {"$ref": "#/$defs/nonemptyString"},
+          "path": {"$ref": "#/$defs/nonemptyString"},
+          "symbol": {"$ref": "#/$defs/nonemptyString"},
+          "parameter": {"$ref": "#/$defs/nonemptyString"},
+          "disposition": {"enum": ["enrolled_member", "non_applicable_same_name", "unresolved_review_candidate"]}
+        },
+        "additionalProperties": false
+      }
+    },
+    "surfaces": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/surface"
+      }
+    },
+    "token_quoting": {
+      "type": "object",
+      "required": [
+        "languages",
+        "included_contexts",
+        "included_objects",
+        "excluded_contexts",
+        "ambiguous",
+        "automatic_rewrite"
+      ],
+      "properties": {
+        "languages": {
+          "type": "array",
+          "minItems": 2,
+          "uniqueItems": true,
+          "items": {
+            "enum": ["python", "shell"]
+          }
+        },
+        "included_contexts": {
+          "const": ["ordinary_explanatory_prose"]
+        },
+        "included_objects": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "enum": [
+              "option",
+              "identifier",
+              "sentinel",
+              "value",
+              "complete_inline_interface_expression"
+            ]
+          }
+        },
+        "excluded_contexts": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "enum": [
+              "usage",
+              "fenced_command",
+              "example",
+              "formula",
+              "structured_grammar"
+            ]
+          }
+        },
+        "ambiguous": {
+          "const": "human_review"
+        },
+        "automatic_rewrite": {
+          "const": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "option_category_precedence": {
+      "type": "array",
+      "minItems": 11,
+      "maxItems": 11,
+      "uniqueItems": true,
+      "prefixItems": [
+        {"const": "help_reporting"},
+        {"const": "preview_no_write"},
+        {"const": "execution_environment_resources"},
+        {"const": "operation_discriminant"},
+        {"const": "inputs"},
+        {"const": "output_targets"},
+        {"const": "output_lifecycle_cleanup"},
+        {"const": "mode_specific"},
+        {"const": "formatting"},
+        {"const": "logging_job_names"},
+        {"const": "scheduler_parallel"}
+      ],
+      "items": false
+    },
+    "parameter_families": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/parameterFamily"
+      }
+    },
+    "examples": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/examplesDisposition"
+      }
+    },
+    "option_realizations": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/optionRealization"
+      }
+    },
+    "format_vocabulary": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/formatVocabulary"
+      }
+    },
+    "checker_consumers": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/checkerConsumer"
+      }
+    },
+    "checker_assignments": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/checkerAssignment"
+      }
+    }
+  },
+  "$defs": {
+    "nonemptyString": {
+      "type": "string",
+      "minLength": 1
+    },
+    "sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "surface": {
+      "type": "object",
+      "required": [
+        "id",
+        "path",
+        "symbol",
+        "language",
+        "kind",
+        "audience",
+        "availability",
+        "required_runtime_facts",
+        "status"
+      ],
+      "properties": {
+        "id": {"$ref": "#/$defs/nonemptyString"},
+        "path": {"$ref": "#/$defs/nonemptyString"},
+        "symbol": {"$ref": "#/$defs/nonemptyString"},
+        "language": {
+          "enum": ["python", "shell", "markdown"]
+        },
+        "kind": {
+          "enum": [
+            "installed_help",
+            "callable_documentation",
+            "public_design"
+          ]
+        },
+        "audience": {
+          "enum": ["command_user", "python_caller", "design_reviewer"]
+        },
+        "availability": {
+          "enum": ["installed", "public_repository"]
+        },
+        "required_runtime_facts": {
+          "enum": ["complete", "direct_call_contract", "extended_derivation"]
+        },
+        "status": {
+          "enum": ["accepted_pilot", "registered"]
+        }
+      },
+      "additionalProperties": false
+    },
+    "familyMember": {
+      "type": "object",
+      "required": [
+        "surface_id",
+        "path",
+        "symbol",
+        "parameter",
+        "owner",
+        "evidence"
+      ],
+      "properties": {
+        "surface_id": {"$ref": "#/$defs/nonemptyString"},
+        "path": {"$ref": "#/$defs/nonemptyString"},
+        "symbol": {"$ref": "#/$defs/nonemptyString"},
+        "parameter": {"$ref": "#/$defs/nonemptyString"},
+        "owner": {"$ref": "#/$defs/nonemptyString"},
+        "evidence": {"$ref": "#/$defs/nonemptyString"},
+        "approved_realization": {"$ref": "#/$defs/nonemptyString"}
+      },
+      "additionalProperties": false
+    },
+    "localMeaning": {
+      "type": "object",
+      "required": [
+        "surface_id",
+        "path",
+        "symbol",
+        "parameter",
+        "owner",
+        "evidence",
+        "meaning"
+      ],
+      "properties": {
+        "surface_id": {"$ref": "#/$defs/nonemptyString"},
+        "path": {"$ref": "#/$defs/nonemptyString"},
+        "symbol": {"$ref": "#/$defs/nonemptyString"},
+        "parameter": {"$ref": "#/$defs/nonemptyString"},
+        "owner": {"$ref": "#/$defs/nonemptyString"},
+        "evidence": {"$ref": "#/$defs/nonemptyString"},
+        "meaning": {"$ref": "#/$defs/nonemptyString"}
+      },
+      "additionalProperties": false
+    },
+    "parameterFamily": {
+      "type": "object",
+      "required": [
+        "id",
+        "parameter",
+        "canonical_core",
+        "members",
+        "local_meanings",
+        "status"
+      ],
+      "properties": {
+        "id": {"$ref": "#/$defs/nonemptyString"},
+        "parameter": {"$ref": "#/$defs/nonemptyString"},
+        "canonical_core": {
+          "type": ["string", "null"]
+        },
+        "members": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/familyMember"
+          }
+        },
+        "local_meanings": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/localMeaning"
+          }
+        },
+        "status": {
+          "enum": ["registered_shared", "non_applicable_same_name"]
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "status": {"const": "registered_shared"}
+            }
+          },
+          "then": {
+            "properties": {
+              "canonical_core": {
+                "type": "string",
+                "minLength": 1
+              },
+              "members": {
+                "minItems": 1
+              },
+              "local_meanings": {
+                "maxItems": 0
+              }
+            }
+          },
+          "else": {
+            "properties": {
+              "canonical_core": {"type": "null"},
+              "members": {"maxItems": 0},
+              "local_meanings": {"minItems": 1}
+            }
+          }
+        }
+      ],
+      "additionalProperties": false
+    },
+    "examplesDisposition": {
+      "type": "object",
+      "required": [
+        "surface_id",
+        "language",
+        "owner",
+        "example_form",
+        "representation_owner",
+        "lifecycle",
+        "deferred_record",
+        "disposition",
+        "minimum_count",
+        "existing_example_count",
+        "example_fingerprints",
+        "preservation",
+        "authority"
+      ],
+      "properties": {
+        "surface_id": {"$ref": "#/$defs/nonemptyString"},
+        "language": {
+          "description": "Implementation or source-surface language, not the CLI invocation environment.",
+          "enum": ["python", "shell"]
+        },
+        "owner": {"$ref": "#/$defs/nonemptyString"},
+        "example_form": {
+          "enum": ["rendered_cli_invocation", "callable_source_language"]
+        },
+        "representation_owner": {
+          "enum": ["HELP.EXAMPLES", "PY.DOCSTRING.NUMPY"]
+        },
+        "lifecycle": {
+          "enum": ["active_enforced", "deferred_migration"]
+        },
+        "deferred_record": {
+          "type": ["string", "null"],
+          "pattern": "^S3-[A-Z]+-[0-9]{3}$"
+        },
+        "disposition": {
+          "enum": ["required_two", "required_one", "omitted_trivial"]
+        },
+        "minimum_count": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 2
+        },
+        "existing_example_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "example_fingerprints": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/sha256"
+          }
+        },
+        "preservation": {
+          "const": "exact"
+        },
+        "authority": {
+          "enum": ["accepted_phase_a_b", "semantic_reaudit_correction"]
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "example_form": {"const": "rendered_cli_invocation"}
+            }
+          },
+          "then": {
+            "properties": {
+              "representation_owner": {"const": "HELP.EXAMPLES"}
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "example_form": {"const": "callable_source_language"}
+            }
+          },
+          "then": {
+            "properties": {
+              "representation_owner": {"const": "PY.DOCSTRING.NUMPY"}
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "lifecycle": {"const": "active_enforced"}
+            }
+          },
+          "then": {
+            "properties": {
+              "deferred_record": {"type": "null"}
+            }
+          },
+          "else": {
+            "properties": {
+              "deferred_record": {"type": "string"},
+              "existing_example_count": {"const": 0},
+              "example_fingerprints": {"maxItems": 0}
+            }
+          }
+        }
+      ],
+      "additionalProperties": false
+    },
+    "surfaceOrder": {
+      "oneOf": [
+        {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/nonemptyString"
+          }
+        },
+        {
+          "type": "object",
+          "required": ["status", "rationale"],
+          "properties": {
+            "status": {"const": "not_applicable"},
+            "rationale": {"$ref": "#/$defs/nonemptyString"}
+          },
+          "additionalProperties": false
+        }
+      ]
+    },
+    "relationship": {
+      "type": "object",
+      "required": ["kind", "members"],
+      "properties": {
+        "kind": {
+          "enum": ["adjacent", "contiguous", "same_group"]
+        },
+        "members": {
+          "type": "array",
+          "minItems": 2,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/nonemptyString"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "optionRealization": {
+      "type": "object",
+      "required": [
+        "surface_id",
+        "language",
+        "status",
+        "logical_order",
+        "roles_reviewed",
+        "roles",
+        "usage_rows",
+        "surface_orders",
+        "relationships",
+        "adapters"
+      ],
+      "properties": {
+        "surface_id": {"$ref": "#/$defs/nonemptyString"},
+        "language": {
+          "enum": ["python", "shell"]
+        },
+        "status": {
+          "enum": ["accepted_pilot", "registered"]
+        },
+        "logical_order": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/nonemptyString"
+          }
+        },
+        "roles_reviewed": {
+          "const": true
+        },
+        "roles": {
+          "type": "object",
+          "minProperties": 1,
+          "additionalProperties": {
+            "enum": [
+              "help_reporting",
+              "preview_no_write",
+              "execution_environment_resources",
+              "operation_discriminant",
+              "inputs",
+              "output_targets",
+              "output_lifecycle_cleanup",
+              "mode_specific",
+              "formatting",
+              "logging_job_names",
+              "scheduler_parallel"
+            ]
+          }
+        },
+        "usage_rows": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "required": ["members", "rationale"],
+            "properties": {
+              "members": {
+                "type": "array",
+                "minItems": 1,
+                "uniqueItems": true,
+                "items": {"$ref": "#/$defs/nonemptyString"}
+              },
+              "rationale": {"$ref": "#/$defs/nonemptyString"}
+            },
+            "additionalProperties": false
+          }
+        },
+        "surface_orders": {
+          "type": "object",
+          "required": [
+            "parser_registration",
+            "usage",
+            "options_parameters",
+            "reporting_order"
+          ],
+          "properties": {
+            "parser_registration": {"$ref": "#/$defs/surfaceOrder"},
+            "usage": {"$ref": "#/$defs/surfaceOrder"},
+            "options_parameters": {"$ref": "#/$defs/surfaceOrder"},
+            "reporting_order": {"$ref": "#/$defs/surfaceOrder"}
+          },
+          "additionalProperties": false
+        },
+        "relationships": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/relationship"
+          }
+        },
+        "adapters": {
+          "type": "object",
+          "required": [
+            "parser",
+            "parser_path",
+            "rendered_help",
+            "help_command",
+            "reporting",
+            "reporting_symbol",
+            "reporting_probes"
+          ],
+          "properties": {
+            "parser": {"$ref": "#/$defs/nonemptyString"},
+            "parser_path": {"$ref": "#/$defs/nonemptyString"},
+            "rendered_help": {"$ref": "#/$defs/nonemptyString"},
+            "help_command": {
+              "type": "array",
+              "minItems": 2,
+              "items": {"$ref": "#/$defs/nonemptyString"}
+            },
+            "reporting": {"$ref": "#/$defs/nonemptyString"},
+            "reporting_symbol": {
+              "type": ["string", "null"]
+            },
+            "reporting_probes": {
+              "type": "array",
+              "items": {
+                "type": "array",
+                "items": {"type": "string"}
+              }
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "formatVocabulary": {
+      "type": "object",
+      "required": [
+        "surface_id",
+        "parameter",
+        "language",
+        "displayed_choices",
+        "accepted_aliases",
+        "case_insensitive",
+        "canonical_values",
+        "recognized_suffixes",
+        "hint_applicability"
+      ],
+      "properties": {
+        "surface_id": {"$ref": "#/$defs/nonemptyString"},
+        "parameter": {"$ref": "#/$defs/nonemptyString"},
+        "language": {
+          "enum": ["python", "shell"]
+        },
+        "displayed_choices": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {"$ref": "#/$defs/nonemptyString"}
+        },
+        "accepted_aliases": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {"$ref": "#/$defs/nonemptyString"}
+        },
+        "case_insensitive": {"type": "boolean"},
+        "canonical_values": {
+          "type": "object",
+          "minProperties": 1,
+          "additionalProperties": {"$ref": "#/$defs/nonemptyString"}
+        },
+        "recognized_suffixes": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {"$ref": "#/$defs/nonemptyString"}
+        },
+        "hint_applicability": {
+          "enum": [
+            "named_paths_ignore_hint",
+            "stdin_requires_hint",
+            "always_applies",
+            "not_applicable"
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "checkerConsumer": {
+      "type": "object",
+      "required": [
+        "checker",
+        "config_use",
+        "diagnostic_scope",
+        "prohibited_diagnostics"
+      ],
+      "properties": {
+        "checker": {"$ref": "#/$defs/nonemptyString"},
+        "config_use": {
+          "enum": [
+            "direct_consumer",
+            "protected_external_inventory",
+            "registry_cross_reference"
+          ]
+        },
+        "diagnostic_scope": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {"$ref": "#/$defs/nonemptyString"}
+        },
+        "prohibited_diagnostics": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {"$ref": "#/$defs/nonemptyString"}
+        }
+      },
+      "additionalProperties": false
+    },
+    "checkerAssignment": {
+      "type": "object",
+      "required": [
+        "diagnostic_id",
+        "owner",
+        "permitted_emitter",
+        "prohibited_emitters"
+      ],
+      "properties": {
+        "diagnostic_id": {"$ref": "#/$defs/nonemptyString"},
+        "owner": {"$ref": "#/$defs/nonemptyString"},
+        "permitted_emitter": {"$ref": "#/$defs/nonemptyString"},
+        "prohibited_emitters": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {"$ref": "#/$defs/nonemptyString"}
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

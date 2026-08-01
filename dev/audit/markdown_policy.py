@@ -34,6 +34,7 @@ from dev.tools.markdown_format import (
     FENCE,
     LIST,
     HeadingUnit,
+    canonical_blockquote,
     fence_errors,
     fenced_indexes,
     format_document,
@@ -666,6 +667,19 @@ def check_text(text: str) -> list[Finding]:
                     "MD.INDENT.SPACES",
                     index + 1,
                     "structural indentation contains a tab",
+                ),
+            )
+
+        canonical_quote = canonical_blockquote(line)
+        if canonical_quote is not None and canonical_quote != line:
+            findings.append(
+                Finding(
+                    "MD.BLOCKQUOTE.MARKER",
+                    index + 1,
+                    (
+                        "blockquote text and nested markers require one "
+                        "space; an empty quoted separator is exactly '>'"
+                    ),
                 ),
             )
 

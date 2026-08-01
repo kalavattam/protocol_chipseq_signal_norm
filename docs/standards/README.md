@@ -13,6 +13,7 @@ This directory is the normative source for maintained repository structure, sour
 | [`r.md`](r.md)                                 | R applicability, naming, comments, documentation, source layout, and toolchain promotion                              |
 | [`rust.md`](rust.md)                           | Rust applicability, naming, documentation, stable-language boundary, source layout, and toolchain promotion           |
 | [`help.md`](help.md)                           | Shared help schema, rendered/source semantics, audiences, aliases, examples, Runtime requirements, and parameters     |
+| [`output.md`](output.md)                       | Shared output contracts and evidence-first numeric rendering boundaries                                               |
 | [`testing.md`](testing.md)                     | Test layers, safe runner, gates, fixtures, evidence, reporting, cleanup, and proportional proof                       |
 | [`source_headers.md`](source_headers.md)       | Header applicability, profiles, field order, basenames, widths, years, attribution, and body boundary                 |
 

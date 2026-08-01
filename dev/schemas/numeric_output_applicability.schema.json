@@ -1,0 +1,41 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "required": ["schema_version", "records", "selected_cohort"],
+  "properties": {
+    "schema_version": {"const": 1},
+    "records": {"type": "array", "items": {"$ref": "#/$defs/record"}},
+    "selected_cohort": {
+      "type": "object",
+      "required": ["id", "declared_ready", "site_ids"],
+      "properties": {
+        "id": {"type": "string"},
+        "declared_ready": {"type": "boolean"},
+        "site_ids": {"type": "array", "items": {"type": "string"}}
+      },
+      "additionalProperties": false
+    }
+  },
+  "$defs": {
+    "record": {
+      "type": "object",
+      "required": ["site_id", "path", "symbol", "emission_role", "fingerprint", "classification", "dp_provenance", "owner", "rationale", "review_state", "migration_disposition"],
+      "properties": {
+        "site_id": {"type": "string"},
+        "path": {"type": "string"},
+        "symbol": {"type": "string"},
+        "emission_role": {"type": "string"},
+        "fingerprint": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+        "classification": {"enum": ["unresolved", "applicable_dp_governed_migrated", "explicitly_excepted", "proved_not_dp_governed"]},
+        "dp_provenance": {"type": "string", "minLength": 1},
+        "owner": {"type": "string", "minLength": 1},
+        "rationale": {"type": "string", "minLength": 1},
+        "exception_owner": {"type": "string"},
+        "review_state": {"enum": ["evidence_only", "reviewed"]},
+        "migration_disposition": {"type": "string", "minLength": 1}
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

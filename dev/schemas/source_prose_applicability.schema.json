@@ -1,0 +1,13 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Source prose applicability",
+  "type": "object",
+  "required": ["schema_version", "line_limit", "scopes", "excluded"],
+  "properties": {
+    "schema_version": {"const": 1},
+    "line_limit": {"const": 79},
+    "scopes": {"type": "array", "items": {"type": "object", "required": ["language", "kind", "checker", "formatter", "status"]}},
+    "excluded": {"type": "array", "items": {"type": "string"}}
+  },
+  "additionalProperties": false
+}

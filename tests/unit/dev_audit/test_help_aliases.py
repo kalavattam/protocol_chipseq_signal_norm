@@ -278,6 +278,50 @@ EOM
 
         self.assertEqual(len(findings), 1)
         self.assertEqual(findings[0].expected, ("-h", "--help"))
+        self.assertEqual(
+            findings[0].diagnostic_id,
+            "HELP.PARAMETER.ALIAS_SET",
+        )
+        self.assertTrue(
+            findings[0].format().startswith("HELP.PARAMETER.ALIAS_SET:"),
+        )
+
+    def test_duplicate_alias_uses_only_duplicate_diagnostic(self) -> None:
+        text = """
+function demo() {
+    cat << EOM
+Parameters
+----------
+  -h, -h, --help : flag
+    Display help.
+EOM
+    case "${1:-}" in
+        -h|--help)
+            return 0
+            ;;
+    esac
+}
+"""
+
+        findings, _ = check_document(
+            REPO_ROOT,
+            "lib/bash/core/demo.sh",
+            text,
+        )
+
+        self.assertEqual(len(findings), 1)
+        self.assertEqual(findings[0].message, "duplicate alias")
+        self.assertEqual(
+            findings[0].diagnostic_id,
+            "HELP.PARAMETER.ALIAS_DUPLICATE",
+        )
+        self.assertTrue(
+            findings[0]
+            .format()
+            .startswith(
+                "HELP.PARAMETER.ALIAS_DUPLICATE:",
+            ),
+        )
 
     def test_regex_details_and_all_help_aliases_are_complete(self) -> None:
         text = """

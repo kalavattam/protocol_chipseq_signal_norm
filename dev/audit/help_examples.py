@@ -19,11 +19,14 @@ Enforce repository-wide strict Examples structure from current source.
 from __future__ import annotations
 
 import argparse
+import ast
 import dataclasses
 import hashlib
 import json
+import os
 import re
 import shlex
+import subprocess
 import sys
 from collections.abc import Iterable
 from pathlib import Path
@@ -1564,7 +1567,207 @@ def script_aliases(
     return accepted, public, hidden
 
 
-def scan_repository(root: Path) -> RepositoryResult:
+def _python_option_aliases(path: Path) -> set[str]:
+    """
+    Extract literal Python argparse option aliases for one registered surface.
+    """
+
+    tree = ast.parse(path.read_text(encoding="utf-8"))
+    return {
+        value.value
+        for node in ast.walk(tree)
+        if isinstance(node, ast.Call)
+        and isinstance(node.func, ast.Attribute)
+        and node.func.attr == "add_argument"
+        for value in node.args
+        if isinstance(value, ast.Constant)
+        and isinstance(value.value, str)
+        and value.value.startswith("-")
+    } | {"-h", "--help"}
+
+
+def _render_registered_help(
+    root: Path,
+    surface: dict[str, object],
+) -> tuple[str, Path | None]:
+    """
+    Render one approved Python or Shell help surface without running work.
+    """
+
+    path = root / str(surface["path"])
+    environment = {
+        **os.environ,
+        "PYTHONDONTWRITEBYTECODE": "1",
+    }
+    if surface["language"] == "python":
+        command = [sys.executable, str(path), "--help"]
+        parser_path = None
+    else:
+        name = path.name.removeprefix("help_")
+        parser_path = root / "bin" / name
+        command = ["bash", str(parser_path), "--help"]
+    result = subprocess.run(
+        command,
+        cwd=root,
+        env=environment,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    if result.returncode:
+        raise RuntimeError(
+            f"registered help command failed ({result.returncode}): "
+            f"{command!r}",
+        )
+    return result.stdout + result.stderr, parser_path
+
+
+def _example_source_fingerprints(text: str) -> list[str]:
+    """
+    Hash each exact rendered numbered example block.
+    """
+
+    pattern = re.compile(
+        r"(?ms)^  \d+\. .*?^    '''bash\n(.*?)^    '''$",
+    )
+    return [
+        hashlib.sha256(match.group(0).encode()).hexdigest()
+        for match in pattern.finditer(text)
+    ]
+
+
+def registered_example_dispositions(
+    root: Path,
+    contracts: dict[str, object],
+) -> tuple[list[Finding], list[dict[str, object]]]:
+    """
+    Enforce registered applicability and exact accepted example fingerprints.
+    """
+
+    surfaces = {
+        str(item["id"]): item for item in contracts.get("surfaces", [])
+    }
+    findings: list[Finding] = []
+    inventory: list[dict[str, object]] = []
+    for disposition in contracts.get("examples", []):
+        surface_id = str(disposition["surface_id"])
+        surface = surfaces[surface_id]
+        owner = str(disposition["owner"])
+        path = str(surface["path"])
+        if disposition["lifecycle"] == "deferred_migration":
+            inventory.append(
+                {
+                    "identity": surface_id,
+                    "path": path,
+                    "owner": owner,
+                    "kind": "registered_python_callable_deferred",
+                    "status": "deferred_migration",
+                    "examples": [],
+                    "example_fingerprints": [],
+                    "example_form": disposition["example_form"],
+                    "representation_owner": disposition[
+                        "representation_owner"
+                    ],
+                    "lifecycle": disposition["lifecycle"],
+                    "deferred_record": disposition["deferred_record"],
+                    "required_count": disposition["minimum_count"],
+                    "current_count": disposition["existing_example_count"],
+                    "authority": disposition["authority"],
+                    "preservation": disposition["preservation"],
+                },
+            )
+            continue
+        try:
+            rendered, parser_path = _render_registered_help(root, surface)
+        except RuntimeError as error:
+            findings.append(
+                Finding(RULE_REQUIRED, path, 1, owner, str(error)),
+            )
+            continue
+
+        if surface["language"] == "python":
+            aliases = _python_option_aliases(root / path)
+            analysis = analyze_help_document(
+                rendered,
+                owner=owner,
+                accepted_aliases=aliases,
+                public_aliases=aliases,
+                hidden_aliases=set(),
+                path=path,
+            )
+            findings.extend(analysis.findings)
+        else:
+            assert parser_path is not None
+            accepted, public, hidden = script_aliases(
+                parser_path,
+                root / path,
+            )
+            analysis = analyze_help_document(
+                rendered,
+                owner=owner,
+                accepted_aliases=accepted,
+                public_aliases=public,
+                hidden_aliases=hidden,
+                path=path,
+            )
+
+        count = len(analysis.examples)
+        minimum = int(disposition["minimum_count"])
+        existing = int(disposition["existing_example_count"])
+        if count < minimum or count != existing:
+            findings.append(
+                Finding(
+                    RULE_COUNT,
+                    path,
+                    1,
+                    owner,
+                    f"registered count is {existing}, actual count is {count}, "
+                    f"and required minimum is {minimum}",
+                ),
+            )
+        fingerprints = _example_source_fingerprints(rendered)
+        if fingerprints != disposition["example_fingerprints"]:
+            findings.append(
+                Finding(
+                    RULE_COMPLETE,
+                    path,
+                    1,
+                    owner,
+                    "rendered example bytes differ from accepted fingerprints",
+                ),
+            )
+        inventory.append(
+            {
+                "identity": surface_id,
+                "path": path,
+                "owner": owner,
+                "kind": "registered_python"
+                if surface["language"] == "python"
+                else "registered_shell_disposition",
+                "status": "strict_green"
+                if not analysis.findings
+                and count == existing
+                and fingerprints == disposition["example_fingerprints"]
+                else "strict_violation",
+                "examples": [
+                    example.as_dict() for example in analysis.examples
+                ],
+                "example_fingerprints": fingerprints,
+                "example_form": disposition["example_form"],
+                "representation_owner": disposition["representation_owner"],
+                "lifecycle": disposition["lifecycle"],
+                "deferred_record": disposition["deferred_record"],
+                "authority": disposition["authority"],
+                "preservation": disposition["preservation"],
+            },
+        )
+    return findings, inventory
+
+
+def scan_repository(
+    root: Path,
+    contracts: dict[str, object] | None = None,
+) -> RepositoryResult:
     """
     Audit every source-derived script and function help owner directly.
 
@@ -1829,6 +2032,22 @@ def scan_repository(root: Path) -> RepositoryResult:
         )
 
     alias_findings, _ = scan_alias_repository(root)
+    if contracts is None:
+        contracts_path = root / "dev/config/help_contracts.json"
+        contracts = (
+            json.loads(contracts_path.read_text(encoding="utf-8"))
+            if contracts_path.is_file()
+            else None
+        )
+    if contracts is not None:
+        contract_findings, contract_inventory = (
+            registered_example_dispositions(
+                root,
+                contracts,
+            )
+        )
+        findings.extend(contract_findings)
+        inventory.extend(contract_inventory)
 
     return RepositoryResult(
         findings,
@@ -1856,6 +2075,11 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
 
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--root", type=Path, default=Path.cwd())
+    parser.add_argument(
+        "--contracts",
+        type=Path,
+        default=Path("dev/config/help_contracts.json"),
+    )
     parser.add_argument("--inventory-output", type=Path)
     parser.add_argument("--semantic-output", type=Path)
     parser.add_argument("--ownership-output", type=Path)
@@ -1931,7 +2155,14 @@ def main(argv: list[str] | None = None) -> int:
     """
 
     args = parse_args(argv)
-    result = scan_repository(args.root)
+    root = args.root.resolve()
+    contracts_path = (
+        args.contracts
+        if args.contracts.is_absolute()
+        else root / args.contracts
+    )
+    contracts = json.loads(contracts_path.read_text(encoding="utf-8"))
+    result = scan_repository(root, contracts)
 
     write_json(args.inventory_output, result.inventory)
     write_json(
@@ -1942,7 +2173,7 @@ def main(argv: list[str] | None = None) -> int:
         args.ownership_output,
         [owner.as_dict() for owner in result.ownership],
     )
-    write_json(args.crosswalk_output, repository_crosswalk(args.root))
+    write_json(args.crosswalk_output, repository_crosswalk(root))
 
     for finding in result.findings:
         print(finding.format())

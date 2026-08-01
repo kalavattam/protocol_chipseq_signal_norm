@@ -48,6 +48,173 @@ strict_availability = "safe_adapter"
 current_exclusions_or_allowlists = []
 
 [[rule]]
+rule_id = "HELP.AUDIENCE"
+description = "Validate registered installed, callable, and public-design help surfaces."
+normative_document = "docs/standards/help.md"
+normative_section = "Help audiences and ownership (`HELP.AUDIENCE`)"
+owner_classification = "semantic-only"
+source_checker = "dev/audit/help_contracts.py"
+execution_kind = "original"
+execution_role = "independent_evidence"
+coverage_relation = "independent"
+covered_scope = "Registered Phase C help surfaces and required availability records."
+remaining_scope = "Audience usefulness and unregistered surfaces remain review-owned."
+parity_test = "tests/unit/dev_audit/test_help_contracts.py"
+scope = "repository"
+command = ["python3", "-m", "dev.audit.help_contracts", "--root", ".", "--config", "dev/config/help_contracts.json", "--json"]
+applicable_paths = ["dev/config/help_contracts.json", "src/**/*.py", "lib/bash/**/*.sh", "docs/design/**/*.md"]
+default_severity = "advisory"
+blocking = false
+semantic_review = true
+required_environment = "python>=3.11"
+required_commands = ["python3"]
+known_side_effects = ["none"]
+output_paths = []
+output_parser = "generic"
+strict_availability = "safe_adapter"
+current_exclusions_or_allowlists = ["owner=HELP.AUDIENCE; audience usefulness and unregistered surfaces remain review-owned"]
+diagnostic_ids = ["HELP.AUDIENCE.RUNTIME_FACT", "HELP.AUDIENCE.AVAILABILITY", "HELP.CONTRACT.SCHEMA", "HELP.CONTRACT.REFERENCE", "HELP.CONTRACT.APPLICABILITY"]
+
+[[rule]]
+rule_id = "HELP.TOKEN.QUOTING"
+description = "Check exact lexical objects in ordinary Python and Shell help prose."
+normative_document = "docs/standards/help.md"
+normative_section = "Exact lexical-token quoting (`HELP.TOKEN.QUOTING`)"
+owner_classification = "advisory"
+source_checker = "dev/audit/help_style.py"
+execution_kind = "original"
+execution_role = "checker"
+coverage_relation = "subset"
+covered_scope = "Safely recognized ordinary prose lexical objects."
+remaining_scope = "Ambiguous fragments and structured syntax remain review-owned or non-applicable."
+parity_test = "tests/unit/dev_audit/test_help_style.py"
+scope = "repository"
+command = ["python3", "-m", "dev.audit.help_style", "--root", "."]
+applicable_paths = ["src/**/*.py", "lib/bash/**/*.sh", "bin/**/*.sh"]
+default_severity = "advisory"
+blocking = false
+semantic_review = true
+required_environment = "python>=3.11"
+required_commands = ["python3"]
+known_side_effects = ["none"]
+output_paths = []
+output_parser = "generic"
+strict_availability = "safe_adapter"
+current_exclusions_or_allowlists = ["owner=HELP.TOKEN.QUOTING; structured Usage, examples, fences, formulas, grammar, and ambiguous fragments"]
+diagnostic_ids = ["HELP.TOKEN.QUOTING.SHELL", "HELP.TOKEN.QUOTING.PYTHON"]
+
+[[rule]]
+rule_id = "MD.BLOCKQUOTE.FORM"
+description = "Check canonical blockquote markers, separators, and nesting."
+normative_document = "docs/standards/markdown.md"
+normative_section = "Blockquote source form (`MD.BLOCKQUOTE.FORM`)"
+owner_classification = "deterministic"
+source_checker = "dev/audit/markdown_policy.py"
+execution_kind = "original"
+execution_role = "checker"
+coverage_relation = "subset"
+covered_scope = "Recognized physical blockquote lines outside fenced content."
+remaining_scope = "Whether content should be quoted remains review-owned."
+parity_test = "tests/unit/dev_audit/test_markdown_policy.py"
+scope = "repository"
+command = ["python3", "-m", "dev.audit.markdown_policy", "--root", "."]
+applicable_paths = ["**/*.md"]
+default_severity = "error"
+blocking = false
+semantic_review = false
+required_environment = "python>=3.11"
+required_commands = ["python3"]
+known_side_effects = ["none"]
+output_paths = []
+output_parser = "generic"
+strict_availability = "safe_adapter"
+current_exclusions_or_allowlists = ["owner=MD.BLOCKQUOTE.FORM; fenced literal content"]
+diagnostic_ids = ["MD.BLOCKQUOTE.MARKER"]
+
+[[rule]]
+rule_id = "SOURCE.PROSE.WRAP"
+description = "Check greedy ordinary source prose through physical column 79."
+normative_document = "docs/standards/source_layout.md"
+normative_section = "Greedy ordinary source prose (`SOURCE.PROSE.WRAP`)"
+owner_classification = "advisory"
+source_checker = "dev/audit/python_source_policy.py"
+execution_kind = "original"
+execution_role = "checker"
+coverage_relation = "subset"
+covered_scope = "Recognized Python help literals, comments, and docstrings."
+remaining_scope = "Eligibility judgment and Shell, R, and Rust realizations remain review-owned."
+parity_test = "tests/unit/dev_audit/test_python_source_policy.py"
+scope = "repository"
+command = ["python3", "-m", "dev.audit.python_source_policy", "--root", ".", "--all-maintained"]
+applicable_paths = ["src/**/*.py", "tests/**/*.py", "dev/**/*.py"]
+default_severity = "advisory"
+blocking = false
+semantic_review = true
+required_environment = "python>=3.11"
+required_commands = ["python3"]
+known_side_effects = ["none"]
+output_paths = []
+output_parser = "generic"
+strict_availability = "safe_adapter"
+current_exclusions_or_allowlists = ["owner=SOURCE.PROSE.WRAP; structure, literals, formulas, URLs, directives, generated, dynamic, and ambiguous content"]
+
+[[rule]]
+rule_id = "HELP.OPTION.ORDER"
+description = "Check reviewed semantic option order across registered help surfaces."
+normative_document = "docs/standards/help.md"
+normative_section = "Semantic option order (`HELP.OPTION.ORDER`)"
+owner_classification = "advisory"
+source_checker = "dev/audit/help_option_order.py"
+execution_kind = "original"
+execution_role = "checker"
+coverage_relation = "subset"
+covered_scope = "Registered accepted Python and Shell pilot realizations."
+remaining_scope = "Role assignment and unregistered surfaces remain review-owned."
+parity_test = "tests/unit/dev_audit/test_help_option_order.py"
+scope = "repository"
+command = ["python3", "-m", "dev.audit.help_option_order", "--root", ".", "--config", "dev/config/help_contracts.json", "--json"]
+applicable_paths = ["dev/config/help_contracts.json", "src/**/*.py", "bin/**/*.sh", "lib/bash/**/*.sh"]
+default_severity = "advisory"
+blocking = false
+semantic_review = true
+required_environment = "python>=3.11"
+required_commands = ["python3"]
+known_side_effects = ["none"]
+output_paths = []
+output_parser = "generic"
+strict_availability = "safe_adapter"
+current_exclusions_or_allowlists = ["owner=HELP.OPTION.ORDER; unreviewed roles and unauthorized migrations"]
+diagnostic_ids = ["HELP.OPTION.ORDER.CATEGORY", "HELP.OPTION.ORDER.ADJACENCY", "HELP.OPTION.ORDER.CONTIGUITY", "HELP.OPTION.ORDER.GROUP", "HELP.OPTION.ORDER.SURFACE_PARITY", "HELP.OPTION.ORDER.ROLE_UNREVIEWED"]
+
+[[rule]]
+rule_id = "OUTPUT.NUMERIC.RENDERING"
+description = "Inventory bounded numeric syntax and validate separate applicability/readiness evidence without changing output."
+normative_document = "docs/standards/output.md"
+normative_section = "Numeric rendering (`OUTPUT.NUMERIC.RENDERING`)"
+owner_classification = "semantic-only"
+source_checker = "dev/audit/numeric_output_applicability.py"
+execution_kind = "original"
+execution_role = "independent_evidence"
+coverage_relation = "independent"
+covered_scope = "Complete enumeration only within the versioned recognized static Python and Shell sink classes; unsupported constructs are explicit review candidates."
+remaining_scope = "Rounding and migration remain deferred; honest unresolved applicability evidence blocks global S3-MIG-002 closure but not Phase C foundation validation."
+parity_test = "tests/unit/dev_audit/test_numeric_emission_inventory.py; tests/unit/dev_audit/test_numeric_output_applicability.py"
+scope = "repository"
+command = ["python3", "-m", "dev.audit.run_numeric_output_applicability"]
+applicable_paths = ["src/**/*.py", "bin/**/*.sh", "lib/bash/**/*.sh"]
+default_severity = "advisory"
+blocking = false
+semantic_review = true
+required_environment = "python>=3.11"
+required_commands = ["python3"]
+known_side_effects = ["temporary inventory outside the repository only"]
+output_paths = []
+output_parser = "generic"
+strict_availability = "safe_adapter"
+current_exclusions_or_allowlists = ["owner=OUTPUT.NUMERIC.RENDERING; no semantic/runtime completeness claim; no numeric source migration; unresolved evidence is permitted only outside a declared-ready cohort"]
+diagnostic_ids = ["OUTPUT.NUMERIC.APPLICABILITY.SCHEMA", "OUTPUT.NUMERIC.APPLICABILITY.REFERENCE", "OUTPUT.NUMERIC.MIGRATION.READINESS"]
+
+[[rule]]
 rule_id = "GOV.OWNER.UNIQUE"
 description = "Enumerate maintained owner IDs and reject duplicate, missing, or mismatched ownership."
 normative_document = "docs/standards/governance.md"

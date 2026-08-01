@@ -128,6 +128,23 @@ The Python forms follow [PEP 8 comments](https://peps.python.org/pep-0008/#comme
 
 <br />
 
+## Greedy ordinary source prose (`SOURCE.PROSE.WRAP`)
+**Classification:** `advisory` with deterministic recognized Python portions.
+
+**Scope:** Eligible ordinary source prose whose language owner can distinguish prose words and indivisible units from structure, literals, formulas, URLs, directives, and generated content.
+
+Wrap at the last complete word or indivisible unit fitting through physical column 79. Break only when the next complete unit and required separator would exceed the boundary. A width-only check does not prove greedy wrapping. Language owners recognize syntax and exclusions without restating this shared meaning.
+
+Python adjacent constant CLI `help=` literals form the only approved automatic formatter subset. The formatter preserves the exact evaluated value and keeps terminal escapes attached to the final text-bearing literal. Python comments and docstrings are checker/evidence-first. Shell comments remain review-owned; R and Rust remain dormant.
+
+**Automation:** `dev/audit/python_source_policy.py` checks the recognized Python subset. `dev/tools/python_help_format.py` formats only eligible adjacent constant help literals with explicit `--write`. Coverage is `subset`.
+
+**Semantic remainder:** Decide whether a unit is indivisible, whether a break is semantically deliberate, and whether prose is eligible.
+
+**Exceptions:** Structural, literal, formula, URL, directive, generated, dynamic, and ambiguous content is never blindly rewritten.
+
+<br />
+
 ## Grammatical naming and migration (`SOURCE.NAMING.SEMANTICS`)
 **Classification:** `advisory` with deterministic inventory opportunities.
 
@@ -140,6 +157,8 @@ Names communicate role and current meaning:
 - classes, exceptions, protocols, traits, and other types use noun phrases describing the modeled concept;
 - tests use a subject-behavior-outcome form that represents one coherent contract; and
 - source filenames and scripts describe their maintained role without repeating unnecessary directory context.
+
+Names, together with their owned interface and context, must communicate cardinality and value shape truthfully and intelligibly. This shared owner does not require every implementation language or every identifier to encode collection-versus-scalar status through a prefix or other lexical marker. Each language owner decides whether a lexical distinction applies and owns any language-native prefix, container form, or spelling rule.
 
 Controlled scientific, file-format, ecosystem, and project abbreviations are permitted when unambiguous in context. Avoid private shorthand, opaque truncations, redundant type suffixes, copied historical abbreviations, numeric suffixes that conceal a collection or semantic distinction, and names that require repository history to decode. A rename must improve meaning rather than merely increase length.
 

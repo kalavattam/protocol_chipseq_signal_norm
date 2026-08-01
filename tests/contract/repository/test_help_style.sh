@@ -873,6 +873,44 @@ function scan_help_examples() {
 }
 
 
+#  Validate shared help applicability and permitted checker assignments
+function scan_help_contracts() {
+    local output=""
+
+    if output="$(
+        PYTHONDONTWRITEBYTECODE=1 \
+            python3 -m dev.audit.help_contracts \
+                --root "${ROOT_REPO}" 2>&1
+    )"; then
+        record_pass "shared help contracts and checker assignments"
+        return 0
+    fi
+
+    while IFS= read -r line; do
+        record_fail "${line}"
+    done <<< "${output}"
+}
+
+
+#  Check reviewed Python and Shell option-order realizations
+function scan_help_option_order() {
+    local output=""
+
+    if output="$(
+        PYTHONDONTWRITEBYTECODE=1 \
+            python3 -m dev.audit.help_option_order \
+                --root "${ROOT_REPO}" 2>&1
+    )"; then
+        record_pass "registered help option-order realizations"
+        return 0
+    fi
+
+    while IFS= read -r line; do
+        record_fail "${line}"
+    done <<< "${output}"
+}
+
+
 #  Enforce repository-wide Runtime requirements for every help owner
 function scan_runtime_requirements() {
     local output=""
@@ -1100,6 +1138,10 @@ scan_user_facing_helper_inventories
 scan_structural_help_style
 
 scan_help_examples
+
+scan_help_contracts
+
+scan_help_option_order
 
 scan_runtime_requirements
 

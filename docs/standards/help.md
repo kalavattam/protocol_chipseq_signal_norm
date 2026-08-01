@@ -1,13 +1,13 @@
 
 # Help and documentation standard
-This document owns shared help and documentation semantics for maintained shell interfaces and the bounded cross-language schema used by Python docstrings. Shell source form, Python applicability, Markdown source form, and path placement remain with their domain owners.
+This document owns shared help and documentation meaning across maintained implementation languages. Python and Shell are the active automated realizations. R and Rust inherit the shared architecture but remain dormant, unenforced, and unmigrated until their existing language-owner applicability triggers are satisfied. Language owners retain source syntax and language-native rendering.
 
 <br />
 
 ## Shared section schema (`HELP.SECTION.SCHEMA`)
 **Classification:** `advisory` with deterministic vocabulary and ordering portions.
 
-**Scope:** User-facing shell help, local shell-function help, and Python docstrings where the same documentation concepts apply.
+**Scope:** Maintained command, helper, and callable documentation when the same documentation concepts apply.
 
 Use NumPy/SciPy-style section names and underline rows when a rendered format uses headed sections. The shared vocabulary is `Description`, `Usage`, `Parameters`, `Expected globals`, `Generated globals`, `Returns`, `Yields`, `Receives`, `Raises`, `Warns`, `Warnings`, `Output`, `See Also`, `Notes`, `References`, `Examples`, `Attributes`, and `Methods`.
 
@@ -57,13 +57,16 @@ In `Usage`, put the command or function on its own first invocation line and ind
 Usage
 -----
   filter_alignment_sc
-    [--help] [--threads <int>]
-    --fil_in <file> --fil_out <file> [--ref_fa <file>]
+    [--help]
+    [--threads <int>]
+    --fil_in <file> [--ref_fa <file>]
+    --fil_out <file>
+    [--mito] [--chk_chr]
 ```
 
 Use square brackets as the primary optionality signal. Unconditional required arguments are unbracketed; optional, defaulted, conditional, and mode-specific arguments are bracketed and their descriptions state defaults or conditions directly. Parenthesize required mutually exclusive branches and bracket the whole group when the choice itself is optional.
 
-Use the same argument order in `Usage` and `Parameters`. The default workflow order is help and reporting, execution controls, analysis mode, inputs, output location and naming, mode-specific options, output formatting, logging and job naming, then scheduler and Parallel controls. Place dry-run immediately after help and other reporting controls such as verbose, and before environment, thread, workflow-input, and output options. Adapt group names to the workflow without reordering the same interface differently across help surfaces.
+Use the same argument order in `Usage` and `Parameters`. [`HELP.OPTION.ORDER`](#semantic-option-order-helpoptionorder) owns shared semantic ordering and relationships. This owner retains Shell heredoc indentation and source realization only.
 
 Parameter and global entries use `name : type` followed by an indented description. Positional entries use `ordinal  name : type`; zero-pad ordinals when there are ten or more arguments. Separate logical entries with one blank line. Keep aliases for one option on one row, separated by comma and one space, followed by one shared type.
 
@@ -97,7 +100,7 @@ This rule governs descriptions rather than usage synopses, metavariables, choice
 ## Rendered help (`HELP.RENDERED`)
 **Classification:** `advisory` with deterministic interface portions.
 
-**Scope:** Rendered default, detailed, and local help for maintained shell commands and helpers.
+**Scope:** Rendered default, detailed, and local help for maintained commands and helpers when applicable.
 
 Rendered help agrees with the accepted public interface, shows required inputs and important modes, and avoids source-only artifacts. Default help is concise but documents every public argument. Detailed help may add mode behavior, references, edge cases, and examples. Local helper help may document globals, shared-state mutation, output, and recoverable status.
 
@@ -114,7 +117,9 @@ A rendered document has one copy of each section. Merge repeated notes or runtim
 ## Help audiences and ownership (`HELP.AUDIENCE`)
 **Classification:** `semantic-only`.
 
-**Scope:** Selection of short, detailed, local, and maintainer-facing documentation surfaces.
+**Scope:** Installed command help, callable documentation, public design documentation, local helper help, and maintainer-facing documentation.
+
+Installed help remains independently useful and contains every fact required to run the interface correctly. Callable documentation remains caller-focused and preserves the direct-call contract. Public design documentation owns extended derivation, rationale, compatibility, provenance, and historical context without becoming a runtime dependency. Absence of a public design document from an installed wheel does not permit installed help to omit required behavior.
 
 Write script help for people running the command and local function help for maintainers when a helper parses arguments, reads or creates globals, mutates state, emits structured output, or has non-obvious status. One centralized help function owns full help for each maintained top-level shell command; wrappers call it instead of embedding competing copies. `repository_layout.md` owns placement.
 
@@ -145,12 +150,29 @@ Hidden compatibility aliases may remain accepted but do not appear in `Usage`, `
 
 <br />
 
+## Exact lexical-token quoting (`HELP.TOKEN.QUOTING`)
+**Classification:** `advisory` with deterministic recognized-context portions.
+
+**Scope:** An exact option, identifier, sentinel, value, or complete inline interface expression presented as one lexical object in ordinary explanatory help prose for an applicable active realization. Python and Shell are currently automated; R and Rust remain dormant without enforcement or migration.
+
+Delimit the complete lexical object with straight single quotes. Do not split one complete inline expression into separately quoted fragments, and do not use Markdown backticks as ordinary help-prose delimiters. Structured `Usage` rows, fenced command blocks, executable examples, formulas, and grammar whose structure carries invocation meaning are outside this owner. Ambiguous fragments remain review-owned and are not automatically rewritten.
+
+`dev/audit/help_style.py` retains source recognition. Only its approved exact lexical-object subset moves here; its remaining vocabulary diagnostics retain their existing owners and coverage.
+
+**Automation:** `dev/audit/help_style.py` emits `HELP.TOKEN.QUOTING.SHELL` and `HELP.TOKEN.QUOTING.PYTHON` for safely recognized ordinary-prose lexical objects. `dev/audit/help_contracts.py` validates applicability and checker assignments but does not re-emit source defects. Coverage is `subset`.
+
+**Semantic remainder:** Classify ambiguous fragments and decide whether a complete expression is being discussed as one lexical object.
+
+**Exceptions:** Structured syntax, examples, fences, formulas, and exact external text retain their separately owned literal form.
+
+<br />
+
 ## Examples (`HELP.EXAMPLES`)
 **Classification:** `advisory` with deterministic structure and ownership portions.
 
-**Scope:** Examples in full command help and recognized nontrivial function help.
+**Scope:** Examples in maintained command, helper, and callable documentation when applicable.
 
-Every maintained top-level command's full help includes `Examples`. A recognized nontrivial function-help document provides at least two examples. Number examples consecutively, describe their purpose, and use a complete invocation owned by the documented interface.
+This owner alone decides whether examples apply and whether zero, one, or two are required. Every maintained nontrivial top-level command's full help normally provides at least two materially distinct examples. Callable examples apply when caller obligations are not self-evident. Exactly one example is permitted when exactly one meaningful invocation exists. Omission is permitted only for a genuinely trivial, context-obvious callable. Number examples consecutively, describe their purpose, and use a complete invocation owned by the documented interface.
 
 Use this rendered form:
 ```text
@@ -164,7 +186,9 @@ Examples
     '''
 ```
 
-Provide exactly one final `Examples` section. Begin numbering at 1 without skips or duplicates. Each numbered entry has exactly one nonempty `'''bash` block, with no blank line between its description and opening delimiter, and invokes the documented owner directly with public accepted spellings. Markdown backtick fences are not rendered shell-help delimiters.
+Provide exactly one final `Examples` section. Begin numbering at 1 without skips or duplicates. Each rendered CLI entry has exactly one nonempty `'''bash` block, with no blank line between its description and opening delimiter, and invokes the documented owner directly with public accepted spellings.
+
+A rendered CLI example uses the existing `'''bash` block because it shows invocation through a shell. The invoked implementation may be Bash, Python, R, Rust, or another language. A callable example uses the source-language-native representation governed by the applicable language documentation owner. `HELP.EXAMPLES` alone decides applicability and required count; the language owner governs only representation, source recognition, and language-specific documentation form. Markdown backtick fences are not rendered shell-help delimiters.
 
 For an ordinary multiline CLI invocation, every continuation line begins four spaces beyond the first command line, tabs are forbidden, nonfinal lines render exactly one terminal backslash with no trailing whitespace, and the final line has none. An unquoted help heredoc therefore needs two literal source backslashes for each one intended in rendered output; a quoted heredoc needs one. Control flow, arrays, nested heredocs, structured pipelines, and other syntax with independent indentation are classified as complex snippets rather than forced into this simple-command shape.
 
@@ -172,11 +196,28 @@ Examples are materially distinct when they vary a meaningful mode, input shape, 
 
 If implementation, callers, tests, and existing documentation do not establish two accurate materially distinct examples, stop for an interface or documentation decision. Do not invent a mode, global, setup requirement, behavior, alias, or filler example.
 
-**Automation:** `dev/audit/help_examples.py` and `dev/audit/help_heredoc_reflow.py` check presence, counts, numbering, command structure, ownership, aliases, duplicate signatures, and bounded safety facets. Coverage is `subset`.
+**Automation:** `dev/audit/help_examples.py` remains the sole owner-specific checker for presence, counts, numbering, command structure, ownership, aliases, duplicate signatures, distinctness, and bounded safety facets. `dev/audit/help_contracts.py` validates only applicability-record structure and references. Coverage is `subset`.
 
 **Semantic remainder:** Review usefulness, safety, material distinctness, and representativeness.
 
 **Exceptions:** A trivial zero-argument helper may provide one example when no second meaningful invocation exists and the owner records why.
+
+<br />
+
+## Semantic option order (`HELP.OPTION.ORDER`)
+**Classification:** `advisory` with deterministic registered-realization portions.
+
+**Scope:** Explicitly reviewed semantic option roles and their applicable language realizations across parser registration, rendered `Usage`, option or parameter sections, and reporting.
+
+The default category precedence is help/reporting; preview/no-write; execution environment/resources; operation discriminants; inputs; output targets; output lifecycle/cleanup; mode-specific options; formatting; logging/job names; and scheduler or Parallel controls. A modifier stays immediately beside the object or effect it governs. Related semantic groups remain contiguous, and the same logical groups remain together across every applicable surface.
+
+Roles are explicit reviewed data; never infer them from option names. A language realization may use source-appropriate syntax, but it must provide a total projection for every applicable surface. Registered rendered `Usage` projections declare ordered semantic `usage_rows`: each configured group occupies one continuation row, remains intact, and preserves its internal order. A group may contain closely related roles only when its nonempty rationale records the intentional approval. The accepted pilot order is evidence for that interface, not a repository-wide migration.
+
+**Automation:** `dev/audit/help_option_order.py` checks registered Python and Shell realizations from `dev/config/help_contracts.json`. `dev/audit/help_contracts.py` validates record structure and references but emits no order defect. Coverage is `subset`.
+
+**Semantic remainder:** Assign roles, approve deviations, and decide whether two options form one semantic group.
+
+**Exceptions:** An unreviewed option remains a review candidate; its name does not create an implicit role or exemption.
 
 <br />
 
@@ -212,7 +253,9 @@ Explicit Boolean values accept `true`, `t`, `yes`, `y`, and `1` as true and `fal
 
 Write defaults as `(default: ...)`. Numeric defaults are unquoted. String-like defaults, paths, sentinels, enum values, and time strings use straight single quotes.
 
-**Automation:** Help-style and parameter-consistency audits check recognized placeholders, types, grouped entries, Boolean vocabulary, and defaults with `subset` coverage.
+File-format displays distinguish public choices, accepted aliases, internal canonical values, suffix recognition, and hint applicability. A value may be accepted case-insensitively without appearing in the displayed choice set. Named-path inference may override or ignore a hint only where the interface contract says so. [`HELP.ALIAS.PUBLIC`](#public-aliases-helpaliaspublic) remains authoritative for public and hidden option spellings.
+
+**Automation:** `dev/audit/help_style.py` retains its existing placeholder, type, grouped-entry, Boolean, default, and remaining prose-vocabulary diagnostics. `dev/audit/help_contracts.py` validates the structure and references of registered Python display, canonicalization, suffix, and hint facts without re-emitting a Shell alias defect. Existing Python interface tests prove the registered realization-specific facts. Coverage is `subset`.
 
 **Semantic remainder:** Choose an accurate type, placeholder, and amount of syntax detail.
 
@@ -223,13 +266,14 @@ Write defaults as `(default: ...)`. Numeric defaults are unquoted. String-like d
 ## Canonical parameter descriptions (`PARAMETER.DESCRIPTIONS`)
 **Classification:** `advisory` with deterministic registered-core comparisons.
 
-**Scope:** Shared public parameter names in shell help, Python CLI help, and maintained interface documentation.
+**Scope:** Shared public parameter names and concepts in maintained command, helper, callable, and interface documentation when applicable.
 
-The table supplies the shared semantic core. Integrate workflow constraints after that core without repeating it. Same-name drift is enforced only for registered shared families; generic local names are not repository-global contracts.
+The table supplies a shared semantic core only for an explicitly registered concept family. Identical names or spellings do not establish shared meaning, applicability, or membership. A shared core is an owned proposition: literal common wording is required only when the registered family says so; otherwise each approved natural realization is recorded and preserved. Same-name nonmembers are review candidates, not semantic drift. `mode`, `method`, and `fil_in` do not acquire one repository-wide meaning from their spellings.
+
+The `Type` field names the user-facing logical value form described or accepted by the interface. It is not a Python, Shell, R, or Rust source type, does not prescribe a language-native container or annotation, and is not by itself a serialization contract. Language owners govern source representation, and an independently owned interface or protocol governs serialization when one exists.
 
 | Parameter     | Type              | Canonical description                                                      |
 | :---          | :---              | :---                                                                       |
-| `fil_in`      | file              | Input file path.                                                           |
 | `csv_fil_in`  | list of file      | Comma-separated list of input file paths.                                  |
 | `fil_out`     | file              | Output file path.                                                          |
 | `csv_fil_out` | list of file      | Comma-separated list of output file paths.                                 |
@@ -240,8 +284,6 @@ The table supplies the shared semantic core. Integrate workflow constraints afte
 | `threads`     | int               | Number of threads to use.                                                  |
 | `ref_fa`      | file              | Reference FASTA file.                                                      |
 | `dp`          | int               | Maximum number of decimal places retained for finite emitted values.       |
-| `mode`        | choice            | Workflow mode.                                                             |
-| `method`      | choice            | Workflow method.                                                           |
 | `verbose`     | flag              | Run script in verbose mode.                                                |
 | `dry_run`     | flag              | Run script in dry-run mode.                                                |
 | `nam_job`     | str               | Job name.                                                                  |
@@ -315,13 +357,31 @@ The table supplies the shared semantic core. Integrate workflow constraints afte
 | `mode_nz`     | choice            | Epsilon/zero-handling mode.                                                |
 | `siz_gen`     | int               | Effective genome size.                                                     |
 
-Use `fil_in`, `csv_fil_in`, `fil_out`, and `csv_fil_out` for canonical input and output file arguments. Use `dp` and `--dp` for decimal precision; do not accept or document `--rnd`, `--round`, `--decimals`, or `--digits` in maintained public CLIs.
+Use `csv_fil_in`, `fil_out`, and `csv_fil_out` for their registered shared concept families. The spelling `fil_in` remains available to local interfaces, but its signal/alignment, metadata-table, and generic input-file meanings are explicitly non-applicable to one shared canonical core. Use `dp` and `--dp` for decimal precision; do not accept or document `--rnd`, `--round`, `--decimals`, or `--digits` in maintained public CLIs.
 
-**Automation:** `tests/contract/repository/test_parameter_docs_consistency.sh` extracts this table only from the `PARAMETER.DESCRIPTIONS` owner section and compares maintained interface roots. Coverage is `subset`.
+**Automation:** `tests/contract/repository/test_parameter_docs_consistency.sh` remains the semantic description-consistency checker. `dev/audit/help_contracts.py` validates concept-family structure, applicability, and schema completeness but does not duplicate its prose-consistency diagnostic. Coverage is `subset`.
 
 **Semantic remainder:** Review whether shared prose is integrated naturally and whether a same-name parameter truly has the shared meaning.
 
 **Exceptions:** A same spelling with a deliberately different meaning requires a narrower name or an explicit owned exclusion.
+
+<br />
+
+### Shared help-contract checker ownership
+`dev/config/help_contracts.json` shares applicability and accepted realization facts; it does not make every consumer an owner of every defect. The standards registry maps each diagnostic to one authoritative owner. The contract data assigns each configured diagnostic to one permitted emitter. Seeded tests separately prove actual cross-checker non-overlap.
+
+| Governed concern                            | Authoritative source checker and diagnostics                                                                        | `help_contracts.py` boundary                                                                                                     |
+| :---                                        | :---                                                                                                                | :---                                                                                                                             |
+| `HELP.ALIAS.PUBLIC` Shell alias sets        | `dev/audit/help_aliases.py`: `HELP.PARAMETER.ALIAS_SET`, `HELP.PARAMETER.ALIAS_DUPLICATE`                           | May cross-reference applicability; does not parse or re-emit Shell alias defects.                                                |
+| `HELP.ALIAS.PUBLIC` Python display evidence | Existing Python interface tests where the Shell checker is non-applicable                                           | Validates registered structure and references; any future source diagnostic requires a distinct realization-specific assignment. |
+| `PARAMETER.DESCRIPTIONS`                    | `tests/contract/repository/test_parameter_docs_consistency.sh`: semantic prose consistency                          | Validates concept-family structure and applicability only.                                                                       |
+| `HELP.EXAMPLES`                             | `dev/audit/help_examples.py`: presence, count, structure, ownership, alias visibility, and distinctness diagnostics | Validates applicability structure and references only.                                                                           |
+| `HELP.PARAMETER.VOCABULARY`                 | `dev/audit/help_style.py`: every existing vocabulary diagnostic outside the approved movement                       | Does not re-emit source vocabulary defects.                                                                                      |
+| `HELP.TOKEN.QUOTING`                        | `dev/audit/help_style.py`: `HELP.TOKEN.QUOTING.SHELL`, `HELP.TOKEN.QUOTING.PYTHON`                                  | Validates applicability and permitted-emitter assignments only.                                                                  |
+| `HELP.OPTION.ORDER`                         | `dev/audit/help_option_order.py`: category, adjacency, contiguity, group, role, and surface-parity diagnostics      | Validates record structure, references, and unique permitted-emitter assignments; does not re-emit order defects.                |
+| Shared contract integrity                   | `dev/audit/help_contracts.py`: `HELP.CONTRACT.SCHEMA`, `HELP.CONTRACT.REFERENCE`, `HELP.CONTRACT.APPLICABILITY`     | Own checker output only; never authorizes a source or public-interface change.                                                   |
+
+`dev/audit/help_alias_inventory.json` remains protected interface evidence. Shared applicability never authorizes parallel alias enforcement, and no checker may infer diagnostic ownership merely because it reads the shared data.
 
 <br />
 

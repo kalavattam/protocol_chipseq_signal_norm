@@ -337,6 +337,23 @@ Use backtick fences by default. A tilde fence is permitted only when the subject
 
 <br />
 
+## Blockquote source form (`MD.BLOCKQUOTE.FORM`)
+**Classification:** `deterministic` for recognized blockquote markers.
+
+**Scope:** Blockquote marker, paragraph, empty quoted separator, and nesting form outside fenced literal content.
+
+Use one space after every text-bearing `>` marker. Use exactly `>` for an empty quoted paragraph separator. Express each nested level as another `> ` marker, such as `> > Nested quoted paragraph.`.
+
+This owner does not govern attachment to headings or colon-introduced structures, file boundaries, or section separators. Those defects remain exclusively with `MD.HEADING.SPACING`, `MD.COLON.STRUCTURE`, `MD.FILE.BOUNDARY`, and `MD.SECTION.BREAK`.
+
+**Automation:** `dev/audit/markdown_policy.py` reports only marker, empty-separator, and nesting defects. `dev/tools/markdown_format.py` canonicalizes only those recognized forms outside fences. Coverage is `exact` for recognized physical blockquote lines.
+
+**Semantic remainder:** Decide whether prose should be quoted and whether nesting is meaningful.
+
+**Exceptions:** Fenced literal content is non-applicable and remains byte-identical.
+
+<br />
+
 ## GFM tables (`MD.TABLE.CANONICAL`)
 **Classification:** `deterministic` for supported non-emoji tables.
 

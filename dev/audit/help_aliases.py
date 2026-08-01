@@ -79,6 +79,7 @@ class Finding:
     expected: tuple[str, ...]
     hidden: tuple[str, ...]
     message: str
+    diagnostic_id: str = "HELP.PARAMETER.ALIAS_SET"
 
     def format(self) -> str:
         """
@@ -86,7 +87,7 @@ class Finding:
         """
 
         location = (
-            f"HELP.PARAMETER.ALIAS_SET: {self.path}:{self.line}: "
+            f"{self.diagnostic_id}: {self.path}:{self.line}: "
             f"owner={self.owner}"
         )
         documented = f"documented={','.join(self.documented)}"
@@ -1016,6 +1017,7 @@ def check_document(
                     (),
                     (),
                     "duplicate alias",
+                    "HELP.PARAMETER.ALIAS_DUPLICATE",
                 ),
             )
 

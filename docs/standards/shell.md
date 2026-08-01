@@ -47,7 +47,9 @@ Use four-space code indentation and spaces rather than tabs. Put lifecycle and p
 
 In argument-parsing `case` patterns, represent a deliberately supported underscore/hyphen spelling pair with one bounded `[_-]` form, such as `--chunk[_-]size`, rather than duplicating equivalent arms. Keep distinct semantic aliases explicit, and do not use broader `?` or `*` patterns that accept unintended near misses.
 
-Apply [`SOURCE.NAMING.SEMANTICS`](source_layout.md) using Shell-native forms. Maintained function names use `snake_case` verb phrases. Local and ordinary variables use `snake_case` noun phrases. Arrays use `snake_case`; retain the established `arr_*` form only where it materially clarifies type. Readonly semantic constants and exported environment contracts use `SCREAMING_SNAKE_CASE`; inherited external environment variables preserve their exact names. Do not use `lowerCamelCase` or `UpperCamelCase` for project-defined functions, variables, or filenames.
+Apply [`SOURCE.NAMING.SEMANTICS`](source_layout.md) using Shell-native forms. Maintained function names use `snake_case` verb phrases. Local and ordinary variables use `snake_case` noun phrases. Use `csv_*` only for an unparsed comma-separated string, `arr_*` only for a parsed array, and an unprefixed name for a scalar. Readonly semantic constants and exported environment contracts use `SCREAMING_SNAKE_CASE`; inherited external environment variables preserve their exact names. Do not use `lowerCamelCase` or `UpperCamelCase` for project-defined functions, variables, or filenames.
+
+The public collection names `len_mip`, `len_min`, `dep_mip`, `dep_min`, `dep_sip`, and `dep_sin` are preserved legacy spellings governed by `S3-MIG-004`. Phase C does not rename them or select canonical names, aliases, or migration cohorts. `len_def` remains scalar.
 
 Do not promote mutable globals to constant spelling. Controlled project, domain, and tool abbreviations remain acceptable when local and evident; opaque abbreviations remain review candidates. Shell source filenames use lowercase `snake_case`.
 

@@ -518,6 +518,90 @@ def test_deterministic_formatter_preserves_fenced_literals() -> None:
     assert format_deterministic(source) == source
 
 
+def test_nested_fence_fixtures_preserve_outer_literal_bytes() -> None:
+    accepted = read("accepted/nested_fences.md")
+    expected = read("format/nested_fences_expected.md")
+    actual = format_document(read("format/nested_fences_input.md"))
+
+    assert not [
+        item
+        for item in check_text(accepted)
+        if item.classification == "deterministic"
+    ]
+    assert actual == expected
+    assert format_document(actual) == actual
+
+    opener = "````````````markdown\n"
+    closer = "````````````\n"
+    accepted_body = accepted.split(opener, 1)[1].rsplit(closer, 1)[0]
+    formatted_body = (
+        format_document(accepted)
+        .split(opener, 1)[1]
+        .rsplit(
+            closer,
+            1,
+        )[0]
+    )
+
+    assert formatted_body == accepted_body
+
+
+def test_shorter_nested_fence_does_not_close_outer_fence() -> None:
+    rejected = read("rejected/nested_fences.md")
+    findings = check_text(rejected)
+
+    assert [item for item in findings if item.rule_id == "MD.FENCE.CLOSED"]
+
+
+def test_other_character_fence_run_remains_literal() -> None:
+    boundary = read("boundary/nested_fences.md")
+
+    assert not [
+        item
+        for item in check_text(boundary)
+        if item.classification == "deterministic"
+    ]
+    assert format_document(boundary) == boundary
+
+
+def test_blockquote_owner_is_exact_and_nonoverlapping() -> None:
+    accepted = check_text(read("accepted/blockquotes.md"))
+    rejected = check_text(read("rejected/blockquotes.md"))
+    boundary = check_text(read("boundary/blockquotes.md"))
+    non_applicable = check_text(read("non_applicable/blockquotes.md"))
+
+    assert not [
+        item for item in accepted if item.rule_id == "MD.BLOCKQUOTE.MARKER"
+    ]
+    assert {
+        item.rule_id
+        for item in rejected
+        if item.classification == "deterministic"
+    } == {"MD.BLOCKQUOTE.MARKER"}
+    assert not [
+        item for item in boundary if item.rule_id == "MD.BLOCKQUOTE.MARKER"
+    ]
+    assert not [
+        item
+        for item in non_applicable
+        if item.rule_id == "MD.BLOCKQUOTE.MARKER"
+    ]
+
+
+def test_blockquote_formatter_is_bounded_and_idempotent() -> None:
+    expected = read("format/blockquotes_expected.md")
+    actual = format_document(read("format/blockquotes_input.md"))
+
+    assert actual == expected
+    assert format_document(actual) == actual
+
+
+def test_blockquote_formatter_preserves_content_indentation() -> None:
+    source = "\n> command \\\n>     --option value\n"
+
+    assert format_deterministic(source) == source
+
+
 def test_deterministic_formatter_handles_anchor_boundary_cluster() -> None:
     source = (
         '\n# Title\nBody.\n\n<a id="later"></a>\n\n<br />\n\n'

@@ -112,6 +112,8 @@ For a policy change, update and approve the normative owner before changing chec
 
 Before proposing a new obligation, governed vocabulary entry, checker facet, or rule ID, search the existing owners and record why clarification, language specialization, or routing cannot express the concern without duplication. Classify its shared or language-specific ownership and its deterministic, advisory, or semantic-only decision boundary. Show reusable benefit rather than a one-off reaction, and estimate the added ordinary instruction-loading and execution burden. Name the canonical owner, semantic remainder, exceptions, and focused proof. Default a concern already covered by an owner to clarification or specialization, and default a one-off concern to no new rule.
 
+Identical names or spellings do not establish shared semantics, applicability, family membership, or authorization to normalize wording.
+
 A standards proposal must identify motivation and source evidence, reusable benefit, existing violations, classification, deterministic or advisory coverage, semantic remainder, migration impact, and representative before-and-after examples or an explicit statement that examples are not applicable. A proposal that passes the anti-accretion screen must also estimate ordinary instruction-loading and execution burden. A local pattern becomes normative only when evidence shows that reuse reduces ambiguity or drift.
 
 The applicable standards owner grants approval. Record the decision in a pull-request review, decision record, or other maintained change record that identifies the approving owner, affected rule IDs, and approved scope. An ID migration requires explicit approval; silence, checker output, or implementation precedent is not approval.
@@ -154,7 +156,11 @@ For a direct interpreter, compiler, formatter, or schema-validator invocation wh
 
 An owner anchor must be stable and associated with the rule ID. A moved or renamed heading must update active registry and contract references in the same reconciled change.
 
-**Automation:** `dev/audit/standards_registry.py` and `tests/unit/dev_audit/test_standards_registry.py` validate the complete static owner inventory against executable registry entries, owner classifications, execution roles, coverage relations, covered and remaining scopes, checker and evidence paths, diagnostic families, migrations, fixtures, and allowlists. The registry coverage relation remains `subset` because the audit does not execute every registered command or decide semantic sufficiency.
+Every semantic movement records complete old-to-new fact dispositions and new-to-old provenance, remaining old scope, source and destination anchors and fingerprints, audience and availability before and after, and any behavioral, scientific, interface, compatibility, exception, or information delta. Schema completeness and matching hashes are evidence, not authorization. LLM analysis may collect and compare evidence but cannot authorize a consequential delta; explicit human authorization is required.
+
+The standards registry preserves one authoritative owner per diagnostic ID. Applicability data separately assigns each configured diagnostic ID to one permitted emitter. Seeded cross-checker tests prove that one governed source defect actually produces one permitted diagnostic from one checker; neither static relation alone proves runtime non-overlap.
+
+**Automation:** `dev/audit/standards_registry.py` and `tests/unit/dev_audit/test_standards_registry.py` validate the complete static owner inventory and unique owner mapping against executable registry entries. `dev/audit/semantic_movement.py` validates movement-record completeness, and `dev/audit/help_contracts.py` validates configured permitted-emitter assignments. Seeded cross-checker tests prove runtime non-overlap. Coverage remains `subset` because automation cannot decide semantic sufficiency or authorize consequential changes.
 
 **Semantic remainder:** Determine whether coverage matches the owner's real scope, whether upstream evidence is sufficient, and whether advisory or semantic review evidence supports a recorded disposition.
 

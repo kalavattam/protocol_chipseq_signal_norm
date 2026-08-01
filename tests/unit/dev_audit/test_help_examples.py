@@ -18,6 +18,8 @@ Focused regressions for strict shell-help Examples documents.
 
 from __future__ import annotations
 
+import copy
+import json
 import unittest
 from pathlib import Path
 
@@ -29,6 +31,7 @@ from dev.audit.help_examples import (
     classify_wrapper_source,
     compliance_summary,
     invocation_facts,
+    registered_example_dispositions,
     repository_crosswalk,
     scan_repository,
     short_help_advertises_details,
@@ -36,6 +39,7 @@ from dev.audit.help_examples import (
 )
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
+CONTRACTS = REPO_ROOT / "dev/config/help_contracts.json"
 
 USAGE = """
 Usage
@@ -665,6 +669,52 @@ EOM
         )
 
         self.assertFalse(compliance_summary(modified)["global_compliance"])
+
+    def test_registered_disposition_count_fault_is_owned_by_examples(
+        self,
+    ) -> None:
+        contracts = json.loads(CONTRACTS.read_text(encoding="utf-8"))
+        modified = copy.deepcopy(contracts)
+        modified["examples"][0]["existing_example_count"] = 3
+        findings, _ = registered_example_dispositions(REPO_ROOT, modified)
+
+        self.assertEqual(
+            {finding.rule_id for finding in findings},
+            {"HELP.EXAMPLES.COUNT"},
+        )
+
+    def test_registered_fingerprint_fault_is_owned_by_examples(self) -> None:
+        contracts = json.loads(CONTRACTS.read_text(encoding="utf-8"))
+        modified = copy.deepcopy(contracts)
+        modified["examples"][0]["example_fingerprints"][0] = "0" * 64
+        findings, _ = registered_example_dispositions(REPO_ROOT, modified)
+
+        self.assertEqual(
+            {finding.rule_id for finding in findings},
+            {"HELP.EXAMPLES.STRUCTURAL_COMPLETE"},
+        )
+
+    def test_deferred_callable_is_recorded_without_rendering_or_diagnostic(
+        self,
+    ) -> None:
+        contracts = json.loads(CONTRACTS.read_text(encoding="utf-8"))
+        findings, inventory = registered_example_dispositions(
+            REPO_ROOT,
+            contracts,
+        )
+        callable_record = next(
+            item
+            for item in inventory
+            if item["identity"] == "compute_input_floor_callable"
+        )
+
+        self.assertFalse(findings)
+        self.assertEqual(callable_record["status"], "deferred_migration")
+        self.assertEqual(callable_record["required_count"], 2)
+        self.assertEqual(callable_record["current_count"], 0)
+        self.assertEqual(callable_record["examples"], [])
+        self.assertEqual(callable_record["example_fingerprints"], [])
+        self.assertEqual(callable_record["deferred_record"], "S3-MIG-001")
 
 
 if __name__ == "__main__":

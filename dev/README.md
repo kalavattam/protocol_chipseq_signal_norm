@@ -29,3 +29,22 @@ Shell-interface extraction records raw parser observations separately from resol
 The pilot Markdown is a concise human review view, not a raw NDJSON dump. It groups evidence by topic, fences every source/diff/JSON/command excerpt, and links the retained machine-readable artifacts for complete detail.
 
 Ruff is available through `env_protocol`, but repository configuration, rule selection, formatting, and enforcement are deferred to a dedicated follow-up session. Audit validation must not treat Ruff as a pilot-closure acceptance gate.
+
+<br />
+
+## Standards-foundation checks
+Run the shared Phase C contract checks without creating repository-local bytecode:
+```bash
+PYTHONDONTWRITEBYTECODE=1 python3 -m dev.audit.help_contracts \
+    --root . \
+    --config dev/config/help_contracts.json \
+    --schema dev/schemas/help_contracts.schema.json
+PYTHONDONTWRITEBYTECODE=1 python3 -m dev.audit.help_option_order --root .
+PYTHONDONTWRITEBYTECODE=1 python3 -m dev.audit.semantic_movement \
+    --schema dev/schemas/semantic_movement.schema.json \
+    --validate <movement-evidence.json>
+PYTHONDONTWRITEBYTECODE=1 python3 -m dev.audit.numeric_emission_inventory \
+    --root . --languages python shell
+```
+
+`help_contracts.py` validates shared applicability, references, and permitted-emitter assignments; it does not replace the source checker named by an authoritative owner. `numeric_emission_inventory.py` is read-only evidence production that claims completeness only within its versioned static sink classes; it does not claim semantic/runtime completeness, enroll a caller, or select numeric semantics.
