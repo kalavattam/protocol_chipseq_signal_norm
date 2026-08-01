@@ -137,12 +137,16 @@ else
 fi
 
 if [[ "${list_only}" == "true" ]]; then
-    for resolved in "${arr_bash_paths[@]}"; do
-        printf 'bash\t%s\n' "${resolved}"
-    done
-    for resolved in "${arr_sh_paths[@]}"; do
-        printf 'sh\t%s\n' "${resolved}"
-    done
+    if (( ${#arr_bash_paths[@]} > 0 )); then
+        for resolved in "${arr_bash_paths[@]}"; do
+            printf 'bash\t%s\n' "${resolved}"
+        done
+    fi
+    if (( ${#arr_sh_paths[@]} > 0 )); then
+        for resolved in "${arr_sh_paths[@]}"; do
+            printf 'sh\t%s\n' "${resolved}"
+        done
+    fi
     exit 0
 fi
 
@@ -224,9 +228,17 @@ PY
 
 
 set +e
-run_language bash "${bash_raw}" "${arr_bash_paths[@]}"
+if (( ${#arr_bash_paths[@]} > 0 )); then
+    run_language bash "${bash_raw}" "${arr_bash_paths[@]}"
+else
+    run_language bash "${bash_raw}"
+fi
 bash_status="$?"
-run_language sh "${sh_raw}" "${arr_sh_paths[@]}"
+if (( ${#arr_sh_paths[@]} > 0 )); then
+    run_language sh "${sh_raw}" "${arr_sh_paths[@]}"
+else
+    run_language sh "${sh_raw}"
+fi
 sh_status="$?"
 set -e
 
