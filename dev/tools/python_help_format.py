@@ -32,6 +32,14 @@ HELP_GROUP = re.compile(
 STRING_TOKEN = re.compile(r'"(?:[^"\\]|\\.)*"')
 
 
+def _literal(value: str) -> str:
+    """
+    Serialize one Unicode-preserving one-line source literal.
+    """
+
+    return json.dumps(value, ensure_ascii=False)
+
+
 def _chunks(value: str, indent: str) -> list[str]:
     """
     Split one rendered value greedily without changing any character.
@@ -45,7 +53,7 @@ def _chunks(value: str, indent: str) -> list[str]:
 
         for unit in units:
             candidate = current + unit
-            if current and len(indent + json.dumps(candidate)) > 79:
+            if current and len(indent + _literal(candidate)) > 79:
                 chunks.append(current)
                 current = unit
             else:
@@ -69,8 +77,7 @@ def format_source(text: str) -> str:
         value = ast.literal_eval("(" + "\n".join(tokens) + ")")
         indent = match.group("base") + "    "
         body = "".join(
-            f"{indent}{json.dumps(chunk, ensure_ascii=False)}\n"
-            for chunk in _chunks(value, indent)
+            f"{indent}{_literal(chunk)}\n" for chunk in _chunks(value, indent)
         )
         replacement = match.group("prefix") + body + match.group("suffix")
 

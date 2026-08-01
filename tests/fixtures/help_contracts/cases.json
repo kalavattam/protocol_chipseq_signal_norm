@@ -1,5 +1,5 @@
 {
-  "schema_version": 2,
+  "schema_version": 3,
   "accepted": {
     "audience": "Installed help contains the runtime formula and conditions.",
     "token": "Use '--mode dist --method qntl_nz' for the default distribution method.",
@@ -10,7 +10,18 @@
       "example_form": "rendered_cli_invocation",
       "representation_owner": "HELP.EXAMPLES",
       "lifecycle": "active_enforced"
-    }
+    },
+    "callable": {
+      "example_form": "callable_source_language",
+      "representation_owner": "PY.DOCSTRING.NUMPY",
+      "lifecycle": "active_enforced",
+      "authority": "authorized_fresh_pilot",
+      "fingerprint_scope": "source_and_displayed_expected_result"
+    },
+    "reporter_binding": [
+      {"source": "parsed_args"},
+      {"literal": null}
+    ]
   },
   "rejected": {
     "audience": "See the repository design document for required mode behavior.",
@@ -25,6 +36,9 @@
       "deferred_record": "S3-MIG-001",
       "required_count": 2,
       "current_count": 0
+    },
+    "reporter_binding": {
+      "source": "environment_variable"
     }
   },
   "boundary": {

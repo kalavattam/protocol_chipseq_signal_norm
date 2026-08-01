@@ -1,5 +1,5 @@
 {
-  "schema_version": 2,
+  "schema_version": 3,
   "parameter_occurrence_dispositions": [
     {"id": "download_dir_scr", "path": "lib/bash/help/help_submit_download_fastqs.sh", "symbol": "help_submit_download_fastqs", "parameter": "dir_scr", "disposition": "enrolled_member"},
     {"id": "install_dry_run", "path": "install/scripts/install_envs_entrypoint.sh", "symbol": "<file>", "parameter": "dry_run", "disposition": "unresolved_review_candidate"},
@@ -67,6 +67,28 @@
       "availability": "installed",
       "required_runtime_facts": "complete",
       "status": "accepted_pilot"
+    },
+    {
+      "id": "compute_pseudo_cli",
+      "path": "src/protocol_chipseq_signal_norm/cli/compute_pseudo.py",
+      "symbol": "parse_args",
+      "language": "python",
+      "kind": "installed_help",
+      "audience": "command_user",
+      "availability": "installed",
+      "required_runtime_facts": "complete",
+      "status": "registered"
+    },
+    {
+      "id": "compute_pseudo_callable",
+      "path": "src/protocol_chipseq_signal_norm/cli/compute_pseudo.py",
+      "symbol": "combine_pseudo_sym",
+      "language": "python",
+      "kind": "callable_documentation",
+      "audience": "python_caller",
+      "availability": "installed",
+      "required_runtime_facts": "direct_call_contract",
+      "status": "registered"
     }
   ],
   "token_quoting": {
@@ -274,6 +296,14 @@
           "parameter": "dp",
           "owner": "PARAMETER.DESCRIPTIONS",
           "evidence": "Parameters row at line 295: Maximum number of decimal places retained for finite emitted values."
+        },
+        {
+          "surface_id": "src/protocol_chipseq_signal_norm/cli/compute_pseudo.py::parse_args",
+          "path": "src/protocol_chipseq_signal_norm/cli/compute_pseudo.py",
+          "symbol": "parse_args",
+          "parameter": "dp",
+          "owner": "PARAMETER.DESCRIPTIONS",
+          "evidence": "argparse help: Maximum number of decimal places retained for finite emitted values."
         }
       ],
       "local_meanings": [],
@@ -546,6 +576,14 @@
           "parameter": "skp_pfx",
           "owner": "PARAMETER.DESCRIPTIONS",
           "evidence": "Parameters row at line 724: Comma-separated list of header prefixes to skip in metadata lines."
+        },
+        {
+          "surface_id": "src/protocol_chipseq_signal_norm/cli/compute_pseudo.py::parse_args",
+          "path": "src/protocol_chipseq_signal_norm/cli/compute_pseudo.py",
+          "symbol": "parse_args",
+          "parameter": "skp_pfx",
+          "owner": "PARAMETER.DESCRIPTIONS",
+          "evidence": "argparse help: Comma-separated list of header prefixes to skip in bedGraph file(s)."
         }
       ],
       "local_meanings": [],
@@ -1039,6 +1077,14 @@
           "parameter": "fil_A",
           "owner": "PARAMETER.DESCRIPTIONS",
           "evidence": "Parameters row at line 764: First bedGraph input file, file A."
+        },
+        {
+          "surface_id": "src/protocol_chipseq_signal_norm/cli/compute_pseudo.py::parse_args",
+          "path": "src/protocol_chipseq_signal_norm/cli/compute_pseudo.py",
+          "symbol": "parse_args",
+          "parameter": "fil_A",
+          "owner": "PARAMETER.DESCRIPTIONS",
+          "evidence": "argparse help: First bedGraph input file, file A."
         }
       ],
       "local_meanings": [],
@@ -1056,6 +1102,14 @@
           "parameter": "fil_B",
           "owner": "PARAMETER.DESCRIPTIONS",
           "evidence": "Parameters row at line 767: Second bedGraph input file, file B."
+        },
+        {
+          "surface_id": "src/protocol_chipseq_signal_norm/cli/compute_pseudo.py::parse_args",
+          "path": "src/protocol_chipseq_signal_norm/cli/compute_pseudo.py",
+          "symbol": "parse_args",
+          "parameter": "fil_B",
+          "owner": "PARAMETER.DESCRIPTIONS",
+          "evidence": "argparse help: Second bedGraph input file, file B."
         }
       ],
       "local_meanings": [],
@@ -1447,6 +1501,14 @@
           "parameter": "eps",
           "owner": "PARAMETER.DESCRIPTIONS",
           "evidence": "Parameters row at line 791: Zero tolerance epsilon or sentinel 'NA'."
+        },
+        {
+          "surface_id": "src/protocol_chipseq_signal_norm/cli/compute_pseudo.py::parse_args",
+          "path": "src/protocol_chipseq_signal_norm/cli/compute_pseudo.py",
+          "symbol": "parse_args",
+          "parameter": "eps",
+          "owner": "PARAMETER.DESCRIPTIONS",
+          "evidence": "argparse help: Zero tolerance epsilon in computation of pseudocount(s)."
         }
       ],
       "local_meanings": [],
@@ -1645,6 +1707,42 @@
       "example_fingerprints": [],
       "preservation": "exact",
       "authority": "semantic_reaudit_correction"
+    },
+    {
+      "surface_id": "compute_pseudo_cli",
+      "language": "python",
+      "owner": "compute_pseudo",
+      "example_form": "rendered_cli_invocation",
+      "representation_owner": "HELP.EXAMPLES",
+      "lifecycle": "active_enforced",
+      "deferred_record": null,
+      "disposition": "required_two",
+      "minimum_count": 2,
+      "existing_example_count": 2,
+      "example_fingerprints": [
+        "3bb5988904b76880b1d2e83b25d669c8dae9a71c31cef000e0dc624bf4a5295e",
+        "a6d06955471e60f06334952efff23ef27f48a30e59c02b445a2bac0b40b6191c"
+      ],
+      "preservation": "exact",
+      "authority": "authorized_fresh_pilot"
+    },
+    {
+      "surface_id": "compute_pseudo_callable",
+      "language": "python",
+      "owner": "combine_pseudo_sym",
+      "example_form": "callable_source_language",
+      "representation_owner": "PY.DOCSTRING.NUMPY",
+      "lifecycle": "active_enforced",
+      "deferred_record": null,
+      "disposition": "required_two",
+      "minimum_count": 2,
+      "existing_example_count": 2,
+      "example_fingerprints": [
+        "4e12e70137174ea79833f69e1915c080a1482db709965210112958716edbd74d",
+        "8dc4ad37084691022a98c6e2ec639882d3987f7172eb88fdb7ebe13fbdccab3d"
+      ],
+      "preservation": "exact",
+      "authority": "authorized_fresh_pilot"
     }
   ],
   "option_realizations": [
@@ -1842,6 +1940,12 @@
         ],
         "reporting": "python_bounded_verbose_argument_probe",
         "reporting_symbol": "_print_input_floor_arguments",
+        "reporting_call_arguments": [
+          {"source": "parsed_args"},
+          {"literal": null},
+          {"literal": null},
+          {"literal": ["track"]}
+        ],
         "reporting_probes": [
           [
             "--verbose",
@@ -1888,6 +1992,146 @@
             "10",
             "--siz_gen",
             "1000",
+            "--dp",
+            "6"
+          ]
+        ]
+      }
+    },
+    {
+      "surface_id": "compute_pseudo_cli",
+      "language": "python",
+      "status": "registered",
+      "logical_order": [
+        "help",
+        "verbose",
+        "fil_A",
+        "fil_B",
+        "skp_pfx",
+        "method",
+        "qntl_nz",
+        "coef",
+        "floor",
+        "eps",
+        "mode_nz",
+        "sym",
+        "dp",
+        "prt_jsn"
+      ],
+      "roles_reviewed": true,
+      "roles": {
+        "help": "help_reporting",
+        "verbose": "help_reporting",
+        "fil_A": "inputs",
+        "fil_B": "inputs",
+        "skp_pfx": "inputs",
+        "method": "mode_specific",
+        "qntl_nz": "mode_specific",
+        "coef": "mode_specific",
+        "floor": "mode_specific",
+        "eps": "mode_specific",
+        "mode_nz": "mode_specific",
+        "sym": "mode_specific",
+        "dp": "formatting",
+        "prt_jsn": "formatting"
+      },
+      "usage_rows": [
+        {
+          "members": ["help", "verbose"],
+          "rationale": "Help and verbosity are the approved reporting controls."
+        },
+        {
+          "members": ["fil_A", "fil_B", "skp_pfx"],
+          "rationale": "The required primary input, optional paired input, and header-prefix control form the input group."
+        },
+        {
+          "members": ["method", "qntl_nz", "coef", "floor", "eps", "mode_nz", "sym"],
+          "rationale": "Pseudocount selection, filtering, and symmetry controls form one mode-specific group."
+        },
+        {
+          "members": ["dp", "prt_jsn"],
+          "rationale": "Finite-value rendering and optional JSON representation form the output-formatting group."
+        }
+      ],
+      "surface_orders": {
+        "parser_registration": ["help", "verbose", "fil_A", "fil_B", "skp_pfx", "method", "qntl_nz", "coef", "floor", "eps", "mode_nz", "sym", "dp", "prt_jsn"],
+        "usage": ["help", "verbose", "fil_A", "fil_B", "skp_pfx", "method", "qntl_nz", "coef", "floor", "eps", "mode_nz", "sym", "dp", "prt_jsn"],
+        "options_parameters": ["help", "verbose", "fil_A", "fil_B", "skp_pfx", "method", "qntl_nz", "coef", "floor", "eps", "mode_nz", "sym", "dp", "prt_jsn"],
+        "reporting_order": ["verbose", "fil_A", "fil_B", "skp_pfx", "method", "qntl_nz", "coef", "floor", "eps", "mode_nz", "sym", "dp", "prt_jsn"]
+      },
+      "relationships": [
+        {
+          "kind": "adjacent",
+          "members": ["fil_A", "fil_B", "skp_pfx"]
+        },
+        {
+          "kind": "contiguous",
+          "members": ["method", "qntl_nz", "coef", "floor", "eps", "mode_nz", "sym"]
+        },
+        {
+          "kind": "same_group",
+          "members": ["dp", "prt_jsn"]
+        }
+      ],
+      "adapters": {
+        "parser": "python_argparse_ast_and_runtime_parser",
+        "parser_path": "src/protocol_chipseq_signal_norm/cli/compute_pseudo.py",
+        "rendered_help": "python_subprocess_help_sections",
+        "help_command": [
+          "{python}",
+          "src/protocol_chipseq_signal_norm/cli/compute_pseudo.py",
+          "--help"
+        ],
+        "reporting": "python_bounded_verbose_argument_probe",
+        "reporting_symbol": "_print_pseudo_arguments",
+        "reporting_call_arguments": [
+          {"source": "parsed_args"},
+          {"literal": null},
+          {"literal": ["track"]}
+        ],
+        "reporting_probes": [
+          [
+            "--verbose",
+            "--fil_A",
+            "signal_A.bdg",
+            "--fil_B",
+            "signal_B.bdg",
+            "--skp_pfx",
+            "track",
+            "--method",
+            "qntl_nz",
+            "--qntl_nz",
+            "1",
+            "--coef",
+            "0.01",
+            "--floor",
+            "0",
+            "--eps",
+            "0",
+            "--mode_nz",
+            "closed",
+            "--sym",
+            "max",
+            "--dp",
+            "6",
+            "--prt_jsn"
+          ],
+          [
+            "--verbose",
+            "--fil_A",
+            "signal_A.bdg",
+            "--skp_pfx",
+            "track",
+            "--method",
+            "frc_mdn_nz",
+            "--floor",
+            "0",
+            "--eps",
+            "0",
+            "--mode_nz",
+            "closed",
+            "--sym",
+            "none",
             "--dp",
             "6"
           ]
@@ -1985,6 +2229,7 @@
         ],
         "reporting": "not_applicable_no_parameter_reporting_surface",
         "reporting_symbol": null,
+        "reporting_call_arguments": [],
         "reporting_probes": []
       }
     }

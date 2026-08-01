@@ -18,14 +18,19 @@ Focused regressions for strict shell-help Examples documents.
 
 from __future__ import annotations
 
+import ast
 import copy
+import hashlib
 import json
+import tempfile
+import tomllib
 import unittest
 from pathlib import Path
 
 from dev.audit.help_examples import (
     Analysis,
     RepositoryResult,
+    _callable_example_blocks,
     accepted_function_aliases,
     analyze_help_document,
     classify_wrapper_source,
@@ -109,6 +114,50 @@ def rules(body: str) -> set[str]:
     """
 
     return {finding.rule_id for finding in analyze(body).findings}
+
+
+def callable_contracts(source: str) -> dict[str, object]:
+    """
+    Build an active callable disposition for one isolated source fixture.
+    """
+
+    function = next(
+        node
+        for node in ast.walk(ast.parse(source))
+        if isinstance(node, ast.FunctionDef) and node.name == "combine"
+    )
+    docstring = ast.get_docstring(function, clean=True)
+    assert docstring is not None
+    blocks, _, errors = _callable_example_blocks(docstring)
+    assert errors == []
+
+    return {
+        "surfaces": [
+            {
+                "id": "callable_fixture",
+                "path": "candidate.py",
+                "symbol": "combine",
+            },
+        ],
+        "examples": [
+            {
+                "surface_id": "callable_fixture",
+                "owner": "combine",
+                "lifecycle": "active_enforced",
+                "example_form": "callable_source_language",
+                "representation_owner": "PY.DOCSTRING.NUMPY",
+                "minimum_count": 2,
+                "existing_example_count": 2,
+                "example_fingerprints": [
+                    hashlib.sha256(block.encode()).hexdigest()
+                    for block in blocks
+                ],
+                "authority": "test_fixture",
+                "preservation": "exact",
+                "deferred_record": None,
+            },
+        ],
+    }
 
 
 class HelpExamplesTest(unittest.TestCase):
@@ -715,6 +764,129 @@ EOM
         self.assertEqual(callable_record["examples"], [])
         self.assertEqual(callable_record["example_fingerprints"], [])
         self.assertEqual(callable_record["deferred_record"], "S3-MIG-001")
+
+    def test_active_callable_examples_preserve_source_and_result_bytes(
+        self,
+    ) -> None:
+        source = (
+            REPO_ROOT
+            / "tests/fixtures/help_contracts/python_callable.py.fixture"
+        ).read_text(encoding="utf-8")
+        function = next(
+            node
+            for node in ast.walk(ast.parse(source))
+            if isinstance(node, ast.FunctionDef) and node.name == "combine"
+        )
+        docstring = ast.get_docstring(function, clean=True)
+        assert docstring is not None
+        blocks, signatures, errors = _callable_example_blocks(docstring)
+        changed_blocks, _, _ = _callable_example_blocks(
+            docstring.replace("(2.0, 2.0)", "(9.0, 9.0)", 1),
+        )
+
+        self.assertEqual(errors, [])
+        self.assertEqual(len(blocks), 2)
+        self.assertEqual(len(signatures), 2)
+        self.assertNotEqual(blocks[0], changed_blocks[0])
+
+    def test_callable_examples_are_syntax_checked_not_executed(self) -> None:
+        docstring = """Examples
+--------
+>>> raise RuntimeError("not executed")
+RuntimeError: not executed"""
+        blocks, signatures, errors = _callable_example_blocks(docstring)
+
+        self.assertEqual(len(blocks), 1)
+        self.assertEqual(len(signatures), 1)
+        self.assertEqual(errors, [])
+
+    def test_callable_example_faults_are_enforced_against_mutated_source(
+        self,
+    ) -> None:
+        source = (
+            REPO_ROOT
+            / "tests/fixtures/help_contracts/python_callable.py.fixture"
+        ).read_text(encoding="utf-8")
+        contracts = callable_contracts(source)
+        second_example = """\n    >>> combine(2.0, 4.0)\n    (3.0, 3.0)\n"""
+        mutations = {
+            "missing": source.replace("Examples", "Examplez", 1),
+            "invalid": source.replace(
+                "combine(1.0, 3.0)",
+                "not valid Python",
+                1,
+            ),
+            "undersized": source.replace(second_example, "", 1),
+            "duplicate": source.replace(
+                "combine(2.0, 4.0)",
+                "combine(1.0, 3.0)",
+                1,
+            ),
+            "source_drift": source.replace(
+                "combine(1.0, 3.0)",
+                "combine(1.0, 4.0)",
+                1,
+            ),
+            "result_drift": source.replace(
+                "(2.0, 2.0)",
+                "(9.0, 9.0)",
+                1,
+            ),
+        }
+        expected = {
+            "missing": {
+                "missing NumPy Examples section",
+                "registered count is 2, actual count is 0, and required minimum is 2",
+                "callable example source/result bytes differ from accepted fingerprints",
+            },
+            "invalid": {
+                "callable example source is not valid Python",
+                "registered count is 2, actual count is 1, and required minimum is 2",
+                "callable example source/result bytes differ from accepted fingerprints",
+            },
+            "undersized": {
+                "registered count is 2, actual count is 1, and required minimum is 2",
+                "callable example source/result bytes differ from accepted fingerprints",
+            },
+            "duplicate": {
+                "callable examples have duplicate Python sources",
+                "callable example source/result bytes differ from accepted fingerprints",
+            },
+            "source_drift": {
+                "callable example source/result bytes differ from accepted fingerprints",
+            },
+            "result_drift": {
+                "callable example source/result bytes differ from accepted fingerprints",
+            },
+        }
+
+        for label, mutated in mutations.items():
+            with (
+                self.subTest(label=label),
+                tempfile.TemporaryDirectory() as raw,
+            ):
+                root = Path(raw)
+                (root / "candidate.py").write_text(mutated, encoding="utf-8")
+                findings, _ = registered_example_dispositions(root, contracts)
+
+                self.assertEqual(
+                    {finding.message for finding in findings},
+                    expected[label],
+                )
+
+    def test_examples_rule_routes_contract_and_python_changes(self) -> None:
+        rules = tomllib.loads(
+            (REPO_ROOT / "dev/config/rules.toml").read_text(encoding="utf-8"),
+        )["rule"]
+        examples_rule = next(
+            item for item in rules if item["rule_id"] == "HELP.EXAMPLES"
+        )
+
+        assert (
+            "dev/config/help_contracts.json"
+            in examples_rule["applicable_paths"]
+        )
+        assert "src/**/*.py" in examples_rule["applicable_paths"]
 
 
 if __name__ == "__main__":

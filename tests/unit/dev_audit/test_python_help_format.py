@@ -48,9 +48,24 @@ def test_formatter_is_greedy_value_preserving_and_idempotent() -> None:
     assert format_source(actual) == actual
 
 
-def test_accepted_pilot_help_literals_are_already_canonical() -> None:
-    source = (
-        ROOT / "src/protocol_chipseq_signal_norm/cli/compute_input_floor.py"
-    ).read_text(encoding="utf-8")
+def test_formatter_preserves_unicode_literals_and_packs_them_greedily() -> (
+    None
+):
+    source = (FIXTURES / "help_format_unicode_input.py.fixture").read_text()
+    expected = (
+        FIXTURES / "help_format_unicode_expected.py.fixture"
+    ).read_text()
+    actual = format_source(source)
 
-    assert format_source(source) == source
+    assert actual == expected
+    assert rendered(actual) == rendered(source)
+    assert format_source(actual) == actual
+
+
+def test_accepted_pilot_help_literals_are_already_canonical() -> None:
+    for name in ("compute_input_floor.py", "compute_pseudo.py"):
+        source = (
+            ROOT / "src/protocol_chipseq_signal_norm/cli" / name
+        ).read_text(encoding="utf-8")
+
+        assert format_source(source) == source

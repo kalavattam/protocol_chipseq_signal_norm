@@ -21,7 +21,12 @@ import copy
 import json
 from pathlib import Path
 
-from dev.audit.help_option_order import render_help, validate_order
+import pytest
+from dev.audit.help_option_order import (
+    python_reporting_order,
+    render_help,
+    validate_order,
+)
 
 ROOT = Path(__file__).resolve().parents[3]
 CONFIG = ROOT / "dev/config/help_contracts.json"
@@ -205,6 +210,32 @@ def test_actual_reporting_order_fault_is_detected() -> None:
     assert any(
         "reporting_order differs" in item["message"] for item in findings
     )
+
+
+def test_reporter_bindings_are_closed_and_checked_before_invocation() -> None:
+    record = next(
+        item
+        for item in data()["option_realizations"]
+        if item["surface_id"] == "compute_pseudo_cli"
+    )
+    adapters = record["adapters"]
+
+    with pytest.raises(RuntimeError, match="closed data binding"):
+        python_reporting_order(
+            ROOT,
+            Path(adapters["parser_path"]),
+            adapters["reporting_symbol"],
+            adapters["reporting_probes"],
+            [{"source": "environment_variable"}],
+        )
+    with pytest.raises(RuntimeError, match="do not match"):
+        python_reporting_order(
+            ROOT,
+            Path(adapters["parser_path"]),
+            adapters["reporting_symbol"],
+            adapters["reporting_probes"],
+            [{"source": "parsed_args"}],
+        )
 
 
 def test_actual_shell_parser_missing_option_is_detected() -> None:

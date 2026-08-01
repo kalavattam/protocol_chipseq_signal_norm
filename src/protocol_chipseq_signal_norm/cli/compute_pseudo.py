@@ -40,6 +40,8 @@ from protocol_chipseq_signal_norm.utilities.utils_check import (
 )
 from protocol_chipseq_signal_norm.utilities.utils_cli import (
     CapArgumentParser,
+    _HelpExample,
+    _SectionedHelpConfig,
     add_help_cap,
 )
 from protocol_chipseq_signal_norm.utilities.utils_io import (
@@ -89,18 +91,32 @@ def combine_pseudo_sym(
     Raises
     ------
     ValueError
-        If 'mode' is not one of the recognized options.
+        If both pseudocounts are finite and 'mode' is not a recognized
+        symmetrization rule.
 
     Notes
     -----
-    - If mode == "none", then return as-is, even if a nonfinite value is
-      present.
-    - Symmetric modes:
-        + If both are finite, then combine as requested.
+    - 'none' returns both inputs as-is, including nonfinite values. With two
+      finite inputs, 'max' and 'min' select the respective input; 'arith',
+      'geom', and 'harm' use the arithmetic, geometric, and harmonic means;
+      and 'use_A' and 'use_B' copy the selected input to both outputs.
+    - For finite inputs, 'geom' falls back to the minimum with a stderr
+      warning if either input is negative; 'harm' does the same if either
+      input is nonpositive.
+    - For every mode except 'none':
         + If exactly one is finite, then mirror the finite value while
           issuing a warning.
         + If both are nonfinite, then return as-is (i.e., let the user
-          decide how to proceed) while issuing a warning.
+          decide how to proceed) while issuing a warning. These nonfinite
+          paths do not validate 'mode'.
+
+    Examples
+    --------
+    >>> combine_pseudo_sym(1.0, 3.0, mode="arith")
+    (2.0, 2.0)
+
+    >>> combine_pseudo_sym(1.0, 3.0, mode="use_A")
+    (1.0, 1.0)
     """
 
     if mode == "none":
@@ -193,6 +209,46 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
             "Compute data-driven pseudocount(s) for one (or two) bedGraph "
             "track(s)."
         ),
+        prog="compute_pseudo",
+        _sectioned_help=_SectionedHelpConfig(
+            usage_rows=(
+                ("help", "verbose"),
+                ("fil_A", "fil_B", "skp_pfx"),
+                (
+                    "method",
+                    "qntl_nz",
+                    "coef",
+                    "floor",
+                    "eps",
+                    "mode_nz",
+                    "sym",
+                ),
+                ("dp", "prt_jsn"),
+            ),
+            examples=(
+                _HelpExample(
+                    description=(
+                        "Compute a default pseudocount from one bedGraph "
+                        "track."
+                    ),
+                    command_lines=("compute_pseudo --fil_A signal_A.bdg",),
+                ),
+                _HelpExample(
+                    description=(
+                        "Compute first-percentile pseudocounts and "
+                        "symmetrize them by maximum."
+                    ),
+                    command_lines=(
+                        "compute_pseudo",
+                        "--fil_A signal_A.bdg",
+                        "--fil_B signal_B.bdg",
+                        "--method qntl_nz",
+                        "--qntl_nz 1",
+                        "--sym max",
+                    ),
+                ),
+            ),
+        ),
     )
     add_help_cap(parser)
     parser.add_argument(
@@ -211,7 +267,8 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         required=True,
         help=(
             "First bedGraph input file, file A. Use '-' for stdin; '.gz' is "
-            "handled.\n\n"
+            "handled.\n"
+            "\n"
         ),
     )
     parser.add_argument(
@@ -221,7 +278,20 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         help=(
             "Second bedGraph input file, file B. This file is optional for "
             "single-file pseudocount modes; use '-' for stdin; '.gz' is "
-            "handled.\n\n"
+            "handled.\n"
+            "\n"
+        ),
+    )
+    parser.add_argument(
+        "-sp",
+        "--skp_pfx",
+        dest="skp_pfx",
+        type=str,
+        default=",".join(DEF_SKP_PFX),
+        help=(
+            "Comma-separated list of header prefixes to skip in bedGraph "
+            "file(s) (default: %(default)s).\n"
+            "\n"
         ),
     )
 
@@ -243,13 +313,14 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
             "    - If '--method qntl_nz', set percentile with '--qntl_nz' "
             "[decimals OK (e.g., 0.1 = 0.1th percentile); nearest-rank "
             "determined via 'round'].\n"
-            "    - 'nonzero' means '|x| > eps' (via '--eps' as defined by "
-            "'--mode_nz').\n"
+            "    - 'nonzero' means '|x| > eps' with '--mode_nz closed', '|x| "
+            ">= eps' with '--mode_nz open', and every finite value with "
+            "'--mode_nz off'.\n"
             "    - If '--coef' is omitted, then defaults to '--coef 0.01' for "
             "'--method frc_*' and '--coef 1.0' for '--method min_nz'.\n"
             "    - '--method min_nz' typically needs a larger coef (e.g., "
-            "0.1–1.0) in comparison to '--method frc_*' (e.g., 0.01)."
-            "\n\n"
+            "0.1–1.0) in comparison to '--method frc_*' (e.g., 0.01).\n"
+            "\n"
         ),
     )
     parser.add_argument(
@@ -261,7 +332,8 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         help=(
             "Quantile in percent for '--method qntl_nz' (0..100). Decimals "
             "are allowed (e.g., 0.5 = 0.5th percentile). Ignored if "
-            "'--method' is not 'qntl_nz' (default: %(default)s).\n\n"
+            "'--method' is not 'qntl_nz' (default: %(default)s).\n"
+            "\n"
         ),
     )
     parser.add_argument(
@@ -273,7 +345,8 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         help=(
             "Coefficient for median, mean, and min methods. If not specified, "
             "then defaults to 0.01 for '--method frc_mdn_nz' and '--method "
-            "frc_avg_nz', or 1.0 for '--method min_nz'.\n\n"
+            "frc_avg_nz', or 1.0 for '--method min_nz'.\n"
+            "\n"
         ),
     )
     parser.add_argument(
@@ -284,7 +357,8 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         default=0.0,
         help=(
             "Lower bound for computation of pseudocount(s) (default: "
-            "%(default)s).\n\n"
+            "%(default)s).\n"
+            "\n"
         ),
     )
     parser.add_argument(
@@ -300,7 +374,8 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
             "When '--mode_nz closed' (default), values with '|x| <= ε' are "
             "treated as zero and excluded from statistics; with '--mode_nz "
             "open', values with '|x| < ε' are excluded; with '--mode_nz off', "
-            "ε-based filtering is disabled.\n\n"
+            "ε-based filtering is disabled.\n"
+            "\n"
         ),
     )
     parser.add_argument(
@@ -313,7 +388,8 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
             "Epsilon/zero-handling mode for selecting 'nonzero' bins:\n"
             "    - closed (default)  drop values with '|x| <= eps'.\n"
             "    - open              drop values with '|x| < eps'.\n"
-            "    - off               disable 'eps'-based zero filtering.\n\n"
+            "    - off               disable 'eps'-based zero filtering.\n"
+            "\n"
         ),
     )
 
@@ -334,12 +410,22 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         default="none",
         help=(
             "Symmetrize pseudocounts across A and B.\n"
+            "    - none returns A and B as computed; max/min select the "
+            "larger/smaller value; arith/geom/harm use "
+            "arithmetic/geometric/harmonic means; use_A/use_B copy A/B to "
+            "both outputs.\n"
+            "    - With finite values, geom falls back to min for a negative "
+            "input and harm falls back to min for a nonpositive input; each "
+            "fallback writes a warning to stderr.\n"
+            "    - In any non-none mode, one finite value is mirrored with a "
+            "warning; two nonfinite values are retained with a warning.\n"
             "    - If both A AND B are given, apply the chosen rule to "
             "'(pseudo_A, pseudo_B)', then print 'pseudo_A:pseudo_B'.\n"
             "    - If only A is given AND '--sym' is provided AND NOT 'none', "
             "mirror A to B and print: 'pseudo_A:pseudo_B'.\n"
             "    - If only A is given AND '--sym' is omitted OR '--sym none', "
-            "print a single value: 'pseudo_A'.\n\n"
+            "print a single value: 'pseudo_A'.\n"
+            "\n"
         ),
     )
 
@@ -351,18 +437,8 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         default=24,
         help=(
             "Maximum number of decimal places retained for finite emitted "
-            "values (default: %(default)s).\n\n"
-        ),
-    )
-    parser.add_argument(
-        "-sp",
-        "--skp_pfx",
-        dest="skp_pfx",
-        type=str,
-        default=",".join(DEF_SKP_PFX),
-        help=(
-            "Comma-separated list of header prefixes to skip in bedGraph "
-            "file(s) (default: %(default)s).\n\n"
+            "values (default: %(default)s).\n"
+            "\n"
         ),
     )
     parser.add_argument(
@@ -383,6 +459,50 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     return parser.parse_args(argv_parse)
 
 
+def _print_pseudo_arguments(
+    args: argparse.Namespace,
+    coef_eff: float | None,
+    skp_pfx: tuple[str, ...],
+) -> None:
+    """
+    Print the verbose argument banner in the reviewed semantic order.
+    """
+
+    with redirect_stdout(sys.stderr):
+        print("####################################")
+        print("## Arguments for 'compute_pseudo' ##")
+        print("####################################")
+        print("")
+        print("--verbose")
+        print(f"--fil_A   {args.fil_A}")
+
+        if getattr(args, "fil_B", None):
+            print(f"--fil_B   {args.fil_B}")
+
+        print(f"--skp_pfx {skp_pfx}")
+        print(f"--method  {args.method}")
+
+        if args.method == "qntl_nz":
+            print(f"--qntl_nz {args.qntl_nz}")
+
+        if coef_eff is not None and coef_eff != args.coef:
+            print(f"--coef    {args.coef}  ## coef_eff = {coef_eff} ##")
+        else:
+            print(f"--coef    {args.coef}")
+
+        print(f"--floor   {args.floor}")
+        print(f"--eps     {args.eps}")
+        print(f"--mode_nz {args.mode_nz}")
+        print(f"--sym     {args.sym}")
+        print(f"--dp     {args.dp}")
+
+        if args.prt_jsn:
+            print("--prt_jsn")
+
+        print("")
+        print("")
+
+
 def main(argv: list[str] | None = None) -> int:
     """
     Execute the primary control flow for the script.
@@ -401,16 +521,18 @@ def main(argv: list[str] | None = None) -> int:
     Raises
     ------
     SystemExit
-        For help, invalid numeric or method arguments, input errors, malformed
-        bedGraph rows, or strict JSON serialization failures.
+        For help, parser rejection, invalid numeric arguments, or missing and
+        conflicting input paths.
 
     Notes
     -----
     Inputs are filtered through '--eps' and '--mode_nz' before pseudocount
-    computation. Pairwise values can be symmetrized with '--sym'. With
-    '--prt_jsn', the command also prints a strict one-line JSON summary that
-    rejects non-finite values. Failure diagnostics and warnings about empty
-    inputs, zero pseudocounts, or symmetrization are written to stderr.
+    computation; malformed or nonnumeric bedGraph rows are skipped by the row
+    iterator. Pairwise values can be symmetrized with '--sym'. With
+    '--prt_jsn', the command prints a strict one-line JSON summary only when
+    all serialized values are finite; otherwise it warns on stderr, omits the
+    JSON line, and returns zero. Warnings about empty inputs, zero
+    pseudocounts, or symmetrization are written to stderr.
     """
 
     args = parse_args(argv)
@@ -457,42 +579,7 @@ def main(argv: list[str] | None = None) -> int:
     mode_nz = args.mode_nz
 
     if args.verbose:
-        with redirect_stdout(sys.stderr):
-            print("####################################")
-            print("## Arguments for 'compute_pseudo' ##")
-            print("####################################")
-            print("")
-            print("--verbose")
-
-            print(f"--fil_A   {args.fil_A}")
-
-            if getattr(args, "fil_B", None):
-                print(f"--fil_B   {args.fil_B}")
-
-            print(f"--method  {args.method}")
-
-            if args.method == "qntl_nz":
-                print(f"--qntl_nz {args.qntl_nz}")
-
-            if coef_eff is not None and coef_eff != args.coef:
-                print(f"--coef    {args.coef}  ## coef_eff = {coef_eff} ##")
-            else:
-                print(f"--coef    {args.coef}")
-
-            print(f"--floor   {args.floor}")
-
-            print(f"--eps     {args.eps}")
-            print(f"--mode_nz {mode_nz}")
-            print(f"--sym     {args.sym}")
-
-            print(f"--dp     {args.dp}")
-            print(f"--skp_pfx {skp_pfx}")
-
-            if args.prt_jsn:
-                print("--prt_jsn")
-
-            print("")
-            print("")
+        _print_pseudo_arguments(args, coef_eff, skp_pfx)
 
     vals_a = list(
         iter_vals_bdg(

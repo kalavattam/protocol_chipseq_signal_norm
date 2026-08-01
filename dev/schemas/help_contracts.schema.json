@@ -18,7 +18,7 @@
   ],
   "properties": {
     "schema_version": {
-      "const": 2
+      "const": 3
     },
     "parameter_occurrence_dispositions": {
       "type": "array",
@@ -381,7 +381,11 @@
           "const": "exact"
         },
         "authority": {
-          "enum": ["accepted_phase_a_b", "semantic_reaudit_correction"]
+          "enum": [
+            "accepted_phase_a_b",
+            "semantic_reaudit_correction",
+            "authorized_fresh_pilot"
+          ]
         }
       },
       "allOf": [
@@ -570,7 +574,8 @@
             "help_command",
             "reporting",
             "reporting_symbol",
-            "reporting_probes"
+            "reporting_probes",
+            "reporting_call_arguments"
           ],
           "properties": {
             "parser": {"$ref": "#/$defs/nonemptyString"},
@@ -591,12 +596,38 @@
                 "type": "array",
                 "items": {"type": "string"}
               }
+            },
+            "reporting_call_arguments": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/reportingCallArgument"
+              }
             }
           },
           "additionalProperties": false
         }
       },
       "additionalProperties": false
+    },
+    "reportingCallArgument": {
+      "oneOf": [
+        {
+          "type": "object",
+          "required": ["source"],
+          "properties": {
+            "source": {"const": "parsed_args"}
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["literal"],
+          "properties": {
+            "literal": true
+          },
+          "additionalProperties": false
+        }
+      ]
     },
     "formatVocabulary": {
       "type": "object",

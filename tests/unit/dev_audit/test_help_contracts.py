@@ -50,7 +50,7 @@ def test_example_forms_separate_applicability_from_representation() -> None:
         if item["surface_id"] == "compute_input_floor_callable"
     )
 
-    assert payload["schema_version"] == 2
+    assert payload["schema_version"] == 3
     assert callable_record == {
         "surface_id": "compute_input_floor_callable",
         "language": "python",
@@ -67,6 +67,57 @@ def test_example_forms_separate_applicability_from_representation() -> None:
         "authority": "semantic_reaudit_correction",
     }
     assert validate_contract(ROOT, payload) == []
+
+
+def test_fresh_pilot_records_require_closed_schema_three_data() -> None:
+    payload = data()
+    callable_record = next(
+        item
+        for item in payload["examples"]
+        if item["surface_id"] == "compute_pseudo_callable"
+    )
+    realization = next(
+        item
+        for item in payload["option_realizations"]
+        if item["surface_id"] == "compute_pseudo_cli"
+    )
+
+    assert callable_record["authority"] == "authorized_fresh_pilot"
+    assert callable_record["lifecycle"] == "active_enforced"
+    assert realization["adapters"]["reporting_call_arguments"] == [
+        {"source": "parsed_args"},
+        {"literal": None},
+        {"literal": ["track"]},
+    ]
+    assert validate_contract(ROOT, payload) == []
+
+
+def test_schema_three_rejects_unknown_authority_and_reporter_binding() -> None:
+    payload = data()
+    record = next(
+        item
+        for item in payload["examples"]
+        if item["surface_id"] == "compute_pseudo_callable"
+    )
+    record["authority"] = "unreviewed"
+
+    assert "HELP.CONTRACT.SCHEMA" in {
+        item["rule_id"] for item in validate_contract(ROOT, payload)
+    }
+
+    payload = data()
+    record = next(
+        item
+        for item in payload["option_realizations"]
+        if item["surface_id"] == "compute_pseudo_cli"
+    )
+    record["adapters"]["reporting_call_arguments"][0] = {
+        "source": "environment_variable"
+    }
+
+    assert "HELP.CONTRACT.SCHEMA" in {
+        item["rule_id"] for item in validate_contract(ROOT, payload)
+    }
 
 
 def test_deferred_example_record_is_bounded_to_approved_destination() -> None:
@@ -119,7 +170,9 @@ def test_incomplete_nested_record_is_a_schema_finding() -> None:
     }
 
 
-def test_usage_rows_require_complete_unique_membership_and_rationales() -> None:
+def test_usage_rows_require_complete_unique_membership_and_rationales() -> (
+    None
+):
     payload = data()
     payload["option_realizations"][0]["usage_rows"][0]["members"].append(
         "mode",
@@ -130,7 +183,12 @@ def test_usage_rows_require_complete_unique_membership_and_rationales() -> None:
     }
 
     payload = data()
-    payload["option_realizations"][1]["usage_rows"][0]["rationale"] = " "
+    record = next(
+        item
+        for item in payload["option_realizations"]
+        if item["surface_id"] == "combine_parts_scaling_factor_help"
+    )
+    record["usage_rows"][0]["rationale"] = " "
 
     assert "HELP.CONTRACT.APPLICABILITY" in {
         item["rule_id"] for item in validate_contract(ROOT, payload)

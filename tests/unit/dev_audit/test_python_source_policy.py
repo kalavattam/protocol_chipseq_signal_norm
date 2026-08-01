@@ -48,6 +48,7 @@ from dev.audit.python_source_policy import (
     parse_args,
 )
 from dev.tools.markdown_format import _rebase_details
+from dev.tools.python_help_format import format_source
 
 ROOT = Path(__file__).resolve().parents[3]
 FIXTURES = ROOT / "tests" / "fixtures" / "python_source_policy"
@@ -1107,6 +1108,32 @@ def test_help_literals_use_greedy_wrapping_and_preserve_value() -> None:
     )
 
     assert help_value(before) == help_value(after)
+
+
+def test_unicode_help_formatter_matches_cli_width_policy() -> None:
+    """
+    Require Unicode-preserving formatter widths to match emitted literals.
+    """
+
+    source = (FIXTURES / "help_format_unicode_input.py.fixture").read_text(
+        encoding="utf-8",
+    )
+    expected = (
+        FIXTURES / "help_format_unicode_expected.py.fixture"
+    ).read_text(encoding="utf-8")
+    joined = expected.replace('"\n            "available', "available")
+
+    assert format_source(source) == expected
+    assert rule_messages(source, RULE_CLI_HELP_LAYOUT) == [
+        "parse_args help line breaks before a prose word that would still fit "
+        "within 79 columns",
+    ]
+    assert rule_messages(expected, RULE_CLI_HELP_LAYOUT) == []
+    assert rule_messages(joined, RULE_CLI_HELP_LAYOUT) == [
+        "splittable static parse_args help source line exceeds 79 columns",
+    ]
+    assert help_value(source) == help_value(expected)
+    assert format_source(expected) == expected
 
 
 def test_single_static_help_boundaries_and_dynamic_exclusion() -> None:

@@ -1636,6 +1636,82 @@ def _example_source_fingerprints(text: str) -> list[str]:
     ]
 
 
+def _callable_example_blocks(
+    docstring: str,
+) -> tuple[list[str], list[str], list[str]]:
+    """
+    Return exact callable example blocks, source signatures, and errors.
+
+    Each block contains both its displayed Python source and expected result;
+    its fingerprint therefore protects both rather than source alone.
+    """
+
+    match = re.search(
+        r"(?ms)^Examples\n-+\n(?P<body>.*?)(?=^[A-Z][A-Za-z ]+\n-+\n|\Z)",
+        docstring,
+    )
+    if match is None:
+        return [], [], ["missing NumPy Examples section"]
+
+    blocks: list[str] = []
+    signatures: list[str] = []
+    errors: list[str] = []
+    for paragraph in match.group("body").strip().split("\n\n"):
+        lines = paragraph.splitlines()
+        if not lines or not lines[0].startswith(">>> "):
+            errors.append("callable example must begin with a Python prompt")
+            continue
+        source: list[str] = []
+        position = 0
+        while position < len(lines) and lines[position].startswith(
+            (">>> ", "... "),
+        ):
+            source.append(lines[position][4:])
+            position += 1
+        expected = lines[position:]
+        if not expected or any(not line.strip() for line in expected):
+            errors.append("callable example must display an expected result")
+            continue
+        try:
+            tree = ast.parse("\n".join(source))
+        except SyntaxError:
+            errors.append("callable example source is not valid Python")
+            continue
+        blocks.append("\n".join(lines))
+        signatures.append(ast.dump(tree, include_attributes=False))
+
+    return blocks, signatures, errors
+
+
+def _registered_callable_docstring(
+    root: Path,
+    surface: dict[str, object],
+) -> tuple[str, int]:
+    """
+    Extract one registered Python callable docstring without importing it.
+    """
+
+    path = root / str(surface["path"])
+    tree = ast.parse(path.read_text(encoding="utf-8"))
+    symbol = str(surface["symbol"])
+    function = next(
+        (
+            node
+            for node in ast.walk(tree)
+            if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))
+            and node.name == symbol
+        ),
+        None,
+    )
+    if function is None:
+        raise RuntimeError(f"registered callable does not exist: {symbol}")
+    docstring = ast.get_docstring(function, clean=True)
+    if docstring is None:
+        raise RuntimeError(f"registered callable lacks a docstring: {symbol}")
+
+    return docstring, function.lineno
+
+
 def registered_example_dispositions(
     root: Path,
     contracts: dict[str, object],
@@ -1672,6 +1748,82 @@ def registered_example_dispositions(
                     "deferred_record": disposition["deferred_record"],
                     "required_count": disposition["minimum_count"],
                     "current_count": disposition["existing_example_count"],
+                    "authority": disposition["authority"],
+                    "preservation": disposition["preservation"],
+                },
+            )
+            continue
+        if disposition["example_form"] == "callable_source_language":
+            try:
+                docstring, line = _registered_callable_docstring(root, surface)
+            except RuntimeError as error:
+                findings.append(
+                    Finding(RULE_REQUIRED, path, 1, owner, str(error)),
+                )
+                continue
+            blocks, signatures, errors = _callable_example_blocks(docstring)
+            for message in errors:
+                findings.append(
+                    Finding(RULE_COMPLETE, path, line, owner, message)
+                )
+            if len(signatures) != len(set(signatures)):
+                findings.append(
+                    Finding(
+                        RULE_SIGNATURE_DUPLICATE,
+                        path,
+                        line,
+                        owner,
+                        "callable examples have duplicate Python sources",
+                    ),
+                )
+            count = len(blocks)
+            minimum = int(disposition["minimum_count"])
+            existing = int(disposition["existing_example_count"])
+            if count < minimum or count != existing:
+                findings.append(
+                    Finding(
+                        RULE_COUNT,
+                        path,
+                        line,
+                        owner,
+                        f"registered count is {existing}, actual count is "
+                        f"{count}, and required minimum is {minimum}",
+                    ),
+                )
+            fingerprints = [
+                hashlib.sha256(block.encode()).hexdigest() for block in blocks
+            ]
+            if fingerprints != disposition["example_fingerprints"]:
+                findings.append(
+                    Finding(
+                        RULE_COMPLETE,
+                        path,
+                        line,
+                        owner,
+                        "callable example source/result bytes differ from "
+                        "accepted fingerprints",
+                    ),
+                )
+            inventory.append(
+                {
+                    "identity": surface_id,
+                    "path": path,
+                    "owner": owner,
+                    "kind": "registered_python_callable",
+                    "status": "strict_green"
+                    if not errors
+                    and len(signatures) == len(set(signatures))
+                    and count == existing
+                    and fingerprints == disposition["example_fingerprints"]
+                    else "strict_violation",
+                    "examples": blocks,
+                    "example_fingerprints": fingerprints,
+                    "example_form": disposition["example_form"],
+                    "representation_owner": disposition[
+                        "representation_owner"
+                    ],
+                    "lifecycle": disposition["lifecycle"],
+                    "deferred_record": disposition["deferred_record"],
                     "authority": disposition["authority"],
                     "preservation": disposition["preservation"],
                 },
@@ -1775,6 +1927,8 @@ def scan_repository(
     ----------
     root : Path
         Repository root containing maintained help owners and registrations.
+    contracts : dict[str, object] | None
+        Registered example contracts, or None to load the repository default.
 
     Returns
     -------

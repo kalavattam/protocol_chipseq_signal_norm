@@ -20,6 +20,7 @@ from __future__ import annotations
 import argparse
 import ast
 import contextlib
+import inspect
 import io
 import json
 import os
@@ -218,6 +219,7 @@ def python_reporting_order(
     parser_path: Path,
     symbol: str,
     probes: list[list[str]],
+    call_arguments: list[dict[str, Any]],
 ) -> list[str]:
     """
     Probe the actual Python verbose argument reporter without running work.
@@ -267,12 +269,51 @@ def python_reporting_order(
     )
     parse_args = namespace["parse_args"]
     reporter = namespace[symbol]
+    if not callable(reporter):
+        raise RuntimeError(f"verbose reporter is not callable: {symbol}")
+
+    signature = inspect.signature(reporter)
+    binding_kinds: list[tuple[str, Any]] = []
+    preflight: list[Any] = []
+    for binding in call_arguments:
+        if not isinstance(binding, dict):
+            raise RuntimeError("verbose reporter binding must be an object")
+        if set(binding) == {"source"} and binding["source"] == "parsed_args":
+            binding_kinds.append(("parsed_args", None))
+            preflight.append(object())
+            continue
+        if set(binding) == {"literal"}:
+            try:
+                literal = json.loads(
+                    json.dumps(binding["literal"], allow_nan=False),
+                )
+            except (TypeError, ValueError) as error:
+                raise RuntimeError(
+                    "verbose reporter literal must be JSON-only data",
+                ) from error
+            binding_kinds.append(("literal", literal))
+            preflight.append(literal)
+            continue
+        raise RuntimeError(
+            "verbose reporter binding is not a closed data binding"
+        )
+    try:
+        signature.bind(*preflight)
+    except TypeError as error:
+        raise RuntimeError(
+            f"verbose reporter bindings do not match {symbol}{signature}",
+        ) from error
+
     observed: list[list[str]] = []
     for arguments in probes:
         parsed = parse_args(arguments)
+        resolved = [
+            parsed if kind == "parsed_args" else value
+            for kind, value in binding_kinds
+        ]
         stream = io.StringIO()
         with contextlib.redirect_stderr(stream):
-            reporter(parsed, None, None, ("track",))
+            reporter(*resolved)
         sequence = [
             _logical(token)
             for token in OPTION_TOKEN.findall(stream.getvalue())
@@ -336,6 +377,7 @@ def actual_surfaces(
             parser_path,
             adapters["reporting_symbol"],
             adapters["reporting_probes"],
+            adapters["reporting_call_arguments"],
         )
 
     return {
@@ -452,9 +494,7 @@ def validate_order(
                     "same-group members do not share one reviewed role",
                 )
 
-        expected_usage_rows = [
-            row["members"] for row in record["usage_rows"]
-        ]
+        expected_usage_rows = [row["members"] for row in record["usage_rows"]]
 
         overrides = (surface_overrides or {}).get(surface_id)
         try:

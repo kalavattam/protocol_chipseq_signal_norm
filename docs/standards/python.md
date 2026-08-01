@@ -133,7 +133,7 @@ Keep a help value on one source line when it fits. When prose requires adjacent 
 
 Reflowing source literals must not change the rendered help value. Use one-line double-quoted literals under `PY.STRING.QUOTES`; do not use manual padding or trailing source whitespace to approach the limit.
 
-**Automation:** `dev/audit/python_source_policy.py` checks physical width and premature word-boundary breaks for recognized static literals. `dev/tools/python_help_format.py` provides preview-by-default formatting for the proven adjacent-literal subset and rejects write operations outside it. Focused fixtures prove exact rendered values and idempotence. Coverage is `subset`.
+**Automation:** `dev/audit/python_source_policy.py` checks physical width and premature word-boundary breaks for recognized static literals. `dev/tools/python_help_format.py` provides preview-by-default formatting for the proven adjacent-literal subset, measures the same Unicode-preserving one-line literal serialization that it emits, and rejects write operations outside it. Focused fixtures prove exact rendered values and idempotence. Coverage is `subset`.
 
 **Semantic remainder:** Decide whether a token is indivisible, an explicit break is meaningful, or clearer help prose should replace mechanical reflow.
 
