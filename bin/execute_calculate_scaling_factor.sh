@@ -579,7 +579,7 @@ function parse_args() {
                 shift 2
                 ;;
 
-            -at|--aln[_-]typ|--align[_-]typ)
+            -at|--align[_-]typ|--aln[_-]typ)
                 require_optarg "${1}" "${2:-}" "main" || {
                     echo >&2
                     help_execute_calculate_scaling_factor >&2
@@ -1248,7 +1248,6 @@ function print_state_debug() {
     if [[ "${verbose}" == "true" ]]; then
         print_banner_pretty "Hardcoded variable assignments"
         echo
-        echo "env_nam=${env_nam}"
         echo "dir_scr=${dir_scr}"
         echo "scr_sub=${scr_sub}"
         echo "scr_cmb=${scr_cmb}"
@@ -1261,6 +1260,7 @@ function print_state_debug() {
         echo
         echo "verbose=${verbose}"
         echo "dry_run=${dry_run}"
+        echo "env_nam=${env_nam}"
         echo "threads=${threads}"
         echo
         echo "mode=${mode}"

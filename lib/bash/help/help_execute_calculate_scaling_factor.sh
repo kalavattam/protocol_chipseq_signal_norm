@@ -28,7 +28,8 @@ Usage
     [--tbl_met <file>] [--cfg_met <file>] [--eqn <equation>]
     [--len_def <int>] [--len_mip <csv>] [--len_min <csv>] [--dep_mip <csv>] [--dep_min <csv>] [--dep_sip <csv>] [--dep_sin <csv>]
     [--dp <int>]
-    [--dir_eo <dir>] [--nam_job <str>] [--max_job <int>] [--slurm] [--time <time>]
+    [--dir_eo <dir>] [--nam_job <str>]
+    [--max_job <int>] [--slurm] [--time <time>]
 
 
   Coordinate calculation of siQ-ChIP or spike-in scaling factors for ChIP-seq data across one or more samples.
@@ -77,7 +78,7 @@ Parameters
 
     Supported aliases are normalized internally.
 
-  -at, --aln_typ, --align_typ : {'pe', 'paired', 'se', 'single', 'auto'}
+  -at, --align_typ, --aln_typ : {'pe', 'paired', 'se', 'single', 'auto'}
     Alignment layout type for input alignment files: 'pe', 'paired', 'se', 'single', or 'auto' (default: '${aln_typ}').
 
   -rf, --ref_fa : file
@@ -95,6 +96,18 @@ Parameters
   -csin, --csv_sin : list of file
     Comma-separated list of spike-in input alignment files. Required if '--mode spike'; ignored otherwise.
 
+  -fo, --fil_out : file
+    Output file path. Tab-delimited output file to which scaling factors and related values are written.
+
+  -f, --force : flag
+    Replace an existing final TSV after successful part-file assembly.
+
+  -np, --no_parts : flag
+    Remove per-sample part files after successful final-table assembly.
+
+  -nh, --no_header : flag
+    Leave the final TSV data-only instead of prepending the mode-specific header.
+
   -tb, --tbl_met : file
     siQ-ChIP metadata table. Required if '--mode siq'; ignored otherwise.
 
@@ -106,7 +119,7 @@ Parameters
 
     For descriptions of these equations, see Dickson et al., Sci Rep 2023 (PMID: 37160995). '5' corresponds to Equation 5 in the paper, and '6' corresponds to Equation 6.
 
-    The 'nd' suffix denotes versions of those equations without depth terms (i.e., "no depth"), meaning forms that omit terms containing \hat{R} and/or \hat{R}_\mathrm{in}. Use the 'nd' versions when applying them to ratios of normalized coverage.
+    The 'nd' suffix denotes versions of those equations without depth terms (i.e., 'no depth'), meaning forms that omit terms containing \hat{R} and/or \hat{R}_\mathrm{in}. Use the 'nd' versions when applying them to ratios of normalized coverage.
 
   -ld, --len_def : int
     Default fragment length for single-end libraries when a per-file fragment length is not otherwise available.
@@ -129,18 +142,6 @@ Parameters
   -dsn, --dep_sin : list of int
     Sequencing/alignment depth value(s) for spike-in input alignment files. May be a single broadcast value or a comma-separated list aligned to samples. Used only in 'spike' mode.
 
-  -fo, --fil_out : file
-    Output file path. Tab-delimited output file to which scaling factors and related values are written.
-
-  -f, --force : flag
-    Replace an existing final TSV after successful part-file assembly.
-
-  -np, --no_parts : flag
-    Remove per-sample part files after successful final-table assembly.
-
-  -nh, --no_header : flag
-    Leave the final TSV data-only instead of prepending the mode-specific header.
-
   -dp, --dp : int
     Maximum number of decimal places retained for finite emitted values (default: ${dp}).
 
@@ -149,8 +150,8 @@ Parameters
 
   -nj, --nam_job : str
     Job name prefix. If omitted, a mode-specific default is constructed:
-      - "calc_sf_siq_\${eqn}" for 'siq' mode
-      - "calc_sf_spike_\${method}" for 'spike' mode
+      - 'calc_sf_siq_\${eqn}' for 'siq' mode
+      - 'calc_sf_spike_\${method}' for 'spike' mode
 
   -mj, --max_job : int
     Maximum number of jobs to run concurrently (default: ${max_job}).
@@ -181,7 +182,7 @@ Notes
   - In 'siq' mode, '--method' is not used.
   - CRAM inputs require '--ref_fa'.
   - For required per-sample input vectors, reconstructed arrays must be non-empty and of matching length.
-  - Optional override vectors such as '--len_mip' or '--csv_dep_min' may contain either:
+  - Optional override vectors such as '--len_mip' or '--dep_min' may contain either:
     1. no value,
     2. one broadcast value, or
     3. one value per sample.

@@ -165,25 +165,66 @@ def _shell_pattern_logical(pattern: str) -> str:
     return value.replace("-", "_")
 
 
-def shell_parser_set(text: str) -> set[str]:
+def shell_function_text(text: str, symbol: str) -> str:
     """
-    Extract actual accepted logical long-option patterns from Shell case arms.
+    Return the bounded body of one named Shell function.
     """
 
-    result: set[str] = set()
-    for line in text.splitlines():
+    match = re.search(
+        rf"(?ms)^function {re.escape(symbol)}\(\) \{{\n"
+        r"(?P<body>.*?)^}\n",
+        text,
+    )
+    if match is None:
+        raise RuntimeError(f"Shell function not found: {symbol}")
+
+    return match.group("body")
+
+
+def shell_parser_order(
+    text: str,
+    alias_map: dict[str, str],
+) -> list[str]:
+    """
+    Extract ordered public logical options from bounded Shell parse_args.
+    """
+
+    result: list[str] = []
+    for line in shell_function_text(text, "parse_args").splitlines():
         match = re.match(r"^\s*(?P<patterns>-[^)]*)\)\s*$", line)
         if match is None:
             continue
-        result.update(
-            _shell_pattern_logical(value)
-            for value in re.findall(
-                r"--[A-Za-z][A-Za-z0-9_\[\]?-]*",
-                match.group("patterns"),
-            )
-        )
+        for value in re.findall(
+            r"--[A-Za-z][A-Za-z0-9_\[\]?-]*",
+            match.group("patterns"),
+        ):
+            logical = _shell_pattern_logical(value)
+            result.append(alias_map.get(logical, logical))
     if re.search(r"\^\(-h\|--h\[e\]\?lp\)\$", text):
-        result.add("help")
+        result.insert(0, "help")
+
+    return _deduplicate(result)
+
+
+def shell_reporting_order(
+    text: str,
+    symbol: str,
+    logical_options: set[str],
+) -> list[str]:
+    """
+    Extract registered argument rows from one bounded Shell reporter.
+    """
+
+    result: list[str] = []
+
+    for line in shell_function_text(text, symbol).splitlines():
+        match = re.match(
+            r'^\s*echo "(?P<label>[A-Za-z][A-Za-z0-9_]*)=',
+            line,
+        )
+
+        if match is not None and match.group("label") in logical_options:
+            result.append(match.group("label"))
     return result
 
 
@@ -354,11 +395,14 @@ def actual_surfaces(
     if record["language"] == "python":
         parser = python_parser_order(parser_text)
     else:
-        accepted = shell_parser_set(parser_text)
         alias_map = rendered_alias_map(rendered)
-        accepted = {alias_map.get(item, item) for item in accepted}
-        expected_set = set(record["logical_order"])
-        parser = parameters if accepted == expected_set else sorted(accepted)
+
+        if adapters["parser"] == "shell_bounded_parse_args_order":
+            parser = shell_parser_order(parser_text, alias_map)
+        else:
+            accepted = set(shell_parser_order(parser_text, alias_map))
+            expected_set = set(record["logical_order"])
+            parser = parameters if accepted == expected_set else sorted(accepted)
 
     reporting_expected = record["surface_orders"]["reporting_order"]
     if isinstance(reporting_expected, dict):
@@ -370,6 +414,12 @@ def actual_surfaces(
                 for text in overrides["reporting_texts"]
                 for token in OPTION_TOKEN.findall(text)
             ],
+        )
+    elif record["language"] == "shell":
+        reporting = shell_reporting_order(
+            overrides.get("reporting_text", parser_text),
+            adapters["reporting_symbol"],
+            set(reporting_expected),
         )
     else:
         reporting = python_reporting_order(

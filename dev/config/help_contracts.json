@@ -69,6 +69,17 @@
       "status": "accepted_pilot"
     },
     {
+      "id": "execute_calculate_scaling_factor_help",
+      "path": "lib/bash/help/help_execute_calculate_scaling_factor.sh",
+      "symbol": "help_execute_calculate_scaling_factor",
+      "language": "shell",
+      "kind": "installed_help",
+      "audience": "command_user",
+      "availability": "installed",
+      "required_runtime_facts": "complete",
+      "status": "registered"
+    },
+    {
       "id": "compute_pseudo_cli",
       "path": "src/protocol_chipseq_signal_norm/cli/compute_pseudo.py",
       "symbol": "parse_args",
@@ -855,7 +866,7 @@
           "symbol": "help_execute_calculate_scaling_factor",
           "parameter": "csv_mip",
           "owner": "PARAMETER.DESCRIPTIONS",
-          "evidence": "Parameters row at line 86: Comma-separated list of main IP alignment files."
+          "evidence": "Parameters row at line 87: Comma-separated list of main IP alignment files."
         }
       ],
       "local_meanings": [],
@@ -872,7 +883,7 @@
           "symbol": "help_execute_calculate_scaling_factor",
           "parameter": "csv_min",
           "owner": "PARAMETER.DESCRIPTIONS",
-          "evidence": "Parameters row at line 89: Comma-separated list of main input alignment files."
+          "evidence": "Parameters row at line 90: Comma-separated list of main input alignment files."
         }
       ],
       "local_meanings": [],
@@ -1694,6 +1705,24 @@
       "authority": "accepted_phase_a_b"
     },
     {
+      "surface_id": "execute_calculate_scaling_factor_help",
+      "language": "shell",
+      "owner": "execute_calculate_scaling_factor.sh",
+      "example_form": "rendered_cli_invocation",
+      "representation_owner": "HELP.EXAMPLES",
+      "lifecycle": "active_enforced",
+      "deferred_record": null,
+      "disposition": "required_two",
+      "minimum_count": 2,
+      "existing_example_count": 2,
+      "example_fingerprints": [
+        "b86d41b80497e67b58df704bdd20b0010d5af95fdfc228ad7ef5125d2b6bc30d",
+        "3565168e4f6a5ae7f63d38cf2f99d86d88fa49b93cbc1be1b24a21d75629ca40"
+      ],
+      "preservation": "exact",
+      "authority": "authorized_fresh_pilot"
+    },
+    {
       "surface_id": "compute_input_floor_callable",
       "language": "python",
       "owner": "compute_input_floor",
@@ -2229,6 +2258,167 @@
         ],
         "reporting": "not_applicable_no_parameter_reporting_surface",
         "reporting_symbol": null,
+        "reporting_call_arguments": [],
+        "reporting_probes": []
+      }
+    },
+    {
+      "surface_id": "execute_calculate_scaling_factor_help",
+      "language": "shell",
+      "status": "registered",
+      "logical_order": [
+        "help", "verbose", "dry_run", "env_nam", "threads", "mode",
+        "method", "aln_typ", "ref_fa", "csv_mip", "csv_min", "csv_sip",
+        "csv_sin", "fil_out", "force", "no_parts", "no_header", "tbl_met",
+        "cfg_met", "eqn", "len_def", "len_mip", "len_min", "dep_mip",
+        "dep_min", "dep_sip", "dep_sin", "dp", "dir_eo", "nam_job",
+        "max_job", "slurm", "time"
+      ],
+      "roles_reviewed": true,
+      "roles": {
+        "help": "help_reporting",
+        "verbose": "help_reporting",
+        "dry_run": "preview_no_write",
+        "env_nam": "execution_environment_resources",
+        "threads": "execution_environment_resources",
+        "mode": "operation_discriminant",
+        "method": "operation_discriminant",
+        "aln_typ": "inputs",
+        "ref_fa": "inputs",
+        "csv_mip": "inputs",
+        "csv_min": "inputs",
+        "csv_sip": "inputs",
+        "csv_sin": "inputs",
+        "fil_out": "output_targets",
+        "force": "output_lifecycle_cleanup",
+        "no_parts": "output_lifecycle_cleanup",
+        "no_header": "output_lifecycle_cleanup",
+        "tbl_met": "mode_specific",
+        "cfg_met": "mode_specific",
+        "eqn": "mode_specific",
+        "len_def": "mode_specific",
+        "len_mip": "mode_specific",
+        "len_min": "mode_specific",
+        "dep_mip": "mode_specific",
+        "dep_min": "mode_specific",
+        "dep_sip": "mode_specific",
+        "dep_sin": "mode_specific",
+        "dp": "formatting",
+        "dir_eo": "logging_job_names",
+        "nam_job": "logging_job_names",
+        "max_job": "scheduler_parallel",
+        "slurm": "scheduler_parallel",
+        "time": "scheduler_parallel"
+      },
+      "usage_rows": [
+        {
+          "members": ["help", "verbose", "dry_run"],
+          "rationale": "Help, diagnostic verbosity, and no-write preview are approved invocation controls."
+        },
+        {
+          "members": ["env_nam", "threads"],
+          "rationale": "Environment and compute-resource controls form one execution setup row."
+        },
+        {
+          "members": ["mode", "method"],
+          "rationale": "The workflow discriminant and the calculation it selects remain adjacent."
+        },
+        {
+          "members": ["aln_typ", "ref_fa"],
+          "rationale": "Input interpretation and reference selection are one readable input row."
+        },
+        {
+          "members": ["csv_mip", "csv_min", "csv_sip", "csv_sin"],
+          "rationale": "The required and conditional alignment collections are one input group."
+        },
+        {
+          "members": ["fil_out", "force", "no_parts", "no_header"],
+          "rationale": "The output target and its lifecycle controls form one output row."
+        },
+        {
+          "members": ["tbl_met", "cfg_met", "eqn"],
+          "rationale": "siQ metadata and equation controls form one mode-specific row."
+        },
+        {
+          "members": ["len_def", "len_mip", "len_min", "dep_mip", "dep_min", "dep_sip", "dep_sin"],
+          "rationale": "Fragment and depth controls form one structured mode-specific row."
+        },
+        {
+          "members": ["dp"],
+          "rationale": "The established finite numeric-rendering control remains separate."
+        },
+        {
+          "members": ["dir_eo", "nam_job"],
+          "rationale": "Log destination and job naming controls form one operational row."
+        },
+        {
+          "members": ["max_job", "slurm", "time"],
+          "rationale": "Concurrency and scheduler controls form one final execution row."
+        }
+      ],
+      "surface_orders": {
+        "parser_registration": [
+          "help", "verbose", "dry_run", "env_nam", "threads", "mode",
+          "method", "aln_typ", "ref_fa", "csv_mip", "csv_min", "csv_sip",
+          "csv_sin", "fil_out", "force", "no_parts", "no_header", "tbl_met",
+          "cfg_met", "eqn", "len_def", "len_mip", "len_min", "dep_mip",
+          "dep_min", "dep_sip", "dep_sin", "dp", "dir_eo", "nam_job",
+          "max_job", "slurm", "time"
+        ],
+        "usage": [
+          "help", "verbose", "dry_run", "env_nam", "threads", "mode",
+          "method", "aln_typ", "ref_fa", "csv_mip", "csv_min", "csv_sip",
+          "csv_sin", "fil_out", "force", "no_parts", "no_header", "tbl_met",
+          "cfg_met", "eqn", "len_def", "len_mip", "len_min", "dep_mip",
+          "dep_min", "dep_sip", "dep_sin", "dp", "dir_eo", "nam_job",
+          "max_job", "slurm", "time"
+        ],
+        "options_parameters": [
+          "help", "verbose", "dry_run", "env_nam", "threads", "mode",
+          "method", "aln_typ", "ref_fa", "csv_mip", "csv_min", "csv_sip",
+          "csv_sin", "fil_out", "force", "no_parts", "no_header", "tbl_met",
+          "cfg_met", "eqn", "len_def", "len_mip", "len_min", "dep_mip",
+          "dep_min", "dep_sip", "dep_sin", "dp", "dir_eo", "nam_job",
+          "max_job", "slurm", "time"
+        ],
+        "reporting_order": [
+          "verbose", "dry_run", "env_nam", "threads", "mode", "method",
+          "aln_typ", "ref_fa", "csv_mip", "csv_min", "csv_sip", "csv_sin",
+          "fil_out", "force", "no_parts", "no_header", "tbl_met", "cfg_met",
+          "eqn", "len_def", "len_mip", "len_min", "dep_mip", "dep_min",
+          "dep_sip", "dep_sin", "dp", "dir_eo", "nam_job", "max_job",
+          "slurm", "time"
+        ]
+      },
+      "relationships": [
+        {"kind": "adjacent", "members": ["mode", "method"]},
+        {
+          "kind": "contiguous",
+          "members": ["aln_typ", "ref_fa", "csv_mip", "csv_min", "csv_sip", "csv_sin"]
+        },
+        {
+          "kind": "adjacent",
+          "members": ["fil_out", "force", "no_parts", "no_header"]
+        },
+        {"kind": "same_group", "members": ["tbl_met", "cfg_met", "eqn"]},
+        {
+          "kind": "same_group",
+          "members": ["len_def", "len_mip", "len_min", "dep_mip", "dep_min", "dep_sip", "dep_sin"]
+        },
+        {"kind": "same_group", "members": ["dir_eo", "nam_job"]},
+        {"kind": "same_group", "members": ["max_job", "slurm", "time"]}
+      ],
+      "adapters": {
+        "parser": "shell_bounded_parse_args_order",
+        "parser_path": "bin/execute_calculate_scaling_factor.sh",
+        "rendered_help": "shell_subprocess_help_sections",
+        "help_command": [
+          "bash",
+          "bin/execute_calculate_scaling_factor.sh",
+          "--help"
+        ],
+        "reporting": "shell_bounded_reporting_function_order",
+        "reporting_symbol": "print_state_debug",
         "reporting_call_arguments": [],
         "reporting_probes": []
       }

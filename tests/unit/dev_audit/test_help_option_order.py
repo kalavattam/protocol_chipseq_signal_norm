@@ -25,6 +25,8 @@ import pytest
 from dev.audit.help_option_order import (
     python_reporting_order,
     render_help,
+    shell_parser_order,
+    shell_reporting_order,
     validate_order,
 )
 
@@ -253,6 +255,107 @@ def test_actual_shell_parser_missing_option_is_detected() -> None:
             },
         },
     )
+    assert "HELP.OPTION.ORDER.SURFACE_PARITY" in {
+        item["rule_id"] for item in findings
+    }
+
+
+def test_shell_parser_order_is_independent_of_parameter_order() -> None:
+    payload = data()
+    source = (ROOT / "bin/execute_calculate_scaling_factor.sh").read_text(
+        encoding="utf-8",
+    )
+    verbose_arm = """            -v|--verbose)
+                verbose=true
+                shift 1
+                ;;
+
+"""
+    dry_run_arm = """            -dr|--dry|--dry[_-]run)
+                dry_run=true
+                shift 1
+                ;;
+
+"""
+    source = source.replace(
+        verbose_arm + dry_run_arm,
+        dry_run_arm + verbose_arm,
+        1,
+    )
+
+    findings = validate_order(
+        ROOT,
+        payload,
+        {"execute_calculate_scaling_factor_help": {"parser_text": source}},
+    )
+
+    assert "HELP.OPTION.ORDER.SURFACE_PARITY" in {
+        item["rule_id"] for item in findings
+    }
+
+
+def test_shell_parser_adapter_ignores_unrelated_case_arms() -> None:
+    source = """function parse_args() {
+    case "${1}" in
+        --alpha)
+            ;;
+        --beta)
+            ;;
+    esac
+}
+
+function unrelated() {
+    case "${1}" in
+        --unrelated)
+            ;;
+    esac
+}
+"""
+
+    assert shell_parser_order(source, {}) == ["alpha", "beta"]
+
+
+def test_shell_reporting_order_is_read_from_registered_function() -> None:
+    source = """function print_state_debug() {
+    echo "alpha=value"
+    echo "beta=value"
+}
+
+function unrelated() {
+    echo "unrelated=value"
+}
+"""
+
+    assert shell_reporting_order(
+        source,
+        "print_state_debug",
+        {"alpha", "beta"},
+    ) == ["alpha", "beta"]
+
+
+def test_shell_reporting_order_fault_is_detected_independently() -> None:
+    payload = data()
+    source = (ROOT / "bin/execute_calculate_scaling_factor.sh").read_text(
+        encoding="utf-8",
+    )
+    source = source.replace(
+        '        echo "verbose=${verbose}"\n'
+        '        echo "dry_run=${dry_run}"\n',
+        '        echo "dry_run=${dry_run}"\n'
+        '        echo "verbose=${verbose}"\n',
+        1,
+    )
+
+    findings = validate_order(
+        ROOT,
+        payload,
+        {
+            "execute_calculate_scaling_factor_help": {
+                "reporting_text": source,
+            },
+        },
+    )
+
     assert "HELP.OPTION.ORDER.SURFACE_PARITY" in {
         item["rule_id"] for item in findings
     }
