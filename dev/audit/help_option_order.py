@@ -34,7 +34,8 @@ from typing import Any
 PARAMETER_ROW = re.compile(r"^\s+(?P<aliases>-[^:]+?)\s+:\s+", re.MULTILINE)
 OPTION_TOKEN = re.compile(r"--[A-Za-z][A-Za-z0-9_-]*")
 SECTION = re.compile(
-    r"(?ms)^(?P<name>[A-Z][A-Za-z ]+)\n-+\n(?P<body>.*?)(?=^[A-Z][A-Za-z ]+\n-+\n|\Z)",
+    r"(?ms)^(?P<name>[A-Z][A-Za-z ]+)\n-+\n"
+    r"(?P<body>.*?)(?=^[A-Z][A-Za-z ]+\n-+\n|\Z)",
 )
 
 
@@ -61,6 +62,7 @@ def python_parser_order(text: str) -> list[str]:
     ]
     calls.sort(key=lambda node: (node.lineno, node.col_offset))
     result = ["help"] if "add_help_cap(" in text else []
+
     for node in calls:
         aliases = [
             value.value
@@ -69,8 +71,10 @@ def python_parser_order(text: str) -> list[str]:
             and isinstance(value.value, str)
             and value.value.startswith("--")
         ]
+
         if aliases:
             result.append(_logical(aliases[-1]))
+
     return _deduplicate(result)
 
 
@@ -84,6 +88,7 @@ def rendered_section(text: str, names: set[str]) -> str:
         for match in SECTION.finditer(text)
         if match.group("name") in names
     ]
+
     return "\n".join(matches)
 
 
@@ -108,14 +113,18 @@ def rendered_usage_rows(text: str) -> list[list[str]]:
     """
 
     rows: list[list[str]] = []
+
     for line in rendered_section(text, {"Usage"}).splitlines():
         if not line.startswith("    "):
             continue
+
         members = _deduplicate(
             [_logical(token) for token in OPTION_TOKEN.findall(line)],
         )
+
         if members:
             rows.append(members)
+
     return rows
 
 
@@ -126,12 +135,16 @@ def rendered_parameter_order(text: str) -> list[str]:
 
     body = rendered_section(text, {"Options", "Parameters"})
     result: list[str] = []
+
     for line in body.splitlines():
         if not re.match(r"^  -(?!\s)", line):
             continue
+
         aliases = OPTION_TOKEN.findall(line)
+
         if aliases:
             result.append(_logical(aliases[-1]))
+
     return _deduplicate(result)
 
 
@@ -142,15 +155,20 @@ def rendered_alias_map(text: str) -> dict[str, str]:
 
     body = rendered_section(text, {"Options", "Parameters"})
     result: dict[str, str] = {}
+
     for line in body.splitlines():
         if not re.match(r"^  -(?!\s)", line):
             continue
+
         aliases = OPTION_TOKEN.findall(line)
         if not aliases:
             continue
+
         canonical = _logical(aliases[-1])
+
         for alias in aliases:
             result[_logical(alias)] = canonical
+
     return result
 
 
@@ -162,6 +180,7 @@ def _shell_pattern_logical(pattern: str) -> str:
     value = pattern.lstrip("-")
     value = value.replace("[_-]", "_")
     value = value.replace("[e]?", "e")
+
     return value.replace("-", "_")
 
 
@@ -190,16 +209,19 @@ def shell_parser_order(
     """
 
     result: list[str] = []
+
     for line in shell_function_text(text, "parse_args").splitlines():
         match = re.match(r"^\s*(?P<patterns>-[^)]*)\)\s*$", line)
         if match is None:
             continue
+
         for value in re.findall(
             r"--[A-Za-z][A-Za-z0-9_\[\]?-]*",
             match.group("patterns"),
         ):
             logical = _shell_pattern_logical(value)
             result.append(alias_map.get(logical, logical))
+
     if re.search(r"\^\(-h\|--h\[e\]\?lp\)\$", text):
         result.insert(0, "help")
 
@@ -225,6 +247,7 @@ def shell_reporting_order(
 
         if match is not None and match.group("label") in logical_options:
             result.append(match.group("label"))
+
     return result
 
 
@@ -240,6 +263,7 @@ def render_help(root: Path, command: list[str]) -> str:
         **os.environ,
         "PYTHONDONTWRITEBYTECODE": "1",
     }
+
     result = subprocess.run(
         resolved,
         cwd=root,
@@ -248,10 +272,12 @@ def render_help(root: Path, command: list[str]) -> str:
         capture_output=True,
         check=False,
     )
+
     if result.returncode:
         raise RuntimeError(
             f"help command failed ({result.returncode}): {resolved!r}",
         )
+
     return result.stdout + result.stderr
 
 
@@ -275,6 +301,7 @@ def python_reporting_order(
         and node.name == symbol
     )
     static: list[str] = []
+
     for node in sorted(
         (
             node
@@ -288,6 +315,7 @@ def python_reporting_order(
     ):
         argument = node.args[0]
         prefix = ""
+
         if isinstance(argument, ast.Constant) and isinstance(
             argument.value,
             str,
@@ -295,13 +323,17 @@ def python_reporting_order(
             prefix = argument.value
         elif isinstance(argument, ast.JoinedStr) and argument.values:
             first = argument.values[0]
+
             if isinstance(first, ast.Constant) and isinstance(
                 first.value, str
             ):
                 prefix = first.value
+
         tokens = OPTION_TOKEN.findall(prefix)
+
         if tokens:
             static.append(_logical(tokens[0]))
+
     static = _deduplicate(static)
 
     namespace = runpy.run_path(
@@ -316,13 +348,17 @@ def python_reporting_order(
     signature = inspect.signature(reporter)
     binding_kinds: list[tuple[str, Any]] = []
     preflight: list[Any] = []
+
     for binding in call_arguments:
         if not isinstance(binding, dict):
             raise RuntimeError("verbose reporter binding must be an object")
+
         if set(binding) == {"source"} and binding["source"] == "parsed_args":
             binding_kinds.append(("parsed_args", None))
             preflight.append(object())
+
             continue
+
         if set(binding) == {"literal"}:
             try:
                 literal = json.loads(
@@ -332,12 +368,16 @@ def python_reporting_order(
                 raise RuntimeError(
                     "verbose reporter literal must be JSON-only data",
                 ) from error
+
             binding_kinds.append(("literal", literal))
             preflight.append(literal)
+
             continue
+
         raise RuntimeError(
-            "verbose reporter binding is not a closed data binding"
+            "verbose reporter binding is not a closed data binding",
         )
+
     try:
         signature.bind(*preflight)
     except TypeError as error:
@@ -346,6 +386,7 @@ def python_reporting_order(
         ) from error
 
     observed: list[list[str]] = []
+
     for arguments in probes:
         parsed = parse_args(arguments)
         resolved = [
@@ -353,8 +394,10 @@ def python_reporting_order(
             for kind, value in binding_kinds
         ]
         stream = io.StringIO()
+
         with contextlib.redirect_stderr(stream):
             reporter(*resolved)
+
         sequence = [
             _logical(token)
             for token in OPTION_TOKEN.findall(stream.getvalue())
@@ -364,8 +407,11 @@ def python_reporting_order(
             raise RuntimeError(
                 "verbose probe order differs from reporting source order",
             )
+
         observed.append(sequence)
+
     emitted = {item for sequence in observed for item in sequence}
+
     return [item for item in static if item in emitted]
 
 
@@ -383,15 +429,19 @@ def actual_surfaces(
     overrides = overrides or {}
     parser_path = Path(adapters["parser_path"])
     parser_text = overrides.get("parser_text")
+
     if parser_text is None:
         parser_text = (root / parser_path).read_text(encoding="utf-8")
+
     rendered = overrides.get("rendered_help")
+
     if rendered is None:
         rendered = render_help(root, adapters["help_command"])
 
     usage = rendered_usage_order(rendered)
     usage_rows = rendered_usage_rows(rendered)
     parameters = rendered_parameter_order(rendered)
+
     if record["language"] == "python":
         parser = python_parser_order(parser_text)
     else:
@@ -402,9 +452,12 @@ def actual_surfaces(
         else:
             accepted = set(shell_parser_order(parser_text, alias_map))
             expected_set = set(record["logical_order"])
-            parser = parameters if accepted == expected_set else sorted(accepted)
+            parser = (
+                parameters if accepted == expected_set else sorted(accepted)
+            )
 
     reporting_expected = record["surface_orders"]["reporting_order"]
+
     if isinstance(reporting_expected, dict):
         reporting: list[str] | dict[str, str] = reporting_expected
     elif "reporting_texts" in overrides:
@@ -467,18 +520,21 @@ def validate_order(
         surface_id = record["surface_id"]
         order = record["logical_order"]
         roles = record["roles"]
+
         if len(order) != len(set(order)):
             add(
                 "HELP.OPTION.ORDER.SURFACE_PARITY",
                 surface_id,
                 "logical order contains duplicates",
             )
+
         if not record.get("roles_reviewed"):
             add(
                 "HELP.OPTION.ORDER.ROLE_UNREVIEWED",
                 surface_id,
                 "semantic roles require explicit review",
             )
+
         if set(roles) != set(order) or any(
             role not in category_rank for role in roles.values()
         ):
@@ -496,6 +552,7 @@ def validate_order(
             ranks = [
                 category_rank[category] for category in observed_categories
             ]
+
             if ranks != sorted(ranks):
                 add(
                     "HELP.OPTION.ORDER.CATEGORY",
@@ -505,6 +562,7 @@ def validate_order(
 
         for relationship in record.get("relationships", []):
             members = relationship["members"]
+
             try:
                 positions = [order.index(member) for member in members]
             except ValueError:
@@ -513,8 +571,11 @@ def validate_order(
                     surface_id,
                     "relationship references an absent option",
                 )
+
                 continue
+
             kind = relationship["kind"]
+
             if kind == "adjacent" and positions != list(
                 range(positions[0], positions[0] + len(positions)),
             ):
@@ -533,10 +594,7 @@ def validate_order(
                 )
             elif (
                 kind == "same_group"
-                and len(
-                    {roles.get(member) for member in members},
-                )
-                != 1
+                and len({roles.get(member) for member in members}) != 1
             ):
                 add(
                     "HELP.OPTION.ORDER.GROUP",
@@ -547,6 +605,7 @@ def validate_order(
         expected_usage_rows = [row["members"] for row in record["usage_rows"]]
 
         overrides = (surface_overrides or {}).get(surface_id)
+
         try:
             actual = actual_surfaces(
                 root,
@@ -560,9 +619,12 @@ def validate_order(
                 surface_id,
                 f"actual surface probe failed: {error}",
             )
+
             continue
+
         for name, expected in record["surface_orders"].items():
             observed = actual[name]
+
             if isinstance(expected, dict):
                 if observed != expected:
                     add(
@@ -570,7 +632,9 @@ def validate_order(
                         surface_id,
                         f"{name} non-applicability differs",
                     )
+
                 continue
+
             if observed != expected:
                 add(
                     "HELP.OPTION.ORDER.SURFACE_PARITY",
@@ -578,6 +642,7 @@ def validate_order(
                     f"{name} differs: expected={expected!r}; "
                     f"actual={observed!r}",
                 )
+
         if actual["usage_rows"] != expected_usage_rows:
             add(
                 "HELP.OPTION.ORDER.GROUP",
@@ -605,10 +670,12 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
     root = args.root.resolve()
     config = args.config if args.config.is_absolute() else root / args.config
+
     findings = validate_order(
         root,
         json.loads(config.read_text(encoding="utf-8")),
     )
+
     if args.json:
         print(json.dumps(findings, indent=2, sort_keys=True))
     else:
@@ -617,6 +684,7 @@ def main(argv: list[str] | None = None) -> int:
                 f"{finding['rule_id']}: {finding['surface_id']}: "
                 f"{finding['message']}",
             )
+
     return 1 if findings else 0
 
 

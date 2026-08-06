@@ -1599,6 +1599,7 @@ def _render_registered_help(
         **os.environ,
         "PYTHONDONTWRITEBYTECODE": "1",
     }
+
     if surface["language"] == "python":
         command = [sys.executable, str(path), "--help"]
         parser_path = None
@@ -1606,6 +1607,7 @@ def _render_registered_help(
         name = path.name.removeprefix("help_")
         parser_path = root / "bin" / name
         command = ["bash", str(parser_path), "--help"]
+
     result = subprocess.run(
         command,
         cwd=root,
@@ -1614,11 +1616,13 @@ def _render_registered_help(
         capture_output=True,
         check=False,
     )
+
     if result.returncode:
         raise RuntimeError(
             f"registered help command failed ({result.returncode}): "
             f"{command!r}",
         )
+
     return result.stdout + result.stderr, parser_path
 
 
@@ -1630,6 +1634,7 @@ def _example_source_fingerprints(text: str) -> list[str]:
     pattern = re.compile(
         r"(?ms)^  \d+\. .*?^    '''bash\n(.*?)^    '''$",
     )
+
     return [
         hashlib.sha256(match.group(0).encode()).hexdigest()
         for match in pattern.finditer(text)
@@ -1656,27 +1661,38 @@ def _callable_example_blocks(
     blocks: list[str] = []
     signatures: list[str] = []
     errors: list[str] = []
+
     for paragraph in match.group("body").strip().split("\n\n"):
         lines = paragraph.splitlines()
+
         if not lines or not lines[0].startswith(">>> "):
             errors.append("callable example must begin with a Python prompt")
+
             continue
+
         source: list[str] = []
         position = 0
+
         while position < len(lines) and lines[position].startswith(
             (">>> ", "... "),
         ):
             source.append(lines[position][4:])
             position += 1
+
         expected = lines[position:]
+
         if not expected or any(not line.strip() for line in expected):
             errors.append("callable example must display an expected result")
+
             continue
+
         try:
             tree = ast.parse("\n".join(source))
         except SyntaxError:
             errors.append("callable example source is not valid Python")
+
             continue
+
         blocks.append("\n".join(lines))
         signatures.append(ast.dump(tree, include_attributes=False))
 
@@ -1705,6 +1721,7 @@ def _registered_callable_docstring(
     )
     if function is None:
         raise RuntimeError(f"registered callable does not exist: {symbol}")
+
     docstring = ast.get_docstring(function, clean=True)
     if docstring is None:
         raise RuntimeError(f"registered callable lacks a docstring: {symbol}")
@@ -1725,11 +1742,13 @@ def registered_example_dispositions(
     }
     findings: list[Finding] = []
     inventory: list[dict[str, object]] = []
+
     for disposition in contracts.get("examples", []):
         surface_id = str(disposition["surface_id"])
         surface = surfaces[surface_id]
         owner = str(disposition["owner"])
         path = str(surface["path"])
+
         if disposition["lifecycle"] == "deferred_migration":
             inventory.append(
                 {
@@ -1752,7 +1771,9 @@ def registered_example_dispositions(
                     "preservation": disposition["preservation"],
                 },
             )
+
             continue
+
         if disposition["example_form"] == "callable_source_language":
             try:
                 docstring, line = _registered_callable_docstring(root, surface)
@@ -1760,12 +1781,16 @@ def registered_example_dispositions(
                 findings.append(
                     Finding(RULE_REQUIRED, path, 1, owner, str(error)),
                 )
+
                 continue
+
             blocks, signatures, errors = _callable_example_blocks(docstring)
+
             for message in errors:
                 findings.append(
-                    Finding(RULE_COMPLETE, path, line, owner, message)
+                    Finding(RULE_COMPLETE, path, line, owner, message),
                 )
+
             if len(signatures) != len(set(signatures)):
                 findings.append(
                     Finding(
@@ -1776,9 +1801,11 @@ def registered_example_dispositions(
                         "callable examples have duplicate Python sources",
                     ),
                 )
+
             count = len(blocks)
             minimum = int(disposition["minimum_count"])
             existing = int(disposition["existing_example_count"])
+
             if count < minimum or count != existing:
                 findings.append(
                     Finding(
@@ -1790,9 +1817,11 @@ def registered_example_dispositions(
                         f"{count}, and required minimum is {minimum}",
                     ),
                 )
+
             fingerprints = [
                 hashlib.sha256(block.encode()).hexdigest() for block in blocks
             ]
+
             if fingerprints != disposition["example_fingerprints"]:
                 findings.append(
                     Finding(
@@ -1804,6 +1833,7 @@ def registered_example_dispositions(
                         "accepted fingerprints",
                     ),
                 )
+
             inventory.append(
                 {
                     "identity": surface_id,
@@ -1828,13 +1858,16 @@ def registered_example_dispositions(
                     "preservation": disposition["preservation"],
                 },
             )
+
             continue
+
         try:
             rendered, parser_path = _render_registered_help(root, surface)
         except RuntimeError as error:
             findings.append(
                 Finding(RULE_REQUIRED, path, 1, owner, str(error)),
             )
+
             continue
 
         if surface["language"] == "python":
@@ -1850,10 +1883,12 @@ def registered_example_dispositions(
             findings.extend(analysis.findings)
         else:
             assert parser_path is not None
+
             accepted, public, hidden = script_aliases(
                 parser_path,
                 root / path,
             )
+
             analysis = analyze_help_document(
                 rendered,
                 owner=owner,
@@ -1866,6 +1901,7 @@ def registered_example_dispositions(
         count = len(analysis.examples)
         minimum = int(disposition["minimum_count"])
         existing = int(disposition["existing_example_count"])
+
         if count < minimum or count != existing:
             findings.append(
                 Finding(
@@ -1873,11 +1909,13 @@ def registered_example_dispositions(
                     path,
                     1,
                     owner,
-                    f"registered count is {existing}, actual count is {count}, "
-                    f"and required minimum is {minimum}",
+                    f"registered count is {existing}, actual count is "
+                    f"{count}, and required minimum is {minimum}",
                 ),
             )
+
         fingerprints = _example_source_fingerprints(rendered)
+
         if fingerprints != disposition["example_fingerprints"]:
             findings.append(
                 Finding(
@@ -1888,6 +1926,7 @@ def registered_example_dispositions(
                     "rendered example bytes differ from accepted fingerprints",
                 ),
             )
+
         inventory.append(
             {
                 "identity": surface_id,
@@ -1913,6 +1952,7 @@ def registered_example_dispositions(
                 "preservation": disposition["preservation"],
             },
         )
+
     return findings, inventory
 
 
@@ -2186,6 +2226,7 @@ def scan_repository(
         )
 
     alias_findings, _ = scan_alias_repository(root)
+
     if contracts is None:
         contracts_path = root / "dev/config/help_contracts.json"
         contracts = (
@@ -2193,6 +2234,7 @@ def scan_repository(
             if contracts_path.is_file()
             else None
         )
+
     if contracts is not None:
         contract_findings, contract_inventory = (
             registered_example_dispositions(
@@ -2316,6 +2358,7 @@ def main(argv: list[str] | None = None) -> int:
         else root / args.contracts
     )
     contracts = json.loads(contracts_path.read_text(encoding="utf-8"))
+
     result = scan_repository(root, contracts)
 
     write_json(args.inventory_output, result.inventory)
