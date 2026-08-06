@@ -73,22 +73,30 @@ while (( "$#" > 0 )); do
     esac
 done
 
+# Require the managed environment before deriving any tool path.
 [[ -n "${CONDA_PREFIX:-}" ]] || \
     die_infrastructure "CONDA_PREFIX must identify env_protocol."
+
+# Resolve managed tools directly, never through PATH.
 shellcheck_path="${CONDA_PREFIX}/bin/shellcheck"
 python_path="${CONDA_PREFIX}/bin/python"
+
 [[ -x "${shellcheck_path}" ]] || \
-    die_infrastructure "managed ShellCheck is not executable: ${shellcheck_path}"
+    die_infrastructure \
+        "managed ShellCheck is not executable: ${shellcheck_path}"
 [[ -x "${python_path}" ]] || \
     die_infrastructure "managed Python is not executable: ${python_path}"
 
+# Verify the pinned ShellCheck version from its own reported provenance.
 version=""
+
 while IFS=':' read -r key value; do
     if [[ "${key}" == "version" ]]; then
         version="${value# }"
         break
     fi
 done < <("${shellcheck_path}" --version)
+
 [[ "${version}" == "0.10.0" ]] || \
     die_infrastructure \
         "expected ShellCheck 0.10.0; found ${version:-unknown}."
@@ -100,17 +108,21 @@ printf 'ShellCheck version: %s\n' "${version}"
 if [[ "${provenance_only}" == "true" ]]; then
     (( ${#arr_requested[@]} == 0 )) || \
         die_infrastructure "--provenance-only accepts no paths."
+
     exit 0
 fi
 
+# Split discovered or supplied paths into Bash and POSIX dialect sets.
 declare -a arr_bash_paths=()
 declare -a arr_sh_paths=()
+
 if (( ${#arr_requested[@]} > 0 )); then
     for supplied in "${arr_requested[@]}"; do
         resolved="$(absolute_file "${supplied}")" || \
             die_infrastructure "cannot resolve path: ${supplied}"
         [[ -f "${resolved}" ]] || \
             die_infrastructure "ShellCheck path is not a file: ${resolved}"
+
         if [[ "${resolved}" == "${posix_bootstrap}" ]]; then
             arr_sh_paths+=( "${resolved}" )
         else
@@ -120,8 +132,14 @@ if (( ${#arr_requested[@]} > 0 )); then
 else
     while IFS= read -r -d '' relative; do
         [[ -f "${root}/${relative}" ]] || continue
+
         case "${relative}" in
-            bin/*.sh|lib/bash/*.sh|lib/bash/**/*.sh|install/scripts/*.sh|tests/*.sh|tests/**/*.sh)
+            bin/*.sh|\
+            lib/bash/*.sh|\
+            lib/bash/**/*.sh|\
+            install/scripts/*.sh|\
+            tests/*.sh|\
+            tests/**/*.sh)
                 resolved="${root}/${relative}"
                 if [[ "${resolved}" == "${posix_bootstrap}" ]]; then
                     arr_sh_paths+=( "${resolved}" )
@@ -142,17 +160,20 @@ if [[ "${list_only}" == "true" ]]; then
             printf 'bash\t%s\n' "${resolved}"
         done
     fi
+
     if (( ${#arr_sh_paths[@]} > 0 )); then
         for resolved in "${arr_sh_paths[@]}"; do
             printf 'sh\t%s\n' "${resolved}"
         done
     fi
+
     exit 0
 fi
 
 if [[ "${output_dir}" != /* ]]; then
     output_dir="${root}/${output_dir}"
 fi
+
 mkdir -p "${output_dir}"
 bash_raw="${output_dir}/bash_findings.json"
 sh_raw="${output_dir}/sh_findings.json"
@@ -175,22 +196,29 @@ function run_language() {
     local part=""
     local parts_dir=""
 
+    # Emit an empty but well-formed inventory when a dialect has no files.
     if (( ${#arr_files[@]} == 0 )); then
         printf '{"comments":[]}\n' > "${raw_output}"
+
         return 0
     fi
 
     parts_dir="$(mktemp -d "${output_dir}/.${shell_mode}.parts.XXXXXX")" || \
         return 2
+
+    # Scan in bounded batches, keeping the worst observed status.
     for (( index = 0; index < ${#arr_files[@]}; index += batch_size )); do
         end=$(( index + batch_size ))
         (( end > ${#arr_files[@]} )) && end="${#arr_files[@]}"
         arr_batch=( "${arr_files[@]:index:end-index}" )
         part="${parts_dir}/part_$(( index / batch_size )).json"
         arr_parts+=( "${part}" )
+
         "${shellcheck_path}" --format=json1 --shell="${shell_mode}" -x \
             -P "${root}" "${arr_batch[@]}" > "${part}"
+
         batch_status="$?"
+
         if (( batch_status > 1 )); then
             language_status="${batch_status}"
         elif (( batch_status == 1 && language_status == 0 )); then
@@ -221,25 +249,34 @@ output.write_text(
 )
 PY
     merge_status="$?"
+
     rm -rf -- "${parts_dir}"
+
     (( merge_status == 0 )) || return 2
+
     return "${language_status}"
 }
 
 
+# Scan each dialect separately so empty-language evidence is preserved.
 set +e
+
 if (( ${#arr_bash_paths[@]} > 0 )); then
     run_language bash "${bash_raw}" "${arr_bash_paths[@]}"
 else
     run_language bash "${bash_raw}"
 fi
+
 bash_status="$?"
+
 if (( ${#arr_sh_paths[@]} > 0 )); then
     run_language sh "${sh_raw}" "${arr_sh_paths[@]}"
 else
     run_language sh "${sh_raw}"
 fi
+
 sh_status="$?"
+
 set -e
 
 if (( bash_status > 1 )); then

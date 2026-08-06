@@ -26,9 +26,14 @@ function json_value() {
     local source="${1}"
     local expression="${2}"
 
-    "${TEST_PYTHON}" -c \
-        'import json,sys; value=json.load(open(sys.argv[1])); print(eval(sys.argv[2], {"value": value}))' \
-        "${source}" "${expression}"
+    "${TEST_PYTHON}" - "${source}" "${expression}" << PY
+import json
+import sys
+
+with open(sys.argv[1], encoding="utf-8") as stream:
+    value = json.load(stream)
+print(eval(sys.argv[2], {"value": value}))
+PY
 }
 
 
@@ -216,20 +221,25 @@ bootstrap="${ROOT_REPO}/install/scripts/install_envs_entrypoint.sh"
 discovery_root="${TEST_DIR_TMP}/shellcheck_discovery"
 make_discovery_repo "${discovery_root}"
 discovery_log="${TEST_DIR_TMP}/shellcheck_discovery.log"
+
+# Name each expected discovery entry so the assertion stays scannable.
+discovered_bin="${discovery_root}/bin/discovered.sh"
+discovered_test="${discovery_root}/tests/contract/discovered.sh"
+discovered_bootstrap="${discovery_root}/install/scripts"
+discovered_bootstrap+="/install_envs_entrypoint.sh"
+
 if CONDA_PREFIX="${fake_prefix}" CONDA_DEFAULT_ENV=env_protocol \
     "${TEST_BASH}" \
         "${discovery_root}/dev/audit/run_shellcheck.sh" --list \
         > "${discovery_log}" 2>&1
 then
-    if grep -Fq $'bash\t'"${discovery_root}/bin/discovered.sh" \
-        "${discovery_log}" && \
-        grep -Fq $'bash\t'"${discovery_root}/tests/contract/discovered.sh" \
-            "${discovery_log}" && \
-        grep -Fq $'sh\t'"${discovery_root}/install/scripts/install_envs_entrypoint.sh" \
-            "${discovery_log}" && \
+    if grep -Fq $'bash\t'"${discovered_bin}" "${discovery_log}" && \
+        grep -Fq $'bash\t'"${discovered_test}" "${discovery_log}" && \
+        grep -Fq $'sh\t'"${discovered_bootstrap}" "${discovery_log}" && \
         ! grep -Fq 'tests/contract/deleted.sh' "${discovery_log}"
     then
-        record_pass "default discovery assigns maintained Bash and POSIX fixtures"
+        record_pass \
+            "default discovery assigns maintained Bash and POSIX fixtures"
     else
         record_fail "default discovery omitted or misclassified a fixture"
     fi
@@ -240,25 +250,34 @@ fi
 legacy_runner="${TEST_DIR_TMP}/run_shellcheck_legacy.sh"
 legacy_output="${TEST_DIR_TMP}/shellcheck_legacy"
 legacy_log="${legacy_output}/invocations.log"
+rm -rf "${legacy_output}"
 mkdir -p "${legacy_output}"
 make_legacy_runner "${legacy_runner}"
+
 set +e
+
 run_fake_with_runner /bin/bash "${legacy_runner}" \
     "${fake_prefix}" 0 "${legacy_output}" "${legacy_log}" "${bash_fixture}" \
     > "${legacy_output}/runner.log" 2>&1
+
 legacy_status="$?"
+
 set -e
+
 if (( legacy_status > 0 )) && \
     grep -Fq 'unbound variable' "${legacy_output}/runner.log"
 then
     record_pass "legacy Bash-only runner exposes the nounset array fault"
 else
-    record_fail "legacy Bash-only runner did not expose the nounset array fault"
+    record_fail \
+        "legacy Bash-only runner did not expose the nounset array fault"
 fi
 
 bash_only_output="${TEST_DIR_TMP}/shellcheck_bash_only"
 bash_only_log="${bash_only_output}/invocations.log"
+rm -rf "${bash_only_output}"
 mkdir -p "${bash_only_output}"
+
 if run_fake_system_bash \
     "${fake_prefix}" 0 "${bash_only_output}" "${bash_only_log}" \
     "${bash_fixture}" > "${bash_only_output}/runner.log" 2>&1
@@ -267,14 +286,20 @@ then
         'value["languages"]["bash"]["file_count"]')" == "1" ]] && \
         [[ "$(json_value "${bash_only_output}/summary.json" \
         'value["languages"]["sh"]["file_count"]')" == "0" ]] && \
-        [[ "$(invocation_count "${bash_only_log}" '--shell=bash')" == "1" ]] && \
-        [[ "$(invocation_count "${bash_only_log}" '--shell=sh')" == "0" ]] && \
+        [[
+            "$(invocation_count "${bash_only_log}" '--shell=bash')" == "1"
+        ]] && \
+        [[
+            "$(invocation_count "${bash_only_log}" '--shell=sh')" == "0"
+        ]] && \
         [[ -s "${bash_only_output}/bash_findings.json" ]] && \
         [[ -s "${bash_only_output}/sh_findings.json" ]]
     then
-        record_pass "Bash-only scan preserves empty POSIX evidence under nounset"
+        record_pass \
+            "Bash-only scan preserves empty POSIX evidence under nounset"
     else
-        record_fail "Bash-only scan lost language counts, calls, or raw evidence"
+        record_fail \
+            "Bash-only scan lost language counts, calls, or raw evidence"
     fi
 else
     record_fail "Bash-only fixture-backed scan failed"
@@ -282,7 +307,9 @@ fi
 
 posix_only_output="${TEST_DIR_TMP}/shellcheck_posix_only"
 posix_only_log="${posix_only_output}/invocations.log"
+rm -rf "${posix_only_output}"
 mkdir -p "${posix_only_output}"
+
 if run_fake_system_bash \
     "${fake_prefix}" 0 "${posix_only_output}" "${posix_only_log}" \
     "${bootstrap}" > "${posix_only_output}/runner.log" 2>&1
@@ -291,14 +318,20 @@ then
         'value["languages"]["bash"]["file_count"]')" == "0" ]] && \
         [[ "$(json_value "${posix_only_output}/summary.json" \
         'value["languages"]["sh"]["file_count"]')" == "1" ]] && \
-        [[ "$(invocation_count "${posix_only_log}" '--shell=bash')" == "0" ]] && \
-        [[ "$(invocation_count "${posix_only_log}" '--shell=sh')" == "1" ]] && \
+        [[
+            "$(invocation_count "${posix_only_log}" '--shell=bash')" == "0"
+        ]] && \
+        [[
+            "$(invocation_count "${posix_only_log}" '--shell=sh')" == "1"
+        ]] && \
         [[ -s "${posix_only_output}/bash_findings.json" ]] && \
         [[ -s "${posix_only_output}/sh_findings.json" ]]
     then
-        record_pass "POSIX-only scan preserves empty Bash evidence under nounset"
+        record_pass \
+            "POSIX-only scan preserves empty Bash evidence under nounset"
     else
-        record_fail "POSIX-only scan lost language counts, calls, or raw evidence"
+        record_fail \
+            "POSIX-only scan lost language counts, calls, or raw evidence"
     fi
 else
     record_fail "POSIX-only fixture-backed scan failed"
@@ -307,7 +340,8 @@ fi
 bash_list="${TEST_DIR_TMP}/shellcheck_bash_only.list"
 posix_list="${TEST_DIR_TMP}/shellcheck_posix_only.list"
 if CONDA_PREFIX="${fake_prefix}" CONDA_DEFAULT_ENV=env_protocol \
-    /bin/bash "${runner}" --list -- "${bash_fixture}" > "${bash_list}" 2>&1 && \
+    /bin/bash "${runner}" --list -- "${bash_fixture}" \
+        > "${bash_list}" 2>&1 && \
     CONDA_PREFIX="${fake_prefix}" CONDA_DEFAULT_ENV=env_protocol \
     /bin/bash "${runner}" --list -- "${bootstrap}" > "${posix_list}" 2>&1 && \
     grep -Eq '^bash\t' "${bash_list}" && \
@@ -322,6 +356,7 @@ fi
 
 default_output="${TEST_DIR_TMP}/shellcheck_default"
 default_log="${default_output}/invocations.log"
+rm -rf "${default_output}"
 mkdir -p "${default_output}"
 if run_fake_with_runner /bin/bash \
     "${discovery_root}/dev/audit/run_shellcheck.sh" "${fake_prefix}" 0 \
@@ -346,6 +381,7 @@ fi
 
 missing_output="${TEST_DIR_TMP}/shellcheck_missing"
 missing_log="${missing_output}/invocations.log"
+rm -rf "${missing_output}"
 mkdir -p "${missing_output}"
 set +e
 run_fake_system_bash \
@@ -354,7 +390,8 @@ run_fake_system_bash \
 missing_status="$?"
 set -e
 if (( missing_status == 2 )) && \
-    grep -Fq 'ShellCheck path is not a file' "${missing_output}/runner.log" && \
+    grep -Fq 'ShellCheck path is not a file' \
+        "${missing_output}/runner.log" && \
     [[ ! -e "${missing_log}" ]]
 then
     record_pass "missing explicit path remains an infrastructure failure"
@@ -364,13 +401,17 @@ fi
 
 duplicate_output="${TEST_DIR_TMP}/shellcheck_duplicates"
 duplicate_log="${duplicate_output}/invocations.log"
+rm -rf "${duplicate_output}"
 mkdir -p "${duplicate_output}"
 if run_fake_system_bash \
     "${fake_prefix}" 0 "${duplicate_output}" "${duplicate_log}" \
     "${bash_fixture}" "${bash_fixture}" \
     > "${duplicate_output}/runner.log" 2>&1
 then
-    duplicate_paths="$(grep -oF -- "${bash_fixture}" "${duplicate_log}" | wc -l)"
+    duplicate_paths="$(
+        grep -oF -- "${bash_fixture}" "${duplicate_log}" | wc -l
+    )"
+
     if [[ "$(json_value "${duplicate_output}/summary.json" \
         'value["languages"]["bash"]["file_count"]')" == "2" ]] && \
         [[ "${duplicate_paths//[[:space:]]/}" == "2" ]] && \
@@ -386,6 +427,7 @@ fi
 
 failure_output="${TEST_DIR_TMP}/shellcheck_failure_propagation"
 failure_log="${failure_output}/invocations.log"
+rm -rf "${failure_output}"
 mkdir -p "${failure_output}"
 set +e
 run_fake_system_bash \
@@ -396,7 +438,10 @@ failure_status="$?"
 set -e
 if (( failure_status > 1 )) && \
     [[ -s "${failure_output}/summary.json" ]] && \
-    [[ "$(json_value "${failure_output}/summary.json" 'value["status"]')" == "2" ]] && \
+    [[
+        "$(json_value "${failure_output}/summary.json" 'value["status"]')" \
+            == "2"
+    ]] && \
     [[ "$(invocation_count "${failure_log}" '--shell=bash')" == "1" ]] && \
     [[ "$(invocation_count "${failure_log}" '--shell=sh')" == "1" ]]
 then
@@ -434,7 +479,10 @@ for expected_status in 0 1 3; do
 done
 
 status_one_summary="${TEST_DIR_TMP}/shellcheck_status_1/summary.json"
-if [[ "$(json_value "${status_one_summary}" 'value["finding_count"]')" == "1" ]]; then
+
+if [[
+    "$(json_value "${status_one_summary}" 'value["finding_count"]')" == "1"
+]]; then
     record_pass "status-1 structured evidence retains its finding count"
 else
     record_fail "status-1 structured evidence has the wrong finding count"
@@ -442,6 +490,7 @@ fi
 
 split_output="${TEST_DIR_TMP}/shellcheck_split"
 split_log="${split_output}/invocations.log"
+rm -rf "${split_output}"
 mkdir -p "${split_output}"
 if run_fake \
     "${fake_prefix}" 0 "${split_output}" "${split_log}" \
@@ -464,7 +513,8 @@ else
 fi
 
 if grep -Fq -- "-x -P ${ROOT_REPO}" "${split_log}"; then
-    record_pass "ShellCheck retains external sources and repository source path"
+    record_pass \
+        "ShellCheck retains external sources and repository source path"
 else
     record_fail "ShellCheck invocation lost -x or the repository source path"
 fi
