@@ -35,10 +35,15 @@ ARRAY = re.compile(
     r"(?P<name>[A-Za-z_][A-Za-z0-9_]*)",
 )
 HEREDOC = re.compile(
-    r"<<-?\s*(?:'(?P<single>[A-Za-z_][A-Za-z0-9_]*)'|"
+    r"(?<!<)(?P<operator><<-?)(?!<)(?P<separator>[ \t]*)"
+    r"(?:'(?P<single>[A-Za-z_][A-Za-z0-9_]*)'|"
     r'"(?P<double>[A-Za-z_][A-Za-z0-9_]*)"|'
     r"(?P<plain>[A-Za-z_][A-Za-z0-9_]*))",
 )
+HEREDOC_SEPARATOR_MESSAGE = (
+    "heredoc operator and delimiter must be separated by exactly one space"
+)
+
 MESSAGE_TYPE = r"[a-z][a-z0-9_]*(?:_[a-z0-9]+)*"
 DIAGNOSTIC = re.compile(
     r'^(?P<indent>[ \t]*)echo[ \t]+"'
@@ -68,6 +73,52 @@ DIAGNOSTIC_INDENT_MESSAGE = (
 DIAGNOSTIC_PREFIX_MESSAGE = (
     "diagnostic prefix must be the first quoted argument by itself"
 )
+
+
+def _within_arithmetic(line: str, position: int) -> bool:
+    """
+    Report whether one position sits inside an arithmetic expansion.
+
+    A '<<' inside '(( ))' is a shift operator rather than a heredoc
+    redirection, so the separator facet must not judge its spacing.
+    """
+
+    depth = 0
+    index = 0
+
+    while index < len(line) - 1:
+        pair = line[index : index + 2]
+
+        if pair == "((":
+            depth += 1
+            index += 2
+
+            continue
+
+        if pair == "))":
+            depth = max(0, depth - 1)
+            index += 2
+
+            continue
+
+        if index == position:
+            return depth > 0
+
+        index += 1
+
+    return False
+
+
+def _heredoc_delimiter(match: re.Match[str]) -> str:
+    """
+    Return one heredoc's delimiter name, whatever quoting it carries.
+    """
+
+    return next(
+        value
+        for name in ("single", "double", "plain")
+        if (value := match.group(name)) is not None
+    )
 
 
 @dataclasses.dataclass(frozen=True)
@@ -292,9 +343,7 @@ def check_diagnostic_forms(lines: list[str], path: str) -> list[Finding]:
         heredoc = HEREDOC.search(line)
 
         if heredoc is not None:
-            heredoc_delimiter = next(
-                value for value in heredoc.groups() if value is not None
-            )
+            heredoc_delimiter = _heredoc_delimiter(heredoc)
             index += 1
 
             continue
@@ -451,10 +500,21 @@ def check_text(text: str, path: str = "<memory>") -> list[Finding]:
         heredoc = HEREDOC.search(line)
 
         if heredoc is not None:
-            delimiter = next(
-                value for value in heredoc.groups() if value is not None
-            )
+            delimiter = _heredoc_delimiter(heredoc)
             heredoc_delimiter = delimiter
+
+            if heredoc.group("separator") != " " and not _within_arithmetic(
+                line,
+                heredoc.start("operator"),
+            ):
+                findings.append(
+                    Finding(
+                        RULE_ID,
+                        path,
+                        index,
+                        HEREDOC_SEPARATOR_MESSAGE,
+                    ),
+                )
 
             if delimiter == "EOF":
                 findings.append(

@@ -31,7 +31,7 @@ function scan_doc_coverage() {
     log="${TEST_DIR_LOG}/doc_coverage.tsv"
 
     if ! (
-        cd "${ROOT_REPO}" && python3 - <<'PY' > "${log}"
+        cd "${ROOT_REPO}" && python3 - << 'PY' > "${log}"
 from __future__ import annotations
 
 import ast

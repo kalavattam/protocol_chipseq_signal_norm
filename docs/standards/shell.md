@@ -55,13 +55,17 @@ Do not promote mutable globals to constant spelling. Controlled project, domain,
 
 Indent `case` patterns one level inside `case`, commands one level inside the pattern, and terminators with their pattern. Use one empty line between adjacent nontrivial arms when it improves scanning; bounded case-arm spacing remains advisory.
 
-Use `EOM` for ordinary shell-text heredocs and quote it when interpolation is not intended. Use a language-specific delimiter such as `PY` for embedded interpreter input. Another meaningful delimiter is permitted when required to avoid a collision or express literal semantics. Heredoc bodies follow their content owner: help bodies follow `help.md`, embedded Python follows Python source expectations, and literal fixtures remain unchanged. Do not reindent or reflow a heredoc without reviewing rendered behavior.
+Write a heredoc redirection as `<<` or `<<-`, exactly one space, then the delimiter. `<<DELIM` with no separating space is not a maintained form.
+
+Leave the delimiter unquoted by default. Single-quote it only when the body must reach the command literally: that is, when the body contains `$`, a backtick, or a backslash sequence whose expansion would corrupt the intended value. The presence of such a character does not by itself require quoting, because a body may contain it precisely in order to be expanded. A rendered help heredoc that interpolates current option defaults is the ordinary unquoted case; an embedded interpreter body that must receive `${...}` verbatim is the ordinary quoted case. Quoting is therefore a deliberate literal-semantics decision about intent, not a lexical property of the body, and an unnecessarily quoted delimiter hides whether the body depends on expansion.
+
+Use `EOM` for ordinary shell-text heredocs. Use a language-specific delimiter such as `PY` for embedded interpreter input. Another meaningful delimiter is permitted when required to avoid a collision or express literal semantics. Heredoc bodies follow their content owner: help bodies follow `help.md`, embedded Python follows Python source expectations, and literal fixtures remain unchanged. Do not reindent or reflow a heredoc without reviewing rendered behavior.
 
 Diagnostics identify the failing script or function and direct errors to stderr. Use `printf` when format control matters; `echo` remains acceptable for simple fixed diagnostics. Do not print success before the operation succeeds.
 
-**Automation:** `dev/audit/shell_source_form.py` checks only fixture-defined simple naming declarations, selected indentation forms, and recognized heredoc delimiters. Shell syntax and related audits provide additional evidence. Coverage is `subset`; no checker claims to parse arbitrary Bash layout, decide readability, or infer quoting intent.
+**Automation:** `dev/audit/shell_source_form.py` checks only fixture-defined simple naming declarations, selected indentation forms, recognized heredoc delimiters, and the exact one-space heredoc operator separator. Herestrings and arithmetic shifts are excluded from that separator facet. Whether a delimiter's quoting is necessary remains review-owned, because no checker can decide expansion intent from the body alone. Shell syntax and related audits provide additional evidence. Coverage is `subset`; no checker claims to parse arbitrary Bash layout, decide readability, or infer quoting intent.
 
-**Semantic remainder:** Review readability, quoting intent, complex continuations, heredoc semantics, and whether command construction preserves argument boundaries.
+**Semantic remainder:** Review readability, whether a quoted delimiter is genuinely required, complex continuations, heredoc semantics, and whether command construction preserves argument boundaries.
 
 **Exceptions:** Generated command fixtures and literal expected output preserve their owned representation.
 

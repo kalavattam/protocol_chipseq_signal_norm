@@ -34,7 +34,7 @@ done
 test ! -e lib/bash/blog
 test ! -e docs/style
 
-python - <<'PY'
+python - << PY
 from setuptools.discovery import PackageFinder
 
 found = set(PackageFinder.find("src"))

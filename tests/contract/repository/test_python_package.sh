@@ -47,7 +47,7 @@ cp -R \
     "${ROOT_REPO}/src" \
     "${package_source}/"
 
-if "${env_cmd[@]}" python - <<'PY'
+if "${env_cmd[@]}" python - << PY
 from setuptools import find_packages
 
 expected = {
@@ -66,7 +66,7 @@ fi
 
 if (
     cd /private/tmp
-    env -u PYTHONPATH "${env_cmd[@]}" python - <<'PY'
+    env -u PYTHONPATH "${env_cmd[@]}" python - << PY
 from pathlib import Path
 
 import protocol_chipseq_signal_norm
@@ -81,7 +81,7 @@ else
     record_fail "editable package import outside the checkout root failed"
 fi
 
-if "${env_cmd[@]}" python - <<'PY'
+if "${env_cmd[@]}" python - << PY
 from importlib import import_module
 from importlib.metadata import entry_points
 

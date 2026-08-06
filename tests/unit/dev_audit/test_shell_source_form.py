@@ -88,6 +88,43 @@ EOF
     )
 
 
+def test_requires_exactly_one_space_before_a_heredoc_delimiter() -> None:
+    """
+    Reject a missing or repeated heredoc operator separator.
+    """
+
+    joined = "\npython - <<PY\nprint('ok')\nPY\n"
+    quoted = "\npython - <<'PY'\nprint('ok')\nPY\n"
+    widened = "\npython - <<  PY\nprint('ok')\nPY\n"
+    indented = "\npython - <<- PY\nprint('ok')\nPY\n"
+    separator = (
+        "heredoc operator and delimiter must be separated by exactly one space"
+    )
+
+    assert messages(joined) == [separator]
+    assert messages(quoted) == [separator]
+    assert messages(widened) == [separator]
+    assert messages(indented) == []
+
+
+def test_heredoc_separator_excludes_herestrings_and_shifts() -> None:
+    """
+    Keep herestrings and arithmetic shifts outside the separator facet.
+    """
+
+    herestring = '\nIFS="," read -r -a arr_values <<< "${csv_values}"\n'
+    bare_herestring = "\nread -r value <<<word\n"
+    spaced_shift = "\nvalue=$(( total << width ))\n"
+    joined_shift = "\nvalue=$((total<<width))\n"
+    guarded_shift = "\nif (( total<<width > limit )); then\n    :\nfi\n"
+
+    assert messages(herestring) == []
+    assert messages(bare_herestring) == []
+    assert messages(spaced_shift) == []
+    assert messages(joined_shift) == []
+    assert messages(guarded_shift) == []
+
+
 def test_rejects_local_array_without_arr_prefix() -> None:
     """
     Recognize the claimed simple local -a declaration boundary.

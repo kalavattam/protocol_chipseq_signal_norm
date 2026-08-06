@@ -23,7 +23,7 @@ source "$(
 cd "${ROOT_REPO}"
 print_section "${TEST_NAME}"
 
-python - <<'PY'
+python - << PY
 from __future__ import annotations
 
 import ast

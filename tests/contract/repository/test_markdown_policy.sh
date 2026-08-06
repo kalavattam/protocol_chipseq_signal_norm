@@ -38,7 +38,7 @@ status=$?
 set -e
 (( status == 0 ))
 "${python_cmd[@]}" -m json.tool "${REPORT}" >/dev/null
-if "${python_cmd[@]}" - "${REPORT}" <<'PY'
+if "${python_cmd[@]}" - "${REPORT}" << PY
 import json
 import sys
 from pathlib import Path
