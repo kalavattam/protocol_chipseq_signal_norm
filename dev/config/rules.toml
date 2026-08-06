@@ -144,6 +144,7 @@ coverage_relation = "subset"
 covered_scope = "Recognized Python docstring prose paragraphs, excluding section headers, NumPy entry headers, multiline textual types, doctest rows, and Examples sections. Help literals emit under PY.CLI.HELP.LAYOUT and adjacent constructed prose under SOURCE.DELIMITED.MULTILINE."
 remaining_scope = "Ordinary Python comment prose, eligibility judgment, and Shell, R, and Rust realizations remain review-owned."
 parity_test = "tests/unit/dev_audit/test_python_source_policy.py"
+gate = "tests/contract/repository/test_python_source_policy_gate.sh"
 scope = "repository"
 command = ["python3", "-m", "dev.audit.python_source_policy", "--root", ".", "--all-maintained"]
 applicable_paths = ["src/**/*.py", "tests/**/*.py", "dev/**/*.py"]

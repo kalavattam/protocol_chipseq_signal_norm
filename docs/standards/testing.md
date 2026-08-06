@@ -160,6 +160,8 @@ Run focused checks for changed owners and implementations before broader suites.
 
 Record unavailable proof, skipped optional gates, warnings, generated-output locations, and residual semantic review. A clean checker does not replace the semantic remainder owned by a rule.
 
+A registered checker reaches the required workflow through a repository contract, as [`governance.md`](governance.md) defines that term. Two obligations follow when such a contract is written. When a rule's migration is partial, gate the migrated cohort and report the unmigrated remainder as a recorded warning naming its deferred record, so a green cohort never reads as repository-wide conformance. When a contract gates a cohort, it must also prove that the checker inspected that cohort: an argument the checker silently rejects yields a vacuous pass, so assert the inspected count rather than the finding count alone.
+
 **Automation:** No checker can decide proportionality. Test selection inventories and coverage reports provide bounded evidence for review.
 
 **Semantic remainder:** Decide whether the selected evidence is sufficient for the risk and scope of the change.

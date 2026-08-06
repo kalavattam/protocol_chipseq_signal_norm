@@ -772,6 +772,17 @@ def _registry_manifest(root: Path) -> dict[str, object]:
                 },
             )
 
+        gate = str(rule.get("gate", ""))
+
+        if gate and _is_path(gate) and not (root / gate).exists():
+            findings.append(
+                {
+                    "kind": "missing_registered_gate",
+                    "rule_id": rule_id,
+                    "detail": f"missing gate: {gate}",
+                },
+            )
+
         for exception in rule.get("current_exclusions_or_allowlists", []):
             if "owner=" not in str(exception):
                 findings.append(
@@ -859,6 +870,7 @@ def _registry_manifest(root: Path) -> dict[str, object]:
         "source_checker",
         "execution_kind",
         "parity_test",
+        "gate",
         "applicable_paths",
         "blocking",
     )
