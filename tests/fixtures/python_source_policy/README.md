@@ -17,7 +17,7 @@ The fixtures are repository-authored micro-cases derived from the reconciled Pyt
 
 - `positive.py.fixture` covers canonical docstrings, annotations, comments, strings, definition topology, multiline parameter and construction delimiters, a multiline NumPy type, compact nested tuples, and a greedily wrapped `parse_args()` help literal.
 - `negative.py.fixture` contains bounded near misses for every deterministic checker owner, including docstring alignment, a misaligned multiline NumPy type closer, multiline parameters, and an overlong single static help literal.
-- `boundary.py.fixture` supplies exact source-form boundary material for parameter markers and generated 79- and 80-column unit cases.
+- `boundary.py.fixture` supplies exact source-form boundary material for parameter markers, generated 79- and 80-column unit cases, and greedy docstring prose whose structural boundaries — entry headers, bullet continuation indentation, multiline textual types, and doctest rows — are not prose breaks.
 - `exceptions.py.fixture` covers governed source-header and directive exclusions, a necessary raw docstring, embedded-double-quote selection, and the multiline triple-single literal-content exception.
 - `make.sh` validates cohort status and expected rule-ID coverage without rewriting any fixture.
 
@@ -37,5 +37,6 @@ The positive, boundary, and exception fixtures must produce zero deterministic f
 - `PY.STRING.QUOTES`
 - `PY.TYPE.ANNOTATIONS`
 - `SOURCE.DELIMITED.MULTILINE`
+- `SOURCE.PROSE.WRAP`
 
 Semantic readability, docstring usefulness, naming quality, abbreviation clarity, paragraph boundaries, and X/Y/Z candidate dispositions are deliberately absent from the recipe’s pass/fail decision.

@@ -137,7 +137,9 @@ Wrap at the last complete word or indivisible unit fitting through physical colu
 
 Python adjacent constant CLI `help=` literals form the only approved automatic formatter subset. The formatter preserves the exact evaluated value and keeps terminal escapes attached to the final text-bearing literal. Python comments and docstrings are checker/evidence-first. Shell comments remain review-owned; R and Rust remain dormant.
 
-**Automation:** `dev/audit/python_source_policy.py` checks the recognized Python subset. `dev/tools/python_help_format.py` formats only eligible adjacent constant help literals with explicit `--write`. Coverage is `subset`.
+A structural boundary is not a premature break. A section header, a documented entry header, a multiline textual-type row, a dedent that ends a block, a list marker's own continuation column, and a literal example row each end a prose line for reasons the width boundary does not govern; joining them would destroy meaning rather than restore greedy wrapping. A language realization recognizes its own structural boundaries before it reports any break.
+
+**Automation:** `dev/audit/python_source_policy.py` checks the recognized Python subset. It emits `SOURCE.PROSE.WRAP` for premature breaks in docstring prose paragraphs, excluding section headers and underlines, NumPy `name : type` entry headers, multiline textual-type rows, block-ending dedents, list markers and their continuation columns, doctest rows, `Examples` sections, and indivisible units. Recognized `parse_args()` help literals emit under `PY.CLI.HELP.LAYOUT` and adjacent constructed prose under `SOURCE.DELIMITED.MULTILINE`, so no two owners report one break. Ordinary Python comment prose remains review-owned. `dev/tools/python_help_format.py` formats only eligible adjacent constant help literals with explicit `--write`. Coverage is `subset`.
 
 **Semantic remainder:** Decide whether a unit is indivisible, whether a break is semantically deliberate, and whether prose is eligible.
 

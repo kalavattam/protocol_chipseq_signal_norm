@@ -40,6 +40,19 @@ def bad_parameters(
     return None
 
 
+def premature_prose() -> None:
+    """
+    Exercise insufficiently greedy docstring prose.
+
+    Notes
+    -----
+    This sentence deliberately stops well before the governed width
+    boundary.
+    """
+
+    return None
+
+
 def bad_type_closer() -> tuple[int, str]:
     """
     Return one badly aligned result pair.

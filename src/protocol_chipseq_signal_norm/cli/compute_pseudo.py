@@ -85,8 +85,7 @@ def combine_pseudo_sym(
     Returns
     -------
     pseudo_a, pseudo_b : tuple[float, float]
-        A pair (pseudo_A, pseudo_B) after applying the symmetrization
-        policy.
+        A pair (pseudo_A, pseudo_B) after applying the symmetrization policy.
 
     Raises
     ------
@@ -98,17 +97,17 @@ def combine_pseudo_sym(
     -----
     - 'none' returns both inputs as-is, including nonfinite values. With two
       finite inputs, 'max' and 'min' select the respective input; 'arith',
-      'geom', and 'harm' use the arithmetic, geometric, and harmonic means;
-      and 'use_A' and 'use_B' copy the selected input to both outputs.
-    - For finite inputs, 'geom' falls back to the minimum with a stderr
-      warning if either input is negative; 'harm' does the same if either
-      input is nonpositive.
+      'geom', and 'harm' use the arithmetic, geometric, and harmonic means; and
+      'use_A' and 'use_B' copy the selected input to both outputs.
+    - For finite inputs, 'geom' falls back to the minimum with a stderr warning
+      if either input is negative; 'harm' does the same if either input is
+      nonpositive.
     - For every mode except 'none':
-        + If exactly one is finite, then mirror the finite value while
-          issuing a warning.
-        + If both are nonfinite, then return as-is (i.e., let the user
-          decide how to proceed) while issuing a warning. These nonfinite
-          paths do not validate 'mode'.
+        + If exactly one is finite, then mirror the finite value while issuing
+          a warning.
+        + If both are nonfinite, then return as-is (i.e., let the user decide
+          how to proceed) while issuing a warning. These nonfinite paths do not
+          validate 'mode'.
 
     Examples
     --------
@@ -235,8 +234,8 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
                 ),
                 _HelpExample(
                     description=(
-                        "Compute first-percentile pseudocounts and "
-                        "symmetrize them by maximum."
+                        "Compute first-percentile pseudocounts and symmetrize "
+                        "them by maximum."
                     ),
                     command_lines=(
                         "compute_pseudo",

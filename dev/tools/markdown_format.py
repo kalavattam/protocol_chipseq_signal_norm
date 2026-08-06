@@ -309,9 +309,9 @@ def _fence_step(
     """
     Advance one shared fenced-literal state machine.
 
-    A closing fence must use the opening delimiter character and a marker
-    run at least as long as the opener. Shorter or other-character markers
-    remain literal content while a fence is open.
+    A closing fence must use the opening delimiter character and a marker run
+    at least as long as the opener. Shorter or other-character markers remain
+    literal content while a fence is open.
     """
 
     match = FENCE.match(line)

@@ -60,6 +60,7 @@ arr_expected_rules=(
     "PY.STRING.QUOTES"
     "PY.TYPE.ANNOTATIONS"
     "SOURCE.DELIMITED.MULTILINE"
+    "SOURCE.PROSE.WRAP"
 )
 
 

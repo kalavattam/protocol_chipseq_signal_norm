@@ -40,8 +40,8 @@ def open_in(path: str) -> AbstractContextManager[TextIO]:
     Parameters
     ----------
     path : str
-        File path or '-' for standard input. A '.gz' suffix is
-        detected automatically.
+        File path or '-' for standard input. A '.gz' suffix is detected
+        automatically.
 
     Returns
     -------
@@ -66,8 +66,8 @@ def open_out(path: str) -> AbstractContextManager[TextIO]:
     Parameters
     ----------
     path : str
-        File path or '-' for standard output. A '.gz' suffix is
-        detected automatically.
+        File path or '-' for standard output. A '.gz' suffix is detected
+        automatically.
 
     Returns
     -------
@@ -138,8 +138,8 @@ def is_header(line: str, skp_pfx: tuple[str, ...] = DEF_SKP_PFX) -> bool:
     Returns
     -------
     is_header : bool
-        'True' for blank lines or lines whose left-stripped content starts
-        with any configured prefix; otherwise, 'False'.
+        'True' for blank lines or lines whose left-stripped content starts with
+        any configured prefix; otherwise, 'False'.
     """
 
     stripped = line.lstrip()

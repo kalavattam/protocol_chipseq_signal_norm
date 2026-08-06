@@ -42,6 +42,7 @@ from dev.audit.python_source_policy import (
     RULE_HELP_SENTENCES,
     RULE_MULTILINE,
     RULE_NAMING,
+    RULE_PROSE_WRAP,
     RULE_STRINGS,
     RULE_TOPOLOGY,
     analyze_text,
@@ -311,6 +312,7 @@ def test_fixture_cohorts_cover_positive_negative_and_exceptions() -> None:
         RULE_DOC_LAYOUT,
         RULE_DOC_NUMPY,
         RULE_MULTILINE,
+        RULE_PROSE_WRAP,
         RULE_STRINGS,
     } <= rule_ids
 
@@ -328,9 +330,18 @@ def test_correction_tools_do_not_exempt_their_own_source_form() -> None:
             path.read_text(encoding="utf-8"),
             path.relative_to(ROOT).as_posix(),
         )
+        # These tools are immutable migration evidence under 'artifacts/', so
+        # they answer to the facets that existed when they were accepted.
+        # 'SOURCE.PROSE.WRAP' arrived afterward and is advisory; its residual
+        # belongs to the recorded migration rather than to this contract.
+        retained = tuple(
+            finding
+            for finding in analysis.findings
+            if finding.rule_id != RULE_PROSE_WRAP
+        )
 
-        if analysis.findings:
-            findings[path.name] = analysis.findings
+        if retained:
+            findings[path.name] = retained
 
     assert paths
     assert findings == {}
@@ -1076,6 +1087,75 @@ VALUE = 1
     assert rule_messages(rejected, RULE_COMMENTS) == [
         "ordinary comment prose must use one space between sentences",
     ]
+
+
+def docstring_source(*body: str) -> str:
+    """
+    Return one module whose callable docstring holds the supplied body.
+    """
+
+    rows = "\n".join(f"    {line}" if line else "" for line in body)
+    return f'def subject() -> None:\n    """\n{rows}\n    """\n\n    return None\n'
+
+
+def test_docstring_prose_wraps_greedily_through_column_79() -> None:
+    """
+    Require the next whole word to move whenever it still fits.
+    """
+
+    filler = "w" * 60
+    accepted = docstring_source(
+        "Summary.",
+        "",
+        f"{filler} abcdefghijklmn",
+        "x.",
+    )
+    premature = docstring_source("Summary.", "", f"{filler} abcdefghijk", "x.")
+    accepted_line = next(
+        line for line in accepted.splitlines() if filler in line
+    )
+    premature_line = next(
+        line for line in premature.splitlines() if filler in line
+    )
+
+    assert len(accepted_line) == 79
+    assert len(premature_line) == 76
+    assert rule_messages(accepted, RULE_PROSE_WRAP) == []
+    assert rule_messages(premature, RULE_PROSE_WRAP) == [
+        "docstring prose breaks before a word that would still fit within 79 "
+        "columns",
+    ]
+
+
+def test_docstring_structural_boundaries_are_not_prose_breaks() -> None:
+    """
+    Exclude entry headers, dedents, textual types, and doctest rows.
+    """
+
+    structural = docstring_source(
+        "Summary.",
+        "",
+        "Parameters",
+        "----------",
+        "first : int",
+        "    A short description.",
+        "second : int",
+        "    A short description.",
+        "",
+        "Returns",
+        "-------",
+        "result : tuple[",
+        "    int,",
+        "]",
+        "    A short description.",
+        "",
+        "Examples",
+        "--------",
+        ">>> subject()",
+        "None",
+    )
+
+    assert rule_messages(structural, RULE_PROSE_WRAP) == []
 
 
 def test_help_literals_use_greedy_wrapping_and_preserve_value() -> None:

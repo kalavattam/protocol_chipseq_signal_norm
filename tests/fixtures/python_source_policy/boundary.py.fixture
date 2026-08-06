@@ -25,3 +25,40 @@ def parameters(
     """
 
     return None
+
+
+def prose_wrap(first: int, second: int) -> tuple[
+    int,
+    str,
+]:
+    """
+    Exercise greedy docstring prose boundaries.
+
+    A wrapped prose paragraph fills each physical line through the last
+    complete word that fits, so the following word would reach column 80.
+
+    Parameters
+    ----------
+    first : int
+        Structural entry boundaries are not prose breaks, so this description
+        never joins the entry header above it.
+    second : int
+        A bullet list wraps against its own continuation indentation:
+        - the marker establishes a deeper continuation column, and the wrapped
+          remainder aligns beneath the first word rather than the marker.
+
+    Returns
+    -------
+    result : tuple[
+        int,
+        str,
+    ]
+        A multiline textual type is structure rather than prose.
+
+    Examples
+    --------
+    >>> prose_wrap(1, 2)
+    (1, 'value')
+    """
+
+    return first, "value"

@@ -52,6 +52,7 @@ RULE_COMMENTS = "PY.COMMENT.FORM"
 RULE_NAMING = "PY.NAMING.IDENTIFIERS"
 RULE_TOPOLOGY = "PY.SOURCE.LAYOUT"
 RULE_MULTILINE = "SOURCE.DELIMITED.MULTILINE"
+RULE_PROSE_WRAP = "SOURCE.PROSE.WRAP"
 RULE_LINE_LENGTH = "PY.FORMAT.LINE_LENGTH"
 RULE_IDS = (
     RULE_DOC_LAYOUT,
@@ -64,6 +65,7 @@ RULE_IDS = (
     RULE_NAMING,
     RULE_TOPOLOGY,
     RULE_MULTILINE,
+    RULE_PROSE_WRAP,
 )
 
 NUMPY_SECTION_ORDER = (
@@ -93,6 +95,9 @@ NUMPY_TYPED_ENTRY = re.compile(
 NUMPY_TYPE_CLOSER = re.compile(
     r"^[\]\)}]+(?:\s*(?:\||,)\s*\S.*)?$",
 )
+PROSE_LIST_MARKER = re.compile(r"^(?P<marker>[-+*]|\d+\.)\s+\S")
+PROSE_INDIVISIBLE = re.compile(r"://|^`|^'[^']*'$")
+DOCTEST_ROW_MARKERS = (">>>", "...")
 
 STRING_FORM = re.compile(
     r"(?is)^(?P<prefix>[rubf]*)(?P<quote>'''|\"\"\"|'|\")",
@@ -1342,6 +1347,173 @@ def _check_docstring_physical_lines(
             )
 
 
+def _bracket_depth(value: str) -> int:
+    """
+    Return the net bracket depth one textual-type fragment contributes.
+    """
+
+    opened = sum(value.count(character) for character in "([{")
+    closed = sum(value.count(character) for character in ")]}")
+
+    return opened - closed
+
+
+def _prose_continuation_indent(line: str) -> int | None:
+    """
+    Return the continuation indentation one prose line establishes.
+
+    Parameters
+    ----------
+    line : str
+        One physical docstring content line.
+
+    Returns
+    -------
+    indent : int | None
+        Column at which this line's own continuation begins, or None when the
+        line cannot begin a wrapped prose paragraph.
+    """
+
+    stripped = line.strip()
+
+    if not stripped:
+        return None
+
+    own_indent = _indent_width(line)
+    marker = PROSE_LIST_MARKER.match(stripped)
+
+    if marker is None:
+        return own_indent
+
+    return own_indent + len(marker.group("marker")) + 1
+
+
+def _check_docstring_prose_wrap(
+    token: tokenize.TokenInfo,
+    path: str,
+    findings: list[Finding],
+) -> Counter[str]:
+    """
+    Reject safely provable premature breaks in docstring prose paragraphs.
+
+    Wrapped prose fills each physical line through the last complete word that
+    fits within 79 columns. A break is premature when the following line's
+    first word would still fit on the current line. Structural boundaries are
+    not prose breaks: section headers and underlines, NumPy 'name : type'
+    entries, dedents that end a block, doctest rows, and 'Examples' sections
+    are excluded rather than joined.
+
+    Parameters
+    ----------
+    token : tokenize.TokenInfo
+        Owning docstring token.
+    path : str
+        Repository-relative diagnostic path.
+    findings : list[Finding]
+        Mutable deterministic finding collection.
+
+    Returns
+    -------
+    counts : Counter[str]
+        Inspected prose pairs, exclusions, and movable-break findings.
+    """
+
+    counts: Counter[str] = Counter()
+    content_lines = token.string.splitlines()[1:-1]
+    section = None
+    skip_next = False
+    type_depth = 0
+
+    for offset, current in enumerate(content_lines[:-1]):
+        line_number = token.start[0] + offset + 1
+        following = content_lines[offset + 1]
+
+        if skip_next:
+            skip_next = False
+
+            continue
+
+        if current.strip() in NUMPY_SECTION_ORDER and SECTION_UNDERLINE.match(
+            following.strip(),
+        ):
+            section = current.strip()
+            skip_next = True
+
+            continue
+
+        if section == "Examples":
+            counts["example_section_exclusions"] += 1
+
+            continue
+
+        if not current.strip() or not following.strip():
+            continue
+
+        entry = NUMPY_TYPED_ENTRY.match(current.strip())
+
+        if type_depth > 0:
+            type_depth = max(0, type_depth + _bracket_depth(current.strip()))
+            counts["type_expression_exclusions"] += 1
+
+            continue
+
+        if entry is not None:
+            type_depth = max(0, _bracket_depth(entry.group("type")))
+            counts["typed_entry_exclusions"] += 1
+
+            continue
+
+        if NUMPY_TYPED_ENTRY.match(following.strip()):
+            counts["typed_entry_exclusions"] += 1
+
+            continue
+
+        is_doctest_pair = current.lstrip().startswith(
+            DOCTEST_ROW_MARKERS,
+        ) or following.lstrip().startswith(DOCTEST_ROW_MARKERS)
+
+        if is_doctest_pair:
+            counts["doctest_exclusions"] += 1
+
+            continue
+
+        continuation = _prose_continuation_indent(current)
+
+        if continuation is None or _indent_width(following) != continuation:
+            counts["boundary_exclusions"] += 1
+
+            continue
+
+        if PROSE_LIST_MARKER.match(following.strip()):
+            counts["boundary_exclusions"] += 1
+
+            continue
+
+        current_text = current.rstrip()
+        word = following.strip().split(maxsplit=1)[0]
+
+        if current_text.endswith(":") or PROSE_INDIVISIBLE.search(word):
+            counts["indivisible_exclusions"] += 1
+
+            continue
+
+        counts["prose_pairs"] += 1
+
+        if len(current_text) + 1 + len(word) <= 79:
+            _finding_at(
+                findings,
+                path,
+                line_number,
+                len(current_text) + 1,
+                RULE_PROSE_WRAP,
+                "docstring prose breaks before a word that would still fit "
+                "within 79 columns",
+            )
+            counts["premature_prose_breaks"] += 1
+
+    return counts
+
+
 def _check_docstring_owner_adjacency(
     node: ast.AST,
     token: tokenize.TokenInfo,
@@ -1522,6 +1694,13 @@ def _check_one_docstring(
         expected_indent,
         path,
         findings,
+    )
+    counts.update(
+        _check_docstring_prose_wrap(
+            token,
+            path,
+            findings,
+        ),
     )
     _check_docstring_owner_adjacency(
         node,
