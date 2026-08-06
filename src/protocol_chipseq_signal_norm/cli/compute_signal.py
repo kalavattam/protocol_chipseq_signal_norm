@@ -22,8 +22,8 @@ decimal places and trailing zeros are stripped.
 
 Examples
 --------
-python -m protocol_chipseq_signal_norm.cli.compute_signal [options] \\
-    --fil_in <file> --fil_out <file>
+python -m protocol_chipseq_signal_norm.cli.compute_signal \\
+    --fil_in <file> --fil_out <file> [options]
 """
 
 from __future__ import annotations

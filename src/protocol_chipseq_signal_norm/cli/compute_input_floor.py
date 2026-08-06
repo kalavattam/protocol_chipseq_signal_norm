@@ -21,8 +21,8 @@ to stdout.
 
 Examples
 --------
-python -m protocol_chipseq_signal_norm.cli.compute_input_floor [options] \\
-    --mode <mode>
+python -m protocol_chipseq_signal_norm.cli.compute_input_floor \\
+    [--mode <mode>] [options]
 """
 
 from __future__ import annotations

@@ -21,8 +21,8 @@ pseudocount pair to stdout and, with '--prt_jsn', also prints a JSON summary.
 
 Examples
 --------
-python -m protocol_chipseq_signal_norm.cli.compute_pseudo [options] \\
-    --fil_A <file> [--fil_B <file>]
+python -m protocol_chipseq_signal_norm.cli.compute_pseudo \\
+    --fil_A <file> [--fil_B <file>] [options]
 """
 
 from __future__ import annotations

@@ -22,8 +22,8 @@ suitable for genome browsers.
 
 Examples
 --------
-python -m protocol_chipseq_signal_norm.cli.compute_signal_ratio [options] \\
-    --fil_A <file> --fil_B <file> --fil_out <file>
+python -m protocol_chipseq_signal_norm.cli.compute_signal_ratio \\
+    --fil_A <file> --fil_B <file> --fil_out <file> [options]
 """
 
 from __future__ import annotations

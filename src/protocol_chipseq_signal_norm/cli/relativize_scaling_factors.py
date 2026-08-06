@@ -28,7 +28,7 @@ Applying it to physical-quantity siQ-ChIP values changes their interpretation.
 Examples
 --------
 python -m protocol_chipseq_signal_norm.cli.relativize_scaling_factors \\
-    [options] <file>
+    --fil_in <file> [options]
 """
 
 import argparse

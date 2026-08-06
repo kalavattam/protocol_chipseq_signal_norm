@@ -192,13 +192,15 @@ A rendered CLI example uses the existing `'''bash` block because it shows invoca
 
 For an ordinary multiline CLI invocation, every continuation line begins four spaces beyond the first command line, tabs are forbidden, nonfinal lines render exactly one terminal backslash with no trailing whitespace, and the final line has none. An unquoted help heredoc therefore needs two literal source backslashes for each one intended in rendered output; a quoted heredoc needs one. Control flow, arrays, nested heredocs, structured pipelines, and other syntax with independent indentation are classified as complex snippets rather than forced into this simple-command shape.
 
+A synopsis example uses placeholders rather than concrete values to show an interface's operand shape. It takes the multiline invocation form above; this rule adds only the order of its operands. Put required operands first, then the optional operands most closely related to them under the applicable bracketing rules, and last the generic `[options]` placeholder, which stands for the remaining options detailed elsewhere in the same documentation. A synopsis never places `[options]` before an operand it does not govern. This ordering is a distinct obligation from [`HELP.OPTION.ORDER`](#semantic-option-order-helpoptionorder), which governs rendered `Usage`, option or parameter sections, and reporting; a synopsis is a compressed operand shape, not a total option projection.
+
 Examples are materially distinct when they vary a meaningful mode, input shape, execution path, or output. Preserve safe quoting and explicit continuation structure. Unsafe commands, indirect owners, duplicate signatures, hidden aliases, and undispositioned review candidates are incomplete evidence. Concise default help may omit examples only when its documented detailed owner provides them.
 
 If implementation, callers, tests, and existing documentation do not establish two accurate materially distinct examples, stop for an interface or documentation decision. Do not invent a mode, global, setup requirement, behavior, alias, or filler example.
 
-**Automation:** `dev/audit/help_examples.py` remains the sole owner-specific checker for presence, counts, numbering, command structure, ownership, aliases, duplicate signatures, distinctness, and bounded safety facets. `dev/audit/help_contracts.py` validates only applicability-record structure and references. Coverage is `subset`.
+**Automation:** `dev/audit/help_examples.py` remains the sole owner-specific checker for presence, counts, numbering, command structure, ownership, aliases, duplicate signatures, distinctness, and bounded safety facets. `dev/audit/help_contracts.py` validates only applicability-record structure and references. No checker decides synopsis operand order, because requiredness, governing relationships, and placeholder meaning are not recoverable from example source alone. Coverage is `subset`.
 
-**Semantic remainder:** Review usefulness, safety, material distinctness, and representativeness.
+**Semantic remainder:** Review usefulness, safety, material distinctness, representativeness, and synopsis operand order.
 
 **Exceptions:** A trivial zero-argument helper may provide one example when no second meaningful invocation exists and the owner records why.
 
