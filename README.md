@@ -237,15 +237,17 @@ If you encounter an issue (bugs, broken code, broken links, unexpected behavior,
 > <br />
 >
 > **If it’s not about code**
-> - Broken link: Mention the file/section where you found it, and provide the correct link (if you know).
-> - Unclear writing: Point to the section, sentence, or phrase, with a quick note about what is unclear.
-> - Unexpected behavior/output: Screenshots and/or copy-paste snippets are helpful.
+> - Broken link: mention the file/section where you found it, and provide the correct link (if you know).
+> - Unclear writing: point to the section, sentence, or phrase, with a quick note about what is unclear.
+> - Unexpected behavior/output: screenshots and/or copy-paste snippets are helpful.
 </details>
 <br />
 
-## Authorship of code and documentation
-- Director, maintainer, and responsible author: Kris Alavattam.
-- Code, documentation, and related were planned, developed, reviewed, and revised using ChatGPT and Codex (OpenAI), subject to human approval.
+## Authorship and AI assistance in code, documentation, and related materials
+- Director, responsible author, and maintainer: Kris Alavattam.
+- Code, documentation, and related materials are planned, designed, developed, reviewed, and revised with AI assistance from ChatGPT and Codex (OpenAI), and Claude Cowork and Claude Code (Anthropic). All AI-assisted output is reviewed, edited, and approved by the author.
     + ChatGPT: GPT-4- and GPT-5-series models (most recent: GPT-5.6 Terra and Sol).
-    + Codex: GPT-5.4, GPT-5.5, GPT-5.6 Terra, and GPT-5.6 Sol models.
-- Ongoing maintenance is performed using ChatGPT and Codex (most recent: GPT-5.6 Terra and Sol).
+    + Codex: GPT-5.4, GPT-5.5, and GPT-5.6 Terra and Sol models.
+    + Claude Cowork: Opus 4.8 model.
+    + Claude Code: Opus 5 model.
+- Ongoing maintenance is performed with AI assistance from Codex (most recent: GPT-5.6 Terra and Sol) and Claude Code (most recent: Opus 5).

@@ -5,6 +5,8 @@ Use the repository as the source of truth. Inspect current files before editing,
 
 Do not touch generated fixture outputs, `artifacts/`, manuscript/workflow notes, or troubleshooting drafts unless the user explicitly asks for that work.
 
+Do not introduce compatibility shims or preserve obsolete, deprecated, or otherwise unmaintained interfaces unless required by the user or an applicable normative owner. Keep legacy-only code and libraries outside the task scope when current maintained behavior does not depend on them. If proposed work would break a maintained public interface, accepted data format, scientific result, or reproducibility contract, identify the impact and obtain explicit approval rather than either adding a shim or silently breaking it.
+
 <br />
 
 ## Project layout
@@ -35,6 +37,8 @@ This file is the routing layer, not the full standards manual. Start with the or
 - `docs/standards/output.md` owns output contracts.
 - Active language owners (`shell.md` and `python.md`) own language realization; `docs/standards/testing.md` and `tests/README.md` own test taxonomy and gates.
 
+Before planning a governed change, use the ordinary task router to derive the smallest complete active task rule set. Identify the applicable normative owners and language realizations, plus only the configuration, checkers, fixtures, and contracts that the proposed change modifies or relies on. Present a compact task rules table stating what applies, what is deferred or excluded, what may change, what must remain unchanged, and the focused proof required. Consult historical reports and evidence packages only to verify a specific claim; do not load them as routine instructions.
+
 Prefer deterministic checks over agent memory. When a standard becomes important, document it in `docs/standards/` and add an advisory or enforced check when practical. Keep Markdown prose natural; do not hard-wrap it only for source line-length preferences.
 
 For governed multi-domain changes, approve the normative owner before changing registries, applicability, automation, fixtures, contracts, or maintained realizations. Route through [`GOV.CHANGE.GOLDEN_FIRST`](docs/standards/governance.md#authoritative-standard-first-changes-govchangegoldenfirst), perform its anti-accretion review, record both old-to-new and new-to-old preservation, validate successive owner-specific passes, and finish with all-owner reconciliation.
@@ -42,14 +46,18 @@ For governed multi-domain changes, approve the normative owner before changing r
 <br />
 
 ## Testing expectations
-Run focused tests for changed paths before broader suites. Use existing gates: `RUN_ATRIA=1`, `RUN_PARALLEL=1`, `RUN_SLURM=1`, and `WAIT_SLURM=1`. Do not add fake dependency shims or broad integration gates.
+Run focused checks for changed paths before broader suites, including the registered checkers that own them, not tests alone. Use existing gates: `RUN_ATRIA=1`, `RUN_PARALLEL=1`, `RUN_SLURM=1`, and `WAIT_SLURM=1`. Do not add fake dependency shims or broad integration gates.
 
 For shell changes, run `bash -n` on changed scripts and `git diff --check`.
 
 <br />
 
 ## Commits
-Use focused commits. The first line should follow `verb(subject): description`, for example `fix(trim): validate discovered SE output`. Follow-up message paragraphs should be complete sentences grouped by context or subject. Commit generated fixture outputs only if the user explicitly changes the fixture policy. When Codex contributes materially to a commit, include:
+Use focused commits. The first line should follow `verb(subject): description`, for example `fix(trim): validate discovered SE output`. Follow-up message paragraphs should be complete sentences grouped by context or subject. Commit generated fixture outputs only if the user explicitly changes the fixture policy.
+
+Credit each agent that contributed materially to a commit with its own trailer, naming the tool surface rather than a bare model brand, as [`SOURCE.HEADER.AI_ATTRIBUTION`](docs/standards/source_headers.md#ai-attribution-sourceheaderaiattribution) requires of source headers. List several trailers in the order the tools reached the work:
 ```txt
 Co-authored-by: Codex <codex@openai.com>
+Co-authored-by: Claude Code <noreply@anthropic.com>
 ```
+Add a trailer only for an agent that actually contributed to that commit.
