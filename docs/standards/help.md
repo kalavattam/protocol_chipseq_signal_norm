@@ -305,7 +305,6 @@ The `Type` field names the user-facing logical value form described or accepted 
 | `csv_fil_A`   | list of file      | Comma-separated list of file A paths.                                      |
 | `csv_fil_B`   | list of file      | Comma-separated list of file B paths.                                      |
 | `csv_scl_fct` | list of num       | Comma-separated list of scaling factors.                                   |
-| `csv_dep_min` | list of num       | Comma-separated list of minimum-depth values.                              |
 | `csv_pseudo`  | list of num       | Comma-separated list of pseudocount values.                                |
 | `csv_usr_frg` | list of int       | Comma-separated list of fixed fragment-length values.                      |
 | `aligner`     | choice            | Alignment program to use.                                                  |
@@ -325,11 +324,11 @@ The `Type` field names the user-facing logical value form described or accepted 
 | `cfg_met`     | file              | YAML configuration file for metadata parsing.                              |
 | `eqn`         | choice            | siQ-ChIP alpha equation.                                                   |
 | `len_def`     | int               | Default fragment length for single-end libraries.                          |
-| `len_mip`     | list of number    | Fragment length value(s) for main IP alignment files.                      |
-| `len_min`     | list of number    | Fragment length value(s) for main input alignment files.                   |
-| `dep_mip`     | list of int       | Sequencing/alignment depth value(s) for main IP alignment files.           |
-| `dep_sip`     | list of int       | Sequencing/alignment depth value(s) for spike-in IP alignment files.       |
-| `dep_sin`     | list of int       | Sequencing/alignment depth value(s) for spike-in input alignment files.    |
+| `csv_len_mip` | list of number    | Fragment length value(s) for main IP alignment files.                      |
+| `csv_len_min` | list of number    | Fragment length value(s) for main input alignment files.                   |
+| `csv_dep_mip` | list of int       | Sequencing/alignment depth value(s) for main IP alignment files.           |
+| `csv_dep_sip` | list of int       | Sequencing/alignment depth value(s) for spike-in IP alignment files.       |
+| `csv_dep_sin` | list of int       | Sequencing/alignment depth value(s) for spike-in input alignment files.    |
 | `fil_A`       | file              | First bedGraph input file, file A.                                         |
 | `fil_B`       | file              | Second bedGraph input file, file B.                                        |
 | `pseudo`      | structured string | Per-file pseudocount spec 'A[:B]'.                                         |

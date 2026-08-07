@@ -142,8 +142,8 @@ function run_submit_siq_prjna857063() {
             --cfg_met "${cfg_p857}"
             --eqn 6nd
             --dp 8
-            --len_mip "${len_ip}"
-            --len_min "${len_in}"
+            --csv_len_mip "${len_ip}"
+            --csv_len_min "${len_in}"
             --dir_eo "${dir_err}"
             --nam_job "${nam_job}"
     )
@@ -959,8 +959,8 @@ if \
             --tbl_met "${tbl_met}" \
             --cfg_met "${cfg_met}" \
             --eqn 6nd \
-            --len_mip 100 \
-            --len_min 200 \
+            --csv_len_mip 100 \
+            --csv_len_min 200 \
             --dir_eo "${dir_err}" \
             --nam_job "${nam_job_pe_len_override}"
 then
@@ -1005,8 +1005,8 @@ if \
             --tbl_met "${tbl_met}" \
             --cfg_met "${cfg_met}" \
             --eqn 6 \
-            --dep_mip 10 \
-            --dep_min 20 \
+            --csv_dep_mip 10 \
+            --csv_dep_min 20 \
             --dir_eo "${dir_err}" \
             --nam_job "${nam_job_pe_dep_override}"
 then
@@ -1132,7 +1132,7 @@ then
 else
     assert_pattern_found \
         "${fil_log_se_missing_length}" \
-        "supply '--len_def' or both '--len_mip' and '--len_min'" \
+        "supply '--len_def' or both '--csv_len_mip' and '--csv_len_min'" \
         "submit_calculate_scaling_factor.sh rejects SE siQ without length"
 fi
 

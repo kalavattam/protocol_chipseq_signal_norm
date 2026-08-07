@@ -618,8 +618,8 @@ run_case_siq \
     "${row_bam_pe_1}" \
     $'0.005320197044334976262114\t6nd\t2.7\t72.5\t300\t20\t3\t2\t100\t200' \
     $'0.00880746873348599648712\t6nd\t5\t81.1\t300\t20\t2\t3\t100\t200' \
-    --len_mip 100 \
-    --len_min 200
+    --csv_len_mip 100 \
+    --csv_len_min 200
 
 run_case_siq \
     dep_override \
@@ -629,8 +629,8 @@ run_case_siq \
     $'0.00382442279544846453973\t6\t2.7\t72.5\t300\t20\t10\t20\t626\t450' \
     $'0.005805224489492278629188\t6\t5\t81.1\t300\t20\t10\t20\t663\t437' \
     --eqn 6 \
-    --dep_mip 10 \
-    --dep_min 20
+    --csv_dep_mip 10 \
+    --csv_dep_min 20
 
 
 #  SE BAM input should use explicit default fragment lengths

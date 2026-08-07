@@ -598,9 +598,9 @@ run_submit_spike_case \
     fractional \
     "${row_exp_se_depth_override}" \
     se \
-    --dep_mip 10 \
-    --dep_min 20 \
-    --dep_sip 2 \
-    --dep_sin 4
+    --csv_dep_mip 10 \
+    --csv_dep_min 20 \
+    --csv_dep_sip 2 \
+    --csv_dep_sin 4
 
 finish

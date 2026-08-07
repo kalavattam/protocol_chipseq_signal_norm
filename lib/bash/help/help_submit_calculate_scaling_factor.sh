@@ -26,7 +26,7 @@ Usage
     --csv_mip <csv> --csv_min <csv> [--csv_sip <csv>] [--csv_sin <csv>]
     --fil_out <file> [--idx_out <int>]
     [--tbl_met <file>] [--cfg_met <file>] [--eqn <equation>]
-    [--len_def <int>] [--len_mip <csv>] [--len_min <csv>] [--dep_mip <csv>] [--dep_min <csv>] [--dep_sip <csv>] [--dep_sin <csv>]
+    [--len_def <int>] [--csv_len_mip <csv>] [--csv_len_min <csv>] [--csv_dep_mip <csv>] [--csv_dep_min <csv>] [--csv_dep_sip <csv>] [--csv_dep_sin <csv>]
     [--dp <int>] --dir_eo <dir> [--nam_job <str>]
 
 
@@ -89,22 +89,22 @@ Parameters
   -ld, --len_def : int
     Default fragment length for single-end libraries when no per-sample override is provided.
 
-  -lmp, --len_mip : list of int
+  -clmp, --csv_len_mip : list of int
     Fragment length value(s) for main IP alignment files. Optional comma-separated list of precomputed fragment lengths.
 
-  -lmn, --len_min : list of int
+  -clmn, --csv_len_min : list of int
     Fragment length value(s) for main input alignment files. Optional comma-separated list of precomputed fragment lengths.
 
-  -dmp, --dep_mip : list of int
+  -cdmp, --csv_dep_mip : list of int
     Sequencing/alignment depth value(s) for main IP alignment files. Optional comma-separated list of precomputed alignment counts.
 
-  -dmn, --dep_min : list of int
+  -cdmn, --csv_dep_min : list of int
     Optional comma-separated list of precomputed alignment counts for main input alignment files.
 
-  -dsp, --dep_sip : list of int
+  -cdsp, --csv_dep_sip : list of int
     Sequencing/alignment depth value(s) for spike-in IP alignment files. Optional comma-separated list of precomputed alignment counts.
 
-  -dsn, --dep_sin : list of int
+  -cdsn, --csv_dep_sin : list of int
     Sequencing/alignment depth value(s) for spike-in input alignment files. Optional comma-separated list of precomputed alignment counts.
 
   -dp, --dp : int
@@ -133,7 +133,7 @@ Notes
   - This wrapper expects coordinate-sorted BAM or CRAM files.
   - CRAM inputs require '--ref_fa'.
   - Optional override vectors may be omitted, may contain a single broadcast value, or may contain one value per sample.
-  - For '--mode siq' with SE data, '--len_def' or both '--len_mip' and '--len_min' must be supplied.
+  - For '--mode siq' with SE data, '--len_def' or both '--csv_len_mip' and '--csv_len_min' must be supplied.
   - This worker writes one '<fil_out>.part.<idx>' row. The execute-layer wrapper combines successful part files into the final TSV.
   - '--idx_out' is an internal execute-layer coordination option. Omit it for direct multi-sample submit calls and Slurm array tasks.
   - Compute downstream denominator floors separately with 'compute_input_floor'.

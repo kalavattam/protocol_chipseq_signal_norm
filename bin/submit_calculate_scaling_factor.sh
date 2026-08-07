@@ -381,63 +381,63 @@ function parse_args() {
                 shift 2
                 ;;
 
-            -lmp|--len[_-]mip)
+            -clmp|--csv[_-]len[_-]mip)
                 require_optarg "${1}" "${2:-}" "main" || {
                     echo >&2
                     help_submit_calculate_scaling_factor
                     return 1
                 }
-                len_mip="${2}"
+                csv_len_mip="${2}"
                 shift 2
                 ;;
 
-            -lmn|--len[_-]min)
+            -clmn|--csv[_-]len[_-]min)
                 require_optarg "${1}" "${2:-}" "main" || {
                     echo >&2
                     help_submit_calculate_scaling_factor
                     return 1
                 }
-                len_min="${2}"
+                csv_len_min="${2}"
                 shift 2
                 ;;
 
-            -dmp|--dep[_-]mip)
+            -cdmp|--csv[_-]dep[_-]mip)
                 require_optarg "${1}" "${2:-}" "main" || {
                     echo >&2
                     help_submit_calculate_scaling_factor
                     return 1
                 }
-                dep_mip="${2}"
+                csv_dep_mip="${2}"
                 shift 2
                 ;;
 
-            -dmn|--dep[_-]min)
+            -cdmn|--csv[_-]dep[_-]min)
                 require_optarg "${1}" "${2:-}" "main" || {
                     echo >&2
                     help_submit_calculate_scaling_factor
                     return 1
                 }
-                dep_min="${2}"
+                csv_dep_min="${2}"
                 shift 2
                 ;;
 
-            -dsp|--dep[_-]sip)
+            -cdsp|--csv[_-]dep[_-]sip)
                 require_optarg "${1}" "${2:-}" "main" || {
                     echo >&2
                     help_submit_calculate_scaling_factor
                     return 1
                 }
-                dep_sip="${2}"
+                csv_dep_sip="${2}"
                 shift 2
                 ;;
 
-            -dsn|--dep[_-]sin)
+            -cdsn|--csv[_-]dep[_-]sin)
                 require_optarg "${1}" "${2:-}" "main" || {
                     echo >&2
                     help_submit_calculate_scaling_factor
                     return 1
                 }
-                dep_sin="${2}"
+                csv_dep_sin="${2}"
                 shift 2
                 ;;
 
@@ -606,11 +606,11 @@ function validate_args() {
         if [[ "${aln_typ}" == "se" ]]; then
             if [[
                      -z "${len_def}" \
-                && ( -z "${len_mip}" || -z "${len_min}" )
+                && ( -z "${csv_len_mip}" || -z "${csv_len_min}" )
             ]]; then
                 echo_err \
                     "for '--mode siq' with SE data, supply '--len_def' or" \
-                    "both '--len_mip' and '--len_min'."
+                    "both '--csv_len_mip' and '--csv_len_min'."
                 return 1
             fi
         fi
@@ -688,12 +688,12 @@ function init_arg_defs() {
     eqn="6nd"
 
     len_def=""      # SE fallback length (bp)
-    len_mip=""      # Precomputed lengths: main IP
-    len_min=""      # Precomputed lengths: main input
-    dep_mip=""      # Precomputed counts: main IP
-    dep_min=""      # Precomputed counts: main input
-    dep_sip=""      # Precomputed counts: spike IP
-    dep_sin=""      # Precomputed counts: spike input
+    csv_len_mip=""      # Precomputed lengths: main IP
+    csv_len_min=""      # Precomputed lengths: main input
+    csv_dep_mip=""      # Precomputed counts: main IP
+    csv_dep_min=""      # Precomputed counts: main input
+    csv_dep_sip=""      # Precomputed counts: spike IP
+    csv_dep_sin=""      # Precomputed counts: spike input
 
     dp=24
     dir_eo=""
@@ -758,12 +758,12 @@ function print_state_debug() {
 
         debug_var \
             "len_def=${len_def:-UNSET}" \
-            "len_mip=${len_mip:-UNSET}" \
-            "len_min=${len_min:-UNSET}" \
-            "dep_mip=${dep_mip:-UNSET}" \
-            "dep_min=${dep_min:-UNSET}" \
-            "dep_sip=${dep_sip:-UNSET}" \
-            "dep_sin=${dep_sin:-UNSET}" \
+            "csv_len_mip=${csv_len_mip:-UNSET}" \
+            "csv_len_min=${csv_len_min:-UNSET}" \
+            "csv_dep_mip=${csv_dep_mip:-UNSET}" \
+            "csv_dep_min=${csv_dep_min:-UNSET}" \
+            "csv_dep_sip=${csv_dep_sip:-UNSET}" \
+            "csv_dep_sin=${csv_dep_sin:-UNSET}" \
             "dp=${dp}" \
             "dir_eo=${dir_eo}" \
             "nam_job=${nam_job}"
@@ -781,38 +781,38 @@ function prepare_vecs() {
         IFS=',' read -r -a arr_sin <<< "${csv_sin}"
     fi
 
-    if [[ -n "${len_mip}" ]]; then
-        IFS=',' read -r -a arr_len_mip <<< "${len_mip}"
+    if [[ -n "${csv_len_mip}" ]]; then
+        IFS=',' read -r -a arr_len_mip <<< "${csv_len_mip}"
     else
         unset arr_len_mip && declare -ga arr_len_mip=()
     fi
 
-    if [[ -n "${len_min}" ]]; then
-        IFS=',' read -r -a arr_len_min <<< "${len_min}"
+    if [[ -n "${csv_len_min}" ]]; then
+        IFS=',' read -r -a arr_len_min <<< "${csv_len_min}"
     else
         unset arr_len_min && declare -ga arr_len_min=()
     fi
 
-    if [[ -n "${dep_mip}" ]]; then
-        IFS=',' read -r -a arr_dep_mip <<< "${dep_mip}"
+    if [[ -n "${csv_dep_mip}" ]]; then
+        IFS=',' read -r -a arr_dep_mip <<< "${csv_dep_mip}"
     else
         unset arr_dep_mip && declare -ga arr_dep_mip=()
     fi
 
-    if [[ -n "${dep_min}" ]]; then
-        IFS=',' read -r -a arr_dep_min <<< "${dep_min}"
+    if [[ -n "${csv_dep_min}" ]]; then
+        IFS=',' read -r -a arr_dep_min <<< "${csv_dep_min}"
     else
         unset arr_dep_min && declare -ga arr_dep_min=()
     fi
 
-    if [[ -n "${dep_sip}" ]]; then
-        IFS=',' read -r -a arr_dep_sip <<< "${dep_sip}"
+    if [[ -n "${csv_dep_sip}" ]]; then
+        IFS=',' read -r -a arr_dep_sip <<< "${csv_dep_sip}"
     else
         unset arr_dep_sip && declare -ga arr_dep_sip=()
     fi
 
-    if [[ -n "${dep_sin}" ]]; then
-        IFS=',' read -r -a arr_dep_sin <<< "${dep_sin}"
+    if [[ -n "${csv_dep_sin}" ]]; then
+        IFS=',' read -r -a arr_dep_sin <<< "${csv_dep_sin}"
     else
         unset arr_dep_sin && declare -ga arr_dep_sin=()
     fi
@@ -872,27 +872,27 @@ function validate_vecs() {
         || return 1
 
     if (( ${#arr_len_mip[@]} > 0 )); then
-        check_arr_num_pos arr_len_mip len_mip || return 1
+        check_arr_num_pos arr_len_mip csv_len_mip || return 1
     fi
 
     if (( ${#arr_len_min[@]} > 0 )); then
-        check_arr_num_pos arr_len_min len_min || return 1
+        check_arr_num_pos arr_len_min csv_len_min || return 1
     fi
 
     if (( ${#arr_dep_mip[@]} > 0 )); then
-        check_arr_int_pos arr_dep_mip dep_mip || return 1
+        check_arr_int_pos arr_dep_mip csv_dep_mip || return 1
     fi
 
     if (( ${#arr_dep_min[@]} > 0 )); then
-        check_arr_int_pos arr_dep_min dep_min || return 1
+        check_arr_int_pos arr_dep_min csv_dep_min || return 1
     fi
 
     if (( ${#arr_dep_sip[@]} > 0 )); then
-        check_arr_int_pos arr_dep_sip dep_sip || return 1
+        check_arr_int_pos arr_dep_sip csv_dep_sip || return 1
     fi
 
     if (( ${#arr_dep_sin[@]} > 0 )); then
-        check_arr_int_pos arr_dep_sin dep_sin || return 1
+        check_arr_int_pos arr_dep_sin csv_dep_sin || return 1
     fi
 }
 

@@ -26,7 +26,7 @@ Usage
     --csv_mip <csv> --csv_min <csv> [--csv_sip <csv>] [--csv_sin <csv>]
     --fil_out <file> [--force] [--no_parts] [--no_header]
     [--tbl_met <file>] [--cfg_met <file>] [--eqn <equation>]
-    [--len_def <int>] [--len_mip <csv>] [--len_min <csv>] [--dep_mip <csv>] [--dep_min <csv>] [--dep_sip <csv>] [--dep_sin <csv>]
+    [--len_def <int>] [--csv_len_mip <csv>] [--csv_len_min <csv>] [--csv_dep_mip <csv>] [--csv_dep_min <csv>] [--csv_dep_sip <csv>] [--csv_dep_sin <csv>]
     [--dp <int>]
     [--dir_eo <dir>] [--nam_job <str>]
     [--max_job <int>] [--slurm] [--time <time>]
@@ -124,22 +124,22 @@ Parameters
   -ld, --len_def : int
     Default fragment length for single-end libraries when a per-file fragment length is not otherwise available.
 
-  -lmp, --len_mip : list of number
+  -clmp, --csv_len_mip : list of number
     Fragment length value(s) for main IP alignment files. May be a single broadcast value or a comma-separated list aligned to samples.
 
-  -lmn, --len_min : list of number
+  -clmn, --csv_len_min : list of number
     Fragment length value(s) for main input alignment files. May be a single broadcast value or a comma-separated list aligned to samples.
 
-  -dmp, --dep_mip : list of int
+  -cdmp, --csv_dep_mip : list of int
     Sequencing/alignment depth value(s) for main IP alignment files. May be a single broadcast value or a comma-separated list aligned to samples.
 
-  -dmn, --dep_min : list of int
+  -cdmn, --csv_dep_min : list of int
     Override sequencing/alignment depth value(s) for main-organism input files. May be a single broadcast value or a comma-separated list aligned to samples.
 
-  -dsp, --dep_sip : list of int
+  -cdsp, --csv_dep_sip : list of int
     Sequencing/alignment depth value(s) for spike-in IP alignment files. May be a single broadcast value or a comma-separated list aligned to samples. Used only in 'spike' mode.
 
-  -dsn, --dep_sin : list of int
+  -cdsn, --csv_dep_sin : list of int
     Sequencing/alignment depth value(s) for spike-in input alignment files. May be a single broadcast value or a comma-separated list aligned to samples. Used only in 'spike' mode.
 
   -dp, --dp : int
@@ -182,7 +182,7 @@ Notes
   - In 'siq' mode, '--method' is not used.
   - CRAM inputs require '--ref_fa'.
   - For required per-sample input vectors, reconstructed arrays must be non-empty and of matching length.
-  - Optional override vectors such as '--len_mip' or '--dep_min' may contain either:
+  - Optional override vectors such as '--csv_len_mip' or '--csv_dep_min' may contain either:
     1. no value,
     2. one broadcast value, or
     3. one value per sample.

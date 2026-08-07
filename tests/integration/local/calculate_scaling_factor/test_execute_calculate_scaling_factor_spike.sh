@@ -635,10 +635,10 @@ run_case_spike \
     fractional \
     $'1\tfractional\t10\t2\t20\t4' \
     $'1\tfractional\t10\t2\t20\t4' \
-    --dep_mip 10 \
-    --dep_min 20 \
-    --dep_sip 2 \
-    --dep_sin 4
+    --csv_dep_mip 10 \
+    --csv_dep_min 20 \
+    --csv_dep_sip 2 \
+    --csv_dep_sin 4
 
 
 #  Unknown spike-in method should fail before running workers

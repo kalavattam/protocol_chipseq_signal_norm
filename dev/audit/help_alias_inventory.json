@@ -1374,146 +1374,146 @@
   },
   {
     "documented_aliases": [
-      "-lmp",
-      "--len_mip"
+      "-clmp",
+      "--csv_len_mip"
     ],
     "hidden_aliases": [
       "--len-mip"
     ],
     "line": 114,
-    "logical_option": "--len_mip",
+    "logical_option": "--csv_len_mip",
     "owner": "help_execute_calculate_scaling_factor",
     "path": "lib/bash/help/help_execute_calculate_scaling_factor.sh",
     "public_aliases": [
-      "-lmp",
-      "--len_mip"
+      "-clmp",
+      "--csv_len_mip"
     ],
     "rejected_or_retired_aliases": [],
     "restored_aliases": [
-      "-lmp"
+      "-clmp"
     ],
     "usage_aliases": [
-      "--len_mip"
+      "--csv_len_mip"
     ]
   },
   {
     "documented_aliases": [
-      "-lmn",
-      "--len_min"
+      "-clmn",
+      "--csv_len_min"
     ],
     "hidden_aliases": [
       "--len-min"
     ],
     "line": 117,
-    "logical_option": "--len_min",
+    "logical_option": "--csv_len_min",
     "owner": "help_execute_calculate_scaling_factor",
     "path": "lib/bash/help/help_execute_calculate_scaling_factor.sh",
     "public_aliases": [
-      "-lmn",
-      "--len_min"
+      "-clmn",
+      "--csv_len_min"
     ],
     "rejected_or_retired_aliases": [],
     "restored_aliases": [
-      "-lmn"
+      "-clmn"
     ],
     "usage_aliases": [
-      "--len_min"
+      "--csv_len_min"
     ]
   },
   {
     "documented_aliases": [
-      "-dmp",
-      "--dep_mip"
+      "-cdmp",
+      "--csv_dep_mip"
     ],
     "hidden_aliases": [
       "--dep-mip"
     ],
     "line": 120,
-    "logical_option": "--dep_mip",
+    "logical_option": "--csv_dep_mip",
     "owner": "help_execute_calculate_scaling_factor",
     "path": "lib/bash/help/help_execute_calculate_scaling_factor.sh",
     "public_aliases": [
-      "-dmp",
-      "--dep_mip"
+      "-cdmp",
+      "--csv_dep_mip"
     ],
     "rejected_or_retired_aliases": [],
     "restored_aliases": [
-      "-dmp"
+      "-cdmp"
     ],
     "usage_aliases": [
-      "--dep_mip"
+      "--csv_dep_mip"
     ]
   },
   {
     "documented_aliases": [
-      "-dmn",
-      "--dep_min"
+      "-cdmn",
+      "--csv_dep_min"
     ],
     "hidden_aliases": [
       "--dep-min"
     ],
     "line": 123,
-    "logical_option": "--dep_min",
+    "logical_option": "--csv_dep_min",
     "owner": "help_execute_calculate_scaling_factor",
     "path": "lib/bash/help/help_execute_calculate_scaling_factor.sh",
     "public_aliases": [
-      "-dmn",
-      "--dep_min"
+      "-cdmn",
+      "--csv_dep_min"
     ],
     "rejected_or_retired_aliases": [],
     "restored_aliases": [
-      "-dmn"
+      "-cdmn"
     ],
     "usage_aliases": [
-      "--dep_min"
+      "--csv_dep_min"
     ]
   },
   {
     "documented_aliases": [
-      "-dsp",
-      "--dep_sip"
+      "-cdsp",
+      "--csv_dep_sip"
     ],
     "hidden_aliases": [
       "--dep-sip"
     ],
     "line": 126,
-    "logical_option": "--dep_sip",
+    "logical_option": "--csv_dep_sip",
     "owner": "help_execute_calculate_scaling_factor",
     "path": "lib/bash/help/help_execute_calculate_scaling_factor.sh",
     "public_aliases": [
-      "-dsp",
-      "--dep_sip"
+      "-cdsp",
+      "--csv_dep_sip"
     ],
     "rejected_or_retired_aliases": [],
     "restored_aliases": [
-      "-dsp"
+      "-cdsp"
     ],
     "usage_aliases": [
-      "--dep_sip"
+      "--csv_dep_sip"
     ]
   },
   {
     "documented_aliases": [
-      "-dsn",
-      "--dep_sin"
+      "-cdsn",
+      "--csv_dep_sin"
     ],
     "hidden_aliases": [
       "--dep-sin"
     ],
     "line": 129,
-    "logical_option": "--dep_sin",
+    "logical_option": "--csv_dep_sin",
     "owner": "help_execute_calculate_scaling_factor",
     "path": "lib/bash/help/help_execute_calculate_scaling_factor.sh",
     "public_aliases": [
-      "-dsn",
-      "--dep_sin"
+      "-cdsn",
+      "--csv_dep_sin"
     ],
     "rejected_or_retired_aliases": [],
     "restored_aliases": [
-      "-dsn"
+      "-cdsn"
     ],
     "usage_aliases": [
-      "--dep_sin"
+      "--csv_dep_sin"
     ]
   },
   {
@@ -2380,146 +2380,146 @@
   },
   {
     "documented_aliases": [
-      "-lmp",
-      "--len_mip"
+      "-clmp",
+      "--csv_len_mip"
     ],
     "hidden_aliases": [
       "--len-mip"
     ],
     "line": 92,
-    "logical_option": "--len_mip",
+    "logical_option": "--csv_len_mip",
     "owner": "help_submit_calculate_scaling_factor",
     "path": "lib/bash/help/help_submit_calculate_scaling_factor.sh",
     "public_aliases": [
-      "-lmp",
-      "--len_mip"
+      "-clmp",
+      "--csv_len_mip"
     ],
     "rejected_or_retired_aliases": [],
     "restored_aliases": [
-      "-lmp"
+      "-clmp"
     ],
     "usage_aliases": [
-      "--len_mip"
+      "--csv_len_mip"
     ]
   },
   {
     "documented_aliases": [
-      "-lmn",
-      "--len_min"
+      "-clmn",
+      "--csv_len_min"
     ],
     "hidden_aliases": [
       "--len-min"
     ],
     "line": 95,
-    "logical_option": "--len_min",
+    "logical_option": "--csv_len_min",
     "owner": "help_submit_calculate_scaling_factor",
     "path": "lib/bash/help/help_submit_calculate_scaling_factor.sh",
     "public_aliases": [
-      "-lmn",
-      "--len_min"
+      "-clmn",
+      "--csv_len_min"
     ],
     "rejected_or_retired_aliases": [],
     "restored_aliases": [
-      "-lmn"
+      "-clmn"
     ],
     "usage_aliases": [
-      "--len_min"
+      "--csv_len_min"
     ]
   },
   {
     "documented_aliases": [
-      "-dmp",
-      "--dep_mip"
+      "-cdmp",
+      "--csv_dep_mip"
     ],
     "hidden_aliases": [
       "--dep-mip"
     ],
     "line": 98,
-    "logical_option": "--dep_mip",
+    "logical_option": "--csv_dep_mip",
     "owner": "help_submit_calculate_scaling_factor",
     "path": "lib/bash/help/help_submit_calculate_scaling_factor.sh",
     "public_aliases": [
-      "-dmp",
-      "--dep_mip"
+      "-cdmp",
+      "--csv_dep_mip"
     ],
     "rejected_or_retired_aliases": [],
     "restored_aliases": [
-      "-dmp"
+      "-cdmp"
     ],
     "usage_aliases": [
-      "--dep_mip"
+      "--csv_dep_mip"
     ]
   },
   {
     "documented_aliases": [
-      "-dmn",
-      "--dep_min"
+      "-cdmn",
+      "--csv_dep_min"
     ],
     "hidden_aliases": [
       "--dep-min"
     ],
     "line": 101,
-    "logical_option": "--dep_min",
+    "logical_option": "--csv_dep_min",
     "owner": "help_submit_calculate_scaling_factor",
     "path": "lib/bash/help/help_submit_calculate_scaling_factor.sh",
     "public_aliases": [
-      "-dmn",
-      "--dep_min"
+      "-cdmn",
+      "--csv_dep_min"
     ],
     "rejected_or_retired_aliases": [],
     "restored_aliases": [
-      "-dmn"
+      "-cdmn"
     ],
     "usage_aliases": [
-      "--dep_min"
+      "--csv_dep_min"
     ]
   },
   {
     "documented_aliases": [
-      "-dsp",
-      "--dep_sip"
+      "-cdsp",
+      "--csv_dep_sip"
     ],
     "hidden_aliases": [
       "--dep-sip"
     ],
     "line": 104,
-    "logical_option": "--dep_sip",
+    "logical_option": "--csv_dep_sip",
     "owner": "help_submit_calculate_scaling_factor",
     "path": "lib/bash/help/help_submit_calculate_scaling_factor.sh",
     "public_aliases": [
-      "-dsp",
-      "--dep_sip"
+      "-cdsp",
+      "--csv_dep_sip"
     ],
     "rejected_or_retired_aliases": [],
     "restored_aliases": [
-      "-dsp"
+      "-cdsp"
     ],
     "usage_aliases": [
-      "--dep_sip"
+      "--csv_dep_sip"
     ]
   },
   {
     "documented_aliases": [
-      "-dsn",
-      "--dep_sin"
+      "-cdsn",
+      "--csv_dep_sin"
     ],
     "hidden_aliases": [
       "--dep-sin"
     ],
     "line": 107,
-    "logical_option": "--dep_sin",
+    "logical_option": "--csv_dep_sin",
     "owner": "help_submit_calculate_scaling_factor",
     "path": "lib/bash/help/help_submit_calculate_scaling_factor.sh",
     "public_aliases": [
-      "-dsn",
-      "--dep_sin"
+      "-cdsn",
+      "--csv_dep_sin"
     ],
     "rejected_or_retired_aliases": [],
     "restored_aliases": [
-      "-dsn"
+      "-cdsn"
     ],
     "usage_aliases": [
-      "--dep_sin"
+      "--csv_dep_sin"
     ]
   },
   {

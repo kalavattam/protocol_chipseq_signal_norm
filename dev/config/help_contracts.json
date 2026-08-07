@@ -1,27 +1,153 @@
 {
   "schema_version": 3,
   "parameter_occurrence_dispositions": [
-    {"id": "download_dir_scr", "path": "lib/bash/help/help_submit_download_fastqs.sh", "symbol": "help_submit_download_fastqs", "parameter": "dir_scr", "disposition": "enrolled_member"},
-    {"id": "install_dry_run", "path": "install/scripts/install_envs_entrypoint.sh", "symbol": "<file>", "parameter": "dry_run", "disposition": "unresolved_review_candidate"},
-    {"id": "install_env_nam", "path": "install/scripts/install_envs_entrypoint.sh", "symbol": "<file>", "parameter": "env_nam", "disposition": "unresolved_review_candidate"},
-    {"id": "source_helpers_dir_fnc_88", "path": "lib/bash/core/source_helpers.sh", "symbol": "_source_helper_resolve", "parameter": "dir_fnc", "disposition": "non_applicable_same_name"},
-    {"id": "source_helpers_dir_fnc_276", "path": "lib/bash/core/source_helpers.sh", "symbol": "source_helpers", "parameter": "dir_fnc", "disposition": "enrolled_member"},
-    {"id": "align_dir_scr", "path": "lib/bash/help/help_submit_align_fastqs.sh", "symbol": "help_submit_align_fastqs", "parameter": "dir_scr", "disposition": "non_applicable_same_name"},
-    {"id": "calculate_dir_scr", "path": "lib/bash/help/help_submit_calculate_scaling_factor.sh", "symbol": "help_submit_calculate_scaling_factor", "parameter": "dir_scr", "disposition": "non_applicable_same_name"},
-    {"id": "compute_dir_scr", "path": "lib/bash/help/help_submit_compute_signal.sh", "symbol": "help_submit_compute_signal", "parameter": "dir_scr", "disposition": "non_applicable_same_name"},
-    {"id": "convert_dir_scr", "path": "lib/bash/help/help_submit_convert_bam_bed.sh", "symbol": "help_submit_convert_bam_bed", "parameter": "dir_scr", "disposition": "non_applicable_same_name"},
-    {"id": "filter_dir_scr", "path": "lib/bash/help/help_submit_filter_alignments.sh", "symbol": "help_submit_filter_alignments", "parameter": "dir_scr", "disposition": "non_applicable_same_name"},
-    {"id": "qsort_dir_scr", "path": "lib/bash/help/help_submit_qsort_bam.sh", "symbol": "help_submit_qsort_bam", "parameter": "dir_scr", "disposition": "non_applicable_same_name"},
-    {"id": "trim_dir_scr", "path": "lib/bash/help/help_submit_trim_fastqs.sh", "symbol": "help_submit_trim_fastqs", "parameter": "dir_scr", "disposition": "non_applicable_same_name"},
-    {"id": "floor_skp_pfx", "path": "src/protocol_chipseq_signal_norm/cli/compute_input_floor.py", "symbol": "parse_args", "parameter": "skp_pfx", "disposition": "non_applicable_same_name"},
-    {"id": "floor_qntl_nz", "path": "src/protocol_chipseq_signal_norm/cli/compute_input_floor.py", "symbol": "parse_args", "parameter": "qntl_nz", "disposition": "non_applicable_same_name"},
-    {"id": "floor_coef", "path": "src/protocol_chipseq_signal_norm/cli/compute_input_floor.py", "symbol": "parse_args", "parameter": "coef", "disposition": "non_applicable_same_name"},
-    {"id": "floor_eps", "path": "src/protocol_chipseq_signal_norm/cli/compute_input_floor.py", "symbol": "parse_args", "parameter": "eps", "disposition": "non_applicable_same_name"},
-    {"id": "floor_mode_nz", "path": "src/protocol_chipseq_signal_norm/cli/compute_input_floor.py", "symbol": "parse_args", "parameter": "mode_nz", "disposition": "non_applicable_same_name"},
-    {"id": "floor_floor", "path": "src/protocol_chipseq_signal_norm/cli/compute_input_floor.py", "symbol": "parse_args", "parameter": "floor", "disposition": "non_applicable_same_name"},
-    {"id": "floor_siz_bin", "path": "src/protocol_chipseq_signal_norm/cli/compute_input_floor.py", "symbol": "parse_args", "parameter": "siz_bin", "disposition": "non_applicable_same_name"},
-    {"id": "floor_siz_gen", "path": "src/protocol_chipseq_signal_norm/cli/compute_input_floor.py", "symbol": "parse_args", "parameter": "siz_gen", "disposition": "non_applicable_same_name"},
-    {"id": "merge_dp", "path": "src/protocol_chipseq_signal_norm/cli/merge_bins_bdg.py", "symbol": "parse_args", "parameter": "dp", "disposition": "unresolved_review_candidate"}
+    {
+      "id": "download_dir_scr",
+      "path": "lib/bash/help/help_submit_download_fastqs.sh",
+      "symbol": "help_submit_download_fastqs",
+      "parameter": "dir_scr",
+      "disposition": "enrolled_member"
+    },
+    {
+      "id": "install_dry_run",
+      "path": "install/scripts/install_envs_entrypoint.sh",
+      "symbol": "<file>",
+      "parameter": "dry_run",
+      "disposition": "unresolved_review_candidate"
+    },
+    {
+      "id": "install_env_nam",
+      "path": "install/scripts/install_envs_entrypoint.sh",
+      "symbol": "<file>",
+      "parameter": "env_nam",
+      "disposition": "unresolved_review_candidate"
+    },
+    {
+      "id": "source_helpers_dir_fnc_88",
+      "path": "lib/bash/core/source_helpers.sh",
+      "symbol": "_source_helper_resolve",
+      "parameter": "dir_fnc",
+      "disposition": "non_applicable_same_name"
+    },
+    {
+      "id": "source_helpers_dir_fnc_276",
+      "path": "lib/bash/core/source_helpers.sh",
+      "symbol": "source_helpers",
+      "parameter": "dir_fnc",
+      "disposition": "enrolled_member"
+    },
+    {
+      "id": "align_dir_scr",
+      "path": "lib/bash/help/help_submit_align_fastqs.sh",
+      "symbol": "help_submit_align_fastqs",
+      "parameter": "dir_scr",
+      "disposition": "non_applicable_same_name"
+    },
+    {
+      "id": "calculate_dir_scr",
+      "path": "lib/bash/help/help_submit_calculate_scaling_factor.sh",
+      "symbol": "help_submit_calculate_scaling_factor",
+      "parameter": "dir_scr",
+      "disposition": "non_applicable_same_name"
+    },
+    {
+      "id": "compute_dir_scr",
+      "path": "lib/bash/help/help_submit_compute_signal.sh",
+      "symbol": "help_submit_compute_signal",
+      "parameter": "dir_scr",
+      "disposition": "non_applicable_same_name"
+    },
+    {
+      "id": "convert_dir_scr",
+      "path": "lib/bash/help/help_submit_convert_bam_bed.sh",
+      "symbol": "help_submit_convert_bam_bed",
+      "parameter": "dir_scr",
+      "disposition": "non_applicable_same_name"
+    },
+    {
+      "id": "filter_dir_scr",
+      "path": "lib/bash/help/help_submit_filter_alignments.sh",
+      "symbol": "help_submit_filter_alignments",
+      "parameter": "dir_scr",
+      "disposition": "non_applicable_same_name"
+    },
+    {
+      "id": "qsort_dir_scr",
+      "path": "lib/bash/help/help_submit_qsort_bam.sh",
+      "symbol": "help_submit_qsort_bam",
+      "parameter": "dir_scr",
+      "disposition": "non_applicable_same_name"
+    },
+    {
+      "id": "trim_dir_scr",
+      "path": "lib/bash/help/help_submit_trim_fastqs.sh",
+      "symbol": "help_submit_trim_fastqs",
+      "parameter": "dir_scr",
+      "disposition": "non_applicable_same_name"
+    },
+    {
+      "id": "floor_skp_pfx",
+      "path": "src/protocol_chipseq_signal_norm/cli/compute_input_floor.py",
+      "symbol": "parse_args",
+      "parameter": "skp_pfx",
+      "disposition": "non_applicable_same_name"
+    },
+    {
+      "id": "floor_qntl_nz",
+      "path": "src/protocol_chipseq_signal_norm/cli/compute_input_floor.py",
+      "symbol": "parse_args",
+      "parameter": "qntl_nz",
+      "disposition": "non_applicable_same_name"
+    },
+    {
+      "id": "floor_coef",
+      "path": "src/protocol_chipseq_signal_norm/cli/compute_input_floor.py",
+      "symbol": "parse_args",
+      "parameter": "coef",
+      "disposition": "non_applicable_same_name"
+    },
+    {
+      "id": "floor_eps",
+      "path": "src/protocol_chipseq_signal_norm/cli/compute_input_floor.py",
+      "symbol": "parse_args",
+      "parameter": "eps",
+      "disposition": "non_applicable_same_name"
+    },
+    {
+      "id": "floor_mode_nz",
+      "path": "src/protocol_chipseq_signal_norm/cli/compute_input_floor.py",
+      "symbol": "parse_args",
+      "parameter": "mode_nz",
+      "disposition": "non_applicable_same_name"
+    },
+    {
+      "id": "floor_floor",
+      "path": "src/protocol_chipseq_signal_norm/cli/compute_input_floor.py",
+      "symbol": "parse_args",
+      "parameter": "floor",
+      "disposition": "non_applicable_same_name"
+    },
+    {
+      "id": "floor_siz_bin",
+      "path": "src/protocol_chipseq_signal_norm/cli/compute_input_floor.py",
+      "symbol": "parse_args",
+      "parameter": "siz_bin",
+      "disposition": "non_applicable_same_name"
+    },
+    {
+      "id": "floor_siz_gen",
+      "path": "src/protocol_chipseq_signal_norm/cli/compute_input_floor.py",
+      "symbol": "parse_args",
+      "parameter": "siz_gen",
+      "disposition": "non_applicable_same_name"
+    },
+    {
+      "id": "merge_dp",
+      "path": "src/protocol_chipseq_signal_norm/cli/merge_bins_bdg.py",
+      "symbol": "parse_args",
+      "parameter": "dp",
+      "disposition": "unresolved_review_candidate"
+    }
   ],
   "surfaces": [
     {
@@ -652,21 +778,31 @@
       "status": "registered_shared"
     },
     {
-      "id": "shared_csv_dep_min",
+      "id": "local_csv_dep_min_meanings",
       "parameter": "csv_dep_min",
-      "canonical_core": "Comma-separated list of minimum-depth values.",
-      "members": [
+      "canonical_core": null,
+      "members": [],
+      "local_meanings": [
         {
           "surface_id": "lib/bash/help/help_execute_compute_signal.sh::help_execute_compute_signal",
           "path": "lib/bash/help/help_execute_compute_signal.sh",
           "symbol": "help_execute_compute_signal",
           "parameter": "csv_dep_min",
           "owner": "PARAMETER.DESCRIPTIONS",
-          "evidence": "Parameters row at line 150: Comma-separated list of minimum-depth values or sentinels. Used only with '--mode ratio'."
+          "evidence": "Parameters row at line 150",
+          "meaning": "Minimum-depth values or sentinels used as a floor for positive input denominators; used only with '--mode ratio'."
+        },
+        {
+          "surface_id": "lib/bash/help/help_submit_calculate_scaling_factor.sh::help_submit_calculate_scaling_factor",
+          "path": "lib/bash/help/help_submit_calculate_scaling_factor.sh",
+          "symbol": "help_submit_calculate_scaling_factor",
+          "parameter": "csv_dep_min",
+          "owner": "PARAMETER.DESCRIPTIONS",
+          "evidence": "Parameters row for '-cdmn, --csv_dep_min'",
+          "meaning": "Sequencing/alignment depth value(s) for main input alignment files, where 'min' abbreviates main input under the local mip/min/sip/sin scheme rather than minimum."
         }
       ],
-      "local_meanings": [],
-      "status": "registered_shared"
+      "status": "non_applicable_same_name"
     },
     {
       "id": "shared_csv_pseudo",
@@ -992,15 +1128,15 @@
       "status": "registered_shared"
     },
     {
-      "id": "shared_len_mip",
-      "parameter": "len_mip",
+      "id": "shared_csv_len_mip",
+      "parameter": "csv_len_mip",
       "canonical_core": "Fragment length value(s) for main IP alignment files.",
       "members": [
         {
           "surface_id": "lib/bash/help/help_submit_calculate_scaling_factor.sh::help_submit_calculate_scaling_factor",
           "path": "lib/bash/help/help_submit_calculate_scaling_factor.sh",
           "symbol": "help_submit_calculate_scaling_factor",
-          "parameter": "len_mip",
+          "parameter": "csv_len_mip",
           "owner": "PARAMETER.DESCRIPTIONS",
           "evidence": "Parameters row at line 92: Fragment length value(s) for main IP alignment files. Optional comma-separated list of precomputed fragment lengths."
         }
@@ -1009,15 +1145,15 @@
       "status": "registered_shared"
     },
     {
-      "id": "shared_len_min",
-      "parameter": "len_min",
+      "id": "shared_csv_len_min",
+      "parameter": "csv_len_min",
       "canonical_core": "Fragment length value(s) for main input alignment files.",
       "members": [
         {
           "surface_id": "lib/bash/help/help_submit_calculate_scaling_factor.sh::help_submit_calculate_scaling_factor",
           "path": "lib/bash/help/help_submit_calculate_scaling_factor.sh",
           "symbol": "help_submit_calculate_scaling_factor",
-          "parameter": "len_min",
+          "parameter": "csv_len_min",
           "owner": "PARAMETER.DESCRIPTIONS",
           "evidence": "Parameters row at line 95: Fragment length value(s) for main input alignment files. Optional comma-separated list of precomputed fragment lengths."
         }
@@ -1026,15 +1162,15 @@
       "status": "registered_shared"
     },
     {
-      "id": "shared_dep_mip",
-      "parameter": "dep_mip",
+      "id": "shared_csv_dep_mip",
+      "parameter": "csv_dep_mip",
       "canonical_core": "Sequencing/alignment depth value(s) for main IP alignment files.",
       "members": [
         {
           "surface_id": "lib/bash/help/help_submit_calculate_scaling_factor.sh::help_submit_calculate_scaling_factor",
           "path": "lib/bash/help/help_submit_calculate_scaling_factor.sh",
           "symbol": "help_submit_calculate_scaling_factor",
-          "parameter": "dep_mip",
+          "parameter": "csv_dep_mip",
           "owner": "PARAMETER.DESCRIPTIONS",
           "evidence": "Parameters row at line 98: Sequencing/alignment depth value(s) for main IP alignment files. Optional comma-separated list of precomputed alignment counts."
         }
@@ -1043,15 +1179,15 @@
       "status": "registered_shared"
     },
     {
-      "id": "shared_dep_sip",
-      "parameter": "dep_sip",
+      "id": "shared_csv_dep_sip",
+      "parameter": "csv_dep_sip",
       "canonical_core": "Sequencing/alignment depth value(s) for spike-in IP alignment files.",
       "members": [
         {
           "surface_id": "lib/bash/help/help_submit_calculate_scaling_factor.sh::help_submit_calculate_scaling_factor",
           "path": "lib/bash/help/help_submit_calculate_scaling_factor.sh",
           "symbol": "help_submit_calculate_scaling_factor",
-          "parameter": "dep_sip",
+          "parameter": "csv_dep_sip",
           "owner": "PARAMETER.DESCRIPTIONS",
           "evidence": "Parameters row at line 104: Sequencing/alignment depth value(s) for spike-in IP alignment files. Optional comma-separated list of precomputed alignment counts."
         }
@@ -1060,15 +1196,15 @@
       "status": "registered_shared"
     },
     {
-      "id": "shared_dep_sin",
-      "parameter": "dep_sin",
+      "id": "shared_csv_dep_sin",
+      "parameter": "csv_dep_sin",
       "canonical_core": "Sequencing/alignment depth value(s) for spike-in input alignment files.",
       "members": [
         {
           "surface_id": "lib/bash/help/help_submit_calculate_scaling_factor.sh::help_submit_calculate_scaling_factor",
           "path": "lib/bash/help/help_submit_calculate_scaling_factor.sh",
           "symbol": "help_submit_calculate_scaling_factor",
-          "parameter": "dep_sin",
+          "parameter": "csv_dep_sin",
           "owner": "PARAMETER.DESCRIPTIONS",
           "evidence": "Parameters row at line 107: Sequencing/alignment depth value(s) for spike-in input alignment files. Optional comma-separated list of precomputed alignment counts."
         }
@@ -1822,27 +1958,51 @@
       },
       "usage_rows": [
         {
-          "members": ["help", "verbose"],
+          "members": [
+            "help",
+            "verbose"
+          ],
           "rationale": "Help and verbosity are the approved reporting controls."
         },
         {
-          "members": ["mode"],
+          "members": [
+            "mode"
+          ],
           "rationale": "The operation discriminant forms its own invocation row."
         },
         {
-          "members": ["fil_in", "infmt", "ref_fa", "skp_pfx"],
+          "members": [
+            "fil_in",
+            "infmt",
+            "ref_fa",
+            "skp_pfx"
+          ],
           "rationale": "Input selection, format, reference, and prefix are one approved input group."
         },
         {
-          "members": ["method", "qntl_nz", "coef", "eps", "mode_nz", "floor"],
+          "members": [
+            "method",
+            "qntl_nz",
+            "coef",
+            "eps",
+            "mode_nz",
+            "floor"
+          ],
           "rationale": "Distribution-method controls are one readable mode-specific group."
         },
         {
-          "members": ["siz_bin", "siz_gen", "flags_pe", "flags_se"],
+          "members": [
+            "siz_bin",
+            "siz_gen",
+            "flags_pe",
+            "flags_se"
+          ],
           "rationale": "Fragment and normalized-coverage controls are one readable mode-specific group."
         },
         {
-          "members": ["dp"],
+          "members": [
+            "dp"
+          ],
           "rationale": "The output-formatting control ends the projection."
         }
       ],
@@ -1970,10 +2130,20 @@
         "reporting": "python_bounded_verbose_argument_probe",
         "reporting_symbol": "_print_input_floor_arguments",
         "reporting_call_arguments": [
-          {"source": "parsed_args"},
-          {"literal": null},
-          {"literal": null},
-          {"literal": ["track"]}
+          {
+            "source": "parsed_args"
+          },
+          {
+            "literal": null
+          },
+          {
+            "literal": null
+          },
+          {
+            "literal": [
+              "track"
+            ]
+          }
         ],
         "reporting_probes": [
           [
@@ -2066,40 +2236,132 @@
       },
       "usage_rows": [
         {
-          "members": ["help", "verbose"],
+          "members": [
+            "help",
+            "verbose"
+          ],
           "rationale": "Help and verbosity are the approved reporting controls."
         },
         {
-          "members": ["fil_A", "fil_B", "skp_pfx"],
+          "members": [
+            "fil_A",
+            "fil_B",
+            "skp_pfx"
+          ],
           "rationale": "The required primary input, optional paired input, and header-prefix control form the input group."
         },
         {
-          "members": ["method", "qntl_nz", "coef", "floor", "eps", "mode_nz", "sym"],
+          "members": [
+            "method",
+            "qntl_nz",
+            "coef",
+            "floor",
+            "eps",
+            "mode_nz",
+            "sym"
+          ],
           "rationale": "Pseudocount selection, filtering, and symmetry controls form one mode-specific group."
         },
         {
-          "members": ["dp", "prt_jsn"],
+          "members": [
+            "dp",
+            "prt_jsn"
+          ],
           "rationale": "Finite-value rendering and optional JSON representation form the output-formatting group."
         }
       ],
       "surface_orders": {
-        "parser_registration": ["help", "verbose", "fil_A", "fil_B", "skp_pfx", "method", "qntl_nz", "coef", "floor", "eps", "mode_nz", "sym", "dp", "prt_jsn"],
-        "usage": ["help", "verbose", "fil_A", "fil_B", "skp_pfx", "method", "qntl_nz", "coef", "floor", "eps", "mode_nz", "sym", "dp", "prt_jsn"],
-        "options_parameters": ["help", "verbose", "fil_A", "fil_B", "skp_pfx", "method", "qntl_nz", "coef", "floor", "eps", "mode_nz", "sym", "dp", "prt_jsn"],
-        "reporting_order": ["verbose", "fil_A", "fil_B", "skp_pfx", "method", "qntl_nz", "coef", "floor", "eps", "mode_nz", "sym", "dp", "prt_jsn"]
+        "parser_registration": [
+          "help",
+          "verbose",
+          "fil_A",
+          "fil_B",
+          "skp_pfx",
+          "method",
+          "qntl_nz",
+          "coef",
+          "floor",
+          "eps",
+          "mode_nz",
+          "sym",
+          "dp",
+          "prt_jsn"
+        ],
+        "usage": [
+          "help",
+          "verbose",
+          "fil_A",
+          "fil_B",
+          "skp_pfx",
+          "method",
+          "qntl_nz",
+          "coef",
+          "floor",
+          "eps",
+          "mode_nz",
+          "sym",
+          "dp",
+          "prt_jsn"
+        ],
+        "options_parameters": [
+          "help",
+          "verbose",
+          "fil_A",
+          "fil_B",
+          "skp_pfx",
+          "method",
+          "qntl_nz",
+          "coef",
+          "floor",
+          "eps",
+          "mode_nz",
+          "sym",
+          "dp",
+          "prt_jsn"
+        ],
+        "reporting_order": [
+          "verbose",
+          "fil_A",
+          "fil_B",
+          "skp_pfx",
+          "method",
+          "qntl_nz",
+          "coef",
+          "floor",
+          "eps",
+          "mode_nz",
+          "sym",
+          "dp",
+          "prt_jsn"
+        ]
       },
       "relationships": [
         {
           "kind": "adjacent",
-          "members": ["fil_A", "fil_B", "skp_pfx"]
+          "members": [
+            "fil_A",
+            "fil_B",
+            "skp_pfx"
+          ]
         },
         {
           "kind": "contiguous",
-          "members": ["method", "qntl_nz", "coef", "floor", "eps", "mode_nz", "sym"]
+          "members": [
+            "method",
+            "qntl_nz",
+            "coef",
+            "floor",
+            "eps",
+            "mode_nz",
+            "sym"
+          ]
         },
         {
           "kind": "same_group",
-          "members": ["dp", "prt_jsn"]
+          "members": [
+            "dp",
+            "prt_jsn"
+          ]
         }
       ],
       "adapters": {
@@ -2114,9 +2376,17 @@
         "reporting": "python_bounded_verbose_argument_probe",
         "reporting_symbol": "_print_pseudo_arguments",
         "reporting_call_arguments": [
-          {"source": "parsed_args"},
-          {"literal": null},
-          {"literal": ["track"]}
+          {
+            "source": "parsed_args"
+          },
+          {
+            "literal": null
+          },
+          {
+            "literal": [
+              "track"
+            ]
+          }
         ],
         "reporting_probes": [
           [
@@ -2192,15 +2462,25 @@
       },
       "usage_rows": [
         {
-          "members": ["help", "dry_run"],
+          "members": [
+            "help",
+            "dry_run"
+          ],
           "rationale": "Help and no-write preview are the approved invocation controls."
         },
         {
-          "members": ["mode", "csv_fil_in", "fil_out"],
+          "members": [
+            "mode",
+            "csv_fil_in",
+            "fil_out"
+          ],
           "rationale": "The workflow discriminant, part-file input list, and output target form the required execution tuple."
         },
         {
-          "members": ["force", "no_parts"],
+          "members": [
+            "force",
+            "no_parts"
+          ],
           "rationale": "The lifecycle controls remain together after the required execution tuple."
         }
       ],
@@ -2267,12 +2547,39 @@
       "language": "shell",
       "status": "registered",
       "logical_order": [
-        "help", "verbose", "dry_run", "env_nam", "threads", "mode",
-        "method", "aln_typ", "ref_fa", "csv_mip", "csv_min", "csv_sip",
-        "csv_sin", "fil_out", "force", "no_parts", "no_header", "tbl_met",
-        "cfg_met", "eqn", "len_def", "len_mip", "len_min", "dep_mip",
-        "dep_min", "dep_sip", "dep_sin", "dp", "dir_eo", "nam_job",
-        "max_job", "slurm", "time"
+        "help",
+        "verbose",
+        "dry_run",
+        "env_nam",
+        "threads",
+        "mode",
+        "method",
+        "aln_typ",
+        "ref_fa",
+        "csv_mip",
+        "csv_min",
+        "csv_sip",
+        "csv_sin",
+        "fil_out",
+        "force",
+        "no_parts",
+        "no_header",
+        "tbl_met",
+        "cfg_met",
+        "eqn",
+        "len_def",
+        "csv_len_mip",
+        "csv_len_min",
+        "csv_dep_mip",
+        "csv_dep_min",
+        "csv_dep_sip",
+        "csv_dep_sin",
+        "dp",
+        "dir_eo",
+        "nam_job",
+        "max_job",
+        "slurm",
+        "time"
       ],
       "roles_reviewed": true,
       "roles": {
@@ -2297,12 +2604,12 @@
         "cfg_met": "mode_specific",
         "eqn": "mode_specific",
         "len_def": "mode_specific",
-        "len_mip": "mode_specific",
-        "len_min": "mode_specific",
-        "dep_mip": "mode_specific",
-        "dep_min": "mode_specific",
-        "dep_sip": "mode_specific",
-        "dep_sin": "mode_specific",
+        "csv_len_mip": "mode_specific",
+        "csv_len_min": "mode_specific",
+        "csv_dep_mip": "mode_specific",
+        "csv_dep_min": "mode_specific",
+        "csv_dep_sip": "mode_specific",
+        "csv_dep_sin": "mode_specific",
         "dp": "formatting",
         "dir_eo": "logging_job_names",
         "nam_job": "logging_job_names",
@@ -2312,101 +2619,298 @@
       },
       "usage_rows": [
         {
-          "members": ["help", "verbose", "dry_run"],
+          "members": [
+            "help",
+            "verbose",
+            "dry_run"
+          ],
           "rationale": "Help, diagnostic verbosity, and no-write preview are approved invocation controls."
         },
         {
-          "members": ["env_nam", "threads"],
+          "members": [
+            "env_nam",
+            "threads"
+          ],
           "rationale": "Environment and compute-resource controls form one execution setup row."
         },
         {
-          "members": ["mode", "method"],
+          "members": [
+            "mode",
+            "method"
+          ],
           "rationale": "The workflow discriminant and the calculation it selects remain adjacent."
         },
         {
-          "members": ["aln_typ", "ref_fa"],
+          "members": [
+            "aln_typ",
+            "ref_fa"
+          ],
           "rationale": "Input interpretation and reference selection are one readable input row."
         },
         {
-          "members": ["csv_mip", "csv_min", "csv_sip", "csv_sin"],
+          "members": [
+            "csv_mip",
+            "csv_min",
+            "csv_sip",
+            "csv_sin"
+          ],
           "rationale": "The required and conditional alignment collections are one input group."
         },
         {
-          "members": ["fil_out", "force", "no_parts", "no_header"],
+          "members": [
+            "fil_out",
+            "force",
+            "no_parts",
+            "no_header"
+          ],
           "rationale": "The output target and its lifecycle controls form one output row."
         },
         {
-          "members": ["tbl_met", "cfg_met", "eqn"],
+          "members": [
+            "tbl_met",
+            "cfg_met",
+            "eqn"
+          ],
           "rationale": "siQ metadata and equation controls form one mode-specific row."
         },
         {
-          "members": ["len_def", "len_mip", "len_min", "dep_mip", "dep_min", "dep_sip", "dep_sin"],
+          "members": [
+            "len_def",
+            "csv_len_mip",
+            "csv_len_min",
+            "csv_dep_mip",
+            "csv_dep_min",
+            "csv_dep_sip",
+            "csv_dep_sin"
+          ],
           "rationale": "Fragment and depth controls form one structured mode-specific row."
         },
         {
-          "members": ["dp"],
+          "members": [
+            "dp"
+          ],
           "rationale": "The established finite numeric-rendering control remains separate."
         },
         {
-          "members": ["dir_eo", "nam_job"],
+          "members": [
+            "dir_eo",
+            "nam_job"
+          ],
           "rationale": "Log destination and job naming controls form one operational row."
         },
         {
-          "members": ["max_job", "slurm", "time"],
+          "members": [
+            "max_job",
+            "slurm",
+            "time"
+          ],
           "rationale": "Concurrency and scheduler controls form one final execution row."
         }
       ],
       "surface_orders": {
         "parser_registration": [
-          "help", "verbose", "dry_run", "env_nam", "threads", "mode",
-          "method", "aln_typ", "ref_fa", "csv_mip", "csv_min", "csv_sip",
-          "csv_sin", "fil_out", "force", "no_parts", "no_header", "tbl_met",
-          "cfg_met", "eqn", "len_def", "len_mip", "len_min", "dep_mip",
-          "dep_min", "dep_sip", "dep_sin", "dp", "dir_eo", "nam_job",
-          "max_job", "slurm", "time"
+          "help",
+          "verbose",
+          "dry_run",
+          "env_nam",
+          "threads",
+          "mode",
+          "method",
+          "aln_typ",
+          "ref_fa",
+          "csv_mip",
+          "csv_min",
+          "csv_sip",
+          "csv_sin",
+          "fil_out",
+          "force",
+          "no_parts",
+          "no_header",
+          "tbl_met",
+          "cfg_met",
+          "eqn",
+          "len_def",
+          "csv_len_mip",
+          "csv_len_min",
+          "csv_dep_mip",
+          "csv_dep_min",
+          "csv_dep_sip",
+          "csv_dep_sin",
+          "dp",
+          "dir_eo",
+          "nam_job",
+          "max_job",
+          "slurm",
+          "time"
         ],
         "usage": [
-          "help", "verbose", "dry_run", "env_nam", "threads", "mode",
-          "method", "aln_typ", "ref_fa", "csv_mip", "csv_min", "csv_sip",
-          "csv_sin", "fil_out", "force", "no_parts", "no_header", "tbl_met",
-          "cfg_met", "eqn", "len_def", "len_mip", "len_min", "dep_mip",
-          "dep_min", "dep_sip", "dep_sin", "dp", "dir_eo", "nam_job",
-          "max_job", "slurm", "time"
+          "help",
+          "verbose",
+          "dry_run",
+          "env_nam",
+          "threads",
+          "mode",
+          "method",
+          "aln_typ",
+          "ref_fa",
+          "csv_mip",
+          "csv_min",
+          "csv_sip",
+          "csv_sin",
+          "fil_out",
+          "force",
+          "no_parts",
+          "no_header",
+          "tbl_met",
+          "cfg_met",
+          "eqn",
+          "len_def",
+          "csv_len_mip",
+          "csv_len_min",
+          "csv_dep_mip",
+          "csv_dep_min",
+          "csv_dep_sip",
+          "csv_dep_sin",
+          "dp",
+          "dir_eo",
+          "nam_job",
+          "max_job",
+          "slurm",
+          "time"
         ],
         "options_parameters": [
-          "help", "verbose", "dry_run", "env_nam", "threads", "mode",
-          "method", "aln_typ", "ref_fa", "csv_mip", "csv_min", "csv_sip",
-          "csv_sin", "fil_out", "force", "no_parts", "no_header", "tbl_met",
-          "cfg_met", "eqn", "len_def", "len_mip", "len_min", "dep_mip",
-          "dep_min", "dep_sip", "dep_sin", "dp", "dir_eo", "nam_job",
-          "max_job", "slurm", "time"
+          "help",
+          "verbose",
+          "dry_run",
+          "env_nam",
+          "threads",
+          "mode",
+          "method",
+          "aln_typ",
+          "ref_fa",
+          "csv_mip",
+          "csv_min",
+          "csv_sip",
+          "csv_sin",
+          "fil_out",
+          "force",
+          "no_parts",
+          "no_header",
+          "tbl_met",
+          "cfg_met",
+          "eqn",
+          "len_def",
+          "csv_len_mip",
+          "csv_len_min",
+          "csv_dep_mip",
+          "csv_dep_min",
+          "csv_dep_sip",
+          "csv_dep_sin",
+          "dp",
+          "dir_eo",
+          "nam_job",
+          "max_job",
+          "slurm",
+          "time"
         ],
         "reporting_order": [
-          "verbose", "dry_run", "env_nam", "threads", "mode", "method",
-          "aln_typ", "ref_fa", "csv_mip", "csv_min", "csv_sip", "csv_sin",
-          "fil_out", "force", "no_parts", "no_header", "tbl_met", "cfg_met",
-          "eqn", "len_def", "len_mip", "len_min", "dep_mip", "dep_min",
-          "dep_sip", "dep_sin", "dp", "dir_eo", "nam_job", "max_job",
-          "slurm", "time"
+          "verbose",
+          "dry_run",
+          "env_nam",
+          "threads",
+          "mode",
+          "method",
+          "aln_typ",
+          "ref_fa",
+          "csv_mip",
+          "csv_min",
+          "csv_sip",
+          "csv_sin",
+          "fil_out",
+          "force",
+          "no_parts",
+          "no_header",
+          "tbl_met",
+          "cfg_met",
+          "eqn",
+          "len_def",
+          "csv_len_mip",
+          "csv_len_min",
+          "csv_dep_mip",
+          "csv_dep_min",
+          "csv_dep_sip",
+          "csv_dep_sin",
+          "dp",
+          "dir_eo",
+          "nam_job",
+          "max_job",
+          "slurm",
+          "time"
         ]
       },
       "relationships": [
-        {"kind": "adjacent", "members": ["mode", "method"]},
+        {
+          "kind": "adjacent",
+          "members": [
+            "mode",
+            "method"
+          ]
+        },
         {
           "kind": "contiguous",
-          "members": ["aln_typ", "ref_fa", "csv_mip", "csv_min", "csv_sip", "csv_sin"]
+          "members": [
+            "aln_typ",
+            "ref_fa",
+            "csv_mip",
+            "csv_min",
+            "csv_sip",
+            "csv_sin"
+          ]
         },
         {
           "kind": "adjacent",
-          "members": ["fil_out", "force", "no_parts", "no_header"]
+          "members": [
+            "fil_out",
+            "force",
+            "no_parts",
+            "no_header"
+          ]
         },
-        {"kind": "same_group", "members": ["tbl_met", "cfg_met", "eqn"]},
         {
           "kind": "same_group",
-          "members": ["len_def", "len_mip", "len_min", "dep_mip", "dep_min", "dep_sip", "dep_sin"]
+          "members": [
+            "tbl_met",
+            "cfg_met",
+            "eqn"
+          ]
         },
-        {"kind": "same_group", "members": ["dir_eo", "nam_job"]},
-        {"kind": "same_group", "members": ["max_job", "slurm", "time"]}
+        {
+          "kind": "same_group",
+          "members": [
+            "len_def",
+            "csv_len_mip",
+            "csv_len_min",
+            "csv_dep_mip",
+            "csv_dep_min",
+            "csv_dep_sip",
+            "csv_dep_sin"
+          ]
+        },
+        {
+          "kind": "same_group",
+          "members": [
+            "dir_eo",
+            "nam_job"
+          ]
+        },
+        {
+          "kind": "same_group",
+          "members": [
+            "max_job",
+            "slurm",
+            "time"
+          ]
+        }
       ],
       "adapters": {
         "parser": "shell_bounded_parse_args_order",
