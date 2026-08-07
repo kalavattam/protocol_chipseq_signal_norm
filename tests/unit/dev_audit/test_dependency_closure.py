@@ -6,8 +6,8 @@
 # Copyright 2026 by Kris Alavattam
 # Email: kalavattam@gmail.com
 #
-# OpenAI ChatGPT and Codex (GPT-5.6) were used in development and
-# documentation.
+# OpenAI ChatGPT and Codex (GPT-5.6) were used in design, development, and
+# documentation, with all output reviewed, edited, and approved by the author.
 #
 # Distributed under the MIT license.
 
@@ -1320,7 +1320,7 @@ function demo() {
 
         self.assertEqual(
             (len(runtime_units), runtime_coverage["changed_block_count"]),
-            (86, 308),
+            (87, 309),
         )
 
         self.assertTrue(runtime_coverage["all_changed_blocks_covered"])

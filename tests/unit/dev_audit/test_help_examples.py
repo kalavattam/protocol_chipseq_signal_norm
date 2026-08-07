@@ -6,8 +6,8 @@
 # Copyright 2026 by Kris Alavattam
 # Email: kalavattam@gmail.com
 #
-# OpenAI ChatGPT and Codex (GPT-5.6) were used in development and
-# documentation.
+# OpenAI ChatGPT and Codex (GPT-5.6) were used in design, development, and
+# documentation, with all output reviewed, edited, and approved by the author.
 #
 # Distributed under the MIT license.
 
@@ -563,7 +563,7 @@ EOM
         shared = categories["shared_heredoc_nonowners"]
 
         self.assertIn(
-            "lib/bash/help/help_execute_compute_signal.sh::<file>@16",
+            "lib/bash/help/help_execute_compute_signal.sh::<file>@17",
             shared["identities"],
         )
 

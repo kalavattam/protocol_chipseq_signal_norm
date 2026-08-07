@@ -6,8 +6,10 @@
 # Copyright 2026 by Kris Alavattam
 # Email: kalavattam@gmail.com
 #
-# OpenAI ChatGPT and Codex (GPT-5.6) were used in development and
-# documentation.
+# The following were used in design, development, and documentation, with all
+# output reviewed, edited, and approved by the author:
+# - OpenAI ChatGPT and Codex (GPT-5.6);
+# - Anthropic Claude Code (Opus 5).
 #
 # Distributed under the MIT license.
 
@@ -37,18 +39,52 @@ RULE_WIDTH = "SOURCE.HEADER.WIDTH"
 RULE_YEAR = "SOURCE.HEADER.YEAR"
 CURRENT_YEAR = 2026
 ATTRIBUTION_START = re.compile(
-    r"^# OpenAI (?:ChatGPT and Codex|ChatGPT|Codex)\b",
+    r"^# (?:OpenAI (?:ChatGPT and Codex|ChatGPT|Codex)"
+    r"|Anthropic Claude Code|The following were used in)\b",
 )
 ATTRIBUTION_LIKE = re.compile(
-    r"^# .*\b(?:AI|OpenAI|ChatGPT|Codex|GPT-)\b",
+    r"^# .*\b(?:AI|OpenAI|ChatGPT|Codex|GPT-|Anthropic|Claude)\b",
     re.IGNORECASE,
 )
-ATTRIBUTION_FORM = re.compile(
-    r"^OpenAI (?P<tools>ChatGPT and Codex|ChatGPT|Codex) "
-    r"\((?P<models>[^()]*)\) (?P<verb>was|were) used in "
-    r"(?P<domain>development and documentation|development|documentation)\.$",
+# Vendors are credited at the tool surface, in fixed adoption order.
+VENDOR_SURFACE_TEXT = (
+    r"OpenAI (?:ChatGPT and Codex|ChatGPT|Codex)|Anthropic Claude Code"
 )
+REVIEW_CLAUSE = "with all output reviewed, edited, and approved by the author"
+DOMAIN_TEXT = (
+    r"design, development, and documentation"
+    r"|development and documentation|development|documentation"
+)
+DOMAIN_KEYS = {
+    "design, development, and documentation": "design_development_documentation",
+    "development and documentation": "both",
+    "development": "development",
+    "documentation": "documentation",
+}
+ATTRIBUTION_FORM = re.compile(
+    rf"^(?P<vendor>{VENDOR_SURFACE_TEXT}) "
+    rf"\((?P<models>[^()]*)\) (?P<verb>was|were) used in "
+    rf"(?P<domain>{DOMAIN_TEXT}), {REVIEW_CLAUSE}\.$",
+)
+ATTRIBUTION_LIST_FORM = re.compile(
+    rf"^The following were used in (?P<domain>{DOMAIN_TEXT}), "
+    rf"{REVIEW_CLAUSE}: (?P<items>- .+)$",
+)
+ATTRIBUTION_LIST_ITEM = re.compile(
+    rf"^- (?P<vendor>{VENDOR_SURFACE_TEXT}) \((?P<models>[^()]*)\)$",
+)
+TOOL_KEYS = {
+    "OpenAI ChatGPT": "chatgpt",
+    "OpenAI Codex": "codex",
+    "OpenAI ChatGPT and Codex": "both",
+    "Anthropic Claude Code": "claude_code",
+}
 MODEL_IDENTIFIER_TEXT = r"GPT-\d+(?:\.\d+)?(?:-(?!series\b)[A-Za-z0-9]+)?"
+# Anthropic declares a model family and version rather than a GPT token.
+ANTHROPIC_MODEL_TEXT = r"(?:Opus|Sonnet|Haiku) \d+(?:\.\d+)?"
+ANTHROPIC_MODEL_LIST = re.compile(
+    rf"{ANTHROPIC_MODEL_TEXT}(?:, {ANTHROPIC_MODEL_TEXT})*",
+)
 SERIES_IDENTIFIER_TEXT = r"GPT-\d+(?:\.\d+)?-series"
 MODEL_TOKEN = re.compile(
     rf"(?<![A-Za-z0-9.-]){MODEL_IDENTIFIER_TEXT}(?![A-Za-z0-9.-])",
@@ -111,6 +147,7 @@ class AttributionObservation:
     models: tuple[str, ...]
     contribution_domain: str
     attribution_style: str
+    vendors: tuple[str, ...] = ()
 
 
 @dataclasses.dataclass(frozen=True)
@@ -129,6 +166,9 @@ def parse_model_declaration(text: str) -> ModelDeclaration | None:
     """
 
     if EXPLICIT_MODEL_LIST.fullmatch(text):
+        return ModelDeclaration("explicit_model_list", tuple(text.split(", ")))
+
+    if ANTHROPIC_MODEL_LIST.fullmatch(text):
         return ModelDeclaration("explicit_model_list", tuple(text.split(", ")))
 
     separator = "; most recent: "
@@ -210,42 +250,116 @@ def valid_required_model(model: str) -> bool:
     )
 
 
+def _vendor_of(surface: str) -> str:
+    """
+    Return the vendor that owns one credited tool surface.
+    """
+
+    return surface.split(" ", 1)[0]
+
+
+def _expected_verb(surface: str) -> str:
+    """
+    Return the verb that agrees with one surface expression.
+    """
+
+    return "were" if " and " in surface else "was"
+
+
 def parse_attribution(rendered: str) -> AttributionObservation | None:
     """
-    Parse one approved bounded OpenAI attribution form.
+    Parse one approved bounded attribution form.
+
+    Both the single-vendor prose form and the multi-vendor lead-in and
+    semicolon-list form are recognized. Vendors must appear in fixed adoption
+    order, and every credited surface must declare a well-formed model
+    parenthetical.
     """
 
     normalized = " ".join(
         line.removeprefix("#").strip() for line in rendered.splitlines()
     )
+    listed = ATTRIBUTION_LIST_FORM.fullmatch(normalized)
+
+    if listed is not None:
+        return _parse_listed_attribution(listed)
+
     match = ATTRIBUTION_FORM.fullmatch(normalized)
+
     if match is None:
         return None
 
     declaration = parse_model_declaration(match.group("models"))
+
     if declaration is None:
         return None
 
-    tools = match.group("tools")
-    expected_verb = "were" if tools == "ChatGPT and Codex" else "was"
-    if match.group("verb") != expected_verb:
+    surface = match.group("vendor")
+
+    if match.group("verb") != _expected_verb(surface):
         return None
 
-    parsed_tools = {
-        "ChatGPT": "chatgpt",
-        "Codex": "codex",
-        "ChatGPT and Codex": "both",
-    }[tools]
+    return AttributionObservation(
+        tools=TOOL_KEYS[surface],
+        models=declaration.tokens,
+        contribution_domain=DOMAIN_KEYS[match.group("domain")],
+        attribution_style=declaration.style,
+        vendors=(_vendor_of(surface),),
+    )
+
+
+def _parse_listed_attribution(
+    match: re.Match[str],
+) -> AttributionObservation | None:
+    """
+    Parse the multi-vendor lead-in and semicolon-list attribution form.
+    """
+
+    items = match.group("items")
+
+    if not items.endswith("."):
+        return None
+
+    # A model parenthetical may itself contain '; ', so split only at an
+    # item boundary rather than at every semicolon.
+    entries = re.split(r"; (?=- )", items[:-1])
+
+    if len(entries) < 2:
+        return None
+
+    surfaces: list[str] = []
+    models: list[str] = []
+    styles: list[str] = []
+
+    for entry in entries:
+        parsed = ATTRIBUTION_LIST_ITEM.fullmatch(entry)
+
+        if parsed is None:
+            return None
+
+        declaration = parse_model_declaration(parsed.group("models"))
+
+        if declaration is None:
+            return None
+
+        surfaces.append(parsed.group("vendor"))
+        models.extend(declaration.tokens)
+        styles.append(declaration.style)
+
+    vendors = tuple(_vendor_of(surface) for surface in surfaces)
+
+    # Vendor sequence records which tools reached this source first, which is
+    # per-source history the checker cannot verify. Only duplication is a
+    # representation defect; order stays semantic review.
+    if len(set(vendors)) != len(vendors):
+        return None
 
     return AttributionObservation(
-        tools=parsed_tools,
-        models=declaration.tokens,
-        contribution_domain=(
-            "both"
-            if match.group("domain") == "development and documentation"
-            else match.group("domain")
-        ),
-        attribution_style=declaration.style,
+        tools="+".join(TOOL_KEYS[surface] for surface in surfaces),
+        models=tuple(models),
+        contribution_domain=DOMAIN_KEYS[match.group("domain")],
+        attribution_style=styles[0],
+        vendors=vendors,
     )
 
 
@@ -896,14 +1010,14 @@ def normalize_attribution_source(
         }[attribution_tools]
         rendered = (
             f"# {tool_name} ({', '.join(required_models)}) {verb} used in "
-            f"{activity}."
+            f"{activity}, {REVIEW_CLAUSE}."
         )
     else:
         _, _, rendered = block
         observation = parse_attribution(rendered)
         if observation is None:
             raise ValueError(
-                "existing attribution is not an approved OpenAI form",
+                "existing attribution is not an approved form",
             )
 
         if (

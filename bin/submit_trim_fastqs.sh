@@ -7,7 +7,8 @@
 # Email: kalavattam@gmail.com
 #
 # OpenAI ChatGPT and Codex (GPT-4- and GPT-5-series models; most recent:
-# GPT-5.6) were used in development and documentation.
+# GPT-5.6) were used in design, development, and documentation, with all output
+# reviewed, edited, and approved by the author.
 #
 # Distributed under the MIT license.
 

@@ -47,7 +47,7 @@ The AI-assisted profile inserts one truthful attribution block and one exact sep
 # Copyright START[-END] by Kris Alavattam
 # Email: kalavattam@gmail.com
 #
-# <approved OpenAI attribution form>
+# <approved attribution form>
 #
 # Distributed under the MIT license.
 
@@ -89,7 +89,7 @@ Write `# Script: ` followed by the exact file basename, including its extension.
 
 **Scope:** Every physical header line from the shebang through the license row.
 
-Limit each complete physical line, including its comment prefix, to 79 characters. Wrap attribution prose without altering model names or meaning. Do not wrap canonical single-row fields; report an unrepresentable basename or identity for review.
+Limit each complete physical line, including its comment prefix, to 79 characters. Wrap attribution prose without altering model names or meaning; a wrapped list item indents its continuation to the item text rather than to the marker. Do not wrap canonical single-row fields; report an unrepresentable basename or identity for review.
 
 **Automation:** The checker rejects `len(line) > 79`; the normalizer wraps attribution content to fit the same complete-line limit. Positive 79-character and negative 80-character fixtures establish the boundary.
 
@@ -119,17 +119,35 @@ For an existing header, preserve its start year. For a maintained file receiving
 ## AI attribution (`SOURCE.HEADER.AI_ATTRIBUTION`)
 **Classification:** `advisory` for participation with a deterministic representation subset.
 
-**Scope:** In-scope maintained sources for which an AI model contributed to development, documentation, or both, plus explicitly declared migration cohorts.
+**Scope:** In-scope maintained sources for which one or more vendors' AI tools contributed to design, development, or documentation, plus explicitly declared migration cohorts.
 
-Use one bounded attribution block naming the applicable approved OpenAI tool and the declared model identifiers. Accepted tool forms name OpenAI ChatGPT alone, OpenAI Codex alone, or OpenAI ChatGPT and Codex together. Use a single-tool form when only that tool contributed; do not name both by default. State truthfully whether the contribution concerned development, documentation, or both.
+Use one bounded attribution block naming every vendor whose tools contributed, the applicable tool surface, and the declared model identifiers. Name the surface that performed the work rather than a bare model brand, so both vendors are credited on the same axis. Accepted OpenAI surfaces are ChatGPT alone, Codex alone, or ChatGPT and Codex together; the accepted Anthropic surface is Claude Code. Use a single-surface form when only that surface contributed; do not name several by default. State truthfully which of design, development, and documentation the contribution covered, and record the author's responsibility with the exact clause `with all output reviewed, edited, and approved by the author`.
+
+One vendor uses prose. The verb agrees with the surface expression, so a single surface takes `was` and a coordination such as `ChatGPT and Codex` takes `were`:
+```text
+# <Vendor> <Surface(s)> (<model detail>) was used in design, development, and
+# documentation, with all output reviewed, edited, and approved by the author.
+```
+
+Two or more vendors use a lead-in, a colon, and a semicolon-separated list. The review clause moves into the lead-in rather than trailing the final item. Every item ends with a semicolon except the last, which ends with a period, and a wrapped item indents its continuation to the item text:
+```text
+# The following were used in design, development, and documentation, with all
+# output reviewed, edited, and approved by the author:
+# - <Vendor A> <Surface(s)> (<model detail>);
+# - <Vendor B> <Surface(s)> (<model detail>).
+```
+
+Vendors appear in the order they were first used on that source, which is a per-source historical fact rather than a repository-wide constant. It is deliberately not alphabetical, and it is not a fixed vendor sequence: a source whose first contributor was Anthropic lists Anthropic first. Most current sources were reached by OpenAI tools first and therefore list OpenAI first, but that is an observation about history, not a rule. Preserve an established order; reorder only when the recorded history was wrong.
+
+Add a vendor's entry only to a source that vendor's tools actually changed; breadth of a migration is not participation evidence. Preserve each existing model parenthetical verbatim, because per-source model history is evidence rather than formatting to normalize.
 
 Inside the parentheses, use either an explicit model-token list separated by comma and one space, one `GPT-X-series models` phrase, or the established `GPT-X- and GPT-Y-series models` phrase. A series phrase may be followed by `; most recent: ` and an explicit model-token list. Do not admit arbitrary words, empty elements, stray punctuation, malformed separators, or a tokenless clause. Preserve an established generic-series or explicit-model-list style unless changing that style is part of the authorized work.
 
 Changed-file discovery is evidence that attribution review is needed; it cannot establish model participation by itself. A normalizer may update only explicitly selected maintained files and must be idempotent. When an attribution block is missing, the normalizer requires an explicit `development`, `documentation`, or `both` contribution-domain choice; it reports and leaves the file unchanged when that semantic input is absent. A model becomes required only through an explicit command argument or applicability manifest; no model identifier is a permanent repository-wide requirement.
 
-**Automation:** `dev/audit/ai_attribution.py` recognizes only approved bounded OpenAI forms and model-declaration grammar, parses exact model tokens, observes style, tool set, and contribution domain, and compares them with repeatable `--required-model` values or a path-scoped applicability manifest. Inventory fields distinguish observed from required tools and domains and report agreement; a coherent no-AI profile reports no attribution style or observed attribution data. The standing registry command supplies no required model, tool, or domain. Creating a missing block requires explicit model, tool, and domain inputs. Coverage is `subset`; participation remains semantic.
+**Automation:** `dev/audit/ai_attribution.py` recognizes the approved bounded single-vendor prose form, the multi-vendor lead-in and semicolon-list form, fixed vendor order, and model-declaration grammar, parses exact model tokens, observes style, tool set, and contribution domain, and compares them with repeatable `--required-model` values or a path-scoped applicability manifest. Inventory fields distinguish observed from required tools and domains and report agreement; a coherent no-AI profile reports no attribution style or observed attribution data. The standing registry command supplies no required model, tool, or domain. Creating a missing block requires explicit model, tool, and domain inputs. Coverage is `subset`; participation remains semantic.
 
-**Semantic remainder:** Establish which tools and models contributed and whether the activity wording and retained attribution style are accurate.
+**Semantic remainder:** Establish which tools and models contributed, whether the recorded vendor order matches which tools reached the source first, and whether the activity wording and retained attribution style are accurate.
 
 **Exceptions:** Do not add attribution when the model did not contribute. Record that disposition in migration evidence rather than fabricating a header claim.
 
@@ -140,7 +158,7 @@ Changed-file discovery is evidence that attribution review is needed; it cannot 
 
 **Scope:** The bounded attribution block of an in-scope source that declares or requires AI attribution.
 
-Each declared or explicitly required model token appears exactly once. Repeated model tokens, repeated attribution blocks, or a second attribution row inside the bounded opening header are invalid. Attribution-like body comments do not alter header conformance.
+Each declared or explicitly required model token appears exactly once across the whole block, including a block that credits several vendors. Repeated model tokens, a vendor credited twice, repeated attribution blocks, or a second attribution row inside the bounded opening header are invalid. Attribution-like body comments do not alter header conformance.
 
 **Automation:** The checker uses parsed-token counters only inside the bounded attribution block, so `GPT-5` is not counted inside `GPT-5.6`. It recognizes explicit, generic-series, repeatable required, and future model identifiers. Normalization uses the same counters when adding a required token; an existing duplicate remains a finding rather than being hidden by substring replacement. Positive, exact-duplicate, generic-series, future-token, duplicate-block, and body-lookalike fixtures provide `subset` coverage.
 

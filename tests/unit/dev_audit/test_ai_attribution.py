@@ -6,8 +6,10 @@
 # Copyright 2026 by Kris Alavattam
 # Email: kalavattam@gmail.com
 #
-# OpenAI ChatGPT and Codex (GPT-5.6) were used in development and
-# documentation.
+# The following were used in design, development, and documentation, with all
+# output reviewed, edited, and approved by the author:
+# - OpenAI ChatGPT and Codex (GPT-5.6);
+# - Anthropic Claude Code (Opus 5).
 #
 # Distributed under the MIT license.
 
@@ -84,28 +86,37 @@ class AiAttributionTest(unittest.TestCase):
 
     def test_recognized_generic_and_explicit_model_forms_pass(self) -> None:
         headers = (
-            "# OpenAI Codex (GPT-5-series models) was used in development.",
             (
-                "# OpenAI ChatGPT and Codex (GPT-4- and GPT-5-series models; "
-                "most recent:\n# GPT-5.6) were used in development and "
-                "documentation."
+                "# OpenAI Codex (GPT-5-series models) was used in "
+                "development, with all output\n# reviewed, edited, and "
+                "approved by the author."
+            ),
+            (
+                "# OpenAI ChatGPT and Codex (GPT-4- and GPT-5-series "
+                "models; most recent:\n# GPT-5.6) were used in "
+                "development and documentation, with all output\n# "
+                "reviewed, edited, and approved by the author."
             ),
             (
                 "# OpenAI ChatGPT and Codex (GPT-5-series models; most "
                 "recent: GPT-5.6) were\n# used in development and "
-                "documentation."
+                "documentation, with all output reviewed, edited, and\n# "
+                "approved by the author."
             ),
             (
-                "# OpenAI ChatGPT (GPT-5-series models; most recent: GPT-5.5, "
-                "GPT-5.6)\n# was used in documentation."
+                "# OpenAI ChatGPT (GPT-5-series models; most recent: "
+                "GPT-5.5, GPT-5.6) was used\n# in documentation, with all "
+                "output reviewed, edited, and approved by the\n# author."
             ),
             (
-                "# OpenAI ChatGPT and Codex (GPT-5.5, GPT-5.6) were used in "
-                "development and\n# documentation."
+                "# OpenAI ChatGPT and Codex (GPT-5.5, GPT-5.6) were used "
+                "in development and\n# documentation, with all output "
+                "reviewed, edited, and approved by the author."
             ),
             (
-                "# OpenAI ChatGPT and Codex (GPT-7.2-preview) were used in "
-                "development."
+                "# OpenAI ChatGPT and Codex (GPT-7.2-preview) were used "
+                "in development, with all\n# output reviewed, edited, and "
+                "approved by the author."
             ),
         )
 
@@ -174,8 +185,11 @@ class AiAttributionTest(unittest.TestCase):
     ) -> None:
         text = source_file(None).replace(
             "# Distributed under the MIT license.",
-            "# OpenAI tool GPT-series helped.\n#\n"
-            "# Distributed under the MIT license.",
+            (
+                "# OpenAI tool GPT-series helped.  Distributed under the MIT "
+                "license, with all\n# output reviewed, edited, and approved "
+                "by the author."
+            ),
         )
 
         self.assertIn(
@@ -190,11 +204,18 @@ class AiAttributionTest(unittest.TestCase):
         self,
     ) -> None:
         headers = (
-            "# OpenAI ChatGPT (GPT-5.6) was used in documentation.",
-            "# OpenAI Codex (GPT-5.6) was used in development.",
+            (
+                "# OpenAI ChatGPT (GPT-5.6) was used in documentation, with "
+                "all output reviewed,\n# edited, and approved by the author."
+            ),
+            (
+                "# OpenAI Codex (GPT-5.6) was used in development, with all "
+                "output reviewed,\n# edited, and approved by the author."
+            ),
             (
                 "# OpenAI ChatGPT and Codex (GPT-5.6) were used in "
-                "development and\n# documentation."
+                "development and\n# documentation, with all output "
+                "reviewed, edited, and approved by the author."
             ),
         )
 
@@ -207,7 +228,13 @@ class AiAttributionTest(unittest.TestCase):
 
     def test_wrong_tool_verb_form_is_rejected(self) -> None:
         findings = check_attribution_source(
-            source_file("# OpenAI Codex (GPT-5.6) were used in development."),
+            source_file(
+                (
+                    "# OpenAI Codex (GPT-5.6) were used in "
+                    "development, with all output reviewed,\n# "
+                    "edited, and approved by the author."
+                )
+            ),
             "tool.sh",
         )
 
@@ -219,7 +246,13 @@ class AiAttributionTest(unittest.TestCase):
     def test_required_domain_and_tools_must_match_observed_wording(
         self,
     ) -> None:
-        text = source_file("# OpenAI Codex (GPT-5.6) was used in development.")
+        text = source_file(
+            (
+                "# OpenAI Codex (GPT-5.6) was used in "
+                "development, with all output reviewed,\n# "
+                "edited, and approved by the author."
+            )
+        )
 
         self.assertEqual(
             check_attribution_source(
@@ -256,7 +289,13 @@ class AiAttributionTest(unittest.TestCase):
         )
 
     def test_exact_model_counters_do_not_confuse_gpt5_and_gpt56(self) -> None:
-        text = source_file("# OpenAI Codex (GPT-5.6) was used in development.")
+        text = source_file(
+            (
+                "# OpenAI Codex (GPT-5.6) was used in "
+                "development, with all output reviewed,\n# "
+                "edited, and approved by the author."
+            )
+        )
 
         findings = check_attribution_source(
             text,
@@ -274,8 +313,9 @@ class AiAttributionTest(unittest.TestCase):
         findings = check_attribution_source(
             source_file(
                 (
-                    "# OpenAI ChatGPT and Codex (GPT-5.6, GPT-5.6) were used "
-                    "in\n# development and documentation."
+                    "# OpenAI ChatGPT and Codex (GPT-5.6, GPT-5.6) were "
+                    "used in development and\n# documentation, with all "
+                    "output reviewed, edited, and approved by the author."
                 ),
             ),
             "tool.sh",
@@ -296,7 +336,11 @@ class AiAttributionTest(unittest.TestCase):
 
         findings = check_attribution_source(
             source_file(
-                "# OpenAI ChatGPT (GPT-series) was used in documentation.",
+                (
+                    "# OpenAI ChatGPT (GPT-series) was used in documentation, "
+                    "with all output\n# reviewed, edited, and approved by the "
+                    "author."
+                ),
             ),
             "tool.sh",
         )
@@ -314,7 +358,8 @@ class AiAttributionTest(unittest.TestCase):
         text = source_file(
             (
                 "# OpenAI Codex (GPT-6.1, GPT-7.2-preview) was used in "
-                "development."
+                "development, with all\n# output reviewed, edited, and "
+                "approved by the author."
             ),
         )
 
@@ -332,19 +377,26 @@ class AiAttributionTest(unittest.TestCase):
             (
                 (
                     "# OpenAI ChatGPT and Codex (GPT-4- and GPT-5-series "
-                    "models) were used in\n# development and documentation."
+                    "models) were used in\n# development and "
+                    "documentation, with all output reviewed, edited, and "
+                    "approved\n# by the author."
                 ),
                 "GPT-4- and GPT-5-series models; most recent: GPT-5.6",
             ),
             (
                 (
                     "# OpenAI Codex (GPT-5-series models; most recent: "
-                    "GPT-5.5) was\n# used in development."
+                    "GPT-5.5) was used in\n# development, with all output "
+                    "reviewed, edited, and approved by the author."
                 ),
                 "GPT-5-series models; most recent: GPT-5.5, GPT-5.6",
             ),
             (
-                "# OpenAI Codex (GPT-5.5) was used in development.",
+                (
+                    "# OpenAI Codex (GPT-5.5) was used in development, with "
+                    "all output reviewed,\n# edited, and approved by the "
+                    "author."
+                ),
                 "GPT-5.5, GPT-5.6",
             ),
         )
@@ -369,7 +421,13 @@ class AiAttributionTest(unittest.TestCase):
                 )
 
     def test_normalization_does_not_invent_a_missing_series(self) -> None:
-        text = source_file("# OpenAI Codex (GPT-5.6) was used in development.")
+        text = source_file(
+            (
+                "# OpenAI Codex (GPT-5.6) was used in "
+                "development, with all output reviewed,\n# "
+                "edited, and approved by the author."
+            )
+        )
 
         with self.assertRaisesRegex(ValueError, "generic-series requirement"):
             normalize_attribution_source(
@@ -403,7 +461,11 @@ class AiAttributionTest(unittest.TestCase):
         )
 
         self.assertIn(
-            "OpenAI ChatGPT (GPT-5.6) was used in documentation.",
+            "OpenAI ChatGPT (GPT-5.6) was used in documentation,",
+            normalized,
+        )
+        self.assertIn(
+            "edited, and approved by the author.",
             normalized,
         )
         self.assertNotIn("Codex", normalized)
@@ -420,7 +482,10 @@ class AiAttributionTest(unittest.TestCase):
 
     def test_header_structure_basename_width_year_and_profiles(self) -> None:
         valid = source_file(
-            "# OpenAI Codex (GPT-5.6) was used in development.",
+            (
+                "# OpenAI Codex (GPT-5.6) was used in development, with all "
+                "output reviewed,\n# edited, and approved by the author."
+            ),
         )
         cases = (
             valid.replace("# Script: tool.sh\n#\n", ""),
@@ -434,12 +499,20 @@ class AiAttributionTest(unittest.TestCase):
             valid.replace("# Script: tool.sh\n#\n", "# Script: tool.sh\n# \n"),
             source_file(
                 (
-                    "# OpenAI ChatGPT and Codex (GPT-5.4, GPT-5.5, GPT-5.6) "
-                    "were used in development and documentation."
+                    # Otherwise valid, but one physical line is too
+                    # wide, so only the width rule may reject it.
+                    "# OpenAI ChatGPT and Codex (GPT-5.4, GPT-5.5, "
+                    "GPT-5.6) were used in development and "
+                    "documentation, with all output reviewed, edited, "
+                    "and approved by the author."
                 ),
             ),
             source_file(
-                "# OpenAI Codex (GPT-5.6) was used in development.",
+                (
+                    "# OpenAI Codex (GPT-5.6) was used in development, with "
+                    "all output reviewed,\n# edited, and approved by the "
+                    "author."
+                ),
                 copyright_line="# Copyright 2024-2025 by Kris Alavattam",
             ),
         )
@@ -450,7 +523,10 @@ class AiAttributionTest(unittest.TestCase):
 
     def test_boundary_profiles_and_body_spacing(self) -> None:
         python = source_file(
-            "# OpenAI Codex (GPT-5.6) was used in development.",
+            (
+                "# OpenAI Codex (GPT-5.6) was used in development, with all "
+                "output reviewed,\n# edited, and approved by the author."
+            ),
             basename="tool.py",
             shebang="#!/usr/bin/env python3",
         )
@@ -488,7 +564,11 @@ class AiAttributionTest(unittest.TestCase):
         )
 
     def test_duplicate_attribution_blocks_use_generic_unique_id(self) -> None:
-        header = "# OpenAI Codex (GPT-5.6) was used in development."
+        header = (
+            "# OpenAI Codex (GPT-5.6) was used in development, with "
+            "all output reviewed,\n# edited, and approved by the "
+            "author."
+        )
         text = source_file(header).replace(
             f"{header}\n#\n",
             f"{header}\n{header}\n#\n",
@@ -508,7 +588,11 @@ class AiAttributionTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             source = source_file(
-                "# OpenAI Codex (GPT-5.6) was used in development.",
+                (
+                    "# OpenAI Codex (GPT-5.6) was used in development, with "
+                    "all output reviewed,\n# edited, and approved by the "
+                    "author."
+                ),
             )
             (root / "tool.sh").write_text(source, encoding="utf-8")
 
