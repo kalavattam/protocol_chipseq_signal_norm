@@ -2540,7 +2540,7 @@ current_exclusions_or_allowlists = []
 
 [[rule]]
 rule_id = "PY.CLI.HELP.LAYOUT"
-description = "Check greedy wrapping of recognized parse_args help literals across maintained Python."
+description = "Check greedy wrapping, source width, and boundary separators of recognized parse_args help literals across maintained Python."
 normative_document = "docs/standards/python.md"
 normative_section = "CLI help-literal layout (`PY.CLI.HELP.LAYOUT`)"
 owner_classification = "deterministic"

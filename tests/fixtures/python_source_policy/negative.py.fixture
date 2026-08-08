@@ -16,6 +16,14 @@ def parse_args(argv):
         "--static",
         help="This single static help literal is deliberately much too long for the governed source-width boundary.",
     )
+    parser.add_argument(
+        "--unseparated",
+        help=(
+            "Adjacent literals that lose the space the rendered prose"
+            "requires, and a bracket pulled against the previous word"
+            "(like this)."
+        ),
+    )
     parser.add_argument("--incomplete", help="incomplete help text")
     #  Bad marker.
     value = 'plain'

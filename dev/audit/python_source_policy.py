@@ -2383,6 +2383,28 @@ def _check_cli_help_layout(
             ):
                 continue
 
+            # A break must carry the separator the joined prose needs, or the
+            # rendered value silently loses a space. Adjacent alphanumerics, or
+            # an opening bracket pulled against the previous word, run two
+            # prose tokens together.
+            if (
+                not current_value[-1:].isspace()
+                and not following_value[:1].isspace()
+                and current_value[-1:].isalnum()
+                and (
+                    following_value[:1].isalnum()
+                    or following_value[:1] in "(["
+                )
+            ):
+                _finding(
+                    findings,
+                    path,
+                    current,
+                    RULE_CLI_HELP_LAYOUT,
+                    "parse_args help literals join without the separator the "
+                    "rendered prose requires",
+                )
+
             piece = _next_help_piece(following_value)
             if not piece:
                 continue

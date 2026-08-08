@@ -424,7 +424,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         dest="fil_in",
         required=True,
         help=(
-            "Input file path. Path to the input bedGraph file (.gz is"
+            "Input file path. Path to the input bedGraph file (.gz is "
             "handled), or '-' for stdin.\n\n"
         ),
     )
@@ -434,7 +434,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         dest="fil_out",
         required=True,
         help=(
-            "Output file path. Path to the output bedGraph file (.gz is"
+            "Output file path. Path to the output bedGraph file (.gz is "
             "handled), or '-' for stdout.\n\n"
         ),
     )
@@ -445,7 +445,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         type=int,
         default=None,
         help=(
-            "Maximum number of decimal places retained for finite emitted"
+            "Maximum number of decimal places retained for finite emitted "
             "values.\n"
             "\n"
             "Controls the value comparisons by N-decimal rounded strings. "
@@ -473,8 +473,8 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         type=str,
         default=",".join(DEF_SKP_PFX),
         help=(
-            "Comma-separated list of header prefixes to skip in bedGraph"
-            "headers/metadata; to disable skipping, pass an empty string"
+            "Comma-separated list of header prefixes to skip in bedGraph "
+            "headers/metadata; to disable skipping, pass an empty string "
             "(default: %(default)s).\n\n"
         ),
     )
