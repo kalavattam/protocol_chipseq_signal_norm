@@ -45,7 +45,7 @@ Parameters
     Display this help message and exit.
 
   -en, --env, --env_nam : str
-    Conda environment to activate. (default: '${env_nam}').
+    Conda environment to activate (default: '${env_nam}').
 
   -ds, --dir_scr : dir
     Directory containing scripts and functions.

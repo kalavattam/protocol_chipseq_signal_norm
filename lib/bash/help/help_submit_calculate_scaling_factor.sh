@@ -92,22 +92,22 @@ Parameters
     Default fragment length for single-end libraries when no per-sample override is provided.
 
   -clmp, --csv_len_mip : list of int
-    Fragment length value(s) for main IP alignment files. Optional comma-separated list of precomputed fragment lengths.
+    Fragment length value(s) for main IP alignment files.
 
   -clmn, --csv_len_min : list of int
-    Fragment length value(s) for main input alignment files. Optional comma-separated list of precomputed fragment lengths.
+    Fragment length value(s) for main input alignment files.
 
   -cdmp, --csv_dep_mip : list of int
-    Sequencing/alignment depth value(s) for main IP alignment files. Optional comma-separated list of precomputed alignment counts.
+    Sequencing/alignment depth value(s) for main IP alignment files.
 
   -cdmn, --csv_dep_min : list of int
-    Optional comma-separated list of precomputed alignment counts for main input alignment files; here 'min' abbreviates main input.
+    Sequencing/alignment depth value(s) for main input alignment files; here 'min' abbreviates main input.
 
   -cdsp, --csv_dep_sip : list of int
-    Sequencing/alignment depth value(s) for spike-in IP alignment files. Optional comma-separated list of precomputed alignment counts.
+    Sequencing/alignment depth value(s) for spike-in IP alignment files.
 
   -cdsn, --csv_dep_sin : list of int
-    Sequencing/alignment depth value(s) for spike-in input alignment files. Optional comma-separated list of precomputed alignment counts.
+    Sequencing/alignment depth value(s) for spike-in input alignment files.
 
   -dp, --dp : int
     Maximum number of decimal places retained for finite emitted values (default: ${dp}).

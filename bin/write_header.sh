@@ -129,7 +129,7 @@ function parse_args() {
                 shift 2
                 ;;
 
-            --in[_-]place)
+            -ip|--in[_-]place)
                 in_place=true
                 shift 1
                 ;;

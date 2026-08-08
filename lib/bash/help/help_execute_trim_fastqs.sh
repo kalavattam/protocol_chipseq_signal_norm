@@ -38,7 +38,7 @@ Parameters
     Run script in dry-run mode. Run the command in check mode.
 
   -en, --env, --env_nam : str
-    Conda environment to activate. (default: '${env_nam}').
+    Conda environment to activate (default: '${env_nam}').
 
   -t, --thr, --threads : int
     Number of threads to use (default: '${threads}').

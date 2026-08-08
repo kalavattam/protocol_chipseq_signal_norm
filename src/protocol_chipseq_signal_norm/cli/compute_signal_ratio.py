@@ -783,7 +783,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         required=True,
         type=str,
         help=(
-            "Output file path. Path to the output bedGraph file. When a real "
+            "Output file path. The result is written as bedGraph. When a real "
             "path is provided, accepted extensions are '.bedGraph', "
             "'.bedgraph', '.bdg', and '.bg', each optionally followed by "
             "'.gz'.\n\n"
@@ -829,7 +829,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         type=str,
         default=None,
         help=(
-            "Scaling factor. Per-file scale factor(s) 'A[:B]'. If only 'A' is "
+            "Scaling factor. Accepts a per-file spec 'A[:B]'. If only 'A' is "
             "given, 'B' defaults to 1.0.\n\n"
         ),
     )

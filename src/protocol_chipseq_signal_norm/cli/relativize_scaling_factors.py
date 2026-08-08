@@ -279,8 +279,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         default=6,
         help=(
             "Maximum number of decimal places retained for finite emitted "
-            "values. Number of decimal places for rounding scaled values. The "
-            "default is 6 decimal places."
+            "values (default: %(default)s)."
         ),
     )
 

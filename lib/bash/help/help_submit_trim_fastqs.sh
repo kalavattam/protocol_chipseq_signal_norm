@@ -72,7 +72,7 @@ Parameters
     Directory for stderr and stdout log files.
 
   -nj, --nam_job : str
-    Job name. Name of job.
+    Job name.
 
 Notes
 -----

@@ -570,7 +570,7 @@ Parameters
     Input file path. Input BAM or CRAM file.
 
   04  fil_out : file
-    Output file path. Output filename.
+    Output file path.
 
   05  siz_bin : int
     Bin size in base pairs.
@@ -597,7 +597,7 @@ Parameters
     Number of records to process per chunk. Used by compute-signal engines.
 
   13  engine : {'chrom', 'window'}
-    Processing engine. Signal-computation engine.
+    Processing engine.
 
   14  dir_eo : dir
     Directory for stderr and stdout log files.
@@ -784,7 +784,7 @@ Parameters
     Maximum number of decimal places retained for finite emitted values.
 
   09  track : bool
-    Write a companion track file. Emit companion '.track' file.
+    Write a companion track file. The name carries a '.track' suffix.
 
   10  pseudo : structured string
     Per-file pseudocount spec 'A[:B]' or sentinel 'NA'.

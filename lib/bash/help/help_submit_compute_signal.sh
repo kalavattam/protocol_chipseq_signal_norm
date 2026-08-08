@@ -38,7 +38,7 @@ Parameters
     Print this help message and exit.
 
   -en, --env, --env_nam : str
-    Conda environment to activate. Environment to activate (default: '${env_nam}').
+    Conda environment to activate (default: '${env_nam}').
 
   -ds, --dir_scr : dir
     Directory containing scripts and functions.
@@ -50,7 +50,16 @@ Parameters
     Workflow mode: 'signal', 'ratio', or 'coord' (default: '${mode}').
 
   -me, --method : {'unadj', 'frag', 'norm', 'log2', 'unadj_r', 'log2_r'}
-    Workflow method. Computation subtype.
+    Workflow method. Signal or ratio computation subtype.
+
+    With '--mode signal':
+      - 'unadj' gives per-bin totals with no adjustment, useful for inspecting raw coverage;
+      - 'frag' adjusts by fragment length; and
+      - 'norm' adjusts by both fragment length and total fragments, so genome-wide coverage sums to 1 and can be comparable across samples.
+
+    With '--mode ratio':
+      - 'unadj' gives 'fil_A / fil_B' (e.g., IP/input) and 'log2' gives its log2, which is symmetric about zero.
+      - The 'unadj_r' and 'log2_r' variants invert the comparison to 'fil_B / fil_A'.
 
     If '--mode signal', defaults to 'norm'. If '--mode ratio', defaults to 'unadj'. If '--mode coord', this argument is ignored.
 
@@ -110,17 +119,17 @@ Parameters
     Used with '--mode signal' or '--mode ratio'.
 
   -cuf, --csv_usr_frg : list of int
-    Comma-separated list of fixed fragment-length values. Optional comma-separated list of fragment lengths or sentinels.
+    Comma-separated list of fixed fragment-length values or sentinels.
 
     Used with '--mode signal' or '--mode coord'.
 
   -cdm, --csv_dep_min : list of number
-    Comma-separated list of minimum-depth values; here 'min' abbreviates minimum. Optional comma-separated list of minimum input depth values or sentinels.
+    Comma-separated list of minimum-depth values or sentinels; here 'min' abbreviates minimum.
 
     Used with '--mode ratio'.
 
   -cps, --csv_pseudo : list of structured string
-    Comma-separated list of pseudocount values. Optional comma-separated list of per-sample pseudocount specs 'A[:B]'.
+    Comma-separated list of per-sample pseudocount specs 'A[:B]'.
 
     Used with '--mode ratio'.
 

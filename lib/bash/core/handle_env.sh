@@ -263,7 +263,7 @@ Parameters
     Display this help message and exit.
 
   1  env_nam : str
-    Conda environment to activate. The name of the environment to activate (required).
+    Conda environment to activate.
 
 Returns
 -------
@@ -419,7 +419,7 @@ Parameters
     Display this help message and exit.
 
   1  env_nam : str
-    Conda environment to activate. Name of environment to ensure is active (required).
+    Conda environment to activate.
 
 Returns
 -------

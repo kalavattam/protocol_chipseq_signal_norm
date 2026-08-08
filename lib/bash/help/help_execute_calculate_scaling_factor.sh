@@ -56,7 +56,7 @@ Parameters
     Run script in dry-run mode. Print commands that would be executed without running them.
 
   -en, --env, --env_nam : str
-    Conda environment to activate. (default: '${env_nam}').
+    Conda environment to activate (default: '${env_nam}').
 
   -t, --thr, --threads : int
     Number of threads to use (default: ${threads}).
@@ -160,7 +160,7 @@ Parameters
     Maximum number of jobs to run concurrently (default: ${max_job}).
 
   -sl, --slurm : flag
-    Submit jobs to the Slurm scheduler. Submit jobs through Slurm.
+    Submit jobs to the Slurm scheduler.
 
   -tm, --time : time
     Slurm job time limit. Slurm wall-clock time in 'h:mm:ss' format (default: '${time}'; used only if '--slurm' is active).

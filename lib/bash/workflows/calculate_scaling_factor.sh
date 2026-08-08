@@ -1475,7 +1475,7 @@ Parameters
     Workflow mode. Mode of calculation; options: "frag" or "norm" (default: '${mode}').
 
   5  dp : int
-    Maximum number of decimal places retained for finite emitted values. Number of decimal places for rounding (default: ${dp}).
+    Maximum number of decimal places retained for finite emitted values (default: ${dp}).
 
 Returns
 -------
@@ -1596,7 +1596,7 @@ Parameters
     Effective genome size (default: ${egs} [appropriate for S. cerevisiae]).
 
   4  dp : int
-    Maximum number of decimal places retained for finite emitted values. Number of decimal places to round to (default: ${dp}).
+    Maximum number of decimal places retained for finite emitted values (default: ${dp}).
 
   5  csv_bin : str
     Comma-separated list of bin sizes to use (default: ${csv_bin}).
@@ -1734,7 +1734,7 @@ Parameters
     Number of mapped reads/alignments in the sample.
 
   2  dp : int
-    Maximum number of decimal places retained for finite emitted values. Number of decimal places to round to (default: ${dp}).
+    Maximum number of decimal places retained for finite emitted values (default: ${dp}).
 
   3  csv_bin : str
     Comma-separated list of bin sizes to use (default: ${csv_bin}).

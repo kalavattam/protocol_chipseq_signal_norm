@@ -322,7 +322,7 @@ Parameters
     Display this help message and exit.
 
   1  max_job : int
-    Maximum number of jobs to run concurrently. Requested maximum number of concurrent jobs.
+    Maximum number of jobs to run concurrently.
 
   2  num_fil : int
     Number of input files/jobs available.

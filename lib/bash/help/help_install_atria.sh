@@ -38,7 +38,7 @@ Parameters
     Run script in dry-run mode. Print planned actions, derived paths, and URLs without downloading, extracting, cloning, building, or writing a PATH snippet.
 
   -en, --env, --env_nam : str
-    Conda environment to activate. Environment to activate before checking Atria runtime dependencies and building Atria (default: '${env_nam}').
+    Conda environment to activate before checking Atria runtime dependencies and building Atria (default: '${env_nam}').
 
   -di, --dir_install : dir
     User-controlled installation directory for Julia and Atria (default: '${dir_install}').

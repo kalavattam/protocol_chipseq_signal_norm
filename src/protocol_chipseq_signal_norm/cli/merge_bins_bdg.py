@@ -446,7 +446,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         default=None,
         help=(
             "Maximum number of decimal places retained for finite emitted"
-            "values. Number of decimals in the printed total.\n"
+            "values.\n"
             "\n"
             "Controls the value comparisons by N-decimal rounded strings. "
             "With '--eps', rounding is applied first, then |Δ| (absolute "

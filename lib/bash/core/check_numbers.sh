@@ -257,7 +257,7 @@ Parameters
     Display this help message and exit.
 
   1  time : str
-    Slurm job time limit. The time string to check.
+    Slurm job time limit.
 
 Returns
 -------

@@ -401,8 +401,8 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         dest="fil_out",
         default=None,
         help=(
-            "Output file path. Output path (supports .gz). If omitted, write "
-            "to stdout."
+            "Output file path; '.gz' is supported. If omitted, write to "
+            "stdout."
         ),
     )
     p.add_argument(
@@ -421,8 +421,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         default=24,
         help=(
             "Maximum number of decimal places retained for finite emitted "
-            "values. Decimal precision for emitted numeric fields (default: "
-            "%(default)s)."
+            "values (default: %(default)s)."
         ),
     )
 

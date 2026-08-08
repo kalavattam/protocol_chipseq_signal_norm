@@ -42,9 +42,9 @@ Parameters
     Input file path. Input data table to header. If omitted, '--fil_out' creates a header-only utility table.
 
   -fo, --fil_out : file
-    Output file path. Output file to create. With '--fil_in', writes a headered copy. Without '--fil_in', writes a header-only table.
+    Output file path. With '--fil_in', writes a headered copy. Without '--fil_in', writes a header-only table.
 
-  --in_place : flag
+  -ip, --in_place : flag
     Modify '--fil_in' in place instead of writing a separate output file.
 
 Notes

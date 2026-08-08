@@ -33,7 +33,7 @@ Parameters
     Run script in dry-run mode. Validate inputs and print the ordered combination plan without writing output.
 
   -md, --mode : {'siq', 'spike'}
-    Workflow mode. Scaling-factor part-file mode. Required.
+    Workflow mode for scaling-factor part files. Required.
 
   -ci, --csv_fil_in : list of file
     Comma-separated list of input file paths for generated scaling-factor part files. Required.

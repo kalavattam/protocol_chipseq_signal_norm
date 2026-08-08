@@ -295,7 +295,7 @@
           "symbol": "run_comp_sig",
           "parameter": "fil_out",
           "owner": "PARAMETER.DESCRIPTIONS",
-          "evidence": "Parameters row for 'fil_out': Output file path. Output filename."
+          "evidence": "Parameters row for 'fil_out': Output file path."
         }
       ],
       "local_meanings": [],
@@ -542,7 +542,7 @@
           "symbol": "check_format_time",
           "parameter": "time",
           "owner": "PARAMETER.DESCRIPTIONS",
-          "evidence": "Parameters row for 'time': Slurm job time limit. The time string to check."
+          "evidence": "Parameters row for 'time': Slurm job time limit."
         }
       ],
       "local_meanings": [],
@@ -593,7 +593,7 @@
           "symbol": "run_comp_sig",
           "parameter": "engine",
           "owner": "PARAMETER.DESCRIPTIONS",
-          "evidence": "Parameters row for 'engine': Processing engine. Signal-computation engine."
+          "evidence": "Parameters row for 'engine': Processing engine."
         }
       ],
       "local_meanings": [],
@@ -661,7 +661,7 @@
           "symbol": "run_comp_rat",
           "parameter": "track",
           "owner": "PARAMETER.DESCRIPTIONS",
-          "evidence": "Parameters row for 'track': Write a companion track file. Emit companion '.track' file."
+          "evidence": "Parameters row for 'track': Write a companion track file. The name carries a '.track' suffix."
         }
       ],
       "local_meanings": [],
@@ -1138,7 +1138,7 @@
           "symbol": "help_submit_calculate_scaling_factor",
           "parameter": "csv_len_mip",
           "owner": "PARAMETER.DESCRIPTIONS",
-          "evidence": "Parameters row for 'csv_len_mip': Fragment length value(s) for main IP alignment files. Optional comma-separated list of precomputed fragment lengths."
+          "evidence": "Parameters row for 'csv_len_mip': Fragment length value(s) for main IP alignment files."
         }
       ],
       "local_meanings": [],
@@ -1155,7 +1155,7 @@
           "symbol": "help_submit_calculate_scaling_factor",
           "parameter": "csv_len_min",
           "owner": "PARAMETER.DESCRIPTIONS",
-          "evidence": "Parameters row for 'csv_len_min': Fragment length value(s) for main input alignment files. Optional comma-separated list of precomputed fragment lengths."
+          "evidence": "Parameters row for 'csv_len_min': Fragment length value(s) for main input alignment files."
         }
       ],
       "local_meanings": [],
@@ -1172,7 +1172,7 @@
           "symbol": "help_submit_calculate_scaling_factor",
           "parameter": "csv_dep_mip",
           "owner": "PARAMETER.DESCRIPTIONS",
-          "evidence": "Parameters row for 'csv_dep_mip': Sequencing/alignment depth value(s) for main IP alignment files. Optional comma-separated list of precomputed alignment counts."
+          "evidence": "Parameters row for 'csv_dep_mip': Sequencing/alignment depth value(s) for main IP alignment files."
         }
       ],
       "local_meanings": [],
@@ -1189,7 +1189,7 @@
           "symbol": "help_submit_calculate_scaling_factor",
           "parameter": "csv_dep_sip",
           "owner": "PARAMETER.DESCRIPTIONS",
-          "evidence": "Parameters row for 'csv_dep_sip': Sequencing/alignment depth value(s) for spike-in IP alignment files. Optional comma-separated list of precomputed alignment counts."
+          "evidence": "Parameters row for 'csv_dep_sip': Sequencing/alignment depth value(s) for spike-in IP alignment files."
         }
       ],
       "local_meanings": [],
@@ -1206,7 +1206,7 @@
           "symbol": "help_submit_calculate_scaling_factor",
           "parameter": "csv_dep_sin",
           "owner": "PARAMETER.DESCRIPTIONS",
-          "evidence": "Parameters row for 'csv_dep_sin': Sequencing/alignment depth value(s) for spike-in input alignment files. Optional comma-separated list of precomputed alignment counts."
+          "evidence": "Parameters row for 'csv_dep_sin': Sequencing/alignment depth value(s) for spike-in input alignment files."
         }
       ],
       "local_meanings": [],
