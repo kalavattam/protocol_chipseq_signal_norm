@@ -1313,21 +1313,50 @@ function demo() {
             "download-fastqs-dependency-closure-runtime-production",
         )
 
-        runtime_units, runtime_coverage = configured_semantic_units(
-            root,
-            runtime,
-        )
+        _, runtime_coverage = configured_semantic_units(root, runtime)
 
-        self.assertEqual(
-            (len(runtime_units), runtime_coverage["changed_block_count"]),
-            (87, 309),
-        )
-
+        # Structural coverage holds for the whole cohort in any tree state, as
+        # it follows from file content rather than commit status.
         self.assertTrue(runtime_coverage["all_changed_blocks_covered"])
         self.assertEqual(runtime_coverage["uncovered_changed_blocks"], [])
         self.assertEqual(runtime_coverage["overlapping_units"], [])
         self.assertEqual(runtime_coverage["segmentation_failures"], [])
         self.assertFalse(runtime_coverage["evidence_truncated"])
+
+        # Select the targets carrying a frozen historical baseline. Every other
+        # target falls back to 'git diff HEAD', so its block count depends on
+        # whether the edit is committed and cannot be pinned.
+        relocations = json.loads(
+            (root / "dev/config/path_relocations.json").read_text(
+                encoding="utf-8",
+            ),
+        )["exact"]
+        historical = copy.deepcopy(runtime)
+        historical["targets"] = [
+            target
+            for target in runtime["targets"]
+            if str(target["path"]) in relocations
+        ]
+
+        # Pin the partition itself, so adding a non-relocated target fails here
+        # rather than silently dropping out of the counts below.
+        self.assertEqual(len(runtime["targets"]), 13)
+        self.assertEqual(len(historical["targets"]), 12)
+
+        historical_units, historical_coverage = configured_semantic_units(
+            root,
+            historical,
+        )
+
+        # Taken over the historical-baseline subset, these counts are identical
+        # in a clean checkout and in a dirty working tree.
+        self.assertEqual(
+            (
+                len(historical_units),
+                historical_coverage["changed_block_count"],
+            ),
+            (86, 308),
+        )
 
     def test_tests_linked_semantic_units_report_derived_counts(self) -> None:
         from dev.audit.generate_prompts import configured_semantic_units
