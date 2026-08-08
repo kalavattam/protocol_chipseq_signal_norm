@@ -149,7 +149,7 @@ Parameters
     Comma-separated list of fixed fragment-length values or sentinels. Used with '--mode signal' or '--mode coord'.
 
   -cdm, --csv_dep_min : list of number
-    Comma-separated list of minimum-depth values or sentinels. Used only with '--mode ratio'.
+    Comma-separated list of minimum-depth values or sentinels; here 'min' abbreviates minimum. Used only with '--mode ratio'.
 
   -cps, --csv_pseudo : list of structured string
     Comma-separated list of pseudocount values as per-sample specs 'A[:B]' or sentinels. Used only with '--mode ratio'.
@@ -429,7 +429,7 @@ Parameters
     List size must match the number of input files via '--csv_fil_in'.
 
   -cdm, --csv_dep_min : list of number
-    Comma-separated list of minimum-depth values or sentinels used to avoid extreme division operations.
+    Comma-separated list of minimum-depth values or sentinels used to avoid extreme division operations; here 'min' abbreviates minimum.
 
     Used only with '--mode ratio'; ignored otherwise.
 

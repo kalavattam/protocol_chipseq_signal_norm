@@ -115,7 +115,7 @@ Parameters
     Used with '--mode signal' or '--mode coord'.
 
   -cdm, --csv_dep_min : list of number
-    Comma-separated list of minimum-depth values. Optional comma-separated list of minimum input depth values or sentinels.
+    Comma-separated list of minimum-depth values; here 'min' abbreviates minimum. Optional comma-separated list of minimum input depth values or sentinels.
 
     Used with '--mode ratio'.
 

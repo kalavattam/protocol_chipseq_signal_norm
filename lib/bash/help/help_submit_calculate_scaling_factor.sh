@@ -101,7 +101,7 @@ Parameters
     Sequencing/alignment depth value(s) for main IP alignment files. Optional comma-separated list of precomputed alignment counts.
 
   -cdmn, --csv_dep_min : list of int
-    Optional comma-separated list of precomputed alignment counts for main input alignment files.
+    Optional comma-separated list of precomputed alignment counts for main input alignment files; here 'min' abbreviates main input.
 
   -cdsp, --csv_dep_sip : list of int
     Sequencing/alignment depth value(s) for spike-in IP alignment files. Optional comma-separated list of precomputed alignment counts.

@@ -137,7 +137,7 @@ Parameters
     Sequencing/alignment depth value(s) for main IP alignment files. May be a single broadcast value or a comma-separated list aligned to samples.
 
   -cdmn, --csv_dep_min : list of int
-    Override sequencing/alignment depth value(s) for main-organism input files. May be a single broadcast value or a comma-separated list aligned to samples.
+    Override sequencing/alignment depth value(s) for main-organism input files; here 'min' abbreviates main input. May be a single broadcast value or a comma-separated list aligned to samples.
 
   -cdsp, --csv_dep_sip : list of int
     Sequencing/alignment depth value(s) for spike-in IP alignment files. May be a single broadcast value or a comma-separated list aligned to samples. Used only in 'spike' mode.
