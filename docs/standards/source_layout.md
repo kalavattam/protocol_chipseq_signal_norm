@@ -112,7 +112,7 @@ Language owners define ordinary, continuation, empty-separator, inline, directiv
 
 The shared categories use language-native spelling:
 - Python, Shell, and R ordinary comments use `# ` and use exactly `#` as an empty paragraph separator;
-- Python and Shell inline comments use two spaces before `#` and one space after it where inline comments are permitted;
+- Python and Shell inline comments use at least two spaces before `#` and one space after it where inline comments are permitted, and each language owner decides whether a bounded shared alignment column may exceed that minimum;
 - R reserves `#'` for roxygen2 documentation rather than ordinary implementation comments; and
 - Rust ordinary line comments use `// `, outer item documentation uses `///`, and inner module or crate documentation uses `//!`.
 

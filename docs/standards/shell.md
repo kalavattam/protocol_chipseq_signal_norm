@@ -45,17 +45,17 @@ The canonical test runner uses `set -u` and aggregates individual failures inten
 
 Use four-space code indentation and spaces rather than tabs. Put lifecycle and public functions before their invocation. Prefer `function name() {` for maintained Bash functions. Keep conditionals and continuations readable, quote expansions unless intentional splitting or globbing is documented, and use arrays for command construction rather than assembled command strings.
 
+When a conditional's test does not fit one readable line, put `if` alone on the first physical line — carrying a leading `!` when the test is negated — end that line with `\`, put the complete test on continuation lines indented one additional level, and put `then` on its own line at the `if` indentation. Do not open the test on the `if` line and continue it from there, as in `if [[ \`: that shape splits the test's own delimiters across the construct and lands `then` on the closing-delimiter row, so neither the first nor the last line reads as a complete unit. This is the conditional realization of the continuation shape [`SHELL.DIAGNOSTIC.FORM`](#shell-diagnostic-source-form-shelldiagnosticform) prescribes for direct `echo` diagnostics.
+
 In argument-parsing `case` patterns, represent a deliberately supported underscore/hyphen spelling pair with one bounded `[_-]` form, such as `--chunk[_-]size`, rather than duplicating equivalent arms. Keep distinct semantic aliases explicit, and do not use broader `?` or `*` patterns that accept unintended near misses.
 
 Apply [`SOURCE.NAMING.SEMANTICS`](source_layout.md) using Shell-native forms. Maintained function names use `snake_case` verb phrases. Local and ordinary variables use `snake_case` noun phrases. Use `csv_*` only for an unparsed comma-separated string, `arr_*` only for a parsed array, and an unprefixed name for a scalar. Readonly semantic constants and exported environment contracts use `SCREAMING_SNAKE_CASE`; inherited external environment variables preserve their exact names. Do not use `lowerCamelCase` or `UpperCamelCase` for project-defined functions, variables, or filenames.
-
-The six scaling-factor collection options accept one value or a comma-separated list of values, so their canonical public names carry the `csv_` prefix that their value shape already earns: `--csv_len_mip`, `--csv_len_min`, `--csv_dep_mip`, `--csv_dep_min`, `--csv_dep_sip`, and `--csv_dep_sin`, with the short forms `-clmp`, `-clmn`, `-cdmp`, `-cdmn`, `-cdsp`, and `-cdsn`. Each option has exactly one short and one long spelling. The raw option value binds to `csv_*`, the parsed array to the matching `arr_*` name, and one indexed element remains an unprefixed scalar. The retired `--len_mip`-style spellings are not compatibility aliases and are no longer accepted. `len_def` remains a scalar and keeps its unprefixed name.
 
 Do not promote mutable globals to constant spelling. Controlled project, domain, and tool abbreviations remain acceptable when local and evident; opaque abbreviations remain review candidates. Shell source filenames use lowercase `snake_case`.
 
 Indent `case` patterns one level inside `case`, commands one level inside the pattern, and terminators with their pattern. Use one empty line between adjacent nontrivial arms when it improves scanning; bounded case-arm spacing remains advisory.
 
-Write a heredoc redirection as `<<` or `<<-`, exactly one space, then the delimiter. `<<DELIM` with no separating space is not a maintained form.
+Write a heredoc redirection as `<<` or `<<-`, exactly one space, then the delimiter. `<<DELIM` with no separating space is not a maintained form. Write a herestring the same way: `<<<`, exactly one space, then the word. The separator serves the same purpose in both operators — it keeps the redirection legible as an operator followed by its operand — so `<<<"${value}"` is not a maintained form either.
 
 Leave the delimiter unquoted by default. Single-quote it only when the body must reach the command literally: that is, when the body contains `$`, a backtick, or a backslash sequence whose expansion would corrupt the intended value. The presence of such a character does not by itself require quoting, because a body may contain it precisely in order to be expanded. A rendered help heredoc that interpolates current option defaults is the ordinary unquoted case; an embedded interpreter body that must receive `${...}` verbatim is the ordinary quoted case. Quoting is therefore a deliberate literal-semantics decision about intent, not a lexical property of the body, and an unnecessarily quoted delimiter hides whether the body depends on expansion.
 
@@ -63,9 +63,9 @@ Use `EOM` for ordinary shell-text heredocs. Use a language-specific delimiter su
 
 Diagnostics identify the failing script or function and direct errors to stderr. Use `printf` when format control matters; `echo` remains acceptable for simple fixed diagnostics. Do not print success before the operation succeeds.
 
-**Automation:** `dev/audit/shell_source_form.py` checks only fixture-defined simple naming declarations, selected indentation forms, recognized heredoc delimiters, and the exact one-space heredoc operator separator. Herestrings and arithmetic shifts are excluded from that separator facet. Whether a delimiter's quoting is necessary remains review-owned, because no checker can decide expansion intent from the body alone. Shell syntax and related audits provide additional evidence. Coverage is `subset`; no checker claims to parse arbitrary Bash layout, decide readability, or infer quoting intent.
+**Automation:** `dev/audit/shell_source_form.py` checks only fixture-defined simple naming declarations, selected indentation forms, recognized heredoc delimiters, and the exact one-space heredoc operator separator. Arithmetic shifts are excluded from that separator facet, because `<<` inside `(( ))` is a shift operator rather than a redirection. The facet recognizes `<<` and `<<-` only, so the herestring separator required above is stated but not yet checked; that is a coverage gap, not an exclusion. Whether a delimiter's quoting is necessary remains review-owned, because no checker can decide expansion intent from the body alone. Shell syntax and related audits provide additional evidence. Coverage is `subset`; no checker claims to parse arbitrary Bash layout, decide readability, or infer quoting intent.
 
-**Semantic remainder:** Review readability, whether a quoted delimiter is genuinely required, complex continuations, heredoc semantics, and whether command construction preserves argument boundaries.
+**Semantic remainder:** Review readability, whether a quoted delimiter is genuinely required, continuations beyond the specified conditional form, heredoc semantics, and whether command construction preserves argument boundaries.
 
 **Exceptions:** Generated command fixtures and literal expected output preserve their owned representation.
 
@@ -110,7 +110,7 @@ Review multiline commands, command arrays, assignments, pipelines, and repeated 
 
 Keep `if`/`elif`/`else`/`fi`, loops and `done`, `case` and `esac`, function declarations, and heredoc boundaries syntactically connected. Apply compact-guard and transfer semantics to `return`, `exit`, `break`, and `continue`, and separate a transfer after substantive diagnostics, mutation, cleanup, or result preparation.
 
-Use `echo` for one simple blank output line. Continue to use `printf` when formatting, escaping, exact data, or portability of arbitrary content matters; this narrow form does not convert every `printf '\n'` call.
+Use `echo` for one simple blank output line, and write it with no argument at all: `echo`, not `echo ""`. The empty argument contributes nothing to the emitted line and only obscures that the line break itself is the whole purpose of the call. Continue to use `printf` when formatting, escaping, exact data, or portability of arbitrary content matters; this narrow form does not convert every `printf '\n'` call.
 
 `X`, `Y`, and `Z` remain evidence concepts under [`SOURCE.LAYOUT.CANDIDATES`](source_layout.md). This standard establishes no numeric values before a representative Shell pilot that measures multiline commands, arrays, assignments, pipelines, and status-transfer regions.
 
@@ -131,11 +131,13 @@ Apply [`SOURCE.COMMENT.ATTACHMENT`](source_layout.md). Begin each nonempty ordin
 
 Inline comments use two spaces before `#` and one space after it when Shell tokenization and the surrounding construct permit an inline comment. Keep them short; promote an overlong explanation to an attached preceding block or maintained documentation.
 
+Two spaces is a minimum rather than a required column. A run of adjacent inline comments may be aligned to one shared column when both bounds hold: the longest aligned line stays within 79 columns, and the alignment column is at or below column 40. Otherwise the two-space minimum applies to every line in the run. [`SOURCE.DELIMITED.MULTILINE`](source_layout.md) prefers one continuation indentation level over fragile visual alignment, and that preference stands: it governs continued code, whose alignment column is owned by the enclosing construct and therefore moves whenever the construct is renamed, rewrapped, or reindented. An inline-comment column is owned by the comment run instead, is reflowed as one unit, and is bounded — which is what these two limits do, keeping a single long member from dragging the run toward the margin or past it. Beyond either bound the alignment becomes the fragile kind, and the minimum applies. Alignment is permitted here, never required.
+
 Ordinary comment prose uses sentence capitalization, complete sentences, and terminal punctuation. Shebangs, source headers, ShellCheck directives, generated markers, parameter expansions, and literal fixtures retain their separately owned syntax. The current `#  ` and `#+ ` ordinary-comment forms are superseded and require a later bounded migration; they are not documentation markers or permanent compatibility forms.
 
-**Automation:** No dedicated checker or registry entry implements this complete Shell comment rule. No migration fixture set exists; current source-header, ShellCheck, and source-form audits cover only their registered subsets and do not establish ordinary-comment conformance.
+**Automation:** No dedicated checker or registry entry implements this complete Shell comment rule. No migration fixture set exists; current source-header, ShellCheck, and source-form audits cover only their registered subsets and do not establish ordinary-comment conformance. Both inline-alignment bounds are measurable and could be checked once a facet exists; none reports them today, so an aligned run is review-owned like the rest of this rule.
 
-**Semantic remainder:** Review comment role, attachment, usefulness, directive boundaries, heredoc context, and whether the explanation belongs in help or maintained documentation.
+**Semantic remainder:** Review comment role, attachment, usefulness, directive boundaries, heredoc context, whether an aligned comment run improves scanning, and whether the explanation belongs in help or maintained documentation.
 
 **Exceptions:** Separately owned shebangs, headers, directives, generated content, and literal heredocs or fixtures are applicability exclusions rather than ordinary-comment exceptions.
 
@@ -182,7 +184,7 @@ Treat ShellCheck status 0 as a completed clean inventory and status 1 as a compl
 
 **Scope:** Maintained shell source outside exempt heredoc, URL, checksum, regex, parser-label, and fixture-literal contexts.
 
-Keep ordinary shell source within 79 columns when a readable split preserves behavior. Prefer semantic command-array and condition boundaries. Direct `echo` diagnostics follow `SHELL.DIAGNOSTIC.FORM`; do not split indivisible URLs, checksums, regular expressions, or literal interface text merely to satisfy a count.
+Keep ordinary shell source within 79 columns when a readable split preserves behavior. Prefer semantic command-array and condition boundaries. Direct `echo` diagnostics follow `SHELL.DIAGNOSTIC.FORM`; do not split indivisible URLs, checksums, regular expressions, literal repository paths, or literal interface text merely to satisfy a count.
 
 **Automation:** `tests/contract/repository/test_shell_line_length.sh` reports repository-wide candidates and strict bounded pilots. Coverage is `subset`, not `exact`.
 
