@@ -278,7 +278,7 @@
           "symbol": "help_submit_compute_signal",
           "parameter": "csv_fil_in",
           "owner": "PARAMETER.DESCRIPTIONS",
-          "evidence": "Parameters row at line 56: Comma-separated list of input file paths for BAM or CRAM files."
+          "evidence": "Parameters row for 'csv_fil_in': Comma-separated list of input file paths for BAM or CRAM files."
         }
       ],
       "local_meanings": [],
@@ -295,7 +295,7 @@
           "symbol": "run_comp_sig",
           "parameter": "fil_out",
           "owner": "PARAMETER.DESCRIPTIONS",
-          "evidence": "Parameters row at line 571: Output file path. Output filename."
+          "evidence": "Parameters row for 'fil_out': Output file path. Output filename."
         }
       ],
       "local_meanings": [],
@@ -312,7 +312,7 @@
           "symbol": "help_submit_compute_signal",
           "parameter": "csv_fil_out",
           "owner": "PARAMETER.DESCRIPTIONS",
-          "evidence": "Parameters row at line 81: Comma-separated list of output file paths."
+          "evidence": "Parameters row for 'csv_fil_out': Comma-separated list of output file paths."
         }
       ],
       "local_meanings": [],
@@ -329,7 +329,7 @@
           "symbol": "help_execute_compute_signal",
           "parameter": "dir_out",
           "owner": "PARAMETER.DESCRIPTIONS",
-          "evidence": "Parameters row at line 110: Output directory for generated files."
+          "evidence": "Parameters row for 'dir_out': Output directory for generated files."
         }
       ],
       "local_meanings": [],
@@ -346,7 +346,7 @@
           "symbol": "run_alignment",
           "parameter": "dir_eo",
           "owner": "PARAMETER.DESCRIPTIONS",
-          "evidence": "Parameters row at line 258: Directory for stderr and stdout log files."
+          "evidence": "Parameters row for 'dir_eo': Directory for stderr and stdout log files."
         }
       ],
       "local_meanings": [],
@@ -363,7 +363,7 @@
           "symbol": "help_submit_download_fastqs",
           "parameter": "dir_scr",
           "owner": "PARAMETER.DESCRIPTIONS",
-          "evidence": "Parameters row at line 31: Maintained entrypoint directory. Pass the repository 'bin' directory; shared libraries are resolved from adjacent 'lib/bash'.",
+          "evidence": "Parameters row for 'dir_scr': Maintained entrypoint directory. Pass the repository 'bin' directory; shared libraries are resolved from adjacent 'lib/bash'.",
           "approved_realization": "Maintained entrypoint directory. Pass the repository 'bin' directory; shared libraries are resolved from adjacent 'lib/bash'."
         }
       ],
@@ -381,7 +381,7 @@
           "symbol": "help_submit_trim_fastqs",
           "parameter": "env_nam",
           "owner": "PARAMETER.DESCRIPTIONS",
-          "evidence": "Parameters row at line 46: Conda environment to activate."
+          "evidence": "Parameters row for 'env_nam': Conda environment to activate."
         }
       ],
       "local_meanings": [],
@@ -398,7 +398,7 @@
           "symbol": "run_alignment",
           "parameter": "threads",
           "owner": "PARAMETER.DESCRIPTIONS",
-          "evidence": "Parameters row at line 222: Number of threads to use."
+          "evidence": "Parameters row for 'threads': Number of threads to use."
         }
       ],
       "local_meanings": [],
@@ -415,7 +415,7 @@
           "symbol": "detail_execute_compute_signal",
           "parameter": "ref_fa",
           "owner": "PARAMETER.DESCRIPTIONS",
-          "evidence": "Parameters row at line 344: Reference FASTA file for CRAM input files."
+          "evidence": "Parameters row for 'ref_fa': Reference FASTA file for CRAM input files."
         }
       ],
       "local_meanings": [],
@@ -432,7 +432,7 @@
           "symbol": "set_args_opt",
           "parameter": "dp",
           "owner": "PARAMETER.DESCRIPTIONS",
-          "evidence": "Parameters row at line 295: Maximum number of decimal places retained for finite emitted values."
+          "evidence": "Parameters row for 'dp': Maximum number of decimal places retained for finite emitted values."
         },
         {
           "surface_id": "src/protocol_chipseq_signal_norm/cli/compute_pseudo.py::parse_args",
@@ -457,7 +457,7 @@
           "symbol": "help_execute_align_fastqs",
           "parameter": "verbose",
           "owner": "PARAMETER.DESCRIPTIONS",
-          "evidence": "Parameters row at line 38: Run script in verbose mode."
+          "evidence": "Parameters row for 'verbose': Run script in verbose mode."
         }
       ],
       "local_meanings": [],
@@ -474,7 +474,7 @@
           "symbol": "help_execute_compute_signal",
           "parameter": "dry_run",
           "owner": "PARAMETER.DESCRIPTIONS",
-          "evidence": "Parameters row at line 63: Run script in dry-run mode."
+          "evidence": "Parameters row for 'dry_run': Run script in dry-run mode."
         }
       ],
       "local_meanings": [],
@@ -491,7 +491,7 @@
           "symbol": "run_comp_sig",
           "parameter": "nam_job",
           "owner": "PARAMETER.DESCRIPTIONS",
-          "evidence": "Parameters row at line 604: Job name."
+          "evidence": "Parameters row for 'nam_job': Job name."
         }
       ],
       "local_meanings": [],
@@ -508,7 +508,7 @@
           "symbol": "set_params_parallel",
           "parameter": "max_job",
           "owner": "PARAMETER.DESCRIPTIONS",
-          "evidence": "Parameters row at line 416: Maximum number of jobs to run concurrently."
+          "evidence": "Parameters row for 'max_job': Maximum number of jobs to run concurrently."
         }
       ],
       "local_meanings": [],
@@ -525,7 +525,7 @@
           "symbol": "help_execute_compute_signal",
           "parameter": "slurm",
           "owner": "PARAMETER.DESCRIPTIONS",
-          "evidence": "Parameters row at line 188: Submit jobs to the Slurm scheduler."
+          "evidence": "Parameters row for 'slurm': Submit jobs to the Slurm scheduler."
         }
       ],
       "local_meanings": [],
@@ -542,7 +542,7 @@
           "symbol": "check_format_time",
           "parameter": "time",
           "owner": "PARAMETER.DESCRIPTIONS",
-          "evidence": "Parameters row at line 258: Slurm job time limit. The time string to check."
+          "evidence": "Parameters row for 'time': Slurm job time limit. The time string to check."
         }
       ],
       "local_meanings": [],
@@ -559,7 +559,7 @@
           "symbol": "parse_filter_alignment_entry",
           "parameter": "out_ext",
           "owner": "PARAMETER.DESCRIPTIONS",
-          "evidence": "Parameters row at line 81: Final output extension: 'bam' or 'cram' (default: 'bam')."
+          "evidence": "Parameters row for 'out_ext': Final output extension: 'bam' or 'cram' (default: 'bam')."
         }
       ],
       "local_meanings": [],
@@ -576,7 +576,7 @@
           "symbol": "run_comp_sig",
           "parameter": "chr_sizes",
           "owner": "PARAMETER.DESCRIPTIONS",
-          "evidence": "Parameters row at line 592: Chromosome sizes file or empty string."
+          "evidence": "Parameters row for 'chr_sizes': Chromosome sizes file or empty string."
         }
       ],
       "local_meanings": [],
@@ -593,7 +593,7 @@
           "symbol": "run_comp_sig",
           "parameter": "engine",
           "owner": "PARAMETER.DESCRIPTIONS",
-          "evidence": "Parameters row at line 598: Processing engine. Signal-computation engine."
+          "evidence": "Parameters row for 'engine': Processing engine. Signal-computation engine."
         }
       ],
       "local_meanings": [],
@@ -610,7 +610,7 @@
           "symbol": "run_comp_sig",
           "parameter": "chunk_size",
           "owner": "PARAMETER.DESCRIPTIONS",
-          "evidence": "Parameters row at line 595: Number of records to process per chunk. Used by compute-signal engines."
+          "evidence": "Parameters row for 'chunk_size': Number of records to process per chunk. Used by compute-signal engines."
         }
       ],
       "local_meanings": [],
@@ -627,7 +627,7 @@
           "symbol": "run_comp_sig",
           "parameter": "siz_bin",
           "owner": "PARAMETER.DESCRIPTIONS",
-          "evidence": "Parameters row at line 574: Bin size in base pairs."
+          "evidence": "Parameters row for 'siz_bin': Bin size in base pairs."
         }
       ],
       "local_meanings": [],
@@ -644,7 +644,7 @@
           "symbol": "set_args_opt",
           "parameter": "scl_fct",
           "owner": "PARAMETER.DESCRIPTIONS",
-          "evidence": "Parameters row at line 289: Scaling factor. Use sentinel 'NA' to omit scaling."
+          "evidence": "Parameters row for 'scl_fct': Scaling factor. Use sentinel 'NA' to omit scaling."
         }
       ],
       "local_meanings": [],
@@ -661,7 +661,7 @@
           "symbol": "run_comp_rat",
           "parameter": "track",
           "owner": "PARAMETER.DESCRIPTIONS",
-          "evidence": "Parameters row at line 785: Write a companion track file. Emit companion '.track' file."
+          "evidence": "Parameters row for 'track': Write a companion track file. Emit companion '.track' file."
         }
       ],
       "local_meanings": [],
@@ -678,7 +678,7 @@
           "symbol": "run_comp_rat",
           "parameter": "strict_bins",
           "owner": "PARAMETER.DESCRIPTIONS",
-          "evidence": "Parameters row at line 806: Require strict bin compatibility across identical ordered input bin grids."
+          "evidence": "Parameters row for 'strict_bins': Require strict bin compatibility across identical ordered input bin grids."
         }
       ],
       "local_meanings": [],
@@ -695,7 +695,7 @@
           "symbol": "detail_execute_compute_signal",
           "parameter": "skip_00",
           "owner": "PARAMETER.DESCRIPTIONS",
-          "evidence": "Parameters row at line 459: Skip rows where both compared values are zero. Shared zero-zero skip mode or sentinel for ratio computation."
+          "evidence": "Parameters row for 'skip_00': Skip rows where both compared values are zero. Shared zero-zero skip mode or sentinel for ratio computation."
         }
       ],
       "local_meanings": [],
@@ -712,7 +712,7 @@
           "symbol": "parse_args",
           "parameter": "skp_pfx",
           "owner": "PARAMETER.DESCRIPTIONS",
-          "evidence": "Parameters row at line 724: Comma-separated list of header prefixes to skip in metadata lines."
+          "evidence": "Parameters row for 'skp_pfx': Comma-separated list of header prefixes to skip in metadata lines."
         },
         {
           "surface_id": "src/protocol_chipseq_signal_norm/cli/compute_pseudo.py::parse_args",
@@ -737,7 +737,7 @@
           "symbol": "help_submit_compute_signal",
           "parameter": "csv_fil_A",
           "owner": "PARAMETER.DESCRIPTIONS",
-          "evidence": "Parameters row at line 71: Comma-separated list of file A paths for numerator bedGraph files."
+          "evidence": "Parameters row for 'csv_fil_A': Comma-separated list of file A paths for numerator bedGraph files."
         }
       ],
       "local_meanings": [],
@@ -754,7 +754,7 @@
           "symbol": "help_submit_compute_signal",
           "parameter": "csv_fil_B",
           "owner": "PARAMETER.DESCRIPTIONS",
-          "evidence": "Parameters row at line 76: Comma-separated list of file B paths for denominator bedGraph files."
+          "evidence": "Parameters row for 'csv_fil_B': Comma-separated list of file B paths for denominator bedGraph files."
         }
       ],
       "local_meanings": [],
@@ -771,7 +771,7 @@
           "symbol": "help_submit_compute_signal",
           "parameter": "csv_scl_fct",
           "owner": "PARAMETER.DESCRIPTIONS",
-          "evidence": "Parameters row at line 106: Comma-separated list of scaling factors or sentinels."
+          "evidence": "Parameters row for 'csv_scl_fct': Comma-separated list of scaling factors or sentinels."
         }
       ],
       "local_meanings": [],
@@ -789,7 +789,7 @@
           "symbol": "help_execute_compute_signal",
           "parameter": "csv_dep_min",
           "owner": "PARAMETER.DESCRIPTIONS",
-          "evidence": "Parameters row at line 150",
+          "evidence": "Parameters row for 'csv_dep_min': Comma-separated list of minimum-depth values or sentinels. Used only with '--mode ratio'.",
           "meaning": "Minimum-depth values or sentinels used as a floor for positive input denominators; used only with '--mode ratio'."
         },
         {
@@ -815,7 +815,7 @@
           "symbol": "detail_execute_compute_signal",
           "parameter": "csv_pseudo",
           "owner": "PARAMETER.DESCRIPTIONS",
-          "evidence": "Parameters row at line 439: Comma-separated list of pseudocount values or sentinels used during ratio computation."
+          "evidence": "Parameters row for 'csv_pseudo': Comma-separated list of pseudocount values or sentinels used during ratio computation."
         }
       ],
       "local_meanings": [],
@@ -832,7 +832,7 @@
           "symbol": "help_execute_compute_signal",
           "parameter": "csv_usr_frg",
           "owner": "PARAMETER.DESCRIPTIONS",
-          "evidence": "Parameters row at line 147: Comma-separated list of fixed fragment-length values or sentinels. Used with '--mode signal' or '--mode coord'."
+          "evidence": "Parameters row for 'csv_usr_frg': Comma-separated list of fixed fragment-length values or sentinels. Used with '--mode signal' or '--mode coord'."
         }
       ],
       "local_meanings": [],
@@ -849,7 +849,7 @@
           "symbol": "run_alignment",
           "parameter": "aligner",
           "owner": "PARAMETER.DESCRIPTIONS",
-          "evidence": "Parameters row at line 225: Alignment program to use: 'bowtie2', 'bwa', or 'bwa-mem2'."
+          "evidence": "Parameters row for 'aligner': Alignment program to use: 'bowtie2', 'bwa', or 'bwa-mem2'."
         }
       ],
       "local_meanings": [],
@@ -866,7 +866,7 @@
           "symbol": "run_alignment",
           "parameter": "bt2_mode",
           "owner": "PARAMETER.DESCRIPTIONS",
-          "evidence": "Parameters row at line 228: Bowtie 2 alignment type when '--aligner bowtie2': 'local', 'global', or 'end-to-end'."
+          "evidence": "Parameters row for 'bt2_mode': Bowtie 2 alignment type when '--aligner bowtie2': 'local', 'global', or 'end-to-end'."
         }
       ],
       "local_meanings": [],
@@ -883,7 +883,7 @@
           "symbol": "run_alignment",
           "parameter": "bwa_alg",
           "owner": "PARAMETER.DESCRIPTIONS",
-          "evidence": "Parameters row at line 231: BWA algorithm when '--aligner bwa': 'mem' or 'aln'."
+          "evidence": "Parameters row for 'bwa_alg': BWA algorithm when '--aligner bwa': 'mem' or 'aln'."
         }
       ],
       "local_meanings": [],
@@ -900,7 +900,7 @@
           "symbol": "help_submit_align_fastqs",
           "parameter": "mapq",
           "owner": "PARAMETER.DESCRIPTIONS",
-          "evidence": "Parameters row at line 68: MAPQ threshold for filtering alignment output files (default: ${mapq})."
+          "evidence": "Parameters row for 'mapq': MAPQ threshold for filtering alignment output files (default: ${mapq})."
         }
       ],
       "local_meanings": [],
@@ -917,7 +917,7 @@
           "symbol": "help_submit_align_fastqs",
           "parameter": "req_flg",
           "owner": "PARAMETER.DESCRIPTIONS",
-          "evidence": "Parameters row at line 71: Require SAM flag bit 2 for properly paired alignments."
+          "evidence": "Parameters row for 'req_flg': Require SAM flag bit 2 for properly paired alignments."
         }
       ],
       "local_meanings": [],
@@ -934,7 +934,7 @@
           "symbol": "run_alignment",
           "parameter": "index",
           "owner": "PARAMETER.DESCRIPTIONS",
-          "evidence": "Parameters row at line 240: Path to the aligner index/reference."
+          "evidence": "Parameters row for 'index': Path to the aligner index/reference."
         }
       ],
       "local_meanings": [],
@@ -951,7 +951,7 @@
           "symbol": "help_execute_align_fastqs",
           "parameter": "qname",
           "owner": "PARAMETER.DESCRIPTIONS",
-          "evidence": "Parameters row at line 80: Retain queryname-sorted intermediate alignment files."
+          "evidence": "Parameters row for 'qname': Retain queryname-sorted intermediate alignment files."
         }
       ],
       "local_meanings": [],
@@ -968,7 +968,7 @@
           "symbol": "help_submit_calculate_scaling_factor",
           "parameter": "align_typ",
           "owner": "PARAMETER.DESCRIPTIONS",
-          "evidence": "Parameters row at line 56: Alignment layout type for input alignment files: 'pe', 'se', or 'auto' (default: '${aln_typ}')."
+          "evidence": "Parameters row for 'align_typ': Alignment layout type for input alignment files: 'pe', 'se', or 'auto' (default: '${aln_typ}')."
         }
       ],
       "local_meanings": [],
@@ -985,7 +985,7 @@
           "symbol": "_get_expr_filter",
           "parameter": "aln_typ",
           "owner": "PARAMETER.DESCRIPTIONS",
-          "evidence": "Parameters row at line 633: Alignment layout type for input alignment files: 'paired', 'pe', 'single', or 'se' (default: 'pe')."
+          "evidence": "Parameters row for 'aln_typ': Alignment layout type for input alignment files: 'paired', 'pe', 'single', or 'se' (default: 'pe')."
         }
       ],
       "local_meanings": [],
@@ -1002,7 +1002,7 @@
           "symbol": "help_execute_calculate_scaling_factor",
           "parameter": "csv_mip",
           "owner": "PARAMETER.DESCRIPTIONS",
-          "evidence": "Parameters row at line 87: Comma-separated list of main IP alignment files."
+          "evidence": "Parameters row for 'csv_mip': Comma-separated list of main IP alignment files."
         }
       ],
       "local_meanings": [],
@@ -1019,7 +1019,7 @@
           "symbol": "help_execute_calculate_scaling_factor",
           "parameter": "csv_min",
           "owner": "PARAMETER.DESCRIPTIONS",
-          "evidence": "Parameters row at line 90: Comma-separated list of main input alignment files."
+          "evidence": "Parameters row for 'csv_min': Comma-separated list of main input alignment files."
         }
       ],
       "local_meanings": [],
@@ -1036,7 +1036,7 @@
           "symbol": "help_submit_calculate_scaling_factor",
           "parameter": "csv_sip",
           "owner": "PARAMETER.DESCRIPTIONS",
-          "evidence": "Parameters row at line 68: Comma-separated list of spike-in IP alignment files (BAM or CRAM; '--mode spike')."
+          "evidence": "Parameters row for 'csv_sip': Comma-separated list of spike-in IP alignment files (BAM or CRAM; '--mode spike')."
         }
       ],
       "local_meanings": [],
@@ -1053,7 +1053,7 @@
           "symbol": "help_submit_calculate_scaling_factor",
           "parameter": "csv_sin",
           "owner": "PARAMETER.DESCRIPTIONS",
-          "evidence": "Parameters row at line 71: Comma-separated list of spike-in input alignment files (BAM or CRAM; '--mode spike')."
+          "evidence": "Parameters row for 'csv_sin': Comma-separated list of spike-in input alignment files (BAM or CRAM; '--mode spike')."
         }
       ],
       "local_meanings": [],
@@ -1070,7 +1070,7 @@
           "symbol": "_parse_metadata",
           "parameter": "tbl_met",
           "owner": "PARAMETER.DESCRIPTIONS",
-          "evidence": "Parameters row at line 1260: siQ-ChIP metadata table."
+          "evidence": "Parameters row for 'tbl_met': siQ-ChIP metadata table."
         }
       ],
       "local_meanings": [],
@@ -1087,7 +1087,7 @@
           "symbol": "_parse_metadata",
           "parameter": "cfg_met",
           "owner": "PARAMETER.DESCRIPTIONS",
-          "evidence": "Parameters row at line 1263: YAML configuration file for metadata parsing."
+          "evidence": "Parameters row for 'cfg_met': YAML configuration file for metadata parsing."
         }
       ],
       "local_meanings": [],
@@ -1104,7 +1104,7 @@
           "symbol": "help_submit_calculate_scaling_factor",
           "parameter": "eqn",
           "owner": "PARAMETER.DESCRIPTIONS",
-          "evidence": "Parameters row at line 86: siQ-ChIP alpha equation to compute when '--mode siq' is active: '5', '5nd', '6', or '6nd' (default: '${eqn}')."
+          "evidence": "Parameters row for 'eqn': siQ-ChIP alpha equation to compute when '--mode siq' is active: '5', '5nd', '6', or '6nd' (default: '${eqn}')."
         }
       ],
       "local_meanings": [],
@@ -1121,7 +1121,7 @@
           "symbol": "help_submit_calculate_scaling_factor",
           "parameter": "len_def",
           "owner": "PARAMETER.DESCRIPTIONS",
-          "evidence": "Parameters row at line 89: Default fragment length for single-end libraries when no per-sample override is provided."
+          "evidence": "Parameters row for 'len_def': Default fragment length for single-end libraries when no per-sample override is provided."
         }
       ],
       "local_meanings": [],
@@ -1138,7 +1138,7 @@
           "symbol": "help_submit_calculate_scaling_factor",
           "parameter": "csv_len_mip",
           "owner": "PARAMETER.DESCRIPTIONS",
-          "evidence": "Parameters row at line 92: Fragment length value(s) for main IP alignment files. Optional comma-separated list of precomputed fragment lengths."
+          "evidence": "Parameters row for 'csv_len_mip': Fragment length value(s) for main IP alignment files. Optional comma-separated list of precomputed fragment lengths."
         }
       ],
       "local_meanings": [],
@@ -1155,7 +1155,7 @@
           "symbol": "help_submit_calculate_scaling_factor",
           "parameter": "csv_len_min",
           "owner": "PARAMETER.DESCRIPTIONS",
-          "evidence": "Parameters row at line 95: Fragment length value(s) for main input alignment files. Optional comma-separated list of precomputed fragment lengths."
+          "evidence": "Parameters row for 'csv_len_min': Fragment length value(s) for main input alignment files. Optional comma-separated list of precomputed fragment lengths."
         }
       ],
       "local_meanings": [],
@@ -1172,7 +1172,7 @@
           "symbol": "help_submit_calculate_scaling_factor",
           "parameter": "csv_dep_mip",
           "owner": "PARAMETER.DESCRIPTIONS",
-          "evidence": "Parameters row at line 98: Sequencing/alignment depth value(s) for main IP alignment files. Optional comma-separated list of precomputed alignment counts."
+          "evidence": "Parameters row for 'csv_dep_mip': Sequencing/alignment depth value(s) for main IP alignment files. Optional comma-separated list of precomputed alignment counts."
         }
       ],
       "local_meanings": [],
@@ -1189,7 +1189,7 @@
           "symbol": "help_submit_calculate_scaling_factor",
           "parameter": "csv_dep_sip",
           "owner": "PARAMETER.DESCRIPTIONS",
-          "evidence": "Parameters row at line 104: Sequencing/alignment depth value(s) for spike-in IP alignment files. Optional comma-separated list of precomputed alignment counts."
+          "evidence": "Parameters row for 'csv_dep_sip': Sequencing/alignment depth value(s) for spike-in IP alignment files. Optional comma-separated list of precomputed alignment counts."
         }
       ],
       "local_meanings": [],
@@ -1206,7 +1206,7 @@
           "symbol": "help_submit_calculate_scaling_factor",
           "parameter": "csv_dep_sin",
           "owner": "PARAMETER.DESCRIPTIONS",
-          "evidence": "Parameters row at line 107: Sequencing/alignment depth value(s) for spike-in input alignment files. Optional comma-separated list of precomputed alignment counts."
+          "evidence": "Parameters row for 'csv_dep_sin': Sequencing/alignment depth value(s) for spike-in input alignment files. Optional comma-separated list of precomputed alignment counts."
         }
       ],
       "local_meanings": [],
@@ -1223,7 +1223,7 @@
           "symbol": "run_comp_rat",
           "parameter": "fil_A",
           "owner": "PARAMETER.DESCRIPTIONS",
-          "evidence": "Parameters row at line 764: First bedGraph input file, file A."
+          "evidence": "Parameters row for 'fil_A': First bedGraph input file, file A."
         },
         {
           "surface_id": "src/protocol_chipseq_signal_norm/cli/compute_pseudo.py::parse_args",
@@ -1248,7 +1248,7 @@
           "symbol": "run_comp_rat",
           "parameter": "fil_B",
           "owner": "PARAMETER.DESCRIPTIONS",
-          "evidence": "Parameters row at line 767: Second bedGraph input file, file B."
+          "evidence": "Parameters row for 'fil_B': Second bedGraph input file, file B."
         },
         {
           "surface_id": "src/protocol_chipseq_signal_norm/cli/compute_pseudo.py::parse_args",
@@ -1273,7 +1273,7 @@
           "symbol": "run_comp_rat",
           "parameter": "pseudo",
           "owner": "PARAMETER.DESCRIPTIONS",
-          "evidence": "Parameters row at line 788: Per-file pseudocount spec 'A[:B]' or sentinel 'NA'."
+          "evidence": "Parameters row for 'pseudo': Per-file pseudocount spec 'A[:B]' or sentinel 'NA'."
         }
       ],
       "local_meanings": [],
@@ -1290,7 +1290,7 @@
           "symbol": "run_comp_rat",
           "parameter": "drp_nan",
           "owner": "PARAMETER.DESCRIPTIONS",
-          "evidence": "Parameters row at line 797: Drop non-finite values from main output."
+          "evidence": "Parameters row for 'drp_nan': Drop non-finite values from main output."
         }
       ],
       "local_meanings": [],
@@ -1307,7 +1307,7 @@
           "symbol": "help_execute_compute_signal",
           "parameter": "typ_out",
           "owner": "PARAMETER.DESCRIPTIONS",
-          "evidence": "Parameters row at line 113: Output file format (default: '${typ_out}')."
+          "evidence": "Parameters row for 'typ_out': Output file format (default: '${typ_out}')."
         }
       ],
       "local_meanings": [],
@@ -1324,7 +1324,7 @@
           "symbol": "run_comp_sig",
           "parameter": "usr_frg",
           "owner": "PARAMETER.DESCRIPTIONS",
-          "evidence": "Parameters row at line 583: Fixed fragment length or sentinel 'NA'."
+          "evidence": "Parameters row for 'usr_frg': Fixed fragment length or sentinel 'NA'."
         }
       ],
       "local_meanings": [],
@@ -1341,7 +1341,7 @@
           "symbol": "help_execute_filter_alignments",
           "parameter": "chk_chr",
           "owner": "PARAMETER.DESCRIPTIONS",
-          "evidence": "Parameters row at line 75: Check chromosomes in output alignment files."
+          "evidence": "Parameters row for 'chk_chr': Check chromosomes in output alignment files."
         }
       ],
       "local_meanings": [],
@@ -1358,7 +1358,7 @@
           "symbol": "parse_filter_alignment_entry",
           "parameter": "retain",
           "owner": "PARAMETER.DESCRIPTIONS",
-          "evidence": "Parameters row at line 75: Species chromosomes to retain: 'sc' or 'sp'."
+          "evidence": "Parameters row for 'retain': Species chromosomes to retain: 'sc' or 'sp'."
         }
       ],
       "local_meanings": [],
@@ -1375,7 +1375,7 @@
           "symbol": "help_execute_filter_alignments",
           "parameter": "mito",
           "owner": "PARAMETER.DESCRIPTIONS",
-          "evidence": "Parameters row at line 66: Retain mitochondrial chromosome."
+          "evidence": "Parameters row for 'mito': Retain mitochondrial chromosome."
         }
       ],
       "local_meanings": [],
@@ -1392,7 +1392,7 @@
           "symbol": "help_submit_filter_alignments",
           "parameter": "tg",
           "owner": "PARAMETER.DESCRIPTIONS",
-          "evidence": "Parameters row at line 73: Retain SP_II_TG chromosome."
+          "evidence": "Parameters row for 'tg': Retain SP_II_TG chromosome."
         }
       ],
       "local_meanings": [],
@@ -1409,7 +1409,7 @@
           "symbol": "help_submit_filter_alignments",
           "parameter": "mtr",
           "owner": "PARAMETER.DESCRIPTIONS",
-          "evidence": "Parameters row at line 76: Retain SP_MTR chromosome."
+          "evidence": "Parameters row for 'mtr': Retain SP_MTR chromosome."
         }
       ],
       "local_meanings": [],
@@ -1426,7 +1426,7 @@
           "symbol": "_set_ref_arg_cram",
           "parameter": "fil_aln",
           "owner": "PARAMETER.DESCRIPTIONS",
-          "evidence": "Parameters row at line 350: Input BAM or CRAM alignment file."
+          "evidence": "Parameters row for 'fil_aln': Input BAM or CRAM alignment file."
         }
       ],
       "local_meanings": [],
@@ -1443,7 +1443,7 @@
           "symbol": "run_alignment",
           "parameter": "fq_1",
           "owner": "PARAMETER.DESCRIPTIONS",
-          "evidence": "Parameters row at line 246: First FASTQ input file."
+          "evidence": "Parameters row for 'fq_1': First FASTQ input file."
         }
       ],
       "local_meanings": [],
@@ -1460,7 +1460,7 @@
           "symbol": "run_alignment",
           "parameter": "fq_2",
           "owner": "PARAMETER.DESCRIPTIONS",
-          "evidence": "Parameters row at line 249: Second FASTQ input file, or 'NA' for single-end data."
+          "evidence": "Parameters row for 'fq_2': Second FASTQ input file, or 'NA' for single-end data."
         }
       ],
       "local_meanings": [],
@@ -1477,7 +1477,7 @@
           "symbol": "parse_entry_trim_fastq",
           "parameter": "sfx_se",
           "owner": "PARAMETER.DESCRIPTIONS",
-          "evidence": "Parameters row at line 366: Suffix to strip from single-end FASTQ filenames."
+          "evidence": "Parameters row for 'sfx_se': Suffix to strip from single-end FASTQ filenames."
         }
       ],
       "local_meanings": [],
@@ -1494,7 +1494,7 @@
           "symbol": "parse_entry_trim_fastq",
           "parameter": "sfx_pe",
           "owner": "PARAMETER.DESCRIPTIONS",
-          "evidence": "Parameters row at line 369: Suffix to strip from paired-end FASTQ read-1 filenames."
+          "evidence": "Parameters row for 'sfx_pe': Suffix to strip from paired-end FASTQ read-1 filenames."
         }
       ],
       "local_meanings": [],
@@ -1511,7 +1511,7 @@
           "symbol": "help_submit_align_fastqs",
           "parameter": "suffix_se",
           "owner": "PARAMETER.DESCRIPTIONS",
-          "evidence": "Parameters row at line 92: Suffix to strip from single-end FASTQ filenames."
+          "evidence": "Parameters row for 'suffix_se': Suffix to strip from single-end FASTQ filenames."
         }
       ],
       "local_meanings": [],
@@ -1528,7 +1528,7 @@
           "symbol": "help_submit_align_fastqs",
           "parameter": "suffix_pe",
           "owner": "PARAMETER.DESCRIPTIONS",
-          "evidence": "Parameters row at line 95: Suffix to strip from paired-end FASTQ read-1 filenames."
+          "evidence": "Parameters row for 'suffix_pe': Suffix to strip from paired-end FASTQ read-1 filenames."
         }
       ],
       "local_meanings": [],
@@ -1545,7 +1545,7 @@
           "symbol": "run_dry_or_wet",
           "parameter": "log_out",
           "owner": "PARAMETER.DESCRIPTIONS",
-          "evidence": "Parameters row at line 415: Stdout log file."
+          "evidence": "Parameters row for 'log_out': Stdout log file."
         }
       ],
       "local_meanings": [],
@@ -1562,7 +1562,7 @@
           "symbol": "run_dry_or_wet",
           "parameter": "log_err",
           "owner": "PARAMETER.DESCRIPTIONS",
-          "evidence": "Parameters row at line 418: Stderr log file."
+          "evidence": "Parameters row for 'log_err': Stderr log file."
         }
       ],
       "local_meanings": [],
@@ -1579,7 +1579,7 @@
           "symbol": "source_helpers",
           "parameter": "dir_fnc",
           "owner": "PARAMETER.DESCRIPTIONS",
-          "evidence": "Parameters row at line 276: Base function directory."
+          "evidence": "Parameters row for 'dir_fnc': Base function directory."
         }
       ],
       "local_meanings": [],
@@ -1596,7 +1596,7 @@
           "symbol": "convert_alignments_bed_python",
           "parameter": "pth_scr_py",
           "owner": "PARAMETER.DESCRIPTIONS",
-          "evidence": "Parameters row at line 515: Python converter script."
+          "evidence": "Parameters row for 'pth_scr_py': Python converter script."
         }
       ],
       "local_meanings": [],
@@ -1613,7 +1613,7 @@
           "symbol": "parse_args",
           "parameter": "coef",
           "owner": "PARAMETER.DESCRIPTIONS",
-          "evidence": "Parameters row at line 267: Coefficient for median, mean, and min methods. If not specified, then defaults to 0.01 for '--method frc_mdn_nz' and '--method frc_avg_nz', or 1.0 for '--method min_nz'."
+          "evidence": "Parameters row for 'coef': Coefficient for median, mean, and min methods. If not specified, then defaults to 0.01 for '--method frc_mdn_nz' and '--method frc_avg_nz', or 1.0 for '--method min_nz'."
         }
       ],
       "local_meanings": [],
@@ -1630,7 +1630,7 @@
           "symbol": "parse_args",
           "parameter": "floor",
           "owner": "PARAMETER.DESCRIPTIONS",
-          "evidence": "Parameters row at line 279: Lower bound for computation of pseudocount(s) (default: %(default)s)."
+          "evidence": "Parameters row for 'floor': Lower bound for computation of pseudocount(s) (default: %(default)s)."
         }
       ],
       "local_meanings": [],
@@ -1647,7 +1647,7 @@
           "symbol": "run_comp_rat",
           "parameter": "eps",
           "owner": "PARAMETER.DESCRIPTIONS",
-          "evidence": "Parameters row at line 791: Zero tolerance epsilon or sentinel 'NA'."
+          "evidence": "Parameters row for 'eps': Zero tolerance epsilon or sentinel 'NA'."
         },
         {
           "surface_id": "src/protocol_chipseq_signal_norm/cli/compute_pseudo.py::parse_args",
@@ -1672,7 +1672,7 @@
           "symbol": "parse_args",
           "parameter": "qntl_nz",
           "owner": "PARAMETER.DESCRIPTIONS",
-          "evidence": "Parameters row at line 255: Quantile in percent for '--method qntl_nz' (0..100). Decimals are allowed (e.g., 0.5 = 0.5th percentile). Ignored if '--method' is not 'qntl_nz' (default: %(default)s)."
+          "evidence": "Parameters row for 'qntl_nz': Quantile in percent for '--method qntl_nz' (0..100). Decimals are allowed (e.g., 0.5 = 0.5th percentile). Ignored if '--method' is not 'qntl_nz' (default: %(default)s)."
         }
       ],
       "local_meanings": [],
@@ -1689,7 +1689,7 @@
           "symbol": "parse_args",
           "parameter": "mode_nz",
           "owner": "PARAMETER.DESCRIPTIONS",
-          "evidence": "Parameters row at line 306: Epsilon/zero-handling mode for selecting 'nonzero' bins: - closed (default) drop values with '|x| <= eps'. - open drop values with '|x| < eps'. - off disable 'eps'-based zero filtering."
+          "evidence": "Parameters row for 'mode_nz': Epsilon/zero-handling mode for selecting 'nonzero' bins: - closed (default) drop values with '|x| <= eps'. - open drop values with '|x| < eps'. - off disable 'eps'-based zero filtering."
         }
       ],
       "local_meanings": [],
@@ -1706,7 +1706,7 @@
           "symbol": "_calculate_dep_fct",
           "parameter": "siz_gen",
           "owner": "PARAMETER.DESCRIPTIONS",
-          "evidence": "Parameters row at line 1470: Effective genome size (in base pairs; default: ${siz_gen} [appropriate for S. cerevisiae])."
+          "evidence": "Parameters row for 'siz_gen': Effective genome size (in base pairs; default: ${siz_gen} [appropriate for S. cerevisiae])."
         }
       ],
       "local_meanings": [],
@@ -1724,7 +1724,7 @@
           "symbol": "parse_args",
           "parameter": "fil_in",
           "owner": "PARAMETER.DESCRIPTIONS",
-          "evidence": "argparse help beginning at line 799",
+          "evidence": "argparse help for 'fil_in': Comma-separated list of minimum-depth values or sentinels. Used only with '--mode ratio'.",
           "meaning": "Signal or alignment input selected by computation mode; ignored by norm mode."
         },
         {
@@ -1733,7 +1733,7 @@
           "symbol": "help_execute_download_fastqs",
           "parameter": "fil_in",
           "owner": "PARAMETER.DESCRIPTIONS",
-          "evidence": "Parameters row beginning at line 49",
+          "evidence": "Parameters row for 'fil_in': Comma-separated list of minimum-depth values or sentinels. Used only with '--mode ratio'.",
           "meaning": "TSV metadata input containing accessions, custom names, and download URLs."
         },
         {
@@ -1742,7 +1742,7 @@
           "symbol": "help_write_header",
           "parameter": "fil_in",
           "owner": "PARAMETER.DESCRIPTIONS",
-          "evidence": "Parameters row beginning at line 40",
+          "evidence": "Parameters row for 'fil_in': Comma-separated list of minimum-depth values or sentinels. Used only with '--mode ratio'.",
           "meaning": "Optional scaling-factor data table to header."
         }
       ],
@@ -1760,7 +1760,7 @@
           "symbol": "parse_args",
           "parameter": "mode",
           "owner": "PARAMETER.DESCRIPTIONS",
-          "evidence": "argparse choice definition beginning at line 771",
+          "evidence": "argparse choice definition for 'mode': Comma-separated list of minimum-depth values or sentinels. Used only with '--mode ratio'.",
           "meaning": "Input-floor computation mode: dist, frag, or norm."
         },
         {
@@ -1769,7 +1769,7 @@
           "symbol": "help_combine_parts_scaling_factor",
           "parameter": "mode",
           "owner": "PARAMETER.DESCRIPTIONS",
-          "evidence": "Parameters row beginning at line 34",
+          "evidence": "Parameters row for 'mode': Comma-separated list of minimum-depth values or sentinels. Used only with '--mode ratio'.",
           "meaning": "Scaling-factor part-file mode: siq or spike."
         }
       ],
@@ -1787,7 +1787,7 @@
           "symbol": "parse_args",
           "parameter": "method",
           "owner": "PARAMETER.DESCRIPTIONS",
-          "evidence": "argparse choice definition beginning at line 852",
+          "evidence": "argparse choice definition for 'method': Comma-separated list of minimum-depth values or sentinels. Used only with '--mode ratio'.",
           "meaning": "Distribution summary used by dist mode."
         },
         {
