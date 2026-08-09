@@ -28,6 +28,42 @@ import subprocess
 from pathlib import Path
 
 RULE_ID = "SHELL.SOURCE.FORM"
+RULE_COMMENT = "SHELL.COMMENT.FORM"
+# A governed header occupies the opening rows, and its continuation rows are
+# not ordinary comments. Nothing below that boundary is header material.
+HEADER_ROWS = 16
+SUPERSEDED_COMMENT = re.compile(r"^\s*#(?:  (?=\S)|\+ )")
+
+
+def _superseded_comment_marker(line: str, index: int) -> bool:
+    """
+    Report whether one line uses a retired ordinary-comment marker.
+
+    `SHELL.COMMENT.FORM` requires `# ` for every nonempty ordinary comment and
+    records `#  ` and `#+ ` as superseded rather than as compatibility forms,
+    so new and changed source may not use them. Shebangs, ShellCheck
+    directives, and the bounded source header carry their own owned syntax and
+    are excluded.
+
+    Parameters
+    ----------
+    line : str
+        One physical source line outside any heredoc body.
+    index : int
+        One-based line number, used to skip the bounded header.
+
+    Returns
+    -------
+    superseded : bool
+        Whether the line begins with a retired ordinary-comment marker.
+    """
+
+    if index <= HEADER_ROWS or "shellcheck" in line:
+        return False
+
+    return SUPERSEDED_COMMENT.match(line) is not None
+
+
 DIAGNOSTIC_RULE_ID = "SHELL.DIAGNOSTIC.FORM"
 FUNCTION = re.compile(
     r"^\s*function\s+(?P<name>[A-Za-z_][A-Za-z0-9_]*)\(\)\s*\{",
@@ -447,6 +483,17 @@ def check_text(text: str, path: str = "<memory>") -> list[Finding]:
                 heredoc_delimiter = None
 
             continue
+
+        if _superseded_comment_marker(line, index):
+            findings.append(
+                Finding(
+                    RULE_COMMENT,
+                    path,
+                    index,
+                    "ordinary comment must begin with '# '; the '#  ' and "
+                    "'#+ ' forms are superseded",
+                ),
+            )
 
         leading = line[: len(line) - len(line.lstrip(" \t"))]
 

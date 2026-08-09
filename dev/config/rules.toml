@@ -1918,6 +1918,33 @@ strict_availability = "safe_adapter"
 current_exclusions_or_allowlists = []
 
 [[rule]]
+rule_id = "SHELL.COMMENT.FORM"
+description = "Report retired ordinary-comment markers in maintained shell."
+normative_document = "docs/standards/shell.md"
+normative_section = "Shell comments (`SHELL.COMMENT.FORM`)"
+owner_classification = "advisory"
+source_checker = "dev/audit/shell_source_form.py"
+execution_kind = "original"
+execution_role = "checker"
+coverage_relation = "subset"
+covered_scope = "Across maintained shell, report the retired '#  ' and '#+ ' ordinary-comment markers outside the bounded source header, ShellCheck directives, and heredoc bodies."
+remaining_scope = "Comment attachment, prose capitalization and punctuation, usefulness, and the boundary between ordinary comments and separately owned syntax remain review-owned; the repository-wide marker count is the S3-MIG-005 inventory rather than a gate."
+parity_test = "tests/unit/dev_audit/test_shell_source_form.py"
+scope = "repository"
+command = ["python3", "-m", "dev.audit.shell_source_form", "--root", "."]
+applicable_paths = ["bin/*.sh", "lib/bash/*.sh", "install/scripts/*.sh", "tests/*.sh"]
+default_severity = "advisory"
+blocking = false
+semantic_review = true
+required_environment = "python>=3.11"
+required_commands = ["python3"]
+known_side_effects = ["none"]
+output_paths = []
+output_parser = "generic"
+strict_availability = "safe_adapter"
+current_exclusions_or_allowlists = ["owner=SHELL.COMMENT.FORM; bounded source headers, ShellCheck directives, and heredoc bodies carry separately owned syntax"]
+
+[[rule]]
 rule_id = "SHELL.DIAGNOSTIC.FORM"
 description = "Check recognized direct-echo diagnostic source form."
 normative_document = "docs/standards/shell.md"

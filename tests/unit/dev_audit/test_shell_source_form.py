@@ -312,3 +312,49 @@ def test_split_echo_preserves_rendered_spacing() -> None:
     assert original.returncode == split.returncode == 0
     assert original.stdout == split.stdout == ""
     assert original.stderr == split.stderr
+
+
+def test_rejects_superseded_ordinary_comment_markers() -> None:
+    """
+    Require '# ' for new ordinary comments.
+
+    'SHELL.COMMENT.FORM' records '#  ' and '#+ ' as superseded rather than as
+    compatibility forms, so source written now may not use them.
+    """
+
+    header = "\n" * 16
+    accepted = f"{header}# One ordinary comment.\nvalue=1\n"
+    wide = f"{header}#  One ordinary comment.\nvalue=1\n"
+    continued = (
+        f"{header}# One ordinary comment,\n#+ continued here.\nvalue=1\n"
+    )
+    expected = (
+        "ordinary comment must begin with '# '; the '#  ' and '#+ ' forms "
+        "are superseded"
+    )
+
+    assert expected not in messages(accepted)
+    assert expected in messages(wide)
+    assert expected in messages(continued)
+
+
+def test_superseded_marker_check_spares_owned_syntax() -> None:
+    """
+    Leave the bounded header, directives, and heredoc bodies alone.
+
+    Each carries separately owned syntax, so a retired ordinary marker inside
+    them is not an ordinary comment at all.
+    """
+
+    header = "\n" * 16
+    directive = f"{header}#  shellcheck disable=SC2034\nvalue=1\n"
+    in_header = "#  Copyright row spacing.\n" + "\n" * 16 + "value=1\n"
+    heredoc = f"{header}cat << 'EOM'\n#  Literal body row.\nEOM\n"
+    expected = (
+        "ordinary comment must begin with '# '; the '#  ' and '#+ ' forms "
+        "are superseded"
+    )
+
+    assert expected not in messages(directive)
+    assert expected not in messages(in_header)
+    assert expected not in messages(heredoc)
