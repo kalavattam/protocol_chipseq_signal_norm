@@ -115,6 +115,16 @@ function ensure_integration_fixtures() {
 }
 
 
+# Unit-scoped fixtures are prepared separately from the integration set,
+# because unit tests run without the local, Parallel, and Slurm gates that
+# decide whether workflow fixtures are needed at all.
+function ensure_unit_fixtures() {
+    # Header fixtures are literal text, so this recipe needs no environment.
+    ensure_fixture ai_attribution \
+        "${repo_root}/tests/fixtures/ai_attribution/source/multi_vendor.sh"
+}
+
+
 function add_shell_tests() {
     local root="${1}"
     local file=""
@@ -318,6 +328,8 @@ passed=0
 failed=0
 
 if (( run_unit == 1 )); then
+    ensure_unit_fixtures
+
     arr_unit_python=( "${managed_python}" )
 
     "${managed_python}" -c 'import pytest' > /dev/null 2>&1 || \

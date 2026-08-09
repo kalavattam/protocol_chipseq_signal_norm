@@ -55,6 +55,11 @@ data/processed/compute_signal/bowtie2_global_flag-2_mapq-1/*
 !data/processed/compute_signal/bowtie2_global_flag-2_mapq-1/tables/
 
 #  Ignore generated test fixture outputs in 'tests/' but retain fixture docs
+tests/fixtures/ai_attribution/**
+!tests/fixtures/ai_attribution/
+!tests/fixtures/ai_attribution/README.md
+!tests/fixtures/ai_attribution/make.sh
+
 tests/fixtures/align_fastqs/**
 !tests/fixtures/align_fastqs/
 !tests/fixtures/align_fastqs/README.md
