@@ -28,11 +28,16 @@ from pathlib import Path
 from dev.audit.ai_attribution import (
     attribution_block,
     check_attribution_source,
+    check_trailer_agreement,
+    check_unsupported_credit,
     load_applicability_manifest,
     model_tokens,
     normalize_attribution_source,
     source_header_inventory,
 )
+
+ROOT = Path(__file__).resolve().parents[3]
+FIXTURES = ROOT / "tests" / "fixtures" / "ai_attribution" / "source"
 
 
 def source_file(
@@ -650,6 +655,141 @@ class AiAttributionTest(unittest.TestCase):
         self.assertEqual(rows[0]["observed_models"], [])
         self.assertIsNone(rows[0]["observed_contribution_domain"])
         self.assertIsNone(rows[0]["observed_tools"])
+
+
+class TrailerAgreementTests(unittest.TestCase):
+    """
+    Compare header vendors with the vendors commit trailers evidence.
+
+    The sources are generated fixtures rather than strings built here, so the
+    header text under test is authored in one place and inspectable on disk.
+    """
+
+    def test_focused_commit_evidence_reports_an_omitted_vendor(self) -> None:
+        findings = check_trailer_agreement(
+            FIXTURES,
+            ["single_vendor.sh"],
+            evidence={("single_vendor.sh", "Anthropic"): 4},
+        )
+
+        self.assertEqual(len(findings), 1)
+        self.assertIn("Anthropic", findings[0].message)
+
+    def test_broad_checkpoint_evidence_is_not_participation(self) -> None:
+        """
+        Keep a wide migration from fabricating a per-file attribution claim.
+        """
+
+        findings = check_trailer_agreement(
+            FIXTURES,
+            ["single_vendor.sh"],
+            evidence={("single_vendor.sh", "Anthropic"): 258},
+        )
+
+        self.assertEqual(findings, [])
+
+    def test_declared_vendor_reports_nothing(self) -> None:
+        findings = check_trailer_agreement(
+            FIXTURES,
+            ["multi_vendor.sh"],
+            evidence={
+                ("multi_vendor.sh", "Anthropic"): 4,
+                ("multi_vendor.sh", "OpenAI"): 4,
+            },
+        )
+
+        self.assertEqual(findings, [])
+
+    def test_generated_fixtures_match_their_accepted_forms(self) -> None:
+        """
+        Prove the fixtures are the inputs the other cases assume.
+        """
+
+        for name, declared in (
+            ("single_vendor.sh", True),
+            ("multi_vendor.sh", True),
+            ("no_attribution.sh", False),
+        ):
+            with self.subTest(fixture=name):
+                text = (FIXTURES / name).read_text(encoding="utf-8")
+                rows = source_header_inventory(FIXTURES, [name])
+
+                self.assertEqual(check_attribution_source(text, name), [])
+                self.assertEqual(
+                    rows[0]["attribution_style"] is not None,
+                    declared,
+                )
+
+        multi = (FIXTURES / "multi_vendor.sh").read_text(encoding="utf-8")
+        single = (FIXTURES / "single_vendor.sh").read_text(encoding="utf-8")
+
+        self.assertIn("Anthropic Claude Code", multi)
+        self.assertNotIn("Anthropic", single)
+
+
+class UnsupportedCreditTests(unittest.TestCase):
+    """
+    Report a header crediting a vendor its own history never credits.
+    """
+
+    def findings(self, **record: object) -> list[str]:
+        """
+        Check the two-vendor fixture against one synthetic history record.
+        """
+
+        base = {"vendors": {"OpenAI"}, "all_credited": True}
+        base.update(record)
+
+        return [
+            finding.message
+            for finding in check_unsupported_credit(
+                FIXTURES,
+                ["multi_vendor.sh"],
+                history={"multi_vendor.sh": base},
+                pending=set(),
+            )
+        ]
+
+    def test_credit_without_any_supporting_commit_is_reported(self) -> None:
+        messages = self.findings()
+
+        self.assertEqual(len(messages), 1)
+        self.assertIn("Anthropic", messages[0])
+
+    def test_supported_credit_reports_nothing(self) -> None:
+        self.assertEqual(
+            self.findings(vendors={"OpenAI", "Anthropic"}),
+            [],
+        )
+
+    def test_history_predating_the_convention_reports_nothing(self) -> None:
+        """
+        Keep an uncredited commit from reading as a vendor's absence.
+        """
+
+        self.assertEqual(self.findings(all_credited=False), [])
+
+    def test_a_working_tree_edit_is_exempt(self) -> None:
+        """
+        Let the commit that adds a credit carry its own trailer.
+        """
+
+        messages = [
+            finding.message
+            for finding in check_unsupported_credit(
+                FIXTURES,
+                ["multi_vendor.sh"],
+                history={
+                    "multi_vendor.sh": {
+                        "vendors": {"OpenAI"},
+                        "all_credited": True,
+                    },
+                },
+                pending={"multi_vendor.sh"},
+            )
+        ]
+
+        self.assertEqual(messages, [])
 
 
 if __name__ == "__main__":

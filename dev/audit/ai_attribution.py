@@ -29,7 +29,7 @@ import textwrap
 from collections import Counter
 from pathlib import Path
 
-from dev.audit.help_heredoc_reflow import run_git, shell_paths
+from dev.audit.help_heredoc_reflow import run_git
 
 RULE_ATTRIBUTION = "SOURCE.HEADER.AI_ATTRIBUTION"
 RULE_ATTRIBUTION_UNIQUE = "SOURCE.HEADER.AI_ATTRIBUTION.UNIQUE"
@@ -1195,25 +1195,405 @@ def repository_start_year(root: Path, path: str, current_year: int) -> int:
     return int(history[-1]) if history else current_year
 
 
+# Git pathspec globbing is not path-aware, so a single '*' already crosses
+# directories. The '**/' form additionally *requires* one, which silently
+# excludes every file sitting directly in the root it names: 'bin/**/*.sh'
+# matches nothing at all, because every maintained entrypoint lives in 'bin/'
+# itself.
+MAINTAINED_HEADER_GLOBS = (
+    "bin/*.sh",
+    "lib/bash/*.sh",
+    "install/scripts/*.sh",
+    "src/*.py",
+    "dev/*.py",
+    "tests/*.py",
+    "tests/*.sh",
+)
+
+
 def attribution_paths(root: Path) -> list[str]:
     """
-    Return every current-diff shell and Python source path.
+    Return every maintained shell and Python source path.
+
+    Discovery is repository-wide rather than changed-file scoped. A header that
+    drifted in an earlier commit is absent from the current diff by
+    construction, so a changed-file scope can never report it and any gate
+    built on one passes vacuously.
+
+    Parameters
+    ----------
+    root : Path
+        Repository root whose maintained source paths are enumerated.
+
+    Returns
+    -------
+    paths : list[str]
+        Sorted repository-relative paths matching the maintained globs, plus
+        untracked source files so a new file is inspected before it lands.
     """
 
-    tracked_python_paths = run_git(
+    tracked = run_git(
         root,
-        ["diff", "--name-only", "--diff-filter=ACMR", "HEAD", "--", "*.py"],
+        ["ls-files", "--", *MAINTAINED_HEADER_GLOBS],
     ).stdout.splitlines()
-    untracked_python_paths = run_git(
+    untracked = run_git(
         root,
-        ["ls-files", "--others", "--exclude-standard", "--", "*.py"],
+        [
+            "ls-files",
+            "--others",
+            "--exclude-standard",
+            "--",
+            *MAINTAINED_HEADER_GLOBS,
+        ],
     ).stdout.splitlines()
 
-    return sorted(
-        set(shell_paths(root))
-        | set(tracked_python_paths)
-        | set(untracked_python_paths),
-    )
+    return sorted(set(tracked) | set(untracked))
+
+
+TRAILER_VENDOR_DOMAINS = (
+    ("openai.com", "OpenAI"),
+    ("anthropic.com", "Anthropic"),
+)
+
+
+FOCUSED_COMMIT_PATHS = 30
+
+
+def trailer_vendors(root: Path) -> dict[tuple[str, str], int]:
+    """
+    Map each path and vendor to the narrowest commit that evidences it.
+
+    A `Co-authored-by` trailer is the author's explicit assertion that an agent
+    contributed materially to that commit, so it is participation evidence a
+    header can be checked against. The vendor is read from the trailer's email
+    domain rather than its display name, because the display name has changed
+    over time and has sometimes named a bare model brand instead of the tool
+    surface.
+
+    The commit's file count is retained because a trailer credits a commit, not
+    a file within it. `SOURCE.HEADER.AI_ATTRIBUTION` states that breadth of a
+    migration is not participation evidence, so a broad checkpoint cannot
+    establish that a vendor touched any particular file it swept up.
+
+    Parameters
+    ----------
+    root : Path
+        Repository root whose history is read.
+
+    Returns
+    -------
+    evidence : dict[tuple[str, str], int]
+        Path and vendor mapped to the smallest evidencing commit's file count.
+    """
+
+    # The body ends at an explicit sentinel rather than at the first blank
+    # line, because commit messages here are multi-paragraph and their
+    # trailers sit at the very end.
+    log = run_git(
+        root,
+        ["log", "--format=%x00%b%x01", "--name-only", "--diff-filter=ACMR"],
+    ).stdout
+
+    evidence: dict[tuple[str, str], int] = {}
+
+    for _, found, paths in _trailer_commits(log):
+        if not found:
+            continue
+
+        for path in paths:
+            for vendor in found:
+                key = (path, vendor)
+                breadth = evidence.get(key)
+
+                if breadth is None or len(paths) < breadth:
+                    evidence[key] = len(paths)
+
+    return evidence
+
+
+def _trailer_commits(log: str) -> list[tuple[str, set[str], list[str]]]:
+    """
+    Split one annotated log into commit body, vendors, and touched paths.
+    """
+
+    commits = []
+
+    for commit in log.split("\x00")[1:]:
+        body, _, files = commit.partition("\x01")
+        commits.append(
+            (
+                body,
+                {
+                    vendor
+                    for domain, vendor in TRAILER_VENDOR_DOMAINS
+                    if domain in body.lower()
+                },
+                [path.strip() for path in files.splitlines() if path.strip()],
+            ),
+        )
+
+    return commits
+
+
+def trailer_history(root: Path) -> dict[str, dict[str, object]]:
+    """
+    Summarize every commit that touched each source, for both directions.
+
+    Parameters
+    ----------
+    root : Path
+        Repository root whose history is read.
+
+    Returns
+    -------
+    history : dict[str, dict[str, object]]
+        Path mapped to the vendors credited anywhere in its history, whether
+        every commit touching it was focused, and whether every commit
+        touching it carried a vendor trailer at all.
+    """
+
+    log = run_git(
+        root,
+        ["log", "--format=%x00%b%x01", "--name-only", "--diff-filter=ACMR"],
+    ).stdout
+
+    history: dict[str, dict[str, object]] = {}
+
+    for _, found, paths in _trailer_commits(log):
+        for path in paths:
+            record = history.setdefault(
+                path,
+                {"vendors": set(), "all_focused": True, "all_credited": True},
+            )
+            record["vendors"] |= found
+            record["all_focused"] &= len(paths) <= FOCUSED_COMMIT_PATHS
+            record["all_credited"] &= bool(found)
+
+    return history
+
+
+def check_unsupported_credit(
+    root: Path,
+    paths: list[str],
+    history: dict[str, dict[str, object]] | None = None,
+    pending: set[str] | None = None,
+) -> list[Finding]:
+    """
+    Report a header crediting a vendor no commit on that source credits.
+
+    This is the converse of `check_trailer_agreement`, and it is reportable
+    only when silence is meaningful: every commit that touched the source must
+    carry a vendor trailer, so the file lies wholly inside the era when
+    crediting was practised and a missing credit is a real absence rather than
+    a missing convention. Under that condition a vendor named in the header but
+    credited by no commit is an attribution the history does not support — the
+    case of a new source inheriting a neighbour's header wholesale.
+
+    Commit breadth is deliberately not required here. It guards the omission
+    direction, where a wide commit would over-attribute; in this direction a
+    wide commit can only add a credited vendor and so only suppresses a
+    finding, which is the safe way to be wrong.
+
+    Parameters
+    ----------
+    root : Path
+        Repository root whose history and sources are compared.
+    paths : list[str]
+        Maintained source paths to compare.
+    history : dict[str, dict[str, object]] | None
+        Precomputed per-path history, or None to read it from the repository.
+    pending : set[str] | None
+        Paths modified in the working tree and therefore exempt, or None to
+        read them from the repository.
+
+    Returns
+    -------
+    findings : list[Finding]
+        One finding per path crediting an unsupported vendor.
+    """
+
+    if history is None:
+        history = trailer_history(root)
+
+    # A header edited in the working tree is ahead of the history it would be
+    # judged against, so the credit it adds has no commit yet. Comparing them
+    # would fail the very change that repairs an omission.
+    if pending is None:
+        pending = set(
+            run_git(root, ["diff", "--name-only", "HEAD"]).stdout.split(),
+        )
+
+    findings: list[Finding] = []
+
+    for path in sorted(set(paths)):
+        record = history.get(path)
+        source = root / path
+
+        if record is None or not source.is_file() or path in pending:
+            continue
+
+        if not record["all_credited"]:
+            continue
+
+        header = "".join(
+            source.read_text(encoding="utf-8").splitlines(True)[:30],
+        )
+        credited = record["vendors"]
+        unsupported = sorted(
+            vendor
+            for _, vendor in TRAILER_VENDOR_DOMAINS
+            if vendor in header and vendor not in credited
+        )
+
+        if unsupported:
+            findings.append(
+                Finding(
+                    RULE_ATTRIBUTION,
+                    path,
+                    1,
+                    f"the header credits {', '.join(unsupported)}, but no "
+                    "commit touching this source credits that vendor",
+                ),
+            )
+
+    return findings
+
+
+def check_trailer_agreement(
+    root: Path,
+    paths: list[str],
+    evidence: dict[tuple[str, str], int] | None = None,
+) -> list[Finding]:
+    """
+    Report a header that omits a vendor its commit trailers evidence.
+
+    Only the omission direction is reported. The converse — a header naming a
+    vendor with no trailer evidence — is not a finding, because trailers are a
+    later convention than the headers themselves and their absence does not
+    show that a tool did not contribute.
+
+    Evidence is limited to focused commits. A trailer on a broad checkpoint
+    says the agent worked somewhere in that change, not on every file it swept
+    up; reporting those would invite fabricated attribution, which this owner's
+    exceptions forbid outright. Measured on this repository, focused commits
+    touch at most 26 files and migration checkpoints at least 51, so the
+    threshold sits inside a real gap rather than being chosen abstractly.
+
+    Parameters
+    ----------
+    root : Path
+        Repository root whose history and sources are compared.
+    paths : list[str]
+        Maintained source paths to compare.
+    evidence : dict[tuple[str, str], int] | None
+        Precomputed trailer evidence, or None to read it from history.
+
+    Returns
+    -------
+    findings : list[Finding]
+        One finding per path whose header omits a focus-evidenced vendor.
+    """
+
+    if evidence is None:
+        evidence = trailer_vendors(root)
+
+    selected = set(paths)
+    omitted: dict[str, list[str]] = {}
+
+    for (path, vendor), breadth in evidence.items():
+        source = root / path
+
+        if breadth > FOCUSED_COMMIT_PATHS or path not in selected:
+            continue
+
+        if not source.is_file():
+            continue
+
+        header = "".join(
+            source.read_text(encoding="utf-8").splitlines(True)[:30],
+        )
+
+        if vendor not in header:
+            omitted.setdefault(path, []).append(vendor)
+
+    return [
+        Finding(
+            RULE_ATTRIBUTION,
+            path,
+            1,
+            f"a focused commit credits {', '.join(sorted(vendors))} for this "
+            "source, but its attribution block omits that vendor",
+        )
+        for path, vendors in sorted(omitted.items())
+    ]
+
+
+def check_pending_credit(
+    root: Path,
+    vendor: str,
+    paths: list[str],
+    pending: set[str] | None = None,
+) -> list[Finding]:
+    """
+    Report a source edited in the working tree that omits *vendor*.
+
+    The two history-based checks cannot see this case. `check_trailer_agreement`
+    reads committed history, so it reports an omission only after the commit
+    that introduced it has landed; `check_unsupported_credit` deliberately
+    exempts working-tree edits. An agent that changes a file and forgets to
+    credit itself is therefore invisible until one commit too late.
+
+    This check closes that gap the only way a checker can: the caller names the
+    vendor about to appear in the commit's trailers, since no tool can infer
+    who is editing. It is opt-in for that reason and is not part of the
+    standing registry command.
+
+    Parameters
+    ----------
+    root : Path
+        Repository root whose working tree is inspected.
+    vendor : str
+        Vendor name that the pending commit will credit.
+    paths : list[str]
+        Maintained source paths eligible for attribution.
+    pending : set[str] | None
+        Paths modified in the working tree, or None to read them from Git.
+
+    Returns
+    -------
+    findings : list[Finding]
+        One finding per edited source whose header omits *vendor*.
+    """
+
+    if pending is None:
+        pending = set(
+            run_git(root, ["diff", "--name-only", "HEAD"]).stdout.split(),
+        )
+
+    findings: list[Finding] = []
+
+    for path in sorted(set(paths) & pending):
+        source = root / path
+
+        if not source.is_file():
+            continue
+
+        header = "".join(
+            source.read_text(encoding="utf-8").splitlines(True)[:30],
+        )
+
+        if vendor not in header:
+            findings.append(
+                Finding(
+                    RULE_ATTRIBUTION,
+                    path,
+                    1,
+                    f"this source was edited but its header omits {vendor}, "
+                    "which the pending commit credits",
+                ),
+            )
+
+    return findings
 
 
 def scan_repository(
@@ -1231,7 +1611,11 @@ def scan_repository(
     root = root.resolve()
     selected = paths if paths is not None else attribution_paths(root)
 
-    return [
+    ordered = sorted(set(selected))
+    findings = check_trailer_agreement(root, ordered)
+    findings += check_unsupported_credit(root, ordered)
+
+    return findings + [
         finding
         for path in sorted(set(selected))
         for finding in check_attribution_source(
@@ -1477,6 +1861,13 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         ),
     )
     parser.add_argument("--inventory-output", type=Path)
+    parser.add_argument(
+        "--credit-vendor",
+        help=(
+            "vendor the pending commit will credit; reports edited sources "
+            "whose headers omit it"
+        ),
+    )
     parser.add_argument("paths", nargs="*")
 
     return parser.parse_args(argv)
@@ -1622,6 +2013,9 @@ def main(argv: list[str] | None = None) -> int:
         required_models=required_models,
         requirements=requirements,
     )
+
+    if args.credit_vendor:
+        findings += check_pending_credit(root, args.credit_vendor, selected)
 
     if args.rule:
         selected_rules = set(args.rule)
