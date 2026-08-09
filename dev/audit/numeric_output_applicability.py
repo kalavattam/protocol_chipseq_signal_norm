@@ -131,7 +131,9 @@ def validate(
         "stale_reference_result": (
             "not_exercised_no_registered_records"
             if not records
-            else "pass" if stale == 0 else "fail"
+            else "pass"
+            if stale == 0
+            else "fail"
         ),
         "selected_cohort_readiness": "ready"
         if cohort["declared_ready"] and not cohort_findings
