@@ -606,8 +606,8 @@ def read_to_fragment(
     Returns
     -------
     fragment : tuple[str, int, int, int] | None
-        Chromosome, clipped start, clipped end, and fragment length, or
-        'None' when the alignment does not produce an interval.
+        Chromosome, clipped start, clipped end, and fragment length, or 'None'
+        when the alignment does not produce an interval.
 
     Raises
     ------
@@ -951,8 +951,7 @@ def parse_bam(
         Input BAM or CRAM path.
     user_fragment_length : int | None
         Optional fixed fragment length override. If provided:
-            - paired-end read alignments: overrides TLEN for leftmost
-                                          anchors.
+            - paired-end read alignments: overrides TLEN for leftmost anchors.
             - single-end read alignments: used for both strands from the 5’
                                           end.
     ref_fa : str | None
@@ -969,8 +968,8 @@ def parse_bam(
     Returns
     -------
     fragment_records : dict[str, list[tuple[int, int, int]]]
-        Chromosome-keyed lists of start, end, and fragment-length tuples.
-        Every interval is half-open and uses zero-based coordinates.
+        Chromosome-keyed lists of start, end, and fragment-length tuples. Every
+        interval is half-open and uses zero-based coordinates.
 
     Raises
     ------
@@ -996,8 +995,7 @@ def parse_bam(
               and read.template_length > 0
               '''
             + For such reads, the fragment starts at 'read.reference_start',
-              and the fragment length is TLEN unless overridden by
-              '--usr_frg'.
+              and the fragment length is TLEN unless overridden by '--usr_frg'.
             + In the current implementation, only leftmost proper-pair anchors
               with 'TLEN > 0' are treated as paired-end fragment anchors.
 
@@ -1007,8 +1005,8 @@ def parse_bam(
                   '--usr_frg' by design (also, no distance guard is in place).
 
         - Single-end read alignments ('read.is_paired == False') are extended
-          strand-aware from the 5’ end to the selected fragment length. This
-          is '--usr_frg' when provided and 'read.query_alignment_length'
+          strand-aware from the 5’ end to the selected fragment length. This is
+          '--usr_frg' when provided and 'read.query_alignment_length'
           otherwise.
             + Forward strand (not 'read.is_reverse'):
                   [start, end) = [reference_start, reference_start + length)
@@ -1031,19 +1029,19 @@ def parse_bam(
 
             These toggles apply uniformly to both paired-end and single-end
             alignments. Keeping 'allow_duplicates=True' retains
-            duplicate-marked proper-pair alignments (e.g., FLAGs 1123 and
-            1187, which correspond to duplicate-marked versions of 99 and
-            163). If the current data lack secondary alignments (which is
-            expected in alignment output from the Tsukiyama Lab Bio-protocol
-            workflow), setting 'allow_secondary=True' does nothing.
+            duplicate-marked proper-pair alignments (e.g., FLAGs 1123 and 1187,
+            which correspond to duplicate-marked versions of 99 and 163). If
+            the current data lack secondary alignments (which is expected in
+            alignment output from the Tsukiyama Lab Bio-protocol workflow),
+            setting 'allow_secondary=True' does nothing.
 
         - Coordinate handling:
             Intervals are clamped to chromosome bounds '[0, chrom_len]'; zero-
             or negative-length intervals after clamping are skipped.
 
     Intentional differences from deepTools:
-        1. Proper pairs: the user may override TLEN with '--usr_frg';
-           deepTools does not allow this.
+        1. Proper pairs: the user may override TLEN with '--usr_frg'; deepTools
+           does not allow this.
         2. No distance guard is applied here, whereas deepTools can fall back
            to single-end-style extension for far or discordant pairs.
         3. Default length for single-end alignments: use
@@ -1155,8 +1153,8 @@ def calc_sig_chrom(
     is_len : bool
         If 'True', normalize by fragment length.
     is_norm : bool
-        If 'True', normalize by both fragment length and total fragment
-        count so that the genome-wide summed signal is approximately 1.
+        If 'True', normalize by both fragment length and total fragment count
+        so that the genome-wide summed signal is approximately 1.
     scl_fct : float | None
         Scaling factor applied to signal.
 
@@ -1177,8 +1175,8 @@ def calc_sig_chrom(
 
     Notes
     -----
-    - If 'is_len=True' or 'is_norm=True', each fragment contributes
-      one divided by the fragment length per covered base.
+    - If 'is_len=True' or 'is_norm=True', each fragment contributes one divided
+      by the fragment length per covered base.
     - If 'is_norm=True', signal is additionally divided by 'fragment_count' so
       that genome-wide summed signal is approximately 1.
     - If 'scl_fct' is provided, signal values are scaled accordingly.
@@ -3190,8 +3188,8 @@ def merge_signal_results(
         Returns
         -------
         mask : np.ndarray
-            Mutable boolean mask sized to the chromosome span under the
-            current bin width.
+            Mutable boolean mask sized to the chromosome span under the current
+            bin width.
         """
 
         if chrom not in array_touched:
@@ -3822,13 +3820,13 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     Raises
     ------
     SystemExit
-        Raised by argparse when '--help' is shown or when required
-        arguments or valid choices are missing.
+        Raised by argparse when '--help' is shown or when required arguments or
+        valid choices are missing.
 
     Notes
     -----
-    Parser option names, defaults, and accepted choices are documented in
-    the 'add_argument()' definitions below and in rendered '--help' output.
+    Parser option names, defaults, and accepted choices are documented in the
+    'add_argument()' definitions below and in rendered '--help' output.
     """
 
     parser = CapArgumentParser(
@@ -4742,8 +4740,8 @@ def main(argv: list[str] | None = None) -> int:
 
     Notes
     -----
-    Verbose argument banners and human-readable failure diagnostics are
-    written to stderr.
+    Verbose argument banners and human-readable failure diagnostics are written
+    to stderr.
     """
 
     time_total_start = time.perf_counter()

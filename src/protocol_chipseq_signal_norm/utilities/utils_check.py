@@ -125,8 +125,8 @@ def pair_values_and_thresholds(
     """
     Pair values with scalar or elementwise thresholds.
 
-    A single threshold is broadcast; other threshold collections must match
-    the number of values.
+    A single threshold is broadcast; other threshold collections must match the
+    number of values.
 
     Parameters
     ----------
@@ -192,8 +192,7 @@ def validate_comparison(
         Short name used in error text (e.g., 'eps' becomes "Error: '--eps'
         ...").
     allow_none : bool
-        If True, silently skip None values; if False, None triggers an
-        error.
+        If True, silently skip None values; if False, None triggers an error.
 
     Raises
     ------
@@ -244,19 +243,18 @@ def validate_output_path(
         gzip-compressed.
     allowed : Iterable[str]
         Iterable of allowed base extensions. Exact lowercase spellings are
-        accepted, and exact camelCase spellings explicitly present in
-        'allowed' (e.g., 'bedGraph') are also accepted. Leading dots are
-        ignored. Defaults to 'ALLOWED_OUTPUT_FORMATS'.
+        accepted, and exact camelCase spellings explicitly present in 'allowed'
+        (e.g., 'bedGraph') are also accepted. Leading dots are ignored.
+        Defaults to 'ALLOWED_OUTPUT_FORMATS'.
 
     Returns
     -------
     output_path, extension, is_compressed : tuple[str, str, bool]
-        Validated output filename, preserving the accepted extension
-        spelling and optional '.gz'; validated output format token, which is
-        'bedGraph' when that exact
-        spelling is supplied and accepted; otherwise returns the accepted
-        lowercase form ('bedgraph', 'bdg', 'bg', or 'bed'); and whether the
-        filename ends with '.gz'.
+        Validated output filename, preserving the accepted extension spelling
+        and optional '.gz'; validated output format token, which is 'bedGraph'
+        when that exact spelling is supplied and accepted; otherwise returns
+        the accepted lowercase form ('bedgraph', 'bdg', 'bg', or 'bed'); and
+        whether the filename ends with '.gz'.
 
     Raises
     ------
@@ -336,8 +334,7 @@ def check_exists(
     Raises
     ------
     FileNotFoundError
-        If the required path does not exist or is not of the requested
-        kind.
+        If the required path does not exist or is not of the requested kind.
     """
 
     p = os.fspath(path)
@@ -388,16 +385,16 @@ def check_writable(
     kind : Literal["file", "dir"], default "file"
         What to validate.
     must_exist : bool
-        When 'kind="file"' and the file already exists, require the file
-        itself to be writable (default: False).
+        When 'kind="file"' and the file already exists, require the file itself
+        to be writable (default: False).
     label : str | None
         Optional label for nicer error text.
 
     Raises
     ------
     FileNotFoundError
-        If the relevant directory (or the directory itself when
-        'kind="dir"') does not exist.
+        If the relevant directory (or the directory itself when 'kind="dir"')
+        does not exist.
     PermissionError
         If the directory (or file, when 'must_exist=True') is not writable.
     IsADirectoryError

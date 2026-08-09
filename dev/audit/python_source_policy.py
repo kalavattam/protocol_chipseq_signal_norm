@@ -98,7 +98,9 @@ NUMPY_TYPE_CLOSER = re.compile(
     r"^[\]\)}]+(?:\s*(?:\||,)\s*\S.*)?$",
 )
 PROSE_LIST_MARKER = re.compile(r"^(?P<marker>[-+*]|\d+\.)\s+\S")
-PROSE_INDIVISIBLE = re.compile(r"://|^`|^'[^']*'$")
+PROSE_INDIVISIBLE = re.compile(r"://|^`[^`]*$|^'[^']*$")
+PROSE_FENCE = re.compile(r"^('''|```|~~~)$")
+SUSPENDED_HYPHEN = frozenset({"and", "nor", "or", "to"})
 DOCTEST_ROW_MARKERS = (">>>", "...")
 
 STRING_FORM = re.compile(
@@ -332,8 +334,8 @@ def _numpy_doc_body(
     Returns
     -------
     doc_body : tuple[tokenize.TokenInfo, int, list[str]] | None
-        String token, expected content indentation, and physical body lines,
-        or 'None' when the candidate uses another recognized form.
+        String token, expected content indentation, and physical body lines, or
+        'None' when the candidate uses another recognized form.
     """
 
     located = _doc_token(node, tokens)
@@ -1390,6 +1392,29 @@ def _prose_continuation_indent(line: str) -> int | None:
     return own_indent + len(marker.group("marker")) + 1
 
 
+def _breaks_mid_word(text: str) -> bool:
+    """
+    Report whether one prose line ends by splitting a hyphenated word.
+
+    A trailing hyphen touching the preceding character continues a single word
+    such as 'whitespace-separated' on the next line, so rejoining the two lines
+    inserts no space. A hyphen with a space before it is a minus sign, dash, or
+    option prefix and keeps its separator.
+
+    Parameters
+    ----------
+    text : str
+        One right-stripped docstring content line.
+
+    Returns
+    -------
+    mid_word : bool
+        Whether the line ends inside a hyphenated word.
+    """
+
+    return len(text) >= 2 and text.endswith("-") and not text[-2].isspace()
+
+
 def _check_docstring_prose_wrap(
     token: tokenize.TokenInfo,
     path: str,
@@ -1404,6 +1429,22 @@ def _check_docstring_prose_wrap(
     not prose breaks: section headers and underlines, NumPy 'name : type'
     entries, dedents that end a block, doctest rows, and 'Examples' sections
     are excluded rather than joined.
+
+    A list item may align its continuation under the item text instead of under
+    the marker's own continuation column. That wider column is an indentation
+    choice and is excluded; the item's wrap point is still checked. Only a list
+    marker licenses it, because a deeper following line is otherwise an entry
+    description or a nested block rather than the same paragraph.
+
+    A following word that opens a quote without closing it begins a multi-word
+    quoted formula or condition. Filling it forward would move its first word
+    alone and split the unit, so it counts as indivisible. A complete quoted
+    token is not indivisible for this purpose: moving it splits nothing.
+
+    A block fenced by a line holding only ''', ```, or ~~~ is verbatim content
+    such as pseudocode, and its line breaks carry meaning that prose wrapping
+    does not govern. Every line between the fences, and the fences themselves,
+    is excluded.
 
     Parameters
     ----------
@@ -1425,6 +1466,7 @@ def _check_docstring_prose_wrap(
     section = None
     skip_next = False
     type_depth = 0
+    in_fence = False
 
     for offset, current in enumerate(content_lines[:-1]):
         line_number = token.start[0] + offset + 1
@@ -1432,6 +1474,17 @@ def _check_docstring_prose_wrap(
 
         if skip_next:
             skip_next = False
+
+            continue
+
+        if PROSE_FENCE.match(current.strip()):
+            in_fence = not in_fence
+            counts["fenced_block_exclusions"] += 1
+
+            continue
+
+        if in_fence:
+            counts["fenced_block_exclusions"] += 1
 
             continue
 
@@ -1481,10 +1534,22 @@ def _check_docstring_prose_wrap(
 
         continuation = _prose_continuation_indent(current)
 
-        if continuation is None or _indent_width(following) != continuation:
+        if continuation is None:
             counts["boundary_exclusions"] += 1
 
             continue
+
+        following_indent = _indent_width(following)
+        is_list_item = PROSE_LIST_MARKER.match(current.strip()) is not None
+        item_aligned = following_indent > continuation and is_list_item
+
+        if following_indent != continuation and not item_aligned:
+            counts["boundary_exclusions"] += 1
+
+            continue
+
+        if item_aligned:
+            counts["list_alignment_pairs"] += 1
 
         if PROSE_LIST_MARKER.match(following.strip()):
             counts["boundary_exclusions"] += 1
@@ -1499,9 +1564,23 @@ def _check_docstring_prose_wrap(
 
             continue
 
+        # A line ending in a hyphen that touches the preceding character broke
+        # one word. Rejoining it restores that word and adds no space, so the
+        # width test must not charge for a separator that will not exist.
+        separator = 0 if _breaks_mid_word(current_text) else 1
+
+        # A suspended hyphen carries its own space: 'zero- or negative-length'
+        # is two words, not one broken word, and rejoining it would produce
+        # 'zero-or'. The two readings are not distinguishable by width, so the
+        # pair stays with review.
+        if separator == 0 and word.strip(",.;:").lower() in SUSPENDED_HYPHEN:
+            counts["suspended_hyphen_exclusions"] += 1
+
+            continue
+
         counts["prose_pairs"] += 1
 
-        if len(current_text) + 1 + len(word) <= 79:
+        if len(current_text) + separator + len(word) <= 79:
             _finding_at(
                 findings,
                 path,

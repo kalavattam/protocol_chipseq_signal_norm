@@ -70,11 +70,10 @@ def sort_chrom(chrom: str, int_max: int = INT_MAX) -> tuple[int, int, str]:
         Chromosome/contig name (e.g., 'X', 'chrII', 'chr10', '2', 'MT',
         'scaffold_42', etc.).
     int_max : int = INT_MAX
-        Integer sentinel used as the numeric tie-breaker for tiers that
-        do not have a real number (mitochondrial and “other” scaffolds).
-        Larger values keep those tiers sorted after purely numeric
-        chromosomes; override only if you need an even bigger sentinel for
-        extreme contig ranges.
+        Integer sentinel used as the numeric tie-breaker for tiers that do not
+        have a real number (mitochondrial and “other” scaffolds). Larger values
+        keep those tiers sorted after purely numeric chromosomes; override only
+        if you need an even bigger sentinel for extreme contig ranges.
 
     Returns
     -------
@@ -84,8 +83,8 @@ def sort_chrom(chrom: str, int_max: int = INT_MAX) -> tuple[int, int, str]:
     Notes
     -----
     - tier: precedence bucket (lower sorts first).
-    - num_key: numeric tie-breaker within tiers that use numbers; 'int_max'
-               for tiers without a natural numeric key.
+    - num_key: numeric tie-breaker within tiers that use numbers; 'int_max' for
+               tiers without a natural numeric key.
     - lex_key: lexical tie-breaker within the catch-all tier; "" otherwise.
     """
 

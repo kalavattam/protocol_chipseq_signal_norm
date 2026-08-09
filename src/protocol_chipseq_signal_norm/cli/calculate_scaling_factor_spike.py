@@ -567,8 +567,8 @@ def main(argv: list[str] | None = None) -> int:
     Parameters
     ----------
     argv : list[str] | None
-        Optional command-line argument list. If None, arguments are read
-        from 'sys.argv[1:]'.
+        Optional command-line argument list. If None, arguments are read from
+        'sys.argv[1:]'.
 
     Returns
     -------

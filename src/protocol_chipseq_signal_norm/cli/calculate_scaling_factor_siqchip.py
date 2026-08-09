@@ -68,8 +68,8 @@ def check_val_pos(args: argparse.Namespace) -> None:
     Raises
     ------
     ValueError
-        If any required numeric argument (mass_ip, mass_in, vol_all,
-        vol_in, len_ip, len_in) is <= 0.
+        If any required numeric argument (mass_ip, mass_in, vol_all, vol_in,
+        len_ip, len_in) is <= 0.
     ValueError
         If 'vol_all <= vol_in'.
     ValueError
@@ -176,12 +176,12 @@ def calculate_alpha(
         Alpha equation to compute. Options:
             - '5':   Equation 5 (for use with fragment length-adjusted raw
                      signal).
-            - '5nd': Equation 5 without depth terms (for use with
-                     normalized coverage).
+            - '5nd': Equation 5 without depth terms (for use with normalized
+                     coverage).
             - '6':   Equation 6 (for use with fragment length-adjusted raw
                      signal).
-            - '6nd': Equation 6 without depth terms (for use with
-                     normalized coverage).
+            - '6nd': Equation 6 without depth terms (for use with normalized
+                     coverage).
     mass_ip : float
         Mass of the IP sample (e.g., immunoprecipitated DNA; ng).
     mass_in : float
@@ -211,9 +211,9 @@ def calculate_alpha(
     Raises
     ------
     ValueError
-        If an unsupported equation is provided, or if constraints required
-        by the selected equation are violated (e.g., 'vol_all <= vol_in'
-        for '--eqn 6' or '--eqn 6nd').
+        If an unsupported equation is provided, or if constraints required by
+        the selected equation are violated (e.g., 'vol_all <= vol_in' for
+        '--eqn 6' or '--eqn 6nd').
     """
 
     if eqn == "5":

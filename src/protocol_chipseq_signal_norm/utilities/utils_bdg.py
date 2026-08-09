@@ -81,8 +81,8 @@ def try_float(token: str) -> float | None:
 
     Notes
     -----
-    Non-finite tokens like 'nan'/'inf' are not canonicalized here; combine
-    with 'canon_nonfinite' to treat them specially.
+    Non-finite tokens like 'nan'/'inf' are not canonicalized here; combine with
+    'canon_nonfinite' to treat them specially.
     """
 
     try:
@@ -116,8 +116,7 @@ def iter_rows_bdg(
     Notes
     -----
     - Skips lines where 'skip_predicate(line)' is True.
-    - Skips lines with < 4 fields, non-integer coords, or non-positive
-      width.
+    - Skips lines with < 4 fields, non-integer coords, or non-positive width.
     - Coordinates are not clamped; caller may clamp to chrom bounds.
     """
 
@@ -167,14 +166,14 @@ def check_size_bin(
     skp_pfx : tuple[str, ...]
         Prefixes to skip as BED or bedGraph header/meta lines.
     max_records : int | None
-        Maximum number of paired rows to compare. If None, compare until
-        either file reaches EOF.
+        Maximum number of paired rows to compare. If None, compare until either
+        file reaches EOF.
 
     Raises
     ------
     ValueError
-        If the bin sizes differ, if lines are malformed, or if positions
-        are not parseable as integers.
+        If the bin sizes differ, if lines are malformed, or if positions are
+        not parseable as integers.
 
     Notes
     -----
@@ -337,8 +336,8 @@ def load_chromosome_sizes(path: str) -> dict[str, int]:
     Parameters
     ----------
     path : str
-        Path to a chromosome-size file with at least two whitespace-
-        separated columns: chromosome name and positive integer size.
+        Path to a chromosome-size file with at least two whitespace-separated
+        columns: chromosome name and positive integer size.
 
     Returns
     -------
@@ -348,8 +347,8 @@ def load_chromosome_sizes(path: str) -> dict[str, int]:
     Raises
     ------
     ValueError
-        If the file is empty, malformed, contains duplicate chromosome
-        names, or contains non-positive sizes.
+        If the file is empty, malformed, contains duplicate chromosome names,
+        or contains non-positive sizes.
     OSError
         If the file cannot be read.
     """
@@ -493,19 +492,18 @@ def write_bdg(
     Parameters
     ----------
     coverage : dict[tuple[str, int], float]
-        Binned signal data, where keys are (chrom, bin_start) and float
-        values.
+        Binned signal data, where keys are (chrom, bin_start) and float values.
     fil_out : str
-        Path to the output file: '.bedGraph', '.bedgraph', '.bdg', or
-        '.bg', optionally with '.gz'.
+        Path to the output file: '.bedGraph', '.bedgraph', '.bdg', or '.bg',
+        optionally with '.gz'.
     siz_bin : int
         Bin size in base pairs.
     decimal_places : int
         Maximum number of decimal places retained for signal values.
     chrom_sizes : dict[str, int] | None
         Optional chromosome sizes. If provided, output interval ends are
-        clamped to chromosome ends and bins outside declared chromosome
-        bounds are rejected.
+        clamped to chromosome ends and bins outside declared chromosome bounds
+        are rejected.
 
     Raises
     ------
@@ -519,9 +517,8 @@ def write_bdg(
     The function writes interval records to 'fil_out'.
 
     - Signal values are rounded to at most 'decimal_places' decimal places.
-    - After rounding, non-informative trailing zeros are stripped from
-      finite decimal representations, and any trailing decimal point is
-      removed.
+    - After rounding, non-informative trailing zeros are stripped from finite
+      decimal representations, and any trailing decimal point is removed.
     - Negative zero is emitted as '0'.
     - Output is automatically gzip-compressed if 'fil_out' ends with '.gz'.
     - bedGraph format: 'chrom<tab>start<tab>end<tab>signal<newline>'.
@@ -591,8 +588,8 @@ def generate_name_track(fil_out: str) -> str:
 
     Notes
     -----
-    - Preserves the original main extension spelling (for example,
-      '.bedGraph' remains '.track.bedGraph').
+    - Preserves the original main extension spelling (for example, '.bedGraph'
+      remains '.track.bedGraph').
     - Preserves any trailing '.gz'.
     - Refactored out of 'compute_signal_ratio.py' for modularization.
     """

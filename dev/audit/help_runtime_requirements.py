@@ -15,9 +15,9 @@
 """
 Audit source-grounded Runtime requirements in maintained shell help.
 
-The owner universe deliberately comes from 'help_examples'. This module
-adds requirement evidence and grammar checks; it must not grow a competing
-owner or compatibility-wrapper parser.
+The owner universe deliberately comes from 'help_examples'. This module adds
+requirement evidence and grammar checks; it must not grow a competing owner or
+compatibility-wrapper parser.
 """
 
 from __future__ import annotations

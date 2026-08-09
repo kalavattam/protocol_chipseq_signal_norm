@@ -85,8 +85,8 @@ def format_value(
     token : str
         Original token from column 4 for the first bin in the run.
     decimal_places : int | None
-        If not None, number of decimals to print when a finite numeric
-         cache is available.
+        If not None, number of decimals to print when a finite numeric cache is
+        available.
     cache : float | None
         Parsed float for the first token in the run (if parseable).
 
@@ -243,17 +243,15 @@ def merge_bins(
         If not None, compare by rounded-to-N-decimal strings and print to N
         decimals.
     eps : float | None = None
-        If not None and 'dp' is None, compare numerically within
-        |Δ| <= eps.
+        If not None and 'dp' is None, compare numerically within |Δ| <= eps.
     skp_pfx : tuple[str, ...]
         Header/metadata prefixes to skip (after left-stripping).
 
     Raises
     ------
     ValueError
-        If '--dp' < 0, if '--eps' < 0, or on malformed data lines
-        (non-integer coords, non-positive width, or < 4 fields). Headers
-        pass through.
+        If '--dp' < 0, if '--eps' < 0, or on malformed data lines (non-integer
+        coords, non-positive width, or < 4 fields). Headers pass through.
 
     Notes
     -----
@@ -264,8 +262,7 @@ def merge_bins(
         + elif eps is not None: compare numeric values within |Δ| <= eps.
         + else: compare exact text of the 4th field (after canonicalizing
           nan/inf).
-    - Non-finite values ('nan', 'inf', '-inf') never merge with anything
-      else.
+    - Non-finite values ('nan', 'inf', '-inf') never merge with anything else.
     """
 
     validate_merge_options(decimal_places, eps)

@@ -103,8 +103,8 @@ def relativize(
 
     Input samples are scaled only when requested.
 
-    When 'include_input' is true, 'in_*' samples use the largest 'IP_*'
-    value; otherwise, they are excluded.
+    When 'include_input' is true, 'in_*' samples use the largest 'IP_*' value;
+    otherwise, they are excluded.
 
     Parameters
     ----------

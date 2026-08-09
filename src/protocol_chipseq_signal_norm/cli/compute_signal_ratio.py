@@ -177,11 +177,11 @@ def calc_rat_bin(
     sig_b : float
         Second file (e.g., input) signal for a bin (B).
     scl_a : float | None
-        Per-file multiplicative scale factor for A. If None or 1.0, treated
-        as neutral.
+        Per-file multiplicative scale factor for A. If None or 1.0, treated as
+        neutral.
     scl_b : float | None
-        Per-file multiplicative scale factor for B. If None or 1.0, treated
-        as neutral.
+        Per-file multiplicative scale factor for B. If None or 1.0, treated as
+        neutral.
     psc_a : float | None
         Pseudocount added to A (post-scaling). If None or 0.0, skipped.
     psc_b : float | None
@@ -197,18 +197,18 @@ def calc_rat_bin(
             - linear: '1 / (A / B)'
             - log2: '-log2(A / B)' (since 'log2(1 / x) = -log2(x)')
     skip_00 : str | None
-        Optional zero-bin ('0 / 0' or 'ε / ε') drop stage. One of
-        "pre_scale", "post_scale", or None.
-            - "pre_scale": Test on raw values (before optional scaling
-                           and/or pseudocounts addition).
+        Optional zero-bin ('0 / 0' or 'ε / ε') drop stage. One of "pre_scale",
+        "post_scale", or None.
+            - "pre_scale": Test on raw values (before optional scaling and/or
+                           pseudocounts addition).
             - "post_scale": Test after optional scaling, before optional
                             pseudocount addition.
             - None: Do not drop '0 / 0' bins.
     eps : float, default 0.0
         Tolerance (epsilon value, ε) for treating values as zero in the
         pre-pseudocount zero-zero check. Use 0.0 for exact-zero behavior,
-        similar to what is done in deepTools. A tiny value (e.g., say,
-        '1e-12') can be used to ignore "float noise."
+        similar to what is done in deepTools. A tiny value (e.g., say, '1e-12')
+        can be used to ignore "float noise."
 
     Returns
     -------
@@ -220,31 +220,30 @@ def calc_rat_bin(
                     'ε / ε'.
             - -inf  When 'log2' is requested and 'ratio == 0'.
             -  inf  When 'reciprocal' is requested on a zero linear ratio.
-            -  nan  When the computation is undefined (e.g., negative ratio
-                    for 'log2', or 'B == 0' even after clamping).
+            -  nan  When the computation is undefined (e.g., negative ratio for
+                    'log2', or 'B == 0' even after clamping).
 
         Caller skips writing the bin when a return value is None.
 
     Notes
     -----
-    This function is defensive: domain issues are mapped to sentinel
-    return values instead of exceptions. Specifically,
-            - '0 / 0' (or 'ε / ε') bins may return None (i.e., when
-              '--skip_00' applies).
+    This function is defensive: domain issues are mapped to sentinel return
+    values instead of exceptions. Specifically,
+            - '0 / 0' (or 'ε / ε') bins may return None (i.e., when '--skip_00'
+              applies).
             - denominator underflow after optional clamping yields
               'float('nan')'.
             - with 'log2=True', 'ratio == 0' yields '-inf', and 'ratio < 0'
               yields 'nan'.
-            - with 'log2=False' and 'recip=True', 'ratio == 0' yields
-              'inf'.
+            - with 'log2=False' and 'recip=True', 'ratio == 0' yields 'inf'.
 
         Callers should validate option domains (e.g., 'scl_fct > 0',
         'eps >= 0') prior to calling. A TypeError may still propagate if
         non-numeric inputs are passed.
 
     Order of operations:
-        1. Optionally skip zero-zero bins: '0 / 0' or 'ε / ε' (deepTools-
-           like). ‡
+        1. Optionally skip zero-zero bins: '0 / 0' or 'ε / ε' (deepTools-like).
+           ‡
         2. Optionally scale each file.
         3. Optionally skip scaled zero-zero bins:
            '[(sf_A × 0) / (sf_B × 0)]' or
@@ -501,8 +500,7 @@ def comp_sig_rat(
         Denominator clamp ("minimum input depth") to avoid extreme and/or
         erroneous division.
     decimal_places : int
-        Maximum number of decimal places retained for finite emitted
-        values.
+        Maximum number of decimal places retained for finite emitted values.
     log2 : bool
         If True, return 'log2(A / B)'. If False, return linear 'A / B'.
     recip : bool
@@ -510,10 +508,10 @@ def comp_sig_rat(
             - linear path: '1 / (A / B)'
             - log2 path: '-log2(A / B)'
     skip_00 : str | None
-        Optional zero-bin ('0 / 0' or 'ε / ε') drop stage. One of
-        "pre_scale", "post_scale", or None.
-            - "pre_scale": Test on raw values (before optional scaling
-                           and/or pseudocounts addition).
+        Optional zero-bin ('0 / 0' or 'ε / ε') drop stage. One of "pre_scale",
+        "post_scale", or None.
+            - "pre_scale": Test on raw values (before optional scaling and/or
+                           pseudocounts addition).
             - "post_scale": Test after optional scaling, before optional
                             pseudocount addition.
             - None: Do not drop '0 / 0' bins.
@@ -521,8 +519,8 @@ def comp_sig_rat(
         Epsilon for zero tests used in the pre-optional-pseudocount '0 / 0'
         drop and for post-clamp denominator zero checks.
     track : bool
-        If True, write a '.track' sidecar omitting non-finite values
-        ('inf', '-inf', and 'nan').
+        If True, write a '.track' sidecar omitting non-finite values ('inf',
+        '-inf', and 'nan').
     drp_nan : bool
         If True, omit non-finite values from the main output as well.
     skp_pfx : tuple[str, ...]
@@ -539,15 +537,15 @@ def comp_sig_rat(
     PermissionError
         If the output directory is not writable.
     ValueError
-        On malformed bedGraph lines, inconsistent bin sizes, invalid
-        numeric arguments, or non-finite formatting issues.
+        On malformed bedGraph lines, inconsistent bin sizes, invalid numeric
+        arguments, or non-finite formatting issues.
     OSError
         On I/O errors opening, reading, and/or writing files.
 
     Notes
     -----
-    The standard bedGraph contains all computed ratios unless '--drp_nan'
-    omits rows with non-finite values. Finite values are rounded to at most
+    The standard bedGraph contains all computed ratios unless '--drp_nan' omits
+    rows with non-finite values. Finite values are rounded to at most
     'decimal_places' places and stripped of non-informative trailing zeros.
     When 'track' is true, a '.track' sidecar excludes all non-finite values.
     """
@@ -1031,8 +1029,8 @@ def main(argv: list[str] | None = None) -> int:
 
     Notes
     -----
-    Verbose argument banners and human-readable failure diagnostics are
-    written to stderr.
+    Verbose argument banners and human-readable failure diagnostics are written
+    to stderr.
     """
 
     args = parse_args(argv)

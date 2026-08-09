@@ -1160,6 +1160,167 @@ def test_docstring_structural_boundaries_are_not_prose_breaks() -> None:
     assert rule_messages(structural, RULE_PROSE_WRAP) == []
 
 
+def test_aligned_list_continuations_keep_the_fit_test() -> None:
+    """
+    Judge an aligned list item by its wrap point, not its indentation.
+
+    A list item whose continuation is aligned under the item text rather than
+    under the marker's own continuation column is still wrapped prose. The
+    alignment is an indentation choice; only the break itself is checked.
+    """
+
+    premature = docstring_source(
+        "Summary.",
+        "",
+        "- alpha: " + ("w" * 57),
+        "               tail.",
+    )
+    accepted = docstring_source(
+        "Summary.",
+        "",
+        "- beta: " + ("w" * 63),
+        "              tail.",
+    )
+    premature_line = next(
+        line for line in premature.splitlines() if "alpha" in line
+    )
+    accepted_line = next(
+        line for line in accepted.splitlines() if "beta" in line
+    )
+
+    assert len(premature_line) == 70
+    assert len(accepted_line) == 75
+    assert rule_messages(accepted, RULE_PROSE_WRAP) == []
+    assert rule_messages(premature, RULE_PROSE_WRAP) == [
+        "docstring prose breaks before a word that would still fit within 79 "
+        "columns",
+    ]
+
+
+def test_quoted_units_spanning_words_are_indivisible() -> None:
+    """
+    Keep a break that would split one quoted multi-word unit unreported.
+
+    A following word that opens a quote without closing it begins a quoted
+    formula or condition. Filling it forward would move only its first word and
+    split the unit, so the break is not reported even though the word fits. A
+    complete quoted token is a different case: moving it splits nothing, so it
+    is reported like any other word.
+    """
+
+    spanning = docstring_source(
+        "Summary.",
+        "",
+        "A paragraph line that ends before a quoted " + ("w" * 20),
+        "'a / b' is the unit.",
+    )
+    complete = docstring_source(
+        "Summary.",
+        "",
+        "A paragraph line that ends before a quoted " + ("w" * 20),
+        "'ab' is the unit.",
+    )
+
+    assert rule_messages(spanning, RULE_PROSE_WRAP) == []
+    assert rule_messages(complete, RULE_PROSE_WRAP) == [
+        "docstring prose breaks before a word that would still fit within 79 "
+        "columns",
+    ]
+
+
+def test_hyphen_broken_words_rejoin_without_a_separator() -> None:
+    """
+    Measure a mid-word hyphen break without charging for a space.
+
+    A trailing hyphen touching the preceding character splits one word, so
+    rejoining inserts no space and the width test must not reserve one. A
+    hyphen preceded by a space is a minus sign or dash and keeps its separator.
+    """
+
+    # Rejoining the broken word gives exactly 79 columns without a separator
+    # and 80 with one, so the two readings disagree on this line.
+    mid_word = docstring_source(
+        "Summary.",
+        "",
+        ("w" * 54) + " whitespace-",
+        "separated columns.",
+    )
+    operator = docstring_source(
+        "Summary.",
+        "",
+        ("w" * 64) + " -",
+        "separated columns.",
+    )
+    mid_word_line = next(
+        line for line in mid_word.splitlines() if "whitespace-" in line
+    )
+    operator_line = next(
+        line for line in operator.splitlines() if line.rstrip().endswith(" -")
+    )
+
+    # A suspended hyphen joins two words sharing one hyphen. Rejoining it
+    # would produce 'zero-or', so width cannot decide it.
+    suspended = docstring_source(
+        "Summary.",
+        "",
+        ("w" * 54) + " whitespace-",
+        "or negative columns.",
+    )
+
+    assert len(mid_word_line) == len(operator_line) == 70
+    assert len(mid_word_line) + len("separated") == 79
+    assert len(operator_line) + 1 + len("separated") == 80
+    assert rule_messages(suspended, RULE_PROSE_WRAP) == []
+    assert rule_messages(mid_word, RULE_PROSE_WRAP) == [
+        "docstring prose breaks before a word that would still fit within 79 "
+        "columns",
+    ]
+    assert rule_messages(operator, RULE_PROSE_WRAP) == []
+
+
+def test_fenced_blocks_are_verbatim_content() -> None:
+    """
+    Leave a fenced pseudocode block entirely outside the fit test.
+
+    A line holding only ''', ```, or ~~~ opens and closes verbatim content
+    whose line breaks carry meaning. Joining them would rewrite the pseudocode
+    rather than restore greedy wrapping.
+    """
+
+    fenced = docstring_source(
+        "Summary.",
+        "",
+        "All of the following are true:",
+        "'''",
+        "    read.is_paired",
+        "and read.is_proper_pair",
+        "and read.reference_id == read.next_reference_id",
+        "'''",
+        "A trailing paragraph.",
+    )
+
+    assert rule_messages(fenced, RULE_PROSE_WRAP) == []
+
+
+def test_deeper_indentation_alone_is_not_wrapped_prose() -> None:
+    """
+    Keep a non-list line followed by a deeper line outside the fit test.
+
+    Only a list marker licenses the wider continuation column. Without this
+    boundary, every entry header followed by its indented description would be
+    read as one wrapped paragraph.
+    """
+
+    nested = docstring_source(
+        "Summary.",
+        "",
+        "A short paragraph line",
+        "        a deeper continuation line.",
+    )
+
+    assert rule_messages(nested, RULE_PROSE_WRAP) == []
+
+
 def test_help_literals_use_greedy_wrapping_and_preserve_value() -> None:
     """
     Require the next whole word to move whenever it still fits.

@@ -198,8 +198,8 @@ def _count_alignment_records(
     Count BAM or CRAM alignment records selected by SAM FLAG.
 
     Duplicate-flagged reads remain eligible because rDNA copy number and
-    high-coverage repeats can represent biological signal rather than only
-    PCR or optical artifacts. Paired-end records serve as fragment proxies.
+    high-coverage repeats can represent biological signal rather than only PCR
+    or optical artifacts. Paired-end records serve as fragment proxies.
 
     Parameters
     ----------
@@ -1374,8 +1374,8 @@ def main(argv: list[str] | None = None) -> int:
 
     Notes
     -----
-    - Emits a note to stderr if '--flags_pe' / '--flags_se' are supplied
-      for bed/bed.gz input (as flags are ignored for bed inputs).
+    - Emits a note to stderr if '--flags_pe' / '--flags_se' are supplied for
+      bed/bed.gz input (as flags are ignored for bed inputs).
     - Prints human-readable error messages to stderr on failure.
     - BrokenPipeError is handled in the '__main__' wrapper.
     """

@@ -83,8 +83,8 @@ def sum_bdg(path: str, *, weight: bool, skp_pfx: tuple[str, ...]) -> float:
     Notes
     -----
     - Lines beginning with any of 'skp_pfx' or blank lines are ignored.
-    - Lines with fewer <4 fields, non-integer coordinates, non-positive
-      widths, or non-finite values (NaN/±inf) are ignored.
+    - Lines with fewer <4 fields, non-integer coordinates, non-positive widths,
+      or non-finite values (NaN/±inf) are ignored.
     - Sorting is not required for summation.
     """
 
@@ -218,14 +218,14 @@ def main(argv: list[str] | None = None) -> int:
         "<path><tab><sum_rounded>" for each input.
 
         Nonzero codes are produced only by early exits elsewhere (e.g.,
-        argument validation before calling this function or SystemExit
-        raised by the program entry point).
+        argument validation before calling this function or SystemExit raised
+        by the program entry point).
 
     Raises
     ------
     SystemExit
-        When invoked as a script, the module’s entry point calls
-        raise SystemExit(main()). Argparse help (no arguments) also exits.
+        When invoked as a script, the module’s entry point calls raise
+        SystemExit(main()). Argparse help (no arguments) also exits.
     ValueError
         Propagated only if lower-level helpers are extended to raise on
         malformed bedGraph lines. In the current implementation, malformed
@@ -233,14 +233,12 @@ def main(argv: list[str] | None = None) -> int:
 
     Notes
     -----
-    - Validates that '--dp' >= 0 and at most one '-' (stdin) path is
-      given.
+    - Validates that '--dp' >= 0 and at most one '-' (stdin) path is given.
     - Header prefixes are parsed once and reused for all inputs.
-    - Each input path is processed independently; results are printed in
-      the same order as provided.
-    - With '--weight' (and equivalent flags), values are multiplied by
-      (end - start) before summing; otherwise, the value column is summed
-       as-is.
+    - Each input path is processed independently; results are printed in the
+      same order as provided.
+    - With '--weight' (and equivalent flags), values are multiplied by (end -
+      start) before summing; otherwise, the value column is summed as-is.
     - Printed totals are rounded to '--dp' decimal places.
     """
 
