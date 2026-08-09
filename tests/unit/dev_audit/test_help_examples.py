@@ -6,8 +6,10 @@
 # Copyright 2026 by Kris Alavattam
 # Email: kalavattam@gmail.com
 #
-# OpenAI ChatGPT and Codex (GPT-5.6) were used in design, development, and
-# documentation, with all output reviewed, edited, and approved by the author.
+# The following were used in design, development, and documentation, with all
+# output reviewed, edited, and approved by the author:
+# - OpenAI ChatGPT and Codex (GPT-5.6);
+# - Anthropic Claude Code (Opus 5).
 #
 # Distributed under the MIT license.
 
@@ -562,8 +564,11 @@ EOM
         categories = {row["category"]: row for row in report["categories"]}
         shared = categories["shared_heredoc_nonowners"]
 
+        # The identity carries the shared heredoc's line, so it moves whenever
+        # the bounded header above it changes height. Crediting a second
+        # vendor grew that block from three rows to five.
         self.assertIn(
-            "lib/bash/help/help_execute_compute_signal.sh::<file>@17",
+            "lib/bash/help/help_execute_compute_signal.sh::<file>@19",
             shared["identities"],
         )
 

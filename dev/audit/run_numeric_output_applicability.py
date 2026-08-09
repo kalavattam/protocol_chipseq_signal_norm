@@ -1,5 +1,22 @@
 #!/usr/bin/env python3
-"""Run numeric applicability with a temporary, deterministic inventory."""
+# -*- coding: utf-8 -*-
+#
+# Script: run_numeric_output_applicability.py
+#
+# Copyright 2026 by Kris Alavattam
+# Email: kalavattam@gmail.com
+#
+# The following were used in design, development, and documentation, with all
+# output reviewed, edited, and approved by the author:
+# - OpenAI ChatGPT and Codex (GPT-5.6);
+# - Anthropic Claude Code (Opus 5).
+#
+# Distributed under the MIT license.
+
+
+"""
+Run numeric applicability with a temporary, deterministic inventory.
+"""
 
 from __future__ import annotations
 
@@ -11,7 +28,9 @@ from dev.audit import numeric_emission_inventory, numeric_output_applicability
 
 
 def main(argv: list[str] | None = None) -> int:
-    """Build only an ephemeral inventory, then run the registered checker."""
+    """
+    Build only an ephemeral inventory, then run the registered checker.
+    """
 
     parser = argparse.ArgumentParser()
     parser.add_argument("--config", type=Path)

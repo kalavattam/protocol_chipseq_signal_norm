@@ -1,5 +1,22 @@
 #!/usr/bin/env python3
-"""Validate read-only numeric-output applicability and migration readiness."""
+# -*- coding: utf-8 -*-
+#
+# Script: numeric_output_applicability.py
+#
+# Copyright 2026 by Kris Alavattam
+# Email: kalavattam@gmail.com
+#
+# The following were used in design, development, and documentation, with all
+# output reviewed, edited, and approved by the author:
+# - OpenAI ChatGPT and Codex (GPT-5.6);
+# - Anthropic Claude Code (Opus 5).
+#
+# Distributed under the MIT license.
+
+
+"""
+Validate read-only numeric-output applicability and migration readiness.
+"""
 
 from __future__ import annotations
 
@@ -44,7 +61,9 @@ def _schema_findings(
 def validate(
     config: dict[str, Any], inventory: dict[str, Any], schema: dict[str, Any]
 ) -> tuple[list[dict[str, str]], dict[str, Any]]:
-    """Validate immutable inventory references without remapping a site."""
+    """
+    Validate immutable inventory references without remapping a site.
+    """
 
     findings = _schema_findings(config, schema)
     if findings:
