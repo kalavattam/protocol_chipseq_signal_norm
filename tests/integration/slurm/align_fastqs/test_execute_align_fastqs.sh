@@ -6,9 +6,10 @@
 # Copyright 2026 by Kris Alavattam
 # Email: kalavattam@gmail.com
 #
-# OpenAI ChatGPT and Codex (GPT-5.5, GPT-5.6) were used in design, development,
-# and documentation, with all output reviewed, edited, and approved by the
-# author.
+# The following were used in design, development, and documentation, with all
+# output reviewed, edited, and approved by the author:
+# - OpenAI ChatGPT and Codex (GPT-5.5, GPT-5.6);
+# - Anthropic Claude Code (Opus 5).
 #
 # Distributed under the MIT license.
 
@@ -17,24 +18,24 @@ set -euo pipefail
 
 TEST_NAME="execute align-fastqs Slurm"
 
-#  Source shared test helpers
+# Source shared test helpers.
 # shellcheck source=tests/support/test_helpers.sh
 source "$(
     git -C "$(dirname "${BASH_SOURCE[0]}")" rev-parse --show-toplevel
 )/tests/support/test_helpers.sh"
 
 
-#  This test must be run on a Slurm-capable system
-#+
-#+ Remote submission check:
-#+
-#+   RUN_SLURM=1 bash tests/integration/slurm/test_execute_align_fastqs.sh
-#+
-#+ Optional output polling after submission:
-#+
-#+   RUN_SLURM=1 WAIT_SLURM=1 \
-#+       bash tests/integration/slurm/test_execute_align_fastqs.sh
-#+
+# This test must be run on a Slurm-capable system.
+#
+# Remote submission check:
+#
+#   RUN_SLURM=1 bash \
+#       tests/integration/slurm/align_fastqs/test_execute_align_fastqs.sh
+#
+# Optional output polling after submission:
+#
+#   RUN_SLURM=1 WAIT_SLURM=1 \
+#       bash tests/integration/slurm/align_fastqs/test_execute_align_fastqs.sh
 if ! is_slurm_enabled; then
     record_skip \
         "Slurm align-fastqs integration check disabled; set RUN_SLURM=1 on a" \
@@ -44,7 +45,7 @@ if ! is_slurm_enabled; then
 fi
 
 
-#  Define fixture and output paths for a Slurm Bowtie2 submission test
+# Define fixture and output paths for a Slurm Bowtie2 submission test.
 dir_fx="${ROOT_REPO}/tests/fixtures/align_fastqs"
 in_se="${dir_fx}/fastq/se/tiny_se.atria.fastq.gz"
 idx_bt2="${dir_fx}/bowtie2/tiny"
@@ -120,7 +121,7 @@ else
 fi
 
 
-#  Submit execute_align_fastqs.sh as a two-task Slurm array
+# Submit execute_align_fastqs.sh as a two-task Slurm array.
 if \
     run_capture \
         "execute align-fastqs Slurm Bowtie2 submission" \
@@ -170,10 +171,9 @@ if ! is_slurm_wait_enabled; then
 fi
 
 
-#  Optional, cluster-agnostic output polling
-#+
-#+ This does not inspect Slurm state; it waits only for expected products to
-#+ appear under the test output directory
+# Optional, cluster-agnostic output polling. This does not inspect Slurm state;
+# it waits only for expected products to appear under the test output
+# directory.
 sec_wait="${SLURM_sec_wait:-120}"
 sec_slp="${SLURM_POLL_SECONDS:-5}"
 elapsed=0

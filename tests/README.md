@@ -41,7 +41,7 @@ Logs and temporary products default to `artifacts/tests/`. Set `TEST_ARTIFACT_RO
 <br />
 
 ## Fixtures and cleanup
-Fixture recipes are `tests/fixtures/<workflow>/make.sh`. Generated fixture data is ignored; each tracked `README.md` describes provenance and expectations. A fixture README may instead declare a bounded tracked static-input cohort, which is validated in place and is not a cleanup target.
+Fixture recipes are `tests/fixtures/<feature>/make.sh`. Generated fixture data is ignored; each tracked `README.md` describes provenance and expectations. `make.sh` generates and nothing else — tests and checkers do the validating.
 
 ```bash
 bash tests/support/clean_artifacts.sh --dry_run --all

@@ -16,6 +16,12 @@ Classify a test by what it proves:
 - `integration/parallel` executes a bounded GNU Parallel path and remains optional.
 - `integration/slurm` contains ordinary scheduler integration and the separately coordinated wet workflow.
 
+Each layer subdivides on one axis, applied uniformly. `unit/` and `integration/` subdivide by the domain a test proves, reusing the vocabulary the repository already shares across layers — a workflow or domain name that means the same thing under `tests/unit/`, `tests/integration/`, and `tests/fixtures/`. Every test in those layers lives in a domain directory, including a domain holding exactly one test; only shared infrastructure such as a README, coordinator, or runner sits at a layer or gate root. `contract/` subdivides instead by the kind of contract, `interfaces/` and `repository/`, and stays flat within a kind, because a repository contract's subject is the repository rather than any one domain.
+
+Do not subdivide by the location of the source under test. That axis splits one domain across directories whenever the source tree moves, and it is how a layer acquires a bucket that grows without anyone choosing it. `tests/unit/dev_audit/` is the one accepted departure: repository audit tooling is itself the domain those tests prove, and no scientific or workflow domain describes them.
+
+Where one sibling subdivides and another does not, the asymmetry is a recorded decision with its reason, not an accident of the order things were added.
+
 Tests, assertions, fakes, coordinators, and harnesses are test-only dependencies. Production code must not import from `tests/`, depend on generated evidence, or require fixture roots at runtime. [`repository_layout.md`](repository_layout.md) owns directory placement and dependency direction.
 
 **Automation:** Repository-layout contracts provide deterministic placement and dependency evidence with `subset` coverage. They do not decide whether a test's assertions prove the claimed layer.
@@ -86,7 +92,11 @@ True-like variants are insufficient. The coordinator must verify the gates, inpu
 
 **Scope:** Tracked static fixtures, generated workflow fixtures, fixture recipes, provenance documentation, and fixture consumers.
 
-Every registered generated workflow fixture root contains a tracked `README.md` and `make.sh`. The source-derived fixture inventory, rather than a durable fixed count, owns the current set. The README records provenance, generation prerequisites, deterministic expectations, and ignored outputs. Generated data remains ignored; recipes and documentation remain tracked. Generated workflow roots are distinct from documented tracked static fixtures, including Slurm fixtures and the text-only `python_source_policy` checker inputs, which are not cleanup targets.
+Every fixture root contains a tracked `README.md` and `make.sh`, and nothing else tracked. The source-derived fixture inventory, rather than a durable fixed count, owns the current set. The README records provenance, generation prerequisites, deterministic expectations, and ignored outputs. Generated data remains ignored; recipes and documentation remain tracked.
+
+**Fixtures are never tracked, and this holds for every fixture root rather than only for workflow data.** A text-only checker input is the easiest case to generate, not an exception to generating it. Tracking a fixture also forfeits an isolation the ignore rule provides for free: checker discovery lists tracked and non-ignored files, so an ignored fixture is invisible to the checkers, and a fixture that deliberately violates a rule cannot be mistaken for a maintained source violating it.
+
+**`make.sh` generates. Tests and checkers validate. A `make.sh` that validates instead of generating is a defect, not a permitted variant.** A recipe authors its inputs literally and derives everything else from them; it never asserts what a checker should report about its output, because that assertion belongs to the test that consumes the fixture.
 
 Retries must not hide nondeterministic failures. Control time, randomness, ordering, and concurrency inputs where practical. An intentionally observational test records its instability boundary and preserves the first failure rather than converting a later retry into unconditional success.
 

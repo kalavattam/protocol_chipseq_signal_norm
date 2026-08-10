@@ -169,7 +169,7 @@ function add_group() {
         integration-slurm)
             selected_slurm=1
             arr_shell_tests+=(
-                "${repo_root}/tests/integration/slurm/test_execute_align_fastqs.sh"
+                "${repo_root}/tests/integration/slurm/align_fastqs/test_execute_align_fastqs.sh"
             )
             ;;
 
