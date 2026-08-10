@@ -32,11 +32,12 @@ RULE_ID = "JSON.SOURCE.FORM"
 # left alone, because JSON has no string continuation.
 BUDGET = 79
 STEP = 2
+# Serialized inventories under 'dev/audit/' are owned by the producer's
+# serializer rather than by an author, so an author-facing rule cannot reach
+# them. They are excluded by not appearing here, which is an applicability
+# boundary rather than an allowlist; a separate exclusion tuple would be
+# unreachable code, because no path can start with both.
 MAINTAINED_ROOTS = ("dev/config/", "dev/schemas/", "tests/fixtures/")
-
-# Serialized inventories are owned by the producer's serializer rather than by
-# an author, so an author-facing rule cannot reach them.
-GENERATED_ROOTS = ("dev/audit/",)
 
 
 @dataclasses.dataclass
@@ -546,7 +547,6 @@ def maintained_paths(root: Path) -> list[str]:
         for item in result.stdout.split(b"\0")
         if item
         and (path := item.decode("utf-8")).startswith(MAINTAINED_ROOTS)
-        and not path.startswith(GENERATED_ROOTS)
         and (root / path).is_file()
     )
 

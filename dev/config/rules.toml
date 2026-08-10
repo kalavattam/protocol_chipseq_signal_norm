@@ -1916,7 +1916,7 @@ known_side_effects = ["none"]
 output_paths = []
 output_parser = "generic"
 strict_availability = "safe_adapter"
-current_exclusions_or_allowlists = ["owner=JSON.SOURCE.FORM; serialized inventories under dev/audit are produced by the --inventory-output paths of dev/audit/ai_attribution.py and dev/audit/help_aliases.py"]
+current_exclusions_or_allowlists = []
 
 [[rule]]
 rule_id = "SHELL.SOURCE.FORM"

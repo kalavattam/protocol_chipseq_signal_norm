@@ -273,6 +273,11 @@ class DiscoveryTests(unittest.TestCase):
     def test_serialized_inventories_are_excluded(self) -> None:
         """
         Prove producer-owned inventories stay outside the author rule.
+
+        The guard is the maintained-root list, which never names `dev/audit/`,
+        rather than any exclusion applied afterwards. This case therefore fails
+        if a later change widens that list to `dev/` and pulls the serialized
+        inventories back into an author-facing rule.
         """
 
         discovered = maintained_paths(ROOT)
