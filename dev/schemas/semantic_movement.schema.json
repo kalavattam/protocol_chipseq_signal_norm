@@ -51,10 +51,7 @@
             ]
           },
           "locator": {"type": "string", "minLength": 1},
-          "sha256": {
-            "type": "string",
-            "pattern": "^[0-9a-f]{64}$"
-          }
+          "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
         },
         "additionalProperties": false
       }
@@ -71,14 +68,8 @@
     "new_owner": {"type": "string", "minLength": 1},
     "source_anchor": {"type": "string", "minLength": 1},
     "destination_anchor": {"type": "string", "minLength": 1},
-    "source_fingerprint": {
-      "type": "string",
-      "pattern": "^[0-9a-f]{64}$"
-    },
-    "destination_fingerprint": {
-      "type": "string",
-      "pattern": "^[0-9a-f]{64}$"
-    },
+    "source_fingerprint": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "destination_fingerprint": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
     "old_to_new_complete": {"const": true},
     "old_to_new_dispositions": {
       "type": "array",
@@ -88,9 +79,7 @@
         "required": ["obligation", "disposition", "evidence"],
         "properties": {
           "obligation": {"type": "string", "minLength": 1},
-          "disposition": {
-            "enum": ["moved", "retained", "excluded_by_owner"]
-          },
+          "disposition": {"enum": ["moved", "retained", "excluded_by_owner"]},
           "evidence": {"type": "string", "minLength": 1}
         },
         "additionalProperties": false

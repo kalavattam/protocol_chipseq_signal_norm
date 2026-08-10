@@ -31,60 +31,246 @@
         "package_id": "download-fastqs-dependency-closure-runtime-production",
         "title": "Download FASTQs dependency closure: runtime and production",
         "semantic_review_path": "semantic_review/download-fastqs-dependency-closure-runtime-production.md",
-        "supplied_artifacts": ["semantic_review/download-fastqs-dependency-closure-runtime-production.md", "findings.ndjson", "facts.ndjson", "adapter_limitations.ndjson", "pilot_report.json"],
+        "supplied_artifacts": [
+          "semantic_review/download-fastqs-dependency-closure-runtime-production.md",
+          "findings.ndjson",
+          "facts.ndjson",
+          "adapter_limitations.ndjson",
+          "pilot_report.json"
+        ],
         "subcohorts": ["shared_runtime", "download_production_help"]
       },
       {
         "package_id": "download-fastqs-dependency-closure-tests-registration",
         "title": "Download FASTQs dependency closure: tests and registration",
         "semantic_review_path": "semantic_review/download-fastqs-dependency-closure-tests-registration.md",
-        "supplied_artifacts": ["semantic_review/download-fastqs-dependency-closure-tests-registration.md", "findings.ndjson", "facts.ndjson", "adapter_limitations.ndjson", "pilot_report.json"],
-        "subcohorts": ["shared_test_infrastructure", "download_tests_registration"]
+        "supplied_artifacts": [
+          "semantic_review/download-fastqs-dependency-closure-tests-registration.md",
+          "findings.ndjson",
+          "facts.ndjson",
+          "adapter_limitations.ndjson",
+          "pilot_report.json"
+        ],
+        "subcohorts": [
+          "shared_test_infrastructure",
+          "download_tests_registration"
+        ]
       }
     ]
   },
   "targets": [
-    {"path": "lib/bash/core/source_helpers.sh", "role": "primary", "target_role": "shared helper loader", "subcohort": "shared_runtime"},
-    {"path": "lib/bash/core/check_source.sh", "role": "primary", "target_role": "shared source validation", "subcohort": "shared_runtime"},
-    {"path": "lib/bash/core/check_args.sh", "role": "primary", "target_role": "shared argument validation", "subcohort": "shared_runtime"},
-    {"path": "lib/bash/core/format_outputs.sh", "role": "primary", "target_role": "shared output formatting", "subcohort": "shared_runtime"},
-    {"path": "lib/bash/core/check_env.sh", "role": "primary", "target_role": "shared environment validation", "subcohort": "shared_runtime"},
-    {"path": "lib/bash/core/check_inputs.sh", "role": "primary", "target_role": "shared input validation", "subcohort": "shared_runtime"},
-    {"path": "lib/bash/core/check_numbers.sh", "role": "primary", "target_role": "shared numeric validation", "subcohort": "shared_runtime"},
-    {"path": "lib/bash/core/handle_env.sh", "role": "primary", "target_role": "shared environment activation", "subcohort": "shared_runtime"},
-    {"path": "lib/bash/core/wrap_cmd.sh", "role": "primary", "target_role": "shared command wrapping", "subcohort": "shared_runtime"},
-    {"path": "lib/bash/help/help_submit_download_fastqs.sh", "role": "primary", "target_role": "submit help owner", "subcohort": "download_production_help"},
-    {"path": "bin/submit_download_fastqs.sh", "role": "primary", "target_role": "submit worker", "subcohort": "download_production_help"},
-    {"path": "lib/bash/help/help_execute_download_fastqs.sh", "role": "primary", "target_role": "execute help owner", "subcohort": "download_production_help"},
-    {"path": "bin/execute_download_fastqs.sh", "role": "primary", "target_role": "execute orchestrator", "subcohort": "download_production_help"},
-    {"path": "tests/support/fixture_helpers.sh", "role": "primary", "target_role": "shared fixture helper", "subcohort": "shared_test_infrastructure"},
-    {"path": "tests/support/test_helpers.sh", "role": "primary", "target_role": "shared test helper", "subcohort": "shared_test_infrastructure"},
-    {"path": "tests/contract/interfaces/test_download_fastqs_interface.sh", "role": "primary", "target_role": "interface smoke test", "subcohort": "download_tests_registration"},
-    {"path": "tests/integration/local/download_fastqs/test_submit_download_fastqs_local.sh", "role": "primary", "target_role": "submit smoke test", "subcohort": "download_tests_registration"},
-    {"path": "tests/integration/local/download_fastqs/test_execute_download_fastqs_se_local.sh", "role": "primary", "target_role": "single-end execute smoke test", "subcohort": "download_tests_registration"},
-    {"path": "tests/integration/local/download_fastqs/test_execute_download_fastqs_pe_local.sh", "role": "primary", "target_role": "paired-end execute smoke test", "subcohort": "download_tests_registration"},
-    {"path": "tests/integration/local/download_fastqs/test_execute_download_fastqs_mixed_local.sh", "role": "primary", "target_role": "mixed-layout execute smoke test", "subcohort": "download_tests_registration"},
-    {"path": "tests/integration/parallel/download_fastqs/test_execute_download_fastqs_parallel.sh", "role": "primary", "target_role": "parallel execute smoke test", "subcohort": "download_tests_registration"},
-    {"path": "tests/run_tests.sh", "role": "primary", "target_role": "smoke runner registration", "subcohort": "download_tests_registration"},
-    {"path": "tests/fixtures/download_fastqs/make.sh", "role": "primary", "target_role": "download fixture recipe", "subcohort": "download_tests_registration"},
-    {"path": "tests/support/clean_artifacts.sh", "role": "primary", "target_role": "fixture cleanup owner", "subcohort": "shared_test_infrastructure"},
-    {"path": "tests/contract/repository/test_cleanup_contract.sh", "role": "primary", "target_role": "fixture cleanup contract", "subcohort": "download_tests_registration"},
-    {"path": "tests/contract/repository/test_runner_selection.sh", "role": "primary", "target_role": "runner and gate contract", "subcohort": "download_tests_registration"},
-    {"path": "tests/contract/repository/test_test_layout.sh", "role": "primary", "target_role": "fixture layout contract", "subcohort": "download_tests_registration"}
+    {
+      "path": "lib/bash/core/source_helpers.sh",
+      "role": "primary",
+      "target_role": "shared helper loader",
+      "subcohort": "shared_runtime"
+    },
+    {
+      "path": "lib/bash/core/check_source.sh",
+      "role": "primary",
+      "target_role": "shared source validation",
+      "subcohort": "shared_runtime"
+    },
+    {
+      "path": "lib/bash/core/check_args.sh",
+      "role": "primary",
+      "target_role": "shared argument validation",
+      "subcohort": "shared_runtime"
+    },
+    {
+      "path": "lib/bash/core/format_outputs.sh",
+      "role": "primary",
+      "target_role": "shared output formatting",
+      "subcohort": "shared_runtime"
+    },
+    {
+      "path": "lib/bash/core/check_env.sh",
+      "role": "primary",
+      "target_role": "shared environment validation",
+      "subcohort": "shared_runtime"
+    },
+    {
+      "path": "lib/bash/core/check_inputs.sh",
+      "role": "primary",
+      "target_role": "shared input validation",
+      "subcohort": "shared_runtime"
+    },
+    {
+      "path": "lib/bash/core/check_numbers.sh",
+      "role": "primary",
+      "target_role": "shared numeric validation",
+      "subcohort": "shared_runtime"
+    },
+    {
+      "path": "lib/bash/core/handle_env.sh",
+      "role": "primary",
+      "target_role": "shared environment activation",
+      "subcohort": "shared_runtime"
+    },
+    {
+      "path": "lib/bash/core/wrap_cmd.sh",
+      "role": "primary",
+      "target_role": "shared command wrapping",
+      "subcohort": "shared_runtime"
+    },
+    {
+      "path": "lib/bash/help/help_submit_download_fastqs.sh",
+      "role": "primary",
+      "target_role": "submit help owner",
+      "subcohort": "download_production_help"
+    },
+    {
+      "path": "bin/submit_download_fastqs.sh",
+      "role": "primary",
+      "target_role": "submit worker",
+      "subcohort": "download_production_help"
+    },
+    {
+      "path": "lib/bash/help/help_execute_download_fastqs.sh",
+      "role": "primary",
+      "target_role": "execute help owner",
+      "subcohort": "download_production_help"
+    },
+    {
+      "path": "bin/execute_download_fastqs.sh",
+      "role": "primary",
+      "target_role": "execute orchestrator",
+      "subcohort": "download_production_help"
+    },
+    {
+      "path": "tests/support/fixture_helpers.sh",
+      "role": "primary",
+      "target_role": "shared fixture helper",
+      "subcohort": "shared_test_infrastructure"
+    },
+    {
+      "path": "tests/support/test_helpers.sh",
+      "role": "primary",
+      "target_role": "shared test helper",
+      "subcohort": "shared_test_infrastructure"
+    },
+    {
+      "path": "tests/contract/interfaces/test_download_fastqs_interface.sh",
+      "role": "primary",
+      "target_role": "interface smoke test",
+      "subcohort": "download_tests_registration"
+    },
+    {
+      "path": "tests/integration/local/download_fastqs/test_submit_download_fastqs_local.sh",
+      "role": "primary",
+      "target_role": "submit smoke test",
+      "subcohort": "download_tests_registration"
+    },
+    {
+      "path": "tests/integration/local/download_fastqs/test_execute_download_fastqs_se_local.sh",
+      "role": "primary",
+      "target_role": "single-end execute smoke test",
+      "subcohort": "download_tests_registration"
+    },
+    {
+      "path": "tests/integration/local/download_fastqs/test_execute_download_fastqs_pe_local.sh",
+      "role": "primary",
+      "target_role": "paired-end execute smoke test",
+      "subcohort": "download_tests_registration"
+    },
+    {
+      "path": "tests/integration/local/download_fastqs/test_execute_download_fastqs_mixed_local.sh",
+      "role": "primary",
+      "target_role": "mixed-layout execute smoke test",
+      "subcohort": "download_tests_registration"
+    },
+    {
+      "path": "tests/integration/parallel/download_fastqs/test_execute_download_fastqs_parallel.sh",
+      "role": "primary",
+      "target_role": "parallel execute smoke test",
+      "subcohort": "download_tests_registration"
+    },
+    {
+      "path": "tests/run_tests.sh",
+      "role": "primary",
+      "target_role": "smoke runner registration",
+      "subcohort": "download_tests_registration"
+    },
+    {
+      "path": "tests/fixtures/download_fastqs/make.sh",
+      "role": "primary",
+      "target_role": "download fixture recipe",
+      "subcohort": "download_tests_registration"
+    },
+    {
+      "path": "tests/support/clean_artifacts.sh",
+      "role": "primary",
+      "target_role": "fixture cleanup owner",
+      "subcohort": "shared_test_infrastructure"
+    },
+    {
+      "path": "tests/contract/repository/test_cleanup_contract.sh",
+      "role": "primary",
+      "target_role": "fixture cleanup contract",
+      "subcohort": "download_tests_registration"
+    },
+    {
+      "path": "tests/contract/repository/test_runner_selection.sh",
+      "role": "primary",
+      "target_role": "runner and gate contract",
+      "subcohort": "download_tests_registration"
+    },
+    {
+      "path": "tests/contract/repository/test_test_layout.sh",
+      "role": "primary",
+      "target_role": "fixture layout contract",
+      "subcohort": "download_tests_registration"
+    }
   ],
   "context": [
-    {"path": "bin/execute_align_fastqs.sh", "child": "download-fastqs-dependency-closure-runtime-production"},
-    {"path": "bin/execute_calculate_scaling_factor.sh", "child": "download-fastqs-dependency-closure-runtime-production"},
-    {"path": "bin/execute_compute_signal.sh", "child": "download-fastqs-dependency-closure-runtime-production"},
-    {"path": "bin/execute_filter_alignments.sh", "child": "download-fastqs-dependency-closure-runtime-production"},
-    {"path": "bin/execute_trim_fastqs.sh", "child": "download-fastqs-dependency-closure-runtime-production"},
-    {"path": "install/envs/env_protocol.yml", "child": "download-fastqs-dependency-closure-runtime-production"},
-    {"path": "install/scripts/install_envs.sh", "child": "download-fastqs-dependency-closure-runtime-production"},
-    {"path": "install/scripts/install_envs_entrypoint.sh", "child": "download-fastqs-dependency-closure-runtime-production"},
-    {"path": ".gitignore", "child": "download-fastqs-dependency-closure-tests-registration"},
-    {"path": "tests/fixtures/download_fastqs/README.md", "child": "download-fastqs-dependency-closure-tests-registration"},
-    {"path": "tests/README.md", "child": "download-fastqs-dependency-closure-tests-registration"},
-    {"path": "docs/standards/testing.md", "child": "download-fastqs-dependency-closure-tests-registration"}
+    {
+      "path": "bin/execute_align_fastqs.sh",
+      "child": "download-fastqs-dependency-closure-runtime-production"
+    },
+    {
+      "path": "bin/execute_calculate_scaling_factor.sh",
+      "child": "download-fastqs-dependency-closure-runtime-production"
+    },
+    {
+      "path": "bin/execute_compute_signal.sh",
+      "child": "download-fastqs-dependency-closure-runtime-production"
+    },
+    {
+      "path": "bin/execute_filter_alignments.sh",
+      "child": "download-fastqs-dependency-closure-runtime-production"
+    },
+    {
+      "path": "bin/execute_trim_fastqs.sh",
+      "child": "download-fastqs-dependency-closure-runtime-production"
+    },
+    {
+      "path": "install/envs/env_protocol.yml",
+      "child": "download-fastqs-dependency-closure-runtime-production"
+    },
+    {
+      "path": "install/scripts/install_envs.sh",
+      "child": "download-fastqs-dependency-closure-runtime-production"
+    },
+    {
+      "path": "install/scripts/install_envs_entrypoint.sh",
+      "child": "download-fastqs-dependency-closure-runtime-production"
+    },
+    {
+      "path": ".gitignore",
+      "child": "download-fastqs-dependency-closure-tests-registration"
+    },
+    {
+      "path": "tests/fixtures/download_fastqs/README.md",
+      "child": "download-fastqs-dependency-closure-tests-registration"
+    },
+    {
+      "path": "tests/README.md",
+      "child": "download-fastqs-dependency-closure-tests-registration"
+    },
+    {
+      "path": "docs/standards/testing.md",
+      "child": "download-fastqs-dependency-closure-tests-registration"
+    }
   ],
   "evidence_selection": {
     "target_selector": {
@@ -92,140 +278,792 @@
       "selection_reason": "Render every current changed block in its complete enclosing top-level function or top-level source region."
     },
     "context_selectors": [
-      {"path": "bin/execute_align_fastqs.sh", "kind": "shell_function", "name": "run_jobs", "child": "download-fastqs-dependency-closure-runtime-production", "selection_reason": "Complete current dir_eo caller context for get_submit_logs and print_built_cmd."},
-      {"path": "bin/execute_calculate_scaling_factor.sh", "kind": "shell_function", "name": "run_jobs", "child": "download-fastqs-dependency-closure-runtime-production", "selection_reason": "Complete current dir_eo caller context for get_submit_logs and print_built_cmd."},
-      {"path": "bin/execute_compute_signal.sh", "kind": "shell_function", "name": "run_jobs", "child": "download-fastqs-dependency-closure-runtime-production", "selection_reason": "Complete current dir_eo caller context for get_submit_logs and print_built_cmd."},
-      {"path": "bin/execute_filter_alignments.sh", "kind": "shell_function", "name": "run_jobs", "child": "download-fastqs-dependency-closure-runtime-production", "selection_reason": "Complete current dir_eo caller context for get_submit_logs and print_built_cmd."},
-      {"path": "bin/execute_trim_fastqs.sh", "kind": "shell_function", "name": "run_jobs", "child": "download-fastqs-dependency-closure-runtime-production", "selection_reason": "Complete current dir_eo caller context for get_submit_logs and print_built_cmd."}
+      {
+        "path": "bin/execute_align_fastqs.sh",
+        "kind": "shell_function",
+        "name": "run_jobs",
+        "child": "download-fastqs-dependency-closure-runtime-production",
+        "selection_reason": "Complete current dir_eo caller context for get_submit_logs and print_built_cmd."
+      },
+      {
+        "path": "bin/execute_calculate_scaling_factor.sh",
+        "kind": "shell_function",
+        "name": "run_jobs",
+        "child": "download-fastqs-dependency-closure-runtime-production",
+        "selection_reason": "Complete current dir_eo caller context for get_submit_logs and print_built_cmd."
+      },
+      {
+        "path": "bin/execute_compute_signal.sh",
+        "kind": "shell_function",
+        "name": "run_jobs",
+        "child": "download-fastqs-dependency-closure-runtime-production",
+        "selection_reason": "Complete current dir_eo caller context for get_submit_logs and print_built_cmd."
+      },
+      {
+        "path": "bin/execute_filter_alignments.sh",
+        "kind": "shell_function",
+        "name": "run_jobs",
+        "child": "download-fastqs-dependency-closure-runtime-production",
+        "selection_reason": "Complete current dir_eo caller context for get_submit_logs and print_built_cmd."
+      },
+      {
+        "path": "bin/execute_trim_fastqs.sh",
+        "kind": "shell_function",
+        "name": "run_jobs",
+        "child": "download-fastqs-dependency-closure-runtime-production",
+        "selection_reason": "Complete current dir_eo caller context for get_submit_logs and print_built_cmd."
+      }
     ]
   },
   "rule_scopes": [
-    {"rule_id": "SHELL.SYNTAX", "paths": ["bin/**/*.sh", "lib/bash/**/*.sh", "tests/**/*.sh"], "enforcement": "strict", "classification": "strict read-only syntax subset"},
-    {"rule_id": "TEST.PROOF.PROPORTIONAL", "paths": ["**"], "enforcement": "strict", "classification": "strict selected-path whitespace check"},
-    {"rule_id": "SHELL.LINE_LENGTH", "paths": ["bin/**/*.sh", "lib/bash/**/*.sh", "tests/**/*.sh"], "enforcement": "advisory", "classification": "existing warning-only advisory; not strict enforcement"}
+    {
+      "rule_id": "SHELL.SYNTAX",
+      "paths": ["bin/**/*.sh", "lib/bash/**/*.sh", "tests/**/*.sh"],
+      "enforcement": "strict",
+      "classification": "strict read-only syntax subset"
+    },
+    {
+      "rule_id": "TEST.PROOF.PROPORTIONAL",
+      "paths": ["**"],
+      "enforcement": "strict",
+      "classification": "strict selected-path whitespace check"
+    },
+    {
+      "rule_id": "SHELL.LINE_LENGTH",
+      "paths": ["bin/**/*.sh", "lib/bash/**/*.sh", "tests/**/*.sh"],
+      "enforcement": "advisory",
+      "classification": "existing warning-only advisory; not strict enforcement"
+    }
   ],
   "semantic_questions": [
-    {"rule_id": "DEPENDENCY.SEMANTIC.REVIEW", "topic": "dependency closure", "question": "Do the two disjoint edge partitions, considered together, establish the intended download_fastqs dependency closure without overstating loaded-only or unobserved runtime behavior?", "paths": ["bin/execute_download_fastqs.sh", "bin/submit_download_fastqs.sh"], "children": ["download-fastqs-dependency-closure-runtime-production", "download-fastqs-dependency-closure-tests-registration"]},
-    {"rule_id": "DEPENDENCY.SEMANTIC.REVIEW", "topic": "shared runtime", "question": "Do changes in shared runtime helpers preserve the behavior required by the download_fastqs family and reveal any concrete contradiction with the previously closed interface family?", "paths": ["lib/bash/core/source_helpers.sh", "lib/bash/core/wrap_cmd.sh"], "children": ["download-fastqs-dependency-closure-runtime-production"]},
-    {"rule_id": "DEPENDENCY.SEMANTIC.REVIEW", "topic": "tests and registration", "question": "Do the shared test helpers, download tests, and runner registration collectively exercise the intended interfaces without claiming runtime coverage that was not observed?", "paths": ["tests/support/fixture_helpers.sh", "tests/support/test_helpers.sh", "tests/run_tests.sh"], "children": ["download-fastqs-dependency-closure-tests-registration"]},
-    {"rule_id": "DEPENDENCY.SEMANTIC.REVIEW", "topic": "documentation", "question": "Are prose-only help changes and broad public-function documentation semantically correct, recognizing that they are not deterministically enforced by this package?", "paths": ["lib/bash/help/help_submit_download_fastqs.sh", "lib/bash/help/help_execute_download_fastqs.sh"], "children": ["download-fastqs-dependency-closure-runtime-production"]},
-    {"rule_id": "DEPENDENCY.SEMANTIC.REVIEW", "topic": "dir_eo migration", "question": "Is get_submit_logs semantically correct against the current migrated dir_eo callers, independently of eventual commit ordering?", "paths": ["lib/bash/core/wrap_cmd.sh", "bin/execute_align_fastqs.sh", "bin/execute_calculate_scaling_factor.sh", "bin/execute_compute_signal.sh", "bin/execute_filter_alignments.sh", "bin/execute_trim_fastqs.sh"], "children": ["download-fastqs-dependency-closure-runtime-production"]}
+    {
+      "rule_id": "DEPENDENCY.SEMANTIC.REVIEW",
+      "topic": "dependency closure",
+      "question": "Do the two disjoint edge partitions, considered together, establish the intended download_fastqs dependency closure without overstating loaded-only or unobserved runtime behavior?",
+      "paths": [
+        "bin/execute_download_fastqs.sh",
+        "bin/submit_download_fastqs.sh"
+      ],
+      "children": [
+        "download-fastqs-dependency-closure-runtime-production",
+        "download-fastqs-dependency-closure-tests-registration"
+      ]
+    },
+    {
+      "rule_id": "DEPENDENCY.SEMANTIC.REVIEW",
+      "topic": "shared runtime",
+      "question": "Do changes in shared runtime helpers preserve the behavior required by the download_fastqs family and reveal any concrete contradiction with the previously closed interface family?",
+      "paths": [
+        "lib/bash/core/source_helpers.sh",
+        "lib/bash/core/wrap_cmd.sh"
+      ],
+      "children": ["download-fastqs-dependency-closure-runtime-production"]
+    },
+    {
+      "rule_id": "DEPENDENCY.SEMANTIC.REVIEW",
+      "topic": "tests and registration",
+      "question": "Do the shared test helpers, download tests, and runner registration collectively exercise the intended interfaces without claiming runtime coverage that was not observed?",
+      "paths": [
+        "tests/support/fixture_helpers.sh",
+        "tests/support/test_helpers.sh",
+        "tests/run_tests.sh"
+      ],
+      "children": ["download-fastqs-dependency-closure-tests-registration"]
+    },
+    {
+      "rule_id": "DEPENDENCY.SEMANTIC.REVIEW",
+      "topic": "documentation",
+      "question": "Are prose-only help changes and broad public-function documentation semantically correct, recognizing that they are not deterministically enforced by this package?",
+      "paths": [
+        "lib/bash/help/help_submit_download_fastqs.sh",
+        "lib/bash/help/help_execute_download_fastqs.sh"
+      ],
+      "children": ["download-fastqs-dependency-closure-runtime-production"]
+    },
+    {
+      "rule_id": "DEPENDENCY.SEMANTIC.REVIEW",
+      "topic": "dir_eo migration",
+      "question": "Is get_submit_logs semantically correct against the current migrated dir_eo callers, independently of eventual commit ordering?",
+      "paths": [
+        "lib/bash/core/wrap_cmd.sh",
+        "bin/execute_align_fastqs.sh",
+        "bin/execute_calculate_scaling_factor.sh",
+        "bin/execute_compute_signal.sh",
+        "bin/execute_filter_alignments.sh",
+        "bin/execute_trim_fastqs.sh"
+      ],
+      "children": ["download-fastqs-dependency-closure-runtime-production"]
+    }
   ],
   "dependency_edges": [
-    {"from": "bin/execute_download_fastqs.sh", "to": "lib/bash/core/source_helpers.sh", "child": "download-fastqs-dependency-closure-runtime-production", "kind": "bootstrap source", "reachability": "statically observed", "runtime_status": "not observed exercised"},
-    {"from": "bin/submit_download_fastqs.sh", "to": "lib/bash/help/help_submit_download_fastqs.sh", "child": "download-fastqs-dependency-closure-runtime-production", "kind": "bootstrap source", "reachability": "conditional", "runtime_status": "not observed exercised"},
-    {"from": "bin/submit_download_fastqs.sh", "to": "lib/bash/core/source_helpers.sh", "child": "download-fastqs-dependency-closure-runtime-production", "kind": "bootstrap source", "reachability": "statically observed", "runtime_status": "not observed exercised"},
-    {"from": "lib/bash/core/source_helpers.sh", "to": "lib/bash/core/check_source.sh", "child": "download-fastqs-dependency-closure-runtime-production", "kind": "source", "reachability": "loaded only", "runtime_status": "unknown"},
-    {"from": "lib/bash/core/source_helpers.sh", "to": "lib/bash/core/check_args.sh", "child": "download-fastqs-dependency-closure-runtime-production", "kind": "source", "reachability": "loaded only", "runtime_status": "unknown"},
-    {"from": "lib/bash/core/source_helpers.sh", "to": "lib/bash/core/format_outputs.sh", "child": "download-fastqs-dependency-closure-runtime-production", "kind": "source", "reachability": "loaded only", "runtime_status": "unknown"},
-    {"from": "lib/bash/core/source_helpers.sh", "to": "lib/bash/core/check_env.sh", "child": "download-fastqs-dependency-closure-runtime-production", "kind": "source", "reachability": "loaded only", "runtime_status": "unknown"},
-    {"from": "lib/bash/core/source_helpers.sh", "to": "lib/bash/core/check_inputs.sh", "child": "download-fastqs-dependency-closure-runtime-production", "kind": "source", "reachability": "loaded only", "runtime_status": "unknown"},
-    {"from": "lib/bash/core/source_helpers.sh", "to": "lib/bash/core/check_numbers.sh", "child": "download-fastqs-dependency-closure-runtime-production", "kind": "source", "reachability": "loaded only", "runtime_status": "unknown"},
-    {"from": "lib/bash/core/source_helpers.sh", "to": "lib/bash/core/handle_env.sh", "child": "download-fastqs-dependency-closure-runtime-production", "kind": "source", "reachability": "loaded only", "runtime_status": "unknown"},
-    {"from": "lib/bash/core/source_helpers.sh", "to": "lib/bash/core/wrap_cmd.sh", "child": "download-fastqs-dependency-closure-runtime-production", "kind": "source", "reachability": "loaded only", "runtime_status": "unknown"},
-    {"from": "bin/execute_download_fastqs.sh", "to": "bin/submit_download_fastqs.sh", "child": "download-fastqs-dependency-closure-runtime-production", "kind": "direct call", "reachability": "conditional", "runtime_status": "not observed exercised"},
-    {"from": "bin/execute_download_fastqs.sh", "to": "lib/bash/core/check_args.sh", "child": "download-fastqs-dependency-closure-runtime-production", "kind": "transitive call", "reachability": "conditional", "runtime_status": "not observed exercised"},
-    {"from": "bin/execute_download_fastqs.sh", "to": "lib/bash/core/check_env.sh", "child": "download-fastqs-dependency-closure-runtime-production", "kind": "transitive call", "reachability": "conditional", "runtime_status": "not observed exercised"},
-    {"from": "bin/execute_download_fastqs.sh", "to": "lib/bash/core/check_inputs.sh", "child": "download-fastqs-dependency-closure-runtime-production", "kind": "transitive call", "reachability": "conditional", "runtime_status": "not observed exercised"},
-    {"from": "bin/execute_download_fastqs.sh", "to": "lib/bash/core/check_numbers.sh", "child": "download-fastqs-dependency-closure-runtime-production", "kind": "transitive call", "reachability": "conditional", "runtime_status": "not observed exercised"},
-    {"from": "bin/execute_download_fastqs.sh", "to": "lib/bash/core/format_outputs.sh", "child": "download-fastqs-dependency-closure-runtime-production", "kind": "transitive call", "reachability": "conditional", "runtime_status": "not observed exercised"},
-    {"from": "bin/execute_download_fastqs.sh", "to": "lib/bash/core/handle_env.sh", "child": "download-fastqs-dependency-closure-runtime-production", "kind": "transitive call", "reachability": "conditional", "runtime_status": "not observed exercised"},
-    {"from": "bin/execute_download_fastqs.sh", "to": "lib/bash/core/wrap_cmd.sh", "child": "download-fastqs-dependency-closure-runtime-production", "kind": "transitive call", "reachability": "conditional", "runtime_status": "not observed exercised"},
-    {"from": "bin/execute_download_fastqs.sh", "to": "lib/bash/help/help_execute_download_fastqs.sh", "child": "download-fastqs-dependency-closure-runtime-production", "kind": "transitive call", "reachability": "conditional", "runtime_status": "not observed exercised"},
-    {"from": "bin/submit_download_fastqs.sh", "to": "lib/bash/core/check_args.sh", "child": "download-fastqs-dependency-closure-runtime-production", "kind": "transitive call", "reachability": "conditional", "runtime_status": "not observed exercised"},
-    {"from": "bin/submit_download_fastqs.sh", "to": "lib/bash/core/check_env.sh", "child": "download-fastqs-dependency-closure-runtime-production", "kind": "transitive call", "reachability": "conditional", "runtime_status": "not observed exercised"},
-    {"from": "bin/submit_download_fastqs.sh", "to": "lib/bash/core/format_outputs.sh", "child": "download-fastqs-dependency-closure-runtime-production", "kind": "transitive call", "reachability": "conditional", "runtime_status": "not observed exercised"},
-    {"from": "tests/contract/interfaces/test_download_fastqs_interface.sh", "to": "bin/execute_download_fastqs.sh", "child": "download-fastqs-dependency-closure-tests-registration", "kind": "test-only", "reachability": "statically observed", "runtime_status": "not observed exercised"},
-    {"from": "tests/contract/interfaces/test_download_fastqs_interface.sh", "to": "bin/submit_download_fastqs.sh", "child": "download-fastqs-dependency-closure-tests-registration", "kind": "test-only", "reachability": "statically observed", "runtime_status": "not observed exercised"},
-    {"from": "tests/integration/local/download_fastqs/test_submit_download_fastqs_local.sh", "to": "bin/submit_download_fastqs.sh", "child": "download-fastqs-dependency-closure-tests-registration", "kind": "test-only", "reachability": "statically observed", "runtime_status": "not observed exercised"},
-    {"from": "tests/integration/local/download_fastqs/test_execute_download_fastqs_se_local.sh", "to": "bin/execute_download_fastqs.sh", "child": "download-fastqs-dependency-closure-tests-registration", "kind": "test-only", "reachability": "statically observed", "runtime_status": "not observed exercised"},
-    {"from": "tests/integration/local/download_fastqs/test_execute_download_fastqs_pe_local.sh", "to": "bin/execute_download_fastqs.sh", "child": "download-fastqs-dependency-closure-tests-registration", "kind": "test-only", "reachability": "statically observed", "runtime_status": "not observed exercised"},
-    {"from": "tests/integration/local/download_fastqs/test_execute_download_fastqs_mixed_local.sh", "to": "bin/execute_download_fastqs.sh", "child": "download-fastqs-dependency-closure-tests-registration", "kind": "test-only", "reachability": "statically observed", "runtime_status": "not observed exercised"},
-    {"from": "tests/integration/parallel/download_fastqs/test_execute_download_fastqs_parallel.sh", "to": "bin/execute_download_fastqs.sh", "child": "download-fastqs-dependency-closure-tests-registration", "kind": "test-only", "reachability": "statically observed", "runtime_status": "not observed exercised"},
-    {"from": "tests/contract/interfaces/test_download_fastqs_interface.sh", "to": "tests/support/test_helpers.sh", "child": "download-fastqs-dependency-closure-tests-registration", "kind": "source", "reachability": "statically observed", "runtime_status": "not observed exercised"},
-    {"from": "tests/integration/local/download_fastqs/test_submit_download_fastqs_local.sh", "to": "tests/support/test_helpers.sh", "child": "download-fastqs-dependency-closure-tests-registration", "kind": "source", "reachability": "statically observed", "runtime_status": "not observed exercised"},
-    {"from": "tests/integration/local/download_fastqs/test_execute_download_fastqs_se_local.sh", "to": "tests/support/test_helpers.sh", "child": "download-fastqs-dependency-closure-tests-registration", "kind": "source", "reachability": "statically observed", "runtime_status": "not observed exercised"},
-    {"from": "tests/integration/local/download_fastqs/test_execute_download_fastqs_pe_local.sh", "to": "tests/support/test_helpers.sh", "child": "download-fastqs-dependency-closure-tests-registration", "kind": "source", "reachability": "statically observed", "runtime_status": "not observed exercised"},
-    {"from": "tests/integration/local/download_fastqs/test_execute_download_fastqs_mixed_local.sh", "to": "tests/support/test_helpers.sh", "child": "download-fastqs-dependency-closure-tests-registration", "kind": "source", "reachability": "statically observed", "runtime_status": "not observed exercised"},
-    {"from": "tests/integration/parallel/download_fastqs/test_execute_download_fastqs_parallel.sh", "to": "tests/support/test_helpers.sh", "child": "download-fastqs-dependency-closure-tests-registration", "kind": "source", "reachability": "statically observed", "runtime_status": "not observed exercised"},
-    {"from": "tests/run_tests.sh", "to": "tests/contract/interfaces/test_download_fastqs_interface.sh", "child": "download-fastqs-dependency-closure-tests-registration", "kind": "test-only", "reachability": "statically observed", "runtime_status": "not observed exercised"},
-    {"from": "tests/run_tests.sh", "to": "tests/integration/local/download_fastqs/test_submit_download_fastqs_local.sh", "child": "download-fastqs-dependency-closure-tests-registration", "kind": "test-only", "reachability": "statically observed", "runtime_status": "not observed exercised"},
-    {"from": "tests/run_tests.sh", "to": "tests/integration/local/download_fastqs/test_execute_download_fastqs_se_local.sh", "child": "download-fastqs-dependency-closure-tests-registration", "kind": "test-only", "reachability": "statically observed", "runtime_status": "not observed exercised"},
-    {"from": "tests/run_tests.sh", "to": "tests/integration/local/download_fastqs/test_execute_download_fastqs_pe_local.sh", "child": "download-fastqs-dependency-closure-tests-registration", "kind": "test-only", "reachability": "statically observed", "runtime_status": "not observed exercised"},
-    {"from": "tests/run_tests.sh", "to": "tests/integration/local/download_fastqs/test_execute_download_fastqs_mixed_local.sh", "child": "download-fastqs-dependency-closure-tests-registration", "kind": "test-only", "reachability": "statically observed", "runtime_status": "not observed exercised"},
-    {"from": "tests/run_tests.sh", "to": "tests/integration/parallel/download_fastqs/test_execute_download_fastqs_parallel.sh", "child": "download-fastqs-dependency-closure-tests-registration", "kind": "test-only", "reachability": "statically observed", "runtime_status": "not observed exercised"},
-    {"from": "tests/run_tests.sh", "to": "tests/fixtures/download_fastqs/make.sh", "child": "download-fastqs-dependency-closure-tests-registration", "kind": "direct call", "reachability": "conditional", "runtime_status": "not observed exercised"},
-    {"from": "tests/fixtures/download_fastqs/make.sh", "to": "tests/support/fixture_helpers.sh", "child": "download-fastqs-dependency-closure-tests-registration", "kind": "source", "reachability": "statically observed", "runtime_status": "not observed exercised"},
-    {"from": "tests/contract/repository/test_runner_selection.sh", "to": "tests/run_tests.sh", "child": "download-fastqs-dependency-closure-tests-registration", "kind": "test-only", "reachability": "statically observed", "runtime_status": "not observed exercised"},
-    {"from": "tests/contract/repository/test_test_layout.sh", "to": "tests/fixtures/download_fastqs/make.sh", "child": "download-fastqs-dependency-closure-tests-registration", "kind": "test-only", "reachability": "statically observed", "runtime_status": "not observed exercised"},
-    {"from": "tests/contract/repository/test_cleanup_contract.sh", "to": "tests/support/clean_artifacts.sh", "child": "download-fastqs-dependency-closure-tests-registration", "kind": "test-only", "reachability": "statically observed", "runtime_status": "not observed exercised"},
-    {"from": "bin/execute_align_fastqs.sh", "to": "lib/bash/core/wrap_cmd.sh", "child": "download-fastqs-dependency-closure-runtime-production", "kind": "direct call", "reachability": "statically observed", "runtime_status": "unknown", "evidence_reference": "complete current run_jobs context calls get_submit_logs"},
-    {"from": "bin/execute_calculate_scaling_factor.sh", "to": "lib/bash/core/wrap_cmd.sh", "child": "download-fastqs-dependency-closure-runtime-production", "kind": "direct call", "reachability": "statically observed", "runtime_status": "unknown", "evidence_reference": "complete current run_jobs context calls get_submit_logs"},
-    {"from": "bin/execute_compute_signal.sh", "to": "lib/bash/core/wrap_cmd.sh", "child": "download-fastqs-dependency-closure-runtime-production", "kind": "direct call", "reachability": "statically observed", "runtime_status": "unknown", "evidence_reference": "complete current run_jobs context calls get_submit_logs"},
-    {"from": "bin/execute_filter_alignments.sh", "to": "lib/bash/core/wrap_cmd.sh", "child": "download-fastqs-dependency-closure-runtime-production", "kind": "direct call", "reachability": "statically observed", "runtime_status": "unknown", "evidence_reference": "complete current run_jobs context calls get_submit_logs"},
-    {"from": "bin/execute_trim_fastqs.sh", "to": "lib/bash/core/wrap_cmd.sh", "child": "download-fastqs-dependency-closure-runtime-production", "kind": "direct call", "reachability": "statically observed", "runtime_status": "unknown", "evidence_reference": "complete current run_jobs context calls get_submit_logs"}
+    {
+      "from": "bin/execute_download_fastqs.sh",
+      "to": "lib/bash/core/source_helpers.sh",
+      "child": "download-fastqs-dependency-closure-runtime-production",
+      "kind": "bootstrap source",
+      "reachability": "statically observed",
+      "runtime_status": "not observed exercised"
+    },
+    {
+      "from": "bin/submit_download_fastqs.sh",
+      "to": "lib/bash/help/help_submit_download_fastqs.sh",
+      "child": "download-fastqs-dependency-closure-runtime-production",
+      "kind": "bootstrap source",
+      "reachability": "conditional",
+      "runtime_status": "not observed exercised"
+    },
+    {
+      "from": "bin/submit_download_fastqs.sh",
+      "to": "lib/bash/core/source_helpers.sh",
+      "child": "download-fastqs-dependency-closure-runtime-production",
+      "kind": "bootstrap source",
+      "reachability": "statically observed",
+      "runtime_status": "not observed exercised"
+    },
+    {
+      "from": "lib/bash/core/source_helpers.sh",
+      "to": "lib/bash/core/check_source.sh",
+      "child": "download-fastqs-dependency-closure-runtime-production",
+      "kind": "source",
+      "reachability": "loaded only",
+      "runtime_status": "unknown"
+    },
+    {
+      "from": "lib/bash/core/source_helpers.sh",
+      "to": "lib/bash/core/check_args.sh",
+      "child": "download-fastqs-dependency-closure-runtime-production",
+      "kind": "source",
+      "reachability": "loaded only",
+      "runtime_status": "unknown"
+    },
+    {
+      "from": "lib/bash/core/source_helpers.sh",
+      "to": "lib/bash/core/format_outputs.sh",
+      "child": "download-fastqs-dependency-closure-runtime-production",
+      "kind": "source",
+      "reachability": "loaded only",
+      "runtime_status": "unknown"
+    },
+    {
+      "from": "lib/bash/core/source_helpers.sh",
+      "to": "lib/bash/core/check_env.sh",
+      "child": "download-fastqs-dependency-closure-runtime-production",
+      "kind": "source",
+      "reachability": "loaded only",
+      "runtime_status": "unknown"
+    },
+    {
+      "from": "lib/bash/core/source_helpers.sh",
+      "to": "lib/bash/core/check_inputs.sh",
+      "child": "download-fastqs-dependency-closure-runtime-production",
+      "kind": "source",
+      "reachability": "loaded only",
+      "runtime_status": "unknown"
+    },
+    {
+      "from": "lib/bash/core/source_helpers.sh",
+      "to": "lib/bash/core/check_numbers.sh",
+      "child": "download-fastqs-dependency-closure-runtime-production",
+      "kind": "source",
+      "reachability": "loaded only",
+      "runtime_status": "unknown"
+    },
+    {
+      "from": "lib/bash/core/source_helpers.sh",
+      "to": "lib/bash/core/handle_env.sh",
+      "child": "download-fastqs-dependency-closure-runtime-production",
+      "kind": "source",
+      "reachability": "loaded only",
+      "runtime_status": "unknown"
+    },
+    {
+      "from": "lib/bash/core/source_helpers.sh",
+      "to": "lib/bash/core/wrap_cmd.sh",
+      "child": "download-fastqs-dependency-closure-runtime-production",
+      "kind": "source",
+      "reachability": "loaded only",
+      "runtime_status": "unknown"
+    },
+    {
+      "from": "bin/execute_download_fastqs.sh",
+      "to": "bin/submit_download_fastqs.sh",
+      "child": "download-fastqs-dependency-closure-runtime-production",
+      "kind": "direct call",
+      "reachability": "conditional",
+      "runtime_status": "not observed exercised"
+    },
+    {
+      "from": "bin/execute_download_fastqs.sh",
+      "to": "lib/bash/core/check_args.sh",
+      "child": "download-fastqs-dependency-closure-runtime-production",
+      "kind": "transitive call",
+      "reachability": "conditional",
+      "runtime_status": "not observed exercised"
+    },
+    {
+      "from": "bin/execute_download_fastqs.sh",
+      "to": "lib/bash/core/check_env.sh",
+      "child": "download-fastqs-dependency-closure-runtime-production",
+      "kind": "transitive call",
+      "reachability": "conditional",
+      "runtime_status": "not observed exercised"
+    },
+    {
+      "from": "bin/execute_download_fastqs.sh",
+      "to": "lib/bash/core/check_inputs.sh",
+      "child": "download-fastqs-dependency-closure-runtime-production",
+      "kind": "transitive call",
+      "reachability": "conditional",
+      "runtime_status": "not observed exercised"
+    },
+    {
+      "from": "bin/execute_download_fastqs.sh",
+      "to": "lib/bash/core/check_numbers.sh",
+      "child": "download-fastqs-dependency-closure-runtime-production",
+      "kind": "transitive call",
+      "reachability": "conditional",
+      "runtime_status": "not observed exercised"
+    },
+    {
+      "from": "bin/execute_download_fastqs.sh",
+      "to": "lib/bash/core/format_outputs.sh",
+      "child": "download-fastqs-dependency-closure-runtime-production",
+      "kind": "transitive call",
+      "reachability": "conditional",
+      "runtime_status": "not observed exercised"
+    },
+    {
+      "from": "bin/execute_download_fastqs.sh",
+      "to": "lib/bash/core/handle_env.sh",
+      "child": "download-fastqs-dependency-closure-runtime-production",
+      "kind": "transitive call",
+      "reachability": "conditional",
+      "runtime_status": "not observed exercised"
+    },
+    {
+      "from": "bin/execute_download_fastqs.sh",
+      "to": "lib/bash/core/wrap_cmd.sh",
+      "child": "download-fastqs-dependency-closure-runtime-production",
+      "kind": "transitive call",
+      "reachability": "conditional",
+      "runtime_status": "not observed exercised"
+    },
+    {
+      "from": "bin/execute_download_fastqs.sh",
+      "to": "lib/bash/help/help_execute_download_fastqs.sh",
+      "child": "download-fastqs-dependency-closure-runtime-production",
+      "kind": "transitive call",
+      "reachability": "conditional",
+      "runtime_status": "not observed exercised"
+    },
+    {
+      "from": "bin/submit_download_fastqs.sh",
+      "to": "lib/bash/core/check_args.sh",
+      "child": "download-fastqs-dependency-closure-runtime-production",
+      "kind": "transitive call",
+      "reachability": "conditional",
+      "runtime_status": "not observed exercised"
+    },
+    {
+      "from": "bin/submit_download_fastqs.sh",
+      "to": "lib/bash/core/check_env.sh",
+      "child": "download-fastqs-dependency-closure-runtime-production",
+      "kind": "transitive call",
+      "reachability": "conditional",
+      "runtime_status": "not observed exercised"
+    },
+    {
+      "from": "bin/submit_download_fastqs.sh",
+      "to": "lib/bash/core/format_outputs.sh",
+      "child": "download-fastqs-dependency-closure-runtime-production",
+      "kind": "transitive call",
+      "reachability": "conditional",
+      "runtime_status": "not observed exercised"
+    },
+    {
+      "from": "tests/contract/interfaces/test_download_fastqs_interface.sh",
+      "to": "bin/execute_download_fastqs.sh",
+      "child": "download-fastqs-dependency-closure-tests-registration",
+      "kind": "test-only",
+      "reachability": "statically observed",
+      "runtime_status": "not observed exercised"
+    },
+    {
+      "from": "tests/contract/interfaces/test_download_fastqs_interface.sh",
+      "to": "bin/submit_download_fastqs.sh",
+      "child": "download-fastqs-dependency-closure-tests-registration",
+      "kind": "test-only",
+      "reachability": "statically observed",
+      "runtime_status": "not observed exercised"
+    },
+    {
+      "from": "tests/integration/local/download_fastqs/test_submit_download_fastqs_local.sh",
+      "to": "bin/submit_download_fastqs.sh",
+      "child": "download-fastqs-dependency-closure-tests-registration",
+      "kind": "test-only",
+      "reachability": "statically observed",
+      "runtime_status": "not observed exercised"
+    },
+    {
+      "from": "tests/integration/local/download_fastqs/test_execute_download_fastqs_se_local.sh",
+      "to": "bin/execute_download_fastqs.sh",
+      "child": "download-fastqs-dependency-closure-tests-registration",
+      "kind": "test-only",
+      "reachability": "statically observed",
+      "runtime_status": "not observed exercised"
+    },
+    {
+      "from": "tests/integration/local/download_fastqs/test_execute_download_fastqs_pe_local.sh",
+      "to": "bin/execute_download_fastqs.sh",
+      "child": "download-fastqs-dependency-closure-tests-registration",
+      "kind": "test-only",
+      "reachability": "statically observed",
+      "runtime_status": "not observed exercised"
+    },
+    {
+      "from": "tests/integration/local/download_fastqs/test_execute_download_fastqs_mixed_local.sh",
+      "to": "bin/execute_download_fastqs.sh",
+      "child": "download-fastqs-dependency-closure-tests-registration",
+      "kind": "test-only",
+      "reachability": "statically observed",
+      "runtime_status": "not observed exercised"
+    },
+    {
+      "from": "tests/integration/parallel/download_fastqs/test_execute_download_fastqs_parallel.sh",
+      "to": "bin/execute_download_fastqs.sh",
+      "child": "download-fastqs-dependency-closure-tests-registration",
+      "kind": "test-only",
+      "reachability": "statically observed",
+      "runtime_status": "not observed exercised"
+    },
+    {
+      "from": "tests/contract/interfaces/test_download_fastqs_interface.sh",
+      "to": "tests/support/test_helpers.sh",
+      "child": "download-fastqs-dependency-closure-tests-registration",
+      "kind": "source",
+      "reachability": "statically observed",
+      "runtime_status": "not observed exercised"
+    },
+    {
+      "from": "tests/integration/local/download_fastqs/test_submit_download_fastqs_local.sh",
+      "to": "tests/support/test_helpers.sh",
+      "child": "download-fastqs-dependency-closure-tests-registration",
+      "kind": "source",
+      "reachability": "statically observed",
+      "runtime_status": "not observed exercised"
+    },
+    {
+      "from": "tests/integration/local/download_fastqs/test_execute_download_fastqs_se_local.sh",
+      "to": "tests/support/test_helpers.sh",
+      "child": "download-fastqs-dependency-closure-tests-registration",
+      "kind": "source",
+      "reachability": "statically observed",
+      "runtime_status": "not observed exercised"
+    },
+    {
+      "from": "tests/integration/local/download_fastqs/test_execute_download_fastqs_pe_local.sh",
+      "to": "tests/support/test_helpers.sh",
+      "child": "download-fastqs-dependency-closure-tests-registration",
+      "kind": "source",
+      "reachability": "statically observed",
+      "runtime_status": "not observed exercised"
+    },
+    {
+      "from": "tests/integration/local/download_fastqs/test_execute_download_fastqs_mixed_local.sh",
+      "to": "tests/support/test_helpers.sh",
+      "child": "download-fastqs-dependency-closure-tests-registration",
+      "kind": "source",
+      "reachability": "statically observed",
+      "runtime_status": "not observed exercised"
+    },
+    {
+      "from": "tests/integration/parallel/download_fastqs/test_execute_download_fastqs_parallel.sh",
+      "to": "tests/support/test_helpers.sh",
+      "child": "download-fastqs-dependency-closure-tests-registration",
+      "kind": "source",
+      "reachability": "statically observed",
+      "runtime_status": "not observed exercised"
+    },
+    {
+      "from": "tests/run_tests.sh",
+      "to": "tests/contract/interfaces/test_download_fastqs_interface.sh",
+      "child": "download-fastqs-dependency-closure-tests-registration",
+      "kind": "test-only",
+      "reachability": "statically observed",
+      "runtime_status": "not observed exercised"
+    },
+    {
+      "from": "tests/run_tests.sh",
+      "to": "tests/integration/local/download_fastqs/test_submit_download_fastqs_local.sh",
+      "child": "download-fastqs-dependency-closure-tests-registration",
+      "kind": "test-only",
+      "reachability": "statically observed",
+      "runtime_status": "not observed exercised"
+    },
+    {
+      "from": "tests/run_tests.sh",
+      "to": "tests/integration/local/download_fastqs/test_execute_download_fastqs_se_local.sh",
+      "child": "download-fastqs-dependency-closure-tests-registration",
+      "kind": "test-only",
+      "reachability": "statically observed",
+      "runtime_status": "not observed exercised"
+    },
+    {
+      "from": "tests/run_tests.sh",
+      "to": "tests/integration/local/download_fastqs/test_execute_download_fastqs_pe_local.sh",
+      "child": "download-fastqs-dependency-closure-tests-registration",
+      "kind": "test-only",
+      "reachability": "statically observed",
+      "runtime_status": "not observed exercised"
+    },
+    {
+      "from": "tests/run_tests.sh",
+      "to": "tests/integration/local/download_fastqs/test_execute_download_fastqs_mixed_local.sh",
+      "child": "download-fastqs-dependency-closure-tests-registration",
+      "kind": "test-only",
+      "reachability": "statically observed",
+      "runtime_status": "not observed exercised"
+    },
+    {
+      "from": "tests/run_tests.sh",
+      "to": "tests/integration/parallel/download_fastqs/test_execute_download_fastqs_parallel.sh",
+      "child": "download-fastqs-dependency-closure-tests-registration",
+      "kind": "test-only",
+      "reachability": "statically observed",
+      "runtime_status": "not observed exercised"
+    },
+    {
+      "from": "tests/run_tests.sh",
+      "to": "tests/fixtures/download_fastqs/make.sh",
+      "child": "download-fastqs-dependency-closure-tests-registration",
+      "kind": "direct call",
+      "reachability": "conditional",
+      "runtime_status": "not observed exercised"
+    },
+    {
+      "from": "tests/fixtures/download_fastqs/make.sh",
+      "to": "tests/support/fixture_helpers.sh",
+      "child": "download-fastqs-dependency-closure-tests-registration",
+      "kind": "source",
+      "reachability": "statically observed",
+      "runtime_status": "not observed exercised"
+    },
+    {
+      "from": "tests/contract/repository/test_runner_selection.sh",
+      "to": "tests/run_tests.sh",
+      "child": "download-fastqs-dependency-closure-tests-registration",
+      "kind": "test-only",
+      "reachability": "statically observed",
+      "runtime_status": "not observed exercised"
+    },
+    {
+      "from": "tests/contract/repository/test_test_layout.sh",
+      "to": "tests/fixtures/download_fastqs/make.sh",
+      "child": "download-fastqs-dependency-closure-tests-registration",
+      "kind": "test-only",
+      "reachability": "statically observed",
+      "runtime_status": "not observed exercised"
+    },
+    {
+      "from": "tests/contract/repository/test_cleanup_contract.sh",
+      "to": "tests/support/clean_artifacts.sh",
+      "child": "download-fastqs-dependency-closure-tests-registration",
+      "kind": "test-only",
+      "reachability": "statically observed",
+      "runtime_status": "not observed exercised"
+    },
+    {
+      "from": "bin/execute_align_fastqs.sh",
+      "to": "lib/bash/core/wrap_cmd.sh",
+      "child": "download-fastqs-dependency-closure-runtime-production",
+      "kind": "direct call",
+      "reachability": "statically observed",
+      "runtime_status": "unknown",
+      "evidence_reference": "complete current run_jobs context calls get_submit_logs"
+    },
+    {
+      "from": "bin/execute_calculate_scaling_factor.sh",
+      "to": "lib/bash/core/wrap_cmd.sh",
+      "child": "download-fastqs-dependency-closure-runtime-production",
+      "kind": "direct call",
+      "reachability": "statically observed",
+      "runtime_status": "unknown",
+      "evidence_reference": "complete current run_jobs context calls get_submit_logs"
+    },
+    {
+      "from": "bin/execute_compute_signal.sh",
+      "to": "lib/bash/core/wrap_cmd.sh",
+      "child": "download-fastqs-dependency-closure-runtime-production",
+      "kind": "direct call",
+      "reachability": "statically observed",
+      "runtime_status": "unknown",
+      "evidence_reference": "complete current run_jobs context calls get_submit_logs"
+    },
+    {
+      "from": "bin/execute_filter_alignments.sh",
+      "to": "lib/bash/core/wrap_cmd.sh",
+      "child": "download-fastqs-dependency-closure-runtime-production",
+      "kind": "direct call",
+      "reachability": "statically observed",
+      "runtime_status": "unknown",
+      "evidence_reference": "complete current run_jobs context calls get_submit_logs"
+    },
+    {
+      "from": "bin/execute_trim_fastqs.sh",
+      "to": "lib/bash/core/wrap_cmd.sh",
+      "child": "download-fastqs-dependency-closure-runtime-production",
+      "kind": "direct call",
+      "reachability": "statically observed",
+      "runtime_status": "unknown",
+      "evidence_reference": "complete current run_jobs context calls get_submit_logs"
+    }
   ],
   "edge_requirements": [
-    {"name": "wrapper_roots_to_shared_runtime", "child": "download-fastqs-dependency-closure-runtime-production", "edges": [
-      {"from": "bin/execute_download_fastqs.sh", "to": "lib/bash/core/source_helpers.sh"},
-      {"from": "bin/execute_download_fastqs.sh", "to": "lib/bash/core/check_args.sh"},
-      {"from": "bin/execute_download_fastqs.sh", "to": "lib/bash/core/check_env.sh"},
-      {"from": "bin/execute_download_fastqs.sh", "to": "lib/bash/core/check_inputs.sh"},
-      {"from": "bin/execute_download_fastqs.sh", "to": "lib/bash/core/check_numbers.sh"},
-      {"from": "bin/execute_download_fastqs.sh", "to": "lib/bash/core/format_outputs.sh"},
-      {"from": "bin/execute_download_fastqs.sh", "to": "lib/bash/core/handle_env.sh"},
-      {"from": "bin/execute_download_fastqs.sh", "to": "lib/bash/core/wrap_cmd.sh"},
-      {"from": "bin/execute_download_fastqs.sh", "to": "lib/bash/help/help_execute_download_fastqs.sh"},
-      {"from": "bin/submit_download_fastqs.sh", "to": "lib/bash/help/help_submit_download_fastqs.sh"},
-      {"from": "bin/submit_download_fastqs.sh", "to": "lib/bash/core/source_helpers.sh"},
-      {"from": "bin/submit_download_fastqs.sh", "to": "lib/bash/core/check_args.sh"},
-      {"from": "bin/submit_download_fastqs.sh", "to": "lib/bash/core/check_env.sh"},
-      {"from": "bin/submit_download_fastqs.sh", "to": "lib/bash/core/format_outputs.sh"}
-    ]},
-    {"name": "download_tests_to_wrapper_roots", "child": "download-fastqs-dependency-closure-tests-registration", "edges": [
-      {"from": "tests/contract/interfaces/test_download_fastqs_interface.sh", "to": "bin/execute_download_fastqs.sh"},
-      {"from": "tests/contract/interfaces/test_download_fastqs_interface.sh", "to": "bin/submit_download_fastqs.sh"},
-      {"from": "tests/integration/local/download_fastqs/test_submit_download_fastqs_local.sh", "to": "bin/submit_download_fastqs.sh"},
-      {"from": "tests/integration/local/download_fastqs/test_execute_download_fastqs_se_local.sh", "to": "bin/execute_download_fastqs.sh"},
-      {"from": "tests/integration/local/download_fastqs/test_execute_download_fastqs_pe_local.sh", "to": "bin/execute_download_fastqs.sh"},
-      {"from": "tests/integration/local/download_fastqs/test_execute_download_fastqs_mixed_local.sh", "to": "bin/execute_download_fastqs.sh"},
-      {"from": "tests/integration/parallel/download_fastqs/test_execute_download_fastqs_parallel.sh", "to": "bin/execute_download_fastqs.sh"}
-    ]},
-    {"name": "download_tests_to_shared_test_infrastructure", "child": "download-fastqs-dependency-closure-tests-registration", "edges": [
-      {"from": "tests/contract/interfaces/test_download_fastqs_interface.sh", "to": "tests/support/test_helpers.sh"},
-      {"from": "tests/integration/local/download_fastqs/test_submit_download_fastqs_local.sh", "to": "tests/support/test_helpers.sh"},
-      {"from": "tests/integration/local/download_fastqs/test_execute_download_fastqs_se_local.sh", "to": "tests/support/test_helpers.sh"},
-      {"from": "tests/integration/local/download_fastqs/test_execute_download_fastqs_pe_local.sh", "to": "tests/support/test_helpers.sh"},
-      {"from": "tests/integration/local/download_fastqs/test_execute_download_fastqs_mixed_local.sh", "to": "tests/support/test_helpers.sh"},
-      {"from": "tests/integration/parallel/download_fastqs/test_execute_download_fastqs_parallel.sh", "to": "tests/support/test_helpers.sh"}
-    ]},
-    {"name": "runner_to_six_download_tests", "child": "download-fastqs-dependency-closure-tests-registration", "edges": [
-      {"from": "tests/run_tests.sh", "to": "tests/contract/interfaces/test_download_fastqs_interface.sh"},
-      {"from": "tests/run_tests.sh", "to": "tests/integration/local/download_fastqs/test_submit_download_fastqs_local.sh"},
-      {"from": "tests/run_tests.sh", "to": "tests/integration/local/download_fastqs/test_execute_download_fastqs_se_local.sh"},
-      {"from": "tests/run_tests.sh", "to": "tests/integration/local/download_fastqs/test_execute_download_fastqs_pe_local.sh"},
-      {"from": "tests/run_tests.sh", "to": "tests/integration/local/download_fastqs/test_execute_download_fastqs_mixed_local.sh"},
-      {"from": "tests/run_tests.sh", "to": "tests/integration/parallel/download_fastqs/test_execute_download_fastqs_parallel.sh"}
-    ]},
-    {"name": "fixture_and_runner_ownership", "child": "download-fastqs-dependency-closure-tests-registration", "edges": [
-      {"from": "tests/run_tests.sh", "to": "tests/fixtures/download_fastqs/make.sh"},
-      {"from": "tests/fixtures/download_fastqs/make.sh", "to": "tests/support/fixture_helpers.sh"},
-      {"from": "tests/contract/repository/test_runner_selection.sh", "to": "tests/run_tests.sh"},
-      {"from": "tests/contract/repository/test_test_layout.sh", "to": "tests/fixtures/download_fastqs/make.sh"},
-      {"from": "tests/contract/repository/test_cleanup_contract.sh", "to": "tests/support/clean_artifacts.sh"}
-    ]},
-    {"name": "get_submit_logs_current_callers", "child": "download-fastqs-dependency-closure-runtime-production", "edges": [
-      {"from": "bin/execute_align_fastqs.sh", "to": "lib/bash/core/wrap_cmd.sh"},
-      {"from": "bin/execute_calculate_scaling_factor.sh", "to": "lib/bash/core/wrap_cmd.sh"},
-      {"from": "bin/execute_compute_signal.sh", "to": "lib/bash/core/wrap_cmd.sh"},
-      {"from": "bin/execute_filter_alignments.sh", "to": "lib/bash/core/wrap_cmd.sh"},
-      {"from": "bin/execute_trim_fastqs.sh", "to": "lib/bash/core/wrap_cmd.sh"}
-    ]}
+    {
+      "name": "wrapper_roots_to_shared_runtime",
+      "child": "download-fastqs-dependency-closure-runtime-production",
+      "edges": [
+        {
+          "from": "bin/execute_download_fastqs.sh",
+          "to": "lib/bash/core/source_helpers.sh"
+        },
+        {
+          "from": "bin/execute_download_fastqs.sh",
+          "to": "lib/bash/core/check_args.sh"
+        },
+        {
+          "from": "bin/execute_download_fastqs.sh",
+          "to": "lib/bash/core/check_env.sh"
+        },
+        {
+          "from": "bin/execute_download_fastqs.sh",
+          "to": "lib/bash/core/check_inputs.sh"
+        },
+        {
+          "from": "bin/execute_download_fastqs.sh",
+          "to": "lib/bash/core/check_numbers.sh"
+        },
+        {
+          "from": "bin/execute_download_fastqs.sh",
+          "to": "lib/bash/core/format_outputs.sh"
+        },
+        {
+          "from": "bin/execute_download_fastqs.sh",
+          "to": "lib/bash/core/handle_env.sh"
+        },
+        {
+          "from": "bin/execute_download_fastqs.sh",
+          "to": "lib/bash/core/wrap_cmd.sh"
+        },
+        {
+          "from": "bin/execute_download_fastqs.sh",
+          "to": "lib/bash/help/help_execute_download_fastqs.sh"
+        },
+        {
+          "from": "bin/submit_download_fastqs.sh",
+          "to": "lib/bash/help/help_submit_download_fastqs.sh"
+        },
+        {
+          "from": "bin/submit_download_fastqs.sh",
+          "to": "lib/bash/core/source_helpers.sh"
+        },
+        {
+          "from": "bin/submit_download_fastqs.sh",
+          "to": "lib/bash/core/check_args.sh"
+        },
+        {
+          "from": "bin/submit_download_fastqs.sh",
+          "to": "lib/bash/core/check_env.sh"
+        },
+        {
+          "from": "bin/submit_download_fastqs.sh",
+          "to": "lib/bash/core/format_outputs.sh"
+        }
+      ]
+    },
+    {
+      "name": "download_tests_to_wrapper_roots",
+      "child": "download-fastqs-dependency-closure-tests-registration",
+      "edges": [
+        {
+          "from": "tests/contract/interfaces/test_download_fastqs_interface.sh",
+          "to": "bin/execute_download_fastqs.sh"
+        },
+        {
+          "from": "tests/contract/interfaces/test_download_fastqs_interface.sh",
+          "to": "bin/submit_download_fastqs.sh"
+        },
+        {
+          "from": "tests/integration/local/download_fastqs/test_submit_download_fastqs_local.sh",
+          "to": "bin/submit_download_fastqs.sh"
+        },
+        {
+          "from": "tests/integration/local/download_fastqs/test_execute_download_fastqs_se_local.sh",
+          "to": "bin/execute_download_fastqs.sh"
+        },
+        {
+          "from": "tests/integration/local/download_fastqs/test_execute_download_fastqs_pe_local.sh",
+          "to": "bin/execute_download_fastqs.sh"
+        },
+        {
+          "from": "tests/integration/local/download_fastqs/test_execute_download_fastqs_mixed_local.sh",
+          "to": "bin/execute_download_fastqs.sh"
+        },
+        {
+          "from": "tests/integration/parallel/download_fastqs/test_execute_download_fastqs_parallel.sh",
+          "to": "bin/execute_download_fastqs.sh"
+        }
+      ]
+    },
+    {
+      "name": "download_tests_to_shared_test_infrastructure",
+      "child": "download-fastqs-dependency-closure-tests-registration",
+      "edges": [
+        {
+          "from": "tests/contract/interfaces/test_download_fastqs_interface.sh",
+          "to": "tests/support/test_helpers.sh"
+        },
+        {
+          "from": "tests/integration/local/download_fastqs/test_submit_download_fastqs_local.sh",
+          "to": "tests/support/test_helpers.sh"
+        },
+        {
+          "from": "tests/integration/local/download_fastqs/test_execute_download_fastqs_se_local.sh",
+          "to": "tests/support/test_helpers.sh"
+        },
+        {
+          "from": "tests/integration/local/download_fastqs/test_execute_download_fastqs_pe_local.sh",
+          "to": "tests/support/test_helpers.sh"
+        },
+        {
+          "from": "tests/integration/local/download_fastqs/test_execute_download_fastqs_mixed_local.sh",
+          "to": "tests/support/test_helpers.sh"
+        },
+        {
+          "from": "tests/integration/parallel/download_fastqs/test_execute_download_fastqs_parallel.sh",
+          "to": "tests/support/test_helpers.sh"
+        }
+      ]
+    },
+    {
+      "name": "runner_to_six_download_tests",
+      "child": "download-fastqs-dependency-closure-tests-registration",
+      "edges": [
+        {
+          "from": "tests/run_tests.sh",
+          "to": "tests/contract/interfaces/test_download_fastqs_interface.sh"
+        },
+        {
+          "from": "tests/run_tests.sh",
+          "to": "tests/integration/local/download_fastqs/test_submit_download_fastqs_local.sh"
+        },
+        {
+          "from": "tests/run_tests.sh",
+          "to": "tests/integration/local/download_fastqs/test_execute_download_fastqs_se_local.sh"
+        },
+        {
+          "from": "tests/run_tests.sh",
+          "to": "tests/integration/local/download_fastqs/test_execute_download_fastqs_pe_local.sh"
+        },
+        {
+          "from": "tests/run_tests.sh",
+          "to": "tests/integration/local/download_fastqs/test_execute_download_fastqs_mixed_local.sh"
+        },
+        {
+          "from": "tests/run_tests.sh",
+          "to": "tests/integration/parallel/download_fastqs/test_execute_download_fastqs_parallel.sh"
+        }
+      ]
+    },
+    {
+      "name": "fixture_and_runner_ownership",
+      "child": "download-fastqs-dependency-closure-tests-registration",
+      "edges": [
+        {
+          "from": "tests/run_tests.sh",
+          "to": "tests/fixtures/download_fastqs/make.sh"
+        },
+        {
+          "from": "tests/fixtures/download_fastqs/make.sh",
+          "to": "tests/support/fixture_helpers.sh"
+        },
+        {
+          "from": "tests/contract/repository/test_runner_selection.sh",
+          "to": "tests/run_tests.sh"
+        },
+        {
+          "from": "tests/contract/repository/test_test_layout.sh",
+          "to": "tests/fixtures/download_fastqs/make.sh"
+        },
+        {
+          "from": "tests/contract/repository/test_cleanup_contract.sh",
+          "to": "tests/support/clean_artifacts.sh"
+        }
+      ]
+    },
+    {
+      "name": "get_submit_logs_current_callers",
+      "child": "download-fastqs-dependency-closure-runtime-production",
+      "edges": [
+        {
+          "from": "bin/execute_align_fastqs.sh",
+          "to": "lib/bash/core/wrap_cmd.sh"
+        },
+        {
+          "from": "bin/execute_calculate_scaling_factor.sh",
+          "to": "lib/bash/core/wrap_cmd.sh"
+        },
+        {
+          "from": "bin/execute_compute_signal.sh",
+          "to": "lib/bash/core/wrap_cmd.sh"
+        },
+        {
+          "from": "bin/execute_filter_alignments.sh",
+          "to": "lib/bash/core/wrap_cmd.sh"
+        },
+        {
+          "from": "bin/execute_trim_fastqs.sh",
+          "to": "lib/bash/core/wrap_cmd.sh"
+        }
+      ]
+    }
   ],
   "adapter_limitations": [
-    {"rule_id": "EVIDENCE.SHELL.UNITS", "adapter": "top-level shell semantic-unit renderer", "limitation": "Recognizes top-level 'function name() {' blocks, tests standalone-brace endpoint candidates with 'bash -n', and preserves intervening top-level regions; it is not a general shell parser.", "children": ["download-fastqs-dependency-closure-runtime-production", "download-fastqs-dependency-closure-tests-registration"]},
-    {"rule_id": "SHELL.LINE_LENGTH", "adapter": "existing shell line-length checker", "limitation": "Repository coverage is warning-only advisory and is not strict enforcement for this package.", "children": ["download-fastqs-dependency-closure-runtime-production", "download-fastqs-dependency-closure-tests-registration"]},
-    {"rule_id": "DOCUMENTATION.SEMANTICS", "adapter": "semantic review", "limitation": "Prose-only heredoc or Markdown reflow and broad public-function documentation remain semantic-review-only.", "children": ["download-fastqs-dependency-closure-runtime-production", "download-fastqs-dependency-closure-tests-registration"]},
-    {"rule_id": "DEPENDENCY.RUNTIME", "adapter": "declarative dependency edges", "limitation": "Static and loaded-only classifications do not establish runtime exercise; runtime status remains separately recorded.", "children": ["download-fastqs-dependency-closure-runtime-production", "download-fastqs-dependency-closure-tests-registration"]}
+    {
+      "rule_id": "EVIDENCE.SHELL.UNITS",
+      "adapter": "top-level shell semantic-unit renderer",
+      "limitation": "Recognizes top-level 'function name() {' blocks, tests standalone-brace endpoint candidates with 'bash -n', and preserves intervening top-level regions; it is not a general shell parser.",
+      "children": [
+        "download-fastqs-dependency-closure-runtime-production",
+        "download-fastqs-dependency-closure-tests-registration"
+      ]
+    },
+    {
+      "rule_id": "SHELL.LINE_LENGTH",
+      "adapter": "existing shell line-length checker",
+      "limitation": "Repository coverage is warning-only advisory and is not strict enforcement for this package.",
+      "children": [
+        "download-fastqs-dependency-closure-runtime-production",
+        "download-fastqs-dependency-closure-tests-registration"
+      ]
+    },
+    {
+      "rule_id": "DOCUMENTATION.SEMANTICS",
+      "adapter": "semantic review",
+      "limitation": "Prose-only heredoc or Markdown reflow and broad public-function documentation remain semantic-review-only.",
+      "children": [
+        "download-fastqs-dependency-closure-runtime-production",
+        "download-fastqs-dependency-closure-tests-registration"
+      ]
+    },
+    {
+      "rule_id": "DEPENDENCY.RUNTIME",
+      "adapter": "declarative dependency edges",
+      "limitation": "Static and loaded-only classifications do not establish runtime exercise; runtime status remains separately recorded.",
+      "children": [
+        "download-fastqs-dependency-closure-runtime-production",
+        "download-fastqs-dependency-closure-tests-registration"
+      ]
+    }
   ]
 }

@@ -17,9 +17,7 @@
     "checker_assignments"
   ],
   "properties": {
-    "schema_version": {
-      "const": 3
-    },
+    "schema_version": {"const": 3},
     "parameter_occurrence_dispositions": {
       "type": "array",
       "minItems": 21,
@@ -31,7 +29,13 @@
           "path": {"$ref": "#/$defs/nonemptyString"},
           "symbol": {"$ref": "#/$defs/nonemptyString"},
           "parameter": {"$ref": "#/$defs/nonemptyString"},
-          "disposition": {"enum": ["enrolled_member", "non_applicable_same_name", "unresolved_review_candidate"]}
+          "disposition": {
+            "enum": [
+              "enrolled_member",
+              "non_applicable_same_name",
+              "unresolved_review_candidate"
+            ]
+          }
         },
         "additionalProperties": false
       }
@@ -39,9 +43,7 @@
     "surfaces": {
       "type": "array",
       "minItems": 1,
-      "items": {
-        "$ref": "#/$defs/surface"
-      }
+      "items": {"$ref": "#/$defs/surface"}
     },
     "token_quoting": {
       "type": "object",
@@ -58,13 +60,9 @@
           "type": "array",
           "minItems": 2,
           "uniqueItems": true,
-          "items": {
-            "enum": ["python", "shell"]
-          }
+          "items": {"enum": ["python", "shell"]}
         },
-        "included_contexts": {
-          "const": ["ordinary_explanatory_prose"]
-        },
+        "included_contexts": {"const": ["ordinary_explanatory_prose"]},
         "included_objects": {
           "type": "array",
           "minItems": 1,
@@ -93,12 +91,8 @@
             ]
           }
         },
-        "ambiguous": {
-          "const": "human_review"
-        },
-        "automatic_rewrite": {
-          "const": false
-        }
+        "ambiguous": {"const": "human_review"},
+        "automatic_rewrite": {"const": false}
       },
       "additionalProperties": false
     },
@@ -125,54 +119,36 @@
     "parameter_families": {
       "type": "array",
       "minItems": 1,
-      "items": {
-        "$ref": "#/$defs/parameterFamily"
-      }
+      "items": {"$ref": "#/$defs/parameterFamily"}
     },
     "examples": {
       "type": "array",
       "minItems": 1,
-      "items": {
-        "$ref": "#/$defs/examplesDisposition"
-      }
+      "items": {"$ref": "#/$defs/examplesDisposition"}
     },
     "option_realizations": {
       "type": "array",
       "minItems": 1,
-      "items": {
-        "$ref": "#/$defs/optionRealization"
-      }
+      "items": {"$ref": "#/$defs/optionRealization"}
     },
     "format_vocabulary": {
       "type": "array",
-      "items": {
-        "$ref": "#/$defs/formatVocabulary"
-      }
+      "items": {"$ref": "#/$defs/formatVocabulary"}
     },
     "checker_consumers": {
       "type": "array",
       "minItems": 1,
-      "items": {
-        "$ref": "#/$defs/checkerConsumer"
-      }
+      "items": {"$ref": "#/$defs/checkerConsumer"}
     },
     "checker_assignments": {
       "type": "array",
       "minItems": 1,
-      "items": {
-        "$ref": "#/$defs/checkerAssignment"
-      }
+      "items": {"$ref": "#/$defs/checkerAssignment"}
     }
   },
   "$defs": {
-    "nonemptyString": {
-      "type": "string",
-      "minLength": 1
-    },
-    "sha256": {
-      "type": "string",
-      "pattern": "^[0-9a-f]{64}$"
-    },
+    "nonemptyString": {"type": "string", "minLength": 1},
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
     "surface": {
       "type": "object",
       "required": [
@@ -190,28 +166,18 @@
         "id": {"$ref": "#/$defs/nonemptyString"},
         "path": {"$ref": "#/$defs/nonemptyString"},
         "symbol": {"$ref": "#/$defs/nonemptyString"},
-        "language": {
-          "enum": ["python", "shell", "markdown"]
-        },
+        "language": {"enum": ["python", "shell", "markdown"]},
         "kind": {
-          "enum": [
-            "installed_help",
-            "callable_documentation",
-            "public_design"
-          ]
+          "enum": ["installed_help", "callable_documentation", "public_design"]
         },
         "audience": {
           "enum": ["command_user", "python_caller", "design_reviewer"]
         },
-        "availability": {
-          "enum": ["installed", "public_repository"]
-        },
+        "availability": {"enum": ["installed", "public_repository"]},
         "required_runtime_facts": {
           "enum": ["complete", "direct_call_contract", "extended_derivation"]
         },
-        "status": {
-          "enum": ["accepted_pilot", "registered"]
-        }
+        "status": {"enum": ["accepted_pilot", "registered"]}
       },
       "additionalProperties": false
     },
@@ -271,44 +237,25 @@
       "properties": {
         "id": {"$ref": "#/$defs/nonemptyString"},
         "parameter": {"$ref": "#/$defs/nonemptyString"},
-        "canonical_core": {
-          "type": ["string", "null"]
-        },
+        "canonical_core": {"type": ["string", "null"]},
         "members": {
           "type": "array",
-          "items": {
-            "$ref": "#/$defs/familyMember"
-          }
+          "items": {"$ref": "#/$defs/familyMember"}
         },
         "local_meanings": {
           "type": "array",
-          "items": {
-            "$ref": "#/$defs/localMeaning"
-          }
+          "items": {"$ref": "#/$defs/localMeaning"}
         },
-        "status": {
-          "enum": ["registered_shared", "non_applicable_same_name"]
-        }
+        "status": {"enum": ["registered_shared", "non_applicable_same_name"]}
       },
       "allOf": [
         {
-          "if": {
-            "properties": {
-              "status": {"const": "registered_shared"}
-            }
-          },
+          "if": {"properties": {"status": {"const": "registered_shared"}}},
           "then": {
             "properties": {
-              "canonical_core": {
-                "type": "string",
-                "minLength": 1
-              },
-              "members": {
-                "minItems": 1
-              },
-              "local_meanings": {
-                "maxItems": 0
-              }
+              "canonical_core": {"type": "string", "minLength": 1},
+              "members": {"minItems": 1},
+              "local_meanings": {"maxItems": 0}
             }
           },
           "else": {
@@ -352,9 +299,7 @@
         "representation_owner": {
           "enum": ["HELP.EXAMPLES", "PY.DOCSTRING.NUMPY"]
         },
-        "lifecycle": {
-          "enum": ["active_enforced", "deferred_migration"]
-        },
+        "lifecycle": {"enum": ["active_enforced", "deferred_migration"]},
         "deferred_record": {
           "type": ["string", "null"],
           "pattern": "^S3-[A-Z]+-[0-9]{3}$"
@@ -362,24 +307,13 @@
         "disposition": {
           "enum": ["required_two", "required_one", "omitted_trivial"]
         },
-        "minimum_count": {
-          "type": "integer",
-          "minimum": 0,
-          "maximum": 2
-        },
-        "existing_example_count": {
-          "type": "integer",
-          "minimum": 0
-        },
+        "minimum_count": {"type": "integer", "minimum": 0, "maximum": 2},
+        "existing_example_count": {"type": "integer", "minimum": 0},
         "example_fingerprints": {
           "type": "array",
-          "items": {
-            "$ref": "#/$defs/sha256"
-          }
+          "items": {"$ref": "#/$defs/sha256"}
         },
-        "preservation": {
-          "const": "exact"
-        },
+        "preservation": {"const": "exact"},
         "authority": {
           "enum": [
             "accepted_phase_a_b",
@@ -396,9 +330,7 @@
             }
           },
           "then": {
-            "properties": {
-              "representation_owner": {"const": "HELP.EXAMPLES"}
-            }
+            "properties": {"representation_owner": {"const": "HELP.EXAMPLES"}}
           }
         },
         {
@@ -414,16 +346,8 @@
           }
         },
         {
-          "if": {
-            "properties": {
-              "lifecycle": {"const": "active_enforced"}
-            }
-          },
-          "then": {
-            "properties": {
-              "deferred_record": {"type": "null"}
-            }
-          },
+          "if": {"properties": {"lifecycle": {"const": "active_enforced"}}},
+          "then": {"properties": {"deferred_record": {"type": "null"}}},
           "else": {
             "properties": {
               "deferred_record": {"type": "string"},
@@ -440,9 +364,7 @@
         {
           "type": "array",
           "uniqueItems": true,
-          "items": {
-            "$ref": "#/$defs/nonemptyString"
-          }
+          "items": {"$ref": "#/$defs/nonemptyString"}
         },
         {
           "type": "object",
@@ -459,16 +381,12 @@
       "type": "object",
       "required": ["kind", "members"],
       "properties": {
-        "kind": {
-          "enum": ["adjacent", "contiguous", "same_group"]
-        },
+        "kind": {"enum": ["adjacent", "contiguous", "same_group"]},
         "members": {
           "type": "array",
           "minItems": 2,
           "uniqueItems": true,
-          "items": {
-            "$ref": "#/$defs/nonemptyString"
-          }
+          "items": {"$ref": "#/$defs/nonemptyString"}
         }
       },
       "additionalProperties": false
@@ -489,23 +407,15 @@
       ],
       "properties": {
         "surface_id": {"$ref": "#/$defs/nonemptyString"},
-        "language": {
-          "enum": ["python", "shell"]
-        },
-        "status": {
-          "enum": ["accepted_pilot", "registered"]
-        },
+        "language": {"enum": ["python", "shell"]},
+        "status": {"enum": ["accepted_pilot", "registered"]},
         "logical_order": {
           "type": "array",
           "minItems": 1,
           "uniqueItems": true,
-          "items": {
-            "$ref": "#/$defs/nonemptyString"
-          }
+          "items": {"$ref": "#/$defs/nonemptyString"}
         },
-        "roles_reviewed": {
-          "const": true
-        },
+        "roles_reviewed": {"const": true},
         "roles": {
           "type": "object",
           "minProperties": 1,
@@ -561,9 +471,7 @@
         },
         "relationships": {
           "type": "array",
-          "items": {
-            "$ref": "#/$defs/relationship"
-          }
+          "items": {"$ref": "#/$defs/relationship"}
         },
         "adapters": {
           "type": "object",
@@ -587,21 +495,14 @@
               "items": {"$ref": "#/$defs/nonemptyString"}
             },
             "reporting": {"$ref": "#/$defs/nonemptyString"},
-            "reporting_symbol": {
-              "type": ["string", "null"]
-            },
+            "reporting_symbol": {"type": ["string", "null"]},
             "reporting_probes": {
               "type": "array",
-              "items": {
-                "type": "array",
-                "items": {"type": "string"}
-              }
+              "items": {"type": "array", "items": {"type": "string"}}
             },
             "reporting_call_arguments": {
               "type": "array",
-              "items": {
-                "$ref": "#/$defs/reportingCallArgument"
-              }
+              "items": {"$ref": "#/$defs/reportingCallArgument"}
             }
           },
           "additionalProperties": false
@@ -614,17 +515,13 @@
         {
           "type": "object",
           "required": ["source"],
-          "properties": {
-            "source": {"const": "parsed_args"}
-          },
+          "properties": {"source": {"const": "parsed_args"}},
           "additionalProperties": false
         },
         {
           "type": "object",
           "required": ["literal"],
-          "properties": {
-            "literal": true
-          },
+          "properties": {"literal": true},
           "additionalProperties": false
         }
       ]
@@ -645,9 +542,7 @@
       "properties": {
         "surface_id": {"$ref": "#/$defs/nonemptyString"},
         "parameter": {"$ref": "#/$defs/nonemptyString"},
-        "language": {
-          "enum": ["python", "shell"]
-        },
+        "language": {"enum": ["python", "shell"]},
         "displayed_choices": {
           "type": "array",
           "minItems": 1,

@@ -16,13 +16,34 @@
   "targets": [
     {"path": "bin/execute_download_fastqs.sh", "role": "primary"},
     {"path": "bin/submit_download_fastqs.sh", "role": "primary"},
-    {"path": "lib/bash/help/help_execute_download_fastqs.sh", "role": "primary"},
-    {"path": "lib/bash/help/help_submit_download_fastqs.sh", "role": "primary"},
-    {"path": "tests/contract/interfaces/test_download_fastqs_interface.sh", "role": "supporting"},
-    {"path": "tests/integration/local/download_fastqs/test_execute_download_fastqs_se_local.sh", "role": "supporting"},
-    {"path": "tests/integration/local/download_fastqs/test_execute_download_fastqs_pe_local.sh", "role": "supporting"},
-    {"path": "tests/integration/local/download_fastqs/test_execute_download_fastqs_mixed_local.sh", "role": "supporting"},
-    {"path": "tests/integration/parallel/download_fastqs/test_execute_download_fastqs_parallel.sh", "role": "supporting"},
+    {
+      "path": "lib/bash/help/help_execute_download_fastqs.sh",
+      "role": "primary"
+    },
+    {
+      "path": "lib/bash/help/help_submit_download_fastqs.sh",
+      "role": "primary"
+    },
+    {
+      "path": "tests/contract/interfaces/test_download_fastqs_interface.sh",
+      "role": "supporting"
+    },
+    {
+      "path": "tests/integration/local/download_fastqs/test_execute_download_fastqs_se_local.sh",
+      "role": "supporting"
+    },
+    {
+      "path": "tests/integration/local/download_fastqs/test_execute_download_fastqs_pe_local.sh",
+      "role": "supporting"
+    },
+    {
+      "path": "tests/integration/local/download_fastqs/test_execute_download_fastqs_mixed_local.sh",
+      "role": "supporting"
+    },
+    {
+      "path": "tests/integration/parallel/download_fastqs/test_execute_download_fastqs_parallel.sh",
+      "role": "supporting"
+    },
     {
       "path": "tests/integration/local/download_fastqs/test_submit_download_fastqs_local.sh",
       "role": "supporting",

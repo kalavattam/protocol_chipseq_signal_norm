@@ -5,46 +5,19 @@
   "captured_status_digest": "sha256:fb47e7a14ec9fcb2d3e4f6ac68b46a2b881c457059ebfd19ad60556e86805185",
   "authored_path_count": 184,
   "paths": [
-    {
-      "path": "README.md",
-      "initial_git_status": " M"
-    },
-    {
-      "path": "docs/dev/parse_metadata_siqchip.md",
-      "initial_git_status": " M"
-    },
-    {
-      "path": "docs/style/help.md",
-      "initial_git_status": " M"
-    },
-    {
-      "path": "docs/style/python.md",
-      "initial_git_status": " M"
-    },
-    {
-      "path": "docs/style/shell.md",
-      "initial_git_status": " M"
-    },
-    {
-      "path": "install/envs/env_protocol.yml",
-      "initial_git_status": " M"
-    },
-    {
-      "path": "install/scripts/install_atria.sh",
-      "initial_git_status": " M"
-    },
-    {
-      "path": "install/scripts/install_envs.sh",
-      "initial_git_status": " M"
-    },
+    {"path": "README.md", "initial_git_status": " M"},
+    {"path": "docs/dev/parse_metadata_siqchip.md", "initial_git_status": " M"},
+    {"path": "docs/style/help.md", "initial_git_status": " M"},
+    {"path": "docs/style/python.md", "initial_git_status": " M"},
+    {"path": "docs/style/shell.md", "initial_git_status": " M"},
+    {"path": "install/envs/env_protocol.yml", "initial_git_status": " M"},
+    {"path": "install/scripts/install_atria.sh", "initial_git_status": " M"},
+    {"path": "install/scripts/install_envs.sh", "initial_git_status": " M"},
     {
       "path": "install/scripts/install_envs_entrypoint.sh",
       "initial_git_status": " M"
     },
-    {
-      "path": "scripts/add_coeffs_namespaced.py",
-      "initial_git_status": " M"
-    },
+    {"path": "scripts/add_coeffs_namespaced.py", "initial_git_status": " M"},
     {
       "path": "scripts/calculate_scaling_factor_siqchip.py",
       "initial_git_status": " M"
@@ -57,94 +30,37 @@
       "path": "scripts/combine_parts_scaling_factor.sh",
       "initial_git_status": " M"
     },
-    {
-      "path": "scripts/compress_remove_files.sh",
-      "initial_git_status": " M"
-    },
-    {
-      "path": "scripts/compute_input_floor.py",
-      "initial_git_status": " M"
-    },
-    {
-      "path": "scripts/compute_pseudo.py",
-      "initial_git_status": " M"
-    },
-    {
-      "path": "scripts/compute_signal.py",
-      "initial_git_status": " M"
-    },
-    {
-      "path": "scripts/compute_signal_ratio.py",
-      "initial_git_status": " M"
-    },
-    {
-      "path": "scripts/execute_align_fastqs.sh",
-      "initial_git_status": " M"
-    },
+    {"path": "scripts/compress_remove_files.sh", "initial_git_status": " M"},
+    {"path": "scripts/compute_input_floor.py", "initial_git_status": " M"},
+    {"path": "scripts/compute_pseudo.py", "initial_git_status": " M"},
+    {"path": "scripts/compute_signal.py", "initial_git_status": " M"},
+    {"path": "scripts/compute_signal_ratio.py", "initial_git_status": " M"},
+    {"path": "scripts/execute_align_fastqs.sh", "initial_git_status": " M"},
     {
       "path": "scripts/execute_calculate_scaling_factor.sh",
       "initial_git_status": " M"
     },
-    {
-      "path": "scripts/execute_compute_signal.sh",
-      "initial_git_status": " M"
-    },
-    {
-      "path": "scripts/execute_download_fastqs.sh",
-      "initial_git_status": " M"
-    },
+    {"path": "scripts/execute_compute_signal.sh", "initial_git_status": " M"},
+    {"path": "scripts/execute_download_fastqs.sh", "initial_git_status": " M"},
     {
       "path": "scripts/execute_filter_alignments.sh",
       "initial_git_status": " M"
     },
-    {
-      "path": "scripts/execute_filter_bams.sh",
-      "initial_git_status": " M"
-    },
-    {
-      "path": "scripts/execute_filter_crams.sh",
-      "initial_git_status": " M"
-    },
-    {
-      "path": "scripts/execute_trim_fastqs.sh",
-      "initial_git_status": " M"
-    },
-    {
-      "path": "scripts/find_files.sh",
-      "initial_git_status": " M"
-    },
-    {
-      "path": "scripts/functions/align_fastqs.sh",
-      "initial_git_status": " M"
-    },
+    {"path": "scripts/execute_filter_bams.sh", "initial_git_status": " M"},
+    {"path": "scripts/execute_filter_crams.sh", "initial_git_status": " M"},
+    {"path": "scripts/execute_trim_fastqs.sh", "initial_git_status": " M"},
+    {"path": "scripts/find_files.sh", "initial_git_status": " M"},
+    {"path": "scripts/functions/align_fastqs.sh", "initial_git_status": " M"},
     {
       "path": "scripts/functions/calculate_scaling_factor.sh",
       "initial_git_status": " M"
     },
-    {
-      "path": "scripts/functions/check_args.sh",
-      "initial_git_status": " M"
-    },
-    {
-      "path": "scripts/functions/check_env.sh",
-      "initial_git_status": " M"
-    },
-    {
-      "path": "scripts/functions/check_inputs.sh",
-      "initial_git_status": " M"
-    },
-    {
-      "path": "scripts/functions/check_numbers.sh",
-      "initial_git_status": " M"
-    },
-    {
-      "path": "scripts/functions/check_source.sh",
-      "initial_git_status": " M"
-    },
-    {
-      "path": "scripts/functions/check_unity.sh",
-      "initial_git_status": " M"
-    },
+    {"path": "scripts/functions/check_args.sh", "initial_git_status": " M"},
+    {"path": "scripts/functions/check_env.sh", "initial_git_status": " M"},
+    {"path": "scripts/functions/check_inputs.sh", "initial_git_status": " M"},
+    {"path": "scripts/functions/check_numbers.sh", "initial_git_status": " M"},
+    {"path": "scripts/functions/check_source.sh", "initial_git_status": " M"},
+    {"path": "scripts/functions/check_unity.sh", "initial_git_status": " M"},
     {
       "path": "scripts/functions/construct_find.sh",
       "initial_git_status": " M"
@@ -153,22 +69,13 @@
       "path": "scripts/functions/filter_alignment.sh",
       "initial_git_status": " M"
     },
-    {
-      "path": "scripts/functions/filter_bam.sh",
-      "initial_git_status": " M"
-    },
-    {
-      "path": "scripts/functions/filter_cram.sh",
-      "initial_git_status": " M"
-    },
+    {"path": "scripts/functions/filter_bam.sh", "initial_git_status": " M"},
+    {"path": "scripts/functions/filter_cram.sh", "initial_git_status": " M"},
     {
       "path": "scripts/functions/format_outputs.sh",
       "initial_git_status": " M"
     },
-    {
-      "path": "scripts/functions/handle_env.sh",
-      "initial_git_status": " M"
-    },
+    {"path": "scripts/functions/handle_env.sh", "initial_git_status": " M"},
     {
       "path": "scripts/functions/handle_exit_interactive.sh",
       "initial_git_status": " M"
@@ -265,10 +172,7 @@
       "path": "scripts/functions/manage_parallel.sh",
       "initial_git_status": " M"
     },
-    {
-      "path": "scripts/functions/manage_slurm.sh",
-      "initial_git_status": " M"
-    },
+    {"path": "scripts/functions/manage_slurm.sh", "initial_git_status": " M"},
     {
       "path": "scripts/functions/populate_array_empty.sh",
       "initial_git_status": " M"
@@ -289,114 +193,48 @@
       "path": "scripts/functions/process_tables.sh",
       "initial_git_status": " M"
     },
-    {
-      "path": "scripts/functions/run_python.sh",
-      "initial_git_status": " M"
-    },
+    {"path": "scripts/functions/run_python.sh", "initial_git_status": " M"},
     {
       "path": "scripts/functions/source_helpers.sh",
       "initial_git_status": " M"
     },
-    {
-      "path": "scripts/functions/utils_bdg.py",
-      "initial_git_status": " M"
-    },
-    {
-      "path": "scripts/functions/utils_check.py",
-      "initial_git_status": " M"
-    },
-    {
-      "path": "scripts/functions/utils_chrom.py",
-      "initial_git_status": " M"
-    },
-    {
-      "path": "scripts/functions/utils_cli.py",
-      "initial_git_status": " M"
-    },
-    {
-      "path": "scripts/functions/utils_format.py",
-      "initial_git_status": " M"
-    },
-    {
-      "path": "scripts/functions/utils_io.py",
-      "initial_git_status": " M"
-    },
+    {"path": "scripts/functions/utils_bdg.py", "initial_git_status": " M"},
+    {"path": "scripts/functions/utils_check.py", "initial_git_status": " M"},
+    {"path": "scripts/functions/utils_chrom.py", "initial_git_status": " M"},
+    {"path": "scripts/functions/utils_cli.py", "initial_git_status": " M"},
+    {"path": "scripts/functions/utils_format.py", "initial_git_status": " M"},
+    {"path": "scripts/functions/utils_io.py", "initial_git_status": " M"},
     {
       "path": "scripts/functions/utils_stabilizer.py",
       "initial_git_status": " M"
     },
-    {
-      "path": "scripts/functions/wrap_cmd.sh",
-      "initial_git_status": " M"
-    },
-    {
-      "path": "scripts/merge_bins_bdg.py",
-      "initial_git_status": " M"
-    },
-    {
-      "path": "scripts/parse_metadata_siqchip.py",
-      "initial_git_status": " M"
-    },
+    {"path": "scripts/functions/wrap_cmd.sh", "initial_git_status": " M"},
+    {"path": "scripts/merge_bins_bdg.py", "initial_git_status": " M"},
+    {"path": "scripts/parse_metadata_siqchip.py", "initial_git_status": " M"},
     {
       "path": "scripts/relativize_scaling_factors.py",
       "initial_git_status": " M"
     },
-    {
-      "path": "scripts/submit_align_fastqs.sh",
-      "initial_git_status": " M"
-    },
+    {"path": "scripts/submit_align_fastqs.sh", "initial_git_status": " M"},
     {
       "path": "scripts/submit_calculate_scaling_factor.sh",
       "initial_git_status": " M"
     },
-    {
-      "path": "scripts/submit_compute_signal.sh",
-      "initial_git_status": " M"
-    },
-    {
-      "path": "scripts/submit_convert_bam_bed.sh",
-      "initial_git_status": " M"
-    },
-    {
-      "path": "scripts/submit_download_fastqs.sh",
-      "initial_git_status": " M"
-    },
+    {"path": "scripts/submit_compute_signal.sh", "initial_git_status": " M"},
+    {"path": "scripts/submit_convert_bam_bed.sh", "initial_git_status": " M"},
+    {"path": "scripts/submit_download_fastqs.sh", "initial_git_status": " M"},
     {
       "path": "scripts/submit_filter_alignments.sh",
       "initial_git_status": " M"
     },
-    {
-      "path": "scripts/submit_filter_bams.sh",
-      "initial_git_status": " M"
-    },
-    {
-      "path": "scripts/submit_filter_crams.sh",
-      "initial_git_status": " M"
-    },
-    {
-      "path": "scripts/submit_qsort_bam.sh",
-      "initial_git_status": " M"
-    },
-    {
-      "path": "scripts/submit_trim_fastqs.sh",
-      "initial_git_status": " M"
-    },
-    {
-      "path": "scripts/sum_bdg.py",
-      "initial_git_status": " M"
-    },
-    {
-      "path": "scripts/symlink_files.sh",
-      "initial_git_status": " M"
-    },
-    {
-      "path": "scripts/write_header.sh",
-      "initial_git_status": " M"
-    },
-    {
-      "path": "tests/python/conftest.py",
-      "initial_git_status": "??"
-    },
+    {"path": "scripts/submit_filter_bams.sh", "initial_git_status": " M"},
+    {"path": "scripts/submit_filter_crams.sh", "initial_git_status": " M"},
+    {"path": "scripts/submit_qsort_bam.sh", "initial_git_status": " M"},
+    {"path": "scripts/submit_trim_fastqs.sh", "initial_git_status": " M"},
+    {"path": "scripts/sum_bdg.py", "initial_git_status": " M"},
+    {"path": "scripts/symlink_files.sh", "initial_git_status": " M"},
+    {"path": "scripts/write_header.sh", "initial_git_status": " M"},
+    {"path": "tests/python/conftest.py", "initial_git_status": "??"},
     {
       "path": "tests/python/test_add_coeffs_namespaced.py",
       "initial_git_status": "??"
@@ -437,34 +275,13 @@
       "path": "tests/python/test_relativize_scaling_factors.py",
       "initial_git_status": "??"
     },
-    {
-      "path": "tests/python/test_sum_bdg.py",
-      "initial_git_status": "??"
-    },
-    {
-      "path": "tests/python/test_utils_bdg.py",
-      "initial_git_status": "??"
-    },
-    {
-      "path": "tests/python/test_utils_check.py",
-      "initial_git_status": "??"
-    },
-    {
-      "path": "tests/python/test_utils_chrom.py",
-      "initial_git_status": "??"
-    },
-    {
-      "path": "tests/python/test_utils_cli.py",
-      "initial_git_status": "??"
-    },
-    {
-      "path": "tests/python/test_utils_format.py",
-      "initial_git_status": "??"
-    },
-    {
-      "path": "tests/python/test_utils_io.py",
-      "initial_git_status": "??"
-    },
+    {"path": "tests/python/test_sum_bdg.py", "initial_git_status": "??"},
+    {"path": "tests/python/test_utils_bdg.py", "initial_git_status": "??"},
+    {"path": "tests/python/test_utils_check.py", "initial_git_status": "??"},
+    {"path": "tests/python/test_utils_chrom.py", "initial_git_status": "??"},
+    {"path": "tests/python/test_utils_cli.py", "initial_git_status": "??"},
+    {"path": "tests/python/test_utils_format.py", "initial_git_status": "??"},
+    {"path": "tests/python/test_utils_io.py", "initial_git_status": "??"},
     {
       "path": "tests/python/test_utils_stabilizer.py",
       "initial_git_status": "??"
@@ -477,14 +294,8 @@
       "path": "tests/scripts/lib/fixture_helpers.sh",
       "initial_git_status": " M"
     },
-    {
-      "path": "tests/scripts/lib/test_helpers.sh",
-      "initial_git_status": " M"
-    },
-    {
-      "path": "tests/scripts/run_smoke_tests.sh",
-      "initial_git_status": " M"
-    },
+    {"path": "tests/scripts/lib/test_helpers.sh", "initial_git_status": " M"},
+    {"path": "tests/scripts/run_smoke_tests.sh", "initial_git_status": " M"},
     {
       "path": "tests/scripts/smoke/test_calculate_scaling_factor_siq_python.sh",
       "initial_git_status": " M"

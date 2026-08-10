@@ -10,13 +10,8 @@
     "decision_groups"
   ],
   "properties": {
-    "schema_version": {
-      "const": 1
-    },
-    "review_id": {
-      "type": "string",
-      "minLength": 1
-    },
+    "schema_version": {"const": 1},
+    "review_id": {"type": "string", "minLength": 1},
     "review_protocol": {
       "type": "object",
       "additionalProperties": false,
@@ -27,61 +22,33 @@
         "review_surfaces"
       ],
       "properties": {
-        "status": {
-          "enum": [
-            "provisional",
-            "reviewed"
-          ]
-        },
-        "hash_role": {
-          "type": "string",
-          "minLength": 1
-        },
-        "membership_rule": {
-          "type": "string",
-          "minLength": 1
-        },
+        "status": {"enum": ["provisional", "reviewed"]},
+        "hash_role": {"type": "string", "minLength": 1},
+        "membership_rule": {"type": "string", "minLength": 1},
         "review_surfaces": {
           "type": "array",
           "minItems": 1,
           "uniqueItems": true,
-          "items": {
-            "type": "string",
-            "minLength": 1
-          }
+          "items": {"type": "string", "minLength": 1}
         }
       }
     },
     "reviewed_source_fingerprint": {
-      "type": [
-        "string",
-        "null"
-      ],
+      "type": ["string", "null"],
       "pattern": "^sha256:[0-9a-f]{64}$"
     },
     "supersedes": {
       "type": "object",
       "additionalProperties": false,
-      "required": [
-        "mechanism",
-        "reason"
-      ],
+      "required": ["mechanism", "reason"],
       "properties": {
-        "mechanism": {
-          "type": "string",
-          "minLength": 1
-        },
-        "reason": {
-          "type": "string",
-          "minLength": 1
-        }
+        "mechanism": {"type": "string", "minLength": 1},
+        "reason": {"type": "string", "minLength": 1}
       }
     },
     "decision_groups": {
       "type": "array",
-      "items": {
-        "$ref": "#/$defs/decision_group"
-      }
+      "items": {"$ref": "#/$defs/decision_group"}
     }
   },
   "$defs": {
@@ -98,14 +65,8 @@
         "membership_fingerprint"
       ],
       "properties": {
-        "group_id": {
-          "type": "string",
-          "minLength": 1
-        },
-        "owner": {
-          "type": "string",
-          "minLength": 1
-        },
+        "group_id": {"type": "string", "minLength": 1},
+        "owner": {"type": "string", "minLength": 1},
         "disposition": {
           "enum": [
             "changed",
@@ -118,22 +79,13 @@
             "retained_indivisible"
           ]
         },
-        "rationale": {
-          "type": "string",
-          "minLength": 1
-        },
-        "reviewed_facts": {
-          "type": "object",
-          "minProperties": 1
-        },
+        "rationale": {"type": "string", "minLength": 1},
+        "reviewed_facts": {"type": "object", "minProperties": 1},
         "members": {
           "type": "array",
           "minItems": 1,
           "uniqueItems": true,
-          "items": {
-            "type": "string",
-            "pattern": "^sha256:[0-9a-f]{64}$"
-          }
+          "items": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"}
         },
         "membership_fingerprint": {
           "type": "string",

@@ -229,13 +229,8 @@
     }
   ],
   "token_quoting": {
-    "languages": [
-      "python",
-      "shell"
-    ],
-    "included_contexts": [
-      "ordinary_explanatory_prose"
-    ],
+    "languages": ["python", "shell"],
+    "included_contexts": ["ordinary_explanatory_prose"],
     "included_objects": [
       "option",
       "identifier",
@@ -1958,51 +1953,27 @@
       },
       "usage_rows": [
         {
-          "members": [
-            "help",
-            "verbose"
-          ],
+          "members": ["help", "verbose"],
           "rationale": "Help and verbosity are the approved reporting controls."
         },
         {
-          "members": [
-            "mode"
-          ],
+          "members": ["mode"],
           "rationale": "The operation discriminant forms its own invocation row."
         },
         {
-          "members": [
-            "fil_in",
-            "infmt",
-            "ref_fa",
-            "skp_pfx"
-          ],
+          "members": ["fil_in", "infmt", "ref_fa", "skp_pfx"],
           "rationale": "Input selection, format, reference, and prefix are one approved input group."
         },
         {
-          "members": [
-            "method",
-            "qntl_nz",
-            "coef",
-            "eps",
-            "mode_nz",
-            "floor"
-          ],
+          "members": ["method", "qntl_nz", "coef", "eps", "mode_nz", "floor"],
           "rationale": "Distribution-method controls are one readable mode-specific group."
         },
         {
-          "members": [
-            "siz_bin",
-            "siz_gen",
-            "flags_pe",
-            "flags_se"
-          ],
+          "members": ["siz_bin", "siz_gen", "flags_pe", "flags_se"],
           "rationale": "Fragment and normalized-coverage controls are one readable mode-specific group."
         },
         {
-          "members": [
-            "dp"
-          ],
+          "members": ["dp"],
           "rationale": "The output-formatting control ends the projection."
         }
       ],
@@ -2090,32 +2061,15 @@
       "relationships": [
         {
           "kind": "adjacent",
-          "members": [
-            "fil_in",
-            "infmt",
-            "ref_fa",
-            "skp_pfx"
-          ]
+          "members": ["fil_in", "infmt", "ref_fa", "skp_pfx"]
         },
         {
           "kind": "contiguous",
-          "members": [
-            "method",
-            "qntl_nz",
-            "coef",
-            "eps",
-            "mode_nz",
-            "floor"
-          ]
+          "members": ["method", "qntl_nz", "coef", "eps", "mode_nz", "floor"]
         },
         {
           "kind": "same_group",
-          "members": [
-            "siz_bin",
-            "siz_gen",
-            "flags_pe",
-            "flags_se"
-          ]
+          "members": ["siz_bin", "siz_gen", "flags_pe", "flags_se"]
         }
       ],
       "adapters": {
@@ -2130,20 +2084,10 @@
         "reporting": "python_bounded_verbose_argument_probe",
         "reporting_symbol": "_print_input_floor_arguments",
         "reporting_call_arguments": [
-          {
-            "source": "parsed_args"
-          },
-          {
-            "literal": null
-          },
-          {
-            "literal": null
-          },
-          {
-            "literal": [
-              "track"
-            ]
-          }
+          {"source": "parsed_args"},
+          {"literal": null},
+          {"literal": null},
+          {"literal": ["track"]}
         ],
         "reporting_probes": [
           [
@@ -2236,18 +2180,11 @@
       },
       "usage_rows": [
         {
-          "members": [
-            "help",
-            "verbose"
-          ],
+          "members": ["help", "verbose"],
           "rationale": "Help and verbosity are the approved reporting controls."
         },
         {
-          "members": [
-            "fil_A",
-            "fil_B",
-            "skp_pfx"
-          ],
+          "members": ["fil_A", "fil_B", "skp_pfx"],
           "rationale": "The required primary input, optional paired input, and header-prefix control form the input group."
         },
         {
@@ -2263,10 +2200,7 @@
           "rationale": "Pseudocount selection, filtering, and symmetry controls form one mode-specific group."
         },
         {
-          "members": [
-            "dp",
-            "prt_jsn"
-          ],
+          "members": ["dp", "prt_jsn"],
           "rationale": "Finite-value rendering and optional JSON representation form the output-formatting group."
         }
       ],
@@ -2336,14 +2270,7 @@
         ]
       },
       "relationships": [
-        {
-          "kind": "adjacent",
-          "members": [
-            "fil_A",
-            "fil_B",
-            "skp_pfx"
-          ]
-        },
+        {"kind": "adjacent", "members": ["fil_A", "fil_B", "skp_pfx"]},
         {
           "kind": "contiguous",
           "members": [
@@ -2356,13 +2283,7 @@
             "sym"
           ]
         },
-        {
-          "kind": "same_group",
-          "members": [
-            "dp",
-            "prt_jsn"
-          ]
-        }
+        {"kind": "same_group", "members": ["dp", "prt_jsn"]}
       ],
       "adapters": {
         "parser": "python_argparse_ast_and_runtime_parser",
@@ -2376,17 +2297,9 @@
         "reporting": "python_bounded_verbose_argument_probe",
         "reporting_symbol": "_print_pseudo_arguments",
         "reporting_call_arguments": [
-          {
-            "source": "parsed_args"
-          },
-          {
-            "literal": null
-          },
-          {
-            "literal": [
-              "track"
-            ]
-          }
+          {"source": "parsed_args"},
+          {"literal": null},
+          {"literal": ["track"]}
         ],
         "reporting_probes": [
           [
@@ -2462,25 +2375,15 @@
       },
       "usage_rows": [
         {
-          "members": [
-            "help",
-            "dry_run"
-          ],
+          "members": ["help", "dry_run"],
           "rationale": "Help and no-write preview are the approved invocation controls."
         },
         {
-          "members": [
-            "mode",
-            "csv_fil_in",
-            "fil_out"
-          ],
+          "members": ["mode", "csv_fil_in", "fil_out"],
           "rationale": "The workflow discriminant, part-file input list, and output target form the required execution tuple."
         },
         {
-          "members": [
-            "force",
-            "no_parts"
-          ],
+          "members": ["force", "no_parts"],
           "rationale": "The lifecycle controls remain together after the required execution tuple."
         }
       ],
@@ -2518,14 +2421,7 @@
         }
       },
       "relationships": [
-        {
-          "kind": "adjacent",
-          "members": [
-            "fil_out",
-            "force",
-            "no_parts"
-          ]
-        }
+        {"kind": "adjacent", "members": ["fil_out", "force", "no_parts"]}
       ],
       "adapters": {
         "parser": "shell_case_acceptance_set_with_public_help_order",
@@ -2619,58 +2515,31 @@
       },
       "usage_rows": [
         {
-          "members": [
-            "help",
-            "verbose",
-            "dry_run"
-          ],
+          "members": ["help", "verbose", "dry_run"],
           "rationale": "Help, diagnostic verbosity, and no-write preview are approved invocation controls."
         },
         {
-          "members": [
-            "env_nam",
-            "threads"
-          ],
+          "members": ["env_nam", "threads"],
           "rationale": "Environment and compute-resource controls form one execution setup row."
         },
         {
-          "members": [
-            "mode",
-            "method"
-          ],
+          "members": ["mode", "method"],
           "rationale": "The workflow discriminant and the calculation it selects remain adjacent."
         },
         {
-          "members": [
-            "aln_typ",
-            "ref_fa"
-          ],
+          "members": ["aln_typ", "ref_fa"],
           "rationale": "Input interpretation and reference selection are one readable input row."
         },
         {
-          "members": [
-            "csv_mip",
-            "csv_min",
-            "csv_sip",
-            "csv_sin"
-          ],
+          "members": ["csv_mip", "csv_min", "csv_sip", "csv_sin"],
           "rationale": "The required and conditional alignment collections are one input group."
         },
         {
-          "members": [
-            "fil_out",
-            "force",
-            "no_parts",
-            "no_header"
-          ],
+          "members": ["fil_out", "force", "no_parts", "no_header"],
           "rationale": "The output target and its lifecycle controls form one output row."
         },
         {
-          "members": [
-            "tbl_met",
-            "cfg_met",
-            "eqn"
-          ],
+          "members": ["tbl_met", "cfg_met", "eqn"],
           "rationale": "siQ metadata and equation controls form one mode-specific row."
         },
         {
@@ -2686,24 +2555,15 @@
           "rationale": "Fragment and depth controls form one structured mode-specific row."
         },
         {
-          "members": [
-            "dp"
-          ],
+          "members": ["dp"],
           "rationale": "The established finite numeric-rendering control remains separate."
         },
         {
-          "members": [
-            "dir_eo",
-            "nam_job"
-          ],
+          "members": ["dir_eo", "nam_job"],
           "rationale": "Log destination and job naming controls form one operational row."
         },
         {
-          "members": [
-            "max_job",
-            "slurm",
-            "time"
-          ],
+          "members": ["max_job", "slurm", "time"],
           "rationale": "Concurrency and scheduler controls form one final execution row."
         }
       ],
@@ -2849,13 +2709,7 @@
         ]
       },
       "relationships": [
-        {
-          "kind": "adjacent",
-          "members": [
-            "mode",
-            "method"
-          ]
-        },
+        {"kind": "adjacent", "members": ["mode", "method"]},
         {
           "kind": "contiguous",
           "members": [
@@ -2869,21 +2723,9 @@
         },
         {
           "kind": "adjacent",
-          "members": [
-            "fil_out",
-            "force",
-            "no_parts",
-            "no_header"
-          ]
+          "members": ["fil_out", "force", "no_parts", "no_header"]
         },
-        {
-          "kind": "same_group",
-          "members": [
-            "tbl_met",
-            "cfg_met",
-            "eqn"
-          ]
-        },
+        {"kind": "same_group", "members": ["tbl_met", "cfg_met", "eqn"]},
         {
           "kind": "same_group",
           "members": [
@@ -2896,21 +2738,8 @@
             "csv_dep_sin"
           ]
         },
-        {
-          "kind": "same_group",
-          "members": [
-            "dir_eo",
-            "nam_job"
-          ]
-        },
-        {
-          "kind": "same_group",
-          "members": [
-            "max_job",
-            "slurm",
-            "time"
-          ]
-        }
+        {"kind": "same_group", "members": ["dir_eo", "nam_job"]},
+        {"kind": "same_group", "members": ["max_job", "slurm", "time"]}
       ],
       "adapters": {
         "parser": "shell_bounded_parse_args_order",
@@ -2933,17 +2762,8 @@
       "surface_id": "compute_input_floor_cli",
       "parameter": "infmt",
       "language": "python",
-      "displayed_choices": [
-        "bam",
-        "cram",
-        "bed",
-        "bedGraph",
-        "bdg",
-        "bg"
-      ],
-      "accepted_aliases": [
-        "bedgraph"
-      ],
+      "displayed_choices": ["bam", "cram", "bed", "bedGraph", "bdg", "bg"],
+      "accepted_aliases": ["bedgraph"],
       "case_insensitive": true,
       "canonical_values": {
         "bed": "bed",
@@ -2953,9 +2773,7 @@
         "bam": "bam",
         "cram": "cram"
       },
-      "recognized_suffixes": [
-        ".bedgraph.gz"
-      ],
+      "recognized_suffixes": [".bedgraph.gz"],
       "hint_applicability": "named_paths_ignore_hint"
     }
   ],
@@ -3804,9 +3622,7 @@
     {
       "checker": "tests.contract.repository.test_parameter_docs_consistency",
       "config_use": "direct_consumer",
-      "diagnostic_scope": [
-        "PARAMETER.DESCRIPTIONS"
-      ],
+      "diagnostic_scope": ["PARAMETER.DESCRIPTIONS"],
       "prohibited_diagnostics": [
         "BOOLEAN.DOCUMENTATION.EXACT_TOKENS",
         "BOOLEAN.PRESENCE_FLAG.VALUE_FREE",

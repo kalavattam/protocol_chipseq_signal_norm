@@ -13,46 +13,18 @@
     "dev/tools/markdown_format.py",
     "tests/unit/metadata/test_parse_siqchip.py"
   ],
-  "x_multiline_call_span_thresholds": [
-    5,
-    6,
-    7
-  ],
-  "y_multiline_assignment_span_thresholds": [
-    4,
-    5,
-    6
-  ],
-  "y_simple_assignment_run_statement_thresholds": [
-    4,
-    5,
-    6
-  ],
+  "x_multiline_call_span_thresholds": [5, 6, 7],
+  "y_multiline_assignment_span_thresholds": [4, 5, 6],
+  "y_simple_assignment_run_statement_thresholds": [4, 5, 6],
   "z_compact_transfer_preparatory_line_limit": 1,
   "selected_x_threshold": 6,
   "selected_y_threshold": 6,
   "line_length": 79,
   "naming_length_thresholds": {
-    "production_callable": [
-      40,
-      48,
-      56
-    ],
-    "test_function": [
-      56,
-      64,
-      72
-    ],
-    "local_or_attribute": [
-      24,
-      32,
-      40
-    ],
-    "type": [
-      32,
-      40,
-      48
-    ]
+    "production_callable": [40, 48, 56],
+    "test_function": [56, 64, 72],
+    "local_or_attribute": [24, 32, 40],
+    "type": [32, 40, 48]
   },
   "semantic_review_manifest": "artifacts/tests/python_source_migration_20260727_semantic_review/final/semantic_review_manifest.json",
   "disposition": "unresolved",

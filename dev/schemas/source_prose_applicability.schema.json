@@ -6,7 +6,13 @@
   "properties": {
     "schema_version": {"const": 1},
     "line_limit": {"const": 79},
-    "scopes": {"type": "array", "items": {"type": "object", "required": ["language", "kind", "checker", "formatter", "status"]}},
+    "scopes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["language", "kind", "checker", "formatter", "status"]
+      }
+    },
     "excluded": {"type": "array", "items": {"type": "string"}}
   },
   "additionalProperties": false
