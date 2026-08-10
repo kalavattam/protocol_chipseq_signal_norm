@@ -85,6 +85,11 @@ tests/fixtures/filter_alignments/**
 !tests/fixtures/filter_alignments/README.md
 !tests/fixtures/filter_alignments/make.sh
 
+tests/fixtures/json_source_form/**
+!tests/fixtures/json_source_form/
+!tests/fixtures/json_source_form/README.md
+!tests/fixtures/json_source_form/make.sh
+
 tests/fixtures/trim_fastqs/**
 !tests/fixtures/trim_fastqs/
 !tests/fixtures/trim_fastqs/README.md

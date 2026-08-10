@@ -6,9 +6,10 @@
 # Copyright 2026 by Kris Alavattam
 # Email: kalavattam@gmail.com
 #
-# OpenAI ChatGPT and Codex (GPT-5.5, GPT-5.6) were used in design, development,
-# and documentation, with all output reviewed, edited, and approved by the
-# author.
+# The following were used in design, development, and documentation, with all
+# output reviewed, edited, and approved by the author:
+# - OpenAI ChatGPT and Codex (GPT-5.5, GPT-5.6);
+# - Anthropic Claude Code (Opus 5).
 #
 # Distributed under the MIT license.
 
@@ -81,6 +82,7 @@ Python naming length	${doc_python}	PY.NAMING.LENGTH
 Python source layout	${doc_python}	PY.SOURCE.LAYOUT
 source layout candidates	${doc_source_layout}	SOURCE.LAYOUT.CANDIDATES
 multiline delimited structures	${doc_source_layout}	SOURCE.DELIMITED.MULTILINE
+JSON source form	${doc_json}	JSON.SOURCE.FORM
 EOM
 
     if (( found == 0 )); then
@@ -105,6 +107,9 @@ function scan_python_task_router() {
         "Python \`parse_args()\` help literal" \
         "Python docstring or API" \
         "Python CLI error handling" \
+        "Maintained authored JSON configuration, schema, or fixture case" \
+        "json.md#json-source-form-jsonsourceform" \
+        "python -m dev.audit.json_source_form --root . <paths>" \
         "source_layout.md#semantic-paragraphs-and-density-sourcelayoutparagraphs" \
         "source_layout.md#comment-attachment-sourcecommentattachment" \
         "source_layout.md#grammatical-naming-and-migration-sourcenamingsemantics" \
@@ -202,6 +207,7 @@ function scan_broken_python_see_also() {
 print_section "${TEST_NAME}"
 
 doc_help="${ROOT_REPO}/docs/standards/help.md"
+doc_json="${ROOT_REPO}/docs/standards/json.md"
 doc_python="${ROOT_REPO}/docs/standards/python.md"
 doc_r="${ROOT_REPO}/docs/standards/r.md"
 doc_router="${ROOT_REPO}/docs/standards/README.md"
@@ -222,6 +228,7 @@ chk_param_docs="$(
 
 files_required=(
     "${doc_help}"
+    "${doc_json}"
     "${doc_python}"
     "${doc_r}"
     "${doc_router}"

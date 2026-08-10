@@ -1891,6 +1891,34 @@ strict_availability = "safe_adapter"
 current_exclusions_or_allowlists = []
 
 [[rule]]
+rule_id = "JSON.SOURCE.FORM"
+description = "Check maintained authored JSON against one canonical rendering."
+normative_document = "docs/standards/json.md"
+normative_section = "JSON source form (`JSON.SOURCE.FORM`)"
+owner_classification = "advisory"
+source_checker = "dev/audit/json_source_form.py"
+execution_kind = "original"
+execution_role = "checker"
+coverage_relation = "subset"
+covered_scope = "Across maintained authored JSON discovered under dev/config, dev/schemas, and tests/fixtures, check parse validity, duplicate keys, two-space indentation, tabs, trailing whitespace, blank lines, the single trailing newline, inline and expanded member separators, delimiter placement for expanded structures, and the 79-column budget that selects between the inline and expanded treatment of one structure."
+remaining_scope = "Decide whether a record-per-line array is genuinely tabular and worth keeping inline where the budget permits either form, whether a new JSON file belongs to the authored or the serialized population, and whether an inline structure reads as one unit. Serialized inventories are excluded by applicability, so their form remains owned by the emitting call and unproved here."
+parity_test = "tests/unit/dev_audit/test_json_source_form.py"
+gate = "tests/contract/repository/test_json_source_form_gate.sh"
+scope = "repository"
+command = ["python3", "-m", "dev.audit.json_source_form", "--root", "."]
+applicable_paths = ["dev/config/**/*.json", "dev/schemas/**/*.json", "tests/fixtures/*/cases.json"]
+default_severity = "advisory"
+blocking = false
+semantic_review = true
+required_environment = "python>=3.11"
+required_commands = ["python3"]
+known_side_effects = ["none"]
+output_paths = []
+output_parser = "generic"
+strict_availability = "safe_adapter"
+current_exclusions_or_allowlists = ["owner=JSON.SOURCE.FORM; serialized inventories under dev/audit are produced by the --inventory-output paths of dev/audit/ai_attribution.py and dev/audit/help_aliases.py"]
+
+[[rule]]
 rule_id = "SHELL.SOURCE.FORM"
 description = "Check recognized shell naming, indentation, and heredoc forms."
 normative_document = "docs/standards/shell.md"

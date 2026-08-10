@@ -32,6 +32,7 @@ conda run -n env_protocol ruff format --check src tests dev
 This file is the routing layer, not the full standards manual. Start with the ordinary task router in `docs/standards/README.md`, then load only the owner sections and focused commands named for the task. Load a complete domain standard only when the work spans that complete domain or the router has no applicable task:
 - `docs/standards/governance.md` owns rule lifecycle, governed change, anti-accretion, and lossless semantic movement.
 - `docs/standards/markdown.md` owns maintained Markdown.
+- `docs/standards/json.md` owns the source form of maintained authored JSON.
 - `docs/standards/source_layout.md` owns cross-language source semantics.
 - `docs/standards/help.md` owns shared help and documentation semantics.
 - `docs/standards/output.md` owns output contracts.

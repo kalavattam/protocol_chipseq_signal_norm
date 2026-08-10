@@ -122,6 +122,10 @@ function ensure_unit_fixtures() {
     # Header fixtures are literal text, so this recipe needs no environment.
     ensure_fixture ai_attribution \
         "${repo_root}/tests/fixtures/ai_attribution/source/multi_vendor.sh"
+
+    # JSON form fixtures are literal text for the same reason.
+    ensure_fixture json_source_form \
+        "${repo_root}/tests/fixtures/json_source_form/source/canonical.json"
 }
 
 
