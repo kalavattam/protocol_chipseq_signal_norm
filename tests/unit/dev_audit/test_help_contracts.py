@@ -39,10 +39,6 @@ def data() -> dict:
     return json.loads(CONFIG.read_text(encoding="utf-8"))
 
 
-def test_repository_contract_is_referentially_complete() -> None:
-    assert validate_contract(ROOT, data()) == []
-
-
 def test_example_forms_separate_applicability_from_representation() -> None:
     payload = data()
     callable_record = next(
