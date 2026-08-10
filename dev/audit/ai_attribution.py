@@ -1348,8 +1348,8 @@ def trailer_history(root: Path) -> dict[str, dict[str, object]]:
     -------
     history : dict[str, dict[str, object]]
         Path mapped to the vendors credited anywhere in its history, whether
-        every commit touching it was focused, and whether every commit
-        touching it carried a vendor trailer at all.
+        every commit touching it was focused, and whether every commit touching
+        it carried a vendor trailer at all.
     """
 
     log = run_git(
@@ -1864,8 +1864,8 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument(
         "--credit-vendor",
         help=(
-            "vendor the pending commit will credit; reports edited sources "
-            "whose headers omit it"
+            "Vendor the pending commit will credit; reports edited sources "
+            "whose headers omit it."
         ),
     )
     parser.add_argument("paths", nargs="*")
