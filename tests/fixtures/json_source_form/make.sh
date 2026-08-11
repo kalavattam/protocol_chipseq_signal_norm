@@ -38,30 +38,36 @@ dir_fix="${dir_scr}"
 # shellcheck source=tests/support/fixture_helpers.sh
 source "${dir_scr}/../../support/fixture_helpers.sh"
 
-# Declare every generated path up front
-dir_src="${dir_fix}/source"
-fil_canonical="${dir_src}/canonical.json"
-fil_overflow="${dir_src}/inline_overflow.json"
-fil_fits="${dir_src}/expanded_fits.json"
-fil_hybrid="${dir_src}/hybrid_delimiter.json"
-fil_indent="${dir_src}/wrong_indent.json"
-fil_tab="${dir_src}/tab_indent.json"
-fil_newline="${dir_src}/no_trailing_newline.json"
-fil_duplicate="${dir_src}/duplicate_key.json"
-fil_unreadable="${dir_src}/unreadable.json"
+# Declare every generated path up front. The directory names the verdict the
+# checker must return for the document inside it: the canonical rendering is
+# the only conforming input, and every other document reports at least one
+# finding.
+dir_acc="${dir_fix}/accepted"
+dir_rej="${dir_fix}/rejected"
+fil_canonical="${dir_acc}/canonical.json"
+fil_overflow="${dir_rej}/inline_overflow.json"
+fil_fits="${dir_rej}/expanded_fits.json"
+fil_hybrid="${dir_rej}/hybrid_delimiter.json"
+fil_indent="${dir_rej}/wrong_indent.json"
+fil_tab="${dir_rej}/tab_indent.json"
+fil_newline="${dir_rej}/no_trailing_newline.json"
+fil_duplicate="${dir_rej}/duplicate_key.json"
+fil_unreadable="${dir_rej}/unreadable.json"
 
 # Remove stale outputs so regeneration is idempotent.
-rm_file "${dir_fix}" "${fil_canonical}"
-rm_file "${dir_fix}" "${fil_overflow}"
-rm_file "${dir_fix}" "${fil_fits}"
-rm_file "${dir_fix}" "${fil_hybrid}"
-rm_file "${dir_fix}" "${fil_indent}"
-rm_file "${dir_fix}" "${fil_tab}"
-rm_file "${dir_fix}" "${fil_newline}"
-rm_file "${dir_fix}" "${fil_duplicate}"
-rm_file "${dir_fix}" "${fil_unreadable}"
+rm_files "${dir_fix}" \
+    "${fil_canonical}" \
+    "${fil_overflow}" \
+    "${fil_fits}" \
+    "${fil_hybrid}" \
+    "${fil_indent}" \
+    "${fil_tab}" \
+    "${fil_newline}" \
+    "${fil_duplicate}" \
+    "${fil_unreadable}"
 
-mkdirs "${dir_src}"
+mkdirs "${dir_acc}" "${dir_rej}"
+
 
 # Author every fixture literally. Each negative fixture departs from the
 # canonical rendering along exactly one axis, so a finding about that axis

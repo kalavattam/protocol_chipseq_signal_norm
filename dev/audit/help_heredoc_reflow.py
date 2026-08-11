@@ -6,8 +6,10 @@
 # Copyright 2026 by Kris Alavattam
 # Email: kalavattam@gmail.com
 #
-# OpenAI ChatGPT and Codex (GPT-5.6) were used in design, development, and
-# documentation, with all output reviewed, edited, and approved by the author.
+# The following were used in design, development, and documentation, with all
+# output reviewed, edited, and approved by the author:
+# - OpenAI ChatGPT and Codex (GPT-5.6);
+# - Anthropic Claude Code (Opus 5).
 #
 # Distributed under the MIT license.
 
@@ -27,6 +29,8 @@ import sys
 from collections.abc import Iterable
 from itertools import pairwise
 from pathlib import Path
+
+from dev.audit.fixture_paths import is_fixture_recipe
 
 RULE_ID = "HELP.HEREDOC.SOURCE_REFLOW"
 RULE_EXAMPLE_SOURCE_BACKSLASH = "HELP.EXAMPLES.COMMAND.SOURCE_BACKSLASH"
@@ -210,7 +214,16 @@ def shell_paths(root: Path) -> list[str]:
         ["ls-files", "--others", "--exclude-standard", "--", "*.sh"],
     ).stdout.splitlines()
 
-    return sorted(set(tracked) | set(untracked))
+    # A fixture recipe has no help surface of its own. It is tracked, so this
+    # discovery reaches it, and its heredoc bodies are fixture payload: a
+    # recipe writing a help-surface fixture would otherwise be read as though
+    # the recipe itself declared that help, at the indentation the heredoc
+    # happens to sit at.
+    return sorted(
+        path
+        for path in set(tracked) | set(untracked)
+        if not is_fixture_recipe(path)
+    )
 
 
 def tracked_at_head(root: Path, path: str) -> bool:

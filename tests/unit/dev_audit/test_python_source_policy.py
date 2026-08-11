@@ -295,17 +295,26 @@ def test_fixture_cohorts_cover_positive_negative_and_exceptions() -> None:
     Keep canonical and literal-exception fixtures clean and negatives broad.
     """
 
-    for name in ("positive", "exceptions", "boundary"):
-        text = (FIXTURES / f"{name}.py.fixture").read_text(encoding="utf-8")
+    for name in (
+        "accepted/canonical.py",
+        "accepted/exceptions.py",
+        "boundary/source_form.py",
+    ):
+        text = (FIXTURES / name).read_text(encoding="utf-8")
 
-        assert analyze_text(text, f"{name}.py.fixture").findings == ()
+        assert analyze_text(text, name).findings == ()
 
-    negative = (FIXTURES / "negative.py.fixture").read_text(encoding="utf-8")
+    negative = "rejected/deterministic_owners.py"
+    text = (FIXTURES / negative).read_text(encoding="utf-8")
     rule_ids = {
-        finding.rule_id
-        for finding in analyze_text(negative, "negative.py.fixture").findings
+        finding.rule_id for finding in analyze_text(text, negative).findings
     }
 
+    # RULE_NAMING and RULE_TOPOLOGY are asserted here rather than in the
+    # fixture recipe. The recipe used to run the checker over its own output
+    # and require eleven owners, nine of which this set already covered;
+    # 'make.sh' generates, and deciding which owners a fixture must provoke is
+    # a unit-level property of the checker.
     assert {
         RULE_HELP_SENTENCES,
         RULE_ANNOTATIONS,
@@ -314,8 +323,10 @@ def test_fixture_cohorts_cover_positive_negative_and_exceptions() -> None:
         RULE_DOC_LAYOUT,
         RULE_DOC_NUMPY,
         RULE_MULTILINE,
+        RULE_NAMING,
         RULE_PROSE_WRAP,
         RULE_STRINGS,
+        RULE_TOPOLOGY,
     } <= rule_ids
 
 
@@ -1258,8 +1269,8 @@ def test_hyphen_broken_words_rejoin_without_a_separator() -> None:
         line for line in operator.splitlines() if line.rstrip().endswith(" -")
     )
 
-    # A suspended hyphen joins two words sharing one hyphen. Rejoining it
-    # would produce 'zero-or', so width cannot decide it.
+    # A suspended hyphen joins two words sharing one hyphen. Rejoining it would
+    # produce 'zero-or', so width cannot decide it.
     suspended = docstring_source(
         "Summary.",
         "",
@@ -1358,11 +1369,11 @@ def test_unicode_help_formatter_matches_cli_width_policy() -> None:
     Require Unicode-preserving formatter widths to match emitted literals.
     """
 
-    source = (FIXTURES / "help_format_unicode_input.py.fixture").read_text(
+    source = (FIXTURES / "format/help_unicode_input.py").read_text(
         encoding="utf-8",
     )
     expected = (
-        FIXTURES / "help_format_unicode_expected.py.fixture"
+        FIXTURES / "format/help_unicode_expected.py"
     ).read_text(encoding="utf-8")
     joined = expected.replace('"\n            "available', "available")
 
@@ -2523,11 +2534,11 @@ def test_checker_is_idempotent_and_rule_selector_rejects_near_misses() -> None:
     Preserve stable reports and reject unknown rule selectors.
     """
 
-    text = (FIXTURES / "positive.py.fixture").read_text(encoding="utf-8")
+    text = (FIXTURES / "accepted/canonical.py").read_text(encoding="utf-8")
 
-    assert analyze_text(text, "positive.py.fixture") == analyze_text(
+    assert analyze_text(text, "accepted/canonical.py") == analyze_text(
         text,
-        "positive.py.fixture",
+        "accepted/canonical.py",
     )
 
     with pytest.raises(SystemExit):

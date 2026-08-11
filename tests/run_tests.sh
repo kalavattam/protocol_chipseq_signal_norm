@@ -115,17 +115,51 @@ function ensure_integration_fixtures() {
 }
 
 
-# Unit-scoped fixtures are prepared separately from the integration set,
-# because unit tests run without the local, Parallel, and Slurm gates that
-# decide whether workflow fixtures are needed at all.
-function ensure_unit_fixtures() {
-    # Header fixtures are literal text, so this recipe needs no environment.
-    ensure_fixture ai_attribution \
-        "${repo_root}/tests/fixtures/ai_attribution/source/multi_vendor.sh"
+# Checker fixtures are prepared separately from the integration set, because
+# the checker suites run without the local, Parallel, and Slurm gates that
+# decide whether workflow fixtures are needed at all. Every recipe below is
+# literal text, so none of them needs an environment.
+#
+# These are needed by both unit tests and shell contract tests, so this
+# function is called whenever either is selected. Wiring them to the unit
+# stage alone would leave 'run_tests.sh contract' running against whatever
+# happened to be left in the working tree from an earlier run, which passes
+# locally and fails on a fresh clone.
+function ensure_checker_fixtures() {
+    local rel_help="tests/fixtures/help/expected"
+    rel_help+="/combine_parts_scaling_factor.examples.txt"
 
-    # JSON form fixtures are literal text for the same reason.
+    ensure_fixture ai_attribution \
+        "${repo_root}/tests/fixtures/ai_attribution/accepted/multi_vendor.sh"
+
+    ensure_fixture help "${repo_root}/${rel_help}"
+
+    ensure_fixture help_contracts \
+        "${repo_root}/tests/fixtures/help_contracts/accepted/shell.sh"
+
     ensure_fixture json_source_form \
-        "${repo_root}/tests/fixtures/json_source_form/source/canonical.json"
+        "${repo_root}/tests/fixtures/json_source_form/accepted/canonical.json"
+
+    ensure_fixture markdown \
+        "${repo_root}/tests/fixtures/markdown/accepted/basic.md"
+
+    ensure_fixture python_source_policy \
+        "${repo_root}/tests/fixtures/python_source_policy/accepted/canonical.py"
+
+    ensure_fixture semantic_movement \
+        "${repo_root}/tests/fixtures/semantic_movement/cases.json"
+
+    ensure_fixture shellcheck \
+        "${repo_root}/tests/fixtures/shellcheck/script/bash.sh"
+}
+
+
+# Slurm wet-validation fixtures are workflow inputs bundled to the remote
+# host, so they are prepared with the Slurm gate rather than with the
+# checker set.
+function ensure_slurm_fixtures() {
+    ensure_fixture slurm \
+        "${repo_root}/tests/fixtures/slurm/reference/tiny.fa"
 }
 
 
@@ -322,18 +356,21 @@ if (( selected_parallel == 1 )) && gate_enabled RUN_PARALLEL; then
 fi
 if (( selected_slurm == 1 )) && gate_enabled RUN_SLURM; then
     need_fixtures=1
+    ensure_slurm_fixtures
 fi
 
 if (( need_fixtures == 1 )); then
     ensure_integration_fixtures
 fi
 
+if (( run_unit == 1 )) || (( ${#arr_shell_tests[@]} > 0 )); then
+    ensure_checker_fixtures
+fi
+
 passed=0
 failed=0
 
 if (( run_unit == 1 )); then
-    ensure_unit_fixtures
-
     arr_unit_python=( "${managed_python}" )
 
     "${managed_python}" -c 'import pytest' > /dev/null 2>&1 || \

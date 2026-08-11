@@ -37,7 +37,7 @@ from dev.audit.ai_attribution import (
 )
 
 ROOT = Path(__file__).resolve().parents[3]
-FIXTURES = ROOT / "tests" / "fixtures" / "ai_attribution" / "source"
+FIXTURES = ROOT / "tests" / "fixtures" / "ai_attribution"
 
 
 def source_file(
@@ -668,8 +668,8 @@ class TrailerAgreementTests(unittest.TestCase):
     def test_focused_commit_evidence_reports_an_omitted_vendor(self) -> None:
         findings = check_trailer_agreement(
             FIXTURES,
-            ["single_vendor.sh"],
-            evidence={("single_vendor.sh", "Anthropic"): 4},
+            ["accepted/single_vendor.sh"],
+            evidence={("accepted/single_vendor.sh", "Anthropic"): 4},
         )
 
         self.assertEqual(len(findings), 1)
@@ -682,8 +682,8 @@ class TrailerAgreementTests(unittest.TestCase):
 
         findings = check_trailer_agreement(
             FIXTURES,
-            ["single_vendor.sh"],
-            evidence={("single_vendor.sh", "Anthropic"): 258},
+            ["accepted/single_vendor.sh"],
+            evidence={("accepted/single_vendor.sh", "Anthropic"): 258},
         )
 
         self.assertEqual(findings, [])
@@ -691,10 +691,10 @@ class TrailerAgreementTests(unittest.TestCase):
     def test_declared_vendor_reports_nothing(self) -> None:
         findings = check_trailer_agreement(
             FIXTURES,
-            ["multi_vendor.sh"],
+            ["accepted/multi_vendor.sh"],
             evidence={
-                ("multi_vendor.sh", "Anthropic"): 4,
-                ("multi_vendor.sh", "OpenAI"): 4,
+                ("accepted/multi_vendor.sh", "Anthropic"): 4,
+                ("accepted/multi_vendor.sh", "OpenAI"): 4,
             },
         )
 
@@ -706,9 +706,9 @@ class TrailerAgreementTests(unittest.TestCase):
         """
 
         for name, declared in (
-            ("single_vendor.sh", True),
-            ("multi_vendor.sh", True),
-            ("no_attribution.sh", False),
+            ("accepted/single_vendor.sh", True),
+            ("accepted/multi_vendor.sh", True),
+            ("non_applicable/no_attribution.sh", False),
         ):
             with self.subTest(fixture=name):
                 text = (FIXTURES / name).read_text(encoding="utf-8")
@@ -720,8 +720,12 @@ class TrailerAgreementTests(unittest.TestCase):
                     declared,
                 )
 
-        multi = (FIXTURES / "multi_vendor.sh").read_text(encoding="utf-8")
-        single = (FIXTURES / "single_vendor.sh").read_text(encoding="utf-8")
+        multi = (
+            FIXTURES / "accepted/multi_vendor.sh"
+        ).read_text(encoding="utf-8")
+        single = (
+            FIXTURES / "accepted/single_vendor.sh"
+        ).read_text(encoding="utf-8")
 
         self.assertIn("Anthropic Claude Code", multi)
         self.assertNotIn("Anthropic", single)
@@ -744,8 +748,8 @@ class UnsupportedCreditTests(unittest.TestCase):
             finding.message
             for finding in check_unsupported_credit(
                 FIXTURES,
-                ["multi_vendor.sh"],
-                history={"multi_vendor.sh": base},
+                ["accepted/multi_vendor.sh"],
+                history={"accepted/multi_vendor.sh": base},
                 pending=set(),
             )
         ]
@@ -778,14 +782,14 @@ class UnsupportedCreditTests(unittest.TestCase):
             finding.message
             for finding in check_unsupported_credit(
                 FIXTURES,
-                ["multi_vendor.sh"],
+                ["accepted/multi_vendor.sh"],
                 history={
-                    "multi_vendor.sh": {
+                    "accepted/multi_vendor.sh": {
                         "vendors": {"OpenAI"},
                         "all_credited": True,
                     },
                 },
-                pending={"multi_vendor.sh"},
+                pending={"accepted/multi_vendor.sh"},
             )
         ]
 

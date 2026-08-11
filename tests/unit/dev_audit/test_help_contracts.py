@@ -6,8 +6,10 @@
 # Copyright 2026 by Kris Alavattam
 # Email: kalavattam@gmail.com
 #
-# OpenAI ChatGPT and Codex (GPT-5.6) were used in design, development, and
-# documentation, with all output reviewed, edited, and approved by the author.
+# The following were used in design, development, and documentation, with all
+# output reviewed, edited, and approved by the author:
+# - OpenAI ChatGPT and Codex (GPT-5.6);
+# - Anthropic Claude Code (Opus 5).
 #
 # Distributed under the MIT license.
 
@@ -255,7 +257,7 @@ def test_shared_data_does_not_grant_parallel_alias_emission() -> None:
 
 
 def test_shell_alias_duplicate_has_only_authoritative_diagnostic() -> None:
-    text = (FIXTURES / "shell.sh.fixture").read_text(encoding="utf-8")
+    text = (FIXTURES / "accepted/shell.sh").read_text(encoding="utf-8")
     alias_findings, _ = check_document(
         ROOT,
         "lib/bash/core/fixture.sh",

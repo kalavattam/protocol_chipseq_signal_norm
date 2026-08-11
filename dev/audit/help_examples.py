@@ -33,6 +33,7 @@ import sys
 from collections.abc import Iterable
 from pathlib import Path
 
+from dev.audit.fixture_paths import is_fixture_path
 from dev.audit.help_aliases import (
     alias_chunks,
     file_alias_chunks,
@@ -1118,10 +1119,16 @@ def shell_help_paths(root: Path) -> list[Path]:
     paths.extend((root / "install" / "scripts").glob("*.sh"))
     paths.extend((root / "tests").rglob("*.sh"))
 
+    # This discovery is a filesystem glob rather than a Git listing, so it
+    # cannot see that generated fixtures are ignored; see 'fixture_paths'. A
+    # fixture shell script is an input to a checker, not a help surface a
+    # person invokes, so it owes no Examples section.
     return sorted(
         path
         for path in paths
-        if path.is_file() and "outputs" not in path.relative_to(root).parts
+        if path.is_file()
+        and "outputs" not in path.relative_to(root).parts
+        and not is_fixture_path(path, root)
     )
 
 
@@ -1142,7 +1149,13 @@ def top_level_shell_paths(root: Path) -> list[Path]:
         ),
     )
 
-    return sorted(path for path in paths if path.is_file())
+    # For the reason given in 'shell_help_paths', generated fixtures are
+    # excluded: this glob cannot see that they are ignored.
+    return sorted(
+        path
+        for path in paths
+        if path.is_file() and not is_fixture_path(path, root)
+    )
 
 
 def centralized_script_help_units(

@@ -6,8 +6,10 @@
 # Copyright 2026 by Kris Alavattam
 # Email: kalavattam@gmail.com
 #
-# OpenAI ChatGPT and Codex (GPT-5.6) were used in design, development, and
-# documentation, with all output reviewed, edited, and approved by the author.
+# The following were used in design, development, and documentation, with all
+# output reviewed, edited, and approved by the author:
+# - OpenAI ChatGPT and Codex (GPT-5.6);
+# - Anthropic Claude Code (Opus 5).
 #
 # Distributed under the MIT license.
 
@@ -27,6 +29,8 @@ import sys
 import tomllib
 from collections import Counter
 from pathlib import Path
+
+from dev.audit.fixture_paths import is_fixture_path
 
 MINIMUM_PYTHON = (3, 11)
 POLICY_LABEL = "Python >= 3.11"
@@ -156,11 +160,14 @@ def maintained_python_paths(root: Path) -> list[Path]:
         *(root / "tests").rglob("*.py"),
     }
 
+    # This discovery is a filesystem glob rather than a Git listing, so it
+    # cannot see that generated fixtures are ignored; see 'fixture_paths'.
     return sorted(
         path
         for path in paths
         if "__pycache__" not in path.parts
         and "artifacts/tests" not in path.as_posix()
+        and not is_fixture_path(path, root)
     )
 
 

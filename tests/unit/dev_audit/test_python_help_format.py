@@ -6,8 +6,10 @@
 # Copyright 2026 by Kris Alavattam
 # Email: kalavattam@gmail.com
 #
-# OpenAI ChatGPT and Codex (GPT-5.6) were used in design, development, and
-# documentation, with all output reviewed, edited, and approved by the author.
+# The following were used in design, development, and documentation, with all
+# output reviewed, edited, and approved by the author:
+# - OpenAI ChatGPT and Codex (GPT-5.6);
+# - Anthropic Claude Code (Opus 5).
 #
 # Distributed under the MIT license.
 
@@ -40,8 +42,8 @@ def rendered(source: str) -> str:
 
 
 def test_formatter_is_greedy_value_preserving_and_idempotent() -> None:
-    source = (FIXTURES / "help_format_input.py.fixture").read_text()
-    expected = (FIXTURES / "help_format_expected.py.fixture").read_text()
+    source = (FIXTURES / "format/help_input.py").read_text()
+    expected = (FIXTURES / "format/help_expected.py").read_text()
     actual = format_source(source)
 
     assert actual == expected
@@ -52,9 +54,9 @@ def test_formatter_is_greedy_value_preserving_and_idempotent() -> None:
 def test_formatter_preserves_unicode_literals_and_packs_them_greedily() -> (
     None
 ):
-    source = (FIXTURES / "help_format_unicode_input.py.fixture").read_text()
+    source = (FIXTURES / "format/help_unicode_input.py").read_text()
     expected = (
-        FIXTURES / "help_format_unicode_expected.py.fixture"
+        FIXTURES / "format/help_unicode_expected.py"
     ).read_text()
     actual = format_source(source)
 

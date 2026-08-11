@@ -775,7 +775,7 @@ EOM
     ) -> None:
         source = (
             REPO_ROOT
-            / "tests/fixtures/help_contracts/python_callable.py.fixture"
+            / "tests/fixtures/help_contracts/accepted/python_callable.py"
         ).read_text(encoding="utf-8")
         function = next(
             node
@@ -810,7 +810,7 @@ RuntimeError: not executed"""
     ) -> None:
         source = (
             REPO_ROOT
-            / "tests/fixtures/help_contracts/python_callable.py.fixture"
+            / "tests/fixtures/help_contracts/accepted/python_callable.py"
         ).read_text(encoding="utf-8")
         contracts = callable_contracts(source)
         second_example = """\n    >>> combine(2.0, 4.0)\n    (3.0, 3.0)\n"""

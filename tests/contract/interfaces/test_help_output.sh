@@ -6,9 +6,10 @@
 # Copyright 2026 by Kris Alavattam
 # Email: kalavattam@gmail.com
 #
-# OpenAI ChatGPT and Codex (GPT-5.5, GPT-5.6) were used in design, development,
-# and documentation, with all output reviewed, edited, and approved by the
-# author.
+# The following were used in design, development, and documentation, with all
+# output reviewed, edited, and approved by the author:
+# - OpenAI ChatGPT and Codex (GPT-5.5, GPT-5.6);
+# - Anthropic Claude Code (Opus 5).
 #
 # Distributed under the MIT license.
 
@@ -42,12 +43,15 @@ function assert_no_duplicate_rendered_sections() {
     done < <(
         awk '
             BEGIN {
-                heading = "Usage|Parameters|Returns|Notes|References|See Also|Examples"
+                heading = "Usage|Parameters|Returns"
+                heading = heading "|Notes|References"
+                heading = heading "|See Also|Examples"
             }
-            /^-{3,}$/ && prev ~ "^(" heading ")$" {
-                count[prev]++
-            }
+
+            /^-{3,}$/ && prev ~ "^(" heading ")$" { count[prev]++ }
+
             { prev = $0 }
+
             END {
                 for (sect in count) {
                     if (count[sect] > 1) {
@@ -142,7 +146,7 @@ function assert_rendered_help_structure() {
 #  Protect the representative multiline Examples section byte-for-byte
 function assert_combine_parts_examples_fixture() {
     local file="${1:?}"
-    local expected="${ROOT_REPO}/tests/fixtures/help/combine_parts_scaling_factor.examples.txt"
+    local expected="${ROOT_REPO}/tests/fixtures/help/expected/combine_parts_scaling_factor.examples.txt"
     local observed="${TEST_DIR_LOG}/help/combine_parts_scaling_factor.examples.txt"
     local line
 

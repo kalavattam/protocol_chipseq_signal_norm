@@ -11,7 +11,7 @@ bash tests/fixtures/json_source_form/make.sh
 
 Generated fixture outputs are ignored by Git. `tests/run_tests.sh` regenerates this fixture set automatically when required inputs are missing.
 
-Each negative fixture departs from the canonical rendering along exactly one axis. That isolation is deliberate: a fixture that violated two rules at once would let a checker regression hide behind whichever finding still fired.
+Each directory names the verdict the checker must return for the document inside it: the canonical rendering is the only conforming input. Each rejected document departs from it along exactly one axis. That isolation is deliberate: a fixture that violated two rules at once would let a checker regression hide behind whichever finding still fired.
 
 Because the outputs are ignored, they are also invisible to the checker itself, whose discovery lists tracked and non-ignored files. A fixture that is deliberately unreadable, wrongly indented, or tab-indented therefore cannot be mistaken for maintained source violating the rule it exists to exercise. This is the same isolation the AI-attribution fixtures rely on, and it is what allows a negative fixture to be pure text with no tooling dependency.
 
@@ -21,16 +21,16 @@ Because the outputs are ignored, they are also invisible to the checker itself, 
 Readable provenance:
 - `make.sh`
 
-Generated source fixtures:
-- `source/canonical.json`: the canonical rendering itself, exercising both treatments the budget selects
-- `source/inline_overflow.json`: one array packed onto its key's line, past the budget
-- `source/expanded_fits.json`: one structure broken across lines that fits the budget inline
-- `source/hybrid_delimiter.json`: one object opened inline and then continued vertically
-- `source/wrong_indent.json`: one expanded structure indented by three spaces instead of two
-- `source/tab_indent.json`: one expanded structure indented with tabs
-- `source/no_trailing_newline.json`: one canonical document with its final newline removed
-- `source/duplicate_key.json`: one object declaring the same key twice
-- `source/unreadable.json`: one document that is not JSON at all
+Generated documents, filed under the verdict the checker must return:
+- `accepted/canonical.json`: the canonical rendering itself, exercising both treatments the budget selects
+- `rejected/inline_overflow.json`: one array packed onto its key's line, past the budget
+- `rejected/expanded_fits.json`: one structure broken across lines that fits the budget inline
+- `rejected/hybrid_delimiter.json`: one object opened inline and then continued vertically
+- `rejected/wrong_indent.json`: one expanded structure indented by three spaces instead of two
+- `rejected/tab_indent.json`: one expanded structure indented with tabs
+- `rejected/no_trailing_newline.json`: one canonical document with its final newline removed
+- `rejected/duplicate_key.json`: one object declaring the same key twice
+- `rejected/unreadable.json`: one document that is not JSON at all
 
 <br />
 

@@ -31,21 +31,26 @@ from dev.audit.json_source_form import (
 )
 
 ROOT = Path(__file__).resolve().parents[3]
-FIXTURES = ROOT / "tests" / "fixtures" / "json_source_form" / "source"
+FIXTURES = ROOT / "tests" / "fixtures" / "json_source_form"
 
 # Every generated fixture, with the finding class it exists to exercise. A
 # fixture is consumed by hard failure rather than by 'skipTest', so a broken
 # generation step fails loudly instead of turning the suite green.
 FIXTURE_CLASSES = (
-    ("canonical.json", None),
-    ("inline_overflow.json", "past the 79-column budget"),
-    ("expanded_fits.json", "fits the 79-column budget inline"),
-    ("hybrid_delimiter.json", "delimiter of an expanded structure"),
-    ("wrong_indent.json", "indentation is"),
-    ("tab_indent.json", "line contains a tab"),
-    ("no_trailing_newline.json", "must end with exactly one newline"),
-    ("duplicate_key.json", "unreadable JSON"),
-    ("unreadable.json", "unreadable JSON"),
+    ("accepted/canonical.json", None),
+    ("rejected/inline_overflow.json", "past the 79-column budget"),
+    ("rejected/expanded_fits.json", "fits the 79-column budget inline"),
+    ("rejected/hybrid_delimiter.json", "delimiter of an expanded structure"),
+    ("rejected/wrong_indent.json", "indentation is"),
+    ("rejected/tab_indent.json", "line contains a tab"),
+    ("rejected/no_trailing_newline.json", "must end with exactly one newline"),
+    ("rejected/duplicate_key.json", "unreadable JSON"),
+    ("rejected/unreadable.json", "unreadable JSON"),
+)
+
+# The two documents the checker must refuse to read rather than rewrite.
+UNREADABLE = frozenset(
+    {"rejected/duplicate_key.json", "rejected/unreadable.json"},
 )
 
 
@@ -99,12 +104,12 @@ class FixtureClassTests(unittest.TestCase):
         """
 
         overflow = check_text(
-            fixture_text("inline_overflow.json"),
-            "inline_overflow.json",
+            fixture_text("rejected/inline_overflow.json"),
+            "rejected/inline_overflow.json",
         )
         fits = check_text(
-            fixture_text("expanded_fits.json"),
-            "expanded_fits.json",
+            fixture_text("rejected/expanded_fits.json"),
+            "rejected/expanded_fits.json",
         )
 
         self.assertNotIn(
@@ -137,7 +142,7 @@ class CanonicalRenderingTests(unittest.TestCase):
         Prove re-rendering the canonical fixture changes nothing.
         """
 
-        text = fixture_text("canonical.json")
+        text = fixture_text("accepted/canonical.json")
 
         self.assertEqual(canonical(json.loads(text)), text)
 
@@ -147,7 +152,7 @@ class CanonicalRenderingTests(unittest.TestCase):
         """
 
         for name, _ in FIXTURE_CLASSES:
-            if name in {"unreadable.json", "duplicate_key.json"}:
+            if name in UNREADABLE:
                 continue
 
             with self.subTest(fixture=name):
@@ -161,7 +166,7 @@ class CanonicalRenderingTests(unittest.TestCase):
         """
 
         for name, _ in FIXTURE_CLASSES:
-            if name in {"unreadable.json", "duplicate_key.json"}:
+            if name in UNREADABLE:
                 continue
 
             with self.subTest(fixture=name):

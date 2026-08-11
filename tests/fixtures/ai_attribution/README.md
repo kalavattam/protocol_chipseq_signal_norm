@@ -11,7 +11,7 @@ bash tests/fixtures/ai_attribution/make.sh
 
 Generated fixture outputs are ignored by Git. `tests/run_tests.sh` regenerates this fixture set automatically when required inputs are missing.
 
-Every fixture shares one bounded header and differs only in its attribution block, which is the subject under test. That isolation is deliberate: a difference in any other header row would confound a finding about attribution with a finding about header structure.
+Each directory names the verdict the checker must return for the header inside it: the two credited forms are accepted, and a coherent no-AI profile is outside what the rule reaches rather than a header it accepts. Every fixture shares one bounded header and differs only in its attribution block, which is the subject under test. That isolation is deliberate: a difference in any other header row would confound a finding about attribution with a finding about header structure.
 
 Because the outputs are ignored, they are also invisible to the attribution checker itself, whose discovery lists tracked and non-ignored files. A fixture whose header is deliberately unattributed therefore cannot be mistaken for a maintained source in violation of the rule it exists to exercise.
 
@@ -21,15 +21,17 @@ Because the outputs are ignored, they are also invisible to the attribution chec
 Readable provenance:
 - `make.sh`
 
-Generated source fixtures:
-- `source/single_vendor.sh`: one vendor credited in the bounded prose form
-- `source/multi_vendor.sh`: two vendors credited in the lead-in and semicolon-list form, in first-use order
-- `source/no_attribution.sh`: a coherent no-AI profile that declares no attribution at all
+Generated headers the checker must accept:
+- `accepted/single_vendor.sh`: one vendor credited in the bounded prose form
+- `accepted/multi_vendor.sh`: two vendors credited in the lead-in and semicolon-list form, in first-use order
+
+Generated headers the rule does not reach:
+- `non_applicable/no_attribution.sh`: a coherent no-AI profile that declares no attribution at all
 
 <br />
 
 ## Expected attribution behavior
-All three fixtures are conforming inputs. `single_vendor.sh` and `multi_vendor.sh` exercise the two accepted representations, and `no_attribution.sh` exercises the profile that must report null observed attribution rather than a finding.
+All three fixtures are conforming inputs. `accepted/single_vendor.sh` and `accepted/multi_vendor.sh` exercise the two accepted representations, and `non_applicable/no_attribution.sh` exercises the profile that must report null observed attribution rather than a finding.
 
 Trailer-agreement behavior is exercised against injected evidence rather than against these files, because a fixture has no commit history of its own.
 

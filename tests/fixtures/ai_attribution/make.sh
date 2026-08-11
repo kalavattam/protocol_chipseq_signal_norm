@@ -38,18 +38,21 @@ dir_fix="${dir_scr}"
 # shellcheck source=tests/support/fixture_helpers.sh
 source "${dir_scr}/../../support/fixture_helpers.sh"
 
-# Declare every generated path up front
-dir_src="${dir_fix}/source"
-fil_single="${dir_src}/single_vendor.sh"
-fil_multi="${dir_src}/multi_vendor.sh"
-fil_none="${dir_src}/no_attribution.sh"
+# Declare every generated path up front. The directory names the verdict the
+# checker must return for the header inside it: the two credited forms are
+# accepted, and a coherent no-AI profile is outside what the rule reaches
+# rather than a header it accepts.
+dir_acc="${dir_fix}/accepted"
+dir_nap="${dir_fix}/non_applicable"
+fil_single="${dir_acc}/single_vendor.sh"
+fil_multi="${dir_acc}/multi_vendor.sh"
+fil_none="${dir_nap}/no_attribution.sh"
 
 # Remove stale outputs so regeneration is idempotent.
-rm_file "${dir_fix}" "${fil_single}"
-rm_file "${dir_fix}" "${fil_multi}"
-rm_file "${dir_fix}" "${fil_none}"
+rm_files "${dir_fix}" "${fil_single}" "${fil_multi}" "${fil_none}"
 
-mkdirs "${dir_src}"
+mkdirs "${dir_acc}" "${dir_nap}"
+
 
 # Author every fixture literally. They share one bounded header and differ
 # only in the attribution block, which is the subject under test. The

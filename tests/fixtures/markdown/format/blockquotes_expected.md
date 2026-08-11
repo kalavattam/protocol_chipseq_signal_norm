@@ -1,5 +1,0 @@
-
-# Blockquote format
-> First.
->
-> > Nested.

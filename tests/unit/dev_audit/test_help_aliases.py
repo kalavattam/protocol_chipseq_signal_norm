@@ -6,8 +6,10 @@
 # Copyright 2026 by Kris Alavattam
 # Email: kalavattam@gmail.com
 #
-# OpenAI ChatGPT and Codex (GPT-5.6) were used in design, development, and
-# documentation, with all output reviewed, edited, and approved by the author.
+# The following were used in design, development, and documentation, with all
+# output reviewed, edited, and approved by the author:
+# - OpenAI ChatGPT and Codex (GPT-5.6);
+# - Anthropic Claude Code (Opus 5).
 #
 # Distributed under the MIT license.
 
@@ -22,6 +24,7 @@ import unittest
 from pathlib import Path
 
 from dev.audit import help_aliases
+from dev.audit.fixture_paths import is_fixture_path
 from dev.audit.help_aliases import (
     AliasChunk,
     ParameterRow,
@@ -979,6 +982,10 @@ EOM
     def test_all_current_help_owners_have_zero_unexplained_alias_gaps(
         self,
     ) -> None:
+        # Generated fixtures are excluded because this glob reads the
+        # filesystem rather than Git and cannot see that they are ignored. A
+        # fixture shell script is an input to a checker, not a help surface a
+        # person invokes, so it owes no alias coverage.
         paths = sorted(
             str(path.relative_to(REPO_ROOT))
             for base in (
@@ -988,6 +995,7 @@ EOM
             )
             for path in base.rglob("*.sh")
             if "outputs" not in path.relative_to(REPO_ROOT).parts
+            and not is_fixture_path(path, REPO_ROOT)
         )
 
         findings, _ = scan_repository(REPO_ROOT, paths)

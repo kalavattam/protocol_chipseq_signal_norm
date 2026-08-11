@@ -1,8 +1,0 @@
-def build(parser):
-    parser.add_argument(
-        "--value",
-        help=(
-            "This sentence uses complete words through the available column "
-            "limit.\n"
-        ),
-    )

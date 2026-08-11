@@ -1,5 +1,0 @@
-def build(parser):
-    parser.add_argument(
-        "--mode",
-        help="Use `--mode dist` for distribution mode.",
-    )

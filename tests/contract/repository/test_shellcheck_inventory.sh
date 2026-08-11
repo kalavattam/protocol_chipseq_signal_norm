@@ -43,7 +43,7 @@ function make_fake_prefix() {
     local prefix="${1}"
 
     mkdir -p "${prefix}/bin"
-    cp "${ROOT_REPO}/tests/fixtures/shellcheck/fake_shellcheck.fixture" \
+    cp "${ROOT_REPO}/tests/fixtures/shellcheck/tool/fake_shellcheck.sh" \
         "${prefix}/bin/shellcheck"
     chmod +x "${prefix}/bin/shellcheck"
     ln -sf "${TEST_PYTHON}" "${prefix}/bin/python"
@@ -95,13 +95,13 @@ function make_discovery_repo() {
         "${root}/install/scripts" \
         "${root}/tests/contract"
     cp "${runner}" "${root}/dev/audit/run_shellcheck.sh"
-    cp "${ROOT_REPO}/tests/fixtures/shellcheck/bash.fixture" \
+    cp "${ROOT_REPO}/tests/fixtures/shellcheck/script/bash.sh" \
         "${root}/bin/discovered.sh"
-    cp "${ROOT_REPO}/tests/fixtures/shellcheck/posix.fixture" \
+    cp "${ROOT_REPO}/tests/fixtures/shellcheck/script/posix.sh" \
         "${root}/install/scripts/install_envs_entrypoint.sh"
-    cp "${ROOT_REPO}/tests/fixtures/shellcheck/bash.fixture" \
+    cp "${ROOT_REPO}/tests/fixtures/shellcheck/script/bash.sh" \
         "${root}/tests/contract/discovered.sh"
-    cp "${ROOT_REPO}/tests/fixtures/shellcheck/bash.fixture" \
+    cp "${ROOT_REPO}/tests/fixtures/shellcheck/script/bash.sh" \
         "${root}/tests/contract/deleted.sh"
     git -C "${root}" init -q
     git -C "${root}" add bin dev install tests
@@ -217,7 +217,7 @@ fi
 
 fake_prefix="${TEST_DIR_TMP}/shellcheck_prefix"
 make_fake_prefix "${fake_prefix}"
-bash_fixture="${ROOT_REPO}/tests/fixtures/shellcheck/bash.fixture"
+bash_fixture="${ROOT_REPO}/tests/fixtures/shellcheck/script/bash.sh"
 bootstrap="${ROOT_REPO}/install/scripts/install_envs_entrypoint.sh"
 
 discovery_root="${TEST_DIR_TMP}/shellcheck_discovery"
