@@ -116,17 +116,21 @@ fi
 # Report the unswept remainder without failing, so it stays visible instead of
 # disappearing behind a green cohort.
 set +e
+
 (
     cd "${ROOT_REPO}" || exit 2
     PYTHONDONTWRITEBYTECODE=1 python3 -m dev.audit.json_source_form \
         --root "${ROOT_REPO}"
 ) > "${inventory_log}" 2>&1
+
 inventory_status="$?"
+
 (
     cd "${ROOT_REPO}" || exit 2
     PYTHONDONTWRITEBYTECODE=1 python3 -m dev.audit.json_source_form \
         --root "${ROOT_REPO}" --json
 ) > "${inventory_json}" 2>&1
+
 set -e
 
 
@@ -167,10 +171,18 @@ else
             "maintained JSON inventory scanned ${total_scanned} path(s)"
     fi
 
-    record_warn \
-        "fixture-paradigm residual: ${residual} finding(s) outside the swept" \
-        "cohort, deferred to the fixture-directory conversion that rewrites" \
-        "tests/fixtures/*/cases.json"
+    # The fixture-paradigm residual this warning used to defer is repaired, not
+    # concealed. Generated 'cases.json' fixtures are now ignored, so they leave
+    # this inventory whether or not their form is canonical, and a residual of
+    # zero here would prove nothing about them. Their canonical form is
+    # asserted directly, against explicit paths that bypass discovery, by
+    # 'test_fixture_paradigm.sh'.
+    if (( residual > 0 )); then
+        record_warn \
+            "${residual} finding(s) outside the swept cohort"
+    else
+        record_pass "no findings outside the swept cohort"
+    fi
 fi
 
 finish

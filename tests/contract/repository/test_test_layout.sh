@@ -6,9 +6,10 @@
 # Copyright 2026 by Kris Alavattam
 # Email: kalavattam@gmail.com
 #
-# OpenAI ChatGPT and Codex (GPT-5.5, GPT-5.6) were used in design, development,
-# and documentation, with all output reviewed, edited, and approved by the
-# author.
+# The following were used in design, development, and documentation, with all
+# output reviewed, edited, and approved by the author:
+# - OpenAI ChatGPT and Codex (GPT-5.5, GPT-5.6);
+# - Anthropic Claude Code (Opus 5).
 #
 # Distributed under the MIT license.
 
@@ -91,69 +92,13 @@ function check_boundaries() {
 }
 
 
-function check_fixtures() {
-    local feature=""
-    local fixture_root=""
-    local generated=""
+# Fixture-root conformance is owned by 'test_fixture_paradigm.sh'. The checks
+# that used to live here discovered their corpus with 'find ... -name make.sh',
+# which could only ever inspect roots that already had a recipe, so the roots
+# most needing inspection were the ones it could not see. The production
+# boundary below is a different claim about a different corpus and stays.
+function check_production_boundary() {
     local findings=0
-
-    while IFS= read -r fixture_root; do
-        feature="$(basename "${fixture_root}")"
-
-        if [[ ! -s "${fixture_root}/README.md" ]]; then
-            record_fail "fixture README is missing or empty: ${feature}"
-            findings=1
-        elif git -C "${ROOT_REPO}" check-ignore -q \
-            "tests/fixtures/${feature}/README.md"
-        then
-            record_fail "fixture README is ignored: ${feature}"
-            findings=1
-        fi
-
-        if [[ ! -r "${fixture_root}/make.sh" ]]; then
-            record_fail "fixture recipe is missing or unreadable: ${feature}"
-            findings=1
-        elif git -C "${ROOT_REPO}" check-ignore -q \
-            "tests/fixtures/${feature}/make.sh"
-        then
-            record_fail "fixture recipe is ignored: ${feature}"
-            findings=1
-        fi
-
-        if ! grep -q 'tests/support/fixture_helpers\.sh' \
-            "${fixture_root}/make.sh"
-        then
-            record_fail \
-                "fixture recipe omits the shared helper: ${feature}"
-            findings=1
-        fi
-
-        while IFS= read -r generated; do
-            if [[ "${feature}" == "python_source_policy" && \
-                "${generated}" == *.py.fixture ]]
-            then
-                continue
-            fi
-
-            if ! git -C "${ROOT_REPO}" check-ignore -q \
-                "${generated#"${ROOT_REPO}/"}"
-            then
-                record_fail \
-                    "generated fixture product is not ignored:" \
-                    "$(print_relpath "${generated}")"
-                findings=1
-            fi
-        done < <(
-            find "${fixture_root}" -type f \
-                ! -path "${fixture_root}/README.md" \
-                ! -path "${fixture_root}/make.sh" \
-                -print | LC_ALL=C sort
-        )
-    done < <(
-        find "${ROOT_REPO}/tests/fixtures" -mindepth 2 -maxdepth 2 \
-            -type f -name make.sh -print \
-            | sed 's#/make\.sh$##' | LC_ALL=C sort
-    )
 
     if rg -n \
         '^[[:space:]]*(source|\.)[[:space:]].*tests/(fixtures|support)/' \
@@ -167,12 +112,12 @@ function check_fixtures() {
     fi
 
     (( findings == 0 )) && \
-        record_pass "fixture recipes, ignores, and production boundaries agree"
+        record_pass "production source is independent of tests"
 }
 
 
 print_section "${TEST_NAME}"
 check_test_scripts
 check_boundaries
-check_fixtures
+check_production_boundary
 finish
