@@ -6,14 +6,15 @@
 # Copyright 2026 by Kris Alavattam
 # Email: kalavattam@gmail.com
 #
-# OpenAI ChatGPT and Codex (GPT-5.5, GPT-5.6) were used in design, development,
-# and documentation, with all output reviewed, edited, and approved by the
-# author.
+# The following were used in design, development, and documentation, with all
+# output reviewed, edited, and approved by the author:
+# - OpenAI ChatGPT and Codex (GPT-5.5, GPT-5.6);
+# - Anthropic Claude Code (Opus 5).
 #
 # Distributed under the MIT license.
 
 
-#  Require Bash >= 4.4 before doing any work
+# Require Bash >= 4.4 before doing any work.
 if [[ -z "${BASH_VERSION:-}" ]]; then
     echo "error(shell):" \
         "this script must be run under Bash >= 4.4." >&2
@@ -27,20 +28,20 @@ elif ((
     exit 1
 fi
 
-#  Run in safe mode, exiting on errors, unset variables, and pipe failures
+# Run in safe mode, exiting on errors, unset variables, and pipe failures.
 set -euo pipefail
 
 
-#  Resolve paths relative to 'tests/fixtures'
+# Resolve paths relative to 'tests/fixtures'.
 dir_scr="$(cd "$(dirname "${BASH_SOURCE[0]}")" > /dev/null 2>&1 && pwd)"
 dir_fix="${dir_scr}"
 
-#  Source shared fixture-generation helpers
+# Source shared fixture-generation helpers.
 # shellcheck source=tests/support/fixture_helpers.sh
 source "${dir_scr}/../../support/fixture_helpers.sh"
 
 
-#  Define fixture paths, contig names, and the shared reference sequence
+# Define fixture paths, contig names, and the shared reference sequence.
 dir_sam="${dir_fix}/sam"
 dir_ref="${dir_fix}/reference"
 
@@ -57,10 +58,17 @@ contigs=(
 seq_100="ACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGT"
 
 
-#  Create fixture output directories
+# Remove stale generated fixture outputs. Every output below is rewritten
+# unconditionally, so this sweep is not what makes regeneration correct
+# today; it is what keeps regeneration correct after a later revision stops
+# writing one of them.
+rm_files "${dir_fix}" "${sam}" "${ref}" "${fai}"
+
+# Create fixture output directories.
 mkdirs "${dir_sam}" "${dir_ref}"
 
-#  Write the tiny reference FASTA and matching FASTA index
+
+# Write the tiny reference FASTA and matching FASTA index.
 : > "${ref}"
 : > "${fai}"
 offset=0
@@ -72,7 +80,7 @@ for contig in "${contigs[@]}"; do
     offset=$(( offset + 100 + 1 ))
 done
 
-#  Write SAM headers and one representative read per retained/dropped class
+# Write SAM headers and one representative read per retained/dropped class.
 {
     write_sam_line '@HD' 'VN:1.6' 'SO:coordinate'
 

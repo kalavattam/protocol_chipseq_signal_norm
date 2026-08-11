@@ -6,16 +6,17 @@
 # Copyright 2026 by Kris Alavattam
 # Email: kalavattam@gmail.com
 #
-# OpenAI ChatGPT and Codex (GPT-5.5, GPT-5.6) were used in design, development,
-# and documentation, with all output reviewed, edited, and approved by the
-# author.
+# The following were used in design, development, and documentation, with all
+# output reviewed, edited, and approved by the author:
+# - OpenAI ChatGPT and Codex (GPT-5.5, GPT-5.6);
+# - Anthropic Claude Code (Opus 5).
 #
 # Distributed under the MIT license.
 
 
 #TODO: refactor for lifecycle-function formatting
 
-#  Require Bash >= 4.4 before doing any work
+# Require Bash >= 4.4 before doing any work.
 if [[ -z "${BASH_VERSION:-}" ]]; then
     echo "error(shell):" \
         "this script must be run under Bash >= 4.4." >&2
@@ -29,15 +30,15 @@ elif ((
     exit 1
 fi
 
-#  Run in safe mode, exiting on errors, unset variables, and pipe failures
+# Run in safe mode, exiting on errors, unset variables, and pipe failures.
 set -euo pipefail
 
-#  Resolve paths relative to 'tests'
+# Resolve paths relative to 'tests'.
 dir_scr="$(cd "$(dirname "${BASH_SOURCE[0]}")" > /dev/null 2>&1 && pwd)"
 dir_rep="$(cd "${dir_scr}/../.." > /dev/null 2>&1 && pwd)"
 
 
-#  Print help text
+# Print help text.
 function show_help_clean() {
     cat << EOM
 Usage
@@ -91,26 +92,26 @@ EOM
 }
 
 
-#  Print an error
+# Print an error.
 function error() {
     echo "error($(basename "${BASH_SOURCE[0]}")):" "$@" >&2
 }
 
 
-#  Print an error and stop
+# Print an error and stop.
 function die() {
     echo "error($(basename "${BASH_SOURCE[0]}")):" "$@" >&2
     exit 1
 }
 
 
-#  Print a cleanup note
+# Print a cleanup note.
 function note() {
     echo "note($(basename "${BASH_SOURCE[0]}")):" "$@" >&2
 }
 
 
-#  Require execution from the expected repository checkout
+# Require execution from the expected repository checkout.
 function require_git_repo() {
     local dir_git=""
 
@@ -134,7 +135,7 @@ function require_git_repo() {
 }
 
 
-#  Require fixture roots to contain only their hand-written source files
+# Require fixture roots to contain only their hand-written source files.
 function check_fixture_safe() {
     local dir_fix=""
     local file=""
@@ -164,7 +165,7 @@ function check_fixture_safe() {
 }
 
 
-#  Require test output directories to contain no tracked files
+# Require test output directories to contain no tracked files.
 function check_output_safe() {
     local -a arr_tracked=()
     local dir_out=""
@@ -186,7 +187,7 @@ function check_output_safe() {
 }
 
 
-#  Print selected cleanup targets
+# Print selected cleanup targets.
 function print_targets() {
     local target=""
 
@@ -197,7 +198,7 @@ function print_targets() {
 }
 
 
-#  Remove or report ignored files under the selected scoped paths
+# Remove or report ignored files under the selected scoped paths.
 function clean_paths() {
     local -a arr_cmd=(
         git -C "${dir_rep}" clean -dX
@@ -211,16 +212,16 @@ function clean_paths() {
         note "removing ignored generated artifacts."
     fi
 
-    #  This helper is called only for fixture cleanup. Passing ignored output
-    #+ children to 'git clean' can cause Git to select their ignored parent and
-    #+ retained sibling evidence, so disposable outputs are handled literally
-    #+ by 'clean_output_paths' instead.
+    # This helper is called only for fixture cleanup. Passing ignored output
+    # children to 'git clean' can cause Git to select their ignored parent and
+    # retained sibling evidence, so disposable outputs are handled literally by
+    # 'clean_output_paths' instead.
     arr_cmd+=( -- "${arr_fix[@]}" )
     "${arr_cmd[@]}"
 }
 
 
-#  Remove or report each literal disposable output root
+# Remove or report each literal disposable output root.
 function clean_output_paths() {
     local dir_out=""
     local path_out=""
@@ -248,15 +249,27 @@ function clean_output_paths() {
 }
 
 
-#  Define repository-relative cleanup targets ================================
-arr_fix=(
-    tests/fixtures/align_fastqs
-    tests/fixtures/calculate_scaling_factor
-    tests/fixtures/compute_signal
-    tests/fixtures/download_fastqs
-    tests/fixtures/filter_alignments
-    tests/fixtures/trim_fastqs
+# Define repository-relative cleanup targets.
+#
+# Derive fixture targets from the recipes on disk rather than listing them. A
+# literal list goes stale silently: it named six roots while the repository had
+# fifteen, so nine generated fixture sets were never cleaned. Removal is
+# 'git clean -dX', which touches ignored files only, so a derived target can
+# never reach a tracked README or recipe.
+arr_fix=()
+while IFS= read -r dir_rcp; do
+    arr_fix+=( "${dir_rcp}" )
+done < <(
+    cd "${dir_rep}" &&
+        find tests/fixtures -mindepth 2 -maxdepth 2 -type f -name make.sh \
+            -print \
+            | sed 's#/make\.sh$##' \
+            | LC_ALL=C sort
 )
+
+if (( ${#arr_fix[@]} == 0 )); then
+    die "no fixture recipes were discovered under 'tests/fixtures'."
+fi
 
 arr_out=(
     .pytest_cache
@@ -273,7 +286,7 @@ arr_out=(
 )
 
 
-#  Parse arguments ============================================================
+# Parse arguments.
 cln_fix=false
 cln_out=false
 dry_run=false
@@ -323,7 +336,7 @@ if [[ "${cln_fix}" == "false" && "${cln_out}" == "false" ]]; then
 fi
 
 
-#  Validate and run scoped cleanup ============================================
+# Validate and run scoped cleanup.
 require_git_repo
 
 arr_tgt=()
@@ -338,15 +351,18 @@ if [[ "${cln_out}" == "true" ]]; then
 fi
 
 print_targets
+
 if [[ \
     "${dry_run}" == "false" && \
     "${CONFIRM_TEST_CLEANUP:-}" != "1"
 ]]; then
     die "destructive cleanup requires exact CONFIRM_TEST_CLEANUP=1."
 fi
+
 if [[ "${cln_fix}" == "true" ]]; then
     clean_paths
 fi
+
 if [[ "${cln_out}" == "true" ]]; then
     clean_output_paths
 fi

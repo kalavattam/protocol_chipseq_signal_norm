@@ -6,14 +6,15 @@
 # Copyright 2026 by Kris Alavattam
 # Email: kalavattam@gmail.com
 #
-# OpenAI ChatGPT and Codex (GPT-5.5, GPT-5.6) were used in design, development,
-# and documentation, with all output reviewed, edited, and approved by the
-# author.
+# The following were used in design, development, and documentation, with all
+# output reviewed, edited, and approved by the author:
+# - OpenAI ChatGPT and Codex (GPT-5.5, GPT-5.6);
+# - Anthropic Claude Code (Opus 5).
 #
 # Distributed under the MIT license.
 
 
-#  Require Bash >= 4.4 before doing any work
+# Require Bash >= 4.4 before doing any work.
 if [[ -z "${BASH_VERSION:-}" ]]; then
     echo "error(shell):" \
         "this script must be run under Bash >= 4.4." >&2
@@ -27,20 +28,20 @@ elif ((
     exit 1
 fi
 
-#  Run in safe mode, exiting on errors, unset variables, and pipe failures
+# Run in safe mode, exiting on errors, unset variables, and pipe failures.
 set -euo pipefail
 
 
-#  Resolve paths relative to 'tests/fixtures'
+# Resolve paths relative to 'tests/fixtures'.
 dir_scr="$(cd "$(dirname "${BASH_SOURCE[0]}")" > /dev/null 2>&1 && pwd)"
 dir_fix="${dir_scr}"
 
-#  Source shared fixture-generation helpers
+# Source shared fixture-generation helpers.
 # shellcheck source=tests/support/fixture_helpers.sh
 source "${dir_scr}/../../support/fixture_helpers.sh"
 
 
-#  Define fixture directories, bedGraph paths, and alignment paths
+# Define fixture directories, bedGraph paths, and alignment paths.
 dir_bdg="${dir_fix}/bedgraph"
 dir_ref="${dir_fix}/reference"
 dir_sam="${dir_fix}/sam"
@@ -71,10 +72,36 @@ fil_cram_pe="${dir_cram_pe}/tiny_pe.cram"
 env_req="env_protocol"
 
 
-#  Require the project environment for samtools-backed fixtures
+# Require the project environment for samtools-backed fixtures.
 require_env "${env_req}" "for compute-signal fixtures."
 
-#  Create fixture output directories
+# Remove stale generated fixture outputs. Every output below is rewritten
+# unconditionally, so this sweep is not what makes regeneration correct today;
+# it is what keeps regeneration correct after a later revision stops writing
+# one of them. The Samtools index companions go with their subjects, because an
+# index outliving its subject is worse than a missing one.
+rm_files \
+    "${dir_fix}" \
+    "${fil_bg_A}" \
+    "${fil_bg_B}" \
+    "${fil_bg_hdr_A}" \
+    "${fil_bg_hdr_B}" \
+    "${fil_ref}" \
+    "${fil_sam_se}" \
+    "${fil_sam_pe}" \
+    "${fil_bam_se}" \
+    "${fil_bam_pe}" \
+    "${fil_cram_se}" \
+    "${fil_cram_pe}"
+
+rm -f -- \
+    "${fil_ref}.fai" \
+    "${fil_bam_se}.bai" \
+    "${fil_bam_pe}.bai" \
+    "${fil_cram_se}.crai" \
+    "${fil_cram_pe}.crai"
+
+# Create fixture output directories.
 mkdirs \
     "${dir_bdg}" \
     "${dir_ref}" \
@@ -88,7 +115,8 @@ mkdirs \
     "${dir_cram_se}" \
     "${dir_cram_pe}"
 
-#  Write tiny bedGraph fixtures for ratio-mode edge cases
+
+# Write tiny bedGraph fixtures for ratio-mode edge cases.
 {
     printf "I\t0\t10\t4\n"
     printf "I\t10\t20\t0\n"
@@ -111,7 +139,7 @@ mkdirs \
     printf "I\t70\t80\t1\n"
 } > "${fil_bg_B}"
 
-#  Write bedGraph fixtures with skippable header/comment lines
+# Write bedGraph fixtures with skippable header/comment lines.
 {
     printf "track type=bedGraph name=\"ratio_A\"\n"
     printf "browser position I:0-80\n"
@@ -144,13 +172,13 @@ mkdirs \
     printf "I\t70\t80\t1\n"
 } > "${fil_bg_hdr_B}"
 
-#  Write tiny reference FASTA used for BAM/CRAM fixture generation
+# Write tiny reference FASTA used for BAM/CRAM fixture generation.
 cat > "${fil_ref}" << EOM
 >I
 ACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGT
 EOM
 
-#  Write single-end SAM records for forward and reverse fragments
+# Write single-end SAM records for forward and reverse fragments.
 {
     write_sam_line '@HD' 'VN:1.6' 'SO:coordinate'
     write_sam_line '@SQ' 'SN:I' 'LN:80'
@@ -164,7 +192,7 @@ EOM
         '*' '0' '0' 'ACGTACGTAC' 'FFFFFFFFFF'
 } > "${fil_sam_se}"
 
-#  Write paired-end SAM records for two fragment positions
+# Write paired-end SAM records for two fragment positions.
 {
     write_sam_line '@HD' 'VN:1.6' 'SO:coordinate'
     write_sam_line '@SQ' 'SN:I' 'LN:80'
@@ -186,27 +214,27 @@ EOM
         '=' '41' '-20' 'ACGTACGTAC' 'FFFFFFFFFF'
 } > "${fil_sam_pe}"
 
-#  Require samtools for indexed FASTA, BAM, and CRAM generation
+# Require samtools for indexed FASTA, BAM, and CRAM generation.
 require_cmd samtools "in '${env_req}' to generate BAM/CRAM fixtures."
 
-#  Index the tiny reference for CRAM generation and reading
+# Index the tiny reference for CRAM generation and reading.
 samtools faidx "${fil_ref}"
 
-#  Generate sorted and indexed BAM fixtures from SAM provenance
+# Generate sorted and indexed BAM fixtures from SAM provenance.
 samtools view -bS "${fil_sam_se}" | samtools sort -o "${fil_bam_se}"
 samtools index "${fil_bam_se}"
 
 samtools view -bS "${fil_sam_pe}" | samtools sort -o "${fil_bam_pe}"
 samtools index "${fil_bam_pe}"
 
-#  Generate indexed CRAM fixtures from the BAM fixtures
+# Generate indexed CRAM fixtures from the BAM fixtures.
 samtools view -C -T "${fil_ref}" -o "${fil_cram_se}" "${fil_bam_se}"
 samtools index "${fil_cram_se}"
 
 samtools view -C -T "${fil_ref}" -o "${fil_cram_pe}" "${fil_bam_pe}"
 samtools index "${fil_cram_pe}"
 
-#  Validate the generated alignment fixtures
+# Validate the generated alignment fixtures.
 samtools quickcheck \
     "${fil_bam_se}" \
     "${fil_bam_pe}" \

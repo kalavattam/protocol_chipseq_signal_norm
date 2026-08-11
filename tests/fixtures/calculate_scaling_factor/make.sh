@@ -27,20 +27,20 @@ elif ((
     exit 1
 fi
 
-#  Run in safe mode, exiting on errors, unset variables, and pipe failures
+# Run in safe mode, exiting on errors, unset variables, and pipe failures.
 set -euo pipefail
 
 
-#  Resolve paths relative to 'tests/fixtures'
+# Resolve paths relative to 'tests/fixtures'.
 dir_scr="$(cd "$(dirname "${BASH_SOURCE[0]}")" > /dev/null 2>&1 && pwd)"
 dir_fix="${dir_scr}"
 
-#  Source shared fixture-generation helpers
+# Source shared fixture-generation helpers.
 # shellcheck source=tests/support/fixture_helpers.sh
 source "${dir_scr}/../../support/fixture_helpers.sh"
 
 
-#  Generate one sorted SE BAM fixture with a known alignment count
+# Generate one sorted SE BAM fixture with a known alignment count.
 function write_fixture_bam_se() {
     local sam="${1:-}"
     local bam="${2:-}"
@@ -66,7 +66,7 @@ function write_fixture_bam_se() {
 }
 
 
-#  Generate one sorted PE BAM fixture with a known fragment count
+# Generate one sorted PE BAM fixture with a known fragment count.
 function write_fixture_bam_pe() {
     local sam="${1:-}"
     local bam="${2:-}"
@@ -98,7 +98,7 @@ function write_fixture_bam_pe() {
 }
 
 
-#  Generate one reference-backed CRAM fixture from a BAM fixture
+# Generate one reference-backed CRAM fixture from a BAM fixture.
 function write_cram_fixture() {
     local bam="${1:-}"
     local cram="${2:-}"
@@ -109,7 +109,7 @@ function write_cram_fixture() {
 }
 
 
-#  Define fixture directories and scaling-factor part-file paths
+# Define fixture directories and scaling-factor part-file paths.
 dir_ref="${dir_fix}/reference"
 dir_sam="${dir_fix}/sam"
 dir_sam_se="${dir_sam}/se"
@@ -209,12 +209,12 @@ cfg_map="${dir_cfg}/parse_metadata_siqchip_field_to_column.yml"
 env_req="env_protocol"
 
 
-#  Require the project environment and Samtools for alignment fixtures
+# Require the project environment and Samtools for alignment fixtures.
 require_env "${env_req}" "for calculate-scaling-factor fixtures."
 require_cmd samtools "in '${env_req}' to generate BAM/CRAM fixtures."
 require_cmd gzip "in '${env_req}' to generate compressed metadata fixtures."
 
-#  Create fixture output directories
+# Create fixture output directories.
 mkdirs \
     "${dir_ref}" \
     "${dir_sam}" \
@@ -229,7 +229,8 @@ mkdirs \
     "${dir_met}" \
     "${dir_cfg}"
 
-#  Write and index the tiny reference used for CRAM fixtures
+
+# Write and index the tiny reference used for CRAM fixtures.
 cat > "${ref_fa}" << EOM
 >I
 ACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGT
@@ -237,7 +238,7 @@ EOM
 
 samtools faidx "${ref_fa}"
 
-#  Generate role-specific SE BAM fixtures with known alignment counts
+# Generate role-specific SE BAM fixtures with known alignment counts.
 write_fixture_bam_se "${sam_se_mip_0}" "${bam_se_mip_0}" mip_A 3
 write_fixture_bam_se "${sam_se_mip_1}" "${bam_se_mip_1}" mip_B 2
 write_fixture_bam_se "${sam_se_min_0}" "${bam_se_min_0}" min_A 2
@@ -247,7 +248,7 @@ write_fixture_bam_se "${sam_se_sip_1}" "${bam_se_sip_1}" sip_B 2
 write_fixture_bam_se "${sam_se_sin_0}" "${bam_se_sin_0}" sin_A 2
 write_fixture_bam_se "${sam_se_sin_1}" "${bam_se_sin_1}" sin_B 1
 
-#  Generate role-specific PE BAM fixtures with matching fragment counts
+# Generate role-specific PE BAM fixtures with matching fragment counts.
 write_fixture_bam_pe "${sam_pe_mip_0}" "${bam_pe_mip_0}" mip_A 3
 write_fixture_bam_pe "${sam_pe_mip_1}" "${bam_pe_mip_1}" mip_B 2
 write_fixture_bam_pe "${sam_pe_min_0}" "${bam_pe_min_0}" min_A 2
@@ -257,7 +258,7 @@ write_fixture_bam_pe "${sam_pe_sip_1}" "${bam_pe_sip_1}" sip_B 2
 write_fixture_bam_pe "${sam_pe_sin_0}" "${bam_pe_sin_0}" sin_A 2
 write_fixture_bam_pe "${sam_pe_sin_1}" "${bam_pe_sin_1}" sin_B 1
 
-#  Duplicate PE main-alignment fixtures under treatment-aware siQ basenames
+# Duplicate PE main-alignment fixtures under treatment-aware siQ basenames.
 cp "${bam_pe_mip_0}"     "${bam_pe_mip_hu_0}"
 cp "${bam_pe_mip_0}.bai" "${bam_pe_mip_hu_0}.bai"
 cp "${bam_pe_mip_1}"     "${bam_pe_mip_hu_1}"
@@ -267,7 +268,7 @@ cp "${bam_pe_min_0}.bai" "${bam_pe_min_hu_0}.bai"
 cp "${bam_pe_min_1}"     "${bam_pe_min_hu_1}"
 cp "${bam_pe_min_1}.bai" "${bam_pe_min_hu_1}.bai"
 
-#  Generate SE and PE CRAM fixtures from the role-specific BAM fixtures
+# Generate SE and PE CRAM fixtures from the role-specific BAM fixtures.
 write_cram_fixture "${bam_se_mip_0}" "${cram_se_mip_0}" "${ref_fa}"
 write_cram_fixture "${bam_se_mip_1}" "${cram_se_mip_1}" "${ref_fa}"
 write_cram_fixture "${bam_se_min_0}" "${cram_se_min_0}" "${ref_fa}"
@@ -382,8 +383,9 @@ do
     [[ -s "${idx}" ]] || die "CRAM index missing or empty: '${idx}'."
 done
 
-#  Remove stale generated fixture outputs. Broad metadata/config cleanup clears
-#+ ignored legacy parser fixtures from earlier generator versions.
+
+# Remove stale generated fixture outputs. Broad metadata/config cleanup clears
+# ignored legacy parser fixtures from earlier generator versions.
 rm_files \
     "${dir_fix}" \
     "${spk_0}" \
@@ -400,7 +402,8 @@ rm -f -- \
     "${dir_met}"/measurements_siqchip.tsv.gz \
     "${dir_cfg}"/parse_metadata_siqchip*.yml
 
-#  Write realistic spike-in scaling-factor part files
+
+# Write realistic spike-in scaling-factor part files.
 write_tsv_row \
     '/path/to/IP_WT_G1_Hho1_6336.sc.bam' \
     '/path/to/IP_WT_G1_Hho1_6336.sp.bam' \
@@ -421,7 +424,7 @@ write_tsv_row \
     '13655994' '116947' '12030091' '339029' \
     > "${spk_2}"
 
-#  Write realistic siQ-ChIP scaling-factor part files
+# Write realistic siQ-ChIP scaling-factor part files.
 write_tsv_row \
     '/path/to/IP_WT_G1_Hho1_6336.sc.bam' \
     '/path/to/in_WT_G1_Hho1_6336.sc.bam' \
@@ -440,13 +443,13 @@ write_tsv_row \
     '13655994' '12030091' '230.767' '199.994' 'NA' 'NA' \
     > "${siq_2}"
 
-#  Write one malformed part file for negative validation
+# Write one malformed part file for negative validation.
 write_tsv_row \
     '/path/to/IP_WT_G1_bad.sc.bam' \
     '/path/to/IP_WT_G1_bad.sp.bam' \
     > "${bad_fld}"
 
-#  Write one header-looking part file for negative validation
+# Write one header-looking part file for negative validation.
 write_tsv_row \
     'main_ip' \
     'spike_ip' \
@@ -460,7 +463,7 @@ write_tsv_row \
     'num_sn' \
     > "${bad_hdr}"
 
-#  Write duplicate-index part files for negative validation
+# Write duplicate-index part files for negative validation.
 write_tsv_row \
     '/path/to/IP_WT_G1_dupA.sc.bam' \
     '/path/to/IP_WT_G1_dupA.sp.bam' \
@@ -481,7 +484,7 @@ write_tsv_row \
     '100' '60' '200' '80' \
     > "${dup_idx_b}"
 
-#  Write minimal siQ-ChIP metadata fixtures for production-YAML parsing tests
+# Write minimal siQ-ChIP metadata fixtures for production-YAML parsing tests.
 {
     write_tsv_row \
         'genotype_full' 'genotype' 'state' 'factor' 'strain_full' 'strain' \
@@ -651,5 +654,6 @@ calculator_inputs:
             lib_vol_in: lib_vol_in
             lib_vol_ip: lib_vol_ip
 EOM
+
 
 succeed "generated calculate-scaling-factor fixtures under ${dir_fix}"
