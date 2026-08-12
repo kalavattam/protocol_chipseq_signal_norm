@@ -6,9 +6,10 @@
 # Copyright 2026 by Kris Alavattam
 # Email: kalavattam@gmail.com
 #
-# OpenAI ChatGPT and Codex (GPT-5.4, GPT-5.6) were used in design, development,
-# and documentation, with all output reviewed, edited, and approved by the
-# author.
+# The following were used in design, development, and documentation, with all
+# output reviewed, edited, and approved by the author:
+# - OpenAI ChatGPT and Codex (GPT-5.4, GPT-5.6);
+# - Anthropic Claude Code (Opus 5).
 #
 # Distributed under the MIT license.
 
@@ -34,16 +35,16 @@ Parameters
     Environment to create: 'env_protocol', 'env_analyze', or 'env_siqchip'.
 
   -ie, --if_exists : {'fail', 'reuse', 'update'}
-    What to do if the requested environment already exists. 'reuse' refreshes the editable repository package in 'env_protocol'; 'update' reconciles a YAML-backed environment before that refresh (default: 'fail').
+    What to do if the requested environment already exists. 'fail' stops without changing anything; 'reuse' leaves the environment as it is and refreshes the editable repository package in 'env_protocol'; 'update' reconciles a YAML-backed environment to its YAML before that refresh (default: 'fail').
 
   -up, --update_package : str
-    With '--if_exists update', install only this exact YAML-declared package specification. Repeat to select more than one package; omit to reconcile every declared dependency.
+    Reconcile only this exact YAML-declared package specification. Repeat to select more than one. Implies '--if_exists update'.
 
   -ch, --channels : list of str
-    Comma-delimited channel list to pass to the package manager.
+    Comma-delimited channel list, searched ahead of the channels declared by the selected environment YAML. Applies to creation and to '--if_exists update'.
 
   -oc, --override_channels : flag
-    Override channels from the selected environment YAML.
+    Use only the '--channels' values, dropping those declared by the YAML and the 'defaults' channel. Requires '--channels'.
 
   -y, --yes : flag
     Automatically answer yes to package-manager prompts.
@@ -107,7 +108,7 @@ err() { printf '%s\n' "error(install_envs_entrypoint.sh): $*" >&2; }
 
 
 find_bash_required() {
-    #  Prefer an already-available 'bash' if it is Bash >= 4.4
+    # Prefer an already-available 'bash' if it is Bash >= 4.4.
     if command -v bash >/dev/null 2>&1; then
         if \
             bash -c '
@@ -122,7 +123,7 @@ find_bash_required() {
         fi
     fi
 
-    #  Common fallback locations for user-installed Bash on macOS/Linux
+    # Common fallback locations for user-installed Bash on macOS/Linux.
     for pth_bash in \
         /opt/homebrew/bin/bash \
         /usr/local/bin/bash \

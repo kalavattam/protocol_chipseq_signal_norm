@@ -6,9 +6,10 @@
 # Copyright 2026 by Kris Alavattam
 # Email: kalavattam@gmail.com
 #
-# OpenAI ChatGPT and Codex (GPT-5.5, GPT-5.6) were used in design, development,
-# and documentation, with all output reviewed, edited, and approved by the
-# author.
+# The following were used in design, development, and documentation, with all
+# output reviewed, edited, and approved by the author:
+# - OpenAI ChatGPT and Codex (GPT-5.5, GPT-5.6);
+# - Anthropic Claude Code (Opus 5).
 #
 # Distributed under the MIT license.
 
@@ -17,7 +18,7 @@ set -euo pipefail
 
 TEST_NAME="install envs layout"
 
-#  Source shared test helpers
+# Source shared test helpers.
 # shellcheck source=tests/support/test_helpers.sh
 source "$(
     git -C "$(dirname "${BASH_SOURCE[0]}")" rev-parse --show-toplevel
@@ -73,11 +74,11 @@ function assert_install_dry_run() {
             "install_envs.sh ${env_lcl} dry-run reports update"
         assert_pattern_found \
             "${log_lcl}" \
-            "install --freeze-installed -n ${env_lcl}" \
-            "install_envs.sh ${env_lcl} update freezes installed packages"
+            "install -n ${env_lcl}" \
+            "install_envs.sh ${env_lcl} update reconciles to its YAML"
         assert_pattern_found \
             "${log_lcl}" \
-            "--override-channels -c conda-forge -c bioconda" \
+            "install -n ${env_lcl} -c conda-forge -c bioconda" \
             "install_envs.sh ${env_lcl} update uses YAML channels"
     else
         assert_pattern_found \
@@ -164,6 +165,13 @@ log_protocol_update_dry_run="${dir_log}/env_protocol_update_dry_run.log"
 log_override_no_channels="${dir_log}/install_override_channels_no_channels.log"
 log_entrypoint_override_no_channels="${dir_log}/entrypoint_override_channels_no_channels.log"
 log_if_exists_bogus="${dir_log}/install_if_exists_bogus.log"
+log_render_create="${dir_log}/install_render_create.log"
+log_render_update="${dir_log}/install_render_update.log"
+log_implied_update="${dir_log}/install_implied_update.log"
+log_update_conflict="${dir_log}/install_update_conflict.log"
+log_channels_additive="${dir_log}/install_channels_additive.log"
+log_tmp_lifecycle="${dir_log}/install_tmp_lifecycle.log"
+log_stop_render="${dir_log}/install_stop_render.log"
 log_install_help="${dir_log}/install_envs_help_aliases.log"
 log_entrypoint_help="${dir_log}/install_envs_entrypoint_help_aliases.log"
 
@@ -458,6 +466,252 @@ else
         "${log_if_exists_bogus}" \
         "invalid '--if_exists' value" \
         "install_envs.sh rejects invalid --if_exists"
+fi
+
+# Channel overrides must reach both the create and the update path. The create
+# path cannot express them as flags, because 'env create' rejects
+# '--override-channels' and '-c', so they are rendered into a temporary copy of
+# the environment YAML instead. The update path uses 'install', which accepts
+# the flags directly. Both were broken before 2026-08-12: creation emitted
+# flags the subcommand refuses, and the update path rejected '--channels'
+# outright.
+chn_mirror="https://example.invalid/conda-forge/,https://example.invalid/bioconda/"
+
+if \
+    check_cmd_exists mamba || check_cmd_exists conda
+then
+    if \
+        run_capture \
+            "install_envs render create channels" \
+            "${log_render_create}" \
+            "${TEST_BASH}" "${scr_inl}" \
+                --dry_run \
+                --env_nam env_siqchip \
+                --channels "${chn_mirror}" \
+                --override_channels
+    then
+        assert_pattern_found \
+            "${log_render_create}" \
+            "Rendered YAML:" \
+            "install_envs.sh create renders a YAML when channels are given"
+        assert_pattern_found \
+            "${log_render_create}" \
+            "  - https://example.invalid/conda-forge/" \
+            "install_envs.sh create renders the supplied channels"
+        assert_pattern_found \
+            "${log_render_create}" \
+            "  - nodefaults" \
+            "install_envs.sh create renders nodefaults for override"
+        assert_pattern_absent \
+            "${log_render_create}" \
+            "env create .*--override-channels" \
+            "install_envs.sh create passes no channel flags to env create"
+        assert_pattern_absent \
+            "${log_render_create}" \
+            "env create -f ${ROOT_REPO}/install/envs" \
+            "install_envs.sh create installs from the rendered copy"
+    else
+        record_fail "install_envs.sh create with channels unexpectedly failed"
+    fi
+
+    if \
+        run_capture \
+            "install_envs render update channels" \
+            "${log_render_update}" \
+            "${TEST_BASH}" "${scr_inl}" \
+                --dry_run \
+                --env_nam env_protocol \
+                --if_exists update \
+                --channels "${chn_mirror}" \
+                --override_channels
+    then
+        assert_pattern_found \
+            "${log_render_update}" \
+            "-c https://example.invalid/conda-forge/" \
+            "install_envs.sh update accepts --channels"
+        assert_pattern_absent \
+            "${log_render_update}" \
+            "-c conda-forge" \
+            "install_envs.sh update drops YAML channels when overridden"
+    else
+        record_fail "install_envs.sh update with channels unexpectedly failed"
+    fi
+else
+    record_skip \
+        "install_envs.sh channel-rendering dry-runs require mamba or conda" \
+        "on PATH"
+fi
+
+# '--update_package' implies '--if_exists update', because it is meaningful in
+# no other mode. An explicitly different '--if_exists' is still a conflict.
+# 'update' also no longer freezes installed packages: freezing cannot reconcile
+# an environment against a YAML that declares a different version, because the
+# solver reports a conflict rather than changing the package.
+if \
+    check_cmd_exists mamba || check_cmd_exists conda
+then
+    if \
+        run_capture \
+            "install_envs update_package implies update" \
+            "${log_implied_update}" \
+            "${TEST_BASH}" "${scr_inl}" \
+                --dry_run \
+                --env_nam env_protocol \
+                --update_package samtools
+    then
+        assert_pattern_found \
+            "${log_implied_update}" \
+            "would update environment 'env_protocol'" \
+            "install_envs.sh --update_package implies --if_exists update"
+        assert_pattern_absent \
+            "${log_implied_update}" \
+            "--freeze-installed" \
+            "install_envs.sh update does not freeze installed packages"
+    else
+        record_fail \
+            "install_envs.sh --update_package without --if_exists" \
+            "unexpectedly failed"
+    fi
+else
+    record_skip \
+        "install_envs.sh implied-update dry-run requires mamba or conda on" \
+        "PATH"
+fi
+
+if \
+    run_capture \
+        "install_envs update_package conflicting if_exists" \
+        "${log_update_conflict}" \
+        "${TEST_BASH}" "${scr_inl}" \
+            --dry_run \
+            --env_nam env_protocol \
+            --if_exists reuse \
+            --update_package samtools
+then
+    record_fail \
+        "install_envs.sh --update_package with --if_exists reuse" \
+        "unexpectedly succeeded"
+else
+    assert_pattern_found \
+        "${log_update_conflict}" \
+        "conflicts with '--if_exists reuse'" \
+        "install_envs.sh rejects --update_package with a conflicting mode"
+fi
+
+# '--channels' adds channels ahead of the declared ones, which is what '-c'
+# means to conda; '--override_channels' is what makes the supplied list
+# exclusive. Assert both directions, because collapsing them into "replace"
+# silently drops 'conda-forge' and 'bioconda' from every install.
+if \
+    check_cmd_exists mamba || check_cmd_exists conda
+then
+    if \
+        run_capture \
+            "install_envs additive channels" \
+            "${log_channels_additive}" \
+            "${TEST_BASH}" "${scr_inl}" \
+                --dry_run \
+                --env_nam env_siqchip \
+                --channels https://example.invalid/cf/
+    then
+        assert_pattern_found \
+            "${log_channels_additive}" \
+            "  - https://example.invalid/cf/" \
+            "install_envs.sh --channels adds the supplied channel"
+        assert_pattern_found \
+            "${log_channels_additive}" \
+            "  - conda-forge" \
+            "install_envs.sh --channels retains declared channels"
+        assert_pattern_absent \
+            "${log_channels_additive}" \
+            "nodefaults" \
+            "install_envs.sh --channels alone adds no nodefaults"
+    else
+        record_fail "install_envs.sh additive-channel dry-run failed"
+    fi
+
+    # The rendered YAML is a temporary artifact. A dry run keeps it so the
+    # caller can read it; nothing may be written beside the tracked YAML, and
+    # the tracked YAML itself must never be modified.
+    pth_declared="${ROOT_REPO}/install/envs/env_siqchip.yml"
+    hsh_before="$(shasum "${pth_declared}" | cut -d' ' -f1)"
+
+    if \
+        run_capture \
+            "install_envs rendered yaml lifecycle" \
+            "${log_tmp_lifecycle}" \
+            "${TEST_BASH}" "${scr_inl}" \
+                --dry_run \
+                --env_nam env_siqchip \
+                --channels https://example.invalid/cf/ \
+                --override_channels
+    then
+        pth_rendered="$(
+            grep '^Rendered YAML: ' "${log_tmp_lifecycle}" \
+                | sed 's|^Rendered YAML: ||'
+        )"
+
+        if [[ -n "${pth_rendered}" && -f "${pth_rendered}" ]]; then
+            record_pass \
+                "install_envs.sh dry run retains the rendered YAML"
+        else
+            record_fail \
+                "install_envs.sh dry run did not retain a readable rendered" \
+                "YAML"
+        fi
+
+        case "${pth_rendered}" in
+            "${ROOT_REPO}"/*)
+                record_fail \
+                    "install_envs.sh rendered YAML was written inside the" \
+                    "repository: '${pth_rendered}'"
+                ;;
+            *)
+                record_pass \
+                    "install_envs.sh renders outside the repository tree"
+                ;;
+        esac
+
+        hsh_after="$(shasum "${pth_declared}" | cut -d' ' -f1)"
+
+        if [[ "${hsh_before}" == "${hsh_after}" ]]; then
+            record_pass "install_envs.sh leaves the tracked YAML unmodified"
+        else
+            record_fail "install_envs.sh modified the tracked YAML"
+        fi
+
+        rm -f "${pth_rendered}"
+    else
+        record_fail "install_envs.sh rendered-YAML dry-run failed"
+    fi
+else
+    record_skip \
+        "install_envs.sh channel and rendering dry-runs require mamba or" \
+        "conda on PATH"
+fi
+
+# The stop path installs nothing and removes the rendered file on the way out,
+# so it must not name a path the caller cannot then read.
+if \
+    run_capture \
+        "install_envs stop path rendered report" \
+        "${log_stop_render}" \
+        "${TEST_BASH}" "${scr_inl}" \
+            --dry_run \
+            --env_nam env_protocol \
+            --channels https://example.invalid/cf/ \
+            --override_channels
+then
+    assert_pattern_found \
+        "${log_stop_render}" \
+        "would stop because environment" \
+        "install_envs.sh reports the stop path"
+    assert_pattern_absent \
+        "${log_stop_render}" \
+        "Rendered YAML:" \
+        "install_envs.sh names no rendered YAML on the stop path"
+else
+    record_fail "install_envs.sh stop-path dry run exited non-zero"
 fi
 
 finish

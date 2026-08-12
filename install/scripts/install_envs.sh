@@ -6,35 +6,39 @@
 # Copyright 2024-2026 by Kris Alavattam
 # Email: kalavattam@gmail.com
 #
-# OpenAI ChatGPT and Codex (GPT-4- and GPT-5-series models; most recent:
-# GPT-5.6) were used in design, development, and documentation, with all output
-# reviewed, edited, and approved by the author.
+# The following were used in design, development, and documentation, with all
+# output reviewed, edited, and approved by the author:
+# - OpenAI ChatGPT and Codex (GPT-4- and GPT-5-series models; most recent:
+#   GPT-5.6);
+# - Anthropic Claude Code (Opus 5).
 #
 # Distributed under the MIT license.
 
 
-#  Require Bash >= 4.4 before doing any work
+# Require Bash >= 4.4 before doing any work.
 if [[ -z "${BASH_VERSION:-}" ]]; then
     echo "error(shell):" \
         "this script must be run under Bash >= 4.4." >&2
     exit 1
-elif (( BASH_VERSINFO[0] < 4 || (BASH_VERSINFO[0] == 4 && BASH_VERSINFO[1] < 4) )); then
+elif ((
+    BASH_VERSINFO[0] < 4 || (BASH_VERSINFO[0] == 4 && BASH_VERSINFO[1] < 4)
+)); then
     echo "error($(basename "${BASH_SOURCE[0]}")):" \
         "this script requires Bash >= 4.4; current version is" \
         "'${BASH_VERSION}'." >&2
     exit 1
 fi
 
-#  Run in safe mode, exiting on errors, unset variables, and pipe failures
+# Run in safe mode, exiting on errors, unset variables, and pipe failures.
 set -euo pipefail
 
-#  Set paths to installation support and repository directories
+# Set paths to installation support and repository directories.
 dir_scr="$(cd "$(dirname "${BASH_SOURCE[0]}")" > /dev/null 2>&1 && pwd)"
 dir_ins="$(cd "${dir_scr}/.." > /dev/null 2>&1 && pwd)"
 dir_rep="$(cd "${dir_ins}/.." > /dev/null 2>&1 && pwd)"
 
 
-#  Source shared helpers
+# Source shared helpers.
 function source_helpers_script() {
     local fnc_src
 
@@ -147,10 +151,13 @@ function init_arg_defs() {
     dry_run=false
     env_nam=""
     if_exists="fail"
+    if_exists_explicit=false
     channels=""
     override_channels=false
     yes=false
     pth_yml=""
+    pth_yml_eff=""
+    dir_yml_tmp=""
     env_action=create
     pkg_mgr=""
 
@@ -193,6 +200,7 @@ function parse_args() {
                     return 1
                 }
                 if_exists="${2}"
+                if_exists_explicit=true
                 shift 2
                 ;;
 
@@ -275,22 +283,26 @@ function validate_args() {
             ;;
     esac
 
-    if [[ "${if_exists}" == "update" && ${#arr_channels[@]} -gt 0 ]]; then
-        echo_err "'--if_exists update' uses channels from the environment YAML."
-        return 1
-    fi
-
-    if [[
-        "${if_exists}" != "update" && ${#requested_packages[@]} -gt 0
-    ]]; then
-        echo_err "'--update_package' requires '--if_exists update'."
-        return 1
+    # '--update_package' is meaningful only when reconciling an existing
+    # environment, so it implies '--if_exists update' rather than requiring the
+    # caller to name both. Refuse only a genuine conflict, where the caller
+    # asked for some other behaviour explicitly.
+    if (( ${#requested_packages[@]} > 0 )); then
+        if [[ "${if_exists_explicit}" != "true" ]]; then
+            if_exists=update
+        elif [[ "${if_exists}" != "update" ]]; then
+            echo_err \
+                "'--update_package' conflicts with '--if_exists" \
+                "${if_exists}'. Package selections apply only to" \
+                "'--if_exists update'."
+            return 1
+        fi
     fi
 
     case "${env_nam}" in
         env_align|env_analyze|env_protocol|env_repro|env_siqchip) : ;;
         *)
-            ## NOTE: 'env_align' and 'env_repro' are not exposed to users ##
+            # Note: 'env_align' and 'env_repro' are not exposed to users.
             echo_err \
                 "invalid environment name specified. Must be 'env_analyze'," \
                 "'env_protocol', or 'env_siqchip'."
@@ -379,47 +391,133 @@ function load_yaml_update_specs() {
         return 1
     fi
 
-    arr_channels=( "${yaml_channels[@]}" )
+    # Channels supplied with '--channels' are added ahead of the declared
+    # ones, matching what '-c' means to conda itself: higher priority, not
+    # replacement. '--override_channels' is what makes the supplied list
+    # exclusive, so only then are the declared channels dropped.
+    if [[ "${override_channels}" != "true" ]]; then
+        arr_channels+=( "${yaml_channels[@]}" )
+    fi
+
     packages=( "${yaml_packages[@]}" )
 }
 
 
-function build_install_cmd() {
+function render_env_yaml() {
     local channel=""
+    local in_channels=false
+    local line=""
 
+    pth_yml_eff="${pth_yml}"
+
+    if [[ -z "${pth_yml}" ]] || (( ${#arr_channels[@]} == 0 )); then
+        return 0
+    fi
+
+    # 'conda env create' and 'mamba env create' reject '--override-channels'
+    # and '-c', so channel selection cannot be expressed as flags on that
+    # subcommand. Rewrite the declared 'channels:' block instead and install
+    # from the rewritten copy, which every conda version reads identically.
+    # Create a directory and name the file inside it, rather than using a
+    # 'mktemp' template. BSD and GNU 'mktemp' disagree about templates whose
+    # 'XXXXXX' is not final, and conda infers the file format from the '.yml'
+    # extension, so the name has to survive intact.
+    dir_yml_tmp="$(mktemp -d)" || {
+        echo_err "failed to create a temporary directory for the rendered" \
+            "environment YAML."
+        return 1
+    }
+
+    pth_yml_eff="${dir_yml_tmp}/${env_nam}.yml"
+
+    while IFS= read -r line || [[ -n "${line}" ]]; do
+        if [[ "${line}" =~ ^channels:[[:space:]]*$ ]]; then
+            printf 'channels:\n'
+
+            for channel in "${arr_channels[@]}"; do
+                printf '  - %s\n' "${channel}"
+            done
+
+            # 'nodefaults' is the environment-file spelling of
+            # '--override-channels'; without it conda still consults the
+            # 'defaults' channel named in a user's '.condarc'.
+            if [[ "${override_channels}" == "true" ]]; then
+                printf '  - nodefaults\n'
+            fi
+
+            in_channels=true
+            continue
+        fi
+
+        if [[ "${in_channels}" == "true" ]]; then
+            if [[ "${line}" =~ ^[[:space:]]+-[[:space:]] ]]; then
+                # Declared channels survive below the supplied ones unless the
+                # caller asked for the supplied list to be exclusive.
+                if [[ "${override_channels}" == "true" ]]; then
+                    continue
+                fi
+            elif [[ "${line}" =~ ^[^[:space:]] ]]; then
+                in_channels=false
+            fi
+        fi
+
+        printf '%s\n' "${line}"
+    done < "${pth_yml}" > "${pth_yml_eff}" || {
+        echo_err "failed to render '${pth_yml}' to '${pth_yml_eff}'."
+        return 1
+    }
+}
+
+
+function cleanup_rendered_yaml() {
+    if [[ -n "${dir_yml_tmp}" && -d "${dir_yml_tmp}" ]]; then
+        rm -rf "${dir_yml_tmp}"
+    fi
+}
+
+
+function resolve_pkg_mgr() {
     # shellcheck disable=SC2119
     check_pkg_mgr || return 1
 
     if command -v mamba >/dev/null 2>&1; then
         pkg_mgr=mamba
-        if [[ -n "${pth_yml}" ]]; then
-            cmd=( mamba env create -f "${pth_yml}" )
-        else
-            cmd=( mamba create -n "${env_nam}" )
-        fi
     else
         pkg_mgr=conda
-        if [[ -n "${pth_yml}" ]]; then
-            cmd=( conda env create -f "${pth_yml}" )
-        else
-            cmd=( conda create -n "${env_nam}" )
+    fi
+}
+
+
+function build_create_cmd() {
+    local channel=""
+
+    validate_var "pkg_mgr" "${pkg_mgr}" || return 1
+
+    if [[ -n "${pth_yml}" ]]; then
+        cmd=( "${pkg_mgr}" env create -f "${pth_yml_eff}" )
+    else
+        cmd=( "${pkg_mgr}" create -n "${env_nam}" )
+    fi
+
+    # Channel flags belong only to the package-list form. On the YAML form the
+    # channels are already rendered into the file that '-f' points at, and the
+    # 'env create' subcommand rejects these flags outright.
+    if [[ -z "${pth_yml}" ]]; then
+        if [[ "${override_channels}" == "true" ]]; then
+            cmd+=( --override-channels )
         fi
-    fi
 
-    if [[ "${override_channels}" == "true" ]]; then
-        cmd+=( --override-channels )
+        for channel in "${arr_channels[@]}"; do
+            cmd+=( -c "${channel}" )
+        done
     fi
-
-    for channel in "${arr_channels[@]}"; do
-        cmd+=( -c "${channel}" )
-    done
 
     if [[ "${yes}" == "true" ]]; then
         cmd+=( --yes )
     fi
 
     if [[ -z "${pth_yml}" && "${env_nam}" == "env_align" ]]; then
-        packages=(  ## NOTE: Retained for old work; not exposed in the docs ##
+        packages=(  # Note: retained for old work; not exposed in the docs.
             bamtools
             bbmap
             bedtools
@@ -445,22 +543,28 @@ function build_install_cmd() {
             wget
         )
     elif [[ -z "${pth_yml}" && "${env_nam}" == "env_repro" ]]; then
-        packages=(  ## NOTE: Not exposing this to users in the docs ##
+        packages=(  # Note: Not exposing this to users in the docs.
             bc
-            bowtie2=2.3.4.2  ## NOTE: Explicitly pinning old version ##
-            deeptools=3.3.1  ## NOTE: Explicitly pinning old version ##
+            bowtie2=2.3.4.2  # Note: explicitly pinning old version.
+            deeptools=3.3.1  # Note: explicitly pinning old version.
             gawk
             ipython
             parallel
             pbzip2
             pigz
-            python=3.6       ## NOTE: Explicitly pinning old version ##
+            python=3.6       # Note: explicitly pinning old version.
             rename
-            samtools=1.9     ## NOTE: Explicitly pinning old version ##
+            samtools=1.9     # Note: explicitly pinning old version.
             tree
             wget
         )
     fi
+
+}
+
+
+function build_pkg_cmd() {
+    validate_var "pkg_mgr" "${pkg_mgr}" || return 1
 
     if [[ "${env_nam}" == "env_protocol" ]]; then
         cmd_pkg=(
@@ -491,6 +595,26 @@ function print_dry_run() {
 
     if [[ -n "${pth_yml}" ]]; then
         echo "YAML: ${pth_yml}"
+    fi
+
+    # Report the rendered file only when a command would install from it. On
+    # the stop path no install happens and the file is removed on the way out,
+    # so naming it here would print a path that no longer exists.
+    if [[
+        "${env_action}" != "stop" \
+        && -n "${pth_yml_eff}" \
+        && "${pth_yml_eff}" != "${pth_yml}"
+    ]]; then
+        echo "Rendered YAML: ${pth_yml_eff}"
+        echo "Rendered channels:"
+
+        # Read these back from the rendered file rather than reprinting the
+        # supplied list. Without '--override_channels' the declared channels
+        # are retained below the supplied ones, so the supplied list alone
+        # would understate what the solver is actually given.
+        sed -n '/^channels:$/,/^[^[:space:]]/p' "${pth_yml_eff}" \
+            | grep -E '^[[:space:]]+-[[:space:]]' \
+            || true
     fi
 
     if [[ "${env_action}" == "create" || "${env_action}" == "update" ]]; then
@@ -601,12 +725,22 @@ function handle_existing_env() {
                 done
             fi
 
-            cmd=(
-                "${pkg_mgr}" install
-                    --freeze-installed
-                    -n "${env_nam}"
-                    --override-channels
-            )
+            # No '--freeze-installed' here. Freezing means "add what is missing
+            # and change nothing else", which cannot reconcile an environment
+            # against a YAML whose declared version differs from the installed
+            # one — the solver reports a conflict instead. Scope is narrowed
+            # with '--update_package', which is explicit about what may change,
+            # rather than by refusing changes.
+            cmd=( "${pkg_mgr}" install -n "${env_nam}" )
+
+            # '--override-channels' is conda's spelling of this script's
+            # '--override_channels', so it is passed only when the caller asked
+            # for it. Passing it unconditionally silently applied the flag to
+            # every update, which both contradicted the interface and made the
+            # update path disagree with creation.
+            if [[ "${override_channels}" == "true" ]]; then
+                cmd+=( --override-channels )
+            fi
 
             for channel in "${arr_channels[@]}"; do
                 cmd+=( -c "${channel}" )
@@ -647,7 +781,7 @@ function run_install() {
         warn_install_duration
     fi
 
-    #MAYBE: change function from "private" to "public"
+    # Maybe: change function from "private" to "public".
     _handle_env_deactivate
 
     if [[ "${env_action}" == "update" && "${yes}" == "true" ]]; then
@@ -692,10 +826,15 @@ function main() {
         return "${rc}"
     fi
 
-    validate_args
-    resolve_env_definition
-    build_install_cmd
+    validate_args          || return 1
+    resolve_env_definition || return 1
+    resolve_pkg_mgr        || return 1
+    build_pkg_cmd          || return 1
 
+    # Decide what will happen before building anything for it. The update
+    # branch constructs its own command, and the reuse and stop branches
+    # construct none, so rendering or building ahead of this point would do
+    # work for actions that never run.
     handle_existing_env || rc=$?
     if (( rc == 2 )); then
         return 0
@@ -703,15 +842,33 @@ function main() {
         return "${rc}"
     fi
 
+    if [[ "${env_action}" == "create" ]]; then
+        render_env_yaml  || return 1
+        build_create_cmd || return 1
+    fi
+
+    # A dry run retains the rendered file so the caller can read exactly what
+    # would have been installed from.
     if [[ "${dry_run}" == "true" ]]; then
         print_dry_run
         return 0
     fi
 
     if [[ "${env_action}" == "create" || "${env_action}" == "update" ]]; then
-        run_install || return 1
+        if ! run_install; then
+            # Retain the rendered file on failure; it is the record of which
+            # channels were actually offered to the solver.
+            if [[ -n "${dir_yml_tmp}" && -d "${dir_yml_tmp}" ]]; then
+                echo_err \
+                    "the rendered environment YAML was kept for inspection:" \
+                    "'${pth_yml_eff}'."
+            fi
+
+            return 1
+        fi
     fi
 
+    cleanup_rendered_yaml
     install_pkg_editable
 }
 
