@@ -43,7 +43,7 @@ Parameters
     Reconcile only this exact YAML-declared package specification, rather than every declared dependency. Repeat to select more than one. Implies '--if_exists update', so naming both is optional; supplying it alongside a different '--if_exists' value is an error. Use it to bound what a transaction may change.
 
   -ch, --channels : list of str
-    Comma-delimited package-manager channels, searched ahead of the channels declared by the selected environment YAML. Declared channels are retained unless '--override_channels' is also given. On environment creation the resulting list is rendered into a temporary copy of the YAML, which is what the package manager installs from; the tracked YAML is never modified. Applies to creation and to '--if_exists update' alike.
+    Comma-delimited package-manager channels, searched ahead of the channels declared by the selected environment YAML. Declared channels are retained unless '--override_channels' is also given. On environment creation the resulting list is rendered into a temporary copy of the YAML, which is what the package manager installs from; the tracked YAML is never modified. Applies to creation and to '--if_exists update' alike. A temporary package-manager configuration is also rendered and applied to that command alone, disabling any configured channel redirection, so that a supplied channel is fetched from the host it names rather than from a mirror declared elsewhere; the caller's own configuration is left untouched.
 
   -oc, --override_channels : flag
     Search only the channels given by '--channels', dropping those declared by the environment YAML and the package manager's 'defaults'. Requires '--channels'. On environment creation the declared channels are omitted from the rendered copy and a 'nodefaults' entry is added; on '--if_exists update' the declared channels are omitted from the command.
@@ -55,7 +55,7 @@ Notes
 -----
   Runtime requirements:
     - bash >= 4.4
-    - mamba or conda
+    - mamba >= 1.5 or conda >= 24.7
 
   - User-facing environments are created from YAML files under 'install/envs/' via 'mamba env create -f <yaml>' (preferred) or 'conda env create -f <yaml>'.
   - See the following YAML files for environment package lists:

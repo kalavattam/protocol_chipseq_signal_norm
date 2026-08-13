@@ -57,7 +57,7 @@ Notes
 -----
   Runtime requirements:
     - bash >= 4.4
-    - mamba or conda
+    - mamba >= 1.5 or conda >= 24.7
 
   Environment names:
     - 'env_protocol': main workflow environment.
@@ -69,7 +69,7 @@ Notes
   - Mamba is preferred and will be used by 'install_envs.sh' when available.
   - Old Conda/Anaconda installations may be slow. Miniforge is recommended for a current Conda/Mamba setup.
   - Invoke this script with 'bash', 'sh', or as an executable script. Do not force another interpreter such as 'zsh'.
-  - This entrypoint requires Mamba or Conda and a Bash >= 4.4 handoff interpreter.
+  - This entrypoint requires Mamba or Conda and a Bash >= 4.4 handoff interpreter. 'install_envs.sh' additionally requires Mamba >= 1.5 or Conda >= 24.7, the versions published with the Bio-protocol manuscript, and stops with an explanatory message on anything older.
   - Full package details are available with:
     '''bash
     bash install/scripts/install_envs.sh --help

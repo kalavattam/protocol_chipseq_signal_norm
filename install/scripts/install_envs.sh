@@ -157,9 +157,11 @@ function init_arg_defs() {
     yes=false
     pth_yml=""
     pth_yml_eff=""
-    dir_yml_tmp=""
+    pth_condarc=""
+    dir_tmp=""
     env_action=create
     pkg_mgr=""
+    pkg_mgr_v=""
 
     arr_channels=()
     cmd=()
@@ -403,6 +405,57 @@ function load_yaml_update_specs() {
 }
 
 
+function ensure_tmp_dir() {
+    if [[ -n "${dir_tmp}" && -d "${dir_tmp}" ]]; then
+        return 0
+    fi
+
+    # Create a directory and name files inside it, rather than using a 'mktemp'
+    # template. BSD and GNU 'mktemp' disagree about templates whose 'XXXXXX' is
+    # not final, and conda infers a file's format from its extension, so the
+    # names have to survive intact.
+    dir_tmp="$(mktemp -d)" || {
+        echo_err \
+            "failed to create a temporary directory for rendered" \
+            "installation files."
+        return 1
+    }
+}
+
+
+function render_condarc() {
+    if [[ -n "${pth_condarc}" ]]; then
+        return 0
+    fi
+
+    if (( ${#arr_channels[@]} == 0 )); then
+        return 0
+    fi
+
+    ensure_tmp_dir || return 1
+
+    pth_condarc="${dir_tmp}/condarc"
+
+    # 'mirrored_channels' is not a channel source and '--override_channels'
+    # cannot reach it. It is a name-to-URL routing table: a supplied channel
+    # URL whose final path segment matches a mirrored name is resolved to that
+    # name, and the packages are then fetched from the mirror list rather than
+    # from the URL that was asked for. Miniforge ships one claiming
+    # 'conda-forge' and pointing at 'anaconda.org', so at a site that proxies
+    # the free channels the solve reads the requested mirror and the download
+    # goes somewhere unreachable.
+    #
+    # Emptying it restores the plain meaning of the supplied channels. The
+    # setting exists only in mamba 2.x; conda 24.7.1 and mamba 1.5.9 do not
+    # recognize it and accept a file containing it without complaint, so this
+    # is written unconditionally rather than behind a version test.
+    printf 'mirrored_channels: {}\n' > "${pth_condarc}" || {
+        echo_err "failed to render a package-manager configuration file."
+        return 1
+    }
+}
+
+
 function render_env_yaml() {
     local channel=""
     local in_channels=false
@@ -415,20 +468,15 @@ function render_env_yaml() {
     fi
 
     # 'conda env create' and 'mamba env create' reject '--override-channels'
-    # and '-c', so channel selection cannot be expressed as flags on that
-    # subcommand. Rewrite the declared 'channels:' block instead and install
-    # from the rewritten copy, which every conda version reads identically.
-    # Create a directory and name the file inside it, rather than using a
-    # 'mktemp' template. BSD and GNU 'mktemp' disagree about templates whose
-    # 'XXXXXX' is not final, and conda infers the file format from the '.yml'
-    # extension, so the name has to survive intact.
-    dir_yml_tmp="$(mktemp -d)" || {
-        echo_err "failed to create a temporary directory for the rendered" \
-            "environment YAML."
-        return 1
-    }
+    # and '-c' on the supported baseline — confirmed on conda 24.7.1 and mamba
+    # 1.5.9 — so channel selection cannot be expressed as flags on that
+    # subcommand. Mamba 2.x does accept them, but relying on that would make
+    # the supported versions diverge for no gain. Rewrite the declared
+    # 'channels:' block instead and install from the rewritten copy, which
+    # every version reads identically.
+    ensure_tmp_dir || return 1
 
-    pth_yml_eff="${dir_yml_tmp}/${env_nam}.yml"
+    pth_yml_eff="${dir_tmp}/${env_nam}.yml"
 
     while IFS= read -r line || [[ -n "${line}" ]]; do
         if [[ "${line}" =~ ^channels:[[:space:]]*$ ]]; then
@@ -469,9 +517,66 @@ function render_env_yaml() {
 }
 
 
-function cleanup_rendered_yaml() {
-    if [[ -n "${dir_yml_tmp}" && -d "${dir_yml_tmp}" ]]; then
-        rm -rf "${dir_yml_tmp}"
+function cleanup_rendered() {
+    if [[ -n "${dir_tmp}" && -d "${dir_tmp}" ]]; then
+        rm -rf "${dir_tmp}"
+    fi
+}
+
+
+function check_pkg_mgr_v() {
+    local floor_major=""
+    local floor_minor=""
+    local version=""
+    local major=""
+    local minor=""
+
+    # Take the first line. Mamba 1.5.x prints its own version and then the
+    # bundled conda version on a second line, so reading the whole output
+    # yields two numbers and comparing the wrong one is easy.
+    version="$(
+        "${pkg_mgr}" --version 2>/dev/null \
+            | head -n 1 \
+            | grep -oE '[0-9]+\.[0-9]+(\.[0-9]+)?' \
+            | head -n 1
+    )"
+
+    if [[ -z "${version}" ]]; then
+        echo_warn \
+            "could not determine the '${pkg_mgr}' version; proceeding" \
+            "without a version check."
+        return 0
+    fi
+
+    pkg_mgr_v="${version}"
+
+    # The floors are the versions published with the Bio-protocol manuscript.
+    # Anything at or above them is supported; nothing below is tested.
+    if [[ "${pkg_mgr}" == "mamba" ]]; then
+        floor_major=1
+        floor_minor=5
+    else
+        floor_major=24
+        floor_minor=7
+    fi
+
+    major="${version%%.*}"
+    minor="${version#*.}"
+    minor="${minor%%.*}"
+
+    if \
+           (( major < floor_major )) \
+        || { (( major == floor_major )) && (( minor < floor_minor )); }
+    then
+        echo_err \
+            "'${pkg_mgr}' ${version} is older than the supported minimum," \
+            "${floor_major}.${floor_minor}."
+        echo >&2
+        echo \
+            "This repository is tested against 'conda' >= 24.7 and 'mamba'" \
+            ">= 1.5, the versions published with the Bio-protocol" \
+            "manuscript. Please update before installing." >&2
+        return 1
     fi
 }
 
@@ -485,6 +590,20 @@ function resolve_pkg_mgr() {
     else
         pkg_mgr=conda
     fi
+
+    check_pkg_mgr_v || return 1
+}
+
+
+function init_cmd_with_condarc() {
+    cmd=()
+
+    if [[ -n "${pth_condarc}" ]]; then
+        # Set for this command alone. The caller's own configuration is left
+        # untouched, and the assignment is part of the command the dry run
+        # prints, so what is reported is what runs.
+        cmd=( env "CONDARC=${pth_condarc}" )
+    fi
 }
 
 
@@ -493,10 +612,12 @@ function build_create_cmd() {
 
     validate_var "pkg_mgr" "${pkg_mgr}" || return 1
 
+    init_cmd_with_condarc
+
     if [[ -n "${pth_yml}" ]]; then
-        cmd=( "${pkg_mgr}" env create -f "${pth_yml_eff}" )
+        cmd+=( "${pkg_mgr}" env create -f "${pth_yml_eff}" )
     else
-        cmd=( "${pkg_mgr}" create -n "${env_nam}" )
+        cmd+=( "${pkg_mgr}" create -n "${env_nam}" )
     fi
 
     # Channel flags belong only to the package-list form. On the YAML form the
@@ -593,6 +714,10 @@ function print_dry_run() {
             "would create environment '${env_nam}'."
     fi
 
+    if [[ -n "${pkg_mgr}" ]]; then
+        echo "Package manager: ${pkg_mgr} ${pkg_mgr_v:-unknown}"
+    fi
+
     if [[ -n "${pth_yml}" ]]; then
         echo "YAML: ${pth_yml}"
     fi
@@ -615,6 +740,14 @@ function print_dry_run() {
         sed -n '/^channels:$/,/^[^[:space:]]/p' "${pth_yml_eff}" \
             | grep -E '^[[:space:]]+-[[:space:]]' \
             || true
+    fi
+
+    # Report the rendered configuration wherever a command would use it. It is
+    # what stops a mirrored channel name from redirecting the supplied
+    # channels, so a reader checking why an install reached a given host needs
+    # to see that it was in force.
+    if [[ "${env_action}" != "stop" && -n "${pth_condarc}" ]]; then
+        echo "Rendered condarc: ${pth_condarc}"
     fi
 
     if [[ "${env_action}" == "create" || "${env_action}" == "update" ]]; then
@@ -731,7 +864,10 @@ function handle_existing_env() {
             # one — the solver reports a conflict instead. Scope is narrowed
             # with '--update_package', which is explicit about what may change,
             # rather than by refusing changes.
-            cmd=( "${pkg_mgr}" install -n "${env_nam}" )
+            render_condarc || return 1
+
+            init_cmd_with_condarc
+            cmd+=( "${pkg_mgr}" install -n "${env_nam}" )
 
             # '--override-channels' is conda's spelling of this script's
             # '--override_channels', so it is passed only when the caller asked
@@ -843,6 +979,7 @@ function main() {
     fi
 
     if [[ "${env_action}" == "create" ]]; then
+        render_condarc   || return 1
         render_env_yaml  || return 1
         build_create_cmd || return 1
     fi
@@ -856,19 +993,31 @@ function main() {
 
     if [[ "${env_action}" == "create" || "${env_action}" == "update" ]]; then
         if ! run_install; then
-            # Retain the rendered file on failure; it is the record of which
-            # channels were actually offered to the solver.
-            if [[ -n "${dir_yml_tmp}" && -d "${dir_yml_tmp}" ]]; then
-                echo_err \
-                    "the rendered environment YAML was kept for inspection:" \
-                    "'${pth_yml_eff}'."
+            # Retain the rendered files on failure; they are the record of
+            # which channels were actually offered to the solver, and of
+            # whether channel redirection was suppressed.
+            if [[ -n "${dir_tmp}" && -d "${dir_tmp}" ]]; then
+                if [[
+                    -n "${pth_yml_eff}" \
+                    && "${pth_yml_eff}" != "${pth_yml}"
+                ]]; then
+                    echo_err \
+                        "the rendered environment YAML was kept for" \
+                        "inspection: '${pth_yml_eff}'."
+                fi
+
+                if [[ -n "${pth_condarc}" ]]; then
+                    echo_err \
+                        "the rendered package-manager configuration was kept" \
+                        "for inspection: '${pth_condarc}'."
+                fi
             fi
 
             return 1
         fi
     fi
 
-    cleanup_rendered_yaml
+    cleanup_rendered
     install_pkg_editable
 }
 

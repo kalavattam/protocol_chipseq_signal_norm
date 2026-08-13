@@ -172,6 +172,8 @@ log_update_conflict="${dir_log}/install_update_conflict.log"
 log_channels_additive="${dir_log}/install_channels_additive.log"
 log_tmp_lifecycle="${dir_log}/install_tmp_lifecycle.log"
 log_stop_render="${dir_log}/install_stop_render.log"
+log_condarc="${dir_log}/install_condarc.log"
+log_condarc_none="${dir_log}/install_condarc_none.log"
 log_install_help="${dir_log}/install_envs_help_aliases.log"
 log_entrypoint_help="${dir_log}/install_envs_entrypoint_help_aliases.log"
 
@@ -510,6 +512,14 @@ then
             "${log_render_create}" \
             "env create -f ${ROOT_REPO}/install/envs" \
             "install_envs.sh create installs from the rendered copy"
+        assert_pattern_found \
+            "${log_render_create}" \
+            "Rendered condarc:" \
+            "install_envs.sh create renders a condarc when channels are given"
+        assert_pattern_found \
+            "${log_render_create}" \
+            "env CONDARC=.* env create" \
+            "install_envs.sh create runs env create under the rendered condarc"
     else
         record_fail "install_envs.sh create with channels unexpectedly failed"
     fi
@@ -533,6 +543,10 @@ then
             "${log_render_update}" \
             "-c conda-forge" \
             "install_envs.sh update drops YAML channels when overridden"
+        assert_pattern_found \
+            "${log_render_update}" \
+            "env CONDARC=.* install -n" \
+            "install_envs.sh update runs install under the rendered condarc"
     else
         record_fail "install_envs.sh update with channels unexpectedly failed"
     fi
@@ -690,6 +704,103 @@ else
         "conda on PATH"
 fi
 
+# 'mirrored_channels' is not a channel source, so '--override_channels' cannot
+# reach it: it redirects a supplied channel URL whose final path segment
+# matches a mirrored name, and the packages are then fetched from the mirror
+# list instead. Miniforge ships one claiming 'conda-forge' for 'anaconda.org',
+# which makes every install at a channel-proxying site read the requested
+# mirror and download from a host that may be unreachable. The rendered condarc
+# empties it. Assert the content, not merely that a file was named, and assert
+# that nothing is rendered when no channels are supplied — a configuration file
+# imposed on an install nobody asked to redirect is its own defect.
+if \
+    check_cmd_exists mamba || check_cmd_exists conda
+then
+    if \
+        run_capture \
+            "install_envs rendered condarc" \
+            "${log_condarc}" \
+            "${TEST_BASH}" "${scr_inl}" \
+                --dry_run \
+                --env_nam env_siqchip \
+                --channels https://example.invalid/cf/ \
+                --override_channels
+    then
+        # Tolerate no match. Under 'set -e' a failing 'grep' in a command
+        # substitution ends the run, which would turn a missing condarc into an
+        # aborted suite rather than a reported failure — and every assertion
+        # after this point would silently never execute.
+        pth_condarc_rendered="$(
+            grep '^Rendered condarc: ' "${log_condarc}" \
+                | sed 's|^Rendered condarc: ||' \
+                || true
+        )"
+
+        if [[ -n "${pth_condarc_rendered}" && -f "${pth_condarc_rendered}" ]]
+        then
+            record_pass \
+                "install_envs.sh dry run retains the rendered condarc"
+
+            if \
+                grep -q 'mirrored_channels: {}' "${pth_condarc_rendered}"
+            then
+                record_pass \
+                    "install_envs.sh rendered condarc empties" \
+                    "mirrored_channels"
+            else
+                record_fail \
+                    "install_envs.sh rendered condarc does not empty" \
+                    "mirrored_channels"
+            fi
+
+            case "${pth_condarc_rendered}" in
+                "${ROOT_REPO}"/*)
+                    record_fail \
+                        "install_envs.sh rendered condarc was written inside" \
+                        "the repository: '${pth_condarc_rendered}'"
+                    ;;
+                *)
+                    record_pass \
+                        "install_envs.sh renders the condarc outside the" \
+                        "repository tree"
+                    ;;
+            esac
+
+            rm -f "${pth_condarc_rendered}"
+        else
+            record_fail \
+                "install_envs.sh dry run did not retain a readable rendered" \
+                "condarc"
+        fi
+    else
+        record_fail "install_envs.sh rendered-condarc dry run failed"
+    fi
+
+    if \
+        run_capture \
+            "install_envs no condarc without channels" \
+            "${log_condarc_none}" \
+            "${TEST_BASH}" "${scr_inl}" \
+                --dry_run \
+                --env_nam env_siqchip
+    then
+        assert_pattern_absent \
+            "${log_condarc_none}" \
+            "Rendered condarc:" \
+            "install_envs.sh renders no condarc without --channels"
+        assert_pattern_absent \
+            "${log_condarc_none}" \
+            "CONDARC=" \
+            "install_envs.sh sets no CONDARC without --channels"
+    else
+        record_fail "install_envs.sh no-channel dry run failed"
+    fi
+else
+    record_skip \
+        "install_envs.sh condarc-rendering dry-runs require mamba or conda" \
+        "on PATH"
+fi
+
 # The stop path installs nothing and removes the rendered file on the way out,
 # so it must not name a path the caller cannot then read.
 if \
@@ -710,6 +821,10 @@ then
         "${log_stop_render}" \
         "Rendered YAML:" \
         "install_envs.sh names no rendered YAML on the stop path"
+    assert_pattern_absent \
+        "${log_stop_render}" \
+        "Rendered condarc:" \
+        "install_envs.sh names no rendered condarc on the stop path"
 else
     record_fail "install_envs.sh stop-path dry run exited non-zero"
 fi
