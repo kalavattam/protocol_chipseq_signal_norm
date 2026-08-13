@@ -2,14 +2,21 @@ name: env_siqchip
 channels:
   - conda-forge
   - bioconda
+# Pin kinds and the argument against pinning more are stated in
+# 'env_protocol.yml'. This environment runs the original siQ-ChIP
+# implementation, whose output this repository compares against, so the same
+# reproducibility argument applies to the tools that move its numbers.
+#
+# These two versions come from a dry-run solve on 2026-08-13 rather than from
+# an installation; this environment has not yet been built.
 dependencies:
-  - bc
+  - bc=1.07.1      # Note: Pinned for reproducibility; carries the reference implementation's arithmetic.
   - bedtools
-  - datamash
+  - datamash       # Maybe: remove; nothing in 'lib/', 'src/', 'bin/', or 'tests/' invokes it.
   - gfortran
   - gnuplot
   - parallel
-  - samtools
+  - samtools=1.24  # Note: Pinned for reproducibility; matches the 'env_protocol' pin so both sides count alignments identically.
   - tree
   - ucsc-bedclip
   - ucsc-bedgraphtobigwig

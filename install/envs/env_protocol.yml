@@ -2,38 +2,48 @@ name: env_protocol
 channels:
   - conda-forge
   - bioconda
+# Version pins fall into three kinds, and each pinned entry says which it is:
+# "pinned for reproducibility" for packages that can change a computed value,
+# "pinned for evidence" for packages whose output this repository cites, and
+# "pinned for compatibility" where a version is forced by another dependency.
+#
+# Resist pinning anything else. Pins are not free: a site installing from a
+# mirrored channel sees fewer builds than 'anaconda.org' carries, so every
+# additional pin raises the chance that a later solve is unsatisfiable there
+# while still solving elsewhere. Packages that cannot move a number and are not
+# cited as evidence are deliberately left to float.
 dependencies:
-  - asciigenome  ## NOTE: Added since publication in Bio-protocol ##
-  - bash         ## NOTE: Added since publication in Bio-protocol ##
-  - bc
-  - bowtie2
-  - bwa          ## NOTE: Added since publication in Bio-protocol ##
-  - bwa-mem2     ## NOTE: Added since publication in Bio-protocol ##
-  - datamash     ## NOTE: Added since publication in Bio-protocol ##
+  - asciigenome        # Note: Added since publication in Bio-protocol.
+  - bash               # Note: Added since publication in Bio-protocol.
+  - bc=1.07.1          # Note: Pinned for reproducibility; carries the scaling-factor arithmetic in 'lib/bash/workflows/calculate_scaling_factor.sh'.
+  - bowtie2=2.5.5      # Note: Pinned for reproducibility; the aligner changes alignments and therefore every downstream count.
+  - bwa=0.7.19         # Note: Added since publication in Bio-protocol; pinned for reproducibility, selectable via '--aligner'.
+  - bwa-mem2=2.3       # Note: Added since publication in Bio-protocol; pinned for reproducibility, selectable via '--aligner'.
+  - datamash           # Note: Added since publication in Bio-protocol. Maybe: remove; nothing in 'lib/', 'src/', 'bin/', or 'tests/' invokes it.
   - fastqc
-  - gawk
-  - gnuplot      ## NOTE: Added since publication in Bio-protocol ## ## MAYBE: remove from 'env_protocol' ##
+  - gawk=5.4.1         # Note: Pinned for reproducibility; used by 'lib/bash/core/format_outputs.sh' and 'lib/bash/core/check_unity.sh'.
+  - gnuplot            # Note: Added since publication in Bio-protocol. Maybe: remove from 'env_protocol'.
   - ipython
   - matplotlib
   - multiqc
-  - numpy        ## NOTE: Required by 'src/protocol_chipseq_signal_norm/cli/compute_signal.py' ## ## TODO: pin version, and make 'scipy' explicit with a pinned version as well ##
+  - numpy=2.4.6        # Note: Pinned for reproducibility; required by 'src/protocol_chipseq_signal_norm/cli/compute_signal.py'. ('scipy' was checked and is imported nowhere, so it is not made explicit.)
   - parallel
   - pbzip2
   - pigz
   - pip
-  - pytest       ## NOTE: Added since publication in Bio-protocol ##
-  - pysam
-  - python=3.11  ## NOTE: Pinned to v3.11 for 'sequali' installation ##
-  - pyyaml       ## NOTE: Made explicit since Bio-protocol publication ##
+  - pytest=9.1.1       # Note: Added since publication in Bio-protocol; pinned for evidence, so test results stay reproducible.
+  - pysam=0.24.0       # Note: Pinned for reproducibility; reads alignments for signal computation.
+  - python=3.11        # Note: Pinned for compatibility and to v3.11 for 'sequali' installation.
+  - pyyaml             # Note: Made explicit since Bio-protocol publication.
   - r-argparse
   - r-ggsci
   - r-plotly
-  - ruff=0.15.21      ## NOTE: Added since publication in Bio-protocol; pinned to the reviewed repository standard ##
-  - shellcheck=0.10.0 ## NOTE: Added since publication in Bio-protocol; pinned for repository static-analysis evidence ##
+  - ruff=0.15.21       # Note: Added since publication in Bio-protocol; pinned for evidence, to the reviewed repository standard.
+  - shellcheck=0.10.0  # Note: Added since publication in Bio-protocol; pinned for evidence, for repository static-analysis provenance.
   - setuptools
   - rename
-  - samtools
+  - samtools=1.24      # Note: Pinned for reproducibility; fragment counts and sequencing depth are derived from it.
   - sequali
-  - tree         ## NOTE: Added since publication in Bio-protocol ##
+  - tree               # Note: Added since publication in Bio-protocol.
   - wget
   - wheel

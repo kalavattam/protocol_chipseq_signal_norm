@@ -436,19 +436,18 @@ function render_condarc() {
 
     pth_condarc="${dir_tmp}/condarc"
 
-    # 'mirrored_channels' is not a channel source and '--override_channels'
-    # cannot reach it. It is a name-to-URL routing table: a supplied channel
-    # URL whose final path segment matches a mirrored name is resolved to that
-    # name, and the packages are then fetched from the mirror list rather than
-    # from the URL that was asked for. Miniforge ships one claiming
-    # 'conda-forge' and pointing at 'anaconda.org', so at a site that proxies
-    # the free channels the solve reads the requested mirror and the download
-    # goes somewhere unreachable.
+    # 'mirrored_channels' maps a channel name onto a mirror list, so a supplied
+    # URL whose final path segment matches that name is fetched from the list
+    # instead. Miniforge ships one sending 'conda-forge' to 'anaconda.org',
+    # unreachable at a proxying site. No channel flag reaches it.
     #
-    # Emptying it restores the plain meaning of the supplied channels. The
-    # setting exists only in mamba 2.x; conda 24.7.1 and mamba 1.5.9 do not
-    # recognize it and accept a file containing it without complaint, so this
-    # is written unconditionally rather than behind a version test.
+    # Written unconditionally: conda 24.7.1 and mamba 1.5.9 do not know the
+    # setting and accept a file carrying it without complaint.
+    #
+    # 'CONDARC' replaces the caller's configuration rather than merging, so
+    # this file also drops the channels that configuration declares. Measured
+    # 2026-08-13, and it is what makes creation exclusive; adding a 'channels:'
+    # key here would silently change that.
     printf 'mirrored_channels: {}\n' > "${pth_condarc}" || {
         echo_err "failed to render a package-manager configuration file."
         return 1

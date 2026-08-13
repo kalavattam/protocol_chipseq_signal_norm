@@ -2,6 +2,9 @@ name: env_analyze
 channels:
   - conda-forge
   - bioconda
+# Pin kinds and the argument against pinning more are stated in
+# 'env_protocol.yml'. Only 'deeptools' is pinned here: it is the one declared
+# package whose output this repository compares its own numbers against.
 dependencies:
   - bioconductor-annotationdbi
   - bioconductor-chipqc
@@ -17,8 +20,8 @@ dependencies:
   - bioconductor-iranges
   - bioconductor-pcatools
   - bioconductor-sva
-  - datamash
-  - deeptools
+  - datamash         # Maybe: remove; nothing in 'lib/', 'src/', 'bin/', or 'tests/' invokes it.
+  - deeptools=3.5.6  # Note: Pinned for reproducibility.
   - gawk
   - gnuplot
   - ipython

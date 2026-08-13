@@ -556,6 +556,9 @@ else
         "on PATH"
 fi
 
+# The spec below names a version because 'env_protocol.yml' pins that package,
+# and '--update_package' matches a declared specification exactly rather than
+# by name. An unpinned package is named bare; a pinned one must carry its pin.
 # '--update_package' implies '--if_exists update', because it is meaningful in
 # no other mode. An explicitly different '--if_exists' is still a conflict.
 # 'update' also no longer freezes installed packages: freezing cannot reconcile
@@ -571,7 +574,7 @@ then
             "${TEST_BASH}" "${scr_inl}" \
                 --dry_run \
                 --env_nam env_protocol \
-                --update_package samtools
+                --update_package samtools=1.24
     then
         assert_pattern_found \
             "${log_implied_update}" \
