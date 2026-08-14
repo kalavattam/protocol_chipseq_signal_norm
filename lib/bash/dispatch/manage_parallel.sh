@@ -21,7 +21,7 @@
 # set_params_parallel
 
 
-#  Require Bash >= 4.4 before defining functions
+# Require Bash >= 4.4 before defining functions.
 if [[ -z "${BASH_VERSION:-}" ]]; then
     echo "error(shell):" \
         "this script must be sourced or run under Bash >= 4.4." >&2
@@ -45,7 +45,7 @@ elif ((
     fi
 fi
 
-#  Source required helper functions if needed
+# Source required helper functions if needed.
 {
     _dir_src_parl="$(
         cd "$(dirname "${BASH_SOURCE[0]}")" > /dev/null 2>&1 && pwd
@@ -190,16 +190,16 @@ Parameters
     Display this help message and exit.
 
   1  slurm : bool
-    Submit jobs to the Slurm scheduler. Whether Slurm mode is active.
+    Whether Slurm mode is active.
 
   2  max_job : int
-    Maximum number of jobs to run concurrently. Maximum concurrent jobs for Slurm mode.
+    Maximum number of jobs Slurm runs concurrently. Read and validated only when 'slurm' is true; pass a sentinel such as 'UNSET' otherwise.
 
   3  par_job : int
-    Maximum concurrent jobs for GNU Parallel or serial mode.
+    Maximum number of jobs GNU Parallel runs concurrently, or 1 for serial execution. Read and validated only when 'slurm' is false; pass a sentinel such as 'UNSET' otherwise.
 
   4  threads : int
-    Number of threads to use. Threads per job.
+    Number of threads per job.
 
   5+ arr_nam : str
     Optional names of indexed arrays to print via 'debug_arr_contents'.
@@ -261,18 +261,27 @@ EOM
 
     slurm="$(normalize_bool "${slurm}" "slurm")" || return 1
 
-    if ! [[ "${max_job}" =~ ^[0-9]+$ ]]; then
-        echo_err_func "${FUNCNAME[0]}" \
-            "positional argument 2, 'max_job', must be a non-negative integer:" \
-            "'${max_job}'."
-        return 1
-    fi
-
-    if ! [[ "${par_job}" =~ ^[1-9][0-9]*$ ]]; then
-        echo_err_func "${FUNCNAME[0]}" \
-            "positional argument 3, 'par_job', must be a positive integer:" \
-            "'${par_job}'."
-        return 1
+    # Validate only the job-count argument the active mode actually uses.
+    # Callers pass a sentinel such as 'UNSET' for the other one because it is
+    # genuinely unset: Slurm mode resolves no GNU Parallel job count, and the
+    # local modes unset the Slurm one. This function reads 'max_job' only when
+    # Slurm is active and 'par_job' only when it is not, so validating both
+    # unconditionally rejected a value that is never read. That made
+    # '--verbose' a hard failure everywhere except serial execution.
+    if [[ "${slurm}" == "true" ]]; then
+        if ! [[ "${max_job}" =~ ^[0-9]+$ ]]; then
+            echo_err_func "${FUNCNAME[0]}" \
+                "positional argument 2, 'max_job', must be a non-negative" \
+                "integer when Slurm is active: '${max_job}'."
+            return 1
+        fi
+    else
+        if ! [[ "${par_job}" =~ ^[1-9][0-9]*$ ]]; then
+            echo_err_func "${FUNCNAME[0]}" \
+                "positional argument 3, 'par_job', must be a positive integer" \
+                "when Slurm is inactive: '${par_job}'."
+            return 1
+        fi
     fi
 
     if ! [[ "${threads}" =~ ^[1-9][0-9]*$ ]]; then
@@ -299,7 +308,7 @@ EOM
         echo "  - Jobs running in serial mode: ${par_job}"
     fi
 
-    echo "  - Number of threads to use. Threads per job: ${threads}"
+    echo "  - Threads per job: ${threads}"
     echo
     echo
 }
@@ -448,7 +457,7 @@ Examples
 EOM
     )
 
-    #  Handle help requests and missing required positional arguments
+    # Handle help requests and missing required positional arguments.
     if [[ "${threads}" =~ ^(-h|--h[e]?lp)$ ]]; then
         echo "${show_help}" >&2
         return 0
@@ -466,7 +475,7 @@ EOM
         return 1
     fi
 
-    #  Check integer inputs
+    # Check integer inputs.
     if ! [[ "${threads}" =~ ^[1-9][0-9]*$ ]]; then
         echo_err_func "${FUNCNAME[0]}" \
             "positional argument 1, 'threads', must be a positive integer:" \
@@ -481,10 +490,10 @@ EOM
         return 1
     fi
 
-    #  Get system CPU core count
+    # Get system CPU core count.
     n_cores=$(determine_cores) || return 1
 
-    #  Do not allow requested total threads to exceed available cores
+    # Do not allow requested total threads to exceed available cores.
     if [[ "${threads}" -gt "${n_cores}" ]]; then
         echo_warn_func "${FUNCNAME[0]}" \
             "requested threads ('${threads}') exceed available cores" \
@@ -492,15 +501,15 @@ EOM
         threads="${n_cores}"
     fi
 
-    #  If only one job is allowed, run serially
+    # If only one job is allowed, run serially.
     if [[ "${max_job}" -le 1 ]]; then
         par_job=1
         echo "${threads};${par_job}"
         return 0
     fi
 
-    #  Start from requested max parallel job count, but do not exceed total
-    #+ available cores
+    # Start from requested max parallel job count, but do not exceed total
+    # available cores.
     par_job="${max_job}"
     if [[ "${par_job}" -gt "${n_cores}" ]]; then
         echo_warn_func "${FUNCNAME[0]}" \
@@ -509,8 +518,8 @@ EOM
         par_job="${n_cores}"
     fi
 
-    #  Convert total thread budget into per-job thread count, enforcing a
-    #+ minimum of 1 thread per job
+    # Convert total thread budget into per-job thread count, enforcing a
+    # minimum of 1 thread per job.
     if [[ "${threads}" -lt "${par_job}" ]]; then
         echo_warn_func "${FUNCNAME[0]}" \
             "requested total threads ('${threads}') are fewer than parallel" \
@@ -520,11 +529,11 @@ EOM
         threads=$(( threads / par_job ))
     fi
 
-    echo "${threads};${par_job}"  # Return adjusted threads-per-job, job count
+    echo "${threads};${par_job}"  # Return adjusted threads-per-job, job count.
 }
 
 
-#  Print an error message when function script is executed directly
+# Print an error message when function script is executed directly.
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
     err_source_only "${BASH_SOURCE[0]}"
 fi

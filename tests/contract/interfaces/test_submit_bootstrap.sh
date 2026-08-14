@@ -230,5 +230,5 @@ for legacy in submit_filter_bams.sh submit_filter_crams.sh; do
     fi
 done
 
-# shellcheck disable=SC2119  # finish intentionally receives no script arguments.
+# shellcheck disable=SC2119  # 'finish' receives no script arguments.
 finish

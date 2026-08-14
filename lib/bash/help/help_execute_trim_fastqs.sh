@@ -58,7 +58,7 @@ Parameters
     Suffix to strip from paired-end FASTQ read-1 filenames (default: '${sfx_pe}').
 
   -deo, --dir_eo : dir
-    Directory for stderr and stdout log files. The directory to store stderr and stdout TXT output files (default: '\${dir_out}/dir_eo').
+    Directory for stderr and stdout log files. The directory to store stderr and stdout TXT output files (default: '\${dir_out}/logs').
 
   -nj, --nam_job : str
     Job name. The name of the job, which is used when writing stderr and stdout (default: '${nam_job}').

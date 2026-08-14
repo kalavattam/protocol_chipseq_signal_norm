@@ -6,14 +6,15 @@
 # Copyright 2026 by Kris Alavattam
 # Email: kalavattam@gmail.com
 #
-# OpenAI ChatGPT and Codex (GPT-5.4, GPT-5.5, GPT-5.6) were used in design,
-# development, and documentation, with all output reviewed, edited, and
-# approved by the author.
+# The following were used in design, development, and documentation, with all
+# output reviewed, edited, and approved by the author:
+# - OpenAI ChatGPT and Codex (GPT-5.4, GPT-5.5, GPT-5.6);
+# - Anthropic Claude Code (Opus 5).
 #
 # Distributed under the MIT license.
 
 
-#  Require Bash >= 4.4 before doing any work
+# Require Bash >= 4.4 before doing any work.
 if [[ -z "${BASH_VERSION:-}" ]]; then
     echo "error(shell):" \
         "this script must be run under Bash >= 4.4." >&2
@@ -27,14 +28,14 @@ elif ((
     exit 1
 fi
 
-#  Run in safe mode, exiting on errors, unset variables, and pipe failures
+# Run in safe mode, exiting on errors, unset variables, and pipe failures.
 set -euo pipefail
 
-#  Set path to the 'scripts' directory
+# Set path to the 'scripts' directory.
 dir_scr="$(cd "$(dirname "${BASH_SOURCE[0]}")" > /dev/null 2>&1 && pwd)"
 
 
-#  Source shared helpers
+# Source shared helpers.
 function source_helpers_script() {
     local fnc_src
 
@@ -93,7 +94,7 @@ function parse_args() {
                 shift 1
                 ;;
 
-            -ci|--csv[_-]fil_in)
+            -ci|--csv[_-]fil[_-]in)
                 require_optarg "${1}" "${2:-}" "main" || {
                     echo >&2
                     help_symlink_files >&2
@@ -103,7 +104,7 @@ function parse_args() {
                 shift 2
                 ;;
 
-            -co|--csv[_-]fil_out)
+            -co|--csv[_-]fil[_-]out)
                 require_optarg "${1}" "${2:-}" "main" || {
                     echo >&2
                     help_symlink_files >&2
@@ -235,8 +236,8 @@ function validate_vecs() {
         done
     fi
 
-    #  Reject duplicate resolved output paths, including basename collisions
-    #+ under '--dir_out'
+    # Reject duplicate resolved output paths, including basename collisions
+    # under '--dir_out'.
     for (( i = 0; i < n_in; i++ )); do
         fil_out="${arr_fil_out[${i}]}"
 
@@ -278,12 +279,12 @@ function run_jobs() {
 
         if [[ "${dry_run}" == "true" ]]; then
             if [[ "${no_force}" == "true" ]]; then
-                printf "Dry run: ln -s \\\n" >&2
+                printf 'Dry run: ln -s \\\n' >&2
             else
-                printf "Dry run: ln -sf \\\n" >&2
+                printf 'Dry run: ln -sf \\\n' >&2
             fi
-            printf "    %q \\\n" "${fil_in}" >&2
-            printf "    %q\n" "${fil_out}" >&2
+            printf '    %q \\\n' "${fil_in}" >&2
+            printf '    %q\n' "${fil_out}" >&2
             n_planned=$(( n_planned + 1 ))
             continue
         fi

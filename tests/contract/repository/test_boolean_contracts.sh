@@ -216,5 +216,5 @@ else
         "$(print_relpath "${log_audit}")"
 fi
 
-# shellcheck disable=SC2119  # finish intentionally receives no script arguments.
+# shellcheck disable=SC2119  # 'finish' receives no script arguments.
 finish
