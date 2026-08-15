@@ -16,6 +16,8 @@ src/**/__pycache__/
 src/**/*.py[cod]
 dev/**/__pycache__/
 dev/**/*.py[cod]
+tests/**/__pycache__/
+tests/**/*.py[cod]
 
 #  Keep generated outputs in one repository-root artifact boundary
 /artifacts/*

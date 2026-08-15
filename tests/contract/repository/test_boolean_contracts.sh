@@ -6,8 +6,10 @@
 # Copyright 2026 by Kris Alavattam
 # Email: kalavattam@gmail.com
 #
-# OpenAI ChatGPT and Codex (GPT-5.6) were used in design, development, and
-# documentation, with all output reviewed, edited, and approved by the author.
+# The following were used in design, development, and documentation, with all
+# output reviewed, edited, and approved by the author:
+# - OpenAI ChatGPT and Codex (GPT-5.6);
+# - Anthropic Claude Code (Opus 5).
 #
 # Distributed under the MIT license.
 
@@ -16,22 +18,24 @@ set -euo pipefail
 
 TEST_NAME="Boolean-like contracts"
 
-#  Source shared test helpers
+# Source shared test helpers.
 # shellcheck source=tests/support/test_helpers.sh
 source "$(
     git -C "$(dirname "${BASH_SOURCE[0]}")" rev-parse --show-toplevel
 )/tests/support/test_helpers.sh"
 
-#  Source the canonical Boolean helper and representative public callers
+# Source the canonical Boolean helper and representative public callers.
 # shellcheck source=lib/bash/core/format_outputs.sh
 source "${ROOT_REPO}/lib/bash/core/format_outputs.sh"
+
 # shellcheck source=lib/bash/core/check_args.sh
 source "${ROOT_REPO}/lib/bash/core/check_args.sh"
+
 # shellcheck source=lib/bash/core/check_inputs.sh
 source "${ROOT_REPO}/lib/bash/core/check_inputs.sh"
 
 
-#  Run normalize_bool without letting expected failures terminate this test
+# Run normalize_bool without letting expected failures terminate this test.
 function run_normalize() {
     local value="${1-}"
     local name="${2:-test_bool}"
@@ -43,7 +47,7 @@ function run_normalize() {
 }
 
 
-#  Require one token to normalize to one canonical value
+# Require one token to normalize to one canonical value.
 function assert_normalized() {
     local token="${1-}"
     local expected="${2:-}"
@@ -59,7 +63,7 @@ function assert_normalized() {
 }
 
 
-#  Require one invalid token to fail with the precise diagnostic
+# Require one invalid token to fail with the precise diagnostic.
 function assert_rejected() {
     local label="${1:-invalid token}"
     local token="${2-}"
@@ -82,7 +86,7 @@ function assert_rejected() {
 }
 
 
-#  Check the maintained test-gate environment contract
+# Check the maintained test-gate environment contract.
 function check_test_gate() {
     local token="${1-}"
     local expected="${2:-}"
@@ -128,10 +132,12 @@ assert_rejected "arbitrary token" sometimes
 assert_rejected "empty required token" ""
 
 stale=previous
+
 set +e
 stale="$(normalize_bool sometimes stale_value 2> "${log_err}")"
 status=$?
 set -e
+
 if [[ "${status}" -ne 0 && -z "${stale}" ]]; then
     record_pass "failed normalization does not retain a stale value"
 else
@@ -166,6 +172,7 @@ RUN_PARALLEL=sometimes normalize_test_gate RUN_PARALLEL \
     > /dev/null 2> "${log_err}"
 status=$?
 set -e
+
 if (( status != 0 )); then
     record_pass "invalid nonempty Boolean environment gate returns nonzero"
 else
@@ -174,6 +181,7 @@ fi
 
 tmp_file="${TEST_DIR_TMP}/boolean_contracts_file"
 : > "${tmp_file}"
+
 if validate_file test_file "${tmp_file}" 0 YES; then
     record_pass "validate_file accepts a canonical true-like token"
 else
@@ -185,6 +193,7 @@ validate_file test_file "${tmp_file}" 0 sometimes \
     > /dev/null 2> "${log_err}"
 status=$?
 set -e
+
 if (( status != 0 )); then
     record_pass "validate_file rejects an invalid Boolean token"
 else
@@ -192,12 +201,14 @@ else
 fi
 
 before_fail="${TEST_FAIL}"
+
 set +e
 assert_scaling_factor_header \
     "${tmp_file}" '^sample$' sometimes "invalid expect" \
     > /dev/null 2> "${log_err}"
 status=$?
 set -e
+
 if [[ "${status}" -ne 0 && "${TEST_FAIL}" -eq "${before_fail}" ]]; then
     record_pass "invalid assertion Boolean fails before mutating test results"
 else
@@ -206,8 +217,9 @@ else
         "status=${status} before=${before_fail} after=${TEST_FAIL}"
 fi
 
-if python3 -m dev.audit.boolean_contracts \
-    --root "${ROOT_REPO}" > "${log_audit}"
+if \
+    python3 -m dev.audit.boolean_contracts \
+        --root "${ROOT_REPO}" > "${log_audit}"
 then
     record_pass "repository Boolean-contract audit"
 else
@@ -216,5 +228,6 @@ else
         "$(print_relpath "${log_audit}")"
 fi
 
-# shellcheck disable=SC2119  # 'finish' receives no script arguments.
+
+# shellcheck disable=SC2119
 finish

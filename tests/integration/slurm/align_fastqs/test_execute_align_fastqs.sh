@@ -36,10 +36,14 @@ source "$(
 #
 #   RUN_SLURM=1 WAIT_SLURM=1 \
 #       bash tests/integration/slurm/align_fastqs/test_execute_align_fastqs.sh
-if ! is_slurm_enabled; then
+if ! \
+    is_slurm_enabled
+then
     record_skip \
         "Slurm align-fastqs integration check disabled; set RUN_SLURM=1 on a" \
         "Slurm-capable system to enable"
+
+    # shellcheck disable=SC2119
     finish
     exit $?
 fi
@@ -82,10 +86,12 @@ print_section "${TEST_NAME}"
 rm -rf "${tmp}"
 mkdir -p "${dir_in}" "${dir_out}" "${dir_err}" "${dir_log}"
 
-require_env_project env_nam || {
-    finish
-    exit $?
-}
+require_env_project env_nam \
+    || {
+        # shellcheck disable=SC2119
+        finish
+        exit $?
+    }
 
 require_files_nonempty \
     "${in_se}" \
@@ -96,6 +102,7 @@ require_files_nonempty \
     "${idx_bt2}.rev.1.bt2" \
     "${idx_bt2}.rev.2.bt2" \
     || {
+        # shellcheck disable=SC2119
         finish
         exit $?
     }
@@ -105,10 +112,12 @@ cp "${in_se}" "${in_2}"
 
 require_files_nonempty \
     "${in_1}" \
-    "${in_2}" || {
-    finish
-    exit $?
-}
+    "${in_2}" \
+    || {
+        # shellcheck disable=SC2119
+        finish
+        exit $?
+    }
 
 if \
     check_cmd_exists sbatch
@@ -116,6 +125,8 @@ then
     record_pass "sbatch is available for Slurm submission"
 else
     record_fail "RUN_SLURM=1 requires sbatch in PATH on a Slurm-capable system"
+
+    # shellcheck disable=SC2119
     finish
     exit $?
 fi
@@ -162,10 +173,14 @@ if [[ -s "${log_run}" ]]; then
         "execute align-fastqs Slurm submission reports batch job ID"
 fi
 
-if ! is_slurm_wait_enabled; then
+if ! \
+    is_slurm_wait_enabled
+then
     record_skip \
         "Slurm output polling disabled; set WAIT_SLURM=1 to wait for BAM" \
         "products after submission"
+
+    # shellcheck disable=SC2119
     finish
     exit $?
 fi
@@ -274,4 +289,5 @@ if [[ -s "${out_2}" ]]; then
         "execute Slurm Bowtie2 BAM 2 contains expected read name"
 fi
 
+# shellcheck disable=SC2119
 finish

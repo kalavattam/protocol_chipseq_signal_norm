@@ -15,7 +15,7 @@
 # Distributed under the MIT license.
 
 
-#  Require Bash >= 4.4 before doing any work
+# Require Bash >= 4.4 before doing any work.
 if [[ -z "${BASH_VERSION:-}" ]]; then
     echo "error(shell):" \
         "this script must be run under Bash >= 4.4." >&2
@@ -358,7 +358,7 @@ EOM
 }
 
 
-#  Build the ordered part-file vector and final-table combiner command
+# Build the ordered part-file vector and final-table combiner command.
 function build_cmd_cmb() {
     local idx idx_pad
 
@@ -390,7 +390,7 @@ function build_cmd_cmb() {
 }
 
 
-#  Build the final-table header command
+# Build the final-table header command.
 function build_cmd_hdr() {
     unset cmd_hdr && declare -ga cmd_hdr
 
@@ -403,7 +403,7 @@ function build_cmd_hdr() {
 }
 
 
-#  Build the Slurm command for dependent final-table assembly
+# Build the Slurm command for dependent final-table assembly.
 function build_cmd_cmb_slurm() {
     local id_dep="${1:-}"
 
@@ -469,7 +469,7 @@ function init_args_hardcoded() {
 }
 
 
-#  Initialize argument variables, assigning default values where applicable
+# Initialize argument variables, assigning default values where applicable.
 function init_arg_defs() {
     verbose=false
     dry_run=false
@@ -523,14 +523,14 @@ function init_arg_defs() {
 }
 
 
-#  Initialize hardcoded arguments and user-facing argument defaults
+# Initialize hardcoded arguments and user-facing argument defaults.
 function init_defs() {
     init_args_hardcoded
     init_arg_defs
 }
 
 
-#  Parse arguments
+# Parse arguments.
 function parse_args() {
     while [[ "$#" -gt 0 ]]; do
         case "${1}" in
@@ -835,7 +835,7 @@ function parse_args() {
 }
 
 
-#  Canonicalize mode and method aliases
+# Canonicalize mode and method aliases.
 function canonicalize_args() {
     case "${mode}" in
         siq)
@@ -856,15 +856,15 @@ function canonicalize_args() {
                 method="chiprx_alpha_ratio"
             fi
 
-            #TODO: comprehensive assessment/reassessment
+            # TODO: comprehensive assessment/reassessment.
             case "${method}" in
                 fractional|bioprotocol|bio_protocol|s)
-                    #TODO: Phase out hidden test alias 's' unless it remains
-                    #+     useful for manuscript/blog drafting
+                    # TODO: phase out hidden test alias 's' unless it remains
+                    # useful for manuscript/blog drafting
                     method="fractional"
                     ;;
                 chiprx_alpha_ratio|alpha_chiprx_ratio|chiprx_ratio|r)
-                    #TODO: Decide whether to keep hidden test alias 'r'
+                    # TODO: decide whether to keep hidden test alias 'r'.
                     method="chiprx_alpha_ratio"
                     ;;
                 chiprx_alpha_ip|alpha_chiprx_ip|chiprx_ip)
@@ -907,7 +907,7 @@ function canonicalize_args() {
 }
 
 
-#  Validate scalar arguments and assign derived scalar defaults
+# Validate scalar arguments and assign derived scalar defaults.
 function validate_args() {
     validate_var "env_nam" "${env_nam}" || return 1
     check_env_installed "${env_nam}" || return 1
@@ -1017,7 +1017,7 @@ function validate_args() {
 }
 
 
-#  Parse input and optional override vectors
+# Parse input and optional override vectors.
 function prepare_vecs() {
     unset arr_mip arr_min && declare -ga arr_mip arr_min
     IFS=',' read -r -a arr_mip <<< "${csv_mip}"
@@ -1030,7 +1030,7 @@ function prepare_vecs() {
         IFS=',' read -r -a arr_sin <<< "${csv_sin}"
     fi
 
-    #  Parse optional override vectors
+    # Parse optional override vectors.
     unset \
         arr_len_mip arr_len_min \
         arr_dep_mip arr_dep_min arr_dep_sip arr_dep_sin
@@ -1064,7 +1064,7 @@ function prepare_vecs() {
 }
 
 
-#  Validate prepared input and override vectors
+# Validate prepared input and override vectors.
 function validate_vecs() {
     check_arr_nonempty "arr_mip" "csv_mip" || return 1
     check_arr_nonempty "arr_min" "csv_min" || return 1
@@ -1124,8 +1124,8 @@ function validate_vecs() {
             || return 1
     fi
 
-    #  Check optional override-vector values after broadcast-compatible lengths
-    #+ are known
+    # Check optional override-vector values after broadcast-compatible lengths
+    # are known.
     if (( ${#arr_len_mip[@]} > 0 )); then
         check_arr_num_pos arr_len_mip csv_len_mip || return 1
     fi
@@ -1154,14 +1154,14 @@ function validate_vecs() {
 }
 
 
-#  Build final-table combination and header commands
+# Build final-table combination and header commands.
 function build_final_cmds() {
     build_cmd_cmb || return 1
     build_cmd_hdr || return 1
 }
 
 
-#  Configure local, GNU Parallel, or Slurm execution
+# Configure local, GNU Parallel, or Slurm execution.
 function config_exec() {
     validate_var "max_job" "${max_job}" || return 1
     check_int_pos "${max_job}" "max_job" || return 1
@@ -1172,7 +1172,7 @@ function config_exec() {
         validate_var "time" "${time}" || return 1
         check_format_time "${time}" || return 1
     elif [[ "${max_job}" -le 1 ]]; then
-        #  Serial local execution does not require parallel job detection
+        # Serial local execution does not require parallel job detection.
         par_job=1
         unset time
 
@@ -1203,7 +1203,7 @@ function config_exec() {
 }
 
 
-#  Activate environment
+# Activate environment.
 function setup_env() {
     local msg_env out
     local -a env_msg
@@ -1232,7 +1232,7 @@ function setup_env() {
 }
 
 
-#  Check tools needed by the selected dispatch mode
+# Check tools needed by the selected dispatch mode.
 function check_tools() {
     check_pgrm_path awk || return 1
     check_pgrm_path calculate_scaling_factor_siqchip || return 1
@@ -1248,7 +1248,7 @@ function check_tools() {
 }
 
 
-#  Report argument variable assignments if in verbose mode
+# Report argument variable assignments if in verbose mode.
 function print_state_debug() {
     if [[ "${verbose}" == "true" ]]; then
         print_banner_pretty "Hardcoded variable assignments"
@@ -1341,10 +1341,10 @@ function print_state_debug() {
 }
 
 
-#  Dispatch Slurm, GNU Parallel, or serial jobs
+# Dispatch Slurm, GNU Parallel, or serial jobs.
 function run_jobs() {
     if [[ "${slurm}" == "true" ]]; then
-        #  Slurm execution
+        # Slurm execution.
         build_cmd "UNSET" || return 1
 
         unset cmd_slurm && declare -a cmd_slurm
@@ -1471,8 +1471,8 @@ function run_jobs() {
             fi
         fi
     else
-        #  Non-Slurm execution: GNU Parallel ('par_job > 1') or serial
-        #+ ('par_job == 1')
+        # Non-Slurm execution: GNU Parallel ('par_job > 1') or serial
+        # ('par_job == 1').
         if [[ "${par_job}" -gt 1 ]]; then
             config="${dir_eo}/${nam_job}.config_parallel.txt"
 
@@ -1565,7 +1565,7 @@ function run_jobs() {
 }
 
 
-#  Main script execution
+# Main script execution.
 function main() {
     init_defs
     source_helpers_execute || return 1
