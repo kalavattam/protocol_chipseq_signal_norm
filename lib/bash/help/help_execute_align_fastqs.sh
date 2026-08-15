@@ -15,9 +15,10 @@
 # Distributed under the MIT license.
 
 
+#TODO: add support for aligner 'minibwa' to 'align_fastqs' chain.
 # shellcheck disable=SC2154
 function help_execute_align_fastqs() {
-    cat << EOM
+    cat >&2 << EOM
 Usage
 -----
   execute_align_fastqs.sh

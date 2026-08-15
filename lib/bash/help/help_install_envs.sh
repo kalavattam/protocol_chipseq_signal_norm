@@ -16,8 +16,9 @@
 
 
 # TODO: decide whether 'gnuplot' should remain in 'env_protocol'. Probably not.
+# TODO FIXME: under Usage, do a sensical breakdown of option types per line.
 function help_install_envs() {
-    cat << EOM
+    cat >&2 << EOM
 Usage
 -----
   install/scripts/install_envs.sh
@@ -94,43 +95,48 @@ EOM
 }
 
 
-# Hidden environments:
-#
-# + env_align  # Note: Retained for old work; not exposed in the docs.
-#   - bamtools
-#   - bbmap
-#   - bedtools
-#   - bowtie2
-#   - bwa
-#   - datamash
-#   - fastqc
-#   - gawk
-#   - gnuplot
-#   - macs3
-#   - minimap
-#   - mosdepth
-#   - parallel
-#   - picard
-#   - preseq
-#   - rename
-#   - samtools
-#   - subread
-#   - tree
-#   - ucsc-bedgraphtobigwig
-#   - ucsc-bedsort
-#   - ucsc-facount
-#   - wget
-# + env_repro  # Note: Not exposing this to users in the docs.
-#   - bc
-#   - bowtie2=2.3.4.2  # Note: Explicitly pinning old version.
-#   - deeptools=3.3.1  # Note: Explicitly pinning old version.
-#   - gawk
-#   - ipython
-#   - parallel
-#   - pbzip2
-#   - pigz
-#   - python=3.6       # Note: Explicitly pinning old version.
-#   - rename
-#   - samtools=1.9     # Note: Explicitly pinning old version.
-#   - tree
-#   - wget
+# TODO: need to pin some packages in 'env_align'.
+show_hidden=false
+if [[ "${show_hidden}" == true ]]; then
+    cat >&2 << EOM
+  Hidden environments:
+    - env_align          # Note: reproduce my 2023-4 processing and analysis.
+      + bamtools
+      + bbmap
+      + bedtools
+      + bowtie2
+      + bwa
+      + datamash
+      + fastqc
+      + gawk
+      + gnuplot
+      + macs3
+      + minimap
+      + mosdepth
+      + parallel
+      + picard
+      + preseq
+      + rename
+      + samtools
+      + subread
+      + tree
+      + ucsc-bedgraphtobigwig
+      + ucsc-bedsort
+      + ucsc-facount
+      + wget
+    - env_repro          # Note: reproduce work from previous lab members.
+      + bc
+      + bowtie2=2.3.4.2  # Note: explicitly pinning old version.
+      + deeptools=3.3.1  # Note: explicitly pinning old version.
+      + gawk
+      + ipython
+      + parallel
+      + pbzip2
+      + pigz
+      + python=3.6       # Note: explicitly pinning old version.
+      + rename
+      + samtools=1.9     # Note: explicitly pinning old version.
+      + tree
+      + wget
+EOM
+fi

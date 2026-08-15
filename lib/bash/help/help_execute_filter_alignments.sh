@@ -17,7 +17,7 @@
 
 # shellcheck disable=SC2154
 function help_execute_filter_alignments() {
-    cat << EOM
+    cat >&2 << EOM
 Usage
 -----
   execute_filter_alignments.sh

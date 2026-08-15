@@ -16,10 +16,10 @@
 
 
 function help_execute_download_fastqs() {
-    #  The owning execute wrapper initializes these documented defaults before
-    #+ rendering help; standalone sourcing is outside this helper's contract
+    # The owning execute wrapper initializes these documented defaults before
+    # rendering help; standalone sourcing is outside this helper's contract
     # shellcheck disable=SC2154
-    cat << EOM
+    cat >&2 << EOM
 Usage
 -----
   execute_download_fastqs.sh

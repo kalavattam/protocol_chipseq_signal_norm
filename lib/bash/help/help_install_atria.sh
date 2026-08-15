@@ -16,7 +16,7 @@
 
 # shellcheck disable=SC2154
 function help_install_atria() {
-    cat << EOM >&2
+    cat >&2 << EOM
 Usage
 -----
   install_atria.sh

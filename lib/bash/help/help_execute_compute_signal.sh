@@ -15,7 +15,7 @@
 # Distributed under the MIT license.
 
 
-# TODO: Add more examples and PMIDs for all studies mentioned in detailed help.
+# TODO: add more examples and PMIDs for all studies mentioned in detailed help.
 usage=$(cat << EOM
 Usage
 -----
@@ -34,11 +34,12 @@ Usage
 EOM
 )
 
+# TODO FIXME: the usage examples in the non-detailed help docs do not show how
+# to actually use the wrapper script.
 # shellcheck disable=SC2154
 function help_execute_compute_signal() {
-cat << EOM
+cat >&2 << EOM
 ${usage}
-
 
   Coordinate and automate the computation of signal tracks, ratio tracks, or fragment-coordinate files from BAM/CRAM or bedGraph input files. Supports multiple normalization strategies and runs computations in serial or parallel via GNU Parallel or Slurm.
 
@@ -47,7 +48,6 @@ ${usage}
     bash path/to/execute_compute_signal.sh --details
     bash path/to/execute_compute_signal.sh --all_help
     '''
-
 
 Parameters
 ----------
@@ -194,7 +194,6 @@ Parameters
   -tm, --time : time
     Slurm job time limit in 'h:mm:ss' format (required if '--slurm'; default: '${time}').
 
-
 Notes
 -----
   Runtime requirements:
@@ -233,18 +232,18 @@ function detail_execute_compute_signal() {
 
     #  Only print the top-level 'Usage' block if '--no-usage' is not invoked
     if [[ ! "${mode}" =~ ^--no[_-]usage$ ]]; then
-cat << EOM
+cat >&2 << EOM
 ${usage}
-
 
 EOM
     fi
 
-#TODO: detailed descriptions of new arguments:
-#+     - --chr_sizes <file>
-#+     - --engine <engine>
-#+     - --chunk_size <int>
-cat << EOM
+# TODO FIXME: missing detailed descriptions of (relatively) new arguments:
+#   - --chr_sizes <file>
+#   - --engine <engine>
+#   - --chunk_size <int>
+#   - Others?
+cat >&2 << EOM
   Driver script automating the computations of bedGraph signal or ratio tracks, or BED-like fragment coordinate files, from BAM/CRAM (for signal tracks or fragment coordinate files) or bedGraph (for ratio tracks) input files.
 
   Supports multiple signal normalization strategies, including
@@ -257,7 +256,6 @@ cat << EOM
     - input- and spike-in-normalized signal ratios (modified ChIP-Rx as described in "Data Analysis I" of Alavattam et al., Bio-protocol 2025)
 
   Supports serial job execution and parallel job execution via Slurm or GNU Parallel.
-
 
 Parameters
 ----------
@@ -518,7 +516,6 @@ Parameters
   -tm, --time : time
     Slurm job time limit. The length of time, in 'h:mm:ss' format, for the Slurm job (required if '--slurm' is specified, ignored if not; default: '${time}').
 
-
 Notes
 -----
   Runtime requirements:
@@ -556,7 +553,6 @@ Notes
       - If the resulting number of parallel jobs is greater than 1, commands are written to a configuration file and executed with GNU Parallel.
       - If the resulting number of parallel jobs is 1, all jobs are run serially in a single Bash process (neither GNU Parallel nor Slurm).
 
-
 Examples
 --------
   1. Compute normalized coverage using GNU Parallel.
@@ -584,6 +580,5 @@ Examples
         --dir_out "\${HOME}/project/ratios" \\
         --typ_out "bg"
     '''
-
 EOM
 }

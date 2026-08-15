@@ -34,7 +34,6 @@ Usage
 
   Compute one per-sample siQ-ChIP or spike-in scaling-factor row from comma-separated BAM/CRAM lists and write it to a deterministic part file.
 
-
 Parameters
 ----------
   -h, --help : flag
@@ -118,7 +117,6 @@ Parameters
   -nj, --nam_job : str
     Job name. Job-name prefix (default depends on resolved mode/method).
 
-
 Notes
 -----
   Runtime requirements:
@@ -142,7 +140,6 @@ Notes
   - To run in "debug mode", set hardcoded variable 'debug=true'                   [debug=${debug:-UNSET}]
   - To run in "parse-only mode", set hardcoded variable 'p_only=true'             [p_only=${p_only:-UNSET}]
   - To run in "parse-and-check-only mode", set hardcoded variable 'pc_only=true'  [pc_only=${pc_only:-UNSET}]
-
 
 Examples
 --------

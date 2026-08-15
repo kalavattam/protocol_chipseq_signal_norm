@@ -15,10 +15,11 @@
 # Distributed under the MIT license.
 
 
-# TODO: Add examples that use optional arguments, including value overrides.
+# TODO: add examples that use optional arguments, including value overrides.
+# TODO: '[--eqn <equation>]' or '[--eqn <spec>]'?
 # shellcheck disable=SC2154
 function help_execute_calculate_scaling_factor() {
-    cat << EOM
+    cat >&2 << EOM
 Usage
 -----
   execute_calculate_scaling_factor.sh
@@ -34,15 +35,13 @@ Usage
     [--dir_eo <dir>] [--nam_job <str>]
     [--max_job <int>] [--slurm] [--time <time>]
 
+  Coordinate the calculation of siQ-ChIP or spike-in scaling factors for ChIP-seq data for one or more samples in a cohort†.
 
-  Coordinate calculation of siQ-ChIP or spike-in scaling factors for ChIP-seq data across one or more samples.
-
-  In 'siq' mode, the script uses main-organism IP and input alignment files, together with a metadata table and YAML configuration file, to calculate siQ-ChIP alpha scaling factors via the downstream 'submit_calculate_scaling_factor.sh' wrapper and the Python helper scripts 'calculate_scaling_factor_siqchip.py' and 'parse_metadata_siqchip.py'. This workflow uses 'parse_metadata_siqchip.yml', which must be configured appropriately if input filenames do not follow the filename conventions described in the Tsukiyama Lab Bio-protocol manuscript.
+  In 'siq' mode, the script uses main-organism IP and input alignment files, together with a metadata table and YAML configuration file, to calculate siQ-ChIP alpha scaling factors via the downstream 'submit_calculate_scaling_factor.sh' wrapper and the Python helper scripts 'calculate_scaling_factor_siqchip.py' and 'parse_metadata_siqchip.py'. This workflow uses 'parse_metadata_siqchip.yml', which must be configured appropriately if input filenames do not follow the filename conventions described in the Tsukiyama Lab Bio-protocol manuscript (PMID: 40364978).
 
   In 'spike' mode, the script uses main-organism and spike-in-organism IP and input alignment files to calculate spike-in scaling factors via the downstream 'submit_calculate_scaling_factor.sh' wrapper and the associated Python/helper-script workflow, including 'calculate_scaling_factor_spike.py' and supporting shell/Python utilities for obtaining fragment-length and alignment-depth values when needed.
 
-  Jobs may be run through Slurm, GNU Parallel, or serial execution, depending on user arguments and the resolved number of jobs. After successful worker completion, the script combines deterministic per-sample part files into the requested final TSV, then writes the mode-specific header unless '--no_header' is supplied.
-
+  Jobs may be run through Slurm, GNU Parallel, or serial execution, depending on user arguments and the resolved number of jobs. After successful worker completion, the script combines deterministic per-sample part files into the requested final TSV, then writes the mode-specific header (unless '--no_header' is supplied).
 
 Parameters
 ----------
@@ -65,7 +64,7 @@ Parameters
     Workflow mode. Scaling-factor mode to run: 'siq' or 'spike' (default: '${mode}').
 
   -me, --method : {'fractional', 'chiprx_alpha_ratio', 'chiprx_alpha_ip', 'chiprx_alpha_in', 'rxinput_alpha'}
-    Workflow method. Spike-in scaling method to compute when '--mode spike' is active (default if '--mode spike': 'chiprx_alpha_ratio'; no default if '--mode siq').
+    Workflow method. Spike-in scaling method to compute when '--mode spike' is active (default: 'chiprx_alpha_ratio'; no default if '--mode siq').
 
     List of accepted canonical method names (first), aliases (subsequent), and calculations:
       - fractional | bioprotocol | bio_protocol
@@ -78,6 +77,13 @@ Parameters
         10^6 / N_s^{in}
       - rxinput_alpha | alpha_rxinput | rxi_alpha | alpha_rxi | rxinput | rxi
         (10^6 * N_s^{in}) / (N_s^{IP} * T^{in})
+
+      where, for a matched IP-input pair (superscript: sample; subscript: genome):
+
+        | terms              | description                                             |
+        | :---               | :---                                                    |
+        | N_s^{IP}, N_s^{in} | processed fragments‡ assigned to the spike-in genome    |
+        | T^{IP}, T^{in}     | total processed fragments‡ (main plus spike-in genomes) |
 
     Supported aliases are normalized internally.
 
@@ -122,28 +128,28 @@ Parameters
 
     For descriptions of these equations, see Dickson et al., Sci Rep 2023 (PMID: 37160995). '5' corresponds to Equation 5 in the paper, and '6' corresponds to Equation 6.
 
-    The 'nd' suffix denotes versions of those equations without depth terms (i.e., 'no depth'), meaning forms that omit terms containing \hat{R} and/or \hat{R}_\mathrm{in}. Use the 'nd' versions when applying them to ratios of normalized coverage.
+    The 'nd' suffix denotes versions of those equations without depth terms (i.e., 'no depth'), meaning forms that omit terms containing \hat{R} and/or \hat{R}_\mathrm{in}. Use the 'nd' versions when applying them to ratios of normalized coverage, and use non-'nd' versions when applying them to ratios of unadjusted signal.
 
   -ld, --len_def : int
     Default fragment length for single-end libraries when a per-file fragment length is not otherwise available.
 
   -clmp, --csv_len_mip : list of number
-    Fragment length value(s) for main IP alignment files. May be a single broadcast value or a comma-separated list aligned to samples.
+    Fragment length value(s) for main IP alignment files. May be a comma-separated list aligned to samples or a single broadcast value.
 
   -clmn, --csv_len_min : list of number
-    Fragment length value(s) for main input alignment files. May be a single broadcast value or a comma-separated list aligned to samples.
+    Fragment length value(s) for main input alignment files. May be a comma-separated list aligned to samples or a single broadcast value.
 
   -cdmp, --csv_dep_mip : list of int
-    Sequencing/alignment depth value(s) for main IP alignment files. May be a single broadcast value or a comma-separated list aligned to samples.
+    Sequencing/alignment depth value(s) for main IP alignment files. May be a comma-separated list aligned to samples or a single broadcast value.
 
   -cdmn, --csv_dep_min : list of int
-    Override sequencing/alignment depth value(s) for main-organism input files; here 'min' abbreviates main input. May be a single broadcast value or a comma-separated list aligned to samples.
+    Override sequencing/alignment depth value(s) for main-organism input files; here 'min' abbreviates main input. May be a comma-separated list aligned to samples or a single broadcast value.
 
   -cdsp, --csv_dep_sip : list of int
-    Sequencing/alignment depth value(s) for spike-in IP alignment files. May be a single broadcast value or a comma-separated list aligned to samples. Used only in 'spike' mode.
+    Sequencing/alignment depth value(s) for spike-in IP alignment files. May be a comma-separated list aligned to samples or a single broadcast value. Used only in 'spike' mode.
 
   -cdsn, --csv_dep_sin : list of int
-    Sequencing/alignment depth value(s) for spike-in input alignment files. May be a single broadcast value or a comma-separated list aligned to samples. Used only in 'spike' mode.
+    Sequencing/alignment depth value(s) for spike-in input alignment files. May be a comma-separated list aligned to samples or a single broadcast value. Used only in 'spike' mode.
 
   -dp, --dp : int
     Maximum number of decimal places retained for finite emitted values (default: ${dp}).
@@ -164,7 +170,6 @@ Parameters
 
   -tm, --time : time
     Slurm job time limit. Slurm wall-clock time in 'h:mm:ss' format (default: '${time}'; used only if '--slurm' is active).
-
 
 Notes
 -----
@@ -202,6 +207,9 @@ Notes
   - Compute downstream denominator floors separately with 'compute_input_floor'.
   - If '--dry_run' is enabled, commands are printed but not executed.
 
+  Footnotes:
+    - † A cohort is a set of ChIP-seq samples intended to be analyzed on a common scale, calibrated to exogenous chromatin, as in spike-in frameworks, or to benchwork measurements, as in siQ-ChIP. Cohort samples are typically for one immunoprecipitated factor, prepared under the same protocol by the same person, and processed together in a batch or controlled set of batches. In siQ-ChIP, careful, validated benchwork permits multiple factors in one cohort.
+    - ‡ Aligned reads are only partial observations of fragments, so counting is best done at the fragment level rather than the level of read alignments. Whatever counting rules are used, they must be applied consistently within each IP-input pair, across all compared samples, and to both the main and spike-in genomes; the results are then "processed fragments."
 
 Examples
 --------

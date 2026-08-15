@@ -36,8 +36,7 @@ Usage
     - parses a semicolon-delimited list of FASTQ input entries,
     - derives sample names and alignment fil_out paths,
     - activates the requested Conda environment, and then
-    - runs alignment either under Slurm array execution or by serial/local
-      iteration, depending on how the script is invoked.
+    - runs alignment either under Slurm array execution or by serial/local iteration, depending on how the script is invoked.
 
   For each input entry, this script writes log files to:
 

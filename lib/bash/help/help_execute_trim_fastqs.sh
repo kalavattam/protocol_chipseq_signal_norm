@@ -17,7 +17,7 @@
 
 # shellcheck disable=SC2154
 function help_execute_trim_fastqs() {
-    cat << EOM
+    cat >&2 << EOM
 Usage
 -----
   execute_trim_fastqs.sh

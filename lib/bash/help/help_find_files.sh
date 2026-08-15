@@ -13,9 +13,15 @@
 # Distributed under the MIT license.
 
 
+# TODO FIXME: under Usage, do a sensical breakdown of option types per line.
+# Maybe like this? (Entails reordering options.)
+#   [--help]
+#    --dir_fnd <dir> --pattern <str> [--include <csv>] [--exclude <csv>]
+#    [--depth <int>] [--follow] [--fastqs]
+#    [--chk_con] [--chk_exc]
 # shellcheck disable=SC1111
 function help_find_files() {
-    cat << EOM
+    cat >&2 << EOM
 Usage
 -----
   find_files.sh

@@ -6,9 +6,11 @@
 # Copyright 2024-2026 by Kris Alavattam
 # Email: kalavattam@gmail.com
 #
-# OpenAI ChatGPT and Codex (GPT-4- and GPT-5-series models; most recent:
-# GPT-5.6) were used in design, development, and documentation, with all output
-# reviewed, edited, and approved by the author.
+# The following were used in design, development, and documentation, with all
+# output reviewed, edited, and approved by the author:
+# - OpenAI ChatGPT and Codex (GPT-4- and GPT-5-series models; most recent:
+#   GPT-5.6);
+# - Anthropic Claude Code (Opus 5).
 #
 # Distributed under the MIT license.
 
@@ -17,7 +19,7 @@
 # supported, document '--size' as type 'size' rather than 'int'.
 # shellcheck disable=SC1111,SC2154
 function help_compress_remove_files() {
-    cat << EOM
+    cat >&2 << EOM
 Usage
 -----
   compress_remove_files.sh
@@ -27,11 +29,9 @@ Usage
     [--depth <int>] [--include <csv>] [--exclude <csv>]
     [--chk_con]
 
-
   Find files in a specified directory that match the given pattern, compress files larger than the specified size, and delete files that are 0 in size.
 
   Files can be further included or excluded based on comma-separated name patterns, and the search can be limited to a specified directory depth.
-
 
 Parameters
 ----------
@@ -81,7 +81,6 @@ Notes
   - If the string assigned to '--pattern' matches anything in the current working directory, the script emits a warning as a reminder that it is running from an inconvenient location.
   - If '--threads' is assigned a positive integer greater than 1, then the script will use GNU Parallel to parallelize file handling and processing.
 
-
 Examples
 --------
   1. Compress matching log files larger than 2 KB.
@@ -120,6 +119,5 @@ Examples
         --size 2 \\
         --dry_run
     '''
-
 EOM
 }
