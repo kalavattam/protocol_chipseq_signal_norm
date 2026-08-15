@@ -6,14 +6,18 @@
 # Copyright 2024-2026 by Kris Alavattam
 # Email: kalavattam@gmail.com
 #
-# OpenAI ChatGPT and Codex (GPT-4- and GPT-5-series models; most recent:
-# GPT-5.6) were used in design, development, and documentation, with all output
-# reviewed, edited, and approved by the author.
+# The following were used in design, development, and documentation, with all
+# output reviewed, edited, and approved by the author:
+# - OpenAI ChatGPT and Codex (GPT-4- and GPT-5-series models; most recent:
+#   GPT-5.6);
+# - Anthropic Claude Code (Opus 5).
 #
 # Distributed under the MIT license.
 
 
-#  Require bash >= 4.4 before doing any work
+# TODO: switch from positional to keyword option parameters, consistent with
+# all other wrappers.
+# Require bash >= 4.4 before doing any work.
 if [[ -z "${BASH_VERSION:-}" ]]; then
     echo "error(shell):" \
         "this script must be run under bash >= 4.4." >&2
@@ -27,28 +31,51 @@ elif ((
     exit 1
 fi
 
-#  Run in safe mode, exiting on errors, unset variables, and pipe failures
+# Run in safe mode, exiting on errors, unset variables, and pipe failures.
 set -euo pipefail
 
-#  Source main help before bootstrap argument parsing
-{
-    _dir_scr_hlp="$(
-        cd "$(dirname "${BASH_SOURCE[0]}")" > /dev/null 2>&1 && pwd
-    )"
+# 'sbatch' copies this script, so '--dir_scr' must outrank 'BASH_SOURCE'.
+function resolve_dir_scr() {
+    local -a args=( "$@" )
+    local i
 
-    # shellcheck source=lib/bash/help/help_submit_download_fastqs.sh
-    source \
-        "${_dir_scr_hlp}/../lib/bash/help/help_submit_download_fastqs.sh" \
-        || {
-        echo "error($(basename "${BASH_SOURCE[0]}")):" \
-            "failed to source main help." >&2
-        exit 1
-    }
-    unset _dir_scr_hlp
+    for (( i = 0; i < ${#args[@]}; i++ )); do
+        case "${args[i]}" in
+            -ds|--dir[_-]scr)
+                if \
+                       (( i + 1 < ${#args[@]} )) \
+                    && [[ -n "${args[i + 1]}" ]] \
+                    && [[ "${args[i + 1]}" != -* ]]
+                then
+                    printf '%s\n' "${args[i + 1]}"
+                    return 0
+                fi
+                ;;
+        esac
+    done
+
+    cd "$(dirname "${BASH_SOURCE[0]}")" > /dev/null 2>&1 && pwd
 }
 
 
-#  Initialize argument variables
+dir_scr="$(resolve_dir_scr "$@")" || {
+    echo "error($(basename "${BASH_SOURCE[0]}")):" \
+        "failed to resolve the script directory." >&2
+    exit 1
+}
+
+fil_hlp="${dir_scr}/../lib/bash/help/help_submit_download_fastqs.sh"
+
+# shellcheck source=lib/bash/help/help_submit_download_fastqs.sh
+source "${fil_hlp}" || {
+    echo "error($(basename "${BASH_SOURCE[0]}")):" \
+        "failed to source main help." >&2
+    exit 1
+}
+unset fil_hlp
+
+
+# Initialize argument variables.
 function init_defs() {
     hlp_req="false"
     srr=""
@@ -59,12 +86,11 @@ function init_defs() {
     nam_cus=""
     dir_eo=""
     nam_job=""
-    dir_scr=""
     dir_fnc=""
 }
 
 
-#  Detect terminal help before resolving bootstrap arguments
+# Detect terminal help before resolving bootstrap arguments.
 function scan_help_args() {
     local arg
 
@@ -79,48 +105,7 @@ function scan_help_args() {
 }
 
 
-#  Resolve '--dir_scr' before sourced parser helpers are available
-function resolve_dir_scr() {
-    local scr="${1:-}"
-    shift
-
-    local -a args=( "$@" )
-    local i=0
-
-    if [[ -z "${scr}" ]]; then
-        scr="unknown_script"
-    fi
-
-    for (( i = 0; i < ${#args[@]}; i++ )); do
-        case "${args[i]}" in
-            -ds|--dir[_-]scr)
-                if \
-                    (( i + 1 >= ${#args[@]} )) || [[
-                        -z "${args[i + 1]:-}" || "${args[i + 1]}" == -*
-                    ]]
-                then
-                    echo "error(${scr}):" \
-                        "option '${args[i]}' requires a value." >&2
-                    echo >&2
-                    help_submit_download_fastqs >&2
-                    return 1
-                fi
-
-                printf "%s\n" "${args[i + 1]}"
-                return 0
-                ;;
-        esac
-    done
-
-    echo "error(${scr}):" \
-        "required option '--dir_scr' was not supplied." >&2
-    echo >&2
-    help_submit_download_fastqs >&2
-    return 1
-}
-
-
-#  Source shared helpers after bootstrap argument parsing
+# Source shared helpers after bootstrap argument parsing.
 function source_helpers_submit() {
     local scr="${1:-}"
     local dir_scr_arg="${2:-}"
@@ -172,7 +157,7 @@ function source_helpers_submit() {
 }
 
 
-#  Parse the bootstrap option and fixed positional submit interface
+# Parse the bootstrap option and fixed positional submit interface.
 function parse_args() {
     local msg
     local -a args_pos=()
@@ -234,7 +219,7 @@ EOM
 }
 
 
-#  Validate submit-layer directories and runtime tool availability
+# Validate submit-layer directories and runtime tool availability.
 function validate_args() {
     local dir
 
@@ -260,7 +245,7 @@ function validate_args() {
 }
 
 
-#  Download one FASTQ URL to one output file
+# Download one FASTQ URL to one output file.
 function download_fastq() {
     local url="${1:-}"
     local fil_out="${2:-}"
@@ -278,7 +263,7 @@ function download_fastq() {
 }
 
 
-#  Create one custom-name symlink
+# Create one custom-name symlink.
 function link_fastq() {
     local src="${1:-}"
     local dst="${2:-}"
@@ -291,7 +276,7 @@ function link_fastq() {
 }
 
 
-#  Download the selected SE or PE entry and create custom symlink(s)
+# Download the selected SE or PE entry and create custom symlink(s).
 function run_downloads() {
     if [[ "${url_2}" != "NA" ]]; then
         download_fastq \
@@ -331,7 +316,7 @@ function run_downloads() {
 }
 
 
-#  Main script execution
+# Main script execution.
 function main() {
     init_defs
     scan_help_args "$@"
@@ -345,8 +330,6 @@ function main() {
         help_submit_download_fastqs
         return 0
     fi
-
-    dir_scr="$(resolve_dir_scr "${0##*/}" "$@")"  || return 1
 
     source_helpers_submit "${0##*/}" "${dir_scr}" || return 1
     parse_args "$@"                               || return 1

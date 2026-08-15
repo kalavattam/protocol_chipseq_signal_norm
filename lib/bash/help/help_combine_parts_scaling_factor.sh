@@ -15,11 +15,12 @@
 
 
 function help_combine_parts_scaling_factor() {
-    cat << EOM
+    cat >&2 << EOM
 Usage
 -----
   combine_parts_scaling_factor.sh
     [--help] [--dry_run]
+    [--dir_scr <dir>]
     --mode <mode> --csv_fil_in <csv> --fil_out <file>
     [--force] [--no_parts]
 
@@ -32,6 +33,9 @@ Parameters
 
   -dr, --dry, --dry_run : flag
     Run script in dry-run mode. Validate inputs and print the ordered combination plan without writing output.
+
+  -ds, --dir_scr : dir
+    Directory containing scripts and functions. Passed by the 'execute_*.sh' wrappers, and needed when this script is run from a copy, as 'sbatch <script>' does, rather than from its real path.
 
   -md, --mode : {'siq', 'spike'}
     Workflow mode for scaling-factor part files. Required.

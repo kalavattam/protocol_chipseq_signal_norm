@@ -17,11 +17,13 @@
 function help_write_header() {
     # The production owner initializes interpolated defaults before invocation.
     # shellcheck disable=SC2154
-    cat << EOM
+    cat >&2 << EOM
 Usage
 -----
   write_header.sh
-    [--help] [--verbose] [--dry_run] [--mode <mode>] [--fil_in <file>] [--fil_out <file>] [--in_place]
+    [--help] [--verbose] [--dry_run]
+    [--dir_scr <dir>]
+    [--mode <mode>] [--fil_in <file>] [--fil_out <file>] [--in_place]
 
   Create a header-only scaling-factor table, write a headered copy of a data table, or add a header to a data table in place.
 
@@ -35,6 +37,9 @@ Parameters
 
   -dr, --dry, --dry_run : flag
     Run script in dry-run mode. Print the header and planned file action without creating or modifying a file.
+
+  -ds, --dir_scr : dir
+    Directory containing scripts and functions. Passed by the 'execute_*.sh' wrappers, and needed when this script is run from a copy, as 'sbatch <script>' does, rather than from its real path.
 
   -md, --mode : {'siq', 'spike'}
     Workflow mode. Type of header to write: 'siq' (siQ-ChIP normalization) or 'spike' (normalization with a spike-in coefficient) (default: '${mode}').

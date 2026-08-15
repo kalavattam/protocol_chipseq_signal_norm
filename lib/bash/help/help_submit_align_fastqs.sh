@@ -14,15 +14,16 @@
 # Distributed under the MIT license.
 
 
+# TODO: do we need '--dir_scr' in the examples? Only if using 'sbatch'.
+#TODO: include Conda, aligner, and Samtools versions.
 # shellcheck disable=SC2154
 function help_submit_align_fastqs() {
-    cat << EOM >&2
+    cat >&2 << EOM
 Usage
 -----
   submit_align_fastqs.sh
     [--help]
-    [--env_nam <str>] --dir_scr <dir>
-    [--threads <int>]
+    [--env_nam <str>] [--dir_scr <dir>] [--threads <int>]
     [--aligner <spec>] [--bt2_mode <spec>] [--bwa_alg <spec>] [--mapq <int>] [--req_flg]
     --index <path> --csv_fil_in <csv> [--ref_fa <file>]
     --dir_out <dir> [--out_ext <format>]
@@ -52,7 +53,7 @@ Parameters
     Conda environment to activate (default: '${env_nam}').
 
   -ds, --dir_scr : dir
-    Directory containing scripts and functions.
+    Directory containing scripts and functions. Passed by the 'execute_*.sh' wrappers, and needed when this script is run from a copy, as 'sbatch <script>' does, rather than from its real path.
 
   -t, --thr, --threads : int
     Number of threads to use (default: ${threads}).

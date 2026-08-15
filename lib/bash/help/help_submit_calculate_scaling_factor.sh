@@ -14,15 +14,17 @@
 # Distributed under the MIT license.
 
 
-# TODO: Add more direct-submit examples for siQ-ChIP and spike-in modes.
+# TODO: add more direct-submit examples for siQ-ChIP and spike-in modes.
+# TODO: do we need '--dir_scr' in the examples? Only if using 'sbatch'.
 function help_submit_calculate_scaling_factor() {
     # The submit owner initializes interpolated defaults before invocation.
     # shellcheck disable=SC2154
-    cat << EOM >&2
+    cat >&2 << EOM
 Usage
 -----
   submit_calculate_scaling_factor.sh
-    [--help] [--env_nam <str>] --dir_scr <dir> [--threads <int>]
+    [--help]
+    [--env_nam <str>] [--dir_scr <dir>] [--threads <int>]
     [--mode <mode>] [--method <method>]
     [--aln_typ <layout>] [--ref_fa <file>]
     --csv_mip <csv> --csv_min <csv> [--csv_sip <csv>] [--csv_sin <csv>]
@@ -43,7 +45,7 @@ Parameters
     Conda environment to activate (default: '${env_nam}').
 
   -ds, --dir_scr : dir
-    Directory containing scripts and functions.
+    Directory containing scripts and functions. Passed by the 'execute_*.sh' wrappers, and needed when this script is run from a copy, as 'sbatch <script>' does, rather than from its real path.
 
   -t, --thr, --threads : int
     Number of threads to use for alignment-processing steps (default: ${threads}).

@@ -15,7 +15,7 @@
 # Distributed under the MIT license.
 
 
-#  Require Bash >= 4.4 before doing any work
+# Require Bash >= 4.4 before doing any work.
 if [[ -z "${BASH_VERSION:-}" ]]; then
     echo "error(shell):" \
         "this script must be run under Bash >= 4.4." >&2
@@ -29,26 +29,51 @@ elif ((
     exit 1
 fi
 
-#  Run in safe mode, exiting on errors, unset variables, and pipe failures
+# Run in safe mode, exiting on errors, unset variables, and pipe failures.
 set -euo pipefail
 
-#  Source main help before bootstrap argument parsing
-_dir_scr_help="$(
+# 'sbatch' copies this script, so '--dir_scr' must outrank 'BASH_SOURCE'.
+function resolve_dir_scr() {
+    local -a args=( "$@" )
+    local i
+
+    for (( i = 0; i < ${#args[@]}; i++ )); do
+        case "${args[i]}" in
+            -ds|--dir[_-]scr)
+                if \
+                       (( i + 1 < ${#args[@]} )) \
+                    && [[ -n "${args[i + 1]}" ]] \
+                    && [[ "${args[i + 1]}" != -* ]]
+                then
+                    printf '%s\n' "${args[i + 1]}"
+                    return 0
+                fi
+                ;;
+        esac
+    done
+
     cd "$(dirname "${BASH_SOURCE[0]}")" > /dev/null 2>&1 && pwd
-)"
-_fil_hlp_main="${_dir_scr_help}/../lib/bash/help"
-_fil_hlp_main="${_fil_hlp_main}/help_submit_calculate_scaling_factor.sh"
+}
+
+
+dir_scr="$(resolve_dir_scr "$@")" || {
+    echo "error($(basename "${BASH_SOURCE[0]}")):" \
+        "failed to resolve the script directory." >&2
+    exit 1
+}
+
+fil_hlp="${dir_scr}/../lib/bash/help/help_submit_calculate_scaling_factor.sh"
 
 # shellcheck source=lib/bash/help/help_submit_calculate_scaling_factor.sh
-source "${_fil_hlp_main}" || {
+source "${fil_hlp}" || {
     echo "error($(basename "${BASH_SOURCE[0]}")):" \
         "failed to source main help." >&2
     exit 1
 }
-unset _dir_scr_help _fil_hlp_main
+unset fil_hlp
 
 
-#  Define script-specific functions
+# Define script-specific functions.
 function derive_samp_sf() {
     local fil_aln="${1:-}"
     local samp=""
@@ -115,46 +140,7 @@ EOM
 }
 
 
-#  Resolve '--dir_scr' before sourced parser helpers are available
-function resolve_dir_scr() {
-    local scr="${1:-}"
-    shift
-
-    local -a args=( "$@" )
-    local i=0
-
-    if [[ -z "${scr}" ]]; then
-        scr="unknown_script"
-    fi
-
-    for (( i = 0; i < ${#args[@]}; i++ )); do
-        case "${args[i]}" in
-            -ds|--dir[_-]scr)
-                if (( i + 1 >= ${#args[@]} )) \
-                    || [[ -z "${args[i + 1]:-}" || "${args[i + 1]}" == -* ]]
-                then
-                    echo "error(${scr}):" \
-                        "option '${args[i]}' requires a value." >&2
-                    echo >&2
-                    help_submit_calculate_scaling_factor
-                    return 1
-                fi
-
-                printf "%s\n" "${args[i + 1]}"
-                return 0
-                ;;
-        esac
-    done
-
-    echo "error(${scr}):" \
-        "required option '--dir_scr' was not supplied." >&2
-    echo >&2
-    help_submit_calculate_scaling_factor
-    return 1
-}
-
-
-#  Source 'source_helpers.sh' and requested helper scripts from 'dir_scr'
+# Source 'source_helpers.sh' and requested helper scripts from 'dir_scr'.
 function source_helpers_submit() {
     local scr="${1:-}"
     local dir_scr_arg="${2:-}"
@@ -210,7 +196,7 @@ function source_helpers_submit() {
 }
 
 
-#  Parse keyword arguments after helper scripts have been sourced
+# Parse keyword arguments after helper scripts have been sourced.
 function parse_args() {
     while [[ "$#" -gt 0 ]]; do
         case "${1}" in
@@ -485,7 +471,7 @@ function parse_args() {
 }
 
 
-#  Canonicalize mode, method, alignment type, coefficient name, and job name
+# Canonicalize mode, method, alignment type, coefficient name, and job name.
 function canonicalize_args() {
     case "${mode}" in
         siq)
@@ -573,7 +559,7 @@ function canonicalize_args() {
 }
 
 
-#  Validate required arguments and simple numeric values
+# Validate required arguments and simple numeric values.
 function validate_args() {
     validate_var     "env_nam" "${env_nam}"         || return 1
     validate_var_dir "dir_scr" "${dir_scr}" 0 false || return 1
@@ -634,11 +620,11 @@ function validate_args() {
 }
 
 
-#  Resolve installed Python command names after helper sourcing
+# Resolve installed Python command names after helper sourcing.
 function resolve_script_paths() {
     validate_var_dir "dir_scr" "${dir_scr}" 0 false || return 1
 
-    # run_python.sh reads the caller-owned repository root dynamically.
+    # 'run_python.sh' reads the caller-owned repository root dynamically.
     # shellcheck disable=SC2034
     dir_rep="$(cd "${dir_scr}/.." && pwd)"
 
@@ -654,23 +640,22 @@ function resolve_script_paths() {
 }
 
 
-#  Initialize hardcoded argument variables
+# Initialize hardcoded argument variables.
 function init_args_hardcoded() {
-    #  If true, print verbose/debug Bash-level logging
+    # If true, print verbose/debug Bash-level logging.
     debug=true
 
-    #  If true, parse arguments and exit before validation or execution
+    # If true, parse arguments and exit before validation or execution.
     p_only=false
 
-    #  If true, parse and check arguments, then exit before execution
+    # If true, parse and check arguments, then exit before execution.
     pc_only=false
 }
 
 
-#  Initialize argument variables, assigning default values where applicable
+# Initialize argument variables, assigning default values where applicable.
 function init_arg_defs() {
     env_nam="env_protocol"
-    dir_scr=""
     threads=1
 
     mode="spike"    # siq | spike
@@ -712,17 +697,14 @@ function init_arg_defs() {
 }
 
 
-#  Initialize hardcoded arguments and user-facing argument defaults
+# Initialize hardcoded arguments and user-facing argument defaults.
 function init_defs() {
     init_args_hardcoded
     init_arg_defs
 }
 
 
-#  Define the help message
-
-
-#  Print parsed scalar arguments when debugging is enabled
+# Print parsed scalar arguments when debugging is enabled.
 function print_state_debug() {
     if [[ "${debug}" == "true" ]]; then
         debug_var \
@@ -774,7 +756,7 @@ function print_state_debug() {
 }
 
 
-#  Reconstruct required and optional arrays from serialized argument strings
+# Reconstruct required and optional arrays from serialized argument strings.
 function prepare_vecs() {
     IFS=',' read -r -a arr_mip <<< "${csv_mip}"
     IFS=',' read -r -a arr_min <<< "${csv_min}"
@@ -822,7 +804,7 @@ function prepare_vecs() {
 }
 
 
-#  Validate vector lengths, sentinels, CRAM reference needs, and values
+# Validate vector lengths, sentinels, CRAM reference needs, and values.
 function validate_vecs() {
     local fil_aln need_ref=false n_samp
     local -a arr_aln
@@ -900,7 +882,7 @@ function validate_vecs() {
 }
 
 
-#  Print reconstructed array values when debugging is enabled
+# Print reconstructed array values when debugging is enabled.
 function print_vecs_debug() {
     if [[ "${debug}" == "true" ]]; then
         debug_var \
@@ -930,7 +912,7 @@ function print_vecs_debug() {
 }
 
 
-#  Validate required input alignment files
+# Validate required input alignment files.
 function validate_input_files() {
     local idx
 
@@ -950,13 +932,13 @@ function validate_input_files() {
 }
 
 
-#  Activate the environment containing the managed editable installation
+# Activate the environment containing the managed editable installation.
 function setup_env() {
     handle_env "${env_nam}" || return 1
 }
 
 
-#  Dispatch Slurm-array or serial work
+# Dispatch Slurm-array or serial work.
 function run_jobs() {
     local err_dsc err_ini id_job id_tsk idx out_dsc out_ini samp
 
@@ -1017,7 +999,7 @@ function run_jobs() {
 }
 
 
-#  Main script execution
+# Main script execution.
 function main() {
     init_defs
 
@@ -1026,8 +1008,6 @@ function main() {
         echo >&2
         return 0
     fi
-
-    dir_scr="$(resolve_dir_scr "${0##*/}" "$@")" || return 1
 
     source_helpers_submit "${0##*/}" "${dir_scr}" \
         calculate_scaling_factor \

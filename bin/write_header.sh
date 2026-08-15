@@ -15,7 +15,7 @@
 # Distributed under the MIT license.
 
 
-#  Require Bash >= 4.4 before doing any work
+# Require Bash >= 4.4 before doing any work.
 if [[ -z "${BASH_VERSION:-}" ]]; then
     echo "error(shell):" \
         "this script must be run under Bash >= 4.4." >&2
@@ -29,14 +29,37 @@ elif ((
     exit 1
 fi
 
-#  Run in safe mode, exiting on errors, unset variables, and pipe failures
+# Run in safe mode, exiting on errors, unset variables, and pipe failures.
 set -euo pipefail
 
-#  Set path to the 'scripts' directory
-dir_scr="$(cd "$(dirname "${BASH_SOURCE[0]}")" > /dev/null 2>&1 && pwd)"
+# Resolve 'dir_scr' for 'sbatch', which copies this script elsewhere.
+dir_scr=""
+_arr_arg=( "$@" )
+
+for (( _idx = 0; _idx < ${#_arr_arg[@]}; _idx++ )); do
+    case "${_arr_arg[_idx]}" in
+        -ds|--dir[_-]scr)
+            if \
+                   (( _idx + 1 < ${#_arr_arg[@]} )) \
+                && [[ -n "${_arr_arg[_idx + 1]}" ]] \
+                && [[ "${_arr_arg[_idx + 1]}" != -* ]]
+            then
+                dir_scr="${_arr_arg[_idx + 1]}"
+            fi
+
+            break
+            ;;
+    esac
+done
+
+unset _arr_arg _idx
+
+if [[ -z "${dir_scr}" ]]; then
+    dir_scr="$(cd "$(dirname "${BASH_SOURCE[0]}")" > /dev/null 2>&1 && pwd)"
+fi
 
 
-#  Source shared helpers
+# Source shared helpers.
 function source_helpers_script() {
     local fnc_src
 
@@ -81,8 +104,6 @@ function init_arg_defs() {
 }
 
 
-
-
 function parse_args() {
     if [[ -z "${1:-}" || "${1}" =~ ^(-h|--h[e]?lp)$ ]]; then
         help_write_header >&2
@@ -99,6 +120,15 @@ function parse_args() {
             -dr|--dry|--dry[_-]run)
                 dry_run=true
                 shift 1
+                ;;
+
+            -ds|--dir[_-]scr)
+                require_optarg "${1}" "${2:-}" "main" || {
+                    echo >&2
+                    help_write_header >&2
+                    return 1
+                }
+                shift 2
                 ;;
 
             -md|--mode)
@@ -351,7 +381,8 @@ function run_jobs() {
                 && mv "${tmp}" "${fil_dst}"
         fi
     else
-        printf '%s\n' "${header%$'\n'}" > "${tmp}" && mv "${tmp}" "${fil_dst}"
+        printf '%s\n' "${header%$'\n'}" > "${tmp}" \
+            && mv "${tmp}" "${fil_dst}"
     fi
 }
 

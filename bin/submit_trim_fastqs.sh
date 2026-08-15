@@ -6,14 +6,16 @@
 # Copyright 2024-2026 by Kris Alavattam
 # Email: kalavattam@gmail.com
 #
-# OpenAI ChatGPT and Codex (GPT-4- and GPT-5-series models; most recent:
-# GPT-5.6) were used in design, development, and documentation, with all output
-# reviewed, edited, and approved by the author.
+# The following were used in design, development, and documentation, with all
+# output reviewed, edited, and approved by the author:
+# - OpenAI ChatGPT and Codex (GPT-4- and GPT-5-series models; most recent:
+#   GPT-5.6);
+# - Anthropic Claude Code (Opus 5).
 #
 # Distributed under the MIT license.
 
 
-#  Require Bash >= 4.4 before doing any work
+# Require Bash >= 4.4 before doing any work.
 if [[ -z "${BASH_VERSION:-}" ]]; then
     echo "error(shell):" \
         "this script must be run under Bash >= 4.4." >&2
@@ -27,63 +29,48 @@ elif ((
     exit 1
 fi
 
-#  Run in safe mode, exiting on errors, unset variables, and pipe failures
+# Run in safe mode, exiting on errors, unset variables, and pipe failures.
 set -euo pipefail
 
-#  Source main help before bootstrap argument parsing
-_dir_scr_help="$(
-    cd "$(dirname "${BASH_SOURCE[0]}")" > /dev/null 2>&1 && pwd
-)"
-
-# shellcheck source=lib/bash/help/help_submit_trim_fastqs.sh
-source "${_dir_scr_help}/../lib/bash/help/help_submit_trim_fastqs.sh" || {
-    echo "error($(basename "${BASH_SOURCE[0]}")):" \
-        "failed to source main help." >&2
-    exit 1
-}
-unset _dir_scr_help
-
-
-#  Resolve '--dir_scr' before sourced parser helpers are available
+# 'sbatch' copies this script, so '--dir_scr' must outrank 'BASH_SOURCE'.
 function resolve_dir_scr() {
-    local script="${1:-}"
-    shift
-
     local -a args=( "$@" )
-    local i=0
-
-    if [[ -z "${script}" ]]; then
-        script="unknown_script"
-    fi
+    local i
 
     for (( i = 0; i < ${#args[@]}; i++ )); do
         case "${args[i]}" in
             -ds|--dir[_-]scr)
-                if (( i + 1 >= ${#args[@]} )) \
-                    || [[ -z "${args[i + 1]:-}" || "${args[i + 1]}" == -* ]]
+                if \
+                       (( i + 1 < ${#args[@]} )) \
+                    && [[ -n "${args[i + 1]}" ]] \
+                    && [[ "${args[i + 1]}" != -* ]]
                 then
-                    echo "error(${script}):" \
-                        "option '${args[i]}' requires a value." >&2
-                    echo >&2
-                    help_submit_trim_fastqs
-                    return 1
+                    printf '%s\n' "${args[i + 1]}"
+                    return 0
                 fi
-
-                printf "%s\n" "${args[i + 1]}"
-                return 0
                 ;;
         esac
     done
 
-    echo "error(${script}):" \
-        "required option '--dir_scr' was not supplied." >&2
-    echo >&2
-    help_submit_trim_fastqs
-    return 1
+    cd "$(dirname "${BASH_SOURCE[0]}")" > /dev/null 2>&1 && pwd
 }
 
 
-#  Source 'source_helpers.sh' and requested helper scripts from 'dir_scr'
+dir_scr="$(resolve_dir_scr "$@")" || {
+    echo "error($(basename "${BASH_SOURCE[0]}")):" \
+        "failed to resolve the script directory." >&2
+    exit 1
+}
+
+# shellcheck source=lib/bash/help/help_submit_trim_fastqs.sh
+source "${dir_scr}/../lib/bash/help/help_submit_trim_fastqs.sh" || {
+    echo "error($(basename "${BASH_SOURCE[0]}")):" \
+        "failed to source main help." >&2
+    exit 1
+}
+
+
+# Source 'source_helpers.sh' and requested helper scripts from 'dir_scr'.
 function source_helpers_submit() {
     local script="${1:-}"
     local dir_scr_arg="${2:-}"
@@ -139,16 +126,15 @@ function source_helpers_submit() {
 }
 
 
-#  Initialize hardcoded argument variables
+# Initialize hardcoded argument variables.
 function init_args_hardcoded() {
     debug=true
 }
 
 
-#  Initialize argument variables, assigning default values where applicable
+# Initialize argument variables, assigning default values where applicable.
 function init_arg_defs() {
     env_nam="env_protocol"
-    dir_scr=""
     threads=4
     csv_fil_in=""
     dir_out=""
@@ -162,14 +148,14 @@ function init_arg_defs() {
 }
 
 
-#  Initialize all script defaults
+# Initialize all script defaults.
 function init_defs() {
     init_args_hardcoded
     init_arg_defs
 }
 
 
-#  Parse keyword arguments after helper scripts have been sourced
+# Parse keyword arguments after helper scripts have been sourced.
 function parse_args() {
     while [[ "$#" -gt 0 ]]; do
         case "${1}" in
@@ -203,7 +189,7 @@ function parse_args() {
                 shift 2
                 ;;
 
-            -ci|--csv[_-]fil_in)
+            -ci|--csv[_-]fil[_-]in)
                 require_optarg "${1}" "${2:-}" "main" || {
                     echo >&2
                     help_submit_trim_fastqs
@@ -274,7 +260,7 @@ function parse_args() {
 }
 
 
-#  Validate required arguments and paths
+# Validate required arguments and paths.
 function validate_args() {
     validate_var     "env_nam"    "${env_nam}"         || return 1
     validate_var_dir "dir_scr"    "${dir_scr}" 0 false || return 1
@@ -290,7 +276,7 @@ function validate_args() {
 }
 
 
-#  Print debug argument variable assignments
+# Print debug argument variable assignments.
 function print_debug_args() {
     if [[ "${debug}" == "true" ]]; then
         echo
@@ -308,26 +294,26 @@ function print_debug_args() {
 }
 
 
-#  Reconstruct the input FASTQ vector from serialized input
+# Reconstruct the input FASTQ vector from serialized input.
 function prepare_vecs() {
     IFS=';' read -r -a arr_fil_in <<< "${csv_fil_in}"
     check_arr_nonempty "arr_fil_in" "csv_fil_in" || return 1
 }
 
 
-#  Activate the requested environment
+# Activate the requested environment.
 function setup_env() {
     handle_env "${env_nam}" || return 1
 }
 
 
-#  Check tools required by the submit worker
+# Check tools required by the submit worker.
 function check_tools() {
     check_pgrm_path atria || return 1
 }
 
 
-#  Print parsed vector state in debug mode
+# Print parsed vector state in debug mode.
 function print_vecs_debug() {
     if [[ "${debug}" != "true" ]]; then
         return 0
@@ -338,7 +324,7 @@ function print_vecs_debug() {
 }
 
 
-#  Parse one FASTQ entry into 'fq_1', 'fq_2', and 'samp'
+# Parse one FASTQ entry into 'fq_1', 'fq_2', and 'samp'.
 function parse_entry_trim_fastq() {
     local fil_in="${1:-}"  # Input FASTQ file(s)
     local sfx_se="${2:-}"  # Suffix for SE FASTQ files
@@ -440,7 +426,7 @@ EOM
 }
 
 
-#  Parse one input entry, print debug state, and run Atria
+# Parse one input entry, print debug state, and run Atria.
 function run_one_entry() {
     local fil_in="${1:-}"
     local fq_1=""
@@ -478,7 +464,7 @@ function run_one_entry() {
 }
 
 
-#  Run the Slurm-array task selected by 'SLURM_ARRAY_TASK_ID'
+# Run the Slurm-array task selected by 'SLURM_ARRAY_TASK_ID'.
 function run_slurm_task() {
     local id_job="${SLURM_ARRAY_JOB_ID:-}"
     local id_tsk="${SLURM_ARRAY_TASK_ID:-}"
@@ -546,7 +532,7 @@ function run_slurm_task() {
 }
 
 
-#  Run all input entries locally in serial order
+# Run all input entries locally in serial order.
 function run_local_jobs() {
     local idx=""
     local fil_in=""
@@ -558,7 +544,7 @@ function run_local_jobs() {
 }
 
 
-#  Dispatch one Slurm task or all local jobs
+# Dispatch one Slurm task or all local jobs.
 function run_jobs() {
     if [[ -n "${SLURM_ARRAY_TASK_ID:-}" ]]; then
         run_slurm_task || return 1
@@ -568,7 +554,7 @@ function run_jobs() {
 }
 
 
-#  Main script execution
+# Main script execution.
 function main() {
     init_defs
 
@@ -577,8 +563,6 @@ function main() {
         echo >&2
         return 0
     fi
-
-    dir_scr="$(resolve_dir_scr "${0##*/}" "$@")" || return 1
 
     source_helpers_submit "${0##*/}" "${dir_scr}" \
         check_args \

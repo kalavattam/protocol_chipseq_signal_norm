@@ -29,14 +29,14 @@ elif ((
     exit 1
 fi
 
-#  Run in safe mode, exiting on errors, unset variables, and pipe failures
+# Run in safe mode, exiting on errors, unset variables, and pipe failures.
 set -euo pipefail
 
-#  Set the path to the 'scripts' directory
+# Set the path to the 'scripts' directory.
 dir_scr="$(cd "$(dirname "${BASH_SOURCE[0]}")" > /dev/null 2>&1 && pwd)"
 
 
-#  Source shared helpers
+# Source shared helpers.
 function source_helpers_execute() {
     local fnc_src
 
@@ -424,12 +424,13 @@ function build_cmd_cmb_slurm() {
             --error="${dir_eo}/${nam_job}_combine.%j.stderr.txt"
             --dependency="afterok:${id_dep}"
             "${scr_cmb}"
+                --dir_scr "${dir_scr}"
                 "${arr_arg_cmb[@]}"
     )
 }
 
 
-#  Build the Slurm command for dependent final-table header insertion
+# Build the Slurm command for dependent final-table header insertion.
 function build_cmd_hdr_slurm() {
     local id_dep="${1:-}"
 
@@ -450,6 +451,7 @@ function build_cmd_hdr_slurm() {
             --error="${dir_eo}/${nam_job}_header.%j.stderr.txt"
             --dependency="afterok:${id_dep}"
             "${scr_hdr}"
+                --dir_scr "${dir_scr}"
                 --mode "${mode}"
                 --fil_in "${fil_out}"
                 --in_place
@@ -457,7 +459,7 @@ function build_cmd_hdr_slurm() {
 }
 
 
-#  Initialize hardcoded argument variables
+# Initialize hardcoded argument variables.
 function init_args_hardcoded() {
     env_nam="env_protocol"
     scr_cmb="${dir_scr}/combine_parts_scaling_factor.sh"

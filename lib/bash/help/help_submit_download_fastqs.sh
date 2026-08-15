@@ -6,20 +6,23 @@
 # Copyright 2026 by Kris Alavattam
 # Email: kalavattam@gmail.com
 #
-# OpenAI ChatGPT and Codex (GPT-5.5, GPT-5.6) were used in design, development,
-# and documentation, with all output reviewed, edited, and approved by the
-# author.
+# The following were used in design, development, and documentation, with all
+# output reviewed, edited, and approved by the author:
+# - OpenAI ChatGPT and Codex (GPT-5.5, GPT-5.6);
+# - Anthropic Claude Code (Opus 5).
 #
 # Distributed under the MIT license.
 
 
+# TODO: do we need '--dir_scr' in the examples? Only if using 'sbatch'.
+# TODO: for consistency with other wrappers, transition to keyword parameters.
 function help_submit_download_fastqs() {
-    cat << EOM
+    cat >&2 << EOM
 Usage
 -----
   submit_download_fastqs.sh
     [--help]
-    --dir_scr <dir>
+    [--dir_scr <dir>]
     srr url_1 url_2 dir_out dir_sym nam_cus dir_eo nam_job
 
   Download one single-end or paired-end FASTQ entry and create custom symlink(s).
@@ -30,7 +33,7 @@ Parameters
     Display this help message and exit.
 
   -ds, --dir_scr : dir
-    Maintained entrypoint directory. Pass the repository 'bin' directory; shared libraries are resolved from adjacent 'lib/bash'.
+    Directory containing scripts and functions. Passed by the 'execute_*.sh' wrappers, and needed when this script is run from a copy, as 'sbatch <script>' does, rather than from its real path.
 
   1  srr : str
     NCBI SRA database run accession code.

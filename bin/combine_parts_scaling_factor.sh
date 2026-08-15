@@ -6,14 +6,15 @@
 # Copyright 2026 by Kris Alavattam
 # Email: kalavattam@gmail.com
 #
-# OpenAI ChatGPT and Codex (GPT-5.5, GPT-5.6) were used in design, development,
-# and documentation, with all output reviewed, edited, and approved by the
-# author.
+# The following were used in design, development, and documentation, with all
+# output reviewed, edited, and approved by the author:
+# - OpenAI ChatGPT and Codex (GPT-5.5, GPT-5.6);
+# - Anthropic Claude Code (Opus 5).
 #
 # Distributed under the MIT license.
 
 
-#  Require Bash >= 4.4 before doing any work
+# Require Bash >= 4.4 before doing any work.
 if [[ -z "${BASH_VERSION:-}" ]]; then
     echo "error(shell):" \
         "this script must be run under Bash >= 4.4." >&2
@@ -27,14 +28,37 @@ elif ((
     exit 1
 fi
 
-#  Run in safe mode, exiting on errors, unset variables, and pipe failures
+# Run in safe mode, exiting on errors, unset variables, and pipe failures.
 set -euo pipefail
 
-#  Set path to the 'scripts' directory
-dir_scr="$(cd "$(dirname "${BASH_SOURCE[0]}")" > /dev/null 2>&1 && pwd)"
+# Resolve 'dir_scr' for 'sbatch', which copies this script elsewhere.
+dir_scr=""
+_arr_arg=( "$@" )
+
+for (( _idx = 0; _idx < ${#_arr_arg[@]}; _idx++ )); do
+    case "${_arr_arg[_idx]}" in
+        -ds|--dir[_-]scr)
+            if \
+                   (( _idx + 1 < ${#_arr_arg[@]} )) \
+                && [[ -n "${_arr_arg[_idx + 1]}" ]] \
+                && [[ "${_arr_arg[_idx + 1]}" != -* ]]
+            then
+                dir_scr="${_arr_arg[_idx + 1]}"
+            fi
+
+            break
+            ;;
+    esac
+done
+
+unset _arr_arg _idx
+
+if [[ -z "${dir_scr}" ]]; then
+    dir_scr="$(cd "$(dirname "${BASH_SOURCE[0]}")" > /dev/null 2>&1 && pwd)"
+fi
 
 
-#  Source shared helpers
+# Source shared helpers.
 function source_helpers_script() {
     local fnc_src
 
@@ -100,6 +124,15 @@ function parse_args() {
                 shift 1
                 ;;
 
+            -ds|--dir[_-]scr)
+                require_optarg "${1}" "${2:-}" "main" || {
+                    echo >&2
+                    help_combine_parts_scaling_factor >&2
+                    return 1
+                }
+                shift 2
+                ;;
+
             -md|--mode)
                 require_optarg "${1}" "${2:-}" "main" || {
                     echo >&2
@@ -110,7 +143,7 @@ function parse_args() {
                 shift 2
                 ;;
 
-            -ci|--csv[_-]fil_in)
+            -ci|--csv[_-]fil[_-]in)
                 require_optarg "${1}" "${2:-}" "main" || {
                     echo >&2
                     help_combine_parts_scaling_factor >&2

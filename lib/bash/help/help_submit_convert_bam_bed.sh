@@ -14,21 +14,28 @@
 # Distributed under the MIT license.
 
 
+# TODO: do we need '--dir_scr' in the examples? Only if using 'sbatch'.
+# TODO: '[(--pth_scr_py <file> | --use_awk)]': redundant bracketing?
 function help_submit_convert_bam_bed() {
     # The submit owner initializes interpolated defaults before invocation.
     # shellcheck disable=SC2154
-    cat << EOM
+    cat >&2 << EOM
 Usage
 -----
   submit_convert_bam_bed.sh
-    [--help] [--env_nam <str>] --dir_scr <dir> [--threads <int>]
+    [--help]
+    [--env_nam <str>] [--dir_scr <dir>] [--threads <int>]
     --csv_fil_in <csv> [--ref_fa <file>]
     [(--pth_scr_py <file> | --use_awk)]
     --dir_out <dir> --dir_eo <dir> [--nam_job <str>]
 
   Convert BAM or CRAM input files to BED output files.
 
-  When run inside a Slurm array task, this script processes the indexed input selected by 'SLURM_ARRAY_TASK_ID'. Otherwise, it processes every input file serially in the current shell.
+  This wrapper is intended primarily to generate BED inputs for the following:
+    - the original siQ-ChIP implementation by Brad Dickson (https://github.com/BradleyDickson/siQ-ChIP) and
+    - the 'protocol' branch of a fork adapted to S. cerevisiae samples (https://github.com/kalavattam/siQ-ChIP/tree/protocol).
+
+  When run inside a Slurm array task, this script processes the single input file selected by 'SLURM_ARRAY_TASK_ID'. Otherwise, it processes all input files serially in the current shell.
 
 Parameters
 ----------
@@ -39,7 +46,7 @@ Parameters
     Conda environment to activate (default: '${env_nam}').
 
   -ds, --dir_scr : dir
-    Directory containing scripts and functions.
+    Directory containing scripts and functions. Passed by the 'execute_*.sh' wrappers, and needed when this script is run from a copy, as 'sbatch <script>' does, rather than from its real path.
 
   -t, --thr, --threads : int
     Number of threads to use per task (default: ${threads}).

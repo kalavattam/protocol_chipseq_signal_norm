@@ -14,16 +14,16 @@
 # Distributed under the MIT license.
 
 
+# TODO: do we need '--dir_scr' in the examples? Only if using 'sbatch'.
 function help_submit_trim_fastqs() {
     # The submit owner initializes interpolated defaults before invocation.
     # shellcheck disable=SC2154
-    cat << EOM >&2
+    cat >&2 << EOM
 Usage
 -----
   submit_trim_fastqs.sh
     [--help]
-    [--env_nam <str>] --dir_scr <dir>
-    [--threads <int>]
+    [--env_nam <str>] [--dir_scr <dir>] [--threads <int>]
     --csv_fil_in <csv> --dir_out <dir>
     --sfx_se <str> --sfx_pe <str>
     --dir_eo <dir> [--nam_job <str>]
@@ -50,7 +50,7 @@ Parameters
     Conda environment to activate.
 
   -ds, --dir_scr : dir
-    Directory containing scripts and functions.
+    Directory containing scripts and functions. Passed by the 'execute_*.sh' wrappers, and needed when this script is run from a copy, as 'sbatch <script>' does, rather than from its real path.
 
   -t, --thr, --threads : int
     Number of threads to use.

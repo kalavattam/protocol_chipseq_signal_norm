@@ -14,14 +14,15 @@
 # Distributed under the MIT license.
 
 
+# TODO: do we need '--dir_scr' in the examples? Only if using 'sbatch'.
 function help_submit_filter_alignments() {
     # The submit owner initializes interpolated defaults before invocation.
     # shellcheck disable=SC2154
-    cat << EOM >&2
+    cat >&2 << EOM
 Usage
 -----
   submit_filter_alignments.sh
-    [--help] [--env_nam <str>] --dir_scr <dir> [--threads <int>]
+    [--help] [--env_nam <str>] [--dir_scr <dir>] [--threads <int>]
     --csv_fil_in <csv> [--ref_fa <file>]
     --dir_out <dir> [--out_ext <format>]
     [--retain <choice>] [--mito] [--tg] [--mtr] [--chk_chr]
@@ -49,7 +50,7 @@ Parameters
     Conda environment to activate (default: '${env_nam}').
 
   -ds, --dir_scr : dir
-    Directory containing scripts and functions.
+    Directory containing scripts and functions. Passed by the 'execute_*.sh' wrappers, and needed when this script is run from a copy, as 'sbatch <script>' does, rather than from its real path.
 
   -t, --thr, --threads : int
     Number of threads to use (default: ${threads}).

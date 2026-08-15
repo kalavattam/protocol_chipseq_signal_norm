@@ -6,14 +6,16 @@
 # Copyright 2024-2026 by Kris Alavattam
 # Email: kalavattam@gmail.com
 #
-# OpenAI ChatGPT and Codex (GPT-4- and GPT-5-series models; most recent:
-# GPT-5.6) were used in design, development, and documentation, with all output
-# reviewed, edited, and approved by the author.
+# The following were used in design, development, and documentation, with all
+# output reviewed, edited, and approved by the author:
+# - OpenAI ChatGPT and Codex (GPT-4- and GPT-5-series models; most recent:
+#   GPT-5.6);
+# - Anthropic Claude Code (Opus 5).
 #
 # Distributed under the MIT license.
 
 
-#  Require Bash >= 4.4 before doing any work
+# Require Bash >= 4.4 before doing any work.
 if [[ -z "${BASH_VERSION:-}" ]]; then
     echo "error(shell):" \
         "this script must be run under Bash >= 4.4." >&2
@@ -27,24 +29,48 @@ elif ((
     exit 1
 fi
 
-#  Run in safe mode, exiting on errors, unset variables, and pipe failures
+# Run in safe mode, exiting on errors, unset variables, and pipe failures.
 set -euo pipefail
 
-#  Source main help before bootstrap argument parsing
-_dir_scr_help="$(
+# 'sbatch' copies this script, so '--dir_scr' must outrank 'BASH_SOURCE'.
+function resolve_dir_scr() {
+    local -a args=( "$@" )
+    local i
+
+    for (( i = 0; i < ${#args[@]}; i++ )); do
+        case "${args[i]}" in
+            -ds|--dir[_-]scr)
+                if \
+                       (( i + 1 < ${#args[@]} )) \
+                    && [[ -n "${args[i + 1]}" ]] \
+                    && [[ "${args[i + 1]}" != -* ]]
+                then
+                    printf '%s\n' "${args[i + 1]}"
+                    return 0
+                fi
+                ;;
+        esac
+    done
+
     cd "$(dirname "${BASH_SOURCE[0]}")" > /dev/null 2>&1 && pwd
-)"
+}
+
+
+dir_scr="$(resolve_dir_scr "$@")" || {
+    echo "error($(basename "${BASH_SOURCE[0]}")):" \
+        "failed to resolve the script directory." >&2
+    exit 1
+}
 
 # shellcheck source=lib/bash/help/help_submit_filter_alignments.sh
-source "${_dir_scr_help}/../lib/bash/help/help_submit_filter_alignments.sh" || {
+source "${dir_scr}/../lib/bash/help/help_submit_filter_alignments.sh" || {
     echo "error($(basename "${BASH_SOURCE[0]}")):" \
         "failed to source main help." >&2
     exit 1
 }
-unset _dir_scr_help
 
 
-#  Define functions
+# Define functions.
 function parse_filter_alignment_entry() {
     local fil_in="${1:-}"     # Input BAM/CRAM file
     local retain="${2:-}"     # Species selector
@@ -128,7 +154,7 @@ EOM
         return 1
     fi
 
-    #  Validate input arguments
+    # Validate input arguments.
     validate_var "fil_in"  "${fil_in}"  || return 1
     validate_var "retain"  "${retain}"  || return 1
     validate_var "dir_out" "${dir_out}" || return 1
@@ -143,8 +169,8 @@ EOM
             ;;
     esac
 
-    #  Extract sample and function names from input values, and assign fil_out
-    #+ name based on species selector
+    # Extract sample and function names from input values, and assign 'fil_out'
+    # name based on species selector.
     samp="$(basename "${fil_in}")"
     samp="${samp%.bam}"
     samp="${samp%.cram}"
@@ -165,12 +191,12 @@ EOM
             ;;
     esac
 
-    #  Return values
+    # Return values.
     echo "${samp},${nam_fnc},${fil_out}"
 }
 
 
-#  Execute filtering using the specified function
+# Execute filtering using the specified function.
 function run_filtering() {
     local nam_fnc="${1:-}"   # Name of function to run
     local threads="${2:-}"   # Number of threads
@@ -299,7 +325,7 @@ EOM
         return 1
     fi
 
-    #  Define paths for log output files
+    # Define paths for log output files.
     log_out="${dir_eo}/${nam_job}.${samp}.stdout.txt"
     log_err="${dir_eo}/${nam_job}.${samp}.stderr.txt"
 
@@ -330,7 +356,7 @@ EOM
         cmd_filter+=( --chk_chr )
     fi
 
-    #  Run the filtering function and capture logs
+    # Run the filtering function and capture logs.
     if ! "${cmd_filter[@]}" > "${log_out}" 2> "${log_err}"; then
         echo_err_func "${FUNCNAME[0]}" \
             "filtering failed for sample '${samp}'. See log: '${log_err}'."
@@ -339,46 +365,7 @@ EOM
 }
 
 
-#  Resolve '--dir_scr' before sourced parser helpers are available
-function resolve_dir_scr() {
-    local script="${1:-}"
-    shift
-
-    local -a args=( "$@" )
-    local i=0
-
-    if [[ -z "${script}" ]]; then
-        script="unknown_script"
-    fi
-
-    for (( i = 0; i < ${#args[@]}; i++ )); do
-        case "${args[i]}" in
-            -ds|--dir[_-]scr)
-                if (( i + 1 >= ${#args[@]} )) \
-                    || [[ -z "${args[i + 1]:-}" || "${args[i + 1]}" == -* ]]
-                then
-                    echo "error(${script}):" \
-                        "option '${args[i]}' requires a value." >&2
-                    echo >&2
-                    help_submit_filter_alignments
-                    return 1
-                fi
-
-                printf "%s\n" "${args[i + 1]}"
-                return 0
-                ;;
-        esac
-    done
-
-    echo "error(${script}):" \
-        "required option '--dir_scr' was not supplied." >&2
-    echo >&2
-    help_submit_filter_alignments
-    return 1
-}
-
-
-#  Source 'source_helpers.sh' and requested helper scripts from 'dir_scr'
+# Source 'source_helpers.sh' and requested helper scripts from 'dir_scr'.
 function source_helpers_submit() {
     local script="${1:-}"
     local dir_scr_arg="${2:-}"
@@ -434,7 +421,7 @@ function source_helpers_submit() {
 }
 
 
-#  Parse keyword arguments after helper scripts have been sourced
+# Parse keyword arguments after helper scripts have been sourced.
 function parse_args() {
     while [[ "$#" -gt 0 ]]; do
         case "${1}" in
@@ -569,14 +556,14 @@ function parse_args() {
 }
 
 
-#  Canonicalize scalar argument aliases
+# Canonicalize scalar argument aliases.
 function canonicalize_args() {
     retain="${retain,,}"
     out_ext="${out_ext,,}"
 }
 
 
-#  Validate required arguments and paths
+# Validate required arguments and paths.
 function validate_args() {
     validate_var     "env_nam"    "${env_nam}"         || return 1
     validate_var_dir "dir_scr"    "${dir_scr}" 0 false || return 1
@@ -609,7 +596,7 @@ function validate_args() {
 }
 
 
-#  Print debug argument variable assignments
+# Print debug argument variable assignments.
 function print_state_debug() {
     if [[ "${debug}" == "true" ]]; then
         echo
@@ -632,7 +619,7 @@ function print_state_debug() {
 }
 
 
-#  Normalize species-specific optional flags
+# Normalize species-specific optional flags.
 function normalize_flags() {
     if [[ "${retain}" == "sc" ]]; then
         if [[ "${tg}" == "true" && "${mtr}" == "true" ]]; then
@@ -654,17 +641,16 @@ function normalize_flags() {
 }
 
 
-#  Initialize hardcoded argument variables
+# Initialize hardcoded argument variables.
 function init_args_hardcoded() {
-    #  If true, run script in debug mode
+    # If true, run script in debug mode.
     debug=true
 }
 
 
-#  Initialize argument variables, assigning default values where applicable
+# Initialize argument variables, assigning default values where applicable.
 function init_arg_defs() {
     env_nam="env_protocol"
-    dir_scr=""
     retain="sc"
     threads=4
     csv_fil_in=""
@@ -680,23 +666,21 @@ function init_arg_defs() {
 }
 
 
-#  Initialize hardcoded arguments and user-facing argument defaults
+# Initialize hardcoded arguments and user-facing argument defaults.
 function init_defs() {
     init_args_hardcoded
     init_arg_defs
 }
 
 
-
-
-#  Reconstruct array from serialized inputs
+# Reconstruct array from serialized inputs.
 function prepare_vecs() {
     unset arr_fil_in && declare -ga arr_fil_in
     IFS=',' read -r -a arr_fil_in <<< "${csv_fil_in}"
 }
 
 
-#  Validate reconstructed input arrays
+# Validate reconstructed input arrays.
 function validate_vecs() {
     local fil_in
 
@@ -719,13 +703,13 @@ function validate_vecs() {
 }
 
 
-#  Activate environment
+# Activate environment.
 function setup_env() {
     handle_env "${env_nam}" || return 1
 }
 
 
-#  Print debug output for reconstructed input arrays
+# Print debug output for reconstructed input arrays.
 function print_vecs_debug() {
     if [[ "${debug}" == "true" ]]; then
         echo "\${#arr_fil_in[@]}=${#arr_fil_in[@]}" && echo
@@ -734,13 +718,13 @@ function print_vecs_debug() {
 }
 
 
-#  Dispatch Slurm-array or local worker jobs
+# Dispatch Slurm-array or local worker jobs.
 function run_jobs() {
     local err_dsc err_ini id_job id_tsk idx fil_in nam_fnc out_dsc out_ini
     local fil_out samp
 
     if [[ -n "${SLURM_ARRAY_TASK_ID:-}" ]]; then
-        #  Workflow mode. Mode: Slurm
+        # Workflow mode: Slurm.
         id_job="${SLURM_ARRAY_JOB_ID}"
         id_tsk="${SLURM_ARRAY_TASK_ID}"
 
@@ -797,7 +781,7 @@ function run_jobs() {
 
         rm "${err_ini}" "${out_ini}"
     else
-        #  Workflow mode. Mode: GNU Parallel/serial
+        # Workflow mode: GNU Parallel/serial.
         for idx in "${!arr_fil_in[@]}"; do
             fil_in="${arr_fil_in[idx]}"
 
@@ -829,7 +813,7 @@ function run_jobs() {
 }
 
 
-#  Main script execution
+# Main script execution.
 function main() {
     init_defs
 
@@ -839,9 +823,7 @@ function main() {
         return 0
     fi
 
-    #  First-pass parse: resolve 'dir_scr' before using sourced parser helpers
-    dir_scr="$(resolve_dir_scr "${0##*/}" "$@")" || return 1
-
+    # First-pass parse: resolve 'dir_scr' before using sourced parser helpers.
     source_helpers_submit "${0##*/}" "${dir_scr}" \
         check_args \
         check_inputs \

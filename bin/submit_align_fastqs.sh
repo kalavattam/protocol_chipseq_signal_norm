@@ -6,14 +6,16 @@
 # Copyright 2024-2026 by Kris Alavattam
 # Email: kalavattam@gmail.com
 #
-# OpenAI ChatGPT and Codex (GPT-4- and GPT-5-series models; most recent:
-# GPT-5.6) were used in design, development, and documentation, with all output
-# reviewed, edited, and approved by the author.
+# The following were used in design, development, and documentation, with all
+# output reviewed, edited, and approved by the author:
+# - OpenAI ChatGPT and Codex (GPT-4- and GPT-5-series models; most recent:
+#   GPT-5.6);
+# - Anthropic Claude Code (Opus 5).
 #
 # Distributed under the MIT license.
 
 
-#  Require Bash >= 4.4 before doing any work
+# Require Bash >= 4.4 before doing any work.
 if [[ -z "${BASH_VERSION:-}" ]]; then
     echo "error(shell):" \
         "this script must be run under Bash >= 4.4." >&2
@@ -27,36 +29,59 @@ elif ((
     exit 1
 fi
 
-#  Run in safe mode, exiting on errors, unset variables, and pipe failures
+# Run in safe mode, exiting on errors, unset variables, and pipe failures.
 set -euo pipefail
 
-#  Source main help before bootstrap argument parsing
-_dir_scr_help="$(
+# 'sbatch' copies this script, so '--dir_scr' must outrank 'BASH_SOURCE'.
+function resolve_dir_scr() {
+    local -a args=( "$@" )
+    local i
+
+    for (( i = 0; i < ${#args[@]}; i++ )); do
+        case "${args[i]}" in
+            -ds|--dir[_-]scr)
+                if \
+                       (( i + 1 < ${#args[@]} )) \
+                    && [[ -n "${args[i + 1]}" ]] \
+                    && [[ "${args[i + 1]}" != -* ]]
+                then
+                    printf '%s\n' "${args[i + 1]}"
+                    return 0
+                fi
+                ;;
+        esac
+    done
+
     cd "$(dirname "${BASH_SOURCE[0]}")" > /dev/null 2>&1 && pwd
-)"
+}
+
+
+dir_scr="$(resolve_dir_scr "$@")" || {
+    echo "error($(basename "${BASH_SOURCE[0]}")):" \
+        "failed to resolve the script directory." >&2
+    exit 1
+}
 
 # shellcheck source=lib/bash/help/help_submit_align_fastqs.sh
-source "${_dir_scr_help}/../lib/bash/help/help_submit_align_fastqs.sh" || {
+source "${dir_scr}/../lib/bash/help/help_submit_align_fastqs.sh" || {
     echo "error($(basename "${BASH_SOURCE[0]}")):" \
         "failed to source main help." >&2
     exit 1
 }
-unset _dir_scr_help
 
 
-#  Define functions
-#  Parse one FASTQ entry into 'fq_1', 'fq_2', 'samp', and alignment 'fil_out'
+# Parse one FASTQ entry into 'fq_1', 'fq_2', 'samp', and alignment 'fil_out'.
 function parse_entry_align_fastq() {
-    local fil_in="${1:-}"      # Input FASTQ file(s)
-    local sfx_se="${2:-}"      # Suffix for SE FASTQ files
-    local sfx_pe="${3:-}"      # Suffix for PE FASTQ files (FASTQ #1)
-    local dir_out="${4:-}"     # Directory for output files
-    local out_ext="${5:-bam}"  # Alignment output extension
-    local fq_1                 # FASTQ file #1
-    local fq_2                 # FASTQ file #2, or 'NA' for SE
-    local samp                 # Sample name
-    local fil_out              # Output file path. Output alignment file
-    local show_help            # Help message
+    local fil_in="${1:-}"      # Input FASTQ file(s).
+    local sfx_se="${2:-}"      # Suffix for SE FASTQ files.
+    local sfx_pe="${3:-}"      # Suffix for PE FASTQ files (FASTQ #1).
+    local dir_out="${4:-}"     # Directory for output files.
+    local out_ext="${5:-bam}"  # Alignment output extension.
+    local fq_1                 # FASTQ file #1.
+    local fq_2                 # FASTQ file #2, or 'NA' for SE.
+    local samp                 # Sample name.
+    local fil_out              # Output file path. Output alignment file.
+    local show_help            # Help message.
 
     show_help=$(cat << EOM
 Usage
@@ -175,12 +200,12 @@ EOM
 
     echo "${fq_1};${fq_2};${samp};${fil_out}"
 }
-#MAYBE: 'parse_entry_align_fastq' still uses 'validate_var' rather than file-
-#      aware helpers such as 'validate_file' and 'validate_var_file'; revisit
-#      if stronger file validation is wanted here
+# MAYBE: 'parse_entry_align_fastq' still uses 'validate_var' rather than
+# file-aware helpers such as 'validate_file' and 'validate_var_file'; revisit
+# if stronger file validation is wanted here.
 
 
-#  Execute alignment using function 'align_fastqs.sh::align_fastqs'
+# Execute alignment using function 'align_fastqs.sh::align_fastqs'.
 function run_alignment() {
     local threads="${1:-}"
     local aligner="${2:-}"
@@ -326,12 +351,12 @@ EOM
         return 1
     fi
 
-    #  Define paths for log output files
+    # Define paths for log output files.
     log_out="${dir_eo}/${nam_job}.${samp}.stdout.txt"
     log_err="${dir_eo}/${nam_job}.${samp}.stderr.txt"
 
-    #  Build the alignment command as an array so optional arguments can be
-    #+ appended without word splitting paths or option values
+    # Build the alignment command as an array so optional arguments can be
+    # appended without word splitting paths or option values.
     cmd_aln=(
         align_fastqs
             --threads "${threads}"
@@ -366,7 +391,7 @@ EOM
         cmd_aln+=( --qname )
     fi
 
-    #  Run alignment function with specified parameters
+    # Run alignment function with specified parameters.
     if ! \
         "${cmd_aln[@]}" > "${log_out}" 2> "${log_err}"
     then
@@ -377,46 +402,7 @@ EOM
 }
 
 
-#  Resolve '--dir_scr' before sourced parser helpers are available
-function resolve_dir_scr() {
-    local script="${1:-}"
-    shift
-
-    local -a args=( "$@" )
-    local i=0
-
-    if [[ -z "${script}" ]]; then
-        script="unknown_script"
-    fi
-
-    for (( i = 0; i < ${#args[@]}; i++ )); do
-        case "${args[i]}" in
-            -ds|--dir[_-]scr)
-                if (( i + 1 >= ${#args[@]} )) \
-                    || [[ -z "${args[i + 1]:-}" || "${args[i + 1]}" == -* ]]
-                then
-                    echo "error(${script}):" \
-                        "option '${args[i]}' requires a value." >&2
-                    echo >&2
-                    help_submit_align_fastqs
-                    return 1
-                fi
-
-                printf "%s\n" "${args[i + 1]}"
-                return 0
-                ;;
-        esac
-    done
-
-    echo "error(${script}):" \
-        "required option '--dir_scr' was not supplied." >&2
-    echo >&2
-    help_submit_align_fastqs
-    return 1
-}
-
-
-#  Source 'source_helpers.sh' and requested helper scripts from 'dir_scr'
+# Source 'source_helpers.sh' and requested helper scripts from 'dir_scr'.
 function source_helpers_submit() {
     local script="${1:-}"
     local dir_scr_arg="${2:-}"
@@ -472,17 +458,16 @@ function source_helpers_submit() {
 }
 
 
-#  Initialize hardcoded argument variables
+# Initialize hardcoded argument variables.
 function init_args_hardcoded() {
-    #  If true, run script in debug mode
+    # If true, run script in debug mode.
     debug=true
 }
 
 
-#  Initialize argument variables, assigning default values where applicable
+# Initialize argument variables, assigning default values where applicable.
 function init_arg_defs() {
     env_nam="env_protocol"
-    dir_scr=""
     threads=4
     aligner="bowtie2"
     bt2_mode="end-to-end"
@@ -505,16 +490,14 @@ function init_arg_defs() {
 }
 
 
-#  Initialize hardcoded arguments and user-facing argument defaults
+# Initialize hardcoded arguments and user-facing argument defaults.
 function init_defs() {
     init_args_hardcoded
     init_arg_defs
 }
 
 
-
-
-#  Parse keyword arguments after helper scripts have been sourced
+# Parse keyword arguments after helper scripts have been sourced.
 function parse_args() {
     while [[ "$#" -gt 0 ]]; do
         case "${1}" in
@@ -603,7 +586,7 @@ function parse_args() {
                 shift 2
                 ;;
 
-            -ci|--csv[_-]fil_in)
+            -ci|--csv[_-]fil[_-]in)
                 require_optarg "${1}" "${2:-}" "main" || {
                     echo >&2
                     help_submit_align_fastqs
@@ -699,13 +682,13 @@ function parse_args() {
 }
 
 
-#  Validate required arguments and paths
+# Validate required arguments and paths.
 function validate_args() {
     validate_var     "env_nam"    "${env_nam}"         || return 1
     validate_var_dir "dir_scr"    "${dir_scr}" 0 false || return 1
     validate_var     "threads"    "${threads}"         || return 1
     validate_var     "aligner"    "${aligner}"         || return 1
-    validate_var     "bt2_mode"    "${bt2_mode}"         || return 1
+    validate_var     "bt2_mode"   "${bt2_mode}"        || return 1
     validate_var     "bwa_alg"    "${bwa_alg}"         || return 1
     validate_var     "mapq"       "${mapq}"            || return 1
     validate_var     "index"      "${index}"           || return 1
@@ -713,7 +696,7 @@ function validate_args() {
     validate_var_dir "dir_out"    "${dir_out}"         || return 1
     validate_var     "sfx_se"     "${sfx_se}"          || return 1
     validate_var     "sfx_pe"     "${sfx_pe}"          || return 1
-    validate_var_dir "dir_eo"    "${dir_eo}"         || return 1
+    validate_var_dir "dir_eo"     "${dir_eo}"          || return 1
     validate_var     "nam_job"    "${nam_job}"         || return 1
 
     check_int_pos    "${threads}" "threads" || return 1
@@ -768,7 +751,7 @@ function validate_args() {
 }
 
 
-#  Print debug argument variable assignments
+# Print debug argument variable assignments.
 function print_state_debug() {
     if [[ "${debug}" == "true" ]]; then
         echo
@@ -795,26 +778,26 @@ function print_state_debug() {
 }
 
 
-#  Activate environment
+# Activate environment.
 function setup_env() {
     handle_env "${env_nam}" || return 1
 }
 
 
-#  Reconstruct input FASTQ vector
+# Reconstruct input FASTQ vector.
 function prepare_vecs() {
     unset arr_fil_in && declare -ga arr_fil_in
     IFS=';' read -r -a arr_fil_in <<< "${csv_fil_in}"
 }
 
 
-#  Validate reconstructed input FASTQ vector
+# Validate reconstructed input FASTQ vector.
 function validate_vecs() {
     check_arr_nonempty "arr_fil_in" "csv_fil_in" || return 1
 }
 
 
-#  Print debug vector assignments
+# Print debug vector assignments.
 function print_vecs_debug() {
     if [[ "${debug}" == "true" ]]; then
         echo "\${#arr_fil_in[@]}=${#arr_fil_in[@]}" && echo
@@ -823,7 +806,7 @@ function print_vecs_debug() {
 }
 
 
-#  Parse one input entry and run one alignment
+# Parse one input entry and run one alignment.
 function run_job() {
     local fil_in="${1:-}"
     local fq_1 fq_2 samp fil_out
@@ -862,7 +845,7 @@ function run_job() {
 }
 
 
-#  Parse Slurm task state and run one array task
+# Parse Slurm task state and run one array task.
 function run_job_slurm() {
     local err_dsc err_ini id_job id_tsk idx fil_in out_dsc out_ini
     local fq_1 fq_2 samp fil_out
@@ -934,7 +917,7 @@ function run_job_slurm() {
 }
 
 
-#  Dispatch one Slurm array task or local loop over input entries
+# Dispatch one Slurm array task or local loop over input entries.
 function run_jobs() {
     local idx fil_in
 
@@ -949,7 +932,7 @@ function run_jobs() {
 }
 
 
-#  Main script execution
+# Main script execution.
 function main() {
     init_defs
 
@@ -958,8 +941,6 @@ function main() {
         echo >&2
         return 0
     fi
-
-    dir_scr="$(resolve_dir_scr "${0##*/}" "$@")" || return 1
 
     source_helpers_submit "${0##*/}" "${dir_scr}" \
         align_fastqs \

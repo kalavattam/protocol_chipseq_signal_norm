@@ -15,7 +15,7 @@
 # Distributed under the MIT license.
 
 
-#  Require Bash >= 4.4 before doing any work
+# Require Bash >= 4.4 before doing any work.
 if [[ -z "${BASH_VERSION:-}" ]]; then
     echo "error(shell):" \
         "this script must be run under Bash >= 4.4." >&2
@@ -29,24 +29,47 @@ elif ((
     exit 1
 fi
 
-#  Run in safe mode, exiting on errors, unset variables, and pipe failures
+# Run in safe mode, exiting on errors, unset variables, and pipe failures.
 set -euo pipefail
 
-#  Source main help before bootstrap argument parsing
-_dir_scr_help="$(
+# 'sbatch' copies this script, so '--dir_scr' must outrank 'BASH_SOURCE'.
+function resolve_dir_scr() {
+    local -a args=( "$@" )
+    local i
+
+    for (( i = 0; i < ${#args[@]}; i++ )); do
+        case "${args[i]}" in
+            -ds|--dir[_-]scr)
+                if \
+                       (( i + 1 < ${#args[@]} )) \
+                    && [[ -n "${args[i + 1]}" ]] \
+                    && [[ "${args[i + 1]}" != -* ]]
+                then
+                    printf '%s\n' "${args[i + 1]}"
+                    return 0
+                fi
+                ;;
+        esac
+    done
+
     cd "$(dirname "${BASH_SOURCE[0]}")" > /dev/null 2>&1 && pwd
-)"
+}
+
+dir_scr="$(resolve_dir_scr "$@")" || {
+    echo "error($(basename "${BASH_SOURCE[0]}")):" \
+        "failed to resolve the script directory." >&2
+    exit 1
+}
 
 # shellcheck source=lib/bash/help/help_submit_compute_signal.sh
-source "${_dir_scr_help}/../lib/bash/help/help_submit_compute_signal.sh" || {
+source "${dir_scr}/../lib/bash/help/help_submit_compute_signal.sh" || {
     echo "error($(basename "${BASH_SOURCE[0]}")):" \
         "failed to source main help." >&2
     exit 1
 }
-unset _dir_scr_help
 
 
-#  Define script-specific functions
+# Define script-specific functions.
 function process_io() {
     local mode=""
     local fil_in=""
@@ -255,7 +278,7 @@ EOM
     done
     unset ext
 
-    #  Return sample name and output descriptor (comma-delimited)
+    # Return sample name and output descriptor (comma-delimited).
     echo "${samp},${dsc}"
 }
 
@@ -385,7 +408,7 @@ EOM
         if [[ "${drp_nan}" == "true" ]]; then optional+=( --drp_nan ); fi
     fi
 
-    #  Return values as comma-separated list
+    # Return values as comma-separated list.
     ( IFS=','; echo "${optional[*]}" )
 }
 
@@ -494,7 +517,7 @@ EOM
 
     cmd_cpy=( "${cmd_ref[@]}" )
 
-    #  Refuse to run if log dirs are neither existent nor writable
+    # Refuse to run if log dirs are neither existent nor writable.
     dir_out="$(dirname "${log_out}")"
     dir_err="$(dirname "${log_err}")"
 
@@ -510,7 +533,7 @@ EOM
         return 1
     fi
 
-    #  In "debug" or "dry-run mode", show the exact command and redirections
+    # In "debug" or "dry-run mode", show the exact command and redirections.
     if [[ "${debug}" == "true" || "${dry_run}" == "true" ]]; then
         printf '%q ' "${cmd_cpy[@]}" >&2
         echo ">> ${log_out} 2>> ${log_err}" >&2
@@ -518,7 +541,7 @@ EOM
         echo >&2
     fi
 
-    #  Execute the command with logging when not in dry-run mode
+    # Execute the command with logging when not in dry-run mode.
     if [[ "${dry_run}" == "false" ]]; then
         "${cmd_cpy[@]}" >> "${log_out}" 2>> "${log_err}"
         return $?
@@ -670,22 +693,22 @@ EOM
         return 1
     fi
 
-    #  Generate optional arguments array dynamically
+    # Generate optional arguments array dynamically.
     IFS="," read -r -a optional <<< "$(
         set_args_opt "signal" "${scl_fct}" "${usr_frg}" "${dp}"
     )"
 
-    #  Debug array of optional arguments
+    # Debug array of optional arguments.
     if [[ "${debug}" == "true" ]]; then
         echo "set_args_opt(): optional=( ${optional[*]} )" >&2
         echo >&2
     fi
 
-    #  Define paths for log output files
+    # Define paths for log output files.
     log_out="${dir_eo}/${nam_job}.${dsc}.stdout.txt"
     log_err="${dir_eo}/${nam_job}.${dsc}.stderr.txt"
 
-    #  Build call to 'compute_signal.py' via 'run_py'
+    # Build call to 'compute_signal.py' via 'run_py'.
     cmd=(
         run_py "${scr_sig}"
             --verbose
@@ -719,7 +742,7 @@ EOM
         cmd+=( "${optional[@]}" )
     fi
 
-    #  Debug or execute call to 'compute_signal.py'
+    # Debug or execute call to 'compute_signal.py'.
     run_dry_or_wet cmd "${log_out}" "${log_err}" || return 1
 }
 
@@ -880,7 +903,7 @@ EOM
         return 1
     fi
 
-    #  Generate optional arguments array dynamically
+    # Generate optional arguments array dynamically.
     IFS="," read -r -a optional <<< "$(
         set_args_opt \
             "ratio" \
@@ -894,17 +917,17 @@ EOM
             "${drp_nan}"
     )"
 
-    #  Debug array of optional arguments
+    # Debug array of optional arguments.
     if [[ "${debug}" == "true" ]]; then
         echo "set_args_opt(): optional=( ${optional[*]} )" >&2
         echo >&2
     fi
 
-    #  Define paths for log output files
+    # Define paths for log output files.
     log_out="${dir_eo}/${nam_job}.${dsc}.stdout.txt"
     log_err="${dir_eo}/${nam_job}.${dsc}.stderr.txt"
 
-    #  Build call to 'compute_signal_ratio.py' via 'run_py'
+    # Build call to 'compute_signal_ratio.py' via 'run_py'.
     cmd=(
         run_py "${scr_rat}"
             --verbose
@@ -914,7 +937,7 @@ EOM
             --method "${method}"
     )
 
-    #  If any, then append optional flags
+    # If any, then append optional flags.
     if [[ "${#optional[@]}" -gt 0 && -n "${optional[0]}" ]]; then
         cmd+=( "${optional[@]}" )
     fi
@@ -931,16 +954,16 @@ EOM
         cmd+=( --strict_bins )
     fi
 
-    #  Debug or execute call to 'compute_signal_ratio.py'
+    # Debug or execute call to 'compute_signal_ratio.py'.
     run_dry_or_wet cmd "${log_out}" "${log_err}" || return 1
 }
 
 
 function get_arr_elem() {
-    local arr_nam="${1:-}"  # Name of indexed array
-    local idx="${2:-}"      # Array index
-    local decl              # Output from 'declare -p'
-    local show_help         # Help message
+    local arr_nam="${1:-}"  # Name of indexed array.
+    local idx="${2:-}"      # Array index.
+    local decl              # Output from 'declare -p'.
+    local show_help         # Help message.
 
     show_help=$(cat << EOM
 Usage
@@ -1038,13 +1061,13 @@ EOM
 
 
 function task_pro() {
-    local mode="${1:-}"           # Workflow mode: 'signal', 'ratio', or 'coord'
-    local idx="${2:-}"            # Array index (integer >= 0)
-    local nam_arr_fil_A="${3:-}"  # Array name for scalar fil_in or file A
-    local nam_arr_fil_B="${4:-}"  # Array name for scalar file B; empty if unused
-    local nam_arr_out="${5:-}"    # Array name for scalar fil_out
-    local nam_arr_scl="${6:-}"    # Array name for scalar scl_fct; empty if unused
-    local nam_arr_opt="${7:-}"    # Array name for scalar opt_var; empty if unused
+    local mode="${1:-}"
+    local idx="${2:-}"
+    local nam_arr_fil_A="${3:-}"
+    local nam_arr_fil_B="${4:-}"
+    local nam_arr_out="${5:-}"
+    local nam_arr_scl="${6:-}"
+    local nam_arr_opt="${7:-}"
     local fil_A fil_B fil_out scl_fct opt_var samp dsc
     local err_ini out_ini err_dsc out_dsc
     local show_help
@@ -1155,7 +1178,7 @@ EOM
         opt_var="$(get_arr_elem "${nam_arr_opt}" "${idx}")" || return 1
     fi
 
-    #  Debug inputs
+    # Debug inputs.
     if [[ "${debug}" == "true" ]]; then
         if [[ "${mode}" == "signal" ]]; then
             debug_var \
@@ -1178,7 +1201,7 @@ EOM
         fi
     fi
 
-    #  Derive sample ('samp') and descriptor ('dsc') via 'process_io'
+    # Derive sample ('samp') and descriptor ('dsc') via 'process_io'.
     if [[ "${mode}" == "ratio" ]]; then
         IFS=',' read -r samp dsc < <(
             process_io \
@@ -1207,12 +1230,12 @@ EOM
         ) || return 1
     fi
 
-    #  Debug 'samp' and 'dsc' output by process_io
+    # Debug 'samp' and 'dsc' output by process_io.
     if [[ "${debug}" == "true" ]]; then
         debug_var "samp=${samp}" "dsc=${dsc}"
     fi
 
-    #  If using Slurm, request initial and descriptor log paths
+    # If using Slurm, request initial and descriptor log paths.
     if [[ -n "${SLURM_ARRAY_TASK_ID:-}" ]]; then
         IFS=',' read -r err_ini out_ini err_dsc out_dsc < <(
             set_logs_slurm \
@@ -1228,7 +1251,7 @@ EOM
         fi
     fi
 
-    #  Return all values for one of the task callers to parse
+    # Return all values for one of the task callers to parse.
     printf '%s,%s,%s,%s,%s,%s,%s,%s,%s\n' \
         "${fil_A}" "${fil_B:-}" "${fil_out}" "${samp}" "${dsc}" \
         "${err_ini:-}" "${out_ini:-}" "${err_dsc:-}" "${out_dsc:-}"
@@ -1328,7 +1351,7 @@ Usage
   run_task_sig
     [--help] idx
 
-  Run one signal-computation task, either under Slurm-array execution or in local GNU Parallel / serial iteration.
+  Run one signal-computation task, either under Slurm-array execution or in GNU Parallel or in a serial iteration.
 
 Parameters
 ----------
@@ -1429,7 +1452,7 @@ Usage
   run_task_rat
     [--help] idx
 
-  Run one ratio-computation task, either under Slurm-array execution or in local GNU Parallel / serial iteration.
+  Run one ratio-computation task, either under Slurm-array execution or in GNU Parallel or in a serial iteration.
 
 Parameters
 ----------
@@ -1530,7 +1553,7 @@ Usage
   run_task_coord
     [--help] idx
 
-  Run one fragment-coordinate extraction task, either under Slurm-array execution or in local GNU Parallel / serial iteration.
+  Run one fragment-coordinate extraction task, either under Slurm-array execution or in GNU Parallel or in a serial iteration.
 
 Parameters
 ----------
@@ -1595,7 +1618,7 @@ EOM
             "arr_fil_in" "" "arr_fil_out" "" "arr_usr_frg"
     ) || return 1
 
-    #  (Use stub parameters per original 'coord' behavior)
+    # (Use stub parameters per original 'coord' behavior).
     run_comp_sig \
         "${debug}" \
         1 \
@@ -1620,46 +1643,8 @@ EOM
 }
 
 
-#  Resolve '--dir_scr' before sourced parser helpers are available
-function resolve_dir_scr() {
-    local scr="${1:-}"
-    shift
 
-    local -a args=( "$@" )
-    local i=0
-
-    if [[ -z "${scr}" ]]; then
-        scr="unknown_script"
-    fi
-
-    for (( i = 0; i < ${#args[@]}; i++ )); do
-        case "${args[i]}" in
-            -ds|--dir[_-]scr)
-                if (( i + 1 >= ${#args[@]} )) \
-                    || [[ -z "${args[i + 1]:-}" || "${args[i + 1]}" == -* ]]
-                then
-                    echo "error(${scr}):" \
-                        "option '${args[i]}' requires a value." >&2
-                    echo >&2
-                    help_submit_compute_signal
-                    return 1
-                fi
-
-                printf "%s\n" "${args[i + 1]}"
-                return 0
-                ;;
-        esac
-    done
-
-    echo "error(${scr}):" \
-        "required option '--dir_scr' was not supplied." >&2
-    echo >&2
-    help_submit_compute_signal
-    return 1
-}
-
-
-#  Source 'source_helpers.sh' and requested helper scripts from 'dir_scr'
+# Source 'source_helpers.sh' and requested helper scripts from 'dir_scr'.
 function source_helpers_submit() {
     local scr="${1:-}"
     local dir_scr_arg="${2:-}"
@@ -1717,25 +1702,24 @@ function source_helpers_submit() {
 
 #  Initialize hardcoded arguments
 function init_args_hardcoded() {
-    #  WARNING: Do not change unless testing/stepping through.
-    #  If true, print verbose/debug Bash-level logging
+    # WARNING: Do not change unless testing/stepping through. If true, print
+    # verbose/debug Bash-level logging.
     debug=true
 
-    #  If true, dry-run script
+    # If true, dry-run script.
     dry_run=false
 
-    #  If true, parse arguments and exit before validation or job submission
+    # If true, parse arguments and exit before validation or job submission.
     p_only=false
 
-    #  If true, parse and check arguments, then exit before execution
+    # If true, parse and check arguments, then exit before execution.
     pc_only=false
 }
 
 
-#  Initialize argument variables, assigning default values where applicable
+# Initialize argument variables, assigning default values where applicable.
 function init_arg_defs() {
     env_nam="env_protocol"
-    dir_scr=""
     threads=4
     mode="signal"
     method=""
@@ -1764,17 +1748,14 @@ function init_arg_defs() {
 }
 
 
-#  Initialize hardcoded arguments and user-facing argument defaults
+# Initialize hardcoded arguments and user-facing argument defaults.
 function init_defs() {
     init_args_hardcoded
     init_arg_defs
 }
 
 
-#  Define the help message
-
-
-#  Parse keyword arguments after helper scripts have been sourced
+# Parse keyword arguments after helper scripts have been sourced.
 function parse_args() {
     while [[ "$#" -gt 0 ]]; do
         case "${1}" in
@@ -2044,7 +2025,7 @@ function parse_args() {
 }
 
 
-#  Canonicalize mode, method, and derived job name
+# Canonicalize mode, method, and derived job name.
 function canonicalize_args() {
     case "${mode}" in
         signal)
@@ -2122,7 +2103,7 @@ function canonicalize_args() {
 }
 
 
-#  Validate required arguments and simple numeric values
+# Validate required arguments and simple numeric values.
 function validate_args() {
     validate_var     "env_nam" "${env_nam}"         || return 1
     validate_var_dir "dir_scr" "${dir_scr}" 0 false || return 1
@@ -2181,11 +2162,11 @@ function validate_args() {
 }
 
 
-#  Resolve installed Python command names after helper sourcing
+# Resolve installed Python command names after helper sourcing.
 function resolve_paths_scrs() {
     validate_var_dir "dir_scr" "${dir_scr}" 0 false || return 1
 
-    # run_python.sh reads the caller-owned repository root dynamically.
+    # 'run_python.sh' reads the caller-owned repository root dynamically.
     # shellcheck disable=SC2034
     dir_rep="$(cd "${dir_scr}/.." && pwd)"
     scr_sig=compute_signal
@@ -2198,7 +2179,7 @@ function resolve_paths_scrs() {
 }
 
 
-#  Print parsed scalar arguments when debugging is enabled
+# Print parsed scalar arguments when debugging is enabled.
 function print_state_debug() {
     if [[ "${debug}" != "true" ]]; then
         return 0
@@ -2256,7 +2237,7 @@ function print_state_debug() {
 }
 
 
-#  Reconstruct mode-dependent arrays from serialized argument strings
+# Reconstruct mode-dependent arrays from serialized argument strings.
 function prepare_vecs() {
     if [[ "${mode}" =~ ^(signal|coord)$ ]]; then
         IFS=',' read -r -a arr_fil_in <<< "${csv_fil_in}"
@@ -2313,7 +2294,7 @@ function prepare_vecs() {
 }
 
 
-#  Validate vector lengths, sentinels, CRAM reference needs, and input files
+# Validate vector lengths, sentinels, CRAM reference needs, and input files.
 function validate_vecs() {
     local idx fil_in fil_out need_ref
 
@@ -2411,7 +2392,7 @@ function validate_vecs() {
 }
 
 
-#  Print reconstructed array values when debugging is enabled
+# Print reconstructed array values when debugging is enabled.
 function print_vecs_debug() {
     if [[ "${debug}" != "true" ]]; then
         return 0
@@ -2447,13 +2428,13 @@ function print_vecs_debug() {
 }
 
 
-#  Activate the environment containing the managed editable installation
+# Activate the environment containing the managed editable installation.
 function setup_env() {
     handle_env "${env_nam}" || return 1
 }
 
 
-#  Dispatch Slurm-array, GNU Parallel, or serial work
+# Dispatch Slurm-array, GNU Parallel, or serial work.
 function run_jobs() {
     local id_job id_tsk idx
 
@@ -2507,7 +2488,7 @@ function run_jobs() {
 }
 
 
-#  Main script execution
+# Main script execution.
 function main() {
     init_defs
 
@@ -2516,8 +2497,6 @@ function main() {
         echo >&2
         return 0
     fi
-
-    dir_scr="$(resolve_dir_scr "${0##*/}" "$@")" || return 1
 
     source_helpers_submit "${0##*/}" "${dir_scr}" \
         check_args \

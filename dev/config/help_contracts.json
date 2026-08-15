@@ -2357,6 +2357,7 @@
       "logical_order": [
         "help",
         "dry_run",
+        "dir_scr",
         "mode",
         "csv_fil_in",
         "fil_out",
@@ -2367,6 +2368,7 @@
       "roles": {
         "help": "help_reporting",
         "dry_run": "preview_no_write",
+        "dir_scr": "execution_environment_resources",
         "mode": "operation_discriminant",
         "csv_fil_in": "inputs",
         "fil_out": "output_targets",
@@ -2377,6 +2379,10 @@
         {
           "members": ["help", "dry_run"],
           "rationale": "Help and no-write preview are the approved invocation controls."
+        },
+        {
+          "members": ["dir_scr"],
+          "rationale": "The execution-environment resource forms its own invocation row."
         },
         {
           "members": ["mode", "csv_fil_in", "fil_out"],
@@ -2391,6 +2397,7 @@
         "parser_registration": [
           "help",
           "dry_run",
+          "dir_scr",
           "mode",
           "csv_fil_in",
           "fil_out",
@@ -2400,6 +2407,7 @@
         "usage": [
           "help",
           "dry_run",
+          "dir_scr",
           "mode",
           "csv_fil_in",
           "fil_out",
@@ -2409,6 +2417,7 @@
         "options_parameters": [
           "help",
           "dry_run",
+          "dir_scr",
           "mode",
           "csv_fil_in",
           "fil_out",
