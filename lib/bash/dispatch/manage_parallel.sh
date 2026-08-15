@@ -81,8 +81,8 @@ fi
 #MAYBE: make function "private"?
 # shellcheck disable=SC2120
 function determine_cores() {
-    local cores=""   # Number of CPU cores available on system
-    local show_help  # Help message
+    local cores=""   # No. CPU cores available on system.
+    local show_help  # Help message.
 
     show_help=$(cat << EOM
 Usage
@@ -170,11 +170,11 @@ EOM
 
 
 function print_parallel_info() {
-    local slurm="${1:-}"    # Boolean-like flag for Slurm: 'true' or 'false'
-    local max_job="${2:-}"  # No. concurrent jobs: Slurm
-    local par_job="${3:-}"  # No. concurrent jobs: GNU Parallel or serial
-    local threads="${4:-}"  # No. threads per job
-    local show_help         # Help message
+    local slurm="${1:-}"    # Boolean-like flag for Slurm: 'true' or 'false'.
+    local max_job="${2:-}"  # No. concurrent jobs: Slurm.
+    local par_job="${3:-}"  # No. concurrent jobs: GNU Parallel or serial.
+    local threads="${4:-}"  # No. threads per job.
+    local show_help         # Help message.
 
     show_help=$(cat << EOM
 Usage
@@ -193,10 +193,10 @@ Parameters
     Whether Slurm mode is active.
 
   2  max_job : int
-    Maximum number of jobs Slurm runs concurrently. Read and validated only when 'slurm' is true; pass a sentinel such as 'UNSET' otherwise.
+    Maximum number of jobs Slurm runs concurrently. Read and validated only when 'slurm' is true; otherwise it may be empty or a sentinel such as 'UNSET'.
 
   3  par_job : int
-    Maximum number of jobs GNU Parallel runs concurrently, or 1 for serial execution. Read and validated only when 'slurm' is false; pass a sentinel such as 'UNSET' otherwise.
+    Maximum number of jobs GNU Parallel runs concurrently, or 1 for serial execution. Read and validated only when 'slurm' is false; otherwise it may be empty or a sentinel such as 'UNSET'.
 
   4  threads : int
     Number of threads per job.
@@ -239,18 +239,6 @@ EOM
         echo >&2
         echo "${show_help}" >&2
         return 1
-    elif [[ -z "${max_job}" ]]; then
-        echo_err_func "${FUNCNAME[0]}" \
-            "positional argument 2, 'max_job', is missing."
-        echo >&2
-        echo "${show_help}" >&2
-        return 1
-    elif [[ -z "${par_job}" ]]; then
-        echo_err_func "${FUNCNAME[0]}" \
-            "positional argument 3, 'par_job', is missing."
-        echo >&2
-        echo "${show_help}" >&2
-        return 1
     elif [[ -z "${threads}" ]]; then
         echo_err_func "${FUNCNAME[0]}" \
             "positional argument 4, 'threads', is missing."
@@ -261,13 +249,8 @@ EOM
 
     slurm="$(normalize_bool "${slurm}" "slurm")" || return 1
 
-    # Validate only the job-count argument the active mode actually uses.
-    # Callers pass a sentinel such as 'UNSET' for the other one because it is
-    # genuinely unset: Slurm mode resolves no GNU Parallel job count, and the
-    # local modes unset the Slurm one. This function reads 'max_job' only when
-    # Slurm is active and 'par_job' only when it is not, so validating both
-    # unconditionally rejected a value that is never read. That made
-    # '--verbose' a hard failure everywhere except serial execution.
+    # Validate only the count the active mode reads; callers pass a sentinel or
+    # an empty value for the other, which this function never reads.
     if [[ "${slurm}" == "true" ]]; then
         if ! [[ "${max_job}" =~ ^[0-9]+$ ]]; then
             echo_err_func "${FUNCNAME[0]}" \
@@ -403,10 +386,10 @@ EOM
 
 
 function set_params_parallel() {
-    local threads="${1:-}"  # Total thread budget (not per-job threads)
-    local max_job="${2:-}"  # Maximum number of jobs allowed
-    local n_cores           # Total available CPU cores on system
-    local par_job           # Resolved GNU Parallel job count
+    local threads="${1:-}"  # Total thread budget (not per-job threads).
+    local max_job="${2:-}"  # Maximum number of jobs allowed.
+    local n_cores           # Total available CPU cores on system.
+    local par_job           # Resolved GNU Parallel job count.
     local show_help
 
     show_help=$(cat << EOM
@@ -518,8 +501,8 @@ EOM
         par_job="${n_cores}"
     fi
 
-    # Convert total thread budget into per-job thread count, enforcing a
-    # minimum of 1 thread per job.
+    # Convert total thread budget into per-job thread count, enforcing 1 thread
+    # per job as a minimum.
     if [[ "${threads}" -lt "${par_job}" ]]; then
         echo_warn_func "${FUNCNAME[0]}" \
             "requested total threads ('${threads}') are fewer than parallel" \

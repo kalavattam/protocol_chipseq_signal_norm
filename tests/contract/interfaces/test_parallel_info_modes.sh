@@ -23,13 +23,16 @@ source "$(
 )/tests/support/test_helpers.sh"
 
 
-# Run 'print_parallel_info' in a subshell, returning its status and output. The
-# function is sourced per invocation rather than once at file scope, so that a
-# failing call cannot leave shared state behind for the next case.
+# Run 'print_parallel_info' in a subshell, sourced per invocation so a failing
+# call leaves no shared state behind for the next case.
 function run_parallel_info() {
     # shellcheck disable=SC2016  # Expand in the child shell, not this one.
     "${TEST_BASH}" -c '
-        source "${1}/lib/bash/core/source_helpers.sh"
+        fnc_src="${1}/lib/bash/core/source_helpers.sh"
+
+        # shellcheck disable=SC1090
+        source "${fnc_src}"
+
         source_helpers "${1}/lib/bash" \
             core/check_args \
             core/check_inputs \
@@ -97,11 +100,8 @@ function check_mode_rejects() {
 
 print_section "${TEST_NAME}"
 
-# Each dispatch mode leaves the other mode's job count unresolved, and the
-# callers in 'bin/execute_*.sh' pass a sentinel for it. Accepting that sentinel
-# is the contract: 'print_parallel_info' reads 'max_job' only under Slurm and
-# 'par_job' only outside it, so validating both unconditionally turned
-# '--verbose' into a hard failure in every mode but serial.
+# Each mode leaves the other's job count unresolved, so callers pass a
+# sentinel. Accepting it is the contract.
 check_mode_accepts \
     "Slurm mode accepts an unresolved 'par_job'" \
     "Max concurrent jobs (Slurm): 4" \
@@ -117,8 +117,30 @@ check_mode_accepts \
     "Jobs running in serial mode: 1" \
     false 1 1 12
 
+# The unused count may also arrive empty, which is how
+# 'execute_calculate_scaling_factor.sh' invokes this function.
+check_mode_accepts \
+    "Slurm mode accepts an empty 'par_job'" \
+    "Max concurrent jobs (Slurm): 4" \
+    true 4 "" 12
+
+check_mode_accepts \
+    "GNU Parallel mode accepts an empty 'max_job'" \
+    "Max concurrent jobs (GNU Parallel): 4" \
+    false "" 4 12
+
 # The relaxation must not become an absence of validation, so the argument the
 # active mode does read is still checked.
+check_mode_rejects \
+    "Slurm mode rejects an empty 'max_job'" \
+    "'max_job'" \
+    true "" UNSET 12
+
+check_mode_rejects \
+    "local mode rejects an empty 'par_job'" \
+    "'par_job'" \
+    false UNSET "" 12
+
 check_mode_rejects \
     "Slurm mode rejects a non-numeric 'max_job'" \
     "'max_job'" \
@@ -139,5 +161,6 @@ check_mode_rejects \
     "'threads'" \
     true 4 UNSET bogus
 
-# shellcheck disable=SC2119  # 'finish' receives no script arguments.
+
+# shellcheck disable=SC2119
 finish

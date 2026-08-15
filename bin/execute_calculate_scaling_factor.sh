@@ -1188,14 +1188,14 @@ function config_exec() {
         check_int_pos "${par_job}" "par_job" || return 1
     fi
 
-    #  Debug parallelization information
+    # Debug parallelization information.
     if [[ "${mode}" == "spike" ]]; then
         unset extra && typeset -a extra
         extra=( "arr_sip" "arr_sin" )
     fi
 
     print_parallel_info \
-        "${slurm}" "${max_job:-UNSET}" "${par_job}" "${threads}" \
+        "${slurm}" "${max_job:-UNSET}" "${par_job:-UNSET}" "${threads}" \
         "arr_mip" "arr_min" "${extra[@]}" \
         || return 1
 
