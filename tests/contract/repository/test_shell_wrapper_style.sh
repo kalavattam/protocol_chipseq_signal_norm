@@ -6,9 +6,10 @@
 # Copyright 2026 by Kris Alavattam
 # Email: kalavattam@gmail.com
 #
-# OpenAI ChatGPT and Codex (GPT-5.5, GPT-5.6) were used in design, development,
-# and documentation, with all output reviewed, edited, and approved by the
-# author.
+# The following were used in design, development, and documentation, with all
+# output reviewed, edited, and approved by the author:
+# - OpenAI ChatGPT and Codex (GPT-5.5, GPT-5.6);
+# - Anthropic Claude Code (Opus 5).
 #
 # Distributed under the MIT license.
 
@@ -17,14 +18,14 @@ set -euo pipefail
 
 TEST_NAME="shell wrapper style"
 
-#  Source shared test helpers
+# Source shared test helpers.
 # shellcheck source=tests/support/test_helpers.sh
 source "$(
     git -C "$(dirname "${BASH_SOURCE[0]}")" rev-parse --show-toplevel
 )/tests/support/test_helpers.sh"
 
 
-#  Fail when eligible top-level CLIs keep main help inline
+# Fail when eligible top-level CLIs keep main help inline.
 function scan_inline_top_level_help() {
     local found=0
     local file line
@@ -54,7 +55,7 @@ function scan_inline_top_level_help() {
 }
 
 
-#  Fail when top-level CLIs lack externalized main help
+# Fail when top-level CLIs lack externalized main help.
 function scan_external_main_help() {
     local found=0
     local file base stem fil_hlp fun_hlp
@@ -83,14 +84,18 @@ function scan_external_main_help() {
             continue
         fi
 
-        if ! grep -q "function ${fun_hlp}()" "${fil_hlp}"; then
+        if ! \
+            grep -q "function ${fun_hlp}()" "${fil_hlp}"
+        then
             found=1
             record_fail \
                 "external main help missing expected function:" \
                 "$(print_relpath "${fil_hlp}"):${fun_hlp}"
         fi
 
-        if ! grep -q "help_${stem}" "${file}"; then
+        if ! \
+            grep -q "help_${stem}" "${file}"
+        then
             found=1
             record_fail \
                 "top-level CLI does not call external main help:" \
@@ -104,7 +109,7 @@ function scan_external_main_help() {
 }
 
 
-#  Fail when real submit wrappers drift from the required '--dir_scr' contract
+# Fail when real submit wrappers drift from the required '--dir_scr' contract.
 function scan_submit_dir_scr_policy() {
     local found=0
     local file base stem fil_hlp
@@ -129,48 +134,62 @@ function scan_submit_dir_scr_policy() {
             continue
         fi
 
-        if ! grep -q "help_${stem}.sh" "${file}"; then
+        if ! \
+            grep -q "help_${stem}.sh" "${file}"
+        then
             found=1
             record_fail \
                 "submit wrapper missing bootstrap main-help source:" \
                 "$(print_relpath "${file}")"
         fi
 
-        if ! grep -q "help/${stem/#submit_/help_submit_}" "${file}"; then
+        if ! \
+            grep -q "help/${stem/#submit_/help_submit_}" "${file}"
+        then
             found=1
             record_fail \
                 "submit wrapper missing helper-sourced main help:" \
                 "$(print_relpath "${file}")"
         fi
 
-        if ! grep -q -- '--dir_scr' "${fil_hlp}"; then
+        if ! \
+            grep -q -- '--dir_scr' "${fil_hlp}"
+        then
             found=1
             record_fail \
                 "submit help missing --dir_scr:" \
                 "$(print_relpath "${fil_hlp}")"
         fi
 
-        if awk '
-            /^Usage:$/ { in_usage = 1; next }
-            /^Usage$/ { pending_usage = 1; next }
-            pending_usage && /^-{3,}$/ {
-                in_usage = 1
-                pending_usage = 0
-                next
-            }
-            pending_usage { pending_usage = 0 }
-            in_usage && /^$/ { in_usage = 0 }
-            in_usage && /\[[^]]*--dir_scr/ { found = 1 }
-            END { exit found ? 0 : 1 }
-        ' "${fil_hlp}"
+        # '--dir_scr' is optional: a worker resolves its own location from
+        # 'BASH_SOURCE' when the flag is absent, which is correct for direct
+        # invocation, GNU Parallel, serial execution, and 'sbatch --wrap'. Only
+        # 'sbatch <script>' needs it, because Slurm runs a copy. The usage
+        # block must therefore bracket it.
+        if ! \
+            awk '
+                /^Usage:$/ { in_usage = 1; next }
+                /^Usage$/ { pending_usage = 1; next }
+                pending_usage && /^-{3,}$/ {
+                    in_usage = 1
+                    pending_usage = 0
+                    next
+                }
+                pending_usage { pending_usage = 0 }
+                in_usage && /^$/ { in_usage = 0 }
+                in_usage && /\[[^]]*--dir_scr/ { found = 1 }
+                END { exit found ? 0 : 1 }
+            ' "${fil_hlp}"
         then
             found=1
             record_fail \
-                "submit help shows optional --dir_scr:" \
+                "submit help must show --dir_scr as optional:" \
                 "$(print_relpath "${fil_hlp}")"
         fi
 
-        if ! grep -q -- '-ds|--dir\[_-\]scr' "${file}"; then
+        if ! \
+            grep -q -- '-ds|--dir\[_-\]scr' "${file}"
+        then
             found=1
             record_fail \
                 "submit wrapper missing -ds|--dir_scr parser:" \
@@ -184,7 +203,7 @@ function scan_submit_dir_scr_policy() {
 }
 
 
-#  Fail when execute wrappers do not pass '--dir_scr' to submit wrappers
+# Fail when execute wrappers do not pass '--dir_scr' to submit wrappers.
 function scan_execute_submit_dir_scr_policy() {
     local found=0
     local file base line
@@ -267,7 +286,7 @@ function scan_execute_submit_dir_scr_policy() {
 
 print_section "${TEST_NAME}"
 
-#  Scan maintained top-level shell CLIs for wrapper structural drift
+# Scan maintained top-level shell CLIs for wrapper structural drift.
 files_top=()
 while IFS= read -r file; do
     files_top+=( "${file}" )

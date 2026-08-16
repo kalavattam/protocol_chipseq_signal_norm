@@ -33,7 +33,7 @@ Parameters
     Display this help message and exit.
 
   -ds, --dir_scr : dir
-    Directory containing scripts and functions. Passed by the 'execute_*.sh' wrappers, and needed when this script is run from a copy, as 'sbatch <script>' does, rather than from its real path.
+    Maintained entrypoint directory containing scripts and functions. Passed by the 'execute_*.sh' wrappers, and needed when this script is run from a copy, as 'sbatch <script>' does, rather than from its real path.
 
   1  srr : str
     NCBI SRA database run accession code.
