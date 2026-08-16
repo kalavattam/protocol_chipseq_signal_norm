@@ -1286,17 +1286,9 @@ def trailer_vendors(root: Path) -> dict[tuple[str, str], int]:
         Path and vendor mapped to the smallest evidencing commit's file count.
     """
 
-    # The body ends at an explicit sentinel rather than at the first blank
-    # line, because commit messages here are multi-paragraph and their
-    # trailers sit at the very end.
-    log = run_git(
-        root,
-        ["log", "--format=%x00%b%x01", "--name-only", "--diff-filter=ACMR"],
-    ).stdout
-
     evidence: dict[tuple[str, str], int] = {}
 
-    for _, found, paths in _trailer_commits(log):
+    for _, found, paths in _rename_aware_commits(root):
         if not found:
             continue
 
@@ -1311,26 +1303,71 @@ def trailer_vendors(root: Path) -> dict[tuple[str, str], int]:
     return evidence
 
 
-def _trailer_commits(log: str) -> list[tuple[str, set[str], list[str]]]:
+def _rename_aware_commits(root: Path) -> list[tuple[str, set[str], list[str]]]:
     """
-    Split one annotated log into commit body, vendors, and touched paths.
+    Read the annotated log with every path resolved to its current name.
+
+    'git log --follow' resolves renames for one path at a time, so a
+    whole-repository walk cannot use it and records each path as it was named
+    in the commit that touched it. A source renamed since then loses its own
+    history: the evidence sits under the old name while every lookup uses the
+    new one, and the file reads as though no commit ever credited its vendors.
+    Reading '--name-status' with rename detection lets the map be rebuilt.
+
+    Parameters
+    ----------
+    root : Path
+        Repository root whose history is read.
+
+    Returns
+    -------
+    commits : list[tuple[str, set[str], list[str]]]
+        Commit body, credited vendors, and touched paths under current names.
     """
 
-    commits = []
+    log = run_git(
+        root,
+        [
+            "log",
+            "--format=%x00%b%x01",
+            "--name-status",
+            "-M",
+            "--diff-filter=ACMR",
+        ],
+    ).stdout
+
+    commits: list[tuple[str, set[str], list[str]]] = []
+    renames: dict[str, str] = {}
 
     for commit in log.split("\x00")[1:]:
         body, _, files = commit.partition("\x01")
-        commits.append(
-            (
-                body,
-                {
-                    vendor
-                    for domain, vendor in TRAILER_VENDOR_DOMAINS
-                    if domain in body.lower()
-                },
-                [path.strip() for path in files.splitlines() if path.strip()],
-            ),
-        )
+        found = {
+            vendor
+            for domain, vendor in TRAILER_VENDOR_DOMAINS
+            if domain in body.lower()
+        }
+        paths: list[str] = []
+
+        for line in files.splitlines():
+            fields = [field for field in line.split("\t") if field.strip()]
+
+            if not fields:
+                continue
+
+            status = fields[0]
+
+            if status.startswith("R") and len(fields) >= 3:
+                # The log is newest-first, so any later rename of the
+                # destination is already recorded and resolves transitively.
+                current = renames.get(fields[2], fields[2])
+                renames[fields[1]] = current
+                paths.append(current)
+                continue
+
+            path = fields[-1]
+            paths.append(renames.get(path, path))
+
+        commits.append((body, found, paths))
 
     return commits
 
@@ -1352,14 +1389,9 @@ def trailer_history(root: Path) -> dict[str, dict[str, object]]:
         it carried a vendor trailer at all.
     """
 
-    log = run_git(
-        root,
-        ["log", "--format=%x00%b%x01", "--name-only", "--diff-filter=ACMR"],
-    ).stdout
-
     history: dict[str, dict[str, object]] = {}
 
-    for _, found, paths in _trailer_commits(log):
+    for _, found, paths in _rename_aware_commits(root):
         for path in paths:
             record = history.setdefault(
                 path,
