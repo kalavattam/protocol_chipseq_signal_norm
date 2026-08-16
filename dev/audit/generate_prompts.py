@@ -6,8 +6,10 @@
 # Copyright 2026 by Kris Alavattam
 # Email: kalavattam@gmail.com
 #
-# OpenAI ChatGPT and Codex (GPT-5.6) were used in design, development, and
-# documentation, with all output reviewed, edited, and approved by the author.
+# The following were used in design, development, and documentation, with all
+# output reviewed, edited, and approved by the author:
+# - OpenAI ChatGPT and Codex (GPT-5.6);
+# - Anthropic Claude Code (Opus 5).
 #
 # Distributed under the MIT license.
 
@@ -44,9 +46,10 @@ REQUIRED_BEHAVIORAL_ANCHORS = {
     "bin/submit_download_fastqs.sh": {
         "help_source": (
             (
-                '"${_dir_scr_hlp}/../lib/bash/help/help_submit_download_fastq'
-                's.sh"'
+                'fil_hlp="${dir_scr}/../lib/bash/help/help_submit_download_fa'
+                'stqs.sh"'
             ),
+            'source "${fil_hlp}"',
         ),
         "early_help": (
             "-h|--hlp|--help)",
@@ -55,12 +58,12 @@ REQUIRED_BEHAVIORAL_ANCHORS = {
         ),
         "bootstrap_dir_scr": (
             "-ds|--dir[_-]scr)",
-            "(( i + 1 >= ${#args[@]} ))",
-            '-z "${args[i + 1]:-}"',
-            '"${args[i + 1]}" == -*',
-            'printf "%s\\n" "${args[i + 1]}"',
-            "required option '--dir_scr' was not supplied.",
-            "return 1",
+            "(( i + 1 < ${#args[@]} ))",
+            '-n "${args[i + 1]}"',
+            '"${args[i + 1]}" != -*',
+            'printf \'%s\\n\' "${args[i + 1]}"',
+            'cd "$(dirname "${BASH_SOURCE[0]}")" > /dev/null 2>&1 && pwd',
+            "cannot locate helper libraries from",
         ),
         "positional_validation": (
             "if [[ ${#args_pos[@]} -ne 8 ]]; then",

@@ -6,8 +6,10 @@
 # Copyright 2026 by Kris Alavattam
 # Email: kalavattam@gmail.com
 #
-# OpenAI ChatGPT and Codex (GPT-5.6) were used in design, development, and
-# documentation, with all output reviewed, edited, and approved by the author.
+# The following were used in design, development, and documentation, with all
+# output reviewed, edited, and approved by the author:
+# - OpenAI ChatGPT and Codex (GPT-5.6);
+# - Anthropic Claude Code (Opus 5).
 #
 # Distributed under the MIT license.
 
@@ -1855,11 +1857,11 @@ EOM
             submit["bootstrap_dir_scr"]["rendered_evidence"],
         )
         self.assertIn(
-            'printf "%s\\n" "${args[i + 1]}"',
+            'printf \'%s\\n\' "${args[i + 1]}"',
             submit["bootstrap_dir_scr"]["rendered_evidence"],
         )
         self.assertIn(
-            "required option '--dir_scr' was not supplied.",
+            "cannot locate helper libraries from",
             submit["bootstrap_dir_scr"]["rendered_evidence"],
         )
 

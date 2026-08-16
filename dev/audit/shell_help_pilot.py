@@ -6,8 +6,10 @@
 # Copyright 2026 by Kris Alavattam
 # Email: kalavattam@gmail.com
 #
-# OpenAI ChatGPT and Codex (GPT-5.6) were used in design, development, and
-# documentation, with all output reviewed, edited, and approved by the author.
+# The following were used in design, development, and documentation, with all
+# output reviewed, edited, and approved by the author:
+# - OpenAI ChatGPT and Codex (GPT-5.6);
+# - Anthropic Claude Code (Opus 5).
 #
 # Distributed under the MIT license.
 
@@ -78,8 +80,12 @@ def help_body(text: str) -> str | None:
     """
 
     match = re.search(
+        # The redirect may sit either side of the heredoc opener: help
+        # functions write to stderr as 'cat >&2 << EOM', and older sources used
+        # the trailing 'cat << EOM >&2' form.
         r"function\s+help_[A-Za-z0-9_]+\(\)\s*\{\n(?:[ "
-        r"\t]*(?:#.*)?\n)*[ \t]*cat\s+<<\s*EOM\n"
+        r"\t]*(?:#.*)?\n)*[ \t]*cat\s+(?:>&\d+\s+)?<<\s*EOM"
+        r"(?:[ \t]*>&\d+)?[ \t]*\n"
         r"(.*?)\nEOM\n\}",
         text,
         re.DOTALL,

@@ -1357,7 +1357,7 @@ function demo() {
                 len(historical_units),
                 historical_coverage["changed_block_count"],
             ),
-            (86, 308),
+            (91, 313),
         )
 
     def test_tests_linked_semantic_units_report_derived_counts(self) -> None:
