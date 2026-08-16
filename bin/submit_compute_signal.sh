@@ -87,10 +87,11 @@ function process_io() {
     local fil_out=""
     local scl_fct=""
     local opt_var=""
-    local show_help     # Help text
-    local samp dsc ext  # Sample name, output descriptor, and loop variable
-    local -a exts       # Recognized output/input extensions
+    local show_help     # Help text.
+    local samp dsc ext  # Sample name, output descriptor, and loop variable.
+    local -a exts       # Recognized output/input extensions.
 
+    # TODO: break parameter options under Usage across semantic paragraphs.
     show_help=$(cat << EOM
 Usage
 -----
@@ -302,9 +303,10 @@ function set_args_opt() {
     local eps="${7:-NA}"
     local skip_00="${8:-NA}"
     local drp_nan="${9:-false}"
-    local -a optional  # Optional CLI arguments
-    local show_help    # Help text
+    local -a optional  # Optional CLI arguments.
+    local show_help    # Help text.
 
+    # TODO: break parameter options under Usage across semantic paragraphs.
     show_help=$(cat << EOM
 Usage
 -----
@@ -426,11 +428,11 @@ function run_dry_or_wet() {
     local arr_nam="${1:-}"
     local log_out="${2:-}"
     local log_err="${3:-}"
-    local dir_out dir_err decl  # Derived directories and declaration metadata
-    local -a cmd_cpy            # Local copy of the command array
-    local show_help             # Help text
+    local dir_out dir_err decl  # Derived directories and declaration metadata.
+    local -a cmd_cpy            # Local copy of the command array.
+    local show_help             # Help text.
 
-
+    # TODO: break parameter options under Usage across semantic paragraphs.
     show_help=$(cat << EOM
 Usage
 -----
@@ -577,10 +579,11 @@ function run_comp_sig() {
     local dir_eo="${14:-}"
     local nam_job="${15:-}"
     local dsc="${16:-}"
-    local log_out log_err  # Explicit local variable declarations
-    local -a optional cmd  # Optional arguments and command array
-    local show_help        # Help text
+    local log_out log_err  # Explicit local variable declarations.
+    local -a optional cmd  # Optional arguments and command array.
+    local show_help        # Help text.
 
+    # TODO: break parameter options under Usage across semantic paragraphs.
     show_help=$(cat << EOM
 Usage
 -----
@@ -776,10 +779,11 @@ function run_comp_rat() {
     local dir_eo="${17:-}"
     local nam_job="${18:-}"
     local dsc="${19:-}"
-    local log_out log_err  # Local variable declarations
-    local -a optional cmd  # Local array declarations
-    local show_help        # Help text
+    local log_out log_err  # Local variable declarations.
+    local -a optional cmd  # Local array declarations.
+    local show_help        # Help text.
 
+    # TODO: break parameter options under Usage across semantic paragraphs.
     show_help=$(cat << EOM
 Usage
 -----
@@ -974,6 +978,7 @@ function get_arr_elem() {
     local decl              # Output from 'declare -p'.
     local show_help         # Help message.
 
+    # TODO: break parameter options under Usage across semantic paragraphs.
     show_help=$(cat << EOM
 Usage
 -----
@@ -1081,6 +1086,7 @@ function task_pro() {
     local err_ini out_ini err_dsc out_dsc
     local show_help
 
+    # TODO: break parameter options under Usage across semantic paragraphs.
     show_help=$(cat << EOM
 Usage
 -----
@@ -1270,6 +1276,7 @@ EOM
 function task_epi() {
     local show_help
 
+    # TODO: break parameter options under Usage across semantic paragraphs.
     show_help=$(cat << EOM
 Usage
 -----
@@ -1358,7 +1365,8 @@ function run_task_sig() {
 Usage
 -----
   run_task_sig
-    [--help] idx
+    [--help]
+    idx
 
   Run one signal-computation task, either under Slurm-array execution or in GNU Parallel or in a serial iteration.
 
@@ -1459,7 +1467,8 @@ function run_task_rat() {
 Usage
 -----
   run_task_rat
-    [--help] idx
+    [--help]
+    idx
 
   Run one ratio-computation task, either under Slurm-array execution or in GNU Parallel or in a serial iteration.
 
@@ -1560,7 +1569,8 @@ function run_task_coord() {
 Usage
 -----
   run_task_coord
-    [--help] idx
+    [--help]
+    idx
 
   Run one fragment-coordinate extraction task, either under Slurm-array execution or in GNU Parallel or in a serial iteration.
 
@@ -1711,8 +1721,8 @@ function source_helpers_submit() {
 
 #  Initialize hardcoded arguments
 function init_args_hardcoded() {
-    # WARNING: Do not change unless testing/stepping through. If true, print
-    # verbose/debug Bash-level logging.
+    # WARNING: Do not change unless testing/stepping through.
+    # If true, print verbose/debug Bash-level logging.
     debug=true
 
     # If true, dry-run script.

@@ -684,13 +684,13 @@ function init_arg_defs() {
     cfg_met=""
     eqn="6nd"
 
-    len_def=""      # SE fallback length (bp)
-    csv_len_mip=""      # Precomputed lengths: main IP
-    csv_len_min=""      # Precomputed lengths: main input
-    csv_dep_mip=""      # Precomputed counts: main IP
-    csv_dep_min=""      # Precomputed counts: main input
-    csv_dep_sip=""      # Precomputed counts: spike IP
-    csv_dep_sin=""      # Precomputed counts: spike input
+    len_def=""      # SE fallback length (bp).
+    csv_len_mip=""  # Precomputed lengths: main IP.
+    csv_len_min=""  # Precomputed lengths: main input.
+    csv_dep_mip=""  # Precomputed counts: main IP.
+    csv_dep_min=""  # Precomputed counts: main input.
+    csv_dep_sip=""  # Precomputed counts: spike IP.
+    csv_dep_sin=""  # Precomputed counts: spike input.
 
     dp=24
     dir_eo=""

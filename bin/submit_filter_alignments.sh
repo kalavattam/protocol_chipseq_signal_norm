@@ -81,14 +81,14 @@ source "${dir_scr}/../lib/bash/help/help_submit_filter_alignments.sh" || {
 
 # Define functions.
 function parse_filter_alignment_entry() {
-    local fil_in="${1:-}"     # Input BAM/CRAM file
-    local retain="${2:-}"     # Species selector
-    local dir_out="${3:-}"    # Directory for output alignment files
-    local out_ext="${4:-bam}" # Final output extension. Output extension
-    local samp                # Sample name derived from fil_in
-    local nam_fnc             # Function name derived from 'retain'
-    local fil_out             # Output file path. Output alignment file
-    local show_help           # Help message
+    local fil_in="${1:-}"     # Input BAM/CRAM file.
+    local retain="${2:-}"     # Species selector.
+    local dir_out="${3:-}"    # Directory for output alignment file.
+    local out_ext="${4:-bam}" # Output extension.
+    local samp                # Sample name derived from fil_in.
+    local nam_fnc             # Function name derived from 'retain'.
+    local fil_out             # Output alignment file.
+    local show_help           # Help message.
 
     show_help=$(cat << EOM
 Usage
@@ -207,21 +207,21 @@ EOM
 
 # Execute filtering using the specified function.
 function run_filtering() {
-    local nam_fnc="${1:-}"   # Name of function to run
-    local threads="${2:-}"   # Number of threads
-    local fil_in="${3:-}"    # Input BAM/CRAM file
-    local fil_out="${4:-}"   # Output file path. Output alignment file
-    local mito="${5:-}"      # Retain mito. chr. (true/false)
-    local tg="${6:-}"        # Retain SP_II_TG chr. (true/false)
-    local mtr="${7:-}"       # Retain SP_MTR chr. (true/false)
-    local chk_chr="${8:-}"   # Check chr. in output (true/false)
-    local dir_eo="${9:-}"   # Directory for stderr and stdout log files
-    local nam_job="${10:-}"  # Job name for log file naming
-    local samp="${11:-}"     # Sample name for log file naming
-    local ref_fa="${12:-}"   # Reference FASTA file for CRAM input/output
-    local log_out log_err    # 'nam_fnc' stdout and stderr log files
-    local -a cmd_filter      # Command array for filtering function
-    local show_help          # Help message
+    local nam_fnc="${1:-}"   # Name of function to run.
+    local threads="${2:-}"   # Number of threads.
+    local fil_in="${3:-}"    # Input BAM/CRAM file.
+    local fil_out="${4:-}"   # Output file path. Output alignment file.
+    local mito="${5:-}"      # Retain mito. chr. (Boolean).
+    local tg="${6:-}"        # Retain SP_II_TG chr. (Boolean).
+    local mtr="${7:-}"       # Retain SP_MTR chr. (Boolean).
+    local chk_chr="${8:-}"   # Check chr. in output (Boolean).
+    local dir_eo="${9:-}"    # Directory for stderr and stdout log files.
+    local nam_job="${10:-}"  # Job name for log file naming.
+    local samp="${11:-}"     # Sample name for log file naming.
+    local ref_fa="${12:-}"   # Reference FASTA file for CRAM input/output.
+    local log_out log_err    # 'nam_fnc' stdout and stderr log files.
+    local -a cmd_filter      # Command array for filtering function.
+    local show_help          # Help message.
 
     show_help=$(cat << EOM
 Usage
@@ -579,7 +579,7 @@ function validate_args() {
     validate_var     "threads"    "${threads}"         || return 1
     validate_var     "csv_fil_in" "${csv_fil_in}"      || return 1
     validate_var_dir "dir_out"    "${dir_out}"         || return 1
-    validate_var_dir "dir_eo"    "${dir_eo}"         || return 1
+    validate_var_dir "dir_eo"    "${dir_eo}"           || return 1
     validate_var     "nam_job"    "${nam_job}"         || return 1
     validate_var     "out_ext"    "${out_ext}"         || return 1
 

@@ -15,7 +15,7 @@
 
 
 # TODO: do we need '--dir_scr' in the examples? Only if using 'sbatch'.
-#TODO: include Conda, aligner, and Samtools versions.
+# TODO: include Conda, aligner, and Samtools versions.
 # shellcheck disable=SC2154
 function help_submit_align_fastqs() {
     cat >&2 << EOM

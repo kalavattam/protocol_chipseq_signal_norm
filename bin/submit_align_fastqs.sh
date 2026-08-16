@@ -92,6 +92,7 @@ function parse_entry_align_fastq() {
     local fil_out              # Output file path. Output alignment file.
     local show_help            # Help message.
 
+    # TODO: break parameter options under Usage across semantic paragraphs.
     show_help=$(cat << EOM
 Usage
 -----
@@ -235,6 +236,7 @@ function run_alignment() {
     local -a cmd_aln
     local show_help
 
+    # TODO: break parameter options under Usage across semantic paragraphs.
     show_help=$(cat << EOM
 Usage
 -----

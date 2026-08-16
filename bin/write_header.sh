@@ -35,7 +35,6 @@ set -euo pipefail
 # Resolve 'dir_scr' for 'sbatch', which copies this script elsewhere.
 dir_scr=""
 _arr_arg=( "$@" )
-
 for (( _idx = 0; _idx < ${#_arr_arg[@]}; _idx++ )); do
     case "${_arr_arg[_idx]}" in
         -ds|--dir[_-]scr)
