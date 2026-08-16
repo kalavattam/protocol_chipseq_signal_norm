@@ -61,6 +61,15 @@ dir_scr="$(resolve_dir_scr "$@")" || {
     exit 1
 }
 
+# 'sbatch' runs a copy, so 'BASH_SOURCE' can resolve outside the repo; if so,
+# fail here rather than at a subsequent 'source'.
+if [[ ! -d "${dir_scr}/../lib/bash" ]]; then
+    echo "error($(basename "${BASH_SOURCE[0]}")):" \
+        "cannot locate helper libraries from '${dir_scr}'; pass '--dir_scr'" \
+        "when this script is run from a copy." >&2
+    exit 1
+fi
+
 # shellcheck source=lib/bash/help/help_submit_compute_signal.sh
 source "${dir_scr}/../lib/bash/help/help_submit_compute_signal.sh" || {
     echo "error($(basename "${BASH_SOURCE[0]}")):" \
