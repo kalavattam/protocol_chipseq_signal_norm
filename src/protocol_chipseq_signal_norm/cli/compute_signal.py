@@ -1351,8 +1351,14 @@ def calc_sig_chrom_array(
             np.add.at(touched_diff, first, 1)
             np.add.at(touched_diff, last_exclusive, -1)
 
-            sig += np.cumsum(diff[:-1])
-            touched |= np.cumsum(touched_diff[:-1]) > 0
+            # Interior coverage is exact in 'int64'; the 'float64' value sum is
+            # not. Floating-point cancellation can leave ~1e-20 residue in bins
+            # whose true value is zero, which 'sig != 0.0' would emit as data.
+            # Masking by the exact indicator restores zero.
+            interior = np.cumsum(touched_diff[:-1]) > 0
+
+            sig += np.where(interior, np.cumsum(diff[:-1]), 0.0)
+            touched |= interior
 
     if is_norm:
         if fragment_count <= 0:
@@ -1550,7 +1556,6 @@ def calc_sig_chrom_direct_sparse_np(
             first = start_bins_subset[has_interior] + 1
             last_exclusive = end_bins_subset[has_interior]
             value = siz_bin * weights_subset[has_interior]
-            touched_diff = None
 
             if use_bincount:
                 diff = np.bincount(
@@ -1568,15 +1573,20 @@ def calc_sig_chrom_direct_sparse_np(
                 np.add.at(diff, first, value)
                 np.add.at(diff, last_exclusive, -value)
 
+            # Interior coverage is exact in 'int64'; the 'float64' value sum is
+            # not. Rounding between each '+value' and '-value' can leave ~1e-20
+            # residue in bins whose true value is zero, which 'sig != 0.0'
+            # would emit as data. Masking by the integer sum restores exact
+            # zero without a tolerance.
+            interior_diff = np.zeros(n_bins + 1, dtype=np.int64)
+            np.add.at(interior_diff, first, 1)
+            np.add.at(interior_diff, last_exclusive, -1)
+            interior = np.cumsum(interior_diff[:-1]) > 0
+
+            sig += np.where(interior, np.cumsum(diff[:-1]), 0.0)
+
             if touched is not None:
-                touched_diff = np.zeros(n_bins + 1, dtype=np.int64)
-                np.add.at(touched_diff, first, 1)
-                np.add.at(touched_diff, last_exclusive, -1)
-
-            sig += np.cumsum(diff[:-1])
-
-            if touched_diff is not None:
-                touched |= np.cumsum(touched_diff[:-1]) > 0
+                touched |= interior
 
     if touched is None:
         idx = np.flatnonzero(sig != 0.0)
@@ -1732,8 +1742,14 @@ def calc_sig_chrom_direct_dense_np(
             np.add.at(touched_diff, first, 1)
             np.add.at(touched_diff, last_exclusive, -1)
 
-            values += np.cumsum(diff[:-1])
-            touched |= np.cumsum(touched_diff[:-1]) > 0
+            # Interior coverage is exact in 'int64'; the 'float64' value sum is
+            # not. Floating-point cancellation can leave ~1e-20 residue in bins
+            # whose true value is zero, which 'values != 0.0' would emit as
+            # data. Masking by the exact indicator restores zero.
+            interior = np.cumsum(touched_diff[:-1]) > 0
+
+            values += np.where(interior, np.cumsum(diff[:-1]), 0.0)
+            touched |= interior
 
     if not np.any(touched & (values != 0.0)):
         return "direct_dense_np", []
@@ -2693,11 +2709,6 @@ def materialize_event_signal_parts(
             else np.empty(0, dtype=np.float64)
         )
 
-        if diff_bins.size > 0:
-            diff = np.zeros(n_bins + 1, dtype=np.float64)
-            np.add.at(diff, diff_bins, diff_values)
-            values += np.cumsum(diff[:-1])
-
         touch_bins_parts = [part[5] for part in parts_by_chrom[chrom]]
         touch_values_parts = [part[6] for part in parts_by_chrom[chrom]]
         touch_bins = (
@@ -2711,10 +2722,25 @@ def materialize_event_signal_parts(
             else np.empty(0, dtype=np.int64)
         )
 
+        # Resolve the exact 'int64' interior indicator before the 'float64'
+        # value sum that uses it. Floating-point cancellation can leave ~1e-20
+        # residue in truly zero bins, which 'values != 0.0' would emit as data.
+        # Masking by the indicator restores exact zero.
+        interior = None
+
         if touch_bins.size > 0:
             touch_diff = np.zeros(n_bins + 1, dtype=np.int64)
             np.add.at(touch_diff, touch_bins, touch_values)
-            touched |= np.cumsum(touch_diff[:-1]) > 0
+            interior = np.cumsum(touch_diff[:-1]) > 0
+            touched |= interior
+
+        if diff_bins.size > 0:
+            diff = np.zeros(n_bins + 1, dtype=np.float64)
+            np.add.at(diff, diff_bins, diff_values)
+            summed = np.cumsum(diff[:-1])
+            values += summed if interior is None else np.where(
+                interior, summed, 0.0
+            )
 
         idx = np.flatnonzero(touched & (values != 0.0))
 
