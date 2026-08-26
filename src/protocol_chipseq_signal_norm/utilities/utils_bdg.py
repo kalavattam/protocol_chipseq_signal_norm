@@ -29,6 +29,7 @@ import math
 import os
 import sys
 from collections.abc import Callable, Iterator
+from dataclasses import dataclass
 from typing import TextIO
 
 from .utils_chrom import sort_chrom
@@ -150,11 +151,26 @@ def iter_rows_bdg(
         yield chromosome, start, end, value_text, numeric_value
 
 
+@dataclass(frozen=True)
+class LibrarySizeBdg:
+    """
+    Represent a bedGraph library size and the bin width it rests on.
+
+    The total is the column sum over fixed-width bins, which is edgeR's
+    'lib.size' for the matrix the track represents. The bin width is carried
+    alongside it because a caller that omitted the width still needs the one
+    the track implied, and because the total means nothing without it.
+    """
+
+    total: float
+    siz_bin: int
+
+
 def sum_counts_bdg(
     path: str,
-    siz_bin: int,
+    siz_bin: int | None = None,
     skp_pfx: tuple[str, ...] | None = None,
-) -> float:
+) -> LibrarySizeBdg:
     """
     Sum a bedGraph over fixed-width bins to recover a library size.
 
@@ -162,21 +178,24 @@ def sum_counts_bdg(
     ----------
     path : str
         BedGraph-like path, or '-' for standard input.
-    siz_bin : int
-        Bin width in base pairs used to write the track.
+    siz_bin : int | None
+        Bin width in base pairs used to write the track. When None, infer it
+        from the track. When supplied, cross-check it against the track and
+        reject a value the track contradicts.
     skp_pfx : tuple[str, ...] | None
         Header prefixes to skip. The default is 'DEF_SKP_PFX'.
 
     Returns
     -------
-    total : float
-        Column sum over fixed-width bins, which is edgeR's 'lib.size' for the
-        matrix this track represents.
+    result : LibrarySizeBdg
+        The library size and the bin width it was computed on.
 
     Raises
     ------
     ValueError
-        If 'siz_bin' is not a positive integer.
+        If 'siz_bin' is supplied and is not a positive integer, if the track
+        holds no usable interval, or if a supplied 'siz_bin' disagrees with the
+        width the track implies.
 
     Notes
     -----
@@ -184,9 +203,17 @@ def sum_counts_bdg(
     'k' bins contributes 'k' times its value rather than once. Summing rows
     directly understates the library size by exactly the compression factor.
 
-    Terminal intervals are rounded up. A chromosome whose length is not a
-    multiple of 'siz_bin' ends in a partial bin that still holds a real count,
-    so it counts as one bin rather than as a fraction of one.
+    Terminal intervals round up: a chromosome whose length is not a multiple of
+    the bin width ends in a partial bin that still holds a real count. Only a
+    chromosome's final interval can be partial, so the total folds in every
+    earlier one and defers the terminal ones.
+
+    The bin width is the greatest common divisor of the interval starts and of
+    the non-terminal widths, both multiples of it. That divisor is always a
+    multiple of the true width, and equals it unless every run shares a factor:
+    a 10 bp track whose runs all span an even number of bins infers 20 and
+    halves the library size, silently. Pass 'siz_bin' where the track cannot be
+    trusted to resolve it.
 
     This is the column sum of the bin matrix, not the alignment count. Under
     the overlap counting in 'countReadsPerBin.py:705' one fragment increments
@@ -195,7 +222,7 @@ def sum_counts_bdg(
     pseudocount by that factor.
     """
 
-    if siz_bin <= 0:
+    if siz_bin is not None and (not isinstance(siz_bin, int) or siz_bin <= 0):
         raise ValueError("'siz_bin' must be a positive integer.")
 
     if skp_pfx is None:
@@ -208,30 +235,70 @@ def sum_counts_bdg(
 
         return is_header(line, skp_pfx)
 
+    grain = 0
     total = 0.0
+    order: list[str] = []
+    final: dict[str, tuple[float, int]] = {}
 
     with open_in(path) as stream:
-        for _chrom, start, end, _text, value in iter_rows_bdg(
+        for chrom, start, end, _text, value in iter_rows_bdg(
             stream,
             skip_predicate,
         ):
             if value is None or not math.isfinite(value):
                 continue
 
-            #  A chromosome whose length is not a multiple of 'siz_bin'
-            #  ends in a partial bin, and a partial bin is still one bin: it
-            #  holds a count of fragments overlapping it. Dividing widths
-            #  would score it as a fraction and undercount the library by one
-            #  partial bin per chromosome.
             width = end - start
-            n_bin = width // siz_bin
 
-            if width % siz_bin:
-                n_bin += 1
+            if width <= 0:
+                continue
 
-            total += value * n_bin
+            grain = math.gcd(grain, start)
 
-    return total
+            # Fold in the previous interval for this chromosome now that a
+            # later one proves it was not terminal, so only genuinely final
+            # intervals stay behind for the rounding-up step below.
+            if chrom in final:
+                value_prior, width_prior = final[chrom]
+                total += value_prior * width_prior
+                grain = math.gcd(grain, width_prior)
+            else:
+                order.append(chrom)
+
+            final[chrom] = (value, width)
+
+    if not order:
+        raise ValueError(f"no usable bedGraph interval in '{path}'.")
+
+    if grain <= 0:
+        # A single-interval track starting at zero resolves nothing.
+        grain = 0 if siz_bin is None else siz_bin
+
+    if siz_bin is None:
+        if grain <= 0:
+            raise ValueError(
+                f"cannot infer a bin width from '{path}'; pass '--siz_bin'.",
+            )
+
+        siz_bin = grain
+    elif grain > 0 and grain % siz_bin:
+        raise ValueError(
+            f"'siz_bin' {siz_bin} disagrees with '{path}', whose intervals "
+            f"imply a bin width of {grain}.",
+        )
+
+    total /= siz_bin
+
+    for chrom in order:
+        value, width = final[chrom]
+        n_bin = width // siz_bin
+
+        if width % siz_bin:
+            n_bin += 1
+
+        total += value * n_bin
+
+    return LibrarySizeBdg(total=total, siz_bin=siz_bin)
 
 
 def check_size_bin(

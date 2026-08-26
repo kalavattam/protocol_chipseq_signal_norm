@@ -493,15 +493,19 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         "--siz_bin",
         dest="siz_bin",
         type=int,
-        default=10,
+        default=None,
         help=(
-            "Bin width in bp used to write the track(s). Required for every "
-            "'--normalization', to convert run-length-encoded intervals back "
-            "into bin counts when recovering library sizes; and required "
-            "again by '--normalization RPKM' for its scale factor (default: "
-            "%(default)s).\n"
+            "Bin width in bp used to write the track(s).\n"
             "\n"
             "Applies to '--method edger' only; ignored otherwise.\n"
+            "\n"
+            "Inferred from the track when omitted, and cross-checked against "
+            "it when given, so a value the track contradicts is refused "
+            "rather than silently rescaling the library size.\n"
+            "\n"
+            "Required only when no track is read, i.e., when both '--lib_A' "
+            "and '--lib_B' are supplied and '--normalization RPKM' needs a "
+            "width for its scale factor.\n"
             "\n"
         ),
     )
@@ -514,7 +518,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         help=(
             "Library size for track A: the column sum of the bin matrix, "
             "which is edgeR's 'lib.size'. Computed from '--fil_A' when "
-            "omitted, which requires an unnormalized track.\n"
+            "omitted, which requires a non-normalized track.\n"
             "\n"
             "Applies to '--method edger' only; ignored otherwise.\n"
             "\n"
@@ -633,6 +637,7 @@ def _print_pseudo_arguments(
     args: argparse.Namespace,
     coef_eff: float | None,
     skp_pfx: tuple[str, ...],
+    siz_bin: int | None = None,
 ) -> None:
     """
     Print the verbose argument banner in the reviewed semantic order.
@@ -655,7 +660,15 @@ def _print_pseudo_arguments(
         if args.method == "edger":
             print(f"--normalization {args.normalization}")
             print(f"--prior_count {args.prior_count}")
-            print(f"--siz_bin {args.siz_bin}")
+
+            if siz_bin is None and args.siz_bin is None:
+                print("--siz_bin (unset)")
+            elif siz_bin is None:
+                print(f"--siz_bin {args.siz_bin}")
+            elif args.siz_bin is None:
+                print(f"--siz_bin {siz_bin}  ## inferred from track ##")
+            else:
+                print(f"--siz_bin {siz_bin}")
 
             if args.lib_A is not None:
                 print(f"--lib_A   {args.lib_A}")
@@ -790,7 +803,7 @@ def _run_edger(
     skp_pfx: tuple[str, ...],
 ) -> int:
     """
-    Emit edgeR-equivalent scale factors and pseudocounts for deepTools.
+    Emit scale factors and pseudocounts from edgeR's prior rule.
 
     Parameters
     ----------
@@ -802,20 +815,34 @@ def _run_edger(
     Returns
     -------
     status : int
-        Zero after printing the pseudocount pair, or the deepTools argument
-        string under '--prt_arg'.
+        Zero. Every failure leaves through 'SystemExit' instead.
 
     Raises
     ------
     SystemExit
-        For a nonpositive library size or an unusable normalization request.
+        For a nonpositive library size, an unusable normalization request, an
+        unreadable track, a '--siz_bin' the track contradicts, or a
+        '--normalization RPKM' run with no width and no track to infer one
+        from.
 
     Notes
     -----
     Library sizes come from '--lib_A' and '--lib_B' when supplied, and are
-    otherwise summed from the tracks. Summing requires an unnormalized track:
-    a CPM or RPKM bedGraph sums to a normalized total, not to a library size,
-    and would silently rescale every value this function returns.
+    otherwise summed from the tracks. Summing requires a non-normalized track,
+    as a CPM or RPKM bedGraph sums to a normalized total, not to a library
+    size, and would silently rescale every value this function returns.
+
+    Reading a track also resolves the bin width, so '--siz_bin' is needed only
+    when both library sizes are supplied, which reads no track, and
+    '--normalization RPKM' still wants a width for its scale factor.
+
+    The result line reaches stdout:
+      - the pseudocount pair as 'A:B',
+      - a single value in single-track mode, or
+      - a deepTools argument string under '--prt_arg'.
+
+    The pair is the spec 'compute_signal_ratio' accepts for '--pseudo' and
+    '--scl_fct'. A JSON summary follows on stdout under '--prt_jsn'.
     """
 
     one_track = _is_one_track(args)
@@ -825,18 +852,41 @@ def _run_edger(
     frg_a, frg_b = args.frg_A, args.frg_B
     sf_a, sf_b = args.sf_A, args.sf_B
 
-    if lib_a is None:
-        lib_a = sum_counts_bdg(args.fil_A, args.siz_bin, skp_pfx)
+    siz_bin = args.siz_bin
 
-    if one_track:
-        #  Mirror A onto B so 'L_bar' collapses to 'L_A'. That reproduces
-        #  edgeR's 'nlib == 1' behavior exactly rather than approximating it;
-        #  see '_is_one_track' for the source reading it comes from.
-        lib_b = lib_a
-        frg_b = frg_a
-        sf_b = sf_a
-    elif lib_b is None:
-        lib_b = sum_counts_bdg(args.fil_B, args.siz_bin, skp_pfx)
+    # Reading a track resolves the bin width, so a run that recovers either
+    # library size needs no '--siz_bin' at all. Only a run given both sizes
+    # reads nothing, and only 'RPKM' then still needs a width.
+    try:
+        if lib_a is None:
+            counts_a = sum_counts_bdg(args.fil_A, siz_bin, skp_pfx)
+            lib_a, siz_bin = counts_a.total, counts_a.siz_bin
+
+        if one_track:
+            # Mirror A onto B so 'L_bar' collapses to 'L_A'. That reproduces
+            # edgeR's 'nlib == 1' behavior exactly rather than approximating
+            # it; see '_is_one_track' for the source reading it comes from.
+            lib_b = lib_a
+            frg_b = frg_a
+            sf_b = sf_a
+        elif lib_b is None:
+            counts_b = sum_counts_bdg(args.fil_B, siz_bin, skp_pfx)
+            lib_b, siz_bin = counts_b.total, counts_b.siz_bin
+    except (OSError, ValueError) as e:
+        if args.verbose:
+            _print_pseudo_arguments(args, None, skp_pfx, siz_bin)
+
+        raise SystemExit(str(e)) from None
+
+    if args.verbose:
+        _print_pseudo_arguments(args, None, skp_pfx, siz_bin)
+
+    if siz_bin is None and canonicalize_norm(args.normalization) == "RPKM":
+        raise SystemExit(
+            "'--siz_bin' is required for '--normalization RPKM' when both "
+            "'--lib_A' and '--lib_B' are supplied, because no track is read "
+            "to infer the bin width from.",
+        )
 
     try:
         result = compute_pseudo_edger(
@@ -844,7 +894,7 @@ def _run_edger(
             lib_b=lib_b,
             prior_count=args.prior_count,
             norm=args.normalization,
-            siz_bin=args.siz_bin,
+            siz_bin=siz_bin,
             scale_a=sf_a,
             scale_b=sf_b,
             frg_a=frg_a,
@@ -899,7 +949,7 @@ def _run_edger(
             "params": {
                 "normalization": args.normalization,
                 "prior_count": args.prior_count,
-                "siz_bin": args.siz_bin,
+                "siz_bin": siz_bin,
                 "dp": args.dp,
                 "skp_pfx": list(skp_pfx),
             },
@@ -918,9 +968,9 @@ def _run_edger(
             },
             "is_edger": result["is_edger"],
             "note": result["note"],
-            #  The B fields mirror A here rather than being dropped, so the
-            #  schema does not change shape between one- and two-track runs.
-            #  'one_track' is what tells a consumer why they are equal.
+            # The B fields mirror A here rather than being dropped, so the
+            # schema does not change shape between one- and two-track runs.
+            # 'one_track' is what tells a consumer why they are equal.
             "one_track": one_track,
         }
 
@@ -1013,7 +1063,7 @@ def main(argv: list[str] | None = None) -> int:
                 "gt",
                 0,
                 "siz_bin",
-                allow_none=False,
+                allow_none=True,
             )
 
             if one_track:
@@ -1041,11 +1091,11 @@ def main(argv: list[str] | None = None) -> int:
                 )
 
             if one_track and args.prt_arg:
-                #  '--scaleFactors' and '--pseudocount' are 'bamCompare'
-                #  options taking a pair each, so there is no one-track
-                #  spelling of them. 'bamCoverage --scaleFactor' exists but
-                #  accepts no pseudocount, so emitting it would silently drop
-                #  the value that was asked for.
+                # The deepTools 'bamCompare' options '--scaleFactors' and
+                # '--pseudocount' take a pair each, so there is no one-track
+                # spelling of them. 'bamCoverage --scaleFactor' exists but
+                # accepts no pseudocount, so emitting it would silently drop
+                # the value that was asked for.
                 raise ValueError(
                     "'--prt_arg' writes the two-track 'bamCompare' argument "
                     "string, which has no single-track form. Drop "
@@ -1063,9 +1113,6 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.method == "edger":
         _warn_inapplicable(args, argv)
-
-        if args.verbose:
-            _print_pseudo_arguments(args, None, skp_pfx)
 
         return _run_edger(args, skp_pfx)
 

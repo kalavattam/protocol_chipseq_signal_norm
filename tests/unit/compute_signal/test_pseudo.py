@@ -6,8 +6,10 @@
 # Copyright 2026 by Kris Alavattam
 # Email: kalavattam@gmail.com
 #
-# OpenAI ChatGPT and Codex (GPT-5.6) were used in design, development, and
-# documentation, with all output reviewed, edited, and approved by the author.
+# The following were used in design, development, and documentation, with all
+# output reviewed, edited, and approved by the author:
+# - OpenAI ChatGPT and Codex (GPT-5.6);
+# - Anthropic Claude Code (Opus 5).
 #
 # Distributed under the MIT license.
 
@@ -266,7 +268,7 @@ def test_parser_preserves_complete_action_contract(
             False,
             "_StoreAction",
             "int",
-            10,
+            None,
             (),
             None,
         ),
@@ -503,3 +505,139 @@ def test_main_rejects_invalid_quantile_with_a_stable_error(
                 "101",
             ]
         )
+
+
+def _bdg_pair(tmp_path: Path) -> tuple[str, str]:
+    """
+    Write a bedGraph pair on a 10 bp grid.
+    """
+
+    first = tmp_path / "first.bdg"
+    second = tmp_path / "second.bdg"
+    first.write_text(
+        "chrI\t0\t10\t2\nchrI\t10\t20\t4\n",
+        encoding="utf-8",
+    )
+    second.write_text(
+        "chrI\t0\t10\t3\nchrI\t10\t20\t5\n",
+        encoding="utf-8",
+    )
+
+    return str(first), str(second)
+
+
+def test_verbose_banner_marks_an_inferred_bin_width(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """
+    The banner reports the width used, not the flag that went unsupplied.
+    """
+
+    fil_a, fil_b = _bdg_pair(tmp_path)
+
+    status = main(
+        [
+            "--verbose",
+            "--method",
+            "edger",
+            "--fil_A",
+            fil_a,
+            "--fil_B",
+            fil_b,
+        ],
+    )
+    banner = capsys.readouterr().err
+
+    assert status == 0
+    assert "--siz_bin 10  ## inferred from track ##" in banner
+    assert "--siz_bin None" not in banner
+
+
+def test_verbose_banner_reports_a_supplied_bin_width_unmarked(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    fil_a, fil_b = _bdg_pair(tmp_path)
+
+    status = main(
+        [
+            "--verbose",
+            "--method",
+            "edger",
+            "--fil_A",
+            fil_a,
+            "--fil_B",
+            fil_b,
+            "--siz_bin",
+            "10",
+        ],
+    )
+    banner = capsys.readouterr().err
+
+    assert status == 0
+    assert "--siz_bin 10\n" in banner
+    assert "inferred from track" not in banner
+
+
+def test_verbose_banner_reports_an_unset_bin_width(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """
+    Supplying both library sizes reads no track, so no width is resolved.
+    """
+
+    fil_a, fil_b = _bdg_pair(tmp_path)
+
+    status = main(
+        [
+            "--verbose",
+            "--method",
+            "edger",
+            "--fil_A",
+            fil_a,
+            "--fil_B",
+            fil_b,
+            "--lib_A",
+            "100",
+            "--lib_B",
+            "200",
+        ],
+    )
+    banner = capsys.readouterr().err
+
+    assert status == 0
+    assert "--siz_bin (unset)" in banner
+
+
+def test_verbose_banner_survives_a_failure_during_resolution(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """
+    A verbose run that fails still says what it was asked to do.
+
+    The banner once printed only after the width resolved, so a contradicted
+    '--siz_bin' produced the error with no record of the request beside it,
+    which is the one case '--verbose' exists for.
+    """
+
+    fil_a, fil_b = _bdg_pair(tmp_path)
+
+    with pytest.raises(SystemExit, match="disagrees with"):
+        main(
+            [
+                "--verbose",
+                "--method",
+                "edger",
+                "--fil_A",
+                fil_a,
+                "--fil_B",
+                fil_b,
+                "--siz_bin",
+                "20",
+            ],
+        )
+
+    assert "--siz_bin 20" in capsys.readouterr().err
