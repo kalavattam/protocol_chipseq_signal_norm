@@ -438,11 +438,11 @@ def test_primary_pair_json_and_verbose_output_are_preserved(
     payload = json.loads(pair.out.splitlines()[1])
 
     assert status == 0
-    assert single.out == "2.00\n"
+    assert single.out == "2\n"
     assert status_pair == 0
-    assert pair.out.splitlines()[0] == "3.000:3.000"
-    assert payload["pseudocounts"]["pseudo_A_str"] == "3.000"
-    assert payload["pseudocounts"]["pseudo_B_str"] == "3.000"
+    assert pair.out.splitlines()[0] == "3:3"
+    assert payload["pseudocounts"]["pseudo_A_str"] == "3"
+    assert payload["pseudocounts"]["pseudo_B_str"] == "3"
     assert reported == [
         "--verbose",
         "--fil_A",
@@ -474,7 +474,7 @@ def test_main_skips_malformed_rows_and_handles_strict_json_failure(
         main(["--fil_A", str(mixed), "--method", "min_nz", "--dp", "2"]) == 0
     )
     malformed = capsys.readouterr()
-    assert malformed.out == "2.00\n"
+    assert malformed.out == "2\n"
     assert malformed.err == ""
 
     assert main(["--fil_A", str(empty), "--prt_jsn"]) == 0
@@ -482,7 +482,8 @@ def test_main_skips_malformed_rows_and_handles_strict_json_failure(
     assert strict_json.out == "nan\n"
     assert "No finite values in A after filtering" in strict_json.err
     assert strict_json.err.endswith(
-        "Strict JSON disallows nan and inf; adjust '--floor' and '--coef', or just skip '--prt_jsn'.\n"
+        "Strict JSON disallows nan and inf; adjust '--floor' and '--coef', or "
+        "just skip '--prt_jsn'.\n"
     )
 
 

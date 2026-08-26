@@ -48,6 +48,7 @@ from protocol_chipseq_signal_norm.utilities.utils_cli import (
     _SectionedHelpConfig,
     add_help_cap,
 )
+from protocol_chipseq_signal_norm.utilities.utils_format import format_value
 from protocol_chipseq_signal_norm.utilities.utils_io import (
     DEF_SKP_PFX,
     ensure_single_stdin,
@@ -911,7 +912,7 @@ def _run_edger(
         )
 
     def render(value: float) -> str:
-        return "nan" if not math.isfinite(value) else f"{value:.{args.dp}f}"
+        return format_value(value, args.dp)
 
     scale_a = result["scale_A"]
     scale_b = result["scale_B"]
@@ -920,14 +921,20 @@ def _run_edger(
 
     if args.verbose:
         with redirect_stdout(sys.stderr):
-            print(f"lib_A          {lib_a:.6f}")
-            print(f"lib_B          {lib_b:.6f}")
-            print(f"prior_scaled_A {result['prior_scaled_A']:.10g}")
-            print(f"prior_scaled_B {result['prior_scaled_B']:.10g}")
+            print(f"lib_A          {format_value(lib_a, args.dp)}")
+            print(f"lib_B          {format_value(lib_b, args.dp)}")
+            print(
+                "prior_scaled_A "
+                f"{format_value(result['prior_scaled_A'], args.dp)}",
+            )
+            print(
+                "prior_scaled_B "
+                f"{format_value(result['prior_scaled_B'], args.dp)}",
+            )
 
             if "k_A" in result:
-                print(f"k_A            {result['k_A']:.6f}")
-                print(f"k_B            {result['k_B']:.6f}")
+                print(f"k_A            {format_value(result['k_A'], args.dp)}")
+                print(f"k_B            {format_value(result['k_B'], args.dp)}")
             print(f"is_edger       {result['is_edger']}")
             print("")
 
@@ -1225,7 +1232,7 @@ def main(argv: list[str] | None = None) -> int:
     )
 
     def format_pseudocount(value: float) -> str:
-        return "nan" if not math.isfinite(value) else f"{value:.{args.dp}f}"
+        return format_value(value, args.dp)
 
     if want_pair:
         rendered_a = format_pseudocount(pseudo_a)
