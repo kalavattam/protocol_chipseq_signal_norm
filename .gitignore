@@ -131,3 +131,7 @@ tests/fixtures/trim_fastqs/**
 !tests/fixtures/trim_fastqs/
 !tests/fixtures/trim_fastqs/README.md
 !tests/fixtures/trim_fastqs/make.sh
+
+# Slurm job logs, which land in whatever directory a job was submitted from
+*.log
+slurm-*.out
