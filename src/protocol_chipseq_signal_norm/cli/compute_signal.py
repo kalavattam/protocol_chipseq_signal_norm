@@ -3890,7 +3890,8 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
             "%(default)s).\n"
             "\n"
             "When '--threads > 1', different chromosomes are processed in "
-            "parallel.\n\n"
+            "parallel.\n"
+            "\n"
         ),
     )
 
@@ -3908,7 +3909,8 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         default=None,
         help=(
             "Reference FASTA file for CRAM decoding. Required for CRAM inputs "
-            "unless the reference is otherwise available to htslib/pysam.\n\n"
+            "unless the reference is otherwise available to htslib/pysam.\n"
+            "\n"
         ),
     )
     parser.add_argument(
@@ -3921,7 +3923,8 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
             "Chromosome sizes file in UCSC-style TSV format with chromosome "
             "name and positive integer size columns. Header sizes from "
             "BAM/CRAM are used when available; this file can supplement "
-            "missing header sizes, but conflicting sizes are rejected.\n\n"
+            "missing header sizes, but conflicting sizes are rejected.\n"
+            "\n"
         ),
     )
     parser.add_argument(
@@ -3937,7 +3940,8 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
             "\n"
             "Note: requesting BED output causes the script to write processed "
             "fragment coordinates in a BED-like format, and '--siz_bin', "
-            "'--method', '--scl_fct', and '--dp' are ignored.\n\n"
+            "'--method', '--scl_fct', and '--dp' are ignored.\n"
+            "\n"
         ),
     )
 
@@ -3960,7 +3964,8 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
             "\n"
             "Note: 'norm' normalizes for both fragment length and total "
             "fragment count so that the genome-wide summed signal is "
-            "approximately 1.\n\n"
+            "approximately 1.\n"
+            "\n"
         ),
     )
     parser.add_argument(
@@ -3971,7 +3976,8 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         default=10,
         help=(
             "Bin size in base pairs for signal calculation (default: "
-            "%(default)s).\n\n"
+            "%(default)s).\n"
+            "\n"
         ),
     )
     parser.add_argument(
@@ -3985,7 +3991,8 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
             "'chrom' parallelizes indexed chromosome fetching and "
             "array-backed signal calculation. 'window' parallelizes indexed "
             "coordinate-window fetching for finer load balance on large BAM "
-            "inputs.\n\n"
+            "inputs.\n"
+            "\n"
         ),
     )
     parser.add_argument(
@@ -3997,7 +4004,8 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         help=(
             "Number of records to process per chunk, retained for "
             "compatibility with older workflows (default: %(default)s). "
-            "Ignored by public engines.\n\n"
+            "Ignored by public engines.\n"
+            "\n"
         ),
     )
     parser.add_argument(
@@ -4035,7 +4043,8 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         help=(
             "Fixed fragment length to use instead of read lengths (single-end "
             "alignments) or template lengths (paired-end alignments; default: "
-            "%(default)s).\n\n"
+            "%(default)s).\n"
+            "\n"
         ),
     )
     parser.add_argument(
@@ -4047,7 +4056,8 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         help=(
             "Maximum number of decimal places retained for finite emitted "
             "values (default: %(default)s). After rounding, non-informative "
-            "trailing zeros are stripped.\n\n"
+            "trailing zeros are stripped.\n"
+            "\n"
         ),
     )
 
