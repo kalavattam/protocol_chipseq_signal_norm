@@ -2739,8 +2739,8 @@ def materialize_event_signal_parts(
             diff = np.zeros(n_bins + 1, dtype=np.float64)
             np.add.at(diff, diff_bins, diff_values)
             summed = np.cumsum(diff[:-1])
-            values += summed if interior is None else np.where(
-                interior, summed, 0.0
+            values += (
+                summed if interior is None else np.where(interior, summed, 0.0)
             )
 
         idx = np.flatnonzero(touched & (values != 0.0))
@@ -3955,7 +3955,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
             "  - Fragment-length-normalized aliases: 'f', 'frg', 'frag', "
             "'frg_len', 'frag_len', 'l', 'len', 'len_frg', 'len_frag'. "
             "Internally standardized to 'frag'.\n"
-            "  - Normalized-coverage aliases: 'n', 'nrm', 'norm', "
+            "  - Normalized-coverage aliases: 'n', 'nc', 'nrm', 'norm', "
             "'normalized'. Internally standardized to 'norm'.\n"
             "\n"
             "Note: 'norm' normalizes for both fragment length and total "
