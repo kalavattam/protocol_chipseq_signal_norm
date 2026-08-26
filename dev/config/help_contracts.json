@@ -2158,8 +2158,18 @@
         "eps",
         "mode_nz",
         "sym",
+        "normalization",
+        "prior_count",
+        "siz_bin",
+        "lib_A",
+        "lib_B",
+        "sf_A",
+        "sf_B",
+        "frg_A",
+        "frg_B",
         "dp",
-        "prt_jsn"
+        "prt_jsn",
+        "prt_arg"
       ],
       "roles_reviewed": true,
       "roles": {
@@ -2175,8 +2185,18 @@
         "eps": "mode_specific",
         "mode_nz": "mode_specific",
         "sym": "mode_specific",
+        "normalization": "mode_specific",
+        "prior_count": "mode_specific",
+        "siz_bin": "mode_specific",
+        "lib_A": "mode_specific",
+        "lib_B": "mode_specific",
+        "sf_A": "mode_specific",
+        "sf_B": "mode_specific",
+        "frg_A": "mode_specific",
+        "frg_B": "mode_specific",
         "dp": "formatting",
-        "prt_jsn": "formatting"
+        "prt_jsn": "formatting",
+        "prt_arg": "formatting"
       },
       "usage_rows": [
         {
@@ -2200,8 +2220,22 @@
           "rationale": "Pseudocount selection, filtering, and symmetry controls form one mode-specific group."
         },
         {
-          "members": ["dp", "prt_jsn"],
-          "rationale": "Finite-value rendering and optional JSON representation form the output-formatting group."
+          "members": [
+            "normalization",
+            "prior_count",
+            "siz_bin",
+            "lib_A",
+            "lib_B",
+            "sf_A",
+            "sf_B",
+            "frg_A",
+            "frg_B"
+          ],
+          "rationale": "Target normalization, prior magnitude, bin width, library sizes, scale factors, and fragment counts form one mode-specific group; every member is inert outside '--method edger'."
+        },
+        {
+          "members": ["dp", "prt_jsn", "prt_arg"],
+          "rationale": "Finite-value rendering and the optional JSON and deepTools argument representations form the output-formatting group."
         }
       ],
       "surface_orders": {
@@ -2218,8 +2252,18 @@
           "eps",
           "mode_nz",
           "sym",
+          "normalization",
+          "prior_count",
+          "siz_bin",
+          "lib_A",
+          "lib_B",
+          "sf_A",
+          "sf_B",
+          "frg_A",
+          "frg_B",
           "dp",
-          "prt_jsn"
+          "prt_jsn",
+          "prt_arg"
         ],
         "usage": [
           "help",
@@ -2234,8 +2278,18 @@
           "eps",
           "mode_nz",
           "sym",
+          "normalization",
+          "prior_count",
+          "siz_bin",
+          "lib_A",
+          "lib_B",
+          "sf_A",
+          "sf_B",
+          "frg_A",
+          "frg_B",
           "dp",
-          "prt_jsn"
+          "prt_jsn",
+          "prt_arg"
         ],
         "options_parameters": [
           "help",
@@ -2250,8 +2304,18 @@
           "eps",
           "mode_nz",
           "sym",
+          "normalization",
+          "prior_count",
+          "siz_bin",
+          "lib_A",
+          "lib_B",
+          "sf_A",
+          "sf_B",
+          "frg_A",
+          "frg_B",
           "dp",
-          "prt_jsn"
+          "prt_jsn",
+          "prt_arg"
         ],
         "reporting_order": [
           "verbose",
@@ -2283,7 +2347,21 @@
             "sym"
           ]
         },
-        {"kind": "same_group", "members": ["dp", "prt_jsn"]}
+        {
+          "kind": "contiguous",
+          "members": [
+            "normalization",
+            "prior_count",
+            "siz_bin",
+            "lib_A",
+            "lib_B",
+            "sf_A",
+            "sf_B",
+            "frg_A",
+            "frg_B"
+          ]
+        },
+        {"kind": "same_group", "members": ["dp", "prt_jsn", "prt_arg"]}
       ],
       "adapters": {
         "parser": "python_argparse_ast_and_runtime_parser",

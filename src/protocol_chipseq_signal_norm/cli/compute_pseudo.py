@@ -37,6 +37,7 @@ import signal
 import sys
 from contextlib import redirect_stdout, suppress
 
+from protocol_chipseq_signal_norm.utilities.utils_bdg import sum_counts_bdg
 from protocol_chipseq_signal_norm.utilities.utils_check import (
     check_exists,
     validate_comparison,
@@ -53,6 +54,9 @@ from protocol_chipseq_signal_norm.utilities.utils_io import (
     parse_skp_pfx,
 )
 from protocol_chipseq_signal_norm.utilities.utils_stabilizer import (
+    NORM_CHOICES,
+    canonicalize_norm,
+    compute_pseudo_edger,
     compute_stats_robust,
     determine_coef_eff,
     iter_vals_bdg,
@@ -225,7 +229,18 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
                     "mode_nz",
                     "sym",
                 ),
-                ("dp", "prt_jsn"),
+                (
+                    "normalization",
+                    "prior_count",
+                    "siz_bin",
+                    "lib_A",
+                    "lib_B",
+                    "sf_A",
+                    "sf_B",
+                    "frg_A",
+                    "frg_B",
+                ),
+                ("dp", "prt_jsn", "prt_arg"),
             ),
             examples=(
                 _HelpExample(
@@ -301,17 +316,25 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         "-m",
         "--method",
         dest="method",
-        choices=("frc_mdn_nz", "qntl_nz", "frc_avg_nz", "min_nz"),
+        choices=("edger", "frc_mdn_nz", "qntl_nz", "frc_avg_nz", "min_nz"),
         default="frc_mdn_nz",
         help=(
-            "Workflow method. Method to compute per-track pseudocount "
-            "(default: %(default)s):\n"
+            "Workflow method to compute per-track pseudocount (default: "
+            "%(default)s):\n"
+            "    - edger       edgeR's prior.count rule; see "
+            "'--normalization'\n"
             "    - frc_mdn_nz  value = coef × median of nonzero bins\n"
             "    - qntl_nz     value = q-th percentile of nonzero bins\n"
             "    - frc_avg_nz  value = coef × mean of nonzero bins\n"
             "    - min_nz      value = coef × minimum nonzero bin\n"
             "\n"
             "Notes:\n"
+            "    - '--method edger' takes one track or two, as edgeR does.\n"
+            "    - With one track, edgeR's per-sample prior scaling "
+            "degenerates to a no-op and the mean library size is that track's "
+            "own.\n"
+            "    - A given track's one-track pseudocount is therefore not its "
+            "two-track pseudocount; both are correct for their own frame.\n"
             "    - If '--method qntl_nz', set percentile with '--qntl_nz' "
             "[decimals OK (e.g., 0.1 = 0.1th percentile); nearest-rank "
             "determined via 'round'].\n"
@@ -432,6 +455,137 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     )
 
     parser.add_argument(
+        "-nm",
+        "--normalization",
+        dest="normalization",
+        choices=NORM_CHOICES,
+        default="CPM",
+        help=(
+            "Target deepTools normalization (default: %(default)s).\n"
+            "    - CPM, BPM  exact; BPM is CPM in deepTools\n"
+            "    - RPKM      exact; needs '--siz_bin'\n"
+            "    - None      correct up to a constant log offset; not edgeR\n"
+            "    - RPGC      needs '--sf_A' and '--sf_B'; not edgeR\n"
+            "    - norm      normalized coverage; not edgeR. Needs '--frg_A' "
+            "and '--frg_B'; pass the raw-count tracks as '--fil_A' and "
+            "'--fil_B', not the normalized coverage tracks\n"
+            "\n"
+            "Applies to '--method edger' only; ignored otherwise.\n"
+            "\n"
+        ),
+    )
+    parser.add_argument(
+        "-pc",
+        "--prior_count",
+        dest="prior_count",
+        type=float,
+        default=2.0,
+        help=(
+            "edgeR 'prior.count' before library-size scaling (default: "
+            "%(default)s).\n"
+            "\n"
+            "Applies to '--method edger' only; ignored otherwise.\n"
+            "\n"
+        ),
+    )
+    parser.add_argument(
+        "-sb",
+        "--siz_bin",
+        dest="siz_bin",
+        type=int,
+        default=10,
+        help=(
+            "Bin width in bp used to write the track(s). Required for every "
+            "'--normalization', to convert run-length-encoded intervals back "
+            "into bin counts when recovering library sizes; and required "
+            "again by '--normalization RPKM' for its scale factor (default: "
+            "%(default)s).\n"
+            "\n"
+            "Applies to '--method edger' only; ignored otherwise.\n"
+            "\n"
+        ),
+    )
+    parser.add_argument(
+        "-lA",
+        "--lib_A",
+        dest="lib_A",
+        type=float,
+        default=None,
+        help=(
+            "Library size for track A: the column sum of the bin matrix, "
+            "which is edgeR's 'lib.size'. Computed from '--fil_A' when "
+            "omitted, which requires an unnormalized track.\n"
+            "\n"
+            "Applies to '--method edger' only; ignored otherwise.\n"
+            "\n"
+        ),
+    )
+    parser.add_argument(
+        "-lB",
+        "--lib_B",
+        dest="lib_B",
+        type=float,
+        default=None,
+        help=(
+            "Library size for track B; see '--lib_A'. Omit this and '--fil_B' "
+            "to compute a single-track pseudocount.\n"
+            "\n"
+        ),
+    )
+    parser.add_argument(
+        "-sfA",
+        "--sf_A",
+        dest="sf_A",
+        type=float,
+        default=None,
+        help=(
+            "Scaling factor read from 'bamCoverage --verbose'. Generate that "
+            "run with '--exactScaling'; otherwise, the factor is a sampled "
+            "estimate and so is every pseudocount derived from it.\n"
+            "\n"
+            "Applies to '--method edger --normalization RPGC' only, where it "
+            "is required.\n"
+            "\n"
+        ),
+    )
+    parser.add_argument(
+        "-sfB",
+        "--sf_B",
+        dest="sf_B",
+        type=float,
+        default=None,
+        help=("deepTools scale factor for track B; see '--sf_A'.\n\n"),
+    )
+    parser.add_argument(
+        "-gA",
+        "--frg_A",
+        dest="frg_A",
+        type=float,
+        default=None,
+        help=(
+            "Fragment count for track A: the number of fragments "
+            "'compute_signal' divided by, not the number of alignment "
+            "records. The two coincide only when exactly one alignment per "
+            "fragment survives filtering. A normalized-coverage track sums to "
+            "1 by construction, so its own total cannot supply this. Get it "
+            "from, e.g., the fragment count 'compute_signal' reports, or as "
+            "1e6 divided by the CPM scale factor that 'bamCoverage --verbose' "
+            "reports.\n"
+            "\n"
+            "Applies to '--method edger' with normalized coverage "
+            "('--normalization norm', aliases 'nc', 'n', 'nrm', 'normalized') "
+            "only, where it is required.\n"
+        ),
+    )
+    parser.add_argument(
+        "-gB",
+        "--frg_B",
+        dest="frg_B",
+        type=float,
+        default=None,
+        help=("Fragment count for track B; see '--frg_A'.\n\n"),
+    )
+    parser.add_argument(
         "-dp",
         "--dp",
         dest="dp",
@@ -450,6 +604,20 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         action="store_true",
         default=False,
         help="Print a JSON summary to stdout.\n\n",
+    )
+    parser.add_argument(
+        "-pa",
+        "--prt_arg",
+        dest="prt_arg",
+        action="store_true",
+        default=False,
+        help=(
+            "Print a ready-to-paste deepTools argument string instead of the "
+            "bare pseudocount pair.\n"
+            "\n"
+            "Applies to '--method edger' only; ignored otherwise.\n"
+            "\n"
+        ),
     )
 
     argv_parse = sys.argv[1:] if argv is None else argv
@@ -484,25 +652,288 @@ def _print_pseudo_arguments(
         print(f"--skp_pfx {skp_pfx}")
         print(f"--method  {args.method}")
 
-        if args.method == "qntl_nz":
-            print(f"--qntl_nz {args.qntl_nz}")
+        if args.method == "edger":
+            print(f"--normalization {args.normalization}")
+            print(f"--prior_count {args.prior_count}")
+            print(f"--siz_bin {args.siz_bin}")
 
-        if coef_eff is not None and coef_eff != args.coef:
-            print(f"--coef    {args.coef}  ## coef_eff = {coef_eff} ##")
+            if args.lib_A is not None:
+                print(f"--lib_A   {args.lib_A}")
+
+            if args.lib_B is not None:
+                print(f"--lib_B   {args.lib_B}")
+
+            if args.sf_A is not None:
+                print(f"--sf_A    {args.sf_A}")
+
+            if args.sf_B is not None:
+                print(f"--sf_B    {args.sf_B}")
+
+            if args.frg_A is not None:
+                print(f"--frg_A   {args.frg_A}")
+
+            if args.frg_B is not None:
+                print(f"--frg_B   {args.frg_B}")
+
+            if args.prt_arg:
+                print("--prt_arg")
         else:
-            print(f"--coef    {args.coef}")
+            if args.method == "qntl_nz":
+                print(f"--qntl_nz {args.qntl_nz}")
 
-        print(f"--floor   {args.floor}")
-        print(f"--eps     {args.eps}")
-        print(f"--mode_nz {args.mode_nz}")
-        print(f"--sym     {args.sym}")
-        print(f"--dp     {args.dp}")
+            if coef_eff is not None and coef_eff != args.coef:
+                print(f"--coef    {args.coef}  ## coef_eff = {coef_eff} ##")
+            else:
+                print(f"--coef    {args.coef}")
+
+            print(f"--floor   {args.floor}")
+            print(f"--eps     {args.eps}")
+            print(f"--mode_nz {args.mode_nz}")
+            print(f"--sym     {args.sym}")
+
+        print(f"--dp      {args.dp}")
 
         if args.prt_jsn:
             print("--prt_jsn")
 
         print("")
         print("")
+
+
+def _is_one_track(args: argparse.Namespace) -> bool:
+    """
+    Report whether the edgeR request describes a single track.
+
+    Parameters
+    ----------
+    args : argparse.Namespace
+        Parsed arguments.
+
+    Returns
+    -------
+    one_track : bool
+        True when neither '--fil_B' nor '--lib_B' was supplied.
+
+    Notes
+    -----
+    edgeR itself has no two-sample requirement, so neither does this. In
+    'add_prior_count.c:88' 'compute_offsets' averages the library sizes over
+    all columns and scales each sample's prior by 'offset[lib] / ave_lib'.
+    With one column that ratio is exactly 1: the per-sample scaling degenerates
+    to a no-op, the prior stays at its nominal 'prior.count', and the
+    denominator becomes 'L + 2 * prior.count'. Nothing guards the path --
+    'cpm.default' checks only for a zero-length dimension, and 'rpkm.default'
+    is 'cpm.default' followed by a length division, so it inherits the same
+    behavior.
+
+    Reproducing that here therefore needs no separate estimator: passing the
+    one library size as both 'lib_a' and 'lib_b' makes 'L_bar' equal 'L_A',
+    which is exactly what 'ave_lib' becomes when 'nlib' is 1. Confirmed
+    against edgeR 4.4.0 in 'experiments/edger_equivalence/06_single_track.R'.
+
+    The consequence a caller must know: a track's one-track pseudocount is not
+    its two-track pseudocount, because 'L_bar' differs. That is edgeR's own
+    behavior -- 'cpm(log = TRUE)' on a one-column 'DGEList' differs from the
+    same column inside a two-column one -- and not an artifact here.
+    """
+
+    return not getattr(args, "fil_B", None) and args.lib_B is None
+
+
+def _warn_inapplicable(
+    args: argparse.Namespace,
+    argv: list[str] | None,
+) -> None:
+    """
+    Warn when arguments that do not apply to the chosen method are passed.
+
+    Parameters
+    ----------
+    args : argparse.Namespace
+        Parsed arguments.
+    argv : list[str] | None
+        Arguments as supplied, or None to read the process arguments.
+
+    Notes
+    -----
+    'edger' derives its pseudocount from library sizes, so it consults none of
+    the distribution-shaping options. Silently ignoring them lets a wrong
+    mental model survive: '--coef 0.05 --method edger' currently runs, ignores
+    the coefficient, and reports nothing.
+
+    Detection reads the supplied tokens rather than comparing against defaults,
+    so an explicitly passed default is still reported.
+    """
+
+    supplied = sys.argv[1:] if argv is None else argv
+    ignored = ("--coef", "--qntl_nz", "--floor", "--eps", "--mode_nz", "--sym")
+
+    seen = [
+        flag
+        for flag in ignored
+        if any(
+            token == flag or token.startswith(f"{flag}=") for token in supplied
+        )
+    ]
+
+    if seen:
+        print(
+            f"Note: {', '.join(seen)} do not apply to '--method edger' and "
+            "were ignored; it derives the pseudocount from library sizes, not "
+            "from the value distribution.",
+            file=sys.stderr,
+        )
+
+
+def _run_edger(
+    args: argparse.Namespace,
+    skp_pfx: tuple[str, ...],
+) -> int:
+    """
+    Emit edgeR-equivalent scale factors and pseudocounts for deepTools.
+
+    Parameters
+    ----------
+    args : argparse.Namespace
+        Parsed arguments carrying the edgeR policy.
+    skp_pfx : tuple[str, ...]
+        Header prefixes to skip when reading library sizes from tracks.
+
+    Returns
+    -------
+    status : int
+        Zero after printing the pseudocount pair, or the deepTools argument
+        string under '--prt_arg'.
+
+    Raises
+    ------
+    SystemExit
+        For a nonpositive library size or an unusable normalization request.
+
+    Notes
+    -----
+    Library sizes come from '--lib_A' and '--lib_B' when supplied, and are
+    otherwise summed from the tracks. Summing requires an unnormalized track:
+    a CPM or RPKM bedGraph sums to a normalized total, not to a library size,
+    and would silently rescale every value this function returns.
+    """
+
+    one_track = _is_one_track(args)
+
+    lib_a = args.lib_A
+    lib_b = args.lib_B
+    frg_a, frg_b = args.frg_A, args.frg_B
+    sf_a, sf_b = args.sf_A, args.sf_B
+
+    if lib_a is None:
+        lib_a = sum_counts_bdg(args.fil_A, args.siz_bin, skp_pfx)
+
+    if one_track:
+        #  Mirror A onto B so 'L_bar' collapses to 'L_A'. That reproduces
+        #  edgeR's 'nlib == 1' behavior exactly rather than approximating it;
+        #  see '_is_one_track' for the source reading it comes from.
+        lib_b = lib_a
+        frg_b = frg_a
+        sf_b = sf_a
+    elif lib_b is None:
+        lib_b = sum_counts_bdg(args.fil_B, args.siz_bin, skp_pfx)
+
+    try:
+        result = compute_pseudo_edger(
+            lib_a=lib_a,
+            lib_b=lib_b,
+            prior_count=args.prior_count,
+            norm=args.normalization,
+            siz_bin=args.siz_bin,
+            scale_a=sf_a,
+            scale_b=sf_b,
+            frg_a=frg_a,
+            frg_b=frg_b,
+        )
+    except ValueError as e:
+        raise SystemExit(str(e)) from None
+
+    if not result["is_edger"]:
+        print(
+            f"Note: '--normalization {args.normalization}' does not "
+            f"reproduce edgeR's estimator: {result['note']}.",
+            file=sys.stderr,
+        )
+
+    def render(value: float) -> str:
+        return "nan" if not math.isfinite(value) else f"{value:.{args.dp}f}"
+
+    scale_a = result["scale_A"]
+    scale_b = result["scale_B"]
+    pseudo_a = result["pseudo_A"]
+    pseudo_b = result["pseudo_B"]
+
+    if args.verbose:
+        with redirect_stdout(sys.stderr):
+            print(f"lib_A          {lib_a:.6f}")
+            print(f"lib_B          {lib_b:.6f}")
+            print(f"prior_scaled_A {result['prior_scaled_A']:.10g}")
+            print(f"prior_scaled_B {result['prior_scaled_B']:.10g}")
+
+            if "k_A" in result:
+                print(f"k_A            {result['k_A']:.6f}")
+                print(f"k_B            {result['k_B']:.6f}")
+            print(f"is_edger       {result['is_edger']}")
+            print("")
+
+    if args.prt_arg:
+        print(
+            f"--scaleFactors {scale_a:.{args.dp}f}:{scale_b:.{args.dp}f} "
+            f"--pseudocount {render(pseudo_a)} {render(pseudo_b)}",
+        )
+    elif one_track:
+        print(render(pseudo_a))
+    else:
+        print(f"{render(pseudo_a)}:{render(pseudo_b)}")
+
+    if args.prt_jsn:
+        out = {
+            "fil_A": args.fil_A,
+            "fil_B": getattr(args, "fil_B", None),
+            "method": "edger",
+            "params": {
+                "normalization": args.normalization,
+                "prior_count": args.prior_count,
+                "siz_bin": args.siz_bin,
+                "dp": args.dp,
+                "skp_pfx": list(skp_pfx),
+            },
+            "lib_sizes": {"A": lib_a, "B": lib_b},
+            "k": (
+                {"A": result["k_A"], "B": result["k_B"]}
+                if "k_A" in result
+                else None
+            ),
+            "scale_factors": {"A": scale_a, "B": scale_b},
+            "pseudocounts": {
+                "pseudo_A": pseudo_a,
+                "pseudo_B": pseudo_b,
+                "pseudo_A_str": render(pseudo_a),
+                "pseudo_B_str": render(pseudo_b),
+            },
+            "is_edger": result["is_edger"],
+            "note": result["note"],
+            #  The B fields mirror A here rather than being dropped, so the
+            #  schema does not change shape between one- and two-track runs.
+            #  'one_track' is what tells a consumer why they are equal.
+            "one_track": one_track,
+        }
+
+        try:
+            print(json.dumps(out, separators=(",", ":"), allow_nan=False))
+        except ValueError:
+            print(
+                "Strict JSON disallows nan and inf; check '--lib_A' and "
+                "'--lib_B', or just skip '--prt_jsn'.",
+                file=sys.stderr,
+            )
+
+    return 0
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -567,6 +998,60 @@ def main(argv: list[str] | None = None) -> int:
         ):
             raise ValueError("'--qntl_nz' must be finite and in [0, 100].")
 
+        if args.method == "edger":
+            one_track = _is_one_track(args)
+
+            validate_comparison(
+                args.prior_count,
+                "ge",
+                0.0,
+                "prior_count",
+                allow_none=False,
+            )
+            validate_comparison(
+                args.siz_bin,
+                "gt",
+                0,
+                "siz_bin",
+                allow_none=False,
+            )
+
+            if one_track:
+                need_sf = args.sf_A is None
+                need_aln = args.frg_A is None
+                both = "'--sf_A'"
+                both_frg = "'--frg_A'"
+            else:
+                need_sf = args.sf_A is None or args.sf_B is None
+                need_aln = args.frg_A is None or args.frg_B is None
+                both = "both '--sf_A' and '--sf_B'"
+                both_frg = "both '--frg_A' and '--frg_B'"
+
+            if canonicalize_norm(args.normalization) == "norm" and need_aln:
+                raise ValueError(
+                    f"'--normalization {args.normalization}' requires "
+                    f"{both_frg}; a normalized-coverage track sums to 1, so "
+                    "the fragment count cannot be recovered from it."
+                )
+
+            if args.normalization == "RPGC" and need_sf:
+                raise ValueError(
+                    f"'--normalization RPGC' requires {both}; read them from "
+                    "'bamCoverage --verbose'.",
+                )
+
+            if one_track and args.prt_arg:
+                #  '--scaleFactors' and '--pseudocount' are 'bamCompare'
+                #  options taking a pair each, so there is no one-track
+                #  spelling of them. 'bamCoverage --scaleFactor' exists but
+                #  accepts no pseudocount, so emitting it would silently drop
+                #  the value that was asked for.
+                raise ValueError(
+                    "'--prt_arg' writes the two-track 'bamCompare' argument "
+                    "string, which has no single-track form. Drop "
+                    "'--prt_arg' to print the pseudocount, or supply track B."
+                )
+
         validate_comparison(args.coef, "ge", 0.0, "coef", allow_none=True)
         validate_comparison(args.floor, "ge", 0.0, "floor", allow_none=False)
         validate_comparison(args.eps, "ge", 0.0, "eps", allow_none=False)
@@ -574,9 +1059,17 @@ def main(argv: list[str] | None = None) -> int:
     except ValueError as e:
         raise SystemExit(str(e)) from None
 
-    coef_eff = determine_coef_eff(args.method, args.coef)
-
     skp_pfx = parse_skp_pfx(args.skp_pfx, default=DEF_SKP_PFX)
+
+    if args.method == "edger":
+        _warn_inapplicable(args, argv)
+
+        if args.verbose:
+            _print_pseudo_arguments(args, None, skp_pfx)
+
+        return _run_edger(args, skp_pfx)
+
+    coef_eff = determine_coef_eff(args.method, args.coef)
 
     mode_nz = args.mode_nz
 

@@ -6,9 +6,10 @@
 # Copyright 2026 by Kris Alavattam
 # Email: kalavattam@gmail.com
 #
-# OpenAI ChatGPT and Codex (GPT-5-series models; most recent: GPT-5.6) were
-# used in design, development, and documentation, with all output reviewed,
-# edited, and approved by the author.
+# The following were used in design, development, and documentation, with all
+# output reviewed, edited, and approved by the author:
+# - OpenAI ChatGPT and Codex (GPT-5-series models; most recent: GPT-5.6);
+# - Anthropic Claude Code (Opus 5).
 #
 # Distributed under the MIT license.
 
@@ -245,6 +246,248 @@ def median_sorted(values: list[float]) -> float:
         return values[count // 2]
 
     return 0.5 * (values[count // 2 - 1] + values[count // 2])
+
+
+NORM_EDGER_EXACT = ("CPM", "BPM", "RPKM")
+NORM_EDGER_APPROX = ("None", "RPGC", "norm")
+
+# Aliases for normalized coverage, matching 'compute_signal.METHOD_CANON' so
+# one substrate has one vocabulary across the codebase. 'norm' is canonical;
+# 'nc' is shorthand used in prose and is accepted rather than privileged.
+NORM_CANON = {
+    "CPM": "CPM",
+    "BPM": "BPM",
+    "RPKM": "RPKM",
+    "None": "None",
+    "RPGC": "RPGC",
+    "n": "norm",
+    "nc": "norm",
+    "nrm": "norm",
+    "norm": "norm",
+    "normalized": "norm",
+}
+NORM_CHOICES = tuple(NORM_CANON.keys())
+
+
+def canonicalize_norm(norm: str) -> str:
+    """
+    Map a normalization alias onto its canonical name.
+
+    Parameters
+    ----------
+    norm : str
+        Any key of 'NORM_CANON'.
+
+    Returns
+    -------
+    canonical : str
+        The canonical name.
+
+    Raises
+    ------
+    ValueError
+        If 'norm' is not a recognized alias.
+    """
+
+    if norm not in NORM_CANON:
+        raise ValueError(f"Error: Unknown --normalization: {norm!r}")
+
+    return NORM_CANON[norm]
+
+
+def compute_pseudo_edger(
+    lib_a: float,
+    lib_b: float,
+    prior_count: float = 2.0,
+    norm: str = "CPM",
+    siz_bin: int = 10,
+    scale_a: float | None = None,
+    scale_b: float | None = None,
+    frg_a: float | None = None,
+    frg_b: float | None = None,
+) -> dict[str, object]:
+    """
+    Derive edgeR-equivalent scale factors and pseudocounts for deepTools.
+
+    Parameters
+    ----------
+    lib_a : float
+        Library size for track A, as edgeR's 'lib.size'.
+    lib_b : float
+        Library size for track B.
+    prior_count : float
+        edgeR's 'prior.count' before library-size scaling.
+    norm : str
+        Target deepTools normalization: 'CPM', 'BPM', 'RPKM', 'None', or
+        'RPGC'.
+    siz_bin : int
+        Bin width in base pairs; used by 'RPKM'.
+    scale_a, scale_b : float | None
+        Externally supplied deepTools scale factors, required for 'RPGC'.
+    frg_a, frg_b : float | None
+        Fragment counts, required for 'norm' (normalized coverage). This is
+        the same denominator 'compute_signal' divides by, not the number of
+        alignment records; the two coincide only when one record per fragment
+        survives filtering. Not derivable from a normalized-coverage track,
+        which sums to 1 by construction.
+
+    Returns
+    -------
+    result : dict[str, object]
+        Keys 'scale_A', 'scale_B', 'pseudo_A', 'pseudo_B', 'prior_scaled_A',
+        'prior_scaled_B', 'is_edger', and 'note'.
+
+    Raises
+    ------
+    ValueError
+        For a nonpositive library size, a negative 'prior.count', an unknown
+        'norm', 'RPGC' without both scale factors, or normalized coverage
+        without both fragment counts.
+
+    Notes
+    -----
+    edgeR's 'cpm(log=TRUE)' computes
+    '(y_i + y0_i) / (L_i + 2 * y0_i) * 1e6' with
+    'y0_i = prior.count * L_i / mean(L)'. That is linear in 'y_i', so it splits
+    into a slope and an intercept that deepTools can express as a scale factor
+    and a pseudocount:
+
+        s_i = 1e6 / (L_i + 2 * y0_i)
+        p_i = s_i * y0_i = 1e6 * prior.count / (mean(L) + 2 * prior.count)
+
+    'p_i' carries no per-sample index, so edgeR's rule is **symmetric** in
+    normalized units. The scale factor is not deepTools' CPM factor
+    '1e6 / N', so '--normalizeUsing' cannot reach it; the pair must be passed
+    as '--scaleFactors A:B --pseudocount P P'.
+
+    A single track is expressed by passing its library size as both 'lib_a'
+    and 'lib_b'. That is not an approximation: edgeR averages library sizes
+    over all columns and scales each prior by 'L_i / mean(L)'
+    ('add_prior_count.c:88'), so with one column the ratio is exactly 1, the
+    prior stays nominal, and 'mean(L)' is that column's own library size.
+    Passing 'L' twice reproduces both. Because 'mean(L)' differs between the
+    two framings, a track's one-track pseudocount is not its two-track
+    pseudocount -- which is edgeR's behavior too, not an artifact here.
+
+    'norm' (aliases 'nc', 'n', 'nrm', 'normalized') is normalized coverage:
+    each fragment deposits exactly 1.0 across
+    its footprint and the track is divided by the fragment count, so it sums to
+    **1**, not to a library size. Its own total is therefore useless as a
+    denominator; the library size that matters is 'N', the fragment count
+    that 'compute_signal' divided by, which must be supplied. That is not the
+    alignment-record count unless exactly one record per fragment survives
+    filtering, which is what '--samFlagInclude 64' arranges for paired-end
+    data and what its absence undoes.
+
+    Normalized coverage also needs a correction edgeR does not make. A fragment spanning 'k'
+    bins deposits '1/k' into each, so an 'nc' bin is a sum of fractional shares
+    rather than a count of events, and is **under-dispersed** by about 'k'
+    (measured 'Var/E' 0.109 against 1.89 for counts). A prior calibrated on
+    Poisson counts is therefore about 'k'-fold too strong, giving
+
+        p_nc = prior.count / (k_bar * N_bar),    k = L / N
+
+    with 'k_bar' and 'N_bar' averaged over the pair. The 'prior.count' and the
+    '1/N_bar' come from edgeR; the '1/k_bar' does not, which is why 'is_edger'
+    is False for this mode.
+
+    'None' and 'RPGC' also do not reproduce the estimator and are likewise
+    reported with 'is_edger' False. edgeR adjusts the denominator to 'L_i + 2 * y0_i';
+    RPGC's denominator is 'N * F / G', whose meaning is one-fold genome
+    coverage, and substituting a bin-matrix column sum for an alignment count
+    makes that meaning false. Both apply the prior's magnitude only, in the
+    proportional form 'p_i = s_i * y0_i'.
+    """
+
+    for label, lib in (("lib_a", lib_a), ("lib_b", lib_b)):
+        if not math.isfinite(lib) or lib <= 0.0:
+            raise ValueError(f"{label!r} must be finite and positive.")
+
+    if not math.isfinite(prior_count) or prior_count < 0.0:
+        raise ValueError("'prior_count' must be finite and nonnegative.")
+
+    norm = canonicalize_norm(norm)
+
+    if norm == "norm":
+        for label, frg in (("frg_a", frg_a), ("frg_b", frg_b)):
+            if frg is None or not math.isfinite(frg) or frg <= 0.0:
+                raise ValueError(
+                    f"{label!r} must be finite and positive for 'norm'; it is "
+                    "the fragment count, which a normalized-coverage track "
+                    "cannot supply because it sums to 1."
+                )
+
+        k_a = lib_a / frg_a
+        k_b = lib_b / frg_b
+        k_mean = 0.5 * (k_a + k_b)
+        frg_mean = 0.5 * (frg_a + frg_b)
+        pseudo = prior_count / (k_mean * frg_mean)
+
+        return {
+            "scale_A": 1.0,
+            "scale_B": 1.0,
+            "pseudo_A": pseudo,
+            "pseudo_B": pseudo,
+            "prior_scaled_A": prior_count * frg_a / frg_mean,
+            "prior_scaled_B": prior_count * frg_b / frg_mean,
+            "k_A": k_a,
+            "k_B": k_b,
+            "is_edger": False,
+            "note": (
+                "edgeR's prior divided by k_bar for the "
+                "under-dispersion of normalized coverage, a correction edgeR "
+                "does not make"
+            ),
+        }
+
+    lib_mean = 0.5 * (lib_a + lib_b)
+    prior_a = prior_count * lib_a / lib_mean
+    prior_b = prior_count * lib_b / lib_mean
+
+    if norm in ("CPM", "BPM"):
+        scale_a = 1e6 / (lib_a + 2.0 * prior_a)
+        scale_b = 1e6 / (lib_b + 2.0 * prior_b)
+        is_edger = True
+        note = "exact; BPM is CPM in deepTools"
+    elif norm == "RPKM":
+        if siz_bin <= 0:
+            raise ValueError("'siz_bin' must be positive for 'RPKM'.")
+
+        scale_a = 1e9 / ((lib_a + 2.0 * prior_a) * siz_bin)
+        scale_b = 1e9 / ((lib_b + 2.0 * prior_b) * siz_bin)
+        is_edger = True
+        note = "exact"
+    elif norm == "None":
+        scale_a = 1.0
+        scale_b = 1.0
+        is_edger = False
+        note = (
+            "reproduces edgeR's ratio up to a constant log offset, "
+            "since the denominator adjustment is absent"
+        )
+    else:
+        if scale_a is None or scale_b is None:
+            raise ValueError(
+                "'RPGC' requires both 'scale_a' and 'scale_b'; read them from "
+                "'bamCoverage --verbose' as the final scaling factor.",
+            )
+
+        is_edger = False
+        note = (
+            "prior magnitude only, in the proportional form; "
+            "RPGC's one-fold denominator has no edgeR analog"
+        )
+
+    return {
+        "scale_A": scale_a,
+        "scale_B": scale_b,
+        "pseudo_A": scale_a * prior_a,
+        "pseudo_B": scale_b * prior_b,
+        "prior_scaled_A": prior_a,
+        "prior_scaled_B": prior_b,
+        "is_edger": is_edger,
+        "note": note,
+    }
 
 
 def pick_stabilizer(

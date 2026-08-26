@@ -25,6 +25,7 @@ bedGraph intervals are treated as 0-based, half-open coordinates.
 
 from __future__ import annotations
 
+import math
 import os
 import sys
 from collections.abc import Callable, Iterator
@@ -147,6 +148,90 @@ def iter_rows_bdg(
         )
 
         yield chromosome, start, end, value_text, numeric_value
+
+
+def sum_counts_bdg(
+    path: str,
+    siz_bin: int,
+    skp_pfx: tuple[str, ...] | None = None,
+) -> float:
+    """
+    Sum a bedGraph over fixed-width bins to recover a library size.
+
+    Parameters
+    ----------
+    path : str
+        BedGraph-like path, or '-' for standard input.
+    siz_bin : int
+        Bin width in base pairs used to write the track.
+    skp_pfx : tuple[str, ...] | None
+        Header prefixes to skip. The default is 'DEF_SKP_PFX'.
+
+    Returns
+    -------
+    total : float
+        Column sum over fixed-width bins, which is edgeR's 'lib.size' for the
+        matrix this track represents.
+
+    Raises
+    ------
+    ValueError
+        If 'siz_bin' is not a positive integer.
+
+    Notes
+    -----
+    A bedGraph run-length encodes equal neighbours, so an interval spanning
+    'k' bins contributes 'k' times its value rather than once. Summing rows
+    directly understates the library size by exactly the compression factor.
+
+    Terminal intervals are rounded up. A chromosome whose length is not a
+    multiple of 'siz_bin' ends in a partial bin that still holds a real count,
+    so it counts as one bin rather than as a fraction of one.
+
+    This is the column sum of the bin matrix, not the alignment count. Under
+    the overlap counting in 'countReadsPerBin.py:705' one fragment increments
+    every bin it touches, so the two differ by roughly '(F / siz_bin) + 1'.
+    Passing the alignment count where this value is expected rescales every
+    pseudocount by that factor.
+    """
+
+    if siz_bin <= 0:
+        raise ValueError("'siz_bin' must be a positive integer.")
+
+    if skp_pfx is None:
+        skp_pfx = DEF_SKP_PFX
+
+    def skip_predicate(line: str) -> bool:
+        """
+        Return whether a raw input row is non-data content.
+        """
+
+        return is_header(line, skp_pfx)
+
+    total = 0.0
+
+    with open_in(path) as stream:
+        for _chrom, start, end, _text, value in iter_rows_bdg(
+            stream,
+            skip_predicate,
+        ):
+            if value is None or not math.isfinite(value):
+                continue
+
+            #  A chromosome whose length is not a multiple of 'siz_bin'
+            #  ends in a partial bin, and a partial bin is still one bin: it
+            #  holds a count of fragments overlapping it. Dividing widths
+            #  would score it as a fraction and undercount the library by one
+            #  partial bin per chromosome.
+            width = end - start
+            n_bin = width // siz_bin
+
+            if width % siz_bin:
+                n_bin += 1
+
+            total += value * n_bin
+
+    return total
 
 
 def check_size_bin(
