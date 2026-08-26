@@ -845,7 +845,7 @@ function canonicalize_args() {
                 f|frg|frag|frg[_-]len|frag[_-]len|l|len|len[_-]frg|len[_-]frag)
                     method="frag"
                     ;;
-                n|nrm|norm|normalized)
+                n|nc|nrm|norm|normalized)
                     method="norm"
                     ;;
                 *)
@@ -854,7 +854,7 @@ function canonicalize_args() {
                         "'u', 'unadj', 'unadjusted', 's', 'smp', 'simple'," \
                         "'r', or 'raw' ('method=unadj'); 'f', 'frg', 'frag'," \
                         "'l', 'len', 'len_frg', or 'len_frag'" \
-                        "('method=frag'); 'n', 'nrm', 'norm', or" \
+                        "('method=frag'); 'n', 'nc', 'nrm', 'norm', or" \
                         "'normalized' ('method=norm')."
                     return 1
                     ;;

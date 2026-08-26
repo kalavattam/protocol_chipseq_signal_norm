@@ -98,6 +98,7 @@ METHOD_CANON = {
     "len_frag": "frag",
     # Normalize signal by fragment length and depth.
     "n": "norm",
+    "nc": "norm",
     "nrm": "norm",
     "norm": "norm",
     "normalized": "norm",

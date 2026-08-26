@@ -2059,7 +2059,7 @@ function canonicalize_args() {
                 f|frg|frag|frg[_-]len|frag[_-]len|l|len|len[_-]frg|len[_-]frag)
                     method="frag"
                     ;;
-                n|nrm|norm|normalized)
+                n|nc|nrm|norm|normalized)
                     method="norm"
                     ;;
                 *)
