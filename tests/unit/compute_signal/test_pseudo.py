@@ -176,7 +176,7 @@ def test_parser_preserves_complete_action_contract(
             False,
             "_StoreAction",
             None,
-            "frc_mdn_nz",
+            "edger",
             ("edger", "frc_mdn_nz", "qntl_nz", "frc_avg_nz", "min_nz"),
             None,
         ),
@@ -477,7 +477,13 @@ def test_main_skips_malformed_rows_and_handles_strict_json_failure(
     assert malformed.out == "2\n"
     assert malformed.err == ""
 
-    assert main(["--fil_A", str(empty), "--prt_jsn"]) == 0
+    # Name the method explicitly: the default is 'edger', whose
+    # library-size path is not what this case exercises.
+    status_empty = main(
+        ["--fil_A", str(empty), "--method", "frc_mdn_nz", "--prt_jsn"],
+    )
+
+    assert status_empty == 0
     strict_json = capsys.readouterr()
     assert strict_json.out == "nan\n"
     assert "No finite values in A after filtering" in strict_json.err

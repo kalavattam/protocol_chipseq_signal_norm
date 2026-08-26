@@ -18,9 +18,13 @@
 """
 Compute pseudocount recommendations for bedGraph signal tracks.
 
-The CLI accepts input tracks, statistic method, coefficient, nonzero filtering,
-symmetry mode, and formatting options. It prints one pseudocount or an A:B
-pseudocount pair to stdout and, with '--prt_jsn', also prints a JSON summary.
+The CLI accepts input tracks and a method. '--method edger' derives the
+pseudocount from library sizes, taking a target normalization, a prior count,
+and optionally the sizes themselves; the four distribution-based methods derive
+it from the value distribution, taking a coefficient, nonzero filtering, and a
+symmetry mode. It prints one pseudocount or an A:B pair to stdout, or a
+deepTools argument string under '--prt_arg', and with '--prt_jsn' also prints a
+JSON summary.
 
 Examples
 --------
@@ -318,7 +322,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         "--method",
         dest="method",
         choices=("edger", "frc_mdn_nz", "qntl_nz", "frc_avg_nz", "min_nz"),
-        default="frc_mdn_nz",
+        default="edger",
         help=(
             "Workflow method to compute per-track pseudocount (default: "
             "%(default)s):\n"
@@ -1016,13 +1020,14 @@ def main(argv: list[str] | None = None) -> int:
 
     Notes
     -----
-    Inputs are filtered through '--eps' and '--mode_nz' before pseudocount
-    computation; malformed or nonnumeric bedGraph rows are skipped by the row
-    iterator. Pairwise values can be symmetrized with '--sym'. With
-    '--prt_jsn', the command prints a strict one-line JSON summary only when
-    all serialized values are finite; otherwise it warns on stderr, omits the
-    JSON line, and returns zero. Warnings about empty inputs, zero
-    pseudocounts, or symmetrization are written to stderr.
+    The four distribution-based methods filter inputs through '--eps' and
+    '--mode_nz' before computing, and can symmetrize the pair with '--sym';
+    '--method edger' consults none of those, deriving the pseudocount from
+    library sizes instead. Malformed or nonnumeric bedGraph rows are skipped by
+    the row iterator. With '--prt_jsn', the command prints a strict one-line
+    JSON summary only when all serialized values are finite; otherwise it warns
+    on stderr, omits the JSON line, and returns zero. Warnings about empty
+    inputs, zero pseudocounts, or symmetrization are written to stderr.
     """
 
     args = parse_args(argv)
