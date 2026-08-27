@@ -567,7 +567,8 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         help=(
             "Library size for track A: the column sum of the bin matrix, "
             "which is edgeR's 'lib.size'. Computed from '--fil_A' when "
-            "omitted, which requires a non-normalized track.\n"
+            "omitted, which requires a non-normalized track. Supplying it "
+            "skips that read and changes nothing else.\n"
             "\n"
             "Applies to '--method edger' only; ignored otherwise.\n"
             "\n"
@@ -790,8 +791,9 @@ def _is_one_track(args: argparse.Namespace) -> bool:
 
     Reproducing that here therefore needs no separate estimator: passing the
     one library size as both 'lib_a' and 'lib_b' makes 'L_bar' equal 'L_A',
-    which is exactly what 'ave_lib' becomes when 'nlib' is 1. Confirmed
-    against edgeR 4.4.0 in 'experiments/edger_equivalence/06_single_track.R'.
+    which is exactly what 'ave_lib' becomes when 'nlib' is 1. Confirmed against
+    edgeR 4.4.0 and pinned by
+    'test_compute_pseudo_edger_reproduces_edger_for_one_library'.
 
     The consequence a caller must know: a track's one-track pseudocount is not
     its two-track pseudocount, because 'L_bar' differs. That is edgeR's own
