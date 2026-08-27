@@ -72,6 +72,11 @@ tests/fixtures/calculate_scaling_factor/**
 !tests/fixtures/calculate_scaling_factor/README.md
 !tests/fixtures/calculate_scaling_factor/make.sh
 
+tests/fixtures/compute_pseudo/**
+!tests/fixtures/compute_pseudo/
+!tests/fixtures/compute_pseudo/README.md
+!tests/fixtures/compute_pseudo/make.sh
+
 tests/fixtures/compute_signal/**
 !tests/fixtures/compute_signal/
 !tests/fixtures/compute_signal/README.md

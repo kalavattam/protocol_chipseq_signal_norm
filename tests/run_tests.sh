@@ -132,6 +132,9 @@ function ensure_checker_fixtures() {
     ensure_fixture ai_attribution \
         "${repo_root}/tests/fixtures/ai_attribution/accepted/multi_vendor.sh"
 
+    ensure_fixture compute_pseudo \
+        "${repo_root}/tests/fixtures/compute_pseudo/bedgraph/pair_A.bdg"
+
     ensure_fixture help "${repo_root}/${rel_help}"
 
     ensure_fixture help_contracts \
