@@ -331,7 +331,9 @@ def compute_pseudo_edger(
     -------
     result : dict[str, object]
         Keys 'scale_A', 'scale_B', 'pseudo_A', 'pseudo_B', 'prior_scaled_A',
-        'prior_scaled_B', 'is_edger', and 'note'.
+        'prior_scaled_B', 'is_edger', and 'note'. Normalized coverage adds
+        'k_A' and 'k_B'; every other mode omits them, so a consumer tests for
+        the key rather than assuming it.
 
     Raises
     ------
@@ -342,19 +344,38 @@ def compute_pseudo_edger(
 
     Notes
     -----
-    edgeR's 'cpm(log=TRUE)' computes
-    '(y_i + y0_i) / (L_i + 2 * y0_i) * 1e6' with
-    'y0_i = prior.count * L_i / mean(L)'. That is linear in 'y_i', so it splits
-    into a slope and an intercept that deepTools can express as a scale factor
-    and a pseudocount:
+    edgeR's 'cpm(log=TRUE)' computes '(y_i + y0_i) / (L_i + 2 * y0_i) * 1e6'
+    with 'y0_i = prior.count * L_i / mean(L)'. That is linear in 'y_i', so it
+    splits into a slope and an intercept that deepTools can express as a scale
+    factor and a pseudocount:
 
         s_i = 1e6 / (L_i + 2 * y0_i)
         p_i = s_i * y0_i = 1e6 * prior.count / (mean(L) + 2 * prior.count)
 
-    'p_i' carries no per-sample index, so edgeR's rule is **symmetric** in
-    normalized units. The scale factor is not deepTools' CPM factor
-    '1e6 / N', so '--normalizeUsing' cannot reach it; the pair must be passed
-    as '--scaleFactors A:B --pseudocount P P'.
+    'p_i' carries no per-sample index, so edgeR's rule is symmetric in
+    normalized units. The scale factor is not deepTools' CPM factor '1e6 / N',
+    so '--normalizeUsing' cannot reach it; the pair must be passed as
+    '--scaleFactors A:B --pseudocount P P'.
+
+    Symmetry holds in real arithmetic, not in 'float64': 'p_A' and 'p_B' reach
+    the same value by different routes, so they can differ in the last bits.
+    Compare them with a tolerance, never with '=='.
+
+    'prior_scaled_A' and 'prior_scaled_B' are 'y0_i' itself: the per-sample
+    prior in count space, before 's_i' converts it to the output substrate.
+    Nothing downstream consumes them; they exist to be read. Their ratio
+    'prior_scaled_A / prior_scaled_B' is 'L_A / L_B', the depth imbalance in
+    prior units; their sum is '2 * prior.count' always, so a violation means a
+    library size is wrong; and 'pseudo_i' factors as 's_i * prior_scaled_i',
+    the decomposition the pseudocount alone hides: a tiny value may come from
+    the depth correction or from the scale factor, and only the pair tells them
+    apart.
+
+    Under 'norm' they scale by 'frg_i / mean(frg)' rather than by
+    'L_i / mean(L)', so there they report fragment imbalance, not bin-sum
+    imbalance. That is also the one mode where they do not feed 'pseudo_i',
+    which is symmetric by construction, so they carry the only per-sample
+    information it returns.
 
     A single track is expressed by passing its library size as both 'lib_a'
     and 'lib_b'. That is not an approximation: edgeR averages library sizes
@@ -366,33 +387,32 @@ def compute_pseudo_edger(
     pseudocount -- which is edgeR's behavior too, not an artifact here.
 
     'norm' (aliases 'nc', 'n', 'nrm', 'normalized') is normalized coverage:
-    each fragment deposits exactly 1.0 across
-    its footprint and the track is divided by the fragment count, so it sums to
-    **1**, not to a library size. Its own total is therefore useless as a
-    denominator; the library size that matters is 'N', the fragment count
-    that 'compute_signal' divided by, which must be supplied. That is not the
-    alignment-record count unless exactly one record per fragment survives
-    filtering, which is what '--samFlagInclude 64' arranges for paired-end
-    data and what its absence undoes.
+    each fragment deposits exactly 1.0 across its footprint and the track is
+    divided by the fragment count, so it sums to 1, not to a library size. Its
+    own total is therefore useless as a denominator; the library size that
+    matters is 'N', the fragment count that 'compute_signal' divided by, which
+    must be supplied. That is not the alignment-record count unless exactly one
+    record per fragment survives filtering, which is what '--samFlagInclude 64'
+    arranges for paired-end data and what its absence undoes.
 
-    Normalized coverage also needs a correction edgeR does not make. A fragment spanning 'k'
-    bins deposits '1/k' into each, so an 'nc' bin is a sum of fractional shares
-    rather than a count of events, and is **under-dispersed** by about 'k'
-    (measured 'Var/E' 0.109 against 1.89 for counts). A prior calibrated on
-    Poisson counts is therefore about 'k'-fold too strong, giving
+    Normalized coverage also needs a correction edgeR does not make. A fragment
+    spanning 'k' bins deposits '1/k' into each, so an 'nc' bin is a sum of
+    fractional shares rather than a count of events, and is under-dispersed by
+    about 'k' (measured 'Var/E' 0.109 against 1.89 for counts). A prior
+    calibrated on Poisson counts is therefore about 'k'-fold too strong, giving
 
-        p_nc = prior.count / (k_bar * N_bar),    k = L / N
+        p_nc = prior.count / (k_bar * N_bar), k = L / N
 
     with 'k_bar' and 'N_bar' averaged over the pair. The 'prior.count' and the
     '1/N_bar' come from edgeR; the '1/k_bar' does not, which is why 'is_edger'
     is False for this mode.
 
     'None' and 'RPGC' also do not reproduce the estimator and are likewise
-    reported with 'is_edger' False. edgeR adjusts the denominator to 'L_i + 2 * y0_i';
-    RPGC's denominator is 'N * F / G', whose meaning is one-fold genome
-    coverage, and substituting a bin-matrix column sum for an alignment count
-    makes that meaning false. Both apply the prior's magnitude only, in the
-    proportional form 'p_i = s_i * y0_i'.
+    reported with 'is_edger' False. edgeR adjusts the denominator to
+    'L_i + 2 * y0_i'; RPGC's denominator is 'N * F / G', whose meaning is
+    one-fold genome coverage, and substituting a bin-matrix column sum for an
+    alignment count makes that meaning false. Both apply the prior's magnitude
+    only, in the proportional form 'p_i = s_i * y0_i'.
     """
 
     for label, lib in (("lib_a", lib_a), ("lib_b", lib_b)):
@@ -430,9 +450,8 @@ def compute_pseudo_edger(
             "k_B": k_b,
             "is_edger": False,
             "note": (
-                "edgeR's prior divided by k_bar for the "
-                "under-dispersion of normalized coverage, a correction edgeR "
-                "does not make"
+                "edgeR's prior divided by k_bar for the under-dispersion of "
+                "normalized coverage, a correction edgeR does not make"
             ),
         }
 
@@ -458,8 +477,8 @@ def compute_pseudo_edger(
         scale_b = 1.0
         is_edger = False
         note = (
-            "reproduces edgeR's ratio up to a constant log offset, "
-            "since the denominator adjustment is absent"
+            "reproduces edgeR's ratio up to a constant log offset, since the "
+            "denominator adjustment is absent"
         )
     else:
         if scale_a is None or scale_b is None:
@@ -470,8 +489,8 @@ def compute_pseudo_edger(
 
         is_edger = False
         note = (
-            "prior magnitude only, in the proportional form; "
-            "RPGC's one-fold denominator has no edgeR analog"
+            "prior magnitude only, in the proportional form; RPGC's one-fold "
+            "denominator has no edgeR analog"
         )
 
     return {

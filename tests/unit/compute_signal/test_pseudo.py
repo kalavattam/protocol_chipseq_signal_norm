@@ -28,6 +28,16 @@ from protocol_chipseq_signal_norm.cli.compute_pseudo import (
     parse_args,
 )
 
+ROOT = Path(__file__).resolve().parents[3]
+BEDGRAPH = ROOT / "tests" / "fixtures" / "compute_pseudo" / "bedgraph"
+
+# Library sizes the fixture pair carries, so 'L_bar' is 12 and the two
+# per-sample priors are '2 * 6 / 12' and '2 * 18 / 12' exactly. A fixture is
+# consumed by hard failure rather than by a skip, so a missing generation step
+# fails loudly instead of turning the suite green.
+FIL_A = str(BEDGRAPH / "pair_A.bdg")
+FIL_B = str(BEDGRAPH / "pair_B.bdg")
+
 
 def test_combine_pseudo_sym_returns_unmodified_for_none_mode() -> None:
     assert combine_pseudo_sym(1.0, 2.0, "none") == (1.0, 2.0)
@@ -77,8 +87,10 @@ def test_combine_pseudo_sym_nonfinite_paths_do_not_validate_mode(
     one_finite = capsys.readouterr()
     assert one_finite.out == ""
     assert (
-        one_finite.err
-        == "pseudo_A is nonfinite; mirroring pseudo_B in symmetric mode 'bad'.\n"
+        one_finite.err == (
+            "pseudo_A is nonfinite; mirroring pseudo_B in symmetric mode "
+            "'bad'.\n"
+        )
     )
 
     result = combine_pseudo_sym(math.nan, math.inf, "bad")
@@ -86,9 +98,8 @@ def test_combine_pseudo_sym_nonfinite_paths_do_not_validate_mode(
     assert math.isnan(result[0])
     assert math.isinf(result[1])
     assert neither_finite.out == ""
-    assert (
-        neither_finite.err
-        == "Both pseudocounts are nonfinite; returning as-is.\n"
+    assert neither_finite.err == (
+        "Both pseudocounts are nonfinite; returning as-is.\n"
     )
 
 
@@ -648,3 +659,70 @@ def test_verbose_banner_survives_a_failure_during_resolution(
         )
 
     assert "--siz_bin 20" in capsys.readouterr().err
+
+
+def test_json_payload_reports_the_per_sample_prior(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """
+    The payload carries edgeR's 'y0_i', not only the pseudocount it feeds.
+
+    The fixture pair is imbalanced 1:3, so a regression that dropped the
+    per-sample scaling would return the nominal 'prior.count' for both tracks
+    rather than the 1.0 and 3.0 asserted here.
+    """
+
+    status = main(
+        [
+            "--method",
+            "edger",
+            "--fil_A",
+            FIL_A,
+            "--fil_B",
+            FIL_B,
+            "--prt_jsn",
+        ],
+    )
+    payload = json.loads(capsys.readouterr().out.splitlines()[1])
+
+    assert status == 0
+    assert payload["lib_sizes"] == {"A": 6.0, "B": 18.0}
+    assert payload["prior_scaled"] == {"A": 1.0, "B": 3.0}
+
+
+def test_json_payload_prior_is_not_derivable_for_normalized_coverage(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """
+    Pin why 'prior_scaled' is emitted rather than left to be derived.
+
+    'pseudo_i / scale_i' recovers it in every other mode. Under 'norm' both
+    scale factors are 1.0 and the pseudocount is symmetric, so that quotient
+    returns the shared pseudocount instead. The fragment counts invert the
+    library-size imbalance here -- 3:1 against the tracks' 1:3 -- so a prior
+    that tracked the tracks could not produce these values.
+    """
+
+    status = main(
+        [
+            "--method",
+            "edger",
+            "--normalization",
+            "nc",
+            "--fil_A",
+            FIL_A,
+            "--fil_B",
+            FIL_B,
+            "--frg_A",
+            "3",
+            "--frg_B",
+            "1",
+            "--prt_jsn",
+        ],
+    )
+    payload = json.loads(capsys.readouterr().out.splitlines()[1])
+
+    assert status == 0
+    assert payload["prior_scaled"] == {"A": 3.0, "B": 1.0}
+    assert payload["scale_factors"] == {"A": 1.0, "B": 1.0}
+    assert payload["pseudocounts"]["pseudo_A"] != payload["prior_scaled"]["A"]

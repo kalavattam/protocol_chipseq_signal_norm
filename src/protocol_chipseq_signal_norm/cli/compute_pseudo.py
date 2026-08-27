@@ -970,6 +970,12 @@ def _run_edger(
                 if "k_A" in result
                 else None
             ),
+            # Not derivable under 'norm': the pseudocount is symmetric there, so
+            # 'pseudo_i / scale_i' returns it rather than the prior.
+            "prior_scaled": {
+                "A": result["prior_scaled_A"],
+                "B": result["prior_scaled_B"],
+            },
             "scale_factors": {"A": scale_a, "B": scale_b},
             "pseudocounts": {
                 "pseudo_A": pseudo_a,
