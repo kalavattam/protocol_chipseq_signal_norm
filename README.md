@@ -89,7 +89,7 @@ bash install/scripts/install_atria.sh --if_exists reuse
 <summary><i>(Click to view <code>install_atria.sh</code> details.)</i></summary>
 <br />
 
-> By default, `install_atria.sh` installs Julia 1.8.5 and Atria 4.1.5 under a user-controlled installation directory. It checks the active project environment for Atria runtime dependencies such as `pigz`, `pbzip2`, and `Rscript`, verifies Julia archive checksums, and can reuse matching existing Julia or Atria installations when `--if_exists reuse` is specified.
+> By default, `install_atria.sh` installs Julia 1.8.5 and the immutable Atria tag `v4.1.5` under a user-controlled installation directory. It checks the active project environment for Atria runtime dependencies such as `pigz`, `pbzip2`, and `Rscript`, verifies Julia archive checksums, and can reuse matching installations with `--if_exists reuse` or reconcile them with `--if_exists update`. Use `--v_atria latest` to opt into resolving the newest stable upstream release tag.
 >
 > To print the resolved installation plan without downloading, cloning, building, or writing `PATH` snippets, run:
 > ```bash

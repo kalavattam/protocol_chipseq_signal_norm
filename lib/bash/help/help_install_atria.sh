@@ -51,13 +51,13 @@ Parameters
     Julia version to install (default: '${v_julia}'). Verified SHA-256 mappings are bundled for Julia 1.8.0-1.8.5 and 1.9.0-1.9.4 on supported Linux and macOS x86_64 and aarch64 targets.
 
   -va, --v_atria, --atria_version : str
-    Atria version to install (default: '${v_atria}'; the corresponding Git tag is expected to be 'v${v_atria}').
+    Atria release version or 'latest' (default: '${v_atria}'). A fixed value checks out its corresponding immutable Git tag. 'latest' resolves the newest stable upstream release tag during a non-dry run and may produce different installations on different dates.
 
   -ps, --path_snippet : file
     Append PATH export lines to the requested file. This may be a shell configuration file such as '${HOME}/.bashrc' or '${HOME}/.zshrc', or a temporary snippet file for, e.g., testing. Without this option, the PATH lines are printed at the end.
 
-  -ie, --if_exists : {'fail', 'reuse'}
-    What to do if Julia and/or Atria already exist in the requested installation directory: 'fail' or 'reuse' (default: '${if_exists}').
+  -ie, --if_exists : {'fail', 'reuse', 'update'}
+    What to do if Julia and/or Atria already exist in the requested installation directory (default: '${if_exists}'). 'fail' stops without changing them, 'reuse' requires verified matching components, and 'update' reconciles missing or mismatched components to the declared versions.
 
 Notes
 -----

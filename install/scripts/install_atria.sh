@@ -13,7 +13,7 @@
 # Distributed under the MIT license.
 
 
-#  Require Bash >= 4.4 before doing any work
+# Require Bash >= 4.4 before doing any work.
 if [[ -z "${BASH_VERSION:-}" ]]; then
     echo "error(shell): this script must be run under Bash >= 4.4." >&2
     exit 1
@@ -26,17 +26,17 @@ elif ((
     exit 1
 fi
 
-#  Run in safe mode, exiting on errors, unset variables, and pipe failures
+# Run in safe mode, exiting on errors, unset variables, and pipe failures.
 set -euo pipefail
 
 
-#  Resolve paths to installation support and repository directories
+# Resolve paths to installation support and repository directories.
 dir_scr="$(cd "$(dirname "${BASH_SOURCE[0]}")" > /dev/null 2>&1 && pwd)"
 dir_ins="$(cd "${dir_scr}/.." > /dev/null 2>&1 && pwd)"
 dir_rep="$(cd "${dir_ins}/.." > /dev/null 2>&1 && pwd)"
 
 
-#  Source shared helpers
+# Source shared helpers.
 function source_helpers_script() {
     local fnc_src
 
@@ -79,13 +79,18 @@ function init_arg_defs() {
     tmp_auto=false
     v_julia="1.8.5"
     v_atria="4.1.5"
+    v_atria_rslv=""
+    tag_atr=""
+    atria_ref_mode="fixed"
+    atria_checkout_chg=false
+    atria_report=""
     path_snippet=""
     if_exists="fail"
     sha_cmd=""
 }
 
 
-#  Define utility functions
+# Define utility functions.
 function echo_dry() {
     echo "dryrun($(basename "${BASH_SOURCE[0]}")):" "$@"
 }
@@ -220,8 +225,8 @@ function verify_julia_exec() {
 }
 
 
-#  Intentionally set global Julia target variables used by later installer
-#+ steps
+# Intentionally set global Julia target variables used by later installer
+# steps.
 function map_julia_target() {
     sys_os="$(uname -s)"
     sys_ar="$(uname -m)"
@@ -361,22 +366,75 @@ function check_julia_version() {
         *)
             echo_err \
                 "unsupported Julia version ${v_julia}. This installer" \
-                "currently supports Julia 1.8.0-1.8.5 and 1.9.0-1.9.4," \
-                "with Julia 1.8.5 as the protocol-tested/default version."
+                "currently supports Julia 1.8.0-1.8.5 and 1.9.0-1.9.4, with" \
+                "Julia 1.8.5 as the protocol-tested/default version."
             return 1
             ;;
     esac
 }
 
 
-#  Intentionally sets global Atria tag variables used by later installer steps
+# Intentionally sets global Atria tag variables used by later installer steps.
 function map_atria_tag() {
-    if [[ "${v_atria}" == v* ]]; then
-        tag_atr="${v_atria}"
-        v_atria="${v_atria#v}"
-    else
-        tag_atr="v${v_atria}"
+    if [[ "${v_atria}" == "latest" ]]; then
+        atria_ref_mode=latest
+        return 0
     fi
+
+    v_atria_rslv="${v_atria#v}"
+    tag_atr="v${v_atria_rslv}"
+}
+
+
+function resolve_atria_tag() {
+    local ref=""
+    local tag=""
+    local major=0
+    local minor=0
+    local patch=0
+    local best_major=-1
+    local best_minor=-1
+    local best_patch=-1
+
+    if [[ "${atria_ref_mode}" != "latest" ]]; then
+        return 0
+    fi
+
+    if [[ "${dry_run}" == "true" ]]; then
+        echo_dry "would resolve the latest stable Atria release tag."
+        return 0
+    fi
+
+    while read -r _ ref; do
+        tag="${ref#refs/tags/}"
+        if [[ "${tag}" =~ ^v([0-9]+)\.([0-9]+)\.([0-9]+)$ ]]; then
+            major=$((10#${BASH_REMATCH[1]}))
+            minor=$((10#${BASH_REMATCH[2]}))
+            patch=$((10#${BASH_REMATCH[3]}))
+            if (( major > best_major )) \
+                || (( major == best_major && minor > best_minor )) \
+                || ((
+                       major == best_major
+                    && minor == best_minor
+                    && patch >  best_patch
+                ))
+            then
+                best_major=${major}
+                best_minor=${minor}
+                best_patch=${patch}
+                tag_atr="${tag}"
+            fi
+        fi
+    done < <(
+        git ls-remote --tags --refs https://github.com/cihga39871/Atria.git
+    )
+
+    if [[ -z "${tag_atr}" ]]; then
+        echo_err "could not resolve a stable Atria release tag."
+        return 1
+    fi
+
+    v_atria_rslv="${tag_atr#v}"
 }
 
 
@@ -384,8 +442,8 @@ function check_req_cmd() {
     local cmd=""
     local rc=0
 
-    #  Use 'curl' here because it is available by default on macOS and common
-    #+ on Linux
+    # Use 'curl' here because it is available by default on macOS and common
+    # on Linux.
     for cmd in cp curl find git grep head mkdir mktemp rm sort tail; do
         if ! command -v "${cmd}" > /dev/null 2>&1; then
             echo_err "required command '${cmd}' is not available in PATH."
@@ -430,7 +488,7 @@ function cleanup_tmp_dir() {
 function install_julia() {
     local pth_path_jul=""
 
-    #  Allow global variable initialization here
+    # Allow global-variable initialization here.
     jul_dir="${dir_install}/julia-${v_julia}"
     jul_bin="${jul_dir}/bin/julia"
     jul_tar_pth="${dir_tmp}/${jul_tar}"
@@ -453,10 +511,20 @@ function install_julia() {
                 verify_julia_exec "${jul_bin}" || return 1
                 return 0
                 ;;
+
+            update)
+                if verify_julia_exec "${jul_bin}"; then
+                    return 0
+                fi
+                echo_warn \
+                    "existing Julia does not match '${v_julia}'; recreating" \
+                    "'${jul_dir}'."
+                rm -rf "${jul_dir}"
+                ;;
         esac
     fi
 
-    if [[ "${if_exists}" == "reuse" ]]; then
+    if [[ "${if_exists}" == "reuse" || "${if_exists}" == "update" ]]; then
         if pth_path_jul="$(command -v julia 2>/dev/null)"; then
             if \
                 verify_julia_exec "${pth_path_jul}"
@@ -543,6 +611,7 @@ function checkout_atria() {
     else
         run_or_print \
             git clone "https://github.com/cihga39871/Atria.git" "${dir_atr}"
+        atria_checkout_chg=true
     fi
 
     if [[ "${dry_run}" == "true" ]]; then
@@ -550,19 +619,42 @@ function checkout_atria() {
         return 0
     fi
 
-    (
+    local checkout_status=0
+    if (
         cd "${dir_atr}"
-        git fetch --tags
+        git fetch --tags || exit $?
 
         if \
             git rev-parse --verify --quiet "refs/tags/${tag_atr}" > /dev/null
         then
-            git checkout --detach "${tag_atr}"
+            if [[
+                "$(git rev-parse HEAD)" != "$(git rev-list -n 1 "${tag_atr}")"
+            ]]; then
+                if [[ "${if_exists}" == "reuse" ]]; then
+                    echo_err \
+                        "Atria checkout does not match requested tag" \
+                        "'${tag_atr}'."
+                    exit 1
+                fi
+
+                git checkout --detach "${tag_atr}" || exit $?
+                exit 10
+            fi
         else
             echo_err "could not find Atria tag '${tag_atr}'."
-            return 1
+            exit 1
         fi
-    )
+    ); then
+        :
+    else
+        checkout_status=$?
+    fi
+
+    case "${checkout_status}" in
+        0) ;;
+        10) atria_checkout_chg=true ;;
+        *) return "${checkout_status}" ;;
+    esac
 }
 
 
@@ -606,9 +698,9 @@ function find_atria_dir() {
             -maxdepth 1 \
             -type d \
             \( \
-                -name "atria-${v_atria}" \
-                -o -name "atria-${v_atria}-*" \
-                -o -name "atria-${v_atria}_*" \
+                -name "atria-${v_atria_rslv}" \
+                -o -name "atria-${v_atria_rslv}-*" \
+                -o -name "atria-${v_atria_rslv}_*" \
             \) \
             -print \
             | sort \
@@ -616,7 +708,7 @@ function find_atria_dir() {
     )"
 
     if [[ -z "${dir_bld}" ]]; then
-        dir_bld="${dir_atr}/atria-${v_atria}"
+        dir_bld="${dir_atr}/atria-${v_atria_rslv}"
     fi
 
     if [[ ! -d "${dir_bld}" ]]; then
@@ -680,15 +772,7 @@ function verify_atria_exec() {
         return 1
     fi
 
-    if ! grep -Fq "v${v_atria}" "${tmp_ver}"; then
-        cat "${tmp_ver}" >&2
-        rm -f "${tmp_ver}" "${tmp_hlp}"
-        [[ "${use_tmp_log}" == "true" ]] && rm -f "${log_chk}"
-        echo_err \
-            "Atria executable exists at '${pth_atr}', but it does not" \
-            "appear to match requested version '${v_atria}'."
-        return 1
-    fi
+    atria_report="$(tr '\n' ' ' < "${tmp_ver}" | sed 's/[[:space:]]*$//')"
 
     if ! "${pth_atr}" --help > "${tmp_hlp}" 2>&1; then
         {
@@ -735,6 +819,8 @@ function retry_suitesparse_fallback() {
         return 1
     fi
 
+    # Atria v4.1.5 packages the upstream fix; retain this fallback for older
+    # pins.
     echo_warn \
         "Atria verification reported a macOS SuiteSparse/CHOLMOD library" \
         "error. Copying Julia SuiteSparse libraries into the Atria build and" \
@@ -764,11 +850,11 @@ function build_atria() {
     if [[ "${dry_run}" == "true" ]]; then
         echo_dry \
             "would build Atria with '${jul_bin}' build_atria.jl."
-        pth_bin="${dir_atr}/atria-${v_atria}/bin"
+        pth_bin="${dir_atr}/atria-${v_atria_rslv}/bin"
         return 0
     fi
 
-    if \
+    if [[ "${atria_checkout_chg}" != "true" ]] && \
         find_atria_dir > /dev/null 2>&1
     then
         pth_atr="${dir_bld}/bin/atria"
@@ -850,10 +936,10 @@ function print_write_path_snippet() {
 
     snippet="$(
         cat << EOM
-#  Julia
+# Julia
 export PATH="\${PATH}:${jul_dir}/bin"
 
-#  Atria
+# Atria
 export PATH="\${PATH}:${pth_bin}"
 EOM
     )"
@@ -998,11 +1084,11 @@ function validate_args() {
     validate_var "if_exists" "${if_exists}" || return 1
 
     case "${if_exists}" in
-        fail|reuse) : ;;
+        fail|reuse|update) : ;;
         *)
             echo_err \
                 "invalid '--if_exists' value: '${if_exists}'. Must be 'fail'" \
-                "or 'reuse'."
+                "'reuse', or 'update'."
             return 1
             ;;
     esac
@@ -1047,7 +1133,7 @@ function report_plan() {
     echo "  - jul_url=${jul_url}"
     echo "  - jul_256=${jul_256:-UNSET}"
     echo "  - v_atria=${v_atria}"
-    echo "  - tag_atr=${tag_atr}"
+    echo "  - tag_atr=${tag_atr:-LATEST (resolved during installation)}"
     echo "  - dir_atr=${dir_install}/Atria"
     echo "  - path_snippet=${path_snippet:-UNSET}"
     echo "  - if_exists=${if_exists}"
@@ -1141,7 +1227,7 @@ function report_dry_run_install() {
     jul_bin="${jul_dir}/bin/julia"
     dir_prg="${dir_install}"
     dir_atr="${dir_prg}/Atria"
-    pth_bin="${dir_atr}/atria-${v_atria}/bin"
+    pth_bin="${dir_atr}/atria-${v_atria_rslv:-LATEST}/bin"
 
     echo_dry "would use working directory '${dir_tmp:-AUTO}'."
 
@@ -1149,8 +1235,8 @@ function report_dry_run_install() {
         echo_dry "would download and verify '${jul_url}'."
         echo_dry \
             "would extract Julia under '${dir_install}', or reuse matching" \
-            "Julia from '${jul_dir}' or PATH if '--if_exists reuse' was" \
-            "specified."
+            "Julia from '${jul_dir}' or PATH when '--if_exists reuse' or" \
+            "'--if_exists update' was specified."
     else
         echo_dry \
             "would refuse non-dry-run download of '${jul_url}' until a" \
@@ -1164,7 +1250,7 @@ function report_dry_run_install() {
         "would clone Atria under '${dir_atr}', or reuse a matching existing" \
         "Atria install under '${dir_atr}' or on PATH if '--if_exists reuse'" \
         "was specified."
-    echo_dry "would check out Atria tag '${tag_atr}'."
+    echo_dry "would check out Atria tag '${tag_atr:-LATEST}'."
     echo_dry "would build Atria using '${jul_bin}'."
     print_write_path_snippet
 }
@@ -1181,7 +1267,8 @@ function run_install() {
 
     echo
     echo "success($(basename "${BASH_SOURCE[0]}")):" \
-        "installed/verified Julia ${v_julia} and Atria ${v_atria}."
+        "installed/verified Julia ${v_julia} and Atria tag ${tag_atr}" \
+        "(reported ${atria_report})."
 }
 
 
@@ -1199,9 +1286,10 @@ function main() {
     fi
 
     validate_args
-    report_plan
     check_checksum_mapping
     check_runtime_req
+    resolve_atria_tag
+    report_plan
 
     if [[ "${dry_run}" == "true" ]]; then
         report_dry_run_install

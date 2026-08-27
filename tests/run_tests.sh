@@ -151,6 +151,9 @@ function ensure_checker_fixtures() {
 
     ensure_fixture shellcheck \
         "${repo_root}/tests/fixtures/shellcheck/script/bash.sh"
+
+    ensure_fixture install_atria \
+        "${repo_root}/tests/fixtures/install_atria/tool/git"
 }
 
 

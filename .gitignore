@@ -102,6 +102,11 @@ tests/fixtures/json_source_form/**
 !tests/fixtures/json_source_form/README.md
 !tests/fixtures/json_source_form/make.sh
 
+tests/fixtures/install_atria/**
+!tests/fixtures/install_atria/
+!tests/fixtures/install_atria/README.md
+!tests/fixtures/install_atria/make.sh
+
 tests/fixtures/markdown/**
 !tests/fixtures/markdown/
 !tests/fixtures/markdown/README.md

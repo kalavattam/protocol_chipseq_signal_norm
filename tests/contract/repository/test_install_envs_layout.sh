@@ -157,7 +157,6 @@ yml_anl="${ROOT_REPO}/install/envs/env_analyze.yml"
 yml_prt="${ROOT_REPO}/install/envs/env_protocol.yml"
 yml_siq="${ROOT_REPO}/install/envs/env_siqchip.yml"
 
-log_atria_dry_run="${dir_log}/install_atria_dry_run.log"
 log_siqchip_dry_run="${dir_log}/env_siqchip_dry_run.log"
 log_analyze_dry_run="${dir_log}/env_analyze_dry_run.log"
 log_protocol_channels_dry_run="${dir_log}/env_protocol_channels_dry_run.log"
@@ -298,36 +297,6 @@ for interface in bash entrypoint; do
             "${alias}" "" false
     done
 done
-
-if \
-    run_capture \
-        "install_atria dry-run" \
-        "${log_atria_dry_run}" \
-        "${TEST_BASH}" "${scr_atr}" \
-            --dry_run \
-            --if_exists reuse \
-            --dir_install "${TEST_DIR_TMP}/install_atria_layout"
-then
-    record_pass "install_atria.sh dry-run exits 0"
-    assert_pattern_found \
-        "${log_atria_dry_run}" \
-        "v_atria=4.1.5" \
-        "install_atria.sh dry-run reports Atria 4.1.5"
-
-    assert_pattern_found \
-        "${log_atria_dry_run}" \
-        "tag_atr=v4.1.5" \
-        "install_atria.sh dry-run maps Atria tag v4.1.5"
-
-    assert_pattern_found \
-        "${log_atria_dry_run}" \
-        "atria-4.1.5/bin" \
-        "install_atria.sh dry-run reports provisional Atria bin path"
-else
-    record_fail \
-        "install_atria.sh dry-run failed; see" \
-        "$(print_relpath "${log_atria_dry_run}")"
-fi
 
 assert_readable_yaml "${yml_anl}" "env_analyze YAML"
 assert_readable_yaml "${yml_prt}" "env_protocol YAML"
