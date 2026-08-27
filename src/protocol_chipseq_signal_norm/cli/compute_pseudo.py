@@ -73,6 +73,50 @@ with suppress(AttributeError, ValueError):
 
 assert sys.version_info >= (3, 11), "Python >= 3.11 required."
 
+# The distribution-shaping options, each with every spelling argparse accepts
+# for it. 'edger' consults none of them, and silently ignoring one lets a
+# wrong mental model survive.
+OPT_IGNORED_EDGER = {
+    "coef": ("-c", "--coef"),
+    "qntl_nz": ("-q", "--qntl_nz"),
+    "floor": ("-fl", "--floor"),
+    "eps": ("-e", "--eps"),
+    "mode_nz": ("-mz", "--mode_nz"),
+    "sym": ("-s", "--sym"),
+}
+
+# Every short option 'parse_args' registers. Resolving an attached value needs
+# the whole set rather than the six above: '-sfA0.5' must resolve to '-sfA',
+# not to '-s' carrying 'fA0.5', and only the longest registered prefix tells
+# the two apart. 'test_pseudo.py' asserts both constants against the parser,
+# so neither can drift away from it.
+OPT_SHORT_ALL = (
+    "-h",
+    "-v",
+    "-fA",
+    "-fB",
+    "-sp",
+    "-m",
+    "-q",
+    "-c",
+    "-fl",
+    "-e",
+    "-mz",
+    "-s",
+    "-nm",
+    "-pc",
+    "-sb",
+    "-lA",
+    "-lB",
+    "-sfA",
+    "-sfB",
+    "-gA",
+    "-gB",
+    "-dp",
+    "-pj",
+    "-pa",
+)
+
 
 # TODO: Extend compressed-input handling to '.bgz' and '.bgzf' here and in
 # related bedGraph parsers. Revisit JSON summarization and whether a shared
@@ -758,6 +802,54 @@ def _is_one_track(args: argparse.Namespace) -> bool:
     return not getattr(args, "fil_B", None) and args.lib_B is None
 
 
+def _resolve_ignored(token: str) -> str | None:
+    """
+    Report which ignored option a supplied token names, if any.
+
+    Parameters
+    ----------
+    token : str
+        One command-line token as supplied.
+
+    Returns
+    -------
+    flag : str | None
+        The option's long form, or None when the token names something else.
+
+    Notes
+    -----
+    Three spellings reach the same option: the bare flag, an inline value after
+    '=', and, for a single-character short option, a value attached directly as
+    in '-c0.05'. Only the third needs care, because a short option is a prefix
+    of longer ones -- '-s' of '-sp', '-sb', '-sfA', and '-sfB' -- so the token
+    resolves to the longest registered option that prefixes it, which is how
+    argparse itself decides. Abbreviation is off ('allow_abbrev=False'), so no
+    partial long form has to be recognized.
+    """
+
+    name = token.split("=", 1)[0]
+
+    for spellings in OPT_IGNORED_EDGER.values():
+        if name in spellings:
+            return spellings[-1]
+
+    if not token.startswith("-") or token.startswith("--"):
+        return None
+
+    prefixes = [opt for opt in OPT_SHORT_ALL if token.startswith(opt)]
+
+    if not prefixes:
+        return None
+
+    longest = max(prefixes, key=len)
+
+    for spellings in OPT_IGNORED_EDGER.values():
+        if longest in spellings:
+            return spellings[-1]
+
+    return None
+
+
 def _warn_inapplicable(
     args: argparse.Namespace,
     argv: list[str] | None,
@@ -780,19 +872,19 @@ def _warn_inapplicable(
     the coefficient, and reports nothing.
 
     Detection reads the supplied tokens rather than comparing against defaults,
-    so an explicitly passed default is still reported.
+    so an explicitly passed default is still reported. It resolves every
+    spelling argparse accepts, short and long alike; reading long forms only
+    would miss '-c 0.05', which is the very case the note exists for.
     """
 
     supplied = sys.argv[1:] if argv is None else argv
-    ignored = ("--coef", "--qntl_nz", "--floor", "--eps", "--mode_nz", "--sym")
+    seen: list[str] = []
 
-    seen = [
-        flag
-        for flag in ignored
-        if any(
-            token == flag or token.startswith(f"{flag}=") for token in supplied
-        )
-    ]
+    for token in supplied:
+        flag = _resolve_ignored(token)
+
+        if flag is not None and flag not in seen:
+            seen.append(flag)
 
     if seen:
         print(

@@ -726,3 +726,136 @@ def test_json_payload_prior_is_not_derivable_for_normalized_coverage(
     assert payload["prior_scaled"] == {"A": 3.0, "B": 1.0}
     assert payload["scale_factors"] == {"A": 1.0, "B": 1.0}
     assert payload["pseudocounts"]["pseudo_A"] != payload["prior_scaled"]["A"]
+
+
+# Every spelling argparse accepts for an option the edgeR path ignores. The
+# note existed but read long forms only, so '-c 0.05' ran silently -- the case
+# its own docstring names as the reason it exists.
+IGNORED_SPELLINGS = (
+    ("--coef", "0.05"),
+    ("--coef=0.05",),
+    ("-c", "0.05"),
+    ("-c=0.05",),
+    ("-c0.05",),
+    ("--qntl_nz", "5"),
+    ("-q", "5"),
+    ("--floor", "1"),
+    ("-fl", "1"),
+    ("--eps", "1"),
+    ("-e", "1"),
+    ("--mode_nz", "open"),
+    ("-mz", "open"),
+    ("--sym", "max"),
+    ("-s", "max"),
+)
+
+
+@pytest.mark.parametrize(
+    "tokens",
+    IGNORED_SPELLINGS,
+    ids=[" ".join(row) for row in IGNORED_SPELLINGS],
+)
+def test_warn_inapplicable_detects_every_spelling(
+    tokens: tuple[str, ...],
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    status = main(
+        ["--method", "edger", "--fil_A", FIL_A, "--fil_B", FIL_B, *tokens],
+    )
+    note = capsys.readouterr().err
+
+    assert status == 0
+    assert "do not apply to '--method edger'" in note
+
+
+# Options whose short forms begin with '-s', which is '--sym'. Resolving by
+# the longest registered prefix is what keeps these from being reported as
+# '--sym' carrying an attached value. Each row is the whole argument list, so
+# the test does not branch to assemble one.
+SYM_PREFIXED = (
+    ("-sp", ("-sp", "#,track,browser")),
+    ("-sb", ("-sb", "10")),
+    ("-sfA", ("-nm", "RPGC", "-sfA", "0.5", "-sfB", "0.5")),
+    ("-sfB", ("-nm", "RPGC", "-sfA", "0.5", "-sfB", "0.5")),
+)
+
+
+@pytest.mark.parametrize(("short_form", "tokens"), SYM_PREFIXED)
+def test_warn_inapplicable_does_not_confuse_sym_with_longer_options(
+    short_form: str,
+    tokens: tuple[str, ...],
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """
+    '-s' prefixes '-sp', '-sb', '-sfA', and '-sfB', which all apply to edgeR.
+
+    Reporting one of them as '--sym' would send a user looking for a flag they
+    never passed.
+    """
+
+    status = main(
+        ["--method", "edger", "--fil_A", FIL_A, "--fil_B", FIL_B, *tokens],
+    )
+
+    assert status == 0
+    assert "do not apply" not in capsys.readouterr().err
+
+
+def test_warn_inapplicable_stays_silent_for_a_distribution_method(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    status = main(
+        [
+            "--method",
+            "frc_mdn_nz",
+            "--fil_A",
+            FIL_A,
+            "--fil_B",
+            FIL_B,
+            "-c",
+            "0.05",
+        ],
+    )
+
+    assert status == 0
+    assert "do not apply" not in capsys.readouterr().err
+
+
+def test_ignored_option_constants_match_the_parser(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """
+    The constants restate the parser, so a test must prove they still agree.
+
+    'compute_pseudo' cannot hand the parser to '_warn_inapplicable' without
+    moving the 'add_argument' calls out of 'parse_args', which three alias
+    auditors and 'PY.CLI.HELP.LAYOUT' all locate by that function's name.
+    Restating the spellings and checking them here keeps both intact.
+    """
+
+    parser_type = compute_pseudo.CapArgumentParser
+    captured: dict[str, object] = {}
+
+    def capture_parser(*args: object, **kwargs: object) -> object:
+        parser = parser_type(*args, **kwargs)
+        captured["parser"] = parser
+
+        return parser
+
+    monkeypatch.setattr(compute_pseudo, "CapArgumentParser", capture_parser)
+    parse_args(["--fil_A", "signal_A.bdg"])
+    actions = getattr(captured["parser"], "_actions")
+    registered = {
+        action.dest: tuple(action.option_strings) for action in actions
+    }
+    shorts = tuple(
+        option
+        for action in actions
+        for option in action.option_strings
+        if not option.startswith("--")
+    )
+
+    assert compute_pseudo.OPT_IGNORED_EDGER == {
+        dest: registered[dest] for dest in compute_pseudo.OPT_IGNORED_EDGER
+    }
+    assert set(compute_pseudo.OPT_SHORT_ALL) == set(shorts)
