@@ -38,6 +38,23 @@ from protocol_chipseq_signal_norm.utilities.utils_io import (
 
 assert sys.version_info >= (3, 11), "Python >= 3.11 required."
 
+# Aliases for normalized coverage, matching 'compute_signal.METHOD_CANON' so
+# one substrate has one vocabulary across the codebase. 'norm' is canonical;
+# 'nc' is shorthand used in prose and is accepted rather than privileged.
+NORM_CANON = {
+    "CPM": "CPM",
+    "BPM": "BPM",
+    "RPKM": "RPKM",
+    "None": "None",
+    "RPGC": "RPGC",
+    "n": "norm",
+    "nc": "norm",
+    "nrm": "norm",
+    "norm": "norm",
+    "normalized": "norm",
+}
+NORM_CHOICES = tuple(NORM_CANON.keys())
+
 
 def iter_vals_bdg(
     path: str,
@@ -246,27 +263,6 @@ def median_sorted(values: list[float]) -> float:
         return values[count // 2]
 
     return 0.5 * (values[count // 2 - 1] + values[count // 2])
-
-
-NORM_EDGER_EXACT = ("CPM", "BPM", "RPKM")
-NORM_EDGER_APPROX = ("None", "RPGC", "norm")
-
-# Aliases for normalized coverage, matching 'compute_signal.METHOD_CANON' so
-# one substrate has one vocabulary across the codebase. 'norm' is canonical;
-# 'nc' is shorthand used in prose and is accepted rather than privileged.
-NORM_CANON = {
-    "CPM": "CPM",
-    "BPM": "BPM",
-    "RPKM": "RPKM",
-    "None": "None",
-    "RPGC": "RPGC",
-    "n": "norm",
-    "nc": "norm",
-    "nrm": "norm",
-    "norm": "norm",
-    "normalized": "norm",
-}
-NORM_CHOICES = tuple(NORM_CANON.keys())
 
 
 def canonicalize_norm(norm: str) -> str:
