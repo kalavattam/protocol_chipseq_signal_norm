@@ -185,6 +185,11 @@ function handle_tar() {
     local tarball=""
     local julia_version=""
 
+    if [[ "${ATRIA_FAKE_TAR_FAIL:-false}" == "true" ]]; then
+        echo "error(fake_tool): forced Julia extraction failure." >&2
+        return 1
+    fi
+
     for arg in "$@"; do
         if [[ "${arg##*/}" == julia-*.tar.gz ]]; then
             tarball="${arg##*/}"

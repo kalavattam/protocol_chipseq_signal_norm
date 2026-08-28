@@ -38,7 +38,7 @@ Parameters
     Conda environment to activate. Environment to create: 'env_analyze', 'env_protocol', or 'env_siqchip'.
 
   -ie, --if_exists : {'fail', 'reuse', 'update'}
-    What to do if the requested environment already exists (default: 'fail'). 'fail' stops without changing anything, and reports how to reuse or rebuild the environment instead. 'reuse' leaves the environment as it is, reconciling no dependencies. 'update' reconciles it to its YAML: declared packages are installed, and an installed version is changed where the YAML declares a different one, which may mean a downgrade; packages the YAML no longer lists are left in place rather than pruned.
+    What to do if the requested environment already exists (default: 'fail'). 'fail' stops without changing anything, and reports how to reuse or rebuild the environment instead. 'reuse' leaves the environment as it is, reconciling no dependencies. 'update' creates a missing YAML-backed environment or reconciles an existing one to its YAML: declared packages are installed, and an installed version is changed where the YAML declares a different one, which may mean a downgrade; packages the YAML no longer lists are left in place rather than pruned.
 
   -up, --update_package : str
     Reconcile only this exact YAML-declared package specification, rather than every declared dependency. Repeat to select more than one. Implies '--if_exists update', so naming both is optional; supplying it alongside a different '--if_exists' value is an error. Use it to bound what a transaction may change.

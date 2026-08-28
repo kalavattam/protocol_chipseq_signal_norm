@@ -57,7 +57,7 @@ Parameters
     Write one installer-managed PATH block to the requested file. This may be a shell configuration file such as '${HOME}/.bashrc' or '${HOME}/.zshrc', or a temporary snippet file for, e.g., testing. Later runs replace that block so the selected Julia and active Atria take precedence. Unmarked existing text is retained.
 
   -ie, --if_exists : {'fail', 'reuse', 'update'}
-    What to do if Julia and/or Atria already exist in the requested installation directory (default: '${if_exists}'). 'fail' stops without changing them, 'reuse' requires verified matching components, and 'update' reconciles missing or mismatched components to the declared versions.
+    What to do if Julia and/or Atria already exist in the requested installation directory (default: '${if_exists}'). 'fail' checks both requested paths before changing either, 'reuse' requires verified matching components, and 'update' creates missing components or reconciles mismatched components to the declared versions.
 
 Notes
 -----
@@ -78,6 +78,7 @@ Notes
     - pbzip2
     - pigz
     - rm
+    - rmdir
     - Rscript
     - sha256sum or shasum (when '--dry_run' is not specified)
     - sort
@@ -93,6 +94,7 @@ Notes
   - BSD tar, which is commonly installed by default on macOS systems, is acceptable; extraction is verified by checking the expected Julia executable afterward.
   - Rscript, pigz, and pbzip2 are expected to come from the active project environment.
   - Updates retain prior versioned Julia and Atria builds. The installer lists inactive retained builds that you may remove yourself after confirming they are unused.
+  - If an existing selected Julia executable is invalid, '--if_exists update' verifies a replacement before moving the invalid directory to a retained 'julia-<version>.invalid.*' path. It never deletes that directory.
 
 Examples
 --------
@@ -100,19 +102,18 @@ Examples
     '''bash
     bash install/scripts/install_atria.sh \\
         --dry_run \\
-        --dir_install "\${HOME}/opt/atria"
+        --dir_install "\${HOME}/opt/atria-runtime"
     '''
 
-  2. Preview pinned versions, an explicit work directory, and reusable existing installs.
+  2. Preview explicit version selections and a custom working directory.
     '''bash
     bash install/scripts/install_atria.sh \\
         --dry_run \\
         --env_nam env_protocol \\
-        --dir_install "\${HOME}/opt/atria" \\
+        --dir_install "\${HOME}/opt/atria-runtime" \\
         --dir_tmp "\${TMPDIR:-/tmp}/atria-build" \\
         --v_julia 1.8.5 \\
-        --v_atria 3.2.2 \\
-        --if_exists reuse
+        --v_atria 4.1.5
     '''
 EOM
 }

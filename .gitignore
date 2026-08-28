@@ -112,6 +112,11 @@ tests/fixtures/install_atria/**
 !tests/fixtures/install_atria/README.md
 !tests/fixtures/install_atria/make.sh
 
+tests/fixtures/install_envs/**
+!tests/fixtures/install_envs/
+!tests/fixtures/install_envs/README.md
+!tests/fixtures/install_envs/make.sh
+
 tests/fixtures/markdown/**
 !tests/fixtures/markdown/
 !tests/fixtures/markdown/README.md

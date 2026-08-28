@@ -43,6 +43,7 @@
     {"callable": "pigz", "conceptual_names": []},
     {"callable": "realpath", "conceptual_names": []},
     {"callable": "rm", "conceptual_names": []},
+    {"callable": "rmdir", "conceptual_names": []},
     {"callable": "sacct", "conceptual_names": ["Slurm"]},
     {"callable": "sbatch", "conceptual_names": ["Slurm"]},
     {"callable": "scontrol", "conceptual_names": ["Slurm"]},

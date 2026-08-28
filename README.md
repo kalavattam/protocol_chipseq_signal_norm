@@ -31,7 +31,7 @@ Installation support files are organized under [`install/`](./install/). Environ
 
 To set up the main repository environment, start with the following:
 ```sh
-#  After cloning/fetching the repo and cd'ing into it
+# Run the following after cloning/fetching the repo and cd'ing into it.
 sh install/scripts/install_envs_entrypoint.sh --env_nam env_protocol --yes
 ```
 
@@ -45,12 +45,12 @@ sh install/scripts/install_envs_entrypoint.sh --env_nam env_protocol --yes
 >
 > If Bash ≥ 4.4 is not yet available, or if Conda or Mamba is not available in `PATH`, `install_envs_entrypoint.sh` will print guidance for the next setup step, including installing [Miniforge](https://github.com/conda-forge/miniforge) when needed.
 >
-> After Bash ≥ 4.4 has been installed and is available in `PATH`, along with Conda or Mamba, repository environments can also be installed directly with:
+> After Bash ≥ 4.4 has been installed and is available in `PATH`, along with Conda or Mamba, repository environments can also be installed directly with the following:
 > ```bash
 > bash install/scripts/install_envs.sh --env_nam env_protocol --yes
 > ```
 >
-> User-facing environments currently supported by `install_envs.sh` are `env_protocol`, `env_analyze`, and `env_siqchip`. By default, these are created from the corresponding YAML files in `install/envs/`.
+> User-facing environments currently supported by `install_envs.sh` are `env_protocol`, `env_analyze`, and `env_siqchip`, each backed by a corresponding YAML file in `install/envs/`. `--if_exists` accepts `fail`, `reuse`, and `update`, and defaults to `fail`, meaning it stops without changing an existing requested environment. `update` creates a missing YAML-backed environment or reconciles an existing one.
 >
 > For institutional or site-specific channel configurations, such as systems that use mirrored Conda channels, pass channels directly to the installer:
 > ```bash
@@ -61,11 +61,55 @@ sh install/scripts/install_envs_entrypoint.sh --env_nam env_protocol --yes
 >     --yes
 > ```
 >
-> The `--if_exists reuse` option skips environment creation and refreshes the managed editable package installation in an existing `env_protocol`:
+> The default (`--if_exists fail`) protects a first run from silently modifying a pre-existing environment. `--if_exists reuse` is the usual choice when re-running the installer: it skips Conda environment creation and, for an existing `env_protocol`, still refreshes the managed editable package installation. This intentional refresh differs from Atria `reuse`, which retains only verified matching components:
 > ```bash
 > bash install/scripts/install_envs.sh \
 >     --env_nam env_protocol \
 >     --if_exists reuse
+> ```
+>
+> Run `bash install/scripts/install_envs.sh --help` for the full list of supported options.
+</details>
+<br />
+
+After `env_protocol` has been created, Julia and Atria can be installed with:
+```bash
+bash install/scripts/install_atria.sh
+```
+
+<details>
+<summary><i>(Click to view <code>install_atria.sh</code> details.)</i></summary>
+<br />
+
+> By default, `install_atria.sh` installs Julia 1.8.5 and Atria at the pinned tag `v4.1.5` into an installation directory given by `--dir_install` (by default, `${HOME}`). Before installing, it verifies the Julia archive checksums and checks the active project environment for Atria's runtime dependencies (`pigz`, `pbzip2`, and `Rscript`).
+>
+> If either requested target path already exists, `--if_exists` decides what happens next:
+> - `fail` (default): stop without installing anything when either requested target path already exists. (Both target paths are checked before either is touched, so a collision in one leaves the other unchanged.)
+> - `reuse`: retain an existing installation only when its Julia and Atria components are verified to match the requested versions.
+> - `update`: create missing components or reconcile existing components with the requested versions.
+>
+> The default protects (`--if_exists fail`) a first run from silently modifying a pre-existing installation. `--if_exists reuse` is the usual choice when re-running the installer with a verified matching installation.
+>
+> Updates retain prior versioned Julia and Atria builds. An invalid Julia is quarantined only once a verified replacement is ready, and the verified build is activated through `Atria/current`. Retained but inactive paths are listed at the end of the run and can be removed manually once they are confirmed unused.
+>
+> Pass `--v_atria latest` to resolve the newest stable upstream release tag instead of the pinned default.
+>
+> To print the resolved installation plan without downloading, cloning, building, or writing `PATH` snippets, run the following (here, `--if_exists reuse` lets the same dry-run command describe either a fresh installation or a verified re-run without aborting when an installation already exists):
+> ```bash
+> bash install/scripts/install_atria.sh --dry_run --if_exists reuse
+> ```
+>
+> To maintain Julia and active Atria `PATH` entries in one installer-managed block in a shell configuration or snippet file, use `--path_snippet`:
+> ```bash
+> bash install/scripts/install_atria.sh \
+>     --if_exists reuse \
+>     --path_snippet "${HOME}/.bashrc"  # or ".bash_profile", ".zshrc", etc.
+> ```
+>
+> Use `--help` with either installer for the full list of supported options:
+> ```bash
+> bash install/scripts/install_envs.sh --help
+> bash install/scripts/install_atria.sh --help
 > ```
 </details>
 <br />
@@ -78,37 +122,6 @@ python -m protocol_chipseq_signal_norm.cli.compute_pseudo --help
 
 Maintained shell entrypoints live in `bin/`, sourced Bash in `lib/bash/`, and installable Python in `src/protocol_chipseq_signal_norm/`. See [`docs/standards/README.md`](./docs/standards/README.md) for the governed layout and source standards.
 
-<br />
-
-After `env_protocol` has been created, Julia and Atria can be installed with:
-```bash
-bash install/scripts/install_atria.sh --if_exists reuse
-```
-
-<details>
-<summary><i>(Click to view <code>install_atria.sh</code> details.)</i></summary>
-<br />
-
-> By default, `install_atria.sh` installs Julia 1.8.5 and Atria with the immutable tag `v4.1.5` under a user-controlled installation directory. It checks the active project environment for Atria runtime dependencies such as `pigz`, `pbzip2`, and `Rscript`, verifies Julia archive checksums, and can reuse matching installations with `--if_exists reuse` or reconcile them with `--if_exists update`. Updates retain prior versioned Julia and Atria builds, activate the verified build through `Atria/current`, and list inactive retained paths that you may remove yourself after confirming they are unused. Use `--v_atria latest` to opt into resolving the newest stable upstream release tag.
->
-> To print the resolved installation plan without downloading, cloning, building, or writing `PATH` snippets, run:
-> ```bash
-> bash install/scripts/install_atria.sh --dry_run --if_exists reuse
-> ```
->
-> To maintain Julia and active Atria `PATH` entries in one installer-managed block in a shell configuration or snippet file, use `--path_snippet`:
-> ```bash
-> bash install/scripts/install_atria.sh \
->     --if_exists reuse \
->     --path_snippet "${HOME}/.bash_profile"  # or "${HOME}/.bashrc"
-> ```
->
-> Use `--help` with either installer for the full list of supported options:
-> ```bash
-> bash install/scripts/install_envs.sh --help
-> bash install/scripts/install_atria.sh --help
-> ```
-</details>
 <br />
 
 ## Testing

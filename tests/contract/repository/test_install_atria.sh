@@ -238,6 +238,151 @@ else
     record_fail "fake Julia downgrade failed; see $(print_relpath "${log}")"
 fi
 
+fail_install="${TEST_DIR_TMP}/fail_existing_install"
+fail_snippet="${TEST_DIR_TMP}/fail_existing_path.sh"
+rm -rf "${fail_install}"
+mkdir -p "${fail_install}/Atria/.git"
+printf '%s\n' "Atria sentinel" > "${fail_install}/Atria/sentinel"
+printf '%s\n' "PATH sentinel" > "${fail_snippet}"
+: > "${fake_log}"
+
+# shellcheck disable=SC2031
+if \
+    PATH="${tool}:${PATH}" \
+    ATRIA_FAKE_LOG="${fake_log}" \
+    CONDA_DEFAULT_ENV=env_protocol \
+    "${TEST_BASH}" "${script}" \
+        --if_exists fail \
+        --path_snippet "${fail_snippet}" \
+        --dir_install "${fail_install}" \
+        > "${log}" 2>&1
+then
+    record_fail "Atria fail mode unexpectedly changed an existing install"
+else
+    assert_pattern_found \
+        "${log}" \
+        "nothing was changed" \
+        "Atria fail mode reports its non-mutation guarantee"
+
+    if [[ "$(< "${fail_install}/Atria/sentinel")" == "Atria sentinel" ]] \
+        && [[ ! -e "${fail_install}/julia-1.8.5" ]] \
+        && [[ "$(< "${fail_snippet}")" == "PATH sentinel" ]]
+    then
+        record_pass "Atria fail mode leaves existing installation state unchanged"
+    else
+        record_fail "Atria fail mode changed existing installation state"
+    fi
+
+    if [[ ! -s "${fake_log}" ]]; then
+        record_pass "Atria fail mode invokes no fake installation command"
+    else
+        record_fail "Atria fail mode invoked an installation command"
+    fi
+fi
+
+: > "${fake_log}"
+# shellcheck disable=SC2031
+if \
+    PATH="${tool}:${PATH}" \
+    ATRIA_FAKE_LOG="${fake_log}" \
+    CONDA_DEFAULT_ENV=env_protocol \
+    "${TEST_BASH}" "${script}" \
+        --if_exists reuse \
+        --v_atria 4.1.5 \
+        --v_julia 1.8.5 \
+        --dir_install "${install}" \
+        > "${log}" 2>&1
+then
+    assert_pattern_absent \
+        "${fake_log}" \
+        '^git checkout|^tar |^curl ' \
+        "Atria reuse does not check out or rebuild matching components"
+else
+    record_fail "matching Atria reuse failed; see $(print_relpath "${log}")"
+fi
+
+: > "${fake_log}"
+# shellcheck disable=SC2031
+if \
+    PATH="${tool}:${PATH}" \
+    ATRIA_FAKE_LOG="${fake_log}" \
+    CONDA_DEFAULT_ENV=env_protocol \
+    "${TEST_BASH}" "${script}" \
+        --if_exists reuse \
+        --v_atria 4.1.4 \
+        --v_julia 1.8.5 \
+        --dir_install "${install}" \
+        > "${log}" 2>&1
+then
+    record_fail "mismatching Atria reuse unexpectedly succeeded"
+else
+    assert_pattern_absent \
+        "${fake_log}" \
+        '^git checkout|^tar |^curl ' \
+        "mismatching Atria reuse leaves components unchanged"
+    assert_active_atria "${install}" "atria-4.1.5" "v4.1.5"
+fi
+
+cat > "${install}/julia-1.8.5/bin/julia" << 'EOM'
+#!/usr/bin/env bash
+
+printf 'julia version 0.0.0\n'
+EOM
+chmod +x "${install}/julia-1.8.5/bin/julia"
+: > "${fake_log}"
+
+# shellcheck disable=SC2031
+if \
+    PATH="${tool}:${PATH}" \
+    ATRIA_FAKE_LOG="${fake_log}" \
+    ATRIA_FAKE_TAR_FAIL=true \
+    CONDA_DEFAULT_ENV=env_protocol \
+    "${TEST_BASH}" "${script}" \
+        --if_exists update \
+        --v_atria 4.1.5 \
+        --v_julia 1.8.5 \
+        --dir_install "${install}" \
+        > "${log}" 2>&1
+then
+    record_fail "failed staged Julia update unexpectedly succeeded"
+else
+    if \
+        [[ "$("${install}/julia-1.8.5/bin/julia")" == "julia version 0.0.0" ]] \
+        && ! compgen -G "${install}/julia-1.8.5.invalid.*" > /dev/null
+    then
+        record_pass "failed staged Julia update preserves the selected Julia"
+    else
+        record_fail "failed staged Julia update changed the selected Julia"
+    fi
+
+    assert_active_atria "${install}" "atria-4.1.5" "v4.1.5"
+fi
+
+: > "${fake_log}"
+# shellcheck disable=SC2031
+if \
+    PATH="${tool}:${PATH}" \
+    ATRIA_FAKE_LOG="${fake_log}" \
+    CONDA_DEFAULT_ENV=env_protocol \
+    "${TEST_BASH}" "${script}" \
+        --if_exists update \
+        --v_atria 4.1.5 \
+        --v_julia 1.8.5 \
+        --dir_install "${install}" \
+        > "${log}" 2>&1
+then
+    if \
+        [[ "$("${install}/julia-1.8.5/bin/julia" --version)" == "julia version 1.8.5" ]] \
+        && compgen -G "${install}/julia-1.8.5.invalid.*" > /dev/null
+    then
+        record_pass "Atria update quarantines and replaces invalid Julia"
+    else
+        record_fail "Atria update did not retain and replace invalid Julia"
+    fi
+else
+    record_fail "staged Julia update failed; see $(print_relpath "${log}")"
+fi
+
 malformed_snippet="${TEST_DIR_TMP}/install_atria_malformed_path.sh"
 cat > "${malformed_snippet}" << 'EOM'
 # <<< protocol_chipseq_signal_norm install_atria.sh <<<

@@ -146,12 +146,30 @@ function assert_help_alias_absent() {
 }
 
 
+function run_fake_install_envs() {
+    local label="${1:?}"
+    local log="${2:?}"
+    shift 2
+
+    run_capture \
+        "${label}" \
+        "${log}" \
+        env \
+            "PATH=${tool_envs}:${PATH}" \
+            "INSTALL_ENVS_FAKE_ENVS=${fake_envs}" \
+            "INSTALL_ENVS_FAKE_LOG=${fake_log}" \
+            CONDA_DEFAULT_ENV= \
+            "${TEST_BASH}" "${scr_inl}" "$@"
+}
+
+
 dir_log="${TEST_DIR_LOG}/install_envs"
 
 scr_inl="${ROOT_REPO}/install/scripts/install_envs.sh"
 scr_ent="${ROOT_REPO}/install/scripts/install_envs_entrypoint.sh"
 scr_atr="${ROOT_REPO}/install/scripts/install_atria.sh"
 scr_hlp="${ROOT_REPO}/lib/bash/help/help_install_envs.sh"
+tool_envs="${ROOT_REPO}/tests/fixtures/install_envs/tool"
 
 yml_anl="${ROOT_REPO}/install/envs/env_analyze.yml"
 yml_prt="${ROOT_REPO}/install/envs/env_protocol.yml"
@@ -175,6 +193,10 @@ log_condarc="${dir_log}/install_condarc.log"
 log_condarc_none="${dir_log}/install_condarc_none.log"
 log_install_help="${dir_log}/install_envs_help_aliases.log"
 log_entrypoint_help="${dir_log}/install_envs_entrypoint_help_aliases.log"
+log_fake="${dir_log}/install_envs_fake.log"
+
+fake_envs="${TEST_DIR_TMP}/install_envs_fake_envs.txt"
+fake_log="${TEST_DIR_TMP}/install_envs_fake_calls.log"
 
 
 print_section "${TEST_NAME}"
@@ -305,6 +327,126 @@ assert_pattern_found \
     "${yml_prt}" \
     '^  - shellcheck=0\.10\.0' \
     "env_protocol pins ShellCheck 0.10.0"
+
+: > "${fake_envs}"
+printf '%s\n' env_siqchip > "${fake_envs}"
+: > "${fake_log}"
+if \
+    run_fake_install_envs \
+        "install_envs fail existing" \
+        "${log_fake}" \
+        --env_nam env_siqchip \
+        --if_exists fail
+then
+    record_fail "install_envs fail mode unexpectedly succeeded"
+else
+    assert_pattern_absent \
+        "${fake_log}" \
+        '^mamba (env create|install|run)' \
+        "install_envs fail mode runs no package-manager mutation"
+fi
+
+: > "${fake_log}"
+printf '%s\n' env_siqchip > "${fake_envs}"
+if \
+    run_fake_install_envs \
+        "install_envs reuse siqchip" \
+        "${log_fake}" \
+        --env_nam env_siqchip \
+        --if_exists reuse
+then
+    assert_pattern_absent \
+        "${fake_log}" \
+        '^mamba (env create|install|run)' \
+        "install_envs reuse leaves non-protocol environment unchanged"
+else
+    record_fail "install_envs siqchip reuse failed"
+fi
+
+: > "${fake_log}"
+printf '%s\n' env_protocol > "${fake_envs}"
+if \
+    run_fake_install_envs \
+        "install_envs reuse protocol" \
+        "${log_fake}" \
+        --env_nam env_protocol \
+        --if_exists reuse
+then
+    assert_pattern_found \
+        "${fake_log}" \
+        '^mamba run -n env_protocol python -m pip install' \
+        "install_envs reuse refreshes only the managed protocol package"
+    assert_pattern_absent \
+        "${fake_log}" \
+        '^mamba (env create|install)' \
+        "install_envs protocol reuse runs no Conda environment mutation"
+else
+    record_fail "install_envs protocol reuse failed"
+fi
+
+: > "${fake_log}"
+printf '%s\n' env_siqchip > "${fake_envs}"
+if \
+    run_fake_install_envs \
+        "install_envs targeted update" \
+        "${log_fake}" \
+        --env_nam env_siqchip \
+        --if_exists update \
+        --update_package samtools=1.24
+then
+    assert_pattern_found \
+        "${fake_log}" \
+        '^mamba install -n env_siqchip.*samtools=1\.24' \
+        "install_envs update invokes the selected declared package"
+    assert_pattern_absent \
+        "${fake_log}" \
+        '^mamba run ' \
+        "install_envs siqchip update does not refresh a protocol package"
+else
+    record_fail "install_envs targeted update failed"
+fi
+
+: > "${fake_log}"
+printf '%s\n' env_protocol > "${fake_envs}"
+if \
+    INSTALL_ENVS_FAKE_INSTALL_FAIL=true \
+    run_fake_install_envs \
+        "install_envs failed update" \
+        "${log_fake}" \
+        --env_nam env_protocol \
+        --if_exists update \
+        --update_package shellcheck=0.10.0
+then
+    record_fail "failed install_envs update unexpectedly succeeded"
+else
+    assert_pattern_absent \
+        "${fake_log}" \
+        '^mamba run ' \
+        "failed install_envs update skips editable-package refresh"
+fi
+
+: > "${fake_log}"
+: > "${fake_envs}"
+if \
+    run_fake_install_envs \
+        "install_envs update missing" \
+        "${log_fake}" \
+        --env_nam env_siqchip \
+        --if_exists update
+then
+    assert_pattern_found \
+        "${fake_log}" \
+        '^mamba env create -f ' \
+        "install_envs update creates a missing YAML environment"
+
+    if grep -Fxq env_siqchip "${fake_envs}"; then
+        record_pass "install_envs update records the created environment"
+    else
+        record_fail "install_envs update did not create the environment"
+    fi
+else
+    record_fail "install_envs update of missing environment failed"
+fi
 
 if \
     check_cmd_exists mamba || check_cmd_exists conda
@@ -801,4 +943,4 @@ else
     record_fail "install_envs.sh stop-path dry run exited non-zero"
 fi
 
-finish
+finish "$@"

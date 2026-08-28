@@ -49,15 +49,17 @@ function run_normalize() {
 
 # Require one token to normalize to one canonical value.
 function assert_normalized() {
-    local token="${1-}"
-    local expected="${2:-}"
+    local tkn="${1-}"
+    local exp="${2:-}"
 
-    run_normalize "${token}"
-    if [[ "${NORMALIZE_STATUS}" -eq 0 && "${NORMALIZE_OUT}" == "${expected}" ]]; then
-        record_pass "normalize_bool '${token}' -> '${expected}'"
+    run_normalize "${tkn}"
+    if [[
+        "${NORMALIZE_STATUS}" -eq 0 && "${NORMALIZE_OUT}" == "${exp}"
+    ]]; then
+        record_pass "normalize_bool '${tkn}' -> '${exp}'"
     else
         record_fail \
-            "normalize_bool '${token}' expected '${expected}', got" \
+            "normalize_bool '${tkn}' expected '${exp}', got" \
             "status=${NORMALIZE_STATUS} output='${NORMALIZE_OUT}'"
     fi
 }
@@ -65,43 +67,52 @@ function assert_normalized() {
 
 # Require one invalid token to fail with the precise diagnostic.
 function assert_rejected() {
-    local label="${1:-invalid token}"
-    local token="${2-}"
+    local lbl="${1:-invalid token}"
+    local tkn="${2-}"
 
-    run_normalize "${token}" strict_value
+    run_normalize "${tkn}" strict_value
     if (( NORMALIZE_STATUS != 0 )); then
-        record_pass "${label} returns nonzero"
+        record_pass "${lbl} returns nonzero"
     else
-        record_fail "${label} unexpectedly normalized to '${NORMALIZE_OUT}'"
+        record_fail "${lbl} unexpectedly normalized to '${NORMALIZE_OUT}'"
     fi
 
-    if grep -Fq \
-        "argument 'strict_value' must be Boolean-like" \
-        "${log_err}"
+    if \
+        grep -Fq \
+            "argument 'strict_value' must be Boolean-like" \
+            "${log_err}"
     then
-        record_pass "${label} emits precise invalid-value diagnostic"
+        record_pass "${lbl} emits precise invalid-value diagnostic"
     else
-        record_fail "${label} lacks precise invalid-value diagnostic"
+        record_fail "${lbl} lacks precise invalid-value diagnostic"
     fi
 }
 
 
 # Check the maintained test-gate environment contract.
 function check_test_gate() {
-    local token="${1-}"
-    local expected="${2:-}"
+    local nam_gate="${1:-}"
+    local tkn="${2-}"
+    local exp="${3:-}"
     local output status
 
     set +e
-    output="$(RUN_PARALLEL="${token}" normalize_test_gate RUN_PARALLEL 2> "${log_err}")"
+    output="$(
+        (
+            export "${nam_gate}=${tkn}"
+            normalize_test_gate "${nam_gate}"
+        ) 2> "${log_err}"
+    )"
     status=$?
     set -e
 
-    if [[ "${status}" -eq 0 && "${output}" == "${expected}" ]]; then
-        record_pass "Boolean environment token '${token}' -> '${expected}'"
+    if [[ "${status}" -eq 0 && "${output}" == "${exp}" ]]; then
+        record_pass \
+            "Boolean environment token '${nam_gate}=${tkn}' -> ${exp}"
     else
         record_fail \
-            "Boolean environment token '${token}' expected '${expected}', got" \
+            "Boolean environment token '${nam_gate}=${tkn}' expected" \
+            "'${exp}', got" \
             "status=${status} output='${output}'"
     fi
 }
@@ -110,16 +121,17 @@ function check_test_gate() {
 print_section "${TEST_NAME}"
 
 dir_log="${TEST_DIR_LOG}/boolean_contracts"
-mkdir -p "${dir_log}"
 log_err="${dir_log}/normalize.err"
 log_audit="${dir_log}/audit.log"
 
-for token in true t yes y 1 TRUE T YES Y; do
-    assert_normalized "${token}" true
+mkdir -p "${dir_log}"
+
+for tkn in true t yes y 1 TRUE T YES Y; do
+    assert_normalized "${tkn}" true
 done
 
-for token in false f no n 0 FALSE F NO N; do
-    assert_normalized "${token}" false
+for tkn in false f no n 0 FALSE F NO N; do
+    assert_normalized "${tkn}" false
 done
 
 assert_rejected "leading-space token" " true"
@@ -146,13 +158,15 @@ else
         "value='${stale}'"
 fi
 
-for token in true YES 1 false No 0; do
-    expected=true
-    case "${token,,}" in
-        false|no|0) expected=false ;;
+for tkn in true YES 1 false No 0; do
+    exp=true
+    case "${tkn,,}" in
+        false|no|0) exp=false ;;
     esac
-    check_test_gate "${token}" "${expected}"
+    check_test_gate RUN_PARALLEL "${tkn}" "${exp}"
 done
+
+check_test_gate RUN_INSTALL_ENVS 1 true
 
 unset RUN_PARALLEL
 if [[ "$(normalize_test_gate RUN_PARALLEL)" == "false" ]]; then

@@ -18,6 +18,7 @@ Focused regressions for Runtime-requirements extraction and policy.
 
 from __future__ import annotations
 
+import json
 import re
 import tempfile
 import unittest
@@ -36,6 +37,7 @@ from dev.audit.help_runtime_requirements import (
     owner_units,
     rewrite_runtime_blocks,
     runtime_entries,
+    runtime_policy_messages,
     settled_requirements,
 )
 from dev.audit.help_style import exact_callable_message
@@ -330,6 +332,21 @@ class RuntimeRequirementsTest(unittest.TestCase):
             rules = self.policy_rule_ids("bash >= 4.4", requirement)
 
             self.assertNotIn("RUNTIME.CAPITALIZATION", rules)
+
+    def test_command_registry_recognizes_rmdir_as_an_executable(self) -> None:
+        root = Path(__file__).resolve().parents[3]
+        registry = json.loads(
+            (root / "dev/config/command_names.json").read_text(
+                encoding="utf-8",
+            ),
+        )
+        callables, _ = validate_command_registry(registry)
+        rule_ids = {
+            rule_id
+            for rule_id, _ in runtime_policy_messages("rmdir", callables)
+        }
+
+        self.assertNotIn("RUNTIME.CAPITALIZATION", rule_ids)
 
     def test_conda_environment_terminology_accepts_resource_and_activation(
         self,

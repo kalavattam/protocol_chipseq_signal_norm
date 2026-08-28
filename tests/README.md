@@ -52,6 +52,6 @@ bash tests/support/clean_artifacts.sh --outputs
 <br />
 
 ## Gates
-`RUN_ATRIA=1`, `RUN_DOWNLOAD=1`, and `RUN_PARALLEL=1` enable their bounded optional integrations. Scheduler submission is separate: the ordinary Slurm integration requires `RUN_SLURM=1`, while the checksummed two-job wet validation requires exact `RUN_SLURM=1 WAIT_SLURM=1 CONFIRM_SLURM_WET=1` gates and the workflow in [`integration/slurm/README.md`](integration/slurm/README.md). The wet runner interprets `WAIT_SLURM` as an exact confirmation; ordinary Boolean normalization does not apply to it.
+`RUN_ATRIA=1`, `RUN_DOWNLOAD=1`, `RUN_INSTALL_ENVS=1`, and `RUN_PARALLEL=1` enable their bounded optional integrations. `RUN_INSTALL_ENVS=1` creates and updates a disposable real `env_siqchip` under the test artifact root. Scheduler submission is separate: the ordinary Slurm integration requires `RUN_SLURM=1`, while the checksummed two-job wet validation requires exact `RUN_SLURM=1 WAIT_SLURM=1 CONFIRM_SLURM_WET=1` gates and the workflow in [`integration/slurm/README.md`](integration/slurm/README.md). The wet runner interprets `WAIT_SLURM` as an exact confirmation; ordinary Boolean normalization does not apply to it.
 
 Boolean test gates accept true, t, yes, y, 1 and false, f, no, n, 0 case-insensitively. Unset or empty gates are disabled; surrounding whitespace and other nonempty values are invalid.

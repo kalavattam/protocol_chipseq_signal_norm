@@ -119,6 +119,7 @@ KNOWN_CALLABLES = frozenset(
         "python3",
         "realpath",
         "rm",
+        "rmdir",
         "Rscript",
         "samtools",
         "sbatch",

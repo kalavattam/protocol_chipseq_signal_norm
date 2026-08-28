@@ -13,4 +13,4 @@ This generated fake toolchain exercises installer reference resolution and rebui
 <br />
 
 ## Current and deferred test coverage
-The repository contract covers dry-run modes, stable-tag selection, checkout, version verification, Julia-aware current-build promotion, retained-build reporting, and managed PATH snippets. A real upstream installation remains manual confirmation.
+The repository contract covers dry-run modes, stable-tag selection, checkout, version verification, Julia-aware current-build promotion, retained-build reporting, managed PATH snippets, non-mutating fail/reuse behavior, and staged invalid-Julia replacement. A real upstream installation remains manual confirmation.

@@ -80,10 +80,10 @@ function init_arg_defs() {
     v_julia="1.8.5"
     v_atria="4.1.5"
     v_atria_rslv=""
-    tag_atr=""
+    atria_tag=""
     atria_ref_mode="fixed"
     atria_co_chg=false
-    atria_report=""
+    atria_rpt=""
     path_snippet=""
     if_exists="fail"
     sha_cmd=""
@@ -180,6 +180,7 @@ function verify_sha256() {
 function extract_julia_tar() {
     local tarball="${1:-}"
     local dir_dst="${2:-}"
+    local pth_exp="${3:-${jul_bin}}"
     local log_tar=""
 
     validate_var_file "tarball" "${tarball}" || return 1
@@ -194,12 +195,12 @@ function extract_julia_tar() {
         return 0
     fi
 
-    if [[ -x "${jul_bin}" ]]; then
+    if [[ -x "${pth_exp}" ]]; then
         echo_warn \
             "tar returned a non-zero exit status while extracting Julia, but" \
-            "the expected Julia executable was found: '${jul_bin}'."
+            "the expected Julia executable was found: '${pth_exp}'."
         echo_warn \
-            "Continuing because older macOS bsdtar versions may warn about" \
+            "continuing because older macOS bsdtar versions may warn about" \
             "malformed pax extended attributes after otherwise successful" \
             "extraction."
         cat "${log_tar}" >&2
@@ -390,7 +391,7 @@ function map_atria_tag() {
     fi
 
     v_atria_rslv="${v_atria#v}"
-    tag_atr="v${v_atria_rslv}"
+    atria_tag="v${v_atria_rslv}"
 }
 
 
@@ -432,31 +433,34 @@ function resolve_atria_tag() {
                 best_major=${major}
                 best_minor=${minor}
                 best_patch=${patch}
-                tag_atr="${tag}"
+                atria_tag="${tag}"
             fi
         fi
     done < <(
         git ls-remote --tags --refs https://github.com/cihga39871/Atria.git
     )
 
-    if [[ -z "${tag_atr}" ]]; then
+    if [[ -z "${atria_tag}" ]]; then
         echo_err "could not resolve a stable Atria release tag."
         return 1
     fi
 
-    v_atria_rslv="${tag_atr#v}"
+    v_atria_rslv="${atria_tag#v}"
 }
 
 
 function check_req_cmd() {
     local cmd=""
     local rc=0
+    local -a arr_req_cmds=(
+        cp curl find git grep head ln mkdir mktemp mv rm rmdir sort tail
+    )
 
     # TODO: we use 'wget' in the in the 'download_fastqs' chain but 'curl'
     # here: pick one and stick with it consistently.
     # Using 'curl' here because it is available by default on macOS and fairly
     # common on Linux.
-    for cmd in cp curl find git grep head ln mkdir mktemp mv rm sort tail; do
+    for cmd in "${arr_req_cmds[@]}"; do
         if ! \
             command -v "${cmd}" > /dev/null 2>&1
         then
@@ -501,8 +505,36 @@ function cleanup_tmp_dir() {
 }
 
 
+function check_fail_existing_install() {
+    local pth_atria="${dir_install}/Atria"
+    local pth_julia="${dir_install}/julia-${v_julia}"
+
+    if [[ "${if_exists}" != "fail" ]]; then
+        return 0
+    fi
+
+    if [[ -e "${pth_julia}" || -L "${pth_julia}" ]]; then
+        echo_err "Julia install directory already exists: '${pth_julia}'."
+        echo_err \
+            "nothing was changed. To reuse it, rerun with '--if_exists reuse'."
+        return 1
+    fi
+
+    if [[ -e "${pth_atria}" || -L "${pth_atria}" ]]; then
+        echo_err "Atria install path already exists: '${pth_atria}'."
+        echo_err \
+            "nothing was changed. To reuse it, rerun with '--if_exists reuse'."
+        return 1
+    fi
+}
+
+
 function install_julia() {
-    local pth_path_jul=""
+    local dir_stg=""
+    local dir_qtn=""
+    local jul_bin_stg=""
+    local pth_jul_init=""
+    local replace_julia=false
 
     # Allow global-variable initialization here.
     jul_dir="${dir_install}/julia-${v_julia}"
@@ -515,7 +547,7 @@ function install_julia() {
                 echo_err \
                     "Julia install directory already exists: '${jul_dir}'."
                 echo_err \
-                    "Nothing was changed. To reuse it, rerun with" \
+                    "nothing was changed. To reuse it, rerun with" \
                     "'--if_exists reuse'."
                 return 1
                 ;;
@@ -533,19 +565,24 @@ function install_julia() {
                     return 0
                 fi
                 echo_warn \
-                    "existing Julia does not match '${v_julia}'; recreating" \
-                    "'${jul_dir}'."
-                rm -rf "${jul_dir}"
+                    "existing Julia does not match '${v_julia}'; preparing" \
+                    "a verified replacement for '${jul_dir}'."
+                replace_julia=true
                 ;;
         esac
     fi
 
-    if [[ "${if_exists}" == "reuse" || "${if_exists}" == "update" ]]; then
-        if pth_path_jul="$(command -v julia 2>/dev/null)"; then
+    if \
+           [[ "${replace_julia}" != "true" ]] \
+        && [[ "${if_exists}" == "reuse" || "${if_exists}" == "update" ]]
+    then
+        if \
+            pth_jul_init="$(command -v julia 2>/dev/null)"
+        then
             if \
-                verify_julia_exec "${pth_path_jul}"
+                verify_julia_exec "${pth_jul_init}"
             then
-                jul_bin="${pth_path_jul}"
+                jul_bin="${pth_jul_init}"
                 jul_dir="$(cd "$(dirname "${jul_bin}")/.." && pwd)"
                 echo \
                     "Matching Julia executable found on PATH; reusing" \
@@ -575,22 +612,78 @@ function install_julia() {
     fi
 
     verify_sha256 "${jul_tar_pth}" "${jul_256}"
-    extract_julia_tar "${jul_tar_pth}" "${dir_install}"
+    dir_stg="$(mktemp -d "${dir_install}/.install_atria_julia.XXXXXX")" || {
+        echo_err "failed to create a staging directory for Julia."
+        return 1
+    }
+    jul_bin_stg="${dir_stg}/julia-${v_julia}/bin/julia"
+
+    if ! \
+        extract_julia_tar "${jul_tar_pth}" "${dir_stg}" "${jul_bin_stg}"
+    then
+        rm -rf "${dir_stg}"
+        return 1
+    fi
+
+    if ! \
+        verify_julia_exec "${jul_bin_stg}"
+    then
+        rm -rf "${dir_stg}"
+        return 1
+    fi
+
+    if [[ "${replace_julia}" == "true" ]]; then
+        dir_qtn="$(
+            mktemp -d "${dir_install}/julia-${v_julia}.invalid.XXXXXX"
+        )"
+        rmdir "${dir_qtn}" || {
+            rm -rf "${dir_stg}"
+            echo_err "failed to prepare a retained Julia quarantine path."
+            return 1
+        }
+
+        if ! \
+            mv "${jul_dir}" "${dir_qtn}"
+        then
+            rm -rf "${dir_stg}"
+            echo_err "failed to quarantine invalid Julia '${jul_dir}'."
+            return 1
+        fi
+    fi
+
+    if ! \
+        mv "${dir_stg}/julia-${v_julia}" "${jul_dir}"
+    then
+        if [[ -n "${dir_qtn}" && -d "${dir_qtn}" ]]; then
+            mv "${dir_qtn}" "${jul_dir}" \
+                || echo_err "failed to restore Julia '${jul_dir}'."
+        fi
+
+        rm -rf "${dir_stg}"
+        echo_err "failed to promote verified Julia '${jul_dir}'."
+        return 1
+    fi
+
+    rmdir "${dir_stg}" || true
 
     verify_julia_exec "${jul_bin}" || return 1
 }
 
 
 function checkout_atria() {
-    local pth_path_atr=""
+    local pth_atr_init=""
 
     dir_prg="${dir_install}"
     dir_atr="${dir_prg}/Atria"
 
     if [[ "${if_exists}" == "reuse" && ! -e "${dir_atr}" ]]; then
-        if pth_path_atr="$(command -v atria 2>/dev/null)"; then
-            if verify_atria_exec "${pth_path_atr}"; then
-                pth_atr="${pth_path_atr}"
+        if \
+            pth_atr_init="$(command -v atria 2>/dev/null)"
+        then
+            if \
+                verify_atria_exec "${pth_atr_init}"
+            then
+                pth_atr="${pth_atr_init}"
                 pth_bin="$(dirname "${pth_atr}")"
                 echo \
                     "Matching Atria executable found on PATH; skipping" \
@@ -608,7 +701,7 @@ function checkout_atria() {
                 echo_err \
                     "Atria repository already exists: '${dir_atr}'."
                 echo_err \
-                    "Nothing was changed. To reuse it, rerun with" \
+                    "nothing was changed. To reuse it, rerun with" \
                     "'--if_exists reuse'."
                 return 1
                 ;;
@@ -631,7 +724,7 @@ function checkout_atria() {
     fi
 
     if [[ "${dry_run}" == "true" ]]; then
-        echo_dry "would check out Atria tag '${tag_atr}'."
+        echo_dry "would check out Atria tag '${atria_tag}'."
         return 0
     fi
 
@@ -641,23 +734,23 @@ function checkout_atria() {
         git fetch --tags || exit $?
 
         if \
-            git rev-parse --verify --quiet "refs/tags/${tag_atr}" > /dev/null
+            git rev-parse --verify --quiet "refs/tags/${atria_tag}" > /dev/null
         then
-            if [[
-                "$(git rev-parse HEAD)" != "$(git rev-list -n 1 "${tag_atr}")"
-            ]]; then
+            if [[ "$(
+                git rev-parse HEAD)" != "$(git rev-list -n 1 "${atria_tag}"
+            )" ]]; then
                 if [[ "${if_exists}" == "reuse" ]]; then
                     echo_err \
                         "Atria checkout does not match requested tag" \
-                        "'${tag_atr}'."
+                        "'${atria_tag}'."
                     exit 1
                 fi
 
-                git checkout --detach "${tag_atr}" || exit $?
+                git checkout --detach "${atria_tag}" || exit $?
                 exit 10
             fi
         else
-            echo_err "could not find Atria tag '${tag_atr}'."
+            echo_err "could not find Atria tag '${atria_tag}'."
             exit 1
         fi
     ); then
@@ -869,7 +962,7 @@ function verify_atria_exec() {
         return 1
     fi
 
-    atria_report="$(tr '\n' ' ' < "${tmp_ver}" | sed 's/[[:space:]]*$//')"
+    atria_rpt="$(tr '\n' ' ' < "${tmp_ver}" | sed 's/[[:space:]]*$//')"
 
     if ! \
         grep -Fq "v${v_atria_rslv}" "${tmp_ver}"
@@ -882,8 +975,8 @@ function verify_atria_exec() {
         fi
 
         echo_err \
-            "Atria executable exists at '${pth_atr}', but it does not" \
-            "appear to match requested tag '${tag_atr}'."
+            "Atria executable exists at '${pth_atr}', but it does not appear" \
+            "to match requested tag '${atria_tag}'."
         return 1
     fi
 
@@ -1003,7 +1096,7 @@ function build_atria() {
 
     if [[ "${if_exists}" == "reuse" && -d "${dir_atr}/.git" ]]; then
         echo_err \
-            "no verified Atria build for tag '${tag_atr}' and Julia" \
+            "no verified Atria build for tag '${atria_tag}' and Julia" \
             "'${v_julia}' was found under '${dir_atr}'. Rerun with" \
             "'--if_exists update' to create one."
         return 1
@@ -1125,13 +1218,15 @@ function report_retained_builds() {
     for dir_cand in "${arr_ret[@]}"; do
         printf '  - %s\n' "${dir_cand}"
     done
-    echo "You may remove any of these yourself after confirming unuse."
+    echo \
+        "You may remove any of these yourself after confirming they are" \
+        "unused."
 }
 
 
 function print_write_path_snippet() {
-    local marker_beg="# >>> protocol_chipseq_signal_norm install_atria.sh >>>"
-    local marker_end="# <<< protocol_chipseq_signal_norm install_atria.sh <<<"
+    local mkr_beg="# >>> protocol_chipseq_signal_norm install_atria.sh >>>"
+    local mkr_end="# <<< protocol_chipseq_signal_norm install_atria.sh <<<"
     local fil_tmp=""
     local line=""
     local in_block=false
@@ -1143,10 +1238,10 @@ function print_write_path_snippet() {
 
     snippet="$(
         cat << EOM
-# ${marker_beg#\# }
+# ${mkr_beg#\# }
 export PATH="${pth_bin}:\${PATH}"
 export PATH="${jul_dir}/bin:\${PATH}"
-# ${marker_end#\# }
+# ${mkr_end#\# }
 
 EOM
     )"
@@ -1175,11 +1270,11 @@ EOM
 
             if [[ -f "${path_snippet}" ]]; then
                 while IFS= read -r line || [[ -n "${line}" ]]; do
-                    if [[ "${line}" == "${marker_beg}" ]]; then
+                    if [[ "${line}" == "${mkr_beg}" ]]; then
                         (( n_beg += 1 ))
                         [[ "${in_block}" == "true" ]] && malformed=true
                         in_block=true
-                    elif [[ "${line}" == "${marker_end}" ]]; then
+                    elif [[ "${line}" == "${mkr_end}" ]]; then
                         (( n_end += 1 ))
                         [[ "${in_block}" != "true" ]] && malformed=true
                         in_block=false
@@ -1210,12 +1305,12 @@ EOM
                 : > "${fil_tmp}"
 
                 while IFS= read -r line || [[ -n "${line}" ]]; do
-                    if [[ "${line}" == "${marker_beg}" ]]; then
+                    if [[ "${line}" == "${mkr_beg}" ]]; then
                         in_block=true
                         continue
                     fi
 
-                    if [[ "${line}" == "${marker_end}" ]]; then
+                    if [[ "${line}" == "${mkr_end}" ]]; then
                         in_block=false
                         continue
                     fi
@@ -1400,7 +1495,7 @@ function report_plan() {
     echo "  - jul_url=${jul_url}"
     echo "  - jul_256=${jul_256:-UNSET}"
     echo "  - v_atria=${v_atria}"
-    echo "  - tag_atr=${tag_atr:-LATEST (resolved during installation)}"
+    echo "  - atria_tag=${atria_tag:-LATEST (resolved during installation)}"
     echo "  - dir_atr=${dir_install}/Atria"
     echo "  - path_snippet=${path_snippet:-UNSET}"
     echo "  - if_exists=${if_exists}"
@@ -1517,7 +1612,7 @@ function report_dry_run_install() {
         "would clone Atria under '${dir_atr}', or reuse a matching existing" \
         "Atria install under '${dir_atr}' or on PATH if '--if_exists reuse'" \
         "was specified."
-    echo_dry "would check out Atria tag '${tag_atr:-LATEST}'."
+    echo_dry "would check out Atria tag '${atria_tag:-LATEST}'."
     echo_dry "would build Atria using '${jul_bin}'."
     echo_dry \
         "would promote the verified Atria build through '${dir_atr}/current'."
@@ -1526,6 +1621,7 @@ function report_dry_run_install() {
 
 
 function run_install() {
+    check_fail_existing_install
     prepare_tmp_dir
     trap cleanup_tmp_dir EXIT
 
@@ -1538,8 +1634,8 @@ function run_install() {
 
     echo
     echo "success($(basename "${BASH_SOURCE[0]}")):" \
-        "installed/verified Julia ${v_julia} and Atria tag ${tag_atr}" \
-        "(reported ${atria_report})."
+        "installed/verified Julia ${v_julia} and Atria tag ${atria_tag}" \
+        "(reported ${atria_rpt})."
 }
 
 
