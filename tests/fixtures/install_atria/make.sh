@@ -103,10 +103,12 @@ function handle_git() {
 
         fetch) : ;;
 
-        checkout) touch .git/current ;;
+        checkout) printf '%s\n' "${3:-}" > .git/current ;;
 
         rev-parse)
-            if [[ "${2:-}" == "HEAD" && -f .git/current ]]; then
+            if [[ "${2:-}" == "HEAD" && -f .git/current ]] \
+                && [[ "$(< .git/current)" == "v4.1.5" ]]
+            then
                 printf '222\n'
             elif [[ "${2:-}" == "HEAD" ]]; then
                 printf '111\n'
@@ -115,7 +117,13 @@ function handle_git() {
             fi
             ;;
 
-        rev-list) printf '222\n' ;;
+        rev-list)
+            if [[ "${!#}" == "v4.1.4" ]]; then
+                printf '111\n'
+            else
+                printf '222\n'
+            fi
+            ;;
     esac
 }
 
@@ -123,40 +131,74 @@ function handle_git() {
 # Create the Julia executable that produces the fixture Atria executable.
 function write_julia_binary() {
     local dir_destination="${1}"
+    local julia_version="${2}"
 
-    mkdir -p "${dir_destination}/julia-1.8.5/bin"
-    cat > "${dir_destination}/julia-1.8.5/bin/julia" << 'JULIA'
+    mkdir -p "${dir_destination}/julia-${julia_version}/bin"
+    cat > "${dir_destination}/julia-${julia_version}/bin/julia" << JULIA
 #!/usr/bin/env bash
 
-if [[ "${1:-}" == "--version" ]]; then
-    printf 'julia version 1.8.5\n'
+if [[ "\${1:-}" == "--version" ]]; then
+    printf 'julia version ${julia_version}\n'
     exit 0
 fi
 
-mkdir -p "$(pwd)/atria-4.1.5/bin"
+fake_version="\${ATRIA_FAKE_VERSION:-v4.1.5}"
+dir_version="\${ATRIA_FAKE_DIR_VERSION:-\${fake_version}}"
+dir_app="\$(pwd)/atria-\${dir_version#v}"
 
-cat > "$(pwd)/atria-4.1.5/bin/atria" << 'ATRIA'
+if [[ -d "\${dir_app}" ]]; then
+    dir_app+="_julia-${julia_version}"
+fi
+
+mkdir -p "\${dir_app}/bin"
+
+cat > "\${dir_app}/bin/julia" << APP_JULIA
 #!/usr/bin/env bash
 
-if [[ "${1:-}" == "--version" ]]; then
-    printf 'v4.1.5\n'
+if [[ "\\\${1:-}" == "--version" ]]; then
+    printf 'julia version ${julia_version}\n'
+fi
+APP_JULIA
+
+cat > "\${dir_app}/bin/atria" << ATRIA
+#!/usr/bin/env bash
+
+if [[ "\\\${1:-}" == "--version" ]]; then
+    printf '%s\n' "\${fake_version}"
 else
     printf 'Atria help\n'
 fi
 ATRIA
 
-chmod +x "$(pwd)/atria-4.1.5/bin/atria"
+chmod +x "\${dir_app}/bin/atria"
+chmod +x "\${dir_app}/bin/julia"
 JULIA
 
-    chmod +x "${dir_destination}/julia-1.8.5/bin/julia"
+    chmod +x "${dir_destination}/julia-${julia_version}/bin/julia"
 }
 
 
 # Emulate extraction of the Julia archive into the final command argument.
 function handle_tar() {
+    local arg=""
     local dir_destination="${!#}"
+    local tarball=""
+    local julia_version=""
 
-    write_julia_binary "${dir_destination}"
+    for arg in "$@"; do
+        if [[ "${arg##*/}" == julia-*.tar.gz ]]; then
+            tarball="${arg##*/}"
+        fi
+    done
+
+    if [[ "${tarball}" =~ ^julia-([0-9]+\.[0-9]+\.[0-9]+)- ]]; then
+        julia_version="${BASH_REMATCH[1]}"
+    else
+        echo "error(fake_tool): could not derive Julia version." >&2
+        return 1
+    fi
+
+    write_julia_binary "${dir_destination}" "${julia_version}"
 }
 
 

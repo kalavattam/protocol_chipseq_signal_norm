@@ -89,18 +89,18 @@ bash install/scripts/install_atria.sh --if_exists reuse
 <summary><i>(Click to view <code>install_atria.sh</code> details.)</i></summary>
 <br />
 
-> By default, `install_atria.sh` installs Julia 1.8.5 and the immutable Atria tag `v4.1.5` under a user-controlled installation directory. It checks the active project environment for Atria runtime dependencies such as `pigz`, `pbzip2`, and `Rscript`, verifies Julia archive checksums, and can reuse matching installations with `--if_exists reuse` or reconcile them with `--if_exists update`. Use `--v_atria latest` to opt into resolving the newest stable upstream release tag.
+> By default, `install_atria.sh` installs Julia 1.8.5 and Atria with the immutable tag `v4.1.5` under a user-controlled installation directory. It checks the active project environment for Atria runtime dependencies such as `pigz`, `pbzip2`, and `Rscript`, verifies Julia archive checksums, and can reuse matching installations with `--if_exists reuse` or reconcile them with `--if_exists update`. Updates retain prior versioned Julia and Atria builds, activate the verified build through `Atria/current`, and list inactive retained paths that you may remove yourself after confirming they are unused. Use `--v_atria latest` to opt into resolving the newest stable upstream release tag.
 >
 > To print the resolved installation plan without downloading, cloning, building, or writing `PATH` snippets, run:
 > ```bash
 > bash install/scripts/install_atria.sh --dry_run --if_exists reuse
 > ```
 >
-> To append Julia and Atria `PATH` lines to a shell configuration or snippet file, use `--pth_snp`:
+> To maintain Julia and active Atria `PATH` entries in one installer-managed block in a shell configuration or snippet file, use `--path_snippet`:
 > ```bash
 > bash install/scripts/install_atria.sh \
 >     --if_exists reuse \
->     --pth_snp "${HOME}/.bash_profile"
+>     --path_snippet "${HOME}/.bash_profile"  # or "${HOME}/.bashrc"
 > ```
 >
 > Use `--help` with either installer for the full list of supported options:
@@ -245,9 +245,8 @@ If you encounter an issue (bugs, broken code, broken links, unexpected behavior,
 
 ## Authorship and AI assistance in code, documentation, and related materials
 - Director, responsible author, and maintainer: Kris Alavattam.
-- Code, documentation, and related materials are planned, designed, developed, reviewed, and revised with AI assistance from ChatGPT and Codex (OpenAI), and Claude Cowork and Claude Code (Anthropic). All AI-assisted output is reviewed, edited, and approved by the author.
+- Code, documentation, and related materials are planned, designed, developed, reviewed, revised, and maintained with AI assistance from ChatGPT and Codex (OpenAI), and Claude Cowork and Claude Code (Anthropic). All AI-assisted output is reviewed, edited, and approved by the author.
     + ChatGPT: GPT-4- and GPT-5-series models (most recent: GPT-5.6 Terra and Sol).
     + Codex: GPT-5.4, GPT-5.5, and GPT-5.6 Terra and Sol models.
     + Claude Cowork: Opus 4.8 model.
     + Claude Code: Opus 5 model.
-- Ongoing maintenance is performed with AI assistance from Codex (most recent: GPT-5.6 Terra and Sol) and Claude Code (most recent: Opus 5).

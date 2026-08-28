@@ -54,7 +54,7 @@ Parameters
     Atria release version or 'latest' (default: '${v_atria}'). A fixed value checks out its corresponding immutable Git tag. 'latest' resolves the newest stable upstream release tag during a non-dry run and may produce different installations on different dates.
 
   -ps, --path_snippet : file
-    Append PATH export lines to the requested file. This may be a shell configuration file such as '${HOME}/.bashrc' or '${HOME}/.zshrc', or a temporary snippet file for, e.g., testing. Without this option, the PATH lines are printed at the end.
+    Write one installer-managed PATH block to the requested file. This may be a shell configuration file such as '${HOME}/.bashrc' or '${HOME}/.zshrc', or a temporary snippet file for, e.g., testing. Later runs replace that block so the selected Julia and active Atria take precedence. Unmarked existing text is retained.
 
   -ie, --if_exists : {'fail', 'reuse', 'update'}
     What to do if Julia and/or Atria already exist in the requested installation directory (default: '${if_exists}'). 'fail' stops without changing them, 'reuse' requires verified matching components, and 'update' reconciles missing or mismatched components to the declared versions.
@@ -73,6 +73,7 @@ Notes
     - head
     - mkdir
     - mktemp
+    - mv
     - Network access (when '--dry_run' is not specified)
     - pbzip2
     - pigz
@@ -91,6 +92,7 @@ Notes
   - A non-dry run requires network access to download Julia and clone/fetch Atria.
   - BSD tar, which is commonly installed by default on macOS systems, is acceptable; extraction is verified by checking the expected Julia executable afterward.
   - Rscript, pigz, and pbzip2 are expected to come from the active project environment.
+  - Updates retain prior versioned Julia and Atria builds. The installer lists inactive retained builds that you may remove yourself after confirming they are unused.
 
 Examples
 --------
