@@ -100,6 +100,8 @@ NUMPY_TYPE_CLOSER = re.compile(
 PROSE_LIST_MARKER = re.compile(r"^(?P<marker>[-+*]|\d+\.)\s+\S")
 PROSE_INDIVISIBLE = re.compile(r"://|^`[^`]*$|^'[^']*$")
 PROSE_FENCE = re.compile(r"^('''|```|~~~)$")
+PROSE_DASH = re.compile(r"(?<= )--(?= )")
+QUOTED_SPAN = re.compile(r"'[^'\n]*'|`[^`\n]*`")
 SUSPENDED_HYPHEN = frozenset({"and", "nor", "or", "to"})
 DOCTEST_ROW_MARKERS = (">>>", "...")
 
@@ -2657,6 +2659,22 @@ def _check_comment_prose(
                 RULE_COMMENTS,
                 "ordinary comment prose must begin with a capital letter",
             )
+
+        # Mask quoted spans first: a literal '--' inside command text is
+        # delimiter syntax rather than a prose dash.
+        if PROSE_DASH.search(QUOTED_SPAN.sub("", sentence)):
+            _finding(
+                findings,
+                path,
+                first,
+                RULE_COMMENTS,
+                (
+                    "ordinary comment prose must use a comma, colon, "
+                    "semicolon, or parentheses instead of a double hyphen as "
+                    "a prose dash"
+                ),
+            )
+            counts["prose_dash"] += 1
 
         if re.search(r"[.!?][\"')\]]? {2,}(?=[A-Z])", sentence):
             _finding(

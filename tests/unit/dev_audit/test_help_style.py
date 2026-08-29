@@ -1055,6 +1055,44 @@ def sample():
 
         self.assertEqual(check_python_docstrings(text, "sample.py", None), [])
 
+    def test_python_docstring_prose_dash_fails(self) -> None:
+        text = '''
+def sample():
+    """Mirror A onto B -- which reproduces edgeR at one column."""
+'''
+
+        findings = check_python_docstrings(text, "sample.py", None)
+
+        self.assertIn(
+            "PYTHON.DOCSTRING.PROSE_DASH",
+            [finding.rule_id for finding in findings],
+        )
+
+    def test_python_docstring_quoted_double_hyphen_passes(self) -> None:
+        """
+        A quoted '--' is delimiter syntax, not a prose dash.
+
+        The exemption carries the rule: over a hundred maintained lines use
+        an end-of-options delimiter, and flagging those would make the check
+        unusable.
+        """
+
+        for token in ("'rm -r -- \"${tmp}\"'", "'--fil_B'", "'git log --'"):
+            with self.subTest(token=token):
+                text = f'''
+def sample():
+    """Pass {token} to the command."""
+'''
+
+                findings = check_python_docstrings(
+                    text, "sample.py", None
+                )
+
+                self.assertNotIn(
+                    "PYTHON.DOCSTRING.PROSE_DASH",
+                    [finding.rule_id for finding in findings],
+                )
+
     def test_python_docstring_example_backticks_are_excluded(self) -> None:
         text = '''
 def sample():

@@ -1753,7 +1753,7 @@ output_paths = []
 output_parser = "generic"
 strict_availability = "safe_adapter"
 current_exclusions_or_allowlists = ["owner=HELP.DOCSTRING.SCHEMA; literal backtick syntax inside Examples, doctest rows, and fenced literal content"]
-diagnostic_ids = ["PYTHON.DOCSTRING.STRAIGHT_QUOTES"]
+diagnostic_ids = ["PYTHON.DOCSTRING.STRAIGHT_QUOTES", "PYTHON.DOCSTRING.PROSE_DASH"]
 
 [[rule]]
 rule_id = "SHELL.SOURCE.DIRECTIVES"

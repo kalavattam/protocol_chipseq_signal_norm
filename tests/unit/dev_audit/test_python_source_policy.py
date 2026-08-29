@@ -1008,6 +1008,36 @@ def test_string_quote_and_literal_content_boundaries() -> None:
     assert len(rule_messages(bad, RULE_STRINGS)) == 2
 
 
+def test_comment_prose_rejects_a_double_hyphen_used_as_a_dash() -> None:
+    """
+    A double hyphen is a prose dash; a quoted one is delimiter syntax.
+
+    The exemption carries the rule: over a hundred maintained lines pass an
+    end-of-options delimiter, and flagging those would make it unusable.
+    """
+
+    header = '''
+"""
+Provide one comment fixture.
+"""
+
+
+def run() -> None:
+    """
+    Run one fixture.
+    """
+'''
+    bad = f"{header}\n    # The prior stays nominal -- edgeR behaves so too.\n    value = 1\n    _ = value\n"
+    good = f"{header}\n    # Remove the scratch tree with 'rm -r -- \"${{tmp}}\"'.\n    value = 1\n    _ = value\n"
+    expected = (
+        "ordinary comment prose must use a comma, colon, semicolon, or "
+        "parentheses instead of a double hyphen as a prose dash"
+    )
+
+    assert expected in rule_messages(bad, RULE_COMMENTS)
+    assert expected not in rule_messages(good, RULE_COMMENTS)
+
+
 def test_comments_cover_markers_separators_inline_spacing_and_width() -> None:
     """
     Exercise exact comment forms and 79/80-column boundaries.

@@ -71,6 +71,7 @@ RULE_PROSE_QUOTES = "HELP.PROSE.STRAIGHT_QUOTES"
 RULE_TOKEN_QUOTING_SHELL = "HELP.TOKEN.QUOTING.SHELL"
 RULE_PARSER_UNKNOWN = "SHELL.PARSER.UNKNOWN_ERROR"
 RULE_PYTHON_PROSE_QUOTES = "PYTHON.DOCSTRING.STRAIGHT_QUOTES"
+RULE_PYTHON_PROSE_DASH = "PYTHON.DOCSTRING.PROSE_DASH"
 RULE_TOKEN_QUOTING_PYTHON = "HELP.TOKEN.QUOTING.PYTHON"
 RULE_TABLE = "MD.TABLE.CANONICAL"
 
@@ -116,6 +117,8 @@ GLOBAL_SUBGROUP = re.compile(
     r"^(?:Read|Write|Required|Optional|Inputs?|Outputs?):$",
 )
 PROSE_BACKTICKS = re.compile(r"`[^`\n]+`")
+PROSE_DASH = re.compile(r"(?<= )--(?= )")
+QUOTED_SPAN = re.compile(r"'[^'\n]*'|`[^`\n]*`")
 LEXICAL_OBJECT = re.compile(
     r"^(?:--?[A-Za-z0-9][A-Za-z0-9_-]*"
     r"(?:\s+[^`\s]+)*|[A-Za-z_][A-Za-z0-9_.-]*|[-+]?[0-9.]+)$",
@@ -1473,6 +1476,21 @@ def check_python_docstrings(
 
             if in_examples or in_fence or stripped.startswith((">>>", "...")):
                 continue
+
+            # Mask quoted spans first: a literal '--' inside command text
+            # is delimiter syntax rather than a prose dash.
+            if PROSE_DASH.search(QUOTED_SPAN.sub("", stripped)):
+                add_finding(
+                    findings,
+                    RULE_PYTHON_PROSE_DASH,
+                    path,
+                    number,
+                    (
+                        "use a comma, colon, semicolon, or parentheses "
+                        "instead of a double hyphen as a prose dash"
+                    ),
+                    active_lines,
+                )
 
             delimiter = re.search(
                 r"``(?P<double>[^`\n]+)``|"
