@@ -877,3 +877,82 @@ def test_ignored_option_constants_match_the_parser(
         dest: registered[dest] for dest in compute_pseudo.OPT_IGNORED_EDGER
     } == compute_pseudo.OPT_IGNORED_EDGER
     assert set(compute_pseudo.OPT_SHORT_ALL) == set(shorts)
+
+
+# Single-track mode is selected from '--fil_B' and '--lib_B', so a library size
+# supplied to skip a read also decides the mode. Each row is a whole argument
+# list parsed by the real parser, so a flag rename fails here rather than
+# quietly reporting two tracks.
+ONE_TRACK_ARGV = (
+    pytest.param((), True, id="neither_B_option"),
+    pytest.param(("--fil_B", FIL_B), False, id="fil_B_long"),
+    pytest.param(("-fB", FIL_B), False, id="fil_B_short"),
+    pytest.param(("--lib_B", "18"), False, id="lib_B_long"),
+    pytest.param(("-lB", "18"), False, id="lib_B_short"),
+    pytest.param(("--fil_B", FIL_B, "--lib_B", "18"), False, id="both"),
+)
+
+
+@pytest.mark.parametrize(("tokens", "expected"), ONE_TRACK_ARGV)
+def test_is_one_track_reads_both_b_options(
+    tokens: tuple[str, ...],
+    expected: bool,
+) -> None:
+    """
+    '--lib_B' without '--fil_B' is two-track, the asymmetric case.
+
+    Reading only '--fil_B' would mirror A onto B and emit one value for a run
+    the user described with two library sizes.
+    """
+
+    args = parse_args(["--fil_A", FIL_A, *tokens])
+
+    assert compute_pseudo._is_one_track(args) is expected
+
+
+def test_is_one_track_treats_a_zero_library_size_as_supplied() -> None:
+    """
+    '--lib_B 0' is falsy but supplied, and the check reads 'is None' for it.
+
+    A truthiness test would report single-track and discard the named B track.
+    """
+
+    args = parse_args(["--fil_A", FIL_A, "--lib_B", "0"])
+
+    assert args.lib_B == 0.0
+    assert compute_pseudo._is_one_track(args) is False
+
+
+# The other B options carry a value for a track rather than asserting one
+# exists, so naming them alone leaves the run single-track.
+ONE_TRACK_UNRELATED = (
+    pytest.param(("--frg_B", "1000"), id="frg_B"),
+    pytest.param(("--sf_B", "0.5"), id="sf_B"),
+)
+
+
+@pytest.mark.parametrize("tokens", ONE_TRACK_UNRELATED)
+def test_is_one_track_ignores_the_other_b_options(
+    tokens: tuple[str, ...],
+) -> None:
+    args = parse_args(["--fil_A", FIL_A, *tokens])
+
+    assert compute_pseudo._is_one_track(args) is True
+
+
+def test_is_one_track_reads_an_unsupplied_fil_b_as_none() -> None:
+    """
+    An unsupplied '--fil_B' is bound to None rather than left off.
+
+    'CapArgumentParser' sets 'argument_default=argparse.SUPPRESS', so an option
+    that declares no default is absent from the namespace and plain attribute
+    access raises. '--fil_B' declares 'default=None' against that, which is
+    what lets every reader treat it like '--lib_B'. Dropping the declaration
+    fails this assertion with 'AttributeError'.
+    """
+
+    args = parse_args(["--fil_A", FIL_A])
+
+    assert args.fil_B is None
+    assert args.lib_B is None
+    assert compute_pseudo._is_one_track(args) is True
