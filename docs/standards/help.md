@@ -391,13 +391,13 @@ Use `csv_fil_in`, `fil_out`, and `csv_fil_out` for their registered shared conce
 
 **Scope:** Cross-language section names and prose conventions used by Python docstrings.
 
-Python docstrings reuse shared concepts for parameters, returns, yields, raises, notes, references, examples, attributes, and methods. Delimit option names, paths, sentinels, API names, and other literal prose tokens with straight single quotes, such as `'--write'`; do not use Markdown single- or double-backtick prose delimiters. Backticks remain literal only inside `Examples`, doctest rows, or fenced literal content. Avoid empty or name-repeating sections. Python applicability, public API stability, recursive coverage, and NumPy-specific semantics belong to `PY.DOCSTRING.NUMPY`; exact Python delimiter, summary-line, prefix, closing-line, and post-docstring source form belongs to `PY.DOCSTRING.LAYOUT`.
+Python docstrings reuse shared concepts for parameters, returns, yields, raises, notes, references, examples, attributes, and methods. Delimit option names, paths, sentinels, API names, and other literal prose tokens with straight single quotes, such as `'--write'`; do not use Markdown single- or double-backtick prose delimiters. Do not use a double hyphen as a prose dash; use a comma, colon, semicolon, or parentheses, so `--` remains unambiguous as an option prefix or end-of-options delimiter. Backticks remain literal only inside `Examples`, doctest rows, or fenced literal content. Avoid empty or name-repeating sections. Python applicability, public API stability, recursive coverage, and NumPy-specific semantics belong to `PY.DOCSTRING.NUMPY`; exact Python delimiter, summary-line, prefix, closing-line, and post-docstring source form belongs to `PY.DOCSTRING.LAYOUT`.
 
 **Automation:** `dev/audit/help_style.py` checks recognized Python docstrings for single- and double-backtick prose delimiters while excluding `Examples`, doctest rows, and fenced literal content. Other Python-specific checks remain registered to the Python owner.
 
 **Semantic remainder:** Review whether a shared concept maps cleanly to the Python object and audience.
 
-**Exceptions:** Literal backtick syntax inside `Examples`, doctest rows, and fenced literal content remains unchanged. Python syntax, signatures, and types remain literal.
+**Exceptions:** Literal backtick syntax inside `Examples`, doctest rows, and fenced literal content remains unchanged. Python syntax, signatures, and types remain literal. A literal `--` inside `Examples`, doctest rows, command text, or fenced literal content remains delimiter syntax.
 
 <br />
 

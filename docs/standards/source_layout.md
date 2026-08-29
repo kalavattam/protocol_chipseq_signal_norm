@@ -106,7 +106,7 @@ Promotion from review-only architecture requires maintained source, representati
 
 An ordinary comment explains purpose, rationale, constraints, or non-obvious behavior and stays accurate with the source it governs. Put one blank line before a phase comment when it begins a new semantic paragraph, and put no blank line between that comment and the paragraph it introduces. Keep inline comments short; promote a long explanation to an attached preceding block or maintained documentation.
 
-Ordinary comment prose uses sentence capitalization, complete sentences, terminal punctuation, and one space between sentences when it forms prose. A multiline ordinary comment uses the language's ordinary continuation marker and its language-native empty separator. Do not mechanically rewrite shebangs, source headers, formatter or linter directives, coverage pragmas, generated markers, literal fixtures, or documentation comments as ordinary prose.
+Ordinary comment prose uses sentence capitalization, complete sentences, terminal punctuation, and one space between sentences when it forms prose. Punctuate a parenthetical or an abrupt break with a comma, colon, semicolon, or parentheses; a double hyphen is not a prose dash, because `--` reads here as an option prefix or an end-of-options delimiter. A multiline ordinary comment uses the language's ordinary continuation marker and its language-native empty separator. Do not mechanically rewrite shebangs, source headers, formatter or linter directives, coverage pragmas, generated markers, literal fixtures, or documentation comments as ordinary prose.
 
 Language owners define ordinary, continuation, empty-separator, inline, directive, and documentation-comment spelling. That syntax realizes these shared attachment, prose, and role semantics without creating a second shared owner.
 
@@ -124,7 +124,7 @@ The Python forms follow [PEP 8 comments](https://peps.python.org/pep-0008/#comme
 
 **Semantic remainder:** Classify comment role, determine the governed source paragraph, review prose usefulness, and distinguish documentation from implementation commentary and directives.
 
-**Exceptions:** Specialized markers retain their separately owned syntax. A detached ordinary comment requires a documented reason when adjacency would misstate its scope.
+**Exceptions:** Specialized markers retain their separately owned syntax. A detached ordinary comment requires a documented reason when adjacency would misstate its scope. A literal `--` inside a command, option name, example, or fixture is delimiter syntax rather than prose punctuation and remains unchanged.
 
 <br />
 
