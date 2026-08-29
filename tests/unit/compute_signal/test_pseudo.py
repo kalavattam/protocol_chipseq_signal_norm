@@ -177,7 +177,7 @@ def test_parser_preserves_complete_action_contract(
             False,
             "_StoreAction",
             None,
-            "==SUPPRESS==",
+            None,
             (),
             None,
         ),

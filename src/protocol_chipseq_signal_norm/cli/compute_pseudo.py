@@ -341,6 +341,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         "-fB",
         "--fil_B",
         dest="fil_B",
+        default=None,
         help=(
             "Second bedGraph input file, file B. This file is optional for "
             "single-file pseudocount modes; use '-' for stdin; '.gz' is "

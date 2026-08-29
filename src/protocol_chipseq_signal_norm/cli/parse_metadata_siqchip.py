@@ -6,9 +6,11 @@
 # Copyright 2024-2026 by Kris Alavattam
 # Email: kalavattam@gmail.com
 #
-# OpenAI ChatGPT and Codex (GPT-4- and GPT-5-series models; most recent:
-# GPT-5.6) were used in design, development, and documentation, with all output
-# reviewed, edited, and approved by the author.
+# The following were used in design, development, and documentation, with all
+# output reviewed, edited, and approved by the author:
+# - OpenAI ChatGPT and Codex (GPT-4- and GPT-5-series models; most recent:
+#   GPT-5.6);
+# - Anthropic Claude Code (Opus 5).
 #
 # Distributed under the MIT license.
 
@@ -24,6 +26,11 @@ See Also
 docs/design/parse_metadata_siqchip.md
     Maintainer notes on filename parsing, YAML configuration, and metadata-row
     matching.
+
+Examples
+--------
+python -m protocol_chipseq_signal_norm.cli.parse_metadata_siqchip \\
+    --cfg <file> --alignment <file> --tbl_met <file> [options]
 """
 
 from __future__ import annotations
@@ -690,12 +697,14 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         "-a",
         "--alignment",
         dest="alignment",
+        default=None,
         help="Alignment file whose basename should be parsed.",
     )
     parser.add_argument(
         "-tb",
         "--tbl_met",
         dest="tbl_met",
+        default=None,
         help="siQ-ChIP metadata table containing rows to match.",
     )
     parser.add_argument(

@@ -363,9 +363,10 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         dest="dep_ip",
         type=int,
         required=False,
+        default=None,
         help=(
-            "Sequencing depth of IP sample (alignments or alignment-inferred "
-            "fragments; required for '--eqn 5' or '--eqn 6').\n\n"
+            "Sequencing depth of IP sample (alignments or inferred fragments; "
+            "required for '--eqn 5' or '--eqn 6').\n\n"
         ),
     )
     parser.add_argument(
@@ -374,9 +375,10 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         dest="dep_in",
         type=int,
         required=False,
+        default=None,
         help=(
-            "Sequencing depth of input sample (alignments or alignment-"
-            "inferred fragments; required for '--eqn 5' or '--eqn 6').\n\n"
+            "Sequencing depth of input sample (alignments or inferred "
+            "fragments; required for '--eqn 5' or '--eqn 6').\n\n"
         ),
     )
 

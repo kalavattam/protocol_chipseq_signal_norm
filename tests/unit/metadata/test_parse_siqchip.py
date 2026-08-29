@@ -6,8 +6,10 @@
 # Copyright 2026 by Kris Alavattam
 # Email: kalavattam@gmail.com
 #
-# OpenAI ChatGPT and Codex (GPT-5.6) were used in design, development, and
-# documentation, with all output reviewed, edited, and approved by the author.
+# The following were used in design, development, and documentation, with all
+# output reviewed, edited, and approved by the author:
+# - OpenAI ChatGPT and Codex (GPT-5.6);
+# - Anthropic Claude Code (Opus 5).
 #
 # Distributed under the MIT license.
 
@@ -22,6 +24,7 @@ from protocol_chipseq_signal_norm.cli.parse_metadata_siqchip import (
     collect_outputs,
     find_row_matching,
     normalize_input_map,
+    parse_args,
     parse_filename,
     validate_id,
 )
@@ -105,3 +108,35 @@ def test_normalize_input_map_and_validate_id_reject_bad_names() -> None:
 
     with pytest.raises(ValueError, match="shell-safe"):
         validate_id("bad-name", "field")
+
+
+# Both options are required unless '--validate_cfg' is given, which
+# 'parse_args' enforces itself rather than through 'required=True'.
+CONDITIONAL_REQUIRED = (
+    pytest.param("--alignment", ("--tbl_met", "metadata.tsv"), id="alignment"),
+    pytest.param("--tbl_met", ("--alignment", "sample.bam"), id="tbl_met"),
+)
+
+
+@pytest.mark.parametrize(("omitted", "supplied"), CONDITIONAL_REQUIRED)
+def test_parse_args_reports_a_conditionally_required_option(
+    omitted: str,
+    supplied: tuple[str, ...],
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """
+    Omitting one reports a usage error rather than raising 'AttributeError'.
+
+    'CapArgumentParser' sets 'argument_default=argparse.SUPPRESS', so until
+    both options declared 'default=None' the guard reading them raised before
+    it could call 'parser.error', and this message was unreachable.
+    """
+
+    with pytest.raises(SystemExit) as error:
+        parse_args(["--cfg", "parser.yml", *supplied])
+
+    note = capsys.readouterr().err
+    expected = f"'{omitted}' is required unless '--validate_cfg' is supplied."
+
+    assert error.value.code == 2
+    assert expected in " ".join(note.split())

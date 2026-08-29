@@ -6,8 +6,10 @@
 # Copyright 2026 by Kris Alavattam
 # Email: kalavattam@gmail.com
 #
-# OpenAI ChatGPT and Codex (GPT-5.6) were used in design, development, and
-# documentation, with all output reviewed, edited, and approved by the author.
+# The following were used in design, development, and documentation, with all
+# output reviewed, edited, and approved by the author:
+# - OpenAI ChatGPT and Codex (GPT-5.6);
+# - Anthropic Claude Code (Opus 5).
 #
 # Distributed under the MIT license.
 
@@ -16,7 +18,39 @@ import pytest
 
 from protocol_chipseq_signal_norm.cli.calculate_scaling_factor_siqchip import (
     calculate_alpha,
+    parse_args,
 )
+
+# The six mass, volume, and length options are required; the depths are not.
+REQUIRED_SIQCHIP = (
+    "--mass_ip",
+    "1",
+    "--mass_in",
+    "1",
+    "--vol_all",
+    "1",
+    "--vol_in",
+    "1",
+    "--len_ip",
+    "1",
+    "--len_in",
+    "1",
+)
+
+
+def test_parse_args_binds_unsupplied_depths_to_none() -> None:
+    """
+    '--dep_ip' and '--dep_out' are read as 'getattr(args, ..., None)'.
+
+    'CapArgumentParser' sets 'argument_default=argparse.SUPPRESS', so without
+    an explicit 'default=None' an unsupplied depth is absent from the namespace
+    and plain attribute access raises instead of reporting None.
+    """
+
+    args = parse_args(list(REQUIRED_SIQCHIP))
+
+    assert args.dep_ip is None
+    assert args.dep_in is None
 
 
 def test_calculate_alpha_equations() -> None:

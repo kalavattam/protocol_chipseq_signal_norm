@@ -6,8 +6,10 @@
 # Copyright 2026 by Kris Alavattam
 # Email: kalavattam@gmail.com
 #
-# OpenAI ChatGPT and Codex (GPT-5.6) were used in design, development, and
-# documentation, with all output reviewed, edited, and approved by the author.
+# The following were used in design, development, and documentation, with all
+# output reviewed, edited, and approved by the author:
+# - OpenAI ChatGPT and Codex (GPT-5.6);
+# - Anthropic Claude Code (Opus 5).
 #
 # Distributed under the MIT license.
 
@@ -1020,3 +1022,83 @@ def test_main_frag_and_norm_warn_and_succeed_for_large_fraction(
         "Warning: 'siz_bin' is a large fraction of 'siz_gen'; 'dep_min' may "
         "be very large.\n"
     )
+
+
+def test_parse_args_binds_unsupplied_fragment_flags_to_none() -> None:
+    """
+    Unsupplied '--flags_pe' and '--flags_se' are None, not absent.
+
+    'CapArgumentParser' sets 'argument_default=argparse.SUPPRESS', so each
+    needs an explicit 'default=None'. The value stays None rather than carrying
+    the documented flag sets, because 'PAIRED_FLAGS' and 'SINGLE_FLAGS' apply
+    only under '--mode frag' and because '_parse_fragment_flags' reports an
+    ignored selection from truthiness: a bound literal would warn on every run
+    in every other mode.
+    """
+
+    args = parse_args(["--fil_in", "input.bam"])
+
+    assert args.flags_pe is None
+    assert args.flags_se is None
+
+
+def test_hidden_fragment_flag_aliases_still_bind() -> None:
+    """
+    The hidden aliases share a 'dest' and declare no default of their own.
+
+    'argparse' binds the declared default from whichever action carries one, so
+    the alias keeps working without restating it.
+    """
+
+    args = parse_args(["--fil_in", "input.bam", "--flags-pe", "99"])
+
+    assert args.flags_pe == "99"
+    assert args.flags_se is None
+
+
+# The fragment-flag help spells its defaults as literals because '%(default)s'
+# would render None: the argparse default is None, and 'PAIRED_FLAGS' and
+# 'SINGLE_FLAGS' are substituted downstream by 'compute_input_floor'. Nothing
+# else ties the prose to the constants.
+FLAG_DEFAULT_HELP = (
+    pytest.param("--flags_pe", "PAIRED_FLAGS", id="flags_pe"),
+    pytest.param("--flags_se", "SINGLE_FLAGS", id="flags_se"),
+)
+
+
+@pytest.mark.parametrize(("option", "constant"), FLAG_DEFAULT_HELP)
+def test_fragment_flag_help_names_the_applied_default(
+    option: str,
+    constant: str,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """
+    The documented FLAGs must be exactly the ones the code substitutes.
+
+    Membership is asserted rather than rendered order, which groups each FLAG
+    with its duplicate-marked counterpart instead of sorting. A help string
+    that stops naming a default fails on the missing marker rather than passing
+    on an empty comparison.
+    """
+
+    parser_type = input_floor_module.CapArgumentParser
+    captured: dict[str, object] = {}
+
+    def capture_parser(*args: object, **kwargs: object) -> object:
+        parser = parser_type(*args, **kwargs)
+        captured["parser"] = parser
+
+        return parser
+
+    monkeypatch.setattr(
+        input_floor_module, "CapArgumentParser", capture_parser
+    )
+    parse_args(["--fil_in", "input.bam"])
+    actions = getattr(captured["parser"], "_actions")
+    flag_action = next(
+        action for action in actions if option in action.option_strings
+    )
+    listed = flag_action.help.split("(default: ", 1)[1].split(";", 1)[0]
+    documented = {int(token) for token in listed.split(",")}
+
+    assert documented == getattr(input_floor_module, constant)

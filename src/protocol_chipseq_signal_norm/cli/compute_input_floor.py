@@ -739,7 +739,8 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
             examples=(
                 _HelpExample(
                     description=(
-                        "Compute a first-percentile floor from bedGraph values."
+                        "Compute a first-percentile floor from bedGraph "
+                        "values."
                     ),
                     command_lines=(
                         "compute_input_floor",
@@ -963,6 +964,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         "--flags_pe",
         dest="flags_pe",
         type=str,
+        default=None,
         help=(
             "Comma-separated SAM FLAGs for paired-end main alignments in "
             "'frag' BAM/CRAM input. BED input ignores them. Accepts decimal "
@@ -980,6 +982,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         "--flags_se",
         dest="flags_se",
         type=str,
+        default=None,
         help=(
             "Comma-separated SAM FLAGs for single-end main alignments in "
             "'frag' BAM/CRAM input. BED input ignores them. Accepts decimal "
