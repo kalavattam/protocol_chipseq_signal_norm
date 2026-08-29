@@ -30,23 +30,18 @@ from protocol_chipseq_signal_norm.utilities.utils_stabilizer import (
     pick_stabilizer,
 )
 
-# Library sizes whose log ratios edgeR 4.4.0 reproduced over 4,000 bins to a
-# maximum deviation of 1.589e-12, and to 4.4e-16 when called in process rather
-# than through ten-decimal command-line arguments. The same pair is what makes
-# the 'float64' asymmetry visible, so one set of inputs serves the regression
-# pin and the tolerance witness both.
+# Verified against edgeR 4.4.0 to 1.589e-12 over 4,000 bins, 4.4e-16 in
+# process. The same pair makes the 'float64' asymmetry visible.
 LIB_A = 24495.0
 LIB_B = 13605.0
 
-# The count matrix 'c(5, 3, 0, 8)' summing to 16, and its second column
-# 'c(4, 2, 1, 6)' summing to 13, checked against edgeR 4.4.0. A track's
-# one-track pseudocount is not its two-track pseudocount, because the mean
-# library size differs; that is edgeR's own behavior rather than ours.
+# Counts 'c(5, 3, 0, 8)' sum to 16 and 'c(4, 2, 1, 6)' to 13, per edgeR 4.4.0.
+# The two framings differ because the mean library size does.
 LIB_ONE_TRACK = 16.0
 LIB_PARTNER = 13.0
 
-# Fragment counts for 'norm'. Their 3:2 ratio is deliberately not the tracks'
-# ratio, so a test cannot pass by reading the library sizes instead.
+# Fragment counts for 'norm'. The 3:2 ratio is not the tracks' ratio, so a test
+# cannot pass by reading library sizes.
 FRG_A = 1200.0
 FRG_B = 800.0
 
@@ -140,16 +135,12 @@ def test_compute_pseudo_edger_symmetry_survives_only_a_tolerance() -> None:
     Keep a live witness for why the symmetry tests use 'math.isclose'.
 
     The equality is exact in real arithmetic (the per-sample 'L_i / L_bar'
-    scaling cancels), but the two sides reach it by different 'float64' routes.
-    Over 100,000 random library-size pairs, exact '==' held for only 46% of CPM
-    pairs and 41% of RPKM pairs, so a test written with '==' passes or fails on
-    the sizes it happens to use and reads as a real asymmetry bug when it
-    fails. Worst observed difference was 4 ULP, and 'rel_tol=1e-16' fails 56%
-    of the time because it sits below machine epsilon.
+    scaling cancels) but not in 'float64', where the two sides take different
+    routes, so exact '==' holds only for some library-size pairs.
 
-    If this assertion ever fails, 'float64' has started agreeing on this pair
-    and the tolerance has lost its witness. Choose sizes that reproduce the
-    difference; do not restore '=='.
+    If this fails, 'float64' has started agreeing on this pair and the
+    tolerance has lost its witness. Pick sizes that reproduce the difference;
+    do not restore '=='.
     """
 
     result = _edger("CPM")
@@ -288,9 +279,8 @@ def test_compute_pseudo_edger_returns_k_only_for_normalized_coverage() -> None:
     assert _edger("norm")["k_A"] == pytest.approx(LIB_A / FRG_A, rel=1e-12)
 
 
-# Each row is a complete call and the fragment its rejection must name. The
-# fragments are short and stable on purpose: asserting the whole sentence
-# would make every wording change a test failure.
+# Each row is a call and the fragment its rejection must name. Short fragments
+# keep a wording change from failing the test.
 EDGER_REJECTIONS = (
     ({"lib_a": 0.0, "lib_b": LIB_B}, "lib_a"),
     ({"lib_a": -1.0, "lib_b": LIB_B}, "lib_a"),
@@ -355,14 +345,6 @@ def test_canonicalize_norm_rejects_an_unregistered_name() -> None:
         canonicalize_norm("cpm")
 
 
-# Normalized-coverage pseudocounts for the published Hho1 and Hmo1 pairs,
-# with the library sizes and fragment counts that produced them. Every sample
-# here is SRA-deposited; unpublished data does not belong in a test. Both
-# inputs were read back off the cluster rather than solved for from the
-# result, which would have pinned the output against itself.
-#
-# 'Hho1_6336' reproduces to every bit from two independently processed
-# cohorts, which is what makes the single-cohort 'Hmo1' row trustworthy.
 NC_PUBLISHED = (
     (
         "Hho1_6336",
@@ -407,16 +389,11 @@ def test_compute_pseudo_edger_reproduces_the_published_pseudocounts(
     """
     Pin the normalized-coverage values a real run produced.
 
-    These are the only assertions here made from measured sequencing depths
-    rather than from constructed ones, so they are what would catch a change
-    that is arithmetically self-consistent but no longer matches the data.
-
-    The tolerance is far tighter than the symmetry tests use, and for the
-    opposite reason: those compare two values reached by different routes,
-    where a few ULP of disagreement is expected, whereas this compares one
-    computation against its own recorded output, where any movement at all is
-    the regression being watched for. At 'rel_tol=1e-12' a change in the
-    thirteenth significant digit still passed, which pinned nothing.
+    These are the only assertions made from measured sequencing depths, so they
+    catch a change that stays arithmetically self-consistent but no longer
+    matches the data. The tolerance is tight because this pins one computation
+    against its own recorded output: at 'rel_tol=1e-12' a change in the
+    thirteenth significant digit still passed.
     """
 
     result = compute_pseudo_edger(
