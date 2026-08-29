@@ -407,3 +407,94 @@ def test_compute_pseudo_edger_reproduces_the_published_pseudocounts(
 
     assert math.isclose(result["pseudo_A"], expected, rel_tol=1e-15)
     assert result["pseudo_A"] == result["pseudo_B"]
+
+
+# Restated so the reimplementation below never reads the module under test.
+PRIOR_DEFAULT = 2.0
+
+# 'BPM' is 'CPM' once the shared bin width cancels; 'RPKM' is 'CPM' per
+# kilobase, and '_edger' passes a 10 bp bin.
+NORM_UNIT = (
+    pytest.param("CPM", 1.0, id="CPM"),
+    pytest.param("BPM", 1.0, id="BPM"),
+    pytest.param("RPKM", 1e3 / 10.0, id="RPKM"),
+)
+
+
+@pytest.mark.parametrize(("norm", "unit"), NORM_UNIT)
+@pytest.mark.parametrize("count", (0.0, 1.0, 7.5, 1234.0))
+def test_compute_pseudo_edger_decomposes_the_published_formula(
+    norm: str,
+    unit: float,
+    count: float,
+) -> None:
+    """
+    's_i * y + p_i' must equal edgeR's '(y + y0_i) / (L_i + 2 * y0_i) * 1e6'.
+
+    edgeR publishes one expression; this module returns a scale factor and a
+    pseudocount, because deepTools takes them separately. Assert the identity
+    at several counts rather than comparing the decomposition against itself,
+    which would prove only that one expression equals itself.
+    """
+
+    result = _edger(norm)
+    lib_mean = 0.5 * (LIB_A + LIB_B)
+    sides = (
+        (LIB_A, "scale_A", "pseudo_A"),
+        (LIB_B, "scale_B", "pseudo_B"),
+    )
+
+    for lib, scale_key, pseudo_key in sides:
+        prior_scaled = PRIOR_DEFAULT * lib / lib_mean
+        published = (
+            (count + prior_scaled) / (lib + 2.0 * prior_scaled) * 1e6 * unit
+        )
+        decomposed = result[scale_key] * count + result[pseudo_key]
+
+        assert math.isclose(decomposed, published, rel_tol=1e-12)
+
+
+def test_compute_pseudo_edger_gives_bpm_the_cpm_result() -> None:
+    """
+    'BPM' reduces to 'CPM' under uniform binning, so the fields must agree.
+
+    BPM divides each bin by its width before summing; at one shared width that
+    cancels, leaving CPM. The reduction needs deepTools' fixed '--binSize'; it
+    is not a definition.
+
+    Compare the whole result, so a future branch that diverges in the note or
+    in 'is_edger' fails here too.
+    """
+
+    assert _edger("BPM") == _edger("CPM")
+
+
+@pytest.mark.parametrize("siz_bin", (1, 10, 50, 200))
+def test_compute_pseudo_edger_keeps_cpm_ratios_under_rpkm(
+    siz_bin: int,
+) -> None:
+    """
+    'RPKM' rescales both tracks by one bin-width constant, so ratios survive.
+
+    The values legitimately differ, which is why this asserts the ratio. The
+    third assertion names the constant, so a change that preserved the ratio
+    while corrupting the scale would still fail.
+    """
+
+    cpm = _edger("CPM")
+    rpkm = _edger("RPKM", siz_bin=siz_bin)
+    per_kilobase = 1e3 / siz_bin
+
+    assert math.isclose(
+        rpkm["pseudo_A"] / rpkm["pseudo_B"],
+        cpm["pseudo_A"] / cpm["pseudo_B"],
+        rel_tol=1e-12,
+    )
+    assert math.isclose(
+        rpkm["scale_A"] / rpkm["scale_B"],
+        cpm["scale_A"] / cpm["scale_B"],
+        rel_tol=1e-12,
+    )
+    assert math.isclose(
+        rpkm["scale_A"], cpm["scale_A"] * per_kilobase, rel_tol=1e-12
+    )

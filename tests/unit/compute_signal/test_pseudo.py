@@ -1218,3 +1218,35 @@ def test_single_track_requires_only_the_a_side_flag(
     assert f"'{flag}'" in message
     assert paired_flag not in message
     assert "both" not in message
+
+
+def test_warn_inapplicable_reports_an_explicitly_passed_default(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """
+    A flag whose value happens to be its default still warns when typed.
+
+    Detection reads the supplied tokens rather than the parsed namespace, so it
+    can tell a default apart from a choice. A user who typed '--sym none' asked
+    the edgeR path for something it does not do, and silence would imply the
+    request was honored.
+    """
+
+    status = main(
+        [
+            "--method",
+            "edger",
+            "--fil_A",
+            FIL_A,
+            "--fil_B",
+            FIL_B,
+            "--sym",
+            "none",
+        ],
+    )
+
+    note = capsys.readouterr().err
+
+    assert status == 0
+    assert "--sym" in note
+    assert "do not apply to '--method edger'" in note
