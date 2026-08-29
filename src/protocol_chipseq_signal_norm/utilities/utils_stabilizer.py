@@ -463,7 +463,7 @@ def compute_pseudo_edger(
         scale_a = 1e6 / (lib_a + 2.0 * prior_a)
         scale_b = 1e6 / (lib_b + 2.0 * prior_b)
         is_edger = True
-        note = "exact; BPM is CPM in deepTools"
+        note = "exact; BPM reduces to CPM with fixed bin width"
     elif norm == "RPKM":
         if siz_bin <= 0:
             raise ValueError("'siz_bin' must be positive for 'RPKM'.")

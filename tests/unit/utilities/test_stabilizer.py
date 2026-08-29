@@ -456,11 +456,11 @@ def test_compute_pseudo_edger_decomposes_the_published_formula(
 
 def test_compute_pseudo_edger_gives_bpm_the_cpm_result() -> None:
     """
-    'BPM' reduces to 'CPM' under uniform binning, so the fields must agree.
+    'BPM' reduces to 'CPM' with fixed bin width, so the fields must agree.
 
-    BPM divides each bin by its width before summing; at one shared width that
-    cancels, leaving CPM. The reduction needs deepTools' fixed '--binSize'; it
-    is not a definition.
+    BPM divides each bin by its width before summing; with fixed bin width that
+    cancels, leaving CPM. The reduction follows from deepTools' '--binSize',
+    not from a definition.
 
     Compare the whole result, so a future branch that diverges in the note or
     in 'is_edger' fails here too.

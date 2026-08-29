@@ -512,7 +512,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         default="CPM",
         help=(
             "Target deepTools normalization (default: %(default)s).\n"
-            "    - CPM, BPM  exact; BPM is CPM in deepTools\n"
+            "    - CPM, BPM  exact; BPM reduces to CPM with fixed bin width\n"
             "    - RPKM      exact; needs '--siz_bin'\n"
             "    - None      correct up to a constant log offset; not edgeR\n"
             "    - RPGC      needs '--sf_A' and '--sf_B'; not edgeR\n"
