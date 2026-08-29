@@ -956,3 +956,265 @@ def test_is_one_track_reads_an_unsupplied_fil_b_as_none() -> None:
     assert args.fil_B is None
     assert args.lib_B is None
     assert compute_pseudo._is_one_track(args) is True
+
+
+# Library sizes the fixture pair carries. Expected pseudocounts below are
+# written from edgeR's published definition rather than by calling the
+# implementation under test, so the assertion is evidence and not arithmetic.
+LIB_A = 6.0
+LIB_B = 18.0
+PRIOR = 2.0
+
+
+def _edger_pseudo(mean_lib: float, prior: float = PRIOR) -> float:
+    """
+    Return edgeR's pseudocount on the CPM scale for one mean library size.
+
+    'y0_i = prior * L_i / mean(L)' and 's_i = 1e6 / (L_i + 2 * y0_i)' give
+    'p_i = s_i * y0_i', which reduces to the expression below and carries no
+    per-sample index. That is why an edgeR pair is symmetric.
+
+    Parameters
+    ----------
+    mean_lib : float
+        Mean library size over the columns being compared.
+    prior : float
+        Nominal 'prior.count'.
+
+    Returns
+    -------
+    pseudo : float
+        Pseudocount in normalized units.
+    """
+
+    return 1e6 * prior / (mean_lib + 2.0 * prior)
+
+
+def test_single_track_emits_one_value_rather_than_a_pair(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """
+    Omitting both '--fil_B' and '--lib_B' emits one value, not 'A:B'.
+    """
+
+    status = main(["--method", "edger", "--fil_A", FIL_A])
+
+    emitted = capsys.readouterr().out.strip()
+
+    assert status == 0
+    assert ":" not in emitted
+    assert math.isclose(
+        float(emitted), _edger_pseudo(LIB_A), rel_tol=1e-12
+    )
+
+
+def test_single_track_value_is_not_the_two_track_value(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """
+    A track's one-track pseudocount is not its two-track pseudocount.
+
+    'mean(L)' is the track's own library size in one framing and the mean of
+    both in the other, so a refactor that quietly made them equal would still
+    produce plausible numbers. This is the assertion that catches it.
+    """
+
+    main(["--method", "edger", "--fil_A", FIL_A])
+
+    alone = float(capsys.readouterr().out.strip())
+
+    main(["--method", "edger", "--fil_A", FIL_A, "--fil_B", FIL_B])
+
+    paired = float(capsys.readouterr().out.strip().split(":")[0])
+
+    assert math.isclose(alone, _edger_pseudo(LIB_A), rel_tol=1e-12)
+    assert math.isclose(
+        paired, _edger_pseudo((LIB_A + LIB_B) / 2.0), rel_tol=1e-12
+    )
+    assert alone != paired
+
+
+def test_single_track_refuses_prt_arg(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """
+    '--prt_arg' is refused rather than silently truncated.
+
+    'bamCompare' takes a pair for each of '--scaleFactors' and '--pseudocount',
+    and 'bamCoverage --scaleFactor' accepts no pseudocount, so emitting a
+    one-track argument string would drop the value the user asked for. Assert
+    nothing was emitted, not merely that it failed.
+    """
+
+    with pytest.raises(SystemExit) as refused:
+        main(["--method", "edger", "--fil_A", FIL_A, "--prt_arg"])
+
+    emitted = capsys.readouterr().out
+    message = str(refused.value)
+
+    assert "no single-track form" in message
+    assert "--scaleFactors" not in emitted
+    assert "--pseudocount" not in emitted
+
+
+def test_prt_arg_writes_the_two_track_argument_string(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """
+    The two-track form is a deepTools argument string, not a bare pair.
+    """
+
+    status = main(
+        ["--method", "edger", "--fil_A", FIL_A, "--fil_B", FIL_B, "--prt_arg"],
+    )
+
+    emitted = capsys.readouterr().out.strip()
+    expected = _edger_pseudo((LIB_A + LIB_B) / 2.0)
+    pseudo = emitted.split("--pseudocount ")[1].split()
+
+    assert status == 0
+    assert emitted.startswith("--scaleFactors ")
+    assert all(
+        math.isclose(float(value), expected, rel_tol=1e-12) for value in pseudo
+    )
+
+
+def _edger_payload(
+    argv: list[str],
+    capsys: pytest.CaptureFixture[str],
+) -> dict:
+    """
+    Run one edgeR invocation with '--prt_jsn' and return its JSON summary.
+
+    Parameters
+    ----------
+    argv : list[str]
+        Arguments after '--method edger'.
+    capsys : pytest.CaptureFixture[str]
+        Capture fixture owned by the calling test.
+
+    Returns
+    -------
+    payload : dict
+        Decoded JSON summary, which is the last line written to stdout.
+    """
+
+    status = main(["--method", "edger", "--prt_jsn", *argv])
+
+    assert status == 0
+
+    return json.loads(capsys.readouterr().out.splitlines()[-1])
+
+
+def test_json_mirrors_b_onto_a_in_single_track_mode(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """
+    The B fields mirror A rather than being dropped, and 'one_track' says why.
+
+    A consumer reading 'pseudo_B' must not have to know which mode produced the
+    file, so the fields stay populated and equal.
+    """
+
+    payload = _edger_payload(["--fil_A", FIL_A], capsys)
+    pseudocounts = payload["pseudocounts"]
+
+    assert payload["one_track"] is True
+    assert payload["fil_B"] is None
+    assert payload["lib_sizes"]["B"] == payload["lib_sizes"]["A"]
+    assert payload["scale_factors"]["B"] == payload["scale_factors"]["A"]
+    assert pseudocounts["pseudo_B"] == pseudocounts["pseudo_A"]
+    assert math.isclose(
+        payload["lib_sizes"]["A"], LIB_A, rel_tol=1e-12
+    )
+
+
+def test_json_keeps_one_shape_across_both_modes(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """
+    The schema does not change shape between one- and two-track runs.
+
+    Compare keys recursively rather than spot-checking one field, so a dropped
+    or added member fails here rather than in a consumer.
+    """
+
+    alone = _edger_payload(["--fil_A", FIL_A], capsys)
+    paired = _edger_payload(["--fil_A", FIL_A, "--fil_B", FIL_B], capsys)
+    shapes = []
+
+    for payload in (alone, paired):
+        shapes.append(
+            {
+                key: sorted(value) if isinstance(value, dict) else None
+                for key, value in sorted(payload.items())
+            },
+        )
+
+    assert shapes[0] == shapes[1]
+    assert alone["one_track"] is True
+    assert paired["one_track"] is False
+    assert paired["pseudocounts"]["pseudo_A"] != (
+        alone["pseudocounts"]["pseudo_A"]
+    )
+
+
+# Each row is a whole normalization case: the flag that single-track mode still
+# requires, a value for it, and the flag a two-track run would also need. The
+# message must name only the first.
+SINGLE_TRACK_REQUIRED = (
+    pytest.param("norm", "--frg_A", "100", "--frg_B", id="norm"),
+    pytest.param("RPGC", "--sf_A", "0.5", "--sf_B", id="RPGC"),
+)
+
+
+@pytest.mark.parametrize(
+    ("normalization", "flag", "value", "paired_flag"), SINGLE_TRACK_REQUIRED
+)
+def test_single_track_requires_only_the_a_side_flag(
+    normalization: str,
+    flag: str,
+    value: str,
+    paired_flag: str,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """
+    Single-track mode asks for the A flag alone, and says so when it is absent.
+
+    A message naming both flags would send the user looking for a track they
+    deliberately did not supply.
+    """
+
+    status = main(
+        [
+            "--method",
+            "edger",
+            "--fil_A",
+            FIL_A,
+            "--normalization",
+            normalization,
+            flag,
+            value,
+        ],
+    )
+
+    capsys.readouterr()
+
+    with pytest.raises(SystemExit) as missing:
+        main(
+            [
+                "--method",
+                "edger",
+                "--fil_A",
+                FIL_A,
+                "--normalization",
+                normalization,
+            ],
+        )
+
+    message = str(missing.value)
+
+    assert status == 0
+    assert f"'{flag}'" in message
+    assert paired_flag not in message
+    assert "both" not in message
