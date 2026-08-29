@@ -6,9 +6,10 @@
 # Copyright 2026 by Kris Alavattam
 # Email: kalavattam@gmail.com
 #
-# OpenAI ChatGPT and Codex (GPT-5.5, GPT-5.6) were used in design, development,
-# and documentation, with all output reviewed, edited, and approved by the
-# author.
+# The following were used in design, development, and documentation, with all
+# output reviewed, edited, and approved by the author:
+# - OpenAI ChatGPT and Codex (GPT-5.5, GPT-5.6);
+# - Anthropic Claude Code (Opus 5).
 #
 # Distributed under the MIT license.
 
@@ -17,7 +18,7 @@ set -euo pipefail
 
 TEST_NAME="python startup"
 
-#  Source shared test helpers
+# Source shared test helpers.
 # shellcheck source=tests/support/test_helpers.sh
 source "$(
     git -C "$(dirname "${BASH_SOURCE[0]}")" rev-parse --show-toplevel
@@ -30,6 +31,7 @@ log_def_spk="${TEST_DIR_LOG}/python_startup/calculate_scaling_factor_spike_defau
 log_ret_in="${TEST_DIR_LOG}/python_startup/compute_signal_retired_input.log"
 log_ret_out="${TEST_DIR_LOG}/python_startup/compute_signal_retired_output.log"
 log_ret_i="${TEST_DIR_LOG}/python_startup/compute_signal_retired_short_i.log"
+log_tup_hlp="${TEST_DIR_LOG}/python_startup/help_literal_tuples.log"
 ret_alias_in="--in""file"
 ret_alias_out="--out""file"
 ret_alias_short="-""i"
@@ -51,7 +53,7 @@ hlp_scr=(
 
 print_section "${TEST_NAME}"
 
-#  Resolve the project environment locally for dependency-backed Python checks
+# Resolve the project environment locally for dependency-backed Python checks.
 require_env_project env_nam || {
     finish
     exit $?
@@ -124,7 +126,7 @@ else
         "$(print_relpath "${log_pol_py}")"
 fi
 
-#  Run lightweight Python syntax checks without writing pycache in-place
+# Run lightweight Python syntax checks without writing pycache in-place.
 while IFS= read -r file; do
     rel="$(print_relpath "${file}")"
     log="${TEST_DIR_LOG}/python_compile/${rel//\//__}.log"
@@ -148,32 +150,165 @@ done < <(
         | sort
 )
 
-#  Run --help with the project environment so dependency imports are available
-for rel in "${hlp_scr[@]}"; do
-    file="${ROOT_REPO}/${rel}"
-    [[ -f "${file}" ]] || {
-        record_skip "python --help ${rel}: file not present"
-        continue
-    }
+# Reconcile the declared roster against what the package ships: a hardcoded
+# list cannot notice a twelfth CLI, and a missing entry degraded to a skip.
+cli_found=()
 
-    log="${TEST_DIR_LOG}/python_help/${rel//\//__}.log"
-    if \
-        PYTHONDONTWRITEBYTECODE=1 \
-        PYTHONPYCACHEPREFIX="${TEST_DIR_OUT}/pycache" \
-        PYTHONPATH="${ROOT_REPO}/src" \
-        run_capture \
-            "python help ${rel}" \
-            "${log}" \
-            "${py_cmd[@]}" "${file}" --help
-    then
-        record_pass "python --help ${rel}"
-    else
-        record_warn \
-            "python --help ${rel} failed; see $(print_relpath "${log}")"
+while IFS= read -r file; do
+    cli_found+=( "$(print_relpath "${file}")" )
+done < <(
+    find "${ROOT_REPO}/src/protocol_chipseq_signal_norm/cli" \
+        -type f -name '*.py' ! -name '__init__.py' -print \
+        | LC_ALL=C sort
+)
+
+if [[ "${cli_found[*]}" == "${hlp_scr[*]}" ]]; then
+    record_pass \
+        "declared help roster matches the shipped CLI modules" \
+        "(${#cli_found[@]})"
+else
+    # Name the differing entries rather than dumping both rosters.
+    cnt_dif=0
+
+    while IFS= read -r rel; do
+        cnt_dif=$(( cnt_dif + 1 ))
+
+        record_fail \
+            "shipped CLI module absent from the declared help roster: ${rel}"
+    done < <(
+        comm -13 \
+            <(printf '%s\n' "${hlp_scr[@]}"   | LC_ALL=C sort) \
+            <(printf '%s\n' "${cli_found[@]}" | LC_ALL=C sort)
+    )
+
+    while IFS= read -r rel; do
+        cnt_dif=$(( cnt_dif + 1 ))
+
+        record_fail \
+            "declared help roster entry is not a shipped CLI module:" \
+            "${rel}"
+    done < <(
+        comm -23 \
+            <(printf '%s\n' "${hlp_scr[@]}"   | LC_ALL=C sort) \
+            <(printf '%s\n' "${cli_found[@]}" | LC_ALL=C sort)
+    )
+
+    # Equal sets in a different order reach this branch with no difference.
+    if (( cnt_dif == 0 )); then
+        record_fail \
+            "declared help roster holds the shipped CLI modules but is not" \
+            "in sorted order"
     fi
+fi
+
+# 'CapArgumentParser' sets 'add_help=False', so a module that omits
+# 'add_help_cap()' carries no help flag at all. Render both forms.
+cnt_hlp=0
+
+for rel in "${cli_found[@]}"; do
+    file="${ROOT_REPO}/${rel}"
+
+    if [[ ! -f "${file}" ]]; then
+        record_fail "python help ${rel}: file not present"
+        continue
+    fi
+
+    for flg in "--help" "-h"; do
+        log="${TEST_DIR_LOG}/python_help/${rel//\//__}${flg//-/_}.log"
+
+        if \
+            PYTHONDONTWRITEBYTECODE=1 \
+            PYTHONPYCACHEPREFIX="${TEST_DIR_OUT}/pycache" \
+            PYTHONPATH="${ROOT_REPO}/src" \
+            run_capture \
+                "python help ${flg} ${rel}" \
+                "${log}" \
+                "${py_cmd[@]}" "${file}" "${flg}"
+        then
+            assert_file_nonempty "${log}" "python ${flg} ${rel} help"
+
+            cnt_hlp=$(( cnt_hlp + 1 ))
+        else
+            record_fail \
+                "python ${flg} ${rel} failed; see $(print_relpath "${log}")"
+        fi
+    done
 done
 
-#  Confirm retired compute_signal.py input/output aliases are not accepted
+# Assert the inspected count, not the finding count alone.
+if (( cnt_hlp == 2 * ${#cli_found[@]} )); then
+    record_pass \
+        "help rendered in both forms for ${#cli_found[@]} CLI modules"
+else
+    record_fail \
+        "help render coverage is ${cnt_hlp} of $(( 2 * ${#cli_found[@]} ))" \
+        "expected renders"
+fi
+
+# Stray commas in a parenthesized concatenation make 'help=' a tuple, which
+# 'argparse' raises on only at render time. 'PY.CLI.HELP.LAYOUT' scopes itself
+# to adjacent string literals, so its checker cannot see this shape.
+cnt_py="$(
+    find "${ROOT_REPO}/src" -type f -name '*.py' -print | wc -l | tr -d ' '
+)"
+
+if \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONPYCACHEPREFIX="${TEST_DIR_OUT}/pycache" \
+    run_capture \
+        "help literal tuple sweep" \
+        "${log_tup_hlp}" \
+        "${py_cmd[@]}" - "${ROOT_REPO}/src" << 'PY'
+import ast
+import pathlib
+import sys
+
+# 'metavar' takes a tuple when 'nargs' is set; the rest are always strings.
+KEY_STR = ("help", "description", "epilog")
+
+root = pathlib.Path(sys.argv[1])
+paths = sorted(root.rglob("*.py"))
+found = []
+
+for path in paths:
+    tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
+
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.Call):
+            continue
+
+        keys = {kwd.arg for kwd in node.keywords}
+
+        for kwd in node.keywords:
+            if not isinstance(kwd.value, ast.Tuple):
+                continue
+
+            if kwd.arg in KEY_STR or (
+                kwd.arg == "metavar" and "nargs" not in keys
+            ):
+                found.append(
+                    f"{path}:{kwd.value.lineno}: {kwd.arg}= is a tuple"
+                )
+
+print(f"inspected {len(paths)}")
+
+for line in found:
+    print(line)
+
+raise SystemExit(1 if found else 0)
+PY
+then
+    assert_pattern_found \
+        "${log_tup_hlp}" \
+        "^inspected ${cnt_py}$" \
+        "help literal tuple sweep inspected ${cnt_py} Python files"
+else
+    record_fail \
+        "tuple-valued help keyword in maintained Python, or the sweep failed" \
+        "to run; see $(print_relpath "${log_tup_hlp}")"
+fi
+
+# Confirm retired compute_signal.py input/output aliases are not accepted.
 if \
     PYTHONDONTWRITEBYTECODE=1 \
     PYTHONPYCACHEPREFIX="${TEST_DIR_OUT}/pycache" \
@@ -226,7 +361,8 @@ if \
             --fil_in canonical.bam \
             --fil_out y
 then
-    record_fail "compute_signal.py unexpectedly accepts retired short input alias"
+    record_fail \
+        "compute_signal.py unexpectedly accepts retired short input alias"
 else
     assert_pattern_found \
         "${log_ret_i}" \
@@ -234,7 +370,7 @@ else
         "compute_signal.py rejects retired short input alias"
 fi
 
-#  Confirm the direct spike-in calculator defaults to the ChIP-Rx ratio
+# Confirm the direct spike-in calculator defaults to the ChIP-Rx ratio.
 if \
     PYTHONDONTWRITEBYTECODE=1 \
     PYTHONPYCACHEPREFIX="${TEST_DIR_OUT}/pycache" \
