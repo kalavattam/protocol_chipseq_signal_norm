@@ -139,13 +139,13 @@ def test_compute_pseudo_edger_symmetry_survives_only_a_tolerance() -> None:
     """
     Keep a live witness for why the symmetry tests use 'math.isclose'.
 
-    The equality is exact in real arithmetic -- the per-sample 'L_i / L_bar'
-    scaling cancels -- but the two sides reach it by different 'float64'
-    routes. Over 100,000 random library-size pairs, exact '==' held for only
-    46% of CPM pairs and 41% of RPKM pairs, so a test written with '==' passes
-    or fails on the sizes it happens to use and reads as a real asymmetry bug
-    when it fails. Worst observed difference was 4 ULP, and 'rel_tol=1e-16'
-    fails 56% of the time because it sits below machine epsilon.
+    The equality is exact in real arithmetic (the per-sample 'L_i / L_bar'
+    scaling cancels), but the two sides reach it by different 'float64' routes.
+    Over 100,000 random library-size pairs, exact '==' held for only 46% of CPM
+    pairs and 41% of RPKM pairs, so a test written with '==' passes or fails on
+    the sizes it happens to use and reads as a real asymmetry bug when it
+    fails. Worst observed difference was 4 ULP, and 'rel_tol=1e-16' fails 56%
+    of the time because it sits below machine epsilon.
 
     If this assertion ever fails, 'float64' has started agreeing on this pair
     and the tolerance has lost its witness. Choose sizes that reproduce the

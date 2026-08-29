@@ -699,8 +699,8 @@ def test_json_payload_prior_is_not_derivable_for_normalized_coverage(
     'pseudo_i / scale_i' recovers it in every other mode. Under 'norm' both
     scale factors are 1.0 and the pseudocount is symmetric, so that quotient
     returns the shared pseudocount instead. The fragment counts invert the
-    library-size imbalance here -- 3:1 against the tracks' 1:3 -- so a prior
-    that tracked the tracks could not produce these values.
+    library-size imbalance here (3:1 against the tracks' 1:3), so a prior that
+    tracked the tracks could not produce these values.
     """
 
     status = main(
@@ -729,7 +729,7 @@ def test_json_payload_prior_is_not_derivable_for_normalized_coverage(
 
 
 # Every spelling argparse accepts for an option the edgeR path ignores. The
-# note existed but read long forms only, so '-c 0.05' ran silently -- the case
+# note existed but read long forms only, so '-c 0.05' ran silently: the case
 # its own docstring names as the reason it exists.
 IGNORED_SPELLINGS = (
     ("--coef", "0.05"),

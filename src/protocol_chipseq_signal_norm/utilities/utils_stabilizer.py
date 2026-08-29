@@ -377,14 +377,14 @@ def compute_pseudo_edger(
     which is symmetric by construction, so they carry the only per-sample
     information it returns.
 
-    A single track is expressed by passing its library size as both 'lib_a'
-    and 'lib_b'. That is not an approximation: edgeR averages library sizes
-    over all columns and scales each prior by 'L_i / mean(L)'
+    A single track is expressed by passing its library size as both 'lib_a' and
+    'lib_b'. That is not an approximation: edgeR averages library sizes over
+    all columns and scales each prior by 'L_i / mean(L)'
     ('add_prior_count.c:88'), so with one column the ratio is exactly 1, the
     prior stays nominal, and 'mean(L)' is that column's own library size.
     Passing 'L' twice reproduces both. Because 'mean(L)' differs between the
     two framings, a track's one-track pseudocount is not its two-track
-    pseudocount -- which is edgeR's behavior too, not an artifact here.
+    pseudocount; that is edgeR's behavior too, not an artifact here.
 
     'norm' (aliases 'nc', 'n', 'nrm', 'normalized') is normalized coverage:
     each fragment deposits exactly 1.0 across its footprint and the track is

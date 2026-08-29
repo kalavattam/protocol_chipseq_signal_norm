@@ -20,30 +20,23 @@ from protocol_chipseq_signal_norm.cli.compute_signal import (
     calc_sig_chrom_direct_sparse_np,
 )
 
-
-# Every quantity 'compute_signal' accumulates is a non-negative contribution: a
-# fragment covers some number of base pairs in a bin, weighted by '1/L' under
-# 'norm' and 'frag', or by 1 under 'unadj' (where 'L' is frgment length).
-# Nothing in the model subtracts, so a negative value for an output bin cannot
-# be real data; it can only be some kind of arithmetic residue.
+# Every quantity 'compute_signal' accumulates is non-negative: a fragment
+# covers base pairs in a bin, weighted by '1/L' under 'norm' and 'frag', or by
+# 1 under 'unadj' (where 'L' is fragment length). Nothing subtracts, so a
+# negative output bin cannot be real data; it can only be arithmetic residue.
 #
-# In previous implementations of the 'compute_signal' algorithm, such residues
-# did occur. Fragment interiors are filled with a difference array — '+value'
-# at the interior start, '-value' one past the end — which is reconstructed by
-# a left-to-right 'np.cumsum' over the chromosome. In exact arithmetic, the
-# running total returns to zero between fragments; in 'float64' arithmetic, it
-# does not, as the two marks for one fragment are separated by many intervening
-# additions and each of those rounds. The leftover is of order machine epsilon
-# times the peak running sum, its sign is arbitrary, and the emit filter's
-# exact 'sig != 0.0' test then wrote it out as data. On real sample data, this
-# produced up to ~3% of bins carrying values near # 1e-20, with approximately
-# half of them negative.
+# Earlier implementations produced exactly that. Interiors are filled with a
+# difference array ('+value' at the interior start, '-value' one past the end)
+# reconstructed by a left-to-right 'np.cumsum'. In exact arithmetic the running
+# total returns to zero between fragments; in 'float64' it does not, because
+# many rounded additions separate a fragment's two marks. The residue is of
+# order machine epsilon times the peak running sum, its sign is arbitrary, and
+# the exact 'sig != 0.0' emit filter wrote it out: on real data, up to ~3% of
+# bins near 1e-20, about half of them negative.
 #
-# So, the fix was to mask the 'float64' cumulative sum with the 'int64' one
-# that already tracks interior coverage. Note that interior coverage is an
-# integer question, so that indicator is exact, and no tolerance has to be
-# chosen or tuned.
-
+# The fix masks the 'float64' cumulative sum with the 'int64' interior-coverage
+# count. Interior coverage is an integer question, so that indicator is exact
+# and no tolerance has to be tuned.
 RNG_SEED = 20260816
 
 
@@ -115,9 +108,9 @@ def test_direct_sparse_is_never_negative(n_frag, size, lo, hi, use_bincount):
     """
     Both sparse result formats are non-negative in every bin.
 
-    'B1' and 'B3' build the difference array differently -- in-place
-    accumulation versus a subtraction of two 'np.bincount' sums -- and the
-    second is the more cancellation-prone of the two, so both are covered.
+    'B1' and 'B3' build the difference array differently (in-place accumulation
+    versus a subtraction of two 'np.bincount' sums), and the second is the more
+    cancellation-prone of the two, so both are covered.
     """
     starts, ends, lengths = _fragments(n_frag, size, lo, hi)
 

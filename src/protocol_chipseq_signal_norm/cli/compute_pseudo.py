@@ -781,12 +781,12 @@ def _is_one_track(args: argparse.Namespace) -> bool:
     -----
     edgeR itself has no two-sample requirement, so neither does this. In
     'add_prior_count.c:88' 'compute_offsets' averages the library sizes over
-    all columns and scales each sample's prior by 'offset[lib] / ave_lib'.
-    With one column that ratio is exactly 1: the per-sample scaling degenerates
-    to a no-op, the prior stays at its nominal 'prior.count', and the
-    denominator becomes 'L + 2 * prior.count'. Nothing guards the path --
-    'cpm.default' checks only for a zero-length dimension, and 'rpkm.default'
-    is 'cpm.default' followed by a length division, so it inherits the same
+    all columns and scales each sample's prior by 'offset[lib] / ave_lib'. With
+    one column that ratio is exactly 1: the per-sample scaling degenerates to a
+    no-op, the prior stays at its nominal 'prior.count', and the denominator
+    becomes 'L + 2 * prior.count'. Nothing guards the path: 'cpm.default'
+    checks only for a zero-length dimension, and 'rpkm.default' is
+    'cpm.default' followed by a length division, so it inherits the same
     behavior.
 
     Reproducing that here therefore needs no separate estimator: passing the
@@ -797,8 +797,8 @@ def _is_one_track(args: argparse.Namespace) -> bool:
 
     The consequence a caller must know: a track's one-track pseudocount is not
     its two-track pseudocount, because 'L_bar' differs. That is edgeR's own
-    behavior -- 'cpm(log = TRUE)' on a one-column 'DGEList' differs from the
-    same column inside a two-column one -- and not an artifact here.
+    behavior, not an artifact here: 'cpm(log = TRUE)' on a one-column 'DGEList'
+    differs from the same column inside a two-column one.
     """
 
     return not getattr(args, "fil_B", None) and args.lib_B is None
@@ -823,7 +823,7 @@ def _resolve_ignored(token: str) -> str | None:
     Three spellings reach the same option: the bare flag, an inline value after
     '=', and, for a single-character short option, a value attached directly as
     in '-c0.05'. Only the third needs care, because a short option is a prefix
-    of longer ones -- '-s' of '-sp', '-sb', '-sfA', and '-sfB' -- so the token
+    of longer ones ('-s' of '-sp', '-sb', '-sfA', and '-sfB'), so the token
     resolves to the longest registered option that prefixes it, which is how
     argparse itself decides. Abbreviation is off ('allow_abbrev=False'), so no
     partial long form has to be recognized.
