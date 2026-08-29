@@ -321,8 +321,8 @@ def compute_pseudo_edger(
     scale_a, scale_b : float | None
         Externally supplied deepTools scale factors, required for 'RPGC'.
     frg_a, frg_b : float | None
-        Fragment counts, required for 'norm' (normalized coverage). This is
-        the same denominator 'compute_signal' divides by, not the number of
+        Fragment counts, required for 'norm' (normalized coverage). This is the
+        same denominator 'compute_signal' divides by, not the number of
         alignment records; the two coincide only when one record per fragment
         survives filtering. Not derivable from a normalized-coverage track,
         which sums to 1 by construction.
@@ -430,7 +430,7 @@ def compute_pseudo_edger(
                 raise ValueError(
                     f"{label!r} must be finite and positive for 'norm'; it is "
                     "the fragment count, which a normalized-coverage track "
-                    "cannot supply because it sums to 1."
+                    "cannot supply because it sums to 1.",
                 )
 
         k_a = lib_a / frg_a

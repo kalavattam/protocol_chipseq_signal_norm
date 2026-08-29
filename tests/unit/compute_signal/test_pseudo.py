@@ -57,7 +57,9 @@ def test_combine_pseudo_sym_warns_for_defined_mean_fallbacks(
     capsys: pytest.CaptureFixture[str],
 ) -> None:
     assert combine_pseudo_sym(-1.0, 4.0, "geom") == (-1.0, -1.0)
+
     geometric = capsys.readouterr()
+
     assert geometric.out == ""
     assert geometric.err == (
         "Geometric mean undefined for negative values; falling back to "
@@ -65,7 +67,9 @@ def test_combine_pseudo_sym_warns_for_defined_mean_fallbacks(
     )
 
     assert combine_pseudo_sym(0.0, 4.0, "harm") == (0.0, 0.0)
+
     harmonic = capsys.readouterr()
+
     assert harmonic.out == ""
     assert harmonic.err == (
         "Harmonic mean undefined for nonpositive values; falling back to "
@@ -84,7 +88,9 @@ def test_combine_pseudo_sym_nonfinite_paths_do_not_validate_mode(
     capsys: pytest.CaptureFixture[str],
 ) -> None:
     assert combine_pseudo_sym(math.nan, 2.0, "bad") == (2.0, 2.0)
+
     one_finite = capsys.readouterr()
+
     assert one_finite.out == ""
     assert (
         one_finite.err == (
@@ -95,6 +101,7 @@ def test_combine_pseudo_sym_nonfinite_paths_do_not_validate_mode(
 
     result = combine_pseudo_sym(math.nan, math.inf, "bad")
     neither_finite = capsys.readouterr()
+
     assert math.isnan(result[0])
     assert math.isinf(result[1])
     assert neither_finite.out == ""
@@ -117,6 +124,7 @@ def test_parser_preserves_complete_action_contract(
     def capture_parser(*args: object, **kwargs: object) -> object:
         parser = parser_type(*args, **kwargs)
         captured["parser"] = parser
+
         return parser
 
     monkeypatch.setattr(compute_pseudo, "CapArgumentParser", capture_parser)
@@ -364,10 +372,12 @@ def test_help_channels_examples_and_semantic_order(
 ) -> None:
     with pytest.raises(SystemExit) as no_arguments:
         parse_args([])
+
     no_argument_capture = capsys.readouterr()
 
     with pytest.raises(SystemExit) as explicit_help:
         parse_args(["--help"])
+
     help_text = capsys.readouterr().out
     ordered = (
         "--help",
@@ -393,7 +403,9 @@ def test_help_channels_examples_and_semantic_order(
     assert "Examples\n--------" in help_text
     assert "compute_pseudo --fil_A signal_A.bdg" in help_text
     assert "--sym max" in help_text
+
     positions = [help_text.index(item) for item in ordered]
+
     assert positions == sorted(positions)
 
 
@@ -424,6 +436,7 @@ def test_primary_pair_json_and_verbose_output_are_preserved(
 
     status = main(["--fil_A", str(first), "--method", "min_nz", "--dp", "2"])
     single = capsys.readouterr()
+
     status_pair = main(
         [
             "--verbose",
@@ -446,6 +459,7 @@ def test_primary_pair_json_and_verbose_output_are_preserved(
         for line in pair.err.splitlines()
         if line.startswith("--")
     ]
+
     payload = json.loads(pair.out.splitlines()[1])
 
     assert status == 0
@@ -484,7 +498,9 @@ def test_main_skips_malformed_rows_and_handles_strict_json_failure(
     assert (
         main(["--fil_A", str(mixed), "--method", "min_nz", "--dp", "2"]) == 0
     )
+
     malformed = capsys.readouterr()
+
     assert malformed.out == "2\n"
     assert malformed.err == ""
 
@@ -495,12 +511,14 @@ def test_main_skips_malformed_rows_and_handles_strict_json_failure(
     )
 
     assert status_empty == 0
+
     strict_json = capsys.readouterr()
+
     assert strict_json.out == "nan\n"
     assert "No finite values in A after filtering" in strict_json.err
     assert strict_json.err.endswith(
         "Strict JSON disallows nan and inf; adjust '--floor' and '--coef', or "
-        "just skip '--prt_jsn'.\n"
+        "just skip '--prt_jsn'.\n",
     )
 
 
@@ -521,7 +539,7 @@ def test_main_rejects_invalid_quantile_with_a_stable_error(
                 "qntl_nz",
                 "--qntl_nz",
                 "101",
-            ]
+            ],
         )
 
 
@@ -855,7 +873,7 @@ def test_ignored_option_constants_match_the_parser(
         if not option.startswith("--")
     )
 
-    assert compute_pseudo.OPT_IGNORED_EDGER == {
+    assert {
         dest: registered[dest] for dest in compute_pseudo.OPT_IGNORED_EDGER
-    }
+    } == compute_pseudo.OPT_IGNORED_EDGER
     assert set(compute_pseudo.OPT_SHORT_ALL) == set(shorts)

@@ -1033,6 +1033,7 @@ def _run_edger(
             if "k_A" in result:
                 print(f"k_A            {format_value(result['k_A'], args.dp)}")
                 print(f"k_B            {format_value(result['k_B'], args.dp)}")
+
             print(f"is_edger       {result['is_edger']}")
             print("")
 
@@ -1064,8 +1065,9 @@ def _run_edger(
                 if "k_A" in result
                 else None
             ),
-            # Not derivable under 'norm': the pseudocount is symmetric there, so
-            # 'pseudo_i / scale_i' returns it rather than the prior.
+
+            # Not derivable under 'norm': the pseudocount is symmetric there,
+            # so 'pseudo_i / scale_i' returns it rather than the prior.
             "prior_scaled": {
                 "A": result["prior_scaled_A"],
                 "B": result["prior_scaled_B"],
@@ -1079,6 +1081,7 @@ def _run_edger(
             },
             "is_edger": result["is_edger"],
             "note": result["note"],
+
             # The B fields mirror A here rather than being dropped, so the
             # schema does not change shape between one- and two-track runs.
             # 'one_track' is what tells a consumer why they are equal.
@@ -1193,7 +1196,7 @@ def main(argv: list[str] | None = None) -> int:
                 raise ValueError(
                     f"'--normalization {args.normalization}' requires "
                     f"{both_frg}; a normalized-coverage track sums to 1, so "
-                    "the fragment count cannot be recovered from it."
+                    "the fragment count cannot be recovered from it.",
                 )
 
             if args.normalization == "RPGC" and need_sf:
@@ -1211,7 +1214,7 @@ def main(argv: list[str] | None = None) -> int:
                 raise ValueError(
                     "'--prt_arg' writes the two-track 'bamCompare' argument "
                     "string, which has no single-track form. Drop "
-                    "'--prt_arg' to print the pseudocount, or supply track B."
+                    "'--prt_arg' to print the pseudocount, or supply track B.",
                 )
 
         validate_comparison(args.coef, "ge", 0.0, "coef", allow_none=True)

@@ -76,7 +76,9 @@ CASES = [
 def test_calc_sig_chrom_array_is_never_negative(
     n_frag, size, lo, hi, is_len, is_norm
 ):
-    """Coverage from the array accumulator is non-negative in every bin."""
+    """
+    Coverage from the array accumulator is non-negative in every bin.
+    """
     starts, ends, lengths = _fragments(n_frag, size, lo, hi)
 
     out = calc_sig_chrom_array(
@@ -114,7 +116,7 @@ def test_direct_sparse_is_never_negative(n_frag, size, lo, hi, use_bincount):
     """
     starts, ends, lengths = _fragments(n_frag, size, lo, hi)
 
-    tag, parts = calc_sig_chrom_direct_sparse_np(
+    _tag, parts = calc_sig_chrom_direct_sparse_np(
         chrom="I",
         starts=starts,
         ends=ends,
@@ -167,7 +169,9 @@ def test_zero_coverage_gaps_are_absent_not_tiny():
     )
 
     covered = set()
-    for start, end in zip(starts.tolist(), ends.tolist()):
+    for start, end in zip(
+        starts.tolist(), ends.tolist(), strict=True
+    ):
         covered.update(range(start // 10, ((end - 1) // 10) + 1))
 
     stray = {
