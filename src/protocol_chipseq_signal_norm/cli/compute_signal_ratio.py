@@ -86,11 +86,13 @@ METHOD_CANON = {
     "s": "unadj",
     "smp": "unadj",
     "simple": "unadj",
+
     # Compute the log2 ratio as log2(A / B).
     "2": "log2",
     "l2": "log2",
     "lg2": "log2",
     "log2": "log2",
+
     # Compute the reciprocal simple ratio as B / A.
     "rr": "unadj_r",
     "raw_r": "unadj_r",
@@ -100,6 +102,7 @@ METHOD_CANON = {
     "sr": "unadj_r",
     "smp_r": "unadj_r",
     "simple_r": "unadj_r",
+
     # Compute the reciprocal log2 ratio as log2(B / A).
     "2r": "log2_r",
     "l2r": "log2_r",
@@ -711,15 +714,15 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         description=(
             "Compute per-bin ratios between two bedGraphs [A (numerator) and "
             "B (denominator)] with optional per-file multiplicative scaling, "
-            "pseudocount addition, 'dep_min' “clamping” (denominator "
-            "thresholding, i.e., a divisor “floor”), log2 transformation, and "
+            "pseudocount addition, 'dep_min' clamping (denominator "
+            "thresholding, i.e., a divisor floor), log2 transformation, and "
             "reciprocal computation.\n"
             "\n"
-            "Can assign an error tolerance (ε [an “epsilon value”]) for "
-            "treating values (e.g., “float noise”) as zero. deepTools "
-            "bamCompare-like behavior is 'ε = 0.0' (the default).\n"
+            "Can assign an error tolerance (ε [an epsilon value]) for "
+            "treating values (e.g., float noise) as zero. deepTools "
+            "'bamCompare'-like behavior is 'ε = 0.0' (the default).\n"
             "\n"
-            "Order of operations is generally deepTools bamCompare-like:\n"
+            "Order of operations is generally deepTools 'bamCompare'-like:\n"
             "    1. Optionally skip zero-zero bins: '0 / 0' or 'ε / ε' "
             "(deepTools-like). ‡\n"
             "    2. Optionally scale each file.\n"
@@ -748,12 +751,16 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         dest="verbose",
         action="store_true",
         default=False,
-        help="Run script in verbose mode.\n\n",
+        help=(
+            "Run script in verbose mode.\n"
+            "\n"
+        ),
     )
 
     parser.add_argument(
         "-fA",
         "--fil_A",
+        "--fil-A",
         dest="fil_A",
         required=True,
         type=str,
@@ -766,6 +773,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument(
         "-fB",
         "--fil_B",
+        "--fil-B",
         dest="fil_B",
         required=True,
         type=str,
@@ -779,6 +787,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument(
         "-fo",
         "--fil_out",
+        "--fil-out",
         dest="fil_out",
         required=True,
         type=str,
@@ -793,6 +802,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument(
         "-cs",
         "--chr_sizes",
+        "--chr-sizes",
         dest="chr_sizes",
         default=None,
         help=(
@@ -984,6 +994,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument(
         "-sp",
         "--skp_pfx",
+        "--skp-pfx",
         dest="skp_pfx",
         type=str,
         default=",".join(DEF_SKP_PFX),

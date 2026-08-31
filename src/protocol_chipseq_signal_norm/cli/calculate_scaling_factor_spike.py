@@ -438,7 +438,10 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         dest="verbose",
         action="store_true",
         default=False,
-        help="Run script in verbose mode.\n\n",
+        help=(
+            "Run script in verbose mode.\n"
+            "\n"
+        ),
     )
     parser.add_argument(
         "-c",
@@ -460,8 +463,8 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
             "        10^6 / N_s^{in}\n"
             "    - chiprx_alpha_ratio | alpha_chiprx_ratio | chiprx_ratio\n"
             "        N_s^{in} / N_s^{IP}\n"
-            "    - rxinput_alpha | alpha_rxinput | rxi_alpha |\n"
-            "      alpha_rxi | rxinput | rxi\n"
+            "    - rxinput_alpha | alpha_rxinput | rxi_alpha | alpha_rxi | "
+            "rxinput | rxi\n"
             "        (10^6 * N_s^{in}) / (N_s^{IP} * T^{in})\n"
             "    - all\n"
             "\n"
@@ -510,7 +513,10 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         dest="spike_ip",
         type=int,
         required=True,
-        help="Number of spike-in alignments for the ChIP-seq IP data.\n\n",
+        help=(
+            "Number of spike-in alignments for the ChIP-seq IP data.\n"
+            "\n"
+        ),
     )
     parser.add_argument(
         "-mn",

@@ -296,7 +296,10 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         dest="verbose",
         action="store_true",
         default=False,
-        help="Run script in verbose mode.\n\n",
+        help=(
+            "Run script in verbose mode.\n"
+            "\n"
+        ),
     )
 
     parser.add_argument(
@@ -327,40 +330,57 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument(
         "-mp",
         "--mass_ip",
+        "--mass-ip",
         dest="mass_ip",
         type=float,
         required=True,
-        help="Mass of IP sample (ng).\n\n",
+        help=(
+            "Mass of IP sample (ng).\n"
+            "\n"
+        ),
     )
     parser.add_argument(
         "-mn",
         "--mass_in",
+        "--mass-in",
         dest="mass_in",
         type=float,
         required=True,
-        help="Mass of input sample (ng).\n\n",
+        help=(
+            "Mass of input sample (ng).\n"
+            "\n"
+        ),
     )
 
     parser.add_argument(
         "-va",
         "--vol_all",
+        "--vol-all",
         dest="vol_all",
         type=float,
         required=True,
-        help="Volume of sample before removal of input (µL).\n\n",
+        help=(
+            "Volume of sample before removal of input (µL).\n"
+            "\n"
+        ),
     )
     parser.add_argument(
         "-vn",
         "--vol_in",
+        "--vol-in",
         dest="vol_in",
         type=float,
         required=True,
-        help="Volume of input sample (µL).\n\n",
+        help=(
+            "Volume of input sample (µL).\n"
+            "\n"
+        ),
     )
 
     parser.add_argument(
         "-di",
         "--dep_ip",
+        "--dep-ip",
         dest="dep_ip",
         type=int,
         required=False,
@@ -374,6 +394,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument(
         "-dn",
         "--dep_in",
+        "--dep-in",
         dest="dep_in",
         type=int,
         required=False,
@@ -388,18 +409,26 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument(
         "-lp",
         "--len_ip",
+        "--len-ip",
         dest="len_ip",
         type=float,
         required=True,
-        help="Summary fragment length of IP sample (bp).\n\n",
+        help=(
+            "Summary fragment length of IP sample (bp).\n"
+            "\n"
+        ),
     )
     parser.add_argument(
         "-ln",
         "--len_in",
+        "--len-in",
         dest="len_in",
         type=float,
         required=True,
-        help="Summary fragment length of input sample (bp).\n\n",
+        help=(
+            "Summary fragment length of input sample (bp).\n"
+            "\n"
+        ),
     )
 
     parser.add_argument(

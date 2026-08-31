@@ -149,7 +149,10 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         dest="verbose",
         action="store_true",
         default=False,
-        help="Run script in verbose mode.\n\n",
+        help=(
+            "Run script in verbose mode.\n"
+            "\n"
+        ),
     )
     parser.add_argument(
         "-w",
@@ -158,7 +161,8 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         action="store_true",
         default=False,
         help=(
-            "Weight values by width (end - start) prior to integration.\n\n"
+            "Weight values by width (end - start) prior to integration.\n"
+            "\n"
         ),
     )
     parser.add_argument(

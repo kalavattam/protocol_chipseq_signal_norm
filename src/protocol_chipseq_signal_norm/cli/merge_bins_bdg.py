@@ -414,7 +414,10 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         dest="verbose",
         action="store_true",
         default=False,
-        help="Run script in verbose mode.\n\n",
+        help=(
+            "Run script in verbose mode.\n"
+            "\n"
+        ),
     )
     parser.add_argument(
         "-fi",
