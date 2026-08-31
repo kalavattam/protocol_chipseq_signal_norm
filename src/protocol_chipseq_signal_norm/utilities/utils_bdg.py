@@ -199,8 +199,8 @@ def sum_counts_bdg(
 
     Notes
     -----
-    A bedGraph run-length encodes equal neighbours, so an interval spanning
-    'k' bins contributes 'k' times its value rather than once. Summing rows
+    A bedGraph run-length encodes equal neighbours, so an interval spanning 'k'
+    bins contributes 'k' times its value rather than once. Summing rows
     directly understates the library size by exactly the compression factor.
 
     Terminal intervals round up: a chromosome whose length is not a multiple of

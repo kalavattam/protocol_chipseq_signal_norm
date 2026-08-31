@@ -6,8 +6,10 @@
 # Copyright 2026 by Kris Alavattam
 # Email: kalavattam@gmail.com
 #
-# OpenAI ChatGPT and Codex (GPT-5.6) were used in design, development, and
-# documentation, with all output reviewed, edited, and approved by the author.
+# The following were used in design, development, and documentation, with all
+# output reviewed, edited, and approved by the author:
+# - OpenAI ChatGPT and Codex (GPT-5.6);
+# - Anthropic Claude Code (Opus 5).
 #
 # Distributed under the MIT license.
 
@@ -1072,8 +1074,8 @@ def sample():
         """
         A quoted '--' is delimiter syntax, not a prose dash.
 
-        The exemption carries the rule: over a hundred maintained lines use
-        an end-of-options delimiter, and flagging those would make the check
+        The exemption carries the rule: over a hundred maintained lines use an
+        end-of-options delimiter, and flagging those would make the check
         unusable.
         """
 

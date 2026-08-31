@@ -294,9 +294,9 @@ def test_sum_counts_bdg_infers_a_multiple_when_runs_share_a_factor(
     """
     Pin the documented limit of inference so it is not mistaken for exact.
 
-    Every run here spans an even number of 10 bp bins, so the divisor lands
-    on 20 and the library size halves. Real tracks carry runs of differing
-    lengths and do not do this; supplying 'siz_bin' is the stated remedy.
+    Every run here spans an even number of 10 bp bins, so the divisor lands on
+    20 and the library size halves. Real tracks carry runs of differing lengths
+    and do not do this; supplying 'siz_bin' is the stated remedy.
     """
 
     path = tmp_path / "even_runs.bdg"
