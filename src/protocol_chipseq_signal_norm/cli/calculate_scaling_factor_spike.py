@@ -449,8 +449,8 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         required=False,
         default="chiprx_alpha_ratio",
         help=(
-            "Coefficient to output (case-insensitive; default: %(default)s)."
-            "\n\n"
+            "Coefficient to output (case-insensitive; default: %(default)s).\n"
+            "\n"
             "Aliases:\n"
             "    - fractional | bioprotocol | bio_protocol\n"
             "        (N_s^{in} / T^{in}) / (N_s^{IP} / T^{IP})\n"
@@ -470,7 +470,8 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
             "    - chiprx_alpha_ip\tOrlando et al.\n"
             "    - chiprx_alpha_in\tOrlando et al.\n"
             "    - rxinput_alpha\tNiu et al., Ma et al., Fursova et al., "
-            "Bressan et al.\n\n"
+            "Bressan et al.\n"
+            "\n"
         ),
     )
     parser.add_argument(
@@ -483,7 +484,8 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         default="plain",
         help=(
             "Output format (default: %(default)s). 'plain' requires a single "
-            "coefficient (i.e., not 'all').\n\n"
+            "coefficient (i.e., not 'all').\n"
+            "\n"
         ),
     )
     parser.add_argument(
@@ -496,7 +498,8 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         required=True,
         help=(
             "Number of “main” alignments (reads or read-inferred fragments) "
-            "for the ChIP-seq IP data.\n\n"
+            "for the ChIP-seq IP data.\n"
+            "\n"
         ),
     )
     parser.add_argument(
@@ -519,7 +522,8 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         required=True,
         help=(
             "Number of “main” alignments for the corresponding ChIP-seq input "
-            "data.\n\n"
+            "data.\n"
+            "\n"
         ),
     )
     parser.add_argument(
@@ -532,7 +536,8 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         required=True,
         help=(
             "Number of spike-in alignments for the corresponding ChIP-seq "
-            "input data.\n\n"
+            "input data.\n"
+            "\n"
         ),
     )
     parser.add_argument(
@@ -546,7 +551,8 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
             "Maximum number of decimal places retained for finite emitted "
             "values. Applies to emitted coefficient values. Plain and TSV "
             "output strip non-informative trailing zeros (default: "
-            "%(default)s).\n\n"
+            "%(default)s).\n"
+            "\n"
         ),
     )
 

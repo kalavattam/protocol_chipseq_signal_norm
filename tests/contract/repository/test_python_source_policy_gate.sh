@@ -34,9 +34,11 @@ declare -a arr_blocking_files=(
     "dev/audit/help_option_order.py"
 )
 
-# 'SOURCE.PROSE.WRAP' is advisory repository-wide until S3-MIG-007 clears its
-# residual, so it is inventoried rather than enforced even on this cohort.
-advisory_rule="SOURCE.PROSE.WRAP"
+# 'SOURCE.PROSE.WRAP' is enforced over this cohort and inventoried beyond it.
+# It stayed advisory here until its Python realization recognized an unfenced
+# display block; before that repair it read a verbatim equation pair as prose,
+# so enforcing it would have demanded a join that destroys the equations.
+residual_rule="SOURCE.PROSE.WRAP"
 
 log_dir="${TEST_DIR_LOG}/python_source_policy_gate"
 blocking_log="${log_dir}/blocking.log"
@@ -94,8 +96,7 @@ set -e
 
 blocking_scanned="$(scanned_paths "${blocking_log}")"
 blocking_total="$(count_findings "${blocking_log}" '^[A-Z][A-Z0-9._]+: ')"
-blocking_advisory="$(count_findings "${blocking_log}" "^${advisory_rule}: ")"
-blocking_enforced=$(( blocking_total - blocking_advisory ))
+blocking_enforced="${blocking_total}"
 
 # Prove the checker actually read the cohort before trusting a zero count.
 if [[ "${blocking_scanned}" == "${#arr_cohort[@]}" ]]; then
@@ -117,8 +118,7 @@ if (( blocking_enforced == 0 )); then
 else
     record_fail \
         "migrated Python cohort has ${blocking_enforced} enforced finding(s)"
-    grep -vE "^${advisory_rule}: |^PY\.SOURCE\.POLICY: " "${blocking_log}" \
-        | sed -n '1,40p' >&2
+    grep -vE '^PY\.SOURCE\.POLICY: ' "${blocking_log}" | sed -n '1,40p' >&2
 fi
 
 
@@ -137,18 +137,15 @@ if (( inventory_status > 1 )); then
     record_fail "Python source-policy inventory failed to run"
 else
     total_findings="$(count_findings "${inventory_log}" '^[A-Z][A-Z0-9._]+: ')"
-    advisory_findings="$(
-        count_findings "${inventory_log}" "^${advisory_rule}: "
+    residual_findings="$(
+        count_findings "${inventory_log}" "^${residual_rule}: "
     )"
     residual=$(( total_findings - blocking_total ))
-    residual_advisory=$(( advisory_findings - blocking_advisory ))
 
     record_pass "maintained Python inventory completed"
     record_warn \
         "S3-MIG-007 residual: ${residual} finding(s) outside the migrated" \
-        "cohort, of which ${residual_advisory} are advisory" \
-        "${advisory_rule}; the cohort itself carries" \
-        "${blocking_advisory} advisory finding(s)"
+        "cohort, of which ${residual_findings} are ${residual_rule}"
 fi
 
 finish

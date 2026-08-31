@@ -759,7 +759,8 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         type=str,
         help=(
             "First bedGraph input file, file A (e.g., IP). Supports plain "
-            "text and '.gz'.\n\n"
+            "text and '.gz'.\n"
+            "\n"
         ),
     )
     parser.add_argument(
@@ -770,7 +771,8 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         type=str,
         help=(
             "Second bedGraph input file, file B (e.g., input). Supports plain "
-            "text and '.gz'.\n\n"
+            "text and '.gz'.\n"
+            "\n"
         ),
     )
 
@@ -784,7 +786,8 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
             "Output file path. The result is written as bedGraph. When a real "
             "path is provided, accepted extensions are '.bedGraph', "
             "'.bedgraph', '.bdg', and '.bg', each optionally followed by "
-            "'.gz'.\n\n"
+            "'.gz'.\n"
+            "\n"
         ),
     )
     parser.add_argument(
@@ -795,7 +798,8 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         help=(
             "Chromosome sizes file in UCSC-style TSV format used to validate "
             "input bedGraph interval bounds. This validation is independent "
-            "of '--strict_bins'.\n\n"
+            "of '--strict_bins'.\n"
+            "\n"
         ),
     )
 
@@ -816,7 +820,8 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
             "'unadj_r', 'unadjusted_r', 'sr', 'smp_r', 'simple_r'. Internally "
             "standardized to 'unadj_r'.\n"
             "  - Reciprocal-log2 aliases: '2r', 'l2r', 'l2_r', 'lg2_r', "
-            "'log2_r'. Internally standardized to 'log2_r'.\n\n"
+            "'log2_r'. Internally standardized to 'log2_r'.\n"
+            "\n"
         ),
     )
     parser.add_argument(
@@ -828,7 +833,8 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         default=None,
         help=(
             "Scaling factor. Accepts a per-file spec 'A[:B]'. If only 'A' is "
-            "given, 'B' defaults to 1.0.\n\n"
+            "given, 'B' defaults to 1.0.\n"
+            "\n"
         ),
     )
     parser.add_argument(
@@ -847,7 +853,8 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
             "bounding low-depth extremes.\n"
             "\n"
             "Using '--pseudo' together with '--dep_min' is allowed, but "
-            "usually makes low-depth stabilization harder to interpret.\n\n"
+            "usually makes low-depth stabilization harder to interpret.\n"
+            "\n"
         ),
     )
     parser.add_argument(
@@ -870,7 +877,8 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
             "'--dep_min <flt>' is specified, choose 'dep_min > ε'.\n"
             "\n"
             "Using '--dep_min' together with '--pseudo' is allowed, but "
-            "usually makes low-depth stabilization harder to interpret.\n\n"
+            "usually makes low-depth stabilization harder to interpret.\n"
+            "\n"
         ),
     )
 
@@ -900,7 +908,8 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
             "post_scale' are equivalent.\n"
             "  - With 'ε > 0' and 'scaling != 1', '--skip_00 post_scale' "
             "interprets ε in scaled units (i.e., the same units that are "
-            "divided).\n\n"
+            "divided).\n"
+            "\n"
         ),
     )
     parser.add_argument(
@@ -922,7 +931,8 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
             "  - If not omitted, then 'pre_scale' and 'post_scale' modes are "
             "equivalent if 'ε = 0' or if no scaling is applied (i.e., 'scl_A "
             "= scl_B = 1').\n"
-            "  - Pseudocounts do not affect this check in either mode.\n\n"
+            "  - Pseudocounts do not affect this check in either mode.\n"
+            "\n"
         ),
     )
 
@@ -937,8 +947,9 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
             "Drop non-finite values from main output. Values 'nan', 'inf', "
             "and '-inf' are skipped.\n"
             "\n"
-            "Note: '--track' output will still drop 'inf', '-inf', and 'nan'."
-            "\n\n"
+            "Note: '--track' output will still drop 'inf', '-inf', and "
+            "'nan'.\n"
+            "\n"
         ),
     )
     parser.add_argument(
@@ -966,7 +977,8 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         help=(
             "Maximum number of decimal places retained for finite emitted "
             "values (default: %(default)s). After rounding, non-informative "
-            "trailing zeros are stripped.\n\n"
+            "trailing zeros are stripped.\n"
+            "\n"
         ),
     )
     parser.add_argument(
@@ -978,7 +990,8 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         help=(
             "Comma-separated list of header prefixes to skip in bedGraph "
             "headers/metadata; to disable skipping, pass an empty string "
-            "(default: %(default)s).\n\n"
+            "(default: %(default)s).\n"
+            "\n"
         ),
     )
     parser.add_argument(
@@ -992,7 +1005,8 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
             "Require strict bin compatibility: both input bedGraphs must have "
             "the same ordered '(chrom, start, end)' grid across all data "
             "rows. Without this flag, only the first few paired rows are "
-            "checked for equal bin width.\n\n"
+            "checked for equal bin width.\n"
+            "\n"
         ),
     )
 

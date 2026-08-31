@@ -129,11 +129,15 @@ Use `CapArgumentParser` and `add_help_cap()`. Every visible optional argument ha
 
 [`HELP.AUDIENCE`](help.md) owns which help surface and level of detail serves the user. [`SOURCE.PROSE.WRAP`](source_layout.md) owns greedy source wrapping; this rule owns Python recognition and exact rendered-value preservation.
 
-Keep a help value on one source line when it fits. When prose requires adjacent literals, wrap greedily at whole-word boundaries: fill each physical source line through the last complete word that fits within 79 columns, and break only when the next complete prose word and its required separator would exceed that limit. Preserve explicit paragraph escapes such as `\n\n`, literal newlines, indivisible tokens, and deliberate semantic boundaries.
+Keep a help value on one source line when it fits. When prose requires adjacent literals, wrap greedily at whole-word boundaries: fill each physical source line through the last complete word that fits within 79 columns, and break only when the next complete prose word and its required separator would exceed that limit. Preserve literal newlines, indivisible tokens, and deliberate semantic boundaries.
+
+Measure the budget on the serialized one-line literal rather than on the rendered value: count the indent, both quotes, and every escape sequence at the width it occupies in source, so a trailing `\n` costs two columns. A word moves forward only when the literal that would carry it still fits.
+
+An explicit paragraph escape occupies its own literal. A text-bearing literal ends in at most one newline escape, terminating its own rendered line, and the blank line separating two paragraphs is a separate `"\n"` literal. One `"...\n\n"` literal conflates a line terminator with a paragraph separator and is not a recognized form.
 
 Reflowing source literals must not change the rendered help value. Use one-line double-quoted literals under `PY.STRING.QUOTES`; do not use manual padding or trailing source whitespace to approach the limit.
 
-**Automation:** `dev/audit/python_source_policy.py` checks physical width and premature word-boundary breaks for recognized static literals. `dev/tools/python_help_format.py` provides preview-by-default formatting for the proven adjacent-literal subset, measures the same Unicode-preserving one-line literal serialization that it emits, and rejects write operations outside it. Focused fixtures prove exact rendered values and idempotence. Coverage is `subset`.
+**Automation:** `dev/audit/python_source_policy.py` checks physical width, premature word-boundary breaks measured on the serialized literal, and paragraph-escape separation for recognized static literals. `dev/tools/python_help_format.py` provides preview-by-default formatting for the proven adjacent-literal subset, measures the same Unicode-preserving one-line literal serialization that it emits, and rejects write operations outside it. Focused fixtures prove exact rendered values and idempotence. Coverage is `subset`.
 
 **Semantic remainder:** Decide whether a token is indivisible, an explicit break is meaningful, or clearer help prose should replace mechanical reflow.
 

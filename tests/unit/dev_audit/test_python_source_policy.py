@@ -1343,6 +1343,44 @@ def test_fenced_blocks_are_verbatim_content() -> None:
     assert rule_messages(fenced, RULE_PROSE_WRAP) == []
 
 
+def test_colon_introduced_display_blocks_are_verbatim_content() -> None:
+    """
+    Leave an unfenced display block outside the fit test.
+
+    A colon, a blank line, and a deeper indent introduce the same verbatim
+    content a fence would, and 'utils_stabilizer.py' writes its two equations
+    that way. Joining them would state one thing neither row says.
+
+    The listed block proves the exclusion stays narrow: a display holding a
+    list marker is indented prose and keeps the ordinary fit test.
+    """
+
+    display = docstring_source(
+        "Summary.",
+        "",
+        "It splits into a slope and an intercept:",
+        "",
+        "    s_i = 1e6 / (L_i + 2 * y0_i)",
+        "    p_i = s_i * y0_i = 1e6 * prior.count / (mean(L) + 2 * prior)",
+        "",
+        "A trailing paragraph.",
+    )
+    listed = docstring_source(
+        "Summary.",
+        "",
+        "The recognized boundaries are:",
+        "",
+        "    - a section header, which ends a paragraph for a reason the",
+        "      width does not govern",
+    )
+
+    assert rule_messages(display, RULE_PROSE_WRAP) == []
+    assert rule_messages(listed, RULE_PROSE_WRAP) == [
+        "docstring prose breaks before a word that would still fit within 79 "
+        "columns",
+    ]
+
+
 def test_deeper_indentation_alone_is_not_wrapped_prose() -> None:
     """
     Keep a non-list line followed by a deeper line outside the fit test.
@@ -1369,14 +1407,12 @@ def test_help_literals_use_greedy_wrapping_and_preserve_value() -> None:
 
     accepted = help_source(("x" * 64) + " ", "a continuation.")
     premature = help_source(("x" * 62) + " ", "a continuation.")
-    paragraph = help_source("Short paragraph.\\n\\n", "Next paragraph.")
     accepted_line = next(
         line for line in accepted.splitlines() if ("x" * 20) in line
     )
 
     assert len(accepted_line) == 79
     assert rule_messages(accepted, RULE_CLI_HELP_LAYOUT) == []
-    assert rule_messages(paragraph, RULE_CLI_HELP_LAYOUT) == []
     assert rule_messages(premature, RULE_CLI_HELP_LAYOUT) == [
         "parse_args help line breaks before a prose word that would still fit "
         "within 79 columns",
@@ -1392,6 +1428,59 @@ def test_help_literals_use_greedy_wrapping_and_preserve_value() -> None:
     )
 
     assert help_value(before) == help_value(after)
+
+
+def test_help_literal_width_counts_escapes_as_written() -> None:
+    """
+    Charge a newline escape the two columns it occupies in source.
+
+    The budget is the serialized literal rather than the rendered value. On the
+    62-column break below, the rendered measurement reads 62 plus a 17-character
+    word and calls the break premature at exactly 79; the literal that would
+    carry the word is 81, because its trailing newline costs two columns and its
+    own closing quote costs one more. Reporting it made the formatter and this
+    checker reject each other's output.
+
+    The 60-column case proves the check still fires, so the repair narrows the
+    arithmetic rather than the rule.
+    """
+
+    escaped = help_source(("x" * 47) + " ", ("y" * 17) + "\\n")
+    fitting = help_source(("x" * 45) + " ", ("y" * 17) + "\\n")
+    escaped_line = next(
+        line for line in escaped.splitlines() if ("x" * 20) in line
+    )
+
+    assert len(escaped_line) == 62
+    assert rule_messages(escaped, RULE_CLI_HELP_LAYOUT) == []
+    assert rule_messages(fitting, RULE_CLI_HELP_LAYOUT) == [
+        "parse_args help line breaks before a prose word that would still fit "
+        "within 79 columns",
+    ]
+
+
+def test_help_paragraph_escapes_occupy_their_own_literal() -> None:
+    """
+    Separate the line a newline terminates from the blank line after it.
+
+    A newline escape ends its own rendered line, so the blank line dividing two
+    paragraphs is a line of its own and takes its own literal. One literal
+    carrying both conflates a terminator with a separator, and it is the form
+    'python_help_format' never emits.
+    """
+
+    joined = help_source("Short paragraph.\\n\\n", "Next paragraph.")
+    separated = help_source(
+        "Short paragraph.\\n",
+        "\\n",
+        "Next paragraph.",
+    )
+
+    assert rule_messages(separated, RULE_CLI_HELP_LAYOUT) == []
+    assert rule_messages(joined, RULE_CLI_HELP_LAYOUT) == [
+        "parse_args help literal must end at one newline escape; a paragraph "
+        "separator is a literal of its own",
+    ]
 
 
 def test_unicode_help_formatter_matches_cli_width_policy() -> None:

@@ -1394,6 +1394,74 @@ def _prose_continuation_indent(line: str) -> int | None:
     return own_indent + len(marker.group("marker")) + 1
 
 
+def _display_block_offsets(lines: list[str]) -> set[int]:
+    """
+    Return the offsets of lines held inside unfenced display blocks.
+
+    A colon, a blank line, and a deeper indent introduce verbatim content such
+    as an equation pair, a sample row, or pseudocode. Its line breaks belong to
+    the content rather than to prose wrapping, so joining two of its rows would
+    merge two separate statements. The blank line is required: a colon followed
+    immediately by a deeper line is an entry header and its description, which
+    is already a structural boundary.
+
+    A block holding a list marker is prose that happens to be indented, so it
+    keeps the ordinary fit test rather than becoming verbatim content.
+
+    Parameters
+    ----------
+    lines : list[str]
+        Physical docstring content lines.
+
+    Returns
+    -------
+    offsets : set[int]
+        Offsets excluded from prose-pair inspection.
+    """
+
+    offsets: set[int] = set()
+    introducer: int | None = None
+    separated = False
+    block: list[int] = []
+    listed = False
+
+    def close() -> None:
+        if block and not listed:
+            offsets.update(block)
+
+    for offset, line in enumerate(lines):
+        stripped = line.strip()
+
+        if not stripped:
+            separated = introducer is not None
+
+            continue
+
+        indent = _indent_width(line)
+
+        if block and introducer is not None and indent > introducer:
+            block.append(offset)
+            listed = listed or PROSE_LIST_MARKER.match(stripped) is not None
+
+            continue
+
+        if introducer is not None and separated and indent > introducer:
+            block = [offset]
+            listed = PROSE_LIST_MARKER.match(stripped) is not None
+
+            continue
+
+        close()
+        block = []
+        listed = False
+        introducer = indent if stripped.endswith(":") else None
+        separated = False
+
+    close()
+
+    return offsets
+
+
 def _breaks_mid_word(text: str) -> bool:
     """
     Report whether one prose line ends by splitting a hyphenated word.
@@ -1448,6 +1516,10 @@ def _check_docstring_prose_wrap(
     does not govern. Every line between the fences, and the fences themselves,
     is excluded.
 
+    A colon, a blank line, and a deeper indent introduce the same verbatim
+    content without a fence. Its rows are excluded too, unless one carries a
+    list marker, which makes the block indented prose rather than a display.
+
     Parameters
     ----------
     token : tokenize.TokenInfo
@@ -1465,6 +1537,7 @@ def _check_docstring_prose_wrap(
 
     counts: Counter[str] = Counter()
     content_lines = token.string.splitlines()[1:-1]
+    display_offsets = _display_block_offsets(content_lines)
     section = None
     skip_next = False
     type_depth = 0
@@ -1487,6 +1560,11 @@ def _check_docstring_prose_wrap(
 
         if in_fence:
             counts["fenced_block_exclusions"] += 1
+
+            continue
+
+        if offset in display_offsets:
+            counts["display_block_exclusions"] += 1
 
             continue
 
@@ -2149,6 +2227,24 @@ def _next_help_piece(value: str) -> str:
     return match.group(0)
 
 
+def _serialized_help_width(indent: str, value: str) -> int:
+    """
+    Return the source width one help literal occupies when written out.
+    """
+
+    return len(indent) + len(json.dumps(value, ensure_ascii=False))
+
+
+def _leading_help_unit(value: str) -> str:
+    """
+    Return the first movable unit and the whitespace it carries forward.
+    """
+
+    match = re.match(r"\S+\s*|\s+", value)
+
+    return match.group(0) if match is not None else ""
+
+
 def _is_help_prose(paragraph: str) -> bool:
     """
     Return whether one help paragraph is prose rather than structured text.
@@ -2449,6 +2545,23 @@ def _check_cli_help_layout(
                     "parse_args help source line exceeds 79 columns",
                 )
 
+            value = _decoded_string(token)
+
+            # A newline escape terminates its own rendered line, and the blank
+            # line between two paragraphs is a line of its own. One literal
+            # carrying both conflates a terminator with a separator, which is
+            # the form the formatter never emits.
+            if value is not None and "\n" in value.removesuffix("\n"):
+                counts["paragraph_escape_findings"] += 1
+                _finding(
+                    findings,
+                    path,
+                    token,
+                    RULE_CLI_HELP_LAYOUT,
+                    "parse_args help literal must end at one newline escape; "
+                    "a paragraph separator is a literal of its own",
+                )
+
         for current, following in pairwise(literal_tokens):
             if current.start[0] == current.end[0]:
                 current_value = _decoded_string(current)
@@ -2457,6 +2570,8 @@ def _check_cli_help_layout(
                 current_value = None
                 following_value = None
 
+            # A newline ends the rendered line, so the following literal opens
+            # a new one and no word can fill back onto this one.
             if (
                 current_value is None
                 or following_value is None
@@ -2486,13 +2601,21 @@ def _check_cli_help_layout(
                     "rendered prose requires",
                 )
 
-            piece = _next_help_piece(following_value)
-            if not piece:
+            unit = _leading_help_unit(following_value)
+
+            if not unit:
                 continue
 
+            # The budget is the serialized literal, so an escape is charged the
+            # columns it occupies in source rather than the one character it
+            # renders as. A trailing newline costs two.
             source_line = lines[current.start[0] - 1]
+            indent = source_line[
+                : len(source_line) - len(source_line.lstrip())
+            ]
+            counts["help_literal_pairs"] += 1
 
-            if len(source_line) + len(piece) <= 79:
+            if _serialized_help_width(indent, current_value + unit) <= 79:
                 _finding(
                     findings,
                     path,

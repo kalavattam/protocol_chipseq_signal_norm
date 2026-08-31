@@ -169,7 +169,8 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         default=24,
         help=(
             "Maximum number of decimal places retained for finite emitted "
-            "values.(default: %(default)s).\n\n"
+            "values.(default: %(default)s).\n"
+            "\n"
         ),
     )
     parser.add_argument(
@@ -181,7 +182,8 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         help=(
             "Comma-separated list of header prefixes to skip in bedGraph "
             "headers/metadata; to disable skipping, pass an empty string "
-            "(default: %(default)s).\n\n"
+            "(default: %(default)s).\n"
+            "\n"
         ),
     )
     parser.add_argument(

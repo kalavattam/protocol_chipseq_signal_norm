@@ -319,7 +319,8 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
             "\n"
             "Variants '5nd' and '6nd' omit the sequencing-depth term for "
             "workflows where signal tracks are already normalized by depth "
-            "(e.g., “normalized coverage”).\n\n"
+            "(e.g., “normalized coverage”).\n"
+            "\n"
         ),
     )
 
@@ -366,7 +367,8 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         default=None,
         help=(
             "Sequencing depth of IP sample (alignments or inferred fragments; "
-            "required for '--eqn 5' or '--eqn 6').\n\n"
+            "required for '--eqn 5' or '--eqn 6').\n"
+            "\n"
         ),
     )
     parser.add_argument(
@@ -378,7 +380,8 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         default=None,
         help=(
             "Sequencing depth of input sample (alignments or inferred "
-            "fragments; required for '--eqn 5' or '--eqn 6').\n\n"
+            "fragments; required for '--eqn 5' or '--eqn 6').\n"
+            "\n"
         ),
     )
 
@@ -411,7 +414,8 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
             "Volume of normalized IP library loaded into the sequencer (µL). "
             "Optional; if supplied, '--lib_vol_in' must also be supplied. "
             "When both library-loading volumes are supplied, alpha is "
-            "multiplied by 'lib_vol_in / lib_vol_ip'.\n\n"
+            "multiplied by 'lib_vol_in / lib_vol_ip'.\n"
+            "\n"
         ),
     )
     parser.add_argument(
@@ -426,7 +430,8 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
             "Volume of normalized input library loaded into the sequencer "
             "(µL). Optional; if supplied, '--lib_vol_ip' must also be "
             "supplied. When both library-loading volumes are supplied, alpha "
-            "is multiplied by 'lib_vol_in / lib_vol_ip'.\n\n"
+            "is multiplied by 'lib_vol_in / lib_vol_ip'.\n"
+            "\n"
         ),
     )
 
@@ -440,7 +445,8 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         help=(
             "Maximum number of decimal places retained for finite emitted "
             "values. Applies to alpha. Output strips non-informative trailing "
-            "zeros (default: %(default)s).\n\n"
+            "zeros (default: %(default)s).\n"
+            "\n"
         ),
     )
 

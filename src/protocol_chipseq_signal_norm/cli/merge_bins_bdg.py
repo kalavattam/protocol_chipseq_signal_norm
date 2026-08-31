@@ -423,7 +423,8 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         required=True,
         help=(
             "Input file path. Path to the input bedGraph file (.gz is "
-            "handled), or '-' for stdin.\n\n"
+            "handled), or '-' for stdin.\n"
+            "\n"
         ),
     )
     parser.add_argument(
@@ -433,7 +434,8 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         required=True,
         help=(
             "Output file path. Path to the output bedGraph file (.gz is "
-            "handled), or '-' for stdout.\n\n"
+            "handled), or '-' for stdout.\n"
+            "\n"
         ),
     )
     parser.add_argument(
@@ -448,7 +450,8 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
             "\n"
             "Controls the value comparisons by N-decimal rounded strings. "
             "With '--eps', rounding is applied first, then |Δ| (absolute "
-            "difference) <= eps is tested on the rounded numbers.\n\n"
+            "difference) <= eps is tested on the rounded numbers.\n"
+            "\n"
         ),
     )
     parser.add_argument(
@@ -461,7 +464,8 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
             "Zero tolerance epsilon for matching (merge if |Δ| <= eps).\n"
             "  - Alone: compare raw numeric values with |Δ| <= eps.\n"
             "  - With '--dp N': compare on rounded values (to N decimals) "
-            "with |Δ| <= eps.\n\n"
+            "with |Δ| <= eps.\n"
+            "\n"
         ),
     )
     parser.add_argument(
@@ -473,7 +477,8 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         help=(
             "Comma-separated list of header prefixes to skip in bedGraph "
             "headers/metadata; to disable skipping, pass an empty string "
-            "(default: %(default)s).\n\n"
+            "(default: %(default)s).\n"
+            "\n"
         ),
     )
 
