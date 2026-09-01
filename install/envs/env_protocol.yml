@@ -13,37 +13,39 @@ channels:
 # while still solving elsewhere. Packages that cannot move a number and are not
 # cited as evidence are deliberately left to float.
 dependencies:
-  - asciigenome        # Note: Added since publication in Bio-protocol.
-  - bash               # Note: Added since publication in Bio-protocol.
-  - bc=1.07.1          # Note: Pinned for reproducibility; carries the scaling-factor arithmetic in 'lib/bash/workflows/calculate_scaling_factor.sh'.
-  - bowtie2=2.5.5      # Note: Pinned for reproducibility; the aligner changes alignments and therefore every downstream count.
-  - bwa=0.7.19         # Note: Added since publication in Bio-protocol; pinned for reproducibility, selectable via '--aligner'.
-  - bwa-mem2=2.3       # Note: Added since publication in Bio-protocol; pinned for reproducibility, selectable via '--aligner'.
-  - datamash           # Note: Added since publication in Bio-protocol. Maybe: remove; nothing in 'lib/', 'src/', 'bin/', or 'tests/' invokes it.
+  - asciigenome               # Note: Added since publication in Bio-protocol. Maybe: remove from 'env_protocol'.
+  - bash                      # Note: Added since publication in Bio-protocol.
+  - bc=1.07.1                 # Note: Pinned for reproducibility; carries the scaling-factor arithmetic in 'lib/bash/workflows/calculate_scaling_factor.sh'.
+  - bioconductor-edger=4.8.2  # Note: Added since publication in Bio-protocol; pinned for reproducibility and evidence, so test results stay reproducible.
+  - bowtie2=2.5.5             # Note: Pinned for reproducibility; the aligner changes alignments and therefore every downstream count.
+  - bwa-mem2=2.3              # Note: Added since publication in Bio-protocol; pinned for reproducibility, selectable via '--aligner'.
+  - bwa=0.7.19                # Note: Added since publication in Bio-protocol; pinned for reproducibility, selectable via '--aligner'.
+  - datamash                  # Note: Added since publication in Bio-protocol. Maybe: remove; nothing in 'lib/', 'src/', 'bin/', or 'tests/' invokes it.
   - fastqc
-  - gawk=5.4.1         # Note: Pinned for reproducibility; used by 'lib/bash/core/format_outputs.sh' and 'lib/bash/core/check_unity.sh'.
-  - gnuplot            # Note: Added since publication in Bio-protocol. Maybe: remove from 'env_protocol'.
+  - gawk=5.4.1                # Note: Pinned for reproducibility; used by 'lib/bash/core/format_outputs.sh' and 'lib/bash/core/check_unity.sh'.
+  - gnuplot                   # Note: Added since publication in Bio-protocol. Maybe: remove from 'env_protocol'.
   - ipython
   - matplotlib
   - multiqc
-  - numpy=2.4.6        # Note: Pinned for reproducibility; required by 'src/protocol_chipseq_signal_norm/cli/compute_signal.py'. ('scipy' was checked and is imported nowhere, so it is not made explicit.)
+  - numpy=2.4.6               # Note: Pinned for reproducibility; required by 'src/protocol_chipseq_signal_norm/cli/compute_signal.py'. ('scipy' was checked and is imported nowhere, so it is not made explicit.)
   - parallel
   - pbzip2
   - pigz
   - pip
-  - pytest=9.1.1       # Note: Added since publication in Bio-protocol; pinned for evidence, so test results stay reproducible.
-  - pysam=0.24.0       # Note: Pinned for reproducibility; reads alignments for signal computation.
-  - python=3.11        # Note: Pinned for compatibility and to v3.11 for 'sequali' installation.
-  - pyyaml             # Note: Made explicit since Bio-protocol publication.
+  - pysam=0.24.0              # Note: Pinned for reproducibility; reads alignments for signal computation.
+  - pytest=9.1.1              # Note: Added since publication in Bio-protocol; pinned for evidence, so test results stay reproducible.
+  - python=3.11               # Note: Pinned for compatibility and to v3.11 for 'sequali' installation.
+  - pyyaml                    # Note: Made explicit since Bio-protocol publication.
   - r-argparse
+  - r-base=4.5.1              # Note: Made explicit since Bio-protocol publication; pinned for reproducibility and evidence.
   - r-ggsci
   - r-plotly
-  - ruff=0.15.21       # Note: Added since publication in Bio-protocol; pinned for evidence, to the reviewed repository standard.
-  - shellcheck=0.10.0  # Note: Added since publication in Bio-protocol; pinned for evidence, for repository static-analysis provenance.
-  - setuptools
   - rename
-  - samtools=1.24      # Note: Pinned for reproducibility; fragment counts and sequencing depth are derived from it.
+  - ruff=0.15.21              # Note: Added since publication in Bio-protocol; pinned for evidence, to the reviewed repository standard.
+  - samtools=1.24             # Note: Pinned for reproducibility; fragment counts and sequencing depth are derived from it.
   - sequali
-  - tree               # Note: Added since publication in Bio-protocol.
+  - setuptools
+  - shellcheck=0.10.0         # Note: Added since publication in Bio-protocol; pinned for evidence, for repository static-analysis provenance.
+  - tree                      # Note: Added since publication in Bio-protocol.
   - wget
   - wheel
