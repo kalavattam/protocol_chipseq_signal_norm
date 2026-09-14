@@ -293,9 +293,8 @@ The `Type` field names the user-facing logical value form described or accepted 
 | `slurm`       | flag              | Submit jobs to the Slurm scheduler.                                        |
 | `time`        | time              | Slurm job time limit.                                                      |
 | `out_ext`     | choice            | Final output extension.                                                    |
-| `chr_sizes`   | file              | Chromosome sizes file.                                                     |
+| `chr_siz`     | file              | Chromosome sizes file.                                                     |
 | `engine`      | choice            | Processing engine.                                                         |
-| `chunk_size`  | int               | Number of records to process per chunk.                                    |
 | `siz_bin`     | int               | Bin size in base pairs.                                                    |
 | `scl_fct`     | num               | Scaling factor.                                                            |
 | `track`       | flag              | Write a companion track file.                                              |

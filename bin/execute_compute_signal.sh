@@ -29,14 +29,14 @@ elif ((
     exit 1
 fi
 
-#  Run in safe mode, exiting on errors, unset variables, and pipe failures
+# Run in safe mode, exiting on errors, unset variables, and pipe failures.
 set -euo pipefail
 
-#  Set the path to the 'scripts' directory
+# Set the path to the 'scripts' directory.
 dir_scr="$(cd "$(dirname "${BASH_SOURCE[0]}")" > /dev/null 2>&1 && pwd)"
 
 
-#  Source shared helpers
+# Source shared helpers.
 function source_helpers_execute() {
     local fnc_src
 
@@ -155,7 +155,7 @@ EOM
 
         IFS=',' read -r -a arr <<< "${raw}"
         for val in "${arr[@]}"; do
-            #  Strip all whitespace
+            # Strip all whitespace.
             val="${val//[[:space:]]/}"
             if [[ -n "${val}" && "${val}" != "NA" ]]; then
                 scaled="true"
@@ -296,8 +296,8 @@ Expected globals
   env_nam, mode, method, engine, skip_00, skp_pfx, nam_job : str
     Environment, mode, method, engine, zero-bin policy, skipped prefix list, and job-name values, respectively.
 
-  threads, siz_bin, chunk_size, dp : int
-    Thread count, bin size, chunk size, and rounding precision, respectively.
+  threads, siz_bin, dp : int
+    Thread count, bin size, and rounding precision, respectively.
 
   eps : num
     Optional numerical tolerance.
@@ -349,8 +349,8 @@ EOM
         check_int_nonneg "${idx}" "idx" || return 1
     fi
 
-    #  Assign default local values from global variables or arrays, but only
-    #+ for the active mode
+    # Assign default local values from global variables or arrays, but only for
+    # the active mode.
     if [[ "${mode}" =~ ^(signal|coord)$ ]]; then
         fil_in="${csv_fil_in}"
         fil_out="${csv_fil_out}"
@@ -409,8 +409,8 @@ EOM
         cmd_bld+=( --csv_fil_A "${fil_A}" --csv_fil_B "${fil_B}" )
     fi
 
-    if [[ -n "${chr_sizes}" ]]; then
-        cmd_bld+=( --chr_sizes "${chr_sizes}" )
+    if [[ -n "${chr_siz}" ]]; then
+        cmd_bld+=( --chr_siz "${chr_siz}" )
     fi
 
     cmd_bld+=( --csv_fil_out "${fil_out}" )
@@ -419,7 +419,6 @@ EOM
         cmd_bld+=(
             --siz_bin "${siz_bin}"
             --engine "${engine}"
-            --chunk_size "${chunk_size}"
             --csv_scl_fct "${scl_fct}"
             --csv_usr_frg "${usr_frg}"
         )
@@ -465,7 +464,7 @@ EOM
 }
 
 
-#  Initialize hardcoded argument variables
+# Initialize hardcoded argument variables.
 function init_args_hardcoded() {
     env_nam="env_protocol"
     scr_sub="${dir_scr}/submit_compute_signal.sh"
@@ -473,7 +472,7 @@ function init_args_hardcoded() {
 }
 
 
-#  Initialize argument variables, assigning default values where applicable
+# Initialize argument variables, assigning default values where applicable.
 function init_arg_defs() {
     verbose=false
     dry_run=false
@@ -482,7 +481,7 @@ function init_arg_defs() {
     method=""
     csv_fil_in=""
     ref_fa=""
-    chr_sizes=""
+    chr_siz=""
     csv_fil_A=""
     csv_fil_B=""
     dir_out=""
@@ -491,7 +490,6 @@ function init_arg_defs() {
     track=false
     siz_bin=""
     engine="chrom"
-    chunk_size=100000
     csv_scl_fct=""
     csv_usr_frg=""
     csv_dep_min=""
@@ -510,14 +508,14 @@ function init_arg_defs() {
 }
 
 
-#  Initialize hardcoded arguments and user-facing argument defaults
+# Initialize hardcoded arguments and user-facing argument defaults.
 function init_defs() {
     init_args_hardcoded
     init_arg_defs
 }
 
 
-#  Parse keyword arguments
+# Parse keyword arguments.
 function parse_args() {
     while [[ "$#" -gt 0 ]]; do
         case "${1}" in
@@ -591,13 +589,13 @@ function parse_args() {
                 shift 2
                 ;;
 
-            -cs|--chr[_-]sizes|--chrom[_-]sizes)
+            -cs|--chr[_-]siz)
                 require_optarg "${1}" "${2:-}" "main" || {
                     echo >&2
                     help_execute_compute_signal >&2
                     return 1
                 }
-                chr_sizes="${2}"
+                chr_siz="${2}"
                 shift 2
                 ;;
 
@@ -676,16 +674,6 @@ function parse_args() {
                 shift 2
                 ;;
 
-            -ck|--chunk[_-]size|--chnk[_-]size)
-                require_optarg "${1}" "${2:-}" "main" || {
-                    echo >&2
-                    help_execute_compute_signal >&2
-                    return 1
-                }
-                chunk_size="${2}"
-                shift 2
-                ;;
-
             -csf|--csv[_-]scl[_-]fct)
                 require_optarg "${1}" "${2:-}" "main" || {
                     echo >&2
@@ -746,7 +734,7 @@ function parse_args() {
                 shift 2
                 ;;
 
-            --strict[_-]bins)
+            -stn|--strict[_-]bins)
                 strict_bins=true
                 shift 1
                 ;;
@@ -832,7 +820,7 @@ function parse_args() {
 }
 
 
-#  Canonicalize mode and method aliases
+# Canonicalize mode and method aliases.
 function canonicalize_args() {
     case "${mode}" in
         s|sig|signal)
@@ -937,7 +925,7 @@ function canonicalize_args() {
 }
 
 
-#  Validate scalar arguments and assign derived scalar defaults
+# Validate scalar arguments and assign derived scalar defaults.
 function validate_args() {
     validate_var "env_nam" "${env_nam}"
     check_env_installed "${env_nam}"
@@ -972,8 +960,8 @@ function validate_args() {
         fi
 
         if [[ "${mode}" == "signal" ]]; then
-            #  If user didn’t supply '--siz_bin', apply a hardcoded default:
-            #+ 10 bp
+            # If user didn’t supply '--siz_bin', apply a hardcoded default: 10
+            # bp.
             if [[ -z "${siz_bin}" ]]; then siz_bin=10; fi
 
             check_int_pos "${siz_bin}" "siz_bin"
@@ -986,10 +974,8 @@ function validate_args() {
                     return 1
                     ;;
             esac
-
-            check_int_pos "${chunk_size}" "chunk_size"
         else
-            #  For 'mode=ratio', ignore '--siz_bin' if the user supplied it
+            # For 'mode=ratio', ignore '--siz_bin' if the user supplied it.
             if [[ -n "${siz_bin}" ]]; then
                 echo_warn \
                     "argument '--siz_bin' is not applicable with '--mode" \
@@ -1018,8 +1004,8 @@ function validate_args() {
                 ;;
         esac
 
-        #  '--siz_bin' is not applicable with 'mode=coord', so ignore if
-        #+ supplied
+        # '--siz_bin' is not applicable with 'mode=coord', so ignore if
+        # supplied.
         if [[ -n "${siz_bin}" ]]; then
             echo_warn \
                 "argument '--siz_bin' is not applicable with" \
@@ -1048,8 +1034,8 @@ function validate_args() {
         validate_var_file "ref_fa" "${ref_fa}"
     fi
 
-    if [[ -n "${chr_sizes}" ]]; then
-        validate_var_file "chr_sizes" "${chr_sizes}"
+    if [[ -n "${chr_siz}" ]]; then
+        validate_var_file "chr_siz" "${chr_siz}"
     fi
 
     if [[ "${mode}" == "ratio" ]]; then
@@ -1093,7 +1079,7 @@ function validate_args() {
 }
 
 
-#  Parse input vectors, derive outputs, and validate per-element values
+# Parse input vectors, derive outputs, and validate per-element values.
 function prepare_vecs() {
     if [[ "${mode}" =~ ^(signal|coord)$ ]]; then
         if [[ -n "${csv_fil_in}" ]]; then
@@ -1147,7 +1133,7 @@ function prepare_vecs() {
         done
         unset fil_in
 
-        #  Scaling factors are only used for '--mode signal'
+        # Scaling factors are only used for '--mode signal'.
         if [[ "${mode}" == "signal" ]]; then
             if [[ -z "${csv_scl_fct}" ]]; then
                 unset arr_scl_fct && declare -ga arr_scl_fct
@@ -1166,8 +1152,8 @@ function prepare_vecs() {
             check_arr_lengths "arr_scl_fct" "arr_fil_in"
         fi
 
-        #  User-supplied fragment lengths are allowed for both 'signal' and
-        #+ 'coord'
+        # User-supplied fragment lengths are allowed for both 'signal' and
+        # 'coord'.
         if [[ -z "${csv_usr_frg}" ]]; then
             unset arr_usr_frg && declare -ga arr_usr_frg
             populate_array_empty arr_usr_frg "${#arr_fil_in[@]}"
@@ -1216,16 +1202,16 @@ function prepare_vecs() {
         for i in "${arr_fil_A[@]}"; do
             base=$(basename "${i}")
 
-            #  Strip 'IP_' prefix (if present)
+            # Strip 'IP_' prefix (if present).
             base="${base#IP_}"
 
-            #  If not user-assigned, determine filename 'prefix' based on
-            #+ provided arguments
+            # If not user-assigned, determine filename 'prefix' based on
+            # provided arguments.
             if [[ -z "${pfx_lcl}" ]]; then
                 pfx_lcl="$(generate_pfx "${method}" "${csv_scl_fct}")"
             fi
 
-            #  Remove file extensions
+            # Remove file extensions.
             for ext in "${exts[@]}"; do
                 base="${base%."${ext}"}"
             done
@@ -1236,7 +1222,7 @@ function prepare_vecs() {
         unset i base pfx_lcl exts
 
         if [[ -z "${csv_scl_fct}" ]]; then
-            #  Produce per-sample sentinel entries ("NA")
+            # Produce per-sample sentinel entries ("NA").
             unset arr_scl_fct && declare -ga arr_scl_fct
             populate_array_empty arr_scl_fct "${#arr_fil_A[@]}"
         else
@@ -1249,7 +1235,7 @@ function prepare_vecs() {
         unset s
 
         if [[ -z "${csv_dep_min}" ]]; then
-            #  Produce per-sample sentinel entries ("NA")
+            # Produce per-sample sentinel entries ("NA").
             unset arr_dep_min && declare -ga arr_dep_min
             populate_array_empty arr_dep_min "${#arr_fil_A[@]}"
         else
@@ -1257,7 +1243,7 @@ function prepare_vecs() {
         fi
 
         if [[ -z "${csv_pseudo}" ]]; then
-            #  Produce per-sample sentinel entries ("NA")
+            # Produce per-sample sentinel entries ("NA").
             unset arr_pseudo && declare -ga arr_pseudo
             populate_array_empty arr_pseudo "${#arr_fil_A[@]}"
         else
@@ -1307,7 +1293,7 @@ function prepare_vecs() {
 }
 
 
-#  Validate final vector shapes after preparation and auto-population
+# Validate final vector shapes after preparation and auto-population.
 function validate_vecs() {
     if [[ "${mode}" == "signal" ]]; then
         check_arr_lengths "arr_fil_in" "arr_fil_out" || return 1
@@ -1326,7 +1312,7 @@ function validate_vecs() {
 }
 
 
-#  Configure Slurm, GNU Parallel, or serial execution parameters
+# Configure Slurm, GNU Parallel, or serial execution parameters.
 function config_exec() {
     validate_var "max_job" "${max_job}"
     check_int_pos "${max_job}" "max_job"
@@ -1341,7 +1327,7 @@ function config_exec() {
         validate_var "time" "${time}"
         check_format_time "${time}"
     elif [[ "${max_job}" -le 1 ]]; then
-        #  Serial local execution does not require parallel job detection
+        # Serial local execution does not require parallel job detection.
         par_job=1
         unset time
 
@@ -1357,7 +1343,7 @@ function config_exec() {
         check_int_pos "${par_job}" "par_job"
     fi
 
-    #  Debug parallelization information and summary output of resolved states
+    # Debug parallelization information and summary output of resolved states.
     print_parallel_info \
         "${slurm}" "${max_job:-UNSET}" "${par_job:-UNSET}" "${threads}" \
         "arr_fil_in" "arr_fil_A" "arr_fil_B" "arr_fil_out" \
@@ -1369,13 +1355,13 @@ function config_exec() {
 }
 
 
-#  Activate environment
+# Activate environment.
 function setup_env() {
     local out
     local -a env_msg
 
-    #TODO: this environment activation block is repeated verbatim many across
-    #+     the 'execute_*.sh' scripts: modularize
+    # TODO: this environment activation block is repeated verbatim many across
+    # the 'execute_*.sh' scripts: modularize.
     env_msg=(
         "'handle_env' failed for 'env_nam=${env_nam}'. Check that Conda/Mamba"
         "are available and that the environment exists."
@@ -1405,7 +1391,7 @@ function setup_env() {
 }
 
 
-#  Check tools needed by the selected dispatch mode
+# Check tools needed by the selected dispatch mode.
 function check_tools() {
     check_pgrm_path compute_signal || return 1
     check_pgrm_path compute_signal_ratio || return 1
@@ -1418,7 +1404,7 @@ function check_tools() {
 }
 
 
-#  Print hardcoded defaults, argument values, and prepared arrays
+# Print hardcoded defaults, argument values, and prepared arrays.
 function print_state_debug() {
     if [[ "${verbose}" == "true" ]]; then
         print_banner_pretty "Hardcoded variable assignments"
@@ -1437,7 +1423,7 @@ function print_state_debug() {
         echo "method=${method:-UNSET}"
         echo "csv_fil_in=${csv_fil_in:-UNSET}"
         echo "ref_fa=${ref_fa:-UNSET}"
-        echo "chr_sizes=${chr_sizes:-UNSET}"
+        echo "chr_siz=${chr_siz:-UNSET}"
         echo "csv_fil_A=${csv_fil_A:-UNSET}"
         echo "csv_fil_B=${csv_fil_B:-UNSET}"
         echo "dir_out=${dir_out}"
@@ -1445,7 +1431,6 @@ function print_state_debug() {
         echo "prefix=${prefix:-UNSET}"
         echo "track=${track}"
         echo "siz_bin=${siz_bin:-UNSET}"
-        echo "chunk_size=${chunk_size:-UNSET}"
         echo "engine=${engine:-UNSET}"
         echo "csv_scl_fct=${csv_scl_fct:-UNSET}"
         echo "csv_usr_frg=${csv_usr_frg:-UNSET}"
@@ -1502,7 +1487,7 @@ function print_state_debug() {
 }
 
 
-#  Serialize prepared arrays into comma-delimited submit-wrapper arguments
+# Serialize prepared arrays into comma-delimited submit-wrapper arguments.
 function serialize_vecs() {
     if [[ "${mode}" =~ ^(signal|coord)$ ]]; then
         csv_fil_in=$(echo "${arr_fil_in[*]}"  | tr ' ' ',')
@@ -1523,7 +1508,7 @@ function serialize_vecs() {
 }
 
 
-#  Print serialized variables used for submit-wrapper command construction
+# Print serialized variables used for submit-wrapper command construction.
 function print_vecs_serialized() {
     if [[ "${verbose}" == "true" ]]; then
         print_banner_pretty "Variable assignments constructed from arrays"
@@ -1534,7 +1519,7 @@ function print_vecs_serialized() {
             echo
             echo "ref_fa=\"${ref_fa:-UNSET}\""
             echo
-            echo "chr_sizes=\"${chr_sizes:-UNSET}\""
+            echo "chr_siz=\"${chr_siz:-UNSET}\""
             echo
         elif [[ "${mode}" == "ratio" ]]; then
             echo "csv_fil_A=\"${csv_fil_A}\""
@@ -1545,7 +1530,7 @@ function print_vecs_serialized() {
 
         echo "csv_fil_out=\"${csv_fil_out}\""
         echo
-        echo "chr_sizes=\"${chr_sizes:-UNSET}\""
+        echo "chr_siz=\"${chr_siz:-UNSET}\""
         echo
 
         if [[ "${mode}" != "coord" ]]; then
@@ -1568,13 +1553,13 @@ function print_vecs_serialized() {
 }
 
 
-#  Dispatch Slurm, GNU Parallel, or serial work
+# Dispatch Slurm, GNU Parallel, or serial work.
 function run_jobs() {
     local config idx log_out log_err
     local -a cmd_slurm
 
     if [[ "${slurm}" == "true" ]]; then
-        #  Slurm execution
+        # Slurm execution.
         build_cmd "UNSET"
 
         unset cmd_slurm && declare -a cmd_slurm
@@ -1602,8 +1587,8 @@ function run_jobs() {
             "${cmd_slurm[@]}"
         fi
     else
-        #  Non-Slurm execution: GNU Parallel ('par_job > 1') or serial
-        #+ ('par_job == 1')
+        # Non-Slurm execution: GNU Parallel ('par_job > 1') or serial
+        # ('par_job == 1').
         if [[ "${par_job}" -gt 1 ]]; then
             config="${dir_eo}/${nam_job}.config_parallel.txt"
 
@@ -1672,7 +1657,7 @@ function run_jobs() {
 }
 
 
-#  Main script execution
+# Main script execution.
 function main() {
     init_defs
     source_helpers_execute || return 1

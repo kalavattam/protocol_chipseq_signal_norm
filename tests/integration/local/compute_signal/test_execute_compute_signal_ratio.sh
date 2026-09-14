@@ -6,9 +6,10 @@
 # Copyright 2026 by Kris Alavattam
 # Email: kalavattam@gmail.com
 #
-# OpenAI ChatGPT and Codex (GPT-5.5, GPT-5.6) were used in design, development,
-# and documentation, with all output reviewed, edited, and approved by the
-# author.
+# The following were used in design, development, and documentation, with all
+# output reviewed, edited, and approved by the author:
+# - OpenAI ChatGPT and Codex (GPT-5.5, GPT-5.6);
+# - Anthropic Claude Code (Opus 5).
 #
 # Distributed under the MIT license.
 
@@ -26,7 +27,7 @@ source "$(
 
 #  Define fixture and output paths for the execute-to-submit ratio path
 dir_fx="${ROOT_REPO}/tests/fixtures/compute_signal/bedgraph"
-chr_sizes="${ROOT_REPO}/tests/fixtures/compute_signal/reference/tiny.fa.fai"
+chr_siz="${ROOT_REPO}/tests/fixtures/compute_signal/reference/tiny.fa.fai"
 fil_A="${dir_fx}/ratio_A.bdg"
 fil_B="${dir_fx}/ratio_B.bdg"
 fil_A_hdr="${dir_fx}/ratio_headers_A.bdg"
@@ -105,7 +106,7 @@ gzip -c "${fil_A}" > "${fil_A_gz}"
 gzip -c "${fil_B}" > "${fil_B_gz}"
 
 require_files_nonempty \
-    "${chr_sizes}" \
+    "${chr_siz}" \
     "${fil_A_gz}" \
     "${fil_B_gz}" || {
     finish
@@ -125,7 +126,7 @@ run_case_compute_signal_ratio \
     "${fil_B}" \
     "${dir_out}" \
     "${dir_err}" \
-    --chr_sizes "${chr_sizes}" \
+    --chr_siz "${chr_siz}" \
     --strict_bins
 
 assert_file_nonempty \

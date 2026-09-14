@@ -82,34 +82,6 @@ function parse_args() {
         self.assertEqual(public, ("-dr", "--dry", "--dry_run"))
         self.assertEqual(hidden, ("--dry-run",))
 
-    def test_chunk_abbreviations_are_hidden_compatibility_aliases(
-        self,
-    ) -> None:
-        row = ParameterRow(
-            "parse_args",
-            1,
-            ("-ck", "--chunk_size"),
-            "  ",
-            "int",
-        )
-        chunk = AliasChunk(
-            "parse_args",
-            (
-                "-ck",
-                "--chunk_size",
-                "--chunk-size",
-                "--chnk_size",
-                "--chnk-size",
-            ),
-        )
-        public, hidden = expected_aliases(row, chunk)
-
-        self.assertEqual(public, ("-ck", "--chunk_size"))
-        self.assertEqual(
-            hidden,
-            ("--chunk-size", "--chnk_size", "--chnk-size"),
-        )
-
     def test_install_channel_inventory_separates_hidden_and_retired_aliases(
         self,
     ) -> None:

@@ -69,13 +69,14 @@ with suppress(AttributeError, ValueError):
 
 assert sys.version_info >= (3, 11), "Python >= 3.11 required."
 
-# TODO: Continue strengthening bin-grid validation beyond the quick upfront
-# checks, while keeping default runtime practical for large bedGraph pairs.
+# TODO: Continue strengthening bin-grid validation beyond quick upfront checks,
+# while keeping default runtime practical for large bedGraph pairs.
 
 # Restrict output to bedGraph filename extensions.
 BEDGRAPH_FORMATS = ("bedGraph", "bedgraph", "bdg", "bg")
 
 # Map accepted `--method` values to canonical internal names.
+# fmt: off
 METHOD_CANON = {
     # Compute the simple unadjusted ratio as A / B.
     "r": "unadj",
@@ -110,6 +111,7 @@ METHOD_CANON = {
     "lg2_r": "log2_r",
     "log2_r": "log2_r",
 }
+# fmt: on
 METHOD_CHOICES = tuple(METHOD_CANON.keys())
 
 
@@ -232,17 +234,16 @@ def calc_rat_bin(
     -----
     This function is defensive: domain issues are mapped to sentinel return
     values instead of exceptions. Specifically,
-            - '0 / 0' (or 'ε / ε') bins may return None (i.e., when '--skip_00'
-              applies).
-            - denominator underflow after optional clamping yields
-              'float('nan')'.
-            - with 'log2=True', 'ratio == 0' yields '-inf', and 'ratio < 0'
-              yields 'nan'.
-            - with 'log2=False' and 'recip=True', 'ratio == 0' yields 'inf'.
+        - '0 / 0' (or 'ε / ε') bins may return None (i.e., when '--skip_00'
+          applies).
+        - denominator underflow after optional clamping yields 'float('nan')'.
+        - with 'log2=True', 'ratio == 0' yields '-inf', and 'ratio < 0' yields
+          'nan'.
+        - with 'log2=False' and 'recip=True', 'ratio == 0' yields 'inf'.
 
-        Callers should validate option domains (e.g., 'scl_fct > 0',
-        'eps >= 0') prior to calling. A TypeError may still propagate if
-        non-numeric inputs are passed.
+    Callers should validate option domains (e.g., 'scl_fct > 0', 'eps >= 0')
+    prior to calling. A TypeError may still propagate if non-numeric inputs are
+    passed.
 
     Order of operations:
         1. Optionally skip zero-zero bins: '0 / 0' or 'ε / ε' (deepTools-like).
@@ -760,9 +761,8 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument(
         "-fA",
         "--fil_A",
-        "--fil-A",
         dest="fil_A",
-        required=True,
+        default=None,
         type=str,
         help=(
             "First bedGraph input file, file A (e.g., IP). Supports plain "
@@ -771,11 +771,16 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         ),
     )
     parser.add_argument(
+        "--fil-A",
+        dest="fil_A",
+        type=str,
+        help=argparse.SUPPRESS,
+    )
+    parser.add_argument(
         "-fB",
         "--fil_B",
-        "--fil-B",
         dest="fil_B",
-        required=True,
+        default=None,
         type=str,
         help=(
             "Second bedGraph input file, file B (e.g., input). Supports plain "
@@ -783,13 +788,18 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
             "\n"
         ),
     )
+    parser.add_argument(
+        "--fil-B",
+        dest="fil_B",
+        type=str,
+        help=argparse.SUPPRESS,
+    )
 
     parser.add_argument(
         "-fo",
         "--fil_out",
-        "--fil-out",
         dest="fil_out",
-        required=True,
+        default=None,
         type=str,
         help=(
             "Output file path. The result is written as bedGraph. When a real "
@@ -800,10 +810,15 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         ),
     )
     parser.add_argument(
+        "--fil-out",
+        dest="fil_out",
+        type=str,
+        help=argparse.SUPPRESS,
+    )
+    parser.add_argument(
         "-cs",
-        "--chr_sizes",
-        "--chr-sizes",
-        dest="chr_sizes",
+        "--chr_siz",
+        dest="chr_siz",
         default=None,
         help=(
             "Chromosome sizes file in UCSC-style TSV format used to validate "
@@ -811,6 +826,11 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
             "of '--strict_bins'.\n"
             "\n"
         ),
+    )
+    parser.add_argument(
+        "--chr-siz",
+        dest="chr_siz",
+        help=argparse.SUPPRESS,
     )
 
     parser.add_argument(
@@ -837,7 +857,6 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument(
         "-sf",
         "--scl_fct",
-        "--scl-fct",
         dest="scl_fct",
         type=str,
         default=None,
@@ -846,6 +865,12 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
             "given, 'B' defaults to 1.0.\n"
             "\n"
         ),
+    )
+    parser.add_argument(
+        "--scl-fct",
+        dest="scl_fct",
+        type=str,
+        help=argparse.SUPPRESS,
     )
     parser.add_argument(
         "-ps",
@@ -870,7 +895,6 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument(
         "-dm",
         "--dep_min",
-        "--dep-min",
         dest="dep_min",
         type=float,
         default=None,
@@ -890,6 +914,12 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
             "usually makes low-depth stabilization harder to interpret.\n"
             "\n"
         ),
+    )
+    parser.add_argument(
+        "--dep-min",
+        dest="dep_min",
+        type=float,
+        help=argparse.SUPPRESS,
     )
 
     parser.add_argument(
@@ -925,7 +955,6 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument(
         "-s0",
         "--skip_00",
-        "--skip-00",
         dest="skip_00",
         choices=["pre_scale", "post_scale"],
         default=None,
@@ -945,11 +974,16 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
             "\n"
         ),
     )
+    parser.add_argument(
+        "--skip-00",
+        dest="skip_00",
+        choices=["pre_scale", "post_scale"],
+        help=argparse.SUPPRESS,
+    )
 
     parser.add_argument(
         "-dn",
         "--drp_nan",
-        "--drp-nan",
         dest="drp_nan",
         action="store_true",
         default=False,
@@ -961,6 +995,12 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
             "'nan'.\n"
             "\n"
         ),
+    )
+    parser.add_argument(
+        "--drp-nan",
+        dest="drp_nan",
+        action="store_true",
+        help=argparse.SUPPRESS,
     )
     parser.add_argument(
         "-tr",
@@ -994,7 +1034,6 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument(
         "-sp",
         "--skp_pfx",
-        "--skp-pfx",
         dest="skp_pfx",
         type=str,
         default=",".join(DEF_SKP_PFX),
@@ -1006,9 +1045,14 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         ),
     )
     parser.add_argument(
-        "-sb",
+        "--skp-pfx",
+        dest="skp_pfx",
+        type=str,
+        help=argparse.SUPPRESS,
+    )
+    parser.add_argument(
+        "-stn",
         "--strict_bins",
-        "--strict-bins",
         dest="strict_bins",
         action="store_true",
         default=False,
@@ -1019,6 +1063,12 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
             "checked for equal bin width.\n"
             "\n"
         ),
+    )
+    parser.add_argument(
+        "--strict-bins",
+        dest="strict_bins",
+        action="store_true",
+        help=argparse.SUPPRESS,
     )
 
     argv_parse = sys.argv[1:] if argv is None else argv
@@ -1060,6 +1110,16 @@ def main(argv: list[str] | None = None) -> int:
 
     args = parse_args(argv)
 
+    # A hidden hyphen spelling is a separate action, so argparse's own
+    # 'required' check cannot see it. Require the value, not the action.
+    for option, value in (
+        ("--fil_A", args.fil_A),
+        ("--fil_B", args.fil_B),
+        ("--fil_out", args.fil_out),
+    ):
+        if value is None:
+            raise SystemExit(f"{option!r} is required.")
+
     if args.fil_A == "-" or args.fil_B == "-":
         raise SystemExit(
             "Dash input is no longer supported; provide file paths for "
@@ -1082,10 +1142,10 @@ def main(argv: list[str] | None = None) -> int:
     except FileNotFoundError as e:
         raise SystemExit(str(e)) from None
 
-    if args.chr_sizes is not None:
+    if args.chr_siz is not None:
         try:
-            check_exists(args.chr_sizes, "file", "chr.sizes file")
-            chrom_sizes = load_chromosome_sizes(args.chr_sizes)
+            check_exists(args.chr_siz, "file", "chr.sizes file")
+            chrom_sizes = load_chromosome_sizes(args.chr_siz)
         except (FileNotFoundError, ValueError, OSError) as e:
             raise SystemExit(str(e)) from None
     else:
@@ -1192,7 +1252,7 @@ def main(argv: list[str] | None = None) -> int:
 
             print(f"--fil_A    {args.fil_A}")
             print(f"--fil_B    {args.fil_B}")
-            print(f"--chr_sizes {args.chr_sizes}")
+            print(f"--chr_siz {args.chr_siz}")
             print(f"--fil_out  {fil_out}")
 
             if requested_method != args.method:

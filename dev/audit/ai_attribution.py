@@ -81,7 +81,7 @@ TOOL_KEYS = {
 }
 MODEL_IDENTIFIER_TEXT = r"GPT-\d+(?:\.\d+)?(?:-(?!series\b)[A-Za-z0-9]+)?"
 # Anthropic declares a model family and version rather than a GPT token.
-ANTHROPIC_MODEL_TEXT = r"(?:Opus|Sonnet|Haiku) \d+(?:\.\d+)?"
+ANTHROPIC_MODEL_TEXT = r"(?:Fable|Haiku|Opus|Sonnet) \d+(?:\.\d+)?"
 ANTHROPIC_MODEL_LIST = re.compile(
     rf"{ANTHROPIC_MODEL_TEXT}(?:, {ANTHROPIC_MODEL_TEXT})*",
 )

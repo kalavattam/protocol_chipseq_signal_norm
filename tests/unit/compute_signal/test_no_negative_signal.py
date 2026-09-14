@@ -6,8 +6,8 @@
 # Copyright 2026 by Kris Alavattam
 # Email: kalavattam@gmail.com
 #
-# Anthropic Claude (Opus 5) was used in design, development, and documentation,
-# with all output reviewed, edited, and approved by the author.
+# Anthropic Claude Code (Opus 5, Fable 5) was used in design, development, and
+# documentation, with all output reviewed, edited, and approved by the author.
 #
 # Distributed under the MIT license.
 
@@ -16,7 +16,6 @@ import numpy as np
 import pytest
 
 from protocol_chipseq_signal_norm.cli.compute_signal import (
-    calc_sig_chrom_array,
     calc_sig_chrom_direct_sparse_np,
 )
 
@@ -37,10 +36,21 @@ from protocol_chipseq_signal_norm.cli.compute_signal import (
 # The fix masks the 'float64' cumulative sum with the 'int64' interior-coverage
 # count. Interior coverage is an integer question, so that indicator is exact
 # and no tolerance has to be tuned.
+#
+# The experimental accumulators that shared this defect and its fix (the 'B3'
+# bincount branch, the array kernel, the dense and event paths) now live in
+# 'dev/algorithm_testing/', where their arms of these assertions moved with
+# them.
 RNG_SEED = 20260816
 
 
-def _fragments(n_frag, chrom_size, min_len, max_len, seed=RNG_SEED):
+def _fragments(
+    n_frag: int,
+    chrom_size: int,
+    min_len: int,
+    max_len: int,
+    seed: int = RNG_SEED,
+) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     """
     Fragments scattered with gaps between them.
 
@@ -48,6 +58,7 @@ def _fragments(n_frag, chrom_size, min_len, max_len, seed=RNG_SEED):
     return to zero, and therefore a place residue can appear. A densely tiled
     chromosome would hide the defect.
     """
+
     rng = np.random.default_rng(seed)
     starts = np.sort(rng.integers(0, chrom_size - max_len - 1, size=n_frag))
     lengths = rng.integers(min_len, max_len, size=n_frag)
@@ -59,7 +70,7 @@ def _fragments(n_frag, chrom_size, min_len, max_len, seed=RNG_SEED):
     )
 
 
-# 'long fragments, sparse' is the case that reproduced the defect: long
+# The 'long fragments, sparse' case is the one that reproduced the defect: long
 # interiors make each fragment's '+value' and '-value' far apart in the
 # cumulative sum, and wide gaps give the residue somewhere to land.
 CASES = [
@@ -72,48 +83,17 @@ CASES = [
 
 @pytest.mark.parametrize(("n_frag", "size", "lo", "hi"), CASES)
 @pytest.mark.parametrize("is_len", [False, True], ids=["unweighted", "length"])
-@pytest.mark.parametrize("is_norm", [False, True], ids=["raw", "norm"])
-def test_calc_sig_chrom_array_is_never_negative(
-    n_frag, size, lo, hi, is_len, is_norm
-):
+def test_direct_sparse_is_never_negative(
+    n_frag: int,
+    size: int,
+    lo: int,
+    hi: int,
+    is_len: bool,
+) -> None:
     """
-    Coverage from the array accumulator is non-negative in every bin.
+    The production sparse accumulator is non-negative in every bin.
     """
-    starts, ends, lengths = _fragments(n_frag, size, lo, hi)
 
-    out = calc_sig_chrom_array(
-        chrom="I",
-        starts=starts,
-        ends=ends,
-        lengths=lengths,
-        chrom_size=size,
-        siz_bin=10,
-        is_len=is_len,
-        is_norm=is_norm,
-        fragment_count=float(n_frag),
-        scl_fct=None,
-    )
-
-    values = np.fromiter(out.values(), dtype=np.float64, count=len(out))
-    negative = values[values < 0]
-
-    assert negative.size == 0, (
-        f"{negative.size} bin(s) carry negative coverage, worst "
-        f"{negative.min():.6g}; coverage is a sum of non-negative "
-        f"contributions and cannot be below zero"
-    )
-
-
-@pytest.mark.parametrize(("n_frag", "size", "lo", "hi"), CASES)
-@pytest.mark.parametrize("use_bincount", [False, True], ids=["B1", "B3"])
-def test_direct_sparse_is_never_negative(n_frag, size, lo, hi, use_bincount):
-    """
-    Both sparse result formats are non-negative in every bin.
-
-    'B1' and 'B3' build the difference array differently (in-place accumulation
-    versus a subtraction of two 'np.bincount' sums), and the second is the more
-    cancellation-prone of the two, so both are covered.
-    """
     starts, ends, lengths = _fragments(n_frag, size, lo, hi)
 
     _tag, parts = calc_sig_chrom_direct_sparse_np(
@@ -123,25 +103,25 @@ def test_direct_sparse_is_never_negative(n_frag, size, lo, hi, use_bincount):
         lengths=lengths,
         chrom_size=size,
         siz_bin=10,
-        is_len=True,
-        use_bincount=use_bincount,
+        is_len=is_len,
     )
 
     if not parts:
         pytest.skip("no covered bins for this configuration")
 
     values = np.concatenate(
-        [np.asarray(part[2], dtype=np.float64) for part in parts]
+        [np.asarray(part[2], dtype=np.float64) for part in parts],
     )
     negative = values[values < 0]
 
     assert negative.size == 0, (
         f"{negative.size} bin(s) carry negative coverage, worst "
-        f"{negative.min():.6g} (use_bincount={use_bincount})"
+        f"{negative.min():.6g}; coverage is a sum of non-negative "
+        f"contributions and cannot be below zero"
     )
 
 
-def test_zero_coverage_gaps_are_absent_not_tiny():
+def test_zero_coverage_gaps_are_absent_not_tiny() -> None:
     """
     A gap between fragments emits no row, rather than a near-zero one.
 
@@ -149,36 +129,34 @@ def test_zero_coverage_gaps_are_absent_not_tiny():
     enough: residue of '+1e-20' is exactly as spurious as '-1e-20', and a bin
     with no fragment over it should not appear in the output at all.
     """
+
     # Two well-separated fragments, so the bins between them are unambiguously
     # uncovered and any row there is residue.
     starts = np.array([1_000, 500_000], dtype=np.int64)
     ends = np.array([1_600, 500_600], dtype=np.int64)
     lengths = np.array([600.0, 600.0], dtype=np.float64)
 
-    out = calc_sig_chrom_array(
+    _tag, parts = calc_sig_chrom_direct_sparse_np(
         chrom="I",
         starts=starts,
         ends=ends,
         lengths=lengths,
         chrom_size=1_000_000,
         siz_bin=10,
-        is_len=False,
-        is_norm=True,
-        fragment_count=2.0,
-        scl_fct=None,
+        is_len=True,
     )
 
     covered = set()
-    for start, end in zip(
-        starts.tolist(), ends.tolist(), strict=True
-    ):
+
+    for start, end in zip(starts.tolist(), ends.tolist(), strict=True):
         covered.update(range(start // 10, ((end - 1) // 10) + 1))
 
-    stray = {
-        position // 10
-        for (_, position) in out
-        if position // 10 not in covered
+    emitted = {
+        int(bin_start) // 10
+        for part in parts
+        for bin_start in part[1].tolist()
     }
+    stray = emitted - covered
 
     assert not stray, (
         f"{len(stray)} bin(s) emitted outside any fragment; nearest strays "

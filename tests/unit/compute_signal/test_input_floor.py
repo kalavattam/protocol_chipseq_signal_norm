@@ -14,6 +14,7 @@
 # Distributed under the MIT license.
 
 
+import argparse
 import hashlib
 import inspect
 import re
@@ -38,6 +39,9 @@ from protocol_chipseq_signal_norm.cli.compute_input_floor import (
     main,
     parse_args,
     parse_flag_csv,
+)
+from protocol_chipseq_signal_norm.utilities.utils_cli import (
+    CapArgumentParser,
 )
 from protocol_chipseq_signal_norm.utilities.utils_io import DEF_SKP_PFX
 
@@ -133,12 +137,12 @@ def test_input_format_hints_are_case_insensitive_and_canonical(
             "dist",
             "--fil_in",
             "-",
-            "--infmt",
+            "--fmt_in",
             hint,
         ],
     )
 
-    assert args.infmt == expected
+    assert args.fmt_in == expected
 
 
 def test_named_path_format_inference_ignores_explicit_hint() -> None:
@@ -160,7 +164,7 @@ def test_compute_input_floor_accepts_mixed_case_direct_hint(
         10,
         100,
         mode="dist",
-        infmt="BeDgRaPh",
+        fmt_in="BeDgRaPh",
     )
 
     assert result == 2.0
@@ -182,7 +186,7 @@ def test_main_accepts_mixed_case_cli_hint(
             "dist",
             "--fil_in",
             "-",
-            "--infmt",
+            "--fmt_in",
             "BdG",
         ],
     )
@@ -274,9 +278,9 @@ def test_help_output_is_byte_exact(
     rendered = capsys.readouterr().out.encode()
 
     assert error.value.code == 0
-    assert len(rendered) == 5719
+    assert len(rendered) == 5723
     assert hashlib.sha256(rendered).hexdigest() == (
-        "f905d67d248556fae5962375b151126e270dc66601dac7ec536662d5fb45836f"
+        "ad379cbf78677b2268e1aa90d783705bfedd2f763e39f238daae53e499e892a1"
     )
 
 
@@ -346,7 +350,7 @@ def test_help_uses_approved_semantic_cli_order(
         "[--verbose]",
         "[--mode {dist,frag,norm}]",
         "[--fil_in FIL_IN]",
-        "[--infmt {bam,cram,bed,bedGraph,bdg,bg}]",
+        "[--fmt_in {bam,cram,bed,bedGraph,bdg,bg}]",
         "[--ref_fa REF_FA]",
         "[--skp_pfx SKP_PFX]",
         "[--method {qntl_nz,frc_mdn_nz,frc_avg_nz,min_nz}]",
@@ -366,7 +370,7 @@ def test_help_uses_approved_semantic_cli_order(
         "\n  -v, --verbose",
         "\n  -md, --mode {dist,frag,norm}",
         "\n  -fi, --fil_in FIL_IN",
-        "\n  -if, --infmt {bam,cram,bed,bedGraph,bdg,bg}",
+        "\n  -fmi, --fmt_in {bam,cram,bed,bedGraph,bdg,bg}",
         "\n  -rf, --ref_fa REF_FA",
         "\n  -sp, --skp_pfx SKP_PFX",
         "\n  -m, --method {qntl_nz,frc_mdn_nz,frc_avg_nz,min_nz}",
@@ -405,7 +409,7 @@ def test_verbose_argument_report_uses_applicable_semantic_order(
             "dist",
             "--fil_in",
             str(bedgraph),
-            "--infmt",
+            "--fmt_in",
             "BdG",
             "--ref_fa",
             "unused.fa",
@@ -426,7 +430,7 @@ def test_verbose_argument_report_uses_applicable_semantic_order(
         "--verbose",
         "--mode",
         "--fil_in",
-        "--infmt",
+        "--fmt_in",
         "--ref_fa",
         "--skp_pfx",
         "--method",
@@ -518,19 +522,19 @@ def test_callable_docstring_summary_matches_signature() -> None:
         "'norm' ignores\n"
         "        'fil_in'. For 'dist' and 'frag', '-' reads standard input "
         "and requires\n"
-        "        'infmt'."
+        "        'fmt_in'."
     ) in source_docstring
-    assert len(docstring.encode()) == 3416
+    assert len(docstring.encode()) == 3418
     assert hashlib.sha256(docstring.encode()).hexdigest() == (
-        "644927a73d710242a05cbc3f89fe672f146de70f56613bd4e92310901cea34a0"
+        "0e69b38675b9341e57faf95de7cc450d06d960ae9c15de13c52aa08d58acd420"
     )
     assert hashlib.sha256(
         " ".join(docstring.split()).encode(),
     ).hexdigest() == (
-        "360deeb6da232e614a1404499eecddc68ae064db540ca2553fdcf7b64667427c"
+        "60ec15a68d9d9fd1331e9563d2be8d98e57544d4a5a8aa6a5a86048ff8f0ca17"
     )
     assert hashlib.sha256((source_docstring + "\n").encode()).hexdigest() == (
-        "d1e0bc008338922769443de1990f4bd8275f2aff74b96af2281c2d9184fbfdb8"
+        "195d66e7667d2c2112157c9a025170bf949a6959cfcba414041e8d63d6939a48"
     )
 
 
@@ -698,7 +702,7 @@ def test_cram_stdin_hint_reaches_reader_as_resolved_format(
     observed: dict[str, object] = {}
 
     def count_records(
-        alignment_path: str,
+        fil_aln: str,
         paired_flags: set[int] | None = None,
         single_flags: set[int] | None = None,
         *,
@@ -707,7 +711,7 @@ def test_cram_stdin_hint_reaches_reader_as_resolved_format(
     ) -> int:
         observed.update(
             {
-                "alignment_path": alignment_path,
+                "fil_aln": fil_aln,
                 "paired_flags": paired_flags,
                 "single_flags": single_flags,
                 "alignment_format": alignment_format,
@@ -728,13 +732,13 @@ def test_cram_stdin_hint_reaches_reader_as_resolved_format(
         10,
         100,
         mode="frag",
-        infmt="cram",
+        fmt_in="cram",
         ref_fa=str(REFERENCE_FASTA),
     )
 
     assert result == pytest.approx(2 / 9)
     assert observed == {
-        "alignment_path": "-",
+        "fil_aln": "-",
         "paired_flags": None,
         "single_flags": None,
         "alignment_format": "cram",
@@ -1102,3 +1106,124 @@ def test_fragment_flag_help_names_the_applied_default(
     documented = {int(token) for token in listed.split(",")}
 
     assert documented == getattr(input_floor_module, constant)
+
+
+# Hidden hyphen aliases are separate 'add_argument' calls that must restate the
+# primary's 'type', 'choices', and action; argparse enforces none of that. Each
+# pair is exercised below, and a completeness guard fails when an alias reaches
+# the parser without a row here.
+HYPHEN_ALIASES = (
+    pytest.param("--fil_in", "--fil-in", "value", id="fil_in"),
+    pytest.param("--flags_pe", "--flags-pe", "value", id="flags_pe"),
+    pytest.param("--flags_se", "--flags-se", "value", id="flags_se"),
+    pytest.param("--fmt_in", "--fmt-in", "bam", id="fmt_in"),
+    pytest.param("--mode_nz", "--mode-nz", "closed", id="mode_nz"),
+    pytest.param("--qntl_nz", "--qntl-nz", "0.5", id="qntl_nz"),
+    pytest.param("--ref_fa", "--ref-fa", "value", id="ref_fa"),
+    pytest.param("--siz_bin", "--siz-bin", "7", id="siz_bin"),
+    pytest.param("--siz_gen", "--siz-gen", "7", id="siz_gen"),
+    pytest.param("--skp_pfx", "--skp-pfx", "value", id="skp_pfx"),
+)
+
+
+def _alias_parser() -> argparse.ArgumentParser:
+    """
+    Return the parser built by the module under test.
+    """
+
+    captured: dict[str, argparse.ArgumentParser] = {}
+    original = CapArgumentParser.parse_args
+
+    def capture(
+        self: CapArgumentParser,
+        *args: object,
+        **kwargs: object,
+    ) -> None:
+        captured["parser"] = self
+
+        raise SystemExit(0)
+
+    CapArgumentParser.parse_args = capture
+
+    try:
+        parse_args(["--mode", "frag", "--fil_in", "-"])
+    except SystemExit:
+        pass
+    finally:
+        CapArgumentParser.parse_args = original
+
+    return captured["parser"]
+
+
+def _registered_hyphen_aliases() -> set[str]:
+    """
+    Return hidden hyphen spellings that alias a visible option.
+
+    A hidden *option* may also carry a hyphen spelling; those are excluded, as
+    they alias nothing the user can see.
+    """
+
+    parser = _alias_parser()
+    visible = {
+        action.dest
+        for action in parser._actions
+        if action.help is not argparse.SUPPRESS
+    }
+
+    return {
+        option
+        for action in parser._actions
+        if action.help is argparse.SUPPRESS and action.dest in visible
+        for option in action.option_strings
+        if option.startswith("--") and "_" not in option
+    }
+
+
+@pytest.mark.parametrize(("primary", "alias", "value"), HYPHEN_ALIASES)
+def test_hidden_hyphen_alias_matches_its_primary(
+    primary: str,
+    alias: str,
+    value: str | None,
+) -> None:
+    """
+    Each hidden hyphen alias parses to the primary's value and type.
+    """
+
+    base = list(["--mode", "frag", "--fil_in", "-"])
+    supplied = [primary] if value is None else [primary, value]
+    aliased = [alias] if value is None else [alias, value]
+    destination = primary.lstrip("-")
+
+    from_primary = getattr(parse_args(base + supplied), destination)
+    from_alias = getattr(parse_args(base + aliased), destination)
+
+    assert from_primary == from_alias
+    assert type(from_primary) is type(from_alias)
+
+
+def test_every_hidden_hyphen_alias_is_covered() -> None:
+    """
+    No hidden hyphen alias may exist without a row in 'HYPHEN_ALIASES'.
+    """
+
+    covered = {row.values[1] for row in HYPHEN_ALIASES}
+    registered = _registered_hyphen_aliases()
+
+    assert registered == covered
+
+
+def test_hidden_hyphen_aliases_stay_out_of_rendered_help(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """
+    Hidden aliases remain usable but are never advertised in help.
+    """
+
+    with pytest.raises(SystemExit):
+        parse_args(["--help"])
+
+    rendered = capsys.readouterr().out
+    registered = _registered_hyphen_aliases()
+
+    for alias in registered:
+        assert alias not in rendered

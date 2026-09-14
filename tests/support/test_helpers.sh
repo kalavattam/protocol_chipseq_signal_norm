@@ -6,9 +6,10 @@
 # Copyright 2026 by Kris Alavattam
 # Email: kalavattam@gmail.com
 #
-# OpenAI ChatGPT and Codex (GPT-5.5, GPT-5.6) were used in design, development,
-# and documentation, with all output reviewed, edited, and approved by the
-# author.
+# The following were used in design, development, and documentation, with all
+# output reviewed, edited, and approved by the author:
+# - OpenAI ChatGPT and Codex (GPT-5.5, GPT-5.6);
+# - Anthropic Claude Code (Opus 5).
 #
 # Distributed under the MIT license.
 
@@ -1918,7 +1919,7 @@ Examples
     require_env_project env_nam
     tmp="$(mktemp -d)"
     mkdir -p "${tmp}/out" "${tmp}/logs"
-    run_case_compute_signal submit bam se_signal signal tests/fixtures/compute_signal/bam/se/tiny_se.bam "${tmp}/out/signal.bdg" "${tmp}/submit.log" "${tmp}/out" "${tmp}/logs" '' --chr_sizes tests/fixtures/compute_signal/reference/tiny.fa.fai --method unadj --siz_bin 10 --engine window --csv_scl_fct NA --dp 3
+    run_case_compute_signal submit bam se_signal signal tests/fixtures/compute_signal/bam/se/tiny_se.bam "${tmp}/out/signal.bdg" "${tmp}/submit.log" "${tmp}/out" "${tmp}/logs" '' --chr_siz tests/fixtures/compute_signal/reference/tiny.fa.fai --method unadj --siz_bin 10 --engine window --csv_scl_fct NA --dp 3
     rm -r -- "${tmp}"
     '''
 

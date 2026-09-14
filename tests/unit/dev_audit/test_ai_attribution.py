@@ -222,6 +222,16 @@ class AiAttributionTest(unittest.TestCase):
                 "development and\n# documentation, with all output "
                 "reviewed, edited, and approved by the author."
             ),
+            (
+                "# Anthropic Claude Code (Fable 5) was used in "
+                "development, with all output\n# reviewed, edited, and "
+                "approved by the author."
+            ),
+            (
+                "# Anthropic Claude Code (Opus 5, Fable 5) was used in "
+                "design, development, and\n# documentation, with all "
+                "output reviewed, edited, and approved by the author."
+            ),
         )
 
         for header in headers:

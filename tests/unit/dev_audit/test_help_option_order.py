@@ -6,8 +6,10 @@
 # Copyright 2026 by Kris Alavattam
 # Email: kalavattam@gmail.com
 #
-# OpenAI ChatGPT and Codex (GPT-5.6) were used in design, development, and
-# documentation, with all output reviewed, edited, and approved by the author.
+# The following were used in design, development, and documentation, with all
+# output reviewed, edited, and approved by the author:
+# - OpenAI ChatGPT and Codex (GPT-5.6);
+# - Anthropic Claude Code (Opus 5).
 #
 # Distributed under the MIT license.
 
@@ -100,7 +102,7 @@ def test_same_group_requires_one_reviewed_role() -> None:
 def test_four_registered_surface_orders_require_exact_parity() -> None:
     payload = copy.deepcopy(data())
     record = payload["option_realizations"][0]
-    record["surface_orders"]["usage"][3:5] = ["infmt", "fil_in"]
+    record["surface_orders"]["usage"][3:5] = ["fmt_in", "fil_in"]
 
     assert "HELP.OPTION.ORDER.SURFACE_PARITY" in emitted(payload)
 

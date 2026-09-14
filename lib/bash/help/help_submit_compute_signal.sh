@@ -9,12 +9,14 @@
 # The following were used in design, development, and documentation, with all
 # output reviewed, edited, and approved by the author:
 # - OpenAI ChatGPT and Codex (GPT-5.5, GPT-5.6);
-# - Anthropic Claude Code (Opus 5).
+# - Anthropic Claude Code (Opus 5, Fable 5).
 #
 # Distributed under the MIT license.
 
 
 # TODO: do we need '--dir_scr' in the examples? Only if using 'sbatch'.
+# TODO: expose '--siz_win' through this wrapper so the engine help no longer
+# has to say the window size is unavailable here.
 function help_submit_compute_signal() {
     # The submit owner initializes interpolated defaults before invocation.
     # shellcheck disable=SC2154
@@ -25,9 +27,9 @@ Usage
     [--help]
     [--env_nam <str>] [--dir_scr <dir>] [--threads <int>]
     [--mode <mode>] [--method <method>]
-    (--csv_fil_in <csv> [--ref_fa <file>] [--chr_sizes <file>] | --csv_fil_A <csv> --csv_fil_B <csv> [--chr_sizes <file>])
+    (--csv_fil_in <csv> [--ref_fa <file>] [--chr_siz <file>] | --csv_fil_A <csv> --csv_fil_B <csv> [--chr_siz <file>])
     --csv_fil_out <csv>
-    [--siz_bin <int>] [--chunk_size <int>] [--engine <engine>] [--csv_scl_fct <csv>] [--csv_usr_frg <csv>]
+    [--siz_bin <int>] [--engine <engine>] [--csv_scl_fct <csv>] [--csv_usr_frg <csv>]
     [--csv_dep_min <csv>] [--csv_pseudo <csv>] [--eps <flt>] [--skip_00 <choice>] [--strict_bins] [--drp_nan]
     [--skp_pfx <csv>] [--track] [--dp <int>]
     --dir_eo <dir> [--nam_job <str>]
@@ -75,8 +77,8 @@ Parameters
 
     Required when '--csv_fil_in' contains CRAM input.
 
-  -cs, --chr_sizes, --chrom_sizes : file
-    Chromosome sizes file in optional UCSC-style TSV format.
+  -cs, --chr_siz : file
+    Chromosome sizes file in UCSC-style TSV format.
 
     Used with '--mode signal' or '--mode coord' to supplement BAM/CRAM header sizes, and with '--mode ratio' to validate bedGraph interval bounds.
 
@@ -101,19 +103,16 @@ Parameters
 
     Used with '--mode signal'.
 
-  -ck, --chunk_size : int
-    Number of records to process per chunk. Reserved compatibility option for compute_signal.py (default: ${chunk_size}).
-
-    Used with '--mode signal'. Ignored by the public 'chrom' and 'window' engines.
-
   -eg, --engine : {'chrom', 'window'}
     Processing engine for signal computation (default: '${engine}').
 
     Used with '--mode signal'.
 
-    Engine selection:
-      - 'chrom': default; best general choice and current best CRAM choice.
-      - 'window': recommended to try for large BAM inputs.
+    Both engines dispatch indexed fetch tasks and produce the same signal; they differ only in how fetch work is divided among threads.
+      - 'chrom': one fetch task per chromosome. Task size tracks chromosome size, so the longest chromosomes dominate wall time.
+      - 'window': each chromosome is split into fixed-size coordinate windows, with one fetch task per window. Task sizes are uniform, giving finer load balance across threads, but at the cost of more fetch calls. Window size is set by 'compute_signal.py --siz_win' (default: 100000) and is not exposed here.
+
+    Recommended: keep 'chrom' as the general choice and the current best choice for CRAM input; try 'window' for large BAM inputs.
 
   -csf, --csv_scl_fct : list of structured string
     Comma-separated list of scaling factors or sentinels.
@@ -143,7 +142,7 @@ Parameters
 
     Accepted zero-zero skip modes are 'pre_scale' and 'post_scale'.
 
-  --strict_bins : flag
+  -stn, --strict_bins : flag
     Require strict bin compatibility. If '--mode ratio', require both input bedGraphs to have the same ordered '(chrom, start, end)' grid across all data rows.
 
   -dn, --drp_nan : flag

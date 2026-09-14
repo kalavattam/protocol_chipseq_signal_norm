@@ -187,7 +187,7 @@ def parse_flag_csv(csv_text: str, label: str) -> set[int]:
 
 
 def _count_alignment_records(
-    alignment_path: str,
+    fil_aln: str,
     paired_flags: set[int] | None = None,
     single_flags: set[int] | None = None,
     *,
@@ -203,7 +203,7 @@ def _count_alignment_records(
 
     Parameters
     ----------
-    alignment_path : str
+    fil_aln : str
         Alignment path, or '-' for standard input. Streaming does not require
         an index.
     paired_flags : set[int] | None
@@ -252,9 +252,7 @@ def _count_alignment_records(
 
     n_in = 0
     read_mode = "rc" if alignment_format == "cram" else "rb"
-    alignment_source = (
-        sys.stdin.buffer if alignment_path == "-" else alignment_path
-    )
+    alignment_source = sys.stdin.buffer if fil_aln == "-" else fil_aln
     alignment_options = {}
 
     if alignment_format == "cram":
@@ -274,7 +272,7 @@ def _count_alignment_records(
     except (FileNotFoundError, OSError, ValueError) as error:
         raise AlignmentReadError(
             f"Error: Cannot process {alignment_format} alignment "
-            f"'{alignment_path}': {error}",
+            f"'{fil_aln}': {error}",
         ) from error
 
     return n_in
@@ -363,7 +361,7 @@ def infer_input_format(path: str, hint: str | None = None) -> str:
 
     Returns
     -------
-    format_name : str
+    fmt_nam : str
         Canonical 'bam', 'cram', 'bed', or 'bedgraph' for recognized input;
         otherwise, 'other'.
     """
@@ -475,7 +473,7 @@ def _validate_mode_dimensions(
 
 
 def _validate_cram_reference(
-    format_name: str,
+    fmt_nam: str,
     ref_fa: str | None,
 ) -> None:
     """
@@ -483,7 +481,7 @@ def _validate_cram_reference(
 
     Parameters
     ----------
-    format_name : str
+    fmt_nam : str
         Canonical input format.
     ref_fa : str | None
         Reference FASTA path supplied for CRAM decoding.
@@ -494,7 +492,7 @@ def _validate_cram_reference(
         If CRAM input has no readable reference FASTA.
     """
 
-    if format_name != "cram":
+    if fmt_nam != "cram":
         return
 
     if not ref_fa:
@@ -523,7 +521,7 @@ def compute_input_floor(
     paired_flags: set[int] | None = None,
     single_flags: set[int] | None = None,
     skp_pfx: tuple[str, ...] = DEF_SKP_PFX,
-    infmt: str | None = None,
+    fmt_in: str | None = None,
     ref_fa: str | None = None,
 ) -> float:
     """
@@ -540,7 +538,7 @@ def compute_input_floor(
         Input path. 'dist' accepts 'bedGraph', 'bdg', or 'bg', optionally with
         '.gz'; 'frag' accepts 'bam', 'cram', 'bed', or 'bed.gz'; 'norm' ignores
         'fil_in'. For 'dist' and 'frag', '-' reads standard input and requires
-        'infmt'.
+        'fmt_in'.
     siz_bin : int
         Target signal-bin width in base pairs. Used only by 'frag' and 'norm';
         callers must supply a positive value smaller than 'siz_gen'.
@@ -585,7 +583,7 @@ def compute_input_floor(
         counting. 'None' uses the defaults.
     skp_pfx : tuple[str, ...]
         Prefixes skipped as header or metadata rows in BED and bedGraph inputs.
-    infmt : str | None
+    fmt_in : str | None
         Required case-insensitive format hint when 'fil_in' is '-'. Accepts
         'bam', 'cram', 'bed', 'bedGraph', 'bdg', or 'bg' and resolves to a
         canonical format; ignored for named paths.
@@ -615,8 +613,8 @@ def compute_input_floor(
     _validate_mode_dimensions(mode, siz_bin, siz_gen)
 
     if mode == "dist":
-        format_name = infer_input_format(fil_in, infmt)
-        if format_name != "bedgraph":
+        fmt_nam = infer_input_format(fil_in, fmt_in)
+        if fmt_nam != "bedgraph":
             raise InputFloorValidationError(
                 "Error: '--mode dist' requires a bedGraph-like input file "
                 "(bedGraph, bdg, or bg, optionally with .gz).",
@@ -668,20 +666,20 @@ def compute_input_floor(
         dep_min = b_over_g / (1.0 - b_over_g)
         return dep_min
 
-    format_name = infer_input_format(fil_in, infmt)
+    fmt_nam = infer_input_format(fil_in, fmt_in)
 
-    if format_name in {"bam", "cram"}:
-        _validate_cram_reference(format_name, ref_fa)
+    if fmt_nam in {"bam", "cram"}:
+        _validate_cram_reference(fmt_nam, ref_fa)
         n_in = _count_alignment_records(
             fil_in,
             paired_flags=paired_flags,
             single_flags=single_flags,
-            alignment_format=format_name,
+            alignment_format=fmt_nam,
             ref_fa=ref_fa,
         )
-    elif format_name == "bed":
+    elif fmt_nam == "bed":
         n_in = _count_bed_records(fil_in, skp_pfx)
-    elif format_name == "bedgraph":
+    elif fmt_nam == "bedgraph":
         raise InputFloorValidationError(
             "Error: '--mode frag' expects bam, cram, or bed/bed.gz "
             "(alignment records), not bedGraph.",
@@ -731,7 +729,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
             usage_rows=(
                 ("help", "verbose"),
                 ("mode",),
-                ("fil_in", "infmt", "ref_fa", "skp_pfx"),
+                ("fil_in", "fmt_in", "ref_fa", "skp_pfx"),
                 ("method", "qntl_nz", "coef", "eps", "mode_nz", "floor"),
                 ("siz_bin", "siz_gen", "flags_pe", "flags_se"),
                 ("dp",),
@@ -810,14 +808,20 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         help=(
             "Input path. For 'dist', provide bedGraph, bdg, or bg, optionally "
             "with '.gz'. For 'frag', provide BAM, CRAM, or BED/BED.GZ. For "
-            "'dist' and 'frag', '-' reads stdin and requires '--infmt'. "
+            "'dist' and 'frag', '-' reads stdin and requires '--fmt_in'. "
             "'norm' ignores '--fil_in'."
         ),
     )
     parser.add_argument(
-        "-if",
-        "--infmt",
-        dest="infmt",
+        "--fil-in",
+        dest="fil_in",
+        type=str,
+        help=argparse.SUPPRESS,
+    )
+    parser.add_argument(
+        "-fmi",
+        "--fmt_in",
+        dest="fmt_in",
         type=_canonicalize_input_format_hint,
         choices=_CANONICAL_INPUT_FORMATS,
         metavar="{bam,cram,bed,bedGraph,bdg,bg}",
@@ -830,6 +834,13 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         ),
     )
     parser.add_argument(
+        "--fmt-in",
+        dest="fmt_in",
+        type=_canonicalize_input_format_hint,
+        choices=_CANONICAL_INPUT_FORMATS,
+        help=argparse.SUPPRESS,
+    )
+    parser.add_argument(
         "-rf",
         "--ref_fa",
         dest="ref_fa",
@@ -838,6 +849,11 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
             "Reference FASTA file required for CRAM decoding. Ignored for "
             "other input formats."
         ),
+    )
+    parser.add_argument(
+        "--ref-fa",
+        dest="ref_fa",
+        help=argparse.SUPPRESS,
     )
 
     parser.add_argument(
@@ -851,6 +867,12 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
             "bedGraph-like input; an empty string disables skipping (default: "
             "'%(default)s')."
         ),
+    )
+    parser.add_argument(
+        "--skp-pfx",
+        dest="skp_pfx",
+        type=str,
+        help=argparse.SUPPRESS,
     )
 
     parser.add_argument(
@@ -882,6 +904,12 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
             "100', select 'i = floor(q * (N - 1))', clamped to '[0, N - 1]' "
             "and then 'dep_min = sorted_vals[i]' (default: %(default)s)."
         ),
+    )
+    parser.add_argument(
+        "--qntl-nz",
+        dest="qntl_nz",
+        type=float,
+        help=argparse.SUPPRESS,
     )
     parser.add_argument(
         "-c",
@@ -921,6 +949,12 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         ),
     )
     parser.add_argument(
+        "--mode-nz",
+        dest="mode_nz",
+        choices=("closed", "open", "off"),
+        help=argparse.SUPPRESS,
+    )
+    parser.add_argument(
         "-f",
         "--floor",
         dest="floor",
@@ -946,6 +980,12 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         ),
     )
     parser.add_argument(
+        "--siz-bin",
+        dest="siz_bin",
+        type=int,
+        help=argparse.SUPPRESS,
+    )
+    parser.add_argument(
         "-sg",
         "--siz_gen",
         dest="siz_gen",
@@ -957,6 +997,12 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
             "appropriate for S. cerevisiae when retaining multi-mapping "
             "alignments)."
         ),
+    )
+    parser.add_argument(
+        "--siz-gen",
+        dest="siz_gen",
+        type=int,
+        help=argparse.SUPPRESS,
     )
 
     parser.add_argument(
@@ -1039,7 +1085,7 @@ def _validate_norm_arguments(
 
     ignored = (
         ("--fil_in", args.fil_in, args.fil_in is not None),
-        ("--infmt", args.infmt, args.infmt is not None),
+        ("--fmt_in", args.fmt_in, args.fmt_in is not None),
         ("--ref_fa", args.ref_fa, args.ref_fa is not None),
         ("--method", args.method, args.method != "qntl_nz"),
         ("--qntl_nz", args.qntl_nz, args.qntl_nz != 1.0),
@@ -1067,7 +1113,7 @@ def _validate_data_arguments(args: argparse.Namespace) -> str:
 
     Returns
     -------
-    format_name : str
+    fmt_nam : str
         Canonical input format.
 
     Raises
@@ -1086,14 +1132,14 @@ def _validate_data_arguments(args: argparse.Namespace) -> str:
             "'--mode frag'.",
         )
 
-    format_name = infer_input_format(args.fil_in, args.infmt)
+    fmt_nam = infer_input_format(args.fil_in, args.fmt_in)
 
     if args.mode == "dist":
-        if format_name != "bedgraph":
+        if fmt_nam != "bedgraph":
             if args.fil_in == "-":
                 message = (
                     "Error: When '--fil_in -' is used with '--mode dist', "
-                    "provide '--infmt {bedGraph,bdg,bg}'."
+                    "provide '--fmt_in {bedGraph,bdg,bg}'."
                 )
             else:
                 message = (
@@ -1127,11 +1173,11 @@ def _validate_data_arguments(args: argparse.Namespace) -> str:
                 file=sys.stderr,
             )
 
-    elif format_name not in {"bam", "cram", "bed"}:
+    elif fmt_nam not in {"bam", "cram", "bed"}:
         if args.fil_in == "-":
             message = (
                 "Error: When '--fil_in -' is used with '--mode frag', provide "
-                "'--infmt {bam,cram,bed}'."
+                "'--fmt_in {bam,cram,bed}'."
             )
         else:
             input_path = args.fil_in
@@ -1145,12 +1191,12 @@ def _validate_data_arguments(args: argparse.Namespace) -> str:
         check_exists(
             args.fil_in,
             kind="file",
-            label=format_name.upper(),
+            label=fmt_nam.upper(),
         )
 
-    _validate_cram_reference(format_name, args.ref_fa)
+    _validate_cram_reference(fmt_nam, args.ref_fa)
 
-    return format_name
+    return fmt_nam
 
 
 def _validate_input_floor_arguments(
@@ -1166,7 +1212,7 @@ def _validate_input_floor_arguments(
 
     Returns
     -------
-    format_name, flags_pe, flags_se : tuple[
+    fmt_nam, flags_pe, flags_se : tuple[
         str | None, str | None, str | None
     ]
         Canonical input format and raw paired- and single-end flag values.
@@ -1185,11 +1231,11 @@ def _validate_input_floor_arguments(
 
     if args.mode == "norm":
         _validate_norm_arguments(args, flags_pe, flags_se)
-        format_name = None
+        fmt_nam = None
     else:
-        format_name = _validate_data_arguments(args)
+        fmt_nam = _validate_data_arguments(args)
 
-    return format_name, flags_pe, flags_se
+    return fmt_nam, flags_pe, flags_se
 
 
 def _parse_fragment_flags(
@@ -1278,8 +1324,8 @@ def _print_input_floor_arguments(
         print(f"--mode {args.mode}")
         print(f"--fil_in {args.fil_in}")
 
-        if args.infmt is not None:
-            print(f"--infmt {args.infmt}")
+        if args.fmt_in is not None:
+            print(f"--fmt_in {args.fmt_in}")
 
         if args.ref_fa is not None:
             print(f"--ref_fa {args.ref_fa}")
@@ -1351,7 +1397,7 @@ def _compute_input_floor_from_args(
         paired_flags=paired_flags,
         single_flags=single_flags,
         skp_pfx=skp_pfx,
-        infmt=args.infmt if data_mode else None,
+        fmt_in=args.fmt_in if data_mode else None,
         ref_fa=args.ref_fa if data_mode else None,
     )
 
@@ -1387,7 +1433,7 @@ def main(argv: list[str] | None = None) -> int:
 
     try:
         (
-            format_name,
+            fmt_nam,
             flags_pe,
             flags_se,
         ) = _validate_input_floor_arguments(args)
@@ -1418,7 +1464,7 @@ def main(argv: list[str] | None = None) -> int:
 
     has_alignment_flags = bool(paired_flags or single_flags)
 
-    if args.mode == "frag" and format_name == "bed" and has_alignment_flags:
+    if args.mode == "frag" and fmt_nam == "bed" and has_alignment_flags:
         print(
             "Note: '--flags_pe' / '--flags_se' are ignored for bed inputs.",
             file=sys.stderr,

@@ -561,17 +561,17 @@
       "status": "registered_shared"
     },
     {
-      "id": "shared_chr_sizes",
-      "parameter": "chr_sizes",
+      "id": "shared_chr_siz",
+      "parameter": "chr_siz",
       "canonical_core": "Chromosome sizes file.",
       "members": [
         {
           "surface_id": "bin/submit_compute_signal.sh::run_comp_sig",
           "path": "bin/submit_compute_signal.sh",
           "symbol": "run_comp_sig",
-          "parameter": "chr_sizes",
+          "parameter": "chr_siz",
           "owner": "PARAMETER.DESCRIPTIONS",
-          "evidence": "Parameters row for 'chr_sizes': Chromosome sizes file or empty string."
+          "evidence": "Parameters row for 'chr_siz': Chromosome sizes file or empty string."
         }
       ],
       "local_meanings": [],
@@ -589,23 +589,6 @@
           "parameter": "engine",
           "owner": "PARAMETER.DESCRIPTIONS",
           "evidence": "Parameters row for 'engine': Processing engine."
-        }
-      ],
-      "local_meanings": [],
-      "status": "registered_shared"
-    },
-    {
-      "id": "shared_chunk_size",
-      "parameter": "chunk_size",
-      "canonical_core": "Number of records to process per chunk.",
-      "members": [
-        {
-          "surface_id": "bin/submit_compute_signal.sh::run_comp_sig",
-          "path": "bin/submit_compute_signal.sh",
-          "symbol": "run_comp_sig",
-          "parameter": "chunk_size",
-          "owner": "PARAMETER.DESCRIPTIONS",
-          "evidence": "Parameters row for 'chunk_size': Number of records to process per chunk. Used by compute-signal engines."
         }
       ],
       "local_meanings": [],
@@ -1915,7 +1898,7 @@
         "verbose",
         "mode",
         "fil_in",
-        "infmt",
+        "fmt_in",
         "ref_fa",
         "skp_pfx",
         "method",
@@ -1936,7 +1919,7 @@
         "verbose": "help_reporting",
         "mode": "operation_discriminant",
         "fil_in": "inputs",
-        "infmt": "inputs",
+        "fmt_in": "inputs",
         "ref_fa": "inputs",
         "skp_pfx": "inputs",
         "method": "mode_specific",
@@ -1961,7 +1944,7 @@
           "rationale": "The operation discriminant forms its own invocation row."
         },
         {
-          "members": ["fil_in", "infmt", "ref_fa", "skp_pfx"],
+          "members": ["fil_in", "fmt_in", "ref_fa", "skp_pfx"],
           "rationale": "Input selection, format, reference, and prefix are one approved input group."
         },
         {
@@ -1983,7 +1966,7 @@
           "verbose",
           "mode",
           "fil_in",
-          "infmt",
+          "fmt_in",
           "ref_fa",
           "skp_pfx",
           "method",
@@ -2003,7 +1986,7 @@
           "verbose",
           "mode",
           "fil_in",
-          "infmt",
+          "fmt_in",
           "ref_fa",
           "skp_pfx",
           "method",
@@ -2023,7 +2006,7 @@
           "verbose",
           "mode",
           "fil_in",
-          "infmt",
+          "fmt_in",
           "ref_fa",
           "skp_pfx",
           "method",
@@ -2042,7 +2025,7 @@
           "verbose",
           "mode",
           "fil_in",
-          "infmt",
+          "fmt_in",
           "ref_fa",
           "skp_pfx",
           "method",
@@ -2061,7 +2044,7 @@
       "relationships": [
         {
           "kind": "adjacent",
-          "members": ["fil_in", "infmt", "ref_fa", "skp_pfx"]
+          "members": ["fil_in", "fmt_in", "ref_fa", "skp_pfx"]
         },
         {
           "kind": "contiguous",
@@ -2096,7 +2079,7 @@
             "dist",
             "--fil_in",
             "signal.bdg",
-            "--infmt",
+            "--fmt_in",
             "bedgraph",
             "--ref_fa",
             "reference.fa",
@@ -2847,7 +2830,7 @@
   "format_vocabulary": [
     {
       "surface_id": "compute_input_floor_cli",
-      "parameter": "infmt",
+      "parameter": "fmt_in",
       "language": "python",
       "displayed_choices": ["bam", "cram", "bed", "bedGraph", "bdg", "bg"],
       "accepted_aliases": ["bedgraph"],

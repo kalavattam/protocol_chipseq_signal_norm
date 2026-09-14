@@ -6,9 +6,10 @@
 # Copyright 2026 by Kris Alavattam
 # Email: kalavattam@gmail.com
 #
-# OpenAI ChatGPT and Codex (GPT-5.5, GPT-5.6) were used in design, development,
-# and documentation, with all output reviewed, edited, and approved by the
-# author.
+# The following were used in design, development, and documentation, with all
+# output reviewed, edited, and approved by the author:
+# - OpenAI ChatGPT and Codex (GPT-5.5, GPT-5.6);
+# - Anthropic Claude Code (Opus 5).
 #
 # Distributed under the MIT license.
 
@@ -26,7 +27,7 @@ source "$(
 
 #  Define fixture and output paths for the execute-to-submit BAM path
 dir_fx="${ROOT_REPO}/tests/fixtures/compute_signal"
-chr_sizes="${dir_fx}/reference/tiny.fa.fai"
+chr_siz="${dir_fx}/reference/tiny.fa.fai"
 in_se="${dir_fx}/bam/se/tiny_se.bam"
 in_pe="${dir_fx}/bam/pe/tiny_pe.bam"
 
@@ -68,7 +69,7 @@ require_env_project env_nam || {
 }
 
 require_files_nonempty \
-    "${chr_sizes}" \
+    "${chr_siz}" \
     "${in_se}" \
     "${in_pe}" || {
     finish
@@ -88,7 +89,7 @@ run_case_compute_signal \
     "${dir_out}" \
     "${dir_err}" \
     "" \
-    --chr_sizes "${chr_sizes}" \
+    --chr_siz "${chr_siz}" \
     --method unadj \
     --siz_bin 10 \
     --engine window \

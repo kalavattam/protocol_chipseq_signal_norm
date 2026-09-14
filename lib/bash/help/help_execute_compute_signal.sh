@@ -10,7 +10,7 @@
 # output reviewed, edited, and approved by the author:
 # - OpenAI ChatGPT and Codex (GPT-4- and GPT-5-series models; most recent:
 #   GPT-5.6);
-# - Anthropic Claude Code (Opus 5).
+# - Anthropic Claude Code (Opus 5, Fable 5).
 #
 # Distributed under the MIT license.
 
@@ -24,9 +24,9 @@ Usage
     [--verbose] [--dry_run]
     [--env_nam <str>] [--threads <int>]
     [--mode <mode>] [--method <method>]
-    (--csv_fil_in <csv> [--ref_fa <file>] [--chr_sizes <file>] | --csv_fil_A <csv> --csv_fil_B <csv> [--chr_sizes <file>])
+    (--csv_fil_in <csv> [--ref_fa <file>] [--chr_siz <file>] | --csv_fil_A <csv> --csv_fil_B <csv> [--chr_siz <file>])
     --dir_out <dir> [--typ_out <format>] [--prefix <str>]
-    [--siz_bin <int>] [--engine <engine>] [--chunk_size <int>] [--csv_usr_frg <csv>] [--csv_scl_fct <csv>]
+    [--siz_bin <int>] [--engine <engine>] [--csv_usr_frg <csv>] [--csv_scl_fct <csv>]
     [--csv_dep_min <csv>] [--csv_pseudo <csv>] [--eps <num>] [--skip_00 <choice>] [--strict_bins] [--drp_nan] [--skp_pfx <csv>]
     [--track] [--dp <int>]
     [--dir_eo <dir>] [--nam_job <str>] [--max_job <int>] [--slurm] [--time <time>]
@@ -99,8 +99,8 @@ Parameters
   -rf, --ref_fa : file
     Reference FASTA file for CRAM input files (required if any '--csv_fil_in' element ends in '.cram'; used only with '--mode signal' or '--mode coord').
 
-  -cs, --chr_sizes, --chrom_sizes : file
-    Chromosome sizes file in optional UCSC-style TSV format.
+  -cs, --chr_siz : file
+    Chromosome sizes file in UCSC-style TSV format.
 
     Used with '--mode signal' or '--mode coord' to supplement BAM/CRAM header sizes, and with '--mode ratio' to validate bedGraph interval bounds.
 
@@ -131,14 +131,11 @@ Parameters
   -eg, --engine : {'chrom', 'window'}
     Processing engine for signal computation (used only with '--mode signal'; default: 'chrom').
 
-    Engine selection:
-      - 'chrom': default; best general choice and current best CRAM choice.
-      - 'window': recommended to try for large BAM inputs.
+    Both engines dispatch indexed fetch tasks and produce the same signal; they differ only in how fetch work is divided among threads.
+      - 'chrom': one fetch task per chromosome. Task size tracks chromosome size, so the longest chromosomes dominate wall time.
+      - 'window': each chromosome is split into fixed-size coordinate windows, with one fetch task per window. Task sizes are uniform, giving finer load balance across threads, at the cost of more fetch calls. Window size is set by 'compute_signal.py --siz_win' (default: 100000) and is not exposed here.
 
-  -ck, --chunk_size : int
-    Number of records to process per chunk. Reserved compatibility option for compute_signal.py (used only with '--mode signal'; default: 100000).
-
-    Ignored by the public 'chrom' and 'window' engines.
+    Recommended: keep 'chrom' as the general choice and the current best choice for CRAM input; try 'window' for large BAM inputs.
 
   -csf, --csv_scl_fct : list of structured string
     Comma-separated list of scaling factors or sentinels. Used only with '--mode signal' or '--mode ratio'.
@@ -162,7 +159,7 @@ Parameters
   -s0, --skp_00, --skip_00 : {'pre_scale', 'post_scale'}
     Skip rows where both compared values are zero. Shared zero-zero skip mode or sentinel for ratio computation: 'pre_scale' or 'post_scale'. Used only with '--mode ratio'.
 
-  --strict_bins : flag
+  -stn, --strict_bins : flag
     Require strict bin compatibility. If '--mode ratio', require both input bedGraph files to have the same ordered '(chrom, start, end)' grid across all data rows.
 
   -dn, --drp_nan, --drop_nan : flag
@@ -230,7 +227,7 @@ EOM
 function detail_execute_compute_signal() {
     local mode="${1:-}"
 
-    #  Only print the top-level 'Usage' block if '--no-usage' is not invoked
+    # Only print the top-level 'Usage' block if '--no-usage' is not invoked.
     if [[ ! "${mode}" =~ ^--no[_-]usage$ ]]; then
 cat >&2 << EOM
 ${usage}
@@ -239,9 +236,8 @@ EOM
     fi
 
 # TODO FIXME: missing detailed descriptions of (relatively) new arguments:
-#   - --chr_sizes <file>
+#   - --chr_siz <file>
 #   - --engine <engine>
-#   - --chunk_size <int>
 #   - Others?
 cat >&2 << EOM
   Driver script automating the computations of bedGraph signal or ratio tracks, or BED-like fragment coordinate files, from BAM/CRAM (for signal tracks or fragment coordinate files) or bedGraph (for ratio tracks) input files.

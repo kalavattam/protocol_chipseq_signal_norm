@@ -10,7 +10,7 @@
 # output reviewed, edited, and approved by the author:
 # - OpenAI ChatGPT and Codex (GPT-4- and GPT-5-series models; most recent:
 #   GPT-5.6);
-# - Anthropic Claude Code (Opus 5).
+# - Anthropic Claude Code (Opus 5, Fable 5).
 #
 # Distributed under the MIT license.
 
@@ -18,21 +18,25 @@
 """
 Calculate binned signal or fragment-coordinate output from BAM/CRAM input.
 
-The CLI accepts input, output, signal-mode, engine, scaling, and formatting
-options. It writes bedGraph-like signal tracks or BED-like fragment-coordinate
-records. When writing bedGraph, finite values are rounded to at most '--dp'
-decimal places and trailing zeros are stripped.
+The CLI accepts input, reference, and output paths, threading, the signal
+method, bin and window sizes, the processing engine, fragment length, scaling,
+reporting, and value formatting. It writes bedGraph-like signal tracks,
+BED-like fragment-coordinate records, or fragment and bin counts ('--report_N',
+'--report_L') with or without a track. When writing bedGraph output, finite
+values are rounded to at most '--dp' decimal places and trailing zeros are
+stripped.
 
 Examples
 --------
 python -m protocol_chipseq_signal_norm.cli.compute_signal \\
     --fil_in <file> --fil_out <file> [options]
+python -m protocol_chipseq_signal_norm.cli.compute_signal \\
+    --fil_in <file> --report_N <file> [--report_L <file>] [options]
 """
 
 from __future__ import annotations
 
 import argparse
-import hashlib
 import json
 import math
 import os
@@ -49,9 +53,7 @@ import numpy as np
 import pysam
 
 from protocol_chipseq_signal_norm.utilities.utils_bdg import (
-    key_bin,
     load_chromosome_sizes,
-    write_bdg,
 )
 from protocol_chipseq_signal_norm.utilities.utils_check import (
     ALLOWED_OUTPUT_FORMATS,
@@ -72,10 +74,12 @@ with suppress(AttributeError, ValueError):
 
 assert sys.version_info >= (3, 11), "Python >= 3.11 required."
 
-# TODO: Reassess chunked processing, compiled-core options, and downstream
-# bigWig compatibility after the current indexed engines are benchmarked.
+# TODO: In the performance pass, reassess a compiled core. Separately, assert
+# emitted terminal-bin end coordinates never exceed chromosome size (the
+# property downstream bigWig converters require; untested).
 
-# Map accepted `--method` values to canonical internal names.
+# Map accepted '--method' values to canonical internal names.
+# fmt: off
 METHOD_CANON = {
     # Compute unadjusted signal.
     "r": "unadj",
@@ -86,6 +90,7 @@ METHOD_CANON = {
     "s": "unadj",
     "smp": "unadj",
     "simple": "unadj",
+
     # Normalize signal by fragment length.
     "f": "frag",
     "frg": "frag",
@@ -96,6 +101,7 @@ METHOD_CANON = {
     "len": "frag",
     "len_frg": "frag",
     "len_frag": "frag",
+
     # Normalize signal by fragment length and depth.
     "n": "norm",
     "nc": "norm",
@@ -103,62 +109,25 @@ METHOD_CANON = {
     "norm": "norm",
     "normalized": "norm",
 }
+# fmt: on
 METHOD_CHOICES = tuple(METHOD_CANON.keys())
 ENGINE_CHOICES = ("chrom", "window")
-PUBLIC_ENGINE_STRATEGY = {
-    "chrom": "indexed_chrom",
-    "window": "indexed_window",
+ENGINE_STRAT = {
+    "chrom": "idx_chrom",
+    "window": "idx_win",
 }
-EXECUTOR_MODE_CHOICES = ("map", "as_completed")
-PROTOTYPE_PARSE_STRATEGY_CHOICES = (
-    "serial",
-    "indexed_chrom",
-    "indexed_window",
-)
-PROTOTYPE_BED_STRATEGY_CHOICES = (
+MODE_EXEC_CHOICES = ("map", "as_completed")
+STRAT_BED_CHOICES = (
     "auto",
     "serial",
-    "indexed_chrom",
-    "indexed_window",
+    "idx_chrom",
+    "idx_win",
 )
-PROTOTYPE_RESULT_FORMAT_CHOICES = (
-    "dict",
-    "sparse_np",
-    "dense_np",
-    "direct_sparse_np",
-    "direct_sparse_idx_np",
-    "direct_sparse_local_np",
-    "direct_sparse_touched_np",
-    "direct_sparse_bincount_np",
-    "direct_sparse_touched_bincount_np",
-    "direct_sparse_local_bincount_np",
-    "direct_dense_np",
-    "event_np",
-)
-PROTOTYPE_MERGE_STRATEGY_CHOICES = (
-    "dict_merge",
-    "chrom_array_merge",
-    "vectorized_merge",
-    "array_sparse_merge_legacy",
-    "array_sparse_merge",
-    "array_dense_merge",
-    "event_diff_merge",
-)
-PROTOTYPE_WRITER_STRATEGY_CHOICES = ("serial", "parallel_ordered")
-PROTOTYPE_WRITE_MODE_CHOICES = ("full", "digest", "profile_only")
-DIRECT_SPARSE_RESULT_FORMATS = (
-    "direct_sparse_np",
-    "direct_sparse_idx_np",
-    "direct_sparse_local_np",
-    "direct_sparse_touched_np",
-    "direct_sparse_bincount_np",
-    "direct_sparse_touched_bincount_np",
-    "direct_sparse_local_bincount_np",
-)
+STRAT_WRITER_CHOICES = ("serial", "parallel_ordered")
 
 
-def get_alignment_chrom_sizes(
-    alignment_path: str,
+def get_siz_chr(
+    fil_aln: str,
     ref_fa: str | None = None,
 ) -> dict[str, int]:
     """
@@ -170,7 +139,7 @@ def get_alignment_chrom_sizes(
     if ref_fa is not None:
         kwargs["reference_filename"] = ref_fa
 
-    with pysam.AlignmentFile(alignment_path, "rb", **kwargs) as alignment_file:
+    with pysam.AlignmentFile(fil_aln, "rb", **kwargs) as alignment_file:
         return {
             chrom: size
             for chrom, size in zip(
@@ -182,22 +151,22 @@ def get_alignment_chrom_sizes(
         }
 
 
-def resolve_chrom_sizes(
-    header_sizes: dict[str, int],
-    chromosome_sizes_path: str | None = None,
+def resolve_siz_chr(
+    siz_chr_hdr: dict[str, int],
+    fil_chr_siz: str | None = None,
 ) -> dict[str, int]:
     """
     Resolve chromosome sizes from BAM/CRAM headers plus an optional TSV.
     """
 
-    chrom_sizes = dict(header_sizes)
+    siz_chr = dict(siz_chr_hdr)
 
-    if chromosome_sizes_path is not None:
-        file_sizes = load_chromosome_sizes(chromosome_sizes_path)
+    if fil_chr_siz is not None:
+        siz_chr_fil = load_chromosome_sizes(fil_chr_siz)
         conflicts = [
-            (chrom, chrom_sizes[chrom], size)
-            for chrom, size in file_sizes.items()
-            if chrom in chrom_sizes and chrom_sizes[chrom] != size
+            (chrom, siz_chr[chrom], size)
+            for chrom, size in siz_chr_fil.items()
+            if chrom in siz_chr and siz_chr[chrom] != size
         ]
 
         if conflicts:
@@ -208,22 +177,22 @@ def resolve_chrom_sizes(
                 f"but chr.sizes file has {file_size}.",
             )
 
-        chrom_sizes.update(file_sizes)
+        siz_chr.update(siz_chr_fil)
 
-    if not chrom_sizes:
+    if not siz_chr:
         raise ValueError(
             "Chromosome sizes are required to trim bedGraph bins. Provide a "
             "BAM/CRAM with sequence lengths in the header or pass "
-            "'--chr_sizes' with a UCSC-style two-column TSV.",
+            "'--chr_siz' with a UCSC-style two-column TSV.",
         )
 
-    return chrom_sizes
+    return siz_chr
 
 
 def start_profile(
     args: argparse.Namespace,
-    output_path: str,
-    output_format: str,
+    fil_out: str,
+    fmt_out: str,
 ) -> dict | None:
     """
     Initialize optional timing metadata for internal profiling.
@@ -236,24 +205,19 @@ def start_profile(
         "version": 1,
         "script": "compute_signal.py",
         "engine": args.engine,
-        "executor_mode": args.executor_mode,
-        "prototype_parse_strategy": args.prototype_parse_strategy,
-        "prototype_bed_strategy": args.prototype_bed_strategy,
-        "prototype_result_format": args.prototype_result_format,
-        "prototype_merge_strategy": args.prototype_merge_strategy,
-        "prototype_writer_strategy": args.prototype_writer_strategy,
-        "prototype_writer_workers": args.prototype_writer_workers,
-        "prototype_write_mode": args.prototype_write_mode,
+        "mode_exec": args.mode_exec,
+        "strat_bed": args.strat_bed,
+        "strat_writer": args.strat_writer,
+        "wrk_writer": args.wrk_writer,
         "threads": args.threads,
         "fil_in": args.fil_in,
         "ref_fa": args.ref_fa,
-        "chr_sizes": args.chr_sizes,
-        "fil_out": output_path,
-        "out_fmt": output_format,
+        "chr_siz": args.chr_siz,
+        "fil_out": fil_out,
+        "fmt_out": fmt_out,
         "method": args.method,
         "siz_bin": args.siz_bin,
-        "chunk_size": args.chunk_size,
-        "indexed_window_size": args.indexed_window_size,
+        "siz_win": args.siz_win,
         "phases_s": {},
         "tasks": [],
     }
@@ -281,85 +245,15 @@ def write_profile(path: str | None, profile: dict | None) -> None:
         handle.write("\n")
 
 
-def signal_dict_to_result(
-    sig: dict[tuple[str, int], float],
-    result_format: str,
-    siz_bin: int,
-) -> object:
-    """
-    Convert a signal dict to one private benchmark result representation.
-
-    Parameters
-    ----------
-    sig : dict[tuple[str, int], float]
-        Sparse signal keyed by chromosome and bin start.
-    result_format : str
-        Requested private result representation.
-    siz_bin : int
-        Bin width used to derive array coordinates.
-
-    Returns
-    -------
-    result : object
-        Signal in the requested private benchmark representation.
-
-    Raises
-    ------
-    ValueError
-        If 'result_format' is not recognized.
-    """
-
-    if result_format == "dict":
-        return sig
-
-    by_chrom: dict[str, list[tuple[int, float]]] = defaultdict(list)
-
-    for (chrom, start), value in sig.items():
-        by_chrom[chrom].append((start, value))
-
-    if result_format in ("sparse_np", "direct_sparse_np"):
-        return (
-            result_format,
-            [
-                (
-                    chrom,
-                    np.asarray([start for start, _ in rows], dtype=np.int64),
-                    np.asarray([value for _, value in rows], dtype=np.float64),
-                )
-                for chrom, rows in by_chrom.items()
-            ],
-        )
-
-    if result_format == "dense_np":
-        dense_parts = []
-
-        for chrom, rows in by_chrom.items():
-            starts = [start for start, _ in rows]
-            first = min(starts)
-            last = max(starts)
-            values = np.zeros(
-                ((last - first) // siz_bin) + 1,
-                dtype=np.float64,
-            )
-
-            for start, value in rows:
-                values[(start - first) // siz_bin] += value
-
-            dense_parts.append((chrom, first, values))
-
-        return "dense_np", dense_parts
-
-    raise ValueError(f"Unknown prototype result format: {result_format!r}.")
-
-
 def count_result_bins(result: Any) -> int:
     """
-    Count signal bins for standard dict results and prototype tuple results.
+    Count signal bins in worker results and merged sparse containers.
 
     Parameters
     ----------
     result : Any
-        Supported mapping- or tuple-backed signal result.
+        Tagged sparse signal result, optionally paired with an integer fragment
+        count.
 
     Returns
     -------
@@ -372,58 +266,20 @@ def count_result_bins(result: Any) -> int:
             return count_result_bins(result[0])
 
         tag = result[0]
-        if tag in ("sparse_np", "direct_sparse_np", "direct_sparse_idx_np"):
+        if tag in ("direct_sparse_np", "sparse_merged"):
             return sum(int(starts.size) for _, starts, _ in result[1])
-
-        if tag == "array_sparse_merged":
-            return sum(int(starts.size) for _, starts, _ in result[1])
-
-        if tag == "direct_dense_np":
-            return sum(
-                int(np.count_nonzero(touched & (values != 0.0)))
-                for _, values, touched in result[1]
-            )
-
-        if tag == "array_dense_merged":
-            return sum(
-                int(np.count_nonzero(touched & (values != 0.0)))
-                for _, values, touched in result[2]
-            )
-
-        if tag == "event_np":
-            return sum(
-                int(edge_bins.size + diff_bins.size + touch_bins.size)
-                for (
-                    _,
-                    _,
-                    edge_bins,
-                    _,
-                    diff_bins,
-                    _,
-                    touch_bins,
-                    _,
-                ) in result[1]
-            )
-
-        if tag == "dense_np":
-            return sum(
-                int(np.count_nonzero(values)) for _, _, values in result[1]
-            )
-
-        if isinstance(tag, dict):
-            return len(tag)
 
     return len(result)
 
 
-def estimate_result_payload_bytes(result: Any) -> int:
+def est_result_bytes(result: Any) -> int:
     """
-    Estimate NumPy-array payload bytes for private benchmark result formats.
+    Estimate NumPy-array payload bytes for a tagged sparse signal result.
 
     Parameters
     ----------
     result : Any
-        Supported mapping- or array-backed signal result.
+        Tagged sparse signal result.
 
     Returns
     -------
@@ -433,77 +289,28 @@ def estimate_result_payload_bytes(result: Any) -> int:
 
     if isinstance(result, tuple) and result:
         tag = result[0]
-        if tag in ("sparse_np", "direct_sparse_np", "direct_sparse_idx_np"):
+        if tag in ("direct_sparse_np", "sparse_merged"):
             return sum(
                 int(starts.nbytes + values.nbytes)
                 for _, starts, values in result[1]
             )
-
-        if tag == "array_sparse_merged":
-            return sum(
-                int(starts.nbytes + values.nbytes)
-                for _, starts, values in result[1]
-            )
-
-        if tag == "direct_dense_np":
-            return sum(
-                int(values.nbytes + touched.nbytes)
-                for _, values, touched in result[1]
-            )
-
-        if tag == "array_dense_merged":
-            return sum(
-                int(values.nbytes + touched.nbytes)
-                for _, values, touched in result[2]
-            )
-
-        if tag == "event_np":
-            return sum(
-                int(
-                    edge_bins.nbytes
-                    + edge_values.nbytes
-                    + diff_bins.nbytes
-                    + diff_values.nbytes
-                    + touch_bins.nbytes
-                    + touch_values.nbytes,
-                )
-                for (
-                    _,
-                    _,
-                    edge_bins,
-                    edge_values,
-                    diff_bins,
-                    diff_values,
-                    touch_bins,
-                    touch_values,
-                ) in result[1]
-            )
-
-        if tag == "dense_np":
-            return sum(int(values.nbytes) for _, _, values in result[1])
-
-        if isinstance(tag, dict):
-            return 0
 
     return 0
 
 
-def check_indexed_alignment(
-    alignment_path: str,
+def check_idx_aln(
+    fil_aln: str,
     ref_fa: str | None,
-    strategy: str,
 ) -> None:
     """
     Validate prerequisites for indexed signal engines.
 
     Parameters
     ----------
-    alignment_path : str
+    fil_aln : str
         BAM or CRAM path that must have a corresponding index.
     ref_fa : str | None
         Reference FASTA required for indexed CRAM access.
-    strategy : str
-        Selected signal-engine strategy.
 
     Raises
     ------
@@ -511,15 +318,12 @@ def check_indexed_alignment(
         If the path, index, or required CRAM reference is absent.
     """
 
-    if strategy == "serial":
-        return
-
-    if alignment_path == "-":
+    if fil_aln == "-":
         raise ValueError(
             "Indexed signal engines require a named BAM or CRAM path.",
         )
 
-    if alignment_path.lower().endswith(".cram") and ref_fa is None:
+    if fil_aln.lower().endswith(".cram") and ref_fa is None:
         raise ValueError(
             "Indexed CRAM signal engines require '--ref_fa' so every worker "
             "can open the CRAM deterministically.",
@@ -530,7 +334,7 @@ def check_indexed_alignment(
     if ref_fa is not None:
         kwargs["reference_filename"] = ref_fa
 
-    with pysam.AlignmentFile(alignment_path, "rb", **kwargs) as alignment_file:
+    with pysam.AlignmentFile(fil_aln, "rb", **kwargs) as alignment_file:
         if not alignment_file.has_index():
             raise ValueError(
                 "Indexed signal engines require an alignment index "
@@ -538,8 +342,8 @@ def check_indexed_alignment(
             )
 
 
-def has_indexed_alignment(
-    alignment_path: str,
+def has_idx_aln(
+    fil_aln: str,
     ref_fa: str | None = None,
 ) -> bool:
     """
@@ -553,7 +357,7 @@ def has_indexed_alignment(
 
     try:
         with pysam.AlignmentFile(
-            alignment_path,
+            fil_aln,
             "rb",
             **kwargs,
         ) as alignment_file:
@@ -564,9 +368,9 @@ def has_indexed_alignment(
 
 def keep_read(
     read: pysam.AlignedSegment,
-    allow_secondary: bool = True,
-    allow_supplementary: bool = False,
-    allow_duplicates: bool = True,
+    allow_sec: bool = True,
+    allow_supp: bool = False,
+    allow_dup: bool = True,
 ) -> bool:
     """
     Return whether a read passes the shared alignment-filter policy.
@@ -575,20 +379,20 @@ def keep_read(
     if read.is_unmapped or read.reference_id < 0:
         return False
 
-    if not allow_secondary and read.is_secondary:
+    if not allow_sec and read.is_secondary:
         return False
 
-    if not allow_supplementary and read.is_supplementary:
+    if not allow_supp and read.is_supplementary:
         return False
 
-    return not (not allow_duplicates and read.is_duplicate)
+    return not (not allow_dup and read.is_duplicate)
 
 
-def read_to_fragment(
+def read_to_frg(
     read: pysam.AlignedSegment,
     get_reference_name: Callable[[int], str],
-    chrom_sizes: dict[str, int],
-    user_fragment_length: int | None = None,
+    siz_chr: dict[str, int],
+    usr_frg: int | None = None,
 ) -> tuple[str, int, int, int] | None:
     """
     Convert one accepted alignment record to a processed fragment interval.
@@ -599,9 +403,9 @@ def read_to_fragment(
         Accepted alignment record.
     get_reference_name : Callable[[int], str]
         Resolver for numeric reference identifiers.
-    chrom_sizes : dict[str, int]
+    siz_chr : dict[str, int]
         Maximum coordinate for each accepted chromosome.
-    user_fragment_length : int | None
+    usr_frg : int | None
         Optional fragment length used to extend alignments.
 
     Returns
@@ -617,15 +421,15 @@ def read_to_fragment(
     """
 
     chrom = get_reference_name(read.reference_id)
-    chrom_len = chrom_sizes.get(chrom)
+    chrom_len = siz_chr.get(chrom)
     if chrom_len is None:
         raise ValueError(
             f"Chromosome {chrom!r} is missing from chromosome sizes. "
-            "Provide '--chr_sizes' with a UCSC-style two-column TSV.",
+            "Provide '--chr_siz' with a UCSC-style two-column TSV.",
         )
 
-    # Handle paired-end alignments: one fragment is emitted per leftmost
-    # anchor in a proper pair.
+    # Handle paired-end alignments: one fragment is emitted per leftmost anchor
+    # in a proper pair.
     is_leftmost_pe = (
         read.is_paired
         and read.is_proper_pair
@@ -636,27 +440,23 @@ def read_to_fragment(
     if is_leftmost_pe:
         start = read.reference_start
         tlen = read.template_length
-        fragment_length = (
-            user_fragment_length if user_fragment_length is not None else tlen
-        )
+        frg_len = usr_frg if usr_frg is not None else tlen
 
-        if user_fragment_length is not None and fragment_length <= 0:
+        if usr_frg is not None and frg_len <= 0:
             raise ValueError("usr_frg must be > 0 for paired-end extension.")
 
-        fragment_start = start
-        fragment_end = start + fragment_length
+        frg_start = start
+        frg_end = start + frg_len
 
     elif not read.is_paired:
-        fragment_length = (
-            user_fragment_length
-            if user_fragment_length is not None
-            else read.query_alignment_length
+        frg_len = (
+            usr_frg if usr_frg is not None else read.query_alignment_length
         )
 
-        if user_fragment_length is not None and fragment_length <= 0:
+        if usr_frg is not None and frg_len <= 0:
             raise ValueError("usr_frg must be > 0 for single-end extension.")
 
-        if user_fragment_length is None and fragment_length <= 0:
+        if usr_frg is None and frg_len <= 0:
             return None
 
         if read.is_reverse:
@@ -665,49 +465,49 @@ def read_to_fragment(
                 if read.reference_end is not None
                 else read.reference_start
             )
-            fragment_end = ref_end
-            fragment_start = fragment_end - fragment_length
+            frg_end = ref_end
+            frg_start = frg_end - frg_len
         else:
-            fragment_start = read.reference_start
-            fragment_end = fragment_start + fragment_length
+            frg_start = read.reference_start
+            frg_end = frg_start + frg_len
     else:
         return None
 
-    if fragment_start < 0:
-        fragment_start = 0
+    if frg_start < 0:
+        frg_start = 0
 
-    if fragment_end > chrom_len:
-        fragment_end = chrom_len
+    if frg_end > chrom_len:
+        frg_end = chrom_len
 
-    if fragment_end <= fragment_start:
+    if frg_end <= frg_start:
         return None
 
-    return chrom, fragment_start, fragment_end, fragment_length
+    return chrom, frg_start, frg_end, frg_len
 
 
-def iter_alignment_fragments(
-    alignment_path: str,
-    chrom_sizes: dict[str, int],
-    user_fragment_length: int | None = None,
+def iter_aln_frg(
+    fil_aln: str,
+    siz_chr: dict[str, int],
+    usr_frg: int | None = None,
     ref_fa: str | None = None,
-    allow_secondary: bool = True,
-    allow_supplementary: bool = False,
-    allow_duplicates: bool = True,
+    allow_sec: bool = True,
+    allow_supp: bool = False,
+    allow_dup: bool = True,
 ) -> Iterator[tuple[str, int, int, int]]:
     """
     Stream processed fragment intervals from a BAM or CRAM file.
 
     Parameters
     ----------
-    alignment_path : str
+    fil_aln : str
         BAM or CRAM input path.
-    chrom_sizes : dict[str, int]
+    siz_chr : dict[str, int]
         Maximum coordinate for each accepted chromosome.
-    user_fragment_length : int | None
+    usr_frg : int | None
         Optional fragment length used to extend alignments.
     ref_fa : str | None
         Reference FASTA used for CRAM decoding.
-    allow_secondary, allow_supplementary, allow_duplicates : bool
+    allow_sec, allow_supp, allow_dup : bool
         Whether to retain secondary, supplementary, and duplicate records.
 
     Yields
@@ -721,56 +521,56 @@ def iter_alignment_fragments(
     if ref_fa is not None:
         kwargs["reference_filename"] = ref_fa
 
-    with pysam.AlignmentFile(alignment_path, "rb", **kwargs) as alignment_file:
+    with pysam.AlignmentFile(fil_aln, "rb", **kwargs) as alignment_file:
         for read in alignment_file.fetch(until_eof=True):
             if not keep_read(
                 read,
-                allow_secondary,
-                allow_supplementary,
-                allow_duplicates,
+                allow_sec,
+                allow_supp,
+                allow_dup,
             ):
                 continue
 
-            fragment = read_to_fragment(
+            fragment = read_to_frg(
                 read,
                 alignment_file.get_reference_name,
-                chrom_sizes,
-                user_fragment_length,
+                siz_chr,
+                usr_frg,
             )
             if fragment is not None:
                 yield fragment
 
 
-def iter_indexed_fragments(
-    alignment_path: str,
+def iter_idx_frg(
+    fil_aln: str,
     chrom: str,
-    chrom_sizes: dict[str, int],
-    user_fragment_length: int | None = None,
+    siz_chr: dict[str, int],
+    usr_frg: int | None = None,
     ref_fa: str | None = None,
     start: int | None = None,
     end: int | None = None,
-    allow_secondary: bool = True,
-    allow_supplementary: bool = False,
-    allow_duplicates: bool = True,
+    allow_sec: bool = True,
+    allow_supp: bool = False,
+    allow_dup: bool = True,
 ) -> Iterator[tuple[str, int, int, int]]:
     """
     Stream processed fragments from one indexed chromosome or window fetch.
 
     Parameters
     ----------
-    alignment_path : str
+    fil_aln : str
         Indexed BAM or CRAM input path.
     chrom : str
         Chromosome to fetch.
-    chrom_sizes : dict[str, int]
+    siz_chr : dict[str, int]
         Maximum coordinate for each accepted chromosome.
-    user_fragment_length : int | None
+    usr_frg : int | None
         Optional fragment length used to extend alignments.
     ref_fa : str | None
         Reference FASTA used for CRAM decoding.
     start, end : int | None
         Optional half-open fetch bounds.
-    allow_secondary, allow_supplementary, allow_duplicates : bool
+    allow_sec, allow_supp, allow_dup : bool
         Whether to retain secondary, supplementary, and duplicate records.
 
     Yields
@@ -784,7 +584,7 @@ def iter_indexed_fragments(
     if ref_fa is not None:
         kwargs["reference_filename"] = ref_fa
 
-    with pysam.AlignmentFile(alignment_path, "rb", **kwargs) as alignment_file:
+    with pysam.AlignmentFile(fil_aln, "rb", **kwargs) as alignment_file:
         if start is None and end is None:
             reads = alignment_file.fetch(chrom)
         else:
@@ -793,9 +593,9 @@ def iter_indexed_fragments(
         for read in reads:
             if not keep_read(
                 read,
-                allow_secondary,
-                allow_supplementary,
-                allow_duplicates,
+                allow_sec,
+                allow_supp,
+                allow_dup,
             ):
                 continue
 
@@ -806,22 +606,77 @@ def iter_indexed_fragments(
                     read.reference_start < start or read.reference_start >= end
                 )
             ):
-                # Partition by read anchor, not computed fragment start.
-                # This prevents double-counting while preserving reverse-
-                # strand single-end fragments that extend left of a window.
+                # Partition by read anchor, not computed fragment start. This
+                # prevents double-counting while preserving reverse-strand
+                # single-end fragments that extend left of a window.
                 continue
 
-            fragment = read_to_fragment(
+            fragment = read_to_frg(
                 read,
                 alignment_file.get_reference_name,
-                chrom_sizes,
-                user_fragment_length,
+                siz_chr,
+                usr_frg,
             )
             if fragment is not None:
                 yield fragment
 
 
-def collect_fragment_arrays_from_iter(
+def count_frgs_and_bins(
+    fragments: Iterator[tuple[str, int, int, int]],
+    siz_bin: int,
+) -> tuple[int, int]:
+    """
+    Count fragments ('N') and the bins they span in total ('L').
+
+    Parameters
+    ----------
+    fragments : Iterator[tuple[str, int, int, int]]
+        Processed fragments as '(chrom, start, end, length)', from
+        'iter_aln_frg' or 'iter_idx_frg'.
+    siz_bin : int
+        Bin size in base pairs.
+
+    Returns
+    -------
+    n_frg, n_bin : tuple[int, int]
+        The number of fragments ('N') and the summed count of bins the
+        fragments touch ('L').
+
+    Notes
+    -----
+    - 'L' counts a fragment once per bin it touches.
+      + That is deliberately not what the signal accumulation does: the
+        accumulators add base-pair overlap, so an unadjusted track sums to
+        total base pairs rather than to total spanned bins, while a
+        fragment-length-normalized track sums to 'N'.
+      + Both are measures of span, but only the bin count makes 'k = L / N'
+        come out in bins, which is the unit 'compute_pseudo' needs for a
+        pseudocount added to per-bin coverage.
+    - Because the fragments arrive from the same iterators the signal path
+      uses, 'N' is the denominator a '--method norm' run divides by, and both
+      numbers describe the same population of read alignments.
+    - Fragments with a nonpositive span are skipped, so they raise neither
+      count.
+    - The carried length field is ignored; both counts come from the start and
+      end coordinates alone.
+    - A half-open fragment '[start, end)' touches bins
+      'start // siz_bin' through '(end - 1) // siz_bin' inclusive.
+    """
+
+    n_frg = 0
+    n_bin = 0
+
+    for _chrom, frg_start, frg_end, _length in fragments:
+        if frg_end <= frg_start:
+            continue
+
+        n_frg += 1
+        n_bin += ((frg_end - 1) // siz_bin) - (frg_start // siz_bin) + 1
+
+    return n_frg, n_bin
+
+
+def collect_frg_arr(
     fragments: Iterator[tuple[str, int, int, int]],
 ) -> tuple[dict[str, tuple[np.ndarray, np.ndarray, np.ndarray]], int]:
     """
@@ -831,13 +686,13 @@ def collect_fragment_arrays_from_iter(
     starts: dict[str, list[int]] = defaultdict(list)
     ends: dict[str, list[int]] = defaultdict(list)
     lengths: dict[str, list[int]] = defaultdict(list)
-    fragment_count = 0
+    n_frg = 0
 
-    for chrom, fragment_start, fragment_end, fragment_length in fragments:
-        starts[chrom].append(fragment_start)
-        ends[chrom].append(fragment_end)
-        lengths[chrom].append(fragment_length)
-        fragment_count += 1
+    for chrom, frg_start, frg_end, frg_len in fragments:
+        starts[chrom].append(frg_start)
+        ends[chrom].append(frg_end)
+        lengths[chrom].append(frg_len)
+        n_frg += 1
 
     arrays: dict[str, tuple[np.ndarray, np.ndarray, np.ndarray]] = {}
 
@@ -848,10 +703,10 @@ def collect_fragment_arrays_from_iter(
             np.asarray(lengths[chrom], dtype=np.float64),
         )
 
-    return arrays, fragment_count
+    return arrays, n_frg
 
 
-def collect_bed_arrays_from_iter(
+def collect_bed_arr(
     fragments: Iterator[tuple[str, int, int, int]],
 ) -> tuple[str, list[tuple[str, np.ndarray, np.ndarray, np.ndarray]], int]:
     """
@@ -861,13 +716,13 @@ def collect_bed_arrays_from_iter(
     starts: dict[str, list[int]] = defaultdict(list)
     ends: dict[str, list[int]] = defaultdict(list)
     lengths: dict[str, list[int]] = defaultdict(list)
-    n_fragments = 0
+    n_frg = 0
 
-    for chrom, fragment_start, fragment_end, fragment_length in fragments:
-        starts[chrom].append(fragment_start)
-        ends[chrom].append(fragment_end)
-        lengths[chrom].append(fragment_length)
-        n_fragments += 1
+    for chrom, frg_start, frg_end, frg_len in fragments:
+        starts[chrom].append(frg_start)
+        ends[chrom].append(frg_end)
+        lengths[chrom].append(frg_len)
+        n_frg += 1
 
     arrays = [
         (
@@ -879,103 +734,50 @@ def collect_bed_arrays_from_iter(
         for chrom in starts
     ]
 
-    return "bed_np", arrays, n_fragments
-
-
-def iter_fragment_chunks(
-    alignment_path: str,
-    chrom_sizes: dict[str, int],
-    chunk_size: int,
-    user_fragment_length: int | None = None,
-    ref_fa: str | None = None,
-) -> Iterator[list[tuple[str, int, int, int]]]:
-    """
-    Stream processed fragments in fixed-size chunks.
-    """
-
-    validate_comparison(chunk_size, "gt", 0, "chunk_size", allow_none=False)
-
-    chunk: list[tuple[str, int, int, int]] = []
-
-    for fragment in iter_alignment_fragments(
-        alignment_path=alignment_path,
-        chrom_sizes=chrom_sizes,
-        user_fragment_length=user_fragment_length,
-        ref_fa=ref_fa,
-    ):
-        chunk.append(fragment)
-
-        if len(chunk) >= chunk_size:
-            yield chunk
-            chunk = []
-
-    if chunk:
-        yield chunk
-
-
-def count_fragments(
-    alignment_path: str,
-    chrom_sizes: dict[str, int],
-    user_fragment_length: int | None = None,
-    ref_fa: str | None = None,
-) -> int:
-    """
-    Count processed fragments after filtering and coordinate clamping.
-    """
-
-    return sum(
-        1
-        for _ in iter_alignment_fragments(
-            alignment_path=alignment_path,
-            chrom_sizes=chrom_sizes,
-            user_fragment_length=user_fragment_length,
-            ref_fa=ref_fa,
-        )
-    )
+    return "bed_np", arrays, n_frg
 
 
 def parse_bam(
-    alignment_path: str,
-    user_fragment_length: int | None = None,
+    fil_aln: str,
+    usr_frg: int | None = None,
     ref_fa: str | None = None,
-    chrom_sizes: dict[str, int] | None = None,
-    allow_secondary: bool = True,
-    allow_supplementary: bool = False,
-    allow_duplicates: bool = True,
+    siz_chr: dict[str, int] | None = None,
+    allow_sec: bool = True,
+    allow_supp: bool = False,
+    allow_dup: bool = True,
 ) -> dict[str, list[tuple[int, int, int]]]:
     """
     Parse a BAM or CRAM into chromosome-grouped fragment intervals.
 
     Parameters
     ----------
-    alignment_path : str
+    fil_aln : str
         Input BAM or CRAM path.
-    user_fragment_length : int | None
+    usr_frg : int | None
         Optional fixed fragment length override. If provided:
             - paired-end read alignments: overrides TLEN for leftmost anchors.
-            - single-end read alignments: used for both strands from the 5’
-                                          end.
+            - single-end read alignments: used for both strands from 5’ end.
     ref_fa : str | None
         Reference FASTA file for CRAM decoding.
-    chrom_sizes : dict[str, int] | None
+    siz_chr : dict[str, int] | None
         Optional chromosome sizes used to filter and clamp fragments.
-    allow_secondary : bool
+    allow_sec : bool
         Include secondary (multi-mapping) alignments. Default True.
-    allow_supplementary : bool
+    allow_supp : bool
         Include supplementary alignments. Default False.
-    allow_duplicates : bool
+    allow_dup : bool
         Include duplicate-marked alignments. Default True.
 
     Returns
     -------
-    fragment_records : dict[str, list[tuple[int, int, int]]]
+    frg_tup : dict[str, list[tuple[int, int, int]]]
         Chromosome-keyed lists of start, end, and fragment-length tuples. Every
         interval is half-open and uses zero-based coordinates.
 
     Raises
     ------
     FileNotFoundError
-        If 'alignment_path' does not exist.
+        If 'fil_aln' does not exist.
     ValueError
         If '--usr_frg' is nonpositive for paired-end or single-end extension.
 
@@ -1022,19 +824,17 @@ def parse_bam(
                   clips) and extend from the 5’ end.
 
         - Filtering toggles:
-            + 'allow_secondary': Include or exclude secondary alignments.
-            + 'allow_supplementary': Include or exclude supplementary
-              alignments.
-            + 'allow_duplicates': Include or exclude duplicate-marked
-              alignments.
+            + 'allow_sec': Include or exclude secondary alignments.
+            + 'allow_supp': Include or exclude supplementary alignments.
+            + 'allow_dup': Include or exclude duplicate-marked alignments.
 
             These toggles apply uniformly to both paired-end and single-end
-            alignments. Keeping 'allow_duplicates=True' retains
-            duplicate-marked proper-pair alignments (e.g., FLAGs 1123 and 1187,
-            which correspond to duplicate-marked versions of 99 and 163). If
-            the current data lack secondary alignments (which is expected in
-            alignment output from the Tsukiyama Lab Bio-protocol workflow),
-            setting 'allow_secondary=True' does nothing.
+            alignments. Keeping 'allow_dup=True' retains duplicate-marked
+            proper-pair alignments (e.g., FLAGs 1123 and 1187, which correspond
+            to duplicate-marked versions of 99 and 163). If the current data
+            lack secondary alignments (which is expected in alignment output
+            from the Tsukiyama Lab Bio-protocol workflow), setting
+            'allow_sec=True' does nothing.
 
         - Coordinate handling:
             Intervals are clamped to chromosome bounds '[0, chrom_len]'; zero-
@@ -1050,34 +850,34 @@ def parse_bam(
            deepTools’ “extend mode” requires a fixed length.
     """
 
-    fragment_records = defaultdict(list)
+    frg_tup = defaultdict(list)
 
     try:
-        if chrom_sizes is None:
-            header_sizes = get_alignment_chrom_sizes(alignment_path, ref_fa)
-            chrom_sizes = resolve_chrom_sizes(header_sizes)
+        if siz_chr is None:
+            siz_chr_hdr = get_siz_chr(fil_aln, ref_fa)
+            siz_chr = resolve_siz_chr(siz_chr_hdr)
 
         for (
             chrom,
-            fragment_start,
-            fragment_end,
-            fragment_length,
-        ) in iter_alignment_fragments(
-            alignment_path=alignment_path,
-            chrom_sizes=chrom_sizes,
-            user_fragment_length=user_fragment_length,
+            frg_start,
+            frg_end,
+            frg_len,
+        ) in iter_aln_frg(
+            fil_aln=fil_aln,
+            siz_chr=siz_chr,
+            usr_frg=usr_frg,
             ref_fa=ref_fa,
-            allow_secondary=allow_secondary,
-            allow_supplementary=allow_supplementary,
-            allow_duplicates=allow_duplicates,
+            allow_sec=allow_sec,
+            allow_supp=allow_supp,
+            allow_dup=allow_dup,
         ):
-            fragment_records[chrom].append(
-                (fragment_start, fragment_end, fragment_length),
+            frg_tup[chrom].append(
+                (frg_start, frg_end, frg_len),
             )
 
     except FileNotFoundError:
         print(
-            f"Error: BAM or CRAM file '{alignment_path}' not found.",
+            f"Error: BAM or CRAM file '{fil_aln}' not found.",
             file=sys.stderr,
         )
 
@@ -1086,300 +886,13 @@ def parse_bam(
         raise
     except Exception as error:
         print(
-            f"Unexpected error with BAM or CRAM file '{alignment_path}': "
-            f"{error}",
+            f"Unexpected error with BAM or CRAM file '{fil_aln}': {error}",
             file=sys.stderr,
         )
 
         raise
 
-    return fragment_records
-
-
-def collect_fragment_arrays(
-    alignment_path: str,
-    chrom_sizes: dict[str, int],
-    user_fragment_length: int | None = None,
-    ref_fa: str | None = None,
-    allow_secondary: bool = True,
-    allow_supplementary: bool = False,
-    allow_duplicates: bool = True,
-) -> tuple[dict[str, tuple[np.ndarray, np.ndarray, np.ndarray]], int]:
-    """
-    Parse a BAM or CRAM once into per-chromosome NumPy fragment arrays.
-    """
-
-    return collect_fragment_arrays_from_iter(
-        iter_alignment_fragments(
-            alignment_path=alignment_path,
-            chrom_sizes=chrom_sizes,
-            user_fragment_length=user_fragment_length,
-            ref_fa=ref_fa,
-            allow_secondary=allow_secondary,
-            allow_supplementary=allow_supplementary,
-            allow_duplicates=allow_duplicates,
-        ),
-    )
-
-
-def calc_sig_chrom(
-    chrom: str,
-    fragment_records: list[tuple[int, int, int]],
-    fragment_count: int,
-    siz_bin: int,
-    is_len: bool,
-    is_norm: bool,
-    scl_fct: float | None = None,
-) -> dict[tuple[str, int], float]:
-    """
-    Compute one chromosome of exact fragment-bin overlap signal.
-
-    Function respects half-open '[start, end)' fragments and avoids per-base
-    loops. Overlap is measured in bases, and output is per-bin sums of per-base
-    contributions.
-
-    If provided, 'scl_fct' is applied after any optional normalization.
-    ('scl_fct > 0' is required to avoid silent zeroing.)
-
-    Parameters
-    ----------
-    chrom : str
-        Chromosome name.
-    fragment_records : list[tuple[int, int, int]]
-        Start, end, and fragment-length tuples.
-    fragment_count : int
-        Total number of fragments (used when 'is_norm=True').
-    siz_bin : int
-        Bin size in base pairs.
-    is_len : bool
-        If 'True', normalize by fragment length.
-    is_norm : bool
-        If 'True', normalize by both fragment length and total fragment count
-        so that the genome-wide summed signal is approximately 1.
-    scl_fct : float | None
-        Scaling factor applied to signal.
-
-    Returns
-    -------
-    sig_bin : dict[tuple[str, int], float]
-        A dictionary of binned signal data, where keys are
-        '(chrom, bin_start)' and values are per-bin signal scores.
-
-    Raises
-    ------
-    ValueError
-        - If 'siz_bin' <= 0.
-        - If 'is_len' or 'is_norm' is True and any fragment length is
-          nonpositive.
-        - If 'is_norm' is True and 'fragment_count' <= 0.
-        - If a provided 'scl_fct' <= 0.
-
-    Notes
-    -----
-    - If 'is_len=True' or 'is_norm=True', each fragment contributes one divided
-      by the fragment length per covered base.
-    - If 'is_norm=True', signal is additionally divided by 'fragment_count' so
-      that genome-wide summed signal is approximately 1.
-    - If 'scl_fct' is provided, signal values are scaled accordingly.
-    - Signal is accumulated per bin according to the number of overlapping
-      bases contributed by each fragment.
-    """
-
-    validate_comparison(siz_bin, "gt", 0, "siz_bin", allow_none=False)
-
-    sig_bin = defaultdict(float)
-
-    for fragment_start, fragment_end, fragment_length in fragment_records:
-        if fragment_end <= fragment_start:
-            continue
-
-        if (is_len or is_norm) and fragment_length <= 0:
-            raise ValueError("'frg_len' must be > 0 when using normalization.")
-
-        per_bas = (1.0 / fragment_length) if (is_len or is_norm) else 1.0
-
-        first_bin_start = (fragment_start // siz_bin) * siz_bin
-        last_bin_start = ((fragment_end - 1) // siz_bin) * siz_bin
-
-        for bin_start in range(first_bin_start, last_bin_start + 1, siz_bin):
-            bin_end = bin_start + siz_bin
-            overlap_start = max(fragment_start, bin_start)
-            overlap_end = min(fragment_end, bin_end)
-            overlap = overlap_end - overlap_start
-
-            if overlap > 0:
-                sig_bin[(chrom, bin_start)] += per_bas * overlap
-
-    # Normalized signal sums to approximately 1 across the genome.
-    if is_norm:
-        if fragment_count <= 0:
-            raise ValueError(
-                "Normalization requires non-zero total fragments.",
-            )
-
-        for k in sig_bin:
-            sig_bin[k] /= fragment_count
-
-    if scl_fct is not None:
-        validate_comparison(scl_fct, "gt", 0, "scl_fct")
-
-        for k in sig_bin:
-            sig_bin[k] *= scl_fct
-
-    return sig_bin
-
-
-def calc_sig_chrom_array(
-    chrom: str,
-    starts: np.ndarray,
-    ends: np.ndarray,
-    lengths: np.ndarray,
-    chrom_size: int,
-    fragment_count: int,
-    siz_bin: int,
-    is_len: bool,
-    is_norm: bool,
-    scl_fct: float | None = None,
-) -> dict[tuple[str, int], float]:
-    """
-    Compute binned signal for one chromosome with vectorized range additions.
-
-    Parameters
-    ----------
-    chrom : str
-        Chromosome represented by the fragment arrays.
-    starts, ends, lengths : np.ndarray
-        Fragment starts, ends, and lengths in matching order.
-    chrom_size : int
-        Chromosome length used to clip bins.
-    fragment_count : int
-        Total accepted fragments used for optional normalization.
-    siz_bin : int
-        Signal-bin width.
-    is_len : bool
-        Whether fragments contribute inverse-length weights.
-    is_norm : bool
-        Whether to apply depth normalization.
-    scl_fct : float | None
-        Optional multiplicative scale factor.
-
-    Returns
-    -------
-    signal : dict[tuple[str, int], float]
-        Sparse nonzero signal keyed by chromosome and bin start.
-
-    Raises
-    ------
-    ValueError
-        If chromosome size, fragment lengths, or normalization inputs are
-        invalid.
-    """
-
-    validate_comparison(siz_bin, "gt", 0, "siz_bin", allow_none=False)
-
-    if chrom_size <= 0:
-        raise ValueError(f"Chromosome size must be > 0 for {chrom!r}.")
-
-    n_bins = math.ceil(chrom_size / siz_bin)
-    if starts.size == 0:
-        return {}
-
-    valid = ends > starts
-
-    if not np.all(valid):
-        starts = starts[valid]
-        ends = ends[valid]
-        lengths = lengths[valid]
-
-    if starts.size == 0:
-        return {}
-
-    if is_len or is_norm:
-        if np.any(lengths <= 0):
-            raise ValueError("'frg_len' must be > 0 when using normalization.")
-
-        weights = 1.0 / lengths
-    else:
-        weights = np.ones(starts.shape, dtype=np.float64)
-
-    sig = np.zeros(n_bins, dtype=np.float64)
-    touched = np.zeros(n_bins, dtype=bool)
-    start_bins = starts // siz_bin
-    end_bins = (ends - 1) // siz_bin
-
-    same = start_bins == end_bins
-
-    if np.any(same):
-        np.add.at(
-            sig,
-            start_bins[same],
-            (ends[same] - starts[same]) * weights[same],
-        )
-        touched[start_bins[same]] = True
-
-    multi = ~same
-
-    if np.any(multi):
-        starts_subset = starts[multi]
-        ends_subset = ends[multi]
-        start_bins_subset = start_bins[multi]
-        end_bins_subset = end_bins[multi]
-        weights_subset = weights[multi]
-
-        left_overlap = (
-            (start_bins_subset + 1) * siz_bin - starts_subset
-        ) * weights_subset
-        right_overlap = (
-            ends_subset - end_bins_subset * siz_bin
-        ) * weights_subset
-        np.add.at(sig, start_bins_subset, left_overlap)
-        np.add.at(sig, end_bins_subset, right_overlap)
-        touched[start_bins_subset] = True
-        touched[end_bins_subset] = True
-
-        has_interior = end_bins_subset > start_bins_subset + 1
-
-        if np.any(has_interior):
-            diff = np.zeros(n_bins + 1, dtype=np.float64)
-            touched_diff = np.zeros(n_bins + 1, dtype=np.int64)
-            first = start_bins_subset[has_interior] + 1
-            last_exclusive = end_bins_subset[has_interior]
-            value = siz_bin * weights_subset[has_interior]
-
-            np.add.at(diff, first, value)
-            np.add.at(diff, last_exclusive, -value)
-
-            np.add.at(touched_diff, first, 1)
-            np.add.at(touched_diff, last_exclusive, -1)
-
-            # Interior coverage is exact in 'int64'; the 'float64' value sum is
-            # not. Floating-point cancellation can leave ~1e-20 residue in bins
-            # whose true value is zero, which 'sig != 0.0' would emit as data.
-            # Masking by the exact indicator restores zero.
-            interior = np.cumsum(touched_diff[:-1]) > 0
-
-            sig += np.where(interior, np.cumsum(diff[:-1]), 0.0)
-            touched |= interior
-
-    if is_norm:
-        if fragment_count <= 0:
-            raise ValueError(
-                "Normalization requires non-zero total fragments.",
-            )
-
-        sig /= fragment_count
-
-    if scl_fct is not None:
-        validate_comparison(scl_fct, "gt", 0, "scl_fct")
-
-        sig *= scl_fct
-
-    nonzero_indices = np.flatnonzero(touched & (sig != 0.0))
-
-    return {
-        (chrom, int(index) * siz_bin): float(sig[index])
-        for index in nonzero_indices
-    }
+    return frg_tup
 
 
 def calc_sig_chrom_direct_sparse_np(
@@ -1390,10 +903,6 @@ def calc_sig_chrom_direct_sparse_np(
     chrom_size: int,
     siz_bin: int,
     is_len: bool,
-    return_bin_indices: bool = False,
-    local_span: bool = False,
-    use_bincount: bool = False,
-    emit_touched_only: bool = False,
 ) -> object:
     """
     Compute binned signal and return sparse NumPy arrays without a dict.
@@ -1414,14 +923,6 @@ def calc_sig_chrom_direct_sparse_np(
         Positive signal-bin width in base pairs.
     is_len : bool
         Whether signal weights are normalized by fragment length.
-    return_bin_indices : bool
-        Whether sparse results use bin indices instead of base coordinates.
-    local_span : bool
-        Whether allocation is bounded to the observed local span.
-    use_bincount : bool
-        Whether aggregation uses NumPy bincount.
-    emit_touched_only : bool
-        Whether sparse output omits untouched or zero-valued bins.
 
     Returns
     -------
@@ -1439,241 +940,9 @@ def calc_sig_chrom_direct_sparse_np(
     if chrom_size <= 0:
         raise ValueError(f"Chromosome size must be > 0 for {chrom!r}.")
 
-    genome_n_bins = math.ceil(chrom_size / siz_bin)
-    if starts.size == 0:
-        return (
-            "direct_sparse_idx_np"
-            if return_bin_indices
-            else "direct_sparse_np",
-            [],
-        )
-
-    valid = ends > starts
-
-    if not np.all(valid):
-        starts = starts[valid]
-        ends = ends[valid]
-        lengths = lengths[valid]
-
-    if starts.size == 0:
-        return (
-            "direct_sparse_idx_np"
-            if return_bin_indices
-            else "direct_sparse_np",
-            [],
-        )
-
-    if is_len:
-        if np.any(lengths <= 0):
-            raise ValueError("'frg_len' must be > 0 when using normalization.")
-
-        weights = 1.0 / lengths
-    else:
-        weights = np.ones(starts.shape, dtype=np.float64)
-
-    start_bins_global = starts // siz_bin
-    end_bins_global = (ends - 1) // siz_bin
-
-    if local_span:
-        first_bin = int(np.min(start_bins_global))
-        last_bin = int(np.max(end_bins_global))
-    else:
-        first_bin = 0
-        last_bin = genome_n_bins - 1
-
-    first_bin = max(0, first_bin)
-    last_bin = min(genome_n_bins - 1, last_bin)
-    n_bins = last_bin - first_bin + 1
-    if n_bins <= 0:
-        return (
-            "direct_sparse_idx_np"
-            if return_bin_indices
-            else "direct_sparse_np",
-            [],
-        )
-
-    sig = np.zeros(n_bins, dtype=np.float64)
-    touched = np.zeros(n_bins, dtype=bool) if emit_touched_only else None
-    start_bins = start_bins_global - first_bin
-    end_bins = end_bins_global - first_bin
-
-    same = start_bins == end_bins
-
-    if np.any(same):
-        same_values = (ends[same] - starts[same]) * weights[same]
-
-        if use_bincount:
-            sig += np.bincount(
-                start_bins[same],
-                weights=same_values,
-                minlength=n_bins,
-            )[:n_bins]
-        else:
-            np.add.at(sig, start_bins[same], same_values)
-
-        if touched is not None:
-            touched[start_bins[same]] = True
-
-    multi = ~same
-
-    if np.any(multi):
-        starts_subset = starts[multi]
-        ends_subset = ends[multi]
-        start_bins_subset = start_bins[multi]
-        end_bins_subset = end_bins[multi]
-        global_start_bins_subset = start_bins_global[multi]
-        global_end_bins_subset = end_bins_global[multi]
-        weights_subset = weights[multi]
-
-        left_overlap = (
-            (global_start_bins_subset + 1) * siz_bin - starts_subset
-        ) * weights_subset
-        right_overlap = (
-            ends_subset - global_end_bins_subset * siz_bin
-        ) * weights_subset
-
-        if use_bincount:
-            sig += np.bincount(
-                start_bins_subset,
-                weights=left_overlap,
-                minlength=n_bins,
-            )[:n_bins]
-            sig += np.bincount(
-                end_bins_subset,
-                weights=right_overlap,
-                minlength=n_bins,
-            )[:n_bins]
-        else:
-            np.add.at(sig, start_bins_subset, left_overlap)
-            np.add.at(sig, end_bins_subset, right_overlap)
-
-        if touched is not None:
-            touched[start_bins_subset] = True
-            touched[end_bins_subset] = True
-
-        has_interior = end_bins_subset > start_bins_subset + 1
-
-        if np.any(has_interior):
-            first = start_bins_subset[has_interior] + 1
-            last_exclusive = end_bins_subset[has_interior]
-            value = siz_bin * weights_subset[has_interior]
-
-            if use_bincount:
-                diff = np.bincount(
-                    first,
-                    weights=value,
-                    minlength=n_bins + 1,
-                ).astype(np.float64, copy=False)
-                diff -= np.bincount(
-                    last_exclusive,
-                    weights=value,
-                    minlength=n_bins + 1,
-                ).astype(np.float64, copy=False)
-            else:
-                diff = np.zeros(n_bins + 1, dtype=np.float64)
-                np.add.at(diff, first, value)
-                np.add.at(diff, last_exclusive, -value)
-
-            # Interior coverage is exact in 'int64'; the 'float64' value sum is
-            # not. Rounding between each '+value' and '-value' can leave ~1e-20
-            # residue in bins whose true value is zero, which 'sig != 0.0'
-            # would emit as data. Masking by the integer sum restores exact
-            # zero without a tolerance.
-            interior_diff = np.zeros(n_bins + 1, dtype=np.int64)
-            np.add.at(interior_diff, first, 1)
-            np.add.at(interior_diff, last_exclusive, -1)
-            interior = np.cumsum(interior_diff[:-1]) > 0
-
-            sig += np.where(interior, np.cumsum(diff[:-1]), 0.0)
-
-            if touched is not None:
-                touched |= interior
-
-    if touched is None:
-        idx = np.flatnonzero(sig != 0.0)
-    else:
-        idx = np.flatnonzero(touched & (sig != 0.0))
-
-    if idx.size == 0:
-        return (
-            "direct_sparse_idx_np"
-            if return_bin_indices
-            else "direct_sparse_np",
-            [],
-        )
-
-    if return_bin_indices:
-        index_dtype = (
-            np.int32 if n_bins <= np.iinfo(np.int32).max else np.int64
-        )
-
-        return (
-            "direct_sparse_idx_np",
-            [
-                (
-                    chrom,
-                    (idx + first_bin).astype(index_dtype, copy=False),
-                    sig[idx].astype(np.float64, copy=False),
-                ),
-            ],
-        )
-
-    return (
-        "direct_sparse_np",
-        [
-            (
-                chrom,
-                ((idx + first_bin) * siz_bin).astype(np.int64, copy=False),
-                sig[idx].astype(np.float64, copy=False),
-            ),
-        ],
-    )
-
-
-def calc_sig_chrom_direct_dense_np(
-    chrom: str,
-    starts: np.ndarray,
-    ends: np.ndarray,
-    lengths: np.ndarray,
-    chrom_size: int,
-    siz_bin: int,
-    is_len: bool,
-) -> object:
-    """
-    Compute binned signal and return one dense chromosome array.
-
-    Parameters
-    ----------
-    chrom : str
-        Chromosome represented by the fragment arrays.
-    starts, ends, lengths : np.ndarray
-        Fragment starts, ends, and lengths in matching order.
-    chrom_size : int
-        Chromosome length used to clip bins.
-    siz_bin : int
-        Signal-bin width.
-    is_len : bool
-        Whether fragments contribute inverse-length weights.
-
-    Returns
-    -------
-    result : object
-        Tagged chromosome result containing dense signal values.
-
-    Raises
-    ------
-    ValueError
-        If chromosome size or fragment lengths are invalid.
-    """
-
-    validate_comparison(siz_bin, "gt", 0, "siz_bin", allow_none=False)
-
-    if chrom_size <= 0:
-        raise ValueError(f"Chromosome size must be > 0 for {chrom!r}.")
-
     n_bins = math.ceil(chrom_size / siz_bin)
     if starts.size == 0:
-        return "direct_dense_np", []
+        return "direct_sparse_np", []
 
     valid = ends > starts
 
@@ -1683,7 +952,7 @@ def calc_sig_chrom_direct_dense_np(
         lengths = lengths[valid]
 
     if starts.size == 0:
-        return "direct_dense_np", []
+        return "direct_sparse_np", []
 
     if is_len:
         if np.any(lengths <= 0):
@@ -1693,20 +962,16 @@ def calc_sig_chrom_direct_dense_np(
     else:
         weights = np.ones(starts.shape, dtype=np.float64)
 
-    values = np.zeros(n_bins, dtype=np.float64)
-    touched = np.zeros(n_bins, dtype=bool)
+    sig = np.zeros(n_bins, dtype=np.float64)
     start_bins = starts // siz_bin
     end_bins = (ends - 1) // siz_bin
 
     same = start_bins == end_bins
 
     if np.any(same):
-        np.add.at(
-            values,
-            start_bins[same],
-            (ends[same] - starts[same]) * weights[same],
-        )
-        touched[start_bins[same]] = True
+        same_values = (ends[same] - starts[same]) * weights[same]
+
+        np.add.at(sig, start_bins[same], same_values)
 
     multi = ~same
 
@@ -1723,247 +988,51 @@ def calc_sig_chrom_direct_dense_np(
         right_overlap = (
             ends_subset - end_bins_subset * siz_bin
         ) * weights_subset
-        np.add.at(values, start_bins_subset, left_overlap)
-        np.add.at(values, end_bins_subset, right_overlap)
-        touched[start_bins_subset] = True
-        touched[end_bins_subset] = True
+
+        np.add.at(sig, start_bins_subset, left_overlap)
+        np.add.at(sig, end_bins_subset, right_overlap)
 
         has_interior = end_bins_subset > start_bins_subset + 1
 
         if np.any(has_interior):
-            diff = np.zeros(n_bins + 1, dtype=np.float64)
-            touched_diff = np.zeros(n_bins + 1, dtype=np.int64)
             first = start_bins_subset[has_interior] + 1
             last_exclusive = end_bins_subset[has_interior]
             value = siz_bin * weights_subset[has_interior]
 
+            diff = np.zeros(n_bins + 1, dtype=np.float64)
             np.add.at(diff, first, value)
             np.add.at(diff, last_exclusive, -value)
 
-            np.add.at(touched_diff, first, 1)
-            np.add.at(touched_diff, last_exclusive, -1)
+            # The 'int64' interior sum is exact; 'float64' rounding can leave
+            # ~1e-20 residue in true-zero bins that 'sig != 0.0' would emit.
+            # Masking by the integer sum restores exact zero, tolerance-free.
+            interior_diff = np.zeros(n_bins + 1, dtype=np.int64)
+            np.add.at(interior_diff, first, 1)
+            np.add.at(interior_diff, last_exclusive, -1)
+            interior = np.cumsum(interior_diff[:-1]) > 0
 
-            # Interior coverage is exact in 'int64'; the 'float64' value sum is
-            # not. Floating-point cancellation can leave ~1e-20 residue in bins
-            # whose true value is zero, which 'values != 0.0' would emit as
-            # data. Masking by the exact indicator restores zero.
-            interior = np.cumsum(touched_diff[:-1]) > 0
+            sig += np.where(interior, np.cumsum(diff[:-1]), 0.0)
 
-            values += np.where(interior, np.cumsum(diff[:-1]), 0.0)
-            touched |= interior
+    idx = np.flatnonzero(sig != 0.0)
 
-    if not np.any(touched & (values != 0.0)):
-        return "direct_dense_np", []
-
-    return "direct_dense_np", [(chrom, values, touched)]
-
-
-def calc_sig_chrom_event_np(
-    chrom: str,
-    starts: np.ndarray,
-    ends: np.ndarray,
-    lengths: np.ndarray,
-    chrom_size: int,
-    siz_bin: int,
-    is_len: bool,
-) -> object:
-    """
-    Return bin edge and range-add events for parent-side materialization.
-
-    Parameters
-    ----------
-    chrom : str
-        Chromosome represented by the fragment arrays.
-    starts, ends, lengths : np.ndarray
-        Fragment starts, ends, and lengths in matching order.
-    chrom_size : int
-        Chromosome length used to clip events.
-    siz_bin : int
-        Signal-bin width.
-    is_len : bool
-        Whether fragments contribute inverse-length weights.
-
-    Returns
-    -------
-    result : object
-        Tagged chromosome result containing range-add event arrays.
-
-    Raises
-    ------
-    ValueError
-        If chromosome size or fragment lengths are invalid.
-    """
-
-    validate_comparison(siz_bin, "gt", 0, "siz_bin", allow_none=False)
-
-    if chrom_size <= 0:
-        raise ValueError(f"Chromosome size must be > 0 for {chrom!r}.")
-
-    n_bins = math.ceil(chrom_size / siz_bin)
-    if starts.size == 0:
-        return "event_np", []
-
-    valid = ends > starts
-
-    if not np.all(valid):
-        starts = starts[valid]
-        ends = ends[valid]
-        lengths = lengths[valid]
-
-    if starts.size == 0:
-        return "event_np", []
-
-    if is_len:
-        if np.any(lengths <= 0):
-            raise ValueError("'frg_len' must be > 0 when using normalization.")
-
-        weights = 1.0 / lengths
-    else:
-        weights = np.ones(starts.shape, dtype=np.float64)
-
-    start_bins = starts // siz_bin
-    end_bins = (ends - 1) // siz_bin
-
-    edge_bin_parts = []
-    edge_value_parts = []
-
-    diff_bin_parts = []
-    diff_value_parts = []
-
-    touch_bin_parts = []
-    touch_value_parts = []
-
-    same = start_bins == end_bins
-
-    if np.any(same):
-        same_bins = start_bins[same].astype(np.int64, copy=False)
-        edge_bin_parts.append(same_bins)
-        edge_value_parts.append(
-            ((ends[same] - starts[same]) * weights[same]).astype(
-                np.float64,
-                copy=False,
-            ),
-        )
-
-    multi = ~same
-
-    if np.any(multi):
-        starts_subset = starts[multi]
-        ends_subset = ends[multi]
-        start_bins_subset = start_bins[multi]
-        end_bins_subset = end_bins[multi]
-        weights_subset = weights[multi]
-
-        edge_bin_parts.extend(
-            [
-                start_bins_subset.astype(np.int64, copy=False),
-                end_bins_subset.astype(np.int64, copy=False),
-            ],
-        )
-        edge_value_parts.extend(
-            [
-                (
-                    ((start_bins_subset + 1) * siz_bin - starts_subset)
-                    * weights_subset
-                ).astype(np.float64, copy=False),
-                (
-                    (ends_subset - end_bins_subset * siz_bin) * weights_subset
-                ).astype(np.float64, copy=False),
-            ],
-        )
-        has_interior = end_bins_subset > start_bins_subset + 1
-
-        if np.any(has_interior):
-            first = (start_bins_subset[has_interior] + 1).astype(
-                np.int64,
-                copy=False,
-            )
-            last_exclusive = end_bins_subset[has_interior].astype(
-                np.int64,
-                copy=False,
-            )
-            value = (siz_bin * weights_subset[has_interior]).astype(
-                np.float64,
-                copy=False,
-            )
-            diff_bin_parts.extend([first, last_exclusive])
-            diff_value_parts.extend([value, -value])
-            touch_bin_parts.extend([first, last_exclusive])
-            touch_value_parts.extend(
-                [
-                    np.ones(first.shape, dtype=np.int64),
-                    -np.ones(last_exclusive.shape, dtype=np.int64),
-                ],
-            )
-
-    edge_bins = (
-        np.concatenate(edge_bin_parts)
-        if edge_bin_parts
-        else np.empty(0, dtype=np.int64)
-    )
-    edge_values = (
-        np.concatenate(edge_value_parts)
-        if edge_value_parts
-        else np.empty(0, dtype=np.float64)
-    )
-    diff_bins = (
-        np.concatenate(diff_bin_parts)
-        if diff_bin_parts
-        else np.empty(0, dtype=np.int64)
-    )
-    diff_values = (
-        np.concatenate(diff_value_parts)
-        if diff_value_parts
-        else np.empty(0, dtype=np.float64)
-    )
-    touch_bins = (
-        np.concatenate(touch_bin_parts)
-        if touch_bin_parts
-        else np.empty(0, dtype=np.int64)
-    )
-    touch_values = (
-        np.concatenate(touch_value_parts)
-        if touch_value_parts
-        else np.empty(0, dtype=np.int64)
-    )
-
-    if edge_bins.size == 0 and diff_bins.size == 0:
-        return "event_np", []
+    if idx.size == 0:
+        return "direct_sparse_np", []
 
     return (
-        "event_np",
+        "direct_sparse_np",
         [
             (
                 chrom,
-                n_bins,
-                edge_bins,
-                edge_values,
-                diff_bins,
-                diff_values,
-                touch_bins,
-                touch_values,
+                (idx * siz_bin).astype(np.int64, copy=False),
+                sig[idx].astype(np.float64, copy=False),
             ),
         ],
     )
 
 
-def calc_sig_task(data: tuple[object, ...]) -> object:
-    """
-    Unpack one worker-task tuple and dispatch to 'calc_sig_chrom()'.
-    """
-
-    return calc_sig_chrom(*data)
-
-
-def calc_sig_array_task(data: tuple[object, ...]) -> object:
-    """
-    Unpack one worker-task tuple and dispatch to 'calc_sig_chrom_array()'.
-    """
-
-    return calc_sig_chrom_array(*data)
-
-
-def calc_sig_indexed_fetch_task(data: tuple[object, ...]) -> object:
+def calc_sig_idx_fetch_task(
+    data: tuple[object, ...],
+) -> tuple[object, int]:
     """
     Fetch one indexed region, parse fragments, and compute unscaled signal.
 
@@ -1974,141 +1043,73 @@ def calc_sig_indexed_fetch_task(data: tuple[object, ...]) -> object:
 
     Returns
     -------
-    result : object
-        Tagged task result for parent-side signal assembly.
+    sig, n_frg : tuple[object, int]
+        Tagged sparse chromosome result and the accepted fragment count.
     """
 
     (
-        alignment_path,
+        fil_aln,
         chrom,
-        chrom_sizes,
-        user_fragment_length,
+        siz_chr,
+        usr_frg,
         ref_fa,
         start,
         end,
         siz_bin,
         is_len,
-        result_format,
     ) = data
 
-    fragment_arrays, fragment_count = collect_fragment_arrays_from_iter(
-        iter_indexed_fragments(
-            alignment_path=alignment_path,
+    frg_arr, n_frg = collect_frg_arr(
+        iter_idx_frg(
+            fil_aln=fil_aln,
             chrom=chrom,
-            chrom_sizes=chrom_sizes,
-            user_fragment_length=user_fragment_length,
+            siz_chr=siz_chr,
+            usr_frg=usr_frg,
             ref_fa=ref_fa,
             start=start,
             end=end,
         ),
     )
 
-    arrays = fragment_arrays.get(chrom)
+    arrays = frg_arr.get(chrom)
 
     if arrays is None:
-        if result_format in DIRECT_SPARSE_RESULT_FORMATS:
-            tag = (
-                "direct_sparse_idx_np"
-                if result_format == "direct_sparse_idx_np"
-                else "direct_sparse_np"
-            )
-            sig = (tag, [])
-        elif result_format in ("direct_dense_np", "event_np"):
-            sig = (result_format, [])
-        else:
-            sig = {}
-    elif result_format in DIRECT_SPARSE_RESULT_FORMATS:
-        local_span = result_format in (
-            "direct_sparse_local_np",
-            "direct_sparse_local_bincount_np",
-        )
-        use_bincount = result_format in (
-            "direct_sparse_bincount_np",
-            "direct_sparse_touched_bincount_np",
-            "direct_sparse_local_bincount_np",
-        )
-        emit_touched_only = result_format in (
-            "direct_sparse_touched_np",
-            "direct_sparse_touched_bincount_np",
-        )
+        sig = ("direct_sparse_np", [])
+    else:
         sig = calc_sig_chrom_direct_sparse_np(
             chrom=chrom,
             starts=arrays[0],
             ends=arrays[1],
             lengths=arrays[2],
-            chrom_size=chrom_sizes[chrom],
-            siz_bin=siz_bin,
-            is_len=is_len,
-            return_bin_indices=result_format == "direct_sparse_idx_np",
-            local_span=local_span,
-            use_bincount=use_bincount,
-            emit_touched_only=emit_touched_only,
-        )
-    elif result_format == "direct_dense_np":
-        sig = calc_sig_chrom_direct_dense_np(
-            chrom=chrom,
-            starts=arrays[0],
-            ends=arrays[1],
-            lengths=arrays[2],
-            chrom_size=chrom_sizes[chrom],
+            chrom_size=siz_chr[chrom],
             siz_bin=siz_bin,
             is_len=is_len,
         )
-    elif result_format == "event_np":
-        sig = calc_sig_chrom_event_np(
-            chrom=chrom,
-            starts=arrays[0],
-            ends=arrays[1],
-            lengths=arrays[2],
-            chrom_size=chrom_sizes[chrom],
-            siz_bin=siz_bin,
-            is_len=is_len,
-        )
-    else:
-        sig = calc_sig_chrom_array(
-            chrom=chrom,
-            starts=arrays[0],
-            ends=arrays[1],
-            lengths=arrays[2],
-            chrom_size=chrom_sizes[chrom],
-            fragment_count=1,
-            siz_bin=siz_bin,
-            is_len=is_len,
-            is_norm=False,
-            scl_fct=None,
-        )
 
-    if result_format in (
-        *DIRECT_SPARSE_RESULT_FORMATS,
-        "direct_dense_np",
-        "event_np",
-    ):
-        return sig, fragment_count
-
-    return signal_dict_to_result(sig, result_format, siz_bin), fragment_count
+    return sig, n_frg
 
 
-def collect_bed_indexed_task(data: tuple[object, ...]) -> object:
+def collect_bed_idx_task(data: tuple[object, ...]) -> object:
     """
     Fetch one indexed region and return compact BED row arrays.
     """
 
     (
-        alignment_path,
+        fil_aln,
         chrom,
-        chrom_sizes,
-        user_fragment_length,
+        siz_chr,
+        usr_frg,
         ref_fa,
         start,
         end,
     ) = data
 
-    return collect_bed_arrays_from_iter(
-        iter_indexed_fragments(
-            alignment_path=alignment_path,
+    return collect_bed_arr(
+        iter_idx_frg(
+            fil_aln=fil_aln,
             chrom=chrom,
-            chrom_sizes=chrom_sizes,
-            user_fragment_length=user_fragment_length,
+            siz_chr=siz_chr,
+            usr_frg=usr_frg,
             ref_fa=ref_fa,
             start=start,
             end=end,
@@ -2129,7 +1130,7 @@ def count_bed_array_rows(result: Any) -> int:
     )
 
 
-def estimate_bed_payload_bytes(result: Any) -> int:
+def est_bed_bytes(result: Any) -> int:
     """
     Estimate NumPy payload bytes in one compact BED array result.
     """
@@ -2143,37 +1144,11 @@ def estimate_bed_payload_bytes(result: Any) -> int:
     )
 
 
-def calc_sig_chunk_task(data: tuple[object, ...]) -> object:
-    """
-    Unpack one worker-task tuple and compute signal for a fragment chunk.
-    """
-
-    fragments, fragment_count, siz_bin, is_len, is_norm, scl_fct = data
-
-    by_chrom = defaultdict(list)
-
-    for chrom, start, end, fragment_length in fragments:
-        by_chrom[chrom].append((start, end, fragment_length))
-
-    sig_chunk = defaultdict(float)
-
-    for chrom, entries in by_chrom.items():
-        sig_chrom = calc_sig_chrom(
-            chrom=chrom,
-            fragment_records=entries,
-            fragment_count=fragment_count,
-            siz_bin=siz_bin,
-            is_len=is_len,
-            is_norm=is_norm,
-            scl_fct=scl_fct,
-        )
-
-        for key, value in sig_chrom.items():
-            sig_chunk[key] += value
-
-    return sig_chunk
-
-
+# TODO: Revisit in the post-M8-c performance pass. This wrapper, the
+# '--profile_json' layer, and the four hidden operator knobs ('--mode_exec',
+# '--strat_bed', '--strat_writer', '--wrk_writer') exist for that pass; its
+# exit decision is to adopt them as supported surface or to move them to
+# 'dev/algorithm_testing/' (decided with the author, 2026-09-12).
 def calc_sig_profile_task(data: tuple[object, ...]) -> object:
     """
     Compute one profiled worker task and return timing metadata.
@@ -2197,14 +1172,10 @@ def calc_sig_profile_task(data: tuple[object, ...]) -> object:
     kind, task_id, payload = data
     start = time.perf_counter()
 
-    if kind == "chrom":
-        result = calc_sig_array_task(payload)
-    elif kind in ("indexed_chrom", "indexed_window"):
-        result = calc_sig_indexed_fetch_task(payload)
+    if kind in ("idx_chrom", "idx_win"):
+        result = calc_sig_idx_fetch_task(payload)
     elif kind == "indexed_bed":
-        result = collect_bed_indexed_task(payload)
-    elif kind == "chunk":
-        result = calc_sig_chunk_task(payload)
+        result = collect_bed_idx_task(payload)
     else:
         raise ValueError(f"Unknown profiled task kind: {kind!r}.")
 
@@ -2220,7 +1191,7 @@ def calc_sig_profile_task(data: tuple[object, ...]) -> object:
         {
             "worker_start_s": start,
             "worker_end_s": end,
-            "worker_elapsed_s": end - start,
+            "worker_s": end - start,
             "result_bins": result_count,
         },
         result,
@@ -2232,7 +1203,7 @@ def iter_task_results(
     task_func: Callable[[object], object],
     task_data: Iterable[object],
     threads: int,
-    executor_mode: str,
+    mode_exec: str,
     task_profiles: list[dict] | None = None,
 ) -> Iterator[object]:
     """
@@ -2248,7 +1219,7 @@ def iter_task_results(
         Ordered task payloads.
     threads : int
         Maximum worker count.
-    executor_mode : str
+    mode_exec : str
         Ordered-map or completion-order execution mode.
     task_profiles : list[dict] | None
         Optional collection receiving worker timing records.
@@ -2256,7 +1227,7 @@ def iter_task_results(
     Yields
     ------
     result : object
-        Task results in the order defined by 'executor_mode'.
+        Task results in the order defined by 'mode_exec'.
     """
 
     if threads == 1:
@@ -2272,9 +1243,9 @@ def iter_task_results(
                     {
                         "worker_start_s": start,
                         "worker_end_s": end,
-                        "worker_elapsed_s": end - start,
-                        "parent_received_s": received,
-                        "parent_receive_lag_s": received - end,
+                        "worker_s": end - start,
+                        "recv_s": received,
+                        "recv_lag_s": received - end,
                         "result_bins": (
                             count_bed_array_rows(result)
                             if kind == "indexed_bed"
@@ -2291,7 +1262,7 @@ def iter_task_results(
 
     with ProcessPoolExecutor(max_workers=max_workers) as executor:
         if task_profiles is None:
-            if executor_mode == "map":
+            if mode_exec == "map":
                 yield from executor.map(task_func, task_data)
             else:
                 future_to_id = {
@@ -2309,16 +1280,14 @@ def iter_task_results(
             for task_id, payload in enumerate(task_data)
         ]
 
-        if executor_mode == "map":
+        if mode_exec == "map":
             for task_id, timing, result in executor.map(
                 calc_sig_profile_task,
                 profiled_data,
             ):
                 received = time.perf_counter()
-                timing["parent_received_s"] = received
-                timing["parent_receive_lag_s"] = (
-                    received - timing["worker_end_s"]
-                )
+                timing["recv_s"] = received
+                timing["recv_lag_s"] = received - timing["worker_end_s"]
                 task_profiles[task_id].update(timing)
 
                 yield result
@@ -2332,16 +1301,14 @@ def iter_task_results(
                 task_id, timing, result = future.result()
                 received = time.perf_counter()
                 timing["completion_order"] = order
-                timing["parent_received_s"] = received
-                timing["parent_receive_lag_s"] = (
-                    received - timing["worker_end_s"]
-                )
+                timing["recv_s"] = received
+                timing["recv_lag_s"] = received - timing["worker_end_s"]
                 task_profiles[task_id].update(timing)
 
                 yield result
 
 
-def summarize_task_profiles(profile: dict | None) -> None:
+def summarize_profiles(profile: dict | None) -> None:
     """
     Add derived worker timing summaries to an active profile.
     """
@@ -2349,29 +1316,29 @@ def summarize_task_profiles(profile: dict | None) -> None:
     if profile is None:
         return
 
-    worker_elapsed = [
-        task["worker_elapsed_s"]
+    worker_s = [
+        task["worker_s"]
         for task in profile.get("tasks", [])
-        if "worker_elapsed_s" in task
+        if "worker_s" in task
     ]
-    receive_lag = [
-        task["parent_receive_lag_s"]
+    recv_lag_s = [
+        task["recv_lag_s"]
         for task in profile.get("tasks", [])
-        if "parent_receive_lag_s" in task
+        if "recv_lag_s" in task
     ]
 
-    if worker_elapsed:
-        profile["worker_elapsed_sum_s"] = sum(worker_elapsed)
-        profile["worker_elapsed_max_s"] = max(worker_elapsed)
+    if worker_s:
+        profile["worker_sum_s"] = sum(worker_s)
+        profile["worker_max_s"] = max(worker_s)
 
-    if receive_lag:
-        profile["parent_receive_lag_sum_s"] = sum(receive_lag)
-        profile["parent_receive_lag_max_s"] = max(receive_lag)
+    if recv_lag_s:
+        profile["recv_lag_sum_s"] = sum(recv_lag_s)
+        profile["recv_lag_max_s"] = max(recv_lag_s)
 
 
-def apply_signal_adjustments(
-    signal_bins: dict[tuple[str, int], float],
-    fragment_count: int,
+def apply_sig_adj(
+    sig_bin: Any,
+    frg_tot: int,
     is_norm: bool,
     scl_fct: float | None = None,
 ) -> None:
@@ -2380,9 +1347,9 @@ def apply_signal_adjustments(
 
     Parameters
     ----------
-    signal_bins : dict[tuple[str, int], float]
-        Mutable sparse signal values.
-    fragment_count : int
+    sig_bin : Any
+        Mutable merged sparse signal container.
+    frg_tot : int
         Total accepted fragments used for normalization.
     is_norm : bool
         Whether to apply depth normalization.
@@ -2395,105 +1362,53 @@ def apply_signal_adjustments(
         If normalization is requested with no accepted fragments.
     """
 
-    if is_array_signal(signal_bins):
-        if is_norm:
-            if fragment_count <= 0:
-                raise ValueError(
-                    "Normalization requires non-zero total fragments.",
-                )
-
-            for values in iter_signal_value_arrays(signal_bins):
-                values /= fragment_count
-
-        if scl_fct is not None:
-            validate_comparison(scl_fct, "gt", 0, "scl_fct")
-
-            for values in iter_signal_value_arrays(signal_bins):
-                values *= scl_fct
-
-        return
-
     if is_norm:
-        if fragment_count <= 0:
+        if frg_tot <= 0:
             raise ValueError(
                 "Normalization requires non-zero total fragments.",
             )
 
-        for key in signal_bins:
-            signal_bins[key] /= fragment_count
+        for values in iter_sig_arr(sig_bin):
+            values /= frg_tot
 
     if scl_fct is not None:
         validate_comparison(scl_fct, "gt", 0, "scl_fct")
 
-        for key in signal_bins:
-            signal_bins[key] *= scl_fct
+        for values in iter_sig_arr(sig_bin):
+            values *= scl_fct
 
 
-def is_array_sparse_signal(signal_bins: object) -> bool:
+def is_sparse_sig(sig_bin: object) -> bool:
     """
     Return True for the merged sparse-array signal container.
     """
 
     return (
-        isinstance(signal_bins, tuple)
-        and len(signal_bins) == 2
-        and signal_bins[0] == "array_sparse_merged"
+        isinstance(sig_bin, tuple)
+        and len(sig_bin) == 2
+        and sig_bin[0] == "sparse_merged"
     )
 
 
-def is_array_dense_signal(signal_bins: object) -> bool:
+def iter_sig_arr(sig_bin: Any) -> Iterator[np.ndarray]:
     """
-    Return True for the merged dense-array signal container.
-    """
-
-    return (
-        isinstance(signal_bins, tuple)
-        and len(signal_bins) == 3
-        and signal_bins[0] == "array_dense_merged"
-    )
-
-
-def is_array_signal(signal_bins: object) -> bool:
-    """
-    Return True for merged signal containers that avoid the final dict.
+    Yield mutable value arrays from the merged sparse signal container.
     """
 
-    return is_array_sparse_signal(signal_bins) or is_array_dense_signal(
-        signal_bins,
-    )
-
-
-def iter_signal_value_arrays(signal_bins: Any) -> Iterator[np.ndarray]:
-    """
-    Yield mutable value arrays from merged array-backed signal containers.
-    """
-
-    if is_array_sparse_signal(signal_bins):
-        for _, _, values in signal_bins[1]:
-            yield values
-    elif is_array_dense_signal(signal_bins):
-        for _, values, _ in signal_bins[2]:
+    if is_sparse_sig(sig_bin):
+        for _, _, values in sig_bin[1]:
             yield values
 
 
-def signal_row_count(signal_bins: Any) -> int:
+def n_sig_rows(sig_bin: Any) -> int:
     """
-    Count output bedGraph rows without assuming a dict-backed signal.
+    Count output bedGraph rows in the merged sparse signal container.
     """
 
-    if is_array_sparse_signal(signal_bins):
-        return sum(int(starts.size) for _, starts, _ in signal_bins[1])
-
-    if is_array_dense_signal(signal_bins):
-        return sum(
-            int(np.count_nonzero(touched & (values != 0.0)))
-            for _, values, touched in signal_bins[2]
-        )
-
-    return len(signal_bins)
+    return sum(int(starts.size) for _, starts, _ in sig_bin[1])
 
 
-def sparse_parts_are_ordered(starts_parts: list[np.ndarray]) -> bool:
+def is_parts_ordered(starts_parts: list[np.ndarray]) -> bool:
     """
     Return True when sparse parts are individually and collectively ordered.
     """
@@ -2517,7 +1432,7 @@ def sparse_parts_are_ordered(starts_parts: list[np.ndarray]) -> bool:
     return True
 
 
-def coalesce_ordered_sparse_arrays(
+def coalesce_sparse(
     starts: np.ndarray,
     values: np.ndarray,
 ) -> tuple[np.ndarray, np.ndarray]:
@@ -2542,8 +1457,8 @@ def coalesce_ordered_sparse_arrays(
     )
 
 
-def coalesce_sparse_signal_parts(
-    parts_by_chrom: dict[str, list[tuple[np.ndarray, np.ndarray]]],
+def coalesce_parts(
+    parts_chr: dict[str, list[tuple[np.ndarray, np.ndarray]]],
     optimize: bool = True,
     stats: dict[str, int] | None = None,
 ) -> object:
@@ -2552,7 +1467,7 @@ def coalesce_sparse_signal_parts(
 
     Parameters
     ----------
-    parts_by_chrom : dict[str, list[tuple[np.ndarray, np.ndarray]]]
+    parts_chr : dict[str, list[tuple[np.ndarray, np.ndarray]]]
         Sparse index/value array parts grouped by chromosome.
     optimize : bool
         Whether to compact the final array representation.
@@ -2575,11 +1490,11 @@ def coalesce_sparse_signal_parts(
 
     merged = []
 
-    for chrom in sorted(parts_by_chrom, key=sort_chrom):
+    for chrom in sorted(parts_chr, key=sort_chrom):
         starts_parts = []
         values_parts = []
 
-        for starts, values in parts_by_chrom[chrom]:
+        for starts, values in parts_chr[chrom]:
             if starts.size == 0:
                 continue
 
@@ -2611,7 +1526,7 @@ def coalesce_sparse_signal_parts(
 
             continue
 
-        is_ordered = optimize and sparse_parts_are_ordered(starts_parts)
+        is_ordered = optimize and is_parts_ordered(starts_parts)
         starts = np.concatenate(starts_parts)
         values = np.concatenate(values_parts)
         if starts.size == 0:
@@ -2627,7 +1542,7 @@ def coalesce_sparse_signal_parts(
         elif stats is not None:
             stats["ordered_chroms"] += 1
 
-        out_starts, out_values = coalesce_ordered_sparse_arrays(starts, values)
+        out_starts, out_values = coalesce_sparse(starts, values)
 
         if out_starts.size > 0:
             merged.append((chrom, out_starts, out_values))
@@ -2635,495 +1550,12 @@ def coalesce_sparse_signal_parts(
             if stats is not None:
                 stats["rows_after"] += int(out_starts.size)
 
-    return "array_sparse_merged", merged
+    return "sparse_merged", merged
 
 
-def sparse_payload_to_starts(
-    tag: str,
-    coords: np.ndarray,
-    siz_bin: int,
-) -> np.ndarray:
-    """
-    Convert sparse payload coordinates to bedGraph bin starts.
-    """
-
-    if tag == "direct_sparse_idx_np":
-        return coords.astype(np.int64, copy=False) * siz_bin
-
-    return coords.astype(np.int64, copy=False)
-
-
-def materialize_event_signal_parts(
-    parts_by_chrom: dict[str, list[tuple]],
-    siz_bin: int,
-) -> object:
-    """
-    Combine event arrays and materialize final sparse signal arrays.
-
-    Parameters
-    ----------
-    parts_by_chrom : dict[str, list[tuple]]
-        Range-add event-array parts grouped by chromosome.
-    siz_bin : int
-        Signal-bin width used to derive output coordinates.
-
-    Returns
-    -------
-    signal : object
-        Ordered sparse signal arrays grouped by chromosome.
-    """
-
-    merged = []
-
-    for chrom in sorted(parts_by_chrom, key=sort_chrom):
-        n_bins = max(part[0] for part in parts_by_chrom[chrom])
-        values = np.zeros(n_bins, dtype=np.float64)
-        touched = np.zeros(n_bins, dtype=bool)
-
-        edge_bins_parts = [part[1] for part in parts_by_chrom[chrom]]
-        edge_values_parts = [part[2] for part in parts_by_chrom[chrom]]
-        edge_bins = (
-            np.concatenate(edge_bins_parts)
-            if edge_bins_parts
-            else (np.empty(0, dtype=np.int64))
-        )
-        edge_values = (
-            np.concatenate(edge_values_parts)
-            if edge_values_parts
-            else np.empty(0, dtype=np.float64)
-        )
-
-        if edge_bins.size > 0:
-            np.add.at(values, edge_bins, edge_values)
-            touched[edge_bins] = True
-
-        diff_bins_parts = [part[3] for part in parts_by_chrom[chrom]]
-        diff_values_parts = [part[4] for part in parts_by_chrom[chrom]]
-        diff_bins = (
-            np.concatenate(diff_bins_parts)
-            if diff_bins_parts
-            else (np.empty(0, dtype=np.int64))
-        )
-        diff_values = (
-            np.concatenate(diff_values_parts)
-            if diff_values_parts
-            else np.empty(0, dtype=np.float64)
-        )
-
-        touch_bins_parts = [part[5] for part in parts_by_chrom[chrom]]
-        touch_values_parts = [part[6] for part in parts_by_chrom[chrom]]
-        touch_bins = (
-            np.concatenate(touch_bins_parts)
-            if touch_bins_parts
-            else (np.empty(0, dtype=np.int64))
-        )
-        touch_values = (
-            np.concatenate(touch_values_parts)
-            if touch_values_parts
-            else np.empty(0, dtype=np.int64)
-        )
-
-        # Resolve the exact 'int64' interior indicator before the 'float64'
-        # value sum that uses it. Floating-point cancellation can leave ~1e-20
-        # residue in truly zero bins, which 'values != 0.0' would emit as data.
-        # Masking by the indicator restores exact zero.
-        interior = None
-
-        if touch_bins.size > 0:
-            touch_diff = np.zeros(n_bins + 1, dtype=np.int64)
-            np.add.at(touch_diff, touch_bins, touch_values)
-            interior = np.cumsum(touch_diff[:-1]) > 0
-            touched |= interior
-
-        if diff_bins.size > 0:
-            diff = np.zeros(n_bins + 1, dtype=np.float64)
-            np.add.at(diff, diff_bins, diff_values)
-            summed = np.cumsum(diff[:-1])
-            values += (
-                summed if interior is None else np.where(interior, summed, 0.0)
-            )
-
-        idx = np.flatnonzero(touched & (values != 0.0))
-
-        if idx.size > 0:
-            merged.append(
-                (
-                    chrom,
-                    (idx * siz_bin).astype(np.int64, copy=False),
-                    values[idx].astype(np.float64, copy=False),
-                ),
-            )
-
-    return "array_sparse_merged", merged
-
-
-def _append_mapping_sparse_parts(
-    signal_result: object,
-    sparse_parts: dict[str, list[tuple[np.ndarray, np.ndarray]]],
-) -> None:
-    """
-    Convert one mapping result into chromosome-keyed sparse arrays.
-
-    Parameters
-    ----------
-    signal_result : object
-        Mapping from chromosome/start keys to signal values.
-    sparse_parts : dict[str, list[tuple[np.ndarray, np.ndarray]]]
-        Mutable chromosome inventory receiving start and value arrays.
-    """
-
-    by_chrom: dict[str, list[tuple[int, float]]] = defaultdict(list)
-
-    for (chrom, start), value in signal_result.items():
-        by_chrom[chrom].append((start, value))
-
-    for chrom, rows in by_chrom.items():
-        sparse_parts[chrom].append(
-            (
-                np.asarray(
-                    [start for start, _ in rows],
-                    dtype=np.int64,
-                ),
-                np.asarray(
-                    [value for _, value in rows],
-                    dtype=np.float64,
-                ),
-            ),
-        )
-
-
-def _accumulate_sparse_merge_result(
-    signal_result: object,
-    sparse_parts: dict[str, list[tuple[np.ndarray, np.ndarray]]],
-    siz_bin: int,
-) -> None:
-    """
-    Append one worker result to sparse-merge chromosome parts.
-
-    Mapping, sparse-array, and dense-array worker representations are
-    normalized to chromosome-keyed start and value arrays.
-
-    Parameters
-    ----------
-    signal_result : object
-        Mapping- or tagged-tuple worker result.
-    sparse_parts : dict[str, list[tuple[np.ndarray, np.ndarray]]]
-        Mutable chromosome inventory receiving sparse arrays.
-    siz_bin : int
-        Signal-bin width used to convert bin indexes to starts.
-    """
-
-    if not isinstance(signal_result, tuple) or not signal_result:
-        _append_mapping_sparse_parts(signal_result, sparse_parts)
-
-        return
-
-    tag = signal_result[0]
-
-    if tag in (
-        "sparse_np",
-        "direct_sparse_np",
-        "direct_sparse_idx_np",
-    ):
-        for chrom, coords, values in signal_result[1]:
-            sparse_parts[chrom].append(
-                (
-                    sparse_payload_to_starts(tag, coords, siz_bin),
-                    values,
-                ),
-            )
-
-        return
-
-    if tag == "dense_np":
-        for chrom, first, values in signal_result[1]:
-            idx = np.flatnonzero(values != 0.0)
-            sparse_parts[chrom].append(
-                (
-                    first + idx.astype(np.int64) * siz_bin,
-                    values[idx],
-                ),
-            )
-
-        return
-
-    _append_mapping_sparse_parts(signal_result, sparse_parts)
-
-
-def _accumulate_dense_merge_result(
-    signal_result: object,
-    ensure_array: Callable[[str], np.ndarray],
-    ensure_touched: Callable[[str], np.ndarray],
-    siz_bin: int,
-) -> None:
-    """
-    Accumulate one worker result into dense arrays and touch masks.
-
-    Parameters
-    ----------
-    signal_result : object
-        Mapping- or tagged-tuple worker result.
-    ensure_array : Callable[[str], np.ndarray]
-        Resolver for a chromosome's mutable dense signal array.
-    ensure_touched : Callable[[str], np.ndarray]
-        Resolver for a chromosome's mutable boolean touch mask.
-    siz_bin : int
-        Signal-bin width used to convert starts to array indexes.
-    """
-
-    if not isinstance(signal_result, tuple) or not signal_result:
-        for (chrom, start), value in signal_result.items():
-            ensure_array(chrom)[start // siz_bin] += value
-            ensure_touched(chrom)[start // siz_bin] = True
-
-        return
-
-    tag = signal_result[0]
-
-    if tag == "direct_dense_np":
-        for chrom, values, touched in signal_result[1]:
-            arr = ensure_array(chrom)
-            arr[: values.size] += values
-            ensure_touched(chrom)[: touched.size] |= touched
-
-        return
-
-    if tag == "dense_np":
-        for chrom, first, values in signal_result[1]:
-            arr = ensure_array(chrom)
-            first_idx = first // siz_bin
-            arr[first_idx : first_idx + values.size] += values
-            ensure_touched(chrom)[first_idx : first_idx + values.size] |= (
-                values != 0.0
-            )
-
-        return
-
-    if tag in (
-        "sparse_np",
-        "direct_sparse_np",
-        "direct_sparse_idx_np",
-    ):
-        for chrom, coords, values in signal_result[1]:
-            if tag == "direct_sparse_idx_np":
-                idx = coords.astype(np.int64, copy=False)
-            else:
-                idx = coords // siz_bin
-
-            np.add.at(ensure_array(chrom), idx, values)
-            ensure_touched(chrom)[idx] = True
-
-        return
-
-    for (chrom, start), value in signal_result.items():
-        ensure_array(chrom)[start // siz_bin] += value
-        ensure_touched(chrom)[start // siz_bin] = True
-
-
-def _accumulate_event_merge_result(
-    signal_result: object,
-    event_parts: dict[str, list[tuple]],
-    sparse_parts: dict[str, list[tuple[np.ndarray, np.ndarray]]],
-    siz_bin: int,
-) -> None:
-    """
-    Append one worker result to event or sparse fallback parts.
-
-    Parameters
-    ----------
-    signal_result : object
-        Mapping- or tagged-tuple worker result.
-    event_parts : dict[str, list[tuple]]
-        Mutable chromosome inventory receiving event-array payloads.
-    sparse_parts : dict[str, list[tuple[np.ndarray, np.ndarray]]]
-        Mutable chromosome inventory receiving fallback sparse arrays.
-    siz_bin : int
-        Signal-bin width used to convert bin indexes to starts.
-    """
-
-    if not isinstance(signal_result, tuple) or not signal_result:
-        for (chrom, start), value in signal_result.items():
-            sparse_parts[chrom].append(
-                (
-                    np.asarray([start], dtype=np.int64),
-                    np.asarray([value], dtype=np.float64),
-                ),
-            )
-
-        return
-
-    tag = signal_result[0]
-
-    if tag == "event_np":
-        for (
-            chrom,
-            n_bins,
-            edge_bins,
-            edge_values,
-            diff_bins,
-            diff_values,
-            touch_bins,
-            touch_values,
-        ) in signal_result[1]:
-            event_parts[chrom].append(
-                (
-                    n_bins,
-                    edge_bins,
-                    edge_values,
-                    diff_bins,
-                    diff_values,
-                    touch_bins,
-                    touch_values,
-                ),
-            )
-
-        return
-
-    if tag in (
-        "sparse_np",
-        "direct_sparse_np",
-        "direct_sparse_idx_np",
-    ):
-        for chrom, coords, values in signal_result[1]:
-            sparse_parts[chrom].append(
-                (
-                    sparse_payload_to_starts(tag, coords, siz_bin),
-                    values,
-                ),
-            )
-
-        return
-
-    for (chrom, start), value in signal_result.items():
-        sparse_parts[chrom].append(
-            (
-                np.asarray([start], dtype=np.int64),
-                np.asarray([value], dtype=np.float64),
-            ),
-        )
-
-
-def _accumulate_dict_merge_result(
-    signal_result: object,
-    combined: defaultdict[tuple[str, int], float],
-    siz_bin: int,
-) -> None:
-    """
-    Convert and accumulate one worker result into a signal dictionary.
-
-    Parameters
-    ----------
-    signal_result : object
-        Mapping- or tagged-tuple worker result.
-    combined : defaultdict[tuple[str, int], float]
-        Mutable chromosome/start signal mapping.
-    siz_bin : int
-        Signal-bin width used to convert array indexes to starts.
-    """
-
-    if not isinstance(signal_result, tuple) or not signal_result:
-        for key, value in signal_result.items():
-            combined[key] += value
-
-        return
-
-    tag = signal_result[0]
-
-    if tag in (
-        "sparse_np",
-        "direct_sparse_np",
-        "direct_sparse_idx_np",
-    ):
-        for chrom, coords, values in signal_result[1]:
-            starts = sparse_payload_to_starts(tag, coords, siz_bin)
-
-            for start, value in zip(starts, values, strict=True):
-                combined[(chrom, int(start))] += float(value)
-
-        return
-
-    if tag == "direct_dense_np":
-        for chrom, values, touched in signal_result[1]:
-            idx = np.flatnonzero(touched & (values != 0.0))
-
-            for index in idx:
-                combined[(chrom, int(index) * siz_bin)] += float(values[index])
-
-        return
-
-    if tag == "dense_np":
-        for chrom, first, values in signal_result[1]:
-            for offset, value in enumerate(values):
-                if value != 0.0:
-                    combined[(chrom, first + offset * siz_bin)] += float(value)
-
-        return
-
-    for key, value in signal_result.items():
-        combined[key] += value
-
-
-def _accumulate_array_merge_result(
-    signal_result: object,
-    ensure_array: Callable[[str], np.ndarray],
-    siz_bin: int,
-) -> None:
-    """
-    Accumulate one worker result into chromosome arrays.
-
-    Parameters
-    ----------
-    signal_result : object
-        Mapping- or tagged-tuple worker result.
-    ensure_array : Callable[[str], np.ndarray]
-        Resolver for a chromosome's mutable dense signal array.
-    siz_bin : int
-        Signal-bin width used to convert starts to array indexes.
-    """
-
-    if not isinstance(signal_result, tuple) or not signal_result:
-        for (chrom, start), value in signal_result.items():
-            ensure_array(chrom)[start // siz_bin] += value
-
-        return
-
-    tag = signal_result[0]
-
-    if tag in (
-        "sparse_np",
-        "direct_sparse_np",
-        "direct_sparse_idx_np",
-    ):
-        for chrom, coords, values in signal_result[1]:
-            arr = ensure_array(chrom)
-
-            if tag == "direct_sparse_idx_np":
-                idx = coords.astype(np.int64, copy=False)
-            else:
-                idx = coords // siz_bin
-
-            np.add.at(arr, idx, values)
-
-        return
-
-    if tag == "dense_np":
-        for chrom, first, values in signal_result[1]:
-            arr = ensure_array(chrom)
-            first_idx = first // siz_bin
-            arr[first_idx : first_idx + values.size] += values
-
-        return
-
-    for (chrom, start), value in signal_result.items():
-        ensure_array(chrom)[start // siz_bin] += value
-
-
-def merge_signal_results(
+def merge_sig(
     results: Iterable[Any],
-    merge_strategy: str,
-    chrom_sizes: dict[str, int],
     siz_bin: int,
-    is_prototype_strategy: bool,
     profile: dict[str, Any] | None = None,
 ) -> tuple[Any, int, int, int]:
     """
@@ -3132,293 +1564,87 @@ def merge_signal_results(
     Parameters
     ----------
     results : Iterable[Any]
-        Per-chromosome signal results to validate and merge.
-    merge_strategy : str
-        Named implementation used to combine worker results.
-    chrom_sizes : dict[str, int]
-        Chromosome lengths keyed by chromosome identifier.
+        Per-task pairs of a tagged sparse signal result and the fragment count
+        that task accepted.
     siz_bin : int
         Positive signal-bin width in base pairs.
-    is_prototype_strategy : bool
-        Whether the selected merge strategy is explicitly experimental.
     profile : dict[str, Any] | None
         Optional mutable timing and merge-statistics payload.
 
     Returns
     -------
-    combined_signal, fragment_count, bin_count, payload_bytes : tuple[
+    combined_signal, frg_tot, n_bin, payload_bytes : tuple[
         Any, int, int, int
     ]
-        Mapping- or array-backed merged signal and execution statistics.
-
-    Notes
-    -----
-    The first return value intentionally remains 'Any' because benchmark
-    strategies use several tagged tuple representations in addition to the
-    production signal mapping.
+        Merged sparse signal container and execution statistics.
     """
 
-    combined_signal: Any = defaultdict(float)
-    combined_arrays: dict[str, np.ndarray] = {}
-    array_touched: dict[str, np.ndarray] = {}
     sparse_parts: dict[str, list[tuple[np.ndarray, np.ndarray]]] = defaultdict(
         list,
     )
-    event_parts: dict[str, list[tuple]] = defaultdict(list)
 
-    fragment_count = 0
-    bin_count = 0
+    frg_tot = 0
+    n_bin = 0
     payload_bytes = 0
 
-    metadata_seconds = 0.0
-    accumulation_seconds = 0.0
-    array_to_dict_seconds = 0.0
-    array_coalesce_seconds = 0.0
-    dense_finalize_seconds = 0.0
-    event_materialize_seconds = 0.0
+    meta_s = 0.0
+    accum_s = 0.0
 
-    sparse_coalesce_stats: dict[str, int] = {}
-
-    def ensure_array(chrom: str) -> np.ndarray:
-        """
-        Ensure a dense chromosome array exists for one chromosomal key.
-
-        Parameters
-        ----------
-        chrom : str
-            Chromosome name used as the lookup key.
-
-        Returns
-        -------
-        array : np.ndarray
-            Mutable float64 array sized to the chromosome span under the
-            current bin width.
-        """
-
-        if chrom not in combined_arrays:
-            combined_arrays[chrom] = np.zeros(
-                math.ceil(chrom_sizes[chrom] / siz_bin),
-                dtype=np.float64,
-            )
-
-        return combined_arrays[chrom]
-
-    def ensure_touched(chrom: str) -> np.ndarray:
-        """
-        Ensure a boolean touch mask exists for one chromosomal key.
-
-        Parameters
-        ----------
-        chrom : str
-            Chromosome name used as the lookup key.
-
-        Returns
-        -------
-        mask : np.ndarray
-            Mutable boolean mask sized to the chromosome span under the current
-            bin width.
-        """
-
-        if chrom not in array_touched:
-            array_touched[chrom] = np.zeros(
-                math.ceil(chrom_sizes[chrom] / siz_bin),
-                dtype=bool,
-            )
-
-        return array_touched[chrom]
+    stats_coal: dict[str, int] = {}
 
     for result in results:
         time_meta = time.perf_counter()
-
-        if is_prototype_strategy:
-            signal_result, result_fragment_count = result
-            fragment_count += result_fragment_count
-        else:
-            signal_result = result
-
-        bin_count += count_result_bins(signal_result)
-        payload_bytes += estimate_result_payload_bytes(signal_result)
+        signal_result, n_frg = result
+        frg_tot += n_frg
+        n_bin += count_result_bins(signal_result)
+        payload_bytes += est_result_bytes(signal_result)
 
         if profile is not None:
-            metadata_seconds += time.perf_counter() - time_meta
+            meta_s += time.perf_counter() - time_meta
 
-        time_accumulate = time.perf_counter()
+        time_accum = time.perf_counter()
 
-        if merge_strategy in (
-            "array_sparse_merge",
-            "array_sparse_merge_legacy",
-        ):
-            _accumulate_sparse_merge_result(
-                signal_result,
-                sparse_parts,
-                siz_bin,
-            )
-        elif merge_strategy == "array_dense_merge":
-            _accumulate_dense_merge_result(
-                signal_result,
-                ensure_array,
-                ensure_touched,
-                siz_bin,
-            )
-        elif merge_strategy == "event_diff_merge":
-            _accumulate_event_merge_result(
-                signal_result,
-                event_parts,
-                sparse_parts,
-                siz_bin,
-            )
-        elif merge_strategy == "dict_merge":
-            _accumulate_dict_merge_result(
-                signal_result,
-                combined_signal,
-                siz_bin,
-            )
-        else:
-            _accumulate_array_merge_result(
-                signal_result,
-                ensure_array,
-                siz_bin,
+        for chrom, starts, values in signal_result[1]:
+            sparse_parts[chrom].append(
+                (starts.astype(np.int64, copy=False), values),
             )
 
         if profile is not None:
-            accumulation_seconds += time.perf_counter() - time_accumulate
+            accum_s += time.perf_counter() - time_accum
 
-    dict_converting_merges = ("chrom_array_merge", "vectorized_merge")
-
-    if merge_strategy in dict_converting_merges:
-        time_convert = time.perf_counter()
-
-        for chrom, array in combined_arrays.items():
-            nonzero_indexes = np.flatnonzero(array != 0.0)
-
-            for index in nonzero_indexes:
-                combined_signal[(chrom, int(index) * siz_bin)] = float(
-                    array[index],
-                )
-
-        if profile is not None:
-            array_to_dict_seconds = time.perf_counter() - time_convert
-
-    if merge_strategy in ("array_sparse_merge", "array_sparse_merge_legacy"):
-        time_coalesce = time.perf_counter()
-        combined_signal = coalesce_sparse_signal_parts(
-            sparse_parts,
-            optimize=merge_strategy == "array_sparse_merge",
-            stats=sparse_coalesce_stats,
-        )
-
-        if profile is not None:
-            array_coalesce_seconds = time.perf_counter() - time_coalesce
-
-    if merge_strategy == "array_dense_merge":
-        time_dense = time.perf_counter()
-        combined_signal = (
-            "array_dense_merged",
-            siz_bin,
-            [
-                (
-                    chrom,
-                    combined_arrays[chrom],
-                    array_touched[chrom],
-                )
-                for chrom in sorted(combined_arrays, key=sort_chrom)
-                if np.any(
-                    array_touched[chrom] & (combined_arrays[chrom] != 0.0),
-                )
-            ],
-        )
-
-        if profile is not None:
-            dense_finalize_seconds = time.perf_counter() - time_dense
-
-    if merge_strategy == "event_diff_merge":
-        time_event = time.perf_counter()
-        combined_signal = materialize_event_signal_parts(
-            event_parts,
-            siz_bin,
-        )
-
-        if sparse_parts:
-            _, sparse_merged = coalesce_sparse_signal_parts(sparse_parts)
-            combined_parts: dict[str, list[tuple[np.ndarray, np.ndarray]]] = (
-                defaultdict(list)
-            )
-
-            for chrom, starts, values in combined_signal[1] + sparse_merged:
-                combined_parts[chrom].append((starts, values))
-
-            combined_signal = coalesce_sparse_signal_parts(combined_parts)
-
-        if profile is not None:
-            event_materialize_seconds = time.perf_counter() - time_event
+    time_coal = time.perf_counter()
+    combined_signal = coalesce_parts(
+        sparse_parts,
+        optimize=True,
+        stats=stats_coal,
+    )
 
     if profile is not None:
         phases = profile["phases_s"]
-        phases["merge_result_metadata"] = metadata_seconds
-        phases["merge_accumulate_results"] = accumulation_seconds
-        phases["merge_array_to_dict"] = array_to_dict_seconds
-        phases["merge_array_coalesce"] = array_coalesce_seconds
-        phases["merge_array_dense_finalize"] = dense_finalize_seconds
-        phases["merge_event_materialize"] = event_materialize_seconds
-        profile["sparse_coalesce_stats"] = sparse_coalesce_stats
+        phases["merge_result_metadata"] = meta_s
+        phases["merge_accumulate_results"] = accum_s
+        phases["merge_array_coalesce"] = time.perf_counter() - time_coal
+        profile["stats_coal"] = stats_coal
 
     return (
         combined_signal,
-        fragment_count,
-        bin_count,
+        frg_tot,
+        n_bin,
         payload_bytes,
     )
 
 
-def format_bdg_rows(
-    rows: list[tuple[tuple[str, int], float]],
-    siz_bin: int,
-    decimal_places: int,
-    chrom_sizes: dict[str, int] | None,
-) -> str:
-    """
-    Format a bedGraph row shard with the same row semantics as write_bdg().
-    """
-
-    lines = []
-
-    for (chrom, bin_start), value in rows:
-        bin_end = bin_start + siz_bin
-
-        if chrom_sizes is not None:
-            chrom_size = chrom_sizes.get(chrom)
-            if chrom_size is None:
-                raise ValueError(
-                    f"Missing chromosome size for bedGraph row: {chrom!r}.",
-                )
-
-            if bin_start < 0 or bin_start >= chrom_size:
-                raise ValueError(
-                    "bedGraph bin start is outside chromosome bounds: "
-                    f"{chrom}:{bin_start} (chromosome size {chrom_size}).",
-                )
-
-            bin_end = min(bin_end, chrom_size)
-
-        lines.append(
-            f"{chrom}\t{bin_start}\t{bin_end}\t"
-            f"{format_bdg_value(value, decimal_places)}\n",
-        )
-
-    return "".join(lines)
-
-
-def format_bdg_value(value: float, decimal_places: int) -> str:
+def format_bdg_value(value: float, dp: int) -> str:
     """
     Format one bedGraph value with the same rounding used by write_bdg().
     """
 
-    rounded_value = round(float(value), decimal_places)
+    rounded_value = round(float(value), dp)
 
     if rounded_value == 0.0:
         rounded_value = 0.0
 
-    rendered_value = f"{rounded_value:.{decimal_places}f}"
+    rendered_value = f"{rounded_value:.{dp}f}"
 
     if "." in rendered_value:
         rendered_value = rendered_value.rstrip("0").rstrip(".")
@@ -3429,7 +1655,7 @@ def format_bdg_value(value: float, decimal_places: int) -> str:
     return rendered_value
 
 
-def iter_sorted_bed_array_rows(
+def iter_bed_rows(
     results: Iterable[object],
 ) -> Iterator[tuple[str, int, int, int]]:
     """
@@ -3446,7 +1672,7 @@ def iter_sorted_bed_array_rows(
         Chromosome, start, end, and fragment length in coordinate order.
     """
 
-    by_chrom: dict[str, list[tuple[np.ndarray, np.ndarray, np.ndarray]]] = (
+    rows_chr: dict[str, list[tuple[np.ndarray, np.ndarray, np.ndarray]]] = (
         defaultdict(list)
     )
 
@@ -3456,19 +1682,19 @@ def iter_sorted_bed_array_rows(
 
         for chrom, starts, ends, lengths in result[1]:
             if starts.size:
-                by_chrom[chrom].append((starts, ends, lengths))
+                rows_chr[chrom].append((starts, ends, lengths))
 
-    for chrom in sorted(by_chrom, key=sort_chrom):
-        starts = np.concatenate([part[0] for part in by_chrom[chrom]])
-        ends = np.concatenate([part[1] for part in by_chrom[chrom]])
-        lengths = np.concatenate([part[2] for part in by_chrom[chrom]])
+    for chrom in sorted(rows_chr, key=sort_chrom):
+        starts = np.concatenate([part[0] for part in rows_chr[chrom]])
+        ends = np.concatenate([part[1] for part in rows_chr[chrom]])
+        lengths = np.concatenate([part[2] for part in rows_chr[chrom]])
         order = np.lexsort((lengths, ends, starts))
 
         for idx in order:
             yield (chrom, int(starts[idx]), int(ends[idx]), int(lengths[idx]))
 
 
-def write_bed_array_results(
+def write_bed_results(
     results: Iterable[object],
     fil_out: str,
 ) -> int:
@@ -3479,15 +1705,15 @@ def write_bed_array_results(
     row_count = 0
 
     with open_out(fil_out) as bed_file:
-        for chrom, start, end, length in iter_sorted_bed_array_rows(results):
+        for chrom, start, end, length in iter_bed_rows(results):
             bed_file.write(f"{chrom}\t{start}\t{end}\t{length}\n")
             row_count += 1
 
     return row_count
 
 
-def write_bed_fragment_dict(
-    fragment_records: dict[str, list[tuple[int, int, int]]],
+def write_bed_frg(
+    frg_tup: dict[str, list[tuple[int, int, int]]],
     fil_out: str,
 ) -> int:
     """
@@ -3497,9 +1723,9 @@ def write_bed_fragment_dict(
     row_count = 0
 
     with open_out(fil_out) as bed_file:
-        for chrom in sorted(fragment_records.keys(), key=sort_chrom):
+        for chrom in sorted(frg_tup.keys(), key=sort_chrom):
             for start, end, length in sorted(
-                fragment_records[chrom],
+                frg_tup[chrom],
                 key=lambda t: t[0],
             ):
                 bed_file.write(f"{chrom}\t{start}\t{end}\t{length}\n")
@@ -3508,12 +1734,12 @@ def write_bed_fragment_dict(
     return row_count
 
 
-def format_bdg_array_rows(
+def format_bdg_rows(
     chrom: str,
     starts: np.ndarray,
     values: np.ndarray,
     siz_bin: int,
-    decimal_places: int,
+    dp: int,
     chrom_size: int | None,
 ) -> str:
     """
@@ -3537,7 +1763,7 @@ def format_bdg_array_rows(
 
         lines.append(
             f"{chrom}\t{bin_start}\t{bin_end}\t"
-            f"{format_bdg_value(float(value), decimal_places)}\n",
+            f"{format_bdg_value(float(value), dp)}\n",
         )
 
     return "".join(lines)
@@ -3545,163 +1771,75 @@ def format_bdg_array_rows(
 
 def format_bdg_rows_task(data: tuple[object, ...]) -> str:
     """
-    ProcessPool-friendly wrapper for formatting one bedGraph shard.
+    ProcessPool-friendly wrapper for sparse-array bedGraph formatting.
     """
 
     return format_bdg_rows(*data)
 
 
-def format_bdg_array_rows_task(data: tuple[object, ...]) -> str:
-    """
-    ProcessPool-friendly wrapper for sparse-array bedGraph formatting.
-    """
-
-    return format_bdg_array_rows(*data)
-
-
-def iter_array_signal_chunks(
-    signal_bins: Any,
-    target_chunks: int,
+def iter_sig_chunks(
+    sig_bin: Any,
+    n_chunks: int,
 ) -> Iterator[tuple[str, np.ndarray, np.ndarray]]:
     """
-    Yield ordered array-backed signal chunks for parallel formatting.
+    Yield ordered sparse signal chunks for parallel formatting.
 
     Parameters
     ----------
-    signal_bins : Any
-        Supported array-backed signal representation.
-    target_chunks : int
+    sig_bin : Any
+        Merged sparse signal container.
+    n_chunks : int
         Approximate number of ordered output chunks.
 
     Yields
     ------
     chunk : tuple[str, np.ndarray, np.ndarray]
-        Chromosome with matching bin-index and value arrays.
+        Chromosome with matching bin-start and value arrays.
     """
 
-    total_rows = max(signal_row_count(signal_bins), 1)
-    chunk_size = max(1, math.ceil(total_rows / max(target_chunks, 1)))
+    total_rows = max(n_sig_rows(sig_bin), 1)
+    chunk_size = max(1, math.ceil(total_rows / max(n_chunks, 1)))
 
-    if is_array_sparse_signal(signal_bins):
-        for chrom, starts, values in signal_bins[1]:
-            for i in range(0, starts.size, chunk_size):
-                yield (
-                    chrom,
-                    starts[i : i + chunk_size],
-                    values[i : i + chunk_size],
-                )
-    elif is_array_dense_signal(signal_bins):
-        dense_siz_bin = signal_bins[1]
-
-        for chrom, values, touched in signal_bins[2]:
-            idx = np.flatnonzero(touched & (values != 0.0))
-            starts = (idx * dense_siz_bin).astype(np.int64, copy=False)
-
-            for i in range(0, idx.size, chunk_size):
-                chunk_starts = starts[i : i + chunk_size]
-                chunk_values = values[idx[i : i + chunk_size]]
-
-                yield (chrom, chunk_starts, chunk_values)
-
-
-def digest_bdg_rows(
-    coverage: Any,
-    siz_bin: int,
-    decimal_places: int,
-    chrom_sizes: dict[str, int] | None,
-) -> tuple[int, str]:
-    """
-    Return row count and SHA-256 for deterministic bedGraph-formatted rows.
-
-    Parameters
-    ----------
-    coverage : Any
-        Supported signal representation.
-    siz_bin : int
-        Signal-bin width.
-    decimal_places : int
-        Decimal precision for rendered values.
-    chrom_sizes : dict[str, int] | None
-        Optional chromosome sizes used to clip final intervals.
-
-    Returns
-    -------
-    row_count, digest : tuple[int, str]
-        Rendered row count and hexadecimal SHA-256 digest.
-    """
-
-    if is_array_signal(coverage):
-        digest = hashlib.sha256()
-        row_count = 0
-
-        for chrom, starts, values in iter_array_signal_chunks(coverage, 1):
-            text = format_bdg_array_rows(
+    for chrom, starts, values in sig_bin[1]:
+        for i in range(0, starts.size, chunk_size):
+            yield (
                 chrom,
-                starts,
-                values,
-                siz_bin,
-                decimal_places,
-                chrom_sizes.get(chrom) if chrom_sizes is not None else None,
+                starts[i : i + chunk_size],
+                values[i : i + chunk_size],
             )
-            row_count += text.count("\n")
-            digest.update(text.encode("utf-8"))
-
-        return row_count, digest.hexdigest()
-
-    digest = hashlib.sha256()
-    row_count = 0
-    items = sorted(
-        coverage.items(),
-        key=lambda item: key_bin(item[0][0], item[0][1]),
-    )
-    chunk_size = 100000
-
-    for index in range(0, len(items), chunk_size):
-        text = format_bdg_rows(
-            items[index : index + chunk_size],
-            siz_bin,
-            decimal_places,
-            chrom_sizes,
-        )
-        row_count += text.count("\n")
-        digest.update(text.encode("utf-8"))
-
-    return row_count, digest.hexdigest()
 
 
-def write_bdg_array_sparse(
-    signal_bins: Any,
+def write_bdg_sparse(
+    sig_bin: Any,
     fil_out: str,
     siz_bin: int,
-    decimal_places: int,
-    chrom_sizes: dict[str, int] | None,
+    dp: int,
+    siz_chr: dict[str, int] | None,
 ) -> None:
     """
     Write a sparse-array signal directly to bedGraph.
     """
 
     with open_out(fil_out) as handle:
-        for chrom, starts, values in iter_array_signal_chunks(signal_bins, 1):
+        for chrom, starts, values in iter_sig_chunks(sig_bin, 1):
             handle.write(
-                format_bdg_array_rows(
+                format_bdg_rows(
                     chrom,
                     starts,
                     values,
                     siz_bin,
-                    decimal_places,
-                    chrom_sizes.get(chrom)
-                    if chrom_sizes is not None
-                    else None,
+                    dp,
+                    siz_chr.get(chrom) if siz_chr is not None else None,
                 ),
             )
 
 
-def write_bdg_parallel_ordered(
-    coverage: Any,
+def write_bdg_par(
+    sig_bin: Any,
     fil_out: str,
     siz_bin: int,
-    decimal_places: int,
-    chrom_sizes: dict[str, int] | None,
+    dp: int,
+    siz_chr: dict[str, int] | None,
     workers: int,
 ) -> None:
     """
@@ -3709,15 +1847,15 @@ def write_bdg_parallel_ordered(
 
     Parameters
     ----------
-    coverage : Any
-        Supported signal representation.
+    sig_bin : Any
+        Merged sparse signal container.
     fil_out : str
         Output bedGraph path.
     siz_bin : int
         Signal-bin width.
-    decimal_places : int
+    dp : int
         Decimal precision for rendered values.
-    chrom_sizes : dict[str, int] | None
+    siz_chr : dict[str, int] | None
         Optional chromosome sizes used to clip final intervals.
     workers : int
         Number of formatting worker processes.
@@ -3727,86 +1865,34 @@ def write_bdg_parallel_ordered(
         workers,
         "ge",
         1,
-        "prototype_writer_workers",
+        "wrk_writer",
         allow_none=False,
     )
 
-    if is_array_signal(coverage):
-        if workers == 1:
-            write_bdg_array_sparse(
-                coverage,
-                fil_out,
-                siz_bin,
-                decimal_places,
-                chrom_sizes,
-            )
-
-            return
-
-        task_data = [
-            (
-                chrom,
-                starts,
-                values,
-                siz_bin,
-                decimal_places,
-                chrom_sizes.get(chrom) if chrom_sizes is not None else None,
-            )
-            for chrom, starts, values in iter_array_signal_chunks(
-                coverage,
-                workers,
-            )
-        ]
-
-        try:
-            with ProcessPoolExecutor(
-                max_workers=min(workers, os.cpu_count() or 1),
-            ) as ex:
-                formatted = list(ex.map(format_bdg_array_rows_task, task_data))
-        except OSError:
-            write_bdg_array_sparse(
-                coverage,
-                fil_out,
-                siz_bin,
-                decimal_places,
-                chrom_sizes,
-            )
-
-            return
-
-        with open_out(fil_out) as handle:
-            for shard in formatted:
-                handle.write(shard)
-
-        return
-
     if workers == 1:
-        write_bdg(
-            coverage,
+        write_bdg_sparse(
+            sig_bin,
             fil_out,
             siz_bin,
-            decimal_places,
-            chrom_sizes=chrom_sizes,
+            dp,
+            siz_chr,
         )
 
         return
 
-    items = sorted(
-        coverage.items(),
-        key=lambda item: key_bin(item[0][0], item[0][1]),
-    )
-
-    if not items:
-        with open_out(fil_out):
-            return
-
-    chunk_size = math.ceil(len(items) / workers)
-    chunks = [
-        items[index : index + chunk_size]
-        for index in range(0, len(items), chunk_size)
-    ]
     task_data = [
-        (chunk, siz_bin, decimal_places, chrom_sizes) for chunk in chunks
+        (
+            chrom,
+            starts,
+            values,
+            siz_bin,
+            dp,
+            siz_chr.get(chrom) if siz_chr is not None else None,
+        )
+        for chrom, starts, values in iter_sig_chunks(
+            sig_bin,
+            workers,
+        )
     ]
 
     try:
@@ -3815,12 +1901,12 @@ def write_bdg_parallel_ordered(
         ) as ex:
             formatted = list(ex.map(format_bdg_rows_task, task_data))
     except OSError:
-        write_bdg(
-            coverage,
+        write_bdg_sparse(
+            sig_bin,
             fil_out,
             siz_bin,
-            decimal_places,
-            chrom_sizes=chrom_sizes,
+            dp,
+            siz_chr,
         )
 
         return
@@ -3866,7 +1952,13 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
             "implementation of siQ-ChIP "
             "(https://github.com/BradleyDickson/siQ-ChIP) or one updated for "
             "use with S. cerevisiae data "
-            "(https://github.com/kalavattam/siQ-ChIP/tree/protocol)."
+            "(https://github.com/kalavattam/siQ-ChIP/tree/protocol).\n"
+            "\n"
+            "The fragment count 'N' and the library size 'L' can be written "
+            "alongside either output or on their own: when '--fil_out' is "
+            "omitted, the run counts and writes only the requested reports. "
+            "Both are inputs to 'compute_pseudo', where 'k = L / N' puts the "
+            "pseudocount in bins, the unit per-bin coverage is added in."
         ),
     )
     add_help_cap(parser)
@@ -3899,8 +1991,13 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         "-fi",
         "--fil_in",
         dest="fil_in",
-        required=True,
+        default=None,
         help="Input file path for the BAM or CRAM file.\n\n",
+    )
+    parser.add_argument(
+        "--fil-in",
+        dest="fil_in",
+        help=argparse.SUPPRESS,
     )
     parser.add_argument(
         "-rf",
@@ -3914,10 +2011,14 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         ),
     )
     parser.add_argument(
+        "--ref-fa",
+        dest="ref_fa",
+        help=argparse.SUPPRESS,
+    )
+    parser.add_argument(
         "-cs",
-        "--chr_sizes",
-        "--chrom_sizes",
-        dest="chr_sizes",
+        "--chr_siz",
+        dest="chr_siz",
         default=None,
         help=(
             "Chromosome sizes file in UCSC-style TSV format with chromosome "
@@ -3928,21 +2029,37 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         ),
     )
     parser.add_argument(
+        "--chr-siz",
+        dest="chr_siz",
+        help=argparse.SUPPRESS,
+    )
+    parser.add_argument(
         "-fo",
         "--fil_out",
         dest="fil_out",
-        required=True,
+        required=False,
+        default=None,
         help=(
-            "Output file path. Supported output types are bedGraph "
-            "('bedGraph', 'bedgraph', 'bdg', 'bg') and BED ('bed').\n"
+            "Output file path. Required unless '--report_N' or '--report_L' "
+            "is given, in which case it may be omitted to count without "
+            "writing a track.\n"
+            "\n"
+            "Supported output types are bedGraph ('bedGraph', 'bedgraph', "
+            "'bdg', 'bg') and BED ('bed').\n"
             "\n"
             "Append '.gz' for gzip compression, e.g., 'output.bdg.gz'.\n"
             "\n"
             "Note: requesting BED output causes the script to write processed "
-            "fragment coordinates in a BED-like format, and '--siz_bin', "
-            "'--method', '--scl_fct', and '--dp' are ignored.\n"
+            "fragment coordinates in a BED-like format, and '--method', "
+            "'--scl_fct', and '--dp' are ignored. '--siz_bin' is ignored too, "
+            "unless '--report_L' is given, since 'L' counts bins.\n"
             "\n"
         ),
+    )
+    parser.add_argument(
+        "--fil-out",
+        dest="fil_out",
+        help=argparse.SUPPRESS,
     )
 
     parser.add_argument(
@@ -3981,6 +2098,12 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         ),
     )
     parser.add_argument(
+        "--siz-bin",
+        dest="siz_bin",
+        type=int,
+        help=argparse.SUPPRESS,
+    )
+    parser.add_argument(
         "-eg",
         "--engine",
         dest="engine",
@@ -3996,34 +2119,29 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         ),
     )
     parser.add_argument(
-        "-ck",
-        "--chunk_size",
-        dest="chunk_size",
+        "-sw",
+        "--siz_win",
+        dest="siz_win",
         type=int,
         default=100000,
         help=(
-            "Number of records to process per chunk, retained for "
-            "compatibility with older workflows (default: %(default)s). "
-            "Ignored by public engines.\n"
+            "Window size in base pairs for the 'window' engine's indexed "
+            "fetch tasks (default: %(default)s). Ignored by the 'chrom' "
+            "engine.\n"
+            "\n"
+            "Each chromosome is split into windows of this size, and one "
+            "worker task fetches and bins each window. Smaller windows give "
+            "finer load balance across threads at the cost of more fetch "
+            "overhead.\n"
             "\n"
         ),
     )
     parser.add_argument(
-        "--chunk-size",
-        dest="chunk_size",
+        "--siz-win",
+        dest="siz_win",
         type=int,
-        default=argparse.SUPPRESS,
         help=argparse.SUPPRESS,
     )
-    parser.add_argument(
-        "--chnk_size",
-        "--chnk-size",
-        dest="chunk_size",
-        type=int,
-        default=argparse.SUPPRESS,
-        help=argparse.SUPPRESS,
-    )
-
     parser.add_argument(
         "-sf",
         "--scl_fct",
@@ -4035,9 +2153,15 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         ),
     )
     parser.add_argument(
+        "--scl-fct",
+        dest="scl_fct",
+        type=float,
+        help=argparse.SUPPRESS,
+    )
+    parser.add_argument(
         "-uf",
         "--usr_frg",
-        dest="user_fragment_length",
+        dest="usr_frg",
         type=int,
         default=None,
         help=(
@@ -4046,6 +2170,61 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
             "%(default)s).\n"
             "\n"
         ),
+    )
+    parser.add_argument(
+        "--usr-frg",
+        dest="usr_frg",
+        type=int,
+        help=argparse.SUPPRESS,
+    )
+    parser.add_argument(
+        "-rN",
+        "--report_N",
+        dest="report_N",
+        default=None,
+        help=(
+            "Write the fragment count 'N' to this file as a single integer on "
+            "one line (default: %(default)s).\n"
+            "\n"
+            "The count covers the fragments the signal path uses, taken from "
+            "the same iterator under the same '--usr_frg' and filter "
+            "settings, so 'N' is identical for every '--method' as well as in "
+            '"report-only mode".\n'
+            "\n"
+            "For '--method norm', 'N' is the denominator the signal is "
+            "divided by, and a '--method frag' track's value column sums to "
+            "'N'. Other tracks do not, and 'N' is counted from the fragments "
+            "rather than summed off any track.\n"
+            "\n"
+        ),
+    )
+    parser.add_argument(
+        "--report-N",
+        dest="report_N",
+        help=argparse.SUPPRESS,
+    )
+    parser.add_argument(
+        "-rL",
+        "--report_L",
+        dest="report_L",
+        default=None,
+        help=(
+            "Write the library size 'L' to this file as a single integer on "
+            "one line (default: %(default)s).\n"
+            "\n"
+            "Depends on '--siz_bin' and '--usr_frg', which set how finely "
+            "each fragment is divided and how far it reaches.\n"
+            "\n"
+            "The library size 'L' is the total number of bins spanned by the "
+            "same fragments counted by 'N' (see above), counting a fragment "
+            "once per bin it touches.\n"
+            "\n"
+        ),
+    )
+    parser.add_argument(
+        "--report-L",
+        dest="report_L",
+        help=argparse.SUPPRESS,
     )
     parser.add_argument(
         "-dp",
@@ -4064,80 +2243,45 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument(
         "-pj",
         "--profile_json",
+        "--profile-json",
         dest="profile_json",
         default=None,
         help=argparse.SUPPRESS,
     )
     parser.add_argument(
-        "-em",
-        "--executor_mode",
-        dest="executor_mode",
-        choices=EXECUTOR_MODE_CHOICES,
+        "-mx",
+        "--mode_exec",
+        "--mode-exec",
+        dest="mode_exec",
+        choices=MODE_EXEC_CHOICES,
         default="map",
         help=argparse.SUPPRESS,
     )
     parser.add_argument(
-        "-pps",
-        "--prototype_parse_strategy",
-        dest="prototype_parse_strategy",
-        choices=PROTOTYPE_PARSE_STRATEGY_CHOICES,
-        default=None,
-        help=argparse.SUPPRESS,
-    )
-    parser.add_argument(
-        "-pbs",
-        "--prototype_bed_strategy",
-        dest="prototype_bed_strategy",
-        choices=PROTOTYPE_BED_STRATEGY_CHOICES,
+        "-bs",
+        "--strat_bed",
+        "--strat-bed",
+        dest="strat_bed",
+        choices=STRAT_BED_CHOICES,
         default="auto",
         help=argparse.SUPPRESS,
     )
     parser.add_argument(
         "-ws",
-        "--indexed_window_size",
-        dest="indexed_window_size",
-        type=int,
-        default=100000,
-        help=argparse.SUPPRESS,
-    )
-    parser.add_argument(
-        "-prf",
-        "--prototype_result_format",
-        dest="prototype_result_format",
-        choices=PROTOTYPE_RESULT_FORMAT_CHOICES,
+        "--strat_writer",
+        "--strat-writer",
+        dest="strat_writer",
+        choices=STRAT_WRITER_CHOICES,
         default=None,
         help=argparse.SUPPRESS,
     )
     parser.add_argument(
-        "-pms",
-        "--prototype_merge_strategy",
-        dest="prototype_merge_strategy",
-        choices=PROTOTYPE_MERGE_STRATEGY_CHOICES,
-        default=None,
-        help=argparse.SUPPRESS,
-    )
-    parser.add_argument(
-        "-pws",
-        "--prototype_writer_strategy",
-        dest="prototype_writer_strategy",
-        choices=PROTOTYPE_WRITER_STRATEGY_CHOICES,
-        default=None,
-        help=argparse.SUPPRESS,
-    )
-    parser.add_argument(
-        "-pww",
-        "--prototype_writer_workers",
-        dest="prototype_writer_workers",
+        "-ww",
+        "--wrk_writer",
+        "--wrk-writer",
+        dest="wrk_writer",
         type=int,
         default=None,
-        help=argparse.SUPPRESS,
-    )
-    parser.add_argument(
-        "-pwm",
-        "--prototype_write_mode",
-        dest="prototype_write_mode",
-        choices=PROTOTYPE_WRITE_MODE_CHOICES,
-        default="full",
         help=argparse.SUPPRESS,
     )
 
@@ -4150,13 +2294,13 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     return parser.parse_args(argv_parse)
 
 
-def _write_bed_output(
+def _write_bed(
     args: argparse.Namespace,
     fil_out: str,
-    header_sizes: dict[str, int],
-    chrom_sizes: dict[str, int],
+    siz_chr_hdr: dict[str, int],
+    siz_chr: dict[str, int],
     profile: dict | None,
-    time_total_start: float,
+    time_tot: float,
 ) -> int:
     """
     Compute and write fragment-coordinate BED output.
@@ -4167,13 +2311,13 @@ def _write_bed_output(
         Validated command-line arguments.
     fil_out : str
         Writable BED output path.
-    header_sizes : dict[str, int]
+    siz_chr_hdr : dict[str, int]
         Alignment-header chromosome lengths in source order.
-    chrom_sizes : dict[str, int]
+    siz_chr : dict[str, int]
         Resolved chromosome lengths selected for output.
     profile : dict | None
         Optional mutable execution profile.
-    time_total_start : float
+    time_tot : float
         Monotonic start time for total-duration reporting.
 
     Returns
@@ -4187,39 +2331,39 @@ def _write_bed_output(
         If an explicitly requested indexed strategy cannot read the alignment.
     """
 
-    bed_strategy = args.prototype_bed_strategy
+    strat_bed = args.strat_bed
 
-    if bed_strategy == "auto":
-        if args.threads > 1 and has_indexed_alignment(
+    if strat_bed == "auto":
+        if args.threads > 1 and has_idx_aln(
             args.fil_in,
             args.ref_fa,
         ):
-            bed_strategy = "indexed_chrom"
+            strat_bed = "idx_chrom"
         else:
-            bed_strategy = "serial"
+            strat_bed = "serial"
 
     if profile is not None:
-        profile["prototype_bed_strategy_resolved"] = bed_strategy
+        profile["strat_bed_resolved"] = strat_bed
 
-    if bed_strategy == "serial":
+    if strat_bed == "serial":
         time_phase = time.perf_counter()
         fragments = parse_bam(
             args.fil_in,
-            args.user_fragment_length,
+            args.usr_frg,
             args.ref_fa,
-            chrom_sizes=chrom_sizes,
+            siz_chr=siz_chr,
         )
         record_phase(profile, "parse_bed_fragments", time_phase)
 
         time_phase = time.perf_counter()
-        row_count = write_bed_fragment_dict(fragments, fil_out)
+        row_count = write_bed_frg(fragments, fil_out)
         record_phase(profile, "write_bed", time_phase)
 
         if profile is not None:
-            profile["output_row_count"] = row_count
+            profile["n_rows_out"] = row_count
     else:
         time_phase = time.perf_counter()
-        check_indexed_alignment(args.fil_in, args.ref_fa, bed_strategy)
+        check_idx_aln(args.fil_in, args.ref_fa)
         record_phase(
             profile,
             "validate_indexed_bed_alignment",
@@ -4227,42 +2371,40 @@ def _write_bed_output(
         )
 
         time_phase = time.perf_counter()
-        chrom_task_names = [
-            chrom for chrom in header_sizes if chrom in chrom_sizes
-        ]
+        task_chr = [chrom for chrom in siz_chr_hdr if chrom in siz_chr]
 
-        if bed_strategy == "indexed_chrom":
+        if strat_bed == "idx_chrom":
             tasks = [
                 (
                     args.fil_in,
                     chrom,
-                    chrom_sizes,
-                    args.user_fragment_length,
+                    siz_chr,
+                    args.usr_frg,
                     args.ref_fa,
                     None,
                     None,
                 )
-                for chrom in chrom_task_names
+                for chrom in task_chr
             ]
         else:
             tasks = [
                 (
                     args.fil_in,
                     chrom,
-                    chrom_sizes,
-                    args.user_fragment_length,
+                    siz_chr,
+                    args.usr_frg,
                     args.ref_fa,
                     start,
                     min(
-                        start + args.indexed_window_size,
-                        chrom_sizes[chrom],
+                        start + args.siz_win,
+                        siz_chr[chrom],
                     ),
                 )
-                for chrom in chrom_task_names
+                for chrom in task_chr
                 for start in range(
                     0,
-                    chrom_sizes[chrom],
-                    args.indexed_window_size,
+                    siz_chr[chrom],
+                    args.siz_win,
                 )
             ]
 
@@ -4271,11 +2413,11 @@ def _write_bed_output(
                 {
                     "task_id": task_id,
                     "kind": "indexed_bed",
-                    "bed_strategy": bed_strategy,
+                    "strat_bed": strat_bed,
                     "chrom": task[1],
                     "start": task[5],
                     "end": task[6],
-                    "chrom_size": int(chrom_sizes[task[1]]),
+                    "chrom_size": int(siz_chr[task[1]]),
                 }
                 for task_id, task in enumerate(tasks)
             ]
@@ -4288,37 +2430,35 @@ def _write_bed_output(
             results = list(
                 iter_task_results(
                     "indexed_bed",
-                    collect_bed_indexed_task,
+                    collect_bed_idx_task,
                     tasks,
                     args.threads,
-                    args.executor_mode,
+                    args.mode_exec,
                     profile["tasks"] if profile is not None else None,
                 ),
             )
         except OSError:
-            if args.prototype_bed_strategy != "auto":
+            if args.strat_bed != "auto":
                 raise
 
             if profile is not None:
-                profile["prototype_bed_strategy_resolved"] = "serial_fallback"
+                profile["strat_bed_resolved"] = "serial_fallback"
 
             fragments = parse_bam(
                 args.fil_in,
-                args.user_fragment_length,
+                args.usr_frg,
                 args.ref_fa,
-                chrom_sizes=chrom_sizes,
+                siz_chr=siz_chr,
             )
             record_phase(profile, "parse_bed_fragments", time_phase)
 
             time_phase = time.perf_counter()
-            row_count = write_bed_fragment_dict(fragments, fil_out)
+            row_count = write_bed_frg(fragments, fil_out)
             record_phase(profile, "write_bed", time_phase)
 
             if profile is not None:
-                profile["output_row_count"] = row_count
-                profile["phases_s"]["total"] = (
-                    time.perf_counter() - time_total_start
-                )
+                profile["n_rows_out"] = row_count
+                profile["phases_s"]["total"] = time.perf_counter() - time_tot
                 write_profile(args.profile_json, profile)
 
             return 0
@@ -4328,15 +2468,15 @@ def _write_bed_output(
             "receive_indexed_bed_results",
             time_phase,
         )
-        summarize_task_profiles(profile)
+        summarize_profiles(profile)
 
         if profile is not None:
             profile["result_payload_bytes"] = sum(
-                estimate_bed_payload_bytes(result) for result in results
+                est_bed_bytes(result) for result in results
             )
 
         time_phase = time.perf_counter()
-        row_count = write_bed_array_results(results, fil_out)
+        row_count = write_bed_results(results, fil_out)
         record_phase(
             profile,
             "merge_sort_write_indexed_bed",
@@ -4344,127 +2484,98 @@ def _write_bed_output(
         )
 
         if profile is not None:
-            profile["output_row_count"] = row_count
+            profile["n_rows_out"] = row_count
 
     if profile is not None:
-        profile["phases_s"]["total"] = time.perf_counter() - time_total_start
+        profile["phases_s"]["total"] = time.perf_counter() - time_tot
         write_profile(args.profile_json, profile)
 
     return 0
 
 
-def _write_bedgraph_output(
+def _write_bdg(
     args: argparse.Namespace,
-    signal_data: Any,
+    sig_bin: Any,
     fil_out: str,
-    chrom_sizes: dict[str, int],
+    siz_chr: dict[str, int],
     profile: dict | None,
-    time_total_start: float,
+    time_tot: float,
 ) -> int:
     """
-    Write, digest, or profile the merged bedGraph signal.
+    Write the merged bedGraph signal.
 
     Parameters
     ----------
     args : argparse.Namespace
         Validated command-line arguments and output strategy.
-    signal_data : Any
-        Merged sparse, dense, or dictionary signal representation.
+    sig_bin : Any
+        Merged sparse signal container.
     fil_out : str
         Writable bedGraph output path.
-    chrom_sizes : dict[str, int]
+    siz_chr : dict[str, int]
         Resolved chromosome lengths keyed by chromosome.
     profile : dict | None
         Optional mutable execution profile.
-    time_total_start : float
+    time_tot : float
         Monotonic start time for total-duration reporting.
 
     Returns
     -------
     status : int
-        Zero after output, digest, or profile-only handling succeeds.
+        Zero after bedGraph output succeeds.
     """
 
     time_phase = time.perf_counter()
 
-    if args.prototype_write_mode == "profile_only":
-        if profile is not None:
-            profile["output_written"] = False
-            profile["output_digest_mode"] = False
-            profile["output_row_count"] = signal_row_count(signal_data)
-            profile["output_sha256"] = None
-    elif args.prototype_write_mode == "digest":
-        row_count, output_sha256 = digest_bdg_rows(
-            signal_data,
-            args.siz_bin,
-            args.dp,
-            chrom_sizes,
-        )
-
-        if profile is not None:
-            profile["output_written"] = False
-            profile["output_digest_mode"] = True
-            profile["output_row_count"] = row_count
-            profile["output_sha256"] = output_sha256
-    elif args.prototype_writer_strategy == "parallel_ordered":
-        write_bdg_parallel_ordered(
-            signal_data,
+    if args.strat_writer == "parallel_ordered":
+        write_bdg_par(
+            sig_bin,
             fil_out,
             args.siz_bin,
             args.dp,
-            chrom_sizes,
-            args.prototype_writer_workers,
-        )
-    elif is_array_signal(signal_data):
-        write_bdg_array_sparse(
-            signal_data,
-            fil_out,
-            args.siz_bin,
-            args.dp,
-            chrom_sizes,
+            siz_chr,
+            args.wrk_writer,
         )
     else:
-        write_bdg(
-            signal_data,
+        write_bdg_sparse(
+            sig_bin,
             fil_out,
             args.siz_bin,
             args.dp,
-            chrom_sizes=chrom_sizes,
+            siz_chr,
         )
 
-    if profile is not None and args.prototype_write_mode == "full":
+    if profile is not None:
         profile["output_written"] = True
-        profile["output_digest_mode"] = False
-        profile["output_row_count"] = signal_row_count(signal_data)
-        profile["output_sha256"] = None
+        profile["n_rows_out"] = n_sig_rows(sig_bin)
 
     record_phase(profile, "write_bedgraph", time_phase)
 
     if profile is not None:
-        profile["phases_s"]["total"] = time.perf_counter() - time_total_start
+        profile["phases_s"]["total"] = time.perf_counter() - time_tot
         write_profile(args.profile_json, profile)
 
     return 0
 
 
-def _public_signal_results(
+def _sig_results(
     args: argparse.Namespace,
-    header_sizes: dict[str, int],
-    chrom_sizes: dict[str, int],
+    siz_chr_hdr: dict[str, int],
+    siz_chr: dict[str, int],
     is_len: bool,
     is_norm: bool,
     profile: dict | None,
-) -> tuple[Iterable[Any], bool, int]:
+) -> Iterable[Any]:
     """
-    Build serial or indexed tasks for a public signal engine.
+    Build indexed worker tasks for a public signal engine.
 
     Parameters
     ----------
     args : argparse.Namespace
         Validated command-line arguments and public engine selection.
-    header_sizes : dict[str, int]
+    siz_chr_hdr : dict[str, int]
         Alignment-header chromosome lengths in source order.
-    chrom_sizes : dict[str, int]
+    siz_chr : dict[str, int]
         Resolved chromosome lengths selected for signal computation.
     is_len : bool
         Whether signal weights use fragment length.
@@ -4475,130 +2586,61 @@ def _public_signal_results(
 
     Returns
     -------
-    results, is_prototype, fragment_count : tuple[Iterable[Any], bool, int]
-        Worker results, prototype-strategy status, and known fragment total.
+    results : Iterable[Any]
+        Ordered worker pairs of a tagged sparse signal result and the fragment
+        count that task accepted.
 
     Raises
     ------
     ValueError
-        If normalization is requested for an empty alignment.
+        If the alignment lacks the index the engines require.
     """
 
-    strategy = PUBLIC_ENGINE_STRATEGY[args.engine]
-    is_prototype_strategy = strategy != "serial"
-
-    if strategy == "serial":
-        time_phase = time.perf_counter()
-        fragment_arrays, fragment_total = collect_fragment_arrays(
-            args.fil_in,
-            chrom_sizes=chrom_sizes,
-            user_fragment_length=args.user_fragment_length,
-            ref_fa=args.ref_fa,
-        )
-        record_phase(profile, "parse_fragment_arrays", time_phase)
-
-        if is_norm and fragment_total == 0:
-            raise ValueError(
-                (
-                    "Normalization requires non-zero total fragments. Check "
-                    "the BAM or CRAM file."
-                ),
-            )
-
-        time_phase = time.perf_counter()
-        tasks = [
-            (
-                chrom,
-                arrays[0],
-                arrays[1],
-                arrays[2],
-                chrom_sizes[chrom],
-                fragment_total,
-                args.siz_bin,
-                is_len,
-                is_norm,
-                args.scl_fct,
-            )
-            for chrom, arrays in fragment_arrays.items()
-        ]
-
-        if profile is not None:
-            profile["fragments_total"] = fragment_total
-            profile["tasks"] = [
-                {
-                    "task_id": task_id,
-                    "kind": "chrom",
-                    "chrom": task[0],
-                    "fragments": int(task[1].size),
-                    "chrom_size": int(task[4]),
-                    "n_bins": math.ceil(task[4] / args.siz_bin),
-                    "payload_bytes": int(
-                        task[1].nbytes + task[2].nbytes + task[3].nbytes,
-                    ),
-                }
-                for task_id, task in enumerate(tasks)
-            ]
-            profile["n_tasks"] = len(tasks)
-
-        record_phase(profile, "build_tasks", time_phase)
-        results = iter_task_results(
-            "chrom",
-            calc_sig_array_task,
-            tasks,
-            args.threads,
-            args.executor_mode,
-            profile["tasks"] if profile is not None else None,
-        )
-
-        return results, is_prototype_strategy, fragment_total
+    strategy = ENGINE_STRAT[args.engine]
 
     time_phase = time.perf_counter()
-    check_indexed_alignment(args.fil_in, args.ref_fa, strategy)
+    check_idx_aln(args.fil_in, args.ref_fa)
     record_phase(profile, "validate_indexed_alignment", time_phase)
 
     time_phase = time.perf_counter()
-    chrom_task_names = [
-        chrom for chrom in header_sizes if chrom in chrom_sizes
-    ]
+    task_chr = [chrom for chrom in siz_chr_hdr if chrom in siz_chr]
 
-    if strategy == "indexed_chrom":
+    if strategy == "idx_chrom":
         tasks = [
             (
                 args.fil_in,
                 chrom,
-                chrom_sizes,
-                args.user_fragment_length,
+                siz_chr,
+                args.usr_frg,
                 args.ref_fa,
                 None,
                 None,
                 args.siz_bin,
                 is_len or is_norm,
-                args.prototype_result_format,
             )
-            for chrom in chrom_task_names
+            for chrom in task_chr
         ]
     else:
         tasks = [
             (
                 args.fil_in,
                 chrom,
-                chrom_sizes,
-                args.user_fragment_length,
+                siz_chr,
+                args.usr_frg,
                 args.ref_fa,
                 start,
                 min(
-                    start + args.indexed_window_size,
-                    chrom_sizes[chrom],
+                    start + args.siz_win,
+                    siz_chr[chrom],
                 ),
                 args.siz_bin,
                 is_len or is_norm,
-                args.prototype_result_format,
             )
-            for chrom in chrom_task_names
+            for chrom in task_chr
             for start in range(
                 0,
-                chrom_sizes[chrom],
-                args.indexed_window_size,
+                siz_chr[chrom],
+                args.siz_win,
             )
         ]
 
@@ -4611,146 +2653,23 @@ def _public_signal_results(
                 "chrom": task[1],
                 "start": task[5],
                 "end": task[6],
-                "chrom_size": int(chrom_sizes[task[1]]),
-                "n_bins": math.ceil(chrom_sizes[task[1]] / args.siz_bin),
+                "chrom_size": int(siz_chr[task[1]]),
+                "n_bins": math.ceil(siz_chr[task[1]] / args.siz_bin),
             }
             for task_id, task in enumerate(tasks)
         ]
         profile["n_tasks"] = len(tasks)
 
     record_phase(profile, "build_tasks", time_phase)
-    results = iter_task_results(
+
+    return iter_task_results(
         strategy,
-        calc_sig_indexed_fetch_task,
+        calc_sig_idx_fetch_task,
         tasks,
         args.threads,
-        args.executor_mode,
+        args.mode_exec,
         profile["tasks"] if profile is not None else None,
     )
-
-    return results, is_prototype_strategy, 0
-
-
-def _chunk_signal_results(
-    args: argparse.Namespace,
-    chrom_sizes: dict[str, int],
-    is_len: bool,
-    is_norm: bool,
-    profile: dict | None,
-) -> tuple[Iterable[Any], bool, int]:
-    """
-    Build fragment-chunk tasks for the compatibility signal engine.
-
-    Parameters
-    ----------
-    args : argparse.Namespace
-        Validated command-line arguments.
-    chrom_sizes : dict[str, int]
-        Resolved chromosome lengths selected for signal computation.
-    is_len : bool
-        Whether signal weights use fragment length.
-    is_norm : bool
-        Whether signal is normalized by total fragments.
-    profile : dict | None
-        Optional mutable task and timing profile.
-
-    Returns
-    -------
-    results, is_prototype, fragment_count : tuple[Iterable[Any], bool, int]
-        Worker results, false prototype status, and fragment total.
-
-    Raises
-    ------
-    ValueError
-        If normalization is requested for an empty alignment.
-    """
-
-    if is_norm:
-        time_phase = time.perf_counter()
-        fragment_total = count_fragments(
-            args.fil_in,
-            chrom_sizes=chrom_sizes,
-            user_fragment_length=args.user_fragment_length,
-            ref_fa=args.ref_fa,
-        )
-        record_phase(profile, "count_fragments", time_phase)
-    else:
-        fragment_total = 0
-
-    if is_norm and fragment_total == 0:
-        raise ValueError(
-            (
-                "Normalization requires non-zero total fragments. Check the "
-                "BAM or CRAM file."
-            ),
-        )
-
-    time_phase = time.perf_counter()
-
-    if profile is None:
-        tasks = (
-            (
-                chunk,
-                fragment_total,
-                args.siz_bin,
-                is_len,
-                is_norm,
-                args.scl_fct,
-            )
-            for chunk in iter_fragment_chunks(
-                alignment_path=args.fil_in,
-                chrom_sizes=chrom_sizes,
-                chunk_size=args.chunk_size,
-                user_fragment_length=args.user_fragment_length,
-                ref_fa=args.ref_fa,
-            )
-        )
-    else:
-        chunks = list(
-            iter_fragment_chunks(
-                alignment_path=args.fil_in,
-                chrom_sizes=chrom_sizes,
-                chunk_size=args.chunk_size,
-                user_fragment_length=args.user_fragment_length,
-                ref_fa=args.ref_fa,
-            ),
-        )
-        tasks = [
-            (
-                chunk,
-                fragment_total,
-                args.siz_bin,
-                is_len,
-                is_norm,
-                args.scl_fct,
-            )
-            for chunk in chunks
-        ]
-        profile["fragments_total"] = (
-            fragment_total if is_norm else sum(len(chunk) for chunk in chunks)
-        )
-        profile["tasks"] = [
-            {
-                "task_id": task_id,
-                "kind": "chunk",
-                "fragments": len(chunk),
-                "payload_items": len(chunk),
-            }
-            for task_id, chunk in enumerate(chunks)
-        ]
-        profile["n_tasks"] = len(tasks)
-
-    record_phase(profile, "build_tasks", time_phase)
-    results = iter_task_results(
-        "chunk",
-        calc_sig_chunk_task,
-        tasks,
-        args.threads,
-        args.executor_mode,
-        profile["tasks"] if profile is not None else None,
-    )
-
-    return results, False, fragment_total
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -4781,18 +2700,37 @@ def main(argv: list[str] | None = None) -> int:
     to stderr.
     """
 
-    time_total_start = time.perf_counter()
+    time_tot = time.perf_counter()
 
     args = parse_args(argv)
 
     if args.fil_in == "-":
         raise SystemExit(
-            "'--fil_in -' is no longer supported; provide a BAM or CRAM path.",
+            "'--fil_in -' is not supported; provide a BAM or CRAM path.",
         )
 
     if args.fil_out == "-":
         raise SystemExit(
-            "'--fil_out -' is no longer supported; provide an output path.",
+            "'--fil_out -' is not supported; provide an output path.",
+        )
+
+    # The option '--fil_out' is optional only in report-only mode. Because
+    # argparse cannot express a conditional requirement, it is checked here,
+    # and the message names the two ways out rather than only stating the rule.
+    # A hidden hyphen spelling is a separate action, so argparse's own
+    # 'required' check cannot see it. Require the value, not the action.
+    if args.fil_in is None:
+        raise SystemExit(
+            "'--fil_in' is required. Supply the BAM or CRAM input path.",
+        )
+
+    report_only = args.fil_out is None
+
+    if report_only and args.report_N is None and args.report_L is None:
+        raise SystemExit(
+            "'--fil_out' is required unless '--report_N' or '--report_L' is "
+            "given. Supply an output path to write a track, or a report path "
+            "to count without writing one.",
         )
 
     try:
@@ -4801,21 +2739,28 @@ def main(argv: list[str] | None = None) -> int:
         if args.ref_fa is not None:
             check_exists(args.ref_fa, kind="file", label="Reference FASTA")
 
-        if args.chr_sizes is not None:
-            check_exists(args.chr_sizes, kind="file", label="chr.sizes file")
+        if args.chr_siz is not None:
+            check_exists(args.chr_siz, kind="file", label="chr.sizes file")
     except FileNotFoundError as error:
         raise SystemExit(str(error)) from None
 
     try:
-        output_path, output_format, _ = validate_output_path(
-            args.fil_out,
-            ALLOWED_OUTPUT_FORMATS,
-        )
+        if report_only:
+            fil_out, fmt_out = None, None
+        else:
+            fil_out, fmt_out, _ = validate_output_path(
+                args.fil_out,
+                ALLOWED_OUTPUT_FORMATS,
+            )
 
-        check_writable(output_path, "file")
+            check_writable(fil_out, "file")
 
         if args.profile_json is not None:
             check_writable(args.profile_json, "file")
+
+        for path_report in (args.report_N, args.report_L):
+            if path_report is not None:
+                check_writable(path_report, "file")
     except (
         ValueError,
         FileNotFoundError,
@@ -4824,44 +2769,27 @@ def main(argv: list[str] | None = None) -> int:
     ) as error:
         raise SystemExit(str(error)) from None
 
-    if output_format != "bed":
-        args.prototype_parse_strategy = PUBLIC_ENGINE_STRATEGY[args.engine]
+    if fmt_out != "bed":
+        if args.strat_writer is None:
+            args.strat_writer = "parallel_ordered"
 
-        if args.prototype_result_format is None:
-            args.prototype_result_format = "direct_sparse_np"
-
-        if args.prototype_merge_strategy is None:
-            args.prototype_merge_strategy = "array_sparse_merge"
-
-        if args.prototype_writer_strategy is None:
-            args.prototype_writer_strategy = "parallel_ordered"
-
-        if args.prototype_writer_workers is None:
-            args.prototype_writer_workers = (
+        if args.wrk_writer is None:
+            args.wrk_writer = (
                 1
-                if args.prototype_writer_strategy == "serial"
+                if args.strat_writer == "serial"
                 else min(4, os.cpu_count() or 1)
             )
     else:
-        if args.prototype_parse_strategy is None:
-            args.prototype_parse_strategy = "serial"
+        if args.strat_writer is None:
+            args.strat_writer = "serial"
 
-        if args.prototype_result_format is None:
-            args.prototype_result_format = "dict"
-
-        if args.prototype_merge_strategy is None:
-            args.prototype_merge_strategy = "dict_merge"
-
-        if args.prototype_writer_strategy is None:
-            args.prototype_writer_strategy = "serial"
-
-        if args.prototype_writer_workers is None:
-            args.prototype_writer_workers = 1
+        if args.wrk_writer is None:
+            args.wrk_writer = 1
 
     try:
         validate_comparison(args.threads, "ge", 1, "threads", allow_none=False)
 
-        if output_format != "bed":
+        if fmt_out != "bed":
             validate_comparison(
                 args.siz_bin,
                 "gt",
@@ -4870,55 +2798,44 @@ def main(argv: list[str] | None = None) -> int:
                 allow_none=False,
             )
             validate_comparison(
-                args.chunk_size,
+                args.siz_win,
                 "gt",
                 0,
-                "chunk_size",
+                "siz_win",
                 allow_none=False,
             )
             validate_comparison(
-                args.indexed_window_size,
-                "gt",
-                0,
-                "indexed_window_size",
-                allow_none=False,
-            )
-            validate_comparison(
-                args.prototype_writer_workers,
+                args.wrk_writer,
                 "ge",
                 1,
-                "prototype_writer_workers",
+                "wrk_writer",
                 allow_none=False,
             )
             validate_comparison(
-                args.prototype_writer_workers,
+                args.wrk_writer,
                 "le",
                 4,
-                "prototype_writer_workers",
+                "wrk_writer",
                 allow_none=False,
             )
             validate_comparison(args.dp, "ge", 0, "dp", allow_none=False)
 
-            if (
-                args.prototype_writer_strategy == "serial"
-                and args.prototype_writer_workers != 1
-            ):
+            if args.strat_writer == "serial" and args.wrk_writer != 1:
                 raise ValueError(
-                    "'--prototype_writer_workers' must be 1 when "
-                    "'--prototype_writer_strategy serial'.",
+                    "'--wrk_writer' must be 1 when '--strat_writer serial'.",
                 )
         else:
             validate_comparison(
-                args.indexed_window_size,
+                args.siz_win,
                 "gt",
                 0,
-                "indexed_window_size",
+                "siz_win",
                 allow_none=False,
             )
 
         validate_comparison(args.scl_fct, "gt", 0, "scl_fct", allow_none=True)
         validate_comparison(
-            args.user_fragment_length,
+            args.usr_frg,
             "gt",
             0,
             "usr_frg",
@@ -4928,12 +2845,12 @@ def main(argv: list[str] | None = None) -> int:
     except ValueError as error:
         raise SystemExit(str(error)) from None
 
-    requested_method = args.method
+    mthd_in = args.method
     args.method = METHOD_CANON[args.method]
 
     is_len = args.method == "frag"
     is_norm = args.method == "norm"
-    profile = start_profile(args, output_path, output_format)
+    profile = start_profile(args, fil_out, fmt_out)
 
     if args.verbose:
         with redirect_stdout(sys.stderr):
@@ -4943,47 +2860,95 @@ def main(argv: list[str] | None = None) -> int:
             print("####################################")
             print("")
             print("--verbose")
-            print(f"--threads {args.threads}")
-            print(f"--fil_in  {args.fil_in}")
-            print(f"--ref_fa  {args.ref_fa}")
-            print(f"--chr_sizes {args.chr_sizes}")
-            print(f"--fil_out {output_path}")
+            print(f"--threads  {args.threads}")
+            print(f"--fil_in   {args.fil_in}")
+            print(f"--ref_fa   {args.ref_fa}")
+            print(f"--chr_siz  {args.chr_siz}")
+            print(f"--fil_out  {fil_out}")
 
-            if output_format == "bed":
-                print(f"--usr_frg {args.user_fragment_length}")
+            if fmt_out == "bed":
+                print(f"--usr_frg  {args.usr_frg}")
+                print(f"--report_N {args.report_N}")
+                print(f"--report_L {args.report_L}")
                 print(
                     "\n\n(BED output mode: signal computation arguments "
                     "ignored)\n",
                 )
             else:
-                if requested_method != args.method:
-                    method_display = (
-                        f"{requested_method}  (standardized internally to "
+                if mthd_in != args.method:
+                    mthd_msg = (
+                        f"{mthd_in}  (standardized internally to "
                         f"{args.method})"
                     )
 
-                    print(f"--method  {method_display}")
+                    print(f"--method   {mthd_msg}")
                 else:
-                    print(f"--method  {args.method}")
+                    print(f"--method   {args.method}")
 
-                print(f"--siz_bin {args.siz_bin}")
-                print(f"--engine  {args.engine}")
-                print(f"--chunk_size {args.chunk_size}")
-                print(f"--scl_fct {args.scl_fct}")
-                print(f"--usr_frg {args.user_fragment_length}")
-                print(f"--dp     {args.dp}")
+                print(f"--siz_bin  {args.siz_bin}")
+                print(f"--engine   {args.engine}")
+                print(f"--siz_win  {args.siz_win}")
+                print(f"--scl_fct  {args.scl_fct}")
+                print(f"--usr_frg  {args.usr_frg}")
+                print(f"--report_N {args.report_N}")
+                print(f"--report_L {args.report_L}")
+                print(f"--dp       {args.dp}")
 
             print("")
             print("")
 
     try:
         time_phase = time.perf_counter()
-        header_sizes = get_alignment_chrom_sizes(args.fil_in, args.ref_fa)
-        chrom_sizes = resolve_chrom_sizes(header_sizes, args.chr_sizes)
-        record_phase(profile, "resolve_chrom_sizes", time_phase)
+        siz_chr_hdr = get_siz_chr(args.fil_in, args.ref_fa)
+        siz_chr = resolve_siz_chr(siz_chr_hdr, args.chr_siz)
+        record_phase(profile, "resolve_siz_chr", time_phase)
 
         if profile is not None:
-            profile["n_chrom_sizes"] = len(chrom_sizes)
+            profile["n_chrom_sizes"] = len(siz_chr)
+
+        if args.report_N is not None or args.report_L is not None:
+            time_phase = time.perf_counter()
+
+            # Counted from the same iterator the signal path consumes, with the
+            # same '--usr_frg', so 'N' here is the very number a
+            # '--method norm' run divides by rather than an estimate of it.
+            n_frg, n_bin = count_frgs_and_bins(
+                iter_aln_frg(
+                    fil_aln=args.fil_in,
+                    siz_chr=siz_chr,
+                    usr_frg=args.usr_frg,
+                    ref_fa=args.ref_fa,
+                ),
+                args.siz_bin,
+            )
+
+            record_phase(profile, "count_frgs_and_bins", time_phase)
+
+            if profile is not None:
+                profile["report_N"] = n_frg
+                profile["report_L"] = n_bin
+
+            for path_report, value, label in (
+                (args.report_N, n_frg, "N"),
+                (args.report_L, n_bin, "L"),
+            ):
+                if path_report is None:
+                    continue
+
+                with open(path_report, "w") as handle:
+                    handle.write(f"{value}\n")
+
+                if args.verbose:
+                    print(
+                        f"{label} {value} -> {path_report}",
+                        file=sys.stderr,
+                    )
+
+            if report_only:
+                if args.profile_json is not None:
+                    write_profile(args.profile_json, profile)
+
+                return 0
     except FileNotFoundError:
         raise SystemExit(f"Alignment file not found: {args.fil_in}") from None
     except ValueError as error:
@@ -4994,100 +2959,76 @@ def main(argv: list[str] | None = None) -> int:
         ) from None
 
     try:
-        if output_format == "bed":
-            _write_bed_output(
+        if fmt_out == "bed":
+            _write_bed(
                 args,
-                output_path,
-                header_sizes,
-                chrom_sizes,
+                fil_out,
+                siz_chr_hdr,
+                siz_chr,
                 profile,
-                time_total_start,
+                time_tot,
             )
 
             return 0
 
-        # Otherwise, compute and write bedGraph signal.
-        if args.engine in PUBLIC_ENGINE_STRATEGY:
-            (
-                results,
-                is_prototype_strategy,
-                fragment_count,
-            ) = _public_signal_results(
-                args,
-                header_sizes,
-                chrom_sizes,
-                is_len,
-                is_norm,
-                profile,
-            )
-
-        else:
-            (
-                results,
-                is_prototype_strategy,
-                fragment_count,
-            ) = _chunk_signal_results(
-                args,
-                chrom_sizes,
-                is_len,
-                is_norm,
-                profile,
-            )
+        # Otherwise, compute and write bedGraph signal. The two public engines
+        # are 'chrom' and 'window', and both map to indexed fetch tasks.
+        results = _sig_results(
+            args,
+            siz_chr_hdr,
+            siz_chr,
+            is_len,
+            is_norm,
+            profile,
+        )
 
         # Receive worker results, then merge in the parent process.
         time_collect_merge = time.perf_counter()
         time_phase = time.perf_counter()
         result_list = list(results)
         record_phase(profile, "receive_worker_results", time_phase)
-        summarize_task_profiles(profile)
+        summarize_profiles(profile)
 
         time_phase = time.perf_counter()
         (
             combined_signal,
-            merged_fragment_count,
-            merged_bin_count,
-            result_payload_bytes,
-        ) = merge_signal_results(
+            frg_tot,
+            n_bin_pre,
+            payload_bytes,
+        ) = merge_sig(
             results=result_list,
-            merge_strategy=args.prototype_merge_strategy,
-            chrom_sizes=chrom_sizes,
             siz_bin=args.siz_bin,
-            is_prototype_strategy=is_prototype_strategy,
             profile=profile,
         )
 
         record_phase(profile, "parent_merge_results", time_phase)
 
-        if is_prototype_strategy:
-            fragment_count = merged_fragment_count
-            time_phase = time.perf_counter()
-            apply_signal_adjustments(
-                combined_signal,
-                fragment_count,
-                is_norm,
-                args.scl_fct,
-            )
-            record_phase(profile, "apply_signal_adjustments", time_phase)
+        time_phase = time.perf_counter()
+        apply_sig_adj(
+            combined_signal,
+            frg_tot,
+            is_norm,
+            args.scl_fct,
+        )
+        record_phase(profile, "apply_sig_adj", time_phase)
 
         record_phase(profile, "collect_and_merge_results", time_collect_merge)
 
         if profile is not None:
-            if is_prototype_strategy:
-                profile["fragments_total"] = fragment_count
-
-            profile["result_bins_before_merge"] = merged_bin_count
-            profile["result_bins_after_merge"] = signal_row_count(
+            profile["fragments_total"] = frg_tot
+            profile["result_bins_before_merge"] = n_bin_pre
+            profile["result_bins_after_merge"] = n_sig_rows(
                 combined_signal,
             )
-            profile["result_payload_bytes"] = result_payload_bytes
+            profile["result_payload_bytes"] = payload_bytes
 
-        _write_bedgraph_output(
+        _write_bdg(
             args,
             combined_signal,
-            output_path,
-            chrom_sizes,
+            fil_out,
+            siz_chr,
             profile,
-            time_total_start,
+            time_tot,
         )
 
         return 0

@@ -142,10 +142,7 @@ def is_hidden_compat(call: ast.Call) -> bool:
     if kw is None or not is_argparse_suppress(kw.value):
         return False
     opts = option_strings(call)
-    return bool(opts) and (
-        all(is_hyphen_duplicate(opt) for opt in opts)
-        or set(opts) == {"--chnk_size", "--chnk-size"}
-    )
+    return bool(opts) and all(is_hyphen_duplicate(opt) for opt in opts)
 
 
 def is_hyphen_duplicate(opt: str) -> bool:
@@ -276,9 +273,8 @@ def check_parse_args(path: Path, tree: ast.Module, findings: list[Finding]) -> N
                     Finding("FAIL", path, call.lineno, "use -rf, --ref_fa for reference FASTA")
                 )
         if hidden_compat:
-            if not opts or (
-                any(not is_hyphen_duplicate(opt) for opt in opts)
-                and set(opts) != {"--chnk_size", "--chnk-size"}
+            if not opts or any(
+                not is_hyphen_duplicate(opt) for opt in opts
             ):
                 findings.append(
                     Finding(
@@ -286,7 +282,7 @@ def check_parse_args(path: Path, tree: ast.Module, findings: list[Finding]) -> N
                         path,
                         call.lineno,
                         "hidden compatibility aliases must be systematic "
-                        "hyphen variants or the approved chunk abbreviation",
+                        "hyphen variants",
                     )
                 )
         elif not is_nonempty_help(call):
@@ -580,15 +576,9 @@ fi
 
 while IFS=: read -r sev rel line msg; do
     case "${sev}" in
-        PASS)
-            record_pass "${rel}"
-            ;;
-        WARN)
-            record_warn "${rel}:${line}:${msg}"
-            ;;
-        FAIL)
-            record_fail "${rel}:${line}:${msg}"
-            ;;
+        PASS) record_pass "${rel}" ;;
+        WARN) record_warn "${rel}:${line}:${msg}" ;;
+        FAIL) record_fail "${rel}:${line}:${msg}" ;;
     esac
 done < "${log_style}"
 

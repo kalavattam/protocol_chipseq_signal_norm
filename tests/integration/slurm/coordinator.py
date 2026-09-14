@@ -6,8 +6,10 @@
 # Copyright 2026 by Kris Alavattam
 # Email: kalavattam@gmail.com
 #
-# OpenAI ChatGPT and Codex (GPT-5.6) were used in design, development, and
-# documentation, with all output reviewed, edited, and approved by the author.
+# The following were used in design, development, and documentation, with all
+# output reviewed, edited, and approved by the author:
+# - OpenAI ChatGPT and Codex (GPT-5.6);
+# - Anthropic Claude Code (Opus 5).
 #
 # Distributed under the MIT license.
 
@@ -2041,7 +2043,7 @@ def job_definitions(config: dict[str, Any]) -> list[dict[str, Any]]:
                 "unadj",
                 "--csv_fil_in",
                 str(fixtures / "tiny_signal.bam"),
-                "--chr_sizes",
+                "--chr_siz",
                 str(fixtures / "tiny.fa.fai"),
                 "--csv_fil_out",
                 str(signal_art / "tiny_se_signal_unadj.bdg"),

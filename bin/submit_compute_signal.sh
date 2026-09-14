@@ -573,12 +573,11 @@ function run_comp_sig() {
     local usr_frg="${8:-}"
     local dp="${9:-}"
     local ref_fa="${10:-}"
-    local chr_sizes="${11:-}"
-    local chunk_size="${12:-}"
-    local engine="${13:-}"
-    local dir_eo="${14:-}"
-    local nam_job="${15:-}"
-    local dsc="${16:-}"
+    local chr_siz="${11:-}"
+    local engine="${12:-}"
+    local dir_eo="${13:-}"
+    local nam_job="${14:-}"
+    local dsc="${15:-}"
     local log_out log_err  # Explicit local variable declarations.
     local -a optional cmd  # Optional arguments and command array.
     local show_help        # Help text.
@@ -588,7 +587,7 @@ function run_comp_sig() {
 Usage
 -----
   run_comp_sig
-    [--help] debug threads fil_in fil_out siz_bin method scl_fct usr_frg dp ref_fa chr_sizes chunk_size engine dir_eo nam_job dsc
+    [--help] debug threads fil_in fil_out siz_bin method scl_fct usr_frg dp ref_fa chr_siz engine dir_eo nam_job dsc
 
   Build and run the per-sample call to 'compute_signal.py'.
 
@@ -627,22 +626,19 @@ Parameters
   10  ref_fa : file
     Reference FASTA file for CRAM input or empty string.
 
-  11  chr_sizes : file
+  11  chr_siz : file
     Chromosome sizes file or empty string.
 
-  12  chunk_size : int
-    Number of records to process per chunk. Used by compute-signal engines.
-
-  13  engine : {'chrom', 'window'}
+  12  engine : {'chrom', 'window'}
     Processing engine.
 
-  14  dir_eo : dir
+  13  dir_eo : dir
     Directory for stderr and stdout log files.
 
-  15  nam_job : str
+  14  nam_job : str
     Job name.
 
-  16  dsc : str
+  15  dsc : str
     Descriptor for log file naming.
 
 Returns
@@ -685,7 +681,6 @@ Examples
         3 \\
         '' \\
         '' \\
-        100000 \\
         chrom \\
         "\${tmp}" \\
         compute_signal \\
@@ -697,9 +692,9 @@ EOM
     if [[ "${1}" =~ ^(-h|--h[e]?lp)$ ]]; then
         echo "${show_help}" >&2
         return 0
-    elif [[ $# -ne 16 ]]; then
+    elif [[ $# -ne 15 ]]; then
         echo_err_func "${FUNCNAME[0]}" \
-            "'run_comp_sig()' expects 16 arguments, but got $#."
+            "'run_comp_sig()' expects 15 arguments, but got $#."
         echo >&2
         echo "${show_help}" >&2
         return 1
@@ -738,12 +733,8 @@ EOM
         cmd+=( --ref_fa "${ref_fa}" )
     fi
 
-    if [[ -n "${chr_sizes}" ]]; then
-        cmd+=( --chr_sizes "${chr_sizes}" )
-    fi
-
-    if [[ -n "${chunk_size}" ]]; then
-        cmd+=( --chunk_size "${chunk_size}" )
+    if [[ -n "${chr_siz}" ]]; then
+        cmd+=( --chr_siz "${chr_siz}" )
     fi
 
     if [[ -n "${engine}" ]]; then
@@ -774,7 +765,7 @@ function run_comp_rat() {
     local skip_00="${12:-}"
     local drp_nan="${13:-}"
     local skp_pfx="${14:-}"
-    local chr_sizes="${15:-}"
+    local chr_siz="${15:-}"
     local strict_bins="${16:-false}"
     local dir_eo="${17:-}"
     local nam_job="${18:-}"
@@ -788,7 +779,7 @@ function run_comp_rat() {
 Usage
 -----
   run_comp_rat
-    [--help] debug fil_A fil_B fil_out method scl_fct dep_min dp track pseudo eps skip_00 drp_nan skp_pfx chr_sizes strict_bins dir_eo nam_job dsc
+    [--help] debug fil_A fil_B fil_out method scl_fct dep_min dp track pseudo eps skip_00 drp_nan skp_pfx chr_siz strict_bins dir_eo nam_job dsc
 
   Build and run the per-sample call to 'compute_signal_ratio.py'.
 
@@ -839,7 +830,7 @@ Parameters
   14  skp_pfx : str
     Comma-separated list of header prefixes to skip. Use sentinel 'NA' to omit.
 
-  15  chr_sizes : file
+  15  chr_siz : file
     Chromosome sizes file or empty string.
 
   16  strict_bins : bool
@@ -910,7 +901,7 @@ EOM
         return 0
     elif [[ $# -ne 19 ]]; then
         echo_err_func "${FUNCNAME[0]}" \
-            "'run_comp_rat()' expects 17 arguments, but got $#."
+            "'run_comp_rat()' expects 19 arguments, but got $#."
         echo >&2
         echo "${show_help}" >&2
         return 1
@@ -959,8 +950,8 @@ EOM
         cmd+=( --skp_pfx "${skp_pfx}" )
     fi
 
-    if [[ -n "${chr_sizes}" ]]; then
-        cmd+=( --chr_sizes "${chr_sizes}" )
+    if [[ -n "${chr_siz}" ]]; then
+        cmd+=( --chr_siz "${chr_siz}" )
     fi
 
     if [[ "${strict_bins}" == "true" ]]; then
@@ -1444,8 +1435,7 @@ EOM
         "$(get_arr_elem arr_usr_frg "${idx}")" \
         "${dp}" \
         "${ref_fa}" \
-        "${chr_sizes}" \
-        "${chunk_size}" \
+        "${chr_siz}" \
         "${engine}" \
         "${dir_eo}" \
         "${nam_job}" \
@@ -1547,7 +1537,7 @@ EOM
         "${skip_00}" \
         "${drp_nan}" \
         "${skp_pfx}" \
-        "${chr_sizes}" \
+        "${chr_siz}" \
         "${strict_bins}" \
         "${dir_eo}" \
         "${nam_job}" \
@@ -1649,8 +1639,7 @@ EOM
         "$(get_arr_elem arr_usr_frg "${idx}")" \
         1 \
         "${ref_fa}" \
-        "${chr_sizes}" \
-        "" \
+        "${chr_siz}" \
         "" \
         "${dir_eo}" \
         "${nam_job}" \
@@ -1719,7 +1708,7 @@ function source_helpers_submit() {
 }
 
 
-#  Initialize hardcoded arguments
+# Initialize hardcoded arguments.
 function init_args_hardcoded() {
     # WARNING: Do not change unless testing/stepping through.
     # If true, print verbose/debug Bash-level logging.
@@ -1747,10 +1736,9 @@ function init_arg_defs() {
     csv_fil_B=""
     csv_fil_out=""
     ref_fa=""
-    chr_sizes=""
+    chr_siz=""
     track=false
     siz_bin=10
-    chunk_size=100000
     engine="chrom"
     csv_scl_fct=""
     csv_usr_frg=""
@@ -1848,13 +1836,13 @@ function parse_args() {
                 shift 2
                 ;;
 
-            -cs|--chr[_-]sizes|--chrom[_-]sizes)
+            -cs|--chr[_-]siz)
                 require_optarg "${1}" "${2:-}" "main" || {
                     echo >&2
                     help_submit_compute_signal
                     return 1
                 }
-                chr_sizes="${2}"
+                chr_siz="${2}"
                 shift 2
                 ;;
 
@@ -1900,16 +1888,6 @@ function parse_args() {
                     return 1
                 }
                 siz_bin="${2}"
-                shift 2
-                ;;
-
-            -ck|--chunk[_-]size|--chnk[_-]size)
-                require_optarg "${1}" "${2:-}" "main" || {
-                    echo >&2
-                    help_submit_compute_signal
-                    return 1
-                }
-                chunk_size="${2}"
                 shift 2
                 ;;
 
@@ -1983,7 +1961,7 @@ function parse_args() {
                 shift 2
                 ;;
 
-            --strict[_-]bins)
+            -stn|--strict[_-]bins)
                 strict_bins=true
                 shift 1
                 ;;
@@ -2148,7 +2126,6 @@ function validate_args() {
         validate_var "csv_fil_out" "${csv_fil_out}" || return 1
         validate_var "siz_bin"     "${siz_bin}"     || return 1
         check_int_pos "${siz_bin}" "siz_bin"        || return 1
-        check_int_pos "${chunk_size}" "chunk_size"  || return 1
         case "${engine}" in
             chrom|window) : ;;
             *)
@@ -2168,8 +2145,8 @@ function validate_args() {
 
     validate_var "nam_job" "${nam_job}" || return 1
 
-    if [[ -n "${chr_sizes}" ]]; then
-        validate_var_file "chr_sizes" "${chr_sizes}" 0 true || return 1
+    if [[ -n "${chr_siz}" ]]; then
+        validate_var_file "chr_siz" "${chr_siz}" 0 true || return 1
     fi
 
     if [[ -z "${dir_eo}" ]]; then
@@ -2222,7 +2199,7 @@ function print_state_debug() {
     fi
 
     debug_var "csv_fil_out=${csv_fil_out}"
-    debug_var "chr_sizes=${chr_sizes:-UNSET}"
+    debug_var "chr_siz=${chr_siz:-UNSET}"
 
     if [[ "${mode}" == "ratio" ]]; then
         debug_var \
@@ -2239,7 +2216,6 @@ function print_state_debug() {
     if [[ "${mode}" == "signal" ]]; then
         debug_var \
             "siz_bin=${siz_bin}" \
-            "chunk_size=${chunk_size}" \
             "engine=${engine}" \
             "csv_usr_frg=${csv_usr_frg}"
     fi

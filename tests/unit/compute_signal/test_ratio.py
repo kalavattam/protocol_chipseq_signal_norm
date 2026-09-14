@@ -6,12 +6,15 @@
 # Copyright 2026 by Kris Alavattam
 # Email: kalavattam@gmail.com
 #
-# OpenAI ChatGPT and Codex (GPT-5.6) were used in design, development, and
-# documentation, with all output reviewed, edited, and approved by the author.
+# The following were used in design, development, and documentation, with all
+# output reviewed, edited, and approved by the author:
+# - OpenAI ChatGPT and Codex (GPT-5.6);
+# - Anthropic Claude Code (Opus 5).
 #
 # Distributed under the MIT license.
 
 
+import argparse
 import math
 from pathlib import Path
 
@@ -20,7 +23,12 @@ import pytest
 from protocol_chipseq_signal_norm.cli.compute_signal_ratio import (
     calc_rat_bin,
     comp_sig_rat,
+    main,
+    parse_args,
     parse_pair,
+)
+from protocol_chipseq_signal_norm.utilities.utils_cli import (
+    CapArgumentParser,
 )
 
 
@@ -193,3 +201,176 @@ def test_comp_sig_rat_rejects_dash_io(tmp_path: Path) -> None:
             track=False,
             drp_nan=False,
         )
+
+
+# Hidden hyphen aliases are separate 'add_argument' calls that must restate the
+# primary's 'type', 'choices', and action; argparse enforces none of that. Each
+# pair is exercised below, and a completeness guard fails when an alias reaches
+# the parser without a row here.
+HYPHEN_ALIASES = (
+    pytest.param("--chr_siz", "--chr-siz", "value", id="chr_siz"),
+    pytest.param("--dep_min", "--dep-min", "0.5", id="dep_min"),
+    pytest.param("--drp_nan", "--drp-nan", None, id="drp_nan"),
+    pytest.param("--fil_A", "--fil-A", "value", id="fil_A"),
+    pytest.param("--fil_B", "--fil-B", "value", id="fil_B"),
+    pytest.param("--fil_out", "--fil-out", "value", id="fil_out"),
+    pytest.param("--scl_fct", "--scl-fct", "value", id="scl_fct"),
+    pytest.param("--skip_00", "--skip-00", "pre_scale", id="skip_00"),
+    pytest.param("--skp_pfx", "--skp-pfx", "value", id="skp_pfx"),
+    pytest.param("--strict_bins", "--strict-bins", None, id="strict_bins"),
+)
+
+
+def _alias_parser() -> argparse.ArgumentParser:
+    """
+    Return the parser built by the module under test.
+    """
+
+    captured: dict[str, argparse.ArgumentParser] = {}
+    original = CapArgumentParser.parse_args
+
+    def capture(
+        self: CapArgumentParser,
+        *args: object,
+        **kwargs: object,
+    ) -> None:
+        captured["parser"] = self
+
+        raise SystemExit(0)
+
+    CapArgumentParser.parse_args = capture
+
+    try:
+        parse_args(["-fA", "a.bdg", "-fB", "b.bdg", "-fo", "c.bdg"])
+    except SystemExit:
+        pass
+    finally:
+        CapArgumentParser.parse_args = original
+
+    return captured["parser"]
+
+
+def _registered_hyphen_aliases() -> set[str]:
+    """
+    Return hidden hyphen spellings that alias a visible option.
+
+    A hidden *option* may also carry a hyphen spelling; those are excluded, as
+    they alias nothing the user can see.
+    """
+
+    parser = _alias_parser()
+    visible = {
+        action.dest
+        for action in parser._actions
+        if action.help is not argparse.SUPPRESS
+    }
+
+    return {
+        option
+        for action in parser._actions
+        if action.help is argparse.SUPPRESS and action.dest in visible
+        for option in action.option_strings
+        if option.startswith("--") and "_" not in option
+    }
+
+
+@pytest.mark.parametrize(("primary", "alias", "value"), HYPHEN_ALIASES)
+def test_hidden_hyphen_alias_matches_its_primary(
+    primary: str,
+    alias: str,
+    value: str | None,
+) -> None:
+    """
+    Each hidden hyphen alias parses to the primary's value and type.
+    """
+
+    base = list(["-fA", "a.bdg", "-fB", "b.bdg", "-fo", "c.bdg"])
+    supplied = [primary] if value is None else [primary, value]
+    aliased = [alias] if value is None else [alias, value]
+    destination = primary.lstrip("-")
+
+    from_primary = getattr(parse_args(base + supplied), destination)
+    from_alias = getattr(parse_args(base + aliased), destination)
+
+    assert from_primary == from_alias
+    assert type(from_primary) is type(from_alias)
+
+
+def test_every_hidden_hyphen_alias_is_covered() -> None:
+    """
+    No hidden hyphen alias may exist without a row in 'HYPHEN_ALIASES'.
+    """
+
+    covered = {row.values[1] for row in HYPHEN_ALIASES}
+    registered = _registered_hyphen_aliases()
+
+    assert registered == covered
+
+
+def test_hidden_hyphen_aliases_stay_out_of_rendered_help(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """
+    Hidden aliases remain usable but are never advertised in help.
+    """
+
+    with pytest.raises(SystemExit):
+        parse_args(["--help"])
+
+    rendered = capsys.readouterr().out
+    registered = _registered_hyphen_aliases()
+
+    for alias in registered:
+        assert alias not in rendered
+
+
+def test_hidden_aliases_satisfy_the_required_ratio_options() -> None:
+    """
+    A run supplying only hyphen spellings is accepted.
+
+    'argparse' enforces 'required' per action, so a hidden alias cannot satisfy
+    a required primary. The requirement is enforced on the parsed values in
+    'main' instead, and this pins that the alias route works.
+    """
+
+    args = parse_args(
+        ["--fil-A", "a.bdg", "--fil-B", "b.bdg", "--fil-out", "c.bdg"],
+    )
+
+    assert args.fil_A == "a.bdg"
+    assert args.fil_B == "b.bdg"
+    assert args.fil_out == "c.bdg"
+
+
+@pytest.mark.parametrize(
+    ("omitted", "supplied"),
+    [
+        pytest.param(
+            "--fil_A",
+            ["--fil_B", "b.bdg", "--fil_out", "c.bdg"],
+            id="fil_A",
+        ),
+        pytest.param(
+            "--fil_B",
+            ["--fil_A", "a.bdg", "--fil_out", "c.bdg"],
+            id="fil_B",
+        ),
+        pytest.param(
+            "--fil_out",
+            ["--fil_A", "a.bdg", "--fil_B", "b.bdg"],
+            id="fil_out",
+        ),
+    ],
+)
+def test_missing_required_ratio_option_is_rejected(
+    omitted: str,
+    supplied: list[str],
+) -> None:
+    """
+    Dropping the requirement from argparse must not drop the requirement.
+    """
+
+    with pytest.raises(SystemExit) as error:
+        main(supplied)
+
+    assert omitted in str(error.value)

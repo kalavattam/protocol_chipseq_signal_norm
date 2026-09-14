@@ -9,7 +9,7 @@ Use `dist` for new analyses. Use `frag` or `norm` when reproducing the fragment-
 <br />
 
 ## Inputs and modes
-The callable accepts `fil_in`, `siz_bin`, `siz_gen`, `mode`, `method`, `qntl_nz`, `coef`, `floor`, `eps`, `mode_nz`, `paired_flags`, `single_flags`, `skp_pfx`, `infmt`, and `ref_fa`. The CLI exposes the corresponding options without changing the callable calculation.
+The callable accepts `fil_in`, `siz_bin`, `siz_gen`, `mode`, `method`, `qntl_nz`, `coef`, `floor`, `eps`, `mode_nz`, `paired_flags`, `single_flags`, `skp_pfx`, `fmt_in`, and `ref_fa`. The CLI exposes the corresponding options without changing the callable calculation.
 
 | Mode   | Input and calculation                                                                                                 |
 | :---   | :---                                                                                                                  |
@@ -17,7 +17,7 @@ The callable accepts `fil_in`, `siz_bin`, `siz_gen`, `mode`, `method`, `qntl_nz`
 | `frag` | Requires BAM, CRAM, or BED/BED.GZ alignment records and uses their counted-record total with `siz_bin` and `siz_gen`. |
 | `norm` | Uses only `siz_bin` and `siz_gen`; it ignores `fil_in` and all input-format options.                                  |
 
-For `dist` and `frag`, `fil_in='-'` reads standard input and requires `infmt`. The public explicit choices are `bam`, `cram`, `bed`, `bedGraph`, `bdg`, and `bg`. Hints accept any letter case and resolve once to the canonical internal values `bam`, `cram`, `bed`, and `bedgraph`. Thus existing aliases such as a lowercase `bedgraph` hint remain accepted even though help displays only `bedGraph`. A named path determines its format case-insensitively from its suffix, so `infmt` is ignored. CRAM decoding requires `ref_fa`; other formats ignore it.
+For `dist` and `frag`, `fil_in='-'` reads standard input and requires `fmt_in`. The public explicit choices are `bam`, `cram`, `bed`, `bedGraph`, `bdg`, and `bg`. Hints accept any letter case and resolve once to the canonical internal values `bam`, `cram`, `bed`, and `bedgraph`. Thus existing aliases such as a lowercase `bedgraph` hint remain accepted even though help displays only `bedGraph`. A named path determines its format case-insensitively from its suffix, so `fmt_in` is ignored. CRAM decoding requires `ref_fa`; other formats ignore it.
 
 `siz_bin` is the target signal-bin width in base pairs and `siz_gen` is the effective genome size in base pairs. Both dimensions must be positive and `siz_bin` must be smaller than `siz_gen` in `frag` and `norm`. Dimension validation does not apply to `dist`, because neither dimension enters its statistic and the command does not infer or validate bedGraph interval widths.
 

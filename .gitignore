@@ -2,8 +2,15 @@
 *.gz
 *.pdf
 
+# Claude Code session machinery: local settings and agent worktrees
+.claude/
+
 #  Ignore root '__init__.py'
 /__init__.py
+
+# Slurm job logs, which land in whatever directory a job was submitted from
+*.log
+slurm-*.out
 
 #  Ignore everything in 'docs/img/', 'docs/xml/', and 'tmp/'
 docs/img/
@@ -146,7 +153,3 @@ tests/fixtures/trim_fastqs/**
 !tests/fixtures/trim_fastqs/
 !tests/fixtures/trim_fastqs/README.md
 !tests/fixtures/trim_fastqs/make.sh
-
-# Slurm job logs, which land in whatever directory a job was submitted from
-*.log
-slurm-*.out
