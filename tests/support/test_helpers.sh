@@ -14,7 +14,7 @@
 # Distributed under the MIT license.
 
 
-#  Require Bash >= 4.4 before doing any work
+# Require Bash >= 4.4 before doing any work.
 if [[ -z "${BASH_VERSION:-}" ]]; then
     echo "error(test_helpers.sh):" \
         "this test suite requires Bash >= 4.4." >&2
@@ -29,7 +29,7 @@ elif ((
 fi
 
 
-#  Set paths used by test scripts =============================================
+# Set paths used by test scripts.
 # shellcheck disable=SC2034
 {
     TEST_DIR_LIB="$(
@@ -39,11 +39,13 @@ fi
     TEST_DIR_SCR="${TEST_DIR}"
     ROOT_REPO="$(cd "${TEST_DIR}/.." > /dev/null 2>&1 && pwd)"
     TEST_DIR_OUT="${TEST_ARTIFACT_ROOT:-${ROOT_REPO}/artifacts/tests}"
+
     if [[ "${TEST_DIR_OUT}" != /* || "${TEST_DIR_OUT}" == "/" ]]; then
         echo "error(test_helpers.sh):" \
             "TEST_ARTIFACT_ROOT must be an absolute non-root path." >&2
         exit 1
     fi
+
     TEST_OUT_PARENT="$(
         cd "$(dirname "${TEST_DIR_OUT}")" > /dev/null 2>&1 && pwd -P
     )" || {
@@ -52,6 +54,7 @@ fi
         exit 1
     }
     TEST_DIR_OUT="${TEST_OUT_PARENT}/$(basename "${TEST_DIR_OUT}")"
+
     case "${TEST_DIR_OUT}/" in
         "${ROOT_REPO}/"*)
             if [[ "${TEST_DIR_OUT}" != "${ROOT_REPO}/artifacts/tests" ]]; then
@@ -61,9 +64,11 @@ fi
             fi
             ;;
     esac
+
     TEST_DIR_TMP="${TEST_DIR_OUT}/tmp"
     TEST_DIR_LOG="${TEST_DIR_OUT}/logs"
     TEST_ENV_PREFIX="${TEST_MANAGED_PREFIX:-}"
+
     if [[ -z "${TEST_ENV_PREFIX}" ]]; then
         if [[ "${CONDA_DEFAULT_ENV:-}" == "env_protocol" && \
             -n "${CONDA_PREFIX:-}" ]]
@@ -71,27 +76,35 @@ fi
             TEST_ENV_PREFIX="${CONDA_PREFIX}"
         else
             CONDA_EXECUTABLE="${CONDA_EXE:-}"
+
             if [[ -z "${CONDA_EXECUTABLE}" || \
                 ! -x "${CONDA_EXECUTABLE}" ]]
             then
                 CONDA_EXECUTABLE="$(command -v conda || true)"
             fi
+
             if [[ -z "${CONDA_EXECUTABLE}" ]]; then
                 echo "error(test_helpers.sh):" \
                     "Conda is required to resolve env_protocol." >&2
                 exit 1
             fi
-            TEST_ENV_PREFIX="$(${CONDA_EXECUTABLE} run -n env_protocol \
-                /bin/sh -c 'printf "%s\n" "$CONDA_PREFIX"')"
+
+            TEST_ENV_PREFIX="$(
+                ${CONDA_EXECUTABLE} run -n env_protocol \
+                    /bin/sh -c 'printf "%s\n" "$CONDA_PREFIX"'
+            )"
         fi
     fi
+
     TEST_BASH="${TEST_ENV_PREFIX}/bin/bash"
     TEST_PYTHON="${TEST_ENV_PREFIX}/bin/python"
+
     if [[ ! -x "${TEST_BASH}" || ! -x "${TEST_PYTHON}" ]]; then
         echo "error(test_helpers.sh):" \
             "env_protocol managed executables are unavailable." >&2
         exit 1
     fi
+
     TEST_BASH_VERSION="$(
         "${TEST_BASH}" -c 'printf "%s\n" "${BASH_VERSION}"'
     )"
@@ -110,7 +123,7 @@ export PYTEST_ADDOPTS="${PYTEST_ADDOPTS:+${PYTEST_ADDOPTS} }-o cache_dir=${TEST_
 mkdir -p "${TEST_DIR_TMP}" "${TEST_DIR_LOG}"
 
 
-#  Source canonical production validation helpers used by the test harness
+# Source canonical production validation helpers used by the test harness.
 # shellcheck source=lib/bash/core/format_outputs.sh
 # shellcheck source=lib/bash/core/check_args.sh
 {
@@ -119,7 +132,7 @@ mkdir -p "${TEST_DIR_TMP}" "${TEST_DIR_LOG}"
 }
 
 
-#  Initialize result counters =================================================
+# Initialize result counters.
 TEST_PASS=0
 TEST_FAIL=0
 TEST_WARN=0
@@ -127,7 +140,7 @@ TEST_SKIP=0
 TEST_NAME="${TEST_NAME:-$(basename "${0}")}"
 
 
-#  Print a repository-relative path when possible
+# Print a repository-relative path when possible.
 function print_relpath() {
     local path="${1:-}"
     local show_help
@@ -188,47 +201,47 @@ EOM
 }
 
 
-#  Print a test section heading
+# Print a test section heading.
 function print_section() {
     printf '\n-- %s --\n' "${1:-${TEST_NAME}}"
 }
 
 
-#  Record a passing assertion
+# Record a passing assertion.
 function record_pass() {
     TEST_PASS=$(( TEST_PASS + 1 ))
     printf 'PASS: %s\n' "$*"
 }
 
 
-#  Record a failing assertion
+# Record a failing assertion.
 function record_fail() {
     TEST_FAIL=$(( TEST_FAIL + 1 ))
     printf 'FAIL: %s\n' "$*" >&2
 }
 
 
-#  Record a non-fatal warning
+# Record a non-fatal warning.
 function record_warn() {
     TEST_WARN=$(( TEST_WARN + 1 ))
     printf 'WARN: %s\n' "$*" >&2
 }
 
 
-#  Record a skipped check
+# Record a skipped check.
 function record_skip() {
     TEST_SKIP=$(( TEST_SKIP + 1 ))
     printf 'SKIP: %s\n' "$*"
 }
 
 
-#  Check whether a command is available
+# Check whether a command is available.
 function check_cmd_exists() {
     command -v "${1:-}" > /dev/null 2>&1
 }
 
 
-#  Normalize one optional Boolean test gate
+# Normalize one optional Boolean test gate.
 function invalid_test_gate_name() {
     echo_err_func "normalize_test_gate" \
         "positional argument 1, 'name', must be a valid shell variable" \
@@ -245,7 +258,7 @@ function normalize_test_gate() {
 }
 
 
-#  Check whether GNU Parallel tests were explicitly requested
+# Check whether GNU Parallel tests were explicitly requested.
 function is_parallel_enabled() {
     local value
 
@@ -254,7 +267,7 @@ function is_parallel_enabled() {
 }
 
 
-#  Check whether Atria tests were explicitly requested
+# Check whether Atria tests were explicitly requested.
 function is_atria_enabled() {
     local value
 
@@ -263,7 +276,7 @@ function is_atria_enabled() {
 }
 
 
-#  Check whether download tests were explicitly requested
+# Check whether download tests were explicitly requested.
 function is_download_enabled() {
     local value
 
@@ -272,7 +285,7 @@ function is_download_enabled() {
 }
 
 
-#  Check whether Slurm tests were explicitly requested
+# Check whether Slurm tests were explicitly requested.
 function is_slurm_enabled() {
     local value
 
@@ -281,7 +294,7 @@ function is_slurm_enabled() {
 }
 
 
-#  Check whether Slurm output polling was explicitly requested
+# Check whether Slurm output polling was explicitly requested.
 function is_slurm_wait_enabled() {
     local value
 
@@ -290,7 +303,7 @@ function is_slurm_wait_enabled() {
 }
 
 
-#  Log command availability in the current shell and project environment
+# Log command availability in the current shell and project environment.
 function check_env_cmds() {
     local env_nam="${1:-env_protocol}"
     local show_help
@@ -402,7 +415,7 @@ EOM
 }
 
 
-#  Require Atria and compression helpers in the requested project environment
+# Require Atria and compression helpers in the requested project environment.
 function require_env_atria() {
     local env_nam="${1:-env_protocol}"
     local log_lcl="${2:-${TEST_DIR_LOG}/atria_project_env.log}"
@@ -494,7 +507,7 @@ EOM
 }
 
 
-#  Require GNU Parallel in the requested project environment
+# Require GNU Parallel in the requested project environment.
 function require_env_parallel() {
     local env_nam="${1:-env_protocol}"
     local log_lcl="${2:-${TEST_DIR_LOG}/parallel_project_env.log}"
@@ -582,7 +595,7 @@ EOM
 }
 
 
-#  Require wget and gzip in the requested project environment
+# Require wget and gzip in the requested project environment.
 function require_env_download() {
     local env_nam="${1:-env_protocol}"
     local log_lcl="${2:-${TEST_DIR_LOG}/download_fastqs_project_env.log}"
@@ -672,7 +685,7 @@ EOM
 }
 
 
-#  Resolve the active project environment or require a named fallback
+# Resolve the active project environment or require a named fallback.
 function require_env_project() {
     local env_ref="${1:-env_nam}"
     local env_fb="${2:-env_protocol}"
@@ -766,7 +779,7 @@ EOM
 }
 
 
-#  Require one or more fixture files to exist and be non-empty
+# Require one or more fixture files to exist and be non-empty.
 function require_files_nonempty() {
     local file=""
     local rc=0
@@ -841,7 +854,7 @@ EOM
 }
 
 
-#  Assert one predictable output file exists, without requiring non-emptiness
+# Assert one predictable output file exists, without requiring non-emptiness.
 function assert_file_exists() {
     local file="${1:-}"
     local show_help
@@ -914,7 +927,7 @@ EOM
 }
 
 
-#  Assert exactly one path was found by a caller-specific search
+# Assert exactly one path was found by a caller-specific search.
 function assert_path_found() {
     local arr_ref="${1:-}"
     local lbl="${2:-path}"
@@ -1002,7 +1015,7 @@ EOM
 }
 
 
-#  Run samtools from the active shell or the resolved project environment
+# Run samtools from the active shell or the resolved project environment.
 function run_samtools() {
     local env_lcl="${env_nam:-env_protocol}"
     local show_help
@@ -1068,7 +1081,7 @@ EOM
 }
 
 
-#  Build and index a BAM input fixture from a committed SAM fixture
+# Build and index a BAM input fixture from a committed SAM fixture.
 function build_filter_alignments_fixture_bam() {
     local in_sam="${1:-}"
     local out_bam="${2:-}"
@@ -1170,7 +1183,7 @@ EOM
 }
 
 
-#  Build and index a CRAM input fixture from committed SAM/reference fixtures
+# Build and index a CRAM input fixture from committed SAM/reference fixtures.
 function build_filter_alignments_fixture_cram() {
     local in_sam="${1:-}"
     local ref_fa="${2:-}"
@@ -1278,7 +1291,7 @@ EOM
 }
 
 
-#  Find a usable Python command
+# Find a usable Python command.
 function find_python() {
     local show_help
 
@@ -1346,7 +1359,7 @@ EOM
 }
 
 
-#  Find a Python command that can bind loopback sockets
+# Find a Python command that can bind loopback sockets.
 function find_python_loopback() {
     local py=""
     local -a arr_py=()
@@ -1429,7 +1442,7 @@ PY
 }
 
 
-#  Find an available loopback TCP port for local HTTP tests
+# Find an available loopback TCP port for local HTTP tests.
 function find_port_free() {
     local py="${1:-}"
     local show_help
@@ -1497,7 +1510,7 @@ PY
 }
 
 
-#  Wait until a local HTTP server is reachable
+# Wait until a local HTTP server is reachable.
 function wait_http_local() {
     local py="${1:-}"
     local url="${2:-}"
@@ -1598,7 +1611,7 @@ PY
 }
 
 
-#  Stop a local HTTP server by PID
+# Stop a local HTTP server by PID.
 function cleanup_server_http() {
     local pid="${1:-}"
 
@@ -1609,7 +1622,7 @@ function cleanup_server_http() {
 }
 
 
-#  Check whether Python is at least version 3.11
+# Check whether Python is at least version 3.11.
 function check_python_ge_311() {
     local py="${1:-}"
 
@@ -1620,7 +1633,7 @@ PY
 }
 
 
-#  Run a command and capture stdout/stderr in a log file
+# Run a command and capture stdout/stderr in a log file.
 function run_capture() {
     local nam="${1:-command}"
     local out="${2:-}"
@@ -1706,7 +1719,7 @@ EOM
 }
 
 
-#  Run one filter-alignments retain-mode wrapper case
+# Run one filter-alignments retain-mode wrapper case.
 function run_case_filter() {
     local retain="${1:-}"
     local nam_cas="${2:-}"
@@ -1842,7 +1855,7 @@ EOM
 }
 
 
-#  Run one compute-signal wrapper case
+# Run one compute-signal wrapper case.
 function run_case_compute_signal() {
     local wrap="${1:-}"
     local fmt_in="${2:-}"
@@ -1919,7 +1932,7 @@ Examples
     require_env_project env_nam
     tmp="$(mktemp -d)"
     mkdir -p "${tmp}/out" "${tmp}/logs"
-    run_case_compute_signal submit bam se_signal signal tests/fixtures/compute_signal/bam/se/tiny_se.bam "${tmp}/out/signal.bdg" "${tmp}/submit.log" "${tmp}/out" "${tmp}/logs" '' --chr_siz tests/fixtures/compute_signal/reference/tiny.fa.fai --method unadj --siz_bin 10 --engine window --csv_scl_fct NA --dp 3
+    run_case_compute_signal submit bam se_signal signal tests/fixtures/compute_signal/bam/se/tiny_se.bam "${tmp}/out/signal.bdg" "${tmp}/submit.log" "${tmp}/out" "${tmp}/logs" '' --method unadj --siz_bin 10 --engine window --csv_scl_fct NA --dp 3
     rm -r -- "${tmp}"
     '''
 
@@ -2019,7 +2032,7 @@ EOM
 }
 
 
-#  Run one compute-signal ratio wrapper case
+# Run one compute-signal ratio wrapper case.
 function run_case_compute_signal_ratio() {
     local wrap="${1:-}"
     local cas_nam="${2:-}"
@@ -2179,7 +2192,7 @@ EOM
 }
 
 
-#  Run one execute-level calculate-scaling-factor two-row case
+# Run one execute-level calculate-scaling-factor two-row case.
 function run_case_scaling_factor_execute() {
     local cas="${1:-}"
     local mode="${2:-}"
@@ -2374,7 +2387,7 @@ EOM
 }
 
 
-#  Run one submit-level calculate-scaling-factor one-part case
+# Run one submit-level calculate-scaling-factor one-part case.
 function run_case_scaling_factor_submit_part() {
     local cas="${1:-}"
     local mode="${2:-}"
@@ -2531,7 +2544,7 @@ EOM
 }
 
 
-#  Assert that a log file contains a pattern
+# Assert that a log file contains a pattern.
 function assert_pattern_found() {
     local file="${1:-}"
     local patn="${2:-}"
@@ -2612,7 +2625,7 @@ EOM
 }
 
 
-#  Assert that a log or output file does not contain a pattern
+# Assert that a log or output file does not contain a pattern.
 function assert_pattern_absent() {
     local file="${1:-}"
     local patn="${2:-}"
@@ -2693,7 +2706,7 @@ EOM
 }
 
 
-#  Assert that a generated output file exists and is non-empty
+# Assert that a generated output file exists and is non-empty.
 function assert_file_nonempty() {
     local file="${1:-}"
     local show_help
@@ -2767,7 +2780,7 @@ EOM
 }
 
 
-#  Assert that a file contains exactly one expected line
+# Assert that a file contains exactly one expected line.
 function assert_file_exact_line() {
     local file="${1:-}"
     local expected="${2:-}"
@@ -2864,7 +2877,7 @@ EOM
 }
 
 
-#  Assert that two files have exactly identical contents
+# Assert that two files have exactly identical contents.
 function assert_files_equal() {
     local observed="${1:-}"
     local expected="${2:-}"
@@ -2947,7 +2960,7 @@ EOM
 }
 
 
-#  Assert whether a scaling-factor output contains an expected header
+# Assert whether a scaling-factor output contains an expected header.
 function assert_scaling_factor_header() {
     local file="${1:-}"
     local header="${2:-}"
@@ -3040,7 +3053,7 @@ EOM
 }
 
 
-#  Assert that a CRAM index exists using common Samtools naming variants
+# Assert that a CRAM index exists using common Samtools naming variants.
 function assert_cram_index() {
     local cram="${1:-}"
     local show_help
@@ -3124,7 +3137,7 @@ EOM
 }
 
 
-#  Assert a reference-backed CRAM read count for one or more regions
+# Assert a reference-backed CRAM read count for one or more regions.
 function assert_cram_count() {
     local cram="${1:-}"
     local ref_fa="${2:-}"
@@ -3236,7 +3249,7 @@ EOM
 }
 
 
-#  Assert filter_alignments @PG provenance in a BAM or CRAM header
+# Assert filter_alignments @PG provenance in a BAM or CRAM header.
 function assert_filter_alignments_pg_header() {
     local fil_in="${1:-}"
     local ref_fa="${2:-}"
@@ -3367,7 +3380,7 @@ EOM
 }
 
 
-#  Assert a gzip FASTQ exists and has expected read content
+# Assert a gzip FASTQ exists and has expected read content.
 function assert_fastq_gzip() {
     local fil_out="${1:-}"
     local rd_patn="${2:-}"
@@ -3503,7 +3516,7 @@ EOM
 }
 
 
-#  Assert a custom FASTQ path exists and is represented as a symlink
+# Assert a custom FASTQ path exists and is represented as a symlink.
 function assert_custom_symlink() {
     local sym="${1:-}"
     local show_help
@@ -3583,7 +3596,7 @@ EOM
 }
 
 
-#  Warn when a help-output section is missing
+# Warn when a help-output section is missing.
 function warn_help_pattern_missing() {
     local file="${1:-}"
     local patn="${2:-}"
@@ -3664,7 +3677,7 @@ EOM
 }
 
 
-#  Print and return the final status for one test group
+# Print and return the final status for one test group.
 function finish() {
     local show_help
 

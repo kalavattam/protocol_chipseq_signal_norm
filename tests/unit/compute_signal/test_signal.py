@@ -18,6 +18,7 @@ import argparse
 import shutil
 from pathlib import Path
 
+import pysam
 import pytest
 
 from protocol_chipseq_signal_norm.cli.compute_signal import (
@@ -26,6 +27,7 @@ from protocol_chipseq_signal_norm.cli.compute_signal import (
     iter_idx_frg,
     main,
     parse_args,
+    read_to_frg,
     resolve_siz_chr,
 )
 from protocol_chipseq_signal_norm.utilities.utils_cli import (
@@ -64,12 +66,37 @@ def collect_indexed_windows(
     return fragments
 
 
-def test_resolve_siz_chr_rejects_conflicts(tmp_path: Path) -> None:
-    sizes = tmp_path / "chr.sizes"
-    sizes.write_text("chrI\t81\n", encoding="utf-8")
+def test_resolve_siz_chr_rejects_an_empty_header() -> None:
+    """
+    Sizes come from the BAM/CRAM header alone, and an empty set is an error.
+    """
 
-    with pytest.raises(ValueError, match="Conflicting chromosome sizes"):
-        resolve_siz_chr({"chrI": 80}, str(sizes))
+    assert resolve_siz_chr({"chrI": 80}) == {"chrI": 80}
+
+    with pytest.raises(ValueError, match="usable sequence lengths"):
+        resolve_siz_chr({})
+
+
+def test_chr_siz_is_rejected(tmp_path: Path) -> None:
+    """
+    The retired option is gone outright, with no compatibility retention.
+    """
+
+    sizes = tmp_path / "chr.sizes"
+    sizes.write_text("chrI\t80\n", encoding="utf-8")
+
+    for spelling in ("--chr_siz", "--chr-siz", "-cs"):
+        with pytest.raises(SystemExit):
+            parse_args(
+                [
+                    "--fil_in",
+                    "x.bam",
+                    "--fil_out",
+                    "y.bdg",
+                    spelling,
+                    str(sizes),
+                ],
+            )
 
 
 def test_compute_signal_engines_match_and_clamp_bedgraph_end(
@@ -395,16 +422,15 @@ def test_compute_signal_rejects_dash_io(tmp_path: Path) -> None:
 # pair is exercised below, and a completeness guard fails when an alias reaches
 # the parser without a row here.
 HYPHEN_ALIASES = (
-    pytest.param("--chr_siz", "--chr-siz", "value", id="chr_siz"),
-    pytest.param("--fil_in", "--fil-in", "value", id="fil_in"),
-    pytest.param("--fil_out", "--fil-out", "value", id="fil_out"),
-    pytest.param("--ref_fa", "--ref-fa", "value", id="ref_fa"),
+    pytest.param("--fil_in",  "--fil-in",    "value", id="fil_in"),
+    pytest.param("--fil_out", "--fil-out",   "value", id="fil_out"),
+    pytest.param("--ref_fa",  "--ref-fa",    "value", id="ref_fa"),
     pytest.param("--report_L", "--report-L", "value", id="report_L"),
     pytest.param("--report_N", "--report-N", "value", id="report_N"),
-    pytest.param("--scl_fct", "--scl-fct", "0.5", id="scl_fct"),
-    pytest.param("--siz_bin", "--siz-bin", "7", id="siz_bin"),
-    pytest.param("--siz_win", "--siz-win", "7", id="siz_win"),
-    pytest.param("--usr_frg", "--usr-frg", "7", id="usr_frg"),
+    pytest.param("--scl_fct",  "--scl-fct",  "0.5",   id="scl_fct"),
+    pytest.param("--siz_bin",  "--siz-bin",  "7",     id="siz_bin"),
+    pytest.param("--siz_win",  "--siz-win",  "7",     id="siz_win"),
+    pytest.param("--usr_frg",  "--usr-frg",  "7",     id="usr_frg"),
 )
 
 
@@ -535,3 +561,56 @@ def test_missing_input_is_still_rejected() -> None:
         main(["--fil_out", "output.bdg"])
 
     assert "'--fil_in' is required" in str(error.value)
+
+
+def test_get_siz_chr_reads_header_lengths(tmp_path: Path) -> None:
+    """
+    Sizes come from the header's reference names and lengths.
+    """
+
+    fil_in = tmp_path / "hdr.bam"
+    header = {
+        "HD": {"VN": "1.6", "SO": "coordinate"},
+        "SQ": [{"SN": "I", "LN": 80}, {"SN": "II", "LN": 40}],
+    }
+
+    with pysam.AlignmentFile(str(fil_in), "wb", header=header):
+        pass
+
+    assert get_siz_chr(str(fil_in)) == {"I": 80, "II": 40}
+
+
+def test_get_siz_chr_drops_nonpositive_lengths(tmp_path: Path) -> None:
+    """
+    A reference whose length is zero is unusable and is dropped.
+
+    This is the case '--chr_siz' once rescued. Nothing rescues it now, so the
+    reference simply does not appear, and a read on it fails loudly.
+    """
+
+    fil_in = tmp_path / "zero.bam"
+    header = {
+        "HD": {"VN": "1.6", "SO": "coordinate"},
+        "SQ": [{"SN": "I", "LN": 80}, {"SN": "II", "LN": 0}],
+    }
+
+    with pysam.AlignmentFile(str(fil_in), "wb", header=header):
+        pass
+
+    assert get_siz_chr(str(fil_in)) == {"I": 80}
+
+
+def test_read_to_frg_rejects_a_chromosome_absent_from_sizes() -> None:
+    """
+    The error names the header, not a retired option.
+    """
+
+    read = pysam.AlignedSegment()
+    read.reference_id = 0
+    read.reference_start = 0
+    read.query_name = "r1"
+    read.query_sequence = "A" * 10
+    read.cigarstring = "10M"
+
+    with pytest.raises(ValueError, match="usable sequence lengths"):
+        read_to_frg(read, lambda _: "absent", {"I": 80})

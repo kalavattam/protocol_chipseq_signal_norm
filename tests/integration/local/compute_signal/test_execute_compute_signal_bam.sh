@@ -18,16 +18,15 @@ set -euo pipefail
 
 TEST_NAME="execute compute-signal BAM"
 
-#  Source shared test helpers
+# Source shared test helpers.
 # shellcheck source=tests/support/test_helpers.sh
 source "$(
     git -C "$(dirname "${BASH_SOURCE[0]}")" rev-parse --show-toplevel
 )/tests/support/test_helpers.sh"
 
 
-#  Define fixture and output paths for the execute-to-submit BAM path
+# Define fixture and output paths for the execute-to-submit BAM path.
 dir_fx="${ROOT_REPO}/tests/fixtures/compute_signal"
-chr_siz="${dir_fx}/reference/tiny.fa.fai"
 in_se="${dir_fx}/bam/se/tiny_se.bam"
 in_pe="${dir_fx}/bam/pe/tiny_pe.bam"
 
@@ -69,7 +68,6 @@ require_env_project env_nam || {
 }
 
 require_files_nonempty \
-    "${chr_siz}" \
     "${in_se}" \
     "${in_pe}" || {
     finish
@@ -77,7 +75,7 @@ require_files_nonempty \
 }
 
 
-#  Signal mode: two 10-bp SE alignments produce chromosome-I bedGraph bins
+# Signal mode: two 10-bp SE alignments produce chromosome-I bedGraph bins.
 run_case_compute_signal \
     execute \
     bam \
@@ -89,10 +87,10 @@ run_case_compute_signal \
     "${dir_out}" \
     "${dir_err}" \
     "" \
-    --chr_siz "${chr_siz}" \
     --method unadj \
     --siz_bin 10 \
     --engine window \
+    --siz_win 20 \
     --csv_scl_fct NA
 
 assert_file_nonempty \
@@ -112,7 +110,7 @@ if [[ -s "${fil_out_se_signal}" ]]; then
 fi
 
 
-#  Coord mode: the same SE alignments emit BED-like processed fragments
+# Coord mode: the same SE alignments emit BED-like processed fragments.
 run_case_compute_signal \
     execute \
     bam \
@@ -142,7 +140,7 @@ if [[ -s "${fil_out_se_coord}" ]]; then
 fi
 
 
-#  Signal mode: two PE fragments cover bins from I:10-60
+# Signal mode: two PE fragments cover bins from I:10-60.
 run_case_compute_signal \
     execute \
     bam \
@@ -175,7 +173,7 @@ if [[ -s "${fil_out_pe_signal}" ]]; then
 fi
 
 
-#  Coord mode: PE output emits one BED-like row per leftmost proper pair
+# Coord mode: PE output emits one BED-like row per leftmost proper pair.
 run_case_compute_signal \
     execute \
     bam \
@@ -205,7 +203,7 @@ if [[ -s "${fil_out_pe_coord}" ]]; then
 fi
 
 
-#  Scaling factor and prefix propagation: raw 10-bp SE bins scaled by 2
+# Scaling factor and prefix propagation: raw 10-bp SE bins scaled by 2.
 run_case_compute_signal \
     execute \
     bam \
@@ -239,7 +237,7 @@ if [[ -s "${fil_out_se_signal_scaled}" ]]; then
 fi
 
 
-#  Fixed SE fragment length extends reads to 20 bp in signal mode
+# Fixed SE fragment length extends reads to 20 bp in signal mode.
 run_case_compute_signal \
     execute \
     bam \
@@ -279,7 +277,7 @@ if [[ -s "${fil_out_se_signal_usr_frg}" ]]; then
 fi
 
 
-#  Fixed SE fragment length is reflected in coord-mode BED intervals
+# Fixed SE fragment length is reflected in coord-mode BED intervals.
 run_case_compute_signal \
     execute \
     bam \
@@ -309,5 +307,95 @@ if [[ -s "${fil_out_se_coord_usr_frg}" ]]; then
         $'^I\t10\t30\t20$' \
         "execute usr_frg SE coord output has chromosome-I fragment I:10-30"
 fi
+
+
+# Forwarding contract for '--siz_win' and the retired '--chr_siz'. These assert
+# against the command the wrapper emitted, not merely that a run succeeded: a
+# silently dropped option would still produce output.
+log_fwd="${tmp}/logs/test_execute_compute_bam_se_signal.tiny_se.stderr.txt"
+
+if [[ -s "${log_fwd}" ]]; then
+    assert_pattern_found \
+        "${log_fwd}" \
+        "--siz_win *20" \
+        "execute signal forwards the supplied '--siz_win'"
+
+    assert_pattern_absent \
+        "${log_fwd}" \
+        "--chr_siz" \
+        "execute signal no longer forwards '--chr_siz'"
+fi
+
+log_coord="${tmp}/logs/test_execute_compute_bam_se_coord.tiny_se.stderr.txt"
+
+if [[ -s "${log_coord}" ]]; then
+    assert_pattern_absent \
+        "${log_coord}" \
+        "--siz_win" \
+        "execute coord omits '--siz_win'"
+
+    assert_pattern_absent \
+        "${log_coord}" \
+        "--engine" \
+        "execute coord omits '--engine'"
+fi
+
+# Validation contract for '--siz_win': a nonpositive or nonnumeric value is
+# rejected before any job is built.
+for val_bad in 0 abc; do
+    out_bad="$(
+        bash "${ROOT_REPO}/bin/execute_compute_signal.sh" \
+            --dry_run \
+            --mode signal \
+            --csv_fil_in "${in_se}" \
+            --dir_out "${dir_out}" \
+            --dir_eo "${dir_err}" \
+            --siz_bin 10 \
+            --siz_win "${val_bad}" 2>&1
+    )" || true
+
+    if [[ "${out_bad}" == *"'--siz_win' was assigned"* ]]; then
+        record_pass "execute rejects an invalid '--siz_win ${val_bad}'"
+    else
+        record_fail "execute did not reject '--siz_win ${val_bad}' itself"
+    fi
+done
+
+# Default contract: a signal case that names neither option still forwards both
+# wrapper defaults, so a dropped default cannot pass unnoticed.
+log_dflt="${tmp}/logs/test_execute_compute_bam_pe_signal.tiny_pe.stderr.txt"
+
+if [[ -s "${log_dflt}" ]]; then
+    assert_pattern_found \
+        "${log_dflt}" \
+        "--engine *chrom" \
+        "execute forwards the default '--engine chrom'"
+
+    assert_pattern_found \
+        "${log_dflt}" \
+        "--siz_win *100000" \
+        "execute forwards the default '--siz_win 100000'"
+fi
+
+
+# Validation contract for '--engine': only 'chrom' and 'window' are accepted.
+for eng_bad in chrm windowed bogus; do
+    out_bad="$(
+        bash "${ROOT_REPO}/bin/execute_compute_signal.sh" \
+            --dry_run \
+            --mode signal \
+            --csv_fil_in "${in_se}" \
+            --dir_out "${dir_out}" \
+            --dir_eo "${dir_err}" \
+            --siz_bin 10 \
+            --engine "${eng_bad}" 2>&1
+    )" || true
+
+    if [[ "${out_bad}" == *"'--engine' must be 'chrom' or 'window'"* ]]; then
+        record_pass "execute rejects an invalid '--engine ${eng_bad}'"
+    else
+        record_fail "execute did not reject '--engine ${eng_bad}' itself"
+    fi
+done
 
 finish

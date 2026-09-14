@@ -18,14 +18,14 @@ set -euo pipefail
 
 TEST_NAME="execute compute-signal ratio"
 
-#  Source shared test helpers
+# Source shared test helpers.
 # shellcheck source=tests/support/test_helpers.sh
 source "$(
     git -C "$(dirname "${BASH_SOURCE[0]}")" rev-parse --show-toplevel
 )/tests/support/test_helpers.sh"
 
 
-#  Define fixture and output paths for the execute-to-submit ratio path
+# Define fixture and output paths for the execute-to-submit ratio path.
 dir_fx="${ROOT_REPO}/tests/fixtures/compute_signal/bedgraph"
 chr_siz="${ROOT_REPO}/tests/fixtures/compute_signal/reference/tiny.fa.fai"
 fil_A="${dir_fx}/ratio_A.bdg"
@@ -114,8 +114,7 @@ require_files_nonempty \
 }
 
 
-
-#  Baseline unadjusted ratio with three-decimal rounding
+# Baseline unadjusted ratio with three-decimal rounding.
 run_case_compute_signal_ratio \
     execute \
     "unadj" \
@@ -161,7 +160,7 @@ if [[ -s "${fil_out_unadj}" ]]; then
 fi
 
 
-#  Scaling factors are applied before ratio calculation: (2 * A) / (1 * B)
+# Scaling factors are applied before ratio calculation: (2 * A) / (1 * B).
 run_case_compute_signal_ratio \
     execute \
     "scl_fct" \
@@ -197,7 +196,7 @@ if [[ -s "${fil_out_scl_fct}" ]]; then
 fi
 
 
-#  Log2 ratio: log2(4 / 2) = 1 and log2(2 / 0.5) = 2
+# Log2 ratio: log2(4 / 2) = 1 and log2(2 / 0.5) = 2.
 run_case_compute_signal_ratio \
     execute \
     "log2" \
@@ -231,7 +230,7 @@ if [[ -s "${fil_out_log2}" ]]; then
 fi
 
 
-#  Reciprocal ratio: B / A gives 0.5, 0.25, and 3 for selected rows
+# Reciprocal ratio: B / A gives 0.5, 0.25, and 3 for selected rows.
 run_case_compute_signal_ratio \
     execute \
     "unadj_r" \
@@ -265,7 +264,7 @@ if [[ -s "${fil_out_unadj_r}" ]]; then
 fi
 
 
-#  Reciprocal log2 ratio: log2(B / A)
+# Reciprocal log2 ratio: log2(B / A).
 run_case_compute_signal_ratio \
     execute \
     "log2_r" \
@@ -299,7 +298,7 @@ if [[ -s "${fil_out_log2_r}" ]]; then
 fi
 
 
-#  Denominator floor: B=0.04 is floored to 0.1, so 1 / 0.1 = 10
+# Denominator floor: B=0.04 is floored to 0.1, so 1 / 0.1 = 10.
 run_case_compute_signal_ratio \
     execute \
     "dep_min" \
@@ -325,7 +324,7 @@ if [[ -s "${fil_out_dep_min}" ]]; then
 fi
 
 
-#  Epsilon guards denominator values at or below eps: B=0.04 <= 0.05 -> nan
+# Epsilon guards denominator values at or below eps: B=0.04 <= 0.05 -> nan.
 run_case_compute_signal_ratio \
     execute \
     "eps" \
@@ -361,7 +360,7 @@ if [[ -s "${fil_out_eps}" ]]; then
 fi
 
 
-#  Pseudocounts: (0 + 1) / (2 + 1) = 0.333 at three decimals
+# Pseudocounts: (0 + 1) / (2 + 1) = 0.333 at three decimals.
 run_case_compute_signal_ratio \
     execute \
     "pseudo" \
@@ -387,7 +386,7 @@ if [[ -s "${fil_out_pseudo}" ]]; then
 fi
 
 
-#  Drop non-finite rows while preserving finite ratio rows
+# Drop non-finite rows while preserving finite ratio rows.
 run_case_compute_signal_ratio \
     execute \
     "drp_nan" \
@@ -427,7 +426,7 @@ if [[ -s "${fil_out_drp_nan}" ]]; then
 fi
 
 
-#  Zero-zero skipping before scaling removes the A=0, B=0 bin
+# Zero-zero skipping before scaling removes the A=0, B=0 bin.
 run_case_compute_signal_ratio \
     execute \
     "skip_00" \
@@ -453,8 +452,8 @@ if [[ -s "${fil_out_skip_00}" ]]; then
 fi
 
 
-#  Post-scale zero-zero skipping can remove bins that are non-zero before
-#+ scaling: I:50-60 has A=1 and B=0.04, then scales to 0.001 and 0.004
+# Post-scale zero-zero skipping can remove bins that are non-zero before
+# scaling: I:50-60 has A=1 and B=0.04, then scales to 0.001 and 0.004.
 run_case_compute_signal_ratio \
     execute \
     "skip_00_post_scale" \
@@ -494,7 +493,7 @@ if [[ -s "${fil_out_skip_00_post_scale}" ]]; then
 fi
 
 
-#  Track sidecar should be generated and should omit non-finite rows
+# Track sidecar should be generated and should omit non-finite rows.
 run_case_compute_signal_ratio \
     execute \
     "track" \
@@ -538,7 +537,7 @@ if [[ -s "${trackfile_track}" ]]; then
 fi
 
 
-#  Gzipped bedGraph input and output should round-trip through execute mode
+# Gzipped bedGraph input and output should round-trip through execute mode.
 if \
     run_capture \
         "execute compute-signal ratio gzip_io" \
@@ -602,7 +601,7 @@ if [[ -s "${outfile_txt_gzip_io}" ]]; then
 fi
 
 
-#  Header/prefix skipping should propagate through execute to submit/Python
+# Header/prefix skipping should propagate through execute to submit/Python.
 if \
     run_capture \
         "execute compute-signal ratio skp_pfx" \
@@ -675,5 +674,26 @@ if [[ -s "${fil_out_skp_pfx}" ]]; then
         "execute skp_pfx ratio output omits comment headers"
 fi
 
+
+# Mode separation: ratio runs take '--chr_siz', which they use to validate
+# bedGraph bounds, and must never receive the signal-only window options.
+log_rat_mode="${tmp}/logs/test_execute_compute_ratio_dep_min.exec_dep_min_ratio_A.stderr.txt"
+
+if [[ -s "${log_rat_mode}" ]]; then
+    assert_pattern_found \
+        "${log_rat_mode}" \
+        "--chr_siz" \
+        "execute ratio still forwards '--chr_siz'"
+
+    assert_pattern_absent \
+        "${log_rat_mode}" \
+        "--siz_win" \
+        "execute ratio omits '--siz_win'"
+
+    assert_pattern_absent \
+        "${log_rat_mode}" \
+        "--engine" \
+        "execute ratio omits '--engine'"
+fi
 
 finish

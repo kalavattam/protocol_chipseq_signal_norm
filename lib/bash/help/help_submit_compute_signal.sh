@@ -15,8 +15,6 @@
 
 
 # TODO: do we need '--dir_scr' in the examples? Only if using 'sbatch'.
-# TODO: expose '--siz_win' through this wrapper so the engine help no longer
-# has to say the window size is unavailable here.
 function help_submit_compute_signal() {
     # The submit owner initializes interpolated defaults before invocation.
     # shellcheck disable=SC2154
@@ -27,9 +25,9 @@ Usage
     [--help]
     [--env_nam <str>] [--dir_scr <dir>] [--threads <int>]
     [--mode <mode>] [--method <method>]
-    (--csv_fil_in <csv> [--ref_fa <file>] [--chr_siz <file>] | --csv_fil_A <csv> --csv_fil_B <csv> [--chr_siz <file>])
+    (--csv_fil_in <csv> [--ref_fa <file>] | --csv_fil_A <csv> --csv_fil_B <csv> [--chr_siz <file>])
     --csv_fil_out <csv>
-    [--siz_bin <int>] [--engine <engine>] [--csv_scl_fct <csv>] [--csv_usr_frg <csv>]
+    [--siz_bin <int>] [--engine <engine>] [--siz_win <int>] [--csv_scl_fct <csv>] [--csv_usr_frg <csv>]
     [--csv_dep_min <csv>] [--csv_pseudo <csv>] [--eps <flt>] [--skip_00 <choice>] [--strict_bins] [--drp_nan]
     [--skp_pfx <csv>] [--track] [--dp <int>]
     --dir_eo <dir> [--nam_job <str>]
@@ -80,7 +78,7 @@ Parameters
   -cs, --chr_siz : file
     Chromosome sizes file in UCSC-style TSV format.
 
-    Used with '--mode signal' or '--mode coord' to supplement BAM/CRAM header sizes, and with '--mode ratio' to validate bedGraph interval bounds.
+    Used only with '--mode ratio' to validate bedGraph interval bounds. Signal and coordinate modes take chromosome sizes from the BAM/CRAM header.
 
   -cA, --csv_fil_A : list of file
     Comma-separated list of file A paths for numerator bedGraph files.
@@ -110,9 +108,12 @@ Parameters
 
     Both engines dispatch indexed fetch tasks and produce the same signal; they differ only in how fetch work is divided among threads.
       - 'chrom': one fetch task per chromosome. Task size tracks chromosome size, so the longest chromosomes dominate wall time.
-      - 'window': each chromosome is split into fixed-size coordinate windows, with one fetch task per window. Task sizes are uniform, giving finer load balance across threads, but at the cost of more fetch calls. Window size is set by 'compute_signal.py --siz_win' (default: 100000) and is not exposed here.
+      - 'window': each chromosome is split into fixed-size coordinate windows, with one fetch task per window. Task sizes are uniform, giving finer load balance across threads, but at the cost of more fetch calls. Window size is set by '--siz_win'.
 
     Recommended: keep 'chrom' as the general choice and the current best choice for CRAM input; try 'window' for large BAM inputs.
+
+  -sw, --siz_win : int
+    Window size in base pairs for the 'window' engine's indexed fetch tasks (default: ${siz_win}). Ignored by the 'chrom' engine. Used only with '--mode signal'.
 
   -csf, --csv_scl_fct : list of structured string
     Comma-separated list of scaling factors or sentinels.

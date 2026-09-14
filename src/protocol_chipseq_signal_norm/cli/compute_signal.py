@@ -52,9 +52,6 @@ from typing import Any
 import numpy as np
 import pysam
 
-from protocol_chipseq_signal_norm.utilities.utils_bdg import (
-    load_chromosome_sizes,
-)
 from protocol_chipseq_signal_norm.utilities.utils_check import (
     ALLOWED_OUTPUT_FORMATS,
     check_exists,
@@ -151,42 +148,19 @@ def get_siz_chr(
         }
 
 
-def resolve_siz_chr(
-    siz_chr_hdr: dict[str, int],
-    fil_chr_siz: str | None = None,
-) -> dict[str, int]:
+def resolve_siz_chr(siz_chr_hdr: dict[str, int]) -> dict[str, int]:
     """
-    Resolve chromosome sizes from BAM/CRAM headers plus an optional TSV.
+    Return chromosome sizes from a BAM/CRAM header, rejecting an empty set.
     """
 
-    siz_chr = dict(siz_chr_hdr)
-
-    if fil_chr_siz is not None:
-        siz_chr_fil = load_chromosome_sizes(fil_chr_siz)
-        conflicts = [
-            (chrom, siz_chr[chrom], size)
-            for chrom, size in siz_chr_fil.items()
-            if chrom in siz_chr and siz_chr[chrom] != size
-        ]
-
-        if conflicts:
-            chrom, header_size, file_size = conflicts[0]
-            raise ValueError(
-                "Conflicting chromosome sizes for "
-                f"{chrom!r}: BAM/CRAM header has {header_size}, "
-                f"but chr.sizes file has {file_size}.",
-            )
-
-        siz_chr.update(siz_chr_fil)
-
-    if not siz_chr:
+    if not siz_chr_hdr:
         raise ValueError(
             "Chromosome sizes are required to trim bedGraph bins. Provide a "
-            "BAM/CRAM with sequence lengths in the header or pass "
-            "'--chr_siz' with a UCSC-style two-column TSV.",
+            "BAM/CRAM whose header carries usable sequence lengths ('LN' "
+            "tags).",
         )
 
-    return siz_chr
+    return dict(siz_chr_hdr)
 
 
 def start_profile(
@@ -212,7 +186,6 @@ def start_profile(
         "threads": args.threads,
         "fil_in": args.fil_in,
         "ref_fa": args.ref_fa,
-        "chr_siz": args.chr_siz,
         "fil_out": fil_out,
         "fmt_out": fmt_out,
         "method": args.method,
@@ -424,8 +397,8 @@ def read_to_frg(
     chrom_len = siz_chr.get(chrom)
     if chrom_len is None:
         raise ValueError(
-            f"Chromosome {chrom!r} is missing from chromosome sizes. "
-            "Provide '--chr_siz' with a UCSC-style two-column TSV.",
+            f"Chromosome {chrom!r} is missing from the alignment header's "
+            "usable sequence lengths; fix the header before rerunning.",
         )
 
     # Handle paired-end alignments: one fragment is emitted per leftmost anchor
@@ -2016,24 +1989,6 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         help=argparse.SUPPRESS,
     )
     parser.add_argument(
-        "-cs",
-        "--chr_siz",
-        dest="chr_siz",
-        default=None,
-        help=(
-            "Chromosome sizes file in UCSC-style TSV format with chromosome "
-            "name and positive integer size columns. Header sizes from "
-            "BAM/CRAM are used when available; this file can supplement "
-            "missing header sizes, but conflicting sizes are rejected.\n"
-            "\n"
-        ),
-    )
-    parser.add_argument(
-        "--chr-siz",
-        dest="chr_siz",
-        help=argparse.SUPPRESS,
-    )
-    parser.add_argument(
         "-fo",
         "--fil_out",
         dest="fil_out",
@@ -2739,8 +2694,6 @@ def main(argv: list[str] | None = None) -> int:
         if args.ref_fa is not None:
             check_exists(args.ref_fa, kind="file", label="Reference FASTA")
 
-        if args.chr_siz is not None:
-            check_exists(args.chr_siz, kind="file", label="chr.sizes file")
     except FileNotFoundError as error:
         raise SystemExit(str(error)) from None
 
@@ -2863,7 +2816,6 @@ def main(argv: list[str] | None = None) -> int:
             print(f"--threads  {args.threads}")
             print(f"--fil_in   {args.fil_in}")
             print(f"--ref_fa   {args.ref_fa}")
-            print(f"--chr_siz  {args.chr_siz}")
             print(f"--fil_out  {fil_out}")
 
             if fmt_out == "bed":
@@ -2900,7 +2852,7 @@ def main(argv: list[str] | None = None) -> int:
     try:
         time_phase = time.perf_counter()
         siz_chr_hdr = get_siz_chr(args.fil_in, args.ref_fa)
-        siz_chr = resolve_siz_chr(siz_chr_hdr, args.chr_siz)
+        siz_chr = resolve_siz_chr(siz_chr_hdr)
         record_phase(profile, "resolve_siz_chr", time_phase)
 
         if profile is not None:

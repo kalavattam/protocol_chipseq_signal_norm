@@ -6,9 +6,10 @@
 # Copyright 2026 by Kris Alavattam
 # Email: kalavattam@gmail.com
 #
-# OpenAI ChatGPT and Codex (GPT-5.5, GPT-5.6) were used in design, development,
-# and documentation, with all output reviewed, edited, and approved by the
-# author.
+# The following were used in design, development, and documentation, with all
+# output reviewed, edited, and approved by the author:
+# - OpenAI ChatGPT and Codex (GPT-5.5, GPT-5.6);
+# - Anthropic Claude Code (Opus 5).
 #
 # Distributed under the MIT license.
 
@@ -17,14 +18,14 @@ set -euo pipefail
 
 TEST_NAME="submit compute-signal CRAM"
 
-#  Source shared test helpers
+# Source shared test helpers.
 # shellcheck source=tests/support/test_helpers.sh
 source "$(
     git -C "$(dirname "${BASH_SOURCE[0]}")" rev-parse --show-toplevel
 )/tests/support/test_helpers.sh"
 
 
-#  Define fixture and output paths for local serial CRAM-backed tests
+# Define fixture and output paths for local serial CRAM-backed tests.
 dir_fx="${ROOT_REPO}/tests/fixtures/compute_signal"
 in_se="${dir_fx}/cram/se/tiny_se.cram"
 in_pe="${dir_fx}/cram/pe/tiny_pe.cram"
@@ -67,7 +68,7 @@ require_files_nonempty \
 }
 
 
-#  Signal mode: two 10-bp SE alignments produce chromosome-I bedGraph bins
+# Signal mode: two 10-bp SE alignments produce chromosome-I bedGraph bins.
 run_case_compute_signal \
     submit \
     cram \
@@ -111,7 +112,7 @@ if [[ -s "${fil_out_se_signal}" ]]; then
 fi
 
 
-#  Coord mode: the same SE alignments emit BED-like processed fragments
+# Coord mode: the same SE alignments emit BED-like processed fragments.
 run_case_compute_signal \
     submit \
     cram \
@@ -142,7 +143,7 @@ if [[ -s "${fil_out_se_coord}" ]]; then
 fi
 
 
-#  Signal mode: two PE fragments cover bins from I:10-60
+# Signal mode: two PE fragments cover bins from I:10-60.
 run_case_compute_signal \
     submit \
     cram \
@@ -176,7 +177,7 @@ if [[ -s "${fil_out_pe_signal}" ]]; then
 fi
 
 
-#  Coord mode: PE output emits one BED-like row per leftmost proper pair
+# Coord mode: PE output emits one BED-like row per leftmost proper pair.
 run_case_compute_signal \
     submit \
     cram \
@@ -207,7 +208,7 @@ if [[ -s "${fil_out_pe_coord}" ]]; then
 fi
 
 
-#  CRAM input without a reference FASTA should fail clearly in the wrapper
+# CRAM input without a reference FASTA should fail clearly in the wrapper.
 # shellcheck disable=SC2154
 if \
     run_capture \
@@ -243,6 +244,49 @@ if [[ ! -s "${fil_out_missing_ref}" ]]; then
     record_pass "submit CRAM missing-ref output is absent or empty"
 else
     record_fail "submit CRAM missing-ref output was unexpectedly written"
+fi
+
+
+# Window engine over CRAM, multi-threaded, as previously CRAM suites had no
+# '--siz_win' case, and nothing paired '--siz_win' with '--threads' above one,
+# in which case window tasks are distributed across cores.
+fil_out_pe_window="${dir_out}/tiny_pe_window_t2.bdg"
+log_pe_window="${dir_log}/submit_compute_signal_cram_pe_window.log"
+
+run_case_compute_signal \
+    submit \
+    cram \
+    "pe_window" \
+    "signal" \
+    "${in_pe}" \
+    "${fil_out_pe_window}" \
+    "${log_pe_window}" \
+    "${dir_out}" \
+    "${dir_err}" \
+    "${ref_fa}" \
+    --method unadj \
+    --siz_bin 10 \
+    --engine window \
+    --siz_win 20 \
+    --threads 2 \
+    --csv_scl_fct NA
+
+assert_file_nonempty \
+    "${fil_out_pe_window}" \
+    "submit CRAM PE window-engine multi-threaded output"
+
+log_window="${tmp}/logs/test_compute_cram_pe_window.tiny_pe_window_t2.stderr.txt"
+
+if [[ -s "${log_window}" ]]; then
+    assert_pattern_found \
+        "${log_window}" \
+        "--siz_win *20" \
+        "submit CRAM window run forwards '--siz_win'"
+
+    assert_pattern_found \
+        "${log_window}" \
+        "--engine *window" \
+        "submit CRAM window run forwards '--engine window'"
 fi
 
 finish

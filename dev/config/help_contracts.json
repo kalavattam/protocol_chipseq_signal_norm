@@ -566,9 +566,9 @@
       "canonical_core": "Chromosome sizes file.",
       "members": [
         {
-          "surface_id": "bin/submit_compute_signal.sh::run_comp_sig",
+          "surface_id": "bin/submit_compute_signal.sh::run_comp_rat",
           "path": "bin/submit_compute_signal.sh",
-          "symbol": "run_comp_sig",
+          "symbol": "run_comp_rat",
           "parameter": "chr_siz",
           "owner": "PARAMETER.DESCRIPTIONS",
           "evidence": "Parameters row for 'chr_siz': Chromosome sizes file or empty string."
@@ -606,6 +606,23 @@
           "parameter": "siz_bin",
           "owner": "PARAMETER.DESCRIPTIONS",
           "evidence": "Parameters row for 'siz_bin': Bin size in base pairs."
+        }
+      ],
+      "local_meanings": [],
+      "status": "registered_shared"
+    },
+    {
+      "id": "shared_siz_win",
+      "parameter": "siz_win",
+      "canonical_core": "Window size in base pairs.",
+      "members": [
+        {
+          "surface_id": "bin/submit_compute_signal.sh::run_comp_sig",
+          "path": "bin/submit_compute_signal.sh",
+          "symbol": "run_comp_sig",
+          "parameter": "siz_win",
+          "owner": "PARAMETER.DESCRIPTIONS",
+          "evidence": "Parameters row for 'siz_win': Window size in base pairs for the 'window' engine, or empty string."
         }
       ],
       "local_meanings": [],

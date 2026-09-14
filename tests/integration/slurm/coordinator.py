@@ -31,16 +31,16 @@ Examples
 --------
 Prepare and inspect a fixed run without contacting a remote host::
 
-    python tests/integration/slurm/coordinator.py prepare \
-        --run_id wet-20260716 \
+    python tests/integration/slurm/coordinator.py prepare \\
+        --run_id wet-20260716 \\
         --ssh_host rhino --partition campus-new --account my-account
     python tests/integration/slurm/coordinator.py status --run_id wet-20260716
 
 Render transfer and remote commands without running them::
 
-    python tests/integration/slurm/coordinator.py push \
+    python tests/integration/slurm/coordinator.py push \\
         --run_id wet-20260716 --dry_run
-    python tests/integration/slurm/coordinator.py instructions \
+    python tests/integration/slurm/coordinator.py instructions \\
         --run_id wet-20260716
 """
 
@@ -2043,8 +2043,6 @@ def job_definitions(config: dict[str, Any]) -> list[dict[str, Any]]:
                 "unadj",
                 "--csv_fil_in",
                 str(fixtures / "tiny_signal.bam"),
-                "--chr_siz",
-                str(fixtures / "tiny.fa.fai"),
                 "--csv_fil_out",
                 str(signal_art / "tiny_se_signal_unadj.bdg"),
                 "--csv_usr_frg",

@@ -421,6 +421,7 @@ EOM
             --engine "${engine}"
             --csv_scl_fct "${scl_fct}"
             --csv_usr_frg "${usr_frg}"
+            --siz_win "${siz_win}"
         )
     elif [[ "${mode}" == "coord" ]]; then
         cmd_bld+=( --csv_usr_frg "${usr_frg}" )
@@ -490,6 +491,7 @@ function init_arg_defs() {
     track=false
     siz_bin=""
     engine="chrom"
+    siz_win=100000
     csv_scl_fct=""
     csv_usr_frg=""
     csv_dep_min=""
@@ -671,6 +673,16 @@ function parse_args() {
                     return 1
                 }
                 engine="${2,,}"
+                shift 2
+                ;;
+
+            -sw|--siz[_-]win)
+                require_optarg "${1}" "${2:-}" "main" || {
+                    echo >&2
+                    help_execute_compute_signal >&2
+                    return 1
+                }
+                siz_win="${2}"
                 shift 2
                 ;;
 
@@ -964,7 +976,8 @@ function validate_args() {
             # bp.
             if [[ -z "${siz_bin}" ]]; then siz_bin=10; fi
 
-            check_int_pos "${siz_bin}" "siz_bin"
+            check_int_pos "${siz_bin}" "siz_bin" || return 1
+            check_int_pos "${siz_win}" "siz_win" || return 1
 
             case "${engine}" in
                 chrom|window) : ;;
@@ -1432,6 +1445,7 @@ function print_state_debug() {
         echo "track=${track}"
         echo "siz_bin=${siz_bin:-UNSET}"
         echo "engine=${engine:-UNSET}"
+        echo "siz_win=${siz_win:-UNSET}"
         echo "csv_scl_fct=${csv_scl_fct:-UNSET}"
         echo "csv_usr_frg=${csv_usr_frg:-UNSET}"
         echo "csv_dep_min=${csv_dep_min:-UNSET}"

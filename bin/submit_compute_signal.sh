@@ -573,8 +573,8 @@ function run_comp_sig() {
     local usr_frg="${8:-}"
     local dp="${9:-}"
     local ref_fa="${10:-}"
-    local chr_siz="${11:-}"
-    local engine="${12:-}"
+    local engine="${11:-}"
+    local siz_win="${12:-}"
     local dir_eo="${13:-}"
     local nam_job="${14:-}"
     local dsc="${15:-}"
@@ -587,7 +587,7 @@ function run_comp_sig() {
 Usage
 -----
   run_comp_sig
-    [--help] debug threads fil_in fil_out siz_bin method scl_fct usr_frg dp ref_fa chr_siz engine dir_eo nam_job dsc
+    [--help] debug threads fil_in fil_out siz_bin method scl_fct usr_frg dp ref_fa engine siz_win dir_eo nam_job dsc
 
   Build and run the per-sample call to 'compute_signal.py'.
 
@@ -626,11 +626,11 @@ Parameters
   10  ref_fa : file
     Reference FASTA file for CRAM input or empty string.
 
-  11  chr_siz : file
-    Chromosome sizes file or empty string.
-
-  12  engine : {'chrom', 'window'}
+  11  engine : {'chrom', 'window'}
     Processing engine.
+
+  12  siz_win : int
+    Window size in base pairs for the 'window' engine, or empty string.
 
   13  dir_eo : dir
     Directory for stderr and stdout log files.
@@ -733,12 +733,12 @@ EOM
         cmd+=( --ref_fa "${ref_fa}" )
     fi
 
-    if [[ -n "${chr_siz}" ]]; then
-        cmd+=( --chr_siz "${chr_siz}" )
-    fi
-
     if [[ -n "${engine}" ]]; then
         cmd+=( --engine "${engine}" )
+    fi
+
+    if [[ -n "${siz_win}" ]]; then
+        cmd+=( --siz_win "${siz_win}" )
     fi
 
     if [[ "${#optional[@]}" -gt 0 && -n "${optional[0]}" ]]; then
@@ -1435,8 +1435,8 @@ EOM
         "$(get_arr_elem arr_usr_frg "${idx}")" \
         "${dp}" \
         "${ref_fa}" \
-        "${chr_siz}" \
         "${engine}" \
+        "${siz_win}" \
         "${dir_eo}" \
         "${nam_job}" \
         "${dsc}"
@@ -1639,7 +1639,7 @@ EOM
         "$(get_arr_elem arr_usr_frg "${idx}")" \
         1 \
         "${ref_fa}" \
-        "${chr_siz}" \
+        "" \
         "" \
         "${dir_eo}" \
         "${nam_job}" \
@@ -1740,6 +1740,7 @@ function init_arg_defs() {
     track=false
     siz_bin=10
     engine="chrom"
+    siz_win=100000
     csv_scl_fct=""
     csv_usr_frg=""
     csv_dep_min=""
@@ -1898,6 +1899,16 @@ function parse_args() {
                     return 1
                 }
                 engine="${2,,}"
+                shift 2
+                ;;
+
+            -sw|--siz[_-]win)
+                require_optarg "${1}" "${2:-}" "main" || {
+                    echo >&2
+                    help_submit_compute_signal
+                    return 1
+                }
+                siz_win="${2}"
                 shift 2
                 ;;
 
@@ -2126,6 +2137,8 @@ function validate_args() {
         validate_var "csv_fil_out" "${csv_fil_out}" || return 1
         validate_var "siz_bin"     "${siz_bin}"     || return 1
         check_int_pos "${siz_bin}" "siz_bin"        || return 1
+        check_int_pos "${siz_win}" "siz_win"        || return 1
+
         case "${engine}" in
             chrom|window) : ;;
             *)
@@ -2217,6 +2230,7 @@ function print_state_debug() {
         debug_var \
             "siz_bin=${siz_bin}" \
             "engine=${engine}" \
+            "siz_win=${siz_win:-UNSET}" \
             "csv_usr_frg=${csv_usr_frg}"
     fi
 

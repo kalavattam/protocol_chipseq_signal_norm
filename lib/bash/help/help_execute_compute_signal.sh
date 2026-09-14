@@ -24,9 +24,9 @@ Usage
     [--verbose] [--dry_run]
     [--env_nam <str>] [--threads <int>]
     [--mode <mode>] [--method <method>]
-    (--csv_fil_in <csv> [--ref_fa <file>] [--chr_siz <file>] | --csv_fil_A <csv> --csv_fil_B <csv> [--chr_siz <file>])
+    (--csv_fil_in <csv> [--ref_fa <file>] | --csv_fil_A <csv> --csv_fil_B <csv> [--chr_siz <file>])
     --dir_out <dir> [--typ_out <format>] [--prefix <str>]
-    [--siz_bin <int>] [--engine <engine>] [--csv_usr_frg <csv>] [--csv_scl_fct <csv>]
+    [--siz_bin <int>] [--engine <engine>] [--siz_win <int>] [--csv_usr_frg <csv>] [--csv_scl_fct <csv>]
     [--csv_dep_min <csv>] [--csv_pseudo <csv>] [--eps <num>] [--skip_00 <choice>] [--strict_bins] [--drp_nan] [--skp_pfx <csv>]
     [--track] [--dp <int>]
     [--dir_eo <dir>] [--nam_job <str>] [--max_job <int>] [--slurm] [--time <time>]
@@ -102,7 +102,7 @@ Parameters
   -cs, --chr_siz : file
     Chromosome sizes file in UCSC-style TSV format.
 
-    Used with '--mode signal' or '--mode coord' to supplement BAM/CRAM header sizes, and with '--mode ratio' to validate bedGraph interval bounds.
+    Used only with '--mode ratio', to validate bedGraph interval bounds. Signal and coordinate modes take chromosome sizes from the BAM/CRAM header.
 
   -cA, --csv_fil_A : list of file
     Comma-separated list of file A paths for coordinate-sorted numerator bedGraph files (e.g., IP signal; used only with '--mode ratio').
@@ -129,13 +129,16 @@ Parameters
     Bin size in base pairs for signal computation (used only with '--mode signal'; default: 10).
 
   -eg, --engine : {'chrom', 'window'}
-    Processing engine for signal computation (used only with '--mode signal'; default: 'chrom').
+    Processing engine for signal computation (used only with '--mode signal'; default: '${engine}').
 
     Both engines dispatch indexed fetch tasks and produce the same signal; they differ only in how fetch work is divided among threads.
       - 'chrom': one fetch task per chromosome. Task size tracks chromosome size, so the longest chromosomes dominate wall time.
-      - 'window': each chromosome is split into fixed-size coordinate windows, with one fetch task per window. Task sizes are uniform, giving finer load balance across threads, at the cost of more fetch calls. Window size is set by 'compute_signal.py --siz_win' (default: 100000) and is not exposed here.
+      - 'window': each chromosome is split into fixed-size coordinate windows, with one fetch task per window. Task sizes are uniform, giving finer load balance across threads, at the cost of more fetch calls. Window size is set by '--siz_win'.
 
     Recommended: keep 'chrom' as the general choice and the current best choice for CRAM input; try 'window' for large BAM inputs.
+
+  -sw, --siz_win : int
+    Window size in base pairs for the 'window' engine's indexed fetch tasks (default: ${siz_win}). Ignored by the 'chrom' engine. Used only with '--mode signal'.
 
   -csf, --csv_scl_fct : list of structured string
     Comma-separated list of scaling factors or sentinels. Used only with '--mode signal' or '--mode ratio'.
@@ -235,10 +238,6 @@ ${usage}
 EOM
     fi
 
-# TODO FIXME: missing detailed descriptions of (relatively) new arguments:
-#   - --chr_siz <file>
-#   - --engine <engine>
-#   - Others?
 cat >&2 << EOM
   Driver script automating the computations of bedGraph signal or ratio tracks, or BED-like fragment coordinate files, from BAM/CRAM (for signal tracks or fragment coordinate files) or bedGraph (for ratio tracks) input files.
 
@@ -357,6 +356,13 @@ Parameters
 
     The list order must match that of '--csv_fil_A' files.
 
+  -cs, --chr_siz : file
+    Chromosome sizes file in UCSC-style TSV format, with chromosome names in the first column and positive integer sizes in the second.
+
+    Used only with '--mode ratio', where it validates that every bedGraph interval falls within its chromosome's bounds. This validation is independent of '--strict_bins', which compares the two inputs to each other rather than to a reference.
+
+    Signal and coordinate modes do not accept it: they take chromosome sizes from the BAM/CRAM header, which is authoritative for the alignments being read.
+
   -do, --dir_out : dir
     Output directory for generated files:
       - Signal tracks if '--mode signal'.
@@ -403,6 +409,30 @@ Parameters
     Bin size in base pairs for signal computation.
 
     Used only with '--mode signal' (default: 10); ignored otherwise.
+
+  -eg, --engine : {'chrom', 'window'}
+    Processing engine for signal computation (default: '${engine}').
+
+    Both engines dispatch indexed fetch tasks and produce the same signal; they differ only in how fetch work is divided among threads. Available options:
+      - 'chrom':
+        + One fetch task per chromosome.
+        + Task size tracks chromosome size, so the longest chromosomes dominate wall time.
+        + The general choice, and the current best choice for CRAM input.
+
+      - 'window':
+        + Each chromosome is split into fixed-size coordinate windows, with one fetch task per window.
+        + Task sizes are uniform, giving finer load balance across threads, at the cost of more fetch calls.
+        + Worth trying for large BAM inputs, particularly with '--threads' above one.
+        + Window size is set by '--siz_win'.
+
+    Used only with '--mode signal'; ignored otherwise.
+
+  -sw, --siz_win : int
+    Window size in base pairs for the 'window' engine's indexed fetch tasks (default: ${siz_win}).
+
+    Smaller windows give finer load balance across threads at the cost of more fetch calls; larger windows do the reverse. Ignored by the 'chrom' engine, which uses whole chromosomes as its unit of work.
+
+    Used only with '--mode signal'; ignored otherwise.
 
   -csf, --csv_scl_fct : list of structured string
     Comma-separated list of scaling factors or sentinels to apply to signal or ratio values.
@@ -459,6 +489,13 @@ Parameters
     Used only with '--mode ratio'; ignored otherwise.
 
     Non-sentinel values must be one of 'pre_scale' or 'post_scale'.
+
+  -stn, --strict_bins : flag
+    Require strict bin compatibility between the two ratio inputs.
+
+    With this flag, both input bedGraph files must share the same ordered '(chrom, start, end)' grid across all data rows. Without it, only the first few paired rows are checked for equal bin width, which catches gross mismatches but not divergence later in the file.
+
+    Used only with '--mode ratio'; ignored otherwise.
 
   -dn, --drp_nan, --drop_nan : flag
     Drop non-finite values from the main ratio output.
