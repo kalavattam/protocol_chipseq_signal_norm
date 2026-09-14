@@ -32,13 +32,13 @@ The pair is deliberately imbalanced 1:3 rather than near-equal, so a test assert
 
 Every quantity the estimator derives is a round number:
 
-| quantity | value |
-| :--- | ---: |
-| `L_A` | 6 |
-| `L_B` | 18 |
-| `L_bar` | 12 |
-| `prior_scaled_A` = `prior.count * L_A / L_bar` | 1.0 |
-| `prior_scaled_B` = `prior.count * L_B / L_bar` | 3.0 |
+| quantity                                       | value |
+| :---                                           | ---:  |
+| `L_A`                                          | 6     |
+| `L_B`                                          | 18    |
+| `L_bar`                                        | 12    |
+| `prior_scaled_A` = `prior.count * L_A / L_bar` | 1.0   |
+| `prior_scaled_B` = `prior.count * L_B / L_bar` | 3.0   |
 
 The two priors sum to `2 * prior.count` and their ratio is `L_A / L_B`, which are the invariants the consuming tests assert. A uniform 10 bp grid also lets the bin width be inferred rather than supplied, so the same pair exercises `--siz_bin` omission.
 

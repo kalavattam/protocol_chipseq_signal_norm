@@ -6,9 +6,10 @@
 # Copyright 2026 by Kris Alavattam
 # Email: kalavattam@gmail.com
 #
-# OpenAI ChatGPT and Codex (GPT-5.5, GPT-5.6) were used in design, development,
-# and documentation, with all output reviewed, edited, and approved by the
-# author.
+# The following were used in design, development, and documentation, with all
+# output reviewed, edited, and approved by the author:
+# - OpenAI ChatGPT and Codex (GPT-5.5, GPT-5.6);
+# - Anthropic Claude Code (Opus 5).
 #
 # Distributed under the MIT license.
 
@@ -29,9 +30,13 @@ mkdir -p "$(dirname "${log_style}")"
 
 print_section "${TEST_NAME}"
 
+# Resolve the import root before the prefix, so the prefix does not
+# expand a variable that it also assigns.
+dir_src="${ROOT_REPO}/src"
+
 if \
     PYTHONDONTWRITEBYTECODE=1 \
-    PYTHONPATH="${ROOT_REPO}/src" \
+    PYTHONPATH="${dir_src}" \
     ROOT_REPO="${ROOT_REPO}" \
     python3 - << 'PY' > "${log_style}"
 from __future__ import annotations
