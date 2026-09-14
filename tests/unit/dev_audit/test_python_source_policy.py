@@ -141,21 +141,12 @@ def test_governed_naming_vocabulary_preserves_policy_projections() -> None:
         "2b9aabb7c42cf07089cf5bafc47b6644d86815f4a449466cd61816e1fb42bd0b"
     )
     assert projection_hash(prohibited_projection) == (
-        "8bc06877dbeff1e556833a33cdb192356feab95bff987b4764f822e6f6380188"
+        "21befe987728341e0f05e7ecba4c26e24f34d2fc75165374021cf697ce184fbc"
     )
     assert prohibited == {
-        "cfg": "configuration",
-        "cmb": "combined",
-        "col": "column",
-        "cvg": "coverage",
-        "dp": "decimal_places",
-        "ext": "extension",
         "fh": "handle",
-        "fmt": "format",
         "py": "python",
-        "rc": "return_code",
         "sb": "start_bins",
-        "src": "source",
         "str": "text",
         "xs": "values",
         "ys": "values",
@@ -1639,21 +1630,21 @@ Provide one naming fixture.
 """
 
 
-def render(cfg: dict[str, object], fil_out: str) -> None:
+def render(fh: dict[str, object], fil_out: str) -> None:
     """
     Render one fixture.
     """
 
-    cvg = cfg
+    xs = fh
     output_path = fil_out
-    _ = cvg, output_path
+    _ = xs, output_path
 '''
 
     messages = rule_messages(source, RULE_NAMING)
 
     assert messages == [
-        "identifier 'cfg' contains opaque shorthand segment(s): cfg",
-        "identifier 'cvg' contains opaque shorthand segment(s): cvg",
+        "identifier 'fh' contains opaque shorthand segment(s): fh",
+        "identifier 'xs' contains opaque shorthand segment(s): xs",
     ]
 
 
