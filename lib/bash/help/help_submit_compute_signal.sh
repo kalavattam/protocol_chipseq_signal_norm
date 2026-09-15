@@ -28,8 +28,9 @@ Usage
     (--csv_fil_in <csv> [--ref_fa <file>] | --csv_fil_A <csv> --csv_fil_B <csv> [--chr_siz <file>])
     --csv_fil_out <csv>
     [--siz_bin <int>] [--engine <engine>] [--siz_win <int>] [--csv_scl_fct <csv>] [--csv_usr_frg <csv>]
-    [--csv_dep_min <csv>] [--csv_pseudo <csv>] [--eps <flt>] [--skip_00 <choice>] [--strict_bins] [--drp_nan]
-    [--skp_pfx <csv>] [--track] [--dp <int>]
+    [--csv_dep_min <csv>] [--csv_pseudo <csv>] [--eps <flt>] [--skip_00 <choice>] [--strict_bins] [--drp_nan] [--skp_pfx <csv>]
+    [--csv_report_N <csv>] [--csv_report_L <csv>]
+    [--track] [--dp <int>]
     --dir_eo <dir> [--nam_job <str>]
 
   Submit per-sample signal, ratio, or fragment-coordinate jobs from comma-separated file lists to 'compute_signal.py' or 'compute_signal_ratio.py'.
@@ -93,9 +94,6 @@ Parameters
   -co, --csv_fil_out : list of file
     Comma-separated list of output file paths.
 
-  -tr, --track : flag
-    Write a companion track file. If '--mode ratio', write a companion bedGraph without non-finite rows.
-
   -sb, --siz_bin : int
     Bin size in base pairs for signal computation (default: ${siz_bin}).
 
@@ -151,6 +149,15 @@ Parameters
 
   -sp, --skp_pfx : list of str
     Comma-separated list of header prefixes to skip. Shared comma-separated bedGraph header prefixes or sentinel to skip.
+
+  -crN, --csv_report_N : list of file
+    Comma-separated list of paths for per-sample fragment-count reports. Supply one path per '--csv_fil_in' element. Used only with '--mode signal'.
+
+  -crL, --csv_report_L : list of file
+    Comma-separated list of paths for per-sample spanned-bin-count reports. 'L' counts bins, so it depends on '--siz_bin'. Used only with '--mode signal'.
+
+  -tr, --track : flag
+    Write a companion track file. If '--mode ratio', write a companion bedGraph without non-finite rows.
 
   -dp, --dp : int
     Maximum number of decimal places retained for finite emitted values (default: ${dp}).

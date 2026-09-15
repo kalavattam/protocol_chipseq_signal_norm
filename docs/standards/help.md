@@ -297,6 +297,8 @@ The `Type` field names the user-facing logical value form described or accepted 
 | `engine`      | choice            | Processing engine.                                                         |
 | `siz_bin`     | int               | Bin size in base pairs.                                                    |
 | `siz_win`     | int               | Window size in base pairs.                                                 |
+| `report_N`    | file              | Fragment-count report path.                                                |
+| `report_L`    | file              | Spanned-bin-count report path.                                             |
 | `scl_fct`     | num               | Scaling factor.                                                            |
 | `track`       | flag              | Write a companion track file.                                              |
 | `strict_bins` | flag              | Require strict bin compatibility.                                          |

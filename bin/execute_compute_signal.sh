@@ -258,7 +258,7 @@ EOM
 
 function build_cmd() {
     local idx="${1:-}"
-    local fil_in fil_A fil_B fil_out
+    local fil_in fil_A fil_B fil_out rep_N rep_L
     local scl_fct usr_frg dep_min pseudo
     local show_help
 
@@ -355,6 +355,18 @@ EOM
         fil_in="${csv_fil_in}"
         fil_out="${csv_fil_out}"
         usr_frg="${csv_usr_frg}"
+        rep_N=""
+        rep_L=""
+
+        if [[ "${report_N}" == "true" ]]; then
+            rep_N="$(IFS=','; echo "${arr_report_N[*]}")"
+        fi
+
+        if [[ "${report_L}" == "true" ]]; then
+            rep_L="$(IFS=','; echo "${arr_report_L[*]}")"
+        fi
+
+        if [[ "${report_only}" == "true" ]]; then fil_out=""; fi
 
         if [[ "${mode}" == "signal" ]]; then
             scl_fct="${csv_scl_fct}"
@@ -373,6 +385,10 @@ EOM
             fil_in="${arr_fil_in[idx]}"
             fil_out="${arr_fil_out[idx]}"
             usr_frg="${arr_usr_frg[idx]}"
+            rep_N="${arr_report_N[idx]}"
+            rep_L="${arr_report_L[idx]}"
+
+            if [[ "${report_only}" == "true" ]]; then fil_out=""; fi
 
             if [[ "${mode}" == "signal" ]]; then
                 scl_fct="${arr_scl_fct[idx]}"
@@ -413,7 +429,9 @@ EOM
         cmd_bld+=( --chr_siz "${chr_siz}" )
     fi
 
-    cmd_bld+=( --csv_fil_out "${fil_out}" )
+    if [[ -n "${fil_out}" ]]; then
+        cmd_bld+=( --csv_fil_out "${fil_out}" )
+    fi
 
     if [[ "${mode}" == "signal" ]]; then
         cmd_bld+=(
@@ -423,6 +441,14 @@ EOM
             --csv_usr_frg "${usr_frg}"
             --siz_win "${siz_win}"
         )
+
+        if [[ -n "${rep_N}" ]]; then
+            cmd_bld+=( --csv_report_N "${rep_N}" )
+        fi
+
+        if [[ -n "${rep_L}" ]]; then
+            cmd_bld+=( --csv_report_L "${rep_L}" )
+        fi
     elif [[ "${mode}" == "coord" ]]; then
         cmd_bld+=( --csv_usr_frg "${usr_frg}" )
     else
@@ -492,6 +518,9 @@ function init_arg_defs() {
     siz_bin=""
     engine="chrom"
     siz_win=100000
+    report_N=false
+    report_L=false
+    report_only=false
     csv_scl_fct=""
     csv_usr_frg=""
     csv_dep_min=""
@@ -651,11 +680,6 @@ function parse_args() {
                 shift 2
                 ;;
 
-            -tr|--trk|--track)
-                track=true
-                shift 1
-                ;;
-
             -sb|--siz[_-]bin)
                 require_optarg "${1}" "${2:-}" "main" || {
                     echo >&2
@@ -764,6 +788,26 @@ function parse_args() {
                 }
                 skp_pfx="${2}"
                 shift 2
+                ;;
+
+            -rN|--report[_-]N)
+                report_N=true
+                shift 1
+                ;;
+
+            -rL|--report[_-]L)
+                report_L=true
+                shift 1
+                ;;
+
+            -ro|--report[_-]only)
+                report_only=true
+                shift 1
+                ;;
+
+            -tr|--trk|--track)
+                track=true
+                shift 1
                 ;;
 
             -dp|--dp)
@@ -979,6 +1023,17 @@ function validate_args() {
             check_int_pos "${siz_bin}" "siz_bin" || return 1
             check_int_pos "${siz_win}" "siz_win" || return 1
 
+            if [[
+                "${report_only}" == "true"
+                && "${report_N}" == "false"
+                && "${report_L}" == "false"
+            ]]; then
+                echo_err \
+                    "'--report_only' requires '--report_N' or '--report_L';" \
+                    "there is nothing to report."
+                return 1
+            fi
+
             case "${engine}" in
                 chrom|window) : ;;
                 *)
@@ -1135,6 +1190,33 @@ function prepare_vecs() {
         done
 
         check_arr_lengths "arr_fil_out" "arr_fil_in"
+
+        # Report paths sit beside the track and share its derived base, so a
+        # sample's counts are findable from its track name alone. Pad an empty
+        # element where a report was not asked for, keeping one element per
+        # sample as every other per-sample array does.
+        unset arr_report_N && declare -ga arr_report_N
+        unset arr_report_L && declare -ga arr_report_L
+        for fil_trk in "${arr_fil_out[@]}"; do
+            base_rep="${fil_trk%.gz}"
+            base_rep="${base_rep%.*}"
+
+            if [[ "${report_N}" == "true" ]]; then
+                arr_report_N+=( "${base_rep}.N.txt" )
+            else
+                arr_report_N+=( "" )
+            fi
+
+            if [[ "${report_L}" == "true" ]]; then
+                arr_report_L+=( "${base_rep}.L.txt" )
+            else
+                arr_report_L+=( "" )
+            fi
+        done
+        unset fil_trk base_rep
+
+        check_arr_lengths "arr_report_N" "arr_fil_in"
+        check_arr_lengths "arr_report_L" "arr_fil_in"
 
         for fil_in in "${arr_fil_in[@]}"; do
             if [[ "${fil_in,,}" == *.cram && -z "${ref_fa}" ]]; then
@@ -1446,6 +1528,9 @@ function print_state_debug() {
         echo "siz_bin=${siz_bin:-UNSET}"
         echo "engine=${engine:-UNSET}"
         echo "siz_win=${siz_win:-UNSET}"
+        echo "report_N=${report_N}"
+        echo "report_L=${report_L}"
+        echo "report_only=${report_only}"
         echo "csv_scl_fct=${csv_scl_fct:-UNSET}"
         echo "csv_usr_frg=${csv_usr_frg:-UNSET}"
         echo "csv_dep_min=${csv_dep_min:-UNSET}"

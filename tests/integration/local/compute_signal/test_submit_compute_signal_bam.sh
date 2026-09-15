@@ -467,4 +467,144 @@ for eng_bad in chrm windowed bogus; do
     fi
 done
 
+
+# Report lists: 'submit' takes report paths rather than deriving them, so
+# assert the written values, which catches flags wired to the wrong sample.
+dir_rep="${tmp}/reports"
+mkdir -p "${dir_rep}"
+
+bash "${ROOT_REPO}/bin/submit_compute_signal.sh" \
+    --mode signal \
+    --csv_fil_in "${in_se},${in_pe}" \
+    --csv_fil_out "${dir_rep}/se.bdg,${dir_rep}/pe.bdg" \
+    --csv_report_N "${dir_rep}/se.N.txt,${dir_rep}/pe.N.txt" \
+    --csv_report_L "${dir_rep}/se.L.txt,${dir_rep}/pe.L.txt" \
+    --dir_eo "${dir_err}" \
+    --siz_bin 10 \
+    --method unadj \
+    > /dev/null 2>&1 || true
+
+assert_file_exact_line "${dir_rep}/se.N.txt" "2" \
+    "submit SE fragment count is 2"
+assert_file_exact_line "${dir_rep}/se.L.txt" "2" \
+    "submit SE spanned-bin count is 2"
+assert_file_exact_line "${dir_rep}/pe.L.txt" "5" \
+    "submit PE spanned-bin count is 5, proving per-sample report paths"
+
+assert_file_nonempty "${dir_rep}/se.bdg" \
+    "submit still writes the track when reports are requested"
+
+dir_only="${tmp}/report_only"
+mkdir -p "${dir_only}"
+
+bash "${ROOT_REPO}/bin/submit_compute_signal.sh" \
+    --mode signal \
+    --csv_fil_in "${in_se}" \
+    --csv_report_N "${dir_only}/se.N.txt" \
+    --csv_report_L "${dir_only}/se.L.txt" \
+    --dir_eo "${dir_err}" \
+    --siz_bin 10 \
+    --method unadj \
+    > /dev/null 2>&1 || true
+
+assert_file_exact_line "${dir_only}/se.N.txt" "2" \
+    "submit report-only writes the fragment count"
+
+if [[ -n "$(find "${dir_only}" -maxdepth 1 -name '*.bdg' 2>/dev/null)" ]]; then
+    record_fail "submit report-only unexpectedly wrote a track"
+else
+    record_pass "submit report-only writes no track"
+fi
+
+out_bad="$(
+    bash "${ROOT_REPO}/bin/submit_compute_signal.sh" \
+        --mode signal \
+        --csv_fil_in "${in_se}" \
+        --dir_eo "${dir_err}" \
+        --siz_bin 10 2>&1
+)" || true
+
+if [[ "${out_bad}" == *"csv_fil_out"* ]]; then
+    record_pass "submit requires an output when no report is requested"
+else
+    record_fail "submit accepted a run with neither output nor reports"
+fi
+
+out_bad="$(
+    bash "${ROOT_REPO}/bin/submit_compute_signal.sh" \
+        --mode coord \
+        --csv_fil_in "${in_se}" \
+        --csv_report_N "${dir_only}/x.N.txt" \
+        --dir_eo "${dir_err}" 2>&1
+)" || true
+
+if [[ "${out_bad}" == *"csv_fil_out"* ]]; then
+    record_pass "submit coord still requires an output despite a report list"
+else
+    record_fail "submit coord accepted a report list in place of an output"
+fi
+
+
+# Value correctness: compare against the CLI on the same input, since fixture
+# constants alone would pass a wrapper that paired paths with the wrong sample.
+dir_ref="${tmp}/reference_counts"
+mkdir -p "${dir_ref}"
+
+if PYTHONDONTWRITEBYTECODE=1 python3 -m protocol_chipseq_signal_norm.cli.compute_signal \
+    --fil_in "${in_pe}" \
+    --siz_bin 10 \
+    --report_N "${dir_ref}/direct.N.txt" \
+    --report_L "${dir_ref}/direct.L.txt" \
+    > /dev/null 2>&1
+then
+    assert_files_equal \
+        "${dir_rep}/pe.N.txt" \
+        "${dir_ref}/direct.N.txt" \
+        "submit PE fragment count equals a direct compute_signal.py run"
+
+    assert_files_equal \
+        "${dir_rep}/pe.L.txt" \
+        "${dir_ref}/direct.L.txt" \
+        "submit PE spanned-bin count equals a direct compute_signal.py run"
+else
+    record_skip "direct compute_signal.py reference run unavailable"
+fi
+
+
+# Reports with BED output: counting precedes the output branch, so reports are
+# written here too, and '--siz_bin' stops being ignored once '--report_L' is
+# given.
+dir_bed="${tmp}/report_bed"
+mkdir -p "${dir_bed}"
+
+bash "${ROOT_REPO}/bin/submit_compute_signal.sh" \
+    --mode coord \
+    --csv_fil_in "${in_pe}" \
+    --csv_fil_out "${dir_bed}/pe.bed" \
+    --dir_eo "${dir_err}" \
+    > /dev/null 2>&1 || true
+
+assert_file_nonempty "${dir_bed}/pe.bed" \
+    "submit coord writes BED output"
+
+if \
+    PYTHONDONTWRITEBYTECODE=1 \
+    python3 -m protocol_chipseq_signal_norm.cli.compute_signal \
+        --fil_in "${in_pe}" \
+        --fil_out "${dir_bed}/direct.bed" \
+        --siz_bin 10 \
+        --report_N "${dir_bed}/bed.N.txt" \
+        --report_L "${dir_bed}/bed.L.txt" \
+        > /dev/null 2>&1
+then
+    assert_file_nonempty "${dir_bed}/direct.bed" \
+        "BED output is written alongside reports"
+
+    assert_files_equal "${dir_bed}/bed.L.txt" "${dir_rep}/pe.L.txt" \
+        "BED-mode spanned-bin count matches the bedGraph-mode value"
+else
+    record_fail "reports alongside BED output failed"
+fi
+
+
 finish

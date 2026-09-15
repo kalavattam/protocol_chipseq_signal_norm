@@ -15,7 +15,8 @@
 # Distributed under the MIT license.
 
 
-# TODO: add more examples and PMIDs for all studies mentioned in detailed help.
+# TODO: more examples, studies, and PMIDs in detailed help: e.g., Bressan et
+# al., 2024 (PMID: 39211331).
 usage=$(cat << EOM
 Usage
 -----
@@ -28,14 +29,13 @@ Usage
     --dir_out <dir> [--typ_out <format>] [--prefix <str>]
     [--siz_bin <int>] [--engine <engine>] [--siz_win <int>] [--csv_usr_frg <csv>] [--csv_scl_fct <csv>]
     [--csv_dep_min <csv>] [--csv_pseudo <csv>] [--eps <num>] [--skip_00 <choice>] [--strict_bins] [--drp_nan] [--skp_pfx <csv>]
+    [--report_N] [--report_L] [--report_only]
     [--track] [--dp <int>]
     [--dir_eo <dir>] [--nam_job <str>] [--max_job <int>] [--slurm] [--time <time>]
 
 EOM
 )
 
-# TODO FIXME: the usage examples in the non-detailed help docs do not show how
-# to actually use the wrapper script.
 # shellcheck disable=SC2154
 function help_execute_compute_signal() {
 cat >&2 << EOM
@@ -44,10 +44,10 @@ ${usage}
   Coordinate and automate the computation of signal tracks, ratio tracks, or fragment-coordinate files from BAM/CRAM or bedGraph input files. Supports multiple normalization strategies and runs computations in serial or parallel via GNU Parallel or Slurm.
 
   For more details on what this script can do, including notes and usage examples, run either of the following:
-    '''bash
-    bash path/to/execute_compute_signal.sh --details
-    bash path/to/execute_compute_signal.sh --all_help
-    '''
+  '''bash
+  bash path/to/execute_compute_signal.sh --details
+  bash path/to/execute_compute_signal.sh --all_help
+  '''
 
 Parameters
 ----------
@@ -171,6 +171,15 @@ Parameters
   -sp, --skp_pfx : list of str
     Comma-separated list of header prefixes to skip. Shared comma-separated list of bedGraph header prefixes or sentinel to skip while parsing ratio-mode input files. Used only with '--mode ratio'.
 
+  -rN, --report_N : flag
+    Write the fragment count 'N' for each sample, beside its output track as '<track>.N.txt'. Used only with '--mode signal'.
+
+  -rL, --report_L : flag
+    Write the spanned-bin count 'L' for each sample, beside its output track as '<track>.L.txt'. 'L' counts bins, so it depends on '--siz_bin'. Used only with '--mode signal'.
+
+  -ro, --report_only : flag
+    Write only the requested reports, with no signal track. Requires '--report_N' or '--report_L'. Used only with '--mode signal'.
+
   -tr, --trk, --track : flag
     Write a companion track file. If '--mode ratio', also write a companion bedGraph with all non-finite rows ('inf', '-inf', and 'nan') removed.
 
@@ -241,14 +250,14 @@ EOM
 cat >&2 << EOM
   Driver script automating the computations of bedGraph signal or ratio tracks, or BED-like fragment coordinate files, from BAM/CRAM (for signal tracks or fragment coordinate files) or bedGraph (for ratio tracks) input files.
 
-  Supports multiple signal normalization strategies, including
+  Supports multiple signal normalization strategies, including the following:
     - unadjusted (raw) signal (i.e., per-bin totals with no fragment-length and/or library-size adjustments)
-    - fragment-length adjusted signal (Dickson et al., JBC 2020; Dickson et al., Sci Rep 2023)
-    - normalized coverage (Dickson et al., Sci Rep 2023)
-    - siQ-ChIP IP efficiency (input-normalized ratio-based analyses; Dickson et al., JBC 2020; Dickson et al., Sci Rep 2023)
-    - log2-transformed input-normalized signal ratios (e.g., as described in "Data Analysis G" of Alavattam et al., Bio-protocol 2025)
-    - spike-in-normalized signal (i.e., unmodified ChIP-Rx; Orlando et al., Cell Rep 2014)
-    - input- and spike-in-normalized signal ratios (modified ChIP-Rx as described in "Data Analysis I" of Alavattam et al., Bio-protocol 2025)
+    - fragment-length adjusted signal (Dickson et al., JBC 2020 [PMID: 32994221]; Dickson et al., Sci Rep 2023 [PMID: 37160995])
+    - normalized coverage (Dickson et al., Sci Rep 2023 [PMID: 37160995])
+    - siQ-ChIP IP efficiency (input-normalized ratio-based analyses; Dickson et al., JBC 2020 [PMID: 32994221]; Dickson et al., Sci Rep 2023 [PMID: 37160995])
+    - log2-transformed input-normalized signal ratios (e.g., as described in "Data Analysis G" of Alavattam et al., Bio-protocol 2025 [PMID: 40364978])
+    - spike-in-normalized signal (i.e., unmodified ChIP-Rx; Orlando et al., Cell Rep 2014 [PMID: 25437568])
+    - input- and spike-in-normalized signal ratios (i.e., ChIP-Rx alpha ratio as described in "Data Analysis I" of Alavattam et al., Bio-protocol 2025 [PMID: 40364978])
 
   Supports serial job execution and parallel job execution via Slurm or GNU Parallel.
 
@@ -281,7 +290,7 @@ Parameters
         + Compute signal tracks directly from BAM/CRAM input files.
         + Supports unadjusted signal, fragment-length-adjusted signal, or normalized coverage.
         + See '--method' for calculation styles.
-        + Use this option with appropriately computed scaling factors ('--csv_scl_fct') to compute unmodified ChIP-Rx (Orlando et al., Cell Rep 2014) spike-in-normalized signal.
+        + Use this option with appropriately computed scaling factors ('--csv_scl_fct') to compute unmodified ChIP-Rx (Orlando et al., Cell Rep 2014 [PMID: 25437568]) spike-in-normalized signal.
         + If 's' or 'sig' are supplied, variable 'mode' is set to "signal".
 
       - 'r', 'rat', 'ratio':
@@ -293,7 +302,7 @@ Parameters
 
       - 'c', 'coord', 'coordinates':
         + Instead of computing signal or ratio tracks, output fragment coordinates in BED-like format from BAM/CRAM input files.
-        + Use this option to prepare input files for the original siQ-ChIP implementation (Dickson et al., JBC 2020; Dickson et al., Sci Rep 2023).
+        + Use this option to prepare input files for the original siQ-ChIP implementation ((Dickson et al., JBC 2020 [PMID: 32994221]; Dickson et al., Sci Rep 2023 [PMID: 37160995])).
         + For more details, see github.com/BradleyDickson/siQ-ChIP or github.com/kalavattam/siQ-ChIP.
         + This mode disables '--siz_bin' and '--method', and sets '--typ_out' to 'bed.gz' by default (or 'bed' if '--typ_out bed' is specified).
         + If 'c' or 'coordinates' are supplied, variable 'mode' is set to "coord".
@@ -308,7 +317,7 @@ Parameters
         + 'f', 'frg', 'frag', 'frg_len', 'frag_len', 'l', 'len', 'len_frg', 'len_frag':
           - Adjust signal by fragment length.
           - Internally, all of these values are standardized to 'method=frag'.
-          - For example, use this option to compute siQ-ChIP-scaled signal with the initial equation described in Dickson et al., JBC 2020 or Equation 5 in Dickson et al., Sci Rep 2023.
+          - For example, use this option to compute siQ-ChIP-scaled signal with the initial equation described in Dickson et al., JBC 2020 (PMID: 32994221) or Equation 5 in Dickson et al., Sci Rep 2023 (PMID: 37160995).
 
         + 'n', 'nrm', 'norm', 'normalized':
           - Compute normalized coverage per Dickson et al., Sci Rep 2023, adjusting by both fragment length and the total number of fragments so that the genome-wide coverage sums to 1.
@@ -342,6 +351,13 @@ Parameters
 
     Required when any '--csv_fil_in' element ends in '.cram'. Used only with '--mode signal' or '--mode coord'; ignored for '--mode ratio'.
 
+  -cs, --chr_siz : file
+    Chromosome sizes file in UCSC-style TSV format, with chromosome names in the first column and positive integer sizes in the second.
+
+    Used only with '--mode ratio', where it validates that every bedGraph interval falls within its chromosome's bounds. This validation is independent of '--strict_bins', which compares the two inputs to each other rather than to a reference.
+
+    Signal and coordinate modes do not accept it: they take chromosome sizes from the BAM/CRAM header, which is authoritative for the alignments being read.
+
   -cA, --csv_fil_A : list of file
     Comma-separated list of file A paths for coordinate-sorted numerator bedGraph files (e.g., ChIP IP signal tracks).
 
@@ -355,13 +371,6 @@ Parameters
     Use with '--mode ratio'.
 
     The list order must match that of '--csv_fil_A' files.
-
-  -cs, --chr_siz : file
-    Chromosome sizes file in UCSC-style TSV format, with chromosome names in the first column and positive integer sizes in the second.
-
-    Used only with '--mode ratio', where it validates that every bedGraph interval falls within its chromosome's bounds. This validation is independent of '--strict_bins', which compares the two inputs to each other rather than to a reference.
-
-    Signal and coordinate modes do not accept it: they take chromosome sizes from the BAM/CRAM header, which is authoritative for the alignments being read.
 
   -do, --dir_out : dir
     Output directory for generated files:
@@ -511,6 +520,33 @@ Parameters
 
     Passed through to 'submit_compute_signal.sh' and then to 'compute_signal_ratio.py'.
 
+  -rN, --report_N : flag
+    Write the fragment count 'N' for each sample.
+
+    'N' is the number of fragments the signal path uses, counted from the same iterator that builds the track, under the same '--csv_usr_frg' and alignment-filter settings. It is therefore the number a '--method norm' run divides by, not an estimate of it.
+
+    The report is written beside each output track, as '<track>.N.txt'. With '--prefix', that follows the track's derived name, so 'run1.sample.bedGraph' yields 'run1.sample.N.txt'.
+
+    Used only with '--mode signal'; ignored otherwise.
+
+  -rL, --report_L : flag
+    Write the spanned-bin count 'L' for each sample.
+
+    'L' is the total number of bins the counted fragments span, counting a fragment once per bin it touches. It is not the summed base pairs an unadjusted track reports: the bin count is what puts 'k = L / N' in bins, the unit a per-bin pseudocount needs.
+
+    Because 'L' counts bins, it depends on '--siz_bin' and on '--csv_usr_frg' where fragment extension changes how far each fragment reaches. The report is written beside each output track, as '<track>.L.txt'.
+
+    Used only with '--mode signal'; ignored otherwise.
+
+  -ro, --report_only : flag
+    Write the requested reports without writing a signal track.
+
+    Requires '--report_N' or '--report_L'; there is nothing to report otherwise, and the run is rejected. Counting happens before the output branch, so the reported values are identical to those a track-writing run would produce on the same input.
+
+    Use this to obtain prior counts without paying for track output.
+
+    Used only with '--mode signal'; ignored otherwise.
+
   -tr, --trk, --track : flag
     Write a companion track file. If '--mode ratio', also write a companion bedGraph with all non-finite rows ('inf', '-inf', and 'nan') removed.
 
@@ -569,13 +605,13 @@ Notes
     + Commas are used internally as list delimiters.
     + Semicolons are also considered unsafe in this wrapper workflow.
     + Spaces in paths are not supported by the current list-serialization and reconstruction logic.
-  - If applicable, use consistent file ordering between IP and input files.
+  - Use consistent file ordering between IP and input files.
   - '--typ_out' must be compatible with the selected '--mode'.
-    + With '--mode signal' or '--mode ratio', bedGraph-style values ('bedGraph', 'bedgraph', 'bdg', and 'bg', and their '.gz' variants) are allowed; 'bed'/'bed.gz' are accepted but are automatically converted to 'bdg.gz' with a warning.
+    + With '--mode signal' or '--mode ratio', bedGraph-style values ('bedGraph', 'bedgraph', 'bdg', and 'bg', and their '.gz' variants) are allowed; 'bed'/'bed.gz' are accepted but are automatically converted to 'bedGraph.gz' with a warning.
     + With '--mode coord', 'bed'/'bed.gz' are allowed; bedGraph-style values are accepted but are automatically converted to 'bed.gz' with a warning.
   - Output file path. Output filenames are derived from BAM/CRAM or bedGraph input files and the value associated with '--typ_out'.
   - For bedGraph-style output, '--dp' sets the maximum number of decimal places retained for finite emitted values; after rounding, non-informative trailing zeros and any trailing decimal point are stripped.
-  - BED-like files of fragment coordinates are, e.g., used as input to the original siQ-ChIP implementation (Dickson et al., JBC 2020; Dickson et al., Sci Rep 2023).
+  - BED-like files of fragment coordinates are, e.g., used as input to the original siQ-ChIP implementation (Dickson et al., JBC 2020 [PMID: 32994221]; Dickson et al., Sci Rep 2023 [PMID: 37160995]).
   - Job execution mode (serial, GNU Parallel, or Slurm array) is chosen automatically from '--slurm', '--threads', and '--max_job':
     + If '--slurm' is specified:
       - Jobs are submitted as a Slurm array.

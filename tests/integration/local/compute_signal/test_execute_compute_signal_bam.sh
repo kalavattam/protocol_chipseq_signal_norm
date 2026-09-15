@@ -340,6 +340,7 @@ if [[ -s "${log_coord}" ]]; then
         "execute coord omits '--engine'"
 fi
 
+
 # Validation contract for '--siz_win': a nonpositive or nonnumeric value is
 # rejected before any job is built.
 for val_bad in 0 abc; do
@@ -361,10 +362,10 @@ for val_bad in 0 abc; do
     fi
 done
 
+
 # Default contract: a signal case that names neither option still forwards both
 # wrapper defaults, so a dropped default cannot pass unnoticed.
 log_dflt="${tmp}/logs/test_execute_compute_bam_pe_signal.tiny_pe.stderr.txt"
-
 if [[ -s "${log_dflt}" ]]; then
     assert_pattern_found \
         "${log_dflt}" \
@@ -397,5 +398,89 @@ for eng_bad in chrm windowed bogus; do
         record_fail "execute did not reject '--engine ${eng_bad}' itself"
     fi
 done
+
+
+# Report flags: the wrapper derives '<track>.N.txt' and '<track>.L.txt' from
+# each output name, so assert those paths and their contents, not just success.
+dir_rep="${tmp}/reports"
+mkdir -p "${dir_rep}"
+
+bash "${ROOT_REPO}/bin/execute_compute_signal.sh" \
+    --mode signal \
+    --csv_fil_in "${in_se},${in_pe}" \
+    --dir_out "${dir_rep}" \
+    --dir_eo "${dir_err}" \
+    --typ_out bedGraph \
+    --siz_bin 10 \
+    --method unadj \
+    --report_N \
+    --report_L \
+    > /dev/null 2>&1 || true
+
+for samp in tiny_se tiny_pe; do
+    assert_file_nonempty \
+        "${dir_rep}/${samp}.bedGraph" \
+        "execute report run still writes the ${samp} track"
+
+    assert_file_nonempty \
+        "${dir_rep}/${samp}.N.txt" \
+        "execute derives ${samp}.N.txt beside the track"
+
+    assert_file_nonempty \
+        "${dir_rep}/${samp}.L.txt" \
+        "execute derives ${samp}.L.txt beside the track"
+done
+
+# SE holds two 10-bp fragments, one bin each; PE spans five bins. Distinct
+# values prove each sample got its own report path rather than the first.
+assert_file_exact_line "${dir_rep}/tiny_se.N.txt" "2" \
+    "execute SE fragment count is 2"
+assert_file_exact_line "${dir_rep}/tiny_se.L.txt" "2" \
+    "execute SE spanned-bin count is 2"
+assert_file_exact_line "${dir_rep}/tiny_pe.L.txt" "5" \
+    "execute PE spanned-bin count is 5, distinct from SE"
+
+dir_only="${tmp}/report_only"
+mkdir -p "${dir_only}"
+
+bash "${ROOT_REPO}/bin/execute_compute_signal.sh" \
+    --mode signal \
+    --csv_fil_in "${in_se}" \
+    --dir_out "${dir_only}" \
+    --dir_eo "${dir_err}" \
+    --typ_out bedGraph \
+    --siz_bin 10 \
+    --method unadj \
+    --report_N \
+    --report_L \
+    --report_only \
+    > /dev/null 2>&1 || true
+
+assert_file_nonempty \
+    "${dir_only}/tiny_se.N.txt" \
+    "execute report-only writes the fragment count"
+
+if [[ -e "${dir_only}/tiny_se.bedGraph" ]]; then
+    record_fail "execute report-only unexpectedly wrote a track"
+else
+    record_pass "execute report-only writes no track"
+fi
+
+out_bad="$(
+    bash "${ROOT_REPO}/bin/execute_compute_signal.sh" \
+        --mode signal \
+        --csv_fil_in "${in_se}" \
+        --dir_out "${dir_only}" \
+        --dir_eo "${dir_err}" \
+        --siz_bin 10 \
+        --report_only 2>&1
+)" || true
+
+if [[ "${out_bad}" == *"'--report_only' requires"* ]]; then
+    record_pass "execute rejects '--report_only' with nothing to report"
+else
+    record_fail "execute accepted '--report_only' with no report flag"
+fi
+
 
 finish

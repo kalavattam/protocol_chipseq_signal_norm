@@ -622,7 +622,41 @@
           "symbol": "run_comp_sig",
           "parameter": "siz_win",
           "owner": "PARAMETER.DESCRIPTIONS",
-          "evidence": "Parameters row for 'siz_win': Window size in base pairs for the 'window' engine, or empty string."
+          "evidence": "Parameters row for 'siz_win': Window size in base pairs for the 'window' engine or empty string."
+        }
+      ],
+      "local_meanings": [],
+      "status": "registered_shared"
+    },
+    {
+      "id": "shared_report_N",
+      "parameter": "report_N",
+      "canonical_core": "Fragment-count report path.",
+      "members": [
+        {
+          "surface_id": "bin/submit_compute_signal.sh::run_comp_sig",
+          "path": "bin/submit_compute_signal.sh",
+          "symbol": "run_comp_sig",
+          "parameter": "report_N",
+          "owner": "PARAMETER.DESCRIPTIONS",
+          "evidence": "Parameters row for 'report_N': Path for the fragment-count report or empty string."
+        }
+      ],
+      "local_meanings": [],
+      "status": "registered_shared"
+    },
+    {
+      "id": "shared_report_L",
+      "parameter": "report_L",
+      "canonical_core": "Spanned-bin-count report path.",
+      "members": [
+        {
+          "surface_id": "bin/submit_compute_signal.sh::run_comp_sig",
+          "path": "bin/submit_compute_signal.sh",
+          "symbol": "run_comp_sig",
+          "parameter": "report_L",
+          "owner": "PARAMETER.DESCRIPTIONS",
+          "evidence": "Parameters row for 'report_L': Path for the spanned-bin-count report or empty string."
         }
       ],
       "local_meanings": [],
