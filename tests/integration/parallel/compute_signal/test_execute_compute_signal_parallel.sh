@@ -17,7 +17,7 @@ set -euo pipefail
 
 TEST_NAME="execute compute-signal GNU Parallel"
 
-#  Source shared test helpers
+# Source shared test helpers.
 # shellcheck source=tests/support/test_helpers.sh
 source "$(
     git -C "$(dirname "${BASH_SOURCE[0]}")" rev-parse --show-toplevel
@@ -34,7 +34,7 @@ then
     exit $?
 fi
 
-#  Define fixture and output paths for lightweight execute-layer config checks
+# Define fixture and output paths for lightweight execute-layer config checks.
 dir_fx="${ROOT_REPO}/tests/fixtures/compute_signal/bedgraph"
 fil_A="${dir_fx}/ratio_A.bdg"
 fil_B="${dir_fx}/ratio_B.bdg"
@@ -83,8 +83,8 @@ require_files_nonempty \
     exit $?
 }
 
-#  GNU Parallel dry-run config should invoke non-executable submit scripts
-#+ through Bash
+# GNU Parallel dry-run config should invoke non-executable submit scripts
+# through Bash.
 # shellcheck disable=SC2154
 if ! \
     require_env_parallel \
@@ -135,7 +135,7 @@ if [[ -s "${cfg_parallel}" ]]; then
 fi
 
 
-#  Real GNU Parallel execution should produce one output per ratio job
+# Real GNU Parallel execution should produce one output per ratio job.
 if \
     run_capture \
         "execute compute-signal GNU Parallel wet run" \
@@ -189,5 +189,6 @@ for out in "${fil_out_wet_1}" "${fil_out_wet_2}"; do
             "$(basename "${out}") has I:60-70 = 0.333"
     fi
 done
+
 
 finish
