@@ -31,7 +31,9 @@ Examples
 python -m protocol_chipseq_signal_norm.cli.compute_signal \\
     --fil_in <file> --fil_out <file> [options]
 python -m protocol_chipseq_signal_norm.cli.compute_signal \\
-    --fil_in <file> --report_N <file> [--report_L <file>] [options]
+    --fil_in <file> --fil_out <file> --report_N --report_L [options]
+python -m protocol_chipseq_signal_norm.cli.compute_signal \\
+    --fil_in <file> --report_N <file> --report_L <file> [options]
 """
 
 from __future__ import annotations
@@ -72,8 +74,8 @@ with suppress(AttributeError, ValueError):
 assert sys.version_info >= (3, 11), "Python >= 3.11 required."
 
 # TODO: In the performance pass, reassess a compiled core. Separately, assert
-# emitted terminal-bin end coordinates never exceed chromosome size (the
-# property downstream bigWig converters require; untested).
+# emitted terminal-bin end coordinates never exceed chromosome size, which is a
+# key property required by downstream bigWig converters.
 
 # Map accepted '--method' values to canonical internal names.
 # fmt: off
@@ -122,6 +124,11 @@ STRAT_BED_CHOICES = (
 )
 STRAT_WRITER_CHOICES = ("serial", "parallel_ordered")
 
+# Stand in for a report path the user did not spell out, which is what a bare
+# '--report_N' or '--report_L' supplies. A NUL byte cannot occur in a path, so
+# the sentinel can never collide with one a user typed.
+REPORT_DERIVE = "\x00derive"
+
 
 def get_siz_chr(
     fil_aln: str,
@@ -161,6 +168,54 @@ def resolve_siz_chr(siz_chr_hdr: dict[str, int]) -> dict[str, int]:
         )
 
     return dict(siz_chr_hdr)
+
+
+def resolve_report_path(
+    value: str | None,
+    fil_out: str | None,
+    label: str,
+    flag: str,
+) -> str | None:
+    """
+    Resolve a report path, deriving it from the output path when unspelled.
+
+    Parameters
+    ----------
+    value : str | None
+        Report path as parsed, 'REPORT_DERIVE' for a bare flag, or None.
+    fil_out : str | None
+        Validated output path or None in report-only mode.
+    label : str
+        Count label placed before '.txt', either 'N' or 'L'.
+    flag : str
+        Option spelling named in the error, e.g., '--report_N'.
+
+    Returns
+    -------
+    path_report : str | None
+        Path to write, unchanged unless it was derived.
+
+    Raises
+    ------
+    ValueError
+        If a bare flag is given without an output path to derive from.
+    """
+
+    if value != REPORT_DERIVE:
+        return value
+
+    if fil_out is None:
+        raise ValueError(
+            f"'{flag}' was given without a path, so the report path is "
+            f"derived from '--fil_out', but no '--fil_out' was given. Supply "
+            f"a path to '{flag}' or an output path to '--fil_out'.",
+        )
+
+    # Strip one '.gz' and then one extension, matching how the wrappers derive
+    # the same name, so a sample's counts sit beside its track either way.
+    base = fil_out[:-3] if fil_out.endswith(".gz") else fil_out
+
+    return f"{os.path.splitext(base)[0]}.{label}.txt"
 
 
 def start_profile(
@@ -1121,7 +1176,7 @@ def est_bed_bytes(result: Any) -> int:
 # '--profile_json' layer, and the four hidden operator knobs ('--mode_exec',
 # '--strat_bed', '--strat_writer', '--wrk_writer') exist for that pass; its
 # exit decision is to adopt them as supported surface or to move them to
-# 'dev/algorithm_testing/' (decided with the author, 2026-09-12).
+# 'dev/algorithm_testing/' (decided 2026-09-12).
 def calc_sig_profile_task(data: tuple[object, ...]) -> object:
     """
     Compute one profiled worker task and return timing metadata.
@@ -1927,11 +1982,12 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
             "use with S. cerevisiae data "
             "(https://github.com/kalavattam/siQ-ChIP/tree/protocol).\n"
             "\n"
-            "The fragment count 'N' and the library size 'L' can be written "
-            "alongside either output or on their own: when '--fil_out' is "
-            "omitted, the run counts and writes only the requested reports. "
-            "Both are inputs to 'compute_pseudo', where 'k = L / N' puts the "
-            "pseudocount in bins, the unit per-bin coverage is added in."
+            "The fragment count 'N' and the spanned-bin count 'L' can be "
+            "written alongside either output or on their own: when "
+            "'--fil_out' is omitted, the run counts and writes only the "
+            "requested reports. Both are inputs to 'compute_pseudo', where "
+            "'k = L / N' puts the pseudocount in bins, the unit per-bin "
+            "coverage is added in."
         ),
     )
     add_help_cap(parser)
@@ -2065,11 +2121,11 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         choices=ENGINE_CHOICES,
         default="chrom",
         help=(
-            "Processing engine for bedGraph output (default: %(default)s). "
-            "'chrom' parallelizes indexed chromosome fetching and "
-            "array-backed signal calculation. 'window' parallelizes indexed "
-            "coordinate-window fetching for finer load balance on large BAM "
-            "inputs.\n"
+            "Processing engine for bedGraph output (default: %(default)s).\n"
+            "  - 'chrom' parallelizes indexed chromosome fetching and "
+            "array-backed signal calculation.\n"
+            "  - 'window' parallelizes indexed coordinate-window fetching for "
+            "finer load balance on, e.g., large BAM inputs.\n"
             "\n"
         ),
     )
@@ -2080,9 +2136,8 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         type=int,
         default=100000,
         help=(
-            "Window size in base pairs for the 'window' engine's indexed "
-            "fetch tasks (default: %(default)s). Ignored by the 'chrom' "
-            "engine.\n"
+            "Window size in base pairs for '--engine window' indexed fetch "
+            "tasks (default: %(default)s). Ignored by '--engine chrom'.\n"
             "\n"
             "Each chromosome is split into windows of this size, and one "
             "worker task fetches and bins each window. Smaller windows give "
@@ -2136,10 +2191,16 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         "-rN",
         "--report_N",
         dest="report_N",
+        nargs="?",
         default=None,
+        const=REPORT_DERIVE,
         help=(
             "Write the fragment count 'N' to this file as a single integer on "
             "one line (default: %(default)s).\n"
+            "\n"
+            "Given without a path, the file is written beside '--fil_out', "
+            "with its extension (and any '.gz') replaced by '.N.txt'. If "
+            "'--fil_out' is not used, then an output path must be given.\n"
             "\n"
             "The count covers the fragments the signal path uses, taken from "
             "the same iterator under the same '--usr_frg' and filter "
@@ -2156,29 +2217,39 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument(
         "--report-N",
         dest="report_N",
+        nargs="?",
+        const=REPORT_DERIVE,
         help=argparse.SUPPRESS,
     )
     parser.add_argument(
         "-rL",
         "--report_L",
         dest="report_L",
+        nargs="?",
         default=None,
+        const=REPORT_DERIVE,
         help=(
-            "Write the library size 'L' to this file as a single integer on "
-            "one line (default: %(default)s).\n"
+            "Write the spanned-bin count 'L' to this file as a single integer "
+            "on one line (default: %(default)s).\n"
             "\n"
-            "Depends on '--siz_bin' and '--usr_frg', which set how finely "
-            "each fragment is divided and how far it reaches.\n"
+            "Given without a path, the file is written beside '--fil_out', "
+            "with its extension (and any '.gz') replaced by '.L.txt'. If "
+            "'--fil_out' is not used, then an output path must be given.\n"
             "\n"
-            "The library size 'L' is the total number of bins spanned by the "
-            "same fragments counted by 'N' (see above), counting a fragment "
-            "once per bin it touches.\n"
+            "Depends on '--siz_bin' and '--usr_frg', which set how each "
+            "fragment is divided and how far it reaches, respectively.\n"
+            "\n"
+            "Bins are counted once per fragment that touches them, so 'L' "
+            "totals the bins spanned by the same fragments counted by 'N' "
+            "(see '--report_N' above).\n"
             "\n"
         ),
     )
     parser.add_argument(
         "--report-L",
         dest="report_L",
+        nargs="?",
+        const=REPORT_DERIVE,
         help=argparse.SUPPRESS,
     )
     parser.add_argument(
@@ -2669,11 +2740,9 @@ def main(argv: list[str] | None = None) -> int:
             "'--fil_out -' is not supported; provide an output path.",
         )
 
-    # The option '--fil_out' is optional only in report-only mode. Because
-    # argparse cannot express a conditional requirement, it is checked here,
-    # and the message names the two ways out rather than only stating the rule.
-    # A hidden hyphen spelling is a separate action, so argparse's own
-    # 'required' check cannot see it. Require the value, not the action.
+    # Neither rule fits argparse: '--fil_out' is optional only in report-only
+    # mode, and a hidden hyphen spelling is a separate action that argparse's
+    # own 'required' check cannot see. Check the parsed values here instead.
     if args.fil_in is None:
         raise SystemExit(
             "'--fil_in' is required. Supply the BAM or CRAM input path.",
@@ -2710,6 +2779,21 @@ def main(argv: list[str] | None = None) -> int:
 
         if args.profile_json is not None:
             check_writable(args.profile_json, "file")
+
+        # Resolve before the writability check below, so a path the user left
+        # to derivation is validated exactly like one they spelled out.
+        args.report_N = resolve_report_path(
+            args.report_N,
+            fil_out,
+            "N",
+            "--report_N",
+        )
+        args.report_L = resolve_report_path(
+            args.report_L,
+            fil_out,
+            "L",
+            "--report_L",
+        )
 
         for path_report in (args.report_N, args.report_L):
             if path_report is not None:

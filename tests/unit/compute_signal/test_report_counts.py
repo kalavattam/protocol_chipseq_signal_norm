@@ -362,3 +362,152 @@ def test_emitted_track_carries_no_zero_valued_row(
 
         assert float(value) != 0.0
         assert value != "-0"
+
+
+@pytest.mark.parametrize(
+    ("nam_out", "base"),
+    [
+        pytest.param("track.bedGraph.gz", "track", id="bedgraph-gz"),
+        pytest.param("track.bedGraph", "track", id="bedgraph-plain"),
+        pytest.param("track.bed", "track", id="bed"),
+        pytest.param("a.b.track.bedGraph.gz", "a.b.track", id="dotted-stem"),
+    ],
+)
+def test_bare_report_flags_derive_paths_from_fil_out(
+    tmp_path: Path,
+    nam_out: str,
+    base: str,
+) -> None:
+    # The derivation strips one trailing '.gz' and then one extension, which is
+    # the rule the execute wrapper applies in Bash. Pinning both spellings and
+    # a dotted stem here keeps the two derivations from drifting apart.
+    fil_in = FIXTURES / "bam" / "se" / "tiny_se.bam"
+    fil_out = tmp_path / nam_out
+
+    status = main(
+        [
+            "--fil_in",
+            str(fil_in),
+            "--fil_out",
+            str(fil_out),
+            "--siz_bin",
+            "10",
+            "--report_N",
+            "--report_L",
+        ],
+    )
+
+    assert status == 0
+    assert read_count(tmp_path / f"{base}.N.txt") > 0
+    assert read_count(tmp_path / f"{base}.L.txt") > 0
+
+
+def test_bare_report_flags_match_explicit_paths(tmp_path: Path) -> None:
+    fil_in = FIXTURES / "bam" / "se" / "tiny_se.bam"
+    dir_bare = tmp_path / "bare"
+    dir_expl = tmp_path / "expl"
+
+    dir_bare.mkdir()
+    dir_expl.mkdir()
+
+    base_args = [
+        "--fil_in",
+        str(fil_in),
+        "--siz_bin",
+        "10",
+        "--method",
+        "norm",
+    ]
+
+    status_bare = main(
+        [
+            *base_args,
+            "--fil_out",
+            str(dir_bare / "track.bedGraph.gz"),
+            "--report_N",
+            "--report_L",
+        ],
+    )
+    status_expl = main(
+        [
+            *base_args,
+            "--fil_out",
+            str(dir_expl / "track.bedGraph.gz"),
+            "--report_N",
+            str(dir_expl / "n.txt"),
+            "--report_L",
+            str(dir_expl / "l.txt"),
+        ],
+    )
+
+    bare_n = read_count(dir_bare / "track.N.txt")
+    bare_l = read_count(dir_bare / "track.L.txt")
+    expl_n = read_count(dir_expl / "n.txt")
+    expl_l = read_count(dir_expl / "l.txt")
+
+    assert status_bare == 0
+    assert status_expl == 0
+    assert bare_n == expl_n
+    assert bare_l == expl_l
+
+
+def test_bare_report_flag_without_fil_out_is_rejected(tmp_path: Path) -> None:
+    # Report-only mode has no output path to derive from. The bare form must
+    # say so rather than guess a location beside the input alignment.
+    fil_in = FIXTURES / "bam" / "se" / "tiny_se.bam"
+
+    with pytest.raises(SystemExit) as excinfo:
+        main(["--fil_in", str(fil_in), "--report_N"])
+
+    message = str(excinfo.value)
+
+    assert "--report_N" in message
+    assert "--fil_out" in message
+
+
+def test_explicit_report_path_is_not_overridden(tmp_path: Path) -> None:
+    fil_in = FIXTURES / "bam" / "se" / "tiny_se.bam"
+    fil_out = tmp_path / "track.bedGraph.gz"
+    path_n = tmp_path / "elsewhere.N.txt"
+
+    status = main(
+        [
+            "--fil_in",
+            str(fil_in),
+            "--fil_out",
+            str(fil_out),
+            "--siz_bin",
+            "10",
+            "--report_N",
+            str(path_n),
+        ],
+    )
+
+    assert status == 0
+    assert read_count(path_n) > 0
+    assert not (tmp_path / "track.N.txt").exists()
+
+
+def test_hidden_hyphen_spelling_derives_identically(tmp_path: Path) -> None:
+    # The hyphen aliases are separate argparse actions sharing one dest, so an
+    # unmirrored 'nargs' / 'const' would make the bare hyphen form behave
+    # differently from the bare underscore form.
+    fil_in = FIXTURES / "bam" / "se" / "tiny_se.bam"
+    fil_out = tmp_path / "track.bedGraph.gz"
+
+    status = main(
+        [
+            "--fil_in",
+            str(fil_in),
+            "--fil_out",
+            str(fil_out),
+            "--siz_bin",
+            "10",
+            "--report-N",
+            "--report-L",
+        ],
+    )
+
+    assert status == 0
+    assert read_count(tmp_path / "track.N.txt") > 0
+    assert read_count(tmp_path / "track.L.txt") > 0
