@@ -29,7 +29,7 @@ Usage
     --dir_out <dir> [--typ_out <format>] [--prefix <str>]
     [--siz_bin <int>] [--engine <engine>] [--siz_win <int>] [--csv_usr_frg <csv>] [--csv_scl_fct <csv>]
     [--csv_dep_min <csv>] [--csv_pseudo <csv>] [--eps <num>] [--skip_00 <choice>] [--strict_bins] [--drp_nan] [--skp_pfx <csv>]
-    [--report_N] [--report_L] [--report_only]
+    [--report_n_frg] [--report_n_bin] [--report_only]
     [--track] [--dp <int>]
     [--dir_eo <dir>] [--nam_job <str>] [--max_job <int>] [--slurm] [--time <time>]
 
@@ -171,14 +171,14 @@ Parameters
   -sp, --skp_pfx : list of str
     Comma-separated list of header prefixes to skip. Shared comma-separated list of bedGraph header prefixes or sentinel to skip while parsing ratio-mode input files. Used only with '--mode ratio'.
 
-  -rN, --report_N : flag
-    Write the fragment count 'N' for each sample, beside its output track as '<track>.N.txt'. Used only with '--mode signal'.
+  -rnf, --report_n_frg : flag
+    Write the fragment count 'N' for each sample, beside its output track as '<track>.n_frg.txt'. Used only with '--mode signal'.
 
-  -rL, --report_L : flag
-    Write the spanned-bin count 'L' for each sample, beside its output track as '<track>.L.txt'. 'L' counts bins, so it depends on '--siz_bin'. Used only with '--mode signal'.
+  -rnb, --report_n_bin : flag
+    Write the spanned-bin count 'L' for each sample, beside its output track as '<track>.n_bin.txt'. 'L' counts bins, so it depends on '--siz_bin' and, if supplied, '--csv_usr_frg'. Used only with '--mode signal'.
 
   -ro, --report_only : flag
-    Write only the requested reports, with no signal track. Requires '--report_N' or '--report_L'. Used only with '--mode signal'.
+    Write only the requested reports, with no signal track. Requires '--report_n_frg' or '--report_n_bin'. Used only with '--mode signal'.
 
   -tr, --trk, --track : flag
     Write a companion track file. If '--mode ratio', also write a companion bedGraph with all non-finite rows ('inf', '-inf', and 'nan') removed.
@@ -534,28 +534,28 @@ Parameters
 
     Passed through to 'submit_compute_signal.sh' and then to 'compute_signal_ratio.py'.
 
-  -rN, --report_N : flag
+  -rnf, --report_n_frg : flag
     Write the fragment count 'N' for each sample.
 
     'N' is the number of fragments the signal path uses, counted from the same iterator that builds the track, under the same '--csv_usr_frg' and alignment-filter settings. It is therefore the number a '--method norm' run divides by, not an estimate of it.
 
-    The report is written beside each output track, as '<track>.N.txt'. With '--prefix', that follows the track's derived name, so 'run1.sample.bedGraph' yields 'run1.sample.N.txt'.
+    The report is written beside each output track, as '<track>.n_frg.txt'. With '--prefix', that follows the track's derived name, so 'run1.sample.bedGraph' yields 'run1.sample.n_frg.txt'.
 
     Used only with '--mode signal'; ignored otherwise.
 
-  -rL, --report_L : flag
+  -rnb, --report_n_bin : flag
     Write the spanned-bin count 'L' for each sample.
 
     'L' is the total number of bins the counted fragments span, counting a fragment once per bin it touches. It is not the summed base pairs an unadjusted track reports: the bin count is what puts 'k = L / N' in bins, the unit a per-bin pseudocount needs.
 
-    Because 'L' counts bins, it depends on '--siz_bin' and on '--csv_usr_frg' where fragment extension changes how far each fragment reaches. The report is written beside each output track, as '<track>.L.txt'.
+    Because 'L' counts bins, it depends on '--siz_bin' and, if supplied, '--csv_usr_frg', where fragment extension changes how far each fragment reaches. The report is written beside each output track, as '<track>.n_bin.txt'.
 
     Used only with '--mode signal'; ignored otherwise.
 
   -ro, --report_only : flag
     Write the requested reports without writing a signal track.
 
-    Requires '--report_N' or '--report_L'; there is nothing to report otherwise, and the run is rejected. Counting happens before the output branch, so the reported values are identical to those a track-writing run would produce on the same input.
+    Requires '--report_n_frg' or '--report_n_bin'; there is nothing to report otherwise, and the run is rejected. Counting happens before the output branch, so the reported values are identical to those a track-writing run would produce on the same input.
 
     Use this to obtain prior counts without paying for track output.
 
@@ -675,13 +675,13 @@ Examples
         --dir_out "\${HOME}/project/tracks" \\
         --typ_out "bedGraph.gz" \\
         --siz_bin 50 \\
-        --report_N \\
-        --report_L \\
+        --report_n_frg \\
+        --report_n_bin \\
         --dir_eo "\${HOME}/project/logs" \\
         --nam_job "norm_sig"
     '''
 
-    Writes 'sample_1.bedGraph.gz' alongside 'sample_1.N.txt' and 'sample_1.L.txt', and the same trio for 'sample_2'. Counting runs before the output branch, so the counts match those of a report-only run on the same input.
+    Writes 'sample_1.bedGraph.gz' alongside 'sample_1.n_frg.txt' and 'sample_1.n_bin.txt', and the same trio for 'sample_2'. Counting runs before the output branch, so the counts match those of a report-only run on the same input.
 
   4. Write only the fragment and spanned-bin counts, with no signal track.
     '''bash
@@ -691,14 +691,14 @@ Examples
         --csv_fil_in "\${HOME}/project/samples/sample_1.bam,\${HOME}/project/samples/sample_2.bam" \\
         --dir_out "\${HOME}/project/counts" \\
         --siz_bin 50 \\
-        --report_N \\
-        --report_L \\
+        --report_n_frg \\
+        --report_n_bin \\
         --report_only \\
         --dir_eo "\${HOME}/project/logs" \\
         --nam_job "counts"
     '''
 
-    Each report is named from the track that would have been written, so this writes 'sample_1.N.txt' and 'sample_1.L.txt' to '--dir_out', and the same pair for 'sample_2'. 'L' counts bins, so it depends on '--siz_bin'.
+    Each report is named from the track that would have been written, so this writes 'sample_1.n_frg.txt' and 'sample_1.n_bin.txt' to '--dir_out', and the same pair for 'sample_2'. 'L' counts bins, so it depends on '--siz_bin'.
 
   5. Compute log2 ratios and write a browser-ready companion track.
     '''bash

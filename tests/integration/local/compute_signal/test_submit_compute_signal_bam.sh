@@ -477,18 +477,26 @@ bash "${ROOT_REPO}/bin/submit_compute_signal.sh" \
     --mode signal \
     --csv_fil_in "${in_se},${in_pe}" \
     --csv_fil_out "${dir_rep}/se.bdg,${dir_rep}/pe.bdg" \
-    --csv_report_N "${dir_rep}/se.N.txt,${dir_rep}/pe.N.txt" \
-    --csv_report_L "${dir_rep}/se.L.txt,${dir_rep}/pe.L.txt" \
+    --csv_report_n_frg "${dir_rep}/se.n_frg.txt,${dir_rep}/pe.n_frg.txt" \
+    --csv_report_n_bin "${dir_rep}/se.n_bin.txt,${dir_rep}/pe.n_bin.txt" \
     --dir_eo "${dir_err}" \
     --siz_bin 10 \
     --method unadj \
     > /dev/null 2>&1 || true
 
-assert_file_exact_line "${dir_rep}/se.N.txt" "2" \
+assert_file_exact_line \
+    "${dir_rep}/se.n_frg.txt" \
+    "2" \
     "submit SE fragment count is 2"
-assert_file_exact_line "${dir_rep}/se.L.txt" "2" \
+
+assert_file_exact_line \
+    "${dir_rep}/se.n_bin.txt" \
+    "2" \
     "submit SE spanned-bin count is 2"
-assert_file_exact_line "${dir_rep}/pe.L.txt" "5" \
+
+assert_file_exact_line \
+    "${dir_rep}/pe.n_bin.txt" \
+    "5" \
     "submit PE spanned-bin count is 5, proving per-sample report paths"
 
 assert_file_nonempty "${dir_rep}/se.bdg" \
@@ -500,14 +508,14 @@ mkdir -p "${dir_only}"
 bash "${ROOT_REPO}/bin/submit_compute_signal.sh" \
     --mode signal \
     --csv_fil_in "${in_se}" \
-    --csv_report_N "${dir_only}/se.N.txt" \
-    --csv_report_L "${dir_only}/se.L.txt" \
+    --csv_report_n_frg "${dir_only}/se.n_frg.txt" \
+    --csv_report_n_bin "${dir_only}/se.n_bin.txt" \
     --dir_eo "${dir_err}" \
     --siz_bin 10 \
     --method unadj \
     > /dev/null 2>&1 || true
 
-assert_file_exact_line "${dir_only}/se.N.txt" "2" \
+assert_file_exact_line "${dir_only}/se.n_frg.txt" "2" \
     "submit report-only writes the fragment count"
 
 if [[ -n "$(find "${dir_only}" -maxdepth 1 -name '*.bdg' 2>/dev/null)" ]]; then
@@ -534,7 +542,7 @@ out_bad="$(
     bash "${ROOT_REPO}/bin/submit_compute_signal.sh" \
         --mode coord \
         --csv_fil_in "${in_se}" \
-        --csv_report_N "${dir_only}/x.N.txt" \
+        --csv_report_n_frg "${dir_only}/x.n_frg.txt" \
         --dir_eo "${dir_err}" 2>&1
 )" || true
 
@@ -550,21 +558,23 @@ fi
 dir_ref="${tmp}/reference_counts"
 mkdir -p "${dir_ref}"
 
-if PYTHONDONTWRITEBYTECODE=1 python3 -m protocol_chipseq_signal_norm.cli.compute_signal \
-    --fil_in "${in_pe}" \
-    --siz_bin 10 \
-    --report_N "${dir_ref}/direct.N.txt" \
-    --report_L "${dir_ref}/direct.L.txt" \
-    > /dev/null 2>&1
+if \
+    PYTHONDONTWRITEBYTECODE=1 \
+    python3 -m protocol_chipseq_signal_norm.cli.compute_signal \
+        --fil_in "${in_pe}" \
+        --siz_bin 10 \
+        --report_n_frg "${dir_ref}/direct.n_frg.txt" \
+        --report_n_bin "${dir_ref}/direct.n_bin.txt" \
+        > /dev/null 2>&1
 then
     assert_files_equal \
-        "${dir_rep}/pe.N.txt" \
-        "${dir_ref}/direct.N.txt" \
+        "${dir_rep}/pe.n_frg.txt" \
+        "${dir_ref}/direct.n_frg.txt" \
         "submit PE fragment count equals a direct compute_signal.py run"
 
     assert_files_equal \
-        "${dir_rep}/pe.L.txt" \
-        "${dir_ref}/direct.L.txt" \
+        "${dir_rep}/pe.n_bin.txt" \
+        "${dir_ref}/direct.n_bin.txt" \
         "submit PE spanned-bin count equals a direct compute_signal.py run"
 else
     record_skip "direct compute_signal.py reference run unavailable"
@@ -572,8 +582,8 @@ fi
 
 
 # Reports with BED output: counting precedes the output branch, so reports are
-# written here too, and '--siz_bin' stops being ignored once '--report_L' is
-# given.
+# written here too, and '--siz_bin' stops being ignored once '--report_n_bin'
+# is given.
 dir_bed="${tmp}/report_bed"
 mkdir -p "${dir_bed}"
 
@@ -593,14 +603,17 @@ if \
         --fil_in "${in_pe}" \
         --fil_out "${dir_bed}/direct.bed" \
         --siz_bin 10 \
-        --report_N "${dir_bed}/bed.N.txt" \
-        --report_L "${dir_bed}/bed.L.txt" \
+        --report_n_frg "${dir_bed}/bed.n_frg.txt" \
+        --report_n_bin "${dir_bed}/bed.n_bin.txt" \
         > /dev/null 2>&1
 then
-    assert_file_nonempty "${dir_bed}/direct.bed" \
+    assert_file_nonempty \
+        "${dir_bed}/direct.bed" \
         "BED output is written alongside reports"
 
-    assert_files_equal "${dir_bed}/bed.L.txt" "${dir_rep}/pe.L.txt" \
+    assert_files_equal \
+        "${dir_bed}/bed.n_bin.txt" \
+        "${dir_rep}/pe.n_bin.txt" \
         "BED-mode spanned-bin count matches the bedGraph-mode value"
 else
     record_fail "reports alongside BED output failed"

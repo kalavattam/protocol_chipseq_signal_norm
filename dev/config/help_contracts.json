@@ -640,34 +640,34 @@
       "status": "registered_shared"
     },
     {
-      "id": "shared_report_N",
-      "parameter": "report_N",
+      "id": "shared_report_n_frg",
+      "parameter": "report_n_frg",
       "canonical_core": "Fragment-count report path.",
       "members": [
         {
           "surface_id": "bin/submit_compute_signal.sh::run_comp_sig",
           "path": "bin/submit_compute_signal.sh",
           "symbol": "run_comp_sig",
-          "parameter": "report_N",
+          "parameter": "report_n_frg",
           "owner": "PARAMETER.DESCRIPTIONS",
-          "evidence": "Parameters row for 'report_N': Path for the fragment-count report or empty string."
+          "evidence": "Parameters row for 'report_n_frg': Path for the fragment-count report or empty string."
         }
       ],
       "local_meanings": [],
       "status": "registered_shared"
     },
     {
-      "id": "shared_report_L",
-      "parameter": "report_L",
+      "id": "shared_report_n_bin",
+      "parameter": "report_n_bin",
       "canonical_core": "Spanned-bin-count report path.",
       "members": [
         {
           "surface_id": "bin/submit_compute_signal.sh::run_comp_sig",
           "path": "bin/submit_compute_signal.sh",
           "symbol": "run_comp_sig",
-          "parameter": "report_L",
+          "parameter": "report_n_bin",
           "owner": "PARAMETER.DESCRIPTIONS",
-          "evidence": "Parameters row for 'report_L': Path for the spanned-bin-count report or empty string."
+          "evidence": "Parameters row for 'report_n_bin': Path for the spanned-bin-count report or empty string."
         }
       ],
       "local_meanings": [],

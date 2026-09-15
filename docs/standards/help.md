@@ -276,91 +276,91 @@ The table supplies a shared semantic core only for an explicitly registered conc
 
 The `Type` field names the user-facing logical value form described or accepted by the interface. It is not a Python, Shell, R, or Rust source type, does not prescribe a language-native container or annotation, and is not by itself a serialization contract. Language owners govern source representation, and an independently owned interface or protocol governs serialization when one exists.
 
-| Parameter     | Type              | Canonical description                                                      |
-| :---          | :---              | :---                                                                       |
-| `csv_fil_in`  | list of file      | Comma-separated list of input file paths.                                  |
-| `fil_out`     | file              | Output file path.                                                          |
-| `csv_fil_out` | list of file      | Comma-separated list of output file paths.                                 |
-| `dir_out`     | dir               | Output directory.                                                          |
-| `dir_eo`      | dir               | Directory for stderr and stdout log files.                                 |
-| `dir_scr`     | dir               | Maintained entrypoint directory used to resolve adjacent shared functions. |
-| `env_nam`     | str               | Conda environment to activate.                                             |
-| `threads`     | int               | Number of threads to use.                                                  |
-| `ref_fa`      | file              | Reference FASTA file.                                                      |
-| `dp`          | int               | Maximum number of decimal places retained for finite emitted values.       |
-| `verbose`     | flag              | Run script in verbose mode.                                                |
-| `dry_run`     | flag              | Run script in dry-run mode.                                                |
-| `nam_job`     | str               | Job name.                                                                  |
-| `max_job`     | int               | Maximum number of jobs to run concurrently.                                |
-| `slurm`       | flag              | Submit jobs to the Slurm scheduler.                                        |
-| `time`        | time              | Slurm job time limit.                                                      |
-| `out_ext`     | choice            | Final output extension.                                                    |
-| `chr_siz`     | file              | Chromosome sizes file.                                                     |
-| `engine`      | choice            | Processing engine.                                                         |
-| `siz_bin`     | int               | Bin size in base pairs.                                                    |
-| `siz_win`     | int               | Window size in base pairs.                                                 |
-| `report_N`    | file              | Fragment-count report path.                                                |
-| `report_L`    | file              | Spanned-bin-count report path.                                             |
-| `scl_fct`     | num               | Scaling factor.                                                            |
-| `track`       | flag              | Write a companion track file.                                              |
-| `strict_bins` | flag              | Require strict bin compatibility.                                          |
-| `skip_00`     | choice            | Skip rows where both compared values are zero.                             |
-| `skp_pfx`     | list of str       | Comma-separated list of header prefixes to skip.                           |
-| `csv_fil_A`   | list of file      | Comma-separated list of file A paths.                                      |
-| `csv_fil_B`   | list of file      | Comma-separated list of file B paths.                                      |
-| `csv_scl_fct` | list of num       | Comma-separated list of scaling factors.                                   |
-| `csv_pseudo`  | list of num       | Comma-separated list of pseudocount values.                                |
-| `csv_usr_frg` | list of int       | Comma-separated list of fixed fragment-length values.                      |
-| `aligner`     | choice            | Alignment program to use.                                                  |
-| `bt2_mode`    | choice            | Bowtie 2 alignment type.                                                   |
-| `bwa_alg`     | choice            | BWA algorithm.                                                             |
-| `mapq`        | int               | MAPQ threshold.                                                            |
-| `req_flg`     | flag              | Require SAM flag bit 2 for properly paired alignments.                     |
-| `index`       | path              | Path to the aligner index/reference.                                       |
-| `qname`       | flag              | Retain queryname-sorted intermediate alignment files.                      |
-| `align_typ`   | choice            | Alignment layout type for input alignment files.                           |
-| `aln_typ`     | choice            | Alignment layout type for input alignment files.                           |
-| `csv_mip`     | list of file      | Comma-separated list of main IP alignment files.                           |
-| `csv_min`     | list of file      | Comma-separated list of main input alignment files.                        |
-| `csv_sip`     | list of file      | Comma-separated list of spike-in IP alignment files.                       |
-| `csv_sin`     | list of file      | Comma-separated list of spike-in input alignment files.                    |
-| `tbl_met`     | file              | siQ-ChIP metadata table.                                                   |
-| `cfg_met`     | file              | YAML configuration file for metadata parsing.                              |
-| `eqn`         | choice            | siQ-ChIP alpha equation.                                                   |
-| `len_def`     | int               | Default fragment length for single-end libraries.                          |
-| `csv_len_mip` | list of number    | Fragment length value(s) for main IP alignment files.                      |
-| `csv_len_min` | list of number    | Fragment length value(s) for main input alignment files.                   |
-| `csv_dep_mip` | list of int       | Sequencing/alignment depth value(s) for main IP alignment files.           |
-| `csv_dep_sip` | list of int       | Sequencing/alignment depth value(s) for spike-in IP alignment files.       |
-| `csv_dep_sin` | list of int       | Sequencing/alignment depth value(s) for spike-in input alignment files.    |
-| `fil_A`       | file              | First bedGraph input file, file A.                                         |
-| `fil_B`       | file              | Second bedGraph input file, file B.                                        |
-| `pseudo`      | structured string | Per-file pseudocount spec 'A[:B]'.                                         |
-| `drp_nan`     | flag              | Drop non-finite values from main output.                                   |
-| `typ_out`     | choice            | Output file format.                                                        |
-| `usr_frg`     | int               | Fixed fragment length.                                                     |
-| `chk_chr`     | flag              | Check chromosomes in output alignment files.                               |
-| `retain`      | choice            | Species chromosomes to retain.                                             |
-| `mito`        | flag              | Retain mitochondrial chromosome.                                           |
-| `tg`          | flag              | Retain SP_II_TG chromosome.                                                |
-| `mtr`         | flag              | Retain SP_MTR chromosome.                                                  |
-| `fil_aln`     | file              | Input BAM or CRAM alignment file.                                          |
-| `fq_1`        | file              | First FASTQ input file.                                                    |
-| `fq_2`        | file              | Second FASTQ input file.                                                   |
-| `sfx_se`      | str               | Suffix to strip from single-end FASTQ filenames.                           |
-| `sfx_pe`      | str               | Suffix to strip from paired-end FASTQ read-1 filenames.                    |
-| `suffix_se`   | str               | Suffix to strip from single-end FASTQ filenames.                           |
-| `suffix_pe`   | str               | Suffix to strip from paired-end FASTQ read-1 filenames.                    |
-| `log_out`     | file              | Stdout log file.                                                           |
-| `log_err`     | file              | Stderr log file.                                                           |
-| `dir_fnc`     | dir               | Base function directory.                                                   |
-| `pth_scr_py`  | file              | Python converter script.                                                   |
-| `coef`        | num               | Coefficient.                                                               |
-| `floor`       | num               | Lower bound.                                                               |
-| `eps`         | num               | Zero tolerance epsilon.                                                    |
-| `qntl_nz`     | num               | Quantile in percent.                                                       |
-| `mode_nz`     | choice            | Epsilon/zero-handling mode.                                                |
-| `siz_gen`     | int               | Effective genome size.                                                     |
+| Parameter      | Type              | Canonical description                                                      |
+| :---           | :---              | :---                                                                       |
+| `csv_fil_in`   | list of file      | Comma-separated list of input file paths.                                  |
+| `fil_out`      | file              | Output file path.                                                          |
+| `csv_fil_out`  | list of file      | Comma-separated list of output file paths.                                 |
+| `dir_out`      | dir               | Output directory.                                                          |
+| `dir_eo`       | dir               | Directory for stderr and stdout log files.                                 |
+| `dir_scr`      | dir               | Maintained entrypoint directory used to resolve adjacent shared functions. |
+| `env_nam`      | str               | Conda environment to activate.                                             |
+| `threads`      | int               | Number of threads to use.                                                  |
+| `ref_fa`       | file              | Reference FASTA file.                                                      |
+| `dp`           | int               | Maximum number of decimal places retained for finite emitted values.       |
+| `verbose`      | flag              | Run script in verbose mode.                                                |
+| `dry_run`      | flag              | Run script in dry-run mode.                                                |
+| `nam_job`      | str               | Job name.                                                                  |
+| `max_job`      | int               | Maximum number of jobs to run concurrently.                                |
+| `slurm`        | flag              | Submit jobs to the Slurm scheduler.                                        |
+| `time`         | time              | Slurm job time limit.                                                      |
+| `out_ext`      | choice            | Final output extension.                                                    |
+| `chr_siz`      | file              | Chromosome sizes file.                                                     |
+| `engine`       | choice            | Processing engine.                                                         |
+| `siz_bin`      | int               | Bin size in base pairs.                                                    |
+| `siz_win`      | int               | Window size in base pairs.                                                 |
+| `report_n_frg` | file              | Fragment-count report path.                                                |
+| `report_n_bin` | file              | Spanned-bin-count report path.                                             |
+| `scl_fct`      | num               | Scaling factor.                                                            |
+| `track`        | flag              | Write a companion track file.                                              |
+| `strict_bins`  | flag              | Require strict bin compatibility.                                          |
+| `skip_00`      | choice            | Skip rows where both compared values are zero.                             |
+| `skp_pfx`      | list of str       | Comma-separated list of header prefixes to skip.                           |
+| `csv_fil_A`    | list of file      | Comma-separated list of file A paths.                                      |
+| `csv_fil_B`    | list of file      | Comma-separated list of file B paths.                                      |
+| `csv_scl_fct`  | list of num       | Comma-separated list of scaling factors.                                   |
+| `csv_pseudo`   | list of num       | Comma-separated list of pseudocount values.                                |
+| `csv_usr_frg`  | list of int       | Comma-separated list of fixed fragment-length values.                      |
+| `aligner`      | choice            | Alignment program to use.                                                  |
+| `bt2_mode`     | choice            | Bowtie 2 alignment type.                                                   |
+| `bwa_alg`      | choice            | BWA algorithm.                                                             |
+| `mapq`         | int               | MAPQ threshold.                                                            |
+| `req_flg`      | flag              | Require SAM flag bit 2 for properly paired alignments.                     |
+| `index`        | path              | Path to the aligner index/reference.                                       |
+| `qname`        | flag              | Retain queryname-sorted intermediate alignment files.                      |
+| `align_typ`    | choice            | Alignment layout type for input alignment files.                           |
+| `aln_typ`      | choice            | Alignment layout type for input alignment files.                           |
+| `csv_mip`      | list of file      | Comma-separated list of main IP alignment files.                           |
+| `csv_min`      | list of file      | Comma-separated list of main input alignment files.                        |
+| `csv_sip`      | list of file      | Comma-separated list of spike-in IP alignment files.                       |
+| `csv_sin`      | list of file      | Comma-separated list of spike-in input alignment files.                    |
+| `tbl_met`      | file              | siQ-ChIP metadata table.                                                   |
+| `cfg_met`      | file              | YAML configuration file for metadata parsing.                              |
+| `eqn`          | choice            | siQ-ChIP alpha equation.                                                   |
+| `len_def`      | int               | Default fragment length for single-end libraries.                          |
+| `csv_len_mip`  | list of number    | Fragment length value(s) for main IP alignment files.                      |
+| `csv_len_min`  | list of number    | Fragment length value(s) for main input alignment files.                   |
+| `csv_dep_mip`  | list of int       | Sequencing/alignment depth value(s) for main IP alignment files.           |
+| `csv_dep_sip`  | list of int       | Sequencing/alignment depth value(s) for spike-in IP alignment files.       |
+| `csv_dep_sin`  | list of int       | Sequencing/alignment depth value(s) for spike-in input alignment files.    |
+| `fil_A`        | file              | First bedGraph input file, file A.                                         |
+| `fil_B`        | file              | Second bedGraph input file, file B.                                        |
+| `pseudo`       | structured string | Per-file pseudocount spec 'A[:B]'.                                         |
+| `drp_nan`      | flag              | Drop non-finite values from main output.                                   |
+| `typ_out`      | choice            | Output file format.                                                        |
+| `usr_frg`      | int               | Fixed fragment length.                                                     |
+| `chk_chr`      | flag              | Check chromosomes in output alignment files.                               |
+| `retain`       | choice            | Species chromosomes to retain.                                             |
+| `mito`         | flag              | Retain mitochondrial chromosome.                                           |
+| `tg`           | flag              | Retain SP_II_TG chromosome.                                                |
+| `mtr`          | flag              | Retain SP_MTR chromosome.                                                  |
+| `fil_aln`      | file              | Input BAM or CRAM alignment file.                                          |
+| `fq_1`         | file              | First FASTQ input file.                                                    |
+| `fq_2`         | file              | Second FASTQ input file.                                                   |
+| `sfx_se`       | str               | Suffix to strip from single-end FASTQ filenames.                           |
+| `sfx_pe`       | str               | Suffix to strip from paired-end FASTQ read-1 filenames.                    |
+| `suffix_se`    | str               | Suffix to strip from single-end FASTQ filenames.                           |
+| `suffix_pe`    | str               | Suffix to strip from paired-end FASTQ read-1 filenames.                    |
+| `log_out`      | file              | Stdout log file.                                                           |
+| `log_err`      | file              | Stderr log file.                                                           |
+| `dir_fnc`      | dir               | Base function directory.                                                   |
+| `pth_scr_py`   | file              | Python converter script.                                                   |
+| `coef`         | num               | Coefficient.                                                               |
+| `floor`        | num               | Lower bound.                                                               |
+| `eps`          | num               | Zero tolerance epsilon.                                                    |
+| `qntl_nz`      | num               | Quantile in percent.                                                       |
+| `mode_nz`      | choice            | Epsilon/zero-handling mode.                                                |
+| `siz_gen`      | int               | Effective genome size.                                                     |
 
 Use `csv_fil_in`, `fil_out`, and `csv_fil_out` for their registered shared concept families. The spelling `fil_in` remains available to local interfaces, but its signal/alignment, metadata-table, and generic input-file meanings are explicitly non-applicable to one shared canonical core. Use `dp` and `--dp` for decimal precision; do not accept or document `--rnd`, `--round`, `--decimals`, or `--digits` in maintained public CLIs.
 

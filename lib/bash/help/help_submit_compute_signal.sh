@@ -29,7 +29,7 @@ Usage
     --csv_fil_out <csv>
     [--siz_bin <int>] [--engine <engine>] [--siz_win <int>] [--csv_scl_fct <csv>] [--csv_usr_frg <csv>]
     [--csv_dep_min <csv>] [--csv_pseudo <csv>] [--eps <flt>] [--skip_00 <choice>] [--strict_bins] [--drp_nan] [--skp_pfx <csv>]
-    [--csv_report_N <csv>] [--csv_report_L <csv>]
+    [--csv_report_n_frg <csv>] [--csv_report_n_bin <csv>]
     [--track] [--dp <int>]
     --dir_eo <dir> [--nam_job <str>]
 
@@ -150,10 +150,10 @@ Parameters
   -sp, --skp_pfx : list of str
     Comma-separated list of header prefixes to skip. Shared comma-separated bedGraph header prefixes or sentinel to skip.
 
-  -crN, --csv_report_N : list of file
+  -crf, --csv_report_n_frg : list of file
     Comma-separated list of paths for per-sample fragment-count reports. Supply one path per '--csv_fil_in' element. Used only with '--mode signal'.
 
-  -crL, --csv_report_L : list of file
+  -crb, --csv_report_n_bin : list of file
     Comma-separated list of paths for per-sample spanned-bin-count reports. 'L' counts bins, so it depends on '--siz_bin'. Used only with '--mode signal'.
 
   -tr, --track : flag
@@ -239,8 +239,8 @@ Examples
         --method "norm" \\
         --csv_fil_in "\${dir_bam}/sample_1.bam,\${dir_bam}/sample_2.bam" \\
         --csv_fil_out "\${dir_out}/sample_1.bedGraph.gz,\${dir_out}/sample_2.bedGraph.gz" \\
-        --csv_report_N "\${dir_out}/sample_1.N.txt,\${dir_out}/sample_2.N.txt" \\
-        --csv_report_L "\${dir_out}/sample_1.L.txt,\${dir_out}/sample_2.L.txt" \\
+        --csv_report_n_frg "\${dir_out}/sample_1.n_frg.txt,\${dir_out}/sample_2.n_frg.txt" \\
+        --csv_report_n_bin "\${dir_out}/sample_1.n_bin.txt,\${dir_out}/sample_2.n_bin.txt" \\
         --siz_bin 10 \\
         --dir_eo "\${dir_eo}" \\
         --nam_job "compute_signal_norm"
@@ -256,8 +256,8 @@ Examples
         --threads 4 \\
         --mode "signal" \\
         --csv_fil_in "\${dir_bam}/sample_1.bam,\${dir_bam}/sample_2.bam" \\
-        --csv_report_N "\${dir_out}/sample_1.N.txt,\${dir_out}/sample_2.N.txt" \\
-        --csv_report_L "\${dir_out}/sample_1.L.txt,\${dir_out}/sample_2.L.txt" \\
+        --csv_report_n_frg "\${dir_out}/sample_1.n_frg.txt,\${dir_out}/sample_2.n_frg.txt" \\
+        --csv_report_n_bin "\${dir_out}/sample_1.n_bin.txt,\${dir_out}/sample_2.n_bin.txt" \\
         --siz_bin 10 \\
         --dir_eo "\${dir_eo}" \\
         --nam_job "compute_signal_counts"

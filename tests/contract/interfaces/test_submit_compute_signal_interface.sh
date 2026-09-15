@@ -154,9 +154,9 @@ else
 fi
 
 
-# Report forwarding: a bare '--report_N' is valid in 'compute_signal.py', which
-# derives its path, so a regression here fails silently rather than loudly.
-# Require every append to carry a quoted value under a non-empty guard.
+# Report forwarding: a bare '--report_n_frg' is valid in 'compute_signal.py',
+# which derives its path, so a regression here fails silently rather than
+# loudly. Require every append to carry a quoted value under a non-empty guard.
 rep_fwd="${TEST_DIR_TMP}/submit_compute_signal_interface/forwarding.txt"
 mkdir -p "$(dirname "${rep_fwd}")"
 
@@ -169,7 +169,7 @@ source = open(sys.argv[1], encoding="utf-8").read().splitlines()
 appends = 0
 for index, line in enumerate(source):
     append = re.match(
-        r'\s*cmd\+=\( --report_([NL])(.*)\)\s*$',
+        r'\s*cmd\+=\( --report_(n_frg|n_bin)(.*)\)\s*$',
         line,
     )
 
@@ -200,7 +200,7 @@ if [[ -s "${rep_fwd}" ]]; then
     assert_pattern_absent \
         "${rep_fwd}" \
         "BARE" \
-        "submit never appends a valueless '--report_N' or '--report_L'"
+        "submit never appends a valueless '--report_n_frg' or '--report_n_bin'"
 
     assert_pattern_absent \
         "${rep_fwd}" \

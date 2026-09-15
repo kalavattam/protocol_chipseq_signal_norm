@@ -582,8 +582,8 @@ function run_comp_sig() {
     local ref_fa="${10:-}"
     local engine="${11:-}"
     local siz_win="${12:-}"
-    local report_N="${13:-}"
-    local report_L="${14:-}"
+    local report_n_frg="${13:-}"
+    local report_n_bin="${14:-}"
     local dir_eo="${15:-}"
     local nam_job="${16:-}"
     local dsc="${17:-}"
@@ -596,7 +596,7 @@ function run_comp_sig() {
 Usage
 -----
   run_comp_sig
-    [--help] debug threads fil_in fil_out siz_bin method scl_fct usr_frg dp ref_fa engine siz_win report_N report_L dir_eo nam_job dsc
+    [--help] debug threads fil_in fil_out siz_bin method scl_fct usr_frg dp ref_fa engine siz_win report_n_frg report_n_bin dir_eo nam_job dsc
 
   Build and run the per-sample call to 'compute_signal.py'.
 
@@ -641,10 +641,10 @@ Parameters
   12  siz_win : int
     Window size in base pairs for the 'window' engine or empty string.
 
-  13  report_N : file
+  13  report_n_frg : file
     Path for the fragment-count report or empty string.
 
-  14  report_L : file
+  14  report_n_bin : file
     Path for the spanned-bin-count report or empty string.
 
   15  dir_eo : dir
@@ -759,12 +759,12 @@ EOM
         cmd+=( --siz_win "${siz_win}" )
     fi
 
-    if [[ -n "${report_N}" ]]; then
-        cmd+=( --report_N "${report_N}" )
+    if [[ -n "${report_n_frg}" ]]; then
+        cmd+=( --report_n_frg "${report_n_frg}" )
     fi
 
-    if [[ -n "${report_L}" ]]; then
-        cmd+=( --report_L "${report_L}" )
+    if [[ -n "${report_n_bin}" ]]; then
+        cmd+=( --report_n_bin "${report_n_bin}" )
     fi
 
     if [[ "${#optional[@]}" -gt 0 && -n "${optional[0]}" ]]; then
@@ -1465,8 +1465,8 @@ EOM
         "${ref_fa}" \
         "${engine}" \
         "${siz_win}" \
-        "$(get_arr_elem arr_report_N "${idx}")" \
-        "$(get_arr_elem arr_report_L "${idx}")" \
+        "$(get_arr_elem arr_rep_n_frg "${idx}")" \
+        "$(get_arr_elem arr_rep_n_bin "${idx}")" \
         "${dir_eo}" \
         "${nam_job}" \
         "${dsc}"
@@ -1773,8 +1773,8 @@ function init_arg_defs() {
     siz_bin=10
     engine="chrom"
     siz_win=100000
-    csv_report_N=""
-    csv_report_L=""
+    csv_report_n_frg=""
+    csv_report_n_bin=""
     csv_scl_fct=""
     csv_usr_frg=""
     csv_dep_min=""
@@ -2021,23 +2021,23 @@ function parse_args() {
                 shift 2
                 ;;
 
-            -crN|--csv[_-]report[_-]N)
+            -crf|--csv[_-]report[_-]n[_-]frg)
                 require_optarg "${1}" "${2:-}" "main" || {
                     echo >&2
                     help_submit_compute_signal
                     return 1
                 }
-                csv_report_N="${2}"
+                csv_report_n_frg="${2}"
                 shift 2
                 ;;
 
-            -crL|--csv[_-]report[_-]L)
+            -crb|--csv[_-]report[_-]n[_-]bin)
                 require_optarg "${1}" "${2:-}" "main" || {
                     echo >&2
                     help_submit_compute_signal
                     return 1
                 }
-                csv_report_L="${2}"
+                csv_report_n_bin="${2}"
                 shift 2
                 ;;
 
@@ -2191,7 +2191,7 @@ function validate_args() {
 
         # Mirror the CLI: an output path is required only when neither report
         # list is given, so a report-only run needs no track.
-        if [[ -z "${csv_report_N}" && -z "${csv_report_L}" ]]; then
+        if [[ -z "${csv_report_n_frg}" && -z "${csv_report_n_bin}" ]]; then
             validate_var "csv_fil_out" "${csv_fil_out}" || return 1
         fi
         validate_var "siz_bin"     "${siz_bin}"     || return 1
@@ -2321,18 +2321,18 @@ function prepare_vecs() {
             for _ in "${arr_fil_in[@]}"; do arr_fil_out+=( "" ); done
         fi
 
-        if [[ -n "${csv_report_N}" ]]; then
-            IFS=',' read -r -a arr_report_N <<< "${csv_report_N}"
+        if [[ -n "${csv_report_n_frg}" ]]; then
+            IFS=',' read -r -a arr_rep_n_frg <<< "${csv_report_n_frg}"
         else
-            unset arr_report_N && declare -ga arr_report_N
-            for _ in "${arr_fil_in[@]}"; do arr_report_N+=( "" ); done
+            unset arr_rep_n_frg && declare -ga arr_rep_n_frg
+            for _ in "${arr_fil_in[@]}"; do arr_rep_n_frg+=( "" ); done
         fi
 
-        if [[ -n "${csv_report_L}" ]]; then
-            IFS=',' read -r -a arr_report_L <<< "${csv_report_L}"
+        if [[ -n "${csv_report_n_bin}" ]]; then
+            IFS=',' read -r -a arr_rep_n_bin <<< "${csv_report_n_bin}"
         else
-            unset arr_report_L && declare -ga arr_report_L
-            for _ in "${arr_fil_in[@]}"; do arr_report_L+=( "" ); done
+            unset arr_rep_n_bin && declare -ga arr_rep_n_bin
+            for _ in "${arr_fil_in[@]}"; do arr_rep_n_bin+=( "" ); done
         fi
 
         if [[ -n "${csv_usr_frg}" ]]; then

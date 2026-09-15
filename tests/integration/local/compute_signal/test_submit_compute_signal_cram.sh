@@ -299,15 +299,15 @@ bash "${ROOT_REPO}/bin/submit_compute_signal.sh" \
     --mode signal \
     --csv_fil_in "${in_pe}" \
     --csv_fil_out "${dir_rep}/pe.bdg" \
-    --csv_report_N "${dir_rep}/pe.N.txt" \
-    --csv_report_L "${dir_rep}/pe.L.txt" \
+    --csv_report_n_frg "${dir_rep}/pe.n_frg.txt" \
+    --csv_report_n_bin "${dir_rep}/pe.n_bin.txt" \
     --ref_fa "${ref_fa}" \
     --dir_eo "${dir_err}" \
     --siz_bin 10 \
     --method unadj \
     > /dev/null 2>&1 || true
 
-assert_file_nonempty "${dir_rep}/pe.N.txt" \
+assert_file_nonempty "${dir_rep}/pe.n_frg.txt" \
     "submit CRAM report run writes the fragment count"
 
 if \
@@ -315,18 +315,18 @@ if \
     python3 -m protocol_chipseq_signal_norm.cli.compute_signal \
         --fil_in "${dir_fx}/bam/pe/tiny_pe.bam" \
         --siz_bin 10 \
-        --report_N "${dir_rep}/bam.N.txt" \
-        --report_L "${dir_rep}/bam.L.txt" \
+        --report_n_frg "${dir_rep}/bam.n_frg.txt" \
+        --report_n_bin "${dir_rep}/bam.n_bin.txt" \
         > /dev/null 2>&1
 then
     assert_files_equal \
-        "${dir_rep}/pe.N.txt" \
-        "${dir_rep}/bam.N.txt" \
+        "${dir_rep}/pe.n_frg.txt" \
+        "${dir_rep}/bam.n_frg.txt" \
         "CRAM fragment count equals the BAM count for the same alignments"
 
     assert_files_equal \
-        "${dir_rep}/pe.L.txt" \
-        "${dir_rep}/bam.L.txt" \
+        "${dir_rep}/pe.n_bin.txt" \
+        "${dir_rep}/bam.n_bin.txt" \
         "CRAM spanned-bin count equals the BAM value for the same alignments"
 else
     record_fail "BAM reference counts for the CRAM comparison failed"

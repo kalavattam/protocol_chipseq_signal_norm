@@ -20,20 +20,23 @@ Calculate binned signal or fragment-coordinate output from BAM/CRAM input.
 
 The CLI accepts input, reference, and output paths, threading, the signal
 method, bin and window sizes, the processing engine, fragment length, scaling,
-reporting, and value formatting. It writes bedGraph-like signal tracks,
-BED-like fragment-coordinate records, or fragment and bin counts ('--report_N',
-'--report_L') with or without a track. When writing bedGraph output, finite
-values are rounded to at most '--dp' decimal places and trailing zeros are
-stripped.
+reporting, and value formatting.
+
+It writes bedGraph-like signal tracks, BED-like fragment-coordinate records, or
+fragment ('--report_n_frg') and bin ('--report_n_bin') counts with or without a
+track.
+
+When writing bedGraph output, finite values are rounded to at most '--dp'
+decimal places and trailing zeros are stripped.
 
 Examples
 --------
 python -m protocol_chipseq_signal_norm.cli.compute_signal \\
     --fil_in <file> --fil_out <file> [options]
 python -m protocol_chipseq_signal_norm.cli.compute_signal \\
-    --fil_in <file> --fil_out <file> --report_N --report_L [options]
+    --fil_in <file> --fil_out <file> --report_n_frg --report_n_bin [options]
 python -m protocol_chipseq_signal_norm.cli.compute_signal \\
-    --fil_in <file> --report_N <file> --report_L <file> [options]
+    --fil_in <file> --report_n_frg <file> --report_n_bin <file> [options]
 """
 
 from __future__ import annotations
@@ -125,8 +128,8 @@ STRAT_BED_CHOICES = (
 STRAT_WRITER_CHOICES = ("serial", "parallel_ordered")
 
 # Stand in for a report path the user did not spell out, which is what a bare
-# '--report_N' or '--report_L' supplies. A NUL byte cannot occur in a path, so
-# the sentinel can never collide with one a user typed.
+# '--report_n_frg' or '--report_n_bin' supplies. A NUL byte cannot occur in a
+# path, so the sentinel can never collide with one a user typed.
 REPORT_DERIVE = "\x00derive"
 
 
@@ -186,9 +189,9 @@ def resolve_report_path(
     fil_out : str | None
         Validated output path or None in report-only mode.
     label : str
-        Count label placed before '.txt', either 'N' or 'L'.
+        Count label placed before '.txt', either 'n_frg' or 'n_bin'.
     flag : str
-        Option spelling named in the error, e.g., '--report_N'.
+        Option spelling named in the error, e.g., '--report_n_frg'.
 
     Returns
     -------
@@ -2051,9 +2054,9 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         required=False,
         default=None,
         help=(
-            "Output file path. Required unless '--report_N' or '--report_L' "
-            "is given, in which case it may be omitted to count without "
-            "writing a track.\n"
+            "Output file path. Required unless '--report_n_frg' or "
+            "'--report_n_bin' is given, in which case it may be omitted to "
+            "count without writing a track.\n"
             "\n"
             "Supported output types are bedGraph ('bedGraph', 'bedgraph', "
             "'bdg', 'bg') and BED ('bed').\n"
@@ -2063,7 +2066,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
             "Note: requesting BED output causes the script to write processed "
             "fragment coordinates in a BED-like format, and '--method', "
             "'--scl_fct', and '--dp' are ignored. '--siz_bin' is ignored too, "
-            "unless '--report_L' is given, since 'L' counts bins.\n"
+            "unless '--report_n_bin' is given, since 'L' counts bins.\n"
             "\n"
         ),
     )
@@ -2188,9 +2191,9 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         help=argparse.SUPPRESS,
     )
     parser.add_argument(
-        "-rN",
-        "--report_N",
-        dest="report_N",
+        "-rnf",
+        "--report_n_frg",
+        dest="report_n_frg",
         nargs="?",
         default=None,
         const=REPORT_DERIVE,
@@ -2199,7 +2202,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
             "one line (default: %(default)s).\n"
             "\n"
             "Given without a path, the file is written beside '--fil_out', "
-            "with its extension (and any '.gz') replaced by '.N.txt'. If "
+            "with its extension (and any '.gz') replaced by '.n_frg.txt'. If "
             "'--fil_out' is not used, then an output path must be given.\n"
             "\n"
             "The count covers the fragments the signal path uses, taken from "
@@ -2215,16 +2218,16 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         ),
     )
     parser.add_argument(
-        "--report-N",
-        dest="report_N",
+        "--report-n-frg",
+        dest="report_n_frg",
         nargs="?",
         const=REPORT_DERIVE,
         help=argparse.SUPPRESS,
     )
     parser.add_argument(
-        "-rL",
-        "--report_L",
-        dest="report_L",
+        "-rnb",
+        "--report_n_bin",
+        dest="report_n_bin",
         nargs="?",
         default=None,
         const=REPORT_DERIVE,
@@ -2233,7 +2236,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
             "on one line (default: %(default)s).\n"
             "\n"
             "Given without a path, the file is written beside '--fil_out', "
-            "with its extension (and any '.gz') replaced by '.L.txt'. If "
+            "with its extension (and any '.gz') replaced by '.n_bin.txt'. If "
             "'--fil_out' is not used, then an output path must be given.\n"
             "\n"
             "Depends on '--siz_bin' and '--usr_frg', which set how each "
@@ -2241,13 +2244,13 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
             "\n"
             "Bins are counted once per fragment that touches them, so 'L' "
             "totals the bins spanned by the same fragments counted by 'N' "
-            "(see '--report_N' above).\n"
+            "(see '--report_n_frg' above).\n"
             "\n"
         ),
     )
     parser.add_argument(
-        "--report-L",
-        dest="report_L",
+        "--report-n-bin",
+        dest="report_n_bin",
         nargs="?",
         const=REPORT_DERIVE,
         help=argparse.SUPPRESS,
@@ -2750,11 +2753,11 @@ def main(argv: list[str] | None = None) -> int:
 
     report_only = args.fil_out is None
 
-    if report_only and args.report_N is None and args.report_L is None:
+    if report_only and args.report_n_frg is None and args.report_n_bin is None:
         raise SystemExit(
-            "'--fil_out' is required unless '--report_N' or '--report_L' is "
-            "given. Supply an output path to write a track, or a report path "
-            "to count without writing one.",
+            "'--fil_out' is required unless '--report_n_frg' or "
+            "'--report_n_bin' is given. Supply an output path to write a "
+            "track, or a report path to count without writing one.",
         )
 
     try:
@@ -2782,20 +2785,20 @@ def main(argv: list[str] | None = None) -> int:
 
         # Resolve before the writability check below, so a path the user left
         # to derivation is validated exactly like one they spelled out.
-        args.report_N = resolve_report_path(
-            args.report_N,
+        args.report_n_frg = resolve_report_path(
+            args.report_n_frg,
             fil_out,
-            "N",
-            "--report_N",
+            "n_frg",
+            "--report_n_frg",
         )
-        args.report_L = resolve_report_path(
-            args.report_L,
+        args.report_n_bin = resolve_report_path(
+            args.report_n_bin,
             fil_out,
-            "L",
-            "--report_L",
+            "n_bin",
+            "--report_n_bin",
         )
 
-        for path_report in (args.report_N, args.report_L):
+        for path_report in (args.report_n_frg, args.report_n_bin):
             if path_report is not None:
                 check_writable(path_report, "file")
     except (
@@ -2904,8 +2907,8 @@ def main(argv: list[str] | None = None) -> int:
 
             if fmt_out == "bed":
                 print(f"--usr_frg  {args.usr_frg}")
-                print(f"--report_N {args.report_N}")
-                print(f"--report_L {args.report_L}")
+                print(f"--report_n_frg {args.report_n_frg}")
+                print(f"--report_n_bin {args.report_n_bin}")
                 print(
                     "\n\n(BED output mode: signal computation arguments "
                     "ignored)\n",
@@ -2926,8 +2929,8 @@ def main(argv: list[str] | None = None) -> int:
                 print(f"--siz_win  {args.siz_win}")
                 print(f"--scl_fct  {args.scl_fct}")
                 print(f"--usr_frg  {args.usr_frg}")
-                print(f"--report_N {args.report_N}")
-                print(f"--report_L {args.report_L}")
+                print(f"--report_n_frg {args.report_n_frg}")
+                print(f"--report_n_bin {args.report_n_bin}")
                 print(f"--dp       {args.dp}")
 
             print("")
@@ -2942,7 +2945,7 @@ def main(argv: list[str] | None = None) -> int:
         if profile is not None:
             profile["n_chrom_sizes"] = len(siz_chr)
 
-        if args.report_N is not None or args.report_L is not None:
+        if args.report_n_frg is not None or args.report_n_bin is not None:
             time_phase = time.perf_counter()
 
             # Counted from the same iterator the signal path consumes, with the
@@ -2961,12 +2964,12 @@ def main(argv: list[str] | None = None) -> int:
             record_phase(profile, "count_frgs_and_bins", time_phase)
 
             if profile is not None:
-                profile["report_N"] = n_frg
-                profile["report_L"] = n_bin
+                profile["report_n_frg"] = n_frg
+                profile["report_n_bin"] = n_bin
 
             for path_report, value, label in (
-                (args.report_N, n_frg, "N"),
-                (args.report_L, n_bin, "L"),
+                (args.report_n_frg, n_frg, "N"),
+                (args.report_n_bin, n_bin, "L"),
             ):
                 if path_report is None:
                     continue

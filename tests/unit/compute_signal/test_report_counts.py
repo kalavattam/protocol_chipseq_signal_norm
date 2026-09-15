@@ -73,9 +73,9 @@ def run_report(
         [
             "--fil_in",
             str(fil_in),
-            "--report_N",
+            "--report_n_frg",
             str(path_n),
-            "--report_L",
+            "--report_n_bin",
             str(path_l),
             *extra_args,
         ],
@@ -161,16 +161,16 @@ def test_report_flag_aliases_leave_fil_out_optional() -> None:
         [
             "--fil_in",
             "input.bam",
-            "-rN",
+            "-rnf",
             "n.txt",
-            "-rL",
+            "-rnb",
             "l.txt",
         ],
     )
 
     assert args.fil_out is None
-    assert args.report_N == "n.txt"
-    assert args.report_L == "l.txt"
+    assert args.report_n_frg == "n.txt"
+    assert args.report_n_bin == "l.txt"
 
 
 def test_report_counts_pe_tlen_fragments(tmp_path: Path) -> None:
@@ -260,10 +260,10 @@ def test_report_only_mode_counts_without_writing_a_track(
     arguments = ["--fil_in", str(fil_in), "--siz_bin", "10"]
 
     if with_n:
-        arguments.extend(["--report_N", str(path_n)])
+        arguments.extend(["--report_n_frg", str(path_n)])
 
     if with_l:
-        arguments.extend(["--report_L", str(path_l)])
+        arguments.extend(["--report_n_bin", str(path_l)])
 
     status = main(arguments)
     created = sorted(entry.name for entry in tmp_path.iterdir())
@@ -311,9 +311,9 @@ def test_reporting_leaves_the_written_track_byte_identical(
             *base_args,
             "--fil_out",
             str(out_reported),
-            "--report_N",
+            "--report_n_frg",
             str(tmp_path / "n.txt"),
-            "--report_L",
+            "--report_n_bin",
             str(tmp_path / "l.txt"),
         ],
     )
@@ -392,14 +392,14 @@ def test_bare_report_flags_derive_paths_from_fil_out(
             str(fil_out),
             "--siz_bin",
             "10",
-            "--report_N",
-            "--report_L",
+            "--report_n_frg",
+            "--report_n_bin",
         ],
     )
 
     assert status == 0
-    assert read_count(tmp_path / f"{base}.N.txt") > 0
-    assert read_count(tmp_path / f"{base}.L.txt") > 0
+    assert read_count(tmp_path / f"{base}.n_frg.txt") > 0
+    assert read_count(tmp_path / f"{base}.n_bin.txt") > 0
 
 
 def test_bare_report_flags_match_explicit_paths(tmp_path: Path) -> None:
@@ -424,8 +424,8 @@ def test_bare_report_flags_match_explicit_paths(tmp_path: Path) -> None:
             *base_args,
             "--fil_out",
             str(dir_bare / "track.bedGraph.gz"),
-            "--report_N",
-            "--report_L",
+            "--report_n_frg",
+            "--report_n_bin",
         ],
     )
     status_expl = main(
@@ -433,15 +433,15 @@ def test_bare_report_flags_match_explicit_paths(tmp_path: Path) -> None:
             *base_args,
             "--fil_out",
             str(dir_expl / "track.bedGraph.gz"),
-            "--report_N",
+            "--report_n_frg",
             str(dir_expl / "n.txt"),
-            "--report_L",
+            "--report_n_bin",
             str(dir_expl / "l.txt"),
         ],
     )
 
-    bare_n = read_count(dir_bare / "track.N.txt")
-    bare_l = read_count(dir_bare / "track.L.txt")
+    bare_n = read_count(dir_bare / "track.n_frg.txt")
+    bare_l = read_count(dir_bare / "track.n_bin.txt")
     expl_n = read_count(dir_expl / "n.txt")
     expl_l = read_count(dir_expl / "l.txt")
 
@@ -457,18 +457,18 @@ def test_bare_report_flag_without_fil_out_is_rejected(tmp_path: Path) -> None:
     fil_in = FIXTURES / "bam" / "se" / "tiny_se.bam"
 
     with pytest.raises(SystemExit) as excinfo:
-        main(["--fil_in", str(fil_in), "--report_N"])
+        main(["--fil_in", str(fil_in), "--report_n_frg"])
 
     message = str(excinfo.value)
 
-    assert "--report_N" in message
+    assert "--report_n_frg" in message
     assert "--fil_out" in message
 
 
 def test_explicit_report_path_is_not_overridden(tmp_path: Path) -> None:
     fil_in = FIXTURES / "bam" / "se" / "tiny_se.bam"
     fil_out = tmp_path / "track.bedGraph.gz"
-    path_n = tmp_path / "elsewhere.N.txt"
+    path_n = tmp_path / "elsewhere.n_frg.txt"
 
     status = main(
         [
@@ -478,14 +478,14 @@ def test_explicit_report_path_is_not_overridden(tmp_path: Path) -> None:
             str(fil_out),
             "--siz_bin",
             "10",
-            "--report_N",
+            "--report_n_frg",
             str(path_n),
         ],
     )
 
     assert status == 0
     assert read_count(path_n) > 0
-    assert not (tmp_path / "track.N.txt").exists()
+    assert not (tmp_path / "track.n_frg.txt").exists()
 
 
 def test_hidden_hyphen_spelling_derives_identically(tmp_path: Path) -> None:
@@ -503,11 +503,11 @@ def test_hidden_hyphen_spelling_derives_identically(tmp_path: Path) -> None:
             str(fil_out),
             "--siz_bin",
             "10",
-            "--report-N",
-            "--report-L",
+            "--report-n-frg",
+            "--report-n-bin",
         ],
     )
 
     assert status == 0
-    assert read_count(tmp_path / "track.N.txt") > 0
-    assert read_count(tmp_path / "track.L.txt") > 0
+    assert read_count(tmp_path / "track.n_frg.txt") > 0
+    assert read_count(tmp_path / "track.n_bin.txt") > 0

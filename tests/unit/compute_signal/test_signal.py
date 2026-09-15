@@ -425,8 +425,12 @@ HYPHEN_ALIASES = (
     pytest.param("--fil_in",  "--fil-in",    "value", id="fil_in"),
     pytest.param("--fil_out", "--fil-out",   "value", id="fil_out"),
     pytest.param("--ref_fa",  "--ref-fa",    "value", id="ref_fa"),
-    pytest.param("--report_L", "--report-L", "value", id="report_L"),
-    pytest.param("--report_N", "--report-N", "value", id="report_N"),
+    pytest.param(
+        "--report_n_bin", "--report-n-bin", "value", id="report_n_bin"
+    ),
+    pytest.param(
+        "--report_n_frg", "--report-n-frg", "value", id="report_n_frg"
+    ),
     pytest.param("--scl_fct",  "--scl-fct",  "0.5",   id="scl_fct"),
     pytest.param("--siz_bin",  "--siz-bin",  "7",     id="siz_bin"),
     pytest.param("--siz_win",  "--siz-win",  "7",     id="siz_win"),

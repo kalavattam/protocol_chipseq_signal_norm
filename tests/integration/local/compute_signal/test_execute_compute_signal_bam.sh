@@ -400,8 +400,9 @@ for eng_bad in chrm windowed bogus; do
 done
 
 
-# Report flags: the wrapper derives '<track>.N.txt' and '<track>.L.txt' from
-# each output name, so assert those paths and their contents, not just success.
+# Report flags: the wrapper derives '<track>.n_frg.txt' and '<track>.n_bin.txt'
+# from each output name, so assert those paths and their contents, not just
+# success.
 dir_rep="${tmp}/reports"
 mkdir -p "${dir_rep}"
 
@@ -413,8 +414,8 @@ bash "${ROOT_REPO}/bin/execute_compute_signal.sh" \
     --typ_out bedGraph \
     --siz_bin 10 \
     --method unadj \
-    --report_N \
-    --report_L \
+    --report_n_frg \
+    --report_n_bin \
     > /dev/null 2>&1 || true
 
 for samp in tiny_se tiny_pe; do
@@ -423,21 +424,21 @@ for samp in tiny_se tiny_pe; do
         "execute report run still writes the ${samp} track"
 
     assert_file_nonempty \
-        "${dir_rep}/${samp}.N.txt" \
-        "execute derives ${samp}.N.txt beside the track"
+        "${dir_rep}/${samp}.n_frg.txt" \
+        "execute derives ${samp}.n_frg.txt beside the track"
 
     assert_file_nonempty \
-        "${dir_rep}/${samp}.L.txt" \
-        "execute derives ${samp}.L.txt beside the track"
+        "${dir_rep}/${samp}.n_bin.txt" \
+        "execute derives ${samp}.n_bin.txt beside the track"
 done
 
 # SE holds two 10-bp fragments, one bin each; PE spans five bins. Distinct
 # values prove each sample got its own report path rather than the first.
-assert_file_exact_line "${dir_rep}/tiny_se.N.txt" "2" \
+assert_file_exact_line "${dir_rep}/tiny_se.n_frg.txt" "2" \
     "execute SE fragment count is 2"
-assert_file_exact_line "${dir_rep}/tiny_se.L.txt" "2" \
+assert_file_exact_line "${dir_rep}/tiny_se.n_bin.txt" "2" \
     "execute SE spanned-bin count is 2"
-assert_file_exact_line "${dir_rep}/tiny_pe.L.txt" "5" \
+assert_file_exact_line "${dir_rep}/tiny_pe.n_bin.txt" "5" \
     "execute PE spanned-bin count is 5, distinct from SE"
 
 dir_only="${tmp}/report_only"
@@ -451,13 +452,13 @@ bash "${ROOT_REPO}/bin/execute_compute_signal.sh" \
     --typ_out bedGraph \
     --siz_bin 10 \
     --method unadj \
-    --report_N \
-    --report_L \
+    --report_n_frg \
+    --report_n_bin \
     --report_only \
     > /dev/null 2>&1 || true
 
 assert_file_nonempty \
-    "${dir_only}/tiny_se.N.txt" \
+    "${dir_only}/tiny_se.n_frg.txt" \
     "execute report-only writes the fragment count"
 
 if [[ -e "${dir_only}/tiny_se.bedGraph" ]]; then
