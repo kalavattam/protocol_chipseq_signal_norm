@@ -199,11 +199,11 @@ Examples
         --mode "signal" \\
         --method "norm" \\
         --csv_fil_in "\${dir_bam}/sample_1.bam,\${dir_bam}/sample_2.bam" \\
-        --csv_fil_out "\${dir_out}/sample_1.bdg.gz,\${dir_out}/sample_2.bdg.gz" \\
+        --csv_fil_out "\${dir_out}/sample_1.bedGraph.gz,\${dir_out}/sample_2.bedGraph.gz" \\
         --siz_bin 10 \\
         --engine "chrom" \\
-        --csv_scl_fct "NA,NA" \\
-        --csv_usr_frg "NA,NA" \\
+        --csv_scl_fct "0.8734,1.1290" \\
+        --csv_usr_frg "150,150" \\
         --dir_eo "\${dir_eo}" \\
         --nam_job "compute_signal_norm"
     '''
@@ -216,12 +216,11 @@ Examples
         --threads 1 \\
         --mode "ratio" \\
         --method "log2" \\
-        --csv_fil_A "\${dir_bdg}/IP_1.bdg.gz,\${dir_bdg}/IP_2.bdg.gz" \\
-        --csv_fil_B "\${dir_bdg}/in_1.bdg.gz,\${dir_bdg}/in_2.bdg.gz" \\
-        --csv_fil_out "\${dir_out}/ratio_1.bdg.gz,\${dir_out}/ratio_2.bdg.gz" \\
-        --csv_scl_fct "NA,NA" \\
-        --csv_dep_min "NA,NA" \\
-        --csv_pseudo "NA,NA" \\
+        --csv_fil_A "\${dir_bdg}/IP_1.bedGraph.gz,\${dir_bdg}/IP_2.bedGraph.gz" \\
+        --csv_fil_B "\${dir_bdg}/in_1.bedGraph.gz,\${dir_bdg}/in_2.bedGraph.gz" \\
+        --csv_fil_out "\${dir_out}/ratio_1.bedGraph.gz,\${dir_out}/ratio_2.bedGraph.gz" \\
+        --csv_scl_fct "0.8734,1.1290" \\
+        --csv_pseudo "0.5,0.4" \\
         --eps 0 \\
         --skip_00 "pre_scale" \\
         --track \\
@@ -229,5 +228,41 @@ Examples
         --dir_eo "\${dir_eo}" \\
         --nam_job "compute_ratio_log2"
     '''
+
+  3. Write per-sample counts beside each signal track.
+    '''bash
+    bash "\${dir_scr}/submit_compute_signal.sh" \\
+        --env_nam "env_protocol" \\
+        --dir_scr "\${dir_scr}" \\
+        --threads 4 \\
+        --mode "signal" \\
+        --method "norm" \\
+        --csv_fil_in "\${dir_bam}/sample_1.bam,\${dir_bam}/sample_2.bam" \\
+        --csv_fil_out "\${dir_out}/sample_1.bedGraph.gz,\${dir_out}/sample_2.bedGraph.gz" \\
+        --csv_report_N "\${dir_out}/sample_1.N.txt,\${dir_out}/sample_2.N.txt" \\
+        --csv_report_L "\${dir_out}/sample_1.L.txt,\${dir_out}/sample_2.L.txt" \\
+        --siz_bin 10 \\
+        --dir_eo "\${dir_eo}" \\
+        --nam_job "compute_signal_norm"
+    '''
+
+    Supply one path per '--csv_fil_in' element. Counting happens before the output branch, so the values match those of a run that writes no track.
+
+  4. Count fragments and spanned bins without writing a track.
+    '''bash
+    bash "\${dir_scr}/submit_compute_signal.sh" \\
+        --env_nam "env_protocol" \\
+        --dir_scr "\${dir_scr}" \\
+        --threads 4 \\
+        --mode "signal" \\
+        --csv_fil_in "\${dir_bam}/sample_1.bam,\${dir_bam}/sample_2.bam" \\
+        --csv_report_N "\${dir_out}/sample_1.N.txt,\${dir_out}/sample_2.N.txt" \\
+        --csv_report_L "\${dir_out}/sample_1.L.txt,\${dir_out}/sample_2.L.txt" \\
+        --siz_bin 10 \\
+        --dir_eo "\${dir_eo}" \\
+        --nam_job "compute_signal_counts"
+    '''
+
+    Omitting '--csv_fil_out' is permitted only because a report list is given; 'L' counts bins, so it still depends on '--siz_bin'.
 EOM
 }

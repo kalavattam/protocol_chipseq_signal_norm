@@ -521,6 +521,7 @@ def _parse_example_entry(
     source_line: int,
     *,
     owner: str,
+    owner_aliases: frozenset[str] = frozenset(),
     accepted_aliases: set[str],
     public_aliases: set[str],
     hidden_aliases: set[str],
@@ -542,6 +543,9 @@ def _parse_example_entry(
         Entry source line.
     owner : str
         Documented command owner.
+    owner_aliases : frozenset[str]
+        Additional owner spellings an example may invoke instead, supplied for
+        a concise surface registered to a wrapper script.
     accepted_aliases : set[str]
         Parser-accepted aliases.
     public_aliases : set[str]
@@ -625,10 +629,27 @@ def _parse_example_entry(
     code = tuple(
         line[4:] if line.startswith("    ") else line for _, line in code_rows
     )
-    owner_pattern = re.compile(
-        rf"(?<![A-Za-z0-9_]){re.escape(owner)}(?![A-Za-z0-9_])",
+    owner_names = (owner, *sorted(owner_aliases))
+    owner_patterns = [
+        re.compile(rf"(?<![A-Za-z0-9_]){re.escape(name)}(?![A-Za-z0-9_])")
+        for name in owner_names
+    ]
+    owner_hits = [
+        line
+        for line in code
+        if any(pattern.search(line) for pattern in owner_patterns)
+    ]
+
+    # Parse the invocation against the spelling the example actually uses, so a
+    # surface registered to a wrapper yields that wrapper's option shape.
+    effective_owner = next(
+        (
+            name
+            for name, pattern in zip(owner_names, owner_patterns, strict=True)
+            if any(pattern.search(line) for line in code)
+        ),
+        owner,
     )
-    owner_hits = [line for line in code if owner_pattern.search(line)]
 
     if not owner_hits:
         strict_findings.append(
@@ -711,7 +732,7 @@ def _parse_example_entry(
         option_names,
         positional_shape,
         expected_outcome_shape,
-    ) = invocation_facts(code, owner)
+    ) = invocation_facts(code, effective_owner)
     example = Example(
         number=int(match.group("number")),
         line=source_line + line_offset,
@@ -748,6 +769,7 @@ def _analyze_examples_section(
     section: Section,
     *,
     owner: str,
+    owner_aliases: frozenset[str] = frozenset(),
     accepted_aliases: set[str],
     public_aliases: set[str],
     hidden_aliases: set[str],
@@ -836,6 +858,7 @@ def _analyze_examples_section(
             match,
             source_line,
             owner=owner,
+            owner_aliases=owner_aliases,
             accepted_aliases=accepted_aliases,
             public_aliases=public_aliases,
             hidden_aliases=hidden_aliases,
@@ -935,6 +958,7 @@ def analyze_help_document(
     text: str,
     *,
     owner: str,
+    owner_aliases: frozenset[str] = frozenset(),
     accepted_aliases: set[str],
     public_aliases: set[str],
     hidden_aliases: set[str],
@@ -950,6 +974,9 @@ def analyze_help_document(
         Source text to inspect or normalize.
     owner : str
         Help owner whose source and rendered forms are analyzed.
+    owner_aliases : frozenset[str]
+        Additional owner spellings an example may invoke instead, supplied for
+        a concise surface registered to a wrapper script.
     accepted_aliases : set[str]
         Option aliases accepted by the documented command.
     public_aliases : set[str]
@@ -1006,6 +1033,7 @@ def analyze_help_document(
             _analyze_examples_section(
                 example_sections[0],
                 owner=owner,
+                owner_aliases=owner_aliases,
                 accepted_aliases=accepted_aliases,
                 public_aliases=public_aliases,
                 hidden_aliases=hidden_aliases,
@@ -1971,6 +1999,53 @@ def registered_example_dispositions(
     return findings, inventory
 
 
+def registered_cli_help_owners(
+    contracts: dict[str, object] | None,
+) -> dict[str, str]:
+    """
+    Map each registered help-function symbol to its wrapper-script owner.
+
+    Parameters
+    ----------
+    contracts : dict[str, object] | None
+        Registered example contracts, or None when no registry is present.
+
+    Returns
+    -------
+    owners : dict[str, str]
+        Help-function symbol mapped to the wrapper script its registered
+        examples invoke. A concise surface of a '--details' command appears
+        here only once registered, so an unregistered one keeps the ordinary
+        owner-invocation obligation.
+    """
+
+    if not contracts:
+        return {}
+
+    surfaces = {
+        item.get("id"): item
+        for item in contracts.get("surfaces", [])
+        if isinstance(item, dict)
+    }
+    owners: dict[str, str] = {}
+
+    for record in contracts.get("examples", []):
+        if not isinstance(record, dict):
+            continue
+
+        if record.get("example_form") != "rendered_cli_invocation":
+            continue
+
+        surface = surfaces.get(record.get("surface_id"))
+        symbol = surface.get("symbol") if isinstance(surface, dict) else None
+        owner = record.get("owner")
+
+        if symbol and isinstance(owner, str) and owner.endswith(".sh"):
+            owners[symbol] = owner
+
+    return owners
+
+
 def scan_repository(
     root: Path,
     contracts: dict[str, object] | None = None,
@@ -2176,21 +2251,47 @@ def scan_repository(
             },
         )
 
+    if contracts is None:
+        contracts_path = root / "dev/config/help_contracts.json"
+        contracts = (
+            json.loads(contracts_path.read_text(encoding="utf-8"))
+            if contracts_path.is_file()
+            else None
+        )
+
     function_units = function_help_units(root)
+    cli_help_owners = registered_cli_help_owners(contracts)
 
     for identity, (path, heredoc) in sorted(function_units.items()):
         text = path.read_text(encoding="utf-8")
-        accepted = accepted_function_aliases(text, heredoc.owner)
-        public = documented_function_aliases(text, heredoc.owner)
-        hidden = {
-            alias
-            for alias in accepted
-            if hidden_alias(alias, tuple(sorted(accepted)))
-        }
+
+        # A concise surface registered to a wrapper documents that wrapper's
+        # interface, so its aliases come from the wrapper parser rather than
+        # from the help function, which accepts only '--help'.
+        registered_wrapper = cli_help_owners.get(heredoc.owner)
+        wrapper_path = (
+            root / "bin" / registered_wrapper if registered_wrapper else None
+        )
+
+        if wrapper_path is not None and wrapper_path.is_file():
+            accepted, public, hidden = wrapper_aliases(root, wrapper_path)
+        else:
+            accepted = accepted_function_aliases(text, heredoc.owner)
+            public = documented_function_aliases(text, heredoc.owner)
+            hidden = {
+                alias
+                for alias in accepted
+                if hidden_alias(alias, tuple(sorted(accepted)))
+            }
 
         analysis = analyze_help_document(
             "\n".join(line for _, line in heredoc.lines),
             owner=heredoc.owner,
+            owner_aliases=frozenset(
+                {cli_help_owners[heredoc.owner]}
+                if heredoc.owner in cli_help_owners
+                else (),
+            ),
             accepted_aliases=accepted,
             public_aliases=public,
             hidden_aliases=hidden,
@@ -2241,14 +2342,6 @@ def scan_repository(
         )
 
     alias_findings, _ = scan_alias_repository(root)
-
-    if contracts is None:
-        contracts_path = root / "dev/config/help_contracts.json"
-        contracts = (
-            json.loads(contracts_path.read_text(encoding="utf-8"))
-            if contracts_path.is_file()
-            else None
-        )
 
     if contracts is not None:
         contract_findings, contract_inventory = (

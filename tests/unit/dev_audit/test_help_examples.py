@@ -38,6 +38,7 @@ from dev.audit.help_examples import (
     classify_wrapper_source,
     compliance_summary,
     invocation_facts,
+    registered_cli_help_owners,
     registered_example_dispositions,
     repository_crosswalk,
     scan_repository,
@@ -568,7 +569,7 @@ EOM
         # the bounded header above it changes height. Crediting a second
         # vendor grew that block from three rows to five.
         self.assertIn(
-            "lib/bash/help/help_execute_compute_signal.sh::<file>@19",
+            "lib/bash/help/help_execute_compute_signal.sh::<file>@20",
             shared["identities"],
         )
 
@@ -892,6 +893,64 @@ RuntimeError: not executed"""
             in examples_rule["applicable_paths"]
         )
         assert "src/**/*.py" in examples_rule["applicable_paths"]
+
+
+class RegisteredConciseSurface(unittest.TestCase):
+    """
+    Cover rendered CLI invocations in a registered concise help surface.
+    """
+
+    body = examples(
+        entry(
+            1,
+            "Run one mode.",
+            'bash "${dir_scr}/demo_wrapper.sh" \\',
+            "    --mode one",
+        ),
+        entry(
+            2,
+            "Run the other mode as a dry run.",
+            'bash "${dir_scr}/demo_wrapper.sh" \\',
+            "    --mode two \\",
+            "    --dry_run",
+        ),
+    )
+
+    def test_registered_surface_accepts_wrapper_invocations(self) -> None:
+        analysis = analyze_help_document(
+            self.body,
+            owner="demo",
+            owner_aliases=frozenset({"demo_wrapper.sh"}),
+            accepted_aliases={"-h", "--help", "--mode", "-dr", "--dry_run"},
+            public_aliases={"-h", "--help", "--mode", "-dr", "--dry_run"},
+            hidden_aliases=set(),
+        )
+        observed = {finding.rule_id for finding in analysis.findings}
+
+        assert "HELP.EXAMPLES.OWNER_INVOCATION" not in observed
+        assert "HELP.EXAMPLES.SIGNATURE_DUPLICATE" not in observed
+
+    def test_unregistered_surface_still_requires_the_owner(self) -> None:
+        # The amendment opens a registered door; it does not remove the wall.
+        analysis = analyze_help_document(
+            self.body,
+            owner="demo",
+            accepted_aliases={"-h", "--help", "--mode", "-dr", "--dry_run"},
+            public_aliases={"-h", "--help", "--mode", "-dr", "--dry_run"},
+            hidden_aliases=set(),
+        )
+        observed = {finding.rule_id for finding in analysis.findings}
+
+        assert "HELP.EXAMPLES.OWNER_INVOCATION" in observed
+
+    def test_registration_resolves_the_wrapper_owner(self) -> None:
+        contracts = json.loads(CONTRACTS.read_text(encoding="utf-8"))
+        owners = registered_cli_help_owners(contracts)
+
+        assert owners["help_execute_compute_signal"] == (
+            "execute_compute_signal.sh"
+        )
+        assert registered_cli_help_owners(None) == {}
 
 
 if __name__ == "__main__":

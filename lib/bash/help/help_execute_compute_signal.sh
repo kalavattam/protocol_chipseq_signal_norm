@@ -116,7 +116,7 @@ Parameters
   -to, --typ_out : {'bedGraph', 'bedGraph.gz', 'bedgraph', 'bedgraph.gz', 'bdg', 'bdg.gz', 'bg', 'bg.gz', 'bed', 'bed.gz'}
     Output file format (default: '${typ_out}').
 
-    For '--mode signal' or '--mode ratio', the typical choice is a bedGraph-style track (e.g., 'bedGraph.gz' or 'bdg.gz').
+    For '--mode signal' or '--mode ratio', the typical choice is a bedGraph-style track (e.g., 'bedGraph.gz').
 
     For '--mode coord', the typical choice is a BED-like coordinate file (e.g., 'bed.gz').
 
@@ -223,14 +223,28 @@ Notes
 
 Examples
 --------
-  1. Print the concise compute-signal wrapper help to stdout.
+  1. Compute normalized coverage from two BAM files locally.
     '''bash
-    help_execute_compute_signal
+    bash "\${dir_scr}/execute_compute_signal.sh" \\
+        --mode signal \\
+        --method norm \\
+        --csv_fil_in IP1.bam,IP2.bam \\
+        --dir_out tracks \\
+        --typ_out bedGraph.gz \\
+        --siz_bin 50
     '''
 
-  2. Save the concise help for offline review.
+  2. Compute log2 IP/input ratios from bedGraph files.
     '''bash
-    help_execute_compute_signal > compute_signal.help.txt
+    bash "\${dir_scr}/execute_compute_signal.sh" \\
+        --mode ratio \\
+        --method log2 \\
+        --csv_fil_A IP1.bedGraph,IP2.bedGraph \\
+        --csv_fil_B in1.bedGraph,in2.bedGraph \\
+        --csv_pseudo 0.5,0.4 \\
+        --dir_out ratios \\
+        --typ_out bedGraph.gz \\
+        --track
     '''
 EOM
 }
@@ -390,7 +404,7 @@ Parameters
 
       - 'bed', 'bed.gz':
         + BED-like format for fragment coordinates instead of signal.
-        + Intended for '--mode coord'; with '--mode signal' or '--mode ratio' these values are accepted but coerced to 'bdg.gz' (see Notes).
+        + Intended for '--mode coord'; with '--mode signal' or '--mode ratio' these values are accepted but coerced to 'bedGraph.gz' (see Notes).
 
   -px, --pfx, --prefix : str
     Custom prefix to prepend to output filenames.
@@ -632,7 +646,7 @@ Examples
         --method "norm" \\
         --csv_fil_in "\${HOME}/project/samples/sample_1.bam,\${HOME}/project/samples/sample_2.bam" \\
         --dir_out "\${HOME}/project/tracks" \\
-        --typ_out "bdg.gz" \\
+        --typ_out "bedGraph.gz" \\
         --siz_bin 50 \\
         --dir_eo "\${HOME}/project/logs" \\
         --nam_job "norm_sig"
@@ -644,10 +658,61 @@ Examples
         --threads 1 \\
         --mode "ratio" \\
         --method "log2" \\
-        --csv_fil_A "\${HOME}/project/norm/IP_1.bdg,\${HOME}/project/norm/IP_2.bdg" \\
-        --csv_fil_B "\${HOME}/project/norm/in_1.bdg,\${HOME}/project/norm/in_2.bdg" \\
+        --csv_fil_A "\${HOME}/project/norm/IP_1.bedGraph,\${HOME}/project/norm/IP_2.bedGraph" \\
+        --csv_fil_B "\${HOME}/project/norm/in_1.bedGraph,\${HOME}/project/norm/in_2.bedGraph" \\
+        --csv_pseudo "0.5,0.4" \\
         --dir_out "\${HOME}/project/ratios" \\
-        --typ_out "bg"
+        --typ_out "bedGraph.gz"
     '''
+
+  3. Compute normalized coverage and write the counts beside each track.
+    '''bash
+    bash "\${HOME}/bin/execute_compute_signal.sh" \\
+        --threads 8 \\
+        --mode "signal" \\
+        --method "norm" \\
+        --csv_fil_in "\${HOME}/project/samples/sample_1.bam,\${HOME}/project/samples/sample_2.bam" \\
+        --dir_out "\${HOME}/project/tracks" \\
+        --typ_out "bedGraph.gz" \\
+        --siz_bin 50 \\
+        --report_N \\
+        --report_L \\
+        --dir_eo "\${HOME}/project/logs" \\
+        --nam_job "norm_sig"
+    '''
+
+    Writes 'sample_1.bedGraph.gz' alongside 'sample_1.N.txt' and 'sample_1.L.txt', and the same trio for 'sample_2'. Counting runs before the output branch, so the counts match those of a report-only run on the same input.
+
+  4. Write only the fragment and spanned-bin counts, with no signal track.
+    '''bash
+    bash "\${HOME}/bin/execute_compute_signal.sh" \\
+        --threads 8 \\
+        --mode "signal" \\
+        --csv_fil_in "\${HOME}/project/samples/sample_1.bam,\${HOME}/project/samples/sample_2.bam" \\
+        --dir_out "\${HOME}/project/counts" \\
+        --siz_bin 50 \\
+        --report_N \\
+        --report_L \\
+        --report_only \\
+        --dir_eo "\${HOME}/project/logs" \\
+        --nam_job "counts"
+    '''
+
+    Each report is named from the track that would have been written, so this writes 'sample_1.N.txt' and 'sample_1.L.txt' to '--dir_out', and the same pair for 'sample_2'. 'L' counts bins, so it depends on '--siz_bin'.
+
+  5. Compute log2 ratios and write a browser-ready companion track.
+    '''bash
+    bash "\${HOME}/bin/execute_compute_signal.sh" \\
+        --threads 4 \\
+        --mode "ratio" \\
+        --method "log2" \\
+        --csv_fil_A "\${HOME}/project/norm/IP_1.bedGraph" \\
+        --csv_fil_B "\${HOME}/project/norm/in_1.bedGraph" \\
+        --dir_out "\${HOME}/project/ratios" \\
+        --typ_out "bedGraph.gz" \\
+        --track
+    '''
+
+    Writes the ratio track and, beside it, a companion carrying '.track' before the extension with 'inf', '-inf', and 'nan' rows removed. Load that copy in a genome browser, where non-finite values otherwise cause trouble.
 EOM
 }

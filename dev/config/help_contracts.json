@@ -195,6 +195,17 @@
       "status": "accepted_pilot"
     },
     {
+      "id": "execute_compute_signal_help",
+      "path": "lib/bash/help/help_execute_compute_signal.sh",
+      "symbol": "help_execute_compute_signal",
+      "language": "shell",
+      "kind": "installed_help",
+      "audience": "command_user",
+      "availability": "installed",
+      "required_runtime_facts": "complete",
+      "status": "registered"
+    },
+    {
       "id": "execute_calculate_scaling_factor_help",
       "path": "lib/bash/help/help_execute_calculate_scaling_factor.sh",
       "symbol": "help_execute_calculate_scaling_factor",
@@ -1868,6 +1879,24 @@
       ],
       "preservation": "exact",
       "authority": "accepted_phase_a_b"
+    },
+    {
+      "surface_id": "execute_compute_signal_help",
+      "language": "shell",
+      "owner": "execute_compute_signal.sh",
+      "example_form": "rendered_cli_invocation",
+      "representation_owner": "HELP.EXAMPLES",
+      "lifecycle": "active_enforced",
+      "deferred_record": null,
+      "disposition": "required_two",
+      "minimum_count": 2,
+      "existing_example_count": 2,
+      "example_fingerprints": [
+        "7db1eecb84d0a5a493e21dc2b98eae5bb1e8fed54a3e69536e336c281d835e35",
+        "713369c1b8bd56891b3c66c1b5b280cacd6be2e7a0616e18d578011ee9418535"
+      ],
+      "preservation": "exact",
+      "authority": "owner_authorized_extension"
     },
     {
       "surface_id": "execute_calculate_scaling_factor_help",

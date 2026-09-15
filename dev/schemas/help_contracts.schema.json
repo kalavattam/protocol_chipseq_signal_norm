@@ -318,7 +318,8 @@
           "enum": [
             "accepted_phase_a_b",
             "semantic_reaudit_correction",
-            "authorized_fresh_pilot"
+            "authorized_fresh_pilot",
+            "owner_authorized_extension"
           ]
         }
       },
