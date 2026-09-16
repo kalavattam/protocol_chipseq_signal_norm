@@ -787,14 +787,14 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
             "calculations and bounds.\n"
             "- frag: Reproduce the fragment-normalization floor calculation "
             "used in the Dickson/siQ-ChIP and *Bio-protocol* workflows. Count "
-            "BAM, CRAM, or BED alignment records and compute 'dep_min = ((n * "
-            "b) / g) / [1 - (b / g)]'. Here, 'n' is the counted-record total, "
-            "'b = siz_bin', and 'g = siz_gen'.\n"
+            "BAM, CRAM, or BED alignment records and compute "
+            "'dep_min = ((n * b) / g) / [1 - (b / g)]'. Here, 'n' is the "
+            "counted-record total, 'b = siz_bin', and 'g = siz_gen'.\n"
             "- norm: Reproduce the normalized-coverage floor calculation used "
             "in the Dickson/siQ-ChIP and *Bio-protocol* workflows. Compute "
-            "'dep_min = (b / g) / [1 - (b / g)]' from 'b = siz_bin' and 'g = "
-            "siz_gen'; '--fil_in' is ignored. The command returns one scalar "
-            "'dep_min'."
+            "'dep_min = (b / g) / [1 - (b / g)]' from 'b = siz_bin' and "
+            "'g = siz_gen'; '--fil_in' is ignored. The command returns one "
+            "scalar 'dep_min'."
         ),
     )
 
@@ -899,10 +899,11 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         type=float,
         default=1.0,
         help=(
-            "Quantile percentage in '[0, 100]' used only by '--mode dist "
-            "--method qntl_nz'. For sorted filtered values and 'q = qntl_nz / "
-            "100', select 'i = floor(q * (N - 1))', clamped to '[0, N - 1]' "
-            "and then 'dep_min = sorted_vals[i]' (default: %(default)s)."
+            "Quantile percentage in '[0, 100]' used only by "
+            "'--mode dist --method qntl_nz'. For sorted filtered values and "
+            "'q = qntl_nz / 100', select 'i = floor(q * (N - 1))', clamped to "
+            "'[0, N - 1]' and then 'dep_min = sorted_vals[i]' (default: "
+            "%(default)s)."
         ),
     )
     parser.add_argument(

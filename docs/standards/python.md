@@ -114,6 +114,8 @@ if __name__ == "__main__":
 
 Use `CapArgumentParser` and `add_help_cap()`. Every visible optional argument has help text, an explicit canonical `dest`, and canonical aliases before compatibility aliases. Positional names use canonical `snake_case`. Hidden hyphenated aliases may map to canonical underscore options, but retired semantic names are not aliases. Preserve registered canonical aliases and `--dp`.
 
+The alias cap bounds the public surface, so it counts visible aliases only. A hidden compatibility alias is suppressed from help and spells the canonical long option with underscores and hyphens interchanged; the permitted set is exactly those systematic permutations, which is finite and derivable from the canonical name rather than open-ended. A name carrying two underscores therefore admits three hidden spellings, and none of them counts against the cap or needs a short form, because a hidden alias has no public pair to shorten.
+
 **Automation:** Parser, alias, and help contracts check registered facts and recognized source forms with `subset` coverage.
 
 **Semantic remainder:** Decide public visibility, alias compatibility, and whether a parser abstraction remains appropriate.
@@ -130,6 +132,10 @@ Use `CapArgumentParser` and `add_help_cap()`. Every visible optional argument ha
 [`HELP.AUDIENCE`](help.md) owns which help surface and level of detail serves the user. [`SOURCE.PROSE.WRAP`](source_layout.md) owns greedy source wrapping; this rule owns Python recognition and exact rendered-value preservation.
 
 Keep a help value on one source line when it fits. When prose requires adjacent literals, wrap greedily at whole-word boundaries: fill each physical source line through the last complete word that fits within 79 columns, and break only when the next complete prose word and its required separator would exceed that limit. Preserve literal newlines, indivisible tokens, and deliberate semantic boundaries.
+
+A table row is an indivisible token rather than prose. Inside a contiguous run of pipe-table rows, as [`HELP.PROSE.SENTENCES`](help.md) bounds the run, each row occupies its own literal, greedy filling does not apply, and the break between two rows is structural rather than premature. The width obligation is unchanged and is measured on the rendered row under that same owner: this admits tables, not long lines, and a row wider than the rendered budget remains a finding.
+
+A quoted span is likewise one indivisible token. A run opened and closed by a single quote moves whole or not at all, and it ends at the following whitespace, so punctuation attached to its closing quote travels with it. Splitting `'|x| >= eps'` across two literals preserves the rendered value but breaks an expression the reader scans as one unit, which is what `SOURCE.PROSE.WRAP` means by distinguishing formulas and literals from prose words.
 
 Measure the budget on the serialized one-line literal rather than on the rendered value: count the indent, both quotes, and every escape sequence at the width it occupies in source, so a trailing `\n` costs two columns. A word moves forward only when the literal that would carry it still fits.
 

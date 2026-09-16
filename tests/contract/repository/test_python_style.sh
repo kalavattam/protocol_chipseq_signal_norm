@@ -146,7 +146,10 @@ def is_hidden_compat(call: ast.Call) -> bool:
 
 
 def is_hyphen_duplicate(opt: str) -> bool:
-    return opt.startswith("--") and "-" in opt[2:] and "_" not in opt[2:]
+    # A hidden spelling interchanges underscores and hyphens in the
+    # canonical long option, so any permutation carrying at least one
+    # hyphen qualifies; a partly converted name is still systematic.
+    return opt.startswith("--") and "-" in opt[2:]
 
 
 def add_argument_calls(func: ast.FunctionDef) -> list[ast.Call]:
@@ -295,7 +298,12 @@ def check_parse_args(path: Path, tree: ast.Module, findings: list[Finding]) -> N
                 if re.match(r"^-[A-Za-z0-9][A-Za-z0-9_-]*$", opt)
             ]
             long_opts = [opt for opt in opts if opt.startswith("--")]
-            if len(short_opts) > 2 or len(long_opts) > 2:
+
+            # The cap bounds the public surface, so hidden compatibility
+            # spellings do not count against it.
+            if not hidden_compat and (
+                len(short_opts) > 2 or len(long_opts) > 2
+            ):
                 findings.append(
                     Finding(
                         "FAIL",

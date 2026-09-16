@@ -36,6 +36,7 @@ from dev.audit.python_naming_vocabulary import (
     prohibited_internal_segments,
 )
 from dev.audit.python_source_policy import (
+    HELP_RENDER_INDENT,
     RULE_ANNOTATIONS,
     RULE_CLI_HELP_LAYOUT,
     RULE_COMMENTS,
@@ -1389,6 +1390,135 @@ def test_deeper_indentation_alone_is_not_wrapped_prose() -> None:
     )
 
     assert rule_messages(nested, RULE_PROSE_WRAP) == []
+
+
+def test_quoted_span_moves_whole_or_not_at_all() -> None:
+    """
+    A quoted span is one movable unit, punctuation included.
+
+    Each case is sized so the verdict flips on the unit definition alone. A
+    leading quote fragment fits where the whole span '|x| >= eps' does not, so
+    whitespace splitting would call the break premature and demand that the
+    expression be split. A span carrying a trailing comma is wider than the
+    bare span, so a span-only unit would invent a premature break where plain
+    splitting never saw one.
+    """
+
+    expression = help_source(("x" * 57) + " ", "'|x| >= eps' trailing.")
+    punctuated = help_source(("y" * 57), "'--opt', trailing.")
+
+    assert rule_messages(expression, RULE_CLI_HELP_LAYOUT) == []
+    assert rule_messages(punctuated, RULE_CLI_HELP_LAYOUT) == []
+
+
+def test_colon_lead_in_is_terminal_only_before_a_structure() -> None:
+    """
+    A colon introducing the structure that follows completes the lead-in.
+
+    Separating a lead-in from its list or table with a blank line makes it a
+    paragraph of its own, where a colon is the correct terminal mark rather
+    than a missing full stop. The allowance is bounded by what follows, so a
+    colon before ordinary prose, or one ending the last paragraph, still fails.
+    """
+
+    before_table = help_source(
+        "Lead in:\\n",
+        "\\n",
+        "| name | value |\\n",
+        "| :--- | :---  |\\n",
+    )
+    before_prose = help_source(
+        "Lead in:\\n",
+        "\\n",
+        "An ordinary following sentence.\\n",
+    )
+    trailing = help_source("Lead in:\\n")
+
+    assert rule_messages(before_table, RULE_HELP_SENTENCES) == []
+    assert rule_messages(before_prose, RULE_HELP_SENTENCES) == [
+        "help prose must end with terminal punctuation",
+    ]
+    assert rule_messages(trailing, RULE_HELP_SENTENCES) == [
+        "help prose must end with terminal punctuation",
+    ]
+
+
+def test_help_table_block_is_exempt_from_prose_and_source_width() -> None:
+    """
+    Pin the table exemption itself, not only its boundaries.
+
+    A row is structure: it carries no sentence and cannot be refilled without
+    destroying the table. The exemption is what lets a row exceed the source
+    budget, since the indent, both quotes, and the newline escape cost fifteen
+    columns the reader never sees. This pins the admitted case so a later
+    tightening of either rule cannot silently withdraw it.
+    """
+
+    header = "| name" + (" " * 55) + "| value |"
+    delimiter = "| :---" + (" " * 55) + "| :---  |"
+    table = help_source(header + "\\n", delimiter + "\\n")
+    source_line = next(line for line in table.splitlines() if "| name" in line)
+
+    assert len(header) == 70
+    assert len(source_line) > 79
+    assert HELP_RENDER_INDENT + len(header) <= 79
+    assert rule_messages(table, RULE_CLI_HELP_LAYOUT) == []
+    assert rule_messages(table, RULE_HELP_SENTENCES) == []
+
+
+def test_help_table_row_beyond_the_rendered_budget_is_reported() -> None:
+    """
+    The exemption admits tables, not long lines.
+
+    A row wide enough to wrap in an eighty-column terminal defeats the reason
+    tables are legible, so the budget moves to the rendered row rather than
+    disappearing.
+    """
+
+    header = "| name" + (" " * 65) + "| value |"
+    delimiter = "| :---" + (" " * 65) + "| :---  |"
+    wide = help_source(header + "\\n", delimiter + "\\n")
+
+    assert HELP_RENDER_INDENT + len(header) > 79
+    assert rule_messages(wide, RULE_CLI_HELP_LAYOUT) == [
+        "parse_args help table row renders beyond 79 columns",
+        "parse_args help table row renders beyond 79 columns",
+    ]
+
+
+def test_malformed_table_does_not_earn_the_exemption() -> None:
+    """
+    A lone pipe-delimited line is not a table and keeps the ordinary rules.
+
+    A table needs a header and its delimiter, so one row is either prose that
+    happens to contain pipes or an unfinished table. Either way it stays under
+    the source-width and sentence rules, which is what keeps this a door for
+    tables rather than a hole for long lines.
+    """
+
+    lone = "| name" + (" " * 55) + "| value |"
+    single = help_source(lone + "\\n")
+
+    assert len(lone) == 70
+    assert rule_messages(single, RULE_CLI_HELP_LAYOUT) == [
+        "splittable static parse_args help source line exceeds 79 columns",
+    ]
+    assert rule_messages(single, RULE_HELP_SENTENCES) == [
+        "help prose must begin with sentence capitalization",
+        "help prose must end with terminal punctuation",
+    ]
+
+    # One row among prose literals is the case the run requirement exists for:
+    # the single-literal path above never consults it.
+    stranded = help_source(
+        "Prose line.\\n",
+        lone + "\\n",
+        "More prose.\\n",
+    )
+
+    assert rule_messages(stranded, RULE_CLI_HELP_LAYOUT) == [
+        "parse_args help source line exceeds 79 columns",
+    ]
 
 
 def test_help_literals_use_greedy_wrapping_and_preserve_value() -> None:

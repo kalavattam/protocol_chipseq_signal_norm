@@ -6,8 +6,10 @@
 # Copyright 2026 by Kris Alavattam
 # Email: kalavattam@gmail.com
 #
-# OpenAI ChatGPT and Codex (GPT-5.6) were used in design, development, and
-# documentation, with all output reviewed, edited, and approved by the author.
+# The following were used in design, development, and documentation, with all
+# output reviewed, edited, and approved by the author:
+# - OpenAI ChatGPT and Codex (GPT-5.6);
+# - Anthropic Claude Code (Opus 5).
 #
 # Distributed under the MIT license.
 
@@ -32,6 +34,12 @@ HELP_GROUP = re.compile(
 )
 STRING_TOKEN = re.compile(r'"(?:[^"\\]|\\.)*"')
 
+# A pipe-table row is indivisible under 'PY.CLI.HELP.LAYOUT', so it is not a
+# wrap candidate. This mirrors 'dev/audit/python_source_policy.py'
+# 'HELP_TABLE_ROW'; the formatter imports nothing from 'dev.audit' by design,
+# and 'MD.TABLE.CANONICAL' owns the form both follow.
+TABLE_ROW = re.compile(r"^[ \t]*\|.*\|[ \t]*$")
+
 
 def _literal(value: str) -> str:
     """
@@ -47,9 +55,26 @@ def _chunks(value: str, indent: str) -> list[str]:
     """
 
     chunks: list[str] = []
+    segments = value.splitlines(keepends=True) or [""]
+    rows = [
+        bool(TABLE_ROW.match(segment.removesuffix("\n")))
+        for segment in segments
+    ]
 
-    for segment in value.splitlines(keepends=True) or [""]:
-        units = re.findall(r"\S+\s*|\s+", segment)
+    for index, segment in enumerate(segments):
+        # A lone row is not a table, so only a contiguous run is spared.
+        if rows[index] and (
+            (index > 0 and rows[index - 1])
+            or (index + 1 < len(rows) and rows[index + 1])
+        ):
+            chunks.append(segment)
+
+            continue
+
+        # A quoted span is one unit, matching '_leading_help_unit' in
+        # 'dev/audit/python_source_policy.py'; splitting one would satisfy
+        # the width budget by breaking an expression.
+        units = re.findall(r"'[^']*'\S*\s*|\S+\s*|\s+", segment)
         current = ""
 
         for unit in units:

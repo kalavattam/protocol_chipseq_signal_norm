@@ -89,6 +89,10 @@ Write help prose as complete sentences. Begin each prose paragraph with sentence
 
 This rule governs descriptions rather than usage synopses, metavariables, choice displays, tables, code blocks, machine-readable fragments, or exact external text. Language owners govern source quoting and wrapping while this shared owner governs the rendered prose contract.
 
+A table here is a GFM pipe table under [`MD.TABLE.CANONICAL`](markdown.md), whose scope already includes rendered help; the exemption covers a contiguous run of that table's rows, uninterrupted by a blank line or by non-row text, and nothing outside the run. A row is exempt from sentence shape because it is structure rather than a sentence. It is not exempt from width: each rendered row occupies at most 79 columns including the help surface's own indentation, so a terminal does not wrap it. Narrow or rewrite a row that cannot meet that budget rather than exempting it.
+
+A paragraph ending in a colon that introduces the structure in the next paragraph is a lead-in rather than an incomplete sentence, and its colon satisfies the terminal-punctuation requirement. [`MD.COLON.STRUCTURE`](markdown.md) already owns this relationship for colon-introducing prose and its table. The allowance holds only when a table block or other structured paragraph immediately follows; a colon standing before ordinary prose, or ending the final paragraph, remains a finding.
+
 **Automation:** `dev/audit/python_source_policy.py` checks capitalization and terminal punctuation for recognized constant `help=` prose in the bounded four-file Python pilot. Shell help structure checks provide description boundaries but do not yet enforce this complete cross-language rule repository-wide. Coverage is `subset`.
 
 **Semantic remainder:** Decide whether text is prose, whether punctuation accurately ends the thought, and whether multiple sentences communicate one coherent option contract.

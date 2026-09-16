@@ -137,7 +137,7 @@ Wrap at the last complete word or indivisible unit fitting through physical colu
 
 Python adjacent constant CLI `help=` literals form the only approved automatic formatter subset. The formatter preserves the exact evaluated value and keeps terminal escapes attached to the final text-bearing literal. Python comments and docstrings are checker/evidence-first. Shell comments remain review-owned; R and Rust remain dormant.
 
-A structural boundary is not a premature break. A section header, a documented entry header, a multiline textual-type row, a dedent that ends a block, a fenced verbatim block, and a literal example row each end a prose line for reasons the width boundary does not govern; joining them would destroy meaning rather than restore greedy wrapping. A language realization must recognize its own structural boundaries before it reports any break.
+A structural boundary is not a premature break. A section header, a documented entry header, a multiline textual-type row, a table row, a dedent that ends a block, a fenced verbatim block, and a literal example row each end a prose line for reasons the width boundary does not govern; joining them would destroy meaning rather than restore greedy wrapping. A language realization must recognize its own structural boundaries before it reports any break.
 
 Embedded verbatim content is not prose. A block fenced by a line holding only `'''`, ```` ``` ````, or `~~~` inside a documentation comment holds pseudocode, sample output, or another literal whose line breaks are part of its meaning. Neither the fences nor any line between them is a wrap candidate, and no automated repair may rewrite them.
 

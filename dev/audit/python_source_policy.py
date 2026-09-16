@@ -2238,11 +2238,49 @@ def _serialized_help_width(indent: str, value: str) -> int:
 def _leading_help_unit(value: str) -> str:
     """
     Return the first movable unit and the whitespace it carries forward.
+
+    A single-quoted span is one unit: moving half of '|x| >= eps' onto the
+    previous line preserves the rendered value and destroys the expression. The
+    span runs through any punctuation attached to its closing quote, so the
+    unit never comes out shorter than plain whitespace splitting would give,
+    which would invent premature breaks rather than remove them.
     """
 
-    match = re.match(r"\S+\s*|\s+", value)
+    match = re.match(r"'[^']*'\S*\s*|\S+\s*|\s+", value)
 
     return match.group(0) if match is not None else ""
+
+
+# A table row is one line delimited by leading and trailing pipes, per
+# 'MD.TABLE.CANONICAL'. A lone row is not a table, so the exemption requires a
+# contiguous run of at least two: a header and its delimiter at minimum.
+HELP_TABLE_ROW = re.compile(r"^[ \t]*\|.*\|[ \t]*$")
+
+# 'argparse' renders a help description at this indent, so a row occupies its
+# own width plus this much of the terminal.
+HELP_RENDER_INDENT = 4
+
+
+def _is_table_row(value: str) -> bool:
+    """
+    Return whether one rendered help line is a pipe-table row.
+    """
+
+    return bool(HELP_TABLE_ROW.match(value.removesuffix("\n")))
+
+
+def _is_table_block(paragraph: str) -> bool:
+    """
+    Return whether one help paragraph is a contiguous pipe-table row run.
+
+    A paragraph qualifies only when every non-empty line is a row and at least
+    two rows are present, so ordinary prose never acquires the exemption by
+    containing a stray pipe.
+    """
+
+    lines = [line for line in paragraph.splitlines() if line.strip()]
+
+    return len(lines) >= 2 and all(_is_table_row(line) for line in lines)
 
 
 def _is_help_prose(paragraph: str) -> bool:
@@ -2446,10 +2484,16 @@ def _check_cli_help_layout(
 
             continue
 
-        for paragraph in re.split(r"\n[ \t]*\n", node.value.value):
+        paragraphs = re.split(r"\n[ \t]*\n", node.value.value)
+
+        for index, paragraph in enumerate(paragraphs):
             prose = paragraph.strip()
 
-            if not prose or not _is_help_prose(prose):
+            if (
+                not prose
+                or _is_table_block(paragraph)
+                or not _is_help_prose(prose)
+            ):
                 counts["structured_help_exclusions"] += 1
 
                 continue
@@ -2473,7 +2517,15 @@ def _check_cli_help_layout(
                     ),
                 )
 
-            if prose[-1] not in ".?!":
+            # A colon introducing the structure that follows is a lead-in
+            # rather than an unfinished sentence, per 'MD.COLON.STRUCTURE'.
+            following = paragraphs[index + 1] if index + 1 < len(paragraphs) else ""
+            introduces = prose.endswith(":") and bool(following.strip()) and (
+                _is_table_block(following)
+                or not _is_help_prose(following.strip())
+            )
+
+            if prose[-1] not in ".?!" and not introduces:
                 findings.append(
                     Finding(
                         path,
@@ -2523,7 +2575,13 @@ def _check_cli_help_layout(
 
         counts["multiline_literal_groups"] += 1
 
-        for token in literal_tokens:
+        decoded_group = [_decoded_string(token) for token in literal_tokens]
+        row_flags = [
+            value is not None and _is_table_row(value)
+            for value in decoded_group
+        ]
+
+        for index, token in enumerate(literal_tokens):
             if token.start[0] != token.end[0]:
                 _finding(
                     findings,
@@ -2535,8 +2593,25 @@ def _check_cli_help_layout(
                 )
 
             source_line = lines[token.start[0] - 1]
+            in_table = row_flags[index] and (
+                (index > 0 and row_flags[index - 1])
+                or (index + 1 < len(row_flags) and row_flags[index + 1])
+            )
 
-            if len(source_line) > 79:
+            if in_table:
+                counts["table_row_literals"] += 1
+                rendered = decoded_group[index].removesuffix("\n")
+
+                if HELP_RENDER_INDENT + len(rendered) > 79:
+                    _finding(
+                        findings,
+                        path,
+                        token,
+                        RULE_CLI_HELP_LAYOUT,
+                        "parse_args help table row renders beyond 79 "
+                        "columns",
+                    )
+            elif len(source_line) > 79:
                 _finding(
                     findings,
                     path,
