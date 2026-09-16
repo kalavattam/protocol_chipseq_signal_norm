@@ -59,14 +59,18 @@ def _edger(norm: str, **kwargs: float) -> dict[str, object]:
     argument set to every branch.
     """
 
-    extra: dict[str, float] = {"lib_a": LIB_A, "lib_b": LIB_B, "norm": norm}
+    extra: dict[str, float] = {
+        "n_bin_a": LIB_A,
+        "n_bin_b": LIB_B,
+        "norm": norm
+    }
 
     if norm == "RPKM":
         extra["siz_bin"] = 10
     elif norm == "RPGC":
         extra.update(scale_a=0.7, scale_b=1.3)
     elif norm == "norm":
-        extra.update(frg_a=FRG_A, frg_b=FRG_B)
+        extra.update(n_frg_a=FRG_A, n_frg_b=FRG_B)
 
     extra.update(kwargs)
 
@@ -282,37 +286,37 @@ def test_compute_pseudo_edger_returns_k_only_for_normalized_coverage() -> None:
 # Each row is a call and the fragment its rejection must name. Short fragments
 # keep a wording change from failing the test.
 EDGER_REJECTIONS = (
-    ({"lib_a": 0.0, "lib_b": LIB_B}, "lib_a"),
-    ({"lib_a": -1.0, "lib_b": LIB_B}, "lib_a"),
-    ({"lib_a": float("nan"), "lib_b": LIB_B}, "lib_a"),
-    ({"lib_a": float("inf"), "lib_b": LIB_B}, "lib_a"),
-    ({"lib_a": LIB_A, "lib_b": 0.0}, "lib_b"),
-    ({"lib_a": LIB_A, "lib_b": LIB_B, "prior_count": -1.0}, "prior_count"),
+    ({"n_bin_a": 0.0, "n_bin_b": LIB_B}, "n_bin_a"),
+    ({"n_bin_a": -1.0, "n_bin_b": LIB_B}, "n_bin_a"),
+    ({"n_bin_a": float("nan"), "n_bin_b": LIB_B}, "n_bin_a"),
+    ({"n_bin_a": float("inf"), "n_bin_b": LIB_B}, "n_bin_a"),
+    ({"n_bin_a": LIB_A, "n_bin_b": 0.0}, "n_bin_b"),
+    ({"n_bin_a": LIB_A, "n_bin_b": LIB_B, "prior_count": -1.0}, "prior_count"),
     (
-        {"lib_a": LIB_A, "lib_b": LIB_B, "norm": "RPKM", "siz_bin": 0},
+        {"n_bin_a": LIB_A, "n_bin_b": LIB_B, "norm": "RPKM", "siz_bin": 0},
         "siz_bin",
     ),
-    ({"lib_a": LIB_A, "lib_b": LIB_B, "norm": "RPGC"}, "RPGC"),
+    ({"n_bin_a": LIB_A, "n_bin_b": LIB_B, "norm": "RPGC"}, "RPGC"),
     (
-        {"lib_a": LIB_A, "lib_b": LIB_B, "norm": "RPGC", "scale_a": 0.7},
+        {"n_bin_a": LIB_A, "n_bin_b": LIB_B, "norm": "RPGC", "scale_a": 0.7},
         "RPGC",
     ),
-    ({"lib_a": LIB_A, "lib_b": LIB_B, "norm": "norm"}, "frg_a"),
+    ({"n_bin_a": LIB_A, "n_bin_b": LIB_B, "norm": "norm"}, "n_frg_a"),
     (
-        {"lib_a": LIB_A, "lib_b": LIB_B, "norm": "norm", "frg_a": FRG_A},
-        "frg_b",
+        {"n_bin_a": LIB_A, "n_bin_b": LIB_B, "norm": "norm", "n_frg_a": FRG_A},
+        "n_frg_b",
     ),
     (
         {
-            "lib_a": LIB_A,
-            "lib_b": LIB_B,
+            "n_bin_a": LIB_A,
+            "n_bin_b": LIB_B,
             "norm": "norm",
-            "frg_a": 0.0,
-            "frg_b": FRG_B,
+            "n_frg_a": 0.0,
+            "n_frg_b": FRG_B,
         },
-        "frg_a",
+        "n_frg_a",
     ),
-    ({"lib_a": LIB_A, "lib_b": LIB_B, "norm": "bogus"}, "Unknown"),
+    ({"n_bin_a": LIB_A, "n_bin_b": LIB_B, "norm": "bogus"}, "Unknown"),
 )
 
 
@@ -374,16 +378,16 @@ NC_PUBLISHED = (
 
 
 @pytest.mark.parametrize(
-    ("sample", "lib_a", "lib_b", "frg_a", "frg_b", "expected"),
+    ("sample", "n_bin_a", "n_bin_b", "n_frg_a", "n_frg_b", "expected"),
     NC_PUBLISHED,
     ids=[row[0] for row in NC_PUBLISHED],
 )
 def test_compute_pseudo_edger_reproduces_the_published_pseudocounts(
     sample: str,
-    lib_a: float,
-    lib_b: float,
-    frg_a: float,
-    frg_b: float,
+    n_bin_a: float,
+    n_bin_b: float,
+    n_frg_a: float,
+    n_frg_b: float,
     expected: float,
 ) -> None:
     """
@@ -397,12 +401,12 @@ def test_compute_pseudo_edger_reproduces_the_published_pseudocounts(
     """
 
     result = compute_pseudo_edger(
-        lib_a=lib_a,
-        lib_b=lib_b,
+        n_bin_a=n_bin_a,
+        n_bin_b=n_bin_b,
         prior_count=2.0,
         norm="norm",
-        frg_a=frg_a,
-        frg_b=frg_b,
+        n_frg_a=n_frg_a,
+        n_frg_b=n_frg_b,
     )
 
     assert math.isclose(result["pseudo_A"], expected, rel_tol=1e-15)
@@ -438,14 +442,14 @@ def test_compute_pseudo_edger_decomposes_the_published_formula(
     """
 
     result = _edger(norm)
-    lib_mean = 0.5 * (LIB_A + LIB_B)
+    n_bin_mean = 0.5 * (LIB_A + LIB_B)
     sides = (
         (LIB_A, "scale_A", "pseudo_A"),
         (LIB_B, "scale_B", "pseudo_B"),
     )
 
     for lib, scale_key, pseudo_key in sides:
-        prior_scaled = PRIOR_DEFAULT * lib / lib_mean
+        prior_scaled = PRIOR_DEFAULT * lib / n_bin_mean
         published = (
             (count + prior_scaled) / (lib + 2.0 * prior_scaled) * 1e6 * unit
         )

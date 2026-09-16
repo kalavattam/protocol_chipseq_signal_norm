@@ -292,35 +292,37 @@ def canonicalize_norm(norm: str) -> str:
 
 
 def compute_pseudo_edger(
-    lib_a: float,
-    lib_b: float,
+    n_bin_a: float,
+    n_bin_b: float,
     prior_count: float = 2.0,
     norm: str = "CPM",
     siz_bin: int = 10,
     scale_a: float | None = None,
     scale_b: float | None = None,
-    frg_a: float | None = None,
-    frg_b: float | None = None,
+    n_frg_a: float | None = None,
+    n_frg_b: float | None = None,
 ) -> dict[str, object]:
     """
-    Derive edgeR-equivalent scale factors and pseudocounts for deepTools.
+    Derive edgeR-equivalent scale factors and pseudocounts for a substrate.
 
     Parameters
     ----------
-    lib_a : float
-        Library size for track A, as edgeR's 'lib.size'.
-    lib_b : float
-        Library size for track B.
+    n_bin_a : float
+        Spanned-bin count for track A: the bin-matrix column sum, which is
+        edgeR's 'lib.size'. Not the fragment count, which is 'n_frg_a'.
+    n_bin_b : float
+        Spanned-bin count for track B.
     prior_count : float
         edgeR's 'prior.count' before library-size scaling.
     norm : str
-        Target deepTools normalization: 'CPM', 'BPM', 'RPKM', 'None', or
-        'RPGC'.
+        Target substrate: a deepTools normalization ('CPM', 'BPM', 'RPKM',
+        'RPGC'), 'None' for an unnormalized track, or 'norm' for this project's
+        normalized coverage.
     siz_bin : int
         Bin width in base pairs; used by 'RPKM'.
     scale_a, scale_b : float | None
         Externally supplied deepTools scale factors, required for 'RPGC'.
-    frg_a, frg_b : float | None
+    n_frg_a, n_frg_b : float | None
         Fragment counts, required for 'norm' (normalized coverage). This is the
         same denominator 'compute_signal' divides by, not the number of
         alignment records; the two coincide only when one record per fragment
@@ -377,14 +379,14 @@ def compute_pseudo_edger(
     which is symmetric by construction, so they carry the only per-sample
     information it returns.
 
-    A single track is expressed by passing its library size as both 'lib_a' and
-    'lib_b'. That is not an approximation: edgeR averages library sizes over
-    all columns and scales each prior by 'L_i / mean(L)'
+    A single track is expressed by passing its library size as both 'n_bin_a'
+    and 'n_bin_b'. That is not an approximation: edgeR averages library sizes
+    over all columns and scales each prior by 'L_i / mean(L)'
     ('add_prior_count.c:88'), so with one column the ratio is exactly 1, the
     prior stays nominal, and 'mean(L)' is that column's own library size.
     Passing 'L' twice reproduces both. Because 'mean(L)' differs between the
     two framings, a track's one-track pseudocount is not its two-track
-    pseudocount; that is edgeR's behavior too, not an artifact here.
+    pseudocount (that is edgeR's behavior too, not an artifact here).
 
     'norm' (aliases 'nc', 'n', 'nrm', 'normalized') is normalized coverage:
     each fragment deposits exactly 1.0 across its footprint and the track is
@@ -415,7 +417,7 @@ def compute_pseudo_edger(
     only, in the proportional form 'p_i = s_i * y0_i'.
     """
 
-    for label, lib in (("lib_a", lib_a), ("lib_b", lib_b)):
+    for label, lib in (("n_bin_a", n_bin_a), ("n_bin_b", n_bin_b)):
         if not math.isfinite(lib) or lib <= 0.0:
             raise ValueError(f"{label!r} must be finite and positive.")
 
@@ -425,7 +427,7 @@ def compute_pseudo_edger(
     norm = canonicalize_norm(norm)
 
     if norm == "norm":
-        for label, frg in (("frg_a", frg_a), ("frg_b", frg_b)):
+        for label, frg in (("n_frg_a", n_frg_a), ("n_frg_b", n_frg_b)):
             if frg is None or not math.isfinite(frg) or frg <= 0.0:
                 raise ValueError(
                     f"{label!r} must be finite and positive for 'norm'; it is "
@@ -433,19 +435,19 @@ def compute_pseudo_edger(
                     "cannot supply because it sums to 1.",
                 )
 
-        k_a = lib_a / frg_a
-        k_b = lib_b / frg_b
+        k_a = n_bin_a / n_frg_a
+        k_b = n_bin_b / n_frg_b
         k_mean = 0.5 * (k_a + k_b)
-        frg_mean = 0.5 * (frg_a + frg_b)
-        pseudo = prior_count / (k_mean * frg_mean)
+        n_frg_mean = 0.5 * (n_frg_a + n_frg_b)
+        pseudo = prior_count / (k_mean * n_frg_mean)
 
         return {
             "scale_A": 1.0,
             "scale_B": 1.0,
             "pseudo_A": pseudo,
             "pseudo_B": pseudo,
-            "prior_scaled_A": prior_count * frg_a / frg_mean,
-            "prior_scaled_B": prior_count * frg_b / frg_mean,
+            "prior_scaled_A": prior_count * n_frg_a / n_frg_mean,
+            "prior_scaled_B": prior_count * n_frg_b / n_frg_mean,
             "k_A": k_a,
             "k_B": k_b,
             "is_edger": False,
@@ -455,21 +457,21 @@ def compute_pseudo_edger(
             ),
         }
 
-    lib_mean = 0.5 * (lib_a + lib_b)
-    prior_a = prior_count * lib_a / lib_mean
-    prior_b = prior_count * lib_b / lib_mean
+    n_bin_mean = 0.5 * (n_bin_a + n_bin_b)
+    prior_a = prior_count * n_bin_a / n_bin_mean
+    prior_b = prior_count * n_bin_b / n_bin_mean
 
     if norm in ("CPM", "BPM"):
-        scale_a = 1e6 / (lib_a + 2.0 * prior_a)
-        scale_b = 1e6 / (lib_b + 2.0 * prior_b)
+        scale_a = 1e6 / (n_bin_a + 2.0 * prior_a)
+        scale_b = 1e6 / (n_bin_b + 2.0 * prior_b)
         is_edger = True
         note = "exact; BPM reduces to CPM with fixed bin width"
     elif norm == "RPKM":
         if siz_bin <= 0:
             raise ValueError("'siz_bin' must be positive for 'RPKM'.")
 
-        scale_a = 1e9 / ((lib_a + 2.0 * prior_a) * siz_bin)
-        scale_b = 1e9 / ((lib_b + 2.0 * prior_b) * siz_bin)
+        scale_a = 1e9 / ((n_bin_a + 2.0 * prior_a) * siz_bin)
+        scale_b = 1e9 / ((n_bin_b + 2.0 * prior_b) * siz_bin)
         is_edger = True
         note = "exact"
     elif norm == "None":

@@ -14,6 +14,7 @@
 # Distributed under the MIT license.
 
 
+import argparse
 import inspect
 import json
 import math
@@ -142,6 +143,7 @@ def test_parser_preserves_complete_action_contract(
             action.const,
         )
         for action in actions
+        if action.help is not argparse.SUPPRESS
     }
 
     assert actual == {
@@ -165,7 +167,7 @@ def test_parser_preserves_complete_action_contract(
         ),
         "fil_A": (
             ("-fA", "--fil_A"),
-            True,
+            False,
             "_StoreAction",
             None,
             "==SUPPRESS==",
@@ -291,8 +293,8 @@ def test_parser_preserves_complete_action_contract(
             (),
             None,
         ),
-        "lib_A": (
-            ("-lA", "--lib_A"),
+        "n_bin_A": (
+            ("-nbA", "--n_bin_A"),
             False,
             "_StoreAction",
             "float",
@@ -300,8 +302,8 @@ def test_parser_preserves_complete_action_contract(
             (),
             None,
         ),
-        "lib_B": (
-            ("-lB", "--lib_B"),
+        "n_bin_B": (
+            ("-nbB", "--n_bin_B"),
             False,
             "_StoreAction",
             "float",
@@ -327,8 +329,8 @@ def test_parser_preserves_complete_action_contract(
             (),
             None,
         ),
-        "frg_A": (
-            ("-gA", "--frg_A"),
+        "n_frg_A": (
+            ("-nfA", "--n_frg_A"),
             False,
             "_StoreAction",
             "float",
@@ -336,8 +338,8 @@ def test_parser_preserves_complete_action_contract(
             (),
             None,
         ),
-        "frg_B": (
-            ("-gB", "--frg_B"),
+        "n_frg_B": (
+            ("-nfB", "--n_frg_B"),
             False,
             "_StoreAction",
             "float",
@@ -635,9 +637,9 @@ def test_verbose_banner_reports_an_unset_bin_width(
             fil_a,
             "--fil_B",
             fil_b,
-            "--lib_A",
+            "--n_bin_A",
             "100",
-            "--lib_B",
+            "--n_bin_B",
             "200",
         ],
     )
@@ -704,7 +706,7 @@ def test_json_payload_reports_the_per_sample_prior(
     payload = json.loads(capsys.readouterr().out.splitlines()[1])
 
     assert status == 0
-    assert payload["lib_sizes"] == {"A": 6.0, "B": 18.0}
+    assert payload["n_bin"] == {"A": 6.0, "B": 18.0}
     assert payload["prior_scaled"] == {"A": 1.0, "B": 3.0}
 
 
@@ -731,9 +733,9 @@ def test_json_payload_prior_is_not_derivable_for_normalized_coverage(
             FIL_A,
             "--fil_B",
             FIL_B,
-            "--frg_A",
+            "--n_frg_A",
             "3",
-            "--frg_B",
+            "--n_frg_B",
             "1",
             "--prt_jsn",
         ],
@@ -839,6 +841,66 @@ def test_warn_inapplicable_stays_silent_for_a_distribution_method(
     assert "do not apply" not in capsys.readouterr().err
 
 
+def test_hidden_alias_restates_its_primary(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """
+    Every hidden alias restates the action contract of the option it aliases.
+
+    A hidden spelling is a separate 'add_argument' call sharing a 'dest', and
+    argparse enforces nothing between the two. An alias that omits 'action'
+    silently demands a value where its primary is a flag; one that omits
+    'choices' accepts any string the primary would reject. Both shipped, so
+    the agreement is asserted rather than assumed.
+    """
+
+    parser_type = compute_pseudo.CapArgumentParser
+    captured: dict[str, object] = {}
+
+    def capture_parser(*args: object, **kwargs: object) -> object:
+        parser = parser_type(*args, **kwargs)
+        captured["parser"] = parser
+
+        return parser
+
+    monkeypatch.setattr(compute_pseudo, "CapArgumentParser", capture_parser)
+    parse_args(["--fil_A", "signal_A.bdg"])
+    actions = getattr(captured["parser"], "_actions")
+
+    def contract(action: argparse.Action) -> tuple[object, ...]:
+        return (
+            type(action).__name__,
+            None if action.type is None else action.type.__name__,
+            tuple(action.choices or ()),
+            action.nargs,
+            action.const,
+        )
+
+    primaries = {
+        action.dest: action
+        for action in reversed(actions)
+        if action.help is not argparse.SUPPRESS
+    }
+    aliased = [
+        action
+        for action in actions
+        if action.help is argparse.SUPPRESS and action.dest in primaries
+    ]
+
+    assert aliased, "no hidden aliases found; the guard would pass vacuously"
+
+    mismatched = {
+        action.option_strings[0]: (
+            contract(primaries[action.dest]),
+            contract(action),
+        )
+        for action in aliased
+        if contract(primaries[action.dest]) != contract(action)
+    }
+
+    assert mismatched == {}
+
+
 def test_ignored_option_constants_match_the_parser(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -864,7 +926,9 @@ def test_ignored_option_constants_match_the_parser(
     parse_args(["--fil_A", "signal_A.bdg"])
     actions = getattr(captured["parser"], "_actions")
     registered = {
-        action.dest: tuple(action.option_strings) for action in actions
+        action.dest: tuple(action.option_strings)
+        for action in actions
+        if action.help is not argparse.SUPPRESS
     }
     shorts = tuple(
         option
@@ -879,17 +943,17 @@ def test_ignored_option_constants_match_the_parser(
     assert set(compute_pseudo.OPT_SHORT_ALL) == set(shorts)
 
 
-# Single-track mode is selected from '--fil_B' and '--lib_B', so a library size
-# supplied to skip a read also decides the mode. Each row is a whole argument
-# list parsed by the real parser, so a flag rename fails here rather than
-# quietly reporting two tracks.
+# Single-track mode is selected from '--fil_B' and '--n_bin_B', so a library
+# size supplied to skip a read also decides the mode. Each row is a whole
+# argument list parsed by the real parser, so a flag rename fails here rather
+# than quietly reporting two tracks.
 ONE_TRACK_ARGV = (
     pytest.param((), True, id="neither_B_option"),
     pytest.param(("--fil_B", FIL_B), False, id="fil_B_long"),
     pytest.param(("-fB", FIL_B), False, id="fil_B_short"),
-    pytest.param(("--lib_B", "18"), False, id="lib_B_long"),
-    pytest.param(("-lB", "18"), False, id="lib_B_short"),
-    pytest.param(("--fil_B", FIL_B, "--lib_B", "18"), False, id="both"),
+    pytest.param(("--n_bin_B", "18"), False, id="n_bin_B_long"),
+    pytest.param(("-nbB", "18"), False, id="n_bin_B_short"),
+    pytest.param(("--fil_B", FIL_B, "--n_bin_B", "18"), False, id="both"),
 )
 
 
@@ -899,7 +963,7 @@ def test_is_one_track_reads_both_b_options(
     expected: bool,
 ) -> None:
     """
-    '--lib_B' without '--fil_B' is two-track, the asymmetric case.
+    '--n_bin_B' without '--fil_B' is two-track, the asymmetric case.
 
     Reading only '--fil_B' would mirror A onto B and emit one value for a run
     the user described with two library sizes.
@@ -912,21 +976,21 @@ def test_is_one_track_reads_both_b_options(
 
 def test_is_one_track_treats_a_zero_library_size_as_supplied() -> None:
     """
-    '--lib_B 0' is falsy but supplied, and the check reads 'is None' for it.
+    '--n_bin_B 0' is falsy but supplied, and the check reads 'is None' for it.
 
     A truthiness test would report single-track and discard the named B track.
     """
 
-    args = parse_args(["--fil_A", FIL_A, "--lib_B", "0"])
+    args = parse_args(["--fil_A", FIL_A, "--n_bin_B", "0"])
 
-    assert args.lib_B == 0.0
+    assert args.n_bin_B == 0.0
     assert compute_pseudo._is_one_track(args) is False
 
 
 # The other B options carry a value for a track rather than asserting one
 # exists, so naming them alone leaves the run single-track.
 ONE_TRACK_UNRELATED = (
-    pytest.param(("--frg_B", "1000"), id="frg_B"),
+    pytest.param(("--n_frg_B", "1000"), id="n_frg_B"),
     pytest.param(("--sf_B", "0.5"), id="sf_B"),
 )
 
@@ -947,14 +1011,14 @@ def test_is_one_track_reads_an_unsupplied_fil_b_as_none() -> None:
     'CapArgumentParser' sets 'argument_default=argparse.SUPPRESS', so an option
     that declares no default is absent from the namespace and plain attribute
     access raises. '--fil_B' declares 'default=None' against that, which is
-    what lets every reader treat it like '--lib_B'. Dropping the declaration
+    what lets every reader treat it like '--n_bin_B'. Dropping the declaration
     fails this assertion with 'AttributeError'.
     """
 
     args = parse_args(["--fil_A", FIL_A])
 
     assert args.fil_B is None
-    assert args.lib_B is None
+    assert args.n_bin_B is None
     assert compute_pseudo._is_one_track(args) is True
 
 
@@ -994,7 +1058,7 @@ def test_single_track_emits_one_value_rather_than_a_pair(
     capsys: pytest.CaptureFixture[str],
 ) -> None:
     """
-    Omitting both '--fil_B' and '--lib_B' emits one value, not 'A:B'.
+    Omitting both '--fil_B' and '--n_bin_B' emits one value, not 'A:B'.
     """
 
     status = main(["--method", "edger", "--fil_A", FIL_A])
@@ -1121,11 +1185,11 @@ def test_json_mirrors_b_onto_a_in_single_track_mode(
 
     assert payload["one_track"] is True
     assert payload["fil_B"] is None
-    assert payload["lib_sizes"]["B"] == payload["lib_sizes"]["A"]
+    assert payload["n_bin"]["B"] == payload["n_bin"]["A"]
     assert payload["scale_factors"]["B"] == payload["scale_factors"]["A"]
     assert pseudocounts["pseudo_B"] == pseudocounts["pseudo_A"]
     assert math.isclose(
-        payload["lib_sizes"]["A"], LIB_A, rel_tol=1e-12
+        payload["n_bin"]["A"], LIB_A, rel_tol=1e-12
     )
 
 
@@ -1163,7 +1227,7 @@ def test_json_keeps_one_shape_across_both_modes(
 # requires, a value for it, and the flag a two-track run would also need. The
 # message must name only the first.
 SINGLE_TRACK_REQUIRED = (
-    pytest.param("norm", "--frg_A", "100", "--frg_B", id="norm"),
+    pytest.param("norm", "--n_frg_A", "100", "--n_frg_B", id="norm"),
     pytest.param("RPGC", "--sf_A", "0.5", "--sf_B", id="RPGC"),
 )
 

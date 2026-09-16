@@ -88,8 +88,8 @@ OPT_IGNORED_EDGER = {
 # Every short option 'parse_args' registers. Resolving an attached value needs
 # the whole set rather than the six above: '-sfA0.5' must resolve to '-sfA',
 # not to '-s' carrying 'fA0.5', and only the longest registered prefix tells
-# the two apart. 'test_pseudo.py' asserts both constants against the parser,
-# so neither can drift away from it.
+# the two apart. 'test_pseudo.py' asserts both constants against the parser, so
+# neither can drift away from it.
 OPT_SHORT_ALL = (
     "-h",
     "-v",
@@ -106,12 +106,12 @@ OPT_SHORT_ALL = (
     "-nm",
     "-pc",
     "-sb",
-    "-lA",
-    "-lB",
+    "-nbA",
+    "-nbB",
     "-sfA",
     "-sfB",
-    "-gA",
-    "-gB",
+    "-nfA",
+    "-nfB",
     "-dp",
     "-pj",
     "-pa",
@@ -282,12 +282,12 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
                     "normalization",
                     "prior_count",
                     "siz_bin",
-                    "lib_A",
-                    "lib_B",
+                    "n_bin_A",
+                    "n_bin_B",
                     "sf_A",
                     "sf_B",
-                    "frg_A",
-                    "frg_B",
+                    "n_frg_A",
+                    "n_frg_B",
                 ),
                 ("dp", "prt_jsn", "prt_arg"),
             ),
@@ -330,12 +330,16 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         "-fA",
         "--fil_A",
         dest="fil_A",
-        required=True,
         help=(
             "First bedGraph input file, file A. Use '-' for stdin; '.gz' is "
             "handled.\n"
             "\n"
         ),
+    )
+    parser.add_argument(
+        "--fil-A",
+        dest="fil_A",
+        help=argparse.SUPPRESS,
     )
     parser.add_argument(
         "-fB",
@@ -350,6 +354,11 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         ),
     )
     parser.add_argument(
+        "--fil-B",
+        dest="fil_B",
+        help=argparse.SUPPRESS,
+    )
+    parser.add_argument(
         "-sp",
         "--skp_pfx",
         dest="skp_pfx",
@@ -361,6 +370,12 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
             "\n"
         ),
     )
+    parser.add_argument(
+        "--skp-pfx",
+        dest="skp_pfx",
+        type=str,
+        help=argparse.SUPPRESS,
+    )
 
     parser.add_argument(
         "-m",
@@ -371,30 +386,33 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         help=(
             "Workflow method to compute per-track pseudocount (default: "
             "%(default)s):\n"
-            "    - edger       edgeR's prior.count rule; see "
-            "'--normalization'\n"
-            "    - frc_mdn_nz  value = coef × median of nonzero bins\n"
-            "    - qntl_nz     value = q-th percentile of nonzero bins\n"
-            "    - frc_avg_nz  value = coef × mean of nonzero bins\n"
-            "    - min_nz      value = coef × minimum nonzero bin\n"
+            "\n"
+            "| method     | description                             |\n"
+            "| :---       | :---                                    |\n"
+            "| edger      | edgeR's prior.count rule ‡              |\n"
+            "| frc_mdn_nz | value = coef × median of nonzero bins   |\n"
+            "| qntl_nz    | value = q-th percentile of nonzero bins |\n"
+            "| frc_avg_nz | value = coef × mean of nonzero bins     |\n"
+            "| min_nz     | value = coef × minimum nonzero bin      |\n"
             "\n"
             "Notes:\n"
-            "    - '--method edger' takes one track or two, as edgeR does.\n"
-            "    - With one track, edgeR's per-sample prior scaling "
-            "degenerates to a no-op and the mean library size is that track's "
-            "own.\n"
-            "    - A given track's one-track pseudocount is therefore not its "
+            "  - '--method edger' takes one track or two, as edgeR does.\n"
+            "  - With one track, edgeR's per-sample prior scaling degenerates "
+            "to a no-op and the mean library size is that track's own.\n"
+            "  - A given track's one-track pseudocount is therefore not its "
             "two-track pseudocount; both are correct for their own frame.\n"
-            "    - If '--method qntl_nz', set percentile with '--qntl_nz' "
+            "  - If '--method qntl_nz', set percentile with '--qntl_nz' "
             "[decimals OK (e.g., 0.1 = 0.1th percentile); nearest-rank "
             "determined via 'round'].\n"
-            "    - 'nonzero' means '|x| > eps' with '--mode_nz closed', '|x| "
-            ">= eps' with '--mode_nz open', and every finite value with "
+            "  - 'nonzero' means '|x| > eps' with '--mode_nz closed', "
+            "'|x| >= eps' with '--mode_nz open', and every finite value with "
             "'--mode_nz off'.\n"
-            "    - If '--coef' is omitted, then defaults to '--coef 0.01' for "
+            "  - If '--coef' is omitted, then defaults to '--coef 0.01' for "
             "'--method frc_*' and '--coef 1.0' for '--method min_nz'.\n"
-            "    - '--method min_nz' typically needs a larger coef (e.g., "
+            "  - '--method min_nz' typically needs a larger coef (e.g., "
             "0.1–1.0) in comparison to '--method frc_*' (e.g., 0.01).\n"
+            "\n"
+            "‡ See '--normalization' for more details.\n"
             "\n"
         ),
     )
@@ -412,6 +430,12 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         ),
     )
     parser.add_argument(
+        "--qntl-nz",
+        dest="qntl_nz",
+        type=float,
+        help=argparse.SUPPRESS,
+    )
+    parser.add_argument(
         "-c",
         "--coef",
         dest="coef",
@@ -419,8 +443,8 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         default=None,
         help=(
             "Coefficient for median, mean, and min methods. If not specified, "
-            "then defaults to 0.01 for '--method frc_mdn_nz' and '--method "
-            "frc_avg_nz', or 1.0 for '--method min_nz'.\n"
+            "then defaults to 0.01 for '--method frc_mdn_nz' and "
+            "'--method frc_avg_nz', or 1.0 for '--method min_nz'.\n"
             "\n"
         ),
     )
@@ -447,9 +471,9 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
             "(default: %(default)s).\n"
             "\n"
             "When '--mode_nz closed' (default), values with '|x| <= ε' are "
-            "treated as zero and excluded from statistics; with '--mode_nz "
-            "open', values with '|x| < ε' are excluded; with '--mode_nz off', "
-            "ε-based filtering is disabled.\n"
+            "treated as zero and excluded from statistics; with "
+            "'--mode_nz open', values with '|x| < ε' are excluded; with "
+            "'--mode_nz off', ε-based filtering is disabled.\n"
             "\n"
         ),
     )
@@ -461,11 +485,20 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         default="closed",
         help=(
             "Epsilon/zero-handling mode for selecting 'nonzero' bins:\n"
-            "    - closed (default)  drop values with '|x| <= eps'.\n"
-            "    - open              drop values with '|x| < eps'.\n"
-            "    - off               disable 'eps'-based zero filtering.\n"
+            "\n"
+            "|                  | description                         |\n"
+            "| :---             | :---                                |\n"
+            "| closed (default) | drop values with '|x| <= eps'.      |\n"
+            "| open             | drop values with '|x| < eps'.       |\n"
+            "| off              | disable 'eps'-based zero filtering. |\n"
             "\n"
         ),
+    )
+    parser.add_argument(
+        "--mode-nz",
+        dest="mode_nz",
+        choices=("closed", "open", "off"),
+        help=argparse.SUPPRESS,
     )
 
     parser.add_argument(
@@ -485,20 +518,20 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         default="none",
         help=(
             "Symmetrize pseudocounts across A and B.\n"
-            "    - none returns A and B as computed; max/min select the "
+            "  - none returns A and B as computed; max/min select the "
             "larger/smaller value; arith/geom/harm use "
             "arithmetic/geometric/harmonic means; use_A/use_B copy A/B to "
             "both outputs.\n"
-            "    - With finite values, geom falls back to min for a negative "
+            "  - With finite values, geom falls back to min for a negative "
             "input and harm falls back to min for a nonpositive input; each "
             "fallback writes a warning to stderr.\n"
-            "    - In any non-none mode, one finite value is mirrored with a "
+            "  - In any non-none mode, one finite value is mirrored with a "
             "warning; two nonfinite values are retained with a warning.\n"
-            "    - If both A AND B are given, apply the chosen rule to "
+            "  - If both A AND B are given, apply the chosen rule to "
             "'(pseudo_A, pseudo_B)', then print 'pseudo_A:pseudo_B'.\n"
-            "    - If only A is given AND '--sym' is provided AND NOT 'none', "
+            "  - If only A is given AND '--sym' is provided AND NOT 'none', "
             "mirror A to B and print: 'pseudo_A:pseudo_B'.\n"
-            "    - If only A is given AND '--sym' is omitted OR '--sym none', "
+            "  - If only A is given AND '--sym' is omitted OR '--sym none', "
             "print a single value: 'pseudo_A'.\n"
             "\n"
         ),
@@ -511,16 +544,21 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         choices=NORM_CHOICES,
         default="CPM",
         help=(
-            "Target deepTools normalization (default: %(default)s).\n"
-            "    - CPM, BPM  exact; BPM reduces to CPM with fixed bin width\n"
-            "    - RPKM      exact; needs '--siz_bin'\n"
-            "    - None      correct up to a constant log offset; not edgeR\n"
-            "    - RPGC      needs '--sf_A' and '--sf_B'; not edgeR\n"
-            "    - norm      normalized coverage; not edgeR. Needs '--frg_A' "
-            "and '--frg_B'; pass the raw-count tracks as '--fil_A' and "
-            "'--fil_B', not the normalized coverage tracks\n"
+            "Target substrate: a deepTools normalization, this project's "
+            "normalized coverage, or none (default: %(default)s).\n"
+            "\n"
+            "|          | description                                    |\n"
+            "| :---     | :---                                           |\n"
+            "| CPM, BPM | exact; BPM reduces to CPM with fixed bin width |\n"
+            "| RPKM     | exact; needs '--siz_bin'                       |\n"
+            "| None     | correct up to a constant log offset; not edgeR |\n"
+            "| RPGC     | needs '--sf_A' and '--sf_B'; not edgeR         |\n"
+            "| norm     | normalized coverage; not edgeR ‡               |\n"
             "\n"
             "Applies to '--method edger' only; ignored otherwise.\n"
+            "\n"
+            "‡ Needs '--n_frg_A' and '--n_frg_B'; pass the raw-count tracks "
+            "as '--fil_A' and '--fil_B', not the normalized coverage tracks.\n"
             "\n"
         ),
     )
@@ -539,6 +577,12 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         ),
     )
     parser.add_argument(
+        "--prior-count",
+        dest="prior_count",
+        type=float,
+        help=argparse.SUPPRESS,
+    )
+    parser.add_argument(
         "-sb",
         "--siz_bin",
         dest="siz_bin",
@@ -551,41 +595,68 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
             "\n"
             "Inferred from the track when omitted, and cross-checked against "
             "it when given, so a value the track contradicts is refused "
-            "rather than silently rescaling the library size.\n"
+            "rather than silently rescaling the spanned-bin count.\n"
             "\n"
-            "Required only when no track is read, i.e., when both '--lib_A' "
-            "and '--lib_B' are supplied and '--normalization RPKM' needs a "
+            "Required only when no track is read, i.e., when both '--n_bin_A' "
+            "and '--n_bin_B' are supplied and '--normalization RPKM' needs a "
             "width for its scale factor.\n"
             "\n"
         ),
     )
     parser.add_argument(
-        "-lA",
-        "--lib_A",
-        dest="lib_A",
+        "--siz-bin",
+        dest="siz_bin",
+        type=int,
+        help=argparse.SUPPRESS,
+    )
+    parser.add_argument(
+        "-nbA",
+        "--n_bin_A",
+        dest="n_bin_A",
         type=float,
         default=None,
         help=(
-            "Library size for track A: the column sum of the bin matrix, "
-            "which is edgeR's 'lib.size'. Computed from '--fil_A' when "
-            "omitted, which requires a non-normalized track. Supplying it "
-            "skips that read and changes nothing else.\n"
+            "Spanned-bin count for track A: the column sum of the bin matrix, "
+            "which is edgeR's 'lib.size'. Note that 'lib.size' is not the "
+            "fragment count, which is '--n_frg_A'.\n"
+            "\n"
+            "Written by 'compute_signal --report_n_bin', as "
+            "'<track>.n_bin.txt' when that flag is given without a path. "
+            "Computed from '--fil_A' when omitted, which requires a "
+            "non-normalized track; supplying it skips that read and changes "
+            "nothing else.\n"
             "\n"
             "Applies to '--method edger' only; ignored otherwise.\n"
             "\n"
         ),
     )
     parser.add_argument(
-        "-lB",
-        "--lib_B",
-        dest="lib_B",
+        "--n-bin-A",
+        "--n_bin-A",
+        "--n-bin_A",
+        dest="n_bin_A",
+        type=float,
+        help=argparse.SUPPRESS,
+    )
+    parser.add_argument(
+        "-nbB",
+        "--n_bin_B",
+        dest="n_bin_B",
         type=float,
         default=None,
         help=(
-            "Library size for track B; see '--lib_A'. Omit this and '--fil_B' "
-            "to compute a single-track pseudocount.\n"
+            "Spanned-bin count for track B; see '--n_bin_A'. Omit this and "
+            "'--fil_B' to compute a single-track pseudocount.\n"
             "\n"
         ),
+    )
+    parser.add_argument(
+        "--n-bin-B",
+        "--n_bin-B",
+        "--n-bin_B",
+        dest="n_bin_B",
+        type=float,
+        help=argparse.SUPPRESS,
     )
     parser.add_argument(
         "-sfA",
@@ -604,6 +675,12 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         ),
     )
     parser.add_argument(
+        "--sf-A",
+        dest="sf_A",
+        type=float,
+        help=argparse.SUPPRESS,
+    )
+    parser.add_argument(
         "-sfB",
         "--sf_B",
         dest="sf_B",
@@ -612,9 +689,15 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         help=("deepTools scale factor for track B; see '--sf_A'.\n\n"),
     )
     parser.add_argument(
-        "-gA",
-        "--frg_A",
-        dest="frg_A",
+        "--sf-B",
+        dest="sf_B",
+        type=float,
+        help=argparse.SUPPRESS,
+    )
+    parser.add_argument(
+        "-nfA",
+        "--n_frg_A",
+        dest="n_frg_A",
         type=float,
         default=None,
         help=(
@@ -622,10 +705,12 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
             "'compute_signal' divided by, not the number of alignment "
             "records. The two coincide only when exactly one alignment per "
             "fragment survives filtering. A normalized-coverage track sums to "
-            "1 by construction, so its own total cannot supply this. Get it "
-            "from, e.g., the fragment count 'compute_signal' reports, or as "
-            "1e6 divided by the CPM scale factor that 'bamCoverage --verbose' "
-            "reports.\n"
+            "1 by construction, so its own total cannot supply this.\n"
+            "\n"
+            "Written by 'compute_signal --report_n_frg', as "
+            "'<track>.n_frg.txt' when that flag is given without a path. "
+            "Failing that, it is 1e6 divided by the CPM scale factor that "
+            "'bamCoverage --verbose' reports.\n"
             "\n"
             "Applies to '--method edger' with normalized coverage "
             "('--normalization norm', aliases 'nc', 'n', 'nrm', 'normalized') "
@@ -633,12 +718,28 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         ),
     )
     parser.add_argument(
-        "-gB",
-        "--frg_B",
-        dest="frg_B",
+        "--n-frg-A",
+        "--n_frg-A",
+        "--n-frg_A",
+        dest="n_frg_A",
+        type=float,
+        help=argparse.SUPPRESS,
+    )
+    parser.add_argument(
+        "-nfB",
+        "--n_frg_B",
+        dest="n_frg_B",
         type=float,
         default=None,
-        help=("Fragment count for track B; see '--frg_A'.\n\n"),
+        help=("Fragment count for track B; see '--n_frg_A'.\n\n"),
+    )
+    parser.add_argument(
+        "--n-frg-B",
+        "--n_frg-B",
+        "--n-frg_B",
+        dest="n_frg_B",
+        type=float,
+        help=argparse.SUPPRESS,
     )
     parser.add_argument(
         "-dp",
@@ -661,6 +762,12 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         help="Print a JSON summary to stdout.\n\n",
     )
     parser.add_argument(
+        "--prt-jsn",
+        dest="prt_jsn",
+        action="store_true",
+        help=argparse.SUPPRESS,
+    )
+    parser.add_argument(
         "-pa",
         "--prt_arg",
         dest="prt_arg",
@@ -673,6 +780,12 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
             "Applies to '--method edger' only; ignored otherwise.\n"
             "\n"
         ),
+    )
+    parser.add_argument(
+        "--prt-arg",
+        dest="prt_arg",
+        action="store_true",
+        help=argparse.SUPPRESS,
     )
 
     argv_parse = sys.argv[1:] if argv is None else argv
@@ -721,11 +834,11 @@ def _print_pseudo_arguments(
             else:
                 print(f"--siz_bin {siz_bin}")
 
-            if args.lib_A is not None:
-                print(f"--lib_A   {args.lib_A}")
+            if args.n_bin_A is not None:
+                print(f"--n_bin_A {args.n_bin_A}")
 
-            if args.lib_B is not None:
-                print(f"--lib_B   {args.lib_B}")
+            if args.n_bin_B is not None:
+                print(f"--n_bin_B {args.n_bin_B}")
 
             if args.sf_A is not None:
                 print(f"--sf_A    {args.sf_A}")
@@ -733,11 +846,11 @@ def _print_pseudo_arguments(
             if args.sf_B is not None:
                 print(f"--sf_B    {args.sf_B}")
 
-            if args.frg_A is not None:
-                print(f"--frg_A   {args.frg_A}")
+            if args.n_frg_A is not None:
+                print(f"--n_frg_A {args.n_frg_A}")
 
-            if args.frg_B is not None:
-                print(f"--frg_B   {args.frg_B}")
+            if args.n_frg_B is not None:
+                print(f"--n_frg_B {args.n_frg_B}")
 
             if args.prt_arg:
                 print("--prt_arg")
@@ -776,7 +889,7 @@ def _is_one_track(args: argparse.Namespace) -> bool:
     Returns
     -------
     one_track : bool
-        True when neither '--fil_B' nor '--lib_B' was supplied.
+        True when neither '--fil_B' nor '--n_bin_B' was supplied.
 
     Notes
     -----
@@ -791,7 +904,7 @@ def _is_one_track(args: argparse.Namespace) -> bool:
     behavior.
 
     Reproducing that here therefore needs no separate estimator: passing the
-    one library size as both 'lib_a' and 'lib_b' makes 'L_bar' equal 'L_A',
+    one library size as both 'n_bin_a' and 'n_bin_b' makes 'L_bar' equal 'L_A',
     which is exactly what 'ave_lib' becomes when 'nlib' is 1. Confirmed against
     edgeR 4.4.0 and pinned by
     'test_compute_pseudo_edger_reproduces_edger_for_one_library'.
@@ -802,7 +915,7 @@ def _is_one_track(args: argparse.Namespace) -> bool:
     differs from the same column inside a two-column one.
     """
 
-    return not getattr(args, "fil_B", None) and args.lib_B is None
+    return not getattr(args, "fil_B", None) and args.n_bin_B is None
 
 
 def _resolve_ignored(token: str) -> str | None:
@@ -927,7 +1040,7 @@ def _run_edger(
 
     Notes
     -----
-    Library sizes come from '--lib_A' and '--lib_B' when supplied, and are
+    Library sizes come from '--n_bin_A' and '--n_bin_B' when supplied, and are
     otherwise summed from the tracks. Summing requires a non-normalized track,
     as a CPM or RPKM bedGraph sums to a normalized total, not to a library
     size, and would silently rescale every value this function returns.
@@ -947,9 +1060,9 @@ def _run_edger(
 
     one_track = _is_one_track(args)
 
-    lib_a = args.lib_A
-    lib_b = args.lib_B
-    frg_a, frg_b = args.frg_A, args.frg_B
+    n_bin_a = args.n_bin_A
+    n_bin_b = args.n_bin_B
+    n_frg_a, n_frg_b = args.n_frg_A, args.n_frg_B
     sf_a, sf_b = args.sf_A, args.sf_B
 
     siz_bin = args.siz_bin
@@ -958,20 +1071,20 @@ def _run_edger(
     # library size needs no '--siz_bin' at all. Only a run given both sizes
     # reads nothing, and only 'RPKM' then still needs a width.
     try:
-        if lib_a is None:
+        if n_bin_a is None:
             counts_a = sum_counts_bdg(args.fil_A, siz_bin, skp_pfx)
-            lib_a, siz_bin = counts_a.total, counts_a.siz_bin
+            n_bin_a, siz_bin = counts_a.total, counts_a.siz_bin
 
         if one_track:
             # Mirror A onto B so 'L_bar' collapses to 'L_A'. That reproduces
             # edgeR's 'nlib == 1' behavior exactly rather than approximating
             # it; see '_is_one_track' for the source reading it comes from.
-            lib_b = lib_a
-            frg_b = frg_a
+            n_bin_b = n_bin_a
+            n_frg_b = n_frg_a
             sf_b = sf_a
-        elif lib_b is None:
+        elif n_bin_b is None:
             counts_b = sum_counts_bdg(args.fil_B, siz_bin, skp_pfx)
-            lib_b, siz_bin = counts_b.total, counts_b.siz_bin
+            n_bin_b, siz_bin = counts_b.total, counts_b.siz_bin
     except (OSError, ValueError) as e:
         if args.verbose:
             _print_pseudo_arguments(args, None, skp_pfx, siz_bin)
@@ -984,21 +1097,21 @@ def _run_edger(
     if siz_bin is None and canonicalize_norm(args.normalization) == "RPKM":
         raise SystemExit(
             "'--siz_bin' is required for '--normalization RPKM' when both "
-            "'--lib_A' and '--lib_B' are supplied, because no track is read "
-            "to infer the bin width from.",
+            "'--n_bin_A' and '--n_bin_B' are supplied, because no track is "
+            "read to infer the bin width from.",
         )
 
     try:
         result = compute_pseudo_edger(
-            lib_a=lib_a,
-            lib_b=lib_b,
+            n_bin_a=n_bin_a,
+            n_bin_b=n_bin_b,
             prior_count=args.prior_count,
             norm=args.normalization,
             siz_bin=siz_bin,
             scale_a=sf_a,
             scale_b=sf_b,
-            frg_a=frg_a,
-            frg_b=frg_b,
+            n_frg_a=n_frg_a,
+            n_frg_b=n_frg_b,
         )
     except ValueError as e:
         raise SystemExit(str(e)) from None
@@ -1020,8 +1133,8 @@ def _run_edger(
 
     if args.verbose:
         with redirect_stdout(sys.stderr):
-            print(f"lib_A          {format_value(lib_a, args.dp)}")
-            print(f"lib_B          {format_value(lib_b, args.dp)}")
+            print(f"n_bin_A        {format_value(n_bin_a, args.dp)}")
+            print(f"n_bin_B        {format_value(n_bin_b, args.dp)}")
             print(
                 "prior_scaled_A "
                 f"{format_value(result['prior_scaled_A'], args.dp)}",
@@ -1060,7 +1173,7 @@ def _run_edger(
                 "dp": args.dp,
                 "skp_pfx": list(skp_pfx),
             },
-            "lib_sizes": {"A": lib_a, "B": lib_b},
+            "n_bin": {"A": n_bin_a, "B": n_bin_b},
             "k": (
                 {"A": result["k_A"], "B": result["k_B"]}
                 if "k_A" in result
@@ -1093,8 +1206,8 @@ def _run_edger(
             print(json.dumps(out, separators=(",", ":"), allow_nan=False))
         except ValueError:
             print(
-                "Strict JSON disallows nan and inf; check '--lib_A' and "
-                "'--lib_B', or just skip '--prt_jsn'.",
+                "Strict JSON disallows nan and inf; check '--n_bin_A' and "
+                "'--n_bin_B', or just skip '--prt_jsn'.",
                 file=sys.stderr,
             )
 
@@ -1135,6 +1248,14 @@ def main(argv: list[str] | None = None) -> int:
     """
 
     args = parse_args(argv)
+
+    # A hidden hyphen spelling is a separate action that argparse's own
+    # 'required' check cannot see, so '--fil-A' alone would be rejected for
+    # want of '--fil_A'. Check the parsed value here instead.
+    if getattr(args, "fil_A", None) is None:
+        raise SystemExit(
+            "'--fil_A' is required. Supply the first bedGraph input path.",
+        )
 
     paths = [
         p for p in (args.fil_A, getattr(args, "fil_B", None)) if p is not None
@@ -1184,14 +1305,14 @@ def main(argv: list[str] | None = None) -> int:
 
             if one_track:
                 need_sf = args.sf_A is None
-                need_aln = args.frg_A is None
+                need_aln = args.n_frg_A is None
                 both = "'--sf_A'"
-                both_frg = "'--frg_A'"
+                both_frg = "'--n_frg_A'"
             else:
                 need_sf = args.sf_A is None or args.sf_B is None
-                need_aln = args.frg_A is None or args.frg_B is None
+                need_aln = args.n_frg_A is None or args.n_frg_B is None
                 both = "both '--sf_A' and '--sf_B'"
-                both_frg = "both '--frg_A' and '--frg_B'"
+                both_frg = "both '--n_frg_A' and '--n_frg_B'"
 
             if canonicalize_norm(args.normalization) == "norm" and need_aln:
                 raise ValueError(
