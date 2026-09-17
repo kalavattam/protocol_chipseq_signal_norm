@@ -926,6 +926,52 @@ def parse_bam(
     return frg_tup
 
 
+def emit_sig_sparse_np(
+    chrom: str,
+    sig: np.ndarray,
+    siz_bin: int,
+) -> object:
+    """
+    Emit one dense per-bin signal array as the tagged sparse result payload.
+
+    Parameters
+    ----------
+    chrom : str
+        Chromosome identifier carried on each emitted part.
+    sig : np.ndarray
+        Dense per-bin signal for the whole chromosome.
+    siz_bin : int
+        Positive signal-bin width in base pairs.
+
+    Returns
+    -------
+    result : object
+        Strategy tag and sparse chromosome result payload.
+
+    Notes
+    -----
+    - Only bins holding an exactly nonzero value are emitted, so an uncovered
+      bin produces no row rather than a near-zero one. Every accumulator
+      feeding this helper owes it exact zeros in uncovered bins.
+    """
+
+    idx = np.flatnonzero(sig != 0.0)
+
+    if idx.size == 0:
+        return "direct_sparse_np", []
+
+    return (
+        "direct_sparse_np",
+        [
+            (
+                chrom,
+                (idx * siz_bin).astype(np.int64, copy=False),
+                sig[idx].astype(np.float64, copy=False),
+            ),
+        ],
+    )
+
+
 def calc_sig_chrom_direct_sparse_np(
     chrom: str,
     starts: np.ndarray,
@@ -1044,21 +1090,7 @@ def calc_sig_chrom_direct_sparse_np(
 
             sig += np.where(interior, np.cumsum(diff[:-1]), 0.0)
 
-    idx = np.flatnonzero(sig != 0.0)
-
-    if idx.size == 0:
-        return "direct_sparse_np", []
-
-    return (
-        "direct_sparse_np",
-        [
-            (
-                chrom,
-                (idx * siz_bin).astype(np.int64, copy=False),
-                sig[idx].astype(np.float64, copy=False),
-            ),
-        ],
-    )
+    return emit_sig_sparse_np(chrom, sig, siz_bin)
 
 
 def calc_sig_idx_fetch_task(
