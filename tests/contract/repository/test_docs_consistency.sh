@@ -250,6 +250,7 @@ python_see_also_modules=(
     "${dir_cli}/calculate_scaling_factor_spike.py"
     "${dir_cli}/compute_input_floor.py"
     "${dir_cli}/compute_pseudo.py"
+    "${dir_cli}/compute_pseudo_deeptools.py"
     "${dir_cli}/compute_signal.py"
     "${dir_cli}/compute_signal_ratio.py"
 )

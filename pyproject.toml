@@ -24,6 +24,7 @@ calculate_scaling_factor_siqchip = "protocol_chipseq_signal_norm.cli.calculate_s
 calculate_scaling_factor_spike = "protocol_chipseq_signal_norm.cli.calculate_scaling_factor_spike:main"
 compute_input_floor = "protocol_chipseq_signal_norm.cli.compute_input_floor:main"
 compute_pseudo = "protocol_chipseq_signal_norm.cli.compute_pseudo:main"
+compute_pseudo_deeptools = "protocol_chipseq_signal_norm.cli.compute_pseudo_deeptools:main"
 compute_signal = "protocol_chipseq_signal_norm.cli.compute_signal:main"
 compute_signal_ratio = "protocol_chipseq_signal_norm.cli.compute_signal_ratio:main"
 merge_bins_bdg = "protocol_chipseq_signal_norm.cli.merge_bins_bdg:main"

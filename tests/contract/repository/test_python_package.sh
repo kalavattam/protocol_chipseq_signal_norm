@@ -93,6 +93,7 @@ expected = {
     "calculate_scaling_factor_spike",
     "compute_input_floor",
     "compute_pseudo",
+    "compute_pseudo_deeptools",
     "compute_signal",
     "compute_signal_ratio",
     "merge_bins_bdg",
@@ -124,6 +125,7 @@ commands=(
     calculate_scaling_factor_spike
     compute_input_floor
     compute_pseudo
+    compute_pseudo_deeptools
     compute_signal
     compute_signal_ratio
     merge_bins_bdg

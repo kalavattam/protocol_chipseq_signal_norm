@@ -42,6 +42,7 @@ hlp_scr=(
     "src/protocol_chipseq_signal_norm/cli/calculate_scaling_factor_spike.py"
     "src/protocol_chipseq_signal_norm/cli/compute_input_floor.py"
     "src/protocol_chipseq_signal_norm/cli/compute_pseudo.py"
+    "src/protocol_chipseq_signal_norm/cli/compute_pseudo_deeptools.py"
     "src/protocol_chipseq_signal_norm/cli/compute_signal.py"
     "src/protocol_chipseq_signal_norm/cli/compute_signal_ratio.py"
     "src/protocol_chipseq_signal_norm/cli/merge_bins_bdg.py"

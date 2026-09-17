@@ -237,6 +237,17 @@
       "availability": "installed",
       "required_runtime_facts": "direct_call_contract",
       "status": "registered"
+    },
+    {
+      "id": "compute_pseudo_deeptools_cli",
+      "path": "src/protocol_chipseq_signal_norm/cli/compute_pseudo_deeptools.py",
+      "symbol": "parse_args",
+      "language": "python",
+      "kind": "installed_help",
+      "audience": "command_user",
+      "availability": "installed",
+      "required_runtime_facts": "complete",
+      "status": "registered"
     }
   ],
   "token_quoting": {
@@ -443,6 +454,14 @@
         {
           "surface_id": "src/protocol_chipseq_signal_norm/cli/compute_pseudo.py::parse_args",
           "path": "src/protocol_chipseq_signal_norm/cli/compute_pseudo.py",
+          "symbol": "parse_args",
+          "parameter": "dp",
+          "owner": "PARAMETER.DESCRIPTIONS",
+          "evidence": "argparse help: Maximum number of decimal places retained for finite emitted values."
+        },
+        {
+          "surface_id": "src/protocol_chipseq_signal_norm/cli/compute_pseudo_deeptools.py::parse_args",
+          "path": "src/protocol_chipseq_signal_norm/cli/compute_pseudo_deeptools.py",
           "symbol": "parse_args",
           "parameter": "dp",
           "owner": "PARAMETER.DESCRIPTIONS",
@@ -757,6 +776,14 @@
         {
           "surface_id": "src/protocol_chipseq_signal_norm/cli/compute_pseudo.py::parse_args",
           "path": "src/protocol_chipseq_signal_norm/cli/compute_pseudo.py",
+          "symbol": "parse_args",
+          "parameter": "skp_pfx",
+          "owner": "PARAMETER.DESCRIPTIONS",
+          "evidence": "argparse help: Comma-separated list of header prefixes to skip in bedGraph file(s)."
+        },
+        {
+          "surface_id": "src/protocol_chipseq_signal_norm/cli/compute_pseudo_deeptools.py::parse_args",
+          "path": "src/protocol_chipseq_signal_norm/cli/compute_pseudo_deeptools.py",
           "symbol": "parse_args",
           "parameter": "skp_pfx",
           "owner": "PARAMETER.DESCRIPTIONS",
@@ -1272,6 +1299,14 @@
           "parameter": "fil_A",
           "owner": "PARAMETER.DESCRIPTIONS",
           "evidence": "argparse help: First bedGraph input file, file A."
+        },
+        {
+          "surface_id": "src/protocol_chipseq_signal_norm/cli/compute_pseudo_deeptools.py::parse_args",
+          "path": "src/protocol_chipseq_signal_norm/cli/compute_pseudo_deeptools.py",
+          "symbol": "parse_args",
+          "parameter": "fil_A",
+          "owner": "PARAMETER.DESCRIPTIONS",
+          "evidence": "argparse help: First bedGraph input file, file A."
         }
       ],
       "local_meanings": [],
@@ -1293,6 +1328,14 @@
         {
           "surface_id": "src/protocol_chipseq_signal_norm/cli/compute_pseudo.py::parse_args",
           "path": "src/protocol_chipseq_signal_norm/cli/compute_pseudo.py",
+          "symbol": "parse_args",
+          "parameter": "fil_B",
+          "owner": "PARAMETER.DESCRIPTIONS",
+          "evidence": "argparse help: Second bedGraph input file, file B."
+        },
+        {
+          "surface_id": "src/protocol_chipseq_signal_norm/cli/compute_pseudo_deeptools.py::parse_args",
+          "path": "src/protocol_chipseq_signal_norm/cli/compute_pseudo_deeptools.py",
           "symbol": "parse_args",
           "parameter": "fil_B",
           "owner": "PARAMETER.DESCRIPTIONS",
@@ -1945,6 +1988,24 @@
       "example_fingerprints": [
         "3bb5988904b76880b1d2e83b25d669c8dae9a71c31cef000e0dc624bf4a5295e",
         "a6d06955471e60f06334952efff23ef27f48a30e59c02b445a2bac0b40b6191c"
+      ],
+      "preservation": "exact",
+      "authority": "authorized_fresh_pilot"
+    },
+    {
+      "surface_id": "compute_pseudo_deeptools_cli",
+      "language": "python",
+      "owner": "compute_pseudo_deeptools",
+      "example_form": "rendered_cli_invocation",
+      "representation_owner": "HELP.EXAMPLES",
+      "lifecycle": "active_enforced",
+      "deferred_record": null,
+      "disposition": "required_two",
+      "minimum_count": 2,
+      "existing_example_count": 2,
+      "example_fingerprints": [
+        "92c03e427695b92877665210cdcfcb3bf72e80f0fa19f7b4da1f121ed99e8575",
+        "8daae0c11d71ba2cf231966d802357e5bbaef4f22048ac2a4ae0a8be3491eba3"
       ],
       "preservation": "exact",
       "authority": "authorized_fresh_pilot"
