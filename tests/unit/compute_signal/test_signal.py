@@ -15,13 +15,18 @@
 
 
 import argparse
+import gzip
 import shutil
 from pathlib import Path
 
+import numpy as np
 import pysam
 import pytest
 
 from protocol_chipseq_signal_norm.cli.compute_signal import (
+    METHOD_CANON,
+    METHOD_DEPOSIT,
+    calc_sig_chrom_direct_sparse_np,
     get_siz_chr,
     iter_aln_frg,
     iter_idx_frg,
@@ -471,7 +476,7 @@ def _registered_hyphen_aliases() -> set[str]:
     """
     Return hidden hyphen spellings that alias a visible option.
 
-    A hidden *option* may also carry a hyphen spelling; those are excluded, as
+    A hidden option may also carry a hyphen spelling; those are excluded, as
     they alias nothing the user can see.
     """
 
@@ -618,3 +623,345 @@ def test_read_to_frg_rejects_a_chromosome_absent_from_sizes() -> None:
 
     with pytest.raises(ValueError, match="usable sequence lengths"):
         read_to_frg(read, lambda _: "absent", {"I": 80})
+
+
+# A single fragment laid across a bin grid it does not divide evenly. At
+# 'siz_bin' 3 the fragment '[0, 10)' fully covers bins 0, 1 and 2 and reaches
+# one base into bin 3, which is the geometry that separates the two deposition
+# families: the fractional methods weight that last bin by its overlap, and the
+# whole-count methods give it the same 1 as any other touched bin.
+PARTIAL_FRAGMENT = {
+    "starts": np.array([0], dtype=np.int64),
+    "ends": np.array([10], dtype=np.int64),
+    "lengths": np.array([10.0], dtype=np.float64),
+    "chrom_size": 30,
+    "siz_bin": 3,
+}
+
+
+def read_bdg_rows(path: Path) -> list[tuple[int, int, float]]:
+    """
+    Read one bedGraph track as '(start, end, value)' rows.
+    """
+
+    if path.suffix == ".gz":
+        text = gzip.decompress(path.read_bytes()).decode("utf-8")
+    else:
+        text = path.read_text(encoding="utf-8")
+
+    rows = []
+
+    for line in text.splitlines():
+        _chrom, start, end, value = line.split("\t")
+        rows.append((int(start), int(end), float(value)))
+
+    return rows
+
+
+def run_method(
+    tmp_path: Path,
+    method: str,
+    extra_args: list[str] | None = None,
+    fil_in: Path | None = None,
+    name: str | None = None,
+) -> list[tuple[int, int, float]]:
+    """
+    Run one bedGraph method at full precision and return its rows.
+    """
+
+    source = fil_in or (FIXTURES / "bam" / "se" / "tiny_se.bam")
+    fil_out = tmp_path / f"{name or method}.bedGraph"
+
+    status = main(
+        [
+            "--fil_in",
+            str(source),
+            "--fil_out",
+            str(fil_out),
+            "--method",
+            method,
+            "--dp",
+            "24",
+            *(extra_args or []),
+        ],
+    )
+
+    assert status == 0
+
+    return read_bdg_rows(fil_out)
+
+
+def test_whole_count_deposits_one_in_a_partly_covered_bin() -> None:
+    """
+    A whole count lands in a bin the fragment only partly covers.
+
+    This is the test that fails if the whole-count family were built by
+    reweighting the fractional accumulator instead of given its own path. A
+    per-bin tweak of the fractional engine cannot produce both columns below:
+    the fractional deposit is the overlap divided by fragment length, so the
+    one-base terminal bin is worth a tenth of a full bin, while the whole-count
+    deposit does not know how much of the bin was covered.
+    """
+
+    _tag, whole = calc_sig_chrom_direct_sparse_np(
+        chrom="I",
+        **PARTIAL_FRAGMENT,
+        is_len=False,
+        is_whole=True,
+    )
+    _tag, fractional = calc_sig_chrom_direct_sparse_np(
+        chrom="I",
+        **PARTIAL_FRAGMENT,
+        is_len=True,
+    )
+
+    np.testing.assert_array_equal(whole[0][1], np.array([0, 3, 6, 9]))
+    np.testing.assert_array_equal(fractional[0][1], np.array([0, 3, 6, 9]))
+
+    # Every touched bin takes exactly one, the partial terminal bin included.
+    np.testing.assert_array_equal(
+        whole[0][2],
+        np.array([1.0, 1.0, 1.0, 1.0]),
+    )
+
+    # The same terminal bin under the fractional family is worth its one base
+    # of overlap out of a fragment length of ten.
+    np.testing.assert_allclose(
+        fractional[0][2],
+        np.array([0.3, 0.3, 0.3, 0.1]),
+        rtol=1e-12,
+    )
+
+    assert whole[0][2][-1] != pytest.approx(fractional[0][2][-1])
+
+
+def test_whole_count_refuses_fragment_length_weighting() -> None:
+    """
+    Asking for both deposition families at once is refused, not resolved.
+
+    The two flags encode three valid states, which leaves a fourth that
+    describes no method. Letting it resolve to whichever flag the
+    implementation reads first would make a caller error look like a deliberate
+    choice.
+    """
+
+    with pytest.raises(ValueError, match="no fragment-length weighting"):
+        calc_sig_chrom_direct_sparse_np(
+            chrom="I",
+            **PARTIAL_FRAGMENT,
+            is_len=True,
+            is_whole=True,
+        )
+
+
+def test_count_and_frag_disagree_on_a_partly_covered_bin(
+    tmp_path: Path,
+) -> None:
+    """
+    The same separation survives the whole command-line path.
+    """
+
+    count_rows = run_method(tmp_path, "count", ["--siz_bin", "3"])
+    frag_rows = run_method(tmp_path, "frag", ["--siz_bin", "3"])
+
+    assert [row[:2] for row in count_rows] == [row[:2] for row in frag_rows]
+    assert {row[2] for row in count_rows} == {1.0}
+
+    partial = [row for row in frag_rows if row[0] == 9]
+
+    assert len(partial) == 1
+    assert partial[0][2] == pytest.approx(0.1)
+
+
+def test_whole_count_methods_share_one_bin_support(tmp_path: Path) -> None:
+    """
+    Both whole-count methods touch the same bins as the fractional family.
+    """
+
+    bins_count = [row[:2] for row in run_method(tmp_path, "count")]
+    bins_cpm = [row[:2] for row in run_method(tmp_path, "cpm")]
+    bins_frag = [row[:2] for row in run_method(tmp_path, "frag")]
+
+    assert bins_count == bins_frag
+    assert bins_cpm == bins_frag
+
+
+@pytest.mark.parametrize("siz_bin", ["3", "10", "7"])
+def test_cpm_is_the_count_track_scaled_to_one_million(
+    tmp_path: Path,
+    siz_bin: str,
+) -> None:
+    """
+    A 'cpm' track is its 'count' track divided by that track's own total.
+    """
+
+    count_rows = run_method(tmp_path, "count", ["--siz_bin", siz_bin])
+    cpm_rows = run_method(tmp_path, "cpm", ["--siz_bin", siz_bin])
+
+    assert [row[:2] for row in count_rows] == [row[:2] for row in cpm_rows]
+
+    bin_tot = sum(row[2] for row in count_rows)
+
+    assert bin_tot > 0
+
+    expected = [row[2] * 1e6 / bin_tot for row in count_rows]
+
+    np.testing.assert_allclose(
+        [row[2] for row in cpm_rows],
+        expected,
+        rtol=1e-12,
+    )
+
+    assert sum(row[2] for row in cpm_rows) == pytest.approx(1e6, rel=1e-12)
+
+
+def test_scl_fct_scales_the_whole_count_methods(tmp_path: Path) -> None:
+    """
+    A scale factor means the same thing for the whole-count methods.
+    """
+
+    for method in ("count", "cpm"):
+        plain = run_method(
+            tmp_path,
+            method,
+            ["--siz_bin", "3"],
+            name=f"{method}_plain",
+        )
+        scaled = run_method(
+            tmp_path,
+            method,
+            ["--siz_bin", "3", "--scl_fct", "2.5"],
+            name=f"{method}_scaled",
+        )
+
+        np.testing.assert_allclose(
+            [row[2] for row in scaled],
+            [row[2] * 2.5 for row in plain],
+            rtol=1e-12,
+        )
+
+
+@pytest.mark.parametrize("method", ["count", "cpm"])
+def test_whole_count_engines_agree(tmp_path: Path, method: str) -> None:
+    """
+    Window fetch deposits each fragment once, as chromosome fetch does.
+    """
+
+    by_chrom = run_method(
+        tmp_path,
+        method,
+        ["--siz_bin", "3"],
+        name=f"{method}_chrom",
+    )
+    by_window = run_method(
+        tmp_path,
+        method,
+        ["--siz_bin", "3", "--engine", "window", "--siz_win", "15"],
+        name=f"{method}_window",
+    )
+
+    assert by_chrom == by_window
+
+
+@pytest.mark.parametrize(
+    ("alias", "canonical"),
+    [
+        ("count", "count"),
+        ("cpm", "cpm"),
+    ],
+)
+def test_whole_count_aliases_standardize(alias: str, canonical: str) -> None:
+    args = parse_args(
+        [
+            "--fil_in",
+            "in.bam",
+            "--fil_out",
+            "out.bedGraph",
+            "--method",
+            alias,
+        ],
+    )
+
+    assert METHOD_CANON[args.method] == canonical
+
+
+def test_every_canonical_method_has_a_deposition_rule() -> None:
+    """
+    The deposition map is total over the methods the parser accepts.
+
+    A method reaching the accumulator without a deposition rule would take
+    whichever family the lookup defaulted to, which is the silent wrong-object
+    failure the two families exist to keep apart. Keeping the map total makes
+    that a loud lookup error instead.
+    """
+
+    assert set(METHOD_DEPOSIT) == set(METHOD_CANON.values())
+    assert set(METHOD_DEPOSIT.values()) == {"fractional", "whole"}
+
+
+def test_the_method_vocabulary_is_exactly_the_ruled_set() -> None:
+    """
+    Every accepted spelling is one the vocabulary ruling admits.
+
+    Each alias here is also a spelling a sibling tool mirrors, so an extra one
+    is not free: it becomes a second file's edit in another workstream.
+    """
+
+    assert set(METHOD_CANON) >= {
+        "unadj",
+        "frag",
+        "norm",
+        "nc",
+        "count",
+        "cpm",
+    }
+
+    for retired in ("ct", "cp", "cnt", "c"):
+        assert retired not in METHOD_CANON
+
+
+def test_a_bare_c_method_is_rejected() -> None:
+    """
+    'c' names no method, because it would name either whole-count member.
+
+    The two differ by a per-sample scalar, so guessing one would hand back a
+    plausible-looking track rather than an error.
+    """
+
+    assert "c" not in METHOD_CANON
+
+    with pytest.raises(SystemExit):
+        parse_args(
+            [
+                "--fil_in",
+                "in.bam",
+                "--fil_out",
+                "out.bedGraph",
+                "--method",
+                "c",
+            ],
+        )
+
+
+@pytest.mark.parametrize("method", ["count", "cpm"])
+def test_whole_count_writes_a_gzipped_bedgraph(
+    tmp_path: Path,
+    method: str,
+) -> None:
+    fil_out = tmp_path / f"{method}.bedGraph.gz"
+
+    status = main(
+        [
+            "--fil_in",
+            str(FIXTURES / "bam" / "se" / "tiny_se.bam"),
+            "--fil_out",
+            str(fil_out),
+            "--method",
+            method,
+            "--siz_bin",
+            "3",
+        ],
+    )
+
+    assert status == 0
+    assert read_bdg_rows(fil_out)

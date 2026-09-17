@@ -511,3 +511,213 @@ def test_hidden_hyphen_spelling_derives_identically(tmp_path: Path) -> None:
     assert status == 0
     assert read_count(tmp_path / "track.n_frg.txt") > 0
     assert read_count(tmp_path / "track.n_bin.txt") > 0
+
+
+def read_bdg_values(path: Path) -> list[float]:
+    """
+    Read the value column of one bedGraph track in file order.
+    """
+
+    return [
+        float(line.split("\t")[3])
+        for line in path.read_text(encoding="utf-8").splitlines()
+    ]
+
+
+def sum_bdg_values(path: Path) -> float:
+    """
+    Sum every emitted value in one bedGraph track.
+    """
+
+    total = 0.0
+
+    for line in path.read_text(encoding="utf-8").splitlines():
+        _chrom, _start, _end, value = line.split("\t")
+        total += float(value)
+
+    return total
+
+
+@pytest.mark.parametrize(
+    ("fixture", "siz_bin", "usr_frg"),
+    [
+        ("bam/se/tiny_se.bam", "3", None),
+        ("bam/se/tiny_se.bam", "10", None),
+        ("bam/se/tiny_se.bam", "7", "25"),
+        ("bam/pe/tiny_pe.bam", "3", None),
+        ("bam/pe/tiny_pe.bam", "10", None),
+        ("bam/pe/tiny_pe.bam", "4", "18"),
+    ],
+)
+def test_count_track_column_sum_equals_reported_n_bin(
+    tmp_path: Path,
+    fixture: str,
+    siz_bin: str,
+    usr_frg: str | None,
+) -> None:
+    """
+    A 'count' track sums to 'L' exactly, as an integer rather than a tolerance.
+
+    Whole-count deposition reads the same fragments '--report_n_bin' counts,
+    through the same iterator and admission rules and under the same
+    '--usr_frg' extension and clamping, so the two numbers are the same
+    quantity arrived at twice: once by accumulating into bins and once by
+    arithmetic on fragment coordinates. Nothing rounds in between, so any
+    disagreement is a real one. The run is unfiltered and emitted at full
+    precision, because value rounding or row filtering would defeat the
+    identity rather than test it.
+    """
+
+    fil_in = FIXTURES / fixture
+    fil_out = tmp_path / "count.bedGraph"
+    path_l = tmp_path / "report_l.txt"
+
+    status = main(
+        [
+            "--fil_in",
+            str(fil_in),
+            "--fil_out",
+            str(fil_out),
+            "--method",
+            "count",
+            "--siz_bin",
+            siz_bin,
+            "--dp",
+            "24",
+            "--report_n_bin",
+            str(path_l),
+            *(["--usr_frg", usr_frg] if usr_frg is not None else []),
+        ],
+    )
+
+    assert status == 0
+
+    n_bin = read_count(path_l)
+    column_sum = sum_bdg_values(fil_out)
+
+    assert n_bin > 0
+    assert column_sum == float(n_bin)
+    assert int(column_sum) == n_bin
+
+
+@pytest.mark.parametrize(
+    ("fixture", "siz_bin", "usr_frg"),
+    [
+        ("bam/se/tiny_se.bam", "3", None),
+        ("bam/se/tiny_se.bam", "10", None),
+        ("bam/se/tiny_se.bam", "7", "25"),
+        ("bam/pe/tiny_pe.bam", "3", None),
+        ("bam/pe/tiny_pe.bam", "10", None),
+        ("bam/pe/tiny_pe.bam", "4", "18"),
+    ],
+)
+def test_cpm_closure_divides_by_the_reported_n_bin(
+    tmp_path: Path,
+    fixture: str,
+    siz_bin: str,
+    usr_frg: str | None,
+) -> None:
+    """
+    The 'L' the closure divides by is the 'L' that '--report_n_bin' reports.
+
+    The closure reads its divisor off the column being scaled, which is what
+    makes the closure exact and is edgeR's own rule. It also leaves the closure
+    unable to detect a wrong divisor, since a wrong 'L' still closes to one
+    million. Recovering the check costs no second pass over the alignment:
+    '--report_n_bin' counts the same fragments through separate arithmetic in
+    the same run, so inverting the closure bin by bin recovers the divisor
+    actually used and compares it against that independently counted value. One
+    extra or missing fragment-bin incidence in either path shows up here as an
+    integer disagreement.
+    """
+
+    args_shared = [
+        "--fil_in",
+        str(FIXTURES / fixture),
+        "--siz_bin",
+        siz_bin,
+        "--dp",
+        "24",
+        *(["--usr_frg", usr_frg] if usr_frg is not None else []),
+    ]
+
+    out_count = tmp_path / "count.bedGraph"
+    out_cpm = tmp_path / "cpm.bedGraph"
+    path_l = tmp_path / "report_l.txt"
+
+    status_count = main(
+        [
+            *args_shared,
+            "--fil_out",
+            str(out_count),
+            "--method",
+            "count",
+            "--report_n_bin",
+            str(path_l),
+        ],
+    )
+    status_cpm = main(
+        [*args_shared, "--fil_out", str(out_cpm), "--method", "cpm"],
+    )
+
+    assert status_count == 0
+    assert status_cpm == 0
+
+    n_bin = read_count(path_l)
+    counts = read_bdg_values(out_count)
+    scaled = read_bdg_values(out_cpm)
+
+    assert counts
+    assert len(counts) == len(scaled)
+
+    # Invert the closure: 'cpm = count / (L / 1e6)', so 'count * 1e6 / cpm'
+    # returns the 'L' the run actually divided by, bin by bin.
+    for count, value in zip(counts, scaled, strict=True):
+        assert value > 0
+
+        recovered = count * 1e6 / value
+
+        assert round(recovered) == n_bin
+        assert recovered == pytest.approx(float(n_bin), rel=1e-9)
+
+
+@pytest.mark.parametrize(
+    ("fixture", "siz_bin"),
+    [
+        ("bam/se/tiny_se.bam", "3"),
+        ("bam/pe/tiny_pe.bam", "10"),
+    ],
+)
+def test_cpm_track_column_sum_is_one_million(
+    tmp_path: Path,
+    fixture: str,
+    siz_bin: str,
+) -> None:
+    """
+    A 'cpm' track closes to one million.
+
+    The closure divides by the track's own column total, so this guards the
+    closure against regression rather than discovering the total independently.
+    The independent check is the 'count' identity above, which the closure is
+    built on.
+    """
+
+    fil_out = tmp_path / "cpm.bedGraph"
+
+    status = main(
+        [
+            "--fil_in",
+            str(FIXTURES / fixture),
+            "--fil_out",
+            str(fil_out),
+            "--method",
+            "cpm",
+            "--siz_bin",
+            siz_bin,
+            "--dp",
+            "24",
+        ],
+    )
+
+    assert status == 0
+    assert sum_bdg_values(fil_out) == pytest.approx(1e6, rel=1e-12)

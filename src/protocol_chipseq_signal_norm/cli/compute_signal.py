@@ -83,7 +83,9 @@ assert sys.version_info >= (3, 11), "Python >= 3.11 required."
 # Map accepted '--method' values to canonical internal names.
 # fmt: off
 METHOD_CANON = {
-    # Compute unadjusted signal.
+    # Deposit base-pair overlap, in which a partly covered bin takes a share
+    # proportional to that overlap, not a whole unit. The column sums to total
+    # fragment length; 'frag' and 'norm' below rescale this same deposition.
     "r": "unadj",
     "raw": "unadj",
     "u": "unadj",
@@ -110,9 +112,30 @@ METHOD_CANON = {
     "nrm": "norm",
     "norm": "norm",
     "normalized": "norm",
+
+    # Deposit one whole count in every bin a fragment touches.
+    "count": "count",
+
+    # Close the whole count to counts per million.
+    "cpm": "cpm",
 }
 # fmt: on
 METHOD_CHOICES = tuple(METHOD_CANON.keys())
+
+# Map each canonical method to how one fragment deposits into the bins it
+# spans. Fractional methods add base-pair overlap, optionally divided by
+# fragment length; whole-count methods add one per touched bin. The map is
+# total over the canonical methods, so a method added without a deposition
+# rule raises here rather than defaulting to a family it was never assigned
+# to.
+METHOD_DEPOSIT = {
+    "unadj": "fractional",
+    "frag": "fractional",
+    "norm": "fractional",
+    "count": "whole",
+    "cpm": "whole",
+}
+
 ENGINE_CHOICES = ("chrom", "window")
 ENGINE_STRAT = {
     "chrom": "idx_chrom",
@@ -368,8 +391,8 @@ def check_idx_aln(
     with pysam.AlignmentFile(fil_aln, "rb", **kwargs) as alignment_file:
         if not alignment_file.has_index():
             raise ValueError(
-                "Indexed signal engines require an alignment index "
-                "(.bai for BAM or .crai for CRAM).",
+                "Indexed signal engines require an alignment index (.bai for "
+                "BAM or .crai for CRAM).",
             )
 
 
@@ -972,6 +995,62 @@ def emit_sig_sparse_np(
     )
 
 
+def calc_sig_whole_np(
+    starts: np.ndarray,
+    ends: np.ndarray,
+    n_bins: int,
+    siz_bin: int,
+) -> np.ndarray:
+    """
+    Deposit one whole count in every bin each fragment touches.
+
+    This is the whole-count family's accumulation, and it is deliberately not
+    the fractional accumulator under a different weight. A fractional deposit
+    is the base-pair overlap, optionally divided by fragment length, so it
+    differs from one at every partial overlap; here a touched bin takes one
+    whether the fragment covers all of it or a single base.
+
+    Parameters
+    ----------
+    starts : np.ndarray
+        Zero-based interval start coordinates, already filtered to positive
+        spans.
+    ends : np.ndarray
+        Zero-based, exclusive interval end coordinates aligned with 'starts'.
+    n_bins : int
+        Number of bins spanning the chromosome.
+    siz_bin : int
+        Positive signal-bin width in base pairs.
+
+    Returns
+    -------
+    sig : np.ndarray
+        Dense per-bin counts as 'float64', summing to the number of fragment
+        touches that 'count_frgs_and_bins' reports as 'L'.
+
+    Notes
+    -----
+    - A half-open fragment '[start, end)' touches bins 'start // siz_bin'
+      through '(end - 1) // siz_bin' inclusive, which is the span rule
+      'count_frgs_and_bins' applied to the same fragments.
+    - Accumulation runs over an 'int64' difference array, so every per-bin
+      total is an exact integer before the single cast to 'float64'. That
+      leaves no rounding residue for the caller's nonzero mask to mistake for
+      coverage.
+    - Ends are clipped to the chromosome upstream, so the largest touched bin
+      is 'n_bins - 1' and the difference array's closing index stays in range.
+    """
+
+    start_bins = starts // siz_bin
+    end_bins = (ends - 1) // siz_bin
+
+    diff = np.zeros(n_bins + 1, dtype=np.int64)
+    np.add.at(diff, start_bins, 1)
+    np.add.at(diff, end_bins + 1, -1)
+
+    return np.cumsum(diff[:-1]).astype(np.float64, copy=False)
+
+
 def calc_sig_chrom_direct_sparse_np(
     chrom: str,
     starts: np.ndarray,
@@ -980,6 +1059,7 @@ def calc_sig_chrom_direct_sparse_np(
     chrom_size: int,
     siz_bin: int,
     is_len: bool,
+    is_whole: bool = False,
 ) -> object:
     """
     Compute binned signal and return sparse NumPy arrays without a dict.
@@ -1000,6 +1080,9 @@ def calc_sig_chrom_direct_sparse_np(
         Positive signal-bin width in base pairs.
     is_len : bool
         Whether signal weights are normalized by fragment length.
+    is_whole : bool
+        Whether a fragment deposits one whole count per touched bin rather than
+        base-pair overlap.
 
     Returns
     -------
@@ -1009,10 +1092,23 @@ def calc_sig_chrom_direct_sparse_np(
     Raises
     ------
     ValueError
-        If a supplied value violates the validated contract.
+        If a supplied value violates the validated contract, or if whole-count
+        deposition is combined with fragment-length weighting.
+
+    Notes
+    -----
+    The two flags name different things and do not combine: 'is_whole' selects
+    the deposition family, and 'is_len' selects the weight within the
+    fractional family. Setting both describes no method, so it raises rather
+    than resolving to whichever flag this implementation happens to read first.
     """
 
     validate_comparison(siz_bin, "gt", 0, "siz_bin", allow_none=False)
+
+    if is_whole and is_len:
+        raise ValueError(
+            "Whole-count deposition takes no fragment-length weighting.",
+        )
 
     if chrom_size <= 0:
         raise ValueError(f"Chromosome size must be > 0 for {chrom!r}.")
@@ -1030,6 +1126,13 @@ def calc_sig_chrom_direct_sparse_np(
 
     if starts.size == 0:
         return "direct_sparse_np", []
+
+    if is_whole:
+        return emit_sig_sparse_np(
+            chrom,
+            calc_sig_whole_np(starts, ends, n_bins, siz_bin),
+            siz_bin,
+        )
 
     if is_len:
         if np.any(lengths <= 0):
@@ -1120,6 +1223,7 @@ def calc_sig_idx_fetch_task(
         end,
         siz_bin,
         is_len,
+        is_whole,
     ) = data
 
     frg_arr, n_frg = collect_frg_arr(
@@ -1147,6 +1251,7 @@ def calc_sig_idx_fetch_task(
             chrom_size=siz_chr[chrom],
             siz_bin=siz_bin,
             is_len=is_len,
+            is_whole=is_whole,
         )
 
     return sig, n_frg
@@ -1404,6 +1509,7 @@ def apply_sig_adj(
     frg_tot: int,
     is_norm: bool,
     scl_fct: float | None = None,
+    is_cpm: bool = False,
 ) -> None:
     """
     Apply global depth normalization and scaling to already merged signal.
@@ -1418,11 +1524,28 @@ def apply_sig_adj(
         Whether to apply depth normalization.
     scl_fct : float | None
         Optional multiplicative scale factor.
+    is_cpm : bool
+        Whether to close a whole-count track to counts per million.
 
     Raises
     ------
     ValueError
-        If normalization is requested with no accepted fragments.
+        If normalization is requested with no accepted fragments, or if the
+        counts-per-million closure is requested on an empty track.
+
+    Notes
+    -----
+    - The counts-per-million closure divides by the track's own column total
+      'L', which a whole-count track carries exactly: every bin holds an
+      integer touch count, so their sum is the same 'L' that '--report_n_bin'
+      reports on the same fragment population. Reading it off the track rather
+      than re-walking the alignment costs nothing and cannot disagree with the
+      values being scaled.
+    - Division by 'L / 1e6' rather than multiplication by '1e6 / L' is edgeR's
+      own 'cpm' construction, kept so the arithmetic matches the source the
+      measured identity was taken from.
+    - Any '--scl_fct' multiplier applies last, on top of either closure, so a
+      scale factor means the same thing for every method.
     """
 
     if is_norm:
@@ -1433,6 +1556,19 @@ def apply_sig_adj(
 
         for values in iter_sig_arr(sig_bin):
             values /= frg_tot
+
+    if is_cpm:
+        bin_tot = sum(float(values.sum()) for values in iter_sig_arr(sig_bin))
+
+        if bin_tot <= 0:
+            raise ValueError(
+                "Counts per million requires non-zero total bin counts.",
+            )
+
+        siz_lib = bin_tot / 1e6
+
+        for values in iter_sig_arr(sig_bin):
+            values /= siz_lib
 
     if scl_fct is not None:
         validate_comparison(scl_fct, "gt", 0, "scl_fct")
@@ -2117,17 +2253,31 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         help=(
             "Workflow method. Specify signal calculation type (default: "
             "'%(default)s').\n"
+            "\n"
+            "Fractional methods deposit each fragment's base-pair overlap "
+            "with a bin, so a bin the fragment only partly covers takes a "
+            "partial value.\n"
             "  - Unadjusted aliases: 'r', 'raw', 'u', 'unadj', 'unadjusted', "
-            "'s', 'smp', 'simple'. Internally standardized to 'unadj'.\n"
+            "'s', 'smp', 'simple'. Internally standardized to 'unadj'. Each "
+            "bin takes its overlap in base pairs with no further adjustment, "
+            "so the track sums to the combined length of all fragments.\n"
             "  - Fragment-length-normalized aliases: 'f', 'frg', 'frag', "
             "'frg_len', 'frag_len', 'l', 'len', 'len_frg', 'len_frag'. "
-            "Internally standardized to 'frag'.\n"
+            "Internally standardized to 'frag'. Each overlap is divided by "
+            "fragment length, so every fragment contributes 1 in total and "
+            "the track sums to the fragment count '--report_n_frg' reports.\n"
             "  - Normalized-coverage aliases: 'n', 'nc', 'nrm', 'norm', "
-            "'normalized'. Internally standardized to 'norm'.\n"
+            "'normalized'. Internally standardized to 'norm'. Each overlap is "
+            "divided by fragment length and by total fragments, so the "
+            "genome-wide summed signal is approximately 1.\n"
             "\n"
-            "Note: 'norm' normalizes for both fragment length and total "
-            "fragment count so that the genome-wide summed signal is "
-            "approximately 1.\n"
+            "Whole-count methods deposit 1 in every bin a fragment touches, "
+            "whether the fragment covers the whole bin or a single base.\n"
+            "  - Whole-count method: 'count'. Each touched bin takes 1, so "
+            "the track sums to the bin total '--report_n_bin' reports.\n"
+            "  - Counts-per-million method: 'cpm'. The whole counts are "
+            "rescaled so the track values sum to one million before '--dp' "
+            "rounding.\n"
             "\n"
         ),
     )
@@ -2277,6 +2427,10 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
             "Bins are counted once per fragment that touches them, so 'L' "
             "totals the bins spanned by the same fragments counted by 'N' "
             "(see '--report_n_frg' above).\n"
+            "\n"
+            "A '--method count' track's value column sums to 'L', since every "
+            "touched bin holds a whole count. Other tracks do not, and 'L' is "
+            "counted from the fragments rather than summed off any track.\n"
             "\n"
         ),
     )
@@ -2625,6 +2779,7 @@ def _sig_results(
     siz_chr: dict[str, int],
     is_len: bool,
     is_norm: bool,
+    is_whole: bool,
     profile: dict | None,
 ) -> Iterable[Any]:
     """
@@ -2642,6 +2797,8 @@ def _sig_results(
         Whether signal weights use fragment length.
     is_norm : bool
         Whether signal is normalized by total fragments.
+    is_whole : bool
+        Whether a fragment deposits one whole count per touched bin.
     profile : dict | None
         Optional mutable task and timing profile.
 
@@ -2678,6 +2835,7 @@ def _sig_results(
                 None,
                 args.siz_bin,
                 is_len or is_norm,
+                is_whole,
             )
             for chrom in task_chr
         ]
@@ -2696,6 +2854,7 @@ def _sig_results(
                 ),
                 args.siz_bin,
                 is_len or is_norm,
+                is_whole,
             )
             for chrom in task_chr
             for start in range(
@@ -2922,6 +3081,8 @@ def main(argv: list[str] | None = None) -> int:
 
     is_len = args.method == "frag"
     is_norm = args.method == "norm"
+    is_whole = METHOD_DEPOSIT[args.method] == "whole"
+    is_cpm = args.method == "cpm"
     profile = start_profile(args, fil_out, fmt_out)
 
     if args.verbose:
@@ -3050,6 +3211,7 @@ def main(argv: list[str] | None = None) -> int:
             siz_chr,
             is_len,
             is_norm,
+            is_whole,
             profile,
         )
 
@@ -3080,6 +3242,7 @@ def main(argv: list[str] | None = None) -> int:
             frg_tot,
             is_norm,
             args.scl_fct,
+            is_cpm,
         )
         record_phase(profile, "apply_sig_adj", time_phase)
 
