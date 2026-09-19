@@ -52,19 +52,21 @@ Parameters
   -md, --mode : {'signal', 'ratio', 'coord'}
     Workflow mode: 'signal', 'ratio', or 'coord' (default: '${mode}').
 
-  -me, --method : {'unadj', 'frag', 'norm', 'log2', 'unadj_r', 'log2_r'}
+  -me, --method : {'unadj', 'frag', 'norm', 'count', 'cpm', 'linear', 'log2', 'linear_r', 'log2_r'}
     Workflow method. Signal or ratio computation subtype.
 
     With '--mode signal':
-      - 'unadj' gives per-bin totals with no adjustment, useful for inspecting raw coverage;
-      - 'frag' adjusts by fragment length; and
-      - 'norm' adjusts by both fragment length and total fragments, so genome-wide coverage sums to 1 and can be comparable across samples.
+      - 'unadj' gives base-pair overlap with no adjustment;
+      - 'frag' gives base-pair overlap divided by fragment length;
+      - 'norm' (alias 'nc') gives base-pair overlap divided by fragment length and total fragments, so genome-wide coverage sums to 1;
+      - 'count' deposits one whole count per bin a fragment touches, so the track sums to the overlap count 'L'; and
+      - 'cpm' rescales those whole counts to sum to one million.
 
     With '--mode ratio':
-      - 'unadj' gives 'fil_A / fil_B' (e.g., IP/input) and 'log2' gives its log2, which is symmetric about zero.
-      - The 'unadj_r' and 'log2_r' variants invert the comparison to 'fil_B / fil_A'.
+      - 'linear' gives 'fil_A / fil_B' (e.g., IP/input) and 'log2' (alias 'l2') gives its log2, which is symmetric about zero.
+      - The 'linear_r' and 'log2_r' (alias 'l2_r') variants invert the comparison to 'fil_B / fil_A' ("r" stands for "reciprocal").
 
-    If '--mode signal', defaults to 'norm'. If '--mode ratio', defaults to 'unadj'. If '--mode coord', this argument is ignored.
+    If '--mode signal', defaults to 'norm'. If '--mode ratio', defaults to 'linear'. If '--mode coord', this argument is ignored.
 
   -ci, --csv_fil_in : list of file
     Comma-separated list of input file paths for BAM or CRAM files.
@@ -118,6 +120,8 @@ Parameters
 
     Used with '--mode signal' or '--mode ratio'.
 
+    A factor multiplies the finished track verbatim, whatever '--method' produced it. A siQ-ChIP alpha is derived against a particular substrate: equations 5 and 6 for 'frag', 5nd and 6nd for 'norm'. A spike-in alpha applies to a ratio, and a ratio built from either 'count' or 'unadj' serves, since the per-bin deposition difference largely cancels in the division. Earlier spike-in work used 'count', so prefer it where continuity with those results matters.
+
   -cuf, --csv_usr_frg : list of int
     Comma-separated list of fixed fragment-length values or sentinels.
 
@@ -154,7 +158,7 @@ Parameters
     Comma-separated list of paths for per-sample fragment-count reports. Supply one path per '--csv_fil_in' element. Used only with '--mode signal'.
 
   -crb, --csv_report_n_bin : list of file
-    Comma-separated list of paths for per-sample spanned-bin-count reports. 'L' counts bins, so it depends on '--siz_bin'. Used only with '--mode signal'.
+    Comma-separated list of paths for per-sample overlap-count reports. 'L' counts fragment-bin overlaps, so it depends on '--siz_bin'. Used only with '--mode signal'.
 
   -tr, --track : flag
     Write a companion track file. If '--mode ratio', write a companion bedGraph without non-finite rows.
@@ -248,7 +252,7 @@ Examples
 
     Supply one path per '--csv_fil_in' element. Counting happens before the output branch, so the values match those of a run that writes no track.
 
-  4. Count fragments and spanned bins without writing a track.
+  4. Count fragments and fragment-bin overlaps without writing a track.
     '''bash
     bash "\${dir_scr}/submit_compute_signal.sh" \\
         --env_nam "env_protocol" \\
@@ -263,6 +267,24 @@ Examples
         --nam_job "compute_signal_counts"
     '''
 
-    Omitting '--csv_fil_out' is permitted only because a report list is given; 'L' counts bins, so it still depends on '--siz_bin'.
+    Omitting '--csv_fil_out' is permitted only because a report list is given; 'L' counts fragment-bin overlaps, so it still depends on '--siz_bin'.
+
+  5. Compute counts-per-million signal from whole-count deposition.
+    '''bash
+    bash "\${dir_scr}/submit_compute_signal.sh" \\
+        --env_nam "env_protocol" \\
+        --dir_scr "\${dir_scr}" \\
+        --threads 4 \\
+        --mode "signal" \\
+        --method "cpm" \\
+        --csv_fil_in "\${dir_bam}/sample_1.bam,\${dir_bam}/sample_2.bam" \\
+        --csv_fil_out "\${dir_out}/sample_1.bedGraph.gz,\${dir_out}/sample_2.bedGraph.gz" \\
+        --csv_report_n_bin "\${dir_out}/sample_1.n_bin.txt,\${dir_out}/sample_2.n_bin.txt" \\
+        --siz_bin 10 \\
+        --dir_eo "\${dir_eo}" \\
+        --nam_job "compute_signal_cpm"
+    '''
+
+    Each fragment deposits one whole count per touched bin, and the track is rescaled to sum to one million. '--csv_report_n_bin' writes the divisor 'L' beside each track.
 EOM
 }

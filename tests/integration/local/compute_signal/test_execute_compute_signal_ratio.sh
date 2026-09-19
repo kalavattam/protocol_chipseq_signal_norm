@@ -41,10 +41,10 @@ dir_log="${TEST_DIR_LOG}/compute_signal"
 fil_A_gz="${dir_in}/ratio_A.bdg.gz"
 fil_B_gz="${dir_in}/ratio_B.bdg.gz"
 
-fil_out_unadj="${dir_out}/exec_ratio_A.bdg"
+fil_out_linear="${dir_out}/exec_ratio_A.bdg"
 fil_out_scl_fct="${dir_out}/exec_scl_fct_ratio_A.bdg"
 fil_out_log2="${dir_out}/exec_log2_ratio_A.bdg"
-fil_out_unadj_r="${dir_out}/exec_unadj_r_ratio_A.bdg"
+fil_out_linear_r="${dir_out}/exec_linear_r_ratio_A.bdg"
 fil_out_log2_r="${dir_out}/exec_log2_r_ratio_A.bdg"
 fil_out_dep_min="${dir_out}/exec_dep_min_ratio_A.bdg"
 fil_out_eps="${dir_out}/exec_eps_ratio_A.bdg"
@@ -59,10 +59,10 @@ fil_out_skp_pfx="${dir_out}/exec_skp_pfx_ratio_headers_A.bdg"
 trackfile_track="${dir_out}/exec_track_ratio_A.track.bdg"
 outfile_txt_gzip_io="${dir_out}/exec_gzip_io_ratio_A.bdg"
 
-log_unadj="${dir_log}/execute_compute_signal_ratio_unadj.log"
+log_linear="${dir_log}/execute_compute_signal_ratio_linear.log"
 log_scl_fct="${dir_log}/execute_compute_signal_ratio_scl_fct.log"
 log_log2="${dir_log}/execute_compute_signal_ratio_log2.log"
-log_unadj_r="${dir_log}/execute_compute_signal_ratio_unadj_r.log"
+log_linear_r="${dir_log}/execute_compute_signal_ratio_linear_r.log"
 log_log2_r="${dir_log}/execute_compute_signal_ratio_log2_r.log"
 log_dep_min="${dir_log}/execute_compute_signal_ratio_dep_min.log"
 log_eps="${dir_log}/execute_compute_signal_ratio_eps.log"
@@ -114,13 +114,13 @@ require_files_nonempty \
 }
 
 
-# Baseline unadjusted ratio with three-decimal rounding.
+# Baseline linear ratio with three-decimal rounding.
 run_case_compute_signal_ratio \
     execute \
-    "unadj" \
+    "linear" \
     "exec" \
-    "${log_unadj}" \
-    "unadj" \
+    "${log_linear}" \
+    "linear" \
     "${fil_A}" \
     "${fil_B}" \
     "${dir_out}" \
@@ -129,32 +129,32 @@ run_case_compute_signal_ratio \
     --strict_bins
 
 assert_file_nonempty \
-    "${fil_out_unadj}" \
+    "${fil_out_linear}" \
     "execute ratio output"
 
-if [[ -s "${fil_out_unadj}" ]]; then
+if [[ -s "${fil_out_linear}" ]]; then
     assert_pattern_found \
-        "${fil_out_unadj}" \
+        "${fil_out_linear}" \
         $'^I\t0\t10\t2$' \
         "execute ratio output has I:0-10 = 2"
 
     assert_pattern_found \
-        "${fil_out_unadj}" \
+        "${fil_out_linear}" \
         $'^I\t10\t20\t0$' \
         "execute ratio output has I:10-20 = 0"
 
     assert_pattern_found \
-        "${fil_out_unadj}" \
+        "${fil_out_linear}" \
         $'^I\t40\t50\t4$' \
         "execute ratio output has I:40-50 = 4"
 
     assert_pattern_found \
-        "${fil_out_unadj}" \
+        "${fil_out_linear}" \
         $'^I\t60\t70\t0.333$' \
         "execute ratio output has I:60-70 = 0.333"
 
     assert_pattern_found \
-        "${fil_out_unadj}" \
+        "${fil_out_linear}" \
         $'^I\t70\t80\t1$' \
         "execute ratio output has I:70-80 = 1"
 fi
@@ -166,7 +166,7 @@ run_case_compute_signal_ratio \
     "scl_fct" \
     "exec_scl_fct" \
     "${log_scl_fct}" \
-    "unadj" \
+    "linear" \
     "${fil_A}" \
     "${fil_B}" \
     "${dir_out}" \
@@ -233,32 +233,32 @@ fi
 # Reciprocal ratio: B / A gives 0.5, 0.25, and 3 for selected rows.
 run_case_compute_signal_ratio \
     execute \
-    "unadj_r" \
-    "exec_unadj_r" \
-    "${log_unadj_r}" \
-    "unadj_r" \
+    "linear_r" \
+    "exec_linear_r" \
+    "${log_linear_r}" \
+    "linear_r" \
     "${fil_A}" \
     "${fil_B}" \
     "${dir_out}" \
     "${dir_err}"
 
 assert_file_nonempty \
-    "${fil_out_unadj_r}" \
+    "${fil_out_linear_r}" \
     "execute reciprocal ratio output"
 
-if [[ -s "${fil_out_unadj_r}" ]]; then
+if [[ -s "${fil_out_linear_r}" ]]; then
     assert_pattern_found \
-        "${fil_out_unadj_r}" \
+        "${fil_out_linear_r}" \
         $'^I\t0\t10\t0.5$' \
         "execute reciprocal ratio output has I:0-10 = 0.5"
 
     assert_pattern_found \
-        "${fil_out_unadj_r}" \
+        "${fil_out_linear_r}" \
         $'^I\t40\t50\t0.25$' \
         "execute reciprocal ratio output has I:40-50 = 0.25"
 
     assert_pattern_found \
-        "${fil_out_unadj_r}" \
+        "${fil_out_linear_r}" \
         $'^I\t60\t70\t3$' \
         "execute reciprocal ratio output has I:60-70 = 3"
 fi
@@ -304,7 +304,7 @@ run_case_compute_signal_ratio \
     "dep_min" \
     "exec_dep_min" \
     "${log_dep_min}" \
-    "unadj" \
+    "linear" \
     "${fil_A}" \
     "${fil_B}" \
     "${dir_out}" \
@@ -330,7 +330,7 @@ run_case_compute_signal_ratio \
     "eps" \
     "exec_eps" \
     "${log_eps}" \
-    "unadj" \
+    "linear" \
     "${fil_A}" \
     "${fil_B}" \
     "${dir_out}" \
@@ -366,7 +366,7 @@ run_case_compute_signal_ratio \
     "pseudo" \
     "exec_pseudo" \
     "${log_pseudo}" \
-    "unadj" \
+    "linear" \
     "${fil_A}" \
     "${fil_B}" \
     "${dir_out}" \
@@ -392,7 +392,7 @@ run_case_compute_signal_ratio \
     "drp_nan" \
     "exec_drp_nan" \
     "${log_drp_nan}" \
-    "unadj" \
+    "linear" \
     "${fil_A}" \
     "${fil_B}" \
     "${dir_out}" \
@@ -432,7 +432,7 @@ run_case_compute_signal_ratio \
     "skip_00" \
     "exec_skip_00" \
     "${log_skip_00}" \
-    "unadj" \
+    "linear" \
     "${fil_A}" \
     "${fil_B}" \
     "${dir_out}" \
@@ -459,7 +459,7 @@ run_case_compute_signal_ratio \
     "skip_00_post_scale" \
     "exec_skip_00_post_scale" \
     "${log_skip_00_post_scale}" \
-    "unadj" \
+    "linear" \
     "${fil_A}" \
     "${fil_B}" \
     "${dir_out}" \
@@ -499,7 +499,7 @@ run_case_compute_signal_ratio \
     "track" \
     "exec_track" \
     "${log_track}" \
-    "unadj" \
+    "linear" \
     "${fil_A}" \
     "${fil_B}" \
     "${dir_out}" \
@@ -537,6 +537,7 @@ if [[ -s "${trackfile_track}" ]]; then
 fi
 
 
+# shellcheck disable=SC2154
 # Gzipped bedGraph input and output should round-trip through execute mode.
 if \
     run_capture \
@@ -546,7 +547,7 @@ if \
             --env_nam "${env_nam}" \
             --threads 1 \
             --mode ratio \
-            --method unadj \
+            --method linear \
             --csv_fil_A "${fil_A_gz}" \
             --csv_fil_B "${fil_B_gz}" \
             --dir_out "${dir_out}" \
@@ -583,6 +584,10 @@ if [[ -s "${fil_out_gzip_io}" ]]; then
     fi
 fi
 
+assert_file_nonempty \
+    "${outfile_txt_gzip_io}" \
+    "execute decompressed gzip ratio output"
+
 if [[ -s "${outfile_txt_gzip_io}" ]]; then
     assert_pattern_found \
         "${outfile_txt_gzip_io}" \
@@ -610,7 +615,7 @@ if \
             --env_nam "${env_nam}" \
             --threads 1 \
             --mode ratio \
-            --method unadj \
+            --method linear \
             --csv_fil_A "${fil_A_hdr}" \
             --csv_fil_B "${fil_B_hdr}" \
             --dir_out "${dir_out}" \
@@ -679,6 +684,10 @@ fi
 # bedGraph bounds, and must never receive the signal-only window options.
 log_rat_mode="${tmp}/logs/test_execute_compute_ratio_dep_min.exec_dep_min_ratio_A.stderr.txt"
 
+assert_file_nonempty \
+    "${log_rat_mode}" \
+    "execute ratio stderr log for mode separation"
+
 if [[ -s "${log_rat_mode}" ]]; then
     assert_pattern_found \
         "${log_rat_mode}" \
@@ -695,5 +704,64 @@ if [[ -s "${log_rat_mode}" ]]; then
         "--engine" \
         "execute ratio omits '--engine'"
 fi
+
+
+# Match the method diagnostic, not exit status: an unrelated argument fault
+# also exits non-zero, so a status check would pass for a valid method.
+arr_mth_gone=(
+    unadj unadj_r unadjusted r raw u s smp simple
+    2 lg2 rr ur sr 2r l2r lg2_r bogus
+)
+
+for retired in "${arr_mth_gone[@]}"; do
+    out_rej="$(
+        bash "${ROOT_REPO}/bin/execute_compute_signal.sh" \
+            --mode ratio \
+            --method "${retired}" \
+            --csv_fil_A "${fil_A}" \
+            --csv_fil_B "${fil_B}" \
+            --dir_out "${dir_out}" 2>&1 || true
+    )"
+
+    if [[ "${out_rej}" == *"invalid value for '--method'"* ]]; then
+        record_pass "execute rejects retired ratio method '${retired}'"
+    else
+        record_fail "execute did not reject ratio method '${retired}'"
+    fi
+done
+
+
+# Read the accepted vocabulary out of the tool itself, so a method added to
+# 'METHOD_CANON' without a matching wrapper arm fails here.
+mapfile -t arr_mth_keep < <(
+    "${TEST_MANAGED_PYTHON}" -c \
+        "from protocol_chipseq_signal_norm.cli.compute_signal_ratio import \
+METHOD_CANON; print(chr(10).join(METHOD_CANON))"
+)
+
+if [[ "${#arr_mth_keep[@]}" -eq 0 ]]; then
+    record_fail "could not read the ratio method vocabulary"
+fi
+
+
+# The same probe stays silent for every kept spelling, which is what makes the
+# loop above discriminating rather than inert.
+for kept in "${arr_mth_keep[@]}"; do
+    out_keep="$(
+        bash "${ROOT_REPO}/bin/execute_compute_signal.sh" \
+            --mode ratio \
+            --method "${kept}" \
+            --csv_fil_A "${fil_A}" \
+            --csv_fil_B "${fil_B}" \
+            --dir_out "${dir_out}" 2>&1 || true
+    )"
+
+    if [[ "${out_keep}" == *"invalid value for '--method'"* ]]; then
+        record_fail "execute wrongly rejected ratio method '${kept}'"
+    else
+        record_pass "execute accepts ratio method '${kept}'"
+    fi
+done
+
 
 finish

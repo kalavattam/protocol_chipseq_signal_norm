@@ -78,38 +78,21 @@ BEDGRAPH_FORMATS = ("bedGraph", "bedgraph", "bdg", "bg")
 # Map accepted `--method` values to canonical internal names.
 # fmt: off
 METHOD_CANON = {
-    # Compute the simple unadjusted ratio as A / B.
-    "r": "unadj",
-    "raw": "unadj",
-    "u": "unadj",
-    "unadj": "unadj",
-    "unadjusted": "unadj",
-    "s": "unadj",
-    "smp": "unadj",
-    "simple": "unadj",
+    # Compute the ratio as A / B, on a linear scale rather than log2 scale.
+    "linear": "linear",
 
-    # Compute the log2 ratio as log2(A / B).
-    "2": "log2",
-    "l2": "log2",
-    "lg2": "log2",
+    # Compute the log2 ratio as log2(A / B). Each canonical name precedes
+    # its short-form alias, which is the order the rendered choices display
+    # inherits.
     "log2": "log2",
+    "l2": "log2",
 
-    # Compute the reciprocal simple ratio as B / A.
-    "rr": "unadj_r",
-    "raw_r": "unadj_r",
-    "ur": "unadj_r",
-    "unadj_r": "unadj_r",
-    "unadjusted_r": "unadj_r",
-    "sr": "unadj_r",
-    "smp_r": "unadj_r",
-    "simple_r": "unadj_r",
+    # Compute the reciprocal linear ratio as B / A.
+    "linear_r": "linear_r",
 
     # Compute the reciprocal log2 ratio as log2(B / A).
-    "2r": "log2_r",
-    "l2r": "log2_r",
-    "l2_r": "log2_r",
-    "lg2_r": "log2_r",
     "log2_r": "log2_r",
+    "l2_r": "log2_r",
 }
 # fmt: on
 METHOD_CHOICES = tuple(METHOD_CANON.keys())
@@ -838,19 +821,15 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         "--method",
         dest="method",
         choices=METHOD_CHOICES,
-        default="unadj",
+        default="linear",
         help=(
             "Workflow method. Ratio-computation subtype (default: "
             "'%(default)s').\n"
-            "  - Unadjusted aliases: 'r', 'raw', 'u', 'unadj', 'unadjusted', "
-            "'s', 'smp', 'simple'. Internally standardized to 'unadj'.\n"
-            "  - Log2 aliases: '2', 'l2', 'lg2', 'log2'. Internally "
-            "standardized to 'log2'.\n"
-            "  - Reciprocal-unadjusted aliases: 'rr', 'raw_r', 'ur', "
-            "'unadj_r', 'unadjusted_r', 'sr', 'smp_r', 'simple_r'. Internally "
-            "standardized to 'unadj_r'.\n"
-            "  - Reciprocal-log2 aliases: '2r', 'l2r', 'l2_r', 'lg2_r', "
-            "'log2_r'. Internally standardized to 'log2_r'.\n"
+            "  - Linear method: 'linear', giving 'A / B'.\n"
+            "  - Log2 method: 'log2' (alias 'l2'), giving 'log2(A / B)'.\n"
+            "  - Reciprocal-linear method: 'linear_r', giving 'B / A'.\n"
+            "  - Reciprocal-log2 method: 'log2_r' (alias 'l2_r'), giving "
+            "'log2(B / A)'.\n"
             "\n"
         ),
     )
@@ -1206,7 +1185,7 @@ def main(argv: list[str] | None = None) -> int:
     args.method = METHOD_CANON[args.method]
 
     log2 = args.method in {"log2", "log2_r"}
-    recip = args.method in {"unadj_r", "log2_r"}
+    recip = args.method in {"linear_r", "log2_r"}
 
     if args.verbose and args.dep_min is not None and args.dep_min <= args.eps:
         # A clamp at or below epsilon does not prevent undefined ratios.

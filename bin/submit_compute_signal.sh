@@ -620,7 +620,7 @@ Parameters
   05  siz_bin : int
     Bin size in base pairs.
 
-  06  method : {'unadj', 'frag', 'norm'}
+  06  method : {'unadj', 'frag', 'norm', 'count', 'cpm'}
     Workflow method. Type of signal computation or empty sentinel ("").
 
   07  scl_fct : number
@@ -645,7 +645,7 @@ Parameters
     Path for the fragment-count report or empty string.
 
   14  report_n_bin : file
-    Path for the spanned-bin-count report or empty string.
+    Path for the overlap-count report or empty string.
 
   15  dir_eo : dir
     Directory for stderr and stdout log files.
@@ -826,8 +826,8 @@ Parameters
   04  fil_out : file
     Output file path. Output ratio bedGraph file.
 
-  05  method : {'unadj', 'log2', 'unadj_r', 'log2_r'}
-    Workflow method. Ratio method: 'unadj', 'log2', 'unadj_r', 'log2_r'.
+  05  method : {'linear', 'log2', 'linear_r', 'log2_r'}
+    Workflow method. Ratio method: 'linear', 'log2', 'linear_r', 'log2_r'.
 
   06  scl_fct : number
     Scaling factor. Use sentinel 'NA' to omit scaling.
@@ -903,7 +903,7 @@ Examples
         IP.bedGraph \\
         input.bedGraph \\
         ratio.bedGraph \\
-        unadj \\
+        linear \\
         NA \\
         NA \\
         3 \\
@@ -2096,20 +2096,16 @@ function canonicalize_args() {
             fi
 
             case "${method}" in
-                u|unadj|unadjusted|s|smp|simple|r|raw)
-                    method="unadj"
-                    ;;
-                f|frg|frag|frg[_-]len|frag[_-]len|l|len|len[_-]frg|len[_-]frag)
-                    method="frag"
-                    ;;
-                n|nc|nrm|norm|normalized)
-                    method="norm"
-                    ;;
+                unadj)   method="unadj" ;;
+                frag)    method="frag"  ;;
+                norm|nc) method="norm"  ;;
+                count)   method="count" ;;
+                cpm)     method="cpm"   ;;
                 *)
                     echo_err \
-                        "invalid value for '--method': '${method}'." \
-                        "Expected a signal method alias for 'unadj', 'frag'," \
-                        "or 'norm'."
+                        "invalid value for '--method': '${method}'. Expected" \
+                        "'unadj', 'frag', 'norm' (alias 'nc'), 'count', or" \
+                        "'cpm'."
                     return 1
                     ;;
             esac
@@ -2117,40 +2113,30 @@ function canonicalize_args() {
 
         ratio)
             if [[ -z "${method}" ]]; then
-                method="unadj"
+                method="linear"
             fi
 
             case "${method}" in
-                u|unadj|unadjusted|s|smp|simple|r|raw)
-                    method="unadj"
-                    ;;
-                2|l2|lg2|log2)
-                    method="log2"
-                    ;;
-                ur|unadj[_-]r|unadjusted[_-]r|sr|smp[_-]r|simple[_-]r|rr|raw[_-]r)
-                    method="unadj_r"
-                    ;;
-                2r|l2r|l2[_-]r|lg2[_-]r|log2[_-]r)
-                    method="log2_r"
-                    ;;
+                linear)            method="linear"   ;;
+                log2|l2)           method="log2"     ;;
+                linear[_-]r)       method="linear_r" ;;
+                log2[_-]r|l2[_-]r) method="log2_r"   ;;
                 *)
                     echo_err \
                         "invalid value for '--method': '${method}'. Expected" \
-                        "a ratio method alias for 'unadj', 'log2'," \
-                        "'unadj_r', or 'log2_r'."
+                        "'linear', 'log2' (alias 'l2'), 'linear_r', or" \
+                        "'log2_r' (alias 'l2_r')."
                     return 1
                     ;;
             esac
             ;;
 
-        coord)
-            method=""
-            ;;
+        coord) method="" ;;
 
         *)
             echo_err \
-                "invalid value for '--mode': '${mode}'." \
-                "Expected Workflow mode. 'signal', 'ratio', or 'coord'."
+                "invalid value for '--mode': '${mode}'. Expected 'signal'," \
+                "'ratio', or 'coord'."
             return 1
             ;;
     esac

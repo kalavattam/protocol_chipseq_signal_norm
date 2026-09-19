@@ -75,23 +75,25 @@ Parameters
   -md, --mode : {'signal', 'ratio', 'coord'}
     Workflow mode: 'signal', 'ratio', or 'coord' (default: '${mode}').
 
-    See '--details' for full synonym lists.
+    See '--details' for accepted spellings.
 
-  -me, --method : {'unadj', 'frag', 'norm', 'log2', 'unadj_r', 'log2_r'}
-    Workflow method. Signal or ratio computation subtype (used only with '--mode signal' or '--mode ratio'; default if '--mode signal': norm; default if '--mode ratio': unadj).
+  -me, --method : {'unadj', 'frag', 'norm', 'count', 'cpm', 'linear', 'log2', 'linear_r', 'log2_r'}
+    Workflow method. Signal or ratio computation subtype (used only with '--mode signal' or '--mode ratio'; default if '--mode signal': 'norm'; default if '--mode ratio': 'linear').
 
     For '--mode signal', the main choices are
-      - 'unadj' (per-bin totals),
-      - 'frag' (fragment-length adjusted), and
-      - 'norm' (fragment- and library-size normalized so that coverage integrates to 1).
+      - 'unadj' (base-pair overlap),
+      - 'frag' (base-pair overlap, divided by fragment length),
+      - 'norm' (base-pair overlap, divided by fragment length and total fragments, so coverage integrates to 1),
+      - 'count' (one whole count per bin a fragment touches), and
+      - 'cpm' (those whole counts rescaled to sum to one million).
 
     For '--mode ratio', the main choices are
-      - 'unadj' ('file A / file B'),
+      - 'linear' ('file A / file B'),
       - 'log2' ['log2(file A / file B)'],
-      - 'unadj_r' ('file B / file A'), and
+      - 'linear_r' ('file B / file A'), and
       - 'log2_r' ['log2(file B / file A)' = '-log2(file A / file B)'].
 
-    See '--details' for full synonym lists and references.
+    See '--details' for accepted spellings and references.
 
   -ci, --csv_fil_in : list of file
     Comma-separated list of input file paths for coordinate-sorted BAM/CRAM files (used only with '--mode signal' or '--mode coord').
@@ -147,6 +149,8 @@ Parameters
 
     For '--mode ratio', each element may be 'NA', a positive scalar float, or a positive 'A:B' spec, where A scales '--csv_fil_A' and B scales '--csv_fil_B' before ratio calculation.
 
+    A factor multiplies the finished track verbatim, whatever '--method' produced it.
+
   -cuf, --csv_usr_frg : list of int
     Comma-separated list of fixed fragment-length values or sentinels. Used with '--mode signal' or '--mode coord'.
 
@@ -175,7 +179,7 @@ Parameters
     Write the fragment count 'N' for each sample, beside its output track as '<track>.n_frg.txt'. Used only with '--mode signal'.
 
   -rnb, --report_n_bin : flag
-    Write the spanned-bin count 'L' for each sample, beside its output track as '<track>.n_bin.txt'. 'L' counts bins, so it depends on '--siz_bin' and, if supplied, '--csv_usr_frg'. Used only with '--mode signal'.
+    Write the overlap count 'L' for each sample, beside its output track as '<track>.n_bin.txt'. 'L' counts fragment-bin overlaps, so it depends on '--siz_bin' and, if supplied, '--csv_usr_frg'. Used only with '--mode signal'.
 
   -ro, --report_only : flag
     Write only the requested reports, with no signal track. Requires '--report_n_frg' or '--report_n_bin'. Used only with '--mode signal'.
@@ -192,7 +196,7 @@ Parameters
     Directory for stderr and stdout log files in TXT format (default: '\${dir_out}/logs').
 
   -nj, --nam_job : str
-    Job name. Prefix for job names (default depends on resolved '--mode' and '--method'; e.g., 'compute_signal_norm', 'compute_ratio_unadj', or 'compute_coord').
+    Job name. Prefix for job names (default depends on resolved '--mode' and '--method'; e.g., 'compute_signal_norm', 'compute_ratio_linear', or 'compute_coord').
 
   -mj, --max_job : int
     Maximum number of jobs to run concurrently (default: ${max_job}).
@@ -265,7 +269,7 @@ cat >&2 << EOM
   Driver script automating the computations of bedGraph signal or ratio tracks, or BED-like fragment coordinate files, from BAM/CRAM (for signal tracks or fragment coordinate files) or bedGraph (for ratio tracks) input files.
 
   Supports multiple signal normalization strategies, including the following:
-    - unadjusted (raw) signal (i.e., per-bin totals with no fragment-length and/or library-size adjustments)
+    - unadjusted (raw) signal (i.e., base-pair overlap with no fragment-length or total-fragment adjustment)
     - fragment-length adjusted signal (Dickson et al., JBC 2020 [PMID: 32994221]; Dickson et al., Sci Rep 2023 [PMID: 37160995])
     - normalized coverage (Dickson et al., Sci Rep 2023 [PMID: 37160995])
     - siQ-ChIP IP efficiency (input-normalized ratio-based analyses; Dickson et al., JBC 2020 [PMID: 32994221]; Dickson et al., Sci Rep 2023 [PMID: 37160995])
@@ -321,39 +325,42 @@ Parameters
         + This mode disables '--siz_bin' and '--method', and sets '--typ_out' to 'bed.gz' by default (or 'bed' if '--typ_out bed' is specified).
         + If 'c' or 'coordinates' are supplied, variable 'mode' is set to "coord".
 
-  -me, --method : {'unadj', 'frag', 'norm', 'log2', 'unadj_r', 'log2_r'}
-    Workflow method. Signal or ratio computation subtype, used only with '--mode signal' or '--mode ratio' (default if '--mode signal': norm; default if '--mode ratio': unadj).
+  -me, --method : {'unadj', 'frag', 'norm', 'count', 'cpm', 'linear', 'log2', 'linear_r', 'log2_r'}
+    Workflow method. Signal or ratio computation subtype, used only with '--mode signal' or '--mode ratio' (default if '--mode signal': norm; default if '--mode ratio': linear).
       - If '--mode signal', then the available options are
-        + 'u', 'unadj', 'unadjusted', 's', 'smp', 'simple', 'r', 'raw':
-          - Compute unadjusted signal (per-bin totals with no fragment-length and/or library-size adjustments).
-          - Internally, all of these values are standardized to 'method=unadj'.
+        + 'unadj':
+          - Compute unadjusted signal (base-pair overlap with no fragment-length or total-fragment adjustment).
 
-        + 'f', 'frg', 'frag', 'frg_len', 'frag_len', 'l', 'len', 'len_frg', 'len_frag':
-          - Adjust signal by fragment length.
-          - Internally, all of these values are standardized to 'method=frag'.
+        + 'frag':
+          - Adjust the above signal by fragment length.
           - For example, use this option to compute siQ-ChIP-scaled signal with the initial equation described in Dickson et al., JBC 2020 (PMID: 32994221) or Equation 5 in Dickson et al., Sci Rep 2023 (PMID: 37160995).
 
-        + 'n', 'nrm', 'norm', 'normalized':
-          - Compute normalized coverage per Dickson et al., Sci Rep 2023, adjusting by both fragment length and the total number of fragments so that the genome-wide coverage sums to 1.
+        + 'nc', 'norm':
+          - Compute normalized coverage per Dickson et al., Sci Rep 2023, adjusting base-pair overlap signal by both fragment length and the total number of fragments so that the genome-wide coverage sums to 1.
             + That is, the coverage integrates to unity and can be interpreted as a probability distribution over the genome.
-          - Internally, all of these values are standardized to 'method=norm'.
+          - Internally, both of these values are standardized to 'method=norm'.
+
+        + 'count':
+          - Deposit one whole count in every bin a fragment touches, whether the fragment covers the whole bin or a single base.
+          - The track's value column sums to the overlap count 'L' that '--report_n_bin' reports on the same run.
+
+        + 'cpm':
+          - Rescale the whole counts so the track sums to one million, following the edgeR construction.
 
       - If '--mode ratio', then the available options are
-        + 'u', 'unadj', 'unadjusted', 's', 'smp', 'simple', 'r', 'raw':
-          - Compute simple, unadjusted (non-log2) fil_A/fil_B ratio (e.g., IP/input): 'ratio = fil_A / fil_B'.
-          - Internally, all of these values are standardized to 'method=unadj'.
+        + 'linear':
+          - Compute the linear (i.e., non-log2) fil_A/fil_B ratio (e.g., IP/input): 'ratio = fil_A / fil_B'.
 
-        + '2', 'l2', 'lg2', 'log2':
+        + 'log2', 'l2':
           - Compute log2(fil_A/fil_B) ratio [e.g., log2(IP/input)]: 'ratio = log2(fil_A / fil_B)'.
-          - Internally, all of these values are standardized to 'method=log2'.
+          - Internally, both of these values are standardized to 'method=log2'.
 
-        + 'ur', 'unadj_r', 'unadjusted_r', 'sr', 'smp_r', 'simple_r', 'rr', 'raw_r':
-          - Compute the reciprocal of the simple, unadjusted (non-log2) ratio: 'ratio = fil_B / fil_A = 1 / (fil_A / fil_B)'.
-          - Internally, all of these values are standardized to 'method=unadj_r'.
+        + 'linear_r':
+          - Compute the reciprocal of the linear ratio: 'ratio = fil_B / fil_A = 1 / (fil_A / fil_B)'.
 
-        + '2r', 'l2r', 'l2_r', 'lg2_r', 'log2_r':
+        + 'log2_r', 'l2_r':
           - Compute the reciprocal of the log2(fil_A/fil_B) ratio: 'ratio = log2(fil_B / fil_A) = -log2(fil_A / fil_B)'.
-          - Internally, all of these values are standardized to 'method=log2_r'.
+          - Internally, both of these values are standardized to 'method=log2_r'.
 
   -ci, --csv_fil_in : list of file
     Comma-separated list of input file paths for coordinate-sorted BAM/CRAM files.
@@ -419,11 +426,11 @@ Parameters
       - If not specified, a default prefix is automatically constructed based on '--method' and '--csv_scl_fct'; for example:
         + 'rat' (default)
         + 'log2_rat' (if '--method log2')
-        + 'recip_rat' (if '--method unadj_r')
+        + 'recip_rat' (if '--method linear_r')
         + 'log2_recip_rat' (if '--method log2_r')
-        + 'scl_rat' (if '--method unadj' and '--csv_scl_fct' is supplied)
+        + 'scl_rat' (if '--method linear' and '--csv_scl_fct' is supplied)
         + 'scl_log2_rat' (if '--method log2' and '--csv_scl_fct' is supplied)
-        + 'scl_recip_rat' (if '--method unadj_r' and '--csv_scl_fct' is supplied)
+        + 'scl_recip_rat' (if '--method linear_r' and '--csv_scl_fct' is supplied)
         + 'scl_log2_recip_rat' (if '--method log2_r' and '--csv_scl_fct' is supplied)
       - If specified, the custom prefix replaces the default.
       - Whether specified or not, any leading 'IP_' string in the base name is stripped before the prefix.
@@ -469,6 +476,8 @@ Parameters
     For '--mode ratio', each non-sentinel element may be either:
       - 'A'    Scale file A by A and file B by 1.0.
       - 'A:B'  Scale file A by A and file B by B.
+
+    A factor multiplies the finished track verbatim, whatever '--method' produced it. A siQ-ChIP alpha is derived against a particular substrate: equations 5 and 6 for 'frag', 5nd and 6nd for 'norm'. A spike-in alpha applies to a ratio, and a ratio built from either 'count' or 'unadj' serves, since the per-bin deposition difference largely cancels in the division. Earlier spike-in work used 'count', so prefer it where continuity with those results matters.
 
   -cuf, --csv_usr_frg : list of int
     Comma-separated list of fixed fragment-length values or sentinels to use instead of read lengths (single-end alignments) or template lengths (paired-end alignments).
@@ -544,11 +553,11 @@ Parameters
     Used only with '--mode signal'; ignored otherwise.
 
   -rnb, --report_n_bin : flag
-    Write the spanned-bin count 'L' for each sample.
+    Write the fragment-bin overlap count 'L' for each sample.
 
     'L' is the total number of bins the counted fragments span, counting a fragment once per bin it touches. It is not the summed base pairs an unadjusted track reports: the bin count is what puts 'k = L / N' in bins, the unit a per-bin pseudocount needs.
 
-    Because 'L' counts bins, it depends on '--siz_bin' and, if supplied, '--csv_usr_frg', where fragment extension changes how far each fragment reaches. The report is written beside each output track, as '<track>.n_bin.txt'.
+    Because 'L' counts fragment-bin overlaps, it depends on '--siz_bin' and, if supplied, '--csv_usr_frg', where fragment extension changes how far each fragment reaches. The report is written beside each output track, as '<track>.n_bin.txt'.
 
     Used only with '--mode signal'; ignored otherwise.
 
@@ -683,7 +692,7 @@ Examples
 
     Writes 'sample_1.bedGraph.gz' alongside 'sample_1.n_frg.txt' and 'sample_1.n_bin.txt', and the same trio for 'sample_2'. Counting runs before the output branch, so the counts match those of a report-only run on the same input.
 
-  4. Write only the fragment and spanned-bin counts, with no signal track.
+  4. Write only the fragment and overlap counts, with no signal track.
     '''bash
     bash "\${HOME}/bin/execute_compute_signal.sh" \\
         --threads 8 \\
@@ -698,9 +707,26 @@ Examples
         --nam_job "counts"
     '''
 
-    Each report is named from the track that would have been written, so this writes 'sample_1.n_frg.txt' and 'sample_1.n_bin.txt' to '--dir_out', and the same pair for 'sample_2'. 'L' counts bins, so it depends on '--siz_bin'.
+    Each report is named from the track that would have been written, so this writes 'sample_1.n_frg.txt' and 'sample_1.n_bin.txt' to '--dir_out', and the same pair for 'sample_2'. 'L' counts fragment-bin overlaps, so it depends on '--siz_bin'.
 
-  5. Compute log2 ratios and write a browser-ready companion track.
+  5. Compute counts-per-million signal from whole-count deposition.
+    '''bash
+    bash "\${HOME}/bin/execute_compute_signal.sh" \\
+        --threads 8 \\
+        --mode "signal" \\
+        --method "cpm" \\
+        --csv_fil_in "\${HOME}/project/samples/sample_1.bam,\${HOME}/project/samples/sample_2.bam" \\
+        --dir_out "\${HOME}/project/tracks" \\
+        --typ_out "bedGraph.gz" \\
+        --siz_bin 50 \\
+        --report_n_bin \\
+        --dir_eo "\${HOME}/project/logs" \\
+        --nam_job "cpm_sig"
+    '''
+
+    Each fragment deposits one whole count per touched bin, and the track is rescaled to sum to one million. '--report_n_bin' writes the divisor 'L' beside it.
+
+  6. Compute log2 ratios and write a browser-ready companion track.
     '''bash
     bash "\${HOME}/bin/execute_compute_signal.sh" \\
         --threads 4 \\

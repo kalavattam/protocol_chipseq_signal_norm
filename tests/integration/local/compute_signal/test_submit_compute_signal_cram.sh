@@ -277,6 +277,10 @@ assert_file_nonempty \
 
 log_window="${tmp}/logs/test_compute_cram_pe_window.tiny_pe_window_t2.stderr.txt"
 
+assert_file_nonempty \
+    "${log_window}" \
+    "submit CRAM window stderr log"
+
 if [[ -s "${log_window}" ]]; then
     assert_pattern_found \
         "${log_window}" \
@@ -312,7 +316,8 @@ assert_file_nonempty "${dir_rep}/pe.n_frg.txt" \
 
 if \
     PYTHONDONTWRITEBYTECODE=1 \
-    python3 -m protocol_chipseq_signal_norm.cli.compute_signal \
+    "${TEST_MANAGED_PYTHON}" \
+        -m protocol_chipseq_signal_norm.cli.compute_signal \
         --fil_in "${dir_fx}/bam/pe/tiny_pe.bam" \
         --siz_bin 10 \
         --report_n_frg "${dir_rep}/bam.n_frg.txt" \
@@ -327,7 +332,7 @@ then
     assert_files_equal \
         "${dir_rep}/pe.n_bin.txt" \
         "${dir_rep}/bam.n_bin.txt" \
-        "CRAM spanned-bin count equals the BAM value for the same alignments"
+        "CRAM overlap count equals the BAM value for the same alignments"
 else
     record_fail "BAM reference counts for the CRAM comparison failed"
 fi

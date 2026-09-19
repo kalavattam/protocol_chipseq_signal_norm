@@ -314,6 +314,10 @@ fi
 # silently dropped option would still produce output.
 log_fwd="${tmp}/logs/test_execute_compute_bam_se_signal.tiny_se.stderr.txt"
 
+assert_file_nonempty \
+    "${log_fwd}" \
+    "execute signal stderr log for the forwarding contract"
+
 if [[ -s "${log_fwd}" ]]; then
     assert_pattern_found \
         "${log_fwd}" \
@@ -327,6 +331,10 @@ if [[ -s "${log_fwd}" ]]; then
 fi
 
 log_coord="${tmp}/logs/test_execute_compute_bam_se_coord.tiny_se.stderr.txt"
+
+assert_file_nonempty \
+    "${log_coord}" \
+    "execute coord stderr log for the forwarding contract"
 
 if [[ -s "${log_coord}" ]]; then
     assert_pattern_absent \
@@ -366,6 +374,10 @@ done
 # Default contract: a signal case that names neither option still forwards both
 # wrapper defaults, so a dropped default cannot pass unnoticed.
 log_dflt="${tmp}/logs/test_execute_compute_bam_pe_signal.tiny_pe.stderr.txt"
+assert_file_nonempty \
+    "${log_dflt}" \
+    "execute signal stderr log for the default contract"
+
 if [[ -s "${log_dflt}" ]]; then
     assert_pattern_found \
         "${log_dflt}" \
@@ -432,14 +444,23 @@ for samp in tiny_se tiny_pe; do
         "execute derives ${samp}.n_bin.txt beside the track"
 done
 
+
 # SE holds two 10-bp fragments, one bin each; PE spans five bins. Distinct
 # values prove each sample got its own report path rather than the first.
-assert_file_exact_line "${dir_rep}/tiny_se.n_frg.txt" "2" \
+assert_file_exact_line \
+    "${dir_rep}/tiny_se.n_frg.txt" \
+    "2" \
     "execute SE fragment count is 2"
-assert_file_exact_line "${dir_rep}/tiny_se.n_bin.txt" "2" \
-    "execute SE spanned-bin count is 2"
-assert_file_exact_line "${dir_rep}/tiny_pe.n_bin.txt" "5" \
-    "execute PE spanned-bin count is 5, distinct from SE"
+
+assert_file_exact_line \
+    "${dir_rep}/tiny_se.n_bin.txt" \
+    "2" \
+    "execute SE fragment-bin overlap count is 2"
+
+assert_file_exact_line \
+    "${dir_rep}/tiny_pe.n_bin.txt" \
+    "5" \
+    "execute PE fragment-bin overlap count is 5, distinct from SE"
 
 dir_only="${tmp}/report_only"
 mkdir -p "${dir_only}"
@@ -482,6 +503,57 @@ if [[ "${out_bad}" == *"'--report_only' requires"* ]]; then
 else
     record_fail "execute accepted '--report_only' with no report flag"
 fi
+
+
+# Match the method diagnostic, not exit status: an unrelated argument fault
+# also exits non-zero, so a status check would pass for a valid method.
+for retired in r raw u unadjusted s smp simple f frg len nrm normalized bad; do
+    out_rej="$(
+        bash "${ROOT_REPO}/bin/execute_compute_signal.sh" \
+            --mode signal \
+            --method "${retired}" \
+            --csv_fil_in "${in_se}" \
+            --dir_out "${dir_out}" 2>&1 || true
+    )"
+
+    if [[ "${out_rej}" == *"invalid value for '--method'"* ]]; then
+        record_pass "execute rejects retired signal method '${retired}'"
+    else
+        record_fail "execute did not reject signal method '${retired}'"
+    fi
+done
+
+
+# Read the accepted vocabulary out of the tool itself, so a method added to
+# 'METHOD_CANON' without a matching wrapper arm fails here.
+mapfile -t arr_mth_keep < <(
+    "${TEST_MANAGED_PYTHON}" -c \
+        "from protocol_chipseq_signal_norm.cli.compute_signal import \
+METHOD_CANON; print(chr(10).join(METHOD_CANON))"
+)
+
+if [[ "${#arr_mth_keep[@]}" -eq 0 ]]; then
+    record_fail "could not read the signal method vocabulary"
+fi
+
+
+# The same probe stays silent for every kept spelling, which is what makes the
+# loop above discriminating rather than inert.
+for kept in "${arr_mth_keep[@]}"; do
+    out_keep="$(
+        bash "${ROOT_REPO}/bin/execute_compute_signal.sh" \
+            --mode signal \
+            --method "${kept}" \
+            --csv_fil_in "${in_se}" \
+            --dir_out "${dir_out}" 2>&1 || true
+    )"
+
+    if [[ "${out_keep}" == *"invalid value for '--method'"* ]]; then
+        record_fail "execute wrongly rejected signal method '${kept}'"
+    else
+        record_pass "execute accepts signal method '${kept}'"
+    fi
+done
 
 
 finish

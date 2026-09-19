@@ -194,6 +194,7 @@ if [[ -s "${fil_out_pe_coord}" ]]; then
 fi
 
 
+# shellcheck disable=SC2154
 # CRAM input without a reference FASTA should fail clearly in the wrapper.
 if \
     run_capture \
@@ -263,6 +264,10 @@ assert_file_nonempty \
     "execute CRAM PE window-engine multi-threaded output"
 
 log_window="${tmp}/logs/test_execute_compute_cram_pe_window.window_t2.tiny_pe.stderr.txt"
+
+assert_file_nonempty \
+    "${log_window}" \
+    "execute CRAM window stderr log"
 
 if [[ -s "${log_window}" ]]; then
     assert_pattern_found \

@@ -21,6 +21,7 @@ from pathlib import Path
 import pytest
 
 from protocol_chipseq_signal_norm.cli.compute_signal_ratio import (
+    METHOD_CANON,
     calc_rat_bin,
     comp_sig_rat,
     main,
@@ -374,3 +375,121 @@ def test_missing_required_ratio_option_is_rejected(
         main(supplied)
 
     assert omitted in str(error.value)
+
+
+def test_the_ratio_vocabulary_is_exactly_the_ruled_set() -> None:
+    """
+    Every accepted spelling is one the vocabulary ruling admits.
+
+    The ratio methods differ from each other in scale, not in adjustment, so
+    the plain quotient is named 'linear' rather than 'unadj'. That also keeps
+    the token 'unadj' meaning one thing across the tools, where it names a
+    deposition rather than a scale.
+    """
+
+    # A list comparison pins membership, count and sequence at once, since
+    # argparse renders the choices display straight from this mapping.
+    assert list(METHOD_CANON) == [
+        "linear",
+        "log2",
+        "l2",
+        "linear_r",
+        "log2_r",
+        "l2_r",
+    ]
+    assert set(METHOD_CANON.values()) == {
+        "linear",
+        "log2",
+        "linear_r",
+        "log2_r",
+    }
+
+
+@pytest.mark.parametrize(
+    "retired",
+    [
+        "unadj",
+        "unadj_r",
+        "unadjusted",
+        "r",
+        "raw",
+        "u",
+        "s",
+        "smp",
+        "simple",
+        "2",
+        "lg2",
+        "rr",
+        "ur",
+        "sr",
+        "2r",
+        "l2r",
+        "lg2_r",
+    ],
+)
+def test_retired_ratio_spellings_are_rejected(retired: str) -> None:
+    assert retired not in METHOD_CANON
+
+    with pytest.raises(SystemExit):
+        parse_args(
+            [
+                "--fil_A",
+                "a.bedGraph",
+                "--fil_B",
+                "b.bedGraph",
+                "--fil_out",
+                "o.bedGraph",
+                "--method",
+                retired,
+            ],
+        )
+
+
+@pytest.mark.parametrize(
+    ("spelling", "canonical"),
+    [
+        ("linear", "linear"),
+        ("log2", "log2"),
+        ("l2", "log2"),
+        ("linear_r", "linear_r"),
+        ("log2_r", "log2_r"),
+        ("l2_r", "log2_r"),
+    ],
+)
+def test_kept_ratio_spellings_standardize(
+    spelling: str,
+    canonical: str,
+) -> None:
+    args = parse_args(
+        [
+            "--fil_A",
+            "a.bedGraph",
+            "--fil_B",
+            "b.bedGraph",
+            "--fil_out",
+            "o.bedGraph",
+            "--method",
+            spelling,
+        ],
+    )
+
+    assert METHOD_CANON[args.method] == canonical
+
+
+def test_method_help_names_every_ratio_method(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """
+    Rendered help names every ratio method and spelling the parser accepts.
+    """
+
+    with pytest.raises(SystemExit):
+        parse_args(["--help"])
+
+    rendered = capsys.readouterr().out
+
+    for spelling in METHOD_CANON:
+        assert f"'{spelling}'" in rendered
+
+    assert "'unadj'" not in rendered
+    assert "'unadj_r'" not in rendered

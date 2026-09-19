@@ -40,10 +40,10 @@ dir_log="${TEST_DIR_LOG}/compute_signal"
 fil_A_gz="${dir_in}/ratio_A.bdg.gz"
 fil_B_gz="${dir_in}/ratio_B.bdg.gz"
 
-fil_out_unadj="${dir_out}/ratio_unadj.dp3.bdg"
+fil_out_linear="${dir_out}/ratio_linear.dp3.bdg"
 fil_out_scl_fct="${dir_out}/ratio_scl_fct_2_1.dp3.bdg"
 fil_out_log2="${dir_out}/ratio_log2.dp3.bdg"
-fil_out_unadj_r="${dir_out}/ratio_unadj_r.dp3.bdg"
+fil_out_linear_r="${dir_out}/ratio_linear_r.dp3.bdg"
 fil_out_log2_r="${dir_out}/ratio_log2_r.dp3.bdg"
 fil_out_dep_min="${dir_out}/ratio_dep_min_0p1.dp3.bdg"
 fil_out_eps="${dir_out}/ratio_eps_0p05.dp3.bdg"
@@ -59,10 +59,10 @@ fil_out_skp_pfx="${dir_out}/ratio_skp_pfx.dp3.bdg"
 trackfile_track="${dir_out}/ratio_track.dp3.track.bdg"
 outfile_txt_gzip_io="${dir_out}/ratio_gzip_io.dp3.bdg"
 
-log_unadj="${dir_log}/submit_compute_signal_ratio_unadj.log"
+log_linear="${dir_log}/submit_compute_signal_ratio_linear.log"
 log_scl_fct="${dir_log}/submit_compute_signal_ratio_scl_fct.log"
 log_log2="${dir_log}/submit_compute_signal_ratio_log2.log"
-log_unadj_r="${dir_log}/submit_compute_signal_ratio_unadj_r.log"
+log_linear_r="${dir_log}/submit_compute_signal_ratio_linear_r.log"
 log_log2_r="${dir_log}/submit_compute_signal_ratio_log2_r.log"
 log_dep_min="${dir_log}/submit_compute_signal_ratio_dep_min.log"
 log_eps="${dir_log}/submit_compute_signal_ratio_eps.log"
@@ -116,13 +116,13 @@ require_files_nonempty \
 }
 
 
-# Baseline unadjusted ratio with three-decimal rounding.
+# Baseline linear ratio with three-decimal rounding.
 run_case_compute_signal_ratio \
     submit \
-    "unadj" \
-    "${fil_out_unadj}" \
-    "${log_unadj}" \
-    "unadj" \
+    "linear" \
+    "${fil_out_linear}" \
+    "${log_linear}" \
+    "linear" \
     "${fil_A}" \
     "${fil_B}" \
     "${dir_out}" \
@@ -144,32 +144,32 @@ run_case_compute_signal_ratio \
     3
 
 assert_file_nonempty \
-    "${fil_out_unadj}" \
+    "${fil_out_linear}" \
     "baseline ratio output"
 
-if [[ -s "${fil_out_unadj}" ]]; then
+if [[ -s "${fil_out_linear}" ]]; then
     assert_pattern_found \
-        "${fil_out_unadj}" \
+        "${fil_out_linear}" \
         $'^I\t0\t10\t2$' \
         "baseline ratio output has I:0-10 = 2"
 
     assert_pattern_found \
-        "${fil_out_unadj}" \
+        "${fil_out_linear}" \
         $'^I\t10\t20\t0$' \
         "baseline ratio output has I:10-20 = 0"
 
     assert_pattern_found \
-        "${fil_out_unadj}" \
+        "${fil_out_linear}" \
         $'^I\t40\t50\t4$' \
         "baseline ratio output has I:40-50 = 4"
 
     assert_pattern_found \
-        "${fil_out_unadj}" \
+        "${fil_out_linear}" \
         $'^I\t60\t70\t0.333$' \
         "baseline ratio output has I:60-70 = 0.333"
 
     assert_pattern_found \
-        "${fil_out_unadj}" \
+        "${fil_out_linear}" \
         $'^I\t70\t80\t1$' \
         "baseline ratio output has I:70-80 = 1"
 fi
@@ -181,7 +181,7 @@ run_case_compute_signal_ratio \
     "scl_fct" \
     "${fil_out_scl_fct}" \
     "${log_scl_fct}" \
-    "unadj" \
+    "linear" \
     "${fil_A}" \
     "${fil_B}" \
     "${dir_out}" \
@@ -270,10 +270,10 @@ fi
 # Reciprocal ratio: B / A gives 0.5, 0.25, and 3 for selected rows.
 run_case_compute_signal_ratio \
     submit \
-    "unadj_r" \
-    "${fil_out_unadj_r}" \
-    "${log_unadj_r}" \
-    "unadj_r" \
+    "linear_r" \
+    "${fil_out_linear_r}" \
+    "${log_linear_r}" \
+    "linear_r" \
     "${fil_A}" \
     "${fil_B}" \
     "${dir_out}" \
@@ -292,22 +292,22 @@ run_case_compute_signal_ratio \
     3
 
 assert_file_nonempty \
-    "${fil_out_unadj_r}" \
+    "${fil_out_linear_r}" \
     "reciprocal ratio output"
 
-if [[ -s "${fil_out_unadj_r}" ]]; then
+if [[ -s "${fil_out_linear_r}" ]]; then
     assert_pattern_found \
-        "${fil_out_unadj_r}" \
+        "${fil_out_linear_r}" \
         $'^I\t0\t10\t0.5$' \
         "reciprocal ratio output has I:0-10 = 0.5"
 
     assert_pattern_found \
-        "${fil_out_unadj_r}" \
+        "${fil_out_linear_r}" \
         $'^I\t40\t50\t0.25$' \
         "reciprocal ratio output has I:40-50 = 0.25"
 
     assert_pattern_found \
-        "${fil_out_unadj_r}" \
+        "${fil_out_linear_r}" \
         $'^I\t60\t70\t3$' \
         "reciprocal ratio output has I:60-70 = 3"
 fi
@@ -365,7 +365,7 @@ run_case_compute_signal_ratio \
     "dep_min" \
     "${fil_out_dep_min}" \
     "${log_dep_min}" \
-    "unadj" \
+    "linear" \
     "${fil_A}" \
     "${fil_B}" \
     "${dir_out}" \
@@ -401,7 +401,7 @@ run_case_compute_signal_ratio \
     "eps" \
     "${fil_out_eps}" \
     "${log_eps}" \
-    "unadj" \
+    "linear" \
     "${fil_A}" \
     "${fil_B}" \
     "${dir_out}" \
@@ -447,7 +447,7 @@ run_case_compute_signal_ratio \
     "pseudo" \
     "${fil_out_pseudo}" \
     "${log_pseudo}" \
-    "unadj" \
+    "linear" \
     "${fil_A}" \
     "${fil_B}" \
     "${dir_out}" \
@@ -483,7 +483,7 @@ run_case_compute_signal_ratio \
     "drp_nan" \
     "${fil_out_drp_nan}" \
     "${log_drp_nan}" \
-    "unadj" \
+    "linear" \
     "${fil_A}" \
     "${fil_B}" \
     "${dir_out}" \
@@ -535,7 +535,7 @@ run_case_compute_signal_ratio \
     "skip_00" \
     "${fil_out_skip_00}" \
     "${log_skip_00}" \
-    "unadj" \
+    "linear" \
     "${fil_A}" \
     "${fil_B}" \
     "${dir_out}" \
@@ -572,7 +572,7 @@ run_case_compute_signal_ratio \
     "skip_00_post_scale" \
     "${fil_out_skip_00_post}" \
     "${log_skip_00_post}" \
-    "unadj" \
+    "linear" \
     "${fil_A}" \
     "${fil_B}" \
     "${dir_out}" \
@@ -618,7 +618,7 @@ run_case_compute_signal_ratio \
     "track" \
     "${fil_out_track}" \
     "${log_track}" \
-    "unadj" \
+    "linear" \
     "${fil_A}" \
     "${fil_B}" \
     "${dir_out}" \
@@ -674,7 +674,7 @@ run_case_compute_signal_ratio \
     "dp_precision" \
     "${fil_out_dp_alias}" \
     "${log_dp_alias}" \
-    "unadj" \
+    "linear" \
     "${fil_A}" \
     "${fil_B}" \
     "${dir_out}" \
@@ -715,7 +715,7 @@ if \
             --dir_scr "${ROOT_REPO}/bin" \
             --threads 1 \
             --mode ratio \
-            --method unadj \
+            --method linear \
             --csv_fil_A "${fil_A_gz}" \
             --csv_fil_B "${fil_B_gz}" \
             --csv_fil_out "${fil_out_gzip_io}" \
@@ -750,6 +750,10 @@ if [[ -s "${fil_out_gzip_io}" ]]; then
     fi
 fi
 
+assert_file_nonempty \
+    "${outfile_txt_gzip_io}" \
+    "submit decompressed gzip ratio output"
+
 if [[ -s "${outfile_txt_gzip_io}" ]]; then
     assert_pattern_found \
         "${outfile_txt_gzip_io}" \
@@ -779,7 +783,7 @@ if \
             --dir_scr "${ROOT_REPO}/bin" \
             --threads 1 \
             --mode ratio \
-            --method unadj \
+            --method linear \
             --csv_fil_A "${fil_A_hdr}" \
             --csv_fil_B "${fil_B_hdr}" \
             --csv_fil_out "${fil_out_skp_pfx}" \
@@ -842,9 +846,14 @@ if [[ -s "${fil_out_skp_pfx}" ]]; then
 fi
 
 
-# Mode separation: ratio runs take '--chr_siz', which they use to validate
-# bedGraph bounds, and must never receive the signal-only window options.
+# Mode separation: ratio runs must never receive the signal-only window
+# options. The submit wrapper does not forward '--chr_siz' itself, so only the
+# absences are asserted here; the execute suite covers the forwarding.
 log_rat_mode="${tmp}/logs/test_compute_ratio_skp_pfx.ratio_skp_pfx.dp3.stderr.txt"
+
+assert_file_nonempty \
+    "${log_rat_mode}" \
+    "submit ratio stderr log for mode separation"
 
 if [[ -s "${log_rat_mode}" ]]; then
     assert_pattern_absent \

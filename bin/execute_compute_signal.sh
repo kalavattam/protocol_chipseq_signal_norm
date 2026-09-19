@@ -98,10 +98,10 @@ Parameters
     Recognized values:
 
     | Before        | After            |
-    | :----         | :----            |
+    | :---          | :---             |
     | 'log2'        | 'log2_rat'       |
     | 'log2_r'      | 'log2_recip_rat' |
-    | 'unadj_r'     | 'recip_rat'      |
+    | 'linear_r'    | 'recip_rat'      |
     | anything else | 'rat'            |
 
   2  scl_fct : list of structured string
@@ -123,7 +123,7 @@ Notes
   - On checking whether scaling is in effect:
 
     | Condition               | Assessment |
-    | :----                   | :----      |
+    | :---                    | :---       |
     | Empty 'scl_fct'         | No scaling |
     | All 'NA' or blank       | No scaling |
     | Any non-NA or non-blank | Scaled     |
@@ -137,16 +137,16 @@ Examples
 
   2. Generate a scaled reciprocal-ratio prefix.
     '''bash
-    generate_pfx unadj_r 2:1
+    generate_pfx linear_r 2:1
     '''
 EOM
     )
 
     case "${method}" in
-        log2)    pfx="log2_rat"       ;;
-        log2_r)  pfx="log2_recip_rat" ;;
-        unadj_r) pfx="recip_rat"      ;;
-        *)       pfx="rat"            ;;
+        log2)     pfx="log2_rat"       ;;
+        log2_r)   pfx="log2_recip_rat" ;;
+        linear_r) pfx="recip_rat"      ;;
+        *)        pfx="rat"            ;;
     esac
 
     if [[ -n "${scl_fct}" ]]; then
@@ -270,8 +270,7 @@ Usage
   build_cmd
     [--help] [idx]
 
-  Construct the command array 'cmd_bld' for one call to
-  'submit_compute_signal.sh'.
+  Construct the command array 'cmd_bld' for one call to 'submit_compute_signal.sh'.
 
 Parameters
 ----------
@@ -885,23 +884,17 @@ function canonicalize_args() {
             if [[ -z "${method}" ]]; then method="norm"; fi
 
             case "${method}" in
-                u|unadj|unadjusted|s|smp|simple|r|raw)
-                    method="unadj"
-                    ;;
-                f|frg|frag|frg[_-]len|frag[_-]len|l|len|len[_-]frg|len[_-]frag)
-                    method="frag"
-                    ;;
-                n|nc|nrm|norm|normalized)
-                    method="norm"
-                    ;;
+                unadj)   method="unadj" ;;
+                frag)    method="frag"  ;;
+                norm|nc) method="norm"  ;;
+                count)   method="count" ;;
+                cpm)     method="cpm"   ;;
                 *)
                     echo_err \
                         "invalid value for '--method': '${method}'. Expected" \
-                        "'u', 'unadj', 'unadjusted', 's', 'smp', 'simple'," \
-                        "'r', or 'raw' ('method=unadj'); 'f', 'frg', 'frag'," \
-                        "'l', 'len', 'len_frg', or 'len_frag'" \
-                        "('method=frag'); 'n', 'nc', 'nrm', 'norm', or" \
-                        "'normalized' ('method=norm')."
+                        "'unadj' ('method=unadj'); 'frag' ('method=frag');" \
+                        "'norm' or 'nc' ('method=norm'); 'count'" \
+                        "('method=count'); or 'cpm' ('method=cpm')."
                     return 1
                     ;;
             esac
@@ -915,30 +908,19 @@ function canonicalize_args() {
         r|rat|ratio)
             mode="ratio"
 
-            if [[ -z "${method}" ]]; then method="unadj"; fi
+            if [[ -z "${method}" ]]; then method="linear"; fi
 
             case "${method}" in
-                u|unadj|unadjusted|s|smp|simple|r|raw)
-                    method="unadj"
-                    ;;
-                2|l2|lg2|log2)
-                    method="log2"
-                    ;;
-                ur|unadj[_-]r|unadjusted[_-]r|sr|smp[_-]r|simple[_-]r|rr|raw[_-]r)
-                    method="unadj_r"
-                    ;;
-                2r|l2r|l2[_-]r|lg2[_-]r|log2[_-]r)
-                    method="log2_r"
-                    ;;
+                linear)            method="linear"   ;;
+                log2|l2)           method="log2"     ;;
+                linear[_-]r)       method="linear_r" ;;
+                log2[_-]r|l2[_-]r) method="log2_r"   ;;
                 *)
                     echo_err \
                         "invalid value for '--method': '${method}'. Expected" \
-                        "'u', 'unadj', 'unadjusted', 's', 'smp', 'simple'," \
-                        "'r', or 'raw' ('method=unadj'); '2', 'l2', 'lg2'," \
-                        "or 'log2' ('method=log2'); 'ur', 'unadj_r'," \
-                        "'unadjusted_r', 'sr', 'smp_r', 'simple_r', 'rr', or" \
-                        "'raw_r' ('method=unadj_r'); or '2r', 'l2r', 'l2_r'," \
-                        "'lg2_r', or 'log2_r' ('method=log2_r')."
+                        "'linear' ('method=linear'); 'log2' or 'l2'" \
+                        "('method=log2'); 'linear_r' ('method=linear_r');" \
+                        "or 'log2_r' or 'l2_r' ('method=log2_r')."
                     return 1
                     ;;
             esac
@@ -1445,7 +1427,7 @@ function config_exec() {
         "arr_scl_fct" "arr_usr_frg" "arr_dep_min" "arr_pseudo"
 
     if [[ "${mode}" == "signal" ]]; then
-        summarize_sig_norm "${method}" "${csv_scl_fct}"
+        summarize_sig_depo "${method}" "${csv_scl_fct}"
     fi
 }
 

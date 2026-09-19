@@ -385,6 +385,10 @@ fi
 # silently dropped option would still produce output.
 log_fwd="${tmp}/logs/test_compute_bam_se_signal.tiny_se_signal_unadj.stderr.txt"
 
+assert_file_nonempty \
+    "${log_fwd}" \
+    "submit signal stderr log for the forwarding contract"
+
 if [[ -s "${log_fwd}" ]]; then
     assert_pattern_found \
         "${log_fwd}" \
@@ -398,6 +402,10 @@ if [[ -s "${log_fwd}" ]]; then
 fi
 
 log_coord="${tmp}/logs/test_compute_bam_se_coord.tiny_se_coord.stderr.txt"
+
+assert_file_nonempty \
+    "${log_coord}" \
+    "submit coord stderr log for the forwarding contract"
 
 if [[ -s "${log_coord}" ]]; then
     assert_pattern_absent \
@@ -434,6 +442,10 @@ done
 # Default contract: a signal case that names neither option still forwards both
 # wrapper defaults, so a dropped default cannot pass unnoticed.
 log_dflt="${tmp}/logs/test_compute_bam_se_signal_frag.tiny_se_signal_frag.stderr.txt"
+
+assert_file_nonempty \
+    "${log_dflt}" \
+    "submit signal stderr log for the default contract"
 
 if [[ -s "${log_dflt}" ]]; then
     assert_pattern_found \
@@ -492,14 +504,15 @@ assert_file_exact_line \
 assert_file_exact_line \
     "${dir_rep}/se.n_bin.txt" \
     "2" \
-    "submit SE spanned-bin count is 2"
+    "submit SE fragment-bin overlap count is 2"
 
 assert_file_exact_line \
     "${dir_rep}/pe.n_bin.txt" \
     "5" \
-    "submit PE spanned-bin count is 5, proving per-sample report paths"
+    "submit PE overlap count is 5, proving per-sample report paths"
 
-assert_file_nonempty "${dir_rep}/se.bdg" \
+assert_file_nonempty \
+    "${dir_rep}/se.bdg" \
     "submit still writes the track when reports are requested"
 
 dir_only="${tmp}/report_only"
@@ -560,7 +573,8 @@ mkdir -p "${dir_ref}"
 
 if \
     PYTHONDONTWRITEBYTECODE=1 \
-    python3 -m protocol_chipseq_signal_norm.cli.compute_signal \
+    "${TEST_MANAGED_PYTHON}" \
+        -m protocol_chipseq_signal_norm.cli.compute_signal \
         --fil_in "${in_pe}" \
         --siz_bin 10 \
         --report_n_frg "${dir_ref}/direct.n_frg.txt" \
@@ -575,9 +589,9 @@ then
     assert_files_equal \
         "${dir_rep}/pe.n_bin.txt" \
         "${dir_ref}/direct.n_bin.txt" \
-        "submit PE spanned-bin count equals a direct compute_signal.py run"
+        "submit PE overlap count equals a direct compute_signal.py run"
 else
-    record_skip "direct compute_signal.py reference run unavailable"
+    record_fail "direct compute_signal.py reference run failed"
 fi
 
 
@@ -594,12 +608,14 @@ bash "${ROOT_REPO}/bin/submit_compute_signal.sh" \
     --dir_eo "${dir_err}" \
     > /dev/null 2>&1 || true
 
-assert_file_nonempty "${dir_bed}/pe.bed" \
+assert_file_nonempty \
+    "${dir_bed}/pe.bed" \
     "submit coord writes BED output"
 
 if \
     PYTHONDONTWRITEBYTECODE=1 \
-    python3 -m protocol_chipseq_signal_norm.cli.compute_signal \
+    "${TEST_MANAGED_PYTHON}" \
+        -m protocol_chipseq_signal_norm.cli.compute_signal \
         --fil_in "${in_pe}" \
         --fil_out "${dir_bed}/direct.bed" \
         --siz_bin 10 \
@@ -614,10 +630,140 @@ then
     assert_files_equal \
         "${dir_bed}/bed.n_bin.txt" \
         "${dir_rep}/pe.n_bin.txt" \
-        "BED-mode spanned-bin count matches the bedGraph-mode value"
+        "BED-mode fragment-bin overlap count matches the bedGraph-mode value"
 else
     record_fail "reports alongside BED output failed"
 fi
+
+
+# Whole-count deposition through the wrapper. Bin 3, not 10: at 10 this
+# fixture emits 1 for both 'count' and 'frag'.
+fil_out_se_signal_count="${dir_out}/se_signal_count.bdg"
+log_se_signal_count="${dir_log}/submit_compute_signal_se_count.log"
+
+run_case_compute_signal \
+    submit \
+    bam \
+    "se_signal_count" \
+    "signal" \
+    "${in_se}" \
+    "${fil_out_se_signal_count}" \
+    "${log_se_signal_count}" \
+    "${dir_out}" \
+    "${dir_err}" \
+    "" \
+    --method count \
+    --siz_bin 3 \
+    --csv_scl_fct NA \
+    --dp 3
+
+assert_file_nonempty \
+    "${fil_out_se_signal_count}" \
+    "count SE signal output"
+
+if [[ -s "${fil_out_se_signal_count}" ]]; then
+    assert_pattern_found \
+        "${fil_out_se_signal_count}" \
+        $'^I\t0\t3\t1$' \
+        "count SE signal deposits a whole 1 at I:0-3"
+
+    # A partly covered bin still takes a whole unit; 'frag' gives 0.1 here.
+    assert_pattern_found \
+        "${fil_out_se_signal_count}" \
+        $'^I\t9\t12\t1$' \
+        "count SE signal gives a partly covered bin a whole 1"
+
+    if \
+        awk \
+            -F'\t' \
+            '$4 !~ /^[0-9]+$/ { bad = 1 } END { exit bad ? 1 : 0 }' \
+            "${fil_out_se_signal_count}"
+    then
+        record_pass "every count value is an integer"
+    else
+        record_fail "count track carries a non-integer value"
+    fi
+fi
+
+
+# Match the method diagnostic, not exit status: an unrelated argument fault
+# also exits non-zero, so a status check would pass for a valid method.
+arr_mth_gone=(
+    r raw u unadjusted s smp simple f frg len nrm normalized bogus
+)
+
+for retired in "${arr_mth_gone[@]}"; do
+    out_rej="$(
+        bash "${ROOT_REPO}/bin/submit_compute_signal.sh" \
+            --mode signal \
+            --method "${retired}" \
+            --csv_fil_in "${in_se}" \
+            --csv_fil_out "${dir_out}/reject.bdg" 2>&1 || true
+    )"
+
+    if [[ "${out_rej}" == *"invalid value for '--method'"* ]]; then
+        record_pass "wrapper rejects retired method spelling '${retired}'"
+    else
+        record_fail "wrapper did not reject method spelling '${retired}'"
+    fi
+done
+
+
+# Read the accepted vocabulary out of the tool itself, so a method added to
+# 'METHOD_CANON' without a matching wrapper arm fails here.
+mapfile -t arr_mth_keep < <(
+    "${TEST_MANAGED_PYTHON}" -c \
+        "from protocol_chipseq_signal_norm.cli.compute_signal import \
+METHOD_CANON; print(chr(10).join(METHOD_CANON))"
+)
+
+if [[ "${#arr_mth_keep[@]}" -eq 0 ]]; then
+    record_fail "could not read the signal method vocabulary"
+fi
+
+# The same probe stays silent for every kept spelling, which is what makes the
+# loop above discriminating rather than inert.
+for kept in "${arr_mth_keep[@]}"; do
+    out_keep="$(
+        bash "${ROOT_REPO}/bin/submit_compute_signal.sh" \
+            --mode signal \
+            --method "${kept}" \
+            --csv_fil_in "${in_se}" \
+            --csv_fil_out "${dir_out}/keep.bdg" 2>&1 || true
+    )"
+
+    if [[ "${out_keep}" == *"invalid value for '--method'"* ]]; then
+        record_fail "wrapper wrongly rejected kept method spelling '${kept}'"
+    else
+        record_pass "wrapper accepts kept method spelling '${kept}'"
+    fi
+done
+
+
+# shellcheck source=lib/bash/core/format_outputs.sh
+source "${ROOT_REPO}/lib/bash/core/format_outputs.sh"
+
+# Read the catch-all wording at run time rather than as a literal, as a pinned
+# one went stale when the message was reworded, and the check passed
+# unconditionally.
+read_depo_msg() {
+    summarize_sig_depo "${1}" "" 2>&1 \
+        | sed -n "s/^.*adjustment: //; s/: .--method .*\$//p"
+}
+
+msg_catch_all="$(read_depo_msg "__no_such_method__")"
+
+if [[ -z "${msg_catch_all}" ]]; then
+    record_fail "could not read the catch-all summary message"
+fi
+
+for accepted in unadj frag norm nc count cpm; do
+    if [[ "$(read_depo_msg "${accepted}")" == "${msg_catch_all}" ]]; then
+        record_fail "'${accepted}' has no summary message of its own"
+    else
+        record_pass "'${accepted}' has its own summary message"
+    fi
+done
 
 
 finish
