@@ -907,14 +907,18 @@ def test_the_method_vocabulary_is_exactly_the_ruled_set() -> None:
     is not free: it becomes a second file's edit in another workstream.
     """
 
-    assert set(METHOD_CANON) >= {
+    # A list comparison pins membership, count and sequence at once. Sequence
+    # matters because argparse renders the choices display straight from this
+    # mapping, so a reorder changes published help; the ruled order puts each
+    # canonical name before its alias.
+    assert list(METHOD_CANON) == [
         "unadj",
         "frag",
         "norm",
         "nc",
         "count",
         "cpm",
-    }
+    ]
 
     for retired in ("ct", "cp", "cnt", "c"):
         assert retired not in METHOD_CANON
@@ -965,3 +969,48 @@ def test_whole_count_writes_a_gzipped_bedgraph(
 
     assert status == 0
     assert read_bdg_rows(fil_out)
+
+
+def test_method_help_names_every_canonical_method(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """
+    Rendered help names every method the parser accepts.
+
+    Deriving the expectation from 'METHOD_CANON' rather than listing methods
+    here means a method added without a help row fails at this assertion,
+    instead of shipping a method the help never mentions.
+    """
+
+    with pytest.raises(SystemExit):
+        parse_args(["--help"])
+
+    rendered = capsys.readouterr().out
+
+    for canonical in sorted(set(METHOD_CANON.values())):
+        assert f"'{canonical}'" in rendered
+
+    for spelling in METHOD_CANON:
+        assert f"'{spelling}'" in rendered
+
+
+def test_method_help_names_both_deposition_families(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """
+    Rendered help separates the fractional and whole-count families.
+
+    The families are what a reader has to understand before the individual
+    methods mean anything, so their absence is a documentation defect even when
+    every method is listed.
+    """
+
+    with pytest.raises(SystemExit):
+        parse_args(["--help"])
+
+    rendered = capsys.readouterr().out
+
+    assert "Fractional methods deposit" in rendered
+    assert "Whole-count methods deposit" in rendered
+    assert "'--report_n_bin'" in rendered
+

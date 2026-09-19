@@ -84,34 +84,17 @@ assert sys.version_info >= (3, 11), "Python >= 3.11 required."
 # fmt: off
 METHOD_CANON = {
     # Deposit base-pair overlap, in which a partly covered bin takes a share
-    # proportional to that overlap, not a whole unit. The column sums to total
-    # fragment length; 'frag' and 'norm' below rescale this same deposition.
-    "r": "unadj",
-    "raw": "unadj",
-    "u": "unadj",
+    # proportional to that overlap. The column sums to total fragment length;
+    # 'frag' and 'norm' below rescale this same deposition.
     "unadj": "unadj",
-    "unadjusted": "unadj",
-    "s": "unadj",
-    "smp": "unadj",
-    "simple": "unadj",
 
     # Normalize signal by fragment length.
-    "f": "frag",
-    "frg": "frag",
     "frag": "frag",
-    "frg_len": "frag",
-    "frag_len": "frag",
-    "l": "frag",
-    "len": "frag",
-    "len_frg": "frag",
-    "len_frag": "frag",
 
-    # Normalize signal by fragment length and depth.
-    "n": "norm",
-    "nc": "norm",
-    "nrm": "norm",
+    # Normalize signal by fragment length and depth. The canonical name
+    # precedes its alias.
     "norm": "norm",
-    "normalized": "norm",
+    "nc": "norm",
 
     # Deposit one whole count in every bin a fragment touches.
     "count": "count",
@@ -124,10 +107,10 @@ METHOD_CHOICES = tuple(METHOD_CANON.keys())
 
 # Map each canonical method to how one fragment deposits into the bins it
 # spans. Fractional methods add base-pair overlap, optionally divided by
-# fragment length; whole-count methods add one per touched bin. The map is
-# total over the canonical methods, so a method added without a deposition
-# rule raises here rather than defaulting to a family it was never assigned
-# to.
+# fragment length; whole-count methods add one per touched bin.
+#
+# The map is total over the canonical methods; a method added without a
+# deposition rule rule raises here.
 METHOD_DEPOSIT = {
     "unadj": "fractional",
     "frag": "fractional",
@@ -701,7 +684,7 @@ def count_frgs_and_bins(
     - 'L' counts a fragment once per bin it touches.
       + That is deliberately not what the signal accumulation does: the
         accumulators add base-pair overlap, so an unadjusted track sums to
-        total base pairs rather than to total spanned bins, while a
+        total base pairs rather than to total fragment-bin overlaps, while a
         fragment-length-normalized track sums to 'N'.
       + Both are measures of span, but only the bin count makes 'k = L / N'
         come out in bins, which is the unit 'compute_pseudo' needs for a
@@ -1136,7 +1119,9 @@ def calc_sig_chrom_direct_sparse_np(
 
     if is_len:
         if np.any(lengths <= 0):
-            raise ValueError("'frg_len' must be > 0 when using normalization.")
+            raise ValueError(
+                "Fragment length must be > 0 when dividing by it.",
+            )
 
         weights = 1.0 / lengths
     else:
@@ -2144,7 +2129,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = CapArgumentParser(
         description=(
             "Compute binned signal from a BAM or CRAM file in bedGraph "
-            "format, optionally applying normalization.\n"
+            "format, optionally adjusting or rescaling it.\n"
             "\n"
             "Alternatively, extract and output processed fragment coordinates "
             "in a BED-like format, which can be used as input to the original "
@@ -2153,8 +2138,8 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
             "use with S. cerevisiae data "
             "(https://github.com/kalavattam/siQ-ChIP/tree/protocol).\n"
             "\n"
-            "The fragment count 'N' and the spanned-bin count 'L' can be "
-            "written alongside either output or on their own: when "
+            "The fragment count 'N' and the fragment-bin overlap count 'L' "
+            "can be written alongside either output or on their own: when "
             "'--fil_out' is omitted, the run counts and writes only the "
             "requested reports. Both are inputs to 'compute_pseudo', where "
             "'k = L / N' puts the pseudocount in bins, the unit per-bin "
@@ -2234,7 +2219,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
             "Note: requesting BED output causes the script to write processed "
             "fragment coordinates in a BED-like format, and '--method', "
             "'--scl_fct', and '--dp' are ignored. '--siz_bin' is ignored too, "
-            "unless '--report_n_bin' is given, since 'L' counts bins.\n"
+            "unless '--report_n_bin' is given.\n"
             "\n"
         ),
     )
@@ -2257,22 +2242,20 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
             "Fractional methods deposit each fragment's base-pair overlap "
             "with a bin, so a bin the fragment only partly covers takes a "
             "partial value.\n"
-            "  - Unadjusted aliases: 'r', 'raw', 'u', 'unadj', 'unadjusted', "
-            "'s', 'smp', 'simple'. Internally standardized to 'unadj'. Each "
-            "bin takes its overlap in base pairs with no further adjustment, "
-            "so the track sums to the combined length of all fragments.\n"
-            "  - Fragment-length-normalized aliases: 'f', 'frg', 'frag', "
-            "'frg_len', 'frag_len', 'l', 'len', 'len_frg', 'len_frag'. "
-            "Internally standardized to 'frag'. Each overlap is divided by "
-            "fragment length, so every fragment contributes 1 in total and "
-            "the track sums to the fragment count '--report_n_frg' reports.\n"
-            "  - Normalized-coverage aliases: 'n', 'nc', 'nrm', 'norm', "
-            "'normalized'. Internally standardized to 'norm'. Each overlap is "
-            "divided by fragment length and by total fragments, so the "
-            "genome-wide summed signal is approximately 1.\n"
+            "  - Unadjusted method: 'unadj'. Each bin takes its overlap in "
+            "base pairs with no further adjustment, so the track sums to the "
+            "combined length of all fragments.\n"
+            "  - Fragment-length-normalized method: 'frag'. Each overlap is "
+            "divided by fragment length, so every fragment contributes 1 in "
+            "total and the track sums to the fragment count '--report_n_frg' "
+            "reports.\n"
+            "  - Normalized-coverage method: 'norm' (alias 'nc'). Each "
+            "overlap is divided by fragment length and by total fragments, so "
+            "the genome-wide summed signal is approximately 1.\n"
             "\n"
             "Whole-count methods deposit 1 in every bin a fragment touches, "
-            "whether the fragment covers the whole bin or a single base.\n"
+            "whether the fragment covers the whole bin or just a single "
+            "base.\n"
             "  - Whole-count method: 'count'. Each touched bin takes 1, so "
             "the track sums to the bin total '--report_n_bin' reports.\n"
             "  - Counts-per-million method: 'cpm'. The whole counts are "
@@ -2344,7 +2327,17 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         type=float,
         default=None,
         help=(
-            "Scaling factor to apply to the signal (default: %(default)s).\n\n"
+            "Scaling factor to apply to the signal (default: %(default)s).\n"
+            "\n"
+            "A factor multiplies the finished track verbatim, whatever "
+            "'--method' produced it. A siQ-ChIP alpha is derived against a "
+            "particular substrate: equations 5 and 6 for 'frag', 5nd and 6nd "
+            "for 'norm'. A spike-in alpha applies to a ratio, and a ratio "
+            "built from either 'count' or 'unadj' serves, since the per-bin "
+            "deposition difference largely cancels in the division. Earlier "
+            "spike-in work used 'count', so prefer it where continuity with "
+            "those results matters.\n"
+            "\n"
         ),
     )
     parser.add_argument(
@@ -2414,8 +2407,8 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         default=None,
         const=REPORT_DERIVE,
         help=(
-            "Write the spanned-bin count 'L' to this file as a single integer "
-            "on one line (default: %(default)s).\n"
+            "Write the fragment-bin overlap count 'L' to this file as a "
+            "single integer on one line (default: %(default)s).\n"
             "\n"
             "Given without a path, the file is written beside '--fil_out', "
             "with its extension (and any '.gz') replaced by '.n_bin.txt'. If "
@@ -2425,7 +2418,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
             "fragment is divided and how far it reaches, respectively.\n"
             "\n"
             "Bins are counted once per fragment that touches them, so 'L' "
-            "totals the bins spanned by the same fragments counted by 'N' "
+            "totals the overlaps made by the same fragments counted by 'N' "
             "(see '--report_n_frg' above).\n"
             "\n"
             "A '--method count' track's value column sums to 'L', since every "
@@ -2911,8 +2904,10 @@ def main(argv: list[str] | None = None) -> int:
     Raises
     ------
     SystemExit
-        For help, invalid dimensions or scaling, unsupported output paths,
-        zero-fragment normalization, or BAM/CRAM read failures.
+        For help, invalid dimensions, invalid scaling, unsupported output
+        paths, an empty column where depth normalization or the
+        counts-per-million closure needs a nonzero total, or BAM/CRAM read
+        failures.
 
     Notes
     -----
