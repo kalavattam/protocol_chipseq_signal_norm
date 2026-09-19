@@ -16,15 +16,14 @@
 
 
 """
-Compute pseudocount recommendations for bedGraph signal tracks.
+Compute pseudocounts for bedGraph signal tracks.
 
 The CLI accepts input tracks and a method. '--method edger' derives the
-pseudocount from library sizes, taking a target normalization, a prior count,
-and optionally the sizes themselves; the four distribution-based methods derive
-it from the value distribution, taking a coefficient, nonzero filtering, and a
-symmetry mode. It prints one pseudocount or an A:B pair to stdout, or a
-deepTools argument string under '--prt_arg', and with '--prt_jsn' also prints a
-JSON summary.
+pseudocount from fragment-bin overlap counts, taking a target substrate, a
+prior count, and optionally the counts themselves; the four distribution-based
+methods derive it from the value distribution, taking a coefficient, nonzero
+filtering, and a symmetry mode. It prints one pseudocount or an A:B pair to
+stdout, and with '--prt_jsn' also prints a JSON summary.
 
 Examples
 --------
@@ -59,8 +58,7 @@ from protocol_chipseq_signal_norm.utilities.utils_io import (
     parse_skp_pfx,
 )
 from protocol_chipseq_signal_norm.utilities.utils_stabilizer import (
-    NORM_CHOICES,
-    canonicalize_norm,
+    canonicalize_substrate,
     compute_pseudo_edger,
     compute_stats_robust,
     determine_coef_eff,
@@ -72,6 +70,23 @@ with suppress(AttributeError, ValueError):
     signal.signal(signal.SIGPIPE, signal.SIG_DFL)
 
 assert sys.version_info >= (3, 11), "Python >= 3.11 required."
+
+# The substrates this tool serves: the project's own, as 'compute_signal' emits
+# them. 'SUBSTRATE_CANON' spans both tools, so each CLI restricts its own
+# choices rather than carrying its own vocabulary. The deepTools substrates
+# belong to 'compute_pseudo_deeptools'.
+# TODO: Potential change of SUBSTRATE, SUB, etc. to something clearer, here and
+# elsewhere.
+SUB_CHOICES = ("unadj", "frag", "norm", "nc", "count", "cpm")
+
+# Substrates whose prior is denominated against the fragment count, so they
+# need '--n_frg_A' and '--n_frg_B'. 'unadj' additionally needs its own column
+# sum, which the track supplies and no report flag writes.
+SUB_FRACTIONAL = ("unadj", "frag", "norm")
+
+# Substrates this tool no longer accepts, and where they went. A bare argparse
+# rejection would leave a user guessing which of the two tools to reach for.
+SUB_MOVED = ("CPM", "BPM", "RPKM", "RPGC", "None")
 
 # The distribution-shaping options, each with every spelling argparse accepts
 # for it. 'edger' consults none of them, and silently ignoring one lets a
@@ -86,10 +101,10 @@ OPT_IGNORED_EDGER = {
 }
 
 # Every short option 'parse_args' registers. Resolving an attached value needs
-# the whole set rather than the six above: '-sfA0.5' must resolve to '-sfA',
-# not to '-s' carrying 'fA0.5', and only the longest registered prefix tells
-# the two apart. 'test_pseudo.py' asserts both constants against the parser, so
-# neither can drift away from it.
+# the whole set rather than the six above: '-sb10' must resolve to '-sb', not
+# to '-s' carrying 'b10', and only the longest registered prefix tells the two
+# apart. 'test_pseudo.py' asserts both constants against the parser, so neither
+# can drift away from it.
 OPT_SHORT_ALL = (
     "-h",
     "-v",
@@ -103,24 +118,59 @@ OPT_SHORT_ALL = (
     "-e",
     "-mz",
     "-s",
-    "-nm",
+    "-su",
     "-pc",
     "-sb",
     "-nbA",
     "-nbB",
-    "-sfA",
-    "-sfB",
     "-nfA",
     "-nfB",
     "-dp",
     "-pj",
-    "-pa",
 )
 
 
 # TODO: Extend compressed-input handling to '.bgz' and '.bgzf' here and in
 # related bedGraph parsers. Revisit JSON summarization and whether a shared
 # warning/error-text helper should be exported to other Python CLIs.
+def _check_substrate(value: str) -> str:
+    """
+    Accept a served substrate, naming the other tool for a moved one.
+
+    Parameters
+    ----------
+    value : str
+        One '--substrate' value as supplied.
+
+    Returns
+    -------
+    substrate : str
+        The value unchanged, for the 'choices' check to validate.
+
+    Raises
+    ------
+    argparse.ArgumentTypeError
+        If the value names a deepTools substrate, which moved to
+        'compute_pseudo_deeptools' when the tools split.
+
+    Notes
+    -----
+    argparse applies 'type' before 'choices', so a moved name is intercepted
+    here and never reaches the bare rejection. Leaving it to 'choices' instead
+    would either list the moved names in the advertised set or drop the
+    migration hint, and the split is recent enough that a user will hit it.
+    """
+
+    if value in SUB_MOVED:
+        raise argparse.ArgumentTypeError(
+            f"'{value}' is a deepTools substrate; use "
+            f"'compute_pseudo_deeptools', which serves {', '.join(SUB_MOVED)} "
+            "through the supplied-scale-factor workflow.",
+        )
+
+    return value
+
+
 def combine_pseudo_sym(
     pseudo_a: float,
     pseudo_b: float,
@@ -279,17 +329,15 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
                     "sym",
                 ),
                 (
-                    "normalization",
+                    "substrate",
                     "prior_count",
                     "siz_bin",
                     "n_bin_A",
                     "n_bin_B",
-                    "sf_A",
-                    "sf_B",
                     "n_frg_A",
                     "n_frg_B",
                 ),
-                ("dp", "prt_jsn", "prt_arg"),
+                ("dp", "prt_jsn"),
             ),
             examples=(
                 _HelpExample(
@@ -389,7 +437,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
             "\n"
             "| method     | description                             |\n"
             "| :---       | :---                                    |\n"
-            "| edger      | edgeR's prior.count rule ‡              |\n"
+            "| edger      | edgeR's prior.count rule                |\n"
             "| frc_mdn_nz | value = coef × median of nonzero bins   |\n"
             "| qntl_nz    | value = q-th percentile of nonzero bins |\n"
             "| frc_avg_nz | value = coef × mean of nonzero bins     |\n"
@@ -398,8 +446,9 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
             "Notes:\n"
             "  - '--method edger' takes one track or two, as edgeR does.\n"
             "  - With one track, edgeR's per-sample prior scaling degenerates "
-            "to a no-op and the mean library size is that track's own.\n"
-            "  - A given track's one-track pseudocount is therefore not its "
+            "to a no-op and the mean fragment-bin overlap count is that "
+            "track's own.\n"
+            "  - For a given track, its single-track pseudocount is not its "
             "two-track pseudocount; both are correct for their own frame.\n"
             "  - If '--method qntl_nz', set percentile with '--qntl_nz' "
             "[decimals OK (e.g., 0.1 = 0.1th percentile); nearest-rank "
@@ -412,7 +461,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
             "  - '--method min_nz' typically needs a larger coef (e.g., "
             "0.1–1.0) in comparison to '--method frc_*' (e.g., 0.01).\n"
             "\n"
-            "‡ See '--normalization' for more details.\n"
+            "For '--method edger', see '--substrate' for more details.\n"
             "\n"
         ),
     )
@@ -537,28 +586,48 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         ),
     )
 
+    # TODO: Potential renaming: '-su' / '--substrate' -> '-ts' / '--typ_sig'.
+    # Here and elsewhere.
     parser.add_argument(
-        "-nm",
-        "--normalization",
-        dest="normalization",
-        choices=NORM_CHOICES,
-        default="CPM",
+        "-su",
+        "--substrate",
+        dest="substrate",
+        type=_check_substrate,
+        choices=SUB_CHOICES,
+        default="norm",
         help=(
-            "Target substrate: a deepTools normalization, this project's "
-            "normalized coverage, or none (default: %(default)s).\n"
+            "Target substrate: which '--method' wrote the track (default: "
+            "%(default)s). Applies to '--method edger' only; ignored "
+            "otherwise.\n"
             "\n"
-            "|          | description                                    |\n"
-            "| :---     | :---                                           |\n"
-            "| CPM, BPM | exact; BPM reduces to CPM with fixed bin width |\n"
-            "| RPKM     | exact; needs '--siz_bin'                       |\n"
-            "| None     | correct up to a constant log offset; not edgeR |\n"
-            "| RPGC     | needs '--sf_A' and '--sf_B'; not edgeR         |\n"
-            "| norm     | normalized coverage; not edgeR ‡               |\n"
+            "|       | deposition          | column sum  | n_frg | n_bin |\n"
+            "| :---  | :---                | :---        | :---  | :---  |\n"
+            "| unadj | overlap in bp       | frag bp     | yes   | yes   |\n"
+            "| frag  | overlap / length    | frag count  | yes   | infer |\n"
+            "| norm  | overlap / len / 'N' | one         | yes   | infer |\n"
+            "| count | one per touched bin | overlaps    | no    | infer |\n"
+            "| cpm   | touches x 1e6 / 'L' | one million | no    | infer |\n"
             "\n"
-            "Applies to '--method edger' only; ignored otherwise.\n"
+            "For fractional substrates 'unadj', 'frag', and 'norm', a partly "
+            "covered bin takes a share of the overlap; for whole-count "
+            "substrates 'count' and 'cpm', a partly covered bin takes one "
+            "count.\n"
             "\n"
-            "‡ Needs '--n_frg_A' and '--n_frg_B'; pass the raw-count tracks "
-            "as '--fil_A' and '--fil_B', not the normalized coverage tracks.\n"
+            "Take the counts the last two columns ask for from "
+            "'compute_signal --report_n_frg --report_n_bin', which writes "
+            "them beside the track it is already producing.\n"
+            "\n"
+            "Where that column reads 'infer', '--n_bin_A' and '--n_bin_B' may "
+            "be omitted and the tool sums '--fil_A' and '--fil_B' in their "
+            "place. Only a 'count' track sums to 'L', so 'count' tracks must "
+            "be used for inference regardless of chosen substrate.\n"
+            "\n"
+            "Here, 'n_bin' ('L') adds up, across all fragments, how many bins "
+            "each fragment spans (it is edgeR's 'lib.size').\n"
+            "\n"
+            "Additional notes:\n"
+            "  - 'nc' is an alias for 'norm'.\n"
+            "  - For deepTools substrates, use 'compute_pseudo_deeptools'.\n"
             "\n"
         ),
     )
@@ -569,8 +638,8 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         type=float,
         default=2.0,
         help=(
-            "edgeR 'prior.count' before library-size scaling (default: "
-            "%(default)s).\n"
+            "edgeR 'prior.count', before the per-sample scaling each "
+            "substrate applies (default: %(default)s).\n"
             "\n"
             "Applies to '--method edger' only; ignored otherwise.\n"
             "\n"
@@ -595,11 +664,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
             "\n"
             "Inferred from the track when omitted, and cross-checked against "
             "it when given, so a value the track contradicts is refused "
-            "rather than silently rescaling the spanned-bin count.\n"
-            "\n"
-            "Required only when no track is read, i.e., when both '--n_bin_A' "
-            "and '--n_bin_B' are supplied and '--normalization RPKM' needs a "
-            "width for its scale factor.\n"
+            "rather than silently rescaling the fragment-bin overlap count.\n"
             "\n"
         ),
     )
@@ -609,6 +674,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         type=int,
         help=argparse.SUPPRESS,
     )
+    # TODO: Here and elsewhere, '?_bin_?' -> '?_ovlp_?'.
     parser.add_argument(
         "-nbA",
         "--n_bin_A",
@@ -616,15 +682,16 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         type=float,
         default=None,
         help=(
-            "Spanned-bin count for track A: the column sum of the bin matrix, "
-            "which is edgeR's 'lib.size'. Note that 'lib.size' is not the "
-            "fragment count, which is '--n_frg_A'.\n"
+            "Fragment-bin overlap count 'L' for track A: the column sum of "
+            "the bin matrix, which is edgeR's 'lib.size'. It adds up, across "
+            "all fragments, how many bins each fragment spans (note this is "
+            "not the fragment count, which is '--n_frg_A').\n"
             "\n"
             "Written by 'compute_signal --report_n_bin', as "
             "'<track>.n_bin.txt' when that flag is given without a path. "
-            "Computed from '--fil_A' when omitted, which requires a "
-            "non-normalized track; supplying it skips that read and changes "
-            "nothing else.\n"
+            "Computed from '--fil_A' when omitted, which reads the track's "
+            "column sum as 'L' and so holds only for a 'count' track; a sum "
+            "below '--n_frg_A' is impossible for one and is refused.\n"
             "\n"
             "Applies to '--method edger' only; ignored otherwise.\n"
             "\n"
@@ -645,8 +712,8 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         type=float,
         default=None,
         help=(
-            "Spanned-bin count for track B; see '--n_bin_A'. Omit this and "
-            "'--fil_B' to compute a single-track pseudocount.\n"
+            "Fragment-bin overlap count 'L' for track B; see '--n_bin_A'. "
+            "Omit this and '--fil_B' to compute a single-track pseudocount.\n"
             "\n"
         ),
     )
@@ -655,42 +722,6 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         "--n_bin-B",
         "--n-bin_B",
         dest="n_bin_B",
-        type=float,
-        help=argparse.SUPPRESS,
-    )
-    parser.add_argument(
-        "-sfA",
-        "--sf_A",
-        dest="sf_A",
-        type=float,
-        default=None,
-        help=(
-            "Scaling factor read from 'bamCoverage --verbose'. Generate that "
-            "run with '--exactScaling'; otherwise, the factor is a sampled "
-            "estimate and so is every pseudocount derived from it.\n"
-            "\n"
-            "Applies to '--method edger --normalization RPGC' only, where it "
-            "is required.\n"
-            "\n"
-        ),
-    )
-    parser.add_argument(
-        "--sf-A",
-        dest="sf_A",
-        type=float,
-        help=argparse.SUPPRESS,
-    )
-    parser.add_argument(
-        "-sfB",
-        "--sf_B",
-        dest="sf_B",
-        type=float,
-        default=None,
-        help=("deepTools scale factor for track B; see '--sf_A'.\n\n"),
-    )
-    parser.add_argument(
-        "--sf-B",
-        dest="sf_B",
         type=float,
         help=argparse.SUPPRESS,
     )
@@ -704,17 +735,16 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
             "Fragment count for track A: the number of fragments "
             "'compute_signal' divided by, not the number of alignment "
             "records. The two coincide only when exactly one alignment per "
-            "fragment survives filtering. A normalized-coverage track sums to "
-            "1 by construction, so its own total cannot supply this.\n"
+            "fragment survives filtering. A fractional track's own column "
+            "total is a deposition total rather than a count, so it cannot "
+            "supply this.\n"
             "\n"
             "Written by 'compute_signal --report_n_frg', as "
-            "'<track>.n_frg.txt' when that flag is given without a path. "
-            "Failing that, it is 1e6 divided by the CPM scale factor that "
-            "'bamCoverage --verbose' reports.\n"
+            "'<track>.n_frg.txt' when that flag is given without a path.\n"
             "\n"
-            "Applies to '--method edger' with normalized coverage "
-            "('--normalization norm', aliases 'nc', 'n', 'nrm', 'normalized') "
-            "only, where it is required.\n"
+            "Applies to '--method edger' with a fractional substrate "
+            "('unadj', 'frag', 'norm', and its alias 'nc') only, where it is "
+            "required.\n"
         ),
     )
     parser.add_argument(
@@ -767,26 +797,6 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         action="store_true",
         help=argparse.SUPPRESS,
     )
-    parser.add_argument(
-        "-pa",
-        "--prt_arg",
-        dest="prt_arg",
-        action="store_true",
-        default=False,
-        help=(
-            "Print a ready-to-paste deepTools argument string instead of the "
-            "bare pseudocount pair.\n"
-            "\n"
-            "Applies to '--method edger' only; ignored otherwise.\n"
-            "\n"
-        ),
-    )
-    parser.add_argument(
-        "--prt-arg",
-        dest="prt_arg",
-        action="store_true",
-        help=argparse.SUPPRESS,
-    )
 
     argv_parse = sys.argv[1:] if argv is None else argv
 
@@ -822,7 +832,7 @@ def _print_pseudo_arguments(
         print(f"--method  {args.method}")
 
         if args.method == "edger":
-            print(f"--normalization {args.normalization}")
+            print(f"--substrate {args.substrate}")
             print(f"--prior_count {args.prior_count}")
 
             if siz_bin is None and args.siz_bin is None:
@@ -840,20 +850,12 @@ def _print_pseudo_arguments(
             if args.n_bin_B is not None:
                 print(f"--n_bin_B {args.n_bin_B}")
 
-            if args.sf_A is not None:
-                print(f"--sf_A    {args.sf_A}")
-
-            if args.sf_B is not None:
-                print(f"--sf_B    {args.sf_B}")
-
             if args.n_frg_A is not None:
                 print(f"--n_frg_A {args.n_frg_A}")
 
             if args.n_frg_B is not None:
                 print(f"--n_frg_B {args.n_frg_B}")
 
-            if args.prt_arg:
-                print("--prt_arg")
         else:
             if args.method == "qntl_nz":
                 print(f"--qntl_nz {args.qntl_nz}")
@@ -894,25 +896,26 @@ def _is_one_track(args: argparse.Namespace) -> bool:
     Notes
     -----
     edgeR itself has no two-sample requirement, so neither does this. In
-    'add_prior_count.c:88' 'compute_offsets' averages the library sizes over
-    all columns and scales each sample's prior by 'offset[lib] / ave_lib'. With
-    one column that ratio is exactly 1: the per-sample scaling degenerates to a
-    no-op, the prior stays at its nominal 'prior.count', and the denominator
-    becomes 'L + 2 * prior.count'. Nothing guards the path: 'cpm.default'
-    checks only for a zero-length dimension, and 'rpkm.default' is
-    'cpm.default' followed by a length division, so it inherits the same
-    behavior.
+    'add_prior_count.c:88' 'compute_offsets' averages the fragment-bin overlap
+    counts over all columns and scales each sample's prior by
+    'offset[lib] / ave_lib'. With one column that ratio is exactly 1: the
+    per-sample scaling degenerates to a no-op, the prior stays at its nominal
+    'prior.count', and the denominator becomes 'L + 2 * prior.count'. Nothing
+    guards the path: 'cpm.default' checks only for a zero-length dimension, and
+    'rpkm.default' is 'cpm.default' followed by a length division, so it
+    inherits the same behavior.
 
-    Reproducing that here therefore needs no separate estimator: passing the
-    one library size as both 'n_bin_a' and 'n_bin_b' makes 'L_bar' equal 'L_A',
-    which is exactly what 'ave_lib' becomes when 'nlib' is 1. Confirmed against
-    edgeR 4.4.0 and pinned by
-    'test_compute_pseudo_edger_reproduces_edger_for_one_library'.
+    Thus, reproducing that here needs no separate estimator: passing the one
+    fragment-bin overlap count as both 'n_bin_a' and 'n_bin_b' makes 'L_bar'
+    equal 'L_A', which is exactly what 'ave_lib' becomes when 'nlib' is 1.
+    Confirmed against edgeR 4.4.0, re-confirmed against 4.8.2, and pinned by
+    'test_compute_pseudo_edger_reproduces_edger_for_one_track'.
 
-    The consequence a caller must know: a track's one-track pseudocount is not
-    its two-track pseudocount, because 'L_bar' differs. That is edgeR's own
-    behavior, not an artifact here: 'cpm(log = TRUE)' on a one-column 'DGEList'
-    differs from the same column inside a two-column one.
+    The consequence a caller must know: a track's single-track pseudocount is
+    not its two-track pseudocount, because 'L_bar' is that track's own count in
+    one mode and the mean of both in the other. That is edgeR's own behavior,
+    not an artifact here: 'cpm(log = TRUE)' on a one-column 'DGEList' differs
+    from the same column inside a two-column one.
     """
 
     return not getattr(args, "fil_B", None) and args.n_bin_B is None
@@ -937,10 +940,10 @@ def _resolve_ignored(token: str) -> str | None:
     Three spellings reach the same option: the bare flag, an inline value after
     '=', and, for a single-character short option, a value attached directly as
     in '-c0.05'. Only the third needs care, because a short option is a prefix
-    of longer ones ('-s' of '-sp', '-sb', '-sfA', and '-sfB'), so the token
-    resolves to the longest registered option that prefixes it, which is how
-    argparse itself decides. Abbreviation is off ('allow_abbrev=False'), so no
-    partial long form has to be recognized.
+    of longer ones ('-s' of '-sp', '-su', and '-sb'), so the token resolves to
+    the longest registered option that prefixes it, which is how argparse
+    itself decides. Abbreviation is off ('allow_abbrev=False'), so no partial
+    long form has to be recognized.
     """
 
     name = token.split("=", 1)[0]
@@ -982,15 +985,14 @@ def _warn_inapplicable(
 
     Notes
     -----
-    'edger' derives its pseudocount from library sizes, so it consults none of
-    the distribution-shaping options. Silently ignoring them lets a wrong
-    mental model survive: '--coef 0.05 --method edger' currently runs, ignores
-    the coefficient, and reports nothing.
+    edgeR derives its pseudocount from fragment-bin overlap counts, so it
+    consults none of the distribution-shaping options. Silently ignoring them
+    lets a wrong mental model survive: '--coef 0.05 --method edger' currently
+    runs, ignores the coefficient, and reports nothing.
 
     Detection reads the supplied tokens rather than comparing against defaults,
     so an explicitly passed default is still reported. It resolves every
-    spelling argparse accepts, short and long alike; reading long forms only
-    would miss '-c 0.05', which is the very case the note exists for.
+    spelling argparse accepts, short and long alike.
     """
 
     supplied = sys.argv[1:] if argv is None else argv
@@ -1005,8 +1007,8 @@ def _warn_inapplicable(
     if seen:
         print(
             f"Note: {', '.join(seen)} do not apply to '--method edger' and "
-            "were ignored; it derives the pseudocount from library sizes, not "
-            "from the value distribution.",
+            "were ignored; it derives the pseudocount from fragment-bin "
+            "overlap counts, not from the value distribution.",
             file=sys.stderr,
         )
 
@@ -1023,7 +1025,8 @@ def _run_edger(
     args : argparse.Namespace
         Parsed arguments carrying the edgeR policy.
     skp_pfx : tuple[str, ...]
-        Header prefixes to skip when reading library sizes from tracks.
+        Header prefixes to skip when reading fragment-bin overlap counts from
+        tracks.
 
     Returns
     -------
@@ -1033,29 +1036,28 @@ def _run_edger(
     Raises
     ------
     SystemExit
-        For a nonpositive library size, an unusable normalization request, an
-        unreadable track, a '--siz_bin' the track contradicts, or a
-        '--normalization RPKM' run with no width and no track to infer one
-        from.
+        For a nonpositive fragment-bin overlap count, an unusable substrate
+        request, an unreadable track, a '--siz_bin' the track contradicts, a
+        fractional substrate without both fragment counts, an 'unadj' run whose
+        column total is absent or below the fragment count, or an inferred
+        overlap count that falls below the fragment count.
 
     Notes
     -----
-    Library sizes come from '--n_bin_A' and '--n_bin_B' when supplied, and are
-    otherwise summed from the tracks. Summing requires a non-normalized track,
-    as a CPM or RPKM bedGraph sums to a normalized total, not to a library
-    size, and would silently rescale every value this function returns.
+    Fragment-bin overlap counts come from '--n_bin_A' and '--n_bin_B' when
+    supplied, and are otherwise summed from the tracks. Summing requires a
+    whole-count track, since a fractional one sums to its own total rather than
+    to 'L' and would silently rescale every value this function returns.
 
-    Reading a track also resolves the bin width, so '--siz_bin' is needed only
-    when both library sizes are supplied, which reads no track, and
-    '--normalization RPKM' still wants a width for its scale factor.
+    Reading a track also resolves the bin width, so '--siz_bin' is never
+    required: no substrate this tool serves needs a width of its own, and the
+    option exists to cross-check the track rather than to supply a missing
+    number.
 
-    The result line reaches stdout:
-      - the pseudocount pair as 'A:B',
-      - a single value in single-track mode, or
-      - a deepTools argument string under '--prt_arg'.
-
-    The pair is the spec 'compute_signal_ratio' accepts for '--pseudo' and
-    '--scl_fct'. A JSON summary follows on stdout under '--prt_jsn'.
+    One result line reaches stdout: a single value in single-track mode, or the
+    pseudocount pair as 'A:B'. The pair is the spec 'compute_signal_ratio'
+    accepts for '--pseudo' and '--scl_fct'. A JSON summary follows on stdout
+    under '--prt_jsn'.
     """
 
     one_track = _is_one_track(args)
@@ -1063,13 +1065,12 @@ def _run_edger(
     n_bin_a = args.n_bin_A
     n_bin_b = args.n_bin_B
     n_frg_a, n_frg_b = args.n_frg_A, args.n_frg_B
-    sf_a, sf_b = args.sf_A, args.sf_B
 
     siz_bin = args.siz_bin
 
     # Reading a track resolves the bin width, so a run that recovers either
-    # library size needs no '--siz_bin' at all. Only a run given both sizes
-    # reads nothing, and only 'RPKM' then still needs a width.
+    # overlap count needs no '--siz_bin' at all, and a run given both of them
+    # reads nothing and needs none either.
     try:
         if n_bin_a is None:
             counts_a = sum_counts_bdg(args.fil_A, siz_bin, skp_pfx)
@@ -1081,7 +1082,6 @@ def _run_edger(
             # it; see '_is_one_track' for the source reading it comes from.
             n_bin_b = n_bin_a
             n_frg_b = n_frg_a
-            sf_b = sf_a
         elif n_bin_b is None:
             counts_b = sum_counts_bdg(args.fil_B, siz_bin, skp_pfx)
             n_bin_b, siz_bin = counts_b.total, counts_b.siz_bin
@@ -1091,25 +1091,53 @@ def _run_edger(
 
         raise SystemExit(str(e)) from None
 
+    # Inferring 'L' reads the track's column sum, which is 'L' only for a
+    # whole-count track. Every fragment touches at least one bin, so a sum
+    # below 'N' proves the track is something else, and inferring from it would
+    # rescale the prior in silence. This tests impossibility, not plausibility:
+    # a real whole-count track cannot trip this, but one summing too high still
+    # slips through.
+    for label, inferred, total, frg in (
+        ("A", args.n_bin_A is None, n_bin_a, n_frg_a),
+        ("B", args.n_bin_B is None and not one_track, n_bin_b, n_frg_b),
+    ):
+        if inferred and frg is not None and total < frg:
+            raise SystemExit(
+                f"Inferred '--n_bin_{label}' is {total}, below "
+                f"'--n_frg_{label}' at {frg}; the summed track cannot be a "
+                f"whole-count track, so '--n_bin_{label}' is required for "
+                f"'--substrate {args.substrate}'.",
+            )
+
     if args.verbose:
         _print_pseudo_arguments(args, None, skp_pfx, siz_bin)
 
-    if siz_bin is None and canonicalize_norm(args.normalization) == "RPKM":
-        raise SystemExit(
-            "'--siz_bin' is required for '--normalization RPKM' when both "
-            "'--n_bin_A' and '--n_bin_B' are supplied, because no track is "
-            "read to infer the bin width from.",
-        )
+    total_a, total_b = None, None
+
+    if canonicalize_substrate(args.substrate) == "unadj":
+        # The track's own column sum is the total fragment base pairs, which is
+        # what the prior is denominated in. It is read here rather than taken
+        # from '--n_bin_A', which carries the overlap count 'k' needs and is a
+        # different quantity entirely.
+        try:
+            total_a = sum_counts_bdg(args.fil_A, siz_bin, skp_pfx).total
+            total_b = (
+                total_a
+                if one_track
+                else sum_counts_bdg(args.fil_B, siz_bin, skp_pfx).total
+            )
+        except (OSError, ValueError) as e:
+            raise SystemExit(str(e)) from None
 
     try:
         result = compute_pseudo_edger(
             n_bin_a=n_bin_a,
             n_bin_b=n_bin_b,
+            total_a=total_a,
+            total_b=total_b,
             prior_count=args.prior_count,
-            norm=args.normalization,
+            substrate=args.substrate,
             siz_bin=siz_bin,
-            scale_a=sf_a,
-            scale_b=sf_b,
             n_frg_a=n_frg_a,
             n_frg_b=n_frg_b,
         )
@@ -1118,8 +1146,8 @@ def _run_edger(
 
     if not result["is_edger"]:
         print(
-            f"Note: '--normalization {args.normalization}' does not "
-            f"reproduce edgeR's estimator: {result['note']}.",
+            f"Note: '--substrate {args.substrate}' does not reproduce edgeR's "
+            f"estimator: {result['note']}.",
             file=sys.stderr,
         )
 
@@ -1135,14 +1163,11 @@ def _run_edger(
         with redirect_stdout(sys.stderr):
             print(f"n_bin_A        {format_value(n_bin_a, args.dp)}")
             print(f"n_bin_B        {format_value(n_bin_b, args.dp)}")
-            print(
-                "prior_scaled_A "
-                f"{format_value(result['prior_scaled_A'], args.dp)}",
-            )
-            print(
-                "prior_scaled_B "
-                f"{format_value(result['prior_scaled_B'], args.dp)}",
-            )
+            prior_a = format_value(result["prior_scaled_A"], args.dp)
+            prior_b = format_value(result["prior_scaled_B"], args.dp)
+
+            print(f"prior_scaled_A {prior_a}")
+            print(f"prior_scaled_B {prior_b}")
 
             if "k_A" in result:
                 print(f"k_A            {format_value(result['k_A'], args.dp)}")
@@ -1151,12 +1176,7 @@ def _run_edger(
             print(f"is_edger       {result['is_edger']}")
             print("")
 
-    if args.prt_arg:
-        print(
-            f"--scaleFactors {scale_a:.{args.dp}f}:{scale_b:.{args.dp}f} "
-            f"--pseudocount {render(pseudo_a)} {render(pseudo_b)}",
-        )
-    elif one_track:
+    if one_track:
         print(render(pseudo_a))
     else:
         print(f"{render(pseudo_a)}:{render(pseudo_b)}")
@@ -1167,7 +1187,7 @@ def _run_edger(
             "fil_B": getattr(args, "fil_B", None),
             "method": "edger",
             "params": {
-                "normalization": args.normalization,
+                "substrate": args.substrate,
                 "prior_count": args.prior_count,
                 "siz_bin": siz_bin,
                 "dp": args.dp,
@@ -1180,8 +1200,10 @@ def _run_edger(
                 else None
             ),
 
-            # Not derivable under 'norm': the pseudocount is symmetric there,
-            # so 'pseudo_i / scale_i' returns it rather than the prior.
+            # Not derivable under 'unadj', 'frag', 'norm' or 'cpm': those
+            # pseudocounts come from a closed form rather than from
+            # 'scale_i * prior_scaled_i', so dividing does not recover the
+            # prior. For that reason, emitted rather than left to the consumer.
             "prior_scaled": {
                 "A": result["prior_scaled_A"],
                 "B": result["prior_scaled_B"],
@@ -1240,11 +1262,12 @@ def main(argv: list[str] | None = None) -> int:
     The four distribution-based methods filter inputs through '--eps' and
     '--mode_nz' before computing, and can symmetrize the pair with '--sym';
     '--method edger' consults none of those, deriving the pseudocount from
-    library sizes instead. Malformed or nonnumeric bedGraph rows are skipped by
-    the row iterator. With '--prt_jsn', the command prints a strict one-line
-    JSON summary only when all serialized values are finite; otherwise it warns
-    on stderr, omits the JSON line, and returns zero. Warnings about empty
-    inputs, zero pseudocounts, or symmetrization are written to stderr.
+    fragment-bin overlap counts instead. Malformed or nonnumeric bedGraph rows
+    are skipped by the row iterator. With '--prt_jsn', the command prints a
+    strict one-line JSON summary only when all serialized values are finite;
+    otherwise it warns on stderr, omits the JSON line, and returns zero.
+    Warnings about empty inputs, zero pseudocounts, or symmetrization are
+    written to stderr.
     """
 
     args = parse_args(argv)
@@ -1304,39 +1327,34 @@ def main(argv: list[str] | None = None) -> int:
             )
 
             if one_track:
-                need_sf = args.sf_A is None
                 need_aln = args.n_frg_A is None
-                both = "'--sf_A'"
                 both_frg = "'--n_frg_A'"
             else:
-                need_sf = args.sf_A is None or args.sf_B is None
                 need_aln = args.n_frg_A is None or args.n_frg_B is None
-                both = "both '--sf_A' and '--sf_B'"
                 both_frg = "both '--n_frg_A' and '--n_frg_B'"
 
-            if canonicalize_norm(args.normalization) == "norm" and need_aln:
+            if canonicalize_substrate(args.substrate) == "unadj" and (
+                args.n_bin_A is None
+                or (not one_track and args.n_bin_B is None)
+            ):
+                # The track this run reads supplies the substrate's own column
+                # total, the fragment base pairs. Summing it for 'n_bin' too
+                # would put that total where 'L' belongs and scale every prior
+                # by 'total / L' without saying so.
                 raise ValueError(
-                    f"'--normalization {args.normalization}' requires "
-                    f"{both_frg}; a normalized-coverage track sums to 1, so "
-                    "the fragment count cannot be recovered from it.",
+                    "'--substrate unadj' requires '--n_bin_A' and "
+                    "'--n_bin_B'; the track supplies its own column total, "
+                    "not the fragment-bin overlap count that 'k' needs.",
                 )
 
-            if args.normalization == "RPGC" and need_sf:
+            if (
+                canonicalize_substrate(args.substrate) in SUB_FRACTIONAL
+                and need_aln
+            ):
                 raise ValueError(
-                    f"'--normalization RPGC' requires {both}; read them from "
-                    "'bamCoverage --verbose'.",
-                )
-
-            if one_track and args.prt_arg:
-                # The deepTools 'bamCompare' options '--scaleFactors' and
-                # '--pseudocount' take a pair each, so there is no one-track
-                # spelling of them. 'bamCoverage --scaleFactor' exists but
-                # accepts no pseudocount, so emitting it would silently drop
-                # the value that was asked for.
-                raise ValueError(
-                    "'--prt_arg' writes the two-track 'bamCompare' argument "
-                    "string, which has no single-track form. Drop "
-                    "'--prt_arg' to print the pseudocount, or supply track B.",
+                    f"'--substrate {args.substrate}' requires {both_frg}; the "
+                    "fractional substrates are denominated against the "
+                    "fragment count, which their own totals cannot supply.",
                 )
 
         validate_comparison(args.coef, "ge", 0.0, "coef", allow_none=True)

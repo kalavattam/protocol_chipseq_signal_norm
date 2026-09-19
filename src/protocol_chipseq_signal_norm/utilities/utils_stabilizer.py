@@ -19,8 +19,9 @@ Stabilizer-statistic helpers for ratio workflows.
 
 Notes
 -----
-Helpers support pseudocount and denominator-floor computations used by
-'compute_pseudo.py' and related scripts.
+Helpers support the pseudocount and denominator-floor computations used by
+'compute_pseudo.py', 'compute_pseudo_deeptools.py' and
+'compute_input_floor.py'.
 """
 
 from __future__ import annotations
@@ -38,22 +39,34 @@ from protocol_chipseq_signal_norm.utilities.utils_io import (
 
 assert sys.version_info >= (3, 11), "Python >= 3.11 required."
 
-# Aliases for normalized coverage, matching 'compute_signal.METHOD_CANON' so
-# one substrate has one vocabulary across the codebase. 'norm' is canonical;
-# 'nc' is shorthand used in prose and is accepted rather than privileged.
-NORM_CANON = {
+# The union of both tools' substrates (i.e., types of signal, adjusted or not);
+# each CLI restricts its own 'choices' to the subset it serves. Spellings
+# mirror 'compute_signal.METHOD_CANON'.
+# fmt: off
+SUBSTRATE_CANON = {
+    # Fractional deposition: a partly covered bin takes a share proportional to
+    # the overlap.
+    "unadj": "unadj",
+    "frag": "frag",
+    "norm": "norm",
+    "nc": "norm",
+
+    # Whole-count deposition: one count per touched bin.
+    "count": "count",
+    "cpm": "cpm",
+
+    # Written by deepTools '--normalizeUsing'.
     "CPM": "CPM",
     "BPM": "BPM",
     "RPKM": "RPKM",
     "None": "None",
     "RPGC": "RPGC",
-    "n": "norm",
-    "nc": "norm",
-    "nrm": "norm",
-    "norm": "norm",
-    "normalized": "norm",
 }
-NORM_CHOICES = tuple(NORM_CANON.keys())
+# fmt: on
+SUBSTRATE_CHOICES = tuple(SUBSTRATE_CANON.keys())
+# TODO: Here and elsewhere, in code, docs, API, comments, docstrings, etc.,
+# rename 'substrate' to something clearer, e.g., 'typ_sig'; ergo, first poll
+# if/how 'typ_sig' is already being used across the codebase.
 
 
 def iter_vals_bdg(
@@ -265,14 +278,14 @@ def median_sorted(values: list[float]) -> float:
     return 0.5 * (values[count // 2 - 1] + values[count // 2])
 
 
-def canonicalize_norm(norm: str) -> str:
+def canonicalize_substrate(substrate: str) -> str:
     """
-    Map a normalization alias onto its canonical name.
+    Map a substrate alias onto its canonical name.
 
     Parameters
     ----------
-    norm : str
-        Any key of 'NORM_CANON'.
+    substrate : str
+        Any key of 'SUBSTRATE_CANON'.
 
     Returns
     -------
@@ -282,157 +295,171 @@ def canonicalize_norm(norm: str) -> str:
     Raises
     ------
     ValueError
-        If 'norm' is not a recognized alias.
+        If 'substrate' is not a recognized alias.
     """
 
-    if norm not in NORM_CANON:
-        raise ValueError(f"Error: Unknown --normalization: {norm!r}")
+    if substrate not in SUBSTRATE_CANON:
+        raise ValueError(f"Error: Unknown substrate: {substrate!r}")
 
-    return NORM_CANON[norm]
+    return SUBSTRATE_CANON[substrate]
 
 
+# TODO: Here and elsewhere across the codebase (code, comments, docs, etc.),
+# 'n_bin_(a|b)' becomes 'n_ovlp_(a|b)', and 'substrate' potentially becomes
+# 'typ_sig' or, if/when appropriate in prose, "type of signal", "signal type",
+# and the like.
 def compute_pseudo_edger(
-    n_bin_a: float,
-    n_bin_b: float,
+    substrate: str = "norm",
     prior_count: float = 2.0,
-    norm: str = "CPM",
-    siz_bin: int = 10,
-    scale_a: float | None = None,
-    scale_b: float | None = None,
+    siz_bin: int | None = None,
+    n_bin_a: float | None = None,
+    n_bin_b: float | None = None,
     n_frg_a: float | None = None,
     n_frg_b: float | None = None,
+    total_a: float | None = None,
+    total_b: float | None = None,
+    scale_a: float | None = None,
+    scale_b: float | None = None,
 ) -> dict[str, object]:
     """
     Derive edgeR-equivalent scale factors and pseudocounts for a substrate.
 
     Parameters
     ----------
-    n_bin_a : float
-        Spanned-bin count for track A: the bin-matrix column sum, which is
-        edgeR's 'lib.size'. Not the fragment count, which is 'n_frg_a'.
-    n_bin_b : float
-        Spanned-bin count for track B.
+    substrate : str
+        Target substrate. This project's are the fractional 'unadj', 'frag' and
+        'norm', and the whole-count 'count' and 'cpm'; deepTools' are 'CPM',
+        'BPM', 'RPKM', 'RPGC' and 'None'. Each CLI restricts its own accepted
+        subset, so this function spans both. Defaults to 'norm', but every call
+        in this project passes it explicitly.
     prior_count : float
-        edgeR's 'prior.count' before library-size scaling.
-    norm : str
-        Target substrate: a deepTools normalization ('CPM', 'BPM', 'RPKM',
-        'RPGC'), 'None' for an unnormalized track, or 'norm' for this project's
-        normalized coverage.
-    siz_bin : int
-        Bin width in base pairs; used by 'RPKM'.
+        edgeR's 'prior.count', before the per-sample scaling each substrate
+        applies.
+    siz_bin : int | None
+        Bin width in base pairs, required for 'RPKM' and unused otherwise. No
+        default: a wrong width rescales an 'RPKM' pair in silence.
+    n_bin_a, n_bin_b : float | None
+        Required for every substrate. Fragment-bin overlap count 'L' for each
+        track, the bin-matrix column sum and edgeR's 'lib.size': how many bins
+        each fragment spans, added up over fragments. Not the fragment count,
+        which is 'n_frg_a'.
+    n_frg_a, n_frg_b : float | None
+        Fragment count 'N' for each track, required by the fractional
+        substrates. It counts the fragments 'compute_signal' admitted, which is
+        what it divides a 'norm' track by. It is not the alignment-record
+        count: the two agree only where filtering leaves one record per
+        fragment. A fractional track cannot supply it, its column total being a
+        deposition total rather than a count.
+    total_a, total_b : float | None
+        The substrate's own column total, required for 'unadj', where it is the
+        total fragment base pairs. Only the track reports it: no report flag
+        writes it, and it is not the fragment-bin overlap count 'L' that 'k'
+        needs, which 'n_bin_a' carries.
     scale_a, scale_b : float | None
         Externally supplied deepTools scale factors, required for 'RPGC'.
-    n_frg_a, n_frg_b : float | None
-        Fragment counts, required for 'norm' (normalized coverage). This is the
-        same denominator 'compute_signal' divides by, not the number of
-        alignment records; the two coincide only when one record per fragment
-        survives filtering. Not derivable from a normalized-coverage track,
-        which sums to 1 by construction.
 
     Returns
     -------
     result : dict[str, object]
         Keys 'scale_A', 'scale_B', 'pseudo_A', 'pseudo_B', 'prior_scaled_A',
-        'prior_scaled_B', 'is_edger', and 'note'. Normalized coverage adds
-        'k_A' and 'k_B'; every other mode omits them, so a consumer tests for
-        the key rather than assuming it.
+        'prior_scaled_B', 'is_edger', and 'note'. The fractional substrates add
+        'k_A' and 'k_B'; the whole-count and deepTools ones omit them, so a
+        consumer tests for the key rather than assuming it.
 
     Raises
     ------
     ValueError
-        For a nonpositive library size, a negative 'prior.count', an unknown
-        'norm', 'RPGC' without both scale factors, or normalized coverage
-        without both fragment counts.
+        For a nonpositive fragment-bin overlap count; a negative 'prior.count';
+        an unknown substrate; a fractional substrate without both fragment
+        counts; 'unadj' whose column total is absent, nonpositive, or below the
+        fragment count; 'RPKM' without a positive 'siz_bin'; or 'RPGC' without
+        both scale factors.
 
     Notes
     -----
-    edgeR's 'cpm(log=TRUE)' computes '(y_i + y0_i) / (L_i + 2 * y0_i) * 1e6'
-    with 'y0_i = prior.count * L_i / mean(L)'. That is linear in 'y_i', so it
-    splits into a slope and an intercept that deepTools can express as a scale
-    factor and a pseudocount:
+    Every substrate gets a scale factor and a pseudocount: add the pseudocount
+    to a track, then multiply by the scale. The pair differs by substrate
+    because a prior must be denominated in the units it is added to.
 
-        s_i = 1e6 / (L_i + 2 * y0_i)
-        p_i = s_i * y0_i = 1e6 * prior.count / (mean(L) + 2 * prior.count)
+    edgeR's 'cpm(log=TRUE)' computes '(y + y0_i) / (L_i + 2 y0_i) * 1e6' with
+    'y0_i = pc * L_i / L_bar', writing
+    - 'y' for one bin's count in track 'i',
+    - 'L_i' for that track's fragment-bin overlap count,
+    - 'y0_i' for its scaled prior,
+    - 'pc' for 'prior.count', and
+    - 'L_bar' for the mean of 'L_i' over the tracks.
 
-    'p_i' carries no per-sample index, so edgeR's rule is symmetric in
-    normalized units. The scale factor is not deepTools' CPM factor '1e6 / N',
-    so '--normalizeUsing' cannot reach it; the pair must be passed as
-    '--scaleFactors A:B --pseudocount P P'.
+    edgeR's 'addPriorCount' computes the same 'y0_i' without the '1e6'. The
+    expression is linear in 'y', so it splits into a slope and an intercept,
+    which is what a scale factor and a pseudocount are. 'is_edger' reports
+    whether the returned pair reproduces it.
 
-    Symmetry holds in real arithmetic, not in 'float64': 'p_A' and 'p_B' reach
-    the same value by different routes, so they can differ in the last bits.
-    Compare them with a tolerance, never with '=='.
+    Below, 'B' is the bin width, 'T' the substrate's own column total, 's' the
+    scale factor returned alongside the pseudocount, and 'p_nc' the fractional
+    prior derived below. This project's substrates return the following:
+    - 'unadj', 'frag', 'norm': scale 1, pseudocount 'p_nc * T'.
+    - 'count': scale 1, pseudocount 'y0_i'.
+    - 'cpm': scale '1 / (1 + 2 pc / L_bar)', pseudocount 'pc * 1e6 / L_bar'.
 
-    'prior_scaled_A' and 'prior_scaled_B' are 'y0_i' itself: the per-sample
-    prior in count space, before 's_i' converts it to the output substrate.
-    Nothing downstream consumes them; they exist to be read. Their ratio
-    'prior_scaled_A / prior_scaled_B' is 'L_A / L_B', the depth imbalance in
-    prior units; their sum is '2 * prior.count' always, so a violation means a
-    library size is wrong; and 'pseudo_i' factors as 's_i * prior_scaled_i',
-    the decomposition the pseudocount alone hides: a tiny value may come from
-    the depth correction or from the scale factor, and only the pair tells them
-    apart.
+    The deepTools substrates, which 'compute_pseudo_deeptools' serves:
+    - 'CPM', 'BPM': scale '1e6 / (L_i + 2 y0_i)', pseudocount 's * y0_i'.
+    - 'RPKM': scale '1e9 / ((L_i + 2 y0_i) B)', pseudocount 's * y0_i'.
+    - 'None': scale 1, pseudocount 'y0_i'; this is 'count' reached elsewhere.
+    - 'RPGC': scale supplied, pseudocount 's * y0_i'.
 
-    Under 'norm' they scale by 'frg_i / mean(frg)' rather than by
-    'L_i / mean(L)', so there they report fragment imbalance, not bin-sum
-    imbalance. That is also the one mode where they do not feed 'pseudo_i',
-    which is symmetric by construction, so they carry the only per-sample
-    information it returns.
+    So 'is_edger' is True for 'cpm', 'CPM', 'BPM' and 'RPKM'. Elsewhere the
+    pair departs deliberately in three ways:
+    1. The fractional substrates divide the prior by 'k_bar' to answer the
+       under-dispersion of fractional deposition, giving
+       'p_nc = pc / (k_bar * N_bar)' with 'k_i = L_i / N_i', averaged over the
+       pair. Its 'pc' and '1 / N_bar' come from edgeR, but its '1 / k_bar' does
+       not.
+    2. 'count' and 'None' carry edgeR's prior without its denominator
+       adjustment, so every bin's log2 ratio is offset by exactly
+       'log2(L_B / L_A)'. That is the depth imbalance, which is what
+       normalizing removes: relative comparison between bins is unaffected, but
+       absolute fold change is not.
+    3. 'RPGC' has no edgeR analogue for its 'N * F / G' denominator, so only
+       the prior's magnitude crosses over.
 
-    A single track is expressed by passing its library size as both 'n_bin_a'
-    and 'n_bin_b'. That is not an approximation: edgeR averages library sizes
-    over all columns and scales each prior by 'L_i / mean(L)'
-    ('add_prior_count.c:88'), so with one column the ratio is exactly 1, the
-    prior stays nominal, and 'mean(L)' is that column's own library size.
-    Passing 'L' twice reproduces both. Because 'mean(L)' differs between the
-    two framings, a track's one-track pseudocount is not its two-track
-    pseudocount (that is edgeR's behavior too, not an artifact here).
+    A closed substrate's pseudocount is symmetric in real arithmetic but not
+    always in 'float64': 'pseudo_A' and 'pseudo_B' can land a bit apart, and
+    which substrates do depends on the counts, so check symmetry with a
+    tolerance. 'cpm' is the exception: it's symmetric bit for bit because its
+    scale is computed once from the closed form rather than per sample.
 
-    'norm' (aliases 'nc', 'n', 'nrm', 'normalized') is normalized coverage:
-    each fragment deposits exactly 1.0 across its footprint and the track is
-    divided by the fragment count, so it sums to 1, not to a library size. Its
-    own total is therefore useless as a denominator; the library size that
-    matters is 'N', the fragment count that 'compute_signal' divided by, which
-    must be supplied. That is not the alignment-record count unless exactly one
-    record per fragment survives filtering, which is what '--samFlagInclude 64'
-    arranges for paired-end data and what its absence undoes.
+    Single-track mode passes one track's overlap count as both 'n_bin_a' and
+    'n_bin_b'. That is exact, not approximate: edgeR scales each prior by
+    'L_i / L_bar' ('add_prior_count.c:88'), which is 1 with one column. But
+    'L_bar' is that track's own count in single-track mode and the mean of both
+    in two-track mode, so a track's single-track pseudocount is not its
+    two-track one.
 
-    Normalized coverage also needs a correction edgeR does not make. A fragment
-    spanning 'k' bins deposits '1/k' into each, so an 'nc' bin is a sum of
-    fractional shares rather than a count of events, and is under-dispersed by
-    about 'k' (measured 'Var/E' 0.109 against 1.89 for counts). A prior
-    calibrated on Poisson counts is therefore about 'k'-fold too strong, giving
-
-        p_nc = prior.count / (k_bar * N_bar), k = L / N
-
-    with 'k_bar' and 'N_bar' averaged over the pair. The 'prior.count' and the
-    '1/N_bar' come from edgeR; the '1/k_bar' does not, which is why 'is_edger'
-    is False for this mode.
-
-    'None' and 'RPGC' also do not reproduce the estimator and are likewise
-    reported with 'is_edger' False. edgeR adjusts the denominator to
-    'L_i + 2 * y0_i'; RPGC's denominator is 'N * F / G', whose meaning is
-    one-fold genome coverage, and substituting a bin-matrix column sum for an
-    alignment count makes that meaning false. Both apply the prior's magnitude
-    only, in the proportional form 'p_i = s_i * y0_i'.
+    Below, 'prior_scaled_A' and 'prior_scaled_B' expose 'y0_i' for reading;
+    nothing consumes them. Their sum is always '2 * prior.count'; their ratio
+    is 'L_A / L_B', or 'N_A / N_B' under the fractional substrates, which scale
+    by 'N_i / N_bar' instead.
     """
 
     for label, lib in (("n_bin_a", n_bin_a), ("n_bin_b", n_bin_b)):
-        if not math.isfinite(lib) or lib <= 0.0:
-            raise ValueError(f"{label!r} must be finite and positive.")
+        if lib is None or not math.isfinite(lib) or lib <= 0.0:
+            raise ValueError(
+                f"{label!r} must be finite and positive; every substrate "
+                "needs both fragment-bin overlap counts.",
+            )
 
     if not math.isfinite(prior_count) or prior_count < 0.0:
         raise ValueError("'prior_count' must be finite and nonnegative.")
 
-    norm = canonicalize_norm(norm)
+    substrate = canonicalize_substrate(substrate)
 
-    if norm == "norm":
+    if substrate in ("norm", "frag", "unadj"):
         for label, frg in (("n_frg_a", n_frg_a), ("n_frg_b", n_frg_b)):
             if frg is None or not math.isfinite(frg) or frg <= 0.0:
                 raise ValueError(
-                    f"{label!r} must be finite and positive for 'norm'; it is "
-                    "the fragment count, which a normalized-coverage track "
-                    "cannot supply because it sums to 1.",
+                    f"{label!r} must be finite and positive for {substrate!r};"
+                    " it is the fragment count, which a fractional track "
+                    "cannot supply because its own total is not a count.",
                 )
 
         k_a = n_bin_a / n_frg_a
@@ -441,11 +468,47 @@ def compute_pseudo_edger(
         n_frg_mean = 0.5 * (n_frg_a + n_frg_b)
         pseudo = prior_count / (k_mean * n_frg_mean)
 
+        # Family members differ only by their column total 'T', so the prior
+        # scales with it: 'p_i = p_nc * T_i'. 'T' is 1 for 'norm', the fragment
+        # count for 'frag', and the total fragment base pairs for 'unadj'.
+        if substrate == "frag":
+            pseudo_a, pseudo_b = pseudo * n_frg_a, pseudo * n_frg_b
+        elif substrate == "unadj":
+            totals = (
+                ("total_a", total_a, n_frg_a),
+                ("total_b", total_b, n_frg_b),
+            )
+
+            for label, total, frg in totals:
+                if total is None or not math.isfinite(total) or total <= 0.0:
+                    raise ValueError(
+                        f"{label!r} must be finite and positive for 'unadj'; "
+                        "it is the track's own column sum, the total fragment "
+                        "base pairs, which no report flag writes.",
+                    )
+
+                # Every fragment spans at least one base pair, so 'T >= N'
+                # holds. A total below 'N' came off another substrate and would
+                # rescale the prior in silence. It fires even when 'n_bin' is
+                # supplied, which the inferred-'L' check in 'compute_pseudo'
+                # cannot.
+                if total < frg:
+                    raise ValueError(
+                        f"{label!r} is {total}, below the fragment count "
+                        f"{frg}; an 'unadj' track sums to the total fragment "
+                        "base pairs and every fragment spans at least one, so "
+                        "this total cannot have come from one.",
+                    )
+
+            pseudo_a, pseudo_b = pseudo * total_a, pseudo * total_b
+        else:
+            pseudo_a = pseudo_b = pseudo
+
         return {
             "scale_A": 1.0,
             "scale_B": 1.0,
-            "pseudo_A": pseudo,
-            "pseudo_B": pseudo,
+            "pseudo_A": pseudo_a,
+            "pseudo_B": pseudo_b,
             "prior_scaled_A": prior_count * n_frg_a / n_frg_mean,
             "prior_scaled_B": prior_count * n_frg_b / n_frg_mean,
             "k_A": k_a,
@@ -453,7 +516,8 @@ def compute_pseudo_edger(
             "is_edger": False,
             "note": (
                 "edgeR's prior divided by k_bar for the under-dispersion of "
-                "normalized coverage, a correction edgeR does not make"
+                "fractional deposition, a correction edgeR does not make, "
+                f"then denominated in {substrate!r}'s own column total"
             ),
         }
 
@@ -461,26 +525,43 @@ def compute_pseudo_edger(
     prior_a = prior_count * n_bin_a / n_bin_mean
     prior_b = prior_count * n_bin_b / n_bin_mean
 
-    if norm in ("CPM", "BPM"):
+    if substrate in ("CPM", "BPM"):
         scale_a = 1e6 / (n_bin_a + 2.0 * prior_a)
         scale_b = 1e6 / (n_bin_b + 2.0 * prior_b)
         is_edger = True
         note = "exact; BPM reduces to CPM with fixed bin width"
-    elif norm == "RPKM":
-        if siz_bin <= 0:
-            raise ValueError("'siz_bin' must be positive for 'RPKM'.")
+    elif substrate == "RPKM":
+        if siz_bin is None or siz_bin <= 0:
+            raise ValueError(
+                "'siz_bin' must be given and positive for 'RPKM'; it is the "
+                "bin width the per-kilobase denominator divides by.",
+            )
 
         scale_a = 1e9 / ((n_bin_a + 2.0 * prior_a) * siz_bin)
         scale_b = 1e9 / ((n_bin_b + 2.0 * prior_b) * siz_bin)
         is_edger = True
         note = "exact"
-    elif norm == "None":
+    elif substrate in ("None", "count"):
         scale_a = 1.0
         scale_b = 1.0
         is_edger = False
         note = (
             "reproduces edgeR's ratio up to a constant log offset, since the "
             "denominator adjustment is absent"
+        )
+    elif substrate == "cpm":
+        # Our 'cpm' track divides by plain 'L_i' where edgeR divides by
+        # 'L_i + 2 y0_i', so the scale is their ratio. Since 'y0_i / L_i' is
+        # 'pc / L_bar' for every track, that ratio is '1 / (1 + 2 pc / L_bar)',
+        # with no sample index. Computing it once from that closed form keeps
+        # the pair bit-identical; the per-sample quotient agrees only in real
+        # arithmetic, but not always in 'float64'.
+        scale_a = 1.0 / (1.0 + 2.0 * prior_count / n_bin_mean)
+        scale_b = scale_a
+        is_edger = True
+        note = (
+            "exact; the scale factor restores edgeR's adjusted denominator, "
+            "and being symmetric it cancels in any A-over-B ratio"
         )
     else:
         if scale_a is None or scale_b is None:
@@ -495,11 +576,20 @@ def compute_pseudo_edger(
             "denominator has no edgeR analog"
         )
 
+    if substrate == "cpm":
+        # The pseudocount 'y0_i * 1e6 / L_i' reduces to 'pc * 1e6 / L_bar', so
+        # it too is symmetric.
+        pseudo_a = prior_count * 1e6 / n_bin_mean
+        pseudo_b = pseudo_a
+    else:
+        pseudo_a = scale_a * prior_a
+        pseudo_b = scale_b * prior_b
+
     return {
         "scale_A": scale_a,
         "scale_B": scale_b,
-        "pseudo_A": scale_a * prior_a,
-        "pseudo_B": scale_b * prior_b,
+        "pseudo_A": pseudo_a,
+        "pseudo_B": pseudo_b,
         "prior_scaled_A": prior_a,
         "prior_scaled_B": prior_b,
         "is_edger": is_edger,
@@ -543,7 +633,9 @@ def pick_stabilizer(
 
     Raises
     ------
-    ValueError for invalid method, invalid qntl_pct, invalid qntl_rule.
+    ValueError
+        For an unrecognized 'method' or 'qntl_rule', or a 'qntl_pct' that is
+        nonfinite or outside [0, 100].
     """
 
     finite_values = [value for value in values if math.isfinite(value)]

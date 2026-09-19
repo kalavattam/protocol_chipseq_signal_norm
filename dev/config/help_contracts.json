@@ -686,7 +686,7 @@
           "symbol": "run_comp_sig",
           "parameter": "report_n_bin",
           "owner": "PARAMETER.DESCRIPTIONS",
-          "evidence": "Parameters row for 'report_n_bin': Path for the spanned-bin-count report or empty string."
+          "evidence": "Parameters row for 'report_n_bin': Path for the overlap-count report or empty string."
         }
       ],
       "local_meanings": [],
@@ -2005,7 +2005,7 @@
       "existing_example_count": 2,
       "example_fingerprints": [
         "92c03e427695b92877665210cdcfcb3bf72e80f0fa19f7b4da1f121ed99e8575",
-        "8daae0c11d71ba2cf231966d802357e5bbaef4f22048ac2a4ae0a8be3491eba3"
+        "e5c7c6d0c6d5ef209cbf4ef63a1dadef140fd9f8e72915c1d700ee83824fcdfb"
       ],
       "preservation": "exact",
       "authority": "authorized_fresh_pilot"
@@ -2282,18 +2282,15 @@
         "eps",
         "mode_nz",
         "sym",
-        "normalization",
+        "substrate",
         "prior_count",
         "siz_bin",
         "n_bin_A",
         "n_bin_B",
-        "sf_A",
-        "sf_B",
         "n_frg_A",
         "n_frg_B",
         "dp",
-        "prt_jsn",
-        "prt_arg"
+        "prt_jsn"
       ],
       "roles_reviewed": true,
       "roles": {
@@ -2309,18 +2306,15 @@
         "eps": "mode_specific",
         "mode_nz": "mode_specific",
         "sym": "mode_specific",
-        "normalization": "mode_specific",
+        "substrate": "mode_specific",
         "prior_count": "mode_specific",
         "siz_bin": "mode_specific",
         "n_bin_A": "mode_specific",
         "n_bin_B": "mode_specific",
-        "sf_A": "mode_specific",
-        "sf_B": "mode_specific",
         "n_frg_A": "mode_specific",
         "n_frg_B": "mode_specific",
         "dp": "formatting",
-        "prt_jsn": "formatting",
-        "prt_arg": "formatting"
+        "prt_jsn": "formatting"
       },
       "usage_rows": [
         {
@@ -2345,21 +2339,19 @@
         },
         {
           "members": [
-            "normalization",
+            "substrate",
             "prior_count",
             "siz_bin",
             "n_bin_A",
             "n_bin_B",
-            "sf_A",
-            "sf_B",
             "n_frg_A",
             "n_frg_B"
           ],
-          "rationale": "Target normalization, prior magnitude, bin width, library sizes, scale factors, and fragment counts form one mode-specific group; every member is inert outside '--method edger'."
+          "rationale": "Target substrate, prior magnitude, bin width, fragment-bin overlap counts, and fragment counts form one mode-specific group; every member is inert outside '--method edger'."
         },
         {
-          "members": ["dp", "prt_jsn", "prt_arg"],
-          "rationale": "Finite-value rendering and the optional JSON and deepTools argument representations form the output-formatting group."
+          "members": ["dp", "prt_jsn"],
+          "rationale": "Finite-value rendering and the optional JSON representation form the output-formatting group."
         }
       ],
       "surface_orders": {
@@ -2376,18 +2368,15 @@
           "eps",
           "mode_nz",
           "sym",
-          "normalization",
+          "substrate",
           "prior_count",
           "siz_bin",
           "n_bin_A",
           "n_bin_B",
-          "sf_A",
-          "sf_B",
           "n_frg_A",
           "n_frg_B",
           "dp",
-          "prt_jsn",
-          "prt_arg"
+          "prt_jsn"
         ],
         "usage": [
           "help",
@@ -2402,18 +2391,15 @@
           "eps",
           "mode_nz",
           "sym",
-          "normalization",
+          "substrate",
           "prior_count",
           "siz_bin",
           "n_bin_A",
           "n_bin_B",
-          "sf_A",
-          "sf_B",
           "n_frg_A",
           "n_frg_B",
           "dp",
-          "prt_jsn",
-          "prt_arg"
+          "prt_jsn"
         ],
         "options_parameters": [
           "help",
@@ -2428,18 +2414,15 @@
           "eps",
           "mode_nz",
           "sym",
-          "normalization",
+          "substrate",
           "prior_count",
           "siz_bin",
           "n_bin_A",
           "n_bin_B",
-          "sf_A",
-          "sf_B",
           "n_frg_A",
           "n_frg_B",
           "dp",
-          "prt_jsn",
-          "prt_arg"
+          "prt_jsn"
         ],
         "reporting_order": [
           "verbose",
@@ -2474,18 +2457,16 @@
         {
           "kind": "contiguous",
           "members": [
-            "normalization",
+            "substrate",
             "prior_count",
             "siz_bin",
             "n_bin_A",
             "n_bin_B",
-            "sf_A",
-            "sf_B",
             "n_frg_A",
             "n_frg_B"
           ]
         },
-        {"kind": "same_group", "members": ["dp", "prt_jsn", "prt_arg"]}
+        {"kind": "same_group", "members": ["dp", "prt_jsn"]}
       ],
       "adapters": {
         "parser": "python_argparse_ast_and_runtime_parser",

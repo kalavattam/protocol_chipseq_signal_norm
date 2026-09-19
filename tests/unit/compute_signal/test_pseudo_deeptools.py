@@ -18,7 +18,6 @@ from pathlib import Path
 
 import pytest
 
-import protocol_chipseq_signal_norm.cli.compute_pseudo as compute_pseudo
 import protocol_chipseq_signal_norm.cli.compute_pseudo_deeptools as interop
 from protocol_chipseq_signal_norm.cli.compute_pseudo_deeptools import (
     SUB_CHOICES,
@@ -29,7 +28,7 @@ from protocol_chipseq_signal_norm.cli.compute_pseudo_deeptools import (
 ROOT = Path(__file__).resolve().parents[3]
 BEDGRAPH = ROOT / "tests" / "fixtures" / "compute_pseudo" / "bedgraph"
 
-# The same fixture pair 'test_pseudo.py' reads, carrying library sizes 6 and
+# The same fixture pair 'test_pseudo.py' reads, carrying overlap counts 6 and
 # 18, so 'L_bar' is 12 and the two per-sample priors are '2 * 6 / 12' and
 # '2 * 18 / 12' exactly. A fixture is consumed by hard failure rather than by a
 # skip, so a missing generation step fails loudly instead of turning the suite
@@ -106,39 +105,42 @@ def test_no_normalization_spelling_survives() -> None:
             parse_args(["--fil_A", FIL_A, spelling, "CPM"])
 
 
-@pytest.mark.parametrize("substrate", sorted(SUB_EXTRA))
-def test_reproduces_compute_pseudo_for_every_shared_substrate(
+# Frozen golden values, captured 2026-09-17 from this tool at its commit-1
+# state, while the differential test against the pre-split 'compute_pseudo' was
+# still green. They are therefore the pre-split arithmetic, and pinning them
+# proves the split was a rename rather than a reimplementation.
+#
+# Never regenerate them: a regenerated value captures the drift it exists to
+# catch, turning the guard into a tautology. A failure here means the
+# arithmetic moved, which is what must be explained.
+GOLDEN_PAIR = {
+    "BPM": "125000:125000",
+    "CPM": "125000:125000",
+    "None": "1:3",
+    "RPGC": "0.699999999999999955591079:3.900000000000000355271368",
+    "RPKM": "12500000:12500000",
+}
+GOLDEN_ONE_TRACK_RPKM = "20000000"
+
+
+@pytest.mark.parametrize("substrate", sorted(GOLDEN_PAIR))
+def test_matches_the_pre_split_arithmetic(
     substrate: str,
     capsys: pytest.CaptureFixture[str],
 ) -> None:
     """
-    Pin the split: the interop tool is a rename, not a reimplementation.
+    Pin the split: this tool still computes what 'compute_pseudo' computed.
 
-    Both CLIs call the same 'compute_pseudo_edger', so a divergence here is a
-    wiring defect in one of the two parsers rather than an arithmetic one. The
-    comparison is over standard output, which is the contract
-    'compute_signal_ratio' and 'bamCompare' consume; the stderr note differs by
-    design, because it names the flag the user actually typed.
+    The comparison was live against the core tool until the core surface
+    dropped its deepTools substrates, at which point the two could no longer be
+    run side by side. Freezing the values keeps the guarantee past that window
+    rather than losing it with the comparison.
+
+    Equality is exact at full 'float64' precision, because last-bit drift is
+    what this exists to catch.
     """
 
-    extra = SUB_EXTRA[substrate]
-
-    status = compute_pseudo.main(
-        [
-            "--fil_A",
-            FIL_A,
-            "--fil_B",
-            FIL_B,
-            "--normalization",
-            substrate,
-            *extra,
-        ],
-    )
-
-    assert status == 0
-
-    expected = capsys.readouterr().out
-    actual = _capture(
+    out = _capture(
         [
             "--fil_A",
             FIL_A,
@@ -146,34 +148,22 @@ def test_reproduces_compute_pseudo_for_every_shared_substrate(
             FIL_B,
             "--substrate",
             substrate,
-            *extra,
+            *SUB_EXTRA[substrate],
         ],
         capsys,
     )
 
-    assert actual == expected
+    assert out == GOLDEN_PAIR[substrate] + "\n"
 
 
-def test_reproduces_compute_pseudo_for_one_track(
+def test_matches_the_pre_split_arithmetic_for_one_track(
     capsys: pytest.CaptureFixture[str],
 ) -> None:
     """
-    Check that single-track mode agrees with the sibling as well.
+    Pin the single-track value, where 'L_bar' collapses to 'L_A'.
     """
 
-    status = compute_pseudo.main(
-        [
-            "--fil_A",
-            FIL_A,
-            "--normalization",
-            "RPKM",
-        ],
-    )
-
-    assert status == 0
-
-    expected = capsys.readouterr().out
-    actual = _capture(
+    out = _capture(
         [
             "--fil_A",
             FIL_A,
@@ -183,7 +173,7 @@ def test_reproduces_compute_pseudo_for_one_track(
         capsys,
     )
 
-    assert actual == expected
+    assert out == GOLDEN_ONE_TRACK_RPKM + "\n"
 
 
 def test_prt_arg_writes_the_two_track_argument_string(
@@ -351,8 +341,8 @@ def test_json_keeps_one_shape_across_both_modes(
     assert pair["one_track"] is False
     assert single["one_track"] is True
 
-    # The substrate is named for what it is. Normalized coverage owns 'k'; this
-    # tool does not serve it.
+    # The substrate is named for what it is. The fractional substrates own 'k',
+    # and this tool serves none of them.
     assert pair["params"]["substrate"] == "CPM"
     assert "normalization" not in pair["params"]
     assert "k" not in pair
@@ -514,7 +504,7 @@ def test_parser_preserves_complete_action_contract() -> None:
             (),
         ),
         "substrate": (
-            ("-sub", "--substrate"),
+            ("-su", "--substrate"),
             "_StoreAction",
             None,
             "CPM",

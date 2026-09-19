@@ -13,7 +13,7 @@ Generated fixture outputs are ignored by Git. `tests/run_tests.sh` regenerates t
 
 The directory names the role each file plays in the assertion. These are bedGraph inputs, which is the role a workflow input plays, rather than a checker verdict, so the root has no `accepted/` or `rejected/` split.
 
-Only the CLI surface needs these files. The estimator itself takes library sizes as floats and is tested directly in `tests/unit/utilities/test_stabilizer.py` with no input on disk at all; a fixture would add a file read to arithmetic that has no file in it.
+Only the CLI surface needs these files. The estimator itself takes overlap counts as floats and is tested directly in `tests/unit/utilities/test_stabilizer.py` with no input on disk at all; a fixture would add a file read to arithmetic that has no file in it.
 
 <br />
 
@@ -22,8 +22,8 @@ Readable provenance:
 - `make.sh`
 
 Generated bedGraph inputs:
-- `bedgraph/pair_A.bdg`: three rows on a uniform 10 bp grid, summing to a library size of 6
-- `bedgraph/pair_B.bdg`: the same grid, summing to a library size of 18
+- `bedgraph/pair_A.bdg`: three rows on a uniform 10 bp grid, summing to an overlap count of 6
+- `bedgraph/pair_B.bdg`: the same grid, summing to an overlap count of 18
 
 <br />
 
@@ -47,7 +47,7 @@ The two priors sum to `2 * prior.count` and their ratio is `L_A / L_B`, which ar
 ## Current and deferred test coverage
 Current coverage in `tests/unit/compute_signal/test_pseudo.py`:
 - the `--prt_jsn` payload reports `prior_scaled`, and its ratio and sum hold; and
-- under `--normalization nc` the prior tracks the fragment counts rather than the library sizes, and `pseudo_i / scale_i` does not recover it.
+- under `--substrate nc` the prior tracks the fragment counts rather than the overlap counts, and `pseudo_i / scale_i` does not recover it.
 
 Deferred:
 - a track carrying `track` or `browser` header lines, which `--skp_pfx` handling needs and which the inline constructions in `test_pseudo.py` still cover; and

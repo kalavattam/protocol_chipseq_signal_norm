@@ -32,7 +32,7 @@ from protocol_chipseq_signal_norm.cli.compute_pseudo import (
 ROOT = Path(__file__).resolve().parents[3]
 BEDGRAPH = ROOT / "tests" / "fixtures" / "compute_pseudo" / "bedgraph"
 
-# Library sizes the fixture pair carries, so 'L_bar' is 12 and the two
+# Overlap counts the fixture pair carries, so 'L_bar' is 12 and the two
 # per-sample priors are '2 * 6 / 12' and '2 * 18 / 12' exactly. A fixture is
 # consumed by hard failure rather than by a skip, so a missing generation step
 # fails loudly instead of turning the suite green.
@@ -93,11 +93,8 @@ def test_combine_pseudo_sym_nonfinite_paths_do_not_validate_mode(
     one_finite = capsys.readouterr()
 
     assert one_finite.out == ""
-    assert (
-        one_finite.err == (
-            "pseudo_A is nonfinite; mirroring pseudo_B in symmetric mode "
-            "'bad'.\n"
-        )
+    assert one_finite.err == (
+        "pseudo_A is nonfinite; mirroring pseudo_B in symmetric mode 'bad'.\n"
     )
 
     result = combine_pseudo_sym(math.nan, math.inf, "bad")
@@ -255,24 +252,13 @@ def test_parser_preserves_complete_action_contract(
             ("none", "max", "min", "arith", "geom", "harm", "use_A", "use_B"),
             None,
         ),
-        "normalization": (
-            ("-nm", "--normalization"),
+        "substrate": (
+            ("-su", "--substrate"),
             False,
             "_StoreAction",
-            None,
-            "CPM",
-            (
-                "CPM",
-                "BPM",
-                "RPKM",
-                "None",
-                "RPGC",
-                "n",
-                "nc",
-                "nrm",
-                "norm",
-                "normalized",
-            ),
+            "_check_substrate",
+            "norm",
+            ("unadj", "frag", "norm", "nc", "count", "cpm"),
             None,
         ),
         "prior_count": (
@@ -311,24 +297,6 @@ def test_parser_preserves_complete_action_contract(
             (),
             None,
         ),
-        "sf_A": (
-            ("-sfA", "--sf_A"),
-            False,
-            "_StoreAction",
-            "float",
-            None,
-            (),
-            None,
-        ),
-        "sf_B": (
-            ("-sfB", "--sf_B"),
-            False,
-            "_StoreAction",
-            "float",
-            None,
-            (),
-            None,
-        ),
         "n_frg_A": (
             ("-nfA", "--n_frg_A"),
             False,
@@ -350,15 +318,6 @@ def test_parser_preserves_complete_action_contract(
         "dp": (("-dp", "--dp"), False, "_StoreAction", "int", 24, (), None),
         "prt_jsn": (
             ("-pj", "--prt_jsn"),
-            False,
-            "_StoreTrueAction",
-            None,
-            False,
-            (),
-            True,
-        ),
-        "prt_arg": (
-            ("-pa", "--prt_arg"),
             False,
             "_StoreTrueAction",
             None,
@@ -506,8 +465,8 @@ def test_main_skips_malformed_rows_and_handles_strict_json_failure(
     assert malformed.out == "2\n"
     assert malformed.err == ""
 
-    # Name the method explicitly: the default is 'edger', whose
-    # library-size path is not what this case exercises.
+    # Name the method explicitly: the default is 'edger', whose overlap-count
+    # path is not what this case exercises.
     status_empty = main(
         ["--fil_A", str(empty), "--method", "frc_mdn_nz", "--prt_jsn"],
     )
@@ -579,6 +538,8 @@ def test_verbose_banner_marks_an_inferred_bin_width(
             "--verbose",
             "--method",
             "edger",
+            "--substrate",
+            "count",
             "--fil_A",
             fil_a,
             "--fil_B",
@@ -603,6 +564,8 @@ def test_verbose_banner_reports_a_supplied_bin_width_unmarked(
             "--verbose",
             "--method",
             "edger",
+            "--substrate",
+            "count",
             "--fil_A",
             fil_a,
             "--fil_B",
@@ -623,7 +586,7 @@ def test_verbose_banner_reports_an_unset_bin_width(
     capsys: pytest.CaptureFixture[str],
 ) -> None:
     """
-    Supplying both library sizes reads no track, so no width is resolved.
+    Supplying both overlap counts reads no track, so no width is resolved.
     """
 
     fil_a, fil_b = _bdg_pair(tmp_path)
@@ -633,6 +596,8 @@ def test_verbose_banner_reports_an_unset_bin_width(
             "--verbose",
             "--method",
             "edger",
+            "--substrate",
+            "count",
             "--fil_A",
             fil_a,
             "--fil_B",
@@ -669,6 +634,8 @@ def test_verbose_banner_survives_a_failure_during_resolution(
                 "--verbose",
                 "--method",
                 "edger",
+                "--substrate",
+                "count",
                 "--fil_A",
                 fil_a,
                 "--fil_B",
@@ -696,6 +663,8 @@ def test_json_payload_reports_the_per_sample_prior(
         [
             "--method",
             "edger",
+            "--substrate",
+            "count",
             "--fil_A",
             FIL_A,
             "--fil_B",
@@ -716,18 +685,19 @@ def test_json_payload_prior_is_not_derivable_for_normalized_coverage(
     """
     Pin why 'prior_scaled' is emitted rather than left to be derived.
 
-    'pseudo_i / scale_i' recovers it in every other mode. Under 'norm' both
-    scale factors are 1.0 and the pseudocount is symmetric, so that quotient
-    returns the shared pseudocount instead. The fragment counts invert the
-    library-size imbalance here (3:1 against the tracks' 1:3), so a prior that
-    tracked the tracks could not produce these values.
+    'pseudo_i / scale_i' recovers it under 'count' alone among this tool's
+    substrates. Under 'norm' both scale factors are 1.0 and the pseudocount is
+    symmetric, so that quotient returns the shared pseudocount instead. The
+    fragment counts invert the overlap-count imbalance here (3:1 against the
+    tracks' 1:3), so a prior that tracked the tracks could not produce these
+    values.
     """
 
     status = main(
         [
             "--method",
             "edger",
-            "--normalization",
+            "--substrate",
             "nc",
             "--fil_A",
             FIL_A,
@@ -780,7 +750,17 @@ def test_warn_inapplicable_detects_every_spelling(
     capsys: pytest.CaptureFixture[str],
 ) -> None:
     status = main(
-        ["--method", "edger", "--fil_A", FIL_A, "--fil_B", FIL_B, *tokens],
+        [
+            "--method",
+            "edger",
+            "--substrate",
+            "count",
+            "--fil_A",
+            FIL_A,
+            "--fil_B",
+            FIL_B,
+            *tokens,
+        ],
     )
     note = capsys.readouterr().err
 
@@ -788,15 +768,13 @@ def test_warn_inapplicable_detects_every_spelling(
     assert "do not apply to '--method edger'" in note
 
 
-# Options whose short forms begin with '-s', which is '--sym'. Resolving by
-# the longest registered prefix is what keeps these from being reported as
-# '--sym' carrying an attached value. Each row is the whole argument list, so
-# the test does not branch to assemble one.
+# Options whose short forms begin with '-s', which is '--sym'. Resolving by the
+# longest registered prefix is what keeps these from being reported as '--sym'
+# carrying an attached value. Each row is the whole argument list, so the test
+# does not branch to assemble one.
 SYM_PREFIXED = (
     ("-sp", ("-sp", "#,track,browser")),
     ("-sb", ("-sb", "10")),
-    ("-sfA", ("-nm", "RPGC", "-sfA", "0.5", "-sfB", "0.5")),
-    ("-sfB", ("-nm", "RPGC", "-sfA", "0.5", "-sfB", "0.5")),
 )
 
 
@@ -807,14 +785,24 @@ def test_warn_inapplicable_does_not_confuse_sym_with_longer_options(
     capsys: pytest.CaptureFixture[str],
 ) -> None:
     """
-    '-s' prefixes '-sp', '-sb', '-sfA', and '-sfB', which all apply to edgeR.
+    '-s' prefixes '-sp', '-sb', and '-su', which all apply to edgeR.
 
     Reporting one of them as '--sym' would send a user looking for a flag they
     never passed.
     """
 
     status = main(
-        ["--method", "edger", "--fil_A", FIL_A, "--fil_B", FIL_B, *tokens],
+        [
+            "--method",
+            "edger",
+            "--substrate",
+            "count",
+            "--fil_A",
+            FIL_A,
+            "--fil_B",
+            FIL_B,
+            *tokens,
+        ],
     )
 
     assert status == 0
@@ -850,8 +838,8 @@ def test_hidden_alias_restates_its_primary(
     A hidden spelling is a separate 'add_argument' call sharing a 'dest', and
     argparse enforces nothing between the two. An alias that omits 'action'
     silently demands a value where its primary is a flag; one that omits
-    'choices' accepts any string the primary would reject. Both shipped, so
-    the agreement is asserted rather than assumed.
+    'choices' accepts any string the primary would reject. Both shipped, so the
+    agreement is asserted rather than assumed.
     """
 
     parser_type = compute_pseudo.CapArgumentParser
@@ -943,8 +931,8 @@ def test_ignored_option_constants_match_the_parser(
     assert set(compute_pseudo.OPT_SHORT_ALL) == set(shorts)
 
 
-# Single-track mode is selected from '--fil_B' and '--n_bin_B', so a library
-# size supplied to skip a read also decides the mode. Each row is a whole
+# Single-track mode is selected from '--fil_B' and '--n_bin_B', so an overlap
+# count supplied to skip a read also decides the mode. Each row is a whole
 # argument list parsed by the real parser, so a flag rename fails here rather
 # than quietly reporting two tracks.
 ONE_TRACK_ARGV = (
@@ -966,7 +954,7 @@ def test_is_one_track_reads_both_b_options(
     '--n_bin_B' without '--fil_B' is two-track, the asymmetric case.
 
     Reading only '--fil_B' would mirror A onto B and emit one value for a run
-    the user described with two library sizes.
+    the user described with two fragment-bin overlap counts.
     """
 
     args = parse_args(["--fil_A", FIL_A, *tokens])
@@ -974,7 +962,7 @@ def test_is_one_track_reads_both_b_options(
     assert compute_pseudo._is_one_track(args) is expected
 
 
-def test_is_one_track_treats_a_zero_library_size_as_supplied() -> None:
+def test_is_one_track_treats_a_zero_overlap_count_as_supplied() -> None:
     """
     '--n_bin_B 0' is falsy but supplied, and the check reads 'is None' for it.
 
@@ -989,10 +977,7 @@ def test_is_one_track_treats_a_zero_library_size_as_supplied() -> None:
 
 # The other B options carry a value for a track rather than asserting one
 # exists, so naming them alone leaves the run single-track.
-ONE_TRACK_UNRELATED = (
-    pytest.param(("--n_frg_B", "1000"), id="n_frg_B"),
-    pytest.param(("--sf_B", "0.5"), id="sf_B"),
-)
+ONE_TRACK_UNRELATED = (pytest.param(("--n_frg_B", "1000"), id="n_frg_B"),)
 
 
 @pytest.mark.parametrize("tokens", ONE_TRACK_UNRELATED)
@@ -1022,26 +1007,57 @@ def test_is_one_track_reads_an_unsupplied_fil_b_as_none() -> None:
     assert compute_pseudo._is_one_track(args) is True
 
 
-# Library sizes the fixture pair carries. Expected pseudocounts below are
+# Overlap counts the fixture pair carries. Expected pseudocounts below are
 # written from edgeR's published definition rather than by calling the
 # implementation under test, so the assertion is evidence and not arithmetic.
+#
+# TODO: 'LIB_A' and 'LIB_B' still carry the retired 'library size'
+# vocabulary. They are overlap counts, so they rename to 'OVLP_*' with the
+# queued 'n_bin' to 'n_ovlp' pass rather than before it.
 LIB_A = 6.0
 LIB_B = 18.0
 PRIOR = 2.0
 
 
+def _count_prior(lib: float, mean_lib: float, prior: float = PRIOR) -> float:
+    """
+    Return edgeR's pseudocount in count units for one overlap count.
+
+    A 'count' track is edgeR's own 'y', so its pseudocount is edgeR's own
+    'y0_i = prior * L_i / L_bar' with no rescaling. Unlike the closed
+    substrates this carries a per-sample index, which is what makes the
+    single-track and two-track values differ.
+
+    Parameters
+    ----------
+    lib : float
+        This sample's fragment-bin overlap count.
+    mean_lib : float
+        Mean fragment-bin overlap count over the columns being compared.
+    prior : float
+        Nominal 'prior.count'.
+
+    Returns
+    -------
+    pseudo : float
+        Pseudocount in count units.
+    """
+
+    return prior * lib / mean_lib
+
+
 def _edger_pseudo(mean_lib: float, prior: float = PRIOR) -> float:
     """
-    Return edgeR's pseudocount on the CPM scale for one mean library size.
+    Return edgeR's pseudocount on the CPM scale for one mean overlap count.
 
-    'y0_i = prior * L_i / mean(L)' and 's_i = 1e6 / (L_i + 2 * y0_i)' give
+    'y0_i = prior * L_i / L_bar' and 's_i = 1e6 / (L_i + 2 * y0_i)' give
     'p_i = s_i * y0_i', which reduces to the expression below and carries no
     per-sample index. That is why an edgeR pair is symmetric.
 
     Parameters
     ----------
     mean_lib : float
-        Mean library size over the columns being compared.
+        Mean fragment-bin overlap count over the columns being compared.
     prior : float
         Nominal 'prior.count'.
 
@@ -1054,6 +1070,265 @@ def _edger_pseudo(mean_lib: float, prior: float = PRIOR) -> float:
     return 1e6 * prior / (mean_lib + 2.0 * prior)
 
 
+def _norm_like(tmp_path: Path) -> tuple[str, str]:
+    """
+    Write a fixture pair rescaled to sum to one, as normalized coverage does.
+    """
+
+    out = []
+
+    for name in ("pair_A.bdg", "pair_B.bdg"):
+        rows = [
+            row.split("\t")
+            for row in (BEDGRAPH / name).read_text().strip().splitlines()
+        ]
+        total = sum(float(row[3]) for row in rows)
+        path = tmp_path / f"norm_{name}"
+        path.write_text(
+            "\n".join(
+                "\t".join([*row[:3], repr(float(row[3]) / total)])
+                for row in rows
+            )
+            + "\n",
+        )
+        out.append(str(path))
+
+    return out[0], out[1]
+
+
+def test_inferred_overlap_count_refuses_a_track_that_cannot_be_counts(
+    tmp_path: Path,
+) -> None:
+    """
+    Refuse an inferred 'L' that is impossible rather than merely surprising.
+
+    Every fragment touches at least one bin, so 'L = k * N' is never below 'N'.
+    A summed column total under '--n_frg' therefore proves the track is not a
+    whole-count one, and inferring 'L' from it would scale the prior silently:
+    measured, a normalized track gives a prior ten times the right one. This is
+    an impossibility test, not a plausibility heuristic, so a genuine
+    whole-count track cannot trip it.
+    """
+
+    fil_a, fil_b = _norm_like(tmp_path)
+
+    with pytest.raises(SystemExit) as excinfo:
+        main(
+            [
+                "--method",
+                "edger",
+                "--substrate",
+                "norm",
+                "--fil_A",
+                fil_a,
+                "--fil_B",
+                fil_b,
+                "--n_frg_A",
+                "3",
+                "--n_frg_B",
+                "6",
+            ],
+        )
+
+    assert "cannot be a whole-count track" in str(excinfo.value)
+
+
+def test_inferred_overlap_count_still_works_for_a_whole_count_track(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """
+    Keep the inference path the refusal is not meant to touch.
+
+    'pseudo_recheck_2026-08-26/02_recheck_inferred.sh' passes deepTools-raw
+    tracks and omits '--n_bin', which is exactly this shape. A whole-count
+    track satisfies 'colSum >= N' by construction, so it stays green.
+    """
+
+    status = main(
+        [
+            "--method",
+            "edger",
+            "--substrate",
+            "norm",
+            "--fil_A",
+            FIL_A,
+            "--fil_B",
+            FIL_B,
+            "--n_frg_A",
+            "3",
+            "--n_frg_B",
+            "6",
+            "--dp",
+            "6",
+        ],
+    )
+
+    assert status == 0
+    assert capsys.readouterr().out.strip() == "0.177778:0.177778"
+
+
+def test_unadj_requires_the_overlap_counts() -> None:
+    """
+    Refuse an 'unadj' run that would conflate two different totals.
+
+    'unadj' reads its own track to get the substrate total, the fragment base
+    pairs. The fragment-bin overlap count 'L' that 'k' needs is a different
+    number off the same file, so letting it default to the summed track
+    silently substitutes one for the other: measured on the fixture pair,
+    supplying 'L' ten times the column sum moves the prior by exactly ten.
+    """
+
+    with pytest.raises(SystemExit) as excinfo:
+        main(
+            [
+                "--method",
+                "edger",
+                "--substrate",
+                "unadj",
+                "--fil_A",
+                FIL_A,
+                "--fil_B",
+                FIL_B,
+                "--n_frg_A",
+                "3",
+                "--n_frg_B",
+                "6",
+            ],
+        )
+
+    assert "'--n_bin_A' and '--n_bin_B'" in str(excinfo.value)
+
+
+# Fragment counts for the fractional substrates. Their 1:2 ratio is not the
+# tracks' 1:3, so a prior that read the overlap counts cannot land on these
+# values.
+FRG_A = 3.0
+FRG_B = 6.0
+
+
+def _fractional_prior(
+    n_frg_a: float = FRG_A,
+    n_frg_b: float = FRG_B,
+    prior: float = PRIOR,
+) -> float:
+    """
+    Return the closed fractional prior 'p_nc' for the fixture pair.
+
+    The fractional substrates divide edgeR's prior by 'k_bar' to answer the
+    under-dispersion of fractional deposition, giving
+    'p_nc = prior / (k_bar * N_bar)' with 'k_i = L_i / N_i', averaged over the
+    pair. Each member then scales 'p_nc' by its own column total. Written from
+    that rule rather than from the tool's output, so the assertion is evidence
+    and not arithmetic.
+
+    Parameters
+    ----------
+    n_frg_a, n_frg_b : float
+        Fragment count 'N' for each track.
+    prior : float
+        Nominal 'prior.count'.
+
+    Returns
+    -------
+    prior_closed : float
+        The prior for a substrate whose column total is one.
+    """
+
+    k_bar = 0.5 * (LIB_A / n_frg_a + LIB_B / n_frg_b)
+    n_frg_bar = 0.5 * (n_frg_a + n_frg_b)
+
+    return prior / (k_bar * n_frg_bar)
+
+
+# One row per project substrate the other CLI tests never run: the extra
+# arguments it needs, and its expected pair. 'unadj' scales 'p_nc' by the
+# track's own base-pair total, 'frag' by the fragment count, and 'cpm' closes
+# on 'L_bar' with no per-sample index. 'norm' and 'count' are covered
+# elsewhere in this file.
+#
+# The fixture's 'unadj' totals happen to equal its overlap counts, so this row
+# cannot separate 'T' from 'L'; 'test_unadj_requires_the_overlap_counts' covers
+# that conflation by refusing the run instead.
+SUBSTRATE_CLI_CASES = (
+    pytest.param(
+        "unadj",
+        [
+            "--n_bin_A",
+            "6",
+            "--n_bin_B",
+            "18",
+            "--n_frg_A",
+            "3",
+            "--n_frg_B",
+            "6",
+        ],
+        (_fractional_prior() * LIB_A, _fractional_prior() * LIB_B),
+        id="unadj",
+    ),
+    pytest.param(
+        "frag",
+        [
+            "--n_frg_A",
+            "3",
+            "--n_frg_B",
+            "6",
+        ],
+        (_fractional_prior() * FRG_A, _fractional_prior() * FRG_B),
+        id="frag",
+    ),
+    pytest.param(
+        "cpm",
+        [],
+        (
+            PRIOR * 1e6 / (0.5 * (LIB_A + LIB_B)),
+            PRIOR * 1e6 / (0.5 * (LIB_A + LIB_B)),
+        ),
+        id="cpm",
+    ),
+)
+
+
+@pytest.mark.parametrize(
+    ("substrate", "extra", "expected"), SUBSTRATE_CLI_CASES
+)
+def test_every_substrate_reaches_stdout_with_its_own_arithmetic(
+    substrate: str,
+    extra: list[str],
+    expected: tuple[float, float],
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """
+    Run each remaining substrate end to end, not only through the estimator.
+
+    'test_stabilizer.py' covers the arithmetic per substrate; what this covers
+    is the plumbing between the CLI and it, where a total can be passed where
+    an overlap count belongs. That substitution is silent, so only a pinned
+    pair catches it.
+    """
+
+    status = main(
+        [
+            "--method",
+            "edger",
+            "--substrate",
+            substrate,
+            "--fil_A",
+            FIL_A,
+            "--fil_B",
+            FIL_B,
+            *extra,
+        ],
+    )
+
+    pseudo_a, pseudo_b = (
+        float(part) for part in capsys.readouterr().out.strip().split(":")
+    )
+
+    assert status == 0
+    assert math.isclose(pseudo_a, expected[0], rel_tol=1e-12)
+    assert math.isclose(pseudo_b, expected[1], rel_tol=1e-12)
+
+
 def test_single_track_emits_one_value_rather_than_a_pair(
     capsys: pytest.CaptureFixture[str],
 ) -> None:
@@ -1061,14 +1336,23 @@ def test_single_track_emits_one_value_rather_than_a_pair(
     Omitting both '--fil_B' and '--n_bin_B' emits one value, not 'A:B'.
     """
 
-    status = main(["--method", "edger", "--fil_A", FIL_A])
+    status = main(
+        [
+            "--method",
+            "edger",
+            "--substrate",
+            "count",
+            "--fil_A",
+            FIL_A,
+        ],
+    )
 
     emitted = capsys.readouterr().out.strip()
 
     assert status == 0
     assert ":" not in emitted
     assert math.isclose(
-        float(emitted), _edger_pseudo(LIB_A), rel_tol=1e-12
+        float(emitted), _count_prior(LIB_A, LIB_A), rel_tol=1e-12
     )
 
 
@@ -1076,71 +1360,38 @@ def test_single_track_value_is_not_the_two_track_value(
     capsys: pytest.CaptureFixture[str],
 ) -> None:
     """
-    A track's one-track pseudocount is not its two-track pseudocount.
+    A track's single-track pseudocount is not its two-track pseudocount.
 
-    'mean(L)' is the track's own library size in one framing and the mean of
-    both in the other, so a refactor that quietly made them equal would still
-    produce plausible numbers. This is the assertion that catches it.
+    'L_bar' is the track's own fragment-bin overlap count in single-track mode
+    and the mean of both in two-track mode, so a refactor that quietly made
+    them equal would still produce plausible numbers. This is the assertion
+    that catches it.
     """
 
-    main(["--method", "edger", "--fil_A", FIL_A])
+    main(["--method", "edger", "--substrate", "count", "--fil_A", FIL_A])
 
     alone = float(capsys.readouterr().out.strip())
 
-    main(["--method", "edger", "--fil_A", FIL_A, "--fil_B", FIL_B])
+    main(
+        [
+            "--method",
+            "edger",
+            "--substrate",
+            "count",
+            "--fil_A",
+            FIL_A,
+            "--fil_B",
+            FIL_B,
+        ],
+    )
 
     paired = float(capsys.readouterr().out.strip().split(":")[0])
 
-    assert math.isclose(alone, _edger_pseudo(LIB_A), rel_tol=1e-12)
-    assert math.isclose(
-        paired, _edger_pseudo((LIB_A + LIB_B) / 2.0), rel_tol=1e-12
-    )
+    mean_lib = (LIB_A + LIB_B) / 2.0
+
+    assert math.isclose(alone, _count_prior(LIB_A, LIB_A), rel_tol=1e-12)
+    assert math.isclose(paired, _count_prior(LIB_A, mean_lib), rel_tol=1e-12)
     assert alone != paired
-
-
-def test_single_track_refuses_prt_arg(
-    capsys: pytest.CaptureFixture[str],
-) -> None:
-    """
-    '--prt_arg' is refused rather than silently truncated.
-
-    'bamCompare' takes a pair for each of '--scaleFactors' and '--pseudocount',
-    and 'bamCoverage --scaleFactor' accepts no pseudocount, so emitting a
-    one-track argument string would drop the value the user asked for. Assert
-    nothing was emitted, not merely that it failed.
-    """
-
-    with pytest.raises(SystemExit) as refused:
-        main(["--method", "edger", "--fil_A", FIL_A, "--prt_arg"])
-
-    emitted = capsys.readouterr().out
-    message = str(refused.value)
-
-    assert "no single-track form" in message
-    assert "--scaleFactors" not in emitted
-    assert "--pseudocount" not in emitted
-
-
-def test_prt_arg_writes_the_two_track_argument_string(
-    capsys: pytest.CaptureFixture[str],
-) -> None:
-    """
-    The two-track form is a deepTools argument string, not a bare pair.
-    """
-
-    status = main(
-        ["--method", "edger", "--fil_A", FIL_A, "--fil_B", FIL_B, "--prt_arg"],
-    )
-
-    emitted = capsys.readouterr().out.strip()
-    expected = _edger_pseudo((LIB_A + LIB_B) / 2.0)
-    pseudo = emitted.split("--pseudocount ")[1].split()
-
-    assert status == 0
-    assert emitted.startswith("--scaleFactors ")
-    assert all(
-        math.isclose(float(value), expected, rel_tol=1e-12) for value in pseudo
-    )
 
 
 def _edger_payload(
@@ -1163,7 +1414,16 @@ def _edger_payload(
         Decoded JSON summary, which is the last line written to stdout.
     """
 
-    status = main(["--method", "edger", "--prt_jsn", *argv])
+    status = main(
+        [
+            "--method",
+            "edger",
+            "--substrate",
+            "count",
+            "--prt_jsn",
+            *argv,
+        ],
+    )
 
     assert status == 0
 
@@ -1188,16 +1448,14 @@ def test_json_mirrors_b_onto_a_in_single_track_mode(
     assert payload["n_bin"]["B"] == payload["n_bin"]["A"]
     assert payload["scale_factors"]["B"] == payload["scale_factors"]["A"]
     assert pseudocounts["pseudo_B"] == pseudocounts["pseudo_A"]
-    assert math.isclose(
-        payload["n_bin"]["A"], LIB_A, rel_tol=1e-12
-    )
+    assert math.isclose(payload["n_bin"]["A"], LIB_A, rel_tol=1e-12)
 
 
 def test_json_keeps_one_shape_across_both_modes(
     capsys: pytest.CaptureFixture[str],
 ) -> None:
     """
-    The schema does not change shape between one- and two-track runs.
+    The schema does not change shape between single-track and two-track runs.
 
     Compare keys recursively rather than spot-checking one field, so a dropped
     or added member fails here rather than in a consumer.
@@ -1215,28 +1473,32 @@ def test_json_keeps_one_shape_across_both_modes(
             },
         )
 
+    pseudo_alone = alone["pseudocounts"]["pseudo_A"]
+    pseudo_paired = paired["pseudocounts"]["pseudo_A"]
+
     assert shapes[0] == shapes[1]
     assert alone["one_track"] is True
     assert paired["one_track"] is False
-    assert paired["pseudocounts"]["pseudo_A"] != (
-        alone["pseudocounts"]["pseudo_A"]
-    )
+    assert pseudo_paired != pseudo_alone
 
 
-# Each row is a whole normalization case: the flag that single-track mode still
+# Each row is a whole substrate case: the flag that single-track mode still
 # requires, a value for it, and the flag a two-track run would also need. The
 # message must name only the first.
+#
+# 'N' must not exceed the fixture's column sum of 6: every fragment touches at
+# least one bin, so 'L >= N', and the inference guard refuses an impossible
+# pair before this case can reach the message it is checking.
 SINGLE_TRACK_REQUIRED = (
-    pytest.param("norm", "--n_frg_A", "100", "--n_frg_B", id="norm"),
-    pytest.param("RPGC", "--sf_A", "0.5", "--sf_B", id="RPGC"),
+    pytest.param("norm", "--n_frg_A", "3", "--n_frg_B", id="norm"),
 )
 
 
 @pytest.mark.parametrize(
-    ("normalization", "flag", "value", "paired_flag"), SINGLE_TRACK_REQUIRED
+    ("substrate", "flag", "value", "paired_flag"), SINGLE_TRACK_REQUIRED
 )
 def test_single_track_requires_only_the_a_side_flag(
-    normalization: str,
+    substrate: str,
     flag: str,
     value: str,
     paired_flag: str,
@@ -1253,10 +1515,12 @@ def test_single_track_requires_only_the_a_side_flag(
         [
             "--method",
             "edger",
+            "--substrate",
+            "count",
             "--fil_A",
             FIL_A,
-            "--normalization",
-            normalization,
+            "--substrate",
+            substrate,
             flag,
             value,
         ],
@@ -1269,10 +1533,12 @@ def test_single_track_requires_only_the_a_side_flag(
             [
                 "--method",
                 "edger",
+                "--substrate",
+                "count",
                 "--fil_A",
                 FIL_A,
-                "--normalization",
-                normalization,
+                "--substrate",
+                substrate,
             ],
         )
 
@@ -1300,6 +1566,8 @@ def test_warn_inapplicable_reports_an_explicitly_passed_default(
         [
             "--method",
             "edger",
+            "--substrate",
+            "count",
             "--fil_A",
             FIL_A,
             "--fil_B",
