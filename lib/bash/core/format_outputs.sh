@@ -6,9 +6,11 @@
 # Copyright 2024-2026 by Kris Alavattam
 # Email: kalavattam@gmail.com
 #
-# OpenAI ChatGPT and Codex (GPT-4- and GPT-5-series models; most recent:
-# GPT-5.6) were used in design, development, and documentation, with all output
-# reviewed, edited, and approved by the author.
+# The following were used in design, development, and documentation, with all
+# output reviewed, edited, and approved by the author:
+# - OpenAI ChatGPT and Codex (GPT-4- and GPT-5-series models; most recent:
+#   GPT-5.6);
+# - Anthropic Claude Code (Opus 5).
 #
 # Distributed under the MIT license.
 
@@ -21,10 +23,10 @@
 # print_banner_pretty
 # print_cmd_array
 # print_cmd_pretty
-# summarize_sig_norm
+# summarize_sig_depo
 
 
-#  Require Bash >= 4.4 before defining functions
+# Require Bash >= 4.4 before defining functions.
 if [[ -z "${BASH_VERSION:-}" ]]; then
     echo "error(shell):" \
         "this script must be sourced or run under Bash >= 4.4." >&2
@@ -48,7 +50,7 @@ elif ((
     fi
 fi
 
-#  Source required helper functions if needed
+# Source required helper functions if needed.
 {
     _dir_src_fmt="$(
         cd "$(dirname "${BASH_SOURCE[0]}")" > /dev/null 2>&1 && pwd
@@ -82,13 +84,13 @@ fi
 }
 
 
-#  Write a script-level error message to stderr
+# Write a script-level error message to stderr.
 function echo_err() {
     echo "error($(basename "${0}")): $*" >&2
 }
 
 
-#  Write a function-level error message to stderr
+# Write a function-level error message to stderr.
 function echo_err_func() {
     local func="${1:-${FUNCNAME[1]:-main}}"
     shift || true
@@ -96,13 +98,13 @@ function echo_err_func() {
 }
 
 
-#  Write a script-level warning message to stderr
+# Write a script-level warning message to stderr.
 function echo_warn() {
     echo "warning($(basename "${0}")): $*" >&2
 }
 
 
-#  Write a function-level warning message to stderr
+# Write a function-level warning message to stderr.
 function echo_warn_func() {
     local func="${1:-${FUNCNAME[1]:-main}}"
     shift || true
@@ -110,12 +112,12 @@ function echo_warn_func() {
 }
 
 
-#TODO: use the below wording around "Boolean-like strings" throughout the repo
-#+     code and documentation
+# TODO: use the below wording around "Boolean-like strings" throughout the repo
+# code and documentation.
 function format_print_cmd() {
-    local slurm="${1:-}"  # Boolean-like: Slurm 'sbatch' command or not
-    local scr="${2:-}"    # Script path for Slurm 'sbatch' command
-    local show_help       # Help message
+    local slurm="${1:-}"  # Boolean-like: Slurm 'sbatch' command or not.
+    local scr="${2:-}"    # Script path for Slurm 'sbatch' command.
+    local show_help       # Help message.
 
     show_help=$(cat << EOM
 Usage
@@ -177,7 +179,7 @@ Examples
 EOM
     )
 
-    #  Parse and check function arguments
+    # Parse and check function arguments.
     if [[ "${slurm}" =~ ^(-h|--h[e]?lp)$ ]]; then
         echo "${show_help}" >&2
         return 0
@@ -192,10 +194,10 @@ EOM
     slurm="$(normalize_bool "${slurm}" "slurm")" || return 1
 
     if [[ "${slurm}" == "false" ]]; then
-        #  For non-Slurm commands, break before each '--' and indent
-        sed -E 's| --| \\\n    --|g'  # Only as robust as incoming command str
+        # For non-Slurm commands, break before each '--' and indent.
+        sed -E 's| --| \\\n    --|g'  # Only as robust as incoming command str.
     elif [[ "${slurm}" == "true" ]]; then
-        #  For Slurm commands, require a script path
+        # For Slurm commands, require a script path.
         if [[ -z "${scr}" ]]; then
             echo_err_func "${FUNCNAME[0]}" \
                 "positional argument 2, 'scr', is missing when 'slurm' is" \
@@ -205,11 +207,11 @@ EOM
             return 1
         fi
 
-        #  Perform display-oriented formatting; this logic expects the current
-        #+ single-line command layout emitted by 'build_cmd'
-        #+
-        #+ Standard AWK features are in use here, so 'awk' (rather than 'gawk')
-        #+ is used intentionally
+        # Perform display-oriented formatting; this logic expects the current
+        # single-line command layout emitted by 'build_cmd'.
+        #
+        # Standard AWK features are in use here, so 'awk' (rather than 'gawk')
+        # is used intentionally.
         awk \
             -v scr="${scr}" '
             BEGIN {
@@ -219,13 +221,13 @@ EOM
             }
 
             {
-                #  Split the input string into tokens based on " --"
+                # Split the input string into tokens based on " --".
                 n = split($0, a, / --/)
 
                 for (i = 1; i <= n; i++) {
                     token = a[i]
 
-                    #  Handle first token: strip and print "sbatch" if present
+                    # Handle first token: strip and print "sbatch" if present.
                     if (i == 1 && token ~ /^sbatch[[:space:]]*/) {
                         sub(/^sbatch[[:space:]]*/, "", token)
                         print "sbatch \\"
@@ -235,7 +237,7 @@ EOM
                         continue
                     }
 
-                    #  If token matches script path, switch indentation context
+                    # If token matches script path, switch indentation context.
                     # if (token ~ scr) {  # (avoid accidental regex semantics)
                     if (index(token, scr) > 0) {
                         print indent_1 scr " \\"
@@ -243,12 +245,12 @@ EOM
                         continue
                     }
 
-                    #  Print remaining tokens with appropriate indentation
+                    # Print remaining tokens with appropriate indentation.
                     if (length(token) > 0) {
-                        #  Use script indentation after scr is printed
+                        # Use script indentation after scr is printed.
                         indent = (in_scr ? indent_2 : indent_1)
 
-                        #  Add trailing backslash unless last token
+                        # Add trailing backslash unless last token.
                         print indent "--" token (i == n ? "" : " \\")
                     }
                 }
@@ -258,11 +260,11 @@ EOM
 
 
 function print_banner_pretty() {
-    local text=""    # Text to wrap
-    local wrap="#"   # Wrapping character
-    local pad=1      # Spaces between side markers and text
-    local cols=77    # Max text width per line; 0 means no wrapping
-    local show_help  # Help message
+    local text=""    # Text to wrap.
+    local wrap="#"   # Wrapping character.
+    local pad=1      # Spaces between side markers and text.
+    local cols=77    # Max text width per line; 0 means no wrapping.
+    local show_help  # Help message.
 
     show_help=$(cat << EOM
 Usage
@@ -320,7 +322,7 @@ Examples
 EOM
     )
 
-    #  Parse and check function arguments
+    # Parse and check function arguments.
     if [[ -z "${1:-}" || "${1}" =~ ^(-h|--h[e]?lp)$ ]]; then
         echo "${show_help}" >&2
         return 0
@@ -374,7 +376,7 @@ EOM
                 ;;
 
             *)
-                #  Treat any leftover args as part of the text
+                # Treat any leftover args as part of the text.
                 if [[ -z "${text}" ]]; then
                     text="${1}"
                 else
@@ -385,7 +387,7 @@ EOM
         esac
     done
 
-    #  Require text
+    # Require text.
     if [[ -z "${text}" ]]; then
         echo_err_func "${FUNCNAME[0]}" \
             "'--text' is required (or supply text as trailing args). For" \
@@ -393,40 +395,40 @@ EOM
         return 1
     fi
 
-    #  Require wrap character
+    # Require wrap character.
     if [[ -z "${wrap}" ]]; then
         echo_err_func "${FUNCNAME[0]}" \
             "'--wrap' must not be empty."
         return 1
     fi
 
-    #  Check 'pad'
+    # Check 'pad'.
     if ! [[ ${pad} =~ ^[0-9]+$ ]]; then
         echo_err_func "${FUNCNAME[0]}" \
             "'--pad' must be a non-negative integer, but got '${pad}'."
         return 1
     fi
 
-    #  Check 'cols' (if set)
+    # Check 'cols' (if set).
     if ! [[ ${cols} =~ ^[0-9]+$ ]]; then
         echo_err_func "${FUNCNAME[0]}" \
             "'--cols' must be a non-negative integer, but got '${cols}'."
         return 1
     fi
 
-    #  Use only the first character of '--wrap'
+    # Use only the first character of '--wrap'.
     local ch="${wrap:0:1}"
     local side="${ch}${ch}"
 
-    #  Split text into wrapped lines
+    # Split text into wrapped lines.
     local -a arr_lines
 
     if (( cols > 0 )); then
-        #  Word-wrapping to 'cols' characters per line (for text only)
+        # Word-wrapping to 'cols' characters per line (for text only).
         local -a arr_words=()
         local w
 
-        #  Basic whitespace splitting; newlines are treated as spaces
+        # Basic whitespace splitting; newlines are treated as spaces.
         for w in ${text}; do
             arr_words+=( "${w}" )
         done
@@ -447,7 +449,7 @@ EOM
         arr_lines=( "${text}" )
     fi
 
-    #  Determine maximum line length
+    # Determine maximum line length.
     local len_max=0 line
     for line in "${arr_lines[@]}"; do
         if (( ${#line} > len_max )); then
@@ -455,23 +457,23 @@ EOM
         fi
     done
 
-    #  Compute full banner width:
-    #+     2 (side) + pad + len_max + pad + 2 (side)
+    # Compute full banner width:
+    #   2 (side) + pad + len_max + pad + 2 (side)
     local width=$(( len_max + 2 * pad + 4 ))
 
-    #  Build border line
+    # Build border line.
     local border="" i
     for (( i = 0; i < width; i++ )); do
         border+="${ch}"
     done
 
-    #  Print banner
+    # Print banner.
     echo "${border}"
 
-    #  For each line, pad out to 'len_max' so the block is rectangular
+    # For each line, pad out to 'len_max' so the block is rectangular.
     local spc_r pad_spc extra
 
-    #  Precompute padding spaces (pad spaces)
+    # Precompute padding spaces (pad spaces).
     pad_spc=""
     for (( i = 0; i < pad; i++ )); do pad_spc+=" "; done
 
@@ -482,7 +484,7 @@ EOM
         for (( i = 0; i < extra; i++ )); do
             spc_r+=" "
         done
-        #  side + pad + text + (extra) + pad + side
+        # side + pad + text + (extra) + pad + side
         printf '%s%s%s%s%s%s\n' \
             "${side}" \
             "${pad_spc}" \
@@ -497,9 +499,9 @@ EOM
 
 
 function print_cmd_array() {
-    local arr_nam="${1:-}"  # Name of command array to print
-    local decl              # Output from 'declare -p' for array validation
-    local show_help         # Help message
+    local arr_nam="${1:-}"  # Name of command array to print.
+    local decl              # Output from 'declare -p' for array validation.
+    local show_help         # Help message.
 
     show_help=$(cat << EOM
 Usage
@@ -587,11 +589,11 @@ EOM
 
 
 function print_cmd_pretty() {
-    local first_n=2       # Number of tokens on first line
-    local pair_flg=false  # Boolean-like: print flag token plus next token
-    local indent=""       # Extra indentation
-    local cont="    "     # Extra indentation: continuation lines
-    local show_help       # Help message
+    local first_n=2       # Number of tokens on first line.
+    local pair_flg=false  # Boolean-like: print flag token plus next token.
+    local indent=""       # Extra indentation.
+    local cont="    "     # Extra indentation: continuation lines.
+    local show_help       # Help message.
 
     show_help=$(cat << EOM
 Usage
@@ -646,7 +648,7 @@ Examples
 EOM
     )
 
-    #  Parse and check function arguments
+    # Parse and check function arguments.
     if [[ -z "${1:-}" || "${1}" =~ ^(-h|--h[e]?lp)$ ]]; then
         echo "${show_help}" >&2
         return 0
@@ -689,24 +691,24 @@ EOM
                     return 1
                 fi
 
-                #  First non-option is the command
+                # First non-option is the command.
                 break
                 ;;
         esac
     done
 
-    #  Check that 'first_n' is a non-negative integer
+    # Check that 'first_n' is a non-negative integer.
     if ! [[ ${first_n} =~ ^[0-9]+$ ]]; then
         echo_err_func "${FUNCNAME[0]}" \
             "'first_n' ('--head <int>') must be a non-negative integer, but" \
             "got '${first_n}'."
         return 1
     elif (( first_n < 1 )); then
-        #  Handle 'first_n=0'
+        # Handle 'first_n=0'.
         first_n=1
     fi
 
-    #  Handle remaining args, which are the actual command
+    # Handle remaining args, which are the actual command.
     local cmd=( "$@" )
     local n=${#cmd[@]}
     if (( n == 0 )); then
@@ -717,10 +719,10 @@ EOM
         return 1
     fi
 
-    # Clamp 'first_n' so that it never exceeds the number of tokens
+    # Clamp 'first_n' so that it never exceeds the number of tokens.
     if (( first_n > n )); then first_n=${n}; fi
 
-    #  First line: print up to 'first_n' tokens
+    # First line: print up to 'first_n' tokens.
     local i=0
     printf '%s%q' "${indent}" "${cmd[0]}"
     i=1
@@ -729,20 +731,20 @@ EOM
         (( i++ ))
     done
 
-    #  Handle subsequent lines, including final line
+    # Handle subsequent lines, including final line.
     if (( i < n )); then
         printf ' \\\n'
 
-        #  Handle continuation lines
+        # Handle continuation lines.
         local start_i end_i k
         while (( i < n )); do
             start_i=${i}
             end_i=${i}
 
-            #  Pair “flag and value” if requested and possible:
-            #+   - current token starts with '-' or '--'
-            #+   - there is a next token
-            #+   - the next token does not start with '-'
+            # Pair "flag and value" if requested and possible:
+            #   - current token starts with '-' or '--'
+            #   - there is a next token
+            #   - the next token does not start with '-'
             if (
                 [[ ${pair_flg} == "true" ]] \
                 && [[ ${cmd[start_i]} == -* ]] \
@@ -752,14 +754,14 @@ EOM
                 end_i=$(( start_i + 1 ))
             fi
 
-            #  Print tokens 'cmd[start_i..end_i]'
+            # Print tokens 'cmd[start_i..end_i]'.
             printf '%s%q' "${cont}" "${cmd[start_i]}"
             for (( k = start_i + 1; k <= end_i; k++ )); do
                 printf ' %q' "${cmd[k]}"
             done
 
             if (( end_i == n - 1 )); then
-                #  Handle last line: no trailing backslash
+                # Handle last line: no trailing backslash.
                 printf '\n'
             else
                 printf ' \\\n'
@@ -773,25 +775,25 @@ EOM
 }
 
 
-#MAYBE: 'format_outputs.sh' may not be the best place for this function
-#MAYBE: make this function "private", i.e., '_summarize_sig_norm'
-function summarize_sig_norm() {
-    local typ_sig="${1:-}"  # Workflow method. Type of signal computation
-    local scl_fct="${2:-}"  # Scaling factor
-    local typ_sig_lc        # Lowercase-converted signal type for case matching
-    local mth_nrm           # Normalization method message
-    local src_scl           # Scaling-factor message
-    local show_help         # Help message
+#MAYBE: 'format_outputs.sh' may not be the best place for this function.
+#MAYBE: make this function "private", i.e., '_summarize_sig_depo'.
+function summarize_sig_depo() {
+    local typ_sig="${1:-}"  # Workflow method. Type of signal computation.
+    local scl_fct="${2:-}"  # Scaling factor.
+    local typ_sig_lc        # Lowercase signal type for case matching.
+    local mth_dep           # Deposition and adjustment message.
+    local src_scl           # Scaling-factor message.
+    local show_help         # Help message.
 
     show_help=$(cat << EOM
 Usage
 -----
-  summarize_sig_norm
+  summarize_sig_depo
     [--help] typ_sig [scl_fct]
 
-  Summarize resolved signal-normalization and scaling states for the signal-computation workflow.
+  Summarize resolved signal-deposition and scaling states for the signal-computation workflow.
 
-  Prints a short human-readable summary indicating (i) what normalization mode is implied by 'typ_sig' and (ii) whether multiplicative scaling factors were supplied.
+  Prints a short human-readable summary indicating (i) which deposition family and adjustment are implied by 'typ_sig' and (ii) whether multiplicative scaling factors were supplied.
 
 Parameters
 ----------
@@ -799,7 +801,7 @@ Parameters
     Display this help message and exit.
 
   1  typ_sig : str
-    Workflow method. Type of signal computation; e.g., 'unadj', 'frag', or 'norm' (aliases accepted).
+    Workflow method. Type of signal computation: 'unadj', 'frag', 'norm' (alias 'nc'), 'count', or 'cpm'.
 
   2  scl_fct : str
     Scaling factor string. If empty, assumes no explicit '--scl_fct' was supplied.
@@ -815,19 +817,19 @@ Notes
 
 Examples
 --------
-  1. Summarize normalized coverage with no multiplicative scaling.
+  1. Summarize fractional deposition, in which each bin takes its base-pair overlap divided by fragment length and total fragments, with no scaling.
     '''bash
-    summarize_sig_norm norm
+    summarize_sig_depo norm
     '''
 
-  2. Summarize fragment-length normalization with explicit scaling.
+  2. Summarize whole-count deposition with explicit scaling.
     '''bash
-    summarize_sig_norm frag 1.25
+    summarize_sig_depo count 1.25
     '''
 EOM
     )
 
-    #  Parse and check function arguments
+    # Parse and check function arguments.
     if [[ "${typ_sig}" =~ ^(-h|--h[e]?lp)$ ]]; then
         echo "${show_help}" >&2
         return 0
@@ -839,32 +841,44 @@ EOM
         return 1
     fi
 
-    #  Lowercase-convert signal-type input so case matching is case-insensitive
+    # Lowercase-convert signal-type input so case matching is case-insensitive.
     typ_sig_lc="${typ_sig,,}"
 
-    #  Determine normalization method message
+    # Determine deposition and adjustment message.
     case "${typ_sig_lc}" in
-        u|unadj|unadjusted|s|smp|simple|r|raw)
-            mth_nrm="No normalization; returning unadjusted signal:"
-            mth_nrm+=" '--method ${typ_sig}'."
+        unadj)
+            mth_dep="Fractional deposition; each bin takes its base-pair"
+            mth_dep+=" overlap: '--method ${typ_sig}'."
             ;;
 
-        f|frg|frag|frg[_-]len|frag[_-]len|l|len|len[_-]frg|len[_-]frag)
-            mth_nrm="Performing fragment-length normalization:"
-            mth_nrm+=" '--method ${typ_sig}'."
+        frag)
+            mth_dep="Fractional deposition; each bin takes its base-pair"
+            mth_dep+=" overlap divided by fragment length:"
+            mth_dep+=" '--method ${typ_sig}'."
             ;;
 
-        n|nrm|norm|normalized)
-            mth_nrm="Generating normalized coverage (Dickson et al., Sci Rep"
-            mth_nrm+=" 2023): '--method ${typ_sig}'."
+        norm|nc)
+            mth_dep="Fractional deposition; each bin takes its base-pair"
+            mth_dep+=" overlap divided by fragment length and total fragments"
+            mth_dep+=" (Dickson et al., Sci Rep 2023): '--method ${typ_sig}'."
+            ;;
+
+        count)
+            mth_dep="Whole-count deposition; one count per touched bin:"
+            mth_dep+=" '--method ${typ_sig}'."
+            ;;
+
+        cpm)
+            mth_dep="Whole-count deposition; rescaled to counts per million:"
+            mth_dep+=" '--method ${typ_sig}'."
             ;;
 
         *)
-            mth_nrm="Unknown normalization method: '--method ${typ_sig}'."
+            mth_dep="Unrecognized method: '--method ${typ_sig}'."
             ;;
     esac
 
-    #  Determine scaling factor message
+    # Determine scaling factor message.
     if [[ -n "${scl_fct}" ]]; then
         src_scl="Custom multiplicative scaling factor(s):"
         src_scl+=" '--scl_fct ${scl_fct}'."
@@ -872,19 +886,19 @@ EOM
         src_scl="No multiplicative scaling factor(s)."
     fi
 
-    #  Print resolved argument states
-    echo "#################################################"
-    echo "## Summary of signal normalization and scaling ##"
-    echo "#################################################"
+    # Print resolved argument states.
+    echo "##############################################"
+    echo "## Summary of signal deposition and scaling ##"
+    echo "##############################################"
     echo
-    echo "- Normalization method: ${mth_nrm}"
+    echo "- Signal deposition and, if applicable, adjustment: ${mth_dep}"
     echo "- Scaling factor source: ${src_scl}"
     echo
     echo
 }
 
 
-#  Print an error message when function script is executed directly
+# Print an error message when function script is executed directly.
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
     err_source_only "${BASH_SOURCE[0]}"
 fi
