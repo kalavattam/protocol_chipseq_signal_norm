@@ -152,9 +152,9 @@ def iter_rows_bdg(
 
 
 @dataclass(frozen=True)
-class LibrarySizeBdg:
+class OverlapCountBdg:
     """
-    Represent a bedGraph library size and the bin width it rests on.
+    Represent a bedGraph overlap count and the bin width it rests on.
 
     The total is the column sum over fixed-width bins, which is edgeR's
     'lib.size' for the matrix the track represents. The bin width is carried
@@ -170,9 +170,9 @@ def sum_counts_bdg(
     path: str,
     siz_bin: int | None = None,
     skp_pfx: tuple[str, ...] | None = None,
-) -> LibrarySizeBdg:
+) -> OverlapCountBdg:
     """
-    Sum a bedGraph over fixed-width bins to recover a library size.
+    Sum a bedGraph over fixed-width bins to recover an overlap count.
 
     Parameters
     ----------
@@ -187,8 +187,8 @@ def sum_counts_bdg(
 
     Returns
     -------
-    result : LibrarySizeBdg
-        The library size and the bin width it was computed on.
+    result : OverlapCountBdg
+        The overlap count and the bin width it was computed on.
 
     Raises
     ------
@@ -201,7 +201,7 @@ def sum_counts_bdg(
     -----
     A bedGraph run-length encodes equal neighbours, so an interval spanning 'k'
     bins contributes 'k' times its value rather than once. Summing rows
-    directly understates the library size by exactly the compression factor.
+    directly understates the overlap count by exactly the compression factor.
 
     Terminal intervals round up: a chromosome whose length is not a multiple of
     the bin width ends in a partial bin that still holds a real count. Only a
@@ -212,8 +212,8 @@ def sum_counts_bdg(
     the non-terminal widths, both multiples of it. That divisor is always a
     multiple of the true width, and equals it unless every run shares a factor:
     a 10 bp track whose runs all span an even number of bins infers 20 and
-    halves the library size, silently. Pass 'siz_bin' where the track cannot be
-    trusted to resolve it.
+    halves the overlap count, silently. Pass 'siz_bin' where the track cannot
+    be trusted to resolve it.
 
     This is the column sum of the bin matrix, not the alignment count. Under
     the overlap counting in 'countReadsPerBin.py:705' one fragment increments
@@ -298,7 +298,7 @@ def sum_counts_bdg(
 
         total += value * n_bin
 
-    return LibrarySizeBdg(total=total, siz_bin=siz_bin)
+    return OverlapCountBdg(total=total, siz_bin=siz_bin)
 
 
 def check_size_bin(

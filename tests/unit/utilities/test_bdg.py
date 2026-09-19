@@ -272,8 +272,8 @@ def test_sum_counts_bdg_survives_a_clamped_terminal_bin(
     Track ends are clamped to chromosome size, so terminal runs are short.
 
     A 75 bp chromosome on a 10 bp grid ends in a 5 bp interval. Folding that
-    width into the divisor would infer a 5 bp grid and inflate the library
-    size, so terminal widths stay out of it.
+    width into the divisor would infer a 5 bp grid and inflate the overlap
+    count, so terminal widths stay out of it.
     """
 
     path = tmp_path / "clamped.bdg"
@@ -295,8 +295,8 @@ def test_sum_counts_bdg_infers_a_multiple_when_runs_share_a_factor(
     Pin the documented limit of inference so it is not mistaken for exact.
 
     Every run here spans an even number of 10 bp bins, so the divisor lands on
-    20 and the library size halves. Real tracks carry runs of differing lengths
-    and do not do this; supplying 'siz_bin' is the stated remedy.
+    20 and the overlap count halves. Real tracks carry runs of differing
+    lengths and do not do this; supplying 'siz_bin' is the stated remedy.
     """
 
     path = tmp_path / "even_runs.bdg"
