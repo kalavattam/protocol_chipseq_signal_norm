@@ -676,17 +676,17 @@
       "status": "registered_shared"
     },
     {
-      "id": "shared_report_n_bin",
-      "parameter": "report_n_bin",
-      "canonical_core": "Spanned-bin-count report path.",
+      "id": "shared_report_n_ovlp",
+      "parameter": "report_n_ovlp",
+      "canonical_core": "Overlap-count report path.",
       "members": [
         {
           "surface_id": "bin/submit_compute_signal.sh::run_comp_sig",
           "path": "bin/submit_compute_signal.sh",
           "symbol": "run_comp_sig",
-          "parameter": "report_n_bin",
+          "parameter": "report_n_ovlp",
           "owner": "PARAMETER.DESCRIPTIONS",
-          "evidence": "Parameters row for 'report_n_bin': Path for the overlap-count report or empty string."
+          "evidence": "Parameters row for 'report_n_ovlp': Path for the overlap-count report or empty string."
         }
       ],
       "local_meanings": [],
@@ -2005,7 +2005,7 @@
       "existing_example_count": 2,
       "example_fingerprints": [
         "92c03e427695b92877665210cdcfcb3bf72e80f0fa19f7b4da1f121ed99e8575",
-        "e5c7c6d0c6d5ef209cbf4ef63a1dadef140fd9f8e72915c1d700ee83824fcdfb"
+        "3ccefeef119ac091121f905b57e6bb7efac074c9513ade166ab7bf4efbf5ef45"
       ],
       "preservation": "exact",
       "authority": "authorized_fresh_pilot"
@@ -2285,8 +2285,8 @@
         "substrate",
         "prior_count",
         "siz_bin",
-        "n_bin_A",
-        "n_bin_B",
+        "n_ovlp_A",
+        "n_ovlp_B",
         "n_frg_A",
         "n_frg_B",
         "dp",
@@ -2309,8 +2309,8 @@
         "substrate": "mode_specific",
         "prior_count": "mode_specific",
         "siz_bin": "mode_specific",
-        "n_bin_A": "mode_specific",
-        "n_bin_B": "mode_specific",
+        "n_ovlp_A": "mode_specific",
+        "n_ovlp_B": "mode_specific",
         "n_frg_A": "mode_specific",
         "n_frg_B": "mode_specific",
         "dp": "formatting",
@@ -2342,8 +2342,8 @@
             "substrate",
             "prior_count",
             "siz_bin",
-            "n_bin_A",
-            "n_bin_B",
+            "n_ovlp_A",
+            "n_ovlp_B",
             "n_frg_A",
             "n_frg_B"
           ],
@@ -2371,8 +2371,8 @@
           "substrate",
           "prior_count",
           "siz_bin",
-          "n_bin_A",
-          "n_bin_B",
+          "n_ovlp_A",
+          "n_ovlp_B",
           "n_frg_A",
           "n_frg_B",
           "dp",
@@ -2394,8 +2394,8 @@
           "substrate",
           "prior_count",
           "siz_bin",
-          "n_bin_A",
-          "n_bin_B",
+          "n_ovlp_A",
+          "n_ovlp_B",
           "n_frg_A",
           "n_frg_B",
           "dp",
@@ -2417,8 +2417,8 @@
           "substrate",
           "prior_count",
           "siz_bin",
-          "n_bin_A",
-          "n_bin_B",
+          "n_ovlp_A",
+          "n_ovlp_B",
           "n_frg_A",
           "n_frg_B",
           "dp",
@@ -2460,8 +2460,8 @@
             "substrate",
             "prior_count",
             "siz_bin",
-            "n_bin_A",
-            "n_bin_B",
+            "n_ovlp_A",
+            "n_ovlp_B",
             "n_frg_A",
             "n_frg_B"
           ]

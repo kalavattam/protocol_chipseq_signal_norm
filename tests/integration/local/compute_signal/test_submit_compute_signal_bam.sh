@@ -490,7 +490,7 @@ bash "${ROOT_REPO}/bin/submit_compute_signal.sh" \
     --csv_fil_in "${in_se},${in_pe}" \
     --csv_fil_out "${dir_rep}/se.bdg,${dir_rep}/pe.bdg" \
     --csv_report_n_frg "${dir_rep}/se.n_frg.txt,${dir_rep}/pe.n_frg.txt" \
-    --csv_report_n_bin "${dir_rep}/se.n_bin.txt,${dir_rep}/pe.n_bin.txt" \
+    --csv_report_n_ovlp "${dir_rep}/se.n_ovlp.txt,${dir_rep}/pe.n_ovlp.txt" \
     --dir_eo "${dir_err}" \
     --siz_bin 10 \
     --method unadj \
@@ -502,12 +502,12 @@ assert_file_exact_line \
     "submit SE fragment count is 2"
 
 assert_file_exact_line \
-    "${dir_rep}/se.n_bin.txt" \
+    "${dir_rep}/se.n_ovlp.txt" \
     "2" \
     "submit SE fragment-bin overlap count is 2"
 
 assert_file_exact_line \
-    "${dir_rep}/pe.n_bin.txt" \
+    "${dir_rep}/pe.n_ovlp.txt" \
     "5" \
     "submit PE overlap count is 5, proving per-sample report paths"
 
@@ -522,7 +522,7 @@ bash "${ROOT_REPO}/bin/submit_compute_signal.sh" \
     --mode signal \
     --csv_fil_in "${in_se}" \
     --csv_report_n_frg "${dir_only}/se.n_frg.txt" \
-    --csv_report_n_bin "${dir_only}/se.n_bin.txt" \
+    --csv_report_n_ovlp "${dir_only}/se.n_ovlp.txt" \
     --dir_eo "${dir_err}" \
     --siz_bin 10 \
     --method unadj \
@@ -578,7 +578,7 @@ if \
         --fil_in "${in_pe}" \
         --siz_bin 10 \
         --report_n_frg "${dir_ref}/direct.n_frg.txt" \
-        --report_n_bin "${dir_ref}/direct.n_bin.txt" \
+        --report_n_ovlp "${dir_ref}/direct.n_ovlp.txt" \
         > /dev/null 2>&1
 then
     assert_files_equal \
@@ -587,8 +587,8 @@ then
         "submit PE fragment count equals a direct compute_signal.py run"
 
     assert_files_equal \
-        "${dir_rep}/pe.n_bin.txt" \
-        "${dir_ref}/direct.n_bin.txt" \
+        "${dir_rep}/pe.n_ovlp.txt" \
+        "${dir_ref}/direct.n_ovlp.txt" \
         "submit PE overlap count equals a direct compute_signal.py run"
 else
     record_fail "direct compute_signal.py reference run failed"
@@ -596,7 +596,7 @@ fi
 
 
 # Reports with BED output: counting precedes the output branch, so reports are
-# written here too, and '--siz_bin' stops being ignored once '--report_n_bin'
+# written here too, and '--siz_bin' stops being ignored once '--report_n_ovlp'
 # is given.
 dir_bed="${tmp}/report_bed"
 mkdir -p "${dir_bed}"
@@ -620,7 +620,7 @@ if \
         --fil_out "${dir_bed}/direct.bed" \
         --siz_bin 10 \
         --report_n_frg "${dir_bed}/bed.n_frg.txt" \
-        --report_n_bin "${dir_bed}/bed.n_bin.txt" \
+        --report_n_ovlp "${dir_bed}/bed.n_ovlp.txt" \
         > /dev/null 2>&1
 then
     assert_file_nonempty \
@@ -628,8 +628,8 @@ then
         "BED output is written alongside reports"
 
     assert_files_equal \
-        "${dir_bed}/bed.n_bin.txt" \
-        "${dir_rep}/pe.n_bin.txt" \
+        "${dir_bed}/bed.n_ovlp.txt" \
+        "${dir_rep}/pe.n_ovlp.txt" \
         "BED-mode fragment-bin overlap count matches the bedGraph-mode value"
 else
     record_fail "reports alongside BED output failed"

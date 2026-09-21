@@ -23,8 +23,8 @@ method, bin and window sizes, the processing engine, fragment length, scaling,
 reporting, and value formatting.
 
 It writes bedGraph-like signal tracks, BED-like fragment-coordinate records, or
-fragment ('--report_n_frg') and bin ('--report_n_bin') counts with or without a
-track.
+fragment ('--report_n_frg') and overlap ('--report_n_ovlp') counts with or
+without a track.
 
 When writing bedGraph output, finite values are rounded to at most '--dp'
 decimal places and trailing zeros are stripped.
@@ -34,9 +34,9 @@ Examples
 python -m protocol_chipseq_signal_norm.cli.compute_signal \\
     --fil_in <file> --fil_out <file> [options]
 python -m protocol_chipseq_signal_norm.cli.compute_signal \\
-    --fil_in <file> --fil_out <file> --report_n_frg --report_n_bin [options]
+    --fil_in <file> --fil_out <file> --report_n_frg --report_n_ovlp [options]
 python -m protocol_chipseq_signal_norm.cli.compute_signal \\
-    --fil_in <file> --report_n_frg <file> --report_n_bin <file> [options]
+    --fil_in <file> --report_n_frg <file> --report_n_ovlp <file> [options]
 """
 
 from __future__ import annotations
@@ -134,7 +134,7 @@ STRAT_BED_CHOICES = (
 STRAT_WRITER_CHOICES = ("serial", "parallel_ordered")
 
 # Stand in for a report path the user did not spell out, which is what a bare
-# '--report_n_frg' or '--report_n_bin' supplies. A NUL byte cannot occur in a
+# '--report_n_frg' or '--report_n_ovlp' supplies. A NUL byte cannot occur in a
 # path, so the sentinel can never collide with one a user typed.
 REPORT_DERIVE = "\x00derive"
 
@@ -195,7 +195,7 @@ def resolve_report_path(
     fil_out : str | None
         Validated output path or None in report-only mode.
     label : str
-        Count label placed before '.txt', either 'n_frg' or 'n_bin'.
+        Count label placed before '.txt', either 'n_frg' or 'n_ovlp'.
     flag : str
         Option spelling named in the error, e.g., '--report_n_frg'.
 
@@ -658,7 +658,7 @@ def iter_idx_frg(
                 yield fragment
 
 
-def count_frgs_and_bins(
+def count_frgs_and_ovlps(
     fragments: Iterator[tuple[str, int, int, int]],
     siz_bin: int,
 ) -> tuple[int, int]:
@@ -675,7 +675,7 @@ def count_frgs_and_bins(
 
     Returns
     -------
-    n_frg, n_bin : tuple[int, int]
+    n_frg, n_ovlp : tuple[int, int]
         The number of fragments ('N') and the summed count of bins the
         fragments touch ('L').
 
@@ -701,16 +701,16 @@ def count_frgs_and_bins(
     """
 
     n_frg = 0
-    n_bin = 0
+    n_ovlp = 0
 
     for _chrom, frg_start, frg_end, _length in fragments:
         if frg_end <= frg_start:
             continue
 
         n_frg += 1
-        n_bin += ((frg_end - 1) // siz_bin) - (frg_start // siz_bin) + 1
+        n_ovlp += ((frg_end - 1) // siz_bin) - (frg_start // siz_bin) + 1
 
-    return n_frg, n_bin
+    return n_frg, n_ovlp
 
 
 def collect_frg_arr(
@@ -1009,13 +1009,13 @@ def calc_sig_whole_np(
     -------
     sig : np.ndarray
         Dense per-bin counts as 'float64', summing to the number of fragment
-        touches that 'count_frgs_and_bins' reports as 'L'.
+        touches that 'count_frgs_and_ovlps' reports as 'L'.
 
     Notes
     -----
     - A half-open fragment '[start, end)' touches bins 'start // siz_bin'
       through '(end - 1) // siz_bin' inclusive, which is the span rule
-      'count_frgs_and_bins' applied to the same fragments.
+      'count_frgs_and_ovlps' applied to the same fragments.
     - Accumulation runs over an 'int64' difference array, so every per-bin
       total is an exact integer before the single cast to 'float64'. That
       leaves no rounding residue for the caller's nonzero mask to mistake for
@@ -1522,7 +1522,7 @@ def apply_sig_adj(
     -----
     - The counts-per-million closure divides by the track's own column total
       'L', which a whole-count track carries exactly: every bin holds an
-      integer touch count, so their sum is the same 'L' that '--report_n_bin'
+      integer touch count, so their sum is the same 'L' that '--report_n_ovlp'
       reports on the same fragment population. Reading it off the track rather
       than re-walking the alignment costs nothing and cannot disagree with the
       values being scaled.
@@ -2208,7 +2208,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         default=None,
         help=(
             "Output file path. Required unless '--report_n_frg' or "
-            "'--report_n_bin' is given, in which case it may be omitted to "
+            "'--report_n_ovlp' is given, in which case it may be omitted to "
             "count without writing a track.\n"
             "\n"
             "Supported output types are bedGraph ('bedGraph', 'bedgraph', "
@@ -2219,7 +2219,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
             "Note: requesting BED output causes the script to write processed "
             "fragment coordinates in a BED-like format, and '--method', "
             "'--scl_fct', and '--dp' are ignored. '--siz_bin' is ignored too, "
-            "unless '--report_n_bin' is given.\n"
+            "unless '--report_n_ovlp' is given.\n"
             "\n"
         ),
     )
@@ -2257,7 +2257,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
             "whether the fragment covers the whole bin or just a single "
             "base.\n"
             "  - Whole-count method: 'count'. Each touched bin takes 1, so "
-            "the track sums to the bin total '--report_n_bin' reports.\n"
+            "the track sums to the overlap total '--report_n_ovlp' reports.\n"
             "  - Counts-per-million method: 'cpm'. The whole counts are "
             "rescaled so the track values sum to one million before '--dp' "
             "rounding.\n"
@@ -2400,9 +2400,9 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         help=argparse.SUPPRESS,
     )
     parser.add_argument(
-        "-rnb",
-        "--report_n_bin",
-        dest="report_n_bin",
+        "-rno",
+        "--report_n_ovlp",
+        dest="report_n_ovlp",
         nargs="?",
         default=None,
         const=REPORT_DERIVE,
@@ -2411,7 +2411,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
             "single integer on one line (default: %(default)s).\n"
             "\n"
             "Given without a path, the file is written beside '--fil_out', "
-            "with its extension (and any '.gz') replaced by '.n_bin.txt'. If "
+            "with its extension (and any '.gz') replaced by '.n_ovlp.txt'. If "
             "'--fil_out' is not used, then an output path must be given.\n"
             "\n"
             "Depends on '--siz_bin' and '--usr_frg', which set how each "
@@ -2428,8 +2428,8 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         ),
     )
     parser.add_argument(
-        "--report-n-bin",
-        dest="report_n_bin",
+        "--report-n-ovlp",
+        dest="report_n_ovlp",
         nargs="?",
         const=REPORT_DERIVE,
         help=argparse.SUPPRESS,
@@ -2939,10 +2939,14 @@ def main(argv: list[str] | None = None) -> int:
 
     report_only = args.fil_out is None
 
-    if report_only and args.report_n_frg is None and args.report_n_bin is None:
+    if (
+        report_only
+        and args.report_n_frg is None
+        and args.report_n_ovlp is None
+    ):
         raise SystemExit(
             "'--fil_out' is required unless '--report_n_frg' or "
-            "'--report_n_bin' is given. Supply an output path to write a "
+            "'--report_n_ovlp' is given. Supply an output path to write a "
             "track, or a report path to count without writing one.",
         )
 
@@ -2977,14 +2981,14 @@ def main(argv: list[str] | None = None) -> int:
             "n_frg",
             "--report_n_frg",
         )
-        args.report_n_bin = resolve_report_path(
-            args.report_n_bin,
+        args.report_n_ovlp = resolve_report_path(
+            args.report_n_ovlp,
             fil_out,
-            "n_bin",
-            "--report_n_bin",
+            "n_ovlp",
+            "--report_n_ovlp",
         )
 
-        for path_report in (args.report_n_frg, args.report_n_bin):
+        for path_report in (args.report_n_frg, args.report_n_ovlp):
             if path_report is not None:
                 check_writable(path_report, "file")
     except (
@@ -3096,7 +3100,7 @@ def main(argv: list[str] | None = None) -> int:
             if fmt_out == "bed":
                 print(f"--usr_frg  {args.usr_frg}")
                 print(f"--report_n_frg {args.report_n_frg}")
-                print(f"--report_n_bin {args.report_n_bin}")
+                print(f"--report_n_ovlp {args.report_n_ovlp}")
                 print(
                     "\n\n(BED output mode: signal computation arguments "
                     "ignored)\n",
@@ -3118,7 +3122,7 @@ def main(argv: list[str] | None = None) -> int:
                 print(f"--scl_fct  {args.scl_fct}")
                 print(f"--usr_frg  {args.usr_frg}")
                 print(f"--report_n_frg {args.report_n_frg}")
-                print(f"--report_n_bin {args.report_n_bin}")
+                print(f"--report_n_ovlp {args.report_n_ovlp}")
                 print(f"--dp       {args.dp}")
 
             print("")
@@ -3133,13 +3137,13 @@ def main(argv: list[str] | None = None) -> int:
         if profile is not None:
             profile["n_chrom_sizes"] = len(siz_chr)
 
-        if args.report_n_frg is not None or args.report_n_bin is not None:
+        if args.report_n_frg is not None or args.report_n_ovlp is not None:
             time_phase = time.perf_counter()
 
             # Counted from the same iterator the signal path consumes, with the
             # same '--usr_frg', so 'N' here is the very number a
             # '--method norm' run divides by rather than an estimate of it.
-            n_frg, n_bin = count_frgs_and_bins(
+            n_frg, n_ovlp = count_frgs_and_ovlps(
                 iter_aln_frg(
                     fil_aln=args.fil_in,
                     siz_chr=siz_chr,
@@ -3149,15 +3153,15 @@ def main(argv: list[str] | None = None) -> int:
                 args.siz_bin,
             )
 
-            record_phase(profile, "count_frgs_and_bins", time_phase)
+            record_phase(profile, "count_frgs_and_ovlps", time_phase)
 
             if profile is not None:
                 profile["report_n_frg"] = n_frg
-                profile["report_n_bin"] = n_bin
+                profile["report_n_ovlp"] = n_ovlp
 
             for path_report, value, label in (
                 (args.report_n_frg, n_frg, "N"),
-                (args.report_n_bin, n_bin, "L"),
+                (args.report_n_ovlp, n_ovlp, "L"),
             ):
                 if path_report is None:
                     continue

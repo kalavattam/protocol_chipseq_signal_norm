@@ -34,21 +34,14 @@ from protocol_chipseq_signal_norm.utilities.utils_stabilizer import (
 # process. The pair's scale factors and pseudocount were re-derived under
 # edgeR 4.8.2 on 2026-09-19 and are unchanged to all ten pinned digits. The
 # same pair makes the 'float64' asymmetry visible.
-#
-# TODO: 'LIB_A' and 'LIB_B' still carry the retired 'library size'
-# vocabulary. They are overlap counts, so they rename to 'OVLP_*' with the
-# queued 'n_bin' to 'n_ovlp' pass rather than before it.
-LIB_A = 24495.0
-LIB_B = 13605.0
+OVLP_A = 24495.0
+OVLP_B = 13605.0
 
 # Counts 'c(5, 3, 0, 8)' sum to 16 and 'c(4, 2, 1, 6)' to 13, per edgeR 4.4.0
 # and again under 4.8.2. Single-track and two-track values differ because the
 # mean fragment-bin overlap count does.
-#
-# TODO: 'LIB_ONE_TRACK' and 'LIB_PARTNER' carry the same retired vocabulary,
-# and rename with the pair above.
-LIB_ONE_TRACK = 16.0
-LIB_PARTNER = 13.0
+OVLP_ONE_TRACK = 16.0
+OVLP_PARTNER = 13.0
 
 # Fragment counts for the fractional substrates. The 3:2 ratio is not the
 # tracks' ratio, so a test cannot pass by reading fragment-bin overlap counts.
@@ -57,7 +50,7 @@ FRG_B = 800.0
 
 # Column totals for 'unadj', the only substrate that needs them. Both clear
 # their fragment count, as the 'T >= N' guard requires, and their 6:5 ratio is
-# a third distinct ratio, so a test cannot pass by reading 'FRG_*' or 'LIB_*'.
+# a third distinct ratio, so a test cannot pass by reading 'FRG_*' or 'OVLP_*'.
 TOTAL_A = 240000.0
 TOTAL_B = 200000.0
 
@@ -78,8 +71,8 @@ def _edger(substrate: str, **kwargs: float) -> dict[str, object]:
     """
 
     extra: dict[str, float] = {
-        "n_bin_a": LIB_A,
-        "n_bin_b": LIB_B,
+        "n_ovlp_a": OVLP_A,
+        "n_ovlp_b": OVLP_B,
         "substrate": substrate,
     }
 
@@ -230,7 +223,7 @@ def test_compute_pseudo_edger_scales_the_prior_by_relative_depth(
     if substrate in SUBSTRATE_FRACTIONAL:
         expected = FRG_A / FRG_B
     else:
-        expected = LIB_A / LIB_B
+        expected = OVLP_A / OVLP_B
 
     assert math.isclose(prior_a / prior_b, expected, rel_tol=1e-12)
     assert math.isclose(prior_a + prior_b, 2 * 2.0, rel_tol=1e-12)
@@ -302,10 +295,10 @@ def test_compute_pseudo_edger_reproduces_edger_for_one_track() -> None:
     """
 
     one = compute_pseudo_edger(
-        substrate="CPM", n_bin_a=LIB_ONE_TRACK, n_bin_b=LIB_ONE_TRACK
+        substrate="CPM", n_ovlp_a=OVLP_ONE_TRACK, n_ovlp_b=OVLP_ONE_TRACK
     )
     two = compute_pseudo_edger(
-        substrate="CPM", n_bin_a=LIB_ONE_TRACK, n_bin_b=LIB_PARTNER
+        substrate="CPM", n_ovlp_a=OVLP_ONE_TRACK, n_ovlp_b=OVLP_PARTNER
     )
 
     assert one["pseudo_A"] == 100000.0
@@ -357,27 +350,27 @@ def test_compute_pseudo_edger_returns_k_only_for_fractional_substrates(
     assert "k_A" not in _edger("CPM")
     assert "k_A" not in _edger("count")
     assert "k_A" not in _edger("cpm")
-    assert _edger(substrate)["k_A"] == pytest.approx(LIB_A / FRG_A, rel=1e-12)
+    assert _edger(substrate)["k_A"] == pytest.approx(OVLP_A / FRG_A, rel=1e-12)
 
 
 # Each row is a call and the fragment its rejection must name. Short fragments
 # keep a wording change from failing the test.
 EDGER_REJECTIONS = (
-    ({"n_bin_a": 0.0, "n_bin_b": LIB_B, "substrate": "CPM"}, "n_bin_a"),
-    ({"n_bin_a": -1.0, "n_bin_b": LIB_B, "substrate": "CPM"}, "n_bin_a"),
+    ({"n_ovlp_a": 0.0, "n_ovlp_b": OVLP_B, "substrate": "CPM"}, "n_ovlp_a"),
+    ({"n_ovlp_a": -1.0, "n_ovlp_b": OVLP_B, "substrate": "CPM"}, "n_ovlp_a"),
     (
-        {"n_bin_a": float("nan"), "n_bin_b": LIB_B, "substrate": "CPM"},
-        "n_bin_a",
+        {"n_ovlp_a": float("nan"), "n_ovlp_b": OVLP_B, "substrate": "CPM"},
+        "n_ovlp_a",
     ),
     (
-        {"n_bin_a": float("inf"), "n_bin_b": LIB_B, "substrate": "CPM"},
-        "n_bin_a",
+        {"n_ovlp_a": float("inf"), "n_ovlp_b": OVLP_B, "substrate": "CPM"},
+        "n_ovlp_a",
     ),
-    ({"n_bin_a": LIB_A, "n_bin_b": 0.0, "substrate": "CPM"}, "n_bin_b"),
+    ({"n_ovlp_a": OVLP_A, "n_ovlp_b": 0.0, "substrate": "CPM"}, "n_ovlp_b"),
     (
         {
-            "n_bin_a": LIB_A,
-            "n_bin_b": LIB_B,
+            "n_ovlp_a": OVLP_A,
+            "n_ovlp_b": OVLP_B,
             "substrate": "CPM",
             "prior_count": -1.0,
         },
@@ -385,28 +378,28 @@ EDGER_REJECTIONS = (
     ),
     (
         {
-            "n_bin_a": LIB_A,
-            "n_bin_b": LIB_B,
+            "n_ovlp_a": OVLP_A,
+            "n_ovlp_b": OVLP_B,
             "substrate": "RPKM",
             "siz_bin": 0,
         },
         "siz_bin",
     ),
-    ({"n_bin_a": LIB_A, "n_bin_b": LIB_B, "substrate": "RPGC"}, "RPGC"),
+    ({"n_ovlp_a": OVLP_A, "n_ovlp_b": OVLP_B, "substrate": "RPGC"}, "RPGC"),
     (
         {
-            "n_bin_a": LIB_A,
-            "n_bin_b": LIB_B,
+            "n_ovlp_a": OVLP_A,
+            "n_ovlp_b": OVLP_B,
             "substrate": "RPGC",
             "scale_a": 0.7,
         },
         "RPGC",
     ),
-    ({"n_bin_a": LIB_A, "n_bin_b": LIB_B, "substrate": "norm"}, "n_frg_a"),
+    ({"n_ovlp_a": OVLP_A, "n_ovlp_b": OVLP_B, "substrate": "norm"}, "n_frg_a"),
     (
         {
-            "n_bin_a": LIB_A,
-            "n_bin_b": LIB_B,
+            "n_ovlp_a": OVLP_A,
+            "n_ovlp_b": OVLP_B,
             "substrate": "norm",
             "n_frg_a": FRG_A,
         },
@@ -414,15 +407,18 @@ EDGER_REJECTIONS = (
     ),
     (
         {
-            "n_bin_a": LIB_A,
-            "n_bin_b": LIB_B,
+            "n_ovlp_a": OVLP_A,
+            "n_ovlp_b": OVLP_B,
             "substrate": "norm",
             "n_frg_a": 0.0,
             "n_frg_b": FRG_B,
         },
         "n_frg_a",
     ),
-    ({"n_bin_a": LIB_A, "n_bin_b": LIB_B, "substrate": "bogus"}, "Unknown"),
+    (
+        {"n_ovlp_a": OVLP_A, "n_ovlp_b": OVLP_B, "substrate": "bogus"},
+        "Unknown",
+    ),
 )
 
 
@@ -462,21 +458,21 @@ def test_frag_prior_is_the_norm_prior_times_the_fragment_count() -> None:
     substrates' ratios a constant apart rather than differently shaped.
     """
 
-    n_bin_a, n_bin_b = 6.0, 18.0
+    n_ovlp_a, n_ovlp_b = 6.0, 18.0
     n_frg_a, n_frg_b = 3.0, 6.0
     prior_count = 2.0
 
     closed = compute_pseudo_edger(
-        n_bin_a=n_bin_a,
-        n_bin_b=n_bin_b,
+        n_ovlp_a=n_ovlp_a,
+        n_ovlp_b=n_ovlp_b,
         prior_count=prior_count,
         substrate="norm",
         n_frg_a=n_frg_a,
         n_frg_b=n_frg_b,
     )
     frag = compute_pseudo_edger(
-        n_bin_a=n_bin_a,
-        n_bin_b=n_bin_b,
+        n_ovlp_a=n_ovlp_a,
+        n_ovlp_b=n_ovlp_b,
         prior_count=prior_count,
         substrate="frag",
         n_frg_a=n_frg_a,
@@ -500,11 +496,11 @@ def test_frag_ratio_differs_from_nc_by_exactly_log2_of_depth_ratio() -> None:
     break this on the low-count bins first.
     """
 
-    n_bin_a, n_bin_b = 6.0, 18.0
+    n_ovlp_a, n_ovlp_b = 6.0, 18.0
     n_frg_a, n_frg_b = 3.0, 6.0
     kwargs = {
-        "n_bin_a": n_bin_a,
-        "n_bin_b": n_bin_b,
+        "n_ovlp_a": n_ovlp_a,
+        "n_ovlp_b": n_ovlp_b,
         "prior_count": 2.0,
         "n_frg_a": n_frg_a,
         "n_frg_b": n_frg_b,
@@ -533,12 +529,12 @@ def test_unadj_prior_is_the_norm_prior_times_the_substrate_total() -> None:
     the general form carries no such assumption.
     """
 
-    n_bin_a, n_bin_b = 6.0, 18.0
+    n_ovlp_a, n_ovlp_b = 6.0, 18.0
     n_frg_a, n_frg_b = 3.0, 6.0
     frg_len = 50.0
     kwargs = {
-        "n_bin_a": n_bin_a,
-        "n_bin_b": n_bin_b,
+        "n_ovlp_a": n_ovlp_a,
+        "n_ovlp_b": n_ovlp_b,
         "prior_count": 2.0,
         "n_frg_a": n_frg_a,
         "n_frg_b": n_frg_b,
@@ -569,8 +565,8 @@ def test_unadj_requires_its_column_total() -> None:
 
     with pytest.raises(ValueError, match="total_a"):
         compute_pseudo_edger(
-            n_bin_a=6.0,
-            n_bin_b=18.0,
+            n_ovlp_a=6.0,
+            n_ovlp_b=18.0,
             prior_count=2.0,
             substrate="unadj",
             n_frg_a=3.0,
@@ -585,14 +581,14 @@ def test_unadj_refuses_a_total_that_cannot_be_base_pairs() -> None:
     An 'unadj' track sums to the total fragment base pairs, and every fragment
     spans at least one base pair, so that total is never below 'N'. The same
     theorem guards the inferred fragment-bin overlap count one substrate over;
-    here, it catches the case that guard cannot see, where '--n_bin' was
+    here, it catches the case that guard cannot see, where '--n_ovlp' was
     supplied and the total still came off the wrong track. Measured, handing
     'unadj' a normalized track returns a prior 150 times too small in silence.
     """
 
     kwargs = {
-        "n_bin_a": 6.0,
-        "n_bin_b": 18.0,
+        "n_ovlp_a": 6.0,
+        "n_ovlp_b": 18.0,
         "prior_count": 2.0,
         "substrate": "unadj",
         "n_frg_a": 3.0,
@@ -623,27 +619,27 @@ def test_cpm_reproduces_edger_exactly() -> None:
     returns.
     """
 
-    for n_bin_a, n_bin_b, prior_count in (
+    for n_ovlp_a, n_ovlp_b, prior_count in (
         (41318705.0, 39204118.0, 2.0),
         (6.0, 18.0, 2.0),
         (1e5, 9e7, 0.5),
     ):
         result = compute_pseudo_edger(
-            n_bin_a=n_bin_a,
-            n_bin_b=n_bin_b,
+            n_ovlp_a=n_ovlp_a,
+            n_ovlp_b=n_ovlp_b,
             prior_count=prior_count,
             substrate="cpm",
         )
-        n_bin_mean = 0.5 * (n_bin_a + n_bin_b)
+        n_ovlp_mean = 0.5 * (n_ovlp_a + n_ovlp_b)
 
-        for label, n_bin in (("A", n_bin_a), ("B", n_bin_b)):
+        for label, n_ovlp in (("A", n_ovlp_a), ("B", n_ovlp_b)):
             scale = result[f"scale_{label}"]
             pseudo = result[f"pseudo_{label}"]
 
             for count in (0.0, 1.0, 37.0, 1e4, 9.5e6):
-                prior = prior_count * n_bin / n_bin_mean
-                expected = (count + prior) * 1e6 / (n_bin + 2.0 * prior)
-                actual = (count * 1e6 / n_bin + pseudo) * scale
+                prior = prior_count * n_ovlp / n_ovlp_mean
+                expected = (count + prior) * 1e6 / (n_ovlp + 2.0 * prior)
+                actual = (count * 1e6 / n_ovlp + pseudo) * scale
 
                 assert actual == pytest.approx(expected, rel=1e-12)
 
@@ -661,8 +657,8 @@ def test_cpm_scale_and_pseudo_are_bit_identical_across_samples() -> None:
     """
 
     result = compute_pseudo_edger(
-        n_bin_a=41318705.0,
-        n_bin_b=39204118.0,
+        n_ovlp_a=41318705.0,
+        n_ovlp_b=39204118.0,
         prior_count=2.0,
         substrate="cpm",
     )
@@ -680,20 +676,20 @@ def test_count_takes_the_prior_in_count_units() -> None:
     count units, which is why the closed sibling is the exact one.
     """
 
-    n_bin_a, n_bin_b, prior_count = 6.0, 18.0, 2.0
+    n_ovlp_a, n_ovlp_b, prior_count = 6.0, 18.0, 2.0
 
     result = compute_pseudo_edger(
-        n_bin_a=n_bin_a,
-        n_bin_b=n_bin_b,
+        n_ovlp_a=n_ovlp_a,
+        n_ovlp_b=n_ovlp_b,
         prior_count=prior_count,
         substrate="count",
     )
-    n_bin_mean = 0.5 * (n_bin_a + n_bin_b)
+    n_ovlp_mean = 0.5 * (n_ovlp_a + n_ovlp_b)
 
     assert result["scale_A"] == 1.0
     assert result["scale_B"] == 1.0
-    assert result["pseudo_A"] == prior_count * n_bin_a / n_bin_mean
-    assert result["pseudo_B"] == prior_count * n_bin_b / n_bin_mean
+    assert result["pseudo_A"] == prior_count * n_ovlp_a / n_ovlp_mean
+    assert result["pseudo_B"] == prior_count * n_ovlp_b / n_ovlp_mean
     assert result["pseudo_A"] != result["pseudo_B"]
     assert result["is_edger"] is False
 
@@ -757,14 +753,14 @@ NC_PUBLISHED = (
 
 
 @pytest.mark.parametrize(
-    ("sample", "n_bin_a", "n_bin_b", "n_frg_a", "n_frg_b", "expected"),
+    ("sample", "n_ovlp_a", "n_ovlp_b", "n_frg_a", "n_frg_b", "expected"),
     NC_PUBLISHED,
     ids=[row[0] for row in NC_PUBLISHED],
 )
 def test_compute_pseudo_edger_reproduces_the_published_pseudocounts(
     sample: str,
-    n_bin_a: float,
-    n_bin_b: float,
+    n_ovlp_a: float,
+    n_ovlp_b: float,
     n_frg_a: float,
     n_frg_b: float,
     expected: float,
@@ -780,8 +776,8 @@ def test_compute_pseudo_edger_reproduces_the_published_pseudocounts(
     """
 
     result = compute_pseudo_edger(
-        n_bin_a=n_bin_a,
-        n_bin_b=n_bin_b,
+        n_ovlp_a=n_ovlp_a,
+        n_ovlp_b=n_ovlp_b,
         prior_count=2.0,
         substrate="norm",
         n_frg_a=n_frg_a,
@@ -824,16 +820,16 @@ def test_compute_pseudo_edger_decomposes_the_published_formula(
     """
 
     result = _edger(substrate)
-    n_bin_mean = 0.5 * (LIB_A + LIB_B)
+    n_ovlp_mean = 0.5 * (OVLP_A + OVLP_B)
     sides = (
-        (LIB_A, "scale_A", "pseudo_A"),
-        (LIB_B, "scale_B", "pseudo_B"),
+        (OVLP_A, "scale_A", "pseudo_A"),
+        (OVLP_B, "scale_B", "pseudo_B"),
     )
 
-    for lib, scale_key, pseudo_key in sides:
-        prior_scaled = PRIOR_DEFAULT * lib / n_bin_mean
+    for n_ovlp, scale_key, pseudo_key in sides:
+        prior_scaled = PRIOR_DEFAULT * n_ovlp / n_ovlp_mean
         published = (
-            (count + prior_scaled) / (lib + 2.0 * prior_scaled) * 1e6 * unit
+            (count + prior_scaled) / (n_ovlp + 2.0 * prior_scaled) * 1e6 * unit
         )
         decomposed = result[scale_key] * count + result[pseudo_key]
 

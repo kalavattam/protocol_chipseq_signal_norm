@@ -279,8 +279,8 @@ def test_parser_preserves_complete_action_contract(
             (),
             None,
         ),
-        "n_bin_A": (
-            ("-nbA", "--n_bin_A"),
+        "n_ovlp_A": (
+            ("-noA", "--n_ovlp_A"),
             False,
             "_StoreAction",
             "float",
@@ -288,8 +288,8 @@ def test_parser_preserves_complete_action_contract(
             (),
             None,
         ),
-        "n_bin_B": (
-            ("-nbB", "--n_bin_B"),
+        "n_ovlp_B": (
+            ("-noB", "--n_ovlp_B"),
             False,
             "_StoreAction",
             "float",
@@ -602,9 +602,9 @@ def test_verbose_banner_reports_an_unset_bin_width(
             fil_a,
             "--fil_B",
             fil_b,
-            "--n_bin_A",
+            "--n_ovlp_A",
             "100",
-            "--n_bin_B",
+            "--n_ovlp_B",
             "200",
         ],
     )
@@ -675,7 +675,7 @@ def test_json_payload_reports_the_per_sample_prior(
     payload = json.loads(capsys.readouterr().out.splitlines()[1])
 
     assert status == 0
-    assert payload["n_bin"] == {"A": 6.0, "B": 18.0}
+    assert payload["n_ovlp"] == {"A": 6.0, "B": 18.0}
     assert payload["prior_scaled"] == {"A": 1.0, "B": 3.0}
 
 
@@ -931,7 +931,7 @@ def test_ignored_option_constants_match_the_parser(
     assert set(compute_pseudo.OPT_SHORT_ALL) == set(shorts)
 
 
-# Single-track mode is selected from '--fil_B' and '--n_bin_B', so an overlap
+# Single-track mode is selected from '--fil_B' and '--n_ovlp_B', so an overlap
 # count supplied to skip a read also decides the mode. Each row is a whole
 # argument list parsed by the real parser, so a flag rename fails here rather
 # than quietly reporting two tracks.
@@ -939,9 +939,9 @@ ONE_TRACK_ARGV = (
     pytest.param((), True, id="neither_B_option"),
     pytest.param(("--fil_B", FIL_B), False, id="fil_B_long"),
     pytest.param(("-fB", FIL_B), False, id="fil_B_short"),
-    pytest.param(("--n_bin_B", "18"), False, id="n_bin_B_long"),
-    pytest.param(("-nbB", "18"), False, id="n_bin_B_short"),
-    pytest.param(("--fil_B", FIL_B, "--n_bin_B", "18"), False, id="both"),
+    pytest.param(("--n_ovlp_B", "18"), False, id="n_ovlp_B_long"),
+    pytest.param(("-noB", "18"), False, id="n_ovlp_B_short"),
+    pytest.param(("--fil_B", FIL_B, "--n_ovlp_B", "18"), False, id="both"),
 )
 
 
@@ -951,7 +951,7 @@ def test_is_one_track_reads_both_b_options(
     expected: bool,
 ) -> None:
     """
-    '--n_bin_B' without '--fil_B' is two-track, the asymmetric case.
+    '--n_ovlp_B' without '--fil_B' is two-track, the asymmetric case.
 
     Reading only '--fil_B' would mirror A onto B and emit one value for a run
     the user described with two fragment-bin overlap counts.
@@ -964,14 +964,14 @@ def test_is_one_track_reads_both_b_options(
 
 def test_is_one_track_treats_a_zero_overlap_count_as_supplied() -> None:
     """
-    '--n_bin_B 0' is falsy but supplied, and the check reads 'is None' for it.
+    '--n_ovlp_B 0' is falsy but supplied, and the check reads 'is None' for it.
 
     A truthiness test would report single-track and discard the named B track.
     """
 
-    args = parse_args(["--fil_A", FIL_A, "--n_bin_B", "0"])
+    args = parse_args(["--fil_A", FIL_A, "--n_ovlp_B", "0"])
 
-    assert args.n_bin_B == 0.0
+    assert args.n_ovlp_B == 0.0
     assert compute_pseudo._is_one_track(args) is False
 
 
@@ -996,30 +996,30 @@ def test_is_one_track_reads_an_unsupplied_fil_b_as_none() -> None:
     'CapArgumentParser' sets 'argument_default=argparse.SUPPRESS', so an option
     that declares no default is absent from the namespace and plain attribute
     access raises. '--fil_B' declares 'default=None' against that, which is
-    what lets every reader treat it like '--n_bin_B'. Dropping the declaration
+    what lets every reader treat it like '--n_ovlp_B'. Dropping the declaration
     fails this assertion with 'AttributeError'.
     """
 
     args = parse_args(["--fil_A", FIL_A])
 
     assert args.fil_B is None
-    assert args.n_bin_B is None
+    assert args.n_ovlp_B is None
     assert compute_pseudo._is_one_track(args) is True
 
 
 # Overlap counts the fixture pair carries. Expected pseudocounts below are
 # written from edgeR's published definition rather than by calling the
 # implementation under test, so the assertion is evidence and not arithmetic.
-#
-# TODO: 'LIB_A' and 'LIB_B' still carry the retired 'library size'
-# vocabulary. They are overlap counts, so they rename to 'OVLP_*' with the
-# queued 'n_bin' to 'n_ovlp' pass rather than before it.
-LIB_A = 6.0
-LIB_B = 18.0
+OVLP_A = 6.0
+OVLP_B = 18.0
 PRIOR = 2.0
 
 
-def _count_prior(lib: float, mean_lib: float, prior: float = PRIOR) -> float:
+def _count_prior(
+    n_ovlp: float,
+    n_ovlp_mean: float,
+    prior: float = PRIOR,
+) -> float:
     """
     Return edgeR's pseudocount in count units for one overlap count.
 
@@ -1030,10 +1030,11 @@ def _count_prior(lib: float, mean_lib: float, prior: float = PRIOR) -> float:
 
     Parameters
     ----------
-    lib : float
-        This sample's fragment-bin overlap count.
-    mean_lib : float
-        Mean fragment-bin overlap count over the columns being compared.
+    n_ovlp : float
+        This sample's fragment-bin overlap count, edgeR's 'lib.size'.
+    n_ovlp_mean : float
+        Mean fragment-bin overlap count over the columns being compared, i.e.,
+        edgeR's 'L_bar'.
     prior : float
         Nominal 'prior.count'.
 
@@ -1043,10 +1044,10 @@ def _count_prior(lib: float, mean_lib: float, prior: float = PRIOR) -> float:
         Pseudocount in count units.
     """
 
-    return prior * lib / mean_lib
+    return prior * n_ovlp / n_ovlp_mean
 
 
-def _edger_pseudo(mean_lib: float, prior: float = PRIOR) -> float:
+def _edger_pseudo(n_ovlp_mean: float, prior: float = PRIOR) -> float:
     """
     Return edgeR's pseudocount on the CPM scale for one mean overlap count.
 
@@ -1056,8 +1057,9 @@ def _edger_pseudo(mean_lib: float, prior: float = PRIOR) -> float:
 
     Parameters
     ----------
-    mean_lib : float
-        Mean fragment-bin overlap count over the columns being compared.
+    n_ovlp_mean : float
+        Mean fragment-bin overlap count over the columns being compared, i.e.,
+        edgeR's 'L_bar'.
     prior : float
         Nominal 'prior.count'.
 
@@ -1067,7 +1069,7 @@ def _edger_pseudo(mean_lib: float, prior: float = PRIOR) -> float:
         Pseudocount in normalized units.
     """
 
-    return 1e6 * prior / (mean_lib + 2.0 * prior)
+    return 1e6 * prior / (n_ovlp_mean + 2.0 * prior)
 
 
 def _norm_like(tmp_path: Path) -> tuple[str, str]:
@@ -1140,7 +1142,7 @@ def test_inferred_overlap_count_still_works_for_a_whole_count_track(
     Keep the inference path the refusal is not meant to touch.
 
     'pseudo_recheck_2026-08-26/02_recheck_inferred.sh' passes deepTools-raw
-    tracks and omits '--n_bin', which is exactly this shape. A whole-count
+    tracks and omits '--n_ovlp', which is exactly this shape. A whole-count
     track satisfies 'colSum >= N' by construction, so it stays green.
     """
 
@@ -1196,7 +1198,7 @@ def test_unadj_requires_the_overlap_counts() -> None:
             ],
         )
 
-    assert "'--n_bin_A' and '--n_bin_B'" in str(excinfo.value)
+    assert "'--n_ovlp_A' and '--n_ovlp_B'" in str(excinfo.value)
 
 
 # Fragment counts for the fractional substrates. Their 1:2 ratio is not the
@@ -1234,7 +1236,7 @@ def _fractional_prior(
         The prior for a substrate whose column total is one.
     """
 
-    k_bar = 0.5 * (LIB_A / n_frg_a + LIB_B / n_frg_b)
+    k_bar = 0.5 * (OVLP_A / n_frg_a + OVLP_B / n_frg_b)
     n_frg_bar = 0.5 * (n_frg_a + n_frg_b)
 
     return prior / (k_bar * n_frg_bar)
@@ -1253,16 +1255,16 @@ SUBSTRATE_CLI_CASES = (
     pytest.param(
         "unadj",
         [
-            "--n_bin_A",
+            "--n_ovlp_A",
             "6",
-            "--n_bin_B",
+            "--n_ovlp_B",
             "18",
             "--n_frg_A",
             "3",
             "--n_frg_B",
             "6",
         ],
-        (_fractional_prior() * LIB_A, _fractional_prior() * LIB_B),
+        (_fractional_prior() * OVLP_A, _fractional_prior() * OVLP_B),
         id="unadj",
     ),
     pytest.param(
@@ -1280,8 +1282,8 @@ SUBSTRATE_CLI_CASES = (
         "cpm",
         [],
         (
-            PRIOR * 1e6 / (0.5 * (LIB_A + LIB_B)),
-            PRIOR * 1e6 / (0.5 * (LIB_A + LIB_B)),
+            PRIOR * 1e6 / (0.5 * (OVLP_A + OVLP_B)),
+            PRIOR * 1e6 / (0.5 * (OVLP_A + OVLP_B)),
         ),
         id="cpm",
     ),
@@ -1333,7 +1335,7 @@ def test_single_track_emits_one_value_rather_than_a_pair(
     capsys: pytest.CaptureFixture[str],
 ) -> None:
     """
-    Omitting both '--fil_B' and '--n_bin_B' emits one value, not 'A:B'.
+    Omitting both '--fil_B' and '--n_ovlp_B' emits one value, not 'A:B'.
     """
 
     status = main(
@@ -1352,7 +1354,7 @@ def test_single_track_emits_one_value_rather_than_a_pair(
     assert status == 0
     assert ":" not in emitted
     assert math.isclose(
-        float(emitted), _count_prior(LIB_A, LIB_A), rel_tol=1e-12
+        float(emitted), _count_prior(OVLP_A, OVLP_A), rel_tol=1e-12
     )
 
 
@@ -1387,10 +1389,12 @@ def test_single_track_value_is_not_the_two_track_value(
 
     paired = float(capsys.readouterr().out.strip().split(":")[0])
 
-    mean_lib = (LIB_A + LIB_B) / 2.0
+    n_ovlp_mean = (OVLP_A + OVLP_B) / 2.0
 
-    assert math.isclose(alone, _count_prior(LIB_A, LIB_A), rel_tol=1e-12)
-    assert math.isclose(paired, _count_prior(LIB_A, mean_lib), rel_tol=1e-12)
+    assert math.isclose(alone, _count_prior(OVLP_A, OVLP_A), rel_tol=1e-12)
+    assert math.isclose(
+        paired, _count_prior(OVLP_A, n_ovlp_mean), rel_tol=1e-12
+    )
     assert alone != paired
 
 
@@ -1445,10 +1449,10 @@ def test_json_mirrors_b_onto_a_in_single_track_mode(
 
     assert payload["one_track"] is True
     assert payload["fil_B"] is None
-    assert payload["n_bin"]["B"] == payload["n_bin"]["A"]
+    assert payload["n_ovlp"]["B"] == payload["n_ovlp"]["A"]
     assert payload["scale_factors"]["B"] == payload["scale_factors"]["A"]
     assert pseudocounts["pseudo_B"] == pseudocounts["pseudo_A"]
-    assert math.isclose(payload["n_bin"]["A"], LIB_A, rel_tol=1e-12)
+    assert math.isclose(payload["n_ovlp"]["A"], OVLP_A, rel_tol=1e-12)
 
 
 def test_json_keeps_one_shape_across_both_modes(

@@ -431,7 +431,7 @@ HYPHEN_ALIASES = (
     pytest.param("--fil_out", "--fil-out",   "value", id="fil_out"),
     pytest.param("--ref_fa",  "--ref-fa",    "value", id="ref_fa"),
     pytest.param(
-        "--report_n_bin", "--report-n-bin", "value", id="report_n_bin"
+        "--report_n_ovlp", "--report-n-ovlp", "value", id="report_n_ovlp"
     ),
     pytest.param(
         "--report_n_frg", "--report-n-frg", "value", id="report_n_frg"
@@ -1012,5 +1012,4 @@ def test_method_help_names_both_deposition_families(
 
     assert "Fractional methods deposit" in rendered
     assert "Whole-count methods deposit" in rendered
-    assert "'--report_n_bin'" in rendered
-
+    assert "'--report_n_ovlp'" in rendered

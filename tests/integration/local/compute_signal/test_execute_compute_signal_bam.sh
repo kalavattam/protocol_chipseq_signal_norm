@@ -412,9 +412,9 @@ for eng_bad in chrm windowed bogus; do
 done
 
 
-# Report flags: the wrapper derives '<track>.n_frg.txt' and '<track>.n_bin.txt'
-# from each output name, so assert those paths and their contents, not just
-# success.
+# Report flags: the wrapper derives '<track>.n_frg.txt' and
+# '<track>.n_ovlp.txt' from each output name, so assert those paths and their
+# contents, not just success.
 dir_rep="${tmp}/reports"
 mkdir -p "${dir_rep}"
 
@@ -427,7 +427,7 @@ bash "${ROOT_REPO}/bin/execute_compute_signal.sh" \
     --siz_bin 10 \
     --method unadj \
     --report_n_frg \
-    --report_n_bin \
+    --report_n_ovlp \
     > /dev/null 2>&1 || true
 
 for samp in tiny_se tiny_pe; do
@@ -440,8 +440,8 @@ for samp in tiny_se tiny_pe; do
         "execute derives ${samp}.n_frg.txt beside the track"
 
     assert_file_nonempty \
-        "${dir_rep}/${samp}.n_bin.txt" \
-        "execute derives ${samp}.n_bin.txt beside the track"
+        "${dir_rep}/${samp}.n_ovlp.txt" \
+        "execute derives ${samp}.n_ovlp.txt beside the track"
 done
 
 
@@ -453,12 +453,12 @@ assert_file_exact_line \
     "execute SE fragment count is 2"
 
 assert_file_exact_line \
-    "${dir_rep}/tiny_se.n_bin.txt" \
+    "${dir_rep}/tiny_se.n_ovlp.txt" \
     "2" \
     "execute SE fragment-bin overlap count is 2"
 
 assert_file_exact_line \
-    "${dir_rep}/tiny_pe.n_bin.txt" \
+    "${dir_rep}/tiny_pe.n_ovlp.txt" \
     "5" \
     "execute PE fragment-bin overlap count is 5, distinct from SE"
 
@@ -474,7 +474,7 @@ bash "${ROOT_REPO}/bin/execute_compute_signal.sh" \
     --siz_bin 10 \
     --method unadj \
     --report_n_frg \
-    --report_n_bin \
+    --report_n_ovlp \
     --report_only \
     > /dev/null 2>&1 || true
 

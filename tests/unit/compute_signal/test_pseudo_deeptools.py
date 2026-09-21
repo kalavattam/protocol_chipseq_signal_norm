@@ -285,9 +285,9 @@ def test_rpkm_without_a_track_read_requires_siz_bin() -> None:
                 FIL_B,
                 "--substrate",
                 "RPKM",
-                "--n_bin_A",
+                "--n_ovlp_A",
                 "6",
-                "--n_bin_B",
+                "--n_ovlp_B",
                 "18",
             ],
         )
@@ -308,8 +308,8 @@ def test_is_one_track_reads_an_unsupplied_fil_b_as_none() -> None:
 
     assert interop._is_one_track(args) is False
 
-    # A supplied '--n_bin_B' describes a second track just as '--fil_B' does.
-    args = parse_args(["--fil_A", FIL_A, "--n_bin_B", "18"])
+    # A supplied '--n_ovlp_B' describes a second track just as '--fil_B' does.
+    args = parse_args(["--fil_A", FIL_A, "--n_ovlp_B", "18"])
 
     assert interop._is_one_track(args) is False
 
@@ -393,9 +393,9 @@ def test_hidden_hyphen_aliases_reach_the_canonical_dest() -> None:
             "3",
             "--siz-bin",
             "10",
-            "--n-bin-A",
+            "--n-ovlp-A",
             "6",
-            "--n-bin-B",
+            "--n-ovlp-B",
             "18",
             "--sf-A",
             "0.7",
@@ -412,8 +412,8 @@ def test_hidden_hyphen_aliases_reach_the_canonical_dest() -> None:
     assert args.fil_B == FIL_B
     assert args.prior_count == 3.0
     assert args.siz_bin == 10
-    assert args.n_bin_A == 6.0
-    assert args.n_bin_B == 18.0
+    assert args.n_ovlp_A == 6.0
+    assert args.n_ovlp_B == 18.0
     assert args.sf_A == 0.7
     assert args.sf_B == 1.3
     assert args.skp_pfx == "#"
@@ -524,15 +524,15 @@ def test_parser_preserves_complete_action_contract() -> None:
             None,
             (),
         ),
-        "n_bin_A": (
-            ("-nbA", "--n_bin_A"),
+        "n_ovlp_A": (
+            ("-noA", "--n_ovlp_A"),
             "_StoreAction",
             "float",
             None,
             (),
         ),
-        "n_bin_B": (
-            ("-nbB", "--n_bin_B"),
+        "n_ovlp_B": (
+            ("-noB", "--n_ovlp_B"),
             "_StoreAction",
             "float",
             None,

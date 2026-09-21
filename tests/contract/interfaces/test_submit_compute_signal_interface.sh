@@ -169,7 +169,7 @@ source = open(sys.argv[1], encoding="utf-8").read().splitlines()
 appends = 0
 for index, line in enumerate(source):
     append = re.match(
-        r'\s*cmd\+=\( --report_(n_frg|n_bin)(.*)\)\s*$',
+        r'\s*cmd\+=\( --report_(n_frg|n_ovlp)(.*)\)\s*$',
         line,
     )
 
@@ -200,7 +200,7 @@ if [[ -s "${rep_fwd}" ]]; then
     assert_pattern_absent \
         "${rep_fwd}" \
         "BARE" \
-        "submit never appends a valueless '--report_n_frg' or '--report_n_bin'"
+        "submit never appends a valueless '--report_n_frg' / '--report_n_ovlp'"
 
     assert_pattern_absent \
         "${rep_fwd}" \

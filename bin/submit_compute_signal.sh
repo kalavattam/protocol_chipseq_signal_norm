@@ -583,7 +583,7 @@ function run_comp_sig() {
     local engine="${11:-}"
     local siz_win="${12:-}"
     local report_n_frg="${13:-}"
-    local report_n_bin="${14:-}"
+    local report_n_ovlp="${14:-}"
     local dir_eo="${15:-}"
     local nam_job="${16:-}"
     local dsc="${17:-}"
@@ -596,7 +596,7 @@ function run_comp_sig() {
 Usage
 -----
   run_comp_sig
-    [--help] debug threads fil_in fil_out siz_bin method scl_fct usr_frg dp ref_fa engine siz_win report_n_frg report_n_bin dir_eo nam_job dsc
+    [--help] debug threads fil_in fil_out siz_bin method scl_fct usr_frg dp ref_fa engine siz_win report_n_frg report_n_ovlp dir_eo nam_job dsc
 
   Build and run the per-sample call to 'compute_signal.py'.
 
@@ -644,7 +644,7 @@ Parameters
   13  report_n_frg : file
     Path for the fragment-count report or empty string.
 
-  14  report_n_bin : file
+  14  report_n_ovlp : file
     Path for the overlap-count report or empty string.
 
   15  dir_eo : dir
@@ -763,8 +763,8 @@ EOM
         cmd+=( --report_n_frg "${report_n_frg}" )
     fi
 
-    if [[ -n "${report_n_bin}" ]]; then
-        cmd+=( --report_n_bin "${report_n_bin}" )
+    if [[ -n "${report_n_ovlp}" ]]; then
+        cmd+=( --report_n_ovlp "${report_n_ovlp}" )
     fi
 
     if [[ "${#optional[@]}" -gt 0 && -n "${optional[0]}" ]]; then
@@ -1466,7 +1466,7 @@ EOM
         "${engine}" \
         "${siz_win}" \
         "$(get_arr_elem arr_rep_n_frg "${idx}")" \
-        "$(get_arr_elem arr_rep_n_bin "${idx}")" \
+        "$(get_arr_elem arr_rep_n_ovlp "${idx}")" \
         "${dir_eo}" \
         "${nam_job}" \
         "${dsc}"
@@ -1774,7 +1774,7 @@ function init_arg_defs() {
     engine="chrom"
     siz_win=100000
     csv_report_n_frg=""
-    csv_report_n_bin=""
+    csv_report_n_ovlp=""
     csv_scl_fct=""
     csv_usr_frg=""
     csv_dep_min=""
@@ -2031,13 +2031,13 @@ function parse_args() {
                 shift 2
                 ;;
 
-            -crb|--csv[_-]report[_-]n[_-]bin)
+            -cro|--csv[_-]report[_-]n[_-]ovlp)
                 require_optarg "${1}" "${2:-}" "main" || {
                     echo >&2
                     help_submit_compute_signal
                     return 1
                 }
-                csv_report_n_bin="${2}"
+                csv_report_n_ovlp="${2}"
                 shift 2
                 ;;
 
@@ -2177,7 +2177,7 @@ function validate_args() {
 
         # Mirror the CLI: an output path is required only when neither report
         # list is given, so a report-only run needs no track.
-        if [[ -z "${csv_report_n_frg}" && -z "${csv_report_n_bin}" ]]; then
+        if [[ -z "${csv_report_n_frg}" && -z "${csv_report_n_ovlp}" ]]; then
             validate_var "csv_fil_out" "${csv_fil_out}" || return 1
         fi
         validate_var "siz_bin"     "${siz_bin}"     || return 1
@@ -2314,11 +2314,11 @@ function prepare_vecs() {
             for _ in "${arr_fil_in[@]}"; do arr_rep_n_frg+=( "" ); done
         fi
 
-        if [[ -n "${csv_report_n_bin}" ]]; then
-            IFS=',' read -r -a arr_rep_n_bin <<< "${csv_report_n_bin}"
+        if [[ -n "${csv_report_n_ovlp}" ]]; then
+            IFS=',' read -r -a arr_rep_n_ovlp <<< "${csv_report_n_ovlp}"
         else
-            unset arr_rep_n_bin && declare -ga arr_rep_n_bin
-            for _ in "${arr_fil_in[@]}"; do arr_rep_n_bin+=( "" ); done
+            unset arr_rep_n_ovlp && declare -ga arr_rep_n_ovlp
+            for _ in "${arr_fil_in[@]}"; do arr_rep_n_ovlp+=( "" ); done
         fi
 
         if [[ -n "${csv_usr_frg}" ]]; then

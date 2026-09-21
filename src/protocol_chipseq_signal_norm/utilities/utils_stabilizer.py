@@ -305,15 +305,14 @@ def canonicalize_substrate(substrate: str) -> str:
 
 
 # TODO: Here and elsewhere across the codebase (code, comments, docs, etc.),
-# 'n_bin_(a|b)' becomes 'n_ovlp_(a|b)', and 'substrate' potentially becomes
-# 'typ_sig' or, if/when appropriate in prose, "type of signal", "signal type",
-# and the like.
+# 'substrate' potentially becomes 'typ_sig' or, if/when appropriate in prose,
+# "type of signal", "signal type", and the like.
 def compute_pseudo_edger(
     substrate: str = "norm",
     prior_count: float = 2.0,
     siz_bin: int | None = None,
-    n_bin_a: float | None = None,
-    n_bin_b: float | None = None,
+    n_ovlp_a: float | None = None,
+    n_ovlp_b: float | None = None,
     n_frg_a: float | None = None,
     n_frg_b: float | None = None,
     total_a: float | None = None,
@@ -338,7 +337,7 @@ def compute_pseudo_edger(
     siz_bin : int | None
         Bin width in base pairs, required for 'RPKM' and unused otherwise. No
         default: a wrong width rescales an 'RPKM' pair in silence.
-    n_bin_a, n_bin_b : float | None
+    n_ovlp_a, n_ovlp_b : float | None
         Required for every substrate. Fragment-bin overlap count 'L' for each
         track, the bin-matrix column sum and edgeR's 'lib.size': how many bins
         each fragment spans, added up over fragments. Not the fragment count,
@@ -354,7 +353,7 @@ def compute_pseudo_edger(
         The substrate's own column total, required for 'unadj', where it is the
         total fragment base pairs. Only the track reports it: no report flag
         writes it, and it is not the fragment-bin overlap count 'L' that 'k'
-        needs, which 'n_bin_a' carries.
+        needs, which 'n_ovlp_a' carries.
     scale_a, scale_b : float | None
         Externally supplied deepTools scale factors, required for 'RPGC'.
 
@@ -428,8 +427,8 @@ def compute_pseudo_edger(
     tolerance. 'cpm' is the exception: it's symmetric bit for bit because its
     scale is computed once from the closed form rather than per sample.
 
-    Single-track mode passes one track's overlap count as both 'n_bin_a' and
-    'n_bin_b'. That is exact, not approximate: edgeR scales each prior by
+    Single-track mode passes one track's overlap count as both 'n_ovlp_a' and
+    'n_ovlp_b'. That is exact, not approximate: edgeR scales each prior by
     'L_i / L_bar' ('add_prior_count.c:88'), which is 1 with one column. But
     'L_bar' is that track's own count in single-track mode and the mean of both
     in two-track mode, so a track's single-track pseudocount is not its
@@ -441,8 +440,8 @@ def compute_pseudo_edger(
     by 'N_i / N_bar' instead.
     """
 
-    for label, lib in (("n_bin_a", n_bin_a), ("n_bin_b", n_bin_b)):
-        if lib is None or not math.isfinite(lib) or lib <= 0.0:
+    for label, n_ovlp in (("n_ovlp_a", n_ovlp_a), ("n_ovlp_b", n_ovlp_b)):
+        if n_ovlp is None or not math.isfinite(n_ovlp) or n_ovlp <= 0.0:
             raise ValueError(
                 f"{label!r} must be finite and positive; every substrate "
                 "needs both fragment-bin overlap counts.",
@@ -462,8 +461,8 @@ def compute_pseudo_edger(
                     "cannot supply because its own total is not a count.",
                 )
 
-        k_a = n_bin_a / n_frg_a
-        k_b = n_bin_b / n_frg_b
+        k_a = n_ovlp_a / n_frg_a
+        k_b = n_ovlp_b / n_frg_b
         k_mean = 0.5 * (k_a + k_b)
         n_frg_mean = 0.5 * (n_frg_a + n_frg_b)
         pseudo = prior_count / (k_mean * n_frg_mean)
@@ -489,7 +488,7 @@ def compute_pseudo_edger(
 
                 # Every fragment spans at least one base pair, so 'T >= N'
                 # holds. A total below 'N' came off another substrate and would
-                # rescale the prior in silence. It fires even when 'n_bin' is
+                # rescale the prior in silence. It fires even when 'n_ovlp' is
                 # supplied, which the inferred-'L' check in 'compute_pseudo'
                 # cannot.
                 if total < frg:
@@ -521,13 +520,13 @@ def compute_pseudo_edger(
             ),
         }
 
-    n_bin_mean = 0.5 * (n_bin_a + n_bin_b)
-    prior_a = prior_count * n_bin_a / n_bin_mean
-    prior_b = prior_count * n_bin_b / n_bin_mean
+    n_ovlp_mean = 0.5 * (n_ovlp_a + n_ovlp_b)
+    prior_a = prior_count * n_ovlp_a / n_ovlp_mean
+    prior_b = prior_count * n_ovlp_b / n_ovlp_mean
 
     if substrate in ("CPM", "BPM"):
-        scale_a = 1e6 / (n_bin_a + 2.0 * prior_a)
-        scale_b = 1e6 / (n_bin_b + 2.0 * prior_b)
+        scale_a = 1e6 / (n_ovlp_a + 2.0 * prior_a)
+        scale_b = 1e6 / (n_ovlp_b + 2.0 * prior_b)
         is_edger = True
         note = "exact; BPM reduces to CPM with fixed bin width"
     elif substrate == "RPKM":
@@ -537,8 +536,8 @@ def compute_pseudo_edger(
                 "bin width the per-kilobase denominator divides by.",
             )
 
-        scale_a = 1e9 / ((n_bin_a + 2.0 * prior_a) * siz_bin)
-        scale_b = 1e9 / ((n_bin_b + 2.0 * prior_b) * siz_bin)
+        scale_a = 1e9 / ((n_ovlp_a + 2.0 * prior_a) * siz_bin)
+        scale_b = 1e9 / ((n_ovlp_b + 2.0 * prior_b) * siz_bin)
         is_edger = True
         note = "exact"
     elif substrate in ("None", "count"):
@@ -556,7 +555,7 @@ def compute_pseudo_edger(
         # with no sample index. Computing it once from that closed form keeps
         # the pair bit-identical; the per-sample quotient agrees only in real
         # arithmetic, but not always in 'float64'.
-        scale_a = 1.0 / (1.0 + 2.0 * prior_count / n_bin_mean)
+        scale_a = 1.0 / (1.0 + 2.0 * prior_count / n_ovlp_mean)
         scale_b = scale_a
         is_edger = True
         note = (
@@ -579,7 +578,7 @@ def compute_pseudo_edger(
     if substrate == "cpm":
         # The pseudocount 'y0_i * 1e6 / L_i' reduces to 'pc * 1e6 / L_bar', so
         # it too is symmetric.
-        pseudo_a = prior_count * 1e6 / n_bin_mean
+        pseudo_a = prior_count * 1e6 / n_ovlp_mean
         pseudo_b = pseudo_a
     else:
         pseudo_a = scale_a * prior_a

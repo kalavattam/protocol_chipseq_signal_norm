@@ -291,12 +291,12 @@ def sum_counts_bdg(
 
     for chrom in order:
         value, width = final[chrom]
-        n_bin = width // siz_bin
+        bin_span = width // siz_bin
 
         if width % siz_bin:
-            n_bin += 1
+            bin_span += 1
 
-        total += value * n_bin
+        total += value * bin_span
 
     return OverlapCountBdg(total=total, siz_bin=siz_bin)
 

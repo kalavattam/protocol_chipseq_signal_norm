@@ -17,7 +17,7 @@ from pathlib import Path
 import pytest
 
 from protocol_chipseq_signal_norm.cli.compute_signal import (
-    count_frgs_and_bins,
+    count_frgs_and_ovlps,
     get_siz_chr,
     iter_aln_frg,
     main,
@@ -75,7 +75,7 @@ def run_report(
             str(fil_in),
             "--report_n_frg",
             str(path_n),
-            "--report_n_bin",
+            "--report_n_ovlp",
             str(path_l),
             *extra_args,
         ],
@@ -90,13 +90,13 @@ def run_report(
     ("start", "end", "siz_bin", "expected_bins"),
     SINGLE_FRAGMENT_CASES,
 )
-def test_count_frgs_and_bins_single_fragment_span(
+def test_count_frgs_and_ovlps_single_fragment_span(
     start: int,
     end: int,
     siz_bin: int,
     expected_bins: int,
 ) -> None:
-    observed = count_frgs_and_bins(
+    observed = count_frgs_and_ovlps(
         iter([("I", start, end, end - start)]),
         siz_bin,
     )
@@ -111,7 +111,7 @@ def test_length_rule_fragment_span_is_offset_independent(offset: int) -> None:
     # sits exactly 'k - 1' bins after the first at every offset.
     length = 2 * 10 + 1
 
-    observed = count_frgs_and_bins(
+    observed = count_frgs_and_ovlps(
         iter([("I", offset, offset + length, length)]),
         10,
     )
@@ -119,39 +119,39 @@ def test_length_rule_fragment_span_is_offset_independent(offset: int) -> None:
     assert observed == (1, 3)
 
 
-def test_count_frgs_and_bins_accumulates_across_chromosomes() -> None:
+def test_count_frgs_and_ovlps_accumulates_across_chromosomes() -> None:
     fragments = [
         ("I", 0, 25, 25),
         ("II", 95, 105, 10),
         ("II", 5, 8, 3),
     ]
 
-    observed = count_frgs_and_bins(iter(fragments), 10)
+    observed = count_frgs_and_ovlps(iter(fragments), 10)
 
     assert observed == (3, 6)
 
 
-def test_count_frgs_and_bins_skips_nonpositive_spans() -> None:
+def test_count_frgs_and_ovlps_skips_nonpositive_spans() -> None:
     fragments = [
         ("I", 10, 10, 0),
         ("I", 20, 15, -5),
         ("I", 0, 5, 5),
     ]
 
-    observed = count_frgs_and_bins(iter(fragments), 10)
+    observed = count_frgs_and_ovlps(iter(fragments), 10)
 
     assert observed == (1, 1)
 
 
-def test_count_frgs_and_bins_empty_input_is_zero_zero() -> None:
-    assert count_frgs_and_bins(iter([]), 10) == (0, 0)
+def test_count_frgs_and_ovlps_empty_input_is_zero_zero() -> None:
+    assert count_frgs_and_ovlps(iter([]), 10) == (0, 0)
 
 
-def test_count_frgs_and_bins_ignores_the_length_field() -> None:
+def test_count_frgs_and_ovlps_ignores_the_length_field() -> None:
     # 'L' derives from the clamped coordinates alone; the carried
     # fragment-length field weights signal, not spans.
-    short_length = count_frgs_and_bins(iter([("I", 0, 25, 1)]), 10)
-    long_length = count_frgs_and_bins(iter([("I", 0, 25, 400)]), 10)
+    short_length = count_frgs_and_ovlps(iter([("I", 0, 25, 1)]), 10)
+    long_length = count_frgs_and_ovlps(iter([("I", 0, 25, 400)]), 10)
 
     assert short_length == long_length == (1, 3)
 
@@ -163,14 +163,14 @@ def test_report_flag_aliases_leave_fil_out_optional() -> None:
             "input.bam",
             "-rnf",
             "n.txt",
-            "-rnb",
+            "-rno",
             "l.txt",
         ],
     )
 
     assert args.fil_out is None
     assert args.report_n_frg == "n.txt"
-    assert args.report_n_bin == "l.txt"
+    assert args.report_n_ovlp == "l.txt"
 
 
 def test_report_counts_pe_tlen_fragments(tmp_path: Path) -> None:
@@ -231,7 +231,7 @@ def test_report_counts_clamp_to_partial_terminal_bin(tmp_path: Path) -> None:
 def test_cli_counts_match_direct_iterator_counts(tmp_path: Path) -> None:
     fil_in = FIXTURES / "bam" / "pe" / "tiny_pe.bam"
     siz_chr = get_siz_chr(str(fil_in))
-    expected = count_frgs_and_bins(
+    expected = count_frgs_and_ovlps(
         iter_aln_frg(str(fil_in), siz_chr=siz_chr),
         10,
     )
@@ -263,7 +263,7 @@ def test_report_only_mode_counts_without_writing_a_track(
         arguments.extend(["--report_n_frg", str(path_n)])
 
     if with_l:
-        arguments.extend(["--report_n_bin", str(path_l)])
+        arguments.extend(["--report_n_ovlp", str(path_l)])
 
     status = main(arguments)
     created = sorted(entry.name for entry in tmp_path.iterdir())
@@ -313,7 +313,7 @@ def test_reporting_leaves_the_written_track_byte_identical(
             str(out_reported),
             "--report_n_frg",
             str(tmp_path / "n.txt"),
-            "--report_n_bin",
+            "--report_n_ovlp",
             str(tmp_path / "l.txt"),
         ],
     )
@@ -393,13 +393,13 @@ def test_bare_report_flags_derive_paths_from_fil_out(
             "--siz_bin",
             "10",
             "--report_n_frg",
-            "--report_n_bin",
+            "--report_n_ovlp",
         ],
     )
 
     assert status == 0
     assert read_count(tmp_path / f"{base}.n_frg.txt") > 0
-    assert read_count(tmp_path / f"{base}.n_bin.txt") > 0
+    assert read_count(tmp_path / f"{base}.n_ovlp.txt") > 0
 
 
 def test_bare_report_flags_match_explicit_paths(tmp_path: Path) -> None:
@@ -425,7 +425,7 @@ def test_bare_report_flags_match_explicit_paths(tmp_path: Path) -> None:
             "--fil_out",
             str(dir_bare / "track.bedGraph.gz"),
             "--report_n_frg",
-            "--report_n_bin",
+            "--report_n_ovlp",
         ],
     )
     status_expl = main(
@@ -435,13 +435,13 @@ def test_bare_report_flags_match_explicit_paths(tmp_path: Path) -> None:
             str(dir_expl / "track.bedGraph.gz"),
             "--report_n_frg",
             str(dir_expl / "n.txt"),
-            "--report_n_bin",
+            "--report_n_ovlp",
             str(dir_expl / "l.txt"),
         ],
     )
 
     bare_n = read_count(dir_bare / "track.n_frg.txt")
-    bare_l = read_count(dir_bare / "track.n_bin.txt")
+    bare_l = read_count(dir_bare / "track.n_ovlp.txt")
     expl_n = read_count(dir_expl / "n.txt")
     expl_l = read_count(dir_expl / "l.txt")
 
@@ -504,13 +504,13 @@ def test_hidden_hyphen_spelling_derives_identically(tmp_path: Path) -> None:
             "--siz_bin",
             "10",
             "--report-n-frg",
-            "--report-n-bin",
+            "--report-n-ovlp",
         ],
     )
 
     assert status == 0
     assert read_count(tmp_path / "track.n_frg.txt") > 0
-    assert read_count(tmp_path / "track.n_bin.txt") > 0
+    assert read_count(tmp_path / "track.n_ovlp.txt") > 0
 
 
 def read_bdg_values(path: Path) -> list[float]:
@@ -549,7 +549,7 @@ def sum_bdg_values(path: Path) -> float:
         ("bam/pe/tiny_pe.bam", "4", "18"),
     ],
 )
-def test_count_track_column_sum_equals_reported_n_bin(
+def test_count_track_column_sum_equals_reported_n_ovlp(
     tmp_path: Path,
     fixture: str,
     siz_bin: str,
@@ -558,7 +558,7 @@ def test_count_track_column_sum_equals_reported_n_bin(
     """
     A 'count' track sums to 'L' exactly, as an integer rather than a tolerance.
 
-    Whole-count deposition reads the same fragments '--report_n_bin' counts,
+    Whole-count deposition reads the same fragments '--report_n_ovlp' counts,
     through the same iterator and admission rules and under the same
     '--usr_frg' extension and clamping, so the two numbers are the same
     quantity arrived at twice: once by accumulating into bins and once by
@@ -584,7 +584,7 @@ def test_count_track_column_sum_equals_reported_n_bin(
             siz_bin,
             "--dp",
             "24",
-            "--report_n_bin",
+            "--report_n_ovlp",
             str(path_l),
             *(["--usr_frg", usr_frg] if usr_frg is not None else []),
         ],
@@ -592,12 +592,12 @@ def test_count_track_column_sum_equals_reported_n_bin(
 
     assert status == 0
 
-    n_bin = read_count(path_l)
+    n_ovlp = read_count(path_l)
     column_sum = sum_bdg_values(fil_out)
 
-    assert n_bin > 0
-    assert column_sum == float(n_bin)
-    assert int(column_sum) == n_bin
+    assert n_ovlp > 0
+    assert column_sum == float(n_ovlp)
+    assert int(column_sum) == n_ovlp
 
 
 @pytest.mark.parametrize(
@@ -611,20 +611,20 @@ def test_count_track_column_sum_equals_reported_n_bin(
         ("bam/pe/tiny_pe.bam", "4", "18"),
     ],
 )
-def test_cpm_closure_divides_by_the_reported_n_bin(
+def test_cpm_closure_divides_by_the_reported_n_ovlp(
     tmp_path: Path,
     fixture: str,
     siz_bin: str,
     usr_frg: str | None,
 ) -> None:
     """
-    The 'L' the closure divides by is the 'L' that '--report_n_bin' reports.
+    The 'L' the closure divides by is the 'L' that '--report_n_ovlp' reports.
 
     The closure reads its divisor off the column being scaled, which is what
     makes the closure exact and is edgeR's own rule. It also leaves the closure
     unable to detect a wrong divisor, since a wrong 'L' still closes to one
     million. Recovering the check costs no second pass over the alignment:
-    '--report_n_bin' counts the same fragments through separate arithmetic in
+    '--report_n_ovlp' counts the same fragments through separate arithmetic in
     the same run, so inverting the closure bin by bin recovers the divisor
     actually used and compares it against that independently counted value. One
     extra or missing fragment-bin incidence in either path shows up here as an
@@ -652,7 +652,7 @@ def test_cpm_closure_divides_by_the_reported_n_bin(
             str(out_count),
             "--method",
             "count",
-            "--report_n_bin",
+            "--report_n_ovlp",
             str(path_l),
         ],
     )
@@ -663,7 +663,7 @@ def test_cpm_closure_divides_by_the_reported_n_bin(
     assert status_count == 0
     assert status_cpm == 0
 
-    n_bin = read_count(path_l)
+    n_ovlp = read_count(path_l)
     counts = read_bdg_values(out_count)
     scaled = read_bdg_values(out_cpm)
 
@@ -677,8 +677,8 @@ def test_cpm_closure_divides_by_the_reported_n_bin(
 
         recovered = count * 1e6 / value
 
-        assert round(recovered) == n_bin
-        assert recovered == pytest.approx(float(n_bin), rel=1e-9)
+        assert round(recovered) == n_ovlp
+        assert recovered == pytest.approx(float(n_ovlp), rel=1e-9)
 
 
 @pytest.mark.parametrize(

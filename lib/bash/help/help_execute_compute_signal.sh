@@ -29,7 +29,7 @@ Usage
     --dir_out <dir> [--typ_out <format>] [--prefix <str>]
     [--siz_bin <int>] [--engine <engine>] [--siz_win <int>] [--csv_usr_frg <csv>] [--csv_scl_fct <csv>]
     [--csv_dep_min <csv>] [--csv_pseudo <csv>] [--eps <num>] [--skip_00 <choice>] [--strict_bins] [--drp_nan] [--skp_pfx <csv>]
-    [--report_n_frg] [--report_n_bin] [--report_only]
+    [--report_n_frg] [--report_n_ovlp] [--report_only]
     [--track] [--dp <int>]
     [--dir_eo <dir>] [--nam_job <str>] [--max_job <int>] [--slurm] [--time <time>]
 
@@ -178,11 +178,11 @@ Parameters
   -rnf, --report_n_frg : flag
     Write the fragment count 'N' for each sample, beside its output track as '<track>.n_frg.txt'. Used only with '--mode signal'.
 
-  -rnb, --report_n_bin : flag
-    Write the overlap count 'L' for each sample, beside its output track as '<track>.n_bin.txt'. 'L' counts fragment-bin overlaps, so it depends on '--siz_bin' and, if supplied, '--csv_usr_frg'. Used only with '--mode signal'.
+  -rno, --report_n_ovlp : flag
+    Write the overlap count 'L' for each sample, beside its output track as '<track>.n_ovlp.txt'. 'L' counts fragment-bin overlaps, so it depends on '--siz_bin' and, if supplied, '--csv_usr_frg'. Used only with '--mode signal'.
 
   -ro, --report_only : flag
-    Write only the requested reports, with no signal track. Requires '--report_n_frg' or '--report_n_bin'. Used only with '--mode signal'.
+    Write only the requested reports, with no signal track. Requires '--report_n_frg' or '--report_n_ovlp'. Used only with '--mode signal'.
 
   -tr, --trk, --track : flag
     Write a companion track file. If '--mode ratio', also write a companion bedGraph with all non-finite rows ('inf', '-inf', and 'nan') removed.
@@ -342,7 +342,7 @@ Parameters
 
         + 'count':
           - Deposit one whole count in every bin a fragment touches, whether the fragment covers the whole bin or a single base.
-          - The track's value column sums to the overlap count 'L' that '--report_n_bin' reports on the same run.
+          - The track's value column sums to the overlap count 'L' that '--report_n_ovlp' reports on the same run.
 
         + 'cpm':
           - Rescale the whole counts so the track sums to one million, following the edgeR construction.
@@ -552,19 +552,19 @@ Parameters
 
     Used only with '--mode signal'; ignored otherwise.
 
-  -rnb, --report_n_bin : flag
+  -rno, --report_n_ovlp : flag
     Write the fragment-bin overlap count 'L' for each sample.
 
     'L' is the total number of bins the counted fragments span, counting a fragment once per bin it touches. It is not the summed base pairs an unadjusted track reports: the bin count is what puts 'k = L / N' in bins, the unit a per-bin pseudocount needs.
 
-    Because 'L' counts fragment-bin overlaps, it depends on '--siz_bin' and, if supplied, '--csv_usr_frg', where fragment extension changes how far each fragment reaches. The report is written beside each output track, as '<track>.n_bin.txt'.
+    Because 'L' counts fragment-bin overlaps, it depends on '--siz_bin' and, if supplied, '--csv_usr_frg', where fragment extension changes how far each fragment reaches. The report is written beside each output track, as '<track>.n_ovlp.txt'.
 
     Used only with '--mode signal'; ignored otherwise.
 
   -ro, --report_only : flag
     Write the requested reports without writing a signal track.
 
-    Requires '--report_n_frg' or '--report_n_bin'; there is nothing to report otherwise, and the run is rejected. Counting happens before the output branch, so the reported values are identical to those a track-writing run would produce on the same input.
+    Requires '--report_n_frg' or '--report_n_ovlp'; there is nothing to report otherwise, and the run is rejected. Counting happens before the output branch, so the reported values are identical to those a track-writing run would produce on the same input.
 
     Use this to obtain prior counts without paying for track output.
 
@@ -685,12 +685,12 @@ Examples
         --typ_out "bedGraph.gz" \\
         --siz_bin 50 \\
         --report_n_frg \\
-        --report_n_bin \\
+        --report_n_ovlp \\
         --dir_eo "\${HOME}/project/logs" \\
         --nam_job "norm_sig"
     '''
 
-    Writes 'sample_1.bedGraph.gz' alongside 'sample_1.n_frg.txt' and 'sample_1.n_bin.txt', and the same trio for 'sample_2'. Counting runs before the output branch, so the counts match those of a report-only run on the same input.
+    Writes 'sample_1.bedGraph.gz' alongside 'sample_1.n_frg.txt' and 'sample_1.n_ovlp.txt', and the same trio for 'sample_2'. Counting runs before the output branch, so the counts match those of a report-only run on the same input.
 
   4. Write only the fragment and overlap counts, with no signal track.
     '''bash
@@ -701,13 +701,13 @@ Examples
         --dir_out "\${HOME}/project/counts" \\
         --siz_bin 50 \\
         --report_n_frg \\
-        --report_n_bin \\
+        --report_n_ovlp \\
         --report_only \\
         --dir_eo "\${HOME}/project/logs" \\
         --nam_job "counts"
     '''
 
-    Each report is named from the track that would have been written, so this writes 'sample_1.n_frg.txt' and 'sample_1.n_bin.txt' to '--dir_out', and the same pair for 'sample_2'. 'L' counts fragment-bin overlaps, so it depends on '--siz_bin'.
+    Each report is named from the track that would have been written, so this writes 'sample_1.n_frg.txt' and 'sample_1.n_ovlp.txt' to '--dir_out', and the same pair for 'sample_2'. 'L' counts fragment-bin overlaps, so it depends on '--siz_bin'.
 
   5. Compute counts-per-million signal from whole-count deposition.
     '''bash
@@ -719,12 +719,12 @@ Examples
         --dir_out "\${HOME}/project/tracks" \\
         --typ_out "bedGraph.gz" \\
         --siz_bin 50 \\
-        --report_n_bin \\
+        --report_n_ovlp \\
         --dir_eo "\${HOME}/project/logs" \\
         --nam_job "cpm_sig"
     '''
 
-    Each fragment deposits one whole count per touched bin, and the track is rescaled to sum to one million. '--report_n_bin' writes the divisor 'L' beside it.
+    Each fragment deposits one whole count per touched bin, and the track is rescaled to sum to one million. '--report_n_ovlp' writes the divisor 'L' beside it.
 
   6. Compute log2 ratios and write a browser-ready companion track.
     '''bash

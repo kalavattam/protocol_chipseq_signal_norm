@@ -304,7 +304,7 @@ bash "${ROOT_REPO}/bin/submit_compute_signal.sh" \
     --csv_fil_in "${in_pe}" \
     --csv_fil_out "${dir_rep}/pe.bdg" \
     --csv_report_n_frg "${dir_rep}/pe.n_frg.txt" \
-    --csv_report_n_bin "${dir_rep}/pe.n_bin.txt" \
+    --csv_report_n_ovlp "${dir_rep}/pe.n_ovlp.txt" \
     --ref_fa "${ref_fa}" \
     --dir_eo "${dir_err}" \
     --siz_bin 10 \
@@ -321,7 +321,7 @@ if \
         --fil_in "${dir_fx}/bam/pe/tiny_pe.bam" \
         --siz_bin 10 \
         --report_n_frg "${dir_rep}/bam.n_frg.txt" \
-        --report_n_bin "${dir_rep}/bam.n_bin.txt" \
+        --report_n_ovlp "${dir_rep}/bam.n_ovlp.txt" \
         > /dev/null 2>&1
 then
     assert_files_equal \
@@ -330,8 +330,8 @@ then
         "CRAM fragment count equals the BAM count for the same alignments"
 
     assert_files_equal \
-        "${dir_rep}/pe.n_bin.txt" \
-        "${dir_rep}/bam.n_bin.txt" \
+        "${dir_rep}/pe.n_ovlp.txt" \
+        "${dir_rep}/bam.n_ovlp.txt" \
         "CRAM overlap count equals the BAM value for the same alignments"
 else
     record_fail "BAM reference counts for the CRAM comparison failed"

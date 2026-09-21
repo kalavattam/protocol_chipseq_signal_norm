@@ -109,8 +109,8 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
                     "substrate",
                     "prior_count",
                     "siz_bin",
-                    "n_bin_A",
-                    "n_bin_B",
+                    "n_ovlp_A",
+                    "n_ovlp_B",
                     "sf_A",
                     "sf_B",
                 ),
@@ -138,8 +138,8 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
                         "--fil_A signal_A.bedGraph",
                         "--fil_B signal_B.bedGraph",
                         "--substrate RPKM",
-                        "--n_bin_A 41318705",
-                        "--n_bin_B 39204118",
+                        "--n_ovlp_A 41318705",
+                        "--n_ovlp_B 39204118",
                         "--siz_bin 10",
                         "--prt_arg",
                     ),
@@ -257,9 +257,9 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
             "it when given, so a value the track contradicts is refused "
             "rather than silently rescaling the fragment-bin overlap count.\n"
             "\n"
-            "Required only when no track is read, i.e., when both '--n_bin_A' "
-            "and '--n_bin_B' are supplied and '--substrate RPKM' needs a "
-            "width for its scale factor.\n"
+            "Required only when no track is read, i.e., when both "
+            "'--n_ovlp_A' and '--n_ovlp_B' are supplied and "
+            "'--substrate RPKM' needs a width for its scale factor.\n"
             "\n"
         ),
     )
@@ -269,11 +269,10 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         type=int,
         help=argparse.SUPPRESS,
     )
-    # TODO: Rename '?_bin_?' to '?_ovlp_?', here and elsewhere.
     parser.add_argument(
-        "-nbA",
-        "--n_bin_A",
-        dest="n_bin_A",
+        "-noA",
+        "--n_ovlp_A",
+        dest="n_ovlp_A",
         type=float,
         default=None,
         help=(
@@ -281,8 +280,8 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
             "the bin matrix, which is edgeR's 'lib.size'. It adds up, across "
             "all fragments, how many bins each fragment spans.\n"
             "\n"
-            "Written by 'compute_signal --report_n_bin', as "
-            "'<track>.n_bin.txt' when that flag is given without a path. "
+            "Written by 'compute_signal --report_n_ovlp', as "
+            "'<track>.n_ovlp.txt' when that flag is given without a path. "
             "Computed from '--fil_A' when omitted, which requires a track "
             "written with '--normalizeUsing None'; supplying it skips that "
             "read and changes nothing else.\n"
@@ -290,30 +289,30 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         ),
     )
     parser.add_argument(
-        "--n-bin-A",
-        "--n_bin-A",
-        "--n-bin_A",
-        dest="n_bin_A",
+        "--n-ovlp-A",
+        "--n_ovlp-A",
+        "--n-ovlp_A",
+        dest="n_ovlp_A",
         type=float,
         help=argparse.SUPPRESS,
     )
     parser.add_argument(
-        "-nbB",
-        "--n_bin_B",
-        dest="n_bin_B",
+        "-noB",
+        "--n_ovlp_B",
+        dest="n_ovlp_B",
         type=float,
         default=None,
         help=(
-            "Fragment-bin overlap count 'L' for track B; see '--n_bin_A'. "
+            "Fragment-bin overlap count 'L' for track B; see '--n_ovlp_A'. "
             "Omit this and '--fil_B' to compute a single-track pseudocount.\n"
             "\n"
         ),
     )
     parser.add_argument(
-        "--n-bin-B",
-        "--n_bin-B",
-        "--n-bin_B",
-        dest="n_bin_B",
+        "--n-ovlp-B",
+        "--n_ovlp-B",
+        "--n-ovlp_B",
+        dest="n_ovlp_B",
         type=float,
         help=argparse.SUPPRESS,
     )
@@ -439,11 +438,11 @@ def _print_pseudo_arguments(
         else:
             print(f"--siz_bin {siz_bin}")
 
-        if args.n_bin_A is not None:
-            print(f"--n_bin_A {args.n_bin_A}")
+        if args.n_ovlp_A is not None:
+            print(f"--n_ovlp_A {args.n_ovlp_A}")
 
-        if args.n_bin_B is not None:
-            print(f"--n_bin_B {args.n_bin_B}")
+        if args.n_ovlp_B is not None:
+            print(f"--n_ovlp_B {args.n_ovlp_B}")
 
         if args.sf_A is not None:
             print(f"--sf_A    {args.sf_A}")
@@ -475,7 +474,7 @@ def _is_one_track(args: argparse.Namespace) -> bool:
     Returns
     -------
     one_track : bool
-        True when neither '--fil_B' nor '--n_bin_B' was supplied.
+        True when neither '--fil_B' nor '--n_ovlp_B' was supplied.
 
     Notes
     -----
@@ -487,7 +486,7 @@ def _is_one_track(args: argparse.Namespace) -> bool:
     'prior.count', and the denominator becomes 'L + 2 * prior.count'.
 
     Reproducing that here therefore needs no separate estimator: passing the
-    one fragment-bin overlap count as both 'n_bin_a' and 'n_bin_b' makes
+    one fragment-bin overlap count as both 'n_ovlp_a' and 'n_ovlp_b' makes
     'L_bar' equal 'L_A', which is what 'ave_lib' becomes when 'nlib' is 1.
 
     The consequence a caller must know: a track's single-track pseudocount is
@@ -496,7 +495,7 @@ def _is_one_track(args: argparse.Namespace) -> bool:
     not an artifact here.
     """
 
-    return not getattr(args, "fil_B", None) and args.n_bin_B is None
+    return not getattr(args, "fil_B", None) and args.n_ovlp_B is None
 
 
 def _run_edger(
@@ -529,7 +528,7 @@ def _run_edger(
 
     Notes
     -----
-    Fragment-bin overlap counts come from '--n_bin_A' and '--n_bin_B' when
+    Fragment-bin overlap counts come from '--n_ovlp_A' and '--n_ovlp_B' when
     supplied, and are otherwise summed from the tracks. Summing requires a
     whole-count track, since a CPM or RPKM bedGraph sums to its own normalized
     total rather than to 'L', and would silently rescale every value this
@@ -549,8 +548,8 @@ def _run_edger(
 
     one_track = _is_one_track(args)
 
-    n_bin_a = args.n_bin_A
-    n_bin_b = args.n_bin_B
+    n_ovlp_a = args.n_ovlp_A
+    n_ovlp_b = args.n_ovlp_B
     sf_a, sf_b = args.sf_A, args.sf_B
 
     siz_bin = args.siz_bin
@@ -559,19 +558,19 @@ def _run_edger(
     # overlap count needs no '--siz_bin' at all. Only a run given both of them
     # reads nothing, and only 'RPKM' then still needs a width.
     try:
-        if n_bin_a is None:
+        if n_ovlp_a is None:
             counts_a = sum_counts_bdg(args.fil_A, siz_bin, skp_pfx)
-            n_bin_a, siz_bin = counts_a.total, counts_a.siz_bin
+            n_ovlp_a, siz_bin = counts_a.total, counts_a.siz_bin
 
         if one_track:
             # Mirror A onto B so 'L_bar' collapses to 'L_A'. That reproduces
             # edgeR's 'nlib == 1' behavior exactly rather than approximating
             # it; see '_is_one_track' for the source reading it comes from.
-            n_bin_b = n_bin_a
+            n_ovlp_b = n_ovlp_a
             sf_b = sf_a
-        elif n_bin_b is None:
+        elif n_ovlp_b is None:
             counts_b = sum_counts_bdg(args.fil_B, siz_bin, skp_pfx)
-            n_bin_b, siz_bin = counts_b.total, counts_b.siz_bin
+            n_ovlp_b, siz_bin = counts_b.total, counts_b.siz_bin
     except (OSError, ValueError) as e:
         if args.verbose:
             _print_pseudo_arguments(args, skp_pfx, siz_bin)
@@ -584,14 +583,14 @@ def _run_edger(
     if siz_bin is None and canonicalize_substrate(args.substrate) == "RPKM":
         raise SystemExit(
             "'--siz_bin' is required for '--substrate RPKM' when both "
-            "'--n_bin_A' and '--n_bin_B' are supplied, because no track is "
+            "'--n_ovlp_A' and '--n_ovlp_B' are supplied, because no track is "
             "read to infer the bin width from.",
         )
 
     try:
         result = compute_pseudo_edger(
-            n_bin_a=n_bin_a,
-            n_bin_b=n_bin_b,
+            n_ovlp_a=n_ovlp_a,
+            n_ovlp_b=n_ovlp_b,
             prior_count=args.prior_count,
             substrate=args.substrate,
             siz_bin=siz_bin,
@@ -618,8 +617,8 @@ def _run_edger(
 
     if args.verbose:
         with redirect_stdout(sys.stderr):
-            print(f"n_bin_A        {format_value(n_bin_a, args.dp)}")
-            print(f"n_bin_B        {format_value(n_bin_b, args.dp)}")
+            print(f"n_ovlp_A        {format_value(n_ovlp_a, args.dp)}")
+            print(f"n_ovlp_B        {format_value(n_ovlp_b, args.dp)}")
             prior_a = format_value(result["prior_scaled_A"], args.dp)
             prior_b = format_value(result["prior_scaled_B"], args.dp)
 
@@ -650,7 +649,7 @@ def _run_edger(
                 "dp": args.dp,
                 "skp_pfx": list(skp_pfx),
             },
-            "n_bin": {"A": n_bin_a, "B": n_bin_b},
+            "n_ovlp": {"A": n_ovlp_a, "B": n_ovlp_b},
 
             # The fractional substrates own 'k_A' and 'k_B', and this tool
             # serves none of them, so the key is absent rather than null.
@@ -678,8 +677,8 @@ def _run_edger(
             print(json.dumps(out, separators=(",", ":"), allow_nan=False))
         except ValueError:
             print(
-                "Strict JSON disallows nan and inf; check '--n_bin_A' and "
-                "'--n_bin_B', or just skip '--prt_jsn'.",
+                "Strict JSON disallows nan and inf; check '--n_ovlp_A' and "
+                "'--n_ovlp_B', or just skip '--prt_jsn'.",
                 file=sys.stderr,
             )
 

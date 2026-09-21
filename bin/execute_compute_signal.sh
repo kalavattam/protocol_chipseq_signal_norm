@@ -258,7 +258,7 @@ EOM
 
 function build_cmd() {
     local idx="${1:-}"
-    local fil_in fil_A fil_B fil_out rep_n_frg rep_n_bin
+    local fil_in fil_A fil_B fil_out rep_n_frg rep_n_ovlp
     local scl_fct usr_frg dep_min pseudo
     local show_help
 
@@ -355,14 +355,14 @@ EOM
         fil_out="${csv_fil_out}"
         usr_frg="${csv_usr_frg}"
         rep_n_frg=""
-        rep_n_bin=""
+        rep_n_ovlp=""
 
         if [[ "${report_n_frg}" == "true" ]]; then
             rep_n_frg="$(IFS=','; echo "${arr_rep_n_frg[*]}")"
         fi
 
-        if [[ "${report_n_bin}" == "true" ]]; then
-            rep_n_bin="$(IFS=','; echo "${arr_rep_n_bin[*]}")"
+        if [[ "${report_n_ovlp}" == "true" ]]; then
+            rep_n_ovlp="$(IFS=','; echo "${arr_rep_n_ovlp[*]}")"
         fi
 
         if [[ "${report_only}" == "true" ]]; then fil_out=""; fi
@@ -385,7 +385,7 @@ EOM
             fil_out="${arr_fil_out[idx]}"
             usr_frg="${arr_usr_frg[idx]}"
             rep_n_frg="${arr_rep_n_frg[idx]}"
-            rep_n_bin="${arr_rep_n_bin[idx]}"
+            rep_n_ovlp="${arr_rep_n_ovlp[idx]}"
 
             if [[ "${report_only}" == "true" ]]; then fil_out=""; fi
 
@@ -445,8 +445,8 @@ EOM
             cmd_bld+=( --csv_report_n_frg "${rep_n_frg}" )
         fi
 
-        if [[ -n "${rep_n_bin}" ]]; then
-            cmd_bld+=( --csv_report_n_bin "${rep_n_bin}" )
+        if [[ -n "${rep_n_ovlp}" ]]; then
+            cmd_bld+=( --csv_report_n_ovlp "${rep_n_ovlp}" )
         fi
     elif [[ "${mode}" == "coord" ]]; then
         cmd_bld+=( --csv_usr_frg "${usr_frg}" )
@@ -518,7 +518,7 @@ function init_arg_defs() {
     engine="chrom"
     siz_win=100000
     report_n_frg=false
-    report_n_bin=false
+    report_n_ovlp=false
     report_only=false
     csv_scl_fct=""
     csv_usr_frg=""
@@ -794,8 +794,8 @@ function parse_args() {
                 shift 1
                 ;;
 
-            -rnb|--report[_-]n[_-]bin)
-                report_n_bin=true
+            -rno|--report[_-]n[_-]ovlp)
+                report_n_ovlp=true
                 shift 1
                 ;;
 
@@ -1008,11 +1008,11 @@ function validate_args() {
             if [[
                 "${report_only}" == "true"
                 && "${report_n_frg}" == "false"
-                && "${report_n_bin}" == "false"
+                && "${report_n_ovlp}" == "false"
             ]]; then
                 echo_err \
                     "'--report_only' requires '--report_n_frg' or" \
-                    "'--report_n_bin'; there is nothing to report."
+                    "'--report_n_ovlp'; there is nothing to report."
                 return 1
             fi
 
@@ -1178,7 +1178,7 @@ function prepare_vecs() {
         # element where a report was not asked for, keeping one element per
         # sample as every other per-sample array does.
         unset arr_rep_n_frg && declare -ga arr_rep_n_frg
-        unset arr_rep_n_bin && declare -ga arr_rep_n_bin
+        unset arr_rep_n_ovlp && declare -ga arr_rep_n_ovlp
         for fil_trk in "${arr_fil_out[@]}"; do
             base_rep="${fil_trk%.gz}"
             base_rep="${base_rep%.*}"
@@ -1189,16 +1189,16 @@ function prepare_vecs() {
                 arr_rep_n_frg+=( "" )
             fi
 
-            if [[ "${report_n_bin}" == "true" ]]; then
-                arr_rep_n_bin+=( "${base_rep}.n_bin.txt" )
+            if [[ "${report_n_ovlp}" == "true" ]]; then
+                arr_rep_n_ovlp+=( "${base_rep}.n_ovlp.txt" )
             else
-                arr_rep_n_bin+=( "" )
+                arr_rep_n_ovlp+=( "" )
             fi
         done
         unset fil_trk base_rep
 
         check_arr_lengths "arr_rep_n_frg" "arr_fil_in"
-        check_arr_lengths "arr_rep_n_bin" "arr_fil_in"
+        check_arr_lengths "arr_rep_n_ovlp" "arr_fil_in"
 
         for fil_in in "${arr_fil_in[@]}"; do
             if [[ "${fil_in,,}" == *.cram && -z "${ref_fa}" ]]; then
@@ -1511,7 +1511,7 @@ function print_state_debug() {
         echo "engine=${engine:-UNSET}"
         echo "siz_win=${siz_win:-UNSET}"
         echo "report_n_frg=${report_n_frg}"
-        echo "report_n_bin=${report_n_bin}"
+        echo "report_n_ovlp=${report_n_ovlp}"
         echo "report_only=${report_only}"
         echo "csv_scl_fct=${csv_scl_fct:-UNSET}"
         echo "csv_usr_frg=${csv_usr_frg:-UNSET}"
