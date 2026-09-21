@@ -142,10 +142,10 @@ def check_val_pos(args: argparse.Namespace) -> None:
         if dep_ip is None or dep_in is None:
             raise ValueError(
                 "Equations '5' and '6' include explicit sequencing-depth "
-                "terms and require both '--dep_ip' and '--dep_in'. If signal "
-                "tracks are already normalized by depth (e.g., as is the case "
-                "for normalized coverage), use '5nd' or '6nd' instead, which "
-                "omit depth terms.",
+                "terms and require both '--dep_ip' and '--dep_in'. If the "
+                "ratio is built from tracks already normalized by depth "
+                "(e.g., as is the case for normalized coverage), use '5nd' or "
+                "'6nd' instead, which omit depth terms.",
             )
 
         validate_comparison(dep_ip, "gt", 0, "dep_ip", allow_none=False)
@@ -176,14 +176,14 @@ def calculate_alpha(
     ----------
     eqn : str
         Alpha equation to compute. Options:
-            - '5':   Equation 5 (for use with fragment length-adjusted raw
-                     signal).
-            - '5nd': Equation 5 without depth terms (for use with normalized
-                     coverage).
-            - '6':   Equation 6 (for use with fragment length-adjusted raw
-                     signal).
-            - '6nd': Equation 6 without depth terms (for use with normalized
-                     coverage).
+            - '5':   Equation 5 (for ratios of fragment length-adjusted raw
+                     signal, i.e., 'frag').
+            - '5nd': Equation 5 without depth terms (for ratios of normalized
+                     coverage, i.e., 'norm').
+            - '6':   Equation 6 (for ratios of fragment length-adjusted raw
+                     signal, i.e., 'frag').
+            - '6nd': Equation 6 without depth terms (for ratios of normalized
+                     coverage, i.e., 'norm').
     mass_ip : float
         Mass of the IP sample (e.g., immunoprecipitated DNA; ng).
     mass_in : float
@@ -314,15 +314,15 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
             "siQ-ChIP alpha equation to compute (PMID: 37160995; default: "
             "%(default)s).\n"
             "\n"
-            "Equations '5' and '6' assume fragment length-adjusted raw "
-            "signal, for which each fragment (not each read) contributes to "
-            "the coverage signal. (Extending reads and including only first "
-            "mates, or otherwise ensuring one fragment = one count, "
-            "approximates that state).\n"
+            "Equations '5' and '6' assume a ratio of fragment length-adjusted "
+            "raw signal tracks ('frag'), for which each fragment (not each "
+            "read) contributes to the coverage signal (extending reads and "
+            "including only first mates, or otherwise ensuring one fragment "
+            "equals one count, approximates that state).\n"
             "\n"
             "Variants '5nd' and '6nd' omit the sequencing-depth term for "
-            "workflows where signal tracks are already normalized by depth "
-            "(e.g., “normalized coverage”).\n"
+            "ratios of tracks already normalized by depth (e.g., \"normalized "
+            "coverage\", 'norm').\n"
             "\n"
         ),
     )

@@ -128,7 +128,7 @@ Parameters
 
     For descriptions of these equations, see Dickson et al., Sci Rep 2023 (PMID: 37160995). '5' corresponds to Equation 5 in the paper, and '6' corresponds to Equation 6.
 
-    The 'nd' suffix denotes versions of those equations without depth terms (i.e., 'no depth'), meaning forms that omit terms containing \hat{R} and/or \hat{R}_\mathrm{in}. Use the 'nd' versions when applying them to ratios of normalized coverage, and use non-'nd' versions when applying them to ratios of unadjusted signal.
+    The 'nd' suffix denotes versions of those equations without depth terms (i.e., 'no depth'), meaning forms that omit terms containing \hat{R} and/or \hat{R}_\mathrm{in}. Use the 'nd' versions when applying them to ratios of normalized coverage ('norm'), and use non-'nd' versions when applying them to ratios of fragment length-adjusted signal ('frag').
 
   -ld, --len_def : int
     Default fragment length for single-end libraries when a per-file fragment length is not otherwise available.
