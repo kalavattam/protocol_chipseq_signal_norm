@@ -16,14 +16,14 @@
 Compute pseudocounts for deepTools bedGraph tracks.
 
 The CLI applies edgeR's 'prior.count' rule for a track written by deepTools,
-taking the track's substrate, a prior count, and optionally the fragment-bin
+taking the track's signal type, a prior count, and optionally the fragment-bin
 overlap counts themselves. It prints one pseudocount or an A:B pair to stdout
 or, under '--prt_arg', an argument string for use with 'bamCompare'; with
 '--prt_jsn', it prints a JSON summary.
 
 This is a deepTools-interop version of 'compute_pseudo' in which the arithmetic
-is shared and the substrate vocabulary differs. For this project's own
-substrates, use 'compute_pseudo'.
+is shared and the signal-type vocabulary differs. For this project's own signal
+types, use 'compute_pseudo'.
 
 Examples
 --------
@@ -57,7 +57,7 @@ from protocol_chipseq_signal_norm.utilities.utils_io import (
     parse_skp_pfx,
 )
 from protocol_chipseq_signal_norm.utilities.utils_stabilizer import (
-    canonicalize_substrate,
+    canonicalize_typ_sig,
     compute_pseudo_edger,
 )
 
@@ -66,13 +66,11 @@ with suppress(AttributeError, ValueError):
 
 assert sys.version_info >= (3, 11), "Python >= 3.11 required."
 
-# These are the deepTools substrates this tool serves. 'SUBSTRATE_CANON' spans
+# These are the deepTools signal types this tool serves. 'TYP_SIG_CANON' spans
 # both tools, so each CLI restricts its own choices rather than carrying its
-# own vocabulary. This tool's own substrates are the ones deepTools
+# own vocabulary. This tool's own signal types are the ones deepTools
 # '--normalizeUsing' writes.
-# TODO: Potential change of SUBSTRATE, SUB, etc. to something clearer, here and
-# elsewhere.
-SUB_CHOICES = ("CPM", "BPM", "RPKM", "RPGC", "None")
+TYP_SIG_SERVED = ("CPM", "BPM", "RPKM", "RPGC", "None")
 
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
@@ -106,7 +104,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
                 ("help", "verbose"),
                 ("fil_A", "fil_B", "skp_pfx"),
                 (
-                    "substrate",
+                    "typ_sig",
                     "prior_count",
                     "siz_bin",
                     "n_ovlp_A",
@@ -137,7 +135,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
                         "compute_pseudo_deeptools",
                         "--fil_A signal_A.bedGraph",
                         "--fil_B signal_B.bedGraph",
-                        "--substrate RPKM",
+                        "--typ_sig RPKM",
                         "--n_ovlp_A 41318705",
                         "--n_ovlp_B 39204118",
                         "--siz_bin 10",
@@ -208,14 +206,14 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     )
 
     parser.add_argument(
-        "-su",
-        "--substrate",
-        dest="substrate",
-        choices=SUB_CHOICES,
+        "-ts",
+        "--typ_sig",
+        dest="typ_sig",
+        choices=TYP_SIG_SERVED,
         default="CPM",
         help=(
-            "Target substrate: the deepTools '--normalizeUsing' the track was "
-            "written with (default: %(default)s).\n"
+            "Target signal type: the deepTools '--normalizeUsing' the track "
+            "was written with (default: %(default)s).\n"
             "\n"
             "|          | description                                    |\n"
             "| :---     | :---                                           |\n"
@@ -258,8 +256,8 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
             "rather than silently rescaling the fragment-bin overlap count.\n"
             "\n"
             "Required only when no track is read, i.e., when both "
-            "'--n_ovlp_A' and '--n_ovlp_B' are supplied and "
-            "'--substrate RPKM' needs a width for its scale factor.\n"
+            "'--n_ovlp_A' and '--n_ovlp_B' are supplied and '--typ_sig RPKM' "
+            "needs a width for its scale factor.\n"
             "\n"
         ),
     )
@@ -324,7 +322,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         default=None,
         help=(
             "Scaling factor read from 'bamCoverage --verbose'. Applies to "
-            "'--substrate RPGC' only, for which it is required.\n"
+            "'--typ_sig RPGC' only, for which it is required.\n"
             "\n"
             "Generate with '--exactScaling'; otherwise, the factor is a "
             "sampled estimate and so is every pseudocount derived from it.\n"
@@ -426,7 +424,7 @@ def _print_pseudo_arguments(
             print(f"--fil_B   {args.fil_B}")
 
         print(f"--skp_pfx {skp_pfx}")
-        print(f"--substrate {args.substrate}")
+        print(f"--typ_sig {args.typ_sig}")
         print(f"--prior_count {args.prior_count}")
 
         if siz_bin is None and args.siz_bin is None:
@@ -508,7 +506,7 @@ def _run_edger(
     Parameters
     ----------
     args : argparse.Namespace
-        Parsed arguments carrying the deepTools substrate policy.
+        Parsed arguments carrying the deepTools signal-type policy.
     skp_pfx : tuple[str, ...]
         Header prefixes to skip when reading fragment-bin overlap counts from
         tracks.
@@ -521,10 +519,10 @@ def _run_edger(
     Raises
     ------
     SystemExit
-        For a nonpositive fragment-bin overlap count, an unusable substrate
+        For a nonpositive fragment-bin overlap count, an unusable signal type
         request, an unreadable track, a '--siz_bin' the track contradicts, a
-        '--substrate RPKM' run with no width and no track to infer one from, or
-        a '--substrate RPGC' run without '--sf_A'.
+        '--typ_sig RPKM' run with no width and no track to infer one from, or a
+        '--typ_sig RPGC' run without '--sf_A'.
 
     Notes
     -----
@@ -536,7 +534,7 @@ def _run_edger(
 
     Reading a track also resolves the bin width, so '--siz_bin' is needed only
     when both fragment-bin overlap counts are supplied, which reads no track,
-    and '--substrate RPKM' still wants a width for its scale factor.
+    and '--typ_sig RPKM' still wants a width for its scale factor.
 
     One result line reaches stdout, the first of these that applies:
       - a deepTools argument string under '--prt_arg',
@@ -580,9 +578,9 @@ def _run_edger(
     if args.verbose:
         _print_pseudo_arguments(args, skp_pfx, siz_bin)
 
-    if siz_bin is None and canonicalize_substrate(args.substrate) == "RPKM":
+    if siz_bin is None and canonicalize_typ_sig(args.typ_sig) == "RPKM":
         raise SystemExit(
-            "'--siz_bin' is required for '--substrate RPKM' when both "
+            "'--siz_bin' is required for '--typ_sig RPKM' when both "
             "'--n_ovlp_A' and '--n_ovlp_B' are supplied, because no track is "
             "read to infer the bin width from.",
         )
@@ -592,7 +590,7 @@ def _run_edger(
             n_ovlp_a=n_ovlp_a,
             n_ovlp_b=n_ovlp_b,
             prior_count=args.prior_count,
-            substrate=args.substrate,
+            typ_sig=args.typ_sig,
             siz_bin=siz_bin,
             scale_a=sf_a,
             scale_b=sf_b,
@@ -602,7 +600,7 @@ def _run_edger(
 
     if not result["is_edger"]:
         print(
-            f"Note: '--substrate {args.substrate}' does not reproduce edgeR's "
+            f"Note: '--typ_sig {args.typ_sig}' does not reproduce edgeR's "
             f"estimator: {result['note']}.",
             file=sys.stderr,
         )
@@ -643,7 +641,7 @@ def _run_edger(
             "fil_B": getattr(args, "fil_B", None),
             "method": "edger",
             "params": {
-                "substrate": args.substrate,
+                "typ_sig": args.typ_sig,
                 "prior_count": args.prior_count,
                 "siz_bin": siz_bin,
                 "dp": args.dp,
@@ -651,7 +649,7 @@ def _run_edger(
             },
             "n_ovlp": {"A": n_ovlp_a, "B": n_ovlp_b},
 
-            # The fractional substrates own 'k_A' and 'k_B', and this tool
+            # The fractional signal types own 'k_A' and 'k_B', and this tool
             # serves none of them, so the key is absent rather than null.
             "prior_scaled": {
                 "A": result["prior_scaled_A"],
@@ -710,8 +708,8 @@ def main(argv: list[str] | None = None) -> int:
     -----
     Every run takes edgeR's prior rule; there is no '--method', because the
     distribution-based estimators read the value distribution alone and are
-    therefore substrate-agnostic. Run those through 'compute_pseudo', which
-    accepts a deepTools track for them without needing to know its substrate.
+    therefore signal-type-agnostic. Run those through 'compute_pseudo', which
+    accepts a deepTools track for them without needing to know its signal type.
 
     With '--prt_jsn', the command prints a strict one-line JSON summary only
     when all serialized values are finite; otherwise it warns on stderr, omits
@@ -769,9 +767,9 @@ def main(argv: list[str] | None = None) -> int:
             need_sf = args.sf_A is None or args.sf_B is None
             both = "both '--sf_A' and '--sf_B'"
 
-        if args.substrate == "RPGC" and need_sf:
+        if args.typ_sig == "RPGC" and need_sf:
             raise ValueError(
-                f"'--substrate RPGC' requires {both}; read them from "
+                f"'--typ_sig RPGC' requires {both}; read them from "
                 "'bamCoverage --verbose'.",
             )
 

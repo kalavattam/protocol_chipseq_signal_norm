@@ -47,7 +47,7 @@ The two priors sum to `2 * prior.count` and their ratio is `L_A / L_B`, which ar
 ## Current and deferred test coverage
 Current coverage in `tests/unit/compute_signal/test_pseudo.py`:
 - the `--prt_jsn` payload reports `prior_scaled`, and its ratio and sum hold; and
-- under `--substrate nc` the prior tracks the fragment counts rather than the overlap counts, and `pseudo_i / scale_i` does not recover it.
+- under `--typ_sig nc` the prior tracks the fragment counts rather than the overlap counts, and `pseudo_i / scale_i` does not recover it.
 
 Deferred:
 - a track carrying `track` or `browser` header lines, which `--skp_pfx` handling needs and which the inline constructions in `test_pseudo.py` still cover; and

@@ -20,8 +20,8 @@ from pathlib import Path
 import pytest
 
 from protocol_chipseq_signal_norm.utilities.utils_stabilizer import (
-    SUBSTRATE_CANON,
-    canonicalize_substrate,
+    TYP_SIG_CANON,
+    canonicalize_typ_sig,
     compute_pseudo_edger,
     compute_stats_robust,
     determine_coef_eff,
@@ -43,29 +43,29 @@ OVLP_B = 13605.0
 OVLP_ONE_TRACK = 16.0
 OVLP_PARTNER = 13.0
 
-# Fragment counts for the fractional substrates. The 3:2 ratio is not the
+# Fragment counts for the fractional signal types. The 3:2 ratio is not the
 # tracks' ratio, so a test cannot pass by reading fragment-bin overlap counts.
 FRG_A = 1200.0
 FRG_B = 800.0
 
-# Column totals for 'unadj', the only substrate that needs them. Both clear
+# Column totals for 'unadj', the only signal type that needs them. Both clear
 # their fragment count, as the 'T >= N' guard requires, and their 6:5 ratio is
 # a third distinct ratio, so a test cannot pass by reading 'FRG_*' or 'OVLP_*'.
 TOTAL_A = 240000.0
 TOTAL_B = 200000.0
 
-SUBSTRATE_FRACTIONAL = ("unadj", "frag", "norm")
-SUBSTRATE_SYMMETRIC = ("CPM", "BPM", "RPKM", "norm", "cpm")
-SUBSTRATE_ASYMMETRIC = ("None", "RPGC", "unadj", "frag", "count")
-SUBSTRATE_ALL = SUBSTRATE_SYMMETRIC + SUBSTRATE_ASYMMETRIC
+TYP_SIG_FRACTIONAL = ("unadj", "frag", "norm")
+TYP_SIG_SYMMETRIC = ("CPM", "BPM", "RPKM", "norm", "cpm")
+TYP_SIG_ASYMMETRIC = ("None", "RPGC", "unadj", "frag", "count")
+TYP_SIG_ALL = TYP_SIG_SYMMETRIC + TYP_SIG_ASYMMETRIC
 
 
-def _edger(substrate: str, **kwargs: float) -> dict[str, object]:
+def _edger(typ_sig: str, **kwargs: float) -> dict[str, object]:
     """
-    Call the estimator with the extra inputs each substrate requires.
+    Call the estimator with the extra inputs each signal type requires.
 
     'RPKM' needs a bin width, 'RPGC' needs both deepTools scale factors, every
-    fractional substrate needs both fragment counts, and 'unadj' needs the
+    fractional signal type needs both fragment counts, and 'unadj' needs the
     column totals on top of those, so a table-driven test cannot pass one
     argument set to every branch. 'count' and 'cpm' need nothing extra.
     """
@@ -73,17 +73,17 @@ def _edger(substrate: str, **kwargs: float) -> dict[str, object]:
     extra: dict[str, float] = {
         "n_ovlp_a": OVLP_A,
         "n_ovlp_b": OVLP_B,
-        "substrate": substrate,
+        "typ_sig": typ_sig,
     }
 
-    if substrate == "RPKM":
+    if typ_sig == "RPKM":
         extra["siz_bin"] = 10
-    elif substrate == "RPGC":
+    elif typ_sig == "RPGC":
         extra.update(scale_a=0.7, scale_b=1.3)
-    elif substrate in SUBSTRATE_FRACTIONAL:
+    elif typ_sig in TYP_SIG_FRACTIONAL:
         extra.update(n_frg_a=FRG_A, n_frg_b=FRG_B)
 
-        if substrate == "unadj":
+        if typ_sig == "unadj":
             extra.update(total_a=TOTAL_A, total_b=TOTAL_B)
 
     extra.update(kwargs)
@@ -167,30 +167,30 @@ def test_compute_pseudo_edger_symmetry_survives_only_a_tolerance() -> None:
     assert math.isclose(result["pseudo_A"], result["pseudo_B"], rel_tol=1e-12)
 
 
-@pytest.mark.parametrize("substrate", SUBSTRATE_SYMMETRIC)
-def test_compute_pseudo_edger_is_symmetric_where_the_substrate_closes(
-    substrate: str,
+@pytest.mark.parametrize("typ_sig", TYP_SIG_SYMMETRIC)
+def test_compute_pseudo_edger_is_symmetric_where_the_typ_sig_closes(
+    typ_sig: str,
 ) -> None:
     """
     Symmetry follows from closure, not from reproducing edgeR.
 
-    A closed substrate divides by its own column total, so the per-sample
+    A closed signal type divides by its own column total, so the per-sample
     scaling cancels and both tracks take the same pseudocount. 'norm' closes
     without reproducing edgeR and 'cpm' does both, so the two properties are
     tested apart.
     """
 
-    result = _edger(substrate)
+    result = _edger(typ_sig)
 
     assert math.isclose(result["pseudo_A"], result["pseudo_B"], rel_tol=1e-12)
 
 
-@pytest.mark.parametrize("substrate", SUBSTRATE_ASYMMETRIC)
+@pytest.mark.parametrize("typ_sig", TYP_SIG_ASYMMETRIC)
 def test_compute_pseudo_edger_tracks_depth_without_the_adjustment(
-    substrate: str,
+    typ_sig: str,
 ) -> None:
     """
-    An unclosed substrate keeps the depth difference in its pseudocount.
+    An unclosed signal type keeps the depth difference in its pseudocount.
 
     It applies the prior's magnitude only: none of these adjusts the
     denominator to 'L_i + 2 * y0_i', the term that cancels the per-sample
@@ -199,28 +199,28 @@ def test_compute_pseudo_edger_tracks_depth_without_the_adjustment(
     place.
     """
 
-    result = _edger(substrate)
+    result = _edger(typ_sig)
 
     assert result["pseudo_A"] != result["pseudo_B"]
 
 
-@pytest.mark.parametrize("substrate", SUBSTRATE_ALL)
+@pytest.mark.parametrize("typ_sig", TYP_SIG_ALL)
 def test_compute_pseudo_edger_scales_the_prior_by_relative_depth(
-    substrate: str,
+    typ_sig: str,
 ) -> None:
     """
     The per-sample prior is 'y0_i', so its ratio is the depth ratio.
 
-    Under a fractional substrate the depth that matters is the fragment count
+    Under a fractional signal type the depth that matters is the fragment count
     rather than the bin-sum, which is why the expected ratio switches with the
     branch.
     """
 
-    result = _edger(substrate)
+    result = _edger(typ_sig)
     prior_a = result["prior_scaled_A"]
     prior_b = result["prior_scaled_B"]
 
-    if substrate in SUBSTRATE_FRACTIONAL:
+    if typ_sig in TYP_SIG_FRACTIONAL:
         expected = FRG_A / FRG_B
     else:
         expected = OVLP_A / OVLP_B
@@ -230,12 +230,12 @@ def test_compute_pseudo_edger_scales_the_prior_by_relative_depth(
 
 
 @pytest.mark.parametrize(
-    "substrate", ("CPM", "BPM", "RPKM", "None", "RPGC", "count")
+    "typ_sig", ("CPM", "BPM", "RPKM", "None", "RPGC", "count")
 )
 def test_compute_pseudo_edger_factors_pseudo_into_scale_and_prior(
-    substrate: str,
+    typ_sig: str,
 ) -> None:
-    result = _edger(substrate)
+    result = _edger(typ_sig)
 
     assert math.isclose(
         result["pseudo_A"],
@@ -249,20 +249,20 @@ def test_compute_pseudo_edger_factors_pseudo_into_scale_and_prior(
     )
 
 
-@pytest.mark.parametrize("substrate", SUBSTRATE_FRACTIONAL)
+@pytest.mark.parametrize("typ_sig", TYP_SIG_FRACTIONAL)
 def test_compute_pseudo_edger_does_not_factor_pseudo_for_fractional(
-    substrate: str,
+    typ_sig: str,
 ) -> None:
     """
     Pin the branches where the decomposition does not hold.
 
-    A fractional substrate derives its pseudocount from the fragment counts
+    A fractional signal type derives its pseudocount from the fragment counts
     instead of from 'scale_i * prior_scaled_i', so a consumer cannot recover
     the per-sample prior by dividing. That is why the CLI emits it rather than
     leaving it to be derived.
     """
 
-    result = _edger(substrate)
+    result = _edger(typ_sig)
 
     assert result["scale_A"] == 1.0
     assert result["scale_B"] == 1.0
@@ -295,10 +295,10 @@ def test_compute_pseudo_edger_reproduces_edger_for_one_track() -> None:
     """
 
     one = compute_pseudo_edger(
-        substrate="CPM", n_ovlp_a=OVLP_ONE_TRACK, n_ovlp_b=OVLP_ONE_TRACK
+        typ_sig="CPM", n_ovlp_a=OVLP_ONE_TRACK, n_ovlp_b=OVLP_ONE_TRACK
     )
     two = compute_pseudo_edger(
-        substrate="CPM", n_ovlp_a=OVLP_ONE_TRACK, n_ovlp_b=OVLP_PARTNER
+        typ_sig="CPM", n_ovlp_a=OVLP_ONE_TRACK, n_ovlp_b=OVLP_PARTNER
     )
 
     assert one["pseudo_A"] == 100000.0
@@ -308,7 +308,7 @@ def test_compute_pseudo_edger_reproduces_edger_for_one_track() -> None:
 
 
 @pytest.mark.parametrize(
-    ("substrate", "is_edger"),
+    ("typ_sig", "is_edger"),
     [
         ("CPM", True),
         ("BPM", True),
@@ -323,25 +323,25 @@ def test_compute_pseudo_edger_reproduces_edger_for_one_track() -> None:
     ],
 )
 def test_compute_pseudo_edger_reports_whether_it_reproduces_edger(
-    substrate: str,
+    typ_sig: str,
     is_edger: bool,
 ) -> None:
     """
     'is_edger' drives the CLI's stderr warning, so it is user-visible.
     """
 
-    result = _edger(substrate)
+    result = _edger(typ_sig)
 
     assert result["is_edger"] is is_edger
     assert result["note"]
 
 
-@pytest.mark.parametrize("substrate", SUBSTRATE_FRACTIONAL)
-def test_compute_pseudo_edger_returns_k_only_for_fractional_substrates(
-    substrate: str,
+@pytest.mark.parametrize("typ_sig", TYP_SIG_FRACTIONAL)
+def test_compute_pseudo_edger_returns_k_only_for_fractional_typ_sig(
+    typ_sig: str,
 ) -> None:
     """
-    Return 'k' only for the fractional substrates.
+    Return 'k' only for the fractional signal types.
 
     'k_A' and 'k_B' are absent elsewhere, so a consumer must test for the key
     rather than assume it.
@@ -350,28 +350,28 @@ def test_compute_pseudo_edger_returns_k_only_for_fractional_substrates(
     assert "k_A" not in _edger("CPM")
     assert "k_A" not in _edger("count")
     assert "k_A" not in _edger("cpm")
-    assert _edger(substrate)["k_A"] == pytest.approx(OVLP_A / FRG_A, rel=1e-12)
+    assert _edger(typ_sig)["k_A"] == pytest.approx(OVLP_A / FRG_A, rel=1e-12)
 
 
 # Each row is a call and the fragment its rejection must name. Short fragments
 # keep a wording change from failing the test.
 EDGER_REJECTIONS = (
-    ({"n_ovlp_a": 0.0, "n_ovlp_b": OVLP_B, "substrate": "CPM"}, "n_ovlp_a"),
-    ({"n_ovlp_a": -1.0, "n_ovlp_b": OVLP_B, "substrate": "CPM"}, "n_ovlp_a"),
+    ({"n_ovlp_a": 0.0, "n_ovlp_b": OVLP_B, "typ_sig": "CPM"}, "n_ovlp_a"),
+    ({"n_ovlp_a": -1.0, "n_ovlp_b": OVLP_B, "typ_sig": "CPM"}, "n_ovlp_a"),
     (
-        {"n_ovlp_a": float("nan"), "n_ovlp_b": OVLP_B, "substrate": "CPM"},
+        {"n_ovlp_a": float("nan"), "n_ovlp_b": OVLP_B, "typ_sig": "CPM"},
         "n_ovlp_a",
     ),
     (
-        {"n_ovlp_a": float("inf"), "n_ovlp_b": OVLP_B, "substrate": "CPM"},
+        {"n_ovlp_a": float("inf"), "n_ovlp_b": OVLP_B, "typ_sig": "CPM"},
         "n_ovlp_a",
     ),
-    ({"n_ovlp_a": OVLP_A, "n_ovlp_b": 0.0, "substrate": "CPM"}, "n_ovlp_b"),
+    ({"n_ovlp_a": OVLP_A, "n_ovlp_b": 0.0, "typ_sig": "CPM"}, "n_ovlp_b"),
     (
         {
             "n_ovlp_a": OVLP_A,
             "n_ovlp_b": OVLP_B,
-            "substrate": "CPM",
+            "typ_sig": "CPM",
             "prior_count": -1.0,
         },
         "prior_count",
@@ -380,27 +380,27 @@ EDGER_REJECTIONS = (
         {
             "n_ovlp_a": OVLP_A,
             "n_ovlp_b": OVLP_B,
-            "substrate": "RPKM",
+            "typ_sig": "RPKM",
             "siz_bin": 0,
         },
         "siz_bin",
     ),
-    ({"n_ovlp_a": OVLP_A, "n_ovlp_b": OVLP_B, "substrate": "RPGC"}, "RPGC"),
+    ({"n_ovlp_a": OVLP_A, "n_ovlp_b": OVLP_B, "typ_sig": "RPGC"}, "RPGC"),
     (
         {
             "n_ovlp_a": OVLP_A,
             "n_ovlp_b": OVLP_B,
-            "substrate": "RPGC",
+            "typ_sig": "RPGC",
             "scale_a": 0.7,
         },
         "RPGC",
     ),
-    ({"n_ovlp_a": OVLP_A, "n_ovlp_b": OVLP_B, "substrate": "norm"}, "n_frg_a"),
+    ({"n_ovlp_a": OVLP_A, "n_ovlp_b": OVLP_B, "typ_sig": "norm"}, "n_frg_a"),
     (
         {
             "n_ovlp_a": OVLP_A,
             "n_ovlp_b": OVLP_B,
-            "substrate": "norm",
+            "typ_sig": "norm",
             "n_frg_a": FRG_A,
         },
         "n_frg_b",
@@ -409,14 +409,14 @@ EDGER_REJECTIONS = (
         {
             "n_ovlp_a": OVLP_A,
             "n_ovlp_b": OVLP_B,
-            "substrate": "norm",
+            "typ_sig": "norm",
             "n_frg_a": 0.0,
             "n_frg_b": FRG_B,
         },
         "n_frg_a",
     ),
     (
-        {"n_ovlp_a": OVLP_A, "n_ovlp_b": OVLP_B, "substrate": "bogus"},
+        {"n_ovlp_a": OVLP_A, "n_ovlp_b": OVLP_B, "typ_sig": "bogus"},
         "Unknown",
     ),
 )
@@ -432,21 +432,21 @@ def test_compute_pseudo_edger_rejects_unusable_inputs(
 
 
 @pytest.mark.parametrize(
-    ("alias", "canonical"), tuple(SUBSTRATE_CANON.items())
+    ("alias", "canonical"), tuple(TYP_SIG_CANON.items())
 )
-def test_canonicalize_substrate_maps_every_registered_alias(
+def test_canonicalize_typ_sig_maps_every_registered_alias(
     alias: str,
     canonical: str,
 ) -> None:
     """
-    Both CLIs canonicalize '--substrate' through this mapping.
+    Both CLIs canonicalize '--typ_sig' through this mapping.
 
     Each restricts its own accepted subset, so a typo here changes what one or
     both command-line surfaces accept. Every key is covered rather than a
     representative few.
     """
 
-    assert canonicalize_substrate(alias) == canonical
+    assert canonicalize_typ_sig(alias) == canonical
 
 
 def test_frag_prior_is_the_norm_prior_times_the_fragment_count() -> None:
@@ -455,7 +455,7 @@ def test_frag_prior_is_the_norm_prior_times_the_fragment_count() -> None:
 
     'frag' is 'norm' before the depth division, so a 'frag' bin is an 'nc' bin
     times 'N_i'. The prior rides the same scalar, which is what keeps the two
-    substrates' ratios a constant apart rather than differently shaped.
+    signal types' ratios a constant apart rather than differently shaped.
     """
 
     n_ovlp_a, n_ovlp_b = 6.0, 18.0
@@ -466,7 +466,7 @@ def test_frag_prior_is_the_norm_prior_times_the_fragment_count() -> None:
         n_ovlp_a=n_ovlp_a,
         n_ovlp_b=n_ovlp_b,
         prior_count=prior_count,
-        substrate="norm",
+        typ_sig="norm",
         n_frg_a=n_frg_a,
         n_frg_b=n_frg_b,
     )
@@ -474,7 +474,7 @@ def test_frag_prior_is_the_norm_prior_times_the_fragment_count() -> None:
         n_ovlp_a=n_ovlp_a,
         n_ovlp_b=n_ovlp_b,
         prior_count=prior_count,
-        substrate="frag",
+        typ_sig="frag",
         n_frg_a=n_frg_a,
         n_frg_b=n_frg_b,
     )
@@ -505,8 +505,8 @@ def test_frag_ratio_differs_from_nc_by_exactly_log2_of_depth_ratio() -> None:
         "n_frg_a": n_frg_a,
         "n_frg_b": n_frg_b,
     }
-    closed = compute_pseudo_edger(substrate="norm", **kwargs)
-    frag = compute_pseudo_edger(substrate="frag", **kwargs)
+    closed = compute_pseudo_edger(typ_sig="norm", **kwargs)
+    frag = compute_pseudo_edger(typ_sig="frag", **kwargs)
 
     for nc_a, nc_b in ((0.0, 0.5), (0.25, 0.25), (1e-3, 7e-2)):
         ratio_nc = (nc_a + closed["pseudo_A"]) / (nc_b + closed["pseudo_B"])
@@ -519,7 +519,7 @@ def test_frag_ratio_differs_from_nc_by_exactly_log2_of_depth_ratio() -> None:
         )
 
 
-def test_unadj_prior_is_the_norm_prior_times_the_substrate_total() -> None:
+def test_unadj_prior_is_the_norm_prior_times_the_typ_sig_total() -> None:
     """
     Check the base-pair member against its own column total.
 
@@ -539,10 +539,10 @@ def test_unadj_prior_is_the_norm_prior_times_the_substrate_total() -> None:
         "n_frg_a": n_frg_a,
         "n_frg_b": n_frg_b,
     }
-    closed = compute_pseudo_edger(substrate="norm", **kwargs)
-    frag = compute_pseudo_edger(substrate="frag", **kwargs)
+    closed = compute_pseudo_edger(typ_sig="norm", **kwargs)
+    frag = compute_pseudo_edger(typ_sig="frag", **kwargs)
     unadj = compute_pseudo_edger(
-        substrate="unadj",
+        typ_sig="unadj",
         total_a=frg_len * n_frg_a,
         total_b=frg_len * n_frg_b,
         **kwargs,
@@ -560,7 +560,7 @@ def test_unadj_prior_is_the_norm_prior_times_the_substrate_total() -> None:
 
 def test_unadj_requires_its_column_total() -> None:
     """
-    Check that the one substrate needing a third quantity says so.
+    Check that the one signal type needing a third quantity says so.
     """
 
     with pytest.raises(ValueError, match="total_a"):
@@ -568,7 +568,7 @@ def test_unadj_requires_its_column_total() -> None:
             n_ovlp_a=6.0,
             n_ovlp_b=18.0,
             prior_count=2.0,
-            substrate="unadj",
+            typ_sig="unadj",
             n_frg_a=3.0,
             n_frg_b=6.0,
         )
@@ -580,8 +580,8 @@ def test_unadj_refuses_a_total_that_cannot_be_base_pairs() -> None:
 
     An 'unadj' track sums to the total fragment base pairs, and every fragment
     spans at least one base pair, so that total is never below 'N'. The same
-    theorem guards the inferred fragment-bin overlap count one substrate over;
-    here, it catches the case that guard cannot see, where '--n_ovlp' was
+    theorem guards the inferred fragment-bin overlap count one signal type
+    over; here, it catches the case that guard cannot see, where '--n_ovlp' was
     supplied and the total still came off the wrong track. Measured, handing
     'unadj' a normalized track returns a prior 150 times too small in silence.
     """
@@ -590,7 +590,7 @@ def test_unadj_refuses_a_total_that_cannot_be_base_pairs() -> None:
         "n_ovlp_a": 6.0,
         "n_ovlp_b": 18.0,
         "prior_count": 2.0,
-        "substrate": "unadj",
+        "typ_sig": "unadj",
         "n_frg_a": 3.0,
         "n_frg_b": 6.0,
     }
@@ -628,7 +628,7 @@ def test_cpm_reproduces_edger_exactly() -> None:
             n_ovlp_a=n_ovlp_a,
             n_ovlp_b=n_ovlp_b,
             prior_count=prior_count,
-            substrate="cpm",
+            typ_sig="cpm",
         )
         n_ovlp_mean = 0.5 * (n_ovlp_a + n_ovlp_b)
 
@@ -660,7 +660,7 @@ def test_cpm_scale_and_pseudo_are_bit_identical_across_samples() -> None:
         n_ovlp_a=41318705.0,
         n_ovlp_b=39204118.0,
         prior_count=2.0,
-        substrate="cpm",
+        typ_sig="cpm",
     )
 
     assert result["scale_A"] == result["scale_B"]
@@ -682,7 +682,7 @@ def test_count_takes_the_prior_in_count_units() -> None:
         n_ovlp_a=n_ovlp_a,
         n_ovlp_b=n_ovlp_b,
         prior_count=prior_count,
-        substrate="count",
+        typ_sig="count",
     )
     n_ovlp_mean = 0.5 * (n_ovlp_a + n_ovlp_b)
 
@@ -694,12 +694,12 @@ def test_count_takes_the_prior_in_count_units() -> None:
     assert result["is_edger"] is False
 
 
-def test_project_substrates_match_compute_signal_exactly() -> None:
+def test_project_typ_sig_match_compute_signal_exactly() -> None:
     """
-    Pin the claim 'SUBSTRATE_CANON' makes in its own comment.
+    Pin the claim 'TYP_SIG_CANON' makes in its own comment.
 
-    One substrate has one vocabulary across the codebase, so the project half
-    of 'SUBSTRATE_CANON' must equal 'compute_signal.METHOD_CANON' key for key.
+    One signal type has one vocabulary across the codebase, so the project half
+    of 'TYP_SIG_CANON' must equal 'compute_signal.METHOD_CANON' key for key.
     The two maps drifted apart by hand twice during the split, once in each
     direction, so the comment is enforced here rather than trusted.
     """
@@ -709,19 +709,19 @@ def test_project_substrates_match_compute_signal_exactly() -> None:
     deeptools = {"CPM", "BPM", "RPKM", "RPGC", "None"}
     project = {
         alias: canonical
-        for alias, canonical in SUBSTRATE_CANON.items()
+        for alias, canonical in TYP_SIG_CANON.items()
         if canonical not in deeptools
     }
 
     assert project == METHOD_CANON
 
 
-def test_canonicalize_substrate_rejects_an_unregistered_name() -> None:
+def test_canonicalize_typ_sig_rejects_an_unregistered_name() -> None:
     # Not a spelling of anything: 'cpm' was this case until the whole-count
     # family registered it, and the retired aliases are the live regression.
     for unregistered in ("tpm", "n", "nrm", "normalized", "cnt", "ct", "cp"):
         with pytest.raises(ValueError, match="Unknown"):
-            canonicalize_substrate(unregistered)
+            canonicalize_typ_sig(unregistered)
 
 
 NC_PUBLISHED = (
@@ -779,7 +779,7 @@ def test_compute_pseudo_edger_reproduces_the_published_pseudocounts(
         n_ovlp_a=n_ovlp_a,
         n_ovlp_b=n_ovlp_b,
         prior_count=2.0,
-        substrate="norm",
+        typ_sig="norm",
         n_frg_a=n_frg_a,
         n_frg_b=n_frg_b,
     )
@@ -793,7 +793,7 @@ PRIOR_DEFAULT = 2.0
 
 # 'BPM' is 'CPM' once the shared bin width cancels; 'RPKM' is 'CPM' per
 # kilobase, and '_edger' passes a 10 bp bin.
-SUBSTRATE_UNIT = (
+TYP_SIG_UNIT = (
     pytest.param("CPM", 1.0, id="CPM"),
     pytest.param("BPM", 1.0, id="BPM"),
     pytest.param("RPKM", 1e3 / 10.0, id="RPKM"),
@@ -801,12 +801,12 @@ SUBSTRATE_UNIT = (
 
 
 @pytest.mark.parametrize(
-    ("substrate", "unit"),
-    SUBSTRATE_UNIT,
+    ("typ_sig", "unit"),
+    TYP_SIG_UNIT,
 )
 @pytest.mark.parametrize("count", (0.0, 1.0, 7.5, 1234.0))
 def test_compute_pseudo_edger_decomposes_the_published_formula(
-    substrate: str,
+    typ_sig: str,
     unit: float,
     count: float,
 ) -> None:
@@ -819,7 +819,7 @@ def test_compute_pseudo_edger_decomposes_the_published_formula(
     which would prove only that one expression equals itself.
     """
 
-    result = _edger(substrate)
+    result = _edger(typ_sig)
     n_ovlp_mean = 0.5 * (OVLP_A + OVLP_B)
     sides = (
         (OVLP_A, "scale_A", "pseudo_A"),

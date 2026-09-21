@@ -2005,7 +2005,7 @@
       "existing_example_count": 2,
       "example_fingerprints": [
         "92c03e427695b92877665210cdcfcb3bf72e80f0fa19f7b4da1f121ed99e8575",
-        "3ccefeef119ac091121f905b57e6bb7efac074c9513ade166ab7bf4efbf5ef45"
+        "6b615b56ddf992dbcef12b0da87b0f528cbbede5056931aedd427823ad0cff48"
       ],
       "preservation": "exact",
       "authority": "authorized_fresh_pilot"
@@ -2282,7 +2282,7 @@
         "eps",
         "mode_nz",
         "sym",
-        "substrate",
+        "typ_sig",
         "prior_count",
         "siz_bin",
         "n_ovlp_A",
@@ -2306,7 +2306,7 @@
         "eps": "mode_specific",
         "mode_nz": "mode_specific",
         "sym": "mode_specific",
-        "substrate": "mode_specific",
+        "typ_sig": "mode_specific",
         "prior_count": "mode_specific",
         "siz_bin": "mode_specific",
         "n_ovlp_A": "mode_specific",
@@ -2339,7 +2339,7 @@
         },
         {
           "members": [
-            "substrate",
+            "typ_sig",
             "prior_count",
             "siz_bin",
             "n_ovlp_A",
@@ -2347,7 +2347,7 @@
             "n_frg_A",
             "n_frg_B"
           ],
-          "rationale": "Target substrate, prior magnitude, bin width, fragment-bin overlap counts, and fragment counts form one mode-specific group; every member is inert outside '--method edger'."
+          "rationale": "Target signal type, prior magnitude, bin width, fragment-bin overlap counts, and fragment counts form one mode-specific group; every member is inert outside '--method edger'."
         },
         {
           "members": ["dp", "prt_jsn"],
@@ -2368,7 +2368,7 @@
           "eps",
           "mode_nz",
           "sym",
-          "substrate",
+          "typ_sig",
           "prior_count",
           "siz_bin",
           "n_ovlp_A",
@@ -2391,7 +2391,7 @@
           "eps",
           "mode_nz",
           "sym",
-          "substrate",
+          "typ_sig",
           "prior_count",
           "siz_bin",
           "n_ovlp_A",
@@ -2414,7 +2414,7 @@
           "eps",
           "mode_nz",
           "sym",
-          "substrate",
+          "typ_sig",
           "prior_count",
           "siz_bin",
           "n_ovlp_A",
@@ -2457,7 +2457,7 @@
         {
           "kind": "contiguous",
           "members": [
-            "substrate",
+            "typ_sig",
             "prior_count",
             "siz_bin",
             "n_ovlp_A",

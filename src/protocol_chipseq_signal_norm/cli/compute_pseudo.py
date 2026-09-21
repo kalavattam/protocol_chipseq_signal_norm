@@ -19,7 +19,7 @@
 Compute pseudocounts for bedGraph signal tracks.
 
 The CLI accepts input tracks and a method. '--method edger' derives the
-pseudocount from fragment-bin overlap counts, taking a target substrate, a
+pseudocount from fragment-bin overlap counts, taking a target signal type, a
 prior count, and optionally the counts themselves; the four distribution-based
 methods derive it from the value distribution, taking a coefficient, nonzero
 filtering, and a symmetry mode. It prints one pseudocount or an A:B pair to
@@ -58,7 +58,7 @@ from protocol_chipseq_signal_norm.utilities.utils_io import (
     parse_skp_pfx,
 )
 from protocol_chipseq_signal_norm.utilities.utils_stabilizer import (
-    canonicalize_substrate,
+    canonicalize_typ_sig,
     compute_pseudo_edger,
     compute_stats_robust,
     determine_coef_eff,
@@ -71,20 +71,18 @@ with suppress(AttributeError, ValueError):
 
 assert sys.version_info >= (3, 11), "Python >= 3.11 required."
 
-# The substrates this tool serves: the project's own, as 'compute_signal' emits
-# them. 'SUBSTRATE_CANON' spans both tools, so each CLI restricts its own
-# choices rather than carrying its own vocabulary. The deepTools substrates
+# The signal types this tool serves: the project's own, as 'compute_signal'
+# emits them. 'TYP_SIG_CANON' spans both tools, so each CLI restricts its own
+# choices rather than carrying its own vocabulary. The deepTools signal types
 # belong to 'compute_pseudo_deeptools'.
-# TODO: Potential change of SUBSTRATE, SUB, etc. to something clearer, here and
-# elsewhere.
-SUB_CHOICES = ("unadj", "frag", "norm", "nc", "count", "cpm")
+TYP_SIG_SERVED = ("unadj", "frag", "norm", "nc", "count", "cpm")
 
-# Substrates whose prior is denominated against the fragment count, so they
+# Signal types whose prior is denominated against the fragment count, so they
 # need '--n_frg_A' and '--n_frg_B'. 'unadj' additionally needs its own column
 # sum, which the track supplies and no report flag writes.
 SUB_FRACTIONAL = ("unadj", "frag", "norm")
 
-# Substrates this tool no longer accepts, and where they went. A bare argparse
+# Signal types this tool no longer accepts and where they went. A bare argparse
 # rejection would leave a user guessing which of the two tools to reach for.
 SUB_MOVED = ("CPM", "BPM", "RPKM", "RPGC", "None")
 
@@ -118,7 +116,7 @@ OPT_SHORT_ALL = (
     "-e",
     "-mz",
     "-s",
-    "-su",
+    "-ts",
     "-pc",
     "-sb",
     "-noA",
@@ -133,24 +131,24 @@ OPT_SHORT_ALL = (
 # TODO: Extend compressed-input handling to '.bgz' and '.bgzf' here and in
 # related bedGraph parsers. Revisit JSON summarization and whether a shared
 # warning/error-text helper should be exported to other Python CLIs.
-def _check_substrate(value: str) -> str:
+def _check_typ_sig(value: str) -> str:
     """
-    Accept a served substrate, naming the other tool for a moved one.
+    Accept a served signal type, naming the other tool for a moved one.
 
     Parameters
     ----------
     value : str
-        One '--substrate' value as supplied.
+        One '--typ_sig' value as supplied.
 
     Returns
     -------
-    substrate : str
+    typ_sig : str
         The value unchanged, for the 'choices' check to validate.
 
     Raises
     ------
     argparse.ArgumentTypeError
-        If the value names a deepTools substrate, which moved to
+        If the value names a deepTools signal type, which moved to
         'compute_pseudo_deeptools' when the tools split.
 
     Notes
@@ -163,7 +161,7 @@ def _check_substrate(value: str) -> str:
 
     if value in SUB_MOVED:
         raise argparse.ArgumentTypeError(
-            f"'{value}' is a deepTools substrate; use "
+            f"'{value}' is a deepTools signal type; use "
             f"'compute_pseudo_deeptools', which serves {', '.join(SUB_MOVED)} "
             "through the supplied-scale-factor workflow.",
         )
@@ -329,7 +327,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
                     "sym",
                 ),
                 (
-                    "substrate",
+                    "typ_sig",
                     "prior_count",
                     "siz_bin",
                     "n_ovlp_A",
@@ -461,7 +459,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
             "  - '--method min_nz' typically needs a larger coef (e.g., "
             "0.1–1.0) in comparison to '--method frc_*' (e.g., 0.01).\n"
             "\n"
-            "For '--method edger', see '--substrate' for more details.\n"
+            "For '--method edger', see '--typ_sig' for more details.\n"
             "\n"
         ),
     )
@@ -586,17 +584,15 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         ),
     )
 
-    # TODO: Potential renaming: '-su' / '--substrate' -> '-ts' / '--typ_sig'.
-    # Here and elsewhere.
     parser.add_argument(
-        "-su",
-        "--substrate",
-        dest="substrate",
-        type=_check_substrate,
-        choices=SUB_CHOICES,
+        "-ts",
+        "--typ_sig",
+        dest="typ_sig",
+        type=_check_typ_sig,
+        choices=TYP_SIG_SERVED,
         default="norm",
         help=(
-            "Target substrate: which '--method' wrote the track (default: "
+            "Target signal type: which '--method' wrote the track (default: "
             "%(default)s). Applies to '--method edger' only; ignored "
             "otherwise.\n"
             "\n"
@@ -608,9 +604,9 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
             "| count | one per touched bin | overlaps    | no    | infer  |\n"
             "| cpm   | touches x 1e6 / 'L' | one million | no    | infer  |\n"
             "\n"
-            "For fractional substrates 'unadj', 'frag', and 'norm', a partly "
-            "covered bin takes a share of the overlap; for whole-count "
-            "substrates 'count' and 'cpm', a partly covered bin takes one "
+            "For fractional signal types 'unadj', 'frag', and 'norm', a "
+            "partly covered bin takes a share of the overlap; for whole-count "
+            "signal types 'count' and 'cpm', a partly covered bin takes one "
             "count.\n"
             "\n"
             "Take the counts the last two columns ask for from "
@@ -620,14 +616,14 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
             "Where that column reads 'infer', '--n_ovlp_A' and '--n_ovlp_B' "
             "may be omitted and the tool sums '--fil_A' and '--fil_B' in "
             "their place. Only a 'count' track sums to 'L', so 'count' tracks "
-            "must be used for inference regardless of chosen substrate.\n"
+            "must be used for inference regardless of chosen signal type.\n"
             "\n"
             "Here, 'n_ovlp' ('L') adds up, across all fragments, how many "
             "bins each fragment spans (it is edgeR's 'lib.size').\n"
             "\n"
             "Additional notes:\n"
             "  - 'nc' is an alias for 'norm'.\n"
-            "  - For deepTools substrates, use 'compute_pseudo_deeptools'.\n"
+            "  - For deepTools signal types, use 'compute_pseudo_deeptools'.\n"
             "\n"
         ),
     )
@@ -638,8 +634,8 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         type=float,
         default=2.0,
         help=(
-            "edgeR 'prior.count', before the per-sample scaling each "
-            "substrate applies (default: %(default)s).\n"
+            "edgeR 'prior.count', before the per-sample scaling each signal "
+            "type applies (default: %(default)s).\n"
             "\n"
             "Applies to '--method edger' only; ignored otherwise.\n"
             "\n"
@@ -741,7 +737,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
             "Written by 'compute_signal --report_n_frg', as "
             "'<track>.n_frg.txt' when that flag is given without a path.\n"
             "\n"
-            "Applies to '--method edger' with a fractional substrate "
+            "Applies to '--method edger' with a fractional signal type "
             "('unadj', 'frag', 'norm', and its alias 'nc') only, where it is "
             "required.\n"
         ),
@@ -831,7 +827,7 @@ def _print_pseudo_arguments(
         print(f"--method  {args.method}")
 
         if args.method == "edger":
-            print(f"--substrate {args.substrate}")
+            print(f"--typ_sig {args.typ_sig}")
             print(f"--prior_count {args.prior_count}")
 
             if siz_bin is None and args.siz_bin is None:
@@ -1035,11 +1031,11 @@ def _run_edger(
     Raises
     ------
     SystemExit
-        For a nonpositive fragment-bin overlap count, an unusable substrate
+        For a nonpositive fragment-bin overlap count, an unusable signal type
         request, an unreadable track, a '--siz_bin' the track contradicts, a
-        fractional substrate without both fragment counts, an 'unadj' run whose
-        column total is absent or below the fragment count, or an inferred
-        overlap count that falls below the fragment count.
+        fractional signal type without both fragment counts, an 'unadj' run
+        whose column total is absent or below the fragment count, or an
+        inferred overlap count that falls below the fragment count.
 
     Notes
     -----
@@ -1049,7 +1045,7 @@ def _run_edger(
     to 'L' and would silently rescale every value this function returns.
 
     Reading a track also resolves the bin width, so '--siz_bin' is never
-    required: no substrate this tool serves needs a width of its own, and the
+    required: no signal type this tool serves needs a width of its own, and the
     option exists to cross-check the track rather than to supply a missing
     number.
 
@@ -1105,7 +1101,7 @@ def _run_edger(
                 f"Inferred '--n_ovlp_{label}' is {total}, below "
                 f"'--n_frg_{label}' at {frg}; the summed track cannot be a "
                 f"whole-count track, so '--n_ovlp_{label}' is required for "
-                f"'--substrate {args.substrate}'.",
+                f"'--typ_sig {args.typ_sig}'.",
             )
 
     if args.verbose:
@@ -1113,7 +1109,7 @@ def _run_edger(
 
     total_a, total_b = None, None
 
-    if canonicalize_substrate(args.substrate) == "unadj":
+    if canonicalize_typ_sig(args.typ_sig) == "unadj":
         # The track's own column sum is the total fragment base pairs, which is
         # what the prior is denominated in. It is read here rather than taken
         # from '--n_ovlp_A', which carries the overlap count 'k' needs and is a
@@ -1135,7 +1131,7 @@ def _run_edger(
             total_a=total_a,
             total_b=total_b,
             prior_count=args.prior_count,
-            substrate=args.substrate,
+            typ_sig=args.typ_sig,
             siz_bin=siz_bin,
             n_frg_a=n_frg_a,
             n_frg_b=n_frg_b,
@@ -1145,7 +1141,7 @@ def _run_edger(
 
     if not result["is_edger"]:
         print(
-            f"Note: '--substrate {args.substrate}' does not reproduce edgeR's "
+            f"Note: '--typ_sig {args.typ_sig}' does not reproduce edgeR's "
             f"estimator: {result['note']}.",
             file=sys.stderr,
         )
@@ -1186,7 +1182,7 @@ def _run_edger(
             "fil_B": getattr(args, "fil_B", None),
             "method": "edger",
             "params": {
-                "substrate": args.substrate,
+                "typ_sig": args.typ_sig,
                 "prior_count": args.prior_count,
                 "siz_bin": siz_bin,
                 "dp": args.dp,
@@ -1332,27 +1328,27 @@ def main(argv: list[str] | None = None) -> int:
                 need_aln = args.n_frg_A is None or args.n_frg_B is None
                 both_frg = "both '--n_frg_A' and '--n_frg_B'"
 
-            if canonicalize_substrate(args.substrate) == "unadj" and (
+            if canonicalize_typ_sig(args.typ_sig) == "unadj" and (
                 args.n_ovlp_A is None
                 or (not one_track and args.n_ovlp_B is None)
             ):
-                # The track this run reads supplies the substrate's own column
-                # total, the fragment base pairs. Summing it for 'n_ovlp' too
-                # would put that total where 'L' belongs and scale every prior
-                # by 'total / L' without saying so.
+                # The track this run reads supplies the signal type's own
+                # column total, the fragment base pairs. Summing it for
+                # 'n_ovlp' too would put that total where 'L' belongs and scale
+                # every prior by 'total / L' without saying so.
                 raise ValueError(
-                    "'--substrate unadj' requires '--n_ovlp_A' and "
+                    "'--typ_sig unadj' requires '--n_ovlp_A' and "
                     "'--n_ovlp_B'; the track supplies its own column total, "
                     "not the fragment-bin overlap count that 'k' needs.",
                 )
 
             if (
-                canonicalize_substrate(args.substrate) in SUB_FRACTIONAL
+                canonicalize_typ_sig(args.typ_sig) in SUB_FRACTIONAL
                 and need_aln
             ):
                 raise ValueError(
-                    f"'--substrate {args.substrate}' requires {both_frg}; the "
-                    "fractional substrates are denominated against the "
+                    f"'--typ_sig {args.typ_sig}' requires {both_frg}; the "
+                    "fractional signal types are denominated against the "
                     "fragment count, which their own totals cannot supply.",
                 )
 

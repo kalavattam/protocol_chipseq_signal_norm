@@ -120,7 +120,11 @@ Parameters
 
     Used with '--mode signal' or '--mode ratio'.
 
-    A factor multiplies the finished track verbatim, whatever '--method' produced it. A siQ-ChIP alpha is derived against a particular substrate: equations 5 and 6 for 'frag', 5nd and 6nd for 'norm'. A spike-in alpha applies to a ratio, and a ratio built from either 'count' or 'unadj' serves, since the per-bin deposition difference largely cancels in the division. Earlier spike-in work used 'count', so prefer it where continuity with those results matters.
+    A factor multiplies the finished track verbatim, whatever '--method' produced it.
+
+    A siQ-ChIP alpha is derived against a ratio of signal types: equations 5 and 6 for 'frag', 5nd and 6nd for 'norm'.
+
+    A spike-in alpha is likewise derived against a ratio of signal types: either 'count' or 'unadj', since the per-bin deposition difference largely cancels in the division. Earlier spike-in work used 'count', so prefer it where continuity with those results matters.
 
   -cuf, --csv_usr_frg : list of int
     Comma-separated list of fixed fragment-length values or sentinels.

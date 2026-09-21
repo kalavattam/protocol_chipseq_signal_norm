@@ -20,7 +20,7 @@ import pytest
 
 import protocol_chipseq_signal_norm.cli.compute_pseudo_deeptools as interop
 from protocol_chipseq_signal_norm.cli.compute_pseudo_deeptools import (
-    SUB_CHOICES,
+    TYP_SIG_SERVED,
     main,
     parse_args,
 )
@@ -36,7 +36,7 @@ BEDGRAPH = ROOT / "tests" / "fixtures" / "compute_pseudo" / "bedgraph"
 FIL_A = str(BEDGRAPH / "pair_A.bdg")
 FIL_B = str(BEDGRAPH / "pair_B.bdg")
 
-# Every substrate this tool serves, with the extra arguments each one needs.
+# Every signal type this tool serves, with the extra arguments each one needs.
 SUB_EXTRA = {
     "CPM": (),
     "BPM": (),
@@ -80,19 +80,19 @@ def _build_parser() -> argparse.ArgumentParser:
     return captured["parser"]
 
 
-def test_substrate_choices_exclude_the_core_vocabulary() -> None:
+def test_typ_sig_choices_exclude_the_core_vocabulary() -> None:
     """
-    Check that each CLI accepts only its own substrates.
+    Check that each CLI accepts only its own signal types.
 
     Post-split the tool is the namespace, so 'norm' and its aliases belong to
     'compute_pseudo' and reach nothing here.
     """
 
-    assert SUB_CHOICES == ("CPM", "BPM", "RPKM", "RPGC", "None")
+    assert TYP_SIG_SERVED == ("CPM", "BPM", "RPKM", "RPGC", "None")
 
     for rejected in ("norm", "nc", "n", "nrm", "normalized"):
         with pytest.raises(SystemExit):
-            parse_args(["--fil_A", FIL_A, "--substrate", rejected])
+            parse_args(["--fil_A", FIL_A, "--typ_sig", rejected])
 
 
 def test_no_normalization_spelling_survives() -> None:
@@ -123,18 +123,18 @@ GOLDEN_PAIR = {
 GOLDEN_ONE_TRACK_RPKM = "20000000"
 
 
-@pytest.mark.parametrize("substrate", sorted(GOLDEN_PAIR))
+@pytest.mark.parametrize("typ_sig", sorted(GOLDEN_PAIR))
 def test_matches_the_pre_split_arithmetic(
-    substrate: str,
+    typ_sig: str,
     capsys: pytest.CaptureFixture[str],
 ) -> None:
     """
     Pin the split: this tool still computes what 'compute_pseudo' computed.
 
     The comparison was live against the core tool until the core surface
-    dropped its deepTools substrates, at which point the two could no longer be
-    run side by side. Freezing the values keeps the guarantee past that window
-    rather than losing it with the comparison.
+    dropped its deepTools signal types, at which point the two could no longer
+    be run side by side. Freezing the values keeps the guarantee past that
+    window rather than losing it with the comparison.
 
     Equality is exact at full 'float64' precision, because last-bit drift is
     what this exists to catch.
@@ -146,14 +146,14 @@ def test_matches_the_pre_split_arithmetic(
             FIL_A,
             "--fil_B",
             FIL_B,
-            "--substrate",
-            substrate,
-            *SUB_EXTRA[substrate],
+            "--typ_sig",
+            typ_sig,
+            *SUB_EXTRA[typ_sig],
         ],
         capsys,
     )
 
-    assert out == GOLDEN_PAIR[substrate] + "\n"
+    assert out == GOLDEN_PAIR[typ_sig] + "\n"
 
 
 def test_matches_the_pre_split_arithmetic_for_one_track(
@@ -167,7 +167,7 @@ def test_matches_the_pre_split_arithmetic_for_one_track(
         [
             "--fil_A",
             FIL_A,
-            "--substrate",
+            "--typ_sig",
             "RPKM",
         ],
         capsys,
@@ -229,7 +229,7 @@ def test_rpgc_requires_both_scale_factors() -> None:
                 FIL_A,
                 "--fil_B",
                 FIL_B,
-                "--substrate",
+                "--typ_sig",
                 "RPGC",
             ],
         )
@@ -237,7 +237,7 @@ def test_rpgc_requires_both_scale_factors() -> None:
     assert "requires both '--sf_A' and '--sf_B'" in str(excinfo.value)
 
     with pytest.raises(SystemExit) as excinfo:
-        main(["--fil_A", FIL_A, "--substrate", "RPGC"])
+        main(["--fil_A", FIL_A, "--typ_sig", "RPGC"])
 
     assert "requires '--sf_A'" in str(excinfo.value)
 
@@ -255,7 +255,7 @@ def test_rpgc_applies_the_supplied_scale_factors(
             FIL_A,
             "--fil_B",
             FIL_B,
-            "--substrate",
+            "--typ_sig",
             "RPGC",
             "--sf_A",
             "0.7",
@@ -283,7 +283,7 @@ def test_rpkm_without_a_track_read_requires_siz_bin() -> None:
                 FIL_A,
                 "--fil_B",
                 FIL_B,
-                "--substrate",
+                "--typ_sig",
                 "RPKM",
                 "--n_ovlp_A",
                 "6",
@@ -341,9 +341,9 @@ def test_json_keeps_one_shape_across_both_modes(
     assert pair["one_track"] is False
     assert single["one_track"] is True
 
-    # The substrate is named for what it is. The fractional substrates own 'k',
-    # and this tool serves none of them.
-    assert pair["params"]["substrate"] == "CPM"
+    # The signal type is named for what it is. The fractional signal types own
+    # 'k', and this tool serves none of them.
+    assert pair["params"]["typ_sig"] == "CPM"
     assert "normalization" not in pair["params"]
     assert "k" not in pair
 
@@ -503,8 +503,8 @@ def test_parser_preserves_complete_action_contract() -> None:
             "#,track,browser",
             (),
         ),
-        "substrate": (
-            ("-su", "--substrate"),
+        "typ_sig": (
+            ("-ts", "--typ_sig"),
             "_StoreAction",
             None,
             "CPM",

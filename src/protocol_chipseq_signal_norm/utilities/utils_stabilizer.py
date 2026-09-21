@@ -39,11 +39,11 @@ from protocol_chipseq_signal_norm.utilities.utils_io import (
 
 assert sys.version_info >= (3, 11), "Python >= 3.11 required."
 
-# The union of both tools' substrates (i.e., types of signal, adjusted or not);
-# each CLI restricts its own 'choices' to the subset it serves. Spellings
-# mirror 'compute_signal.METHOD_CANON'.
+# The union of both tools' signal types, adjusted or not; each CLI restricts
+# its own 'choices' to the subset it serves. Spellings mirror
+# 'compute_signal.METHOD_CANON'.
 # fmt: off
-SUBSTRATE_CANON = {
+TYP_SIG_CANON = {
     # Fractional deposition: a partly covered bin takes a share proportional to
     # the overlap.
     "unadj": "unadj",
@@ -63,10 +63,7 @@ SUBSTRATE_CANON = {
     "RPGC": "RPGC",
 }
 # fmt: on
-SUBSTRATE_CHOICES = tuple(SUBSTRATE_CANON.keys())
-# TODO: Here and elsewhere, in code, docs, API, comments, docstrings, etc.,
-# rename 'substrate' to something clearer, e.g., 'typ_sig'; ergo, first poll
-# if/how 'typ_sig' is already being used across the codebase.
+TYP_SIG_CHOICES = tuple(TYP_SIG_CANON.keys())
 
 
 def iter_vals_bdg(
@@ -278,14 +275,14 @@ def median_sorted(values: list[float]) -> float:
     return 0.5 * (values[count // 2 - 1] + values[count // 2])
 
 
-def canonicalize_substrate(substrate: str) -> str:
+def canonicalize_typ_sig(typ_sig: str) -> str:
     """
-    Map a substrate alias onto its canonical name.
+    Map a signal-type alias onto its canonical name.
 
     Parameters
     ----------
-    substrate : str
-        Any key of 'SUBSTRATE_CANON'.
+    typ_sig : str
+        Any key of 'TYP_SIG_CANON'.
 
     Returns
     -------
@@ -295,20 +292,17 @@ def canonicalize_substrate(substrate: str) -> str:
     Raises
     ------
     ValueError
-        If 'substrate' is not a recognized alias.
+        If 'typ_sig' is not a recognized alias.
     """
 
-    if substrate not in SUBSTRATE_CANON:
-        raise ValueError(f"Error: Unknown substrate: {substrate!r}")
+    if typ_sig not in TYP_SIG_CANON:
+        raise ValueError(f"Error: Unknown signal type: {typ_sig!r}")
 
-    return SUBSTRATE_CANON[substrate]
+    return TYP_SIG_CANON[typ_sig]
 
 
-# TODO: Here and elsewhere across the codebase (code, comments, docs, etc.),
-# 'substrate' potentially becomes 'typ_sig' or, if/when appropriate in prose,
-# "type of signal", "signal type", and the like.
 def compute_pseudo_edger(
-    substrate: str = "norm",
+    typ_sig: str = "norm",
     prior_count: float = 2.0,
     siz_bin: int | None = None,
     n_ovlp_a: float | None = None,
@@ -321,39 +315,39 @@ def compute_pseudo_edger(
     scale_b: float | None = None,
 ) -> dict[str, object]:
     """
-    Derive edgeR-equivalent scale factors and pseudocounts for a substrate.
+    Derive edgeR-equivalent scale factors and pseudocounts for a signal type.
 
     Parameters
     ----------
-    substrate : str
-        Target substrate. This project's are the fractional 'unadj', 'frag' and
-        'norm', and the whole-count 'count' and 'cpm'; deepTools' are 'CPM',
-        'BPM', 'RPKM', 'RPGC' and 'None'. Each CLI restricts its own accepted
-        subset, so this function spans both. Defaults to 'norm', but every call
-        in this project passes it explicitly.
+    typ_sig : str
+        Target signal type. This project's are the fractional 'unadj', 'frag'
+        and 'norm', and the whole-count 'count' and 'cpm'; deepTools' are
+        'CPM', 'BPM', 'RPKM', 'RPGC' and 'None'. Each CLI restricts its own
+        accepted subset, so this function spans both. Defaults to 'norm', but
+        every call in this project passes it explicitly.
     prior_count : float
-        edgeR's 'prior.count', before the per-sample scaling each substrate
+        edgeR's 'prior.count', before the per-sample scaling each signal type
         applies.
     siz_bin : int | None
         Bin width in base pairs, required for 'RPKM' and unused otherwise. No
         default: a wrong width rescales an 'RPKM' pair in silence.
     n_ovlp_a, n_ovlp_b : float | None
-        Required for every substrate. Fragment-bin overlap count 'L' for each
+        Required for every signal type. Fragment-bin overlap count 'L' for each
         track, the bin-matrix column sum and edgeR's 'lib.size': how many bins
         each fragment spans, added up over fragments. Not the fragment count,
         which is 'n_frg_a'.
     n_frg_a, n_frg_b : float | None
-        Fragment count 'N' for each track, required by the fractional
-        substrates. It counts the fragments 'compute_signal' admitted, which is
-        what it divides a 'norm' track by. It is not the alignment-record
-        count: the two agree only where filtering leaves one record per
-        fragment. A fractional track cannot supply it, its column total being a
-        deposition total rather than a count.
+        Fragment count 'N' for each track, required by the fractional signal
+        types. It counts the fragments 'compute_signal' admitted, which is what
+        it divides a 'norm' track by. It is not the alignment-record count: the
+        two agree only where filtering leaves one record per fragment. A
+        fractional track cannot supply it, its column total being a deposition
+        total rather than a count.
     total_a, total_b : float | None
-        The substrate's own column total, required for 'unadj', where it is the
-        total fragment base pairs. Only the track reports it: no report flag
-        writes it, and it is not the fragment-bin overlap count 'L' that 'k'
-        needs, which 'n_ovlp_a' carries.
+        The signal type's own column total, required for 'unadj', where it is
+        the total fragment base pairs. Only the track reports it: no report
+        flag writes it, and it is not the fragment-bin overlap count 'L' that
+        'k' needs, which 'n_ovlp_a' carries.
     scale_a, scale_b : float | None
         Externally supplied deepTools scale factors, required for 'RPGC'.
 
@@ -361,24 +355,25 @@ def compute_pseudo_edger(
     -------
     result : dict[str, object]
         Keys 'scale_A', 'scale_B', 'pseudo_A', 'pseudo_B', 'prior_scaled_A',
-        'prior_scaled_B', 'is_edger', and 'note'. The fractional substrates add
-        'k_A' and 'k_B'; the whole-count and deepTools ones omit them, so a
+        'prior_scaled_B', 'is_edger', and 'note'. The fractional signal types
+        add 'k_A' and 'k_B'; the whole-count and deepTools ones omit them, so a
         consumer tests for the key rather than assuming it.
 
     Raises
     ------
     ValueError
         For a nonpositive fragment-bin overlap count; a negative 'prior.count';
-        an unknown substrate; a fractional substrate without both fragment
+        an unknown signal type; a fractional signal type without both fragment
         counts; 'unadj' whose column total is absent, nonpositive, or below the
         fragment count; 'RPKM' without a positive 'siz_bin'; or 'RPGC' without
         both scale factors.
 
     Notes
     -----
-    Every substrate gets a scale factor and a pseudocount: add the pseudocount
-    to a track, then multiply by the scale. The pair differs by substrate
-    because a prior must be denominated in the units it is added to.
+    Every signal type gets a scale factor and a pseudocount: add the
+    pseudocount to a track, then multiply by the scale. The pair differs by
+    signal type because a prior must be denominated in the units it is added
+    to.
 
     edgeR's 'cpm(log=TRUE)' computes '(y + y0_i) / (L_i + 2 y0_i) * 1e6' with
     'y0_i = pc * L_i / L_bar', writing
@@ -393,14 +388,15 @@ def compute_pseudo_edger(
     which is what a scale factor and a pseudocount are. 'is_edger' reports
     whether the returned pair reproduces it.
 
-    Below, 'B' is the bin width, 'T' the substrate's own column total, 's' the
-    scale factor returned alongside the pseudocount, and 'p_nc' the fractional
-    prior derived below. This project's substrates return the following:
+    Below, 'B' is the bin width, 'T' the signal type's own column total, 's' is
+    the scale factor returned alongside the pseudocount, and 'p_nc' is the
+    fractional prior derived below. This project's signal types return the
+    following:
     - 'unadj', 'frag', 'norm': scale 1, pseudocount 'p_nc * T'.
     - 'count': scale 1, pseudocount 'y0_i'.
     - 'cpm': scale '1 / (1 + 2 pc / L_bar)', pseudocount 'pc * 1e6 / L_bar'.
 
-    The deepTools substrates, which 'compute_pseudo_deeptools' serves:
+    The deepTools signal types, which 'compute_pseudo_deeptools' serves:
     - 'CPM', 'BPM': scale '1e6 / (L_i + 2 y0_i)', pseudocount 's * y0_i'.
     - 'RPKM': scale '1e9 / ((L_i + 2 y0_i) B)', pseudocount 's * y0_i'.
     - 'None': scale 1, pseudocount 'y0_i'; this is 'count' reached elsewhere.
@@ -408,7 +404,7 @@ def compute_pseudo_edger(
 
     So 'is_edger' is True for 'cpm', 'CPM', 'BPM' and 'RPKM'. Elsewhere the
     pair departs deliberately in three ways:
-    1. The fractional substrates divide the prior by 'k_bar' to answer the
+    1. The fractional signal types divide the prior by 'k_bar' to answer the
        under-dispersion of fractional deposition, giving
        'p_nc = pc / (k_bar * N_bar)' with 'k_i = L_i / N_i', averaged over the
        pair. Its 'pc' and '1 / N_bar' come from edgeR, but its '1 / k_bar' does
@@ -421,9 +417,9 @@ def compute_pseudo_edger(
     3. 'RPGC' has no edgeR analogue for its 'N * F / G' denominator, so only
        the prior's magnitude crosses over.
 
-    A closed substrate's pseudocount is symmetric in real arithmetic but not
+    A closed signal type's pseudocount is symmetric in real arithmetic but not
     always in 'float64': 'pseudo_A' and 'pseudo_B' can land a bit apart, and
-    which substrates do depends on the counts, so check symmetry with a
+    which signal types do depends on the counts, so check symmetry with a
     tolerance. 'cpm' is the exception: it's symmetric bit for bit because its
     scale is computed once from the closed form rather than per sample.
 
@@ -436,28 +432,28 @@ def compute_pseudo_edger(
 
     Below, 'prior_scaled_A' and 'prior_scaled_B' expose 'y0_i' for reading;
     nothing consumes them. Their sum is always '2 * prior.count'; their ratio
-    is 'L_A / L_B', or 'N_A / N_B' under the fractional substrates, which scale
-    by 'N_i / N_bar' instead.
+    is 'L_A / L_B', or 'N_A / N_B' under the fractional signal types, which
+    scale by 'N_i / N_bar' instead.
     """
 
     for label, n_ovlp in (("n_ovlp_a", n_ovlp_a), ("n_ovlp_b", n_ovlp_b)):
         if n_ovlp is None or not math.isfinite(n_ovlp) or n_ovlp <= 0.0:
             raise ValueError(
-                f"{label!r} must be finite and positive; every substrate "
+                f"{label!r} must be finite and positive; every signal type "
                 "needs both fragment-bin overlap counts.",
             )
 
     if not math.isfinite(prior_count) or prior_count < 0.0:
         raise ValueError("'prior_count' must be finite and nonnegative.")
 
-    substrate = canonicalize_substrate(substrate)
+    typ_sig = canonicalize_typ_sig(typ_sig)
 
-    if substrate in ("norm", "frag", "unadj"):
+    if typ_sig in ("norm", "frag", "unadj"):
         for label, frg in (("n_frg_a", n_frg_a), ("n_frg_b", n_frg_b)):
             if frg is None or not math.isfinite(frg) or frg <= 0.0:
                 raise ValueError(
-                    f"{label!r} must be finite and positive for {substrate!r};"
-                    " it is the fragment count, which a fractional track "
+                    f"{label!r} must be finite and positive for {typ_sig!r}; "
+                    "it is the fragment count, which a fractional track "
                     "cannot supply because its own total is not a count.",
                 )
 
@@ -470,9 +466,9 @@ def compute_pseudo_edger(
         # Family members differ only by their column total 'T', so the prior
         # scales with it: 'p_i = p_nc * T_i'. 'T' is 1 for 'norm', the fragment
         # count for 'frag', and the total fragment base pairs for 'unadj'.
-        if substrate == "frag":
+        if typ_sig == "frag":
             pseudo_a, pseudo_b = pseudo * n_frg_a, pseudo * n_frg_b
-        elif substrate == "unadj":
+        elif typ_sig == "unadj":
             totals = (
                 ("total_a", total_a, n_frg_a),
                 ("total_b", total_b, n_frg_b),
@@ -487,10 +483,10 @@ def compute_pseudo_edger(
                     )
 
                 # Every fragment spans at least one base pair, so 'T >= N'
-                # holds. A total below 'N' came off another substrate and would
-                # rescale the prior in silence. It fires even when 'n_ovlp' is
-                # supplied, which the inferred-'L' check in 'compute_pseudo'
-                # cannot.
+                # holds. A total below 'N' came off another signal type and
+                # would rescale the prior in silence. It fires even when
+                # 'n_ovlp' is supplied, which the inferred-'L' check in
+                # 'compute_pseudo' cannot.
                 if total < frg:
                     raise ValueError(
                         f"{label!r} is {total}, below the fragment count "
@@ -516,7 +512,7 @@ def compute_pseudo_edger(
             "note": (
                 "edgeR's prior divided by k_bar for the under-dispersion of "
                 "fractional deposition, a correction edgeR does not make, "
-                f"then denominated in {substrate!r}'s own column total"
+                f"then denominated in {typ_sig!r}'s own column total"
             ),
         }
 
@@ -524,12 +520,12 @@ def compute_pseudo_edger(
     prior_a = prior_count * n_ovlp_a / n_ovlp_mean
     prior_b = prior_count * n_ovlp_b / n_ovlp_mean
 
-    if substrate in ("CPM", "BPM"):
+    if typ_sig in ("CPM", "BPM"):
         scale_a = 1e6 / (n_ovlp_a + 2.0 * prior_a)
         scale_b = 1e6 / (n_ovlp_b + 2.0 * prior_b)
         is_edger = True
         note = "exact; BPM reduces to CPM with fixed bin width"
-    elif substrate == "RPKM":
+    elif typ_sig == "RPKM":
         if siz_bin is None or siz_bin <= 0:
             raise ValueError(
                 "'siz_bin' must be given and positive for 'RPKM'; it is the "
@@ -540,7 +536,7 @@ def compute_pseudo_edger(
         scale_b = 1e9 / ((n_ovlp_b + 2.0 * prior_b) * siz_bin)
         is_edger = True
         note = "exact"
-    elif substrate in ("None", "count"):
+    elif typ_sig in ("None", "count"):
         scale_a = 1.0
         scale_b = 1.0
         is_edger = False
@@ -548,7 +544,7 @@ def compute_pseudo_edger(
             "reproduces edgeR's ratio up to a constant log offset, since the "
             "denominator adjustment is absent"
         )
-    elif substrate == "cpm":
+    elif typ_sig == "cpm":
         # Our 'cpm' track divides by plain 'L_i' where edgeR divides by
         # 'L_i + 2 y0_i', so the scale is their ratio. Since 'y0_i / L_i' is
         # 'pc / L_bar' for every track, that ratio is '1 / (1 + 2 pc / L_bar)',
@@ -575,7 +571,7 @@ def compute_pseudo_edger(
             "denominator has no edgeR analog"
         )
 
-    if substrate == "cpm":
+    if typ_sig == "cpm":
         # The pseudocount 'y0_i * 1e6 / L_i' reduces to 'pc * 1e6 / L_bar', so
         # it too is symmetric.
         pseudo_a = prior_count * 1e6 / n_ovlp_mean

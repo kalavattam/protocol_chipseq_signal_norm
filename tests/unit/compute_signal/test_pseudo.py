@@ -252,11 +252,11 @@ def test_parser_preserves_complete_action_contract(
             ("none", "max", "min", "arith", "geom", "harm", "use_A", "use_B"),
             None,
         ),
-        "substrate": (
-            ("-su", "--substrate"),
+        "typ_sig": (
+            ("-ts", "--typ_sig"),
             False,
             "_StoreAction",
-            "_check_substrate",
+            "_check_typ_sig",
             "norm",
             ("unadj", "frag", "norm", "nc", "count", "cpm"),
             None,
@@ -538,7 +538,7 @@ def test_verbose_banner_marks_an_inferred_bin_width(
             "--verbose",
             "--method",
             "edger",
-            "--substrate",
+            "--typ_sig",
             "count",
             "--fil_A",
             fil_a,
@@ -564,7 +564,7 @@ def test_verbose_banner_reports_a_supplied_bin_width_unmarked(
             "--verbose",
             "--method",
             "edger",
-            "--substrate",
+            "--typ_sig",
             "count",
             "--fil_A",
             fil_a,
@@ -596,7 +596,7 @@ def test_verbose_banner_reports_an_unset_bin_width(
             "--verbose",
             "--method",
             "edger",
-            "--substrate",
+            "--typ_sig",
             "count",
             "--fil_A",
             fil_a,
@@ -634,7 +634,7 @@ def test_verbose_banner_survives_a_failure_during_resolution(
                 "--verbose",
                 "--method",
                 "edger",
-                "--substrate",
+                "--typ_sig",
                 "count",
                 "--fil_A",
                 fil_a,
@@ -663,7 +663,7 @@ def test_json_payload_reports_the_per_sample_prior(
         [
             "--method",
             "edger",
-            "--substrate",
+            "--typ_sig",
             "count",
             "--fil_A",
             FIL_A,
@@ -686,8 +686,8 @@ def test_json_payload_prior_is_not_derivable_for_normalized_coverage(
     Pin why 'prior_scaled' is emitted rather than left to be derived.
 
     'pseudo_i / scale_i' recovers it under 'count' alone among this tool's
-    substrates. Under 'norm' both scale factors are 1.0 and the pseudocount is
-    symmetric, so that quotient returns the shared pseudocount instead. The
+    signal types. Under 'norm' both scale factors are 1.0 and the pseudocount
+    is symmetric, so that quotient returns the shared pseudocount instead. The
     fragment counts invert the overlap-count imbalance here (3:1 against the
     tracks' 1:3), so a prior that tracked the tracks could not produce these
     values.
@@ -697,7 +697,7 @@ def test_json_payload_prior_is_not_derivable_for_normalized_coverage(
         [
             "--method",
             "edger",
-            "--substrate",
+            "--typ_sig",
             "nc",
             "--fil_A",
             FIL_A,
@@ -753,7 +753,7 @@ def test_warn_inapplicable_detects_every_spelling(
         [
             "--method",
             "edger",
-            "--substrate",
+            "--typ_sig",
             "count",
             "--fil_A",
             FIL_A,
@@ -795,7 +795,7 @@ def test_warn_inapplicable_does_not_confuse_sym_with_longer_options(
         [
             "--method",
             "edger",
-            "--substrate",
+            "--typ_sig",
             "count",
             "--fil_A",
             FIL_A,
@@ -1024,9 +1024,9 @@ def _count_prior(
     Return edgeR's pseudocount in count units for one overlap count.
 
     A 'count' track is edgeR's own 'y', so its pseudocount is edgeR's own
-    'y0_i = prior * L_i / L_bar' with no rescaling. Unlike the closed
-    substrates this carries a per-sample index, which is what makes the
-    single-track and two-track values differ.
+    'y0_i = prior * L_i / L_bar' with no rescaling. Unlike the closed signal
+    types this carries a per-sample index, which is what makes the single-track
+    and two-track values differ.
 
     Parameters
     ----------
@@ -1119,7 +1119,7 @@ def test_inferred_overlap_count_refuses_a_track_that_cannot_be_counts(
             [
                 "--method",
                 "edger",
-                "--substrate",
+                "--typ_sig",
                 "norm",
                 "--fil_A",
                 fil_a,
@@ -1150,7 +1150,7 @@ def test_inferred_overlap_count_still_works_for_a_whole_count_track(
         [
             "--method",
             "edger",
-            "--substrate",
+            "--typ_sig",
             "norm",
             "--fil_A",
             FIL_A,
@@ -1173,7 +1173,7 @@ def test_unadj_requires_the_overlap_counts() -> None:
     """
     Refuse an 'unadj' run that would conflate two different totals.
 
-    'unadj' reads its own track to get the substrate total, the fragment base
+    'unadj' reads its own track to get the signal type total, the fragment base
     pairs. The fragment-bin overlap count 'L' that 'k' needs is a different
     number off the same file, so letting it default to the summed track
     silently substitutes one for the other: measured on the fixture pair,
@@ -1185,7 +1185,7 @@ def test_unadj_requires_the_overlap_counts() -> None:
             [
                 "--method",
                 "edger",
-                "--substrate",
+                "--typ_sig",
                 "unadj",
                 "--fil_A",
                 FIL_A,
@@ -1201,7 +1201,7 @@ def test_unadj_requires_the_overlap_counts() -> None:
     assert "'--n_ovlp_A' and '--n_ovlp_B'" in str(excinfo.value)
 
 
-# Fragment counts for the fractional substrates. Their 1:2 ratio is not the
+# Fragment counts for the fractional signal types. Their 1:2 ratio is not the
 # tracks' 1:3, so a prior that read the overlap counts cannot land on these
 # values.
 FRG_A = 3.0
@@ -1216,7 +1216,7 @@ def _fractional_prior(
     """
     Return the closed fractional prior 'p_nc' for the fixture pair.
 
-    The fractional substrates divide edgeR's prior by 'k_bar' to answer the
+    The fractional signal types divide edgeR's prior by 'k_bar' to answer the
     under-dispersion of fractional deposition, giving
     'p_nc = prior / (k_bar * N_bar)' with 'k_i = L_i / N_i', averaged over the
     pair. Each member then scales 'p_nc' by its own column total. Written from
@@ -1233,7 +1233,7 @@ def _fractional_prior(
     Returns
     -------
     prior_closed : float
-        The prior for a substrate whose column total is one.
+        The prior for a signal type whose column total is one.
     """
 
     k_bar = 0.5 * (OVLP_A / n_frg_a + OVLP_B / n_frg_b)
@@ -1242,7 +1242,7 @@ def _fractional_prior(
     return prior / (k_bar * n_frg_bar)
 
 
-# One row per project substrate the other CLI tests never run: the extra
+# One row per project signal type the other CLI tests never run: the extra
 # arguments it needs, and its expected pair. 'unadj' scales 'p_nc' by the
 # track's own base-pair total, 'frag' by the fragment count, and 'cpm' closes
 # on 'L_bar' with no per-sample index. 'norm' and 'count' are covered
@@ -1251,7 +1251,7 @@ def _fractional_prior(
 # The fixture's 'unadj' totals happen to equal its overlap counts, so this row
 # cannot separate 'T' from 'L'; 'test_unadj_requires_the_overlap_counts' covers
 # that conflation by refusing the run instead.
-SUBSTRATE_CLI_CASES = (
+TYP_SIG_CLI_CASES = (
     pytest.param(
         "unadj",
         [
@@ -1291,29 +1291,29 @@ SUBSTRATE_CLI_CASES = (
 
 
 @pytest.mark.parametrize(
-    ("substrate", "extra", "expected"), SUBSTRATE_CLI_CASES
+    ("typ_sig", "extra", "expected"), TYP_SIG_CLI_CASES
 )
-def test_every_substrate_reaches_stdout_with_its_own_arithmetic(
-    substrate: str,
+def test_every_typ_sig_reaches_stdout_with_its_own_arithmetic(
+    typ_sig: str,
     extra: list[str],
     expected: tuple[float, float],
     capsys: pytest.CaptureFixture[str],
 ) -> None:
     """
-    Run each remaining substrate end to end, not only through the estimator.
+    Run each remaining signal type end to end, not only through the estimator.
 
-    'test_stabilizer.py' covers the arithmetic per substrate; what this covers
-    is the plumbing between the CLI and it, where a total can be passed where
-    an overlap count belongs. That substitution is silent, so only a pinned
-    pair catches it.
+    'test_stabilizer.py' covers the arithmetic per signal type; what this
+    covers is the plumbing between the CLI and it, where a total can be passed
+    where an overlap count belongs. That substitution is silent, so only a
+    pinned pair catches it.
     """
 
     status = main(
         [
             "--method",
             "edger",
-            "--substrate",
-            substrate,
+            "--typ_sig",
+            typ_sig,
             "--fil_A",
             FIL_A,
             "--fil_B",
@@ -1342,7 +1342,7 @@ def test_single_track_emits_one_value_rather_than_a_pair(
         [
             "--method",
             "edger",
-            "--substrate",
+            "--typ_sig",
             "count",
             "--fil_A",
             FIL_A,
@@ -1370,7 +1370,7 @@ def test_single_track_value_is_not_the_two_track_value(
     that catches it.
     """
 
-    main(["--method", "edger", "--substrate", "count", "--fil_A", FIL_A])
+    main(["--method", "edger", "--typ_sig", "count", "--fil_A", FIL_A])
 
     alone = float(capsys.readouterr().out.strip())
 
@@ -1378,7 +1378,7 @@ def test_single_track_value_is_not_the_two_track_value(
         [
             "--method",
             "edger",
-            "--substrate",
+            "--typ_sig",
             "count",
             "--fil_A",
             FIL_A,
@@ -1422,7 +1422,7 @@ def _edger_payload(
         [
             "--method",
             "edger",
-            "--substrate",
+            "--typ_sig",
             "count",
             "--prt_jsn",
             *argv,
@@ -1486,7 +1486,7 @@ def test_json_keeps_one_shape_across_both_modes(
     assert pseudo_paired != pseudo_alone
 
 
-# Each row is a whole substrate case: the flag that single-track mode still
+# Each row is a whole signal type case: the flag that single-track mode still
 # requires, a value for it, and the flag a two-track run would also need. The
 # message must name only the first.
 #
@@ -1499,10 +1499,10 @@ SINGLE_TRACK_REQUIRED = (
 
 
 @pytest.mark.parametrize(
-    ("substrate", "flag", "value", "paired_flag"), SINGLE_TRACK_REQUIRED
+    ("typ_sig", "flag", "value", "paired_flag"), SINGLE_TRACK_REQUIRED
 )
 def test_single_track_requires_only_the_a_side_flag(
-    substrate: str,
+    typ_sig: str,
     flag: str,
     value: str,
     paired_flag: str,
@@ -1519,12 +1519,12 @@ def test_single_track_requires_only_the_a_side_flag(
         [
             "--method",
             "edger",
-            "--substrate",
+            "--typ_sig",
             "count",
             "--fil_A",
             FIL_A,
-            "--substrate",
-            substrate,
+            "--typ_sig",
+            typ_sig,
             flag,
             value,
         ],
@@ -1537,12 +1537,12 @@ def test_single_track_requires_only_the_a_side_flag(
             [
                 "--method",
                 "edger",
-                "--substrate",
+                "--typ_sig",
                 "count",
                 "--fil_A",
                 FIL_A,
-                "--substrate",
-                substrate,
+                "--typ_sig",
+                typ_sig,
             ],
         )
 
@@ -1570,7 +1570,7 @@ def test_warn_inapplicable_reports_an_explicitly_passed_default(
         [
             "--method",
             "edger",
-            "--substrate",
+            "--typ_sig",
             "count",
             "--fil_A",
             FIL_A,
