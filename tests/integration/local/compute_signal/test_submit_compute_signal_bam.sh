@@ -480,8 +480,8 @@ for eng_bad in chrm windowed bogus; do
 done
 
 
-# Report lists: 'submit' takes report paths rather than deriving them, so
-# assert the written values, which catches flags wired to the wrong sample.
+# Report lists: an explicit list overrides the derived default, so assert the
+# written values, which catches flags wired to the wrong sample.
 dir_rep="${tmp}/reports"
 mkdir -p "${dir_rep}"
 
@@ -636,8 +636,8 @@ else
 fi
 
 
-# Whole-count deposition through the wrapper. Bin 3, not 10: at 10 this
-# fixture emits 1 for both 'count' and 'frag'.
+# Whole-count deposition through the wrapper. Bin 3, not 10: at 10 this fixture
+# emits 1 for both 'count' and 'frag'.
 fil_out_se_signal_count="${dir_out}/se_signal_count.bdg"
 log_se_signal_count="${dir_log}/submit_compute_signal_se_count.log"
 

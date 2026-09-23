@@ -412,7 +412,7 @@ for eng_bad in chrm windowed bogus; do
 done
 
 
-# Report flags: the wrapper derives '<track>.n_frg.txt' and
+# Reports ride by default: the wrapper derives '<track>.n_frg.txt' and
 # '<track>.n_ovlp.txt' from each output name, so assert those paths and their
 # contents, not just success.
 dir_rep="${tmp}/reports"
@@ -426,9 +426,46 @@ bash "${ROOT_REPO}/bin/execute_compute_signal.sh" \
     --typ_out bedGraph \
     --siz_bin 10 \
     --method unadj \
-    --report_n_frg \
-    --report_n_ovlp \
     > /dev/null 2>&1 || true
+
+# Drift pin. 'derive_report_path' and the CLI's 'resolve_report_path' spell one
+# rule twice: 'execute' hands over an explicit path, a direct 'submit' passes a
+# bare flag. Invoke with a bare flag so the CLI uses its own rule; asserting
+# against a path 'execute' supplied would be circular.
+# shellcheck source=lib/bash/core/format_outputs.sh
+source "${ROOT_REPO}/lib/bash/core/format_outputs.sh"
+
+dir_pin="${tmp}/derivation_pin"
+mkdir -p "${dir_pin}"
+
+for label in n_frg n_ovlp; do
+    for ext in bedGraph bedGraph.gz; do
+        trk_pin="${dir_pin}/pin_${label}_${ext//./_}.${ext}"
+
+        PYTHONDONTWRITEBYTECODE=1 \
+        "${TEST_MANAGED_PYTHON}" \
+            -m protocol_chipseq_signal_norm.cli.compute_signal \
+            --fil_in "${in_se}" \
+            --fil_out "${trk_pin}" \
+            --siz_bin 10 \
+            --method unadj \
+            "--report_${label}" \
+            > /dev/null 2>&1 || true
+
+        derived="$(derive_report_path "${trk_pin}" "${label}")"
+
+        if [[ -s "${derived}" ]]; then
+            record_pass \
+                "shell and CLI derivations agree for ${label} on .${ext}"
+        else
+            record_fail \
+                "derivation drift for ${label} on .${ext}: helper says" \
+                "'${derived}', which the CLI did not write"
+        fi
+    done
+done
+unset label ext trk_pin derived
+
 
 for samp in tiny_se tiny_pe; do
     assert_file_nonempty \
@@ -465,6 +502,7 @@ assert_file_exact_line \
 dir_only="${tmp}/report_only"
 mkdir -p "${dir_only}"
 
+# Reports are emitted by default, so '--report_only' now stands alone.
 bash "${ROOT_REPO}/bin/execute_compute_signal.sh" \
     --mode signal \
     --csv_fil_in "${in_se}" \
@@ -473,8 +511,6 @@ bash "${ROOT_REPO}/bin/execute_compute_signal.sh" \
     --typ_out bedGraph \
     --siz_bin 10 \
     --method unadj \
-    --report_n_frg \
-    --report_n_ovlp \
     --report_only \
     > /dev/null 2>&1 || true
 
@@ -482,12 +518,18 @@ assert_file_nonempty \
     "${dir_only}/tiny_se.n_frg.txt" \
     "execute report-only writes the fragment count"
 
+assert_file_nonempty \
+    "${dir_only}/tiny_se.n_ovlp.txt" \
+    "execute report-only writes the overlap count"
+
 if [[ -e "${dir_only}/tiny_se.bedGraph" ]]; then
     record_fail "execute report-only unexpectedly wrote a track"
 else
     record_pass "execute report-only writes no track"
 fi
 
+# The guard inverts with the default: the contradiction is now asking for a
+# report-only run and then suppressing the reports.
 out_bad="$(
     bash "${ROOT_REPO}/bin/execute_compute_signal.sh" \
         --mode signal \
@@ -495,14 +537,64 @@ out_bad="$(
         --dir_out "${dir_only}" \
         --dir_eo "${dir_err}" \
         --siz_bin 10 \
-        --report_only 2>&1
+        --report_only \
+        --no_report 2>&1
 )" || true
 
-if [[ "${out_bad}" == *"'--report_only' requires"* ]]; then
-    record_pass "execute rejects '--report_only' with nothing to report"
+if [[
+    "${out_bad}" == *"'--report_only'"* && "${out_bad}" == *"'--no_report'"*
+]]; then
+    record_pass \
+        "execute rejects '--report_only' with '--no_report', naming both"
 else
-    record_fail "execute accepted '--report_only' with no report flag"
+    record_fail "execute did not reject '--report_only --no_report' by name"
 fi
+
+# The retired driver booleans are gone; the Python CLI keeps its own.
+for retired_rep in --report_n_frg --report_n_ovlp -rnf -rno; do
+    out_bad="$(
+        bash "${ROOT_REPO}/bin/execute_compute_signal.sh" \
+            --mode signal \
+            --csv_fil_in "${in_se}" \
+            --dir_out "${dir_only}" \
+            --dir_eo "${dir_err}" \
+            --siz_bin 10 \
+            "${retired_rep}" 2>&1
+    )" || true
+
+    if [[ "${out_bad}" == *"${retired_rep}"* ]]; then
+        record_pass "execute rejects retired '${retired_rep}'"
+    else
+        record_fail "execute accepted retired '${retired_rep}'"
+    fi
+done
+
+# Opt-out suppresses both reports and still writes the track.
+dir_norep="${tmp}/no_report"
+mkdir -p "${dir_norep}"
+
+bash "${ROOT_REPO}/bin/execute_compute_signal.sh" \
+    --mode signal \
+    --csv_fil_in "${in_se}" \
+    --dir_out "${dir_norep}" \
+    --dir_eo "${dir_err}" \
+    --typ_out bedGraph \
+    --siz_bin 10 \
+    --method unadj \
+    --no_report \
+    > /dev/null 2>&1 || true
+
+assert_file_nonempty \
+    "${dir_norep}/tiny_se.bedGraph" \
+    "execute '--no_report' still writes the track"
+
+for suffix in n_frg n_ovlp; do
+    if [[ -e "${dir_norep}/tiny_se.${suffix}.txt" ]]; then
+        record_fail "execute '--no_report' wrote ${suffix} anyway"
+    else
+        record_pass "execute '--no_report' suppresses ${suffix}"
+    fi
+done
 
 
 # Match the method diagnostic, not exit status: an unrelated argument fault

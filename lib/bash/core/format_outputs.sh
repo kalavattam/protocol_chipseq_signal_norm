@@ -898,6 +898,28 @@ EOM
 }
 
 
+# Derive the report path 'compute_signal' writes beside a track. In the CLI,
+# 'resolve_report_path' spells the same rule for a bare '--report_n_frg'. A
+# contract test pins them together: a drift would send the wrappers to
+# different paths.
+function derive_report_path() {
+    local fil_trk="${1:-}"
+    local label="${2:-}"
+    local base
+
+    if [[ -z "${fil_trk}" || -z "${label}" ]]; then
+        echo_err_func "${FUNCNAME[0]}" \
+            "a track path and a count label are both required."
+        return 1
+    fi
+
+    base="${fil_trk%.gz}"
+    base="${base%.*}"
+
+    echo "${base}.${label}.txt"
+}
+
+
 # Print an error message when function script is executed directly.
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
     err_source_only "${BASH_SOURCE[0]}"

@@ -29,7 +29,7 @@ Usage
     --csv_fil_out <csv>
     [--siz_bin <int>] [--engine <engine>] [--siz_win <int>] [--csv_scl_fct <csv>] [--csv_usr_frg <csv>]
     [--csv_dep_min <csv>] [--csv_pseudo <csv>] [--eps <flt>] [--skip_00 <choice>] [--strict_bins] [--drp_nan] [--skp_pfx <csv>]
-    [--csv_report_n_frg <csv>] [--csv_report_n_ovlp <csv>]
+    [--csv_report_n_frg <csv>] [--csv_report_n_ovlp <csv>] [--no_report]
     [--track] [--dp <int>]
     --dir_eo <dir> [--nam_job <str>]
 
@@ -59,7 +59,7 @@ Parameters
       - 'unadj' gives base-pair overlap with no adjustment;
       - 'frag' gives base-pair overlap divided by fragment length;
       - 'norm' (alias 'nc') gives base-pair overlap divided by fragment length and total fragments, so genome-wide coverage sums to 1;
-      - 'count' deposits one whole count per bin a fragment touches, so the track sums to the overlap count 'L'; and
+      - 'count' deposits one whole count per bin a fragment touches, so the track sums to the overlap count 'L' / 'n_ovlp'; and
       - 'cpm' rescales those whole counts to sum to one million.
 
     With '--mode ratio':
@@ -159,10 +159,13 @@ Parameters
     Comma-separated list of header prefixes to skip. Shared comma-separated bedGraph header prefixes or sentinel to skip.
 
   -crf, --csv_report_n_frg : list of file
-    Comma-separated list of paths for per-sample fragment-count reports. Supply one path per '--csv_fil_in' element. Used only with '--mode signal'.
+    Comma-separated list of paths for per-sample fragment-count reports, 'N' / 'n_frg'. Supply one path per '--csv_fil_in' element. Optional: without it, each report is written beside its own output track as '<track>.n_frg.txt'. Used only with '--mode signal'.
 
   -cro, --csv_report_n_ovlp : list of file
-    Comma-separated list of paths for per-sample overlap-count reports. 'L' counts fragment-bin overlaps, so it depends on '--siz_bin'. Used only with '--mode signal'.
+    Comma-separated list of paths for per-sample overlap-count reports, 'L' / 'n_ovlp'. It depends on '--siz_bin' and, if supplied, '--csv_usr_frg'. Optional: without it, each report is written beside its own output track as '<track>.n_ovlp.txt'. Used only with '--mode signal'.
+
+  -nr, --no_report : flag
+    Suppress both per-sample counts, which are written by default. They are the inputs 'compute_pseudo --method edger' consumes, so suppressing them leaves a later ratio run without the numbers it needs for pseudocount regularization per (or adapted from) edgeR. Used only with '--mode signal'.
 
   -tr, --track : flag
     Write a companion track file. If '--mode ratio', write a companion bedGraph without non-finite rows.
@@ -271,7 +274,7 @@ Examples
         --nam_job "compute_signal_counts"
     '''
 
-    Omitting '--csv_fil_out' is permitted only because a report list is given; 'L' counts fragment-bin overlaps, so it still depends on '--siz_bin'.
+    Omitting '--csv_fil_out' is permitted only because a report list is given; 'L' / 'n_ovlp' counts fragment-bin overlaps, so it still depends on '--siz_bin'.
 
   5. Compute counts-per-million signal from whole-count deposition.
     '''bash
@@ -289,6 +292,6 @@ Examples
         --nam_job "compute_signal_cpm"
     '''
 
-    Each fragment deposits one whole count per touched bin, and the track is rescaled to sum to one million. '--csv_report_n_ovlp' writes the divisor 'L' beside each track.
+    Each fragment deposits one whole count per touched bin, and the track is rescaled to sum to one million. '--csv_report_n_ovlp' writes the divisor 'L' / 'n_ovlp' beside each track.
 EOM
 }

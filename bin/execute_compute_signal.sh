@@ -357,11 +357,8 @@ EOM
         rep_n_frg=""
         rep_n_ovlp=""
 
-        if [[ "${report_n_frg}" == "true" ]]; then
+        if [[ "${no_report}" == "false" ]]; then
             rep_n_frg="$(IFS=','; echo "${arr_rep_n_frg[*]}")"
-        fi
-
-        if [[ "${report_n_ovlp}" == "true" ]]; then
             rep_n_ovlp="$(IFS=','; echo "${arr_rep_n_ovlp[*]}")"
         fi
 
@@ -448,6 +445,12 @@ EOM
         if [[ -n "${rep_n_ovlp}" ]]; then
             cmd_bld+=( --csv_report_n_ovlp "${rep_n_ovlp}" )
         fi
+
+        # Without this, the opt-out stops here: 'submit' would see no report
+        # list, take that for 'derive', and write them anyway.
+        if [[ "${no_report}" == "true" ]]; then
+            cmd_bld+=( --no_report )
+        fi
     elif [[ "${mode}" == "coord" ]]; then
         cmd_bld+=( --csv_usr_frg "${usr_frg}" )
     else
@@ -517,9 +520,8 @@ function init_arg_defs() {
     siz_bin=""
     engine="chrom"
     siz_win=100000
-    report_n_frg=false
-    report_n_ovlp=false
     report_only=false
+    no_report=false
     csv_scl_fct=""
     csv_usr_frg=""
     csv_dep_min=""
@@ -789,18 +791,13 @@ function parse_args() {
                 shift 2
                 ;;
 
-            -rnf|--report[_-]n[_-]frg)
-                report_n_frg=true
-                shift 1
-                ;;
-
-            -rno|--report[_-]n[_-]ovlp)
-                report_n_ovlp=true
-                shift 1
-                ;;
-
             -ro|--report[_-]only)
                 report_only=true
+                shift 1
+                ;;
+
+            -nr|--no[_-]report)
+                no_report=true
                 shift 1
                 ;;
 
@@ -1007,12 +1004,11 @@ function validate_args() {
 
             if [[
                 "${report_only}" == "true"
-                && "${report_n_frg}" == "false"
-                && "${report_n_ovlp}" == "false"
+                && "${no_report}" == "true"
             ]]; then
                 echo_err \
-                    "'--report_only' requires '--report_n_frg' or" \
-                    "'--report_n_ovlp'; there is nothing to report."
+                    "'--report_only' and '--no_report' contradict: the run" \
+                    "would write neither a track nor a report."
                 return 1
             fi
 
@@ -1173,29 +1169,21 @@ function prepare_vecs() {
 
         check_arr_lengths "arr_fil_out" "arr_fil_in"
 
-        # Report paths sit beside the track and share its derived base, so a
-        # sample's counts are findable from its track name alone. Pad an empty
-        # element where a report was not asked for, keeping one element per
-        # sample as every other per-sample array does.
+        # Reports share the track's derived base, so a sample's counts follow
+        # from its name. Under '--no_report', pad an empty element to keep one
+        # per sample, as every per-sample array here does.
         unset arr_rep_n_frg && declare -ga arr_rep_n_frg
         unset arr_rep_n_ovlp && declare -ga arr_rep_n_ovlp
         for fil_trk in "${arr_fil_out[@]}"; do
-            base_rep="${fil_trk%.gz}"
-            base_rep="${base_rep%.*}"
-
-            if [[ "${report_n_frg}" == "true" ]]; then
-                arr_rep_n_frg+=( "${base_rep}.n_frg.txt" )
+            if [[ "${no_report}" == "false" ]]; then
+                arr_rep_n_frg+=( "$(derive_report_path "${fil_trk}" n_frg)" )
+                arr_rep_n_ovlp+=( "$(derive_report_path "${fil_trk}" n_ovlp)" )
             else
                 arr_rep_n_frg+=( "" )
-            fi
-
-            if [[ "${report_n_ovlp}" == "true" ]]; then
-                arr_rep_n_ovlp+=( "${base_rep}.n_ovlp.txt" )
-            else
                 arr_rep_n_ovlp+=( "" )
             fi
         done
-        unset fil_trk base_rep
+        unset fil_trk
 
         check_arr_lengths "arr_rep_n_frg" "arr_fil_in"
         check_arr_lengths "arr_rep_n_ovlp" "arr_fil_in"
@@ -1510,9 +1498,8 @@ function print_state_debug() {
         echo "siz_bin=${siz_bin:-UNSET}"
         echo "engine=${engine:-UNSET}"
         echo "siz_win=${siz_win:-UNSET}"
-        echo "report_n_frg=${report_n_frg}"
-        echo "report_n_ovlp=${report_n_ovlp}"
         echo "report_only=${report_only}"
+        echo "no_report=${no_report}"
         echo "csv_scl_fct=${csv_scl_fct:-UNSET}"
         echo "csv_usr_frg=${csv_usr_frg:-UNSET}"
         echo "csv_dep_min=${csv_dep_min:-UNSET}"

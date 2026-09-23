@@ -669,7 +669,7 @@
           "symbol": "run_comp_sig",
           "parameter": "report_n_frg",
           "owner": "PARAMETER.DESCRIPTIONS",
-          "evidence": "Parameters row for 'report_n_frg': Path for the fragment-count report or empty string."
+          "evidence": "Parameters row for 'report_n_frg': Path for the fragment-count report, sentinel 'DERIVE', or empty string."
         }
       ],
       "local_meanings": [],
@@ -686,7 +686,7 @@
           "symbol": "run_comp_sig",
           "parameter": "report_n_ovlp",
           "owner": "PARAMETER.DESCRIPTIONS",
-          "evidence": "Parameters row for 'report_n_ovlp': Path for the overlap-count report or empty string."
+          "evidence": "Parameters row for 'report_n_ovlp': Path for the overlap-count report, sentinel 'DERIVE', or empty string."
         }
       ],
       "local_meanings": [],

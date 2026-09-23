@@ -154,9 +154,10 @@ else
 fi
 
 
-# Report forwarding: a bare '--report_n_frg' is valid in 'compute_signal.py',
-# which derives its path, so a regression here fails silently rather than
-# loudly. Require every append to carry a quoted value under a non-empty guard.
+# Report forwarding. A bare '--report_n_frg' makes the CLI derive its own path:
+# intended under the 'DERIVE' guard, a silent fault anywhere else. Pin both
+# directions, and keep path appends quoted under a non-empty guard so an empty
+# variable fails here rather than deriving.
 rep_fwd="${TEST_DIR_TMP}/submit_compute_signal_interface/forwarding.txt"
 mkdir -p "$(dirname "${rep_fwd}")"
 
@@ -166,7 +167,9 @@ import sys
 
 source = open(sys.argv[1], encoding="utf-8").read().splitlines()
 
-appends = 0
+bare = 0
+valued = 0
+
 for index, line in enumerate(source):
     append = re.match(
         r'\s*cmd\+=\( --report_(n_frg|n_ovlp)(.*)\)\s*$',
@@ -176,41 +179,60 @@ for index, line in enumerate(source):
     if not append:
         continue
 
-    appends += 1
     label, tail = append.group(1), append.group(2).strip()
     var = f"report_{label}"
     line_no = index + 1
+    window = [entry.strip() for entry in source[max(0, index - 2):index]]
 
-    if tail != f'"${{{var}}}"':
-        print(f"BARE --report_{label} line {line_no}: appends {tail!r}")
-        continue
+    derive = f'if [[ "${{{var}}}" == "DERIVE" ]]; then'
+    valued_guard = f'elif [[ -n "${{{var}}}" ]]; then'
 
-    window = source[max(0, index - 2):index]
-    guard = f'if [[ -n "${{{var}}}" ]]; then'
+    if tail == "":
+        bare += 1
 
-    if any(entry.strip() == guard for entry in window):
-        print(f"OK --report_{label} line {line_no}: quoted under '-n' guard")
+        if derive in window:
+            print(f"OK-DERIVE --report_{label} line {line_no}")
+        else:
+            print(f"BARE-UNGUARDED --report_{label} line {line_no}")
+    elif tail == f'"${{{var}}}"':
+        valued += 1
+
+        if valued_guard in window:
+            print(f"OK-VALUED --report_{label} line {line_no}")
+        else:
+            print(f"UNGUARDED --report_{label} line {line_no}")
     else:
-        print(f"UNGUARDED --report_{label} line {line_no}: no '-n' on {var}")
+        print(f"UNEXPECTED --report_{label} line {line_no}: {tail!r}")
 
-print(f"APPENDS {appends}")
+print(f"BARE {bare}")
+print(f"VALUED {valued}")
 PY
 
 if [[ -s "${rep_fwd}" ]]; then
     assert_pattern_absent \
         "${rep_fwd}" \
-        "BARE" \
-        "submit never appends a valueless '--report_n_frg' / '--report_n_ovlp'"
+        "BARE-UNGUARDED" \
+        "a bare report append occurs only under the 'DERIVE' guard"
 
     assert_pattern_absent \
         "${rep_fwd}" \
-        "UNGUARDED" \
-        "each report append sits under a non-empty guard on its own variable"
+        "UNGUARDED --report" \
+        "each valued report append sits under a non-empty guard"
+
+    assert_pattern_absent \
+        "${rep_fwd}" \
+        "UNEXPECTED" \
+        "no report append carries an unrecognized argument form"
 
     assert_pattern_found \
         "${rep_fwd}" \
-        "APPENDS 2" \
-        "both report forwarding sites were found and checked"
+        "BARE 2" \
+        "the derive branch bare-appends both report flags"
+
+    assert_pattern_found \
+        "${rep_fwd}" \
+        "VALUED 2" \
+        "the explicit-path branch still forwards both report flags by value"
 else
     record_fail "report forwarding report was not produced"
 fi

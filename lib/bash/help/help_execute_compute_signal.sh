@@ -29,7 +29,7 @@ Usage
     --dir_out <dir> [--typ_out <format>] [--prefix <str>]
     [--siz_bin <int>] [--engine <engine>] [--siz_win <int>] [--csv_usr_frg <csv>] [--csv_scl_fct <csv>]
     [--csv_dep_min <csv>] [--csv_pseudo <csv>] [--eps <num>] [--skip_00 <choice>] [--strict_bins] [--drp_nan] [--skp_pfx <csv>]
-    [--report_n_frg] [--report_n_ovlp] [--report_only]
+    [--report_only] [--no_report]
     [--track] [--dp <int>]
     [--dir_eo <dir>] [--nam_job <str>] [--max_job <int>] [--slurm] [--time <time>]
 
@@ -175,14 +175,11 @@ Parameters
   -sp, --skp_pfx : list of str
     Comma-separated list of header prefixes to skip. Shared comma-separated list of bedGraph header prefixes or sentinel to skip while parsing ratio-mode input files. Used only with '--mode ratio'.
 
-  -rnf, --report_n_frg : flag
-    Write the fragment count 'N' for each sample, beside its output track as '<track>.n_frg.txt'. Used only with '--mode signal'.
-
-  -rno, --report_n_ovlp : flag
-    Write the overlap count 'L' for each sample, beside its output track as '<track>.n_ovlp.txt'. 'L' counts fragment-bin overlaps, so it depends on '--siz_bin' and, if supplied, '--csv_usr_frg'. Used only with '--mode signal'.
-
   -ro, --report_only : flag
-    Write only the requested reports, with no signal track. Requires '--report_n_frg' or '--report_n_ovlp'. Used only with '--mode signal'.
+    Write only the reports, with no signal track. By default, the fragment count 'N' / 'n_frg' and the fragment-bin overlap count 'L' / 'n_ovlp' are written beside each output track as '<track>.n_frg.txt' and '<track>.n_ovlp.txt', both of which are needed for pseudocount regularization per (or adapted from) edgeR. Used only with '--mode signal'.
+
+  -nr, --no_report : flag
+    Suppress both counts. Cannot be combined with '--report_only'. Used only with '--mode signal'.
 
   -tr, --trk, --track : flag
     Write a companion track file. If '--mode ratio', also write a companion bedGraph with all non-finite rows ('inf', '-inf', and 'nan') removed.
@@ -342,7 +339,7 @@ Parameters
 
         + 'count':
           - Deposit one whole count in every bin a fragment touches, whether the fragment covers the whole bin or a single base.
-          - The track's value column sums to the overlap count 'L' that '--report_n_ovlp' reports on the same run.
+          - The track's value column sums to the overlap count 'L' / 'n_ovlp' reported beside the track on the same run.
 
         + 'cpm':
           - Rescale the whole counts so the track sums to one million, following the edgeR construction.
@@ -547,30 +544,31 @@ Parameters
 
     Passed through to 'submit_compute_signal.sh' and then to 'compute_signal_ratio.py'.
 
-  -rnf, --report_n_frg : flag
-    Write the fragment count 'N' for each sample.
-
-    'N' is the number of fragments the signal path uses, counted from the same iterator that builds the track, under the same '--csv_usr_frg' and alignment-filter settings. It is therefore the number a '--method norm' run divides by, not an estimate of it.
-
-    The report is written beside each output track, as '<track>.n_frg.txt'. With '--prefix', that follows the track's derived name, so 'run1.sample.bedGraph' yields 'run1.sample.n_frg.txt'.
-
-    Used only with '--mode signal'; ignored otherwise.
-
-  -rno, --report_n_ovlp : flag
-    Write the fragment-bin overlap count 'L' for each sample.
-
-    'L' is the total number of bins the counted fragments span, counting a fragment once per bin it touches. It is not the summed base pairs an unadjusted track reports: the bin count is what puts 'k = L / N' in bins, the unit a per-bin pseudocount needs.
-
-    Because 'L' counts fragment-bin overlaps, it depends on '--siz_bin' and, if supplied, '--csv_usr_frg', where fragment extension changes how far each fragment reaches. The report is written beside each output track, as '<track>.n_ovlp.txt'.
-
-    Used only with '--mode signal'; ignored otherwise.
-
   -ro, --report_only : flag
-    Write the requested reports without writing a signal track.
+    Write the two per-sample counts without writing a signal track.
 
-    Requires '--report_n_frg' or '--report_n_ovlp'; there is nothing to report otherwise, and the run is rejected. Counting happens before the output branch, so the reported values are identical to those a track-writing run would produce on the same input.
+    Both are written beside each output track by default, whether or not this flag is given:
+      - 'N' / 'n_frg', the fragment count, written as '<track>.n_frg.txt':
+        + Counted from the same iterator that builds the track, under the same '--csv_usr_frg' and alignment-filter settings.
+        + Thus, it's the number a '--method norm' run divides by, not an estimate of it.
 
-    Use this to obtain prior counts without paying for track output.
+      - 'L' / 'n_ovlp', the fragment-bin overlap count, written as '<track>.n_ovlp.txt':
+        + The total number of bins the counted fragments span / overlap, counting a fragment once per bin it touches.
+        + Not the summed base pairs an unadjusted track reports: the bin count is what puts 'k = L / N' in bins, which is the unit a per-bin pseudocount needs.
+        + It depends on '--siz_bin' and, if supplied, '--csv_usr_frg', since fragment extension changes how far each fragment reaches.
+
+    Both names follow the track's own derived name, so under '--prefix', '.sample.bedGraph' yields 'run_1.sample.n_frg.txt' and 'run_1.sample.n_ovlp.txt'. The pair is what 'compute_pseudo --method edger' consumes.
+
+    Counting happens before the output branch, so the reported values are identical to those a track-writing run would produce on the same input. Use this to obtain prior counts without paying for track output.
+
+    Cannot be combined with '--no_report': that pair would write neither a track nor a report; such a run is rejected.
+
+    Used only with '--mode signal'; ignored otherwise.
+
+  -nr, --no_report : flag
+    Suppress the two per-sample counts described under '--report_only' above, which are otherwise written beside each output track.
+
+    They are the inputs 'compute_pseudo --method edger' consumes, so suppressing them leaves a later ratio run without the numbers it needs for pseudocount regularization per (or adapted from) edgeR.
 
     Used only with '--mode signal'; ignored otherwise.
 
@@ -665,7 +663,7 @@ Examples
         --nam_job "norm_sig"
     '''
 
-  2. Compute log2 IP/input ratios from bedGraph files in serial.
+  2. Compute log2 IP/input ratios from bedGraph files in serial with user-supplied pseudocounts.
     '''bash
     bash "\${HOME}/bin/execute_compute_signal.sh" \\
         --threads 1 \\
@@ -678,7 +676,7 @@ Examples
         --typ_out "bedGraph.gz"
     '''
 
-  3. Compute normalized coverage and write the counts beside each track.
+  3. Compute normalized coverage without the per-sample counts of 'N' / 'n_frg' and 'L' / 'n_ovlp'.
     '''bash
     bash "\${HOME}/bin/execute_compute_signal.sh" \\
         --threads 8 \\
@@ -688,13 +686,12 @@ Examples
         --dir_out "\${HOME}/project/tracks" \\
         --typ_out "bedGraph.gz" \\
         --siz_bin 50 \\
-        --report_n_frg \\
-        --report_n_ovlp \\
+        --no_report \\
         --dir_eo "\${HOME}/project/logs" \\
         --nam_job "norm_sig"
     '''
 
-    Writes 'sample_1.bedGraph.gz' alongside 'sample_1.n_frg.txt' and 'sample_1.n_ovlp.txt', and the same trio for 'sample_2'. Counting runs before the output branch, so the counts match those of a report-only run on the same input.
+    Writes 'sample_1.bedGraph.gz' and 'sample_2.bedGraph.gz' and nothing else. Example 1, which omits '--no_report', writes 'sample_1.n_frg.txt' and 'sample_1.n_ovlp.txt' beside each track. Suppress them only where no pseudocount is wanted later: 'compute_pseudo --method edger' consumes these two counts.
 
   4. Write only the fragment and overlap counts, with no signal track.
     '''bash
@@ -704,14 +701,12 @@ Examples
         --csv_fil_in "\${HOME}/project/samples/sample_1.bam,\${HOME}/project/samples/sample_2.bam" \\
         --dir_out "\${HOME}/project/counts" \\
         --siz_bin 50 \\
-        --report_n_frg \\
-        --report_n_ovlp \\
         --report_only \\
         --dir_eo "\${HOME}/project/logs" \\
         --nam_job "counts"
     '''
 
-    Each report is named from the track that would have been written, so this writes 'sample_1.n_frg.txt' and 'sample_1.n_ovlp.txt' to '--dir_out', and the same pair for 'sample_2'. 'L' counts fragment-bin overlaps, so it depends on '--siz_bin'.
+    Each report is named from the track that would have been written, so this writes 'sample_1.n_frg.txt' and 'sample_1.n_ovlp.txt' to '--dir_out', and the same pair for 'sample_2'. 'L' / 'n_ovlp' counts fragment-bin overlaps, so it depends on '--siz_bin'.
 
   5. Compute counts-per-million signal from whole-count deposition.
     '''bash
@@ -722,13 +717,13 @@ Examples
         --csv_fil_in "\${HOME}/project/samples/sample_1.bam,\${HOME}/project/samples/sample_2.bam" \\
         --dir_out "\${HOME}/project/tracks" \\
         --typ_out "bedGraph.gz" \\
-        --siz_bin 50 \\
-        --report_n_ovlp \\
+        --siz_bin 20 \\
+        --prefix "cpm" \\
         --dir_eo "\${HOME}/project/logs" \\
         --nam_job "cpm_sig"
     '''
 
-    Each fragment deposits one whole count per touched bin, and the track is rescaled to sum to one million. '--report_n_ovlp' writes the divisor 'L' beside it.
+    Each fragment deposits one whole count per touched bin, and the track is rescaled to sum to one million. The divisor 'L' / 'n_ovlp' is written beside it as 'cpm.sample_1.n_ovlp.txt', following the track's prefixed name, so a CPM run can share an output directory with the normalized run of example 1.
 
   6. Compute log2 ratios and write a browser-ready companion track.
     '''bash
@@ -740,9 +735,10 @@ Examples
         --csv_fil_B "\${HOME}/project/norm/in_1.bedGraph" \\
         --dir_out "\${HOME}/project/ratios" \\
         --typ_out "bedGraph.gz" \\
-        --track
+        --track \\
+        --no_report
     '''
 
-    Writes the ratio track and, beside it, a companion carrying '.track' before the extension with 'inf', '-inf', and 'nan' rows removed. Load that copy in a genome browser, where non-finite values otherwise cause trouble.
+    Writes the ratio track and, beside it, a companion carrying '.track' before the extension with 'inf', '-inf', and 'nan' rows removed. Load that copy in a genome browser, where non-finite values otherwise cause rendering trouble.
 EOM
 }

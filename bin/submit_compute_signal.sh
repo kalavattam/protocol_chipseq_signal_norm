@@ -642,10 +642,10 @@ Parameters
     Window size in base pairs for the 'window' engine or empty string.
 
   13  report_n_frg : file
-    Path for the fragment-count report or empty string.
+    Path for the fragment-count report, sentinel 'DERIVE', or empty string.
 
   14  report_n_ovlp : file
-    Path for the overlap-count report or empty string.
+    Path for the overlap-count report, sentinel 'DERIVE', or empty string.
 
   15  dir_eo : dir
     Directory for stderr and stdout log files.
@@ -759,11 +759,15 @@ EOM
         cmd+=( --siz_win "${siz_win}" )
     fi
 
-    if [[ -n "${report_n_frg}" ]]; then
+    if [[ "${report_n_frg}" == "DERIVE" ]]; then
+        cmd+=( --report_n_frg )
+    elif [[ -n "${report_n_frg}" ]]; then
         cmd+=( --report_n_frg "${report_n_frg}" )
     fi
 
-    if [[ -n "${report_n_ovlp}" ]]; then
+    if [[ "${report_n_ovlp}" == "DERIVE" ]]; then
+        cmd+=( --report_n_ovlp )
+    elif [[ -n "${report_n_ovlp}" ]]; then
         cmd+=( --report_n_ovlp "${report_n_ovlp}" )
     fi
 
@@ -1775,6 +1779,7 @@ function init_arg_defs() {
     siz_win=100000
     csv_report_n_frg=""
     csv_report_n_ovlp=""
+    no_report=false
     csv_scl_fct=""
     csv_usr_frg=""
     csv_dep_min=""
@@ -2041,6 +2046,11 @@ function parse_args() {
                 shift 2
                 ;;
 
+            -nr|--no[_-]report)
+                no_report=true
+                shift 1
+                ;;
+
             -tr|--track)
                 track=true
                 shift 1
@@ -2276,7 +2286,10 @@ function print_state_debug() {
             "siz_bin=${siz_bin}" \
             "engine=${engine}" \
             "siz_win=${siz_win:-UNSET}" \
-            "csv_usr_frg=${csv_usr_frg}"
+            "csv_usr_frg=${csv_usr_frg}" \
+            "csv_report_n_frg=${csv_report_n_frg:-UNSET}" \
+            "csv_report_n_ovlp=${csv_report_n_ovlp:-UNSET}" \
+            "no_report=${no_report}"
     fi
 
     if [[ "${mode}" != "coord" ]]; then
@@ -2307,19 +2320,34 @@ function prepare_vecs() {
             for _ in "${arr_fil_in[@]}"; do arr_fil_out+=( "" ); done
         fi
 
+        # With no explicit list, 'compute_signal' derives the paths from a bare
+        # flag. Sentinel 'DERIVE' marks that branch and is consumed here, never
+        # passed on; the CLI's own sentinel for this is different.
+        if [[ "${no_report}" == "true" ]]; then
+            fill_rep=""
+        else
+            fill_rep="DERIVE"
+        fi
+
         if [[ -n "${csv_report_n_frg}" ]]; then
             IFS=',' read -r -a arr_rep_n_frg <<< "${csv_report_n_frg}"
         else
             unset arr_rep_n_frg && declare -ga arr_rep_n_frg
-            for _ in "${arr_fil_in[@]}"; do arr_rep_n_frg+=( "" ); done
+            for _ in "${arr_fil_in[@]}"; do
+                arr_rep_n_frg+=( "${fill_rep}" )
+            done
         fi
 
         if [[ -n "${csv_report_n_ovlp}" ]]; then
             IFS=',' read -r -a arr_rep_n_ovlp <<< "${csv_report_n_ovlp}"
         else
             unset arr_rep_n_ovlp && declare -ga arr_rep_n_ovlp
-            for _ in "${arr_fil_in[@]}"; do arr_rep_n_ovlp+=( "" ); done
+            for _ in "${arr_fil_in[@]}"; do
+                arr_rep_n_ovlp+=( "${fill_rep}" )
+            done
         fi
+
+        unset fill_rep
 
         if [[ -n "${csv_usr_frg}" ]]; then
             IFS=',' read -r -a arr_usr_frg <<< "${csv_usr_frg}"
