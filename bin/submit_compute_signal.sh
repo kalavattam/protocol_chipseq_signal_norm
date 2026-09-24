@@ -780,6 +780,68 @@ EOM
 }
 
 
+# Resolve the 'edger' element into the 'A:B' spec the ratio tool takes. Reads
+# the counts beside each track and hands them to 'compute_pseudo', whose stdout
+# is already that spec: nothing is reformatted, no digits lost.
+function resolve_pseudo_edger() {
+    local fil_A="${1:-}"
+    local fil_B="${2:-}"
+    local typ_sig="${3:-}"
+    local env_nam="${4:-}"
+    local rep spec
+    local -a cnt
+
+    if [[ -z "${fil_A}" || -z "${fil_B}" || -z "${typ_sig}" ]]; then
+        echo_err_func "${FUNCNAME[0]}" \
+            "track A, track B, and a signal type are all required."
+        return 1
+    fi
+
+    for rep in \
+        "$(derive_report_path "${fil_A}" n_frg)" \
+        "$(derive_report_path "${fil_B}" n_frg)" \
+        "$(derive_report_path "${fil_A}" n_ovlp)" \
+        "$(derive_report_path "${fil_B}" n_ovlp)"
+    do
+        if [[ ! -s "${rep}" ]]; then
+            echo_err_func "${FUNCNAME[0]}" \
+                "'--csv_pseudo edger' needs '${rep}', which is missing or" \
+                "empty. The signal run that wrote the track writes it too," \
+                "unless it was given '--no_report'."
+            return 1
+        fi
+
+        cnt+=( "$(< "${rep}")" )
+    done
+
+    spec="$(
+        run_py compute_pseudo \
+            --method edger \
+            --typ_sig "${typ_sig}" \
+            --fil_A "${fil_A}" \
+            --fil_B "${fil_B}" \
+            --n_frg_A "${cnt[0]}" \
+            --n_frg_B "${cnt[1]}" \
+            --n_ovlp_A "${cnt[2]}" \
+            --n_ovlp_B "${cnt[3]}"
+    )" || {
+        echo_err_func "${FUNCNAME[0]}" \
+            "'compute_pseudo --method edger' failed for '${fil_A}' and" \
+            "'${fil_B}'."
+        return 1
+    }
+
+    if [[ -z "${spec}" || "${spec}" != *:* ]]; then
+        echo_err_func "${FUNCNAME[0]}" \
+            "'compute_pseudo' returned '${spec}', which is not an 'A:B'" \
+            "pseudocount spec."
+        return 1
+    fi
+
+    echo "${spec}"
+}
+
+
 function run_comp_rat() {
     local debug="${1:-}"
     local fil_A="${2:-}"
@@ -800,6 +862,7 @@ function run_comp_rat() {
     local dir_eo="${17:-}"
     local nam_job="${18:-}"
     local dsc="${19:-}"
+    local typ_sig="${20:-}"
     local log_out log_err  # Local variable declarations.
     local -a optional cmd  # Local array declarations.
     local show_help        # Help text.
@@ -809,7 +872,7 @@ function run_comp_rat() {
 Usage
 -----
   run_comp_rat
-    [--help] debug fil_A fil_B fil_out method scl_fct dep_min dp track pseudo eps skip_00 drp_nan skp_pfx chr_siz strict_bins dir_eo nam_job dsc
+    [--help] debug fil_A fil_B fil_out method scl_fct dep_min dp track pseudo eps skip_00 drp_nan skp_pfx chr_siz strict_bins dir_eo nam_job dsc typ_sig
 
   Build and run the per-sample call to 'compute_signal_ratio.py'.
 
@@ -875,6 +938,9 @@ Parameters
   19  dsc : str
     Descriptor string for logs.
 
+  20  typ_sig : str
+    Signal type the input tracks carry, or empty string. Needed by 'compute_pseudo --method edger'.
+
 Returns
 -------
   Returns 0 when the per-sample ratio command succeeds; 1 otherwise.
@@ -921,7 +987,8 @@ Examples
         false \\
         "\${tmp}" \\
         compute_ratio \\
-        IP_over_input
+        IP_over_input \\
+        norm
     '''
 EOM
     )
@@ -929,12 +996,21 @@ EOM
     if [[ "${1}" =~ ^(-h|--h[e]?lp)$ ]]; then
         echo "${show_help}" >&2
         return 0
-    elif [[ $# -ne 19 ]]; then
+    elif [[ $# -ne 20 ]]; then
         echo_err_func "${FUNCNAME[0]}" \
-            "'run_comp_rat()' expects 19 arguments, but got $#."
+            "'run_comp_rat()' expects 20 arguments, but got $#."
         echo >&2
         echo "${show_help}" >&2
         return 1
+    fi
+
+    # An 'edger' element is a request, not a value: it's an instruction to
+    # resolve the edgeR values from the counts the signal run wrote beside each
+    # track, before the call is assembled.
+    if [[ "${pseudo}" == "edger" ]]; then
+        pseudo="$(
+            resolve_pseudo_edger "${fil_A}" "${fil_B}" "${typ_sig}"
+        )" || return 1
     fi
 
     # Generate optional arguments array dynamically.
@@ -1575,7 +1651,8 @@ EOM
         "${strict_bins}" \
         "${dir_eo}" \
         "${nam_job}" \
-        "${dsc}"
+        "${dsc}" \
+        "${typ_sig}"
     rc=$?
 
     task_epi "${err_ini}" "${out_ini}"
@@ -1780,6 +1857,7 @@ function init_arg_defs() {
     csv_report_n_frg=""
     csv_report_n_ovlp=""
     no_report=false
+    typ_sig=""
     csv_scl_fct=""
     csv_usr_frg=""
     csv_dep_min=""
@@ -2046,6 +2124,16 @@ function parse_args() {
                 shift 2
                 ;;
 
+            -ts|--typ[_-]sig)
+                require_optarg "${1}" "${2:-}" "main" || {
+                    echo >&2
+                    help_submit_compute_signal
+                    return 1
+                }
+                typ_sig="${2}"
+                shift 2
+                ;;
+
             -nr|--no[_-]report)
                 no_report=true
                 shift 1
@@ -2183,6 +2271,14 @@ function validate_args() {
     fi
 
     if [[ "${mode}" == "signal" ]]; then
+        if [[ -n "${typ_sig}" ]]; then
+            echo_err \
+                "'--typ_sig' is for '--mode ratio', where it declares what" \
+                "an existing input is. In '--mode signal', '--method'" \
+                "chooses what to do; use that instead."
+            return 1
+        fi
+
         validate_var "csv_fil_in"  "${csv_fil_in}"  || return 1
 
         # Mirror the CLI: an output path is required only when neither report
@@ -2274,6 +2370,7 @@ function print_state_debug() {
             "track=${track}" \
             "csv_dep_min=${csv_dep_min}" \
             "csv_pseudo=${csv_pseudo}" \
+            "typ_sig=${typ_sig:-UNSET}" \
             "eps=${eps}" \
             "skip_00=${skip_00}" \
             "strict_bins=${strict_bins}" \

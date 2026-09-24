@@ -15,6 +15,8 @@
 
 
 # TODO: do we need '--dir_scr' in the examples? Only if using 'sbatch'.
+# TODO: check the ordering and semantic paragraphs, particularly around
+# '... [--csv_pseudo <csv>] [--typ_sig <str>] ...'.
 function help_submit_compute_signal() {
     # The submit owner initializes interpolated defaults before invocation.
     # shellcheck disable=SC2154
@@ -28,7 +30,7 @@ Usage
     (--csv_fil_in <csv> [--ref_fa <file>] | --csv_fil_A <csv> --csv_fil_B <csv> [--chr_siz <file>])
     --csv_fil_out <csv>
     [--siz_bin <int>] [--engine <engine>] [--siz_win <int>] [--csv_scl_fct <csv>] [--csv_usr_frg <csv>]
-    [--csv_dep_min <csv>] [--csv_pseudo <csv>] [--eps <flt>] [--skip_00 <choice>] [--strict_bins] [--drp_nan] [--skp_pfx <csv>]
+    [--csv_dep_min <csv>] [--csv_pseudo <csv>] [--typ_sig <str>] [--eps <flt>] [--skip_00 <choice>] [--strict_bins] [--drp_nan] [--skp_pfx <csv>]
     [--csv_report_n_frg <csv>] [--csv_report_n_ovlp <csv>] [--no_report]
     [--track] [--dp <int>]
     --dir_eo <dir> [--nam_job <str>]
@@ -113,7 +115,9 @@ Parameters
     Recommended: keep 'chrom' as the general choice and the current best choice for CRAM input; try 'window' for large BAM inputs.
 
   -sw, --siz_win : int
-    Window size in base pairs for the 'window' engine's indexed fetch tasks (default: ${siz_win}). Ignored by the 'chrom' engine. Used only with '--mode signal'.
+    Window size in base pairs for the 'window' engine's indexed fetch tasks (default: ${siz_win}). Ignored by the 'chrom' engine.
+
+    Used with '--mode signal'.
 
   -csf, --csv_scl_fct : list of structured string
     Comma-separated list of scaling factors or sentinels.
@@ -137,9 +141,14 @@ Parameters
     Used with '--mode ratio'.
 
   -cps, --csv_pseudo : list of structured string
-    Comma-separated list of per-sample pseudocount specs 'A[:B]'.
+    Comma-separated list of per-sample pseudocount specs 'A[:B]', or the element 'edger' to derive one from the counts beside each track. Deriving needs '--typ_sig' and the reports a signal run writes; a run given '--no_report' writes neither.
+
+  -ts, --typ_sig : str
+    Signal type the input tracks carry, required by '--csv_pseudo edger'.
 
     Used with '--mode ratio'.
+
+    '--mode ratio --typ_sig <value>' is the '--mode signal --method <value>' that produced the track ('--method' chooses what to do; '--typ_sig' declares what an existing input is).
 
   -e, --eps : float
     Zero tolerance epsilon or sentinel used for ratio-mode zero checks.
@@ -159,13 +168,19 @@ Parameters
     Comma-separated list of header prefixes to skip. Shared comma-separated bedGraph header prefixes or sentinel to skip.
 
   -crf, --csv_report_n_frg : list of file
-    Comma-separated list of paths for per-sample fragment-count reports, 'N' / 'n_frg'. Supply one path per '--csv_fil_in' element. Optional: without it, each report is written beside its own output track as '<track>.n_frg.txt'. Used only with '--mode signal'.
+    Comma-separated list of paths for per-sample fragment-count reports, 'N' / 'n_frg'. Supply one path per '--csv_fil_in' element. Optional: without it, each report is written beside its own output track as '<track>.n_frg.txt'.
+
+    Used with '--mode signal'.
 
   -cro, --csv_report_n_ovlp : list of file
-    Comma-separated list of paths for per-sample overlap-count reports, 'L' / 'n_ovlp'. It depends on '--siz_bin' and, if supplied, '--csv_usr_frg'. Optional: without it, each report is written beside its own output track as '<track>.n_ovlp.txt'. Used only with '--mode signal'.
+    Comma-separated list of paths for per-sample overlap-count reports, 'L' / 'n_ovlp'. It depends on '--siz_bin' and, if supplied, '--csv_usr_frg'. Optional: without it, each report is written beside its own output track as '<track>.n_ovlp.txt'.
+
+    Used with '--mode signal'.
 
   -nr, --no_report : flag
-    Suppress both per-sample counts, which are written by default. They are the inputs 'compute_pseudo --method edger' consumes, so suppressing them leaves a later ratio run without the numbers it needs for pseudocount regularization per (or adapted from) edgeR. Used only with '--mode signal'.
+    Suppress both per-sample counts, which are written by default. They are the inputs 'compute_pseudo --method edger' consumes, so suppressing them leaves a later ratio run without the numbers it needs for pseudocount regularization per (or adapted from) edgeR.
+
+    Used with '--mode signal'.
 
   -tr, --track : flag
     Write a companion track file. If '--mode ratio', write a companion bedGraph without non-finite rows.

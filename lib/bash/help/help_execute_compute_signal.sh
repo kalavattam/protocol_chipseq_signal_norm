@@ -17,6 +17,8 @@
 
 # TODO: more examples, studies, and PMIDs in detailed help: e.g., Bressan et
 # al., 2024 (PMID: 39211331).
+# TODO: check the ordering and semantic paragraphs, particularly around
+# '... [--csv_pseudo <csv>] [--typ_sig <str>] ...'.
 usage=$(cat << EOM
 Usage
 -----
@@ -28,7 +30,7 @@ Usage
     (--csv_fil_in <csv> [--ref_fa <file>] | --csv_fil_A <csv> --csv_fil_B <csv> [--chr_siz <file>])
     --dir_out <dir> [--typ_out <format>] [--prefix <str>]
     [--siz_bin <int>] [--engine <engine>] [--siz_win <int>] [--csv_usr_frg <csv>] [--csv_scl_fct <csv>]
-    [--csv_dep_min <csv>] [--csv_pseudo <csv>] [--eps <num>] [--skip_00 <choice>] [--strict_bins] [--drp_nan] [--skp_pfx <csv>]
+    [--csv_dep_min <csv>] [--csv_pseudo <csv>] [--typ_sig <str>] [--eps <num>] [--skip_00 <choice>] [--strict_bins] [--drp_nan] [--skp_pfx <csv>]
     [--report_only] [--no_report]
     [--track] [--dp <int>]
     [--dir_eo <dir>] [--nam_job <str>] [--max_job <int>] [--slurm] [--time <time>]
@@ -78,7 +80,9 @@ Parameters
     See '--details' for accepted spellings.
 
   -me, --method : {'unadj', 'frag', 'norm', 'count', 'cpm', 'linear', 'log2', 'linear_r', 'log2_r'}
-    Workflow method. Signal or ratio computation subtype (used only with '--mode signal' or '--mode ratio'; default if '--mode signal': 'norm'; default if '--mode ratio': 'linear').
+    Workflow method. Signal or ratio computation subtype.
+
+    Used with '--mode signal' or '--mode ratio' (default if '--mode signal': 'norm'; default if '--mode ratio': 'linear').
 
     For '--mode signal', the main choices are
       - 'unadj' (base-pair overlap),
@@ -96,21 +100,31 @@ Parameters
     See '--details' for accepted spellings and references.
 
   -ci, --csv_fil_in : list of file
-    Comma-separated list of input file paths for coordinate-sorted BAM/CRAM files (used only with '--mode signal' or '--mode coord').
+    Comma-separated list of input file paths for coordinate-sorted BAM/CRAM files.
+
+    Used with '--mode signal' or '--mode coord'.
 
   -rf, --ref_fa : file
-    Reference FASTA file for CRAM input files (required if any '--csv_fil_in' element ends in '.cram'; used only with '--mode signal' or '--mode coord').
+    Reference FASTA file for CRAM input files (required if any '--csv_fil_in' element ends in '.cram').
+
+    Used with '--mode signal' or '--mode coord'.
 
   -cs, --chr_siz : file
     Chromosome sizes file in UCSC-style TSV format.
 
-    Used only with '--mode ratio', to validate bedGraph interval bounds. Signal and coordinate modes take chromosome sizes from the BAM/CRAM header.
+    Used with '--mode ratio'.
+
+    In '--mode ratio', '--chr_siz <file>' validates bedGraph interval bounds. Signal and coordinate modes, on the other hand, take chromosome sizes from the BAM/CRAM header.
 
   -cA, --csv_fil_A : list of file
-    Comma-separated list of file A paths for coordinate-sorted numerator bedGraph files (e.g., IP signal; used only with '--mode ratio').
+    Comma-separated list of file A paths for coordinate-sorted numerator bedGraph files (e.g., IP signal).
+
+    Used with '--mode ratio'.
 
   -cB, --csv_fil_B : list of file
-    Comma-separated list of file B paths for coordinate-sorted denominator bedGraph files (e.g., input signal; used only with '--mode ratio').
+    Comma-separated list of file B paths for coordinate-sorted denominator bedGraph files (e.g., input signal).
+
+    Used with '--mode ratio'.
 
   -do, --dir_out : dir
     Output directory for generated files.
@@ -128,22 +142,28 @@ Parameters
     Custom prefix to prepend to output filenames.
 
   -sb, --siz_bin : int
-    Bin size in base pairs for signal computation (used only with '--mode signal'; default: 10).
+    Bin size in base pairs for signal computation (default: 10).
+
+    Used with '--mode signal'
 
   -eg, --engine : {'chrom', 'window'}
-    Processing engine for signal computation (used only with '--mode signal'; default: '${engine}').
+    Processing engine for signal computation (default: '${engine}').
 
     Both engines dispatch indexed fetch tasks and produce the same signal; they differ only in how fetch work is divided among threads.
       - 'chrom': one fetch task per chromosome. Task size tracks chromosome size, so the longest chromosomes dominate wall time.
-      - 'window': each chromosome is split into fixed-size coordinate windows, with one fetch task per window. Task sizes are uniform, giving finer load balance across threads, at the cost of more fetch calls. Window size is set by '--siz_win'.
+      - 'window': each chromosome is split into fixed-size coordinate windows, with one fetch task per window. Task sizes are uniform, giving finer load balance across threads, but at the cost of more fetch calls. Window size is set by '--siz_win'.
 
-    Recommended: keep 'chrom' as the general choice and the current best choice for CRAM input; try 'window' for large BAM inputs.
+    Tentative recommendation for S. cerevisiae datasets: keep 'chrom' as the general choice and the current best choice for CRAM input; try 'window' for large BAM inputs.
 
   -sw, --siz_win : int
-    Window size in base pairs for the 'window' engine's indexed fetch tasks (default: ${siz_win}). Ignored by the 'chrom' engine. Used only with '--mode signal'.
+    Window size in base pairs for the 'window' engine's indexed fetch tasks (default: ${siz_win}). Ignored by the 'chrom' engine.
+
+    Used with '--mode signal'.
 
   -csf, --csv_scl_fct : list of structured string
-    Comma-separated list of scaling factors or sentinels. Used only with '--mode signal' or '--mode ratio'.
+    Comma-separated list of scaling factors or sentinels.
+
+    Used with '--mode signal' or '--mode ratio'.
 
     For '--mode signal', each element must be 'NA' or a positive scalar float.
 
@@ -152,34 +172,57 @@ Parameters
     A factor multiplies the finished track verbatim, whatever '--method' produced it.
 
   -cuf, --csv_usr_frg : list of int
-    Comma-separated list of fixed fragment-length values or sentinels. Used with '--mode signal' or '--mode coord'.
+    Comma-separated list of fixed fragment-length values or sentinels.
+
+    Used with '--mode signal' or '--mode coord'.
 
   -cdm, --csv_dep_min : list of number
-    Comma-separated list of minimum-depth values or sentinels; here 'min' abbreviates minimum. Used only with '--mode ratio'.
+    Comma-separated list of minimum-depth values or sentinels; here 'min' abbreviates minimum.
+
+    Used with '--mode ratio'.
 
   -cps, --csv_pseudo : list of structured string
-    Comma-separated list of pseudocount values as per-sample specs 'A[:B]' or sentinels. Used only with '--mode ratio'.
+    Comma-separated list of pseudocount values as per-sample specs 'A[:B]', the element 'edger' to derive one from the counts beside each track, or sentinels.
+
+    Used with '--mode ratio'.
+
+  -ts, --typ_sig : str
+    Signal type the input tracks carry, required by '--csv_pseudo edger'.
+
+    Used with '--mode ratio'.
 
   -e, --eps : number
-    Zero tolerance epsilon or sentinel used for ratio-mode zero checks. Used only with '--mode ratio'.
+    Zero tolerance epsilon or sentinel used for ratio-mode zero checks.
+
+    Used with '--mode ratio'.
 
   -s0, --skp_00, --skip_00 : {'pre_scale', 'post_scale'}
-    Skip rows where both compared values are zero. Shared zero-zero skip mode or sentinel for ratio computation: 'pre_scale' or 'post_scale'. Used only with '--mode ratio'.
+    Skip rows where both compared values are zero. Shared zero-zero skip mode or sentinel for ratio computation: 'pre_scale' or 'post_scale'.
+
+    Used with '--mode ratio'.
 
   -stn, --strict_bins : flag
     Require strict bin compatibility. If '--mode ratio', require both input bedGraph files to have the same ordered '(chrom, start, end)' grid across all data rows.
 
   -dn, --drp_nan, --drop_nan : flag
-    Drop non-finite ratio rows ('inf', '-inf', and 'nan') from the main ratio output. Used only with '--mode ratio'.
+    Drop non-finite ratio rows ('inf', '-inf', and 'nan') from the main ratio output.
+
+    Used with '--mode ratio'.
 
   -sp, --skp_pfx : list of str
-    Comma-separated list of header prefixes to skip. Shared comma-separated list of bedGraph header prefixes or sentinel to skip while parsing ratio-mode input files. Used only with '--mode ratio'.
+    Comma-separated list of header prefixes to skip. Shared comma-separated list of bedGraph header prefixes or sentinel to skip while parsing ratio-mode input files.
+
+    Used with '--mode ratio'.
 
   -ro, --report_only : flag
-    Write only the reports, with no signal track. By default, the fragment count 'N' / 'n_frg' and the fragment-bin overlap count 'L' / 'n_ovlp' are written beside each output track as '<track>.n_frg.txt' and '<track>.n_ovlp.txt', both of which are needed for pseudocount regularization per (or adapted from) edgeR. Used only with '--mode signal'.
+    Write only the reports, with no signal track. By default, the fragment count 'N' / 'n_frg' and the fragment-bin overlap count 'L' / 'n_ovlp' are written beside each output track as '<track>.n_frg.txt' and '<track>.n_ovlp.txt', both of which are needed for pseudocount regularization per (or adapted from) edgeR.
+
+    Used with '--mode signal'.
 
   -nr, --no_report : flag
-    Suppress both counts. Cannot be combined with '--report_only'. Used only with '--mode signal'.
+    Suppress both counts. Cannot be combined with '--report_only'.
+
+    Used with '--mode signal'.
 
   -tr, --trk, --track : flag
     Write a companion track file. If '--mode ratio', also write a companion bedGraph with all non-finite rows ('inf', '-inf', and 'nan') removed.
@@ -323,7 +366,7 @@ Parameters
         + If 'c' or 'coordinates' are supplied, variable 'mode' is set to "coord".
 
   -me, --method : {'unadj', 'frag', 'norm', 'count', 'cpm', 'linear', 'log2', 'linear_r', 'log2_r'}
-    Workflow method. Signal or ratio computation subtype, used only with '--mode signal' or '--mode ratio' (default if '--mode signal': norm; default if '--mode ratio': linear).
+    Workflow method. Signal or ratio computation subtype used with '--mode signal' or '--mode ratio' (default if '--mode signal': norm; default if '--mode ratio': linear).
       - If '--mode signal', then the available options are
         + 'unadj':
           - Compute unadjusted signal (base-pair overlap with no fragment-length or total-fragment adjustment).
@@ -367,26 +410,30 @@ Parameters
   -rf, --ref_fa : file
     Reference FASTA file for CRAM input files.
 
-    Required when any '--csv_fil_in' element ends in '.cram'. Used only with '--mode signal' or '--mode coord'; ignored for '--mode ratio'.
+    Required when any '--csv_fil_in' element ends in '.cram'.
+
+    Used with '--mode signal' or '--mode coord'.
 
   -cs, --chr_siz : file
     Chromosome sizes file in UCSC-style TSV format, with chromosome names in the first column and positive integer sizes in the second.
 
-    Used only with '--mode ratio', where it validates that every bedGraph interval falls within its chromosome's bounds. This validation is independent of '--strict_bins', which compares the two inputs to each other rather than to a reference.
+    Used with '--mode ratio'.
 
-    Signal and coordinate modes do not accept it: they take chromosome sizes from the BAM/CRAM header, which is authoritative for the alignments being read.
+    In '--mode ratio', it validates that every bedGraph interval falls within its chromosome's bounds. This validation is independent of '--strict_bins', which compares the two inputs to each other rather than to a reference.
+
+    On the other hand, '--mode signal' and '--mode coord' do not accept '--chr_siz <file>': they take chromosome sizes from the BAM/CRAM header, which is authoritative for the alignments being read.
 
   -cA, --csv_fil_A : list of file
     Comma-separated list of file A paths for coordinate-sorted numerator bedGraph files (e.g., ChIP IP signal tracks).
 
-    Use with '--mode ratio'.
+    Used with '--mode ratio'.
 
     The list order must match that of '--csv_fil_B' files.
 
   -cB, --csv_fil_B : list of file
     Comma-separated list of file B paths for coordinate-sorted denominator bedGraph files (e.g., input signal tracks).
 
-    Use with '--mode ratio'.
+    Used with '--mode ratio'.
 
     The list order must match that of '--csv_fil_A' files.
 
@@ -433,9 +480,9 @@ Parameters
       - Whether specified or not, any leading 'IP_' string in the base name is stripped before the prefix.
 
   -sb, --siz_bin : int
-    Bin size in base pairs for signal computation.
+    Bin size in base pairs for signal computation (default: 10).
 
-    Used only with '--mode signal' (default: 10); ignored otherwise.
+    Used with '--mode signal'.
 
   -eg, --engine : {'chrom', 'window'}
     Processing engine for signal computation (default: '${engine}').
@@ -452,19 +499,19 @@ Parameters
         + Worth trying for large BAM inputs, particularly with '--threads' above one.
         + Window size is set by '--siz_win'.
 
-    Used only with '--mode signal'; ignored otherwise.
+    Used with '--mode signal'; ignored otherwise.
 
   -sw, --siz_win : int
     Window size in base pairs for the 'window' engine's indexed fetch tasks (default: ${siz_win}).
 
     Smaller windows give finer load balance across threads at the cost of more fetch calls; larger windows do the reverse. Ignored by the 'chrom' engine, which uses whole chromosomes as its unit of work.
 
-    Used only with '--mode signal'; ignored otherwise.
+    Used with '--mode signal'; ignored otherwise.
 
   -csf, --csv_scl_fct : list of structured string
     Comma-separated list of scaling factors or sentinels to apply to signal or ratio values.
 
-    Used with either '--mode signal' or '--mode ratio'; ignored otherwise.
+    Used with '--mode signal' or '--mode ratio'; ignored otherwise.
 
     List size must match the number of input files via '--csv_fil_in' or '--csv_fil_A'/'--csv_fil_B'.
 
@@ -490,7 +537,7 @@ Parameters
   -cdm, --csv_dep_min : list of number
     Comma-separated list of minimum-depth values or sentinels used to avoid extreme division operations; here 'min' abbreviates minimum.
 
-    Used only with '--mode ratio'; ignored otherwise.
+    Used with '--mode ratio'; ignored otherwise.
 
     List size must match the number of input files via '--csv_fil_A'/'--csv_fil_B'.
 
@@ -499,27 +546,43 @@ Parameters
   -cps, --csv_pseudo : list of structured string
     Comma-separated list of pseudocount values or sentinels used during ratio computation.
 
-    Used only with '--mode ratio'; ignored otherwise.
+    Each element is one of:
+      - 'A' or 'A:B', a literal pseudocount for the pair.
+      - 'edger', which is a request rather than a value: the counts a signal run wrote beside each track are read back and passed to 'compute_pseudo --method edger', whose result is used for that pair. Needs the following:
+        + '--typ_sig <spec>' and
+        + both signal bedGraph tracks must have their '<track>.n_frg.txt' and '<track>.n_ovlp.txt' beside them.
+      - 'NA', no pseudocount for that pair.
+
+    Elements may be mixed, so one pair can be derived while another takes a literal.
+
+    Used with '--mode ratio'; ignored otherwise.
+
+  -ts, --typ_sig : str
+    Signal type the input tracks carry, required by '--csv_pseudo edger'.
+
+    Used with '--mode ratio'; ignored otherwise.
+
+    The '--mode ratio --typ_sig <spec>' value is the '--mode signal --method <spec>' that produced the track ('--method' chooses what to do; '--typ_sig' declares what an existing input is). Rejected with '--mode signal', where '--method' already says what is being written.
 
     List size must match the number of input files via '--csv_fil_A'/'--csv_fil_B'.
 
     Each non-sentinel element may be either:
-      - 'A'    Add pseudocount A symmetrically.
-      - 'A:B'  Add pseudocount A to file A and B to file B.
+      - 'A': add pseudocount A symmetrically.
+      - 'A:B': add pseudocount A to file A and B to file B.
 
     Although allowed, using '--csv_pseudo' together with '--csv_dep_min' is usually harder to interpret, since both stabilize low-depth ratio behavior in different ways.
 
   -e, --eps : number
     Zero tolerance epsilon or sentinel used for ratio-mode zero checks.
 
-    Used only with '--mode ratio'; ignored otherwise.
+    Used with '--mode ratio'; ignored otherwise.
 
     Non-sentinel values must be non-negative floats.
 
   -s0, --skp_00, --skip_00 : {'pre_scale', 'post_scale'}
     Skip rows where both compared values are zero. Shared zero-zero skip mode or sentinel for ratio computation.
 
-    Used only with '--mode ratio'; ignored otherwise.
+    Used with '--mode ratio'; ignored otherwise.
 
     Non-sentinel values must be one of 'pre_scale' or 'post_scale'.
 
@@ -528,7 +591,7 @@ Parameters
 
     With this flag, both input bedGraph files must share the same ordered '(chrom, start, end)' grid across all data rows. Without it, only the first few paired rows are checked for equal bin width, which catches gross mismatches but not divergence later in the file.
 
-    Used only with '--mode ratio'; ignored otherwise.
+    Used with '--mode ratio'; ignored otherwise.
 
   -dn, --drp_nan, --drop_nan : flag
     Drop non-finite values from the main ratio output.
@@ -540,37 +603,37 @@ Parameters
   -sp, --skp_pfx : list of str
     Comma-separated list of header prefixes to skip. Shared comma-separated list of bedGraph header prefixes or sentinel to skip.
 
-    Used only with '--mode ratio'; ignored otherwise.
+    Used with '--mode ratio'; ignored otherwise.
 
     Passed through to 'submit_compute_signal.sh' and then to 'compute_signal_ratio.py'.
 
   -ro, --report_only : flag
     Write the two per-sample counts without writing a signal track.
 
-    Both are written beside each output track by default, whether or not this flag is given:
+    By default, the following two per-sample counts are written beside each output track, whether or not this flag is given:
       - 'N' / 'n_frg', the fragment count, written as '<track>.n_frg.txt':
         + Counted from the same iterator that builds the track, under the same '--csv_usr_frg' and alignment-filter settings.
         + Thus, it's the number a '--method norm' run divides by, not an estimate of it.
 
       - 'L' / 'n_ovlp', the fragment-bin overlap count, written as '<track>.n_ovlp.txt':
         + The total number of bins the counted fragments span / overlap, counting a fragment once per bin it touches.
-        + Not the summed base pairs an unadjusted track reports: the bin count is what puts 'k = L / N' in bins, which is the unit a per-bin pseudocount needs.
-        + It depends on '--siz_bin' and, if supplied, '--csv_usr_frg', since fragment extension changes how far each fragment reaches.
+        + Not the summed base pairs an unadjusted track reports: the bin count is what puts 'k = L / N' in bins, which is the unit needed to compute per-bin pseudocounts.
+        + In addition to alignment-filter settings, it depends on '--siz_bin' and, if supplied, '--csv_usr_frg', since fragment extension changes how far each fragment reaches.
 
     Both names follow the track's own derived name, so under '--prefix', '.sample.bedGraph' yields 'run_1.sample.n_frg.txt' and 'run_1.sample.n_ovlp.txt'. The pair is what 'compute_pseudo --method edger' consumes.
 
-    Counting happens before the output branch, so the reported values are identical to those a track-writing run would produce on the same input. Use this to obtain prior counts without paying for track output.
+    Counting happens before the output branch, so the reported values are identical to those a track-writing run would produce on the same input. Use this to obtain prior counts without outputting a bedGraph track.
 
-    Cannot be combined with '--no_report': that pair would write neither a track nor a report; such a run is rejected.
+    Cannot be combined with '--no_report', as doing so would write neither a track nor a report. Such a run is rejected.
 
-    Used only with '--mode signal'; ignored otherwise.
+    Used with '--mode signal'; ignored otherwise.
 
   -nr, --no_report : flag
     Suppress the two per-sample counts described under '--report_only' above, which are otherwise written beside each output track.
 
     They are the inputs 'compute_pseudo --method edger' consumes, so suppressing them leaves a later ratio run without the numbers it needs for pseudocount regularization per (or adapted from) edgeR.
 
-    Used only with '--mode signal'; ignored otherwise.
+    Used with '--mode signal'; ignored otherwise.
 
   -tr, --trk, --track : flag
     Write a companion track file. If '--mode ratio', also write a companion bedGraph with all non-finite rows ('inf', '-inf', and 'nan') removed.
@@ -723,7 +786,9 @@ Examples
         --nam_job "cpm_sig"
     '''
 
-    Each fragment deposits one whole count per touched bin, and the track is rescaled to sum to one million. The divisor 'L' / 'n_ovlp' is written beside it as 'cpm.sample_1.n_ovlp.txt', following the track's prefixed name, so a CPM run can share an output directory with the normalized run of example 1.
+    Each fragment deposits one whole count per touched bin, and the track is rescaled to sum to one million.
+
+    The divisor 'L' / 'n_ovlp' is written beside it as 'cpm.sample_1.n_ovlp.txt', following the track's prefixed name, so a CPM run can share an output directory with the normalized run of example 1.
 
   6. Compute log2 ratios and write a browser-ready companion track.
     '''bash
@@ -735,10 +800,27 @@ Examples
         --csv_fil_B "\${HOME}/project/norm/in_1.bedGraph" \\
         --dir_out "\${HOME}/project/ratios" \\
         --typ_out "bedGraph.gz" \\
-        --track \\
-        --no_report
+        --track
     '''
 
     Writes the ratio track and, beside it, a companion carrying '.track' before the extension with 'inf', '-inf', and 'nan' rows removed. Load that copy in a genome browser, where non-finite values otherwise cause rendering trouble.
+
+  7. Derive an edgeR-styled pseudocount from the counts the signal run wrote.
+    '''bash
+    bash "\${HOME}/bin/execute_compute_signal.sh" \\
+        --threads 4 \\
+        --mode "ratio" \\
+        --method "log2" \\
+        --csv_fil_A "\${HOME}/project/norm/IP_1.bedGraph" \\
+        --csv_fil_B "\${HOME}/project/norm/in_1.bedGraph" \\
+        --dir_out "\${HOME}/project/ratios" \\
+        --typ_out "bedGraph.gz" \\
+        --typ_sig "norm" \\
+        --csv_pseudo "edger"
+    '''
+
+    Reads 'IP_1.n_frg.txt', 'IP_1.n_ovlp.txt' and the matching pair beside 'in_1.bedGraph', passes all four to 'compute_pseudo --method edger', and applies the result to the IP-input pair.
+
+    The signal runs that wrote those tracks wrote the counts beside them, so nothing extra is needed unless they were given '--no_report'. '--typ_sig norm' says the tracks carry normalized coverage, which is what '--method norm' produced.
 EOM
 }

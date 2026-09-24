@@ -764,4 +764,237 @@ for kept in "${arr_mth_keep[@]}"; do
 done
 
 
+# Derived pseudocount: the 'edger' element makes the ratio stage read the
+# counts beside each track rather than take a literal. 'count' tracks, not
+# 'norm', so an A/B swap changes the value and this check can see one.
+# shellcheck source=lib/bash/core/format_outputs.sh
+source "${ROOT_REPO}/lib/bash/core/format_outputs.sh"
+
+dir_edg="${tmp}/edger"
+mkdir -p "${dir_edg}"
+
+for samp in se pe; do
+    "${TEST_BASH}" "${ROOT_REPO}/bin/execute_compute_signal.sh" \
+        --env_nam "${env_nam}" \
+        --threads 1 \
+        --mode signal \
+        --method count \
+        --csv_fil_in "${ROOT_REPO}/tests/fixtures/compute_signal/bam/${samp}/tiny_${samp}.bam" \
+        --dir_out "${dir_edg}" \
+        --typ_out bedGraph \
+        --siz_bin 10 \
+        --dir_eo "${dir_err}" \
+        --nam_job "edger_src_${samp}" \
+        --max_job 1 \
+        --csv_scl_fct NA > /dev/null 2>&1 || true
+done
+unset samp
+
+trk_A="${dir_edg}/tiny_se.bedGraph"
+trk_B="${dir_edg}/tiny_pe.bedGraph"
+
+# The counts the ratio stage must find for itself.
+for f in "${trk_A}" "${trk_B}"; do
+    assert_file_nonempty "${f}" "edger source track $(basename "${f}")"
+    assert_file_nonempty \
+        "$(derive_report_path "${f}" n_frg)" \
+        "edger source count n_frg for $(basename "${f}")"
+    assert_file_nonempty \
+        "$(derive_report_path "${f}" n_ovlp)" \
+        "edger source count n_ovlp for $(basename "${f}")"
+done
+unset f
+
+# Plumbing equivalence. Both arms call the same 'compute_pseudo' binary, so
+# this checks report-path derivation, A/B pairing, precision through shell
+# capture, and '--typ_sig' forwarding, not the arithmetic.
+exp_pseudo="$(
+    "${TEST_MANAGED_PYTHON}" \
+        -m protocol_chipseq_signal_norm.cli.compute_pseudo \
+        --method edger \
+        --typ_sig count \
+        --fil_A "${trk_A}" \
+        --fil_B "${trk_B}" \
+        --n_frg_A "$(< "$(derive_report_path "${trk_A}" n_frg)")" \
+        --n_frg_B "$(< "$(derive_report_path "${trk_B}" n_frg)")" \
+        --n_ovlp_A "$(< "$(derive_report_path "${trk_A}" n_ovlp)")" \
+        --n_ovlp_B "$(< "$(derive_report_path "${trk_B}" n_ovlp)")" \
+        2>/dev/null
+)"
+
+"${TEST_BASH}" "${ROOT_REPO}/bin/execute_compute_signal.sh" \
+    --env_nam "${env_nam}" \
+    --threads 1 \
+    --mode ratio \
+    --method log2 \
+    --typ_sig count \
+    --csv_fil_A "${trk_A}" \
+    --csv_fil_B "${trk_B}" \
+    --dir_out "${dir_edg}" \
+    --typ_out bedGraph \
+    --prefix derived \
+    --dir_eo "${dir_err}" \
+    --nam_job "edger_ratio" \
+    --max_job 1 \
+    --csv_scl_fct NA \
+    --csv_dep_min NA \
+    --csv_pseudo edger \
+    --verbose > "${dir_edg}/ratio.log" 2>&1 || true
+
+log_edg="${dir_err}/edger_ratio.derived_tiny_se.stderr.txt"
+
+swap_pseudo="$(
+    "${TEST_MANAGED_PYTHON}" \
+        -m protocol_chipseq_signal_norm.cli.compute_pseudo \
+        --method edger \
+        --typ_sig count \
+        --fil_A "${trk_A}" \
+        --fil_B "${trk_B}" \
+        --n_frg_A "$(< "$(derive_report_path "${trk_B}" n_frg)")" \
+        --n_frg_B "$(< "$(derive_report_path "${trk_A}" n_frg)")" \
+        --n_ovlp_A "$(< "$(derive_report_path "${trk_B}" n_ovlp)")" \
+        --n_ovlp_B "$(< "$(derive_report_path "${trk_A}" n_ovlp)")" \
+        2>/dev/null
+)"
+
+if [[ "${exp_pseudo}" != "${swap_pseudo}" ]]; then
+    record_pass "the equivalence check can see an A/B pairing error"
+else
+    record_fail \
+        "the equivalence check has no pairing power: swapping A and B gives" \
+        "the same value, so a mis-wired pair would pass"
+fi
+
+# 'norm' is symmetric: both inputs are means over A and B, so an A/B swap
+# cannot change the answer and is harmless rather than hidden. Transposing
+# 'N' and 'L' inverts 'k = L / N', which would corrupt it; pin both.
+norm_ok="$(
+    "${TEST_MANAGED_PYTHON}" \
+        -m protocol_chipseq_signal_norm.cli.compute_pseudo \
+        --method edger \
+        --typ_sig norm \
+        --fil_A "${trk_A}" \
+        --fil_B "${trk_B}" \
+        --n_frg_A 3 \
+        --n_frg_B 7 \
+        --n_ovlp_A 11 \
+        --n_ovlp_B 29 \
+        2>/dev/null
+)"
+norm_swap="$(
+    "${TEST_MANAGED_PYTHON}" \
+        -m protocol_chipseq_signal_norm.cli.compute_pseudo \
+        --method edger \
+        --typ_sig norm \
+        --fil_A "${trk_A}" \
+        --fil_B "${trk_B}" \
+        --n_frg_A 7 \
+        --n_frg_B 3 \
+        --n_ovlp_A 29 \
+        --n_ovlp_B 11 \
+        2>/dev/null
+)"
+norm_trans="$(
+    "${TEST_MANAGED_PYTHON}" \
+        -m protocol_chipseq_signal_norm.cli.compute_pseudo \
+        --method edger \
+        --typ_sig norm \
+        --fil_A "${trk_A}" \
+        --fil_B "${trk_B}" \
+        --n_frg_A 11 \
+        --n_frg_B 29 \
+        --n_ovlp_A 3 \
+        --n_ovlp_B 7 \
+        2>/dev/null
+)"
+
+if [[ "${norm_ok}" == "${norm_ok#*:}:${norm_ok#*:}" ]]; then
+    record_pass "'norm' gives both tracks the same pseudocount, as designed"
+else
+    record_fail "'norm' is no longer symmetric in A and B: '${norm_ok}'"
+fi
+
+if [[ "${norm_ok}" == "${norm_swap}" ]]; then
+    record_pass "'norm' is unchanged by an A/B swap, so a swap cannot corrupt it"
+else
+    record_fail \
+        "'norm' changed under an A/B swap: '${norm_ok}' became '${norm_swap}'"
+fi
+
+if [[ "${norm_ok}" != "${norm_trans}" ]]; then
+    record_pass "'norm' sees an 'N'/'L' transposition, the error that would corrupt it"
+else
+    record_fail "'norm' cannot see an 'N'/'L' transposition; 'k = L / N' is unpinned"
+fi
+
+if grep -qF -- "--pseudo ${exp_pseudo}" "${log_edg}"; then
+    record_pass "plumbing equivalence: the derived pseudocount matches a hand run"
+else
+    record_fail \
+        "plumbing equivalence: expected '--pseudo ${exp_pseudo}' in the" \
+        "ratio call; see $(print_relpath "${log_edg}")"
+fi
+
+# A missing report must name what is missing, not fail as a bare open error.
+dir_miss="${tmp}/edger_missing"
+mkdir -p "${dir_miss}"
+cp "${trk_A}" "${dir_miss}/a.bedGraph"
+cp "${trk_B}" "${dir_miss}/b.bedGraph"
+
+out_miss="$(
+    "${TEST_BASH}" "${ROOT_REPO}/bin/execute_compute_signal.sh" \
+        --env_nam "${env_nam}" \
+        --threads 1 \
+        --mode ratio \
+        --method log2 \
+        --typ_sig count \
+        --csv_fil_A "${dir_miss}/a.bedGraph" \
+        --csv_fil_B "${dir_miss}/b.bedGraph" \
+        --dir_out "${dir_miss}" \
+        --typ_out bedGraph \
+        --dir_eo "${dir_err}" \
+        --nam_job "edger_missing" \
+        --max_job 1 \
+        --csv_scl_fct NA \
+        --csv_dep_min NA \
+        --csv_pseudo edger 2>&1
+)" || true
+
+# The descriptor is derived from the method and sample, so glob rather than
+# guess it.
+txt_miss="${out_miss}$(cat "${dir_err}"/edger_missing.*.stderr.txt 2>/dev/null || true)"
+
+if [[
+    "${txt_miss}" == *"n_frg"* && "${txt_miss}" == *"--csv_pseudo edger"*
+]]; then
+    record_pass "a missing count names the report and the flag that needed it"
+else
+    record_fail \
+        "a missing count did not name the report and the flag; see" \
+        "$(print_relpath "${dir_err}")/edger_missing.*.stderr.txt"
+fi
+
+# '--typ_sig' belongs to ratio mode; '--method' owns that meaning in signal.
+out_sig="$(
+    "${TEST_BASH}" "${ROOT_REPO}/bin/execute_compute_signal.sh" \
+        --env_nam "${env_nam}" \
+        --threads 1 \
+        --mode signal \
+        --method norm \
+        --typ_sig norm \
+        --csv_fil_in "${ROOT_REPO}/tests/fixtures/compute_signal/bam/se/tiny_se.bam" \
+        --dir_out "${dir_edg}" \
+        --dir_eo "${dir_err}" \
+        --siz_bin 10 2>&1
+)" || true
+
+if [[
+    "${out_sig}" == *"'--typ_sig'"* && "${out_sig}" == *"'--method'"*
+]]; then
+    record_pass "'--typ_sig' is rejected in signal mode, naming '--method'"
+else
+    record_fail "'--typ_sig' was not rejected in signal mode by name"
+fi
+
+
 finish

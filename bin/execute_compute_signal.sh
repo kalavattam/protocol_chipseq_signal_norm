@@ -286,29 +286,29 @@ Parameters
 
 Expected globals
 ----------------
-  scr_sub, ref_fa : file
-    Submission-script and optional reference-FASTA paths, respectively.
+  scr_sub, ref_fa, chr_siz : file
+    Submission-script, optional reference-FASTA, and optional chromosome-sizes paths, respectively.
 
   dir_scr, dir_eo : dir
     Script and wrapper-log directories, respectively.
 
-  env_nam, mode, method, engine, skip_00, skp_pfx, nam_job : str
-    Environment, mode, method, engine, zero-bin policy, skipped prefix list, and job-name values, respectively.
+  env_nam, mode, method, engine, skip_00, skp_pfx, nam_job, typ_sig : str
+    Environment, mode, method, engine, zero-bin policy, skipped prefix list, job-name, and ratio-mode signal-type values, respectively.
 
-  threads, siz_bin, dp : int
-    Thread count, bin size, and rounding precision, respectively.
+  threads, siz_bin, siz_win, dp : int
+    Thread count, bin size, window size, and rounding precision, respectively.
 
   eps : num
     Optional numerical tolerance.
 
-  drp_nan, track : bool
-    Missing-value and track-line switches, respectively.
+  drp_nan, track, strict_bins, report_only, no_report : bool
+    Missing-value, track-line, strict-bin, report-only, and report opt-out switches, respectively.
 
   csv_fil_in, csv_fil_out, csv_usr_frg, csv_scl_fct, csv_fil_A, csv_fil_B, csv_dep_min, csv_pseudo : str
     Mode-dependent serialized input, output, fragment-length, scaling-factor, numerator, denominator, minimum-depth, and pseudocount values, respectively.
 
-  arr_fil_in, arr_fil_out, arr_usr_frg, arr_scl_fct, arr_fil_A, arr_fil_B, arr_dep_min, arr_pseudo : array
-    Reconstructed input, output, fragment-length, scaling-factor, numerator, denominator, minimum-depth, and pseudocount arrays, respectively.
+  arr_fil_in, arr_fil_out, arr_usr_frg, arr_scl_fct, arr_fil_A, arr_fil_B, arr_dep_min, arr_pseudo, arr_rep_n_frg, arr_rep_n_ovlp : array
+    Reconstructed input, output, fragment-length, scaling-factor, numerator, denominator, minimum-depth, pseudocount, fragment-count report, and overlap-count report arrays, respectively.
 
 Returns
 -------
@@ -460,6 +460,10 @@ EOM
             --csv_pseudo "${pseudo}"
         )
 
+        if [[ -n "${typ_sig}" ]]; then
+            cmd_bld+=( --typ_sig "${typ_sig}" )
+        fi
+
         if [[ -n "${eps}" ]]; then
             cmd_bld+=( --eps "${eps}" )
         fi
@@ -522,6 +526,7 @@ function init_arg_defs() {
     siz_win=100000
     report_only=false
     no_report=false
+    typ_sig=""
     csv_scl_fct=""
     csv_usr_frg=""
     csv_dep_min=""
@@ -791,6 +796,11 @@ function parse_args() {
                 shift 2
                 ;;
 
+            -ts|--typ[_-]sig)
+                typ_sig="${2}"
+                shift 2
+                ;;
+
             -ro|--report[_-]only)
                 report_only=true
                 shift 1
@@ -995,12 +1005,20 @@ function validate_args() {
         fi
 
         if [[ "${mode}" == "signal" ]]; then
-            # If user didn’t supply '--siz_bin', apply a hardcoded default: 10
-            # bp.
+            # If a user did not supply '--siz_bin', apply a hardcoded default:
+            # 10 bp.
             if [[ -z "${siz_bin}" ]]; then siz_bin=10; fi
 
             check_int_pos "${siz_bin}" "siz_bin" || return 1
             check_int_pos "${siz_win}" "siz_win" || return 1
+
+            if [[ -n "${typ_sig}" ]]; then
+                echo_err \
+                    "'--typ_sig' is for '--mode ratio', where it declares" \
+                    "what an existing input is. In '--mode signal'," \
+                    "'--method' chooses what to do; use that instead."
+                return 1
+            fi
 
             if [[
                 "${report_only}" == "true"
@@ -1218,7 +1236,7 @@ function prepare_vecs() {
         fi
 
         # User-supplied fragment lengths are allowed for both 'signal' and
-        # 'coord'.
+        # 'coord' modes.
         if [[ -z "${csv_usr_frg}" ]]; then
             unset arr_usr_frg && declare -ga arr_usr_frg
             populate_array_empty arr_usr_frg "${#arr_fil_in[@]}"
@@ -1318,6 +1336,20 @@ function prepare_vecs() {
         for p in "${arr_pseudo[@]}"; do
             if [[ "${p}" == "NA" ]]; then continue; fi
 
+            # An 'edger' element is a request, not a value, as 'submit'
+            # resolves pseudocounts per pair from the counts the signal run
+            # wrote beside each track.
+            if [[ "${p}" == "edger" ]]; then
+                if [[ -z "${typ_sig}" ]]; then
+                    echo_err \
+                        "'--csv_pseudo edger' needs '--typ_sig' to say which" \
+                        "signal type wrote the input tracks."
+                    return 1
+                fi
+
+                continue
+            fi
+
             if [[ "${p}" != *:* ]]; then
                 check_flt_nonneg "${p}" "csv_pseudo"
                 continue
@@ -1326,7 +1358,7 @@ function prepare_vecs() {
             if [[ "${p}" == *:*:* ]]; then
                 echo_err \
                     "invalid pseudocount spec in '--csv_pseudo': '${p}'." \
-                    "Expected 'A' or 'A:B'."
+                    "Expected 'A', 'A:B', 'edger', or 'NA'."
                 return 1
             fi
 
@@ -1335,7 +1367,7 @@ function prepare_vecs() {
             if [[ -z "${pseudo_A}" || -z "${pseudo_B}" ]]; then
                 echo_err \
                     "invalid pseudocount spec in '--csv_pseudo': '${p}'." \
-                    "Expected 'A' or 'A:B'."
+                    "Expected 'A', 'A:B', 'edger', or 'NA'."
                 return 1
             fi
 
@@ -1345,7 +1377,9 @@ function prepare_vecs() {
         unset p pseudo_A pseudo_B
 
         for d in "${arr_dep_min[@]}"; do
-            if [[ "${d}" != "NA" ]]; then check_flt_pos "${d}" "csv_dep_min"; fi
+            if [[ "${d}" != "NA" ]]; then
+                check_flt_pos "${d}" "csv_dep_min"
+            fi
         done
         unset d
 
@@ -1425,8 +1459,8 @@ function setup_env() {
     local out
     local -a env_msg
 
-    # TODO: this environment activation block is repeated verbatim many across
-    # the 'execute_*.sh' scripts: modularize.
+    # TODO: this environment activation block is repeated verbatim many times
+    # across the 'execute_*.sh' scripts: modularize.
     env_msg=(
         "'handle_env' failed for 'env_nam=${env_nam}'. Check that Conda/Mamba"
         "are available and that the environment exists."
@@ -1500,6 +1534,7 @@ function print_state_debug() {
         echo "siz_win=${siz_win:-UNSET}"
         echo "report_only=${report_only}"
         echo "no_report=${no_report}"
+        echo "typ_sig=${typ_sig:-UNSET}"
         echo "csv_scl_fct=${csv_scl_fct:-UNSET}"
         echo "csv_usr_frg=${csv_usr_frg:-UNSET}"
         echo "csv_dep_min=${csv_dep_min:-UNSET}"
