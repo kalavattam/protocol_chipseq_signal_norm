@@ -515,6 +515,28 @@ run_case_spike \
     $'500000\trxinput_alpha\t3\t1\t2\t2' \
     $'125000\trxinput_alpha\t2\t2\t3\t1'
 
+# 'main_per_spike' divides main by spike counts within each sample: 
+# (3/1) / (2/2) = 3, then (2/2) / (3/1) = 1/3. It is the coefficient that pairs
+# with a 'norm' track, whose own normalizer is the main count.
+run_case_spike \
+    main_per_spike \
+    arr_cmd_bam_se \
+    "${row_bam_se_0}" \
+    "${row_bam_se_1}" \
+    main_per_spike \
+    $'3\tmain_per_spike\t3\t1\t2\t2' \
+    $'0.333333333333333314829616\tmain_per_spike\t2\t2\t3\t1'
+
+# The short alias must reach the same canonical coefficient.
+run_case_spike \
+    main_per_spike_alias \
+    arr_cmd_bam_se \
+    "${row_bam_se_0}" \
+    "${row_bam_se_1}" \
+    mps \
+    $'3\tmain_per_spike\t3\t1\t2\t2' \
+    $'0.333333333333333314829616\tmain_per_spike\t2\t2\t3\t1'
+
 
 #  Alignment variants should preserve counts under automatic type detection
 run_case_spike \
@@ -558,6 +580,36 @@ run_case_spike \
     "" \
     $'2\tchiprx_alpha_ratio\t3\t1\t2\t2' \
     $'0.5\tchiprx_alpha_ratio\t2\t2\t3\t1'
+
+# The coefficient is arithmetic over four counts, so it cannot vary by
+# alignment layout or format. These cases assert that, rather than assuming
+# it, across paired-end BAM and single- and paired-end CRAM.
+run_case_spike \
+    pe_bam_main_per_spike \
+    arr_cmd_bam_pe \
+    "${row_bam_pe_0}" \
+    "${row_bam_pe_1}" \
+    main_per_spike \
+    $'3\tmain_per_spike\t3\t1\t2\t2' \
+    $'0.333333333333333314829616\tmain_per_spike\t2\t2\t3\t1'
+
+run_case_spike \
+    se_cram_main_per_spike \
+    arr_cmd_cram_se \
+    "${row_cram_se_0}" \
+    "${row_cram_se_1}" \
+    main_per_spike \
+    $'3\tmain_per_spike\t3\t1\t2\t2' \
+    $'0.333333333333333314829616\tmain_per_spike\t2\t2\t3\t1'
+
+run_case_spike \
+    pe_cram_main_per_spike \
+    arr_cmd_cram_pe \
+    "${row_cram_pe_0}" \
+    "${row_cram_pe_1}" \
+    main_per_spike \
+    $'3\tmain_per_spike\t3\t1\t2\t2' \
+    $'0.333333333333333314829616\tmain_per_spike\t2\t2\t3\t1'
 
 assert_pattern_found \
     "${log_err_pe_cram_0}" \

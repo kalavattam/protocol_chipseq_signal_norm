@@ -863,6 +863,9 @@ function canonicalize_args() {
                     # useful for manuscript/blog drafting
                     method="fractional"
                     ;;
+                main_per_spike|main_spike_ratio|mps|m)
+                    method="main_per_spike"
+                    ;;
                 chiprx_alpha_ratio|alpha_chiprx_ratio|chiprx_ratio|r)
                     # TODO: decide whether to keep hidden test alias 'r'.
                     method="chiprx_alpha_ratio"

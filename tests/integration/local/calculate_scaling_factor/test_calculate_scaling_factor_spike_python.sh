@@ -242,6 +242,11 @@ assert_pattern_found \
 
 assert_pattern_found \
     "${log_all_tsv}" \
+    $'^main_per_spike\t2.25$' \
+    "calculate_scaling_factor_spike.py all TSV has main_per_spike"
+
+assert_pattern_found \
+    "${log_all_tsv}" \
     $'^chiprx_alpha_ip\t100000$' \
     "calculate_scaling_factor_spike.py all TSV has chiprx_alpha_ip"
 
@@ -266,6 +271,11 @@ assert_pattern_found \
     "${log_all_json}" \
     '"fractional": 2.0' \
     "calculate_scaling_factor_spike.py all JSON has fractional"
+
+assert_pattern_found \
+    "${log_all_json}" \
+    '"main_per_spike": 2.25' \
+    "calculate_scaling_factor_spike.py all JSON has main_per_spike"
 
 assert_pattern_found \
     "${log_all_json}" \

@@ -194,6 +194,18 @@ printf -v row_exp_se_fractional '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s' \
     2 \
     2
 
+printf -v row_exp_se_main_per_spike '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s' \
+    "${bam_se_mip}" \
+    "${bam_se_sip}" \
+    "${bam_se_min}" \
+    "${bam_se_sin}" \
+    3 \
+    main_per_spike \
+    3 \
+    1 \
+    2 \
+    2
+
 printf -v row_exp_se_alpha_ip '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s' \
     "${bam_se_mip}" \
     "${bam_se_sip}" \
@@ -553,6 +565,19 @@ run_submit_spike_case \
     "${bam_se_sin}" \
     fractional \
     "${row_exp_se_fractional}" \
+    se
+
+# 'main_per_spike' divides main by spike counts within each sample, so it is
+# the coefficient that pairs with a 'norm' track: (3/1) / (2/2) = 3.
+run_submit_spike_case \
+    se_main_per_spike \
+    15 \
+    "${bam_se_mip}" \
+    "${bam_se_min}" \
+    "${bam_se_sip}" \
+    "${bam_se_sin}" \
+    main_per_spike \
+    "${row_exp_se_main_per_spike}" \
     se
 
 run_submit_spike_case \

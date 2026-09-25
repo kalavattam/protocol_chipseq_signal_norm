@@ -63,12 +63,14 @@ Parameters
   -md, --mode : {'siq', 'spike'}
     Workflow mode. Scaling-factor mode to run: 'siq' or 'spike' (default: '${mode}').
 
-  -me, --method : {'fractional', 'chiprx_alpha_ratio', 'chiprx_alpha_ip', 'chiprx_alpha_in', 'rxinput_alpha'}
+  -me, --method : {'fractional', 'main_per_spike', 'chiprx_alpha_ratio', 'chiprx_alpha_ip', 'chiprx_alpha_in', 'rxinput_alpha'}
     Workflow method. Spike-in scaling method to compute when '--mode spike' is active (default: 'chiprx_alpha_ratio'; no default if '--mode siq').
 
     List of accepted canonical method names (first), aliases (subsequent), and calculations:
       - fractional | bioprotocol | bio_protocol
         (N_s^{in} / T^{in}) / (N_s^{IP} / T^{IP})
+      - main_per_spike | main_spike_ratio | mps
+        (N_m^{IP} / N_s^{IP}) / (N_m^{in} / N_s^{in})
       - chiprx_alpha_ratio | alpha_chiprx_ratio | chiprx_ratio
         N_s^{in} / N_s^{IP}
       - chiprx_alpha_ip | alpha_chiprx_ip | chiprx_ip
@@ -82,6 +84,7 @@ Parameters
 
         | terms              | description                                             |
         | :---               | :---                                                    |
+        | N_m^{IP}, N_m^{in} | processed fragments‡ assigned to the main genome        |
         | N_s^{IP}, N_s^{in} | processed fragments‡ assigned to the spike-in genome    |
         | T^{IP}, T^{in}     | total processed fragments‡ (main plus spike-in genomes) |
 

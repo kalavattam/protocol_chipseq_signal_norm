@@ -53,8 +53,8 @@ Parameters
   -md, --mode : {'siq', 'spike'}
     Workflow mode. Scaling-factor framework: 'siq' or 'spike' (default: '${mode}').
 
-  -me, --method : {'fractional', 'chiprx_alpha_ratio', 'chiprx_alpha_ip', 'chiprx_alpha_in', 'rxinput_alpha'}
-    Workflow method. Spike-in coefficient to compute: 'fractional', 'chiprx_alpha_ratio', 'chiprx_alpha_ip', 'chiprx_alpha_in', 'rxinput_alpha', or aliases ('--mode spike'; default: 'chiprx_alpha_ratio').
+  -me, --method : {'fractional', 'main_per_spike', 'chiprx_alpha_ratio', 'chiprx_alpha_ip', 'chiprx_alpha_in', 'rxinput_alpha'}
+    Workflow method. Spike-in scaling method to compute when '--mode spike' is active (default: 'chiprx_alpha_ratio'; no default if '--mode siq').
 
   -at, --aln_typ, --align_typ : {'pe', 'se', 'auto'}
     Alignment layout type for input alignment files: 'pe', 'se', or 'auto' (default: '${aln_typ}').

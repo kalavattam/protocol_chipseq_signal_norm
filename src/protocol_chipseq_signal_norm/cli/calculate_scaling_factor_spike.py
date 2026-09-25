@@ -57,6 +57,7 @@ assert sys.version_info >= (3, 11), "Python >= 3.11 required."
 # derived for the supported counting definitions.
 # Map user-facing '--coef' aliases to canonical coefficient names.
 # Compatibility aliases remain accepted even when help omits them.
+# fmt: off
 COEF_ALIAS_CANON = {
     "fractional": "fractional",
     "bioprotocol": "fractional",
@@ -64,22 +65,31 @@ COEF_ALIAS_CANON = {
     "alavattam": "fractional",
     "tsukiyama": "fractional",
     "s": "fractional",
+
+    "main_per_spike": "main_per_spike",
+    "main_spike_ratio": "main_per_spike",
+    "mps": "main_per_spike",
+    "m": "main_per_spike",
+
     "chiprx_alpha_ip": "chiprx_alpha_ip",
     "alpha_chiprx_ip": "chiprx_alpha_ip",
     "alpha_ip": "chiprx_alpha_ip",
     "chiprx_ip": "chiprx_alpha_ip",
     "orlando_ip": "chiprx_alpha_ip",
+
     "chiprx_alpha_in": "chiprx_alpha_in",
     "alpha_chiprx_in": "chiprx_alpha_in",
     "alpha_in": "chiprx_alpha_in",
     "chiprx_in": "chiprx_alpha_in",
     "orlando_in": "chiprx_alpha_in",
+
     "chiprx_alpha_ratio": "chiprx_alpha_ratio",
     "alpha_chiprx_ratio": "chiprx_alpha_ratio",
     "alpha_ratio": "chiprx_alpha_ratio",
     "chiprx_ratio": "chiprx_alpha_ratio",
     "orlando_ratio": "chiprx_alpha_ratio",
     "r": "chiprx_alpha_ratio",
+
     "rxinput_alpha": "rxinput_alpha",
     "alpha_rxinput": "rxinput_alpha",
     "rxi_alpha": "rxinput_alpha",
@@ -90,12 +100,15 @@ COEF_ALIAS_CANON = {
     "ma": "rxinput_alpha",
     "niu": "rxinput_alpha",
     "fursova": "rxinput_alpha",
+
     "all": "all",
 }
+# fmt: on
 
 # Preserve the canonical output order when '--coef all' is selected.
 COEF_ORDER = (
     "fractional",
+    "main_per_spike",
     "chiprx_alpha_ip",
     "chiprx_alpha_in",
     "chiprx_alpha_ratio",
@@ -120,6 +133,7 @@ def normalize_coef(raw: str) -> str:
         f"Invalid --coef '{raw}'.\n\n"
         "Accepted values and aliases (case-insensitive):\n"
         "    - fractional | bioprotocol | bio_protocol\n"
+        "    - main_per_spike | main_spike_ratio | mps\n"
         "    - chiprx_alpha_ip | alpha_chiprx_ip | chiprx_ip\n"
         "    - chiprx_alpha_in | alpha_chiprx_in | chiprx_in\n"
         "    - chiprx_alpha_ratio | alpha_chiprx_ratio | chiprx_ratio\n"
@@ -293,8 +307,8 @@ def calculate_scaling_factors(
         Non-negative integer counts.
     required : tuple[str, ...]
         Tuple of canonical coefficient names to compute. Canonical names:
-        fractional, chiprx_alpha_ip, chiprx_alpha_in, chiprx_alpha_ratio,
-        rxinput_alpha.
+        fractional, main_per_spike, chiprx_alpha_ip, chiprx_alpha_in,
+        chiprx_alpha_ratio, rxinput_alpha.
 
     Returns
     -------
@@ -355,6 +369,7 @@ def calculate_scaling_factors(
 
     spike_ip_coefficients = {
         "fractional",
+        "main_per_spike",
         "chiprx_alpha_ip",
         "chiprx_alpha_ratio",
         "rxinput_alpha",
@@ -367,7 +382,17 @@ def calculate_scaling_factors(
             "require division by N_s^IP.",
         )
 
+    main_input_coefficients = {"main_per_spike"}
+    requires_main_input = bool(requested_names & main_input_coefficients)
+
+    if requires_main_input and main_in == 0:
+        raise ZeroDivisionError(
+            "'main_in' is 0; cannot compute requested coefficient(s) that "
+            "require division by N_m^in.",
+        )
+
     spike_input_coefficients = {
+        "main_per_spike",
         "chiprx_alpha_in",
         "chiprx_alpha_ratio",
     }
@@ -387,6 +412,15 @@ def calculate_scaling_factors(
             spike_ip / total_ip
         )
 
+    # Main material per unit of spike-in reference, IP over input: 'norm'
+    # divides its own main count out, so the coefficient has to put that count
+    # back. 'chiprx_alpha_ratio' never does. 'fractional' does, but against
+    # main plus spike rather than main alone.
+    if "main_per_spike" in requested_names:
+        factors["main_per_spike"] = (main_ip / spike_ip) / (
+            main_in / spike_in
+        )
+
     # The ChIP-Rx IP coefficient follows Orlando et al.
     if "chiprx_alpha_ip" in requested_names:
         factors["chiprx_alpha_ip"] = 1e6 / spike_ip
@@ -395,6 +429,8 @@ def calculate_scaling_factors(
     if "chiprx_alpha_in" in requested_names:
         factors["chiprx_alpha_in"] = 1e6 / spike_in
 
+    # ChIP-Rx IP coefficient over ChIP-Rx input coefficient, which becomes
+    # input spike-in alignments over IP spike-in alignments.
     if "chiprx_alpha_ratio" in requested_names:
         factors["chiprx_alpha_ratio"] = spike_in / spike_ip
 
@@ -457,6 +493,8 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
             "Aliases:\n"
             "    - fractional | bioprotocol | bio_protocol\n"
             "        (N_s^{in} / T^{in}) / (N_s^{IP} / T^{IP})\n"
+            "    - main_per_spike | main_spike_ratio | mps\n"
+            "        (N_m^{IP} / N_s^{IP}) / (N_m^{in} / N_s^{in})\n"
             "    - chiprx_alpha_ip | alpha_chiprx_ip | chiprx_ip\n"
             "        10^6 / N_s^{IP}\n"
             "    - chiprx_alpha_in | alpha_chiprx_in | chiprx_in\n"

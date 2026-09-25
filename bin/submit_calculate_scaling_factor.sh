@@ -505,6 +505,9 @@ function canonicalize_args() {
                 fractional|bioprotocol|bio_protocol|s)
                     method="fractional"
                     ;;
+                main_per_spike|main_spike_ratio|mps|m)
+                    method="main_per_spike"
+                    ;;
                 chiprx_alpha_ratio|alpha_chiprx_ratio|chiprx_ratio|r)
                     method="chiprx_alpha_ratio"
                     ;;
