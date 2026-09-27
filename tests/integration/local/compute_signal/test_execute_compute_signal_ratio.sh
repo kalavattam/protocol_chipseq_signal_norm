@@ -935,6 +935,78 @@ else
         "ratio call; see $(print_relpath "${log_edg}")"
 fi
 
+# Separability: the pseudocount is added before scaling, so a scale factor is
+# a pure additive offset in log2 space and never interacts with the prior.
+for arm in plain scaled; do
+    csv_scl="NA"
+
+    if [[ "${arm}" == "scaled" ]]; then
+        csv_scl="2:1"
+    fi
+
+    "${TEST_BASH}" "${ROOT_REPO}/bin/execute_compute_signal.sh" \
+        --env_nam "${env_nam}" \
+        --threads 1 \
+        --mode ratio \
+        --method log2 \
+        --typ_sig count \
+        --csv_fil_A "${trk_A}" \
+        --csv_fil_B "${trk_B}" \
+        --dir_out "${dir_edg}" \
+        --typ_out bedGraph \
+        --prefix "sep_${arm}" \
+        --dir_eo "${dir_err}" \
+        --nam_job "edger_sep_${arm}" \
+        --max_job 1 \
+        --dp 15 \
+        --csv_scl_fct "${csv_scl}" \
+        --csv_dep_min NA \
+        --csv_pseudo edger > /dev/null 2>&1 || true
+done
+unset arm csv_scl
+
+sep_plain="${dir_edg}/sep_plain_tiny_se.bedGraph"
+sep_scaled="${dir_edg}/sep_scaled_tiny_se.bedGraph"
+
+# The combination itself: a derived pseudocount alongside a scale factor.
+assert_file_nonempty \
+    "${sep_scaled}" \
+    "'--csv_pseudo edger' with '--csv_scl_fct' produces a track"
+
+if [[ -s "${sep_plain}" && -s "${sep_scaled}" ]]; then
+    read -r n_chk n_bad < <(
+        paste "${sep_plain}" "${sep_scaled}" \
+            | awk -F'\t' '
+                function abs(x) { return x < 0 ? -x : x }
+
+                $4 !~ /^-?[0-9]/ || $8 !~ /^-?[0-9]/ { next }
+
+                {
+                    n_chk += 1
+
+                    if (abs($8 - ($4 + 1.0)) > 1e-9) {
+                        n_bad += 1
+                    }
+                }
+
+                END { print (n_chk + 0) "\t" (n_bad + 0) }
+            '
+    )
+
+    if [[ "${n_chk}" -gt 0 && "${n_bad}" -eq 0 ]]; then
+        record_pass \
+            "separability: 'scl_fct 2:1' shifts all ${n_chk} finite bins by" \
+            "exactly 1 in log2 space"
+    else
+        record_fail \
+            "separability: ${n_bad} of ${n_chk} finite bins do not satisfy" \
+            "'log2 scaled == log2 plain + 1';" \
+            "see $(print_relpath "${sep_scaled}")"
+    fi
+
+    unset n_chk n_bad
+fi
+
 # A missing report must name what is missing, not fail as a bare open error.
 dir_miss="${tmp}/edger_missing"
 mkdir -p "${dir_miss}"

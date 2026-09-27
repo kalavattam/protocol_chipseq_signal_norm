@@ -171,13 +171,15 @@ def calc_rat_bin(
         Per-file multiplicative scale factor for B. If None or 1.0, treated as
         neutral.
     psc_a : float | None
-        Pseudocount added to A (post-scaling). If None or 0.0, skipped.
+        Pseudocount added to A in unscaled track units, before any optional
+        scaling. If None or 0.0, skipped.
     psc_b : float | None
-        Pseudocount added to B (post-scaling). If None or 0.0, skipped.
+        Pseudocount added to B in unscaled track units, before any optional
+        scaling. If None or 0.0, skipped.
     dep_min : float | None
-        Minimum allowed denominator after any optional scaling and/or
-        pseudocount addition. If provided, B := max(B, dep_min) to avoid
-        extreme and undefined (e.g., 'n / 0') divisions.
+        Minimum allowed denominator after any optional pseudocount addition
+        and/or scaling. If provided, 'B := max(B, dep_min)' to avoid extreme
+        and undefined (e.g., 'n / 0') divisions.
     log2 : bool
         If True, return 'log2(A / B)'. If False, return linear 'A / B'.
     recip : bool
@@ -187,28 +189,31 @@ def calc_rat_bin(
     skip_00 : str | None
         Optional zero-bin ('0 / 0' or 'ε / ε') drop stage. One of "pre_scale",
         "post_scale", or None.
-            - "pre_scale": Test on raw values (before optional scaling and/or
-                           pseudocounts addition).
-            - "post_scale": Test after optional scaling, before optional
-                            pseudocount addition.
-            - None: Do not drop '0 / 0' bins.
+            - "pre_scale": Compare the raw pair; a match drops the bin. Runs
+                           before any optional pseudocount addition and/or
+                           scaling.
+            - "post_scale": Compare the scaled pair; a match drops the bin.
+                            Scaling is applied here for the comparison only.
+                            Runs before any optional pseudocount addition.
+            - None: Do not drop '0 / 0' or 'ε / ε' bins.
     eps : float, default 0.0
-        Tolerance (epsilon value, ε) for treating values as zero in the
+        Tolerance (epsilon value: ε) for treating values as zero in the
         pre-pseudocount zero-zero check. Use 0.0 for exact-zero behavior,
-        similar to what is done in deepTools. A tiny value (e.g., say, '1e-12')
-        can be used to ignore "float noise."
+        similar to what is done in deepTools. A tiny value can be used to
+        ignore "float noise."
 
     Returns
     -------
     value : float | None
-        The computed value (ratio or log2 ratio, possibly reciprocated).
+        The computed value: a linear ratio or log2 ratio, possibly
+        reciprocated.
 
         May also return the following:
-            - None  When 'skip_00' is specified and the bin is '0 / 0' or
+            - None: When 'skip_00' is specified and the bin is '0 / 0' or
                     'ε / ε'.
-            - -inf  When 'log2' is requested and 'ratio == 0'.
-            -  inf  When 'reciprocal' is requested on a zero linear ratio.
-            -  nan  When the computation is undefined (e.g., negative ratio for
+            - -inf: When 'log2' is requested and 'ratio == 0'.
+            -  inf: When 'reciprocal' is requested on a zero linear ratio.
+            -  nan: When the computation is undefined (e.g., negative ratio for
                     'log2', or 'B == 0' even after clamping).
 
         Caller skips writing the bin when a return value is None.
@@ -229,53 +234,60 @@ def calc_rat_bin(
     passed.
 
     Order of operations:
-        1. Optionally skip zero-zero bins: '0 / 0' or 'ε / ε' (deepTools-like).
-           ‡
-        2. Optionally scale each file.
-        3. Optionally skip scaled zero-zero bins:
-           '[(sf_A × 0) / (sf_B × 0)]' or
-           '[(sf_A × ε) / (sf_B × ε)]'. ‡
-        4. Optionally add pseudocounts.
-        5. Optionally clamp denominator by 'dep_min'.
-        6. If the denominator is <= ε, treat the bin as undefined.
-        7. Divide 'A / B'.
-        8. Optionally perform log2 transformation.
-        9. Optionally compute reciprocal of #7 (linear) or #8 (log2).
-
-        ‡ Either of optional #1 or optional #3, not both.
+        1. Optionally skip zero-zero bins, in one of two modes:
+             - 'pre_scale':  '|A| <= ε and |B| <= ε', the raw pair.
+             - 'post_scale': '|sf_A × A| <= ε and |sf_B × B| <= ε', the scaled
+                             pair. Scaling is applied here for the comparison
+                             only.
+           With 'ε = 0' the modes coincide; on non-negative input, 'pre_scale'
+           matches deepTools 'bamCompare --skipZeroOverZero'.
+        2. Optionally add pseudocounts in unscaled track units.
+        3. Optionally scale each file, after optional pseudocount addition.
+        4. Optionally clamp denominator by 'dep_min'.
+        5. If the denominator is <= ε, treat the bin as undefined.
+        6. Divide 'A / B'.
+        7. Optionally perform log2 transformation.
+        8. Optionally compute reciprocal of #6 (linear) or #7 (log2).
     """
 
-    # 1. Optionally skip an empty pair before scaling.
+    # 1A. Optionally skip an empty pair before any optional pseudocount
+    # addition and/or scaling.
     if skip_00 == "pre_scale" and abs(sig_a) <= eps and abs(sig_b) <= eps:
         return None
 
-    # 2. Apply non-neutral scale factors.
-    num = sig_a if (scl_a is None or scl_a == 1.0) else (scl_a * sig_a)
-    den = sig_b if (scl_b is None or scl_b == 1.0) else (scl_b * sig_b)
+    # 1B. Optionally skip an empty scaled pair. Scaling is applied here for the
+    # comparison only and runs before any optional pseudocount addition.
+    if skip_00 == "post_scale":
+        tst_a = sig_a if (scl_a is None or scl_a == 1.0) else (scl_a * sig_a)
+        tst_b = sig_b if (scl_b is None or scl_b == 1.0) else (scl_b * sig_b)
 
-    # 3. Optionally skip an empty scaled pair before adding pseudocounts.
-    if skip_00 == "post_scale" and abs(num) <= eps and abs(den) <= eps:
-        return None
+        if abs(tst_a) <= eps and abs(tst_b) <= eps:
+            return None
 
-    # 4. Add non-neutral pseudocounts.
-    if psc_a not in (None, 0.0):
-        num += psc_a
+    # 2. Add non-neutral pseudocounts, in unscaled track units.
+    num = sig_a if psc_a in (None, 0.0) else (sig_a + psc_a)
+    den = sig_b if psc_b in (None, 0.0) else (sig_b + psc_b)
 
-    if psc_b not in (None, 0.0):
-        den += psc_b
+    # 3. Apply non-neutral scale factors to the regularized values, which is
+    # edgeR's order: 'addPriorCount' regularizes in count space then scales.
+    if scl_a not in (None, 1.0):
+        num *= scl_a
 
-    # 5. Clamp the denominator when a minimum was specified.
+    if scl_b not in (None, 1.0):
+        den *= scl_b
+
+    # 4. Clamp the denominator when a minimum was specified.
     if dep_min is not None and den < dep_min:
         den = dep_min
 
-    # 6. Treat an effectively zero denominator as undefined.
+    # 5. Treat an effectively zero denominator as undefined.
     if abs(den) <= eps:
         return float("nan")
 
-    # 7. Compute the ratio.
+    # 6. Compute the ratio.
     ratio = num / den
 
-    # 8. Apply the optional log2 transformation.
+    # 7. Apply the optional log2 transformation.
     if log2:
         if ratio > 0.0:
             transformed = math.log2(ratio)
@@ -284,10 +296,10 @@ def calc_rat_bin(
         else:
             transformed = float("nan")
 
-        # 9. Apply the optional reciprocal in log space.
+        # 8. Apply the optional reciprocal in log space.
         return -transformed if recip else transformed
 
-    # 9. Apply the optional reciprocal in linear space.
+    # 8. Apply the optional reciprocal in linear space.
     if recip:
         return (1.0 / ratio) if ratio != 0.0 else float("inf")
 
@@ -480,9 +492,11 @@ def comp_sig_rat(
     scl_b : float
         Scale factor for B.
     psc_a : float
-        Pseudocount added to A after scaling (0.0 means no addition).
+        Pseudocount added to A before scaling, in unscaled track units (0.0
+        means no addition).
     psc_b : float
-        Pseudocount added to B after scaling (0.0 means no addition).
+        Pseudocount added to B before scaling, in unscaled track units (0.0
+        means no addition).
     dep_min : float | None
         Denominator clamp ("minimum input depth") to avoid extreme and/or
         erroneous division.
@@ -497,10 +511,12 @@ def comp_sig_rat(
     skip_00 : str | None
         Optional zero-bin ('0 / 0' or 'ε / ε') drop stage. One of "pre_scale",
         "post_scale", or None.
-            - "pre_scale": Test on raw values (before optional scaling and/or
-                           pseudocounts addition).
-            - "post_scale": Test after optional scaling, before optional
-                            pseudocount addition.
+            - "pre_scale": Compare the raw pair; a match drops the bin. Runs
+                           before any optional pseudocount addition and/or
+                           scaling.
+            - "post_scale": Compare the scaled pair; a match drops the bin.
+                            Scaling is applied here for the comparison only.
+                            Runs before any optional pseudocount addition.
             - None: Do not drop '0 / 0' bins.
     eps : float
         Epsilon for zero tests used in the pre-optional-pseudocount '0 / 0'
@@ -704,26 +720,31 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
             "\n"
             "Can assign an error tolerance (ε [an epsilon value]) for "
             "treating values (e.g., float noise) as zero. deepTools "
-            "'bamCompare'-like behavior is 'ε = 0.0' (the default).\n"
+            "'bamCompare' has no ε of its own; the default here, 'ε = 0.0', "
+            "is its behavior.\n"
             "\n"
-            "Order of operations is generally deepTools 'bamCompare'-like:\n"
-            "    1. Optionally skip zero-zero bins: '0 / 0' or 'ε / ε' "
-            "(deepTools-like). ‡\n"
-            "    2. Optionally scale each file.\n"
-            "    3. Optionally skip scaled zero-zero bins: '[(sf_A × 0) / "
-            "(sf_B × 0)]' or '[(sf_A × ε) / (sf_B × ε)]'. ‡\n"
-            "    4. Optionally add pseudocounts.\n"
-            "    5. Optionally clamp divisor (denominator) by 'dep_min' (see "
+            "Order of operations follows deepTools 'bamCompare' except that "
+            "pseudocounts are added before scaling, where 'bamCompare' scales "
+            "first:\n"
+            "  1. Optionally skip zero-zero bins in one of two modes:\n"
+            "     - 'pre_scale':  '|A| <= ε and |B| <= ε', the raw pair; a "
+            "match drops the bin. Runs before any optional pseudocount "
+            "addition and/or scaling.\n"
+            "     - 'post_scale': '|sf_A × A| <= ε and |sf_B × B| <= ε', the "
+            "scaled pair. Scaling is applied here for the comparison only. "
+            "Runs before any optional pseudocount addition.\n"
+            "     - With 'ε = 0' the modes coincide; on non-negative input, "
+            "'pre_scale' matches deepTools 'bamCompare "
+            "--skipZeroOverZero'.\n"
+            "  2. Optionally add pseudocounts, in unscaled track units.\n"
+            "  3. Optionally scale each file, after its pseudocount.\n"
+            "  4. Optionally clamp divisor (denominator) by 'dep_min' (see "
             "below).\n"
-            "    6. If the divisor (denominator) is <= ε, treat the bin as "
+            "  5. If the divisor (denominator) is <= ε, treat the bin as "
             "undefined.\n"
-            "    7. Divide 'A / B'.\n"
-            "    8. Optionally perform log2 transformation.\n"
-            "    9. Optionally compute reciprocal of #7 (linear) or #8 "
-            "(log2).\n"
-            "\n"
-            "‡ Either of optional #1 or optional #3 can be applied, not "
-            "both.\n"
+            "  6. Divide 'A / B'.\n"
+            "  7. Optionally perform log2 transformation.\n"
+            "  8. Optionally compute reciprocal of #6 (linear) or #7 (log2).\n"
             "\n"
             "(See module docstring for more details.)"
         ),
@@ -858,8 +879,18 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         type=str,
         default="0:0",
         help=(
-            "Per-file pseudocount spec 'A[:B]' added after scaling (default: "
-            "%(default)s).\n"
+            "Per-file pseudocount spec 'A[:B]' added in unscaled track units, "
+            "before any optional scaling (default: %(default)s).\n"
+            "\n"
+            "Each pseudocount is added to its own track ('A' to file A, 'B' "
+            "to file B) before that track's '--scl_fct' value is applied, if "
+            "one is specified.\n"
+            "\n"
+            "The ordering follows edgeR: 'addPriorCount' regularizes in count "
+            "space, then scales. Here the pseudocount is denominated in "
+            "whatever units the track carries, which for the fractional "
+            "signal types is not counts, so the prior is adapted from edgeR "
+            "rather than reproduced.\n"
             "\n"
             "Note: This is primarily useful for log2-ratio methods, where it "
             "helps avoid undefined values such as 'log2(A / 0)'; for linear "
@@ -878,12 +909,12 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         type=float,
         default=None,
         help=(
-            "Minimum allowed denominator threshold or “clamp” (i.e., “minimum "
-            "input depth” as described in PMID 40364978). This is a “floor” "
-            "ensuring denominators do not fall below this value.\n"
+            "Minimum allowed denominator threshold or \"clamp\" (i.e., "
+            "\"minimum input depth\" as described in PMID 40364978). This is "
+            "a \"floor\" ensuring denominators do not fall below this value.\n"
             "\n"
-            "The 'dep_min' value is applied after any optional scaling and/or "
-            "pseudocount addition ('B := max(B, dep_min)').\n"
+            "The 'dep_min' value is applied after any optional pseudocount "
+            "addition and/or scaling ('B := max(B, dep_min)').\n"
             "\n"
             "With or without clamping, a zero-guard with ε ('--eps') is "
             "applied after this optional step in the order of operations; if "
@@ -914,7 +945,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
             "Applied in two places:\n"
             "  - '--skip_00':\n"
             "    + If '--skip_00 pre_scale', check raw values (before any "
-            "optional scaling and/or pseudocount addition).\n"
+            "optional pseudocount addition and/or scaling).\n"
             "    + If '--skip_00 post_scale', check scaled values (before any "
             "optional pseudocount addition).\n"
             "  - Denominator guard:\n"
@@ -940,15 +971,27 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         help=(
             "Skip rows where both compared values are zero. Values satisfying "
             "'|value| <= ε' are treated as zero for this check.\n"
-            "  - '--skip_00 pre_scale':  Test on raw values (deepTools "
-            "bamCompare-like behavior).\n"
-            "  - '--skip_00 post_scale': Test after scaling.\n"
+            "  - '--skip_00 pre_scale':  Compare the raw pair; a match drops "
+            "the row.\n"
+            "  - '--skip_00 post_scale': Compare the scaled pair; a match "
+            "drops the row. Scaling is applied here for the comparison only. "
+            "Runs before any optional pseudocount addition; what continues is "
+            "unscaled until #3, where the pseudocount is scaled with it.\n"
             "  - Omit entirely to disable the '0 / 0' (or 'ε / ε') drop.\n"
             "\n"
             "Notes:\n"
             "  - If not omitted, then 'pre_scale' and 'post_scale' modes are "
             "equivalent if 'ε = 0' or if no scaling is applied (i.e., "
             "'scl_A = scl_B = 1').\n"
+            "  - With 'ε = 0', 'pre_scale' matches deepTools "
+            "'bamCompare --skipZeroOverZero'. deepTools has no ε of its own, "
+            "so 'ε > 0' has no counterpart there.\n"
+            "  - Both modes are conjunctions, so an 'n / 0' bin is "
+            "unaffected.\n"
+            "  - On sparse input, which is what 'compute_signal' writes, a "
+            "bin that is '0 / 0' is absent from both files and never reaches "
+            "this check. The modes matter for dense input, such as coverage "
+            "that writes explicit zero rows.\n"
             "  - Pseudocounts do not affect this check in either mode.\n"
             "\n"
         ),

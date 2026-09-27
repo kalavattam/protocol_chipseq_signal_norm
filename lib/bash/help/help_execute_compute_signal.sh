@@ -184,6 +184,8 @@ Parameters
   -cps, --csv_pseudo : list of structured string
     Comma-separated list of pseudocount values as per-sample specs 'A[:B]', the element 'edger' to derive one from the counts beside each track, or sentinels.
 
+    Values are in unscaled track units: a pseudocount is added before that track's '--csv_scl_fct' value is applied, if one is specified.
+
     Used with '--mode ratio'.
 
   -ts, --typ_sig : str
@@ -545,6 +547,10 @@ Parameters
 
   -cps, --csv_pseudo : list of structured string
     Comma-separated list of pseudocount values or sentinels used during ratio computation.
+
+    Values should be in unscaled track units, as the ratio tool adds each pseudocount to its own track ('A' to file A, 'B' to file B) before applying that track's '--csv_scl_fct' value, if one is specified.
+
+    The ordering follows edgeR: 'addPriorCount' regularizes in count space, then scales. Here the pseudocount is denominated in whatever units the track carries, which for the fractional signal types is not counts, so the prior is adapted from edgeR rather than reproduced.
 
     Each element is one of:
       - 'A' or 'A:B', a literal pseudocount for the pair.

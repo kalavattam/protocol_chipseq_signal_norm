@@ -67,7 +67,7 @@ def test_calc_rat_bin_handles_scaling_and_log_reciprocal() -> None:
         None,
     )
 
-    assert scaled == 4.5
+    assert scaled == 5.0
     assert reciprocal == -1.0
 
 
@@ -89,6 +89,144 @@ def test_calc_rat_bin_zero_handling() -> None:
     assert math.isnan(
         calc_rat_bin(1, 0, None, None, None, None, None, False, False, None),
     )
+
+
+# Measured on the pre-reorder tree at '627d12a'. Scaling moved to after the
+# pseudocount add, so every unscaled case has to stay put.
+BASELINE_UNSCALED = [
+    (
+        (4.0, 2.0), (1.0, 1.0), (1.0, 1.0), None, False, False, None, 0.0,
+        1.6666666666666667
+    ),
+    (
+        (4.0, 2.0), (None, None), (0.5, 0.4), None, True, False, None, 0.0,
+        0.9068905956085185
+    ),
+    (
+        (4.0, 0.0), (1.0, 1.0), (1.0, 0.0), None, True, False, None, 0.0,
+        "nan"
+    ),
+    (
+        (4.0, 0.0), (None, None), (None, None), None, True, False, None, 0.0,
+        "nan"
+    ),
+    (
+        (0.0, 2.0), (1.0, 1.0), (2.0, 3.0), 2.0, False, False, None, 0.0, 0.4
+    ),
+    (
+        (0.0, 0.0), (1.0, 1.0), (1.0, 1.0), None, True, False, "post_scale",
+        0.0, None
+    ),
+    (
+        (1e-09, 3.0), (None, None), (1.0, 1.0), None, True, False, "pre_scale",
+        1e-12, -1.999999998557305
+    ),
+    (
+        (7.5, 0.25), (1.0, 1.0), (0.5, 0.4), 0.5, True, True, None, 0.0,
+        -3.62148837674627
+    ),
+]
+
+
+@pytest.mark.parametrize(
+    "sig, scl, psc, dep_min, log2, recip, skip_00, eps, want",
+    BASELINE_UNSCALED,
+)
+def test_unscaled_ratios_match_the_pre_reorder_baseline(
+    sig: tuple[float, float],
+    scl: tuple[float | None, float | None],
+    psc: tuple[float | None, float | None],
+    dep_min: float | None,
+    log2: bool,
+    recip: bool,
+    skip_00: str | None,
+    eps: float,
+    want: float | str | None,
+) -> None:
+    got = calc_rat_bin(
+        sig[0], sig[1], scl[0], scl[1], psc[0], psc[1], dep_min, log2, recip,
+        skip_00, eps,
+    )
+
+    if want == "nan":
+        assert math.isnan(got)
+    else:
+        assert got == want
+
+
+def test_scaled_log2_ratio_is_an_additive_offset_on_the_unscaled_one() -> None:
+    sig_a, sig_b, psc_a, psc_b = 4.0, 2.0, 1.0, 0.5
+
+    plain = calc_rat_bin(
+        sig_a, sig_b, None, None, psc_a, psc_b, None, True, False, None,
+    )
+
+    # Powers of two over a ratio that divides exactly, so binary64 loses
+    # nothing and the identity pins exactly rather than to a tolerance.
+    exact = calc_rat_bin(
+        sig_a, sig_b, 2.0, 4.0, psc_a, psc_b, None, True, False, None,
+    )
+
+    assert exact == math.log2(2.0 / 4.0) + plain
+
+    # Real spike-in coefficients are not powers of two, so the two groupings
+    # differ in the last bits. 1e-15 covers that and nothing coarser.
+    rough = calc_rat_bin(
+        7.5, 0.25, 1.1413, 1.0, 1.0, 0.4, None, True, False, None,
+    )
+    rough_plain = calc_rat_bin(
+        7.5, 0.25, None, None, 1.0, 0.4, None, True, False, None,
+    )
+
+    assert rough == pytest.approx(math.log2(1.1413) + rough_plain, rel=1e-15)
+
+
+def test_post_scale_zero_test_reads_the_scaled_pair() -> None:
+    # Scaling moved after the pseudocount, so 'post_scale' computes the scaled
+    # pair on the side. A tiny scale drops this bin; the raw pair would not.
+    dropped = calc_rat_bin(
+        4.0, 2.0, 1e-4, 1e-4, None, None, None, False, False, "post_scale",
+        1e-2,
+    )
+    kept = calc_rat_bin(
+        4.0, 2.0, None, None, None, None, None, False, False, "post_scale",
+        1e-2,
+    )
+
+    assert dropped is None
+    assert kept == 2.0
+
+
+def test_dep_min_clamps_the_scaled_regularized_denominator() -> None:
+    # 'dep_min' still sits after both steps, so under scaling it now sees
+    # 'scl_b * (sig_b + psc_b)' rather than 'scl_b * sig_b + psc_b'.
+    clamped = calc_rat_bin(
+        4.0, 1.0, 2.0, 3.0, 1.0, 0.5, 10.0, False, False, None,
+    )
+    unclamped = calc_rat_bin(
+        4.0, 1.0, 2.0, 3.0, 1.0, 0.5, 4.0, False, False, None,
+    )
+
+    assert clamped == (2.0 * (4.0 + 1.0)) / 10.0
+    assert unclamped == (2.0 * (4.0 + 1.0)) / (3.0 * (1.0 + 0.5))
+
+
+def test_each_pseudocount_scales_with_the_side_it_regularizes() -> None:
+    got = calc_rat_bin(4.0, 2.0, 2.0, 3.0, 1.0, 0.5, None, False, False, None)
+
+    assert got == (2.0 * (4.0 + 1.0)) / (3.0 * (2.0 + 0.5))
+
+
+def test_scaling_reaches_a_bin_whose_numerator_is_only_pseudocount() -> None:
+    # 'A' is empty, so before the reorder the numerator was the bare
+    # pseudocount and a siQ-ChIP coefficient never reached the bin.
+    siq = calc_rat_bin(
+        0.0, 2.0, 0.0146, 1.0, 1.0, 1.0, None, True, False, None,
+    )
+    unity = calc_rat_bin(0.0, 2.0, 1.0, 1.0, 1.0, 1.0, None, True, False, None)
+
+    assert siq != unity
+    assert siq == pytest.approx(math.log2(0.0146) + unity, rel=1e-15)
 
 
 def test_comp_sig_rat_writes_small_bedgraph(tmp_path: Path) -> None:

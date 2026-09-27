@@ -143,6 +143,8 @@ Parameters
   -cps, --csv_pseudo : list of structured string
     Comma-separated list of per-sample pseudocount specs 'A[:B]', or the element 'edger' to derive one from the counts beside each track. Deriving needs '--typ_sig' and the reports a signal run writes; a run given '--no_report' writes neither.
 
+    Values should be in unscaled track units, as the ratio tool adds each pseudocount to its own track ('A' to file A, 'B' to file B) before applying that track's '--csv_scl_fct' value, if one is specified.
+
   -ts, --typ_sig : str
     Signal type the input tracks carry, required by '--csv_pseudo edger'.
 
