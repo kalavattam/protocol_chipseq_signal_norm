@@ -565,11 +565,10 @@ EOM
         categories = {row["category"]: row for row in report["categories"]}
         shared = categories["shared_heredoc_nonowners"]
 
-        # The identity carries the shared heredoc's line, so it moves whenever
-        # the bounded header above it changes height. Crediting a second
-        # vendor grew that block from three rows to five.
+        # The identity carries the heredoc's line, so it moves when the header
+        # above it changes height: two vendors take five rows, not three.
         self.assertIn(
-            "lib/bash/help/help_execute_compute_signal.sh::<file>@20",
+            "lib/bash/help/help_execute_compute_signal.sh::<file>@22",
             shared["identities"],
         )
 
