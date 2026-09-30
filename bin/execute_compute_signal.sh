@@ -1264,6 +1264,7 @@ function prepare_vecs() {
             done
             unset s
 
+            expand_arr_bcst "${#arr_fil_in[@]}" "arr_scl_fct" || return 1
             check_arr_lengths "arr_scl_fct" "arr_fil_in" || return 1
         fi
 
@@ -1283,6 +1284,7 @@ function prepare_vecs() {
         done
         unset u
 
+        expand_arr_bcst "${#arr_fil_in[@]}" "arr_usr_frg" || return 1
         check_arr_lengths "arr_usr_frg" "arr_fil_in" || return 1
     else
         if [[ -n "${csv_fil_A}" ]]; then
@@ -1427,6 +1429,24 @@ function prepare_vecs() {
             fi
         done
         unset d
+
+        # One value applies to every pair, except a literal pseudocount: pairs
+        # of different depths need their own, so list one per pair or 'edger'.
+        if [[
+            "${#arr_pseudo[@]}" -eq 1
+            && "${#arr_fil_A[@]}" -gt 1
+            && "${arr_pseudo[0]}" != "edger"
+            && "${arr_pseudo[0]}" != "NA"
+        ]]; then
+            echo_err \
+                "a single literal '--csv_pseudo' ('${arr_pseudo[0]}') is not" \
+                "applied to all ${#arr_fil_A[@]} pairs; give one per pair," \
+                "or use 'edger'."
+            return 1
+        fi
+
+        expand_arr_bcst "${#arr_fil_A[@]}" \
+            "arr_scl_fct" "arr_dep_min" "arr_pseudo" || return 1
 
         check_arr_lengths "arr_fil_B"   "arr_fil_A" || return 1
         check_arr_lengths "arr_fil_out" "arr_fil_A" || return 1

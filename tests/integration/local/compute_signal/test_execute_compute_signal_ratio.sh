@@ -1064,6 +1064,93 @@ done
 unset arr_case_mix case_mix tag_mix csv_mix pc_mix arr_mix arr_pc_mix rc_mix
 unset n_bad idx nam log_mix exp_mix
 
+# A single value applies to every pair: one 'edger' still derives each pair's
+# own pseudocount, and one scale factor and floor reach both.
+for case_bc in \
+    "edg|--csv_pseudo edger --prior_count 1" \
+    "scl|--csv_scl_fct 2:1 --csv_dep_min 0.5 --csv_pseudo NA"
+do
+    IFS='|' read -r tag_bc opt_bc <<< "${case_bc}"
+    read -r -a arr_opt_bc <<< "${opt_bc}"
+
+    "${TEST_BASH}" "${ROOT_REPO}/bin/execute_compute_signal.sh" \
+        --env_nam "${env_nam}" \
+        --threads 1 \
+        --mode ratio \
+        --method log2 \
+        --typ_sig count \
+        --csv_fil_A "${trk_A},${trk_B}" \
+        --csv_fil_B "${trk_B},${trk_A}" \
+        --dir_out "${dir_edg}" \
+        --typ_out bedGraph \
+        --prefix "bc_${tag_bc}" \
+        --dir_eo "${dir_err}" \
+        --nam_job "edger_bc_${tag_bc}" \
+        --max_job 1 \
+        "${arr_opt_bc[@]}" > /dev/null 2>&1 || true
+
+    n_bad=0
+    for idx in 0 1; do
+        nam="bc_${tag_bc}_$(basename "${arr_pair_A[idx]}" .bedGraph)"
+        log_bc="${dir_err}/edger_bc_${tag_bc}.${nam}.stderr.txt"
+
+        if [[ "${tag_bc}" == "edg" ]]; then
+            want="--pseudo $(
+                exp_edger "${arr_pair_A[idx]}" "${arr_pair_B[idx]}" 1
+            ) "
+        else
+            want="--scl_fct 2:1 --dep_min 0.5 "
+        fi
+
+        if [[ ! -s "${dir_edg}/${nam}.bedGraph" ]] \
+            || ! grep -qF -- "${want}" "${log_bc}" 2>/dev/null
+        then
+            n_bad=$(( n_bad + 1 ))
+        fi
+    done
+
+    if [[ "${n_bad}" -eq 0 ]]; then
+        record_pass "a single '${opt_bc}' applies to both pairs"
+    else
+        record_fail \
+            "a single '${opt_bc}' did not reach ${n_bad} of 2 pairs; see" \
+            "$(print_relpath "${dir_err}")"
+    fi
+done
+unset case_bc tag_bc opt_bc arr_opt_bc n_bad idx nam log_bc want
+
+# A single literal pseudocount is not applied to every pair.
+rc_bl=0
+out_bl="$(
+    "${TEST_BASH}" "${ROOT_REPO}/bin/execute_compute_signal.sh" \
+        --env_nam "${env_nam}" \
+        --threads 1 \
+        --mode ratio \
+        --method log2 \
+        --csv_fil_A "${trk_A},${trk_B}" \
+        --csv_fil_B "${trk_B},${trk_A}" \
+        --dir_out "${dir_edg}" \
+        --typ_out bedGraph \
+        --prefix bc_lit \
+        --dir_eo "${dir_err}" \
+        --nam_job "edger_bc_lit" \
+        --max_job 1 \
+        --csv_pseudo 1:1 2>&1
+)" || rc_bl=$?
+
+if [[
+    "${rc_bl}" -ne 0
+    && "${out_bl}" == *"single literal '--csv_pseudo'"*
+    && ! -e "${dir_edg}/bc_lit_tiny_se.bedGraph"
+]]; then
+    record_pass "a single literal '--csv_pseudo' is not applied to all pairs"
+else
+    record_fail \
+        "a single literal '--csv_pseudo' was applied to all pairs" \
+        "(exit ${rc_bl})"
+fi
+unset rc_bl out_bl
+
 # Separability: the pseudocount is added before scaling, so a scale factor is
 # a pure additive offset in log2 space and never interacts with the prior.
 for arm in plain scaled; do

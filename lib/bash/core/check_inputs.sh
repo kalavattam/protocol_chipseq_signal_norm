@@ -6,9 +6,11 @@
 # Copyright 2024-2026 by Kris Alavattam
 # Email: kalavattam@gmail.com
 #
-# OpenAI ChatGPT and Codex (GPT-4- and GPT-5-series models; most recent:
-# GPT-5.6) were used in design, development, and documentation, with all output
-# reviewed, edited, and approved by the author.
+# The following were used in design, development, and documentation, with all
+# output reviewed, edited, and approved by the author:
+# - OpenAI ChatGPT and Codex (GPT-4- and GPT-5-series models; most recent:
+#   GPT-5.6);
+# - Anthropic Claude Code (Opus 5.5).
 #
 # Distributed under the MIT license.
 
@@ -25,6 +27,7 @@
 # debug_arr_contents
 # check_arr_nonempty
 # check_arr_len_bcst
+# expand_arr_bcst
 
 
 #  Require Bash >= 4.4 before defining functions
@@ -1158,6 +1161,95 @@ EOM
     done
 
     return 0
+}
+
+
+function expand_arr_bcst() {
+    local n_req="${1:-}"
+    local arr_nam val idx
+    local show_help
+
+    show_help=$(cat << EOM
+Usage
+-----
+  expand_arr_bcst
+    [--help] n_req arr1 [arr2 ...]
+
+  Expand each named single-element array to 'n_req' copies of its element.
+
+Parameters
+----------
+  -h, --help : flag
+    Display this help message and exit.
+
+  1   n_req : int
+    Required full length for per-sample arrays.
+
+  2   arr1 : str
+    Name of the first array variable to expand.
+
+  3+  arr2 : str
+    Name(s) of additional array variable(s) to expand.
+
+Returns
+-------
+  0 if every named array has length 0, 1, or 'n_req' and single-element arrays were expanded; 1 if argument parsing fails or if any array has an invalid length.
+
+Notes
+-----
+  Runtime requirements:
+    bash >= 4.4
+
+  - Lengths are checked with 'check_arr_len_bcst' before anything is changed.
+  - Arrays of length 0 or 'n_req' are left as they are.
+
+Examples
+--------
+  1. Broadcast one scaling factor to three samples.
+    '''bash
+    arr_scl_fct=( "2" )
+    expand_arr_bcst 3 "arr_scl_fct"
+    '''
+
+  2. Reject a two-element array for three samples.
+    '''bash
+    arr_usr_frg=( "200" "250" )
+    if ! expand_arr_bcst 3 "arr_usr_frg"; then
+      echo "fragment-length vector cannot broadcast" >&2
+    fi
+    '''
+EOM
+    )
+
+    if [[ "${n_req}" =~ ^(-h|--h[e]?lp)$ ]]; then
+        echo "${show_help}" >&2
+        return 0
+    elif [[ $# -lt 2 ]]; then
+        echo_err_func "${FUNCNAME[0]}" \
+            "'n_req' and at least one array name are required."
+        echo >&2
+        echo "${show_help}" >&2
+        return 1
+    fi
+
+    check_arr_len_bcst "$@" || return 1
+    shift
+
+    for arr_nam in "$@"; do
+        local -n arr_bcst="${arr_nam}"
+
+        if \
+            [[ -v "arr_bcst[@]" ]] && (( ${#arr_bcst[@]} == 1 && n_req > 1 ))
+        then
+            val="${arr_bcst[0]}"
+
+            for (( idx = 1; idx < n_req; idx++ )); do
+                arr_bcst+=( "${val}" )
+            done
+        fi
+
+        unset -n arr_bcst
+    done
 }
 
 

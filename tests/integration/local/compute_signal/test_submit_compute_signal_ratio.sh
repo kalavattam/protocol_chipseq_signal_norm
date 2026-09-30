@@ -1097,10 +1097,10 @@ rc_mix=0
 # Compare each pair's logged '--pseudo' (printed as floats) to its spec
 # numerically, so a value applied to the wrong pair cannot pass.
 function call_has_pseudo() {
-    local fil_out="${1}" spec="${2}"
-    local log="${dir_mix}/test_compute_ratio_mixed.$(
-        basename "${fil_out}" .bedGraph
-    ).stderr.txt"
+    local fil_out="${1}"
+    local spec="${2}"
+    local nam="${fil_out##*/}"
+    local log="${dir_mix}/test_compute_ratio_mixed.${nam%.bedGraph}.stderr.txt"
 
     [[ -s "${log}" ]] || return 1
 
@@ -1138,5 +1138,73 @@ else
         "element (exit ${rc_mix}); see $(print_relpath "${dir_mix}")"
 fi
 unset dir_cnt trk_se trk_pe dir_mix out_mix_1 out_mix_2 exp_mix_1 rc_mix
+
+
+# A direct submit run applies one scale factor and floor to every pair, and
+# refuses one literal pseudocount for several pairs.
+dir_bc="${tmp}/broadcast"
+mkdir -p "${dir_bc}"
+
+"${TEST_BASH}" "${ROOT_REPO}/bin/submit_compute_signal.sh" \
+    --env_nam "${env_nam}" \
+    --dir_scr "${ROOT_REPO}/bin" \
+    --threads 1 \
+    --mode ratio \
+    --method linear \
+    --csv_fil_A "${fil_A},${fil_A}" \
+    --csv_fil_B "${fil_B},${fil_B}" \
+    --csv_fil_out "${dir_bc}/one.bdg,${dir_bc}/two.bdg" \
+    --dir_eo "${dir_bc}" \
+    --nam_job "test_compute_ratio_bc" \
+    --csv_scl_fct 2:1 \
+    --csv_dep_min 0.5 \
+    --dp 3 > /dev/null 2>&1 || true
+
+# Bin I:50-60 holds A = 1, B = 0.04, so '2 * 1 / max(0.04, 0.5)' is 4 only when
+# both the scale factor and the floor reached the pair.
+n_bc=0
+for out in "${dir_bc}/one.bdg" "${dir_bc}/two.bdg"; do
+    if grep -q $'^I\t50\t60\t4$' "${out}" 2>/dev/null; then
+        n_bc=$(( n_bc + 1 ))
+    fi
+done
+
+if [[ "${n_bc}" -eq 2 ]]; then
+    record_pass "submit applies a single scale factor and floor to both pairs"
+else
+    record_fail \
+        "submit applied a single scale factor and floor to ${n_bc} of 2" \
+        "pairs; see $(print_relpath "${dir_bc}")"
+fi
+
+rc_bl=0
+out_bl="$(
+    "${TEST_BASH}" "${ROOT_REPO}/bin/submit_compute_signal.sh" \
+        --env_nam "${env_nam}" \
+        --dir_scr "${ROOT_REPO}/bin" \
+        --threads 1 \
+        --mode ratio \
+        --method linear \
+        --csv_fil_A "${fil_A},${fil_A}" \
+        --csv_fil_B "${fil_B},${fil_B}" \
+        --csv_fil_out "${dir_bc}/lit_1.bdg,${dir_bc}/lit_2.bdg" \
+        --dir_eo "${dir_bc}" \
+        --nam_job "test_compute_ratio_bc_lit" \
+        --csv_pseudo 1:1 2>&1
+)" || rc_bl=$?
+
+if [[
+    "${rc_bl}" -ne 0
+    && "${out_bl}" == *"single literal '--csv_pseudo'"*
+    && ! -e "${dir_bc}/lit_1.bdg"
+]]; then
+    record_pass \
+        "submit does not apply a single literal pseudocount to all pairs"
+else
+    record_fail \
+        "submit applied a single literal pseudocount to all pairs (exit" \
+        "${rc_bl})"
+fi
+unset dir_bc n_bc out rc_bl out_bl
 
 finish

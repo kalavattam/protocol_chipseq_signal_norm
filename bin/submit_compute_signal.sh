@@ -2478,7 +2478,6 @@ function prepare_vecs() {
                 arr_rep_n_ovlp+=( "${fill_rep}" )
             done
         fi
-
         unset fill_rep
 
         if [[ -n "${csv_usr_frg}" ]]; then
@@ -2488,6 +2487,8 @@ function prepare_vecs() {
             populate_array_empty arr_usr_frg "${#arr_fil_in[@]}"
         fi
 
+        expand_arr_bcst "${#arr_fil_in[@]}" "arr_usr_frg" || return 1
+
         if [[ "${mode}" == "signal" ]]; then
             if [[ -n "${csv_scl_fct}" ]]; then
                 IFS=',' read -r -a arr_scl_fct <<< "${csv_scl_fct}"
@@ -2495,6 +2496,8 @@ function prepare_vecs() {
                 unset arr_scl_fct && declare -ga arr_scl_fct
                 populate_array_empty arr_scl_fct "${#arr_fil_in[@]}"
             fi
+
+            expand_arr_bcst "${#arr_fil_in[@]}" "arr_scl_fct" || return 1
         fi
     elif [[ "${mode}" == "ratio" ]]; then
         IFS=',' read -r -a arr_fil_A   <<< "${csv_fil_A}"
@@ -2549,6 +2552,24 @@ function prepare_vecs() {
                 "elements, and none were given."
             return 1
         fi
+
+        # One value applies to every pair, except a literal pseudocount: pairs
+        # of different depths need their own, so list one per pair or 'edger'.
+        if [[
+            "${#arr_pseudo[@]}" -eq 1
+                && "${#arr_fil_A[@]}" -gt 1
+                && "${arr_pseudo[0]}" != "edger"
+                && "${arr_pseudo[0]}" != "NA"
+        ]]; then
+            echo_err \
+                "a single literal '--csv_pseudo' ('${arr_pseudo[0]}') is not" \
+                "applied to all ${#arr_fil_A[@]} pairs; give one per pair," \
+                "or use 'edger'."
+            return 1
+        fi
+
+        expand_arr_bcst "${#arr_fil_A[@]}" \
+            "arr_scl_fct" "arr_dep_min" "arr_pseudo" || return 1
     fi
 }
 

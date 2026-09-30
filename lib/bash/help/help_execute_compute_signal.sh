@@ -163,6 +163,8 @@ Parameters
   -csf, --csv_scl_fct : list of structured string
     Comma-separated list of scaling factors or sentinels.
 
+    A single value applies to every input.
+
     Used with '--mode signal' or '--mode ratio'.
 
     For '--mode signal', each element must be 'NA' or a positive scalar float.
@@ -174,15 +176,21 @@ Parameters
   -cuf, --csv_usr_frg : list of int
     Comma-separated list of fixed fragment-length values or sentinels.
 
+    A single value applies to every input.
+
     Used with '--mode signal' or '--mode coord'.
 
   -cdm, --csv_dep_min : list of number
     Comma-separated list of minimum-depth values or sentinels; here 'min' abbreviates minimum.
 
+    A single value applies to every pair.
+
     Used with '--mode ratio'.
 
   -cps, --csv_pseudo : list of structured string
     Comma-separated list of pseudocount values as per-sample specs 'A:B', the element 'edger' to derive one from the counts beside each track, or sentinels.
+
+    A single 'edger' or 'NA' applies to every pair; a single literal 'A:B' does not, so provide one per pair.
 
     Values are in unscaled track units: a pseudocount is added before that track's '--csv_scl_fct' value is applied, if one is specified.
 
@@ -522,7 +530,7 @@ Parameters
 
     Used with '--mode signal' or '--mode ratio'; ignored otherwise.
 
-    List size must match the number of input files via '--csv_fil_in' or '--csv_fil_A'/'--csv_fil_B'.
+    List size must be 1, which applies to every input, or match the number of input files via '--csv_fil_in' or '--csv_fil_A'/'--csv_fil_B'.
 
     For '--mode signal', each non-sentinel element must be a positive scalar float.
 
@@ -541,14 +549,14 @@ Parameters
 
     Used with either '--mode signal' or '--mode coord'; ignored otherwise.
 
-    List size must match the number of input files via '--csv_fil_in'.
+    List size must be 1, which applies to every input, or match the number of input files via '--csv_fil_in'.
 
   -cdm, --csv_dep_min : list of number
     Comma-separated list of minimum-depth values or sentinels used to avoid extreme division operations; here 'min' abbreviates minimum.
 
     Used with '--mode ratio'; ignored otherwise.
 
-    List size must match the number of input files via '--csv_fil_A'/'--csv_fil_B'.
+    List size must be 1, which applies to every pair, or match the number of input files via '--csv_fil_A'/'--csv_fil_B'.
 
     Although allowed, using '--csv_dep_min' together with '--csv_pseudo' is usually harder to interpret, since both stabilize low-depth ratio behavior in different ways.
 
@@ -570,7 +578,7 @@ Parameters
 
     An 'edger' element derives from the edgeR prior set by '--prior_count'.
 
-    List size must match the number of input files via '--csv_fil_A'/'--csv_fil_B'.
+    List size must match the number of input files via '--csv_fil_A'/'--csv_fil_B', or be a single 'edger' or 'NA', which applies to every pair. A single literal 'A:B' is refused for more than one pair, since pairs of different depths need their own pseudocounts.
 
     Although allowed, using '--csv_pseudo' together with '--csv_dep_min' is usually harder to interpret, since both stabilize low-depth ratio behavior in different ways.
 
@@ -837,21 +845,21 @@ Examples
 
     Writes the ratio track and, beside it, a companion carrying '.track' before the extension with 'inf', '-inf', and 'nan' rows removed. Load that copy in a genome browser, where non-finite values otherwise cause rendering trouble.
 
-  7. Derive an edgeR-styled pseudocount from the counts the signal run wrote.
+  7. Derive an edgeR-styled pseudocount for each pair from the counts the signal runs wrote.
     '''bash
     bash "\${HOME}/bin/execute_compute_signal.sh" \\
         --threads 4 \\
         --mode "ratio" \\
         --method "log2" \\
-        --csv_fil_A "\${HOME}/project/norm/IP_1.bedGraph" \\
-        --csv_fil_B "\${HOME}/project/norm/in_1.bedGraph" \\
+        --csv_fil_A "\${HOME}/project/norm/IP_1.bedGraph,\${HOME}/project/norm/IP_2.bedGraph" \\
+        --csv_fil_B "\${HOME}/project/norm/in_1.bedGraph,\${HOME}/project/norm/in_2.bedGraph" \\
         --dir_out "\${HOME}/project/ratios" \\
         --typ_out "bedGraph.gz" \\
         --typ_sig "norm" \\
         --csv_pseudo "edger"
     '''
 
-    Reads 'IP_1.n_frg.txt', 'IP_1.n_ovlp.txt' and the matching pair beside 'in_1.bedGraph', passes all four to 'compute_pseudo --method edger', and applies the result to the IP-input pair.
+    The single 'edger' applies to both pairs, and each pair gets its own pseudocount: for the first, 'IP_1.n_frg.txt', 'IP_1.n_ovlp.txt', and the matching pair beside 'in_1.bedGraph' go to 'compute_pseudo --method edger', and the second is handled the same way with its own counts.
 
     The signal runs that wrote those tracks wrote the counts beside them, so nothing extra is needed unless they were given '--no_report'. '--typ_sig norm' says the tracks carry normalized coverage, which is what '--method norm' produced.
 EOM

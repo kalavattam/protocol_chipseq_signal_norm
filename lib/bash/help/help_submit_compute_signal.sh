@@ -122,6 +122,8 @@ Parameters
   -csf, --csv_scl_fct : list of structured string
     Comma-separated list of scaling factors or sentinels.
 
+    A single value applies to every input.
+
     Used with '--mode signal' or '--mode ratio'.
 
     A factor multiplies the finished track verbatim, whatever '--method' produced it.
@@ -133,15 +135,21 @@ Parameters
   -cuf, --csv_usr_frg : list of int
     Comma-separated list of fixed fragment-length values or sentinels.
 
+    A single value applies to every input.
+
     Used with '--mode signal' or '--mode coord'.
 
   -cdm, --csv_dep_min : list of number
     Comma-separated list of minimum-depth values or sentinels; here 'min' abbreviates minimum.
 
+    A single value applies to every pair.
+
     Used with '--mode ratio'.
 
   -cps, --csv_pseudo : list of structured string
     Comma-separated list of per-sample pseudocount specs 'A:B', or the element 'edger' to derive one from the counts beside each track. Deriving needs '--typ_sig' and the reports a signal run writes; a run given '--no_report' writes neither.
+
+    A single 'edger' or 'NA' applies to every pair; a single literal 'A:B' does not, so provide one per pair.
 
     Values should be in unscaled track units, as the ratio tool adds each pseudocount to its own track ('A' to file A, 'B' to file B) before applying that track's '--csv_scl_fct' value, if one is specified.
 

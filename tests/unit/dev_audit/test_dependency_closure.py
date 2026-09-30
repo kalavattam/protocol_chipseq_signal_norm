@@ -9,7 +9,7 @@
 # The following were used in design, development, and documentation, with all
 # output reviewed, edited, and approved by the author:
 # - OpenAI ChatGPT and Codex (GPT-5.6);
-# - Anthropic Claude Code (Opus 5).
+# - Anthropic Claude Code (Opus 5, Opus 5.5).
 #
 # Distributed under the MIT license.
 
@@ -1357,7 +1357,7 @@ function demo() {
                 len(historical_units),
                 historical_coverage["changed_block_count"],
             ),
-            (98, 367),
+            (100, 369),
         )
 
     def test_tests_linked_semantic_units_report_derived_counts(self) -> None:

@@ -677,5 +677,37 @@ for samp in se pe; do
 done
 unset dir_cnt_fx dir_cnt_out samp trk_cnt ext
 
+# One scale factor and one fragment length apply to every input in signal mode:
+# both tracks double, and the SE track also extends to 20 bp.
+dir_bc="${tmp}/broadcast"
+mkdir -p "${dir_bc}"
+
+bash "${ROOT_REPO}/bin/execute_compute_signal.sh" \
+    --env_nam "${env_nam}" \
+    --threads 1 \
+    --mode signal \
+    --method unadj \
+    --siz_bin 10 \
+    --csv_fil_in "${in_se},${in_pe}" \
+    --dir_out "${dir_bc}" \
+    --typ_out bedGraph \
+    --dir_eo "${dir_bc}" \
+    --max_job 1 \
+    --no_report \
+    --csv_scl_fct 2 \
+    --csv_usr_frg 20 > /dev/null 2>&1 || true
+
+if \
+       grep -q $'^I\t10\t20\t40$' "${dir_bc}/tiny_se.bedGraph" 2>/dev/null \
+    && grep -q $'^I\t10\t20\t20$' "${dir_bc}/tiny_pe.bedGraph" 2>/dev/null
+then
+    record_pass "a single scale factor and fragment length reach both inputs"
+else
+    record_fail \
+        "a single scale factor or fragment length did not reach both" \
+        "inputs; see $(print_relpath "${dir_bc}")"
+fi
+unset dir_bc
+
 
 finish
