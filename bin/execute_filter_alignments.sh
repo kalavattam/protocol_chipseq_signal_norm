@@ -6,14 +6,16 @@
 # Copyright 2024-2026 by Kris Alavattam
 # Email: kalavattam@gmail.com
 #
-# OpenAI ChatGPT and Codex (GPT-4- and GPT-5-series models; most recent:
-# GPT-5.6) were used in design, development, and documentation, with all output
-# reviewed, edited, and approved by the author.
+# The following were used in design, development, and documentation, with all
+# output reviewed, edited, and approved by the author:
+# - OpenAI ChatGPT and Codex (GPT-4- and GPT-5-series models; most recent:
+#   GPT-5.6);
+# - Anthropic Claude Code (Opus 5.5).
 #
 # Distributed under the MIT license.
 
 
-#  Require Bash >= 4.4 before doing any work
+# Require Bash >= 4.4 before doing any work.
 if [[ -z "${BASH_VERSION:-}" ]]; then
     echo "error(shell):" \
         "this script must be run under Bash >= 4.4." >&2
@@ -27,14 +29,14 @@ elif ((
     exit 1
 fi
 
-#  Run in safe mode, exiting on errors, unset variables, and pipe failures
+# Run in safe mode, exiting on errors, unset variables, and pipe failures.
 set -euo pipefail
 
-#  Set the path to the 'scripts' directory
+# Set the path to the 'scripts' directory.
 dir_scr="$(cd "$(dirname "${BASH_SOURCE[0]}")" > /dev/null 2>&1 && pwd)"
 
 
-#  Source shared helpers
+# Source shared helpers.
 function source_helpers_execute() {
     local fnc_src
 
@@ -159,10 +161,10 @@ EOM
     fi
 
     if [[ "${idx}" == "UNSET" ]]; then
-        #  Use the full serialized input list for Slurm or whole-wrapper calls
+        # Use the full serialized input list for Slurm or whole-wrapper calls.
         fil_in_i="${csv_fil_in}"
     else
-        #  Use one parsed alignment path for per-sample local/parallel calls
+        # Use one parsed alignment path for per-sample local/parallel calls.
         check_int_nonneg "${idx}" "idx" || return 1
         fil_in_i="${arr_fil_in[idx]}"
     fi
@@ -203,7 +205,7 @@ EOM
 }
 
 
-#  Initialize hardcoded argument variables
+# Initialize hardcoded argument variables.
 function init_args_hardcoded() {
     env_nam="env_protocol"
     scr_sub="${dir_scr}/submit_filter_alignments.sh"
@@ -211,7 +213,7 @@ function init_args_hardcoded() {
 }
 
 
-#  Initialize argument variables, assigning default values where applicable
+# Initialize argument variables, assigning default values where applicable.
 function init_arg_defs() {
     verbose=false
     dry_run=false
@@ -233,14 +235,14 @@ function init_arg_defs() {
 }
 
 
-#  Initialize hardcoded arguments and user-facing argument defaults
+# Initialize hardcoded arguments and user-facing argument defaults.
 function init_defs() {
     init_args_hardcoded
     init_arg_defs
 }
 
 
-#  Parse keyword arguments
+# Parse keyword arguments.
 function parse_args() {
     while [[ "$#" -gt 0 ]]; do
         case "${1}" in
@@ -400,7 +402,7 @@ function parse_args() {
 }
 
 
-#  Canonicalize argument aliases and species-specific optional flags
+# Canonicalize argument aliases and species-specific optional flags.
 function canonicalize_args() {
     out_ext="${out_ext,,}"
     retain="${retain,,}"
@@ -427,7 +429,7 @@ function canonicalize_args() {
 }
 
 
-#  Validate scalar arguments and assign derived scalar defaults
+# Validate scalar arguments and assign derived scalar defaults.
 function validate_args() {
     validate_var "env_nam" "${env_nam}" || return 1
     check_env_installed "${env_nam}"    || return 1
@@ -473,13 +475,13 @@ function validate_args() {
 }
 
 
-#  Reconstruct arrays from serialized inputs
+# Reconstruct arrays from serialized inputs.
 function prepare_vecs() {
     IFS=',' read -r -a arr_fil_in <<< "${csv_fil_in}"
 }
 
 
-#  Validate reconstructed input arrays
+# Validate reconstructed input arrays.
 function validate_vecs() {
     local fil_in
 
@@ -511,7 +513,7 @@ function validate_vecs() {
 }
 
 
-#  Configure local, GNU Parallel, or Slurm execution
+# Configure local, GNU Parallel, or Slurm execution.
 function config_exec() {
     if [[ "${slurm}" == "true" ]]; then
         max_job="$(reset_max_job "${max_job}" "${#arr_fil_in[@]}")"
@@ -519,7 +521,7 @@ function config_exec() {
         validate_var "time" "${time}" || return 1
         check_format_time "${time}" || return 1
     elif [[ "${max_job}" -le 1 ]]; then
-        #  Serial local execution does not require parallel job detection
+        # Serial local execution does not require parallel job detection.
         par_job=1
         unset time
 
@@ -543,7 +545,7 @@ function config_exec() {
 }
 
 
-#  Activate environment
+# Activate environment.
 function setup_env() {
     local -a env_msg
 
@@ -568,7 +570,7 @@ function setup_env() {
 }
 
 
-#  Check tools needed by the selected dispatch mode
+# Check tools needed by the selected dispatch mode.
 function check_tools() {
     check_pgrm_path awk      || return 1
     check_pgrm_path grep     || return 1
@@ -584,7 +586,7 @@ function check_tools() {
 }
 
 
-#  Print debug state after validation and execution configuration
+# Print debug state after validation and execution configuration.
 function print_state_debug() {
     if [[ "${verbose}" == "true" ]]; then
         print_banner_pretty "Hardcoded variable assignments"
@@ -625,7 +627,7 @@ function print_state_debug() {
 }
 
 
-#  Dispatch local, GNU Parallel, or Slurm jobs
+# Dispatch local, GNU Parallel, or Slurm jobs.
 function run_jobs() {
     local config idx log_err log_out
     local -a cmd_slurm
@@ -654,7 +656,7 @@ function run_jobs() {
         fi
 
         if [[ "${dry_run}" == "false" ]]; then
-            "${cmd_slurm[@]}"
+            "${cmd_slurm[@]}" || return 1
         fi
     elif [[ "${par_job}" -gt 1 ]]; then
         config="${dir_eo}/${nam_job}.config_parallel.txt"
@@ -680,13 +682,13 @@ function run_jobs() {
         if [[ "${dry_run}" == "true" || "${verbose}" == "true" ]]; then
             print_banner_pretty "GNU Parallel execution"
             echo
-            parallel --jobs "${par_job}" --dryrun < "${config}"
+            parallel --jobs "${par_job}" --dryrun < "${config}" || return 1
             echo
             echo
         fi
 
         if [[ "${dry_run}" == "false" ]]; then
-            parallel --jobs "${par_job}" < "${config}"
+            parallel --jobs "${par_job}" < "${config}" || return 1
         fi
     else
         build_cmd "UNSET" || return 1
@@ -709,7 +711,7 @@ function run_jobs() {
 }
 
 
-#  Main script execution
+# Main script execution.
 function main() {
     init_defs
     source_helpers_execute || return 1

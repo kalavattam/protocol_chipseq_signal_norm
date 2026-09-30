@@ -1753,7 +1753,7 @@ function run_jobs() {
         fi
 
         if [[ "${dry_run}" == "false" ]]; then
-            "${cmd_slurm[@]}"
+            "${cmd_slurm[@]}" || return 1
         fi
     else
         # Non-Slurm execution: GNU Parallel ('par_job > 1') or serial
@@ -1782,13 +1782,13 @@ function run_jobs() {
             if [[ "${dry_run}" == "true" || "${verbose}" == "true" ]]; then
                 print_banner_pretty "GNU Parallel execution"
                 echo
-                parallel --jobs "${par_job}" --dryrun < "${config}"
+                parallel --jobs "${par_job}" --dryrun < "${config}" || return 1
                 echo
                 echo
             fi
 
             if [[ "${dry_run}" == "false" ]]; then
-                parallel --jobs "${par_job}" < "${config}"
+                parallel --jobs "${par_job}" < "${config}" || return 1
             fi
         else
             if [[ "${dry_run}" == "true" || "${verbose}" == "true" ]]; then

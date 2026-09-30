@@ -6,9 +6,10 @@
 # Copyright 2026 by Kris Alavattam
 # Email: kalavattam@gmail.com
 #
-# OpenAI ChatGPT and Codex (GPT-5.5, GPT-5.6) were used in design, development,
-# and documentation, with all output reviewed, edited, and approved by the
-# author.
+# The following were used in design, development, and documentation, with all
+# output reviewed, edited, and approved by the author:
+# - OpenAI ChatGPT and Codex (GPT-5.5, GPT-5.6);
+# - Anthropic Claude Code (Opus 5.5).
 #
 # Distributed under the MIT license.
 
@@ -17,7 +18,7 @@ set -euo pipefail
 
 TEST_NAME="execute trim-fastqs GNU Parallel"
 
-#  Source shared test helpers
+# Source shared test helpers.
 # shellcheck source=tests/support/test_helpers.sh
 source "$(
     git -C "$(dirname "${BASH_SOURCE[0]}")" rev-parse --show-toplevel
@@ -28,14 +29,14 @@ if ! {
     is_atria_enabled && is_parallel_enabled
 }; then
     record_skip \
-        "Atria GNU Parallel execute trim-fastqs check disabled;" \
-        "set RUN_ATRIA=1 RUN_PARALLEL=1 to enable"
+        "Atria GNU Parallel execute trim-fastqs check disabled; set" \
+        "RUN_ATRIA=1 RUN_PARALLEL=1 to enable"
     finish
     exit $?
 fi
 
 
-#  Define fixture and output paths for a local GNU Parallel Atria wet run
+# Define fixture and output paths for a local GNU Parallel Atria wet run.
 dir_fx="${ROOT_REPO}/tests/fixtures/trim_fastqs"
 in_se="${dir_fx}/fastq/se/tiny_se.fastq.gz"
 in_r1="${dir_fx}/fastq/pe/tiny_pe_R1.fastq.gz"
@@ -103,10 +104,8 @@ then
 fi
 
 
-#  Run execute_trim_fastqs.sh through local GNU Parallel for one SE and one PE
-#+ input entry; with two entries and '--max_job 2', the execute wrapper writes
-#+ a GNU Parallel config and dispatches the per-entry submit commands through
-#+ 'parallel' instead of the serial branch
+# Run one SE and one PE entry with '--max_job 2', so the execute wrapper
+# dispatches them through GNU Parallel rather than its serial branch.
 if \
     run_capture \
         "execute trim-fastqs GNU Parallel Atria wet run" \
@@ -221,5 +220,38 @@ assert_file_exists \
 assert_file_exists \
     "${log_err_pe}" \
     "execute trim-fastqs GNU Parallel PE submit stderr log exists"
+
+
+# A failed job must fail the GNU Parallel run while the other still runs. The
+# first input is a gzipped file that is not a FASTQ, so its trimming fails.
+dir_st="${tmp}/status"
+mkdir -p "${dir_st}/in" "${dir_st}/out" "${dir_st}/logs"
+printf 'this is not a fastq\n' | gzip -c > "${dir_st}/in/bad_se.fastq.gz"
+cp "${in_se}" "${dir_st}/in/tiny_se.fastq.gz"
+
+rc_st=0
+"${TEST_BASH}" "${ROOT_REPO}/bin/execute_trim_fastqs.sh" \
+    --env_nam "${env_nam}" \
+    --threads 2 \
+    --csv_fil_in "${dir_st}/in/bad_se.fastq.gz;${dir_st}/in/tiny_se.fastq.gz" \
+    --dir_out "${dir_st}/out" \
+    --sfx_se ".fastq.gz" \
+    --sfx_pe "_R1.fastq.gz" \
+    --dir_eo "${dir_st}/logs" \
+    --nam_job "test_execute_trim_parallel_status" \
+    --max_job 2 > /dev/null 2>&1 || rc_st=$?
+
+if [[
+    "${rc_st}" -ne 0
+    && -s "${dir_st}/out/tiny_se.atria.fastq.gz"
+]]; then
+    record_pass "a failed job fails the GNU Parallel run; the other still runs"
+else
+    record_fail \
+        "a failed job was not reported by the GNU Parallel run, or the other" \
+        "did not run (exit ${rc_st})"
+fi
+unset dir_st rc_st
+
 
 finish
