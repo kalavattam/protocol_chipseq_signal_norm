@@ -262,4 +262,45 @@ unset dir_cnt trk_se trk_pe dir_mix exp_mix rc_mix pfx_mix_log log_mix_lit
 unset log_mix_edg
 
 
+# A failed job must fail the GNU Parallel run while the other still runs. The
+# first pair's track is copied without its counts, so its 'edger' fails.
+dir_cnt="${ROOT_REPO}/tests/fixtures/compute_signal/bedgraph/count"
+dir_par_st="${tmp}/par_status"
+mkdir -p "${dir_par_st}"
+cp "${dir_cnt}/tiny_se.bedGraph" "${dir_par_st}/a.bedGraph"
+cp "${dir_cnt}/tiny_pe.bedGraph" "${dir_par_st}/b.bedGraph"
+
+rc_par=0
+"${TEST_BASH}" "${ROOT_REPO}/bin/execute_compute_signal.sh" \
+    --env_nam "${env_nam}" \
+    --threads 2 \
+    --mode ratio \
+    --method log2 \
+    --typ_sig count \
+    --csv_fil_A "${dir_par_st}/a.bedGraph,${dir_cnt}/tiny_se.bedGraph" \
+    --csv_fil_B "${dir_par_st}/b.bedGraph,${dir_cnt}/tiny_pe.bedGraph" \
+    --dir_out "${dir_par_st}" \
+    --typ_out bedGraph \
+    --prefix st \
+    --dir_eo "${dir_par_st}" \
+    --nam_job "test_execute_compute_parallel_status" \
+    --max_job 2 \
+    --csv_scl_fct NA,NA \
+    --csv_dep_min NA,NA \
+    --csv_pseudo "edger,1:1" > /dev/null 2>&1 || rc_par=$?
+
+if [[
+    "${rc_par}" -ne 0
+    && ! -e "${dir_par_st}/st_a.bedGraph"
+    && -s "${dir_par_st}/st_tiny_se.bedGraph"
+]]; then
+    record_pass "a failed job fails the GNU Parallel run; the other still runs"
+else
+    record_fail \
+        "a failed job was not reported by the GNU Parallel run, or the other" \
+        "did not run (exit ${rc_par})"
+fi
+unset dir_cnt dir_par_st rc_par
+
+
 finish

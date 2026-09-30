@@ -1177,6 +1177,73 @@ else
         "$(print_relpath "${dir_err}")/edger_missing.*.stderr.txt"
 fi
 
+# A failed first pair must fail the serial run, and the second pair must still
+# run; before, only the last task's status survived.
+rc_ser=0
+out_ser="$(
+    "${TEST_BASH}" "${ROOT_REPO}/bin/execute_compute_signal.sh" \
+        --env_nam "${env_nam}" \
+        --threads 1 \
+        --mode ratio \
+        --method log2 \
+        --typ_sig count \
+        --csv_fil_A "${dir_miss}/a.bedGraph,${trk_A}" \
+        --csv_fil_B "${dir_miss}/b.bedGraph,${trk_B}" \
+        --dir_out "${dir_miss}" \
+        --typ_out bedGraph \
+        --prefix serial \
+        --dir_eo "${dir_err}" \
+        --nam_job "serial_status" \
+        --max_job 1 \
+        --csv_scl_fct NA,NA \
+        --csv_dep_min NA,NA \
+        --csv_pseudo "edger,1:1" 2>&1
+)" || rc_ser=$?
+
+if [[
+    "${rc_ser}" -ne 0
+    && "${out_ser}" == *"1 of 2 task(s) failed"*
+    && ! -e "${dir_miss}/serial_a.bedGraph"
+    && -s "${dir_miss}/serial_tiny_se.bedGraph"
+]]; then
+    record_pass "a failed first pair fails the serial run; the second still runs"
+else
+    record_fail \
+        "a failed first pair was not reported by the serial run, or the" \
+        "second pair did not run (exit ${rc_ser})"
+fi
+unset rc_ser out_ser
+
+# An invalid argument stops at its first check rather than running on to fail
+# somewhere unrelated.
+rc_thr=0
+out_thr="$(
+    "${TEST_BASH}" "${ROOT_REPO}/bin/execute_compute_signal.sh" \
+        --env_nam "${env_nam}" \
+        --threads 0 \
+        --mode ratio \
+        --method linear \
+        --csv_fil_A "${fil_A}" \
+        --csv_fil_B "${fil_B}" \
+        --dir_out "${dir_out}" \
+        --typ_out bdg \
+        --dir_eo "${dir_err}" \
+        --max_job 1 2>&1
+)" || rc_thr=$?
+
+if [[
+    "${rc_thr}" -ne 0
+    && "${out_thr}" == *"'--threads' was assigned '0'"*
+    && "${out_thr}" != *"print_parallel_info"*
+]]; then
+    record_pass "an invalid '--threads' stops at its own check"
+else
+    record_fail \
+        "an invalid '--threads' did not stop at its own check" \
+        "(exit ${rc_thr})"
+fi
+unset rc_thr out_thr
+
 # '--typ_sig' belongs to ratio mode; '--method' owns that meaning in signal.
 out_sig="$(
     "${TEST_BASH}" "${ROOT_REPO}/bin/execute_compute_signal.sh" \

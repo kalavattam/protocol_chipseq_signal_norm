@@ -926,10 +926,10 @@ function canonicalize_args() {
                     ;;
             esac
 
-            validate_var "csv_fil_in" "${csv_fil_in}"
+            validate_var "csv_fil_in" "${csv_fil_in}" || return 1
             validate_var_dir "csv_fil_in parent directory" \
-                "$(dirname "${csv_fil_in%%[,;]*}")" 0 false
-            check_str_delim "csv_fil_in" "${csv_fil_in}"
+                "$(dirname "${csv_fil_in%%[,;]*}")" 0 false || return 1
+            check_str_delim "csv_fil_in" "${csv_fil_in}" || return 1
             ;;
 
         r|rat|ratio)
@@ -952,15 +952,15 @@ function canonicalize_args() {
                     ;;
             esac
 
-            validate_var "csv_fil_A" "${csv_fil_A}"
+            validate_var "csv_fil_A" "${csv_fil_A}" || return 1
             validate_var_dir "csv_fil_A parent directory" \
-                "$(dirname "${csv_fil_A%%[,;]*}")" 0 false
-            check_str_delim "csv_fil_A" "${csv_fil_A}"
+                "$(dirname "${csv_fil_A%%[,;]*}")" 0 false || return 1
+            check_str_delim "csv_fil_A" "${csv_fil_A}" || return 1
 
-            validate_var "csv_fil_B" "${csv_fil_B}"
+            validate_var "csv_fil_B" "${csv_fil_B}" || return 1
             validate_var_dir "csv_fil_B parent directory" \
-                "$(dirname "${csv_fil_B%%[,;]*}")" 0 false
-            check_str_delim "csv_fil_B" "${csv_fil_B}"
+                "$(dirname "${csv_fil_B%%[,;]*}")" 0 false || return 1
+            check_str_delim "csv_fil_B" "${csv_fil_B}" || return 1
             ;;
 
         c|coord|coordinates)
@@ -973,10 +973,10 @@ function canonicalize_args() {
             fi
             unset method
 
-            validate_var "csv_fil_in" "${csv_fil_in}"
+            validate_var "csv_fil_in" "${csv_fil_in}" || return 1
             validate_var_dir "csv_fil_in parent directory" \
-                "$(dirname "${csv_fil_in%%[,;]*}")" 0 false
-            check_str_delim "csv_fil_in" "${csv_fil_in}"
+                "$(dirname "${csv_fil_in%%[,;]*}")" 0 false || return 1
+            check_str_delim "csv_fil_in" "${csv_fil_in}" || return 1
             ;;
 
         *)
@@ -992,20 +992,20 @@ function canonicalize_args() {
 
 # Validate scalar arguments and assign derived scalar defaults.
 function validate_args() {
-    validate_var "env_nam" "${env_nam}"
-    check_env_installed "${env_nam}"
+    validate_var "env_nam" "${env_nam}" || return 1
+    check_env_installed "${env_nam}" || return 1
 
-    validate_var_dir  "dir_scr" "${dir_scr}" 0 false
+    validate_var_dir  "dir_scr" "${dir_scr}" 0 false || return 1
 
-    validate_var_file "scr_sub" "${scr_sub}"
+    validate_var_file "scr_sub" "${scr_sub}" || return 1
 
-    validate_var "threads" "${threads}"
-    check_int_pos "${threads}" "threads"
+    validate_var "threads" "${threads}" || return 1
+    check_int_pos "${threads}" "threads" || return 1
 
-    validate_var_dir "dir_out" "${dir_out}"
+    validate_var_dir "dir_out" "${dir_out}" || return 1
 
     if [[ "${mode}" =~ ^(signal|ratio)$ ]]; then
-        validate_var "typ_out" "${typ_out}"
+        validate_var "typ_out" "${typ_out}" || return 1
         case "${typ_out}" in
             bedGraph|bedGraph.gz|bedgraph|bedgraph.gz|bdg|bdg.gz|bg|bg.gz) : ;;
             *)
@@ -1068,7 +1068,7 @@ function validate_args() {
             fi
         fi
     else
-        validate_var "typ_out" "${typ_out}"
+        validate_var "typ_out" "${typ_out}" || return 1
         case "${typ_out}" in
             bedGraph|bedGraph.gz|bedgraph|bedgraph.gz|bdg|bdg.gz|bg|bg.gz)
                 echo_warn \
@@ -1099,27 +1099,27 @@ function validate_args() {
     fi
 
     if [[ -n "${csv_scl_fct}" ]]; then
-        check_str_delim "csv_scl_fct" "${csv_scl_fct}"
+        check_str_delim "csv_scl_fct" "${csv_scl_fct}" || return 1
     fi
 
     if [[ -n "${csv_usr_frg}" ]]; then
-        check_str_delim "csv_usr_frg" "${csv_usr_frg}"
+        check_str_delim "csv_usr_frg" "${csv_usr_frg}" || return 1
     fi
 
     if [[ -n "${csv_dep_min}" ]]; then
-        check_str_delim "csv_dep_min" "${csv_dep_min}"
+        check_str_delim "csv_dep_min" "${csv_dep_min}" || return 1
     fi
 
     if [[ -n "${csv_pseudo}" ]]; then
-        check_str_delim "csv_pseudo" "${csv_pseudo}"
+        check_str_delim "csv_pseudo" "${csv_pseudo}" || return 1
     fi
 
     if [[ -n "${ref_fa}" ]]; then
-        validate_var_file "ref_fa" "${ref_fa}"
+        validate_var_file "ref_fa" "${ref_fa}" || return 1
     fi
 
     if [[ -n "${chr_siz}" ]]; then
-        validate_var_file "chr_siz" "${chr_siz}"
+        validate_var_file "chr_siz" "${chr_siz}" || return 1
     fi
 
     # '--prior_count' only changes 'edger' pseudocounts, so refuse it outside
@@ -1159,11 +1159,11 @@ function validate_args() {
         fi
     fi
 
-    validate_var "dp" "${dp}"
-    check_int_pos "${dp}" "dp"
+    validate_var "dp" "${dp}" || return 1
+    check_int_pos "${dp}" "dp" || return 1
 
     if [[ -z "${dir_eo}" ]]; then dir_eo="${dir_out}/logs"; fi
-    validate_var_dir "dir_eo" "${dir_eo}"
+    validate_var_dir "dir_eo" "${dir_eo}" || return 1
 
     if [[ -z "${nam_job}" ]]; then
         if [[ "${mode}" == "coord" ]]; then
@@ -1172,7 +1172,7 @@ function validate_args() {
             nam_job="compute_${mode}_${method}"
         fi
     fi
-    validate_var "nam_job" "${nam_job}"
+    validate_var "nam_job" "${nam_job}" || return 1
 }
 
 
@@ -1181,10 +1181,10 @@ function prepare_vecs() {
     if [[ "${mode}" =~ ^(signal|coord)$ ]]; then
         if [[ -n "${csv_fil_in}" ]]; then
             IFS=',' read -r -a arr_fil_in <<< "${csv_fil_in}"
-            check_arr_nonempty "arr_fil_in" "csv_fil_in"
+            check_arr_nonempty "arr_fil_in" "csv_fil_in" || return 1
 
             for fil_in in "${arr_fil_in[@]}"; do
-                validate_var_file "fil_in" "${fil_in}"
+                validate_var_file "fil_in" "${fil_in}" || return 1
             done
             unset fil_in
         else
@@ -1218,7 +1218,7 @@ function prepare_vecs() {
             fi
         done
 
-        check_arr_lengths "arr_fil_out" "arr_fil_in"
+        check_arr_lengths "arr_fil_out" "arr_fil_in" || return 1
 
         # Derive each sample's report paths from its track name; under
         # '--no_report', pad an empty element to keep one per sample.
@@ -1235,8 +1235,8 @@ function prepare_vecs() {
         done
         unset fil_trk
 
-        check_arr_lengths "arr_rep_n_frg" "arr_fil_in"
-        check_arr_lengths "arr_rep_n_ovlp" "arr_fil_in"
+        check_arr_lengths "arr_rep_n_frg" "arr_fil_in" || return 1
+        check_arr_lengths "arr_rep_n_ovlp" "arr_fil_in" || return 1
 
         for fil_in in "${arr_fil_in[@]}"; do
             if [[ "${fil_in,,}" == *.cram && -z "${ref_fa}" ]]; then
@@ -1259,12 +1259,12 @@ function prepare_vecs() {
 
             for s in "${arr_scl_fct[@]}"; do
                 if [[ "${s}" != "NA" ]]; then
-                    check_flt_pos "${s}" "csv_scl_fct"
+                    check_flt_pos "${s}" "csv_scl_fct" || return 1
                 fi
             done
             unset s
 
-            check_arr_lengths "arr_scl_fct" "arr_fil_in"
+            check_arr_lengths "arr_scl_fct" "arr_fil_in" || return 1
         fi
 
         # User-supplied fragment lengths are allowed for both 'signal' and
@@ -1278,19 +1278,19 @@ function prepare_vecs() {
 
         for u in "${arr_usr_frg[@]}"; do
             if [[ "${u}" != "NA" ]]; then
-                check_flt_pos "${u}" "csv_usr_frg"
+                check_flt_pos "${u}" "csv_usr_frg" || return 1
             fi
         done
         unset u
 
-        check_arr_lengths "arr_usr_frg" "arr_fil_in"
+        check_arr_lengths "arr_usr_frg" "arr_fil_in" || return 1
     else
         if [[ -n "${csv_fil_A}" ]]; then
             IFS=',' read -r -a arr_fil_A <<< "${csv_fil_A}"
-            check_arr_nonempty "arr_fil_A" "csv_fil_A"
+            check_arr_nonempty "arr_fil_A" "csv_fil_A" || return 1
 
             for file in "${arr_fil_A[@]}"; do
-                validate_var_file "csv_fil_A" "${file}"
+                validate_var_file "csv_fil_A" "${file}" || return 1
             done
             unset file
         else
@@ -1300,10 +1300,10 @@ function prepare_vecs() {
 
         if [[ -n "${csv_fil_B}" ]]; then
             IFS=',' read -r -a arr_fil_B <<< "${csv_fil_B}"
-            check_arr_nonempty "arr_fil_B" "csv_fil_B"
+            check_arr_nonempty "arr_fil_B" "csv_fil_B" || return 1
 
             for file in "${arr_fil_B[@]}"; do
-                validate_var_file "csv_fil_B" "${file}"
+                validate_var_file "csv_fil_B" "${file}" || return 1
             done
             unset file
         else
@@ -1345,7 +1345,7 @@ function prepare_vecs() {
         fi
 
         for s in "${arr_scl_fct[@]}"; do
-            check_scl_fct_ratio "${s}"
+            check_scl_fct_ratio "${s}" || return 1
         done
         unset s
 
@@ -1423,16 +1423,16 @@ function prepare_vecs() {
 
         for d in "${arr_dep_min[@]}"; do
             if [[ "${d}" != "NA" ]]; then
-                check_flt_pos "${d}" "csv_dep_min"
+                check_flt_pos "${d}" "csv_dep_min" || return 1
             fi
         done
         unset d
 
-        check_arr_lengths "arr_fil_B"   "arr_fil_A"
-        check_arr_lengths "arr_fil_out" "arr_fil_A"
-        check_arr_lengths "arr_scl_fct" "arr_fil_A"
-        check_arr_lengths "arr_dep_min" "arr_fil_A"
-        check_arr_lengths "arr_pseudo"  "arr_fil_A"
+        check_arr_lengths "arr_fil_B"   "arr_fil_A" || return 1
+        check_arr_lengths "arr_fil_out" "arr_fil_A" || return 1
+        check_arr_lengths "arr_scl_fct" "arr_fil_A" || return 1
+        check_arr_lengths "arr_dep_min" "arr_fil_A" || return 1
+        check_arr_lengths "arr_pseudo"  "arr_fil_A" || return 1
     fi
 }
 
@@ -1458,8 +1458,8 @@ function validate_vecs() {
 
 # Configure Slurm, GNU Parallel, or serial execution parameters.
 function config_exec() {
-    validate_var "max_job" "${max_job}"
-    check_int_pos "${max_job}" "max_job"
+    validate_var "max_job" "${max_job}"  || return 1
+    check_int_pos "${max_job}" "max_job" || return 1
 
     if [[ "${slurm}" == "true" ]]; then
         if [[ "${mode}" == "ratio" ]]; then
@@ -1468,23 +1468,23 @@ function config_exec() {
             max_job=$(reset_max_job "${max_job}" "${#arr_fil_in[@]}")
         fi
 
-        validate_var "time" "${time}"
-        check_format_time "${time}"
+        validate_var "time" "${time}" || return 1
+        check_format_time "${time}"   || return 1
     elif [[ "${max_job}" -le 1 ]]; then
         # Serial local execution does not require parallel job detection.
         par_job=1
         unset time
 
-        validate_var "par_job" "${par_job}"
-        check_int_pos "${par_job}" "par_job"
+        validate_var "par_job" "${par_job}"  || return 1
+        check_int_pos "${par_job}" "par_job" || return 1
     else
         IFS=';' read -r threads par_job < <(
             set_params_parallel "${threads}" "${max_job}"
         )
         unset time
 
-        validate_var "par_job" "${par_job}"
-        check_int_pos "${par_job}" "par_job"
+        validate_var "par_job" "${par_job}"  || return 1
+        check_int_pos "${par_job}" "par_job" || return 1
     fi
 
     # Debug parallelization information and summary output of resolved states.
@@ -1704,7 +1704,7 @@ function print_vecs_serialized() {
 
 # Dispatch Slurm, GNU Parallel, or serial work.
 function run_jobs() {
-    local config idx log_out log_err
+    local config idx log_out log_err n_fail
     local -a cmd_slurm
 
     if [[ "${slurm}" == "true" ]]; then
@@ -1790,6 +1790,9 @@ function run_jobs() {
             fi
 
             if [[ "${dry_run}" == "false" ]]; then
+                # Run every task as GNU Parallel does, then fail if any did;
+                # otherwise only the last task's status would survive.
+                n_fail=0
                 for idx in "${!arr_fil_out[@]}"; do
                     build_cmd "${idx}"
                     cmd_bld=( "${BASH}" "${cmd_bld[@]}" )
@@ -1798,8 +1801,19 @@ function run_jobs() {
                         get_submit_logs "${arr_fil_out[idx]}"
                     )
 
-                    "${cmd_bld[@]}" >> "${log_out}" 2>> "${log_err}"
+                    if ! "${cmd_bld[@]}" >> "${log_out}" 2>> "${log_err}"; then
+                        echo_err \
+                            "task ${idx} failed for '${arr_fil_out[idx]}';" \
+                            "see '${log_err}'."
+                        n_fail=$(( n_fail + 1 ))
+                    fi
                 done
+
+                if (( n_fail > 0 )); then
+                    echo_err \
+                        "${n_fail} of ${#arr_fil_out[@]} task(s) failed."
+                    return 1
+                fi
             fi
         fi
     fi
