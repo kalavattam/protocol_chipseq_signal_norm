@@ -9,7 +9,7 @@
 # The following were used in design, development, and documentation, with all
 # output reviewed, edited, and approved by the author:
 # - OpenAI ChatGPT and Codex (GPT-5.5, GPT-5.6);
-# - Anthropic Claude Code (Opus 5).
+# - Anthropic Claude Code (Opus 5, Opus 5.5).
 #
 # Distributed under the MIT license.
 
@@ -84,8 +84,8 @@ require_files_nonempty \
     exit $?
 }
 
-# GNU Parallel dry-run config should invoke non-executable submit scripts
-# through Bash.
+# GNU Parallel dry-run config should invoke non-executable submit scripts via
+# Bash.
 # shellcheck disable=SC2154
 if ! \
     require_env_parallel \
@@ -105,7 +105,7 @@ if \
             --env_nam "${env_nam}" \
             --threads 2 \
             --mode ratio \
-            --method unadj \
+            --method linear \
             --csv_fil_A "${fil_A}" \
             --csv_fil_B "${fil_B}" \
             --dir_out "${dir_out}" \
@@ -145,7 +145,7 @@ if \
             --env_nam "${env_nam}" \
             --threads 2 \
             --mode ratio \
-            --method unadj \
+            --method linear \
             --csv_fil_A "${fil_A_1},${fil_A_2}" \
             --csv_fil_B "${fil_B},${fil_B}" \
             --dir_out "${dir_out}" \
@@ -190,6 +190,76 @@ for out in "${fil_out_wet_1}" "${fil_out_wet_2}"; do
             "$(basename "${out}") has I:60-70 = 0.333"
     fi
 done
+
+
+# A mixed pseudocount list under GNU Parallel: each job must get its own
+# element, and the literal pair must run untouched.
+# shellcheck source=lib/bash/core/format_outputs.sh
+source "${ROOT_REPO}/lib/bash/core/format_outputs.sh"
+
+dir_cnt="${ROOT_REPO}/tests/fixtures/compute_signal/bedgraph/count"
+trk_se="${dir_cnt}/tiny_se.bedGraph"
+trk_pe="${dir_cnt}/tiny_pe.bedGraph"
+dir_mix="${tmp}/mixed"
+mkdir -p "${dir_mix}"
+
+exp_mix="$(
+    "${TEST_MANAGED_PYTHON}" \
+        -m protocol_chipseq_signal_norm.cli.compute_pseudo \
+        --method edger \
+        --typ_sig count \
+        --prior_count 1 \
+        --fil_A "${trk_pe}" \
+        --fil_B "${trk_se}" \
+        --n_frg_A "$(< "$(derive_report_path "${trk_pe}" n_frg)")" \
+        --n_frg_B "$(< "$(derive_report_path "${trk_se}" n_frg)")" \
+        --n_ovlp_A "$(< "$(derive_report_path "${trk_pe}" n_ovlp)")" \
+        --n_ovlp_B "$(< "$(derive_report_path "${trk_se}" n_ovlp)")" \
+        2>/dev/null
+)"
+
+rc_mix=0
+"${TEST_BASH}" "${ROOT_REPO}/bin/execute_compute_signal.sh" \
+    --env_nam "${env_nam}" \
+    --threads 2 \
+    --mode ratio \
+    --method log2 \
+    --typ_sig count \
+    --prior_count 1 \
+    --csv_fil_A "${trk_se},${trk_pe}" \
+    --csv_fil_B "${trk_pe},${trk_se}" \
+    --dir_out "${dir_mix}" \
+    --typ_out bedGraph \
+    --prefix mix \
+    --dir_eo "${dir_mix}" \
+    --nam_job "test_execute_compute_parallel_mix" \
+    --max_job 2 \
+    --csv_scl_fct NA,NA \
+    --csv_dep_min NA,NA \
+    --csv_pseudo "1:1,edger" > /dev/null 2>&1 || rc_mix=$?
+
+pfx_mix_log="${dir_mix}/test_execute_compute_parallel_mix"
+log_mix_lit="${pfx_mix_log}.mix_tiny_se.stderr.txt"
+log_mix_edg="${pfx_mix_log}.mix_tiny_pe.stderr.txt"
+
+if [[
+    "${rc_mix}" -eq 0
+    && -n "${exp_mix}"
+    && -s "${dir_mix}/mix_tiny_se.bedGraph"
+    && -s "${dir_mix}/mix_tiny_pe.bedGraph"
+]] \
+    && grep -qF -- "--pseudo 1:1 " "${log_mix_lit}" 2>/dev/null \
+    && grep -qF -- "--pseudo ${exp_mix} " "${log_mix_edg}" 2>/dev/null
+then
+    record_pass \
+        "GNU Parallel with '1:1,edger' gives each pair its own element"
+else
+    record_fail \
+        "GNU Parallel with '1:1,edger' did not give each pair its own" \
+        "element (exit ${rc_mix}); see $(print_relpath "${dir_mix}")"
+fi
+unset dir_cnt trk_se trk_pe dir_mix exp_mix rc_mix pfx_mix_log log_mix_lit
+unset log_mix_edg
 
 
 finish

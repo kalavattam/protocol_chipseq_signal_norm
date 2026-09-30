@@ -10,7 +10,7 @@
 # output reviewed, edited, and approved by the author:
 # - OpenAI ChatGPT and Codex (GPT-4- and GPT-5-series models; most recent:
 #   GPT-5.6);
-# - Anthropic Claude Code (Opus 5, Fable 5).
+# - Anthropic Claude Code (Opus 5, Fable 5, Opus 5.5).
 #
 # Distributed under the MIT license.
 
@@ -343,7 +343,7 @@ Parameters
     Write a companion track file. Mode 'ratio': return track sans '-inf', 'nan' (default: false).
 
   6  pseudo : structured string
-    Per-file pseudocount spec 'A[:B]'. Mode 'ratio' only; use sentinel 'NA' to omit (default: 'NA').
+    Per-file pseudocount spec 'A:B'. Mode 'ratio' only; use sentinel 'NA' to omit (default: 'NA').
 
   7  eps : float
     Zero tolerance epsilon or sentinel 'NA'. Mode 'ratio' only (default: 'NA').
@@ -780,16 +780,15 @@ EOM
 }
 
 
-# Resolve the 'edger' element into the 'A:B' spec the ratio tool takes. Reads
-# the counts beside each track and hands them to 'compute_pseudo', whose stdout
-# is already that spec: nothing is reformatted, no digits lost.
+# Resolve 'edger' to the 'A:B' spec 'compute_pseudo' prints from the counts
+# beside each track, passed through unreformatted so no digits are lost.
 function resolve_pseudo_edger() {
     local fil_A="${1:-}"
     local fil_B="${2:-}"
     local typ_sig="${3:-}"
-    local env_nam="${4:-}"
+    local prior_count="${4:-}"
     local rep spec
-    local -a cnt
+    local -a cnt opt
 
     if [[ -z "${fil_A}" || -z "${fil_B}" || -z "${typ_sig}" ]]; then
         echo_err_func "${FUNCNAME[0]}" \
@@ -814,6 +813,11 @@ function resolve_pseudo_edger() {
         cnt+=( "$(< "${rep}")" )
     done
 
+    # Empty leaves the prior count to 'compute_pseudo', which owns the default.
+    if [[ -n "${prior_count}" ]]; then
+        opt+=( --prior_count "${prior_count}" )
+    fi
+
     spec="$(
         run_py compute_pseudo \
             --method edger \
@@ -823,7 +827,8 @@ function resolve_pseudo_edger() {
             --n_frg_A "${cnt[0]}" \
             --n_frg_B "${cnt[1]}" \
             --n_ovlp_A "${cnt[2]}" \
-            --n_ovlp_B "${cnt[3]}"
+            --n_ovlp_B "${cnt[3]}" \
+            "${opt[@]}"
     )" || {
         echo_err_func "${FUNCNAME[0]}" \
             "'compute_pseudo --method edger' failed for '${fil_A}' and" \
@@ -863,6 +868,7 @@ function run_comp_rat() {
     local nam_job="${18:-}"
     local dsc="${19:-}"
     local typ_sig="${20:-}"
+    local prior_count="${21:-}"
     local log_out log_err  # Local variable declarations.
     local -a optional cmd  # Local array declarations.
     local show_help        # Help text.
@@ -872,7 +878,7 @@ function run_comp_rat() {
 Usage
 -----
   run_comp_rat
-    [--help] debug fil_A fil_B fil_out method scl_fct dep_min dp track pseudo eps skip_00 drp_nan skp_pfx chr_siz strict_bins dir_eo nam_job dsc typ_sig
+    [--help] debug fil_A fil_B fil_out method scl_fct dep_min dp track pseudo eps skip_00 drp_nan skp_pfx chr_siz strict_bins dir_eo nam_job dsc typ_sig prior_count
 
   Build and run the per-sample call to 'compute_signal_ratio.py'.
 
@@ -909,7 +915,7 @@ Parameters
     Write a companion track file. The name carries a '.track' suffix.
 
   10  pseudo : structured string
-    Per-file pseudocount spec 'A[:B]' or sentinel 'NA'.
+    Per-file pseudocount spec 'A:B' or sentinel 'NA'.
 
   11  eps : float
     Zero tolerance epsilon or sentinel 'NA'.
@@ -940,6 +946,9 @@ Parameters
 
   20  typ_sig : str
     Signal type the input tracks carry, or empty string. Needed by 'compute_pseudo --method edger'.
+
+  21  prior_count : float
+    edgeR 'prior.count' for an 'edger' pseudocount or empty string to use the 'compute_pseudo' default.
 
 Returns
 -------
@@ -988,7 +997,8 @@ Examples
         "\${tmp}" \\
         compute_ratio \\
         IP_over_input \\
-        norm
+        norm \\
+        ''
     '''
 EOM
     )
@@ -996,20 +1006,20 @@ EOM
     if [[ "${1}" =~ ^(-h|--h[e]?lp)$ ]]; then
         echo "${show_help}" >&2
         return 0
-    elif [[ $# -ne 20 ]]; then
+    elif [[ $# -ne 21 ]]; then
         echo_err_func "${FUNCNAME[0]}" \
-            "'run_comp_rat()' expects 20 arguments, but got $#."
+            "'run_comp_rat()' expects 21 arguments, but got $#."
         echo >&2
         echo "${show_help}" >&2
         return 1
     fi
 
-    # An 'edger' element is a request, not a value: it's an instruction to
-    # resolve the edgeR values from the counts the signal run wrote beside each
-    # track, before the call is assembled.
+    # 'edger' is not a value: derive this pair's pseudocount from the counts
+    # beside its tracks before the call is assembled.
     if [[ "${pseudo}" == "edger" ]]; then
         pseudo="$(
-            resolve_pseudo_edger "${fil_A}" "${fil_B}" "${typ_sig}"
+            resolve_pseudo_edger \
+                "${fil_A}" "${fil_B}" "${typ_sig}" "${prior_count}"
         )" || return 1
     fi
 
@@ -1652,7 +1662,8 @@ EOM
         "${dir_eo}" \
         "${nam_job}" \
         "${dsc}" \
-        "${typ_sig}"
+        "${typ_sig}" \
+        "${prior_count}"
     rc=$?
 
     task_epi "${err_ini}" "${out_ini}"
@@ -1858,6 +1869,7 @@ function init_arg_defs() {
     csv_report_n_ovlp=""
     no_report=false
     typ_sig=""
+    prior_count=""
     csv_scl_fct=""
     csv_usr_frg=""
     csv_dep_min=""
@@ -2134,6 +2146,16 @@ function parse_args() {
                 shift 2
                 ;;
 
+            -pc|--prior[_-]count)
+                require_optarg "${1}" "${2:-}" "main" || {
+                    echo >&2
+                    help_submit_compute_signal
+                    return 1
+                }
+                prior_count="${2}"
+                shift 2
+                ;;
+
             -nr|--no[_-]report)
                 no_report=true
                 shift 1
@@ -2270,6 +2292,19 @@ function validate_args() {
         esac
     fi
 
+    # '--prior_count' only changes 'edger' pseudocounts, so refuse it outside
+    # ratio mode here and without an 'edger' element once the list is read.
+    if [[ -n "${prior_count}" ]]; then
+        if [[ "${mode}" != "ratio" ]]; then
+            echo_err \
+                "'--prior_count' is for '--mode ratio', where it sets the" \
+                "edgeR prior that '--csv_pseudo edger' derives from."
+            return 1
+        fi
+
+        check_flt_nonneg "${prior_count}" "prior_count" || return 1
+    fi
+
     if [[ "${mode}" == "signal" ]]; then
         if [[ -n "${typ_sig}" ]]; then
             echo_err \
@@ -2371,6 +2406,7 @@ function print_state_debug() {
             "csv_dep_min=${csv_dep_min}" \
             "csv_pseudo=${csv_pseudo}" \
             "typ_sig=${typ_sig:-UNSET}" \
+            "prior_count=${prior_count:-UNSET}" \
             "eps=${eps}" \
             "skip_00=${skip_00}" \
             "strict_bins=${strict_bins}" \
@@ -2417,9 +2453,8 @@ function prepare_vecs() {
             for _ in "${arr_fil_in[@]}"; do arr_fil_out+=( "" ); done
         fi
 
-        # With no explicit list, 'compute_signal' derives the paths from a bare
-        # flag. Sentinel 'DERIVE' marks that branch and is consumed here, never
-        # passed on; the CLI's own sentinel for this is different.
+        # Without an explicit list, 'DERIVE' tells this script to pass a bare
+        # flag so 'compute_signal' derives the paths; it is never passed on.
         if [[ "${no_report}" == "true" ]]; then
             fill_rep=""
         else
@@ -2489,6 +2524,30 @@ function prepare_vecs() {
         else
             unset arr_pseudo && declare -ga arr_pseudo
             populate_array_empty arr_pseudo "${#arr_fil_A[@]}"
+        fi
+
+        # A bare 'A' would regularize file A alone and leave file B's zero bins
+        # undefined, so a literal must name both sides.
+        for p in "${arr_pseudo[@]}"; do
+            if [[ "${p}" == "NA" || "${p}" == "edger" ]]; then continue; fi
+
+            if [[ "${p}" != *:* ]]; then
+                echo_err \
+                    "'--csv_pseudo' element '${p}' needs 'A:B'; use" \
+                    "'${p}:${p}' for the same pseudocount on both tracks."
+                return 1
+            fi
+        done
+        unset p
+
+        if [[
+            -n "${prior_count}"
+            && " ${arr_pseudo[*]} " != *" edger "*
+        ]]; then
+            echo_err \
+                "'--prior_count' applies only to '--csv_pseudo edger'" \
+                "elements, and none were given."
+            return 1
         fi
     fi
 }

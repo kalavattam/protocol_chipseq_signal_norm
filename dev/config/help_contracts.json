@@ -1348,7 +1348,7 @@
     {
       "id": "shared_pseudo",
       "parameter": "pseudo",
-      "canonical_core": "Per-file pseudocount spec 'A[:B]'.",
+      "canonical_core": "Per-file pseudocount spec 'A:B'.",
       "members": [
         {
           "surface_id": "bin/submit_compute_signal.sh::run_comp_rat",
@@ -1356,7 +1356,7 @@
           "symbol": "run_comp_rat",
           "parameter": "pseudo",
           "owner": "PARAMETER.DESCRIPTIONS",
-          "evidence": "Parameters row for 'pseudo': Per-file pseudocount spec 'A[:B]' or sentinel 'NA'."
+          "evidence": "Parameters row for 'pseudo': Per-file pseudocount spec 'A:B' or sentinel 'NA'."
         }
       ],
       "local_meanings": [],
@@ -1936,7 +1936,7 @@
       "existing_example_count": 2,
       "example_fingerprints": [
         "7db1eecb84d0a5a493e21dc2b98eae5bb1e8fed54a3e69536e336c281d835e35",
-        "713369c1b8bd56891b3c66c1b5b280cacd6be2e7a0616e18d578011ee9418535"
+        "42a1ee5d342e4e259da63806b2d1663bebc09a080b55e84dd1b2d9524177bca8"
       ],
       "preservation": "exact",
       "authority": "owner_authorized_extension"

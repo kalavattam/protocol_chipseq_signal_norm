@@ -339,7 +339,7 @@ The `Type` field names the user-facing logical value form described or accepted 
 | `csv_dep_sin`   | list of int       | Sequencing/alignment depth value(s) for spike-in input alignment files.    |
 | `fil_A`         | file              | First bedGraph input file, file A.                                         |
 | `fil_B`         | file              | Second bedGraph input file, file B.                                        |
-| `pseudo`        | structured string | Per-file pseudocount spec 'A[:B]'.                                         |
+| `pseudo`        | structured string | Per-file pseudocount spec 'A:B'.                                           |
 | `drp_nan`       | flag              | Drop non-finite values from main output.                                   |
 | `typ_out`       | choice            | Output file format.                                                        |
 | `usr_frg`       | int               | Fixed fragment length.                                                     |

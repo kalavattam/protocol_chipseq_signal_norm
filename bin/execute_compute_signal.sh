@@ -10,7 +10,7 @@
 # output reviewed, edited, and approved by the author:
 # - OpenAI ChatGPT and Codex (GPT-4- and GPT-5-series models; most recent:
 #   GPT-5.6);
-# - Anthropic Claude Code (Opus 5, Fable 5).
+# - Anthropic Claude Code (Opus 5, Fable 5, Opus 5.5).
 #
 # Distributed under the MIT license.
 
@@ -295,6 +295,9 @@ Expected globals
   env_nam, mode, method, engine, skip_00, skp_pfx, nam_job, typ_sig : str
     Environment, mode, method, engine, zero-bin policy, skipped prefix list, job-name, and ratio-mode signal-type values, respectively.
 
+  prior_count : num
+    Ratio-mode edgeR 'prior.count' for '--csv_pseudo edger' elements or empty string.
+
   threads, siz_bin, siz_win, dp : int
     Thread count, bin size, window size, and rounding precision, respectively.
 
@@ -464,6 +467,12 @@ EOM
             cmd_bld+=( --typ_sig "${typ_sig}" )
         fi
 
+        # Forward '--prior_count' only when this call has an 'edger' element;
+        # 'submit' refuses it for a call with only literal pseudocounts.
+        if [[ -n "${prior_count}" && ",${pseudo}," == *",edger,"* ]]; then
+            cmd_bld+=( --prior_count "${prior_count}" )
+        fi
+
         if [[ -n "${eps}" ]]; then
             cmd_bld+=( --eps "${eps}" )
         fi
@@ -527,6 +536,7 @@ function init_arg_defs() {
     report_only=false
     no_report=false
     typ_sig=""
+    prior_count=""
     csv_scl_fct=""
     csv_usr_frg=""
     csv_dep_min=""
@@ -798,6 +808,16 @@ function parse_args() {
 
             -ts|--typ[_-]sig)
                 typ_sig="${2}"
+                shift 2
+                ;;
+
+            -pc|--prior[_-]count)
+                require_optarg "${1}" "${2:-}" "main" || {
+                    echo >&2
+                    help_execute_compute_signal >&2
+                    return 1
+                }
+                prior_count="${2}"
                 shift 2
                 ;;
 
@@ -1102,6 +1122,19 @@ function validate_args() {
         validate_var_file "chr_siz" "${chr_siz}"
     fi
 
+    # '--prior_count' only changes 'edger' pseudocounts, so refuse it outside
+    # ratio mode here and without an 'edger' element in 'prepare_vecs'.
+    if [[ -n "${prior_count}" ]]; then
+        if [[ "${mode}" != "ratio" ]]; then
+            echo_err \
+                "'--prior_count' is for '--mode ratio', where it sets the" \
+                "edgeR prior that '--csv_pseudo edger' derives from."
+            return 1
+        fi
+
+        check_flt_nonneg "${prior_count}" "prior_count" || return 1
+    fi
+
     if [[ "${mode}" == "ratio" ]]; then
         if [[ -n "${eps}" ]]; then check_flt_nonneg "${eps}" "eps"; fi
 
@@ -1187,9 +1220,8 @@ function prepare_vecs() {
 
         check_arr_lengths "arr_fil_out" "arr_fil_in"
 
-        # Reports share the track's derived base, so a sample's counts follow
-        # from its name. Under '--no_report', pad an empty element to keep one
-        # per sample, as every per-sample array here does.
+        # Derive each sample's report paths from its track name; under
+        # '--no_report', pad an empty element to keep one per sample.
         unset arr_rep_n_frg && declare -ga arr_rep_n_frg
         unset arr_rep_n_ovlp && declare -ga arr_rep_n_ovlp
         for fil_trk in "${arr_fil_out[@]}"; do
@@ -1333,12 +1365,12 @@ function prepare_vecs() {
             IFS=',' read -r -a arr_pseudo <<< "${csv_pseudo}"
         fi
 
+        has_edger=false
         for p in "${arr_pseudo[@]}"; do
             if [[ "${p}" == "NA" ]]; then continue; fi
 
-            # An 'edger' element is a request, not a value, as 'submit'
-            # resolves pseudocounts per pair from the counts the signal run
-            # wrote beside each track.
+            # 'edger' is not a value: 'submit' later derives each pair's
+            # pseudocount from the counts beside its tracks; check '--typ_sig'.
             if [[ "${p}" == "edger" ]]; then
                 if [[ -z "${typ_sig}" ]]; then
                     echo_err \
@@ -1347,18 +1379,23 @@ function prepare_vecs() {
                     return 1
                 fi
 
+                has_edger=true
                 continue
             fi
 
+            # A bare 'A' would regularize file A alone and leave file B's zero
+            # bins undefined, so a literal must name both sides.
             if [[ "${p}" != *:* ]]; then
-                check_flt_nonneg "${p}" "csv_pseudo"
-                continue
+                echo_err \
+                    "'--csv_pseudo' element '${p}' needs 'A:B'; use" \
+                    "'${p}:${p}' for the same pseudocount on both tracks."
+                return 1
             fi
 
             if [[ "${p}" == *:*:* ]]; then
                 echo_err \
                     "invalid pseudocount spec in '--csv_pseudo': '${p}'." \
-                    "Expected 'A', 'A:B', 'edger', or 'NA'."
+                    "Expected 'A:B', 'edger', or 'NA'."
                 return 1
             fi
 
@@ -1367,14 +1404,22 @@ function prepare_vecs() {
             if [[ -z "${pseudo_A}" || -z "${pseudo_B}" ]]; then
                 echo_err \
                     "invalid pseudocount spec in '--csv_pseudo': '${p}'." \
-                    "Expected 'A', 'A:B', 'edger', or 'NA'."
+                    "Expected 'A:B', 'edger', or 'NA'."
                 return 1
             fi
 
-            check_flt_nonneg "${pseudo_A}" "csv_pseudo"
-            check_flt_nonneg "${pseudo_B}" "csv_pseudo"
+            check_flt_nonneg "${pseudo_A}" "csv_pseudo" || return 1
+            check_flt_nonneg "${pseudo_B}" "csv_pseudo" || return 1
         done
         unset p pseudo_A pseudo_B
+
+        if [[ -n "${prior_count}" && "${has_edger}" != "true" ]]; then
+            echo_err \
+                "'--prior_count' applies only to '--csv_pseudo edger'" \
+                "elements, and none were given."
+            return 1
+        fi
+        unset has_edger
 
         for d in "${arr_dep_min[@]}"; do
             if [[ "${d}" != "NA" ]]; then
@@ -1535,6 +1580,7 @@ function print_state_debug() {
         echo "report_only=${report_only}"
         echo "no_report=${no_report}"
         echo "typ_sig=${typ_sig:-UNSET}"
+        echo "prior_count=${prior_count:-UNSET}"
         echo "csv_scl_fct=${csv_scl_fct:-UNSET}"
         echo "csv_usr_frg=${csv_usr_frg:-UNSET}"
         echo "csv_dep_min=${csv_dep_min:-UNSET}"

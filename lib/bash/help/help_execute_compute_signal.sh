@@ -10,7 +10,7 @@
 # output reviewed, edited, and approved by the author:
 # - OpenAI ChatGPT and Codex (GPT-4- and GPT-5-series models; most recent:
 #   GPT-5.6);
-# - Anthropic Claude Code (Opus 5, Fable 5).
+# - Anthropic Claude Code (Opus 5, Fable 5, Opus 5.5).
 #
 # Distributed under the MIT license.
 
@@ -30,7 +30,7 @@ Usage
     (--csv_fil_in <csv> [--ref_fa <file>] | --csv_fil_A <csv> --csv_fil_B <csv> [--chr_siz <file>])
     --dir_out <dir> [--typ_out <format>] [--prefix <str>]
     [--siz_bin <int>] [--engine <engine>] [--siz_win <int>] [--csv_usr_frg <csv>] [--csv_scl_fct <csv>]
-    [--csv_dep_min <csv>] [--csv_pseudo <csv>] [--typ_sig <str>] [--eps <num>] [--skip_00 <choice>] [--strict_bins] [--drp_nan] [--skp_pfx <csv>]
+    [--csv_dep_min <csv>] [--csv_pseudo <csv>] [--typ_sig <str>] [--prior_count <num>] [--eps <num>] [--skip_00 <choice>] [--strict_bins] [--drp_nan] [--skp_pfx <csv>]
     [--report_only] [--no_report]
     [--track] [--dp <int>]
     [--dir_eo <dir>] [--nam_job <str>] [--max_job <int>] [--slurm] [--time <time>]
@@ -182,7 +182,7 @@ Parameters
     Used with '--mode ratio'.
 
   -cps, --csv_pseudo : list of structured string
-    Comma-separated list of pseudocount values as per-sample specs 'A[:B]', the element 'edger' to derive one from the counts beside each track, or sentinels.
+    Comma-separated list of pseudocount values as per-sample specs 'A:B', the element 'edger' to derive one from the counts beside each track, or sentinels.
 
     Values are in unscaled track units: a pseudocount is added before that track's '--csv_scl_fct' value is applied, if one is specified.
 
@@ -192,6 +192,13 @@ Parameters
     Signal type the input tracks carry, required by '--csv_pseudo edger'.
 
     Used with '--mode ratio'.
+
+  -pc, --prior_count : number
+    edgeR 'prior.count' from which '--csv_pseudo edger' elements derive their pseudocounts (default: 2, from 'compute_pseudo'). It is given in counts and converted to the units of the '--typ_sig' track.
+
+    See '--details' for the conversion for each signal type.
+
+    Used with '--mode ratio' and at least one 'edger' element; rejected otherwise.
 
   -e, --eps : number
     Zero tolerance epsilon or sentinel used for ratio-mode zero checks.
@@ -287,7 +294,7 @@ Examples
         --method log2 \\
         --csv_fil_A IP1.bedGraph,IP2.bedGraph \\
         --csv_fil_B in1.bedGraph,in2.bedGraph \\
-        --csv_pseudo 0.5,0.4 \\
+        --csv_pseudo 0.5:0.5,0.4:0.4 \\
         --dir_out ratios \\
         --typ_out bedGraph.gz \\
         --track
@@ -553,13 +560,19 @@ Parameters
     The ordering follows edgeR: 'addPriorCount' regularizes in count space, then scales. Here the pseudocount is denominated in whatever units the track carries, which for the fractional signal types is not counts, so the prior is adapted from edgeR rather than reproduced.
 
     Each element is one of:
-      - 'A' or 'A:B', a literal pseudocount for the pair.
+      - 'A:B', a literal pseudocount pair: 'A' is added to file A and 'B' to file B. Use 'A:A' for the same pseudocount on both tracks; a bare 'A' is refused, since it would leave file B unregularized.
       - 'edger', which is a request rather than a value: the counts a signal run wrote beside each track are read back and passed to 'compute_pseudo --method edger', whose result is used for that pair. Needs the following:
         + '--typ_sig <spec>' and
         + both signal bedGraph tracks must have their '<track>.n_frg.txt' and '<track>.n_ovlp.txt' beside them.
       - 'NA', no pseudocount for that pair.
 
     Elements may be mixed, so one pair can be derived while another takes a literal.
+
+    An 'edger' element derives from the edgeR prior set by '--prior_count'.
+
+    List size must match the number of input files via '--csv_fil_A'/'--csv_fil_B'.
+
+    Although allowed, using '--csv_pseudo' together with '--csv_dep_min' is usually harder to interpret, since both stabilize low-depth ratio behavior in different ways.
 
     Used with '--mode ratio'; ignored otherwise.
 
@@ -570,13 +583,26 @@ Parameters
 
     The '--mode ratio --typ_sig <spec>' value is the '--mode signal --method <spec>' that produced the track ('--method' chooses what to do; '--typ_sig' declares what an existing input is). Rejected with '--mode signal', where '--method' already says what is being written.
 
-    List size must match the number of input files via '--csv_fil_A'/'--csv_fil_B'.
+  -pc, --prior_count : number
+    edgeR 'prior.count' from which '--csv_pseudo edger' elements derive their pseudocounts (default: 2, from 'compute_pseudo'). It is given in counts, and 'compute_pseudo --method edger' converts it to the units of the '--typ_sig' track.
 
-    Each non-sentinel element may be either:
-      - 'A': add pseudocount A symmetrically.
-      - 'A:B': add pseudocount A to file A and B to file B.
+    The terms below are:
+      - 'L', a track's fragment-bin overlap count ('n_ovlp').
+      - 'N', a track's fragment count ('n_frg').
+      - 'k = L / N', the mean number of bins a fragment touches.
+      - '_bar', the mean of a term over the two tracks.
+      - 'p = prior_count / (k_bar * N_bar)'.
 
-    Although allowed, using '--csv_pseudo' together with '--csv_dep_min' is usually harder to interpret, since both stabilize low-depth ratio behavior in different ways.
+    Each track's pseudocount, by '--typ_sig', is:
+      - 'count': 'prior_count * L / L_bar', edgeR's own per-sample scaling, so the two tracks differ.
+      - 'cpm': 'prior_count * 1e6 / L_bar', the same for both tracks.
+      - 'unadj': 'p' times the track's summed signal, which is its total fragment base pairs.
+      - 'frag': 'p' times 'N'.
+      - 'norm': 'p', the same for both tracks.
+
+    For 'unadj', 'frag', and 'norm', dividing by 'k_bar' corrects for fractional deposition; edgeR does not make this correction.
+
+    Used with '--mode ratio'. Rejected with any other mode, and when no '--csv_pseudo' element is 'edger', because it would then change no output: a sweep over it would return identical tracks.
 
   -e, --eps : number
     Zero tolerance epsilon or sentinel used for ratio-mode zero checks.
@@ -740,7 +766,7 @@ Examples
         --method "log2" \\
         --csv_fil_A "\${HOME}/project/norm/IP_1.bedGraph,\${HOME}/project/norm/IP_2.bedGraph" \\
         --csv_fil_B "\${HOME}/project/norm/in_1.bedGraph,\${HOME}/project/norm/in_2.bedGraph" \\
-        --csv_pseudo "0.5,0.4" \\
+        --csv_pseudo "0.5:0.5,0.4:0.4" \\
         --dir_out "\${HOME}/project/ratios" \\
         --typ_out "bedGraph.gz"
     '''

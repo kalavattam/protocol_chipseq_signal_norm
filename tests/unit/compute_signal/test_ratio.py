@@ -9,7 +9,7 @@
 # The following were used in design, development, and documentation, with all
 # output reviewed, edited, and approved by the author:
 # - OpenAI ChatGPT and Codex (GPT-5.6);
-# - Anthropic Claude Code (Opus 5).
+# - Anthropic Claude Code (Opus 5, Opus 5.5).
 #
 # Distributed under the MIT license.
 
@@ -342,10 +342,8 @@ def test_comp_sig_rat_rejects_dash_io(tmp_path: Path) -> None:
         )
 
 
-# Hidden hyphen aliases are separate 'add_argument' calls that must restate the
-# primary's 'type', 'choices', and action; argparse enforces none of that. Each
-# pair is exercised below, and a completeness guard fails when an alias reaches
-# the parser without a row here.
+# Each hidden hyphen alias must restate its primary's 'type', 'choices', and
+# action; every pair is tested, and a guard fails on an alias missing here.
 HYPHEN_ALIASES = (
     pytest.param("--chr_siz", "--chr-siz", "value", id="chr_siz"),
     pytest.param("--dep_min", "--dep-min", "0.5", id="dep_min"),
@@ -513,6 +511,67 @@ def test_missing_required_ratio_option_is_rejected(
         main(supplied)
 
     assert omitted in str(error.value)
+
+
+@pytest.mark.parametrize("pseudo", ["1", "0.5", "0"])
+def test_a_bare_pseudocount_is_refused(tmp_path: Path, pseudo: str) -> None:
+    """
+    A bare 'A' would regularize file A alone, so it is refused, naming 'A:B'.
+    """
+
+    fil_a = tmp_path / "a.bdg"
+    fil_b = tmp_path / "b.bdg"
+    fil_out = tmp_path / "ratio.bdg"
+    fil_a.write_text("chrI 0 10 4\nchrI 10 20 5\n", encoding="utf-8")
+    fil_b.write_text("chrI 0 10 2\nchrI 10 20 0\n", encoding="utf-8")
+
+    with pytest.raises(SystemExit) as error:
+        main(
+            [
+                "--fil_A",
+                str(fil_a),
+                "--fil_B",
+                str(fil_b),
+                "--fil_out",
+                str(fil_out),
+                "--pseudo",
+                pseudo,
+            ],
+        )
+
+    assert "'A:B'" in str(error.value)
+    assert not fil_out.exists()
+
+
+def test_a_paired_pseudocount_reaches_both_tracks(tmp_path: Path) -> None:
+    """
+    'A:A' regularizes the zero denominator that a bare 'A' would leave.
+    """
+
+    fil_a = tmp_path / "a.bdg"
+    fil_b = tmp_path / "b.bdg"
+    fil_out = tmp_path / "ratio.bdg"
+    fil_a.write_text("chrI 0 10 5\n", encoding="utf-8")
+    fil_b.write_text("chrI 0 10 0\n", encoding="utf-8")
+
+    assert (
+        main(
+            [
+                "--fil_A",
+                str(fil_a),
+                "--fil_B",
+                str(fil_b),
+                "--fil_out",
+                str(fil_out),
+                "--pseudo",
+                "1:1",
+                "--dp",
+                "3",
+            ],
+        )
+        == 0
+    )
+    assert fil_out.read_text(encoding="utf-8") == "chrI\t0\t10\t6\n"
 
 
 def test_the_ratio_vocabulary_is_exactly_the_ruled_set() -> None:

@@ -9,7 +9,7 @@
 # The following were used in design, development, and documentation, with all
 # output reviewed, edited, and approved by the author:
 # - OpenAI ChatGPT and Codex (GPT-5.5, GPT-5.6);
-# - Anthropic Claude Code (Opus 5).
+# - Anthropic Claude Code (Opus 5, Opus 5.5).
 #
 # Distributed under the MIT license.
 
@@ -32,14 +32,13 @@ fil_A="${dir_fx}/ratio_A.bdg"
 fil_B="${dir_fx}/ratio_B.bdg"
 fil_A_hdr="${dir_fx}/ratio_headers_A.bdg"
 fil_B_hdr="${dir_fx}/ratio_headers_B.bdg"
+fil_A_gz="${dir_fx}/ratio_A.bdg.gz"
+fil_B_gz="${dir_fx}/ratio_B.bdg.gz"
 
 tmp="${TEST_DIR_TMP}/execute_compute_signal_ratio"
-dir_in="${tmp}/in"
 dir_out="${tmp}/out"
 dir_err="${tmp}/logs"
 dir_log="${TEST_DIR_LOG}/compute_signal"
-fil_A_gz="${dir_in}/ratio_A.bdg.gz"
-fil_B_gz="${dir_in}/ratio_B.bdg.gz"
 
 fil_out_linear="${dir_out}/exec_ratio_A.bdg"
 fil_out_scl_fct="${dir_out}/exec_scl_fct_ratio_A.bdg"
@@ -78,7 +77,7 @@ log_skp_pfx="${dir_log}/execute_compute_signal_ratio_skp_pfx.log"
 print_section "${TEST_NAME}"
 
 rm -rf "${tmp}"
-mkdir -p "${dir_in}" "${dir_out}" "${dir_err}" "${dir_log}"
+mkdir -p "${dir_out}" "${dir_err}" "${dir_log}"
 
 require_env_project env_nam || {
     finish
@@ -101,9 +100,6 @@ then
     finish
     exit $?
 fi
-
-gzip -c "${fil_A}" > "${fil_A_gz}"
-gzip -c "${fil_B}" > "${fil_B_gz}"
 
 require_files_nonempty \
     "${chr_siz}" \
@@ -764,50 +760,33 @@ for kept in "${arr_mth_keep[@]}"; do
 done
 
 
-# Derived pseudocount: the 'edger' element makes the ratio stage read the
-# counts beside each track rather than take a literal. 'count' tracks, not
-# 'norm', so an A/B swap changes the value and this check can see one.
+# 'edger' reads the counts beside each track; 'count' tracks, unlike 'norm',
+# make an A/B swap change the value, so these checks can see one.
 # shellcheck source=lib/bash/core/format_outputs.sh
 source "${ROOT_REPO}/lib/bash/core/format_outputs.sh"
 
 dir_edg="${tmp}/edger"
 mkdir -p "${dir_edg}"
 
-for samp in se pe; do
-    "${TEST_BASH}" "${ROOT_REPO}/bin/execute_compute_signal.sh" \
-        --env_nam "${env_nam}" \
-        --threads 1 \
-        --mode signal \
-        --method count \
-        --csv_fil_in "${ROOT_REPO}/tests/fixtures/compute_signal/bam/${samp}/tiny_${samp}.bam" \
-        --dir_out "${dir_edg}" \
-        --typ_out bedGraph \
-        --siz_bin 10 \
-        --dir_eo "${dir_err}" \
-        --nam_job "edger_src_${samp}" \
-        --max_job 1 \
-        --csv_scl_fct NA > /dev/null 2>&1 || true
-done
-unset samp
+# The fixture 'count' tracks, with the counts the ratio stage must find for
+# itself beside each.
+dir_cnt="${ROOT_REPO}/tests/fixtures/compute_signal/bedgraph/count"
+trk_A="${dir_cnt}/tiny_se.bedGraph"
+trk_B="${dir_cnt}/tiny_pe.bedGraph"
 
-trk_A="${dir_edg}/tiny_se.bedGraph"
-trk_B="${dir_edg}/tiny_pe.bedGraph"
+require_files_nonempty \
+    "${trk_A}" \
+    "${trk_B}" \
+    "$(derive_report_path "${trk_A}" n_frg)" \
+    "$(derive_report_path "${trk_B}" n_frg)" \
+    "$(derive_report_path "${trk_A}" n_ovlp)" \
+    "$(derive_report_path "${trk_B}" n_ovlp)" || {
+    finish
+    exit $?
+}
 
-# The counts the ratio stage must find for itself.
-for f in "${trk_A}" "${trk_B}"; do
-    assert_file_nonempty "${f}" "edger source track $(basename "${f}")"
-    assert_file_nonempty \
-        "$(derive_report_path "${f}" n_frg)" \
-        "edger source count n_frg for $(basename "${f}")"
-    assert_file_nonempty \
-        "$(derive_report_path "${f}" n_ovlp)" \
-        "edger source count n_ovlp for $(basename "${f}")"
-done
-unset f
-
-# Plumbing equivalence. Both arms call the same 'compute_pseudo' binary, so
-# this checks report-path derivation, A/B pairing, precision through shell
-# capture, and '--typ_sig' forwarding, not the arithmetic.
+# Both arms run 'compute_pseudo', so this checks the plumbing (report paths,
+# A/B pairing, precision, '--typ_sig' forwarding), not the arithmetic.
 exp_pseudo="$(
     "${TEST_MANAGED_PYTHON}" \
         -m protocol_chipseq_signal_norm.cli.compute_pseudo \
@@ -865,9 +844,8 @@ else
         "the same value, so a mis-wired pair would pass"
 fi
 
-# 'norm' is symmetric: both inputs are means over A and B, so an A/B swap
-# cannot change the answer and is harmless rather than hidden. Transposing
-# 'N' and 'L' inverts 'k = L / N', which would corrupt it; pin both.
+# 'norm' uses pair means, so an A/B swap is harmless, but swapping 'N' and 'L'
+# inverts 'k = L / N'; pin both.
 norm_ok="$(
     "${TEST_MANAGED_PYTHON}" \
         -m protocol_chipseq_signal_norm.cli.compute_pseudo \
@@ -934,6 +912,157 @@ else
         "plumbing equivalence: expected '--pseudo ${exp_pseudo}' in the" \
         "ratio call; see $(print_relpath "${log_edg}")"
 fi
+
+# '--prior_count' reaches the derivation; the default run above already pins
+# that omitting it leaves 'compute_pseudo' its own default.
+exp_pc1="$(
+    "${TEST_MANAGED_PYTHON}" \
+        -m protocol_chipseq_signal_norm.cli.compute_pseudo \
+        --method edger \
+        --typ_sig count \
+        --prior_count 1 \
+        --fil_A "${trk_A}" \
+        --fil_B "${trk_B}" \
+        --n_frg_A "$(< "$(derive_report_path "${trk_A}" n_frg)")" \
+        --n_frg_B "$(< "$(derive_report_path "${trk_B}" n_frg)")" \
+        --n_ovlp_A "$(< "$(derive_report_path "${trk_A}" n_ovlp)")" \
+        --n_ovlp_B "$(< "$(derive_report_path "${trk_B}" n_ovlp)")" \
+        2>/dev/null
+)"
+
+if [[ -n "${exp_pc1}" && "${exp_pc1}" != "${exp_pseudo}" ]]; then
+    record_pass "'--prior_count 1' and the default derive different values"
+else
+    record_fail \
+        "'--prior_count 1' derives '${exp_pc1}', the same as the default" \
+        "'${exp_pseudo}', so the forwarding check below has no power"
+fi
+
+"${TEST_BASH}" "${ROOT_REPO}/bin/execute_compute_signal.sh" \
+    --env_nam "${env_nam}" \
+    --threads 1 \
+    --mode ratio \
+    --method log2 \
+    --typ_sig count \
+    --prior_count 1 \
+    --csv_fil_A "${trk_A}" \
+    --csv_fil_B "${trk_B}" \
+    --dir_out "${dir_edg}" \
+    --typ_out bedGraph \
+    --prefix pc1 \
+    --dir_eo "${dir_err}" \
+    --nam_job "edger_pc1" \
+    --max_job 1 \
+    --csv_scl_fct NA \
+    --csv_dep_min NA \
+    --csv_pseudo edger > /dev/null 2>&1 || true
+
+log_pc1="${dir_err}/edger_pc1.pc1_tiny_se.stderr.txt"
+
+if grep -qF -- "--pseudo ${exp_pc1}" "${log_pc1}" 2>/dev/null; then
+    record_pass \
+        "'--prior_count 1' reaches 'compute_pseudo' and its value is used"
+else
+    record_fail \
+        "'--prior_count 1': expected '--pseudo ${exp_pc1}' in the ratio" \
+        "call; see $(print_relpath "${log_pc1}")"
+fi
+
+# Print the 'A:B' spec 'compute_pseudo' derives for one pair from the counts
+# beside its tracks, with an optional prior count.
+function exp_edger() {
+    local fil_A="${1}" fil_B="${2}" pc="${3:-}"
+    local -a opt=()
+
+    if [[ -n "${pc}" ]]; then opt=( --prior_count "${pc}" ); fi
+
+    "${TEST_MANAGED_PYTHON}" \
+        -m protocol_chipseq_signal_norm.cli.compute_pseudo \
+        --method edger \
+        --typ_sig count \
+        --fil_A "${fil_A}" \
+        --fil_B "${fil_B}" \
+        --n_frg_A "$(< "$(derive_report_path "${fil_A}" n_frg)")" \
+        --n_frg_B "$(< "$(derive_report_path "${fil_B}" n_frg)")" \
+        --n_ovlp_A "$(< "$(derive_report_path "${fil_A}" n_ovlp)")" \
+        --n_ovlp_B "$(< "$(derive_report_path "${fil_B}" n_ovlp)")" \
+        "${opt[@]}" \
+        2>/dev/null
+}
+
+# Mixed lists: each pair must get its own element, checked in both orders so an
+# element applied to the wrong pair cannot pass.
+arr_pair_A=( "${trk_A}" "${trk_B}" )
+arr_pair_B=( "${trk_B}" "${trk_A}" )
+arr_case_mix=(
+    "lit_edg|1:1,edger|1"
+    "edg_lit|edger,1:1|1"
+    "lit_edg_def|1:1,edger|"
+)
+
+for case_mix in "${arr_case_mix[@]}"; do
+    IFS='|' read -r tag_mix csv_mix pc_mix <<< "${case_mix}"
+    IFS=',' read -r -a arr_mix <<< "${csv_mix}"
+    arr_pc_mix=()
+
+    if [[ -n "${pc_mix}" ]]; then arr_pc_mix=( --prior_count "${pc_mix}" ); fi
+
+    rc_mix=0
+    "${TEST_BASH}" "${ROOT_REPO}/bin/execute_compute_signal.sh" \
+        --env_nam "${env_nam}" \
+        --threads 1 \
+        --mode ratio \
+        --method log2 \
+        --typ_sig count \
+        "${arr_pc_mix[@]}" \
+        --csv_fil_A "${trk_A},${trk_B}" \
+        --csv_fil_B "${trk_B},${trk_A}" \
+        --dir_out "${dir_edg}" \
+        --typ_out bedGraph \
+        --prefix "mix_${tag_mix}" \
+        --dir_eo "${dir_err}" \
+        --nam_job "edger_mix_${tag_mix}" \
+        --max_job 1 \
+        --csv_scl_fct NA,NA \
+        --csv_dep_min NA,NA \
+        --csv_pseudo "${csv_mix}" > /dev/null 2>&1 || rc_mix=$?
+
+    # The driver's exit status does not see a failed pair, so each pair's track
+    # and ratio call are checked directly.
+    n_bad=0
+    for idx in 0 1; do
+        nam="mix_${tag_mix}_$(basename "${arr_pair_A[idx]}" .bedGraph)"
+        log_mix="${dir_err}/edger_mix_${tag_mix}.${nam}.stderr.txt"
+        exp_mix="${arr_mix[idx]}"
+
+        if [[ "${exp_mix}" == "edger" ]]; then
+            exp_mix="$(
+                exp_edger "${arr_pair_A[idx]}" "${arr_pair_B[idx]}" "${pc_mix}"
+            )"
+        fi
+
+        if [[
+            ! -s "${dir_edg}/${nam}.bedGraph"
+            || -z "${exp_mix}"
+        ]] || ! grep -qF -- "--pseudo ${exp_mix} " "${log_mix}" 2>/dev/null
+        then
+            n_bad=$(( n_bad + 1 ))
+        fi
+    done
+
+    if [[ "${rc_mix}" -eq 0 && "${n_bad}" -eq 0 ]]; then
+        record_pass \
+            "'${csv_mix}' with '--prior_count ${pc_mix:-<default>}' gives" \
+            "each pair its own element"
+    else
+        record_fail \
+            "'${csv_mix}' with '--prior_count ${pc_mix:-<default>}':" \
+            "${n_bad} of 2 pairs missing a track or the expected '--pseudo'" \
+            "(exit ${rc_mix}); see $(print_relpath "${dir_err}")"
+    fi
+done
+unset arr_case_mix case_mix tag_mix csv_mix pc_mix arr_mix arr_pc_mix rc_mix
+unset n_bad idx nam log_mix exp_mix
 
 # Separability: the pseudocount is added before scaling, so a scale factor is
 # a pure additive offset in log2 space and never interacts with the prior.
@@ -1034,7 +1163,9 @@ out_miss="$(
 
 # The descriptor is derived from the method and sample, so glob rather than
 # guess it.
-txt_miss="${out_miss}$(cat "${dir_err}"/edger_missing.*.stderr.txt 2>/dev/null || true)"
+txt_miss="${out_miss}$(
+    cat "${dir_err}"/edger_missing.*.stderr.txt 2>/dev/null || true
+)"
 
 if [[
     "${txt_miss}" == *"n_frg"* && "${txt_miss}" == *"--csv_pseudo edger"*
@@ -1067,6 +1198,230 @@ if [[
 else
     record_fail "'--typ_sig' was not rejected in signal mode by name"
 fi
+
+# '--prior_count' is refused wherever it could change no output, so a sweep
+# over it cannot silently return identical tracks.
+bam_se="${ROOT_REPO}/tests/fixtures/compute_signal/bam/se/tiny_se.bam"
+
+rc_pc=0
+out_pc="$(
+    "${TEST_BASH}" "${ROOT_REPO}/bin/execute_compute_signal.sh" \
+        --env_nam "${env_nam}" \
+        --threads 1 \
+        --mode signal \
+        --method norm \
+        --prior_count 1 \
+        --csv_fil_in "${bam_se}" \
+        --dir_out "${dir_edg}" \
+        --dir_eo "${dir_err}" \
+        --siz_bin 10 2>&1
+)" || rc_pc=$?
+
+if [[
+    "${rc_pc}" -ne 0
+    && "${out_pc}" == *"'--prior_count' is for '--mode ratio'"*
+]]; then
+    record_pass "'--prior_count' is rejected in signal mode"
+else
+    record_fail \
+        "'--prior_count' was not rejected in signal mode (exit ${rc_pc})"
+fi
+
+rc_pc=0
+out_pc="$(
+    "${TEST_BASH}" "${ROOT_REPO}/bin/execute_compute_signal.sh" \
+        --env_nam "${env_nam}" \
+        --threads 1 \
+        --mode ratio \
+        --method log2 \
+        --prior_count 1 \
+        --csv_fil_A "${trk_A}" \
+        --csv_fil_B "${trk_B}" \
+        --dir_out "${dir_edg}" \
+        --typ_out bedGraph \
+        --prefix pc_lit \
+        --dir_eo "${dir_err}" \
+        --nam_job "edger_pc_lit" \
+        --max_job 1 \
+        --csv_scl_fct NA \
+        --csv_dep_min NA \
+        --csv_pseudo 1:1 2>&1
+)" || rc_pc=$?
+
+if [[
+    "${rc_pc}" -ne 0
+    && "${out_pc}" == *"'--prior_count' applies only to '--csv_pseudo edger'"*
+    && ! -e "${dir_edg}/pc_lit_tiny_se.bedGraph"
+]]; then
+    record_pass "'--prior_count' is rejected when no element is 'edger'"
+else
+    record_fail \
+        "'--prior_count' with only literal pseudocounts was not rejected" \
+        "before writing a track (exit ${rc_pc})"
+fi
+
+# With '--csv_pseudo' omitted, every element is the 'NA' sentinel.
+rc_pc=0
+out_pc="$(
+    "${TEST_BASH}" "${ROOT_REPO}/bin/execute_compute_signal.sh" \
+        --env_nam "${env_nam}" \
+        --threads 1 \
+        --mode ratio \
+        --method log2 \
+        --prior_count 1 \
+        --csv_fil_A "${trk_A}" \
+        --csv_fil_B "${trk_B}" \
+        --dir_out "${dir_edg}" \
+        --typ_out bedGraph \
+        --prefix pc_none \
+        --dir_eo "${dir_err}" \
+        --nam_job "edger_pc_none" \
+        --max_job 1 2>&1
+)" || rc_pc=$?
+
+if [[
+    "${rc_pc}" -ne 0
+    && "${out_pc}" == *"'--prior_count' applies only to '--csv_pseudo edger'"*
+    && ! -e "${dir_edg}/pc_none_tiny_se.bedGraph"
+]]; then
+    record_pass "'--prior_count' is rejected when '--csv_pseudo' is omitted"
+else
+    record_fail \
+        "'--prior_count' without '--csv_pseudo' was not rejected before" \
+        "writing a track (exit ${rc_pc})"
+fi
+
+rc_pc=0
+out_pc="$(
+    "${TEST_BASH}" "${ROOT_REPO}/bin/execute_compute_signal.sh" \
+        --env_nam "${env_nam}" \
+        --threads 1 \
+        --mode ratio \
+        --method log2 \
+        --typ_sig count \
+        --prior_count two \
+        --csv_fil_A "${trk_A}" \
+        --csv_fil_B "${trk_B}" \
+        --dir_out "${dir_edg}" \
+        --typ_out bedGraph \
+        --prefix pc_bad \
+        --dir_eo "${dir_err}" \
+        --nam_job "edger_pc_bad" \
+        --max_job 1 \
+        --csv_scl_fct NA \
+        --csv_dep_min NA \
+        --csv_pseudo edger 2>&1
+)" || rc_pc=$?
+
+if [[
+    "${rc_pc}" -ne 0
+    && "${out_pc}" == *"'--prior_count' was assigned 'two'"*
+    && ! -e "${dir_edg}/pc_bad_tiny_se.bedGraph"
+]]; then
+    record_pass "a non-numeric '--prior_count' is rejected before any work"
+else
+    record_fail \
+        "a non-numeric '--prior_count' was not rejected (exit ${rc_pc})"
+fi
+unset bam_se rc_pc out_pc
+
+# A bare literal would regularize file A alone and leave file B's zero bins
+# undefined, so it is refused before any work.
+rc_bare=0
+out_bare="$(
+    "${TEST_BASH}" "${ROOT_REPO}/bin/execute_compute_signal.sh" \
+        --env_nam "${env_nam}" \
+        --threads 1 \
+        --mode ratio \
+        --method log2 \
+        --csv_fil_A "${fil_A}" \
+        --csv_fil_B "${fil_B}" \
+        --dir_out "${dir_out}" \
+        --typ_out bdg \
+        --prefix exec_bare \
+        --dir_eo "${dir_err}" \
+        --nam_job "test_execute_compute_ratio_bare" \
+        --max_job 1 \
+        --csv_pseudo 1 2>&1
+)" || rc_bare=$?
+
+if [[
+    "${rc_bare}" -ne 0
+    && "${out_bare}" == *"needs 'A:B'"*
+    && ! -e "${dir_out}/exec_bare_ratio_A.bdg"
+]]; then
+    record_pass "a bare '--csv_pseudo' literal is refused, naming 'A:B'"
+else
+    record_fail \
+        "a bare '--csv_pseudo' literal was not refused before any work" \
+        "(exit ${rc_bare})"
+fi
+unset rc_bare out_bare
+
+# '--prior_count' belongs to ratio mode, so coord mode refuses it too.
+bam_crd="${ROOT_REPO}/tests/fixtures/compute_signal/bam/se/tiny_se.bam"
+
+rc_crd=0
+out_crd="$(
+    "${TEST_BASH}" "${ROOT_REPO}/bin/execute_compute_signal.sh" \
+        --env_nam "${env_nam}" \
+        --threads 1 \
+        --mode coord \
+        --prior_count 1 \
+        --csv_fil_in "${bam_crd}" \
+        --dir_out "${dir_out}" \
+        --typ_out bed \
+        --prefix exec_crd_pc \
+        --dir_eo "${dir_err}" 2>&1
+)" || rc_crd=$?
+
+if [[
+    "${rc_crd}" -ne 0
+    && "${out_crd}" == *"'--prior_count' is for '--mode ratio'"*
+]]; then
+    record_pass "'--prior_count' is rejected in coord mode"
+else
+    record_fail \
+        "'--prior_count' was not rejected in coord mode (exit ${rc_crd})"
+fi
+unset bam_crd rc_crd out_crd
+
+# A non-numeric side of 'A:B' must stop the run before dispatch; the exit
+# status alone cannot show that, so also require that no task log exists.
+rc_nan=0
+out_nan="$(
+    "${TEST_BASH}" "${ROOT_REPO}/bin/execute_compute_signal.sh" \
+        --env_nam "${env_nam}" \
+        --threads 1 \
+        --mode ratio \
+        --method log2 \
+        --csv_fil_A "${fil_A}" \
+        --csv_fil_B "${fil_B}" \
+        --dir_out "${dir_out}" \
+        --typ_out bdg \
+        --prefix exec_nan_psd \
+        --dir_eo "${dir_err}" \
+        --nam_job "test_execute_compute_ratio_nan_psd" \
+        --max_job 1 \
+        --csv_pseudo x:1 2>&1
+)" || rc_nan=$?
+
+if [[
+    "${rc_nan}" -ne 0
+    && "${out_nan}" == *"'--csv_pseudo' was assigned 'x'"*
+    && ! -e "${dir_out}/exec_nan_psd_ratio_A.bdg"
+    && -z "$(
+        find "${dir_err}" -name 'test_execute_compute_ratio_nan_psd.*' \
+            2>/dev/null
+    )"
+]]; then
+    record_pass "a non-numeric side of an 'A:B' pseudocount stops the run"
+else
+    record_fail \
+        "a non-numeric side of an 'A:B' pseudocount did not stop the run" \
+        "(exit ${rc_nan})"
+fi
+unset rc_nan out_nan
 
 
 finish

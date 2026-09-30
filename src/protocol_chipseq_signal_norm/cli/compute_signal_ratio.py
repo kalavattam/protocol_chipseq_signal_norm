@@ -10,7 +10,7 @@
 # output reviewed, edited, and approved by the author:
 # - OpenAI ChatGPT and Codex (GPT-4- and GPT-5-series models; most recent:
 #   GPT-5.6);
-# - Anthropic Claude Code (Opus 5).
+# - Anthropic Claude Code (Opus 5, Opus 5.5).
 #
 # Distributed under the MIT license.
 
@@ -81,9 +81,8 @@ METHOD_CANON = {
     # Compute the ratio as A / B, on a linear scale rather than log2 scale.
     "linear": "linear",
 
-    # Compute the log2 ratio as log2(A / B). Each canonical name precedes
-    # its short-form alias, which is the order the rendered choices display
-    # inherits.
+    # Compute the log2 ratio as log2(A / B). Canonical names precede their
+    # aliases, which sets the order the rendered choices show.
     "log2": "log2",
     "l2": "log2",
 
@@ -879,12 +878,16 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         type=str,
         default="0:0",
         help=(
-            "Per-file pseudocount spec 'A[:B]' added in unscaled track units, "
+            "Per-file pseudocount spec 'A:B' added in unscaled track units, "
             "before any optional scaling (default: %(default)s).\n"
             "\n"
             "Each pseudocount is added to its own track ('A' to file A, 'B' "
             "to file B) before that track's '--scl_fct' value is applied, if "
             "one is specified.\n"
+            "\n"
+            "Both values are required. A bare 'A' is refused, since it would "
+            "leave file B unregularized; use 'A:A' for the same pseudocount "
+            "on both tracks.\n"
             "\n"
             "The ordering follows edgeR: 'addPriorCount' regularizes in count "
             "space, then scales. Here the pseudocount is denominated in "
@@ -1191,6 +1194,14 @@ def main(argv: list[str] | None = None) -> int:
             scl_a, scl_b = parse_pair(args.scl_fct, 1.0)
         else:
             scl_a, scl_b = 1.0, 1.0
+
+        # A bare 'A' would regularize file A alone and leave file B's zero
+        # bins undefined, so it is refused rather than read as 'A:0'.
+        if ":" not in args.pseudo:
+            raise argparse.ArgumentTypeError(
+                "'--pseudo' needs 'A:B'; use 'A:A' for the same pseudocount "
+                "on both tracks.",
+            )
 
         psc_a, psc_b = parse_pair(args.pseudo, 0.0)
     except argparse.ArgumentTypeError as e:

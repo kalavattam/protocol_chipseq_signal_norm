@@ -9,7 +9,7 @@
 # The following were used in design, development, and documentation, with all
 # output reviewed, edited, and approved by the author:
 # - OpenAI ChatGPT and Codex (GPT-5.5, GPT-5.6);
-# - Anthropic Claude Code (Opus 5, Fable 5).
+# - Anthropic Claude Code (Opus 5, Fable 5, Opus 5.5).
 #
 # Distributed under the MIT license.
 
@@ -30,7 +30,7 @@ Usage
     (--csv_fil_in <csv> [--ref_fa <file>] | --csv_fil_A <csv> --csv_fil_B <csv> [--chr_siz <file>])
     --csv_fil_out <csv>
     [--siz_bin <int>] [--engine <engine>] [--siz_win <int>] [--csv_scl_fct <csv>] [--csv_usr_frg <csv>]
-    [--csv_dep_min <csv>] [--csv_pseudo <csv>] [--typ_sig <str>] [--eps <flt>] [--skip_00 <choice>] [--strict_bins] [--drp_nan] [--skp_pfx <csv>]
+    [--csv_dep_min <csv>] [--csv_pseudo <csv>] [--typ_sig <str>] [--prior_count <flt>] [--eps <flt>] [--skip_00 <choice>] [--strict_bins] [--drp_nan] [--skp_pfx <csv>]
     [--csv_report_n_frg <csv>] [--csv_report_n_ovlp <csv>] [--no_report]
     [--track] [--dp <int>]
     --dir_eo <dir> [--nam_job <str>]
@@ -141,7 +141,7 @@ Parameters
     Used with '--mode ratio'.
 
   -cps, --csv_pseudo : list of structured string
-    Comma-separated list of per-sample pseudocount specs 'A[:B]', or the element 'edger' to derive one from the counts beside each track. Deriving needs '--typ_sig' and the reports a signal run writes; a run given '--no_report' writes neither.
+    Comma-separated list of per-sample pseudocount specs 'A:B', or the element 'edger' to derive one from the counts beside each track. Deriving needs '--typ_sig' and the reports a signal run writes; a run given '--no_report' writes neither.
 
     Values should be in unscaled track units, as the ratio tool adds each pseudocount to its own track ('A' to file A, 'B' to file B) before applying that track's '--csv_scl_fct' value, if one is specified.
 
@@ -151,6 +151,11 @@ Parameters
     Used with '--mode ratio'.
 
     '--mode ratio --typ_sig <value>' is the '--mode signal --method <value>' that produced the track ('--method' chooses what to do; '--typ_sig' declares what an existing input is).
+
+  -pc, --prior_count : float
+    edgeR 'prior.count' from which '--csv_pseudo edger' elements derive their pseudocounts (default: 2, from 'compute_pseudo'). It is given in counts and converted to the units of the '--typ_sig' track.
+
+    Used with '--mode ratio' and at least one 'edger' element; rejected otherwise.
 
   -e, --eps : float
     Zero tolerance epsilon or sentinel used for ratio-mode zero checks.
@@ -248,7 +253,7 @@ Examples
         --csv_fil_B "\${dir_bdg}/in_1.bedGraph.gz,\${dir_bdg}/in_2.bedGraph.gz" \\
         --csv_fil_out "\${dir_out}/ratio_1.bedGraph.gz,\${dir_out}/ratio_2.bedGraph.gz" \\
         --csv_scl_fct "0.8734,1.1290" \\
-        --csv_pseudo "0.5,0.4" \\
+        --csv_pseudo "0.5:0.5,0.4:0.4" \\
         --eps 0 \\
         --skip_00 "pre_scale" \\
         --track \\

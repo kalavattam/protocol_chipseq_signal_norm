@@ -9,7 +9,7 @@
 # The following were used in design, development, and documentation, with all
 # output reviewed, edited, and approved by the author:
 # - OpenAI ChatGPT and Codex (GPT-5.5, GPT-5.6);
-# - Anthropic Claude Code (Opus 5).
+# - Anthropic Claude Code (Opus 5, Opus 5.5).
 #
 # Distributed under the MIT license.
 
@@ -31,14 +31,13 @@ fil_A="${dir_fx}/ratio_A.bdg"
 fil_B="${dir_fx}/ratio_B.bdg"
 fil_A_hdr="${dir_fx}/ratio_headers_A.bdg"
 fil_B_hdr="${dir_fx}/ratio_headers_B.bdg"
+fil_A_gz="${dir_fx}/ratio_A.bdg.gz"
+fil_B_gz="${dir_fx}/ratio_B.bdg.gz"
 
 tmp="${TEST_DIR_TMP}/submit_compute_signal_ratio"
-dir_in="${tmp}/in"
 dir_out="${tmp}/out"
 dir_err="${tmp}/logs"
 dir_log="${TEST_DIR_LOG}/compute_signal"
-fil_A_gz="${dir_in}/ratio_A.bdg.gz"
-fil_B_gz="${dir_in}/ratio_B.bdg.gz"
 
 fil_out_linear="${dir_out}/ratio_linear.dp3.bdg"
 fil_out_scl_fct="${dir_out}/ratio_scl_fct_2_1.dp3.bdg"
@@ -80,7 +79,7 @@ print_section "${TEST_NAME}"
 
 
 rm -rf "${tmp}"
-mkdir -p "${dir_in}" "${dir_out}" "${dir_err}" "${dir_log}"
+mkdir -p "${dir_out}" "${dir_err}" "${dir_log}"
 
 require_env_project env_nam || {
     finish
@@ -104,9 +103,6 @@ then
     finish
     exit $?
 fi
-
-gzip -c "${fil_A}" > "${fil_A_gz}"
-gzip -c "${fil_B}" > "${fil_B_gz}"
 
 require_files_nonempty \
     "${fil_A_gz}" \
@@ -846,9 +842,8 @@ if [[ -s "${fil_out_skp_pfx}" ]]; then
 fi
 
 
-# Mode separation: ratio runs must never receive the signal-only window
-# options. The submit wrapper does not forward '--chr_siz' itself, so only the
-# absences are asserted here; the execute suite covers the forwarding.
+# Ratio runs must never receive the signal-only window options; forwarding is
+# covered by the execute suite.
 log_rat_mode="${tmp}/logs/test_compute_ratio_skp_pfx.ratio_skp_pfx.dp3.stderr.txt"
 
 assert_file_nonempty \
@@ -866,5 +861,282 @@ if [[ -s "${log_rat_mode}" ]]; then
         "--engine" \
         "submit ratio omits '--engine'"
 fi
+
+
+# '--prior_count' is refused wherever it could change no output. A direct
+# submit run must refuse it too, not only the execute driver.
+rc_pc=0
+out_pc="$(
+    "${TEST_BASH}" "${ROOT_REPO}/bin/submit_compute_signal.sh" \
+        --env_nam "${env_nam}" \
+        --dir_scr "${ROOT_REPO}/bin" \
+        --threads 1 \
+        --mode ratio \
+        --method linear \
+        --prior_count 1 \
+        --csv_fil_A "${fil_A}" \
+        --csv_fil_B "${fil_B}" \
+        --csv_fil_out "${tmp}/ratio_pc_lit.bedGraph" \
+        --dir_eo "${dir_err}" \
+        --nam_job "test_compute_ratio_pc_lit" \
+        --csv_scl_fct NA \
+        --csv_dep_min NA \
+        --csv_pseudo 1:1 2>&1
+)" || rc_pc=$?
+
+if [[
+    "${rc_pc}" -ne 0
+    && "${out_pc}" == *"'--prior_count' applies only to '--csv_pseudo edger'"*
+    && ! -e "${tmp}/ratio_pc_lit.bedGraph"
+]]; then
+    record_pass "submit rejects '--prior_count' when no element is 'edger'"
+else
+    record_fail \
+        "submit did not reject '--prior_count' with only literal" \
+        "pseudocounts (exit ${rc_pc})"
+fi
+
+# With '--csv_pseudo' omitted, every element is the 'NA' sentinel.
+rc_pc=0
+out_pc="$(
+    "${TEST_BASH}" "${ROOT_REPO}/bin/submit_compute_signal.sh" \
+        --env_nam "${env_nam}" \
+        --dir_scr "${ROOT_REPO}/bin" \
+        --threads 1 \
+        --mode ratio \
+        --method linear \
+        --prior_count 1 \
+        --csv_fil_A "${fil_A}" \
+        --csv_fil_B "${fil_B}" \
+        --csv_fil_out "${tmp}/ratio_pc_none.bedGraph" \
+        --dir_eo "${dir_err}" \
+        --nam_job "test_compute_ratio_pc_none" 2>&1
+)" || rc_pc=$?
+
+if [[
+    "${rc_pc}" -ne 0
+    && "${out_pc}" == *"'--prior_count' applies only to '--csv_pseudo edger'"*
+    && ! -e "${tmp}/ratio_pc_none.bedGraph"
+]]; then
+    record_pass "submit rejects '--prior_count' when '--csv_pseudo' is omitted"
+else
+    record_fail \
+        "submit did not reject '--prior_count' without '--csv_pseudo'" \
+        "(exit ${rc_pc})"
+fi
+
+bam_se="${ROOT_REPO}/tests/fixtures/compute_signal/bam/se/tiny_se.bam"
+
+rc_pc=0
+out_pc="$(
+    "${TEST_BASH}" "${ROOT_REPO}/bin/submit_compute_signal.sh" \
+        --env_nam "${env_nam}" \
+        --dir_scr "${ROOT_REPO}/bin" \
+        --threads 1 \
+        --mode signal \
+        --method norm \
+        --prior_count 1 \
+        --csv_fil_in "${bam_se}" \
+        --csv_fil_out "${tmp}/signal_pc.bedGraph" \
+        --dir_eo "${dir_err}" \
+        --nam_job "test_compute_signal_pc" 2>&1
+)" || rc_pc=$?
+
+if [[
+    "${rc_pc}" -ne 0
+    && "${out_pc}" == *"'--prior_count' is for '--mode ratio'"*
+]]; then
+    record_pass "submit rejects '--prior_count' in signal mode"
+else
+    record_fail \
+        "submit did not reject '--prior_count' in signal mode" \
+        "(exit ${rc_pc})"
+fi
+unset bam_se rc_pc out_pc
+
+# A bare literal would regularize file A alone and leave file B's zero bins
+# undefined, so a direct submit run refuses it too.
+rc_bare=0
+out_bare="$(
+    "${TEST_BASH}" "${ROOT_REPO}/bin/submit_compute_signal.sh" \
+        --env_nam "${env_nam}" \
+        --dir_scr "${ROOT_REPO}/bin" \
+        --threads 1 \
+        --mode ratio \
+        --method linear \
+        --csv_fil_A "${fil_A}" \
+        --csv_fil_B "${fil_B}" \
+        --csv_fil_out "${tmp}/ratio_bare.bedGraph" \
+        --dir_eo "${dir_err}" \
+        --nam_job "test_compute_ratio_bare" \
+        --csv_pseudo 1 2>&1
+)" || rc_bare=$?
+
+if [[
+    "${rc_bare}" -ne 0
+    && "${out_bare}" == *"needs 'A:B'"*
+    && ! -e "${tmp}/ratio_bare.bedGraph"
+]]; then
+    record_pass "submit refuses a bare '--csv_pseudo' literal, naming 'A:B'"
+else
+    record_fail \
+        "submit did not refuse a bare '--csv_pseudo' literal" \
+        "(exit ${rc_bare})"
+fi
+unset rc_bare out_bare
+
+# '--prior_count' belongs to ratio mode, so a direct submit run in coord mode
+# refuses it too.
+bam_crd="${ROOT_REPO}/tests/fixtures/compute_signal/bam/se/tiny_se.bam"
+
+rc_crd=0
+out_crd="$(
+    "${TEST_BASH}" "${ROOT_REPO}/bin/submit_compute_signal.sh" \
+        --env_nam "${env_nam}" \
+        --dir_scr "${ROOT_REPO}/bin" \
+        --threads 1 \
+        --mode coord \
+        --prior_count 1 \
+        --csv_fil_in "${bam_crd}" \
+        --csv_fil_out "${tmp}/coord_pc.bed" \
+        --dir_eo "${dir_err}" \
+        --nam_job "test_compute_coord_pc" 2>&1
+)" || rc_crd=$?
+
+if [[
+    "${rc_crd}" -ne 0
+    && "${out_crd}" == *"'--prior_count' is for '--mode ratio'"*
+    && ! -e "${tmp}/coord_pc.bed"
+]]; then
+    record_pass "submit rejects '--prior_count' in coord mode"
+else
+    record_fail \
+        "submit did not reject '--prior_count' in coord mode (exit ${rc_crd})"
+fi
+unset bam_crd rc_crd out_crd
+
+# A non-numeric '--prior_count' is refused before any work.
+rc_nan=0
+out_nan="$(
+    "${TEST_BASH}" "${ROOT_REPO}/bin/submit_compute_signal.sh" \
+        --env_nam "${env_nam}" \
+        --dir_scr "${ROOT_REPO}/bin" \
+        --threads 1 \
+        --mode ratio \
+        --method log2 \
+        --typ_sig count \
+        --prior_count two \
+        --csv_fil_A "${fil_A}" \
+        --csv_fil_B "${fil_B}" \
+        --csv_fil_out "${tmp}/ratio_pc_nan.bedGraph" \
+        --dir_eo "${dir_err}" \
+        --nam_job "test_compute_ratio_pc_nan" \
+        --csv_pseudo edger 2>&1
+)" || rc_nan=$?
+
+if [[
+    "${rc_nan}" -ne 0
+    && "${out_nan}" == *"'--prior_count' was assigned 'two'"*
+    && ! -e "${tmp}/ratio_pc_nan.bedGraph"
+]]; then
+    record_pass "submit refuses a non-numeric '--prior_count' before any work"
+else
+    record_fail \
+        "submit did not refuse a non-numeric '--prior_count'" \
+        "(exit ${rc_nan})"
+fi
+unset rc_nan out_nan
+
+
+# A mixed list given to submit whole, as under Slurm: each task must resolve
+# only its own element.
+# shellcheck source=lib/bash/core/format_outputs.sh
+source "${ROOT_REPO}/lib/bash/core/format_outputs.sh"
+
+dir_cnt="${ROOT_REPO}/tests/fixtures/compute_signal/bedgraph/count"
+trk_se="${dir_cnt}/tiny_se.bedGraph"
+trk_pe="${dir_cnt}/tiny_pe.bedGraph"
+dir_mix="${tmp}/mixed"
+out_mix_1="${dir_mix}/edg_se_pe.bedGraph"
+out_mix_2="${dir_mix}/lit_pe_se.bedGraph"
+mkdir -p "${dir_mix}"
+
+exp_mix_1="$(
+    "${TEST_MANAGED_PYTHON}" \
+        -m protocol_chipseq_signal_norm.cli.compute_pseudo \
+        --method edger \
+        --typ_sig count \
+        --prior_count 1 \
+        --fil_A "${trk_se}" \
+        --fil_B "${trk_pe}" \
+        --n_frg_A "$(< "$(derive_report_path "${trk_se}" n_frg)")" \
+        --n_frg_B "$(< "$(derive_report_path "${trk_pe}" n_frg)")" \
+        --n_ovlp_A "$(< "$(derive_report_path "${trk_se}" n_ovlp)")" \
+        --n_ovlp_B "$(< "$(derive_report_path "${trk_pe}" n_ovlp)")" \
+        2>/dev/null
+)"
+
+rc_mix=0
+"${TEST_BASH}" "${ROOT_REPO}/bin/submit_compute_signal.sh" \
+    --env_nam "${env_nam}" \
+    --dir_scr "${ROOT_REPO}/bin" \
+    --threads 1 \
+    --mode ratio \
+    --method log2 \
+    --typ_sig count \
+    --prior_count 1 \
+    --csv_fil_A "${trk_se},${trk_pe}" \
+    --csv_fil_B "${trk_pe},${trk_se}" \
+    --csv_fil_out "${out_mix_1},${out_mix_2}" \
+    --dir_eo "${dir_mix}" \
+    --nam_job "test_compute_ratio_mixed" \
+    --csv_scl_fct NA,NA \
+    --csv_dep_min NA,NA \
+    --csv_pseudo "edger,1:1" > /dev/null 2>&1 || rc_mix=$?
+
+# Compare each pair's logged '--pseudo' (printed as floats) to its spec
+# numerically, so a value applied to the wrong pair cannot pass.
+function call_has_pseudo() {
+    local fil_out="${1}" spec="${2}"
+    local log="${dir_mix}/test_compute_ratio_mixed.$(
+        basename "${fil_out}" .bedGraph
+    ).stderr.txt"
+
+    [[ -s "${log}" ]] || return 1
+
+    "${TEST_MANAGED_PYTHON}" - "${log}" "${spec}" << 'PY'
+import math
+import re
+import sys
+
+text = open(sys.argv[1], encoding="utf-8").read()
+found = re.search(r"^--pseudo\s+(\S+):(\S+)$", text, re.MULTILINE)
+want = [float(v) for v in sys.argv[2].split(":")]
+got = [float(v) for v in found.groups()] if found else []
+same = len(got) == 2 and all(
+    math.isclose(g, w, rel_tol=1e-12) for g, w in zip(got, want)
+)
+raise SystemExit(0 if same else 1)
+PY
+}
+
+if [[
+    "${rc_mix}" -eq 0
+    && -n "${exp_mix_1}"
+    && -s "${out_mix_1}"
+    && -s "${out_mix_2}"
+]] \
+    && call_has_pseudo "${out_mix_1}" "${exp_mix_1}" \
+    && call_has_pseudo "${out_mix_2}" "1:1"
+then
+    record_pass \
+        "submit given 'edger,1:1' whole applies '--prior_count' to the" \
+        "'edger' pair only"
+else
+    record_fail \
+        "submit given 'edger,1:1' whole did not give each pair its own" \
+        "element (exit ${rc_mix}); see $(print_relpath "${dir_mix}")"
+fi
+unset dir_cnt trk_se trk_pe dir_mix out_mix_1 out_mix_2 exp_mix_1 rc_mix
 
 finish
