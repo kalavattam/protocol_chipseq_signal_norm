@@ -9,7 +9,7 @@
 # The following were used in design, development, and documentation, with all
 # output reviewed, edited, and approved by the author:
 # - OpenAI ChatGPT and Codex (GPT-5.5, GPT-5.6);
-# - Anthropic Claude Code (Opus 5).
+# - Anthropic Claude Code (Opus 5, Opus 5.5).
 #
 # Distributed under the MIT license.
 
@@ -578,12 +578,25 @@ def approved_realization(member: dict[str, object], fallback: str) -> str:
         return norm_desc(explicit)
     evidence = str(member.get("evidence", ""))
     marker = ": "
-    return norm_desc(evidence.rsplit(marker, 1)[-1]) if marker in evidence else fallback
+    return norm_desc(evidence.partition(marker)[2]) if marker in evidence else fallback
+
+
+def prove_evidence_extraction() -> None:
+    """Prove approved text keeps its own ': ', as in '(default: x)'."""
+
+    member = {"evidence": "Parameters row for 'x': Format (default: 'bam')."}
+    got = approved_realization(member, "")
+    if got != norm_desc("Format (default: 'bam')."):
+        print(
+            f"FAIL:{rel(CONTRACTS)}:1:evidence extraction truncated the "
+            f"approved text: {got!r}"
+        )
 
 
 canonical_table = read_canonical_table()
 registry, families = read_registered_families(canonical_table)
 prove_family_fault_detection(canonical_table, families)
+prove_evidence_extraction()
 paths = iter_text_files()
 for finding in scan_retired_names(paths):
     print(finding)

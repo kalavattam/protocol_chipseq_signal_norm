@@ -9,7 +9,7 @@
 # The following were used in design, development, and documentation, with all
 # output reviewed, edited, and approved by the author:
 # - OpenAI ChatGPT and Codex (GPT-5.5, GPT-5.6);
-# - Anthropic Claude Code (Opus 5).
+# - Anthropic Claude Code (Opus 5, Opus 5.5).
 #
 # Distributed under the MIT license.
 
@@ -33,7 +33,7 @@ Parameters
     Display this help message and exit.
 
   -ds, --dir_scr : dir
-    Maintained entrypoint directory containing scripts and functions. Passed by the 'execute_*.sh' wrappers, and needed when this script is run from a copy, as 'sbatch <script>' does, rather than from its real path.
+    Maintained entrypoint directory, the repository 'bin'; shared functions are read from the adjacent 'lib/bash'. Passed by the 'execute_*.sh' wrappers, and needed when this script runs from a copy, as 'sbatch <script>' does.
 
   1  srr : str
     NCBI SRA database run accession code.

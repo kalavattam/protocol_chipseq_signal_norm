@@ -380,8 +380,8 @@
           "symbol": "help_submit_download_fastqs",
           "parameter": "dir_scr",
           "owner": "PARAMETER.DESCRIPTIONS",
-          "evidence": "Parameters row for 'dir_scr': Maintained entrypoint directory. Pass the repository 'bin' directory; shared libraries are resolved from adjacent 'lib/bash'.",
-          "approved_realization": "Maintained entrypoint directory. Pass the repository 'bin' directory; shared libraries are resolved from adjacent 'lib/bash'."
+          "evidence": "Parameters row for 'dir_scr': Maintained entrypoint directory, the repository 'bin'; shared functions are read from the adjacent 'lib/bash'. Passed by the 'execute_*.sh' wrappers, and needed when this script runs from a copy, as 'sbatch <script>' does.",
+          "approved_realization": "Maintained entrypoint directory, the repository 'bin'; shared functions are read from the adjacent 'lib/bash'. Passed by the 'execute_*.sh' wrappers, and needed when this script runs from a copy, as 'sbatch <script>' does."
         }
       ],
       "local_meanings": [],
@@ -899,7 +899,7 @@
           "symbol": "help_execute_compute_signal",
           "parameter": "csv_usr_frg",
           "owner": "PARAMETER.DESCRIPTIONS",
-          "evidence": "Parameters row for 'csv_usr_frg': Comma-separated list of fixed fragment-length values or sentinels. Used with '--mode signal' or '--mode coord'."
+          "evidence": "Parameters row for 'csv_usr_frg': Comma-separated list of fixed fragment-length values or sentinels."
         }
       ],
       "local_meanings": [],
@@ -1298,7 +1298,8 @@
           "symbol": "parse_args",
           "parameter": "fil_A",
           "owner": "PARAMETER.DESCRIPTIONS",
-          "evidence": "argparse help: First bedGraph input file, file A."
+          "evidence": "argparse help: First bedGraph input file, file A. Use '-' for stdin; '.gz' is handled.",
+          "approved_realization": "First bedGraph input file, file A. Use '-' for stdin; '.gz' is handled."
         },
         {
           "surface_id": "src/protocol_chipseq_signal_norm/cli/compute_pseudo_deeptools.py::parse_args",
@@ -1306,7 +1307,8 @@
           "symbol": "parse_args",
           "parameter": "fil_A",
           "owner": "PARAMETER.DESCRIPTIONS",
-          "evidence": "argparse help: First bedGraph input file, file A."
+          "evidence": "argparse help: First bedGraph input file, file A. Use '-' for stdin; '.gz' is handled.",
+          "approved_realization": "First bedGraph input file, file A. Use '-' for stdin; '.gz' is handled."
         }
       ],
       "local_meanings": [],
@@ -1331,7 +1333,8 @@
           "symbol": "parse_args",
           "parameter": "fil_B",
           "owner": "PARAMETER.DESCRIPTIONS",
-          "evidence": "argparse help: Second bedGraph input file, file B."
+          "evidence": "argparse help: Second bedGraph input file, file B. This file is optional for single-file pseudocount modes; use '-' for stdin; '.gz' is handled.",
+          "approved_realization": "Second bedGraph input file, file B. This file is optional for single-file pseudocount modes; use '-' for stdin; '.gz' is handled."
         },
         {
           "surface_id": "src/protocol_chipseq_signal_norm/cli/compute_pseudo_deeptools.py::parse_args",
@@ -1339,7 +1342,8 @@
           "symbol": "parse_args",
           "parameter": "fil_B",
           "owner": "PARAMETER.DESCRIPTIONS",
-          "evidence": "argparse help: Second bedGraph input file, file B."
+          "evidence": "argparse help: Second bedGraph input file, file B. This file is optional for single-track mode; use '-' for stdin; '.gz' is handled.",
+          "approved_realization": "Second bedGraph input file, file B. This file is optional for single-track mode; use '-' for stdin; '.gz' is handled."
         }
       ],
       "local_meanings": [],
@@ -1738,7 +1742,8 @@
           "symbol": "parse_args",
           "parameter": "eps",
           "owner": "PARAMETER.DESCRIPTIONS",
-          "evidence": "argparse help: Zero tolerance epsilon in computation of pseudocount(s)."
+          "evidence": "argparse help: Zero tolerance epsilon in computation of pseudocount(s) (default: %(default)s). When '--mode_nz closed' (default), values with '|x| <= ε' are treated as zero and excluded from statistics; with '--mode_nz open', values with '|x| < ε' are excluded; with '--mode_nz off', ε-based filtering is disabled.",
+          "approved_realization": "Zero tolerance epsilon in computation of pseudocount(s) (default: %(default)s). When '--mode_nz closed' (default), values with '|x| <= ε' are treated as zero and excluded from statistics; with '--mode_nz open', values with '|x| < ε' are excluded; with '--mode_nz off', ε-based filtering is disabled."
         }
       ],
       "local_meanings": [],
@@ -1772,7 +1777,7 @@
           "symbol": "parse_args",
           "parameter": "mode_nz",
           "owner": "PARAMETER.DESCRIPTIONS",
-          "evidence": "Parameters row for 'mode_nz': Epsilon/zero-handling mode for selecting 'nonzero' bins: - closed (default) drop values with '|x| <= eps'. - open drop values with '|x| < eps'. - off disable 'eps'-based zero filtering."
+          "evidence": "Parameters row for 'mode_nz': Epsilon/zero-handling mode for selecting 'nonzero' bins: | | description | | :--- | :--- | | closed (default) | drop values with '|x| <= eps'. | | open | drop values with '|x| < eps'. | | off | disable 'eps'-based zero filtering. |"
         }
       ],
       "local_meanings": [],
