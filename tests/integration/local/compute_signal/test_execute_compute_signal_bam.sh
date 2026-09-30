@@ -9,7 +9,7 @@
 # The following were used in design, development, and documentation, with all
 # output reviewed, edited, and approved by the author:
 # - OpenAI ChatGPT and Codex (GPT-5.5, GPT-5.6);
-# - Anthropic Claude Code (Opus 5).
+# - Anthropic Claude Code (Opus 5, Opus 5.5).
 #
 # Distributed under the MIT license.
 
@@ -309,8 +309,7 @@ if [[ -s "${fil_out_se_coord_usr_frg}" ]]; then
 fi
 
 
-# Forwarding contract for '--siz_win' and the retired '--chr_siz'. These assert
-# against the command the wrapper emitted, not merely that a run succeeded: a
+# Check '--siz_win' and the retired '--chr_siz' in the emitted command, since a
 # silently dropped option would still produce output.
 log_fwd="${tmp}/logs/test_execute_compute_bam_se_signal.tiny_se.stderr.txt"
 
@@ -412,8 +411,7 @@ for eng_bad in chrm windowed bogus; do
 done
 
 
-# Reports ride by default: the wrapper derives '<track>.n_frg.txt' and
-# '<track>.n_ovlp.txt' from each output name, so assert those paths and their
+# Reports are written by default beside each track; check their paths and
 # contents, not just success.
 dir_rep="${tmp}/reports"
 mkdir -p "${dir_rep}"
@@ -428,10 +426,8 @@ bash "${ROOT_REPO}/bin/execute_compute_signal.sh" \
     --method unadj \
     > /dev/null 2>&1 || true
 
-# Drift pin. 'derive_report_path' and the CLI's 'resolve_report_path' spell one
-# rule twice: 'execute' hands over an explicit path, a direct 'submit' passes a
-# bare flag. Invoke with a bare flag so the CLI uses its own rule; asserting
-# against a path 'execute' supplied would be circular.
+# The shell and CLI each derive report paths; call the CLI with a bare flag so
+# its own rule runs, and compare it to the shell's.
 # shellcheck source=lib/bash/core/format_outputs.sh
 source "${ROOT_REPO}/lib/bash/core/format_outputs.sh"
 
@@ -646,6 +642,40 @@ for kept in "${arr_mth_keep[@]}"; do
         record_pass "execute accepts signal method '${kept}'"
     fi
 done
+
+
+# Recompute the literal 'count/' fixtures, so they cannot drift from what
+# '--method count --siz_bin 10' actually writes.
+dir_cnt_fx="${dir_fx}/bedgraph/count"
+dir_cnt_out="${tmp}/count_fixture"
+mkdir -p "${dir_cnt_out}"
+
+for samp in se pe; do
+    trk_cnt="${dir_cnt_out}/tiny_${samp}.bedGraph"
+
+    if \
+        PYTHONDONTWRITEBYTECODE=1 \
+        "${TEST_MANAGED_PYTHON}" \
+            -m protocol_chipseq_signal_norm.cli.compute_signal \
+            --fil_in "${dir_fx}/bam/${samp}/tiny_${samp}.bam" \
+            --fil_out "${trk_cnt}" \
+            --siz_bin 10 \
+            --method count \
+            --report_n_frg \
+            --report_n_ovlp \
+            > /dev/null 2>&1
+    then
+        for ext in bedGraph n_frg.txt n_ovlp.txt; do
+            assert_files_equal \
+                "${dir_cnt_out}/tiny_${samp}.${ext}" \
+                "${dir_cnt_fx}/tiny_${samp}.${ext}" \
+                "'count' fixture tiny_${samp}.${ext} matches compute_signal"
+        done
+    else
+        record_fail "compute_signal --method count failed on tiny_${samp}.bam"
+    fi
+done
+unset dir_cnt_fx dir_cnt_out samp trk_cnt ext
 
 
 finish

@@ -9,7 +9,7 @@
 # The following were used in design, development, and documentation, with all
 # output reviewed, edited, and approved by the author:
 # - OpenAI ChatGPT and Codex (GPT-5.5, GPT-5.6);
-# - Anthropic Claude Code (Opus 5).
+# - Anthropic Claude Code (Opus 5, Opus 5.5).
 #
 # Distributed under the MIT license.
 
@@ -98,7 +98,7 @@ function ensure_integration_fixtures() {
         env_protocol
 
     ensure_fixture compute_signal \
-        "${repo_root}/tests/fixtures/compute_signal/bam/se/tiny_se.bam" \
+        "${repo_root}/tests/fixtures/compute_signal/bedgraph/count/tiny_pe.n_ovlp.txt" \
         env_protocol
 
     if gate_enabled RUN_DOWNLOAD; then
@@ -115,16 +115,8 @@ function ensure_integration_fixtures() {
 }
 
 
-# Checker fixtures are prepared separately from the integration set, because
-# the checker suites run without the local, Parallel, and Slurm gates that
-# decide whether workflow fixtures are needed at all. Every recipe below is
-# literal text, so none of them needs an environment.
-#
-# These are needed by both unit tests and shell contract tests, so this
-# function is called whenever either is selected. Wiring them to the unit
-# stage alone would leave 'run_tests.sh contract' running against whatever
-# happened to be left in the working tree from an earlier run, which passes
-# locally and fails on a fresh clone.
+# Checker fixtures need no environment and serve both unit and contract tests,
+# so prepare them whenever either runs, or a fresh clone fails.
 function ensure_checker_fixtures() {
     local rel_help="tests/fixtures/help/expected"
     rel_help+="/combine_parts_scaling_factor.examples.txt"
@@ -163,9 +155,8 @@ function ensure_checker_fixtures() {
 }
 
 
-# Slurm wet-validation fixtures are workflow inputs bundled to the remote
-# host, so they are prepared with the Slurm gate rather than with the
-# checker set.
+# Slurm wet-validation fixtures go to the remote host, so they are prepared
+# with the Slurm gate, not with the checker set.
 function ensure_slurm_fixtures() {
     ensure_fixture slurm \
         "${repo_root}/tests/fixtures/slurm/reference/tiny.fa"

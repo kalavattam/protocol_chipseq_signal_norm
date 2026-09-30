@@ -9,7 +9,7 @@
 # The following were used in design, development, and documentation, with all
 # output reviewed, edited, and approved by the author:
 # - OpenAI ChatGPT and Codex (GPT-5.5, GPT-5.6);
-# - Anthropic Claude Code (Opus 5).
+# - Anthropic Claude Code (Opus 5, Opus 5.5).
 #
 # Distributed under the MIT license.
 
@@ -43,6 +43,7 @@ source "${dir_scr}/../../support/fixture_helpers.sh"
 
 # Define fixture directories, bedGraph paths, and alignment paths.
 dir_bdg="${dir_fix}/bedgraph"
+dir_bdg_cnt="${dir_bdg}/count"
 dir_ref="${dir_fix}/reference"
 dir_sam="${dir_fix}/sam"
 dir_sam_se="${dir_sam}/se"
@@ -58,6 +59,15 @@ fil_bg_A="${dir_bdg}/ratio_A.bdg"
 fil_bg_B="${dir_bdg}/ratio_B.bdg"
 fil_bg_hdr_A="${dir_bdg}/ratio_headers_A.bdg"
 fil_bg_hdr_B="${dir_bdg}/ratio_headers_B.bdg"
+fil_bg_A_gz="${fil_bg_A}.gz"
+fil_bg_B_gz="${fil_bg_B}.gz"
+
+fil_cnt_se="${dir_bdg_cnt}/tiny_se.bedGraph"
+fil_cnt_se_frg="${dir_bdg_cnt}/tiny_se.n_frg.txt"
+fil_cnt_se_ovlp="${dir_bdg_cnt}/tiny_se.n_ovlp.txt"
+fil_cnt_pe="${dir_bdg_cnt}/tiny_pe.bedGraph"
+fil_cnt_pe_frg="${dir_bdg_cnt}/tiny_pe.n_frg.txt"
+fil_cnt_pe_ovlp="${dir_bdg_cnt}/tiny_pe.n_ovlp.txt"
 
 fil_ref="${dir_ref}/tiny.fa"
 fil_sam_se="${dir_sam_se}/tiny_se.sam"
@@ -75,17 +85,22 @@ env_req="env_protocol"
 # Require the project environment for samtools-backed fixtures.
 require_env "${env_req}" "for compute-signal fixtures."
 
-# Remove stale generated fixture outputs. Every output below is rewritten
-# unconditionally, so this sweep is not what makes regeneration correct today;
-# it is what keeps regeneration correct after a later revision stops writing
-# one of them. The Samtools index companions go with their subjects, because an
-# index outliving its subject is worse than a missing one.
+# Remove stale outputs, so a file a later revision stops writing cannot linger;
+# Samtools indexes go with their subjects.
 rm_files \
     "${dir_fix}" \
     "${fil_bg_A}" \
     "${fil_bg_B}" \
     "${fil_bg_hdr_A}" \
     "${fil_bg_hdr_B}" \
+    "${fil_bg_A_gz}" \
+    "${fil_bg_B_gz}" \
+    "${fil_cnt_se}" \
+    "${fil_cnt_se_frg}" \
+    "${fil_cnt_se_ovlp}" \
+    "${fil_cnt_pe}" \
+    "${fil_cnt_pe_frg}" \
+    "${fil_cnt_pe_ovlp}" \
     "${fil_ref}" \
     "${fil_sam_se}" \
     "${fil_sam_pe}" \
@@ -104,6 +119,7 @@ rm -f -- \
 # Create fixture output directories.
 mkdirs \
     "${dir_bdg}" \
+    "${dir_bdg_cnt}" \
     "${dir_ref}" \
     "${dir_sam}" \
     "${dir_sam_se}" \
@@ -171,6 +187,34 @@ mkdirs \
     printf "I\t60\t70\t3\n"
     printf "I\t70\t80\t1\n"
 } > "${fil_bg_hdr_B}"
+
+require_cmd gzip "to compress the ratio bedGraph fixtures."
+
+# Compress the plain ratio pair for gzip input coverage. '-n' omits the name
+# and timestamp, so regeneration is byte-identical.
+gzip -n -c "${fil_bg_A}" > "${fil_bg_A_gz}"
+gzip -n -c "${fil_bg_B}" > "${fil_bg_B_gz}"
+
+# Write what '--method count --siz_bin 10' gives for the SAM records below:
+# count tracks, plus the 'n_frg' and 'n_ovlp' that '--csv_pseudo edger' reads.
+{
+    printf "I\t0\t10\t1\n"
+    printf "I\t20\t30\t1\n"
+} > "${fil_cnt_se}"
+
+printf "2\n" > "${fil_cnt_se_frg}"
+printf "2\n" > "${fil_cnt_se_ovlp}"
+
+{
+    printf "I\t10\t20\t1\n"
+    printf "I\t20\t30\t1\n"
+    printf "I\t30\t40\t1\n"
+    printf "I\t40\t50\t1\n"
+    printf "I\t50\t60\t1\n"
+} > "${fil_cnt_pe}"
+
+printf "2\n" > "${fil_cnt_pe_frg}"
+printf "5\n" > "${fil_cnt_pe_ovlp}"
 
 # Write tiny reference FASTA used for BAM/CRAM fixture generation.
 cat > "${fil_ref}" << EOM

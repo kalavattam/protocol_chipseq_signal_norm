@@ -28,6 +28,16 @@ Ratio bedGraph:
 - `bedgraph/ratio_B.bdg`
 - `bedgraph/ratio_headers_A.bdg`
 - `bedgraph/ratio_headers_B.bdg`
+- `bedgraph/ratio_A.bdg.gz`
+- `bedgraph/ratio_B.bdg.gz`
+
+Count bedGraph and per-sample counts:
+- `bedgraph/count/tiny_se.bedGraph`
+- `bedgraph/count/tiny_se.n_frg.txt`
+- `bedgraph/count/tiny_se.n_ovlp.txt`
+- `bedgraph/count/tiny_pe.bedGraph`
+- `bedgraph/count/tiny_pe.n_frg.txt`
+- `bedgraph/count/tiny_pe.n_ovlp.txt`
 
 Alignment fixtures:
 - `reference/tiny.fa`
@@ -46,6 +56,17 @@ Alignment fixtures:
 The `ratio_A.bdg` and `ratio_B.bdg` files are plain four-column bedGraph files with matching bins and no header lines.
 
 The `ratio_headers_A.bdg` and `ratio_headers_B.bdg` files preserve the same data rows, but include header-like lines for `--skp_pfx` coverage. They include default skipped prefixes (`track`, `browser`, and `#`) plus the custom prefix `customHeader`.
+
+The `ratio_A.bdg.gz` and `ratio_B.bdg.gz` files are `gzip -n` copies of the plain pair, for gzip input coverage. `-n` omits the name and timestamp, so regeneration is byte-identical.
+
+The `count/` tracks are what `--method count --siz_bin 10` writes for `sam/se/tiny_se.sam` and `sam/pe/tiny_pe.sam`, written literally rather than by running the tool. Beside each are the two counts a signal run writes and `--csv_pseudo edger` reads back: `n_frg`, the fragment count `N`, and `n_ovlp`, the number of bins those fragments touch, `L`.
+
+| Track     | Fragments              | Bins with value 1 | `N`  | `L`  |
+| :---      | :---                   | :---              | :--- | :--- |
+| `tiny_se` | `[0, 10)`, `[20, 30)`  | 0, 2              | 2    | 2    |
+| `tiny_pe` | `[10, 40)`, `[40, 60)` | 1, 2, 3, 4, 5     | 2    | 5    |
+
+The two tracks differ in `N` and `L`, so an A/B swap changes the derived pseudocount and the pairing test can see one.
 
 <br />
 
