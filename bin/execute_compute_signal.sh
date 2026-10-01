@@ -1122,6 +1122,15 @@ function validate_args() {
         validate_var_file "chr_siz" "${chr_siz}" || return 1
     fi
 
+    # Only 'signal' mode writes reports; elsewhere '--report_only' would leave
+    # 'coord' tasks without an output path, or be ignored in 'ratio' mode.
+    if [[ "${report_only}" == "true" && "${mode}" != "signal" ]]; then
+        echo_err \
+            "'--report_only' is for '--mode signal', where it writes the" \
+            "reports without a track. '--mode ${mode}' writes no reports."
+        return 1
+    fi
+
     # '--prior_count' only changes 'edger' pseudocounts, so refuse it outside
     # ratio mode here and without an 'edger' element in 'prepare_vecs'.
     if [[ -n "${prior_count}" ]]; then

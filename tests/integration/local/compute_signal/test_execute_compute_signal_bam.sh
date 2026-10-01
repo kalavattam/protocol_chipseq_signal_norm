@@ -546,6 +546,42 @@ else
     record_fail "execute did not reject '--report_only --no_report' by name"
 fi
 
+# Only 'signal' mode writes reports, so '--report_only' is refused elsewhere;
+# 'coord' tasks used to fail later for want of an output path.
+for mode_ro in coord ratio; do
+    if [[ "${mode_ro}" == "coord" ]]; then
+        args_ro=( --csv_fil_in "${in_se}" --typ_out bed.gz )
+    else
+        args_ro=(
+            --csv_fil_A "${dir_fx}/bedgraph/ratio_A.bdg.gz"
+            --csv_fil_B "${dir_fx}/bedgraph/ratio_B.bdg.gz"
+        )
+    fi
+
+    rc_ro=0
+    out_ro="$(
+        bash "${ROOT_REPO}/bin/execute_compute_signal.sh" \
+            --dry_run \
+            --mode "${mode_ro}" \
+            "${args_ro[@]}" \
+            --dir_out "${dir_only}" \
+            --dir_eo "${dir_err}" \
+            --report_only 2>&1
+    )" || rc_ro=$?
+
+    if [[
+        "${rc_ro}" -ne 0
+        && "${out_ro}" == *"'--report_only' is for '--mode signal'"*
+    ]]; then
+        record_pass "execute rejects '--report_only' with '--mode ${mode_ro}'"
+    else
+        record_fail \
+            "execute did not reject '--report_only' with '--mode" \
+            "${mode_ro}' (exit ${rc_ro})"
+    fi
+done
+unset mode_ro args_ro rc_ro out_ro
+
 # The retired driver booleans are gone; the Python CLI keeps its own.
 for retired_rep in --report_n_frg --report_n_ovlp -rnf -rno; do
     out_bad="$(
