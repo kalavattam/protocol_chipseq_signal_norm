@@ -10,7 +10,7 @@
 # output reviewed, edited, and approved by the author:
 # - OpenAI ChatGPT and Codex (GPT-4- and GPT-5-series models; most recent:
 #   GPT-5.6);
-# - Anthropic Claude Code (Opus 5).
+# - Anthropic Claude Code (Opus 5, Opus 5.5).
 #
 # Distributed under the MIT license.
 
@@ -235,51 +235,27 @@ EOM
         fi
 
         if [[ ${#arr_len_mip[@]} -gt 0 ]]; then
-            if [[ ${#arr_len_mip[@]} -eq 1 ]]; then
-                len_mip_i="${arr_len_mip[0]}"
-            else
-                len_mip_i="${arr_len_mip[idx]}"
-            fi
+            len_mip_i="${arr_len_mip[idx]}"
         fi
 
         if [[ ${#arr_len_min[@]} -gt 0 ]]; then
-            if [[ ${#arr_len_min[@]} -eq 1 ]]; then
-                len_min_i="${arr_len_min[0]}"
-            else
-                len_min_i="${arr_len_min[idx]}"
-            fi
+            len_min_i="${arr_len_min[idx]}"
         fi
 
         if [[ ${#arr_dep_mip[@]} -gt 0 ]]; then
-            if [[ ${#arr_dep_mip[@]} -eq 1 ]]; then
-                dep_mip_i="${arr_dep_mip[0]}"
-            else
-                dep_mip_i="${arr_dep_mip[idx]}"
-            fi
+            dep_mip_i="${arr_dep_mip[idx]}"
         fi
 
         if [[ ${#arr_dep_min[@]} -gt 0 ]]; then
-            if [[ ${#arr_dep_min[@]} -eq 1 ]]; then
-                dep_min_i="${arr_dep_min[0]}"
-            else
-                dep_min_i="${arr_dep_min[idx]}"
-            fi
+            dep_min_i="${arr_dep_min[idx]}"
         fi
 
         if [[ ${#arr_dep_sip[@]} -gt 0 ]]; then
-            if [[ ${#arr_dep_sip[@]} -eq 1 ]]; then
-                dep_sip_i="${arr_dep_sip[0]}"
-            else
-                dep_sip_i="${arr_dep_sip[idx]}"
-            fi
+            dep_sip_i="${arr_dep_sip[idx]}"
         fi
 
         if [[ ${#arr_dep_sin[@]} -gt 0 ]]; then
-            if [[ ${#arr_dep_sin[@]} -eq 1 ]]; then
-                dep_sin_i="${arr_dep_sin[0]}"
-            else
-                dep_sin_i="${arr_dep_sin[idx]}"
-            fi
+            dep_sin_i="${arr_dep_sin[idx]}"
         fi
     fi
 
@@ -1115,13 +1091,13 @@ function validate_vecs() {
     fi
     unset need_ref
 
-    check_arr_len_bcst \
+    expand_arr_bcst \
         "${#arr_mip[@]}" \
         arr_len_mip arr_len_min arr_dep_mip arr_dep_min \
         || return 1
 
     if [[ "${mode}" == "spike" ]]; then
-        check_arr_len_bcst \
+        expand_arr_bcst \
             "${#arr_mip[@]}" \
             arr_dep_sip arr_dep_sin \
             || return 1

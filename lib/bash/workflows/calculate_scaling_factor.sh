@@ -10,7 +10,7 @@
 # output reviewed, edited, and approved by the author:
 # - OpenAI ChatGPT and Codex (GPT-4- and GPT-5-series models; most recent:
 #   GPT-5.6);
-# - Anthropic Claude Code (Opus 5).
+# - Anthropic Claude Code (Opus 5, Opus 5.5).
 #
 # Distributed under the MIT license.
 
@@ -35,7 +35,7 @@
 # process_samp_spike
 
 
-#  Require Bash >= 4.4 before defining functions
+# Require Bash >= 4.4 before defining functions.
 if [[ -z "${BASH_VERSION:-}" ]]; then
     echo "error(shell):" \
         "this script must be sourced or run under Bash >= 4.4." >&2
@@ -59,7 +59,7 @@ elif ((
     fi
 fi
 
-#  Source required helper functions
+# Source required helper functions.
 _dir_src_sf="$(
     cd "$(dirname "${BASH_SOURCE[0]}")" > /dev/null 2>&1 && pwd
 )"
@@ -105,8 +105,6 @@ Usage
 
   Return the per-sample fragment-length override for a given key and sample index.
 
-  If the corresponding override array contains exactly one value, that value is broadcast to all sample indices.
-
 Parameters
 ----------
   -h, --help : flag
@@ -131,9 +129,9 @@ Notes
 
 Examples
 --------
-  1. Broadcast one main-IP fragment-length override to sample index 3.
+  1. Select the fourth main-IP fragment-length override.
     '''bash
-    arr_len_mip=( 150 )
+    arr_len_mip=( 150 160 170 180 )
     _get_len_idx mip 3
     '''
 
@@ -172,18 +170,8 @@ EOM
     fi
 
     case "${key}" in
-        mip)
-            val="${arr_len_mip[idx]:-}"
-            if [[ -z "${val}" ]] && (( ${#arr_len_mip[@]} == 1 )); then
-                val="${arr_len_mip[0]}"
-            fi
-        ;;
-        min)
-            val="${arr_len_min[idx]:-}"
-            if [[ -z "${val}" ]] && (( ${#arr_len_min[@]} == 1 )); then
-                val="${arr_len_min[0]}"
-            fi
-        ;;
+        mip) val="${arr_len_mip[idx]:-}" ;;
+        min) val="${arr_len_min[idx]:-}" ;;
         *)
             echo_err_func "${FUNCNAME[0]}" \
                 "positional argument 1, 'key', is '${key}' but must be" \
@@ -216,8 +204,6 @@ Usage
     [--help] key idx
 
   Return the per-sample alignment-depth override for a given key and sample index.
-
-  If the corresponding override array contains exactly one value, that value is broadcast to all sample indices.
 
 Parameters
 ----------
@@ -284,34 +270,10 @@ EOM
     fi
 
     case "${key}" in
-        mip)
-            val="${arr_dep_mip[idx]:-}"
-            if [[ -z "${val}" ]] && (( ${#arr_dep_mip[@]} == 1 )); then
-                val="${arr_dep_mip[0]}"
-            fi
-        ;;
-
-        min)
-            val="${arr_dep_min[idx]:-}"
-            if [[ -z "${val}" ]] && (( ${#arr_dep_min[@]} == 1 )); then
-                val="${arr_dep_min[0]}"
-            fi
-        ;;
-
-        sip)
-            val="${arr_dep_sip[idx]:-}"
-            if [[ -z "${val}" ]] && (( ${#arr_dep_sip[@]} == 1 )); then
-                val="${arr_dep_sip[0]}"
-            fi
-        ;;
-
-        sin)
-            val="${arr_dep_sin[idx]:-}"
-            if [[ -z "${val}" ]] && (( ${#arr_dep_sin[@]} == 1 )); then
-                val="${arr_dep_sin[0]}"
-            fi
-        ;;
-
+        mip) val="${arr_dep_mip[idx]:-}" ;;
+        min) val="${arr_dep_min[idx]:-}" ;;
+        sip) val="${arr_dep_sip[idx]:-}" ;;
+        sin) val="${arr_dep_sin[idx]:-}" ;;
         *)
             echo_err_func "${FUNCNAME[0]}" \
                 "positional argument 1, 'key', is '${key}' but must be" \
@@ -331,7 +293,7 @@ EOM
 }
 
 
-#  Set Samtools reference arguments for one BAM or CRAM input
+# Set Samtools reference arguments for one BAM or CRAM input.
 function _set_ref_arg_cram() {
     local fil_aln="${1:-}"
     local arr_ref_nam="${2:-}"
@@ -617,7 +579,7 @@ EOM
 
 
 function _get_expr_filter() {
-    local aln_typ="${1:-pe}"  # Alignment type for file
+    local aln_typ="${1:-pe}"  # Alignment type for file.
     local show_help
 
     show_help=$(cat << EOM
@@ -692,12 +654,12 @@ EOM
 
 
 function _count_alignments() {
-    local threads="${1:-}"    # No. threads for parallelization
-    local fil_aln="${2:-}"    # Input BAM or CRAM alignment file
-    local aln_typ="${3:-pe}"  # "paired", "pe", "single", "se" (default: "pe")
-    local expr                # Samtools filtration expression
-    local -a arr_ref_arg=()   # Samtools CRAM reference arguments
-    local show_help           # Help message/documentation
+    local threads="${1:-}"    # No. threads for parallelization.
+    local fil_aln="${2:-}"    # Input BAM or CRAM alignment file.
+    local aln_typ="${3:-pe}"  # "paired", "pe", "single", "se" (default: "pe").
+    local expr                # Samtools filtration expression.
+    local -a arr_ref_arg=()   # Samtools CRAM reference arguments.
+    local show_help           # Help message/documentation.
 
     show_help=$(cat << EOM
 Usage
@@ -790,11 +752,11 @@ EOM
         ;;
     esac
 
-    #  Determine filtering flags based on alignment type
+    # Determine filtering flags based on alignment type.
     expr="$(_get_expr_filter "${aln_typ}")" || return 1
     _set_ref_arg_cram "${fil_aln}" arr_ref_arg || return 1
 
-    #  Count alignments based on alignment type
+    # Count alignments based on alignment type.
     samtools view \
         -@ "${threads}" \
         "${arr_ref_arg[@]}" \
@@ -811,13 +773,13 @@ EOM
 
 
 function _calculate_frag_avg() {
-    local threads="${1:-}"    # No. threads for parallelization
-    local fil_aln="${2:-}"    # Input BAM or CRAM alignment file
-    local aln_typ="${3:-pe}"  # "paired", "pe", "single", "se"
-    local len_lcl="${4:-}"    # Optional default length for SE libraries
-    local expr=""             # Samtools filtration expression
-    local -a arr_ref_arg=()   # Samtools CRAM reference arguments
-    local show_help           # Help message/documentation
+    local threads="${1:-}"    # No. threads for parallelization.
+    local fil_aln="${2:-}"    # Input BAM or CRAM alignment file.
+    local aln_typ="${3:-pe}"  # "paired", "pe", "single", "se".
+    local len_lcl="${4:-}"    # Optional default length for SE libraries.
+    local expr=""             # Samtools filtration expression.
+    local -a arr_ref_arg=()   # Samtools CRAM reference arguments.
+    local show_help           # Help message/documentation.
 
     show_help=$(cat << EOM
 Usage
@@ -919,8 +881,8 @@ EOM
         ;;
     esac
 
-    #  If single-end, TLEN is not meaningful, so use provided default (per SAM
-    #+ spec, TLEN is 0 for single-end reads)
+    # If single-end, TLEN is not meaningful, so use provided default (per SAM
+    # spec, TLEN is 0 for single-end reads).
     if [[ "${aln_typ}" == "single" ]]; then
         if [[ -n "${len_lcl}" ]]; then
             if ! [[ "${len_lcl}" =~ ^[1-9][0-9]*([.][0-9]+)?$ ]]; then
@@ -949,11 +911,11 @@ EOM
         fi
     fi
 
-    #  Determine filtering flags based on alignment type
+    # Determine filtering flags based on alignment type.
     expr="$(_get_expr_filter "${aln_typ}")" || return 1
     _set_ref_arg_cram "${fil_aln}" arr_ref_arg || return 1
 
-    #  Compute average fragment length using samtools and awk
+    # Compute average fragment length using samtools and awk.
     samtools view -@ "${threads}" "${arr_ref_arg[@]}" --expr "${expr}" "${fil_aln}" \
         | awk '{
             if ($9 > 0) { sum += $9; count++ }
@@ -974,9 +936,9 @@ EOM
 
 
 function _compute_scl_fct() {
-    local mode="${1:-}"     # Workflow mode. Coefficient family: "siq" or "spike"
-    local scr_siq="${2:-}"  # Entry point for siQ-ChIP scaling factor
-    local scr_spk="${3:-}"  # Entry point for spike-in scaling factor
+    local mode="${1:-}"     # Workflow mode. Coefficient family: "siq" or "spike".
+    local scr_siq="${2:-}"  # Entry point for siQ-ChIP scaling factor.
+    local scr_spk="${3:-}"  # Entry point for spike-in scaling factor.
     local show_help
 
     show_help=$(cat << EOM
@@ -1234,11 +1196,11 @@ EOM
 
 
 function _parse_metadata() {
-    local scr_met="${1:-}"  # Python entry point for parsing metadata
-    local fil_aln="${2:-}"  # Alignment file to process
-    local tbl_met="${3:-}"  # siQ-ChIP metadata table
-    local cfg_met="${4:-}"  # YAML configuration for metadata parsing
-    local -a arr_shell      # Python-emitted shell assignment lines
+    local scr_met="${1:-}"  # Python entry point for parsing metadata.
+    local fil_aln="${2:-}"  # Alignment file to process.
+    local tbl_met="${3:-}"  # siQ-ChIP metadata table.
+    local cfg_met="${4:-}"  # YAML configuration for metadata parsing.
+    local -a arr_shell      # Python-emitted shell assignment lines.
     local show_help
 
     show_help=$(cat << EOM
@@ -1436,20 +1398,20 @@ EOM
 
 
 # ------------------------------ Begin #LEGACY ------------------------------ #
-#  The following global variable and four functions are retained for reference
-#+ and, e.g., future comparisons with Python helpers; they are no longer called
-#+ by the production scaling-factor row writers
+# The following global variable and four functions are retained for reference
+# and, e.g., future comparisons with Python helpers; they are no longer called
+# by the production scaling-factor row writers.
 DEP_BINS_DFLT="${DEP_BINS_DFLT:-1,5,10,20,30,40,50}"
 
 
 function _calculate_dep_fct() {
-    local n_in="${1:-}"             # Alignment count for input (not IP) BAM file
-    local siz_bin="${2:-10}"        # Bin size (in bp)
-    local siz_gen="${3:-12157105}"  # Effective genome size for model organism (in bp)
-    local mode="${4:-norm}"         # "frag" or "norm"
-    local dp="${5:-24}"            # Number of decimal points for rounding
-    local fct_dep                   # Variable for calculations
-    local show_help                 # Help message/documentation
+    local n_in="${1:-}"             # Alignment count for input (not IP) BAM file.
+    local siz_bin="${2:-10}"        # Bin size (in bp).
+    local siz_gen="${3:-12157105}"  # Effective genome size for model organism (in bp).
+    local mode="${4:-norm}"         # "frag" or "norm".
+    local dp="${5:-24}"             # Number of decimal points for rounding.
+    local fct_dep                   # Variable for calculations.
+    local show_help                 # Help message/documentation.
 
     show_help=$(cat << EOM
 Usage
@@ -1539,22 +1501,22 @@ EOM
         ;;
     esac
 
-    #  Compute depth factor via 'bc' operation based on 'mode'
+    # Compute depth factor via 'bc' operation based on 'mode'.
     if [[ "${mode}" == "norm" ]]; then
-        #  For "normalized coverage"
+        # For "normalized coverage".
         fct_dep=$(bc -l <<< "
             scale=${dp};
             (${siz_bin}) / (${siz_gen} * (1 - (${siz_bin} / ${siz_gen})))
         ")
     else
-        #  For fragment-length-adjusted signal
+        # For fragment-length-adjusted signal.
         fct_dep=$(bc -l <<< "
             scale=${dp};
             (${n_in} * ${siz_bin}) / (${siz_gen} * (1 - (${siz_bin} / ${siz_gen})))
         ")
     fi
 
-    #  Add leading zero if bc returns .ddd or -.ddd
+    # Add leading zero if bc returns .ddd or -.ddd.
     if [[ "${fct_dep}" =~ ^\.[0-9] ]]; then
         fct_dep="0${fct_dep}"
     elif [[ "${fct_dep}" =~ ^-\.[0-9] ]]; then
@@ -1566,11 +1528,11 @@ EOM
 
 
 function _calculate_dep_arr() {
-    local dep="${1:-}"                      # Number of mapped reads in sample
-    local mod="${2:-norm}"                  # Data transformation mode
-    local egs="${3:-12157105}"              # Effective genome size
-    local dp="${4:-24}"                    # Rounding precision for output
-    local csv_bin="${5:-${DEP_BINS_DFLT}}"  # Comma-delimited bin sizes
+    local dep="${1:-}"                      # Number of mapped reads in sample.
+    local mod="${2:-norm}"                  # Data transformation mode.
+    local egs="${3:-12157105}"              # Effective genome size.
+    local dp="${4:-24}"                     # Rounding precision for output.
+    local csv_bin="${5:-${DEP_BINS_DFLT}}"  # Comma-delimited bin sizes.
     local bin
     local -a arr_dep arr_bin
     local show_help
@@ -1710,9 +1672,9 @@ EOM
 
 
 function _compute_dep_all() {
-    local dep="${1:-}"                      # Number of alignments in sample BAM
-    local dp="${2:-24}"                    # Number of decimals to round to
-    local csv_bin="${3:-${DEP_BINS_DFLT}}"  # Comma-delimited bin sizes
+    local dep="${1:-}"                      # Number of alignments in sample BAM.
+    local dp="${2:-24}"                     # Number of decimals to round to.
+    local csv_bin="${3:-${DEP_BINS_DFLT}}"  # Comma-delimited bin sizes.
     local -a arr_dm_fr arr_dm_nm
     local output
     local show_help
@@ -1803,7 +1765,7 @@ EOM
         return 1
     fi
 
-    #  Note: detailed value validation is delegated to '_calculate_dep_arr'
+    # Note: detailed value validation is delegated to '_calculate_dep_arr'.
     IFS=',' read -r -a arr_dm_fr < <(
         _calculate_dep_arr "${dep}" "frag" "12157105" "${dp}" "${csv_bin}"
     ) || return 1
@@ -1817,8 +1779,8 @@ EOM
 
 
 function _generate_fmt_str() {
-    local num_fld="${1:-}"  # Number of fields in the output row
-    local fmt_str=""        # Variable for format string
+    local num_fld="${1:-}"  # Number of fields in the output row.
+    local fmt_str=""        # Variable for format string.
     local i
     local show_help
 
@@ -1888,22 +1850,21 @@ EOM
 # ------------------------------- End #LEGACY ------------------------------- #
 
 
-#  Compute siQ-ChIP alpha scaling factor and related values for a sample
-#+
-#+ Workflow function that processes a sample using global variables; extracts
-#+ siQ-ChIP metadata from a TSV table, computes alignment counts, and computes
-#+ average fragment lengths
-#+
+# Compute siQ-ChIP alpha scaling factor and related values for a sample.
+#
+# Workflow function that processes a sample using global variables; extracts
+# siQ-ChIP metadata from a TSV table, computes alignment counts, and computes
+# average fragment lengths.
 # shellcheck disable=SC2154
 function process_samp_siq() {
     local idx="${1:-}"  # Array sample index
 
-    #  Declare local variables
+    # Declare local variables.
     local fil_ip fil_in siq mass_ip mass_in vol_all vol_in
     local lib_vol_ip lib_vol_in
     local typ_ip typ_in dep_ip dep_in len_ip len_in v
     local dep_ip_met dep_in_met len_ip_met len_in_met
-    # local fmt_str  # Reserved in case formatted output generation is revived
+    # local fmt_str  # Reserved in case formatted output generation is revived.
     local len_ip_ovrd len_in_ovrd fil_out_part
     local -a arr_fields arr_arg_siq
     local show_help
@@ -2029,11 +1990,11 @@ EOM
         return 1
     fi
 
-    #  Assign alignment files based on sample index
+    # Assign alignment files based on sample index.
     fil_ip="${arr_mip[idx]}"
     fil_in="${arr_min[idx]}"
 
-    #  Check that alignment files exist
+    # Check that alignment files exist.
     validate_var_file "fil_ip" "${fil_ip}" "${idx}" || return 1
     validate_var_file "fil_in" "${fil_in}" "${idx}" || return 1
 
@@ -2041,7 +2002,7 @@ EOM
         debug_var "idx=${idx}" "fil_ip=${fil_ip}" "fil_in=${fil_in}"
     fi
 
-    #  Parse siQ-ChIP metadata, assigning global variables
+    # Parse siQ-ChIP metadata, assigning global variables.
     _parse_metadata \
         "${scr_met}" "${fil_ip}" "${tbl_met}" "${cfg_met}" || {
             echo_err_func "${FUNCNAME[0]}" \
@@ -2057,7 +2018,7 @@ EOM
     lib_vol_ip="${lib_vol_ip:-NA}"
     lib_vol_in="${lib_vol_in:-NA}"
 
-    #  Determine end type per alignment file (robust if inputs ever mix)
+    # Determine end type per alignment file (robust if inputs ever mix).
     typ_ip="$(_resolve_typ_fil "${fil_ip}")" || {
         echo_err_func "${FUNCNAME[0]}" \
             "failed while resolving 'typ_ip'."
@@ -2069,7 +2030,7 @@ EOM
         return 1
     }
 
-    #  Count alignments in alignment files
+    # Count alignments in alignment files.
     dep_ip="$(_get_dep_idx mip "${idx}")"
     if [[ -z "${dep_ip}" ]]; then
         if [[ -n "${dep_ip_met}" && "${dep_ip_met}" != "NA" ]]; then
@@ -2089,7 +2050,9 @@ EOM
         if [[ -n "${dep_in_met}" && "${dep_in_met}" != "NA" ]]; then
             dep_in="${dep_in_met}"
         else
-            dep_in="$(_count_alignments "${threads}" "${fil_in}" "${typ_in}")" || {
+            dep_in="$(
+                _count_alignments "${threads}" "${fil_in}" "${typ_in}"
+            )" || {
                 echo_err_func "${FUNCNAME[0]}" \
                     "failed while counting alignments for input file '${fil_in}'" \
                     "with type '${typ_in}'."
@@ -2098,8 +2061,8 @@ EOM
         fi
     fi
 
-    #  Compute average fragment lengths for alignment files; overrides take
-    #+ precedence over metadata, TLEN, or 'len_def'
+    # Compute average fragment lengths for alignment files; overrides take
+    # precedence over metadata, TLEN, or 'len_def'.
     len_ip_ovrd="$(_get_len_idx mip "${idx}")"
     len_in_ovrd="$(_get_len_idx min "${idx}")"
 
@@ -2146,7 +2109,7 @@ EOM
             "lib_vol_ip=${lib_vol_ip}" "lib_vol_in=${lib_vol_in}"
     fi
 
-    #  Compute siQ-ChIP alpha scaling factor
+    # Compute siQ-ChIP alpha scaling factor.
     arr_arg_siq=(
         --eqn     "${eqn}"     --dp      "${dp}"
         --mass_ip "${mass_ip}" --mass_in "${mass_in}"
@@ -2168,7 +2131,7 @@ EOM
             "${arr_arg_siq[@]}"
     ) || return 1
 
-    #  Build a row of results, printing them tab-separated with no trailing tab
+    # Build a row of results, printing them tab-separated with no trailing tab.
     if [[ -z "${fil_out:-}" ]]; then
         echo_err_func "${FUNCNAME[0]}" \
             "global variable 'fil_out' is empty or unset."
@@ -2206,24 +2169,23 @@ EOM
             "failed to write per-sample results file '${fil_out_part}'."
         return 1
     fi
-    #  The execute-layer driver combines per-sample part files deterministically
-    #+ after all workers finish successfully.
+    # The execute-layer driver combines per-sample part files deterministically
+    # after all workers finish successfully.
 }
 
 
-#  Compute spike-in scaling factor and related values for a sample
-#+
-#+ Workflow function that processes a sample using global variables; computes
-#+ alignment counts and a requested scaling-factor coefficient
-#+
+# Compute spike-in scaling factor and related values for a sample.
+#
+# Workflow function that processes a sample using global variables; computes
+# alignment counts and a requested scaling-factor coefficient.
 # shellcheck disable=SC2154
 function process_samp_spike() {
     local idx="${1:-}"  # Array sample index
 
-    #  Declare local variables
+    # Declare local variables.
     local mp mn sp sn typ_mp typ_sp typ_mn typ_sn
     local num_mp num_sp num_mn num_sn coef_lcl coef_val v fil_out_part
-    # local fmt_str  # Reserved in case formatted output generation is revived
+    # local fmt_str  # Reserved in case formatted output generation is revived.
     local -a arr_fields
     local show_help
 
@@ -2338,13 +2300,13 @@ EOM
         return 1
     fi
 
-    #  Assign alignment files based on sample index
+    # Assign alignment files based on sample index.
     mp="${arr_mip[idx]}"
     mn="${arr_min[idx]}"
     sp="${arr_sip[idx]}"
     sn="${arr_sin[idx]}"
 
-    #  Check that alignment files exist
+    # Check that alignment files exist.
     validate_var_file "mp" "${mp}" "${idx}" || return 1
     validate_var_file "sp" "${sp}" "${idx}" || return 1
     validate_var_file "mn" "${mn}" "${idx}" || return 1
@@ -2354,7 +2316,7 @@ EOM
         debug_var "idx=${idx}" "mp=${mp}" "mn=${mn}" "sp=${sp}" "sn=${sn}"
     fi
 
-    #  Determine end type per alignment file
+    # Determine end type per alignment file.
     typ_mp="$(_resolve_typ_fil "${mp}")" || {
         echo_err_func "${FUNCNAME[0]}" \
             "failed while resolving 'typ_mp'."
@@ -2382,7 +2344,7 @@ EOM
             "typ_mn=${typ_mn}" "typ_sn=${typ_sn}"
     fi
 
-    #  Count alignments in alignment files
+    # Count alignments in alignment files.
     num_mp="$(_get_dep_idx mip "${idx}")"
     if [[ -z "${num_mp}" ]]; then
         num_mp="$(_count_alignments "${threads}" "${mp}" "${typ_mp}")" || {
@@ -2439,7 +2401,7 @@ EOM
             "coef_spk=${coef_lcl}" "dp=${dp}"
     fi
 
-    #  Compute requested spike-in coefficient
+    # Compute requested spike-in coefficient.
     coef_val="$(
         _compute_scl_fct \
             "spike" "${scr_siq}" "${scr_spk}" \
@@ -2455,7 +2417,7 @@ EOM
         return 1
     }
 
-    #  Build a row of results, printing them tab-separated with no trailing tab
+    # Build a row of results, printing them tab-separated with no trailing tab.
     if [[ -z "${fil_out:-}" ]]; then
         echo_err_func "${FUNCNAME[0]}" \
             "global variable 'fil_out' is empty or unset."
@@ -2488,12 +2450,12 @@ EOM
             "failed to write per-sample results file '${fil_out_part}'."
         return 1
     fi
-    #  The execute-layer driver combines per-sample part files deterministically
-    #+ after all workers finish successfully.
+    # The execute-layer driver combines per-sample part files deterministically
+    # after all workers finish successfully.
 }
 
 
-#  Print an error message when function script is executed directly
+# Print an error message when function script is executed directly.
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
     err_source_only "${BASH_SOURCE[0]}"
 fi

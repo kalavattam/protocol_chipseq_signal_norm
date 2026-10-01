@@ -9,7 +9,7 @@
 # The following were used in design, development, and documentation, with all
 # output reviewed, edited, and approved by the author:
 # - OpenAI ChatGPT and Codex (GPT-5.5, GPT-5.6);
-# - Anthropic Claude Code (Opus 5).
+# - Anthropic Claude Code (Opus 5, Opus 5.5).
 #
 # Distributed under the MIT license.
 
@@ -18,7 +18,7 @@ set -euo pipefail
 
 TEST_NAME="submit calculate-scaling-factor siQ"
 
-#  Source shared test helpers
+# Source shared test helpers.
 # shellcheck source=tests/support/test_helpers.sh
 source "$(
     git -C "$(dirname "${BASH_SOURCE[0]}")" rev-parse --show-toplevel
@@ -36,7 +36,7 @@ function link_prjna857063_bam_pair() {
 }
 
 
-#  Run one PE siQ submit-worker case and assert the exact part row
+# Run one PE siQ submit-worker case and assert the exact part row.
 function run_submit_siq_pe() {
     local cas="${1:-}"
     local mip="${2:-}"
@@ -106,7 +106,7 @@ function run_submit_siq_pe() {
 }
 
 
-#  Run one PRJNA857063-shaped submit-worker case and assert the exact part row
+# Run one PRJNA857063-shaped submit-worker case and assert the exact part row.
 function run_submit_siq_prjna857063() {
     local cas="${1:-}"
     local mip="${2:-}"
@@ -183,7 +183,7 @@ function run_submit_siq_prjna857063() {
 }
 
 
-#  Run one PE siQ submit-worker case that should fail during metadata parsing
+# Run one PE siQ submit-worker case that should fail during metadata parsing.
 function run_submit_siq_pe_failure() {
     local cas="${1:-}"
     local tbl="${2:-}"
@@ -228,7 +228,7 @@ function run_submit_siq_pe_failure() {
 }
 
 
-#  Define fixture and output paths for the direct submit-worker test
+# Define fixture and output paths for the direct submit-worker test.
 scr_sub="${ROOT_REPO}/bin/submit_calculate_scaling_factor.sh"
 cfg_met="${ROOT_REPO}/data/raw/docs/parse_metadata_siqchip.yml"
 cfg_p857="${ROOT_REPO}/data/raw/docs/parse_metadata_siqchip_PRJNA857063.yml"
@@ -520,9 +520,9 @@ then
     exit $?
 fi
 
-#shellcheck disable=SC2034
-#  PE BAM input should compute lengths from paired-end fragment sizes
-# shellcheck disable=SC2154
+
+# PE BAM input should compute lengths from paired-end fragment sizes.
+# shellcheck disable=SC2154,SC2034
 if \
     run_capture \
         "submit calculate-scaling-factor siQ PE" \
@@ -604,7 +604,7 @@ assert_pattern_found \
     "submit scaling-factor siQ PE uses metadata input fragment length"
 
 
-#  PE CRAM input should compute when an explicit reference is supplied
+# PE CRAM input should compute when an explicit reference is supplied.
 if \
     run_capture \
         "submit calculate-scaling-factor siQ PE CRAM" \
@@ -656,7 +656,7 @@ assert_pattern_found \
     "submit scaling-factor siQ PE CRAM auto-detects IP as PE"
 
 
-#  CRAM input should fail clearly when no reference is supplied
+# CRAM input should fail clearly when no reference is supplied.
 if \
     run_capture \
         "submit calculate-scaling-factor siQ CRAM missing reference" \
@@ -688,7 +688,7 @@ else
 fi
 
 
-#  Metadata library-loading volumes should correct alpha and remain auditable
+# Metadata library-loading volumes should correct alpha and remain auditable.
 if \
     run_capture \
         "submit calculate-scaling-factor siQ PE library-volume correction" \
@@ -728,8 +728,8 @@ run_submit_siq_pe_failure \
     26
 
 
-#  PRJNA857063 study metadata should reproduce all SI-table alpha values when
-#+ supplied the reported fragment lengths and library-loading volumes
+# PRJNA857063 study metadata should reproduce all SI-table alpha values when
+# supplied the reported fragment lengths and library-loading volumes.
 link_prjna857063_bam_pair "${p857_dmso_18_mip}"  "${p857_dmso_18_min}"
 link_prjna857063_bam_pair "${p857_dmso_27_mip}"  "${p857_dmso_27_min}"
 link_prjna857063_bam_pair "${p857_cbp30_18_mip}" "${p857_cbp30_18_min}"
@@ -804,7 +804,7 @@ run_submit_siq_prjna857063 \
     '357'
 
 
-#  Metadata parser variants should propagate through the submit wrapper
+# Metadata parser variants should propagate through the submit wrapper.
 run_submit_siq_pe \
     pe_gzip_metadata \
     "${bam_pe_mip}" \
@@ -823,7 +823,7 @@ run_submit_siq_pe_failure \
     24
 
 
-#  Depth-dependent equation 5 should use alignment-inferred depths
+# Depth-dependent equation 5 should use alignment-inferred depths.
 if \
     run_capture \
         "submit calculate-scaling-factor siQ PE equation 5" \
@@ -864,7 +864,7 @@ else
 fi
 
 
-#  Equation 5 without depth terms should ignore alignment-inferred depths
+# Equation 5 without depth terms should ignore alignment-inferred depths.
 if \
     run_capture \
         "submit calculate-scaling-factor siQ PE equation 5nd" \
@@ -902,7 +902,7 @@ assert_file_exact_line \
     "submit scaling-factor siQ PE equation 5nd part"
 
 
-#  Depth-dependent equation 6 should use alignment-inferred depths
+# Depth-dependent equation 6 should use alignment-inferred depths.
 if \
     run_capture \
         "submit calculate-scaling-factor siQ PE equation 6" \
@@ -943,7 +943,7 @@ else
 fi
 
 
-#  Explicit length overrides should take precedence over PE fragment sizes
+# Explicit length overrides should take precedence over PE fragment sizes.
 if \
     run_capture \
         "submit calculate-scaling-factor siQ PE length overrides" \
@@ -989,7 +989,7 @@ else
 fi
 
 
-#  Explicit depth overrides should feed depth-dependent equations
+# Explicit depth overrides should feed depth-dependent equations.
 if \
     run_capture \
         "submit calculate-scaling-factor siQ PE depth overrides" \
@@ -1035,7 +1035,58 @@ else
 fi
 
 
-#  SE BAM input should use an explicit default fragment length
+# One depth override given to submit for two samples, as a Slurm array or a
+# direct run receives it, must reach both samples' parts.
+fil_out_bcst="${dir_out}/scaling.submit.pe_dep_bcst.siq.tsv"
+fil_log_bcst="${dir_log}/submit_siq_pe_dep_bcst.log"
+
+if \
+    run_capture \
+        "submit calculate-scaling-factor siQ PE single depth override" \
+        "${fil_log_bcst}" \
+        "${TEST_BASH}" "${scr_sub}" \
+            --env_nam "${env_nam}" \
+            --dir_scr "${ROOT_REPO}/bin" \
+            --threads 1 \
+            --mode siq \
+            --aln_typ auto \
+            --csv_mip "${bam_pe_mip},${bam_pe_mip}" \
+            --csv_min "${bam_pe_min},${bam_pe_min}" \
+            --fil_out "${fil_out_bcst}" \
+            --tbl_met "${tbl_met}" \
+            --cfg_met "${cfg_met}" \
+            --eqn 6 \
+            --csv_dep_mip 10 \
+            --csv_dep_min 20 \
+            --dir_eo "${dir_err}" \
+            --nam_job "test_submit_calculate_scaling_factor_siq_pe_dep_bcst"
+then
+    n_bcst=0
+    for prt in "${fil_out_bcst}.part.000000" "${fil_out_bcst}.part.000001"
+    do
+        if [[ "$(cat "${prt}" 2>/dev/null)" == "${row_exp_pe_dep_override}" ]]
+        then
+            n_bcst=$(( n_bcst + 1 ))
+        fi
+    done
+
+    if [[ "${n_bcst}" -eq 2 ]]; then
+        record_pass "submit applies one depth override to both samples"
+    else
+        record_fail \
+            "submit applied one depth override to ${n_bcst} of 2 samples;" \
+            "see $(print_relpath "${dir_out}")"
+    fi
+    unset n_bcst prt
+else
+    record_fail \
+        "submit calculate-scaling-factor siQ single depth override failed;" \
+        "see $(print_relpath "${fil_log_bcst}")"
+fi
+unset fil_out_bcst fil_log_bcst
+
+
+# SE BAM input should use an explicit default fragment length.
 if \
     run_capture \
         "submit calculate-scaling-factor siQ SE" \
@@ -1107,7 +1158,7 @@ assert_pattern_found \
     "submit scaling-factor siQ SE uses default input fragment length"
 
 
-#  Explicit SE mode without length information should fail before processing
+# Explicit SE mode without length information should fail before processing.
 if \
     run_capture \
         "submit calculate-scaling-factor siQ SE missing length" \
@@ -1139,7 +1190,7 @@ else
 fi
 
 
-#  Invalid equation identifiers should fail before processing
+# Invalid equation identifiers should fail before processing.
 if \
     run_capture \
         "submit calculate-scaling-factor siQ invalid equation" \
@@ -1171,7 +1222,7 @@ else
 fi
 
 
-#  Spike-in method arguments are invalid in siQ mode
+# Spike-in method arguments are invalid in siQ mode.
 if \
     run_capture \
         "submit calculate-scaling-factor siQ method not applicable" \

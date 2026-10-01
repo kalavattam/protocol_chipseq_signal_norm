@@ -10,7 +10,7 @@
 # output reviewed, edited, and approved by the author:
 # - OpenAI ChatGPT and Codex (GPT-4- and GPT-5-series models; most recent:
 #   GPT-5.6);
-# - Anthropic Claude Code (Opus 5).
+# - Anthropic Claude Code (Opus 5, Opus 5.5).
 #
 # Distributed under the MIT license.
 
@@ -861,7 +861,7 @@ function validate_vecs() {
         n_samp="${#arr_mip[@]}"
     fi
 
-    check_arr_len_bcst \
+    expand_arr_bcst \
         "${n_samp}" \
         arr_len_mip arr_len_min \
         arr_dep_mip arr_dep_min \
