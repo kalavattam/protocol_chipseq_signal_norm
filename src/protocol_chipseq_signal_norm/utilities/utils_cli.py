@@ -6,9 +6,10 @@
 # Copyright 2025-2026 by Kris Alavattam
 # Email: kalavattam@gmail.com
 #
-# OpenAI ChatGPT and Codex (GPT-5-series models; most recent: GPT-5.6) were
-# used in design, development, and documentation, with all output reviewed,
-# edited, and approved by the author.
+# The following were used in design, development, and documentation, with all
+# output reviewed, edited, and approved by the author:
+# - OpenAI ChatGPT and Codex (GPT-5-series models; most recent: GPT-5.6);
+# - Anthropic Claude Code (Opus 5.5).
 #
 # Distributed under the MIT license.
 
@@ -19,15 +20,24 @@ Command-line parser helpers.
 Notes
 -----
 'CapArgumentParser' and 'add_help_cap()' provide shared parser behavior for
-user-facing Python CLIs.
+user-facing Python CLIs. 'find_supplied()' and 'check_opts_apply()' realize
+'HELP.PARAMETER.APPLICABILITY' for them.
 """
 
 from __future__ import annotations
 
 import argparse
+import sys
+from collections.abc import Collection, Mapping, Sequence
 from dataclasses import dataclass
 
-__all__ = ["CapArgumentParser", "CapHelpFormatter", "add_help_cap"]
+__all__ = [
+    "CapArgumentParser",
+    "CapHelpFormatter",
+    "add_help_cap",
+    "check_opts_apply",
+    "find_supplied",
+]
 
 
 @dataclass(frozen=True)
@@ -314,3 +324,112 @@ def add_help_cap(parser: argparse.ArgumentParser) -> None:
         action="help",
         help="Show this help message and exit.\n\n",
     )
+
+
+def find_supplied(
+    parser: argparse.ArgumentParser,
+    argv: Sequence[str],
+) -> set[str]:
+    """
+    Return the destinations of the options a command line gives explicitly.
+
+    Parameters
+    ----------
+    parser : argparse.ArgumentParser
+        Parser whose option spellings are resolved.
+    argv : Sequence[str]
+        Arguments as supplied, without the program name.
+
+    Returns
+    -------
+    supplied : set[str]
+        The 'dest' of every option present in 'argv'.
+
+    Notes
+    -----
+    Parsed values cannot tell an explicit default from an omitted option, so
+    this reads the tokens. A token may be a bare option, an option with an
+    inline value after '=', or a short option with its value attached, as in
+    '-c0.05'. A short option is a prefix of longer ones ('-s' of '-sp'), so an
+    attached form resolves to the longest registered option it starts with,
+    as argparse does. Parsing stops at '--'.
+    """
+
+    by_flag = parser._option_string_actions
+    shorts = [flag for flag in by_flag if not flag.startswith("--")]
+    supplied: set[str] = set()
+
+    for token in argv:
+        if token == "--":
+            break
+
+        if not token.startswith("-") or token == "-":
+            continue
+
+        action = by_flag.get(token.split("=", 1)[0])
+
+        if action is None and not token.startswith("--"):
+            prefixes = [flag for flag in shorts if token.startswith(flag)]
+
+            if prefixes:
+                action = by_flag[max(prefixes, key=len)]
+
+        if action is not None:
+            supplied.add(action.dest)
+
+    return supplied
+
+
+def check_opts_apply(
+    supplied: Collection[str],
+    act: str,
+    opts: Mapping[str, str],
+    where: str,
+    now: str,
+) -> None:
+    """
+    Refuse or warn about supplied options that have no effect.
+
+    Parameters
+    ----------
+    supplied : Collection[str]
+        Destinations of the options given explicitly, from 'find_supplied()'.
+    act : str
+        'refuse' to stop with an error, or 'warn' to print a note and go on.
+    opts : Mapping[str, str]
+        Each checked option's destination mapped to its spelling, such as
+        '{"coef": "--coef"}'.
+    where : str
+        Where the options apply, such as "'--method qntl_nz'".
+    now : str
+        The current condition, under which they do not apply.
+
+    Raises
+    ------
+    SystemExit
+        For the first supplied option when 'act' is 'refuse'.
+    ValueError
+        If 'act' is not 'refuse' or 'warn'.
+
+    Notes
+    -----
+    This realizes 'HELP.PARAMETER.APPLICABILITY' for CLIs: a warning is a
+    'Note:' line on stderr. The caller decides that the options do not apply.
+    """
+
+    if act not in {"refuse", "warn"}:
+        raise ValueError(f"'act' must be 'refuse' or 'warn': {act!r}.")
+
+    for dest, flag in opts.items():
+        if dest not in supplied:
+            continue
+
+        if act == "refuse":
+            raise SystemExit(
+                f"'{flag}' is for {where}; it has no effect with {now}.",
+            )
+
+        print(
+            f"Note: '{flag}' has no effect with {now} and is ignored.",
+            file=sys.stderr,
+        )

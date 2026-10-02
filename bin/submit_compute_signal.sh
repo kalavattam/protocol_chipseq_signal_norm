@@ -816,6 +816,13 @@ function resolve_pseudo_edger() {
         cnt+=( "$(< "${rep}")" )
     done
 
+    # Only the fractional types read fragment counts; the others would warn.
+    case "${typ_sig}" in
+        unadj|frag|norm|nc)
+            opt+=( --n_frg_A "${cnt[0]}" --n_frg_B "${cnt[1]}" )
+            ;;
+    esac
+
     # Empty leaves the prior count to 'compute_pseudo', which owns the default.
     if [[ -n "${prior_count}" ]]; then
         opt+=( --prior_count "${prior_count}" )
@@ -827,8 +834,6 @@ function resolve_pseudo_edger() {
             --typ_sig "${typ_sig}" \
             --fil_A "${fil_A}" \
             --fil_B "${fil_B}" \
-            --n_frg_A "${cnt[0]}" \
-            --n_frg_B "${cnt[1]}" \
             --n_ovlp_A "${cnt[2]}" \
             --n_ovlp_B "${cnt[3]}" \
             "${opt[@]}"

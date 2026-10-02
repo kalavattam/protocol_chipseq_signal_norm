@@ -10,7 +10,7 @@
 # output reviewed, edited, and approved by the author:
 # - OpenAI ChatGPT and Codex (GPT-4- and GPT-5-series models; most recent:
 #   GPT-5.6);
-# - Anthropic Claude Code (Opus 5).
+# - Anthropic Claude Code (Opus 5, Opus 5.5).
 #
 # Distributed under the MIT license.
 
@@ -50,6 +50,8 @@ from protocol_chipseq_signal_norm.utilities.utils_cli import (
     _HelpExample,
     _SectionedHelpConfig,
     add_help_cap,
+    check_opts_apply,
+    find_supplied,
 )
 from protocol_chipseq_signal_norm.utilities.utils_format import format_value
 from protocol_chipseq_signal_norm.utilities.utils_io import (
@@ -86,46 +88,27 @@ SUB_FRACTIONAL = ("unadj", "frag", "norm")
 # rejection would leave a user guessing which of the two tools to reach for.
 SUB_MOVED = ("CPM", "BPM", "RPKM", "RPGC", "None")
 
-# The distribution-shaping options, each with every spelling argparse accepts
-# for it. 'edger' consults none of them, and silently ignoring one lets a
-# wrong mental model survive.
-OPT_IGNORED_EDGER = {
-    "coef": ("-c", "--coef"),
-    "qntl_nz": ("-q", "--qntl_nz"),
-    "floor": ("-fl", "--floor"),
-    "eps": ("-e", "--eps"),
-    "mode_nz": ("-mz", "--mode_nz"),
-    "sym": ("-s", "--sym"),
+# The distribution-shaping options, which 'edger' does not consult, and the
+# edgeR inputs, which the distribution methods do not; each maps its 'dest' to
+# its spelling.
+OPT_DIST = {
+    "coef": "--coef",
+    "qntl_nz": "--qntl_nz",
+    "floor": "--floor",
+    "eps": "--eps",
+    "mode_nz": "--mode_nz",
+    "sym": "--sym",
 }
 
-# Every short option 'parse_args' registers. Resolving an attached value needs
-# the whole set rather than the six above: '-sb10' must resolve to '-sb', not
-# to '-s' carrying 'b10', and only the longest registered prefix tells the two
-# apart. 'test_pseudo.py' asserts both constants against the parser, so neither
-# can drift away from it.
-OPT_SHORT_ALL = (
-    "-h",
-    "-v",
-    "-fA",
-    "-fB",
-    "-sp",
-    "-m",
-    "-q",
-    "-c",
-    "-fl",
-    "-e",
-    "-mz",
-    "-s",
-    "-ts",
-    "-pc",
-    "-sb",
-    "-noA",
-    "-noB",
-    "-nfA",
-    "-nfB",
-    "-dp",
-    "-pj",
-)
+OPT_EDGER = {
+    "typ_sig": "--typ_sig",
+    "prior_count": "--prior_count",
+    "siz_bin": "--siz_bin",
+    "n_ovlp_A": "--n_ovlp_A",
+    "n_ovlp_B": "--n_ovlp_B",
+    "n_frg_A": "--n_frg_A",
+    "n_frg_B": "--n_frg_B",
+}
 
 
 # TODO: Extend compressed-input handling to '.bgz' and '.bgzf' here and in
@@ -799,7 +782,10 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         parser.print_help(sys.stderr)
         raise SystemExit(0)
 
-    return parser.parse_args(argv_parse)
+    args = parser.parse_args(argv_parse)
+    args.supplied = find_supplied(parser, argv_parse)
+
+    return args
 
 
 def _print_pseudo_arguments(
@@ -916,96 +902,91 @@ def _is_one_track(args: argparse.Namespace) -> bool:
     return not getattr(args, "fil_B", None) and args.n_ovlp_B is None
 
 
-def _resolve_ignored(token: str) -> str | None:
+def _check_applicability(args: argparse.Namespace) -> None:
     """
-    Report which ignored option a supplied token names, if any.
-
-    Parameters
-    ----------
-    token : str
-        One command-line token as supplied.
-
-    Returns
-    -------
-    flag : str | None
-        The option's long form, or None when the token names something else.
-
-    Notes
-    -----
-    Three spellings reach the same option: the bare flag, an inline value after
-    '=', and, for a single-character short option, a value attached directly as
-    in '-c0.05'. Only the third needs care, because a short option is a prefix
-    of longer ones ('-s' of '-sp', '-su', and '-sb'), so the token resolves to
-    the longest registered option that prefixes it, which is how argparse
-    itself decides. Abbreviation is off ('allow_abbrev=False'), so no partial
-    long form has to be recognized.
-    """
-
-    name = token.split("=", 1)[0]
-
-    for spellings in OPT_IGNORED_EDGER.values():
-        if name in spellings:
-            return spellings[-1]
-
-    if not token.startswith("-") or token.startswith("--"):
-        return None
-
-    prefixes = [opt for opt in OPT_SHORT_ALL if token.startswith(opt)]
-
-    if not prefixes:
-        return None
-
-    longest = max(prefixes, key=len)
-
-    for spellings in OPT_IGNORED_EDGER.values():
-        if longest in spellings:
-            return spellings[-1]
-
-    return None
-
-
-def _warn_inapplicable(
-    args: argparse.Namespace,
-    argv: list[str] | None,
-) -> None:
-    """
-    Warn when arguments that do not apply to the chosen method are passed.
+    Refuse or warn about options that have no effect with this method.
 
     Parameters
     ----------
     args : argparse.Namespace
-        Parsed arguments.
-    argv : list[str] | None
-        Arguments as supplied, or None to read the process arguments.
+        Parsed arguments, with 'supplied' from 'find_supplied()'.
+
+    Raises
+    ------
+    SystemExit
+        For an option that would change the result if it applied, per
+        'HELP.PARAMETER.APPLICABILITY'.
 
     Notes
     -----
-    edgeR derives its pseudocount from fragment-bin overlap counts, so it
-    consults none of the distribution-shaping options. Silently ignoring them
-    lets a wrong mental model survive: '--coef 0.05 --method edger' currently
-    runs, ignores the coefficient, and reports nothing.
-
-    Detection reads the supplied tokens rather than comparing against defaults,
-    so an explicitly passed default is still reported. It resolves every
-    spelling argparse accepts, short and long alike.
+    Distribution options do nothing under 'edger', and edgeR inputs nothing
+    under the distribution methods. Under 'edger', '--siz_bin' only checks a
+    track that is read; for a whole-count type, '--n_frg_A' / '--n_frg_B' only
+    check an overlap count inferred from one; with no track read, both warn.
     """
 
-    supplied = sys.argv[1:] if argv is None else argv
-    seen: list[str] = []
+    sup = args.supplied
+    now = f"'--method {args.method}'"
 
-    for token in supplied:
-        flag = _resolve_ignored(token)
+    if args.method != "edger":
+        check_opts_apply(sup, "refuse", OPT_EDGER, "'--method edger'", now)
 
-        if flag is not None and flag not in seen:
-            seen.append(flag)
+        if args.method == "qntl_nz":
+            check_opts_apply(
+                sup,
+                "refuse",
+                {"coef": "--coef"},
+                "'--method frc_mdn_nz', 'frc_avg_nz', or 'min_nz'",
+                now,
+            )
+        else:
+            check_opts_apply(
+                sup,
+                "refuse",
+                {"qntl_nz": "--qntl_nz"},
+                "'--method qntl_nz'",
+                now,
+            )
 
-    if seen:
-        print(
-            f"Note: {', '.join(seen)} do not apply to '--method edger' and "
-            "were ignored; it derives the pseudocount from fragment-bin "
-            "overlap counts, not from the value distribution.",
-            file=sys.stderr,
+        if args.mode_nz == "off":
+            check_opts_apply(
+                sup,
+                "refuse",
+                {"eps": "--eps"},
+                "'--mode_nz closed' or 'open'",
+                "'--mode_nz off'",
+            )
+
+        return
+
+    check_opts_apply(
+        sup,
+        "refuse",
+        OPT_DIST,
+        "'--method frc_mdn_nz', 'qntl_nz', 'frc_avg_nz', or 'min_nz'",
+        now,
+    )
+
+    # With every overlap count given, no track is read to check.
+    if args.n_ovlp_A is not None and (
+        _is_one_track(args) or args.n_ovlp_B is not None
+    ):
+        check_opts_apply(
+            sup,
+            "warn",
+            {"siz_bin": "--siz_bin"},
+            "a run that reads a track",
+            "both overlap counts given",
         )
+
+        if canonicalize_typ_sig(args.typ_sig) not in SUB_FRACTIONAL:
+            check_opts_apply(
+                sup,
+                "warn",
+                {"n_frg_A": "--n_frg_A", "n_frg_B": "--n_frg_B"},
+                "a fractional '--typ_sig' or an inferred overlap count",
+                f"'--typ_sig {args.typ_sig}' and both overlap counts given",
+            )
 
 
 def _run_edger(
@@ -1086,12 +1067,9 @@ def _run_edger(
 
         raise SystemExit(str(e)) from None
 
-    # Inferring 'L' reads the track's column sum, which is 'L' only for a
-    # whole-count track. Every fragment touches at least one bin, so a sum
-    # below 'N' proves the track is something else, and inferring from it would
-    # rescale the prior in silence. This tests impossibility, not plausibility:
-    # a real whole-count track cannot trip this, but one summing too high still
-    # slips through.
+    # Only a whole-count track sums to 'L'. Each fragment touches a bin, so a
+    # sum below 'N' proves the track is not one; this catches impossible cases,
+    # but not every implausible one, as too-high sums still slip through.
     for label, inferred, total, frg in (
         ("A", args.n_ovlp_A is None, n_ovlp_a, n_frg_a),
         ("B", args.n_ovlp_B is None and not one_track, n_ovlp_b, n_frg_b),
@@ -1108,12 +1086,11 @@ def _run_edger(
         _print_pseudo_arguments(args, None, skp_pfx, siz_bin)
 
     total_a, total_b = None, None
+    fractional = canonicalize_typ_sig(args.typ_sig) in SUB_FRACTIONAL
 
     if canonicalize_typ_sig(args.typ_sig) == "unadj":
-        # The track's own column sum is the total fragment base pairs, which is
-        # what the prior is denominated in. It is read here rather than taken
-        # from '--n_ovlp_A', which carries the overlap count 'k' needs and is a
-        # different quantity entirely.
+        # The prior is denominated in fragment base pairs, the track's column
+        # sum; '--n_ovlp_A' is the overlap count 'k' needs, a different number.
         try:
             total_a = sum_counts_bdg(args.fil_A, siz_bin, skp_pfx).total
             total_b = (
@@ -1132,9 +1109,8 @@ def _run_edger(
             total_b=total_b,
             prior_count=args.prior_count,
             typ_sig=args.typ_sig,
-            siz_bin=siz_bin,
-            n_frg_a=n_frg_a,
-            n_frg_b=n_frg_b,
+            n_frg_a=n_frg_a if fractional else None,
+            n_frg_b=n_frg_b if fractional else None,
         )
     except ValueError as e:
         raise SystemExit(str(e)) from None
@@ -1195,10 +1171,8 @@ def _run_edger(
                 else None
             ),
 
-            # Not derivable under 'unadj', 'frag', 'norm' or 'cpm': those
-            # pseudocounts come from a closed form rather than from
-            # 'scale_i * prior_scaled_i', so dividing does not recover the
-            # prior. For that reason, emitted rather than left to the consumer.
+            # Emitted b/c a consumer cannot derive it: under 'unadj', 'frag',
+            # 'norm', and 'cpm', 'pseudo / scale' does not recover the prior.
             "prior_scaled": {
                 "A": result["prior_scaled_A"],
                 "B": result["prior_scaled_B"],
@@ -1213,9 +1187,8 @@ def _run_edger(
             "is_edger": result["is_edger"],
             "note": result["note"],
 
-            # The B fields mirror A here rather than being dropped, so the
-            # schema does not change shape between one- and two-track runs.
-            # 'one_track' is what tells a consumer why they are equal.
+            # B mirrors A so the schema keeps one shape for one- and two-track
+            # runs; 'one_track' tells a consumer why the two are equal.
             "one_track": one_track,
         }
 
@@ -1332,14 +1305,12 @@ def main(argv: list[str] | None = None) -> int:
                 args.n_ovlp_A is None
                 or (not one_track and args.n_ovlp_B is None)
             ):
-                # The track this run reads supplies the signal type's own
-                # column total, the fragment base pairs. Summing it for
-                # 'n_ovlp' too would put that total where 'L' belongs and scale
-                # every prior by 'total / L' without saying so.
+                # An 'unadj' track sums to its fragment base pairs, not 'L', so
+                # inferring 'n_ovlp' from it would silently scale every prior.
                 raise ValueError(
-                    "'--typ_sig unadj' requires '--n_ovlp_A' and "
-                    "'--n_ovlp_B'; the track supplies its own column total, "
-                    "not the fragment-bin overlap count that 'k' needs.",
+                    "'--typ_sig unadj' entails '--n_ovlp_A' and '--n_ovlp_B'; "
+                    "the track supplies its own column total, not the count "
+                    "of fragment-bin overlaps that 'k' needs.",
                 )
 
             if (
@@ -1361,14 +1332,21 @@ def main(argv: list[str] | None = None) -> int:
 
     skp_pfx = parse_skp_pfx(args.skp_pfx, default=DEF_SKP_PFX)
 
-    if args.method == "edger":
-        _warn_inapplicable(args, argv)
+    _check_applicability(args)
 
+    if args.method == "edger":
         return _run_edger(args, skp_pfx)
 
     coef_eff = determine_coef_eff(args.method, args.coef)
 
     mode_nz = args.mode_nz
+    eps = args.eps if "eps" in args.supplied else None
+
+    # The quantile settings reach the helper only for the method that reads
+    # them.
+    qntl_pct, qntl_rule = (
+        (args.qntl_nz, "round") if args.method == "qntl_nz" else (None, None)
+    )
 
     if args.verbose:
         _print_pseudo_arguments(args, coef_eff, skp_pfx)
@@ -1376,7 +1354,7 @@ def main(argv: list[str] | None = None) -> int:
     vals_a = list(
         iter_vals_bdg(
             args.fil_A,
-            eps=args.eps,
+            eps=eps,
             mode_nz=mode_nz,
             skp_pfx=skp_pfx,
         ),
@@ -1393,9 +1371,9 @@ def main(argv: list[str] | None = None) -> int:
         vals_a,
         method=args.method,
         coef=coef_eff,
-        qntl_pct=args.qntl_nz,
+        qntl_pct=qntl_pct,
         floor=args.floor,
-        qntl_rule="round",
+        qntl_rule=qntl_rule,
     )
 
     pseudo_b = float("nan")
@@ -1405,7 +1383,7 @@ def main(argv: list[str] | None = None) -> int:
         vals_b = list(
             iter_vals_bdg(
                 args.fil_B,
-                eps=args.eps,
+                eps=eps,
                 mode_nz=mode_nz,
                 skp_pfx=skp_pfx,
             ),
@@ -1422,9 +1400,9 @@ def main(argv: list[str] | None = None) -> int:
             vals_b,
             method=args.method,
             coef=coef_eff,
-            qntl_pct=args.qntl_nz,
+            qntl_pct=qntl_pct,
             floor=args.floor,
-            qntl_rule="round",
+            qntl_rule=qntl_rule,
         )
     else:
         # If only one file is supplied, then mirror A to B if and only if the

@@ -9,7 +9,7 @@
 # The following were used in design, development, and documentation, with all
 # output reviewed, edited, and approved by the author:
 # - OpenAI ChatGPT and Codex (GPT-5.6);
-# - Anthropic Claude Code (Opus 5).
+# - Anthropic Claude Code (Opus 5, Opus 5.5).
 #
 # Distributed under the MIT license.
 
@@ -168,6 +168,36 @@ def test_compute_input_floor_accepts_mixed_case_direct_hint(
     )
 
     assert result == 2.0
+
+
+# Each distribution method on the ratio fixture with the floor it gave before
+# the helpers began refusing parameters that cannot act. 'mode_nz' 'off'
+# leaves no zero filtering for 'eps' to tune.
+DIST_FLOORS = (
+    ("frc_mdn_nz", "closed", 0.015),
+    ("frc_avg_nz", "closed", 0.07 / 3),
+    ("min_nz", "closed", 1.0),
+    ("qntl_nz", "closed", 1.0),
+    ("frc_mdn_nz", "off", 0.015),
+)
+
+
+@pytest.mark.parametrize(("method", "mode_nz", "expected"), DIST_FLOORS)
+def test_dist_passes_its_helpers_only_settings_that_apply(
+    method: str,
+    mode_nz: str,
+    expected: float,
+) -> None:
+    result = compute_input_floor(
+        str(FIXTURES / "bedgraph" / "ratio_A.bdg"),
+        10,
+        100,
+        mode="dist",
+        method=method,
+        mode_nz=mode_nz,
+    )
+
+    assert result == pytest.approx(expected)
 
 
 def test_main_accepts_mixed_case_cli_hint(

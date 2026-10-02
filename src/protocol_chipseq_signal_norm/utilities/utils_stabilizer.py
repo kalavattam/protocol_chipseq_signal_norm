@@ -9,7 +9,7 @@
 # The following were used in design, development, and documentation, with all
 # output reviewed, edited, and approved by the author:
 # - OpenAI ChatGPT and Codex (GPT-5-series models; most recent: GPT-5.6);
-# - Anthropic Claude Code (Opus 5).
+# - Anthropic Claude Code (Opus 5, Opus 5.5).
 #
 # Distributed under the MIT license.
 
@@ -28,6 +28,7 @@ from __future__ import annotations
 
 import math
 import sys
+import warnings
 from collections.abc import Iterable, Iterator
 
 from protocol_chipseq_signal_norm.utilities.utils_bdg import iter_rows_bdg
@@ -68,8 +69,8 @@ TYP_SIG_CHOICES = tuple(TYP_SIG_CANON.keys())
 
 def iter_vals_bdg(
     path: str,
-    eps: float = 0.0,
-    mode_nz: str = "closed",
+    eps: float | None = None,
+    mode_nz: str | None = None,
     skp_pfx: tuple[str, ...] | None = None,
     nz_policy: str = "abs",
 ) -> Iterator[float]:
@@ -82,10 +83,12 @@ def iter_vals_bdg(
     ----------
     path : str
         BedGraph-like path, or '-' for standard input.
-    eps : float
-        Epsilon threshold.
-    mode_nz : str
-        Boundary mode: 'closed', 'open', or 'off'.
+    eps : float | None
+        Epsilon threshold (default 0.0). Refused when 'mode_nz' or 'nz_policy'
+        is 'off', since nothing is then compared with it.
+    mode_nz : str | None
+        Boundary mode: 'closed' (default), 'open', or 'off'. Refused when
+        'nz_policy' is 'off'.
     skp_pfx : tuple[str, ...] | None
         Header prefixes to skip. The default is 'DEF_SKP_PFX'.
     nz_policy : str
@@ -99,8 +102,24 @@ def iter_vals_bdg(
     Raises
     ------
     ValueError
-        If 'mode_nz' or 'nz_policy' is unknown.
+        If 'mode_nz' or 'nz_policy' is unknown, or 'eps' or 'mode_nz' is given
+        where it has no effect.
     """
+
+    if nz_policy == "off" and mode_nz is not None:
+        raise ValueError(
+            "'mode_nz' is for 'nz_policy' 'abs' or 'pos'; it has no effect "
+            "with 'nz_policy' 'off'.",
+        )
+
+    if eps is not None and "off" in (mode_nz, nz_policy):
+        raise ValueError(
+            "'eps' is for 'mode_nz' 'closed' or 'open'; it has no effect when "
+            "zero filtering is 'off'.",
+        )
+
+    eps = 0.0 if eps is None else eps
+    mode_nz = "closed" if mode_nz is None else mode_nz
 
     if skp_pfx is None:
         skp_pfx = DEF_SKP_PFX
@@ -226,8 +245,18 @@ def determine_coef_eff(method: str, coef: float | None) -> float | None:
     Raises
     ------
     ValueError
-        If 'method' is unrecognized.
+        If 'method' is unrecognized, or 'coef' is given with 'qntl_nz', which
+        uses no coefficient.
     """
+
+    if method == "qntl_nz" and coef is not None:
+        raise ValueError(
+            "'coef' is for methods 'frc_mdn_nz', 'frc_avg_nz', and 'min_nz'; "
+            "it has no effect with 'qntl_nz'.",
+        )
+
+    if method not in ("frc_mdn_nz", "frc_avg_nz", "min_nz", "qntl_nz"):
+        raise ValueError(f"Unknown stabilizer-selection method: {method!r}")
 
     if coef is not None:
         return coef
@@ -299,6 +328,83 @@ def canonicalize_typ_sig(typ_sig: str) -> str:
         raise ValueError(f"Error: Unknown signal type: {typ_sig!r}")
 
     return TYP_SIG_CANON[typ_sig]
+
+
+def _check_inputs_edger(
+    typ_sig: str,
+    siz_bin: int | None,
+    n_frg_a: float | None,
+    n_frg_b: float | None,
+    total_a: float | None,
+    total_b: float | None,
+) -> None:
+    """
+    Refuse fragment counts and totals a signal type does not read.
+
+    Parameters
+    ----------
+    typ_sig : str
+        Target signal type.
+    siz_bin : int | None
+        Bin width, read only for 'RPKM'; warned about otherwise.
+    n_frg_a, n_frg_b : float | None
+        Fragment counts, read only for 'unadj', 'frag', and 'norm'.
+    total_a, total_b : float | None
+        Column sums, read only for 'unadj'.
+
+    Raises
+    ------
+    ValueError
+        For a fragment count or total given to a type that does not read it.
+    """
+
+    if typ_sig not in ("unadj", "frag", "norm") and (
+        n_frg_a is not None or n_frg_b is not None
+    ):
+        raise ValueError(
+            "'n_frg_a' and 'n_frg_b' are for 'unadj', 'frag', and 'norm'; "
+            f"they have no effect with {typ_sig!r}.",
+        )
+
+    if typ_sig != "unadj" and (total_a is not None or total_b is not None):
+        raise ValueError(
+            "'total_a' and 'total_b' are for 'unadj'; they have no effect "
+            f"with {typ_sig!r}.",
+        )
+
+    if typ_sig != "RPKM" and siz_bin is not None:
+        warnings.warn(
+            f"'siz_bin' has no effect with {typ_sig!r} and is ignored.",
+            stacklevel=3,
+        )
+
+
+def _check_scale_edger(
+    typ_sig: str,
+    scale_a: float | None,
+    scale_b: float | None,
+) -> None:
+    """
+    Refuse supplied scale factors outside 'RPGC'.
+
+    Parameters
+    ----------
+    typ_sig : str
+        Target signal type.
+    scale_a, scale_b : float | None
+        Scale factors, read only for 'RPGC'.
+
+    Raises
+    ------
+    ValueError
+        For a scale factor given to a type other than 'RPGC'.
+    """
+
+    if typ_sig != "RPGC" and (scale_a is not None or scale_b is not None):
+        raise ValueError(
+            "'scale_a' and 'scale_b' are for 'RPGC'; they have no effect with "
+            f"{typ_sig!r}.",
+        )
 
 
 def compute_pseudo_edger(
@@ -448,6 +554,9 @@ def compute_pseudo_edger(
 
     typ_sig = canonicalize_typ_sig(typ_sig)
 
+    _check_inputs_edger(typ_sig, siz_bin, n_frg_a, n_frg_b, total_a, total_b)
+    _check_scale_edger(typ_sig, scale_a, scale_b)
+
     if typ_sig in ("norm", "frag", "unadj"):
         for label, frg in (("n_frg_a", n_frg_a), ("n_frg_b", n_frg_b)):
             if frg is None or not math.isfinite(frg) or frg <= 0.0:
@@ -485,7 +594,7 @@ def compute_pseudo_edger(
                 # Every fragment spans at least one base pair, so 'T >= N'
                 # holds. A total below 'N' came off another signal type and
                 # would rescale the prior in silence. It fires even when
-                # 'n_ovlp' is supplied, which the inferred-'L' check in
+                # 'n_ovlp' is supplied, which the inferred 'L' check in
                 # 'compute_pseudo' cannot.
                 if total < frg:
                     raise ValueError(
@@ -596,9 +705,9 @@ def pick_stabilizer(
     values: Iterable[float],
     method: str,
     coef: float | None = None,
-    qntl_pct: float = 1.0,
+    qntl_pct: float | None = None,
     floor: float = 0.0,
-    qntl_rule: str = "round",
+    qntl_rule: str | None = None,
 ) -> float:
     """
     Choose a stabilizer value from a collection of values.
@@ -612,12 +721,14 @@ def pick_stabilizer(
     coef : float | None
         Coefficient for the frc_* and min_* methods. If None, resolved by
         determine_coef_eff().
-    qntl_pct : float
-        Quantile in percent for qntl_nz (0..100). Decimals allowed.
+    qntl_pct : float | None
+        Quantile in percent for qntl_nz (0..100; default 1.0). Decimals
+        allowed. Refused for the other methods.
     floor : float
         Lower bound applied to the result: max(value, floor).
-    qntl_rule : str
-        {'round', 'floor'} selection rule on sorted values:
+    qntl_rule : str | None
+        {'round', 'floor'} selection rule on sorted values (default 'round'),
+        refused for the other methods:
             k = round(p*(n-1))  or  k = floor(p*(n-1))
 
     Returns
@@ -629,18 +740,26 @@ def pick_stabilizer(
     Raises
     ------
     ValueError
-        For an unrecognized 'method' or 'qntl_rule', or a 'qntl_pct' that is
-        nonfinite or outside [0, 100].
+        For an unrecognized 'method' or 'qntl_rule', a 'qntl_pct' that is
+        nonfinite or outside [0, 100], or a parameter given to a method that
+        does not use it.
     """
+
+    if method != "qntl_nz" and (qntl_pct is not None or qntl_rule is not None):
+        raise ValueError(
+            "'qntl_pct' and 'qntl_rule' are for method 'qntl_nz'; they have "
+            f"no effect with {method!r}.",
+        )
+
+    coef = determine_coef_eff(method, coef)
+    qntl_pct = 1.0 if qntl_pct is None else qntl_pct
+    qntl_rule = "round" if qntl_rule is None else qntl_rule
 
     finite_values = [value for value in values if math.isfinite(value)]
     if not finite_values:
         return float("nan")
 
     finite_values.sort()
-
-    if coef is None:
-        coef = determine_coef_eff(method, None)
 
     if method == "frc_mdn_nz":
         return max(

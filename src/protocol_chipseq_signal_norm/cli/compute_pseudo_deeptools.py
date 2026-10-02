@@ -6,7 +6,7 @@
 # Copyright 2026 by Kris Alavattam
 # Email: kalavattam@gmail.com
 #
-# Anthropic Claude Code (Opus 5) was used in design, development, and
+# Anthropic Claude Code (Opus 5, Opus 5.5) was used in design, development, and
 # documentation, with all output reviewed, edited, and approved by the author.
 #
 # Distributed under the MIT license.
@@ -49,6 +49,8 @@ from protocol_chipseq_signal_norm.utilities.utils_cli import (
     _HelpExample,
     _SectionedHelpConfig,
     add_help_cap,
+    check_opts_apply,
+    find_supplied,
 )
 from protocol_chipseq_signal_norm.utilities.utils_format import format_value
 from protocol_chipseq_signal_norm.utilities.utils_io import (
@@ -66,10 +68,8 @@ with suppress(AttributeError, ValueError):
 
 assert sys.version_info >= (3, 11), "Python >= 3.11 required."
 
-# These are the deepTools signal types this tool serves. 'TYP_SIG_CANON' spans
-# both tools, so each CLI restricts its own choices rather than carrying its
-# own vocabulary. This tool's own signal types are the ones deepTools
-# '--normalizeUsing' writes.
+# The signal types deepTools '--normalizeUsing' writes: this tool's subset of
+# the shared 'TYP_SIG_CANON', which spans both tools.
 TYP_SIG_SERVED = ("CPM", "BPM", "RPKM", "RPGC", "None")
 
 
@@ -400,7 +400,10 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         parser.print_help(sys.stderr)
         raise SystemExit(0)
 
-    return parser.parse_args(argv_parse)
+    args = parser.parse_args(argv_parse)
+    args.supplied = find_supplied(parser, argv_parse)
+
+    return args
 
 
 def _print_pseudo_arguments(
@@ -496,6 +499,53 @@ def _is_one_track(args: argparse.Namespace) -> bool:
     return not getattr(args, "fil_B", None) and args.n_ovlp_B is None
 
 
+def _check_applicability(args: argparse.Namespace) -> None:
+    """
+    Refuse or warn about options that have no effect with this signal type.
+
+    Parameters
+    ----------
+    args : argparse.Namespace
+        Parsed arguments, with 'supplied' from 'find_supplied()'.
+
+    Raises
+    ------
+    SystemExit
+        For '--sf_A' or '--sf_B' outside 'RPGC', per
+        'HELP.PARAMETER.APPLICABILITY'.
+
+    Notes
+    -----
+    '--siz_bin' checks a track that is read and gives 'RPKM' its width, so it
+    does nothing only when no track is read and the type is not 'RPKM'.
+    """
+
+    typ = canonicalize_typ_sig(args.typ_sig)
+    now = f"'--typ_sig {args.typ_sig}'"
+
+    if typ != "RPGC":
+        check_opts_apply(
+            args.supplied,
+            "refuse",
+            {"sf_A": "--sf_A", "sf_B": "--sf_B"},
+            "'--typ_sig RPGC'",
+            now,
+        )
+
+    reads_no_track = args.n_ovlp_A is not None and (
+        _is_one_track(args) or args.n_ovlp_B is not None
+    )
+
+    if typ != "RPKM" and reads_no_track:
+        check_opts_apply(
+            args.supplied,
+            "warn",
+            {"siz_bin": "--siz_bin"},
+            "'--typ_sig RPKM' or a run that reads a track",
+            f"{now} and both overlap counts given",
+        )
+
+
 def _run_edger(
     args: argparse.Namespace,
     skp_pfx: tuple[str, ...],
@@ -578,7 +628,9 @@ def _run_edger(
     if args.verbose:
         _print_pseudo_arguments(args, skp_pfx, siz_bin)
 
-    if siz_bin is None and canonicalize_typ_sig(args.typ_sig) == "RPKM":
+    typ = canonicalize_typ_sig(args.typ_sig)
+
+    if siz_bin is None and typ == "RPKM":
         raise SystemExit(
             "'--siz_bin' is required for '--typ_sig RPKM' when both "
             "'--n_ovlp_A' and '--n_ovlp_B' are supplied, because no track is "
@@ -591,7 +643,7 @@ def _run_edger(
             n_ovlp_b=n_ovlp_b,
             prior_count=args.prior_count,
             typ_sig=args.typ_sig,
-            siz_bin=siz_bin,
+            siz_bin=siz_bin if typ == "RPKM" else None,
             scale_a=sf_a,
             scale_b=sf_b,
         )
@@ -665,9 +717,8 @@ def _run_edger(
             "is_edger": result["is_edger"],
             "note": result["note"],
 
-            # The B fields mirror A here rather than being dropped, so the
-            # schema does not change shape between one- and two-track runs.
-            # 'one_track' is what tells a consumer why they are equal.
+            # B mirrors A so the schema keeps one shape for one- and two-track
+            # runs; 'one_track' tells a consumer why the two are equal.
             "one_track": one_track,
         }
 
@@ -774,11 +825,8 @@ def main(argv: list[str] | None = None) -> int:
             )
 
         if one_track and args.prt_arg:
-            # The deepTools 'bamCompare' options '--scaleFactors' and
-            # '--pseudocount' take a pair each, so there is no single-track
-            # spelling of them. 'bamCoverage --scaleFactor' exists but accepts
-            # no pseudocount, so emitting it would silently drop the value that
-            # was asked for.
+            # 'bamCompare' takes '--scaleFactors' and '--pseudocount' as pairs,
+            # and 'bamCoverage --scaleFactor' takes no pseudocount at all.
             raise ValueError(
                 "'--prt_arg' writes the two-track 'bamCompare' argument "
                 "string, which has no single-track form. Drop '--prt_arg' to "
@@ -786,6 +834,8 @@ def main(argv: list[str] | None = None) -> int:
             )
     except ValueError as e:
         raise SystemExit(str(e)) from None
+
+    _check_applicability(args)
 
     skp_pfx = parse_skp_pfx(args.skp_pfx, default=DEF_SKP_PFX)
 

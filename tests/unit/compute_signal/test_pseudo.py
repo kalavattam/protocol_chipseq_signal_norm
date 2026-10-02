@@ -9,7 +9,7 @@
 # The following were used in design, development, and documentation, with all
 # output reviewed, edited, and approved by the author:
 # - OpenAI ChatGPT and Codex (GPT-5.6);
-# - Anthropic Claude Code (Opus 5).
+# - Anthropic Claude Code (Opus 5, Opus 5.5).
 #
 # Distributed under the MIT license.
 
@@ -718,9 +718,8 @@ def test_json_payload_prior_is_not_derivable_for_normalized_coverage(
     assert payload["pseudocounts"]["pseudo_A"] != payload["prior_scaled"]["A"]
 
 
-# Every spelling argparse accepts for an option the edgeR path ignores. The
-# note existed but read long forms only, so '-c 0.05' ran silently: the case
-# its own docstring names as the reason it exists.
+# Every spelling argparse accepts for an option the edgeR path does not use. An
+# earlier note read long forms only, so '-c 0.05' ran silently.
 IGNORED_SPELLINGS = (
     ("--coef", "0.05"),
     ("--coef=0.05",),
@@ -745,27 +744,25 @@ IGNORED_SPELLINGS = (
     IGNORED_SPELLINGS,
     ids=[" ".join(row) for row in IGNORED_SPELLINGS],
 )
-def test_warn_inapplicable_detects_every_spelling(
+def test_edger_refuses_every_spelling_of_a_distribution_option(
     tokens: tuple[str, ...],
-    capsys: pytest.CaptureFixture[str],
 ) -> None:
-    status = main(
-        [
-            "--method",
-            "edger",
-            "--typ_sig",
-            "count",
-            "--fil_A",
-            FIL_A,
-            "--fil_B",
-            FIL_B,
-            *tokens,
-        ],
-    )
-    note = capsys.readouterr().err
+    with pytest.raises(SystemExit) as caught:
+        main(
+            [
+                "--method",
+                "edger",
+                "--typ_sig",
+                "count",
+                "--fil_A",
+                FIL_A,
+                "--fil_B",
+                FIL_B,
+                *tokens,
+            ],
+        )
 
-    assert status == 0
-    assert "do not apply to '--method edger'" in note
+    assert "it has no effect with '--method edger'" in str(caught.value.code)
 
 
 # Options whose short forms begin with '-s', which is '--sym'. Resolving by the
@@ -779,7 +776,7 @@ SYM_PREFIXED = (
 
 
 @pytest.mark.parametrize(("short_form", "tokens"), SYM_PREFIXED)
-def test_warn_inapplicable_does_not_confuse_sym_with_longer_options(
+def test_edger_does_not_confuse_sym_with_longer_options(
     short_form: str,
     tokens: tuple[str, ...],
     capsys: pytest.CaptureFixture[str],
@@ -806,10 +803,10 @@ def test_warn_inapplicable_does_not_confuse_sym_with_longer_options(
     )
 
     assert status == 0
-    assert "do not apply" not in capsys.readouterr().err
+    assert "has no effect" not in capsys.readouterr().err
 
 
-def test_warn_inapplicable_stays_silent_for_a_distribution_method(
+def test_distribution_method_accepts_its_own_options(
     capsys: pytest.CaptureFixture[str],
 ) -> None:
     status = main(
@@ -826,7 +823,7 @@ def test_warn_inapplicable_stays_silent_for_a_distribution_method(
     )
 
     assert status == 0
-    assert "do not apply" not in capsys.readouterr().err
+    assert "has no effect" not in capsys.readouterr().err
 
 
 def test_hidden_alias_restates_its_primary(
@@ -889,16 +886,14 @@ def test_hidden_alias_restates_its_primary(
     assert mismatched == {}
 
 
-def test_ignored_option_constants_match_the_parser(
+def test_applicability_constants_match_the_parser(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """
-    The constants restate the parser, so a test must prove they still agree.
+    The option families restate the parser, so a test must prove they agree.
 
-    'compute_pseudo' cannot hand the parser to '_warn_inapplicable' without
-    moving the 'add_argument' calls out of 'parse_args', which three alias
-    auditors and 'PY.CLI.HELP.LAYOUT' all locate by that function's name.
-    Restating the spellings and checking them here keeps both intact.
+    Each 'dest' must be registered, and its spelling must be one of that
+    option's own or a refusal would name a flag the user cannot type.
     """
 
     parser_type = compute_pseudo.CapArgumentParser
@@ -918,17 +913,13 @@ def test_ignored_option_constants_match_the_parser(
         for action in actions
         if action.help is not argparse.SUPPRESS
     }
-    shorts = tuple(
-        option
-        for action in actions
-        for option in action.option_strings
-        if not option.startswith("--")
-    )
+    families = {**compute_pseudo.OPT_DIST, **compute_pseudo.OPT_EDGER}
 
     assert {
-        dest: registered[dest] for dest in compute_pseudo.OPT_IGNORED_EDGER
-    } == compute_pseudo.OPT_IGNORED_EDGER
-    assert set(compute_pseudo.OPT_SHORT_ALL) == set(shorts)
+        dest: flag
+        for dest, flag in families.items()
+        if flag not in registered.get(dest, ())
+    } == {}
 
 
 # Single-track mode is selected from '--fil_B' and '--n_ovlp_B', so an overlap
@@ -1554,35 +1545,29 @@ def test_single_track_requires_only_the_a_side_flag(
     assert "both" not in message
 
 
-def test_warn_inapplicable_reports_an_explicitly_passed_default(
-    capsys: pytest.CaptureFixture[str],
-) -> None:
+def test_edger_refuses_an_explicitly_passed_default() -> None:
     """
-    A flag whose value happens to be its default still warns when typed.
+    A flag whose value happens to be its default is still refused when typed.
 
     Detection reads the supplied tokens rather than the parsed namespace, so it
     can tell a default apart from a choice. A user who typed '--sym none' asked
-    the edgeR path for something it does not do, and silence would imply the
-    request was honored.
+    the edgeR path for something it does not do.
     """
 
-    status = main(
-        [
-            "--method",
-            "edger",
-            "--typ_sig",
-            "count",
-            "--fil_A",
-            FIL_A,
-            "--fil_B",
-            FIL_B,
-            "--sym",
-            "none",
-        ],
-    )
+    with pytest.raises(SystemExit) as caught:
+        main(
+            [
+                "--method",
+                "edger",
+                "--typ_sig",
+                "count",
+                "--fil_A",
+                FIL_A,
+                "--fil_B",
+                FIL_B,
+                "--sym",
+                "none",
+            ],
+        )
 
-    note = capsys.readouterr().err
-
-    assert status == 0
-    assert "--sym" in note
-    assert "do not apply to '--method edger'" in note
+    assert "'--sym' is for" in str(caught.value.code)

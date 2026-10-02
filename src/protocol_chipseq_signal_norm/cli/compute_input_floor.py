@@ -10,7 +10,7 @@
 # output reviewed, edited, and approved by the author:
 # - OpenAI ChatGPT and Codex (GPT-4- and GPT-5-series models; most recent:
 #   GPT-5.6);
-# - Anthropic Claude Code (Opus 5).
+# - Anthropic Claude Code (Opus 5, Opus 5.5).
 #
 # Distributed under the MIT license.
 
@@ -620,12 +620,13 @@ def compute_input_floor(
                 "(bedGraph, bdg, or bg, optionally with .gz).",
             )
 
-        # Ratio denominators occupy a positive domain, so the iterator policy
-        # and explicit guard retain only positive values for the floor.
+        # Keep only positive values, since ratio denominators are positive. The
+        # helpers refuse settings that cannot act: 'eps' needs zero filtering,
+        # and only 'qntl_nz' takes quantile settings, but no coefficient.
         vals = list(
             iter_vals_bdg(
                 fil_in,
-                eps=eps,
+                eps=None if mode_nz == "off" else eps,
                 mode_nz=mode_nz,
                 skp_pfx=skp_pfx,
                 nz_policy="pos",
@@ -640,15 +641,16 @@ def compute_input_floor(
                 "(cannot compute distribution-based 'dep_min').",
             )
 
-        coef_eff = determine_coef_eff(method, coef)
+        quantile = method == "qntl_nz"
+        coef_eff = determine_coef_eff(method, None if quantile else coef)
 
         dep_min = pick_stabilizer(
             vals,
             method=method,
             coef=coef_eff,
-            qntl_pct=qntl_nz,
+            qntl_pct=qntl_nz if quantile else None,
             floor=floor,
-            qntl_rule="floor",
+            qntl_rule="floor" if quantile else None,
         )
 
         if not math.isfinite(dep_min):

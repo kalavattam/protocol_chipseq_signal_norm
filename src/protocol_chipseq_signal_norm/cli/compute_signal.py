@@ -10,7 +10,7 @@
 # output reviewed, edited, and approved by the author:
 # - OpenAI ChatGPT and Codex (GPT-4- and GPT-5-series models; most recent:
 #   GPT-5.6);
-# - Anthropic Claude Code (Opus 5, Fable 5).
+# - Anthropic Claude Code (Opus 5, Fable 5, Opus 5.5).
 #
 # Distributed under the MIT license.
 
@@ -68,6 +68,8 @@ from protocol_chipseq_signal_norm.utilities.utils_chrom import sort_chrom
 from protocol_chipseq_signal_norm.utilities.utils_cli import (
     CapArgumentParser,
     add_help_cap,
+    check_opts_apply,
+    find_supplied,
 )
 from protocol_chipseq_signal_norm.utilities.utils_io import open_out
 
@@ -2502,7 +2504,10 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         parser.print_help(sys.stderr)
         raise SystemExit(0)
 
-    return parser.parse_args(argv_parse)
+    args = parser.parse_args(argv_parse)
+    args.supplied = find_supplied(parser, argv_parse)
+
+    return args
 
 
 def _write_bed(
@@ -2888,6 +2893,68 @@ def _sig_results(
     )
 
 
+def _check_applicability(
+    args: argparse.Namespace,
+    fmt_out: str | None,
+) -> None:
+    """
+    Refuse or warn about options that have no effect on this output.
+
+    Parameters
+    ----------
+    args : argparse.Namespace
+        Parsed arguments, with 'supplied' from 'find_supplied()'.
+    fmt_out : str | None
+        Output format, or None for a report-only run.
+
+    Raises
+    ------
+    SystemExit
+        For an option that would change the result if it applied, per
+        'HELP.PARAMETER.APPLICABILITY'.
+
+    Notes
+    -----
+    BED output writes fragment coordinates, so the signal settings do nothing
+    there; '--siz_bin' still sizes the overlap report when one is asked for.
+    """
+
+    sup = args.supplied
+
+    if fmt_out == "bed":
+        now = "BED output"
+        opts = {"method": "--method", "scl_fct": "--scl_fct"}
+
+        if args.report_n_frg is None and args.report_n_ovlp is None:
+            opts["siz_bin"] = "--siz_bin"
+
+        check_opts_apply(sup, "refuse", opts, "bedGraph output", now)
+        check_opts_apply(
+            sup,
+            "warn",
+            {"dp": "--dp", "engine": "--engine", "siz_win": "--siz_win"},
+            "bedGraph output",
+            now,
+        )
+    elif fmt_out is not None and args.engine == "chrom":
+        check_opts_apply(
+            sup,
+            "warn",
+            {"siz_win": "--siz_win"},
+            "'--engine window'",
+            "'--engine chrom'",
+        )
+
+    if args.ref_fa is not None and not args.fil_in.lower().endswith(".cram"):
+        check_opts_apply(
+            sup,
+            "warn",
+            {"ref_fa": "--ref_fa"},
+            "CRAM input",
+            "non-CRAM input",
+        )
+
+
 def main(argv: list[str] | None = None) -> int:
     """
     Execute the primary control flow for the script.
@@ -3018,6 +3085,8 @@ def main(argv: list[str] | None = None) -> int:
 
         if args.wrk_writer is None:
             args.wrk_writer = 1
+
+    _check_applicability(args, fmt_out)
 
     try:
         validate_comparison(args.threads, "ge", 1, "threads", allow_none=False)

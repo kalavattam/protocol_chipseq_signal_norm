@@ -23,8 +23,8 @@ source "$(
 )/tests/support/test_helpers.sh"
 
 
-# Define fixture and output paths. Each row passes one option to a mode it
-# does not apply to, per 'HELP.PARAMETER.APPLICABILITY'.
+# Define fixture and output paths. Each row passes one option to a mode it does
+# not apply to, per 'HELP.PARAMETER.APPLICABILITY'.
 dir_fx="${ROOT_REPO}/tests/fixtures/compute_signal"
 in_se="${dir_fx}/bam/se/tiny_se.bam"
 fil_A="${dir_fx}/bedgraph/ratio_A.bdg.gz"
@@ -315,7 +315,37 @@ if [[
 else
     record_fail "execute did not warn about '--time' without '--slurm'"
 fi
-unset row mode opt val act args rc out cmd lbl nam
+
+# A whole-count 'edger' run must pass its tools nothing they ignore, such as
+# the fragment counts only the fractional types read.
+dir_edg="${tmp}/edger_count"
+mkdir -p "${dir_edg}/logs"
+
+rc=0
+out="$(
+    "${TEST_BASH}" "${ROOT_REPO}/bin/execute_compute_signal.sh" \
+        --mode ratio \
+        --csv_fil_A "${dir_fx}/bedgraph/count/tiny_se.bedGraph" \
+        --csv_fil_B "${dir_fx}/bedgraph/count/tiny_pe.bedGraph" \
+        --csv_pseudo edger \
+        --typ_sig count \
+        --dir_out "${dir_edg}" \
+        --dir_eo "${dir_edg}/logs" \
+        --max_job 1 \
+        --threads 1 2>&1
+)" || rc=$?
+
+if [[
+    "${rc}" -eq 0
+    && "${out}" != *"has no effect"*
+]] && ! grep -rq "has no effect" "${dir_edg}/logs"; then
+    record_pass "a whole-count 'edger' ratio run passes nothing ignored"
+else
+    record_fail \
+        "a whole-count 'edger' ratio run failed or passed an ignored option" \
+        "(exit ${rc}); see $(print_relpath "${dir_edg}/logs")"
+fi
 
 
+unset row mode opt val act args rc out cmd lbl nam dir_edg
 finish
