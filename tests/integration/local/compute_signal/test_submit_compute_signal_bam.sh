@@ -9,7 +9,7 @@
 # The following were used in design, development, and documentation, with all
 # output reviewed, edited, and approved by the author:
 # - OpenAI ChatGPT and Codex (GPT-5.5, GPT-5.6);
-# - Anthropic Claude Code (Opus 5).
+# - Anthropic Claude Code (Opus 5, Opus 5.5).
 #
 # Distributed under the MIT license.
 
@@ -121,8 +121,7 @@ run_case_compute_signal \
     "${log_se_coord}" \
     "${dir_out}" \
     "${dir_err}" \
-    "" \
-    --dp 3
+    ""
 
 assert_file_nonempty \
     "${fil_out_se_coord}" \
@@ -186,8 +185,7 @@ run_case_compute_signal \
     "${log_pe_coord}" \
     "${dir_out}" \
     "${dir_err}" \
-    "" \
-    --dp 3
+    ""
 
 assert_file_nonempty \
     "${fil_out_pe_coord}" \
@@ -360,8 +358,7 @@ run_case_compute_signal \
     "${dir_out}" \
     "${dir_err}" \
     "" \
-    --csv_usr_frg 20 \
-    --dp 3
+    --csv_usr_frg 20
 
 assert_file_nonempty \
     "${fil_out_se_coord_usr_frg}" \
@@ -380,10 +377,9 @@ if [[ -s "${fil_out_se_coord_usr_frg}" ]]; then
 fi
 
 
-# Forwarding contract for '--siz_win' and the retired '--chr_siz'. These assert
-# against the command the wrapper emitted, not merely that a run succeeded: a
-# silently dropped option would still produce output.
-log_fwd="${tmp}/logs/test_compute_bam_se_signal.tiny_se_signal_unadj.stderr.txt"
+# Check what reaches the tool for '--siz_win' and retired '--chr_siz'. Read the
+# run log's command, since a dropped option still yields output.
+log_fwd="${log_se_signal}"
 
 assert_file_nonempty \
     "${log_fwd}" \
@@ -392,7 +388,7 @@ assert_file_nonempty \
 if [[ -s "${log_fwd}" ]]; then
     assert_pattern_found \
         "${log_fwd}" \
-        "--siz_win *20" \
+        "run_py compute_signal .*--siz_win 20" \
         "submit signal forwards the supplied '--siz_win'"
 
     assert_pattern_absent \
@@ -401,7 +397,7 @@ if [[ -s "${log_fwd}" ]]; then
         "submit signal no longer forwards '--chr_siz'"
 fi
 
-log_coord="${tmp}/logs/test_compute_bam_se_coord.tiny_se_coord.stderr.txt"
+log_coord="${log_se_coord}"
 
 assert_file_nonempty \
     "${log_coord}" \
@@ -410,13 +406,28 @@ assert_file_nonempty \
 if [[ -s "${log_coord}" ]]; then
     assert_pattern_absent \
         "${log_coord}" \
-        "--siz_win" \
+        "run_py compute_signal .*--siz_win" \
         "submit coord omits '--siz_win'"
 
     assert_pattern_absent \
         "${log_coord}" \
-        "--engine" \
+        "run_py compute_signal .*--engine" \
         "submit coord omits '--engine'"
+
+    assert_pattern_absent \
+        "${log_coord}" \
+        "run_py compute_signal .*--siz_bin " \
+        "submit coord passes no '--siz_bin' to BED output"
+
+    assert_pattern_absent \
+        "${log_coord}" \
+        "run_py compute_signal .*--dp " \
+        "submit coord passes no '--dp' to BED output"
+
+    assert_pattern_found \
+        "${log_coord}" \
+        "run_py compute_signal .*--fil_out" \
+        "submit coord run log records the built command"
 fi
 
 # Validation contract for '--siz_win': a nonpositive or nonnumeric value is
@@ -439,9 +450,9 @@ for val_bad in 0 abc; do
     fi
 done
 
-# Default contract: a signal case that names neither option still forwards both
-# wrapper defaults, so a dropped default cannot pass unnoticed.
-log_dflt="${tmp}/logs/test_compute_bam_se_signal_frag.tiny_se_signal_frag.stderr.txt"
+# With neither option given, the tool gets '--engine chrom' sans '--siz_win',
+# since the 'chrom' engine does not use it.
+log_dflt="${log_se_signal_frag}"
 
 assert_file_nonempty \
     "${log_dflt}" \
@@ -450,13 +461,13 @@ assert_file_nonempty \
 if [[ -s "${log_dflt}" ]]; then
     assert_pattern_found \
         "${log_dflt}" \
-        "--engine *chrom" \
+        "run_py compute_signal .*--engine chrom" \
         "submit forwards the default '--engine chrom'"
 
-    assert_pattern_found \
+    assert_pattern_absent \
         "${log_dflt}" \
-        "--siz_win *100000" \
-        "submit forwards the default '--siz_win 100000'"
+        "run_py compute_signal .*--siz_win" \
+        "submit does not forward '--siz_win' to the 'chrom' engine"
 fi
 
 
@@ -636,8 +647,8 @@ else
 fi
 
 
-# Whole-count deposition through the wrapper. Bin 3, not 10: at 10 this fixture
-# emits 1 for both 'count' and 'frag'.
+# '--method count' through the wrapper, with 3-bp bins: each 10-bp read fills
+# exactly one 10-bp bin, where 'count' and 'frag' would both give 1.
 fil_out_se_signal_count="${dir_out}/se_signal_count.bdg"
 log_se_signal_count="${dir_log}/submit_compute_signal_se_count.log"
 

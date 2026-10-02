@@ -736,8 +736,11 @@ EOM
             --verbose
             --threads "${threads}"
             --fil_in "${fil_in}"
-            --siz_bin "${siz_bin}"
     )
+
+    if [[ -n "${siz_bin}" ]]; then
+        cmd+=( --siz_bin "${siz_bin}" )
+    fi
 
     if [[ -n "${fil_out}" ]]; then
         cmd+=( --fil_out "${fil_out}" )
@@ -1749,17 +1752,18 @@ EOM
             "arr_fil_in" "" "arr_fil_out" "" "arr_usr_frg"
     ) || return 1
 
-    # (Use stub parameters per original 'coord' behavior).
+    # BED output takes no bin size, method, scale, or decimal places, so those
+    # slots are unset rather than stubbed (HELP.PARAMETER.APPLICABILITY).
     run_comp_sig \
         "${debug}" \
         1 \
         "${fil_in}" \
         "${fil_out}" \
-        1 \
+        "" \
         "" \
         "NA" \
         "$(get_arr_elem arr_usr_frg "${idx}")" \
-        1 \
+        "NA" \
         "${ref_fa}" \
         "" \
         "" \
@@ -1863,8 +1867,11 @@ function init_arg_defs() {
     chr_siz=""
     track=false
     siz_bin=10
+    siz_bin_set=false
     engine="chrom"
+    engine_set=false
     siz_win=100000
+    siz_win_set=false
     csv_report_n_frg=""
     csv_report_n_ovlp=""
     no_report=false
@@ -1880,6 +1887,7 @@ function init_arg_defs() {
     drp_nan=false
     skp_pfx="NA"
     dp=24
+    dp_set=false
     dir_eo=""
     nam_job=""
 }
@@ -2013,6 +2021,7 @@ function parse_args() {
                     return 1
                 }
                 siz_bin="${2}"
+                siz_bin_set=true
                 shift 2
                 ;;
 
@@ -2023,6 +2032,7 @@ function parse_args() {
                     return 1
                 }
                 engine="${2,,}"
+                engine_set=true
                 shift 2
                 ;;
 
@@ -2033,6 +2043,7 @@ function parse_args() {
                     return 1
                 }
                 siz_win="${2}"
+                siz_win_set=true
                 shift 2
                 ;;
 
@@ -2173,6 +2184,7 @@ function parse_args() {
                     return 1
                 }
                 dp="${2}"
+                dp_set=true
                 shift 2
                 ;;
 
@@ -2251,7 +2263,13 @@ function canonicalize_args() {
             esac
             ;;
 
-        coord) method="" ;;
+        coord)
+            check_opt_applies \
+                refuse --mode coord signal,ratio \
+                --method "${method}" \
+                || return 1
+            method=""
+            ;;
 
         *)
             echo_err \
@@ -2267,6 +2285,87 @@ function canonicalize_args() {
         else
             nam_job="compute_${mode}_${method}"
         fi
+    fi
+}
+
+
+# Per 'HELP.PARAMETER.APPLICABILITY', refuse or warn about options that have no
+# effect in this mode.
+function check_opts_mode() {
+    # Options for another mode's inputs or results are refused.
+    check_opt_applies \
+        refuse --mode "${mode}" signal,coord \
+        --csv_fil_in "${csv_fil_in}" \
+        --csv_usr_frg "${csv_usr_frg}" \
+        || return 1
+
+    check_opt_applies \
+        refuse --mode "${mode}" signal,ratio \
+        --csv_scl_fct "${csv_scl_fct}" \
+        || return 1
+
+    check_opt_applies \
+        refuse --mode "${mode}" signal \
+        --siz_bin "${siz_bin_set}" \
+        --csv_report_n_frg "${csv_report_n_frg}" \
+        --csv_report_n_ovlp "${csv_report_n_ovlp}" \
+        || return 1
+
+    check_opt_applies \
+        refuse --mode "${mode}" ratio \
+        --csv_fil_A "${csv_fil_A}" \
+        --csv_fil_B "${csv_fil_B}" \
+        --csv_dep_min "${csv_dep_min}" \
+        --csv_pseudo "${csv_pseudo}" \
+        --eps "${eps}" \
+        --skip_00 "${skip_00}" \
+        --strict_bins "${strict_bins}" \
+        --drp_nan "${drp_nan}" \
+        --skp_pfx "${skp_pfx}" \
+        --track "${track}" \
+        --typ_sig "${typ_sig}" \
+        || return 1
+
+    # Supporting files, performance settings, and satisfied requests warn.
+    check_opt_applies \
+        warn --mode "${mode}" signal,coord \
+        --ref_fa "${ref_fa}"
+
+    check_opt_applies \
+        warn --mode "${mode}" ratio \
+        --chr_siz "${chr_siz}"
+
+    check_opt_applies \
+        warn --mode "${mode}" signal \
+        --engine "${engine_set}" \
+        --siz_win "${siz_win_set}" \
+        --no_report "${no_report}"
+
+    check_opt_applies \
+        warn --mode "${mode}" signal,ratio \
+        --dp "${dp_set}"
+
+    if [[ "${mode}" != "signal" ]]; then return 0; fi
+
+    # An explicit report list would be written anyway, so it contradicts
+    # '--no_report'.
+    if [[
+        "${no_report}" == "true"
+        && ( -n "${csv_report_n_frg}" || -n "${csv_report_n_ovlp}" )
+    ]]; then
+        echo_err \
+            "'--no_report' and an explicit report list contradict: the" \
+            "list would be written anyway."
+        return 1
+    fi
+
+    # The 'chrom' engine has no windows to size, so '--siz_win' is not passed
+    # on; a supplied one is reported first.
+    if [[ "${engine}" != "window" ]]; then
+        check_opt_applies \
+            warn --engine "${engine}" window \
+            --siz_win "${siz_win_set}"
+        siz_win=""
     fi
 }
 
@@ -2354,6 +2453,8 @@ function validate_args() {
     fi
 
     validate_var_dir "dir_eo" "${dir_eo}" || return 1
+
+    check_opts_mode || return 1
 }
 
 

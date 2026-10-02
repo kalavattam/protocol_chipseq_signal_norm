@@ -1727,6 +1727,34 @@ strict_availability = "safe_adapter"
 current_exclusions_or_allowlists = []
 diagnostic_ids = ["BOOLEAN.DOCUMENTATION.EXACT_TOKENS", "BOOLEAN.PRESENCE_FLAG.VALUE_FREE", "HELP.GLOBAL.GROUP_SYNTAX", "HELP.GLOBAL.MAPPING_REVIEW", "HELP.GLOBAL.REPEATED_DESCRIPTION", "HELP.GLOBAL.SUBGROUP", "HELP.GLOBAL.TYPE", "HELP.PROSE.STRAIGHT_QUOTES"]
 
+
+[[rule]]
+rule_id = "HELP.PARAMETER.APPLICABILITY"
+description = "Prove that options with no effect in the current mode are refused or warned about, never ignored silently."
+normative_document = "docs/standards/help.md"
+normative_section = "Parameter applicability (`HELP.PARAMETER.APPLICABILITY`)"
+owner_classification = "advisory"
+source_checker = "tests/integration/local/compute_signal/test_compute_signal_opt_applicability.sh"
+execution_kind = "original"
+execution_role = "evidence_producer"
+coverage_relation = "subset"
+covered_scope = "Refuse and warn paths of the compute_signal execute and submit drivers."
+remaining_scope = "Identify each parameter's conditions, decide whether a user would expect it to change the result, and choose refusal or warning; other drivers, CLIs, and helpers."
+parity_test = "tests/integration/local/compute_signal/test_compute_signal_opt_applicability.sh"
+scope = "repository"
+command = ["bash", "tests/integration/local/compute_signal/test_compute_signal_opt_applicability.sh"]
+applicable_paths = ["bin/**/*.sh", "lib/bash/**/*.sh", "src/**/*.py"]
+default_severity = "advisory"
+blocking = false
+semantic_review = true
+required_environment = "env_protocol"
+required_commands = ["bash", "conda"]
+known_side_effects = ["creates artifacts/tests logs"]
+output_paths = ["artifacts/tests/**"]
+output_parser = "smoke_summary"
+strict_availability = "unavailable"
+current_exclusions_or_allowlists = []
+
 [[rule]]
 rule_id = "HELP.DOCSTRING.SCHEMA"
 description = "Audit the bounded shared vocabulary and typography used by Python docstrings."

@@ -6,9 +6,11 @@
 # Copyright 2024-2026 by Kris Alavattam
 # Email: kalavattam@gmail.com
 #
-# OpenAI ChatGPT and Codex (GPT-4- and GPT-5-series models; most recent:
-# GPT-5.6) were used in design, development, and documentation, with all output
-# reviewed, edited, and approved by the author.
+# The following were used in design, development, and documentation, with all
+# output reviewed, edited, and approved by the author:
+# - OpenAI ChatGPT and Codex (GPT-4- and GPT-5-series models; most recent:
+#   GPT-5.6);
+# - Anthropic Claude Code (Opus 5.5).
 #
 # Distributed under the MIT license.
 
@@ -18,11 +20,12 @@
 # check_arg_supplied
 # check_args_mut_excl
 # check_flags_mut_excl
+# check_opt_applies
 # check_match
 # check_str_delim
 
 
-#  Require Bash >= 4.4 before defining functions
+# Require Bash >= 4.4 before defining functions.
 if [[ -z "${BASH_VERSION:-}" ]]; then
     echo "error(shell):" \
         "this script must be sourced or run under Bash >= 4.4." >&2
@@ -46,7 +49,7 @@ elif ((
     fi
 fi
 
-#  Source required helper functions if needed
+# Source required helper functions if needed.
 {
     _dir_src_args="$(
         cd "$(dirname "${BASH_SOURCE[0]}")" > /dev/null 2>&1 && pwd
@@ -80,7 +83,7 @@ fi
 }
 
 
-#  Normalize a Boolean-like value to 'true' or 'false'
+# Normalize a Boolean-like value to 'true' or 'false'.
 function normalize_bool() {
     local val="${1:-}"
     local nam="${2:-bool}"
@@ -160,8 +163,8 @@ EOM
 }
 
 
-#  Require that an option be followed by a non-empty value that is not another
-#+ option-like token
+# Require that an option be followed by a non-empty value that is not another
+# option-like token.
 function require_optarg() {
     local opt="${1:-}"
     local val="${2:-}"
@@ -288,7 +291,7 @@ Examples
 EOM
     )
 
-    #  Parse and check function arguments
+    # Parse and check function arguments.
     if [[ -z "${1:-}" || "${1}" =~ ^(-h|--h[e]?lp)$ ]]; then
         echo "${show_help}" >&2
         return 0
@@ -326,7 +329,7 @@ EOM
         esac
     done
 
-    #  Check that required arguments are supplied
+    # Check that required arguments are supplied.
     if [[ -z "${nam}" ]]; then
         echo_err_func "${FUNCNAME[0]}" \
             "'--name' is required."
@@ -335,8 +338,8 @@ EOM
         return 1
     fi
 
-    #  Check that the argument has been supplied; return an informative error
-    #+ message if not
+    # Check that the argument has been supplied; return an informative error
+    # message if not.
     if [[ -z "${asm}" ]]; then
         echo_err_func "${FUNCNAME[0]}" \
             "'--${nam}' is required."
@@ -402,7 +405,7 @@ Examples
 EOM
     )
 
-    #  Print help message if no arguments are passed or if help is requested
+    # Print help message if no arguments are passed or if help is requested.
     if [[ "${1}" =~ ^(-h|--h[e]?lp)$ ]]; then
         echo "${show_help}" >&2
         return 0
@@ -420,7 +423,7 @@ EOM
         return 1
     fi
 
-    #  Validate mutually exclusive arguments
+    # Validate mutually exclusive arguments.
     if [[ -n "${val_1}" && -n "${val_2}" ]]; then
         echo_err_func "${FUNCNAME[0]}" \
             "only one of '--${nam_1}' or '--${nam_2}' can be specified at a" \
@@ -493,7 +496,7 @@ Examples
 EOM
     )
 
-    #  Parse and check function arguments
+    # Parse and check function arguments.
     if [[ "${flg_1}" =~ ^(-h|--h[e]?lp)$ ]]; then
         echo "${show_help}" >&2
         return 0
@@ -526,7 +529,7 @@ EOM
     flg_1="$(normalize_bool "${flg_1}" "flg_1")" || return 1
     flg_2="$(normalize_bool "${flg_2}" "flg_2")" || return 1
 
-    #  Perform the checks
+    # Perform the checks.
     if [[ "${flg_1}" == "true" && "${flg_2}" == "true" ]]; then
         echo_err_func "${FUNCNAME[0]}" \
             "only one of '--${nam_1}' or '--${nam_2}' can be specified at a" \
@@ -539,6 +542,130 @@ EOM
     fi
 }
 
+
+function check_opt_applies() {
+    local act="${1:-}"
+    local cnd="${2:-}"
+    local val="${3:-}"
+    local lst="${4:-}"
+    local opt use whr
+    local -a arr_ok
+    local show_help
+
+    show_help=$(cat << EOM
+Usage
+-----
+  check_opt_applies
+    [--help] act cnd val lst [opt value]...
+
+  Checks options against the condition they apply under, such as a mode.
+
+  An option that was not supplied, or that applies, passes. A supplied option that does not apply is refused or ignored with a warning, per 'HELP.PARAMETER.APPLICABILITY'.
+
+Parameters
+----------
+  -h, --help : flag
+    Display this help message and exit.
+
+  1  act : {'refuse', 'warn'}
+    What to do with a supplied option that does not apply.
+
+  2  cnd : str
+    The option that sets the condition, such as '--mode'.
+
+  3  val : str
+    The condition's current value, such as 'ratio'.
+
+  4  lst : str
+    Comma-separated values of 'cnd' under which the options apply, such as 'signal,coord'.
+
+  5+  opt value : str
+    Pairs of an option as a user types it, such as '--siz_bin', and its current value. A value of '', 'false', or 'NA' counts as not supplied.
+
+Returns
+-------
+  0 if every option was not supplied, applies, or was ignored with a warning; 1 if one was refused or an argument is invalid.
+
+Notes
+-----
+  Runtime requirements:
+    bash >= 4.4
+
+  Messages go to stderr under the calling script's name, since they report on the user's command rather than on this function. A refusal stops at the first refused option.
+
+Examples
+--------
+  1. Refuse signal-only options given in ratio mode.
+    '''bash
+    check_opt_applies \\
+        refuse --mode ratio signal \\
+        --siz_bin "20" \\
+        --engine ""
+    '''
+
+  2. Ignore a ratio-only supporting file in signal mode, with a warning.
+    '''bash
+    check_opt_applies \\
+        warn --mode signal ratio \\
+        --chr_siz "chrom.sizes"
+    '''
+EOM
+    )
+
+    # Parse and check function arguments.
+    if [[ "${act}" =~ ^(-h|--h[e]?lp)$ ]]; then
+        echo "${show_help}" >&2
+        return 0
+    elif [[ "${act}" != "refuse" && "${act}" != "warn" ]]; then
+        echo_err_func "${FUNCNAME[0]}" \
+            "positional argument 1, 'act', must be 'refuse' or 'warn':" \
+            "'${act}'."
+        echo >&2
+        echo "${show_help}" >&2
+        return 1
+    elif [[ -z "${cnd}" || -z "${val}" || -z "${lst}" ]]; then
+        echo_err_func "${FUNCNAME[0]}" \
+            "positional arguments 2-4, 'cnd', 'val', and 'lst', are" \
+            "required."
+        echo >&2
+        echo "${show_help}" >&2
+        return 1
+    elif (( $# % 2 != 0 )); then
+        echo_err_func "${FUNCNAME[0]}" \
+            "options after 'lst' must come in 'opt value' pairs."
+        echo >&2
+        echo "${show_help}" >&2
+        return 1
+    fi
+
+    shift 4
+
+    # An option applies under its condition, so nothing more to check.
+    if [[ ",${lst}," == *",${val},"* ]]; then return 0; fi
+
+    # Name every value the options apply under, as 'cnd A' or 'cnd B'.
+    IFS=',' read -r -a arr_ok <<< "${lst}"
+    printf -v whr "'${cnd} %s' or " "${arr_ok[@]}"
+    whr="${whr% or }"
+
+    while (( $# > 0 )); do
+        opt="${1}"
+        use="${2}"
+        shift 2
+
+        case "${use}" in ''|false|NA) continue ;; esac
+
+        if [[ "${act}" == "refuse" ]]; then
+            echo_err \
+                "'${opt}' is for ${whr}; it has no effect with '${cnd}" \
+                "${val}'."
+            return 1
+        fi
+
+        echo_warn \
+            "'${opt}' has no effect with '${cnd} ${val}' and is ignored."
+    done
+}
 
 #TODO: audit current usage; keep this helper even if unused
 function check_match() {
@@ -643,9 +770,8 @@ EOM
 }
 
 
-#TODO: reassess long-term home for helper: e.g., perhaps 'check_inputs.sh';
-#+     'check_args.sh' is OK for now because it validates argument-string
-#+     formatting
+# TODO: reassess long-term home for helper; e.g., perhaps 'check_inputs.sh'?
+# 'check_args.sh' is OK for now b/c it validates argument-string formatting.
 function check_str_delim() {
     local nam="${1:-}"
     local val="${2:-}"
@@ -717,21 +843,21 @@ EOM
         return 1
     fi
 
-    #  Check for empty value
+    # Check for empty value.
     if [[ -z "${val}" ]]; then
         echo_err_func "${FUNCNAME[0]}" \
             "improperly formatted '${nam}' value: '${val}' (empty value)."
         return 1
     fi
 
-    #  Check for improper commas
+    # Check for improper commas.
     if [[ "${val}" =~ ,{2,} || "${val}" =~ ^, || "${val}" =~ ,$ ]]; then
         echo_err_func "${FUNCNAME[0]}" \
             "improperly formatted '${nam}' value: '${val}' (invalid commas)."
         return 1
     fi
 
-    #  Check for improper semicolons
+    # Check for improper semicolons.
     if [[ "${val}" =~ \;{2,} || "${val}" =~ ^\; || "${val}" =~ \;$ ]]; then
         echo_err_func "${FUNCNAME[0]}" \
             "improperly formatted '${nam}' value: '${val}' (invalid" \
@@ -739,7 +865,7 @@ EOM
         return 1
     fi
 
-    #  Check for mixed improper delimiters
+    # Check for mixed improper delimiters.
     if [[ "${val}" =~ ,\; || "${val}" =~ \;, ]]; then
         echo_err_func "${FUNCNAME[0]}" \
             "improperly formatted '${nam}' value: '${val}' (mixed invalid" \
@@ -747,7 +873,7 @@ EOM
         return 1
     fi
 
-    #  Check for spaces before/after commas
+    # Check for spaces before/after commas.
     if [[
         "${val}" =~ [[:space:]]+,[[:space:]]* \
         || "${val}" =~ [[:space:]]*,[[:space:]]+
@@ -758,7 +884,7 @@ EOM
         return 1
     fi
 
-    #  Check for spaces before/after semicolons
+    # Check for spaces before/after semicolons.
     if [[
         "${val}" =~ [[:space:]]+\;[[:space:]]* \
         || "${val}" =~ [[:space:]]*\;[[:space:]]+
@@ -771,7 +897,7 @@ EOM
 }
 
 
-#  Print an error message when function script is executed directly
+# Print an error message when function script is executed directly.
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
     err_source_only "${BASH_SOURCE[0]}"
 fi

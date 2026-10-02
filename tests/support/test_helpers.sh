@@ -9,7 +9,7 @@
 # The following were used in design, development, and documentation, with all
 # output reviewed, edited, and approved by the author:
 # - OpenAI ChatGPT and Codex (GPT-5.5, GPT-5.6);
-# - Anthropic Claude Code (Opus 5).
+# - Anthropic Claude Code (Opus 5, Opus 5.5).
 #
 # Distributed under the MIT license.
 
@@ -2003,7 +2003,8 @@ EOM
         --csv_usr_frg NA
     )
 
-    if [[ "${wrap}" == "execute" ]]; then
+    # BED output has no values to round, so coord cases pass no '--dp'.
+    if [[ "${wrap}" == "execute" && "${mode}" != "coord" ]]; then
         arr_cmd+=( --dp 3 )
     fi
 

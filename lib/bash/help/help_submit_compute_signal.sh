@@ -68,7 +68,7 @@ Parameters
       - 'linear' gives 'fil_A / fil_B' (e.g., IP/input) and 'log2' (alias 'l2') gives its log2, which is symmetric about zero.
       - The 'linear_r' and 'log2_r' (alias 'l2_r') variants invert the comparison to 'fil_B / fil_A' ("r" stands for "reciprocal").
 
-    If '--mode signal', defaults to 'norm'. If '--mode ratio', defaults to 'linear'. If '--mode coord', this argument is ignored.
+    If '--mode signal', defaults to 'norm'. If '--mode ratio', defaults to 'linear'. If '--mode coord', this argument is refused.
 
   -ci, --csv_fil_in : list of file
     Comma-separated list of input file paths for BAM or CRAM files.
@@ -115,7 +115,7 @@ Parameters
     Recommended: keep 'chrom' as the general choice and the current best choice for CRAM input; try 'window' for large BAM inputs.
 
   -sw, --siz_win : int
-    Window size in base pairs for the 'window' engine's indexed fetch tasks (default: ${siz_win}). Ignored by the 'chrom' engine.
+    Window size in base pairs for the 'window' engine's indexed fetch tasks (default: ${siz_win}). Ignored, with a warning, by the 'chrom' engine.
 
     Used with '--mode signal'.
 
@@ -193,7 +193,7 @@ Parameters
     Used with '--mode signal'.
 
   -nr, --no_report : flag
-    Suppress both per-sample counts, which are written by default. They are the inputs 'compute_pseudo --method edger' consumes, so suppressing them leaves a later ratio run without the numbers it needs for pseudocount regularization per (or adapted from) edgeR.
+    Suppress both per-sample counts, which are written by default. They are the inputs 'compute_pseudo --method edger' consumes, so suppressing them leaves a later ratio run without the numbers it needs for pseudocount regularization per (or adapted from) edgeR. Refused together with '--csv_report_n_frg' or '--csv_report_n_ovlp', which would write the counts anyway.
 
     Used with '--mode signal'.
 
@@ -220,6 +220,7 @@ Notes
 
   - BAM/CRAM and bedGraph input files must be coordinate-sorted.
   - CRAM inputs in '--mode signal' or '--mode coord' require '--ref_fa'.
+  - An option given in a mode it does not apply to is refused if it would change the result; otherwise, it's ignored with a warning.
   - Input and output paths supplied to this wrapper interface must not contain spaces, commas, or semicolons.
   - Dash input/output ('-') is not supported by this wrapper or the underlying Python scripts.
   - Use consistent file ordering in input and output lists.

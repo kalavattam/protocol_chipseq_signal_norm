@@ -271,6 +271,29 @@ File-format displays distinguish public choices, accepted aliases, internal cano
 
 <br />
 
+## Parameter applicability (`HELP.PARAMETER.APPLICABILITY`)
+**Classification:** `advisory` with deterministic tested-path portions.
+
+**Scope:** Every maintained shell driver, Python CLI, sourced shell function, and public Python function whose options or parameters have no effect under some condition, such as a mode, method, output format, input type, or another option's value.
+
+A parameter that has no effect under the current condition is never ignored silently. When a caller supplies it anyway:
+- **Refuse** it when a user would expect it to change the result, such as a value, a row, a file, or a format. The refusal names the parameter and the condition under which it applies.
+- **Warn and ignore** it when it is a supporting input, a performance setting, or a request already satisfied, so that ignoring it changes nothing the user could expect. The warning names the parameter and says it is ignored.
+
+A help description that states a condition, as [`HELP.SOURCE_STYLE`](#source-help-structure-helpsource_style) requires for mode-specific arguments, states the condition this rule enforces. A parameter counts as supplied only when the caller gave it explicitly. A default the code fills in is not supplied, so a caller passes an unset value (an empty string in Shell, `None` in Python) for a parameter that does not apply, rather than forwarding a default. Entry points and the helpers they call each enforce the rule for their own parameters; a duplicate message at two layers is acceptable.
+
+Language realizations:
+- **Shell:** refusals use the role-appropriate error helper and return or exit with status 1; warnings use the warning helper. Both write to stderr, following [`SHELL.PARSER.UNKNOWN_OPTION`](shell.md#unknown-option-diagnostics-shellparserunknown_option) for helper role and identification. A parameter with a non-empty default records that it was supplied with a `<name>_set` flag set during parsing.
+- **Python:** a CLI refuses with a diagnostic and nonzero status, and warns with a `Note:` line on stderr. A reusable function raises `ValueError` to refuse and calls `warnings.warn` to warn, following [`PY.ERROR.EXIT`](python.md#error-and-status-ownership-pyerrorexit). A CLI detects an explicitly supplied option from the command-line tokens, since parsed defaults hide it.
+
+**Automation:** Focused interface tests prove each recognized refuse or warn path for the drivers and CLIs that realize this rule, with `subset` coverage. No checker inventories conditional parameters.
+
+**Semantic remainder:** Identify each parameter's conditions, decide whether a user would expect it to change the result, and choose refusal or warning.
+
+**Exceptions:** A parameter whose condition depends on per-entry input within one call, such as a single-end suffix in a call that mixes single-end and paired-end entries, is exempt while any entry can use it. An existing replacement that coerces an invalid value with a warning, such as `--typ_out`, remains a warning.
+
+<br />
+
 ## Canonical parameter descriptions (`PARAMETER.DESCRIPTIONS`)
 **Classification:** `advisory` with deterministic registered-core comparisons.
 

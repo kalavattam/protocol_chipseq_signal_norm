@@ -438,8 +438,11 @@ EOM
             --engine "${engine}"
             --csv_scl_fct "${scl_fct}"
             --csv_usr_frg "${usr_frg}"
-            --siz_win "${siz_win}"
         )
+
+        if [[ "${engine}" == "window" ]]; then
+            cmd_bld+=( --siz_win "${siz_win}" )
+        fi
 
         if [[ -n "${rep_n_frg}" ]]; then
             cmd_bld+=( --csv_report_n_frg "${rep_n_frg}" )
@@ -498,8 +501,11 @@ EOM
         fi
     fi
 
+    if [[ "${mode}" != "coord" ]]; then
+        cmd_bld+=( --dp "${dp}" )
+    fi
+
     cmd_bld+=(
-        --dp "${dp}"
         --dir_eo "${dir_eo}"
         --nam_job "${nam_job}"
     )
@@ -532,7 +538,9 @@ function init_arg_defs() {
     track=false
     siz_bin=""
     engine="chrom"
+    engine_set=false
     siz_win=100000
+    siz_win_set=false
     report_only=false
     no_report=false
     typ_sig=""
@@ -547,11 +555,13 @@ function init_arg_defs() {
     drp_nan=false
     skp_pfx=""
     dp=24
+    dp_set=false
     dir_eo=""
     nam_job=""
     max_job=6
     slurm=false
     time="0:30:00"
+    time_set=false
 }
 
 
@@ -713,6 +723,7 @@ function parse_args() {
                     return 1
                 }
                 engine="${2,,}"
+                engine_set=true
                 shift 2
                 ;;
 
@@ -723,6 +734,7 @@ function parse_args() {
                     return 1
                 }
                 siz_win="${2}"
+                siz_win_set=true
                 shift 2
                 ;;
 
@@ -843,6 +855,7 @@ function parse_args() {
                     return 1
                 }
                 dp="${2}"
+                dp_set=true
                 shift 2
                 ;;
 
@@ -888,6 +901,7 @@ function parse_args() {
                     return 1
                 }
                 time="${2}"
+                time_set=true
                 shift 2
                 ;;
 
@@ -966,11 +980,10 @@ function canonicalize_args() {
         c|coord|coordinates)
             mode="coord"
 
-            if [[ -n "${method}" ]]; then
-                echo_warn \
-                    "argument '--method' is not applicable with '--mode" \
-                    "coord'. Ignoring/unsetting 'method=${method}'."
-            fi
+            check_opt_applies \
+                refuse --mode coord signal,ratio \
+                --method "${method}" \
+                || return 1
             unset method
 
             validate_var "csv_fil_in" "${csv_fil_in}" || return 1
@@ -987,6 +1000,73 @@ function canonicalize_args() {
             return 1
             ;;
     esac
+}
+
+
+# Per 'HELP.PARAMETER.APPLICABILITY', refuse or warn about options that have no
+# effect in this mode.
+function check_opts_mode() {
+    # Options for another mode's inputs or results are refused.
+    check_opt_applies \
+        refuse --mode "${mode}" signal,coord \
+        --csv_fil_in "${csv_fil_in}" \
+        --csv_usr_frg "${csv_usr_frg}" \
+        || return 1
+
+    check_opt_applies \
+        refuse --mode "${mode}" signal,ratio \
+        --csv_scl_fct "${csv_scl_fct}" \
+        || return 1
+
+    check_opt_applies \
+        refuse --mode "${mode}" signal \
+        --siz_bin "${siz_bin}" \
+        || return 1
+
+    check_opt_applies \
+        refuse --mode "${mode}" ratio \
+        --csv_fil_A "${csv_fil_A}" \
+        --csv_fil_B "${csv_fil_B}" \
+        --csv_dep_min "${csv_dep_min}" \
+        --csv_pseudo "${csv_pseudo}" \
+        --eps "${eps}" \
+        --skip_00 "${skip_00}" \
+        --strict_bins "${strict_bins}" \
+        --drp_nan "${drp_nan}" \
+        --skp_pfx "${skp_pfx}" \
+        --track "${track}" \
+        --typ_sig "${typ_sig}" \
+        || return 1
+
+    # Supporting files, performance settings, and satisfied requests warn.
+    check_opt_applies \
+        warn --mode "${mode}" signal,coord \
+        --ref_fa "${ref_fa}"
+
+    check_opt_applies \
+        warn --mode "${mode}" ratio \
+        --chr_siz "${chr_siz}"
+
+    check_opt_applies \
+        warn --mode "${mode}" signal \
+        --engine "${engine_set}" \
+        --siz_win "${siz_win_set}" \
+        --no_report "${no_report}"
+
+    check_opt_applies \
+        warn --mode "${mode}" signal,ratio \
+        --dp "${dp_set}"
+
+    # The 'chrom' engine has no windows to size.
+    if [[ "${mode}" == "signal" ]]; then
+        check_opt_applies \
+            warn --engine "${engine}" window \
+            --siz_win "${siz_win_set}"
+    fi
+
+    # Ignored supporting files are not passed on.
+    if [[ "${mode}" != "ratio" ]]; then chr_siz=""; fi
+    if [[ "${mode}" == "ratio" ]]; then ref_fa=""; fi
 }
 
 
@@ -1058,14 +1138,6 @@ function validate_args() {
                     return 1
                     ;;
             esac
-        else
-            # For 'mode=ratio', ignore '--siz_bin' if the user supplied it.
-            if [[ -n "${siz_bin}" ]]; then
-                echo_warn \
-                    "argument '--siz_bin' is not applicable with '--mode" \
-                    "${mode}'. Ignoring/unsetting '--siz_bin ${siz_bin}'."
-                unset siz_bin
-            fi
         fi
     else
         validate_var "typ_out" "${typ_out}" || return 1
@@ -1087,15 +1159,6 @@ function validate_args() {
                 return 1
                 ;;
         esac
-
-        # '--siz_bin' is not applicable with 'mode=coord', so ignore if
-        # supplied.
-        if [[ -n "${siz_bin}" ]]; then
-            echo_warn \
-                "argument '--siz_bin' is not applicable with" \
-                "'--mode ${mode}'. Ignoring/unsetting '--siz_bin ${siz_bin}'."
-            unset siz_bin
-        fi
     fi
 
     if [[ -n "${csv_scl_fct}" ]]; then
@@ -1143,6 +1206,8 @@ function validate_args() {
 
         check_flt_nonneg "${prior_count}" "prior_count" || return 1
     fi
+
+    check_opts_mode || return 1
 
     if [[ "${mode}" == "ratio" ]]; then
         if [[ -n "${eps}" ]]; then check_flt_nonneg "${eps}" "eps"; fi
@@ -1489,6 +1554,11 @@ function validate_vecs() {
 function config_exec() {
     validate_var "max_job" "${max_job}"  || return 1
     check_int_pos "${max_job}" "max_job" || return 1
+
+    # Only a Slurm job has a time limit.
+    if [[ "${slurm}" != "true" && "${time_set}" == "true" ]]; then
+        echo_warn "'--time' has no effect without '--slurm' and is ignored."
+    fi
 
     if [[ "${slurm}" == "true" ]]; then
         if [[ "${mode}" == "ratio" ]]; then

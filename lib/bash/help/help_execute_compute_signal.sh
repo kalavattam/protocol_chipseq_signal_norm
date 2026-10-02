@@ -156,7 +156,7 @@ Parameters
     Tentative recommendation for S. cerevisiae datasets: keep 'chrom' as the general choice and the current best choice for CRAM input; try 'window' for large BAM inputs.
 
   -sw, --siz_win : int
-    Window size in base pairs for the 'window' engine's indexed fetch tasks (default: ${siz_win}). Ignored by the 'chrom' engine.
+    Window size in base pairs for the 'window' engine's indexed fetch tasks (default: ${siz_win}). Ignored, with a warning, by the 'chrom' engine.
 
     Used with '--mode signal'.
 
@@ -279,6 +279,7 @@ Notes
 
   - BAM/CRAM and bedGraph input files must be coordinate-sorted.
   - CRAM inputs require '--ref_fa'.
+  - An option given in a mode it does not apply to is refused if it would change the result; otherwise, it's ignored with a warning.
   - Input and output paths supplied to this wrapper interface must not contain spaces, commas, or semicolons.
   - See 'execute_compute_signal.sh --details' for more notes.
 
@@ -422,7 +423,7 @@ Parameters
   -ci, --csv_fil_in : list of file
     Comma-separated list of input file paths for coordinate-sorted BAM/CRAM files.
 
-    Required when '--mode signal' or '--mode coord'. Ignored for '--mode ratio'.
+    Required when '--mode signal' or '--mode coord'. Refused with '--mode ratio'.
 
   -rf, --ref_fa : file
     Reference FASTA file for CRAM input files.
@@ -516,19 +517,19 @@ Parameters
         + Worth trying for large BAM inputs, particularly with '--threads' above one.
         + Window size is set by '--siz_win'.
 
-    Used with '--mode signal'; ignored otherwise.
+    Used with '--mode signal'; ignored with a warning otherwise.
 
   -sw, --siz_win : int
     Window size in base pairs for the 'window' engine's indexed fetch tasks (default: ${siz_win}).
 
-    Smaller windows give finer load balance across threads at the cost of more fetch calls; larger windows do the reverse. Ignored by the 'chrom' engine, which uses whole chromosomes as its unit of work.
+    Smaller windows give finer load balance across threads at the cost of more fetch calls; larger windows do the reverse. Ignored, with a warning, by the 'chrom' engine, which uses whole chromosomes as its unit of work.
 
-    Used with '--mode signal'; ignored otherwise.
+    Used with '--mode signal'; ignored with a warning otherwise.
 
   -csf, --csv_scl_fct : list of structured string
     Comma-separated list of scaling factors or sentinels to apply to signal or ratio values.
 
-    Used with '--mode signal' or '--mode ratio'; ignored otherwise.
+    Used with '--mode signal' or '--mode ratio'; refused otherwise.
 
     List size must be 1, which applies to every input, or match the number of input files via '--csv_fil_in' or '--csv_fil_A'/'--csv_fil_B'.
 
@@ -547,14 +548,14 @@ Parameters
   -cuf, --csv_usr_frg : list of int
     Comma-separated list of fixed fragment-length values or sentinels to use instead of read lengths (single-end alignments) or template lengths (paired-end alignments).
 
-    Used with either '--mode signal' or '--mode coord'; ignored otherwise.
+    Used with either '--mode signal' or '--mode coord'; refused otherwise.
 
     List size must be 1, which applies to every input, or match the number of input files via '--csv_fil_in'.
 
   -cdm, --csv_dep_min : list of number
     Comma-separated list of minimum-depth values or sentinels used to avoid extreme division operations; here 'min' abbreviates minimum.
 
-    Used with '--mode ratio'; ignored otherwise.
+    Used with '--mode ratio'; refused otherwise.
 
     List size must be 1, which applies to every pair, or match the number of input files via '--csv_fil_A'/'--csv_fil_B'.
 
@@ -582,12 +583,12 @@ Parameters
 
     Although allowed, using '--csv_pseudo' together with '--csv_dep_min' is usually harder to interpret, since both stabilize low-depth ratio behavior in different ways.
 
-    Used with '--mode ratio'; ignored otherwise.
+    Used with '--mode ratio'; refused otherwise.
 
   -ts, --typ_sig : str
     Signal type the input tracks carry, required by '--csv_pseudo edger'.
 
-    Used with '--mode ratio'; ignored otherwise.
+    Used with '--mode ratio'; refused otherwise.
 
     The '--mode ratio --typ_sig <spec>' value is the '--mode signal --method <spec>' that produced the track ('--method' chooses what to do; '--typ_sig' declares what an existing input is). Rejected with '--mode signal', where '--method' already says what is being written.
 
@@ -615,14 +616,14 @@ Parameters
   -e, --eps : number
     Zero tolerance epsilon or sentinel used for ratio-mode zero checks.
 
-    Used with '--mode ratio'; ignored otherwise.
+    Used with '--mode ratio'; refused otherwise.
 
     Non-sentinel values must be non-negative floats.
 
   -s0, --skp_00, --skip_00 : {'pre_scale', 'post_scale'}
     Skip rows where both compared values are zero. Shared zero-zero skip mode or sentinel for ratio computation.
 
-    Used with '--mode ratio'; ignored otherwise.
+    Used with '--mode ratio'; refused otherwise.
 
     Non-sentinel values must be one of 'pre_scale' or 'post_scale'.
 
@@ -631,19 +632,19 @@ Parameters
 
     With this flag, both input bedGraph files must share the same ordered '(chrom, start, end)' grid across all data rows. Without it, only the first few paired rows are checked for equal bin width, which catches gross mismatches but not divergence later in the file.
 
-    Used with '--mode ratio'; ignored otherwise.
+    Used with '--mode ratio'; refused otherwise.
 
   -dn, --drp_nan, --drop_nan : flag
     Drop non-finite values from the main ratio output.
 
-    Used only with '--mode ratio'; ignored otherwise.
+    Used only with '--mode ratio'; refused otherwise.
 
     If set, rows yielding 'inf', '-inf', or 'nan' are omitted from the main ratio output.
 
   -sp, --skp_pfx : list of str
     Comma-separated list of header prefixes to skip. Shared comma-separated list of bedGraph header prefixes or sentinel to skip.
 
-    Used with '--mode ratio'; ignored otherwise.
+    Used with '--mode ratio'; refused otherwise.
 
     Passed through to 'submit_compute_signal.sh' and then to 'compute_signal_ratio.py'.
 
@@ -666,14 +667,14 @@ Parameters
 
     Cannot be combined with '--no_report', as doing so would write neither a track nor a report. Such a run is rejected.
 
-    Used with '--mode signal'; ignored otherwise.
+    Used with '--mode signal'; refused otherwise.
 
   -nr, --no_report : flag
     Suppress the two per-sample counts described under '--report_only' above, which are otherwise written beside each output track.
 
     They are the inputs 'compute_pseudo --method edger' consumes, so suppressing them leaves a later ratio run without the numbers it needs for pseudocount regularization per (or adapted from) edgeR.
 
-    Used with '--mode signal'; ignored otherwise.
+    Used with '--mode signal'; ignored with a warning otherwise.
 
   -tr, --trk, --track : flag
     Write a companion track file. If '--mode ratio', also write a companion bedGraph with all non-finite rows ('inf', '-inf', and 'nan') removed.
@@ -711,7 +712,7 @@ Parameters
       - If the resolved number of parallel jobs is 1, jobs are run serially.
 
   -tm, --time : time
-    Slurm job time limit. The length of time, in 'h:mm:ss' format, for the Slurm job (required if '--slurm' is specified, ignored if not; default: '${time}').
+    Slurm job time limit. The length of time, in 'h:mm:ss' format, for the Slurm job (required if '--slurm' is specified, ignored with a warning if not; default: '${time}').
 
 Notes
 -----
@@ -729,6 +730,7 @@ Notes
 
   - BAM/CRAM and bedGraph input files must be coordinate-sorted.
   - CRAM inputs require '--ref_fa'.
+  - An option given in a mode it does not apply to is refused if it would change the result; otherwise, it's ignored with a warning.
   - Input and output paths supplied to this wrapper interface must not contain spaces, commas, or semicolons.
     + Commas are used internally as list delimiters.
     + Semicolons are also considered unsafe in this wrapper workflow.
