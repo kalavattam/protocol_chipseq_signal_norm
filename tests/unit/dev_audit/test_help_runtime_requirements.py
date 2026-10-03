@@ -6,8 +6,10 @@
 # Copyright 2026 by Kris Alavattam
 # Email: kalavattam@gmail.com
 #
-# OpenAI ChatGPT and Codex (GPT-5.6) were used in design, development, and
-# documentation, with all output reviewed, edited, and approved by the author.
+# The following were used in design, development, and documentation, with all
+# output reviewed, edited, and approved by the author:
+# - OpenAI ChatGPT and Codex (GPT-5.6);
+# - Anthropic Claude Code (Opus 5.5).
 #
 # Distributed under the MIT license.
 
@@ -475,6 +477,34 @@ class RuntimeRequirementsTest(unittest.TestCase):
             CHECKSUM_REQUIREMENT,
             "sha256sum or shasum (when '--dry_run' is not specified)",
         )
+
+    def test_checksum_installers_settle_the_sha256_alternative(self) -> None:
+        root = Path(__file__).resolve().parents[3]
+
+        units = owner_units(root)
+
+        for identity in (
+            "install/scripts/install_atria.sh",
+            "install/scripts/install_preseq.sh",
+        ):
+            kind, source, _, _ = units[identity]
+
+            evidence = evidence_for_owner(identity, source, kind, root)
+            alternatives = [
+                item for item in evidence if item.key == "sha256sum_or_shasum"
+            ]
+
+            with self.subTest(identity=identity):
+                self.assertEqual(
+                    [item.invocation for item in alternatives],
+                    ["command -v sha256sum", "command -v shasum"],
+                )
+                self.assertTrue(
+                    all(
+                        item.category == "callable_alternative"
+                        for item in alternatives
+                    ),
+                )
 
     def test_settled_owner_requirements_distinguish_execution_from_validation(
         self,

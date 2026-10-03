@@ -50,7 +50,7 @@ sh install/scripts/install_envs_entrypoint.sh --env_nam env_protocol --yes
 > bash install/scripts/install_envs.sh --env_nam env_protocol --yes
 > ```
 >
-> User-facing environments currently supported by `install_envs.sh` are `env_protocol`, `env_analyze`, and `env_siqchip`, each backed by a corresponding YAML file in `install/envs/`. `--if_exists` accepts `fail`, `reuse`, and `update`, and defaults to `fail`, meaning it stops without changing an existing requested environment. `update` creates a missing YAML-backed environment or reconciles an existing one.
+> User-facing environments currently supported by `install_envs.sh` are `env_protocol`, `env_analyze`, `env_qc`, and `env_siqchip`, each backed by a corresponding YAML file in `install/envs/`. `--if_exists` accepts `fail`, `reuse`, and `update`, and defaults to `fail`, meaning it stops without changing an existing requested environment. `update` creates a missing YAML-backed environment or reconciles an existing one.
 >
 > For institutional or site-specific channel configurations, such as systems that use mirrored Conda channels, pass channels directly to the installer:
 > ```bash
@@ -110,6 +110,27 @@ bash install/scripts/install_atria.sh
 > ```bash
 > bash install/scripts/install_envs.sh --help
 > bash install/scripts/install_atria.sh --help
+> ```
+</details>
+<br />
+
+Quality-control tools live in their own environment, `env_qc`, kept apart from `env_protocol` so that they can be updated without touching the workflow's pins. After creating it, build `preseq` into it:
+```bash
+bash install/scripts/install_envs.sh --env_nam env_qc --yes
+bash install/scripts/install_preseq.sh
+```
+
+<details>
+<summary><i>(Click to view <code>install_preseq.sh</code> details.)</i></summary>
+<br />
+
+> `env_qc` declares sequali, MultiQC, FastQC, kraken2, sdust, and longdust. `preseq` is not among them: no Bioconda build of it currently coexists with these packages on Linux. `install_preseq.sh` builds `preseq` 3.2.0 from its release tarball, after verifying the tarball's SHA-256, against the compiler, `make`, and `htslib` that `env_qc` declares, and installs it into that environment. It adds `#include <cstdint>` to one header, without which `preseq` 3.2.0 does not compile with GCC 13 or later.
+>
+> If `preseq` is already installed, `--if_exists` decides what happens next: `fail` (default) stops without changing anything, `reuse` keeps an installation that reports version 3.2.0, and `update` rebuilds it. Where the network is restricted, pass a local copy of the tarball with `--fil_tar`.
+>
+> To print the resolved plan without activating the environment, downloading, or building, run:
+> ```bash
+> bash install/scripts/install_preseq.sh --dry_run
 > ```
 </details>
 <br />
@@ -261,5 +282,4 @@ If you encounter an issue (bugs, broken code, broken links, unexpected behavior,
 - Code, documentation, and related materials are planned, designed, developed, reviewed, revised, and maintained with AI assistance from ChatGPT and Codex (OpenAI), and Claude Cowork and Claude Code (Anthropic). All AI-assisted output is reviewed, edited, and approved by the author.
     + ChatGPT: GPT-4- and GPT-5-series models (most recent: GPT-5.6 Terra and Sol).
     + Codex: GPT-5.4, GPT-5.5, and GPT-5.6 Terra and Sol models.
-    + Claude Cowork: Opus 4.8 model.
-    + Claude Code: Opus 5 model.
+    + Claude Cowork and Code: Opus 4.8, Opus 5, Fable 5, and Opus 5.5 models.

@@ -10,7 +10,7 @@
 # output reviewed, edited, and approved by the author:
 # - OpenAI ChatGPT and Codex (GPT-4- and GPT-5-series models; most recent:
 #   GPT-5.6);
-# - Anthropic Claude Code (Opus 5).
+# - Anthropic Claude Code (Opus 5, Opus 5.5).
 #
 # Distributed under the MIT license.
 
@@ -34,8 +34,8 @@ Parameters
   -dr, --dry, --dry_run : flag
     Run script in dry-run mode. Print resolved installation command and exit without installing.
 
-  -en, --env, --env_nam : {'env_analyze', 'env_protocol', 'env_siqchip'}
-    Conda environment to activate. Environment to create: 'env_analyze', 'env_protocol', or 'env_siqchip'.
+  -en, --env, --env_nam : {'env_analyze', 'env_protocol', 'env_qc', 'env_siqchip'}
+    Environment to create: 'env_analyze', 'env_protocol', 'env_qc', or 'env_siqchip'.
 
   -ie, --if_exists : {'fail', 'reuse', 'update'}
     What to do if the requested environment already exists (default: 'fail'). 'fail' stops without changing anything, and reports how to reuse or rebuild the environment instead. 'reuse' leaves the environment as it is, reconciling no dependencies. 'update' creates a missing YAML-backed environment or reconciles an existing one to its YAML: declared packages are installed, and an installed version is changed where the YAML declares a different one, which may mean a downgrade; packages the YAML no longer lists are left in place rather than pruned.
@@ -65,8 +65,10 @@ Notes
       | :---         | :---                          |
       | env_analyze  | install/envs/env_analyze.yml  |
       | env_protocol | install/envs/env_protocol.yml |
+      | env_qc       | install/envs/env_qc.yml       |
       | env_siqchip  | install/envs/env_siqchip.yml  |
 
+  - 'env_qc' holds quality-control tools. 'preseq' is not declared in it; build it into the environment afterward with 'install/scripts/install_preseq.sh'.
   - Depending on the specified environment, a large number of packages and dependencies may need to be installed. As a result, the 'mamba env create' or 'conda env create' operation can take more than 10 minutes, especially for a fresh installation that does not make use of cached packages. In such cases, environment creation may take even longer (e.g., more than 20 or 30 minutes).
   - With '--if_exists reuse', this script skips environment creation. For 'env_protocol', it refreshes the repository's managed editable Python-package installation; it does not otherwise reconcile environment dependencies.
   - With '--if_exists update', this script reconciles a YAML-backed existing environment to its YAML, then refreshes the managed editable package when applicable. Declared versions win: a package whose YAML specification differs from the installed one is changed to match, which may mean a downgrade. Packages the YAML no longer declares are left in place rather than pruned. Channels come from the YAML, with any '--channels' values searched ahead of them, or replacing them entirely under '--override_channels'. Use repeatable '--update_package' selections to bound the transaction to specific packages.

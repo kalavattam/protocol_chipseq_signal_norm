@@ -9,7 +9,7 @@
 # The following were used in design, development, and documentation, with all
 # output reviewed, edited, and approved by the author:
 # - OpenAI ChatGPT and Codex (GPT-5.4, GPT-5.6);
-# - Anthropic Claude Code (Opus 5).
+# - Anthropic Claude Code (Opus 5, Opus 5.5).
 #
 # Distributed under the MIT license.
 
@@ -31,8 +31,8 @@ Parameters
   -dr, --dry, --dry_run : flag
     Print the resolved installation command without creating an environment.
 
-  -en, --env, --env_nam : {'env_protocol', 'env_analyze', 'env_siqchip'}
-    Environment to create: 'env_protocol', 'env_analyze', or 'env_siqchip'.
+  -en, --env, --env_nam : {'env_protocol', 'env_analyze', 'env_qc', 'env_siqchip'}
+    Environment to create: 'env_protocol', 'env_analyze', 'env_qc', or 'env_siqchip'.
 
   -ie, --if_exists : {'fail', 'reuse', 'update'}
     What to do if the requested environment already exists. 'fail' stops without changing anything; 'reuse' leaves the environment as it is and refreshes the editable repository package in 'env_protocol'; 'update' reconciles a YAML-backed environment to its YAML before that refresh (default: 'fail').
@@ -62,6 +62,7 @@ Notes
   Environment names:
     - 'env_protocol': main workflow environment.
     - 'env_analyze': analysis environment.
+    - 'env_qc': quality-control environment; build 'preseq' into it afterward with 'install/scripts/install_preseq.sh'.
     - 'env_siqchip': Environment for
       + original implementation of siQ-ChIP (https://github.com/BradleyDickson/siQ-ChIP) or
       + fork of original implementation (https://github.com/kalavattam/siQ-ChIP).

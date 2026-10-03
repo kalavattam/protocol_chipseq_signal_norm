@@ -10,6 +10,8 @@ Mamba `>= 1.5` or Conda `>= 24.7` is required, along with Bash `>= 4.4`. `instal
 
 Creating `env_protocol` also installs this repository as an editable package with the selected manager. Reusing an existing `env_protocol` refreshes that editable installation. The explicit `--if_exists update` mode reconciles a YAML-backed environment to its YAML, installing declared packages and changing an installed version wherever the YAML declares a different one, which may mean a downgrade, and then performs the same refresh; packages the YAML no longer declares are left in place rather than pruned. Repeatable `--update_package` values bound that transaction to exact specifications already present in the YAML, and imply `--if_exists update`. Other environments are not package-install targets. Dry-run mode prints the environment and applicable package commands without executing them. Before/after transaction capture is a validation responsibility; the installer does not automatically preserve an environment-delta report.
 
+`install/scripts/install_preseq.sh` builds `preseq` from its release tarball into `env_qc`, whose YAML declares the compiler, `make`, and `htslib` it needs; no Bioconda build of `preseq` currently coexists with that environment's packages on Linux. Like `install_atria.sh`, it is run separately, after the environment exists.
+
 <br />
 
 ## Installing where Conda channels are mirrored

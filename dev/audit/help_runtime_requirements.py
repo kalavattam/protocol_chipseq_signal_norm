@@ -9,7 +9,7 @@
 # The following were used in design, development, and documentation, with all
 # output reviewed, edited, and approved by the author:
 # - OpenAI ChatGPT and Codex (GPT-5.6);
-# - Anthropic Claude Code (Opus 5).
+# - Anthropic Claude Code (Opus 5, Opus 5.5).
 #
 # Distributed under the MIT license.
 
@@ -134,10 +134,15 @@ KNOWN_CALLABLES = frozenset(
         "zcat",
     },
 )
+
 CHECKSUM_PROVIDERS = frozenset({"sha256sum", "shasum"})
 CHECKSUM_REQUIREMENT = (
     "sha256sum or shasum (when '--dry_run' is not specified)"
 )
+
+# Installers that verify a downloaded archive with whichever SHA-256 tool is
+# available.
+CHECKSUM_INSTALLERS = frozenset({"install_atria.sh", "install_preseq.sh"})
 DECOMPRESSION_PROVIDERS = frozenset({"gzip", "zcat"})
 REGION_BEDGRAPH_CHECK = (
     "lib/bash/workflows/process_region.sh::check_region_bdg"
@@ -202,11 +207,9 @@ SAMTOOLS_FALLBACK = (
     "samtools",
 )
 
-# Generic command extraction cannot safely distinguish a validator's dynamic
-# input from an executable it runs, nor can it prove generated arrays execute.
-# These settled entries therefore retain the exact, source-reviewed contracts
-# for the completed validation and orchestration cohorts. The table is keyed
-# by stable owner identity rather than filename branches.
+# Generic extraction can't tell a validator's dynamic inputs from what it runs
+# or prove generated arrays execute, so these source-reviewed requirements are
+# settled by hand, keyed by stable owner identity rather than by filename.
 SETTLED_OWNER_REQUIREMENTS: dict[str, tuple[str, ...]] = {
     "lib/bash/core/check_source.sh::err_source_only": (
         "bash >= 4.4",
@@ -1548,7 +1551,7 @@ def evidence_for_owner(
 
             if (
                 name in CHECKSUM_PROVIDERS
-                and source.name == "install_atria.sh"
+                and source.name in CHECKSUM_INSTALLERS
             ):
                 evidence.append(
                     Evidence(

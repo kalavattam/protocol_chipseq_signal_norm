@@ -10,7 +10,7 @@
 # output reviewed, edited, and approved by the author:
 # - OpenAI ChatGPT and Codex (GPT-4- and GPT-5-series models; most recent:
 #   GPT-5.6);
-# - Anthropic Claude Code (Opus 5).
+# - Anthropic Claude Code (Opus 5, Opus 5.5).
 #
 # Distributed under the MIT license.
 
@@ -285,10 +285,8 @@ function validate_args() {
             ;;
     esac
 
-    # '--update_package' is meaningful only when reconciling an existing
-    # environment, so it implies '--if_exists update' rather than requiring the
-    # caller to name both. Refuse only a genuine conflict, where the caller
-    # asked for some other behaviour explicitly.
+    # '--update_package' only makes sense when reconciling, so it implies
+    # '--if_exists update'; refuse only an explicit, conflicting '--if_exists'.
     if (( ${#requested_packages[@]} > 0 )); then
         if [[ "${if_exists_explicit}" != "true" ]]; then
             if_exists=update
@@ -302,12 +300,12 @@ function validate_args() {
     fi
 
     case "${env_nam}" in
-        env_align|env_analyze|env_protocol|env_repro|env_siqchip) : ;;
+        env_align|env_analyze|env_protocol|env_qc|env_repro|env_siqchip) : ;;
         *)
             # Note: 'env_align' and 'env_repro' are not exposed to users.
             echo_err \
                 "invalid environment name specified. Must be 'env_analyze'," \
-                "'env_protocol', or 'env_siqchip'."
+                "'env_protocol', 'env_qc', or 'env_siqchip'."
             return 1
             ;;
     esac
@@ -316,7 +314,7 @@ function validate_args() {
 
 function resolve_env_definition() {
     case "${env_nam}" in
-        env_analyze|env_protocol|env_siqchip)
+        env_analyze|env_protocol|env_qc|env_siqchip)
             pth_yml="${dir_rep}/install/envs/${env_nam}.yml"
 
             if [[ ! -f "${pth_yml}" ]]; then
@@ -393,10 +391,8 @@ function load_yaml_update_specs() {
         return 1
     fi
 
-    # Channels supplied with '--channels' are added ahead of the declared
-    # ones, matching what '-c' means to conda itself: higher priority, not
-    # replacement. '--override_channels' is what makes the supplied list
-    # exclusive, so only then are the declared channels dropped.
+    # '--channels' adds ahead of the declared channels, as '-c' does in conda;
+    # only '--override_channels' drops the declared ones.
     if [[ "${override_channels}" != "true" ]]; then
         arr_channels+=( "${yaml_channels[@]}" )
     fi
@@ -410,10 +406,8 @@ function ensure_tmp_dir() {
         return 0
     fi
 
-    # Create a directory and name files inside it, rather than using a 'mktemp'
-    # template. BSD and GNU 'mktemp' disagree about templates whose 'XXXXXX' is
-    # not final, and conda infers a file's format from its extension, so the
-    # names have to survive intact.
+    # Name files inside a fresh directory, not via a 'mktemp' template: BSD and
+    # GNU differ on a non-final 'XXXXXX', and conda reads the file extension.
     dir_tmp="$(mktemp -d)" || {
         echo_err \
             "failed to create a temporary directory for rendered" \
@@ -436,18 +430,9 @@ function render_condarc() {
 
     pth_condarc="${dir_tmp}/condarc"
 
-    # 'mirrored_channels' maps a channel name onto a mirror list, so a supplied
-    # URL whose final path segment matches that name is fetched from the list
-    # instead. Miniforge ships one sending 'conda-forge' to 'anaconda.org',
-    # unreachable at a proxying site. No channel flag reaches it.
-    #
-    # Written unconditionally: conda 24.7.1 and mamba 1.5.9 do not know the
-    # setting and accept a file carrying it without complaint.
-    #
-    # 'CONDARC' replaces the caller's configuration rather than merging, so
-    # this file also drops the channels that configuration declares. Measured
-    # 2026-08-13, and it is what makes creation exclusive; adding a 'channels:'
-    # key here would silently change that.
+    # Empty 'mirrored_channels', which no channel flag reaches and which can
+    # send a supplied URL to an unreachable mirror. 'CONDARC' replaces, rather
+    # than merges, the caller's configuration, which keeps creation exclusive.
     printf 'mirrored_channels: {}\n' > "${pth_condarc}" || {
         echo_err "failed to render a package-manager configuration file."
         return 1
@@ -466,13 +451,9 @@ function render_env_yaml() {
         return 0
     fi
 
-    # 'conda env create' and 'mamba env create' reject '--override-channels'
-    # and '-c' on the supported baseline — confirmed on conda 24.7.1 and mamba
-    # 1.5.9 — so channel selection cannot be expressed as flags on that
-    # subcommand. Mamba 2.x does accept them, but relying on that would make
-    # the supported versions diverge for no gain. Rewrite the declared
-    # 'channels:' block instead and install from the rewritten copy, which
-    # every version reads identically.
+    # 'env create' rejects '-c' and '--override-channels' on the supported
+    # conda 24.7 and mamba 1.5, so rewrite the YAML's 'channels:' block and
+    # install from that copy, which every supported version reads identically.
     ensure_tmp_dir || return 1
 
     pth_yml_eff="${dir_tmp}/${env_nam}.yml"
@@ -722,7 +703,7 @@ function print_dry_run() {
     fi
 
     # Report the rendered file only when a command would install from it. On
-    # the stop path no install happens and the file is removed on the way out,
+    # the stop path, no install happens and the file is removed on the way out,
     # so naming it here would print a path that no longer exists.
     if [[
         "${env_action}" != "stop" \
@@ -732,19 +713,16 @@ function print_dry_run() {
         echo "Rendered YAML: ${pth_yml_eff}"
         echo "Rendered channels:"
 
-        # Read these back from the rendered file rather than reprinting the
-        # supplied list. Without '--override_channels' the declared channels
-        # are retained below the supplied ones, so the supplied list alone
-        # would understate what the solver is actually given.
+        # Read these back from the rendered file: without '--override_channels'
+        # the declared channels are retained below the supplied ones, so the
+        # supplied list alone would understate what the solver is given.
         sed -n '/^channels:$/,/^[^[:space:]]/p' "${pth_yml_eff}" \
             | grep -E '^[[:space:]]+-[[:space:]]' \
             || true
     fi
 
-    # Report the rendered configuration wherever a command would use it. It is
-    # what stops a mirrored channel name from redirecting the supplied
-    # channels, so a reader checking why an install reached a given host needs
-    # to see that it was in force.
+    # Report the rendered configuration wherever a command would use it: it
+    # decides whether a mirrored channel name can redirect the supplied ones.
     if [[ "${env_action}" != "stop" && -n "${pth_condarc}" ]]; then
         echo "Rendered condarc: ${pth_condarc}"
     fi
@@ -857,22 +835,15 @@ function handle_existing_env() {
                 done
             fi
 
-            # No '--freeze-installed' here. Freezing means "add what is missing
-            # and change nothing else", which cannot reconcile an environment
-            # against a YAML whose declared version differs from the installed
-            # one — the solver reports a conflict instead. Scope is narrowed
-            # with '--update_package', which is explicit about what may change,
-            # rather than by refusing changes.
+            # No '--freeze-installed': freezing can't change a version the YAML
+            # declares differently. '--update_package' bounds what may change.
             render_condarc || return 1
 
             init_cmd_with_condarc
             cmd+=( "${pkg_mgr}" install -n "${env_nam}" )
 
-            # '--override-channels' is conda's spelling of this script's
-            # '--override_channels', so it is passed only when the caller asked
-            # for it. Passing it unconditionally silently applied the flag to
-            # every update, which both contradicted the interface and made the
-            # update path disagree with creation.
+            # Pass conda's '--override-channels' only when the caller asked for
+            # '--override_channels', so the update path agrees with creation.
             if [[ "${override_channels}" == "true" ]]; then
                 cmd+=( --override-channels )
             fi
@@ -966,10 +937,8 @@ function main() {
     resolve_pkg_mgr        || return 1
     build_pkg_cmd          || return 1
 
-    # Decide what will happen before building anything for it. The update
-    # branch constructs its own command, and the reuse and stop branches
-    # construct none, so rendering or building ahead of this point would do
-    # work for actions that never run.
+    # Decide the action first: update builds its own command, and reuse and
+    # stop build none, so rendering earlier would do work that never runs.
     handle_existing_env || rc=$?
     if (( rc == 2 )); then
         return 0

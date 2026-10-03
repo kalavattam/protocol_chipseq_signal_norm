@@ -1,0 +1,25 @@
+name: env_qc
+channels:
+  - conda-forge
+  - bioconda
+# Quality-control tools, kept apart from 'env_protocol' so that they can be
+# updated without touching the workflow's pins, and so that each tool added
+# here does not constrain the workflow environment's solve. Pin kinds and the
+# argument against pinning more are stated in 'env_protocol.yml'.
+#
+# 'preseq' is not declared here: no Bioconda build of it currently coexists
+# with these packages on Linux. 'install/scripts/install_preseq.sh' builds it
+# from its release tarball into this environment, against the 'htslib' and
+# compilers declared below.
+dependencies:
+  - cxx-compiler    # Note: Builds 'preseq' from source; see 'install/scripts/install_preseq.sh'.
+  - fastqc=0.12.1   # Note: Pinned for evidence; gate reports in the analysis repositories cite its output.
+  - htslib=1.24     # Note: Pinned for compatibility; 'preseq' is built against it, at the version 'samtools=1.24' uses in 'env_protocol'.
+  - kraken2=2.17.2  # Note: Pinned for evidence; classifies reads that align to neither genome.
+  - longdust=1.4    # Note: Pinned for reproducibility; defines long low-complexity intervals.
+  - make            # Note: Builds 'preseq' from source; see 'install/scripts/install_preseq.sh'.
+  - multiqc=1.35    # Note: Pinned for evidence; gate reports in the analysis repositories cite its output.
+  - python=3.11     # Note: Pinned for compatibility, as in 'env_protocol', for 'sequali'.
+  - sdust=0.1       # Note: Pinned for reproducibility; defines short low-complexity intervals.
+  - sequali=1.0.2   # Note: Pinned for evidence; gate reports in the analysis repositories cite its output.
+  - zlib

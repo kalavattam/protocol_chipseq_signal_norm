@@ -9,7 +9,7 @@
 # The following were used in design, development, and documentation, with all
 # output reviewed, edited, and approved by the author:
 # - OpenAI ChatGPT and Codex (GPT-5.5, GPT-5.6);
-# - Anthropic Claude Code (Opus 5).
+# - Anthropic Claude Code (Opus 5, Opus 5.5).
 #
 # Distributed under the MIT license.
 
@@ -174,9 +174,11 @@ tool_envs="${ROOT_REPO}/tests/fixtures/install_envs/tool"
 yml_anl="${ROOT_REPO}/install/envs/env_analyze.yml"
 yml_prt="${ROOT_REPO}/install/envs/env_protocol.yml"
 yml_siq="${ROOT_REPO}/install/envs/env_siqchip.yml"
+yml_qc="${ROOT_REPO}/install/envs/env_qc.yml"
 
 log_siqchip_dry_run="${dir_log}/env_siqchip_dry_run.log"
 log_analyze_dry_run="${dir_log}/env_analyze_dry_run.log"
+log_qc_dry_run="${dir_log}/env_qc_dry_run.log"
 log_protocol_channels_dry_run="${dir_log}/env_protocol_channels_dry_run.log"
 log_protocol_update_dry_run="${dir_log}/env_protocol_update_dry_run.log"
 log_override_no_channels="${dir_log}/install_override_channels_no_channels.log"
@@ -323,6 +325,15 @@ done
 assert_readable_yaml "${yml_anl}" "env_analyze YAML"
 assert_readable_yaml "${yml_prt}" "env_protocol YAML"
 assert_readable_yaml "${yml_siq}" "env_siqchip YAML"
+assert_readable_yaml "${yml_qc}" "env_qc YAML"
+assert_pattern_found \
+    "${yml_qc}" \
+    '^  - htslib=1\.24' \
+    "env_qc pins the htslib that preseq is built against"
+assert_pattern_absent \
+    "${yml_qc}" \
+    '^  - preseq' \
+    "env_qc leaves preseq to install_preseq.sh"
 assert_pattern_found \
     "${yml_prt}" \
     '^  - shellcheck=0\.10\.0' \
@@ -469,6 +480,17 @@ then
         --yes
 
     assert_install_dry_run \
+        "env_qc" "${yml_qc}" "${log_qc_dry_run}" \
+        --dry_run \
+        --env_nam env_qc \
+        --yes
+
+    assert_pattern_absent \
+        "${log_qc_dry_run}" \
+        "Package command:" \
+        "install_envs.sh env_qc gets no editable repository install"
+
+    assert_install_dry_run \
         "env_protocol" "${yml_prt}" \
         "${log_protocol_channels_dry_run}" \
         --dry_run \
@@ -581,13 +603,9 @@ else
         "install_envs.sh rejects invalid --if_exists"
 fi
 
-# Channel overrides must reach both the create and the update path. The create
-# path cannot express them as flags, because 'env create' rejects
-# '--override-channels' and '-c', so they are rendered into a temporary copy of
-# the environment YAML instead. The update path uses 'install', which accepts
-# the flags directly. Both were broken before 2026-08-12: creation emitted
-# flags the subcommand refuses, and the update path rejected '--channels'
-# outright.
+# Channel overrides must reach both paths. 'env create' rejects '-c' and
+# '--override-channels', so creation renders them into a temporary YAML copy;
+# the update path uses 'install', which takes the flags directly.
 chn_mirror="https://example.invalid/conda-forge/,https://example.invalid/bioconda/"
 
 if \
@@ -667,14 +685,9 @@ else
         "on PATH"
 fi
 
-# The spec below names a version because 'env_protocol.yml' pins that package,
-# and '--update_package' matches a declared specification exactly rather than
-# by name. An unpinned package is named bare; a pinned one must carry its pin.
-# '--update_package' implies '--if_exists update', because it is meaningful in
-# no other mode. An explicitly different '--if_exists' is still a conflict.
-# 'update' also no longer freezes installed packages: freezing cannot reconcile
-# an environment against a YAML that declares a different version, because the
-# solver reports a conflict rather than changing the package.
+# '--update_package' matches a declared spec exactly, so a pinned package must
+# carry its pin. It implies '--if_exists update' (another explicit value is a
+# conflict), and 'update' doesn't freeze, so it can change a declared version.
 if \
     check_cmd_exists mamba || check_cmd_exists conda
 then
@@ -726,10 +739,9 @@ else
         "install_envs.sh rejects --update_package with a conflicting mode"
 fi
 
-# '--channels' adds channels ahead of the declared ones, which is what '-c'
-# means to conda; '--override_channels' is what makes the supplied list
-# exclusive. Assert both directions, because collapsing them into "replace"
-# silently drops 'conda-forge' and 'bioconda' from every install.
+# '--channels' adds ahead of the declared channels; only '--override_channels'
+# makes the list exclusive. Assert both, since treating '--channels' as a
+# replacement would drop 'conda-forge' and 'bioconda' from every install.
 if \
     check_cmd_exists mamba || check_cmd_exists conda
 then
@@ -758,9 +770,8 @@ then
         record_fail "install_envs.sh additive-channel dry-run failed"
     fi
 
-    # The rendered YAML is a temporary artifact. A dry run keeps it so the
-    # caller can read it; nothing may be written beside the tracked YAML, and
-    # the tracked YAML itself must never be modified.
+    # A dry run keeps the rendered YAML for inspection. Nothing may be written
+    # beside the tracked YAML, which must never be modified.
     pth_declared="${ROOT_REPO}/install/envs/env_siqchip.yml"
     hsh_before="$(shasum "${pth_declared}" | cut -d' ' -f1)"
 
@@ -818,15 +829,9 @@ else
         "conda on PATH"
 fi
 
-# 'mirrored_channels' is not a channel source, so '--override_channels' cannot
-# reach it: it redirects a supplied channel URL whose final path segment
-# matches a mirrored name, and the packages are then fetched from the mirror
-# list instead. Miniforge ships one claiming 'conda-forge' for 'anaconda.org',
-# which makes every install at a channel-proxying site read the requested
-# mirror and download from a host that may be unreachable. The rendered condarc
-# empties it. Assert the content, not merely that a file was named, and assert
-# that nothing is rendered when no channels are supplied — a configuration file
-# imposed on an install nobody asked to redirect is its own defect.
+# 'mirrored_channels' silently redirects matching channel URLs, out of reach
+# of '--override_channels', so the rendered condarc empties it. Assert its
+# content and that no condarc is rendered when no channels are supplied.
 if \
     check_cmd_exists mamba || check_cmd_exists conda
 then
@@ -840,10 +845,8 @@ then
                 --channels https://example.invalid/cf/ \
                 --override_channels
     then
-        # Tolerate no match. Under 'set -e' a failing 'grep' in a command
-        # substitution ends the run, which would turn a missing condarc into an
-        # aborted suite rather than a reported failure — and every assertion
-        # after this point would silently never execute.
+        # Tolerate no match: under 'set -e', a failing 'grep' here would abort
+        # the suite instead of reporting the missing condarc as a failure.
         pth_condarc_rendered="$(
             grep '^Rendered condarc: ' "${log_condarc}" \
                 | sed 's|^Rendered condarc: ||' \
