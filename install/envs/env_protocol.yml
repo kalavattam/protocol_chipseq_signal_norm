@@ -26,7 +26,7 @@ dependencies:
   - gnuplot                   # Note: Added since publication in Bio-protocol. Maybe: remove from 'env_protocol'.
   - ipython
   - matplotlib
-  - multiqc
+  - multiqc=1.35              # Note: Pinned for evidence; gate reports in the analysis repositories cite its output.
   - numpy=2.4.6               # Note: Pinned for reproducibility; required by 'src/protocol_chipseq_signal_norm/cli/compute_signal.py'. ('scipy' was checked and is imported nowhere, so it is not made explicit.)
   - parallel
   - pbzip2
@@ -43,7 +43,7 @@ dependencies:
   - rename
   - ruff=0.15.21              # Note: Added since publication in Bio-protocol; pinned for evidence, to the reviewed repository standard.
   - samtools=1.24             # Note: Pinned for reproducibility; fragment counts and sequencing depth are derived from it.
-  - sequali
+  - sequali=1.0.2             # Note: Pinned for evidence; gate reports in the analysis repositories cite its output.
   - setuptools
   - shellcheck=0.10.0         # Note: Added since publication in Bio-protocol; pinned for evidence, for repository static-analysis provenance.
   - tree                      # Note: Added since publication in Bio-protocol.
