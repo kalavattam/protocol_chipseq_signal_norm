@@ -44,11 +44,13 @@ function assert_install_dry_run() {
     local log_lcl="${3:-}"
     shift 3
 
+    # Run through the fake package manager so the caller's environment list,
+    # not the host's environments, decides whether the target exists.
     if ! \
-        run_capture \
+        run_fake_install_envs \
             "install_envs ${env_lcl} dry-run" \
             "${log_lcl}" \
-            "${TEST_BASH}" "${scr_inl}" "$@"
+            "$@"
     then
         record_fail \
             "install_envs.sh ${env_lcl} dry-run failed; see" \
@@ -150,6 +152,11 @@ function run_fake_install_envs() {
     local label="${1:?}"
     local log="${2:?}"
     shift 2
+
+    # Without the generated fakes, PATH would reach the real package manager,
+    # so refuse to run rather than risk changing a real environment.
+    require_files_nonempty "${tool_envs}/conda" "${tool_envs}/mamba" \
+        || return 1
 
     run_capture \
         "${label}" \
@@ -462,6 +469,8 @@ fi
 if \
     check_cmd_exists mamba || check_cmd_exists conda
 then
+    # No target exists here, so each dry run plans a creation.
+    : > "${fake_envs}"
     assert_install_dry_run \
         "env_siqchip" "${yml_siq}" "${log_siqchip_dry_run}" \
         --dry_run \
@@ -490,6 +499,8 @@ then
         "Package command:" \
         "install_envs.sh env_qc gets no editable repository install"
 
+    # The reuse and update dry runs need 'env_protocol' to exist.
+    printf '%s\n' env_protocol > "${fake_envs}"
     assert_install_dry_run \
         "env_protocol" "${yml_prt}" \
         "${log_protocol_channels_dry_run}" \
@@ -611,15 +622,15 @@ chn_mirror="https://example.invalid/conda-forge/,https://example.invalid/biocond
 if \
     check_cmd_exists mamba || check_cmd_exists conda
 then
+    : > "${fake_envs}"
     if \
-        run_capture \
+        run_fake_install_envs \
             "install_envs render create channels" \
             "${log_render_create}" \
-            "${TEST_BASH}" "${scr_inl}" \
-                --dry_run \
-                --env_nam env_siqchip \
-                --channels "${chn_mirror}" \
-                --override_channels
+            --dry_run \
+            --env_nam env_siqchip \
+            --channels "${chn_mirror}" \
+            --override_channels
     then
         assert_pattern_found \
             "${log_render_create}" \
@@ -653,16 +664,16 @@ then
         record_fail "install_envs.sh create with channels unexpectedly failed"
     fi
 
+    printf '%s\n' env_protocol > "${fake_envs}"
     if \
-        run_capture \
+        run_fake_install_envs \
             "install_envs render update channels" \
             "${log_render_update}" \
-            "${TEST_BASH}" "${scr_inl}" \
-                --dry_run \
-                --env_nam env_protocol \
-                --if_exists update \
-                --channels "${chn_mirror}" \
-                --override_channels
+            --dry_run \
+            --env_nam env_protocol \
+            --if_exists update \
+            --channels "${chn_mirror}" \
+            --override_channels
     then
         assert_pattern_found \
             "${log_render_update}" \
@@ -691,14 +702,14 @@ fi
 if \
     check_cmd_exists mamba || check_cmd_exists conda
 then
+    printf '%s\n' env_protocol > "${fake_envs}"
     if \
-        run_capture \
+        run_fake_install_envs \
             "install_envs update_package implies update" \
             "${log_implied_update}" \
-            "${TEST_BASH}" "${scr_inl}" \
-                --dry_run \
-                --env_nam env_protocol \
-                --update_package samtools=1.24
+            --dry_run \
+            --env_nam env_protocol \
+            --update_package samtools=1.24
     then
         assert_pattern_found \
             "${log_implied_update}" \
@@ -745,14 +756,14 @@ fi
 if \
     check_cmd_exists mamba || check_cmd_exists conda
 then
+    : > "${fake_envs}"
     if \
-        run_capture \
+        run_fake_install_envs \
             "install_envs additive channels" \
             "${log_channels_additive}" \
-            "${TEST_BASH}" "${scr_inl}" \
-                --dry_run \
-                --env_nam env_siqchip \
-                --channels https://example.invalid/cf/
+            --dry_run \
+            --env_nam env_siqchip \
+            --channels https://example.invalid/cf/
     then
         assert_pattern_found \
             "${log_channels_additive}" \
@@ -776,18 +787,20 @@ then
     hsh_before="$(shasum "${pth_declared}" | cut -d' ' -f1)"
 
     if \
-        run_capture \
+        run_fake_install_envs \
             "install_envs rendered yaml lifecycle" \
             "${log_tmp_lifecycle}" \
-            "${TEST_BASH}" "${scr_inl}" \
-                --dry_run \
-                --env_nam env_siqchip \
-                --channels https://example.invalid/cf/ \
-                --override_channels
+            --dry_run \
+            --env_nam env_siqchip \
+            --channels https://example.invalid/cf/ \
+            --override_channels
     then
+        # Tolerate no match, as the condarc check below does, so a missing
+        # report is recorded as a failure instead of aborting the suite.
         pth_rendered="$(
             grep '^Rendered YAML: ' "${log_tmp_lifecycle}" \
-                | sed 's|^Rendered YAML: ||'
+                | sed 's|^Rendered YAML: ||' \
+                || true
         )"
 
         if [[ -n "${pth_rendered}" && -f "${pth_rendered}" ]]; then
@@ -835,15 +848,15 @@ fi
 if \
     check_cmd_exists mamba || check_cmd_exists conda
 then
+    : > "${fake_envs}"
     if \
-        run_capture \
+        run_fake_install_envs \
             "install_envs rendered condarc" \
             "${log_condarc}" \
-            "${TEST_BASH}" "${scr_inl}" \
-                --dry_run \
-                --env_nam env_siqchip \
-                --channels https://example.invalid/cf/ \
-                --override_channels
+            --dry_run \
+            --env_nam env_siqchip \
+            --channels https://example.invalid/cf/ \
+            --override_channels
     then
         # Tolerate no match: under 'set -e', a failing 'grep' here would abort
         # the suite instead of reporting the missing condarc as a failure.
@@ -894,12 +907,11 @@ then
     fi
 
     if \
-        run_capture \
+        run_fake_install_envs \
             "install_envs no condarc without channels" \
             "${log_condarc_none}" \
-            "${TEST_BASH}" "${scr_inl}" \
-                --dry_run \
-                --env_nam env_siqchip
+            --dry_run \
+            --env_nam env_siqchip
     then
         assert_pattern_absent \
             "${log_condarc_none}" \
@@ -920,15 +932,15 @@ fi
 
 # The stop path installs nothing and removes the rendered file on the way out,
 # so it must not name a path the caller cannot then read.
+printf '%s\n' env_protocol > "${fake_envs}"
 if \
-    run_capture \
+    run_fake_install_envs \
         "install_envs stop path rendered report" \
         "${log_stop_render}" \
-        "${TEST_BASH}" "${scr_inl}" \
-            --dry_run \
-            --env_nam env_protocol \
-            --channels https://example.invalid/cf/ \
-            --override_channels
+        --dry_run \
+        --env_nam env_protocol \
+        --channels https://example.invalid/cf/ \
+        --override_channels
 then
     assert_pattern_found \
         "${log_stop_render}" \
