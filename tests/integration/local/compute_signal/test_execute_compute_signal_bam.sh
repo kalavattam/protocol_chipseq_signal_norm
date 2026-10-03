@@ -506,7 +506,6 @@ bash "${ROOT_REPO}/bin/execute_compute_signal.sh" \
     --dir_eo "${dir_err}" \
     --typ_out bedGraph \
     --siz_bin 10 \
-    --method unadj \
     --report_only \
     > /dev/null 2>&1 || true
 

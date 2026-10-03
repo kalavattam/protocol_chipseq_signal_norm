@@ -98,6 +98,8 @@ Parameters
   -co, --csv_fil_out : list of file
     Comma-separated list of output file paths.
 
+    In '--mode signal', it may be omitted when a report list is given to write only the reports given, with no track; '--method' and '--csv_scl_fct' are then refused, as is '--siz_bin' without '--csv_report_n_ovlp', and '--engine', '--siz_win', and '--dp' are ignored with a warning.
+
   -sb, --siz_bin : int
     Bin size in base pairs for signal computation (default: ${siz_bin}).
 
@@ -183,19 +185,19 @@ Parameters
     Comma-separated list of header prefixes to skip. Shared comma-separated bedGraph header prefixes or sentinel to skip.
 
   -crf, --csv_report_n_frg : list of file
-    Comma-separated list of paths for per-sample fragment-count reports, 'N' / 'n_frg'. Supply one path per '--csv_fil_in' element. Optional: without it, each report is written beside its own output track as '<track>.n_frg.txt'.
+    Comma-separated list of paths for per-sample fragment-count reports, 'N' / 'n_frg'. Supply one path per '--csv_fil_in' element. Optional: without it, each report is written beside its own output track as '<track>.n_frg.txt', or not at all when there is no track.
 
-    Used with '--mode signal'.
+    Used with '--mode signal'. Given without '--csv_fil_out', only the reports given are written: '--method' and '--csv_scl_fct' are then refused, as is '--siz_bin' unless '--csv_report_n_ovlp' is also given, and '--engine', '--siz_win', and '--dp' are ignored with a warning.
 
   -cro, --csv_report_n_ovlp : list of file
-    Comma-separated list of paths for per-sample overlap-count reports, 'L' / 'n_ovlp'. It depends on '--siz_bin' and, if supplied, '--csv_usr_frg'. Optional: without it, each report is written beside its own output track as '<track>.n_ovlp.txt'.
+    Comma-separated list of paths for per-sample overlap-count reports, 'L' / 'n_ovlp'. It depends on '--siz_bin' and, if supplied, '--csv_usr_frg'. Optional: without it, each report is written beside its own output track as '<track>.n_ovlp.txt', or not at all when there is no track.
 
-    Used with '--mode signal'.
+    Used with '--mode signal'. Given without '--csv_fil_out', only the reports given are written: '--method' and '--csv_scl_fct' are then refused, and '--engine', '--siz_win', and '--dp' are ignored with a warning.
 
   -nr, --no_report : flag
-    Suppress both per-sample counts, which are written by default. They are the inputs 'compute_pseudo --method edger' consumes, so suppressing them leaves a later ratio run without the numbers it needs for pseudocount regularization per (or adapted from) edgeR. Refused together with '--csv_report_n_frg' or '--csv_report_n_ovlp', which would write the counts anyway.
+    Suppress both per-sample counts, which are written by default. They are the inputs 'compute_pseudo --method edger' consumes, so suppressing them leaves a later ratio run without the numbers it needs for pseudocount regularization per (or adapted from) edgeR.
 
-    Used with '--mode signal'.
+    Used with '--mode signal'. Refused together with '--csv_report_n_frg' or '--csv_report_n_ovlp', which would write the counts anyway.
 
   -tr, --track : flag
     Write a companion track file. If '--mode ratio', write a companion bedGraph without non-finite rows.

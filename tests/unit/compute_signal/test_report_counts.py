@@ -257,13 +257,14 @@ def test_report_only_mode_counts_without_writing_a_track(
     fil_in = FIXTURES / "bam" / "se" / "tiny_se.bam"
     path_n = tmp_path / "n.txt"
     path_l = tmp_path / "l.txt"
-    arguments = ["--fil_in", str(fil_in), "--siz_bin", "10"]
+    arguments = ["--fil_in", str(fil_in)]
 
     if with_n:
         arguments.extend(["--report_n_frg", str(path_n)])
 
+    # '--siz_bin' sizes only the overlap report, so it is refused without one.
     if with_l:
-        arguments.extend(["--report_n_ovlp", str(path_l)])
+        arguments.extend(["--report_n_ovlp", str(path_l), "--siz_bin", "10"])
 
     status = main(arguments)
     created = sorted(entry.name for entry in tmp_path.iterdir())

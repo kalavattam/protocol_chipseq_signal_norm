@@ -536,7 +536,6 @@ bash "${ROOT_REPO}/bin/submit_compute_signal.sh" \
     --csv_report_n_ovlp "${dir_only}/se.n_ovlp.txt" \
     --dir_eo "${dir_err}" \
     --siz_bin 10 \
-    --method unadj \
     > /dev/null 2>&1 || true
 
 assert_file_exact_line "${dir_only}/se.n_frg.txt" "2" \

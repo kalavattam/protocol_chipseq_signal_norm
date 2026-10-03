@@ -234,12 +234,12 @@ Parameters
   -ro, --report_only : flag
     Write only the reports, with no signal track. By default, the fragment count 'N' / 'n_frg' and the fragment-bin overlap count 'L' / 'n_ovlp' are written beside each output track as '<track>.n_frg.txt' and '<track>.n_ovlp.txt', both of which are needed for pseudocount regularization per (or adapted from) edgeR.
 
-    Used with '--mode signal'.
+    Used with '--mode signal'. Refuses '--method' and '--csv_scl_fct'; ignores '--engine', '--siz_win', and '--dp' with a warning.
 
   -nr, --no_report : flag
-    Suppress both counts. Cannot be combined with '--report_only'.
+    Suppress both counts.
 
-    Used with '--mode signal'.
+    Used with '--mode signal'. Cannot be combined with '--report_only'.
 
   -tr, --trk, --track : flag
     Write a companion track file. If '--mode ratio', also write a companion bedGraph with all non-finite rows ('inf', '-inf', and 'nan') removed.
@@ -665,9 +665,7 @@ Parameters
 
     Counting happens before the output branch, so the reported values are identical to those a track-writing run would produce on the same input. Use this to obtain prior counts without outputting a bedGraph track.
 
-    Cannot be combined with '--no_report', as doing so would write neither a track nor a report. Such a run is rejected.
-
-    Used with '--mode signal'; refused otherwise.
+    Used with '--mode signal'; refused otherwise. Cannot be combined with '--no_report', as doing so would write neither a track nor a report. Such a run is rejected. With no track to build, '--method' and '--csv_scl_fct' are refused, and '--engine', '--siz_win', and '--dp' are ignored with a warning.
 
   -nr, --no_report : flag
     Suppress the two per-sample counts described under '--report_only' above, which are otherwise written beside each output track.

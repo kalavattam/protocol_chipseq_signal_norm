@@ -1864,6 +1864,7 @@ function init_arg_defs() {
     threads=4
     mode="signal"
     method=""
+    method_set=false
     csv_fil_in=""
     csv_fil_A=""
     csv_fil_B=""
@@ -1956,6 +1957,7 @@ function parse_args() {
                     return 1
                 }
                 method="$(printf '%s\n' "${2}" | tr '[:upper:]' '[:lower:]')"
+                method_set=true
                 shift 2
                 ;;
 
@@ -2364,6 +2366,48 @@ function check_opts_mode() {
         return 1
     fi
 
+    # Without '--csv_fil_out', the run writes counts and no track, so track
+    # settings do nothing and are not passed on.
+    if [[ -z "${csv_fil_out}" ]]; then
+        local opt
+        local -a arr_ref=() arr_ign=()
+
+        if [[ "${method_set}" == "true" ]]; then arr_ref+=( --method ); fi
+        if [[ -n "${csv_scl_fct}" ]]; then arr_ref+=( --csv_scl_fct ); fi
+        if [[ "${engine_set}" == "true" ]]; then arr_ign+=( --engine ); fi
+        if [[ "${siz_win_set}" == "true" ]]; then arr_ign+=( --siz_win ); fi
+        if [[ "${dp_set}" == "true" ]]; then arr_ign+=( --dp ); fi
+
+        if (( ${#arr_ref[@]} > 0 )); then
+            echo_err \
+                "'${arr_ref[0]}' is for track output; it has no effect" \
+                "without '--csv_fil_out'."
+            return 1
+        fi
+
+        if [[ "${siz_bin_set}" == "true" && -z "${csv_report_n_ovlp}" ]]; then
+            echo_err \
+                "'--siz_bin' is for track output or '--csv_report_n_ovlp';" \
+                "it has no effect without either."
+            return 1
+        fi
+
+        for opt in "${arr_ign[@]}"; do
+            echo_warn \
+                "'${opt}' has no effect without '--csv_fil_out' and is" \
+                "ignored."
+        done
+
+        method=""
+        engine=""
+        siz_win=""
+        dp="NA"
+
+        # Only the overlap report is sized by '--siz_bin'.
+        if [[ -z "${csv_report_n_ovlp}" ]]; then siz_bin=""; fi
+        return 0
+    fi
+
     # The 'chrom' engine has no windows to size, so '--siz_win' is not passed
     # on; a supplied one is reported first.
     if [[ "${engine}" != "window" ]]; then
@@ -2559,9 +2603,10 @@ function prepare_vecs() {
             for _ in "${arr_fil_in[@]}"; do arr_fil_out+=( "" ); done
         fi
 
-        # Without an explicit list, 'DERIVE' tells this script to pass a bare
-        # flag so 'compute_signal' derives the paths; it is never passed on.
-        if [[ "${no_report}" == "true" ]]; then
+        # For an omitted list, 'DERIVE' (never passed on) has 'compute_signal'
+        # derive the paths; with no track to derive from, only the given lists
+        # are written.
+        if [[ "${no_report}" == "true" || -z "${csv_fil_out}" ]]; then
             fill_rep=""
         else
             fill_rep="DERIVE"

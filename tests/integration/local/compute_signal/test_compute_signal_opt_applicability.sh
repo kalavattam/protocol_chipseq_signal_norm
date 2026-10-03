@@ -267,6 +267,175 @@ else
         "(exit ${rc})"
 fi
 
+# A report-only run builds no track, so the track's settings are refused or
+# warned about and never passed on; the empty row is the control.
+rows_rpt=(
+    "--method|frag|refuse"
+    "--csv_scl_fct|2|refuse"
+    "--engine|window|warn"
+    "--siz_win|20|warn"
+    "--dp|3|warn"
+    "||none"
+)
+
+for row in "${rows_rpt[@]}"; do
+    IFS='|' read -r opt val act <<< "${row}"
+    args=()
+    if [[ -n "${opt}" ]]; then args+=( "${opt}" "${val}" ); fi
+
+    rc=0
+    out="$(
+        "${TEST_BASH}" "${ROOT_REPO}/bin/execute_compute_signal.sh" \
+            --dry_run \
+            --mode signal \
+            --csv_fil_in "${in_se}" \
+            --report_only \
+            "${args[@]}" \
+            --dir_out "${dir_out}" \
+            --dir_eo "${dir_err}" \
+            --max_job 1 \
+            --threads 1 2>&1
+    )" || rc=$?
+
+    cmd="$(grep -m1 'submit_compute_signal.sh --env' <<< "${out}" || true)"
+    lbl="execute '${opt:-nothing extra}' with '--report_only'"
+    msg="'${opt}' has no effect with '--report_only'"
+
+    case "${act}" in
+        refuse)
+            if [[
+                "${rc}" -ne 0
+                && "${out}" == *"error("*"'${opt}' is for track output"*
+            ]]; then
+                record_pass "${lbl} is refused by name"
+            else
+                record_fail "${lbl} was not refused by name (exit ${rc})"
+            fi
+            ;;
+        *)
+            if [[
+                "${rc}" -eq 0
+                && -n "${cmd}"
+                && "${cmd}" != *" --method "*
+                && "${cmd}" != *" --csv_scl_fct "*
+                && "${cmd}" != *" --engine "*
+                && "${cmd}" != *" --siz_win "*
+                && "${cmd}" != *" --dp "*
+                && (
+                    "${act}" == "none"
+                    && "${out}" != *"has no effect"*
+                    || "${out}" == *"warning("*"${msg}"*
+                )
+            ]]; then
+                record_pass "${lbl} passes on no track setting"
+            else
+                record_fail "${lbl} warned wrongly, or passed a setting on"
+            fi
+            ;;
+    esac
+
+    rc=0
+    out="$(
+        "${TEST_BASH}" "${ROOT_REPO}/bin/submit_compute_signal.sh" \
+            --env_nam "${env_nam}" \
+            --dir_scr "${ROOT_REPO}/bin" \
+            --threads 1 \
+            --dir_eo "${dir_err}" \
+            --nam_job "opt_appl_rpt_${opt#--}" \
+            --mode signal \
+            --csv_fil_in "${in_se}" \
+            --csv_report_n_frg "${dir_out}/rpt_${opt#--}.n_frg.txt" \
+            --csv_report_n_ovlp "${dir_out}/rpt_${opt#--}.n_ovlp.txt" \
+            "${args[@]}" 2>&1
+    )" || rc=$?
+
+    cmd="$(grep -m1 'run_py compute_signal' <<< "${out}" || true)"
+    lbl="submit '${opt:-nothing extra}' without '--csv_fil_out'"
+    msg="'${opt}' has no effect without '--csv_fil_out'"
+
+    case "${act}" in
+        refuse)
+            if [[
+                "${rc}" -ne 0
+                && "${out}" == *"error("*"'${opt}' is for track output"*
+                && -z "${cmd}"
+            ]]; then
+                record_pass "${lbl} is refused by name before any tool runs"
+            else
+                record_fail "${lbl} was not refused by name (exit ${rc})"
+            fi
+            ;;
+        *)
+            if [[
+                "${rc}" -eq 0
+                && -n "${cmd}"
+                && "${cmd}" != *" --method "*
+                && "${cmd}" != *" --scl_fct "*
+                && "${cmd}" != *" --engine "*
+                && "${cmd}" != *" --siz_win "*
+                && "${cmd}" != *" --dp "*
+                && (
+                    "${act}" == "none"
+                    && "${out}" != *"has no effect"*
+                    || "${out}" == *"warning("*"${msg}"*
+                )
+            ]]; then
+                record_pass "${lbl} passes the tool no track setting"
+            else
+                record_fail "${lbl} warned wrongly, or passed a setting on"
+            fi
+            ;;
+    esac
+done
+
+# With no track to derive from, 'submit' writes only the report list given and
+# refuses '--siz_bin', which then sizes nothing.
+dir_one="${dir_out}/one_list"
+mkdir -p "${dir_one}"
+
+for siz in "" 20; do
+    args=()
+    if [[ -n "${siz}" ]]; then args+=( --siz_bin "${siz}" ); fi
+
+    rc=0
+    out="$(
+        "${TEST_BASH}" "${ROOT_REPO}/bin/submit_compute_signal.sh" \
+            --env_nam "${env_nam}" \
+            --dir_scr "${ROOT_REPO}/bin" \
+            --threads 1 \
+            --dir_eo "${dir_err}" \
+            --nam_job "opt_appl_one_list" \
+            --mode signal \
+            --csv_fil_in "${in_se}" \
+            --csv_report_n_frg "${dir_one}/se.n_frg.txt" \
+            "${args[@]}" 2>&1
+    )" || rc=$?
+
+    cmd="$(grep -m1 'run_py compute_signal' <<< "${out}" || true)"
+
+    if [[ -z "${siz}" ]]; then
+        if [[
+            "${rc}" -eq 0
+            && -s "${dir_one}/se.n_frg.txt"
+            && ! -e "${dir_one}/se.n_ovlp.txt"
+            && "${cmd}" != *" --report_n_ovlp"*
+            && "${cmd}" != *" --siz_bin "*
+        ]]; then
+            record_pass "submit writes only the one report list given"
+        else
+            record_fail "submit with one report list failed (exit ${rc})"
+        fi
+    elif [[
+        "${rc}" -ne 0
+        && "${out}" == *"'--siz_bin' is for track output or"*
+        && -z "${cmd}"
+    ]]; then
+        record_pass "submit refuses '--siz_bin' without an overlap report"
+    else
+        record_fail "submit took '--siz_bin' without an overlap report"
+    fi
+done
+
 # Options in their own modes stay silent: no applicability message at all.
 rc=0
 out="$(

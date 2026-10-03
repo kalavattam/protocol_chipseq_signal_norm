@@ -279,6 +279,102 @@ def test_compute_signal_refuses_signal_options_for_bed(
     assert message in str(caught.value.code)
 
 
+# A report-only run (no '--fil_out') builds no track either.
+REPORT_ONLY_REFUSED = (
+    (["--method", "unadj"], "'--method' is for bedGraph output"),
+    (["--scl_fct", "2"], "'--scl_fct' is for bedGraph output"),
+)
+
+
+@pytest.mark.parametrize(("argv", "message"), REPORT_ONLY_REFUSED)
+def test_compute_signal_refuses_signal_options_for_report_only(
+    argv: list[str],
+    message: str,
+    tmp_path: Path,
+) -> None:
+    with pytest.raises(SystemExit) as caught:
+        signal.main(
+            [
+                "--fil_in",
+                BAM_SE,
+                "--report_n_frg",
+                str(tmp_path / "x.n_frg.txt"),
+                *argv,
+            ],
+        )
+
+    assert message in str(caught.value.code)
+    assert "a report-only run" in str(caught.value.code)
+
+
+@pytest.mark.parametrize(
+    "argv",
+    [["--dp", "3"], ["--engine", "window"], ["--siz_win", "20"]],
+    ids=["dp", "engine", "siz_win"],
+)
+def test_compute_signal_warns_for_report_only(
+    argv: list[str],
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    status = signal.main(
+        [
+            "--fil_in",
+            BAM_SE,
+            "--report_n_frg",
+            str(tmp_path / "x.n_frg.txt"),
+            *argv,
+        ],
+    )
+
+    assert status == 0
+    assert (tmp_path / "x.n_frg.txt").exists()
+    assert (
+        f"Note: '{argv[0]}' has no effect with a report-only run"
+        in capsys.readouterr().err
+    )
+
+
+# '--siz_bin' sizes only the track and the overlap report.
+@pytest.mark.parametrize(
+    "fil_out", [None, "x.bed"], ids=["report-only", "bed"]
+)
+def test_compute_signal_refuses_siz_bin_without_overlap_report(
+    fil_out: str | None,
+    tmp_path: Path,
+) -> None:
+    argv = ["--fil_in", BAM_SE, "--report_n_frg", str(tmp_path / "x.txt")]
+
+    if fil_out is not None:
+        argv += ["--fil_out", str(tmp_path / fil_out)]
+
+    with pytest.raises(SystemExit) as caught:
+        signal.main([*argv, "--siz_bin", "20"])
+
+    assert "'--siz_bin' is for bedGraph output or '--report_n_ovlp'" in str(
+        caught.value.code,
+    )
+
+
+def test_compute_signal_takes_siz_bin_for_overlap_report(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    status = signal.main(
+        [
+            "--fil_in",
+            BAM_SE,
+            "--report_n_ovlp",
+            str(tmp_path / "x.n_ovlp.txt"),
+            "--siz_bin",
+            "20",
+        ],
+    )
+
+    assert status == 0
+    assert "has no effect" not in capsys.readouterr().err
+
+
 SIGNAL_WARNED = (
     pytest.param("x.bed", ["--dp", "3"], "'--dp'", id="bed dp"),
     pytest.param(

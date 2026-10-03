@@ -2219,9 +2219,10 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
             "Append '.gz' for gzip compression, e.g., 'output.bdg.gz'.\n"
             "\n"
             "Note: requesting BED output causes the script to write processed "
-            "fragment coordinates in a BED-like format, and '--method', "
-            "'--scl_fct', and '--dp' are ignored. '--siz_bin' is ignored too, "
-            "unless '--report_n_ovlp' is given.\n"
+            "fragment coordinates in a BED-like format. Both BED output and a "
+            "run without '--fil_out' refuse '--method' and '--scl_fct'; "
+            "'--siz_bin' is also refused unless '--report_n_ovlp' is given; "
+            "'--dp', '--engine', and '--siz_win' are ignored with a warning.\n"
             "\n"
         ),
     )
@@ -2395,6 +2396,11 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
             "'N'. Other tracks do not, and 'N' is counted from the fragments "
             "rather than summed off any track.\n"
             "\n"
+            "Without '--fil_out', only the reports are written: '--method' "
+            "and '--scl_fct' are then refused, as is '--siz_bin' unless "
+            "'--report_n_ovlp' is also given, and '--dp', '--engine', and "
+            "'--siz_win' are ignored with a warning.\n"
+            "\n"
         ),
     )
     parser.add_argument(
@@ -2429,6 +2435,10 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
             "A '--method count' track's value column sums to 'L', since every "
             "touched bin holds a whole count. Other tracks do not, and 'L' is "
             "counted from the fragments rather than summed off any track.\n"
+            "\n"
+            "Without '--fil_out', only the reports are written: '--method' "
+            "and '--scl_fct' are then refused, and '--dp', '--engine', and "
+            "'--siz_win' are ignored with a warning.\n"
             "\n"
         ),
     )
@@ -2915,20 +2925,27 @@ def _check_applicability(
 
     Notes
     -----
-    BED output writes fragment coordinates, so the signal settings do nothing
-    there; '--siz_bin' still sizes the overlap report when one is asked for.
+    BED output writes fragment coordinates and a report-only run writes only
+    counts, so the signal settings do nothing in either; '--siz_bin' still
+    sizes the overlap report when that is asked for.
     """
 
     sup = args.supplied
 
-    if fmt_out == "bed":
-        now = "BED output"
+    if fmt_out in ("bed", None):
+        now = "BED output" if fmt_out == "bed" else "a report-only run"
         opts = {"method": "--method", "scl_fct": "--scl_fct"}
-
-        if args.report_n_frg is None and args.report_n_ovlp is None:
-            opts["siz_bin"] = "--siz_bin"
-
         check_opts_apply(sup, "refuse", opts, "bedGraph output", now)
+
+        if args.report_n_ovlp is None:
+            check_opts_apply(
+                sup,
+                "refuse",
+                {"siz_bin": "--siz_bin"},
+                "bedGraph output or '--report_n_ovlp'",
+                now,
+            )
+
         check_opts_apply(
             sup,
             "warn",

@@ -410,7 +410,8 @@ EOM
         --mode "${mode}"
     )
 
-    if [[ "${mode}" != "coord" ]]; then
+    # A report-only run builds no track, so its settings are not passed on.
+    if [[ "${mode}" != "coord" && "${report_only}" == "false" ]]; then
         cmd_bld+=( --method "${method}" )
     fi
 
@@ -433,14 +434,15 @@ EOM
     fi
 
     if [[ "${mode}" == "signal" ]]; then
-        cmd_bld+=(
-            --siz_bin "${siz_bin}"
-            --engine "${engine}"
-            --csv_scl_fct "${scl_fct}"
-            --csv_usr_frg "${usr_frg}"
-        )
+        cmd_bld+=( --siz_bin "${siz_bin}" )
 
-        if [[ "${engine}" == "window" ]]; then
+        if [[ "${report_only}" == "false" ]]; then
+            cmd_bld+=( --engine "${engine}" --csv_scl_fct "${scl_fct}" )
+        fi
+
+        cmd_bld+=( --csv_usr_frg "${usr_frg}" )
+
+        if [[ "${report_only}" == "false" && "${engine}" == "window" ]]; then
             cmd_bld+=( --siz_win "${siz_win}" )
         fi
 
@@ -501,7 +503,7 @@ EOM
         fi
     fi
 
-    if [[ "${mode}" != "coord" ]]; then
+    if [[ "${mode}" != "coord" && "${report_only}" == "false" ]]; then
         cmd_bld+=( --dp "${dp}" )
     fi
 
@@ -527,6 +529,7 @@ function init_arg_defs() {
     threads=4
     mode="signal"
     method=""
+    method_set=false
     csv_fil_in=""
     ref_fa=""
     chr_siz=""
@@ -623,6 +626,7 @@ function parse_args() {
                     return 1
                 }
                 method="${2,,}"
+                method_set=true
                 shift 2
                 ;;
 
@@ -1057,8 +1061,31 @@ function check_opts_mode() {
         warn --mode "${mode}" signal,ratio \
         --dp "${dp_set}"
 
-    # The 'chrom' engine has no windows to size.
-    if [[ "${mode}" == "signal" ]]; then
+    # A report-only run writes counts and no track, so the track's settings do
+    # nothing there.
+    if [[ "${report_only}" == "true" ]]; then
+        local opt
+        local -a arr_ref=() arr_ign=()
+
+        if [[ "${method_set}" == "true" ]]; then arr_ref+=( --method ); fi
+        if [[ -n "${csv_scl_fct}" ]]; then arr_ref+=( --csv_scl_fct ); fi
+        if [[ "${engine_set}" == "true" ]]; then arr_ign+=( --engine ); fi
+        if [[ "${siz_win_set}" == "true" ]]; then arr_ign+=( --siz_win ); fi
+        if [[ "${dp_set}" == "true" ]]; then arr_ign+=( --dp ); fi
+
+        if (( ${#arr_ref[@]} > 0 )); then
+            echo_err \
+                "'${arr_ref[0]}' is for track output; it has no effect with" \
+                "'--report_only'."
+            return 1
+        fi
+
+        for opt in "${arr_ign[@]}"; do
+            echo_warn \
+                "'${opt}' has no effect with '--report_only' and is ignored."
+        done
+    elif [[ "${mode}" == "signal" ]]; then
+        # The 'chrom' engine has no windows to size.
         check_opt_applies \
             warn --engine "${engine}" window \
             --siz_win "${siz_win_set}"
