@@ -10,7 +10,7 @@
 # output reviewed, edited, and approved by the author:
 # - OpenAI ChatGPT and Codex (GPT-4- and GPT-5-series models; most recent:
 #   GPT-5.6);
-# - Anthropic Claude Code (Opus 5).
+# - Anthropic Claude Code (Opus 5, Opus 5.5).
 #
 # Distributed under the MIT license.
 
@@ -55,7 +55,7 @@ Parameters
     Comma-separated list of input file paths. Comma-delimited serialized string of coordinate-sorted BAM or CRAM input files.
 
   -rf, --ref_fa : file
-    Reference FASTA file. Reference FASTA required when '--csv_fil_in' contains CRAM input or '--out_ext cram'.
+    Reference FASTA file. Reference FASTA required when '--csv_fil_in' contains CRAM input or '--out_ext cram'; otherwise, ignored with a warning.
 
   -do, --dir_out : dir
     Output directory. The directory to store species-filtered and -reheadered output files.
@@ -70,10 +70,14 @@ Parameters
     Retain mitochondrial chromosome.
 
   -tg, --tg : flag
-    Retain SP_II_TG chromosome (sp only).
+    Retain SP_II_TG chromosome.
+
+    Used with '--retain sp'.
 
   -mr, --mtr : flag
-    Retain SP_MTR chromosome (sp only).
+    Retain SP_MTR chromosome.
+
+    Used with '--retain sp'.
 
   -cc, --chk_chr : flag
     Check chromosomes in output alignment files.
@@ -116,7 +120,7 @@ Notes
   - '--out_ext' defaults to 'bam'.
   - CRAM input or CRAM output requires '--ref_fa'.
   - Flag '--mito' applies to either S. cerevisiae or S. pombe data.
-  - Flags '--tg' and '--mtr' apply only to S. pombe data; if supplied with '--retain sc', they are ignored with a warning.
+  - Flags '--tg' and '--mtr' apply only to S. pombe data; if supplied with '--retain sc', they are refused.
 
 Examples
 --------

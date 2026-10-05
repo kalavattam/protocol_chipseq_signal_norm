@@ -10,7 +10,7 @@
 # output reviewed, edited, and approved by the author:
 # - OpenAI ChatGPT and Codex (GPT-4- and GPT-5-series models; most recent:
 #   GPT-5.6);
-# - Anthropic Claude Code (Opus 5).
+# - Anthropic Claude Code (Opus 5, Opus 5.5).
 #
 # Distributed under the MIT license.
 
@@ -298,6 +298,7 @@ Notes
 
   - This helper is a thin wrapper around either 'filter_alignment_sc' or 'filter_alignment_sp'.
   - '--mito', '--tg', '--mtr', and '--chk_chr' are passed only when their values are 'true'.
+  - '--ref_fa' is passed only when 'fil_in' or 'fil_out' is CRAM.
 
 Examples
 --------
@@ -345,7 +346,11 @@ EOM
             --fil_out "${fil_out}"
     )
 
-    if [[ -n "${ref_fa}" ]]; then
+    # A mixed list can share one reference; an entry with no CRAM gets none.
+    if [[
+        -n "${ref_fa}"
+        && ( "${fil_in,,}" == *.cram || "${fil_out,,}" == *.cram )
+    ]]; then
         cmd_filter+=( --ref_fa "${ref_fa}" )
     fi
 
@@ -579,13 +584,9 @@ function validate_args() {
     validate_var     "threads"    "${threads}"         || return 1
     validate_var     "csv_fil_in" "${csv_fil_in}"      || return 1
     validate_var_dir "dir_out"    "${dir_out}"         || return 1
-    validate_var_dir "dir_eo"    "${dir_eo}"           || return 1
+    validate_var_dir "dir_eo"     "${dir_eo}"          || return 1
     validate_var     "nam_job"    "${nam_job}"         || return 1
     validate_var     "out_ext"    "${out_ext}"         || return 1
-
-    if [[ -n "${ref_fa}" ]]; then
-        validate_var_file "ref_fa" "${ref_fa}" || return 1
-    fi
 
     case "${out_ext}" in
         bam|cram) : ;;
@@ -602,6 +603,12 @@ function validate_args() {
             return 1
             ;;
     esac
+
+    check_opts_mode || return 1
+
+    if [[ -n "${ref_fa}" ]]; then
+        validate_var_file "ref_fa" "${ref_fa}" || return 1
+    fi
 }
 
 
@@ -628,24 +635,27 @@ function print_state_debug() {
 }
 
 
-# Normalize species-specific optional flags.
-function normalize_flags() {
-    if [[ "${retain}" == "sc" ]]; then
-        if [[ "${tg}" == "true" && "${mtr}" == "true" ]]; then
-            echo_warn \
-                "'--tg' and '--mtr' were supplied with '--retain sc' and" \
-                "will be ignored."
-            tg=false
-            mtr=false
-        elif [[ "${tg}" == "true" ]]; then
-            echo_warn \
-                "'--tg' was supplied with '--retain sc' and will be ignored."
-            tg=false
-        elif [[ "${mtr}" == "true" ]]; then
-            echo_warn \
-                "'--mtr' was supplied with '--retain sc' and will be ignored."
-            mtr=false
-        fi
+# Per 'HELP.PARAMETER.APPLICABILITY', refuse or warn about options that have no
+# effect with these settings.
+function check_opts_mode() {
+    # S. cerevisiae has no optional contigs to retain.
+    check_opt_applies \
+        refuse --retain "${retain}" sp \
+        --tg "${tg}" \
+        --mtr "${mtr}" \
+        || return 1
+
+    # Only CRAM input or output reads the reference, so it is not passed on
+    # otherwise.
+    if [[
+        -n "${ref_fa}"
+        && ",${csv_fil_in,,}," != *".cram,"*
+        && "${out_ext}" != "cram"
+    ]]; then
+        echo_warn \
+            "'--ref_fa' has no effect without CRAM input or output and is" \
+            "ignored."
+        ref_fa=""
     fi
 }
 
@@ -846,7 +856,6 @@ function main() {
     parse_args "$@"   || return 1
     canonicalize_args || return 1
     validate_args     || return 1
-    normalize_flags   || return 1
     print_state_debug || return 1
     setup_env         || return 1
     prepare_vecs      || return 1

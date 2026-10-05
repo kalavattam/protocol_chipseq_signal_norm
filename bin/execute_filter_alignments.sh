@@ -402,29 +402,34 @@ function parse_args() {
 }
 
 
-# Canonicalize argument aliases and species-specific optional flags.
+# Canonicalize argument aliases.
 function canonicalize_args() {
     out_ext="${out_ext,,}"
     retain="${retain,,}"
+}
 
-    if [[ "${retain}" == "sc" ]]; then
-        if [[ "${tg}" == "true" && "${mtr}" == "true" ]]; then
-            echo_warn \
-                "flags '--tg' and '--mtr' were supplied with '--retain sc'" \
-                "and will be ignored."
-            tg=false
-            mtr=false
-        elif [[ "${tg}" == "true" ]]; then
-            echo_warn \
-                "flag '--tg' was supplied with '--retain sc' and will be" \
-                "ignored."
-            tg=false
-        elif [[ "${mtr}" == "true" ]]; then
-            echo_warn \
-                "flag '--mtr' was supplied with '--retain sc' and will be" \
-                "ignored."
-            mtr=false
-        fi
+
+# Per 'HELP.PARAMETER.APPLICABILITY', refuse or warn about options that have no
+# effect with these settings.
+function check_opts_mode() {
+    # S. cerevisiae has no optional contigs to retain.
+    check_opt_applies \
+        refuse --retain "${retain}" sp \
+        --tg "${tg}" \
+        --mtr "${mtr}" \
+        || return 1
+
+    # Only CRAM input or output reads the reference, so it is not passed on
+    # otherwise.
+    if [[
+        -n "${ref_fa}"
+        && ",${csv_fil_in,,}," != *".cram,"*
+        && "${out_ext}" != "cram"
+    ]]; then
+        echo_warn \
+            "'--ref_fa' has no effect without CRAM input or output and is" \
+            "ignored."
+        ref_fa=""
     fi
 }
 
@@ -441,8 +446,12 @@ function validate_args() {
     check_int_pos "${threads}" "threads" || return 1
 
     validate_var "csv_fil_in" "${csv_fil_in}"    || return 1
-    validate_var_dir "csv_fil_in parent directory" \
-        "$(dirname "${csv_fil_in%%,*}")" 0 false || return 1
+    validate_var_dir \
+        "csv_fil_in parent directory" \
+        "$(dirname "${csv_fil_in%%,*}")" \
+        0 \
+        false \
+        || return 1
     check_str_delim "csv_fil_in" "${csv_fil_in}" || return 1
 
     validate_var_dir "dir_out" "${dir_out}" || return 1
@@ -472,6 +481,8 @@ function validate_args() {
     validate_var "nam_job" "${nam_job}"  || return 1
     validate_var "max_job" "${max_job}"  || return 1
     check_int_pos "${max_job}" "max_job" || return 1
+
+    check_opts_mode || return 1
 }
 
 

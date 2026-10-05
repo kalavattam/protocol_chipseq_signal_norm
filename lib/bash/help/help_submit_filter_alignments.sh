@@ -9,7 +9,7 @@
 # The following were used in design, development, and documentation, with all
 # output reviewed, edited, and approved by the author:
 # - OpenAI ChatGPT and Codex (GPT-5.5, GPT-5.6);
-# - Anthropic Claude Code (Opus 5).
+# - Anthropic Claude Code (Opus 5, Opus 5.5).
 #
 # Distributed under the MIT license.
 
@@ -68,7 +68,7 @@ Parameters
     Species chromosomes to retain: 'sc' or 'sp' (default: '${retain}').
 
   -rf, --ref_fa : file
-    Reference FASTA file. Reference FASTA required when any input file is CRAM or '--out_ext cram'.
+    Reference FASTA file. Reference FASTA required when any input file is CRAM or '--out_ext cram'; otherwise, ignored with a warning.
 
   -m, --mito : flag
     Retain mitochondrial chromosome.
@@ -76,8 +76,12 @@ Parameters
   -tg, --tg : flag
     Retain SP_II_TG chromosome.
 
+    Used with '--retain sp'.
+
   -mr, --mtr : flag
     Retain SP_MTR chromosome.
+
+    Used with '--retain sp'.
 
   -cc, --chk_chr : flag
     Check chromosomes in output alignment files.
@@ -107,7 +111,7 @@ Notes
   - This wrapper does not support '-' for stdin/stdout. Use the underlying Python scripts directly for streaming input/output workflows.
   - Use consistent file ordering in input and output lists.
   - To run in debug mode, set hardcoded variable 'debug=true'.
-  - Flags '--tg' and '--mtr' are only meaningful with '--retain sp'; if supplied with '--retain sc', they are ignored with a warning.
+  - Flags '--tg' and '--mtr' are only meaningful with '--retain sp'; if supplied with '--retain sc', they are refused.
 
 Examples
 --------

@@ -6,9 +6,11 @@
 # Copyright 2024-2026 by Kris Alavattam
 # Email: kalavattam@gmail.com
 #
-# OpenAI ChatGPT and Codex (GPT-4- and GPT-5-series models; most recent:
-# GPT-5.6) were used in design, development, and documentation, with all output
-# reviewed, edited, and approved by the author.
+# The following were used in design, development, and documentation, with all
+# output reviewed, edited, and approved by the author:
+# - OpenAI ChatGPT and Codex (GPT-4- and GPT-5-series models; most recent:
+#   GPT-5.6);
+# - Anthropic Claude Code (Opus 5.5).
 #
 # Distributed under the MIT license.
 
@@ -26,7 +28,7 @@
 # filter_alignment_sp
 
 
-#  Require Bash >= 4.4 before defining functions
+# Require Bash >= 4.4 before defining functions.
 if [[ -z "${BASH_VERSION:-}" ]]; then
     echo "error(shell):" \
         "this script must be sourced or run under Bash >= 4.4." >&2
@@ -50,7 +52,7 @@ elif ((
     fi
 fi
 
-#  Source required helper functions if needed
+# Source required helper functions if needed.
 {
     _dir_src_alignment="$(
         cd "$(dirname "${BASH_SOURCE[0]}")" > /dev/null 2>&1 && pwd
@@ -84,15 +86,14 @@ fi
 }
 
 
-#  Parse keyword arguments for alignment-filter helpers
-#+
-#+ - Assign parsed values back to caller variables named by the caller
-#+ - Support shared arguments for S. cerevisiae and S. pombe filtering
-#+ - Argument support can be extended for additional organisms
-#+ - Restrict organism-specific flags such as '--tg' and '--mtr' to the
-#+   appropriate caller
-#+ - Assumes caller-level help handling so this helper only parses arguments
-#+   after public entry-point validation has begun
+# Parse keyword arguments for alignment-filter helpers:
+# - Assign parsed values back to caller variables named by the caller.
+# - Support shared arguments for S. cerevisiae and S. pombe filtering.
+# - Argument support can be extended for additional organisms.
+# - Restrict organism-specific flags such as '--tg' and '--mtr' to the
+#   appropriate caller.
+# - Assumes caller-level help handling, so this helper only parses arguments
+#   after public entry-point validation has begun.
 function _parse_args_filter_alignment() {
     local func="${1:-}"
     local chr_nam="${2:-}"
@@ -209,14 +210,14 @@ EOM
     local show_help="${9:-}"
     shift 9
 
-    #  Consume the documented parser-wiring delimiter when supplied. Keep it
-    #+ optional for compatibility with older internal callers.
+    # Consume the documented parser-wiring delimiter when supplied. Optional
+    # for compatibility with older internal callers.
     if [[ "${1:-}" == "--" ]]; then
         shift 1
     fi
 
-    #  Parse arguments, assigning parsed values back to caller variables whose
-    #+ names are passed in
+    # Parse arguments, assigning parsed values back to caller variables whose
+    # names are passed in.
     while (( $# > 0 )); do
         case "${1}" in
             -t|--thr|--threads)
@@ -301,9 +302,9 @@ EOM
 }
 
 
-#  Validate common required arguments for alignment-filter helpers
-#+ - Check thread count, input-file existence, and output-directory existence
-#+ - Shared by organism-specific alignment-filter entry-point functions
+# Validate common required arguments for alignment-filter helpers:
+# - Check thread count, input-file existence, and output-directory existence.
+# - Shared by organism-specific alignment-filter entry-point functions.
 function _validate_args_filter_alignment() {
     local func="${1:-}"
     local threads="${2:-}"
@@ -339,7 +340,7 @@ Parameters
     Output file path. Output BAM or CRAM file.
 
   5  ref_fa : file
-    Reference FASTA file. Reference FASTA required for CRAM.
+    Reference FASTA file. Reference FASTA required for CRAM; otherwise, ignored with a warning.
 
 Returns
 -------
@@ -421,6 +422,10 @@ EOM
         fi
 
         validate_var_file "ref_fa" "${ref_fa}" || return 1
+    elif [[ -n "${ref_fa}" ]]; then
+        echo_warn_func "${func}" \
+            "'--ref_fa' has no effect without CRAM input or output and is" \
+            "ignored."
     fi
 
     outdir="$(dirname "${fil_out}")"
@@ -435,8 +440,8 @@ EOM
 }
 
 
-#  Print unique reference-sequence names present in an alignment file
-#+ - Used for optional post-filter chromosome checking
+# Print unique reference-sequence names present in an alignment file; used for
+# optional post-filter chromosome checking.
 function _check_chr_alignment() {
     local fil_out="${1:-}"
     local ref_fa="${2:-}"
@@ -511,8 +516,8 @@ EOM
 #MAYBE: move to a shared helper script later if reused elsewhere
 
 
-#  "Finalize" a filtered alignment file
-#+ - Index the output and optionally print retained chromosome names
+# "Finalize" a filtered alignment file: index the output and optionally print
+# retained chromosome names.
 function _finalize_alignment_filter() {
     local threads="${1:-}"
     local fil_out="${2:-}"
@@ -587,7 +592,7 @@ EOM
 }
 
 
-#  Sanitize one value for inclusion in a SAM @PG field
+# Sanitize one value for inclusion in a SAM @PG field.
 function _sanitize_pg_value() {
     local value="${1:-}"
 
@@ -599,7 +604,7 @@ function _sanitize_pg_value() {
 }
 
 
-#  Build the @PG CL field describing one filter_alignments operation
+# Build the @PG CL field describing one filter_alignments operation.
 function _build_filter_pg_cl() {
     local func="${1:-}"
     local retain="${2:-}"
@@ -627,7 +632,11 @@ function _build_filter_pg_cl() {
     cl+=" chk_chr=$(_sanitize_pg_value "${chk_chr}")"
     cl+=" out_ext=$(_sanitize_pg_value "${out_ext}")"
 
-    if [[ -n "${ref_fa}" ]]; then
+    # Record the reference only where CRAM used it.
+    if [[
+        -n "${ref_fa}"
+        && ( "${fil_in,,}" == *.cram || "${fil_out,,}" == *.cram )
+    ]]; then
         cl+=" ref_fa=$(_sanitize_pg_value "${ref_fa}")"
     fi
 
@@ -635,7 +644,7 @@ function _build_filter_pg_cl() {
 }
 
 
-#  Filter SAM header lines and append a valid filter_alignments @PG record
+# Filter SAM header lines and append a valid filter_alignments @PG record.
 function _filter_sam_header_chr() {
     local func="${1:-}"
     local chrs="${2:-}"
@@ -738,11 +747,11 @@ function _filter_sam_header_chr() {
 }
 
 
-#  Filter a SAM file by retained reference-sequence names
-#+ - Keep non-'@SQ' header lines, retain only matching '@SQ' lines, and keep
-#+   only alignments whose reference sequence is in the supplied chromosome set
-#+ - Used when chromosome filtering is done by rewriting SAM header/body
-#+   content rather than by alignment filtering plus reheadering
+# Filter a SAM file by retained reference-sequence names:
+# - Keep non-'@SQ' header lines, retain only matching '@SQ' lines, and keep
+#   only alignments whose reference sequence is in the supplied chromosome set.
+# - Used when chromosome filtering is done by rewriting SAM header/body content
+#   rather than by alignment filtering plus reheadering.
 function _filter_sam_chr() {
     local func="${1:-}"
     local fil_in="${2:-}"
@@ -945,8 +954,8 @@ EOM
 #+     performance becomes limiting for larger genomes
 
 
-#  Remove temporary files used during alignment filtering
-#+ - Best-effort cleanup helper for explicit call sites
+# Remove temporary files used during alignment filtering: best-effort cleanup
+# helper for explicit call sites.
 function _cleanup_filter_alignment_tmp() {
     local pth_1="${1:-}"
     local pth_2="${2:-}"
@@ -956,9 +965,9 @@ function _cleanup_filter_alignment_tmp() {
 }
 
 
-#  Filter and reheader a BAM or CRAM file for S. cerevisiae chromosomes
-#+ - Public entry-point function for main-organism yeast alignment filtering
-#+ - Uses direct filtering followed by reheadering
+# Filter and reheader a BAM or CRAM file for S. cerevisiae chromosomes:
+# - Public entry-point function for main-organism yeast alignment filtering.
+# - Uses direct filtering followed by reheadering.
 function filter_alignment_sc() {
     local threads=1
     local fil_in=""
@@ -996,7 +1005,7 @@ Parameters
     Output file path. Filtered BAM or CRAM fil_out.
 
   -rf, --ref_fa : file
-    Reference FASTA file. Reference FASTA required when input or output is CRAM.
+    Reference FASTA file. Reference FASTA required when input or output is CRAM; otherwise, ignored with a warning.
 
   -m, --mit, --mito : flag
     Retain mitochondrial chromosome.
@@ -1208,10 +1217,10 @@ EOM
 }
 
 
-#  Filter and reheader a BAM or CRAM file for S. pombe chromosomes
-#+ - Public entry-point function for spike-in-organism yeast alignment filtering
-#+ - Uses SAM-level rewriting because retained references may include optional
-#+   contigs that are easier to handle through header/body filtering
+# Filter and reheader a BAM or CRAM file for S. pombe chromosomes:
+# - Public entry-point function for spike-in organism alignment filtering.
+# - Uses SAM-level rewriting because retained references may include optional
+#   contigs that are easier to handle through header/body filtering.
 function filter_alignment_sp() {
     local threads=1
     local fil_in=""
@@ -1249,7 +1258,7 @@ Parameters
     Output file path. Filtered BAM or CRAM fil_out.
 
   -rf, --ref_fa : file
-    Reference FASTA file. Reference FASTA required when input or output is CRAM.
+    Reference FASTA file. Reference FASTA required when input or output is CRAM; otherwise, ignored with a warning.
 
   -m, --mit, --mito : flag
     Retain mitochondrial chromosome. Uses chromosome 'SP_Mito'.
@@ -1417,15 +1426,16 @@ EOM
         fi
     fi
 
-    #  Remove intermediates immediately on success
+    # Remove intermediates immediately on success.
     _cleanup_filter_alignment_tmp "${pth_in}" "${pth_out}"
 
-    _finalize_alignment_filter "${threads}" "${fil_out}" "${chk_chr}" "${ref_fa}" \
+    _finalize_alignment_filter \
+        "${threads}" "${fil_out}" "${chk_chr}" "${ref_fa}" \
         || return 1
 }
 
 
-#  Print an error message when function script is executed directly
+# Print an error message when function script is executed directly.
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
     err_source_only "${BASH_SOURCE[0]}"
 fi
