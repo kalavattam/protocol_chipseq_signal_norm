@@ -21,7 +21,6 @@
 # _finalize_alignment_filter
 # _sanitize_pg_value
 # _build_filter_pg_cl
-# _filter_sam_header_chr
 # _filter_sam_chr
 # _cleanup_filter_alignment_tmp
 # filter_alignment_sc
@@ -644,114 +643,11 @@ function _build_filter_pg_cl() {
 }
 
 
-# Filter SAM header lines and append a valid filter_alignments @PG record.
-function _filter_sam_header_chr() {
-    local func="${1:-}"
-    local chrs="${2:-}"
-    local pg_id="${3:-}"
-    local pg_pn="${4:-filter_alignments}"
-    local pg_cl="${5:-}"
-
-    if [[ -z "${func}" ]]; then
-        echo_err_func "${FUNCNAME[0]}" \
-            "positional argument 1, 'func', is missing."
-        return 1
-    elif [[ -z "${chrs}" ]]; then
-        echo_err_func "${FUNCNAME[0]}" \
-            "positional argument 2, 'chrs', is missing."
-        return 1
-    fi
-
-    awk \
-        -v chrs="${chrs}" \
-        -v pg_id="${pg_id}" \
-        -v pg_pn="${pg_pn}" \
-        -v pg_cl="${pg_cl}" \
-        '
-            BEGIN {
-                split(chrs, arr_chrs, " ")
-                for (i in arr_chrs) {
-                    chrom_map[arr_chrs[i]] = 1
-                }
-            }
-
-            function keep_sq_line(line, a, b, sn) {
-                if (line !~ /SN:/) {
-                    return 0
-                }
-
-                split(line, a, /SN:/)
-                split(a[2], b, /[ \t]/)
-                sn = b[1]
-
-                return (sn in chrom_map)
-            }
-
-            function pg_tag_value(line, tag, fields, i, n) {
-                n = split(line, fields, "\t")
-                for (i = 1; i <= n; i++) {
-                    if (fields[i] ~ "^" tag ":") {
-                        return substr(fields[i], length(tag) + 2)
-                    }
-                }
-
-                return ""
-            }
-
-            function emit_pg(    id, i) {
-                if (pg_id == "" || pg_done) {
-                    return
-                }
-
-                id = pg_id
-                i = 1
-                while (id in pg_ids) {
-                    id = pg_id "." i
-                    i++
-                }
-
-                print "@PG\tID:" id "\tPN:" pg_pn "\tCL:" pg_cl
-                pg_done = 1
-            }
-
-            /^@HD/ {
-                print
-                next
-            }
-
-            /^@SQ/ {
-                if (keep_sq_line($0)) {
-                    print
-                }
-                next
-            }
-
-            /^@PG/ {
-                id = pg_tag_value($0, "ID")
-                if (id != "") {
-                    pg_ids[id] = 1
-                }
-                print
-                next
-            }
-
-            /^@/ {
-                print
-                next
-            }
-
-            END {
-                emit_pg()
-            }
-        '
-}
-
-
 # Filter a SAM file by retained reference-sequence names:
 # - Keep non-'@SQ' header lines, retain only matching '@SQ' lines, and keep
 #   only alignments whose reference sequence is in the supplied chromosome set.
-# - Used when chromosome filtering is done by rewriting SAM header/body content
-#   rather than by alignment filtering plus reheadering.
+# - Shared by both species' filters, since re-encoding SAM text renumbers
+#   references by name.
 function _filter_sam_chr() {
     local func="${1:-}"
     local fil_in="${2:-}"
@@ -859,7 +755,7 @@ EOM
 
     validate_var_file "fil_in" "${fil_in}" || return 1
 
-    #TODO: explicitly use 'gawk'?
+    # TODO: explicitly use 'gawk'?
     if ! \
         awk \
             -v chrs="${chrs}" \
@@ -950,8 +846,8 @@ EOM
         return 1
     fi
 }
-#TODO: benchmark GNU Awk-based filtering approach against alternatives if
-#+     performance becomes limiting for larger genomes
+# TODO: benchmark GNU Awk-based filtering approach against alternatives if
+# performance becomes limiting for larger genomes.
 
 
 # Remove temporary files used during alignment filtering: best-effort cleanup
@@ -967,7 +863,8 @@ function _cleanup_filter_alignment_tmp() {
 
 # Filter and reheader a BAM or CRAM file for S. cerevisiae chromosomes:
 # - Public entry-point function for main-organism yeast alignment filtering.
-# - Uses direct filtering followed by reheadering.
+# - Uses SAM-level rewriting, as for S. pombe, so reads keep their chromosome
+#   whatever the reference order.
 function filter_alignment_sc() {
     local threads=1
     local fil_in=""
@@ -978,7 +875,7 @@ function filter_alignment_sc() {
     local chk_chr=false
     local ref_fa=""
     local chrs
-    local outdir outbam hdr_rh bam_filter bam_rh_init bam_rh_sort pg_cl
+    local outdir outbase pth_in pth_out pg_cl
     local -a arr_ref_arg=()
     local show_help
 
@@ -1024,8 +921,6 @@ Notes
     - basename
     - bash >= 4.4
     - dirname
-    - Input BAM or CRAM index
-    - mv (when writing BAM)
     - Reference FASTA and required index (when processing CRAM)
     - rm
     - samtools
@@ -1099,81 +994,41 @@ EOM
             "${ref_fa}"
     )"
 
+    # Rewriting through SAM text lets samtools renumber references by name;
+    # 'samtools reheader' does not, so it would relabel reads whenever a
+    # dropped reference precedes a kept one.
     outdir="$(dirname "${fil_out}")"
-    outbam="$(basename "${fil_out}")"
-    if [[ "${fil_out,,}" == *.cram ]]; then
-        hdr_rh="${outdir}/tmp.${outbam%.cram}.header.sam"
-        bam_filter="${outdir}/tmp.${outbam%.cram}.filter.bam"
-        bam_rh_init="${outdir}/tmp.${outbam%.cram}.rehead.bam"
-        bam_rh_sort="${outdir}/tmp.${outbam%.cram}.sort.bam"
-    else
-        hdr_rh="${outdir}/tmp.${outbam%.bam}.header.sam"
-        bam_filter="${fil_out}"
-        bam_rh_init="${outdir}/rehead.${outbam}"
-        bam_rh_sort="${outdir}/txt_rh_sort.${outbam}"
-    fi
+    outbase="$(basename "${fil_out}")"
+    outbase="${outbase%.bam}"
+    outbase="${outbase%.cram}"
+    pth_in="${outdir}/tmp.${outbase}.in.sam"
+    pth_out="${outdir}/tmp.${outbase}.out.sam"
 
-    # shellcheck disable=SC2086
     if ! \
         samtools view \
             -@ "${threads}" \
-            -b \
-            -o "${bam_filter}" \
+            -h \
+            -o "${pth_in}" \
             "${arr_ref_arg[@]}" \
-            "${fil_in}" \
-            ${chrs}
+            "${fil_in}"
     then
         echo_err_func "${FUNCNAME[0]}" \
-            "failed to filter '${fil_in}'."
+            "failed to generate '${pth_in}'."
+        _cleanup_filter_alignment_tmp "${pth_in}" "${pth_out}"
         return 1
     fi
 
     if ! \
-        samtools view -H "${bam_filter}" \
-            | _filter_sam_header_chr \
-                "${FUNCNAME[0]}" \
-                "${chrs}" \
-                "${FUNCNAME[0]}" \
-                "filter_alignments" \
-                "${pg_cl}" \
-                > "${hdr_rh}"
+        _filter_sam_chr \
+            "${FUNCNAME[0]}" \
+            "${pth_in}" \
+            "${pth_out}" \
+            "${chrs}" \
+            "${FUNCNAME[0]}" \
+            "filter_alignments" \
+            "${pg_cl}"
     then
-        echo_err_func "${FUNCNAME[0]}" \
-            "failed to build filtered header for '${bam_filter}'."
-        if [[ "${fil_out,,}" == *.cram ]]; then
-            rm -f "${hdr_rh}" "${bam_filter}" "${bam_rh_init}" "${bam_rh_sort}"
-        else
-            rm -f "${hdr_rh}" "${bam_rh_init}" "${bam_rh_sort}"
-        fi
-        return 1
-    fi
-
-    if ! \
-        samtools reheader "${hdr_rh}" "${bam_filter}" > "${bam_rh_init}"
-    then
-        echo_err_func "${FUNCNAME[0]}" \
-            "failed to reheader '${bam_filter}'."
-        if [[ "${fil_out,,}" == *.cram ]]; then
-            rm -f "${hdr_rh}" "${bam_filter}" "${bam_rh_init}" "${bam_rh_sort}"
-        else
-            rm -f "${hdr_rh}" "${bam_rh_init}" "${bam_rh_sort}"
-        fi
-        return 1
-    fi
-
-    if ! \
-        samtools sort \
-            -@ "${threads}" \
-            -o "${bam_rh_sort}" \
-            "${bam_rh_init}"
-    then
-        echo_err_func "${FUNCNAME[0]}" \
-            "failed to sort reheadered BAM intermediate."
-        if [[ "${fil_out,,}" == *.cram ]]; then
-            rm -f "${hdr_rh}" "${bam_filter}" "${bam_rh_init}" "${bam_rh_sort}"
-        else
-            rm -f "${hdr_rh}" "${bam_rh_init}" "${bam_rh_sort}"
-        fi
+        _cleanup_filter_alignment_tmp "${pth_in}" "${pth_out}"
         return 1
     fi
 
@@ -1184,35 +1039,29 @@ EOM
                 -C \
                 -T "${ref_fa}" \
                 -o "${fil_out}" \
-                "${bam_rh_sort}"
+                "${pth_out}"
         then
             echo_err_func "${FUNCNAME[0]}" \
-                "failed to convert filtered BAM intermediate to CRAM."
-            rm -f "${hdr_rh}" "${bam_filter}" "${bam_rh_init}" "${bam_rh_sort}"
+                "failed to generate '${fil_out}'."
+            _cleanup_filter_alignment_tmp "${pth_in}" "${pth_out}"
             return 1
         fi
     else
-        if ! mv -f "${bam_rh_sort}" "${fil_out}"; then
+        if ! \
+            samtools view -@ "${threads}" -b -o "${fil_out}" "${pth_out}"
+        then
             echo_err_func "${FUNCNAME[0]}" \
-                "failed to rename sorted reheadered BAM file."
-            rm -f "${hdr_rh}" "${bam_rh_init}" "${bam_rh_sort}"
+                "failed to generate '${fil_out}'."
+            _cleanup_filter_alignment_tmp "${pth_in}" "${pth_out}"
             return 1
         fi
     fi
 
-    if [[ "${fil_out,,}" == *.cram ]]; then
-        if ! rm -f "${hdr_rh}" "${bam_filter}" "${bam_rh_init}" "${bam_rh_sort}"; then
-            echo_err_func "${FUNCNAME[0]}" \
-                "failed to delete filter BAM intermediates."
-            return 1
-        fi
-    elif ! rm -f "${hdr_rh}" "${bam_rh_init}"; then
-        echo_err_func "${FUNCNAME[0]}" \
-            "failed to delete reheader BAM intermediate."
-        return 1
-    fi
+    # Remove intermediates immediately on success.
+    _cleanup_filter_alignment_tmp "${pth_in}" "${pth_out}"
 
-    _finalize_alignment_filter "${threads}" "${fil_out}" "${chk_chr}" "${ref_fa}" \
+    _finalize_alignment_filter \
+        "${threads}" "${fil_out}" "${chk_chr}" "${ref_fa}" \
         || return 1
 }
 

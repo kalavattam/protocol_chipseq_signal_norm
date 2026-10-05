@@ -288,8 +288,6 @@ Notes
     - basename
     - bash >= 4.4
     - dirname
-    - Input BAM or CRAM index (when filtering S. cerevisiae alignments)
-    - mv (when writing S. cerevisiae BAM output)
     - Reference FASTA and required index (when processing CRAM)
     - rm
     - samtools
