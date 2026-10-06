@@ -198,6 +198,7 @@ Notes
 
   - For '--index' when using Bowtie 2, the path should end with the index stem: 'path/to/dir/stem'; when using 'bwa' or 'bwa-mem2', the path should be the indexed reference FASTA path (for example, '.fa').
   - '--bwa_alg' is used only when '--aligner bwa'. It is refused with '--aligner bowtie2'; with '--aligner bwa-mem2', which always runs 'bwa-mem2 mem', 'mem' is ignored with a warning and 'aln' is refused.
+  - Unaligned reads are excluded from the output; with paired-end data, so are the mates of unaligned reads.
   - For '--qname', the retained queryname-sorted output will have the same path and stem assigned to '--fil_out', except '.qnam' will be inserted before the final extension (for example, '.qnam.bam' or '.qnam.cram'). For CRAM output, the retained queryname-sorted BAM work file is converted in Step #5.
   - '--ref_fa' is required when '--fil_out' ends in '.cram', since CRAM writing requires a reference FASTA.
   - Because Step #1 currently builds aligner and Samtools argument strings, whitespace is not supported in '--index', '--ref_fa', '--fq_1', '--fq_2', or '--fil_out'.
@@ -569,13 +570,16 @@ EOM
 
 
     # Step 1 ------------------------------------------------------------------
-    # Based on parsed arguments, construct the call to Samtools.
+    # Based on parsed arguments, construct the call to Samtools. BWA and
+    # BWA-MEM2 write unaligned reads, so drop them, and with paired-end data
+    # drop the mates of unaligned reads too, keeping pairs whole.
     args_sam="-@ ${threads}"
-    args_sam+="$(
-        if [[ "${req_flg}" == "true" ]] && [[ -n "${fq_2}" ]]; then
-            echo " -f 2"
-        fi
-    )"
+    if [[ -n "${fq_2}" ]]; then
+        args_sam+=" -F 12"
+        if [[ "${req_flg}" == "true" ]]; then args_sam+=" -f 2"; fi
+    else
+        args_sam+=" -F 4"
+    fi
     args_sam+=" -q ${mapq} -o ${fil_wrk}"
 
     # Based on parsed arguments, construct and run the call to Bowtie 2, BWA,
@@ -629,8 +633,8 @@ EOM
         args_bwa="-t ${threads} ${index}"
 
         if [[ "${bwa_alg}" == "mem" ]]; then
-            # Run BWA-MEM with paired- or single-end sequenced reads, excluding
-            # unaligned reads from output.
+            # Run BWA-MEM with paired- or single-end sequenced reads; unaligned
+            # reads are excluded via the Samtools call.
             # shellcheck disable=SC2086,SC2046
             if [[ -n "${fq_2}" ]]; then
                 if ! (
@@ -736,8 +740,8 @@ EOM
         # Assign BWA-MEM2 arguments.
         args_bwa="-t ${threads} ${index}"
 
-        # Run BWA-MEM2 with paired- or single-end sequenced reads, excluding
-        # unaligned reads from output.
+        # Run BWA-MEM2 with paired- or single-end sequenced reads; unaligned
+        # reads are excluded via the Samtools call.
         # shellcheck disable=SC2086,SC2046
         if [[ -n "${fq_2}" ]]; then
             if ! (
