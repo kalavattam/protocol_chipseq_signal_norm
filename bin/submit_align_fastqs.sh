@@ -10,7 +10,7 @@
 # output reviewed, edited, and approved by the author:
 # - OpenAI ChatGPT and Codex (GPT-4- and GPT-5-series models; most recent:
 #   GPT-5.6);
-# - Anthropic Claude Code (Opus 5).
+# - Anthropic Claude Code (Opus 5, Opus 5.5).
 #
 # Distributed under the MIT license.
 
@@ -269,10 +269,10 @@ Parameters
     BWA algorithm when '--aligner bwa': 'mem' or 'aln'.
 
   05  mapq : int
-    MAPQ threshold for filtering alignment output files. If 'mapq > 0', '--mapq' is passed to 'align_fastqs'; otherwise, it is omitted.
+    MAPQ threshold for filtering alignment output files, always passed to 'align_fastqs'; 0 disables MAPQ-based filtering.
 
   06  req_flg : flag
-    Require SAM flag bit 2 for properly paired alignments. If 'true', pass '--req_flg'.
+    Require SAM flag bit 2 for properly paired alignments.
 
   07  index : path
     Path to the aligner index/reference.
@@ -287,10 +287,10 @@ Parameters
     Second FASTQ input file, or 'NA' for single-end data.
 
   11  fil_out : file
-    Output file path. Output alignment file; must end in '.bam' or '.cram'.
+    Output file path; must end in '.bam' or '.cram'.
 
   12  qname : flag
-    Retain queryname-sorted intermediate alignment files. If 'true', pass '--qname'.
+    Retain queryname-sorted intermediate alignment files.
 
   13  dir_eo : dir
     Directory for stderr and stdout log files.
@@ -319,8 +319,8 @@ Notes
 
   - This helper is a thin wrapper around 'align_fastqs'.
   - '--fq_2' is passed only when 'fq_2 != NA'.
-  - '--mapq' is passed only when 'mapq > 0'.
-  - '--req_flg' and '--qname' are passed only when their values are 'true'.
+  - '--req_flg' is passed only when its value is 'true' and 'fq_2' is not 'NA'.
+  - '--qname' is passed only when its value is 'true'.
   - '--ref_fa' is passed only when 'fil_out' ends in '.cram'.
 
 Examples
@@ -382,11 +382,10 @@ EOM
         bwa)     cmd_aln+=( --bwa_alg "${bwa_alg}" ) ;;
     esac
 
-    if [[ "${mapq}" -gt 0 ]]; then
-        cmd_aln+=( --mapq "${mapq}" )
-    fi
+    cmd_aln+=( --mapq "${mapq}" )
 
-    if [[ "${req_flg}" == "true" ]]; then
+    # A mixed list can require pairs; a single-end entry gets no '--req_flg'.
+    if [[ "${req_flg}" == "true" && "${fq_2}" != "NA" ]]; then
         cmd_aln+=( --req_flg )
     fi
 
@@ -482,10 +481,12 @@ function init_arg_defs() {
     threads=4
     aligner="bowtie2"
     bt2_mode="end-to-end"
+    bt2_mode_set=false
     bwa_alg="mem"
+    bwa_alg_set=false
     ref_fa=""
     out_ext="bam"
-    mapq=0
+    mapq=1
     req_flg=false
     index=""
     csv_fil_in=""
@@ -559,6 +560,7 @@ function parse_args() {
                     return 1
                 }
                 bt2_mode="$(printf '%s\n' "${2}" | tr '[:upper:]' '[:lower:]')"
+                bt2_mode_set=true
                 shift 2
                 ;;
 
@@ -569,6 +571,7 @@ function parse_args() {
                     return 1
                 }
                 bwa_alg="$(printf '%s\n' "${2}" | tr '[:upper:]' '[:lower:]')"
+                bwa_alg_set=true
                 shift 2
                 ;;
 
@@ -723,30 +726,6 @@ function validate_args() {
             ;;
     esac
 
-    case "${bt2_mode}" in
-        local|global|end-to-end) : ;;
-        *)
-            echo_err \
-                "'--bt2_mode' must be 'local', 'global', or 'end-to-end':" \
-                "'${bt2_mode}'."
-            return 1
-            ;;
-    esac
-
-    case "${bwa_alg}" in
-        mem|aln) : ;;
-        *)
-            echo_err \
-                "'--bwa_alg' must be 'mem' or 'aln': '${bwa_alg}'."
-            return 1
-            ;;
-    esac
-
-    if [[ "${aligner}" == "bwa-mem2" && "${bwa_alg}" != "mem" ]]; then
-        echo_err "'--aligner bwa-mem2' requires '--bwa_alg mem'."
-        return 1
-    fi
-
     case "${out_ext}" in
         bam|cram) : ;;
         *)
@@ -756,8 +735,77 @@ function validate_args() {
             ;;
     esac
 
+    check_opts_mode || return 1
+
+    # Each aligner's own option is checked only when it is used.
+    if [[ "${aligner}" == "bowtie2" ]]; then
+        case "${bt2_mode}" in
+            local|global|end-to-end) : ;;
+            *)
+                echo_err \
+                    "'--bt2_mode' must be 'local', 'global', or" \
+                    "'end-to-end': '${bt2_mode}'."
+                return 1
+                ;;
+        esac
+    elif [[ "${aligner}" == "bwa" ]]; then
+        case "${bwa_alg}" in
+            mem|aln) : ;;
+            *)
+                echo_err \
+                    "'--bwa_alg' must be 'mem' or 'aln': '${bwa_alg}'."
+                return 1
+                ;;
+        esac
+    fi
+
     if [[ "${out_ext}" == "cram" ]]; then
         validate_var_file "ref_fa" "${ref_fa}" || return 1
+    fi
+}
+
+
+# Per 'HELP.PARAMETER.APPLICABILITY', refuse or warn about options that have no
+# effect with these settings.
+function check_opts_mode() {
+    # Each aligner takes only its own algorithm option.
+    check_opt_applies \
+        refuse --aligner "${aligner}" bowtie2 \
+        --bt2_mode "${bt2_mode_set}" \
+        || return 1
+
+    # 'bwa-mem2' has only 'mem', so asking for it changes nothing; anything
+    # else is refused.
+    if [[ "${aligner}" == "bwa-mem2" && "${bwa_alg}" == "mem" ]]; then
+        check_opt_applies \
+            warn \
+            --aligner "${aligner}" \
+            bwa \
+            --bwa_alg "${bwa_alg_set}"
+    else
+        check_opt_applies \
+            refuse \
+            --aligner "${aligner}" \
+            bwa \
+            --bwa_alg "${bwa_alg_set}" \
+            || return 1
+    fi
+
+    # Only CRAM output reads the reference, so it is not passed on otherwise.
+    check_opt_applies \
+        warn \
+        --out_ext "${out_ext}" \
+        cram \
+        --ref_fa "${ref_fa}"
+
+    if [[ "${out_ext}" != "cram" ]]; then ref_fa=""; fi
+
+    # A paired-end entry holds two comma-separated files; with none, there are
+    # no pairs to require.
+    if [[ "${req_flg}" == "true" && "${csv_fil_in}" != *,* ]]; then
+        echo_warn \
+            "'--req_flg' has no effect with single-end input and is ignored."
+        req_flg=false
     fi
 }
 

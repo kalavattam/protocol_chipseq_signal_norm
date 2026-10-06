@@ -6,14 +6,16 @@
 # Copyright 2024-2026 by Kris Alavattam
 # Email: kalavattam@gmail.com
 #
-# OpenAI ChatGPT and Codex (GPT-4- and GPT-5-series models; most recent:
-# GPT-5.6) were used in design, development, and documentation, with all output
-# reviewed, edited, and approved by the author.
+# The following were used in design, development, and documentation, with all
+# output reviewed, edited, and approved by the author:
+# - OpenAI ChatGPT and Codex (GPT-4- and GPT-5-series models; most recent:
+#   GPT-5.6);
+# - Anthropic Claude Code (Opus 5.5).
 #
 # Distributed under the MIT license.
 
 
-#  Require Bash >= 4.4 before doing any work
+# Require Bash >= 4.4 before doing any work.
 if [[ -z "${BASH_VERSION:-}" ]]; then
     echo "error(shell):" \
         "this script must be run under Bash >= 4.4." >&2
@@ -27,14 +29,14 @@ elif ((
     exit 1
 fi
 
-#  Run in safe mode, exiting on errors, unset variables, and pipe failures
+# Run in safe mode, exiting on errors, unset variables, and pipe failures.
 set -euo pipefail
 
-#  Set the path to the 'scripts' directory
+# Set the path to the 'scripts' directory.
 dir_scr="$(cd "$(dirname "${BASH_SOURCE[0]}")" > /dev/null 2>&1 && pwd)"
 
 
-#  Source shared helpers
+# Source shared helpers.
 function source_helpers_execute() {
     local fnc_src
 
@@ -161,10 +163,10 @@ EOM
     fi
 
     if [[ "${idx}" == "UNSET" ]]; then
-        #  Use the full serialized input list for Slurm or whole-wrapper calls.
+        # Use the full serialized input list for Slurm or whole-wrapper calls.
         fil_in_i="${csv_fil_in}"
     else
-        #  Use one parsed FASTQ entry for per-sample local/parallel calls.
+        # Use one parsed FASTQ entry for per-sample local/parallel calls.
         check_int_nonneg "${idx}" "idx" || return 1
         fil_in_i="${arr_fil_in[idx]}"
     fi
@@ -205,7 +207,7 @@ EOM
 }
 
 
-#  Initialize hardcoded argument variables
+# Initialize hardcoded argument variables.
 function init_args_hardcoded() {
     env_nam="env_protocol"
     scr_sub="${dir_scr}/submit_align_fastqs.sh"
@@ -213,14 +215,16 @@ function init_args_hardcoded() {
 }
 
 
-#  Initialize argument variables, assigning default values where applicable
+# Initialize argument variables, assigning default values where applicable.
 function init_arg_defs() {
     verbose=false
     dry_run=false
     threads=1
     aligner="bowtie2"
-    bt2_mode="global"
+    bt2_mode="end-to-end"
+    bt2_mode_set=false
     bwa_alg="mem"
+    bwa_alg_set=false
     ref_fa=""
     out_ext="bam"
     mapq=1
@@ -242,14 +246,14 @@ function init_arg_defs() {
 }
 
 
-#  Initialize hardcoded arguments and user-facing argument defaults
+# Initialize hardcoded arguments and user-facing argument defaults.
 function init_defs() {
     init_args_hardcoded
     init_arg_defs
 }
 
 
-#  Parse command-line arguments
+# Parse command-line arguments.
 function parse_args() {
     while [[ "$#" -gt 0 ]]; do
         case "${1}" in
@@ -300,6 +304,7 @@ function parse_args() {
                     return 1
                 }
                 bt2_mode="${2,,}"
+                bt2_mode_set=true
                 shift 2
                 ;;
 
@@ -310,6 +315,7 @@ function parse_args() {
                     return 1
                 }
                 bwa_alg="${2,,}"
+                bwa_alg_set=true
                 shift 2
                 ;;
 
@@ -459,7 +465,54 @@ function parse_args() {
 }
 
 
-#  Validate scalar arguments and assign derived scalar defaults
+# Per 'HELP.PARAMETER.APPLICABILITY', refuse or warn about options that have no
+# effect with these settings.
+function check_opts_mode() {
+    # Each aligner takes only its own algorithm option.
+    check_opt_applies \
+        refuse \
+        --aligner "${aligner}" \
+        bowtie2 \
+        --bt2_mode "${bt2_mode_set}" \
+        || return 1
+
+    # 'bwa-mem2' has only 'mem', so asking for it changes nothing; anything
+    # else is refused.
+    if [[ "${aligner}" == "bwa-mem2" && "${bwa_alg}" == "mem" ]]; then
+        check_opt_applies \
+            warn \
+            --aligner "${aligner}" \
+            bwa \
+            --bwa_alg "${bwa_alg_set}"
+    else
+        check_opt_applies \
+            refuse \
+            --aligner "${aligner}" \
+            bwa \
+            --bwa_alg "${bwa_alg_set}" \
+            || return 1
+    fi
+
+    # Only CRAM output reads the reference, so it is not passed on otherwise.
+    check_opt_applies \
+        warn \
+        --out_ext "${out_ext}" \
+        cram \
+        --ref_fa "${ref_fa}"
+
+    if [[ "${out_ext}" != "cram" ]]; then ref_fa=""; fi
+
+    # A paired-end entry holds two comma-separated files; with none, there are
+    # no pairs to require.
+    if [[ "${req_flg}" == "true" && "${csv_fil_in}" != *,* ]]; then
+        echo_warn \
+            "'--req_flg' has no effect with single-end input and is ignored."
+        req_flg=false
+    fi
+}
+
+
+# Validate scalar arguments and assign derived scalar defaults.
 function validate_args() {
     validate_var "env_nam" "${env_nam}" || return 1
     check_env_installed "${env_nam}" || return 1
@@ -472,14 +525,34 @@ function validate_args() {
     check_int_pos "${threads}" "threads" || return 1
 
     case "${aligner}" in
+        bowtie2|bwa|bwa-mem2) : ;;
+        *)
+            echo_err \
+                "'--aligner' must be 'bowtie2', 'bwa', or 'bwa-mem2':" \
+                "'${aligner}'."
+            return 1
+            ;;
+    esac
+
+    case "${out_ext}" in
+        bam|cram) : ;;
+        *)
+            echo_err \
+                "'--out_ext' must be 'bam' or 'cram': '${out_ext}'."
+            return 1
+            ;;
+    esac
+
+    check_opts_mode || return 1
+
+    case "${aligner}" in
         bowtie2)
             case "${bt2_mode}" in
                 local|global|end-to-end) : ;;
                 *)
                     echo_err \
-                        "selection associated with '--bt2_mode' is not valid:" \
-                        "'${bt2_mode}'. Selection must be 'local', 'global'," \
-                        "or 'end-to-end'."
+                        "'--bt2_mode' must be 'local', 'global', or" \
+                        "'end-to-end': '${bt2_mode}'."
                     return 1
                     ;;
             esac
@@ -490,41 +563,15 @@ function validate_args() {
                 mem|aln) : ;;
                 *)
                     echo_err \
-                        "selection associated with '--bwa_alg' is not valid:" \
-                        "'${bwa_alg}'. Selection must be 'mem' or 'aln'."
+                        "'--bwa_alg' must be 'mem' or 'aln': '${bwa_alg}'."
                     return 1
                     ;;
             esac
-            ;;
-
-        bwa-mem2)
-            if [[ "${bwa_alg}" != "mem" ]]; then
-                echo_err \
-                    "'--bwa_alg' must be 'mem' when '--aligner bwa-mem2'."
-                return 1
-            fi
-            ;;
-
-        *)
-            echo_err \
-                "selection associated with '--aligner' is not valid:" \
-                "'${aligner}'. Selection must be 'bowtie2', 'bwa', or" \
-                "'bwa-mem2'."
-            return 1
             ;;
     esac
 
     validate_var "mapq" "${mapq}" || return 1
     check_int_nonneg "${mapq}" "mapq" || return 1
-
-    case "${out_ext}" in
-        bam|cram) : ;;
-        *)
-            echo_err \
-                "'--out_ext' must be 'bam' or 'cram': '${out_ext}'."
-            return 1
-            ;;
-    esac
 
     if [[ "${out_ext}" == "cram" ]]; then
         validate_var_file "ref_fa" "${ref_fa}" || return 1
@@ -554,21 +601,21 @@ function validate_args() {
 }
 
 
-#  Parse input FASTQ vector
+# Parse input FASTQ vector.
 function prepare_vecs() {
     unset arr_fil_in && declare -ga arr_fil_in
     IFS=';' read -r -a arr_fil_in <<< "${csv_fil_in}"
 }
 
 
-#  Validate parsed FASTQ vector
+# Validate parsed FASTQ vector.
 function validate_vecs() {
     check_arr_nonempty "arr_fil_in" "csv_fil_in" || return 1
     check_string_fastqs "${csv_fil_in}" "${sfx_se}" "${sfx_pe}" || return 1
 }
 
 
-#  Configure local, GNU Parallel, or Slurm execution
+# Configure local, GNU Parallel, or Slurm execution.
 function config_exec() {
     validate_var "max_job" "${max_job}" || return 1
     check_int_pos "${max_job}" "max_job" || return 1
@@ -579,7 +626,7 @@ function config_exec() {
         validate_var "time" "${time}" || return 1
         check_format_time "${time}" || return 1
     elif [[ "${max_job}" -le 1 ]]; then
-        #  Serial local execution does not require parallel job detection
+        # Serial local execution does not require parallel job detection.
         par_job=1
         unset max_job time
     else
@@ -601,7 +648,7 @@ function config_exec() {
 }
 
 
-#  Activate environment
+# Activate environment.
 function setup_env() {
     local -a env_msg
 
@@ -626,7 +673,7 @@ function setup_env() {
 }
 
 
-#  Check tools needed by the selected dispatch mode
+# Check tools needed by the selected dispatch mode.
 function check_tools() {
     case "${aligner}" in
         bowtie2)  check_pgrm_path bowtie2  || return 1 ;;
@@ -644,7 +691,7 @@ function check_tools() {
 }
 
 
-#  Report argument variable assignments if in verbose mode
+# Report argument variable assignments if in verbose mode.
 function print_state_debug() {
     if [[ "${verbose}" == "true" ]]; then
         print_banner_pretty "Hardcoded variable assignments"
@@ -691,13 +738,13 @@ function print_state_debug() {
 }
 
 
-#  Dispatch Slurm, GNU Parallel, or serial jobs
+# Dispatch Slurm, GNU Parallel, or serial jobs.
 function run_jobs() {
     local config idx log_err log_out
     local -a cmd_slurm
 
     if [[ "${slurm}" == "true" ]]; then
-        #  Slurm execution
+        # Slurm execution.
         build_cmd "UNSET" || return 1
 
         cmd_slurm=(
@@ -724,8 +771,8 @@ function run_jobs() {
             "${cmd_slurm[@]}" || return 1
         fi
     else
-        #  Non-Slurm execution: GNU Parallel ('par_job > 1') or serial
-        #+ ('par_job == 1')
+        # Non-Slurm execution: GNU Parallel ('par_job > 1') or serial
+        # ('par_job == 1').
         if [[ "${par_job}" -gt 1 ]]; then
             config="${dir_eo}/${nam_job}.config_parallel.txt"
 
@@ -760,7 +807,7 @@ function run_jobs() {
                 parallel --jobs "${par_job}" < "${config}" || return 1
             fi
         else
-            #  Serial execution
+            # Serial execution.
             build_cmd "UNSET" || return 1
             cmd_bld=( "${BASH}" "${cmd_bld[@]}" )
 
@@ -783,7 +830,7 @@ function run_jobs() {
 }
 
 
-#  Main script execution
+# Main script execution.
 function main() {
     init_defs
     source_helpers_execute || return 1

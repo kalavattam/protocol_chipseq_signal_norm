@@ -6,9 +6,11 @@
 # Copyright 2024-2026 by Kris Alavattam
 # Email: kalavattam@gmail.com
 #
-# OpenAI ChatGPT and Codex (GPT-4- and GPT-5-series models; most recent:
-# GPT-5.6) were used in design, development, and documentation, with all output
-# reviewed, edited, and approved by the author.
+# The following were used in design, development, and documentation, with all
+# output reviewed, edited, and approved by the author:
+# - OpenAI ChatGPT and Codex (GPT-4- and GPT-5-series models; most recent:
+#   GPT-5.6);
+# - Anthropic Claude Code (Opus 5.5).
 #
 # Distributed under the MIT license.
 
@@ -17,7 +19,7 @@
 # align_fastqs
 
 
-#  Require Bash >= 4.4 before defining functions
+# Require Bash >= 4.4 before defining functions.
 if [[ -z "${BASH_VERSION:-}" ]]; then
     echo "error(shell):" \
         "this script must be sourced or run under Bash >= 4.4." >&2
@@ -41,7 +43,7 @@ elif ((
     fi
 fi
 
-#  Source required helper functions if needed
+# Source required helper functions if needed.
 {
     _dir_src_aln="$(
         cd "$(dirname "${BASH_SOURCE[0]}")" > /dev/null 2>&1 && pwd
@@ -94,19 +96,22 @@ function _check_path_whitespace() {
 
 function align_fastqs() {
     local threads aligner bt2_mode bwa_alg mapq req_flg index ref_fa
+    local bt2_mode_set bwa_alg_set
     local fq_1 fq_2 fil_out qname out_fmt
     local args_sam args_bt2 args_bwa args_bwa_aln
     local fil_wrk fil_qnam_out bam_qnam bam_mate bam_coor bam_mrk
     local fil_sai_1 fil_sai_2
     local show_help
 
-    #  Assign default argument values
+    # Assign default argument values.
     threads=1
     aligner="bowtie2"
     bt2_mode="end-to-end"
+    bt2_mode_set=false
     bwa_alg="mem"
+    bwa_alg_set=false
     ref_fa=""
-    mapq=0
+    mapq=1
     req_flg=false
     fq_1=""
     fq_2=""
@@ -139,22 +144,26 @@ Parameters
     Alignment program to use: 'bowtie2', 'bwa', or 'bwa-mem2' (default: '${aligner}').
 
   -2m, --bt2_mode : {'local', 'global', 'end-to-end'}
-    Bowtie 2 alignment type when '--aligner bowtie2': 'local', 'global', or 'end-to-end' (default: '${bt2_mode}'; ignored otherwise).
+    Bowtie 2 alignment type when '--aligner bowtie2': 'local', 'global', or 'end-to-end' (default: '${bt2_mode}'); refused otherwise.
 
   -ba, --bwa_alg : {'mem', 'aln'}
-    BWA algorithm when '--aligner bwa': 'mem' or 'aln' (default: '${bwa_alg}'; ignored otherwise).
+    BWA algorithm when '--aligner bwa': 'mem' or 'aln' (default: '${bwa_alg}').
+
+    With '--aligner bwa-mem2', which has only 'mem', 'mem' is ignored with a warning and 'aln' is refused; with '--aligner bowtie2', it is refused.
 
   -mq, --mpq, --mapq : int
-    MAPQ threshold for filtering alignment output files (default: ${mapq}). To disable MAPQ-based filtering, specify 0.
+    MAPQ threshold for filtering alignment output files (default: ${mapq}).
+
+    To disable MAPQ-based filtering, specify 0.
 
   -rq, --req_flg : flag
-    Require SAM flag bit 2 for properly paired alignments. Ignored for single-end data.
+    Require SAM flag bit 2 for properly paired alignments. Ignored with a warning for single-end data.
 
   -ix, --idx, --index : path
     Path to the aligner index/reference.
 
   -rf, --ref_fa : file
-    Reference FASTA file. Reference FASTA path required when '--fil_out' ends in '.cram'.
+    Reference FASTA path required when '--fil_out' ends in '.cram'; otherwise, ignored with a warning.
 
   -f1, --fq_1, --fastq_1 : file
     First FASTQ input file. For paired-end data, this is read 1.
@@ -188,7 +197,7 @@ Notes
     - samtools
 
   - For '--index' when using Bowtie 2, the path should end with the index stem: 'path/to/dir/stem'; when using 'bwa' or 'bwa-mem2', the path should be the indexed reference FASTA path (for example, '.fa').
-  - '--bwa_alg' is used only when '--aligner bwa'. It is ignored when '--aligner bowtie2' and must remain 'mem' when '--aligner bwa-mem2'.
+  - '--bwa_alg' is used only when '--aligner bwa'. It is refused with '--aligner bowtie2'; with '--aligner bwa-mem2', which always runs 'bwa-mem2 mem', 'mem' is ignored with a warning and 'aln' is refused.
   - For '--qname', the retained queryname-sorted output will have the same path and stem assigned to '--fil_out', except '.qnam' will be inserted before the final extension (for example, '.qnam.bam' or '.qnam.cram'). For CRAM output, the retained queryname-sorted BAM work file is converted in Step #5.
   - '--ref_fa' is required when '--fil_out' ends in '.cram', since CRAM writing requires a reference FASTA.
   - Because Step #1 currently builds aligner and Samtools argument strings, whitespace is not supported in '--index', '--ref_fa', '--fq_1', '--fq_2', or '--fil_out'.
@@ -223,14 +232,14 @@ EOM
     #TODO: add a '--dry_run' flag that shows what *would* happen
 
 
-    #  Step 0 -----------------------------------------------------------------
-    #  Describe keyword arguments
+    # Step 0 ------------------------------------------------------------------
+    # Describe keyword arguments.
     if [[ -z "${1:-}" || "${1:-}" =~ ^(-h|--h[e]?lp)$ ]]; then
         echo "${show_help}" >&2
         return 0
     fi
 
-    #  Parse keyword arguments
+    # Parse keyword arguments.
     while (( $# > 0 )); do
         case "${1}" in
             -t|--thr|--threads)
@@ -249,7 +258,7 @@ EOM
                     echo "${show_help}" >&2
                     return 1
                 }
-                aligner="${2:-,,}"
+                aligner="${2,,}"
                 shift 2
                 ;;
 
@@ -259,7 +268,8 @@ EOM
                     echo "${show_help}" >&2
                     return 1
                 }
-                bt2_mode="${2:-,,}"
+                bt2_mode="${2,,}"
+                bt2_mode_set=true
                 shift 2
                 ;;
 
@@ -269,7 +279,8 @@ EOM
                     echo "${show_help}" >&2
                     return 1
                 }
-                bwa_alg="${2:-,,}"
+                bwa_alg="${2,,}"
+                bwa_alg_set=true
                 shift 2
                 ;;
 
@@ -353,7 +364,7 @@ EOM
         esac
     done
 
-    #  Validate keyword arguments
+    # Validate keyword arguments.
     if [[ -z "${threads}" ]]; then
         echo_err_func "${FUNCNAME[0]}" \
             "'--threads' is required."
@@ -368,23 +379,13 @@ EOM
     fi
 
     case "${aligner}" in
-        bt2) aligner="bowtie2" ;;
-    esac
-
-    case "${aligner}" in
         bowtie2)
             case "${bt2_mode}" in
                 local|global|end-to-end) : ;;
-                na)
-                    echo_err_func "${FUNCNAME[0]}" \
-                        "'--bt2_mode' cannot be 'NA' when using 'bowtie2'."
-                    return 1
-                    ;;
                 *)
                     echo_err_func "${FUNCNAME[0]}" \
-                        "selection associated with '--bt2_mode' is not valid:" \
-                        "'${bt2_mode}'; must be 'local', 'global', or" \
-                        "'end-to-end'."
+                        "'--bt2_mode' must be 'local', 'global', or" \
+                        "'end-to-end': '${bt2_mode}'."
                     return 1
                     ;;
             esac
@@ -395,26 +396,18 @@ EOM
                 mem|aln) : ;;
                 *)
                     echo_err_func "${FUNCNAME[0]}" \
-                        "selection associated with '--bwa_alg' is not" \
-                        "valid: '${bwa_alg}'; must be 'mem' or 'aln'."
+                        "'--bwa_alg' must be 'mem' or 'aln': '${bwa_alg}'."
                     return 1
                     ;;
             esac
             ;;
 
-        bwa-mem2)
-            if [[ "${bwa_alg}" != "mem" ]]; then
-                echo_err_func "${FUNCNAME[0]}" \
-                    "'--bwa_alg' must be 'mem' when using 'bwa-mem2', but" \
-                    "was assigned '${bwa_alg}'."
-                return 1
-            fi
-            ;;
+        bwa-mem2) : ;;
 
         *)
             echo_err_func "${FUNCNAME[0]}" \
-                "selection associated with '--aligner' is not valid:" \
-                "'${aligner}'; must be 'bowtie2', 'bwa', or 'bwa-mem2'."
+                "'--aligner' must be 'bowtie2', 'bwa', or 'bwa-mem2':" \
+                "'${aligner}'."
             return 1
             ;;
     esac
@@ -514,13 +507,8 @@ EOM
             return 1
         fi
     elif [[ -n "${ref_fa}" ]]; then
-        _check_path_whitespace \
-            "${ref_fa}" "--ref_fa" "${FUNCNAME[0]}" \
-            || return 1
-
         echo_warn_func "${FUNCNAME[0]}" \
-            "'--ref_fa' was supplied but will be ignored because '--fil_out'" \
-            "does not end in '.cram'."
+            "'--ref_fa' has no effect without CRAM output and is ignored."
     fi
 
     if [[ -z "${fq_1}" ]]; then
@@ -551,28 +539,37 @@ EOM
             || return 1
     fi
 
-    #  Warn when supplied arguments will be ignored based on other selections
-    if [[ "${aligner}" != "bowtie2" && "${bt2_mode}" != "end-to-end" ]]; then
-        echo_warn_func "${FUNCNAME[0]}" \
-            "'--bt2_mode' was supplied but will be ignored because" \
-            "'--aligner' is not 'bowtie2'."
+    # Per 'HELP.PARAMETER.APPLICABILITY', refuse the other aligner's option and
+    # warn about a pair requirement with no pairs.
+    if [[ "${aligner}" != "bowtie2" && "${bt2_mode_set}" == "true" ]]; then
+        echo_err_func "${FUNCNAME[0]}" \
+            "'--bt2_mode' is for '--aligner bowtie2'; it has no effect with" \
+            "'--aligner ${aligner}'."
+        return 1
     fi
 
-    if [[ "${aligner}" != "bwa" && "${bwa_alg}" != "mem" ]]; then
-        echo_warn_func "${FUNCNAME[0]}" \
-            "'--bwa_alg' was supplied but will be ignored because" \
-            "'--aligner' is not 'bwa'."
+    # 'bwa-mem2' has only 'mem', so asking for it changes nothing.
+    if [[ "${aligner}" != "bwa" && "${bwa_alg_set}" == "true" ]]; then
+        if [[ "${aligner}" == "bwa-mem2" && "${bwa_alg}" == "mem" ]]; then
+            echo_warn_func "${FUNCNAME[0]}" \
+                "'--bwa_alg' has no effect with '--aligner bwa-mem2' and is" \
+                "ignored."
+        else
+            echo_err_func "${FUNCNAME[0]}" \
+                "'--bwa_alg' is for '--aligner bwa'; it has no effect with" \
+                "'--aligner ${aligner}'."
+            return 1
+        fi
     fi
 
     if [[ -z "${fq_2}" && "${req_flg}" == "true" ]]; then
         echo_warn_func "${FUNCNAME[0]}" \
-            "'--req_flg' was supplied but will be ignored because only one" \
-            "FASTQ file was provided."
+            "'--req_flg' has no effect with single-end input and is ignored."
     fi
 
 
-    #  Step 1 -----------------------------------------------------------------
-    #  Based on parsed arguments, construct the call to Samtools
+    # Step 1 ------------------------------------------------------------------
+    # Based on parsed arguments, construct the call to Samtools.
     args_sam="-@ ${threads}"
     args_sam+="$(
         if [[ "${req_flg}" == "true" ]] && [[ -n "${fq_2}" ]]; then
@@ -581,12 +578,12 @@ EOM
     )"
     args_sam+=" -q ${mapq} -o ${fil_wrk}"
 
-    #  Based on parsed arguments, construct and run the call to Bowtie 2,
-    #+ BWA, or BWA-MEM2 with output piped to the above-constructed Samtools
-    #+ call where appropriate
+    # Based on parsed arguments, construct and run the call to Bowtie 2, BWA,
+    # or BWA-MEM2 with output piped to the above-constructed Samtools call
+    # where appropriate.
     # shellcheck disable=SC2086
     if [[ "${aligner}" == "bowtie2" ]]; then
-        #  Assign Bowtie 2 arguments
+        # Assign Bowtie 2 arguments.
         args_bt2="-p ${threads} -x ${index}"
 
         if [[ "${bt2_mode}" == "local" ]]; then
@@ -595,11 +592,11 @@ EOM
             args_bt2+=" --very-sensitive"
         fi
 
-        #  Exclude unaligned reads from output
+        # Exclude unaligned reads from output.
         args_bt2+=" --no-unal --phred33"
 
-        #  Run Bowtie 2 with paired-end (top) or single-end (bottom) sequenced
-        #+ reads
+        # Run Bowtie 2 with paired-end (top) or single-end (bottom) sequenced
+        # reads.
         if [[ -n "${fq_2}" ]]; then
             args_bt2+=" --no-mixed --no-discordant"
             args_bt2+=" --no-overlap --no-dovetail"
@@ -628,12 +625,12 @@ EOM
             fi
         fi
     elif [[ "${aligner}" == "bwa" ]]; then
-        #  Assign BWA arguments
+        # Assign BWA arguments.
         args_bwa="-t ${threads} ${index}"
 
         if [[ "${bwa_alg}" == "mem" ]]; then
-            #  Run BWA-MEM with paired-end (top) or single-end (bottom)
-            #+ sequenced reads, excluding unaligned reads from output
+            # Run BWA-MEM with paired- or single-end sequenced reads, excluding
+            # unaligned reads from output.
             # shellcheck disable=SC2086,SC2046
             if [[ -n "${fq_2}" ]]; then
                 if ! (
@@ -660,7 +657,7 @@ EOM
                 fi
             fi
         elif [[ "${bwa_alg}" == "aln" ]]; then
-            #  Assign BWA-backtrack arguments
+            # Assign BWA-backtrack arguments.
             args_bwa_aln="-t ${threads}"
 
             fil_sai_1="${fil_wrk%.bam}.R1.sai"
@@ -736,11 +733,11 @@ EOM
             fi
         fi
     elif [[ "${aligner}" == "bwa-mem2" ]]; then
-        #  Assign BWA-MEM2 arguments
+        # Assign BWA-MEM2 arguments.
         args_bwa="-t ${threads} ${index}"
 
-        #  Run BWA-MEM2 with paired-end (top) or single-end (bottom)
-        #+ sequenced reads, excluding unaligned reads from output
+        # Run BWA-MEM2 with paired- or single-end sequenced reads, excluding
+        # unaligned reads from output.
         # shellcheck disable=SC2086,SC2046
         if [[ -n "${fq_2}" ]]; then
             if ! (
@@ -750,8 +747,8 @@ EOM
             ); then
                 echo_err_func "${FUNCNAME[0]}" \
                     "Step #1: failed to align paired-end data with" \
-                    "'bwa-mem2 mem', and/or failed to process the" \
-                    "alignments with 'samtools view'."
+                    "'bwa-mem2 mem', and/or failed to process the alignments" \
+                    "with 'samtools view'."
                 return 1
             fi
         else
@@ -761,17 +758,17 @@ EOM
             ); then
                 echo_err_func "${FUNCNAME[0]}" \
                     "Step #1: failed to align single-end data with" \
-                    "'bwa-mem2 mem', and/or failed to process the" \
-                    "alignments with 'samtools view'."
+                    "'bwa-mem2 mem', and/or failed to process the alignments" \
+                    "with 'samtools view'."
                 return 1
             fi
         fi
     fi
 
 
-    #  Step 2 -----------------------------------------------------------------
-    #  Sort the BAM file by queryname, and fix mates if the BAM file is made up
-    #+ of paired-end alignments
+    # Step 2 ------------------------------------------------------------------
+    # Sort the BAM file by queryname, and fix mates if the BAM file is made up
+    # of paired-end alignments.
     if [[ -f "${fil_wrk}" ]]; then
         bam_qnam="${fil_wrk%.bam}.qnam.bam"
 
@@ -822,9 +819,9 @@ EOM
     fi
 
 
-    #  Step 3 -----------------------------------------------------------------
-    #  Sort the queryname-sorted, fixmate-adjusted BAM file by coordinates,
-    #+ then index the coordinate-sorted BAM file
+    # Step 3 ------------------------------------------------------------------
+    # Sort the queryname-sorted, fixmate-adjusted BAM file by coordinates, then
+    # index the coordinate-sorted BAM file.
     # shellcheck disable=SC2086
     if [[ -f "${bam_qnam}" ]]; then
         bam_coor="${fil_wrk%.bam}.coor.bam"
@@ -879,9 +876,9 @@ EOM
     fi
 
 
-    #  Step #4 ----------------------------------------------------------------
-    #  Mark duplicate alignments in the coordinate-sorted BAM file; then,
-    #+ index the file again
+    # Step #4 -----------------------------------------------------------------
+    # Mark duplicate alignments in the coordinate-sorted BAM file; then, index
+    # the file again.
     if [[ -f "${fil_wrk}" ]]; then
         if \
             samtools view -H "${fil_wrk}" | grep -q "@PG.*CL:samtools markdup"
@@ -905,8 +902,8 @@ EOM
                 return 1
             fi
 
-            #  Replace the original coordinate-sorted BAM with one in which
-            #+ duplicates alignments are marked
+            # Replace the original coordinate-sorted BAM with one in which
+            # duplicate alignments are marked.
             if ! \
                 mv -f "${bam_mrk}" "${fil_wrk}"
             then
@@ -916,7 +913,7 @@ EOM
                 return 1
             fi
 
-            #  Index the duplicate-marked coordinate-sorted BAM file
+            # Index the duplicate-marked coordinate-sorted BAM file.
             if ! \
                 samtools index -@ "${threads}" "${fil_wrk}"
             then
@@ -933,9 +930,9 @@ EOM
     fi
 
 
-    #  Step 5 -----------------------------------------------------------------
-    #  Convert the final BAM work file to CRAM if requested; otherwise retain
-    #+ BAM output as-is
+    # Step 5 ------------------------------------------------------------------
+    # Convert the final BAM work file to CRAM if requested; otherwise retain
+    # BAM output as-is.
     if [[ "${out_fmt}" == "cram" ]]; then
         if ! \
             samtools view \
@@ -1006,7 +1003,7 @@ EOM
 }
 
 
-#  Print an error message when function script is executed directly
+# Print an error message when function script is executed directly.
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
     err_source_only "${BASH_SOURCE[0]}"
 fi

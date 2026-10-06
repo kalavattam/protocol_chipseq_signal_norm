@@ -46,10 +46,14 @@ Parameters
     Number of threads to use (default: '${threads}').
 
   -ci, --csv_fil_in : list of structured string
-    Comma-separated list of input file paths. Semicolon-delimited serialized string of FASTQ input entries. For single-end data, each entry is one FASTQ file. For paired-end data, each entry contains a comma-delimited FASTQ pair, e.g., "${HOME}/path/samp_1.fastq.gz;${HOME}/path/samp_2_R1.fastq.gz,${HOME}/path/samp_2_R2.fastq.gz;${HOME}/path/samp_3.fastq.gz".
+    Semicolon-delimited serialized string of FASTQ input entries.
+
+    For single-end data, each entry is one FASTQ file. For paired-end data, each entry contains a comma-delimited FASTQ pair.
+
+    E.g., "${HOME}/path/samp_1.fastq.gz;${HOME}/path/samp_2_R1.fastq.gz,${HOME}/path/samp_2_R2.fastq.gz;${HOME}/path/samp_3.fastq.gz".
 
   -do, --dir_out : dir
-    Output directory. Directory for Atria-trimmed FASTQ output files.
+    Directory for Atria-trimmed FASTQ output files.
 
   -sxs, --sfx_se, --suffix_se : str
     Suffix to strip from single-end FASTQ filenames (default: '${sfx_se}').

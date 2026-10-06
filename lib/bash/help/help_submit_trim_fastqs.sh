@@ -9,7 +9,7 @@
 # The following were used in design, development, and documentation, with all
 # output reviewed, edited, and approved by the author:
 # - OpenAI ChatGPT and Codex (GPT-5.5, GPT-5.6);
-# - Anthropic Claude Code (Opus 5).
+# - Anthropic Claude Code (Opus 5, Opus 5.5).
 #
 # Distributed under the MIT license.
 
@@ -56,12 +56,12 @@ Parameters
     Number of threads to use.
 
   -ci, --csv_fil_in : list of structured string
-    Comma-separated list of input file paths. Semicolon-delimited serialized string of FASTQ input entries.
+    Semicolon-delimited serialized string of FASTQ input entries.
 
     For single-end data, each entry is one FASTQ file. For paired-end data, each entry contains a comma-delimited FASTQ pair.
 
   -do, --dir_out : dir
-    Output directory. Directory for trimmed FASTQ output files.
+    Directory for trimmed FASTQ output files.
 
   -sxs, --sfx_se, --suffix_se : str
     Suffix to strip from single-end FASTQ filenames.

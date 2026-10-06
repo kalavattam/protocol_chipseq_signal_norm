@@ -9,7 +9,7 @@
 # The following were used in design, development, and documentation, with all
 # output reviewed, edited, and approved by the author:
 # - OpenAI ChatGPT and Codex (GPT-5.5, GPT-5.6);
-# - Anthropic Claude Code (Opus 5).
+# - Anthropic Claude Code (Opus 5, Opus 5.5).
 #
 # Distributed under the MIT license.
 
@@ -62,28 +62,42 @@ Parameters
     Alignment program to use: 'bowtie2', 'bwa', or 'bwa-mem2' (default: '${aligner}').
 
   -2m, --bt2_mode : {'local', 'global', 'end-to-end'}
-    Bowtie 2 alignment type: 'local', 'global', or 'end-to-end' (default: '${bt2_mode}').
+    Bowtie 2 alignment type when '--aligner bowtie2': 'local', 'global', or 'end-to-end' (default: '${bt2_mode}'); refused otherwise.
 
   -ba, --bwa_alg : {'mem', 'aln'}
     BWA algorithm when '--aligner bwa': 'mem' or 'aln' (default: '${bwa_alg}').
 
+    With '--aligner bwa-mem2', which has only 'mem', 'mem' is ignored with a warning and 'aln' is refused; with '--aligner bowtie2', it is refused.
+
   -mq, --mapq : int
     MAPQ threshold for filtering alignment output files (default: ${mapq}).
+
+    To disable MAPQ-based filtering, specify 0.
+
+    With Bowtie 2, both mates of a concordant pair get the same MAPQ, so the filter keeps or drops whole pairs. A MAPQ of 1 or more does not mean a unique alignment, as a read alignment with multiple equally good placements can get MAPQ 1, and its placement is chosen at random.
 
   -rq, --req_flg : flag
     Require SAM flag bit 2 for properly paired alignments.
 
+    Ignored with a warning when every entry is single-end.
+
   -ix, --index : path
     Path to the aligner index/reference.
 
+    If using Bowtie 2, the path should end with the index stem, e.g., "\${HOME}/path/stem". If using BWA or BWA-MEM2, the path should be the indexed reference FASTA path, e.g., "\${HOME}/path/stem.fa".
+
   -ci, --csv_fil_in : list of structured string
-    Comma-separated list of input file paths. Semicolon-delimited serialized string of FASTQ input entries. For single-end data, each entry is one FASTQ file. For paired-end data, each entry contains a comma-delimited FASTQ pair.
+    Semicolon-delimited serialized string of FASTQ input entries.
+
+    For single-end data, each entry is one FASTQ file. For paired-end data, each entry contains a comma-delimited FASTQ pair.
+
+    E.g., "\${HOME}/path/samp_1.fastq.gz;\${HOME}/path/samp_2_R1.fastq.gz,\${HOME}/path/samp_2_R2.fastq.gz;\${HOME}/path/samp_3.fastq.gz".
 
   -rf, --ref_fa : file
-    Reference FASTA file. Reference FASTA path required when '--out_ext cram'.
+    Reference FASTA file. Reference FASTA path required when '--out_ext cram'; otherwise, ignored with a warning.
 
   -do, --dir_out : dir
-    Output directory. Directory to write alignment output files.
+    Directory to write alignment output files.
 
   -ox, --out_ext : {'bam', 'cram'}
     Final output extension for alignment files: 'bam' or 'cram' (default: '${out_ext}').
@@ -109,8 +123,8 @@ Notes
     - A compatible Conda environment providing the listed tools
     - bash >= 4.4
     - bowtie2 (when '--aligner bowtie2' is specified)
-    - bwa (when '--aligner bwa_aln' or 'bwa_mem' is specified)
-    - bwa-mem2 (when '--aligner bwa_mem2' is specified)
+    - bwa (when '--aligner bwa' is specified)
+    - bwa-mem2 (when '--aligner bwa-mem2' is specified)
     - conda (when the requested environment is not active)
     - samtools
     - Slurm allocation (when run as a Slurm array task)

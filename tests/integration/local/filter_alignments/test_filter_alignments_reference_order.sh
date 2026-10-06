@@ -86,8 +86,7 @@ fi
 
 # Run one helper on the reordered input.
 function run_filter() {
-    # Expand in the child shell, not this one.
-    # shellcheck disable=SC2016
+    # shellcheck disable=SC2016  # Expand in the child shell, not this one.
     "${TEST_BASH}" -c '
         # shellcheck disable=SC1090
         source "${1}/lib/bash/core/source_helpers.sh"
