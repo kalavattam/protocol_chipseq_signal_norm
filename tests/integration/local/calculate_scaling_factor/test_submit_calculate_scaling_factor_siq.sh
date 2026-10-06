@@ -1250,8 +1250,9 @@ then
 else
     assert_pattern_found \
         "${fil_log_method_not_applicable}" \
-        "'--method' is valid only when '--mode spike'" \
+        "'--method' is for '--mode spike'" \
         "submit_calculate_scaling_factor.sh rejects method under siQ mode"
 fi
+
 
 finish

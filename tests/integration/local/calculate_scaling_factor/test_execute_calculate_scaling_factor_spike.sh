@@ -9,7 +9,7 @@
 # The following were used in design, development, and documentation, with all
 # output reviewed, edited, and approved by the author:
 # - OpenAI ChatGPT and Codex (GPT-5.5, GPT-5.6);
-# - Anthropic Claude Code (Opus 5).
+# - Anthropic Claude Code (Opus 5, Opus 5.5).
 #
 # Distributed under the MIT license.
 
@@ -18,7 +18,7 @@ set -euo pipefail
 
 TEST_NAME="execute calculate-scaling-factor spike"
 
-#  Source shared test helpers
+# Source shared test helpers.
 # shellcheck source=tests/support/test_helpers.sh
 source "$(
     git -C "$(dirname "${BASH_SOURCE[0]}")" rev-parse --show-toplevel
@@ -57,7 +57,7 @@ function run_case_spike() {
 
 
 
-#  Define fixture, output, and worker-input paths
+# Define fixture, output, and worker-input paths.
 scr_exe="${ROOT_REPO}/bin/execute_calculate_scaling_factor.sh"
 dir_fix="${ROOT_REPO}/tests/fixtures/calculate_scaling_factor"
 dir_bam="${dir_fix}/bam"
@@ -335,8 +335,8 @@ then
 fi
 
 
-#  Run one serial spike-in calculation case and assert its assembled table
-#  Dry-run execution should report assembly without writing a final table
+# Run one serial spike-in calculation case and assert its assembled table.
+# Dry-run execution should report assembly without writing a final table.
 if \
     run_capture \
         "execute calculate-scaling-factor spike dry-run" \
@@ -397,7 +397,8 @@ assert_pattern_found \
     "execute_calculate_scaling_factor.sh --dry_run reports second part index"
 
 
-#  Default method should use alignment-derived counts and automatic SE detection
+# Default method should use alignment-derived counts and automatic SE
+# detection.
 run_case_spike \
     default \
     arr_cmd_bam_se \
@@ -469,7 +470,7 @@ assert_pattern_found \
     "execute scaling-factor spike default counts first spike input alignments"
 
 
-#  Canonical spike-in methods and one accepted alias should propagate to TSVs
+# Canonical spike-in methods and one accepted alias should propagate to TSVs.
 run_case_spike \
     fractional \
     arr_cmd_bam_se \
@@ -538,7 +539,7 @@ run_case_spike \
     $'0.333333333333333314829616\tmain_per_spike\t2\t2\t3\t1'
 
 
-#  Alignment variants should preserve counts under automatic type detection
+# Alignment variants should preserve counts under automatic type detection.
 run_case_spike \
     pe_bam \
     arr_cmd_bam_pe \
@@ -655,7 +656,7 @@ assert_pattern_found \
     "execute scaling-factor spike mixed BAM/CRAM list reads PE CRAM input"
 
 
-#  CRAM input without a reference FASTA should fail before worker execution
+# CRAM input without a reference FASTA should fail before worker execution.
 if \
     run_capture \
         "execute calculate-scaling-factor spike CRAM missing reference" \
@@ -680,7 +681,7 @@ else
 fi
 
 
-#  Broadcast depth overrides should replace per-file Samtools counts
+# Broadcast depth overrides should replace per-file Samtools counts.
 run_case_spike \
     dep_broadcast \
     arr_cmd_bam_se \
@@ -695,7 +696,7 @@ run_case_spike \
     --csv_dep_sin 4
 
 
-#  Unknown spike-in method should fail before running workers
+# Unknown spike-in method should fail before running workers.
 if \
     run_capture \
         "execute calculate-scaling-factor spike invalid method" \
@@ -711,12 +712,12 @@ then
 else
     assert_pattern_found \
         "${log_invalid_method}" \
-        'is not recognized' \
+        "'--method' must be 'fractional'" \
         "execute_calculate_scaling_factor.sh rejects invalid spike method"
 fi
 
 
-#  Existing final output should fail unless '--force' is supplied
+# Existing final output should fail unless '--force' is supplied.
 if \
     run_capture \
         "execute calculate-scaling-factor spike existing output" \
@@ -736,8 +737,8 @@ else
 fi
 
 
-#  '--force' should replace output and '--no_parts' should remove worker part
-#+ files
+# '--force' should replace output and '--no_parts' should remove worker part
+# files.
 if \
     run_capture \
         "execute calculate-scaling-factor spike force no-parts" \
@@ -766,5 +767,6 @@ if [[ ! -e "${prt_default_0}" && ! -e "${prt_default_1}" ]]; then
 else
     record_fail "execute scaling-factor spike --no_parts retained worker parts"
 fi
+
 
 finish

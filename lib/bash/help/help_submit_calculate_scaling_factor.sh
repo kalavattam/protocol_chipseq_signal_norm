@@ -9,7 +9,7 @@
 # The following were used in design, development, and documentation, with all
 # output reviewed, edited, and approved by the author:
 # - OpenAI ChatGPT and Codex (GPT-5.5, GPT-5.6);
-# - Anthropic Claude Code (Opus 5).
+# - Anthropic Claude Code (Opus 5, Opus 5.5).
 #
 # Distributed under the MIT license.
 
@@ -51,16 +51,20 @@ Parameters
     Number of threads to use for alignment-processing steps (default: ${threads}).
 
   -md, --mode : {'siq', 'spike'}
-    Workflow mode. Scaling-factor framework: 'siq' or 'spike' (default: '${mode}').
+    Scaling-factor mode to run: 'siq' or 'spike' (default: '${mode}').
+
+    Used with '--mode spike': '--method', '--csv_sip', '--csv_sin', '--csv_dep_sip', and '--csv_dep_sin', which are refused with '--mode siq'.
+
+    Used with '--mode siq': '--tbl_met', '--cfg_met', '--eqn', '--len_def', '--csv_len_mip', and '--csv_len_min', which are refused with '--mode spike'.
 
   -me, --method : {'fractional', 'main_per_spike', 'chiprx_alpha_ratio', 'chiprx_alpha_ip', 'chiprx_alpha_in', 'rxinput_alpha'}
-    Workflow method. Spike-in scaling method to compute when '--mode spike' is active (default: 'chiprx_alpha_ratio'; no default if '--mode siq').
+    Spike-in scaling method to compute when '--mode spike' is active (default: 'chiprx_alpha_ratio'); refused with '--mode siq'.
 
   -at, --aln_typ, --align_typ : {'pe', 'se', 'auto'}
     Alignment layout type for input alignment files: 'pe', 'se', or 'auto' (default: '${aln_typ}').
 
   -rf, --ref_fa : file
-    Reference FASTA file. Reference FASTA required when any input alignment file is CRAM.
+    Reference FASTA required when any input alignment file is CRAM; otherwise, ignored with a warning.
 
   -cmip, --csv_mip : list of file
     Comma-separated list of main IP alignment files (BAM or CRAM).
@@ -71,8 +75,12 @@ Parameters
   -csip, --csv_sip : list of file
     Comma-separated list of spike-in IP alignment files (BAM or CRAM; '--mode spike').
 
+    Required with '--mode spike'; refused otherwise.
+
   -csin, --csv_sin : list of file
     Comma-separated list of spike-in input alignment files (BAM or CRAM; '--mode spike').
+
+    Required with '--mode spike'; refused otherwise.
 
   -fo, --fil_out : file
     Output file path. Base output TSV path used to derive '<fil_out>.part.<idx>'.
@@ -81,22 +89,34 @@ Parameters
     Optional output-part index override for execute-layer local dispatch.
 
   -tb, --tbl_met : file
-    siQ-ChIP metadata table. Used in 'siq' mode.
+    siQ-ChIP metadata table.
+
+    Required with '--mode siq'; refused otherwise.
 
   -cm, --cfg_met : file
-    YAML configuration file for metadata parsing. Used in 'siq' mode.
+    YAML configuration file for metadata parsing.
+
+    Required with '--mode siq'; refused otherwise.
 
   -eq, --eqn : {'5', '5nd', '6', '6nd'}
     siQ-ChIP alpha equation to compute when '--mode siq' is active: '5', '5nd', '6', or '6nd' (default: '${eqn}').
 
+    Refused with '--mode spike'.
+
   -ld, --len_def : int
     Default fragment length for single-end libraries when no per-sample override is provided.
+
+    Used with '--mode siq'; refused otherwise.
 
   -clmp, --csv_len_mip : list of int
     Fragment length value(s) for main IP alignment files.
 
+    Used with '--mode siq'; refused otherwise.
+
   -clmn, --csv_len_min : list of int
     Fragment length value(s) for main input alignment files.
+
+    Used with '--mode siq'; refused otherwise.
 
   -cdmp, --csv_dep_mip : list of int
     Sequencing/alignment depth value(s) for main IP alignment files.
@@ -107,8 +127,12 @@ Parameters
   -cdsp, --csv_dep_sip : list of int
     Sequencing/alignment depth value(s) for spike-in IP alignment files.
 
+    Used with '--mode spike'; refused otherwise.
+
   -cdsn, --csv_dep_sin : list of int
     Sequencing/alignment depth value(s) for spike-in input alignment files.
+
+    Used with '--mode spike'; refused otherwise.
 
   -dp, --dp : int
     Maximum number of decimal places retained for finite emitted values (default: ${dp}).

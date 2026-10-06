@@ -9,7 +9,7 @@
 # The following were used in design, development, and documentation, with all
 # output reviewed, edited, and approved by the author:
 # - OpenAI ChatGPT and Codex (GPT-5.5, GPT-5.6);
-# - Anthropic Claude Code (Opus 5).
+# - Anthropic Claude Code (Opus 5, Opus 5.5).
 #
 # Distributed under the MIT license.
 
@@ -18,14 +18,14 @@ set -euo pipefail
 
 TEST_NAME="submit calculate-scaling-factor spike"
 
-#  Source shared test helpers
+# Source shared test helpers.
 # shellcheck source=tests/support/test_helpers.sh
 source "$(
     git -C "$(dirname "${BASH_SOURCE[0]}")" rev-parse --show-toplevel
 )/tests/support/test_helpers.sh"
 
 
-#  Run one direct submit-worker spike case and assert its part row
+# Run one direct submit-worker spike case and assert its part row.
 function run_submit_spike_case() {
     local cas="${1:-}"
     local idx_out="${2:-}"
@@ -85,7 +85,7 @@ function run_submit_spike_case() {
 }
 
 
-#  Define fixture and output paths for the direct submit-worker test
+# Define fixture and output paths for the direct submit-worker test.
 scr_sub="${ROOT_REPO}/bin/submit_calculate_scaling_factor.sh"
 dir_fix="${ROOT_REPO}/tests/fixtures/calculate_scaling_factor"
 dir_bam_se="${dir_fix}/bam/se"
@@ -298,7 +298,7 @@ then
     exit $?
 fi
 
-#  Direct submit-worker execution should write one indexed, data-only part row
+# Direct submit-worker execution should write one indexed, data-only part row.
 # shellcheck disable=SC2154
 if \
     run_capture \
@@ -391,7 +391,7 @@ assert_pattern_found \
     "submit scaling-factor spike PE counts spike input fragments"
 
 
-#  Direct PE CRAM input should work with a reference and non-default method
+# Direct PE CRAM input should work with a reference and non-default method.
 if \
     run_capture \
         "submit calculate-scaling-factor spike PE CRAM alpha IP" \
@@ -480,7 +480,7 @@ assert_pattern_found \
     "submit scaling-factor spike PE CRAM counts spike input fragments"
 
 
-#  CRAM input without a reference FASTA should fail before worker execution
+# CRAM input without a reference FASTA should fail before worker execution.
 if \
     run_capture \
         "submit calculate-scaling-factor spike CRAM missing reference" \
@@ -510,7 +510,7 @@ else
 fi
 
 
-#  Unknown spike-in methods should fail before worker execution
+# Unknown spike-in methods should fail before worker execution.
 if \
     run_capture \
         "submit calculate-scaling-factor spike invalid method" \
@@ -537,12 +537,12 @@ then
 else
     assert_pattern_found \
         "${fil_log_invalid_method}" \
-        "invalid '--method' value" \
+        "'--method' must be 'fractional'" \
         "submit_calculate_scaling_factor.sh rejects invalid spike method"
 fi
 
 
-#  SE BAM input should be accepted and auto-detected by the submit wrapper
+# SE BAM input should be accepted and auto-detected by the submit wrapper.
 run_submit_spike_case \
     se_default \
     9 \
@@ -555,7 +555,7 @@ run_submit_spike_case \
     se
 
 
-#  Canonical spike-in methods should produce expected submit-worker rows
+# Canonical spike-in methods should produce expected submit-worker rows.
 run_submit_spike_case \
     se_fractional \
     10 \
@@ -614,7 +614,7 @@ run_submit_spike_case \
     se
 
 
-#  Explicit depth overrides should replace alignment-derived counts
+# Explicit depth overrides should replace alignment-derived counts.
 run_submit_spike_case \
     se_depth_override \
     14 \
@@ -629,5 +629,6 @@ run_submit_spike_case \
     --csv_dep_min 20 \
     --csv_dep_sip 2 \
     --csv_dep_sin 4
+
 
 finish

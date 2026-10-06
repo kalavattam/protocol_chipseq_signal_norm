@@ -9,7 +9,7 @@
 # The following were used in design, development, and documentation, with all
 # output reviewed, edited, and approved by the author:
 # - OpenAI ChatGPT and Codex (GPT-5.5, GPT-5.6);
-# - Anthropic Claude Code (Opus 5).
+# - Anthropic Claude Code (Opus 5, Opus 5.5).
 #
 # Distributed under the MIT license.
 
@@ -18,7 +18,7 @@ set -euo pipefail
 
 TEST_NAME="execute calculate-scaling-factor siQ"
 
-#  Source shared test helpers
+# Source shared test helpers.
 # shellcheck source=tests/support/test_helpers.sh
 source "$(
     git -C "$(dirname "${BASH_SOURCE[0]}")" rev-parse --show-toplevel
@@ -51,7 +51,7 @@ function run_case_siq() {
 }
 
 
-#  Define fixture, output, and worker-input paths
+# Define fixture, output, and worker-input paths.
 scr_exe="${ROOT_REPO}/bin/execute_calculate_scaling_factor.sh"
 cfg_met="${ROOT_REPO}/data/raw/docs/parse_metadata_siqchip.yml"
 
@@ -312,8 +312,8 @@ then
 fi
 
 
-#  Run one serial siQ calculation case and assert its assembled table
-#  Dry-run execution should report worker, combiner, and header commands
+# Run one serial siQ calculation case and assert its assembled table. Dry-run
+# execution should report worker, combiner, and header commands.
 if \
     run_capture \
         "execute calculate-scaling-factor siQ dry-run" \
@@ -368,7 +368,7 @@ assert_pattern_found \
     "execute_calculate_scaling_factor.sh siQ --dry_run reports second index"
 
 
-#  PE BAM input should compute lengths from paired-end fragment sizes
+# PE BAM input should compute lengths from paired-end fragment sizes.
 run_case_siq \
     pe_bam \
     arr_cmd_bam_pe \
@@ -388,7 +388,7 @@ assert_pattern_found \
     "execute scaling-factor siQ PE BAM auto-detects second IP as PE"
 
 
-#  Metadata library-loading volumes should correct alpha through execute
+# Metadata library-loading volumes should correct alpha through execute.
 run_case_scaling_factor_execute \
     pe_lib_volume \
     siQ \
@@ -404,7 +404,7 @@ run_case_scaling_factor_execute \
     $'0.005805224489492278629188\t6nd\t5\t81.1\t300\t20\t2\t3\t663\t437\t2\t4'
 
 
-#  PE CRAM input should work when an explicit reference is supplied
+# PE CRAM input should work when an explicit reference is supplied.
 run_case_siq \
     pe_cram \
     arr_cmd_cram_pe \
@@ -424,7 +424,7 @@ assert_pattern_found \
     "execute scaling-factor siQ PE CRAM forwards ref_fa"
 
 
-#  CRAM input should fail clearly when no reference is supplied
+# CRAM input should fail clearly when no reference is supplied.
 if \
     run_capture \
         "execute calculate-scaling-factor siQ CRAM missing reference" \
@@ -455,7 +455,7 @@ else
 fi
 
 
-#  Invalid equation identifiers should fail before processing
+# Invalid equation identifiers should fail before processing.
 if \
     run_capture \
         "execute calculate-scaling-factor siQ invalid equation" \
@@ -481,12 +481,12 @@ then
 else
     assert_pattern_found \
         "${log_invalid_eqn}" \
-        "equation ('--eqn') was assigned '7'" \
+        "'--eqn' must be '5', '5nd', '6', or '6nd': '7'" \
         "execute_calculate_scaling_factor.sh rejects invalid siQ equation"
 fi
 
 
-#  Spike-in method arguments are invalid in siQ mode
+# Spike-in method arguments are invalid in siQ mode.
 if \
     run_capture \
         "execute calculate-scaling-factor siQ method not applicable" \
@@ -503,12 +503,12 @@ then
 else
     assert_pattern_found \
         "${log_method_not_applicable}" \
-        "'--method' may be used only when '--mode spike' is active" \
+        "'--method' is for '--mode spike'" \
         "execute_calculate_scaling_factor.sh rejects method under siQ mode"
 fi
 
 
-#  Mixed SE/PE BAM lists should keep per-file auto-detection
+# Mixed SE/PE BAM lists should keep per-file auto-detection.
 run_case_siq \
     mixed_layout \
     arr_cmd_mxd_lyt \
@@ -528,7 +528,7 @@ assert_pattern_found \
     "execute scaling-factor siQ mixed layout keeps second IP as PE"
 
 
-#  Mixed BAM/CRAM lists should route CRAM samples with the shared reference
+# Mixed BAM/CRAM lists should route CRAM samples with the shared reference.
 run_case_siq \
     mixed_format \
     arr_cmd_mxd_fmt \
@@ -543,7 +543,7 @@ assert_pattern_found \
     "execute scaling-factor siQ mixed BAM/CRAM list forwards ref_fa"
 
 
-#  Metadata parser variants should propagate through the execute wrapper
+# Metadata parser variants should propagate through the execute wrapper.
 run_case_siq \
     gzip_metadata \
     arr_cmd_bam_pe \
@@ -583,7 +583,7 @@ else
 fi
 
 
-#  Equation selection should propagate through the execute wrapper
+# Equation selection should propagate through the execute wrapper.
 run_case_siq \
     eqn5 \
     arr_cmd_bam_pe \
@@ -612,7 +612,7 @@ run_case_siq \
     --eqn 6
 
 
-#  Broadcast length and depth overrides should reach each submit worker
+# Broadcast length and depth overrides should reach each submit worker.
 run_case_siq \
     len_override \
     arr_cmd_bam_pe \
@@ -635,7 +635,7 @@ run_case_siq \
     --csv_dep_min 20
 
 
-#  SE BAM input should use explicit default fragment lengths
+# SE BAM input should use explicit default fragment lengths.
 run_case_siq \
     se_bam \
     arr_cmd_bam_se \
@@ -664,7 +664,7 @@ run_case_siq \
     --no_header
 
 
-#  Existing final output should fail unless '--force' is supplied
+# Existing final output should fail unless '--force' is supplied.
 if \
     run_capture \
         "execute calculate-scaling-factor siQ existing output" \
@@ -685,7 +685,7 @@ else
 fi
 
 
-#  '--force' should replace output and '--no_parts' should remove worker parts
+# '--force' should replace output and '--no_parts' should remove worker parts.
 if \
     run_capture \
         "execute calculate-scaling-factor siQ force no-parts" \
@@ -714,5 +714,6 @@ if [[ ! -e "${prt_pe_bam_0}" && ! -e "${prt_pe_bam_1}" ]]; then
 else
     record_fail "execute scaling-factor siQ --no_parts retained worker parts"
 fi
+
 
 finish

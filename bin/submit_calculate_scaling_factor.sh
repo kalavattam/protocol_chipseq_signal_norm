@@ -366,6 +366,7 @@ function parse_args() {
                     return 1
                 }
                 eqn="$(printf '%s\n' "${2}" | tr '[:upper:]' '[:lower:]')"
+                eqn_set=true
                 shift 2
                 ;;
 
@@ -483,16 +484,7 @@ function parse_args() {
 # Canonicalize mode, method, alignment type, coefficient name, and job name.
 function canonicalize_args() {
     case "${mode}" in
-        siq)
-            mode="siq"
-
-            if [[ -n "${method}" ]]; then
-                echo_err "'--method' is valid only when '--mode spike'."
-                return 1
-            fi
-
-            method=""
-            ;;
+        siq) : ;;
 
         spike|spk)
             mode="spike"
@@ -521,17 +513,22 @@ function canonicalize_args() {
                     method="rxinput_alpha"
                     ;;
                 *)
-                    echo_err "invalid '--method' value: '${method}'."
+                    echo_err \
+                        "'--method' must be 'fractional', 'main_per_spike'," \
+                        "'chiprx_alpha_ratio', 'chiprx_alpha_ip'," \
+                        "'chiprx_alpha_in', or 'rxinput_alpha': '${method}'."
                     return 1
                     ;;
             esac
             ;;
 
         *)
-            echo_err "'--mode' must be 'siq' or 'spike', but got '${mode}'."
+            echo_err "'--mode' must be 'siq' or 'spike': '${mode}'."
             return 1
             ;;
     esac
+
+    check_opts_mode || return 1
 
     case "${aln_typ}" in
         pe|paired) aln_typ="pe" ;;
@@ -539,21 +536,22 @@ function canonicalize_args() {
         auto)      : ;;
         *)
             echo_err \
-                "'--aln_typ' must be 'pe', 'se', or 'auto', but got" \
-                "'${aln_typ}'."
+                "'--aln_typ' must be 'pe', 'se', or 'auto': '${aln_typ}'."
             return 1
             ;;
     esac
 
-    case "${eqn}" in
-        5|5nd|6|6nd) : ;;
-        *)
-            echo_err \
-                "'--eqn' must be '5', '5nd', '6', or '6nd', but got" \
-                "'${eqn}'."
-            return 1
-            ;;
-    esac
+    # The equation is checked only in the mode that uses it.
+    if [[ "${mode}" == "siq" ]]; then
+        case "${eqn}" in
+            5|5nd|6|6nd) : ;;
+            *)
+                echo_err \
+                    "'--eqn' must be '5', '5nd', '6', or '6nd': '${eqn}'."
+                return 1
+                ;;
+        esac
+    fi
 
     if [[ -z "${nam_job}" ]]; then
         if [[ "${mode}" == "siq" ]]; then
@@ -568,6 +566,32 @@ function canonicalize_args() {
     else
         coef_spk=""
     fi
+}
+
+
+# Per 'HELP.PARAMETER.APPLICABILITY', refuse options that have no effect in
+# this mode.
+function check_opts_mode() {
+    check_opt_applies \
+        refuse \
+        --mode "${mode}" spike \
+        --method "${method}" \
+        --csv_sip "${csv_sip}" \
+        --csv_sin "${csv_sin}" \
+        --csv_dep_sip "${csv_dep_sip}" \
+        --csv_dep_sin "${csv_dep_sin}" \
+        || return 1
+
+    check_opt_applies \
+        refuse \
+        --mode "${mode}" siq \
+        --tbl_met "${tbl_met}" \
+        --cfg_met "${cfg_met}" \
+        --eqn "${eqn_set}" \
+        --len_def "${len_def}" \
+        --csv_len_mip "${csv_len_mip}" \
+        --csv_len_min "${csv_len_min}" \
+        || return 1
 }
 
 
@@ -686,6 +710,7 @@ function init_arg_defs() {
     tbl_met=""
     cfg_met=""
     eqn="6nd"
+    eqn_set=false
 
     len_def=""      # SE fallback length (bp).
     csv_len_mip=""  # Precomputed lengths: main IP.
@@ -845,6 +870,10 @@ function validate_vecs() {
     if [[ "${need_ref}" == "true" && -z "${ref_fa}" ]]; then
         echo_err "'--ref_fa' is required when an input alignment file is CRAM."
         return 1
+    elif [[ "${need_ref}" == "false" && -n "${ref_fa}" ]]; then
+        echo_warn \
+            "'--ref_fa' has no effect without CRAM input and is ignored."
+        ref_fa=""
     fi
 
     if [[ -n "${ref_fa}" ]]; then

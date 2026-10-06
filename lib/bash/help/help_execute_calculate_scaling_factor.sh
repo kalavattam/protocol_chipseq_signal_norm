@@ -10,7 +10,7 @@
 # output reviewed, edited, and approved by the author:
 # - OpenAI ChatGPT and Codex (GPT-4- and GPT-5-series models; most recent:
 #   GPT-5.6);
-# - Anthropic Claude Code (Opus 5).
+# - Anthropic Claude Code (Opus 5, Opus 5.5).
 #
 # Distributed under the MIT license.
 
@@ -61,10 +61,14 @@ Parameters
     Number of threads to use (default: ${threads}).
 
   -md, --mode : {'siq', 'spike'}
-    Workflow mode. Scaling-factor mode to run: 'siq' or 'spike' (default: '${mode}').
+    Scaling-factor mode to run: 'siq' or 'spike' (default: '${mode}').
+
+    Used with '--mode spike': '--method', '--csv_sip', '--csv_sin', '--csv_dep_sip', and '--csv_dep_sin', which are refused with '--mode siq'.
+
+    Used with '--mode siq': '--tbl_met', '--cfg_met', '--eqn', '--len_def', '--csv_len_mip', and '--csv_len_min', which are refused with '--mode spike'.
 
   -me, --method : {'fractional', 'main_per_spike', 'chiprx_alpha_ratio', 'chiprx_alpha_ip', 'chiprx_alpha_in', 'rxinput_alpha'}
-    Workflow method. Spike-in scaling method to compute when '--mode spike' is active (default: 'chiprx_alpha_ratio'; no default if '--mode siq').
+    Spike-in scaling method to compute when '--mode spike' is active (default: 'chiprx_alpha_ratio'); refused with '--mode siq'.
 
     List of accepted canonical method names (first), aliases (subsequent), and calculations:
       - fractional | bioprotocol | bio_protocol
@@ -94,7 +98,7 @@ Parameters
     Alignment layout type for input alignment files: 'pe', 'paired', 'se', 'single', or 'auto' (default: '${aln_typ}').
 
   -rf, --ref_fa : file
-    Reference FASTA file. Reference FASTA required when any input alignment file is CRAM.
+    Reference FASTA required when any input alignment file is CRAM; otherwise, ignored with a warning.
 
   -cmip, --csv_mip : list of file
     Comma-separated list of main IP alignment files.
@@ -103,10 +107,14 @@ Parameters
     Comma-separated list of main input alignment files.
 
   -csip, --csv_sip : list of file
-    Comma-separated list of spike-in IP alignment files. Required if '--mode spike'; ignored otherwise.
+    Comma-separated list of spike-in IP alignment files.
+
+    Required if '--mode spike'; refused otherwise.
 
   -csin, --csv_sin : list of file
-    Comma-separated list of spike-in input alignment files. Required if '--mode spike'; ignored otherwise.
+    Comma-separated list of spike-in input alignment files.
+
+    Required if '--mode spike'; refused otherwise.
 
   -fo, --fil_out : file
     Output file path. Tab-delimited output file to which scaling factors and related values are written.
@@ -121,13 +129,17 @@ Parameters
     Leave the final TSV data-only instead of prepending the mode-specific header.
 
   -tb, --tbl_met : file
-    siQ-ChIP metadata table. Required if '--mode siq'; ignored otherwise.
+    siQ-ChIP metadata table.
+
+    Required if '--mode siq'; refused otherwise.
 
   -cm, --cfg_met : file
-    YAML configuration file for metadata parsing. Used in 'siq' mode.
+    YAML configuration file for metadata parsing.
+
+    Required if '--mode siq'; refused otherwise.
 
   -eq, --eqn : {'5', '5nd', '6', '6nd'}
-    siQ-ChIP alpha equation to compute when '--mode siq' is active: '5', '5nd', '6', or '6nd' (default: '${eqn}'; ignored if '--mode spike').
+    siQ-ChIP alpha equation to compute when '--mode siq' is active: '5', '5nd', '6', or '6nd' (default: '${eqn}'); refused with '--mode spike'.
 
     For descriptions of these equations, see Dickson et al., Sci Rep 2023 (PMID: 37160995). '5' corresponds to Equation 5 in the paper, and '6' corresponds to Equation 6.
 
@@ -136,23 +148,41 @@ Parameters
   -ld, --len_def : int
     Default fragment length for single-end libraries when a per-file fragment length is not otherwise available.
 
+    Used with '--mode siq'; refused otherwise.
+
   -clmp, --csv_len_mip : list of number
-    Fragment length value(s) for main IP alignment files. May be a comma-separated list aligned to samples or a single broadcast value.
+    Fragment length value(s) for main IP alignment files.
+
+    May be a comma-separated list aligned to samples or a single broadcast value.
+
+    Used with '--mode siq'; refused otherwise.
 
   -clmn, --csv_len_min : list of number
-    Fragment length value(s) for main input alignment files. May be a comma-separated list aligned to samples or a single broadcast value.
+    Fragment length value(s) for main input alignment files.
+
+    May be a comma-separated list aligned to samples or a single broadcast value.
+
+    Used with '--mode siq'; refused otherwise.
 
   -cdmp, --csv_dep_mip : list of int
-    Sequencing/alignment depth value(s) for main IP alignment files. May be a comma-separated list aligned to samples or a single broadcast value.
+    Sequencing/alignment depth value(s) for main IP alignment files.
+
+    May be a comma-separated list aligned to samples or a single broadcast value.
 
   -cdmn, --csv_dep_min : list of int
-    Override sequencing/alignment depth value(s) for main-organism input files; here 'min' abbreviates main input. May be a comma-separated list aligned to samples or a single broadcast value.
+    Override sequencing/alignment depth value(s) for main-organism input files; here 'min' abbreviates main input.
+
+    May be a comma-separated list aligned to samples or a single broadcast value.
 
   -cdsp, --csv_dep_sip : list of int
-    Sequencing/alignment depth value(s) for spike-in IP alignment files. May be a comma-separated list aligned to samples or a single broadcast value. Used only in 'spike' mode.
+    Sequencing/alignment depth value(s) for spike-in IP alignment files.
+
+    May be a comma-separated list aligned to samples or a single broadcast value. Used with '--mode spike'; refused otherwise.
 
   -cdsn, --csv_dep_sin : list of int
-    Sequencing/alignment depth value(s) for spike-in input alignment files. May be a comma-separated list aligned to samples or a single broadcast value. Used only in 'spike' mode.
+    Sequencing/alignment depth value(s) for spike-in input alignment files.
+
+    May be a comma-separated list aligned to samples or a single broadcast value. Used with '--mode spike'; refused otherwise.
 
   -dp, --dp : int
     Maximum number of decimal places retained for finite emitted values (default: ${dp}).
@@ -162,8 +192,8 @@ Parameters
 
   -nj, --nam_job : str
     Job name prefix. If omitted, a mode-specific default is constructed:
-      - 'calc_sf_siq_\${eqn}' for 'siq' mode
-      - 'calc_sf_spike_\${method}' for 'spike' mode
+      - 'calc_sf_siq_\${eqn}' for 'siq' mode.
+      - 'calc_sf_spike_\${method}' for 'spike' mode.
 
   -mj, --max_job : int
     Maximum number of jobs to run concurrently (default: ${max_job}).
@@ -172,7 +202,7 @@ Parameters
     Submit jobs to the Slurm scheduler.
 
   -tm, --time : time
-    Slurm job time limit. Slurm wall-clock time in 'h:mm:ss' format (default: '${time}'; used only if '--slurm' is active).
+    Slurm wall-clock time in 'h:mm:ss' format (default: '${time}'; used only if '--slurm' is active).
 
 Notes
 -----
@@ -190,7 +220,7 @@ Notes
     - sbatch (when '--slurm' is specified)
 
   - In 'spike' mode, '--method' is normalized internally to one of the supported spike-in calculation modes.
-  - In 'siq' mode, '--method' is not used.
+  - In 'siq' mode, '--method' is refused.
   - CRAM inputs require '--ref_fa'.
   - For required per-sample input vectors, reconstructed arrays must be non-empty and of matching length.
   - Optional override vectors such as '--csv_len_mip' or '--csv_dep_min' may contain either:

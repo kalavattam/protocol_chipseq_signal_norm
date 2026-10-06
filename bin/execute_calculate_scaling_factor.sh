@@ -79,6 +79,7 @@ function build_cmd() {
     local csv_mip_i csv_min_i csv_sip_i="" csv_sin_i=""
     local len_mip_i len_min_i
     local dep_mip_i dep_min_i dep_sip_i="" dep_sin_i=""
+    local lst_aln
     local show_help
 
     unset cmd_bld && declare -ga cmd_bld
@@ -273,7 +274,10 @@ EOM
 
     cmd_bld+=( --aln_typ "${aln_typ}" )
 
-    if [[ -n "${ref_fa}" ]]; then
+    # Pass the reference only to a call that reads CRAM, so a sample with BAM
+    # files alone draws no warning.
+    lst_aln=",${csv_mip_i},${csv_min_i},${csv_sip_i},${csv_sin_i},"
+    if [[ -n "${ref_fa}" && "${lst_aln,,}" == *.cram,* ]]; then
         cmd_bld+=( --ref_fa "${ref_fa}" )
     fi
 
@@ -471,6 +475,7 @@ function init_arg_defs() {
     tbl_met=""
     cfg_met=""
     eqn="6nd"
+    eqn_set=false
 
     len_def=""
     csv_len_mip=""
@@ -672,6 +677,7 @@ function parse_args() {
                     return 1
                 }
                 eqn="${2,,}"
+                eqn_set=true
                 shift 2
                 ;;
 
@@ -814,16 +820,7 @@ function parse_args() {
 # Canonicalize mode and method aliases.
 function canonicalize_args() {
     case "${mode}" in
-        siq)
-            mode="siq"
-
-            if [[ -n "${method}" ]]; then
-                echo_err \
-                    "'--method' may be used only when '--mode spike' is" \
-                    "active."
-                return 1
-            fi
-            ;;
+        siq) : ;;
 
         spike|spk)
             mode="spike"
@@ -857,17 +854,16 @@ function canonicalize_args() {
                     ;;
                 *)
                     echo_err \
-                        "spike method ('--method') was assigned '${method}'" \
-                        "but is not recognized."
+                        "'--method' must be 'fractional', 'main_per_spike'," \
+                        "'chiprx_alpha_ratio', 'chiprx_alpha_ip'," \
+                        "'chiprx_alpha_in', or 'rxinput_alpha': '${method}'."
                     return 1
                     ;;
             esac
             ;;
 
         *)
-            echo_err \
-                "scaling-factor mode ('--mode') was assigned '${mode}' but" \
-                "must be 'siq' or 'spike'."
+            echo_err "'--mode' must be 'siq' or 'spike': '${mode}'."
             return 1
             ;;
     esac
@@ -878,16 +874,47 @@ function canonicalize_args() {
         auto) : ;;
         *)
             echo_err \
-                "alignment type ('--aln_typ') was assigned '${aln_typ}'" \
-                "but must be 'pe', 'se', or 'auto'."
+                "'--aln_typ' must be 'pe', 'se', or 'auto': '${aln_typ}'."
             return 1
             ;;
     esac
 }
 
 
+# Per 'HELP.PARAMETER.APPLICABILITY', refuse options that have no effect in
+# this mode.
+function check_opts_mode() {
+    # Spike-in files, depths, and methods are for spike mode.
+    check_opt_applies \
+        refuse \
+        --mode "${mode}" \
+        spike \
+        --method "${method}" \
+        --csv_sip "${csv_sip}" \
+        --csv_sin "${csv_sin}" \
+        --csv_dep_sip "${csv_dep_sip}" \
+        --csv_dep_sin "${csv_dep_sin}" \
+        || return 1
+
+    # Metadata, equations, and fragment lengths are for siQ mode.
+    check_opt_applies \
+        refuse \
+        --mode "${mode}" \
+        siq \
+        --tbl_met "${tbl_met}" \
+        --cfg_met "${cfg_met}" \
+        --eqn "${eqn_set}" \
+        --len_def "${len_def}" \
+        --csv_len_mip "${csv_len_mip}" \
+        --csv_len_min "${csv_len_min}" \
+        || return 1
+}
+
+
 # Validate scalar arguments and assign derived scalar defaults.
 function validate_args() {
+    check_opts_mode || return 1
+
     validate_var "env_nam" "${env_nam}" || return 1
     check_env_installed "${env_nam}" || return 1
 
@@ -952,8 +979,7 @@ function validate_args() {
             5|5nd|6|6nd) : ;;
             *)
                 echo_err \
-                    "equation ('--eqn') was assigned '${eqn}' but must be" \
-                    "'5', '5nd', '6', or '6nd'."
+                    "'--eqn' must be '5', '5nd', '6', or '6nd': '${eqn}'."
                 return 1
                 ;;
         esac
@@ -1084,6 +1110,10 @@ function validate_vecs() {
     if [[ "${need_ref}" == "true" && -z "${ref_fa}" ]]; then
         echo_err "'--ref_fa' is required when an input alignment file is CRAM."
         return 1
+    elif [[ "${need_ref}" == "false" && -n "${ref_fa}" ]]; then
+        echo_warn \
+            "'--ref_fa' has no effect without CRAM input and is ignored."
+        ref_fa=""
     fi
 
     if [[ -n "${ref_fa}" ]]; then
