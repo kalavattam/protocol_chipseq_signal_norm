@@ -2114,9 +2114,13 @@ EOM
         --eqn     "${eqn}"     --dp      "${dp}"
         --mass_ip "${mass_ip}" --mass_in "${mass_in}"
         --vol_all "${vol_all}" --vol_in  "${vol_in}"
-        --dep_ip  "${dep_ip}"  --dep_in  "${dep_in}"
         --len_ip  "${len_ip}"  --len_in  "${len_in}"
     )
+
+    # Depths enter only equations '5' and '6'; the row still reports them.
+    if [[ "${eqn}" == "5" || "${eqn}" == "6" ]]; then
+        arr_arg_siq+=( --dep_ip "${dep_ip}" --dep_in "${dep_in}" )
+    fi
 
     if [[ "${lib_vol_ip}" != "NA" && "${lib_vol_in}" != "NA" ]]; then
         arr_arg_siq+=(
@@ -2186,7 +2190,7 @@ function process_samp_spike() {
     local mp mn sp sn typ_mp typ_sp typ_mn typ_sn
     local num_mp num_sp num_mn num_sn coef_lcl coef_val v fil_out_part
     # local fmt_str  # Reserved in case formatted output generation is revived.
-    local -a arr_fields
+    local -a arr_fields arr_main
     local show_help
 
     show_help=$(cat << EOM
@@ -2219,7 +2223,7 @@ Expected globals
     Reference-FASTA and output-table paths, respectively.
 
   aln_typ, coef_spk : str
-    Alignment-type override and requested spike-in coefficient, respectively.
+    Alignment-type override and requested spike-in coefficient, respectively. 'coef_spk' is a canonical name, as 'submit_calculate_scaling_factor.sh' passes it, which decides the main counts passed on.
 
   threads, dp, idx_out : int
     Thread count, rounding precision, and optional output-part index, respectively.
@@ -2401,15 +2405,31 @@ EOM
             "coef_spk=${coef_lcl}" "dp=${dp}"
     fi
 
+    # Pass only the main counts the coefficient uses; the row still reports
+    # them.
+    case "${coef_lcl}" in
+        fractional|main_per_spike)
+            arr_main=( --main_ip "${num_mp}" --main_in "${num_mn}" )
+            ;;
+
+        rxinput_alpha)
+            arr_main=( --main_in "${num_mn}" )
+            ;;
+
+        *)
+            arr_main=()
+            ;;
+    esac
+
     # Compute requested spike-in coefficient.
     coef_val="$(
         _compute_scl_fct \
             "spike" "${scr_siq}" "${scr_spk}" \
-            --coef    "${coef_lcl}" \
-            --format  "plain" \
-            --main_ip "${num_mp}" --spike_ip "${num_sp}" \
-            --main_in "${num_mn}" --spike_in "${num_sn}" \
-            --dp      "${dp}"
+            --coef     "${coef_lcl}" \
+            --format   "plain" \
+            --spike_ip "${num_sp}" --spike_in "${num_sn}" \
+            "${arr_main[@]}" \
+            --dp       "${dp}"
     )" || {
         echo_err_func "${FUNCNAME[0]}" \
             "failed while computing spike-in coefficient '${coef_lcl}' for" \

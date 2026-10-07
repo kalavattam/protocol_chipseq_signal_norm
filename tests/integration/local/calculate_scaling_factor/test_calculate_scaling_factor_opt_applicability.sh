@@ -270,14 +270,17 @@ for idx in "${!rows_ref[@]}"; do
         run_submit "${dir_out}" spike "${spk[@]}" --ref_fa "${fil_ref}"
     )" || rc=$?
 
+    # The helper passes the calculator only the counts the coefficient uses,
+    # so no other note appears.
     if [[
         "${rc}" -eq 0
         && "${out}" == *"'--ref_fa' has no effect without CRAM input"*
+        && "${out}" != *"has no effect with '--coef"*
         && -s "${dir_out}/sf.tsv.part.000000"
     ]]; then
         record_pass "${lbl} warns and still runs"
     else
-        record_fail "${lbl} did not warn, or failed (exit ${rc})"
+        record_fail "${lbl} did not warn, warned twice, or failed (exit ${rc})"
     fi
 done
 

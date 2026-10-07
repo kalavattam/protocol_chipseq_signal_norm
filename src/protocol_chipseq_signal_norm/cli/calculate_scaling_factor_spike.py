@@ -10,7 +10,7 @@
 # output reviewed, edited, and approved by the author:
 # - OpenAI ChatGPT and Codex (GPT-4- and GPT-5-series models; most recent:
 #   GPT-5.6);
-# - Anthropic Claude Code (Opus 5).
+# - Anthropic Claude Code (Opus 5, Opus 5.5).
 #
 # Distributed under the MIT license.
 
@@ -35,6 +35,7 @@ import json
 import re
 import signal
 import sys
+import warnings
 from contextlib import redirect_stdout, suppress
 
 from protocol_chipseq_signal_norm.utilities.utils_check import (
@@ -43,6 +44,8 @@ from protocol_chipseq_signal_norm.utilities.utils_check import (
 from protocol_chipseq_signal_norm.utilities.utils_cli import (
     CapArgumentParser,
     add_help_cap,
+    check_opts_apply,
+    find_supplied,
 )
 from protocol_chipseq_signal_norm.utilities.utils_format import format_value
 
@@ -114,6 +117,12 @@ COEF_ORDER = (
     "chiprx_alpha_ratio",
     "rxinput_alpha",
 )
+
+# Coefficients that use each main count; the others use spike counts only.
+USES_MAIN = {
+    "main_ip": frozenset({"fractional", "main_per_spike"}),
+    "main_in": frozenset({"fractional", "main_per_spike", "rxinput_alpha"}),
+}
 
 
 def normalize_coef(raw: str) -> str:
@@ -244,30 +253,57 @@ def validate_counts(args: argparse.Namespace) -> None:
     Parameters
     ----------
     args : argparse.Namespace
-        main_ip, spike_ip, main_in, spike_in
+        main_ip, spike_ip, main_in, spike_in, with 'supplied' from
+        'find_supplied()'.
 
     Raises
     ------
     ValueError
-        If any count < 0 or if dp < 0.
+        If any count < 0, if dp < 0, or if a main count the coefficient uses
+        is missing.
     ZeroDivisionError
         If a per-sample total is zero.
+
+    Notes
+    -----
+    Per 'HELP.PARAMETER.APPLICABILITY', a main count the coefficient does not
+    use is ignored with a note and set to None.
     """
-
-    for name in ("main_ip", "spike_ip", "main_in", "spike_in"):
-        validate_comparison(
-            getattr(args, name),
-            "ge",
-            0,
-            name,
-            allow_none=False,
-        )
-
-    validate_comparison(args.dp, "ge", 0, "dp", allow_none=False)
 
     args.coef_raw = args.coef
 
     args.coef = normalize_coef(args.coef)
+    coefs = set(COEF_ORDER) if args.coef == "all" else {args.coef}
+
+    for name, uses in USES_MAIN.items():
+        flag = f"--{name}"
+
+        if coefs & uses:
+            if getattr(args, name) is None:
+                raise ValueError(
+                    f"'{flag}' is required for '--coef {args.coef}'.",
+                )
+        else:
+            check_opts_apply(
+                args.supplied,
+                "warn",
+                {name: flag},
+                "'--coef' values that use it",
+                f"'--coef {args.coef}'",
+            )
+            setattr(args, name, None)
+
+    for name in ("main_ip", "spike_ip", "main_in", "spike_in"):
+        if getattr(args, name) is not None:
+            validate_comparison(
+                getattr(args, name),
+                "ge",
+                0,
+                name,
+                allow_none=False,
+            )
+
+    validate_comparison(args.dp, "ge", 0, "dp", allow_none=False)
 
     if args.fmt not in ("plain", "tsv", "json"):
         raise ValueError(f"Invalid --format '{args.fmt}'.")
@@ -278,21 +314,21 @@ def validate_counts(args: argparse.Namespace) -> None:
             "'--format tsv|json' or a specific '--coef' value.",
         )
 
-    if (args.main_ip + args.spike_ip) == 0:
+    if args.main_ip is not None and (args.main_ip + args.spike_ip) == 0:
         raise ZeroDivisionError(
             "IP totals are zero ('main_ip' + 'spike_ip' = 0).",
         )
 
-    if (args.main_in + args.spike_in) == 0:
+    if args.main_in is not None and (args.main_in + args.spike_in) == 0:
         raise ZeroDivisionError(
             "Input totals are zero ('main_in' + 'spike_in' = 0).",
         )
 
 
 def calculate_scaling_factors(
-    main_ip: int,
+    main_ip: int | None,
     spike_ip: int,
-    main_in: int,
+    main_in: int | None,
     spike_in: int,
     required: tuple[str, ...] = COEF_ORDER,
 ) -> dict[str, float]:
@@ -303,8 +339,12 @@ def calculate_scaling_factors(
 
     Parameters
     ----------
-    main_ip, spike_ip, main_in, spike_in : int
-        Non-negative integer counts.
+    main_ip, main_in : int | None
+        Non-negative integer main counts, or None when no requested
+        coefficient uses them ('chiprx_alpha_*' use neither; 'rxinput_alpha'
+        uses only 'main_in').
+    spike_ip, spike_in : int
+        Non-negative integer spike-in counts.
     required : tuple[str, ...]
         Tuple of canonical coefficient names to compute. Canonical names:
         fractional, main_per_spike, chiprx_alpha_ip, chiprx_alpha_in,
@@ -320,40 +360,17 @@ def calculate_scaling_factors(
     TypeError
         If a count is not an integer.
     ValueError
-        If a count is negative or a requested coefficient is unknown.
+        If a count is negative, a requested coefficient is unknown, or a main
+        count a requested coefficient uses is None.
     ZeroDivisionError
         If a requested coefficient has a zero denominator.
+
+    Warns
+    -----
+    UserWarning
+        If a main count is given that no requested coefficient uses, per
+        'HELP.PARAMETER.APPLICABILITY'; it is ignored.
     """
-
-    for name, count in (
-        ("main_ip", main_ip),
-        ("spike_ip", spike_ip),
-        ("main_in", main_in),
-        ("spike_in", spike_in),
-    ):
-        if not isinstance(count, int):
-            raise TypeError(
-                f"Expected type 'int' for '{name}', but got "
-                f"'{type(count).__name__}'.",
-            )
-
-        if count < 0:
-            raise ValueError(
-                f"Count for '{name}' must be >= 0, but got '{count}'.",
-            )
-
-    total_ip = main_ip + spike_ip
-    total_input = main_in + spike_in
-
-    if total_ip == 0:
-        raise ZeroDivisionError(
-            "IP totals are zero ('main_ip' + 'spike_ip' = 0).",
-        )
-
-    if total_input == 0:
-        raise ZeroDivisionError(
-            "Input totals are zero ('main_in' + 'spike_in' = 0).",
-        )
 
     requested_names = set(required)
     unknown = requested_names - set(COEF_ORDER)
@@ -365,6 +382,59 @@ def calculate_scaling_factors(
         raise ValueError(
             f"Invalid coefficient name(s) in 'required': {unknown_names}. "
             f"Allowed: {allowed_names}.",
+        )
+
+    mains = {"main_ip": main_ip, "main_in": main_in}
+
+    for name, count in mains.items():
+        if requested_names & USES_MAIN[name]:
+            if count is None:
+                raise ValueError(
+                    f"'{name}' is required for coefficient(s) "
+                    f"{sorted(requested_names & USES_MAIN[name])}.",
+                )
+        elif count is not None:
+            warnings.warn(
+                f"'{name}' has no effect with coefficient(s) "
+                f"{sorted(requested_names)} and is ignored.",
+                stacklevel=2,
+            )
+            mains[name] = None
+
+    main_ip, main_in = mains["main_ip"], mains["main_in"]
+
+    for name, count in (
+        ("main_ip", main_ip),
+        ("spike_ip", spike_ip),
+        ("main_in", main_in),
+        ("spike_in", spike_in),
+    ):
+        if count is None and name in {"main_ip", "main_in"}:
+            continue
+
+        if not isinstance(count, int):
+            raise TypeError(
+                f"Expected type 'int' for '{name}', but got "
+                f"'{type(count).__name__}'.",
+            )
+
+        if count < 0:
+            raise ValueError(
+                f"Count for '{name}' must be >= 0, but got '{count}'.",
+            )
+
+    # A total exists only where its main count does.
+    total_ip = None if main_ip is None else main_ip + spike_ip
+    total_input = None if main_in is None else main_in + spike_in
+
+    if total_ip == 0:
+        raise ZeroDivisionError(
+            "IP totals are zero ('main_ip' + 'spike_ip' = 0).",
+        )
+
+    if total_input == 0:
+        raise ZeroDivisionError(
+            "Input totals are zero ('main_in' + 'spike_in' = 0).",
         )
 
     spike_ip_coefficients = {
@@ -453,7 +523,8 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     Returns
     -------
     arguments : argparse.Namespace
-        Parsed spike-in counts, methods, and rendering options.
+        Parsed spike-in counts, methods, and rendering options, with 'supplied'
+        from 'find_supplied()'.
 
     Raises
     ------
@@ -481,8 +552,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     )
     parser.add_argument(
         "-c",
-        "--coef",
-        "--coefficient",
+        "--coef", "--coefficient",
         dest="coef",
         type=str,
         required=False,
@@ -517,8 +587,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     )
     parser.add_argument(
         "-ft",
-        "--fmt",
-        "--format",
+        "--fmt", "--format",
         dest="fmt",
         type=str,
         choices=("plain", "tsv", "json"),
@@ -530,59 +599,85 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         ),
     )
     parser.add_argument(
-        "-mp",
-        "-mip",
-        "--mip",
-        "--main_ip",
+        "-mp", "-mip",
+        "--mip", "--main_ip",
         dest="main_ip",
         type=int,
-        required=True,
+        required=False,
+        default=None,
         help=(
-            "Number of “main” alignments (reads or read-inferred fragments) "
+            "Number of \"main\" alignments (reads or read-inferred fragments) "
             "for the ChIP-seq IP data.\n"
+            "\n"
+            "Required for '--coef fractional', 'main_per_spike', or 'all'; "
+            "otherwise, ignored with a warning.\n"
             "\n"
         ),
     )
     parser.add_argument(
-        "-sp",
-        "-sip",
-        "--sip",
-        "--spike_ip",
+        "--main-ip",
+        dest="main_ip",
+        type=int,
+        help=argparse.SUPPRESS,
+    )
+    parser.add_argument(
+        "-sp", "-sip",
+        "--sip", "--spike_ip",
         dest="spike_ip",
         type=int,
-        required=True,
+        required=False,
+        default=None,
         help=(
             "Number of spike-in alignments for the ChIP-seq IP data.\n"
             "\n"
         ),
     )
     parser.add_argument(
-        "-mn",
-        "-min",
-        "--min",
-        "--main_in",
+        "--spike-ip",
+        dest="spike_ip",
+        type=int,
+        help=argparse.SUPPRESS,
+    )
+    parser.add_argument(
+        "-mn", "-min",
+        "--min", "--main_in",
         dest="main_in",
         type=int,
-        required=True,
+        required=False,
+        default=None,
         help=(
-            "Number of “main” alignments for the corresponding ChIP-seq input "
-            "data.\n"
+            "Number of \"main\" alignments for the corresponding ChIP-seq "
+            "input data.\n"
+            "\n"
+            "Required for '--coef fractional', 'main_per_spike', "
+            "'rxinput_alpha', or 'all'; otherwise, ignored with a warning.\n"
             "\n"
         ),
     )
     parser.add_argument(
-        "-sn",
-        "-sin",
-        "--sin",
-        "--spike_in",
+        "--main-in",
+        dest="main_in",
+        type=int,
+        help=argparse.SUPPRESS,
+    )
+    parser.add_argument(
+        "-sn", "-sin",
+        "--sin", "--spike_in",
         dest="spike_in",
         type=int,
-        required=True,
+        required=False,
+        default=None,
         help=(
             "Number of spike-in alignments for the corresponding ChIP-seq "
             "input data.\n"
             "\n"
         ),
+    )
+    parser.add_argument(
+        "--spike-in",
+        dest="spike_in",
+        type=int,
+        help=argparse.SUPPRESS,
     )
     parser.add_argument(
         "-dp",
@@ -606,7 +701,16 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         parser.print_help(sys.stderr)
         raise SystemExit(0)
 
-    return parser.parse_args(argv_parse)
+    args = parser.parse_args(argv_parse)
+    args.supplied = find_supplied(parser, argv_parse)
+
+    # A hidden hyphen spelling is a separate action that argparse's own
+    # 'required' check cannot see, so check the parsed values here instead.
+    for dest in ("spike_ip", "spike_in"):
+        if getattr(args, dest) is None:
+            raise SystemExit(f"'--{dest}' is required.")
+
+    return args
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -652,16 +756,28 @@ def main(argv: list[str] | None = None) -> int:
                 print("--verbose")
                 print(f"--coef     {args.coef_raw}  (canon: {args.coef})")
                 print(f"--format   {args.fmt}")
-                print(f"--main_ip  {args.main_ip}")
+                if args.main_ip is not None:
+                    print(f"--main_ip  {args.main_ip}")
                 print(f"--spike_ip {args.spike_ip}")
-                print(f"--main_in  {args.main_in}")
+                if args.main_in is not None:
+                    print(f"--main_in  {args.main_in}")
                 print(f"--spike_in {args.spike_in}")
                 print(f"--dp      {args.dp}")
                 print("")
                 print("")
 
-        ratio_ip = args.spike_ip / (args.main_ip + args.spike_ip)
-        ratio_in = args.spike_in / (args.main_in + args.spike_in)
+        # A spike-in fraction needs its main count, which a coefficient that
+        # does not use it leaves as None.
+        ratio_ip = (
+            None
+            if args.main_ip is None
+            else args.spike_ip / (args.main_ip + args.spike_ip)
+        )
+        ratio_in = (
+            None
+            if args.main_in is None
+            else args.spike_in / (args.main_in + args.spike_in)
+        )
 
         # Additional composition warnings are non-fatal. These values are
         # mathematically valid but often indicate a counting or main/spike-in
@@ -670,6 +786,9 @@ def main(argv: list[str] | None = None) -> int:
             ("IP", args.main_ip, args.spike_ip, ratio_ip),
             ("input", args.main_in, args.spike_in, ratio_in),
         ):
+            if frac is None:
+                continue
+
             if main == 0 and spike > 0:
                 print(
                     f"Warning: '{label}' has 'main == 0' and 'spike > 0' "
@@ -689,6 +808,9 @@ def main(argv: list[str] | None = None) -> int:
                 )
 
         for label, frac in (("IP", ratio_ip), ("input", ratio_in)):
+            if frac is None:
+                continue
+
             if frac < 1e-6:
                 print(
                     f"Warning: '{label}' spike-in fraction may be unusually "
@@ -719,8 +841,8 @@ def main(argv: list[str] | None = None) -> int:
                 print("")
 
                 # Keep one shared value-column start for this block. Ratio
-                # labels are “IP spike-in fraction” and “input spike-in
-                # fraction”.
+                # labels are "IP spike-in fraction" and "input spike-in
+                # fraction".
                 base_labels = (
                     "IP spike-in fraction",
                     "input spike-in fraction",
@@ -736,14 +858,12 @@ def main(argv: list[str] | None = None) -> int:
                     dots = "." * (label_width - len(label) + 8)
                     print(f"{label} {dots} {value}")
 
-                print_dotted(
-                    "IP spike-in fraction",
-                    format_value(ratio_ip, args.dp),
-                )
-                print_dotted(
-                    "input spike-in fraction",
-                    format_value(ratio_in, args.dp),
-                )
+                for label, frac in (
+                    ("IP spike-in fraction", ratio_ip),
+                    ("input spike-in fraction", ratio_in),
+                ):
+                    if frac is not None:
+                        print_dotted(label, format_value(frac, args.dp))
 
                 for key in coefficient_labels:
                     print_dotted(

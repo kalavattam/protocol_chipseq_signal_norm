@@ -10,7 +10,7 @@
 # output reviewed, edited, and approved by the author:
 # - OpenAI ChatGPT and Codex (GPT-4- and GPT-5-series models; most recent:
 #   GPT-5.6);
-# - Anthropic Claude Code (Opus 5).
+# - Anthropic Claude Code (Opus 5, Opus 5.5).
 #
 # Distributed under the MIT license.
 
@@ -46,6 +46,8 @@ from protocol_chipseq_signal_norm.utilities.utils_check import (
 from protocol_chipseq_signal_norm.utilities.utils_cli import (
     CapArgumentParser,
     add_help_cap,
+    check_opts_apply,
+    find_supplied,
 )
 from protocol_chipseq_signal_norm.utilities.utils_format import format_value
 
@@ -176,12 +178,12 @@ def calculate_alpha(
     ----------
     eqn : str
         Alpha equation to compute. Options:
-            - '5':   Equation 5 (for ratios of fragment length-adjusted raw
-                     signal, i.e., 'frag').
+            - '5':   Equation 5 (for ratios of fragment length-adjusted signal,
+                     i.e., 'frag').
             - '5nd': Equation 5 without depth terms (for ratios of normalized
                      coverage, i.e., 'norm').
-            - '6':   Equation 6 (for ratios of fragment length-adjusted raw
-                     signal, i.e., 'frag').
+            - '6':   Equation 6 (for ratios of fragment length-adjusted signal,
+                     i.e., 'frag').
             - '6nd': Equation 6 without depth terms (for ratios of normalized
                      coverage, i.e., 'norm').
     mass_ip : float
@@ -213,10 +215,19 @@ def calculate_alpha(
     Raises
     ------
     ValueError
-        If an unsupported equation is provided, or if constraints required by
-        the selected equation are violated (e.g., 'vol_all <= vol_in' for
-        '--eqn 6' or '--eqn 6nd').
+        If an unsupported equation is provided, if 'dep_ip' or 'dep_in' is
+        given with '5nd' or '6nd', which have no depth terms, or if
+        constraints required by the selected equation are violated (e.g.,
+        'vol_all <= vol_in' for '--eqn 6' or '--eqn 6nd').
     """
+
+    # Per 'HELP.PARAMETER.APPLICABILITY', depths do nothing without depth
+    # terms, so callers pass None.
+    if eqn in {"5nd", "6nd"} and (dep_ip is not None or dep_in is not None):
+        raise ValueError(
+            "'dep_ip' and 'dep_in' are for 'eqn' '5' or '6'; they have no "
+            f"effect with 'eqn' '{eqn}'.",
+        )
 
     if eqn == "5":
         # Equation 5 uses mass, volume, depth, and fragment-length ratios.
@@ -238,8 +249,8 @@ def calculate_alpha(
             )
 
         if eqn == "6":
-            # Equation 6 uses the concentration ratio with
-            # fragment-length-adjusted raw-signal ratios.
+            # Equation 6 uses the concentration ratio with fragment
+            # length-adjusted signal ratios.
             ip_concentration = (
                 mass_ip / (660 * len_ip * (vol_all - vol_in))
             ) * (1 / dep_ip)
@@ -275,7 +286,8 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     Returns
     -------
     arguments : argparse.Namespace
-        Parsed siQ-ChIP input measurements and output options.
+        Parsed siQ-ChIP input measurements and output options, with 'supplied'
+        from 'find_supplied()'.
 
     Raises
     ------
@@ -315,8 +327,8 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
             "%(default)s).\n"
             "\n"
             "Equations '5' and '6' assume a ratio of fragment length-adjusted "
-            "raw signal tracks ('frag'), for which each fragment (not each "
-            "read) contributes to the coverage signal (extending reads and "
+            "signal tracks ('frag'), for which each fragment (not each read) "
+            "contributes to the coverage signal (extending reads and "
             "including only first mates, or otherwise ensuring one fragment "
             "equals one count, approximates that state).\n"
             "\n"
@@ -330,111 +342,152 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument(
         "-mp",
         "--mass_ip",
-        "--mass-ip",
         dest="mass_ip",
         type=float,
-        required=True,
+        default=None,
         help=(
             "Mass of IP sample (ng).\n"
             "\n"
         ),
     )
     parser.add_argument(
+        "--mass-ip",
+        dest="mass_ip",
+        type=float,
+        help=argparse.SUPPRESS,
+    )
+    parser.add_argument(
         "-mn",
         "--mass_in",
-        "--mass-in",
         dest="mass_in",
         type=float,
-        required=True,
+        default=None,
         help=(
             "Mass of input sample (ng).\n"
             "\n"
         ),
     )
+    parser.add_argument(
+        "--mass-in",
+        dest="mass_in",
+        type=float,
+        help=argparse.SUPPRESS,
+    )
 
     parser.add_argument(
         "-va",
         "--vol_all",
-        "--vol-all",
         dest="vol_all",
         type=float,
-        required=True,
+        default=None,
         help=(
             "Volume of sample before removal of input (µL).\n"
             "\n"
         ),
     )
     parser.add_argument(
+        "--vol-all",
+        dest="vol_all",
+        type=float,
+        help=argparse.SUPPRESS,
+    )
+    parser.add_argument(
         "-vn",
         "--vol_in",
-        "--vol-in",
         dest="vol_in",
         type=float,
-        required=True,
+        default=None,
         help=(
             "Volume of input sample (µL).\n"
             "\n"
         ),
     )
+    parser.add_argument(
+        "--vol-in",
+        dest="vol_in",
+        type=float,
+        help=argparse.SUPPRESS,
+    )
 
     parser.add_argument(
         "-di",
         "--dep_ip",
-        "--dep-ip",
         dest="dep_ip",
         type=int,
         required=False,
         default=None,
         help=(
-            "Sequencing depth of IP sample (alignments or inferred fragments; "
-            "required for '--eqn 5' or '--eqn 6').\n"
+            "Sequencing depth of IP sample (alignments or inferred "
+            "fragments); required for '--eqn 5' or '--eqn 6'; refused "
+            "otherwise.\n"
             "\n"
         ),
     )
     parser.add_argument(
+        "--dep-ip",
+        dest="dep_ip",
+        type=int,
+        help=argparse.SUPPRESS,
+    )
+    parser.add_argument(
         "-dn",
         "--dep_in",
-        "--dep-in",
         dest="dep_in",
         type=int,
         required=False,
         default=None,
         help=(
             "Sequencing depth of input sample (alignments or inferred "
-            "fragments; required for '--eqn 5' or '--eqn 6').\n"
+            "fragments); required for '--eqn 5' or '--eqn 6'; refused "
+            "otherwise.\n"
             "\n"
         ),
+    )
+    parser.add_argument(
+        "--dep-in",
+        dest="dep_in",
+        type=int,
+        help=argparse.SUPPRESS,
     )
 
     parser.add_argument(
         "-lp",
         "--len_ip",
-        "--len-ip",
         dest="len_ip",
         type=float,
-        required=True,
+        default=None,
         help=(
             "Summary fragment length of IP sample (bp).\n"
             "\n"
         ),
     )
     parser.add_argument(
+        "--len-ip",
+        dest="len_ip",
+        type=float,
+        help=argparse.SUPPRESS,
+    )
+    parser.add_argument(
         "-ln",
         "--len_in",
-        "--len-in",
         dest="len_in",
         type=float,
-        required=True,
+        default=None,
         help=(
             "Summary fragment length of input sample (bp).\n"
             "\n"
         ),
     )
+    parser.add_argument(
+        "--len-in",
+        dest="len_in",
+        type=float,
+        help=argparse.SUPPRESS,
+    )
 
     parser.add_argument(
         "-lvp",
         "--lib_vol_ip",
-        "--lib-vol-ip",
         dest="lib_vol_ip",
         type=float,
         required=False,
@@ -448,9 +501,14 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         ),
     )
     parser.add_argument(
+        "--lib-vol-ip",
+        dest="lib_vol_ip",
+        type=float,
+        help=argparse.SUPPRESS,
+    )
+    parser.add_argument(
         "-lvn",
         "--lib_vol_in",
-        "--lib-vol-in",
         dest="lib_vol_in",
         type=float,
         required=False,
@@ -462,6 +520,12 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
             "is multiplied by 'lib_vol_in / lib_vol_ip'.\n"
             "\n"
         ),
+    )
+    parser.add_argument(
+        "--lib-vol-in",
+        dest="lib_vol_in",
+        type=float,
+        help=argparse.SUPPRESS,
     )
 
     parser.add_argument(
@@ -485,7 +549,23 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         parser.print_help(sys.stderr)
         raise SystemExit(0)
 
-    return parser.parse_args(argv_parse)
+    args = parser.parse_args(argv_parse)
+    args.supplied = find_supplied(parser, argv_parse)
+
+    # A hidden hyphen spelling is a separate action that argparse's own
+    # 'required' check cannot see, so check the parsed values here instead.
+    for dest in (
+        "mass_ip",
+        "mass_in",
+        "vol_all",
+        "vol_in",
+        "len_ip",
+        "len_in",
+    ):
+        if getattr(args, dest) is None:
+            raise SystemExit(f"'--{dest}' is required.")
+
+    return args
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -516,6 +596,17 @@ def main(argv: list[str] | None = None) -> int:
     """
 
     args = parse_args(argv)
+
+    # Per 'HELP.PARAMETER.APPLICABILITY', refuse depths for an equation that
+    # has no depth terms.
+    if args.eqn in {"5nd", "6nd"}:
+        check_opts_apply(
+            args.supplied,
+            "refuse",
+            {"dep_ip": "--dep_ip", "dep_in": "--dep_in"},
+            "'--eqn 5' or '--eqn 6'",
+            f"'--eqn {args.eqn}'",
+        )
 
     if args.eqn in {"5", "5nd"}:
         ratio = args.vol_in / args.vol_all

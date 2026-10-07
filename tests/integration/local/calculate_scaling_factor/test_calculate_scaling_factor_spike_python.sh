@@ -9,7 +9,7 @@
 # The following were used in design, development, and documentation, with all
 # output reviewed, edited, and approved by the author:
 # - OpenAI ChatGPT and Codex (GPT-5.5, GPT-5.6);
-# - Anthropic Claude Code (Opus 5).
+# - Anthropic Claude Code (Opus 5, Opus 5.5).
 #
 # Distributed under the MIT license.
 
@@ -331,6 +331,7 @@ run_spike_failure \
     --main_ip -1 \
     --spike_ip 10 \
     --main_in 80 \
-    --spike_in 20
+    --spike_in 20 \
+    --coef fractional
 
 finish

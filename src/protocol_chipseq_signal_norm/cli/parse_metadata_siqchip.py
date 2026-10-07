@@ -10,7 +10,7 @@
 # output reviewed, edited, and approved by the author:
 # - OpenAI ChatGPT and Codex (GPT-4- and GPT-5-series models; most recent:
 #   GPT-5.6);
-# - Anthropic Claude Code (Opus 5).
+# - Anthropic Claude Code (Opus 5, Opus 5.5).
 #
 # Distributed under the MIT license.
 
@@ -48,6 +48,8 @@ from protocol_chipseq_signal_norm.utilities.utils_check import check_exists
 from protocol_chipseq_signal_norm.utilities.utils_cli import (
     CapArgumentParser,
     add_help_cap,
+    check_opts_apply,
+    find_supplied,
 )
 from protocol_chipseq_signal_norm.utilities.utils_io import (
     is_header,
@@ -669,7 +671,8 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     Returns
     -------
     arguments : argparse.Namespace
-        Parsed configuration, alignment, and output-selection options.
+        Parsed configuration, alignment, and output-selection options, with
+        'supplied' from 'find_supplied()'.
 
     Raises
     ------
@@ -708,6 +711,11 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         help="siQ-ChIP metadata table containing rows to match.",
     )
     parser.add_argument(
+        "--tbl-met",
+        dest="tbl_met",
+        help=argparse.SUPPRESS,
+    )
+    parser.add_argument(
         "-c",
         "--cfg",
         "--configure",
@@ -721,7 +729,18 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         dest="validate_cfg",
         action="store_true",
         default=False,
-        help="Validate the configuration file and exit.",
+        help=(
+            "Validate the configuration file and exit.\n"
+            "\n"
+            "Options '--alignment', '--tbl_met', '--shell', and '--skp_pfx' "
+            "have no effect here and are ignored with a warning."
+        ),
+    )
+    parser.add_argument(
+        "--validate-cfg",
+        dest="validate_cfg",
+        action="store_true",
+        help=argparse.SUPPRESS,
     )
     parser.add_argument(
         "-sh",
@@ -741,10 +760,34 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
             "lines."
         ),
     )
+    parser.add_argument(
+        "--skp-pfx",
+        dest="skp_pfx",
+        help=argparse.SUPPRESS,
+    )
 
     args = parser.parse_args(argv)
+    args.supplied = find_supplied(
+        parser,
+        sys.argv[1:] if argv is None else argv,
+    )
 
-    if not args.validate_cfg:
+    # Per 'HELP.PARAMETER.APPLICABILITY', a validation run reads only the
+    # configuration.
+    if args.validate_cfg:
+        check_opts_apply(
+            args.supplied,
+            "warn",
+            {
+                "alignment": "--alignment",
+                "tbl_met": "--tbl_met",
+                "shell": "--shell",
+                "skp_pfx": "--skp_pfx",
+            },
+            "a lookup run",
+            "'--validate_cfg'",
+        )
+    else:
         if not args.alignment:
             parser.error(
                 "'--alignment' is required unless '--validate_cfg' is "
