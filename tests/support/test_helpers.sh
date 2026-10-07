@@ -1208,7 +1208,7 @@ Parameters
     Input SAM fixture.
 
   2  ref_fa : file
-    Reference FASTA file. Reference FASTA used for CRAM writing.
+    Reference FASTA file, used for CRAM writing.
 
   3  out_cram : file
     Output CRAM fixture to create.
@@ -1755,7 +1755,7 @@ Parameters
     Name of the command array to execute.
 
   5  nam_job_pfx : str
-    Job name. Job-name prefix.
+    Job-name prefix.
 
   6  arr_arg_ref : str
     Name of the array containing additional wrapper arguments.
@@ -1892,7 +1892,7 @@ Parameters
     Case name suffix.
 
   4  mode : str
-    Workflow mode. Compute-signal mode to pass to the wrapper.
+    Compute-signal mode to pass to the wrapper.
 
   5  in_lcl : file
     Input alignment file or serialized input string.
@@ -2072,7 +2072,7 @@ Parameters
     Log file for the wrapper command.
 
   5  method : str
-    Workflow method. Ratio method to request (default: unadj).
+    Ratio method to request (default: unadj).
 
   6  fil_A : file
     First bedGraph input file, file A.
@@ -2226,7 +2226,7 @@ Parameters
     Case name.
 
   2  mode : str
-    Workflow mode. Scaling-factor mode label.
+    Scaling-factor mode label.
 
   3  arr_cmd_nam : str
     Name of the base command array.
@@ -2238,10 +2238,10 @@ Parameters
     Log directory for command output.
 
   6  out_suffix : str
-    Output file path. Output filename suffix.
+    Output filename suffix.
 
   7  job_prefix : str
-    Job name. Job-name prefix.
+    Job-name prefix.
 
   8  header : str
     Expected header pattern.
@@ -2417,7 +2417,7 @@ Parameters
     Case name.
 
   2  mode : str
-    Workflow mode. Scaling-factor mode label.
+    Scaling-factor mode label.
 
   3  arr_cmd_nam : str
     Name of the base command array.
@@ -3277,7 +3277,7 @@ Parameters
     Input file path. BAM or CRAM file to inspect.
 
   2  ref_fa : file
-    Reference FASTA file. Reference FASTA required for CRAM header reads.
+    Reference FASTA file. Required for CRAM header reads.
 
   3  pg_id : str
     Expected @PG ID.

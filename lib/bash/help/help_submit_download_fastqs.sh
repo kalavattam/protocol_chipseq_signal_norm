@@ -45,7 +45,7 @@ Parameters
     Second FASTQ URL for paired-end data ("NA" for single-end data).
 
   4  dir_out : dir
-    Output directory. Directory to save FASTQ file(s).
+    Output directory for FASTQ files.
 
   5  dir_sym : dir
     Directory for symlink(s) to FASTQ file(s).

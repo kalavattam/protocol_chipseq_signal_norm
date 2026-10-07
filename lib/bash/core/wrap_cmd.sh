@@ -6,9 +6,10 @@
 # Copyright 2025-2026 by Kris Alavattam
 # Email: kalavattam@gmail.com
 #
-# OpenAI ChatGPT and Codex (GPT-5-series models; most recent: GPT-5.6) were
-# used in design, development, and documentation, with all output reviewed,
-# edited, and approved by the author.
+# The following were used in design, development, and documentation, with all
+# output reviewed, edited, and approved by the author:
+# - OpenAI ChatGPT and Codex (GPT-5-series models; most recent: GPT-5.6);
+# - Anthropic Claude Code (Opus 5.5).
 #
 # Distributed under the MIT license.
 
@@ -17,7 +18,7 @@
 # print_built_cmd
 
 
-#  Require Bash >= 4.4 before defining functions
+# Require Bash >= 4.4 before defining functions.
 if [[ -z "${BASH_VERSION:-}" ]]; then
     echo "error(shell):" \
         "this script must be sourced or run under Bash >= 4.4." >&2
@@ -41,7 +42,7 @@ elif ((
     fi
 fi
 
-#  Source required helper functions if needed
+# Source required helper functions if needed.
 {
     _dir_src_cmd="$(
         cd "$(dirname "${BASH_SOURCE[0]}")" > /dev/null 2>&1 && pwd
@@ -103,7 +104,7 @@ Expected globals
     Existing directory in which wrapper-level stdout/stderr logs are written.
 
   nam_job : str
-    Job name. Job-name prefix used in derived log filenames.
+    Job-name prefix used in derived log filenames.
 
 Returns
 -------
@@ -187,7 +188,7 @@ EOM
 }
 
 
-#MAYBE: rename to 'print_cmd_built'?
+# MAYBE: rename to 'print_cmd_built'?
 # shellcheck disable=SC2154
 function print_built_cmd() {
     local log_out="${1:-}"
@@ -295,7 +296,7 @@ EOM
 }
 
 
-#  Print an error message when function script is executed directly
+# Print an error message when function script is executed directly.
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
     err_source_only "${BASH_SOURCE[0]}"
 fi

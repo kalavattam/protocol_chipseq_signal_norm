@@ -14,7 +14,7 @@
 # Distributed under the MIT license.
 
 
-#MAYBE: further modularization of primitives?
+# MAYBE: further modularization of primitives?
 
 
 # _validate_process_alignments
@@ -23,7 +23,7 @@
 # convert_alignments_bed_python
 
 
-#  Require Bash >= 4.4 before defining functions
+# Require Bash >= 4.4 before defining functions.
 if [[ -z "${BASH_VERSION:-}" ]]; then
     echo "error(shell):" \
         "this script must be sourced or run under Bash >= 4.4." >&2
@@ -47,7 +47,7 @@ elif ((
     fi
 fi
 
-#  Source required helper functions if needed
+# Source required helper functions if needed.
 {
     _dir_src_pro_aln="$(
         cd "$(dirname "${BASH_SOURCE[0]}")" > /dev/null 2>&1 && pwd
@@ -81,7 +81,7 @@ fi
 }
 
 
-#  Validate shared alignment-processing paths
+# Validate shared alignment-processing paths.
 function _validate_process_alignments() {
     local func="${1:-}"
     local fil_in="${2:-}"
@@ -108,13 +108,13 @@ Parameters
     Name of the calling function for diagnostics.
 
   2  fil_in : file
-    Input file path. Input BAM or CRAM file.
+    Input BAM or CRAM file.
 
   3  fil_out : file
-    Output file path. Output BAM or CRAM file.
+    Output BAM or CRAM file.
 
   4  ref_fa : file
-    Reference FASTA file. Reference FASTA required for CRAM input; otherwise, ignored with a warning.
+    Reference FASTA file. Required for CRAM input; otherwise, ignored with a warning.
 
   5  log_out : file
     Stdout log file.
@@ -160,13 +160,13 @@ Examples
 EOM
     )
 
-    #MAYBE: [[ -z "${func}" || "${threads}" =~ ^(-h|--h[e]?lp)$ ]]
+    # MAYBE: [[ -z "${func}" || "${threads}" =~ ^(-h|--h[e]?lp)$ ]]
     if [[ "${func}" =~ ^(-h|--h[e]?lp)$ ]]; then
         echo "${show_help}" >&2
         return 0
     fi
 
-    #MAYBE: check parameter assignments
+    # MAYBE: check parameter assignments.
 
     validate_var_file "fil_in"  "${fil_in}"  || return 1
     validate_var      "fil_out" "${fil_out}" || return 1
@@ -208,7 +208,7 @@ EOM
 }
 
 
-#  Sort one BAM or CRAM file by query name
+# Sort one BAM or CRAM file by query name.
 function qsort_file_alignments() {
     local threads="${1:-}"
     local fil_in="${2:-}"
@@ -236,13 +236,13 @@ Parameters
     Number of threads to use for samtools.
 
   2  fil_in : file
-    Input file path. Input BAM or CRAM file.
+    Input BAM or CRAM file.
 
   3  fil_out : file
-    Output file path. Output queryname-sorted BAM or CRAM file.
+    Output queryname-sorted BAM or CRAM file.
 
   4  ref_fa : file
-    Reference FASTA file. Reference FASTA required for CRAM input; otherwise, ignored with a warning.
+    Reference FASTA file. Required for CRAM input; otherwise, ignored with a warning.
 
   5  log_out : file
     Stdout log file for the processing command.
@@ -292,13 +292,13 @@ Examples
 EOM
     )
 
-    #MAYBE: [[ -z "${threads}" || "${threads}" =~ ^(-h|--h[e]?lp)$ ]]
+    # MAYBE: [[ -z "${threads}" || "${threads}" =~ ^(-h|--h[e]?lp)$ ]]
     if [[ "${threads}" =~ ^(-h|--h[e]?lp)$ ]]; then
         echo "${show_help}" >&2
         return 0
     fi
 
-    #TODO: check parameter assignments
+    # TODO: check parameter assignments.
 
     check_int_pos "${threads}" "threads" || return 1
     _validate_process_alignments \
@@ -354,7 +354,7 @@ EOM
 }
 
 
-#  Convert one BAM or CRAM file to BED.GZ with AWK-based PE fragment handling
+# Convert one BAM or CRAM file to BED.GZ with AWK-based PE fragment handling.
 function convert_alignments_bed_awk() {
     local threads="${1:-}"
     local fil_in="${2:-}"
@@ -382,13 +382,13 @@ Parameters
     Number of threads to use for samtools.
 
   2  fil_in : file
-    Input file path. Input queryname-sorted BAM or CRAM file.
+    Input queryname-sorted BAM or CRAM file.
 
   3  fil_out : file
-    Output file path. Output BED.GZ file.
+    Output BED.GZ file.
 
   4  ref_fa : file
-    Reference FASTA file. Reference FASTA required for CRAM input; otherwise, ignored with a warning.
+    Reference FASTA file. Required for CRAM input; otherwise, ignored with a warning.
 
   5  log_out : file
     Stdout log file for the processing command.
@@ -439,13 +439,13 @@ Examples
 EOM
     )
 
-    #MAYBE: [[ -z "${threads}" || "${threads}" =~ ^(-h|--h[e]?lp)$ ]]
+    # MAYBE: [[ -z "${threads}" || "${threads}" =~ ^(-h|--h[e]?lp)$ ]]
     if [[ "${threads}" =~ ^(-h|--h[e]?lp)$ ]]; then
         echo "${show_help}" >&2
         return 0
     fi
 
-    #TODO: check parameter assignments
+    # TODO: check parameter assignments.
 
     check_int_pos "${threads}" "threads" || return 1
     _validate_process_alignments \
@@ -492,7 +492,7 @@ EOM
 }
 
 
-#  Convert one BAM or CRAM file to BED.GZ with a Python converter script
+# Convert one BAM or CRAM file to BED.GZ with a Python converter script.
 function convert_alignments_bed_python() {
     local threads="${1:-}"
     local pth_scr_py="${2:-}"
@@ -524,13 +524,13 @@ Parameters
     Python converter script.
 
   3  fil_in : file
-    Input file path. Input BAM or CRAM file.
+    Input BAM or CRAM file.
 
   4  fil_out : file
-    Output file path. Output BED.GZ file.
+    Output BED.GZ file.
 
   5  ref_fa : file
-    Reference FASTA file. Reference FASTA required for CRAM input; otherwise, ignored with a warning.
+    Reference FASTA file. Required for CRAM input; otherwise, ignored with a warning.
 
   6  log_out : file
     Stdout log file for the processing command.
@@ -581,13 +581,13 @@ Examples
 EOM
     )
 
-    #MAYBE: [[ -z "${threads}" || "${threads}" =~ ^(-h|--h[e]?lp)$ ]]
+    # MAYBE: [[ -z "${threads}" || "${threads}" =~ ^(-h|--h[e]?lp)$ ]]
     if [[ "${threads}" =~ ^(-h|--h[e]?lp)$ ]]; then
         echo "${show_help}" >&2
         return 0
     fi
 
-    #TODO: check parameter assignments
+    # TODO: check parameter assignments.
 
     check_int_pos "${threads}" "threads" || return 1
     if [[ "${pth_scr_py}" == */* || "${pth_scr_py}" == *.py ]]; then
@@ -628,7 +628,7 @@ EOM
 }
 
 
-#  Print an error message when function script is executed directly
+# Print an error message when function script is executed directly.
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
     err_source_only "${BASH_SOURCE[0]}"
 fi

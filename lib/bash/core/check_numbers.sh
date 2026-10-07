@@ -10,7 +10,7 @@
 # output reviewed, edited, and approved by the author:
 # - OpenAI ChatGPT and Codex (GPT-4- and GPT-5-series models; most recent:
 #   GPT-5.6);
-# - Anthropic Claude Code (Opus 5).
+# - Anthropic Claude Code (Opus 5, Opus 5.5).
 #
 # Distributed under the MIT license.
 
@@ -25,7 +25,7 @@
 # check_scl_fct
 
 
-#  Require Bash >= 4.4 before defining functions
+# Require Bash >= 4.4 before defining functions.
 if [[ -z "${BASH_VERSION:-}" ]]; then
     echo "error(shell):" \
         "this script must be sourced or run under Bash >= 4.4." >&2
@@ -49,7 +49,7 @@ elif ((
     fi
 fi
 
-#  Source required helper functions if needed
+# Source required helper functions if needed.
 {
     _dir_src_nos="$(
         cd "$(dirname "${BASH_SOURCE[0]}")" > /dev/null 2>&1 && pwd
@@ -132,7 +132,7 @@ Examples
 EOM
     )
 
-    #  Parse and check function arguments
+    # Parse and check function arguments.
     if [[ "${val}" =~ ^(-h|--h[e]?lp)$ ]]; then
         echo "${show_help}" >&2
         return 0
@@ -209,7 +209,7 @@ Examples
 EOM
     )
 
-    #  Parse and check function arguments
+    # Parse and check function arguments.
     if [[ "${val}" =~ ^(-h|--h[e]?lp)$ ]]; then
         echo "${show_help}" >&2
         return 0
@@ -221,7 +221,7 @@ EOM
         return 1
     fi
 
-    #  Check that the value is numeric and strictly greater than 0
+    # Check that the value is numeric and strictly greater than 0.
     if \
         [[ "${val}" =~ ^[+]?([0-9]+([.][0-9]*)?|[.]?[0-9]+)$ ]] \
         && ! [[ "${val}" =~ ^[+]?(0+([.]0*)?|[.]0+)$ ]]
@@ -286,7 +286,7 @@ Examples
 EOM
     )
 
-    #  Parse and check function arguments
+    # Parse and check function arguments.
     if [[ "${time}" =~ ^(-h|--h[e]?lp)$ ]]; then
         echo "${show_help}" >&2
         return 0
@@ -298,7 +298,7 @@ EOM
         return 1
     fi
 
-    #  Check for 'mm:ss', 'h:mm:ss', or 'hh:mm:ss'
+    # Check for 'mm:ss', 'h:mm:ss', or 'hh:mm:ss'.
     if [[ ! "${time}" =~ ^([0-9]{1,2}:)?[0-5][0-9]:[0-5][0-9]$ ]]; then
         echo_err_func "${FUNCNAME[0]}" \
             "'${time}' is not a valid time format. Expected format is" \
@@ -357,7 +357,7 @@ Examples
 EOM
     )
 
-    #  Parse and check function arguments, printing help message as appropriate
+    # Parse and check function arguments, printing help message as appropriate.
     if [[ "${val}" =~ ^(-h|--h[e]?lp)$ ]]; then
         echo "${show_help}" >&2
         return 0
@@ -369,7 +369,7 @@ EOM
         return 1
     fi
 
-    #  Perform the check and return an error message if it fails
+    # Perform the check and return an error message if it fails.
     if ! [[ "${val}" =~ ^[0-9]+$ ]]; then
         if [[ -n "${nam}" ]]; then
             echo_err_func "${FUNCNAME[0]}" \
@@ -433,7 +433,7 @@ Examples
 EOM
     )
 
-    #  Parse and check function arguments, printing help message as appropriate
+    # Parse and check function arguments, printing help message as appropriate.
     if [[ "${val}" =~ ^(-h|--h[e]?lp)$ ]]; then
         echo "${show_help}" >&2
         return 0
@@ -445,7 +445,7 @@ EOM
         return 1
     fi
 
-    #  Perform the check and return an error message if it fails
+    # Perform the check and return an error message if it fails.
     if ! [[ "${val}" =~ ^[1-9][0-9]*$ ]]; then
         if [[ -n "${nam}" ]]; then
             echo_err_func "${FUNCNAME[0]}" \
@@ -650,7 +650,7 @@ EOM
 
 #TODO: audit current usage; keep this helper even if unused
 function check_scl_fct() {
-    local scl_fct="${1:-}"  # Scaling factor. Comma-separated scaling factors to validate
+    local scl_fct="${1:-}"  # Comma-separated scaling factors to validate
     local entries=()        # Array for individual comma-separated components
     local entry             # Individual scaling factor: 'num:den' or 'num'
     local num den           # Values for validation and formatting
@@ -679,7 +679,7 @@ Parameters
     Display this help message and exit.
 
   1  scl_fct : str
-    Scaling factor. Comma-separated scaling factors to validate.
+    Comma-separated scaling factors to validate.
 
 Returns
 -------
@@ -706,7 +706,7 @@ Examples
 EOM
     )
 
-    #  Parse and check function parameter
+    # Parse and check function parameter.
     if [[ "${scl_fct}" =~ ^(-h|--h[e]?lp)$ ]]; then
         echo "${show_help}" >&2
         return 0
@@ -718,16 +718,16 @@ EOM
         return 1
     fi
 
-    #  Split the input string by commas
+    # Split the input string by commas.
     IFS=',' read -ra entries <<< "${scl_fct}"
 
     for entry in "${entries[@]}"; do
-        #  Check that entry is a 'num:den' pair (containing a colon)
+        # Check that entry is a 'num:den' pair (containing a colon).
         if [[ "${entry}" == *:* ]]; then
-            #  Split into num and den
+            # Split into num and den.
             IFS=':' read -r num den <<< "${entry}"
 
-            #  Validate that both 'num' and 'den' are positive floats
+            # Validate that both 'num' and 'den' are positive floats.
             if ! check_flt_pos "${num}" >/dev/null 2>&1; then
                 echo_err_func "${FUNCNAME[0]}" \
                     "invalid 'num' in '${entry}' (must be a positive float)."
@@ -740,14 +740,14 @@ EOM
                 return 1
             fi
 
-            #  0-pad values starting with a decimal point
+            # 0-pad values starting with a decimal point.
             if [[ "${num}" == .* ]]; then num="0${num}"; fi
             if [[ "${den}" == .* ]]; then den="0${den}"; fi
 
-            #  Add back to the formatted values as 'num:den'
+            # Add back to the formatted values as 'num:den'.
             val_fmt+=( "${num}:${den}" )
         else
-            #  Validate single numerator-only entry as a positive float
+            # Validate single numerator-only entry as a positive float.
             if ! check_flt_pos "${entry}" >/dev/null 2>&1; then
                 echo_err_func "${FUNCNAME[0]}" \
                     "invalid numerator-only scaling factor '${entry}' (must" \
@@ -755,23 +755,23 @@ EOM
                 return 1
             fi
 
-            #  Zero-pad values starting with a decimal point
+            # Zero-pad values starting with a decimal point.
             if [[ "${entry}" == .* ]]; then entry="0${entry}"; fi
 
-            #  Append as 'entry:1' (numerator-only case)
+            # Append as 'entry:1' (numerator-only case).
             val_fmt+=( "${entry}:1" )
         fi
     done
 
-    #  Join the validated, formatted values back into a comma-separated string
+    # Join the validated, formatted values back into a comma-separated string.
     out_str=$(IFS=','; echo "${val_fmt[*]}")
 
-    #  Output the final formatted string
+    # Output the final formatted string.
     echo "${out_str}"
 }
 
 
-#  Print an error message when function script is executed directly
+# Print an error message when function script is executed directly.
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
     err_source_only "${BASH_SOURCE[0]}"
 fi

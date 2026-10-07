@@ -89,7 +89,7 @@ function parse_entry_align_fastq() {
     local fq_1                 # FASTQ file #1.
     local fq_2                 # FASTQ file #2, or 'NA' for SE.
     local samp                 # Sample name.
-    local fil_out              # Output file path. Output alignment file.
+    local fil_out              # Output alignment file.
     local show_help            # Help message.
 
     # TODO: break parameter options under Usage across semantic paragraphs.
@@ -99,7 +99,7 @@ Usage
   parse_entry_align_fastq
     [--help] fil_in sfx_se sfx_pe dir_out [out_ext]
 
-  Parse one Input file path. FASTQ input entry into 'fq_1', 'fq_2', 'samp', and alignment 'fil_out'.
+  Parse one FASTQ input entry into 'fq_1', 'fq_2', 'samp', and alignment 'fil_out'.
 
   The input entry may represent either:
     - single-end data: one FASTQ path
@@ -115,7 +115,7 @@ Parameters
     Display this help message and exit.
 
   1  fil_in : file
-    Input file path. FASTQ input entry. For single-end data, this is one FASTQ file. For paired-end data, this is a comma-delimited FASTQ pair.
+    FASTQ input entry. For single-end data, this is one FASTQ file. For paired-end data, this is a comma-delimited FASTQ pair.
 
   2  sfx_se : str
     Suffix to strip from single-end FASTQ filenames when deriving the sample name.

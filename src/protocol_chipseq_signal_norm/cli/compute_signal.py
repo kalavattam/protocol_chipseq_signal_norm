@@ -2239,8 +2239,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         choices=METHOD_CHOICES,
         default="norm",
         help=(
-            "Workflow method. Specify signal calculation type (default: "
-            "'%(default)s').\n"
+            "Specify signal calculation type (default: '%(default)s').\n"
             "\n"
             "Fractional methods deposit each fragment's base-pair overlap "
             "with a bin, so a bin the fragment only partly covers takes a "

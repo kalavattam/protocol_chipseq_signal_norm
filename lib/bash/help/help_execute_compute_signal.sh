@@ -80,7 +80,7 @@ Parameters
     See '--details' for accepted spellings.
 
   -me, --method : {'unadj', 'frag', 'norm', 'count', 'cpm', 'linear', 'log2', 'linear_r', 'log2_r'}
-    Workflow method. Signal or ratio computation subtype.
+    Signal or ratio computation subtype.
 
     Used with '--mode signal' or '--mode ratio' (default if '--mode signal': 'norm'; default if '--mode ratio': 'linear').
 
@@ -227,7 +227,7 @@ Parameters
     Used with '--mode ratio'.
 
   -sp, --skp_pfx : list of str
-    Comma-separated list of header prefixes to skip. Shared comma-separated list of bedGraph header prefixes or sentinel to skip while parsing ratio-mode input files.
+    Comma-separated list of header prefixes to skip, shared by all ratio-mode bedGraph inputs, or a sentinel.
 
     Used with '--mode ratio'.
 
@@ -253,7 +253,7 @@ Parameters
     Directory for stderr and stdout log files in TXT format (default: '\${dir_out}/logs').
 
   -nj, --nam_job : str
-    Job name. Prefix for job names (default depends on resolved '--mode' and '--method'; e.g., 'compute_signal_norm', 'compute_ratio_linear', or 'compute_coord').
+    Job-name prefix (default depends on resolved '--mode' and '--method'; e.g., 'compute_signal_norm', 'compute_ratio_linear', or 'compute_coord').
 
   -mj, --max_job : int
     Maximum number of jobs to run concurrently (default: ${max_job}).
@@ -384,7 +384,7 @@ Parameters
         + If 'c' or 'coordinates' are supplied, variable 'mode' is set to "coord".
 
   -me, --method : {'unadj', 'frag', 'norm', 'count', 'cpm', 'linear', 'log2', 'linear_r', 'log2_r'}
-    Workflow method. Signal or ratio computation subtype used with '--mode signal' or '--mode ratio' (default if '--mode signal': norm; default if '--mode ratio': linear).
+    Signal or ratio computation subtype used with '--mode signal' or '--mode ratio' (default if '--mode signal': norm; default if '--mode ratio': linear).
       - If '--mode signal', then the available options are
         + 'unadj':
           - Compute unadjusted signal (base-pair overlap with no fragment-length or total-fragment adjustment).
@@ -642,7 +642,7 @@ Parameters
     If set, rows yielding 'inf', '-inf', or 'nan' are omitted from the main ratio output.
 
   -sp, --skp_pfx : list of str
-    Comma-separated list of header prefixes to skip. Shared comma-separated list of bedGraph header prefixes or sentinel to skip.
+    Comma-separated list of header prefixes to skip, shared by all bedGraph inputs, or a sentinel.
 
     Used with '--mode ratio'; refused otherwise.
 
@@ -690,7 +690,7 @@ Parameters
     Directory for stderr and stdout log files in TXT format (default: '\${dir_out}/logs').
 
   -nj, --nam_job : str
-    Job name. Prefix for job names (default depends on resolved '--mode' and '--method'; e.g., 'compute_signal_norm', 'compute_ratio_log2', or 'compute_coord').
+    Job-name prefix (default depends on resolved '--mode' and '--method'; e.g., 'compute_signal_norm', 'compute_ratio_log2', or 'compute_coord').
 
   -mj, --max_job : int
     Maximum number of jobs to run concurrently (default: ${max_job}).
@@ -710,7 +710,7 @@ Parameters
       - If the resolved number of parallel jobs is 1, jobs are run serially.
 
   -tm, --time : time
-    Slurm job time limit. The length of time, in 'h:mm:ss' format, for the Slurm job (required if '--slurm' is specified, ignored with a warning if not; default: '${time}').
+    Slurm job time limit, in 'h:mm:ss' format (required if '--slurm' is specified, ignored with a warning if not; default: '${time}').
 
 Notes
 -----
@@ -737,7 +737,7 @@ Notes
   - '--typ_out' must be compatible with the selected '--mode'.
     + With '--mode signal' or '--mode ratio', bedGraph-style values ('bedGraph', 'bedgraph', 'bdg', and 'bg', and their '.gz' variants) are allowed; 'bed'/'bed.gz' are accepted but are automatically converted to 'bedGraph.gz' with a warning.
     + With '--mode coord', 'bed'/'bed.gz' are allowed; bedGraph-style values are accepted but are automatically converted to 'bed.gz' with a warning.
-  - Output file path. Output filenames are derived from BAM/CRAM or bedGraph input files and the value associated with '--typ_out'.
+  - Output filenames are derived from BAM/CRAM or bedGraph input files and the value associated with '--typ_out'.
   - For bedGraph-style output, '--dp' sets the maximum number of decimal places retained for finite emitted values; after rounding, non-informative trailing zeros and any trailing decimal point are stripped.
   - BED-like files of fragment coordinates are, e.g., used as input to the original siQ-ChIP implementation (Dickson et al., JBC 2020 [PMID: 32994221]; Dickson et al., Sci Rep 2023 [PMID: 37160995]).
   - Job execution mode (serial, GNU Parallel, or Slurm array) is chosen automatically from '--slurm', '--threads', and '--max_job':

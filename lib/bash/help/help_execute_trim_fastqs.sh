@@ -10,7 +10,7 @@
 # output reviewed, edited, and approved by the author:
 # - OpenAI ChatGPT and Codex (GPT-4- and GPT-5-series models; most recent:
 #   GPT-5.6);
-# - Anthropic Claude Code (Opus 5).
+# - Anthropic Claude Code (Opus 5, Opus 5.5).
 #
 # Distributed under the MIT license.
 
@@ -37,7 +37,7 @@ Parameters
     Run script in verbose mode.
 
   -dr, --dry, --dry_run : flag
-    Run script in dry-run mode. Run the command in check mode.
+    Run script in dry-run mode.
 
   -en, --env, --env_nam : str
     Conda environment to activate (default: '${env_nam}').
@@ -62,10 +62,10 @@ Parameters
     Suffix to strip from paired-end FASTQ read-1 filenames (default: '${sfx_pe}').
 
   -deo, --dir_eo : dir
-    Directory for stderr and stdout log files. The directory to store stderr and stdout TXT output files (default: '\${dir_out}/logs').
+    Directory for stderr and stdout log files (default: '\${dir_out}/logs').
 
   -nj, --nam_job : str
-    Job name. The name of the job, which is used when writing stderr and stdout (default: '${nam_job}').
+    Job name, used in the names of the stderr and stdout files (default: '${nam_job}').
 
   -mj, --max_job : int
     Maximum number of jobs to run concurrently (default: '${max_job}').
@@ -78,7 +78,7 @@ Parameters
     Submit jobs to the Slurm scheduler. Without this flag, jobs run in serial.
 
   -tm, --time : time
-    Slurm job time limit. The length of time, in 'h:mm:ss' format, for the Slurm job (required if '--slurm' is specified, ignored if not; default: '${time}').
+    Slurm job time limit, in 'h:mm:ss' format (required if '--slurm' is specified, ignored if not; default: '${time}').
 
 Notes
 -----

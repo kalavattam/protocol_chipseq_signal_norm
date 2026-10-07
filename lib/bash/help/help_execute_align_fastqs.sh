@@ -87,10 +87,10 @@ Parameters
     E.g., "\${HOME}/path/samp_1.fastq.gz;\${HOME}/path/samp_2_R1.fastq.gz,\${HOME}/path/samp_2_R2.fastq.gz;\${HOME}/path/samp_3.fastq.gz".
 
   -rf, --ref_fa : file
-    Reference FASTA file. Reference FASTA path required when '--out_ext cram'; otherwise, ignored with a warning.
+    Reference FASTA file. Required when '--out_ext cram'; otherwise, ignored with a warning.
 
   -do, --dir_out : dir
-    Output directory. Directory in which to write alignment output files.
+    Output directory for alignment files.
 
   -ox, --out_ext : {'bam', 'cram'}
     Final output extension for alignment files: 'bam' or 'cram' (default: '${out_ext}').
@@ -121,7 +121,7 @@ Parameters
     Submit jobs to the Slurm scheduler; otherwise, run them through GNU Parallel or in serial, as resolved locally.
 
   -tm, --time : time
-    Slurm job time limit. Length of time, in 'h:mm:ss' format, for the Slurm job (default: ${time}; required if '--slurm' is specified, ignored otherwise).
+    Slurm job time limit, in 'h:mm:ss' format (default: ${time}; required if '--slurm' is specified, ignored otherwise).
 
 Notes
 -----

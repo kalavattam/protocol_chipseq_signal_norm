@@ -59,16 +59,16 @@ Parameters
     Comma-separated list of input file paths. Comma-delimited list of input BAM or CRAM files.
 
   -do, --dir_out : dir
-    Output directory. Directory in which filtered alignment files will be written.
+    Output directory for filtered alignment files.
 
   -ox, --out_ext : {'bam', 'cram'}
-    Final output extension. Filtered output extension: 'bam' or 'cram' (default: '${out_ext}').
+    Final output extension: 'bam' or 'cram' (default: '${out_ext}').
 
   -rt, --retain : {'sc', 'sp'}
     Species chromosomes to retain: 'sc' or 'sp' (default: '${retain}').
 
   -rf, --ref_fa : file
-    Reference FASTA file. Reference FASTA required when any input file is CRAM or '--out_ext cram'; otherwise, ignored with a warning.
+    Reference FASTA file. Required when any input file is CRAM or '--out_ext cram'; otherwise, ignored with a warning.
 
   -m, --mito : flag
     Retain mitochondrial chromosome.

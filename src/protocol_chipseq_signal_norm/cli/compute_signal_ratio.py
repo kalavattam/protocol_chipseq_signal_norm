@@ -843,8 +843,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         choices=METHOD_CHOICES,
         default="linear",
         help=(
-            "Workflow method. Ratio-computation subtype (default: "
-            "'%(default)s').\n"
+            "Ratio-computation subtype (default: '%(default)s').\n"
             "  - Linear method: 'linear', giving 'A / B'.\n"
             "  - Log2 method: 'log2' (alias 'l2'), giving 'log2(A / B)'.\n"
             "  - Reciprocal-linear method: 'linear_r', giving 'B / A'.\n"

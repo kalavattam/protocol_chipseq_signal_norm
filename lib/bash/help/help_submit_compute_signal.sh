@@ -55,7 +55,7 @@ Parameters
     Workflow mode: 'signal', 'ratio', or 'coord' (default: '${mode}').
 
   -me, --method : {'unadj', 'frag', 'norm', 'count', 'cpm', 'linear', 'log2', 'linear_r', 'log2_r'}
-    Workflow method. Signal or ratio computation subtype.
+    Signal or ratio computation subtype.
 
     With '--mode signal':
       - 'unadj' gives base-pair overlap with no adjustment;
@@ -182,7 +182,7 @@ Parameters
     Drop non-finite values from main output. Applies to ratio mode.
 
   -sp, --skp_pfx : list of str
-    Comma-separated list of header prefixes to skip. Shared comma-separated bedGraph header prefixes or sentinel to skip.
+    Comma-separated list of header prefixes to skip, shared by all bedGraph inputs, or a sentinel.
 
   -crf, --csv_report_n_frg : list of file
     Comma-separated list of paths for per-sample fragment-count reports, 'N' / 'n_frg'. Supply one path per '--csv_fil_in' element. Optional: without it, each report is written beside its own output track as '<track>.n_frg.txt', or not at all when there is no track.
@@ -209,7 +209,7 @@ Parameters
     Directory for stderr and stdout log files.
 
   -nj, --nam_job : str
-    Job name. Prefix for job names (default: 'compute_\${mode}_\${method}' for '--mode signal' and '--mode ratio'; 'compute_\${mode}' for '--mode coord').
+    Job-name prefix (default: 'compute_\${mode}_\${method}' for '--mode signal' and '--mode ratio'; 'compute_\${mode}' for '--mode coord').
 
 Notes
 -----

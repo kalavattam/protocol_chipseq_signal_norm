@@ -294,7 +294,7 @@ Parameters
     Second FASTQ input file. Required for paired-end data.
 
   -fo, --fil_out : file
-    Output file path. Path to the final alignment fil_out (must end in '.bam' or '.cram').
+    Path to the final alignment file (must end in '.bam' or '.cram').
 
   -qn, --qnam, --qname : flag
     Retain queryname-sorted intermediate alignment files.

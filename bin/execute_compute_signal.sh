@@ -105,7 +105,7 @@ Parameters
     | anything else | 'rat'            |
 
   2  scl_fct : list of structured string
-    Scaling factor. Comma-delimited scaling-factor string.
+    Comma-delimited scaling-factor string.
 
     Scaling is considered active if at least one comma-delimited element is non-empty and not 'NA' after whitespace is removed.
 

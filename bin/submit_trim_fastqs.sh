@@ -10,7 +10,7 @@
 # output reviewed, edited, and approved by the author:
 # - OpenAI ChatGPT and Codex (GPT-4- and GPT-5-series models; most recent:
 #   GPT-5.6);
-# - Anthropic Claude Code (Opus 5).
+# - Anthropic Claude Code (Opus 5, Opus 5.5).
 #
 # Distributed under the MIT license.
 
@@ -335,13 +335,13 @@ function print_vecs_debug() {
 
 # Parse one FASTQ entry into 'fq_1', 'fq_2', and 'samp'.
 function parse_entry_trim_fastq() {
-    local fil_in="${1:-}"  # Input FASTQ file(s)
-    local sfx_se="${2:-}"  # Suffix for SE FASTQ files
-    local sfx_pe="${3:-}"  # Suffix for PE FASTQ files (FASTQ #1)
-    local fq_1             # FASTQ file #1
-    local fq_2             # FASTQ file #2, or 'NA' for SE
-    local samp             # Sample name
-    local show_help        # Help message
+    local fil_in="${1:-}"  # Input FASTQ file(s).
+    local sfx_se="${2:-}"  # Suffix for SE FASTQ files.
+    local sfx_pe="${3:-}"  # Suffix for PE FASTQ files (FASTQ #1).
+    local fq_1             # FASTQ file #1.
+    local fq_2             # FASTQ file #2, or 'NA' for SE.
+    local samp             # Sample name.
+    local show_help        # Help message.
 
     show_help=$(cat << EOM
 Usage
@@ -349,7 +349,7 @@ Usage
   parse_entry_trim_fastq
     [--help] fil_in sfx_se sfx_pe
 
-  Parse one Input file path. FASTQ input entry into 'fq_1', 'fq_2', and 'samp'.
+  Parse one FASTQ input entry into 'fq_1', 'fq_2', and 'samp'.
 
 Parameters
 ----------
@@ -357,7 +357,7 @@ Parameters
     Display this help message and exit.
 
   1  fil_in : file
-    Input file path. FASTQ input entry. For single-end data, this is one FASTQ file. For paired-end data, this is a comma-delimited FASTQ pair.
+    FASTQ input entry. For single-end data, this is one FASTQ file. For paired-end data, this is a comma-delimited FASTQ pair.
 
   2  sfx_se : str
     Suffix to strip from single-end FASTQ filenames.

@@ -333,13 +333,13 @@ Parameters
     Number of threads to use. Requested thread count.
 
   3  fil_in : file
-    Input file path. Input BAM or CRAM file.
+    Input BAM or CRAM file.
 
   4  fil_out : file
-    Output file path. Output BAM or CRAM file.
+    Output BAM or CRAM file.
 
   5  ref_fa : file
-    Reference FASTA file. Reference FASTA required for CRAM; otherwise, ignored with a warning.
+    Reference FASTA file. Required for CRAM; otherwise, ignored with a warning.
 
 Returns
 -------
@@ -464,7 +464,7 @@ Parameters
     Output file path. BAM or CRAM file to inspect.
 
   2  ref_fa : file
-    Reference FASTA file. Reference FASTA required for CRAM input.
+    Reference FASTA file. Required for CRAM input.
 
 Returns
 -------
@@ -547,7 +547,7 @@ Parameters
     Check chromosomes in output alignment files. If true, print retained chromosomes after indexing.
 
   4  ref_fa : file
-    Reference FASTA file. Reference FASTA required when chromosome checking a CRAM file.
+    Reference FASTA file. Required when chromosome checking a CRAM file.
 
 Returns
 -------
@@ -676,10 +676,10 @@ Parameters
     Name of the calling function for diagnostics.
 
   2  fil_in : file
-    Input file path. Input SAM, BAM, or CRAM path.
+    Input SAM, BAM, or CRAM path.
 
   3  fil_out : file
-    Output file path. Output SAM path.
+    Output SAM path.
 
   4  chrs : str
     Space-delimited chromosome set to retain.
@@ -902,7 +902,7 @@ Parameters
     Output file path. Filtered BAM or CRAM fil_out.
 
   -rf, --ref_fa : file
-    Reference FASTA file. Reference FASTA required when input or output is CRAM; otherwise, ignored with a warning.
+    Reference FASTA file. Required when input or output is CRAM; otherwise, ignored with a warning.
 
   -m, --mit, --mito : flag
     Retain mitochondrial chromosome.
@@ -1107,7 +1107,7 @@ Parameters
     Output file path. Filtered BAM or CRAM fil_out.
 
   -rf, --ref_fa : file
-    Reference FASTA file. Reference FASTA required when input or output is CRAM; otherwise, ignored with a warning.
+    Reference FASTA file. Required when input or output is CRAM; otherwise, ignored with a warning.
 
   -m, --mit, --mito : flag
     Retain mitochondrial chromosome. Uses chromosome 'SP_Mito'.

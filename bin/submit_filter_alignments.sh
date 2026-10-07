@@ -106,7 +106,7 @@ Parameters
     Display this help message and exit.
 
   1  fil_in : file
-    Input file path. Input BAM or CRAM file.
+    Input BAM or CRAM file.
 
   2  retain : {'sc', 'sp'}
     Species chromosomes to retain: 'sc' or 'sp'.
@@ -210,7 +210,7 @@ function run_filtering() {
     local nam_fnc="${1:-}"   # Name of function to run.
     local threads="${2:-}"   # Number of threads.
     local fil_in="${3:-}"    # Input BAM/CRAM file.
-    local fil_out="${4:-}"   # Output file path. Output alignment file.
+    local fil_out="${4:-}"   # Output alignment file.
     local mito="${5:-}"      # Retain mito. chr. (Boolean).
     local tg="${6:-}"        # Retain SP_II_TG chr. (Boolean).
     local mtr="${7:-}"       # Retain SP_MTR chr. (Boolean).
@@ -248,10 +248,10 @@ Parameters
     Number of threads to use.
 
   03  fil_in : file
-    Input file path. Input BAM or CRAM file.
+    Input BAM or CRAM file.
 
   04  fil_out : file
-    Output file path. Output BAM or CRAM file.
+    Output BAM or CRAM file.
 
   05  mito : flag
     Retain mitochondrial chromosome. If 'true', pass '--mito'.

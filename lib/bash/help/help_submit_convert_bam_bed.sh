@@ -55,7 +55,7 @@ Parameters
     Comma-separated list of input file paths for BAM or CRAM files.
 
   -rf, --ref_fa : file
-    Reference FASTA file. Reference FASTA required when any input file is CRAM; otherwise, ignored with a warning.
+    Reference FASTA file. Required when any input file is CRAM; otherwise, ignored with a warning.
 
   -pp, --pth_scr_py : file
     Python converter script (default: '\${dir_scr}/compute_signal.py'). Mutually exclusive with '--use_awk'.
@@ -64,7 +64,7 @@ Parameters
     Run AWK processing code rather than the Python script. Mutually exclusive with explicit '--pth_scr_py'. Do not use with single-end data.
 
   -do, --dir_out : dir
-    Output directory. Directory to save BED output files.
+    Output directory for BED files.
 
   -deo, --dir_eo : dir
     Directory for stderr and stdout log files.

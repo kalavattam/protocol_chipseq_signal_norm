@@ -6,9 +6,11 @@
 # Copyright 2025-2026 by Kris Alavattam
 # Email: kalavattam@gmail.com
 #
-# OpenAI ChatGPT and Codex (GPT-4- and GPT-5-series models; most recent:
-# GPT-5.6) were used in design, development, and documentation, with all output
-# reviewed, edited, and approved by the author.
+# The following were used in design, development, and documentation, with all
+# output reviewed, edited, and approved by the author:
+# - OpenAI ChatGPT and Codex (GPT-4- and GPT-5-series models; most recent:
+#   GPT-5.6);
+# - Anthropic Claude Code (Opus 5, Opus 5.5).
 #
 # Distributed under the MIT license.
 
@@ -16,7 +18,7 @@
 # check_unity
 
 
-#  Require Bash >= 4.4 before defining functions
+# Require Bash >= 4.4 before defining functions.
 if [[ -z "${BASH_VERSION:-}" ]]; then
     echo "error(shell):" \
         "this script must be sourced or run under Bash >= 4.4." >&2
@@ -40,7 +42,7 @@ elif ((
     fi
 fi
 
-#  Source required helper functions if needed
+# Source required helper functions if needed.
 {
     _dir_src_unity="$(
         cd "$(dirname "${BASH_SOURCE[0]}")" > /dev/null 2>&1 && pwd
@@ -75,14 +77,14 @@ fi
 
 
 function check_unity() {
-    local fil_in="${1}"            # bedGraph fil_in ('.gz' OK)
-    local bnd_gt="${2:-0.999998}"  # Lower bound for unity check
-    local bnd_lt="${3:-1.000002}"  # Upper bound for unity check
-    local quiet="${4:-false}"      # Boolean-like: suppress success message
-    local awk_unity                # AWK program for unity check
-    local status=0                 # Exit status of AWK or gzip|AWK pipeline
-    local pipefail_set=0           # Flag: caller had 'pipefail' enabled
-    local show_help                # Help message/documentation
+    local fil_in="${1}"            # bedGraph fil_in ('.gz' OK).
+    local bnd_gt="${2:-0.999998}"  # Lower bound for unity check.
+    local bnd_lt="${3:-1.000002}"  # Upper bound for unity check.
+    local quiet="${4:-false}"      # Boolean-like: suppress success message.
+    local awk_unity                # AWK program for unity check.
+    local status=0                 # Exit status of AWK or gzip|AWK pipeline.
+    local pipefail_set=0           # Flag: caller had 'pipefail' enabled.
+    local show_help                # Help message/documentation.
 
     show_help=$(cat << EOM
 Usage
@@ -98,7 +100,7 @@ Parameters
     Display this help message and exit.
 
   1  fil_in : file
-    Input file path. Path to input bedGraph file ('.gz' OK).
+    Path to input bedGraph file ('.gz' OK).
 
   2  bnd_gt : float
     Lower bound for unity check (default: ${bnd_gt}).
@@ -136,8 +138,8 @@ Examples
 EOM
     )
 
-    #  Display help message if help flag or no arguments is given (latter with
-    #+ error)
+    # Display help message if help flag or no arguments is given (latter with
+    # error).
     if [[ "${fil_in}" =~ ^(-h|--h[e]?lp)$ ]]; then
         echo "${show_help}" >&2
         return 0
@@ -157,14 +159,14 @@ EOM
         return 1
     fi
 
-    #  Validate input file
+    # Validate input file.
     if [[ ! -f "${fil_in}" ]]; then
         echo_err_func "${FUNCNAME[0]}" \
             "input file not found or not accessible: '${fil_in}'."
         return 1
     fi
 
-    #  Validate bounds
+    # Validate bounds.
     check_flt_pos "${bnd_gt}" "bnd_gt" || return 1
     check_flt_pos "${bnd_lt}" "bnd_lt" || return 1
 
@@ -182,15 +184,15 @@ EOM
 
     quiet="$(normalize_bool "${quiet}" "quiet")" || return 1
 
-    #  Record whether the caller already had 'pipefail' enabled, as gzip-stream
-    #+ failures should propagate when reading compressed input
+    # Record whether the caller already had 'pipefail' enabled, as gzip-stream
+    # failures should propagate when reading compressed input.
     case ":${SHELLOPTS:-}:" in
         *:pipefail:*) pipefail_set=1 ;;
     esac
 
     set -o pipefail
 
-    #  Define AWK program locally (as it is only used by this function)
+    # Define AWK program locally (as it is only used by this function).
     # shellcheck disable=SC2016
     awk_unity='
         /^[[:space:]]*$/        { next }
@@ -240,7 +242,7 @@ EOM
 }
 
 
-#  Print an error message when function script is executed directly
+# Print an error message when function script is executed directly.
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
     err_source_only "${BASH_SOURCE[0]}"
 fi

@@ -6,9 +6,11 @@
 # Copyright 2024-2026 by Kris Alavattam
 # Email: kalavattam@gmail.com
 #
-# OpenAI ChatGPT and Codex (GPT-4- and GPT-5-series models; most recent:
-# GPT-5.6) were used in design, development, and documentation, with all output
-# reviewed, edited, and approved by the author.
+# The following were used in design, development, and documentation, with all
+# output reviewed, edited, and approved by the author:
+# - OpenAI ChatGPT and Codex (GPT-4- and GPT-5-series models; most recent:
+#   GPT-5.6);
+# - Anthropic Claude Code (Opus 5.5).
 #
 # Distributed under the MIT license.
 
@@ -22,7 +24,7 @@
 # trim_fastqs_atria
 
 
-#  Require Bash >= 4.4 before defining functions
+# Require Bash >= 4.4 before defining functions.
 if [[ -z "${BASH_VERSION:-}" ]]; then
     echo "error(shell):" \
         "this script must be sourced or run under Bash >= 4.4." >&2
@@ -46,7 +48,7 @@ elif ((
     fi
 fi
 
-#  Source required helper functions if needed
+# Source required helper functions if needed.
 {
     _dir_src_seq="$(
         cd "$(dirname "${BASH_SOURCE[0]}")" > /dev/null 2>&1 && pwd
@@ -80,12 +82,12 @@ fi
 }
 
 
-#TODO: audit current usage; keep this helper even if unused
-#MAYBE: make this function "private"
+# TODO: audit current usage; keep this helper even if unused.
+# MAYBE: make this function "private".
 function check_seq_type() {
-    local bam="${1:-}"  # Input BAM file
-    local line_pg       # Recognized '@PG' lines from BAM header
-    local show_help     # Help message
+    local bam="${1:-}"  # Input BAM file.
+    local line_pg       # Recognized '@PG' lines from BAM header.
+    local show_help     # Help message.
 
 show_help=$(cat << EOM
 Usage
@@ -137,7 +139,7 @@ Examples
 EOM
 )
 
-    #  Parse and check function argument
+    # Parse and check function argument.
     if [[ "${bam}" =~ ^(-h|--h[e]?lp)$ ]]; then
         echo "${show_help}" >&2
         return 0
@@ -151,14 +153,14 @@ EOM
 
     validate_var_file "bam" "${bam}" || return 1
 
-    #  Check that Samtools is available in PATH
+    # Check that Samtools is available in PATH.
     if ! command -v samtools > /dev/null 2>&1; then
         echo_err_func "${FUNCNAME[0]}" \
             "samtools is either not installed or not in PATH."
         return 1
     fi
 
-    #  Extract @PG lines from BAM header and analyze sequencing type
+    # Extract @PG lines from BAM header and analyze sequencing type.
     line_pg=$(
         samtools view -H "${bam}" | grep -E '^@PG.*ID:(bowtie2|bwa)'
     )
@@ -170,8 +172,8 @@ EOM
         return 1
     fi
 
-    #  Determine sequencing type based on paired-end indicators '_R2', '_r2',
-    #+ or '_2'
+    # Determine sequencing type based on paired-end indicators '_R2', '_r2', or
+    # '_2'.
     if \
         printf '%s\n' "${line_pg}" | grep -E '(_[Rr]2|_2)' > /dev/null 2>&1
     then
@@ -182,18 +184,18 @@ EOM
 }
 
 
-#MAYBE: make this function "private"
+# MAYBE: make this function "private".
 function check_string_fastqs() {
-    local csv_fil_in="${1:-}"  # Serialized string of FASTQ file paths
-    local sfx_se="${2:-}"   # Expected suffix for SE FASTQ files
-    local sfx_pe="${3:-}"   # Expected suffix for PE FASTQ read-1 files
-    local -a arr_fq         # FASTQ entries split on semicolons
-    local fq                # One FASTQ entry
-    local fq_1              # First FASTQ file
-    local fq_2              # Second FASTQ file (for PE reads)
-    local sfx_pe_2          # Expected suffix for PE FASTQ read-2 files
-    local num_prt           # Number of comma-delimited fields in one entry
-    local show_help         # Help message
+    local csv_fil_in="${1:-}"  # Serialized string of FASTQ file paths.
+    local sfx_se="${2:-}"      # Expected suffix for SE FASTQ files.
+    local sfx_pe="${3:-}"      # Expected suffix for PE FASTQ read-1 files.
+    local -a arr_fq            # FASTQ entries split on semicolons.
+    local fq                   # One FASTQ entry.
+    local fq_1                 # First FASTQ file.
+    local fq_2                 # Second FASTQ file (for PE reads).
+    local sfx_pe_2             # Expected suffix for PE FASTQ read-2 files.
+    local num_prt              # Number of comma-delimited fields in one entry.
+    local show_help            # Help message.
 
     show_help=$(cat << EOM
 Usage
@@ -325,13 +327,13 @@ EOM
 #TODO: audit current usage; keep this helper even if unused
 #MAYBE: make this function "private"
 function get_paired_suffix() {
-    local file="${1:-}"    # File to check existence
-    local sfx_pe="${2:-}"  # User-supplied PE suffix (_R1.fastq.gz, etc.)
-    local sfx_pe_2         # Modified suffix for second read
-    local sfx_mod          # Candidate modified suffix
-    local file_2           # Candidate read-2 FASTQ file
-    local i                # Index for iterative replacement
-    local show_help        # Help message
+    local file="${1:-}"    # File to check existence.
+    local sfx_pe="${2:-}"  # User-supplied PE suffix (_R1.fastq.gz, etc.).
+    local sfx_pe_2         # Modified suffix for second read.
+    local sfx_mod          # Candidate modified suffix.
+    local file_2           # Candidate read-2 FASTQ file.
+    local i                # Index for iterative replacement.
+    local show_help        # Help message.
 
     show_help=$(cat << EOM
 Usage
@@ -426,13 +428,13 @@ EOM
 #TODO: audit current usage; keep this helper even if unused
 #MAYBE: make this function "private"
 function parse_fastq_entry() {
-    local fil_in="${1:-}"  # Input file path. Input FASTQ entry
-    local sfx_se="${2:-}"  # Expected suffix for SE FASTQ files
-    local sfx_pe="${3:-}"  # Expected suffix for PE FASTQ read-1 files
-    local fq_1             # FASTQ file #1
-    local fq_2             # FASTQ file #2, or 'NA' for SE
-    local samp             # Sample name derived from 'fq_1'
-    local show_help        # Help message
+    local fil_in="${1:-}"  # Input FASTQ entry.
+    local sfx_se="${2:-}"  # Expected suffix for SE FASTQ files.
+    local sfx_pe="${3:-}"  # Expected suffix for PE FASTQ read-1 files.
+    local fq_1             # FASTQ file #1.
+    local fq_2             # FASTQ file #2, or 'NA' for SE.
+    local samp             # Sample name derived from 'fq_1'.
+    local show_help        # Help message.
 
     show_help=$(cat << EOM
 Usage
@@ -454,7 +456,7 @@ Parameters
     Display this help message and exit.
 
   1  fil_in : file
-    Input file path. Input FASTQ entry.
+    Input FASTQ entry.
 
   2  sfx_se : str
     Suffix to strip from single-end FASTQ filenames.
@@ -534,19 +536,19 @@ EOM
 }
 
 
-#  Trim one Input file path. FASTQ input entry with Atria
+# Trim one FASTQ input entry with Atria.
 # TODO: Fill in any missing maintainer-facing runtime assumptions for
 # 'trim_fastqs_atria()' after the Atria wrapper behavior is next reviewed.
 function trim_fastqs_atria() {
-    local threads="${1:-}"  # Number of threads to use
-    local fq_1="${2:-}"     # FASTQ file #1
-    local fq_2="${3:-}"     # FASTQ file #2, or 'NA' for SE data
-    local dir_out="${4:-}"  # Output directory for trimmed FASTQs
-    local log_out="${5:-}"  # Stdout log file
-    local log_err="${6:-}"  # Stderr log file
-    local samp="${7:-}"     # Sample name for error reporting
-    local show_help         # Help message
-    local -a arr_cmd_atria  # Atria command array
+    local threads="${1:-}"  # Number of threads to use.
+    local fq_1="${2:-}"     # FASTQ file #1.
+    local fq_2="${3:-}"     # FASTQ file #2, or 'NA' for SE data.
+    local dir_out="${4:-}"  # Output directory for trimmed FASTQs.
+    local log_out="${5:-}"  # Stdout log file.
+    local log_err="${6:-}"  # Stderr log file.
+    local samp="${7:-}"     # Sample name for error reporting.
+    local show_help         # Help message.
+    local -a arr_cmd_atria  # Atria command array.
 
     show_help=$(cat << EOM
 Usage
@@ -554,7 +556,7 @@ Usage
   trim_fastqs_atria
     [--help] threads fq_1 fq_2 dir_out log_out log_err samp
 
-  Trim one single- or paired-end Input file path. FASTQ input entry with Atria.
+  Trim one single- or paired-end FASTQ input entry with Atria.
 
 Parameters
 ----------
@@ -697,8 +699,8 @@ EOM
 
 
 function pair_fastqs() {
-    local arg="${1:-}"  # Optional help flag
-    local show_help     # Help message
+    local arg="${1:-}"  # Optional help flag.
+    local show_help     # Help message.
 
     show_help=$(cat << EOM
 Usage
@@ -775,25 +777,26 @@ EOM
     awk '
         BEGIN { OFS = "" }
         {
-            #  Check for lines ending with "_R1" or "_r1", optionally followed
-            #+ by ".atria", then by ".fastq", ".fq", ".fastq.gz", or ".fq.gz"
+            # Check for lines ending with "_R1" or "_r1", optionally followed
+            # by ".atria", then by ".fastq", ".fq", ".fastq.gz", or ".fq.gz".
             if ($0 ~ /_[Rr]1(\.atria)?\.(fastq|fq)(\.gz)?$/) {
                 r1 = $0
                 getline
-                #  Ensure the next line is a matching "_R2" or "_r2" file
+
+                # Ensure the next line is a matching "_R2" or "_r2" file.
                 if ($0 ~ /_[Rr]2(\.atria)?\.(fastq|fq)(\.gz)?$/) {
                     r2 = $0
                     print r1 ",", r2, ";"
                 } else {
-                    #  Print an error message and exit with a failure code if
-                    #+ no matching "_R2" or "_r2" file is found
+                    # Print an error message and exit with a failure code if no
+                    # matching "_R2" or "_r2" file is found.
                     print \
                         "error(pair_fastqs): missing [Rr]2 file for " r1 \
                         > "/dev/stderr"
                     exit 1
                 }
             } else {
-                #  Handle unpaired files
+                # Handle unpaired files.
                 print $0 ";"
             }
         }
@@ -801,11 +804,11 @@ EOM
 }
 
 
-#  Alias for 'pair_fastqs'
+# Alias for 'pair_fastqs'.
 function pair_fqs() { pair_fastqs "$@"; }
 
 
-#  Print an error message when function script is executed directly
+# Print an error message when function script is executed directly.
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
     err_source_only "${BASH_SOURCE[0]}"
 fi

@@ -141,7 +141,7 @@ Parameters
     Directory for stderr and stdout log files.
 
   -nj, --nam_job : str
-    Job name. Job-name prefix (default depends on resolved mode/method).
+    Job-name prefix (default depends on resolved mode/method).
 
 Notes
 -----

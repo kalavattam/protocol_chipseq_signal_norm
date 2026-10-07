@@ -9,7 +9,7 @@
 # The following were used in design, development, and documentation, with all
 # output reviewed, edited, and approved by the author:
 # - OpenAI ChatGPT and Codex (GPT-5.5, GPT-5.6);
-# - Anthropic Claude Code (Opus 5).
+# - Anthropic Claude Code (Opus 5, Opus 5.5).
 #
 # Distributed under the MIT license.
 
@@ -42,10 +42,10 @@ Parameters
     Directory containing scripts and functions. Passed by the 'execute_*.sh' wrappers, and needed when this script is run from a copy, as 'sbatch <script>' does, rather than from its real path.
 
   -md, --mode : {'siq', 'spike'}
-    Workflow mode. Type of header to write: 'siq' (siQ-ChIP normalization) or 'spike' (normalization with a spike-in coefficient) (default: '${mode}').
+    Type of header to write: 'siq' (siQ-ChIP normalization) or 'spike' (normalization with a spike-in coefficient) (default: '${mode}').
 
   -fi, --fil_in : file
-    Input file path. Input data table to header. If omitted, '--fil_out' creates a header-only utility table.
+    Input data table to header. If omitted, '--fil_out' creates a header-only utility table.
 
   -fo, --fil_out : file
     Output file path. With '--fil_in', writes a headered copy. Without '--fil_in', writes a header-only table.

@@ -49,10 +49,10 @@ Parameters
     Comma-separated list of input file paths for BAM or CRAM files.
 
   -rf, --ref_fa : file
-    Reference FASTA file. Reference FASTA required when any input file is CRAM; otherwise, ignored with a warning.
+    Reference FASTA file. Required when any input file is CRAM; otherwise, ignored with a warning.
 
   -do, --dir_out : dir
-    Output directory. Directory to save queryname-sorted alignment files.
+    Output directory for queryname-sorted alignment files.
 
   -deo, --dir_eo : dir
     Directory for stderr and stdout log files.

@@ -118,7 +118,7 @@ Parameters
     Second bedGraph input file, file B ('mode=ratio'; e.g., input).
 
   -fo, --fil_out : file
-    Output file path. Output file (bedGraph[.gz] for 'mode={signal,ratio}', BED[.gz] for 'mode=coord').
+    Output file (bedGraph[.gz] for 'mode={signal,ratio}', BED[.gz] for 'mode=coord').
 
   -sf, --scl_fct : number
     Scaling factor (<flt>) or sentinel (NA) ('mode=signal' or 'mode=ratio').
@@ -328,7 +328,7 @@ Parameters
     Display this help message and exit.
 
   1  mode : {'signal', 'ratio'}
-    Workflow mode. Mode: 'signal' or 'ratio'.
+    Workflow mode: 'signal' or 'ratio'.
 
   2  scl_fct : number
     Scaling factor. Use sentinel 'NA' to omit scaling.
@@ -612,7 +612,7 @@ Parameters
     Number of threads to use.
 
   03  fil_in : file
-    Input file path. Input BAM or CRAM file.
+    Input BAM or CRAM file.
 
   04  fil_out : file
     Output file path.
@@ -621,7 +621,7 @@ Parameters
     Bin size in base pairs.
 
   06  method : {'unadj', 'frag', 'norm', 'count', 'cpm'}
-    Workflow method. Type of signal computation or empty sentinel ("").
+    Type of signal computation or empty sentinel ("").
 
   07  scl_fct : number
     Scaling factor. Use sentinel 'NA' to omit scaling.
@@ -905,10 +905,10 @@ Parameters
     Second bedGraph input file, file B.
 
   04  fil_out : file
-    Output file path. Output ratio bedGraph file.
+    Output ratio bedGraph file.
 
   05  method : {'linear', 'log2', 'linear_r', 'log2_r'}
-    Workflow method. Ratio method: 'linear', 'log2', 'linear_r', 'log2_r'.
+    Ratio method: 'linear', 'log2', 'linear_r', 'log2_r'.
 
   06  scl_fct : number
     Scaling factor. Use sentinel 'NA' to omit scaling.
@@ -1216,7 +1216,7 @@ Parameters
     Display this help message and exit.
 
   1  mode : {'signal', 'ratio', 'coord'}
-    Workflow mode. 'signal', 'ratio', or 'coord'.
+    Workflow mode: 'signal', 'ratio', or 'coord'.
 
   2  idx : int
     Zero-based task index.

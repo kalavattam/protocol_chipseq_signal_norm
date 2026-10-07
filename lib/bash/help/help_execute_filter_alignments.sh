@@ -43,7 +43,7 @@ Parameters
     Run script in verbose mode.
 
   -dr, --dry, --dry_run : flag
-    Run script in dry-run mode. Run the command in "check" mode.
+    Run script in dry-run mode.
 
   -en, --env, --env_nam : str
     Conda environment to activate (default: '${env_nam}').
@@ -55,13 +55,13 @@ Parameters
     Comma-separated list of input file paths. Comma-delimited serialized string of coordinate-sorted BAM or CRAM input files.
 
   -rf, --ref_fa : file
-    Reference FASTA file. Reference FASTA required when '--csv_fil_in' contains CRAM input or '--out_ext cram'; otherwise, ignored with a warning.
+    Reference FASTA file. Required when '--csv_fil_in' contains CRAM input or '--out_ext cram'; otherwise, ignored with a warning.
 
   -do, --dir_out : dir
-    Output directory. The directory to store species-filtered and -reheadered output files.
+    Output directory for species-filtered and -reheadered files.
 
   -ox, --out_ext : {'bam', 'cram'}
-    Final output extension. Filtered output extension: 'bam' or 'cram' (default: '${out_ext}').
+    Final output extension: 'bam' or 'cram' (default: '${out_ext}').
 
   -rt, --retain : {'sc', 'sp'}
     Species chromosomes to retain: S. cerevisiae, "sc"; S. pombe, "sp" (default: '${retain}').
@@ -83,10 +83,10 @@ Parameters
     Check chromosomes in output alignment files.
 
   -deo, --dir_eo : dir
-    Directory for stderr and stdout log files. The directory to store stderr and stdout TXT output files (default: '\${dir_out}/logs').
+    Directory for stderr and stdout log files (default: '\${dir_out}/logs').
 
   -nj, --nam_job : str
-    Job name. The name of the job, which is used when writing stderr and stdout TXT files (default: '${nam_job}').
+    Job name, used in the names of the stderr and stdout TXT files (default: '${nam_job}').
 
   -mj, --max_job : int
     Maximum number of jobs to run concurrently (default: '${max_job}').
@@ -99,7 +99,7 @@ Parameters
     Submit jobs to the Slurm scheduler; otherwise, run them in serial.
 
   -tm, --time : time
-    Slurm job time limit. The length of time, in 'h:mm:ss' format, for the Slurm job (required if '--slurm' is specified, ignored if not; default: '${time}').
+    Slurm job time limit, in 'h:mm:ss' format (required if '--slurm' is specified, ignored if not; default: '${time}').
 
 Notes
 -----

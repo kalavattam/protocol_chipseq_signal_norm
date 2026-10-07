@@ -10,7 +10,7 @@
 # output reviewed, edited, and approved by the author:
 # - OpenAI ChatGPT and Codex (GPT-4- and GPT-5-series models; most recent:
 #   GPT-5.6);
-# - Anthropic Claude Code (Opus 5).
+# - Anthropic Claude Code (Opus 5, Opus 5.5).
 #
 # Distributed under the MIT license.
 
@@ -775,10 +775,10 @@ EOM
 }
 
 
-#MAYBE: 'format_outputs.sh' may not be the best place for this function.
-#MAYBE: make this function "private", i.e., '_summarize_sig_depo'.
+# MAYBE: 'format_outputs.sh' may not be the best place for this function.
+# MAYBE: make this function "private", i.e., '_summarize_sig_depo'.
 function summarize_sig_depo() {
-    local typ_sig="${1:-}"  # Workflow method. Type of signal computation.
+    local typ_sig="${1:-}"  # Type of signal computation.
     local scl_fct="${2:-}"  # Scaling factor.
     local typ_sig_lc        # Lowercase signal type for case matching.
     local mth_dep           # Deposition and adjustment message.
@@ -801,7 +801,7 @@ Parameters
     Display this help message and exit.
 
   1  typ_sig : str
-    Workflow method. Type of signal computation: 'unadj', 'frag', 'norm' (alias 'nc'), 'count', or 'cpm'.
+    Type of signal computation: 'unadj', 'frag', 'norm' (alias 'nc'), 'count', or 'cpm'.
 
   2  scl_fct : str
     Scaling factor string. If empty, assumes no explicit '--scl_fct' was supplied.

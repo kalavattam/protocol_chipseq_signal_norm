@@ -10,14 +10,14 @@
 # output reviewed, edited, and approved by the author:
 # - OpenAI ChatGPT and Codex (GPT-4- and GPT-5-series models; most recent:
 #   GPT-5.6);
-# - Anthropic Claude Code (Opus 5).
+# - Anthropic Claude Code (Opus 5, Opus 5.5).
 #
 # Distributed under the MIT license.
 
 
 function help_execute_download_fastqs() {
     # The owning execute wrapper initializes these documented defaults before
-    # rendering help; standalone sourcing is outside this helper's contract
+    # rendering help; standalone sourcing is outside this helper's contract.
     # shellcheck disable=SC2154
     cat >&2 << EOM
 Usage
@@ -47,10 +47,10 @@ Parameters
     Conda environment to activate (default: '${env_nam}').
 
   -t, --thr, --threads : int
-    Number of threads to use. Number of download jobs to run concurrently (default: ${threads}).
+    Number of download jobs to run concurrently, each a single-threaded process; with '--slurm', also the number of CPUs requested (default: ${threads}).
 
   -fi, --fil_in : file
-    Input file path. Input TSV file containing 'run_accession', 'custom_name', and 'fastq_ftp' or 'fastq_https' columns.
+    Input TSV file containing 'run_accession', 'custom_name', and 'fastq_ftp' or 'fastq_https' columns.
 
   -do, --dir_out : dir
     Output directory for accession-named downloaded FASTQ files.
@@ -59,16 +59,16 @@ Parameters
     Output directory for custom-named FASTQ symlinks.
 
   -nj, --nam_job : str
-    Job name. Job-name prefix used for logs and scheduler submissions (default: '${nam_job}').
+    Job-name prefix used for logs and scheduler submissions (default: '${nam_job}').
 
   -deo, --dir_eo : dir
     Directory for stderr and stdout log files plus GNU Parallel config files (default: '\${dir_out}/logs').
 
   -sl, --slurm : flag
-    Submit jobs to the Slurm scheduler. Submit a GNU Parallel download job through Slurm.
+    Submit a GNU Parallel download job through Slurm.
 
   -tm, --time : time
-    Slurm job time limit. Slurm walltime in h:mm:ss format; used only with '--slurm' (default: '${time}').
+    Slurm job time limit, in 'h:mm:ss' format; used only with '--slurm' (default: '${time}').
 
 Notes
 -----

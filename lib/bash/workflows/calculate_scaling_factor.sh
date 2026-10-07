@@ -936,7 +936,7 @@ EOM
 
 
 function _compute_scl_fct() {
-    local mode="${1:-}"     # Workflow mode. Coefficient family: "siq" or "spike".
+    local mode="${1:-}"     # Coefficient family: "siq" or "spike".
     local scr_siq="${2:-}"  # Entry point for siQ-ChIP scaling factor.
     local scr_spk="${3:-}"  # Entry point for spike-in scaling factor.
     local show_help
@@ -957,7 +957,7 @@ Parameters
     Display this help message and exit.
 
   1  mode : {'siq', 'spike'}
-    Workflow mode. Coefficient family; must be 'siq' or 'spike'.
+    Coefficient family; must be 'siq' or 'spike'.
 
   2  scr_siq : structured string
     Python entry point for siQ-ChIP coefficient calculation.
@@ -1436,7 +1436,7 @@ Parameters
     Effective genome size (in base pairs; default: ${siz_gen} [appropriate for S. cerevisiae]).
 
   4  mode : {'frag', 'norm'}
-    Workflow mode. Mode of calculation; options: "frag" or "norm" (default: '${mode}').
+    Mode of calculation; options: "frag" or "norm" (default: '${mode}').
 
   5  dp : int
     Maximum number of decimal places retained for finite emitted values (default: ${dp}).

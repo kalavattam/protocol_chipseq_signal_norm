@@ -6,9 +6,11 @@
 # Copyright 2024-2026 by Kris Alavattam
 # Email: kalavattam@gmail.com
 #
-# OpenAI ChatGPT and Codex (GPT-4- and GPT-5-series models; most recent:
-# GPT-5.6) were used in design, development, and documentation, with all output
-# reviewed, edited, and approved by the author.
+# The following were used in design, development, and documentation, with all
+# output reviewed, edited, and approved by the author:
+# - OpenAI ChatGPT and Codex (GPT-4- and GPT-5-series models; most recent:
+#   GPT-5.6);
+# - Anthropic Claude Code (Opus 5.5).
 #
 # Distributed under the MIT license.
 
@@ -17,7 +19,7 @@
 # check_pgrm_path
 
 
-#  Require Bash >= 4.4 before defining functions
+# Require Bash >= 4.4 before defining functions.
 if [[ -z "${BASH_VERSION:-}" ]]; then
     echo "error(shell):" \
         "this script must be sourced or run under Bash >= 4.4." >&2
@@ -41,7 +43,7 @@ elif ((
     fi
 fi
 
-#  Source required helper functions if needed
+# Source required helper functions if needed.
 {
     _dir_src_env_chk="$(
         cd "$(dirname "${BASH_SOURCE[0]}")" > /dev/null 2>&1 && pwd
@@ -94,7 +96,7 @@ Parameters
     Display this help message and exit.
 
   1  env_nam : str
-    Conda environment to activate. Name of Conda environment to check.
+    Name of Conda environment to check.
 
   2  quiet : bool
     If true-like, suppress expected "not installed" error messages and return status only (default: 'false').
@@ -130,7 +132,7 @@ Examples
 EOM
     )
 
-    #  Parse and check function arguments
+    # Parse and check function arguments.
     if [[ "${env_nam}" =~ ^(-h|--h[e]?lp)$ ]]; then
         echo "${show_help}" >&2
         return 0
@@ -156,14 +158,14 @@ EOM
         return 1
     }
 
-    #  Check availability of 'conda'
+    # Check availability of 'conda'.
     if ! command -v conda >/dev/null 2>&1; then
         echo_err_func "${FUNCNAME[0]}" \
             "'conda' is not available in PATH."
         return 1
     fi
 
-    #  Check that the specific Conda environment is installed
+    # Check that the specific Conda environment is installed.
     if ! \
         conda env list | awk -v env="${env_nam}" '
             $1 == env { found = 1 } END { exit !found }
@@ -223,7 +225,7 @@ Examples
 EOM
     )
 
-    #  Parse and check function arguments
+    # Parse and check function arguments.
     if [[ "${prog}" =~ ^(-h|--h[e]?lp)$ ]]; then
         echo "${show_help}" >&2
         return 0
@@ -252,7 +254,7 @@ EOM
 }
 
 
-#  Print an error message when function script is executed directly
+# Print an error message when function script is executed directly.
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
     err_source_only "${BASH_SOURCE[0]}"
 fi

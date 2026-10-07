@@ -94,7 +94,7 @@ Parameters
     E.g., "\${HOME}/path/samp_1.fastq.gz;\${HOME}/path/samp_2_R1.fastq.gz,\${HOME}/path/samp_2_R2.fastq.gz;\${HOME}/path/samp_3.fastq.gz".
 
   -rf, --ref_fa : file
-    Reference FASTA file. Reference FASTA path required when '--out_ext cram'; otherwise, ignored with a warning.
+    Reference FASTA file. Required when '--out_ext cram'; otherwise, ignored with a warning.
 
   -do, --dir_out : dir
     Directory to write alignment output files.

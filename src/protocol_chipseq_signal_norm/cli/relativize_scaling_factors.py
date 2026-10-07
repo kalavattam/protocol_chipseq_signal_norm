@@ -10,7 +10,7 @@
 # output reviewed, edited, and approved by the author:
 # - OpenAI ChatGPT and Codex (GPT-4- and GPT-5-series models; most recent:
 #   GPT-5.6);
-# - Anthropic Claude Code (Opus 5).
+# - Anthropic Claude Code (Opus 5, Opus 5.5).
 #
 # Distributed under the MIT license.
 
@@ -248,10 +248,9 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         dest="fil_in",
         required=True,
         help=(
-            "Input file path. Path to the input TSV file containing ChIP-seq "
-            "metrics from running, e.g., execute_calculate_scaling_factor.sh. "
-            "The file must contain a supported scaling-factor column: 'siq' "
-            "or 'spike'."
+            "Path to the input TSV file containing ChIP-seq metrics from "
+            "running, e.g., execute_calculate_scaling_factor.sh. The file "
+            "must contain a supported scaling-factor column: 'siq' or 'spike'."
         ),
     )
     parser.add_argument(

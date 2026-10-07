@@ -9,7 +9,7 @@
 # The following were used in design, development, and documentation, with all
 # output reviewed, edited, and approved by the author:
 # - OpenAI ChatGPT and Codex (GPT-5-series models; most recent: GPT-5.6);
-# - Anthropic Claude Code (Opus 5).
+# - Anthropic Claude Code (Opus 5, Opus 5.5).
 #
 # Distributed under the MIT license.
 
@@ -425,8 +425,8 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         dest="fil_in",
         required=True,
         help=(
-            "Input file path. Path to the input bedGraph file (.gz is "
-            "handled), or '-' for stdin.\n"
+            "Path to the input bedGraph file (.gz is handled), or '-' for "
+            "stdin.\n"
             "\n"
         ),
     )
@@ -436,8 +436,8 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         dest="fil_out",
         required=True,
         help=(
-            "Output file path. Path to the output bedGraph file (.gz is "
-            "handled), or '-' for stdout.\n"
+            "Path to the output bedGraph file (.gz is handled), or '-' for "
+            "stdout.\n"
             "\n"
         ),
     )
