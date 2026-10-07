@@ -6,7 +6,7 @@
 # Copyright 2026 by Kris Alavattam
 # Email: kalavattam@gmail.com
 #
-# Anthropic Claude Code (Opus 5) was used in design, development, and
+# Anthropic Claude Code (Opus 5, Opus 5.5) was used in design, development, and
 # documentation, with all output reviewed, edited, and approved by the author.
 #
 # Distributed under the MIT license.
@@ -39,10 +39,10 @@ dir_fix="${dir_scr}"
 source "${dir_scr}/../../support/fixture_helpers.sh"
 
 # Declare every generated path up front. The directory names the verdict the
-# checker must return for the documents inside it, so a verdict with no
-# fixture is visible as an absent directory rather than as a filename nobody
-# wrote. 'format/' holds input and expected pairs for the formatter, which
-# makes a claim about a rewrite rather than about a verdict.
+# checker must return for the documents inside it, so a verdict with no fixture
+# is visible as an absent directory rather than as a filename nobody wrote.
+# 'format/' holds input and expected pairs for the formatter, which makes a
+# claim about a rewrite rather than about a verdict.
 dir_acc="${dir_fix}/accepted"
 dir_bnd="${dir_fix}/boundary"
 dir_nap="${dir_fix}/non_applicable"

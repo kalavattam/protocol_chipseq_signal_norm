@@ -6,7 +6,7 @@
 # Copyright 2026 by Kris Alavattam
 # Email: kalavattam@gmail.com
 #
-# Anthropic Claude Code (Opus 5) was used in design, development, and
+# Anthropic Claude Code (Opus 5, Opus 5.5) was used in design, development, and
 # documentation, with all output reviewed, edited, and approved by the author.
 #
 # Distributed under the MIT license.
@@ -290,8 +290,8 @@ function check_readme() {
 # A recipe that rewrites every output unconditionally is idempotent without
 # this, and two recipes relied on that. It is not enough. The sweep is what
 # keeps regeneration correct after a later revision stops writing an output the
-# previous revision wrote, which no amount of unconditional overwriting
-# can undo. It also holds for the recipes this contract will not run, where the
+# previous revision wrote, which no amount of unconditional overwriting can
+# undo. It also holds for the recipes this contract will not run, where the
 # empirical check below is skipped.
 function check_stale_sweep() {
     local root="${1}"

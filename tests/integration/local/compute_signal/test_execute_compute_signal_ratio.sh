@@ -1151,8 +1151,8 @@ else
 fi
 unset rc_bl out_bl
 
-# Separability: the pseudocount is added before scaling, so a scale factor is
-# a pure additive offset in log2 space and never interacts with the prior.
+# Separability: the pseudocount is added before scaling, so a scale factor is a
+# pure additive offset in log2 space and never interacts with the prior.
 for arm in plain scaled; do
     csv_scl="NA"
 

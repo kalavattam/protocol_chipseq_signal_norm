@@ -9,7 +9,7 @@
 # The following were used in design, development, and documentation, with all
 # output reviewed, edited, and approved by the author:
 # - OpenAI ChatGPT and Codex (GPT-5.5, GPT-5.6);
-# - Anthropic Claude Code (Opus 5).
+# - Anthropic Claude Code (Opus 5, Opus 5.5).
 #
 # Distributed under the MIT license.
 
@@ -59,9 +59,9 @@ seq_100="ACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACG
 
 
 # Remove stale generated fixture outputs. Every output below is rewritten
-# unconditionally, so this sweep is not what makes regeneration correct
-# today; it is what keeps regeneration correct after a later revision stops
-# writing one of them.
+# unconditionally, so this sweep is not what makes regeneration correct today;
+# it is what keeps regeneration correct after a later revision stops writing
+# one of them.
 rm_files "${dir_fix}" "${sam}" "${ref}" "${fai}"
 
 # Create fixture output directories.

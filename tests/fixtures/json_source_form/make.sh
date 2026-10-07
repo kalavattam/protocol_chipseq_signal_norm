@@ -6,7 +6,7 @@
 # Copyright 2026 by Kris Alavattam
 # Email: kalavattam@gmail.com
 #
-# Anthropic Claude Code (Opus 5) was used in design, development, and
+# Anthropic Claude Code (Opus 5, Opus 5.5) was used in design, development, and
 # documentation, with all output reviewed, edited, and approved by the author.
 #
 # Distributed under the MIT license.
@@ -71,8 +71,8 @@ mkdirs "${dir_acc}" "${dir_rej}"
 
 # Author every fixture literally. Each negative fixture departs from the
 # canonical rendering along exactly one axis, so a finding about that axis
-# cannot be confounded with a finding about another. The delimiter is quoted
-# so no '$' in a fixture body reaches the shell.
+# cannot be confounded with a finding about another. The delimiter is quoted so
+# no '$' in a fixture body reaches the shell.
 
 # The canonical rendering itself, exercising both treatments the budget
 # selects: a short structure stays inline, a long one expands, and a
@@ -111,9 +111,9 @@ cat << 'EOM' > "${fil_fits}"
 }
 EOM
 
-# One object opened inline and then continued vertically. The opening
-# delimiter is not the last content on its line and the closing delimiter is
-# not the first content on its line.
+# One object opened inline and then continued vertically. The opening delimiter
+# is not the last content on its line and the closing delimiter is not the
+# first content on its line.
 cat << 'EOM' > "${fil_hybrid}"
 {
   "requirements": [
@@ -135,8 +135,8 @@ cat << 'EOM' > "${fil_indent}"
 EOM
 
 # One expanded structure indented with a tab. The tab is built with 'printf'
-# rather than typed into a heredoc body, where it would be an invisible
-# control character that any editor could silently convert to spaces.
+# rather than typed into a heredoc body, where it would be an invisible control
+# character that any editor could silently convert to spaces.
 tab="$(printf '\t')"
 
 {

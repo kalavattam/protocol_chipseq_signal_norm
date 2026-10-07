@@ -583,8 +583,8 @@ run_case_spike \
     $'0.5\tchiprx_alpha_ratio\t2\t2\t3\t1'
 
 # The coefficient is arithmetic over four counts, so it cannot vary by
-# alignment layout or format. These cases assert that, rather than assuming
-# it, across paired-end BAM and single- and paired-end CRAM.
+# alignment layout or format. These cases assert that, rather than assuming it,
+# across paired-end BAM and single- and paired-end CRAM.
 run_case_spike \
     pe_bam_main_per_spike \
     arr_cmd_bam_pe \

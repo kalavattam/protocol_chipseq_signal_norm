@@ -9,7 +9,7 @@
 # The following were used in design, development, and documentation, with all
 # output reviewed, edited, and approved by the author:
 # - OpenAI ChatGPT and Codex (GPT-5.5, GPT-5.6);
-# - Anthropic Claude Code (Opus 5).
+# - Anthropic Claude Code (Opus 5, Opus 5.5).
 #
 # Distributed under the MIT license.
 
@@ -30,8 +30,8 @@ mkdir -p "$(dirname "${log_style}")"
 
 print_section "${TEST_NAME}"
 
-# Resolve the import root before the prefix, so the prefix does not
-# expand a variable that it also assigns.
+# Resolve the import root before the prefix, so the prefix does not expand a
+# variable that it also assigns.
 dir_src="${ROOT_REPO}/src"
 
 if \

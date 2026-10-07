@@ -6,7 +6,7 @@
 # Copyright 2026 by Kris Alavattam
 # Email: kalavattam@gmail.com
 #
-# Anthropic Claude Code (Opus 5) was used in design, development, and
+# Anthropic Claude Code (Opus 5, Opus 5.5) was used in design, development, and
 # documentation, with all output reviewed, edited, and approved by the author.
 #
 # Distributed under the MIT license.
@@ -54,9 +54,9 @@ rm_files "${dir_fix}" "${fil_single}" "${fil_multi}" "${fil_none}"
 mkdirs "${dir_acc}" "${dir_nap}"
 
 
-# Author every fixture literally. They share one bounded header and differ
-# only in the attribution block, which is the subject under test. The
-# delimiter is quoted so the '$' in no body reaches the shell.
+# Author every fixture literally. They share one bounded header and differ only
+# in the attribution block, which is the subject under test. The delimiter is
+# quoted so the '$' in no body reaches the shell.
 
 # One vendor credited in the bounded prose form.
 cat << 'EOM' > "${fil_single}"

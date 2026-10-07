@@ -842,9 +842,9 @@ else
         "conda on PATH"
 fi
 
-# 'mirrored_channels' silently redirects matching channel URLs, out of reach
-# of '--override_channels', so the rendered condarc empties it. Assert its
-# content and that no condarc is rendered when no channels are supplied.
+# 'mirrored_channels' silently redirects matching channel URLs, out of reach of
+# '--override_channels', so the rendered condarc empties it. Assert its content
+# and that no condarc is rendered when no channels are supplied.
 if \
     check_cmd_exists mamba || check_cmd_exists conda
 then

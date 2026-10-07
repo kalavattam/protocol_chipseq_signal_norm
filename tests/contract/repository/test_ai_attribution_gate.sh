@@ -6,7 +6,7 @@
 # Copyright 2026 by Kris Alavattam
 # Email: kalavattam@gmail.com
 #
-# Anthropic Claude Code (Opus 5) was used in design, development, and
+# Anthropic Claude Code (Opus 5, Opus 5.5) was used in design, development, and
 # documentation, with all output reviewed, edited, and approved by the author.
 #
 # Distributed under the MIT license.
@@ -24,10 +24,10 @@ source "$(
 )/tests/support/test_helpers.sh"
 
 
-# The header rules were applied across the maintained tree, but nothing ran
-# the checker over that tree afterward, so drift went unreported until it was
-# found by eye. This gate exists to make that impossible: it runs the
-# registered command repository-wide and proves the scan was not vacuous.
+# The header rules were applied across the maintained tree, but nothing ran the
+# checker over that tree afterward, so drift went unreported until it was found
+# by eye. This gate exists to make that impossible: it runs the registered
+# command repository-wide and proves the scan was not vacuous.
 inspected_floor=200
 
 print_section "${TEST_NAME}"
