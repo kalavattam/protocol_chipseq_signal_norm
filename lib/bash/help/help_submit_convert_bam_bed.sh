@@ -9,7 +9,7 @@
 # The following were used in design, development, and documentation, with all
 # output reviewed, edited, and approved by the author:
 # - OpenAI ChatGPT and Codex (GPT-5.5, GPT-5.6);
-# - Anthropic Claude Code (Opus 5).
+# - Anthropic Claude Code (Opus 5, Opus 5.5).
 #
 # Distributed under the MIT license.
 
@@ -55,7 +55,7 @@ Parameters
     Comma-separated list of input file paths for BAM or CRAM files.
 
   -rf, --ref_fa : file
-    Reference FASTA file. Reference FASTA required when any input file is CRAM.
+    Reference FASTA file. Reference FASTA required when any input file is CRAM; otherwise, ignored with a warning.
 
   -pp, --pth_scr_py : file
     Python converter script (default: '\${dir_scr}/compute_signal.py'). Mutually exclusive with '--use_awk'.
@@ -89,6 +89,7 @@ Notes
     + The AWK branch assumes QNAME-sorted paired-end records in adjacent pairs and writes paired-fragment intervals.
     + The Python branch uses 'compute_signal.py', which does not require QNAME sorting, handles single-end data, and emits fragments according to its own 'parse_bam()' policy.
   - Python conversion is the default. Use '--pth_scr_py' only to supply a custom converter, or use '--use_awk' to select the AWK branch.
+  - The Python converter is called with '--fil_in', '--fil_out', and '--threads', and with '--ref_fa' for CRAM input; a custom '--pth_scr_py' must accept them.
   - CRAM inputs require '--ref_fa' in both AWK and Python branches.
   - This is a submit-wrapper script: it supports serial/local iteration and Slurm-array task execution, but it does not submit Slurm jobs itself.
 

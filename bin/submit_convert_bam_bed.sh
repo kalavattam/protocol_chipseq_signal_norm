@@ -10,7 +10,7 @@
 # output reviewed, edited, and approved by the author:
 # - OpenAI ChatGPT and Codex (GPT-4- and GPT-5-series models; most recent:
 #   GPT-5.6);
-# - Anthropic Claude Code (Opus 5).
+# - Anthropic Claude Code (Opus 5, Opus 5.5).
 #
 # Distributed under the MIT license.
 
@@ -391,13 +391,18 @@ function validate_vecs() {
         esac
     done
 
-    if [[ "${need_ref}" == "true" && -z "${ref_fa}" ]]; then
-        echo_err "'--ref_fa' is required when '--csv_fil_in' contains CRAM."
-        return 1
-    fi
+    # Without CRAM input, '--ref_fa' is ignored, so it is neither checked nor
+    # passed on.
+    if [[ "${need_ref}" == "true" ]]; then
+        if [[ -z "${ref_fa}" ]]; then
+            echo_err \
+                "'--ref_fa' is required when '--csv_fil_in' contains CRAM."
+            return 1
+        fi
 
-    if [[ -n "${ref_fa}" ]]; then
         validate_var_file "ref_fa" "${ref_fa}" || return 1
+    elif [[ -n "${ref_fa}" ]]; then
+        echo_warn "'--ref_fa' has no effect without CRAM input and is ignored."
     fi
 }
 
@@ -442,7 +447,7 @@ function derive_fil_out() {
 # Convert one BAM or CRAM file to BED.
 function run_job() {
     local idx="${1:-}"
-    local fil_in fil_out samp log_out log_err
+    local fil_in fil_out samp log_out log_err ref_job=""
 
     if ! [[ "${idx}" =~ ^[0-9]+$ ]]; then
         echo_err_func "${FUNCNAME[0]}" "invalid task index: '${idx}'."
@@ -458,6 +463,9 @@ function run_job() {
     log_out="${dir_eo}/${nam_job}.${samp}.stdout.txt"
     log_err="${dir_eo}/${nam_job}.${samp}.stderr.txt"
 
+    # Pass the reference only to CRAM entries.
+    if [[ "${fil_in,,}" == *.cram ]]; then ref_job="${ref_fa}"; fi
+
     if [[ "${debug}" == "true" ]]; then
         debug_var \
             "idx=${idx}" \
@@ -472,7 +480,7 @@ function run_job() {
                 "${threads}" \
                 "${fil_in}" \
                 "${fil_out}" \
-                "${ref_fa}" \
+                "${ref_job}" \
                 "${log_out}" \
                 "${log_err}"
         then
@@ -484,10 +492,11 @@ function run_job() {
     else
         if ! \
             convert_alignments_bed_python \
+                "${threads}" \
                 "${pth_scr_py}" \
                 "${fil_in}" \
                 "${fil_out}" \
-                "${ref_fa}" \
+                "${ref_job}" \
                 "${log_out}" \
                 "${log_err}"
         then

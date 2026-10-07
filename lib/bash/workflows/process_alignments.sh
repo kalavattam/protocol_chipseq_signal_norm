@@ -6,9 +6,10 @@
 # Copyright 2026 by Kris Alavattam
 # Email: kalavattam@gmail.com
 #
-# OpenAI ChatGPT and Codex (GPT-5-series models; most recent: GPT-5.6) were
-# used in design, development, and documentation, with all output reviewed,
-# edited, and approved by the author.
+# The following were used in design, development, and documentation, with all
+# output reviewed, edited, and approved by the author:
+# - OpenAI ChatGPT and Codex (GPT-5-series models; most recent: GPT-5.6);
+# - Anthropic Claude Code (Opus 5.5).
 #
 # Distributed under the MIT license.
 
@@ -113,7 +114,7 @@ Parameters
     Output file path. Output BAM or CRAM file.
 
   4  ref_fa : file
-    Reference FASTA file. Reference FASTA required for CRAM input.
+    Reference FASTA file. Reference FASTA required for CRAM input; otherwise, ignored with a warning.
 
   5  log_out : file
     Stdout log file.
@@ -195,12 +196,14 @@ EOM
 
     if [[ "${fil_in,,}" == *.cram ]]; then
         if [[ -z "${ref_fa}" ]]; then
-            echo_err_func "${func}" \
-                "positional argument 4, 'ref_fa', is required for CRAM."
+            echo_err_func "${func}" "'ref_fa' is required for CRAM input."
             return 1
         fi
 
         validate_var_file "ref_fa" "${ref_fa}" || return 1
+    elif [[ -n "${ref_fa}" ]]; then
+        echo_warn_func "${func}" \
+            "'ref_fa' has no effect without CRAM input and is ignored."
     fi
 }
 
@@ -239,7 +242,7 @@ Parameters
     Output file path. Output queryname-sorted BAM or CRAM file.
 
   4  ref_fa : file
-    Reference FASTA file. Reference FASTA required for CRAM input.
+    Reference FASTA file. Reference FASTA required for CRAM input; otherwise, ignored with a warning.
 
   5  log_out : file
     Stdout log file for the processing command.
@@ -385,7 +388,7 @@ Parameters
     Output file path. Output BED.GZ file.
 
   4  ref_fa : file
-    Reference FASTA file. Reference FASTA required for CRAM input.
+    Reference FASTA file. Reference FASTA required for CRAM input; otherwise, ignored with a warning.
 
   5  log_out : file
     Stdout log file for the processing command.
@@ -491,12 +494,13 @@ EOM
 
 #  Convert one BAM or CRAM file to BED.GZ with a Python converter script
 function convert_alignments_bed_python() {
-    local pth_scr_py="${1:-}"
-    local fil_in="${2:-}"
-    local fil_out="${3:-}"
-    local ref_fa="${4:-}"
-    local log_out="${5:-}"
-    local log_err="${6:-}"
+    local threads="${1:-}"
+    local pth_scr_py="${2:-}"
+    local fil_in="${3:-}"
+    local fil_out="${4:-}"
+    local ref_fa="${5:-}"
+    local log_out="${6:-}"
+    local log_err="${7:-}"
     local show_help
     local -a arr_ref_arg=()
 
@@ -504,7 +508,7 @@ function convert_alignments_bed_python() {
 Usage
 -----
   convert_alignments_bed_python
-    [--help] pth_scr_py fil_in fil_out ref_fa log_out log_err
+    [--help] threads pth_scr_py fil_in fil_out ref_fa log_out log_err
 
   Convert one BAM or CRAM file to BED.GZ of alignment records using a Python converter script.
 
@@ -513,22 +517,25 @@ Parameters
   -h, --help : flag
     Display this help message and exit.
 
-  1  pth_scr_py : file
+  1  threads : int
+    Number of threads to pass to the Python converter.
+
+  2  pth_scr_py : file
     Python converter script.
 
-  2  fil_in : file
+  3  fil_in : file
     Input file path. Input BAM or CRAM file.
 
-  3  fil_out : file
+  4  fil_out : file
     Output file path. Output BED.GZ file.
 
-  4  ref_fa : file
-    Reference FASTA file. Reference FASTA required for CRAM input.
+  5  ref_fa : file
+    Reference FASTA file. Reference FASTA required for CRAM input; otherwise, ignored with a warning.
 
-  5  log_out : file
+  6  log_out : file
     Stdout log file for the processing command.
 
-  6  log_err : file
+  7  log_err : file
     Stderr log file for the processing command.
 
 Returns
@@ -542,7 +549,7 @@ Notes
     - python >= 3.11
     - Reference FASTA and required index (when processing CRAM)
 
-  - CRAM input is passed to the Python converter with '--ref_fa'.
+  - The Python converter is called with '--fil_in', '--fil_out', and '--threads', and with '--ref_fa' for CRAM input.
 
 Examples
 --------
@@ -550,6 +557,7 @@ Examples
     '''bash
     mkdir -p "results" "logs"
     convert_alignments_bed_python \\
+        4 \\
         "compute_signal" \\
         "alignments/sample.bam" \\
         "results/sample.bed.gz" \\
@@ -562,6 +570,7 @@ Examples
     '''bash
     mkdir -p "results" "logs"
     convert_alignments_bed_python \\
+        4 \\
         "compute_signal" \\
         "alignments/sample.cram" \\
         "results/sample.bed.gz" \\
@@ -572,14 +581,15 @@ Examples
 EOM
     )
 
-    #MAYBE: [[ -z "${pth_scr_py}" || "${pth_scr_py}" =~ ^(-h|--h[e]?lp)$ ]]
-    if [[ "${pth_scr_py}" =~ ^(-h|--h[e]?lp)$ ]]; then
+    #MAYBE: [[ -z "${threads}" || "${threads}" =~ ^(-h|--h[e]?lp)$ ]]
+    if [[ "${threads}" =~ ^(-h|--h[e]?lp)$ ]]; then
         echo "${show_help}" >&2
         return 0
     fi
 
     #TODO: check parameter assignments
 
+    check_int_pos "${threads}" "threads" || return 1
     if [[ "${pth_scr_py}" == */* || "${pth_scr_py}" == *.py ]]; then
         validate_var_file "pth_scr_py" "${pth_scr_py}" || return 1
     else
@@ -602,6 +612,7 @@ EOM
         python "${pth_scr_py}" \
             --fil_in "${fil_in}" \
             --fil_out "${fil_out}" \
+            --threads "${threads}" \
             "${arr_ref_arg[@]}" \
             > "${log_out}" \
             2> "${log_err}"
@@ -609,6 +620,7 @@ EOM
         "${pth_scr_py}" \
             --fil_in "${fil_in}" \
             --fil_out "${fil_out}" \
+            --threads "${threads}" \
             "${arr_ref_arg[@]}" \
             > "${log_out}" \
             2> "${log_err}"
