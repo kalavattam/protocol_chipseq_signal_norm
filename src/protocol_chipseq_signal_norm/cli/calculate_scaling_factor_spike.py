@@ -259,8 +259,8 @@ def validate_counts(args: argparse.Namespace) -> None:
     Raises
     ------
     ValueError
-        If any count < 0, if dp < 0, or if a main count the coefficient uses
-        is missing.
+        If any count < 0, if dp < 0, or if a main count the coefficient uses is
+        missing.
     ZeroDivisionError
         If a per-sample total is zero.
 
@@ -340,9 +340,9 @@ def calculate_scaling_factors(
     Parameters
     ----------
     main_ip, main_in : int | None
-        Non-negative integer main counts, or None when no requested
-        coefficient uses them ('chiprx_alpha_*' use neither; 'rxinput_alpha'
-        uses only 'main_in').
+        Non-negative integer main counts, or None when no requested coefficient
+        uses them ('chiprx_alpha_*' use neither; 'rxinput_alpha' uses only
+        'main_in').
     spike_ip, spike_in : int
         Non-negative integer spike-in counts.
     required : tuple[str, ...]
@@ -552,7 +552,8 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     )
     parser.add_argument(
         "-c",
-        "--coef", "--coefficient",
+        "--coef",
+        "--coefficient",
         dest="coef",
         type=str,
         required=False,
@@ -587,7 +588,8 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     )
     parser.add_argument(
         "-ft",
-        "--fmt", "--format",
+        "--fmt",
+        "--format",
         dest="fmt",
         type=str,
         choices=("plain", "tsv", "json"),
@@ -599,8 +601,10 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         ),
     )
     parser.add_argument(
-        "-mp", "-mip",
-        "--mip", "--main_ip",
+        "-mp",
+        "-mip",
+        "--mip",
+        "--main_ip",
         dest="main_ip",
         type=int,
         required=False,
@@ -621,8 +625,10 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         help=argparse.SUPPRESS,
     )
     parser.add_argument(
-        "-sp", "-sip",
-        "--sip", "--spike_ip",
+        "-sp",
+        "-sip",
+        "--sip",
+        "--spike_ip",
         dest="spike_ip",
         type=int,
         required=False,
@@ -639,8 +645,10 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         help=argparse.SUPPRESS,
     )
     parser.add_argument(
-        "-mn", "-min",
-        "--min", "--main_in",
+        "-mn",
+        "-min",
+        "--min",
+        "--main_in",
         dest="main_in",
         type=int,
         required=False,
@@ -661,8 +669,10 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         help=argparse.SUPPRESS,
     )
     parser.add_argument(
-        "-sn", "-sin",
-        "--sin", "--spike_in",
+        "-sn",
+        "-sin",
+        "--sin",
+        "--spike_in",
         dest="spike_in",
         type=int,
         required=False,
@@ -756,11 +766,15 @@ def main(argv: list[str] | None = None) -> int:
                 print("--verbose")
                 print(f"--coef     {args.coef_raw}  (canon: {args.coef})")
                 print(f"--format   {args.fmt}")
+
                 if args.main_ip is not None:
                     print(f"--main_ip  {args.main_ip}")
+
                 print(f"--spike_ip {args.spike_ip}")
+
                 if args.main_in is not None:
                     print(f"--main_in  {args.main_in}")
+
                 print(f"--spike_in {args.spike_in}")
                 print(f"--dp      {args.dp}")
                 print("")

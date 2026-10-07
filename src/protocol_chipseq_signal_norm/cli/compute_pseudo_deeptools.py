@@ -825,8 +825,9 @@ def main(argv: list[str] | None = None) -> int:
             )
 
         if one_track and args.prt_arg:
-            # 'bamCompare' takes '--scaleFactors' and '--pseudocount' as pairs,
-            # and 'bamCoverage --scaleFactor' takes no pseudocount at all.
+            # The two-track 'bamCompare' takes '--scaleFactors' and
+            # '--pseudocount' as pairs, and 'bamCoverage --scaleFactor' takes
+            # no pseudocount at all.
             raise ValueError(
                 "'--prt_arg' writes the two-track 'bamCompare' argument "
                 "string, which has no single-track form. Drop '--prt_arg' to "

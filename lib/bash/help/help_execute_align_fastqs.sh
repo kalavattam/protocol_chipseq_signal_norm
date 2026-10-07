@@ -55,10 +55,10 @@ Parameters
     Alignment program to use: 'bowtie2', 'bwa', or 'bwa-mem2' (default: '${aligner}').
 
   -2m, --bt2_mode : {'local', 'global', 'end-to-end'}
-    Bowtie 2 alignment type when '--aligner bowtie2': 'local', 'global', or 'end-to-end' (default: ${bt2_mode}); refused otherwise.
+    Bowtie 2 alignment type when '--aligner bowtie2': 'local', 'global', or 'end-to-end' (default: '${bt2_mode}'); refused otherwise.
 
   -ba, --bwa_alg : {'mem', 'aln'}
-    BWA algorithm when '--aligner bwa': 'mem' or 'aln' (default: ${bwa_alg}).
+    BWA algorithm when '--aligner bwa': 'mem' or 'aln' (default: '${bwa_alg}').
 
     With '--aligner bwa-mem2', which has only 'mem', 'mem' is ignored with a warning and 'aln' is refused; with '--aligner bowtie2', it is refused.
 

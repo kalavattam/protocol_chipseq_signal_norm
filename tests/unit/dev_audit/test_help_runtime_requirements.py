@@ -602,7 +602,7 @@ class RuntimeRequirementsTest(unittest.TestCase):
                 "uniq (when 'chk_chr' is true)",
             ),
         )
-        self.assertIn(
+        self.assertNotIn(
             "Input BAM or CRAM index",
             settled_requirements(
                 "lib/bash/workflows/filter_alignment.sh::filter_alignment_sc",
@@ -871,11 +871,6 @@ class RuntimeRequirementsTest(unittest.TestCase):
                 "awk",
                 "basename",
                 "dirname",
-                (
-                    "Input BAM or CRAM index (when filtering S. cerevisiae "
-                    "alignments)"
-                ),
-                "mv (when writing S. cerevisiae BAM output)",
                 "Reference FASTA and required index (when processing CRAM)",
                 "rm",
                 "samtools",

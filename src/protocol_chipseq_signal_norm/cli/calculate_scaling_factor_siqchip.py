@@ -216,8 +216,8 @@ def calculate_alpha(
     ------
     ValueError
         If an unsupported equation is provided, if 'dep_ip' or 'dep_in' is
-        given with '5nd' or '6nd', which have no depth terms, or if
-        constraints required by the selected equation are violated (e.g.,
+        given with '5nd' or '6nd', which have no depth terms, or if constraints
+        required by the selected equation are violated (e.g.,
         'vol_all <= vol_in' for '--eqn 6' or '--eqn 6nd').
     """
 

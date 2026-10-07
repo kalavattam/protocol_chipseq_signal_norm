@@ -351,8 +351,8 @@ def find_supplied(
     this reads the tokens. A token may be a bare option, an option with an
     inline value after '=', or a short option with its value attached, as in
     '-c0.05'. A short option is a prefix of longer ones ('-s' of '-sp'), so an
-    attached form resolves to the longest registered option it starts with,
-    as argparse does. Parsing stops at '--'.
+    attached form resolves to the longest registered option it starts with, as
+    argparse does. Parsing stops at '--'.
     """
 
     by_flag = parser._option_string_actions
