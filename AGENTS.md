@@ -42,6 +42,10 @@ Before planning a governed change, use the ordinary task router to derive the sm
 
 Prefer deterministic checks over agent memory. When a standard becomes important, document it in `docs/standards/` and add an advisory or enforced check when practical. Keep Markdown prose natural; do not hard-wrap it only for source line-length preferences.
 
+Prefer American English spelling in code, comments, help, and prose (`neighbor`, `behavior`, `center`, `defense`, `normalize`).
+
+Agent shells may be zsh, where an unquoted `$var` holding a list is not split into words and interactive aliases may shadow commands. Run list loops under `bash -c` or a script file, and use `command <tool>` for tools that may be aliased.
+
 For governed multi-domain changes, approve the normative owner before changing registries, applicability, automation, fixtures, contracts, or maintained realizations. Route through [`GOV.CHANGE.GOLDEN_FIRST`](docs/standards/governance.md#authoritative-standard-first-changes-govchangegoldenfirst), perform its anti-accretion review, record both old-to-new and new-to-old preservation, validate successive owner-specific passes, and finish with all-owner reconciliation.
 
 <br />

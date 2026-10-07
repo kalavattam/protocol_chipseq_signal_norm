@@ -9,7 +9,7 @@
 # The following were used in design, development, and documentation, with all
 # output reviewed, edited, and approved by the author:
 # - OpenAI ChatGPT and Codex (GPT-5.6);
-# - Anthropic Claude Code (Opus 5).
+# - Anthropic Claude Code (Opus 5, Opus 5.5).
 #
 # Distributed under the MIT license.
 
@@ -57,6 +57,8 @@ fil_fmt_input="${dir_fmt}/help_input.py"
 fil_fmt_expected="${dir_fmt}/help_expected.py"
 fil_fmt_uni_input="${dir_fmt}/help_unicode_input.py"
 fil_fmt_uni_expected="${dir_fmt}/help_unicode_expected.py"
+fil_fmt_comment_input="${dir_fmt}/comment_wrap_input.py"
+fil_fmt_comment_expected="${dir_fmt}/comment_wrap_expected.py"
 
 
 # Remove stale outputs so regeneration is idempotent.
@@ -68,7 +70,9 @@ rm_files "${dir_fix}" \
     "${fil_fmt_input}" \
     "${fil_fmt_expected}" \
     "${fil_fmt_uni_input}" \
-    "${fil_fmt_uni_expected}"
+    "${fil_fmt_uni_expected}" \
+    "${fil_fmt_comment_input}" \
+    "${fil_fmt_comment_expected}"
 
 mkdirs "${dir_acc}" "${dir_bnd}" "${dir_rej}" "${dir_fmt}"
 
@@ -258,7 +262,9 @@ EOM
 # ignored, so it cannot be mistaken for maintained source violating the rules
 # it exists to provoke.
 cat << 'EOM' > "${fil_rej_owners}"
-"""Reject noncanonical deterministic Python source forms."""
+"""
+Reject noncanonical deterministic Python source forms.
+"""
 
 import argparse
 
@@ -390,6 +396,100 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         ),
     )
     return parser.parse_args(argv)
+EOM
+
+# Format: an input with premature comment breaks, and the expected output of
+# 'dev/tools/comment_wrap_format.py', written by hand. Comment-like lines in a
+# string, an inline 'noqa' comment, and 'fmt' directives stay as written.
+cat << 'EOM' > "${fil_fmt_comment_input}"
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+#
+# Script: comment_wrap.py
+#
+# Copyright 2026 by Kris Alavattam
+# Email: kalavattam@gmail.com
+#
+# Anthropic Claude Code (Opus 5.5) was used in design, development, and
+# documentation, with all output reviewed, edited, and approved by the author.
+#
+# Distributed under the MIT license.
+
+
+"""
+Exercise comment refilling.
+"""
+
+TEXT = """
+# A comment-like line in a string is literal text, and the
+# formatter leaves its line breaks alone.
+"""
+
+
+def total(values: list[int]) -> int:
+    """
+    Return the sum of the values.
+    """
+
+    # Sum the values in order, because the caller relies on that order when it
+    # reports
+    # a running total.
+    result = 0
+
+    # Each step below is short:
+    # - Add each value to the running total in the order that the caller gave
+    #   it.
+    for value in values:
+        result += value  # noqa: PERF401
+
+    # fmt: off
+    # fmt: on
+    return result
+EOM
+
+cat << 'EOM' > "${fil_fmt_comment_expected}"
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+#
+# Script: comment_wrap.py
+#
+# Copyright 2026 by Kris Alavattam
+# Email: kalavattam@gmail.com
+#
+# Anthropic Claude Code (Opus 5.5) was used in design, development, and
+# documentation, with all output reviewed, edited, and approved by the author.
+#
+# Distributed under the MIT license.
+
+
+"""
+Exercise comment refilling.
+"""
+
+TEXT = """
+# A comment-like line in a string is literal text, and the
+# formatter leaves its line breaks alone.
+"""
+
+
+def total(values: list[int]) -> int:
+    """
+    Return the sum of the values.
+    """
+
+    # Sum the values in order, because the caller relies on that order when it
+    # reports a running total.
+    result = 0
+
+    # Each step below is short:
+    # - Add each value to the running total in the order that the caller gave
+    #   it.
+    for value in values:
+        result += value  # noqa: PERF401
+
+    # fmt: off
+    # fmt: on
+    return result
 EOM
 
 

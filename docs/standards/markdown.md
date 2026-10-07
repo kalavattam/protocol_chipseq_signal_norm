@@ -189,7 +189,7 @@ Every formal H1-H6 and safely recognized structural H7/H8 heading follows these 
 
 **Scope:** Ordinary prose outside fences, tables, HTML blocks, block quotes, list structure, link definitions, and explicit hard breaks.
 
-Keep each natural prose paragraph on one source line and let the renderer or editor wrap it. Do not hard-wrap prose to a fixed column. Preserve paragraph boundaries, explicit hard breaks, block quotes, list continuation prefixes, link definitions, raw HTML, tables, and literal code.
+Keep each natural prose paragraph on one source line and let the renderer or editor wrap it. Do not hard-wrap prose to a fixed column. Spell prose in American English under [`SOURCE.SPELLING.AMERICAN`](source_layout.md#american-english-spelling-sourcespellingamerican). Preserve paragraph boundaries, explicit hard breaks, block quotes, list continuation prefixes, link definitions, raw HTML, tables, and literal code.
 
 Automatic unwrapping is advisory until a parser proves that joining source lines preserves block and inline meaning. Never join across a block boundary or an explicit hard break.
 

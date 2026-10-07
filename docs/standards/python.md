@@ -386,7 +386,7 @@ Shebangs, source headers, encoding rows, tool directives, coverage pragmas, type
 
 These forms are consistent with [PEP 8 block and inline comment guidance](https://peps.python.org/pep-0008/#comments).
 
-**Automation:** `dev/audit/python_source_policy.py` checks recognized ordinary markers, separator context, inline spacing, trailing whitespace, header and directive exclusions, 79-column width, and safely identifiable whole-paragraph capitalization, terminal punctuation, and sentence spacing across maintained Python. Wrapped prose is evaluated as one paragraph. Literal labels and statically recognizable code or operator fragments remain outside the deterministic prose subset; attachment and usefulness remain semantic review.
+**Automation:** `dev/audit/python_source_policy.py` checks recognized ordinary markers, separator context, inline spacing, trailing whitespace, header and directive exclusions, 79-column width, and safely identifiable whole-paragraph capitalization, terminal punctuation, and sentence spacing across maintained Python. Wrapped prose is evaluated as one paragraph. Literal labels and statically recognizable code or operator fragments remain outside the deterministic prose subset; attachment and usefulness remain semantic review. Greedy wrapping of ordinary full-line comment prose has no checker facet here; `dev/tools/comment_wrap_format.py` refills paragraphs that break early, excluding tool directives, comment-like lines inside strings, and the bounded header, and previews them without `--write`.
 
 **Semantic remainder:** Review comment role, attachment, usefulness, prose, indivisible content, and whether the explanation belongs in a docstring or maintained documentation. Apply that review through the shared owner.
 

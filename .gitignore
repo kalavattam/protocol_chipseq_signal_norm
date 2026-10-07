@@ -1,23 +1,24 @@
-#  Wholesale-ignore PDF files as well as gzip-compressed files
+# Wholesale-ignore PDF files as well as gzip-compressed files.
 *.gz
 *.pdf
 
-# Claude Code session machinery: local settings and agent worktrees
+# Ignore Claude Code session machinery: local settings and agent worktrees.
 .claude/
 
-#  Ignore root '__init__.py'
+# Ignore root '__init__.py'
 /__init__.py
 
-# Slurm job logs, which land in whatever directory a job was submitted from
+# Ignore Slurm job logs; by default, they land in the directory a job was
+# submitted from.
 *.log
 slurm-*.out
 
-#  Ignore everything in 'docs/img/', 'docs/xml/', and 'tmp/'
+# Ignore everything in 'docs/img/', 'docs/xml/', and 'tmp/'.
 docs/img/
 docs/xml/
 tmp/
 
-#  Ignore generated Python bytecode under maintained roots
+# Ignore generated Python bytecode under maintained roots.
 /.pytest_cache/
 src/**/__pycache__/
 src/**/*.py[cod]
@@ -26,18 +27,17 @@ dev/**/*.py[cod]
 tests/**/__pycache__/
 tests/**/*.py[cod]
 
-#  Keep generated outputs in one repository-root artifact boundary
+# Keep generated outputs in one repository-root artifact boundary.
 /artifacts/*
 !/artifacts/README.md
 
-#  Ignore everything in 'data/{genomes,processed,raw,symlinked,tracks}/'
+# Ignore everything in 'data/{genomes,processed,raw,symlinked,tracks}/'.
 data/genomes/
 data/processed/
 data/symlinked/
 data/tracks/
 
-#  Re-allow certain files in 'data/raw/docs/', continuing to exclude other
-#+ files
+# Re-allow certain files in 'data/raw/docs/', continue to exclude other files.
 data/raw/*
 !data/raw/docs/
 data/raw/docs/*
@@ -52,9 +52,8 @@ data/raw/docs/measurements_siqchip_all.tsv
 data/raw/docs/SRR_custom.tsv
 data/raw/docs/test*
 
-#  Re-allow everything in the 'tables/' subdirectory under
-#+ 'data/processed/compute_signal/' for Bio-protocol manuscript-specific
-#+ alignment and filtering parameters
+# Re-allow everything in 'tables/' under 'data/processed/compute_signal/' for
+# Bio-protocol manuscript-specific alignment and filtering parameters.
 !data/processed/
 data/processed/*
 !data/processed/compute_signal/
@@ -63,7 +62,7 @@ data/processed/compute_signal/*
 data/processed/compute_signal/bowtie2_global_flag-2_mapq-1/*
 !data/processed/compute_signal/bowtie2_global_flag-2_mapq-1/tables/
 
-#  Ignore generated test fixture outputs in 'tests/' but retain fixture docs
+# In 'tests/', retain fixture docs, ignore generated test fixture outputs.
 tests/fixtures/ai_attribution/**
 !tests/fixtures/ai_attribution/
 !tests/fixtures/ai_attribution/README.md
@@ -138,6 +137,11 @@ tests/fixtures/semantic_movement/**
 !tests/fixtures/semantic_movement/
 !tests/fixtures/semantic_movement/README.md
 !tests/fixtures/semantic_movement/make.sh
+
+tests/fixtures/shell_source_form/**
+!tests/fixtures/shell_source_form/
+!tests/fixtures/shell_source_form/README.md
+!tests/fixtures/shell_source_form/make.sh
 
 tests/fixtures/shellcheck/**
 !tests/fixtures/shellcheck/

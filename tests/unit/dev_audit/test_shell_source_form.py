@@ -9,7 +9,7 @@
 # The following were used in design, development, and documentation, with all
 # output reviewed, edited, and approved by the author:
 # - OpenAI ChatGPT and Codex (GPT-5.6);
-# - Anthropic Claude Code (Opus 5).
+# - Anthropic Claude Code (Opus 5, Opus 5.5).
 #
 # Distributed under the MIT license.
 
@@ -21,8 +21,16 @@ Tests for the deliberately narrow shell source-form checker.
 from __future__ import annotations
 
 import subprocess
+from pathlib import Path
 
-from dev.audit.shell_source_form import DIAGNOSTIC_RULE_ID, check_text
+from dev.audit.shell_source_form import (
+    DIAGNOSTIC_RULE_ID,
+    RULE_COMMENT,
+    check_text,
+)
+
+ROOT = Path(__file__).resolve().parents[3]
+FIXTURES = ROOT / "tests" / "fixtures" / "shell_source_form"
 
 
 def messages(text: str, path: str = "tool.sh") -> list[str]:
@@ -358,3 +366,61 @@ def test_superseded_marker_check_spares_owned_syntax() -> None:
     assert expected not in messages(directive)
     assert expected not in messages(in_header)
     assert expected not in messages(heredoc)
+
+
+def wrap_lines(text: str, path: str) -> list[int]:
+    """
+    Return the lines that the comment-wrap facet reports.
+    """
+
+    return [
+        finding.line
+        for finding in check_text(text, path)
+        if finding.rule_id == RULE_COMMENT
+        and finding.message.startswith("comment breaks before")
+    ]
+
+
+def test_comment_wrap_fixtures_accept_and_bound_greedy_prose() -> None:
+    """
+    Report nothing for greedy prose and for breaks on the fit-test edge.
+
+    The accepted script holds every structural boundary the facet recognizes,
+    and the boundary script holds breaks that are one column or one unit too
+    long to move, so neither may produce any finding.
+    """
+
+    for name in ("accepted/comment_wrap.sh", "boundary/comment_wrap.sh"):
+        text = (FIXTURES / name).read_text(encoding="utf-8")
+
+        assert check_text(text, f"tests/{name}") == []
+
+
+def test_comment_wrap_fixture_rejects_one_break_per_block() -> None:
+    """
+    Report exactly one premature break in each rejected block.
+
+    Blocks are separated by blank lines. Each holds one break, so a facet that
+    misses a case or reports a structural boundary changes the count of some
+    block.
+    """
+
+    name = "rejected/comment_wrap.sh"
+    text = (FIXTURES / name).read_text(encoding="utf-8")
+    lines = text.splitlines()
+    starts = [
+        number
+        for number, line in enumerate(lines, 1)
+        if number > 16 and line.strip() and not lines[number - 2].strip()
+    ]
+    found = wrap_lines(text, f"tests/{name}")
+    per_block = [
+        sum(start <= line < end for line in found)
+        for start, end in zip(
+            starts,
+            [*starts[1:], len(lines) + 1],
+            strict=True,
+        )
+    ]
+
+    assert per_block == [1, 1, 1, 1, 1]

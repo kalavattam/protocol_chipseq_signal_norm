@@ -9,7 +9,7 @@
 # The following were used in design, development, and documentation, with all
 # output reviewed, edited, and approved by the author:
 # - OpenAI ChatGPT and Codex (GPT-5.6);
-# - Anthropic Claude Code (Opus 5).
+# - Anthropic Claude Code (Opus 5, Opus 5.5).
 #
 # Distributed under the MIT license.
 
@@ -1639,7 +1639,13 @@ def _check_docstring_prose_wrap(
         current_text = current.rstrip()
         word = following.strip().split(maxsplit=1)[0]
 
-        if current_text.endswith(":") or PROSE_INDIVISIBLE.search(word):
+        # A colon introduces a structure only when a fence or a deeper display
+        # follows; before same-indentation prose it is ordinary punctuation.
+        introduces = current_text.endswith(":") and (
+            item_aligned or following.strip().startswith(("'''", "```", "~~~"))
+        )
+
+        if introduces or PROSE_INDIVISIBLE.search(word):
             counts["indivisible_exclusions"] += 1
 
             continue

@@ -9,7 +9,7 @@
 # The following were used in design, development, and documentation, with all
 # output reviewed, edited, and approved by the author:
 # - OpenAI ChatGPT and Codex (GPT-5.6);
-# - Anthropic Claude Code (Opus 5).
+# - Anthropic Claude Code (Opus 5, Opus 5.5).
 #
 # Distributed under the MIT license.
 
@@ -27,8 +27,15 @@ import re
 import subprocess
 from pathlib import Path
 
+from dev.tools.comment_wrap_format import (
+    WRAP_COLUMN,
+    premature_breaks,
+    shell_candidates,
+)
+
 RULE_ID = "SHELL.SOURCE.FORM"
 RULE_COMMENT = "SHELL.COMMENT.FORM"
+
 # A governed header occupies the opening rows, and its continuation rows are
 # not ordinary comments. Nothing below that boundary is header material.
 HEADER_ROWS = 16
@@ -117,8 +124,8 @@ def _within_arithmetic(line: str, position: int) -> bool:
     """
     Report whether one position sits inside an arithmetic expansion.
 
-    A '<<' inside '(( ))' is a shift operator rather than a heredoc
-    redirection, so the separator facet must not judge its spacing.
+    A '<<' inside '(( ))' is a shift operator, not a heredoc redirection, so
+    the separator facet must not judge its spacing.
     """
 
     depth = 0
@@ -577,6 +584,17 @@ def check_text(text: str, path: str = "<memory>") -> list[Finding]:
                         ),
                     ),
                 )
+
+    for index, word in premature_breaks(lines, shell_candidates(lines)):
+        findings.append(
+            Finding(
+                RULE_COMMENT,
+                path,
+                index,
+                f"comment breaks before '{word}', which fits through column "
+                f"{WRAP_COLUMN}; fill ordinary comment prose greedily",
+            ),
+        )
 
     return findings
 

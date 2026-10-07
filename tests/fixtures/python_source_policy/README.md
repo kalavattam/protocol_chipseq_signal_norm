@@ -36,6 +36,7 @@ Generated modules the checker must reject:
 Generated formatter pairs:
 - `format/help_input.py` and `format/help_expected.py`
 - `format/help_unicode_input.py` and `format/help_unicode_expected.py`
+- `format/comment_wrap_input.py` and `format/comment_wrap_expected.py`: premature comment breaks for `dev/tools/comment_wrap_format.py`, refilled by hand in the expected file; comment-like lines in a string, an inline `noqa` comment, and `fmt` directives stay as written
 
 <br />
 

@@ -9,7 +9,7 @@
 # The following were used in design, development, and documentation, with all
 # output reviewed, edited, and approved by the author:
 # - OpenAI ChatGPT and Codex (GPT-5.6);
-# - Anthropic Claude Code (Opus 5).
+# - Anthropic Claude Code (Opus 5, Opus 5.5).
 #
 # Distributed under the MIT license.
 
@@ -1160,6 +1160,40 @@ def test_docstring_prose_wraps_greedily_through_column_79() -> None:
         "docstring prose breaks before a word that would still fit within 79 "
         "columns",
     ]
+
+
+def test_colon_ends_a_sentence_unless_a_structure_follows() -> None:
+    """
+    Fit-test a colon line before prose, but not before a fence or display.
+
+    A colon introduces a structure only when a fence or a deeper display
+    follows it. Before prose at the same indentation, it is ordinary
+    punctuation, and the next word moves up when it fits.
+    """
+
+    filler = "w" * 60
+    prose = docstring_source("Summary.", "", f"{filler} colon:", "it fits.")
+    fence = docstring_source(
+        "Summary.",
+        "",
+        f"{filler} colon:",
+        "'''",
+        "literal",
+        "'''",
+    )
+    display = docstring_source(
+        "Summary.",
+        "",
+        f"- {filler} item:",
+        "      [start, end) = [0, 1)",
+    )
+
+    assert rule_messages(prose, RULE_PROSE_WRAP) == [
+        "docstring prose breaks before a word that would still fit within 79 "
+        "columns",
+    ]
+    assert rule_messages(fence, RULE_PROSE_WRAP) == []
+    assert rule_messages(display, RULE_PROSE_WRAP) == []
 
 
 def test_docstring_structural_boundaries_are_not_prose_breaks() -> None:

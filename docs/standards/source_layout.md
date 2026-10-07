@@ -129,13 +129,13 @@ The Python forms follow [PEP 8 comments](https://peps.python.org/pep-0008/#comme
 <br />
 
 ## Greedy ordinary source prose (`SOURCE.PROSE.WRAP`)
-**Classification:** `advisory` with deterministic recognized Python portions.
+**Classification:** `advisory` with deterministic recognized Python and Shell portions.
 
 **Scope:** Eligible ordinary source prose whose language owner can distinguish prose words and indivisible units from structure, literals, formulas, URLs, directives, and generated content.
 
 Wrap at the last complete word or indivisible unit fitting through physical column 79. Break only when the next complete unit and required separator would exceed the boundary. A width-only check does not prove greedy wrapping. Language owners recognize syntax and exclusions without restating this shared meaning.
 
-Python adjacent constant CLI `help=` literals form the only approved automatic formatter subset. The formatter preserves the exact evaluated value and keeps terminal escapes attached to the final text-bearing literal. Python comments and docstrings are checker/evidence-first. Shell comments remain review-owned; R and Rust remain dormant.
+Two automatic formatter subsets are approved. Python adjacent constant CLI `help=` literals form one; that formatter preserves the exact evaluated value and keeps terminal escapes attached to the final text-bearing literal. Ordinary full-line Shell and Python comment prose forms the other; that formatter refills only a paragraph that breaks early, keeps every multiword bracketed or quoted unit whole, and never rejoins a paragraph containing a line that ends in an attached hyphen, which it leaves for review. Both preview by default and write only when asked. Python comments and docstrings are checker/evidence-first. Shell ordinary comment prose is checker-backed through [`SHELL.COMMENT.FORM`](shell.md#shell-comments-shellcommentform), which recognizes Shell structure; R and Rust remain dormant.
 
 A structural boundary is not a premature break. A section header, a documented entry header, a multiline textual-type row, a table row, a dedent that ends a block, a fenced verbatim block, and a literal example row each end a prose line for reasons the width boundary does not govern; joining them would destroy meaning rather than restore greedy wrapping. A language realization must recognize its own structural boundaries before it reports any break.
 
@@ -147,11 +147,28 @@ Indivisible means the unit cannot be split, not that it cannot be moved. A compl
 
 Distinguish where a continuation sits from where the line broke. A list item may continue at the marker's own continuation column or align under the item text; both are indentation choices, and neither exempts the item from the ordinary fit test. Exclude the column, never the wrap point. This distinction is narrow on purpose: a deeper following line is a continuation only when a list marker introduced it, since an entry header followed by its indented description is a structural boundary and joining the two would destroy the entry.
 
-**Automation:** `dev/audit/python_source_policy.py` checks the recognized Python subset. It emits `SOURCE.PROSE.WRAP` for premature breaks in docstring prose paragraphs, excluding section headers and underlines, NumPy `name : type` entry headers, multiline textual-type rows, block-ending dedents, a following list marker, doctest rows, `Examples` sections, fenced verbatim blocks, colon-introduced indented display blocks, and indivisible units. A list item whose continuation is aligned under the item text keeps its wider column but is still fit-tested; a deeper following line without a list marker remains excluded. Recognized `parse_args()` help literals emit under `PY.CLI.HELP.LAYOUT` and adjacent constructed prose under `SOURCE.DELIMITED.MULTILINE`, so no two owners report one break. Ordinary Python comment prose remains review-owned. `dev/tools/python_help_format.py` formats only eligible adjacent constant help literals with explicit `--write`. Coverage is `subset`.
+**Automation:** `dev/audit/python_source_policy.py` checks the recognized Python subset. It emits `SOURCE.PROSE.WRAP` for premature breaks in docstring prose paragraphs, excluding section headers and underlines, NumPy `name : type` entry headers, multiline textual-type rows, block-ending dedents, a following list marker, doctest rows, `Examples` sections, fenced verbatim blocks, colon-introduced indented display blocks, and indivisible units. A list item whose continuation is aligned under the item text keeps its wider column but is still fit-tested; a deeper following line without a list marker remains excluded. Recognized `parse_args()` help literals emit under `PY.CLI.HELP.LAYOUT` and adjacent constructed prose under `SOURCE.DELIMITED.MULTILINE`, so no two owners report one break. Ordinary Python comment prose remains review-owned. `dev/tools/python_help_format.py` formats only eligible adjacent constant help literals with explicit `--write`. `dev/audit/shell_source_form.py` reports premature breaks in ordinary Shell comment prose under `SHELL.COMMENT.FORM`, with the exclusions that rule lists. `dev/tools/comment_wrap_format.py` refills ordinary Shell and Python comment prose with explicit `--write`, applying the same exclusions plus the Python directives `PY.COMMENT.FORM` names; it holds the only copy of the rules, which the Shell checker imports. Coverage is `subset`.
 
 **Semantic remainder:** Decide whether a unit is indivisible, whether a break is semantically deliberate, and whether prose is eligible.
 
 **Exceptions:** Structural, literal, formula, URL, directive, generated, dynamic, and ambiguous content is never blindly rewritten.
+
+<br />
+
+## American English spelling (`SOURCE.SPELLING.AMERICAN`)
+**Classification:** `advisory`.
+
+**Scope:** Comments, docstrings, help, diagnostics, and other natural-language text in maintained implementation source, the names of new and changed identifiers, and maintained Markdown prose through [`markdown.md`](markdown.md#natural-prose-mdproseunwrap).
+
+Write natural-language text in American English spelling: `neighbor`, `behavior`, `center`, `defense`, and `normalize` rather than `neighbour`, `behaviour`, `centre`, `defence`, and `normalise`. Apply the same spelling to the names of new and changed identifiers.
+
+An externally owned or protected spelling keeps its form at its bounded interface: a public option, a production wrapper or command name, a file format, a serialized field, a package or tool name, and quoted source text. Changing one follows its existing interface owner and [`governance.md`](governance.md); an internal rename follows [`SOURCE.NAMING.SEMANTICS`](#grammatical-naming-and-migration-sourcenamingsemantics).
+
+**Automation:** No dedicated registry entry or checker exists for this owner. A word-list checker and an explicitly invoked fixer are planned; until then, review owns it.
+
+**Semantic remainder:** Decide whether a spelling belongs to an external or protected interface, whether text is a quotation, and whether a word is a proper noun or a term of art.
+
+**Exceptions:** Quoted external text, immutable historical evidence, and literal fixtures keep their spelling.
 
 <br />
 

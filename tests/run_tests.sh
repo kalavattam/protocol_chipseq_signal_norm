@@ -144,6 +144,9 @@ function ensure_checker_fixtures() {
     ensure_fixture semantic_movement \
         "${repo_root}/tests/fixtures/semantic_movement/cases.json"
 
+    ensure_fixture shell_source_form \
+        "${repo_root}/tests/fixtures/shell_source_form/rejected/comment_wrap.sh"
+
     ensure_fixture shellcheck \
         "${repo_root}/tests/fixtures/shellcheck/script/bash.sh"
 
