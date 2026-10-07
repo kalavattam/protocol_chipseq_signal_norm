@@ -94,6 +94,125 @@ function _check_path_whitespace() {
 }
 
 
+# Keep or drop each template (all records sharing a read name) of a SAM or BAM
+# file queryname-grouped as a whole, by whether its primary records pass a MAPQ
+# threshold; write the kept records to a BAM file.
+function _filter_bam_mapq_template() {
+    local bam_in="${1:-}"
+    local bam_out="${2:-}"
+    local mapq="${3:-}"
+    local n_pri="${4:-}"
+    local threads="${5:-1}"
+    local func="${FUNCNAME[1]:-${FUNCNAME[0]}}"
+    local txt_nam="${bam_out%.bam}.names.txt"
+    local show_help
+
+    show_help=$(cat << EOM
+Usage
+-----
+  _filter_bam_mapq_template
+    [--help] bam_in bam_out mapq n_pri [threads]
+
+  Keep or drop each template (all records sharing a read name) of a queryname-grouped SAM or BAM file as a whole, by whether its primary records pass a MAPQ threshold, and write the kept records to a BAM file.
+
+  Secondary and supplementary records follow their template, whatever their own MAPQ.
+
+Parameters
+----------
+  -h, --help : flag
+    Display this help message and exit.
+
+  1  bam_in : file
+    Queryname-grouped SAM or BAM file to filter.
+
+  2  bam_out : file
+    BAM file to write the kept records to.
+
+  3  mapq : int
+    MAPQ threshold that every primary record of a kept template must meet.
+
+  4  n_pri : int
+    Number of primary records per template: 2 for paired-end data, 1 for single-end data.
+
+  5  threads : int
+    Number of threads to use for 'samtools view' (default: '${threads}').
+
+Returns
+-------
+  Writes 'bam_out' and returns 0 on success; prints an error and returns 1 on failure.
+
+Notes
+-----
+  Runtime requirements:
+    - awk
+    - bash >= 4.4
+    - samtools
+
+Examples
+--------
+  1. Keep paired-end templates whose two primary records reach MAPQ 30.
+    '''bash
+    _filter_bam_mapq_template sample.qnam.bam sample.mapq.bam 30 2 4
+    '''
+
+  2. Keep single-end reads whose primary record reaches MAPQ 1.
+    '''bash
+    _filter_bam_mapq_template sample.qnam.bam sample.mapq.bam 1 1
+    '''
+EOM
+    )
+
+    if [[ "${bam_in}" =~ ^(-h|--h[e]?lp)$ ]]; then
+        echo "${show_help}" >&2
+        echo >&2
+        return 0
+    elif [[ -z "${bam_in}" || -z "${bam_out}" || -z "${mapq}" ]]; then
+        echo_err_func "${func}" \
+            "positional arguments 1 to 3, 'bam_in', 'bam_out', and 'mapq'," \
+            "are required."
+        return 1
+    elif [[ -z "${n_pri}" ]]; then
+        echo_err_func "${func}" \
+            "positional argument 4, 'n_pri', is missing."
+        return 1
+    fi
+
+    # List the names whose primary records, 'n_pri' of them, all pass.
+    if ! (
+        set -o pipefail
+        samtools view -@ "${threads}" -F 0x900 -q "${mapq}" "${bam_in}" \
+            | cut -f 1 \
+            | uniq -c \
+            | awk -v n="${n_pri}" '$1 == n { print $2 }' \
+            > "${txt_nam}"
+    ); then
+        rm -f "${txt_nam}"
+        echo_err_func "${func}" \
+            "failed to list read names whose primary records pass MAPQ" \
+            "'${mapq}' in '${bam_in}'."
+        return 1
+    fi
+
+    # Write every record of the listed names, secondary and supplementary
+    # records included.
+    if ! \
+        samtools view \
+            -@ "${threads}" \
+            -b \
+            -N "${txt_nam}" \
+            -o "${bam_out}" \
+            "${bam_in}"
+    then
+        rm -f "${txt_nam}" "${bam_out}"
+        echo_err_func "${func}" \
+            "failed to filter '${bam_in}' by read name."
+        return 1
+    fi
+
+    rm -f "${txt_nam}"
+}
+
+
 function align_fastqs() {
     local threads aligner bt2_mode bwa_alg mapq req_flg index ref_fa
     local bt2_mode_set bwa_alg_set
@@ -101,6 +220,7 @@ function align_fastqs() {
     local args_sam args_bt2 args_bwa args_bwa_aln
     local fil_wrk fil_qnam_out bam_qnam bam_mate bam_coor bam_mrk
     local fil_sai_1 fil_sai_2
+    local bam_mapq n_pri
     local show_help
 
     # Assign default argument values.
@@ -156,6 +276,8 @@ Parameters
 
     To disable MAPQ-based filtering, specify 0.
 
+    With paired-end data, a pair is kept only when both mates pass. Secondary (SAM flag 256) and supplementary (SAM flag 2048) alignments are kept or dropped with their associated primary read alignments, whatever their own MAPQ.
+
   -rq, --req_flg : flag
     Require SAM flag bit 2 for properly paired alignments. Ignored with a warning for single-end data.
 
@@ -199,6 +321,7 @@ Notes
   - For '--index' when using Bowtie 2, the path should end with the index stem: 'path/to/dir/stem'; when using 'bwa' or 'bwa-mem2', the path should be the indexed reference FASTA path (for example, '.fa').
   - '--bwa_alg' is used only when '--aligner bwa'. It is refused with '--aligner bowtie2'; with '--aligner bwa-mem2', which always runs 'bwa-mem2 mem', 'mem' is ignored with a warning and 'aln' is refused.
   - Unaligned reads are excluded from the output; with paired-end data, so are the mates of unaligned reads.
+  - Duplicates are marked (SAM flag 1024) in Step #4, after MAPQ filtering, and kept. Like any other read, '--mapq' filters them by the MAPQ the aligner gave them.
   - For '--qname', the retained queryname-sorted output will have the same path and stem assigned to '--fil_out', except '.qnam' will be inserted before the final extension (for example, '.qnam.bam' or '.qnam.cram'). For CRAM output, the retained queryname-sorted BAM work file is converted in Step #5.
   - '--ref_fa' is required when '--fil_out' ends in '.cram', since CRAM writing requires a reference FASTA.
   - Because Step #1 currently builds aligner and Samtools argument strings, whitespace is not supported in '--index', '--ref_fa', '--fq_1', '--fq_2', or '--fil_out'.
@@ -571,8 +694,8 @@ EOM
 
     # Step 1 ------------------------------------------------------------------
     # Based on parsed arguments, construct the call to Samtools. BWA and
-    # BWA-MEM2 write unaligned reads, so drop them, and with paired-end data
-    # drop the mates of unaligned reads too, keeping pairs whole.
+    # BWA-MEM2 write unaligned reads, so use Samtools to drop them, including
+    # the mates of unaligned reads in PE data (i.e., keep pairs whole).
     args_sam="-@ ${threads}"
     if [[ -n "${fq_2}" ]]; then
         args_sam+=" -F 12"
@@ -580,7 +703,13 @@ EOM
     else
         args_sam+=" -F 4"
     fi
-    args_sam+=" -q ${mapq} -o ${fil_wrk}"
+
+    # Bowtie 2 gives both mates of a pair one MAPQ and, without '-k', writes no
+    # supplementary or secondary records, so a per-record MAPQ filter keeps or
+    # drops whole templates. BWA and BWA-MEM2 do neither, so their MAPQ filter
+    # runs via read alignment name in Step 2.
+    if [[ "${aligner}" == "bowtie2" ]]; then args_sam+=" -q ${mapq}"; fi
+    args_sam+=" -o ${fil_wrk}"
 
     # Based on parsed arguments, construct and run the call to Bowtie 2, BWA,
     # or BWA-MEM2 with output piped to the above-constructed Samtools call
@@ -684,8 +813,8 @@ EOM
                         > "${fil_sai_2}"
                 then
                     echo_err_func "${FUNCNAME[0]}" \
-                        "Step #1: failed to generate second '.sai' file" \
-                        "with 'bwa aln'."
+                        "Step #1: failed to generate second '.sai' file with" \
+                        "'bwa aln'."
                     rm -f "${fil_sai_1}"
                     return 1
                 fi
@@ -811,6 +940,39 @@ EOM
             then
                 echo_err_func "${FUNCNAME[0]}" \
                     "Step #2: failed to rename mate pair-fixed," \
+                    "queryname-sorted BAM file."
+                return 1
+            fi
+        fi
+
+        # BWA and BWA-MEM2 can give two mates different MAPQ values and write
+        # supplementary records with their own MAPQ values, so keep or drop
+        # each template (all records sharing a read name, secondary records
+        # included) as a whole, by whether its primary records (both mates in
+        # paired-end data) pass the '--mapq' gate.
+        if [[ "${aligner}" != "bowtie2" && "${mapq}" -gt 0 ]]; then
+            bam_mapq="${fil_wrk%.bam}.mapq.bam"
+            if [[ -n "${fq_2}" ]]; then n_pri=2; else n_pri=1; fi
+
+            if ! \
+                _filter_bam_mapq_template \
+                    "${bam_qnam}" \
+                    "${bam_mapq}" \
+                    "${mapq}" \
+                    "${n_pri}" \
+                    "${threads}"
+            then
+                echo_err_func "${FUNCNAME[0]}" \
+                    "Step #2: failed to filter queryname-sorted BAM file by" \
+                    "template MAPQ."
+                return 1
+            fi
+
+            if ! \
+                mv -f "${bam_mapq}" "${bam_qnam}"
+            then
+                echo_err_func "${FUNCNAME[0]}" \
+                    "Step #2: failed to rename MAPQ-filtered," \
                     "queryname-sorted BAM file."
                 return 1
             fi

@@ -74,7 +74,7 @@ Parameters
 
     To disable MAPQ-based filtering, specify 0.
 
-    With Bowtie 2, both mates of a concordant pair get the same MAPQ, so the filter keeps or drops whole pairs. A MAPQ of 1 or more does not mean a unique alignment, as a read alignment with multiple equally good placements can get MAPQ 1, and its placement is chosen at random.
+    With paired-end data, a pair is kept only when both mates pass. Secondary (SAM flag 256) and supplementary (SAM flag 2048) alignments are kept or dropped with their read, whatever their own MAPQ. With Bowtie 2, a MAPQ of 1 or more does not mean a unique alignment, as a read alignment with multiple equally good placements can get MAPQ 1, and its placement is chosen at random.
 
   -rq, --req_flg : flag
     Require SAM flag bit 2 for properly paired alignments.
@@ -131,6 +131,7 @@ Notes
 
   - '--ref_fa' is required when '--out_ext cram'.
   - '--req_flg' and '--qname' are optional flags.
+  - Duplicates are marked (SAM flag 1024) after MAPQ filtering, and kept. Like any other read, '--mapq' filters them by the MAPQ the aligner gave them.
 
 Examples
 --------

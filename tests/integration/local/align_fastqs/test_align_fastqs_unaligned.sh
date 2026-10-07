@@ -72,6 +72,7 @@ function print_fq() {
     printf '@%s\n%s\n+\n%s\n' "${1}" "${2}" "${2//?/I}"
 }
 
+
 # Add an unaligned read to the single-end input. Add an unaligned pair and a
 # pair whose second mate is unaligned to the paired-end input.
 seq_se="$(gzip -cd "${in_se}" | sed -n 2p)"

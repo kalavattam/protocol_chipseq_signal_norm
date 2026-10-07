@@ -90,7 +90,7 @@ function ensure_fixture() {
 
 function ensure_integration_fixtures() {
     ensure_fixture align_fastqs \
-        "${repo_root}/tests/fixtures/align_fastqs/reference/tiny.fa" \
+        "${repo_root}/tests/fixtures/align_fastqs/sam/repeat_secondary_se.sam" \
         env_protocol
 
     ensure_fixture calculate_scaling_factor \

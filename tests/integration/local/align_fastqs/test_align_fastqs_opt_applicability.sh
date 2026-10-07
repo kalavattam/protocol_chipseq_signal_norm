@@ -265,9 +265,9 @@ else
         "entry (exit ${rc}; passed ${n_req} times)"
 fi
 
-# 'submit' passes '--mapq' on every time, so its default of 1 and an explicit
-# 0 both reach the helper; the mixed run above gave no '--mapq'. The trace
-# shows each helper call with its arguments expanded.
+# 'submit' passes '--mapq' on every time, so its default of 1 and an explicit 0
+# both reach the helper; the mixed run above gave no '--mapq'. The trace shows
+# each helper call with its arguments expanded.
 patn_call='^\++ align_fastqs '
 n_mq1="$(
     grep -E "${patn_call}" <<< "${out}" | grep -cE -- '--mapq 1( |$)' || true
@@ -317,6 +317,7 @@ function run_helper() {
         align_fastqs "$@"
     ' _ "${ROOT_REPO}" --threads 1 --fq_1 "${in_se}" "$@" 2>&1
 }
+
 
 # label|arguments|act|message
 ref_bt2="'--bt2_mode' is for '--aligner bowtie2'"
@@ -377,8 +378,8 @@ for idx in "${!rows_hlp[@]}"; do
 done
 
 
-# Called directly with no '--mapq', the helper filters at its default of 1;
-# the trace shows the 'samtools view' arguments it builds.
+# Called directly with no '--mapq', the helper filters at its default of 1; the
+# trace shows the 'samtools view' arguments it builds.
 # shellcheck disable=SC2016  # Expand in the child shell, not this one.
 out="$(
     "${TEST_BASH}" -x -c '
@@ -397,7 +398,7 @@ out="$(
         --fil_out "${tmp}/helper_mapq.bam" 2>&1
 )" || true
 
-if grep -q "^+* *args_sam+=' -q 1 " <<< "${out}"; then
+if grep -q "^+* *args_sam+=' -q 1'" <<< "${out}"; then
     record_pass "helper defaults '--mapq' to 1"
 else
     record_fail "helper did not default '--mapq' to 1"
