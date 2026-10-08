@@ -6,12 +6,15 @@
 # Copyright 2026 by Kris Alavattam
 # Email: kalavattam@gmail.com
 #
-# OpenAI ChatGPT and Codex (GPT-5.6) were used in design, development, and
-# documentation, with all output reviewed, edited, and approved by the author.
+# The following were used in design, development, and documentation, with all
+# output reviewed, edited, and approved by the author:
+# - OpenAI ChatGPT and Codex (GPT-5.6);
+# - Anthropic Claude Code (Opus 5.5).
 #
 # Distributed under the MIT license.
 
 
+import warnings
 from pathlib import Path
 
 import pytest
@@ -19,6 +22,7 @@ import pytest
 from protocol_chipseq_signal_norm.utilities.utils_check import (
     as_tuple,
     check_exists,
+    check_writable,
     pair_values_and_thresholds,
     validate_comparison,
     validate_output_path,
@@ -63,3 +67,26 @@ def test_check_exists_accepts_files_and_rejects_missing(
 
     with pytest.raises(FileNotFoundError):
         check_exists(tmp_path / "missing.txt", kind="file")
+
+
+def test_check_writable_warns_about_must_exist_for_directories(
+    tmp_path: Path,
+) -> None:
+    with pytest.warns(UserWarning) as record:
+        check_writable(tmp_path, kind="dir", must_exist=True)
+
+    assert [str(item.message) for item in record] == [
+        "'must_exist' has no effect with kind='dir' and is ignored.",
+    ]
+
+
+def test_check_writable_does_not_warn_about_must_exist_for_files(
+    tmp_path: Path,
+) -> None:
+    path = tmp_path / "output.txt"
+    path.write_text("x", encoding="utf-8")
+
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")
+        check_writable(path, kind="file", must_exist=True)
+        check_writable(tmp_path, kind="dir")

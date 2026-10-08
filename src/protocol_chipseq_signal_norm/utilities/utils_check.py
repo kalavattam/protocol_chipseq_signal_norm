@@ -9,7 +9,7 @@
 # The following were used in design, development, and documentation, with all
 # output reviewed, edited, and approved by the author:
 # - OpenAI ChatGPT and Codex (GPT-5-series models; most recent: GPT-5.6);
-# - Anthropic Claude Code (Opus 5).
+# - Anthropic Claude Code (Opus 5, Opus 5.5).
 #
 # Distributed under the MIT license.
 
@@ -28,6 +28,7 @@ from __future__ import annotations
 import operator
 import os
 import sys
+import warnings
 from collections.abc import Iterable
 from typing import Any, Literal
 
@@ -387,7 +388,8 @@ def check_writable(
         What to validate.
     must_exist : bool
         When 'kind="file"' and the file already exists, require the file itself
-        to be writable (default: False).
+        to be writable (default: False). Ignored with a warning when
+        'kind="dir"'.
     label : str | None
         Optional label for nicer error text.
 
@@ -405,6 +407,12 @@ def check_writable(
     p = os.fspath(path)
 
     if kind == "dir":
+        if must_exist:
+            warnings.warn(
+                "'must_exist' has no effect with kind='dir' and is ignored.",
+                stacklevel=2,
+            )
+
         dir_path = p
 
         if not os.path.isdir(dir_path):
