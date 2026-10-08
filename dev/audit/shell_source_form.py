@@ -109,7 +109,7 @@ DIAGNOSTIC_CONTINUATION = re.compile(
     r'^(?P<indent>[ \t]+)"(?P<message>.*)"(?P<tail>[ \t].*)?$',
 )
 ECHO_CONTINUED = re.compile(r"^[ \t]*echo[ \t]+\\$")
-SNAKE_CASE = re.compile(r"^[a-z][a-z0-9]*(?:_[a-z0-9]+)*$")
+SNAKE_CASE = re.compile(r"^_?[a-z][a-z0-9]*(?:_[a-z0-9]+)*$")
 MAINTAINED_ROOTS = ("bin/", "lib/bash/", "install/scripts/", "tests/")
 POSIX_BOOTSTRAP = "install/scripts/install_envs_entrypoint.sh"
 DIAGNOSTIC_INDENT_MESSAGE = (

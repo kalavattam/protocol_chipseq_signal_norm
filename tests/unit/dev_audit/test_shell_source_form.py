@@ -98,6 +98,34 @@ EOF
     )
 
 
+def test_function_names_allow_one_leading_underscore() -> None:
+    """
+    One leading underscore marks a private helper; two, or a capital after it,
+    are rejected.
+    """
+
+    accepted = """
+function _sort_qname_bam() {
+    :
+}
+"""
+    rejected = """
+function __helper() {
+    :
+}
+
+function _Helper() {
+    :
+}
+"""
+
+    assert messages(accepted) == []
+    assert messages(rejected) == [
+        "recognized function name is not snake_case",
+        "recognized function name is not snake_case",
+    ]
+
+
 def test_requires_exactly_one_space_before_a_heredoc_delimiter() -> None:
     """
     Reject a missing or repeated heredoc operator separator.
