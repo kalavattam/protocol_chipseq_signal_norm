@@ -236,14 +236,19 @@ def test_help_uses_approved_applicability_wording(
     captured = capsys.readouterr()
     normalized_help = " ".join(captured.out.split())
     applicability = (
-        "Use 'dist' for new analyses. Use 'frag' or 'norm' when reproducing "
-        "the fragment-normalization or normalized-coverage floor calculations "
-        "used in the Dickson/siQ-ChIP and *Bio-protocol* workflows."
+        "'frag' and 'norm' compute the fragment-normalization and "
+        "normalized-coverage floors of the Dickson/siQ-ChIP and "
+        "*Bio-protocol* workflows. Their floor is the mean per-bin input "
+        "depth, which suits large, sparse genomes such as human and mouse but "
+        "overwrites real depletion in small, dense genomes such as S. "
+        "cerevisiae and S. pombe. 'dist' takes the floor from the input's own "
+        "values and suits both."
     )
 
     assert error.value.code == 0
     assert applicability in normalized_help
-    assert "- dist: Recommended for new analyses." in captured.out
+    assert "- dist: Suits sparse and dense genomes alike." in captured.out
+    assert "new analyses" not in captured.out
     assert "Retained to reproduce the legacy workflow." not in captured.out
     assert "legacy-reproducible" not in captured.out
     assert "The command returns one scalar 'dep_min'." in captured.out
@@ -308,9 +313,9 @@ def test_help_output_is_byte_exact(
     rendered = capsys.readouterr().out.encode()
 
     assert error.value.code == 0
-    assert len(rendered) == 5723
+    assert len(rendered) == 6417
     assert hashlib.sha256(rendered).hexdigest() == (
-        "ad379cbf78677b2268e1aa90d783705bfedd2f763e39f238daae53e499e892a1"
+        "7f240d0228fc1c74f992b8ecb11faf44e95983eec76f8c9e3650786e60389a2c"
     )
 
 
@@ -426,11 +431,14 @@ def test_help_uses_approved_semantic_cli_order(
 
 
 def test_verbose_argument_report_uses_applicable_semantic_order(
-    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
     capsys: pytest.CaptureFixture[str],
 ) -> None:
-    bedgraph = tmp_path / "input.bdg"
-    bedgraph.write_text("chrI\t0\t10\t2\n", encoding="utf-8")
+    monkeypatch.setattr(
+        input_floor_module,
+        "iter_vals_bdg",
+        lambda *args, **kwargs: iter([2.0]),
+    )
 
     status = main(
         [
@@ -438,11 +446,9 @@ def test_verbose_argument_report_uses_applicable_semantic_order(
             "--mode",
             "dist",
             "--fil_in",
-            str(bedgraph),
+            "-",
             "--fmt_in",
             "BdG",
-            "--ref_fa",
-            "unused.fa",
             "--skp_pfx",
             "#",
         ],
@@ -461,16 +467,12 @@ def test_verbose_argument_report_uses_applicable_semantic_order(
         "--mode",
         "--fil_in",
         "--fmt_in",
-        "--ref_fa",
         "--skp_pfx",
         "--method",
         "--qntl_nz",
-        "--coef",
         "--eps",
         "--mode_nz",
         "--floor",
-        "--siz_bin",
-        "--siz_gen",
         "--dp",
     ]
 
@@ -489,10 +491,11 @@ def test_callable_docstring_summary_matches_signature() -> None:
     )
 
     assert (
-        "The 'mode' parameter selects 'dist', 'frag', or 'norm'. Use 'dist' "
-        "for new analyses. Use 'frag' or 'norm' when reproducing the "
-        "fragment-normalization or normalized-coverage floor calculations "
-        "used in the Dickson/siQ-ChIP and *Bio-protocol* workflows."
+        "The 'mode' parameter selects 'dist', 'frag', or 'norm'. 'frag' and "
+        "'norm' compute the fragment-normalization and normalized-coverage "
+        "floors of the Dickson/siQ-ChIP and *Bio-protocol* workflows, which "
+        "suit large, sparse genomes but not small, dense ones; 'dist' takes "
+        "the floor from the input distribution and suits both."
     ) in extended_summary
     assert docstring.index("The 'mode' parameter") < docstring.index(
         "Parameters\n----------",
@@ -516,8 +519,8 @@ def test_callable_docstring_summary_matches_signature() -> None:
     source_lines = source_docstring.splitlines()
     prose_paragraphs: list[list[str]] = [[source_lines[1]]]
     extended_start = source_lines.index(
-        "    The 'mode' parameter selects 'dist', 'frag', or 'norm'. Use "
-        "'dist' for new",
+        "    The 'mode' parameter selects 'dist', 'frag', or 'norm'. 'frag' "
+        "and 'norm'",
     )
     parameters_start = source_lines.index("    Parameters")
     prose_paragraphs.append(
@@ -554,17 +557,17 @@ def test_callable_docstring_summary_matches_signature() -> None:
         "and requires\n"
         "        'fmt_in'."
     ) in source_docstring
-    assert len(docstring.encode()) == 3418
+    assert len(docstring.encode()) == 3488
     assert hashlib.sha256(docstring.encode()).hexdigest() == (
-        "0e69b38675b9341e57faf95de7cc450d06d960ae9c15de13c52aa08d58acd420"
+        "a10574cac257fe6d6ebc51b5e2c31fcdbe309dfc8b3f60dfaa7476105f466b0a"
     )
     assert hashlib.sha256(
         " ".join(docstring.split()).encode(),
     ).hexdigest() == (
-        "60ec15a68d9d9fd1331e9563d2be8d98e57544d4a5a8aa6a5a86048ff8f0ca17"
+        "d5ffd64895f86c02aa676ce3549758422ace0acccbaa2383bba179a6e09184f6"
     )
     assert hashlib.sha256((source_docstring + "\n").encode()).hexdigest() == (
-        "195d66e7667d2c2112157c9a025170bf949a6959cfcba414041e8d63d6939a48"
+        "fa5a5e81e4bbfba72df87dc451f2287d6171fecb75906ab0905d5a3996d52daa"
     )
 
 
@@ -877,18 +880,15 @@ def test_compute_input_floor_frag_and_norm_accept_large_fraction(
 
 
 def test_main_preserves_flag_error_diagnostic_and_status(
-    tmp_path: Path,
     capsys: pytest.CaptureFixture[str],
 ) -> None:
-    bed = tmp_path / "input.bed"
-    bed.write_text("chrI\t0\t10\n", encoding="utf-8")
-
+    # FLAGs apply to BAM or CRAM input; with BED they are refused unchecked.
     status = main(
         [
             "--mode",
             "frag",
             "--fil_in",
-            str(bed),
+            str(BAM_SE),
             "--flags_pe",
             "bad",
         ],
@@ -959,35 +959,33 @@ def test_main_reports_missing_cram_reference_as_anticipated_error(
     ("siz_bin", "siz_gen"),
     DIST_DIMENSION_CASES,
 )
-def test_main_dist_ignores_all_dimension_cases_without_warning(
+def test_main_dist_refuses_dimension_options(
     tmp_path: Path,
-    capsys: pytest.CaptureFixture[str],
     siz_bin: int,
     siz_gen: int,
 ) -> None:
     bedgraph = tmp_path / "input.bdg"
     bedgraph.write_text("chrI\t0\t10\t2\n", encoding="utf-8")
 
-    status = main(
-        [
-            "--mode",
-            "dist",
-            "--fil_in",
-            str(bedgraph),
-            "--siz_bin",
-            str(siz_bin),
-            "--siz_gen",
-            str(siz_gen),
-            "--dp",
-            "1",
-        ],
+    # Refused before the values are checked, so any pair is refused by name.
+    with pytest.raises(SystemExit) as error:
+        main(
+            [
+                "--mode",
+                "dist",
+                "--fil_in",
+                str(bedgraph),
+                "--siz_bin",
+                str(siz_bin),
+                "--siz_gen",
+                str(siz_gen),
+            ],
+        )
+
+    assert str(error.value) == (
+        "'--siz_bin' is for '--mode frag' or '--mode norm'; it has no effect "
+        "with '--mode dist'."
     )
-
-    captured = capsys.readouterr()
-
-    assert status == 0
-    assert captured.out == "2\n"
-    assert captured.err == ""
 
 
 @pytest.mark.parametrize("mode", ("frag", "norm"))
@@ -1132,7 +1130,7 @@ def test_fragment_flag_help_names_the_applied_default(
     flag_action = next(
         action for action in actions if option in action.option_strings
     )
-    listed = flag_action.help.split("(default: ", 1)[1].split(";", 1)[0]
+    listed = flag_action.help.split("(default: ", 1)[1].split(")", 1)[0]
     documented = {int(token) for token in listed.split(",")}
 
     assert documented == getattr(input_floor_module, constant)

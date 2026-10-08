@@ -2253,6 +2253,17 @@
           [
             "--verbose",
             "--mode",
+            "dist",
+            "--fil_in",
+            "signal.bdg",
+            "--method",
+            "frc_mdn_nz",
+            "--coef",
+            "0.01"
+          ],
+          [
+            "--verbose",
+            "--mode",
             "frag",
             "--fil_in",
             "alignment.bam",

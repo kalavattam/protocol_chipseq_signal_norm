@@ -36,6 +36,7 @@ import math
 # Import pysam lazily in `_count_alignment_records()`.
 import signal
 import sys
+import warnings
 from contextlib import redirect_stdout, suppress
 
 from protocol_chipseq_signal_norm.utilities.utils_check import (
@@ -47,6 +48,8 @@ from protocol_chipseq_signal_norm.utilities.utils_cli import (
     _HelpExample,
     _SectionedHelpConfig,
     add_help_cap,
+    check_opts_apply,
+    find_supplied,
 )
 from protocol_chipseq_signal_norm.utilities.utils_format import format_value
 from protocol_chipseq_signal_norm.utilities.utils_io import (
@@ -71,6 +74,29 @@ PAIRED_FLAGS = {99, 1123, 163, 1187}
 SINGLE_FLAGS = {0, 16, 1024, 1040}
 
 _CANONICAL_INPUT_FORMATS = ("bam", "cram", "bed", "bedgraph")
+_FORMAT_LABELS = {
+    "bam": "BAM",
+    "cram": "CRAM",
+    "bed": "BED",
+    "bedgraph": "bedGraph",
+}
+
+# Options that act only in one mode, by destination and spelling.
+_OPTS_DIST = {
+    "method": "--method",
+    "qntl_nz": "--qntl_nz",
+    "coef": "--coef",
+    "eps": "--eps",
+    "mode_nz": "--mode_nz",
+    "floor": "--floor",
+}
+_OPTS_DIMS = {"siz_bin": "--siz_bin", "siz_gen": "--siz_gen"}
+_OPTS_FLAGS = {"flags_pe": "--flags_pe", "flags_se": "--flags_se"}
+_OPTS_INPUT = {
+    "fmt_in": "--fmt_in",
+    "ref_fa": "--ref_fa",
+    "skp_pfx": "--skp_pfx",
+}
 _FORMAT_HINT_ALIASES = {
     "bam": "bam",
     "cram": "cram",
@@ -103,29 +129,6 @@ class InputFloorValidationError(InputFloorError):
     """
     Represent an invalid input-floor computation request.
     """
-
-
-def _note_ignored(option: str, reason: str, value: object) -> None:
-    """
-    Print a standard “ignored option” note when a mode does not use an arg.
-
-    Parameters
-    ----------
-    option : str
-        Option name as shown to the user (e.g., '--fil_in').
-    reason : str
-        Short reason string (e.g., \"in '--mode norm'\").
-    value : object
-        Value that triggered the note (printed only when useful).
-    """
-
-    if value is None:
-        return
-
-    print(
-        f"Note: '{option}' is ignored {reason}: got '{value}'.",
-        file=sys.stderr,
-    )
 
 
 def parse_flag_csv(csv_text: str, label: str) -> set[int]:
@@ -507,6 +510,93 @@ def _validate_cram_reference(
         raise InputFloorValidationError(f"Error: {error}") from None
 
 
+def _check_params_mode(
+    fil_in: str,
+    mode: str,
+    method: str,
+    coef: float | None,
+    paired_flags: set[int] | None,
+    single_flags: set[int] | None,
+    fmt_in: str | None,
+) -> None:
+    """
+    Refuse or warn about given parameters that cannot act.
+
+    Parameters
+    ----------
+    fil_in : str
+        Input path, or '-' for standard input.
+    mode : str
+        Floor-computation mode.
+    method : str
+        Distribution method.
+    coef : float | None
+        Coefficient for the coefficient-based distribution methods.
+    paired_flags, single_flags : set[int] | None
+        Paired- and single-end FLAG allowlists.
+    fmt_in : str | None
+        Input-format hint.
+
+    Raises
+    ------
+    ValueError
+        If 'coef' is given outside 'dist' or with 'qntl_nz', or a FLAG
+        allowlist is given outside 'frag'.
+
+    Notes
+    -----
+    This realizes 'HELP.PARAMETER.APPLICABILITY' for the parameters whose
+    'None' default shows whether they were given. A format hint for a named
+    path is ignored with a warning.
+    """
+
+    if coef is not None:
+        if mode != "dist":
+            raise ValueError(
+                f"'coef' is for mode 'dist'; it has no effect with {mode!r}.",
+            )
+
+        if method == "qntl_nz":
+            raise ValueError(
+                "'coef' is for methods 'frc_mdn_nz', 'frc_avg_nz', and "
+                "'min_nz'; it has no effect with 'qntl_nz'.",
+            )
+
+    if mode != "frag" and (
+        paired_flags is not None or single_flags is not None
+    ):
+        raise ValueError(
+            "'paired_flags' and 'single_flags' are for mode 'frag'; they have "
+            f"no effect with {mode!r}.",
+        )
+
+    if mode != "norm" and fmt_in is not None and fil_in != "-":
+        warnings.warn(
+            "'fmt_in' has no effect with a named input path and is ignored.",
+            stacklevel=3,
+        )
+
+
+def _warn_ref_fa(fmt_nam: str, ref_fa: str | None) -> None:
+    """
+    Warn that a reference FASTA does nothing for input other than CRAM.
+
+    Parameters
+    ----------
+    fmt_nam : str
+        Canonical input format.
+    ref_fa : str | None
+        Reference FASTA path.
+    """
+
+    if ref_fa is not None and fmt_nam != "cram":
+        warnings.warn(
+            f"'ref_fa' has no effect with {_FORMAT_LABELS[fmt_nam]} input and "
+            "is ignored.",
+            stacklevel=3,
+        )
+
+
 def compute_input_floor(
     fil_in: str,
     siz_bin: int,
@@ -527,10 +617,11 @@ def compute_input_floor(
     """
     Compute a denominator floor for input normalization.
 
-    The 'mode' parameter selects 'dist', 'frag', or 'norm'. Use 'dist' for new
-    analyses. Use 'frag' or 'norm' when reproducing the fragment-normalization
-    or normalized-coverage floor calculations used in the Dickson/siQ-ChIP and
-    *Bio-protocol* workflows.
+    The 'mode' parameter selects 'dist', 'frag', or 'norm'. 'frag' and 'norm'
+    compute the fragment-normalization and normalized-coverage floors of the
+    Dickson/siQ-ChIP and *Bio-protocol* workflows, which suit large, sparse
+    genomes but not small, dense ones; 'dist' takes the floor from the input
+    distribution and suits both.
 
     Parameters
     ----------
@@ -611,9 +702,19 @@ def compute_input_floor(
         )
 
     _validate_mode_dimensions(mode, siz_bin, siz_gen)
+    _check_params_mode(
+        fil_in,
+        mode,
+        method,
+        coef,
+        paired_flags,
+        single_flags,
+        fmt_in,
+    )
 
     if mode == "dist":
         fmt_nam = infer_input_format(fil_in, fmt_in)
+        _warn_ref_fa(fmt_nam, ref_fa)
         if fmt_nam != "bedgraph":
             raise InputFloorValidationError(
                 "Error: '--mode dist' requires a bedGraph-like input file "
@@ -669,6 +770,15 @@ def compute_input_floor(
         return dep_min
 
     fmt_nam = infer_input_format(fil_in, fmt_in)
+    _warn_ref_fa(fmt_nam, ref_fa)
+
+    if fmt_nam == "bed" and (
+        paired_flags is not None or single_flags is not None
+    ):
+        raise ValueError(
+            "'paired_flags' and 'single_flags' are for BAM or CRAM input; "
+            "they have no effect with BED input.",
+        )
 
     if fmt_nam in {"bam", "cram"}:
         _validate_cram_reference(fmt_nam, ref_fa)
@@ -683,13 +793,13 @@ def compute_input_floor(
         n_in = _count_bed_records(fil_in, skp_pfx)
     elif fmt_nam == "bedgraph":
         raise InputFloorValidationError(
-            "Error: '--mode frag' expects bam, cram, or bed/bed.gz "
-            "(alignment records), not bedGraph.",
+            "Error: '--mode frag' expects bam, cram, or bed/bed.gz (alignment "
+            "records), not bedGraph.",
         )
     else:
         raise InputFloorValidationError(
-            f"Error: Unsupported file type: {fil_in}. Provide a bam, cram, "
-            "or bed/bed.gz file.",
+            f"Error: Unsupported file type: {fil_in}. Provide a bam, cram, or "
+            "bed/bed.gz file.",
         )
 
     dep_min = ((n_in * siz_bin) / siz_gen) / (1.0 - b_over_g)
@@ -721,10 +831,14 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
             "Compute 'dep_min', a floor for positive input denominators that "
             "helps prevent extreme or erroneous IP/input ratios. The current "
             "repository consumer, 'compute_signal_ratio', applies it as "
-            "'denominator := max(denominator, dep_min)'. Use 'dist' for new "
-            "analyses. Use 'frag' or 'norm' when reproducing the "
-            "fragment-normalization or normalized-coverage floor calculations "
-            "used in the Dickson/siQ-ChIP and *Bio-protocol* workflows."
+            "'denominator := max(denominator, dep_min)'. 'frag' and 'norm' "
+            "compute the fragment-normalization and normalized-coverage "
+            "floors of the Dickson/siQ-ChIP and *Bio-protocol* workflows. "
+            "Their floor is the mean per-bin input depth, which suits large, "
+            "sparse genomes such as human and mouse but overwrites real "
+            "depletion in small, dense genomes such as S. cerevisiae and S. "
+            "pombe. 'dist' takes the floor from the input's own values and "
+            "suits both."
         ),
         prog="compute_input_floor",
         _sectioned_help=_SectionedHelpConfig(
@@ -780,23 +894,31 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         default="dist",
         help=(
             "Floor-computation mode (default: '%(default)s').\n"
-            "- dist: Recommended for new analyses. Read bedGraph column four, "
-            "skip non-data rows, filter to finite values, apply "
+            "- dist: Suits sparse and dense genomes alike. Read bedGraph "
+            "column four, skip non-data rows, filter to finite values, apply "
             "'--eps'/'--mode_nz', retain 'v_i > 0' because ratio denominators "
-            "occupy a positive domain, and summarize with '--method'. This "
-            "mode does not use, validate, compare, infer, or warn about "
-            "'--siz_bin' or '--siz_gen'. See the method-specific options for "
-            "calculations and bounds.\n"
-            "- frag: Reproduce the fragment-normalization floor calculation "
-            "used in the Dickson/siQ-ChIP and *Bio-protocol* workflows. Count "
-            "BAM, CRAM, or BED alignment records and compute "
+            "occupy a positive domain, and summarize with '--method'. See the "
+            "method-specific options for calculations and bounds.\n"
+            "- frag: The fragment-normalization floor of the Dickson/siQ-ChIP "
+            "and *Bio-protocol* workflows, designed for large, sparse "
+            "genomes. Count BAM, CRAM, or BED alignment records and compute "
             "'dep_min = ((n * b) / g) / [1 - (b / g)]'. Here, 'n' is the "
             "counted-record total, 'b = siz_bin', and 'g = siz_gen'.\n"
-            "- norm: Reproduce the normalized-coverage floor calculation used "
-            "in the Dickson/siQ-ChIP and *Bio-protocol* workflows. Compute "
-            "'dep_min = (b / g) / [1 - (b / g)]' from 'b = siz_bin' and "
-            "'g = siz_gen'; '--fil_in' is ignored. The command returns one "
-            "scalar 'dep_min'."
+            "- norm: The normalized-coverage floor of the Dickson/siQ-ChIP "
+            "and *Bio-protocol* workflows, designed for large, sparse "
+            "genomes. Compute 'dep_min = (b / g) / [1 - (b / g)]' from "
+            "'b = siz_bin' and 'g = siz_gen'. The command returns one scalar "
+            "'dep_min'.\n"
+            "\n"
+            "Used with '--mode dist': '--method', '--qntl_nz', '--coef', "
+            "'--eps', '--mode_nz', and '--floor', which other modes refuse.\n"
+            "\n"
+            "Used with '--mode frag' or '--mode norm': '--siz_bin' and "
+            "'--siz_gen', which '--mode dist' refuses.\n"
+            "\n"
+            "Used with '--mode frag': '--flags_pe' and '--flags_se', which "
+            "other modes refuse. '--mode norm' refuses '--fil_in' and ignores "
+            "'--fmt_in', '--ref_fa', and '--skp_pfx' with a warning."
         ),
     )
 
@@ -811,7 +933,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
             "Input path. For 'dist', provide bedGraph, bdg, or bg, optionally "
             "with '.gz'. For 'frag', provide BAM, CRAM, or BED/BED.GZ. For "
             "'dist' and 'frag', '-' reads stdin and requires '--fmt_in'. "
-            "'norm' ignores '--fil_in'."
+            "Refused with '--mode norm'."
         ),
     )
     parser.add_argument(
@@ -830,9 +952,10 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         default=None,
         help=(
             "Case-insensitive input-format hint for 'dist' or 'frag'. "
-            "Required when '--fil_in -' reads stdin and ignored for named "
-            "paths. Choose 'bam', 'cram', 'bed', 'bedGraph', 'bdg', or 'bg'; "
-            "accepted values resolve to 'bam', 'cram', 'bed', or 'bedgraph'."
+            "Required when '--fil_in -' reads stdin; otherwise, ignored with "
+            "a warning. Choose 'bam', 'cram', 'bed', 'bedGraph', 'bdg', or "
+            "'bg'; accepted values resolve to 'bam', 'cram', 'bed', or "
+            "'bedgraph'."
         ),
     )
     parser.add_argument(
@@ -848,8 +971,9 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         dest="ref_fa",
         default=None,
         help=(
-            "Reference FASTA file required for CRAM decoding. Ignored for "
-            "other input formats."
+            "Reference FASTA file.\n"
+            "\n"
+            "Required for CRAM input; otherwise, ignored with a warning."
         ),
     )
     parser.add_argument(
@@ -867,7 +991,8 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         help=(
             "Comma-separated header prefixes skipped in BED/BED.GZ and "
             "bedGraph-like input; an empty string disables skipping (default: "
-            "'%(default)s')."
+            "'%(default)s'). With '--mode norm' or BAM or CRAM input, ignored "
+            "with a warning."
         ),
     )
     parser.add_argument(
@@ -884,8 +1009,8 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         choices=("qntl_nz", "frc_mdn_nz", "frc_avg_nz", "min_nz"),
         default="qntl_nz",
         help=(
-            "Distribution method used only in '--mode dist' (default: "
-            "'%(default)s').\n"
+            "Distribution method for '--mode dist' (default: '%(default)s'); "
+            "refused otherwise.\n"
             "- qntl_nz: 'dep_min = Q_q({v_i : v_i > 0})'. See '--qntl_nz' for "
             "the selection rule.\n"
             "- frc_mdn_nz: 'dep_min = coef * median({v_i : v_i > 0})'.\n"
@@ -901,11 +1026,11 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         type=float,
         default=1.0,
         help=(
-            "Quantile percentage in '[0, 100]' used only by "
-            "'--mode dist --method qntl_nz'. For sorted filtered values and "
-            "'q = qntl_nz / 100', select 'i = floor(q * (N - 1))', clamped to "
-            "'[0, N - 1]' and then 'dep_min = sorted_vals[i]' (default: "
-            "%(default)s)."
+            "Quantile percentage in '[0, 100]' for "
+            "'--mode dist --method qntl_nz'; refused otherwise. For sorted "
+            "filtered values and 'q = qntl_nz / 100', select "
+            "'i = floor(q * (N - 1))', clamped to '[0, N - 1]' and then "
+            "'dep_min = sorted_vals[i]' (default: %(default)s)."
         ),
     )
     parser.add_argument(
@@ -921,10 +1046,10 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         type=float,
         default=None,
         help=(
-            "Nonnegative coefficient used only by the 'frc_mdn_nz', "
-            "'frc_avg_nz', and 'min_nz' distribution methods. If omitted, "
-            "defaults match 'compute_pseudo.py': 0.01 for 'frc_*' and 1.0 for "
-            "'min_nz'. The 'qntl_nz' method ignores it."
+            "Nonnegative coefficient for the 'frc_mdn_nz', 'frc_avg_nz', and "
+            "'min_nz' distribution methods of '--mode dist'; refused "
+            "otherwise. If omitted, defaults match 'compute_pseudo.py': 0.01 "
+            "for 'frc_*' and 1.0 for 'min_nz'."
         ),
     )
     parser.add_argument(
@@ -934,8 +1059,8 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         type=float,
         default=0.0,
         help=(
-            "Nonnegative zero tolerance used only in '--mode dist' (default: "
-            "%(default)s)."
+            "Nonnegative zero tolerance for '--mode dist' (default: "
+            "%(default)s); refused otherwise."
         ),
     )
     parser.add_argument(
@@ -945,10 +1070,10 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         choices=("closed", "open", "off"),
         default="closed",
         help=(
-            "Epsilon rule used only in '--mode dist': 'closed' drops "
-            "'abs(v_i) <= eps', 'open' drops 'abs(v_i) < eps', and 'off' "
-            "disables epsilon filtering. Positive-only filtering follows "
-            "(default: '%(default)s')."
+            "Epsilon rule for '--mode dist'; refused otherwise. 'closed' "
+            "drops 'abs(v_i) <= eps', 'open' drops 'abs(v_i) < eps', and "
+            "'off' disables epsilon filtering. Positive-only filtering "
+            "follows (default: '%(default)s')."
         ),
     )
     parser.add_argument(
@@ -966,7 +1091,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         help=(
             "Nonnegative lower bound applied after the raw '--mode dist' "
             "statistic as 'dep_min := max(dep_min, floor)' (default: "
-            "%(default)s)."
+            "%(default)s); refused with other modes."
         ),
     )
 
@@ -978,8 +1103,8 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         default=10,
         help=(
             "Target signal-bin width in base pairs for 'frag' and 'norm'; it "
-            "must be positive and smaller than '--siz_gen'. 'dist' ignores "
-            "this value (default: %(default)s)."
+            "must be positive and smaller than '--siz_gen' (default: "
+            "%(default)s). Refused with '--mode dist'."
         ),
     )
     parser.add_argument(
@@ -996,9 +1121,8 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         default=12157105,
         help=(
             "Positive effective genome size in base pairs for 'frag' and "
-            "'norm'. 'dist' ignores this value (default: %(default)s, "
-            "appropriate for S. cerevisiae when retaining multi-mapping "
-            "alignments)."
+            "'norm' (default: %(default)s, appropriate for S. cerevisiae when "
+            "retaining multi-mapping alignments). Refused with '--mode dist'."
         ),
     )
     parser.add_argument(
@@ -1016,8 +1140,9 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         default=None,
         help=(
             "Comma-separated SAM FLAGs for paired-end main alignments in "
-            "'frag' BAM/CRAM input. BED input ignores them. Accepts decimal "
-            "or hexadecimal values (default: 99,1123,163,1187; e.g. 0x63)."
+            "'frag' BAM/CRAM input. Accepts decimal or hexadecimal values "
+            "(default: 99,1123,163,1187). Refused with other modes and with "
+            "BED input."
         ),
     )
     parser.add_argument(
@@ -1034,8 +1159,9 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         default=None,
         help=(
             "Comma-separated SAM FLAGs for single-end main alignments in "
-            "'frag' BAM/CRAM input. BED input ignores them. Accepts decimal "
-            "or hexadecimal values (default: 0,16,1024,1040; e.g. 0x400)."
+            "'frag' BAM/CRAM input. Accepts decimal or hexadecimal values "
+            "(default: 0,16,1024,1040). Refused with other modes and with BED "
+            "input."
         ),
     )
     parser.add_argument(
@@ -1065,44 +1191,83 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         parser.print_help(sys.stderr)
         raise SystemExit(0)
 
-    return parser.parse_args(argv_parse)
+    args = parser.parse_args(argv_parse)
+    args.supplied = find_supplied(parser, argv_parse)
+
+    return args
 
 
-def _validate_norm_arguments(
-    args: argparse.Namespace,
-    flags_pe: str | None,
-    flags_se: str | None,
-) -> None:
+def _check_opts_mode(args: argparse.Namespace) -> None:
     """
-    Report arguments that normalization mode intentionally ignores.
+    Refuse or warn about given options that the mode does not use.
 
     Parameters
     ----------
     args : argparse.Namespace
-        Parsed input-floor arguments.
-    flags_pe : str | None
-        Raw paired-end flag selection.
-    flags_se : str | None
-        Raw single-end flag selection.
+        Parsed input-floor arguments, with 'supplied' from 'find_supplied()'.
+
+    Raises
+    ------
+    SystemExit
+        For the first given option that the mode refuses.
+
+    Notes
+    -----
+    Per 'HELP.PARAMETER.APPLICABILITY', options that would change the result
+    are refused, and supporting inputs are ignored with a warning and not
+    passed on.
     """
 
-    ignored = (
-        ("--fil_in", args.fil_in, args.fil_in is not None),
-        ("--fmt_in", args.fmt_in, args.fmt_in is not None),
-        ("--ref_fa", args.ref_fa, args.ref_fa is not None),
-        ("--method", args.method, args.method != "qntl_nz"),
-        ("--qntl_nz", args.qntl_nz, args.qntl_nz != 1.0),
-        ("--coef", args.coef, args.coef is not None),
-        ("--floor", args.floor, args.floor != 0.0),
-        ("--eps", args.eps, args.eps != 0.0),
-        ("--mode_nz", args.mode_nz, args.mode_nz != "closed"),
-        ("--flags_pe", flags_pe, bool(flags_pe)),
-        ("--flags_se", flags_se, bool(flags_se)),
-    )
+    supplied = args.supplied
+    now = f"'--mode {args.mode}'"
 
-    for option, value, supplied in ignored:
-        if supplied:
-            _note_ignored(option, "in '--mode norm'", value)
+    if args.mode != "dist":
+        check_opts_apply(supplied, "refuse", _OPTS_DIST, "'--mode dist'", now)
+
+    if args.mode == "dist":
+        check_opts_apply(
+            supplied,
+            "refuse",
+            _OPTS_DIMS,
+            "'--mode frag' or '--mode norm'",
+            now,
+        )
+
+        if args.method == "qntl_nz":
+            check_opts_apply(
+                supplied,
+                "refuse",
+                {"coef": "--coef"},
+                "'--method frc_mdn_nz', 'frc_avg_nz', or 'min_nz'",
+                "'--method qntl_nz'",
+            )
+        else:
+            check_opts_apply(
+                supplied,
+                "refuse",
+                {"qntl_nz": "--qntl_nz"},
+                "'--method qntl_nz'",
+                f"'--method {args.method}'",
+            )
+
+    if args.mode != "frag":
+        check_opts_apply(supplied, "refuse", _OPTS_FLAGS, "'--mode frag'", now)
+
+    if args.mode == "norm":
+        check_opts_apply(
+            supplied,
+            "refuse",
+            {"fil_in": "--fil_in"},
+            "'--mode dist' or '--mode frag'",
+            now,
+        )
+        check_opts_apply(
+            supplied,
+            "warn",
+            _OPTS_INPUT,
+            "'--mode dist' or '--mode frag'",
+            now,
+        )
 
 
 def _validate_data_arguments(args: argparse.Namespace) -> str:
@@ -1136,6 +1301,45 @@ def _validate_data_arguments(args: argparse.Namespace) -> str:
         )
 
     fmt_nam = infer_input_format(args.fil_in, args.fmt_in)
+    label = f"{_FORMAT_LABELS[fmt_nam]} input"
+
+    if args.fil_in != "-":
+        check_opts_apply(
+            args.supplied,
+            "warn",
+            {"fmt_in": "--fmt_in"},
+            "'--fil_in -'",
+            "a named '--fil_in' path",
+        )
+        args.fmt_in = None
+
+    if fmt_nam != "cram":
+        check_opts_apply(
+            args.supplied,
+            "warn",
+            {"ref_fa": "--ref_fa"},
+            "CRAM input",
+            label,
+        )
+        args.ref_fa = None
+
+    if args.mode == "frag" and fmt_nam == "bed":
+        check_opts_apply(
+            args.supplied,
+            "refuse",
+            _OPTS_FLAGS,
+            "BAM or CRAM input",
+            label,
+        )
+
+    if fmt_nam in {"bam", "cram"}:
+        check_opts_apply(
+            args.supplied,
+            "warn",
+            {"skp_pfx": "--skp_pfx"},
+            "BED or bedGraph input",
+            label,
+        )
 
     if args.mode == "dist":
         if fmt_nam != "bedgraph":
@@ -1162,18 +1366,6 @@ def _validate_data_arguments(args: argparse.Namespace) -> str:
         ):
             raise InputFloorValidationError(
                 "Error: '--qntl_nz' must be finite and in [0, 100].",
-            )
-
-        if args.method != "qntl_nz" and args.qntl_nz != 1.0:
-            print(
-                "Note: '--qntl_nz' is ignored unless '--method qntl_nz'.",
-                file=sys.stderr,
-            )
-
-        if args.method == "qntl_nz" and args.coef is not None:
-            print(
-                "Note: '--coef' is ignored for '--method qntl_nz'.",
-                file=sys.stderr,
             )
 
     elif fmt_nam not in {"bam", "cram", "bed"}:
@@ -1221,6 +1413,7 @@ def _validate_input_floor_arguments(
         Canonical input format and raw paired- and single-end flag values.
     """
 
+    _check_opts_mode(args)
     _validate_mode_dimensions(
         args.mode,
         args.siz_bin,
@@ -1233,7 +1426,6 @@ def _validate_input_floor_arguments(
     flags_se = getattr(args, "flags_se", None)
 
     if args.mode == "norm":
-        _validate_norm_arguments(args, flags_pe, flags_se)
         fmt_nam = None
     else:
         fmt_nam = _validate_data_arguments(args)
@@ -1273,12 +1465,6 @@ def _parse_fragment_flags(
 
         if flags_se:
             single_flags = parse_flag_csv(flags_se, "flags_se")
-    else:
-        if flags_pe:
-            _note_ignored("--flags_pe", "unless '--mode frag'", flags_pe)
-
-        if flags_se:
-            _note_ignored("--flags_se", "unless '--mode frag'", flags_se)
 
     return paired_flags, single_flags
 
@@ -1325,15 +1511,18 @@ def _print_input_floor_arguments(
         print("")
         print("--verbose")
         print(f"--mode {args.mode}")
-        print(f"--fil_in {args.fil_in}")
 
-        if args.fmt_in is not None:
-            print(f"--fmt_in {args.fmt_in}")
+        # Report only the options the mode and method use.
+        if args.mode != "norm":
+            print(f"--fil_in {args.fil_in}")
 
-        if args.ref_fa is not None:
-            print(f"--ref_fa {args.ref_fa}")
+            if args.fmt_in is not None:
+                print(f"--fmt_in {args.fmt_in}")
 
-        print(f"--skp_pfx {skp_pfx}")
+            if args.ref_fa is not None:
+                print(f"--ref_fa {args.ref_fa}")
+
+            print(f"--skp_pfx {skp_pfx}")
 
         if args.mode == "dist":
             print(f"--method {args.method}")
@@ -1341,13 +1530,15 @@ def _print_input_floor_arguments(
             if args.method == "qntl_nz":
                 print(f"--qntl_nz {args.qntl_nz}")
 
-            print(f"--coef {args.coef}")
+            if args.method != "qntl_nz":
+                print(f"--coef {args.coef}")
+
             print(f"--eps {args.eps}")
             print(f"--mode_nz {args.mode_nz}")
             print(f"--floor {args.floor}")
-
-        print(f"--siz_bin {args.siz_bin}")
-        print(f"--siz_gen {args.siz_gen}")
+        else:
+            print(f"--siz_bin {args.siz_bin}")
+            print(f"--siz_gen {args.siz_gen}")
 
         if args.mode == "frag":
             print(f"--flags_pe {paired_flags_text}")
@@ -1436,7 +1627,7 @@ def main(argv: list[str] | None = None) -> int:
 
     try:
         (
-            fmt_nam,
+            _fmt_nam,
             flags_pe,
             flags_se,
         ) = _validate_input_floor_arguments(args)
@@ -1464,14 +1655,6 @@ def main(argv: list[str] | None = None) -> int:
         print(str(error), file=sys.stderr)
 
         return 1
-
-    has_alignment_flags = bool(paired_flags or single_flags)
-
-    if args.mode == "frag" and fmt_nam == "bed" and has_alignment_flags:
-        print(
-            "Note: '--flags_pe' / '--flags_se' are ignored for bed inputs.",
-            file=sys.stderr,
-        )
 
     _print_input_floor_arguments(args, paired_flags, single_flags, skp_pfx)
 
