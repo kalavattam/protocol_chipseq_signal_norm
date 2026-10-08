@@ -232,6 +232,7 @@ function init_arg_defs() {
     max_job=6
     slurm=false
     time="0:30:00"
+    time_set=false
 }
 
 
@@ -388,6 +389,7 @@ function parse_args() {
                     return 1
                 }
                 time="${2}"
+                time_set=true
                 shift 2
                 ;;
 
@@ -526,6 +528,11 @@ function validate_vecs() {
 
 # Configure local, GNU Parallel, or Slurm execution.
 function config_exec() {
+    # Only a Slurm job has a time limit.
+    if [[ "${slurm}" != "true" && "${time_set}" == "true" ]]; then
+        echo_warn "'--time' has no effect without '--slurm' and is ignored."
+    fi
+
     if [[ "${slurm}" == "true" ]]; then
         max_job="$(reset_max_job "${max_job}" "${#arr_fil_in[@]}")"
 

@@ -108,6 +108,7 @@ rows_exe=(
     "--csv_dep_sip in siq|siq|bam|--csv_dep_sip 100|refuse --csv_dep_sip"
     "--csv_dep_sin in siq|siq|bam|--csv_dep_sin 100|refuse --csv_dep_sin"
     "--ref_fa with BAM only|spike|bam|--ref_fa ${ref_fa}|warn --ref_fa"
+    "--time without --slurm|spike|bam|--time 1:00:00|warn --time"
     "missing --ref_fa, BAM only|spike|bam|--ref_fa ${tmp}/no.fa|warn --ref_fa"
     "--ref_fa with a CRAM entry|spike|mix|--ref_fa ${ref_fa}|pass --ref_fa"
     "--eqn in siq|siq|bam|--eqn 5|pass --eqn"

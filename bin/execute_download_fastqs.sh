@@ -6,9 +6,11 @@
 # Copyright 2024-2026 by Kris Alavattam
 # Email: kalavattam@gmail.com
 #
-# OpenAI ChatGPT and Codex (GPT-4- and GPT-5-series models; most recent:
-# GPT-5.6) were used in design, development, and documentation, with all output
-# reviewed, edited, and approved by the author.
+# The following were used in design, development, and documentation, with all
+# output reviewed, edited, and approved by the author:
+# - OpenAI ChatGPT and Codex (GPT-4- and GPT-5-series models; most recent:
+#   GPT-5.6);
+# - Anthropic Claude Code (Opus 5.5).
 #
 # Distributed under the MIT license.
 
@@ -249,6 +251,7 @@ function init_arg_defs() {
     dir_eo=""
     slurm=false
     time="3:00:00"
+    time_set=false
     config=""
     has_dup_dl=false
 
@@ -365,6 +368,7 @@ function parse_args() {
                     return 1
                 }
                 time="${2}"
+                time_set=true
                 shift 2
                 ;;
 
@@ -413,6 +417,11 @@ function validate_args() {
         echo_err "failed to resolve log directory: '${dir_eo}'."
         return 1
     }
+
+    # Only a Slurm job has a time limit.
+    if [[ "${slurm}" != "true" && "${time_set}" == "true" ]]; then
+        echo_warn "'--time' has no effect without '--slurm' and is ignored."
+    fi
 
     if [[ "${slurm}" == "true" ]]; then
         validate_var "time" "${time}" || return 1

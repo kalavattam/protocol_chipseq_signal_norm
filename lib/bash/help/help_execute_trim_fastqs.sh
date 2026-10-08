@@ -78,7 +78,7 @@ Parameters
     Submit jobs to the Slurm scheduler. Without this flag, jobs run in serial.
 
   -tm, --time : time
-    Slurm job time limit, in 'h:mm:ss' format (required if '--slurm' is specified, ignored if not; default: '${time}').
+    Slurm job time limit, in 'h:mm:ss' format (default: '${time}'); required if '--slurm' is specified, ignored with a warning if not.
 
 Notes
 -----

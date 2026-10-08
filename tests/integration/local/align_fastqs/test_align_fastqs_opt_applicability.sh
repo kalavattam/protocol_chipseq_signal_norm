@@ -86,6 +86,7 @@ rows_exe=(
     "--ref_fa with CRAM output|se|${a_bt2} ${ref_cram}|pass --ref_fa"
     "--req_flg with SE only|se|${a_bt2} --req_flg|warn --req_flg"
     "--req_flg with a PE entry|mix|${a_bt2} --req_flg|pass --req_flg"
+    "--time without --slurm|se|${a_bt2} --time 1:00:00|warn --time"
 )
 
 for idx in "${!rows_exe[@]}"; do

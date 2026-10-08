@@ -262,7 +262,7 @@ Parameters
     Submit jobs to the Slurm scheduler.
 
   -tm, --time : time
-    Slurm job time limit in 'h:mm:ss' format (required if '--slurm'; default: '${time}').
+    Slurm job time limit, in 'h:mm:ss' format (default: '${time}'); required if '--slurm' is specified, ignored with a warning if not.
 
 Notes
 -----
@@ -710,7 +710,7 @@ Parameters
       - If the resolved number of parallel jobs is 1, jobs are run serially.
 
   -tm, --time : time
-    Slurm job time limit, in 'h:mm:ss' format (required if '--slurm' is specified, ignored with a warning if not; default: '${time}').
+    Slurm job time limit, in 'h:mm:ss' format (default: '${time}'); required if '--slurm' is specified, ignored with a warning if not.
 
 Notes
 -----

@@ -68,7 +68,7 @@ Parameters
     Submit a GNU Parallel download job through Slurm.
 
   -tm, --time : time
-    Slurm job time limit, in 'h:mm:ss' format; used only with '--slurm' (default: '${time}').
+    Slurm job time limit, in 'h:mm:ss' format (default: '${time}'); used only with '--slurm', ignored with a warning otherwise.
 
 Notes
 -----

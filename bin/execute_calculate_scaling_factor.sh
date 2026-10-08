@@ -492,6 +492,7 @@ function init_arg_defs() {
     max_job=6
     slurm=false
     time="0:30:00"
+    time_set=false
 
     unset arr_mip arr_min arr_sip arr_sin arr_len_mip arr_len_min
     unset arr_dep_mip arr_dep_min arr_dep_sip arr_dep_sin
@@ -803,6 +804,7 @@ function parse_args() {
                     return 1
                 }
                 time="${2}"
+                time_set=true
                 shift 2
                 ;;
 
@@ -1174,6 +1176,11 @@ function build_final_cmds() {
 function config_exec() {
     validate_var "max_job" "${max_job}" || return 1
     check_int_pos "${max_job}" "max_job" || return 1
+
+    # Only a Slurm job has a time limit.
+    if [[ "${slurm}" != "true" && "${time_set}" == "true" ]]; then
+        echo_warn "'--time' has no effect without '--slurm' and is ignored."
+    fi
 
     if [[ "${slurm}" == "true" ]]; then
         max_job="$(reset_max_job "${max_job}" "${#arr_mip[@]}")"

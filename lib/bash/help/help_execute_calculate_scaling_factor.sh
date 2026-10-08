@@ -202,7 +202,7 @@ Parameters
     Submit jobs to the Slurm scheduler.
 
   -tm, --time : time
-    Slurm wall-clock time in 'h:mm:ss' format (default: '${time}'; used only if '--slurm' is active).
+    Slurm wall-clock time in 'h:mm:ss' format (default: '${time}'); used only if '--slurm' is active, ignored with a warning otherwise.
 
 Notes
 -----

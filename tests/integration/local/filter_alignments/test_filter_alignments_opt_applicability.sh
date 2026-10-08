@@ -59,7 +59,7 @@ if ! \
         "${in_bam}" \
         "${dir_log}/opt_applicability_prepare_bam.log" \
         "filter-alignments applicability BAM fixture" \
-    || ! \
+|| ! \
     build_filter_alignments_fixture_cram \
         "${in_sam}" \
         "${ref_fa}" \
@@ -152,6 +152,30 @@ for idx in "${!rows_exe[@]}"; do
             ;;
     esac
 done
+
+# A time limit is for Slurm jobs only, so a local run warns about it.
+dir_out="${tmp}/exe_time"
+mkdir -p "${dir_out}/logs"
+
+rc=0
+out="$(
+    "${TEST_BASH}" "${ROOT_REPO}/bin/execute_filter_alignments.sh" \
+        --dry_run \
+        --threads 1 \
+        --csv_fil_in "${in_bam}" \
+        --dir_out "${dir_out}" \
+        --max_job 1 \
+        --time 1:00:00 2>&1
+)" || rc=$?
+
+if [[
+    "${rc}" -eq 0
+    && "${out}" == *"warning("*"'--time' has no effect without '--slurm'"*
+]]; then
+    record_pass "execute warns about '--time' without '--slurm'"
+else
+    record_fail "execute did not warn about '--time' without '--slurm'"
+fi
 
 
 # Run 'submit' on a list, writing to its own output directory.
@@ -251,7 +275,7 @@ fi
 function run_helper() {
     # shellcheck disable=SC2016  # Expand in the child shell, not this one.
     "${TEST_BASH}" -c '
-        # shellcheck disable=SC1090
+        # shellcheck source=lib/bash/core/source_helpers.sh
         source "${1}/lib/bash/core/source_helpers.sh"
 
         source_helpers "${1}/lib/bash" \

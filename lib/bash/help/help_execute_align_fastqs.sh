@@ -127,7 +127,7 @@ Parameters
     Submit jobs to the Slurm scheduler; otherwise, run them through GNU Parallel or in serial, as resolved locally.
 
   -tm, --time : time
-    Slurm job time limit, in 'h:mm:ss' format (default: ${time}; required if '--slurm' is specified, ignored otherwise).
+    Slurm job time limit, in 'h:mm:ss' format (default: '${time}'); required if '--slurm' is specified, ignored with a warning if not.
 
 Notes
 -----
