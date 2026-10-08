@@ -887,8 +887,7 @@ function run_install() {
         warn_install_duration
     fi
 
-    # Maybe: change function from "private" to "public".
-    _handle_env_deactivate
+    handle_env_deactivate
 
     if [[ "${env_action}" == "update" && "${yes}" == "true" ]]; then
         CONDA_ALWAYS_YES=true "${cmd[@]}" "${packages[@]}" || {

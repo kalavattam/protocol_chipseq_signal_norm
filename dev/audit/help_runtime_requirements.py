@@ -230,7 +230,7 @@ SETTLED_OWNER_REQUIREMENTS: dict[str, tuple[str, ...]] = {
         "sed (when formatting a non-Slurm command)",
         "awk (when formatting an 'sbatch' command)",
     ),
-    "lib/bash/core/handle_env.sh::_handle_env_deactivate": (
+    "lib/bash/core/handle_env.sh::handle_env_deactivate": (
         "bash >= 4.4",
         "basename",
         "conda (when deactivating an active environment)",

@@ -10,7 +10,7 @@
 # output reviewed, edited, and approved by the author:
 # - OpenAI ChatGPT and Codex (GPT-4- and GPT-5-series models; most recent:
 #   GPT-5.6);
-# - Anthropic Claude Code (Opus 5).
+# - Anthropic Claude Code (Opus 5, Opus 5.5).
 #
 # Distributed under the MIT license.
 
@@ -18,13 +18,13 @@
 # activate_env
 # _current_errexit_nounset
 # _restore_errexit_nounset
-# _handle_env_deactivate
+# handle_env_deactivate
 # _handle_env_activate_success
 # _handle_env_activate
 # handle_env
 
 
-#  Require Bash >= 4.4 before defining functions
+# Require Bash >= 4.4 before defining functions.
 if [[ -z "${BASH_VERSION:-}" ]]; then
     echo "error(shell):" \
         "this script must be sourced or run under Bash >= 4.4." >&2
@@ -48,7 +48,7 @@ elif ((
     fi
 fi
 
-#  Source required helper functions if needed
+# Source required helper functions if needed.
 {
     _dir_src_env="$(
         cd "$(dirname "${BASH_SOURCE[0]}")" > /dev/null 2>&1 && pwd
@@ -82,13 +82,13 @@ fi
 }
 
 
-#  Legacy public wrapper; prefer 'handle_env'
+# Legacy public wrapper; prefer 'handle_env'.
 function activate_env() { handle_env "$@"; }
-#TODO: remove once all call sites have been updated to use 'handle_env'
+# TODO: remove once all call sites have been updated to use 'handle_env'
 
 
-#  Report current 'set -e' and 'set -u' states as, respectively, 'had_e' and
-#+ 'had_u' on stdout, each 0 (off) or 1 (on); does not change shell options
+# Report current 'set -e' and 'set -u' states as, respectively, 'had_e' and
+# 'had_u' on stdout, each 0 (off) or 1 (on); does not change shell options.
 function _current_errexit_nounset() {
     local had_e=0
     local had_u=0
@@ -105,7 +105,7 @@ function _current_errexit_nounset() {
 }
 
 
-#  Restore prior 'set -e', 'set -u' states based on flags '0' (off), '1' (on)
+# Restore prior 'set -e', 'set -u' states based on flags '0' (off), '1' (on).
 function _restore_errexit_nounset() {
     local had_e="${1:-0}"
     local had_u="${2:-0}"
@@ -115,7 +115,7 @@ function _restore_errexit_nounset() {
 }
 
 
-function _handle_env_deactivate() {
+function handle_env_deactivate() {
     local shl_cur="${1:-}"
     local cur_env="${CONDA_DEFAULT_ENV:-}"
     local had_e had_u
@@ -125,7 +125,7 @@ function _handle_env_deactivate() {
     show_help=$(cat << EOM
 Usage
 -----
-  _handle_env_deactivate
+  handle_env_deactivate
     [--help] [shl_cur]
 
   Safely deactivate a Conda environment.
@@ -155,26 +155,26 @@ Examples
 --------
   1. Return without changing state when no named environment is active.
     '''bash
-    CONDA_DEFAULT_ENV='' _handle_env_deactivate
+    CONDA_DEFAULT_ENV='' handle_env_deactivate
     '''
 
   2. Deactivate a named environment in a subshell using the Bash hook.
     '''bash
     (
         CONDA_DEFAULT_ENV=env_protocol
-        _handle_env_deactivate bash
+        handle_env_deactivate bash
     )
     '''
 EOM
     )
 
-    #  Parse help request
+    # Parse help request.
     if [[ "${shl_cur}" =~ ^(-h|--h[e]?lp)$ ]]; then
         echo "${show_help}" >&2
         return 0
     fi
 
-    #  If no env is active, or only 'base' is active, nothing to do
+    # If no env is active, or only 'base' is active, nothing to do.
     if [[ -z "${cur_env}" || "${cur_env}" == "base" ]]; then
         return 0
     fi
@@ -193,8 +193,8 @@ EOM
             ;;
 
         zsh)
-            #  Limited fallback branch for Conda hook initialization; this
-            #+ helper is otherwise intended for Bash >= 4.4 workflows
+            # Limited fallback branch for Conda hook initialization; this
+            # helper is otherwise intended for Bash >= 4.4 workflows.
             eval "$(conda shell.zsh hook)" || rc=$?
             ;;
 
@@ -206,8 +206,8 @@ EOM
             ;;
     esac
 
-    #  If hook-sourcing failed, bail still with 'set -e' / 'set -u' off, but
-    #+ restore flags before returning
+    # If hook-sourcing failed, bail still with 'set -e' / 'set -u' off, but
+    # restore flags before returning.
     if [[ "${rc}" -ne 0 ]]; then
         echo_err_func "${FUNCNAME[0]}" \
             "failed to initialize Conda shell hook."
@@ -228,7 +228,7 @@ EOM
 }
 
 
-#  Print activation success message and restore prior strict-mode flags
+# Print activation success message and restore prior strict-mode flags.
 function _handle_env_activate_success() {
     local env_nam="${1:-}"
     local had_e="${2:-0}"
@@ -297,7 +297,7 @@ Examples
 EOM
     )
 
-    #  Parse and check function arguments
+    # Parse and check function arguments.
     if [[ "${env_nam}" =~ ^(-h|--h[e]?lp)$ ]]; then
         echo "${show_help}" >&2
         return 0
@@ -309,12 +309,12 @@ EOM
         return 1
     fi
 
-    #  Conda/Mamba shell-hook and activation logic may not be strict-mode-safe,
-    #+ so capture current '-e' / '-u' state and temporarily disable both
+    # Conda/Mamba shell-hook and activation logic may not be strict-mode-safe,
+    # so capture current '-e' / '-u' state and temporarily disable both.
     read -r had_e had_u < <(_current_errexit_nounset)
     set +e +u
 
-    #  Source the appropriate Conda shell hook
+    # Source the appropriate Conda shell hook.
     shl_cur=$(basename "${SHELL:-/bin/bash}")
     case "${shl_cur}" in
         bash)
@@ -323,8 +323,8 @@ EOM
             ;;
 
         zsh)
-            #  Limited fallback branch for Conda hook initialization; this
-            #+ helper is otherwise intended for Bash >= 4.4 workflows
+            # Limited fallback branch for Conda hook initialization; this
+            # helper is otherwise intended for Bash >= 4.4 workflows.
             eval "$(conda shell.zsh hook)" || rc=$?
             ;;
 
@@ -335,8 +335,8 @@ EOM
             ;;
     esac
 
-    #  If sourcing the hook failed, bail still with '-e' / '-u' off, but
-    #+ ensure flags are restored before returning
+    # If sourcing the hook failed, bail still with '-e' / '-u' off, but ensure
+    # flags are restored before returning.
     if [[ "${rc}" -ne 0 ]]; then
         echo_err_func "${FUNCNAME[0]}" \
             "failed to initialize Conda shell hook."
@@ -344,8 +344,8 @@ EOM
         return 1
     fi
 
-    #  Optional: check that the env exists; now safe because '-u' / '-e' are
-    #+ off
+    # Optional: check that the env exists; now safe because '-u' / '-e' are
+    # off.
     if command -v conda &> /dev/null; then
         if conda env list | grep -Fqw -- "${env_nam}"; then
             has_env=true
@@ -365,10 +365,10 @@ EOM
         return 1
     fi
 
-    #  Try activation with 'mamba', then 'conda', then 'source activate'
+    # Try activation with 'mamba', then 'conda', then 'source activate'.
     if command -v mamba &> /dev/null; then
-        #TODO: when Mamba is installed/working, 'mamba activate' can still be
-        #+     unreliable depending on shell-hook/setup details; revisit this
+        # TODO: when Mamba is installed/working, 'mamba activate' can still be
+        # unreliable depending on shell-hook/setup details; revisit this.
         if mamba activate "${env_nam}" &> /dev/null; then
             _handle_env_activate_success \
                 "${env_nam}" "${had_e}" "${had_u}"
@@ -399,7 +399,7 @@ EOM
 
 
 function handle_env() {
-    local env_nam="${1:-}"  # Name of environment to activate
+    local env_nam="${1:-}"
     local cur_env="${CONDA_DEFAULT_ENV:-}"
     local show_help
 
@@ -455,7 +455,7 @@ Examples
 EOM
     )
 
-    #  Parse and check function arguments
+    # Parse and check function arguments.
     if [[ "${env_nam}" =~ ^(-h|--h[e]?lp)$ ]]; then
         echo "${show_help}" >&2
         return 0
@@ -467,21 +467,21 @@ EOM
         return 1
     fi
 
-    #  If no env or env is base, activate requested one
+    # If no env or env is base, activate requested one.
     if [[ -z "${cur_env}" || "${cur_env}" == "base" ]]; then
         _handle_env_activate "${env_nam}" || return 1
     elif [[ "${cur_env}" != "${env_nam}" ]]; then
-        #  If different env is active, deactivate then activate
-        _handle_env_deactivate || return 1
+        # If different env is active, deactivate then activate.
+        handle_env_deactivate || return 1
         _handle_env_activate "${env_nam}" || return 1
     fi
 
-    #  Otherwise, requested environment is already active, so do nothing
+    # Otherwise, requested environment is already active, so do nothing.
     return 0
 }
 
 
-#  Print an error message when function script is executed directly
+# Print an error message when function script is executed directly.
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
     err_source_only "${BASH_SOURCE[0]}"
 fi
