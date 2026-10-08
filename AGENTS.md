@@ -51,7 +51,7 @@ For governed multi-domain changes, approve the normative owner before changing r
 <br />
 
 ## Testing expectations
-Run focused checks for changed paths before broader suites, including the registered checkers that own them, not tests alone. Use existing gates: `RUN_ATRIA=1`, `RUN_PARALLEL=1`, `RUN_SLURM=1`, and `WAIT_SLURM=1`. Do not add fake dependency shims or broad integration gates.
+Verify a change with focused checks for the changed paths: the tests that reference them and the registered checkers that own them, not tests alone. Run `bash tests/run_tests.sh` or another whole-tree suite only when the user asks for it. Use existing gates: `RUN_ATRIA=1`, `RUN_PARALLEL=1`, `RUN_SLURM=1`, and `WAIT_SLURM=1`. Do not add fake dependency shims or broad integration gates.
 
 For shell changes, run `bash -n` on changed scripts and `git diff --check`.
 
