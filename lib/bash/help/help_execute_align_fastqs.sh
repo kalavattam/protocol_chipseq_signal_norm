@@ -42,8 +42,10 @@ Parameters
   -v, --verbose : flag
     Run script in verbose mode.
 
-  -dr, --dry, --dry_run : flag
-    Run script in dry-run mode. Do not execute commands.
+  -dr, --dry_run : flag
+    Run script in dry-run mode.
+
+    Print the Slurm, GNU Parallel, or serial command that would run, then call 'submit_align_fastqs.sh' locally with '--dry_run' to print the commands for each input entry, without submitting or running them or writing logs.
 
   -en, --env, --env_nam : str
     Conda environment to activate (default: '${env_nam}').
@@ -67,7 +69,9 @@ Parameters
 
     To disable MAPQ-based filtering, specify 0.
 
-    With paired-end data, a pair is kept only when both mates pass. Secondary (SAM flag 256) and supplementary (SAM flag 2048) alignments are kept or dropped with their read, whatever their own MAPQ. With Bowtie 2, a MAPQ of 1 or more does not mean a unique alignment, as a read alignment with multiple equally good placements can get MAPQ 1, and its placement is chosen at random.
+    With paired-end data, a pair is kept only when both mates pass. Secondary (SAM flag 256) and supplementary (SAM flag 2048) alignments are kept or dropped with their read, whatever their own MAPQ.
+
+    With Bowtie 2, a MAPQ of 1 or more does not mean a unique alignment, as a read alignment with multiple equally good placements can get MAPQ 1, and its placement is chosen at random.
 
   -rq, --req_flg : flag
     Require SAM flag bit 2 for properly paired alignments.
@@ -77,7 +81,9 @@ Parameters
   -ix, --index : path
     Path to the aligner index/reference.
 
-    If using Bowtie 2, the path should end with the index stem, e.g., "\${HOME}/path/stem". If using BWA or BWA-MEM2, the path should be the indexed reference FASTA path, e.g., "\${HOME}/path/stem.fa".
+    If using Bowtie 2, the path should end with the index stem, e.g., "\${HOME}/path/stem".
+
+    If using BWA or BWA-MEM2, the path should be the indexed reference FASTA path, e.g., "\${HOME}/path/stem.fa".
 
   -ci, --csv_fil_in : list of structured string
     Semicolon-delimited serialized string of FASTQ input entries.

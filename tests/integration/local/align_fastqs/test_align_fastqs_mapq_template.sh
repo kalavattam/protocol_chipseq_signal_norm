@@ -68,7 +68,7 @@ require_files_nonempty \
 function run_helper() {
     # shellcheck disable=SC2016  # Expand in the child shell, not this one.
     "${TEST_BASH}" -c '
-        # shellcheck disable=SC1090
+        # shellcheck source=lib/bash/core/source_helpers.sh
         source "${1}/lib/bash/core/source_helpers.sh"
 
         source_helpers "${1}/lib/bash" \
@@ -250,7 +250,7 @@ done
 function run_filter() {
     # shellcheck disable=SC2016  # Expand in the child shell, not this one.
     "${TEST_BASH}" -c '
-        # shellcheck disable=SC1090
+        # shellcheck source=lib/bash/core/source_helpers.sh
         source "${1}/lib/bash/core/source_helpers.sh"
 
         source_helpers "${1}/lib/bash" \
@@ -303,7 +303,7 @@ rc=0
 # shellcheck disable=SC2016  # Expand in the child shell, not this one.
 out="$(
     "${TEST_BASH}" -c '
-        # shellcheck disable=SC1090
+        # shellcheck source=lib/bash/core/source_helpers.sh
         source "${1}/lib/bash/core/source_helpers.sh"
 
         source_helpers "${1}/lib/bash" \
@@ -313,7 +313,7 @@ out="$(
             workflows/align_fastqs
         shift 1
         _sort_qname_bam "$@"
-    ' _ "${ROOT_REPO}" align_fastqs 1 bwa 30 "" \
+    ' _ "${ROOT_REPO}" align_fastqs false 1 bwa 30 "" \
         "${dir_fail}/x.bam" "${dir_fail}/x.qnam.bam" 2>&1
 )" || rc=$?
 n_own="$(grep -c '^error([^)]*::align_fastqs)' <<< "${out}" || true)"

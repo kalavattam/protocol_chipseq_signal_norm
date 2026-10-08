@@ -22,7 +22,7 @@ function help_submit_align_fastqs() {
 Usage
 -----
   submit_align_fastqs.sh
-    [--help]
+    [--help] [--dry_run]
     [--env_nam <str>] [--dir_scr <dir>] [--threads <int>]
     [--aligner <spec>] [--bt2_mode <spec>] [--bwa_alg <spec>] [--mapq <int>] [--req_flg]
     --index <path> --csv_fil_in <csv> [--ref_fa <file>]
@@ -30,8 +30,7 @@ Usage
     [--qname] --sfx_se <str> --sfx_pe <str>
     --dir_eo <dir> [--nam_job <str>]
 
-  Submit or execute one or more FASTQ-alignment jobs by calling the downstream
-  function 'align_fastqs'.
+  Submit or execute one or more FASTQ-alignment jobs by calling the downstream function 'align_fastqs'.
 
   This wrapper
     - parses a semicolon-delimited list of FASTQ input entries,
@@ -39,7 +38,7 @@ Usage
     - activates the requested Conda environment, and then
     - runs alignment either under Slurm array execution or by serial/local iteration, depending on how the script is invoked.
 
-  For each input entry, this script writes log files to:
+  For each input entry, this script writes log files, except in a dry run, to:
 
     \${dir_eo}/\${nam_job}.\${samp}.stdout.txt
     \${dir_eo}/\${nam_job}.\${samp}.stderr.txt
@@ -49,11 +48,20 @@ Parameters
   -h, --help : flag
     Display this help message and exit.
 
+  -dr, --dry_run : flag
+    Run script in dry-run mode.
+
+    For each input entry, print the 'align_fastqs' call with its log redirections, then the commands it would run, to stdout, without running them or writing files or logs.
+
+    A dry run always iterates over the entries locally, even inside a Slurm array task.
+
   -en, --env, --env_nam : str
     Conda environment to activate (default: '${env_nam}').
 
   -ds, --dir_scr : dir
-    Directory containing scripts and functions. Passed by the 'execute_*.sh' wrappers, and needed when this script is run from a copy, as 'sbatch <script>' does, rather than from its real path.
+    Directory containing scripts and functions.
+
+    Passed by the 'execute_*.sh' wrappers, and needed when this script is run from a copy, as 'sbatch <script>' does, rather than from its real path.
 
   -t, --thr, --threads : int
     Number of threads to use (default: ${threads}).
@@ -74,7 +82,9 @@ Parameters
 
     To disable MAPQ-based filtering, specify 0.
 
-    With paired-end data, a pair is kept only when both mates pass. Secondary (SAM flag 256) and supplementary (SAM flag 2048) alignments are kept or dropped with their read, whatever their own MAPQ. With Bowtie 2, a MAPQ of 1 or more does not mean a unique alignment, as a read alignment with multiple equally good placements can get MAPQ 1, and its placement is chosen at random.
+    With paired-end data, a pair is kept only when both mates pass. Secondary (SAM flag 256) and supplementary (SAM flag 2048) alignments are kept or dropped with their read, whatever their own MAPQ.
+
+    With Bowtie 2, a MAPQ of 1 or more does not mean a unique alignment, as a read alignment with multiple equally good placements can get MAPQ 1, and its placement is chosen at random.
 
   -rq, --req_flg : flag
     Require SAM flag bit 2 for properly paired alignments.
@@ -84,7 +94,9 @@ Parameters
   -ix, --index : path
     Path to the aligner index/reference.
 
-    If using Bowtie 2, the path should end with the index stem, e.g., "\${HOME}/path/stem". If using BWA or BWA-MEM2, the path should be the indexed reference FASTA path, e.g., "\${HOME}/path/stem.fa".
+    If using Bowtie 2, the path should end with the index stem, e.g., "\${HOME}/path/stem".
+
+    If using BWA or BWA-MEM2, the path should be the indexed reference FASTA path, e.g., "\${HOME}/path/stem.fa".
 
   -ci, --csv_fil_in : list of structured string
     Semicolon-delimited serialized string of FASTQ input entries.

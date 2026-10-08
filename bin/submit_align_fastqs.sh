@@ -232,6 +232,7 @@ function run_alignment() {
     local dir_eo="${13:-}"
     local nam_job="${14:-}"
     local samp="${15:-}"
+    local dry_run="${16:-false}"
     local log_out log_err
     local -a cmd_aln
     local show_help
@@ -241,7 +242,7 @@ function run_alignment() {
 Usage
 -----
   run_alignment
-    [--help] threads aligner bt2_mode bwa_alg mapq req_flg index ref_fa fq_1 fq_2 fil_out qname dir_eo nam_job samp
+    [--help] threads aligner bt2_mode bwa_alg mapq req_flg index ref_fa fq_1 fq_2 fil_out qname dir_eo nam_job samp [dry_run]
 
   Construct log-file paths and then run 'align_fastqs.sh::align_fastqs', writing stdout to
 
@@ -301,10 +302,13 @@ Parameters
   15  samp : str
     Sample name used in log-file naming.
 
+  16  dry_run : bool
+    Whether to print the 'align_fastqs' call with its log redirections, then run it with '--dry_run', which prints its commands to stdout and writes no files or logs (default: '${dry_run}').
+
 Returns
 -------
-  - Writes alignment stdout and stderr to per-sample log files.
-  - Returns 0 when alignment completes successfully; 1 otherwise.
+  - Writes alignment stdout and stderr to per-sample log files, except in a dry run.
+  - Returns 0 when alignment completes successfully or when a dry run succeeds; 1 otherwise.
 
 Notes
 -----
@@ -401,6 +405,25 @@ EOM
         cmd_aln+=( --qname )
     fi
 
+    # In a dry run, show the call and its log redirections, then let
+    # 'align_fastqs' print its commands without writing files or logs.
+    if [[ "${dry_run}" == "true" ]]; then
+        printf '\n%s\n' "# Sample '${samp}': call to 'align_fastqs'."
+        printf '%s \\\n    > %q \\\n    2> %q\n\n' \
+            "$(print_cmd_pretty --pair_flg --head 1 "${cmd_aln[@]}")" \
+            "${log_out}" "${log_err}"
+
+        if ! \
+            "${cmd_aln[@]}" --dry_run
+        then
+            echo_err_func "${FUNCNAME[0]}" \
+                "dry run failed for sample '${samp}'."
+            return 1
+        fi
+
+        return 0
+    fi
+
     # Run alignment function with specified parameters.
     if ! \
         "${cmd_aln[@]}" > "${log_out}" 2> "${log_err}"
@@ -477,6 +500,7 @@ function init_args_hardcoded() {
 
 # Initialize argument variables, assigning default values where applicable.
 function init_arg_defs() {
+    dry_run=false
     env_nam="env_protocol"
     threads=4
     aligner="bowtie2"
@@ -513,6 +537,11 @@ function init_defs() {
 function parse_args() {
     while [[ "$#" -gt 0 ]]; do
         case "${1}" in
+            -dr|--dry[_-]run)
+                dry_run=true
+                shift 1
+                ;;
+
             -en|--env|--env[_-]nam)
                 require_optarg "${1}" "${2:-}" "main" || {
                     echo >&2
@@ -815,6 +844,7 @@ function print_state_debug() {
     if [[ "${debug}" == "true" ]]; then
         echo
         debug_var \
+            "dry_run=${dry_run}" \
             "env_nam=${env_nam}" \
             "dir_scr=${dir_scr}" \
             "threads=${threads}" \
@@ -894,9 +924,9 @@ function run_job() {
     if ! \
         run_alignment \
             "${threads}" "${aligner}" "${bt2_mode}" "${bwa_alg}" \
-            "${mapq}"    "${req_flg}" "${index}"   "${ref_fa}" \
-            "${fq_1}"    "${fq_2}"    "${fil_out}" "${qname}" \
-            "${dir_eo}" "${nam_job}" "${samp}"
+            "${mapq}"    "${req_flg}" "${index}"    "${ref_fa}" \
+            "${fq_1}"    "${fq_2}"    "${fil_out}"  "${qname}" \
+            "${dir_eo}"  "${nam_job}" "${samp}"     "${dry_run}"
     then
         echo_err "failed to perform alignment."
         return 1
@@ -960,9 +990,9 @@ function run_job_slurm() {
     if ! \
         run_alignment \
             "${threads}" "${aligner}" "${bt2_mode}" "${bwa_alg}" \
-            "${mapq}"    "${req_flg}" "${index}"   "${ref_fa}" \
-            "${fq_1}"    "${fq_2}"    "${fil_out}" "${qname}" \
-            "${dir_eo}" "${nam_job}" "${samp}"
+            "${mapq}"    "${req_flg}" "${index}"    "${ref_fa}" \
+            "${fq_1}"    "${fq_2}"    "${fil_out}"  "${qname}" \
+            "${dir_eo}"  "${nam_job}" "${samp}"     "${dry_run}"
     then
         echo_err "failed to perform alignment."
         return 1
@@ -970,8 +1000,8 @@ function run_job_slurm() {
 
     rm -f -- "${err_ini}" "${out_ini}" || {
         echo_warn \
-            "failed to remove initial Slurm log files:" \
-            "'${err_ini}', '${out_ini}'."
+            "failed to remove initial Slurm log files: '${err_ini}'," \
+            "'${out_ini}'."
     }
 }
 
@@ -980,7 +1010,8 @@ function run_job_slurm() {
 function run_jobs() {
     local idx fil_in
 
-    if [[ -n "${SLURM_ARRAY_TASK_ID:-}" ]]; then
+    # A dry run always iterates locally, so it touches no Slurm logs.
+    if [[ -n "${SLURM_ARRAY_TASK_ID:-}" && "${dry_run}" == "false" ]]; then
         run_job_slurm || return 1
     else
         for idx in "${!arr_fil_in[@]}"; do

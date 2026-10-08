@@ -262,7 +262,7 @@ function parse_args() {
                 shift 1
                 ;;
 
-            -dr|--dry|--dry[_-]run)
+            -dr|--dry[_-]run)
                 dry_run=true
                 shift 1
                 ;;
@@ -826,6 +826,20 @@ function run_jobs() {
                     || return 1
             fi
         fi
+    fi
+
+    # After the dispatch preview, a dry run makes one local call of the submit
+    # script with '--dry_run', in every mode, so it also shows the commands
+    # each entry would run; nothing is submitted, run, or written.
+    if [[ "${dry_run}" == "true" ]]; then
+        build_cmd "UNSET" || return 1
+        print_banner_pretty "Dry run of 'submit_align_fastqs.sh'"
+
+        env -u SLURM_ARRAY_TASK_ID \
+            "${BASH}" "${cmd_bld[@]}" --dry_run \
+            || return 1
+
+        echo
     fi
 }
 

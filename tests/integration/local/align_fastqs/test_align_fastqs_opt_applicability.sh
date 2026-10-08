@@ -305,7 +305,7 @@ fi
 function run_helper() {
     # shellcheck disable=SC2016  # Expand in the child shell, not this one.
     "${TEST_BASH}" -c '
-        # shellcheck disable=SC1090
+        # shellcheck source=lib/bash/core/source_helpers.sh
         source "${1}/lib/bash/core/source_helpers.sh"
 
         source_helpers "${1}/lib/bash" \
@@ -378,27 +378,17 @@ for idx in "${!rows_hlp[@]}"; do
 done
 
 
-# Called directly with no '--mapq', the helper filters at its default of 1; the
-# trace shows the 'samtools view' arguments it builds.
-# shellcheck disable=SC2016  # Expand in the child shell, not this one.
+# Called directly with no '--mapq', the helper filters at its default of 1; a
+# dry run prints the 'samtools view' call it builds.
 out="$(
-    "${TEST_BASH}" -x -c '
-        # shellcheck disable=SC1090
-        source "${1}/lib/bash/core/source_helpers.sh"
-
-        source_helpers "${1}/lib/bash" \
-            core/check_args \
-            core/check_inputs \
-            core/format_outputs \
-            workflows/align_fastqs
-        shift 1
-        align_fastqs "$@"
-    ' _ "${ROOT_REPO}" --threads 1 --fq_1 "${in_se}" \
-        --aligner bowtie2 --index "${idx_bt2}" \
-        --fil_out "${tmp}/helper_mapq.bam" 2>&1
+    run_helper \
+        --dry_run \
+        --aligner bowtie2 \
+        --index "${idx_bt2}" \
+        --fil_out "${tmp}/helper_mapq.bam"
 )" || true
 
-if grep -q "^+* *args_sam+=' -q 1'" <<< "${out}"; then
+if [[ "${out}" == *"| samtools view \\"*"-F 4 \\"$'\n'"        -q 1 \\"* ]]; then
     record_pass "helper defaults '--mapq' to 1"
 else
     record_fail "helper did not default '--mapq' to 1"
@@ -433,8 +423,8 @@ for lyr in execute submit helper; do
     fi
 done
 
-# A Bowtie 2 index stem with no index files passes validation and fails in
-# Step 1, which must stop the helper with one error in the helper's name.
+# Validation lets through a Bowtie 2 index stem with no index files; Step 1
+# then fails, which must stop the helper with one error in the helper's name.
 fil_out="${tmp}/helper_step1.bam"
 rc=0
 out="$(
