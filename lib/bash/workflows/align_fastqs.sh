@@ -189,7 +189,7 @@ EOM
 
         # Options that take a value, by program.
         case "${arr_prn_ref[*]:0:idx}" in
-            bowtie2)                  opt_val="-p -x -1 -2 -U" ;;
+            bowtie2)                  opt_val="-p -x -X -1 -2 -U" ;;
             "samtools view")          opt_val="-@ -F -f -q -o -T -O -N" ;;
             samtools\ *)              opt_val="-@ -o" ;;
             "bwa mem"|"bwa-mem2 mem") opt_val="-t" ;;
@@ -472,15 +472,18 @@ function _validate_args_align_fastqs() {
     local aligner="${3:-}"
     local bt2_mode="${4:-}"
     local bt2_mode_set="${5:-}"
-    local bwa_alg="${6:-}"
-    local bwa_alg_set="${7:-}"
-    local mapq="${8:-}"
-    local req_flg="${9:-}"
-    local index="${10:-}"
-    local ref_fa="${11:-}"
-    local fq_1="${12:-}"
-    local fq_2="${13:-}"
-    local fil_out="${14:-}"
+    local bt2_X="${6:-}"
+    local bt2_X_set="${7:-}"
+    local bt2_inherited="${8:-}"
+    local bwa_alg="${9:-}"
+    local bwa_alg_set="${10:-}"
+    local mapq="${11:-}"
+    local req_flg="${12:-}"
+    local index="${13:-}"
+    local ref_fa="${14:-}"
+    local fq_1="${15:-}"
+    local fq_2="${16:-}"
+    local fil_out="${17:-}"
     local out_fmt
     local show_help
 
@@ -488,7 +491,7 @@ function _validate_args_align_fastqs() {
 Usage
 -----
   _validate_args_align_fastqs
-    [--help] func threads aligner bt2_mode bt2_mode_set bwa_alg bwa_alg_set mapq req_flg index ref_fa fq_1 fq_2 fil_out
+    [--help] func threads aligner bt2_mode bt2_mode_set bt2_X bt2_X_set bt2_inherited bwa_alg bwa_alg_set mapq req_flg index ref_fa fq_1 fq_2 fil_out
 
   Validate the parsed arguments of 'align_fastqs()' before alignment.
 
@@ -512,31 +515,40 @@ Parameters
   05  bt2_mode_set : bool
     Whether the caller supplied '--bt2_mode'.
 
-  06  bwa_alg : str
+  06  bt2_X : int
+    Maximum fragment length for a Bowtie 2 paired-end alignment.
+
+  07  bt2_X_set : bool
+    Whether the caller supplied '--bt2_X'.
+
+  08  bt2_inherited : bool
+    Whether the caller asked for the earlier "inherited" Bowtie 2 paired-end call.
+
+  09  bwa_alg : str
     BWA algorithm: 'mem' or 'aln'.
 
-  07  bwa_alg_set : bool
+  10  bwa_alg_set : bool
     Whether the caller supplied '--bwa_alg'.
 
-  08  mapq : int
+  11  mapq : int
     MAPQ threshold.
 
-  09  req_flg : bool
+  12  req_flg : bool
     Whether properly paired alignments are required.
 
-  10  index : path
+  13  index : path
     Path to the aligner index/reference.
 
-  11  ref_fa : file
+  14  ref_fa : file
     Reference FASTA path; required for CRAM output, otherwise ignored with a warning.
 
-  12  fq_1 : file
+  15  fq_1 : file
     First FASTQ input file.
 
-  13  fq_2 : file
+  16  fq_2 : file
     Second FASTQ input file, or empty for single-end data.
 
-  14  fil_out : file
+  17  fil_out : file
     Path to the final alignment file.
 
 Returns
@@ -559,6 +571,9 @@ Examples
         bowtie2 \\
         end-to-end \\
         false \\
+        1000 \\
+        false \\
+        false \\
         mem \\
         false \\
         1 \\
@@ -577,6 +592,9 @@ Examples
         4 \\
         bwa-mem2 \\
         end-to-end \\
+        false \\
+        1000 \\
+        false \\
         false \\
         mem \\
         false \\
@@ -620,6 +638,13 @@ EOM
                     return 1
                     ;;
             esac
+
+            if [[ ! "${bt2_X}" =~ ^[1-9][0-9]*$ ]]; then
+                echo_err_func "${func}" \
+                    "'--bt2_X' was assigned '${bt2_X}' but must be a positive" \
+                    "integer."
+                return 1
+            fi
             ;;
 
         bwa)
@@ -752,6 +777,28 @@ EOM
         return 1
     fi
 
+    if [[ "${aligner}" != "bowtie2" && "${bt2_X_set}" == "true" ]]; then
+        echo_err_func "${func}" \
+            "'--bt2_X' is for '--aligner bowtie2'; it has no effect with" \
+            "'--aligner ${aligner}'."
+        return 1
+    fi
+
+    if [[ "${aligner}" != "bowtie2" && "${bt2_inherited}" == "true" ]]; then
+        echo_err_func "${func}" \
+            "'--bt2_inherited' is for '--aligner bowtie2'; it has no effect" \
+            "with '--aligner ${aligner}'."
+        return 1
+    fi
+
+    # The inherited call passes no '-X', so '--bt2_X' would change nothing.
+    if [[ "${bt2_X_set}" == "true" && "${bt2_inherited}" == "true" ]]; then
+        echo_err_func "${func}" \
+            "'--bt2_X' has no effect with '--bt2_inherited', which passes no" \
+            "'-X'."
+        return 1
+    fi
+
     # 'bwa-mem2' has only 'mem', so asking for it changes nothing.
     if [[ "${aligner}" != "bwa" && "${bwa_alg_set}" == "true" ]]; then
         if [[ "${aligner}" == "bwa-mem2" && "${bwa_alg}" == "mem" ]]; then
@@ -770,6 +817,17 @@ EOM
         echo_warn_func "${func}" \
             "'--req_flg' has no effect with single-end input and is ignored."
     fi
+
+    if [[ -z "${fq_2}" && "${bt2_X_set}" == "true" ]]; then
+        echo_warn_func "${func}" \
+            "'--bt2_X' has no effect with single-end input and is ignored."
+    fi
+
+    if [[ -z "${fq_2}" && "${bt2_inherited}" == "true" ]]; then
+        echo_warn_func "${func}" \
+            "'--bt2_inherited' has no effect with single-end input and is" \
+            "ignored."
+    fi
 }
 
 
@@ -780,9 +838,11 @@ function _align_bowtie2() {
     local dry_run="${2:-}"
     local threads="${3:-}"
     local bt2_mode="${4:-}"
-    local index="${5:-}"
-    local fq_1="${6:-}"
-    local fq_2="${7:-}"
+    local bt2_X="${5:-}"
+    local bt2_inherited="${6:-}"
+    local index="${7:-}"
+    local fq_1="${8:-}"
+    local fq_2="${9:-}"
     local -a arr_bt2 arr_sam
     local show_help
 
@@ -790,7 +850,7 @@ function _align_bowtie2() {
 Usage
 -----
   _align_bowtie2
-    [--help] func dry_run threads bt2_mode index fq_1 fq_2 [samtools_arg ...]
+    [--help] func dry_run threads bt2_mode bt2_X bt2_inherited index fq_1 fq_2 [samtools_arg ...]
 
   Align paired- or single-end reads with Bowtie 2 and pipe the alignments to 'samtools view' with the caller's arguments (Step 1 of 'align_fastqs()').
 
@@ -799,28 +859,34 @@ Parameters
   -h, --help : flag
     Display this help message and exit.
 
-  1  func : str
+  01  func : str
     Name of the calling function for diagnostics.
 
-  2  dry_run : bool
+  02  dry_run : bool
     Whether to print the command to stdout instead of running it.
 
-  3  threads : int
+  03  threads : int
     Number of threads to use.
 
-  4  bt2_mode : str
+  04  bt2_mode : str
     Bowtie 2 alignment type: 'local', 'global', or 'end-to-end'.
 
-  5  index : path
+  05  bt2_X : int
+    Maximum fragment length for a paired-end alignment, passed as '-X'.
+
+  06  bt2_inherited : bool
+    Whether to make the earlier paired-end call ('--no-overlap --no-dovetail', no '-X') instead.
+
+  07  index : path
     Bowtie 2 index stem.
 
-  6  fq_1 : file
+  08  fq_1 : file
     First FASTQ input file.
 
-  7  fq_2 : file
+  09  fq_2 : file
     Second FASTQ input file, or empty for single-end data.
 
-  8+  samtools_arg : str
+  10+  samtools_arg : str
     Arguments for 'samtools view', ending with its output path.
 
 Returns
@@ -843,6 +909,8 @@ Examples
         false \\
         1 \\
         end-to-end \\
+        1000 \\
+        false \\
         tests/fixtures/align_fastqs/bowtie2/tiny \\
         tests/fixtures/align_fastqs/fastq/se/tiny_se.atria.fastq.gz \\
         '' \\
@@ -856,6 +924,8 @@ Examples
         true \\
         2 \\
         local \\
+        1000 \\
+        false \\
         tests/fixtures/align_fastqs/bowtie2/tiny \\
         tests/fixtures/align_fastqs/fastq/pe/tiny_pe_R1.atria.fastq.gz \\
         tests/fixtures/align_fastqs/fastq/pe/tiny_pe_R2.atria.fastq.gz \\
@@ -884,13 +954,22 @@ EOM
     # Run Bowtie 2 with paired-end (top) or single-end (bottom) sequenced reads.
     if [[ -n "${fq_2}" ]]; then
         arr_bt2+=( --no-mixed --no-discordant )
-        arr_bt2+=( --no-overlap --no-dovetail )
+
+        # Keep overlapping mates and bound the fragment length, unless asked
+        # for the earlier call, which drops overlapping mates and leaves '-X'
+        # at Bowtie 2's default of 500.
+        if [[ "${bt2_inherited}" == "true" ]]; then
+            arr_bt2+=( --no-overlap --no-dovetail )
+        else
+            arr_bt2+=( -X "${bt2_X}" )
+        fi
+
         arr_bt2+=( -1 "${fq_1}" -2 "${fq_2}" )
     else
         arr_bt2+=( -U "${fq_1}" )
     fi
 
-    arr_sam=( samtools view "${@:8}" )
+    arr_sam=( samtools view "${@:10}" )
 
     if [[ "${dry_run}" == "true" ]]; then
         _print_dry_run_cmd arr_bt2 arr_sam
@@ -1243,19 +1322,22 @@ EOM
 
 # Step 1: build the Samtools call that drops unaligned reads (and applies the
 # MAPQ filter for Bowtie 2), then align with the selected aligner.
+# TODO: "semantic paragraphs" for options under Usage in 'show_help'.
 function _align_reads() {
     local func="${1:-}"
     local dry_run="${2:-}"
     local threads="${3:-}"
     local aligner="${4:-}"
     local bt2_mode="${5:-}"
-    local bwa_alg="${6:-}"
-    local mapq="${7:-}"
-    local req_flg="${8:-}"
-    local index="${9:-}"
-    local fq_1="${10:-}"
-    local fq_2="${11:-}"
-    local fil_wrk="${12:-}"
+    local bt2_X="${6:-}"
+    local bt2_inherited="${7:-}"
+    local bwa_alg="${8:-}"
+    local mapq="${9:-}"
+    local req_flg="${10:-}"
+    local index="${11:-}"
+    local fq_1="${12:-}"
+    local fq_2="${13:-}"
+    local fil_wrk="${14:-}"
     local -a arr_sam
     local show_help
 
@@ -1263,7 +1345,7 @@ function _align_reads() {
 Usage
 -----
   _align_reads
-    [--help] func dry_run threads aligner bt2_mode bwa_alg mapq req_flg index fq_1 fq_2 fil_wrk
+    [--help] func dry_run threads aligner bt2_mode bt2_X bt2_inherited bwa_alg mapq req_flg index fq_1 fq_2 fil_wrk
 
   Build the 'samtools view' arguments that drop unaligned reads (and, for Bowtie 2, apply the MAPQ threshold), then align with the selected aligner and write the BAM work file (Step 1 of 'align_fastqs()').
 
@@ -1287,25 +1369,31 @@ Parameters
   05  bt2_mode : str
     Bowtie 2 alignment type: 'local', 'global', or 'end-to-end'.
 
-  06  bwa_alg : str
+  06  bt2_X : int
+    Maximum fragment length for a Bowtie 2 paired-end alignment.
+
+  07  bt2_inherited : bool
+    Whether to make the earlier Bowtie 2 paired-end call.
+
+  08  bwa_alg : str
     BWA algorithm: 'mem' or 'aln'.
 
-  07  mapq : int
+  09  mapq : int
     MAPQ threshold; applied here only for Bowtie 2.
 
-  08  req_flg : bool
+  10  req_flg : bool
     Whether properly paired alignments are required.
 
-  09  index : path
+  11  index : path
     Path to the aligner index/reference.
 
-  10  fq_1 : file
+  12  fq_1 : file
     First FASTQ input file.
 
-  11  fq_2 : file
+  13  fq_2 : file
     Second FASTQ input file, or empty for single-end data.
 
-  12  fil_wrk : file
+  14  fil_wrk : file
     BAM work file to write.
 
 Returns
@@ -1331,6 +1419,8 @@ Examples
         2 \\
         bowtie2 \\
         end-to-end \\
+        1000 \\
+        false \\
         mem \\
         1 \\
         true \\
@@ -1348,6 +1438,8 @@ Examples
         1 \\
         bwa \\
         end-to-end \\
+        1000 \\
+        false \\
         aln \\
         30 \\
         false \\
@@ -1391,8 +1483,8 @@ EOM
     # piped to the above-constructed Samtools call.
     if [[ "${aligner}" == "bowtie2" ]]; then
         _align_bowtie2 \
-            "${func}" "${dry_run}" "${threads}" "${bt2_mode}" "${index}" \
-            "${fq_1}" "${fq_2}" "${arr_sam[@]}" \
+            "${func}" "${dry_run}" "${threads}" "${bt2_mode}" "${bt2_X}" \
+            "${bt2_inherited}" "${index}" "${fq_1}" "${fq_2}" "${arr_sam[@]}" \
             || return 1
     elif [[ "${aligner}" == "bwa" ]]; then
         if [[ "${bwa_alg}" == "mem" ]]; then
@@ -2126,8 +2218,9 @@ EOM
 
 
 function align_fastqs() {
-    local dry_run threads aligner bt2_mode bwa_alg mapq req_flg index ref_fa
-    local bt2_mode_set bwa_alg_set
+    local dry_run threads aligner bt2_mode bt2_X bt2_inherited bwa_alg mapq
+    local req_flg index ref_fa
+    local bt2_mode_set bt2_X_set bwa_alg_set
     local fq_1 fq_2 fil_out qname out_fmt
     local fil_wrk fil_qnam_out bam_qnam
     local show_help
@@ -2138,6 +2231,9 @@ function align_fastqs() {
     aligner="bowtie2"
     bt2_mode="end-to-end"
     bt2_mode_set=false
+    bt2_X=1000
+    bt2_X_set=false
+    bt2_inherited=false
     bwa_alg="mem"
     bwa_alg_set=false
     ref_fa=""
@@ -2152,7 +2248,7 @@ function align_fastqs() {
 Usage
 -----
   align_fastqs
-    [--help] [--dry_run] [--threads <int>] [--aligner <aligner>] [--bt2_mode <mode>] [--bwa_alg <algorithm>] [--mapq <int>] [--req_flg] --index <path> [--ref_fa <file>] --fq_1 <file> [--fq_2 <file>] --fil_out <file> [--qname]
+    [--help] [--dry_run] [--threads <int>] [--aligner <aligner>] [--bt2_mode <mode>] [--bt2_X <int>] [--bwa_alg <algorithm>] [--mapq <int>] [--req_flg] --index <path> [--ref_fa <file>] --fq_1 <file> [--fq_2 <file>] --fil_out <file> [--qname]
 
   Align single- or paired-end Illumina short reads using Bowtie 2, BWA, or BWA-MEM2, and convert the output to a sorted, duplicate-marked, mate-fixed (if working with paired-end reads) alignment file using Samtools.
 
@@ -2178,6 +2274,9 @@ Parameters
 
   -2m, --bt2_mode : {'local', 'global', 'end-to-end'}
     Bowtie 2 alignment type when '--aligner bowtie2': 'local', 'global', or 'end-to-end' (default: '${bt2_mode}'); refused otherwise.
+
+  -2X, --bt2_X : int
+    Maximum fragment length for a Bowtie 2 paired-end alignment, passed as 'bowtie2 -X' (default: ${bt2_X}); refused unless '--aligner bowtie2'; ignored with a warning for single-end data.
 
   -ba, --bwa_alg : {'mem', 'aln'}
     BWA algorithm when '--aligner bwa': 'mem' or 'aln' (default: '${bwa_alg}').
@@ -2234,6 +2333,7 @@ Notes
   - For '--index' when using Bowtie 2, the path should end with the index stem: 'path/to/dir/stem'; when using 'bwa' or 'bwa-mem2', the path should be the indexed reference FASTA path (for example, '.fa').
   - '--bwa_alg' is used only when '--aligner bwa'. It is refused with '--aligner bowtie2'; with '--aligner bwa-mem2', which always runs 'bwa-mem2 mem', 'mem' is ignored with a warning and 'aln' is refused.
   - Unaligned reads are excluded from the output; with paired-end data, so are the mates of unaligned reads.
+  - With Bowtie 2 and paired-end data, mates may overlap or contain one another, so fragments shorter than the two reads together are kept; mates that extend past each other ("dovetailed") are not.
   - Duplicates are marked (SAM flag 1024) in Step #4, after MAPQ filtering, and kept. Like any other read, '--mapq' filters them by the MAPQ the aligner gave them.
   - For '--qname', the retained queryname-sorted output will have the same path and stem assigned to '--fil_out', except '.qnam' will be inserted before the final extension (for example, '.qnam.bam' or '.qnam.cram'). For CRAM output, the retained queryname-sorted BAM work file is converted in Step #5.
   - '--ref_fa' is required when '--fil_out' ends in '.cram', since CRAM writing requires a reference FASTA.
@@ -2309,6 +2409,25 @@ EOM
                 bt2_mode="${2,,}"
                 bt2_mode_set=true
                 shift 2
+                ;;
+
+            -2X|--bt2[_-]X)
+                require_optarg "${1}" "${2:-}" "${FUNCNAME[0]}" || {
+                    echo >&2
+                    echo "${show_help}" >&2
+                    return 1
+                }
+                bt2_X="${2}"
+                bt2_X_set=true
+                shift 2
+                ;;
+
+            # Hidden per 'HELP.ALIAS.PUBLIC': reproduces the Bowtie 2
+            # paired-end calls made before 2026-10
+            # ('--no-overlap --no-dovetail', no '-X') and their alignments.
+            -2i|--bt2[_-]inherited)
+                bt2_inherited=true
+                shift 1
                 ;;
 
             -ba|--bwa[_-]alg)
@@ -2409,6 +2528,9 @@ EOM
         "${aligner}" \
         "${bt2_mode}" \
         "${bt2_mode_set}" \
+        "${bt2_X}" \
+        "${bt2_X_set}" \
+        "${bt2_inherited}" \
         "${bwa_alg}" \
         "${bwa_alg_set}" \
         "${mapq}" \
@@ -2446,6 +2568,8 @@ EOM
         "${threads}" \
         "${aligner}" \
         "${bt2_mode}" \
+        "${bt2_X}" \
+        "${bt2_inherited}" \
         "${bwa_alg}" \
         "${mapq}" \
         "${req_flg}" \

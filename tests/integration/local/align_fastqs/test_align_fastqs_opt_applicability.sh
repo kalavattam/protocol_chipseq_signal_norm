@@ -40,6 +40,9 @@ tmp="${TEST_DIR_TMP}/align_fastqs_opt_applicability"
 msg_ref="'--ref_fa' has no effect"
 msg_req="'--req_flg' has no effect with single-end input"
 msg_bm2="'--bwa_alg' has no effect with '--aligner bwa-mem2'"
+msg_bx="'--bt2_X' has no effect with single-end input"
+msg_bi="'--bt2_inherited' has no effect with single-end input"
+msg_both="'--bt2_X' has no effect with '--bt2_inherited'"
 
 # Each aligner with its index.
 a_bt2="--aligner bowtie2 --index ${idx_bt2}"
@@ -86,6 +89,12 @@ rows_exe=(
     "--ref_fa with CRAM output|se|${a_bt2} ${ref_cram}|pass --ref_fa"
     "--req_flg with SE only|se|${a_bt2} --req_flg|warn --req_flg"
     "--req_flg with a PE entry|mix|${a_bt2} --req_flg|pass --req_flg"
+    "--bt2_X with bwa|mix|${a_bwa} --bt2_X 800|refuse --bt2_X"
+    "--bt2_inherited with bwa-mem2|mix|${a_bm2} -2i|refuse --bt2_inherited"
+    "--bt2_X with SE only|se|${a_bt2} --bt2_X 800|warn --bt2_X"
+    "--bt2_inherited with SE only|se|${a_bt2} -2i|warn --bt2_inherited"
+    "--bt2_X with a PE entry|mix|${a_bt2} --bt2_X 800|pass --bt2_X"
+    "--bt2_inherited with a PE entry|mix|${a_bt2} -2i|pass --bt2_inherited"
     "--time without --slurm|se|${a_bt2} --time 1:00:00|warn --time"
 )
 
@@ -221,6 +230,8 @@ rows_ref=(
     "--bt2_mode|${a_bwa} --bt2_mode local|'--bt2_mode' is for '--aligner "
     "--bwa_alg|${a_bt2} --bwa_alg mem|'--bwa_alg' is for '--aligner "
     "--bwa_alg aln|${a_bm2} --bwa_alg aln|'--bwa_alg' is for '--aligner bwa';"
+    "--bt2_X|${a_bwa} --bt2_X 800|'--bt2_X' is for '--aligner "
+    "--bt2_inherited|${a_bm2} -2i|'--bt2_inherited' is for '--aligner "
 )
 
 for idx in "${!rows_ref[@]}"; do
@@ -249,6 +260,8 @@ rows_wrn=(
     "--ref_fa|${msg_ref}|${a_bt2} --ref_fa ${ref_fa}"
     "--req_flg|${msg_req}|${a_bt2} --req_flg"
     "--bwa_alg mem|${msg_bm2}|${a_bm2} --bwa_alg mem"
+    "--bt2_X|${msg_bx}|${a_bt2} --bt2_X 800"
+    "--bt2_inherited|${msg_bi}|${a_bt2} -2i"
 )
 
 for idx in "${!rows_wrn[@]}"; do
@@ -307,6 +320,36 @@ else
         "submit '--req_flg' with a mixed list warned, or reached the SE" \
         "entry (exit ${rc}; passed ${n_req} times)"
 fi
+
+# Likewise for the Bowtie 2 fragment settings: in a dry run of a mixed list,
+# only the paired-end entry's call carries them.
+for arg in "--bt2_X 800" "-2i"; do
+    read -r -a args <<< "${arg}"
+    opt="--bt2_X"
+    if [[ "${arg}" == "-2i" ]]; then opt="--bt2_inherited"; fi
+
+    out_bt2="$(
+        run_submit "${tmp}/sub_mixed_bt2" --dry_run \
+            --csv_fil_in "${in_se};${in_pe}" --aligner bowtie2 \
+            --index "${idx_bt2}" "${args[@]}"
+    )" || true
+    blk_se="$(
+        awk '/^# Sample /{ on = /tiny_se/ } on' <<< "${out_bt2}"
+    )"
+    blk_pe="$(
+        awk '/^# Sample /{ on = /tiny_pe/ } on' <<< "${out_bt2}"
+    )"
+
+    if [[
+        -n "${blk_se}"
+        && "${blk_se}" != *"${opt}"*
+        && "${blk_pe}" == *"    ${opt}"*
+    ]]; then
+        record_pass "submit passes '${opt}' only to a mixed list's PE entry"
+    else
+        record_fail "submit did not pass '${opt}' to the PE entry alone"
+    fi
+done
 
 # 'submit' passes '--mapq' on every time, so its default of 1 and an explicit 0
 # both reach the helper; the mixed run above gave no '--mapq'. The trace shows
@@ -372,6 +415,11 @@ rows_hlp=(
     "--bwa_alg mem with bwa-mem2|${a_bm2} --bwa_alg mem|warn|${msg_bm2}"
     "--req_flg with SE input|${a_bt2} --req_flg|warn|${msg_req}"
     "--ref_fa with BAM output|${a_bt2} --ref_fa ${ref_fa}|warn|${msg_ref}"
+    "--bt2_X with bwa|${a_bwa} --bt2_X 800|refuse|'--bt2_X' is for"
+    "--bt2_inherited with bwa|${a_bwa} -2i|refuse|'--bt2_inherited' is for"
+    "--bt2_X 0|${a_bt2} --bt2_X 0|refuse|'--bt2_X' was assigned '0'"
+    "--bt2_X with SE input|${a_bt2} --bt2_X 800|warn|${msg_bx}"
+    "--bt2_inherited with SE input|${a_bt2} -2i|warn|${msg_bi}"
     "--bt2_mode in capitals|${a_bt2} --bt2_mode Local|pass|"
 )
 
@@ -436,6 +484,48 @@ if [[ "${out}" == *"| samtools view \\"*"-F 4 \\"$'\n'"        -q 1 \\"* ]]; the
 else
     record_fail "helper did not default '--mapq' to 1"
 fi
+
+# '--bt2_X' with '--bt2_inherited' is refused at every layer, before any file
+# is written.
+arg_bth=( --aligner bowtie2 --index "${idx_bt2}" --bt2_X 800 -2i )
+
+declare -A out_bth
+out_bth[execute]="$(
+    "${TEST_BASH}" "${ROOT_REPO}/bin/execute_align_fastqs.sh" \
+        --dry_run \
+        --threads 1 \
+        --csv_fil_in "${in_pe}" \
+        --dir_out "${tmp}/exe_0" \
+        --max_job 1 \
+        "${arg_bth[@]}" 2>&1
+)" || true
+out_bth[submit]="$(
+    run_submit "${tmp}/sub_bth" --csv_fil_in "${in_pe}" "${arg_bth[@]}"
+)" || true
+out_bth[helper]="$(
+    run_helper "${arg_bth[@]}" --fq_2 "${in_pe_2}" \
+        --fil_out "${tmp}/helper_bth.bam"
+)" || true
+
+# Each layer refuses in its own name, so a layer that forwards the pair on to
+# the next one's refusal fails here.
+declare -A who_bth=(
+    [execute]="error(execute_align_fastqs.sh): "
+    [submit]="error(submit_align_fastqs.sh): "
+    [helper]="::align_fastqs): "
+)
+
+for lyr in execute submit helper; do
+    if [[
+        "${out_bth[${lyr}]}" == *"${who_bth[${lyr}]}${msg_both}"*
+        && ! -e "${tmp}/sub_bth/tiny_pe.bam"
+        && ! -e "${tmp}/helper_bth.bam"
+    ]]; then
+        record_pass "${lyr} refuses '--bt2_X' with '--bt2_inherited'"
+    else
+        record_fail "${lyr} did not refuse '--bt2_X' with '--bt2_inherited'"
+    fi
+done
 
 # The 'bt2' alias is gone, and every layer words an invalid aligner alike.
 msg_aln="'--aligner' must be 'bowtie2', 'bwa', or 'bwa-mem2': 'bt2'."

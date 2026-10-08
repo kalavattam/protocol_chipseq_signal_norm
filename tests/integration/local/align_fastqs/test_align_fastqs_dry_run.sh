@@ -137,8 +137,7 @@ bowtie2 \\
     --phred33 \\
     --no-mixed \\
     --no-discordant \\
-    --no-overlap \\
-    --no-dovetail \\
+    -X 1000 \\
     -1 ${in_pe_1} \\
     -2 ${in_pe_2} \\
     | samtools view \\
@@ -216,6 +215,44 @@ if [[ -z "$(find "${dir_sp}" -mindepth 1 -print -quit)" ]]; then
 else
     record_fail "helper dry run wrote files in '${dir_sp}'"
 fi
+
+
+# Bowtie 2, paired-end: '--bt2_X' sets '-X', and the hidden '--bt2_inherited'
+# restores the earlier call token for token, with no '-X'.
+t="${tmp}/bt2"
+for arm in "--bt2_X 800|-X 800" "-2i|--no-overlap;--no-dovetail"; do
+    IFS='|' read -r arg tok <<< "${arm}"
+    read -r -a args <<< "${arg}"
+    IFS=';' read -r -a toks <<< "${tok}"
+    printf -v lin '    %s \\\n' "${toks[@]}"
+
+    out="$(
+        run_helper --dry_run --threads 1 --aligner bowtie2 \
+            --index "${idx_bt2}" --fq_1 "${in_pe_1}" --fq_2 "${in_pe_2}" \
+            "${args[@]}" --fil_out "${t}.bam" 2> /dev/null
+    )" || true
+
+    exp="# Step 1: align the reads into the BAM work file.
+bowtie2 \\
+    -p 1 \\
+    -x ${idx_bt2} \\
+    --very-sensitive \\
+    --no-unal \\
+    --phred33 \\
+    --no-mixed \\
+    --no-discordant \\
+${lin}    -1 ${in_pe_1} \\
+    -2 ${in_pe_2} \\
+    | samtools view \\
+        -@ 1 \\
+        -F 12 \\
+        -q 1 \\
+        -o ${t}.bam"
+
+    check_block \
+        "Bowtie 2 PE dry run with '${arg}' prints its call" \
+        "${exp}" "$(print_step 1 "${out}")"
+done
 
 
 # BWA-backtrack, paired-end, '--mapq 20': the '.sai' redirects, their removal,

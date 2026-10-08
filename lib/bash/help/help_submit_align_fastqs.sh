@@ -24,7 +24,7 @@ Usage
   submit_align_fastqs.sh
     [--help] [--dry_run]
     [--env_nam <str>] [--dir_scr <dir>] [--threads <int>]
-    [--aligner <spec>] [--bt2_mode <spec>] [--bwa_alg <spec>] [--mapq <int>] [--req_flg]
+    [--aligner <spec>] [--bt2_mode <spec>] [--bt2_X <int>] [--bwa_alg <spec>] [--mapq <int>] [--req_flg]
     --index <path> --csv_fil_in <csv> [--ref_fa <file>]
     --dir_out <dir> [--out_ext <format>]
     [--qname] --sfx_se <str> --sfx_pe <str>
@@ -71,6 +71,9 @@ Parameters
 
   -2m, --bt2_mode : {'local', 'global', 'end-to-end'}
     Bowtie 2 alignment type when '--aligner bowtie2': 'local', 'global', or 'end-to-end' (default: '${bt2_mode}'); refused otherwise.
+
+  -2X, --bt2_X : int
+    Maximum fragment length for a Bowtie 2 paired-end alignment, passed as 'bowtie2 -X' (default: ${bt2_X}); refused unless '--aligner bowtie2'; ignored with a warning for single-end data.
 
   -ba, --bwa_alg : {'mem', 'aln'}
     BWA algorithm when '--aligner bwa': 'mem' or 'aln' (default: '${bwa_alg}').

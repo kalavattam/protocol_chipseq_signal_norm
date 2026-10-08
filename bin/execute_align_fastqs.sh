@@ -113,11 +113,11 @@ Expected globals
   env_nam, aligner, bt2_mode, bwa_alg, out_ext, csv_fil_in, sfx_se, sfx_pe, nam_job : str
     Environment, aligner, Bowtie 2 mode, BWA algorithm, output extension, serialized inputs, SE suffix, PE suffix, and job-name values, respectively.
 
-  threads, mapq : int
-    Thread count and MAPQ threshold, respectively.
+  threads, mapq, bt2_X : int
+    Thread count, MAPQ threshold, and Bowtie 2 maximum fragment length, respectively.
 
-  req_flg, qname : bool
-    Flag-filter and queryname-sort switches, respectively.
+  req_flg, qname, bt2_X_set, bt2_inherited : bool
+    Flag-filter and queryname-sort switches, whether '--bt2_X' was supplied, and whether the earlier Bowtie 2 paired-end call was asked for, respectively.
 
   index : path
     Aligner index or reference prefix.
@@ -200,6 +200,16 @@ EOM
         cmd_bld+=( --req_flg )
     fi
 
+    # Likewise for the Bowtie 2 fragment settings, which pass on only when
+    # supplied.
+    if [[ "${bt2_X_set}" == "true" && "${fil_in_i}" == *,* ]]; then
+        cmd_bld+=( --bt2_X "${bt2_X}" )
+    fi
+
+    if [[ "${bt2_inherited}" == "true" && "${fil_in_i}" == *,* ]]; then
+        cmd_bld+=( --bt2_inherited )
+    fi
+
     if [[ "${out_ext}" == "cram" ]]; then
         cmd_bld+=( --ref_fa "${ref_fa}" )
     fi
@@ -226,6 +236,9 @@ function init_arg_defs() {
     aligner="bowtie2"
     bt2_mode="end-to-end"
     bt2_mode_set=false
+    bt2_X=1000
+    bt2_X_set=false
+    bt2_inherited=false
     bwa_alg="mem"
     bwa_alg_set=false
     ref_fa=""
@@ -310,6 +323,25 @@ function parse_args() {
                 bt2_mode="${2,,}"
                 bt2_mode_set=true
                 shift 2
+                ;;
+
+            -2X|--bt2[_-]X)
+                require_optarg "${1}" "${2:-}" "main" || {
+                    echo >&2
+                    help_execute_align_fastqs >&2
+                    return 1
+                }
+                bt2_X="${2}"
+                bt2_X_set=true
+                shift 2
+                ;;
+
+            # Hidden per 'HELP.ALIAS.PUBLIC': reproduces the Bowtie 2
+            # paired-end calls made before 2026-10
+            # ('--no-overlap --no-dovetail', no '-X') and their alignments.
+            -2i|--bt2[_-]inherited)
+                bt2_inherited=true
+                shift 1
                 ;;
 
             -ba|--bwa[_-]alg)
@@ -473,13 +505,23 @@ function parse_args() {
 # Per 'HELP.PARAMETER.APPLICABILITY', refuse or warn about options that have no
 # effect with these settings.
 function check_opts_mode() {
-    # Each aligner takes only its own algorithm option.
+    # Each aligner takes only its own options.
     check_opt_applies \
         refuse \
         --aligner "${aligner}" \
         bowtie2 \
         --bt2_mode "${bt2_mode_set}" \
+        --bt2_X "${bt2_X_set}" \
+        --bt2_inherited "${bt2_inherited}" \
         || return 1
+
+    # The inherited call passes no '-X', so '--bt2_X' would change nothing.
+    if [[ "${bt2_X_set}" == "true" && "${bt2_inherited}" == "true" ]]; then
+        echo_err \
+            "'--bt2_X' has no effect with '--bt2_inherited', which passes no" \
+            "'-X'."
+        return 1
+    fi
 
     # 'bwa-mem2' has only 'mem', so asking for it changes nothing; anything
     # else is refused.
@@ -513,6 +555,19 @@ function check_opts_mode() {
         echo_warn \
             "'--req_flg' has no effect with single-end input and is ignored."
         req_flg=false
+    fi
+
+    if [[ "${bt2_X_set}" == "true" && "${csv_fil_in}" != *,* ]]; then
+        echo_warn \
+            "'--bt2_X' has no effect with single-end input and is ignored."
+        bt2_X_set=false
+    fi
+
+    if [[ "${bt2_inherited}" == "true" && "${csv_fil_in}" != *,* ]]; then
+        echo_warn \
+            "'--bt2_inherited' has no effect with single-end input and is" \
+            "ignored."
+        bt2_inherited=false
     fi
 }
 
@@ -561,6 +616,10 @@ function validate_args() {
                     return 1
                     ;;
             esac
+
+            if [[ "${bt2_X_set}" == "true" ]]; then
+                check_int_pos "${bt2_X}" "bt2_X" || return 1
+            fi
             ;;
 
         bwa)
@@ -720,6 +779,8 @@ function print_state_debug() {
         echo "threads=${threads}"
         echo "aligner=${aligner}"
         echo "bt2_mode=${bt2_mode}"
+        echo "bt2_X=${bt2_X}"
+        echo "bt2_inherited=${bt2_inherited}"
         echo "bwa_alg=${bwa_alg}"
         echo "ref_fa=${ref_fa}"
         echo "out_ext=${out_ext}"

@@ -247,8 +247,7 @@ bowtie2 \
     --very-sensitive \
     --no-mixed \
     --no-discordant \
-    --no-overlap \
-    --no-dovetail \
+    -X 1000 \
     -1 "${fq_r1_gz}" \
     -2 "${fq_r2_gz}" \
     -S /dev/null \

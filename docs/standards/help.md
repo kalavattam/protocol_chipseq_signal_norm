@@ -144,11 +144,11 @@ For a command with `--details`, that surface owns the required full document and
 
 Parser acceptance alone does not make an alias public. A public alias is intentionally documented and covered as supported. `Usage` advertises canonical long options. `Parameters` lists each public short and long alias exactly once, with the public short before the canonical long spelling. A public dry-run interface provides `-dr` and canonical `--dry_run`; narrower compatibility decisions may retire other historical dry-run spellings but do not remove that public pair.
 
-Hidden compatibility aliases may remain accepted but do not appear in `Usage`, `Parameters`, examples, or ordinary prose. Retired semantic names are not compatibility aliases. Preserve established underscore options, the documented underscore/hyphen boundary, public CSV short aliases beginning with `-c`, and canonical `--dp`. Alias changes migrate parser, help, examples, and interface evidence together.
+Hidden compatibility aliases may remain accepted but do not appear in `Usage`, `Parameters`, examples, or ordinary prose. A hidden reproduction setting, which restores an earlier default call so that outputs made with it can be reproduced exactly, may also stay out of `Usage`, `Parameters`, examples, and ordinary prose when the author rules so. A source comment at its parser case names the outputs it reproduces, and a focused test proves the call it restores. Retired semantic names are not compatibility aliases. Preserve established underscore options, the documented underscore/hyphen boundary, public CSV short aliases beginning with `-c`, and canonical `--dp`. Alias changes migrate parser, help, examples, and interface evidence together.
 
 **Automation:** `dev/audit/help_aliases.py`, parser contracts, and rendered checks compare registered facts and recognized forms with `subset` coverage.
 
-**Semantic remainder:** Decide whether an accepted spelling is public, compatibility-only, or retired.
+**Semantic remainder:** Decide whether an accepted spelling is public, compatibility-only, a hidden reproduction setting, or retired.
 
 **Exceptions:** None permit a hidden or retired spelling to appear as public documentation.
 
@@ -278,7 +278,7 @@ File-format displays distinguish public choices, accepted aliases, internal cano
 
 A parameter that has no effect under the current condition is never ignored silently. When a caller supplies it anyway:
 - **Refuse** it when a user would expect it to change the result, such as a value, a row, a file, or a format. The refusal names the parameter and the condition under which it applies.
-- **Warn and ignore** it when it is a supporting input, a performance setting, or a request already satisfied, so that ignoring it changes nothing the user could expect. The warning names the parameter and says it is ignored.
+- **Warn and ignore** it when it is a supporting input, a performance setting, or a request already satisfied, so that ignoring it changes nothing the user could expect. The warning names the parameter and says it is ignored. An ignored parameter is neither checked nor passed on, so an invalid value for it does not stop the run.
 
 A help description that states a condition, as [`HELP.SOURCE_STYLE`](#source-help-structure-helpsource_style) requires for mode-specific arguments, states the condition this rule enforces. A parameter counts as supplied only when the caller gave it explicitly. A default the code fills in is not supplied, so a caller passes an unset value (an empty string in Shell, `None` in Python) for a parameter that does not apply, rather than forwarding a default. Entry points and the helpers they call each enforce the rule for their own parameters; a duplicate message at two layers is acceptable.
 
@@ -290,7 +290,7 @@ Language realizations:
 
 **Semantic remainder:** Identify each parameter's conditions, decide whether a user would expect it to change the result, and choose refusal or warning.
 
-**Exceptions:** A parameter whose condition depends on per-entry input within one call, such as a single-end suffix in a call that mixes single-end and paired-end entries, is exempt while any entry can use it. An existing replacement that coerces an invalid value with a warning, such as `--typ_out`, remains a warning.
+**Exceptions:** A parameter whose condition depends on per-entry input within one call, such as a single-end suffix in a call that mixes single-end and paired-end entries, is exempt while any entry can use it. An existing replacement that coerces an invalid value with a warning, such as `--typ_out`, remains a warning. A Python CLI's parser checks a declared `choices` list or value type before this rule runs, so it may still reject a malformed value for an ignored option.
 
 <br />
 
