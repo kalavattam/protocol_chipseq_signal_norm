@@ -133,6 +133,7 @@ Notes
 
   - 'cmd_bld' is written as a global indexed array.
   - The reference FASTA argument is included only when 'out_ext=cram'.
+  - '--req_flg' is included only when the input being run includes a paired-end entry; a single-end entry run on its own gets none.
   - Flag-only options are added as separate array elements.
   - On index handling:
 
@@ -193,7 +194,9 @@ EOM
         bwa)     cmd_bld+=( --bwa_alg "${bwa_alg}" ) ;;
     esac
 
-    if [[ "${req_flg}" == "true" ]]; then
+    # A paired-end entry holds two comma-separated files; a single-end entry
+    # run on its own gets no '--req_flg'.
+    if [[ "${req_flg}" == "true" && "${fil_in_i}" == *,* ]]; then
         cmd_bld+=( --req_flg )
     fi
 

@@ -153,6 +153,49 @@ for idx in "${!rows_exe[@]}"; do
     esac
 done
 
+# Run in parallel, a mixed list gets one command per entry; with BAM output,
+# only the CRAM entry gets the reference, so the BAM entry's log stays free of
+# a warning. With CRAM output, both entries get it.
+for out_ext in bam cram; do
+    dir_out="${tmp}/exe_mix_parallel_${out_ext}"
+    mkdir -p "${dir_out}/logs"
+
+    rc=0
+    out="$(
+        "${TEST_BASH}" "${ROOT_REPO}/bin/execute_filter_alignments.sh" \
+            --dry_run \
+            --threads 4 \
+            --csv_fil_in "${in_bam},${in_cram}" \
+            --dir_out "${dir_out}" \
+            --out_ext "${out_ext}" \
+            --ref_fa "${ref_fa}" \
+            --max_job 2 2>&1
+    )" || rc=$?
+
+    cmds="$(grep 'submit_filter_alignments.sh --env' <<< "${out}" || true)"
+    cmd_bam="$(grep -F -- "--csv_fil_in ${in_bam} " <<< "${cmds}" || true)"
+    cmd_cram="$(grep -F -- "--csv_fil_in ${in_cram} " <<< "${cmds}" || true)"
+    want_bam="no"
+    if [[ "${out_ext}" == "cram" ]]; then want_bam="yes"; fi
+    has_bam="no"
+    if [[ "${cmd_bam}" == *" --ref_fa "* ]]; then has_bam="yes"; fi
+
+    if [[
+        "${rc}" -eq 0
+        && -n "${cmd_bam}"
+        && "${cmd_cram}" == *" --ref_fa "*
+        && "${has_bam}" == "${want_bam}"
+    ]]; then
+        record_pass \
+            "execute passes '--ref_fa' per parallel entry with" \
+            "'--out_ext ${out_ext}'"
+    else
+        record_fail \
+            "execute passed '--ref_fa' wrongly per parallel entry with" \
+            "'--out_ext ${out_ext}' (exit ${rc})"
+    fi
+done
+
 # A time limit is for Slurm jobs only, so a local run warns about it.
 dir_out="${tmp}/exe_time"
 mkdir -p "${dir_out}/logs"

@@ -132,6 +132,7 @@ Notes
 
   - 'cmd_bld' is written as a global indexed array.
   - Flag-only options are added as separate array elements.
+  - The reference FASTA argument is included only when the output is CRAM or the input being run includes a CRAM file; a BAM entry run on its own with BAM output gets none.
   - On index handling:
 
     idx=UNSET  ->  --csv_fil_in "\${csv_fil_in}"       # Full serialized list
@@ -199,7 +200,11 @@ EOM
         cmd_bld+=( --chk_chr )
     fi
 
-    if [[ -n "${ref_fa}" ]]; then
+    # A BAM entry run on its own with BAM output gets no reference.
+    if [[
+        -n "${ref_fa}"
+        && ( "${out_ext}" == "cram" || ",${fil_in_i,,}," == *".cram,"* )
+    ]]; then
         cmd_bld+=( --ref_fa "${ref_fa}" )
     fi
 }

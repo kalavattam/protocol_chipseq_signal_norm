@@ -155,6 +155,48 @@ for idx in "${!rows_exe[@]}"; do
     esac
 done
 
+# Run in parallel, a mixed list gets one command per entry, and only the
+# paired-end entry gets '--req_flg', so the single-end entry's log stays free
+# of a warning.
+dir_out="${tmp}/exe_mix_parallel"
+read -r -a args <<< "${a_bt2}"
+mkdir -p "${dir_out}/logs"
+
+rc=0
+out="$(
+    "${TEST_BASH}" "${ROOT_REPO}/bin/execute_align_fastqs.sh" \
+        --dry_run \
+        --threads 4 \
+        --csv_fil_in "${in_se};${in_pe}" \
+        --dir_out "${dir_out}" \
+        --max_job 2 \
+        "${args[@]}" \
+        --req_flg 2>&1
+)" || rc=$?
+
+cmd_se="$(
+    grep 'submit_align_fastqs.sh --env' <<< "${out}" \
+        | grep -F -- "--csv_fil_in ${in_se} " \
+        || true
+)"
+cmd_pe="$(
+    grep 'submit_align_fastqs.sh --env' <<< "${out}" \
+        | grep -F -- "${in_pe_2}" \
+        || true
+)"
+
+if [[
+    "${rc}" -eq 0
+    && -n "${cmd_se}"
+    && -n "${cmd_pe}"
+    && "${cmd_se}" != *" --req_flg"*
+    && "${cmd_pe}" == *" --req_flg"*
+]]; then
+    record_pass "execute passes '--req_flg' only to a parallel PE entry"
+else
+    record_fail "execute passed '--req_flg' to a parallel SE entry (exit ${rc})"
+fi
+
 
 # Run 'submit' on a list, writing to its own output directory.
 function run_submit() {
