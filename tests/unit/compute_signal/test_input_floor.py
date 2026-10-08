@@ -55,11 +55,11 @@ MIXED_CASE_FORMAT_HINTS = (
     ("bAm", "bam"),
     ("CrAm", "cram"),
     ("bEd", "bed"),
-    ("bedGraph", "bedgraph"),
-    ("bedgraph", "bedgraph"),
-    ("BeDgRaPh", "bedgraph"),
-    ("BdG", "bedgraph"),
-    ("bG", "bedgraph"),
+    ("bedGraph", "bedGraph"),
+    ("bedgraph", "bedGraph"),
+    ("BeDgRaPh", "bedGraph"),
+    ("BdG", "bedGraph"),
+    ("bG", "bedGraph"),
 )
 DIST_DIMENSION_CASES = (
     (10, 100),
@@ -115,9 +115,9 @@ def test_infer_input_format_recognizes_suffixes_and_stdin_hints() -> None:
     assert infer_input_format("x.bam") == "bam"
     assert infer_input_format("x.cram") == "cram"
     assert infer_input_format("x.bed.gz") == "bed"
-    assert infer_input_format("x.bdg") == "bedgraph"
+    assert infer_input_format("x.bdg") == "bedGraph"
     assert infer_input_format("-", "cram") == "cram"
-    assert infer_input_format("-", "bedGraph") == "bedgraph"
+    assert infer_input_format("-", "bedGraph") == "bedGraph"
     assert infer_input_format("x.txt") == "other"
 
 
@@ -147,7 +147,7 @@ def test_input_format_hints_are_case_insensitive_and_canonical(
 
 def test_named_path_format_inference_ignores_explicit_hint() -> None:
     assert infer_input_format("x.BAM", "BeDgRaPh") == "bam"
-    assert infer_input_format("x.BEDGRAPH.GZ", "CrAm") == "bedgraph"
+    assert infer_input_format("x.BEDGRAPH.GZ", "CrAm") == "bedGraph"
 
 
 def test_compute_input_floor_accepts_mixed_case_direct_hint(
@@ -315,7 +315,7 @@ def test_help_output_is_byte_exact(
     assert error.value.code == 0
     assert len(rendered) == 6417
     assert hashlib.sha256(rendered).hexdigest() == (
-        "7f240d0228fc1c74f992b8ecb11faf44e95983eec76f8c9e3650786e60389a2c"
+        "3f82d5481d5f5a2c5b3d14bd36f19811c423383074c7322d0f5d2179c121ea74"
     )
 
 

@@ -73,12 +73,12 @@ assert sys.version_info >= (3, 11), "Python >= 3.11 required."
 PAIRED_FLAGS = {99, 1123, 163, 1187}
 SINGLE_FLAGS = {0, 16, 1024, 1040}
 
-_CANONICAL_INPUT_FORMATS = ("bam", "cram", "bed", "bedgraph")
+_CANONICAL_INPUT_FORMATS = ("bam", "cram", "bed", "bedGraph")
 _FORMAT_LABELS = {
     "bam": "BAM",
     "cram": "CRAM",
     "bed": "BED",
-    "bedgraph": "bedGraph",
+    "bedGraph": "bedGraph",
 }
 
 # Options that act only in one mode, by destination and spelling.
@@ -101,9 +101,9 @@ _FORMAT_HINT_ALIASES = {
     "bam": "bam",
     "cram": "cram",
     "bed": "bed",
-    "bedgraph": "bedgraph",
-    "bdg": "bedgraph",
-    "bg": "bedgraph",
+    "bedgraph": "bedGraph",
+    "bdg": "bedGraph",
+    "bg": "bedGraph",
 }
 
 
@@ -338,7 +338,7 @@ def _canonicalize_input_format_hint(hint: str | None) -> str | None:
     Returns
     -------
     canonical_hint : str | None
-        One of 'bam', 'cram', 'bed', or 'bedgraph'. An unknown hint is
+        One of 'bam', 'cram', 'bed', or 'bedGraph'. An unknown hint is
         case-normalized for the parser or caller to reject.
     """
 
@@ -365,7 +365,7 @@ def infer_input_format(path: str, hint: str | None = None) -> str:
     Returns
     -------
     fmt_nam : str
-        Canonical 'bam', 'cram', 'bed', or 'bedgraph' for recognized input;
+        Canonical 'bam', 'cram', 'bed', or 'bedGraph' for recognized input;
         otherwise, 'other'.
     """
 
@@ -397,7 +397,7 @@ def infer_input_format(path: str, hint: str | None = None) -> str:
         or lowercase_path.endswith(".bg")
         or lowercase_path.endswith(".bg.gz")
     ):
-        return "bedgraph"
+        return "bedGraph"
 
     return "other"
 
@@ -715,7 +715,7 @@ def compute_input_floor(
     if mode == "dist":
         fmt_nam = infer_input_format(fil_in, fmt_in)
         _warn_ref_fa(fmt_nam, ref_fa)
-        if fmt_nam != "bedgraph":
+        if fmt_nam != "bedGraph":
             raise InputFloorValidationError(
                 "Error: '--mode dist' requires a bedGraph-like input file "
                 "(bedGraph, bdg, or bg, optionally with .gz).",
@@ -791,7 +791,7 @@ def compute_input_floor(
         )
     elif fmt_nam == "bed":
         n_in = _count_bed_records(fil_in, skp_pfx)
-    elif fmt_nam == "bedgraph":
+    elif fmt_nam == "bedGraph":
         raise InputFloorValidationError(
             "Error: '--mode frag' expects bam, cram, or bed/bed.gz (alignment "
             "records), not bedGraph.",
@@ -955,7 +955,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
             "Required when '--fil_in -' reads stdin; otherwise, ignored with "
             "a warning. Choose 'bam', 'cram', 'bed', 'bedGraph', 'bdg', or "
             "'bg'; accepted values resolve to 'bam', 'cram', 'bed', or "
-            "'bedgraph'."
+            "'bedGraph'."
         ),
     )
     parser.add_argument(
@@ -1342,7 +1342,7 @@ def _validate_data_arguments(args: argparse.Namespace) -> str:
         )
 
     if args.mode == "dist":
-        if fmt_nam != "bedgraph":
+        if fmt_nam != "bedGraph":
             if args.fil_in == "-":
                 message = (
                     "Error: When '--fil_in -' is used with '--mode dist', "
