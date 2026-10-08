@@ -433,5 +433,30 @@ for lyr in execute submit helper; do
     fi
 done
 
+# A Bowtie 2 index stem with no index files passes validation and fails in
+# Step 1, which must stop the helper with one error in the helper's name.
+fil_out="${tmp}/helper_step1.bam"
+rc=0
+out="$(
+    run_helper \
+        --aligner bowtie2 \
+        --index "${tmp}/no_index" \
+        --fil_out "${fil_out}"
+)" || rc=$?
+n_err="$(grep -c '^error(' <<< "${out}" || true)"
+
+if [[
+    "${rc}" -ne 0
+    && "${n_err}" -eq 1
+    && "${out}" == *"::align_fastqs): Step #1: failed to align single-end"*
+    && ! -e "${fil_out}"
+]]; then
+    record_pass "helper stops at a Step 1 failure with one error by name"
+else
+    record_fail \
+        "helper did not stop at a Step 1 failure with one error by name" \
+        "(exit ${rc}; ${n_err} errors)"
+fi
+
 
 finish
