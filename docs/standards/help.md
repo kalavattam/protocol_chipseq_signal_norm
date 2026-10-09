@@ -344,7 +344,7 @@ The `Type` field names the user-facing logical value form described or accepted 
 | `mapq`          | int               | MAPQ threshold.                                                            |
 | `req_flg`       | flag              | Require SAM flag bit 2 for properly paired alignments.                     |
 | `index`         | path              | Path to the aligner index/reference.                                       |
-| `qname`         | flag              | Retain queryname-sorted intermediate alignment files.                      |
+| `qname`         | flag              | Also write a queryname-sorted copy of the final alignment file.            |
 | `align_typ`     | choice            | Alignment layout type for input alignment files.                           |
 | `aln_typ`       | choice            | Alignment layout type for input alignment files.                           |
 | `csv_mip`       | list of file      | Comma-separated list of main IP alignment files.                           |

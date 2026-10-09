@@ -299,7 +299,7 @@ Parameters
     Output file path; must end in '.bam' or '.cram'.
 
   14  qname : flag
-    Retain queryname-sorted intermediate alignment files.
+    Also write a queryname-sorted copy of the final alignment file.
 
   15  dir_eo : dir
     Directory for stderr and stdout log files.

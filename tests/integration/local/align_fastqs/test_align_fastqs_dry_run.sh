@@ -122,8 +122,15 @@ mkdir -p "${dir_sp}"
 
 rc=0
 out="$(
-    run_helper --dry_run --threads 2 --aligner bowtie2 --index "${idx_bt2}" \
-        --fq_1 "${in_pe_1}" --fq_2 "${in_pe_2}" --req_flg --qname \
+    run_helper \
+        --dry_run \
+        --threads 2 \
+        --aligner bowtie2 \
+        --index "${idx_bt2}" \
+        --fq_1 "${in_pe_1}" \
+        --fq_2 "${in_pe_2}" \
+        --req_flg \
+        --qname \
         --fil_out "${dir_sp}/tiny pe.bam" 2> /dev/null
 )" || rc=$?
 
@@ -173,6 +180,9 @@ samtools sort \\
     -o ${esc}.coor.bam \\
     ${esc}.qnam.bam
 
+rm -f \\
+    ${esc}.qnam.bam
+
 mv -f \\
     ${esc}.coor.bam \\
     ${esc}.bam
@@ -199,7 +209,11 @@ samtools index \\
 
 
 # Step 5: write the final output and the retained files.
-${msg_nil}"
+samtools sort \\
+    -@ 2 \\
+    -n \\
+    -o ${esc}.qnam.bam \\
+    ${esc}.bam"
 
 if [[ "${rc}" -eq 0 ]]; then
     record_pass "helper dry run returns 0"
@@ -208,7 +222,9 @@ else
 fi
 
 check_block \
-    "Bowtie 2 PE dry run prints every step, spaces escaped" "${exp}" "${out}"
+    "Bowtie 2 PE dry run prints every step, spaces escaped" \
+    "${exp}" \
+    "${out}"
 
 if [[ -z "$(find "${dir_sp}" -mindepth 1 -print -quit)" ]]; then
     record_pass "helper dry run writes no file"
@@ -227,9 +243,15 @@ for arm in "--bt2_X 800|-X 800" "-2i|--no-overlap;--no-dovetail"; do
     printf -v lin '    %s \\\n' "${toks[@]}"
 
     out="$(
-        run_helper --dry_run --threads 1 --aligner bowtie2 \
-            --index "${idx_bt2}" --fq_1 "${in_pe_1}" --fq_2 "${in_pe_2}" \
-            "${args[@]}" --fil_out "${t}.bam" 2> /dev/null
+        run_helper \
+            --dry_run \
+            --threads 1 \
+            --aligner bowtie2 \
+            --index "${idx_bt2}" \
+            --fq_1 "${in_pe_1}" \
+            --fq_2 "${in_pe_2}" \
+            "${args[@]}" \
+            --fil_out "${t}.bam" 2> /dev/null
     )" || true
 
     exp="# Step 1: align the reads into the BAM work file.
@@ -251,7 +273,8 @@ ${lin}    -1 ${in_pe_1} \\
 
     check_block \
         "Bowtie 2 PE dry run with '${arg}' prints its call" \
-        "${exp}" "$(print_step 1 "${out}")"
+        "${exp}" \
+        "$(print_step 1 "${out}")"
 done
 
 
@@ -259,9 +282,16 @@ done
 # and the template filter's pipeline.
 t="${tmp}/aln"
 out="$(
-    run_helper --dry_run --threads 1 --aligner bwa --bwa_alg aln \
-        --mapq 20 --index "${idx_bwa}" --fq_1 "${in_pe_1}" \
-        --fq_2 "${in_pe_2}" --fil_out "${t}.bam" 2> /dev/null
+    run_helper \
+        --dry_run \
+        --threads 1 \
+        --aligner bwa \
+        --bwa_alg aln \
+        --mapq 20 \
+        --index "${idx_bwa}" \
+        --fq_1 "${in_pe_1}" \
+        --fq_2 "${in_pe_2}" \
+        --fil_out "${t}.bam" 2> /dev/null
 )" || true
 
 exp="# Step 1: align the reads into the BAM work file.
@@ -291,8 +321,11 @@ bwa sampe \\
 rm -f \\
     ${t}.R1.sai \\
     ${t}.R2.sai"
-check_block "BWA-backtrack PE dry run prints Step 1" \
-    "${exp}" "$(print_step 1 "${out}")"
+
+check_block \
+    "BWA-backtrack PE dry run prints Step 1" \
+    "${exp}" \
+    "$(print_step 1 "${out}")"
 
 exp="# Step 2: sort the BAM work file by queryname.
 samtools sort \\
@@ -336,24 +369,49 @@ rm -f \\
 mv -f \\
     ${t}.mapq.bam \\
     ${t}.qnam.bam"
-check_block "BWA-backtrack PE dry run prints the template filter" \
-    "${exp}" "$(print_step 2 "${out}")"
+
+check_block \
+    "BWA-backtrack PE dry run prints the template filter" \
+    "${exp}" \
+    "$(print_step 2 "${out}")"
+
+# Without '--qname', BAM output is the work file itself, so Step 5 runs nothing.
+exp="# Step 5: write the final output and the retained files.
+${msg_nil}"
+
+check_block \
+    "BAM dry run without '--qname' runs nothing in Step 5" \
+    "${exp}" \
+    "$(print_step 5 "${out}")"
 
 # The printed commands are the ones a real run executes: run as a script, they
 # write the same files, holding the same records.
 dir_par="${tmp}/parity"
 mkdir -p "${dir_par}/printed" "${dir_par}/real"
 out="$(
-    run_helper --dry_run --threads 1 --aligner bwa --bwa_alg aln \
-        --mapq 20 --index "${idx_bwa}" --fq_1 "${in_pe_1}" \
-        --fq_2 "${in_pe_2}" --fil_out "${dir_par}/printed/aln.bam" \
+    run_helper \
+        --dry_run \
+        --threads 1 \
+        --aligner bwa \
+        --bwa_alg aln \
+        --mapq 20 \
+        --index "${idx_bwa}" \
+        --fq_1 "${in_pe_1}" \
+        --fq_2 "${in_pe_2}" \
+        --fil_out "${dir_par}/printed/aln.bam" \
         2> /dev/null
 )" || true
 
 rc=0
 "${TEST_BASH}" -e -c "${out}" > /dev/null 2>&1 || rc=$?
-run_helper --threads 1 --aligner bwa --bwa_alg aln --mapq 20 \
-    --index "${idx_bwa}" --fq_1 "${in_pe_1}" --fq_2 "${in_pe_2}" \
+run_helper \
+    --threads 1 \
+    --aligner bwa \
+    --bwa_alg aln \
+    --mapq 20 \
+    --index "${idx_bwa}" \
+    --fq_1 "${in_pe_1}" \
+    --fq_2 "${in_pe_2}" \
     --fil_out "${dir_par}/real/aln.bam" > /dev/null 2>&1 || rc=$?
 
 if [[
@@ -370,12 +428,18 @@ else
 fi
 
 
-# BWA-MEM2, single-end, CRAM with '--qname': Step 5 converts both files,
-# indexes the output, and removes the BAM work files.
+# BWA-MEM2, single-end, CRAM with '--qname': Step 5 name-sorts the final BAM,
+# converts both files, indexes the output, and removes the BAM work files.
 t="${tmp}/cram"
 out="$(
-    run_helper --dry_run --threads 1 --aligner bwa-mem2 --index "${idx_bm2}" \
-        --ref_fa "${ref_fa}" --fq_1 "${in_se}" --qname \
+    run_helper \
+        --dry_run \
+        --threads 1 \
+        --aligner bwa-mem2 \
+        --index "${idx_bm2}" \
+        --ref_fa "${ref_fa}" \
+        --fq_1 "${in_se}" \
+        --qname \
         --fil_out "${t}.cram" 2> /dev/null
 )" || true
 
@@ -388,10 +452,19 @@ bwa-mem2 mem \\
         -@ 1 \\
         -F 4 \\
         -o ${t}.bam"
-check_block "BWA-MEM2 SE dry run prints Step 1 without '-q'" \
-    "${exp}" "$(print_step 1 "${out}")"
+
+check_block \
+    "BWA-MEM2 SE dry run prints Step 1 without '-q'" \
+    "${exp}" \
+    "$(print_step 1 "${out}")"
 
 exp="# Step 5: write the final output and the retained files.
+samtools sort \\
+    -@ 1 \\
+    -n \\
+    -o ${t}.qnam.bam \\
+    ${t}.bam
+
 samtools view \\
     -T ${ref_fa} \\
     -O cram \\
@@ -414,15 +487,22 @@ rm -f \\
 
 rm -f \\
     ${t}.qnam.bam"
-check_block "CRAM dry run prints Step 5" \
-    "${exp}" "$(print_step 5 "${out}")"
+
+check_block \
+    "CRAM dry run prints Step 5" \
+    "${exp}" \
+    "$(print_step 5 "${out}")"
 
 
 # A dry run still validates: a missing FASTQ is refused before any step.
 rc=0
 out="$(
-    run_helper --dry_run --aligner bowtie2 --index "${idx_bt2}" \
-        --fq_1 "${tmp}/absent.fastq.gz" --fil_out "${tmp}/absent.bam" 2>&1
+    run_helper \
+        --dry_run \
+        --aligner bowtie2 \
+        --index "${idx_bt2}" \
+        --fq_1 "${tmp}/absent.fastq.gz" \
+        --fil_out "${tmp}/absent.bam" 2>&1
 )" || rc=$?
 
 if [[
@@ -524,8 +604,12 @@ for spl in --dry-run --dry; do
     declare -A rc_lyr=( [helper]=0 [submit]=0 [execute]=0 )
 
     out_lyr[helper]="$(
-        run_helper "${spl}" --aligner bowtie2 --index "${idx_bt2}" \
-            --fq_1 "${in_se}" --fil_out "${tmp}/spell.bam" 2>&1
+        run_helper \
+            "${spl}" \
+            --aligner bowtie2 \
+            --index "${idx_bt2}" \
+            --fq_1 "${in_se}" \
+            --fil_out "${tmp}/spell.bam" 2>&1
     )" || rc_lyr[helper]=$?
     out_lyr[submit]="$(
         "${TEST_BASH}" "${ROOT_REPO}/bin/submit_align_fastqs.sh" \

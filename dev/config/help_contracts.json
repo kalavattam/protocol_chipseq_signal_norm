@@ -1010,7 +1010,7 @@
     {
       "id": "shared_qname",
       "parameter": "qname",
-      "canonical_core": "Retain queryname-sorted intermediate alignment files.",
+      "canonical_core": "Also write a queryname-sorted copy of the final alignment file.",
       "members": [
         {
           "surface_id": "lib/bash/help/help_execute_align_fastqs.sh::help_execute_align_fastqs",
@@ -1018,7 +1018,7 @@
           "symbol": "help_execute_align_fastqs",
           "parameter": "qname",
           "owner": "PARAMETER.DESCRIPTIONS",
-          "evidence": "Parameters row for 'qname': Retain queryname-sorted intermediate alignment files."
+          "evidence": "Parameters row for 'qname': Also write a queryname-sorted copy of the final alignment file."
         }
       ],
       "local_meanings": [],

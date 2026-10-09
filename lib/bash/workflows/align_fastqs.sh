@@ -1715,10 +1715,8 @@ function _sort_coord_bam() {
     local func="${1:-}"
     local dry_run="${2:-}"
     local threads="${3:-}"
-    local qname="${4:-}"
-    local fq_2="${5:-}"
-    local fil_wrk="${6:-}"
-    local bam_qnam="${7:-}"
+    local fil_wrk="${4:-}"
+    local bam_qnam="${5:-}"
     local bam_coor
     local -a arr_cmd
     local show_help
@@ -1727,9 +1725,9 @@ function _sort_coord_bam() {
 Usage
 -----
   _sort_coord_bam
-    [--help] func dry_run threads qname fq_2 fil_wrk bam_qnam
+    [--help] func dry_run threads fil_wrk bam_qnam
 
-  Sort the queryname-sorted BAM file by coordinates into the BAM work file and index it, deleting the queryname-sorted file unless it is to be retained (Step 3 of 'align_fastqs()').
+  Sort the queryname-sorted BAM file by coordinates into the BAM work file and index it, deleting the queryname-sorted file (Step 3 of 'align_fastqs()').
 
 Parameters
 ----------
@@ -1745,16 +1743,10 @@ Parameters
   3  threads : int
     Number of threads to use.
 
-  4  qname : bool
-    Whether to retain the queryname-sorted file.
-
-  5  fq_2 : file
-    Second FASTQ input file, or empty for single-end data; selects the error message.
-
-  6  fil_wrk : file
+  4  fil_wrk : file
     BAM work file to replace with the coordinate-sorted alignments.
 
-  7  bam_qnam : file
+  5  bam_qnam : file
     Queryname-sorted BAM file from Step 2.
 
 Returns
@@ -1771,28 +1763,19 @@ Notes
 
 Examples
 --------
-  1. Coordinate-sort a single-end work file and delete the queryname-sorted file.
+  1. Coordinate-sort a work file and delete the queryname-sorted file.
     '''bash
     _sort_coord_bam \\
         align_fastqs \\
         false \\
         2 \\
-        false \\
-        '' \\
-        work/tiny_se.bam \\
-        work/tiny_se.qnam.bam
-    '''
-
-  2. Print, without running, the coordinate sort of a paired-end work file that retains the queryname-sorted file.
-    '''bash
-    _sort_coord_bam \\
-        align_fastqs \\
-        true \\
-        2 \\
-        true \\
-        tests/fixtures/align_fastqs/fastq/pe/tiny_pe_R2.atria.fastq.gz \\
         work/tiny_pe.bam \\
         work/tiny_pe.qnam.bam
+    '''
+
+  2. Display the helper's argument contract.
+    '''bash
+    _sort_coord_bam --help
     '''
 EOM
     )
@@ -1824,17 +1807,17 @@ EOM
             return 1
         fi
 
-        if [[ "${qname}" == "false" ]]; then
-            arr_cmd=( rm -f "${bam_qnam}" )
+        # With '--qname', Step 5 name-sorts the final, duplicate-marked BAM, so
+        # this file is not kept.
+        arr_cmd=( rm -f "${bam_qnam}" )
 
-            if ! \
-                _run_or_print_cmd "${dry_run}" arr_cmd
-            then
-                echo_err_func "${func}" \
-                    "Step #3: failed to delete intermediate queryname-sorted" \
-                    "BAM file."
-                return 1
-            fi
+        if ! \
+            _run_or_print_cmd "${dry_run}" arr_cmd
+        then
+            echo_err_func "${func}" \
+                "Step #3: failed to delete intermediate queryname-sorted BAM" \
+                "file."
+            return 1
         fi
 
         arr_cmd=( mv -f "${bam_coor}" "${fil_wrk}" )
@@ -1857,14 +1840,8 @@ EOM
             return 1
         fi
     else
-        if [[ -n "${fq_2}" ]]; then
-            echo_err_func "${func}" \
-                "Step #3: mate-fixed, queryname-sorted BAM file does not" \
-                "exist."
-        else
-            echo_err_func "${func}" \
-                "Step #3: queryname-sorted BAM file does not exist."
-        fi
+        echo_err_func "${func}" \
+            "Step #3: queryname-sorted BAM file from Step 2 does not exist."
         return 1
     fi
 }
@@ -2004,8 +1981,8 @@ EOM
 }
 
 
-# Step 5: convert the final BAM work file to CRAM if requested; otherwise
-# retain BAM output as is, renaming any retained queryname-sorted file.
+# Step 5: with '--qname', name-sort the final BAM work file into a copy; then
+# convert the work file and the copy to CRAM if requested, or keep both as BAM.
 function _finalize_align_output() {
     local func="${1:-}"
     local dry_run="${2:-}"
@@ -2026,7 +2003,7 @@ Usage
   _finalize_align_output
     [--help] func dry_run threads out_fmt fil_out fil_wrk ref_fa qname bam_qnam fil_qnam_out
 
-  Convert the BAM work file and any retained queryname-sorted file to CRAM when requested, or rename the retained queryname-sorted BAM file into place (Step 5 of 'align_fastqs()').
+  With 'qname', name-sort the final, duplicate-marked BAM work file into a queryname-sorted copy; then convert the work file and the copy to CRAM when requested, or rename the copy into place (Step 5 of 'align_fastqs()').
 
 Parameters
 ----------
@@ -2055,13 +2032,13 @@ Parameters
     Reference FASTA path, used for CRAM output.
 
   08  qname : bool
-    Whether the queryname-sorted file is retained.
+    Whether to write a queryname-sorted copy of the final alignments.
 
   09  bam_qnam : file
-    Queryname-sorted BAM work file.
+    Path for the queryname-sorted BAM copy of the work file.
 
   10  fil_qnam_out : file
-    Path for the retained queryname-sorted output.
+    Path for the queryname-sorted output.
 
 Returns
 -------
@@ -2078,7 +2055,7 @@ Notes
 
 Examples
 --------
-  1. Convert a paired-end work file and its retained queryname-sorted file to CRAM.
+  1. Name-sort a paired-end work file into a copy, then convert both to CRAM.
     '''bash
     _finalize_align_output \\
         align_fastqs \\
@@ -2093,7 +2070,7 @@ Examples
         work/tiny_pe.qnam.cram
     '''
 
-  2. Print, without running, the step for BAM output that keeps the queryname-sorted file in place.
+  2. Print, without running, the step for BAM output with a queryname-sorted copy.
     '''bash
     _finalize_align_output \\
         align_fastqs \\
@@ -2119,14 +2096,30 @@ EOM
         printf '\n%s\n' \
             "# Step 5: write the final output and the retained files."
 
-        # BAM output is the BAM work file itself; with '--qname', so is the
-        # retained file, so nothing runs.
-        if [[
-            "${out_fmt}" == "bam"
-                && ( "${qname}" == "false" || "${bam_qnam}" == "${fil_qnam_out}" )
-        ]]; then
+        # BAM output without '--qname' is the BAM work file itself, so nothing
+        # runs.
+        if [[ "${out_fmt}" == "bam" && "${qname}" == "false" ]]; then
             printf '%s\n\n' \
                 "# Nothing to do: the BAM work file is the final output."
+        fi
+    fi
+
+    # Queryname-sort the final, duplicate-marked work file.
+    if [[ "${qname}" == "true" ]]; then
+        arr_cmd=(
+            samtools sort
+                -@ "${threads}"
+                -n
+                -o "${bam_qnam}"
+                "${fil_wrk}"
+        )
+
+        if ! \
+            _run_or_print_cmd "${dry_run}" arr_cmd
+        then
+            echo_err_func "${func}" \
+                "Step #5: failed to queryname-sort the final BAM work file."
+            return 1
         fi
     fi
 
@@ -2256,7 +2249,7 @@ Usage
 
   When '--aligner bwa' is selected, '--bwa_alg' may be used to choose either 'mem' or the older backtrack workflow ('aln' with downstream 'samse' or 'sampe').
 
-  Optionally, a queryname-sorted output can be retained with the '--qname' flag; otherwise, the queryname-sorted intermediate/work file is deleted.
+  Optionally, '--qname' also writes a queryname-sorted copy of the final alignment file.
 
 Parameters
 ----------
@@ -2309,7 +2302,7 @@ Parameters
     Path to the final alignment file (must end in '.bam' or '.cram').
 
   -qn, --qnam, --qname : flag
-    Retain queryname-sorted intermediate alignment files.
+    Also write a queryname-sorted copy of the final alignment file.
 
 Returns
 -------
@@ -2335,7 +2328,7 @@ Notes
   - Unaligned reads are excluded from the output; with paired-end data, so are the mates of unaligned reads.
   - With Bowtie 2 and paired-end data, mates may overlap or contain one another, so fragments shorter than the two reads together are kept; mates that extend past each other ("dovetailed") are not.
   - Duplicates are marked (SAM flag 1024) in Step #4, after MAPQ filtering, and kept. Like any other read, '--mapq' filters them by the MAPQ the aligner gave them.
-  - For '--qname', the retained queryname-sorted output will have the same path and stem assigned to '--fil_out', except '.qnam' will be inserted before the final extension (for example, '.qnam.bam' or '.qnam.cram'). For CRAM output, the retained queryname-sorted BAM work file is converted in Step #5.
+  - For '--qname', the retained queryname-sorted output will have the same path and stem assigned to '--fil_out', except '.qnam' will be inserted before the final extension (for example, '.qnam.bam' or '.qnam.cram'). The copy is made in Step #5 from the final, duplicate-marked alignments, so it holds the same records and flags.
   - '--ref_fa' is required when '--fil_out' ends in '.cram', since CRAM writing requires a reference FASTA.
 
 Examples
@@ -2599,8 +2592,6 @@ EOM
         "${FUNCNAME[0]}" \
         "${dry_run}" \
         "${threads}" \
-        "${qname}" \
-        "${fq_2}" \
         "${fil_wrk}" \
         "${bam_qnam}" \
         || return 1
@@ -2615,8 +2606,8 @@ EOM
         || return 1
 
 
-    # Step 5: convert to CRAM if requested, and keep or delete the
-    # queryname-sorted file.
+    # Step 5: convert to CRAM if requested; with '--qname', name-sort the final
+    # BAM into a copy.
     _finalize_align_output \
         "${FUNCNAME[0]}" \
         "${dry_run}" \

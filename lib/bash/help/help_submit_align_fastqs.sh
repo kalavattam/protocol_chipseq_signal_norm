@@ -118,7 +118,7 @@ Parameters
     Final output extension for alignment files: 'bam' or 'cram' (default: '${out_ext}').
 
   -qn, --qnam, --qname : flag
-    Retain queryname-sorted intermediate alignment files.
+    Also write a queryname-sorted copy of the final alignment file.
 
   -sxs, --sfx_se, --suffix_se : str
     Suffix to strip from single-end FASTQ filenames.

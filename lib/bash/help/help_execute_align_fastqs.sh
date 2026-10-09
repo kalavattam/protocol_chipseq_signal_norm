@@ -105,7 +105,7 @@ Parameters
     Final output extension for alignment files: 'bam' or 'cram' (default: '${out_ext}').
 
   -qn, --qname : flag
-    Retain queryname-sorted intermediate alignment files.
+    Also write a queryname-sorted copy of the final alignment file.
 
   -sxs, --sfx_se, --suffix_se : str
     Suffix to strip from single-end FASTQ filenames (default: '${sfx_se}').
@@ -147,7 +147,7 @@ Notes
 
   - When the '--slurm' flag is used, jobs are parallelized via Slurm array tasks. Otherwise, if multiple jobs are to be run, they are parallelized locally via GNU Parallel; if only one job is to be run, execution proceeds in serial.
   - If using Bowtie 2, ensure the path to index files ends with the index stem, e.g., "\${HOME}/path/stem" or "\${HOME}/path/sc_sp_proc". If using BWA or BWA-MEM2, the path should include the reference FASTA filename, e.g., "\${HOME}/path/stem.fa" or "\${HOME}/path/sc_sp_proc.fa".
-  - Calling the script with '--qname' retains an intermediate queryname-sorted alignment file used during mate fixing for paired-end alignments.
+  - Calling the script with '--qname' also writes a queryname-sorted copy of each final alignment file, with the same records and flags.
   - Retained queryname-sorted output files will share the same path and stem as the final alignment output file, but with '.qnam' inserted before the final extension (for example, '.qnam.bam' or '.qnam.cram').
   - When '--out_ext cram' is used, '--ref_fa' must also be supplied. Although intermediate work files are processed in BAM format, the final output, and any retained queryname-sorted output, are written as CRAM, which requires a reference FASTA.
   - Duplicates are marked (SAM flag 1024) after MAPQ filtering, and kept. Like any other read, '--mapq' filters them by the MAPQ the aligner gave them.
