@@ -128,12 +128,12 @@ Examples
 --------
   1. Check a normalized bedGraph with the default unity bounds.
     '''bash
-    check_unity "coverage_track.bdg"
+    check_unity "coverage_track.bedGraph"
     '''
 
   2. Check a gzipped track with wider bounds and quiet success output.
     '''bash
-    check_unity "coverage_track.bdg.gz" 0.99 1.01 "true"
+    check_unity "coverage_track.bedGraph.gz" 0.99 1.01 "true"
     '''
 EOM
     )

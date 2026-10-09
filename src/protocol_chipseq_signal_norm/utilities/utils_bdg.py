@@ -9,7 +9,7 @@
 # The following were used in design, development, and documentation, with all
 # output reviewed, edited, and approved by the author:
 # - OpenAI ChatGPT and Codex (GPT-5-series models; most recent: GPT-5.6);
-# - Anthropic Claude Code (Opus 5).
+# - Anthropic Claude Code (Opus 5, Opus 5.5).
 #
 # Distributed under the MIT license.
 
@@ -647,8 +647,7 @@ def write_bdg(
     coverage : dict[tuple[str, int], float]
         Binned signal data, where keys are (chrom, bin_start) and float values.
     fil_out : str
-        Path to the output file: '.bedGraph', '.bedgraph', '.bdg', or '.bg',
-        optionally with '.gz'.
+        Path to the output file ending in '.bedGraph', optionally with '.gz'.
     siz_bin : int
         Bin size in base pairs.
     decimal_places : int

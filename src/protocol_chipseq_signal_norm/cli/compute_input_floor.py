@@ -40,7 +40,10 @@ import warnings
 from contextlib import redirect_stdout, suppress
 
 from protocol_chipseq_signal_norm.utilities.utils_check import (
+    FORMATS,
+    canonicalize_format,
     check_exists,
+    format_from_path,
     validate_comparison,
 )
 from protocol_chipseq_signal_norm.utilities.utils_cli import (
@@ -73,7 +76,6 @@ assert sys.version_info >= (3, 11), "Python >= 3.11 required."
 PAIRED_FLAGS = {99, 1123, 163, 1187}
 SINGLE_FLAGS = {0, 16, 1024, 1040}
 
-_CANONICAL_INPUT_FORMATS = ("bam", "cram", "bed", "bedGraph")
 _FORMAT_LABELS = {
     "bam": "BAM",
     "cram": "CRAM",
@@ -96,14 +98,6 @@ _OPTS_INPUT = {
     "fmt_in": "--fmt_in",
     "ref_fa": "--ref_fa",
     "skp_pfx": "--skp_pfx",
-}
-_FORMAT_HINT_ALIASES = {
-    "bam": "bam",
-    "cram": "cram",
-    "bed": "bed",
-    "bedgraph": "bedGraph",
-    "bdg": "bedGraph",
-    "bg": "bedGraph",
 }
 
 
@@ -326,28 +320,30 @@ def _count_bed_records(bed_path: str, skp_pfx: tuple[str, ...]) -> int:
         ) from error
 
 
-def _canonicalize_input_format_hint(hint: str | None) -> str | None:
+def _format_hint(value: str) -> str:
     """
-    Canonicalize an explicit project-owned input-format hint.
+    Resolve a '--fmt_in' value for argparse, in any letter case.
 
     Parameters
     ----------
-    hint : str | None
-        Explicit format hint in any letter case.
+    value : str
+        Format name as supplied.
 
     Returns
     -------
-    canonical_hint : str | None
-        One of 'bam', 'cram', 'bed', or 'bedGraph'. An unknown hint is
-        case-normalized for the parser or caller to reject.
+    fmt : str
+        Canonical 'bam', 'cram', 'bed', or 'bedGraph'.
+
+    Raises
+    ------
+    argparse.ArgumentTypeError
+        If the name is a short bedGraph spelling or names no format.
     """
 
-    if hint is None:
-        return None
-
-    lowercase_hint = hint.casefold()
-
-    return _FORMAT_HINT_ALIASES.get(lowercase_hint, lowercase_hint)
+    try:
+        return canonicalize_format(value)
+    except ValueError as error:
+        raise argparse.ArgumentTypeError(str(error)) from None
 
 
 def infer_input_format(path: str, hint: str | None = None) -> str:
@@ -359,47 +355,26 @@ def infer_input_format(path: str, hint: str | None = None) -> str:
     path : str
         Input file path, or '-' for standard input.
     hint : str | None
-        Optional case-insensitive format hint used only when 'path == "-"' is
-        true. Accepts 'bam', 'cram', 'bed', 'bedGraph', 'bdg', or 'bg'.
+        Optional format hint in any letter case, used only when 'path == "-"'
+        is true: 'bam', 'cram', 'bed', or 'bedGraph'.
 
     Returns
     -------
     fmt_nam : str
         Canonical 'bam', 'cram', 'bed', or 'bedGraph' for recognized input;
         otherwise, 'other'.
+
+    Raises
+    ------
+    ValueError
+        If the hint or the path's suffix is a short bedGraph spelling, or the
+        hint names no format.
     """
 
     if path == "-":
-        canonical_hint = (
-            hint
-            if hint in _CANONICAL_INPUT_FORMATS
-            else _canonicalize_input_format_hint(hint)
-        )
+        return "other" if hint is None else canonicalize_format(hint)
 
-        if canonical_hint in _CANONICAL_INPUT_FORMATS:
-            return canonical_hint
-
-    lowercase_path = path.lower()
-    if lowercase_path.endswith(".bam"):
-        return "bam"
-
-    if lowercase_path.endswith(".cram"):
-        return "cram"
-
-    if lowercase_path.endswith(".bed") or lowercase_path.endswith(".bed.gz"):
-        return "bed"
-
-    if (
-        lowercase_path.endswith(".bedgraph")
-        or lowercase_path.endswith(".bedgraph.gz")
-        or lowercase_path.endswith(".bdg")
-        or lowercase_path.endswith(".bdg.gz")
-        or lowercase_path.endswith(".bg")
-        or lowercase_path.endswith(".bg.gz")
-    ):
-        return "bedGraph"
-
-    return "other"
+    return format_from_path(path) or "other"
 
 
 def _validate_positive_mode_dimensions(
@@ -626,10 +601,9 @@ def compute_input_floor(
     Parameters
     ----------
     fil_in : str
-        Input path. 'dist' accepts 'bedGraph', 'bdg', or 'bg', optionally with
-        '.gz'; 'frag' accepts 'bam', 'cram', 'bed', or 'bed.gz'; 'norm' ignores
-        'fil_in'. For 'dist' and 'frag', '-' reads standard input and requires
-        'fmt_in'.
+        Input path. 'dist' accepts '.bedGraph', optionally with '.gz'; 'frag'
+        accepts 'bam', 'cram', 'bed', or 'bed.gz'; 'norm' ignores 'fil_in'. For
+        'dist' and 'frag', '-' reads standard input and requires 'fmt_in'.
     siz_bin : int
         Target signal-bin width in base pairs. Used only by 'frag' and 'norm';
         callers must supply a positive value smaller than 'siz_gen'.
@@ -676,8 +650,8 @@ def compute_input_floor(
         Prefixes skipped as header or metadata rows in BED and bedGraph inputs.
     fmt_in : str | None
         Required case-insensitive format hint when 'fil_in' is '-'. Accepts
-        'bam', 'cram', 'bed', 'bedGraph', 'bdg', or 'bg' and resolves to a
-        canonical format; ignored for named paths.
+        'bam', 'cram', 'bed', or 'bedGraph' and resolves to a canonical format;
+        ignored for named paths.
     ref_fa : str | None
         Reference FASTA required for CRAM decoding and ignored otherwise.
 
@@ -717,8 +691,8 @@ def compute_input_floor(
         _warn_ref_fa(fmt_nam, ref_fa)
         if fmt_nam != "bedGraph":
             raise InputFloorValidationError(
-                "Error: '--mode dist' requires a bedGraph-like input file "
-                "(bedGraph, bdg, or bg, optionally with .gz).",
+                "Error: '--mode dist' requires a bedGraph input file "
+                "('.bedGraph', optionally with '.gz').",
             )
 
         # Keep only positive values, since ratio denominators are positive. The
@@ -859,7 +833,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
                     command_lines=(
                         "compute_input_floor",
                         "--mode dist",
-                        "--fil_in signal.bdg",
+                        "--fil_in signal.bedGraph",
                         "--method qntl_nz",
                         "--qntl_nz 1",
                     ),
@@ -930,10 +904,10 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         required=False,
         default=None,
         help=(
-            "Input path. For 'dist', provide bedGraph, bdg, or bg, optionally "
-            "with '.gz'. For 'frag', provide BAM, CRAM, or BED/BED.GZ. For "
-            "'dist' and 'frag', '-' reads stdin and requires '--fmt_in'. "
-            "Refused with '--mode norm'."
+            "Input path. For 'dist', provide bedGraph ('.bedGraph'), "
+            "optionally with '.gz'. For 'frag', provide BAM, CRAM, or "
+            "BED/BED.GZ. For 'dist' and 'frag', '-' reads stdin and requires "
+            "'--fmt_in'. Refused with '--mode norm'."
         ),
     )
     parser.add_argument(
@@ -946,23 +920,22 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         "-fmi",
         "--fmt_in",
         dest="fmt_in",
-        type=_canonicalize_input_format_hint,
-        choices=_CANONICAL_INPUT_FORMATS,
-        metavar="{bam,cram,bed,bedGraph,bdg,bg}",
+        type=_format_hint,
+        choices=FORMATS,
+        metavar="{bam,cram,bed,bedGraph}",
         default=None,
         help=(
             "Case-insensitive input-format hint for 'dist' or 'frag'. "
             "Required when '--fil_in -' reads stdin; otherwise, ignored with "
-            "a warning. Choose 'bam', 'cram', 'bed', 'bedGraph', 'bdg', or "
-            "'bg'; accepted values resolve to 'bam', 'cram', 'bed', or "
-            "'bedGraph'."
+            "a warning. Choose 'bam', 'cram', 'bed', or 'bedGraph', in any "
+            "letter case."
         ),
     )
     parser.add_argument(
         "--fmt-in",
         dest="fmt_in",
-        type=_canonicalize_input_format_hint,
-        choices=_CANONICAL_INPUT_FORMATS,
+        type=_format_hint,
+        choices=FORMATS,
         help=argparse.SUPPRESS,
     )
     parser.add_argument(
@@ -1346,13 +1319,13 @@ def _validate_data_arguments(args: argparse.Namespace) -> str:
             if args.fil_in == "-":
                 message = (
                     "Error: When '--fil_in -' is used with '--mode dist', "
-                    "provide '--fmt_in {bedGraph,bdg,bg}'."
+                    "provide '--fmt_in bedGraph'."
                 )
             else:
                 message = (
                     f"Error: Unsupported file type for '--mode dist': "
-                    f"'{args.fil_in}'. Provide bedGraph-like input "
-                    "(bedGraph, bdg, or bg, optionally with .gz)."
+                    f"'{args.fil_in}'. Provide bedGraph input ('.bedGraph', "
+                    "optionally with '.gz')."
                 )
 
             raise InputFloorValidationError(message)

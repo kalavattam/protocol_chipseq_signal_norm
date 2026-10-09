@@ -97,7 +97,7 @@ def test_chr_siz_is_rejected(tmp_path: Path) -> None:
                     "--fil_in",
                     "x.bam",
                     "--fil_out",
-                    "y.bdg",
+                    "y.bedGraph",
                     spelling,
                     str(sizes),
                 ],
@@ -108,8 +108,8 @@ def test_compute_signal_engines_match_and_clamp_bedgraph_end(
     tmp_path: Path,
 ) -> None:
     fil_in = FIXTURES / "bam" / "se" / "tiny_se.bam"
-    out_chrom = tmp_path / "chrom.bdg"
-    out_window = tmp_path / "window.bdg"
+    out_chrom = tmp_path / "chrom.bedGraph"
+    out_window = tmp_path / "window.bedGraph"
 
     chrom_status = main(
         [
@@ -220,9 +220,9 @@ def test_compute_signal_public_engines_match_default(
     usr_frg: int | None,
 ) -> None:
     fil_in = FIXTURES / subdir
-    out_default = tmp_path / f"{fil_in.stem}.default.bdg"
-    out_chrom = tmp_path / f"{fil_in.stem}.chrom.bdg"
-    out_window = tmp_path / f"{fil_in.stem}.window.bdg"
+    out_default = tmp_path / f"{fil_in.stem}.default.bedGraph"
+    out_chrom = tmp_path / f"{fil_in.stem}.chrom.bedGraph"
+    out_window = tmp_path / f"{fil_in.stem}.window.bedGraph"
     base_args = [
         "--fil_in",
         str(fil_in),
@@ -348,7 +348,7 @@ def test_compute_signal_public_engines_require_index(tmp_path: Path) -> None:
                 "--fil_in",
                 str(fil_in),
                 "--fil_out",
-                str(tmp_path / "out.bdg"),
+                str(tmp_path / "out.bedGraph"),
                 "--method",
                 "unadj",
                 "--engine",
@@ -368,7 +368,7 @@ def test_compute_signal_public_cram_requires_reference_fasta(
                 "--fil_in",
                 str(fil_in),
                 "--fil_out",
-                str(tmp_path / "out.bdg"),
+                str(tmp_path / "out.bedGraph"),
                 "--method",
                 "unadj",
                 "--engine",
@@ -387,7 +387,7 @@ def test_compute_signal_public_engines_and_bed_output(tmp_path: Path) -> None:
                     "--fil_in",
                     str(fil_in),
                     "--fil_out",
-                    str(tmp_path / f"{engine}.bdg"),
+                    str(tmp_path / f"{engine}.bedGraph"),
                     "--method",
                     "unadj",
                     "--engine",
@@ -416,7 +416,7 @@ def test_compute_signal_rejects_dash_io(tmp_path: Path) -> None:
     fil_in = FIXTURES / "bam" / "se" / "tiny_se.bam"
 
     with pytest.raises(SystemExit, match="--fil_in -"):
-        main(["--fil_in", "-", "--fil_out", str(tmp_path / "x.bdg")])
+        main(["--fil_in", "-", "--fil_out", str(tmp_path / "x.bedGraph")])
 
     with pytest.raises(SystemExit, match="--fil_out -"):
         main(["--fil_in", str(fil_in), "--fil_out", "-"])
@@ -463,7 +463,7 @@ def _alias_parser() -> argparse.ArgumentParser:
     CapArgumentParser.parse_args = capture
 
     try:
-        parse_args(["-fi", "x.bam", "-fo", "y.bdg"])
+        parse_args(["-fi", "x.bam", "-fo", "y.bedGraph"])
     except SystemExit:
         pass
     finally:
@@ -506,7 +506,7 @@ def test_hidden_hyphen_alias_matches_its_primary(
     Each hidden hyphen alias parses to the primary's value and type.
     """
 
-    base = list(["-fi", "x.bam", "-fo", "y.bdg"])
+    base = list(["-fi", "x.bam", "-fo", "y.bedGraph"])
     supplied = [primary] if value is None else [primary, value]
     aliased = [alias] if value is None else [alias, value]
     destination = primary.lstrip("-")
@@ -555,10 +555,10 @@ def test_hidden_aliases_satisfy_the_required_input_option() -> None:
     'main' instead, and this pins that the alias route works.
     """
 
-    args = parse_args(["--fil-in", "input.bam", "--fil-out", "output.bdg"])
+    args = parse_args(["--fil-in", "input.bam", "--fil-out", "output.bedGraph"])
 
     assert args.fil_in == "input.bam"
-    assert args.fil_out == "output.bdg"
+    assert args.fil_out == "output.bedGraph"
 
 
 def test_missing_input_is_still_rejected() -> None:
@@ -567,7 +567,7 @@ def test_missing_input_is_still_rejected() -> None:
     """
 
     with pytest.raises(SystemExit) as error:
-        main(["--fil_out", "output.bdg"])
+        main(["--fil_out", "output.bedGraph"])
 
     assert "'--fil_in' is required" in str(error.value)
 

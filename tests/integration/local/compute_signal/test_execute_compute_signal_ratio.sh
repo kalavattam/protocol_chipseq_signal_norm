@@ -28,35 +28,35 @@ source "$(
 # Define fixture and output paths for the execute-to-submit ratio path.
 dir_fx="${ROOT_REPO}/tests/fixtures/compute_signal/bedgraph"
 chr_siz="${ROOT_REPO}/tests/fixtures/compute_signal/reference/tiny.fa.fai"
-fil_A="${dir_fx}/ratio_A.bdg"
-fil_B="${dir_fx}/ratio_B.bdg"
-fil_A_hdr="${dir_fx}/ratio_headers_A.bdg"
-fil_B_hdr="${dir_fx}/ratio_headers_B.bdg"
-fil_A_gz="${dir_fx}/ratio_A.bdg.gz"
-fil_B_gz="${dir_fx}/ratio_B.bdg.gz"
+fil_A="${dir_fx}/ratio_A.bedGraph"
+fil_B="${dir_fx}/ratio_B.bedGraph"
+fil_A_hdr="${dir_fx}/ratio_headers_A.bedGraph"
+fil_B_hdr="${dir_fx}/ratio_headers_B.bedGraph"
+fil_A_gz="${dir_fx}/ratio_A.bedGraph.gz"
+fil_B_gz="${dir_fx}/ratio_B.bedGraph.gz"
 
 tmp="${TEST_DIR_TMP}/execute_compute_signal_ratio"
 dir_out="${tmp}/out"
 dir_err="${tmp}/logs"
 dir_log="${TEST_DIR_LOG}/compute_signal"
 
-fil_out_linear="${dir_out}/exec_ratio_A.bdg"
-fil_out_scl_fct="${dir_out}/exec_scl_fct_ratio_A.bdg"
-fil_out_log2="${dir_out}/exec_log2_ratio_A.bdg"
-fil_out_linear_r="${dir_out}/exec_linear_r_ratio_A.bdg"
-fil_out_log2_r="${dir_out}/exec_log2_r_ratio_A.bdg"
-fil_out_dep_min="${dir_out}/exec_dep_min_ratio_A.bdg"
-fil_out_eps="${dir_out}/exec_eps_ratio_A.bdg"
-fil_out_pseudo="${dir_out}/exec_pseudo_ratio_A.bdg"
-fil_out_drp_nan="${dir_out}/exec_drp_nan_ratio_A.bdg"
-fil_out_skip_00="${dir_out}/exec_skip_00_ratio_A.bdg"
-fil_out_skip_00_post_scale="${dir_out}/exec_skip_00_post_scale_ratio_A.bdg"
-fil_out_track="${dir_out}/exec_track_ratio_A.bdg"
-fil_out_gzip_io="${dir_out}/exec_gzip_io_ratio_A.bdg.gz"
-fil_out_skp_pfx="${dir_out}/exec_skp_pfx_ratio_headers_A.bdg"
+fil_out_linear="${dir_out}/exec_ratio_A.bedGraph"
+fil_out_scl_fct="${dir_out}/exec_scl_fct_ratio_A.bedGraph"
+fil_out_log2="${dir_out}/exec_log2_ratio_A.bedGraph"
+fil_out_linear_r="${dir_out}/exec_linear_r_ratio_A.bedGraph"
+fil_out_log2_r="${dir_out}/exec_log2_r_ratio_A.bedGraph"
+fil_out_dep_min="${dir_out}/exec_dep_min_ratio_A.bedGraph"
+fil_out_eps="${dir_out}/exec_eps_ratio_A.bedGraph"
+fil_out_pseudo="${dir_out}/exec_pseudo_ratio_A.bedGraph"
+fil_out_drp_nan="${dir_out}/exec_drp_nan_ratio_A.bedGraph"
+fil_out_skip_00="${dir_out}/exec_skip_00_ratio_A.bedGraph"
+fil_out_skip_00_post_scale="${dir_out}/exec_skip_00_post_scale_ratio_A.bedGraph"
+fil_out_track="${dir_out}/exec_track_ratio_A.bedGraph"
+fil_out_gzip_io="${dir_out}/exec_gzip_io_ratio_A.bedGraph.gz"
+fil_out_skp_pfx="${dir_out}/exec_skp_pfx_ratio_headers_A.bedGraph"
 
-trackfile_track="${dir_out}/exec_track_ratio_A.track.bdg"
-outfile_txt_gzip_io="${dir_out}/exec_gzip_io_ratio_A.bdg"
+trackfile_track="${dir_out}/exec_track_ratio_A.track.bedGraph"
+outfile_txt_gzip_io="${dir_out}/exec_gzip_io_ratio_A.bedGraph"
 
 log_linear="${dir_log}/execute_compute_signal_ratio_linear.log"
 log_scl_fct="${dir_log}/execute_compute_signal_ratio_scl_fct.log"
@@ -547,7 +547,7 @@ if \
             --csv_fil_A "${fil_A_gz}" \
             --csv_fil_B "${fil_B_gz}" \
             --dir_out "${dir_out}" \
-            --typ_out bdg.gz \
+            --typ_out bedGraph.gz \
             --prefix "exec_gzip_io" \
             --eps 0 \
             --dp 3 \
@@ -615,7 +615,7 @@ if \
             --csv_fil_A "${fil_A_hdr}" \
             --csv_fil_B "${fil_B_hdr}" \
             --dir_out "${dir_out}" \
-            --typ_out bdg \
+            --typ_out bedGraph \
             --prefix "exec_skp_pfx" \
             --eps 0 \
             --dp 3 \
@@ -1313,7 +1313,7 @@ out_thr="$(
         --csv_fil_A "${fil_A}" \
         --csv_fil_B "${fil_B}" \
         --dir_out "${dir_out}" \
-        --typ_out bdg \
+        --typ_out bedGraph \
         --dir_eo "${dir_err}" \
         --max_job 1 2>&1
 )" || rc_thr=$?
@@ -1491,7 +1491,7 @@ out_bare="$(
         --csv_fil_A "${fil_A}" \
         --csv_fil_B "${fil_B}" \
         --dir_out "${dir_out}" \
-        --typ_out bdg \
+        --typ_out bedGraph \
         --prefix exec_bare \
         --dir_eo "${dir_err}" \
         --nam_job "test_execute_compute_ratio_bare" \
@@ -1502,7 +1502,7 @@ out_bare="$(
 if [[
     "${rc_bare}" -ne 0
     && "${out_bare}" == *"needs 'A:B'"*
-    && ! -e "${dir_out}/exec_bare_ratio_A.bdg"
+    && ! -e "${dir_out}/exec_bare_ratio_A.bedGraph"
 ]]; then
     record_pass "a bare '--csv_pseudo' literal is refused, naming 'A:B'"
 else
@@ -1552,7 +1552,7 @@ out_nan="$(
         --csv_fil_A "${fil_A}" \
         --csv_fil_B "${fil_B}" \
         --dir_out "${dir_out}" \
-        --typ_out bdg \
+        --typ_out bedGraph \
         --prefix exec_nan_psd \
         --dir_eo "${dir_err}" \
         --nam_job "test_execute_compute_ratio_nan_psd" \
@@ -1563,7 +1563,7 @@ out_nan="$(
 if [[
     "${rc_nan}" -ne 0
     && "${out_nan}" == *"'--csv_pseudo' was assigned 'x'"*
-    && ! -e "${dir_out}/exec_nan_psd_ratio_A.bdg"
+    && ! -e "${dir_out}/exec_nan_psd_ratio_A.bedGraph"
     && -z "$(
         find "${dir_err}" -name 'test_execute_compute_ratio_nan_psd.*' \
             2>/dev/null

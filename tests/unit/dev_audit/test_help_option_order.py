@@ -200,7 +200,7 @@ def test_actual_reporting_order_fault_is_detected() -> None:
         [
             "--mode dist",
             "--verbose",
-            "--fil_in signal.bdg",
+            "--fil_in signal.bedGraph",
         ],
     )
     findings = validate_order(

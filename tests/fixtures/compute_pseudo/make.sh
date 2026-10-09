@@ -6,7 +6,7 @@
 # Copyright 2026 by Kris Alavattam
 # Email: kalavattam@gmail.com
 #
-# Anthropic Claude Code (Opus 5) was used in design, development, and
+# Anthropic Claude Code (Opus 5, Opus 5.5) was used in design, development, and
 # documentation, with all output reviewed, edited, and approved by the author.
 #
 # Distributed under the MIT license.
@@ -42,13 +42,11 @@ source "${dir_scr}/../../support/fixture_helpers.sh"
 # plays in the assertion: these are bedGraph inputs, which is what a workflow
 # input is, rather than a checker verdict.
 dir_bdg="${dir_fix}/bedgraph"
-fil_bdg_A="${dir_bdg}/pair_A.bdg"
-fil_bdg_B="${dir_bdg}/pair_B.bdg"
+fil_bdg_A="${dir_bdg}/pair_A.bedGraph"
+fil_bdg_B="${dir_bdg}/pair_B.bedGraph"
 
 # Remove stale outputs so regeneration is idempotent.
-rm_files "${dir_fix}" \
-    "${fil_bdg_A}" \
-    "${fil_bdg_B}"
+rm_files "${dir_fix}" "${fil_bdg_A}" "${fil_bdg_B}"
 
 mkdirs "${dir_bdg}"
 
@@ -57,7 +55,8 @@ mkdirs "${dir_bdg}"
 # edgeR estimator derives from them is a round number a reader can check by
 # hand, which is what makes a failure legible rather than merely red:
 #
-#     L_A = 1 + 2 + 3 =  6        L_B = 4 + 6 + 8 = 18
+#     L_A = 1 + 2 + 3 =  6
+#     L_B = 4 + 6 + 8 = 18
 #     L_bar = (6 + 18) / 2 = 12
 #     prior_scaled_A = 2 * 6 / 12 = 1.0
 #     prior_scaled_B = 2 * 18 / 12 = 3.0

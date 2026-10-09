@@ -58,4 +58,4 @@ def test_open_in_and_open_out_handle_gzip(tmp_path: Path) -> None:
 
 def test_ensure_single_stdin_rejects_multiple_stdin_paths() -> None:
     with pytest.raises(ValueError, match="At most one"):
-        ensure_single_stdin(["-", "file.bdg", "-"])
+        ensure_single_stdin(["-", "file.bedGraph", "-"])

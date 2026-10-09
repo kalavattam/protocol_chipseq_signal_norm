@@ -27,36 +27,36 @@ source "$(
 
 dir_fx="${ROOT_REPO}/tests/fixtures/compute_signal/bedgraph"
 chr_siz="${ROOT_REPO}/tests/fixtures/compute_signal/reference/tiny.fa.fai"
-fil_A="${dir_fx}/ratio_A.bdg"
-fil_B="${dir_fx}/ratio_B.bdg"
-fil_A_hdr="${dir_fx}/ratio_headers_A.bdg"
-fil_B_hdr="${dir_fx}/ratio_headers_B.bdg"
-fil_A_gz="${dir_fx}/ratio_A.bdg.gz"
-fil_B_gz="${dir_fx}/ratio_B.bdg.gz"
+fil_A="${dir_fx}/ratio_A.bedGraph"
+fil_B="${dir_fx}/ratio_B.bedGraph"
+fil_A_hdr="${dir_fx}/ratio_headers_A.bedGraph"
+fil_B_hdr="${dir_fx}/ratio_headers_B.bedGraph"
+fil_A_gz="${dir_fx}/ratio_A.bedGraph.gz"
+fil_B_gz="${dir_fx}/ratio_B.bedGraph.gz"
 
 tmp="${TEST_DIR_TMP}/submit_compute_signal_ratio"
 dir_out="${tmp}/out"
 dir_err="${tmp}/logs"
 dir_log="${TEST_DIR_LOG}/compute_signal"
 
-fil_out_linear="${dir_out}/ratio_linear.dp3.bdg"
-fil_out_scl_fct="${dir_out}/ratio_scl_fct_2_1.dp3.bdg"
-fil_out_log2="${dir_out}/ratio_log2.dp3.bdg"
-fil_out_linear_r="${dir_out}/ratio_linear_r.dp3.bdg"
-fil_out_log2_r="${dir_out}/ratio_log2_r.dp3.bdg"
-fil_out_dep_min="${dir_out}/ratio_dep_min_0p1.dp3.bdg"
-fil_out_eps="${dir_out}/ratio_eps_0p05.dp3.bdg"
-fil_out_pseudo="${dir_out}/ratio_pseudo_1_1.dp3.bdg"
-fil_out_drp_nan="${dir_out}/ratio_drp_nan.dp3.bdg"
-fil_out_skip_00="${dir_out}/ratio_skip_00_pre_scale.dp3.bdg"
-fil_out_skip_00_post="${dir_out}/ratio_skip_00_post_scale.dp3.bdg"
-fil_out_track="${dir_out}/ratio_track.dp3.bdg"
-fil_out_dp_alias="${dir_out}/ratio_dp_alias.dp2.bdg"
-fil_out_gzip_io="${dir_out}/ratio_gzip_io.dp3.bdg.gz"
-fil_out_skp_pfx="${dir_out}/ratio_skp_pfx.dp3.bdg"
+fil_out_linear="${dir_out}/ratio_linear.dp3.bedGraph"
+fil_out_scl_fct="${dir_out}/ratio_scl_fct_2_1.dp3.bedGraph"
+fil_out_log2="${dir_out}/ratio_log2.dp3.bedGraph"
+fil_out_linear_r="${dir_out}/ratio_linear_r.dp3.bedGraph"
+fil_out_log2_r="${dir_out}/ratio_log2_r.dp3.bedGraph"
+fil_out_dep_min="${dir_out}/ratio_dep_min_0p1.dp3.bedGraph"
+fil_out_eps="${dir_out}/ratio_eps_0p05.dp3.bedGraph"
+fil_out_pseudo="${dir_out}/ratio_pseudo_1_1.dp3.bedGraph"
+fil_out_drp_nan="${dir_out}/ratio_drp_nan.dp3.bedGraph"
+fil_out_skip_00="${dir_out}/ratio_skip_00_pre_scale.dp3.bedGraph"
+fil_out_skip_00_post="${dir_out}/ratio_skip_00_post_scale.dp3.bedGraph"
+fil_out_track="${dir_out}/ratio_track.dp3.bedGraph"
+fil_out_dp_alias="${dir_out}/ratio_dp_alias.dp2.bedGraph"
+fil_out_gzip_io="${dir_out}/ratio_gzip_io.dp3.bedGraph.gz"
+fil_out_skp_pfx="${dir_out}/ratio_skp_pfx.dp3.bedGraph"
 
-trackfile_track="${dir_out}/ratio_track.dp3.track.bdg"
-outfile_txt_gzip_io="${dir_out}/ratio_gzip_io.dp3.bdg"
+trackfile_track="${dir_out}/ratio_track.dp3.track.bedGraph"
+outfile_txt_gzip_io="${dir_out}/ratio_gzip_io.dp3.bedGraph"
 
 log_linear="${dir_log}/submit_compute_signal_ratio_linear.log"
 log_scl_fct="${dir_log}/submit_compute_signal_ratio_scl_fct.log"
@@ -1153,7 +1153,7 @@ mkdir -p "${dir_bc}"
     --method linear \
     --csv_fil_A "${fil_A},${fil_A}" \
     --csv_fil_B "${fil_B},${fil_B}" \
-    --csv_fil_out "${dir_bc}/one.bdg,${dir_bc}/two.bdg" \
+    --csv_fil_out "${dir_bc}/one.bedGraph,${dir_bc}/two.bedGraph" \
     --dir_eo "${dir_bc}" \
     --nam_job "test_compute_ratio_bc" \
     --csv_scl_fct 2:1 \
@@ -1163,7 +1163,7 @@ mkdir -p "${dir_bc}"
 # Bin I:50-60 holds A = 1, B = 0.04, so '2 * 1 / max(0.04, 0.5)' is 4 only when
 # both the scale factor and the floor reached the pair.
 n_bc=0
-for out in "${dir_bc}/one.bdg" "${dir_bc}/two.bdg"; do
+for out in "${dir_bc}/one.bedGraph" "${dir_bc}/two.bedGraph"; do
     if grep -q $'^I\t50\t60\t4$' "${out}" 2>/dev/null; then
         n_bc=$(( n_bc + 1 ))
     fi
@@ -1187,7 +1187,7 @@ out_bl="$(
         --method linear \
         --csv_fil_A "${fil_A},${fil_A}" \
         --csv_fil_B "${fil_B},${fil_B}" \
-        --csv_fil_out "${dir_bc}/lit_1.bdg,${dir_bc}/lit_2.bdg" \
+        --csv_fil_out "${dir_bc}/lit_1.bedGraph,${dir_bc}/lit_2.bedGraph" \
         --dir_eo "${dir_bc}" \
         --nam_job "test_compute_ratio_bc_lit" \
         --csv_pseudo 1:1 2>&1
@@ -1196,7 +1196,7 @@ out_bl="$(
 if [[
     "${rc_bl}" -ne 0
     && "${out_bl}" == *"single literal '--csv_pseudo'"*
-    && ! -e "${dir_bc}/lit_1.bdg"
+    && ! -e "${dir_bc}/lit_1.bedGraph"
 ]]; then
     record_pass \
         "submit does not apply a single literal pseudocount to all pairs"

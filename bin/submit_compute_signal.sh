@@ -87,9 +87,8 @@ function process_io() {
     local fil_out=""
     local scl_fct=""
     local opt_var=""
-    local show_help     # Help text.
-    local samp dsc ext  # Sample name, output descriptor, and loop variable.
-    local -a exts       # Recognized output/input extensions.
+    local show_help  # Help text.
+    local samp dsc   # Sample name and output descriptor.
 
     # TODO: break parameter options under Usage across semantic paragraphs.
     show_help=$(cat << EOM
@@ -271,29 +270,18 @@ EOM
         validate_var "opt_var" "${opt_var}" || return 1
     fi
 
-    exts=( bedGraph bedGraph.gz bedgraph bedgraph.gz bdg bdg.gz bg bg.gz )
+    # Format suffixes are removed in any letter case.
     if [[ "${mode}" == "ratio" ]]; then
-        samp="${fil_out##*/}"
-        for ext in "${exts[@]}"; do
-            samp="${samp%."${ext}"}"
-        done
+        samp="$(strip_fmt_suffix "${fil_out##*/}")"
     else
-        samp="$(basename "${fil_in}")"
-        samp="${samp%.bam}"
-        samp="${samp%.cram}"
+        samp="$(strip_fmt_suffix "$(basename "${fil_in}")")"
     fi
 
-    exts+=( bed bed.gz )
     if [[ -n "${fil_out}" ]]; then
-        dsc="$(basename "${fil_out}")"
+        dsc="$(strip_fmt_suffix "$(basename "${fil_out}")")"
     else
-        dsc="$(basename "${fil_in}")"
+        dsc="$(strip_fmt_suffix "$(basename "${fil_in}")")"
     fi
-
-    for ext in "${exts[@]}"; do
-        dsc="${dsc%."${ext}"}"
-    done
-    unset ext
 
     # Return sample name and output descriptor (comma-delimited).
     echo "${samp},${dsc}"
@@ -491,7 +479,9 @@ Examples
     tmp="\$(mktemp -d)"; trap 'rm -r -- "\${tmp}"' EXIT
     declare -a cmd=(printf '%s\n' executed)
     debug=false; dry_run=false
-    if run_dry_or_wet cmd "\${tmp}/stdout.txt" "\${tmp}/stderr.txt"; then
+    if \\
+        run_dry_or_wet cmd "\${tmp}/stdout.txt" "\${tmp}/stderr.txt"
+    then
         printf '%s\n' 'command completed'
     fi
     '''
@@ -515,7 +505,9 @@ EOM
         return 1
     fi
 
-    if ! decl="$(declare -p "${arr_nam}" 2> /dev/null)"; then
+    if ! \
+        decl="$(declare -p "${arr_nam}" 2> /dev/null)"
+    then
         echo_err_func "${FUNCNAME[0]}" \
             "command array '${arr_nam}' is unset."
         return 1
@@ -1134,7 +1126,9 @@ Examples
   2. Confirm that an out-of-range element request is rejected.
     '''bash
     declare -a arr_fil_out=(sample_A.bedGraph)
-    if ! get_arr_elem arr_fil_out 2; then
+    if ! \\
+        get_arr_elem arr_fil_out 2
+    then
         printf '%s\n' 'out-of-range index rejected as expected'
     fi
     '''
@@ -1166,7 +1160,9 @@ EOM
         return 1
     fi
 
-    if ! decl="$(declare -p "${arr_nam}" 2> /dev/null)"; then
+    if ! \
+        decl="$(declare -p "${arr_nam}" 2> /dev/null)"
+    then
         echo_err_func "${FUNCNAME[0]}" \
             "array '${arr_nam}' is unset."
         return 1
@@ -2814,6 +2810,11 @@ function validate_vecs() {
                 "'submit_compute_signal.sh'. Provide output file paths."
             return 1
         fi
+
+        # A report-only run writes no track, so its entry is empty.
+        if [[ -n "${fil_out}" ]]; then
+            check_fmt_path "${fil_out}" || return 1
+        fi
     done
 
     if [[ "${mode}" =~ ^(signal|coord)$ ]]; then
@@ -2845,11 +2846,13 @@ function validate_vecs() {
         done
     elif [[ "${mode}" == "ratio" ]]; then
         for idx in "${!arr_fil_A[@]}"; do
+            check_fmt_path "${arr_fil_A[${idx}]}" || return 1
             validate_var_file "arr_fil_A" "${arr_fil_A[${idx}]}" "${idx}" \
                 || return 1
         done
 
         for idx in "${!arr_fil_B[@]}"; do
+            check_fmt_path "${arr_fil_B[${idx}]}" || return 1
             validate_var_file "arr_fil_B" "${arr_fil_B[${idx}]}" "${idx}" \
                 || return 1
         done
@@ -2966,6 +2969,7 @@ function main() {
     source_helpers_submit "${0##*/}" "${dir_scr}" \
         check_args \
         check_env \
+        check_formats \
         check_inputs \
         check_numbers \
         format_outputs \

@@ -9,7 +9,7 @@
 # The following were used in design, development, and documentation, with all
 # output reviewed, edited, and approved by the author:
 # - OpenAI ChatGPT and Codex (GPT-5-series models; most recent: GPT-5.6);
-# - Anthropic Claude Code (Opus 5).
+# - Anthropic Claude Code (Opus 5, Opus 5.5).
 #
 # Distributed under the MIT license.
 
@@ -39,6 +39,7 @@ from contextlib import redirect_stdout, suppress
 
 from protocol_chipseq_signal_norm.utilities.utils_bdg import iter_rows_bdg
 from protocol_chipseq_signal_norm.utilities.utils_check import (
+    check_bedgraph_path,
     check_exists,
     validate_comparison,
 )
@@ -195,7 +196,8 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         nargs="+",
         help=(
             "bedGraph paths ('.gz' is handled), or '-' for stdin (at most, "
-            "one '-' is allowed)."
+            "one '-' is allowed). A name ending in '.bdg' or '.bg' is "
+            "refused; use '.bedGraph'."
         ),
     )
 
@@ -256,6 +258,7 @@ def main(argv: list[str] | None = None) -> int:
 
         for p in args.paths:
             if p != "-":
+                check_bedgraph_path(p)
                 check_exists(p, "file", "bedGraph")
 
         validate_comparison(args.dp, "ge", 0, "dp", allow_none=False)

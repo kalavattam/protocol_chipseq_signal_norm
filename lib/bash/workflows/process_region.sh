@@ -6,9 +6,11 @@
 # Copyright 2024-2026 by Kris Alavattam
 # Email: kalavattam@gmail.com
 #
-# OpenAI ChatGPT and Codex (GPT-4- and GPT-5-series models; most recent:
-# GPT-5.6) were used in design, development, and documentation, with all output
-# reviewed, edited, and approved by the author.
+# The following were used in design, development, and documentation, with all
+# output reviewed, edited, and approved by the author:
+# - OpenAI ChatGPT and Codex (GPT-4- and GPT-5-series models; most recent:
+#   GPT-5.6);
+# - Anthropic Claude Code (Opus 5.5).
 #
 # Distributed under the MIT license.
 
@@ -18,7 +20,7 @@
 # check_region_bdg
 
 
-#  Source required helper functions if needed
+# Source required helper functions if needed.
 {
     _dir_src_region="$(
         cd "$(dirname "${BASH_SOURCE[0]}")" > /dev/null 2>&1 && pwd
@@ -52,8 +54,8 @@
 }
 
 
-#TODO: audit current usage; keep this helper even if unused
-#MAYBE: make function "private"?
+# TODO: audit current usage; keep this helper even if unused.
+# MAYBE: make function "private"?
 function check_region() {
     local region="${1:-}"
     local pat_rmn="I|II|III|IV|V|VI|VII|VIII|IX|X|XI|XII|XIII|XIV|XV|XVI"
@@ -107,7 +109,9 @@ Examples
 
   2. Handle rejection of a range whose end coordinate precedes its start coordinate.
     '''bash
-    if ! check_region "chrI:500-100"; then
+    if ! \\
+        check_region "chrI:500-100"
+    then
         printf '%s\n' "The region range is reversed."
     fi
     '''
@@ -162,8 +166,8 @@ EOM
 
 
 function check_region_bam() {
-    #TODO: handle (S|CR)AM too
-    #TODO: handle bedGraph as well, or create a separate function for that
+    # TODO: handle (S|CR)AM too.
+    # TODO: handle bedGraph as well, or create a separate function for that.
     local bam="${1:-}"
     local region="${2:-}"
     local chr start end
@@ -214,7 +218,9 @@ Examples
 
   2. Handle rejection of a range extending beyond the chromosome bounds in an indexed BAM.
     '''bash
-    if ! check_region_bam "alignments/sample.bam" "chrI:1-999999999"; then
+    if ! \\
+        check_region_bam "alignments/sample.bam" "chrI:1-999999999"
+    then
         printf '%s\n' "The requested BAM region is out of bounds."
     fi
     '''
@@ -240,7 +246,9 @@ EOM
 
     validate_var_file "bam" "${bam}" || return 1
 
-    if ! command -v samtools > /dev/null 2>&1; then
+    if ! \
+        command -v samtools > /dev/null 2>&1
+    then
         echo_err_func "${FUNCNAME[0]}" \
             "'samtools' is not installed or not in PATH."
         return 1
@@ -314,7 +322,7 @@ EOM
 }
 
 
-#TODO: audit current usage; keep this helper even if unused
+# TODO: audit current usage; keep this helper even if unused.
 function check_region_bdg() {
     local fil_bdg="${1:-}"
     local region="${2:-}"
@@ -364,12 +372,14 @@ Examples
 --------
   1. Validate a chromosome against bounds inferred from a plain-text bedGraph.
     '''bash
-    check_region_bdg "signals/sample.bdg" chrI
+    check_region_bdg "signals/sample.bedGraph" chrI
     '''
 
   2. Validate an explicit range against bounds inferred from a gzip-compressed bedGraph.
     '''bash
-    if check_region_bdg "signals/sample.bdg.gz" "chrI:1-1000"; then
+    if \\
+        check_region_bdg "signals/sample.bedGraph.gz" "chrI:1-1000"
+    then
         printf '%s\n' "The compressed bedGraph contains the requested range."
     fi
     '''
@@ -397,9 +407,13 @@ EOM
     check_region "${region}" || return 1
 
     if [[ "${fil_bdg}" =~ \.gz$ ]]; then
-        if command -v gzip > /dev/null 2>&1; then
+        if \
+            command -v gzip > /dev/null 2>&1
+        then
             cmd_cat=( gzip -cd "${fil_bdg}" )
-        elif command -v zcat > /dev/null 2>&1; then
+        elif \
+            command -v zcat > /dev/null 2>&1
+        then
             cmd_cat=( zcat "${fil_bdg}" )
         else
             echo_err_func "${FUNCNAME[0]}" \
@@ -491,7 +505,7 @@ EOM
 }
 
 
-#  Print an error message when function script is executed directly
+# Print an error message when function script is executed directly.
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
     err_source_only "${BASH_SOURCE[0]}"
 fi

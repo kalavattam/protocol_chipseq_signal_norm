@@ -33,8 +33,8 @@ BEDGRAPH = ROOT / "tests" / "fixtures" / "compute_pseudo" / "bedgraph"
 # '2 * 18 / 12' exactly. A fixture is consumed by hard failure rather than by a
 # skip, so a missing generation step fails loudly instead of turning the suite
 # green.
-FIL_A = str(BEDGRAPH / "pair_A.bdg")
-FIL_B = str(BEDGRAPH / "pair_B.bdg")
+FIL_A = str(BEDGRAPH / "pair_A.bedGraph")
+FIL_B = str(BEDGRAPH / "pair_B.bedGraph")
 
 # Every signal type this tool serves, with the extra arguments each one needs.
 SUB_EXTRA = {

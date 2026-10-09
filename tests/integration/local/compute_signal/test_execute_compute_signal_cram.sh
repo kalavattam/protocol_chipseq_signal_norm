@@ -36,11 +36,11 @@ dir_out="${tmp}/out"
 dir_err="${tmp}/logs"
 dir_log="${TEST_DIR_LOG}/compute_signal"
 
-fil_out_se_signal="${dir_out}/tiny_se.bdg"
+fil_out_se_signal="${dir_out}/tiny_se.bedGraph"
 fil_out_se_coord="${dir_out}/tiny_se.bed"
-fil_out_pe_signal="${dir_out}/tiny_pe.bdg"
+fil_out_pe_signal="${dir_out}/tiny_pe.bedGraph"
 fil_out_pe_coord="${dir_out}/tiny_pe.bed"
-fil_out_missing_ref="${dir_out}/tiny_se_missing_ref.bdg"
+fil_out_missing_ref="${dir_out}/tiny_se_missing_ref.bedGraph"
 
 log_se_signal="${dir_log}/execute_compute_signal_cram_se_signal.log"
 log_se_coord="${dir_log}/execute_compute_signal_cram_se_coord.log"
@@ -75,7 +75,7 @@ run_case_compute_signal \
     "se_signal" \
     "signal" \
     "${in_se}" \
-    "bdg" \
+    "bedGraph" \
     "${log_se_signal}" \
     "${dir_out}" \
     "${dir_err}" \
@@ -138,7 +138,7 @@ run_case_compute_signal \
     "pe_signal" \
     "signal" \
     "${in_pe}" \
-    "bdg" \
+    "bedGraph" \
     "${log_pe_signal}" \
     "${dir_out}" \
     "${dir_err}" \
@@ -206,7 +206,7 @@ if \
             --mode signal \
             --csv_fil_in "${in_se}" \
             --dir_out "${dir_out}" \
-            --typ_out bdg \
+            --typ_out bedGraph \
             --csv_usr_frg NA \
             --dp 3 \
             --dir_eo "${dir_err}" \
@@ -237,7 +237,7 @@ fi
 # Window engine over CRAM, multi-threaded, as previously CRAM suites had no
 # '--siz_win' case, and nothing paired '--siz_win' with '--threads' above one,
 # in which case window tasks are distributed across cores.
-fil_out_pe_window="${dir_out}/window_t2.tiny_pe.bdg"
+fil_out_pe_window="${dir_out}/window_t2.tiny_pe.bedGraph"
 log_pe_window="${dir_log}/execute_compute_signal_cram_pe_window.log"
 
 run_case_compute_signal \
@@ -246,7 +246,7 @@ run_case_compute_signal \
     "pe_window" \
     "signal" \
     "${in_pe}" \
-    "bdg" \
+    "bedGraph" \
     "${log_pe_window}" \
     "${dir_out}" \
     "${dir_err}" \

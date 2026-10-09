@@ -70,6 +70,7 @@ from protocol_chipseq_signal_norm.utilities.utils_cli import (
     add_help_cap,
     check_opts_apply,
     find_supplied,
+    warn_as_note,
 )
 from protocol_chipseq_signal_norm.utilities.utils_io import open_out
 
@@ -2213,10 +2214,10 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
             "'--report_n_ovlp' is given, in which case it may be omitted to "
             "count without writing a track.\n"
             "\n"
-            "Supported output types are bedGraph ('bedGraph', 'bedgraph', "
-            "'bdg', 'bg') and BED ('bed').\n"
+            "Supported output types are bedGraph ('.bedGraph') and BED "
+            "('.bed').\n"
             "\n"
-            "Append '.gz' for gzip compression, e.g., 'output.bdg.gz'.\n"
+            "Append '.gz' for gzip compression: e.g., 'output.bedGraph.gz'.\n"
             "\n"
             "Note: requesting BED output causes the script to write processed "
             "fragment coordinates in a BED-like format. Both BED output and a "
@@ -3051,10 +3052,11 @@ def main(argv: list[str] | None = None) -> int:
         if report_only:
             fil_out, fmt_out = None, None
         else:
-            fil_out, fmt_out, _ = validate_output_path(
-                args.fil_out,
-                ALLOWED_OUTPUT_FORMATS,
-            )
+            with warn_as_note():
+                fil_out, fmt_out, _ = validate_output_path(
+                    args.fil_out,
+                    ALLOWED_OUTPUT_FORMATS,
+                )
 
             check_writable(fil_out, "file")
 

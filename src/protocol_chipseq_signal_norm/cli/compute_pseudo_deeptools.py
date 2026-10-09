@@ -41,6 +41,7 @@ from contextlib import redirect_stdout, suppress
 
 from protocol_chipseq_signal_norm.utilities.utils_bdg import sum_counts_bdg
 from protocol_chipseq_signal_norm.utilities.utils_check import (
+    check_bedgraph_path,
     check_exists,
     validate_comparison,
 )
@@ -161,7 +162,8 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         dest="fil_A",
         help=(
             "First bedGraph input file, file A. Use '-' for stdin; '.gz' is "
-            "handled.\n"
+            "handled. A name ending in '.bdg' or '.bg' is refused; use "
+            "'.bedGraph'.\n"
             "\n"
         ),
     )
@@ -177,7 +179,8 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         default=None,
         help=(
             "Second bedGraph input file, file B. This file is optional for "
-            "single-track mode; use '-' for stdin; '.gz' is handled.\n"
+            "single-track mode; use '-' for stdin; '.gz' is handled. A name "
+            "ending in '.bdg' or '.bg' is refused; use '.bedGraph'.\n"
             "\n"
         ),
     )
@@ -794,8 +797,9 @@ def main(argv: list[str] | None = None) -> int:
             if p is None or p == "-":
                 continue
 
+            check_bedgraph_path(p)
             check_exists(p, kind="file", label=f"bedGraph {label}")
-    except FileNotFoundError as e:
+    except (FileNotFoundError, ValueError) as e:
         raise SystemExit(str(e)) from None
 
     try:

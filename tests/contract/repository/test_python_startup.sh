@@ -339,7 +339,7 @@ if \
         "${log_ret_out}" \
         "${py_cmd[@]}" "${ROOT_REPO}/src/protocol_chipseq_signal_norm/cli/compute_signal.py" \
             --fil_in x \
-            --fil_out canonical.bdg \
+            --fil_out canonical.bedGraph \
             "${ret_alias_out}" y
 then
     record_fail "compute_signal.py unexpectedly accepts retired output alias"

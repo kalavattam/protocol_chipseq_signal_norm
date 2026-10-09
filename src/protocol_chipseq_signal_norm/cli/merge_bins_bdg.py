@@ -47,6 +47,7 @@ from protocol_chipseq_signal_norm.utilities.utils_bdg import (
     try_float,
 )
 from protocol_chipseq_signal_norm.utilities.utils_check import (
+    check_bedgraph_path,
     check_exists,
     check_writable,
     validate_comparison,
@@ -55,6 +56,7 @@ from protocol_chipseq_signal_norm.utilities.utils_check import (
 from protocol_chipseq_signal_norm.utilities.utils_cli import (
     CapArgumentParser,
     add_help_cap,
+    warn_as_note,
 )
 from protocol_chipseq_signal_norm.utilities.utils_io import (
     DEF_SKP_PFX,
@@ -426,7 +428,8 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         required=True,
         help=(
             "Path to the input bedGraph file (.gz is handled), or '-' for "
-            "stdin.\n"
+            "stdin. A name ending in '.bdg' or '.bg' is refused; use "
+            "'.bedGraph'.\n"
             "\n"
         ),
     )
@@ -436,8 +439,8 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         dest="fil_out",
         required=True,
         help=(
-            "Path to the output bedGraph file (.gz is handled), or '-' for "
-            "stdout.\n"
+            "Path to the output bedGraph file, ending in '.bedGraph' (.gz is "
+            "handled), or '-' for stdout.\n"
             "\n"
         ),
     )
@@ -518,13 +521,16 @@ def main(argv: list[str] | None = None) -> int:
 
     try:
         if args.fil_in != "-":
+            check_bedgraph_path(args.fil_in)
             check_exists(args.fil_in, "file", "bedGraph")
 
         if args.fil_out != "-":
-            fil_out, _, _ = validate_output_path(
-                args.fil_out,
-                ("bedgraph", "bdg", "bg"),
-            )
+            with warn_as_note():
+                fil_out, _, _ = validate_output_path(
+                    args.fil_out,
+                    ("bedGraph",),
+                )
+
             check_writable(fil_out, "file")
         else:
             fil_out = "-"

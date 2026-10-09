@@ -36,11 +36,11 @@ dir_out="${tmp}/out"
 dir_err="${tmp}/logs"
 dir_log="${TEST_DIR_LOG}/compute_signal"
 
-fil_out_se_signal="${dir_out}/tiny_se_signal_unadj.bdg"
+fil_out_se_signal="${dir_out}/tiny_se_signal_unadj.bedGraph"
 fil_out_se_coord="${dir_out}/tiny_se_coord.bed"
-fil_out_pe_signal="${dir_out}/tiny_pe_signal_unadj.bdg"
+fil_out_pe_signal="${dir_out}/tiny_pe_signal_unadj.bedGraph"
 fil_out_pe_coord="${dir_out}/tiny_pe_coord.bed"
-fil_out_missing_ref="${dir_out}/tiny_se_missing_ref.bdg"
+fil_out_missing_ref="${dir_out}/tiny_se_missing_ref.bedGraph"
 
 log_se_signal="${dir_log}/submit_compute_signal_cram_se_signal.log"
 log_se_coord="${dir_log}/submit_compute_signal_cram_se_coord.log"
@@ -248,7 +248,7 @@ fi
 # Window engine over CRAM, multi-threaded, as previously CRAM suites had no
 # '--siz_win' case, and nothing paired '--siz_win' with '--threads' above one,
 # in which case window tasks are distributed across cores.
-fil_out_pe_window="${dir_out}/tiny_pe_window_t2.bdg"
+fil_out_pe_window="${dir_out}/tiny_pe_window_t2.bedGraph"
 log_pe_window="${dir_log}/submit_compute_signal_cram_pe_window.log"
 
 run_case_compute_signal \
@@ -300,7 +300,7 @@ mkdir -p "${dir_rep}"
 bash "${ROOT_REPO}/bin/submit_compute_signal.sh" \
     --mode signal \
     --csv_fil_in "${in_pe}" \
-    --csv_fil_out "${dir_rep}/pe.bdg" \
+    --csv_fil_out "${dir_rep}/pe.bedGraph" \
     --csv_report_n_frg "${dir_rep}/pe.n_frg.txt" \
     --csv_report_n_ovlp "${dir_rep}/pe.n_ovlp.txt" \
     --ref_fa "${ref_fa}" \

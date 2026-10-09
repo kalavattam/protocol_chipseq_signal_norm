@@ -129,8 +129,8 @@ Parameters
   -do, --dir_out : dir
     Output directory for generated files.
 
-  -to, --typ_out : {'bedGraph', 'bedGraph.gz', 'bedgraph', 'bedgraph.gz', 'bdg', 'bdg.gz', 'bg', 'bg.gz', 'bed', 'bed.gz'}
-    Output file format (default: 'bedGraph.gz' with '--mode signal' or '--mode ratio'; 'bed.gz' with '--mode coord').
+  -to, --typ_out : {'bedGraph', 'bedGraph.gz', 'bed', 'bed.gz'}
+    Output file format (default: 'bedGraph.gz' with '--mode signal' or '--mode ratio'; 'bed.gz' with '--mode coord'). Values are matched in any letter case; 'bdg' and 'bg' are refused.
 
     For '--mode signal' or '--mode ratio', the typical choice is a bedGraph-style track (e.g., 'bedGraph.gz').
 
@@ -461,13 +461,13 @@ Parameters
       - Ratio tracks if '--mode ratio'.
       - BED-like files of fragment coordinates if '--mode coord'.
 
-  -to, --typ_out : {'bedGraph', 'bedGraph.gz', 'bedgraph', 'bedgraph.gz', 'bdg', 'bdg.gz', 'bg', 'bg.gz', 'bed', 'bed.gz'}
-    Output file format for signal track output files (default: 'bedGraph.gz' with '--mode signal' or '--mode ratio'; 'bed.gz' with '--mode coord'). Available options:
-      - 'bedGraph', 'bedgraph', 'bdg', 'bg':
+  -to, --typ_out : {'bedGraph', 'bedGraph.gz', 'bed', 'bed.gz'}
+    Output file format for signal track output files (default: 'bedGraph.gz' with '--mode signal' or '--mode ratio'; 'bed.gz' with '--mode coord'). Values are matched in any letter case; 'bdg' and 'bg' are refused. Available options:
+      - 'bedGraph':
         + Signal/ratio in bedGraph format.
         + Intended for '--mode signal' or '--mode ratio'; with '--mode coord' these values are accepted but coerced to 'bed.gz' (see Notes).
 
-      - 'bedGraph.gz', 'bedgraph.gz', 'bdg.gz', 'bg.gz':
+      - 'bedGraph.gz':
         + Signal/ratio in gzip-compressed bedGraph format.
         + Intended for '--mode signal' or '--mode ratio'; with '--mode coord' these values are accepted but coerced to 'bed.gz' (see Notes).
 
@@ -735,7 +735,7 @@ Notes
     + Spaces in paths are not supported by the current list-serialization and reconstruction logic.
   - Use consistent file ordering between IP and input files.
   - '--typ_out' must be compatible with the selected '--mode'.
-    + With '--mode signal' or '--mode ratio', bedGraph-style values ('bedGraph', 'bedgraph', 'bdg', and 'bg', and their '.gz' variants) are allowed; 'bed'/'bed.gz' are accepted but are automatically converted to 'bedGraph.gz' with a warning.
+    + With '--mode signal' or '--mode ratio', bedGraph values ('bedGraph' and 'bedGraph.gz') are allowed; 'bed'/'bed.gz' are accepted but are automatically converted to 'bedGraph.gz' with a warning.
     + With '--mode coord', 'bed'/'bed.gz' are allowed; bedGraph-style values are accepted but are automatically converted to 'bed.gz' with a warning.
   - Output filenames are derived from BAM/CRAM or bedGraph input files and the value associated with '--typ_out'.
   - For bedGraph-style output, '--dp' sets the maximum number of decimal places retained for finite emitted values; after rounding, non-informative trailing zeros and any trailing decimal point are stripped.

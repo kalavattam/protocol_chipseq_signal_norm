@@ -296,8 +296,8 @@ def test_reporting_leaves_the_written_track_byte_identical(
     tmp_path: Path,
 ) -> None:
     fil_in = FIXTURES / "bam" / "pe" / "tiny_pe.bam"
-    out_plain = tmp_path / "plain.bdg"
-    out_reported = tmp_path / "reported.bdg"
+    out_plain = tmp_path / "plain.bedGraph"
+    out_reported = tmp_path / "reported.bedGraph"
     base_args = [
         "--fil_in",
         str(fil_in),
@@ -336,7 +336,7 @@ def test_emitted_track_carries_no_zero_valued_row(
     # '--skip_00' is redundant on our own tracks) depends on this, so the
     # property is pinned here against changes to the emission predicate.
     fil_in = FIXTURES / "bam" / "se" / "tiny_se.bam"
-    fil_out = tmp_path / "track.bdg"
+    fil_out = tmp_path / "track.bedGraph"
 
     status = main(
         [

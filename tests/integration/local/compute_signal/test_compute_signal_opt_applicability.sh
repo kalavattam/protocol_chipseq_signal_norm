@@ -28,8 +28,8 @@ source "$(
 # checked, so rows with a missing file or a malformed value still warn.
 dir_fx="${ROOT_REPO}/tests/fixtures/compute_signal"
 in_se="${dir_fx}/bam/se/tiny_se.bam"
-fil_A="${dir_fx}/bedgraph/ratio_A.bdg.gz"
-fil_B="${dir_fx}/bedgraph/ratio_B.bdg.gz"
+fil_A="${dir_fx}/bedgraph/ratio_A.bedGraph.gz"
+fil_B="${dir_fx}/bedgraph/ratio_B.bedGraph.gz"
 ref_fa="${dir_fx}/reference/tiny.fa"
 
 tmp="${TEST_DIR_TMP}/compute_signal_opt_applicability"

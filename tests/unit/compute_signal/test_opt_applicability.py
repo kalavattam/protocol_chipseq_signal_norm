@@ -42,8 +42,8 @@ from protocol_chipseq_signal_norm.utilities.utils_stabilizer import (
 
 ROOT = Path(__file__).resolve().parents[3]
 FIXTURES = ROOT / "tests" / "fixtures"
-FIL_A = str(FIXTURES / "compute_pseudo" / "bedgraph" / "pair_A.bdg")
-FIL_B = str(FIXTURES / "compute_pseudo" / "bedgraph" / "pair_B.bdg")
+FIL_A = str(FIXTURES / "compute_pseudo" / "bedgraph" / "pair_A.bedGraph")
+FIL_B = str(FIXTURES / "compute_pseudo" / "bedgraph" / "pair_B.bedGraph")
 BAM_SE = str(FIXTURES / "compute_signal" / "bam" / "se" / "tiny_se.bam")
 REF_FA = str(FIXTURES / "compute_signal" / "reference" / "tiny.fa")
 
@@ -388,17 +388,17 @@ SIGNAL_WARNED = (
         "x.bed", ["--engine", "window"], "'--engine'", id="bed engine"
     ),
     pytest.param(
-        "x.bdg", ["--siz_win", "20"], "'--siz_win'", id="chrom siz_win"
+        "x.bedGraph", ["--siz_win", "20"], "'--siz_win'", id="chrom siz_win"
     ),
-    pytest.param("x.bdg", ["--ref_fa", REF_FA], "'--ref_fa'", id="BAM ref_fa"),
+    pytest.param("x.bedGraph", ["--ref_fa", REF_FA], "'--ref_fa'", id="BAM ref_fa"),
     pytest.param(
-        "x.bdg",
+        "x.bedGraph",
         ["--ref_fa", "missing.fa"],
         "'--ref_fa'",
         id="BAM missing ref_fa",
     ),
     pytest.param(
-        "x.bdg", ["--siz_win", "0"], "'--siz_win'", id="chrom invalid siz_win"
+        "x.bedGraph", ["--siz_win", "0"], "'--siz_win'", id="chrom invalid siz_win"
     ),
     pytest.param(
         "x.bed", ["--siz_win", "0"], "'--siz_win'", id="bed invalid siz_win"
@@ -431,7 +431,7 @@ def test_compute_signal_stays_silent_for_options_that_apply(
             "--fil_in",
             BAM_SE,
             "--fil_out",
-            str(tmp_path / "x.bdg"),
+            str(tmp_path / "x.bedGraph"),
             "--engine",
             "window",
             "--siz_win",

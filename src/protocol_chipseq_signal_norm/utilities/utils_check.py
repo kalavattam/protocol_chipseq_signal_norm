@@ -43,13 +43,19 @@ COMPARISON_OPERATORS: dict[str, tuple] = {
     "ne": (operator.ne, "!="),
 }
 
-ALLOWED_OUTPUT_FORMATS: tuple[str, ...] = (
-    "bedGraph",
-    "bedgraph",
-    "bdg",
-    "bg",
-    "bed",
-)
+# Formats the tools read and write, by canonical name. A format name or file
+# suffix is matched in any letter case and resolves to its canonical spelling.
+FORMATS: tuple[str, ...] = ("bam", "cram", "bed", "bedGraph")
+
+# Formats whose files may end in '.gz'.
+FORMATS_GZIP: frozenset[str] = frozenset({"bed", "bedGraph"})
+
+# Short bedGraph spellings, refused in favor of 'bedGraph'.
+BEDGRAPH_SHORT: frozenset[str] = frozenset({"bdg", "bg"})
+
+ALLOWED_OUTPUT_FORMATS: tuple[str, ...] = ("bedGraph", "bed")
+
+_FORMAT_CANON = {name.casefold(): name for name in FORMATS}
 
 
 def format_label(label: str) -> str:
@@ -231,6 +237,159 @@ def validate_comparison(
             )
 
 
+def canonicalize_format(name: str, allowed: Iterable[str] = FORMATS) -> str:
+    """
+    Resolve a format name, in any letter case, to its canonical spelling.
+
+    Parameters
+    ----------
+    name : str
+        Format name as supplied, such as 'bedgraph' or 'CRAM'.
+    allowed : Iterable[str]
+        Canonical formats accepted here (default: 'FORMATS').
+
+    Returns
+    -------
+    fmt : str
+        Canonical format name, such as 'bedGraph' or 'cram'.
+
+    Raises
+    ------
+    ValueError
+        If 'name' is a short bedGraph spelling ('bdg', 'bg') or not one of
+        'allowed'.
+    """
+
+    allowed = tuple(allowed)
+    key = name.strip().casefold()
+
+    if key in BEDGRAPH_SHORT:
+        raise ValueError(f"Format '{name}' is not accepted; use 'bedGraph'.")
+
+    fmt = _FORMAT_CANON.get(key)
+
+    if fmt is None or fmt not in allowed:
+        quoted = [f"'{entry}'" for entry in allowed]
+        choices = (
+            quoted[0]
+            if len(quoted) == 1
+            else f"{', '.join(quoted[:-1])}, or {quoted[-1]}"
+        )
+
+        raise ValueError(f"Invalid format '{name}'; choose {choices}.")
+
+    return fmt
+
+
+def _split_suffix(path: os.PathLike[str] | str) -> tuple[str, str]:
+    """
+    Split a path's format suffix from an optional trailing '.gz'.
+
+    Parameters
+    ----------
+    path : os.PathLike[str] | str
+        File path.
+
+    Returns
+    -------
+    ext, gz : tuple[str, str]
+        Suffix before any '.gz', without its dot and as typed; and the '.gz' as
+        typed, in any letter case as 'open_in()' and 'open_out()' accept it,
+        otherwise ''.
+    """
+
+    value = os.fspath(path)
+    gz = value[-3:] if value.lower().endswith(".gz") else ""
+    base = value[: -len(gz)] if gz else value
+
+    return os.path.splitext(base)[1].lstrip("."), gz
+
+
+def _refuse_short(path: os.PathLike[str] | str, ext: str, gz: str) -> None:
+    """
+    Refuse a short bedGraph suffix, naming the accepted one.
+
+    Parameters
+    ----------
+    path : os.PathLike[str] | str
+        File path.
+    ext, gz : str
+        The path's suffix and optional '.gz', from '_split_suffix()'.
+
+    Raises
+    ------
+    ValueError
+        If 'ext' is a short bedGraph spelling ('bdg', 'bg').
+    """
+
+    if ext.casefold() in BEDGRAPH_SHORT:
+        want = ".bedGraph.gz" if gz else ".bedGraph"
+
+        raise ValueError(
+            f"'{os.fspath(path)}': '.{ext}{gz}' is not accepted; the file "
+            f"name must end in '{want}'.",
+        )
+
+
+def format_from_path(path: os.PathLike[str] | str) -> str | None:
+    """
+    Recognize a file's format from its suffix, in any letter case.
+
+    Parameters
+    ----------
+    path : os.PathLike[str] | str
+        File path, such as 'x.cram' or 'x.BEDGRAPH.gz'.
+
+    Returns
+    -------
+    fmt : str | None
+        Canonical format, or None when the suffix names no format; '.gz' is
+        recognized only after a BED or bedGraph suffix.
+
+    Raises
+    ------
+    ValueError
+        If the suffix is a short bedGraph spelling ('.bdg', '.bg').
+
+    Notes
+    -----
+    The file is never renamed; only its format is recognized.
+    """
+
+    ext, gz = _split_suffix(path)
+    _refuse_short(path, ext, gz)
+    fmt = _FORMAT_CANON.get(ext.casefold())
+
+    if fmt is None or (gz and fmt not in FORMATS_GZIP):
+        return None
+
+    return fmt
+
+
+def check_bedgraph_path(path: os.PathLike[str] | str) -> None:
+    """
+    Refuse a bedGraph input whose name uses a short suffix.
+
+    Parameters
+    ----------
+    path : os.PathLike[str] | str
+        bedGraph input path, or '-' for standard input.
+
+    Raises
+    ------
+    ValueError
+        If the path ends in '.bdg' or '.bg', with or without '.gz'.
+
+    Notes
+    -----
+    Any other name is read as bedGraph, so piped inputs and temporary files
+    keep working; only the short spellings are refused.
+    """
+
+    ext, gz = _split_suffix(path)
+    _refuse_short(path, ext, gz)
+
+
 def validate_output_path(
     value: os.PathLike[str] | str,
     allowed: Iterable[str] = ALLOWED_OUTPUT_FORMATS,
@@ -241,77 +400,54 @@ def validate_output_path(
     Parameters
     ----------
     value : os.PathLike[str] | str
-        Output path provided by the user. If it ends with ".gz", output is
+        Output path provided by the user. If it ends with '.gz', output is
         gzip-compressed.
     allowed : Iterable[str]
-        Iterable of allowed base extensions. Exact lowercase spellings are
-        accepted, and exact camelCase spellings explicitly present in 'allowed'
-        (e.g., 'bedGraph') are also accepted. Leading dots are ignored.
-        Defaults to 'ALLOWED_OUTPUT_FORMATS'.
+        Canonical formats accepted here (default: 'ALLOWED_OUTPUT_FORMATS').
 
     Returns
     -------
-    output_path, extension, is_compressed : tuple[str, str, bool]
-        Validated output filename, preserving the accepted extension spelling
-        and optional '.gz'; validated output format token, which is 'bedGraph'
-        when that exact spelling is supplied and accepted; otherwise returns
-        the accepted lowercase form ('bedgraph', 'bdg', 'bg', or 'bed'); and
-        whether the filename ends with '.gz'.
+    output_path, fmt, is_compressed : tuple[str, str, bool]
+        The output path as given; its canonical format, such as 'bedGraph'; and
+        whether it ends with '.gz'.
 
     Raises
     ------
     ValueError
-        If the base extension is not one of the allowed values.
+        If the suffix is a short bedGraph spelling, or names no format in
+        'allowed'.
 
-    Notes
+    Warns
     -----
-    Refactored out of 'compute_signal.py' for modularization.
+    UserWarning
+        If the suffix differs from the canonical one only in letter case, such
+        as '.BEDGRAPH.gz'; the path is still written as given.
     """
 
     value = os.fspath(value)
+    allowed = tuple(allowed)
+    ext, gz = _split_suffix(value)
+    _refuse_short(value, ext, gz)
+    fmt = _FORMAT_CANON.get(ext.casefold())
 
-    # Preserve exact spellings such as `bedGraph` while recognizing aliases.
-    allowed_exact = {extension.lstrip(".") for extension in allowed}
-    allowed_lower = {extension.lower() for extension in allowed_exact}
-
-    is_compressed = value.endswith(".gz")
-
-    base = value[:-3] if is_compressed else value
-    stem, raw_extension = os.path.splitext(base)
-
-    preserved_extension = raw_extension.lstrip(".")
-    lowercase_extension = preserved_extension.lower()
-
-    if not (
-        preserved_extension in allowed_exact
-        or (
-            preserved_extension == lowercase_extension
-            and lowercase_extension in allowed_lower
-        )
-    ):
-        allowed_ordered = tuple(extension.lstrip(".") for extension in allowed)
-        allowed_text = ", ".join(
-            f".{extension}" for extension in allowed_ordered
-        )
+    if fmt is None or fmt not in allowed or (gz and fmt not in FORMATS_GZIP):
+        allowed_text = ", ".join(f"'.{entry}'" for entry in allowed)
 
         raise ValueError(
-            f"Invalid extension '{preserved_extension}'; allowed: "
-            f"{allowed_text}.",
+            f"Invalid extension '.{ext}'; allowed: {allowed_text}, each "
+            "optionally followed by '.gz'.",
         )
 
-    output_path = (
-        f"{stem}.{preserved_extension}.gz"
-        if is_compressed
-        else f"{stem}.{preserved_extension}"
-    )
+    canonical = f".{fmt}.gz" if gz else f".{fmt}"
 
-    extension = (
-        "bedGraph"
-        if preserved_extension == "bedGraph"
-        else lowercase_extension
-    )
+    if f".{ext}{gz}" != canonical:
+        warnings.warn(
+            f"writing '{value}' as given; the canonical suffix is "
+            f"'{canonical}'.",
+            stacklevel=2,
+        )
 
-    return output_path, extension, is_compressed
+    return value, fmt, bool(gz)
 
 
 def check_exists(

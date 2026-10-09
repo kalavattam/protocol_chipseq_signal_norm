@@ -79,7 +79,7 @@ fi
 # shellcheck disable=SC2154
 function get_submit_logs() {
     local fil_smp="${1:-}"
-    local base log_out log_err
+    local base ext log_out log_err
     local show_help
 
     show_help=$(cat << EOM
@@ -137,7 +137,9 @@ Examples
     dir_eo="\$(mktemp -d)"
     trap 'rm -r -- "\${dir_eo}"' EXIT
     nam_job=compute_signal
-    if logs="\$(get_submit_logs results/sample_B.bedGraph)"; then
+    if \\
+        logs="\$(get_submit_logs results/sample_B.bedGraph)"
+    then
         printf '%s\n' "\${logs}"
     fi
     '''
@@ -170,16 +172,16 @@ EOM
         return 1
     fi
 
+    # Remove the compression and format suffixes, in any letter case.
     base="$(basename "${fil_smp}")"
-    base="${base%.gz}"
-    base="${base%.bam}"
-    base="${base%.cram}"
-    base="${base%.sam}"
-    base="${base%.bedGraph}"
-    base="${base%.bedgraph}"
-    base="${base%.bdg}"
-    base="${base%.bg}"
-    base="${base%.bed}"
+    if [[ "${base,,}" == *.gz ]]; then base="${base:0:${#base}-3}"; fi
+
+    for ext in bam cram sam bedgraph bed; do
+        if [[ "${base,,}" == *."${ext}" ]]; then
+            base="${base:0:${#base}-${#ext}-1}"
+            break
+        fi
+    done
 
     log_out="${dir_eo}/${nam_job}.${base}.stdout.txt"
     log_err="${dir_eo}/${nam_job}.${base}.stderr.txt"
@@ -268,7 +270,9 @@ EOM
         return 1
     fi
 
-    if ! declare -p cmd_bld > /dev/null 2>&1; then
+    if ! \
+        declare -p cmd_bld > /dev/null 2>&1
+    then
         echo_err_func "${FUNCNAME[0]}" \
             "global indexed array 'cmd_bld' is unset."
         return 1

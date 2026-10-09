@@ -1904,7 +1904,7 @@
       "minimum_count": 2,
       "existing_example_count": 2,
       "example_fingerprints": [
-        "519668196e1f1f336341d3cb3e922616fef2f8234cc8e4405503f107db39da7b",
+        "851a9d9eb34b497492626244efd22029642a917be06bcc708fa62288fbfaac8e",
         "0600b6200054914b88b37836ff48660e517b116673d86aa0d3a60b9003a0ebef"
       ],
       "preservation": "exact",
@@ -1991,8 +1991,8 @@
       "minimum_count": 2,
       "existing_example_count": 2,
       "example_fingerprints": [
-        "3bb5988904b76880b1d2e83b25d669c8dae9a71c31cef000e0dc624bf4a5295e",
-        "a6d06955471e60f06334952efff23ef27f48a30e59c02b445a2bac0b40b6191c"
+        "b0fb906a1c920ddaf1be90f050641d9addda4155a06fdd4c6c744f6d6ddc5d13",
+        "94bc11c31884ee853a6a721f7b7cc358b2c104896dbb1d480d0f99fb2649487a"
       ],
       "preservation": "exact",
       "authority": "authorized_fresh_pilot"

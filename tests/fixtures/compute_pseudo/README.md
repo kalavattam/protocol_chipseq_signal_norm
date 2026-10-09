@@ -22,8 +22,8 @@ Readable provenance:
 - `make.sh`
 
 Generated bedGraph inputs:
-- `bedgraph/pair_A.bdg`: three rows on a uniform 10 bp grid, summing to an overlap count of 6
-- `bedgraph/pair_B.bdg`: the same grid, summing to an overlap count of 18
+- `bedgraph/pair_A.bedGraph`: three rows on a uniform 10 bp grid, summing to an overlap count of 6
+- `bedgraph/pair_B.bedGraph`: the same grid, summing to an overlap count of 18
 
 <br />
 

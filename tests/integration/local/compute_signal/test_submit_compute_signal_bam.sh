@@ -35,14 +35,14 @@ dir_out="${tmp}/out"
 dir_err="${tmp}/logs"
 dir_log="${TEST_DIR_LOG}/compute_signal"
 
-fil_out_se_signal="${dir_out}/tiny_se_signal_unadj.bdg"
+fil_out_se_signal="${dir_out}/tiny_se_signal_unadj.bedGraph"
 fil_out_se_coord="${dir_out}/tiny_se_coord.bed"
-fil_out_pe_signal="${dir_out}/tiny_pe_signal_unadj.bdg"
+fil_out_pe_signal="${dir_out}/tiny_pe_signal_unadj.bedGraph"
 fil_out_pe_coord="${dir_out}/tiny_pe_coord.bed"
-fil_out_se_signal_scaled="${dir_out}/tiny_se_signal_scaled.bdg"
-fil_out_se_signal_frag="${dir_out}/tiny_se_signal_frag.bdg"
-fil_out_se_signal_norm="${dir_out}/tiny_se_signal_norm.bdg"
-fil_out_se_signal_usr_frg="${dir_out}/tiny_se_signal_usr_frg.bdg"
+fil_out_se_signal_scaled="${dir_out}/tiny_se_signal_scaled.bedGraph"
+fil_out_se_signal_frag="${dir_out}/tiny_se_signal_frag.bedGraph"
+fil_out_se_signal_norm="${dir_out}/tiny_se_signal_norm.bedGraph"
+fil_out_se_signal_usr_frg="${dir_out}/tiny_se_signal_usr_frg.bedGraph"
 fil_out_se_coord_usr_frg="${dir_out}/tiny_se_coord_usr_frg.bed"
 
 log_se_signal="${dir_log}/submit_compute_signal_bam_se_signal.log"
@@ -500,7 +500,7 @@ mkdir -p "${dir_rep}"
 bash "${ROOT_REPO}/bin/submit_compute_signal.sh" \
     --mode signal \
     --csv_fil_in "${in_se},${in_pe}" \
-    --csv_fil_out "${dir_rep}/se.bdg,${dir_rep}/pe.bdg" \
+    --csv_fil_out "${dir_rep}/se.bedGraph,${dir_rep}/pe.bedGraph" \
     --csv_report_n_frg "${dir_rep}/se.n_frg.txt,${dir_rep}/pe.n_frg.txt" \
     --csv_report_n_ovlp "${dir_rep}/se.n_ovlp.txt,${dir_rep}/pe.n_ovlp.txt" \
     --dir_eo "${dir_err}" \
@@ -524,7 +524,7 @@ assert_file_exact_line \
     "submit PE overlap count is 5, proving per-sample report paths"
 
 assert_file_nonempty \
-    "${dir_rep}/se.bdg" \
+    "${dir_rep}/se.bedGraph" \
     "submit still writes the track when reports are requested"
 
 dir_only="${tmp}/report_only"
@@ -649,7 +649,7 @@ fi
 
 # '--method count' through the wrapper, with 3-bp bins: each 10-bp read fills
 # exactly one 10-bp bin, where 'count' and 'frag' would both give 1.
-fil_out_se_signal_count="${dir_out}/se_signal_count.bdg"
+fil_out_se_signal_count="${dir_out}/se_signal_count.bedGraph"
 log_se_signal_count="${dir_log}/submit_compute_signal_se_count.log"
 
 run_case_compute_signal \
@@ -709,7 +709,7 @@ for retired in "${arr_mth_gone[@]}"; do
             --mode signal \
             --method "${retired}" \
             --csv_fil_in "${in_se}" \
-            --csv_fil_out "${dir_out}/reject.bdg" 2>&1 || true
+            --csv_fil_out "${dir_out}/reject.bedGraph" 2>&1 || true
     )"
 
     if [[ "${out_rej}" == *"invalid value for '--method'"* ]]; then
@@ -740,7 +740,7 @@ for kept in "${arr_mth_keep[@]}"; do
             --mode signal \
             --method "${kept}" \
             --csv_fil_in "${in_se}" \
-            --csv_fil_out "${dir_out}/keep.bdg" 2>&1 || true
+            --csv_fil_out "${dir_out}/keep.bedGraph" 2>&1 || true
     )"
 
     if [[ "${out_keep}" == *"invalid value for '--method'"* ]]; then

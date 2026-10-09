@@ -33,8 +33,8 @@ def run_merge(
     eps: float | None = None,
     skp_pfx: tuple[str, ...] = DEF_SKP_PFX,
 ) -> str:
-    fil_in = tmp_path / "input.bdg"
-    fil_out = tmp_path / "output.bdg"
+    fil_in = tmp_path / "input.bedGraph"
+    fil_out = tmp_path / "output.bedGraph"
 
     fil_in.write_text(text, encoding="utf-8")
     merge_bins(

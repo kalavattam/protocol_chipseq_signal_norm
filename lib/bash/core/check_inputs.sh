@@ -134,8 +134,10 @@ Examples
 
   2. Reject an empty value at a reported array index.
     '''bash
-    if ! validate_var "csv_fil_in" "" 2; then
-      echo "csv_fil_in element 2 is empty" >&2
+    if ! \\
+        validate_var "csv_fil_in" "" 2
+    then
+        echo "csv_fil_in element 2 is empty" >&2
     fi
     '''
 EOM
@@ -218,8 +220,10 @@ Examples
 
   2. Reject a path that is not a regular file.
     '''bash
-    if ! validate_file "fil_in" "/path/that/does/not/exist"; then
-      echo "fil_in is unavailable" >&2
+    if ! \\
+        validate_file "fil_in" "/path/that/does/not/exist"
+    then
+        echo "fil_in is unavailable" >&2
     fi
     '''
 EOM
@@ -319,8 +323,10 @@ Examples
 
   2. Reject a path that is not a directory.
     '''bash
-    if ! validate_dir "dir_out" "/path/that/does/not/exist"; then
-      echo "dir_out is unavailable" >&2
+    if ! \\
+        validate_dir "dir_out" "/path/that/does/not/exist"
+    then
+        echo "dir_out is unavailable" >&2
     fi
     '''
 EOM
@@ -422,8 +428,10 @@ Examples
 
   2. Reject an empty required file value.
     '''bash
-    if ! validate_var_file "fil_in" ""; then
-      echo "fil_in is required" >&2
+    if ! \\
+        validate_var_file "fil_in" ""
+    then
+        echo "fil_in is required" >&2
     fi
     '''
 EOM
@@ -503,8 +511,10 @@ Examples
 
   2. Reject an empty required directory value.
     '''bash
-    if ! validate_var_dir "dir_out" ""; then
-      echo "dir_out is required" >&2
+    if ! \\
+        validate_var_dir "dir_out" ""
+    then
+        echo "dir_out is required" >&2
     fi
     '''
 EOM
@@ -581,8 +591,10 @@ Examples
 
   2. Reject a group containing a missing file.
     '''bash
-    if ! check_arr_files "input BAM" "\${BASH_SOURCE[0]}" "/missing.bam"; then
-      echo "input BAM group is incomplete" >&2
+    if ! \\
+        check_arr_files "input BAM" "\${BASH_SOURCE[0]}" "/missing.bam"
+    then
+        echo "input BAM group is incomplete" >&2
     fi
     '''
 EOM
@@ -665,16 +677,18 @@ Examples
   1. Accept two indexed arrays with matching lengths.
     '''bash
     arr_fil_in=( "a.bam" "b.bam" )
-    arr_fil_out=( "a.bdg" "b.bdg" )
+    arr_fil_out=( "a.bedGraph" "b.bedGraph" )
     check_arr_lengths "arr_fil_in" "arr_fil_out"
     '''
 
   2. Reject indexed arrays with different lengths.
     '''bash
     arr_fil_in=( "a.bam" "b.bam" )
-    arr_fil_out=( "a.bdg" )
-    if ! check_arr_lengths "arr_fil_in" "arr_fil_out"; then
-      echo "input and output arrays differ in length" >&2
+    arr_fil_out=( "a.bedGraph" )
+    if ! \\
+        check_arr_lengths "arr_fil_in" "arr_fil_out"
+    then
+        echo "input and output arrays differ in length" >&2
     fi
     '''
 EOM
@@ -706,7 +720,9 @@ EOM
         return 1
     fi
 
-    if ! decl="$(declare -p "${arr_nam_1}" 2> /dev/null)"; then
+    if ! \
+        decl="$(declare -p "${arr_nam_1}" 2> /dev/null)"
+    then
         echo_err_func "${FUNCNAME[0]}" \
             "'${arr_nam_1}' is unset."
         return 1
@@ -716,7 +732,9 @@ EOM
         return 1
     fi
 
-    if ! decl="$(declare -p "${arr_nam_2}" 2> /dev/null)"; then
+    if ! \
+        decl="$(declare -p "${arr_nam_2}" 2> /dev/null)"
+    then
         echo_err_func "${FUNCNAME[0]}" \
             "'${arr_nam_2}' is unset."
         return 1
@@ -907,7 +925,7 @@ Examples
   2. Inspect several arrays while silently skipping an unset name.
     '''bash
     arr_fil_in=( "a.bam" )
-    arr_fil_out=( "a.bdg" )
+    arr_fil_out=( "a.bedGraph" )
     debug_arr_contents "arr_fil_in" "arr_fil_out" "arr_unset"
     '''
 EOM
@@ -929,7 +947,9 @@ EOM
             continue
         fi
 
-        if ! decl="$(declare -p "${arr_nam}" 2> /dev/null)"; then
+        if ! \
+            decl="$(declare -p "${arr_nam}" 2> /dev/null)"
+        then
             continue
         elif [[ "${decl}" != declare\ -a* ]]; then
             continue
@@ -989,8 +1009,10 @@ Examples
   2. Reject an empty reconstructed array.
     '''bash
     arr_fil_in=()
-    if ! check_arr_nonempty "arr_fil_in" "csv_fil_in"; then
-      echo "csv_fil_in produced no entries" >&2
+    if ! \\
+        check_arr_nonempty "arr_fil_in" "csv_fil_in"
+    then
+        echo "csv_fil_in produced no entries" >&2
     fi
     '''
 EOM
@@ -1019,7 +1041,9 @@ EOM
         return 1
     fi
 
-    if ! decl="$(declare -p "${arr_nam}" 2> /dev/null)"; then
+    if ! \
+        decl="$(declare -p "${arr_nam}" 2> /dev/null)"
+    then
         echo_err_func "${FUNCNAME[0]}" \
             "reconstructed array '${arr_nam}' is unset. Check input for" \
             "serialized variable '${src_nam}'."
@@ -1093,8 +1117,10 @@ Examples
   2. Reject a two-element array for three samples.
     '''bash
     arr_scl_fct=( "1" "2" )
-    if ! check_arr_len_bcst 3 "arr_scl_fct"; then
-      echo "scaling-factor vector cannot broadcast" >&2
+    if ! \\
+        check_arr_len_bcst 3 "arr_scl_fct"
+    then
+        echo "scaling-factor vector cannot broadcast" >&2
     fi
     '''
 EOM
@@ -1134,7 +1160,9 @@ EOM
             return 1
         fi
 
-        if ! decl="$(declare -p "${arr_nam}" 2> /dev/null)"; then
+        if ! \
+            decl="$(declare -p "${arr_nam}" 2> /dev/null)"
+        then
             echo_err_func "${FUNCNAME[0]}" \
                 "array '${arr_nam}' is unset."
             return 1
@@ -1214,8 +1242,10 @@ Examples
   2. Reject a two-element array for three samples.
     '''bash
     arr_usr_frg=( "200" "250" )
-    if ! expand_arr_bcst 3 "arr_usr_frg"; then
-      echo "fragment-length vector cannot broadcast" >&2
+    if ! \\
+        expand_arr_bcst 3 "arr_usr_frg"
+    then
+        echo "fragment-length vector cannot broadcast" >&2
     fi
     '''
 EOM

@@ -58,8 +58,6 @@ MIXED_CASE_FORMAT_HINTS = (
     ("bedGraph", "bedGraph"),
     ("bedgraph", "bedGraph"),
     ("BeDgRaPh", "bedGraph"),
-    ("BdG", "bedGraph"),
-    ("bG", "bedGraph"),
 )
 DIST_DIMENSION_CASES = (
     (10, 100),
@@ -115,7 +113,7 @@ def test_infer_input_format_recognizes_suffixes_and_stdin_hints() -> None:
     assert infer_input_format("x.bam") == "bam"
     assert infer_input_format("x.cram") == "cram"
     assert infer_input_format("x.bed.gz") == "bed"
-    assert infer_input_format("x.bdg") == "bedGraph"
+    assert infer_input_format("x.bedGraph") == "bedGraph"
     assert infer_input_format("-", "cram") == "cram"
     assert infer_input_format("-", "bedGraph") == "bedGraph"
     assert infer_input_format("x.txt") == "other"
@@ -143,6 +141,37 @@ def test_input_format_hints_are_case_insensitive_and_canonical(
     )
 
     assert args.fmt_in == expected
+
+
+@pytest.mark.parametrize("hint", ("bdg", "BdG", "bg", "bG"))
+def test_short_bedgraph_hints_are_refused(
+    hint: str,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    message = f"Format '{hint}' is not accepted; use 'bedGraph'."
+
+    with pytest.raises(ValueError, match=message):
+        infer_input_format("-", hint)
+
+    with pytest.raises(SystemExit) as error:
+        parse_args(["--mode", "dist", "--fil_in", "-", "--fmt_in", hint])
+
+    assert error.value.code == 2
+    assert message in capsys.readouterr().err
+
+
+@pytest.mark.parametrize(
+    ("path", "want"),
+    (
+        ("x.bdg", ".bedGraph"),
+        ("x.BDG.gz", ".bedGraph.gz"),
+        ("x.bg", ".bedGraph"),
+        ("x.bg.gz", ".bedGraph.gz"),
+    ),
+)
+def test_short_bedgraph_suffixes_are_refused(path: str, want: str) -> None:
+    with pytest.raises(ValueError, match=f"must end in '{want}'"):
+        infer_input_format(path)
 
 
 def test_named_path_format_inference_ignores_explicit_hint() -> None:
@@ -189,7 +218,7 @@ def test_dist_passes_its_helpers_only_settings_that_apply(
     expected: float,
 ) -> None:
     result = compute_input_floor(
-        str(FIXTURES / "bedgraph" / "ratio_A.bdg"),
+        str(FIXTURES / "bedgraph" / "ratio_A.bedGraph"),
         10,
         100,
         mode="dist",
@@ -217,7 +246,7 @@ def test_main_accepts_mixed_case_cli_hint(
             "--fil_in",
             "-",
             "--fmt_in",
-            "BdG",
+            "BeDgRaPh",
         ],
     )
     captured = capsys.readouterr()
@@ -265,7 +294,7 @@ def test_help_shows_one_public_bedgraph_spelling(
         parse_args(["--help"])
 
     captured = capsys.readouterr()
-    public_choices = "{bam,cram,bed,bedGraph,bdg,bg}"
+    public_choices = "{bam,cram,bed,bedGraph}"
     public_choice_count = captured.out.count(public_choices)
 
     assert error.value.code == 0
@@ -288,7 +317,7 @@ def test_help_examples_use_exact_bash_blocks(
         "    '''bash\n"
         "    compute_input_floor \\\n"
         "        --mode dist \\\n"
-        "        --fil_in signal.bdg \\\n"
+        "        --fil_in signal.bedGraph \\\n"
         "        --method qntl_nz \\\n"
         "        --qntl_nz 1\n"
         "    '''\n\n"
@@ -313,9 +342,9 @@ def test_help_output_is_byte_exact(
     rendered = capsys.readouterr().out.encode()
 
     assert error.value.code == 0
-    assert len(rendered) == 6417
+    assert len(rendered) == 6353
     assert hashlib.sha256(rendered).hexdigest() == (
-        "3f82d5481d5f5a2c5b3d14bd36f19811c423383074c7322d0f5d2179c121ea74"
+        "a38263fb1b5e90286da47a7273c1713573cbae367816c680681dcd9f1989eb38"
     )
 
 
@@ -385,7 +414,7 @@ def test_help_uses_approved_semantic_cli_order(
         "[--verbose]",
         "[--mode {dist,frag,norm}]",
         "[--fil_in FIL_IN]",
-        "[--fmt_in {bam,cram,bed,bedGraph,bdg,bg}]",
+        "[--fmt_in {bam,cram,bed,bedGraph}]",
         "[--ref_fa REF_FA]",
         "[--skp_pfx SKP_PFX]",
         "[--method {qntl_nz,frc_mdn_nz,frc_avg_nz,min_nz}]",
@@ -405,7 +434,7 @@ def test_help_uses_approved_semantic_cli_order(
         "\n  -v, --verbose",
         "\n  -md, --mode {dist,frag,norm}",
         "\n  -fi, --fil_in FIL_IN",
-        "\n  -fmi, --fmt_in {bam,cram,bed,bedGraph,bdg,bg}",
+        "\n  -fmi, --fmt_in {bam,cram,bed,bedGraph}",
         "\n  -rf, --ref_fa REF_FA",
         "\n  -sp, --skp_pfx SKP_PFX",
         "\n  -m, --method {qntl_nz,frc_mdn_nz,frc_avg_nz,min_nz}",
@@ -448,7 +477,7 @@ def test_verbose_argument_report_uses_applicable_semantic_order(
             "--fil_in",
             "-",
             "--fmt_in",
-            "BdG",
+            "BeDgRaPh",
             "--skp_pfx",
             "#",
         ],
@@ -549,25 +578,24 @@ def test_callable_docstring_summary_matches_signature() -> None:
     assert documented_parameters == signature_parameters
     assert (
         "    fil_in : str\n"
-        "        Input path. 'dist' accepts 'bedGraph', 'bdg', or 'bg', "
-        "optionally with\n"
-        "        '.gz'; 'frag' accepts 'bam', 'cram', 'bed', or 'bed.gz'; "
-        "'norm' ignores\n"
-        "        'fil_in'. For 'dist' and 'frag', '-' reads standard input "
-        "and requires\n"
-        "        'fmt_in'."
+        "        Input path. 'dist' accepts '.bedGraph', optionally with "
+        "'.gz'; 'frag'\n"
+        "        accepts 'bam', 'cram', 'bed', or 'bed.gz'; 'norm' ignores "
+        "'fil_in'. For\n"
+        "        'dist' and 'frag', '-' reads standard input and requires "
+        "'fmt_in'."
     ) in source_docstring
-    assert len(docstring.encode()) == 3488
+    assert len(docstring.encode()) == 3456
     assert hashlib.sha256(docstring.encode()).hexdigest() == (
-        "a10574cac257fe6d6ebc51b5e2c31fcdbe309dfc8b3f60dfaa7476105f466b0a"
+        "1b08ac72a2aa0655311b36f47f63af0bc577d06cd6693d79878a0415cc9673ba"
     )
     assert hashlib.sha256(
         " ".join(docstring.split()).encode(),
     ).hexdigest() == (
-        "d5ffd64895f86c02aa676ce3549758422ace0acccbaa2383bba179a6e09184f6"
+        "7ad1590bb24cf8bd0326d95577e5425131948883fd2a45bedecc06ef96e65887"
     )
     assert hashlib.sha256((source_docstring + "\n").encode()).hexdigest() == (
-        "fa5a5e81e4bbfba72df87dc451f2287d6171fecb75906ab0905d5a3996d52daa"
+        "55402fb448a8036256b8f1cdbc2e20c87bd03a5c07019df769fb8525d6e24352"
     )
 
 
@@ -575,7 +603,7 @@ def test_main_trims_noninformative_finite_output(
     tmp_path: Path,
     capsys: pytest.CaptureFixture[str],
 ) -> None:
-    bedgraph = tmp_path / "input.bdg"
+    bedgraph = tmp_path / "input.bedGraph"
     bedgraph.write_text("chrI\t0\t10\t1.23\n", encoding="utf-8")
 
     status = main(
@@ -790,7 +818,7 @@ def test_data_validation_raises_without_owning_process_exit() -> None:
 
 
 def test_compute_input_floor_norm_and_dist_modes(tmp_path: Path) -> None:
-    bdg = tmp_path / "input.bdg"
+    bdg = tmp_path / "input.bedGraph"
     bdg.write_text(
         "chrI 0 10 0\n"
         "chrI 10 20 -1\n"
@@ -824,7 +852,7 @@ def test_compute_input_floor_dist_ignores_all_dimension_cases(
     siz_bin: int,
     siz_gen: int,
 ) -> None:
-    bedgraph = tmp_path / "input.bdg"
+    bedgraph = tmp_path / "input.bedGraph"
     bedgraph.write_text("chrI\t0\t10\t2\n", encoding="utf-8")
 
     result = compute_input_floor(
@@ -964,7 +992,7 @@ def test_main_dist_refuses_dimension_options(
     siz_bin: int,
     siz_gen: int,
 ) -> None:
-    bedgraph = tmp_path / "input.bdg"
+    bedgraph = tmp_path / "input.bedGraph"
     bedgraph.write_text("chrI\t0\t10\t2\n", encoding="utf-8")
 
     # Refused before the values are checked, so any pair is refused by name.

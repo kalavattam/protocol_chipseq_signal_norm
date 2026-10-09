@@ -37,20 +37,20 @@ fi
 
 # Define fixture and output paths for lightweight execute-layer config checks.
 dir_fx="${ROOT_REPO}/tests/fixtures/compute_signal/bedgraph"
-fil_A="${dir_fx}/ratio_A.bdg"
-fil_B="${dir_fx}/ratio_B.bdg"
+fil_A="${dir_fx}/ratio_A.bedGraph"
+fil_B="${dir_fx}/ratio_B.bedGraph"
 
 tmp="${TEST_DIR_TMP}/execute_compute_signal_parallel"
 dir_in="${tmp}/in"
 dir_out="${tmp}/out"
 dir_err="${tmp}/logs"
 dir_log="${TEST_DIR_LOG}/compute_signal"
-fil_A_1="${dir_in}/ratio_A_1.bdg"
-fil_A_2="${dir_in}/ratio_A_2.bdg"
+fil_A_1="${dir_in}/ratio_A_1.bedGraph"
+fil_A_2="${dir_in}/ratio_A_2.bedGraph"
 
 cfg_parallel="${dir_err}/test_execute_compute_parallel.config_parallel.txt"
-fil_out_wet_1="${dir_out}/exec_parallel_wet_ratio_A_1.bdg"
-fil_out_wet_2="${dir_out}/exec_parallel_wet_ratio_A_2.bdg"
+fil_out_wet_1="${dir_out}/exec_parallel_wet_ratio_A_1.bedGraph"
+fil_out_wet_2="${dir_out}/exec_parallel_wet_ratio_A_2.bedGraph"
 
 log_env_parallel="${dir_log}/execute_compute_signal_parallel_env.log"
 log_dry_run="${dir_log}/execute_compute_signal_parallel_dry_run.log"
@@ -109,7 +109,7 @@ if \
             --csv_fil_A "${fil_A}" \
             --csv_fil_B "${fil_B}" \
             --dir_out "${dir_out}" \
-            --typ_out bdg \
+            --typ_out bedGraph \
             --prefix exec_parallel \
             --eps 0 \
             --dp 3 \
@@ -149,7 +149,7 @@ if \
             --csv_fil_A "${fil_A_1},${fil_A_2}" \
             --csv_fil_B "${fil_B},${fil_B}" \
             --dir_out "${dir_out}" \
-            --typ_out bdg \
+            --typ_out bedGraph \
             --prefix exec_parallel_wet \
             --eps 0 \
             --dp 3 \

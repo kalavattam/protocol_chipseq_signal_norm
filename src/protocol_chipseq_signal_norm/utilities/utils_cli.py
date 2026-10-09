@@ -28,7 +28,9 @@ from __future__ import annotations
 
 import argparse
 import sys
-from collections.abc import Collection, Mapping, Sequence
+import warnings
+from collections.abc import Collection, Iterator, Mapping, Sequence
+from contextlib import contextmanager
 from dataclasses import dataclass
 
 __all__ = [
@@ -37,6 +39,7 @@ __all__ = [
     "add_help_cap",
     "check_opts_apply",
     "find_supplied",
+    "warn_as_note",
 ]
 
 
@@ -433,3 +436,28 @@ def check_opts_apply(
             f"Note: '{flag}' has no effect with {now} and is ignored.",
             file=sys.stderr,
         )
+
+
+@contextmanager
+def warn_as_note() -> Iterator[None]:
+    """
+    Print warnings raised inside the block as 'Note:' lines on stderr.
+
+    Yields
+    ------
+    _ : None
+        Control to the block; its warnings are printed when it ends.
+
+    Notes
+    -----
+    A reusable function warns with 'warnings.warn', per
+    'HELP.PARAMETER.APPLICABILITY'; a CLI wraps the call in this block so the
+    user sees the same 'Note:' line that 'check_opts_apply' prints.
+    """
+
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always")
+        yield
+
+    for item in caught:
+        print(f"Note: {item.message}", file=sys.stderr)

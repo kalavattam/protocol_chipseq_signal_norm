@@ -59,6 +59,7 @@ function source_helpers_execute() {
     source_helpers "${dir_fnc}" \
         check_args \
         check_env \
+        check_formats \
         check_inputs \
         check_numbers \
         format_outputs \
@@ -1119,6 +1120,8 @@ function check_opts_mode() {
 
 # Validate scalar arguments and assign derived scalar defaults.
 function validate_args() {
+    local typ_fmt rc_fmt
+
     validate_var "env_nam" "${env_nam}" || return 1
     check_env_installed "${env_nam}" || return 1
 
@@ -1141,10 +1144,16 @@ function validate_args() {
         fi
     fi
 
+    # A format name in any letter case resolves to its canonical spelling; a
+    # short bedGraph spelling is refused.
+    validate_var "typ_out" "${typ_out}" || return 1
+    rc_fmt=0
+    typ_fmt="$(canonicalize_fmt "${typ_out}")" || rc_fmt=$?
+    if (( rc_fmt == 1 )); then return 1; fi
+
     if [[ "${mode}" =~ ^(signal|ratio)$ ]]; then
-        validate_var "typ_out" "${typ_out}" || return 1
-        case "${typ_out}" in
-            bedGraph|bedGraph.gz|bedgraph|bedgraph.gz|bdg|bdg.gz|bg|bg.gz) : ;;
+        case "${typ_fmt}" in
+            bedGraph|bedGraph.gz) typ_out="${typ_fmt}" ;;
             *)
                 echo_warn \
                     "unsupported value for '--typ_out' with" \
@@ -1187,9 +1196,8 @@ function validate_args() {
             fi
         fi
     else
-        validate_var "typ_out" "${typ_out}" || return 1
-        case "${typ_out}" in
-            bedGraph|bedGraph.gz|bedgraph|bedgraph.gz|bdg|bdg.gz|bg|bg.gz)
+        case "${typ_fmt}" in
+            bedGraph|bedGraph.gz)
                 echo_warn \
                     "unsupported value for '--typ_out' with" \
                     "'--mode ${mode}': '${typ_out}'. Coercing '--typ_out' to" \
@@ -1197,7 +1205,7 @@ function validate_args() {
                 typ_out="bed.gz"
                 ;;
 
-            bed|bed.gz) : ;;
+            bed|bed.gz) typ_out="${typ_fmt}" ;;
 
             *)
                 echo_err \
@@ -1434,6 +1442,7 @@ function prepare_vecs() {
             check_arr_nonempty "arr_fil_A" "csv_fil_A" || return 1
 
             for file in "${arr_fil_A[@]}"; do
+                check_fmt_path "${file}" || return 1
                 validate_var_file "csv_fil_A" "${file}" || return 1
             done
             unset file
@@ -1447,6 +1456,7 @@ function prepare_vecs() {
             check_arr_nonempty "arr_fil_B" "csv_fil_B" || return 1
 
             for file in "${arr_fil_B[@]}"; do
+                check_fmt_path "${file}" || return 1
                 validate_var_file "csv_fil_B" "${file}" || return 1
             done
             unset file
@@ -1456,7 +1466,6 @@ function prepare_vecs() {
         fi
 
         pfx_lcl="${prefix}"
-        exts=( bedGraph bedGraph.gz bedgraph bedgraph.gz bdg bdg.gz bg bg.gz )
         unset arr_fil_out && declare -ga arr_fil_out
         for i in "${arr_fil_A[@]}"; do
             base=$(basename "${i}")
@@ -1470,15 +1479,12 @@ function prepare_vecs() {
                 pfx_lcl="$(generate_pfx "${method}" "${csv_scl_fct}")"
             fi
 
-            # Remove file extensions.
-            for ext in "${exts[@]}"; do
-                base="${base%."${ext}"}"
-            done
-            unset ext
+            # Remove the format suffix, in any letter case.
+            base="$(strip_fmt_suffix "${base}")"
 
             arr_fil_out+=( "${dir_out}/${pfx_lcl}_${base}.${typ_out}" )
         done
-        unset i base pfx_lcl exts
+        unset i base pfx_lcl
 
         if [[ -z "${csv_scl_fct}" ]]; then
             # Produce per-sample sentinel entries ("NA").

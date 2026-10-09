@@ -125,7 +125,7 @@ function ensure_checker_fixtures() {
         "${repo_root}/tests/fixtures/ai_attribution/accepted/multi_vendor.sh"
 
     ensure_fixture compute_pseudo \
-        "${repo_root}/tests/fixtures/compute_pseudo/bedgraph/pair_A.bdg"
+        "${repo_root}/tests/fixtures/compute_pseudo/bedgraph/pair_A.bedGraph"
 
     ensure_fixture help "${repo_root}/${rel_help}"
 

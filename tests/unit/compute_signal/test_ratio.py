@@ -230,9 +230,9 @@ def test_scaling_reaches_a_bin_whose_numerator_is_only_pseudocount() -> None:
 
 
 def test_comp_sig_rat_writes_small_bedgraph(tmp_path: Path) -> None:
-    fil_a = tmp_path / "a.bdg"
-    fil_b = tmp_path / "b.bdg"
-    fil_out = tmp_path / "ratio.bdg"
+    fil_a = tmp_path / "a.bedGraph"
+    fil_b = tmp_path / "b.bedGraph"
+    fil_out = tmp_path / "ratio.bedGraph"
     fil_a.write_text("chrI 0 10 4\nchrI 10 20 0\n", encoding="utf-8")
     fil_b.write_text("chrI 0 10 2\nchrI 10 20 0\n", encoding="utf-8")
 
@@ -258,9 +258,9 @@ def test_comp_sig_rat_writes_small_bedgraph(tmp_path: Path) -> None:
 
 
 def test_comp_sig_rat_strict_bins_rejects_end_mismatch(tmp_path: Path) -> None:
-    fil_a = tmp_path / "a.bdg"
-    fil_b = tmp_path / "b.bdg"
-    fil_out = tmp_path / "ratio.bdg"
+    fil_a = tmp_path / "a.bedGraph"
+    fil_b = tmp_path / "b.bedGraph"
+    fil_out = tmp_path / "ratio.bedGraph"
     fil_a.write_text("chrI 0 10 4\nchrI 10 20 2\n", encoding="utf-8")
     fil_b.write_text("chrI 0 10 2\nchrI 10 21 1\n", encoding="utf-8")
 
@@ -288,9 +288,9 @@ def test_comp_sig_rat_strict_bins_rejects_end_mismatch(tmp_path: Path) -> None:
 def test_comp_sig_rat_chr_sizes_rejects_out_of_bounds_input(
     tmp_path: Path,
 ) -> None:
-    fil_a = tmp_path / "a.bdg"
-    fil_b = tmp_path / "b.bdg"
-    fil_out = tmp_path / "ratio.bdg"
+    fil_a = tmp_path / "a.bedGraph"
+    fil_b = tmp_path / "b.bedGraph"
+    fil_out = tmp_path / "ratio.bedGraph"
     fil_a.write_text("chrI 70 81 4\n", encoding="utf-8")
     fil_b.write_text("chrI 70 80 2\n", encoding="utf-8")
 
@@ -316,9 +316,9 @@ def test_comp_sig_rat_chr_sizes_rejects_out_of_bounds_input(
 
 
 def test_comp_sig_rat_rejects_dash_io(tmp_path: Path) -> None:
-    fil_a = tmp_path / "a.bdg"
-    fil_b = tmp_path / "b.bdg"
-    fil_out = tmp_path / "ratio.bdg"
+    fil_a = tmp_path / "a.bedGraph"
+    fil_b = tmp_path / "b.bedGraph"
+    fil_out = tmp_path / "ratio.bedGraph"
     fil_a.write_text("chrI 0 10 4\n", encoding="utf-8")
     fil_b.write_text("chrI 0 10 2\n", encoding="utf-8")
 
@@ -378,7 +378,7 @@ def _alias_parser() -> argparse.ArgumentParser:
     CapArgumentParser.parse_args = capture
 
     try:
-        parse_args(["-fA", "a.bdg", "-fB", "b.bdg", "-fo", "c.bdg"])
+        parse_args(["-fA", "a.bedGraph", "-fB", "b.bedGraph", "-fo", "c.bedGraph"])
     except SystemExit:
         pass
     finally:
@@ -421,7 +421,7 @@ def test_hidden_hyphen_alias_matches_its_primary(
     Each hidden hyphen alias parses to the primary's value and type.
     """
 
-    base = list(["-fA", "a.bdg", "-fB", "b.bdg", "-fo", "c.bdg"])
+    base = list(["-fA", "a.bedGraph", "-fB", "b.bedGraph", "-fo", "c.bedGraph"])
     supplied = [primary] if value is None else [primary, value]
     aliased = [alias] if value is None else [alias, value]
     destination = primary.lstrip("-")
@@ -471,12 +471,12 @@ def test_hidden_aliases_satisfy_the_required_ratio_options() -> None:
     """
 
     args = parse_args(
-        ["--fil-A", "a.bdg", "--fil-B", "b.bdg", "--fil-out", "c.bdg"],
+        ["--fil-A", "a.bedGraph", "--fil-B", "b.bedGraph", "--fil-out", "c.bedGraph"],
     )
 
-    assert args.fil_A == "a.bdg"
-    assert args.fil_B == "b.bdg"
-    assert args.fil_out == "c.bdg"
+    assert args.fil_A == "a.bedGraph"
+    assert args.fil_B == "b.bedGraph"
+    assert args.fil_out == "c.bedGraph"
 
 
 @pytest.mark.parametrize(
@@ -484,17 +484,17 @@ def test_hidden_aliases_satisfy_the_required_ratio_options() -> None:
     [
         pytest.param(
             "--fil_A",
-            ["--fil_B", "b.bdg", "--fil_out", "c.bdg"],
+            ["--fil_B", "b.bedGraph", "--fil_out", "c.bedGraph"],
             id="fil_A",
         ),
         pytest.param(
             "--fil_B",
-            ["--fil_A", "a.bdg", "--fil_out", "c.bdg"],
+            ["--fil_A", "a.bedGraph", "--fil_out", "c.bedGraph"],
             id="fil_B",
         ),
         pytest.param(
             "--fil_out",
-            ["--fil_A", "a.bdg", "--fil_B", "b.bdg"],
+            ["--fil_A", "a.bedGraph", "--fil_B", "b.bedGraph"],
             id="fil_out",
         ),
     ],
@@ -519,9 +519,9 @@ def test_a_bare_pseudocount_is_refused(tmp_path: Path, pseudo: str) -> None:
     A bare 'A' would regularize file A alone, so it is refused, naming 'A:B'.
     """
 
-    fil_a = tmp_path / "a.bdg"
-    fil_b = tmp_path / "b.bdg"
-    fil_out = tmp_path / "ratio.bdg"
+    fil_a = tmp_path / "a.bedGraph"
+    fil_b = tmp_path / "b.bedGraph"
+    fil_out = tmp_path / "ratio.bedGraph"
     fil_a.write_text("chrI 0 10 4\nchrI 10 20 5\n", encoding="utf-8")
     fil_b.write_text("chrI 0 10 2\nchrI 10 20 0\n", encoding="utf-8")
 
@@ -548,9 +548,9 @@ def test_a_paired_pseudocount_reaches_both_tracks(tmp_path: Path) -> None:
     'A:A' regularizes the zero denominator that a bare 'A' would leave.
     """
 
-    fil_a = tmp_path / "a.bdg"
-    fil_b = tmp_path / "b.bdg"
-    fil_out = tmp_path / "ratio.bdg"
+    fil_a = tmp_path / "a.bedGraph"
+    fil_b = tmp_path / "b.bedGraph"
+    fil_out = tmp_path / "ratio.bedGraph"
     fil_a.write_text("chrI 0 10 5\n", encoding="utf-8")
     fil_b.write_text("chrI 0 10 0\n", encoding="utf-8")
 

@@ -2044,7 +2044,7 @@ def job_definitions(config: dict[str, Any]) -> list[dict[str, Any]]:
                 "--csv_fil_in",
                 str(fixtures / "tiny_signal.bam"),
                 "--csv_fil_out",
-                str(signal_art / "tiny_se_signal_unadj.bdg"),
+                str(signal_art / "tiny_se_signal_unadj.bedGraph"),
                 "--csv_usr_frg",
                 "NA",
                 "--csv_scl_fct",
@@ -2064,16 +2064,16 @@ def job_definitions(config: dict[str, Any]) -> list[dict[str, Any]]:
             "assertions": [
                 {
                     "kind": "nonempty",
-                    "path": str(signal_art / "tiny_se_signal_unadj.bdg"),
+                    "path": str(signal_art / "tiny_se_signal_unadj.bedGraph"),
                 },
                 {
                     "kind": "contains",
-                    "path": str(signal_art / "tiny_se_signal_unadj.bdg"),
+                    "path": str(signal_art / "tiny_se_signal_unadj.bedGraph"),
                     "text": "I\t0\t10\t10",
                 },
                 {
                     "kind": "contains",
-                    "path": str(signal_art / "tiny_se_signal_unadj.bdg"),
+                    "path": str(signal_art / "tiny_se_signal_unadj.bedGraph"),
                     "text": "I\t20\t30\t10",
                 },
             ],

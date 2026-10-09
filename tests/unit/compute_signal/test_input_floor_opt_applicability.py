@@ -37,7 +37,7 @@ FIXTURES = ROOT / "tests" / "fixtures" / "compute_signal"
 BAM_SE = FIXTURES / "bam" / "se" / "tiny_se.bam"
 CRAM_SE = FIXTURES / "cram" / "se" / "tiny_se.cram"
 REFERENCE_FASTA = FIXTURES / "reference" / "tiny.fa"
-BDG = FIXTURES / "bedgraph" / "ratio_A.bdg"
+BDG = FIXTURES / "bedgraph" / "ratio_A.bedGraph"
 
 DIST_ONLY = (
     ("--method", "frc_mdn_nz"),
@@ -215,7 +215,7 @@ def test_a_default_given_explicitly_is_still_refused(
         ("norm", ["--fmt_in", "bed"], "--fmt_in", "'--mode norm'"),
         (
             "dist",
-            ["--fmt_in", "bdg"],
+            ["--fmt_in", "bedGraph"],
             "--fmt_in",
             "a named '--fil_in' path",
         ),
@@ -330,7 +330,7 @@ def test_fmt_in_with_stdin_draws_no_message(
 ) -> None:
     monkeypatch.setattr("sys.stdin", BDG.open(encoding="utf-8"))
 
-    assert main(["--mode", "dist", "--fil_in", "-", "--fmt_in", "bdg"]) == 0
+    assert main(["--mode", "dist", "--fil_in", "-", "--fmt_in", "bedGraph"]) == 0
     assert capsys.readouterr().err == ""
 
 
@@ -400,7 +400,7 @@ def test_library_refuses_given_parameters_that_cannot_act(
         ),
         (
             BDG,
-            {"mode": "dist", "fmt_in": "bdg"},
+            {"mode": "dist", "fmt_in": "bedGraph"},
             "'fmt_in' has no effect with a named input path and is ignored.",
         ),
     ),

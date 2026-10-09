@@ -116,7 +116,7 @@ def test_pick_stabilizer_rejects_bad_quantile() -> None:
 
 
 def test_iter_vals_bdg_filters_by_positive_policy(tmp_path: Path) -> None:
-    path = tmp_path / "values.bdg"
+    path = tmp_path / "values.bedGraph"
     path.write_text(
         "chrI 0 10 0\nchrI 10 20 0.1\nchrI 20 30 2\nchrI 30 40 nan\n",
         encoding="utf-8",

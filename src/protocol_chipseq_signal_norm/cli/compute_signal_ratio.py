@@ -47,6 +47,7 @@ from protocol_chipseq_signal_norm.utilities.utils_bdg import (
     validate_bounds_bdg,
 )
 from protocol_chipseq_signal_norm.utilities.utils_check import (
+    check_bedgraph_path,
     check_exists,
     check_writable,
     validate_comparison,
@@ -55,6 +56,7 @@ from protocol_chipseq_signal_norm.utilities.utils_check import (
 from protocol_chipseq_signal_norm.utilities.utils_cli import (
     CapArgumentParser,
     add_help_cap,
+    warn_as_note,
 )
 from protocol_chipseq_signal_norm.utilities.utils_io import (
     DEF_SKP_PFX,
@@ -73,7 +75,7 @@ assert sys.version_info >= (3, 11), "Python >= 3.11 required."
 # while keeping default runtime practical for large bedGraph pairs.
 
 # Restrict output to bedGraph filename extensions.
-BEDGRAPH_FORMATS = ("bedGraph", "bedgraph", "bdg", "bg")
+BEDGRAPH_FORMATS = ("bedGraph",)
 
 # Map accepted `--method` values to canonical internal names.
 # fmt: off
@@ -769,7 +771,8 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         type=str,
         help=(
             "First bedGraph input file, file A (e.g., IP). Supports plain "
-            "text and '.gz'.\n"
+            "text and '.gz'. A name ending in '.bdg' or '.bg' is refused; use "
+            "'.bedGraph'.\n"
             "\n"
         ),
     )
@@ -787,7 +790,8 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         type=str,
         help=(
             "Second bedGraph input file, file B (e.g., input). Supports plain "
-            "text and '.gz'.\n"
+            "text and '.gz'. A name ending in '.bdg' or '.bg' is refused; use "
+            "'.bedGraph'.\n"
             "\n"
         ),
     )
@@ -805,10 +809,8 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         default=None,
         type=str,
         help=(
-            "Output file path. The result is written as bedGraph. When a real "
-            "path is provided, accepted extensions are '.bedGraph', "
-            "'.bedgraph', '.bdg', and '.bg', each optionally followed by "
-            "'.gz'.\n"
+            "Output file path. The result is written as bedGraph, so the path "
+            "must end in '.bedGraph', optionally followed by '.gz'.\n"
             "\n"
         ),
     )
@@ -1157,13 +1159,15 @@ def main(argv: list[str] | None = None) -> int:
         )
 
     try:
+        check_bedgraph_path(args.fil_A)
         check_exists(args.fil_A, "file", "First file (A)")
-    except FileNotFoundError as e:
+    except (FileNotFoundError, ValueError) as e:
         raise SystemExit(str(e)) from None
 
     try:
+        check_bedgraph_path(args.fil_B)
         check_exists(args.fil_B, "file", "Second file (B)")
-    except FileNotFoundError as e:
+    except (FileNotFoundError, ValueError) as e:
         raise SystemExit(str(e)) from None
 
     if args.chr_siz is not None:
@@ -1176,7 +1180,12 @@ def main(argv: list[str] | None = None) -> int:
         chrom_sizes = None
 
     try:
-        fil_out, _, _ = validate_output_path(args.fil_out, BEDGRAPH_FORMATS)
+        with warn_as_note():
+            fil_out, _, _ = validate_output_path(
+                args.fil_out,
+                BEDGRAPH_FORMATS,
+            )
+
         check_writable(fil_out, kind="file")
     except (
         ValueError,

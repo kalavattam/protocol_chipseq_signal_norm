@@ -36,8 +36,8 @@ BEDGRAPH = ROOT / "tests" / "fixtures" / "compute_pseudo" / "bedgraph"
 # per-sample priors are '2 * 6 / 12' and '2 * 18 / 12' exactly. A fixture is
 # consumed by hard failure rather than by a skip, so a missing generation step
 # fails loudly instead of turning the suite green.
-FIL_A = str(BEDGRAPH / "pair_A.bdg")
-FIL_B = str(BEDGRAPH / "pair_B.bdg")
+FIL_A = str(BEDGRAPH / "pair_A.bedGraph")
+FIL_B = str(BEDGRAPH / "pair_B.bedGraph")
 
 
 def test_combine_pseudo_sym_returns_unmodified_for_none_mode() -> None:
@@ -126,7 +126,7 @@ def test_parser_preserves_complete_action_contract(
         return parser
 
     monkeypatch.setattr(compute_pseudo, "CapArgumentParser", capture_parser)
-    parse_args(["--fil_A", "signal_A.bdg"])
+    parse_args(["--fil_A", "signal_A.bedGraph"])
     parser = captured["parser"]
     actions = getattr(parser, "_actions")
     actual = {
@@ -362,7 +362,7 @@ def test_help_channels_examples_and_semantic_order(
     assert no_argument_capture.err.startswith("Usage\n-----\n  compute_pseudo")
     assert explicit_help.value.code == 0
     assert "Examples\n--------" in help_text
-    assert "compute_pseudo --fil_A signal_A.bdg" in help_text
+    assert "compute_pseudo --fil_A signal_A.bedGraph" in help_text
     assert "--sym max" in help_text
 
     positions = [help_text.index(item) for item in ordered]
@@ -390,8 +390,8 @@ def test_primary_pair_json_and_verbose_output_are_preserved(
     tmp_path: Path,
     capsys: pytest.CaptureFixture[str],
 ) -> None:
-    first = tmp_path / "first.bdg"
-    second = tmp_path / "second.bdg"
+    first = tmp_path / "first.bedGraph"
+    second = tmp_path / "second.bedGraph"
     first.write_text("chrI\t0\t10\t2\n", encoding="utf-8")
     second.write_text("chrI\t0\t10\t3\n", encoding="utf-8")
 
@@ -449,8 +449,8 @@ def test_main_skips_malformed_rows_and_handles_strict_json_failure(
     tmp_path: Path,
     capsys: pytest.CaptureFixture[str],
 ) -> None:
-    mixed = tmp_path / "mixed.bdg"
-    empty = tmp_path / "empty.bdg"
+    mixed = tmp_path / "mixed.bedGraph"
+    empty = tmp_path / "empty.bedGraph"
     mixed.write_text(
         "chrI\t0\t10\tnot-a-number\nchrI\t10\t20\t2\n", encoding="utf-8"
     )
@@ -486,7 +486,7 @@ def test_main_skips_malformed_rows_and_handles_strict_json_failure(
 def test_main_rejects_invalid_quantile_with_a_stable_error(
     tmp_path: Path,
 ) -> None:
-    input_path = tmp_path / "input.bdg"
+    input_path = tmp_path / "input.bedGraph"
     input_path.write_text("chrI\t0\t10\t2\n", encoding="utf-8")
 
     with pytest.raises(
@@ -509,8 +509,8 @@ def _bdg_pair(tmp_path: Path) -> tuple[str, str]:
     Write a bedGraph pair on a 10 bp grid.
     """
 
-    first = tmp_path / "first.bdg"
-    second = tmp_path / "second.bdg"
+    first = tmp_path / "first.bedGraph"
+    second = tmp_path / "second.bedGraph"
     first.write_text(
         "chrI\t0\t10\t2\nchrI\t10\t20\t4\n",
         encoding="utf-8",
@@ -849,7 +849,7 @@ def test_hidden_alias_restates_its_primary(
         return parser
 
     monkeypatch.setattr(compute_pseudo, "CapArgumentParser", capture_parser)
-    parse_args(["--fil_A", "signal_A.bdg"])
+    parse_args(["--fil_A", "signal_A.bedGraph"])
     actions = getattr(captured["parser"], "_actions")
 
     def contract(action: argparse.Action) -> tuple[object, ...]:
@@ -906,7 +906,7 @@ def test_applicability_constants_match_the_parser(
         return parser
 
     monkeypatch.setattr(compute_pseudo, "CapArgumentParser", capture_parser)
-    parse_args(["--fil_A", "signal_A.bdg"])
+    parse_args(["--fil_A", "signal_A.bedGraph"])
     actions = getattr(captured["parser"], "_actions")
     registered = {
         action.dest: tuple(action.option_strings)
@@ -1070,7 +1070,7 @@ def _norm_like(tmp_path: Path) -> tuple[str, str]:
 
     out = []
 
-    for name in ("pair_A.bdg", "pair_B.bdg"):
+    for name in ("pair_A.bedGraph", "pair_B.bedGraph"):
         rows = [
             row.split("\t")
             for row in (BEDGRAPH / name).read_text().strip().splitlines()

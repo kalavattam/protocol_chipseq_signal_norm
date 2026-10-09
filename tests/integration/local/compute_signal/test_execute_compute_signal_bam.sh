@@ -35,22 +35,22 @@ dir_out="${tmp}/out"
 dir_err="${tmp}/logs"
 dir_log="${TEST_DIR_LOG}/compute_signal"
 
-fil_out_se_signal="${dir_out}/tiny_se.bdg"
+fil_out_se_signal="${dir_out}/tiny_se.bedGraph"
 log_se_signal="${dir_log}/execute_compute_signal_bam_se_signal.log"
 
 fil_out_se_coord="${dir_out}/tiny_se.bed"
 log_se_coord="${dir_log}/execute_compute_signal_bam_se_coord.log"
 
-fil_out_pe_signal="${dir_out}/tiny_pe.bdg"
+fil_out_pe_signal="${dir_out}/tiny_pe.bedGraph"
 log_pe_signal="${dir_log}/execute_compute_signal_bam_pe_signal.log"
 
 fil_out_pe_coord="${dir_out}/tiny_pe.bed"
 log_pe_coord="${dir_log}/execute_compute_signal_bam_pe_coord.log"
 
-fil_out_se_signal_scaled="${dir_out}/scaled.tiny_se.bdg"
+fil_out_se_signal_scaled="${dir_out}/scaled.tiny_se.bedGraph"
 log_se_signal_scaled="${dir_log}/execute_compute_signal_bam_se_signal_scaled.log"
 
-fil_out_se_signal_usr_frg="${dir_out}/usr_frg_signal.tiny_se.bdg"
+fil_out_se_signal_usr_frg="${dir_out}/usr_frg_signal.tiny_se.bedGraph"
 log_se_signal_usr_frg="${dir_log}/execute_compute_signal_bam_se_signal_usr_frg.log"
 
 fil_out_se_coord_usr_frg="${dir_out}/usr_frg_coord.tiny_se.bed"
@@ -82,7 +82,7 @@ run_case_compute_signal \
     "se_signal" \
     "signal" \
     "${in_se}" \
-    "bdg" \
+    "bedGraph" \
     "${log_se_signal}" \
     "${dir_out}" \
     "${dir_err}" \
@@ -147,7 +147,7 @@ run_case_compute_signal \
     "pe_signal" \
     "signal" \
     "${in_pe}" \
-    "bdg" \
+    "bedGraph" \
     "${log_pe_signal}" \
     "${dir_out}" \
     "${dir_err}" \
@@ -210,7 +210,7 @@ run_case_compute_signal \
     "se_signal_scaled" \
     "signal" \
     "${in_se}" \
-    "bdg" \
+    "bedGraph" \
     "${log_se_signal_scaled}" \
     "${dir_out}" \
     "${dir_err}" \
@@ -244,7 +244,7 @@ run_case_compute_signal \
     "se_signal_usr_frg" \
     "signal" \
     "${in_se}" \
-    "bdg" \
+    "bedGraph" \
     "${log_se_signal_usr_frg}" \
     "${dir_out}" \
     "${dir_err}" \
@@ -553,8 +553,8 @@ for mode_ro in coord ratio; do
         args_ro=( --csv_fil_in "${in_se}" --typ_out bed.gz )
     else
         args_ro=(
-            --csv_fil_A "${dir_fx}/bedgraph/ratio_A.bdg.gz"
-            --csv_fil_B "${dir_fx}/bedgraph/ratio_B.bdg.gz"
+            --csv_fil_A "${dir_fx}/bedgraph/ratio_A.bedGraph.gz"
+            --csv_fil_B "${dir_fx}/bedgraph/ratio_B.bedGraph.gz"
         )
     fi
 

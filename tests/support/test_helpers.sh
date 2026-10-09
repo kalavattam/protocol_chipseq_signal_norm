@@ -1932,7 +1932,7 @@ Examples
     require_env_project env_nam
     tmp="$(mktemp -d)"
     mkdir -p "${tmp}/out" "${tmp}/logs"
-    run_case_compute_signal submit bam se_signal signal tests/fixtures/compute_signal/bam/se/tiny_se.bam "${tmp}/out/signal.bdg" "${tmp}/submit.log" "${tmp}/out" "${tmp}/logs" '' --method unadj --siz_bin 10 --engine window --csv_scl_fct NA --dp 3
+    run_case_compute_signal submit bam se_signal signal tests/fixtures/compute_signal/bam/se/tiny_se.bam "${tmp}/out/signal.bedGraph" "${tmp}/submit.log" "${tmp}/out" "${tmp}/logs" '' --method unadj --siz_bin 10 --engine window --csv_scl_fct NA --dp 3
     rm -r -- "${tmp}"
     '''
 
@@ -2106,7 +2106,7 @@ Examples
     require_env_project env_nam
     tmp="$(mktemp -d)"
     mkdir -p "${tmp}/out" "${tmp}/logs"
-    run_case_compute_signal_ratio submit unadj "${tmp}/out/ratio.bdg" "${tmp}/submit.log" unadj tests/fixtures/compute_signal/bedgraph/ratio_A.bdg tests/fixtures/compute_signal/bedgraph/ratio_B.bdg "${tmp}/out" "${tmp}/logs" --csv_scl_fct NA --csv_dep_min NA --csv_pseudo NA --eps 0 --dp 3
+    run_case_compute_signal_ratio submit unadj "${tmp}/out/ratio.bedGraph" "${tmp}/submit.log" unadj tests/fixtures/compute_signal/bedgraph/ratio_A.bedGraph tests/fixtures/compute_signal/bedgraph/ratio_B.bedGraph "${tmp}/out" "${tmp}/logs" --csv_scl_fct NA --csv_dep_min NA --csv_pseudo NA --eps 0 --dp 3
     rm -r -- "${tmp}"
     '''
 
@@ -2117,7 +2117,7 @@ Examples
     require_env_project env_nam
     tmp="$(mktemp -d)"
     mkdir -p "${tmp}/out" "${tmp}/logs"
-    run_case_compute_signal_ratio execute track ratio_track "${tmp}/execute.log" unadj tests/fixtures/compute_signal/bedgraph/ratio_A.bdg tests/fixtures/compute_signal/bedgraph/ratio_B.bdg "${tmp}/out" "${tmp}/logs" --track
+    run_case_compute_signal_ratio execute track ratio_track "${tmp}/execute.log" unadj tests/fixtures/compute_signal/bedgraph/ratio_A.bedGraph tests/fixtures/compute_signal/bedgraph/ratio_B.bedGraph "${tmp}/out" "${tmp}/logs" --track
     rm -r -- "${tmp}"
     '''
 EOM
@@ -2161,7 +2161,7 @@ EOM
                     --csv_fil_A "${fil_A}"
                     --csv_fil_B "${fil_B}"
                     --dir_out "${dir_out_lcl}"
-                    --typ_out bdg
+                    --typ_out bedGraph
                     --prefix "${out_spec}"
                     --eps 0
                     --dp 3
@@ -2747,8 +2747,8 @@ Examples
     # shellcheck source=tests/support/test_helpers.sh
     source tests/support/test_helpers.sh
     tmp="$(mktemp -d)"
-    printf '%s\n' $'I\t0\t10\t1' > "${tmp}/signal.bdg"
-    assert_file_nonempty "${tmp}/signal.bdg"
+    printf '%s\n' $'I\t0\t10\t1' > "${tmp}/signal.bedGraph"
+    assert_file_nonempty "${tmp}/signal.bedGraph"
     rm -r -- "${tmp}"
     '''
 
@@ -2757,8 +2757,8 @@ Examples
     # shellcheck source=tests/support/test_helpers.sh
     source tests/support/test_helpers.sh
     tmp="$(mktemp -d)"
-    : > "${tmp}/signal.bdg"
-    assert_file_nonempty "${tmp}/signal.bdg" "signal output"
+    : > "${tmp}/signal.bedGraph"
+    assert_file_nonempty "${tmp}/signal.bedGraph" "signal output"
     rm -r -- "${tmp}"
     '''
 EOM
