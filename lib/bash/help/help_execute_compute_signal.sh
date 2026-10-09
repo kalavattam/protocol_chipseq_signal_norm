@@ -130,7 +130,7 @@ Parameters
     Output directory for generated files.
 
   -to, --typ_out : {'bedGraph', 'bedGraph.gz', 'bedgraph', 'bedgraph.gz', 'bdg', 'bdg.gz', 'bg', 'bg.gz', 'bed', 'bed.gz'}
-    Output file format (default: '${typ_out}').
+    Output file format (default: 'bedGraph.gz' with '--mode signal' or '--mode ratio'; 'bed.gz' with '--mode coord').
 
     For '--mode signal' or '--mode ratio', the typical choice is a bedGraph-style track (e.g., 'bedGraph.gz').
 
@@ -462,7 +462,7 @@ Parameters
       - BED-like files of fragment coordinates if '--mode coord'.
 
   -to, --typ_out : {'bedGraph', 'bedGraph.gz', 'bedgraph', 'bedgraph.gz', 'bdg', 'bdg.gz', 'bg', 'bg.gz', 'bed', 'bed.gz'}
-    Output file format for signal track output files (default: '${typ_out}'). Available options:
+    Output file format for signal track output files (default: 'bedGraph.gz' with '--mode signal' or '--mode ratio'; 'bed.gz' with '--mode coord'). Available options:
       - 'bedGraph', 'bedgraph', 'bdg', 'bg':
         + Signal/ratio in bedGraph format.
         + Intended for '--mode signal' or '--mode ratio'; with '--mode coord' these values are accepted but coerced to 'bed.gz' (see Notes).

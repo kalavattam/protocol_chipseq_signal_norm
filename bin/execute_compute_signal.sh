@@ -536,7 +536,7 @@ function init_arg_defs() {
     csv_fil_A=""
     csv_fil_B=""
     dir_out=""
-    typ_out="bedGraph.gz"
+    typ_out=""
     prefix=""
     track=false
     siz_bin=""
@@ -1130,6 +1130,16 @@ function validate_args() {
     check_int_pos "${threads}" "threads" || return 1
 
     validate_var_dir "dir_out" "${dir_out}" || return 1
+
+    # Each mode has its own default output format, so a warning about coercing
+    # '--typ_out' can only concern a value the user supplied.
+    if [[ -z "${typ_out}" ]]; then
+        if [[ "${mode}" == "coord" ]]; then
+            typ_out="bed.gz"
+        else
+            typ_out="bedGraph.gz"
+        fi
+    fi
 
     if [[ "${mode}" =~ ^(signal|ratio)$ ]]; then
         validate_var "typ_out" "${typ_out}" || return 1

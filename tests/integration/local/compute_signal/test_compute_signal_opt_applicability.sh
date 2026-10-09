@@ -528,6 +528,44 @@ else
         "(exit ${rc}); see $(print_relpath "${dir_edg}/logs")"
 fi
 
+# Each mode has its own default '--typ_out', so a coord run without one writes
+# BED with no message; a supplied bedGraph value is coerced with a warning.
+for typ in "" bedGraph.gz; do
+    args=()
+    if [[ -n "${typ}" ]]; then args=( --typ_out "${typ}" ); fi
 
-unset row mode opt val act args rc out cmd lbl nam dir_edg
+    rc=0
+    out="$(
+        "${TEST_BASH}" "${ROOT_REPO}/bin/execute_compute_signal.sh" \
+            --dry_run \
+            --mode coord \
+            --csv_fil_in "${in_se}" \
+            "${args[@]}" \
+            --dir_out "${dir_out}" \
+            --dir_eo "${dir_err}" \
+            --max_job 1 \
+            --threads 1 2>&1
+    )" || rc=$?
+
+    cmd="$(grep -m1 'submit_compute_signal.sh --env' <<< "${out}" || true)"
+    n_wrn="$(grep -c "Coercing '--typ_out'" <<< "${out}" || true)"
+    n_exp=0
+    if [[ -n "${typ}" ]]; then n_exp=1; fi
+
+    if [[
+        "${rc}" -eq 0
+        && "${cmd}" == *".bed.gz"*
+        && "${n_wrn}" -eq "${n_exp}"
+    ]]; then
+        record_pass \
+            "execute coord '--typ_out ${typ:-unset}' warns ${n_exp} time(s)"
+    else
+        record_fail \
+            "execute coord '--typ_out ${typ:-unset}' warned ${n_wrn}" \
+            "time(s), expected ${n_exp} (exit ${rc})"
+    fi
+done
+
+
+unset row mode opt val act args rc out cmd lbl nam dir_edg typ n_wrn n_exp
 finish
