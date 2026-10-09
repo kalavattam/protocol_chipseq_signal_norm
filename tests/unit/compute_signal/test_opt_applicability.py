@@ -307,10 +307,17 @@ def test_compute_signal_refuses_signal_options_for_report_only(
     assert "a report-only run" in str(caught.value.code)
 
 
+# An ignored value is not checked, so an invalid one still only warns.
 @pytest.mark.parametrize(
     "argv",
-    [["--dp", "3"], ["--engine", "window"], ["--siz_win", "20"]],
-    ids=["dp", "engine", "siz_win"],
+    [
+        ["--dp", "3"],
+        ["--engine", "window"],
+        ["--siz_win", "20"],
+        ["--dp", "-1"],
+        ["--siz_win", "0"],
+    ],
+    ids=["dp", "engine", "siz_win", "invalid dp", "invalid siz_win"],
 )
 def test_compute_signal_warns_for_report_only(
     argv: list[str],
@@ -384,6 +391,18 @@ SIGNAL_WARNED = (
         "x.bdg", ["--siz_win", "20"], "'--siz_win'", id="chrom siz_win"
     ),
     pytest.param("x.bdg", ["--ref_fa", REF_FA], "'--ref_fa'", id="BAM ref_fa"),
+    pytest.param(
+        "x.bdg",
+        ["--ref_fa", "missing.fa"],
+        "'--ref_fa'",
+        id="BAM missing ref_fa",
+    ),
+    pytest.param(
+        "x.bdg", ["--siz_win", "0"], "'--siz_win'", id="chrom invalid siz_win"
+    ),
+    pytest.param(
+        "x.bed", ["--siz_win", "0"], "'--siz_win'", id="bed invalid siz_win"
+    ),
 )
 
 

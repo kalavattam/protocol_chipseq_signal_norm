@@ -24,7 +24,8 @@ source "$(
 
 
 # Define fixture and output paths. Each row passes one option to a mode it does
-# not apply to, per 'HELP.PARAMETER.APPLICABILITY'.
+# not apply to, per 'HELP.PARAMETER.APPLICABILITY'; a warned option is not
+# checked, so rows with a missing file or a malformed value still warn.
 dir_fx="${ROOT_REPO}/tests/fixtures/compute_signal"
 in_se="${dir_fx}/bam/se/tiny_se.bam"
 fil_A="${dir_fx}/bedgraph/ratio_A.bdg.gz"
@@ -97,6 +98,10 @@ rows_exe=(
     "signal|--siz_win|20|warn"
     "coord|--dp|3|warn"
     "ratio|--no_report||warn"
+    "ratio|--ref_fa|${tmp}/missing.fa|warn"
+    "signal|--chr_siz|${tmp}/missing.sizes|warn"
+    "signal|--siz_win|abc|warn"
+    "coord|--dp|abc|warn"
 )
 
 for row in "${rows_exe[@]}"; do
@@ -200,6 +205,10 @@ rows_sub=(
     "signal|--siz_win|20|warn"
     "coord|--dp|3|warn"
     "ratio|--no_report||warn"
+    "ratio|--ref_fa|${tmp}/missing.fa|warn"
+    "signal|--chr_siz|${tmp}/missing.sizes|warn"
+    "signal|--siz_win|abc|warn"
+    "coord|--dp|abc|warn"
 )
 
 for row in "${rows_sub[@]}"; do
@@ -268,13 +277,17 @@ else
 fi
 
 # A report-only run builds no track, so the track's settings are refused or
-# warned about and never passed on; the empty row is the control.
+# warned about and never passed on, and a warned one's value is not checked;
+# the empty row is the control.
 rows_rpt=(
     "--method|frag|refuse"
     "--csv_scl_fct|2|refuse"
     "--engine|window|warn"
     "--siz_win|20|warn"
     "--dp|3|warn"
+    "--engine|bogus|warn"
+    "--siz_win|abc|warn"
+    "--dp|abc|warn"
     "||none"
 )
 
@@ -298,7 +311,7 @@ for row in "${rows_rpt[@]}"; do
     )" || rc=$?
 
     cmd="$(grep -m1 'submit_compute_signal.sh --env' <<< "${out}" || true)"
-    lbl="execute '${opt:-nothing extra}' with '--report_only'"
+    lbl="execute '${opt:-nothing extra}${val:+ ${val}}' with '--report_only'"
     msg="'${opt}' has no effect with '--report_only'"
 
     case "${act}" in

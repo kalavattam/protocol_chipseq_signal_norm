@@ -430,8 +430,8 @@ if [[ -s "${log_coord}" ]]; then
         "submit coord run log records the built command"
 fi
 
-# Validation contract for '--siz_win': a nonpositive or nonnumeric value is
-# rejected before any job is built.
+# Validation contract for '--siz_win': with the 'window' engine, which uses it,
+# a nonpositive or nonnumeric value is rejected before any job is built.
 for val_bad in 0 abc; do
     out_bad="$(
         bash "${ROOT_REPO}/bin/submit_compute_signal.sh" \
@@ -440,6 +440,7 @@ for val_bad in 0 abc; do
             --csv_fil_out "${fil_out_se_signal}" \
             --dir_eo "${dir_err}" \
             --siz_bin 10 \
+            --engine window \
             --siz_win "${val_bad}" 2>&1
     )" || true
 

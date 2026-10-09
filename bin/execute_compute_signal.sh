@@ -1137,7 +1137,6 @@ function validate_args() {
             if [[ -z "${siz_bin}" ]]; then siz_bin=10; fi
 
             check_int_pos "${siz_bin}" "siz_bin" || return 1
-            check_int_pos "${siz_win}" "siz_win" || return 1
 
             if [[ -n "${typ_sig}" ]]; then
                 echo_err \
@@ -1156,15 +1155,6 @@ function validate_args() {
                     "would write neither a track nor a report."
                 return 1
             fi
-
-            case "${engine}" in
-                chrom|window) : ;;
-                *)
-                    echo_err \
-                        "'--engine' must be 'chrom' or 'window': '${engine}'."
-                    return 1
-                    ;;
-            esac
         fi
     else
         validate_var "typ_out" "${typ_out}" || return 1
@@ -1187,6 +1177,32 @@ function validate_args() {
                 ;;
         esac
     fi
+
+    # Only 'signal' mode writes reports; elsewhere '--report_only' would leave
+    # 'coord' tasks without an output path, or be ignored in 'ratio' mode.
+    if [[ "${report_only}" == "true" && "${mode}" != "signal" ]]; then
+        echo_err \
+            "'--report_only' is for '--mode signal', where it writes the" \
+            "reports without a track. '--mode ${mode}' writes no reports."
+        return 1
+    fi
+
+    # '--prior_count' only changes 'edger' pseudocounts, so refuse it outside
+    # ratio mode here and without an 'edger' element in 'prepare_vecs'.
+    if [[ -n "${prior_count}" ]]; then
+        if [[ "${mode}" != "ratio" ]]; then
+            echo_err \
+                "'--prior_count' is for '--mode ratio', where it sets the" \
+                "edgeR prior that '--csv_pseudo edger' derives from."
+            return 1
+        fi
+
+        check_flt_nonneg "${prior_count}" "prior_count" || return 1
+    fi
+
+    # Options that have no effect are refused, or warned about and cleared,
+    # before any value is checked, so an ignored value is never validated.
+    check_opts_mode || return 1
 
     if [[ -n "${csv_scl_fct}" ]]; then
         check_str_delim "csv_scl_fct" "${csv_scl_fct}" || return 1
@@ -1212,29 +1228,22 @@ function validate_args() {
         validate_var_file "chr_siz" "${chr_siz}" || return 1
     fi
 
-    # Only 'signal' mode writes reports; elsewhere '--report_only' would leave
-    # 'coord' tasks without an output path, or be ignored in 'ratio' mode.
-    if [[ "${report_only}" == "true" && "${mode}" != "signal" ]]; then
-        echo_err \
-            "'--report_only' is for '--mode signal', where it writes the" \
-            "reports without a track. '--mode ${mode}' writes no reports."
-        return 1
-    fi
+    # A track-writing signal run uses the engine, and its 'window' engine the
+    # window size; a report-only run uses neither.
+    if [[ "${mode}" == "signal" && "${report_only}" != "true" ]]; then
+        case "${engine}" in
+            chrom|window) : ;;
+            *)
+                echo_err \
+                    "'--engine' must be 'chrom' or 'window': '${engine}'."
+                return 1
+                ;;
+        esac
 
-    # '--prior_count' only changes 'edger' pseudocounts, so refuse it outside
-    # ratio mode here and without an 'edger' element in 'prepare_vecs'.
-    if [[ -n "${prior_count}" ]]; then
-        if [[ "${mode}" != "ratio" ]]; then
-            echo_err \
-                "'--prior_count' is for '--mode ratio', where it sets the" \
-                "edgeR prior that '--csv_pseudo edger' derives from."
-            return 1
+        if [[ "${engine}" == "window" ]]; then
+            check_int_pos "${siz_win}" "siz_win" || return 1
         fi
-
-        check_flt_nonneg "${prior_count}" "prior_count" || return 1
     fi
-
-    check_opts_mode || return 1
 
     if [[ "${mode}" == "ratio" ]]; then
         if [[ -n "${eps}" ]]; then check_flt_nonneg "${eps}" "eps"; fi
@@ -1260,8 +1269,10 @@ function validate_args() {
         fi
     fi
 
-    validate_var "dp" "${dp}" || return 1
-    check_int_pos "${dp}" "dp" || return 1
+    if [[ "${mode}" != "coord" && "${report_only}" != "true" ]]; then
+        validate_var "dp" "${dp}" || return 1
+        check_int_pos "${dp}" "dp" || return 1
+    fi
 
     if [[ -z "${dir_eo}" ]]; then dir_eo="${dir_out}/logs"; fi
     validate_var_dir "dir_eo" "${dir_eo}" || return 1

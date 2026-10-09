@@ -2352,6 +2352,9 @@ function check_opts_mode() {
         warn --mode "${mode}" signal,ratio \
         --dp "${dp_set}"
 
+    # An ignored chromosome-sizes file is neither checked nor passed on.
+    if [[ "${mode}" != "ratio" ]]; then chr_siz=""; fi
+
     if [[ "${mode}" != "signal" ]]; then return 0; fi
 
     # An explicit report list would be written anyway, so it contradicts
@@ -2426,7 +2429,6 @@ function validate_args() {
     validate_var     "threads" "${threads}"         || return 1
 
     check_int_pos "${threads}" "threads" || return 1
-    check_int_pos "${dp}"     "dp"     || return 1
 
     if [[ "${mode}" == "ratio" ]]; then
         case "${skip_00}" in
@@ -2471,16 +2473,6 @@ function validate_args() {
         fi
         validate_var "siz_bin"     "${siz_bin}"     || return 1
         check_int_pos "${siz_bin}" "siz_bin"        || return 1
-        check_int_pos "${siz_win}" "siz_win"        || return 1
-
-        case "${engine}" in
-            chrom|window) : ;;
-            *)
-                echo_err \
-                    "'--engine' must be 'chrom' or 'window': '${engine}'."
-                return 1
-                ;;
-        esac
     elif [[ "${mode}" == "coord" ]]; then
         validate_var "csv_fil_in"  "${csv_fil_in}"  || return 1
         validate_var "csv_fil_out" "${csv_fil_out}" || return 1
@@ -2492,10 +2484,6 @@ function validate_args() {
 
     validate_var "nam_job" "${nam_job}" || return 1
 
-    if [[ -n "${chr_siz}" ]]; then
-        validate_var_file "chr_siz" "${chr_siz}" 0 true || return 1
-    fi
-
     if [[ -z "${dir_eo}" ]]; then
         echo_err "'--dir_eo' is required."
         return 1
@@ -2503,7 +2491,33 @@ function validate_args() {
 
     validate_var_dir "dir_eo" "${dir_eo}" || return 1
 
+    # Options that have no effect are refused, or warned about and cleared,
+    # before their values are checked, so an ignored value is never validated.
     check_opts_mode || return 1
+
+    if [[ -n "${chr_siz}" ]]; then
+        validate_var_file "chr_siz" "${chr_siz}" 0 true || return 1
+    fi
+
+    # 'check_opts_mode' clears the track settings a run does not use.
+    if [[ "${mode}" == "signal" && -n "${engine}" ]]; then
+        case "${engine}" in
+            chrom|window) : ;;
+            *)
+                echo_err \
+                    "'--engine' must be 'chrom' or 'window': '${engine}'."
+                return 1
+                ;;
+        esac
+    fi
+
+    if [[ "${mode}" == "signal" && -n "${siz_win}" ]]; then
+        check_int_pos "${siz_win}" "siz_win" || return 1
+    fi
+
+    if [[ "${mode}" != "coord" && "${dp}" != "NA" ]]; then
+        check_int_pos "${dp}" "dp" || return 1
+    fi
 }
 
 

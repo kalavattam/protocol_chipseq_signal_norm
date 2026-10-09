@@ -3039,7 +3039,9 @@ def main(argv: list[str] | None = None) -> int:
     try:
         check_exists(args.fil_in, kind="file", label="Alignment file")
 
-        if args.ref_fa is not None:
+        # Only CRAM decoding reads the reference, so an ignored one is not
+        # checked.
+        if args.ref_fa is not None and args.fil_in.lower().endswith(".cram"):
             check_exists(args.ref_fa, kind="file", label="Reference FASTA")
 
     except FileNotFoundError as error:
@@ -3115,13 +3117,18 @@ def main(argv: list[str] | None = None) -> int:
                 "siz_bin",
                 allow_none=False,
             )
-            validate_comparison(
-                args.siz_win,
-                "gt",
-                0,
-                "siz_win",
-                allow_none=False,
-            )
+
+            # A track uses '--siz_win' only with the 'window' engine, and
+            # always uses '--dp'; a report-only run uses neither.
+            if fmt_out is not None and args.engine == "window":
+                validate_comparison(
+                    args.siz_win,
+                    "gt",
+                    0,
+                    "siz_win",
+                    allow_none=False,
+                )
+
             validate_comparison(
                 args.wrk_writer,
                 "ge",
@@ -3136,13 +3143,16 @@ def main(argv: list[str] | None = None) -> int:
                 "wrk_writer",
                 allow_none=False,
             )
-            validate_comparison(args.dp, "ge", 0, "dp", allow_none=False)
+
+            if fmt_out is not None:
+                validate_comparison(args.dp, "ge", 0, "dp", allow_none=False)
 
             if args.strat_writer == "serial" and args.wrk_writer != 1:
                 raise ValueError(
                     "'--wrk_writer' must be 1 when '--strat_writer serial'.",
                 )
-        else:
+        elif args.strat_bed == "idx_win":
+            # Only the hidden windowed BED strategy uses '--siz_win'.
             validate_comparison(
                 args.siz_win,
                 "gt",
