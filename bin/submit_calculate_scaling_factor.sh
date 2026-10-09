@@ -574,7 +574,8 @@ function canonicalize_args() {
 function check_opts_mode() {
     check_opt_applies \
         refuse \
-        --mode "${mode}" spike \
+        --mode "${mode}" \
+        spike \
         --method "${method}" \
         --csv_sip "${csv_sip}" \
         --csv_sin "${csv_sin}" \
@@ -584,7 +585,8 @@ function check_opts_mode() {
 
     check_opt_applies \
         refuse \
-        --mode "${mode}" siq \
+        --mode "${mode}" \
+        siq \
         --tbl_met "${tbl_met}" \
         --cfg_met "${cfg_met}" \
         --eqn "${eqn_set}" \

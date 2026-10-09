@@ -985,7 +985,9 @@ function canonicalize_args() {
             mode="coord"
 
             check_opt_applies \
-                refuse --mode coord signal,ratio \
+                refuse \
+                --mode coord \
+                signal,ratio \
                 --method "${method}" \
                 || return 1
             unset method
@@ -1012,23 +1014,31 @@ function canonicalize_args() {
 function check_opts_mode() {
     # Options for another mode's inputs or results are refused.
     check_opt_applies \
-        refuse --mode "${mode}" signal,coord \
+        refuse \
+        --mode "${mode}" \
+        signal,coord \
         --csv_fil_in "${csv_fil_in}" \
         --csv_usr_frg "${csv_usr_frg}" \
         || return 1
 
     check_opt_applies \
-        refuse --mode "${mode}" signal,ratio \
+        refuse \
+        --mode "${mode}" \
+        signal,ratio \
         --csv_scl_fct "${csv_scl_fct}" \
         || return 1
 
     check_opt_applies \
-        refuse --mode "${mode}" signal \
+        refuse \
+        --mode "${mode}" \
+        signal \
         --siz_bin "${siz_bin}" \
         || return 1
 
     check_opt_applies \
-        refuse --mode "${mode}" ratio \
+        refuse \
+        --mode "${mode}" \
+        ratio \
         --csv_fil_A "${csv_fil_A}" \
         --csv_fil_B "${csv_fil_B}" \
         --csv_dep_min "${csv_dep_min}" \
@@ -1044,21 +1054,29 @@ function check_opts_mode() {
 
     # Supporting files, performance settings, and satisfied requests warn.
     check_opt_applies \
-        warn --mode "${mode}" signal,coord \
+        warn \
+        --mode "${mode}" \
+        signal,coord \
         --ref_fa "${ref_fa}"
 
     check_opt_applies \
-        warn --mode "${mode}" ratio \
+        warn \
+        --mode "${mode}" \
+        ratio \
         --chr_siz "${chr_siz}"
 
     check_opt_applies \
-        warn --mode "${mode}" signal \
+        warn \
+        --mode "${mode}" \
+        signal \
         --engine "${engine_set}" \
         --siz_win "${siz_win_set}" \
         --no_report "${no_report}"
 
     check_opt_applies \
-        warn --mode "${mode}" signal,ratio \
+        warn \
+        --mode "${mode}" \
+        signal,ratio \
         --dp "${dp_set}"
 
     # A report-only run writes counts and no track, so the track's settings do
@@ -1087,7 +1105,9 @@ function check_opts_mode() {
     elif [[ "${mode}" == "signal" ]]; then
         # The 'chrom' engine has no windows to size.
         check_opt_applies \
-            warn --engine "${engine}" window \
+            warn \
+            --engine "${engine}" \
+            window \
             --siz_win "${siz_win_set}"
     fi
 

@@ -638,7 +638,9 @@ function print_state_debug() {
 function check_opts_mode() {
     # S. cerevisiae has no optional contigs to retain.
     check_opt_applies \
-        refuse --retain "${retain}" sp \
+        refuse \
+        --retain "${retain}" \
+        sp \
         --tg "${tg}" \
         --mtr "${mtr}" \
         || return 1

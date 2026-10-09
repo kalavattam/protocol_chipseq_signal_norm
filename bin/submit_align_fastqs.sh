@@ -845,7 +845,9 @@ function validate_args() {
 function check_opts_mode() {
     # Each aligner takes only its own options.
     check_opt_applies \
-        refuse --aligner "${aligner}" bowtie2 \
+        refuse \
+        --aligner "${aligner}" \
+        bowtie2 \
         --bt2_mode "${bt2_mode_set}" \
         --bt2_X "${bt2_X_set}" \
         --bt2_inherited "${bt2_inherited}" \

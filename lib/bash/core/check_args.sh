@@ -598,7 +598,9 @@ Examples
   1. Refuse signal-only options given in ratio mode.
     '''bash
     check_opt_applies \\
-        refuse --mode ratio signal \\
+        refuse \\
+        --mode ratio \\
+        signal \\
         --siz_bin "20" \\
         --engine ""
     '''
@@ -606,7 +608,9 @@ Examples
   2. Ignore a ratio-only supporting file in signal mode, with a warning.
     '''bash
     check_opt_applies \\
-        warn --mode signal ratio \\
+        warn \\
+        --mode signal \\
+        ratio \\
         --chr_siz "chrom.sizes"
     '''
 EOM
