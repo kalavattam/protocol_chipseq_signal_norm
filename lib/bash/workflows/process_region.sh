@@ -406,7 +406,7 @@ EOM
     validate_var_file "fil_bdg" "${fil_bdg}" || return 1
     check_region "${region}" || return 1
 
-    if [[ "${fil_bdg}" =~ \.gz$ ]]; then
+    if [[ "${fil_bdg,,}" == *.gz ]]; then
         if \
             command -v gzip > /dev/null 2>&1
         then

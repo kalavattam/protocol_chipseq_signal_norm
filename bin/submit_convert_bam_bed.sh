@@ -421,14 +421,12 @@ function print_vecs_debug() {
 # Strip known alignment suffixes before assigning a BED output path.
 function strip_sfx_aln() {
     local base="${1:-}"
+    local stem
 
-    case "${base,,}" in
-        *.qnam.bam)  printf '%s\n' "${base%.qnam.bam}"  ;;
-        *.qnam.cram) printf '%s\n' "${base%.qnam.cram}" ;;
-        *.bam)       printf '%s\n' "${base%.bam}"       ;;
-        *.cram)      printf '%s\n' "${base%.cram}"      ;;
-        *)           printf '%s\n' "${base}"            ;;
-    esac
+    stem="$(strip_fmt_suffix "${base}")"
+    if [[ "${stem,,}" == *.qnam ]]; then stem="${stem:0:${#stem}-5}"; fi
+
+    printf '%s\n' "${stem}"
 }
 
 
@@ -580,6 +578,7 @@ function main() {
     source_helpers_submit "${0##*/}" "${dir_scr}" \
         check_args \
         check_env \
+        check_formats \
         check_inputs \
         check_numbers \
         format_outputs \

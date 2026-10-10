@@ -138,9 +138,7 @@ EOM
         return 1
     fi
 
-    samp="$(basename "${fil_aln}")"
-    samp="${samp%.bam}"
-    samp="${samp%.cram}"
+    samp="$(strip_fmt_suffix "$(basename "${fil_aln}")")"
     samp="${samp#IP_}"
     samp="${samp#in_}"
     samp="${samp//./_}"
@@ -1056,6 +1054,7 @@ function main() {
         calculate_scaling_factor \
         check_args \
         check_env \
+        check_formats \
         check_inputs \
         check_numbers \
         format_outputs \

@@ -913,7 +913,8 @@ function derive_report_path() {
         return 1
     fi
 
-    base="${fil_trk%.gz}"
+    base="${fil_trk}"
+    if [[ "${base,,}" == *.gz ]]; then base="${base:0:${#base}-3}"; fi
     base="${base%.*}"
 
     echo "${base}.${label}.txt"

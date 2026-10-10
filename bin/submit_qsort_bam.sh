@@ -372,12 +372,12 @@ function derive_fil_out() {
 
     case "${base,,}" in
         *.bam)
-            stem="${base%.bam}"
+            stem="$(strip_fmt_suffix "${base}")"
             ext_out="bam"
             ;;
 
         *.cram)
-            stem="${base%.cram}"
+            stem="$(strip_fmt_suffix "${base}")"
             ext_out="cram"
             ;;
 
@@ -508,6 +508,7 @@ function main() {
     source_helpers_submit "${0##*/}" "${dir_scr}" \
         check_args \
         check_env \
+        check_formats \
         check_inputs \
         check_numbers \
         format_outputs \

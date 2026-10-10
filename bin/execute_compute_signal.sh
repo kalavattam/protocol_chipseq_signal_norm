@@ -1344,9 +1344,7 @@ function prepare_vecs() {
 
         unset arr_fil_out && declare -ga arr_fil_out
         for i in "${arr_fil_in[@]}"; do
-            base="$(basename "${i}")"
-            base="${base%.bam}"
-            base="${base%.cram}"
+            base="$(strip_fmt_suffix "$(basename "${i}")")"
 
             if [[ -n "${prefix}" ]]; then
                 if [[ "${base}" =~ ^IP_ ]]; then

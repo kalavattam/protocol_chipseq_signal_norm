@@ -61,7 +61,7 @@ fi
     }
 
     source_helpers "${_dir_src_cmd}" \
-        check_source format_outputs || {
+        check_formats check_source format_outputs || {
             echo "error($(basename "${BASH_SOURCE[0]}")):" \
                 "failed to source required helper dependencies." >&2
 
@@ -173,15 +173,7 @@ EOM
     fi
 
     # Remove the compression and format suffixes, in any letter case.
-    base="$(basename "${fil_smp}")"
-    if [[ "${base,,}" == *.gz ]]; then base="${base:0:${#base}-3}"; fi
-
-    for ext in bam cram sam bedgraph bed; do
-        if [[ "${base,,}" == *."${ext}" ]]; then
-            base="${base:0:${#base}-${#ext}-1}"
-            break
-        fi
-    done
+    base="$(strip_fmt_suffix "$(basename "${fil_smp}")")"
 
     log_out="${dir_eo}/${nam_job}.${base}.stdout.txt"
     log_err="${dir_eo}/${nam_job}.${base}.stderr.txt"

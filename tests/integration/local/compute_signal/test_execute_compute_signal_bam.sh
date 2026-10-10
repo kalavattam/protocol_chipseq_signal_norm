@@ -435,9 +435,14 @@ source "${ROOT_REPO}/lib/bash/core/format_outputs.sh"
 dir_pin="${tmp}/derivation_pin"
 mkdir -p "${dir_pin}"
 
+# Number the tracks: names differing only in letter case would share one file
+# on a file system that ignores case.
 for label in n_frg n_ovlp; do
-    for ext in bedGraph bedGraph.gz; do
-        trk_pin="${dir_pin}/pin_${label}_${ext//./_}.${ext}"
+    n=0
+
+    for ext in bedGraph bedGraph.gz bedGraph.GZ; do
+        n=$(( n + 1 ))
+        trk_pin="${dir_pin}/pin_${label}_${n}.${ext}"
 
         PYTHONDONTWRITEBYTECODE=1 \
         "${TEST_MANAGED_PYTHON}" \
@@ -450,8 +455,9 @@ for label in n_frg n_ovlp; do
             > /dev/null 2>&1 || true
 
         derived="$(derive_report_path "${trk_pin}" "${label}")"
+        want="${dir_pin}/pin_${label}_${n}.${label}.txt"
 
-        if [[ -s "${derived}" ]]; then
+        if [[ -s "${derived}" && "${derived}" == "${want}" ]]; then
             record_pass \
                 "shell and CLI derivations agree for ${label} on .${ext}"
         else
@@ -461,7 +467,7 @@ for label in n_frg n_ovlp; do
         fi
     done
 done
-unset label ext trk_pin derived
+unset label n ext trk_pin derived want
 
 
 for samp in tiny_se tiny_pe; do

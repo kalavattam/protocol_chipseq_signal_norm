@@ -225,7 +225,7 @@ def resolve_report_path(
 
     # Strip one '.gz' and then one extension, matching how the wrappers derive
     # the same name, so a sample's counts sit beside its track either way.
-    base = fil_out[:-3] if fil_out.endswith(".gz") else fil_out
+    base = fil_out[:-3] if fil_out.lower().endswith(".gz") else fil_out
 
     return f"{os.path.splitext(base)[0]}.{label}.txt"
 

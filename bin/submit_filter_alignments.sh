@@ -180,9 +180,7 @@ EOM
 
     # Extract sample and function names from input values, and assign 'fil_out'
     # name based on species selector.
-    samp="$(basename "${fil_in}")"
-    samp="${samp%.bam}"
-    samp="${samp%.cram}"
+    samp="$(strip_fmt_suffix "$(basename "${fil_in}")")"
 
     case "${retain}" in
         sc)
@@ -845,6 +843,7 @@ function main() {
     # First-pass parse: resolve 'dir_scr' before using sourced parser helpers.
     source_helpers_submit "${0##*/}" "${dir_scr}" \
         check_args \
+        check_formats \
         check_inputs \
         filter_alignment \
         format_outputs \

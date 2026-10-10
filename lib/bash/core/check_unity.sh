@@ -216,7 +216,7 @@ EOM
         }
     '
 
-    if [[ "${fil_in}" == *.gz ]]; then
+    if [[ "${fil_in,,}" == *.gz ]]; then
         gunzip -cd -- "${fil_in}" \
             | awk \
                 -v bnd_gt="${bnd_gt}" \
