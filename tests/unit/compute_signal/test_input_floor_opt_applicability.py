@@ -403,6 +403,16 @@ def test_library_refuses_given_parameters_that_cannot_act(
             {"mode": "dist", "fmt_in": "bedGraph"},
             "'fmt_in' has no effect with a named input path and is ignored.",
         ),
+        (
+            BDG,
+            {"mode": "norm", "fmt_in": "bedGraph"},
+            "'fmt_in' has no effect with 'norm' and is ignored.",
+        ),
+        (
+            BDG,
+            {"mode": "norm", "ref_fa": "missing.fa"},
+            "'ref_fa' has no effect with 'norm' and is ignored.",
+        ),
     ),
 )
 def test_library_warns_about_supporting_parameters(

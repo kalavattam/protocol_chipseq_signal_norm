@@ -493,6 +493,7 @@ def _check_params_mode(
     paired_flags: set[int] | None,
     single_flags: set[int] | None,
     fmt_in: str | None,
+    ref_fa: str | None,
 ) -> None:
     """
     Refuse or warn about given parameters that cannot act.
@@ -511,6 +512,8 @@ def _check_params_mode(
         Paired- and single-end FLAG allowlists.
     fmt_in : str | None
         Input-format hint.
+    ref_fa : str | None
+        Reference FASTA path.
 
     Raises
     ------
@@ -522,7 +525,8 @@ def _check_params_mode(
     -----
     This realizes 'HELP.PARAMETER.APPLICABILITY' for the parameters whose
     'None' default shows whether they were given. A format hint for a named
-    path is ignored with a warning.
+    path, and a format hint or reference in 'norm', which reads no input, are
+    ignored with a warning.
     """
 
     if coef is not None:
@@ -545,7 +549,14 @@ def _check_params_mode(
             f"no effect with {mode!r}.",
         )
 
-    if mode != "norm" and fmt_in is not None and fil_in != "-":
+    if mode == "norm":
+        for name, value in (("fmt_in", fmt_in), ("ref_fa", ref_fa)):
+            if value is not None:
+                warnings.warn(
+                    f"{name!r} has no effect with 'norm' and is ignored.",
+                    stacklevel=3,
+                )
+    elif fmt_in is not None and fil_in != "-":
         warnings.warn(
             "'fmt_in' has no effect with a named input path and is ignored.",
             stacklevel=3,
@@ -651,9 +662,10 @@ def compute_input_floor(
     fmt_in : str | None
         Required case-insensitive format hint when 'fil_in' is '-'. Accepts
         'bam', 'cram', 'bed', or 'bedGraph' and resolves to a canonical format;
-        ignored for named paths.
+        ignored, with a warning, for named paths and in 'norm'.
     ref_fa : str | None
-        Reference FASTA required for CRAM decoding and ignored otherwise.
+        Reference FASTA required for CRAM decoding and ignored, with a warning,
+        otherwise.
 
     Returns
     -------
@@ -684,6 +696,7 @@ def compute_input_floor(
         paired_flags,
         single_flags,
         fmt_in,
+        ref_fa,
     )
 
     if mode == "dist":
@@ -1590,8 +1603,8 @@ def main(argv: list[str] | None = None) -> int:
 
     Notes
     -----
-    - Emits a note to stderr if '--flags_pe' / '--flags_se' are supplied for
-      bed/bed.gz input (as flags are ignored for bed inputs).
+    - Refuses '--flags_pe' and '--flags_se' with BED input, where they have
+      no effect.
     - Prints human-readable error messages to stderr on failure.
     - BrokenPipeError is handled in the '__main__' wrapper.
     """

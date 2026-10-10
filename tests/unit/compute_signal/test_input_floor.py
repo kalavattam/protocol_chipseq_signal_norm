@@ -585,17 +585,17 @@ def test_callable_docstring_summary_matches_signature() -> None:
         "        'dist' and 'frag', '-' reads standard input and requires "
         "'fmt_in'."
     ) in source_docstring
-    assert len(docstring.encode()) == 3456
+    assert len(docstring.encode()) == 3508
     assert hashlib.sha256(docstring.encode()).hexdigest() == (
-        "1b08ac72a2aa0655311b36f47f63af0bc577d06cd6693d79878a0415cc9673ba"
+        "43e700fcd2bba053e12e26e41281e2968d57a344c69d19910c095a6e1216c061"
     )
     assert hashlib.sha256(
         " ".join(docstring.split()).encode(),
     ).hexdigest() == (
-        "7ad1590bb24cf8bd0326d95577e5425131948883fd2a45bedecc06ef96e65887"
+        "5683ee3603a0b2556c54dfddf7d444a8e15f57dc0409956858f027aa0a149c47"
     )
     assert hashlib.sha256((source_docstring + "\n").encode()).hexdigest() == (
-        "55402fb448a8036256b8f1cdbc2e20c87bd03a5c07019df769fb8525d6e24352"
+        "15b58ee2e667c4fcbb87aead5f712c74226e6a66b3e803cb9ca7110271dd2912"
     )
 
 
