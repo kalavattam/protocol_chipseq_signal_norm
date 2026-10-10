@@ -169,4 +169,41 @@ for idx in "${!rows[@]}"; do
 done
 
 
+# Filtering the S. pombe output again keeps the input's '@HD' line and gives
+# the second '@PG' record a distinct ID.
+fil_sp="${tmp}/out_3.bam"
+fil_twice="${tmp}/out_twice.bam"
+rc=0
+out="$(
+    run_filter filter_alignment_sp \
+        --threads 1 \
+        --fil_in "${fil_sp}" \
+        --fil_out "${fil_twice}" \
+        --mito \
+        --tg \
+        --mtr
+)" || rc=$?
+hd_in="$(run_samtools view -H "${in_bam}" | grep '^@HD' || true)"
+hd_out="$(run_samtools view -H "${fil_twice}" | grep '^@HD' || true)"
+ids_pg="$(
+    run_samtools view -H "${fil_twice}" \
+        | awk -F '\t' '/^@PG/ && $2 ~ /^ID:filter_alignment_sp/ { print $2 }'
+)"
+
+if [[
+    "${rc}" -eq 0
+    && -n "${hd_in}"
+    && "${hd_out}" == "${hd_in}"
+    && "$(tr '\n' ' ' <<< "${ids_pg}")" \
+        == "ID:filter_alignment_sp ID:filter_alignment_sp.1 "
+]]; then
+    record_pass "filtering twice keeps '@HD' and gives distinct '@PG' IDs"
+else
+    printf '%s\n' "${out}" > "${dir_log}/reference_order_twice.log"
+    record_fail \
+        "filtering twice lost '@HD' or repeated a '@PG' ID (exit ${rc}):" \
+        "$(tr '\n' ' ' <<< "${ids_pg}")"
+fi
+
+
 finish

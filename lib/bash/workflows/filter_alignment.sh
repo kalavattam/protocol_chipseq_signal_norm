@@ -809,30 +809,35 @@ EOM
                 pg_done = 1
             }
 
-            /^@SQ/ {
-                if (keep_sq_line($0)) {
+            # Test each line once for a header; the "@PG" record is written at
+            # the first alignment line, after every header ID has been seen.
+            {
+                if (substr($0, 1, 1) == "@") {
+                    if (substr($0, 1, 3) == "@SQ") {
+                        if (keep_sq_line($0)) {
+                            print
+                        }
+                        next
+                    }
+
+                    if (substr($0, 1, 3) == "@PG") {
+                        id = pg_tag_value($0, "ID")
+                        if (id != "") {
+                            pg_ids[id] = 1
+                        }
+                    }
+
+                    print
+                    next
+                }
+
+                if (!pg_done) {
+                    emit_pg()
+                }
+
+                if ($3 in chrom_map) {
                     print
                 }
-                next
-            }
-
-            /^@PG/ {
-                id = pg_tag_value($0, "ID")
-                if (id != "") {
-                    pg_ids[id] = 1
-                }
-                print
-                next
-            }
-
-            /^@/ {
-                print
-                next
-            }
-
-            ($3 in chrom_map) {
-                emit_pg()
-                print
             }
 
             END {
@@ -846,8 +851,6 @@ EOM
         return 1
     fi
 }
-# TODO: benchmark GNU Awk-based filtering approach against alternatives if
-# performance becomes limiting for larger genomes.
 
 
 # Remove temporary files used during alignment filtering: best-effort cleanup
