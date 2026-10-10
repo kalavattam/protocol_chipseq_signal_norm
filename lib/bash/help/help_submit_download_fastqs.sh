@@ -15,15 +15,14 @@
 
 
 # TODO: do we need '--dir_scr' in the examples? Only if using 'sbatch'.
-# TODO: for consistency with other wrappers, transition to keyword parameters.
 function help_submit_download_fastqs() {
     cat >&2 << EOM
 Usage
 -----
   submit_download_fastqs.sh
-    [--help]
-    [--dir_scr <dir>]
-    srr url_1 url_2 dir_out dir_sym nam_cus dir_eo nam_job
+    [--help] [--dir_scr <dir>]
+    --srr <str> --url_1 <str> [--url_2 <str>]
+    --dir_out <dir> --dir_sym <dir> --nam_cus <str> --dir_eo <dir> --nam_job <str>
 
   Download one single-end or paired-end FASTQ entry and create custom symlink(s).
 
@@ -33,30 +32,32 @@ Parameters
     Display this help message and exit.
 
   -ds, --dir_scr : dir
-    Maintained entrypoint directory, the repository 'bin'; shared functions are read from the adjacent 'lib/bash'. Passed by the 'execute_*.sh' wrappers, and needed when this script runs from a copy, as 'sbatch <script>' does.
+    Maintained entrypoint directory, the repository 'bin'; shared functions are read from the adjacent 'lib/bash'.
 
-  1  srr : str
+    Passed by the 'execute_*.sh' wrappers, and needed when this script runs from a copy, as 'sbatch <script>' does.
+
+  -sr, --srr : str
     NCBI SRA database run accession code.
 
-  2  url_1 : str
+  -u1, --url_1 : str
     URL (FTP or HTTPS) for FASTQ file.
 
-  3  url_2 : str
-    Second FASTQ URL for paired-end data ("NA" for single-end data).
+  -u2, --url_2 : str
+    Second FASTQ URL for paired-end data (default: 'NA', for single-end data).
 
-  4  dir_out : dir
+  -do, --dir_out : dir
     Output directory for FASTQ files.
 
-  5  dir_sym : dir
+  -dy, --dir_sym, --dir_symlink : dir
     Directory for symlink(s) to FASTQ file(s).
 
-  6  nam_cus : str
+  -nc, --nam_cus : str
     Custom name for symlink(s).
 
-  7  dir_eo : dir
+  -deo, --dir_eo : dir
     Directory for stderr and stdout log files.
 
-  8  nam_job : str
+  -nj, --nam_job : str
     Job name.
 
 Notes
@@ -70,7 +71,7 @@ Notes
     - Network access
     - wget
 
-  - Use 'NA' for 'url_2' when processing single-end data.
+  - Omit '--url_2', or pass 'NA', for single-end data.
 
 Examples
 --------
@@ -78,16 +79,27 @@ Examples
     '''bash
     bash "\${dir_scr}/submit_download_fastqs.sh" \\
         --dir_scr "\${dir_scr}" \\
-        SRR_SINGLE "\${url_single}" NA \\
-        "\${dir_out}" "\${dir_sym}" sample_single "\${dir_eo}" download_fastqs
+        --srr SRR_SINGLE \\
+        --url_1 "\${url_single}" \\
+        --dir_out "\${dir_out}" \\
+        --dir_sym "\${dir_sym}" \\
+        --nam_cus sample_single \\
+        --dir_eo "\${dir_eo}" \\
+        --nam_job download_fastqs
     '''
 
   2. Download one paired-end FASTQ pair and create custom symlinks.
     '''bash
     bash "\${dir_scr}/submit_download_fastqs.sh" \\
         --dir_scr "\${dir_scr}" \\
-        SRR_PAIRED "\${url_r1}" "\${url_r2}" \\
-        "\${dir_out}" "\${dir_sym}" sample_paired "\${dir_eo}" download_fastqs
+        --srr SRR_PAIRED \\
+        --url_1 "\${url_r1}" \\
+        --url_2 "\${url_r2}" \\
+        --dir_out "\${dir_out}" \\
+        --dir_sym "\${dir_sym}" \\
+        --nam_cus sample_paired \\
+        --dir_eo "\${dir_eo}" \\
+        --nam_job download_fastqs
     '''
 EOM
 }

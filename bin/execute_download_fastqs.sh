@@ -138,7 +138,7 @@ Notes
   Runtime requirements:
     bash >= 4.4
 
-  The submit wrapper receives '--dir_scr' for bootstrap helper sourcing, followed by its fixed positional worker payload.
+  The submit wrapper receives '--dir_scr' for bootstrap helper sourcing, followed by one keyword option per worker value.
 
 Examples
 --------
@@ -172,14 +172,14 @@ EOM
     cmd_bld=(
         "${scr_sub}"
             --dir_scr "${dir_scr}"
-            "${list_job_acc[idx]}"
-            "${list_job_url_1[idx]}"
-            "${list_job_url_2[idx]}"
-            "${dir_out}"
-            "${dir_sym}"
-            "${list_job_cus[idx]}"
-            "${dir_eo}"
-            "${nam_job}"
+            --srr "${list_job_acc[idx]}"
+            --url_1 "${list_job_url_1[idx]}"
+            --url_2 "${list_job_url_2[idx]}"
+            --dir_out "${dir_out}"
+            --dir_sym "${dir_sym}"
+            --nam_cus "${list_job_cus[idx]}"
+            --dir_eo "${dir_eo}"
+            --nam_job "${nam_job}"
     )
 }
 

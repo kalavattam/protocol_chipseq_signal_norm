@@ -6,8 +6,10 @@
 # Copyright 2026 by Kris Alavattam
 # Email: kalavattam@gmail.com
 #
-# OpenAI ChatGPT and Codex (GPT-5.6) were used in design, development, and
-# documentation, with all output reviewed, edited, and approved by the author.
+# The following were used in design, development, and documentation, with all
+# output reviewed, edited, and approved by the author:
+# - OpenAI ChatGPT and Codex (GPT-5.6);
+# - Anthropic Claude Code (Opus 5.5).
 #
 # Distributed under the MIT license.
 
@@ -16,7 +18,7 @@ set -euo pipefail
 
 TEST_NAME="submit download-fastqs local"
 
-#  Source shared test helpers
+# Source shared test helpers.
 # shellcheck source=tests/support/test_helpers.sh
 source "$(
     git -C "$(dirname "${BASH_SOURCE[0]}")" rev-parse --show-toplevel
@@ -34,7 +36,7 @@ then
 fi
 
 
-#  Define fixture and output paths for direct loopback HTTP downloads
+# Define fixture and output paths for direct loopback HTTP downloads.
 dir_fx="${ROOT_REPO}/tests/fixtures/download_fastqs"
 dir_src="${dir_fx}/source"
 src_se="${dir_src}/se/tiny_download_se.fastq.gz"
@@ -188,7 +190,7 @@ else
 fi
 
 
-#  Run direct submit with canonical --dir_scr on one SE loopback URL
+# Run direct submit with canonical --dir_scr on one SE loopback URL.
 if \
     run_capture \
         "submit download-fastqs canonical SE local HTTP wet run" \
@@ -196,14 +198,13 @@ if \
         "${arr_env_cmd[@]}" \
         "${TEST_BASH}" "${ROOT_REPO}/bin/submit_download_fastqs.sh" \
             --dir_scr "${ROOT_REPO}/bin" \
-            "${srr_se}" \
-            "${url_se}" \
-            NA \
-            "${dir_out_se}" \
-            "${dir_sym_se}" \
-            "${nam_cus_se}" \
-            "${dir_eo_se}" \
-            "${nam_job_se}"
+            --srr "${srr_se}" \
+            --url_1 "${url_se}" \
+            --dir_out "${dir_out_se}" \
+            --dir_sym "${dir_sym_se}" \
+            --nam_cus "${nam_cus_se}" \
+            --dir_eo "${dir_eo_se}" \
+            --nam_job "${nam_job_se}"
 then
     record_pass "submit canonical --dir_scr SE worker exits 0"
 else
@@ -251,11 +252,11 @@ assert_pattern_found \
     "Symlinking ${srr_se} to ${nam_cus_se}." \
     "submit canonical SE worker reports the mapped custom name"
 
-if [[ \
-        ! -e "${dir_out_se}/${srr_se}_R2.fastq.gz" \
+if [[
+    ! -e "${dir_out_se}/${srr_se}_R2.fastq.gz" \
     && ! -e "${dir_sym_se}/${nam_cus_se}_R2.fastq.gz" \
     && ! -e "${dir_eo_se}/${nam_job_se}.${srr_se}_R2.stdout.txt" \
-    && ! -e "${dir_eo_se}/${nam_job_se}.${srr_se}_R2.stderr.txt" \
+    && ! -e "${dir_eo_se}/${nam_job_se}.${srr_se}_R2.stderr.txt"
 ]]; then
     record_pass "submit canonical SE worker creates no second mate"
 else
@@ -269,7 +270,7 @@ arr_eo_se=( "${dir_eo_se}"/* )
 shopt -u nullglob
 
 if ((
-        ${#arr_out_se[@]} == 1
+    ${#arr_out_se[@]} == 1
     && ${#arr_sym_se[@]} == 1
     && ${#arr_eo_se[@]} == 2
 )); then
@@ -279,7 +280,7 @@ else
 fi
 
 
-#  Run direct submit with hidden --dir-scr on one PE loopback URL pair
+# Run direct submit with hidden --dir-scr on one PE loopback URL pair.
 if \
     run_capture \
         "submit download-fastqs hidden PE local HTTP wet run" \
@@ -287,14 +288,14 @@ if \
         "${arr_env_cmd[@]}" \
         "${TEST_BASH}" "${ROOT_REPO}/bin/submit_download_fastqs.sh" \
             --dir-scr "${ROOT_REPO}/bin" \
-            "${srr_pe}" \
-            "${url_r1}" \
-            "${url_r2}" \
-            "${dir_out_pe}" \
-            "${dir_sym_pe}" \
-            "${nam_cus_pe}" \
-            "${dir_eo_pe}" \
-            "${nam_job_pe}"
+            --srr "${srr_pe}" \
+            --url-1 "${url_r1}" \
+            --url-2 "${url_r2}" \
+            --dir-out "${dir_out_pe}" \
+            --dir-symlink "${dir_sym_pe}" \
+            --nam-cus "${nam_cus_pe}" \
+            --dir-eo "${dir_eo_pe}" \
+            --nam-job "${nam_job_pe}"
 then
     record_pass "submit hidden --dir-scr PE worker exits 0"
 else
@@ -368,9 +369,9 @@ assert_pattern_found \
     "Symlinking ${srr_pe} to ${nam_cus_pe}." \
     "submit hidden PE worker reports the mapped custom name"
 
-if [[ \
+if [[
     ! -e "${dir_out_pe}/${srr_pe}.fastq.gz" \
-    && ! -e "${dir_sym_pe}/${nam_cus_pe}.fastq.gz" \
+    && ! -e "${dir_sym_pe}/${nam_cus_pe}.fastq.gz"
 ]]; then
     record_pass "submit hidden PE worker creates no unsuffixed SE output"
 else
@@ -384,7 +385,7 @@ arr_eo_pe=( "${dir_eo_pe}"/* )
 shopt -u nullglob
 
 if ((
-        ${#arr_out_pe[@]} == 2
+    ${#arr_out_pe[@]} == 2
     && ${#arr_sym_pe[@]} == 2
     && ${#arr_eo_pe[@]} == 4
 )); then

@@ -6,8 +6,10 @@
 # Copyright 2026 by Kris Alavattam
 # Email: kalavattam@gmail.com
 #
-# OpenAI ChatGPT and Codex (GPT-5.6) were used in design, development, and
-# documentation, with all output reviewed, edited, and approved by the author.
+# The following were used in design, development, and documentation, with all
+# output reviewed, edited, and approved by the author:
+# - OpenAI ChatGPT and Codex (GPT-5.6);
+# - Anthropic Claude Code (Opus 5.5).
 #
 # Distributed under the MIT license.
 
@@ -16,14 +18,14 @@ set -euo pipefail
 
 TEST_NAME="download-fastqs interface"
 
-#  Source shared test helpers
+# Source shared test helpers.
 # shellcheck source=tests/support/test_helpers.sh
 source "$(
     git -C "$(dirname "${BASH_SOURCE[0]}")" rev-parse --show-toplevel
 )/tests/support/test_helpers.sh"
 
 
-#  Require one command to succeed
+# Require one command to succeed.
 function expect_success() {
     local label="${1:-command}"
     local log="${2:-}"
@@ -37,7 +39,7 @@ function expect_success() {
 }
 
 
-#  Require one command to fail
+# Require one command to fail.
 function expect_failure() {
     local label="${1:-command}"
     local log="${2:-}"
@@ -51,7 +53,7 @@ function expect_failure() {
 }
 
 
-#  Assert that one worker directory remains empty
+# Assert that one worker directory remains empty.
 function assert_dir_empty() {
     local dir="${1:-}"
     local label="${2:-directory}"
@@ -64,7 +66,7 @@ function assert_dir_empty() {
 }
 
 
-#  Run a command from one explicit working directory
+# Run a command from one explicit working directory.
 function run_from_dir() {
     local dir="${1:-}"
     shift
@@ -76,7 +78,7 @@ function run_from_dir() {
 }
 
 
-#  Assert one fixed-string occurrence count
+# Assert one fixed-string occurrence count.
 function assert_count_fixed() {
     local file="${1:-}"
     local pattern="${2:-}"
@@ -112,7 +114,7 @@ rm -rf "${tmp}"
 mkdir -p "${dir_cap}" "${dir_out}" "${dir_sym}" "${dir_eo}"
 
 
-#  Canonical execute spellings parse before deterministic validation failure
+# Canonical execute spellings parse before deterministic validation failure.
 log="${dir_cap}/execute_canonical.log"
 expect_failure "canonical execute aliases" "${log}" \
     "${TEST_BASH}" "${scr_exe}" \
@@ -129,7 +131,7 @@ assert_pattern_absent \
     "canonical execute aliases are accepted"
 
 
-#  Systematic hidden hyphen spellings remain accepted but undocumented
+# Systematic hidden hyphen spellings remain accepted but undocumented.
 log="${dir_cap}/execute_hidden_hyphens.log"
 expect_failure "hidden execute hyphen aliases" "${log}" \
     "${TEST_BASH}" "${scr_exe}" \
@@ -147,7 +149,7 @@ assert_pattern_absent \
     "hidden execute hyphen aliases are accepted"
 
 
-#  Canonical and hidden submit bootstrap options reach positional validation
+# Canonical and hidden submit bootstrap options reach required-value checks.
 for opt in -ds --dir_scr --dir-scr; do
     log="${dir_cap}/submit_${opt#-}.log"
     log="${log//-/_}"
@@ -155,7 +157,7 @@ for opt in -ds --dir_scr --dir-scr; do
         "${TEST_BASH}" "${scr_sub}" "${opt}" "${dir_scr}"
     assert_pattern_found \
         "${log}" \
-        'requires 8 positional arguments' \
+        "'srr' is empty or unset" \
         "submit ${opt} is accepted"
     assert_pattern_absent \
         "${log}" \
@@ -164,7 +166,20 @@ for opt in -ds --dir_scr --dir-scr; do
 done
 
 
-#  Retired aliases remain rejected
+# The retired positional worker payload is rejected.
+log="${dir_cap}/submit_positional.log"
+expect_failure "submit positional payload" "${log}" \
+    "${TEST_BASH}" "${scr_sub}" \
+        --dir_scr "${dir_scr}" \
+        SRR_PHASE1B "file://${tmp}/never_exists.fastq.gz" NA \
+        "${dir_out}" "${dir_sym}" sample_phase1b "${dir_eo}" phase1b
+assert_pattern_found \
+    "${log}" \
+    "unknown option/parameter passed: 'SRR_PHASE1B'" \
+    "submit rejects the retired positional payload"
+
+
+# Retired aliases remain rejected.
 retired_aliases=(-i "--in""file" -eo)
 for opt in "${retired_aliases[@]}"; do
     log="${dir_cap}/retired_${opt#-}.log"
@@ -178,12 +193,16 @@ for opt in "${retired_aliases[@]}"; do
 done
 
 
-#  Rendered help exposes canonical public aliases and exact callables only
+# Rendered help exposes canonical public aliases and exact callables only.
 log_exe_hlp="${dir_cap}/execute_help.log"
 log_sub_hlp="${dir_cap}/submit_help.log"
-expect_success "execute canonical help" "${log_exe_hlp}" \
+expect_success \
+    "execute canonical help" \
+    "${log_exe_hlp}" \
     "${TEST_BASH}" "${scr_exe}" --help
-expect_success "submit canonical help" "${log_sub_hlp}" \
+expect_success \
+    "submit canonical help" \
+    "${log_sub_hlp}" \
     "${TEST_BASH}" "${scr_sub}" --help
 
 for file in "${log_exe_hlp}" "${log_sub_hlp}"; do
@@ -240,19 +259,29 @@ assert_pattern_found \
     "submit help identifies the maintained bootstrap directory"
 
 
-#  Hidden help remains accepted
-expect_success "execute hidden --hlp" "${dir_cap}/execute_hlp.log" \
+# Hidden help remains accepted.
+expect_success \
+    "execute hidden --hlp" \
+    "${dir_cap}/execute_hlp.log" \
     "${TEST_BASH}" "${scr_exe}" --hlp
 
 
-#  Submit help is terminal from every required argument position
-expect_success "submit help first" "${dir_cap}/submit_help_first.log" \
+# Submit help is terminal from every required argument position.
+expect_success \
+    "submit help first" \
+    "${dir_cap}/submit_help_first.log" \
     "${TEST_BASH}" "${scr_sub}" --help
-expect_success "submit short help first" "${dir_cap}/submit_h_first.log" \
+expect_success \
+    "submit short help first" \
+    "${dir_cap}/submit_h_first.log" \
     "${TEST_BASH}" "${scr_sub}" -h
-expect_success "submit hidden help first" "${dir_cap}/submit_hlp_first.log" \
+expect_success \
+    "submit hidden help first" \
+    "${dir_cap}/submit_hlp_first.log" \
     "${TEST_BASH}" "${scr_sub}" --hlp
-expect_success "submit help after junk" "${dir_cap}/submit_help_junk.log" \
+expect_success \
+    "submit help after junk" \
+    "${dir_cap}/submit_help_junk.log" \
     "${TEST_BASH}" "${scr_sub}" junk --help
 expect_success \
     "submit help after dir_scr" \
@@ -264,13 +293,20 @@ expect_success \
     "${TEST_BASH}" "${scr_sub}" --help --dir_scr "${dir_scr}"
 
 
-#  A complete worker payload remains inert when followed by help
+# A complete worker payload remains inert when followed by help.
 log_terminal="${dir_cap}/submit_help_full_payload.log"
-expect_success "submit terminal help with worker payload" "${log_terminal}" \
+expect_success \
+    "submit terminal help with worker payload" \
+    "${log_terminal}" \
     "${TEST_BASH}" "${scr_sub}" \
         --dir_scr "${dir_scr}" \
-        SRR_PHASE1B "file://${tmp}/never_exists.fastq.gz" NA \
-        "${dir_out}" "${dir_sym}" sample_phase1b "${dir_eo}" phase1b \
+        --srr SRR_PHASE1B \
+        --url_1 "file://${tmp}/never_exists.fastq.gz" \
+        --dir_out "${dir_out}" \
+        --dir_sym "${dir_sym}" \
+        --nam_cus sample_phase1b \
+        --dir_eo "${dir_eo}" \
+        --nam_job phase1b \
         --help
 
 for file in "${dir_cap}"/submit_*help*.log "${dir_cap}/submit_h_first.log"; do
@@ -280,7 +316,7 @@ for file in "${dir_cap}"/submit_*help*.log "${dir_cap}/submit_h_first.log"; do
         "terminal submit help renders Usage"
     assert_pattern_absent \
         "${file}" \
-        'error(\|requires 8 positional\|Downloading\|Symlinking' \
+        'error(\|is empty or unset\|Downloading\|Symlinking' \
         "terminal submit help bypasses validation and downloads"
 done
 
@@ -289,7 +325,7 @@ assert_dir_empty "${dir_sym}" "submit help symlink directory"
 assert_dir_empty "${dir_eo}" "submit help worker-log directory"
 
 
-#  Dry runs cover SE, PE, mixed, and duplicate-accession planning
+# Dry runs cover SE, PE, mixed, and duplicate-accession planning.
 dir_dry="${tmp}/dry_run"
 mkdir -p "${dir_dry}/out" "${dir_dry}/links" "${dir_dry}/logs"
 
@@ -329,7 +365,9 @@ EOM
 
 for dry_case in se pe mixed duplicate; do
     log="${dir_cap}/dry_${dry_case}.log"
-    expect_success "execute ${dry_case} dry run" "${log}" \
+    expect_success \
+        "execute ${dry_case} dry run" \
+        "${log}" \
         "${TEST_BASH}" "${scr_exe}" \
             --dry_run \
             --fil_in "${dir_dry}/${dry_case}.tsv" \
@@ -388,7 +426,7 @@ assert_pattern_found \
     "dry run rejects conflicting accession URLs"
 
 
-#  Fake wget proves relative paths and worker-failure propagation without I/O
+# Fake wget proves relative paths and worker-failure propagation without I/O.
 dir_fake="${tmp}/fake_bin"
 dir_rel="${tmp}/relative"
 mkdir -p \
@@ -435,21 +473,20 @@ expect_success \
         env PATH="${dir_fake}:${PATH}" \
         "${TEST_BASH}" "${scr_sub}" \
             --dir_scr "${dir_scr}" \
-            SRR_REL_SUB \
-            https://example.invalid/relative.fastq.gz \
-            NA \
-            relative/submit/out \
-            relative/submit/links \
-            relative_submit \
-            relative/submit/logs \
-            relative_submit
+            --srr SRR_REL_SUB \
+            --url_1 https://example.invalid/relative.fastq.gz \
+            --dir_out relative/submit/out \
+            --dir_sym relative/submit/links \
+            --nam_cus relative_submit \
+            --dir_eo relative/submit/logs \
+            --nam_job relative_submit
 
 assert_custom_symlink \
     "${dir_rel}/submit/links/relative_submit.fastq.gz" \
     "direct submit relative-directory symlink"
-if [[ \
+if [[
     "${dir_rel}/submit/links/relative_submit.fastq.gz" \
-    -ef "${dir_rel}/submit/out/SRR_REL_SUB.fastq.gz" \
+    -ef "${dir_rel}/submit/out/SRR_REL_SUB.fastq.gz"
 ]]; then
     record_pass "direct submit relative symlink resolves to its output"
 else
@@ -470,9 +507,9 @@ expect_success \
 assert_custom_symlink \
     "${dir_rel}/execute/links/relative_execute.fastq.gz" \
     "execute relative-directory symlink"
-if [[ \
+if [[
     "${dir_rel}/execute/links/relative_execute.fastq.gz" \
-    -ef "${dir_rel}/execute/out/SRR_REL_EXEC.fastq.gz" \
+    -ef "${dir_rel}/execute/out/SRR_REL_EXEC.fastq.gz"
 ]]; then
     record_pass "execute relative symlink resolves to its output"
 else

@@ -9,7 +9,7 @@
 # The following were used in design, development, and documentation, with all
 # output reviewed, edited, and approved by the author:
 # - OpenAI ChatGPT and Codex (GPT-5.6);
-# - Anthropic Claude Code (Opus 5).
+# - Anthropic Claude Code (Opus 5, Opus 5.5).
 #
 # Distributed under the MIT license.
 
@@ -1866,12 +1866,12 @@ EOM
         )
 
         self.assertIn(
-            "if [[ ${#args_pos[@]} -ne 8 ]]; then",
-            submit["positional_validation"]["rendered_evidence"],
+            "-sr|--srr)",
+            submit["keyword_validation"]["rendered_evidence"],
         )
         self.assertIn(
-            'nam_job="${args_pos[7]}"',
-            submit["positional_validation"]["rendered_evidence"],
+            'validate_var "nam_job" "${nam_job}" || return 1',
+            submit["keyword_validation"]["rendered_evidence"],
         )
 
         for call in (
@@ -1968,10 +1968,10 @@ EOM
                 )
 
             descriptive_only = copy.deepcopy(all_evidence[submit_path])
-            descriptive_only["positional_validation"] = {
+            descriptive_only["keyword_validation"] = {
                 "evidence_kind": "complete_line_source_window",
                 "rendered_evidence": (
-                    "The submit wrapper requires 8 positional arguments."
+                    "The submit wrapper requires its keyword options."
                 ),
             }
 
@@ -1979,7 +1979,7 @@ EOM
                 ValueError,
                 (
                     "missing required behavioral anchor group "
-                    "positional_validation"
+                    "keyword_validation"
                 ),
             ):
                 write_pilot_bundle(

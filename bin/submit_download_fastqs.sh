@@ -10,13 +10,11 @@
 # output reviewed, edited, and approved by the author:
 # - OpenAI ChatGPT and Codex (GPT-4- and GPT-5-series models; most recent:
 #   GPT-5.6);
-# - Anthropic Claude Code (Opus 5).
+# - Anthropic Claude Code (Opus 5, Opus 5.5).
 #
 # Distributed under the MIT license.
 
 
-# TODO: switch from positional to keyword option parameters, consistent with
-# all other wrappers.
 # Require bash >= 4.4 before doing any work.
 if [[ -z "${BASH_VERSION:-}" ]]; then
     echo "error(shell):" \
@@ -89,7 +87,7 @@ function init_defs() {
     hlp_req="false"
     srr=""
     url_1=""
-    url_2=""
+    url_2="NA"
     dir_out=""
     dir_sym=""
     nam_cus=""
@@ -158,6 +156,7 @@ function source_helpers_submit() {
     source_helpers "${dir_fnc}" \
         check_args \
         check_env \
+        check_inputs \
         format_outputs \
         || {
             echo "error(${scr}): failed to source required helper scripts." >&2
@@ -166,11 +165,8 @@ function source_helpers_submit() {
 }
 
 
-# Parse the bootstrap option and fixed positional submit interface.
+# Parse the keyword submit interface.
 function parse_args() {
-    local msg
-    local -a args_pos=()
-
     while [[ "$#" -gt 0 ]]; do
         case "${1}" in
             -h|--hlp|--help)
@@ -188,49 +184,109 @@ function parse_args() {
                 shift 2
                 ;;
 
-            -*)
+            -sr|--srr)
+                require_optarg "${1}" "${2:-}" "main" || {
+                    echo >&2
+                    help_submit_download_fastqs >&2
+                    return 1
+                }
+                srr="${2}"
+                shift 2
+                ;;
+
+            -u1|--url[_-]1)
+                require_optarg "${1}" "${2:-}" "main" || {
+                    echo >&2
+                    help_submit_download_fastqs >&2
+                    return 1
+                }
+                url_1="${2}"
+                shift 2
+                ;;
+
+            -u2|--url[_-]2)
+                require_optarg "${1}" "${2:-}" "main" || {
+                    echo >&2
+                    help_submit_download_fastqs >&2
+                    return 1
+                }
+                url_2="${2}"
+                shift 2
+                ;;
+
+            -do|--dir[_-]out)
+                require_optarg "${1}" "${2:-}" "main" || {
+                    echo >&2
+                    help_submit_download_fastqs >&2
+                    return 1
+                }
+                dir_out="${2}"
+                shift 2
+                ;;
+
+            -dy|--dir[_-]sym|--dir[_-]symlink)
+                require_optarg "${1}" "${2:-}" "main" || {
+                    echo >&2
+                    help_submit_download_fastqs >&2
+                    return 1
+                }
+                dir_sym="${2}"
+                shift 2
+                ;;
+
+            -nc|--nam[_-]cus)
+                require_optarg "${1}" "${2:-}" "main" || {
+                    echo >&2
+                    help_submit_download_fastqs >&2
+                    return 1
+                }
+                nam_cus="${2}"
+                shift 2
+                ;;
+
+            -deo|--dir[_-]eo)
+                require_optarg "${1}" "${2:-}" "main" || {
+                    echo >&2
+                    help_submit_download_fastqs >&2
+                    return 1
+                }
+                dir_eo="${2}"
+                shift 2
+                ;;
+
+            -nj|--nam[_-]job)
+                require_optarg "${1}" "${2:-}" "main" || {
+                    echo >&2
+                    help_submit_download_fastqs >&2
+                    return 1
+                }
+                nam_job="${2}"
+                shift 2
+                ;;
+
+            *)
                 echo_err "unknown option/parameter passed: '${1}'."
                 echo >&2
                 help_submit_download_fastqs >&2
                 return 1
                 ;;
-
-            *)
-                args_pos+=( "${1}" )
-                shift 1
-                ;;
         esac
     done
-
-    if [[ ${#args_pos[@]} -ne 8 ]]; then
-        msg="but ${#args_pos[@]} were supplied."
-
-        if [[ ${#args_pos[@]} -eq 1 ]]; then
-            msg="but only ${#args_pos[@]} was supplied."
-        fi
-
-        cat >&2 << EOM
-error: '$(basename "${0}")' requires 8 positional arguments, ${msg}
-
-$(help_submit_download_fastqs)
-EOM
-        return 1
-    fi
-
-    srr="${args_pos[0]}"
-    url_1="${args_pos[1]}"
-    url_2="${args_pos[2]}"
-    dir_out="${args_pos[3]}"
-    dir_sym="${args_pos[4]}"
-    nam_cus="${args_pos[5]}"
-    dir_eo="${args_pos[6]}"
-    nam_job="${args_pos[7]}"
 }
 
 
 # Validate submit-layer directories and runtime tool availability.
 function validate_args() {
     local dir
+
+    validate_var "srr"     "${srr}"     || return 1
+    validate_var "url_1"   "${url_1}"   || return 1
+    validate_var "url_2"   "${url_2}"   || return 1
+    validate_var "dir_out" "${dir_out}" || return 1
+    validate_var "dir_sym" "${dir_sym}" || return 1
+    validate_var "nam_cus" "${nam_cus}" || return 1
+    validate_var "dir_eo"  "${dir_eo}"  || return 1
+    validate_var "nam_job" "${nam_job}" || return 1
 
     for dir in dir_out dir_sym dir_eo; do
         local value="${!dir}"

@@ -380,8 +380,8 @@
           "symbol": "help_submit_download_fastqs",
           "parameter": "dir_scr",
           "owner": "PARAMETER.DESCRIPTIONS",
-          "evidence": "Parameters row for 'dir_scr': Maintained entrypoint directory, the repository 'bin'; shared functions are read from the adjacent 'lib/bash'. Passed by the 'execute_*.sh' wrappers, and needed when this script runs from a copy, as 'sbatch <script>' does.",
-          "approved_realization": "Maintained entrypoint directory, the repository 'bin'; shared functions are read from the adjacent 'lib/bash'. Passed by the 'execute_*.sh' wrappers, and needed when this script runs from a copy, as 'sbatch <script>' does."
+          "evidence": "Parameters row for 'dir_scr': Maintained entrypoint directory, the repository 'bin'; shared functions are read from the adjacent 'lib/bash'.",
+          "approved_realization": "Maintained entrypoint directory, the repository 'bin'; shared functions are read from the adjacent 'lib/bash'."
         }
       ],
       "local_meanings": [],

@@ -9,7 +9,7 @@
 # The following were used in design, development, and documentation, with all
 # output reviewed, edited, and approved by the author:
 # - OpenAI ChatGPT and Codex (GPT-5.6);
-# - Anthropic Claude Code (Opus 5).
+# - Anthropic Claude Code (Opus 5, Opus 5.5).
 #
 # Distributed under the MIT license.
 
@@ -65,17 +65,14 @@ REQUIRED_BEHAVIORAL_ANCHORS = {
             'cd "$(dirname "${BASH_SOURCE[0]}")" > /dev/null 2>&1 && pwd',
             "cannot locate helper libraries from",
         ),
-        "positional_validation": (
-            "if [[ ${#args_pos[@]} -ne 8 ]]; then",
-            'msg="but ${#args_pos[@]} were supplied."',
-            'srr="${args_pos[0]}"',
-            'url_1="${args_pos[1]}"',
-            'url_2="${args_pos[2]}"',
-            'dir_out="${args_pos[3]}"',
-            'dir_sym="${args_pos[4]}"',
-            'nam_cus="${args_pos[5]}"',
-            'dir_eo="${args_pos[6]}"',
-            'nam_job="${args_pos[7]}"',
+        "keyword_validation": (
+            "-sr|--srr)",
+            "-u1|--url[_-]1)",
+            "-u2|--url[_-]2)",
+            "-nc|--nam[_-]cus)",
+            'validate_var "srr"     "${srr}"     || return 1',
+            'validate_var "url_1"   "${url_1}"   || return 1',
+            'validate_var "nam_job" "${nam_job}" || return 1',
         ),
         "worker_after_bootstrap": (
             'source_helpers_submit "${0##*/}" "${dir_scr}" || return 1',
@@ -100,7 +97,7 @@ REQUIRED_BEHAVIORAL_ANCHORS = {
 SOURCE_ONLY_ANCHORS = {
     ("bin/submit_download_fastqs.sh", "early_help"),
     ("bin/submit_download_fastqs.sh", "bootstrap_dir_scr"),
-    ("bin/submit_download_fastqs.sh", "positional_validation"),
+    ("bin/submit_download_fastqs.sh", "keyword_validation"),
     ("bin/submit_download_fastqs.sh", "worker_after_bootstrap"),
     (
         "lib/bash/help/help_execute_download_fastqs.sh",
