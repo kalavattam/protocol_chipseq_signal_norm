@@ -363,9 +363,11 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         "--fil_A",
         dest="fil_A",
         help=(
-            "First bedGraph input file, file A. Use '-' for stdin; '.gz' is "
-            "handled. A name ending in '.bdg' or '.bg' is refused; use "
-            "'.bedGraph'.\n"
+            "First bedGraph input file, file A. Required unless "
+            "'--method edger' is given '--n_ovlp_A' and a '--typ_sig' other "
+            "than 'unadj', in which case it is not read. Use '-' for stdin; "
+            "'.gz' is handled. A name ending in '.bdg' or '.bg' is refused; "
+            "use '.bedGraph'.\n"
             "\n"
         ),
     )
@@ -381,9 +383,10 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         default=None,
         help=(
             "Second bedGraph input file, file B. This file is optional for "
-            "single-file pseudocount modes; use '-' for stdin; '.gz' is "
-            "handled. A name ending in '.bdg' or '.bg' is refused; use "
-            "'.bedGraph'.\n"
+            "single-file pseudocount modes, and it is not read when "
+            "'--n_ovlp_B' is given unless '--typ_sig' is 'unadj'; use '-' for "
+            "stdin; '.gz' is handled. A name ending in '.bdg' or '.bg' is "
+            "refused; use '.bedGraph'.\n"
             "\n"
         ),
     )
@@ -400,7 +403,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         default=",".join(DEF_SKP_PFX),
         help=(
             "Comma-separated list of header prefixes to skip in bedGraph "
-            "file(s) (default: %(default)s).\n"
+            "file(s); unused when no track is read (default: %(default)s).\n"
             "\n"
         ),
     )
@@ -809,7 +812,9 @@ def _print_pseudo_arguments(
         print("####################################")
         print("")
         print("--verbose")
-        print(f"--fil_A   {args.fil_A}")
+
+        if args.fil_A:
+            print(f"--fil_A   {args.fil_A}")
 
         if getattr(args, "fil_B", None):
             print(f"--fil_B   {args.fil_B}")
@@ -907,6 +912,37 @@ def _is_one_track(args: argparse.Namespace) -> bool:
     return not getattr(args, "fil_B", None) and args.n_ovlp_B is None
 
 
+def _find_tracks_read(args: argparse.Namespace) -> tuple[bool, bool]:
+    """
+    Report which input tracks the run reads.
+
+    Parameters
+    ----------
+    args : argparse.Namespace
+        Parsed arguments.
+
+    Returns
+    -------
+    read_a, read_b : tuple[bool, bool]
+        Whether track A and track B are read.
+
+    Notes
+    -----
+    The distribution methods read every track given. Under 'edger', a track is
+    read only to infer its overlap count, except that 'unadj' reads both for
+    their column totals.
+    """
+
+    if args.method != "edger":
+        return True, getattr(args, "fil_B", None) is not None
+
+    unadj = canonicalize_typ_sig(args.typ_sig) == "unadj"
+    read_a = args.n_ovlp_A is None or unadj
+    read_b = not _is_one_track(args) and (args.n_ovlp_B is None or unadj)
+
+    return read_a, read_b
+
+
 def _check_applicability(args: argparse.Namespace) -> None:
     """
     Refuse or warn about options that have no effect with this method.
@@ -925,9 +961,11 @@ def _check_applicability(args: argparse.Namespace) -> None:
     Notes
     -----
     Distribution options do nothing under 'edger', and edgeR inputs nothing
-    under the distribution methods. Under 'edger', '--siz_bin' only checks a
-    track that is read; for a whole-count type, '--n_frg_A' / '--n_frg_B' only
-    check an overlap count inferred from one; with no track read, both warn.
+    under the distribution methods. Under 'edger', a track is read only to
+    infer its overlap count or, for 'unadj', its column total, and an unread
+    track warns. '--siz_bin' and '--skp_pfx' act only on a track that is read;
+    for a whole-count type, '--n_frg_A' / '--n_frg_B' only check an overlap
+    count inferred from one; with no track read, all of them warn.
     """
 
     sup = args.supplied
@@ -972,14 +1010,36 @@ def _check_applicability(args: argparse.Namespace) -> None:
         now,
     )
 
-    # With every overlap count given, no track is read to check.
-    if args.n_ovlp_A is not None and (
-        _is_one_track(args) or args.n_ovlp_B is not None
-    ):
+    read_a, read_b = _find_tracks_read(args)
+
+    # A track whose overlap count is given is not read, so it is not checked or
+    # passed on.
+    if not read_a:
         check_opts_apply(
             sup,
             "warn",
-            {"siz_bin": "--siz_bin"},
+            {"fil_A": "--fil_A"},
+            "a run that reads track A",
+            "'--n_ovlp_A' given",
+        )
+        args.fil_A = None
+
+    if not read_b:
+        check_opts_apply(
+            sup,
+            "warn",
+            {"fil_B": "--fil_B"},
+            "a run that reads track B",
+            "'--n_ovlp_B' given",
+        )
+        args.fil_B = None
+
+    # With no track read, nothing is checked against a bin width or skipped.
+    if not (read_a or read_b):
+        check_opts_apply(
+            sup,
+            "warn",
+            {"siz_bin": "--siz_bin", "skp_pfx": "--skp_pfx"},
             "a run that reads a track",
             "both overlap counts given",
         )
@@ -1244,18 +1304,31 @@ def main(argv: list[str] | None = None) -> int:
     """
 
     args = parse_args(argv)
+    read_a, read_b = _find_tracks_read(args)
 
     # A hidden hyphen spelling is a separate action that argparse's own
     # 'required' check cannot see, so '--fil-A' alone would be rejected for
-    # want of '--fil_A'. Check the parsed value here instead.
-    if getattr(args, "fil_A", None) is None:
+    # want of '--fil_A'. Check the parsed value here instead. A track is
+    # required and checked only where it is read.
+    if read_a and getattr(args, "fil_A", None) is None:
         raise SystemExit(
-            "'--fil_A' is required. Supply the first bedGraph input path.",
+            "'--fil_A' is required unless '--method edger' is given "
+            "'--n_ovlp_A' and a '--typ_sig' other than 'unadj'. Supply the "
+            "first bedGraph input path.",
         )
 
-    paths = [
-        p for p in (args.fil_A, getattr(args, "fil_B", None)) if p is not None
-    ]
+    if read_b and getattr(args, "fil_B", None) is None:
+        raise SystemExit(
+            "'--fil_B' is required for '--typ_sig unadj' with two tracks, "
+            "since it reads each track's column total. Supply the second "
+            "bedGraph input path.",
+        )
+
+    tracks = (
+        ("A", getattr(args, "fil_A", None), read_a),
+        ("B", getattr(args, "fil_B", None), read_b),
+    )
+    paths = [p for _, p, read in tracks if read and p is not None]
 
     try:
         ensure_single_stdin(paths)
@@ -1263,11 +1336,8 @@ def main(argv: list[str] | None = None) -> int:
         raise SystemExit(str(e)) from None
 
     try:
-        for label, p in (
-            ("A", args.fil_A),
-            ("B", getattr(args, "fil_B", None)),
-        ):
-            if p is None or p == "-":
+        for label, p, read in tracks:
+            if not read or p is None or p == "-":
                 continue
 
             check_bedgraph_path(p)
@@ -1458,23 +1528,23 @@ def main(argv: list[str] | None = None) -> int:
         args.sym != "none"
     )
 
-    def format_pseudocount(value: float) -> str:
+    def format_pseudo(value: float) -> str:
         return format_value(value, args.dp)
 
     if want_pair:
-        rendered_a = format_pseudocount(pseudo_a)
-        rendered_b = format_pseudocount(
+        rendered_a = format_pseudo(pseudo_a)
+        rendered_b = format_pseudo(
             pseudo_b if math.isfinite(pseudo_b) else pseudo_a,
         )
         print(f"{rendered_a}:{rendered_b}")
     else:
-        print(f"{format_pseudocount(pseudo_a)}")
+        print(f"{format_pseudo(pseudo_a)}")
 
     # Keep the JSON summary local until other CLIs share a reviewed contract.
     if args.prt_jsn:
         pseudocounts = {
             "pseudo_A": pseudo_a,
-            "pseudo_A_str": format_pseudocount(pseudo_a),
+            "pseudo_A_str": format_pseudo(pseudo_a),
         }
 
         if want_pair:
@@ -1482,7 +1552,7 @@ def main(argv: list[str] | None = None) -> int:
             pseudocounts.update(
                 {
                     "pseudo_B": value_b,
-                    "pseudo_B_str": format_pseudocount(value_b),
+                    "pseudo_B_str": format_pseudo(value_b),
                 },
             )
 

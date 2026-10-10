@@ -22,6 +22,7 @@ refused or warned about, never ignored silently.
 from __future__ import annotations
 
 import argparse
+import json
 from pathlib import Path
 
 import pytest
@@ -229,6 +230,42 @@ WARNED_CLI = (
         "'--siz_bin' has no effect",
         id="compute_pseudo_deeptools siz_bin",
     ),
+    pytest.param(
+        pseudo.main,
+        ["--method", "edger", "--typ_sig", "count", "--skp_pfx", "track"],
+        "'--skp_pfx' has no effect",
+        id="compute_pseudo skp_pfx",
+    ),
+    pytest.param(
+        dtools.main,
+        ["--typ_sig", "CPM", "--skp_pfx", "track"],
+        "'--skp_pfx' has no effect",
+        id="compute_pseudo_deeptools skp_pfx",
+    ),
+    pytest.param(
+        pseudo.main,
+        ["--method", "edger", "--typ_sig", "count"],
+        "'--fil_A' has no effect with '--n_ovlp_A' given",
+        id="compute_pseudo fil_A",
+    ),
+    pytest.param(
+        pseudo.main,
+        ["--method", "edger", "--typ_sig", "count"],
+        "'--fil_B' has no effect with '--n_ovlp_B' given",
+        id="compute_pseudo fil_B",
+    ),
+    pytest.param(
+        dtools.main,
+        ["--typ_sig", "CPM"],
+        "'--fil_A' has no effect with '--n_ovlp_A' given",
+        id="compute_pseudo_deeptools fil_A",
+    ),
+    pytest.param(
+        dtools.main,
+        ["--typ_sig", "CPM"],
+        "'--fil_B' has no effect with '--n_ovlp_B' given",
+        id="compute_pseudo_deeptools fil_B",
+    ),
 )
 
 
@@ -255,6 +292,133 @@ def test_pseudo_clis_warn_when_no_track_is_read(
 
     assert status == 0
     assert message in capsys.readouterr().err
+
+
+# Each CLI with the arguments that select edgeR's prior from a count alone.
+COUNT_ONLY = (
+    pytest.param(
+        pseudo.main,
+        ["--method", "edger", "--typ_sig", "count"],
+        id="compute_pseudo",
+    ),
+    pytest.param(
+        dtools.main,
+        ["--typ_sig", "CPM"],
+        id="compute_pseudo_deeptools",
+    ),
+)
+
+
+@pytest.mark.parametrize(("main", "argv"), COUNT_ONLY)
+def test_pseudo_clis_neither_need_nor_check_an_unread_track(
+    main,
+    argv: list[str],
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    assert main([*argv, "--n_ovlp_A", "6"]) == 0
+    expected = capsys.readouterr()
+    assert "has no effect" not in expected.err
+
+    status = main([*argv, "--n_ovlp_A", "6", "--fil_A", "missing.bedGraph"])
+    result = capsys.readouterr()
+
+    assert status == 0
+    assert "'--fil_A' has no effect with '--n_ovlp_A' given" in result.err
+    assert result.out == expected.out
+
+
+def test_compute_pseudo_summary_does_not_record_an_unread_track(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    argv = ["--method", "edger", "--typ_sig", "count", "--prt_jsn"]
+    status = pseudo.main([*argv, "--fil_A", FIL_A, "--n_ovlp_A", "6"])
+    summary = json.loads(capsys.readouterr().out.splitlines()[-1])
+
+    assert status == 0
+    assert summary["fil_A"] is None
+
+
+REQUIRED_TRACK = (
+    pytest.param(
+        pseudo.main,
+        ["--method", "edger", "--typ_sig", "count"],
+        "'--fil_A' is required unless '--method edger' is given '--n_ovlp_A'",
+        id="compute_pseudo fil_A",
+    ),
+    pytest.param(
+        pseudo.main,
+        [
+            "--method",
+            "edger",
+            "--typ_sig",
+            "unadj",
+            "--fil_A",
+            FIL_A,
+            "--n_ovlp_A",
+            "6",
+            "--n_ovlp_B",
+            "18",
+            "--n_frg_A",
+            "2",
+            "--n_frg_B",
+            "3",
+        ],
+        "'--fil_B' is required for '--typ_sig unadj' with two tracks",
+        id="compute_pseudo unadj fil_B",
+    ),
+    pytest.param(
+        dtools.main,
+        ["--typ_sig", "CPM"],
+        "'--fil_A' is required unless '--n_ovlp_A' is given.",
+        id="compute_pseudo_deeptools fil_A",
+    ),
+)
+
+
+@pytest.mark.parametrize(("main", "argv", "message"), REQUIRED_TRACK)
+def test_pseudo_clis_require_a_track_that_is_read(
+    main,
+    argv: list[str],
+    message: str,
+) -> None:
+    with pytest.raises(SystemExit) as caught:
+        main(argv)
+
+    assert message in str(caught.value.code)
+
+
+# 'unadj' reads both tracks for their column totals, so the tracks and the bin
+# width that checks them act even with both overlap counts given.
+UNADJ = [
+    "--method",
+    "edger",
+    "--typ_sig",
+    "unadj",
+    "--fil_A",
+    FIL_A,
+    "--fil_B",
+    FIL_B,
+    "--n_ovlp_A",
+    "6",
+    "--n_ovlp_B",
+    "18",
+    "--n_frg_A",
+    "2",
+    "--n_frg_B",
+    "3",
+]
+
+
+def test_compute_pseudo_reads_tracks_and_bin_width_for_unadj(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    assert pseudo.main([*UNADJ, "--siz_bin", "10"]) == 0
+    assert "has no effect" not in capsys.readouterr().err
+
+    with pytest.raises(SystemExit) as caught:
+        pseudo.main([*UNADJ, "--siz_bin", "20"])
+
+    assert "disagrees with" in str(caught.value.code)
 
 
 # 'compute_signal' options that do nothing for the output being written.

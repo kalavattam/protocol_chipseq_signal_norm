@@ -1077,22 +1077,24 @@ exp_mix_1="$(
 )"
 
 rc_mix=0
-"${TEST_BASH}" "${ROOT_REPO}/bin/submit_compute_signal.sh" \
-    --env_nam "${env_nam}" \
-    --dir_scr "${ROOT_REPO}/bin" \
-    --threads 1 \
-    --mode ratio \
-    --method log2 \
-    --typ_sig count \
-    --prior_count 1 \
-    --csv_fil_A "${trk_se},${trk_pe}" \
-    --csv_fil_B "${trk_pe},${trk_se}" \
-    --csv_fil_out "${out_mix_1},${out_mix_2}" \
-    --dir_eo "${dir_mix}" \
-    --nam_job "test_compute_ratio_mixed" \
-    --csv_scl_fct NA,NA \
-    --csv_dep_min NA,NA \
-    --csv_pseudo "edger,1:1" > /dev/null 2>&1 || rc_mix=$?
+out_mix="$(
+    "${TEST_BASH}" "${ROOT_REPO}/bin/submit_compute_signal.sh" \
+        --env_nam "${env_nam}" \
+        --dir_scr "${ROOT_REPO}/bin" \
+        --threads 1 \
+        --mode ratio \
+        --method log2 \
+        --typ_sig count \
+        --prior_count 1 \
+        --csv_fil_A "${trk_se},${trk_pe}" \
+        --csv_fil_B "${trk_pe},${trk_se}" \
+        --csv_fil_out "${out_mix_1},${out_mix_2}" \
+        --dir_eo "${dir_mix}" \
+        --nam_job "test_compute_ratio_mixed" \
+        --csv_scl_fct NA,NA \
+        --csv_dep_min NA,NA \
+        --csv_pseudo "edger,1:1" 2>&1
+)" || rc_mix=$?
 
 # Compare each pair's logged '--pseudo' (printed as floats) to its spec
 # numerically, so a value applied to the wrong pair cannot pass.
@@ -1120,11 +1122,13 @@ raise SystemExit(0 if same else 1)
 PY
 }
 
+# The edgeR step passes only what 'compute_pseudo' reads, so it draws no note.
 if [[
     "${rc_mix}" -eq 0
     && -n "${exp_mix_1}"
     && -s "${out_mix_1}"
     && -s "${out_mix_2}"
+    && "${out_mix}" != *"has no effect"*
 ]] \
     && call_has_pseudo "${out_mix_1}" "${exp_mix_1}" \
     && call_has_pseudo "${out_mix_2}" "1:1"
@@ -1137,7 +1141,57 @@ else
         "submit given 'edger,1:1' whole did not give each pair its own" \
         "element (exit ${rc_mix}); see $(print_relpath "${dir_mix}")"
 fi
-unset dir_cnt trk_se trk_pe dir_mix out_mix_1 out_mix_2 exp_mix_1 rc_mix
+
+# Only 'unadj' reads the tracks with both counts given for their column totals;
+# the pair's pseudocount must match the CLI given the same inputs.
+out_unadj="${dir_mix}/edg_unadj.bedGraph"
+exp_unadj="$(
+    "${TEST_MANAGED_PYTHON}" \
+        -m protocol_chipseq_signal_norm.cli.compute_pseudo \
+        --method edger \
+        --typ_sig unadj \
+        --fil_A "${trk_se}" \
+        --fil_B "${trk_pe}" \
+        --n_frg_A "$(< "$(derive_report_path "${trk_se}" n_frg)")" \
+        --n_frg_B "$(< "$(derive_report_path "${trk_pe}" n_frg)")" \
+        --n_ovlp_A "$(< "$(derive_report_path "${trk_se}" n_ovlp)")" \
+        --n_ovlp_B "$(< "$(derive_report_path "${trk_pe}" n_ovlp)")" \
+        2>/dev/null
+)"
+
+rc_unadj=0
+out_run="$(
+    "${TEST_BASH}" "${ROOT_REPO}/bin/submit_compute_signal.sh" \
+        --env_nam "${env_nam}" \
+        --dir_scr "${ROOT_REPO}/bin" \
+        --threads 1 \
+        --mode ratio \
+        --method log2 \
+        --typ_sig unadj \
+        --csv_fil_A "${trk_se}" \
+        --csv_fil_B "${trk_pe}" \
+        --csv_fil_out "${out_unadj}" \
+        --dir_eo "${dir_mix}" \
+        --nam_job "test_compute_ratio_mixed" \
+        --csv_pseudo edger 2>&1
+)" || rc_unadj=$?
+
+if [[
+    "${rc_unadj}" -eq 0
+    && -n "${exp_unadj}"
+    && -s "${out_unadj}"
+    && "${out_run}" != *"has no effect"*
+]] \
+    && call_has_pseudo "${out_unadj}" "${exp_unadj}"
+then
+    record_pass "submit passes the tracks to 'edger' for '--typ_sig unadj'"
+else
+    record_fail \
+        "submit did not give 'edger' the tracks for '--typ_sig unadj'" \
+        "(exit ${rc_unadj}); see $(print_relpath "${dir_mix}")"
+fi
+unset dir_cnt trk_se trk_pe dir_mix out_mix out_mix_1 out_mix_2 exp_mix_1
+unset rc_mix out_unadj exp_unadj rc_unadj out_run
 
 
 # A direct submit run applies one scale factor and floor to every pair, and

@@ -1603,8 +1603,8 @@ def main(argv: list[str] | None = None) -> int:
 
     Notes
     -----
-    - Refuses '--flags_pe' and '--flags_se' with BED input, where they have
-      no effect.
+    - Refuses '--flags_pe' and '--flags_se' with BED input, where they have no
+      effect.
     - Prints human-readable error messages to stderr on failure.
     - BrokenPipeError is handled in the '__main__' wrapper.
     """

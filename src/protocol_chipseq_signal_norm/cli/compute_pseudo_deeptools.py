@@ -161,8 +161,9 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         "--fil_A",
         dest="fil_A",
         help=(
-            "First bedGraph input file, file A. Use '-' for stdin; '.gz' is "
-            "handled. A name ending in '.bdg' or '.bg' is refused; use "
+            "First bedGraph input file, file A. Required unless '--n_ovlp_A' "
+            "is given, in which case it is not read. Use '-' for stdin; '.gz' "
+            "is handled. A name ending in '.bdg' or '.bg' is refused; use "
             "'.bedGraph'.\n"
             "\n"
         ),
@@ -179,8 +180,9 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         default=None,
         help=(
             "Second bedGraph input file, file B. This file is optional for "
-            "single-track mode; use '-' for stdin; '.gz' is handled. A name "
-            "ending in '.bdg' or '.bg' is refused; use '.bedGraph'.\n"
+            "single-track mode, and it is not read when '--n_ovlp_B' is "
+            "given; use '-' for stdin; '.gz' is handled. A name ending in "
+            "'.bdg' or '.bg' is refused; use '.bedGraph'.\n"
             "\n"
         ),
     )
@@ -197,7 +199,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         default=",".join(DEF_SKP_PFX),
         help=(
             "Comma-separated list of header prefixes to skip in bedGraph "
-            "file(s) (default: %(default)s).\n"
+            "file(s); unused when no track is read (default: %(default)s).\n"
             "\n"
         ),
     )
@@ -424,7 +426,9 @@ def _print_pseudo_arguments(
         print("#############################################")
         print("")
         print("--verbose")
-        print(f"--fil_A   {args.fil_A}")
+
+        if args.fil_A:
+            print(f"--fil_A   {args.fil_A}")
 
         if getattr(args, "fil_B", None):
             print(f"--fil_B   {args.fil_B}")
@@ -502,6 +506,28 @@ def _is_one_track(args: argparse.Namespace) -> bool:
     return not getattr(args, "fil_B", None) and args.n_ovlp_B is None
 
 
+def _find_tracks_read(args: argparse.Namespace) -> tuple[bool, bool]:
+    """
+    Report which input tracks the run reads.
+
+    Parameters
+    ----------
+    args : argparse.Namespace
+        Parsed arguments.
+
+    Returns
+    -------
+    read_a, read_b : tuple[bool, bool]
+        Whether track A and track B are read. A track is read only to infer its
+        overlap count.
+    """
+
+    read_a = args.n_ovlp_A is None
+    read_b = not _is_one_track(args) and args.n_ovlp_B is None
+
+    return read_a, read_b
+
+
 def _check_applicability(args: argparse.Namespace) -> None:
     """
     Refuse or warn about options that have no effect with this signal type.
@@ -519,8 +545,10 @@ def _check_applicability(args: argparse.Namespace) -> None:
 
     Notes
     -----
-    '--siz_bin' checks a track that is read and gives 'RPKM' its width, so it
-    does nothing only when no track is read and the type is not 'RPKM'.
+    A track is read only to infer its overlap count, and an unread track warns.
+    '--skp_pfx' acts only on a track that is read. '--siz_bin' checks a track
+    that is read and gives 'RPKM' its width, so it does nothing only when no
+    track is read and the type is not 'RPKM'.
     """
 
     typ = canonicalize_typ_sig(args.typ_sig)
@@ -535,18 +563,47 @@ def _check_applicability(args: argparse.Namespace) -> None:
             now,
         )
 
-    reads_no_track = args.n_ovlp_A is not None and (
-        _is_one_track(args) or args.n_ovlp_B is not None
-    )
+    read_a, read_b = _find_tracks_read(args)
 
-    if typ != "RPKM" and reads_no_track:
+    # A track whose overlap count is given is not read, so it is not checked
+    # or passed on.
+    if not read_a:
         check_opts_apply(
             args.supplied,
             "warn",
-            {"siz_bin": "--siz_bin"},
-            "'--typ_sig RPKM' or a run that reads a track",
-            f"{now} and both overlap counts given",
+            {"fil_A": "--fil_A"},
+            "a run that reads track A",
+            "'--n_ovlp_A' given",
         )
+        args.fil_A = None
+
+    if not read_b:
+        check_opts_apply(
+            args.supplied,
+            "warn",
+            {"fil_B": "--fil_B"},
+            "a run that reads track B",
+            "'--n_ovlp_B' given",
+        )
+        args.fil_B = None
+
+    if not (read_a or read_b):
+        check_opts_apply(
+            args.supplied,
+            "warn",
+            {"skp_pfx": "--skp_pfx"},
+            "a run that reads a track",
+            "both overlap counts given",
+        )
+
+        if typ != "RPKM":
+            check_opts_apply(
+                args.supplied,
+                "warn",
+                {"siz_bin": "--siz_bin"},
+                "'--typ_sig RPKM' or a run that reads a track",
+                f"{now} and both overlap counts given",
+            )
 
 
 def _run_edger(
@@ -771,18 +828,23 @@ def main(argv: list[str] | None = None) -> int:
     """
 
     args = parse_args(argv)
+    read_a, read_b = _find_tracks_read(args)
 
     # A hidden hyphen spelling is a separate action that argparse's own
     # 'required' check cannot see, so '--fil-A' alone would be rejected for
-    # want of '--fil_A'. Check the parsed value here instead.
-    if getattr(args, "fil_A", None) is None:
+    # want of '--fil_A'. Check the parsed value here instead. A track is
+    # required, and checked, only where it is read.
+    if read_a and getattr(args, "fil_A", None) is None:
         raise SystemExit(
-            "'--fil_A' is required. Supply the first bedGraph input path.",
+            "'--fil_A' is required unless '--n_ovlp_A' is given. Supply the "
+            "first bedGraph input path.",
         )
 
-    paths = [
-        p for p in (args.fil_A, getattr(args, "fil_B", None)) if p is not None
-    ]
+    tracks = (
+        ("A", getattr(args, "fil_A", None), read_a),
+        ("B", getattr(args, "fil_B", None), read_b),
+    )
+    paths = [p for _, p, read in tracks if read and p is not None]
 
     try:
         ensure_single_stdin(paths)
@@ -790,11 +852,8 @@ def main(argv: list[str] | None = None) -> int:
         raise SystemExit(str(e)) from None
 
     try:
-        for label, p in (
-            ("A", args.fil_A),
-            ("B", getattr(args, "fil_B", None)),
-        ):
-            if p is None or p == "-":
+        for label, p, read in tracks:
+            if not read or p is None or p == "-":
                 continue
 
             check_bedgraph_path(p)
@@ -829,9 +888,9 @@ def main(argv: list[str] | None = None) -> int:
             )
 
         if one_track and args.prt_arg:
-            # The two-track 'bamCompare' takes '--scaleFactors' and
-            # '--pseudocount' as pairs, and 'bamCoverage --scaleFactor' takes
-            # no pseudocount at all.
+            # The two-track 'bamCompare' takes as pairs '--scaleFactors' and
+            # '--pseudocount', and 'bamCoverage --scaleFactor' takes no
+            # pseudocount at all.
             raise ValueError(
                 "'--prt_arg' writes the two-track 'bamCompare' argument "
                 "string, which has no single-track form. Drop '--prt_arg' to "

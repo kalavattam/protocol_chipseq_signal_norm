@@ -779,7 +779,7 @@
           "symbol": "parse_args",
           "parameter": "skp_pfx",
           "owner": "PARAMETER.DESCRIPTIONS",
-          "evidence": "argparse help: Comma-separated list of header prefixes to skip in bedGraph file(s)."
+          "evidence": "argparse help: Comma-separated list of header prefixes to skip in bedGraph file(s); unused when no track is read."
         },
         {
           "surface_id": "src/protocol_chipseq_signal_norm/cli/compute_pseudo_deeptools.py::parse_args",
@@ -787,7 +787,7 @@
           "symbol": "parse_args",
           "parameter": "skp_pfx",
           "owner": "PARAMETER.DESCRIPTIONS",
-          "evidence": "argparse help: Comma-separated list of header prefixes to skip in bedGraph file(s)."
+          "evidence": "argparse help: Comma-separated list of header prefixes to skip in bedGraph file(s); unused when no track is read."
         }
       ],
       "local_meanings": [],
@@ -1298,8 +1298,8 @@
           "symbol": "parse_args",
           "parameter": "fil_A",
           "owner": "PARAMETER.DESCRIPTIONS",
-          "evidence": "argparse help: First bedGraph input file, file A. Use '-' for stdin; '.gz' is handled.",
-          "approved_realization": "First bedGraph input file, file A. Use '-' for stdin; '.gz' is handled."
+          "evidence": "argparse help: First bedGraph input file, file A. Required unless '--method edger' is given '--n_ovlp_A' and a '--typ_sig' other than 'unadj', in which case it is not read. Use '-' for stdin; '.gz' is handled. A name ending in '.bdg' or '.bg' is refused; use '.bedGraph'.",
+          "approved_realization": "First bedGraph input file, file A. Required unless '--method edger' is given '--n_ovlp_A' and a '--typ_sig' other than 'unadj', in which case it is not read. Use '-' for stdin; '.gz' is handled. A name ending in '.bdg' or '.bg' is refused; use '.bedGraph'."
         },
         {
           "surface_id": "src/protocol_chipseq_signal_norm/cli/compute_pseudo_deeptools.py::parse_args",
@@ -1307,8 +1307,8 @@
           "symbol": "parse_args",
           "parameter": "fil_A",
           "owner": "PARAMETER.DESCRIPTIONS",
-          "evidence": "argparse help: First bedGraph input file, file A. Use '-' for stdin; '.gz' is handled.",
-          "approved_realization": "First bedGraph input file, file A. Use '-' for stdin; '.gz' is handled."
+          "evidence": "argparse help: First bedGraph input file, file A. Required unless '--n_ovlp_A' is given, in which case it is not read. Use '-' for stdin; '.gz' is handled. A name ending in '.bdg' or '.bg' is refused; use '.bedGraph'.",
+          "approved_realization": "First bedGraph input file, file A. Required unless '--n_ovlp_A' is given, in which case it is not read. Use '-' for stdin; '.gz' is handled. A name ending in '.bdg' or '.bg' is refused; use '.bedGraph'."
         }
       ],
       "local_meanings": [],
@@ -1333,8 +1333,8 @@
           "symbol": "parse_args",
           "parameter": "fil_B",
           "owner": "PARAMETER.DESCRIPTIONS",
-          "evidence": "argparse help: Second bedGraph input file, file B. This file is optional for single-file pseudocount modes; use '-' for stdin; '.gz' is handled.",
-          "approved_realization": "Second bedGraph input file, file B. This file is optional for single-file pseudocount modes; use '-' for stdin; '.gz' is handled."
+          "evidence": "argparse help: Second bedGraph input file, file B. This file is optional for single-file pseudocount modes, and it is not read when '--n_ovlp_B' is given unless '--typ_sig' is 'unadj'; use '-' for stdin; '.gz' is handled. A name ending in '.bdg' or '.bg' is refused; use '.bedGraph'.",
+          "approved_realization": "Second bedGraph input file, file B. This file is optional for single-file pseudocount modes, and it is not read when '--n_ovlp_B' is given unless '--typ_sig' is 'unadj'; use '-' for stdin; '.gz' is handled. A name ending in '.bdg' or '.bg' is refused; use '.bedGraph'."
         },
         {
           "surface_id": "src/protocol_chipseq_signal_norm/cli/compute_pseudo_deeptools.py::parse_args",
@@ -1342,8 +1342,8 @@
           "symbol": "parse_args",
           "parameter": "fil_B",
           "owner": "PARAMETER.DESCRIPTIONS",
-          "evidence": "argparse help: Second bedGraph input file, file B. This file is optional for single-track mode; use '-' for stdin; '.gz' is handled.",
-          "approved_realization": "Second bedGraph input file, file B. This file is optional for single-track mode; use '-' for stdin; '.gz' is handled."
+          "evidence": "argparse help: Second bedGraph input file, file B. This file is optional for single-track mode, and it is not read when '--n_ovlp_B' is given; use '-' for stdin; '.gz' is handled. A name ending in '.bdg' or '.bg' is refused; use '.bedGraph'.",
+          "approved_realization": "Second bedGraph input file, file B. This file is optional for single-track mode, and it is not read when '--n_ovlp_B' is given; use '-' for stdin; '.gz' is handled. A name ending in '.bdg' or '.bg' is refused; use '.bedGraph'."
         }
       ],
       "local_meanings": [],

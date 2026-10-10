@@ -815,6 +815,12 @@ function resolve_pseudo_edger() {
             ;;
     esac
 
+    # With both overlap counts given, only 'unadj' reads the tracks for their
+    # column totals; the others would warn.
+    if [[ "${typ_sig}" == "unadj" ]]; then
+        opt+=( --fil_A "${fil_A}" --fil_B "${fil_B}" )
+    fi
+
     # Empty leaves the prior count to 'compute_pseudo', which owns the default.
     if [[ -n "${prior_count}" ]]; then
         opt+=( --prior_count "${prior_count}" )
@@ -824,8 +830,6 @@ function resolve_pseudo_edger() {
         run_py compute_pseudo \
             --method edger \
             --typ_sig "${typ_sig}" \
-            --fil_A "${fil_A}" \
-            --fil_B "${fil_B}" \
             --n_ovlp_A "${cnt[2]}" \
             --n_ovlp_B "${cnt[3]}" \
             "${opt[@]}"
