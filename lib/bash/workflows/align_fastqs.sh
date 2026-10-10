@@ -25,6 +25,7 @@
 # _align_reads
 # _sort_qname_bam
 # _sort_coord_bam
+# _check_optical_names
 # _mark_dup_bam
 # _finalize_align_output
 # align_fastqs
@@ -126,7 +127,9 @@ Notes
   Runtime requirements:
     bash >= 4.4
 
-  - The program name, with its subcommand for 'samtools', 'bwa', and 'bwa-mem2', starts the command; 'mv', 'rm', 'cut', 'uniq', and 'awk' also keep their leading options there, as in 'mv -f'. An option shares a line with its value only when the option is listed here as taking one, since shape alone cannot tell 'samtools markdup -t in.bam' (a flag, then a file) from 'bwa aln -t 4' (an option and its value). A new value-taking option belongs in this list; without it, the option and its value print on separate lines, which changes the layout but not the command.
+  - The program name, with its subcommand for 'samtools', 'bwa', and 'bwa-mem2', starts the command; 'mv', 'rm', 'cut', 'uniq', 'awk', and 'gzip' also keep their leading options there, as in 'mv -f'.
+    + An option shares a line with its value only when it is in this function's table of value-taking options, kept per program in the source, since shape alone cannot tell 'samtools markdup -t in.bam' (a flag, then a file) from 'bwa aln -t 4' (an option and its value).
+    + A new value-taking option belongs in that table; without it, the option and its value print on separate lines, which changes the layout but not the command.
 
 Examples
 --------
@@ -191,6 +194,7 @@ EOM
         case "${arr_prn_ref[*]:0:idx}" in
             bowtie2)                  opt_val="-p -x -X -1 -2 -U" ;;
             "samtools view")          opt_val="-@ -F -f -q -o -T -O -N" ;;
+            "samtools markdup")       opt_val="-@ -d -f" ;;
             samtools\ *)              opt_val="-@ -o" ;;
             "bwa mem"|"bwa-mem2 mem") opt_val="-t" ;;
             "bwa aln")                opt_val="-t" ;;
@@ -203,7 +207,7 @@ EOM
         # first line, as in 'mv -f' or 'uniq -c'; only its operands go on
         # continuation lines.
         case "${arr_prn_ref[0]}" in
-            mv|rm|cut|uniq|awk)
+            mv|rm|cut|uniq|awk|gzip)
                 while [[ "${arr_prn_ref[idx]:-}" == -* ]]; do
                     if [[ " ${opt_val} " == *" ${arr_prn_ref[idx]} "* ]]; then
                         idx=$(( idx + 1 ))
@@ -1847,6 +1851,148 @@ EOM
 }
 
 
+# For Step 4: decide whether 'samtools markdup' can tell optical duplicates
+# apart based on whether every read name carries flow-cell coordinates and all
+# tile prefixes have one length.
+# TODO: revisit once pinned Samtools includes the fix for Samtools Issue #2399.
+function _check_optical_names() {
+    local func="${1:-}"
+    local threads="${2:-}"
+    local fil_wrk="${3:-}"
+    local dist_nam="${4:-}"
+    local cnt n_nam n_bad n_len
+    local show_help
+
+    show_help=$(cat << EOM
+Usage
+-----
+  _check_optical_names
+    [--help] func threads fil_wrk dist_nam
+
+  Decide whether 'samtools markdup -d' can tell optical duplicates apart in a BAM file: every read name must carry Illumina flow-cell coordinates and all tile prefixes ('machine:run:flowcell:lane:tile') must have one length (for Step 4 of 'align_fastqs()').
+
+Parameters
+----------
+  -h, --help : flag
+    Display this help message and exit.
+
+  1  func : str
+    Name of the calling function for diagnostics.
+
+  2  threads : int
+    Number of threads to use for 'samtools view'.
+
+  3  fil_wrk : file
+    BAM file whose read names to check.
+
+  4  dist_nam : str
+    Name of the variable that receives the 'OPTICAL DISTANCE' value: '2500', or 'not used' and the reason.
+
+Returns
+-------
+  Sets 'dist_nam' and returns 0 when optical duplicates can be told apart; sets it, prints a warning, and returns 1 when a read name has no coordinates or the tile prefixes differ in length; sets it and returns 1 silently when the file has no reads; prints an error and returns 2 when the names cannot be read.
+
+Notes
+-----
+  Runtime requirements:
+    - awk
+    - bash >= 4.4
+    - cut
+    - samtools
+
+  - A name is parsed as Samtools 1.24 parses it: it must have 3, 4, 6, or 7 colons, with digits where the x and y coordinates go; the tile prefix is everything before x.
+  - One name per template is read (primary records that are not the second mate).
+  - Samtools 1.24 calls duplicates on different tiles optical when tile prefixes in a duplicate set differ in length, which includes names it cannot parse (Samtools Issue #2399), so '-d' is not passed then.
+
+Examples
+--------
+  1. Check whether a coordinate-sorted work file allows optical calls.
+    '''bash
+    _check_optical_names align_fastqs 2 work/tiny_pe.bam dist_opt
+    '''
+
+  2. Display the helper's argument contract.
+    '''bash
+    _check_optical_names --help
+    '''
+EOM
+    )
+
+    if [[ "${func}" =~ ^(-h|--h[e]?lp)$ ]]; then
+        echo "${show_help}" >&2
+        return 0
+    fi
+
+    # Count names, names without coordinates, and distinct prefix lengths,
+    # following the colon count that 'get_coordinates_colons()' in
+    # 'bam_markdup.c' uses.
+    # shellcheck disable=SC2016  # The program is for awk, not the shell.
+    if ! \
+        cnt="$(
+            set -o pipefail
+            samtools view -@ "${threads}" -F 0x980 "${fil_wrk}" \
+                | cut -f 1 \
+                | awk -F ':' '
+                    {
+                        n_nam++
+                        sep = NF - 1
+
+                        if (sep == 3) { ix = 3; iy = 4 }
+                        else if (sep == 4) { ix = 4; iy = 5 }
+                        else if (sep == 6 || sep == 7) { ix = 6; iy = 7 }
+                        else { n_bad++; next }
+
+                        if ($ix !~ /^[-+]?[0-9]/ || $iy !~ /^[-+]?[0-9]/) {
+                            n_bad++
+                            next
+                        }
+
+                        len = 0
+                        for (i = 1; i < ix; i++) len += length($i) + 1
+                        lens[len] = 1
+                    }
+
+                    END {
+                        n_len = 0
+                        for (k in lens) n_len++
+                        print n_nam + 0, n_bad + 0, n_len
+                    }
+                '
+        )"
+    then
+        echo_err_func "${func}" \
+            "Step #4: failed to read the read names of coordinate-sorted BAM" \
+            "file."
+        return 2
+    fi
+
+    local -n dist_ref="${dist_nam}"
+    read -r n_nam n_bad n_len <<< "${cnt}"
+
+    if (( n_nam == 0 )); then
+        dist_ref="not used; no reads"
+        return 1
+    elif (( n_bad > 0 )); then
+        dist_ref="not used; ${n_bad} of ${n_nam} read names carry no"
+        dist_ref+=" flow-cell coordinates"
+        echo_warn_func "${func}" \
+            "Step #4: ${n_bad} of ${n_nam} read names carry no flow-cell" \
+            "coordinates, so optical duplicates are not told apart."
+        return 1
+    elif (( n_len > 1 )); then
+        dist_ref="not used; read names have ${n_len} tile-prefix lengths"
+        dist_ref+=" (Samtools Issue #2399)"
+        echo_warn_func "${func}" \
+            "Step #4: read names have ${n_len} tile-prefix lengths, so" \
+            "optical duplicates are not told apart (Samtools Issue #2399)."
+        return 1
+    fi
+
+    dist_ref="2500"
+    return 0
+}
+
+
 # Step 4: mark duplicate alignments in the coordinate-sorted BAM work file,
 # then index the file again.
 function _mark_dup_bam() {
@@ -1854,17 +2000,20 @@ function _mark_dup_bam() {
     local dry_run="${2:-}"
     local threads="${3:-}"
     local fil_wrk="${4:-}"
-    local bam_mrk
-    local -a arr_cmd
+    local txt_mrk="${5:-}"
+    local bam_mrk dist_opt rc_opt
+    local -a arr_cmd arr_opt
     local show_help
 
     show_help=$(cat << EOM
 Usage
 -----
   _mark_dup_bam
-    [--help] func dry_run threads fil_wrk
+    [--help] func dry_run threads fil_wrk txt_mrk
 
-  Mark duplicate alignments in the coordinate-sorted BAM work file and index it again, skipping files already marked (Step 4 of 'align_fastqs()').
+  Mark duplicate alignments in the coordinate-sorted BAM work file, write the duplicate statistics, and index the file again, skipping files already marked (Step 4 of 'align_fastqs()').
+
+  Optical duplicates are told apart ('-d 2500') only when '_check_optical_names()' allows it.
 
 Parameters
 ----------
@@ -1883,6 +2032,9 @@ Parameters
   4  fil_wrk : file
     Coordinate-sorted BAM work file from Step 3.
 
+  5  txt_mrk : file
+    Path for the duplicate statistics, without '.gz'; the file is written gzip-compressed, as 'txt_mrk.gz'.
+
 Returns
 -------
   Returns 0 when marking and indexing succeed or are skipped or after printing the commands for a dry run; prints an error and returns 1 otherwise.
@@ -1890,16 +2042,26 @@ Returns
 Notes
 -----
   Runtime requirements:
+    - awk
     - bash >= 4.4
+    - cut
     - grep
+    - gzip
     - mv
     - samtools
 
+  - A dry run cannot read the names, so it prints the '-d 2500' form after a comment saying when it applies.
+
 Examples
 --------
-  1. Mark duplicates in a coordinate-sorted work file.
+  1. Mark duplicates in a coordinate-sorted work file and write its statistics.
     '''bash
-    _mark_dup_bam align_fastqs false 2 work/tiny_pe.bam
+    _mark_dup_bam \\
+        align_fastqs \\
+        false \\
+        2 \\
+        work/tiny_pe.bam \\
+        work/tiny_pe.markdup.txt
     '''
 
   2. Display the helper's argument contract.
@@ -1915,8 +2077,11 @@ EOM
     fi
 
     if [[ "${dry_run}" == "true" ]]; then
-        printf '\n%s\n' \
-            "# Step 4: mark duplicates and index the BAM work file again."
+        # Note: weird line break is necessary fror output text formatting.
+        printf '\n%s %s\n%s\n' \
+            "# Step 4: mark duplicates and index the BAM work file again." \
+            "'-d 2500' only if" \
+            "# all read names carry flow-cell coordinates of one format."
     fi
 
     if [[ "${dry_run}" == "true" || -f "${fil_wrk}" ]]; then
@@ -1931,10 +2096,34 @@ EOM
         else
             bam_mrk="${fil_wrk%.bam}.mark.bam"
 
+            # Tell optical duplicates apart only when the read names allow it.
+            arr_opt=()
+            dist_opt="2500"
+
+            if [[ "${dry_run}" == "false" ]]; then
+                rc_opt=0
+                _check_optical_names \
+                    "${func}" \
+                    "${threads}" \
+                    "${fil_wrk}" \
+                    dist_opt \
+                    || rc_opt=$?
+
+                if (( rc_opt == 2 )); then
+                    return 1
+                fi
+            fi
+
+            if [[ "${dist_opt}" == "2500" ]]; then
+                arr_opt=( -d 2500 )
+            fi
+
             arr_cmd=(
                 samtools markdup
                     -@ "${threads}"
                     -t
+                    "${arr_opt[@]}"
+                    -f "${txt_mrk}"
                     "${fil_wrk}"
                     "${bam_mrk}"
             )
@@ -1945,6 +2134,26 @@ EOM
                 echo_err_func "${func}" \
                     "Step #4: failed to mark duplicates in coordinate-sorted" \
                     "BAM file."
+                return 1
+            fi
+
+            # As the statistics' last line, record whether optical duplicates
+            # were told apart and, if not, why.
+            if [[ "${dry_run}" == "true" ]]; then
+                printf '%s %q\n\n' \
+                    "printf 'OPTICAL DISTANCE: %s\\n' 2500 >>" \
+                    "${txt_mrk}"
+            else
+                printf 'OPTICAL DISTANCE: %s\n' "${dist_opt}" >> "${txt_mrk}"
+            fi
+
+            arr_cmd=( gzip -f "${txt_mrk}" )
+
+            if ! \
+                _run_or_print_cmd "${dry_run}" arr_cmd
+            then
+                echo_err_func "${func}" \
+                    "Step #4: failed to compress duplicate statistics."
                 return 1
             fi
 
@@ -2215,7 +2424,7 @@ function align_fastqs() {
     local req_flg index ref_fa
     local bt2_mode_set bt2_X_set bwa_alg_set
     local fq_1 fq_2 fil_out qname out_fmt
-    local fil_wrk fil_qnam_out bam_qnam
+    local fil_wrk fil_qnam_out bam_qnam txt_mrk
     local show_help
 
     # Assign default argument values.
@@ -2327,7 +2536,11 @@ Notes
   - '--bwa_alg' is used only when '--aligner bwa'. It is refused with '--aligner bowtie2'; with '--aligner bwa-mem2', which always runs 'bwa-mem2 mem', 'mem' is ignored with a warning and 'aln' is refused.
   - Unaligned reads are excluded from the output; with paired-end data, so are the mates of unaligned reads.
   - With Bowtie 2 and paired-end data, mates may overlap or contain one another, so fragments shorter than the two reads together are kept; mates that extend past each other ("dovetailed") are not.
-  - Duplicates are marked (SAM flag 1024) in Step #4, after MAPQ filtering, and kept. Like any other read, '--mapq' filters them by the MAPQ the aligner gave them.
+  - Duplicates are marked (SAM flag 1024) in Step #4, after MAPQ filtering, and kept.
+    + Like any other read, '--mapq' filters them by the MAPQ the aligner gave them.
+    + When every read name carries Illumina flow-cell coordinates ('...:tile:x:y') in one format, duplicates on the same tile as their original and within 2500 pixels of it in x and y are tagged as optical ('dt:Z:SQ'); the rest are tagged as library duplicates ('dt:Z:LB').
+    + Otherwise, as with most SRA-dumped names, no 'dt' tags are written and a warning says why.
+    + Duplicate statistics are written to '<stem>.markdup.txt.gz' beside the alignment file; Samtools estimates library size for paired-end data only. The file's last line, 'OPTICAL DISTANCE:', gives 2500 when optical duplicates were told apart, or 'not used' and the reason.
   - For '--qname', the retained queryname-sorted output will have the same path and stem assigned to '--fil_out', except '.qnam' will be inserted before the final extension (for example, '.qnam.bam' or '.qnam.cram'). The copy is made in Step #5 from the final, duplicate-marked alignments, so it holds the same records and flags.
   - '--ref_fa' is required when '--fil_out' ends in '.cram', since CRAM writing requires a reference FASTA.
 
@@ -2551,6 +2764,7 @@ EOM
     esac
 
     bam_qnam="${fil_wrk%.bam}.qnam.bam"
+    txt_mrk="${fil_wrk%.bam}.markdup.txt"
 
 
     # Step 1: align the reads into the BAM work file, dropping unaligned reads
@@ -2603,6 +2817,7 @@ EOM
         "${dry_run}" \
         "${threads}" \
         "${fil_wrk}" \
+        "${txt_mrk}" \
         || return 1
 
 

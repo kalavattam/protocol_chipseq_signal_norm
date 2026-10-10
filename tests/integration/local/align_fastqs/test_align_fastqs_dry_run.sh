@@ -192,12 +192,20 @@ samtools index \\
     ${esc}.bam
 
 
-# Step 4: mark duplicates and index the BAM work file again.
+# Step 4: mark duplicates and index the BAM work file again. '-d 2500' only if
+# all read names carry flow-cell coordinates of one format.
 samtools markdup \\
     -@ 2 \\
     -t \\
+    -d 2500 \\
+    -f ${esc}.markdup.txt \\
     ${esc}.bam \\
     ${esc}.mark.bam
+
+printf 'OPTICAL DISTANCE: %s\\n' 2500 >> ${esc}.markdup.txt
+
+gzip -f \\
+    ${esc}.markdup.txt
 
 mv -f \\
     ${esc}.mark.bam \\
@@ -375,7 +383,7 @@ check_block \
     "${exp}" \
     "$(print_step 2 "${out}")"
 
-# Without '--qname', BAM output is the work file itself, so Step 5 runs nothing.
+# Without '--qname', BAM output is the work file itself: Step 5 runs nothing.
 exp="# Step 5: write the final output and the retained files.
 ${msg_nil}"
 

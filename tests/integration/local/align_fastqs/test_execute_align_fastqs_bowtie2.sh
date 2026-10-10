@@ -6,9 +6,10 @@
 # Copyright 2026 by Kris Alavattam
 # Email: kalavattam@gmail.com
 #
-# OpenAI ChatGPT and Codex (GPT-5.5, GPT-5.6) were used in design, development,
-# and documentation, with all output reviewed, edited, and approved by the
-# author.
+# The following were used in design, development, and documentation, with all
+# output reviewed, edited, and approved by the author:
+# - OpenAI ChatGPT and Codex (GPT-5.5, GPT-5.6);
+# - Anthropic Claude Code (Opus 5.5).
 #
 # Distributed under the MIT license.
 
@@ -41,12 +42,14 @@ ref_fa="${tmp}/tiny.fa"
 
 out_se="${dir_out}/tiny_se.bam"
 bai_se="${out_se}.bai"
-stat_se="${dir_out}/tiny_se.idxstats.txt"
+mrk_se="${dir_out}/tiny_se.markdup.txt.gz"
+ixs_se="${dir_out}/tiny_se.idxstats.txt"
 vw_se="${dir_out}/tiny_se.view.txt"
 
 out_pe="${dir_out}/tiny_pe.bam"
 bai_pe="${out_pe}.bai"
-stat_pe="${dir_out}/tiny_pe.idxstats.txt"
+mrk_pe="${dir_out}/tiny_pe.markdup.txt.gz"
+ixs_pe="${dir_out}/tiny_pe.idxstats.txt"
 vw_pe="${dir_out}/tiny_pe.view.txt"
 
 out_se_cram="${dir_out}/tiny_se.cram"
@@ -135,6 +138,10 @@ assert_file_nonempty \
     "${bai_se}" \
     "execute Bowtie2 SE BAM index"
 
+assert_file_nonempty \
+    "${mrk_se}" \
+    "execute Bowtie2 SE duplicate statistics"
+
 if [[ -s "${out_se}" ]]; then
     if \
         run_capture \
@@ -149,7 +156,7 @@ if [[ -s "${out_se}" ]]; then
 
     run_capture \
         "idxstats execute align-fastqs Bowtie2 SE BAM" \
-        "${stat_se}" \
+        "${ixs_se}" \
         run_samtools idxstats "${out_se}"
 
     run_capture \
@@ -158,7 +165,7 @@ if [[ -s "${out_se}" ]]; then
         run_samtools view "${out_se}"
 
     assert_pattern_found \
-        "${stat_se}" \
+        "${ixs_se}" \
         $'^I\t108\t1\t0$' \
         "execute Bowtie2 SE BAM has one mapped read on chromosome I"
 
@@ -206,6 +213,10 @@ assert_file_nonempty \
     "${bai_pe}" \
     "execute Bowtie2 PE BAM index"
 
+assert_file_nonempty \
+    "${mrk_pe}" \
+    "execute Bowtie2 PE duplicate statistics"
+
 if [[ -s "${out_pe}" ]]; then
     if \
         run_capture \
@@ -220,7 +231,7 @@ if [[ -s "${out_pe}" ]]; then
 
     run_capture \
         "idxstats execute align-fastqs Bowtie2 PE BAM" \
-        "${stat_pe}" \
+        "${ixs_pe}" \
         run_samtools idxstats "${out_pe}"
 
     run_capture \
@@ -229,7 +240,7 @@ if [[ -s "${out_pe}" ]]; then
         run_samtools view "${out_pe}"
 
     assert_pattern_found \
-        "${stat_pe}" \
+        "${ixs_pe}" \
         $'^I\t108\t2\t0$' \
         "execute Bowtie2 PE BAM has two mapped reads on chromosome I"
 

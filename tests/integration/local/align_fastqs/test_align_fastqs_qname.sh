@@ -148,16 +148,19 @@ for idx in "${!rows[@]}"; do
         continue
     fi
 
-    # Only the final file, its index, and the copy remain.
+    # Only the final file, its index, the duplicate statistics, and the copy
+    # remain.
     got="$(
         cd "${dir_out}" && find . -type f | LC_ALL=C sort | paste -sd ' ' -
     )"
     idx_ext="bai"
     if [[ "${ext}" == "cram" ]]; then idx_ext="crai"; fi
-    exp="./x.${ext} ./x.${ext}.${idx_ext} ./x.qnam.${ext}"
+    exp="./x.${ext} ./x.${ext}.${idx_ext} ./x.markdup.txt.gz ./x.qnam.${ext}"
 
     if [[ "${got}" == "${exp}" ]]; then
-        record_pass "${lbl}: writes the final file, its index, and the copy"
+        record_pass \
+            "${lbl}: writes the final file, its index, the statistics, and" \
+            "the copy"
     else
         record_fail "${lbl}: wrote '${got}', expected '${exp}'"
         continue
