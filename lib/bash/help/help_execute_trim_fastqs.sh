@@ -75,7 +75,7 @@ Parameters
         + If 'max_job' is 1, jobs run sequentially (serial mode).
 
   -sl, --slurm : flag
-    Submit jobs to the Slurm scheduler. Without this flag, jobs run in serial.
+    Submit jobs to the Slurm scheduler; otherwise, run them through GNU Parallel or in serial, as resolved locally.
 
   -tm, --time : time
     Slurm job time limit, in 'h:mm:ss' format (default: '${time}'); required if '--slurm' is specified, ignored with a warning if not.
