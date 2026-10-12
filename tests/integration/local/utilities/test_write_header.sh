@@ -6,9 +6,10 @@
 # Copyright 2026 by Kris Alavattam
 # Email: kalavattam@gmail.com
 #
-# OpenAI ChatGPT and Codex (GPT-5.5, GPT-5.6) were used in design, development,
-# and documentation, with all output reviewed, edited, and approved by the
-# author.
+# The following were used in design, development, and documentation, with all
+# output reviewed, edited, and approved by the author:
+# - OpenAI ChatGPT and Codex (GPT-5.5, GPT-5.6);
+# - Anthropic Claude Code (Opus 5.5).
 #
 # Distributed under the MIT license.
 
@@ -133,6 +134,7 @@ log_spike_idempotent="${dir_log}/spike_idempotent.log"
 log_dry_header_only="${dir_log}/dry_header_only.log"
 log_dry_in_place="${dir_log}/dry_in_place.log"
 log_dry_copy="${dir_log}/dry_copy.log"
+log_dry_verbose="${dir_log}/dry_verbose.log"
 log_invalid_mode="${dir_log}/invalid_mode.log"
 log_missing_output_mode="${dir_log}/missing_output_mode.log"
 log_in_place_without_input="${dir_log}/in_place_without_input.log"
@@ -319,6 +321,31 @@ assert_pattern_found \
     "${log_dry_header_only}" \
     'would create' \
     "write_header.sh dry_header_only reports planned creation"
+
+assert_pattern_absent \
+    "${log_dry_header_only}" \
+    'has no effect' \
+    "write_header.sh dry_header_only warns about nothing"
+
+# A dry run already prints the header, so '--verbose' is ignored with a
+# warning.
+run_header_success \
+    dry_verbose \
+    "${log_dry_verbose}" \
+    --dry_run \
+    --verbose \
+    --mode spike \
+    --fil_out "${fil_dry}"
+
+assert_pattern_found \
+    "${log_dry_verbose}" \
+    "'--verbose' has no effect with '--dry_run' and is ignored" \
+    "write_header.sh dry_verbose warns about '--verbose'"
+
+assert_pattern_found \
+    "${log_dry_verbose}" \
+    "^${hdr_spk}$" \
+    "write_header.sh dry_verbose still prints the header"
 
 {
     printf '%s\n' "${hdr_spk}"

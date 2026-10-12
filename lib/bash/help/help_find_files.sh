@@ -10,12 +10,12 @@
 # output reviewed, edited, and approved by the author:
 # - OpenAI ChatGPT and Codex (GPT-4- and GPT-5-series models; most recent:
 #   GPT-5.6);
-# - Anthropic Claude Code (Opus 5).
+# - Anthropic Claude Code (Opus 5, Opus 5.5).
 #
 # Distributed under the MIT license.
 
 
-# TODO FIXME: under Usage, do a sensical breakdown of option types per line.
+# TODO: under Usage, break options in "semantic paragraphs".
 # Maybe like this? (Entails reordering options.)
 #   [--help]
 #    --dir_fnd <dir> --pattern <str> [--include <csv>] [--exclude <csv>]
@@ -51,6 +51,8 @@ Parameters
   -fq, --fqs, --fastqs : flag
     Find FASTQ files, returning them in a semicolon-separated string with paired-end files grouped into comma-separated substrings.
 
+    Ignored with a warning with '--chk_con', or with '--chk_exc' without '--shw_str', since those print no string.
+
   -in, --incld, --include : csv
     Comma-separated list of patterns to include, including shell wildcards. '--include' is subordinate to '--pattern'.
 
@@ -64,7 +66,7 @@ Parameters
     Check the construction and execution of the 'find' command, output raw list of found files, and then exit.
 
   -ss, --shw_str, --show_str : flag
-    With '--chk_exc', show a one-line “stringified” summary in addition to the raw list; without '--chk_exc', ignored.
+    With '--chk_exc', show a one-line “stringified” summary in addition to the raw list; without '--chk_exc', ignored with a warning.
 
 Notes
 -----

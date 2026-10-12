@@ -35,6 +35,8 @@ Parameters
   -v, --verbose : flag
     Run script in verbose mode. Print the header before writing.
 
+    Ignored with a warning with '--dry_run', which already prints the header.
+
   -dr, --dry, --dry_run : flag
     Run script in dry-run mode. Print the header and planned file action without creating or modifying a file.
 

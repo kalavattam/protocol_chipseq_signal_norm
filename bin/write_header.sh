@@ -10,7 +10,7 @@
 # output reviewed, edited, and approved by the author:
 # - OpenAI ChatGPT and Codex (GPT-4- and GPT-5-series models; most recent:
 #   GPT-5.6);
-# - Anthropic Claude Code (Opus 5).
+# - Anthropic Claude Code (Opus 5, Opus 5.5).
 #
 # Distributed under the MIT license.
 
@@ -197,6 +197,11 @@ function validate_args() {
             return 1
             ;;
     esac
+
+    # '--dry_run' already prints the header that '--verbose' would print.
+    if [[ "${dry_run}" == "true" && "${verbose}" == "true" ]]; then
+        echo_warn "'--verbose' has no effect with '--dry_run' and is ignored."
+    fi
 
     if [[ -n "${fil_in}" ]]; then
         validate_var_file "fil_in" "${fil_in}"

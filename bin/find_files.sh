@@ -6,9 +6,11 @@
 # Copyright 2024-2026 by Kris Alavattam
 # Email: kalavattam@gmail.com
 #
-# OpenAI ChatGPT and Codex (GPT-4- and GPT-5-series models; most recent:
-# GPT-5.6) were used in design, development, and documentation, with all output
-# reviewed, edited, and approved by the author.
+# The following were used in design, development, and documentation, with all
+# output reviewed, edited, and approved by the author:
+# - OpenAI ChatGPT and Codex (GPT-4- and GPT-5-series models; most recent:
+#   GPT-5.6);
+# - Anthropic Claude Code (Opus 5.5).
 #
 # Distributed under the MIT license.
 
@@ -214,6 +216,25 @@ function validate_args() {
     fi
 
     check_flags_mut_excl ${chk_con} "chk_con" ${chk_exc} "chk_exc"
+
+    # '--shw_str' adds the one-line string to the '--chk_exc' report.
+    if [[ "${shw_str}" == "true" && "${chk_exc}" == "false" ]]; then
+        echo_warn \
+            "'--shw_str' has no effect without '--chk_exc' and is ignored."
+    fi
+
+    # '--fastqs' changes only the one-line string, which '--chk_con' never
+    # prints and '--chk_exc' prints only with '--shw_str'.
+    if [[ "${fastqs}" == "true" ]]; then
+        if [[ "${chk_con}" == "true" ]]; then
+            echo_warn \
+                "'--fastqs' has no effect with '--chk_con' and is ignored."
+        elif [[ "${chk_exc}" == "true" && "${shw_str}" == "false" ]]; then
+            echo_warn \
+                "'--fastqs' has no effect with '--chk_exc' without" \
+                "'--shw_str' and is ignored."
+        fi
+    fi
 }
 
 
