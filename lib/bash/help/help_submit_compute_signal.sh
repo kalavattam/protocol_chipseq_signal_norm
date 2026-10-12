@@ -80,6 +80,8 @@ Parameters
 
     Required when '--csv_fil_in' contains CRAM input.
 
+    Used with '--mode signal' or '--mode coord'.
+
   -cs, --chr_siz : file
     Chromosome sizes file in UCSC-style TSV format.
 
@@ -155,6 +157,8 @@ Parameters
 
     Values should be in unscaled track units, as the ratio tool adds each pseudocount to its own track ('A' to file A, 'B' to file B) before applying that track's '--csv_scl_fct' value, if one is specified.
 
+    Used with '--mode ratio'.
+
   -ts, --typ_sig : str
     Signal type the input tracks carry, required by '--csv_pseudo edger'.
 
@@ -176,13 +180,19 @@ Parameters
     Accepted zero-zero skip modes are 'pre_scale' and 'post_scale'.
 
   -stn, --strict_bins : flag
-    Require strict bin compatibility. If '--mode ratio', require both input bedGraphs to have the same ordered '(chrom, start, end)' grid across all data rows.
+    Require strict bin compatibility: both input bedGraphs must have the same ordered '(chrom, start, end)' grid across all data rows.
+
+    Used with '--mode ratio'.
 
   -dn, --drp_nan : flag
-    Drop non-finite values from main output. Applies to ratio mode.
+    Drop non-finite values from main output.
+
+    Used with '--mode ratio'.
 
   -sp, --skp_pfx : list of str
     Comma-separated list of header prefixes to skip, shared by all bedGraph inputs, or a sentinel.
+
+    Used with '--mode ratio'.
 
   -crf, --csv_report_n_frg : list of file
     Comma-separated list of paths for per-sample fragment-count reports, 'N' / 'n_frg'. Supply one path per '--csv_fil_in' element. Optional: without it, each report is written beside its own output track as '<track>.n_frg.txt', or not at all when there is no track.
@@ -200,10 +210,16 @@ Parameters
     Used with '--mode signal'. Refused together with '--csv_report_n_frg' or '--csv_report_n_ovlp', which would write the counts anyway.
 
   -tr, --track : flag
-    Write a companion track file. If '--mode ratio', write a companion bedGraph without non-finite rows.
+    Write a companion track file without non-finite rows.
+
+    Needed only without a positive pseudocount on both tracks, such as '--csv_pseudo edger', which keeps every ratio finite.
+
+    Used with '--mode ratio'.
 
   -dp, --dp : int
     Maximum number of decimal places retained for finite emitted values (default: ${dp}).
+
+    Used with '--mode signal' or '--mode ratio'.
 
   -deo, --dir_eo : dir
     Directory for stderr and stdout log files.

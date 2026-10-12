@@ -2194,7 +2194,8 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         default=None,
         help=(
             "Reference FASTA file for CRAM decoding. Required for CRAM inputs "
-            "unless the reference is otherwise available to htslib/pysam.\n"
+            "unless the reference is otherwise available to htslib/pysam. "
+            "Ignored with a warning for non-CRAM input.\n"
             "\n"
         ),
     )
@@ -2308,7 +2309,8 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         default=100000,
         help=(
             "Window size in base pairs for '--engine window' indexed fetch "
-            "tasks (default: %(default)s). Ignored by '--engine chrom'.\n"
+            "tasks (default: %(default)s). Ignored with a warning by "
+            "'--engine chrom'.\n"
             "\n"
             "Each chromosome is split into windows of this size, and one "
             "worker task fetches and bins each window. Smaller windows give "

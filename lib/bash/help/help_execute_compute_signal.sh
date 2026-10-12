@@ -144,7 +144,7 @@ Parameters
   -sb, --siz_bin : int
     Bin size in base pairs for signal computation (default: 10).
 
-    Used with '--mode signal'
+    Used with '--mode signal'.
 
   -eg, --engine : {'chrom', 'window'}
     Processing engine for signal computation (default: '${engine}').
@@ -154,6 +154,8 @@ Parameters
       - 'window': each chromosome is split into fixed-size coordinate windows, with one fetch task per window. Task sizes are uniform, giving finer load balance across threads, but at the cost of more fetch calls. Window size is set by '--siz_win'.
 
     Tentative recommendation for S. cerevisiae datasets: keep 'chrom' as the general choice and the current best choice for CRAM input; try 'window' for large BAM inputs.
+
+    Used with '--mode signal'.
 
   -sw, --siz_win : int
     Window size in base pairs for the 'window' engine's indexed fetch tasks (default: ${siz_win}). Ignored, with a warning, by the 'chrom' engine.
@@ -219,7 +221,9 @@ Parameters
     Used with '--mode ratio'.
 
   -stn, --strict_bins : flag
-    Require strict bin compatibility. If '--mode ratio', require both input bedGraph files to have the same ordered '(chrom, start, end)' grid across all data rows.
+    Require strict bin compatibility: both input bedGraph files must have the same ordered '(chrom, start, end)' grid across all data rows.
+
+    Used with '--mode ratio'.
 
   -dn, --drp_nan, --drop_nan : flag
     Drop non-finite ratio rows ('inf', '-inf', and 'nan') from the main ratio output.
@@ -242,12 +246,18 @@ Parameters
     Used with '--mode signal'. Cannot be combined with '--report_only'.
 
   -tr, --trk, --track : flag
-    Write a companion track file. If '--mode ratio', also write a companion bedGraph with all non-finite rows ('inf', '-inf', and 'nan') removed.
+    Write a companion track file with all non-finite rows ('inf', '-inf', and 'nan') removed.
+
+    Needed only without a positive pseudocount on both tracks, such as '--csv_pseudo edger'; see '--details'.
+
+    Used with '--mode ratio'.
 
   -dp, --dp : int
     Maximum number of decimal places retained for finite emitted values (default: ${dp}).
 
     After rounding, non-informative trailing zeros are stripped.
+
+    Used with '--mode signal' or '--mode ratio'.
 
   -deo, --dir_eo : dir
     Directory for stderr and stdout log files in TXT format (default: '\${dir_out}/logs').
@@ -675,16 +685,20 @@ Parameters
     Used with '--mode signal'; ignored with a warning otherwise.
 
   -tr, --trk, --track : flag
-    Write a companion track file. If '--mode ratio', also write a companion bedGraph with all non-finite rows ('inf', '-inf', and 'nan') removed.
+    Write a companion track file with all non-finite rows ('inf', '-inf', and 'nan') removed. The new file will include '.track' before the extension.
 
-    The new file will include '.track' before the extension.
+    Needed only when the ratio can be non-finite: without a pseudocount, a zero denominator gives 'nan', and under '--method log2' a zero numerator gives '-inf'. A positive pseudocount on both tracks ('--csv_pseudo edger', or a positive 'A:B'), with '--eps' below it, prevents both, so the companion would only copy the main output.
 
     This cleaned version is ideal for visualization in genome browsers such as IGV, avoiding issues caused by 'inf', '-inf' or 'nan' values.
+
+    Used with '--mode ratio'; refused otherwise.
 
   -dp, --dp : int
     Maximum number of decimal places retained for finite emitted values (default: ${dp}).
 
     After rounding, non-informative trailing zeros are stripped.
+
+    Used with '--mode signal' or '--mode ratio'; ignored with a warning otherwise.
 
   -deo, --dir_eo : dir
     Directory for stderr and stdout log files in TXT format (default: '\${dir_out}/logs').

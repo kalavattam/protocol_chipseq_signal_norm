@@ -1041,6 +1041,8 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
             "\n"
             "Notes:\n"
             "  - This file is safe for use in genome browsers such as IGV.\n"
+            "  - Needed only without a positive '--pseudo' on both tracks "
+            "with '--eps' below it, which keeps every ratio finite.\n"
         ),
     )
 
