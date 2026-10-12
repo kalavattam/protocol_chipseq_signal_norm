@@ -2181,7 +2181,7 @@ EOM
 # Compute spike-in scaling factor and related values for a sample.
 #
 # Workflow function that processes a sample using global variables; computes
-# alignment counts and a requested scaling-factor coefficient.
+# fragment counts and a requested scaling-factor coefficient.
 # shellcheck disable=SC2154
 function process_samp_spike() {
     local idx="${1:-}"  # Array sample index
@@ -2190,7 +2190,7 @@ function process_samp_spike() {
     local mp mn sp sn typ_mp typ_sp typ_mn typ_sn
     local num_mp num_sp num_mn num_sn coef_lcl coef_val v fil_out_part
     # local fmt_str  # Reserved in case formatted output generation is revived.
-    local -a arr_fields arr_main
+    local -a arr_fields arr_main arr_spike
     local show_help
 
     show_help=$(cat << EOM
@@ -2201,7 +2201,7 @@ Usage
 
   Processes a single sample (array index 'idx') to compute a spike-in scaling factor and related QC values.
 
-  For the main/spike IP and input alignment files at 'idx', this function detects paired- or single-end sequenced read alignment status per file, counts alignments, computes the requested scaling-factor coefficient, and writes a per-sample tab-separated results row.
+  For the main/spike IP and input alignment files at 'idx', this function detects whether each file holds paired- or single-end alignments, counts fragments, computes the requested scaling-factor coefficient, and writes a per-sample tab-separated results row.
 
 Parameters
 ----------
@@ -2214,7 +2214,7 @@ Parameters
 Expected globals
 ----------------
   arr_mip, arr_sip, arr_min, arr_sin : array
-    Main-IP, spike-IP, main-input, and spike-input alignment arrays, respectively.
+    Main-IP, spike-IP, main-input, and spike-input alignment-file arrays, respectively.
 
   scr_siq, scr_spk : structured string
     siQ-ChIP and spike-in Python entry points, respectively.
@@ -2223,7 +2223,9 @@ Expected globals
     Reference-FASTA and output-table paths, respectively.
 
   aln_typ, coef_spk : str
-    Alignment-type override and requested spike-in coefficient, respectively. 'coef_spk' is a canonical name, as 'submit_calculate_scaling_factor.sh' passes it, which decides the main counts passed on.
+    Alignment-type override and requested spike-in coefficient, respectively.
+
+    'coef_spk' must be a canonical name, which 'submit_calculate_scaling_factor.sh' supplies; it decides which counts are passed to the calculator.
 
   threads, dp, idx_out : int
     Thread count, rounding precision, and optional output-part index, respectively.
@@ -2273,12 +2275,15 @@ Examples
     scr_spk=calculate_scaling_factor_spike
     fil_out="\${TMPDIR:-/tmp}/scaling.spike.tsv"
     aln_typ=pe coef_spk=chiprx_alpha_ratio threads=1 dp=12 idx_out=0 debug=false
+
     process_samp_spike 0
     '''
 
   2. Confirm that a nonnumeric sample index is rejected before processing.
     '''bash
-    if ! process_samp_spike sample_one; then
+    if ! \\
+        process_samp_spike sample_one
+    then
         printf '%s\n' 'nonnumeric index rejected as expected'
     fi
     '''
@@ -2405,8 +2410,8 @@ EOM
             "coef_spk=${coef_lcl}" "dp=${dp}"
     fi
 
-    # Pass only the main counts the coefficient uses; the row still reports
-    # them.
+    # Pass only the counts the coefficient uses; the row still reports all
+    # four.
     case "${coef_lcl}" in
         fractional|main_per_spike)
             arr_main=( --main_ip "${num_mp}" --main_in "${num_mn}" )
@@ -2421,15 +2426,31 @@ EOM
             ;;
     esac
 
-    # Compute requested spike-in coefficient.
+    case "${coef_lcl}" in
+        chiprx_alpha_ip)
+            arr_spike=( --spike_ip "${num_sp}" )
+            ;;
+
+        chiprx_alpha_in)
+            arr_spike=( --spike_in "${num_sn}" )
+            ;;
+
+        *)
+            arr_spike=( --spike_ip "${num_sp}" --spike_in "${num_sn}" )
+            ;;
+    esac
+
+    # Compute the requested spike-in coefficient.
     coef_val="$(
         _compute_scl_fct \
-            "spike" "${scr_siq}" "${scr_spk}" \
-            --coef     "${coef_lcl}" \
-            --format   "plain" \
-            --spike_ip "${num_sp}" --spike_in "${num_sn}" \
+            "spike" \
+            "${scr_siq}" \
+            "${scr_spk}" \
+            --coef "${coef_lcl}" \
+            --format "plain" \
+            "${arr_spike[@]}" \
             "${arr_main[@]}" \
-            --dp       "${dp}"
+            --dp "${dp}"
     )" || {
         echo_err_func "${FUNCNAME[0]}" \
             "failed while computing spike-in coefficient '${coef_lcl}' for" \
@@ -2455,6 +2476,8 @@ EOM
         _get_fil_out_part "${fil_out}" "${idx_out:-${idx}}"
     )" || return 1
 
+    # Note: the execute-layer driver combines per-sample part files
+    # deterministically after all workers finish successfully.
     if ! {
             arr_fields=(
                 "${mp}" "${sp}" "${mn}" "${sn}" "${coef_val}" "${coef_lcl}"
@@ -2470,8 +2493,6 @@ EOM
             "failed to write per-sample results file '${fil_out_part}'."
         return 1
     fi
-    # The execute-layer driver combines per-sample part files deterministically
-    # after all workers finish successfully.
 }
 
 

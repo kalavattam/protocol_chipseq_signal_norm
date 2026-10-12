@@ -88,6 +88,10 @@ UNUSED_MAINS = (
     ("chiprx_alpha_in", ["--main_ip", "--main_in"]),
     ("rxinput_alpha", ["--main_ip"]),
 )
+SPIKES_USED = {
+    "chiprx_alpha_ip": ["--spike_ip", "10"],
+    "chiprx_alpha_in": ["--spike_in", "20"],
+}
 
 
 @pytest.mark.parametrize(("coef", "flags"), UNUSED_MAINS)
@@ -97,12 +101,13 @@ def test_spike_warns_about_unused_main_counts(
     capsys: pytest.CaptureFixture[str],
 ) -> None:
     needed = ["--main_in", "100"] if coef == "rxinput_alpha" else []
+    spikes = SPIKES_USED.get(coef, SPIKE_ARGS)
 
-    assert spike.main(["--coef", coef, *SPIKE_ARGS, *needed]) == 0
+    assert spike.main(["--coef", coef, *spikes, *needed]) == 0
     bare = capsys.readouterr()
     assert bare.err == ""
 
-    assert spike.main(["--coef", coef, *SPIKE_ARGS, *MAINS]) == 0
+    assert spike.main(["--coef", coef, *spikes, *MAINS]) == 0
     full = capsys.readouterr()
 
     assert full.out == bare.out
@@ -170,6 +175,94 @@ def test_calculate_scaling_factors_requires_used_main_counts() -> None:
     with pytest.raises(ValueError, match="'main_in' is required"):
         spike.calculate_scaling_factors(
             None, 10, None, 20, required=("rxinput_alpha",)
+        )
+
+
+# A spike count a coefficient does not use is ignored with a note, and the
+# coefficient is the same as without it.
+UNUSED_SPIKES = (
+    ("chiprx_alpha_ip", "--spike_ip", "10", "--spike_in", "100000"),
+    ("chiprx_alpha_in", "--spike_in", "20", "--spike_ip", "50000"),
+)
+
+
+@pytest.mark.parametrize(
+    ("coef", "used", "count", "unused", "out"),
+    UNUSED_SPIKES,
+)
+def test_spike_warns_about_an_unused_spike_count(
+    coef: str,
+    used: str,
+    count: str,
+    unused: str,
+    out: str,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    assert spike.main(["--coef", coef, used, count]) == 0
+    bare = capsys.readouterr()
+    assert bare.out == f"{out}\n"
+    assert bare.err == ""
+
+    # The ignored count is not validated, and the library never sees it.
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")
+        assert spike.main(["--coef", coef, used, count, unused, "-1"]) == 0
+
+    full = capsys.readouterr()
+    assert full.out == bare.out
+    assert full.err == (
+        f"Note: '{unused}' has no effect with '--coef {coef}' and is "
+        "ignored.\n"
+    )
+
+
+MISSING_SPIKES = (
+    ("chiprx_alpha_ip", ["--spike_in", "20"], "--spike_ip"),
+    ("chiprx_alpha_in", ["--spike_ip", "10"], "--spike_in"),
+    ("chiprx_alpha_ratio", ["--spike_ip", "10"], "--spike_in"),
+    ("chiprx_alpha_ratio", ["--spike_in", "20"], "--spike_ip"),
+    ("rxinput_alpha", ["--main_in", "100", "--spike_ip", "10"], "--spike_in"),
+    ("fractional", [*MAINS, "--spike_in", "20"], "--spike_ip"),
+)
+
+
+@pytest.mark.parametrize(("coef", "given", "flag"), MISSING_SPIKES)
+def test_spike_requires_spike_counts_a_coefficient_uses(
+    coef: str,
+    given: list[str],
+    flag: str,
+) -> None:
+    with pytest.raises(SystemExit) as error:
+        spike.main(["--coef", coef, *given])
+
+    assert str(error.value) == f"'{flag}' is required for '--coef {coef}'."
+
+
+def test_calculate_scaling_factors_handles_spike_counts_by_use() -> None:
+    with pytest.warns(UserWarning, match="'spike_in' has no effect"):
+        vals = spike.calculate_scaling_factors(
+            None, 10, None, 20, required=("chiprx_alpha_ip",)
+        )
+
+    assert vals == {"chiprx_alpha_ip": 100000.0}
+
+    # The ignored count is dropped before the counts are checked.
+    with pytest.warns(UserWarning, match="'spike_in' has no effect"):
+        vals = spike.calculate_scaling_factors(
+            None, 10, None, -1, required=("chiprx_alpha_ip",)
+        )
+
+    assert vals == {"chiprx_alpha_ip": 100000.0}
+
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")
+        assert spike.calculate_scaling_factors(
+            None, None, None, 20, required=("chiprx_alpha_in",)
+        ) == {"chiprx_alpha_in": 50000.0}
+
+    with pytest.raises(ValueError, match="'spike_ip' is required"):
+        spike.calculate_scaling_factors(
+            None, None, None, 20, required=("chiprx_alpha_ratio",)
         )
 
 
@@ -263,7 +356,6 @@ def test_hidden_validate_cfg_spelling_parses() -> None:
             [a for a in SIQ_ARGS if a not in {"--len_in", "180"}],
             "--len_in",
         ),
-        (spike, ["--spike_ip", "10"], "--spike_in"),
     ],
 )
 def test_required_options_are_still_required(

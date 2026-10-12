@@ -94,6 +94,8 @@ Parameters
 
     Supported aliases are normalized internally.
 
+    All four alignment files are counted and the counts are reported in the output table, including counts the method does not use.
+
   -at, --align_typ, --aln_typ : {'pe', 'paired', 'se', 'single', 'auto'}
     Alignment layout type for input alignment files: 'pe', 'paired', 'se', 'single', or 'auto' (default: '${aln_typ}').
 

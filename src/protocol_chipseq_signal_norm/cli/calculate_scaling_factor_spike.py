@@ -118,10 +118,12 @@ COEF_ORDER = (
     "rxinput_alpha",
 )
 
-# Coefficients that use each main count; the others use spike counts only.
-USES_MAIN = {
+# Coefficients that use each count.
+USES_COUNT = {
     "main_ip": frozenset({"fractional", "main_per_spike"}),
+    "spike_ip": frozenset(COEF_ORDER) - {"chiprx_alpha_in"},
     "main_in": frozenset({"fractional", "main_per_spike", "rxinput_alpha"}),
+    "spike_in": frozenset(COEF_ORDER) - {"chiprx_alpha_ip"},
 }
 
 
@@ -259,15 +261,15 @@ def validate_counts(args: argparse.Namespace) -> None:
     Raises
     ------
     ValueError
-        If any count < 0, if dp < 0, or if a main count the coefficient uses is
+        If any count < 0, if dp < 0, or if a count the coefficient uses is
         missing.
     ZeroDivisionError
         If a per-sample total is zero.
 
     Notes
     -----
-    Per 'HELP.PARAMETER.APPLICABILITY', a main count the coefficient does not
-    use is ignored with a note and set to None.
+    Per 'HELP.PARAMETER.APPLICABILITY', a count the coefficient does not use is
+    ignored with a note and set to None.
     """
 
     args.coef_raw = args.coef
@@ -275,7 +277,7 @@ def validate_counts(args: argparse.Namespace) -> None:
     args.coef = normalize_coef(args.coef)
     coefs = set(COEF_ORDER) if args.coef == "all" else {args.coef}
 
-    for name, uses in USES_MAIN.items():
+    for name, uses in USES_COUNT.items():
         flag = f"--{name}"
 
         if coefs & uses:
@@ -327,9 +329,9 @@ def validate_counts(args: argparse.Namespace) -> None:
 
 def calculate_scaling_factors(
     main_ip: int | None,
-    spike_ip: int,
+    spike_ip: int | None,
     main_in: int | None,
-    spike_in: int,
+    spike_in: int | None,
     required: tuple[str, ...] = COEF_ORDER,
 ) -> dict[str, float]:
     """
@@ -343,8 +345,10 @@ def calculate_scaling_factors(
         Non-negative integer main counts, or None when no requested coefficient
         uses them ('chiprx_alpha_*' use neither; 'rxinput_alpha' uses only
         'main_in').
-    spike_ip, spike_in : int
-        Non-negative integer spike-in counts.
+    spike_ip, spike_in : int | None
+        Non-negative integer spike-in counts, or None when no requested
+        coefficient uses them ('chiprx_alpha_in' uses only 'spike_in';
+        'chiprx_alpha_ip' uses only 'spike_ip').
     required : tuple[str, ...]
         Tuple of canonical coefficient names to compute. Canonical names:
         fractional, main_per_spike, chiprx_alpha_ip, chiprx_alpha_in,
@@ -360,15 +364,15 @@ def calculate_scaling_factors(
     TypeError
         If a count is not an integer.
     ValueError
-        If a count is negative, a requested coefficient is unknown, or a main
-        count a requested coefficient uses is None.
+        If a count is negative, a requested coefficient is unknown, or a count
+        a requested coefficient uses is None.
     ZeroDivisionError
         If a requested coefficient has a zero denominator.
 
     Warns
     -----
     UserWarning
-        If a main count is given that no requested coefficient uses, per
+        If a count is given that no requested coefficient uses, per
         'HELP.PARAMETER.APPLICABILITY'; it is ignored.
     """
 
@@ -384,14 +388,19 @@ def calculate_scaling_factors(
             f"Allowed: {allowed_names}.",
         )
 
-    mains = {"main_ip": main_ip, "main_in": main_in}
+    counts = {
+        "main_ip": main_ip,
+        "spike_ip": spike_ip,
+        "main_in": main_in,
+        "spike_in": spike_in,
+    }
 
-    for name, count in mains.items():
-        if requested_names & USES_MAIN[name]:
+    for name, count in counts.items():
+        if requested_names & USES_COUNT[name]:
             if count is None:
                 raise ValueError(
                     f"'{name}' is required for coefficient(s) "
-                    f"{sorted(requested_names & USES_MAIN[name])}.",
+                    f"{sorted(requested_names & USES_COUNT[name])}.",
                 )
         elif count is not None:
             warnings.warn(
@@ -399,17 +408,13 @@ def calculate_scaling_factors(
                 f"{sorted(requested_names)} and is ignored.",
                 stacklevel=2,
             )
-            mains[name] = None
+            counts[name] = None
 
-    main_ip, main_in = mains["main_ip"], mains["main_in"]
+    main_ip, spike_ip = counts["main_ip"], counts["spike_ip"]
+    main_in, spike_in = counts["main_in"], counts["spike_in"]
 
-    for name, count in (
-        ("main_ip", main_ip),
-        ("spike_ip", spike_ip),
-        ("main_in", main_in),
-        ("spike_in", spike_in),
-    ):
-        if count is None and name in {"main_ip", "main_in"}:
+    for name, count in counts.items():
+        if count is None:
             continue
 
         if not isinstance(count, int):
@@ -636,6 +641,9 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         help=(
             "Number of spike-in alignments for the ChIP-seq IP data.\n"
             "\n"
+            "Required unless '--coef chiprx_alpha_in' is given, in which case "
+            "it is ignored with a warning.\n"
+            "\n"
         ),
     )
     parser.add_argument(
@@ -681,6 +689,9 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
             "Number of spike-in alignments for the corresponding ChIP-seq "
             "input data.\n"
             "\n"
+            "Required unless '--coef chiprx_alpha_ip' is given, in which case "
+            "it is ignored with a warning.\n"
+            "\n"
         ),
     )
     parser.add_argument(
@@ -713,12 +724,6 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
 
     args = parser.parse_args(argv_parse)
     args.supplied = find_supplied(parser, argv_parse)
-
-    # A hidden hyphen spelling is a separate action that argparse's own
-    # 'required' check cannot see, so check the parsed values here instead.
-    for dest in ("spike_ip", "spike_in"):
-        if getattr(args, dest) is None:
-            raise SystemExit(f"'--{dest}' is required.")
 
     return args
 
@@ -770,12 +775,15 @@ def main(argv: list[str] | None = None) -> int:
                 if args.main_ip is not None:
                     print(f"--main_ip  {args.main_ip}")
 
-                print(f"--spike_ip {args.spike_ip}")
+                if args.spike_ip is not None:
+                    print(f"--spike_ip {args.spike_ip}")
 
                 if args.main_in is not None:
                     print(f"--main_in  {args.main_in}")
 
-                print(f"--spike_in {args.spike_in}")
+                if args.spike_in is not None:
+                    print(f"--spike_in {args.spike_in}")
+
                 print(f"--dp      {args.dp}")
                 print("")
                 print("")

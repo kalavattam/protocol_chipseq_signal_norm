@@ -60,7 +60,7 @@ require_files_nonempty \
 }
 
 
-# Print the alignment files of samples 0 and 1 for one input type ('bam', or
+# Print the alignment files of samples 0 and 1 for one input type ('bam' or
 # 'mix' with sample 0 as CRAM), file prefix, and genome, comma-separated.
 function csv_aln() {
     local typ="${1}" pfx="${2}" gen="${3}"
@@ -282,6 +282,36 @@ for idx in "${!rows_ref[@]}"; do
         record_pass "${lbl} warns and still runs"
     else
         record_fail "${lbl} did not warn, warned twice, or failed (exit ${rc})"
+    fi
+done
+
+
+# Each method gets only the counts it uses, so the calculator never notes an
+# unused one.
+for method in \
+    fractional \
+    main_per_spike \
+    chiprx_alpha_ip \
+    chiprx_alpha_in \
+    chiprx_alpha_ratio \
+    rxinput_alpha
+do
+    dir_out="${tmp}/sub_method_${method}"
+    lbl="submit --method ${method}"
+
+    rc=0
+    out="$(
+        run_submit "${dir_out}" spike "${spk[@]}" --method "${method}"
+    )" || rc=$?
+
+    if [[
+        "${rc}" -eq 0
+        && "${out}" != *"has no effect"*
+        && -s "${dir_out}/sf.tsv.part.000000"
+    ]]; then
+        record_pass "${lbl} passes only the counts it uses"
+    else
+        record_fail "${lbl} passed an unused count or failed (exit ${rc})"
     fi
 done
 

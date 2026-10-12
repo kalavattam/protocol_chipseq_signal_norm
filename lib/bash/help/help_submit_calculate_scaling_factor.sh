@@ -60,6 +60,8 @@ Parameters
   -me, --method : {'fractional', 'main_per_spike', 'chiprx_alpha_ratio', 'chiprx_alpha_ip', 'chiprx_alpha_in', 'rxinput_alpha'}
     Spike-in scaling method to compute when '--mode spike' is active (default: 'chiprx_alpha_ratio'); refused with '--mode siq'.
 
+    All four alignment files are counted and the counts are reported in the output table, including counts the method does not use.
+
   -at, --aln_typ, --align_typ : {'pe', 'se', 'auto'}
     Alignment layout type for input alignment files: 'pe', 'se', or 'auto' (default: '${aln_typ}').
 
