@@ -632,4 +632,26 @@ else
     record_fail "failed worker unexpectedly creates a custom-name symlink"
 fi
 
+
+# 'link_fastqs' refuses a missing accession file and creates no link.
+mkdir -p "${dir_rel}/link/out" "${dir_rel}/link/links"
+log="${dir_cap}/link_fastqs_missing.log"
+# shellcheck disable=SC2016  # Expand in the child shell, not this one.
+expect_failure \
+    "link_fastqs with a missing accession file" \
+    "${log}" \
+    "${TEST_BASH}" -c '
+        source "${1}/lib/bash/workflows/download_fastqs.sh"
+        link_fastqs "${2}/out" SRR_LINK "${2}/links" missing_link se
+    ' _ "${ROOT_REPO}" "${dir_rel}/link"
+assert_pattern_found \
+    "${log}" \
+    "downloaded FASTQ is missing or empty" \
+    "link_fastqs reports a missing accession file"
+if [[ ! -L "${dir_rel}/link/links/missing_link.fastq.gz" ]]; then
+    record_pass "link_fastqs creates no link to a missing file"
+else
+    record_fail "link_fastqs created a link to a missing file"
+fi
+
 finish

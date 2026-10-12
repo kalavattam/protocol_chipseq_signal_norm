@@ -64,6 +64,7 @@ function source_helpers_execute() {
         format_outputs \
         handle_env \
         help/help_execute_download_fastqs \
+        workflows/download_fastqs \
         wrap_cmd \
         || {
             echo "error($(basename "${BASH_SOURCE[0]}")):" \
@@ -191,54 +192,6 @@ EOM
             --dir_eo "${dir_eo}"
             --nam_job "${nam_job}"
     )
-}
-
-
-function link_name_custom() {
-    local idx="${1:-}"
-    local acc cus url_2
-    local src dst
-
-    check_int_nonneg "${idx}" "idx" || return 1
-
-    acc="${list_acc[idx]}"
-    cus="${list_cus[idx]}"
-    url_2="${list_url_2[idx]}"
-
-    if [[ "${url_2}" != "NA" ]]; then
-        src="${dir_out}/${acc}_R1.fastq.gz"
-        dst="${dir_sym}/${cus}_R1.fastq.gz"
-        if [[ ! -s "${src}" ]]; then
-            echo_err "downloaded FASTQ is missing or empty: '${src}'."
-            return 1
-        fi
-        ln -sf "${src}" "${dst}" || {
-            echo_err "failed to create symlink '${dst}' -> '${src}'."
-            return 1
-        }
-
-        src="${dir_out}/${acc}_R2.fastq.gz"
-        dst="${dir_sym}/${cus}_R2.fastq.gz"
-        if [[ ! -s "${src}" ]]; then
-            echo_err "downloaded FASTQ is missing or empty: '${src}'."
-            return 1
-        fi
-        ln -sf "${src}" "${dst}" || {
-            echo_err "failed to create symlink '${dst}' -> '${src}'."
-            return 1
-        }
-    else
-        src="${dir_out}/${acc}.fastq.gz"
-        dst="${dir_sym}/${cus}.fastq.gz"
-        if [[ ! -s "${src}" ]]; then
-            echo_err "downloaded FASTQ is missing or empty: '${src}'."
-            return 1
-        fi
-        ln -sf "${src}" "${dst}" || {
-            echo_err "failed to create symlink '${dst}' -> '${src}'."
-            return 1
-        }
-    fi
 }
 
 
@@ -888,10 +841,22 @@ function prepare_config_parallel() {
 
 # Create all requested custom-name symlinks after local unique downloads.
 function link_names_custom() {
-    local i
+    local i layout
 
     for i in "${!list_acc[@]}"; do
-        link_name_custom "${i}" || return 1
+        layout=se
+
+        if [[ "${list_url_2[i]}" != "NA" ]]; then
+            layout=pe
+        fi
+
+        link_fastqs \
+            "${dir_out}" \
+            "${list_acc[i]}" \
+            "${dir_sym}" \
+            "${list_cus[i]}" \
+            "${layout}" \
+            || return 1
     done
 }
 

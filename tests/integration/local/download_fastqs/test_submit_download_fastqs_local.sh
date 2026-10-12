@@ -244,7 +244,7 @@ assert_file_nonempty \
 
 assert_pattern_found \
     "${log_run_se}" \
-    "Downloading ${srr_se} from ${url_se}." \
+    "Downloading ${srr_se} from ${url_se} (attempt 1 of 3)." \
     "submit canonical SE worker reports the mapped accession and URL"
 
 assert_pattern_found \
@@ -356,12 +356,12 @@ assert_file_nonempty \
 
 assert_pattern_found \
     "${log_run_pe}" \
-    "Downloading ${srr_pe} from ${url_r1}." \
+    "Downloading ${srr_pe} from ${url_r1} (attempt 1 of 3)." \
     "submit hidden PE worker reports the mapped R1 URL"
 
 assert_pattern_found \
     "${log_run_pe}" \
-    "Downloading ${srr_pe} from ${url_r2}." \
+    "Downloading ${srr_pe} from ${url_r2} (attempt 1 of 3)." \
     "submit hidden PE worker reports the mapped R2 URL"
 
 assert_pattern_found \
