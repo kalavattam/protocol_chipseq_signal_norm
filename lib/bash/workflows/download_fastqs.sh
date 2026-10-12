@@ -563,13 +563,13 @@ Parameters
     Expected MD5 of the first FASTQ file (default: 'NA', not checked).
 
   -m2, --md5_2 : str
-    Expected MD5 of the second FASTQ file (default: 'NA', not checked).
+    Expected MD5 of the second FASTQ file (default: 'NA', not checked); for paired-end entries only.
 
   -s1, --siz_1 : int
     Expected size of the first FASTQ file in bytes (default: 'NA', not checked).
 
   -s2, --siz_2 : int
-    Expected size of the second FASTQ file in bytes (default: 'NA', not checked).
+    Expected size of the second FASTQ file in bytes (default: 'NA', not checked); for paired-end entries only.
 
   -do, --dir_out : dir
     Output directory for accession-named FASTQ files.
@@ -801,6 +801,19 @@ EOM
     validate_var "nam_cus" "${nam_cus}" || return 1
     validate_var "dir_eo"  "${dir_eo}"  || return 1
     validate_var "nam_job" "${nam_job}" || return 1
+
+    # The second mate's checks apply only to paired-end entries; 'NA' counts as
+    # not given.
+    if [[ "${url_2}" == "NA" ]]; then
+        for nam in md5_2 siz_2; do
+            if [[ "${!nam}" != "NA" ]]; then
+                echo_err \
+                    "'--${nam}' is for paired-end entries ('--url_2'); it" \
+                    "has no effect without '--url_2'."
+                return 1
+            fi
+        done
+    fi
 
     for dir in dir_out dir_sym dir_eo; do
         val="${!dir}"

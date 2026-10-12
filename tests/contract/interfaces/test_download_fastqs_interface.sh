@@ -202,7 +202,11 @@ for row in "${rows_bad[@]}"; do
     expect_failure \
         "submit malformed ${nam}" \
         "${log}" \
-        "${TEST_BASH}" "${scr_sub}" "${args_sub[@]}" "${opt}" "${val}"
+        "${TEST_BASH}" "${scr_sub}" \
+            "${args_sub[@]}" \
+            --url_2 "file://${tmp}/never_exists_R2.fastq.gz" \
+            "${opt}" \
+            "${val}"
     assert_pattern_found \
         "${log}" \
         "${pat}" \
@@ -211,6 +215,49 @@ for row in "${rows_bad[@]}"; do
         "${log}" \
         'Downloading' \
         "submit checks ${nam} before downloading"
+done
+
+
+# Second-mate checks are refused for a single-end entry, before any download;
+# an explicit 'NA' counts as not given.
+dir_se2="${tmp}/single_end_r2"
+mkdir -p "${dir_se2}/out" "${dir_se2}/links" "${dir_se2}/logs"
+args_se2=(
+    --dir_scr "${dir_scr}"
+    --srr SRR_SE_R2
+    --url_1 "file://${tmp}/never_exists.fastq.gz"
+    --dir_out "${dir_se2}/out"
+    --dir_sym "${dir_se2}/links"
+    --nam_cus sample_se_r2
+    --dir_eo "${dir_se2}/logs"
+    --nam_job se_r2
+)
+rows_se=(
+    "md5_2|--md5_2|0123456789abcdef0123456789abcdef|refused"
+    "siz_2|-s2|42|refused"
+    "md5_2_na|--md5_2|NA|accepted"
+)
+for row in "${rows_se[@]}"; do
+    IFS='|' read -r nam opt val exp <<< "${row}"
+    log="${dir_cap}/submit_se_${nam}.log"
+    "${TEST_BASH}" "${scr_sub}" "${args_se2[@]}" "${opt}" "${val}" \
+        > "${log}" 2>&1 || true
+
+    if [[ "${exp}" == "refused" ]]; then
+        assert_pattern_found \
+            "${log}" \
+            "'--${nam}' is for paired-end entries ('--url_2')" \
+            "submit refuses '${opt}' for a single-end entry"
+        assert_pattern_absent \
+            "${log}" \
+            'Downloading' \
+            "submit refuses '${opt}' before downloading"
+    else
+        assert_pattern_absent \
+            "${log}" \
+            'is for paired-end entries' \
+            "submit accepts '${opt} NA' for a single-end entry"
+    fi
 done
 
 
@@ -421,6 +468,14 @@ assert_count_fixed \
     "/submit_download_fastqs.sh" \
     1 \
     "PE dry run plans one worker"
+assert_pattern_absent \
+    "${dir_cap}/dry_se.log" \
+    '--url_2\|--md5_\|--siz_' \
+    "SE dry run passes no second-URL, MD5, or size options"
+assert_pattern_found \
+    "${dir_cap}/dry_pe.log" \
+    '--url_2' \
+    "PE dry run passes '--url_2'"
 assert_count_fixed \
     "${dir_cap}/dry_mixed.log" \
     "/submit_download_fastqs.sh" \

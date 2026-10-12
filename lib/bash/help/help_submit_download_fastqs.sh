@@ -50,13 +50,13 @@ Parameters
     Expected MD5 of the first FASTQ file (default: 'NA', not checked).
 
   -m2, --md5_2 : str
-    Expected MD5 of the second FASTQ file (default: 'NA', not checked).
+    Expected MD5 of the second FASTQ file (default: 'NA', not checked); for paired-end entries only.
 
   -s1, --siz_1 : int
     Expected size of the first FASTQ file in bytes (default: 'NA', not checked).
 
   -s2, --siz_2 : int
-    Expected size of the second FASTQ file in bytes (default: 'NA', not checked).
+    Expected size of the second FASTQ file in bytes (default: 'NA', not checked); for paired-end entries only.
 
   -do, --dir_out : dir
     Output directory for FASTQ files.

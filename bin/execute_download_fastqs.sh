@@ -76,7 +76,8 @@ function source_helpers_execute() {
 
 function build_cmd() {
     local idx="${1:-}"
-    local show_help
+    local i show_help
+    local -a arr_opt
 
     unset cmd_bld && declare -ga cmd_bld
 
@@ -145,7 +146,8 @@ Notes
   Runtime requirements:
     bash >= 4.4
 
-  The submit wrapper receives '--dir_scr' for bootstrap helper sourcing, followed by one keyword option per worker value.
+  - The submit wrapper receives '--dir_scr' for bootstrap helper sourcing, followed by one keyword option per worker value.
+  - '--url_2' and the MD5 and size options are passed only when their value is not 'NA'.
 
 Examples
 --------
@@ -175,22 +177,36 @@ EOM
 
     check_int_nonneg "${idx}" "idx" || return 1
 
-    # shellcheck disable=SC2034
     cmd_bld=(
         "${scr_sub}"
             --dir_scr "${dir_scr}"
             --srr "${list_job_acc[idx]}"
             --url_1 "${list_job_url_1[idx]}"
-            --url_2 "${list_job_url_2[idx]}"
-            --md5_1 "${list_job_md5_1[idx]}"
-            --md5_2 "${list_job_md5_2[idx]}"
-            --siz_1 "${list_job_siz_1[idx]}"
-            --siz_2 "${list_job_siz_2[idx]}"
-            --dir_out "${dir_out}"
-            --dir_sym "${dir_sym}"
-            --nam_cus "${list_job_cus[idx]}"
-            --dir_eo "${dir_eo}"
-            --nam_job "${nam_job}"
+    )
+
+    # Pass the optional values only when the TSV gives them ('NA' otherwise),
+    # so a single-end entry gets no second-mate options.
+    arr_opt=(
+        --url_2 "${list_job_url_2[idx]}"
+        --md5_1 "${list_job_md5_1[idx]}"
+        --md5_2 "${list_job_md5_2[idx]}"
+        --siz_1 "${list_job_siz_1[idx]}"
+        --siz_2 "${list_job_siz_2[idx]}"
+    )
+
+    for (( i = 0; i < ${#arr_opt[@]}; i += 2 )); do
+        if [[ "${arr_opt[i + 1]}" != "NA" ]]; then
+            cmd_bld+=( "${arr_opt[i]}" "${arr_opt[i + 1]}" )
+        fi
+    done
+
+    # shellcheck disable=SC2034
+    cmd_bld+=(
+        --dir_out "${dir_out}"
+        --dir_sym "${dir_sym}"
+        --nam_cus "${list_job_cus[idx]}"
+        --dir_eo "${dir_eo}"
+        --nam_job "${nam_job}"
     )
 }
 
