@@ -151,8 +151,8 @@ assert_pattern_absent \
 
 # Canonical and hidden submit bootstrap options reach required-value checks.
 for opt in -ds --dir_scr --dir-scr; do
-    log="${dir_cap}/submit_${opt#-}.log"
-    log="${log//-/_}"
+    nam="${opt#-}"
+    log="${dir_cap}/submit_${nam//-/_}.log"
     expect_failure "submit ${opt} acceptance" "${log}" \
         "${TEST_BASH}" "${scr_sub}" "${opt}" "${dir_scr}"
     assert_pattern_found \
@@ -217,8 +217,8 @@ done
 # Retired aliases remain rejected.
 retired_aliases=(-i "--in""file" -eo)
 for opt in "${retired_aliases[@]}"; do
-    log="${dir_cap}/retired_${opt#-}.log"
-    log="${log//-/_}"
+    nam="${opt#-}"
+    log="${dir_cap}/retired_${nam//-/_}.log"
     expect_failure "retired execute alias ${opt}" "${log}" \
         "${TEST_BASH}" "${scr_exe}" "${opt}" "${fil_missing}"
     assert_pattern_found \
