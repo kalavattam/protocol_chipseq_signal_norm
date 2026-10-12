@@ -272,7 +272,8 @@ EOM
             -tg|--tg)
                 if [[ "${chr_nam}" != "sp" ]]; then
                     echo_err_func "${func}" \
-                        "option '${1}' is not supported here."
+                        "'${1}' is for S. pombe ('sp') filtering; it has no" \
+                        "effect with S. cerevisiae ('sc') filtering."
                     return 1
                 fi
                 printf -v "${tg_ref}" '%s' true
@@ -282,7 +283,8 @@ EOM
             -mr|--mr|--mtr)
                 if [[ "${chr_nam}" != "sp" ]]; then
                     echo_err_func "${func}" \
-                        "option '${1}' is not supported here."
+                        "'${1}' is for S. pombe ('sp') filtering; it has no" \
+                        "effect with S. cerevisiae ('sc') filtering."
                     return 1
                 fi
                 printf -v "${mtr_ref}" '%s' true

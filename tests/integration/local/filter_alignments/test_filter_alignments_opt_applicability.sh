@@ -359,6 +359,28 @@ else
     record_fail "helper flagged '--ref_fa' with CRAM input (exit ${rc})"
 fi
 
+# The S. cerevisiae helper refuses the S. pombe-only flags by name.
+for opt in --tg --mtr; do
+    rc=0
+    out="$(
+        run_helper \
+            filter_alignment_sc \
+                --fil_in "${in_bam}" \
+                --fil_out "${tmp}/helper_${opt#--}.bam" \
+                "${opt}"
+    )" || rc=$?
+
+    if [[
+        "${rc}" -ne 0
+        && "${out}" == *"error("*"'${opt}' is for S. pombe ('sp') filtering"*
+        && ! -e "${tmp}/helper_${opt#--}.bam"
+    ]]; then
+        record_pass "helper refuses '${opt}' for S. cerevisiae by name"
+    else
+        record_fail "helper did not refuse '${opt}' by name (exit ${rc})"
+    fi
+done
+
 pg_bam="$(
     run_helper \
         _build_filter_pg_cl \
