@@ -58,7 +58,7 @@ Parameters
     Reference FASTA file. Required when any input file is CRAM; otherwise, ignored with a warning.
 
   -pp, --pth_scr_py : file
-    Python converter script (default: '\${dir_scr}/compute_signal.py'). Mutually exclusive with '--use_awk'.
+    Custom Python converter script run with 'python' (default: the installed 'compute_signal' command). Mutually exclusive with '--use_awk'.
 
   -awk, --use_awk : flag
     Run AWK processing code rather than the Python script. Mutually exclusive with explicit '--pth_scr_py'. Do not use with single-end data.
@@ -87,7 +87,7 @@ Notes
 
   - The AWK and Python branches are not equivalent:
     + The AWK branch assumes QNAME-sorted paired-end records in adjacent pairs and writes paired-fragment intervals.
-    + The Python branch uses 'compute_signal.py', which does not require QNAME sorting, handles single-end data, and emits fragments according to its own 'parse_bam()' policy.
+    + The Python branch uses 'compute_signal', which does not require QNAME sorting, handles single-end data, and emits fragments according to its own 'parse_bam()' policy.
   - Python conversion is the default. Use '--pth_scr_py' only to supply a custom converter, or use '--use_awk' to select the AWK branch.
   - The Python converter is called with '--fil_in', '--fil_out', and '--threads', and with '--ref_fa' for CRAM input; a custom '--pth_scr_py' must accept them.
   - CRAM inputs require '--ref_fa' in both AWK and Python branches.
@@ -103,7 +103,6 @@ Examples
         --threads 4 \\
         --csv_fil_in "\${dir_aln}/sample.bam,\${dir_aln}/sample.cram" \\
         --ref_fa "\${dir_ref}/genome.fa" \\
-        --pth_scr_py "\${dir_scr}/compute_signal.py" \\
         --dir_out "\${dir_bed}" \\
         --dir_eo "\${dir_eo}" \\
         --nam_job "convert_python"
