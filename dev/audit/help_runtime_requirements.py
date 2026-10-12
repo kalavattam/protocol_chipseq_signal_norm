@@ -108,6 +108,7 @@ KNOWN_CALLABLES = frozenset(
         "head",
         "ln",
         "mamba",
+        "md5sum",
         "mkdir",
         "mktemp",
         "mv",

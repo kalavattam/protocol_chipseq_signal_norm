@@ -23,6 +23,7 @@ Compressed source FASTQ:
 - `source/se/tiny_download_se.fastq.gz`
 - `source/pe/tiny_download_pe_R1.fastq.gz`
 - `source/pe/tiny_download_pe_R2.fastq.gz`
+- `source/se/tiny_download_se_truncated.fastq.gz` (the single-end file without its 8-byte gzip trailer)
 
 Metadata template:
 - `metadata/local_se.template.tsv`
@@ -31,6 +32,16 @@ Metadata template:
 - `metadata/local_pe_duplicate_custom.template.tsv`
 - `metadata/local_pe_conflicting_accession.template.tsv`
 - `metadata/local_mixed.template.tsv`
+- `metadata/local_se_verified.template.tsv`
+- `metadata/local_pe_verified.template.tsv`
+- `metadata/local_pe_md5_only.template.tsv`
+- `metadata/local_se_wrong_md5.template.tsv`
+- `metadata/local_se_wrong_size.template.tsv`
+- `metadata/local_pe_md5_count.template.tsv`
+- `metadata/local_pe_wrong_md5_r2.template.tsv`
+- `metadata/local_pe_conflicting_md5.template.tsv`
+- `metadata/local_se_truncated.template.tsv`
+- `metadata/local_se_missing.template.tsv`
 
 The compressed FASTQ files are generated with `gzip -n -c` so gzip headers do not encode timestamps or source filenames.
 
@@ -76,7 +87,27 @@ When the same accession/URL pair appears more than once with different custom na
 
 <br />
 
-## Current and deferred test coverage
-The test suite covers local single-end, paired-end, and mixed-metadata downloads over loopback HTTP when gated by `RUN_DOWNLOAD=1`. It also covers local GNU Parallel dispatch for mixed metadata when gated by both `RUN_DOWNLOAD=1` and `RUN_PARALLEL=1`.
+## Download verification
+`make.sh` computes each source file's MD5 and size when it generates the fixtures and writes them into the verification templates, which add the optional `fastq_md5` and `fastq_bytes` columns:
 
-`#TODO`: Add Slurm coverage. Consider an optional external-network test gated by a future `RUN_NETWORK=1` flag. Handle issues when running tests while `env_protocol` is active.
+| Template                   | Content                                  | Expected behavior                                        |
+| :---                       | :---                                     | :---                                                     |
+| `local_se_verified`        | right MD5 and size                       | downloads; no unverified-download warning                |
+| `local_pe_verified`        | right MD5 and size for both mates        | downloads both mates                                     |
+| `local_pe_md5_only`        | right MD5s, no `fastq_bytes` column      | downloads both mates                                     |
+| `local_se_wrong_md5`       | wrong MD5                                | fails after 3 attempts; no file left                     |
+| `local_se_wrong_size`      | size one byte too large                  | fails after 3 attempts; no file left                     |
+| `local_pe_md5_count`       | one MD5 for two URLs                     | rejected while reading the TSV                           |
+| `local_pe_wrong_md5_r2`    | right R1 MD5, wrong R2 MD5               | R1 downloads; R2 fails after 3 attempts; no R2 file left |
+| `local_pe_conflicting_md5` | one accession twice, with different MD5s | rejected while planning the downloads                    |
+| `local_se_truncated`       | no MD5; the truncated source             | fails `gzip -t` after 3 attempts; no file left           |
+| `local_se_missing`         | no MD5; a URL the server does not have   | fails at once (server 404); no file left                 |
+
+`local_se.template.tsv`, with no `fastq_md5` column, gives one warning that its download is checked only with `gzip -t`.
+
+<br />
+
+## Current and deferred test coverage
+The test suite covers local single-end, paired-end, and mixed-metadata downloads, as well as download verification, over loopback HTTP when gated by `RUN_DOWNLOAD=1`. It also covers local GNU Parallel dispatch for mixed metadata when gated by both `RUN_DOWNLOAD=1` and `RUN_PARALLEL=1`.
+
+`#TODO`: Add Slurm coverage, and consider an optional external-network test gated by a future `RUN_NETWORK=1` flag. Handle issues when running tests while `env_protocol` is active.

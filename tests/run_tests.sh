@@ -103,7 +103,7 @@ function ensure_integration_fixtures() {
 
     if gate_enabled RUN_DOWNLOAD; then
         ensure_fixture download_fastqs \
-            "${repo_root}/tests/fixtures/download_fastqs/metadata/local_se.template.tsv"
+            "${repo_root}/tests/fixtures/download_fastqs/metadata/local_se_missing.template.tsv"
     fi
 
     ensure_fixture filter_alignments \

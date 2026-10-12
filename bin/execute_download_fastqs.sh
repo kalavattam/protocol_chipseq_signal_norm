@@ -15,7 +15,7 @@
 # Distributed under the MIT license.
 
 
-#  Require bash >= 4.4 before doing any work
+# Require bash >= 4.4 before doing any work.
 if [[ -z "${BASH_VERSION:-}" ]]; then
     echo "error(shell):" \
         "this script must be run under bash >= 4.4." >&2
@@ -29,14 +29,14 @@ elif ((
     exit 1
 fi
 
-#  Run in safe mode, exiting on errors, unset variables, and pipe failures
+# Run in safe mode, exiting on errors, unset variables, and pipe failures.
 set -euo pipefail
 
-#  Set the path to the maintained entrypoint directory
+# Set the path to the maintained entrypoint directory.
 dir_scr="$(cd "$(dirname "${BASH_SOURCE[0]}")" > /dev/null 2>&1 && pwd)"
 
 
-#  Source shared helpers
+# Source shared helpers.
 function source_helpers_execute() {
     local fnc_src
 
@@ -109,6 +109,12 @@ Expected globals
   list_job_url_2 : array of str
     Parsed read-2 URL values.
 
+  list_job_md5_1, list_job_md5_2 : array of str
+    Parsed read-1 and read-2 MD5 values, respectively ('NA' when absent).
+
+  list_job_siz_1, list_job_siz_2 : array of str
+    Parsed read-1 and read-2 file sizes in bytes, respectively ('NA' when absent).
+
   dir_out : dir
     Download-output directory.
 
@@ -175,6 +181,10 @@ EOM
             --srr "${list_job_acc[idx]}"
             --url_1 "${list_job_url_1[idx]}"
             --url_2 "${list_job_url_2[idx]}"
+            --md5_1 "${list_job_md5_1[idx]}"
+            --md5_2 "${list_job_md5_2[idx]}"
+            --siz_1 "${list_job_siz_1[idx]}"
+            --siz_2 "${list_job_siz_2[idx]}"
             --dir_out "${dir_out}"
             --dir_sym "${dir_sym}"
             --nam_cus "${list_job_cus[idx]}"
@@ -232,14 +242,14 @@ function link_name_custom() {
 }
 
 
-#  Initialize hardcoded argument variables
+# Initialize hardcoded argument variables.
 function init_args_hardcoded() {
     env_nam="env_protocol"
     scr_sub="${dir_scr}/submit_download_fastqs.sh"
 }
 
 
-#  Initialize argument variables, assigning default values where applicable
+# Initialize argument variables, assigning default values where applicable.
 function init_arg_defs() {
     verbose=false
     dry_run=false
@@ -256,23 +266,27 @@ function init_arg_defs() {
     has_dup_dl=false
 
     unset list_acc list_url_1 list_url_2 list_cus
+    unset list_md5_1 list_md5_2 list_siz_1 list_siz_2
     unset list_job_acc list_job_url_1 list_job_url_2 list_job_cus
+    unset list_job_md5_1 list_job_md5_2 list_job_siz_1 list_job_siz_2
     unset cmd_bld
 
     declare -ga list_acc list_url_1 list_url_2 list_cus
+    declare -ga list_md5_1 list_md5_2 list_siz_1 list_siz_2
     declare -ga list_job_acc list_job_url_1 list_job_url_2 list_job_cus
+    declare -ga list_job_md5_1 list_job_md5_2 list_job_siz_1 list_job_siz_2
     declare -ga cmd_bld
 }
 
 
-#  Initialize all script defaults
+# Initialize all script defaults.
 function init_defs() {
     init_args_hardcoded
     init_arg_defs
 }
 
 
-#  Parse command-line arguments
+# Parse command-line arguments.
 function parse_args() {
     while [[ "$#" -gt 0 ]]; do
         case "${1}" in
@@ -383,7 +397,7 @@ function parse_args() {
 }
 
 
-#  Check parsed argument values
+# Check parsed argument values.
 function validate_args() {
     validate_var "env_nam" "${env_nam}" || return 1
     check_env_installed "${env_nam}" || return 1
@@ -430,13 +444,13 @@ function validate_args() {
 }
 
 
-#  Activate environment
+# Activate environment.
 function setup_env() {
     local out
     local -a env_msg
 
-    #TODO: this environment activation block is repeated verbatim many across
-    #+     the 'execute_*.sh' scripts: modularize
+    # TODO: this environment activation block is repeated verbatim across many
+    # 'execute_*.sh' scripts, so modularize it.
     env_msg=(
         "'handle_env' failed for 'env_nam=${env_nam}'. Check that Conda/Mamba"
         "are available and that the environment exists."
@@ -466,9 +480,10 @@ function setup_env() {
 }
 
 
-#  Check tools needed by the selected dispatch mode
+# Check tools needed by the selected dispatch mode.
 function check_tools() {
     check_pgrm_path cut  || return 1
+    check_pgrm_path gzip || return 1
     check_pgrm_path ln   || return 1
     check_pgrm_path wget || return 1
 
@@ -482,18 +497,24 @@ function check_tools() {
 }
 
 
-#  Parse the download metadata TSV into raw vectors
+# Parse the download metadata TSV into raw vectors.
 function parse_tbl_dl() {
     local run_acc_idx=""
     local custom_name_idx=""
     local url_col_idx=""
+    local md5_idx=""
+    local siz_idx=""
     local iter=0
+    local n_fq=0
+    local n_fq_md5=0
     local line i
     local run_acc custom_name urls
-    local -a arr_hdr arr_url_fq
+    local -a arr_hdr arr_url_fq arr_md5 arr_siz
 
     unset list_acc list_url_1 list_url_2 list_cus
+    unset list_md5_1 list_md5_2 list_siz_1 list_siz_2
     declare -ga list_acc list_url_1 list_url_2 list_cus
+    declare -ga list_md5_1 list_md5_2 list_siz_1 list_siz_2
 
     while IFS=$'\t' read -r line || [[ -n "${line}" ]]; do
         (( iter++ )) || true
@@ -511,6 +532,8 @@ function parse_tbl_dl() {
                     "custom_name")   custom_name_idx=${i} ;;
                     "fastq_ftp")     url_col_idx=${i}     ;;
                     "fastq_https")   url_col_idx=${i}     ;;
+                    "fastq_md5")     md5_idx=${i}         ;;
+                    "fastq_bytes")   siz_idx=${i}         ;;
                 esac
             done
 
@@ -556,8 +579,32 @@ function parse_tbl_dl() {
 
         IFS=';' read -r -a arr_url_fq <<< "${urls}"
 
+        parse_fld_opt \
+            "${line}" \
+            "${md5_idx}" \
+            "${#arr_url_fq[@]}" \
+            "fastq_md5" \
+            "${iter}" \
+            "${run_acc}" \
+            arr_md5 \
+            || return 1
+
+        parse_fld_opt \
+            "${line}" \
+            "${siz_idx}" \
+            "${#arr_url_fq[@]}" \
+            "fastq_bytes" \
+            "${iter}" \
+            "${run_acc}" \
+            arr_siz \
+            || return 1
+
         list_acc+=( "${run_acc}" )
         list_cus+=( "${custom_name}" )
+        list_md5_1+=( "${arr_md5[0]}" )
+        list_md5_2+=( "${arr_md5[1]}" )
+        list_siz_1+=( "${arr_siz[0]}" )
+        list_siz_2+=( "${arr_siz[1]}" )
 
         if [[ ${#arr_url_fq[@]} -eq 1 ]]; then
             if [[ -z "${arr_url_fq[0]}" || "${arr_url_fq[0]}" == "NA" ]]; then
@@ -583,11 +630,70 @@ function parse_tbl_dl() {
             echo_err "unexpected number of FASTQ URLs for '${run_acc}'."
             return 1
         fi
+
+        for i in "${!arr_url_fq[@]}"; do
+            (( n_fq++ )) || true
+
+            if [[ "${arr_md5[i]}" != "NA" ]]; then
+                (( n_fq_md5++ )) || true
+            fi
+        done
     done < "${fil_in}"
+
+    if (( n_fq_md5 < n_fq )); then
+        echo_warn \
+            "$(( n_fq - n_fq_md5 )) of ${n_fq} FASTQ files have no MD5" \
+            "('fastq_md5') in '${fil_in}', so their downloads are checked" \
+            "only with 'gzip -t'."
+    fi
+
+    if (( n_fq_md5 > 0 )); then
+        check_pgrm_path md5sum || return 1
+    fi
 }
 
 
-#  Validate raw download vectors
+# Read one optional ';'-separated column into a two-element array whose values
+# match the URLs; an absent column, or an empty or 'NA' field, gives 'NA' for
+# each.
+function parse_fld_opt() {
+    local line="${1}"
+    local idx="${2}"
+    local n_url="${3}"
+    local col="${4}"
+    local iter="${5}"
+    local run_acc="${6}"
+    local -n arr_ref="${7}"
+    local fld
+    local -a arr_fld
+
+    arr_ref=( "NA" "NA" )
+
+    if [[ -z "${idx}" ]]; then
+        return 0
+    fi
+
+    fld=$(echo "${line}" | cut -f $(( idx + 1 )))
+
+    if [[ -z "${fld}" || "${fld}" == "NA" ]]; then
+        return 0
+    fi
+
+    IFS=';' read -r -a arr_fld <<< "${fld}"
+
+    if (( ${#arr_fld[@]} != n_url )); then
+        echo_err \
+            "column '${col}' has ${#arr_fld[@]} value(s) but there are" \
+            "${n_url} URL(s) for TSV line '${iter}' ('${run_acc}')."
+        return 1
+    fi
+
+    # shellcheck disable=SC2034  # 'arr_ref' names the caller's array.
+    arr_ref=( "${arr_fld[0]:-NA}" "${arr_fld[1]:-NA}" )
+}
+
+
+# Validate raw download vectors.
 function validate_vecs_dl() {
     check_arr_nonempty "list_acc"   "download entries"         || return 1
     check_arr_nonempty "list_url_1" "FASTQ URL entries"        || return 1
@@ -597,22 +703,30 @@ function validate_vecs_dl() {
     check_arr_lengths "list_acc" "list_url_1" || return 1
     check_arr_lengths "list_acc" "list_url_2" || return 1
     check_arr_lengths "list_acc" "list_cus"   || return 1
+    check_arr_lengths "list_acc" "list_md5_1" || return 1
+    check_arr_lengths "list_acc" "list_md5_2" || return 1
+    check_arr_lengths "list_acc" "list_siz_1" || return 1
+    check_arr_lengths "list_acc" "list_siz_2" || return 1
 }
 
 
-#  Build the unique raw-download job vectors
+# Build the unique raw-download job vectors.
 function parse_jobs_uniq() {
     local i key
     local -A seen_key_acc seen_cus
 
     unset list_job_acc list_job_url_1 list_job_url_2 list_job_cus
+    unset list_job_md5_1 list_job_md5_2 list_job_siz_1 list_job_siz_2
 
     declare -ga list_job_acc list_job_url_1 list_job_url_2 list_job_cus
+    declare -ga list_job_md5_1 list_job_md5_2 list_job_siz_1 list_job_siz_2
 
     has_dup_dl=false
 
     for i in "${!list_acc[@]}"; do
         key="${list_url_1[i]}"$'\t'"${list_url_2[i]}"
+        key+=$'\t'"${list_md5_1[i]}"$'\t'"${list_md5_2[i]}"
+        key+=$'\t'"${list_siz_1[i]}"$'\t'"${list_siz_2[i]}"
 
         if [[ -n "${seen_cus[${list_cus[i]}]:-}" ]]; then
             echo_err "duplicate custom_name in input TSV: '${list_cus[i]}'."
@@ -624,7 +738,7 @@ function parse_jobs_uniq() {
             if [[ "${seen_key_acc[${list_acc[i]}]}" != "${key}" ]]; then
                 echo_err \
                     "run_accession '${list_acc[i]}' appears with conflicting" \
-                    "FASTQ URL values."
+                    "FASTQ URL, MD5, or size values."
                 return 1
             fi
             has_dup_dl=true
@@ -636,12 +750,20 @@ function parse_jobs_uniq() {
         list_job_url_1+=( "${list_url_1[i]}" )
         list_job_url_2+=( "${list_url_2[i]}" )
         list_job_cus+=( "${list_cus[i]}" )
+        list_job_md5_1+=( "${list_md5_1[i]}" )
+        list_job_md5_2+=( "${list_md5_2[i]}" )
+        list_job_siz_1+=( "${list_siz_1[i]}" )
+        list_job_siz_2+=( "${list_siz_2[i]}" )
     done
 
     check_arr_nonempty "list_job_acc" "unique download entries" || return 1
     check_arr_lengths  "list_job_acc" "list_job_url_1"          || return 1
     check_arr_lengths  "list_job_acc" "list_job_url_2"          || return 1
     check_arr_lengths  "list_job_acc" "list_job_cus"            || return 1
+    check_arr_lengths  "list_job_acc" "list_job_md5_1"          || return 1
+    check_arr_lengths  "list_job_acc" "list_job_md5_2"          || return 1
+    check_arr_lengths  "list_job_acc" "list_job_siz_1"          || return 1
+    check_arr_lengths  "list_job_acc" "list_job_siz_2"          || return 1
 
     if [[ "${slurm}" == "true" && "${has_dup_dl}" == "true" ]]; then
         echo_err \
@@ -653,7 +775,7 @@ function parse_jobs_uniq() {
 }
 
 
-#  Report current scalar and vector state in verbose mode
+# Report current scalar and vector state in verbose mode.
 function print_state_debug() {
     local el
 
@@ -706,10 +828,34 @@ function print_state_debug() {
     for el in "${list_url_2[@]}"; do echo "${el}"; done
     echo
     echo
+
+    print_banner_pretty "list_md5_1 elements"
+    echo
+    for el in "${list_md5_1[@]}"; do echo "${el}"; done
+    echo
+    echo
+
+    print_banner_pretty "list_md5_2 elements"
+    echo
+    for el in "${list_md5_2[@]}"; do echo "${el}"; done
+    echo
+    echo
+
+    print_banner_pretty "list_siz_1 elements"
+    echo
+    for el in "${list_siz_1[@]}"; do echo "${el}"; done
+    echo
+    echo
+
+    print_banner_pretty "list_siz_2 elements"
+    echo
+    for el in "${list_siz_2[@]}"; do echo "${el}"; done
+    echo
+    echo
 }
 
 
-#  Create a command file for GNU Parallel-backed execution if needed
+# Create a command file for GNU Parallel-backed execution if needed.
 function prepare_config_parallel() {
     local i
 
@@ -740,7 +886,7 @@ function prepare_config_parallel() {
 }
 
 
-#  Create all requested custom-name symlinks after local unique downloads
+# Create all requested custom-name symlinks after local unique downloads.
 function link_names_custom() {
     local i
 
@@ -750,7 +896,7 @@ function link_names_custom() {
 }
 
 
-#  Dispatch Slurm, GNU Parallel, or serial download work
+# Dispatch Slurm, GNU Parallel, or serial download work.
 function run_jobs() {
     local i cmd_wrap
     local -a cmd_para cmd_slurm
@@ -848,7 +994,7 @@ function run_jobs() {
 }
 
 
-#  Main script execution
+# Main script execution.
 function main() {
     init_defs
     source_helpers_execute || return 1

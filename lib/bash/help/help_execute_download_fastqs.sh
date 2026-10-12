@@ -38,10 +38,10 @@ Parameters
     Display this help message and exit.
 
   -v, --verbose : flag
-    Run script in verbose mode. Print detailed script state and commands.
+    Run script in verbose mode: print detailed script state and commands.
 
   -dr, --dry, --dry_run : flag
-    Run script in dry-run mode. Print commands without running them.
+    Run script in dry-run mode: print commands without running them.
 
   -en, --env, --env_nam : str
     Conda environment to activate (default: '${env_nam}').
@@ -82,15 +82,25 @@ Notes
     - cut
     - dirname
     - grep (when resolving or activating the requested environment)
+    - gzip
     - ln
+    - md5sum (when the TSV has 'fastq_md5' values)
+    - mv
     - Network access (when '--dry_run' is not specified)
     - parallel (when '--threads' is greater than 1)
     - rm
     - sbatch (when '--slurm' is specified)
+    - wc
     - wget
 
   - The TSV header must include 'run_accession', 'custom_name', and either 'fastq_ftp' or 'fastq_https'.
   - Paired-end FASTQ URLs must be stored in one URL field separated by a semicolon.
+  - URLs without a scheme, as in ENA's 'fastq_ftp' values, are downloaded over 'https://'.
+  - Optional 'fastq_md5' and 'fastq_bytes' columns, separated by a semicolon like the URLs, give each file's expected MD5 and size, and each download is checked against them.
+    + They are recommended, not required: a download can have the right size but corrupt content, which only an MD5 check catches.
+    + ENA's filereport returns both when asked, for example 'https://www.ebi.ac.uk/ena/portal/api/filereport?accession=<project or run>&result=read_run&format=tsv&fields=run_accession,fastq_ftp,fastq_md5,fastq_bytes'; add the 'custom_name' column yourself.
+    + Files without an MD5 are checked only with 'gzip -t', and the run warns once.
+  - A file that fails its check is downloaded again, up to 3 attempts in all; then it is removed and its entry fails.
   - Downloaded files are written to 'dir_out' using run-accession names. Symlinks are written to 'dir_sym' using 'custom_name' values.
   - Repeated 'run_accession' rows with identical URLs are downloaded once and linked to every requested 'custom_name' during local execution. Slurm mode rejects repeated accessions.
   - Repeated 'run_accession' rows with conflicting URLs and duplicate 'custom_name' values are rejected.

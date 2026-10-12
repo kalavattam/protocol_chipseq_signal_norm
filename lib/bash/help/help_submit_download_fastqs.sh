@@ -22,6 +22,7 @@ Usage
   submit_download_fastqs.sh
     [--help] [--dir_scr <dir>]
     --srr <str> --url_1 <str> [--url_2 <str>]
+    [--md5_1 <str>] [--md5_2 <str>] [--siz_1 <int>] [--siz_2 <int>]
     --dir_out <dir> --dir_sym <dir> --nam_cus <str> --dir_eo <dir> --nam_job <str>
 
   Download one single-end or paired-end FASTQ entry and create custom symlink(s).
@@ -45,6 +46,18 @@ Parameters
   -u2, --url_2 : str
     Second FASTQ URL for paired-end data (default: 'NA', for single-end data).
 
+  -m1, --md5_1 : str
+    Expected MD5 of the first FASTQ file (default: 'NA', not checked).
+
+  -m2, --md5_2 : str
+    Expected MD5 of the second FASTQ file (default: 'NA', not checked).
+
+  -s1, --siz_1 : int
+    Expected size of the first FASTQ file in bytes (default: 'NA', not checked).
+
+  -s2, --siz_2 : int
+    Expected size of the second FASTQ file in bytes (default: 'NA', not checked).
+
   -do, --dir_out : dir
     Output directory for FASTQ files.
 
@@ -67,11 +80,20 @@ Notes
     - bash >= 4.4
     - cat
     - dirname
+    - gzip
     - ln
+    - md5sum (when '--md5_1' or '--md5_2' is given)
+    - mv
     - Network access
+    - rm
+    - wc
     - wget
 
   - Omit '--url_2', or pass 'NA', for single-end data.
+  - URLs without a scheme, as in ENA's 'fastq_ftp' values, are downloaded over 'https://'.
+  - Each file is downloaded to '<file>.part' and moved into place only after it passes verification: its size when '--siz_1' or '--siz_2' is given, then its MD5 when '--md5_1' or '--md5_2' is given, otherwise 'gzip -t'.
+  - A file that fails verification is downloaded again, up to 3 attempts in all; then the partial file is removed and the entry fails.
+    + A failed download is not attempted again, since 'wget' already makes up to 5 tries, including when the connection is refused.
 
 Examples
 --------

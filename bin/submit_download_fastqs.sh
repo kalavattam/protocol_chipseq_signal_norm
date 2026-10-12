@@ -88,6 +88,10 @@ function init_defs() {
     srr=""
     url_1=""
     url_2="NA"
+    md5_1="NA"
+    md5_2="NA"
+    siz_1="NA"
+    siz_2="NA"
     dir_out=""
     dir_sym=""
     nam_cus=""
@@ -214,6 +218,46 @@ function parse_args() {
                 shift 2
                 ;;
 
+            -m1|--md5[_-]1)
+                require_optarg "${1}" "${2:-}" "main" || {
+                    echo >&2
+                    help_submit_download_fastqs >&2
+                    return 1
+                }
+                md5_1="${2}"
+                shift 2
+                ;;
+
+            -m2|--md5[_-]2)
+                require_optarg "${1}" "${2:-}" "main" || {
+                    echo >&2
+                    help_submit_download_fastqs >&2
+                    return 1
+                }
+                md5_2="${2}"
+                shift 2
+                ;;
+
+            -s1|--siz[_-]1)
+                require_optarg "${1}" "${2:-}" "main" || {
+                    echo >&2
+                    help_submit_download_fastqs >&2
+                    return 1
+                }
+                siz_1="${2}"
+                shift 2
+                ;;
+
+            -s2|--siz[_-]2)
+                require_optarg "${1}" "${2:-}" "main" || {
+                    echo >&2
+                    help_submit_download_fastqs >&2
+                    return 1
+                }
+                siz_2="${2}"
+                shift 2
+                ;;
+
             -do|--dir[_-]out)
                 require_optarg "${1}" "${2:-}" "main" || {
                     echo >&2
@@ -277,11 +321,15 @@ function parse_args() {
 
 # Validate submit-layer directories and runtime tool availability.
 function validate_args() {
-    local dir
+    local dir nam val
 
     validate_var "srr"     "${srr}"     || return 1
     validate_var "url_1"   "${url_1}"   || return 1
     validate_var "url_2"   "${url_2}"   || return 1
+    validate_var "md5_1"   "${md5_1}"   || return 1
+    validate_var "md5_2"   "${md5_2}"   || return 1
+    validate_var "siz_1"   "${siz_1}"   || return 1
+    validate_var "siz_2"   "${siz_2}"   || return 1
     validate_var "dir_out" "${dir_out}" || return 1
     validate_var "dir_sym" "${dir_sym}" || return 1
     validate_var "nam_cus" "${nam_cus}" || return 1
@@ -305,26 +353,140 @@ function validate_args() {
         printf -v "${dir}" '%s' "${value}"
     done
 
+    for nam in md5_1 md5_2; do
+        val="${!nam}"
+
+        if [[ "${val}" != "NA" && ! "${val}" =~ ^[0-9A-Fa-f]{32}$ ]]; then
+            echo_err \
+                "'--${nam}' must be 32 hexadecimal characters or 'NA':" \
+                "'${val}'."
+            return 1
+        fi
+    done
+
+    for nam in siz_1 siz_2; do
+        val="${!nam}"
+
+        if [[ "${val}" != "NA" && ! "${val}" =~ ^[1-9][0-9]*$ ]]; then
+            echo_err \
+                "'--${nam}' must be a positive integer number of bytes or" \
+                "'NA': '${val}'."
+            return 1
+        fi
+    done
+
+    check_pgrm_path gzip || return 1
     check_pgrm_path ln   || return 1
     check_pgrm_path wget || return 1
+
+    if [[ "${md5_1}" != "NA" || "${md5_2}" != "NA" ]]; then
+        check_pgrm_path md5sum || return 1
+    fi
 }
 
 
-# Download one FASTQ URL to one output file.
+# Check a downloaded file against its expected size and MD5; without an MD5,
+# test its gzip integrity. Print the reason for a failure.
+function verify_fastq() {
+    local fil="${1:-}"
+    local md5="${2:-}"
+    local siz="${3:-}"
+    local val
+
+    if [[ "${siz}" != "NA" ]]; then
+        val="$(wc -c < "${fil}")"
+        val="${val//[[:space:]]/}"
+
+        if [[ "${val}" != "${siz}" ]]; then
+            echo "size is ${val} bytes, expected ${siz}"
+            return 1
+        fi
+    fi
+
+    if [[ "${md5}" != "NA" ]]; then
+        val="$(md5sum < "${fil}")"
+        val="${val%% *}"
+
+        if [[ "${val,,}" != "${md5,,}" ]]; then
+            echo "MD5 is ${val}, expected ${md5,,}"
+            return 1
+        fi
+    elif ! \
+        gzip -t < "${fil}" 2> /dev/null
+    then
+        echo "file fails 'gzip -t'"
+        return 1
+    fi
+}
+
+
+# Download one FASTQ URL to a partial file, verify it, and move it into place;
+# a file that fails verification is downloaded again, up to 'n_try' times.
 function download_fastq() {
     local url="${1:-}"
     local fil_out="${2:-}"
-    local log_out="${3:-}"
-    local log_err="${4:-}"
+    local md5="${3:-}"
+    local siz="${4:-}"
+    local log_out="${5:-}"
+    local log_err="${6:-}"
+    local fil_prt="${fil_out}.part"
+    local n_try=3
+    local i_try reason
+    local -a cmd_wget
 
-    echo "Downloading ${srr} from ${url}." >&2
-    wget --progress=dot:mega -O "${fil_out}" "${url}" \
-        > "${log_out}" \
-        2> "${log_err}" ||
-        {
-            echo_err "failed to download '${url}'."
+    # ENA's 'fastq_ftp' values carry no scheme, and 'wget' would then use HTTP
+    # on port 80.
+    if [[ "${url}" != *://* ]]; then
+        url="https://${url}"
+    fi
+
+    cmd_wget=(
+        wget
+            --progress=dot:mega
+            --tries=5
+            --retry-connrefused
+            --waitretry=10
+            -O "${fil_prt}"
+            "${url}"
+    )
+
+    for (( i_try = 1; i_try <= n_try; i_try++ )); do
+        echo \
+            "Downloading ${srr} from ${url} (attempt ${i_try} of" \
+            "${n_try})." >&2
+        printf '%q ' "${cmd_wget[@]}" >&2
+        echo >&2
+
+        if ! \
+            "${cmd_wget[@]}" > "${log_out}" 2> "${log_err}"
+        then
+            rm -f -- "${fil_prt}"
+            echo_err "failed to download '${url}'; see '${log_err}'."
             return 1
-        }
+        fi
+
+        if \
+            reason="$(verify_fastq "${fil_prt}" "${md5}" "${siz}")"
+        then
+            mv -f -- "${fil_prt}" "${fil_out}" || {
+                rm -f -- "${fil_prt}"
+                echo_err "failed to move '${fil_prt}' to '${fil_out}'."
+                return 1
+            }
+            return 0
+        fi
+
+        if (( i_try < n_try )); then
+            echo_warn \
+                "download of '${url}' failed verification: ${reason};" \
+                "downloading it again."
+        fi
+    done
+
+    rm -f -- "${fil_prt}"
+    echo_err \
+        "download of '${url}' failed verification ${n_try} times: ${reason}."
+    return 1
 }
 
 
@@ -347,18 +509,24 @@ function run_downloads() {
         download_fastq \
             "${url_1}" \
             "${dir_out}/${srr}_R1.fastq.gz" \
+            "${md5_1}" \
+            "${siz_1}" \
             "${dir_eo}/${nam_job}.${srr}_R1.stdout.txt" \
             "${dir_eo}/${nam_job}.${srr}_R1.stderr.txt" || return 1
 
         download_fastq \
             "${url_2}" \
             "${dir_out}/${srr}_R2.fastq.gz" \
+            "${md5_2}" \
+            "${siz_2}" \
             "${dir_eo}/${nam_job}.${srr}_R2.stdout.txt" \
             "${dir_eo}/${nam_job}.${srr}_R2.stderr.txt" || return 1
     else
         download_fastq \
             "${url_1}" \
             "${dir_out}/${srr}.fastq.gz" \
+            "${md5_1}" \
+            "${siz_1}" \
             "${dir_eo}/${nam_job}.${srr}.stdout.txt" \
             "${dir_eo}/${nam_job}.${srr}.stderr.txt" || return 1
     fi
@@ -404,8 +572,8 @@ function main() {
         return 0
     fi
 
-    validate_args                                 || return 1
-    run_downloads                                 || return 1
+    validate_args || return 1
+    run_downloads || return 1
 }
 
 

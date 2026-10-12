@@ -179,6 +179,41 @@ assert_pattern_found \
     "submit rejects the retired positional payload"
 
 
+# Malformed MD5 and size values are rejected before any download.
+args_sub=(
+    --dir_scr "${dir_scr}"
+    --srr SRR_PHASE1B
+    --url_1 "file://${tmp}/never_exists.fastq.gz"
+    --dir_out "${dir_out}"
+    --dir_sym "${dir_sym}"
+    --nam_cus sample_phase1b
+    --dir_eo "${dir_eo}"
+    --nam_job phase1b
+)
+rows_bad=(
+    "md5_1|--md5_1|xyz|'--md5_1' must be 32 hexadecimal characters"
+    "md5_2|-m2|0123|'--md5_2' must be 32 hexadecimal characters"
+    "siz_1|--siz-1|abc|'--siz_1' must be a positive integer"
+    "siz_2|-s2|0|'--siz_2' must be a positive integer"
+)
+for row in "${rows_bad[@]}"; do
+    IFS='|' read -r nam opt val pat <<< "${row}"
+    log="${dir_cap}/submit_bad_${nam}.log"
+    expect_failure \
+        "submit malformed ${nam}" \
+        "${log}" \
+        "${TEST_BASH}" "${scr_sub}" "${args_sub[@]}" "${opt}" "${val}"
+    assert_pattern_found \
+        "${log}" \
+        "${pat}" \
+        "submit rejects a malformed ${nam} passed as '${opt}'"
+    assert_pattern_absent \
+        "${log}" \
+        'Downloading' \
+        "submit checks ${nam} before downloading"
+done
+
+
 # Retired aliases remain rejected.
 retired_aliases=(-i "--in""file" -eo)
 for opt in "${retired_aliases[@]}"; do
@@ -443,7 +478,9 @@ mkdir -p \
 
 cat > "${dir_fake}/wget" << 'EOM'
 #!/usr/bin/env bash
+
 set -euo pipefail
+
 output=""
 while (( $# > 0 )); do
     case "${1}" in
@@ -453,11 +490,14 @@ while (( $# > 0 )); do
             ;;
 
         *)
+            url="${1}"
             shift
             ;;
     esac
 done
-printf '%s\n' '@synthetic-fastq' 'ACGT' '+' 'IIII' > "${output}"
+
+printf '%s\n' "${url:-}" > "${output%/*}/wget_url.txt"
+printf '%s\n' '@synthetic-fastq' 'ACGT' '+' 'IIII' | gzip -c > "${output}"
 EOM
 chmod +x "${dir_fake}/wget"
 
@@ -492,6 +532,32 @@ if [[
 else
     record_fail "direct submit relative symlink target is broken"
 fi
+
+# A URL without a scheme, as in ENA's 'fastq_ftp' values, is fetched over
+# 'https://'.
+mkdir -p \
+    "${dir_rel}/scheme/out" \
+    "${dir_rel}/scheme/links" \
+    "${dir_rel}/scheme/logs"
+
+expect_success \
+    "submit fake download of a URL without a scheme" \
+    "${dir_cap}/submit_no_scheme.log" \
+    env PATH="${dir_fake}:${PATH}" \
+    "${TEST_BASH}" "${scr_sub}" \
+        --dir_scr "${dir_scr}" \
+        --srr SRR_SCHEME \
+        --url_1 ftp.example.invalid/vol1/fastq/scheme.fastq.gz \
+        --dir_out "${dir_rel}/scheme/out" \
+        --dir_sym "${dir_rel}/scheme/links" \
+        --nam_cus scheme \
+        --dir_eo "${dir_rel}/scheme/logs" \
+        --nam_job scheme
+
+assert_file_exact_line \
+    "${dir_rel}/scheme/out/wget_url.txt" \
+    "https://ftp.example.invalid/vol1/fastq/scheme.fastq.gz" \
+    "submit adds 'https://' to a URL without a scheme"
 
 expect_success \
     "execute relative-directory fake download" \
@@ -552,9 +618,14 @@ expect_failure \
             --dir_sym relative/failure/links \
             --dir_eo relative/failure/logs
 
-assert_file_nonempty \
-    "${dir_rel}/failure/out/SRR_FAIL.fastq.gz" \
-    "failed fake worker leaves diagnostic partial output"
+if [[
+    ! -e "${dir_rel}/failure/out/SRR_FAIL.fastq.gz"
+    && ! -e "${dir_rel}/failure/out/SRR_FAIL.fastq.gz.part"
+]]; then
+    record_pass "failed worker leaves no FASTQ or partial file"
+else
+    record_fail "failed worker leaves a FASTQ or partial file"
+fi
 if [[ ! -e "${dir_rel}/failure/links/failed_worker.fastq.gz" ]]; then
     record_pass "failed worker does not create a custom-name symlink"
 else
