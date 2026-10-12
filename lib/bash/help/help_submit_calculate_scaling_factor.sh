@@ -110,6 +110,8 @@ Parameters
 
     Used with '--mode siq'; refused otherwise.
 
+    Ignored with a warning with '--aln_typ pe' or when both '--csv_len_mip' and '--csv_len_min' are given.
+
   -clmp, --csv_len_mip : list of int
     Fragment length value(s) for main IP alignment files.
 

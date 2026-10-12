@@ -93,6 +93,9 @@ function args_mode() {
 }
 
 
+# Both per-sample fragment-length lists, which leave '--len_def' no file.
+len_both="--csv_len_mip 200 --csv_len_min 180"
+
 # 'execute' rows are dry runs: label|mode|input|arguments|act option. Refused
 # rows name the option; warned rows warn and drop it; control rows do neither
 # and pass on the option they name.
@@ -113,6 +116,10 @@ rows_exe=(
     "--ref_fa with a CRAM entry|spike|mix|--ref_fa ${ref_fa}|pass --ref_fa"
     "--eqn in siq|siq|bam|--eqn 5|pass --eqn"
     "--csv_len_mip in siq|siq|bam|--csv_len_mip 200|pass --csv_len_mip"
+    "--len_def with PE|siq|bam|--aln_typ pe --len_def 200|warn --len_def"
+    "--len_def with lengths|siq|bam|${len_both} --len_def 200|warn --len_def"
+    "--len_def in siq|siq|bam|--len_def 200|pass --len_def"
+    "--len_def, one list|siq|bam|--csv_len_mip 200 --len_def 9|pass --len_def"
     "--csv_dep_sip in spike|spike|bam|--csv_dep_sip 100|pass --csv_dep_sip"
 )
 
@@ -282,6 +289,35 @@ for idx in "${!rows_ref[@]}"; do
         record_pass "${lbl} warns and still runs"
     else
         record_fail "${lbl} did not warn, warned twice, or failed (exit ${rc})"
+    fi
+done
+
+
+# A default fragment length that no file can use warns and is not checked, so
+# the run still writes its row: label|arguments.
+rows_len=(
+    "--len_def with PE|--aln_typ pe --len_def 0"
+    "--len_def with paired|--aln_typ paired --len_def 0"
+    "--len_def with lengths|${len_both} --len_def 0"
+)
+
+for idx in "${!rows_len[@]}"; do
+    IFS='|' read -r lbl arg <<< "${rows_len[idx]}"
+    read -r -a args <<< "${arg}"
+    dir_out="${tmp}/sub_len_${idx}"
+    lbl="submit ${lbl}"
+
+    rc=0
+    out="$(run_submit "${dir_out}" siq "${siq[@]}" "${args[@]}")" || rc=$?
+
+    if [[
+        "${rc}" -eq 0
+        && "${out}" == *"'--len_def' has no effect"*
+        && -s "${dir_out}/sf.tsv.part.000000"
+    ]]; then
+        record_pass "${lbl} warns and still runs"
+    else
+        record_fail "${lbl} did not warn or failed (exit ${rc})"
     fi
 done
 

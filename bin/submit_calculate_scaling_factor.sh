@@ -592,6 +592,30 @@ function check_opts_mode() {
         --csv_len_mip "${csv_len_mip}" \
         --csv_len_min "${csv_len_min}" \
         || return 1
+
+    # '--len_def' is only the fallback length for single-end files that lack a
+    # per-sample length; '--csv_len_mip'/'--csv_len_min' override any layout.
+    if [[ -n "${len_def}" ]]; then
+        case "${aln_typ}" in
+            pe|paired)
+                check_opt_applies \
+                    warn \
+                    --aln_typ "${aln_typ}" \
+                    se,auto \
+                    --len_def "${len_def}"
+                len_def=""
+                ;;
+
+            *)
+                if [[ -n "${csv_len_mip}" && -n "${csv_len_min}" ]]; then
+                    echo_warn \
+                        "'--len_def' has no effect with both '--csv_len_mip'" \
+                        "and '--csv_len_min' and is ignored."
+                    len_def=""
+                fi
+                ;;
+        esac
+    fi
 }
 
 
