@@ -636,8 +636,8 @@ EOM
 function check_arr_lengths() {
     local arr_nam_1="${1:-}"  # Name of first indexed array
     local arr_nam_2="${2:-}"  # Name of second indexed array
-    local arr_siz_1           # Size of first array
-    local arr_siz_2           # Size of second array
+    local len_1               # Size of first array
+    local len_2               # Size of second array
     local decl
     local show_help           # Help message
 
@@ -747,13 +747,13 @@ EOM
     local -n arr_1="${arr_nam_1}"
     local -n arr_2="${arr_nam_2}"
 
-    arr_siz_1="${#arr_1[@]}"
-    arr_siz_2="${#arr_2[@]}"
+    len_1="${#arr_1[@]}"
+    len_2="${#arr_2[@]}"
 
-    if (( arr_siz_1 != arr_siz_2 )); then
+    if (( len_1 != len_2 )); then
         echo_err_func "${FUNCNAME[0]}" \
-            "array length mismatch. '${arr_nam_1}' has '${arr_siz_1}'" \
-            "element(s), whereas '${arr_nam_2}' has '${arr_siz_2}'."
+            "array length mismatch. '${arr_nam_1}' has '${len_1}'" \
+            "element(s), whereas '${arr_nam_2}' has '${len_2}'."
         return 1
     fi
 

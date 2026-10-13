@@ -158,6 +158,11 @@ tests/fixtures/slurm/**
 !tests/fixtures/slurm/README.md
 !tests/fixtures/slurm/make.sh
 
+tests/fixtures/slurm_dry_run/**
+!tests/fixtures/slurm_dry_run/
+!tests/fixtures/slurm_dry_run/README.md
+!tests/fixtures/slurm_dry_run/make.sh
+
 tests/fixtures/trim_fastqs/**
 !tests/fixtures/trim_fastqs/
 !tests/fixtures/trim_fastqs/README.md

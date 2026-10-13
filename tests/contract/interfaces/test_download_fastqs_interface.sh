@@ -116,6 +116,7 @@ mkdir -p "${dir_cap}" "${dir_out}" "${dir_sym}" "${dir_eo}"
 
 # Canonical execute spellings parse before deterministic validation failure.
 log="${dir_cap}/execute_canonical.log"
+
 expect_failure "canonical execute aliases" "${log}" \
     "${TEST_BASH}" "${scr_exe}" \
         --env_nam "${env_missing}" \
@@ -125,6 +126,7 @@ expect_failure "canonical execute aliases" "${log}" \
         --dir_sym "${dir_sym}" \
         -deo "${dir_eo}" \
         --dir_eo "${dir_eo}"
+
 assert_pattern_absent \
     "${log}" \
     'unknown option/parameter' \
@@ -133,6 +135,7 @@ assert_pattern_absent \
 
 # Systematic hidden hyphen spellings remain accepted but undocumented.
 log="${dir_cap}/execute_hidden_hyphens.log"
+
 expect_failure "hidden execute hyphen aliases" "${log}" \
     "${TEST_BASH}" "${scr_exe}" \
         --dry-run \
@@ -143,6 +146,7 @@ expect_failure "hidden execute hyphen aliases" "${log}" \
         --dir-symlink "${dir_sym}" \
         --nam-job phase1b_interface \
         --dir-eo "${dir_eo}"
+
 assert_pattern_absent \
     "${log}" \
     'unknown option/parameter' \
@@ -153,12 +157,15 @@ assert_pattern_absent \
 for opt in -ds --dir_scr --dir-scr; do
     nam="${opt#-}"
     log="${dir_cap}/submit_${nam//-/_}.log"
+
     expect_failure "submit ${opt} acceptance" "${log}" \
         "${TEST_BASH}" "${scr_sub}" "${opt}" "${dir_scr}"
+
     assert_pattern_found \
         "${log}" \
         "'srr' is empty or unset" \
         "submit ${opt} is accepted"
+
     assert_pattern_absent \
         "${log}" \
         'unknown parameter\|required option' \
@@ -168,11 +175,13 @@ done
 
 # The retired positional worker payload is rejected.
 log="${dir_cap}/submit_positional.log"
+
 expect_failure "submit positional payload" "${log}" \
     "${TEST_BASH}" "${scr_sub}" \
         --dir_scr "${dir_scr}" \
         SRR_PHASE1B "file://${tmp}/never_exists.fastq.gz" NA \
         "${dir_out}" "${dir_sym}" sample_phase1b "${dir_eo}" phase1b
+
 assert_pattern_found \
     "${log}" \
     "unknown option/parameter passed: 'SRR_PHASE1B'" \
@@ -180,7 +189,7 @@ assert_pattern_found \
 
 
 # Malformed MD5 and size values are rejected before any download.
-args_sub=(
+arr_args_sub=(
     --dir_scr "${dir_scr}"
     --srr SRR_PHASE1B
     --url_1 "file://${tmp}/never_exists.fastq.gz"
@@ -190,27 +199,32 @@ args_sub=(
     --dir_eo "${dir_eo}"
     --nam_job phase1b
 )
-rows_bad=(
+
+arr_rows_bad=(
     "md5_1|--md5_1|xyz|'--md5_1' must be 32 hexadecimal characters"
     "md5_2|-m2|0123|'--md5_2' must be 32 hexadecimal characters"
     "siz_1|--siz-1|abc|'--siz_1' must be a positive integer"
     "siz_2|-s2|0|'--siz_2' must be a positive integer"
 )
-for row in "${rows_bad[@]}"; do
+
+for row in "${arr_rows_bad[@]}"; do
     IFS='|' read -r nam opt val pat <<< "${row}"
     log="${dir_cap}/submit_bad_${nam}.log"
+
     expect_failure \
         "submit malformed ${nam}" \
         "${log}" \
         "${TEST_BASH}" "${scr_sub}" \
-            "${args_sub[@]}" \
+            "${arr_args_sub[@]}" \
             --url_2 "file://${tmp}/never_exists_R2.fastq.gz" \
             "${opt}" \
             "${val}"
+
     assert_pattern_found \
         "${log}" \
         "${pat}" \
         "submit rejects a malformed ${nam} passed as '${opt}'"
+
     assert_pattern_absent \
         "${log}" \
         'Downloading' \
@@ -222,7 +236,8 @@ done
 # an explicit 'NA' counts as not given.
 dir_se2="${tmp}/single_end_r2"
 mkdir -p "${dir_se2}/out" "${dir_se2}/links" "${dir_se2}/logs"
-args_se2=(
+
+arr_args_se2=(
     --dir_scr "${dir_scr}"
     --srr SRR_SE_R2
     --url_1 "file://${tmp}/never_exists.fastq.gz"
@@ -232,15 +247,18 @@ args_se2=(
     --dir_eo "${dir_se2}/logs"
     --nam_job se_r2
 )
-rows_se=(
+
+arr_rows_se=(
     "md5_2|--md5_2|0123456789abcdef0123456789abcdef|refused"
     "siz_2|-s2|42|refused"
     "md5_2_na|--md5_2|NA|accepted"
 )
-for row in "${rows_se[@]}"; do
+
+for row in "${arr_rows_se[@]}"; do
     IFS='|' read -r nam opt val exp <<< "${row}"
     log="${dir_cap}/submit_se_${nam}.log"
-    "${TEST_BASH}" "${scr_sub}" "${args_se2[@]}" "${opt}" "${val}" \
+
+    "${TEST_BASH}" "${scr_sub}" "${arr_args_se2[@]}" "${opt}" "${val}" \
         > "${log}" 2>&1 || true
 
     if [[ "${exp}" == "refused" ]]; then
@@ -248,6 +266,7 @@ for row in "${rows_se[@]}"; do
             "${log}" \
             "'--${nam}' is for paired-end entries ('--url_2')" \
             "submit refuses '${opt}' for a single-end entry"
+
         assert_pattern_absent \
             "${log}" \
             'Downloading' \
@@ -262,12 +281,15 @@ done
 
 
 # Retired aliases remain rejected.
-retired_aliases=(-i "--in""file" -eo)
-for opt in "${retired_aliases[@]}"; do
+arr_retired_aliases=(-i "--in""file" -eo)
+
+for opt in "${arr_retired_aliases[@]}"; do
     nam="${opt#-}"
     log="${dir_cap}/retired_${nam//-/_}.log"
+
     expect_failure "retired execute alias ${opt}" "${log}" \
         "${TEST_BASH}" "${scr_exe}" "${opt}" "${fil_missing}"
+
     assert_pattern_found \
         "${log}" \
         "unknown option/parameter passed: '${opt}'" \
@@ -278,10 +300,12 @@ done
 # Rendered help exposes canonical public aliases and exact callables only.
 log_exe_hlp="${dir_cap}/execute_help.log"
 log_sub_hlp="${dir_cap}/submit_help.log"
+
 expect_success \
     "execute canonical help" \
     "${log_exe_hlp}" \
     "${TEST_BASH}" "${scr_exe}" --help
+
 expect_success \
     "submit canonical help" \
     "${log_sub_hlp}" \
@@ -292,6 +316,7 @@ for file in "${log_exe_hlp}" "${log_sub_hlp}"; do
         "${file}" \
         '-h, --help' \
         "rendered help documents -h, --help"
+
     assert_pattern_absent \
         "${file}" \
         '--hlp' \
@@ -335,6 +360,7 @@ assert_pattern_absent \
     "${log_sub_hlp}" \
     '--dry_run' \
     "submit help does not imply a nonexistent dry-run mode"
+
 assert_pattern_found \
     "${log_sub_hlp}" \
     "Maintained entrypoint directory" \
@@ -353,22 +379,27 @@ expect_success \
     "submit help first" \
     "${dir_cap}/submit_help_first.log" \
     "${TEST_BASH}" "${scr_sub}" --help
+
 expect_success \
     "submit short help first" \
     "${dir_cap}/submit_h_first.log" \
     "${TEST_BASH}" "${scr_sub}" -h
+
 expect_success \
     "submit hidden help first" \
     "${dir_cap}/submit_hlp_first.log" \
     "${TEST_BASH}" "${scr_sub}" --hlp
+
 expect_success \
     "submit help after junk" \
     "${dir_cap}/submit_help_junk.log" \
     "${TEST_BASH}" "${scr_sub}" junk --help
+
 expect_success \
     "submit help after dir_scr" \
     "${dir_cap}/submit_help_after_dir_scr.log" \
     "${TEST_BASH}" "${scr_sub}" --dir_scr "${dir_scr}" --help
+
 expect_success \
     "submit help before dir_scr" \
     "${dir_cap}/submit_help_before_dir_scr.log" \
@@ -377,6 +408,7 @@ expect_success \
 
 # A complete worker payload remains inert when followed by help.
 log_terminal="${dir_cap}/submit_help_full_payload.log"
+
 expect_success \
     "submit terminal help with worker payload" \
     "${log_terminal}" \
@@ -396,6 +428,7 @@ for file in "${dir_cap}"/submit_*help*.log "${dir_cap}/submit_h_first.log"; do
         "${file}" \
         '^Usage$' \
         "terminal submit help renders Usage"
+
     assert_pattern_absent \
         "${file}" \
         'error(\|is empty or unset\|Downloading\|Symlinking' \
@@ -447,6 +480,7 @@ EOM
 
 for dry_case in se pe mixed duplicate; do
     log="${dir_cap}/dry_${dry_case}.log"
+
     expect_success \
         "execute ${dry_case} dry run" \
         "${log}" \
@@ -463,29 +497,64 @@ assert_count_fixed \
     "/submit_download_fastqs.sh" \
     1 \
     "SE dry run plans one worker"
+
 assert_count_fixed \
     "${dir_cap}/dry_pe.log" \
     "/submit_download_fastqs.sh" \
     1 \
     "PE dry run plans one worker"
+
 assert_pattern_absent \
     "${dir_cap}/dry_se.log" \
     '--url_2\|--md5_\|--siz_' \
     "SE dry run passes no second-URL, MD5, or size options"
+
 assert_pattern_found \
     "${dir_cap}/dry_pe.log" \
     '--url_2' \
     "PE dry run passes '--url_2'"
+
 assert_count_fixed \
     "${dir_cap}/dry_mixed.log" \
     "/submit_download_fastqs.sh" \
     2 \
     "mixed dry run plans two workers"
+
 assert_count_fixed \
     "${dir_cap}/dry_duplicate.log" \
     "/submit_download_fastqs.sh" \
     1 \
     "duplicate-accession dry run plans one unique worker"
+
+# A Slurm dry run prints one 'sbatch' call that wraps GNU Parallel; the
+# 'sbatch' stub passes the tool check here and fails if the dry run submits.
+dir_tol="${ROOT_REPO}/tests/fixtures/slurm_dry_run/tool"
+log="${dir_cap}/dry_slurm.log"
+
+expect_success \
+    "execute Slurm dry run" \
+    "${log}" \
+    env PATH="${dir_tol}:${PATH}" \
+    "${TEST_BASH}" "${scr_exe}" \
+        --dry_run \
+        --slurm \
+        --threads 2 \
+        --fil_in "${dir_dry}/mixed.tsv" \
+        --dir_out "${dir_dry}/out" \
+        --dir_sym "${dir_dry}/links" \
+        --dir_eo "${dir_dry}/logs"
+
+assert_count_fixed \
+    "${log}" \
+    "sbatch --job-name=" \
+    1 \
+    "Slurm dry run prints one 'sbatch' call"
+
+assert_count_fixed \
+    "${log}" \
+    "--wrap=parallel\\ --jobs\\ 2\\ \\<\\ " \
+    1 \
+    "Slurm dry run wraps 'parallel --jobs 2' around the config"
 
 expect_failure \
     "execute duplicate custom-name dry run" \
@@ -496,6 +565,7 @@ expect_failure \
         --dir_out "${dir_dry}/out" \
         --dir_sym "${dir_dry}/links" \
         --dir_eo "${dir_dry}/logs"
+
 expect_failure \
     "execute conflicting-accession dry run" \
     "${dir_cap}/dry_conflicting.log" \
@@ -510,6 +580,7 @@ assert_pattern_found \
     "${dir_cap}/dry_duplicate_custom.log" \
     "duplicate custom_name" \
     "dry run rejects a duplicate custom name"
+
 assert_pattern_found \
     "${dir_cap}/dry_conflicting.log" \
     "conflicting.*FASTQ URL" \
@@ -579,6 +650,7 @@ expect_success \
 assert_custom_symlink \
     "${dir_rel}/submit/links/relative_submit.fastq.gz" \
     "direct submit relative-directory symlink"
+
 if [[
     "${dir_rel}/submit/links/relative_submit.fastq.gz" \
     -ef "${dir_rel}/submit/out/SRR_REL_SUB.fastq.gz"
@@ -628,6 +700,7 @@ expect_success \
 assert_custom_symlink \
     "${dir_rel}/execute/links/relative_execute.fastq.gz" \
     "execute relative-directory symlink"
+
 if [[
     "${dir_rel}/execute/links/relative_execute.fastq.gz" \
     -ef "${dir_rel}/execute/out/SRR_REL_EXEC.fastq.gz"
@@ -639,7 +712,9 @@ fi
 
 cat > "${dir_fake}/wget" << 'EOM'
 #!/usr/bin/env bash
+
 set -euo pipefail
+
 output=""
 while (( $# > 0 )); do
     case "${1}" in
@@ -653,6 +728,7 @@ while (( $# > 0 )); do
             ;;
     esac
 done
+
 printf '%s\n' '@partial-fastq' 'TGCA' '+' 'IIII' > "${output}"
 exit 42
 EOM
@@ -681,6 +757,7 @@ if [[
 else
     record_fail "failed worker leaves a FASTQ or partial file"
 fi
+
 if [[ ! -e "${dir_rel}/failure/links/failed_worker.fastq.gz" ]]; then
     record_pass "failed worker does not create a custom-name symlink"
 else
@@ -691,6 +768,7 @@ fi
 # 'link_fastqs' refuses a missing accession file and creates no link.
 mkdir -p "${dir_rel}/link/out" "${dir_rel}/link/links"
 log="${dir_cap}/link_fastqs_missing.log"
+
 # shellcheck disable=SC2016  # Expand in the child shell, not this one.
 expect_failure \
     "link_fastqs with a missing accession file" \
@@ -699,14 +777,17 @@ expect_failure \
         source "${1}/lib/bash/workflows/download_fastqs.sh"
         link_fastqs "${2}/out" SRR_LINK "${2}/links" missing_link se
     ' _ "${ROOT_REPO}" "${dir_rel}/link"
+
 assert_pattern_found \
     "${log}" \
     "downloaded FASTQ is missing or empty" \
     "link_fastqs reports a missing accession file"
+
 if [[ ! -L "${dir_rel}/link/links/missing_link.fastq.gz" ]]; then
     record_pass "link_fastqs creates no link to a missing file"
 else
     record_fail "link_fastqs created a link to a missing file"
 fi
+
 
 finish

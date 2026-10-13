@@ -34,18 +34,18 @@ set -euo pipefail
 
 # 'sbatch' copies this script, so '--dir_scr' must outrank 'BASH_SOURCE'.
 function resolve_dir_scr() {
-    local -a args=( "$@" )
+    local -a arr_args=( "$@" )
     local i
 
-    for (( i = 0; i < ${#args[@]}; i++ )); do
-        case "${args[i]}" in
+    for (( i = 0; i < ${#arr_args[@]}; i++ )); do
+        case "${arr_args[i]}" in
             -ds|--dir[_-]scr)
                 if \
-                       (( i + 1 < ${#args[@]} )) \
-                    && [[ -n "${args[i + 1]}" ]] \
-                    && [[ "${args[i + 1]}" != -* ]]
+                    (( i + 1 < ${#arr_args[@]} )) \
+                    && [[ -n "${arr_args[i + 1]}" ]] \
+                    && [[ "${arr_args[i + 1]}" != -* ]]
                 then
-                    printf '%s\n' "${args[i + 1]}"
+                    printf '%s\n' "${arr_args[i + 1]}"
                     return 0
                 fi
                 ;;

@@ -267,7 +267,7 @@ function download_fastq() {
     local log_err="${7:-}"
     local fil_prt n_try i_try reason
     local show_help
-    local -a cmd_wget
+    local -a arr_cmd_wget
 
     show_help=$(cat << EOM
 Usage
@@ -372,7 +372,7 @@ EOM
         url="https://${url}"
     fi
 
-    cmd_wget=(
+    arr_cmd_wget=(
         wget
             --progress=dot:mega
             --tries=5
@@ -386,11 +386,11 @@ EOM
         echo \
             "Downloading ${acc} from ${url} (attempt ${i_try} of" \
             "${n_try})." >&2
-        printf '%q ' "${cmd_wget[@]}" >&2
+        printf '%q ' "${arr_cmd_wget[@]}" >&2
         echo >&2
 
         if ! \
-            "${cmd_wget[@]}" > "${log_out}" 2> "${log_err}"
+            "${arr_cmd_wget[@]}" > "${log_out}" 2> "${log_err}"
         then
             rm -f -- "${fil_prt}"
             echo_err "failed to download '${url}'; see '${log_err}'."

@@ -130,6 +130,9 @@ function ensure_checker_fixtures() {
     ensure_fixture diagnostics \
         "${repo_root}/tests/fixtures/diagnostics/script/run.sh"
 
+    ensure_fixture slurm_dry_run \
+        "${repo_root}/tests/fixtures/slurm_dry_run/tool/sbatch"
+
     ensure_fixture help "${repo_root}/${rel_help}"
 
     ensure_fixture help_contracts \

@@ -140,7 +140,7 @@ se="SRR_LOCAL_SE.fastq.gz"
 pe="SRR_LOCAL_PE_R1.fastq.gz SRR_LOCAL_PE_R2.fastq.gz"
 vrf="failed verification 3 times:"
 cnt="column 'fastq_md5' has 1 value(s) but there are 2 URL(s)"
-rows=(
+arr_rows=(
     "se_verified|local_se_verified|0|${se}|-"
     "pe_verified|local_pe_verified|0|${pe}|-"
     "pe_md5_only|local_pe_md5_only|0|${pe}|-"
@@ -154,7 +154,7 @@ rows=(
     "pe_conflicting_md5|local_pe_conflicting_md5|1||conflicting FASTQ URL, MD5"
 )
 
-for row in "${rows[@]}"; do
+for row in "${arr_rows[@]}"; do
     IFS='|' read -r nam tpl rc_exp fil_exp pat <<< "${row}"
     log="${dir_log}/execute_download_fastqs_verify_${nam}.log"
 
