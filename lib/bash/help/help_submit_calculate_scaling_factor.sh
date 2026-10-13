@@ -50,6 +50,8 @@ Parameters
   -t, --thr, --threads : int
     Number of threads to use for alignment-processing steps (default: ${threads}).
 
+    Ignored with a warning when every count is supplied (all four '--csv_dep_*' lists with '--mode spike'; both '--csv_dep_*' and both '--csv_len_*' lists with '--mode siq'), since no file is read.
+
   -md, --mode : {'siq', 'spike'}
     Scaling-factor mode to run: 'siq' or 'spike' (default: '${mode}').
 
@@ -65,8 +67,10 @@ Parameters
   -at, --aln_typ, --align_typ : {'pe', 'se', 'auto'}
     Alignment layout type for input alignment files: 'pe', 'se', or 'auto' (default: '${aln_typ}').
 
+    Ignored with a warning when every count is supplied (all four '--csv_dep_*' lists with '--mode spike'; both '--csv_dep_*' and both '--csv_len_*' lists with '--mode siq'), since no file is read.
+
   -rf, --ref_fa : file
-    Reference FASTA required when any input alignment file is CRAM; otherwise, ignored with a warning.
+    Reference FASTA required when any input alignment file is CRAM, unless every count is supplied (all four '--csv_dep_*' lists with '--mode spike'; both '--csv_dep_*' and both '--csv_len_*' lists with '--mode siq'), which reads no file; otherwise, ignored with a warning.
 
   -cmip, --csv_mip : list of file
     Comma-separated list of main IP alignment files (BAM or CRAM).

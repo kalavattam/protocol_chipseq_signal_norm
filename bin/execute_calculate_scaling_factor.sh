@@ -264,15 +264,21 @@ EOM
         "${scr_sub}"
         --env_nam "${env_nam}"
         --dir_scr "${dir_scr}"
-        --threads "${threads}"
         --mode "${mode}"
     )
+
+    # A job given every count reads no file, so it takes no threads or layout.
+    if [[ "${all_cnt}" != "true" ]]; then
+        cmd_bld+=( --threads "${threads}" )
+    fi
 
     if [[ "${mode}" == "spike" ]]; then
         cmd_bld+=( --method "${method}" )
     fi
 
-    cmd_bld+=( --aln_typ "${aln_typ}" )
+    if [[ "${all_cnt}" != "true" ]]; then
+        cmd_bld+=( --aln_typ "${aln_typ}" )
+    fi
 
     # Pass the reference only to a call that reads CRAM, so a sample with BAM
     # files alone draws no warning.
@@ -458,11 +464,13 @@ function init_arg_defs() {
     no_header=false
 
     threads=1
+    threads_set=false
 
     mode="spike"
     method=""
 
     aln_typ="auto"
+    aln_typ_set=false
     ref_fa=""
 
     csv_mip=""
@@ -543,6 +551,7 @@ function parse_args() {
                     return 1
                 }
                 threads="${2}"
+                threads_set=true
                 shift 2
                 ;;
 
@@ -573,6 +582,7 @@ function parse_args() {
                     return 1
                 }
                 aln_typ="${2,,}"
+                aln_typ_set=true
                 shift 2
                 ;;
 
@@ -870,6 +880,8 @@ function canonicalize_args() {
             ;;
     esac
 
+    check_opts_mode || return 1
+
     case "${aln_typ}" in
         pe|paired) aln_typ="pe" ;;
         se|single) aln_typ="se" ;;
@@ -934,13 +946,48 @@ function check_opts_mode() {
                 ;;
         esac
     fi
+
+    # With every count supplied, no alignment file is read: its layout and the
+    # reference that decodes CRAM do nothing.
+    all_cnt=false
+    cnd_cnt=""
+
+    if [[ -n "${csv_dep_mip}" && -n "${csv_dep_min}" ]]; then
+        case "${mode}" in
+            spike)
+                if [[ -n "${csv_dep_sip}" && -n "${csv_dep_sin}" ]]; then
+                    all_cnt=true
+                    cnd_cnt="all four '--csv_dep_*' lists"
+                fi
+                ;;
+
+            siq)
+                if [[ -n "${csv_len_mip}" && -n "${csv_len_min}" ]]; then
+                    all_cnt=true
+                    cnd_cnt="both '--csv_dep_*' and both '--csv_len_*' lists"
+                fi
+                ;;
+        esac
+    fi
+
+    if [[ "${all_cnt}" == "true" ]]; then
+        if [[ "${aln_typ_set}" == "true" ]]; then
+            echo_warn \
+                "'--aln_typ' has no effect with ${cnd_cnt} and is ignored."
+            aln_typ="auto"
+        fi
+
+        if [[ -n "${ref_fa}" ]]; then
+            echo_warn \
+                "'--ref_fa' has no effect with ${cnd_cnt} and is ignored."
+            ref_fa=""
+        fi
+    fi
 }
 
 
 # Validate scalar arguments and assign derived scalar defaults.
 function validate_args() {
-    check_opts_mode || return 1
-
     validate_var "env_nam" "${env_nam}" || return 1
     check_env_installed "${env_nam}" || return 1
 
@@ -952,8 +999,20 @@ function validate_args() {
 
     validate_var_file "scr_sub" "${scr_sub}" || return 1
 
-    validate_var "threads" "${threads}" || return 1
-    check_int_pos "${threads}" "threads" || return 1
+    # With every count supplied, jobs read no file, so threads matter only for
+    # sizing Slurm or parallel jobs, not for a serial local run.
+    if [[
+        "${all_cnt}" == "true" && "${slurm}" != "true" && "${max_job}" == "1"
+    ]]; then
+        if [[ "${threads_set}" == "true" ]]; then
+            echo_warn \
+                "'--threads' has no effect with ${cnd_cnt} in a serial local" \
+                "run and is ignored."
+        fi
+    else
+        validate_var "threads" "${threads}" || return 1
+        check_int_pos "${threads}" "threads" || return 1
+    fi
 
     validate_var "csv_mip" "${csv_mip}" || return 1
     validate_var_dir "csv_mip parent directory" \
@@ -1133,7 +1192,10 @@ function validate_vecs() {
     done
     unset arr_aln file
 
-    if [[ "${need_ref}" == "true" && -z "${ref_fa}" ]]; then
+    # A CRAM file is decoded only when a count is derived from it.
+    if [[
+        "${need_ref}" == "true" && -z "${ref_fa}" && "${all_cnt}" != "true"
+    ]]; then
         echo_err "'--ref_fa' is required when an input alignment file is CRAM."
         return 1
     elif [[ "${need_ref}" == "false" && -n "${ref_fa}" ]]; then

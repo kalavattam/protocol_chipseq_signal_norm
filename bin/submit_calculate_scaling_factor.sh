@@ -234,6 +234,7 @@ function parse_args() {
                     return 1
                 }
                 threads="${2}"
+                threads_set=true
                 shift 2
                 ;;
 
@@ -264,6 +265,7 @@ function parse_args() {
                     return 1
                 }
                 aln_typ="$(printf '%s\n' "${2}" | tr '[:upper:]' '[:lower:]')"
+                aln_typ_set=true
                 shift 2
                 ;;
 
@@ -616,6 +618,49 @@ function check_opts_mode() {
                 ;;
         esac
     fi
+
+    # With every count supplied, no alignment file is read: its layout and the
+    # reference that decodes CRAM do nothing, and neither do the threads that
+    # read it.
+    all_cnt=false
+    cnd_cnt=""
+
+    if [[ -n "${csv_dep_mip}" && -n "${csv_dep_min}" ]]; then
+        case "${mode}" in
+            spike)
+                if [[ -n "${csv_dep_sip}" && -n "${csv_dep_sin}" ]]; then
+                    all_cnt=true
+                    cnd_cnt="all four '--csv_dep_*' lists"
+                fi
+                ;;
+
+            siq)
+                if [[ -n "${csv_len_mip}" && -n "${csv_len_min}" ]]; then
+                    all_cnt=true
+                    cnd_cnt="both '--csv_dep_*' and both '--csv_len_*' lists"
+                fi
+                ;;
+        esac
+    fi
+
+    if [[ "${all_cnt}" == "true" ]]; then
+        if [[ "${aln_typ_set}" == "true" ]]; then
+            echo_warn \
+                "'--aln_typ' has no effect with ${cnd_cnt} and is ignored."
+            aln_typ="auto"
+        fi
+
+        if [[ "${threads_set}" == "true" ]]; then
+            echo_warn \
+                "'--threads' has no effect with ${cnd_cnt} and is ignored."
+        fi
+
+        if [[ -n "${ref_fa}" ]]; then
+            echo_warn \
+                "'--ref_fa' has no effect with ${cnd_cnt} and is ignored."
+            ref_fa=""
+        fi
+    fi
 }
 
 
@@ -623,8 +668,11 @@ function check_opts_mode() {
 function validate_args() {
     validate_var     "env_nam" "${env_nam}"         || return 1
     validate_var_dir "dir_scr" "${dir_scr}" 0 false || return 1
-    validate_var     "threads" "${threads}"         || return 1
-    check_int_pos    "${threads}" "threads"         || return 1
+    if [[ "${all_cnt}" != "true" ]]; then
+        validate_var  "threads" "${threads}" || return 1
+        check_int_pos "${threads}" "threads" || return 1
+    fi
+
     check_int_pos    "${dp}"     "dp"             || return 1
 
     validate_var "csv_mip" "${csv_mip}" || return 1
@@ -717,11 +765,13 @@ function init_args_hardcoded() {
 function init_arg_defs() {
     env_nam="env_protocol"
     threads=1
+    threads_set=false
 
-    mode="spike"    # siq | spike
-    method=""       # chiprx_alpha_ratio | fractional | rxinput_alpha | ...
+    mode="spike"       # siq | spike
+    method=""          # chiprx_alpha_ratio | fractional | rxinput_alpha | ...
 
-    aln_typ="auto"  # paired | pe | single | se | auto
+    aln_typ="auto"     # paired | pe | single | se | auto
+    aln_typ_set=false
     ref_fa=""
 
     csv_mip=""
@@ -736,13 +786,13 @@ function init_arg_defs() {
     eqn="6nd"
     eqn_set=false
 
-    len_def=""      # SE fallback length (bp).
-    csv_len_mip=""  # Precomputed lengths: main IP.
-    csv_len_min=""  # Precomputed lengths: main input.
-    csv_dep_mip=""  # Precomputed counts: main IP.
-    csv_dep_min=""  # Precomputed counts: main input.
-    csv_dep_sip=""  # Precomputed counts: spike IP.
-    csv_dep_sin=""  # Precomputed counts: spike input.
+    len_def=""         # SE fallback length (bp).
+    csv_len_mip=""     # Precomputed lengths: main IP.
+    csv_len_min=""     # Precomputed lengths: main input.
+    csv_dep_mip=""     # Precomputed counts: main IP.
+    csv_dep_min=""     # Precomputed counts: main input.
+    csv_dep_sip=""     # Precomputed counts: spike IP.
+    csv_dep_sin=""     # Precomputed counts: spike input.
 
     dp=24
     dir_eo=""
@@ -891,7 +941,10 @@ function validate_vecs() {
         fi
     done
 
-    if [[ "${need_ref}" == "true" && -z "${ref_fa}" ]]; then
+    # A CRAM file is decoded only when a count is derived from it.
+    if [[
+        "${need_ref}" == "true" && -z "${ref_fa}" && "${all_cnt}" != "true"
+    ]]; then
         echo_err "'--ref_fa' is required when an input alignment file is CRAM."
         return 1
     elif [[ "${need_ref}" == "false" && -n "${ref_fa}" ]]; then

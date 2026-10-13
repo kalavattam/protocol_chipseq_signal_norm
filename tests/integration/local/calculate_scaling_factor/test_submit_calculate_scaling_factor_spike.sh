@@ -36,6 +36,7 @@ function run_submit_spike_case() {
     local method="${7:-}"
     local row_exp="${8:-}"
     local typ_exp="${9:-}"
+    local lbl
     shift 9 || true
 
     local fil_out="${dir_out}/scaling.submit.${cas}.spike.tsv"
@@ -78,10 +79,17 @@ function run_submit_spike_case() {
         "${row_exp}" \
         $'^main_ip\tspike_ip\tmain_in\tspike_in\tspike\tcoef'
 
+    # An empty 'typ_exp' means every count is supplied, so no file is read.
+    if [[ -n "${typ_exp}" ]]; then
+        lbl="auto-detects main IP as ${typ_exp}"
+    else
+        lbl="reads no layout with every count supplied"
+    fi
+
     assert_pattern_found \
         "${fil_log}" \
-        "typ_mp=${typ_exp}" \
-        "submit scaling-factor spike ${cas} auto-detects main IP as ${typ_exp}"
+        "^typ_mp=${typ_exp}\$" \
+        "submit scaling-factor spike ${cas} ${lbl}"
 }
 
 
@@ -614,7 +622,8 @@ run_submit_spike_case \
     se
 
 
-# Explicit depth overrides should replace alignment-derived counts.
+# Explicit depth overrides should replace alignment-derived counts, and with
+# every count supplied no file is read for its layout.
 run_submit_spike_case \
     se_depth_override \
     14 \
@@ -624,7 +633,7 @@ run_submit_spike_case \
     "${bam_se_sin}" \
     fractional \
     "${row_exp_se_depth_override}" \
-    se \
+    "" \
     --csv_dep_mip 10 \
     --csv_dep_min 20 \
     --csv_dep_sip 2 \

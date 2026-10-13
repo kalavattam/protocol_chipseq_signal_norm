@@ -1937,7 +1937,7 @@ Notes
     - samtools (when alignment depth, fragment length, or layout must be derived)
 
   - For single-end libraries, TLEN is not meaningful; this function requires 'len_def' (or an optional 4th positional argument, 'len_lcl') to supply a fixed fragment length.
-  - End-type detection is per-file in case of mixed inputs.
+  - End-type detection is per-file in case of mixed inputs and only for a file whose count or length must be derived.
   - Individual alignment files are expected to be a single input type: either entirely PE or entirely SE.
 
 Examples
@@ -2018,17 +2018,10 @@ EOM
     lib_vol_ip="${lib_vol_ip:-NA}"
     lib_vol_in="${lib_vol_in:-NA}"
 
-    # Determine end type per alignment file (robust if inputs ever mix).
-    typ_ip="$(_resolve_typ_fil "${fil_ip}")" || {
-        echo_err_func "${FUNCNAME[0]}" \
-            "failed while resolving 'typ_ip'."
-        return 1
-    }
-    typ_in="$(_resolve_typ_fil "${fil_in}")" || {
-        echo_err_func "${FUNCNAME[0]}" \
-            "failed while resolving 'typ_in'."
-        return 1
-    }
+    # Determine end type per alignment file (robust if inputs ever mix) and
+    # only when a count or fragment length must be derived from it.
+    typ_ip=""
+    typ_in=""
 
     # Count alignments in alignment files.
     dep_ip="$(_get_dep_idx mip "${idx}")"
@@ -2036,7 +2029,15 @@ EOM
         if [[ -n "${dep_ip_met}" && "${dep_ip_met}" != "NA" ]]; then
             dep_ip="${dep_ip_met}"
         else
-            dep_ip="$(_count_alignments "${threads}" "${fil_ip}" "${typ_ip}")" || {
+            typ_ip="$(_resolve_typ_fil "${fil_ip}")" || {
+                echo_err_func "${FUNCNAME[0]}" \
+                    "failed while resolving 'typ_ip'."
+                return 1
+            }
+
+            dep_ip="$(
+                _count_alignments "${threads}" "${fil_ip}" "${typ_ip}"
+            )" || {
                 echo_err_func "${FUNCNAME[0]}" \
                     "failed while counting alignments for IP file '${fil_ip}'" \
                     "with type '${typ_ip}'."
@@ -2050,6 +2051,12 @@ EOM
         if [[ -n "${dep_in_met}" && "${dep_in_met}" != "NA" ]]; then
             dep_in="${dep_in_met}"
         else
+            typ_in="$(_resolve_typ_fil "${fil_in}")" || {
+                echo_err_func "${FUNCNAME[0]}" \
+                    "failed while resolving 'typ_in'."
+                return 1
+            }
+
             dep_in="$(
                 _count_alignments "${threads}" "${fil_in}" "${typ_in}"
             )" || {
@@ -2071,6 +2078,14 @@ EOM
     elif [[ -n "${len_ip_met}" && "${len_ip_met}" != "NA" ]]; then
         len_ip="${len_ip_met}"
     else
+        if [[ -z "${typ_ip}" ]]; then
+            typ_ip="$(_resolve_typ_fil "${fil_ip}")" || {
+                echo_err_func "${FUNCNAME[0]}" \
+                    "failed while resolving 'typ_ip'."
+                return 1
+            }
+        fi
+
         len_ip="$(
             _calculate_frag_avg \
                 "${threads}" "${fil_ip}" "${typ_ip}" "${len_def:-}"
@@ -2087,6 +2102,14 @@ EOM
     elif [[ -n "${len_in_met}" && "${len_in_met}" != "NA" ]]; then
         len_in="${len_in_met}"
     else
+        if [[ -z "${typ_in}" ]]; then
+            typ_in="$(_resolve_typ_fil "${fil_in}")" || {
+                echo_err_func "${FUNCNAME[0]}" \
+                    "failed while resolving 'typ_in'."
+                return 1
+            }
+        fi
+
         len_in="$(
             _calculate_frag_avg \
                 "${threads}" "${fil_in}" "${typ_in}" "${len_def:-}"
@@ -2254,7 +2277,7 @@ Notes
     - Reference FASTA and required index (when processing CRAM)
     - samtools (when alignment depth or layout must be derived)
 
-  - End-type detection is per-file in case of mixed inputs.
+  - End-type detection is per-file in case of mixed inputs and only for a file whose count must be derived.
   - Individual alignment files are expected to be a single input type: either entirely PE or entirely SE.
 
 Examples
@@ -2325,37 +2348,21 @@ EOM
         debug_var "idx=${idx}" "mp=${mp}" "mn=${mn}" "sp=${sp}" "sn=${sn}"
     fi
 
-    # Determine end type per alignment file.
-    typ_mp="$(_resolve_typ_fil "${mp}")" || {
-        echo_err_func "${FUNCNAME[0]}" \
-            "failed while resolving 'typ_mp'."
-        return 1
-    }
-    typ_sp="$(_resolve_typ_fil "${sp}")" || {
-        echo_err_func "${FUNCNAME[0]}" \
-            "failed while resolving 'typ_sp'."
-        return 1
-    }
-    typ_mn="$(_resolve_typ_fil "${mn}")" || {
-        echo_err_func "${FUNCNAME[0]}" \
-            "failed while resolving 'typ_mn'."
-        return 1
-    }
-    typ_sn="$(_resolve_typ_fil "${sn}")" || {
-        echo_err_func "${FUNCNAME[0]}" \
-            "failed while resolving 'typ_sn'."
-        return 1
-    }
+    # Count alignments in alignment files. A file is read for its layout only
+    # when its count is not supplied.
+    typ_mp=""
+    typ_sp=""
+    typ_mn=""
+    typ_sn=""
 
-    if [[ "${debug}" == "true" ]]; then
-        debug_var \
-            "typ_mp=${typ_mp}" "typ_sp=${typ_sp}" \
-            "typ_mn=${typ_mn}" "typ_sn=${typ_sn}"
-    fi
-
-    # Count alignments in alignment files.
     num_mp="$(_get_dep_idx mip "${idx}")"
     if [[ -z "${num_mp}" ]]; then
+        typ_mp="$(_resolve_typ_fil "${mp}")" || {
+            echo_err_func "${FUNCNAME[0]}" \
+                "failed while resolving 'typ_mp'."
+            return 1
+        }
+
         num_mp="$(_count_alignments "${threads}" "${mp}" "${typ_mp}")" || {
             echo_err_func "${FUNCNAME[0]}" \
                 "failed while counting alignments for main IP file '${mp}'" \
@@ -2366,6 +2373,12 @@ EOM
 
     num_mn="$(_get_dep_idx min "${idx}")"
     if [[ -z "${num_mn}" ]]; then
+        typ_mn="$(_resolve_typ_fil "${mn}")" || {
+            echo_err_func "${FUNCNAME[0]}" \
+                "failed while resolving 'typ_mn'."
+            return 1
+        }
+
         num_mn="$(_count_alignments "${threads}" "${mn}" "${typ_mn}")" || {
             echo_err_func "${FUNCNAME[0]}" \
                 "failed while counting alignments for main input file '${mn}'" \
@@ -2376,6 +2389,12 @@ EOM
 
     num_sp="$(_get_dep_idx sip "${idx}")"
     if [[ -z "${num_sp}" ]]; then
+        typ_sp="$(_resolve_typ_fil "${sp}")" || {
+            echo_err_func "${FUNCNAME[0]}" \
+                "failed while resolving 'typ_sp'."
+            return 1
+        }
+
         num_sp="$(_count_alignments "${threads}" "${sp}" "${typ_sp}")" || {
             echo_err_func "${FUNCNAME[0]}" \
                 "failed while counting alignments for spike IP file '${sp}'" \
@@ -2386,12 +2405,24 @@ EOM
 
     num_sn="$(_get_dep_idx sin "${idx}")"
     if [[ -z "${num_sn}" ]]; then
+        typ_sn="$(_resolve_typ_fil "${sn}")" || {
+            echo_err_func "${FUNCNAME[0]}" \
+                "failed while resolving 'typ_sn'."
+            return 1
+        }
+
         num_sn="$(_count_alignments "${threads}" "${sn}" "${typ_sn}")" || {
             echo_err_func "${FUNCNAME[0]}" \
                 "failed while counting alignments for spike input file" \
                 "'${sn}' with type '${typ_sn}'."
             return 1
         }
+    fi
+
+    if [[ "${debug}" == "true" ]]; then
+        debug_var \
+            "typ_mp=${typ_mp}" "typ_sp=${typ_sp}" \
+            "typ_mn=${typ_mn}" "typ_sn=${typ_sn}"
     fi
 
     coef_lcl="${coef_spk:-chiprx_alpha_ratio}"
