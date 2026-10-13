@@ -963,9 +963,11 @@ def _check_applicability(args: argparse.Namespace) -> None:
     Distribution options do nothing under 'edger', and edgeR inputs nothing
     under the distribution methods. Under 'edger', a track is read only to
     infer its overlap count or, for 'unadj', its column total, and an unread
-    track warns. '--siz_bin' and '--skp_pfx' act only on a track that is read;
-    for a whole-count type, '--n_frg_A' / '--n_frg_B' only check an overlap
-    count inferred from one; with no track read, all of them warn.
+    track warns. '--siz_bin' and '--skp_pfx' act only on a track that is read,
+    so with no track read, both warn. For a whole-count type, a track's
+    fragment count only checks an overlap count inferred from that track, so it
+    warns when that track's overlap count is given. With a single track, B
+    mirrors A, so '--n_frg_B' warns.
     """
 
     sup = args.supplied
@@ -1044,13 +1046,35 @@ def _check_applicability(args: argparse.Namespace) -> None:
             "both overlap counts given",
         )
 
-        if canonicalize_typ_sig(args.typ_sig) not in SUB_FRACTIONAL:
+    # A single track is mirrored onto B, fragment count included.
+    if _is_one_track(args):
+        check_opts_apply(
+            sup,
+            "warn",
+            {"n_frg_B": "--n_frg_B"},
+            "a run with track B",
+            "a single track",
+        )
+
+    # A whole-count type uses a track's fragment count only to check an overlap
+    # count inferred from that track.
+    if canonicalize_typ_sig(args.typ_sig) not in SUB_FRACTIONAL:
+        if args.n_ovlp_A is not None:
             check_opts_apply(
                 sup,
                 "warn",
-                {"n_frg_A": "--n_frg_A", "n_frg_B": "--n_frg_B"},
+                {"n_frg_A": "--n_frg_A"},
                 "a fractional '--typ_sig' or an inferred overlap count",
-                f"'--typ_sig {args.typ_sig}' and both overlap counts given",
+                f"'--typ_sig {args.typ_sig}' and '--n_ovlp_A' given",
+            )
+
+        if args.n_ovlp_B is not None:
+            check_opts_apply(
+                sup,
+                "warn",
+                {"n_frg_B": "--n_frg_B"},
+                "a fractional '--typ_sig' or an inferred overlap count",
+                f"'--typ_sig {args.typ_sig}' and '--n_ovlp_B' given",
             )
 
 

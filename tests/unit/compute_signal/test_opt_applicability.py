@@ -23,6 +23,7 @@ from __future__ import annotations
 
 import argparse
 import json
+from collections.abc import Callable
 from pathlib import Path
 
 import pytest
@@ -292,6 +293,92 @@ def test_pseudo_clis_warn_when_no_track_is_read(
 
     assert status == 0
     assert message in capsys.readouterr().err
+
+
+# Counts that cannot act draw a warning and leave the result unchanged. With a
+# whole-count type, a track's fragment count only checks an overlap count
+# inferred from that track, so it does nothing when that count is given. With
+# one track, B copies A, so '--n_frg_B' and '--sf_B' do nothing.
+UNUSED_COUNT = (
+    pytest.param(
+        pseudo.main,
+        [
+            "--method",
+            "edger",
+            "--typ_sig",
+            "count",
+            "--fil_B",
+            FIL_B,
+            "--n_ovlp_A",
+            "6",
+        ],
+        ["--n_frg_A", "2"],
+        "'--n_frg_A' has no effect with '--typ_sig count' and "
+        "'--n_ovlp_A' given",
+        id="compute_pseudo n_frg_A",
+    ),
+    pytest.param(
+        pseudo.main,
+        [
+            "--method",
+            "edger",
+            "--typ_sig",
+            "cpm",
+            "--fil_A",
+            FIL_A,
+            "--n_ovlp_B",
+            "18",
+        ],
+        ["--n_frg_B", "2"],
+        "'--n_frg_B' has no effect with '--typ_sig cpm' and "
+        "'--n_ovlp_B' given",
+        id="compute_pseudo n_frg_B",
+    ),
+    pytest.param(
+        pseudo.main,
+        [
+            "--method",
+            "edger",
+            "--typ_sig",
+            "frag",
+            "--n_ovlp_A",
+            "6",
+            "--n_frg_A",
+            "2",
+        ],
+        ["--n_frg_B", "3"],
+        "'--n_frg_B' has no effect with a single track",
+        id="compute_pseudo n_frg_B one track",
+    ),
+    pytest.param(
+        dtools.main,
+        ["--typ_sig", "RPGC", "--n_ovlp_A", "6", "--sf_A", "1"],
+        ["--sf_B", "2"],
+        "'--sf_B' has no effect with a single track",
+        id="compute_pseudo_deeptools sf_B one track",
+    ),
+)
+
+
+@pytest.mark.parametrize(("main", "argv", "extra", "message"), UNUSED_COUNT)
+def test_pseudo_clis_warn_about_an_unused_count(
+    main: Callable[[list[str] | None], int],
+    argv: list[str],
+    extra: list[str],
+    message: str,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    status_expected = main(argv)
+    expected = capsys.readouterr()
+
+    status = main([*argv, *extra])
+    result = capsys.readouterr()
+
+    assert status_expected == 0
+    assert "has no effect" not in expected.err
+    assert status == 0
+    assert message in result.err
+    assert result.out == expected.out
 
 
 # Each CLI with the arguments that select edgeR's prior from a count alone.

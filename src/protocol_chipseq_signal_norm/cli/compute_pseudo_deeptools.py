@@ -545,10 +545,11 @@ def _check_applicability(args: argparse.Namespace) -> None:
 
     Notes
     -----
-    A track is read only to infer its overlap count, and an unread track warns.
-    '--skp_pfx' acts only on a track that is read. '--siz_bin' checks a track
-    that is read and gives 'RPKM' its width, so it does nothing only when no
-    track is read and the type is not 'RPKM'.
+    With a single track, B mirrors A, so '--sf_B' warns. A track is read only
+    to infer its overlap count, and an unread track warns. '--skp_pfx' acts
+    only on a track that is read. '--siz_bin' checks a track that is read and
+    gives 'RPKM' its width, so it does nothing only when no track is read and
+    the type is not 'RPKM'.
     """
 
     typ = canonicalize_typ_sig(args.typ_sig)
@@ -561,6 +562,15 @@ def _check_applicability(args: argparse.Namespace) -> None:
             {"sf_A": "--sf_A", "sf_B": "--sf_B"},
             "'--typ_sig RPGC'",
             now,
+        )
+    elif _is_one_track(args):
+        # A single track is mirrored onto B, scale factor included.
+        check_opts_apply(
+            args.supplied,
+            "warn",
+            {"sf_B": "--sf_B"},
+            "a run with track B",
+            "a single track",
         )
 
     read_a, read_b = _find_tracks_read(args)

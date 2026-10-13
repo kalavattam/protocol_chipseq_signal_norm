@@ -183,6 +183,17 @@ def test_method_options_are_refused_with_the_other_method(
     assert str(error.value) == refusal(option, where, now)
 
 
+def test_eps_is_refused_without_zero_filtering(bed: Path) -> None:
+    with pytest.raises(SystemExit) as error:
+        main([*mode_args("dist", bed), "--mode_nz", "off", "--eps", "0.1"])
+
+    assert str(error.value) == refusal(
+        "--eps",
+        "'--mode_nz closed' or 'open'",
+        "'--mode_nz off'",
+    )
+
+
 @pytest.mark.parametrize(
     "args",
     (
@@ -304,6 +315,16 @@ def test_verbose_norm_reports_no_input_options(
             "0.5",
         ],
         ["--mode", "dist", "--fil_in", str(BDG), "--qntl_nz", "5"],
+        [
+            "--mode",
+            "dist",
+            "--fil_in",
+            str(BDG),
+            "--mode_nz",
+            "open",
+            "--eps",
+            "0.1",
+        ],
         ["--mode", "norm", "--siz_bin", "30"],
         ["--mode", "frag", "--fil_in", str(BAM_SE), "--flags_se", "0"],
         [

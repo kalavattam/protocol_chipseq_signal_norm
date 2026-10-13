@@ -1236,6 +1236,15 @@ def _check_opts_mode(args: argparse.Namespace) -> None:
                 f"'--method {args.method}'",
             )
 
+        if args.mode_nz == "off":
+            check_opts_apply(
+                supplied,
+                "refuse",
+                {"eps": "--eps"},
+                "'--mode_nz closed' or 'open'",
+                "'--mode_nz off'",
+            )
+
     if args.mode != "frag":
         check_opts_apply(supplied, "refuse", _OPTS_FLAGS, "'--mode frag'", now)
 
