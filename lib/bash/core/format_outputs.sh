@@ -17,12 +17,15 @@
 
 # echo_err
 # echo_err_func
+# echo_note
+# echo_note_func
 # echo_warn
 # echo_warn_func
 # format_print_cmd
 # print_banner_pretty
 # print_cmd_array
 # print_cmd_pretty
+# print_context_diag
 # summarize_sig_depo
 
 
@@ -84,31 +87,101 @@ fi
 }
 
 
-# Write a script-level error message to stderr.
+# Print diagnostic context as prescribed by 'SHELL.DIAGNOSTIC.FORM':
+# '<file>::<function>' for the function that called the 'echo_*' helper or for
+# 'fun' when it is given; the run script and '>' are first when '<file>' is not
+# the run script. 'dep' is the index of the caller in 'FUNCNAME', which is 2
+# when an 'echo_*' helper calls this function.
+function print_context_diag() {
+    local dep="${1}"
+    local fun="${2:-}"
+    local run="${0##*/}"
+    local bot=$(( ${#FUNCNAME[@]} - 1 ))
+    local src=""
+    local ctx
+
+    run="${run#-}"
+
+    if [[ -z "${fun}" ]]; then
+        fun="${FUNCNAME[dep]:-}"
+        src="${BASH_SOURCE[dep]:-}"
+
+        # A script's top level ('main' in the bottom frame) and a sourced
+        # file's top level ('source') are not functions.
+        if [[
+            "${fun}" == "source" || ( "${fun}" == "main" && dep -eq bot )
+        ]]; then
+            fun=""
+        fi
+    else
+        # A named function is looked up where it was defined.
+        src="$(shopt -s extdebug; declare -F "${fun}")" || src=""
+        src="${src#* * }"
+    fi
+
+    if [[ -z "${src}" || "${src}" == "${0}" ]]; then
+        ctx="${run}"
+    else
+        ctx="${run}>${src##*/}"
+    fi
+
+    if [[ -n "${fun}" ]]; then
+        ctx+="::${fun}"
+    fi
+
+    echo "${ctx}"
+}
+
+
+# Write an error message to stderr in the caller's context.
 function echo_err() {
-    echo "error($(basename "${0}")): $*" >&2
+    echo "error($(print_context_diag 2)):" \
+        "$*" >&2
 }
 
 
-# Write a function-level error message to stderr.
+# Write an error message to stderr for function 'func', or for the caller when
+# 'func' is empty.
 function echo_err_func() {
-    local func="${1:-${FUNCNAME[1]:-main}}"
+    local func="${1:-}"
     shift || true
-    echo "error($(basename "${0}")::${func}): $*" >&2
+    echo "error($(print_context_diag 2 "${func}")):" \
+        "$*" >&2
 }
 
 
-# Write a script-level warning message to stderr.
+# Write a warning message to stderr in the caller's context.
 function echo_warn() {
-    echo "warning($(basename "${0}")): $*" >&2
+    echo "warning($(print_context_diag 2)):" \
+        "$*" >&2
 }
 
 
-# Write a function-level warning message to stderr.
+# Write a warning message to stderr for function 'func', or for the caller when
+# 'func' is empty.
 function echo_warn_func() {
-    local func="${1:-${FUNCNAME[1]:-main}}"
+    local func="${1:-}"
     shift || true
-    echo "warning($(basename "${0}")::${func}): $*" >&2
+    echo "warning($(print_context_diag 2 "${func}")):" \
+        "$*" >&2
+}
+
+
+# Write a note to stderr in the caller's context: information that needs no
+# action.
+function echo_note() {
+    echo "note($(print_context_diag 2)):" \
+        "$*" >&2
+}
+
+
+# Write a note to stderr for function 'func', or for the caller when 'func' is
+# empty.
+function echo_note_func() {
+    local func="${1:-}"
+    shift || true
+    echo "note($(print_context_diag 2 "${func}")):" \
+        "$*" >&2
 }
 
 
@@ -131,6 +204,9 @@ Usage
 
 Parameters
 ----------
+  -h, --help : flag
+    Display this help message and exit.
+
   1  slurm : bool
     Submit jobs to the Slurm scheduler. Boolean-like string:
       - true-like: treat the input as an 'sbatch' command and format sbatch flags and script arguments separately.
@@ -210,8 +286,9 @@ EOM
         # Perform display-oriented formatting; this logic expects the current
         # single-line command layout emitted by 'build_cmd'.
         #
-        # Standard AWK features are in use here, so 'awk' (rather than 'gawk')
-        # is used intentionally.
+        # Only standard AWK features are used here, so plain 'awk' works
+        # whether it resolves to 'gawk' (as in 'env_protocol') or to the system
+        # 'awk'.
         awk \
             -v scr="${scr}" '
             BEGIN {
@@ -237,8 +314,9 @@ EOM
                         continue
                     }
 
-                    # If token matches script path, switch indentation context.
-                    # if (token ~ scr) {  # (avoid accidental regex semantics)
+                    # If token contains the script path, matched literally
+                    # rather than as a regular expression, switch indentation
+                    # context.
                     if (index(token, scr) > 0) {
                         print indent_1 scr " \\"
                         in_scr = 1
@@ -900,7 +978,7 @@ EOM
 
 # Derive the report path 'compute_signal' writes beside a track. In the CLI,
 # 'resolve_report_path' spells the same rule for a bare '--report_n_frg'. A
-# contract test pins them together: a drift would send the wrappers to
+# contract test pins them together, as a drift would send the wrappers to
 # different paths.
 function derive_report_path() {
     local fil_trk="${1:-}"

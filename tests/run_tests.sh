@@ -127,6 +127,9 @@ function ensure_checker_fixtures() {
     ensure_fixture compute_pseudo \
         "${repo_root}/tests/fixtures/compute_pseudo/bedgraph/pair_A.bedGraph"
 
+    ensure_fixture diagnostics \
+        "${repo_root}/tests/fixtures/diagnostics/script/run.sh"
+
     ensure_fixture help "${repo_root}/${rel_help}"
 
     ensure_fixture help_contracts \
