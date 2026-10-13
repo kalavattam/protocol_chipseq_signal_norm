@@ -2738,6 +2738,41 @@ function prepare_vecs() {
             return 1
         fi
 
+        if [[
+            -n "${typ_sig}"
+            && " ${arr_pseudo[*]} " != *" edger "*
+        ]]; then
+            echo_err \
+                "'--typ_sig' applies only to '--csv_pseudo edger'" \
+                "elements, and none were given."
+            return 1
+        fi
+
+        # Each denominator is clamped to at least its pair's minimum, so when
+        # every minimum is above epsilon, no denominator reaches the zero
+        # guard, and without '--skip_00' epsilon acts nowhere.
+        if [[
+            "${eps}" != "NA" && "${skip_00}" == "NA" && -n "${csv_dep_min}"
+        ]]; then
+            if \
+                awk -v eps="${eps}" -v lst="${csv_dep_min}" '
+                    BEGIN {
+                        n = split(lst, arr, ",")
+                        for (i = 1; i <= n; i++) {
+                            if (arr[i] == "NA" || !(arr[i] + 0 > eps + 0)) {
+                                exit 1
+                            }
+                        }
+                    }
+                '
+            then
+                echo_warn \
+                    "'--eps' has no effect with every '--csv_dep_min' above" \
+                    "it and no '--skip_00' and is ignored."
+                eps="NA"
+            fi
+        fi
+
         # One value applies to every pair, except a literal pseudocount: pairs
         # of different depths need their own, so list one per pair or 'edger'.
         if [[

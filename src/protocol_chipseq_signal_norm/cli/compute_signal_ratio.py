@@ -56,6 +56,8 @@ from protocol_chipseq_signal_norm.utilities.utils_check import (
 from protocol_chipseq_signal_norm.utilities.utils_cli import (
     CapArgumentParser,
     add_help_cap,
+    check_opts_apply,
+    find_supplied,
     warn_as_note,
 )
 from protocol_chipseq_signal_norm.utilities.utils_io import (
@@ -963,6 +965,9 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
             "  - With 'ε > 0' and 'scaling != 1', '--skip_00 post_scale' "
             "interprets ε in scaled units (i.e., the same units that are "
             "divided).\n"
+            "  - Ignored with a warning when '--dep_min' is above ε and "
+            "'--skip_00' is not given, since the clamped denominator never "
+            "reaches the guard.\n"
             "\n"
         ),
     )
@@ -1105,7 +1110,10 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         parser.print_help(sys.stderr)
         raise SystemExit(0)
 
-    return parser.parse_args(argv_parse)
+    args = parser.parse_args(argv_parse)
+    args.supplied = find_supplied(parser, argv_parse)
+
+    return args
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -1224,6 +1232,23 @@ def main(argv: list[str] | None = None) -> int:
                 "'post_scale'."
             ),
         )
+
+    # The denominator is clamped to at least '--dep_min', so a minimum above
+    # epsilon keeps it off the zero guard; without '--skip_00', epsilon acts
+    # nowhere. An ignored value is not checked.
+    if (
+        args.dep_min is not None
+        and args.skip_00 is None
+        and args.dep_min > args.eps
+    ):
+        check_opts_apply(
+            args.supplied,
+            "warn",
+            {"eps": "--eps"},
+            "'--skip_00' or a '--dep_min' at or below it",
+            "'--dep_min' above it and no '--skip_00'",
+        )
+        args.eps = 0.0
 
     try:
         for label, value in (("scl_fct:A", scl_a), ("scl_fct:B", scl_b)):

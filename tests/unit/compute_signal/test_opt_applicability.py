@@ -31,6 +31,7 @@ import pytest
 from protocol_chipseq_signal_norm.cli import compute_pseudo as pseudo
 from protocol_chipseq_signal_norm.cli import compute_pseudo_deeptools as dtools
 from protocol_chipseq_signal_norm.cli import compute_signal as signal
+from protocol_chipseq_signal_norm.cli import compute_signal_ratio as ratio
 from protocol_chipseq_signal_norm.utilities.utils_cli import (
     check_opts_apply,
     find_supplied,
@@ -689,6 +690,65 @@ def test_compute_signal_stays_silent_for_options_that_apply(
             "20",
             "--dp",
             "3",
+        ],
+    )
+
+    assert status == 0
+    assert "has no effect" not in capsys.readouterr().err
+
+
+# The denominator is clamped to at least '--dep_min', so with a minimum above
+# '--eps' and no '--skip_00', '--eps' acts nowhere: it warns, its value is not
+# checked, and the ratios match the run without it.
+@pytest.mark.parametrize("eps", ("0.5", "-3"))
+def test_compute_signal_ratio_warns_about_eps_below_dep_min(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+    eps: str,
+) -> None:
+    argv = ["--fil_A", FIL_A, "--fil_B", FIL_B, "--dep_min", "1"]
+    fil_exp = tmp_path / "expected.bedGraph"
+    fil_out = tmp_path / "out.bedGraph"
+
+    status_expected = ratio.main([*argv, "--fil_out", str(fil_exp)])
+    expected = capsys.readouterr()
+
+    status = ratio.main([*argv, "--fil_out", str(fil_out), "--eps", eps])
+    result = capsys.readouterr()
+
+    assert status_expected == 0
+    assert "has no effect" not in expected.err
+    assert status == 0
+    assert (
+        "Note: '--eps' has no effect with '--dep_min' above it and no "
+        "'--skip_00' and is ignored." in result.err
+    )
+    assert fil_out.read_bytes() == fil_exp.read_bytes()
+
+
+# Epsilon acts with a minimum at or below it, or with '--skip_00'.
+@pytest.mark.parametrize(
+    "argv",
+    (
+        ["--dep_min", "0.5", "--eps", "0.5"],
+        ["--dep_min", "1", "--eps", "0.5", "--skip_00", "pre_scale"],
+        ["--eps", "0.5"],
+    ),
+)
+def test_compute_signal_ratio_stays_silent_where_eps_acts(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+    argv: list[str],
+) -> None:
+    status = ratio.main(
+        [
+            "--fil_A",
+            FIL_A,
+            "--fil_B",
+            FIL_B,
+            "--fil_out",
+            str(tmp_path / "out.bedGraph"),
+            *argv,
         ],
     )
 

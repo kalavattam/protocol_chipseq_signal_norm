@@ -162,7 +162,7 @@ Parameters
   -ts, --typ_sig : str
     Signal type the input tracks carry, required by '--csv_pseudo edger'.
 
-    Used with '--mode ratio'.
+    Used with '--mode ratio' and at least one 'edger' element; rejected otherwise.
 
     '--mode ratio --typ_sig <value>' is the '--mode signal --method <value>' that produced the track ('--method' chooses what to do; '--typ_sig' declares what an existing input is).
 
@@ -173,6 +173,8 @@ Parameters
 
   -e, --eps : float
     Zero tolerance epsilon or sentinel used for ratio-mode zero checks.
+
+    Ignored with a warning when every '--csv_dep_min' is above it and '--skip_00' is not given.
 
   -s0, --skip_00 : {'pre_scale', 'post_scale'}
     Skip rows where both compared values are zero. Shared zero-zero skip mode or sentinel for ratio computation.

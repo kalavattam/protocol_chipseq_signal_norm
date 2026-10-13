@@ -276,7 +276,7 @@ File-format displays distinguish public choices, accepted aliases, internal cano
 
 **Scope:** Every maintained shell driver, Python CLI, sourced shell function, and public Python function whose options or parameters have no effect under some condition, such as a mode, method, output format, input type, or another option's value.
 
-Applicability is decided by the call itself, not by which files exist at run time or what they contain. A parameter that matters only for some disk state, such as an overwrite flag when no output exists yet or a reuse choice when nothing is installed, or only for some detected file content, such as a single-end fallback when the layout is detected per file, is outside this rule.
+Applicability is decided by the call itself, not by which files exist at run time or what they contain. A parameter that matters only for some disk state, such as an overwrite flag when no output exists yet or a reuse choice when nothing is installed, or only for some detected file content, such as a single-end fallback when the layout is detected per file, is outside this rule. The call includes how its values relate: a parameter that another given value makes inert, such as a zero threshold below a minimum the denominator is clamped to, is within this rule. A parameter that is inert only for some input data, such as dropping non-finite values when the data happen to produce none, is outside it.
 
 A parameter that has no effect under the current condition is never ignored silently. When a caller supplies it anyway:
 - **Refuse** it when a user would expect it to change the result, such as a value, a row, a file, or a format. The refusal names the parameter and the condition under which it applies.

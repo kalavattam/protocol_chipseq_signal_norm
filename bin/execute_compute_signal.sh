@@ -538,6 +538,7 @@ function init_arg_defs() {
     csv_fil_B=""
     dir_out=""
     typ_out=""
+    typ_out_set=false
     prefix=""
     track=false
     siz_bin=""
@@ -698,6 +699,7 @@ function parse_args() {
                     return 1
                 }
                 typ_out="${2}"
+                typ_out_set=true
                 shift 2
                 ;;
 
@@ -1088,6 +1090,7 @@ function check_opts_mode() {
 
         if [[ "${method_set}" == "true" ]]; then arr_ref+=( --method ); fi
         if [[ -n "${csv_scl_fct}" ]]; then arr_ref+=( --csv_scl_fct ); fi
+        if [[ "${typ_out_set}" == "true" ]]; then arr_ref+=( --typ_out ); fi
         if [[ "${engine_set}" == "true" ]]; then arr_ign+=( --engine ); fi
         if [[ "${siz_win_set}" == "true" ]]; then arr_ign+=( --siz_win ); fi
         if [[ "${dp_set}" == "true" ]]; then arr_ign+=( --dp ); fi
@@ -1284,6 +1287,29 @@ function validate_args() {
     fi
 
     if [[ "${mode}" == "ratio" ]]; then
+        # Each denominator is clamped to at least its pair's minimum, so when
+        # every minimum is above epsilon, no denominator reaches the zero
+        # guard, and without '--skip_00' epsilon acts nowhere.
+        if [[ -n "${eps}" && -z "${skip_00}" && -n "${csv_dep_min}" ]]; then
+            if \
+                awk -v eps="${eps}" -v lst="${csv_dep_min}" '
+                    BEGIN {
+                        n = split(lst, arr, ",")
+                        for (i = 1; i <= n; i++) {
+                            if (arr[i] == "NA" || !(arr[i] + 0 > eps + 0)) {
+                                exit 1
+                            }
+                        }
+                    }
+                '
+            then
+                echo_warn \
+                    "'--eps' has no effect with every '--csv_dep_min' above" \
+                    "it and no '--skip_00' and is ignored."
+                eps=""
+            fi
+        fi
+
         if [[ -n "${eps}" ]]; then check_flt_nonneg "${eps}" "eps"; fi
 
         if [[ -n "${skip_00}" ]]; then
@@ -1565,6 +1591,13 @@ function prepare_vecs() {
             echo_err \
                 "'--prior_count' applies only to '--csv_pseudo edger'" \
                 "elements, and none were given."
+            return 1
+        fi
+
+        if [[ -n "${typ_sig}" && "${has_edger}" != "true" ]]; then
+            echo_err \
+                "'--typ_sig' applies only to '--csv_pseudo edger' elements," \
+                "and none were given."
             return 1
         fi
         unset has_edger

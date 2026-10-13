@@ -567,5 +567,171 @@ for typ in "" bedGraph.gz; do
 done
 
 
-unset row mode opt val act args rc out cmd lbl nam dir_edg typ n_wrn n_exp
+# A report-only run writes no track, so a track format is refused.
+rc=0
+out="$(
+    "${TEST_BASH}" "${ROOT_REPO}/bin/execute_compute_signal.sh" \
+        --dry_run \
+        --mode signal \
+        --csv_fil_in "${in_se}" \
+        --report_only \
+        --typ_out bedGraph.gz \
+        --dir_out "${dir_out}" \
+        --dir_eo "${dir_err}" \
+        --max_job 1 \
+        --threads 1 2>&1
+)" || rc=$?
+
+if [[
+    "${rc}" -ne 0
+    && "${out}" == *"error("*"'--typ_out' is for track output"*
+]]; then
+    record_pass "execute refuses '--typ_out' with '--report_only'"
+else
+    record_fail "execute took '--typ_out' with '--report_only' (exit ${rc})"
+fi
+
+# '--typ_sig' says what wrote the tracks for 'edger' pseudocounts only, so a
+# ratio call without an 'edger' element refuses it.
+for pse in "" 1:1; do
+    args=( --typ_sig count )
+    if [[ -n "${pse}" ]]; then args+=( --csv_pseudo "${pse}" ); fi
+    lbl="'--typ_sig' with '--csv_pseudo ${pse:-unset}'"
+    msg="'--typ_sig' applies only to '--csv_pseudo edger' elements"
+
+    rc=0
+    out="$(
+        "${TEST_BASH}" "${ROOT_REPO}/bin/execute_compute_signal.sh" \
+            --dry_run \
+            --mode ratio \
+            --csv_fil_A "${fil_A}" \
+            --csv_fil_B "${fil_B}" \
+            "${args[@]}" \
+            --dir_out "${dir_out}" \
+            --dir_eo "${dir_err}" \
+            --max_job 1 \
+            --threads 1 2>&1
+    )" || rc=$?
+
+    if [[ "${rc}" -ne 0 && "${out}" == *"error("*"${msg}"* ]]; then
+        record_pass "execute refuses ${lbl}"
+    else
+        record_fail "execute took ${lbl} (exit ${rc})"
+    fi
+
+    rc=0
+    out="$(
+        "${TEST_BASH}" "${ROOT_REPO}/bin/submit_compute_signal.sh" \
+            --env_nam "${env_nam}" \
+            --dir_scr "${ROOT_REPO}/bin" \
+            --threads 1 \
+            --dir_eo "${dir_err}" \
+            --nam_job "opt_appl_typ_sig" \
+            --mode ratio \
+            --csv_fil_A "${fil_A}" \
+            --csv_fil_B "${fil_B}" \
+            --csv_fil_out "${dir_out}/typ_sig.bedGraph.gz" \
+            "${args[@]}" 2>&1
+    )" || rc=$?
+
+    cmd="$(grep -m1 'run_py compute_signal' <<< "${out}" || true)"
+
+    if [[
+        "${rc}" -ne 0
+        && "${out}" == *"error("*"${msg}"*
+        && -z "${cmd}"
+    ]]; then
+        record_pass "submit refuses ${lbl} before any tool runs"
+    else
+        record_fail "submit took ${lbl} (exit ${rc})"
+    fi
+done
+
+# Each denominator is clamped to at least '--csv_dep_min', so with every
+# minimum above '--eps' and no '--skip_00', '--eps' warns and is not passed on;
+# a minimum at '--eps' or a '--skip_00' lets it act: dep_min|skip_00|act.
+rows_eps=(
+    "5||warn"
+    "0.5||none"
+    "5|pre_scale|none"
+)
+
+for row in "${rows_eps[@]}"; do
+    IFS='|' read -r dep skp act <<< "${row}"
+    args=( --csv_dep_min "${dep}" --eps 0.5 )
+    if [[ -n "${skp}" ]]; then args+=( --skip_00 "${skp}" ); fi
+    lbl="'--eps 0.5' with '--csv_dep_min ${dep}' and '--skip_00 ${skp:-unset}'"
+    msg="'--eps' has no effect with every '--csv_dep_min' above it"
+
+    rc=0
+    out="$(
+        "${TEST_BASH}" "${ROOT_REPO}/bin/execute_compute_signal.sh" \
+            --dry_run \
+            --mode ratio \
+            --csv_fil_A "${fil_A}" \
+            --csv_fil_B "${fil_B}" \
+            "${args[@]}" \
+            --dir_out "${dir_out}" \
+            --dir_eo "${dir_err}" \
+            --max_job 1 \
+            --threads 1 2>&1
+    )" || rc=$?
+
+    cmd="$(grep -m1 'submit_compute_signal.sh --env' <<< "${out}" || true)"
+
+    if [[
+        "${rc}" -eq 0
+        && -n "${cmd}"
+        && (
+            "${act}" == "warn"
+            && "${out}" == *"warning("*"${msg}"*
+            && "${cmd}" != *" --eps "*
+            || "${act}" == "none"
+            && "${out}" != *"has no effect"*
+            && "${cmd}" == *" --eps 0.5 "*
+        )
+    ]]; then
+        record_pass "execute handles ${lbl}"
+    else
+        record_fail "execute mishandled ${lbl} (exit ${rc})"
+    fi
+
+    rc=0
+    out="$(
+        "${TEST_BASH}" "${ROOT_REPO}/bin/submit_compute_signal.sh" \
+            --env_nam "${env_nam}" \
+            --dir_scr "${ROOT_REPO}/bin" \
+            --threads 1 \
+            --dir_eo "${dir_err}" \
+            --nam_job "opt_appl_eps" \
+            --mode ratio \
+            --csv_fil_A "${fil_A}" \
+            --csv_fil_B "${fil_B}" \
+            --csv_fil_out "${dir_out}/eps.bedGraph.gz" \
+            "${args[@]}" 2>&1
+    )" || rc=$?
+
+    cmd="$(grep -m1 'run_py compute_signal' <<< "${out}" || true)"
+
+    if [[
+        "${rc}" -eq 0
+        && -n "${cmd}"
+        && (
+            "${act}" == "warn"
+            && "${out}" == *"warning("*"${msg}"*
+            && "${cmd}" != *" --eps "*
+            || "${act}" == "none"
+            && "${out}" != *"has no effect"*
+            && "${cmd}" == *" --eps 0.5 "*
+        )
+    ]]; then
+        record_pass "submit handles ${lbl}"
+    else
+        record_fail "submit mishandled ${lbl} (exit ${rc})"
+    fi
+done
+
+
+unset row mode opt val act args rc out cmd lbl msg nam dir_edg typ n_wrn n_exp
+unset pse dep skp
 finish
