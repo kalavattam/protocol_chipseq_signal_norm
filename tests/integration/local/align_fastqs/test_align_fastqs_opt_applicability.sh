@@ -510,8 +510,8 @@ out_bth[helper]="$(
 # Each layer refuses in its own name, so a layer that forwards the pair on to
 # the next one's refusal fails here.
 declare -A who_bth=(
-    [execute]="error(execute_align_fastqs.sh): "
-    [submit]="error(submit_align_fastqs.sh): "
+    [execute]="error(execute_align_fastqs.sh::check_opts_mode): "
+    [submit]="error(submit_align_fastqs.sh::check_opts_mode): "
     [helper]="::align_fastqs): "
 )
 

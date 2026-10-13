@@ -81,11 +81,13 @@ Put the complete `message_type(script_or_function):` prefix in the first double-
 Keep every physical source line within 79 columns. Break prose at word boundaries into additional adjacent quoted arguments as needed. Do not embed leading or trailing whitespace in a prose argument: `echo` supplies the single separating space between arguments.
 
 ```bash
-echo "error(test_helpers.sh):" \
+echo "error($(basename "${0}")>$(basename "${BASH_SOURCE[0]}")):" \
     "TEST_ARTIFACT_ROOT must be an absolute non-root path. This is" \
     "additional text to make my point about breaking text across multiple" \
     "lines. Let me know if you need more information." >&2
 ```
+
+Name the reporting context as `<file>::<function>`, where `<file>` is the basename of the file that defines the reporting function (`BASH_SOURCE`) and `<function>` is that function (`FUNCNAME`). When the defining file is not the script that was run, put the run script's basename (`$0`) and `>` before it, read as "ran, then reached": `error(submit_download_fastqs.sh>download_fastqs.sh::download_fastq):`. When the two are the same file, name it once: `error(execute_download_fastqs.sh::parse_tbl_dl):`. Outside any function, the context is the file alone, `error(execute_download_fastqs.sh):` or `error(submit_download_fastqs.sh>check_source.sh):`. When no script was run, as under `bash -c` or in an interactive shell, `$0` names the shell, and the context names it the same way: `error(bash>check_inputs.sh::validate_var):`. Take the basename as `${0##*/}` with any leading `-` removed, because a login shell's `$0` is `-bash` and `basename` reads it as an option. A helper that reports on behalf of another function names that function, not itself. The shared helpers in `lib/bash/core/format_outputs.sh` derive this context; a direct `echo` writes the same visible prefix.
 
 Use `printf` or a role-appropriate diagnostic helper when formatting, escaping, exact whitespace, or arbitrary content makes adjacent fixed `echo` arguments unsuitable. Preserve the same visible prefix and output-stream contract.
 

@@ -88,6 +88,11 @@ tests/fixtures/compute_signal/**
 !tests/fixtures/compute_signal/README.md
 !tests/fixtures/compute_signal/make.sh
 
+tests/fixtures/diagnostics/**
+!tests/fixtures/diagnostics/
+!tests/fixtures/diagnostics/README.md
+!tests/fixtures/diagnostics/make.sh
+
 tests/fixtures/download_fastqs/**
 !tests/fixtures/download_fastqs/
 !tests/fixtures/download_fastqs/README.md
