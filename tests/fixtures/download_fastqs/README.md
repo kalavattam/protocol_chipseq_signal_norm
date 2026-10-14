@@ -143,6 +143,6 @@ The `source/names/` files have two 8-base records each, in ENA's form, `@<run>.<
 <br />
 
 ## Current and deferred test coverage
-The test suite covers local single-end, paired-end, and mixed-metadata downloads, as well as download verification, over loopback HTTP when gated by `RUN_DOWNLOAD=1`. It also covers local GNU Parallel dispatch for mixed metadata when gated by both `RUN_DOWNLOAD=1` and `RUN_PARALLEL=1`.
+The test suite covers local single-end, paired-end, and mixed-metadata downloads, as well as download verification and read-name restoration, over loopback HTTP when gated by `RUN_DOWNLOAD=1`. It also covers local GNU Parallel dispatch for mixed metadata when gated by both `RUN_DOWNLOAD=1` and `RUN_PARALLEL=1`.
 
-`#TODO`: Add Slurm coverage, and consider an optional external-network test gated by a future `RUN_NETWORK=1` flag. Handle issues when running tests while `env_protocol` is active.
+`#TODO`: Add Slurm coverage, and consider an optional external-network test gated by a future `RUN_NETWORK=1` flag.
