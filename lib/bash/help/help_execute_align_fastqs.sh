@@ -15,7 +15,7 @@
 # Distributed under the MIT license.
 
 
-#TODO: add support for aligner 'minibwa' to 'align_fastqs' chain.
+# TODO: add support for aligner 'minibwa' to 'align_fastqs' chain.
 # shellcheck disable=SC2154
 function help_execute_align_fastqs() {
     cat >&2 << EOM
@@ -110,8 +110,12 @@ Parameters
   -sxs, --sfx_se, --suffix_se : str
     Suffix to strip from single-end FASTQ filenames (default: '${sfx_se}').
 
+    Ignored with a warning when every entry is paired-end.
+
   -sxp, --sfx_pe, --suffix_pe : str
     Suffix to strip from paired-end FASTQ read-1 filenames (default: '${sfx_pe}').
+
+    Ignored with a warning when every entry is single-end.
 
   -deo, --dir_eo : dir
     Directory for stderr and stdout log files in TXT format (default: \${dir_out}/logs).

@@ -78,6 +78,7 @@ function source_helpers_execute() {
 function build_cmd() {
     local idx="${1:-UNSET}"
     local fil_in_i=""
+    local re_se=';[^;,]+;'  # Matches a single-end entry, which has no comma.
     local show_help
 
     unset arr_cmd_bld && declare -ga arr_cmd_bld
@@ -130,6 +131,7 @@ Notes
     bash >= 4.4
 
   - 'arr_cmd_bld' is written as a global indexed array.
+  - '--sfx_se' and '--sfx_pe' are included only when the input being run includes an entry of that layout.
   - On index handling:
 
     idx=UNSET  ->  --csv_fil_in "\${csv_fil_in}"       # Full serialized list
@@ -175,11 +177,19 @@ EOM
             --threads "${threads}"
             --csv_fil_in "${fil_in_i}"
             --dir_out "${dir_out}"
-            --sfx_se "${sfx_se}"
-            --sfx_pe "${sfx_pe}"
             --dir_eo "${dir_eo}"
             --nam_job "${nam_job}"
     )
+
+    # Each suffix passes on only when the input being run has an entry of its
+    # layout.
+    if [[ -n "${sfx_se}" && ";${fil_in_i};" =~ ${re_se} ]]; then
+        arr_cmd_bld+=( --sfx_se "${sfx_se}" )
+    fi
+
+    if [[ -n "${sfx_pe}" && "${fil_in_i}" == *,* ]]; then
+        arr_cmd_bld+=( --sfx_pe "${sfx_pe}" )
+    fi
 }
 
 
@@ -198,7 +208,9 @@ function init_arg_defs() {
     csv_fil_in=""
     dir_out=""
     sfx_se=".fastq.gz"
+    sfx_se_set=false
     sfx_pe="_R1.fastq.gz"
+    sfx_pe_set=false
     dir_eo=""
     nam_job="trim_fastqs"
     max_job=8
@@ -280,6 +292,7 @@ function parse_args() {
                     return 1
                 }
                 sfx_se="${2}"
+                sfx_se_set=true
                 shift 2
                 ;;
 
@@ -290,6 +303,7 @@ function parse_args() {
                     return 1
                 }
                 sfx_pe="${2}"
+                sfx_pe_set=true
                 shift 2
                 ;;
 
@@ -352,6 +366,8 @@ function parse_args() {
 
 # Check parsed argument values.
 function validate_args() {
+    local re_se=';[^;,]+;'  # Matches a single-end entry, which has no comma.
+
     validate_var "env_nam" "${env_nam}" || return 1
     check_env_installed "${env_nam}" || return 1
 
@@ -372,8 +388,32 @@ function validate_args() {
 
     validate_var_dir "dir_out" "${dir_out}" || return 1
 
-    validate_var "sfx_se" "${sfx_se}" || return 1
-    validate_var "sfx_pe" "${sfx_pe}" || return 1
+    # Per 'HELP.PARAMETER.APPLICABILITY', each suffix names the files of one
+    # layout, so it is required when an entry has that layout and is not passed
+    # on otherwise; only a suffix given on the command line draws a warning.
+    if [[ ";${csv_fil_in};" =~ ${re_se} ]]; then
+        validate_var "sfx_se" "${sfx_se}" || return 1
+    else
+        if [[ "${sfx_se_set}" == "true" ]]; then
+            echo_warn \
+                "'--sfx_se' has no effect with paired-end input and is" \
+                "ignored."
+        fi
+
+        sfx_se=""
+    fi
+
+    if [[ "${csv_fil_in}" == *,* ]]; then
+        validate_var "sfx_pe" "${sfx_pe}" || return 1
+    else
+        if [[ "${sfx_pe_set}" == "true" ]]; then
+            echo_warn \
+                "'--sfx_pe' has no effect with single-end input and is" \
+                "ignored."
+        fi
+
+        sfx_pe=""
+    fi
 
     if [[ -z "${dir_eo}" ]]; then dir_eo="${dir_out}/logs"; fi
     validate_var_dir "dir_eo" "${dir_eo}" || return 1

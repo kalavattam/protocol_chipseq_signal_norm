@@ -195,6 +195,8 @@ function check_string_fastqs() {
     local fq_2                 # Second FASTQ file (for PE reads).
     local sfx_pe_2             # Expected suffix for PE FASTQ read-2 files.
     local num_prt              # Number of comma-delimited fields in one entry.
+    local has_se=false         # Whether any entry is single-end.
+    local has_pe=false         # Whether any entry is paired-end.
     local show_help            # Help message.
 
     show_help=$(cat << EOM
@@ -218,10 +220,10 @@ Parameters
     Comma-separated list of input file paths. Serialized FASTQ-entry string.
 
   2  sfx_se : str
-    Suffix to strip from single-end FASTQ filenames.
+    Suffix to strip from single-end FASTQ filenames. Required when an entry is single-end; otherwise, pass an empty string, since a given suffix is ignored with a warning.
 
   3  sfx_pe : str
-    Suffix to strip from paired-end FASTQ read-1 filenames.
+    Suffix to strip from paired-end FASTQ read-1 filenames. Required when an entry is paired-end; otherwise, pass an empty string, since a given suffix is ignored with a warning.
 
 Returns
 -------
@@ -237,7 +239,7 @@ Examples
 --------
   1. Validate one existing single-end FASTQ file.
     '''bash
-    check_string_fastqs "reads/control.fastq.gz" ".fastq.gz" "_R1.fastq.gz"
+    check_string_fastqs "reads/control.fastq.gz" ".fastq.gz" ""
     '''
 
   2. Validate a serialized mixture containing one existing paired-end entry and one existing single-end entry.
@@ -254,18 +256,6 @@ EOM
     elif [[ -z "${csv_fil_in}" ]]; then
         echo_err_func "${FUNCNAME[0]}" \
             "positional argument 1, 'csv_fil_in', is missing."
-        echo >&2
-        echo "${show_help}" >&2
-        return 1
-    elif [[ -z "${sfx_se}" ]]; then
-        echo_err_func "${FUNCNAME[0]}" \
-            "positional argument 2, 'sfx_se', is missing."
-        echo >&2
-        echo "${show_help}" >&2
-        return 1
-    elif [[ -z "${sfx_pe}" ]]; then
-        echo_err_func "${FUNCNAME[0]}" \
-            "positional argument 3, 'sfx_pe', is missing."
         echo >&2
         echo "${show_help}" >&2
         return 1
@@ -286,6 +276,14 @@ EOM
         if (( num_prt == 2 )); then
             IFS=',' read -r fq_1 fq_2 <<< "${fq}"
             unset IFS
+            has_pe=true
+
+            if [[ -z "${sfx_pe}" ]]; then
+                echo_err_func "${FUNCNAME[0]}" \
+                    "positional argument 3, 'sfx_pe', is missing; paired-end" \
+                    "entry '${fq}' needs it."
+                return 1
+            fi
 
             validate_var_file "fq_1" "${fq_1}" || return 1
             validate_var_file "fq_2" "${fq_2}" || return 1
@@ -308,6 +306,14 @@ EOM
         else
             fq_1="${fq}"
             fq_2="NA"
+            has_se=true
+
+            if [[ -z "${sfx_se}" ]]; then
+                echo_err_func "${FUNCNAME[0]}" \
+                    "positional argument 2, 'sfx_se', is missing; single-end" \
+                    "entry '${fq}' needs it."
+                return 1
+            fi
 
             validate_var_file "fq_1" "${fq_1}" || return 1
 
@@ -320,12 +326,24 @@ EOM
         fi
     done
 
+    # Per 'HELP.PARAMETER.APPLICABILITY', a suffix for a layout that no entry
+    # has is warned about.
+    if [[ -n "${sfx_se}" && "${has_se}" != "true" ]]; then
+        echo_warn_func "${FUNCNAME[0]}" \
+            "'sfx_se' has no effect with paired-end input and is ignored."
+    fi
+
+    if [[ -n "${sfx_pe}" && "${has_pe}" != "true" ]]; then
+        echo_warn_func "${FUNCNAME[0]}" \
+            "'sfx_pe' has no effect with single-end input and is ignored."
+    fi
+
     return 0
 }
 
 
-#TODO: audit current usage; keep this helper even if unused
-#MAYBE: make this function "private"
+# TODO: audit current usage; keep this helper even if unused.
+# MAYBE: make this function "private".
 function get_paired_suffix() {
     local file="${1:-}"    # File to check existence.
     local sfx_pe="${2:-}"  # User-supplied PE suffix (_R1.fastq.gz, etc.).
@@ -425,8 +443,8 @@ EOM
 }
 
 
-#TODO: audit current usage; keep this helper even if unused
-#MAYBE: make this function "private"
+# TODO: audit current usage; keep this helper even if unused.
+# MAYBE: make this function "private".
 function parse_fastq_entry() {
     local fil_in="${1:-}"  # Input FASTQ entry.
     local sfx_se="${2:-}"  # Expected suffix for SE FASTQ files.
@@ -459,10 +477,10 @@ Parameters
     Input FASTQ entry.
 
   2  sfx_se : str
-    Suffix to strip from single-end FASTQ filenames.
+    Suffix to strip from single-end FASTQ filenames. Required when 'fil_in' is single-end; otherwise, pass an empty string, since a given suffix is ignored with a warning.
 
   3  sfx_pe : str
-    Suffix to strip from paired-end FASTQ read-1 filenames.
+    Suffix to strip from paired-end FASTQ read-1 filenames. Required when 'fil_in' is paired-end; otherwise, pass an empty string, since a given suffix is ignored with a warning.
 
 Returns
 -------
@@ -483,13 +501,13 @@ Examples
 --------
   1. Parse one existing single-end FASTQ and derive the sample name by removing the SE suffix.
     '''bash
-    parse_fastq_entry "reads/control.fastq.gz" ".fastq.gz" "_R1.fastq.gz"
+    parse_fastq_entry "reads/control.fastq.gz" ".fastq.gz" ""
     '''
 
   2. Parse an existing paired-end FASTQ entry while preserving its explicitly supplied read-2 path.
     '''bash
     fq_pair="reads/sample_R1.fastq.gz,reads/sample_R2.fastq.gz"
-    parse_fastq_entry "\${fq_pair}" ".fastq.gz" "_R1.fastq.gz"
+    parse_fastq_entry "\${fq_pair}" "" "_R1.fastq.gz"
     '''
 EOM
     )
@@ -500,18 +518,6 @@ EOM
     elif [[ -z "${fil_in}" ]]; then
         echo_err_func "${FUNCNAME[0]}" \
             "positional argument 1, 'fil_in', is missing."
-        echo >&2
-        echo "${show_help}" >&2
-        return 1
-    elif [[ -z "${sfx_se}" ]]; then
-        echo_err_func "${FUNCNAME[0]}" \
-            "positional argument 2, 'sfx_se', is missing."
-        echo >&2
-        echo "${show_help}" >&2
-        return 1
-    elif [[ -z "${sfx_pe}" ]]; then
-        echo_err_func "${FUNCNAME[0]}" \
-            "positional argument 3, 'sfx_pe', is missing."
         echo >&2
         echo "${show_help}" >&2
         return 1

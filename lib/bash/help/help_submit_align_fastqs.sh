@@ -27,7 +27,7 @@ Usage
     [--aligner <spec>] [--bt2_mode <spec>] [--bt2_X <int>] [--bwa_alg <spec>] [--mapq <int>] [--req_flg]
     --index <path> --csv_fil_in <csv> [--ref_fa <file>]
     --dir_out <dir> [--out_ext <format>]
-    [--qname] --sfx_se <str> --sfx_pe <str>
+    [--qname] [--sfx_se <str>] [--sfx_pe <str>]
     --dir_eo <dir> [--nam_job <str>]
 
   Submit or execute one or more FASTQ-alignment jobs by calling the downstream function 'align_fastqs'.
@@ -121,10 +121,10 @@ Parameters
     Also write a queryname-sorted copy of the final alignment file.
 
   -sxs, --sfx_se, --suffix_se : str
-    Suffix to strip from single-end FASTQ filenames.
+    Suffix to strip from single-end FASTQ filenames. Required when an entry is single-end; otherwise, ignored with a warning.
 
   -sxp, --sfx_pe, --suffix_pe : str
-    Suffix to strip from paired-end FASTQ read-1 filenames.
+    Suffix to strip from paired-end FASTQ read-1 filenames. Required when an entry is paired-end; otherwise, ignored with a warning.
 
   -deo, --dir_eo : dir
     Directory for stderr and stdout log files.
@@ -168,7 +168,6 @@ Examples
         --dir_out "\${dir_out}" \\
         --out_ext "bam" \\
         --sfx_se ".fastq.gz" \\
-        --sfx_pe "_R1.fastq.gz" \\
         --dir_eo "\${dir_eo}" \\
         --nam_job "align_bowtie2"
     '''
@@ -187,7 +186,6 @@ Examples
         --dir_out "\${dir_out}" \\
         --out_ext "cram" \\
         --req_flg \\
-        --sfx_se ".fastq.gz" \\
         --sfx_pe "_R1.fastq.gz" \\
         --dir_eo "\${dir_eo}" \\
         --nam_job "align_bwa_mem2"

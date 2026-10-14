@@ -271,17 +271,36 @@ function parse_args() {
 
 # Validate required arguments and paths.
 function validate_args() {
+    local re_se=';[^;,]+;'  # Matches a single-end entry, which has no comma.
+
     validate_var     "env_nam"    "${env_nam}"         || return 1
     validate_var_dir "dir_scr"    "${dir_scr}" 0 false || return 1
     validate_var     "threads"    "${threads}"         || return 1
     validate_var     "csv_fil_in" "${csv_fil_in}"      || return 1
     validate_var_dir "dir_out"    "${dir_out}"         || return 1
-    validate_var     "sfx_se"     "${sfx_se}"          || return 1
-    validate_var     "sfx_pe"     "${sfx_pe}"          || return 1
-    validate_var_dir "dir_eo"    "${dir_eo}"         || return 1
+    validate_var_dir "dir_eo"     "${dir_eo}"          || return 1
     validate_var     "nam_job"    "${nam_job}"         || return 1
 
     check_int_pos "${threads}" "threads" || return 1
+
+    # Per 'HELP.PARAMETER.APPLICABILITY', each suffix names the files of one
+    # layout, so it is required when an entry has that layout and is not passed
+    # on otherwise.
+    if [[ ";${csv_fil_in};" =~ ${re_se} ]]; then
+        validate_var "sfx_se" "${sfx_se}" || return 1
+    elif [[ -n "${sfx_se}" ]]; then
+        echo_warn \
+            "'--sfx_se' has no effect with paired-end input and is" \
+            "ignored."
+    fi
+
+    if [[ "${csv_fil_in}" == *,* ]]; then
+        validate_var "sfx_pe" "${sfx_pe}" || return 1
+    elif [[ -n "${sfx_pe}" ]]; then
+        echo_warn \
+            "'--sfx_pe' has no effect with single-end input and is" \
+            "ignored."
+    fi
 }
 
 
@@ -360,10 +379,10 @@ Parameters
     FASTQ input entry. For single-end data, this is one FASTQ file. For paired-end data, this is a comma-delimited FASTQ pair.
 
   2  sfx_se : str
-    Suffix to strip from single-end FASTQ filenames.
+    Suffix to strip from single-end FASTQ filenames. Required when 'fil_in' is single-end; otherwise, pass an empty string.
 
   3  sfx_pe : str
-    Suffix to strip from paired-end FASTQ read-1 filenames.
+    Suffix to strip from paired-end FASTQ read-1 filenames. Required when 'fil_in' is paired-end; otherwise, pass an empty string.
 
 Returns
 -------
@@ -387,7 +406,7 @@ Examples
     parse_entry_trim_fastq \\
         reads/sample.atria.fastq.gz \\
         .atria.fastq.gz \\
-        _R1.atria.fastq.gz
+        ""
     '''
 
   2. Capture the parsed fields for one paired-end FASTQ entry.
@@ -396,7 +415,7 @@ Examples
         parsed="\$(
             parse_entry_trim_fastq \\
                 reads/sample_R1.atria.fastq.gz,reads/sample_R2.atria.fastq.gz \\
-                .atria.fastq.gz \\
+                "" \\
                 _R1.atria.fastq.gz
         )" \\
     then
@@ -418,8 +437,6 @@ EOM
     fi
 
     validate_var "fil_in" "${fil_in}" || return 1
-    validate_var "sfx_se" "${sfx_se}" || return 1
-    validate_var "sfx_pe" "${sfx_pe}" || return 1
 
     IFS=';' read -r fq_1 fq_2 samp < <(
         parse_fastq_entry "${fil_in}" "${sfx_se}" "${sfx_pe}"
@@ -441,13 +458,24 @@ function run_one_entry() {
     local fq_1=""
     local fq_2=""
     local samp=""
+    local sfx_ent_se=""
+    local sfx_ent_pe=""
     local log_out=""
     local log_err=""
 
     if [[ "${debug}" == "true" ]]; then debug_var "fil_in=${fil_in}"; fi
 
+    # An entry uses only the suffix for its own layout.
+    if [[ "${fil_in}" == *,* ]]; then
+        sfx_ent_se=""
+        sfx_ent_pe="${sfx_pe}"
+    else
+        sfx_ent_se="${sfx_se}"
+        sfx_ent_pe=""
+    fi
+
     IFS=';' read -r fq_1 fq_2 samp < <(
-        parse_entry_trim_fastq "${fil_in}" "${sfx_se}" "${sfx_pe}"
+        parse_entry_trim_fastq "${fil_in}" "${sfx_ent_se}" "${sfx_ent_pe}"
     ) || return 1
 
     log_out="${dir_eo}/${nam_job}.${samp}.stdout.txt"
@@ -482,6 +510,8 @@ function run_slurm_task() {
     local fq_1=""
     local fq_2=""
     local samp=""
+    local sfx_ent_se=""
+    local sfx_ent_pe=""
     local err_ini=""
     local out_ini=""
     local err_dsc=""
@@ -508,8 +538,17 @@ function run_slurm_task() {
 
     if [[ "${debug}" == "true" ]]; then debug_var "fil_in=${fil_in}"; fi
 
+    # An entry uses only the suffix for its own layout.
+    if [[ "${fil_in}" == *,* ]]; then
+        sfx_ent_se=""
+        sfx_ent_pe="${sfx_pe}"
+    else
+        sfx_ent_se="${sfx_se}"
+        sfx_ent_pe=""
+    fi
+
     IFS=';' read -r fq_1 fq_2 samp < <(
-        parse_entry_trim_fastq "${fil_in}" "${sfx_se}" "${sfx_pe}"
+        parse_entry_trim_fastq "${fil_in}" "${sfx_ent_se}" "${sfx_ent_pe}"
     ) || return 1
 
     IFS=',' read -r err_ini out_ini err_dsc out_dsc < <(

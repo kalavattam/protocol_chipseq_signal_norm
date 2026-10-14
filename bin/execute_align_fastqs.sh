@@ -78,6 +78,7 @@ function source_helpers_execute() {
 function build_cmd() {
     local idx="${1:-UNSET}"
     local fil_in_i=""
+    local re_se=';[^;,]+;'  # Matches a single-end entry, which has no comma.
     local show_help
 
     unset arr_cmd_bld && declare -ga arr_cmd_bld
@@ -134,6 +135,7 @@ Notes
   - 'arr_cmd_bld' is written as a global indexed array.
   - The reference FASTA argument is included only when 'out_ext=cram'.
   - '--req_flg' is included only when the input being run includes a paired-end entry; a single-end entry run on its own gets none.
+  - '--sfx_se' and '--sfx_pe' are included only when the input being run includes an entry of that layout.
   - Flag-only options are added as separate array elements.
   - On index handling:
 
@@ -183,8 +185,6 @@ EOM
             --csv_fil_in "${fil_in_i}"
             --dir_out "${dir_out}"
             --out_ext "${out_ext}"
-            --sfx_se "${sfx_se}"
-            --sfx_pe "${sfx_pe}"
             --dir_eo "${dir_eo}"
             --nam_job "${nam_job}"
     )
@@ -193,6 +193,16 @@ EOM
         bowtie2) arr_cmd_bld+=( --bt2_mode "${bt2_mode}" ) ;;
         bwa)     arr_cmd_bld+=( --bwa_alg "${bwa_alg}" ) ;;
     esac
+
+    # Each suffix passes on only when the input being run has an entry of its
+    # layout.
+    if [[ -n "${sfx_se}" && ";${fil_in_i};" =~ ${re_se} ]]; then
+        arr_cmd_bld+=( --sfx_se "${sfx_se}" )
+    fi
+
+    if [[ -n "${sfx_pe}" && "${fil_in_i}" == *,* ]]; then
+        arr_cmd_bld+=( --sfx_pe "${sfx_pe}" )
+    fi
 
     # A paired-end entry holds two comma-separated files; a single-end entry
     # run on its own gets no '--req_flg'.
@@ -250,7 +260,9 @@ function init_arg_defs() {
     dir_out=""
     qname=false
     sfx_se=".atria.fastq.gz"
+    sfx_se_set=false
     sfx_pe="_R1.atria.fastq.gz"
+    sfx_pe_set=false
     dir_eo=""
     nam_job="align_fastqs"
     max_job=6
@@ -432,6 +444,7 @@ function parse_args() {
                     return 1
                 }
                 sfx_se="${2}"
+                sfx_se_set=true
                 shift 2
                 ;;
 
@@ -442,6 +455,7 @@ function parse_args() {
                     return 1
                 }
                 sfx_pe="${2}"
+                sfx_pe_set=true
                 shift 2
                 ;;
 
@@ -505,6 +519,8 @@ function parse_args() {
 # Per 'HELP.PARAMETER.APPLICABILITY', refuse or warn about options that have no
 # effect with these settings.
 function check_opts_mode() {
+    local re_se=';[^;,]+;'  # Matches a single-end entry, which has no comma.
+
     # Each aligner takes only its own options.
     check_opt_applies \
         refuse \
@@ -568,6 +584,33 @@ function check_opts_mode() {
             "'--bt2_inherited' has no effect with single-end input and is" \
             "ignored."
         bt2_inherited=false
+    fi
+
+    # Each suffix names the files of one layout, so it is required when an
+    # entry has that layout and is not passed on otherwise; only a suffix given
+    # on the command line draws a warning.
+    if [[ ";${csv_fil_in};" =~ ${re_se} ]]; then
+        validate_var "sfx_se" "${sfx_se}" || return 1
+    else
+        if [[ "${sfx_se_set}" == "true" ]]; then
+            echo_warn \
+                "'--sfx_se' has no effect with paired-end input and is" \
+                "ignored."
+        fi
+
+        sfx_se=""
+    fi
+
+    if [[ "${csv_fil_in}" == *,* ]]; then
+        validate_var "sfx_pe" "${sfx_pe}" || return 1
+    else
+        if [[ "${sfx_pe_set}" == "true" ]]; then
+            echo_warn \
+                "'--sfx_pe' has no effect with single-end input and is" \
+                "ignored."
+        fi
+
+        sfx_pe=""
     fi
 }
 
@@ -654,9 +697,6 @@ function validate_args() {
         "$(dirname "${csv_fil_in%%[,;]*}")" 0 false || return 1
 
     validate_var_dir "dir_out" "${dir_out}" || return 1
-
-    validate_var "sfx_se" "${sfx_se}" || return 1
-    validate_var "sfx_pe" "${sfx_pe}" || return 1
 
     if [[ -z "${dir_eo}" ]]; then dir_eo="${dir_out}/logs"; fi
     validate_var_dir "dir_eo" "${dir_eo}" || return 1

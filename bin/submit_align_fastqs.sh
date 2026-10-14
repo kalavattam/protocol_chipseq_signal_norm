@@ -118,10 +118,10 @@ Parameters
     FASTQ input entry. For single-end data, this is one FASTQ file. For paired-end data, this is a comma-delimited FASTQ pair.
 
   2  sfx_se : str
-    Suffix to strip from single-end FASTQ filenames when deriving the sample name.
+    Suffix to strip from single-end FASTQ filenames when deriving the sample name. Required when 'fil_in' is single-end; otherwise, pass an empty string.
 
   3  sfx_pe : str
-    Suffix to strip from paired-end FASTQ read-1 filenames when deriving the sample name.
+    Suffix to strip from paired-end FASTQ read-1 filenames when deriving the sample name. Required when 'fil_in' is paired-end; otherwise, pass an empty string.
 
   4  dir_out : dir
     Output directory used to construct the alignment fil_out path.
@@ -152,7 +152,7 @@ Examples
     parse_entry_align_fastq \\
         tests/fixtures/align_fastqs/fastq/se/tiny_se.atria.fastq.gz \\
         .atria.fastq.gz \\
-        _R1.atria.fastq.gz \\
+        "" \\
         work \\
         bam
     '''
@@ -161,7 +161,7 @@ Examples
     '''bash
     parse_entry_align_fastq \\
         tests/fixtures/align_fastqs/fastq/pe/tiny_pe_R1.atria.fastq.gz,tests/fixtures/align_fastqs/fastq/pe/tiny_pe_R2.atria.fastq.gz \\
-        .atria.fastq.gz \\
+        "" \\
         _R1.atria.fastq.gz \\
         work \\
         cram
@@ -181,8 +181,6 @@ EOM
     fi
 
     validate_var "fil_in"  "${fil_in}"  || return 1
-    validate_var "sfx_se"  "${sfx_se}"  || return 1
-    validate_var "sfx_pe"  "${sfx_pe}"  || return 1
     validate_var "dir_out" "${dir_out}" || return 1
 
     IFS=';' read -r fq_1 fq_2 samp < <(
@@ -779,8 +777,6 @@ function validate_args() {
     validate_var     "index"      "${index}"           || return 1
     validate_var     "csv_fil_in" "${csv_fil_in}"      || return 1
     validate_var_dir "dir_out"    "${dir_out}"         || return 1
-    validate_var     "sfx_se"     "${sfx_se}"          || return 1
-    validate_var     "sfx_pe"     "${sfx_pe}"          || return 1
     validate_var_dir "dir_eo"     "${dir_eo}"          || return 1
     validate_var     "nam_job"    "${nam_job}"         || return 1
 
@@ -843,6 +839,8 @@ function validate_args() {
 # Per 'HELP.PARAMETER.APPLICABILITY', refuse or warn about options that have no
 # effect with these settings.
 function check_opts_mode() {
+    local re_se=';[^;,]+;'  # Matches a single-end entry, which has no comma.
+
     # Each aligner takes only its own options.
     check_opt_applies \
         refuse \
@@ -910,6 +908,24 @@ function check_opts_mode() {
 
     # A default is not passed on, so 'align_fastqs' applies its own.
     if [[ "${bt2_X_set}" != "true" ]]; then bt2_X=""; fi
+
+    # Each suffix names the files of one layout, so it is required when an
+    # entry has that layout and is not passed on otherwise.
+    if [[ ";${csv_fil_in};" =~ ${re_se} ]]; then
+        validate_var "sfx_se" "${sfx_se}" || return 1
+    elif [[ -n "${sfx_se}" ]]; then
+        echo_warn \
+            "'--sfx_se' has no effect with paired-end input and is" \
+            "ignored."
+    fi
+
+    if [[ "${csv_fil_in}" == *,* ]]; then
+        validate_var "sfx_pe" "${sfx_pe}" || return 1
+    elif [[ -n "${sfx_pe}" ]]; then
+        echo_warn \
+            "'--sfx_pe' has no effect with single-end input and is" \
+            "ignored."
+    fi
 }
 
 
@@ -974,7 +990,7 @@ function print_vecs_debug() {
 # Parse one input entry and run one alignment.
 function run_job() {
     local fil_in="${1:-}"
-    local fq_1 fq_2 samp fil_out
+    local fq_1 fq_2 samp fil_out sfx_ent_se sfx_ent_pe
 
     if [[ -z "${fil_in}" ]]; then
         echo_err_func "${FUNCNAME[0]}" \
@@ -984,9 +1000,19 @@ function run_job() {
 
     if [[ "${debug}" == "true" ]]; then debug_var "fil_in=${fil_in}"; fi
 
+    # An entry uses only the suffix for its own layout.
+    if [[ "${fil_in}" == *,* ]]; then
+        sfx_ent_se=""
+        sfx_ent_pe="${sfx_pe}"
+    else
+        sfx_ent_se="${sfx_se}"
+        sfx_ent_pe=""
+    fi
+
     IFS=';' read -r fq_1 fq_2 samp fil_out < <(
         parse_entry_align_fastq \
-            "${fil_in}" "${sfx_se}" "${sfx_pe}" "${dir_out}" "${out_ext}"
+            "${fil_in}" "${sfx_ent_se}" "${sfx_ent_pe}" \
+            "${dir_out}" "${out_ext}"
     ) || return 1
 
     if [[ "${debug}" == "true" ]]; then
@@ -1014,7 +1040,7 @@ function run_job() {
 # Parse Slurm task state and run one array task.
 function run_job_slurm() {
     local err_dsc err_ini id_job id_tsk idx fil_in out_dsc out_ini
-    local fq_1 fq_2 samp fil_out
+    local fq_1 fq_2 samp fil_out sfx_ent_se sfx_ent_pe
 
     id_job="${SLURM_ARRAY_JOB_ID:-}"
     id_tsk="${SLURM_ARRAY_TASK_ID:-}"
@@ -1038,9 +1064,19 @@ function run_job_slurm() {
 
     if [[ "${debug}" == "true" ]]; then debug_var "fil_in=${fil_in}"; fi
 
+    # An entry uses only the suffix for its own layout.
+    if [[ "${fil_in}" == *,* ]]; then
+        sfx_ent_se=""
+        sfx_ent_pe="${sfx_pe}"
+    else
+        sfx_ent_se="${sfx_se}"
+        sfx_ent_pe=""
+    fi
+
     IFS=';' read -r fq_1 fq_2 samp fil_out < <(
         parse_entry_align_fastq \
-            "${fil_in}" "${sfx_se}" "${sfx_pe}" "${dir_out}" "${out_ext}"
+            "${fil_in}" "${sfx_ent_se}" "${sfx_ent_pe}" \
+            "${dir_out}" "${out_ext}"
     ) || return 1
 
     if [[ "${debug}" == "true" ]]; then

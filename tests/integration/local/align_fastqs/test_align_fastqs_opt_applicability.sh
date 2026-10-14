@@ -24,8 +24,9 @@ source "$(
 
 
 # Define fixture and output paths. Per 'HELP.PARAMETER.APPLICABILITY', each
-# aligner refuses the other's option; '--ref_fa' without CRAM and an all-SE
-# '--req_flg' are ignored with a warning.
+# aligner refuses the other's option; '--ref_fa' without CRAM, an all-SE
+# '--req_flg', and a suffix for a layout no entry has are ignored with a
+# warning.
 dir_fx="${ROOT_REPO}/tests/fixtures/align_fastqs"
 in_se="${dir_fx}/fastq/se/tiny_se.atria.fastq.gz"
 in_pe_1="${dir_fx}/fastq/pe/tiny_pe_R1.atria.fastq.gz"
@@ -43,6 +44,10 @@ msg_bm2="'--bwa_alg' has no effect with '--aligner bwa-mem2'"
 msg_bx="'--bt2_X' has no effect with single-end input"
 msg_bi="'--bt2_inherited' has no effect with single-end input"
 msg_both="'--bt2_X' has no effect with '--bt2_inherited'"
+msg_sse="'--sfx_se' has no effect with paired-end input"
+msg_spe="'--sfx_pe' has no effect with single-end input"
+sfx_se=".atria.fastq.gz"
+sfx_pe="_R1.atria.fastq.gz"
 
 # Each aligner with its index.
 a_bt2="--aligner bowtie2 --index ${idx_bt2}"
@@ -73,9 +78,10 @@ require_files_nonempty \
 }
 
 
-# 'execute' rows are dry runs: label|input ('se' or 'mix')|arguments|act.
-# Refused rows name the option; warned rows warn and drop it; control rows do
-# neither and pass on the option they name.
+# 'execute' rows are dry runs: label|input ('se', 'pe', or 'mix')|arguments|
+# act. Refused rows name the option; warned rows warn and drop it; control rows
+# do neither and pass on the option they name; dropped rows do not warn but
+# pass on no default for the option they name.
 ref_cram="--ref_fa ${ref_fa} --out_ext cram"
 rows_exe=(
     "--bt2_mode with bwa|se|${a_bwa} --bt2_mode local|refuse --bt2_mode"
@@ -96,11 +102,18 @@ rows_exe=(
     "--bt2_X with a PE entry|mix|${a_bt2} --bt2_X 800|pass --bt2_X"
     "--bt2_inherited with a PE entry|mix|${a_bt2} -2i|pass --bt2_inherited"
     "--time without --slurm|se|${a_bt2} --time 1:00:00|warn --time"
+    "--sfx_pe with SE only|se|${a_bt2} --sfx_pe ${sfx_pe}|warn --sfx_pe"
+    "--sfx_se with PE only|pe|${a_bt2} --sfx_se ${sfx_se}|warn --sfx_se"
+    "--sfx_pe with a PE entry|mix|${a_bt2} --sfx_pe ${sfx_pe}|pass --sfx_pe"
+    "--sfx_se with an SE entry|mix|${a_bt2} --sfx_se ${sfx_se}|pass --sfx_se"
+    "default --sfx_pe with SE only|se|${a_bt2}|drop --sfx_pe"
+    "default --sfx_se with PE only|pe|${a_bt2}|drop --sfx_se"
 )
 
 for idx in "${!rows_exe[@]}"; do
     IFS='|' read -r lbl inp arg act <<< "${rows_exe[idx]}"
     csv="${in_se}"
+    if [[ "${inp}" == "pe" ]]; then csv="${in_pe}"; fi
     if [[ "${inp}" == "mix" ]]; then csv="${in_se};${in_pe}"; fi
     read -r -a args <<< "${arg}"
     read -r -a acts <<< "${act}"
@@ -161,8 +174,57 @@ for idx in "${!rows_exe[@]}"; do
                 record_fail "${lbl} was dropped or flagged (exit ${rc})"
             fi
             ;;
+
+        drop)
+            if [[
+                "${rc}" -eq 0
+                && -n "${cmd}"
+                && "${cmd}" != *" ${opt}"*
+                && "${out}" != *"has no effect"*
+            ]]; then
+                record_pass "${lbl} is not passed on, with no message"
+            else
+                record_fail "${lbl} was passed on or flagged (exit ${rc})"
+            fi
+            ;;
     esac
 done
+
+
+# Run per entry, each command passes on only the suffix for its own layout.
+dir_out="${tmp}/exe_sfx_entry"
+mkdir -p "${dir_out}/logs"
+
+rc=0
+out="$(
+    "${TEST_BASH}" "${ROOT_REPO}/bin/execute_align_fastqs.sh" \
+        --dry_run \
+        --aligner bowtie2 \
+        --index "${idx_bt2}" \
+        --threads 1 \
+        --csv_fil_in "${in_se};${in_pe}" \
+        --dir_out "${dir_out}" \
+        --dir_eo "${dir_out}/logs" \
+        --max_job 2 \
+        --sfx_se "${sfx_se}" \
+        --sfx_pe "${sfx_pe}" 2>&1
+)" || rc=$?
+
+pat="submit_align_fastqs.sh --env"
+cmd_se="$(grep -m1 "${pat}.*tiny_se\." <<< "${out}" || true)"
+cmd_pe="$(grep -m1 "${pat}.*tiny_pe_R1" <<< "${out}" || true)"
+
+if [[
+    "${rc}" -eq 0
+    && "${cmd_se}" == *" --sfx_se "* && "${cmd_se}" != *" --sfx_pe "*
+    && "${cmd_pe}" == *" --sfx_pe "* && "${cmd_pe}" != *" --sfx_se "*
+    && "${out}" != *"has no effect"*
+]]; then
+    record_pass "execute passes each entry only its own suffix"
+else
+    record_fail \
+        "execute passed an entry the other layout's suffix (exit ${rc})"
+fi
 
 # Run in parallel, a mixed list gets one command per entry, and only the
 # paired-end entry gets '--req_flg', so the single-end entry's log stays free
@@ -387,6 +449,87 @@ else
 fi
 
 
+# A suffix for a layout no entry has warns, and the entries still align; a
+# missing suffix for a layout an entry has is refused before aligning. The
+# mixed '--req_flg' run above passed both suffixes, and neither layer warned.
+# label|input ('se' or 'pe')|arguments|act|message
+o_se="--sfx_se ${sfx_se}"
+o_pe="--sfx_pe ${sfx_pe}"
+rows_sfx=(
+    "--sfx_pe with SE only|se|${o_se} ${o_pe}|warn|${msg_spe}"
+    "--sfx_se with PE only|pe|${o_se} ${o_pe}|warn|${msg_sse}"
+    "no --sfx_se with an SE entry|se|${o_pe}|refuse|'sfx_se' is empty"
+    "no --sfx_pe with a PE entry|pe|${o_se}|refuse|'sfx_pe' is empty"
+    "only --sfx_se with SE only|se|${o_se}|pass|"
+    "only --sfx_pe with PE only|pe|${o_pe}|pass|"
+)
+
+for idx in "${!rows_sfx[@]}"; do
+    IFS='|' read -r lbl inp arg act msg <<< "${rows_sfx[idx]}"
+    csv="${in_se}"
+    stm="tiny_se"
+    if [[ "${inp}" == "pe" ]]; then csv="${in_pe}"; stm="tiny_pe"; fi
+    read -r -a args <<< "${arg}"
+    dir_out="${tmp}/sub_sfx_${idx}"
+    lbl="submit ${lbl}"
+    mkdir -p "${dir_out}/logs"
+
+    rc=0
+    out="$(
+        "${TEST_BASH}" "${ROOT_REPO}/bin/submit_align_fastqs.sh" \
+            --env_nam "${env_nam}" \
+            --dir_scr "${ROOT_REPO}/bin" \
+            --threads 1 \
+            --aligner bowtie2 \
+            --index "${idx_bt2}" \
+            --csv_fil_in "${csv}" \
+            --dir_out "${dir_out}" \
+            --dir_eo "${dir_out}/logs" \
+            "${args[@]}" 2>&1
+    )" || rc=$?
+
+    case "${act}" in
+        refuse)
+            if [[
+                "${rc}" -ne 0
+                && "${out}" == *"error("*"${msg}"*
+                && ! -e "${dir_out}/${stm}.bam"
+            ]]; then
+                record_pass "${lbl} is refused before aligning"
+            else
+                record_fail "${lbl} was not refused (exit ${rc})"
+            fi
+            ;;
+
+        warn)
+            if [[
+                "${rc}" -eq 0
+                && "${out}" == *"warning(submit_align_fastqs.sh"*"${msg}"*
+                && "${out}" != *"::check_string_fastqs): "*
+                && -s "${dir_out}/${stm}.bam"
+            ]]; then
+                record_pass "${lbl} warns once and aligns"
+            else
+                record_fail \
+                    "${lbl} did not warn once, or did not align (exit ${rc})"
+            fi
+            ;;
+
+        pass)
+            if [[
+                "${rc}" -eq 0
+                && "${out}" != *"has no effect"*
+                && -s "${dir_out}/${stm}.bam"
+            ]]; then
+                record_pass "${lbl} aligns with no message"
+            else
+                record_fail "${lbl} was flagged, or did not align (exit ${rc})"
+            fi
+            ;;
+    esac
+done
+
+
 # The helper checks on its own.
 function run_helper() {
     # shellcheck disable=SC2016  # Expand in the child shell, not this one.
@@ -580,6 +723,84 @@ else
         "helper did not stop at a Step 1 failure with one error by name" \
         "(exit ${rc}; ${n_err} errors)"
 fi
+
+
+# The FASTQ-entry check enforces the suffixes on its own.
+function run_check_fastqs() {
+    # shellcheck disable=SC2016  # Expand in the child shell, not this one.
+    "${TEST_BASH}" -c '
+        # shellcheck source=lib/bash/core/source_helpers.sh
+        source "${1}/lib/bash/core/source_helpers.sh"
+
+        source_helpers "${1}/lib/bash" \
+            core/check_args \
+            core/check_inputs \
+            core/format_outputs \
+            workflows/process_sequences
+        shift 1
+        check_string_fastqs "$@"
+    ' _ "${ROOT_REPO}" "$@" 2>&1
+}
+
+
+# label|input ('se', 'pe', or 'mix')|sfx_se|sfx_pe|act|message
+fn_chk="::check_string_fastqs): "
+chk_spe="'sfx_pe' has no effect with single-end input"
+chk_sse="'sfx_se' has no effect with paired-end input"
+chk_nse="positional argument 2, 'sfx_se', is missing;"
+chk_npe="positional argument 3, 'sfx_pe', is missing;"
+rows_chk=(
+    "sfx_pe with SE only|se|${sfx_se}|${sfx_pe}|warn|${chk_spe}"
+    "sfx_se with PE only|pe|${sfx_se}|${sfx_pe}|warn|${chk_sse}"
+    "no sfx_se with an SE entry|mix||${sfx_pe}|refuse|${chk_nse}"
+    "no sfx_pe with a PE entry|mix|${sfx_se}||refuse|${chk_npe}"
+    "both suffixes with a mixed list|mix|${sfx_se}|${sfx_pe}|pass|"
+    "only sfx_se with SE only|se|${sfx_se}||pass|"
+    "only sfx_pe with PE only|pe||${sfx_pe}|pass|"
+)
+
+for idx in "${!rows_chk[@]}"; do
+    IFS='|' read -r lbl inp s_se s_pe act msg <<< "${rows_chk[idx]}"
+    csv="${in_se}"
+    if [[ "${inp}" == "pe" ]]; then csv="${in_pe}"; fi
+    if [[ "${inp}" == "mix" ]]; then csv="${in_se};${in_pe}"; fi
+    lbl="check_string_fastqs ${lbl}"
+
+    rc=0
+    out="$(run_check_fastqs "${csv}" "${s_se}" "${s_pe}")" || rc=$?
+
+    case "${act}" in
+        refuse)
+            if [[
+                "${rc}" -ne 0
+                && "${out}" == *"error("*"${fn_chk}${msg}"*
+            ]]; then
+                record_pass "${lbl} is refused by name"
+            else
+                record_fail "${lbl} was not refused by name (exit ${rc})"
+            fi
+            ;;
+
+        warn)
+            if [[
+                "${rc}" -eq 0
+                && "${out}" == *"warning("*"${fn_chk}${msg}"*
+            ]]; then
+                record_pass "${lbl} warns"
+            else
+                record_fail "${lbl} did not warn (exit ${rc})"
+            fi
+            ;;
+
+        pass)
+            if [[ "${rc}" -eq 0 && -z "${out}" ]]; then
+                record_pass "${lbl} is accepted with no message"
+            else
+                record_fail "${lbl} was not accepted quietly (exit ${rc})"
+            fi
+            ;;
+    esac
+done
 
 
 finish

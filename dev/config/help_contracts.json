@@ -1564,7 +1564,7 @@
           "symbol": "parse_entry_trim_fastq",
           "parameter": "sfx_se",
           "owner": "PARAMETER.DESCRIPTIONS",
-          "evidence": "Parameters row for 'sfx_se': Suffix to strip from single-end FASTQ filenames."
+          "evidence": "Parameters row for 'sfx_se': Suffix to strip from single-end FASTQ filenames. Required when 'fil_in' is single-end; otherwise, pass an empty string."
         }
       ],
       "local_meanings": [],
@@ -1581,7 +1581,7 @@
           "symbol": "parse_entry_trim_fastq",
           "parameter": "sfx_pe",
           "owner": "PARAMETER.DESCRIPTIONS",
-          "evidence": "Parameters row for 'sfx_pe': Suffix to strip from paired-end FASTQ read-1 filenames."
+          "evidence": "Parameters row for 'sfx_pe': Suffix to strip from paired-end FASTQ read-1 filenames. Required when 'fil_in' is paired-end; otherwise, pass an empty string."
         }
       ],
       "local_meanings": [],
@@ -1598,7 +1598,7 @@
           "symbol": "help_submit_align_fastqs",
           "parameter": "suffix_se",
           "owner": "PARAMETER.DESCRIPTIONS",
-          "evidence": "Parameters row for 'suffix_se': Suffix to strip from single-end FASTQ filenames."
+          "evidence": "Parameters row for 'suffix_se': Suffix to strip from single-end FASTQ filenames. Required when an entry is single-end; otherwise, ignored with a warning."
         }
       ],
       "local_meanings": [],
@@ -1615,7 +1615,7 @@
           "symbol": "help_submit_align_fastqs",
           "parameter": "suffix_pe",
           "owner": "PARAMETER.DESCRIPTIONS",
-          "evidence": "Parameters row for 'suffix_pe': Suffix to strip from paired-end FASTQ read-1 filenames."
+          "evidence": "Parameters row for 'suffix_pe': Suffix to strip from paired-end FASTQ read-1 filenames. Required when an entry is paired-end; otherwise, ignored with a warning."
         }
       ],
       "local_meanings": [],

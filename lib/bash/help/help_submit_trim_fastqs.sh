@@ -25,7 +25,7 @@ Usage
     [--help]
     [--env_nam <str>] [--dir_scr <dir>] [--threads <int>]
     --csv_fil_in <csv> --dir_out <dir>
-    --sfx_se <str> --sfx_pe <str>
+    [--sfx_se <str>] [--sfx_pe <str>]
     --dir_eo <dir> [--nam_job <str>]
 
   Submit or execute one or more FASTQ-trimming jobs by calling downstream program 'atria'.
@@ -64,10 +64,10 @@ Parameters
     Directory for trimmed FASTQ output files.
 
   -sxs, --sfx_se, --suffix_se : str
-    Suffix to strip from single-end FASTQ filenames.
+    Suffix to strip from single-end FASTQ filenames. Required when an entry is single-end; otherwise, ignored with a warning.
 
   -sxp, --sfx_pe, --suffix_pe : str
-    Suffix to strip from paired-end FASTQ read-1 filenames.
+    Suffix to strip from paired-end FASTQ read-1 filenames. Required when an entry is paired-end; otherwise, ignored with a warning.
 
   -deo, --dir_eo : dir
     Directory for stderr and stdout log files.
@@ -102,7 +102,6 @@ Examples
         --csv_fil_in "\${dir_fastq}/sample.fastq.gz" \\
         --dir_out "\${dir_out}" \\
         --sfx_se ".fastq.gz" \\
-        --sfx_pe "_R1.fastq.gz" \\
         --dir_eo "\${dir_eo}" \\
         --nam_job "trim_se"
     '''
@@ -115,7 +114,6 @@ Examples
         --threads 4 \\
         --csv_fil_in "\${dir_fastq}/sample_1_R1.fastq.gz,\${dir_fastq}/sample_1_R2.fastq.gz;\${dir_fastq}/sample_2_R1.fastq.gz,\${dir_fastq}/sample_2_R2.fastq.gz" \\
         --dir_out "\${dir_out}" \\
-        --sfx_se ".fastq.gz" \\
         --sfx_pe "_R1.fastq.gz" \\
         --dir_eo "\${dir_eo}" \\
         --nam_job "trim_pe"

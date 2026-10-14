@@ -58,8 +58,12 @@ Parameters
   -sxs, --sfx_se, --suffix_se : str
     Suffix to strip from single-end FASTQ filenames (default: '${sfx_se}').
 
+    Ignored with a warning when every entry is paired-end.
+
   -sxp, --sfx_pe, --suffix_pe : str
     Suffix to strip from paired-end FASTQ read-1 filenames (default: '${sfx_pe}').
+
+    Ignored with a warning when every entry is single-end.
 
   -deo, --dir_eo : dir
     Directory for stderr and stdout log files (default: '\${dir_out}/logs').
@@ -115,7 +119,6 @@ Examples
         --threads 8 \\
         --csv_fil_in "\${HOME}/path/samp_1_R1.fastq.gz,\${HOME}/path/samp_1_R2.fastq.gz;\${HOME}/path/samp_2_R1.fastq.gz,\${HOME}/path/samp_2_R2.fastq.gz" \\
         --dir_out "\${HOME}/path/output/dir" \\
-        --sfx_se ".fastq.gz" \\
         --sfx_pe "_R1.fastq.gz" \\
         --dir_eo "\${HOME}/path/output/logs" \\
         --max_job 2 \\
