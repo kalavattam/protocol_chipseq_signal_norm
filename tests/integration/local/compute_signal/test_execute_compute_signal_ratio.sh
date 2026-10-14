@@ -1067,7 +1067,7 @@ unset n_bad idx nam log_mix exp_mix
 # A single value applies to every pair: one 'edger' still derives each pair's
 # own pseudocount, and one scale factor and floor reach both.
 for case_bc in \
-    "edg|--csv_pseudo edger --prior_count 1" \
+    "edg|--csv_pseudo edger --typ_sig count --prior_count 1" \
     "scl|--csv_scl_fct 2:1 --csv_dep_min 0.5 --csv_pseudo NA"
 do
     IFS='|' read -r tag_bc opt_bc <<< "${case_bc}"
@@ -1078,7 +1078,6 @@ do
         --threads 1 \
         --mode ratio \
         --method log2 \
-        --typ_sig count \
         --csv_fil_A "${trk_A},${trk_B}" \
         --csv_fil_B "${trk_B},${trk_A}" \
         --dir_out "${dir_edg}" \

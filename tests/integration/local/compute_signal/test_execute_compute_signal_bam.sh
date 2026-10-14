@@ -511,7 +511,6 @@ bash "${ROOT_REPO}/bin/execute_compute_signal.sh" \
     --csv_fil_in "${in_se}" \
     --dir_out "${dir_only}" \
     --dir_eo "${dir_err}" \
-    --typ_out bedGraph \
     --siz_bin 10 \
     --report_only \
     > /dev/null 2>&1 || true

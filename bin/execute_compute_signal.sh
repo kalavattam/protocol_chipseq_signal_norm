@@ -469,12 +469,13 @@ EOM
             --csv_pseudo "${pseudo}"
         )
 
-        if [[ -n "${typ_sig}" ]]; then
+        # Forward '--typ_sig' and '--prior_count' only when this call has an
+        # 'edger' element; 'submit' refuses both for a call with only literal
+        # pseudocounts.
+        if [[ -n "${typ_sig}" && ",${pseudo}," == *",edger,"* ]]; then
             arr_cmd_bld+=( --typ_sig "${typ_sig}" )
         fi
 
-        # Forward '--prior_count' only when this call has an 'edger' element;
-        # 'submit' refuses it for a call with only literal pseudocounts.
         if [[ -n "${prior_count}" && ",${pseudo}," == *",edger,"* ]]; then
             arr_cmd_bld+=( --prior_count "${prior_count}" )
         fi
