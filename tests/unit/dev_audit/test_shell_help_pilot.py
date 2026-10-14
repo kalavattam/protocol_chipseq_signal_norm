@@ -1843,11 +1843,11 @@ EOM
         submit = windows["bin/submit_download_fastqs.sh"]
 
         self.assertIn(
-            "-h|--hlp|--help)",
+            'scan_help_args "$@"',
             submit["early_help"]["rendered_evidence"],
         )
         self.assertIn(
-            "help_submit_download_fastqs >&2",
+            "help_submit_download_fastqs",
             submit["early_help"]["rendered_evidence"],
         )
         self.assertIn("return 0", submit["early_help"]["rendered_evidence"])
@@ -1857,7 +1857,7 @@ EOM
             submit["bootstrap_dir_scr"]["rendered_evidence"],
         )
         self.assertIn(
-            'printf \'%s\\n\' "${args[i + 1]}"',
+            'printf \'%s\\n\' "${arr_args[i + 1]}"',
             submit["bootstrap_dir_scr"]["rendered_evidence"],
         )
         self.assertIn(
@@ -1870,15 +1870,14 @@ EOM
             submit["keyword_validation"]["rendered_evidence"],
         )
         self.assertIn(
-            'validate_var "nam_job" "${nam_job}" || return 1',
+            'url_2="${2}"',
             submit["keyword_validation"]["rendered_evidence"],
         )
 
         for call in (
             "source_helpers_submit",
             "parse_args",
-            "validate_args",
-            "run_downloads",
+            "download_fastqs",
         ):
             self.assertIn(
                 call,
@@ -1944,8 +1943,7 @@ EOM
                             '"${dir_scr}" || return 1'
                         ),
                         'parse_args "$@"',
-                        "validate_args",
-                        "run_downloads",
+                        'download_fastqs "${arr_cmd_dl[@]}"',
                     )
                 ),
             }
