@@ -123,6 +123,12 @@ Expected globals
   dir_sym : dir
     Symlink-output directory.
 
+  use_existing : bool
+    Whether files already in 'dir_out' are checked instead of downloaded.
+
+  keep_names : bool
+    Whether the archive's read names are kept.
+
   arr_job_cus : array of str
     Parsed custom-name values.
 
@@ -147,7 +153,7 @@ Notes
     bash >= 4.4
 
   - The submit wrapper receives '--dir_scr' for bootstrap helper sourcing, followed by one keyword option per worker value.
-  - '--url_2' and the MD5 and size options are passed only when their value is not 'NA'.
+  - '--url_2' and the MD5 and size options are passed only when their value is not 'NA'; '--use_existing' and '--keep_names' only when true.
 
 Examples
 --------
@@ -200,10 +206,21 @@ EOM
         fi
     done
 
-    # shellcheck disable=SC2034
     arr_cmd_bld+=(
         --dir_out "${dir_out}"
         --dir_sym "${dir_sym}"
+    )
+
+    if [[ "${use_existing}" == "true" ]]; then
+        arr_cmd_bld+=( --use_existing )
+    fi
+
+    if [[ "${keep_names}" == "true" ]]; then
+        arr_cmd_bld+=( --keep_names )
+    fi
+
+    # shellcheck disable=SC2034
+    arr_cmd_bld+=(
         --nam_cus "${arr_job_cus[idx]}"
         --dir_eo "${dir_eo}"
         --nam_job "${nam_job}"
@@ -226,6 +243,8 @@ function init_arg_defs() {
     fil_in=""
     dir_out=""
     dir_sym=""
+    use_existing=false
+    keep_names=false
     nam_job="download_fastqs"
     dir_eo=""
     slurm=false
@@ -317,6 +336,16 @@ function parse_args() {
                 }
                 dir_sym="${2}"
                 shift 2
+                ;;
+
+            -ue|--use[_-]existing)
+                use_existing=true
+                shift 1
+                ;;
+
+            -kn|--keep[_-]names)
+                keep_names=true
+                shift 1
                 ;;
 
             -nj|--nam[_-]job)
@@ -767,6 +796,8 @@ function print_state_debug() {
     echo "fil_in=${fil_in}"
     echo "dir_out=${dir_out}"
     echo "dir_sym=${dir_sym}"
+    echo "use_existing=${use_existing}"
+    echo "keep_names=${keep_names}"
     echo "nam_job=${nam_job}"
     echo "dir_eo=${dir_eo}"
     echo "slurm=${slurm}"

@@ -24,6 +24,11 @@ Compressed source FASTQ:
 - `source/pe/tiny_download_pe_R1.fastq.gz`
 - `source/pe/tiny_download_pe_R2.fastq.gz`
 - `source/se/tiny_download_se_truncated.fastq.gz` (the single-end file without its 8-byte gzip trailer)
+- `source/names/*.fastq.gz` (read-name sources; see "Read-name restoration")
+
+Expected restored FASTQ:
+- `expected/names_pe.fastq` (both mates of the restored pair)
+- `expected/names_se.fastq`
 
 Metadata template:
 - `metadata/local_se.template.tsv`
@@ -42,6 +47,16 @@ Metadata template:
 - `metadata/local_pe_conflicting_md5.template.tsv`
 - `metadata/local_se_truncated.template.tsv`
 - `metadata/local_se_missing.template.tsv`
+- `metadata/local_names_pe.template.tsv`
+- `metadata/local_names_pe_r2_name.template.tsv`
+- `metadata/local_names_pe_order.template.tsv`
+- `metadata/local_names_pe_mate.template.tsv`
+- `metadata/local_names_pe_missing.template.tsv`
+- `metadata/local_names_se.template.tsv`
+- `metadata/local_names_se_no_mate.template.tsv`
+- `metadata/local_names_se_lost.template.tsv`
+- `metadata/local_names_sequencer_pe.template.tsv`
+- `metadata/local_names_sequencer_se.template.tsv`
 
 The compressed FASTQ files are generated with `gzip -n -c` so gzip headers do not encode timestamps or source filenames.
 
@@ -104,6 +119,26 @@ When the same accession/URL pair appears more than once with different custom na
 | `local_se_missing`         | no MD5; a URL the server does not have   | fails at once (server 404); no file left                 |
 
 `local_se.template.tsv`, with no `fastq_md5` column, gives one warning that its download is checked only with `gzip -t`.
+
+<br />
+
+## Read-name restoration
+The `tiny_download_*` sources have names that are not `<run>.<n>`, so their names need nothing: they stay as downloaded, with one note.
+
+The `source/names/` files have two 8-base records each, in ENA's form, `@<run>.<n> <Illumina name>/<mate>`, with the Illumina names `VH00699:369:AACWKJJM5:1:1101:30009:1000` and `VH00699:369:AACWKJJM5:1:1101:30236:1000`. Each bad variant breaks exactly one check:
+
+| Template                   | Sources                                                         | Expected behavior                                                                       |
+| :---                       | :---                                                            | :---                                                                                    |
+| `local_names_pe`           | `ena_R1`, `ena_R2`                                              | restored to `expected/names_pe.fastq`                                                   |
+| `local_names_pe_r2_name`   | `ena_R1`, `r2_name_R2`                                          | the second R2 name differs from R1; left as downloaded, 1 of 2 records                  |
+| `local_names_pe_order`     | `order_R1`, `order_R2`                                          | spot numbers 1 and 3; left as downloaded, 1 of 2 records                                |
+| `local_names_pe_mate`      | `mate_R1`, `ena_R2`                                             | the first R1 header ends in `/2`; left as downloaded, 1 of 2 records                    |
+| `local_names_se`           | `ena_se` (names end in `/1`)                                    | restored to `expected/names_se.fastq`                                                   |
+| `local_names_se_no_mate`   | `ena_se_no_mate` (no `/1`)                                      | restored to `expected/names_se.fastq`                                                   |
+| `local_names_se_lost`      | `lost_se` (`@<run>.<n> <n>/1`)                                  | names not stored by the archive; left as downloaded, with one note                      |
+| `local_names_sequencer_pe` | `sequencer_R1`, `sequencer_R2` (bcl-convert comment), with MD5s | names need nothing; left as downloaded, with one note and no read past the first header |
+| `local_names_sequencer_se` | `sequencer_se` (no comment)                                     | names need nothing; left as downloaded, with one note                                   |
+| `local_names_pe_missing`   | none: URLs the server lacks                                     | right MD5s and sizes of `ena_R1` and `ena_R2`; only `--use_existing` passes             |
 
 <br />
 

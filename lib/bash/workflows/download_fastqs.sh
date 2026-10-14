@@ -18,6 +18,8 @@
 # derive_fastq_path
 # verify_fastq
 # download_fastq
+# print_fastq_names_form
+# restore_fastq_names
 # link_fastqs
 # download_fastqs
 
@@ -422,6 +424,355 @@ EOM
 }
 
 
+# Print the read-name form of a FASTQ file from its first header: 'archive'
+# when the name needs restoring, 'lost' when the archive did not store it,
+# 'restored' when it was restored before, 'other' otherwise.
+function print_fastq_names_form() {
+    local fil="${1:-}"
+    local acc="${2:-}"
+    local hdr nam cmt
+    local show_help
+
+    show_help=$(cat << EOM
+Usage
+-----
+  print_fastq_names_form
+    [--help] fil acc
+
+  Print the read-name form of one gzipped FASTQ file, judged from its first header.
+
+Parameters
+----------
+  -h, --help : flag
+    Display this help message and exit.
+
+  1  fil : file
+    Gzipped FASTQ file.
+
+  2  acc : str
+    Run accession of the file.
+
+Returns
+-------
+  Prints one word to stdout and returns 0:
+    - 'archive': the name is '<acc>.<n>' and the comment holds another name, as in '@<acc>.<n> <Illumina name>/<m>'; the name needs restoring.
+    - 'lost': the name is '<acc>.<n>' and there is no comment, or the comment is '<n>' or '<n>/<m>'; the archive did not store the Illumina name.
+    - 'restored': the name is not '<acc>.<n>' and the comment is; the name was restored before.
+    - 'other': the name is not '<acc>.<n>' and the comment is not either, as in a FASTQ file straight from the sequencer; the name needs nothing.
+
+Notes
+-----
+  Runtime requirements:
+    - bash >= 4.4
+    - gzip
+    - head
+
+Examples
+--------
+  1. Check whether a downloaded mate still has the archive's headers.
+    '''bash
+    print_fastq_names_form "\${dir_out}/SRR32203047_R1.fastq.gz" SRR32203047
+    '''
+
+  2. Display the helper's argument contract.
+    '''bash
+    print_fastq_names_form --help
+    '''
+EOM
+    )
+
+    if [[ "${fil}" =~ ^(-h|--h[e]?lp)$ ]]; then
+        echo "${show_help}" >&2
+        return 0
+    elif [[ -z "${fil}" || -z "${acc}" ]]; then
+        echo_err_func "${FUNCNAME[0]}" \
+            "expected two arguments: 'fil' and 'acc'."
+        echo >&2
+        echo "${show_help}" >&2
+        return 1
+    fi
+
+    # 'head' closes the pipe early, so 'gzip' may exit on SIGPIPE.
+    hdr="$(gzip -cd < "${fil}" 2> /dev/null | head -n 1)" || true
+    nam="${hdr%% *}"
+    nam="${nam#@}"
+    cmt=""
+
+    if [[ "${hdr}" == *" "* ]]; then
+        cmt="${hdr#* }"
+    fi
+
+    # Only an '<acc>.<n>' name needs restoring; any other name is left as is.
+    if [[ ! "${nam}" =~ ^"${acc}"\.[0-9]+$ ]]; then
+        if [[ "${cmt}" =~ ^"${acc}"\.[0-9]+$ ]]; then
+            echo restored
+        else
+            echo other
+        fi
+    elif [[ -z "${cmt}" || "${cmt}" =~ ^[0-9]+(/[12])?$ ]]; then
+        echo lost
+    else
+        echo archive
+    fi
+}
+
+
+# Restore the Illumina read names that ENA moves into the header comment; the
+# file(s) of one entry are rewritten in full or left as downloaded.
+function restore_fastq_names() {
+    local acc="${1:-}"
+    local fq_1="${2:-}"
+    local fq_2="${3:-}"
+    local fil form tmp_1 tmp_2 res
+    local show_help
+    local -a arr_fil arr_awk
+
+    show_help=$(cat << EOM
+Usage
+-----
+  restore_fastq_names
+    [--help] acc fq_1 fq_2
+
+  Restore the Illumina read names of one downloaded single- or paired-end FASTQ entry from the header comments written by ENA.
+
+Parameters
+----------
+  -h, --help : flag
+    Display this help message and exit.
+
+  1  acc : str
+    Run accession of the entry.
+
+  2  fq_1 : file
+    First or only gzipped FASTQ file.
+
+  3  fq_2 : file
+    Second gzipped FASTQ file, or 'NA' for single-end data.
+
+Returns
+-------
+  Returns 0 when the names are restored, already restored, not stored by the archive, or left as downloaded after a failed check; returns 1 when a file is missing, empty, unreadable, or cannot be replaced.
+
+Notes
+-----
+  Runtime requirements:
+    - awk
+    - bash >= 4.4
+    - gzip
+    - head
+    - mv
+    - rm
+
+  - ENA writes '@<acc>.<n> <Illumina name>/<m>'; each header becomes '@<Illumina name> <acc>.<n>'. Sequence and quality lines are copied unchanged.
+  - Every header of every file must have that form, with spot numbers '<n>' in order from 1, mate suffix '<m>' matching the file (optional for single-end data), and equal names in both mates. Otherwise both files stay as downloaded, and one warning gives the count of failed records and the first failed header.
+  - Each file is rewritten to '<file stem>.names.tmp.gz' beside it and moved over the download only when every record passes.
+  - A file whose names the archive did not store ('@<acc>.<n> <n>/1'), whose names are already restored, or whose names are not '<acc>.<n>' at all, such as a FASTQ file straight from the sequencer, is left as is with one note and is not read past its first header.
+
+Examples
+--------
+  1. Restore the names of one downloaded paired-end entry.
+    '''bash
+    restore_fastq_names \\
+        SRR32203047 \\
+        "\${dir_out}/SRR32203047_R1.fastq.gz" \\
+        "\${dir_out}/SRR32203047_R2.fastq.gz"
+    '''
+
+  2. Restore the names of one downloaded single-end entry.
+    '''bash
+    restore_fastq_names SRR7175377 "\${dir_out}/SRR7175377.fastq.gz" NA
+    '''
+EOM
+    )
+
+    if [[ "${acc}" =~ ^(-h|--h[e]?lp)$ ]]; then
+        echo "${show_help}" >&2
+        return 0
+    elif (( $# != 3 )); then
+        echo_err_func "${FUNCNAME[0]}" \
+            "expected three arguments: 'acc', 'fq_1', and 'fq_2'."
+        echo >&2
+        echo "${show_help}" >&2
+        return 1
+    fi
+
+    arr_fil=( "${fq_1}" )
+
+    if [[ "${fq_2}" != "NA" ]]; then
+        arr_fil+=( "${fq_2}" )
+    fi
+
+    for fil in "${arr_fil[@]}"; do
+        if [[ ! -s "${fil}" ]]; then
+            echo_err "FASTQ file is missing or empty: '${fil}'."
+            return 1
+        fi
+    done
+
+    form="$(print_fastq_names_form "${fq_1}" "${acc}")" || return 1
+
+    case "${form}" in
+        lost)
+            echo_note \
+                "${acc}: read names were not stored by the archive; left" \
+                "as downloaded."
+            return 0
+            ;;
+
+        restored)
+            echo_note "${acc}: read names are already restored."
+            return 0
+            ;;
+
+        other)
+            echo_note \
+                "${acc}: read names are not in the archive's '<run>.<n>'" \
+                "form, so they are left as is."
+            return 0
+            ;;
+    esac
+
+    echo "Restoring the read names of ${acc}." >&2
+
+    tmp_1="${fq_1%.fastq.gz}.names.tmp.gz"
+    tmp_2=""
+
+    if [[ "${fq_2}" != "NA" ]]; then
+        tmp_2="${fq_2%.fastq.gz}.names.tmp.gz"
+    fi
+
+    # Read both mates in step, writing each through its own 'gzip -c'; paths
+    # come from the environment, so the shell never reparses them. On success,
+    # print 'ok <records>'; otherwise print the counts and first failed header
+    # as 'bad <failed> <records> <first header>' and exit 1.
+    # shellcheck disable=SC2016  # The program is for awk, not the shell.
+    arr_awk=(
+        awk
+            -v acc="${acc}"
+            -v pe="${tmp_2:+1}"
+            '
+            function check_header(hdr, mate,    sp, pfx, nam) {
+                if (substr(hdr, 1, 1) != "@") { return "" }
+                sp = index(hdr, " ")
+                if (sp == 0) { return "" }
+                pfx = substr(hdr, 2, sp - 2)
+                nam = substr(hdr, sp + 1)
+                if (pfx != acc "." rec) { return "" }
+
+                if (nam ~ /\/[12]$/) {
+                    if (substr(nam, length(nam)) != mate) { return "" }
+                    nam = substr(nam, 1, length(nam) - 2)
+                } else if (pe) {
+                    return ""
+                }
+
+                if (nam ~ /[ \t]/) { return "" }
+                if (gsub(/:/, ":", nam) != 6) { return "" }
+                return nam
+            }
+
+            function mark_bad(txt) {
+                n_bad++
+                if (n_bad == 1) { first = txt }
+            }
+
+            BEGIN {
+                cmd_in = "gzip -cd < \"$FQ_2\""
+                cmd_1 = "gzip -c > \"$TMP_1\""
+                cmd_2 = "gzip -c > \"$TMP_2\""
+            }
+
+            {
+                ln_1 = $0
+
+                if (pe && (cmd_in | getline ln_2) <= 0) {
+                    mark_bad("second mate ends first")
+                    short = 1
+                    exit
+                }
+
+                if ((NR - 1) % 4 != 0) {
+                    if (!n_bad) {
+                        print ln_1 | cmd_1
+                        if (pe) { print ln_2 | cmd_2 }
+                    }
+                    next
+                }
+
+                rec++
+                nam_1 = check_header(ln_1, 1)
+                nam_2 = pe ? check_header(ln_2, 2) : nam_1
+
+                if (nam_1 == "" || nam_2 == "" || nam_1 != nam_2) {
+                    mark_bad(pe ? ln_1 " | " ln_2 : ln_1)
+                    next
+                }
+
+                if (!n_bad) {
+                    print "@" nam_1 " " acc "." rec | cmd_1
+                    if (pe) { print "@" nam_2 " " acc "." rec | cmd_2 }
+                }
+            }
+
+            END {
+                if (pe && !short && (cmd_in | getline ln_2) > 0) {
+                    mark_bad("first mate ends first")
+                }
+                if (NR % 4 != 0) { mark_bad("incomplete last record") }
+
+                close(cmd_1)
+                if (pe) { close(cmd_2) }
+
+                if (n_bad) {
+                    print "bad", n_bad, rec, first
+                    exit 1
+                }
+                print "ok", rec
+            }
+            '
+    )
+
+    if \
+        res="$(
+            set -o pipefail
+            gzip -cd < "${fq_1}" \
+                | FQ_2="${fq_2}" TMP_1="${tmp_1}" TMP_2="${tmp_2}" \
+                    "${arr_awk[@]}"
+        )"
+    then
+        mv -f -- "${tmp_1}" "${fq_1}" || {
+            rm -f -- "${tmp_1}" ${tmp_2:+"${tmp_2}"}
+            echo_err "failed to move '${tmp_1}' to '${fq_1}'."
+            return 1
+        }
+
+        if [[ -n "${tmp_2}" ]]; then
+            mv -f -- "${tmp_2}" "${fq_2}" || {
+                rm -f -- "${tmp_2}"
+                echo_err "failed to move '${tmp_2}' to '${fq_2}'."
+                return 1
+            }
+        fi
+
+        return 0
+    fi
+
+    rm -f -- "${tmp_1}" ${tmp_2:+"${tmp_2}"}
+
+    if [[ "${res}" =~ ^bad\ ([0-9]+)\ ([0-9]+)\ (.*)$ ]]; then
+        echo_warn \
+            "${acc}: ${BASH_REMATCH[1]} of ${BASH_REMATCH[2]} records do not" \
+            "have the archive's read-name form, so the names were not" \
+            "restored and the file(s) stay as downloaded; first failed" \
+            "header: '${BASH_REMATCH[3]}'."
+        return 0
+    fi
+
+    echo_err "failed to read or rewrite the FASTQ file(s) of '${acc}'."
+    return 1
+}
+
+
 # Link the accession-named FASTQ file(s) of one entry to its custom name.
 function link_fastqs() {
     local dir_out="${1:-}"
@@ -529,10 +880,10 @@ EOM
 # Download, verify, and link one single- or paired-end FASTQ entry.
 function download_fastqs() {
     local srr url_1 url_2 md5_1 md5_2 siz_1 siz_2
-    local dir_out dir_sym nam_cus dir_eo nam_job
-    local dir nam val idx mate layout pfx_log
+    local dir_out dir_sym nam_cus dir_eo nam_job keep_names use_existing
+    local dir nam val idx mate layout pfx_log fil form md5 siz reason
     local show_help
-    local -a arr_mate arr_url arr_md5 arr_siz
+    local -a arr_mate arr_url arr_md5 arr_siz arr_fq
 
     show_help=$(cat << EOM
 Usage
@@ -541,9 +892,10 @@ Usage
     [--help]
     --srr <str> --url_1 <str> [--url_2 <str>]
     [--md5_1 <str>] [--md5_2 <str>] [--siz_1 <int>] [--siz_2 <int>]
-    --dir_out <dir> --dir_sym <dir> --nam_cus <str> --dir_eo <dir> --nam_job <str>
+    --dir_out <dir> --dir_sym <dir> [--use_existing] [--keep_names]
+    --nam_cus <str> --dir_eo <dir> --nam_job <str>
 
-  Download one single- or paired-end FASTQ entry, verify each file, and create its custom-name symlink(s).
+  Download one single- or paired-end FASTQ entry, verify each file, restore its Illumina read names, and create its custom-name symlink(s).
 
 Parameters
 ----------
@@ -577,6 +929,12 @@ Parameters
   -dy, --dir_sym, --dir_symlink : dir
     Directory for custom-named symlinks.
 
+  -ue, --use_existing : flag
+    Check and keep a FASTQ file already in '--dir_out' instead of downloading it again.
+
+  -kn, --keep_names : flag
+    Keep the read names as the archive wrote them; do not restore the Illumina names.
+
   -nc, --nam_cus : str
     Custom name for the symlink(s).
 
@@ -593,8 +951,10 @@ Returns
 Notes
 -----
   Runtime requirements:
+    - awk (unless '--keep_names' is given)
     - bash >= 4.4
     - gzip
+    - head
     - ln
     - md5sum (when '--md5_1' or '--md5_2' is given)
     - mv
@@ -604,7 +964,11 @@ Notes
     - wget
 
   - Directories must exist; they are resolved to absolute physical paths, so the symlinks do not depend on the working directory.
-  - See 'download_fastq()' for verification and retries.
+  - See 'download_fastq()' for verification and retries, and 'restore_fastq_names()' for the read names.
+  - With '--use_existing', a file already in '--dir_out' is checked rather than downloaded again. The check uses the file's MD5 and size when they are given, and 'gzip -t' when they are not.
+    + A file whose names are already restored no longer matches the archive's MD5, so it gets 'gzip -t' only.
+    + A file that fails its check fails the entry and is not downloaded again.
+    + A missing file is downloaded as usual.
 
 Examples
 --------
@@ -651,6 +1015,8 @@ EOM
     nam_cus=""
     dir_eo=""
     nam_job=""
+    keep_names=false
+    use_existing=false
 
     while (( $# > 0 )); do
         case "${1}" in
@@ -747,6 +1113,16 @@ EOM
                 }
                 dir_sym="${2}"
                 shift 2
+                ;;
+
+            -ue|--use[_-]existing)
+                use_existing=true
+                shift 1
+                ;;
+
+            -kn|--keep[_-]names)
+                keep_names=true
+                shift 1
                 ;;
 
             -nc|--nam[_-]cus)
@@ -853,8 +1229,13 @@ EOM
     done
 
     check_pgrm_path gzip || return 1
+    check_pgrm_path head || return 1
     check_pgrm_path ln   || return 1
     check_pgrm_path wget || return 1
+
+    if [[ "${keep_names}" == "false" ]]; then
+        check_pgrm_path awk || return 1
+    fi
 
     if [[ "${md5_1}" != "NA" || "${md5_2}" != "NA" ]]; then
         check_pgrm_path md5sum || return 1
@@ -872,8 +1253,12 @@ EOM
     arr_md5=( "${md5_1}" "${md5_2}" )
     arr_siz=( "${siz_1}" "${siz_2}" )
 
+    arr_fq=( NA NA )
+
     for idx in "${!arr_mate[@]}"; do
         mate="${arr_mate[idx]}"
+        fil="$(derive_fastq_path "${dir_out}" "${srr}" "${mate}")" || return 1
+        arr_fq[idx]="${fil}"
 
         if [[ "${mate}" == "NA" ]]; then
             pfx_log="${dir_eo}/${nam_job}.${srr}"
@@ -881,16 +1266,45 @@ EOM
             pfx_log="${dir_eo}/${nam_job}.${srr}_R${mate}"
         fi
 
+        # Check a file already in place instead of downloading it. Restored
+        # names no longer match the archive's MD5; do only 'gzip -t' then.
+        if [[ "${use_existing}" == "true" && -e "${fil}" ]]; then
+            echo "Checking existing ${fil} for ${srr}." >&2
+            form="$(print_fastq_names_form "${fil}" "${srr}")" || return 1
+            md5="${arr_md5[idx]}"
+            siz="${arr_siz[idx]}"
+
+            if [[ "${form}" == "restored" ]]; then
+                md5=NA
+                siz=NA
+            fi
+
+            if ! \
+                reason="$(verify_fastq "${fil}" "${md5}" "${siz}")"
+            then
+                echo_err \
+                    "existing file '${fil}' fails its check: ${reason};" \
+                    "remove it or run without '--use_existing'."
+                return 1
+            fi
+
+            continue
+        fi
+
         download_fastq \
             "${srr}" \
             "${arr_url[idx]}" \
-            "$(derive_fastq_path "${dir_out}" "${srr}" "${mate}")" \
+            "${fil}" \
             "${arr_md5[idx]}" \
             "${arr_siz[idx]}" \
             "${pfx_log}.stdout.txt" \
             "${pfx_log}.stderr.txt" \
             || return 1
     done
+
+    if [[ "${keep_names}" == "false" ]]; then
+        restore_fastq_names "${srr}" "${arr_fq[0]}" "${arr_fq[1]}" || return 1
+    fi
 
     echo "Symlinking ${srr} to ${nam_cus}." >&2
     link_fastqs "${dir_out}" "${srr}" "${dir_sym}" "${nam_cus}" "${layout}"

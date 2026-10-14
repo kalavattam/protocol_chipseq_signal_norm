@@ -47,7 +47,23 @@ function cleanup_fastqs_tmp() {
         "${dir_fix}" \
         "${fq_se_tmp}" \
         "${fq_r1_tmp}" \
-        "${fq_r2_tmp}"
+        "${fq_r2_tmp}" \
+        "${fq_nam_tmp}"
+}
+
+
+# Write one gzipped FASTQ of 8-base records whose headers are the arguments.
+function write_fastq_names() {
+    local fil_out="${1}"
+    local hdr
+    shift 1
+
+    for hdr in "$@"; do
+        printf '%s\n' "${hdr}" ACGTACGT + IIIIIIII
+    done > "${fq_nam_tmp}"
+
+    gzip_n "${fq_nam_tmp}" "${fil_out}"
+    rm_file "${dir_fix}" "${fq_nam_tmp}"
 }
 
 
@@ -56,10 +72,13 @@ dir_src="${dir_fix}/source"
 dir_src_se="${dir_src}/se"
 dir_src_pe="${dir_src}/pe"
 dir_mtd="${dir_fix}/metadata"
+dir_src_nam="${dir_src}/names"
+dir_exp="${dir_fix}/expected"
 
 fq_se_tmp="${dir_src_se}/tiny_download_se.fastq.tmp"
 fq_r1_tmp="${dir_src_pe}/tiny_download_pe_R1.fastq.tmp"
 fq_r2_tmp="${dir_src_pe}/tiny_download_pe_R2.fastq.tmp"
+fq_nam_tmp="${dir_src_nam}/names.fastq.tmp"
 
 fq_se_gz="${dir_src_se}/tiny_download_se.fastq.gz"
 fq_r1_gz="${dir_src_pe}/tiny_download_pe_R1.fastq.gz"
@@ -82,6 +101,16 @@ tpl_pe_bad_r2="${dir_mtd}/local_pe_wrong_md5_r2.template.tsv"
 tpl_pe_cnfl_md5="${dir_mtd}/local_pe_conflicting_md5.template.tsv"
 tpl_se_trn="${dir_mtd}/local_se_truncated.template.tsv"
 tpl_se_404="${dir_mtd}/local_se_missing.template.tsv"
+tpl_nam_pe="${dir_mtd}/local_names_pe.template.tsv"
+tpl_nam_pe_r2="${dir_mtd}/local_names_pe_r2_name.template.tsv"
+tpl_nam_pe_ord="${dir_mtd}/local_names_pe_order.template.tsv"
+tpl_nam_pe_mat="${dir_mtd}/local_names_pe_mate.template.tsv"
+tpl_nam_pe_404="${dir_mtd}/local_names_pe_missing.template.tsv"
+tpl_nam_se="${dir_mtd}/local_names_se.template.tsv"
+tpl_nam_se_nmt="${dir_mtd}/local_names_se_no_mate.template.tsv"
+tpl_nam_se_lst="${dir_mtd}/local_names_se_lost.template.tsv"
+tpl_nam_seq="${dir_mtd}/local_names_sequencer_pe.template.tsv"
+tpl_nam_seq_se="${dir_mtd}/local_names_sequencer_se.template.tsv"
 
 
 # Register cleanup of temporary FASTQ intermediates on exit.
@@ -92,7 +121,13 @@ require_cmd gzip "to generate download-fastqs fixtures."
 require_cmd md5sum "to write expected MD5 values into metadata templates."
 
 # Create fixture output directories.
-mkdirs "${dir_src}" "${dir_src_se}" "${dir_src_pe}" "${dir_mtd}"
+mkdirs \
+    "${dir_src}" \
+    "${dir_src_se}" \
+    "${dir_src_pe}" \
+    "${dir_src_nam}" \
+    "${dir_mtd}" \
+    "${dir_exp}"
 
 # Remove stale temporary intermediates.
 cleanup_fastqs_tmp
@@ -405,6 +440,173 @@ url_pe+=';__BASE_URL__/pe/tiny_download_pe_R2.fastq.gz'
         'tiny_download_se' \
         '__BASE_URL__/se/missing.fastq.gz'
 } > "${tpl_se_404}"
+
+
+# Write paired-end sources in ENA's form, '@<run>.<n> <Illumina name>/<mate>',
+# plus three bad pairs that each fail one check: an R2 name unlike R1's, a
+# skipped spot number, '/2' in R1. Also write single-end sources with '/1',
+# without it, and with names the archive did not store.
+pfx_nam='VH00699:369:AACWKJJM5:1:1101'
+nam_1="${pfx_nam}:30009:1000"
+nam_2="${pfx_nam}:30236:1000"
+
+write_fastq_names \
+    "${dir_src_nam}/ena_R1.fastq.gz" \
+    "@SRR_NAMES_PE.1 ${nam_1}/1" \
+    "@SRR_NAMES_PE.2 ${nam_2}/1"
+
+write_fastq_names \
+    "${dir_src_nam}/ena_R2.fastq.gz" \
+    "@SRR_NAMES_PE.1 ${nam_1}/2" \
+    "@SRR_NAMES_PE.2 ${nam_2}/2"
+
+write_fastq_names \
+    "${dir_src_nam}/r2_name_R2.fastq.gz" \
+    "@SRR_NAMES_PE.1 ${nam_1}/2" \
+    "@SRR_NAMES_PE.2 ${pfx_nam}:30237:1000/2"
+
+write_fastq_names \
+    "${dir_src_nam}/order_R1.fastq.gz" \
+    "@SRR_NAMES_PE.1 ${nam_1}/1" \
+    "@SRR_NAMES_PE.3 ${nam_2}/1"
+
+write_fastq_names \
+    "${dir_src_nam}/order_R2.fastq.gz" \
+    "@SRR_NAMES_PE.1 ${nam_1}/2" \
+    "@SRR_NAMES_PE.3 ${nam_2}/2"
+
+write_fastq_names \
+    "${dir_src_nam}/mate_R1.fastq.gz" \
+    "@SRR_NAMES_PE.1 ${nam_1}/2" \
+    "@SRR_NAMES_PE.2 ${nam_2}/1"
+
+write_fastq_names \
+    "${dir_src_nam}/ena_se.fastq.gz" \
+    "@SRR_NAMES_SE.1 ${nam_1}/1" \
+    "@SRR_NAMES_SE.2 ${nam_2}/1"
+
+write_fastq_names \
+    "${dir_src_nam}/ena_se_no_mate.fastq.gz" \
+    "@SRR_NAMES_SE.1 ${nam_1}" \
+    "@SRR_NAMES_SE.2 ${nam_2}"
+
+write_fastq_names \
+    "${dir_src_nam}/lost_se.fastq.gz" \
+    "@SRR_NAMES_LOST.1 1/1" \
+    "@SRR_NAMES_LOST.2 2/1"
+
+# Write sources as they come from the sequencer, whose names need nothing: a
+# pair with the bcl-convert comment and a single-end file without a comment.
+write_fastq_names \
+    "${dir_src_nam}/sequencer_R1.fastq.gz" \
+    "@${nam_1} 1:N:0:ACGTACGT" \
+    "@${nam_2} 1:N:0:ACGTACGT"
+
+write_fastq_names \
+    "${dir_src_nam}/sequencer_R2.fastq.gz" \
+    "@${nam_1} 2:N:0:ACGTACGT" \
+    "@${nam_2} 2:N:0:ACGTACGT"
+
+write_fastq_names \
+    "${dir_src_nam}/sequencer_se.fastq.gz" \
+    "@${nam_1}" \
+    "@${nam_2}"
+
+# Write the expected restored records, uncompressed; both mates of the pair
+# restore to the same headers.
+for nam in pe se; do
+    if [[ "${nam}" == "pe" ]]; then
+        acc=SRR_NAMES_PE
+    else
+        acc=SRR_NAMES_SE
+    fi
+
+    printf '%s\n' \
+        "@${nam_1} ${acc}.1" ACGTACGT + IIIIIIII \
+        "@${nam_2} ${acc}.2" ACGTACGT + IIIIIIII \
+        > "${dir_exp}/names_${nam}.fastq"
+done
+
+# Write the read-name templates, one source pair or file per template; the
+# missing-file template has the right MD5 values and sizes but URLs the server
+# does not have, so only files already in place can satisfy it.
+md5_nam_r1="$(md5sum < "${dir_src_nam}/ena_R1.fastq.gz")"
+md5_nam_r1="${md5_nam_r1%% *}"
+md5_nam_r2="$(md5sum < "${dir_src_nam}/ena_R2.fastq.gz")"
+md5_nam_r2="${md5_nam_r2%% *}"
+siz_nam_r1="$(wc -c < "${dir_src_nam}/ena_R1.fastq.gz")"
+siz_nam_r1="${siz_nam_r1//[[:space:]]/}"
+siz_nam_r2="$(wc -c < "${dir_src_nam}/ena_R2.fastq.gz")"
+siz_nam_r2="${siz_nam_r2//[[:space:]]/}"
+
+url_nam='__BASE_URL__/names'
+
+arr_rows=(
+    "${tpl_nam_pe}|SRR_NAMES_PE|ena_R1;ena_R2"
+    "${tpl_nam_pe_r2}|SRR_NAMES_PE|ena_R1;r2_name_R2"
+    "${tpl_nam_pe_ord}|SRR_NAMES_PE|order_R1;order_R2"
+    "${tpl_nam_pe_mat}|SRR_NAMES_PE|mate_R1;ena_R2"
+    "${tpl_nam_se}|SRR_NAMES_SE|ena_se"
+    "${tpl_nam_se_nmt}|SRR_NAMES_SE|ena_se_no_mate"
+    "${tpl_nam_se_lst}|SRR_NAMES_LOST|lost_se"
+    "${tpl_nam_seq_se}|SEQ_SE|sequencer_se"
+)
+
+for row in "${arr_rows[@]}"; do
+    IFS='|' read -r tpl acc stems <<< "${row}"
+    url="${url_nam}/${stems%%;*}.fastq.gz"
+
+    if [[ "${stems}" == *";"* ]]; then
+        url+=";${url_nam}/${stems#*;}.fastq.gz"
+    fi
+
+    {
+        write_tsv_row \
+            'run_accession' \
+            'custom_name' \
+            'fastq_https'
+
+        write_tsv_row \
+            "${acc}" \
+            "names_${acc,,}" \
+            "${url}"
+    } > "${tpl}"
+done
+
+{
+    write_tsv_row \
+        'run_accession' \
+        'custom_name' \
+        'fastq_https' \
+        'fastq_md5' \
+        'fastq_bytes'
+
+    write_tsv_row \
+        'SRR_NAMES_PE' \
+        'names_srr_names_pe' \
+        "${url_nam}/missing_R1.fastq.gz;${url_nam}/missing_R2.fastq.gz" \
+        "${md5_nam_r1};${md5_nam_r2}" \
+        "${siz_nam_r1};${siz_nam_r2}"
+} > "${tpl_nam_pe_404}"
+
+md5_seq_r1="$(md5sum < "${dir_src_nam}/sequencer_R1.fastq.gz")"
+md5_seq_r1="${md5_seq_r1%% *}"
+md5_seq_r2="$(md5sum < "${dir_src_nam}/sequencer_R2.fastq.gz")"
+md5_seq_r2="${md5_seq_r2%% *}"
+
+{
+    write_tsv_row \
+        'run_accession' \
+        'custom_name' \
+        'fastq_https' \
+        'fastq_md5'
+
+    write_tsv_row \
+        'SEQ_PE' \
+        'names_seq_pe' \
+        "${url_nam}/sequencer_R1.fastq.gz;${url_nam}/sequencer_R2.fastq.gz" \
+        "${md5_seq_r1};${md5_seq_r2}"
+} > "${tpl_nam_seq}"
 
 
 succeed "generated download-fastqs fixtures under ${dir_fix}"

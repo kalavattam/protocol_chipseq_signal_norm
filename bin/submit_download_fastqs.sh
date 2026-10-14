@@ -94,6 +94,8 @@ function init_defs() {
     siz_2=""
     dir_out=""
     dir_sym=""
+    use_existing="false"
+    keep_names="false"
     nam_cus=""
     dir_eo=""
     nam_job=""
@@ -279,6 +281,16 @@ function parse_args() {
                 shift 2
                 ;;
 
+            -ue|--use[_-]existing)
+                use_existing="true"
+                shift 1
+                ;;
+
+            -kn|--keep[_-]names)
+                keep_names="true"
+                shift 1
+                ;;
+
             -nc|--nam[_-]cus)
                 require_optarg "${1}" "${2:-}" "main" || {
                     echo >&2
@@ -367,6 +379,14 @@ function main() {
             arr_cmd_dl+=( "${arr_opt[i]}" "${arr_opt[i + 1]}" )
         fi
     done
+
+    if [[ "${use_existing}" == "true" ]]; then
+        arr_cmd_dl+=( --use_existing )
+    fi
+
+    if [[ "${keep_names}" == "true" ]]; then
+        arr_cmd_dl+=( --keep_names )
+    fi
 
     download_fastqs "${arr_cmd_dl[@]}"
 }

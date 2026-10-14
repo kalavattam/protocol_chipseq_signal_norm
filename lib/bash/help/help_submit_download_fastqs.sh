@@ -23,7 +23,8 @@ Usage
     [--help] [--dir_scr <dir>]
     --srr <str> --url_1 <str> [--url_2 <str>]
     [--md5_1 <str>] [--md5_2 <str>] [--siz_1 <int>] [--siz_2 <int>]
-    --dir_out <dir> --dir_sym <dir> --nam_cus <str> --dir_eo <dir> --nam_job <str>
+    --dir_out <dir> --dir_sym <dir> [--use_existing] [--keep_names]
+    --nam_cus <str> --dir_eo <dir> --nam_job <str>
 
   Download one single-end or paired-end FASTQ entry and create custom symlink(s).
 
@@ -64,6 +65,12 @@ Parameters
   -dy, --dir_sym, --dir_symlink : dir
     Directory for symlink(s) to FASTQ file(s).
 
+  -ue, --use_existing : flag
+    Check and keep a FASTQ file already in '--dir_out' instead of downloading it again.
+
+  -kn, --keep_names : flag
+    Keep the read names as the archive wrote them; do not restore the Illumina names.
+
   -nc, --nam_cus : str
     Custom name for symlink(s).
 
@@ -76,11 +83,13 @@ Parameters
 Notes
 -----
   Runtime requirements:
+    - awk (unless '--keep_names' is given)
     - basename
     - bash >= 4.4
     - cat
     - dirname
     - gzip
+    - head
     - ln
     - md5sum (when '--md5_1' or '--md5_2' is given)
     - mv
@@ -94,6 +103,15 @@ Notes
   - Each file is downloaded to '<file>.part' and moved into place only after it passes verification: its size when '--siz_1' or '--siz_2' is given, then its MD5 when '--md5_1' or '--md5_2' is given, otherwise 'gzip -t'.
   - A file that fails verification is downloaded again, up to 3 attempts in all; then the partial file is removed and the entry fails.
     + A failed download is not attempted again, since 'wget' already makes up to 5 tries, including when the connection is refused.
+  - Read names: ENA moves each read's Illumina name into the header comment ('@<run>.<n> <Illumina name>/<mate>'), and aligners keep only '<run>.<n>', so optical duplicates cannot be told apart. After its check, each entry's headers are rewritten to '@<Illumina name> <run>.<n>'; sequence and quality lines are unchanged. '--keep_names' turns this off.
+    + Every header of both mates must have the archive's form, with spot numbers in order, mate suffixes matching the file, and equal names in both mates; otherwise the files stay as downloaded and one warning gives the count.
+    + Names the archive did not store ('@<run>.<n> <n>/1') are left as is, with one note.
+    + Names that are not '<run>.<n>', as in FASTQ files straight from a sequencer, are already what is wanted; they are left as is, with one note, and only the first header is read.
+    + The rewrite takes about 5 minutes per pair of 9 million reads and needs free space about the size of the entry while it runs.
+  - With '--use_existing', a file already in '--dir_out' is checked rather than downloaded again. The check uses the file's MD5 and size when they are given, and 'gzip -t' when they are not.
+    + A file whose names are already restored no longer matches the archive's MD5, so it gets 'gzip -t' only, and a rerun notes that its names are already restored.
+    + A file that fails its check fails its entry and is not downloaded again.
+    + A missing file is downloaded as usual.
 
 Examples
 --------
