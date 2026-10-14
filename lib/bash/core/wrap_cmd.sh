@@ -79,7 +79,7 @@ fi
 # shellcheck disable=SC2154
 function get_submit_logs() {
     local fil_smp="${1:-}"
-    local base ext log_out log_err
+    local base log_out log_err
     local show_help
 
     show_help=$(cat << EOM
