@@ -263,7 +263,7 @@ function build_cmd() {
     local scl_fct usr_frg dep_min pseudo
     local show_help
 
-    unset cmd_bld && declare -ga cmd_bld
+    unset arr_cmd_bld && declare -ga arr_cmd_bld
 
     show_help=$(cat << EOM
 Usage
@@ -271,7 +271,7 @@ Usage
   build_cmd
     [--help] [idx]
 
-  Construct the command array 'cmd_bld' for one call to 'submit_compute_signal.sh'.
+  Construct the command array 'arr_cmd_bld' for one call to 'submit_compute_signal.sh'.
 
 Parameters
 ----------
@@ -316,27 +316,27 @@ Expected globals
 
 Returns
 -------
-  0 if 'cmd_bld' is constructed successfully; 1 if argument parsing fails.
+  0 if 'arr_cmd_bld' is constructed successfully; 1 if argument parsing fails.
 
 Notes
 -----
   Runtime requirements:
     bash >= 4.4
 
-  'cmd_bld' is written as a global indexed array.
+  'arr_cmd_bld' is written as a global indexed array.
 
 Examples
 --------
   1. Build the non-indexed command for the active validated mode.
     '''bash
     build_cmd
-    declare -p cmd_bld
+    declare -p arr_cmd_bld
     '''
 
   2. Build the first per-sample command from prepared mode-specific arrays.
     '''bash
     build_cmd 0
-    declare -p cmd_bld
+    declare -p arr_cmd_bld
     '''
 EOM
     )
@@ -403,7 +403,7 @@ EOM
         fi
     fi
 
-    cmd_bld=(
+    arr_cmd_bld=(
         "${scr_sub}"
         --env_nam "${env_nam}"
         --dir_scr "${dir_scr}"
@@ -413,102 +413,102 @@ EOM
 
     # A report-only run builds no track, so its settings are not passed on.
     if [[ "${mode}" != "coord" && "${report_only}" == "false" ]]; then
-        cmd_bld+=( --method "${method}" )
+        arr_cmd_bld+=( --method "${method}" )
     fi
 
     if [[ "${mode}" =~ ^(signal|coord)$ ]]; then
-        cmd_bld+=( --csv_fil_in "${fil_in}" )
+        arr_cmd_bld+=( --csv_fil_in "${fil_in}" )
 
         if [[ -n "${ref_fa}" ]]; then
-            cmd_bld+=( --ref_fa "${ref_fa}" )
+            arr_cmd_bld+=( --ref_fa "${ref_fa}" )
         fi
     else
-        cmd_bld+=( --csv_fil_A "${fil_A}" --csv_fil_B "${fil_B}" )
+        arr_cmd_bld+=( --csv_fil_A "${fil_A}" --csv_fil_B "${fil_B}" )
     fi
 
     if [[ -n "${chr_siz}" ]]; then
-        cmd_bld+=( --chr_siz "${chr_siz}" )
+        arr_cmd_bld+=( --chr_siz "${chr_siz}" )
     fi
 
     if [[ -n "${fil_out}" ]]; then
-        cmd_bld+=( --csv_fil_out "${fil_out}" )
+        arr_cmd_bld+=( --csv_fil_out "${fil_out}" )
     fi
 
     if [[ "${mode}" == "signal" ]]; then
-        cmd_bld+=( --siz_bin "${siz_bin}" )
+        arr_cmd_bld+=( --siz_bin "${siz_bin}" )
 
         if [[ "${report_only}" == "false" ]]; then
-            cmd_bld+=( --engine "${engine}" --csv_scl_fct "${scl_fct}" )
+            arr_cmd_bld+=( --engine "${engine}" --csv_scl_fct "${scl_fct}" )
         fi
 
-        cmd_bld+=( --csv_usr_frg "${usr_frg}" )
+        arr_cmd_bld+=( --csv_usr_frg "${usr_frg}" )
 
         if [[ "${report_only}" == "false" && "${engine}" == "window" ]]; then
-            cmd_bld+=( --siz_win "${siz_win}" )
+            arr_cmd_bld+=( --siz_win "${siz_win}" )
         fi
 
         if [[ -n "${rep_n_frg}" ]]; then
-            cmd_bld+=( --csv_report_n_frg "${rep_n_frg}" )
+            arr_cmd_bld+=( --csv_report_n_frg "${rep_n_frg}" )
         fi
 
         if [[ -n "${rep_n_ovlp}" ]]; then
-            cmd_bld+=( --csv_report_n_ovlp "${rep_n_ovlp}" )
+            arr_cmd_bld+=( --csv_report_n_ovlp "${rep_n_ovlp}" )
         fi
 
         # Without this, the opt-out stops here: 'submit' would see no report
         # list, take that for 'derive', and write them anyway.
         if [[ "${no_report}" == "true" ]]; then
-            cmd_bld+=( --no_report )
+            arr_cmd_bld+=( --no_report )
         fi
     elif [[ "${mode}" == "coord" ]]; then
-        cmd_bld+=( --csv_usr_frg "${usr_frg}" )
+        arr_cmd_bld+=( --csv_usr_frg "${usr_frg}" )
     else
-        cmd_bld+=(
+        arr_cmd_bld+=(
             --csv_scl_fct "${scl_fct}"
             --csv_dep_min "${dep_min}"
             --csv_pseudo "${pseudo}"
         )
 
         if [[ -n "${typ_sig}" ]]; then
-            cmd_bld+=( --typ_sig "${typ_sig}" )
+            arr_cmd_bld+=( --typ_sig "${typ_sig}" )
         fi
 
         # Forward '--prior_count' only when this call has an 'edger' element;
         # 'submit' refuses it for a call with only literal pseudocounts.
         if [[ -n "${prior_count}" && ",${pseudo}," == *",edger,"* ]]; then
-            cmd_bld+=( --prior_count "${prior_count}" )
+            arr_cmd_bld+=( --prior_count "${prior_count}" )
         fi
 
         if [[ -n "${eps}" ]]; then
-            cmd_bld+=( --eps "${eps}" )
+            arr_cmd_bld+=( --eps "${eps}" )
         fi
 
         if [[ -n "${skip_00}" ]]; then
-            cmd_bld+=( --skip_00 "${skip_00}" )
+            arr_cmd_bld+=( --skip_00 "${skip_00}" )
         fi
 
         if [[ "${drp_nan}" == "true" ]]; then
-            cmd_bld+=( --drp_nan )
+            arr_cmd_bld+=( --drp_nan )
         fi
 
         if [[ -n "${skp_pfx}" ]]; then
-            cmd_bld+=( --skp_pfx "${skp_pfx}" )
+            arr_cmd_bld+=( --skp_pfx "${skp_pfx}" )
         fi
 
         if [[ "${track}" == "true" ]]; then
-            cmd_bld+=( --track )
+            arr_cmd_bld+=( --track )
         fi
 
         if [[ "${strict_bins}" == "true" ]]; then
-            cmd_bld+=( --strict_bins )
+            arr_cmd_bld+=( --strict_bins )
         fi
     fi
 
     if [[ "${mode}" != "coord" && "${report_only}" == "false" ]]; then
-        cmd_bld+=( --dp "${dp}" )
+        arr_cmd_bld+=( --dp "${dp}" )
     fi
 
-    cmd_bld+=(
+    arr_cmd_bld+=(
         --dir_eo "${dir_eo}"
         --nam_job "${nam_job}"
     )
@@ -1925,7 +1925,7 @@ function run_jobs() {
                 --output="${dir_eo}/${nam_job}.%A-%a.stdout.txt"
                 --error="${dir_eo}/${nam_job}.%A-%a.stderr.txt"
                 --array="1-${#arr_fil_out[@]}%${max_job}"
-                "${cmd_bld[@]}"
+                "${arr_cmd_bld[@]}"
         )
 
         if [[ "${dry_run}" == "true" || "${verbose}" == "true" ]]; then
@@ -1949,7 +1949,7 @@ function run_jobs() {
 
             for idx in "${!arr_fil_out[@]}"; do
                 build_cmd "${idx}"
-                cmd_bld=( "${BASH}" "${cmd_bld[@]}" )
+                arr_cmd_bld=( "${BASH}" "${arr_cmd_bld[@]}" )
 
                 IFS=';' read -r log_out log_err < <(
                     get_submit_logs "${arr_fil_out[idx]}"
@@ -1981,7 +1981,7 @@ function run_jobs() {
 
                 for idx in "${!arr_fil_out[@]}"; do
                     build_cmd "${idx}"
-                    cmd_bld=( "${BASH}" "${cmd_bld[@]}" )
+                    arr_cmd_bld=( "${BASH}" "${arr_cmd_bld[@]}" )
 
                     IFS=';' read -r log_out log_err < <(
                         get_submit_logs "${arr_fil_out[idx]}"
@@ -1999,13 +1999,15 @@ function run_jobs() {
                 n_fail=0
                 for idx in "${!arr_fil_out[@]}"; do
                     build_cmd "${idx}"
-                    cmd_bld=( "${BASH}" "${cmd_bld[@]}" )
+                    arr_cmd_bld=( "${BASH}" "${arr_cmd_bld[@]}" )
 
                     IFS=';' read -r log_out log_err < <(
                         get_submit_logs "${arr_fil_out[idx]}"
                     )
 
-                    if ! "${cmd_bld[@]}" >> "${log_out}" 2>> "${log_err}"; then
+                    if ! \
+                        "${arr_cmd_bld[@]}" >> "${log_out}" 2>> "${log_err}"
+                    then
                         echo_err \
                             "task ${idx} failed for '${arr_fil_out[idx]}';" \
                             "see '${log_err}'."

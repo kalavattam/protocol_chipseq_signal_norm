@@ -82,7 +82,7 @@ function build_cmd() {
     local lst_aln
     local show_help
 
-    unset cmd_bld && declare -ga cmd_bld
+    unset arr_cmd_bld && declare -ga arr_cmd_bld
 
     show_help=$(cat << EOM
 Usage
@@ -90,7 +90,7 @@ Usage
   build_cmd
     [--help] [idx]
 
-  Construct the command array 'cmd_bld' for one call to 'submit_calculate_scaling_factor.sh'.
+  Construct the command array 'arr_cmd_bld' for one call to 'submit_calculate_scaling_factor.sh'.
 
 Parameters
 ----------
@@ -174,14 +174,14 @@ Expected globals
 
 Returns
 -------
-  0 if 'cmd_bld' is constructed successfully; 1 if argument parsing fails.
+  0 if 'arr_cmd_bld' is constructed successfully; 1 if argument parsing fails.
 
 Notes
 -----
   Runtime requirements:
     bash >= 4.4
 
-  - 'cmd_bld' is written as a global indexed array.
+  - 'arr_cmd_bld' is written as a global indexed array.
   - Broadcastable override arrays may have length 0, 1, or n, where n is the number of samples.
 
 Examples
@@ -189,13 +189,13 @@ Examples
   1. Build the non-indexed submit command from validated scalar globals.
     '''bash
     build_cmd
-    declare -p cmd_bld
+    declare -p arr_cmd_bld
     '''
 
   2. Build the first per-sample command from prepared input and override arrays.
     '''bash
     build_cmd 0
-    declare -p cmd_bld
+    declare -p arr_cmd_bld
     '''
 EOM
     )
@@ -260,7 +260,7 @@ EOM
         fi
     fi
 
-    cmd_bld=(
+    arr_cmd_bld=(
         "${scr_sub}"
         --env_nam "${env_nam}"
         --dir_scr "${dir_scr}"
@@ -269,44 +269,44 @@ EOM
 
     # A job given every count reads no file, so it takes no threads or layout.
     if [[ "${all_cnt}" != "true" ]]; then
-        cmd_bld+=( --threads "${threads}" )
+        arr_cmd_bld+=( --threads "${threads}" )
     fi
 
     if [[ "${mode}" == "spike" ]]; then
-        cmd_bld+=( --method "${method}" )
+        arr_cmd_bld+=( --method "${method}" )
     fi
 
     if [[ "${all_cnt}" != "true" ]]; then
-        cmd_bld+=( --aln_typ "${aln_typ}" )
+        arr_cmd_bld+=( --aln_typ "${aln_typ}" )
     fi
 
     # Pass the reference only to a call that reads CRAM, so a sample with BAM
     # files alone draws no warning.
     lst_aln=",${csv_mip_i},${csv_min_i},${csv_sip_i},${csv_sin_i},"
     if [[ -n "${ref_fa}" && "${lst_aln,,}" == *.cram,* ]]; then
-        cmd_bld+=( --ref_fa "${ref_fa}" )
+        arr_cmd_bld+=( --ref_fa "${ref_fa}" )
     fi
 
-    cmd_bld+=(
+    arr_cmd_bld+=(
         --csv_mip "${csv_mip_i}"
         --csv_min "${csv_min_i}"
     )
 
     if [[ "${mode}" == "spike" ]]; then
-        cmd_bld+=(
+        arr_cmd_bld+=(
             --csv_sip "${csv_sip_i}"
             --csv_sin "${csv_sin_i}"
         )
     fi
 
-    cmd_bld+=( --fil_out "${fil_out}" )
+    arr_cmd_bld+=( --fil_out "${fil_out}" )
 
     if [[ "${idx}" != "UNSET" ]]; then
-        cmd_bld+=( --idx_out "${idx}" )
+        arr_cmd_bld+=( --idx_out "${idx}" )
     fi
 
     if [[ "${mode}" == "siq" ]]; then
-        cmd_bld+=(
+        arr_cmd_bld+=(
             --tbl_met "${tbl_met}"
             --cfg_met "${cfg_met}"
             --eqn "${eqn}"
@@ -314,29 +314,29 @@ EOM
     fi
 
     if [[ -n "${len_def}" ]]; then
-        cmd_bld+=( --len_def "${len_def}" )
+        arr_cmd_bld+=( --len_def "${len_def}" )
     fi
 
     if [[ -n "${len_mip_i}" ]]; then
-        cmd_bld+=( --csv_len_mip "${len_mip_i}" )
+        arr_cmd_bld+=( --csv_len_mip "${len_mip_i}" )
     fi
     if [[ -n "${len_min_i}" ]]; then
-        cmd_bld+=( --csv_len_min "${len_min_i}" )
+        arr_cmd_bld+=( --csv_len_min "${len_min_i}" )
     fi
     if [[ -n "${dep_mip_i}" ]]; then
-        cmd_bld+=( --csv_dep_mip "${dep_mip_i}" )
+        arr_cmd_bld+=( --csv_dep_mip "${dep_mip_i}" )
     fi
     if [[ -n "${dep_min_i}" ]]; then
-        cmd_bld+=( --csv_dep_min "${dep_min_i}" )
+        arr_cmd_bld+=( --csv_dep_min "${dep_min_i}" )
     fi
     if [[ -n "${dep_sip_i}" ]]; then
-        cmd_bld+=( --csv_dep_sip "${dep_sip_i}" )
+        arr_cmd_bld+=( --csv_dep_sip "${dep_sip_i}" )
     fi
     if [[ -n "${dep_sin_i}" ]]; then
-        cmd_bld+=( --csv_dep_sin "${dep_sin_i}" )
+        arr_cmd_bld+=( --csv_dep_sin "${dep_sin_i}" )
     fi
 
-    cmd_bld+=(
+    arr_cmd_bld+=(
         --dp "${dp}"
         --dir_eo "${dir_eo}"
         --nam_job "${nam_job}"
@@ -348,8 +348,8 @@ EOM
 function build_cmd_cmb() {
     local idx idx_pad
 
-    unset arr_prt arr_arg_cmb cmd_cmb
-    declare -ga arr_prt arr_arg_cmb cmd_cmb
+    unset arr_prt arr_arg_cmb arr_cmd_cmb
+    declare -ga arr_prt arr_arg_cmb arr_cmd_cmb
 
     for idx in "${!arr_mip[@]}"; do
         printf -v idx_pad '%06d' "${idx}"
@@ -372,15 +372,15 @@ function build_cmd_cmb() {
         arr_arg_cmb+=( --no_parts )
     fi
 
-    cmd_cmb=( "${BASH}" "${scr_cmb}" "${arr_arg_cmb[@]}" )
+    arr_cmd_cmb=( "${BASH}" "${scr_cmb}" "${arr_arg_cmb[@]}" )
 }
 
 
 # Build the final-table header command.
 function build_cmd_hdr() {
-    unset cmd_hdr && declare -ga cmd_hdr
+    unset arr_cmd_hdr && declare -ga arr_cmd_hdr
 
-    cmd_hdr=(
+    arr_cmd_hdr=(
         "${BASH}" "${scr_hdr}"
             --mode "${mode}"
             --fil_in "${fil_out}"
@@ -398,8 +398,8 @@ function build_cmd_cmb_slurm() {
         return 1
     fi
 
-    unset cmd_cmb_slurm && declare -ga cmd_cmb_slurm
-    cmd_cmb_slurm=(
+    unset arr_cmd_cmb_slurm && declare -ga arr_cmd_cmb_slurm
+    arr_cmd_cmb_slurm=(
         sbatch
             --parsable
             --job-name="${nam_job}_combine"
@@ -425,8 +425,8 @@ function build_cmd_hdr_slurm() {
         return 1
     fi
 
-    unset cmd_hdr_slurm && declare -ga cmd_hdr_slurm
-    cmd_hdr_slurm=(
+    unset arr_cmd_hdr_slurm && declare -ga arr_cmd_hdr_slurm
+    arr_cmd_hdr_slurm=(
         sbatch
             --parsable
             --job-name="${nam_job}_header"
@@ -504,12 +504,12 @@ function init_arg_defs() {
 
     unset arr_mip arr_min arr_sip arr_sin arr_len_mip arr_len_min
     unset arr_dep_mip arr_dep_min arr_dep_sip arr_dep_sin
-    unset arr_prt arr_arg_cmb cmd_bld cmd_cmb cmd_hdr
+    unset arr_prt arr_arg_cmb arr_cmd_bld arr_cmd_cmb arr_cmd_hdr
 
     declare -ga arr_mip arr_min arr_sip arr_sin
     declare -ga arr_len_mip arr_len_min
     declare -ga arr_dep_mip arr_dep_min arr_dep_sip arr_dep_sin
-    declare -ga arr_prt arr_arg_cmb cmd_bld cmd_cmb cmd_hdr
+    declare -ga arr_prt arr_arg_cmb arr_cmd_bld arr_cmd_cmb arr_cmd_hdr
 }
 
 
@@ -1460,7 +1460,7 @@ function run_jobs() {
                 --output="${dir_eo}/${nam_job}.%A-%a.stdout.txt"
                 --error="${dir_eo}/${nam_job}.%A-%a.stderr.txt"
                 --array="1-${#arr_mip[@]}%${max_job}"
-                "${cmd_bld[@]}"
+                "${arr_cmd_bld[@]}"
         )
 
         if [[ "${dry_run}" == "true" || "${verbose}" == "true" ]]; then
@@ -1493,17 +1493,17 @@ function run_jobs() {
             if [[ "${verbose}" == "true" ]]; then
                 print_banner_pretty "Call to dependent combiner 'sbatch'"
                 echo
-                printf '%q ' "${cmd_cmb_slurm[@]}"
+                printf '%q ' "${arr_cmd_cmb_slurm[@]}"
                 echo
                 echo
             fi
 
-            if ! raw_cmb="$("${cmd_cmb_slurm[@]}")"; then
+            if ! raw_cmb="$("${arr_cmd_cmb_slurm[@]}")"; then
                 echo_err \
                     "submitted scaling-factor Slurm array '${id_job}' but" \
                     "failed to submit its dependent combiner job."
                 echo "Run the combiner manually after array completion:" >&2
-                printf '  %q ' "${cmd_cmb[@]}" >&2
+                printf '  %q ' "${arr_cmd_cmb[@]}" >&2
                 echo >&2
                 return 1
             fi
@@ -1525,19 +1525,19 @@ function run_jobs() {
                 if [[ "${verbose}" == "true" ]]; then
                     print_banner_pretty "Call to dependent header 'sbatch'"
                     echo
-                    printf '%q ' "${cmd_hdr_slurm[@]}"
+                    printf '%q ' "${arr_cmd_hdr_slurm[@]}"
                     echo
                     echo
                 fi
 
-                if ! raw_hdr="$("${cmd_hdr_slurm[@]}")"; then
+                if ! raw_hdr="$("${arr_cmd_hdr_slurm[@]}")"; then
                     echo_err \
                         "submitted dependent combiner job '${id_cmb}' but" \
                         "failed to submit its dependent header job."
                     echo \
                         "Write the header manually after combiner completion:" \
                         >&2
-                    printf '  %q ' "${cmd_hdr[@]}" >&2
+                    printf '  %q ' "${arr_cmd_hdr[@]}" >&2
                     echo >&2
                     return 1
                 fi
@@ -1558,7 +1558,7 @@ function run_jobs() {
 
             print_banner_pretty "Call to dependent combiner 'sbatch'"
             echo
-            printf '%q ' "${cmd_cmb_slurm[@]}"
+            printf '%q ' "${arr_cmd_cmb_slurm[@]}"
             echo
             echo
 
@@ -1567,7 +1567,7 @@ function run_jobs() {
 
                 print_banner_pretty "Call to dependent header 'sbatch'"
                 echo
-                printf '%q ' "${cmd_hdr_slurm[@]}"
+                printf '%q ' "${arr_cmd_hdr_slurm[@]}"
                 echo
                 echo
             fi
@@ -1582,7 +1582,7 @@ function run_jobs() {
 
             for idx in "${!arr_mip[@]}"; do
                 build_cmd "${idx}" || return 1
-                cmd_bld=( "${BASH}" "${cmd_bld[@]}" )
+                arr_cmd_bld=( "${BASH}" "${arr_cmd_bld[@]}" )
 
                 IFS=';' read -r log_out log_err < <(
                     get_submit_logs "${arr_mip[idx]}"
@@ -1614,7 +1614,7 @@ function run_jobs() {
 
                 for idx in "${!arr_mip[@]}"; do
                     build_cmd "${idx}" || return 1
-                    cmd_bld=( "${BASH}" "${cmd_bld[@]}" )
+                    arr_cmd_bld=( "${BASH}" "${arr_cmd_bld[@]}" )
 
                     IFS=';' read -r log_out log_err < <(
                         get_submit_logs "${arr_mip[idx]}"
@@ -1629,12 +1629,12 @@ function run_jobs() {
             if [[ "${dry_run}" == "false" ]]; then
                 for idx in "${!arr_mip[@]}"; do
                     build_cmd "${idx}" || return 1
-                    cmd_bld=( "${BASH}" "${cmd_bld[@]}" )
+                    arr_cmd_bld=( "${BASH}" "${arr_cmd_bld[@]}" )
 
                     IFS=';' read -r log_out log_err < <(
                         get_submit_logs "${arr_mip[idx]}"
                     )
-                    "${cmd_bld[@]}" >> "${log_out}" 2>> "${log_err}" \
+                    "${arr_cmd_bld[@]}" >> "${log_out}" 2>> "${log_err}" \
                         || return 1
                 done
             fi
@@ -1643,24 +1643,24 @@ function run_jobs() {
         if [[ "${dry_run}" == "true" || "${verbose}" == "true" ]]; then
             print_banner_pretty "Scaling-factor part combination"
             echo
-            printf '%q ' "${cmd_cmb[@]}"
+            printf '%q ' "${arr_cmd_cmb[@]}"
             echo
             echo
 
             if [[ "${no_header}" == "false" ]]; then
                 print_banner_pretty "Scaling-factor header insertion"
                 echo
-                printf '%q ' "${cmd_hdr[@]}"
+                printf '%q ' "${arr_cmd_hdr[@]}"
                 echo
                 echo
             fi
         fi
 
         if [[ "${dry_run}" == "false" ]]; then
-            "${cmd_cmb[@]}" || return 1
+            "${arr_cmd_cmb[@]}" || return 1
 
             if [[ "${no_header}" == "false" ]]; then
-                "${cmd_hdr[@]}" || return 1
+                "${arr_cmd_hdr[@]}" || return 1
             fi
         fi
     fi

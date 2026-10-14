@@ -9,7 +9,7 @@
 # The following were used in design, development, and documentation, with all
 # output reviewed, edited, and approved by the author:
 # - OpenAI ChatGPT and Codex (GPT-5.5, GPT-5.6);
-# - Anthropic Claude Code (Opus 5).
+# - Anthropic Claude Code (Opus 5, Opus 5.5).
 #
 # Distributed under the MIT license.
 
@@ -241,14 +241,24 @@ function scan_execute_submit_dir_scr_policy() {
                 "$(print_relpath "${file}")"
         fi
 
+        # A wrapper with no 'arr_cmd_bld=(' submit command would otherwise pass
+        # unchecked, e.g., after the array is renamed.
         while IFS= read -r line; do
             found=1
+
+            if [[ "${line}" == "none" ]]; then
+                record_fail \
+                    "execute wrapper has no 'arr_cmd_bld=(' submit command:" \
+                    "$(print_relpath "${file}")"
+                continue
+            fi
+
             record_fail \
                 "execute submit command missing --dir_scr \"\${dir_scr}\":" \
                 "$(print_relpath "${file}"):${line}"
         done < <(
             awk '
-                /^[[:space:]]*cmd_bld=\(/ {
+                /^[[:space:]]*arr_cmd_bld=\(/ {
                     in_cmd = 1
                     start = FNR
                     has_submit = 0
@@ -271,7 +281,16 @@ function scan_execute_submit_dir_scr_policy() {
                         if (has_submit && missing_dir_scr) {
                             print start ":" $0
                         }
+                        if (has_submit) {
+                            n_submit++
+                        }
                         in_cmd = 0
+                    }
+                }
+
+                END {
+                    if (n_submit == 0) {
+                        print "none"
                     }
                 }
             ' "${file}"

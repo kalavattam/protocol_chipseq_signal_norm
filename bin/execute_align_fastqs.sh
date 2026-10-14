@@ -80,7 +80,7 @@ function build_cmd() {
     local fil_in_i=""
     local show_help
 
-    unset cmd_bld && declare -ga cmd_bld
+    unset arr_cmd_bld && declare -ga arr_cmd_bld
 
     show_help=$(cat << EOM
 Usage
@@ -88,7 +88,7 @@ Usage
   build_cmd
     [--help] [idx]
 
-  Construct the command array 'cmd_bld' for one call to 'submit_align_fastqs.sh'.
+  Construct the command array 'arr_cmd_bld' for one call to 'submit_align_fastqs.sh'.
 
 Parameters
 ----------
@@ -124,14 +124,14 @@ Expected globals
 
 Returns
 -------
-  0 if 'cmd_bld' is constructed successfully; otherwise 1.
+  0 if 'arr_cmd_bld' is constructed successfully; otherwise 1.
 
 Notes
 -----
   Runtime requirements:
     bash >= 4.4
 
-  - 'cmd_bld' is written as a global indexed array.
+  - 'arr_cmd_bld' is written as a global indexed array.
   - The reference FASTA argument is included only when 'out_ext=cram'.
   - '--req_flg' is included only when the input being run includes a paired-end entry; a single-end entry run on its own gets none.
   - Flag-only options are added as separate array elements.
@@ -145,13 +145,13 @@ Examples
   1. Build the whole-wrapper command after defaults and scalars are validated.
     '''bash
     build_cmd
-    declare -p cmd_bld
+    declare -p arr_cmd_bld
     '''
 
   2. Build the first per-entry command after input vectors are prepared.
     '''bash
     build_cmd 0
-    declare -p cmd_bld
+    declare -p arr_cmd_bld
     '''
 EOM
     )
@@ -172,7 +172,7 @@ EOM
         fil_in_i="${arr_fil_in[idx]}"
     fi
 
-    cmd_bld=(
+    arr_cmd_bld=(
         "${scr_sub}"
             --env_nam "${env_nam}"
             --dir_scr "${dir_scr}"
@@ -190,32 +190,32 @@ EOM
     )
 
     case "${aligner}" in
-        bowtie2) cmd_bld+=( --bt2_mode "${bt2_mode}" ) ;;
-        bwa)     cmd_bld+=( --bwa_alg "${bwa_alg}" ) ;;
+        bowtie2) arr_cmd_bld+=( --bt2_mode "${bt2_mode}" ) ;;
+        bwa)     arr_cmd_bld+=( --bwa_alg "${bwa_alg}" ) ;;
     esac
 
     # A paired-end entry holds two comma-separated files; a single-end entry
     # run on its own gets no '--req_flg'.
     if [[ "${req_flg}" == "true" && "${fil_in_i}" == *,* ]]; then
-        cmd_bld+=( --req_flg )
+        arr_cmd_bld+=( --req_flg )
     fi
 
     # Likewise for the Bowtie 2 fragment settings, which pass on only when
     # supplied.
     if [[ "${bt2_X_set}" == "true" && "${fil_in_i}" == *,* ]]; then
-        cmd_bld+=( --bt2_X "${bt2_X}" )
+        arr_cmd_bld+=( --bt2_X "${bt2_X}" )
     fi
 
     if [[ "${bt2_inherited}" == "true" && "${fil_in_i}" == *,* ]]; then
-        cmd_bld+=( --bt2_inherited )
+        arr_cmd_bld+=( --bt2_inherited )
     fi
 
     if [[ "${out_ext}" == "cram" ]]; then
-        cmd_bld+=( --ref_fa "${ref_fa}" )
+        arr_cmd_bld+=( --ref_fa "${ref_fa}" )
     fi
 
     if [[ "${qname}" == "true" ]]; then
-        cmd_bld+=( --qname )
+        arr_cmd_bld+=( --qname )
     fi
 }
 
@@ -258,8 +258,8 @@ function init_arg_defs() {
     time="1:00:00"
     time_set=false
 
-    unset arr_fil_in cmd_bld
-    declare -ga arr_fil_in cmd_bld
+    unset arr_fil_in arr_cmd_bld
+    declare -ga arr_fil_in arr_cmd_bld
 }
 
 
@@ -827,7 +827,7 @@ function run_jobs() {
                 --error="${dir_eo}/${nam_job}.%A-%a.stderr.txt"
                 --output="${dir_eo}/${nam_job}.%A-%a.stdout.txt"
                 --array="1-${#arr_fil_in[@]}%${max_job}"
-                "${cmd_bld[@]}"
+                "${arr_cmd_bld[@]}"
         )
 
         if [[ "${dry_run}" == "true" || "${verbose}" == "true" ]]; then
@@ -851,7 +851,7 @@ function run_jobs() {
 
             for idx in "${!arr_fil_in[@]}"; do
                 build_cmd "${idx}" || return 1
-                cmd_bld=( "${BASH}" "${cmd_bld[@]}" )
+                arr_cmd_bld=( "${BASH}" "${arr_cmd_bld[@]}" )
 
                 IFS=';' read -r log_out log_err < <(
                     get_submit_logs "${arr_fil_in[idx]}"
@@ -880,7 +880,7 @@ function run_jobs() {
         else
             # Serial execution.
             build_cmd "UNSET" || return 1
-            cmd_bld=( "${BASH}" "${cmd_bld[@]}" )
+            arr_cmd_bld=( "${BASH}" "${arr_cmd_bld[@]}" )
 
             log_out="${dir_eo}/${nam_job}_ser.stdout.txt"
             log_err="${dir_eo}/${nam_job}_ser.stderr.txt"
@@ -893,7 +893,7 @@ function run_jobs() {
             fi
 
             if [[ "${dry_run}" == "false" ]]; then
-                "${cmd_bld[@]}" >> "${log_out}" 2>> "${log_err}" \
+                "${arr_cmd_bld[@]}" >> "${log_out}" 2>> "${log_err}" \
                     || return 1
             fi
         fi
@@ -907,7 +907,7 @@ function run_jobs() {
         print_banner_pretty "Dry run of 'submit_align_fastqs.sh'"
 
         env -u SLURM_ARRAY_TASK_ID \
-            "${BASH}" "${cmd_bld[@]}" --dry_run \
+            "${BASH}" "${arr_cmd_bld[@]}" --dry_run \
             || return 1
 
         echo

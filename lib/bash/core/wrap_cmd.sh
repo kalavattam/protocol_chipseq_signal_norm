@@ -195,7 +195,7 @@ Usage
   print_built_cmd
     [--help] [log_out] [log_err]
 
-  Print the current command array 'cmd_bld' as one shell-escaped command line.
+  Print the current command array 'arr_cmd_bld' as one shell-escaped command line.
 
   If both 'log_out' and 'log_err' are supplied, append stdout and stderr redirections to the printed command.
 
@@ -212,7 +212,7 @@ Parameters
 
 Expected globals
 ----------------
-  cmd_bld : array
+  arr_cmd_bld : array
     Global indexed array containing the command to print; must be set and non-empty.
 
 Returns
@@ -231,13 +231,13 @@ Examples
 --------
   1. Print a command without log redirections.
     '''bash
-    cmd_bld=(compute_signal --help)
+    arr_cmd_bld=(compute_signal --help)
     print_built_cmd
     '''
 
   2. Print a command with append redirections for both logs.
     '''bash
-    cmd_bld=(samtools view sample.bam)
+    arr_cmd_bld=(samtools view sample.bam)
     print_built_cmd logs/sample.stdout.txt logs/sample.stderr.txt
     '''
 EOM
@@ -263,26 +263,26 @@ EOM
     fi
 
     if ! \
-        declare -p cmd_bld > /dev/null 2>&1
+        declare -p arr_cmd_bld > /dev/null 2>&1
     then
         echo_err_func "${FUNCNAME[0]}" \
-            "global indexed array 'cmd_bld' is unset."
+            "global indexed array 'arr_cmd_bld' is unset."
         return 1
     fi
 
-    if [[ "$(declare -p cmd_bld 2> /dev/null)" != declare\ -a* ]]; then
+    if [[ "$(declare -p arr_cmd_bld 2> /dev/null)" != declare\ -a* ]]; then
         echo_err_func "${FUNCNAME[0]}" \
-            "'cmd_bld' must be an indexed array."
+            "'arr_cmd_bld' must be an indexed array."
         return 1
     fi
 
-    if (( ${#cmd_bld[@]} == 0 )); then
+    if (( ${#arr_cmd_bld[@]} == 0 )); then
         echo_err_func "${FUNCNAME[0]}" \
-            "global indexed array 'cmd_bld' is empty."
+            "global indexed array 'arr_cmd_bld' is empty."
         return 1
     fi
 
-    printf '%q ' "${cmd_bld[@]}"
+    printf '%q ' "${arr_cmd_bld[@]}"
 
     if [[ -n "${log_out}" && -n "${log_err}" ]]; then
         printf '>> %q 2>> %q' "${log_out}" "${log_err}"

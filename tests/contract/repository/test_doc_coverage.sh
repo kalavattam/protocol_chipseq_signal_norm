@@ -9,7 +9,7 @@
 # The following were used in design, development, and documentation, with all
 # output reviewed, edited, and approved by the author:
 # - OpenAI ChatGPT and Codex (GPT-5.5, GPT-5.6);
-# - Anthropic Claude Code (Opus 5).
+# - Anthropic Claude Code (Opus 5, Opus 5.5).
 #
 # Distributed under the MIT license.
 
@@ -62,7 +62,7 @@ NOOP_HEREDOC_RE = re.compile(r"(?m)^[ \t]*:[ \t]*<<['\"]?EOM['\"]?")
 COMPLEX_SHELL_RE = re.compile(
     r"\b(?:getopts|case |while |for |if |awk |perl |python|samtools|"
     r"curl|wget|sbatch|parallel|mk" r"temp|rm |mv |cp |ln |printf )\b|"
-    r"declare -g|local -n|cmd_bld|Expected globals|Generated globals"
+    r"declare -g|local -n|arr_cmd_bld|Expected globals|Generated globals"
 )
 
 

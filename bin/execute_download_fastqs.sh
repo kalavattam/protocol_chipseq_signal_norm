@@ -79,7 +79,7 @@ function build_cmd() {
     local i show_help
     local -a arr_opt
 
-    unset cmd_bld && declare -ga cmd_bld
+    unset arr_cmd_bld && declare -ga arr_cmd_bld
 
     show_help=$(cat << EOM
 Usage
@@ -87,7 +87,7 @@ Usage
   build_cmd
     [--help] idx
 
-  Construct the command array 'cmd_bld' for one call to 'submit_download_fastqs.sh'.
+  Construct the command array 'arr_cmd_bld' for one call to 'submit_download_fastqs.sh'.
 
 Parameters
 ----------
@@ -134,12 +134,12 @@ Expected globals
 
 Generated globals
 -----------------
-  cmd_bld : array of str
+  arr_cmd_bld : array of str
     Indexed array containing one call to 'submit_download_fastqs.sh'.
 
 Returns
 -------
-  0 if 'cmd_bld' is constructed successfully; otherwise 1.
+  0 if 'arr_cmd_bld' is constructed successfully; otherwise 1.
 
 Notes
 -----
@@ -159,7 +159,7 @@ Examples
   2. Build the first prepared download job and inspect its command array.
     '''bash
     build_cmd 0
-    declare -p cmd_bld
+    declare -p arr_cmd_bld
     '''
 EOM
     )
@@ -177,7 +177,7 @@ EOM
 
     check_int_nonneg "${idx}" "idx" || return 1
 
-    cmd_bld=(
+    arr_cmd_bld=(
         "${scr_sub}"
             --dir_scr "${dir_scr}"
             --srr "${arr_job_acc[idx]}"
@@ -196,12 +196,12 @@ EOM
 
     for (( i = 0; i < ${#arr_opt[@]}; i += 2 )); do
         if [[ "${arr_opt[i + 1]}" != "NA" ]]; then
-            cmd_bld+=( "${arr_opt[i]}" "${arr_opt[i + 1]}" )
+            arr_cmd_bld+=( "${arr_opt[i]}" "${arr_opt[i + 1]}" )
         fi
     done
 
     # shellcheck disable=SC2034
-    cmd_bld+=(
+    arr_cmd_bld+=(
         --dir_out "${dir_out}"
         --dir_sym "${dir_sym}"
         --nam_cus "${arr_job_cus[idx]}"
@@ -238,13 +238,13 @@ function init_arg_defs() {
     unset arr_md5_1 arr_md5_2 arr_siz_1 arr_siz_2
     unset arr_job_acc arr_job_url_1 arr_job_url_2 arr_job_cus
     unset arr_job_md5_1 arr_job_md5_2 arr_job_siz_1 arr_job_siz_2
-    unset cmd_bld
+    unset arr_cmd_bld
 
     declare -ga arr_acc arr_url_1 arr_url_2 arr_cus
     declare -ga arr_md5_1 arr_md5_2 arr_siz_1 arr_siz_2
     declare -ga arr_job_acc arr_job_url_1 arr_job_url_2 arr_job_cus
     declare -ga arr_job_md5_1 arr_job_md5_2 arr_job_siz_1 arr_job_siz_2
-    declare -ga cmd_bld
+    declare -ga arr_cmd_bld
 }
 
 
@@ -843,7 +843,7 @@ function prepare_config_parallel() {
 
     for i in "${!arr_job_acc[@]}"; do
         build_cmd "${i}" || return 1
-        cmd_bld=( "${BASH}" "${cmd_bld[@]}" )
+        arr_cmd_bld=( "${BASH}" "${arr_cmd_bld[@]}" )
 
         {
             print_built_cmd
@@ -948,7 +948,7 @@ function run_jobs() {
         else
             for i in "${!arr_job_acc[@]}"; do
                 build_cmd "${i}" || return 1
-                cmd_bld=( "${BASH}" "${cmd_bld[@]}" )
+                arr_cmd_bld=( "${BASH}" "${arr_cmd_bld[@]}" )
 
                 if [[ "${dry_run}" == "true" || "${verbose}" == "true" ]]; then
                     print_banner_pretty "Serial execution"
@@ -958,7 +958,7 @@ function run_jobs() {
                 fi
 
                 if [[ "${dry_run}" == "false" ]]; then
-                    "${cmd_bld[@]}" || {
+                    "${arr_cmd_bld[@]}" || {
                         echo_err \
                             "serial download worker failed for accession" \
                             "'${arr_job_acc[i]}'."

@@ -80,7 +80,7 @@ function build_cmd() {
     local fil_in_i=""
     local show_help
 
-    unset cmd_bld && declare -ga cmd_bld
+    unset arr_cmd_bld && declare -ga arr_cmd_bld
 
     show_help=$(cat << EOM
 Usage
@@ -88,7 +88,7 @@ Usage
   build_cmd
     [--help] [idx]
 
-  Construct the command array 'cmd_bld' for one call to 'submit_trim_fastqs.sh'.
+  Construct the command array 'arr_cmd_bld' for one call to 'submit_trim_fastqs.sh'.
 
 Parameters
 ----------
@@ -121,15 +121,15 @@ Expected globals
 
 Returns
 -------
-  - Writes the built command to the global indexed array 'cmd_bld'.
-  - Returns 0 if 'cmd_bld' is constructed successfully; otherwise 1.
+  - Writes the built command to the global indexed array 'arr_cmd_bld'.
+  - Returns 0 if 'arr_cmd_bld' is constructed successfully; otherwise 1.
 
 Notes
 -----
   Runtime requirements:
     bash >= 4.4
 
-  - 'cmd_bld' is written as a global indexed array.
+  - 'arr_cmd_bld' is written as a global indexed array.
   - On index handling:
 
     idx=UNSET  ->  --csv_fil_in "\${csv_fil_in}"       # Full serialized list
@@ -140,13 +140,13 @@ Examples
   1. Build the non-indexed trimming command from validated scalar globals.
     '''bash
     build_cmd
-    declare -p cmd_bld
+    declare -p arr_cmd_bld
     '''
 
   2. Build the first per-entry command from the prepared FASTQ array.
     '''bash
     build_cmd 0
-    declare -p cmd_bld
+    declare -p arr_cmd_bld
     '''
 EOM
     )
@@ -168,7 +168,7 @@ EOM
     fi
 
     # shellcheck disable=SC2034
-    cmd_bld=(
+    arr_cmd_bld=(
         "${scr_sub}"
             --env_nam "${env_nam}"
             --dir_scr "${dir_scr}"
@@ -207,8 +207,8 @@ function init_arg_defs() {
     time_set=false
     par_job=""
 
-    unset arr_fil_in cmd_bld
-    declare -ga arr_fil_in cmd_bld
+    unset arr_fil_in arr_cmd_bld
+    declare -ga arr_fil_in arr_cmd_bld
 }
 
 
@@ -536,7 +536,7 @@ function run_jobs() {
                 --error="${dir_eo}/${nam_job}.%A-%a.stderr.txt"
                 --output="${dir_eo}/${nam_job}.%A-%a.stdout.txt"
                 --array="1-${#arr_fil_in[@]}%${max_job}"
-                "${cmd_bld[@]}"
+                "${arr_cmd_bld[@]}"
         )
 
         if [[ "${dry_run}" == "true" || "${verbose}" == "true" ]]; then
@@ -563,7 +563,7 @@ function run_jobs() {
 
         for idx in "${!arr_fil_in[@]}"; do
             build_cmd "${idx}" || return 1
-            cmd_bld=( "${BASH}" "${cmd_bld[@]}" )
+            arr_cmd_bld=( "${BASH}" "${arr_cmd_bld[@]}" )
 
             IFS=';' read -r log_out log_err < <(
                 get_submit_logs "${arr_fil_in[idx]}"
@@ -593,7 +593,7 @@ function run_jobs() {
     fi
 
     build_cmd "UNSET" || return 1
-    cmd_bld=( "${BASH}" "${cmd_bld[@]}" )
+    arr_cmd_bld=( "${BASH}" "${arr_cmd_bld[@]}" )
 
     log_out="${dir_eo}/${nam_job}_ser.stdout.txt"
     log_err="${dir_eo}/${nam_job}_ser.stderr.txt"
@@ -606,7 +606,7 @@ function run_jobs() {
     fi
 
     if [[ "${dry_run}" == "false" ]]; then
-        "${cmd_bld[@]}" >> "${log_out}" 2>> "${log_err}"
+        "${arr_cmd_bld[@]}" >> "${log_out}" 2>> "${log_err}"
     fi
 }
 

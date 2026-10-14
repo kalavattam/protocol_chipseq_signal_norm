@@ -79,7 +79,7 @@ function build_cmd() {
     local fil_in_i=""
     local show_help
 
-    unset cmd_bld && declare -ga cmd_bld
+    unset arr_cmd_bld && declare -ga arr_cmd_bld
 
     show_help=$(cat << EOM
 Usage
@@ -87,7 +87,7 @@ Usage
   build_cmd
     [--help] [idx]
 
-  Construct the command array 'cmd_bld' for one call to 'submit_filter_alignments.sh'.
+  Construct the command array 'arr_cmd_bld' for one call to 'submit_filter_alignments.sh'.
 
 Parameters
 ----------
@@ -123,14 +123,14 @@ Expected globals
 
 Returns
 -------
-  0 if 'cmd_bld' is constructed successfully; 1 otherwise.
+  0 if 'arr_cmd_bld' is constructed successfully; 1 otherwise.
 
 Notes
 -----
   Runtime requirements:
     bash >= 4.4
 
-  - 'cmd_bld' is written as a global indexed array.
+  - 'arr_cmd_bld' is written as a global indexed array.
   - Flag-only options are added as separate array elements.
   - The reference FASTA argument is included only when the output is CRAM or the input being run includes a CRAM file; a BAM entry run on its own with BAM output gets none.
   - On index handling:
@@ -143,13 +143,13 @@ Examples
   1. Build the non-indexed filtering command from validated scalar globals.
     '''bash
     build_cmd
-    declare -p cmd_bld
+    declare -p arr_cmd_bld
     '''
 
   2. Build the first per-alignment command from the prepared input array.
     '''bash
     build_cmd 0
-    declare -p cmd_bld
+    declare -p arr_cmd_bld
     '''
 EOM
     )
@@ -171,7 +171,7 @@ EOM
     fi
 
     # shellcheck disable=SC2034
-    cmd_bld=(
+    arr_cmd_bld=(
         "${scr_sub}"
             --env_nam "${env_nam}"
             --dir_scr "${dir_scr}"
@@ -185,19 +185,19 @@ EOM
     )
 
     if [[ "${mito}" == "true" ]]; then
-        cmd_bld+=( --mito )
+        arr_cmd_bld+=( --mito )
     fi
 
     if [[ "${tg}" == "true" ]]; then
-        cmd_bld+=( --tg )
+        arr_cmd_bld+=( --tg )
     fi
 
     if [[ "${mtr}" == "true" ]]; then
-        cmd_bld+=( --mtr )
+        arr_cmd_bld+=( --mtr )
     fi
 
     if [[ "${chk_chr}" == "true" ]]; then
-        cmd_bld+=( --chk_chr )
+        arr_cmd_bld+=( --chk_chr )
     fi
 
     # A BAM entry run on its own with BAM output gets no reference.
@@ -205,7 +205,7 @@ EOM
         -n "${ref_fa}"
         && ( "${out_ext}" == "cram" || ",${fil_in_i,,}," == *".cram,"* )
     ]]; then
-        cmd_bld+=( --ref_fa "${ref_fa}" )
+        arr_cmd_bld+=( --ref_fa "${ref_fa}" )
     fi
 }
 
@@ -669,7 +669,7 @@ function run_jobs() {
                 --error="${dir_eo}/${nam_job}.%A-%a.stderr.txt"
                 --output="${dir_eo}/${nam_job}.%A-%a.stdout.txt"
                 --array="1-${#arr_fil_in[@]}%${max_job}"
-                "${cmd_bld[@]}"
+                "${arr_cmd_bld[@]}"
         )
 
         if [[ "${dry_run}" == "true" || "${verbose}" == "true" ]]; then
@@ -690,7 +690,7 @@ function run_jobs() {
 
         for idx in "${!arr_fil_in[@]}"; do
             build_cmd "${idx}" || return 1
-            cmd_bld=( "${BASH}" "${cmd_bld[@]}" )
+            arr_cmd_bld=( "${BASH}" "${arr_cmd_bld[@]}" )
 
             IFS=';' read -r log_out log_err < <(
                 get_submit_logs "${arr_fil_in[idx]}"
@@ -717,7 +717,7 @@ function run_jobs() {
         fi
     else
         build_cmd "UNSET" || return 1
-        cmd_bld=( "${BASH}" "${cmd_bld[@]}" )
+        arr_cmd_bld=( "${BASH}" "${arr_cmd_bld[@]}" )
 
         log_out="${dir_eo}/${nam_job}_ser.stdout.txt"
         log_err="${dir_eo}/${nam_job}_ser.stderr.txt"
@@ -730,7 +730,7 @@ function run_jobs() {
         fi
 
         if [[ "${dry_run}" == "false" ]]; then
-            "${cmd_bld[@]}" >> "${log_out}" 2>> "${log_err}"
+            "${arr_cmd_bld[@]}" >> "${log_out}" 2>> "${log_err}"
         fi
     fi
 }
