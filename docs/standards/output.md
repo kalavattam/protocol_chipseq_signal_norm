@@ -24,7 +24,7 @@ No choice is made here for rounding, binary-floating semantics, ties, `dp=0`, ve
 ## Alignment-file header record (`OUTPUT.ALIGNMENT.RECORD`)
 **Classification:** `advisory` with deterministic fixture evidence.
 
-**Scope:** Every SAM, BAM, or CRAM file that a maintained chain writes as an output, including additional outputs such as the `--qname` BAM, in every chain that writes alignment files (today `align_fastqs` and `filter_alignments`).
+**Scope:** Every SAM, BAM, or CRAM file that a maintained chain writes as an output, including additional outputs such as the `--qname` BAM, in every chain that writes alignment files (today `align_fastqs`, `filter_alignments`, and `qsort_bam`).
 
 A reader must be able to learn from the header alone everything the pipeline did to the file, whether the settings that shaped it are public or hidden. Keep every tool's own `@PG` line: never pass `--no-PG` when writing an output, and never strip `@PG` lines from one.
 
