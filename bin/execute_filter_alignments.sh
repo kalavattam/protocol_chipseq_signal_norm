@@ -739,6 +739,12 @@ function run_jobs() {
 # Main script execution.
 function main() {
     init_defs
+
+    # Add this script to the call path that alignment-file records give
+    # ('OUTPUT.ALIGNMENT.RECORD') by name, since Slurm runs a renamed copy.
+    PIPELINE_CALLS="${PIPELINE_CALLS:+${PIPELINE_CALLS} > }"
+    PIPELINE_CALLS+="execute_filter_alignments.sh"
+    export PIPELINE_CALLS
     source_helpers_execute || return 1
 
     if [[ -z "${1:-}" || "${1}" =~ ^(-h|--h[e]?lp)$ ]]; then

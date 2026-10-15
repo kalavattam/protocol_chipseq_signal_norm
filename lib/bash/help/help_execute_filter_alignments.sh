@@ -121,6 +121,9 @@ Notes
   - CRAM input or CRAM output requires '--ref_fa'.
   - Flag '--mito' applies to either S. cerevisiae or S. pombe data.
   - Flags '--tg' and '--mtr' apply only to S. pombe data; if supplied with '--retain sc', they are refused.
+  - Each output's header keeps the input's header, any earlier pipeline record included, and adds this chain's record as '@CO' lines:
+    + 'pipeline:' lines give the commit, the options in effect, the chromosomes kept, and the input file name;
+    + 'pipeline-run:' lines give the thread count, the start time, the host, the scripts and functions that ran, and the full paths.
 
 Examples
 --------

@@ -112,6 +112,9 @@ Notes
   - Use consistent file ordering in input and output lists.
   - To run in debug mode, set hardcoded variable 'debug=true'.
   - Flags '--tg' and '--mtr' are only meaningful with '--retain sp'; if supplied with '--retain sc', they are refused.
+  - Each output's header keeps the input's header, any earlier pipeline record included, and adds this chain's record as '@CO' lines:
+    + 'pipeline:' lines give the commit, the options in effect, the chromosomes kept, and the input file name;
+    + 'pipeline-run:' lines give the thread count, the start time, the host, the scripts and functions that ran, and the full paths.
 
 Examples
 --------

@@ -70,7 +70,11 @@ fi
     }
 
     source_helpers "${_dir_src_alignment}/.." \
-        check_args check_inputs check_source format_outputs || {
+        check_args \
+        check_inputs \
+        check_source \
+        format_outputs \
+        record_alignment || {
             echo "error($(basename "${BASH_SOURCE[0]}")):" \
                 "failed to source required helper dependencies." >&2
 
@@ -111,31 +115,31 @@ Parameters
   -h, --help : flag
     Display this help message and exit.
 
-  1  func : str
+  01  func : str
     Name of the calling function for diagnostics.
 
-  2  chr_nam : str
+  02  chr_nam : str
     Organism code that controls organism-specific options.
 
-  3  threads_ref : str
+  03  threads_ref : str
     Name of the caller variable that receives parsed threads.
 
-  4  fil_in_ref : str
+  04  fil_in_ref : str
     Name of the caller variable that receives the input path.
 
-  5  fil_out_ref : str
+  05  fil_out_ref : str
     Name of the caller variable that receives the output path.
 
-  6  mito_ref : str
+  06  mito_ref : str
     Name of the caller variable that receives the mitochondrial flag.
 
-  7  tg_ref : str
+  07  tg_ref : str
     Name of the caller variable that receives the TG flag.
 
-  8  mtr_ref : str
+  08  mtr_ref : str
     Name of the caller variable that receives the MTR flag.
 
-  9  chk_chr_ref : str
+  09  chk_chr_ref : str
     Name of the caller variable that receives the chromosome-check flag.
 
   10  ref_fa_ref : str
@@ -514,7 +518,7 @@ EOM
         | sort \
         | uniq
 }
-#MAYBE: move to a shared helper script later if reused elsewhere
+#MAYBE: move to a shared helper script later if reused elsewhere.
 
 
 # "Finalize" a filtered alignment file: index the output and optionally print
@@ -645,6 +649,160 @@ function _build_filter_pg_cl() {
 }
 
 
+# Build the pipeline record ('OUTPUT.ALIGNMENT.RECORD') of one
+# 'filter_alignments' operation as '@CO' header lines, content lines first.
+function _build_filter_record() {
+    local func="${1:-}"
+    local rec_nam="${2:-}"
+    local threads="${3:-}"
+    local retain="${4:-}"
+    local fil_in="${5:-}"
+    local fil_out="${6:-}"
+    local mito="${7:-false}"
+    local tg="${8:-false}"
+    local mtr="${9:-false}"
+    local ref_fa="${10:-}"
+    local chrs="${11:-}"
+    local -a arr_cnt arr_run arr_pth
+    local show_help
+
+    show_help=$(cat << EOM
+Usage
+-----
+  _build_filter_record
+    [--help] func rec_nam threads retain fil_in fil_out mito tg mtr ref_fa chrs
+
+  Fill the named array with the '@CO' lines of the pipeline record of one 'filter_alignments' operation: 'pipeline:' lines for what determines the file's content, then 'pipeline-run:' lines for the run's context.
+
+Parameters
+----------
+  -h, --help : flag
+    Display this help message and exit.
+
+  01  func : str
+    Name of the calling function for diagnostics.
+
+  02  rec_nam : str
+    Name of the indexed array to fill, one header line per element.
+
+  03  threads : int
+    Number of threads to use.
+
+  04  retain : str
+    Species whose chromosomes are retained: 'sc' or 'sp'.
+
+  05  fil_in : file
+    Input BAM or CRAM file.
+
+  06  fil_out : file
+    Output BAM or CRAM file.
+
+  07  mito : bool
+    Whether the mitochondrial chromosome is retained.
+
+  08  tg : bool
+    Whether 'SP_II_TG' is retained; recorded only for 'sp'.
+
+  09  mtr : bool
+    Whether 'SP_MTR' is retained; recorded only for 'sp'.
+
+  10  ref_fa : file
+    Reference FASTA, recorded only when the input or output is CRAM, or empty.
+
+  11  chrs : str
+    Space-delimited chromosome set retained.
+
+Returns
+-------
+  Returns 0 after filling the array; prints an error and returns 1 if 'rec_nam' is missing.
+
+Notes
+-----
+  Runtime requirements:
+    - bash >= 4.4
+    - date
+    - dirname
+    - git (optional; without it, the commit is 'unknown')
+    - hostname
+
+Examples
+--------
+  1. Build the record for an S. cerevisiae filter and print it.
+    '''bash
+    _build_filter_record \\
+        filter_alignment_sc \\
+        arr_rec \\
+        2 \\
+        sc \\
+        work/sample.bam \\
+        work/sample.sc.bam \\
+        false \\
+        false \\
+        false \\
+        '' \\
+        'I II III IV V VI VII VIII IX X XI XII XIII XIV XV XVI'
+    printf '%s\\n' "\${arr_rec[@]}"
+    '''
+
+  2. Display the helper's argument contract.
+    '''bash
+    _build_filter_record --help
+    '''
+EOM
+    )
+
+    if [[ "${func}" =~ ^(-h|--h[e]?lp)$ ]]; then
+        echo "${show_help}" >&2
+        return 0
+    elif [[ -z "${rec_nam}" ]]; then
+        echo_err_func "${FUNCNAME[0]}" \
+            "positional argument 2, 'rec_nam', is missing."
+        return 1
+    fi
+
+    local -n rec_ref="${rec_nam}"
+
+    # Content lines: the chain, the commit, the options in effect, the
+    # chromosomes kept, and the input by file name.
+    arr_cnt=(
+        $'@CO\tpipeline: chain=filter_alignments'
+        $'@CO\tpipeline: commit='"$(print_record_commit)"
+        $'@CO\tpipeline: --retain='"${retain}"
+        $'@CO\tpipeline: --mito='"${mito}"
+    )
+
+    if [[ "${retain}" == "sp" ]]; then
+        arr_cnt+=(
+            $'@CO\tpipeline: --tg='"${tg}"
+            $'@CO\tpipeline: --mtr='"${mtr}"
+        )
+    fi
+
+    arr_cnt+=(
+        $'@CO\tpipeline: chromosomes='"${chrs}"
+        $'@CO\tpipeline: --fil_in='"${fil_in##*/}"
+    )
+
+    # Record the reference only where CRAM used it.
+    arr_pth=( fil_in "${fil_in}" )
+    if [[ "${fil_in,,}" == *.cram || "${fil_out,,}" == *.cram ]]; then
+        arr_cnt+=( $'@CO\tpipeline: --ref_fa='"${ref_fa##*/}" )
+        arr_pth+=( ref_fa "${ref_fa}" )
+    fi
+    arr_pth+=( fil_out "${fil_out}" )
+
+    # Run lines: the thread count, the start time, the host, the caller, the
+    # environment, any Slurm job, and the full paths.
+    arr_run=()
+    add_record_run_lines \
+        arr_run "${BASH_SOURCE[0]##*/}::${func}" "${threads}" "${arr_pth[@]}" \
+        || return 1
+
+    # shellcheck disable=SC2034  # Read by name in the caller.
+    rec_ref=( "${arr_cnt[@]}" "${arr_run[@]}" )
+}
+
+
 # Filter a SAM file by retained reference-sequence names:
 # - Keep non-'@SQ' header lines, retain only matching '@SQ' lines, and keep
 #   only alignments whose reference sequence is in the supplied chromosome set.
@@ -658,16 +816,16 @@ function _filter_sam_chr() {
     local pg_id="${5:-}"
     local pg_pn="${6:-filter_alignments}"
     local pg_cl="${7:-}"
+    local rec="${8:-}"
     local show_help
 
     show_help=$(cat << EOM
 Usage
 -----
   _filter_sam_chr
-    [--help] func fil_in fil_out chrs [pg_id] [pg_pn] [pg_cl]
+    [--help] func fil_in fil_out chrs [pg_id] [pg_pn] [pg_cl] [rec]
 
-  Rewrite a SAM file so that only selected chromosomes and their matching
-  alignments remain.
+  Rewrite a SAM file so that only selected chromosomes and their matching alignments remain.
 
 Parameters
 ----------
@@ -694,6 +852,9 @@ Parameters
 
   7  pg_cl : str
     Sanitized program-group command line.
+
+  8  rec : str
+    Pipeline record ('@CO' lines, newline-separated) to write after the new @PG line.
 
 Returns
 -------
@@ -758,8 +919,10 @@ EOM
     validate_var_file "fil_in" "${fil_in}" || return 1
 
     # TODO: explicitly use 'gawk'?
+    # The record reaches awk through the environment, as '-v' would expand its
+    # backslashes.
     if ! \
-        awk \
+        REC_FILTER="${rec}" awk \
             -v chrs="${chrs}" \
             -v pg_id="${pg_id}" \
             -v pg_pn="${pg_pn}" \
@@ -808,6 +971,9 @@ EOM
                 }
 
                 print "@PG\tID:" id "\tPN:" pg_pn "\tCL:" pg_cl
+                if (ENVIRON["REC_FILTER"] != "") {
+                    print ENVIRON["REC_FILTER"]
+                }
                 pg_done = 1
             }
 
@@ -881,7 +1047,7 @@ function filter_alignment_sc() {
     local ref_fa=""
     local chrs
     local outdir outbase pth_in pth_out pg_cl
-    local -a arr_ref_arg=()
+    local -a arr_ref_arg=() arr_rec=()
     local show_help
 
     show_help=$(cat << EOM
@@ -999,6 +1165,20 @@ EOM
             "${ref_fa}"
     )"
 
+    _build_filter_record \
+        "${FUNCNAME[0]}" \
+        arr_rec \
+        "${threads}" \
+        sc \
+        "${fil_in}" \
+        "${fil_out}" \
+        "${mito}" \
+        false \
+        false \
+        "${ref_fa}" \
+        "${chrs}" \
+        || return 1
+
     # Rewriting through SAM text lets samtools renumber references by name;
     # 'samtools reheader' does not, so it would relabel reads whenever a
     # dropped reference precedes a kept one.
@@ -1031,7 +1211,8 @@ EOM
             "${chrs}" \
             "${FUNCNAME[0]}" \
             "filter_alignments" \
-            "${pg_cl}"
+            "${pg_cl}" \
+            "$(printf '%s\n' "${arr_rec[@]}")"
     then
         _cleanup_filter_alignment_tmp "${pth_in}" "${pth_out}"
         return 1
@@ -1086,7 +1267,7 @@ function filter_alignment_sp() {
     local ref_fa=""
     local chrs
     local outdir outbase pth_in pth_out pg_cl
-    local -a arr_ref_arg=()
+    local -a arr_ref_arg=() arr_rec=()
     local show_help
 
     show_help=$(cat << EOM
@@ -1220,6 +1401,20 @@ EOM
             "${ref_fa}"
     )"
 
+    _build_filter_record \
+        "${FUNCNAME[0]}" \
+        arr_rec \
+        "${threads}" \
+        sp \
+        "${fil_in}" \
+        "${fil_out}" \
+        "${mito}" \
+        "${tg}" \
+        "${mtr}" \
+        "${ref_fa}" \
+        "${chrs}" \
+        || return 1
+
     outdir="$(dirname "${fil_out}")"
     outbase="$(basename "${fil_out}")"
     outbase="${outbase%.bam}"
@@ -1250,7 +1445,8 @@ EOM
             "${chrs}" \
             "${FUNCNAME[0]}" \
             "filter_alignments" \
-            "${pg_cl}"
+            "${pg_cl}" \
+            "$(printf '%s\n' "${arr_rec[@]}")"
     then
         _cleanup_filter_alignment_tmp "${pth_in}" "${pth_out}"
         return 1
