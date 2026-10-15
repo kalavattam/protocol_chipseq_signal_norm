@@ -81,7 +81,8 @@ require_files_nonempty \
 # 'execute' rows are dry runs: label|input ('se', 'pe', or 'mix')|arguments|
 # act. Refused rows name the option; warned rows warn and drop it; control rows
 # do neither and pass on the option they name; dropped rows do not warn but
-# pass on no default for the option they name.
+# pass on no default for the option they name. A dry run calls 'submit', which
+# refuses the same options, so a refusal must come from 'execute' itself.
 ref_cram="--ref_fa ${ref_fa} --out_ext cram"
 rows_exe=(
     "--bt2_mode with bwa|se|${a_bwa} --bt2_mode local|refuse --bt2_mode"
@@ -138,13 +139,18 @@ for idx in "${!rows_exe[@]}"; do
 
     case "${acts[0]}" in
         refuse)
+            msg="$(
+                grep -m1 -F "'${opt}' is for '--aligner " <<< "${out}" || true
+            )"
+
             if [[
                 "${rc}" -ne 0
-                && "${out}" == *"error("*"'${opt}' is for '--aligner "*
+                && "${msg}" == "error(execute_align_fastqs.sh"*
             ]]; then
                 record_pass "${lbl} is refused by name"
             else
-                record_fail "${lbl} was not refused by name (exit ${rc})"
+                record_fail \
+                    "${lbl} was not refused by name in 'execute' (exit ${rc})"
             fi
             ;;
 

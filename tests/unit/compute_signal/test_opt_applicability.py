@@ -180,6 +180,42 @@ REFUSED_CLI = (
     ),
     pytest.param(
         pseudo.main,
+        ["--method", "frc_mdn_nz", "--typ_sig", "count"],
+        "'--typ_sig' is for '--method edger'",
+        id="compute_pseudo typ_sig",
+    ),
+    pytest.param(
+        pseudo.main,
+        ["--method", "frc_mdn_nz", "--siz_bin", "10"],
+        "'--siz_bin' is for '--method edger'",
+        id="compute_pseudo siz_bin",
+    ),
+    pytest.param(
+        pseudo.main,
+        ["--method", "frc_mdn_nz", "--n_ovlp_A", "6"],
+        "'--n_ovlp_A' is for '--method edger'",
+        id="compute_pseudo n_ovlp_A",
+    ),
+    pytest.param(
+        pseudo.main,
+        ["--method", "frc_mdn_nz", "--n_ovlp_B", "18"],
+        "'--n_ovlp_B' is for '--method edger'",
+        id="compute_pseudo n_ovlp_B",
+    ),
+    pytest.param(
+        pseudo.main,
+        ["--method", "frc_mdn_nz", "--n_frg_A", "2"],
+        "'--n_frg_A' is for '--method edger'",
+        id="compute_pseudo n_frg_A",
+    ),
+    pytest.param(
+        pseudo.main,
+        ["--method", "frc_mdn_nz", "--n_frg_B", "2"],
+        "'--n_frg_B' is for '--method edger'",
+        id="compute_pseudo n_frg_B",
+    ),
+    pytest.param(
+        pseudo.main,
         ["--method", "qntl_nz", "--coef", "0.5"],
         "'--coef' is for '--method frc_mdn_nz'",
         id="compute_pseudo coef",
@@ -201,6 +237,12 @@ REFUSED_CLI = (
         ["--typ_sig", "CPM", "--sf_A", "1", "--sf_B", "1"],
         "'--sf_A' is for '--typ_sig RPGC'",
         id="compute_pseudo_deeptools sf",
+    ),
+    pytest.param(
+        dtools.main,
+        ["--typ_sig", "CPM", "--sf_B", "1"],
+        "'--sf_B' is for '--typ_sig RPGC'",
+        id="compute_pseudo_deeptools sf_B",
     ),
 )
 

@@ -927,6 +927,37 @@ fi
 
 bam_se="${ROOT_REPO}/tests/fixtures/compute_signal/bam/se/tiny_se.bam"
 
+# '--typ_sig' belongs to ratio mode; '--method' owns that meaning in signal.
+# Only this check names '--method', so the message shows it was the one that
+# refused.
+rc_ts=0
+out_ts="$(
+    "${TEST_BASH}" "${ROOT_REPO}/bin/submit_compute_signal.sh" \
+        --env_nam "${env_nam}" \
+        --dir_scr "${ROOT_REPO}/bin" \
+        --threads 1 \
+        --mode signal \
+        --method norm \
+        --typ_sig norm \
+        --siz_bin 10 \
+        --csv_fil_in "${bam_se}" \
+        --csv_fil_out "${tmp}/signal_ts.bedGraph" \
+        --dir_eo "${dir_err}" \
+        --nam_job "test_compute_signal_ts" 2>&1
+)" || rc_ts=$?
+
+if [[
+    "${rc_ts}" -ne 0
+    && "${out_ts}" == *"'--typ_sig'"* && "${out_ts}" == *"'--method'"*
+    && ! -e "${tmp}/signal_ts.bedGraph"
+]]; then
+    record_pass "submit rejects '--typ_sig' in signal mode, naming '--method'"
+else
+    record_fail \
+        "submit did not reject '--typ_sig' in signal mode by name" \
+        "(exit ${rc_ts})"
+fi
+
 rc_pc=0
 out_pc="$(
     "${TEST_BASH}" "${ROOT_REPO}/bin/submit_compute_signal.sh" \
@@ -952,7 +983,7 @@ else
         "submit did not reject '--prior_count' in signal mode" \
         "(exit ${rc_pc})"
 fi
-unset bam_se rc_pc out_pc
+unset bam_se rc_pc out_pc rc_ts out_ts
 
 # A bare literal would regularize file A alone and leave file B's zero bins
 # undefined, so a direct submit run refuses it too.

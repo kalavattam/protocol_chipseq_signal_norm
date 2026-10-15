@@ -114,6 +114,8 @@ rows_exe=(
     "--csv_len_mip in spike|spike|bam|--csv_len_mip 200|refuse --csv_len_mip"
     "--csv_len_min in spike|spike|bam|--csv_len_min 200|refuse --csv_len_min"
     "--method in siq|siq|bam|--method fractional|refuse --method"
+    "--csv_sip in siq|siq|bam|--csv_sip x.bam|refuse --csv_sip"
+    "--csv_sin in siq|siq|bam|--csv_sin x.bam|refuse --csv_sin"
     "--csv_dep_sip in siq|siq|bam|--csv_dep_sip 100|refuse --csv_dep_sip"
     "--csv_dep_sin in siq|siq|bam|--csv_dep_sin 100|refuse --csv_dep_sin"
     "--ref_fa with BAM only|spike|bam|--ref_fa ${ref_fa}|warn --ref_fa"
@@ -263,10 +265,14 @@ siq=( --tbl_met "${tbl_met}" --cfg_met "${cfg_met}" )
 rows_sub=(
     "default --eqn in spike|spike|--eqn 6nd|--eqn"
     "--len_def in spike|spike|--len_def 200|--len_def"
+    "--csv_len_mip in spike|spike|--csv_len_mip 200|--csv_len_mip"
     "--csv_len_min in spike|spike|--csv_len_min 200|--csv_len_min"
     "--tbl_met in spike|spike|--tbl_met ${tbl_met}|--tbl_met"
+    "--cfg_met in spike|spike|--cfg_met ${cfg_met}|--cfg_met"
     "--method in siq|siq|--method fractional|--method"
     "--csv_dep_sip in siq|siq|--csv_dep_sip 100|--csv_dep_sip"
+    "--csv_dep_sin in siq|siq|--csv_dep_sin 100|--csv_dep_sin"
+    "--csv_sip in siq|siq|--csv_sip x.bam|--csv_sip"
     "--csv_sin in siq|siq|--csv_sin x.bam|--csv_sin"
 )
 
