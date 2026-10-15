@@ -74,7 +74,7 @@ fi
     }
 
     source_helpers "${_dir_src_aln}/.." \
-        check_args check_source format_outputs || {
+        check_args check_source format_outputs record_alignment || {
             echo "error($(basename "${BASH_SOURCE[0]}")):" \
                 "failed to source required helper dependencies." >&2
 
@@ -1811,7 +1811,7 @@ EOM
             return 1
         fi
 
-        # With '--qname', Step 5 name-sorts the final, duplicate-marked BAM, so
+        # With '--qname', Step 6 name-sorts the final, duplicate-marked BAM, so
         # this file is not kept.
         arr_cmd=( rm -f "${bam_qnam}" )
 
@@ -2001,6 +2001,7 @@ function _mark_dup_bam() {
     local threads="${3:-}"
     local fil_wrk="${4:-}"
     local txt_mrk="${5:-}"
+    local dist_nam="${6:-}"
     local bam_mrk dist_opt rc_opt
     local -a arr_cmd arr_opt
     local show_help
@@ -2009,7 +2010,7 @@ function _mark_dup_bam() {
 Usage
 -----
   _mark_dup_bam
-    [--help] func dry_run threads fil_wrk txt_mrk
+    [--help] func dry_run threads fil_wrk txt_mrk dist_nam
 
   Mark duplicate alignments in the coordinate-sorted BAM work file, write the duplicate statistics, and index the file again, skipping files already marked (Step 4 of 'align_fastqs()').
 
@@ -2034,6 +2035,9 @@ Parameters
 
   5  txt_mrk : file
     Path for the duplicate statistics, without '.gz'; the file is written gzip-compressed, as 'txt_mrk.gz'.
+
+  6  dist_nam : str
+    Name of the variable to set to the optical duplicate distance, '2500', or to 'not used' and the reason; set to empty when the file was already marked.
 
 Returns
 -------
@@ -2061,7 +2065,8 @@ Examples
         false \\
         2 \\
         work/tiny_pe.bam \\
-        work/tiny_pe.markdup.txt
+        work/tiny_pe.markdup.txt \\
+        dist_mrk
     '''
 
   2. Display the helper's argument contract.
@@ -2084,11 +2089,14 @@ EOM
             "# all read names carry flow-cell coordinates of one format."
     fi
 
+    local -n dist_out="${dist_nam}"
+    dist_out=""
+
     if [[ "${dry_run}" == "true" || -f "${fil_wrk}" ]]; then
         if \
             [[ "${dry_run}" == "false" ]] \
                 && samtools view -H "${fil_wrk}" \
-                    | grep -q "@PG.*CL:samtools markdup"
+                | grep -q "@PG.*CL:samtools markdup"
         then
             echo_err_func "${func}" \
                 "Step #4: duplicate alignments are already marked in" \
@@ -2114,6 +2122,8 @@ EOM
                 fi
             fi
 
+            # shellcheck disable=SC2034  # Read by name in the caller.
+            dist_out="${dist_opt}"
             if [[ "${dist_opt}" == "2500" ]]; then
                 arr_opt=( -d 2500 )
             fi
@@ -2190,7 +2200,394 @@ EOM
 }
 
 
-# Step 5: with '--qname', name-sort the final BAM work file into a copy; then
+# Build the pipeline record ('OUTPUT.ALIGNMENT.RECORD') that Step 5 writes into
+# the header of the BAM work file as '@CO' lines.
+function _build_align_record() {
+    local func="${1:-}"
+    local cnt_nam="${2:-}"
+    local run_nam="${3:-}"
+    local threads="${4:-}"
+    local aligner="${5:-}"
+    local bt2_mode="${6:-}"
+    local bt2_X="${7:-}"
+    local bt2_inherited="${8:-}"
+    local bwa_alg="${9:-}"
+    local mapq="${10:-}"
+    local req_flg="${11:-}"
+    local index="${12:-}"
+    local ref_fa="${13:-}"
+    local fq_1="${14:-}"
+    local fq_2="${15:-}"
+    local fil_out="${16:-}"
+    local qname="${17:-}"
+    local -a arr_pth
+    local show_help
+
+    show_help=$(cat << EOM
+Usage
+-----
+  _build_align_record
+    [--help] func cnt_nam run_nam threads aligner bt2_mode bt2_X bt2_inherited bwa_alg mapq req_flg index ref_fa fq_1 fq_2 fil_out qname
+
+  Fill two named arrays with the '@CO' lines of the pipeline record for 'align_fastqs()': one with the 'pipeline:' lines for what determines the file's content, the other with the 'pipeline-run:' lines for the run's context.
+
+Parameters
+----------
+  -h, --help : flag
+    Display this help message and exit.
+
+  01  func : str
+    Name of the calling function for diagnostics.
+
+  02  cnt_nam : str
+    Name of the indexed array to fill with the content lines, one header line per element.
+
+  03  run_nam : str
+    Name of the indexed array to fill with the run lines, one header line per element.
+
+  04  threads : int
+    Number of threads to use.
+
+  05  aligner : str
+    Alignment program: 'bowtie2', 'bwa', or 'bwa-mem2'.
+
+  06  bt2_mode : str
+    Bowtie 2 alignment type: 'local', 'global', or 'end-to-end'.
+
+  07  bt2_X : int
+    Maximum fragment length for a Bowtie 2 paired-end alignment.
+
+  08  bt2_inherited : bool
+    Whether the earlier Bowtie 2 paired-end call is made.
+
+  09  bwa_alg : str
+    BWA algorithm: 'mem' or 'aln'.
+
+  10  mapq : int
+    MAPQ threshold.
+
+  11  req_flg : bool
+    Whether properly paired alignments are required.
+
+  12  index : path
+    Path to the aligner index/reference.
+
+  13  ref_fa : file
+    Reference FASTA, recorded only for CRAM output, or empty.
+
+  14  fq_1 : file
+    First FASTQ input file.
+
+  15  fq_2 : file
+    Second FASTQ input file, or empty for single-end data.
+
+  16  fil_out : file
+    Path to the final alignment file.
+
+  17  qname : bool
+    Whether a queryname-sorted copy is also written.
+
+Returns
+-------
+  Returns 0 after filling the arrays; prints an error and returns 1 if 'cnt_nam' or 'run_nam' is missing.
+
+Notes
+-----
+  Runtime requirements:
+    - bash >= 4.4
+    - date
+    - dirname
+    - git (optional; without it, the commit is 'unknown')
+    - hostname
+
+  - Options are recorded only where they are in effect; for example, '--bt2_X' is left out for single-end data and with '--bt2_inherited'.
+  - Inputs are named without their directories in the 'pipeline:' lines; their full paths, the thread count, the start time, the host, the call path, the environment, and any Slurm job are in the 'pipeline-run:' lines.
+  - The commit is marked '-dirty' when tracked files have uncommitted changes; untracked files do not count.
+
+Examples
+--------
+  1. Build the record for a single-end Bowtie 2 run and print it.
+    '''bash
+    _build_align_record \\
+        align_fastqs \\
+        arr_rec_cnt \\
+        arr_rec_run \\
+        1 \\
+        bowtie2 \\
+        end-to-end \\
+        1000 \\
+        false \\
+        mem \\
+        1 \\
+        false \\
+        tests/fixtures/align_fastqs/bowtie2/tiny \\
+        '' \\
+        tests/fixtures/align_fastqs/fastq/se/tiny_se.atria.fastq.gz \\
+        '' \\
+        work/tiny_se.bam \\
+        false
+    printf '%s\\n' "\${arr_rec_cnt[@]}" "\${arr_rec_run[@]}"
+    '''
+
+  2. Display the helper's argument contract.
+    '''bash
+    _build_align_record --help
+    '''
+EOM
+    )
+
+    if [[ "${func}" =~ ^(-h|--h[e]?lp)$ ]]; then
+        echo "${show_help}" >&2
+        return 0
+    elif [[ -z "${cnt_nam}" ]]; then
+        echo_err_func "${FUNCNAME[0]}" \
+            "positional argument 2, 'cnt_nam', is missing."
+        return 1
+    elif [[ -z "${run_nam}" ]]; then
+        echo_err_func "${FUNCNAME[0]}" \
+            "positional argument 3, 'run_nam', is missing."
+        return 1
+    fi
+
+    local -n cnt_ref="${cnt_nam}"
+    local -n run_ref="${run_nam}"
+    cnt_ref=()
+    # shellcheck disable=SC2034  # Filled by name in 'add_record_run_lines'.
+    run_ref=()
+
+    # Content lines: the chain, the commit, the options in effect, the inputs
+    # by file name, and the steps skipped from the start.
+    cnt_ref+=(
+        $'@CO\tpipeline: chain=align_fastqs'
+        $'@CO\tpipeline: commit='"$(print_record_commit)"
+        $'@CO\tpipeline: --aligner='"${aligner}"
+    )
+
+    case "${aligner}" in
+        bowtie2)
+            cnt_ref+=( $'@CO\tpipeline: --bt2_mode='"${bt2_mode}" )
+            if [[ -n "${fq_2}" && "${bt2_inherited}" == "true" ]]; then
+                cnt_ref+=( $'@CO\tpipeline: --bt2_inherited=true' )
+            elif [[ -n "${fq_2}" ]]; then
+                cnt_ref+=( $'@CO\tpipeline: --bt2_X='"${bt2_X}" )
+            fi
+            ;;
+
+        bwa)
+            cnt_ref+=( $'@CO\tpipeline: --bwa_alg='"${bwa_alg}" )
+            ;;
+    esac
+
+    cnt_ref+=( $'@CO\tpipeline: --mapq='"${mapq}" )
+    if [[ -n "${fq_2}" ]]; then
+        cnt_ref+=( $'@CO\tpipeline: --req_flg='"${req_flg}" )
+    fi
+    cnt_ref+=(
+        $'@CO\tpipeline: --qname='"${qname}"
+        $'@CO\tpipeline: --index='"${index##*/}"
+    )
+    if [[ "${fil_out}" == *.cram ]]; then
+        cnt_ref+=( $'@CO\tpipeline: --ref_fa='"${ref_fa##*/}" )
+    fi
+    cnt_ref+=( $'@CO\tpipeline: --fq_1='"${fq_1##*/}" )
+    if [[ -n "${fq_2}" ]]; then
+        cnt_ref+=( $'@CO\tpipeline: --fq_2='"${fq_2##*/}" )
+    else
+        cnt_ref+=( $'@CO\tpipeline: skipped=fixmate (single-end)' )
+    fi
+    if (( mapq == 0 )); then
+        cnt_ref+=( $'@CO\tpipeline: skipped=MAPQ filter (--mapq=0)' )
+    fi
+
+    # Run lines: the thread count, the start time, the host, the caller, the
+    # environment, any Slurm job, and the full paths.
+    arr_pth=( index "${index}" fq_1 "${fq_1}" fq_2 "${fq_2}" )
+    if [[ "${fil_out}" == *.cram ]]; then arr_pth+=( ref_fa "${ref_fa}" ); fi
+    arr_pth+=( fil_out "${fil_out}" )
+
+    add_record_run_lines \
+        "${run_nam}" "${BASH_SOURCE[0]##*/}::align_fastqs" "${threads}" \
+        "${arr_pth[@]}" \
+        || return 1
+}
+
+
+# Step 5: write the pipeline record into the header of the BAM work file, then
+# index the file again, skipping files that already carry a record.
+function _write_align_record() {
+    local func="${1:-}"
+    local dry_run="${2:-}"
+    local threads="${3:-}"
+    local fil_wrk="${4:-}"
+    local cnt_nam="${5:-}"
+    local run_nam="${6:-}"
+    local hdr_rec bam_rec
+    local -a arr_cmd
+    local show_help
+
+    show_help=$(cat << EOM
+Usage
+-----
+  _write_align_record
+    [--help] func dry_run threads fil_wrk cnt_nam run_nam
+
+  Write the pipeline record, content lines first, into the header of the duplicate-marked BAM work file as '@CO' lines, and index the file again, skipping files that already carry a record (Step 5 of 'align_fastqs()').
+
+Parameters
+----------
+  -h, --help : flag
+    Display this help message and exit.
+
+  1  func : str
+    Name of the calling function for diagnostics.
+
+  2  dry_run : bool
+    Whether to print the commands to stdout instead of running them; a dry run does not check for an earlier record.
+
+  3  threads : int
+    Number of threads to use.
+
+  4  fil_wrk : file
+    Duplicate-marked, coordinate-sorted BAM work file from Step 4.
+
+  5  cnt_nam : str
+    Name of the indexed array holding the record's content lines.
+
+  6  run_nam : str
+    Name of the indexed array holding the record's run lines.
+
+Returns
+-------
+  Returns 0 when writing and indexing succeed or are skipped or after printing the commands for a dry run; prints an error and returns 1 otherwise.
+
+Notes
+-----
+  Runtime requirements:
+    - bash >= 4.4
+    - grep
+    - mv
+    - rm
+    - samtools
+
+  - The header is read with '--no-PG', so reading it adds no '@PG' line; 'samtools reheader' adds its own.
+
+Examples
+--------
+  1. Write a record built by '_build_align_record()' into a work file.
+    '''bash
+    _write_align_record \\
+        align_fastqs \\
+        false \\
+        2 \\
+        work/tiny_pe.bam \\
+        arr_rec_cnt \\
+        arr_rec_run
+    '''
+
+  2. Display the helper's argument contract.
+    '''bash
+    _write_align_record --help
+    '''
+EOM
+    )
+
+    if [[ "${func}" =~ ^(-h|--h[e]?lp)$ ]]; then
+        echo "${show_help}" >&2
+        return 0
+    fi
+
+    if [[ "${dry_run}" == "true" ]]; then
+        printf '\n%s\n' \
+            "# Step 5: write the pipeline record into the BAM work file."
+    fi
+
+    if [[ "${dry_run}" == "false" && ! -f "${fil_wrk}" ]]; then
+        echo_err_func "${func}" \
+            "Step #5: duplicate-marked BAM file does not exist."
+        return 1
+    elif \
+        [[ "${dry_run}" == "false" ]] \
+            && samtools view -H --no-PG "${fil_wrk}" \
+                | grep -q $'^@CO\tpipeline: chain=align_fastqs$'
+    then
+        echo_err_func "${func}" \
+            "Step #5: duplicate-marked BAM file already carries a pipeline" \
+            "record. Skipping record operations."
+        return 0
+    fi
+
+    local -n rec_cnt_ref="${cnt_nam}"
+    local -n rec_run_ref="${run_nam}"
+    hdr_rec="${fil_wrk%.bam}.header.sam"
+    bam_rec="${fil_wrk%.bam}.record.bam"
+
+    # Write the header, then the record after it.
+    arr_cmd=( samtools view -H --no-PG "${fil_wrk}" )
+
+    if [[ "${dry_run}" == "true" ]]; then
+        _print_dry_run_cmd --out "${hdr_rec}" arr_cmd
+        printf 'printf %q' '%s\n'
+        printf ' \\\n    %q' "${rec_cnt_ref[@]}" "${rec_run_ref[@]}"
+        printf ' \\\n    >> %q\n\n' "${hdr_rec}"
+    elif ! \
+        {
+            "${arr_cmd[@]}" \
+                && printf '%s\n' "${rec_cnt_ref[@]}" "${rec_run_ref[@]}"
+        } > "${hdr_rec}"
+    then
+        echo_err_func "${func}" \
+            "Step #5: failed to write the header with the pipeline record."
+        return 1
+    fi
+
+    # Replace the header of the BAM work file with the new one.
+    arr_cmd=( samtools reheader "${hdr_rec}" "${fil_wrk}" )
+
+    if [[ "${dry_run}" == "true" ]]; then
+        _print_dry_run_cmd --out "${bam_rec}" arr_cmd
+    elif ! \
+        "${arr_cmd[@]}" > "${bam_rec}"
+    then
+        echo_err_func "${func}" \
+            "Step #5: failed to write the pipeline record into the" \
+            "duplicate-marked BAM file."
+        return 1
+    fi
+
+    arr_cmd=( mv -f "${bam_rec}" "${fil_wrk}" )
+
+    if ! \
+        _run_or_print_cmd "${dry_run}" arr_cmd
+    then
+        echo_err_func "${func}" \
+            "Step #5: failed to rename the BAM file with the pipeline record."
+        return 1
+    fi
+
+    arr_cmd=( rm -f "${hdr_rec}" )
+
+    if ! \
+        _run_or_print_cmd "${dry_run}" arr_cmd
+    then
+        echo_err_func "${func}" \
+            "Step #5: failed to remove the header file."
+        return 1
+    fi
+
+    # The new header moves the records, so index the file again.
+    arr_cmd=( samtools index -@ "${threads}" "${fil_wrk}" )
+
+    if ! \
+        _run_or_print_cmd "${dry_run}" arr_cmd
+    then
+        echo_err_func "${func}" \
+            "Step #5: failed to index the BAM file with the pipeline record."
+        return 1
+    fi
+}
+
+
+# Step 6: with '--qname', name-sort the final BAM work file into a copy; then
 # convert the work file and the copy to CRAM if requested, or keep both as BAM.
 function _finalize_align_output() {
     local func="${1:-}"
@@ -2212,7 +2609,7 @@ Usage
   _finalize_align_output
     [--help] func dry_run threads out_fmt fil_out fil_wrk ref_fa qname bam_qnam fil_qnam_out
 
-  With 'qname', name-sort the final, duplicate-marked BAM work file into a queryname-sorted copy; then convert the work file and the copy to CRAM when requested, or rename the copy into place (Step 5 of 'align_fastqs()').
+  With 'qname', name-sort the final, duplicate-marked BAM work file into a queryname-sorted copy; then convert the work file and the copy to CRAM when requested, or rename the copy into place (Step 6 of 'align_fastqs()').
 
 Parameters
 ----------
@@ -2235,7 +2632,7 @@ Parameters
     Path to the final alignment file.
 
   06  fil_wrk : file
-    BAM work file from Step 4.
+    BAM work file from Step 5.
 
   07  ref_fa : file
     Reference FASTA path, used for CRAM output.
@@ -2303,7 +2700,7 @@ EOM
 
     if [[ "${dry_run}" == "true" ]]; then
         printf '\n%s\n' \
-            "# Step 5: write the final output and the retained files."
+            "# Step 6: write the final output and the retained files."
 
         # BAM output without '--qname' is the BAM work file itself, so nothing
         # runs.
@@ -2327,7 +2724,7 @@ EOM
             _run_or_print_cmd "${dry_run}" arr_cmd
         then
             echo_err_func "${func}" \
-                "Step #5: failed to queryname-sort the final BAM work file."
+                "Step #6: failed to queryname-sort the final BAM work file."
             return 1
         fi
     fi
@@ -2345,7 +2742,7 @@ EOM
             _run_or_print_cmd "${dry_run}" arr_cmd
         then
             echo_err_func "${func}" \
-                "Step #5: failed to convert BAM work file to final CRAM file."
+                "Step #6: failed to convert BAM work file to final CRAM file."
             return 1
         fi
 
@@ -2355,7 +2752,7 @@ EOM
             _run_or_print_cmd "${dry_run}" arr_cmd
         then
             echo_err_func "${func}" \
-                "Step #5: failed to index final CRAM file."
+                "Step #6: failed to index final CRAM file."
             return 1
         fi
 
@@ -2372,7 +2769,7 @@ EOM
                 _run_or_print_cmd "${dry_run}" arr_cmd
             then
                 echo_err_func "${func}" \
-                    "Step #5: failed to convert queryname-sorted BAM" \
+                    "Step #6: failed to convert queryname-sorted BAM" \
                     "intermediate to retained CRAM file."
                 return 1
             fi
@@ -2384,7 +2781,7 @@ EOM
             _run_or_print_cmd "${dry_run}" arr_cmd
         then
             echo_err_func "${func}" \
-                "Step #5: failed to delete BAM work file and/or BAM index" \
+                "Step #6: failed to delete BAM work file and/or BAM index" \
                 "after CRAM conversion."
             return 1
         fi
@@ -2396,7 +2793,7 @@ EOM
                 _run_or_print_cmd "${dry_run}" arr_cmd
             then
                 echo_err_func "${func}" \
-                    "Step #5: failed to delete queryname-sorted BAM work" \
+                    "Step #6: failed to delete queryname-sorted BAM work" \
                     "intermediate after CRAM conversion."
                 return 1
             fi
@@ -2410,7 +2807,7 @@ EOM
                 _run_or_print_cmd "${dry_run}" arr_cmd
             then
                 echo_err_func "${func}" \
-                    "Step #5: failed to rename retained queryname-sorted BAM" \
+                    "Step #6: failed to rename retained queryname-sorted BAM" \
                     "intermediate."
                 return 1
             fi
@@ -2424,7 +2821,10 @@ function align_fastqs() {
     local req_flg index ref_fa
     local bt2_mode_set bt2_X_set bwa_alg_set
     local fq_1 fq_2 fil_out qname out_fmt
-    local fil_wrk fil_qnam_out bam_qnam txt_mrk
+    local fil_wrk fil_qnam_out bam_qnam txt_mrk dist_mrk
+
+    # shellcheck disable=SC2034  # Filled and read by name in the helpers.
+    local -a arr_rec_cnt arr_rec_run
     local show_help
 
     # Assign default argument values.
@@ -2541,7 +2941,10 @@ Notes
     + When every read name carries Illumina flow-cell coordinates ('...:tile:x:y') in one format, duplicates on the same tile as their original and within 2500 pixels of it in x and y are tagged as optical ('dt:Z:SQ'); the rest are tagged as library duplicates ('dt:Z:LB').
     + Otherwise, as with most SRA-dumped names, no 'dt' tags are written and a warning says why.
     + Duplicate statistics are written to '<stem>.markdup.txt.gz' beside the alignment file; Samtools estimates library size for paired-end data only. The file's last line, 'OPTICAL DISTANCE:', gives 2500 when optical duplicates were told apart, or 'not used' and the reason.
-  - For '--qname', the retained queryname-sorted output will have the same path and stem assigned to '--fil_out', except '.qnam' will be inserted before the final extension (for example, '.qnam.bam' or '.qnam.cram'). The copy is made in Step #5 from the final, duplicate-marked alignments, so it holds the same records and flags.
+  - Each alignment file's header, the '.qnam' copy's included, carries a pipeline record as '@CO' lines:
+    + 'pipeline:' lines give the commit, the options in effect, the input file names, and any skipped steps;
+    + 'pipeline-run:' lines give the thread count, the start time, the host, the scripts and functions that ran, and the full paths.
+  - For '--qname', the retained queryname-sorted output will have the same path and stem assigned to '--fil_out', except '.qnam' will be inserted before the final extension (for example, '.qnam.bam' or '.qnam.cram'). The copy is made in Step #6 from the final, duplicate-marked alignments, so it holds the same records and flags.
   - '--ref_fa' is required when '--fil_out' ends in '.cram', since CRAM writing requires a reference FASTA.
 
 Examples
@@ -2628,9 +3031,9 @@ EOM
                 shift 2
                 ;;
 
-            # Hidden per 'HELP.ALIAS.PUBLIC': reproduces the Bowtie 2
-            # paired-end calls made before 2026-10
-            # ('--no-overlap --no-dovetail', no '-X') and their alignments.
+            # Hidden per 'HELP.ALIAS.PUBLIC': reproduces the Bowtie 2 PE calls
+            # made before 2026-10 ('--no-overlap --no-dovetail', no '-X') and
+            # their alignments.
             -2i|--bt2[_-]inherited)
                 bt2_inherited=true
                 shift 1
@@ -2766,6 +3169,27 @@ EOM
     bam_qnam="${fil_wrk%.bam}.qnam.bam"
     txt_mrk="${fil_wrk%.bam}.markdup.txt"
 
+    # Build the pipeline record now, so that its start time is the run's.
+    _build_align_record \
+        "${FUNCNAME[0]}" \
+        arr_rec_cnt \
+        arr_rec_run \
+        "${threads}" \
+        "${aligner}" \
+        "${bt2_mode}" \
+        "${bt2_X}" \
+        "${bt2_inherited}" \
+        "${bwa_alg}" \
+        "${mapq}" \
+        "${req_flg}" \
+        "${index}" \
+        "${ref_fa}" \
+        "${fq_1}" \
+        "${fq_2}" \
+        "${fil_out}" \
+        "${qname}" \
+        || return 1
+
 
     # Step 1: align the reads into the BAM work file, dropping unaligned reads
     # and, for Bowtie 2, applying the MAPQ threshold.
@@ -2818,10 +3242,35 @@ EOM
         "${threads}" \
         "${fil_wrk}" \
         "${txt_mrk}" \
+        dist_mrk \
         || return 1
 
 
-    # Step 5: convert to CRAM if requested; with '--qname', name-sort the final
+    # Step 5: write the pipeline record, with whether optical duplicates were
+    # told apart, into the header and index the BAM work file again.
+    if [[ "${dist_mrk}" == "2500" ]]; then
+        arr_rec_cnt+=( $'@CO\tpipeline: optical_distance=2500' )
+    elif [[ -n "${dist_mrk}" ]]; then
+        arr_rec_cnt+=(
+            $'@CO\tpipeline: skipped=optical duplicates ('"${dist_mrk})"
+        )
+    else
+        arr_rec_cnt+=(
+            $'@CO\tpipeline: optical_distance=unknown (marked earlier)'
+        )
+    fi
+
+    _write_align_record \
+        "${FUNCNAME[0]}" \
+        "${dry_run}" \
+        "${threads}" \
+        "${fil_wrk}" \
+        arr_rec_cnt \
+        arr_rec_run \
+        || return 1
+
+
+    # Step 6: convert to CRAM if requested; with '--qname', name-sort the final
     # BAM into a copy.
     _finalize_align_output \
         "${FUNCNAME[0]}" \

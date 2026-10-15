@@ -98,6 +98,14 @@ function print_step() {
 }
 
 
+# Drop the pipeline record's lines from a dry run: some, such as the start time
+# and the commit, change between runs, so 'test_align_fastqs_record.sh' checks
+# them instead.
+function drop_record_lines() {
+    grep -v -F "    \$'@CO" <<< "${1}" || true
+}
+
+
 # Compare one block of dry-run output with the lines expected for it.
 function check_block() {
     local lbl="${1}"
@@ -216,7 +224,34 @@ samtools index \\
     ${esc}.bam
 
 
-# Step 5: write the final output and the retained files.
+# Step 5: write the pipeline record into the BAM work file.
+samtools view \\
+    -H \\
+    --no-PG \\
+    ${esc}.bam \\
+    > ${esc}.header.sam
+
+printf %s\\\\n \\
+    >> ${esc}.header.sam
+
+samtools reheader \\
+    ${esc}.header.sam \\
+    ${esc}.bam \\
+    > ${esc}.record.bam
+
+mv -f \\
+    ${esc}.record.bam \\
+    ${esc}.bam
+
+rm -f \\
+    ${esc}.header.sam
+
+samtools index \\
+    -@ 2 \\
+    ${esc}.bam
+
+
+# Step 6: write the final output and the retained files.
 samtools sort \\
     -@ 2 \\
     -n \\
@@ -232,7 +267,7 @@ fi
 check_block \
     "Bowtie 2 PE dry run prints every step, spaces escaped" \
     "${exp}" \
-    "${out}"
+    "$(drop_record_lines "${out}")"
 
 if [[ -z "$(find "${dir_sp}" -mindepth 1 -print -quit)" ]]; then
     record_pass "helper dry run writes no file"
@@ -383,14 +418,14 @@ check_block \
     "${exp}" \
     "$(print_step 2 "${out}")"
 
-# Without '--qname', BAM output is the work file itself: Step 5 runs nothing.
-exp="# Step 5: write the final output and the retained files.
+# Without '--qname', BAM output is the work file itself: Step 6 runs nothing.
+exp="# Step 6: write the final output and the retained files.
 ${msg_nil}"
 
 check_block \
-    "BAM dry run without '--qname' runs nothing in Step 5" \
+    "BAM dry run without '--qname' runs nothing in Step 6" \
     "${exp}" \
-    "$(print_step 5 "${out}")"
+    "$(print_step 6 "${out}")"
 
 # The printed commands are the ones a real run executes: run as a script, they
 # write the same files, holding the same records.
@@ -436,7 +471,7 @@ else
 fi
 
 
-# BWA-MEM2, single-end, CRAM with '--qname': Step 5 name-sorts the final BAM,
+# BWA-MEM2, single-end, CRAM with '--qname': Step 6 name-sorts the final BAM,
 # converts both files, indexes the output, and removes the BAM work files.
 t="${tmp}/cram"
 out="$(
@@ -466,7 +501,7 @@ check_block \
     "${exp}" \
     "$(print_step 1 "${out}")"
 
-exp="# Step 5: write the final output and the retained files.
+exp="# Step 6: write the final output and the retained files.
 samtools sort \\
     -@ 1 \\
     -n \\
@@ -497,9 +532,9 @@ rm -f \\
     ${t}.qnam.bam"
 
 check_block \
-    "CRAM dry run prints Step 5" \
+    "CRAM dry run prints Step 6" \
     "${exp}" \
-    "$(print_step 5 "${out}")"
+    "$(print_step 6 "${out}")"
 
 
 # A dry run still validates: a missing FASTQ is refused before any step.
@@ -550,7 +585,7 @@ if [[
     "${rc}" -eq 0
     && "${out}" == *"# Sample 'tiny_se': call to 'align_fastqs'."*
     && "${out}" == *"    > ${log}.stdout.txt \\"$'\n'"    2> ${log}.stderr.txt"*
-    && "${out}" == *"# Step 5: "*
+    && "${out}" == *"# Step 6: "*
 ]]; then
     record_pass "submit dry run prints the call, its logs, and the steps"
 else

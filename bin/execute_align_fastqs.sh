@@ -348,9 +348,9 @@ function parse_args() {
                 shift 2
                 ;;
 
-            # Hidden per 'HELP.ALIAS.PUBLIC': reproduces the Bowtie 2
-            # paired-end calls made before 2026-10
-            # ('--no-overlap --no-dovetail', no '-X') and their alignments.
+            # Hidden per 'HELP.ALIAS.PUBLIC': reproduces the Bowtie 2 PE calls
+            # made before 2026-10 ('--no-overlap --no-dovetail', no '-X') and
+            # their alignments.
             -2i|--bt2[_-]inherited)
                 bt2_inherited=true
                 shift 1
@@ -958,6 +958,12 @@ function run_jobs() {
 # Main script execution.
 function main() {
     init_defs
+
+    # Add this script to the call path that alignment-file records give
+    # ('OUTPUT.ALIGNMENT.RECORD') by name, since Slurm runs a renamed copy.
+    PIPELINE_CALLS="${PIPELINE_CALLS:+${PIPELINE_CALLS} > }"
+    PIPELINE_CALLS+="execute_align_fastqs.sh"
+    export PIPELINE_CALLS
     source_helpers_execute || return 1
 
     if [[ -z "${1:-}" || "${1}" =~ ^(-h|--h[e]?lp)$ ]]; then

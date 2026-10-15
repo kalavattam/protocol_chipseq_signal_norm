@@ -3381,6 +3381,209 @@ EOM
 }
 
 
+# Assert the pipeline record ('OUTPUT.ALIGNMENT.RECORD') that one chain wrote
+# into a BAM or CRAM header.
+function assert_alignment_record() {
+    local fil="${1:-}"
+    local ref_fa="${2:-}"
+    local chain="${3:-}"
+    local threads="${4:-}"
+    local exp_cnt="${5:-}"
+    local exp_pth="${6:-}"
+    local excl="${7:-}"
+    local show_help
+
+    show_help=$(cat << 'EOM'
+Usage
+-----
+  assert_alignment_record
+    [--help] fil ref_fa chain threads exp_cnt exp_pth [excl] [label...]
+
+  Assert the last pipeline record a chain wrote into a BAM or CRAM header: its content lines ('pipeline:') as expected and before its run lines ('pipeline-run:'), one valid commit line, and run lines giving the thread count, a start time, the host, the call path, the environment, and the expected full paths; also assert that no header read ('samtools view -H') left an '@PG' line.
+
+Parameters
+----------
+  -h, --help : flag
+    Display this help message and exit.
+
+  1  fil : file
+    BAM or CRAM file to inspect.
+
+  2  ref_fa : file
+    Reference FASTA file. Required for CRAM header reads; otherwise, empty.
+
+  3  chain : str
+    Chain whose record is checked, as in its 'pipeline: chain=' line; the record runs from that chain's last such line to the end of the header's '@CO' lines.
+
+  4  threads : int
+    Expected thread count.
+
+  5  exp_cnt : str
+    Expected content lines, newline-separated, without the commit line and the lines matching 'excl'.
+
+  6  exp_pth : str
+    Expected run lines for paths, newline-separated, in order.
+
+  7  excl : str
+    Extended regular expression for content lines checked elsewhere; empty to check every content line.
+
+  8+ label : str
+    Optional assertion label.
+
+Returns
+-------
+  Records content, commit, order, run-line, and header-read assertions; returns 1 if the header cannot be read or holds no record of the chain.
+
+Notes
+-----
+  Runtime requirements:
+    - A compatible Conda environment providing samtools (when 'samtools' is unavailable)
+    - awk
+    - bash >= 4.4
+    - conda (when 'samtools' is unavailable)
+    - grep
+    - head
+    - Reference FASTA (when inspecting CRAM)
+    - samtools
+    - sed
+
+  - The header is read with '--no-PG', so reading it adds no '@PG' line.
+
+Examples
+--------
+  1. Check the record of a queryname sort.
+    '''bash
+    # shellcheck source=tests/support/test_helpers.sh
+    source tests/support/test_helpers.sh
+    assert_alignment_record work/x.qnam.bam '' qsort_bam 1 \
+        "$(printf '@CO\tpipeline: chain=qsort_bam\n@CO\tpipeline: --fil_in=x.bam')" \
+        "$(printf '@CO\tpipeline-run: --fil_in=%s\n@CO\tpipeline-run: --fil_out=%s' "${PWD}/work/x.bam" "${PWD}/work/x.qnam.bam")" \
+        '' "qsort record"
+    '''
+
+  2. Display the helper's argument contract.
+    '''bash
+    # shellcheck source=tests/support/test_helpers.sh
+    source tests/support/test_helpers.sh
+    assert_alignment_record --help
+    '''
+EOM
+    )
+
+    if [[ "${fil}" =~ ^(-h|--h[e]?lp)$ ]]; then
+        echo "${show_help}" >&2
+        return 0
+    fi
+
+    shift 7 || true
+
+    local lbl="${*:-${chain} record}"
+    local co rec cnt run got
+    local re_cmt re_start
+    local -a arr_ref_arg=()
+
+    re_cmt=$'^@CO\tpipeline: commit=([0-9a-f]{40}(-dirty)?|unknown)$'
+    re_start='^[0-9]{4}-[0-9]{2}-[0-9]{2}'
+    re_start+='T[0-9]{2}:[0-9]{2}:[0-9]{2}[-+][0-9]{4}$'
+
+    if [[ "${fil,,}" == *.cram ]]; then
+        arr_ref_arg=( -T "${ref_fa}" )
+    fi
+
+    local hdr
+
+    if ! \
+        hdr="$(run_samtools view -H --no-PG "${arr_ref_arg[@]}" "${fil}")"
+    then
+        record_fail "${lbl}: header cannot be read"
+        return 1
+    fi
+
+    if ! \
+        co="$(grep '^@CO' <<< "${hdr}")"
+    then
+        record_fail "${lbl}: header holds no '@CO' lines"
+        return 1
+    fi
+
+    # Reading a header to rewrite it adds no '@PG' line.
+    if grep -q -E $'^@PG\t.*\tCL:samtools view( [^ ]+)* -H( |$)' <<< "${hdr}"
+    then
+        record_fail "${lbl}: a header read left an '@PG' line"
+    else
+        record_pass "${lbl}: no header read left an '@PG' line"
+    fi
+
+    # The chain's last record: from its last chain line to the end.
+    rec="$(
+        awk -v c="@CO"$'\t'"pipeline: chain=${chain}" '
+            { lin[NR] = $0 }
+            $0 == c { beg = NR }
+            END { if (beg) for (i = beg; i <= NR; i++) print lin[i] }
+        ' <<< "${co}"
+    )"
+    if [[ -z "${rec}" ]]; then
+        record_fail "${lbl}: header holds no record of '${chain}'"
+        return 1
+    fi
+
+    cnt="$(grep $'^@CO\tpipeline: ' <<< "${rec}" || true)"
+    run="$(grep $'^@CO\tpipeline-run: ' <<< "${rec}" || true)"
+
+    got="$(grep -v -E $'^@CO\tpipeline: commit=' <<< "${cnt}" || true)"
+    if [[ -n "${excl}" ]]; then
+        got="$(grep -v -E "${excl}" <<< "${got}" || true)"
+    fi
+    if [[ "${got}" == "${exp_cnt}" ]]; then
+        record_pass "${lbl}: content lines hold the options and inputs"
+    else
+        record_fail "${lbl}: content lines differ"
+        diff <(printf '%s\n' "${exp_cnt}") <(printf '%s\n' "${got}") >&2 \
+            || true
+    fi
+
+    if [[ "$(grep -c -E "${re_cmt}" <<< "${cnt}")" == 1 ]]; then
+        record_pass "${lbl}: one valid commit line"
+    else
+        record_fail "${lbl}: commit line missing, repeated, or malformed"
+    fi
+
+    # Every line of the record is a content line or a run line, and the content
+    # lines come first.
+    if
+        awk '
+            /^@CO\tpipeline: / { if (run) bad = 1; next }
+            /^@CO\tpipeline-run: / { run = 1; next }
+            { bad = 1 }
+            END { exit (bad || !run) }
+        ' <<< "${rec}"
+    then
+        record_pass "${lbl}: content lines come before run lines"
+    else
+        record_fail "${lbl}: record lines are out of order or unknown"
+    fi
+
+    got="$(
+        grep -E $'^@CO\tpipeline-run: --[a-z_0-9]+=/' <<< "${run}" || true
+    )"
+    if [[
+        "$(head -n 1 <<< "${run}")" \
+            == $'@CO\tpipeline-run: --threads='"${threads}"
+        && "$(sed -n $'s/^@CO\tpipeline-run: start=//p' <<< "${run}")" \
+            =~ ${re_start}
+        && "$(
+            grep -c -E $'^@CO\tpipeline-run: (host|calls|env)=.' <<< "${run}"
+        )" == 3
+        && "${got}" == "${exp_pth}"
+    ]]; then
+        record_pass "${lbl}: run lines hold the threads, time, host, and paths"
+    else
+        record_fail "${lbl}: run lines are incomplete"
+        printf '%s\n' "${run}" >&2
+    fi
+}
+
+
 # Assert a gzip FASTQ exists and has expected read content.
 function assert_fastq_gzip() {
     local fil_out="${1:-}"
