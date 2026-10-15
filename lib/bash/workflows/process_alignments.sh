@@ -66,7 +66,11 @@ fi
     }
 
     source_helpers "${_dir_src_pro_aln}/.." \
-        check_inputs check_numbers check_source format_outputs || {
+        check_inputs \
+        check_numbers \
+        check_source \
+        format_outputs \
+        record_alignment || {
             echo "error($(basename "${BASH_SOURCE[0]}")):" \
                 "failed to source required helper dependencies." >&2
 
@@ -208,6 +212,197 @@ EOM
 }
 
 
+# Build the pipeline record ('OUTPUT.ALIGNMENT.RECORD') of one 'qsort_bam' sort
+# as '@CO' header lines, content lines first.
+function _build_qsort_record() {
+    local rec_nam="${1:-}"
+    local threads="${2:-}"
+    local fil_in="${3:-}"
+    local fil_out="${4:-}"
+    local ref_fa="${5:-}"
+    local -a arr_cnt arr_run arr_pth
+    local show_help
+
+    show_help=$(cat << EOM
+Usage
+-----
+  _build_qsort_record
+    [--help] rec_nam threads fil_in fil_out ref_fa
+
+  Fill the named array with the '@CO' lines of the pipeline record of one 'qsort_bam' sort: 'pipeline:' lines for what determines the file's content, then 'pipeline-run:' lines for the run's context.
+
+Parameters
+----------
+  -h, --help : flag
+    Display this help message and exit.
+
+  1  rec_nam : str
+    Name of the indexed array to fill, one header line per element.
+
+  2  threads : int
+    Number of threads to use.
+
+  3  fil_in : file
+    Input BAM or CRAM file.
+
+  4  fil_out : file
+    Output queryname-sorted BAM or CRAM file.
+
+  5  ref_fa : file
+    Reference FASTA, recorded only for CRAM input, or empty.
+
+Returns
+-------
+  Returns 0 after filling the array; prints an error and returns 1 if 'rec_nam' is missing.
+
+Notes
+-----
+  Runtime requirements:
+    - bash >= 4.4
+    - date
+    - dirname
+    - git (optional; without it, the commit is 'unknown')
+    - hostname
+
+Examples
+--------
+  1. Build the record for a BAM sort and print it.
+    '''bash
+    _build_qsort_record arr_rec 4 \\
+        alignments/sample.bam results/sample.qnam.bam ''
+    printf '%s\\n' "\${arr_rec[@]}"
+    '''
+
+  2. Display the helper's argument contract.
+    '''bash
+    _build_qsort_record --help
+    '''
+EOM
+    )
+
+    if [[ "${rec_nam}" =~ ^(-h|--h[e]?lp)$ ]]; then
+        echo "${show_help}" >&2
+        return 0
+    elif [[ -z "${rec_nam}" ]]; then
+        echo_err_func "${FUNCNAME[0]}" \
+            "positional argument 1, 'rec_nam', is missing."
+        return 1
+    fi
+
+    local -n rec_ref="${rec_nam}"
+
+    # Content lines: the chain, the commit, and the input by file name.
+    arr_cnt=(
+        $'@CO\tpipeline: chain=qsort_bam'
+        $'@CO\tpipeline: commit='"$(print_record_commit)"
+        $'@CO\tpipeline: --fil_in='"${fil_in##*/}"
+    )
+
+    arr_pth=( fil_in "${fil_in}" )
+    if [[ "${fil_in,,}" == *.cram ]]; then
+        arr_cnt+=( $'@CO\tpipeline: --ref_fa='"${ref_fa##*/}" )
+        arr_pth+=( ref_fa "${ref_fa}" )
+    fi
+    arr_pth+=( fil_out "${fil_out}" )
+
+    # Run lines: the thread count, the start time, the host, the caller, the
+    # environment, any Slurm job, and the full paths.
+    arr_run=()
+    add_record_run_lines \
+        arr_run "${BASH_SOURCE[0]##*/}::qsort_file_alignments" "${threads}" \
+        "${arr_pth[@]}" \
+        || return 1
+
+    # shellcheck disable=SC2034  # Read by name in the caller.
+    rec_ref=( "${arr_cnt[@]}" "${arr_run[@]}" )
+}
+
+
+# Write a pipeline record into the header of a BAM file.
+function _write_qsort_record() {
+    local fil_bam="${1:-}"
+    local rec_nam="${2:-}"
+    local hdr_rec bam_rec
+    local show_help
+
+    show_help=$(cat << EOM
+Usage
+-----
+  _write_qsort_record
+    [--help] fil_bam rec_nam
+
+  Write the pipeline record in the named array into the header of a BAM file as '@CO' lines, after the header's existing lines.
+
+Parameters
+----------
+  -h, --help : flag
+    Display this help message and exit.
+
+  1  fil_bam : file
+    BAM file to rewrite in place.
+
+  2  rec_nam : str
+    Name of the indexed array holding the record, one header line per element.
+
+Returns
+-------
+  Returns 0 when the record is written; otherwise 1.
+
+Notes
+-----
+  Runtime requirements:
+    - bash >= 4.4
+    - mv
+    - rm
+    - samtools
+
+  - The header is read with '--no-PG', so reading it adds no '@PG' line; 'samtools reheader' adds its own.
+
+Examples
+--------
+  1. Write a record built by '_build_qsort_record()' into a sorted BAM.
+    '''bash
+    _write_qsort_record results/sample.qnam.bam arr_rec
+    '''
+
+  2. Display the helper's argument contract.
+    '''bash
+    _write_qsort_record --help
+    '''
+EOM
+    )
+
+    if [[ "${fil_bam}" =~ ^(-h|--h[e]?lp)$ ]]; then
+        echo "${show_help}" >&2
+        return 0
+    fi
+
+    local -n rec_wrt_ref="${rec_nam}"
+    hdr_rec="${fil_bam%.bam}.header.sam"
+    bam_rec="${fil_bam%.bam}.record.bam"
+
+    if ! \
+        {
+            samtools view -H --no-PG "${fil_bam}" \
+                && printf '%s\n' "${rec_wrt_ref[@]}"
+        } > "${hdr_rec}"
+    then
+        rm -f "${hdr_rec}"
+        return 1
+    fi
+
+    if ! \
+        samtools reheader "${hdr_rec}" "${fil_bam}" > "${bam_rec}"
+    then
+        rm -f "${hdr_rec}" "${bam_rec}"
+        return 1
+    fi
+
+    rm -f "${hdr_rec}"
+    mv -f "${bam_rec}" "${fil_bam}"
+}
+
+
 # Sort one BAM or CRAM file by query name.
 function qsort_file_alignments() {
     local threads="${1:-}"
@@ -217,6 +412,9 @@ function qsort_file_alignments() {
     local log_out="${5:-}"
     local log_err="${6:-}"
     local tmp_bam
+
+    # shellcheck disable=SC2034  # Filled and read by name in the helpers.
+    local -a arr_rec
     local show_help
 
     show_help=$(cat << EOM
@@ -225,7 +423,7 @@ Usage
   qsort_file_alignments
     [--help] threads fil_in fil_out ref_fa log_out log_err
 
-  Sort one BAM or CRAM alignment file by query name.
+  Sort one BAM or CRAM alignment file by query name, and write the chain's pipeline record into the output's header.
 
 Parameters
 ----------
@@ -263,6 +461,9 @@ Notes
     - samtools
 
   - CRAM input is converted through a temporary BAM before being written as CRAM.
+  - The output keeps the input's header, any earlier pipeline record included, and adds this chain's record as '@CO' lines:
+    + 'pipeline:' lines give the commit and the input file name;
+    + 'pipeline-run:' lines give the thread count, the start time, the host, the scripts and functions that ran, and the full paths.
 
 Examples
 --------
@@ -310,6 +511,10 @@ EOM
         "${log_err}" \
         || return 1
 
+    _build_qsort_record \
+        arr_rec "${threads}" "${fil_in}" "${fil_out}" "${ref_fa}" \
+        || return 1
+
     if [[ "${fil_in,,}" == *.cram ]]; then
         tmp_bam="${fil_out%.cram}.tmp.$$.bam"
 
@@ -323,14 +528,14 @@ EOM
                     -@ "${threads}" \
                     -n \
                     -o "${tmp_bam}" \
-                    -
-
-            samtools view \
-                -@ "${threads}" \
-                -T "${ref_fa}" \
-                -O cram \
-                -o "${fil_out}" \
-                "${tmp_bam}"
+                    - \
+                && _write_qsort_record "${tmp_bam}" arr_rec \
+                && samtools view \
+                    -@ "${threads}" \
+                    -T "${ref_fa}" \
+                    -O cram \
+                    -o "${fil_out}" \
+                    "${tmp_bam}"
             } > "${log_out}" 2> "${log_err}"
         then
             rm -f "${tmp_bam}"
@@ -339,14 +544,14 @@ EOM
 
         rm -f "${tmp_bam}"
     else
-        if ! \
+        if ! {
             samtools sort \
                 -@ "${threads}" \
                 -n \
                 -o "${fil_out}" \
                 "${fil_in}" \
-                > "${log_out}" \
-                2> "${log_err}"
+                && _write_qsort_record "${fil_out}" arr_rec
+            } > "${log_out}" 2> "${log_err}"
         then
             return 1
         fi

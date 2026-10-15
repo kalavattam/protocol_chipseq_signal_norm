@@ -71,6 +71,9 @@ Notes
 
   - BAM inputs are written as '*.qnam.bam'.
   - CRAM inputs are written as '*.qnam.cram' and require '--ref_fa'.
+  - Each output's header keeps the input's header, any earlier pipeline record included, and adds this chain's record as '@CO' lines:
+    + 'pipeline:' lines give the commit and the input file name;
+    + 'pipeline-run:' lines give the thread count, the start time, the host, the scripts and functions that ran, and the full paths.
   - This is a submit-wrapper script: it supports serial/local iteration and Slurm-array task execution, but it does not submit Slurm jobs itself.
 
 Examples

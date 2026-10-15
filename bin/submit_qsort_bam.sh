@@ -41,7 +41,7 @@ function resolve_dir_scr() {
         case "${args[i]}" in
             -ds|--dir[_-]scr)
                 if \
-                       (( i + 1 < ${#args[@]} )) \
+                    (( i + 1 < ${#args[@]} )) \
                     && [[ -n "${args[i + 1]}" ]] \
                     && [[ "${args[i + 1]}" != -* ]]
                 then
@@ -498,6 +498,12 @@ function run_jobs() {
 # Main script execution.
 function main() {
     init_defs
+
+    # Add this script to the call path that alignment-file records give
+    # ('OUTPUT.ALIGNMENT.RECORD') by name, since Slurm runs a renamed copy.
+    PIPELINE_CALLS="${PIPELINE_CALLS:+${PIPELINE_CALLS} > }"
+    PIPELINE_CALLS+="submit_qsort_bam.sh"
+    export PIPELINE_CALLS
 
     if [[ -z "${1:-}" || "${1}" =~ ^(-h|--h[e]?lp)$ ]]; then
         help_submit_qsort_bam
