@@ -154,6 +154,22 @@ else
     printf '%s\n' "${got}" >&2
 fi
 
+# In an array task, the job is the array's ID, not the task's own job ID.
+got="$(
+    SLURM_JOB_ID=124 SLURM_ARRAY_JOB_ID=123 SLURM_ARRAY_TASK_ID=1 \
+        print_run fnc_x 1
+)"
+if [[
+    "${got}" == *$'pipeline-run: slurm_job=123\n'*
+    && "${got}" == *$'pipeline-run: slurm_task=1'
+    && "${got}" != *'slurm_job=124'*
+]]; then
+    record_pass "an array task gives the array's job ID and its task"
+else
+    record_fail "an array task's job line is not the array's ID:"
+    grep 'slurm_' <<< "${got}" >&2 || true
+fi
+
 rc=0
 print_run fnc_x 1 fil_in > /dev/null 2>&1 || rc=$?
 if (( rc == 1 )); then

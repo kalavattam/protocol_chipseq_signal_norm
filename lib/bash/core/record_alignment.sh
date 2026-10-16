@@ -145,13 +145,13 @@ EOM
 }
 
 
-# To a named array, append the run lines of an alignment file's pipeline record
-# ('OUTPUT.ALIGNMENT.RECORD').
+# Append the run lines of an alignment file's pipeline record
+# ('OUTPUT.ALIGNMENT.RECORD') to a named array.
 function add_record_run_lines() {
     local rec_nam="${1:-}"
     local fnc="${2:-}"
     local threads="${3:-}"
-    local calls idx key pth
+    local calls idx job key pth
     local -a arr_pth
     local show_help
 
@@ -193,6 +193,7 @@ Notes
 
   - The start time is the time of the call, so call it when the chain starts.
   - The call path is 'PIPELINE_CALLS', to which each 'execute_*' and 'submit_*' script adds its name, then 'fnc', joined with ' > '; a direct library call gives 'fnc' alone.
+  - In a Slurm array task, the job is the array's job ID ('SLURM_ARRAY_JOB_ID'), as in the log names and 'sacct', with the task ID beside it; otherwise it is 'SLURM_JOB_ID'.
 
 Examples
 --------
@@ -238,8 +239,11 @@ EOM
         $'@CO\tpipeline-run: env='"${CONDA_DEFAULT_ENV:-none}"
     )
 
-    if [[ -n "${SLURM_JOB_ID:-}" ]]; then
-        run_ref+=( $'@CO\tpipeline-run: slurm_job='"${SLURM_JOB_ID}" )
+    # In an array, give the array's job ID, which names the logs and 'sacct'
+    # rows; each task's own 'SLURM_JOB_ID' differs from it.
+    job="${SLURM_ARRAY_JOB_ID:-${SLURM_JOB_ID:-}}"
+    if [[ -n "${job}" ]]; then
+        run_ref+=( $'@CO\tpipeline-run: slurm_job='"${job}" )
     fi
 
     if [[ -n "${SLURM_ARRAY_TASK_ID:-}" ]]; then
