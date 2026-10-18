@@ -125,7 +125,7 @@ The same reads come under three header forms, because Bowtie2 seeds each read's 
 
 The single-end files `tie_se` and `tie_cmt_se` hold the R1 reads with the `tie_pe` and `tie_cmt` headers.
 
-Measured with Bowtie 2 2.5.5 and the pipeline's default paired-end call, about 164 of the 2,000 paired-end records and 144 of the 1,000 single-end records are tied (MAPQ 0 or 1). From `tie_pe` to `tie_cmt`, about 116 paired-end records move; from `tie_cmt` to `tie_idx`, none do; changing `--seed` moves no paired-end record but about 102 single-end ones; and `--seed 0` gives the same output as no `--seed`. With `-p 8`, the output order differs from `-p 1` while the records do not, and `--reorder` restores the `-p 1` order.
+Measured with Bowtie 2 2.5.5 and the pipeline's default paired-end call, about 164 of the 2,000 paired-end records and 144 of the 1,000 single-end records are tied (MAPQ 0 or 1). A record moves when its flag, reference, position, MAPQ, CIGAR, or mate fields change. From `tie_pe` to `tie_cmt`, about 136 paired-end records move; from `tie_cmt` to `tie_idx`, none do; changing `--seed` moves no paired-end record but about 123 single-end ones; and `--seed 0` gives the same output as no `--seed`. With `-p 8`, the output order differs from `-p 1` while the records do not, and `--reorder` restores the `-p 1` order.
 
 <br />
 

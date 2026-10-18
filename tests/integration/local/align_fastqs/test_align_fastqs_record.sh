@@ -189,18 +189,18 @@ rows=()
 
 add_row "Bowtie 2 PE, '--qname'" bt2_pe.bam \
     "--aligner bowtie2 --index ${idx_bt2} ${a_pe} --qname" \
-    --aligner=bowtie2 --bt2_mode=end-to-end --bt2_X=1000 --mapq=1 \
+    --aligner=bowtie2 --bt2_mode=end-to-end bt2_seed=0 --bt2_X=1000 --mapq=1 \
     --req_flg=false --qname=true --index=tiny "${k_pe[@]}"
 
 add_row "Bowtie 2 PE, '--bt2_inherited'" bt2_inh.bam \
     "--aligner bowtie2 --index ${idx_bt2} ${a_pe} --bt2_inherited --req_flg" \
-    --aligner=bowtie2 --bt2_mode=end-to-end --bt2_inherited=true --mapq=1 \
-    --req_flg=true --qname=false --index=tiny "${k_pe[@]}"
+    --aligner=bowtie2 --bt2_mode=end-to-end bt2_seed=0 --bt2_inherited=true \
+    --mapq=1 --req_flg=true --qname=false --index=tiny "${k_pe[@]}"
 
 add_row "Bowtie 2 SE, local" bt2_se.bam \
     "--aligner bowtie2 --bt2_mode local --index ${idx_bt2} ${a_se}" \
-    --aligner=bowtie2 --bt2_mode=local --mapq=1 --qname=false --index=tiny \
-    "${k_se[@]}"
+    --aligner=bowtie2 --bt2_mode=local bt2_seed=0 --mapq=1 --qname=false \
+    --index=tiny "${k_se[@]}"
 
 add_row "BWA-MEM PE, '--mapq 0'" mem_pe.bam \
     "--aligner bwa --index ${idx_bwa} ${a_pe} --mapq 0" \
@@ -454,7 +454,7 @@ if (( rc != 0 )) || [[ ! -s "${fil_drv}" ]]; then
     record_fail "driver run failed (exit ${rc}); see '${dir_drv}/run.log'"
 else
     add_row "driver" "" "" \
-        --aligner=bowtie2 --bt2_mode=global --mapq=0 --qname=false \
+        --aligner=bowtie2 --bt2_mode=global bt2_seed=0 --mapq=0 --qname=false \
         --index=tiny "${k_se[@]}" "skipped=MAPQ filter (--mapq=0)"
     IFS='|' read -r _ _ _ lin <<< "${rows[-1]}"
     IFS=';' read -r -a arr_lin <<< "${lin}"

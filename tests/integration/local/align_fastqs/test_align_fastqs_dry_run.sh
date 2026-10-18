@@ -146,6 +146,8 @@ exp="
 # Step 1: align the reads into the BAM work file.
 bowtie2 \\
     -p 2 \\
+    --reorder \\
+    --seed 0 \\
     -x ${idx_bt2} \\
     --very-sensitive \\
     --no-unal \\
@@ -300,6 +302,8 @@ for arm in "--bt2_X 800|-X 800" "-2i|--no-overlap;--no-dovetail"; do
     exp="# Step 1: align the reads into the BAM work file.
 bowtie2 \\
     -p 1 \\
+    --reorder \\
+    --seed 0 \\
     -x ${idx_bt2} \\
     --very-sensitive \\
     --no-unal \\

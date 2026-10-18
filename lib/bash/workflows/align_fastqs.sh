@@ -192,7 +192,7 @@ EOM
 
         # Options that take a value, by program.
         case "${arr_prn_ref[*]:0:idx}" in
-            bowtie2)                  opt_val="-p -x -X -1 -2 -U" ;;
+            bowtie2)                  opt_val="-p --seed -x -X -1 -2 -U" ;;
             "samtools view")          opt_val="-@ -F -f -q -o -T -O -N" ;;
             "samtools markdup")       opt_val="-@ -d -f" ;;
             samtools\ *)              opt_val="-@ -o" ;;
@@ -943,8 +943,10 @@ EOM
         return 0
     fi
 
-    # Assign Bowtie 2 arguments.
-    arr_bt2=( bowtie2 -p "${threads}" -x "${index}" )
+    # Assign Bowtie 2 arguments: '--reorder' keeps input order at any thread
+    # count, and '--seed 0', the project's seed and Bowtie 2's default, leaves
+    # earlier files unchanged.
+    arr_bt2=( bowtie2 -p "${threads}" --reorder --seed 0 -x "${index}" )
 
     if [[ "${bt2_mode}" == "local" ]]; then
         arr_bt2+=( --very-sensitive-local )
@@ -2365,7 +2367,10 @@ EOM
 
     case "${aligner}" in
         bowtie2)
-            cnt_ref+=( $'@CO\tpipeline: --bt2_mode='"${bt2_mode}" )
+            cnt_ref+=(
+                $'@CO\tpipeline: --bt2_mode='"${bt2_mode}"
+                $'@CO\tpipeline: bt2_seed=0'
+            )
             if [[ -n "${fq_2}" && "${bt2_inherited}" == "true" ]]; then
                 cnt_ref+=( $'@CO\tpipeline: --bt2_inherited=true' )
             elif [[ -n "${fq_2}" ]]; then
@@ -2941,6 +2946,9 @@ Notes
     + When every read name carries Illumina flow-cell coordinates ('...:tile:x:y') in one format, duplicates on the same tile as their original and within 2500 pixels of it in x and y are tagged as optical ('dt:Z:SQ'); the rest are tagged as library duplicates ('dt:Z:LB').
     + Otherwise, as with most SRA-dumped names, no 'dt' tags are written and a warning says why.
     + Duplicate statistics are written to '<stem>.markdup.txt.gz' beside the alignment file; Samtools estimates library size for paired-end data only. The file's last line, 'OPTICAL DISTANCE:', gives 2500 when optical duplicates were told apart, or 'not used' and the reason.
+  - Bowtie 2 runs with '--reorder', so its output order does not depend on the thread count, and also with '--seed 0', its default; the record gives the seed as 'bt2_seed=0'.
+    + Which of several equally good alignments a read gets depends on the seed and on the read's sequence, qualities, and whole FASTQ header line, so renaming reads can move them.
+    + For paired-end data, the two mates' seeds are combined so that the seed, and header text identical in both mates, cancel; only header differences between the mates move pairs.
   - Each alignment file's header, the '.qnam' copy's included, carries a pipeline record as '@CO' lines:
     + 'pipeline:' lines give the commit, the options in effect, the input file names, and any skipped steps;
     + 'pipeline-run:' lines give the thread count, the start time, the host, the scripts and functions that ran, and the full paths.
