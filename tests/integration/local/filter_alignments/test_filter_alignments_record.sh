@@ -135,18 +135,41 @@ function add_row() {
 
 rows=()
 
-add_row "S. cerevisiae, BAM to BAM" filter_alignment_sc "${in_bam}" sc.bam "" \
-    --retain=sc --mito=false "chromosomes=${chr_sc}" --fil_in=in.bam
+add_row \
+    "S. cerevisiae, BAM to BAM" \
+    filter_alignment_sc \
+    "${in_bam}" \
+    sc.bam \
+    "" \
+    --retain=sc \
+    --mito=false \
+    "chromosomes=${chr_sc}" \
+    --fil_in=in.bam
 
-add_row "S. cerevisiae, BAM to CRAM, '--mito'" \
-    filter_alignment_sc "${in_bam}" sc_mito.cram --mito \
-    --retain=sc --mito=true "chromosomes=${chr_sc} Mito" --fil_in=in.bam \
+add_row \
+    "S. cerevisiae, BAM to CRAM, '--mito'" \
+    filter_alignment_sc \
+    "${in_bam}" \
+    sc_mito.cram \
+    --mito \
+    --retain=sc \
+    --mito=true \
+    "chromosomes=${chr_sc} Mito" \
+    --fil_in=in.bam \
     --ref_fa=filter_sc_sp.fa
 
-add_row "S. pombe, CRAM to BAM, '--tg --mtr'" \
-    filter_alignment_sp "${in_cram}" sp.bam "--tg --mtr" \
-    --retain=sp --mito=false --tg=true --mtr=true \
-    "chromosomes=SP_II_TG SP_I SP_II SP_III SP_MTR" --fil_in=in.cram \
+add_row \
+    "S. pombe, CRAM to BAM, '--tg --mtr'" \
+    filter_alignment_sp \
+    "${in_cram}" \
+    sp.bam \
+    "--tg --mtr" \
+    --retain=sp \
+    --mito=false \
+    --tg=true \
+    --mtr=true \
+    "chromosomes=SP_II_TG SP_I SP_II SP_III SP_MTR" \
+    --fil_in=in.cram \
     --ref_fa=filter_sc_sp.fa
 
 for idx in "${!rows[@]}"; do
