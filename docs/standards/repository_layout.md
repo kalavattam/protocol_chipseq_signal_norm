@@ -98,7 +98,7 @@ Installation code may consume repository packaging metadata and environment defi
 
 **Scope:** `tests/`, `dev/`, and `artifacts/`.
 
-Tests follow the semantic taxonomy in [`testing.md`](testing.md): unit tests in `tests/unit/`, repository and interface contracts in `tests/contract/`, environment-facing tests in `tests/integration/`, reusable test-only helpers in `tests/support/`, and fixture recipes and documentation in `tests/fixtures/`. A fixture root tracks its `make.sh` and `README.md`; its generated inputs stay ignored.
+Tests follow the semantic taxonomy in [`testing.md`](testing.md): unit tests in `tests/unit/`, repository and interface contracts in `tests/contract/`, environment-facing tests in `tests/integration/`, reusable test-only helpers in `tests/support/`, and fixture recipes and documentation in `tests/fixtures/`. A fixture root tracks its `make.sh`, `README.md`, and any generator script `make.sh` runs; its generated inputs stay ignored.
 
 Repository audit implementations live in `dev/audit/`, explicitly invoked mutation tools in `dev/tools/`, machine registry and configuration in `dev/config/`, and schemas in `dev/schemas/`. Developer tooling may inspect production source, but production source must not import or source `dev/` or `tests/`.
 
