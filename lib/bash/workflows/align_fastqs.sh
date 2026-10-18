@@ -2226,6 +2226,7 @@ function _build_align_record() {
     local fq_2="${15:-}"
     local fil_out="${16:-}"
     local qname="${17:-}"
+    local md5_idx md5_ref md5_fq_1 md5_fq_2 prg_aln pkg_aln pkg_sam
     local -a arr_pth
     local show_help
 
@@ -2295,7 +2296,7 @@ Parameters
 
 Returns
 -------
-  Returns 0 after filling the arrays; prints an error and returns 1 if 'cnt_nam' or 'run_nam' is missing.
+  Returns 0 after filling the arrays; prints an error and returns 1 if 'cnt_nam' or 'run_nam' is missing or an input cannot be checksummed.
 
 Notes
 -----
@@ -2305,10 +2306,13 @@ Notes
     - dirname
     - git (optional; without it, the commit is 'unknown')
     - hostname
+    - md5sum
 
   - Options are recorded only where they are in effect; for example, '--bt2_X' is left out for single-end data and with '--bt2_inherited'.
   - Inputs are named without their directories in the 'pipeline:' lines; their full paths, the thread count, the start time, the host, the call path, the environment, and any Slurm job are in the 'pipeline-run:' lines.
   - The commit is marked '-dirty' when tracked files have uncommitted changes; untracked files do not count.
+  - Each input's name is followed by the MD5 checksum of its bytes ('index_md5', 'ref_fa_md5', 'fq_1_md5', 'fq_2_md5'), from 'print_record_md5' and 'print_record_index_md5'.
+  - 'pkg_<aligner>' and 'pkg_samtools' give each program's Conda package version and build, from 'print_record_conda_pkg', or 'unknown' outside Conda.
 
 Examples
 --------
@@ -2361,11 +2365,18 @@ EOM
     # shellcheck disable=SC2034  # Filled by name in 'add_record_run_lines'.
     run_ref=()
 
-    # Content lines: the chain, the commit, the options in effect, the inputs
-    # by file name, and the steps skipped from the start.
+    # Content lines: the chain, the commit, the packages that ran, the options
+    # in effect, the inputs by file name, and the steps skipped from the start.
+    # Package versions come from Conda, not from each program's own '@PG' line,
+    # which can be wrong (BWA-MEM2 2.3 reports 2.2.1, bwa-mem2#276).
+    prg_aln="${aligner}"
+    pkg_aln="$(print_record_conda_pkg "${prg_aln}")" || return 1
+    pkg_sam="$(print_record_conda_pkg samtools)" || return 1
     cnt_ref+=(
         $'@CO\tpipeline: chain=align_fastqs'
         $'@CO\tpipeline: commit='"$(print_record_commit)"
+        $'@CO\tpipeline: pkg_'"${prg_aln}=${pkg_aln}"
+        $'@CO\tpipeline: pkg_samtools='"${pkg_sam}"
         $'@CO\tpipeline: --aligner='"${aligner}"
     )
 
@@ -2398,16 +2409,33 @@ EOM
     if [[ -n "${fq_2}" ]]; then
         cnt_ref+=( $'@CO\tpipeline: --req_flg='"${req_flg}" )
     fi
+
+    # Each input is named, then identified by the checksum of its bytes, so a
+    # rebuild can confirm it has the same files rather than the same names.
+    md5_idx="$(print_record_index_md5 "${aligner}" "${index}")" || return 1
     cnt_ref+=(
         $'@CO\tpipeline: --qname='"${qname}"
         $'@CO\tpipeline: --index='"${index##*/}"
+        $'@CO\tpipeline: index_md5='"${md5_idx}"
     )
     if [[ "${fil_out}" == *.cram ]]; then
-        cnt_ref+=( $'@CO\tpipeline: --ref_fa='"${ref_fa##*/}" )
+        md5_ref="$(print_record_md5 "${ref_fa}")" || return 1
+        cnt_ref+=(
+            $'@CO\tpipeline: --ref_fa='"${ref_fa##*/}"
+            $'@CO\tpipeline: ref_fa_md5='"${md5_ref}"
+        )
     fi
-    cnt_ref+=( $'@CO\tpipeline: --fq_1='"${fq_1##*/}" )
+    md5_fq_1="$(print_record_md5 "${fq_1}")" || return 1
+    cnt_ref+=(
+        $'@CO\tpipeline: --fq_1='"${fq_1##*/}"
+        $'@CO\tpipeline: fq_1_md5='"${md5_fq_1}"
+    )
     if [[ -n "${fq_2}" ]]; then
-        cnt_ref+=( $'@CO\tpipeline: --fq_2='"${fq_2##*/}" )
+        md5_fq_2="$(print_record_md5 "${fq_2}")" || return 1
+        cnt_ref+=(
+            $'@CO\tpipeline: --fq_2='"${fq_2##*/}"
+            $'@CO\tpipeline: fq_2_md5='"${md5_fq_2}"
+        )
     else
         cnt_ref+=( $'@CO\tpipeline: skipped=fixmate (single-end)' )
     fi
@@ -2945,6 +2973,7 @@ Notes
     - bwa (when '--aligner bwa' is specified)
     - bwa-mem2 (when '--aligner bwa-mem2' is specified)
     - grep
+    - md5sum
     - Reference FASTA and required index (when writing CRAM)
     - samtools
 
@@ -2964,6 +2993,8 @@ Notes
   - Each alignment file's header, the '.qnam' copy's included, carries a pipeline record as '@CO' lines:
     + 'pipeline:' lines give the commit, the options in effect, the input file names, and any skipped steps;
     + 'pipeline-run:' lines give the thread count, the start time, the host, the scripts and functions that ran, and the full paths.
+  - The record names each input and gives the MD5 checksum of its bytes, as stored: 'index_md5' for the index files, 'fq_1_md5' and 'fq_2_md5' for the FASTQs, and 'ref_fa_md5' for the reference with CRAM output.
+  - It also gives the Conda package version and build of the aligner and Samtools ('pkg_bowtie2=2.5.5-h9e91881_0', for example), since a program's own '@PG' version can be wrong: BWA-MEM2 2.3 reports 2.2.1 (bwa-mem2 issue #276).
   - For '--qname', the retained queryname-sorted output will have the same path and stem assigned to '--fil_out', except '.qnam' will be inserted before the final extension (for example, '.qnam.bam' or '.qnam.cram'). The copy is made in Step #6 from the final, duplicate-marked alignments, so it holds the same records and flags.
   - '--ref_fa' is required when '--fil_out' ends in '.cram', since CRAM writing requires a reference FASTA.
 

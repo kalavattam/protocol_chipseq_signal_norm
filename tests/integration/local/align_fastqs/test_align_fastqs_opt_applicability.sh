@@ -705,14 +705,45 @@ for lyr in execute submit helper; do
     fi
 done
 
-# Validation lets through a Bowtie 2 index stem with no index files; Step 1
-# then fails, which must stop the helper with one error in the helper's name.
-fil_out="${tmp}/helper_step1.bam"
+# A Bowtie 2 index stem with no index files stops the helper before Step 1:
+# building the pipeline record computes the index's checksum first, and that
+# fails with one error naming the stem.
+fil_out="${tmp}/helper_no_index.bam"
 rc=0
 out="$(
     run_helper \
         --aligner bowtie2 \
         --index "${tmp}/no_index" \
+        --fil_out "${fil_out}"
+)" || rc=$?
+n_err="$(grep -c '^error(' <<< "${out}" || true)"
+
+if [[
+    "${rc}" -ne 0
+    && "${n_err}" -eq 1
+    && "${out}" == *"no Bowtie 2 index at '${tmp}/no_index'"*
+    && "${out}" != *"Step #1"*
+    && ! -e "${fil_out}"
+]]; then
+    record_pass "helper stops before Step 1 on a missing index, with one error"
+else
+    record_fail \
+        "helper did not stop before Step 1 on a missing index" \
+        "(exit ${rc}; ${n_err} errors)"
+fi
+
+# Index files that exist but hold no index pass the checksum; Step 1 then
+# fails, which must stop the helper with one error in the helper's name.
+for ext in 1 2 3 4 rev.1 rev.2; do
+    echo "not an index" > "${tmp}/bad_index.${ext}.bt2"
+done
+
+fil_out="${tmp}/helper_step1.bam"
+rc=0
+out="$(
+    run_helper \
+        --aligner bowtie2 \
+        --index "${tmp}/bad_index" \
         --fil_out "${fil_out}"
 )" || rc=$?
 n_err="$(grep -c '^error(' <<< "${out}" || true)"

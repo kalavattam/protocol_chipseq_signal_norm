@@ -790,6 +790,7 @@ function check_tools() {
         bwa-mem2) check_pgrm_path bwa-mem2 || return 1 ;;
     esac
 
+    check_pgrm_path md5sum || return 1
     check_pgrm_path samtools || return 1
 
     if [[ "${slurm}" == "true" ]]; then

@@ -141,6 +141,7 @@ Notes
     - bwa (when '--aligner bwa' is specified)
     - bwa-mem2 (when '--aligner bwa-mem2' is specified)
     - conda (when the requested environment is not active)
+    - md5sum
     - samtools
     - Slurm allocation (when run as a Slurm array task)
 
@@ -158,6 +159,8 @@ Notes
   - Each alignment file's header, the '.qnam' copy's included, carries a pipeline record as '@CO' lines:
     + 'pipeline:' lines give the commit, the options in effect, the input file names, and any skipped steps;
     + 'pipeline-run:' lines give the thread count, the start time, the host, the scripts and functions that ran, and the full paths.
+  - The record names each input and gives the MD5 checksum of its bytes, as stored: 'index_md5' for the index files, 'fq_1_md5' and 'fq_2_md5' for the FASTQs, and 'ref_fa_md5' for the reference with CRAM output.
+  - It also gives the Conda package version and build of the aligner and Samtools ('pkg_bowtie2=2.5.5-h9e91881_0', for example), since a program's own '@PG' version can be wrong: BWA-MEM2 2.3 reports 2.2.1 (bwa-mem2 issue #276).
 
 Examples
 --------

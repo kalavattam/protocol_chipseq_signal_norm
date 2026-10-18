@@ -32,9 +32,19 @@ idx_bm2="${dir_fx}/bwa-mem2/tiny.fa"
 in_pe_1="${dir_fx}/fastq/pe/tiny_pe_R1.atria.fastq.gz"
 in_pe_2="${dir_fx}/fastq/pe/tiny_pe_R2.atria.fastq.gz"
 in_se="${dir_fx}/fastq/se/tiny_se.atria.fastq.gz"
+fa_tiny="${dir_fx}/reference/tiny.fa"
 
 tmp="${TEST_DIR_TMP}/align_fastqs_record"
 ref_fa="${tmp}/tiny.fa"
+dir_dry="${tmp}/dry"
+dir_drv="${tmp}/driver"
+fil_two="${tmp}/twice.bam"
+fil_drv="${dir_drv}/out/tiny_se.bam"
+
+# The BWA-backtrack row, the fifth, writes the file the dry-run and
+# record-twice checks compare against.
+fil_aln_se="${tmp}/out_4/aln_se.bam"
+
 re_opt='^@CO'$'\t''pipeline: (optical_distance=2500|'
 re_opt+='skipped=optical duplicates [(]not used; )'
 
@@ -50,7 +60,7 @@ require_env_project env_nam || {
 }
 
 require_files_nonempty \
-    "${dir_fx}/reference/tiny.fa" \
+    "${fa_tiny}" \
     "${idx_bt2}.1.bt2" \
     "${idx_bwa}.bwt" \
     "${idx_bm2}.0123" \
@@ -62,7 +72,7 @@ require_files_nonempty \
 }
 
 # CRAM writing indexes the reference, so use a copy outside the fixtures.
-cp "${dir_fx}/reference/tiny.fa" "${ref_fa}"
+cp "${fa_tiny}" "${ref_fa}"
 
 
 # Run the helper.
@@ -89,11 +99,13 @@ function print_co() {
 }
 
 
-# Print the content lines, or the run lines, of a record.
+# Print the content lines of a record.
 function print_cnt() {
     grep $'^@CO\tpipeline: ' <<< "${1}" || true
 }
 
+
+# Print the run lines of a record.
 function print_run() {
     grep $'^@CO\tpipeline-run: ' <<< "${1}" || true
 }
@@ -154,6 +166,12 @@ function print_arg_val() {
 }
 
 
+# Print the keys of a record's run lines, in order.
+function print_run_keys() {
+    print_run "${1}" | sed -E $'s/^@CO\tpipeline-run: ([^=]+)=.*$/\\1/'
+}
+
+
 # Print the expected path lines.
 function print_pth_exp() {
     local key
@@ -166,6 +184,43 @@ function print_pth_exp() {
 }
 
 
+# Print the MD5 checksum of a file's bytes.
+function print_md5() {
+    md5sum < "${1}" | cut -d ' ' -f 1
+}
+
+
+# Print the MD5 checksum of an index's files as the record's help documents it:
+# the checksum of their 'md5sum' lines, in the order given.
+function print_index_md5() {
+    local dir="${1}"
+    shift 1
+
+    ( cd "${dir}" && md5sum "$@" ) | md5sum | cut -d ' ' -f 1
+}
+
+
+# Print a program's Conda package as '<version>-<build>', from its package
+# record's fields rather than its file name.
+function print_pkg() {
+    local dir_pfx
+
+    dir_pfx="$(dirname "$(dirname "$(command -v "${1}")")")"
+    "${TEST_PYTHON}" - "${1}" "${dir_pfx}" << 'PY'
+import glob
+import json
+import sys
+
+prg, prefix = sys.argv[1:]
+for path in glob.glob(f"{prefix}/conda-meta/{prg}-[0-9]*.json"):
+    with open(path, encoding="utf-8") as handle:
+        rec = json.load(handle)
+        if rec["name"] == prg:
+            print(f"{rec['version']}-{rec['build']}")
+PY
+}
+
+
 # Add one row, as label|output|arguments|expected content lines; the content
 # lines are the arguments after the third, joined with ';'.
 function add_row() {
@@ -175,22 +230,59 @@ function add_row() {
     local IFS=';'
 
     shift 3
-    rows+=( "${lbl}|${out}|${arg}|chain=align_fastqs;$*" )
+    arr_rows+=( "${lbl}|${out}|${arg}|chain=align_fastqs;$*" )
 }
+
+
+# The expected checksums and packages, computed independently of the record's
+# own helpers.
+m_fq_pe_1="$(print_md5 "${in_pe_1}")"
+m_fq_pe_2="$(print_md5 "${in_pe_2}")"
+m_fq_se="$(print_md5 "${in_se}")"
+m_ref="$(print_md5 "${fa_tiny}")"
+m_idx_bt2="$(
+    print_index_md5 "${dir_fx}/bowtie2" \
+        tiny.1.bt2 tiny.2.bt2 tiny.3.bt2 tiny.4.bt2 \
+        tiny.rev.1.bt2 tiny.rev.2.bt2
+)"
+m_idx_bwa="$(
+    print_index_md5 "${dir_fx}/bwa" \
+        tiny.fa.amb tiny.fa.ann tiny.fa.bwt tiny.fa.pac tiny.fa.sa
+)"
+m_idx_bm2="$(
+    print_index_md5 "${dir_fx}/bwa-mem2" \
+        tiny.fa.0123 tiny.fa.amb tiny.fa.ann tiny.fa.bwt.2bit.64 tiny.fa.pac
+)"
+
+pkg_bt2="$(print_pkg bowtie2)"
+pkg_bwa="$(print_pkg bwa)"
+pkg_bm2="$(print_pkg bwa-mem2)"
+pkg_sam="$(print_pkg samtools)"
 
 
 # One row per aligner and layout.
 a_pe="--fq_1 ${in_pe_1} --fq_2 ${in_pe_2}"
 a_se="--fq_1 ${in_se}"
 a_ref="--ref_fa ${ref_fa}"
-k_pe=( --fq_1=tiny_pe_R1.atria.fastq.gz --fq_2=tiny_pe_R2.atria.fastq.gz )
-k_se=( --fq_1=tiny_se.atria.fastq.gz "skipped=fixmate (single-end)" )
-rows=()
+arr_in_pe=(
+    --fq_1=tiny_pe_R1.atria.fastq.gz
+    "fq_1_md5=${m_fq_pe_1}"
+    --fq_2=tiny_pe_R2.atria.fastq.gz
+    "fq_2_md5=${m_fq_pe_2}"
+)
+arr_in_se=(
+    --fq_1=tiny_se.atria.fastq.gz
+    "fq_1_md5=${m_fq_se}"
+    "skipped=fixmate (single-end)"
+)
+arr_rows=()
 
 add_row \
     "Bowtie 2 PE, '--qname'" \
     bt2_pe.bam \
     "--aligner bowtie2 --index ${idx_bt2} ${a_pe} --qname" \
+    "pkg_bowtie2=${pkg_bt2}" \
+    "pkg_samtools=${pkg_sam}" \
     --aligner=bowtie2 \
     --bt2_mode=end-to-end \
     bt2_seed=0 \
@@ -199,12 +291,15 @@ add_row \
     --req_flg=false \
     --qname=true \
     --index=tiny \
-    "${k_pe[@]}"
+    "index_md5=${m_idx_bt2}" \
+    "${arr_in_pe[@]}"
 
 add_row \
     "Bowtie 2 PE, '--bt2_inherited'" \
     bt2_inh.bam \
     "--aligner bowtie2 --index ${idx_bt2} ${a_pe} --bt2_inherited --req_flg" \
+    "pkg_bowtie2=${pkg_bt2}" \
+    "pkg_samtools=${pkg_sam}" \
     --aligner=bowtie2 \
     --bt2_mode=end-to-end \
     bt2_seed=0 \
@@ -213,24 +308,30 @@ add_row \
     --req_flg=true \
     --qname=false \
     --index=tiny \
-    "${k_pe[@]}"
+    "index_md5=${m_idx_bt2}" \
+    "${arr_in_pe[@]}"
 
 add_row \
     "Bowtie 2 SE, local" \
     bt2_se.bam \
     "--aligner bowtie2 --bt2_mode local --index ${idx_bt2} ${a_se}" \
+    "pkg_bowtie2=${pkg_bt2}" \
+    "pkg_samtools=${pkg_sam}" \
     --aligner=bowtie2 \
     --bt2_mode=local \
     bt2_seed=0 \
     --mapq=1 \
     --qname=false \
     --index=tiny \
-    "${k_se[@]}"
+    "index_md5=${m_idx_bt2}" \
+    "${arr_in_se[@]}"
 
 add_row \
     "BWA-MEM PE, '--mapq 0'" \
     mem_pe.bam \
     "--aligner bwa --index ${idx_bwa} ${a_pe} --mapq 0" \
+    "pkg_bwa=${pkg_bwa}" \
+    "pkg_samtools=${pkg_sam}" \
     --aligner=bwa \
     --bwa_alg=mem \
     bwa_K=100000000 \
@@ -238,43 +339,51 @@ add_row \
     --req_flg=false \
     --qname=false \
     --index=tiny.fa \
-    "${k_pe[@]}" \
+    "index_md5=${m_idx_bwa}" \
+    "${arr_in_pe[@]}" \
     "skipped=MAPQ filter (--mapq=0)"
 
 add_row \
     "BWA-backtrack SE" \
     aln_se.bam \
     "--aligner bwa --bwa_alg aln --index ${idx_bwa} ${a_se} --mapq 20" \
+    "pkg_bwa=${pkg_bwa}" \
+    "pkg_samtools=${pkg_sam}" \
     --aligner=bwa \
     --bwa_alg=aln \
     --mapq=20 \
     --qname=false \
     --index=tiny.fa \
-    "${k_se[@]}"
+    "index_md5=${m_idx_bwa}" \
+    "${arr_in_se[@]}"
 
 add_row \
     "BWA-MEM2 PE, CRAM, '--qname'" \
     bm2_pe.cram \
     "--aligner bwa-mem2 --index ${idx_bm2} ${a_ref} ${a_pe} --qname" \
+    "pkg_bwa-mem2=${pkg_bm2}" \
+    "pkg_samtools=${pkg_sam}" \
     --aligner=bwa-mem2 \
     bwa_K=100000000 \
     --mapq=1 \
     --req_flg=false \
     --qname=true \
     --index=tiny.fa \
+    "index_md5=${m_idx_bm2}" \
     --ref_fa=tiny.fa \
-    "${k_pe[@]}"
+    "ref_fa_md5=${m_ref}" \
+    "${arr_in_pe[@]}"
 
-for idx in "${!rows[@]}"; do
-    IFS='|' read -r lbl nam arg lin <<< "${rows[idx]}"
-    read -r -a args <<< "${arg}"
+for idx in "${!arr_rows[@]}"; do
+    IFS='|' read -r lbl nam arg lin <<< "${arr_rows[idx]}"
+    read -r -a arr_args <<< "${arg}"
     IFS=';' read -r -a arr_lin <<< "${lin}"
     dir_out="${tmp}/out_${idx}"
     fil_out="${dir_out}/${nam}"
     mkdir -p "${dir_out}"
 
     rc=0
-    run_helper --threads 1 "${args[@]}" --fil_out "${fil_out}" \
+    run_helper --threads 1 "${arr_args[@]}" --fil_out "${fil_out}" \
         > "${dir_out}/run.log" 2>&1 || rc=$?
     if (( rc != 0 )) || [[ ! -s "${fil_out}" ]]; then
         record_fail "${lbl}: run failed (exit ${rc}); see '${dir_out}/run.log'"
@@ -282,15 +391,15 @@ for idx in "${!rows[@]}"; do
     fi
 
     # The full paths, in the order the record gives them.
-    pth=()
+    arr_pth=()
     for key in index fq_1 fq_2 ref_fa; do
-        val="$(print_arg_val "--${key}" "${args[@]}")"
-        if [[ -n "${val}" ]]; then pth+=( "${key}" "${val}" ); fi
+        val="$(print_arg_val "--${key}" "${arr_args[@]}")"
+        if [[ -n "${val}" ]]; then arr_pth+=( "${key}" "${val}" ); fi
     done
-    pth+=( fil_out "${fil_out}" )
+    arr_pth+=( fil_out "${fil_out}" )
 
     exp_cnt="$(print_cnt_exp "${arr_lin[@]}")"
-    exp_pth="$(print_pth_exp "${pth[@]}")"
+    exp_pth="$(print_pth_exp "${arr_pth[@]}")"
     check_record "${lbl}" "${fil_out}" "${exp_cnt}" "${exp_pth}" 1
 
     # A direct call to the library gives the library function alone.
@@ -307,7 +416,8 @@ for idx in "${!rows[@]}"; do
     # 'samtools reheader' among them.
     pg="$(
         run_samtools view -H --no-PG -T "${ref_fa}" "${fil_out}" \
-            | grep '^@PG' || true
+            | grep '^@PG' \
+            || true
     )"
     if [[
         "$(head -n 1 <<< "${pg}" | cut -f 3)" =~ ^PN:(bowtie2|bwa|bwa-mem2)$
@@ -362,7 +472,6 @@ done
 
 
 # A dry run prints the content lines a real run writes.
-dir_dry="${tmp}/dry"
 mkdir -p "${dir_dry}"
 rc=0
 out="$(
@@ -393,7 +502,7 @@ dec="$(
 )"
 got="$(print_cnt "${dec}" | grep -v -E 'commit=|optical_distance=' || true)"
 exp="$(
-    print_cnt "$(print_co "${tmp}/out_4/aln_se.bam")" \
+    print_cnt "$(print_co "${fil_aln_se}")" \
         | grep -v -E 'commit=|optical_distance=|skipped=optical ' \
         || true
 )"
@@ -406,12 +515,8 @@ fi
 
 # It prints the same run lines too, by key: their values, such as the start
 # time and the paths, differ between the two runs.
-function print_run_keys() {
-    print_run "${1}" | sed -E $'s/^@CO\tpipeline-run: ([^=]+)=.*$/\\1/'
-}
-
 got="$(print_run_keys "${dec}")"
-exp="$(print_run_keys "$(print_co "${tmp}/out_4/aln_se.bam")")"
+exp="$(print_run_keys "$(print_co "${fil_aln_se}")")"
 if [[ -n "${exp}" && "${got}" == "${exp}" ]]; then
     record_pass "dry run prints the run lines a real run writes, by key"
 else
@@ -422,8 +527,7 @@ fi
 
 # Step 5 skips a file that already carries a record, so writing twice leaves
 # one record.
-fil_two="${tmp}/twice.bam"
-cp "${tmp}/out_4/aln_se.bam" "${fil_two}"
+cp "${fil_aln_se}" "${fil_two}"
 rc=0
 # shellcheck disable=SC2016  # Expand in the child shell, not this one.
 "${TEST_BASH}" -c '
@@ -481,7 +585,6 @@ fi
 
 # Through the drivers: 'execute' runs 'submit', which calls the library, so the
 # call path names all three, and the record names the requested environment.
-dir_drv="${tmp}/driver"
 mkdir -p "${dir_drv}/out" "${dir_drv}/logs"
 rc=0
 "${TEST_BASH}" "${ROOT_REPO}/bin/execute_align_fastqs.sh" \
@@ -501,7 +604,6 @@ rc=0
     --max_job 1 \
     > "${dir_drv}/run.log" 2>&1 || rc=$?
 
-fil_drv="${dir_drv}/out/tiny_se.bam"
 if (( rc != 0 )) || [[ ! -s "${fil_drv}" ]]; then
     record_fail "driver run failed (exit ${rc}); see '${dir_drv}/run.log'"
 else
@@ -509,15 +611,18 @@ else
         "driver" \
         "" \
         "" \
+        "pkg_bowtie2=${pkg_bt2}" \
+        "pkg_samtools=${pkg_sam}" \
         --aligner=bowtie2 \
         --bt2_mode=global \
         bt2_seed=0 \
         --mapq=0 \
         --qname=false \
         --index=tiny \
-        "${k_se[@]}" \
+        "index_md5=${m_idx_bt2}" \
+        "${arr_in_se[@]}" \
         "skipped=MAPQ filter (--mapq=0)"
-    IFS='|' read -r _ _ _ lin <<< "${rows[-1]}"
+    IFS='|' read -r _ _ _ lin <<< "${arr_rows[-1]}"
     IFS=';' read -r -a arr_lin <<< "${lin}"
 
     check_record "driver" "${fil_drv}" \
