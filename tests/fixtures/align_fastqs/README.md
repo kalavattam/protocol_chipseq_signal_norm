@@ -19,6 +19,7 @@ The fixture set focuses on single-end and paired-end Bowtie2 alignment to BAM an
 ## Files
 Readable provenance:
 - `make.sh`
+- `make_tie.py`, the generator `make.sh` runs for the tie fixtures
 - `reference/tiny.fa`
 
 The FASTQ records are generated deterministically by `make.sh` as compressed workflow inputs and can be inspected with `gzip -cd`.
@@ -65,6 +66,14 @@ Queryname-grouped SAM records with secondary records, for the MAPQ template filt
 - `sam/repeat_secondary_pe.sam`
 - `sam/repeat_secondary_se.sam`
 
+Tie reference, reads, and Bowtie2 index, for the determinism checks:
+- `reference/tie.fa`
+- `fastq/pe/tie_pe_R1.atria.fastq.gz` and `fastq/pe/tie_pe_R2.atria.fastq.gz`
+- `fastq/pe/tie_cmt_pe_R1.atria.fastq.gz` and `fastq/pe/tie_cmt_pe_R2.atria.fastq.gz`
+- `fastq/pe/tie_idx_pe_R1.atria.fastq.gz` and `fastq/pe/tie_idx_pe_R2.atria.fastq.gz`
+- `fastq/se/tie_se.atria.fastq.gz` and `fastq/se/tie_cmt_se.atria.fastq.gz`
+- `bowtie2/tie.*.bt2`, with the same index files as `tiny`
+
 <br />
 
 ## Expected alignment behavior
@@ -100,6 +109,23 @@ R1 matches chromosome `I` in forward orientation. R2 is the reverse complement o
 With BWA MEM and bwa-mem2, `chim` R1 is a split read with its primary in the repeat, `rchm` R1 a split read with its supplementary in the repeat, and `half` a pair whose mates get different MAPQ; BWA ALN gives `half` different mate MAPQs too. Bowtie2 writes no supplementary records. `test_align_fastqs_mapq_template.sh` checks the MAPQs each aligner writes before relying on them.
 
 In the SAM fixtures, template `sec_keep` has primary records at MAPQ 60 and a secondary record at MAPQ 0, and `sec_drop` has a primary record at MAPQ 0 and a secondary record at MAPQ 255. Filtered at MAPQ 30 by primary records, only `sec_keep` is kept, with its secondary record.
+
+<br />
+
+### Tie fixtures
+`make.sh` runs `make_tie.py`, which draws the tie reference and reads through `random.Random(0).random()`, a stream Python guarantees across versions, so they are random in content but identical on every run and every host. The reference has two chromosomes, `chrT1` and `chrT2`, each of three 3,000-base unique blocks with a copy of one 600-base repeat after each, then a 1,000-base unique block. A read inside a repeat copy has six equally good placements, and Bowtie2 picks one with a per-read random generator. The reads are 1,000 pairs of 50-base mates, from 150- to 400-base fragments on either strand, with one mismatch in about 30% of mates.
+
+The same reads come under three header forms, because Bowtie2 seeds each read's generator from its sequence, its qualities, its whole FASTQ header line, and `--seed`, and for a pair it combines the two mates' seeds by exclusive or, which cancels every term the two mates share:
+
+| Files     | R1 header                | R2 header                | Change from the row above |
+| :---      | :---                     | :---                     | :---                      |
+| `tie_pe`  | `tie_<n>`                | `tie_<n>`                |                           |
+| `tie_cmt` | `tie_<n> 1:N:0:AAAAAAAA` | `tie_<n> 2:N:0:AAAAAAAA` | the mates now differ      |
+| `tie_idx` | `tie_<n> 1:N:0:CCCCCCCC` | `tie_<n> 2:N:0:CCCCCCCC` | a change both mates share |
+
+The single-end files `tie_se` and `tie_cmt_se` hold the R1 reads with the `tie_pe` and `tie_cmt` headers.
+
+Measured with Bowtie 2 2.5.5 and the pipeline's default paired-end call, about 164 of the 2,000 paired-end records and 144 of the 1,000 single-end records are tied (MAPQ 0 or 1). From `tie_pe` to `tie_cmt`, about 116 paired-end records move; from `tie_cmt` to `tie_idx`, none do; changing `--seed` moves no paired-end record but about 102 single-end ones; and `--seed 0` gives the same output as no `--seed`. With `-p 8`, the output order differs from `-p 1` while the records do not, and `--reorder` restores the `-p 1` order.
 
 <br />
 

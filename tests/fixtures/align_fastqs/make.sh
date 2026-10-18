@@ -51,6 +51,14 @@ function cleanup_tmp_fastqs() {
         "${fq_rpt_se_tmp}" \
         "${fq_rpt_r1_tmp}" \
         "${fq_rpt_r2_tmp}" \
+        "${fq_tie_r1_tmp}" \
+        "${fq_tie_r2_tmp}" \
+        "${fq_tie_cmt_r1_tmp}" \
+        "${fq_tie_cmt_r2_tmp}" \
+        "${fq_tie_idx_r1_tmp}" \
+        "${fq_tie_idx_r2_tmp}" \
+        "${fq_tie_se_tmp}" \
+        "${fq_tie_cmt_se_tmp}" \
         "${tmp_bln_se}" \
         "${tmp_bln_r1}" \
         "${tmp_bln_r2}"
@@ -115,6 +123,27 @@ idx_rpt_bm2="${ref_rpt_bm2}"
 
 sam_sec_pe="${dir_sam}/repeat_secondary_pe.sam"
 sam_sec_se="${dir_sam}/repeat_secondary_se.sam"
+
+ref_tie="${dir_ref}/tie.fa"
+fq_tie_r1_tmp="${dir_fq_pe}/tie_pe_R1.atria.fastq.tmp"
+fq_tie_r2_tmp="${dir_fq_pe}/tie_pe_R2.atria.fastq.tmp"
+fq_tie_cmt_r1_tmp="${dir_fq_pe}/tie_cmt_pe_R1.atria.fastq.tmp"
+fq_tie_cmt_r2_tmp="${dir_fq_pe}/tie_cmt_pe_R2.atria.fastq.tmp"
+fq_tie_idx_r1_tmp="${dir_fq_pe}/tie_idx_pe_R1.atria.fastq.tmp"
+fq_tie_idx_r2_tmp="${dir_fq_pe}/tie_idx_pe_R2.atria.fastq.tmp"
+fq_tie_se_tmp="${dir_fq_se}/tie_se.atria.fastq.tmp"
+fq_tie_cmt_se_tmp="${dir_fq_se}/tie_cmt_se.atria.fastq.tmp"
+
+fq_tie_r1_gz="${dir_fq_pe}/tie_pe_R1.atria.fastq.gz"
+fq_tie_r2_gz="${dir_fq_pe}/tie_pe_R2.atria.fastq.gz"
+fq_tie_cmt_r1_gz="${dir_fq_pe}/tie_cmt_pe_R1.atria.fastq.gz"
+fq_tie_cmt_r2_gz="${dir_fq_pe}/tie_cmt_pe_R2.atria.fastq.gz"
+fq_tie_idx_r1_gz="${dir_fq_pe}/tie_idx_pe_R1.atria.fastq.gz"
+fq_tie_idx_r2_gz="${dir_fq_pe}/tie_idx_pe_R2.atria.fastq.gz"
+fq_tie_se_gz="${dir_fq_se}/tie_se.atria.fastq.gz"
+fq_tie_cmt_se_gz="${dir_fq_se}/tie_cmt_se.atria.fastq.gz"
+
+idx_tie_bt2="${dir_bt2}/tie"
 
 env_req="env_protocol"
 
@@ -552,6 +581,82 @@ bwa-mem2 mem "${idx_rpt_bm2}" "${fq_rpt_r1_gz}" "${fq_rpt_r2_gz}" \
 
 # Validate the secondary-record SAM fixtures.
 samtools quickcheck "${sam_sec_pe}" "${sam_sec_se}"
+
+
+# Write the tie reference and reads for the determinism checks with
+# 'make_tie.py'; its docstring describes the data.
+require_cmd python3 "in '${env_req}' to generate the tie fixtures."
+
+python3 "${dir_scr}/make_tie.py" \
+    --fil_ref "${ref_tie}" \
+    --fil_r1 "${fq_tie_r1_tmp}" \
+    --fil_r2 "${fq_tie_r2_tmp}" \
+    --fil_cmt_r1 "${fq_tie_cmt_r1_tmp}" \
+    --fil_cmt_r2 "${fq_tie_cmt_r2_tmp}" \
+    --fil_idx_r1 "${fq_tie_idx_r1_tmp}" \
+    --fil_idx_r2 "${fq_tie_idx_r2_tmp}" \
+    --fil_se "${fq_tie_se_tmp}" \
+    --fil_cmt_se "${fq_tie_cmt_se_tmp}"
+
+# Compress the tie FASTQ fixtures with deterministic gzip metadata, then remove
+# the temporary FASTQs.
+gzip_n "${fq_tie_r1_tmp}" "${fq_tie_r1_gz}"
+gzip_n "${fq_tie_r2_tmp}" "${fq_tie_r2_gz}"
+gzip_n "${fq_tie_cmt_r1_tmp}" "${fq_tie_cmt_r1_gz}"
+gzip_n "${fq_tie_cmt_r2_tmp}" "${fq_tie_cmt_r2_gz}"
+gzip_n "${fq_tie_idx_r1_tmp}" "${fq_tie_idx_r1_gz}"
+gzip_n "${fq_tie_idx_r2_tmp}" "${fq_tie_idx_r2_gz}"
+gzip_n "${fq_tie_se_tmp}" "${fq_tie_se_gz}"
+gzip_n "${fq_tie_cmt_se_tmp}" "${fq_tie_cmt_se_gz}"
+
+rm_files \
+    "${dir_fix}" \
+    "${fq_tie_r1_tmp}" \
+    "${fq_tie_r2_tmp}" \
+    "${fq_tie_cmt_r1_tmp}" \
+    "${fq_tie_cmt_r2_tmp}" \
+    "${fq_tie_idx_r1_tmp}" \
+    "${fq_tie_idx_r2_tmp}" \
+    "${fq_tie_se_tmp}" \
+    "${fq_tie_cmt_se_tmp}"
+
+
+# Remove stale tie index files before regeneration.
+rm_files \
+    "${dir_fix}" \
+    "${idx_tie_bt2}.1.bt2" \
+    "${idx_tie_bt2}.2.bt2" \
+    "${idx_tie_bt2}.3.bt2" \
+    "${idx_tie_bt2}.4.bt2" \
+    "${idx_tie_bt2}.rev.1.bt2" \
+    "${idx_tie_bt2}.rev.2.bt2"
+
+# Build the tie Bowtie2 index.
+log_tie="${dir_bt2}/tie-bowtie2-build.log"
+if ! \
+    bowtie2-build "${ref_tie}" "${idx_tie_bt2}" > "${log_tie}" 2>&1
+then
+    cat "${log_tie}" >&2
+    exit 1
+fi
+
+rm_file "${dir_fix}" "${log_tie}"
+
+# Validate the tie paired-end and single-end alignment paths.
+bowtie2 \
+    -x "${idx_tie_bt2}" \
+    -1 "${fq_tie_r1_gz}" \
+    -2 "${fq_tie_r2_gz}" \
+    -S /dev/null \
+        > /dev/null \
+        2> /dev/null
+
+bowtie2 \
+    -x "${idx_tie_bt2}" \
+    -U "${fq_tie_se_gz}" \
+    -S /dev/null \
+        > /dev/null \
+        2> /dev/null
 
 
 succeed "generated align-fastqs fixtures under '${dir_fix}'."

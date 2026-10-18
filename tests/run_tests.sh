@@ -90,7 +90,7 @@ function ensure_fixture() {
 
 function ensure_integration_fixtures() {
     ensure_fixture align_fastqs \
-        "${repo_root}/tests/fixtures/align_fastqs/sam/repeat_secondary_se.sam" \
+        "${repo_root}/tests/fixtures/align_fastqs/bowtie2/tie.rev.2.bt2" \
         env_protocol
 
     ensure_fixture calculate_scaling_factor \
@@ -101,7 +101,9 @@ function ensure_integration_fixtures() {
         "${repo_root}/tests/fixtures/compute_signal/bedgraph/count/tiny_pe.n_ovlp.txt" \
         env_protocol
 
-    if gate_enabled RUN_DOWNLOAD; then
+    if \
+        gate_enabled RUN_DOWNLOAD
+    then
         ensure_fixture download_fastqs \
             "${repo_root}/tests/fixtures/download_fastqs/metadata/local_names_sequencer_pe.template.tsv"
     fi
