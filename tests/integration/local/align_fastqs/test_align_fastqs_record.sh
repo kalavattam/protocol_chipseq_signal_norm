@@ -187,35 +187,83 @@ k_pe=( --fq_1=tiny_pe_R1.atria.fastq.gz --fq_2=tiny_pe_R2.atria.fastq.gz )
 k_se=( --fq_1=tiny_se.atria.fastq.gz "skipped=fixmate (single-end)" )
 rows=()
 
-add_row "Bowtie 2 PE, '--qname'" bt2_pe.bam \
+add_row \
+    "Bowtie 2 PE, '--qname'" \
+    bt2_pe.bam \
     "--aligner bowtie2 --index ${idx_bt2} ${a_pe} --qname" \
-    --aligner=bowtie2 --bt2_mode=end-to-end bt2_seed=0 --bt2_X=1000 --mapq=1 \
-    --req_flg=false --qname=true --index=tiny "${k_pe[@]}"
+    --aligner=bowtie2 \
+    --bt2_mode=end-to-end \
+    bt2_seed=0 \
+    --bt2_X=1000 \
+    --mapq=1 \
+    --req_flg=false \
+    --qname=true \
+    --index=tiny \
+    "${k_pe[@]}"
 
-add_row "Bowtie 2 PE, '--bt2_inherited'" bt2_inh.bam \
+add_row \
+    "Bowtie 2 PE, '--bt2_inherited'" \
+    bt2_inh.bam \
     "--aligner bowtie2 --index ${idx_bt2} ${a_pe} --bt2_inherited --req_flg" \
-    --aligner=bowtie2 --bt2_mode=end-to-end bt2_seed=0 --bt2_inherited=true \
-    --mapq=1 --req_flg=true --qname=false --index=tiny "${k_pe[@]}"
+    --aligner=bowtie2 \
+    --bt2_mode=end-to-end \
+    bt2_seed=0 \
+    --bt2_inherited=true \
+    --mapq=1 \
+    --req_flg=true \
+    --qname=false \
+    --index=tiny \
+    "${k_pe[@]}"
 
-add_row "Bowtie 2 SE, local" bt2_se.bam \
+add_row \
+    "Bowtie 2 SE, local" \
+    bt2_se.bam \
     "--aligner bowtie2 --bt2_mode local --index ${idx_bt2} ${a_se}" \
-    --aligner=bowtie2 --bt2_mode=local bt2_seed=0 --mapq=1 --qname=false \
-    --index=tiny "${k_se[@]}"
-
-add_row "BWA-MEM PE, '--mapq 0'" mem_pe.bam \
-    "--aligner bwa --index ${idx_bwa} ${a_pe} --mapq 0" \
-    --aligner=bwa --bwa_alg=mem --mapq=0 --req_flg=false --qname=false \
-    --index=tiny.fa "${k_pe[@]}" "skipped=MAPQ filter (--mapq=0)"
-
-add_row "BWA-backtrack SE" aln_se.bam \
-    "--aligner bwa --bwa_alg aln --index ${idx_bwa} ${a_se} --mapq 20" \
-    --aligner=bwa --bwa_alg=aln --mapq=20 --qname=false --index=tiny.fa \
+    --aligner=bowtie2 \
+    --bt2_mode=local \
+    bt2_seed=0 \
+    --mapq=1 \
+    --qname=false \
+    --index=tiny \
     "${k_se[@]}"
 
-add_row "BWA-MEM2 PE, CRAM, '--qname'" bm2_pe.cram \
+add_row \
+    "BWA-MEM PE, '--mapq 0'" \
+    mem_pe.bam \
+    "--aligner bwa --index ${idx_bwa} ${a_pe} --mapq 0" \
+    --aligner=bwa \
+    --bwa_alg=mem \
+    bwa_K=100000000 \
+    --mapq=0 \
+    --req_flg=false \
+    --qname=false \
+    --index=tiny.fa \
+    "${k_pe[@]}" \
+    "skipped=MAPQ filter (--mapq=0)"
+
+add_row \
+    "BWA-backtrack SE" \
+    aln_se.bam \
+    "--aligner bwa --bwa_alg aln --index ${idx_bwa} ${a_se} --mapq 20" \
+    --aligner=bwa \
+    --bwa_alg=aln \
+    --mapq=20 \
+    --qname=false \
+    --index=tiny.fa \
+    "${k_se[@]}"
+
+add_row \
+    "BWA-MEM2 PE, CRAM, '--qname'" \
+    bm2_pe.cram \
     "--aligner bwa-mem2 --index ${idx_bm2} ${a_ref} ${a_pe} --qname" \
-    --aligner=bwa-mem2 --mapq=1 --req_flg=false --qname=true \
-    --index=tiny.fa --ref_fa=tiny.fa "${k_pe[@]}"
+    --aligner=bwa-mem2 \
+    bwa_K=100000000 \
+    --mapq=1 \
+    --req_flg=false \
+    --qname=true \
+    --index=tiny.fa \
+    --ref_fa=tiny.fa \
+    "${k_pe[@]}"
 
 for idx in "${!rows[@]}"; do
     IFS='|' read -r lbl nam arg lin <<< "${rows[idx]}"
@@ -344,8 +392,11 @@ dec="$(
     ' <<< "${out}"
 )"
 got="$(print_cnt "${dec}" | grep -v -E 'commit=|optical_distance=' || true)"
-exp="$(print_cnt "$(print_co "${tmp}/out_4/aln_se.bam")" \
-    | grep -v -E 'commit=|optical_distance=|skipped=optical ' || true)"
+exp="$(
+    print_cnt "$(print_co "${tmp}/out_4/aln_se.bam")" \
+        | grep -v -E 'commit=|optical_distance=|skipped=optical ' \
+        || true
+)"
 if [[ "${rc}" -eq 0 && -n "${exp}" && "${got}" == "${exp}" ]]; then
     record_pass "dry run prints the content lines a real run writes"
 else
@@ -386,7 +437,8 @@ rc=0
 ' _ "${ROOT_REPO}" "${fil_two}" \
     $'@CO\tpipeline: chain=align_fastqs' \
     $'@CO\tpipeline-run: --threads=1' \
-    > "${tmp}/twice.log" 2>&1 || rc=$?
+    > "${tmp}/twice.log" 2>&1 \
+    || rc=$?
 
 if [[
     "${rc}" -eq 0
@@ -453,9 +505,18 @@ fil_drv="${dir_drv}/out/tiny_se.bam"
 if (( rc != 0 )) || [[ ! -s "${fil_drv}" ]]; then
     record_fail "driver run failed (exit ${rc}); see '${dir_drv}/run.log'"
 else
-    add_row "driver" "" "" \
-        --aligner=bowtie2 --bt2_mode=global bt2_seed=0 --mapq=0 --qname=false \
-        --index=tiny "${k_se[@]}" "skipped=MAPQ filter (--mapq=0)"
+    add_row \
+        "driver" \
+        "" \
+        "" \
+        --aligner=bowtie2 \
+        --bt2_mode=global \
+        bt2_seed=0 \
+        --mapq=0 \
+        --qname=false \
+        --index=tiny \
+        "${k_se[@]}" \
+        "skipped=MAPQ filter (--mapq=0)"
     IFS='|' read -r _ _ _ lin <<< "${rows[-1]}"
     IFS=';' read -r -a arr_lin <<< "${lin}"
 

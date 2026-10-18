@@ -196,7 +196,7 @@ EOM
             "samtools view")          opt_val="-@ -F -f -q -o -T -O -N" ;;
             "samtools markdup")       opt_val="-@ -d -f" ;;
             samtools\ *)              opt_val="-@ -o" ;;
-            "bwa mem"|"bwa-mem2 mem") opt_val="-t" ;;
+            "bwa mem"|"bwa-mem2 mem") opt_val="-t -K" ;;
             "bwa aln")                opt_val="-t" ;;
             awk)                      opt_val="-v" ;;
             cut)                      opt_val="-f" ;;
@@ -1102,8 +1102,12 @@ EOM
         return 0
     fi
 
-    # Assign BWA or BWA-MEM2 arguments.
-    arr_bwa=( "${prog}" mem -t "${threads}" "${index}" "${fq_1}" )
+    # Assign BWA or BWA-MEM2 arguments: '-K' fixes the batch of read bases,
+    # over which paired-end insert sizes are estimated, so output does not
+    # depend on the thread count.
+    arr_bwa=(
+        "${prog}" mem -t "${threads}" -K 100000000 "${index}" "${fq_1}"
+    )
 
     if [[ -n "${fq_2}" ]]; then
         arr_bwa+=( "${fq_2}" )
@@ -2380,6 +2384,13 @@ EOM
 
         bwa)
             cnt_ref+=( $'@CO\tpipeline: --bwa_alg='"${bwa_alg}" )
+            if [[ "${bwa_alg}" == "mem" ]]; then
+                cnt_ref+=( $'@CO\tpipeline: bwa_K=100000000' )
+            fi
+            ;;
+
+        bwa-mem2)
+            cnt_ref+=( $'@CO\tpipeline: bwa_K=100000000' )
             ;;
     esac
 
@@ -2949,6 +2960,7 @@ Notes
   - Bowtie 2 runs with '--reorder', so its output order does not depend on the thread count, and also with '--seed 0', its default; the record gives the seed as 'bt2_seed=0'.
     + Which of several equally good alignments a read gets depends on the seed and on the read's sequence, qualities, and whole FASTQ header line, so renaming reads can move them.
     + For paired-end data, the two mates' seeds are combined so that the seed, and header text identical in both mates, cancel; only header differences between the mates move pairs.
+  - BWA-MEM and BWA-MEM2 run with '-K 100000000', a fixed batch of read bases over which paired-end insert sizes are estimated, so their output does not depend on the thread count; the record gives it as 'bwa_K=100000000'.
   - Each alignment file's header, the '.qnam' copy's included, carries a pipeline record as '@CO' lines:
     + 'pipeline:' lines give the commit, the options in effect, the input file names, and any skipped steps;
     + 'pipeline-run:' lines give the thread count, the start time, the host, the scripts and functions that ran, and the full paths.

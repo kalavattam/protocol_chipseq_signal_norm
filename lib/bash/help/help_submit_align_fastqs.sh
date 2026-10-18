@@ -154,6 +154,7 @@ Notes
   - Bowtie 2 runs with '--reorder', so its output order does not depend on the thread count, and also with '--seed 0', its default; the record gives the seed as 'bt2_seed=0'.
     + Which of several equally good alignments a read gets depends on the seed and on the read's sequence, qualities, and whole FASTQ header line, so renaming reads can move them.
     + For paired-end data, the two mates' seeds are combined so that the seed, and header text identical in both mates, cancel; only header differences between the mates move pairs.
+  - BWA-MEM and BWA-MEM2 run with '-K 100000000', a fixed batch of read bases over which paired-end insert sizes are estimated, so their output does not depend on the thread count; the record gives it as 'bwa_K=100000000'.
   - Each alignment file's header, the '.qnam' copy's included, carries a pipeline record as '@CO' lines:
     + 'pipeline:' lines give the commit, the options in effect, the input file names, and any skipped steps;
     + 'pipeline-run:' lines give the thread count, the start time, the host, the scripts and functions that ran, and the full paths.

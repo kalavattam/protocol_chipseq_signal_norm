@@ -493,6 +493,7 @@ out="$(
 exp="# Step 1: align the reads into the BAM work file.
 bwa-mem2 mem \\
     -t 1 \\
+    -K 100000000 \\
     ${idx_bm2} \\
     ${in_se} \\
     | samtools view \\

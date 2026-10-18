@@ -14,7 +14,7 @@
 
 set -euo pipefail
 
-TEST_NAME="align-fastqs determinism (Bowtie 2)"
+TEST_NAME="align-fastqs determinism"
 
 # Source shared test helpers.
 # shellcheck source=tests/support/test_helpers.sh
@@ -24,10 +24,13 @@ source "$(
 
 
 # Define fixture and output paths. The tie fixtures hold reads with several
-# equally good placements, so Bowtie 2's seed and output order show in them.
+# equally good placements, so Bowtie 2's seed and output order, and BWA's
+# batches, show in them.
 dir_fx="${ROOT_REPO}/tests/fixtures/align_fastqs"
 ref_tie="${dir_fx}/reference/tie.fa"
 idx_tie="${dir_fx}/bowtie2/tie"
+idx_bwa="${dir_fx}/bwa/tie.fa"
+idx_bm2="${dir_fx}/bwa-mem2/tie.fa"
 fq_pe_1="${dir_fx}/fastq/pe/tie_pe_R1.atria.fastq.gz"
 fq_pe_2="${dir_fx}/fastq/pe/tie_pe_R2.atria.fastq.gz"
 fq_cmt_1="${dir_fx}/fastq/pe/tie_cmt_pe_R1.atria.fastq.gz"
@@ -53,6 +56,8 @@ require_env_project env_nam || {
 require_files_nonempty \
     "${ref_tie}" \
     "${idx_tie}.1.bt2" \
+    "${idx_bwa}.bwt" \
+    "${idx_bm2}.0123" \
     "${fq_pe_1}" \
     "${fq_pe_2}" \
     "${fq_cmt_1}" \
@@ -84,20 +89,29 @@ function run_helper() {
 }
 
 
-# Print the Bowtie 2 command of the helper's dry run, one argument per line,
-# for the given inputs and options.
-function print_bt2_cmd() {
+# Print the Step 1 aligner command of the helper's dry run, one argument per
+# line, given the line that starts it ('bowtie2', 'bwa mem', or 'bwa-mem2 mem')
+# and the helper's arguments.
+function print_aln_cmd() {
+    local head="${1}"
+    shift 1
+
     run_helper \
         --threads 1 \
-        --aligner bowtie2 \
-        --index "${idx_tie}" \
         "$@" \
         --fil_out "${tmp}/dry.bam" \
         --dry_run \
         2> /dev/null \
-        | sed -n '/^bowtie2 \\$/,/^ *| samtools/p' \
+        | sed -n "/^${head} \\\\\$/,/^ *| samtools/p" \
         | sed -e '$d' -e 's/^ *//' -e 's/ \\$//' \
         | tr ' ' '\n'
+}
+
+
+# Print the Bowtie 2 command of the helper's dry run for the given inputs and
+# options.
+function print_bt2_cmd() {
+    print_aln_cmd bowtie2 --aligner bowtie2 --index "${idx_tie}" "$@"
 }
 
 
@@ -291,60 +305,171 @@ for row in "${arr_facts[@]}"; do
 done
 
 
-# The pipeline record names the seed.
-fil_rec="${tmp}/rec.bam"
-if
-    run_helper \
-        --threads 1 \
-        --aligner bowtie2 \
-        --index "${idx_tie}" \
-        --fq_1 "${fq_se}" \
-        --fil_out "${fil_rec}" \
-        > "${tmp}/rec.log" 2>&1 \
-        && print_cnt "${fil_rec}" | grep -qx $'@CO\tpipeline: bt2_seed=0'
-then
-    record_pass "the record gives 'bt2_seed=0'"
-else
-    record_fail "the record lacks 'bt2_seed=0'; see '${tmp}/rec.log'"
-fi
+# BWA-MEM and BWA-MEM2 pass a fixed '-K', whatever the layout.
+arr_mem=(
+    "BWA-MEM|bwa mem|--aligner bwa --index ${idx_bwa}"
+    "BWA-MEM2|bwa-mem2 mem|--aligner bwa-mem2 --index ${idx_bm2}"
+)
+
+for row in "${arr_mem[@]}"; do
+    IFS='|' read -r lbl head arg <<< "${row}"
+    read -r -a arr_args <<< "${arg}"
+
+    for lay in pe se; do
+        if [[ "${lay}" == "pe" ]]; then
+            arr_in=( --fq_1 "${fq_pe_1}" --fq_2 "${fq_pe_2}" )
+        else
+            arr_in=( --fq_1 "${fq_se}" )
+        fi
+
+        cmd=" $(print_aln_cmd "${head}" "${arr_args[@]}" "${arr_in[@]}" \
+            | paste -sd ' ' -) "
+        if [[ "${cmd}" == *" -K 100000000 "* ]]; then
+            record_pass "${lbl} ${lay}: the call passes '-K 100000000'"
+        else
+            record_fail "${lbl} ${lay}: the call lacks '-K 100000000'"
+        fi
+    done
+done
+
+
+# Why '-K' is fixed: BWA estimates paired-end insert sizes per batch, so a
+# different batch size moves records. At a fixed '-K', the thread count moves
+# none; the fixture is smaller than one default batch, so this part would pass
+# without '-K' too, and the command check above is what fails without it.
+for idx in "${!arr_mem[@]}"; do
+    IFS='|' read -r lbl head arg <<< "${arr_mem[idx]}"
+    read -r -a arr_args <<< "${arg}"
+    arr_cmd=()
+    mapfile -t arr_cmd < <(
+        print_aln_cmd "${head}" "${arr_args[@]}" \
+            --fq_1 "${fq_pe_1}" --fq_2 "${fq_pe_2}"
+    )
+
+    if (( ${#arr_cmd[@]} == 0 )); then
+        record_fail "${lbl}: no command in the dry run"
+        continue
+    fi
+
+    mapfile -t arr_k10 < <(print_with_opt -K 10000 "${arr_cmd[@]}")
+    mapfile -t arr_t4 < <(print_with_opt -t 4 "${arr_cmd[@]}")
+
+    run_bt2 "${tmp}/mem_${idx}.sam" "${arr_cmd[@]}"
+    run_bt2 "${tmp}/mem_${idx}_k10.sam" "${arr_k10[@]}"
+    run_bt2 "${tmp}/mem_${idx}_t4.sam" "${arr_t4[@]}"
+
+    if [[ ! -s "${tmp}/mem_${idx}.sam" ]]; then
+        record_fail "${lbl}: the aligner wrote no records"
+        continue
+    fi
+
+    n="$(count_moved "${tmp}/mem_${idx}.sam" "${tmp}/mem_${idx}_k10.sam")"
+    if [[ "${n}" != "mismatch" ]] && (( n > 0 )); then
+        record_pass "${lbl}: '-K 10000' moves ${n} records"
+    else
+        record_fail "${lbl}: '-K 10000' moved '${n}' records, expected some"
+    fi
+
+    if cmp -s "${tmp}/mem_${idx}.sam" "${tmp}/mem_${idx}_t4.sam"; then
+        record_pass "${lbl}: '-t 4' output equals '-t 1'"
+    else
+        record_fail "${lbl}: '-t 4' output differs from '-t 1'"
+    fi
+done
+
+
+# The pipeline record names Bowtie 2's seed and BWA-MEM's batch size, and
+# BWA-backtrack, which has no '-K', gets no batch line.
+arr_rec=(
+    "Bowtie 2|--aligner bowtie2 --index ${idx_tie}|bt2_seed=0|yes"
+    "BWA-MEM|--aligner bwa --index ${idx_bwa}|bwa_K=100000000|yes"
+    "BWA-MEM2|--aligner bwa-mem2 --index ${idx_bm2}|bwa_K=100000000|yes"
+    "BWA-backtrack|--aligner bwa --bwa_alg aln --index ${idx_bwa}|bwa_K=|no"
+)
+
+for idx in "${!arr_rec[@]}"; do
+    IFS='|' read -r lbl arg lin exp <<< "${arr_rec[idx]}"
+    read -r -a arr_args <<< "${arg}"
+    fil_rec="${tmp}/rec_${idx}.bam"
+
+    if ! \
+        run_helper \
+            --threads 1 \
+            "${arr_args[@]}" \
+            --fq_1 "${fq_pe_1}" \
+            --fq_2 "${fq_pe_2}" \
+            --fil_out "${fil_rec}" \
+            > "${tmp}/rec_${idx}.log" 2>&1
+    then
+        record_fail "${lbl}: the run failed; see '${tmp}/rec_${idx}.log'"
+        continue
+    fi
+
+    got=no
+    if print_cnt "${fil_rec}" | grep -q $'^@CO\tpipeline: '"${lin}"; then
+        got=yes
+    fi
+
+    if [[ "${got}" == "${exp}" ]]; then
+        record_pass "${lbl}: the record's '${lin}' line is present: ${got}"
+    else
+        record_fail "${lbl}: the record's '${lin}' line is present: ${got}"
+    fi
+done
 
 
 # The chain run twice, at one thread and at eight, writes the same records,
-# content lines, and '@PG' program sequence, in the final and '--qname' files.
-for row in "pe|--fq_1 ${fq_pe_1} --fq_2 ${fq_pe_2}" "se|--fq_1 ${fq_se}"; do
-    IFS='|' read -r lay arg <<< "${row}"
+# content lines, and '@PG' program sequence, in the final and '--qname' files,
+# for every aligner and layout.
+arr_chain=(
+    "bt2|--aligner bowtie2 --index ${idx_tie}"
+    "mem|--aligner bwa --index ${idx_bwa}"
+    "aln|--aligner bwa --bwa_alg aln --index ${idx_bwa}"
+    "bm2|--aligner bwa-mem2 --index ${idx_bm2}"
+)
+
+for row in "${arr_chain[@]}"; do
+    IFS='|' read -r aln arg <<< "${row}"
     read -r -a arr_args <<< "${arg}"
 
-    for thr in 1 8; do
-        mkdir -p "${tmp}/chain_${lay}_${thr}"
-        run_helper \
-            --threads "${thr}" \
-            --aligner bowtie2 \
-            --index "${idx_tie}" \
-            "${arr_args[@]}" \
-            --qname \
-            --fil_out "${tmp}/chain_${lay}_${thr}/x.bam" \
-            > "${tmp}/chain_${lay}_${thr}/run.log" 2>&1 || true
-    done
-
-    for fil in x.bam x.qnam.bam; do
-        fil_1="${tmp}/chain_${lay}_1/${fil}"
-        fil_8="${tmp}/chain_${lay}_8/${fil}"
-
-        if [[ ! -s "${fil_1}" || ! -s "${fil_8}" ]]; then
-            record_fail "${lay} chain: '${fil}' is missing"
-        elif [[
-            "$(print_records "${fil_1}")" == "$(print_records "${fil_8}")"
-            && "$(print_cnt "${fil_1}")" == "$(print_cnt "${fil_8}")"
-            && "$(print_pg_ids "${fil_1}")" == "$(print_pg_ids "${fil_8}")"
-        ]]; then
-            record_pass \
-                "${lay} chain, '${fil}': one and eight threads give the same" \
-                "records, content lines, and programs"
+    for lay in pe se; do
+        if [[ "${lay}" == "pe" ]]; then
+            arr_in=( --fq_1 "${fq_pe_1}" --fq_2 "${fq_pe_2}" )
         else
-            record_fail \
-                "${lay} chain, '${fil}': one and eight threads differ"
+            arr_in=( --fq_1 "${fq_se}" )
         fi
+
+        dir_run="${tmp}/chain_${aln}_${lay}"
+        for thr in 1 8; do
+            mkdir -p "${dir_run}_${thr}"
+            run_helper \
+                --threads "${thr}" \
+                "${arr_args[@]}" \
+                "${arr_in[@]}" \
+                --qname \
+                --fil_out "${dir_run}_${thr}/x.bam" \
+                > "${dir_run}_${thr}/run.log" 2>&1 || true
+        done
+
+        for fil in x.bam x.qnam.bam; do
+            fil_1="${dir_run}_1/${fil}"
+            fil_8="${dir_run}_8/${fil}"
+            lbl="${aln} ${lay} chain, '${fil}'"
+
+            if [[ ! -s "${fil_1}" || ! -s "${fil_8}" ]]; then
+                record_fail "${lbl}: missing"
+            elif [[
+                "$(print_records "${fil_1}")" == "$(print_records "${fil_8}")"
+                && "$(print_cnt "${fil_1}")" == "$(print_cnt "${fil_8}")"
+                && "$(print_pg_ids "${fil_1}")" == "$(print_pg_ids "${fil_8}")"
+            ]]; then
+                record_pass \
+                    "${lbl}: one and eight threads give the same records," \
+                    "content lines, and programs"
+            else
+                record_fail "${lbl}: one and eight threads differ"
+            fi
+        done
     done
 done
 
