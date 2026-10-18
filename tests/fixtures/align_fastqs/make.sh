@@ -144,6 +144,8 @@ fq_tie_se_gz="${dir_fq_se}/tie_se.atria.fastq.gz"
 fq_tie_cmt_se_gz="${dir_fq_se}/tie_cmt_se.atria.fastq.gz"
 
 idx_tie_bt2="${dir_bt2}/tie"
+ref_tie_bwa="${dir_bwa}/tie.fa"
+ref_tie_bm2="${dir_bm2}/tie.fa"
 
 env_req="env_protocol"
 
@@ -624,6 +626,16 @@ rm_files \
 # Remove stale tie index files before regeneration.
 rm_files \
     "${dir_fix}" \
+    "${ref_tie_bwa}.amb" \
+    "${ref_tie_bwa}.ann" \
+    "${ref_tie_bwa}.bwt" \
+    "${ref_tie_bwa}.pac" \
+    "${ref_tie_bwa}.sa" \
+    "${ref_tie_bm2}.0123" \
+    "${ref_tie_bm2}.amb" \
+    "${ref_tie_bm2}.ann" \
+    "${ref_tie_bm2}.bwt.2bit.64" \
+    "${ref_tie_bm2}.pac" \
     "${idx_tie_bt2}.1.bt2" \
     "${idx_tie_bt2}.2.bt2" \
     "${idx_tie_bt2}.3.bt2" \
@@ -631,7 +643,24 @@ rm_files \
     "${idx_tie_bt2}.rev.1.bt2" \
     "${idx_tie_bt2}.rev.2.bt2"
 
-# Build the tie Bowtie2 index.
+# Build the tie BWA and BWA-MEM2 indexes, then the Bowtie2 index last, whose
+# final file is the runner's sentinel.
+cp "${ref_tie}" "${ref_tie_bwa}"
+cp "${ref_tie}" "${ref_tie_bm2}"
+
+log_tie_bwa="${dir_bwa}/tie-bwa-index.log"
+if ! \
+    {
+        bwa index "${ref_tie_bwa}" \
+            && bwa-mem2 index "${ref_tie_bm2}"
+    } > "${log_tie_bwa}" 2>&1
+then
+    cat "${log_tie_bwa}" >&2
+    exit 1
+fi
+
+rm_file "${dir_fix}" "${log_tie_bwa}"
+
 log_tie="${dir_bt2}/tie-bowtie2-build.log"
 if ! \
     bowtie2-build "${ref_tie}" "${idx_tie_bt2}" > "${log_tie}" 2>&1
