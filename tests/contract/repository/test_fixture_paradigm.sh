@@ -54,6 +54,14 @@ function path_is_ignored() {
 }
 
 
+# List the generator scripts, 'make_<name>.py', that a root's recipe names.
+function list_generators() {
+    grep -oE 'make_[A-Za-z0-9_]+\.py' "${dir_fix}/${1}/make.sh" \
+        | LC_ALL=C sort -u \
+        || true
+}
+
+
 # Agree two independent derivations of the fixture-root population.
 #
 # An inspected-count assertion on its own proves only that the checker read
@@ -116,31 +124,56 @@ function check_declared_stanzas() {
 # Property 1: generated products are ignored and provenance is not.
 function check_ignore_stanza() {
     local root="${1}"
+    local gen=""
     local findings=0
 
-    if ! path_is_ignored "tests/fixtures/${root}/probe.generated"; then
+    if ! \
+        path_is_ignored "tests/fixtures/${root}/probe.generated"
+    then
         record_fail "generated products are not ignored: ${root}"
         findings=1
     fi
 
-    if path_is_ignored "tests/fixtures/${root}/README.md"; then
+    if \
+        path_is_ignored "tests/fixtures/${root}/README.md"
+    then
         record_fail "fixture README is ignored: ${root}"
         findings=1
     fi
 
-    if path_is_ignored "tests/fixtures/${root}/make.sh"; then
+    if \
+        path_is_ignored "tests/fixtures/${root}/make.sh"
+    then
         record_fail "fixture recipe is ignored: ${root}"
         findings=1
     fi
+
+    while IFS= read -r gen; do
+        if \
+            path_is_ignored "tests/fixtures/${root}/${gen}"
+        then
+            record_fail "fixture generator is ignored: ${root}/${gen}"
+            findings=1
+        fi
+    done < <(list_generators "${root}")
 
     return "${findings}"
 }
 
 
-# Property 2: nothing but the README and the recipe is tracked.
+# Property 2: nothing but the README, the recipe, and the generator scripts the
+# recipe names is tracked. A named generator that is not tracked fails too,
+# since a fresh checkout could not run the recipe.
 function check_tracked_contents() {
     local root="${1}"
+    local expected=""
     local observed=""
+
+    expected="$(
+        { printf '%s\n' README.md make.sh; list_generators "${root}"; } \
+            | LC_ALL=C sort \
+            | paste -sd, -
+    )"
 
     observed="$(
         git -C "${ROOT_REPO}" ls-files -- "tests/fixtures/${root}" \
@@ -149,10 +182,10 @@ function check_tracked_contents() {
             | paste -sd, -
     )"
 
-    if [[ "${observed}" != "README.md,make.sh" ]]; then
+    if [[ "${observed}" != "${expected}" ]]; then
         record_fail \
-            "fixture root tracks more than its README and recipe:" \
-            "${root} tracks '${observed}'"
+            "fixture root tracks other than its README, recipe, and named" \
+            "generators: ${root} tracks '${observed}', expected '${expected}'"
         return 1
     fi
 
@@ -165,8 +198,10 @@ function check_runner_wiring() {
     local root="${1}"
     local runner="${ROOT_REPO}/tests/run_tests.sh"
 
-    if ! grep -q "ensure_fixture ${root} " "${runner}" \
-        && ! grep -q "ensure_fixture ${root}\$" "${runner}"; then
+    if ! \
+        grep -q "ensure_fixture ${root} " "${runner}" \
+            && ! grep -q "ensure_fixture ${root}\$" "${runner}"
+    then
         record_fail "fixture root is not wired into run_tests.sh: ${root}"
         return 1
     fi
@@ -192,22 +227,30 @@ function check_recipe_shape() {
         return 1
     fi
 
-    if ! grep -q '^set -euo pipefail$' "${recipe}"; then
+    if ! \
+        grep -q '^set -euo pipefail$' "${recipe}"
+    then
         record_fail "fixture recipe omits safe mode: ${root}"
         findings=1
     fi
 
-    if ! grep -q 'BASH_VERSINFO' "${recipe}"; then
+    if ! \
+        grep -q 'BASH_VERSINFO' "${recipe}"
+    then
         record_fail "fixture recipe omits the Bash version guard: ${root}"
         findings=1
     fi
 
-    if ! grep -q 'tests/support/fixture_helpers\.sh' "${recipe}"; then
+    if ! \
+        grep -q 'tests/support/fixture_helpers\.sh' "${recipe}"
+    then
         record_fail "fixture recipe omits the shared helper: ${root}"
         findings=1
     fi
 
-    if ! grep -q '^succeed ' "${recipe}"; then
+    if ! \
+        grep -q '^succeed ' "${recipe}"
+    then
         record_fail "fixture recipe does not end in 'succeed': ${root}"
         findings=1
     fi
@@ -239,23 +282,83 @@ function check_recipe_shape() {
         ' "${recipe}"
     )"
 
-    if grep -qE '(^|[^_[:alnum:]])(python3?|conda)[[:space:]]' \
-        <<< "${body}"; then
+    # A recipe running its own generator script beside it generates rather than
+    # validates, so that call form, and the 'require_cmd' line declaring the
+    # interpreter, are removed before the check.
+    body="$(
+        grep -vE \
+            -e '(^|[^_[:alnum:]])python3 "\$\{dir_scr\}/make_[A-Za-z0-9_]+\.py"([[:space:]]|$)' \
+            -e '^[[:space:]]*require_cmd[[:space:]]+python3[[:space:]]' \
+            <<< "${body}" \
+            || true
+    )"
+
+    if \
+        grep -qE '(^|[^_[:alnum:]])(python3?|conda)[[:space:]]' <<< "${body}"
+    then
         record_fail \
-            "fixture recipe validates instead of generating:" \
-            "${root} invokes a checker or interpreter"
+            "fixture recipe validates instead of generating: ${root} invokes" \
+            "a checker or interpreter"
         findings=1
     fi
 
     # Diagnostics go through the shared vocabulary. An 'echo' writing file
     # content is not a vocabulary fault, so this looks only at output sent to
     # standard error, which is what 'die' and 'note' exist to produce.
-    if grep -qE '^[[:space:]]*echo[[:space:]].*>&2' <<< "${body}"; then
+    if \
+        grep -qE '^[[:space:]]*echo[[:space:]].*>&2' <<< "${body}"
+    then
         record_fail \
             "fixture recipe writes diagnostics with bare 'echo' rather than" \
             "'die' or 'note': ${root}"
         findings=1
     fi
+
+    return "${findings}"
+}
+
+
+# Property 8: a generator script only generates, and reproducibly.
+#
+# It imports nothing from the repository, which would let a recipe validate
+# through its generator, and it draws randomness only through
+# 'random.Random(<int>).random()', the one stream Python guarantees across
+# versions; the five methods below may change their algorithms.
+function check_generators() {
+    local root="${1}"
+    local gen=""
+    local fil=""
+    local findings=0
+
+    while IFS= read -r gen; do
+        fil="${dir_fix}/${root}/${gen}"
+
+        if [[ ! -r "${fil}" ]]; then
+            record_fail "fixture generator is missing: ${root}/${gen}"
+            findings=1
+            continue
+        fi
+
+        if \
+            grep -qE \
+                '^[[:space:]]*(import|from)[[:space:]]+(dev|protocol_chipseq_signal_norm)([.[:space:]]|$)' \
+                "${fil}"
+        then
+            record_fail \
+                "fixture generator imports from the repository:" \
+                "${root}/${gen}"
+            findings=1
+        fi
+
+        if \
+            grep -qE '\.(choice|randint|randrange|shuffle|sample)\(' "${fil}"
+        then
+            record_fail \
+                "fixture generator draws randomness through a method whose" \
+                "output may change between Python versions: ${root}/${gen}"
+            findings=1
+        fi
+    done < <(list_generators "${root}")
 
     return "${findings}"
 }
@@ -274,7 +377,9 @@ function check_readme() {
     fi
 
     for section in '## Files' '## Current and deferred test coverage'; do
-        if ! grep -qF "${section}" "${readme}"; then
+        if ! \
+            grep -qF "${section}" "${readme}"
+        then
             record_fail \
                 "fixture README omits the '${section}' section: ${root}"
             findings=1
@@ -296,8 +401,11 @@ function check_readme() {
 function check_stale_sweep() {
     local root="${1}"
 
-    if ! grep -qE '^[[:space:]]*rm_files?[[:space:]]' \
-        "${dir_fix}/${root}/make.sh"; then
+    if ! \
+        grep -qE \
+            '^[[:space:]]*rm_files?[[:space:]]' \
+            "${dir_fix}/${root}/make.sh"
+    then
         record_fail "fixture recipe has no stale-output sweep: ${root}"
         return 1
     fi
@@ -340,8 +448,12 @@ function check_regeneration() {
 
     mkdir -p "$(dirname "${before}")"
 
-    if ! run_recipe "${root}" "${log}"; then
-        if missing_prerequisite "${log}"; then
+    if ! \
+        run_recipe "${root}" "${log}"
+    then
+        if \
+            missing_prerequisite "${log}"
+        then
             record_skip \
                 "regeneration of ${root} needs a prerequisite this machine" \
                 "does not provide: $(tail -1 "${log}")"
@@ -355,7 +467,9 @@ function check_regeneration() {
 
     inventory_fixture_root "${root}" > "${before}"
 
-    if ! run_recipe "${root}" "${log}"; then
+    if ! \
+        run_recipe "${root}" "${log}"
+    then
         record_fail "fixture recipe failed to rerun: ${root}"
         tail -5 "${log}" >&2
         return 1
@@ -363,7 +477,9 @@ function check_regeneration() {
 
     inventory_fixture_root "${root}" > "${after}"
 
-    if ! cmp -s "${before}" "${after}"; then
+    if ! \
+        cmp -s "${before}" "${after}"
+    then
         record_fail "fixture regeneration is not idempotent: ${root}"
         diff -u "${before}" "${after}" >&2 || true
         return 1
@@ -382,8 +498,10 @@ function check_regeneration() {
 function inventory_fixture_root() {
     local root="${1}"
 
-    find "${dir_fix}/${root}" -type f \
-        ! -name README.md ! -name make.sh -print \
+    find "${dir_fix}/${root}" \
+        -type f \
+        ! -name README.md ! -name make.sh ! -name 'make_*.py' \
+        -print \
         | LC_ALL=C sort \
         | while IFS= read -r file; do
             printf '%s  %s\n' \
@@ -416,11 +534,13 @@ function check_generated_json() {
         return 1
     fi
 
-    if output="$(
-        PYTHONDONTWRITEBYTECODE=1 \
+    if \
+        output="$(
+            PYTHONDONTWRITEBYTECODE=1 \
             "${TEST_PYTHON}" -m dev.audit.json_source_form \
                 --root "${ROOT_REPO}" "${arr_json[@]}" 2>&1
-    )"; then
+        )"
+    then
         record_pass \
             "${#arr_json[@]} generated 'cases.json' fixture(s) are in" \
             "canonical form"
@@ -461,6 +581,7 @@ for root in "${arr_converted[@]}"; do
     check_tracked_contents "${root}" || findings=1
     check_runner_wiring "${root}" || findings=1
     check_recipe_shape "${root}" || findings=1
+    check_generators "${root}" || findings=1
     check_stale_sweep "${root}" || findings=1
     check_readme "${root}" || findings=1
     check_regeneration "${root}" || findings=1
