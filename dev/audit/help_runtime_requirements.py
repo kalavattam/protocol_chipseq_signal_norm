@@ -295,6 +295,7 @@ SETTLED_OWNER_REQUIREMENTS: dict[str, tuple[str, ...]] = {
         "bwa (when '--aligner bwa' is specified)",
         "bwa-mem2 (when '--aligner bwa-mem2' is specified)",
         "grep",
+        "md5sum",
         "Reference FASTA and required index (when writing CRAM)",
         "samtools",
     ),

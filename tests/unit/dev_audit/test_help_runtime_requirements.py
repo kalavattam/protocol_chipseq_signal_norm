@@ -91,7 +91,7 @@ class RuntimeRequirementsTest(unittest.TestCase):
                     "samtools",
                 },
                 {
-                    "Bowtie2": {"bowtie2"},
+                    "Bowtie 2": {"bowtie2"},
                     "Conda": {"conda"},
                     "Python": {"python"},
                     "SAMtools": {"samtools"},
@@ -207,7 +207,7 @@ class RuntimeRequirementsTest(unittest.TestCase):
             "samtools",
         }
         concepts = {
-            "Bowtie2": {"bowtie2"},
+            "Bowtie 2": {"bowtie2"},
             "BWA": {"bwa"},
             "BWA-MEM2": {"bwa-mem2"},
             "Python": {"python"},
@@ -241,7 +241,7 @@ class RuntimeRequirementsTest(unittest.TestCase):
             "samtools",
         }
         concepts = {
-            "Bowtie2": {"bowtie2"},
+            "Bowtie 2": {"bowtie2"},
             "BWA": {"bwa"},
             "BWA-MEM2": {"bwa-mem2"},
             "Python": {"python"},
@@ -553,6 +553,7 @@ class RuntimeRequirementsTest(unittest.TestCase):
                 "bwa (when '--aligner bwa' is specified)",
                 "bwa-mem2 (when '--aligner bwa-mem2' is specified)",
                 "grep",
+                "md5sum",
                 "Reference FASTA and required index (when writing CRAM)",
                 "samtools",
             ),

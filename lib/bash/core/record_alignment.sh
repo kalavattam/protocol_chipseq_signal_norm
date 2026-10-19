@@ -344,9 +344,9 @@ Usage
   print_record_conda_pkg
     [--help] prg
 
-  Print the version and build of the Conda package that installed the program 'prg' on 'PATH' as '<version>-<build>'.
+  Print the version and build of the Conda package that installed the program 'prg' on 'PATH'. A hyphen joins the two.
 
-  The values come from the environment's package records and fill a 'pkg_<prg>=' line of an alignment file's pipeline record.
+  The values come from the environment's package records. They fill the program's 'pkg_' line in an alignment file's pipeline record. The line for 'bowtie2' reads 'pkg_bowtie2=2.5.5-h9e91881_0'.
 
 Parameters
 ----------
