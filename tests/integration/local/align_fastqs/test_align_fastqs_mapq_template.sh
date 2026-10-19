@@ -173,9 +173,10 @@ for idx in "${!pre[@]}"; do
 done
 
 
-# Bowtie 2 keeps the per-record filter, which is whole-template only while both
-# mates get one MAPQ and no supplementary or secondary records are written.
-# Assert both, including on the chimeric reads in local mode.
+# Without '-k', Bowtie 2 gives both mates one MAPQ and writes no supplementary
+# or secondary records, so the template filter cannot change its output. Assert
+# both, including on the chimeric reads in local mode, so that a change in what
+# Bowtie 2 writes shows here.
 guard=(
     "bowtie2 end-to-end|pe|${bt2}"
     "bowtie2 local|pe|${bt2_loc}"
@@ -186,7 +187,9 @@ for idx in "${!guard[@]}"; do
     IFS='|' read -r lbl typ arg <<< "${guard[idx]}"
     lbl="${lbl} ${typ^^}"
 
-    if ! fil_out="$(align_case "bt2_${idx}" "${typ}" "${arg} --mapq 0")"; then
+    if ! \
+        fil_out="$(align_case "bt2_${idx}" "${typ}" "${arg} --mapq 0")"
+    then
         record_fail "${lbl} failed"
         continue
     fi
@@ -244,9 +247,11 @@ for idx in "${!rows[@]}"; do
 done
 
 
-# The aligners as called write no secondary records, so check the template
-# filter on its own with fixtures that have them: a template is kept or dropped
-# by its primary records, never by a secondary record's MAPQ.
+# The aligners as called write no secondary records, and Step 1 removes
+# unaligned records first. So, check the template filter on its own with
+# fixtures that have both: a template is kept or dropped by its aligned primary
+# records, never by a secondary record's MAPQ, and an unaligned record never
+# counts as passing.
 function run_filter() {
     # shellcheck disable=SC2016  # Expand in the child shell, not this one.
     "${TEST_BASH}" -c '

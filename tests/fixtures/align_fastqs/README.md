@@ -74,6 +74,11 @@ Tie reference, reads, and indexes for the determinism checks:
 - `fastq/se/tie_se.atria.fastq.gz` and `fastq/se/tie_cmt_se.atria.fastq.gz`
 - `bowtie2/tie.*.bt2`, `bwa/tie.fa.*`, and `bwa-mem2/tie.fa.*`, with the same index files as `tiny`
 
+Bridge reference, reads, and indexes, for a mate that runs from one contig into the next:
+- `reference/bridge.fa`
+- `fastq/pe/bridge_pe_R1.atria.fastq.gz` and `fastq/pe/bridge_pe_R2.atria.fastq.gz`
+- `bowtie2/bridge.*.bt2`, `bwa/bridge.fa.*`, and `bwa-mem2/bridge.fa.*`, with the same index files as `tiny`
+
 <br />
 
 ## Expected alignment behavior
@@ -108,7 +113,7 @@ R1 matches chromosome `I` in forward orientation. R2 is the reverse complement o
 
 With BWA MEM and bwa-mem2, `chim` R1 is a split read with its primary in the repeat, `rchm` R1 a split read with its supplementary in the repeat, and `half` a pair whose mates get different MAPQ; BWA ALN gives `half` different mate MAPQs too. Bowtie 2 writes no supplementary records. `test_align_fastqs_mapq_template.sh` checks the MAPQs each aligner writes before relying on them.
 
-In the SAM fixtures, template `sec_keep` has primary records at MAPQ 60 and a secondary record at MAPQ 0, and `sec_drop` has a primary record at MAPQ 0 and a secondary record at MAPQ 255. Filtered at MAPQ 30 by primary records, only `sec_keep` is kept, with its secondary record.
+In the SAM fixtures, template `sec_keep` has primary records at MAPQ 60 and a secondary record at MAPQ 0, and `sec_drop` has a primary record at MAPQ 0 and a secondary record at MAPQ 255. Filtered at MAPQ 30 by primary records, only `sec_keep` is kept, with its secondary record. Template `unal_mate` has an aligned R1 and an R2 flagged unaligned (0x4) whose partner lacks 0x8, the shape `bwa sampe` writes in #75, and the single-end file holds an unaligned read, `unal`. Both unaligned records keep MAPQ 60, so the filter must drop them by their flag, not their MAPQ.
 
 <br />
 
@@ -126,6 +131,18 @@ The same reads come under three header forms. Bowtie 2 seeds each read's generat
 The single-end files `tie_se` and `tie_cmt_se` hold the R1 reads with the `tie_pe` and `tie_cmt` headers.
 
 Measured with Bowtie 2 2.5.5 and the pipeline's default paired-end call, about 164 of the 2,000 paired-end records and 144 of the 1,000 single-end records are tied (MAPQ 0 or 1). A record moves when its flag, reference, position, MAPQ, CIGAR, or mate fields change. From `tie_pe` to `tie_cmt`, about 136 paired-end records move; from `tie_cmt` to `tie_idx`, none do; changing `--seed` moves no paired-end record but about 123 single-end ones; and `--seed 0` gives the same output as no `--seed`. With `-p 8`, the output order differs from `-p 1` while the records do not, and `--reorder` restores the `-p 1` order. With BWA-MEM (0.7.19) and BWA-MEM2 (2.3), changing `-K 100000000` to `-K 10000` moves 2 paired-end records because insert sizes are estimated per batch. The whole set is smaller than one default batch, so the thread count alone moves none.
+
+<br />
+
+### Bridge fixtures
+`make.sh` joins the repeat fixtures' unique blocks into two contigs: `chrA` (blocks 0 and 1, 800 bases) and `chrB` (blocks 2 and 3, 800 bases). The 100-base pairs are cut from them:
+
+| Read name | R1                       | R2                                                                           |
+| :---      | :---                     | :---                                                                         |
+| `brdg`    | unique in `chrA`, at 501 | reverse complement of the last 70 bases of `chrA` and the first 30 of `chrB` |
+| `ctrl`    | unique in `chrB`         | unique in `chrB`                                                             |
+
+With BWA ALN (0.7.19), `bwa sampe` flags `brdg` R2 unaligned (0x4) but keeps its position. It leaves R1's mate-unaligned flag (0x8) clear, so a per-record `samtools view -F 12` keeps R1 alone. BWA MEM and bwa-mem2 MEM align R2 in part and write a supplementary record on `chrB`. Bowtie 2 end-to-end leaves R2 unaligned and flags R1's mate unaligned. Bowtie 2 local aligns R2 in part. `test_align_fastqs_unaligned.sh` checks the raw BWA ALN flags before relying on them.
 
 <br />
 

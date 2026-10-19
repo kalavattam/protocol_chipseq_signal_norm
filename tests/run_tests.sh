@@ -90,7 +90,7 @@ function ensure_fixture() {
 
 function ensure_integration_fixtures() {
     ensure_fixture align_fastqs \
-        "${repo_root}/tests/fixtures/align_fastqs/bowtie2/tie.rev.2.bt2" \
+        "${repo_root}/tests/fixtures/align_fastqs/bowtie2/bridge.rev.2.bt2" \
         env_protocol
 
     ensure_fixture calculate_scaling_factor \

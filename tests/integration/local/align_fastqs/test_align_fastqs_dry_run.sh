@@ -161,11 +161,11 @@ bowtie2 \\
         -@ 2 \\
         -F 12 \\
         -f 2 \\
-        -q 1 \\
         -o ${esc}.bam
 
 
-# Step 2: sort the BAM work file by queryname.
+# Step 2: sort the BAM work file by queryname, fix mates in paired-end data,
+# and filter templates.
 samtools sort \\
     -@ 2 \\
     -n \\
@@ -181,6 +181,31 @@ samtools fixmate \\
 
 mv -f \\
     ${esc}.mate.bam \\
+    ${esc}.qnam.bam
+
+samtools view \\
+    -@ 2 \\
+    -F 2308 \\
+    -q 1 \\
+    ${esc}.qnam.bam \\
+    | cut -f 1 \\
+    | uniq -c \\
+    | awk -v n=2 \\
+        \\\$1\\ ==\\ n\\ \\{\\ print\\ \\\$2\\ \\} \\
+        > ${esc}.mapq.names.txt
+
+samtools view \\
+    -@ 2 \\
+    -b \\
+    -N ${esc}.mapq.names.txt \\
+    -o ${esc}.mapq.bam \\
+    ${esc}.qnam.bam
+
+rm -f \\
+    ${esc}.mapq.names.txt
+
+mv -f \\
+    ${esc}.mapq.bam \\
     ${esc}.qnam.bam
 
 
@@ -315,7 +340,6 @@ ${lin}    -1 ${in_pe_1} \\
     | samtools view \\
         -@ 1 \\
         -F 12 \\
-        -q 1 \\
         -o ${t}.bam"
 
     check_block \
@@ -374,7 +398,8 @@ check_block \
     "${exp}" \
     "$(print_step 1 "${out}")"
 
-exp="# Step 2: sort the BAM work file by queryname.
+exp="# Step 2: sort the BAM work file by queryname, fix mates in paired-end data,
+# and filter templates.
 samtools sort \\
     -@ 1 \\
     -n \\
@@ -394,7 +419,7 @@ mv -f \\
 
 samtools view \\
     -@ 1 \\
-    -F 0x900 \\
+    -F 2308 \\
     -q 20 \\
     ${t}.qnam.bam \\
     | cut -f 1 \\

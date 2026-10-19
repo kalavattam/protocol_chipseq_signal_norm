@@ -144,8 +144,7 @@ for idx in "${!rows_exe[@]}"; do
             )"
 
             if [[
-                "${rc}" -ne 0
-                && "${msg}" == "error(execute_align_fastqs.sh"*
+                "${rc}" -ne 0 && "${msg}" == "error(execute_align_fastqs.sh"*
             ]]; then
                 record_pass "${lbl} is refused by name"
             else
@@ -618,8 +617,8 @@ for idx in "${!rows_hlp[@]}"; do
 done
 
 
-# Called directly with no '--mapq', the helper filters at its default of 1; a
-# dry run prints the 'samtools view' call it builds.
+# With no '--mapq', the helper filters at its default MAPQ of 1. Check that the
+# dry run's Step 2 template filter calls 'samtools view' with '-q 1'.
 out="$(
     run_helper \
         --dry_run \
@@ -628,7 +627,7 @@ out="$(
         --fil_out "${tmp}/helper_mapq.bam"
 )" || true
 
-if [[ "${out}" == *"| samtools view \\"*"-F 4 \\"$'\n'"        -q 1 \\"* ]]; then
+if [[ "${out}" == *"-F 2308 \\"$'\n'"    -q 1 \\"* ]]; then
     record_pass "helper defaults '--mapq' to 1"
 else
     record_fail "helper did not default '--mapq' to 1"

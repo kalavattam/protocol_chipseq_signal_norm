@@ -340,8 +340,7 @@ add_row \
     --qname=false \
     --index=tiny.fa \
     "index_md5=${m_idx_bwa}" \
-    "${arr_in_pe[@]}" \
-    "skipped=MAPQ filter (--mapq=0)"
+    "${arr_in_pe[@]}"
 
 add_row \
     "BWA-backtrack SE" \
@@ -620,15 +619,16 @@ else
         --qname=false \
         --index=tiny \
         "index_md5=${m_idx_bt2}" \
-        "${arr_in_se[@]}" \
-        "skipped=MAPQ filter (--mapq=0)"
+        "${arr_in_se[@]}"
     IFS='|' read -r _ _ _ lin <<< "${arr_rows[-1]}"
     IFS=';' read -r -a arr_lin <<< "${lin}"
 
     check_record "driver" "${fil_drv}" \
         "$(print_cnt_exp "${arr_lin[@]}")" \
-        "$(print_pth_exp index "${idx_bt2}" fq_1 "${in_se}" \
-            fil_out "${fil_drv}")" \
+        "$(
+            print_pth_exp \
+                index "${idx_bt2}" fq_1 "${in_se}" fil_out "${fil_drv}"
+        )" \
         1
 
     co="$(print_co "${fil_drv}")"

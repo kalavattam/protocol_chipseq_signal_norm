@@ -415,9 +415,12 @@ EOM
         return 1
     fi
 
-    # List the names whose primary records, 'n_pri' of them, all pass.
+    # List the names whose primary records, 'n_pri' of them, all pass. With
+    # '-F 2308' (4 + 256 + 2048), unaligned, secondary, and supplementary
+    # records are left out. Only aligned primary records count, even if an
+    # unaligned one reached this filter.
     arr_view=(
-        samtools view -@ "${threads}" -F 0x900 -q "${mapq}" "${bam_in}"
+        samtools view -@ "${threads}" -F 2308 -q "${mapq}" "${bam_in}"
     )
     arr_cut=( cut -f 1 )
     arr_uniq=( uniq -c )
@@ -918,7 +921,7 @@ Examples
         tests/fixtures/align_fastqs/bowtie2/tiny \\
         tests/fixtures/align_fastqs/fastq/se/tiny_se.atria.fastq.gz \\
         '' \\
-        -@ 1 -F 4 -q 1 -o work/tiny_se.bam
+        -@ 1 -F 4 -o work/tiny_se.bam
     '''
 
   2. Print, without running, the paired-end call in local mode that requires proper pairs.
@@ -933,7 +936,7 @@ Examples
         tests/fixtures/align_fastqs/bowtie2/tiny \\
         tests/fixtures/align_fastqs/fastq/pe/tiny_pe_R1.atria.fastq.gz \\
         tests/fixtures/align_fastqs/fastq/pe/tiny_pe_R2.atria.fastq.gz \\
-        -@ 2 -F 12 -f 2 -q 1 -o work/tiny_pe.bam
+        -@ 2 -F 12 -f 2 -o work/tiny_pe.bam
     '''
 EOM
     )
@@ -1330,8 +1333,8 @@ EOM
 }
 
 
-# Step 1: build the Samtools call that drops unaligned reads (and applies the
-# MAPQ filter for Bowtie 2), then align with the selected aligner.
+# Step 1: build the Samtools call that drops unaligned reads, then align with
+# the selected aligner.
 # TODO: "semantic paragraphs" for options under Usage in 'show_help'.
 function _align_reads() {
     local func="${1:-}"
@@ -1342,12 +1345,11 @@ function _align_reads() {
     local bt2_X="${6:-}"
     local bt2_inherited="${7:-}"
     local bwa_alg="${8:-}"
-    local mapq="${9:-}"
-    local req_flg="${10:-}"
-    local index="${11:-}"
-    local fq_1="${12:-}"
-    local fq_2="${13:-}"
-    local fil_wrk="${14:-}"
+    local req_flg="${9:-}"
+    local index="${10:-}"
+    local fq_1="${11:-}"
+    local fq_2="${12:-}"
+    local fil_wrk="${13:-}"
     local -a arr_sam
     local show_help
 
@@ -1355,9 +1357,9 @@ function _align_reads() {
 Usage
 -----
   _align_reads
-    [--help] func dry_run threads aligner bt2_mode bt2_X bt2_inherited bwa_alg mapq req_flg index fq_1 fq_2 fil_wrk
+    [--help] func dry_run threads aligner bt2_mode bt2_X bt2_inherited bwa_alg req_flg index fq_1 fq_2 fil_wrk
 
-  Build the 'samtools view' arguments that drop unaligned reads (and, for Bowtie 2, apply the MAPQ threshold), then align with the selected aligner and write the BAM work file (Step 1 of 'align_fastqs()').
+  Build the 'samtools view' arguments that drop unaligned reads, then align with the selected aligner and write the BAM work file (Step 1 of 'align_fastqs()'). MAPQ is filtered by template in Step 2.
 
 Parameters
 ----------
@@ -1388,22 +1390,19 @@ Parameters
   08  bwa_alg : str
     BWA algorithm: 'mem' or 'aln'.
 
-  09  mapq : int
-    MAPQ threshold; applied here only for Bowtie 2.
-
-  10  req_flg : bool
+  09  req_flg : bool
     Whether properly paired alignments are required.
 
-  11  index : path
+  10  index : path
     Path to the aligner index/reference.
 
-  12  fq_1 : file
+  11  fq_1 : file
     First FASTQ input file.
 
-  13  fq_2 : file
+  12  fq_2 : file
     Second FASTQ input file, or empty for single-end data.
 
-  14  fil_wrk : file
+  13  fil_wrk : file
     BAM work file to write.
 
 Returns
@@ -1432,7 +1431,6 @@ Examples
         1000 \\
         false \\
         mem \\
-        1 \\
         true \\
         tests/fixtures/align_fastqs/bowtie2/tiny \\
         tests/fixtures/align_fastqs/fastq/pe/tiny_pe_R1.atria.fastq.gz \\
@@ -1440,7 +1438,7 @@ Examples
         work/tiny_pe.bam
     '''
 
-  2. Print, without running, the single-end calls with BWA-backtrack; MAPQ is filtered later.
+  2. Print without running the single-end calls with BWA-backtrack.
     '''bash
     _align_reads \\
         align_fastqs \\
@@ -1451,7 +1449,6 @@ Examples
         1000 \\
         false \\
         aln \\
-        30 \\
         false \\
         tests/fixtures/align_fastqs/bwa/tiny.fa \\
         tests/fixtures/align_fastqs/fastq/se/tiny_se.atria.fastq.gz \\
@@ -1471,9 +1468,11 @@ EOM
             "# Step 1: align the reads into the BAM work file."
     fi
 
-    # Based on parsed arguments, construct the call to Samtools. BWA and
-    # BWA-MEM2 write unaligned reads, so use Samtools to drop them, including
-    # the mates of unaligned reads in PE data (i.e., keep pairs whole).
+    # Drop unaligned reads with Samtools. In PE data, '-F 12' also drops a read
+    # whose mate is flagged unaligned. Samtools tests each record alone, so
+    # this keeps pairs whole only when both records' flags agree. BWA-backtrack
+    # can flag one mate unaligned and leave its partner's 0x8 clear, so Step 2
+    # drops any template left with one primary record.
     arr_sam=( -@ "${threads}" )
     if [[ -n "${fq_2}" ]]; then
         arr_sam+=( -F 12 )
@@ -1482,11 +1481,9 @@ EOM
         arr_sam+=( -F 4 )
     fi
 
-    # Bowtie 2 gives both mates of a pair one MAPQ and, without '-k', writes no
-    # supplementary or secondary records, so a per-record MAPQ filter keeps or
-    # drops whole templates. BWA and BWA-MEM2 do neither, so their MAPQ filter
-    # runs via read alignment name in Step 2.
-    if [[ "${aligner}" == "bowtie2" ]]; then arr_sam+=( -q "${mapq}" ); fi
+    # The MAPQ threshold is not applied here. A per-record '-q' can split a
+    # template whenever its records' MAPQs differ, so Step 2 applies it by
+    # template for every aligner.
     arr_sam+=( -o "${fil_wrk}" )
 
     # Based on parsed arguments, run Bowtie 2, BWA, or BWA-MEM2 with output
@@ -1518,7 +1515,8 @@ EOM
 
 
 # Step 2: sort the BAM work file by queryname, fix mates if the file holds
-# paired-end alignments, and, for BWA and BWA-MEM2, filter templates by MAPQ.
+# paired-end alignments, and keep or drop each template whole by its primary
+# records' MAPQ.
 function _sort_qname_bam() {
     local func="${1:-}"
     local dry_run="${2:-}"
@@ -1538,7 +1536,7 @@ Usage
   _sort_qname_bam
     [--help] func dry_run threads aligner mapq fq_2 fil_wrk bam_qnam
 
-  Sort the BAM work file by queryname into 'bam_qnam', fix mates for paired-end data, and, for BWA and BWA-MEM2 with 'mapq' above 0, keep or drop each template whole by its primary records' MAPQ (Step 2 of 'align_fastqs()').
+  Sort the BAM work file by queryname into 'bam_qnam' and fix mates for paired-end data (Step 2 of 'align_fastqs()'). Then keep or drop each template whole by whether its primary records pass 'mapq', for every aligner and layout. A paired-end template that lost a mate in Step 1 is dropped too.
 
 Parameters
 ----------
@@ -1558,7 +1556,7 @@ Parameters
     Alignment program that wrote the BAM work file.
 
   5  mapq : int
-    MAPQ threshold; applied here only for BWA and BWA-MEM2.
+    MAPQ threshold that a template's primary records must pass.
 
   6  fq_2 : file
     Second FASTQ input file, or empty for single-end data; selects mate fixing.
@@ -1576,7 +1574,7 @@ Returns
 Notes
 -----
   Runtime requirements:
-    - awk (when 'aligner' is 'bwa' or 'bwa-mem2' and 'mapq' is above 0)
+    - awk
     - bash >= 4.4
     - mv
     - samtools
@@ -1596,7 +1594,7 @@ Examples
         work/tiny_pe.qnam.bam
     '''
 
-  2. Print, without running, the queryname sort of a single-end Bowtie 2 work file; MAPQ was filtered in Step 1.
+  2. Print, without running, the queryname sort and template filter of a single-end Bowtie 2 work file.
     '''bash
     _sort_qname_bam \\
         align_fastqs \\
@@ -1617,8 +1615,10 @@ EOM
     fi
 
     if [[ "${dry_run}" == "true" ]]; then
-        printf '\n%s\n' \
-            "# Step 2: sort the BAM work file by queryname."
+        printf '\n%s %s\n%s\n' \
+            "# Step 2: sort the BAM work file by queryname," \
+            "fix mates in paired-end data," \
+            "# and filter templates."
     fi
 
     # A dry run writes no Step 1 file, so it prints the commands as they would
@@ -1674,41 +1674,40 @@ EOM
             fi
         fi
 
-        # BWA and BWA-MEM2 can give two mates different MAPQ values and write
-        # supplementary records with their own MAPQ values, so keep or drop
-        # each template (all records sharing a read name, secondary records
-        # included) as a whole, by whether its primary records (both mates in
-        # paired-end data) pass the '--mapq' gate.
-        if [[ "${aligner}" != "bowtie2" && "${mapq}" -gt 0 ]]; then
-            bam_mapq="${fil_wrk%.bam}.mapq.bam"
-            if [[ -n "${fq_2}" ]]; then n_pri=2; else n_pri=1; fi
+        # Keep or drop all records of each template (they share its read name)
+        # by whether its primary records pass '--mapq'; in PE data both mates
+        # must. A per-record '-q' would split templates whose records' MAPQs
+        # differ, such as BWA mates, supplementary records, and Bowtie 2
+        # secondaries under '-k'. Step 1 can also leave a PE template with one
+        # primary record (#75). So this filter runs for every call.
+        bam_mapq="${fil_wrk%.bam}.mapq.bam"
+        if [[ -n "${fq_2}" ]]; then n_pri=2; else n_pri=1; fi
 
-            if ! \
-                _filter_bam_mapq_template \
-                    "${bam_qnam}" \
-                    "${bam_mapq}" \
-                    "${mapq}" \
-                    "${n_pri}" \
-                    "${threads}" \
-                    "${func}" \
-                    "${dry_run}"
-            then
-                echo_err_func "${func}" \
-                    "Step #2: failed to filter queryname-sorted BAM file by" \
-                    "template MAPQ."
-                return 1
-            fi
+        if ! \
+            _filter_bam_mapq_template \
+                "${bam_qnam}" \
+                "${bam_mapq}" \
+                "${mapq}" \
+                "${n_pri}" \
+                "${threads}" \
+                "${func}" \
+                "${dry_run}"
+        then
+            echo_err_func "${func}" \
+                "Step #2: failed to filter queryname-sorted BAM file by" \
+                "template MAPQ."
+            return 1
+        fi
 
-            arr_cmd=( mv -f "${bam_mapq}" "${bam_qnam}" )
+        arr_cmd=( mv -f "${bam_mapq}" "${bam_qnam}" )
 
-            if ! \
-                _run_or_print_cmd "${dry_run}" arr_cmd
-            then
-                echo_err_func "${func}" \
-                    "Step #2: failed to rename MAPQ-filtered," \
-                    "queryname-sorted BAM file."
-                return 1
-            fi
+        if ! \
+            _run_or_print_cmd "${dry_run}" arr_cmd
+        then
+            echo_err_func "${func}" \
+                "Step #2: failed to rename MAPQ-filtered," \
+                "queryname-sorted BAM file."
+            return 1
         fi
 
     else
@@ -2438,9 +2437,6 @@ EOM
         )
     else
         cnt_ref+=( $'@CO\tpipeline: skipped=fixmate (single-end)' )
-    fi
-    if (( mapq == 0 )); then
-        cnt_ref+=( $'@CO\tpipeline: skipped=MAPQ filter (--mapq=0)' )
     fi
 
     # Run lines: the thread count, the start time, the host, the caller, the
@@ -3242,8 +3238,7 @@ EOM
         || return 1
 
 
-    # Step 1: align the reads into the BAM work file, dropping unaligned reads
-    # and, for Bowtie 2, applying the MAPQ threshold.
+    # Step 1: align the reads into the BAM work file, dropping unaligned reads.
     _align_reads \
         "${FUNCNAME[0]}" \
         "${dry_run}" \
@@ -3253,7 +3248,6 @@ EOM
         "${bt2_X}" \
         "${bt2_inherited}" \
         "${bwa_alg}" \
-        "${mapq}" \
         "${req_flg}" \
         "${index}" \
         "${fq_1}" \
@@ -3262,8 +3256,8 @@ EOM
         || return 1
 
 
-    # Step 2: sort by queryname, fix mates in paired-end data, and, for BWA and
-    # BWA-MEM2, keep or drop each template whole by its primary records' MAPQ.
+    # Step 2: sort by queryname, fix mates in paired-end data, and keep or drop
+    # each template whole by its primary records' MAPQ.
     _sort_qname_bam \
         "${FUNCNAME[0]}" \
         "${dry_run}" \

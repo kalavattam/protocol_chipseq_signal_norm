@@ -59,6 +59,8 @@ function cleanup_tmp_fastqs() {
         "${fq_tie_idx_r2_tmp}" \
         "${fq_tie_se_tmp}" \
         "${fq_tie_cmt_se_tmp}" \
+        "${fq_brg_r1_tmp}" \
+        "${fq_brg_r2_tmp}" \
         "${tmp_bln_se}" \
         "${tmp_bln_r1}" \
         "${tmp_bln_r2}"
@@ -146,6 +148,17 @@ fq_tie_cmt_se_gz="${dir_fq_se}/tie_cmt_se.atria.fastq.gz"
 idx_tie_bt2="${dir_bt2}/tie"
 ref_tie_bwa="${dir_bwa}/tie.fa"
 ref_tie_bm2="${dir_bm2}/tie.fa"
+
+ref_brg="${dir_ref}/bridge.fa"
+ref_brg_bwa="${dir_bwa}/bridge.fa"
+ref_brg_bm2="${dir_bm2}/bridge.fa"
+fq_brg_r1_tmp="${dir_fq_pe}/bridge_pe_R1.atria.fastq.tmp"
+fq_brg_r2_tmp="${dir_fq_pe}/bridge_pe_R2.atria.fastq.tmp"
+
+fq_brg_r1_gz="${dir_fq_pe}/bridge_pe_R1.atria.fastq.gz"
+fq_brg_r2_gz="${dir_fq_pe}/bridge_pe_R2.atria.fastq.gz"
+
+idx_brg_bt2="${dir_bt2}/bridge"
 
 env_req="env_protocol"
 
@@ -530,7 +543,10 @@ bwa-mem2 mem "${idx_rpt_bm2}" "${fq_rpt_r1_gz}" "${fq_rpt_r2_gz}" \
 
 # Write name-grouped SAM records with secondary records for the MAPQ template
 # filter: at MAPQ 30, 'sec_keep' has passing primaries and a failing secondary,
-# and 'sec_drop' a failing primary and a passing secondary.
+# and 'sec_drop' a failing primary and a passing secondary. 'unal_mate' (PE)
+# has an aligned R1 and an R2 flagged unaligned (0x4) whose partner lacks 0x8,
+# as 'bwa sampe' writes one (#75), and 'unal' (SE) is an unaligned read. Both
+# unaligned records keep MAPQ 60, so only the filter's '-F 4' drops them.
 {
     write_sam_line '@HD' 'VN:1.6' 'SO:queryname'
     write_sam_line '@SQ' 'SN:chrR' "LN:${#seq_rpt}"
@@ -558,6 +574,14 @@ bwa-mem2 mem "${idx_rpt_bm2}" "${fq_rpt_r1_gz}" "${fq_rpt_r2_gz}" \
     write_sam_line \
         'sec_keep' '355' 'chrR' '601' '0' '10M' \
         '=' '301' '0' 'ACGTACGTAA' 'FFFFFFFFFF'
+
+    write_sam_line \
+        'unal_mate' '99' 'chrR' '701' '60' '10M' \
+        '=' '801' '110' 'ACGTACGTAA' 'FFFFFFFFFF'
+
+    write_sam_line \
+        'unal_mate' '151' 'chrR' '801' '60' '10M' \
+        '=' '701' '-110' 'ACGTACGTAA' 'FFFFFFFFFF'
 } > "${sam_sec_pe}"
 
 {
@@ -578,6 +602,10 @@ bwa-mem2 mem "${idx_rpt_bm2}" "${fq_rpt_r1_gz}" "${fq_rpt_r2_gz}" \
 
     write_sam_line \
         'sec_keep' '256' 'chrR' '601' '0' '10M' \
+        '*' '0' '0' 'ACGTACGTAA' 'FFFFFFFFFF'
+
+    write_sam_line \
+        'unal' '4' 'chrR' '701' '60' '10M' \
         '*' '0' '0' 'ACGTACGTAA' 'FFFFFFFFFF'
 } > "${sam_sec_se}"
 
@@ -643,8 +671,7 @@ rm_files \
     "${idx_tie_bt2}.rev.1.bt2" \
     "${idx_tie_bt2}.rev.2.bt2"
 
-# Build the tie BWA and BWA-MEM2 indexes, then the Bowtie 2 index last; its
-# final file is the runner's sentinel.
+# Build the tie BWA and BWA-MEM2 indexes, then the Bowtie 2 index.
 cp "${ref_tie}" "${ref_tie_bwa}"
 cp "${ref_tie}" "${ref_tie_bm2}"
 
@@ -686,6 +713,87 @@ bowtie2 \
     -S /dev/null \
         > /dev/null \
         2> /dev/null
+
+
+# Write the bridge reference: two contigs, 'chrA' (unique blocks 0 and 1) and
+# 'chrB' (unique blocks 2 and 3), so that a read can run off the end of 'chrA'
+# into the start of 'chrB'.
+seq_brg_a="${blk_u_0}${blk_u_1}"
+seq_brg_b="${blk_u_2}${blk_u_3}"
+
+{
+    echo ">chrA"
+    fold -w 60 <<< "${seq_brg_a}"
+    echo ">chrB"
+    fold -w 60 <<< "${seq_brg_b}"
+} > "${ref_brg}"
+
+# Write the bridge reads, 100 bases each (offsets are zero-based):
+# - 'brdg': R1 is unique in 'chrA'. R2 is the reverse complement of the last 70
+#   bases of 'chrA' and the first 30 of 'chrB'. BWA ALN flags R2 unaligned and
+#   leaves R1's mate-unaligned flag clear.
+# - 'ctrl': both mates unique in 'chrB'.
+{
+    print_fq brdg "${seq_brg_a:500:100}"
+    print_fq ctrl "${seq_brg_b:100:100}"
+} > "${fq_brg_r1_tmp}"
+
+{
+    print_fq brdg "$(print_rc "${seq_brg_a:730:70}${seq_brg_b:0:30}")"
+    print_fq ctrl "$(print_rc "${seq_brg_b:330:100}")"
+} > "${fq_brg_r2_tmp}"
+
+# Compress the bridge FASTQ fixtures with deterministic gzip metadata, then
+# remove the temporary FASTQs.
+gzip_n "${fq_brg_r1_tmp}" "${fq_brg_r1_gz}"
+gzip_n "${fq_brg_r2_tmp}" "${fq_brg_r2_gz}"
+
+rm_file "${dir_fix}" "${fq_brg_r1_tmp}"
+rm_file "${dir_fix}" "${fq_brg_r2_tmp}"
+
+
+# Remove stale bridge index files before regeneration.
+rm_files \
+    "${dir_fix}" \
+    "${ref_brg_bwa}.amb" \
+    "${ref_brg_bwa}.ann" \
+    "${ref_brg_bwa}.bwt" \
+    "${ref_brg_bwa}.pac" \
+    "${ref_brg_bwa}.sa" \
+    "${ref_brg_bm2}.0123" \
+    "${ref_brg_bm2}.amb" \
+    "${ref_brg_bm2}.ann" \
+    "${ref_brg_bm2}.bwt.2bit.64" \
+    "${ref_brg_bm2}.pac" \
+    "${idx_brg_bt2}.1.bt2" \
+    "${idx_brg_bt2}.2.bt2" \
+    "${idx_brg_bt2}.3.bt2" \
+    "${idx_brg_bt2}.4.bt2" \
+    "${idx_brg_bt2}.rev.1.bt2" \
+    "${idx_brg_bt2}.rev.2.bt2"
+
+# Build the bridge BWA and BWA-MEM2 indexes, then the Bowtie 2 index last; its
+# final file is the runner's sentinel.
+cp "${ref_brg}" "${ref_brg_bwa}"
+cp "${ref_brg}" "${ref_brg_bm2}"
+
+log_brg="${dir_ref}/bridge-index.log"
+if ! \
+    {
+        bwa index "${ref_brg_bwa}" \
+            && bwa-mem2 index "${ref_brg_bm2}" \
+            && bowtie2-build "${ref_brg}" "${idx_brg_bt2}"
+    } > "${log_brg}" 2>&1
+then
+    cat "${log_brg}" >&2
+    exit 1
+fi
+
+rm_file "${dir_fix}" "${log_brg}"
+
+# Validate the bridge paired-end alignment path.
+bwa mem "${ref_brg_bwa}" "${fq_brg_r1_gz}" "${fq_brg_r2_gz}" \
+    > /dev/null 2> /dev/null
 
 
 succeed "generated align-fastqs fixtures under '${dir_fix}'."
