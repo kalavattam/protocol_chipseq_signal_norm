@@ -643,7 +643,7 @@ rm_files \
     "${idx_tie_bt2}.rev.1.bt2" \
     "${idx_tie_bt2}.rev.2.bt2"
 
-# Build the tie BWA and BWA-MEM2 indexes, then the Bowtie2 index last, whose
+# Build the tie BWA and BWA-MEM2 indexes, then the Bowtie 2 index last; its
 # final file is the runner's sentinel.
 cp "${ref_tie}" "${ref_tie_bwa}"
 cp "${ref_tie}" "${ref_tie_bm2}"

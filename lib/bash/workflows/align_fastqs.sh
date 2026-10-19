@@ -943,9 +943,9 @@ EOM
         return 0
     fi
 
-    # Assign Bowtie 2 arguments: '--reorder' keeps input order at any thread
-    # count, and '--seed 0', the project's seed and Bowtie 2's default, leaves
-    # earlier files unchanged.
+    # Assign Bowtie 2 arguments. '--reorder' keeps input order at any thread
+    # count. '--seed 0' is the project's seed and Bowtie 2's default, so new
+    # files have the same records as earlier ones.
     arr_bt2=( bowtie2 -p "${threads}" --reorder --seed 0 -x "${index}" )
 
     if [[ "${bt2_mode}" == "local" ]]; then
@@ -1102,8 +1102,8 @@ EOM
         return 0
     fi
 
-    # Assign BWA or BWA-MEM2 arguments: '-K' fixes the batch of read bases,
-    # over which paired-end insert sizes are estimated, so output does not
+    # Assign BWA or BWA-MEM2 arguments. '-K' fixes the batch of read bases over
+    # which paired-end insert sizes are estimated, so the output does not
     # depend on the thread count.
     arr_bwa=(
         "${prog}" mem -t "${threads}" -K 100000000 "${index}" "${fq_1}"
@@ -2410,8 +2410,8 @@ EOM
         cnt_ref+=( $'@CO\tpipeline: --req_flg='"${req_flg}" )
     fi
 
-    # Each input is named, then identified by the checksum of its bytes, so a
-    # rebuild can confirm it has the same files rather than the same names.
+    # Each input is named and then identified by the checksum of its bytes, so
+    # a rebuild can confirm it has the same files rather than the same names.
     md5_idx="$(print_record_index_md5 "${aligner}" "${index}")" || return 1
     cnt_ref+=(
         $'@CO\tpipeline: --qname='"${qname}"
@@ -2986,10 +2986,10 @@ Notes
     + When every read name carries Illumina flow-cell coordinates ('...:tile:x:y') in one format, duplicates on the same tile as their original and within 2500 pixels of it in x and y are tagged as optical ('dt:Z:SQ'); the rest are tagged as library duplicates ('dt:Z:LB').
     + Otherwise, as with most SRA-dumped names, no 'dt' tags are written and a warning says why.
     + Duplicate statistics are written to '<stem>.markdup.txt.gz' beside the alignment file; Samtools estimates library size for paired-end data only. The file's last line, 'OPTICAL DISTANCE:', gives 2500 when optical duplicates were told apart, or 'not used' and the reason.
-  - Bowtie 2 runs with '--reorder', so its output order does not depend on the thread count, and also with '--seed 0', its default; the record gives the seed as 'bt2_seed=0'.
+  - Bowtie 2 runs with '--reorder', so its output order does not depend on the thread count. It also runs with '--seed 0', its default, which the record gives as 'bt2_seed=0'.
     + Which of several equally good alignments a read gets depends on the seed and on the read's sequence, qualities, and whole FASTQ header line, so renaming reads can move them.
-    + For paired-end data, the two mates' seeds are combined so that the seed, and header text identical in both mates, cancel; only header differences between the mates move pairs.
-  - BWA-MEM and BWA-MEM2 run with '-K 100000000', a fixed batch of read bases over which paired-end insert sizes are estimated, so their output does not depend on the thread count; the record gives it as 'bwa_K=100000000'.
+    + For paired-end data, the two mates' seeds are combined, which cancels the seed and any header text identical in both mates; only header differences between the mates move pairs.
+  - BWA-MEM and BWA-MEM2 run with '-K 100000000', which fixes the batch of read bases over which paired-end insert sizes are estimated. Their output therefore does not depend on the thread count; the record gives the setting as 'bwa_K=100000000'.
   - Each alignment file's header, the '.qnam' copy's included, carries a pipeline record as '@CO' lines:
     + 'pipeline:' lines give the commit, the options in effect, the input file names, and any skipped steps;
     + 'pipeline-run:' lines give the thread count, the start time, the host, the scripts and functions that ran, and the full paths.

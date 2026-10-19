@@ -160,7 +160,7 @@ def reverse_complement(seq: str) -> str:
 
 def add_mismatch(rng: random.Random, read: str) -> str:
     """
-    Return the read with one base changed, at probability 'P_MISMATCH'.
+    Return the read with one base changed at probability 'P_MISMATCH'.
 
     Parameters
     ----------
@@ -285,7 +285,7 @@ def write_fasta(path: str, chroms: dict[str, str]) -> None:
 
 def write_fastq(path: str, reads: list[str], suffix: str) -> None:
     """
-    Write reads named 'tie_<n>' plus 'suffix', with uniform qualities.
+    Write reads named 'tie_<n>' plus 'suffix' with uniform base qualities.
 
     Parameters
     ----------

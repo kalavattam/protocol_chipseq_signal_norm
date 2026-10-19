@@ -283,8 +283,8 @@ function check_recipe_shape() {
     )"
 
     # A recipe running its own generator script beside it generates rather than
-    # validates, so that call form, and the 'require_cmd' line declaring the
-    # interpreter, are removed before the check.
+    # validates, so the check first removes that call and the 'require_cmd'
+    # line that declares the interpreter.
     body="$(
         grep -vE \
             -e '(^|[^_[:alnum:]])python3 "\$\{dir_scr\}/make_[A-Za-z0-9_]+\.py"([[:space:]]|$)' \
@@ -320,8 +320,8 @@ function check_recipe_shape() {
 
 # Property 8: a generator script only generates, and reproducibly.
 #
-# It imports nothing from the repository, which would let a recipe validate
-# through its generator, and it draws randomness only through
+# It imports nothing from the repository, as that would let a recipe validate
+# through its generator. It draws randomness only through
 # 'random.Random(<int>).random()', the one stream Python guarantees across
 # versions; the five methods below may change their algorithms.
 function check_generators() {

@@ -236,7 +236,7 @@ Usage
   print_record_index_md5
     [--help] aligner index
 
-  Print one MD5 checksum for an aligner's index files, as 32 lowercase hexadecimal digits, for the 'index_md5=' line of an alignment file's pipeline record.
+  Print one MD5 checksum for an aligner's index files as 32 lowercase hexadecimal digits for the 'index_md5=' line of an alignment file's pipeline record.
 
 Parameters
 ----------
@@ -259,8 +259,13 @@ Notes
     - bash >= 4.4
     - md5sum
 
-  - The index files are, for Bowtie 2, '.1', '.2', '.3', '.4', '.rev.1', and '.rev.2' with '.bt2', or with '.bt2l' when '<stem>.1.bt2' is absent; for BWA, '.amb', '.ann', '.bwt', '.pac', and '.sa'; for BWA-MEM2, '.0123', '.amb', '.ann', '.bwt.2bit.64', and '.pac'.
-  - The checksum is that of the lines '<md5>  <file name>', one per index file in that order, each ending in a newline, so it does not depend on the index's directory; in a shell, 'cd <dir> && md5sum <files> | md5sum' gives the same value.
+  - The index files are:
+    + For Bowtie 2,  '.1', '.2', '.3', '.4', '.rev.1', and '.rev.2', with '.bt2' or, when '<stem>.1.bt2' is absent, '.bt2l'.
+    + For BWA, they are '.amb', '.ann', '.bwt', '.pac', and '.sa'.
+    + For BWA-MEM2, they are '.0123', '.amb', '.ann', '.bwt.2bit.64', and '.pac'.
+  - The checksum is taken over the lines '<md5>  <file name>', one per index file in that order and each ending in a newline.
+    + Only file names appear, so it does not depend on the index's directory.
+    + In a shell, 'cd <dir> && md5sum <files> | md5sum' gives the same value.
 
 Examples
 --------
@@ -339,7 +344,9 @@ Usage
   print_record_conda_pkg
     [--help] prg
 
-  Print the version and build, as '<version>-<build>', of the Conda package that installed the program found on 'PATH' under the name 'prg', read from the environment's package records, for a 'pkg_<prg>=' line of an alignment file's pipeline record.
+  Print the version and build of the Conda package that installed the program 'prg' on 'PATH' as '<version>-<build>'.
+
+  The values come from the environment's package records and fill a 'pkg_<prg>=' line of an alignment file's pipeline record.
 
 Parameters
 ----------

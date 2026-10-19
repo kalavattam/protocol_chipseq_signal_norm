@@ -41,7 +41,7 @@ dir_drv="${tmp}/driver"
 fil_two="${tmp}/twice.bam"
 fil_drv="${dir_drv}/out/tiny_se.bam"
 
-# The BWA-backtrack row, the fifth, writes the file the dry-run and
+# The BWA-backtrack row (the fifth) writes the file that the dry-run and
 # record-twice checks compare against.
 fil_aln_se="${tmp}/out_4/aln_se.bam"
 

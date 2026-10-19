@@ -24,8 +24,8 @@ source "$(
 
 
 # Define fixture and output paths. The tie fixtures hold reads with several
-# equally good placements, so Bowtie 2's seed and output order, and BWA's
-# batches, show in them.
+# equally good placements, so they show the effects of Bowtie 2's seed, its
+# output order, and BWA's batch size.
 dir_fx="${ROOT_REPO}/tests/fixtures/align_fastqs"
 ref_tie="${dir_fx}/reference/tie.fa"
 idx_tie="${dir_fx}/bowtie2/tie"
@@ -89,9 +89,9 @@ function run_helper() {
 }
 
 
-# Print the Step 1 aligner command of the helper's dry run, one argument per
-# line, given the line that starts it ('bowtie2', 'bwa mem', or 'bwa-mem2 mem')
-# and the helper's arguments.
+# Print the Step 1 aligner command from the helper's dry run with one argument
+# per line. The first argument is the line that starts the command ('bowtie2',
+# 'bwa mem', or 'bwa-mem2 mem'); the rest are the helper's arguments.
 function print_aln_cmd() {
     local head="${1}"
     shift 1
@@ -160,7 +160,7 @@ function run_bt2() {
 
 
 # Print how many records differ in flag, position, MAPQ, CIGAR, or mate fields
-# between two outputs written in input order; read names are left out, since
+# between two outputs written in input order; read names are left out because
 # they differ between header forms.
 function count_moved() {
     if (( $(wc -l < "${1}") != $(wc -l < "${2}") )); then
@@ -222,8 +222,8 @@ for row in "${arr_calls[@]}"; do
 done
 
 
-# The call's output is the same at one thread and at eight, record for record
-# and in order, and '--seed 0' gives the output of no '--seed'.
+# At one thread and at eight, the call writes the same records in the same
+# order, and '--seed 0' gives the same output as no '--seed'.
 for idx in "${!arr_calls[@]}"; do
     IFS='|' read -r lbl arg <<< "${arr_calls[idx]}"
     read -r -a arr_args <<< "${arg}"
@@ -253,10 +253,10 @@ for idx in "${!arr_calls[@]}"; do
 done
 
 
-# Facts about Bowtie 2 that the help states, checked on the fixture: tied
-# single-end reads move with the seed and with the header; in a pair, the seed
-# and header text both mates share cancel, and only a difference between the
-# mates moves the pair.
+# Check the help's facts about Bowtie 2 on the fixture. Tied single-end reads
+# move with the seed and with the header. In a pair, the seed and any header
+# text both mates share cancel out, and only a difference between the mates
+# moves the pair.
 load_bt2_cmd --fq_1 "${fq_se}" || true
 mapfile -t arr_se_7 < <(print_with_opt --seed 7 "${arr_cmd[@]}")
 run_bt2 "${tmp}/se_s7.sam" "${arr_se_7[@]}"
@@ -305,7 +305,7 @@ for row in "${arr_facts[@]}"; do
 done
 
 
-# BWA-MEM and BWA-MEM2 pass a fixed '-K', whatever the layout.
+# BWA-MEM and BWA-MEM2 pass a fixed '-K' for either layout.
 arr_mem=(
     "BWA-MEM|bwa mem|--aligner bwa --index ${idx_bwa}"
     "BWA-MEM2|bwa-mem2 mem|--aligner bwa-mem2 --index ${idx_bm2}"
@@ -335,8 +335,9 @@ done
 
 # Why '-K' is fixed: BWA estimates paired-end insert sizes per batch, so a
 # different batch size moves records. At a fixed '-K', the thread count moves
-# none; the fixture is smaller than one default batch, so this part would pass
-# without '-K' too, and the command check above is what fails without it.
+# no records. This part would pass without '-K' too, because the fixture is
+# smaller than one default batch; the command check above is the one that fails
+# without it.
 for idx in "${!arr_mem[@]}"; do
     IFS='|' read -r lbl head arg <<< "${arr_mem[idx]}"
     read -r -a arr_args <<< "${arg}"
@@ -378,8 +379,8 @@ for idx in "${!arr_mem[@]}"; do
 done
 
 
-# The pipeline record names Bowtie 2's seed and BWA-MEM's batch size, and
-# BWA-backtrack, which has no '-K', gets no batch line.
+# The pipeline record names Bowtie 2's seed and BWA-MEM's batch size.
+# BWA-backtrack has no '-K', so its record has no batch line.
 arr_rec=(
     "Bowtie 2|--aligner bowtie2 --index ${idx_tie}|bt2_seed=0|yes"
     "BWA-MEM|--aligner bwa --index ${idx_bwa}|bwa_K=100000000|yes"
@@ -418,9 +419,9 @@ for idx in "${!arr_rec[@]}"; do
 done
 
 
-# The chain run twice, at one thread and at eight, writes the same records,
-# content lines, and '@PG' program sequence, in the final and '--qname' files,
-# for every aligner and layout.
+# For every aligner and layout, running the chain at one thread and again at
+# eight writes the same records, content lines, and '@PG' program sequence to
+# both the final and '--qname' files.
 arr_chain=(
     "bt2|--aligner bowtie2 --index ${idx_tie}"
     "mem|--aligner bwa --index ${idx_bwa}"

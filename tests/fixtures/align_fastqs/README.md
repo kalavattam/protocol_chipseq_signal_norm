@@ -66,7 +66,7 @@ Queryname-grouped SAM records with secondary records, for the MAPQ template filt
 - `sam/repeat_secondary_pe.sam`
 - `sam/repeat_secondary_se.sam`
 
-Tie reference, reads, and indexes, for the determinism checks:
+Tie reference, reads, and indexes for the determinism checks:
 - `reference/tie.fa`
 - `fastq/pe/tie_pe_R1.atria.fastq.gz` and `fastq/pe/tie_pe_R2.atria.fastq.gz`
 - `fastq/pe/tie_cmt_pe_R1.atria.fastq.gz` and `fastq/pe/tie_cmt_pe_R2.atria.fastq.gz`
@@ -113,9 +113,9 @@ In the SAM fixtures, template `sec_keep` has primary records at MAPQ 60 and a se
 <br />
 
 ### Tie fixtures
-`make.sh` runs `make_tie.py`, which draws the tie reference and reads through `random.Random(0).random()`, a stream Python guarantees across versions, so they are random in content but identical on every run and every host. The reference has two chromosomes, `chrT1` and `chrT2`, each of three 3,000-base unique blocks with a copy of one 600-base repeat after each, then a 1,000-base unique block. A read inside a repeat copy has six equally good placements, and Bowtie2 picks one with a per-read random generator. The reads are 1,000 pairs of 50-base mates, from 150- to 400-base fragments on either strand, with one mismatch in about 30% of mates.
+`make.sh` runs `make_tie.py`, which draws the tie reference and reads through `random.Random(0).random()`. Python guarantees that stream across versions, so the data are random in content but identical on every run and every host. The reference has two chromosomes, `chrT1` and `chrT2`. Each holds three 3,000-base unique blocks, each followed by a copy of one shared 600-base repeat, and ends with a 1,000-base unique block. A read inside a repeat copy has six equally good placements, and Bowtie 2 picks one with a per-read random generator. The reads are 1,000 pairs of 50-base mates cut from 150- to 400-base fragments on either strand. About 30% of mates carry one mismatch.
 
-The same reads come under three header forms, because Bowtie2 seeds each read's generator from its sequence, its qualities, its whole FASTQ header line, and `--seed`, and for a pair it combines the two mates' seeds by exclusive or, which cancels every term the two mates share:
+The same reads come under three header forms. Bowtie 2 seeds each read's generator from its sequence, its qualities, its whole FASTQ header line, and `--seed`. For a pair, it combines the two mates' seeds by exclusive or, which cancels every term the mates share:
 
 | Files     | R1 header                | R2 header                | Change from the row above |
 | :---      | :---                     | :---                     | :---                      |
@@ -125,7 +125,7 @@ The same reads come under three header forms, because Bowtie2 seeds each read's 
 
 The single-end files `tie_se` and `tie_cmt_se` hold the R1 reads with the `tie_pe` and `tie_cmt` headers.
 
-Measured with Bowtie 2 2.5.5 and the pipeline's default paired-end call, about 164 of the 2,000 paired-end records and 144 of the 1,000 single-end records are tied (MAPQ 0 or 1). A record moves when its flag, reference, position, MAPQ, CIGAR, or mate fields change. From `tie_pe` to `tie_cmt`, about 136 paired-end records move; from `tie_cmt` to `tie_idx`, none do; changing `--seed` moves no paired-end record but about 123 single-end ones; and `--seed 0` gives the same output as no `--seed`. With `-p 8`, the output order differs from `-p 1` while the records do not, and `--reorder` restores the `-p 1` order. With BWA-MEM (0.7.19) and BWA-MEM2 (2.3), `-K 10000` against `-K 100000000` moves 2 paired-end records, because insert sizes are estimated per batch; the whole set is smaller than one default batch, so the thread count alone moves none.
+Measured with Bowtie 2 2.5.5 and the pipeline's default paired-end call, about 164 of the 2,000 paired-end records and 144 of the 1,000 single-end records are tied (MAPQ 0 or 1). A record moves when its flag, reference, position, MAPQ, CIGAR, or mate fields change. From `tie_pe` to `tie_cmt`, about 136 paired-end records move; from `tie_cmt` to `tie_idx`, none do; changing `--seed` moves no paired-end record but about 123 single-end ones; and `--seed 0` gives the same output as no `--seed`. With `-p 8`, the output order differs from `-p 1` while the records do not, and `--reorder` restores the `-p 1` order. With BWA-MEM (0.7.19) and BWA-MEM2 (2.3), changing `-K 100000000` to `-K 10000` moves 2 paired-end records because insert sizes are estimated per batch. The whole set is smaller than one default batch, so the thread count alone moves none.
 
 <br />
 
