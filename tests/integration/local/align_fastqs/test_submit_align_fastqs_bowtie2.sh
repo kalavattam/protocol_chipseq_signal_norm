@@ -16,16 +16,16 @@
 
 set -euo pipefail
 
-TEST_NAME="submit align-fastqs Bowtie2"
+TEST_NAME="submit align-fastqs Bowtie 2"
 
-#  Source shared test helpers
+# Source shared test helpers.
 # shellcheck source=tests/support/test_helpers.sh
 source "$(
     git -C "$(dirname "${BASH_SOURCE[0]}")" rev-parse --show-toplevel
 )/tests/support/test_helpers.sh"
 
 
-#  Define fixture and output paths for Bowtie2 alignment
+# Define fixture and output paths for Bowtie 2 alignment.
 dir_fx="${ROOT_REPO}/tests/fixtures/align_fastqs"
 ref_src="${dir_fx}/reference/tiny.fa"
 in_se="${dir_fx}/fastq/se/tiny_se.atria.fastq.gz"
@@ -102,7 +102,7 @@ require_files_nonempty \
 cp "${ref_src}" "${ref_fa}"
 
 
-#  Align one SE FASTQ fixture with Bowtie2 and emit BAM
+# Align one SE FASTQ fixture with Bowtie 2 and emit BAM.
 # shellcheck disable=SC2154
 if \
     run_capture \
@@ -124,60 +124,60 @@ if \
             --dir_eo "${dir_err}" \
             --nam_job "test_submit_align_bowtie2"
 then
-    record_pass "submit_align_fastqs.sh Bowtie2 BAM exits 0"
+    record_pass "submit_align_fastqs.sh Bowtie 2 BAM exits 0"
 else
     record_fail \
-        "submit_align_fastqs.sh Bowtie2 BAM failed; see" \
+        "submit_align_fastqs.sh Bowtie 2 BAM failed; see" \
         "$(print_relpath "${log_se}")"
 fi
 
 assert_file_nonempty \
     "${out_se}" \
-    "submit Bowtie2 SE BAM output"
+    "submit Bowtie 2 SE BAM output"
 
 assert_file_nonempty \
     "${bai_se}" \
-    "submit Bowtie2 SE BAM index"
+    "submit Bowtie 2 SE BAM index"
 
 assert_file_nonempty \
     "${mrk_se}" \
-    "submit Bowtie2 SE duplicate statistics"
+    "submit Bowtie 2 SE duplicate statistics"
 
 if [[ -s "${out_se}" ]]; then
     if \
         run_capture \
-            "quickcheck submit align-fastqs Bowtie2 BAM" \
+            "quickcheck submit align-fastqs Bowtie 2 BAM" \
             "${log_se_qc}" \
             run_samtools quickcheck "${out_se}"
     then
-        record_pass "submit Bowtie2 SE BAM passes samtools quickcheck"
+        record_pass "submit Bowtie 2 SE BAM passes samtools quickcheck"
     else
-        record_fail "submit Bowtie2 SE BAM fails samtools quickcheck"
+        record_fail "submit Bowtie 2 SE BAM fails samtools quickcheck"
     fi
 
     run_capture \
-        "idxstats submit align-fastqs Bowtie2 SE BAM" \
+        "idxstats submit align-fastqs Bowtie 2 SE BAM" \
         "${ixs_se}" \
         run_samtools idxstats "${out_se}"
 
     run_capture \
-        "view submit align-fastqs Bowtie2 SE BAM" \
+        "view submit align-fastqs Bowtie 2 SE BAM" \
         "${vw_se}" \
         run_samtools view "${out_se}"
 
     assert_pattern_found \
         "${ixs_se}" \
         $'^I\t108\t1\t0$' \
-        "submit Bowtie2 SE BAM has one mapped read on chromosome I"
+        "submit Bowtie 2 SE BAM has one mapped read on chromosome I"
 
     assert_pattern_found \
         "${vw_se}" \
         $'^tiny_se_read_1\t' \
-        "submit Bowtie2 SE BAM contains expected read name"
+        "submit Bowtie 2 SE BAM contains expected read name"
 fi
 
 
-#  Align one PE FASTQ fixture with Bowtie2, requiring proper pairs
+# Align one PE FASTQ fixture with Bowtie 2, requiring proper pairs.
 # shellcheck disable=SC2154
 if \
     run_capture \
@@ -200,70 +200,70 @@ if \
             --dir_eo "${dir_err}" \
             --nam_job "test_submit_align_bowtie2_pe"
 then
-    record_pass "submit_align_fastqs.sh Bowtie2 PE BAM exits 0"
+    record_pass "submit_align_fastqs.sh Bowtie 2 PE BAM exits 0"
 else
     record_fail \
-        "submit_align_fastqs.sh Bowtie2 PE BAM failed; see" \
+        "submit_align_fastqs.sh Bowtie 2 PE BAM failed; see" \
         "$(print_relpath "${log_pe}")"
 fi
 
 assert_file_nonempty \
     "${out_pe}" \
-    "submit Bowtie2 PE BAM output"
+    "submit Bowtie 2 PE BAM output"
 
 assert_file_nonempty \
     "${bai_pe}" \
-    "submit Bowtie2 PE BAM index"
+    "submit Bowtie 2 PE BAM index"
 
 assert_file_nonempty \
     "${mrk_pe}" \
-    "submit Bowtie2 PE duplicate statistics"
+    "submit Bowtie 2 PE duplicate statistics"
 
 if [[ -s "${out_pe}" ]]; then
     if \
         run_capture \
-            "quickcheck submit align-fastqs Bowtie2 PE BAM" \
+            "quickcheck submit align-fastqs Bowtie 2 PE BAM" \
             "${log_pe_qc}" \
             run_samtools quickcheck "${out_pe}"
     then
-        record_pass "submit Bowtie2 PE BAM passes samtools quickcheck"
+        record_pass "submit Bowtie 2 PE BAM passes samtools quickcheck"
     else
-        record_fail "submit Bowtie2 PE BAM fails samtools quickcheck"
+        record_fail "submit Bowtie 2 PE BAM fails samtools quickcheck"
     fi
 
     run_capture \
-        "idxstats submit align-fastqs Bowtie2 PE BAM" \
+        "idxstats submit align-fastqs Bowtie 2 PE BAM" \
         "${ixs_pe}" \
         run_samtools idxstats "${out_pe}"
 
     run_capture \
-        "view submit align-fastqs Bowtie2 PE BAM" \
+        "view submit align-fastqs Bowtie 2 PE BAM" \
         "${vw_pe}" \
         run_samtools view "${out_pe}"
 
     assert_pattern_found \
         "${ixs_pe}" \
         $'^I\t108\t2\t0$' \
-        "submit Bowtie2 PE BAM has two mapped reads on chromosome I"
+        "submit Bowtie 2 PE BAM has two mapped reads on chromosome I"
 
     assert_pattern_found \
         "${vw_pe}" \
         $'^tiny_pe_pair_1\t' \
-        "submit Bowtie2 PE BAM contains expected read name"
+        "submit Bowtie 2 PE BAM contains expected read name"
 
     assert_pattern_found \
         "${vw_pe}" \
         $'^tiny_pe_pair_1\t99\tI\t17\t' \
-        "submit Bowtie2 PE BAM has proper-pair R1 flag and start"
+        "submit Bowtie 2 PE BAM has proper-pair R1 flag and start"
 
     assert_pattern_found \
         "${vw_pe}" \
         $'^tiny_pe_pair_1\t147\tI\t70\t' \
-        "submit Bowtie2 PE BAM has proper-pair R2 flag and start"
+        "submit Bowtie 2 PE BAM has proper-pair R2 flag and start"
 fi
 
 
-#  Align one SE FASTQ fixture with Bowtie2 and emit CRAM
+# Align one SE FASTQ fixture with Bowtie 2 and emit CRAM.
 # shellcheck disable=SC2154
 if \
     run_capture \
@@ -286,56 +286,56 @@ if \
             --dir_eo "${dir_err}" \
             --nam_job "test_submit_align_bowtie2_se_cram"
 then
-    record_pass "submit_align_fastqs.sh Bowtie2 SE CRAM exits 0"
+    record_pass "submit_align_fastqs.sh Bowtie 2 SE CRAM exits 0"
 else
     record_fail \
-        "submit_align_fastqs.sh Bowtie2 SE CRAM failed; see" \
+        "submit_align_fastqs.sh Bowtie 2 SE CRAM failed; see" \
         "$(print_relpath "${log_se_cram}")"
 fi
 
 assert_file_nonempty \
     "${out_se_cram}" \
-    "submit Bowtie2 SE CRAM output"
+    "submit Bowtie 2 SE CRAM output"
 
 assert_file_nonempty \
     "${crai_se_cram}" \
-    "submit Bowtie2 SE CRAI index"
+    "submit Bowtie 2 SE CRAI index"
 
 if [[ -s "${out_se_cram}" ]]; then
     if \
         run_capture \
-            "quickcheck submit align-fastqs Bowtie2 SE CRAM" \
+            "quickcheck submit align-fastqs Bowtie 2 SE CRAM" \
             "${log_se_qc_cram}" \
             run_samtools quickcheck "${out_se_cram}"
     then
-        record_pass "submit Bowtie2 SE CRAM passes samtools quickcheck"
+        record_pass "submit Bowtie 2 SE CRAM passes samtools quickcheck"
     else
-        record_fail "submit Bowtie2 SE CRAM fails samtools quickcheck"
+        record_fail "submit Bowtie 2 SE CRAM fails samtools quickcheck"
     fi
 
     run_capture \
-        "count submit align-fastqs Bowtie2 SE CRAM" \
+        "count submit align-fastqs Bowtie 2 SE CRAM" \
         "${count_se_cram}" \
         run_samtools view -T "${ref_fa}" -c "${out_se_cram}" I
 
     run_capture \
-        "view submit align-fastqs Bowtie2 SE CRAM" \
+        "view submit align-fastqs Bowtie 2 SE CRAM" \
         "${vw_se_cram}" \
         run_samtools view -T "${ref_fa}" "${out_se_cram}"
 
     assert_pattern_found \
         "${count_se_cram}" \
         $'^1$' \
-        "submit Bowtie2 SE CRAM has one mapped read on chromosome I"
+        "submit Bowtie 2 SE CRAM has one mapped read on chromosome I"
 
     assert_pattern_found \
         "${vw_se_cram}" \
         $'^tiny_se_read_1\t' \
-        "submit Bowtie2 SE CRAM contains expected read name"
+        "submit Bowtie 2 SE CRAM contains expected read name"
 fi
 
 
-#  Align one PE FASTQ fixture with Bowtie2 and emit CRAM
+# Align one PE FASTQ fixture with Bowtie 2 and emit CRAM.
 # shellcheck disable=SC2154
 if \
     run_capture \
@@ -359,62 +359,62 @@ if \
             --dir_eo "${dir_err}" \
             --nam_job "test_submit_align_bowtie2_pe_cram"
 then
-    record_pass "submit_align_fastqs.sh Bowtie2 PE CRAM exits 0"
+    record_pass "submit_align_fastqs.sh Bowtie 2 PE CRAM exits 0"
 else
     record_fail \
-        "submit_align_fastqs.sh Bowtie2 PE CRAM failed; see" \
+        "submit_align_fastqs.sh Bowtie 2 PE CRAM failed; see" \
         "$(print_relpath "${log_pe_cram}")"
 fi
 
 assert_file_nonempty \
     "${out_pe_cram}" \
-    "submit Bowtie2 PE CRAM output"
+    "submit Bowtie 2 PE CRAM output"
 
 assert_file_nonempty \
     "${crai_pe_cram}" \
-    "submit Bowtie2 PE CRAI index"
+    "submit Bowtie 2 PE CRAI index"
 
 if [[ -s "${out_pe_cram}" ]]; then
     if \
         run_capture \
-            "quickcheck submit align-fastqs Bowtie2 PE CRAM" \
+            "quickcheck submit align-fastqs Bowtie 2 PE CRAM" \
             "${log_pe_qc_cram}" \
             run_samtools quickcheck "${out_pe_cram}"
     then
-        record_pass "submit Bowtie2 PE CRAM passes samtools quickcheck"
+        record_pass "submit Bowtie 2 PE CRAM passes samtools quickcheck"
     else
-        record_fail "submit Bowtie2 PE CRAM fails samtools quickcheck"
+        record_fail "submit Bowtie 2 PE CRAM fails samtools quickcheck"
     fi
 
     run_capture \
-        "count submit align-fastqs Bowtie2 PE CRAM" \
+        "count submit align-fastqs Bowtie 2 PE CRAM" \
         "${count_pe_cram}" \
         run_samtools view -T "${ref_fa}" -c "${out_pe_cram}" I
 
     run_capture \
-        "view submit align-fastqs Bowtie2 PE CRAM" \
+        "view submit align-fastqs Bowtie 2 PE CRAM" \
         "${vw_pe_cram}" \
         run_samtools view -T "${ref_fa}" "${out_pe_cram}"
 
     assert_pattern_found \
         "${count_pe_cram}" \
         $'^2$' \
-        "submit Bowtie2 PE CRAM has two mapped reads on chromosome I"
+        "submit Bowtie 2 PE CRAM has two mapped reads on chromosome I"
 
     assert_pattern_found \
         "${vw_pe_cram}" \
         $'^tiny_pe_pair_1\t' \
-        "submit Bowtie2 PE CRAM contains expected read name"
+        "submit Bowtie 2 PE CRAM contains expected read name"
 
     assert_pattern_found \
         "${vw_pe_cram}" \
         $'^tiny_pe_pair_1\t99\tI\t17\t' \
-        "submit Bowtie2 PE CRAM has proper-pair R1 flag and start"
+        "submit Bowtie 2 PE CRAM has proper-pair R1 flag and start"
 
     assert_pattern_found \
         "${vw_pe_cram}" \
         $'^tiny_pe_pair_1\t147\tI\t70\t' \
-        "submit Bowtie2 PE CRAM has proper-pair R2 flag and start"
+        "submit Bowtie 2 PE CRAM has proper-pair R2 flag and start"
 fi
 
 finish

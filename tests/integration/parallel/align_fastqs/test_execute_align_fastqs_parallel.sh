@@ -6,9 +6,10 @@
 # Copyright 2026 by Kris Alavattam
 # Email: kalavattam@gmail.com
 #
-# OpenAI ChatGPT and Codex (GPT-5.5, GPT-5.6) were used in design, development,
-# and documentation, with all output reviewed, edited, and approved by the
-# author.
+# The following were used in design, development, and documentation, with all
+# output reviewed, edited, and approved by the author:
+# - OpenAI ChatGPT and Codex (GPT-5.5, GPT-5.6);
+# - Anthropic Claude Code (Opus 5.5).
 #
 # Distributed under the MIT license.
 
@@ -17,7 +18,7 @@ set -euo pipefail
 
 TEST_NAME="execute align-fastqs GNU Parallel"
 
-#  Source shared test helpers
+# Source shared test helpers.
 # shellcheck source=tests/support/test_helpers.sh
 source "$(
     git -C "$(dirname "${BASH_SOURCE[0]}")" rev-parse --show-toplevel
@@ -34,7 +35,7 @@ then
     exit $?
 fi
 
-#  Define fixture and output paths for a local GNU Parallel Bowtie2 wet run
+# Define fixture and output paths for a local GNU Parallel Bowtie 2 wet run.
 dir_fx="${ROOT_REPO}/tests/fixtures/align_fastqs"
 in_se="${dir_fx}/fastq/se/tiny_se.atria.fastq.gz"
 idx_bt2="${dir_fx}/bowtie2/tiny"
@@ -109,10 +110,10 @@ then
 fi
 
 
-#  Run execute_align_fastqs.sh through local GNU Parallel for two SE inputs
+# Run execute_align_fastqs.sh through local GNU Parallel for two SE inputs.
 if \
     run_capture \
-        "execute align-fastqs GNU Parallel Bowtie2 wet run" \
+        "execute align-fastqs GNU Parallel Bowtie 2 wet run" \
         "${log_run}" \
         "${TEST_BASH}" "${ROOT_REPO}/bin/execute_align_fastqs.sh" \
             --env_nam "${env_nam}" \
@@ -130,10 +131,10 @@ if \
             --nam_job "test_execute_align_parallel" \
             --max_job 2
 then
-    record_pass "execute_align_fastqs.sh GNU Parallel Bowtie2 wet run exits 0"
+    record_pass "execute_align_fastqs.sh GNU Parallel Bowtie 2 wet run exits 0"
 else
     record_fail \
-        "execute_align_fastqs.sh GNU Parallel Bowtie2 wet run failed; see" \
+        "execute_align_fastqs.sh GNU Parallel Bowtie 2 wet run failed; see" \
         "$(print_relpath "${log_run}")"
 fi
 
@@ -143,19 +144,19 @@ assert_file_nonempty \
 
 assert_file_nonempty \
     "${out_1}" \
-    "execute GNU Parallel Bowtie2 BAM output 1"
+    "execute GNU Parallel Bowtie 2 BAM output 1"
 
 assert_file_nonempty \
     "${bai_1}" \
-    "execute GNU Parallel Bowtie2 BAM index 1"
+    "execute GNU Parallel Bowtie 2 BAM index 1"
 
 assert_file_nonempty \
     "${out_2}" \
-    "execute GNU Parallel Bowtie2 BAM output 2"
+    "execute GNU Parallel Bowtie 2 BAM output 2"
 
 assert_file_nonempty \
     "${bai_2}" \
-    "execute GNU Parallel Bowtie2 BAM index 2"
+    "execute GNU Parallel Bowtie 2 BAM index 2"
 
 if [[ -s "${cfg}" ]]; then
     assert_pattern_found \
@@ -168,73 +169,73 @@ fi
 if [[ -s "${out_1}" ]]; then
     if \
         run_capture \
-            "quickcheck execute align-fastqs GNU Parallel Bowtie2 BAM 1" \
+            "quickcheck execute align-fastqs GNU Parallel Bowtie 2 BAM 1" \
             "${log_qc_1}" \
             run_samtools quickcheck "${out_1}"
     then
         record_pass \
-            "execute GNU Parallel Bowtie2 BAM 1 passes samtools quickcheck"
+            "execute GNU Parallel Bowtie 2 BAM 1 passes samtools quickcheck"
     else
         record_fail \
-            "execute GNU Parallel Bowtie2 BAM 1 fails samtools quickcheck"
+            "execute GNU Parallel Bowtie 2 BAM 1 fails samtools quickcheck"
     fi
 
     run_capture \
-        "idxstats execute align-fastqs GNU Parallel Bowtie2 BAM 1" \
+        "idxstats execute align-fastqs GNU Parallel Bowtie 2 BAM 1" \
         "${stat_1}" \
         run_samtools idxstats "${out_1}"
 
     run_capture \
-        "view execute align-fastqs GNU Parallel Bowtie2 BAM 1" \
+        "view execute align-fastqs GNU Parallel Bowtie 2 BAM 1" \
         "${vw_1}" \
         run_samtools view "${out_1}"
 
     assert_pattern_found \
         "${stat_1}" \
         $'^I\t108\t1\t0$' \
-        "execute GNU Parallel Bowtie2 BAM 1 has one mapped read on" \
+        "execute GNU Parallel Bowtie 2 BAM 1 has one mapped read on" \
         "chromosome I"
 
     assert_pattern_found \
         "${vw_1}" \
         $'^tiny_se_read_1\t' \
-        "execute GNU Parallel Bowtie2 BAM 1 contains expected read name"
+        "execute GNU Parallel Bowtie 2 BAM 1 contains expected read name"
 fi
 
 if [[ -s "${out_2}" ]]; then
     if \
         run_capture \
-            "quickcheck execute align-fastqs GNU Parallel Bowtie2 BAM 2" \
+            "quickcheck execute align-fastqs GNU Parallel Bowtie 2 BAM 2" \
             "${log_qc_2}" \
             run_samtools quickcheck "${out_2}"
     then
         record_pass \
-            "execute GNU Parallel Bowtie2 BAM 2 passes samtools quickcheck"
+            "execute GNU Parallel Bowtie 2 BAM 2 passes samtools quickcheck"
     else
         record_fail \
-            "execute GNU Parallel Bowtie2 BAM 2 fails samtools quickcheck"
+            "execute GNU Parallel Bowtie 2 BAM 2 fails samtools quickcheck"
     fi
 
     run_capture \
-        "idxstats execute align-fastqs GNU Parallel Bowtie2 BAM 2" \
+        "idxstats execute align-fastqs GNU Parallel Bowtie 2 BAM 2" \
         "${stat_2}" \
         run_samtools idxstats "${out_2}"
 
     run_capture \
-        "view execute align-fastqs GNU Parallel Bowtie2 BAM 2" \
+        "view execute align-fastqs GNU Parallel Bowtie 2 BAM 2" \
         "${vw_2}" \
         run_samtools view "${out_2}"
 
     assert_pattern_found \
         "${stat_2}" \
         $'^I\t108\t1\t0$' \
-        "execute GNU Parallel Bowtie2 BAM 2 has one mapped read on" \
+        "execute GNU Parallel Bowtie 2 BAM 2 has one mapped read on" \
         "chromosome I"
 
     assert_pattern_found \
         "${vw_2}" \
         $'^tiny_se_read_1\t' \
-        "execute GNU Parallel Bowtie2 BAM 2 contains expected read name"
+        "execute GNU Parallel Bowtie 2 BAM 2 contains expected read name"
 fi
 
 finish

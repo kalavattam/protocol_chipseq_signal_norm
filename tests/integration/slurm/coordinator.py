@@ -9,7 +9,7 @@
 # The following were used in design, development, and documentation, with all
 # output reviewed, edited, and approved by the author:
 # - OpenAI ChatGPT and Codex (GPT-5.6);
-# - Anthropic Claude Code (Opus 5).
+# - Anthropic Claude Code (Opus 5, Opus 5.5).
 #
 # Distributed under the MIT license.
 
@@ -78,7 +78,7 @@ DEFAULT_BUNDLE_DIR = Path("artifacts/slurm/sessions")
 DEFAULT_RESULT_DIR = Path("artifacts/slurm/results")
 DEFAULT_REMOTE_ROOT = PurePosixPath("protocol_chipseq_signal_norm_slurm_runs")
 DEFAULT_SCOPE = (
-    "submit bootstrap plus tiny Bowtie2 alignment and BAM signal workers"
+    "submit bootstrap plus tiny Bowtie 2 alignment and BAM signal workers"
 )
 RUN_ID_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$")
 REMOTE_TOKEN_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]*$")

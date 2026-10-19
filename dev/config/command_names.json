@@ -6,7 +6,7 @@
     {"callable": "awk", "conceptual_names": []},
     {"callable": "bash", "conceptual_names": ["Bash"]},
     {"callable": "bc", "conceptual_names": []},
-    {"callable": "bowtie2", "conceptual_names": ["Bowtie 2", "Bowtie2"]},
+    {"callable": "bowtie2", "conceptual_names": ["Bowtie 2"]},
     {"callable": "bwa", "conceptual_names": ["BWA"]},
     {"callable": "bwa-mem2", "conceptual_names": ["BWA-MEM2"]},
     {"callable": "python", "conceptual_names": ["Python"]},

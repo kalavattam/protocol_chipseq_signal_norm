@@ -18,10 +18,10 @@ tests/integration/slurm/run_wet_tests.sh
 
 ## Validation scope
 The bounded wet suite submits exactly two single-CPU jobs using dedicated text-only fixtures under `tests/fixtures/slurm/`:
-1. `submit_align_fastqs.sh` aligns one 30-base FASTQ read with Bowtie2 and asserts that the BAM and BAI are nonempty.
+1. `submit_align_fastqs.sh` aligns one 30-base FASTQ read with Bowtie 2 and asserts that the BAM and BAI are nonempty.
 2. `submit_compute_signal.sh` computes an unadjusted 10-base-bin signal track from two tiny SAM-derived alignments and asserts the expected chromosome-I rows.
 
-Before submission, the runner copies the committed reference into `results/artifacts/fixtures/`, builds its tiny Bowtie2 index, and converts the committed SAM to an indexed BAM in that same run-specific directory. It does not use production data, download data, or write generated products into the extracted source tree.
+Before submission, the runner copies the committed reference into `results/artifacts/fixtures/`, builds its tiny Bowtie 2 index, and converts the committed SAM to an indexed BAM in that same run-specific directory. It does not use production data, download data, or write generated products into the extracted source tree.
 
 The fixed scheduler bounds are two jobs, one node, one task, one CPU per task, at most 1 GiB memory, and at most five minutes wall time per job. Preparation rejects wider values.
 

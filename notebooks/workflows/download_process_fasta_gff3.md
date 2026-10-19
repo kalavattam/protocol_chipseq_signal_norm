@@ -48,10 +48,10 @@ This step sets up the directory structure for organizing *S. cerevisiae* and *S.
 ```bash
 #!/bin/bash
 
-#  Optional: Request an interactive node
+# Optional: Request an interactive node.
 # grabnode  ## Uncomment to request 1 core, 20 GB memory, 1 day, no GPU ##
 
-#  Define path variables
+# Define path variables.
 dir_bas="${HOME}/repos"  ## WARNING: Change as needed ##
 dir_rep="${dir_bas}/protocol_chipseq_signal_norm"
 dir_dat="${dir_rep}/data"
@@ -59,11 +59,11 @@ dir_gen="${dir_dat}/genomes"
 
 # shellcheck disable=SC2086
 {
-    #  Create subdirectories for storing FASTA and GFF3 files
+    # Create subdirectories for storing FASTA and GFF3 files.
     mkdir -p ${dir_gen}/{cerevisiae,pombe}/{fasta,gff3}/{raw,proc}
     mkdir -p ${dir_gen}/concat/{fasta,gff3}/proc
 
-    #  Create a temporary directory for intermediate files
+    # Create a temporary directory for intermediate files.
     mkdir -p ${dir_gen}/cerevisiae/tmp
 }
 ```
@@ -84,7 +84,7 @@ This step downloads the *S. cerevisiae* genome and annotation files from the [Sa
 <summary><i>Bash code: Download, extract, and organize </i>S. cerevisiae<i> genome files.</i></summary>
 
 ```bash
-#  Define S. cerevisiae URL, tarball, and file names
+# Define S. cerevisiae URL, tarball, and file names.
 lnk_sc_fa_1="http://sgd-archive.yeastgenome.org/sequence"
 lnk_sc_fa_2="S288C_reference/genome_releases"
 tarball="S288C_reference_genome_R64-5-1_20240529.tgz"
@@ -92,17 +92,17 @@ fil_sc_fa="S288C_reference_sequence_R64-5-1_20240529"
 unpack="${fil_sc_fa/sequence/genome}"
 fil_sc_g3="saccharomyces_cerevisiae_R64-5-1_20240529.gff.gz"
 
-#  Download the tarball to the S. cerevisiae directory
+# Download the tarball to the S. cerevisiae directory.
 curl \
     -o "${dir_gen}/cerevisiae/${tarball}" \
     "${lnk_sc_fa_1}/${lnk_sc_fa_2}/${tarball}"
 
-#  Unpack the tarball in the temporary directory
+# Unpack the tarball in the temporary directory.
 tar \
     -xzf "${dir_gen}/cerevisiae/${tarball}" \
     -C "${dir_gen}/cerevisiae/tmp"
 
-#  Move the FASTA and GFF3 files to corresponding raw directories
+# Move the FASTA and GFF3 files to corresponding raw directories.
 mv \
     "${dir_gen}/cerevisiae/tmp/${unpack}/${fil_sc_fa}.fsa.gz" \
     "${dir_gen}/cerevisiae/fasta/raw/"
@@ -111,7 +111,7 @@ mv \
     "${dir_gen}/cerevisiae/tmp/${unpack}/${fil_sc_g3}" \
     "${dir_gen}/cerevisiae/gff3/raw/"
 
-#  Clean up the temporary directory (but retain the original tarball)
+# Clean up the temporary directory (but retain the original tarball).
 rm -rf "${dir_gen}/cerevisiae/tmp"
 ```
 </details>
@@ -131,18 +131,18 @@ This step downloads the *S. pombe* genome and annotation files from [Pombase](ht
 <summary><i>Bash code: Download, extract, and organize </i>S. pombe<i> files</i></summary>
 
 ```bash
-#  Define the S. pombe URL and file names
+# Define the S. pombe URL and file names.
 lnk_sp_1="https://www.pombase.org/data"
 lnk_sp_2="releases/pombase-2024-11-01"
 fil_sp_fa="Schizosaccharomyces_pombe_all_chromosomes.fa.gz"
 fil_sp_g3="Schizosaccharomyces_pombe_all_chromosomes.gff3.gz"
 
-#  Download and store the S. pombe FASTA file
+# Download and store the S. pombe FASTA file.
 curl \
     -o "${dir_gen}/pombe/fasta/raw/${fil_sp_fa}" \
     "${lnk_sp_1}/${lnk_sp_2}/fasta/chromosomes/${fil_sp_fa}"
 
-#  Download and store the S. pombe GFF3 file
+# Download and store the S. pombe GFF3 file.
 curl "${lnk_sp_1}/${lnk_sp_2}/gff/${fil_sp_g3%.gz}" \
     | gzip \
         > "${dir_gen}/pombe/gff3/raw/${fil_sp_g3}"
@@ -164,29 +164,29 @@ This step processes the *S. cerevisiae* FASTA file to standardize chromosome nam
 <summary><i>Bash code: Prepare </i>S. cerevisiae<i> FASTA file for concatenation</i></summary>
 
 ```bash
-#  Define directories and file names for raw and processed FASTA files
+# Define directories and file names for raw and processed FASTA files.
 dir_sc_fa_un="${dir_gen}/cerevisiae/fasta/raw"
 dir_sc_fa_pr="${dir_gen}/cerevisiae/fasta/proc"
 fil_sc_fa_un="S288C_reference_sequence_R64-5-1_20240529.fsa.gz"
 fil_sc_fa_pr="S288C_R64-5-1_proc.fasta.gz"
 
-#  Process raw S. cerevisiae FASTA file
+# Process raw S. cerevisiae FASTA file.
 zcat "${dir_sc_fa_un}/${fil_sc_fa_un}" \
     | awk '
-        #  Set input field separator (FS) to either "chromosome=" or
-        #+ "location=", and no output field separator (OFS)
+        # Set input field separator (FS) to either "chromosome=" or
+        # "location=", and no output field separator (OFS).
         BEGIN { FS="chromosome=|location="; OFS="" }
 
-        #  Do main processing
+        # Do the main processing.
         {
-            #  Find header lines, which start with ">", and process them
+            # Find header lines, which start with ">", and process them.
             if ($0 ~ /^>/) {
                 if ($2 ~ /mitochondrion/) {
-                    #  Rename mitochondrial chromosome
+                    # Rename mitochondrial chromosome.
                     print ">Mito"
                 } else {
-                    #  Extract chromosome names, printing them without "chr"
-                    #+ prefixes
+                    # Extract chromosome names, printing them without "chr"
+                    # prefixes.
                     split($2, nam_chr, "]")
                     print ">" nam_chr[1]
                 }
@@ -216,45 +216,45 @@ This step processes the *S. cerevisiae* GFF3 file to standardize chromosome name
 <summary><i>Bash code: Prepare </i>S. cerevisiae<i> GFF3 file for concatenation</i></summary>
 
 ```bash
-#  Define directories and file names for raw and processed S. cerevisiae GFF3
-#+ files
+# Define directories and file names for raw and processed S. cerevisiae GFF3
+# files.
 dir_sc_g3_un="${dir_gen}/cerevisiae/gff3/raw"
 dir_sc_g3_pr="${dir_gen}/cerevisiae/gff3/proc"
 fil_sc_g3_un="saccharomyces_cerevisiae_R64-5-1_20240529.gff.gz"
 fil_sc_g3_pr="S288C_R64-5-1_proc.gff3.gz"
 fil_sc_g3_re="S288C_R64-5-1_proc_readable.gff3.gz"
 
-#  Process raw S. cerevisiae GFF3 file
+# Process raw S. cerevisiae GFF3 file.
 zcat "${dir_sc_g3_un}/${fil_sc_g3_un}" \
     | awk -F "\t" '
-        #  Set in- and output field separators to tabs ("\t")
+        # Set in- and output field separators to tabs ("\t").
         BEGIN { OFS = FS; skip = 0 }
 
-        #  Do main processing
+        # Do the main processing.
         {
-            #  Skip "###" line and all lines after it
+            # Skip "###" line and all lines after it.
             if ($0 ~ /^###/) { skip = 1 }
             if (skip == 1) { next }
 
-            #  In column 1 ($1), remove "chr" prefix and rename "mt" to "Mito"
+            # In column 1 ($1), remove "chr" prefix and rename "mt" to "Mito".
             gsub(/^chr/, "", $1)
             gsub(/^mt/, "Mito", $1)
 
-            #  Convert URL-encoded characters in $9
+            # Convert URL-encoded characters in $9.
             gsub(/%20/, " ", $9)
             gsub(/%2C/, ",", $9)
             gsub(/%3B/, ",", $9)
             gsub(/%28/, "(", $9)
             gsub(/%29/, ")", $9)
 
-            #  Convert HTML entities in $9
+            # Convert HTML entities in $9.
             gsub(/&#946/, "beta", $9)
             gsub(/&#8242/, " prime", $9)
 
-            #  Convert literal percent symbol to word "percent"
+            # Convert literal percent symbol to word "percent".
             gsub(/%/, " percent", $9)
 
-            #  In $7, convert "0" to "."
+            # In $7, convert "0" to ".".
             if ($7 == "0") { $7 = "." }
 
             print $0
@@ -263,43 +263,42 @@ zcat "${dir_sc_g3_un}/${fil_sc_g3_un}" \
     | gzip \
         > "${dir_sc_g3_pr}/${fil_sc_g3_pr}"
 
-#  Process GFF3 file for readability by modifying gene and ARS names
+# Process GFF3 file for readability by modifying gene and ARS names.
 zcat "${dir_sc_g3_pr}/${fil_sc_g3_pr}" \
     | awk '
         BEGIN { FS = OFS = "\t" }
 
-        #  Skip lines starting with a hash, as these are headers or comments
+        # Skip lines starting with a hash, as these are headers or comments.
         $1 ~ /^#/ { print; next }
 
-        #  Process lines where column 3 ($3) matches gene-related features
+        # Process lines where column 3 ($3) matches gene-related features.
         $3 ~ /^(\
             blocked_reading_frame|gene|ncRNA_gene|\
             pseudogene|rRNA_gene|snRNA_gene|\
             snoRNA_gene|tRNA_gene|telomerase_RNA_gene\
         )$/ {
-            #  If a "gene=" field exists in $9, extract the gene name
+            # If a "gene=" field exists in $9, extract the gene name.
             if (match($9, /gene=[^;]+/)) {
                 nam_gen = substr($9, RSTART + 5, RLENGTH - 5)
 
-                #  Replace the "Name=" field in $9 with the extracted gene
-                #+ name
+                # Replace the "Name=" field in $9 with the extracted gene name.
                 sub(/Name=[^;]+/, "Name=" nam_gen, $9)
             }
         }
 
-        #  Process lines where $3 is "ARS"
+        # Process lines where $3 is "ARS".
         $3 == "ARS" {
-            #  If an "Alias=" field exists in $9, extract the alias name
+            # If an "Alias=" field exists in $9, extract the alias name.
             if (match($9, /Alias=[^;]+/)) {
                 nam_als = substr($9, RSTART + 6, RLENGTH - 6)
 
-                #  Replace the "Name=" field in $9 with the extracted alias
-                #+ name
+                # Replace the "Name=" field in $9 with the extracted alias
+                # name.
                 sub(/Name=[^;]+/, "Name=" nam_als, $9)
             }
         }
 
-        #  Print all lines; modified lines are printed after processing
+        # Print all lines; modified lines are printed after processing.
         { print }
     ' \
     | gzip \
@@ -322,14 +321,14 @@ This step standardizes *S. pombe* chromosome names by prefixing them with "SP_" 
 <summary><i>Bash code: Prepare </i>S. pombe<i> FASTA file for concatenation</i></summary>
 
 ```bash
-#  Define directories and file names for raw and processed S. pombe FASTA files
+# Define directories and file names for raw and processed S. pombe FASTA files.
 dir_sp_fa_un="${dir_gen}/pombe/fasta/raw"
 dir_sp_fa_pr="${dir_gen}/pombe/fasta/proc"
 fil_sp_fa_un="Schizosaccharomyces_pombe_all_chromosomes.fa.gz"
 fil_sp_fa_pr="972h-_2024-11-01_proc.fasta.gz"
 
-#  Prepend substring "SP_" to chromosome names and simplify long chromosome/DNA
-#+ names
+# Prepend substring "SP_" to chromosome names and simplify long chromosome/DNA
+# names.
 zcat "${dir_sp_fa_un}/${fil_sp_fa_un}" \
     | sed -r '
         s/^>chr_II_telomeric_gap\ .*$/>SP_II_TG/g;
@@ -359,14 +358,14 @@ This step processes the *S. pombe* GFF3 file by standardizing chromosome names, 
 <summary><i>Bash code: Prepare </i>S. pombe<i> GFF3 file for concatenation</i></summary>
 
 ```bash
-#  Define directories and file names for raw and processed S. pombe GFF3 files
+# Define directories and file names for raw and processed S. pombe GFF3 files.
 dir_sp_g3_un="${dir_gen}/pombe/gff3/raw"
 dir_sp_g3_pr="${dir_gen}/pombe/gff3/proc"
 fil_sp_g3_un="Schizosaccharomyces_pombe_all_chromosomes.gff3.gz"
 fil_sp_g3_pr="972h-_2024-11-01_proc.gff3.gz"
 
-#  Prepend substring "SP_" to chromosome names and simplify long chromosome/DNA
-#+ names
+# Prepend substring "SP_" to chromosome names and simplify long chromosome/DNA
+# names.
 zcat "${dir_sp_g3_un}/${fil_sp_g3_un}" \
     | sed '
         s/^chr_II_telomeric_gap/SP_II_TG/g;
@@ -396,7 +395,7 @@ This final step concatenates the processed *S. cerevisiae* and *S. pombe* FASTA 
 <summary><i>Bash code: Concatenate the processed FASTA and GFF3 files</i></summary>
 
 ```bash
-#  Define variables for processed input and output FASTA and GFF3 files
+# Define variables for processed input and output FASTA and GFF3 files.
 sc="S288C_R64-5-1_proc"
 sc_fa="${sc}.fasta.gz"
 sc_g3="${sc}.gff3.gz"
@@ -412,24 +411,24 @@ cc_fa="${cc}.fasta.gz"
 cc_g3="${cc}.gff3.gz"
 cc_re="${cc}_readable.gff3.gz"
 
-#  Concatenate processed FASTA files for S. cerevisiae and S. pombe
+# Concatenate processed FASTA files for S. cerevisiae and S. pombe.
 cat \
     "${dir_gen}/cerevisiae/fasta/proc/${sc_fa}" \
     "${dir_gen}/pombe/fasta/proc/${sp_fa}" \
         > "${dir_gen}/concat/fasta/proc/${cc_fa}"
 
-#  Create uncompressed version of concatenated FASTA file for use in Bowtie2
-#+ index generation
+# Create uncompressed version of concatenated FASTA file for use in Bowtie 2
+# index generation.
 gunzip -c "${dir_gen}/concat/fasta/proc/${cc_fa}" \
     > "${dir_gen}/concat/fasta/proc/${cc_fa%.gz}"
 
-#  Concatenate processed GFF3 files for S. cerevisiae and S. pombe
+# Concatenate processed GFF3 files for S. cerevisiae and S. pombe.
 cat \
     "${dir_gen}/cerevisiae/gff3/proc/${sc_g3}" \
     "${dir_gen}/pombe/gff3/proc/${sp_g3}" \
         > "${dir_gen}/concat/gff3/proc/${cc_g3}"
 
-#  Concatenate processed, easier-to-read GFF3 files
+# Concatenate processed, easier-to-read GFF3 files.
 cat \
     "${dir_gen}/cerevisiae/gff3/proc/${sc_re}" \
     "${dir_gen}/pombe/gff3/proc/${sp_re}" \

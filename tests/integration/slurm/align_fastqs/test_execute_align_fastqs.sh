@@ -9,7 +9,7 @@
 # The following were used in design, development, and documentation, with all
 # output reviewed, edited, and approved by the author:
 # - OpenAI ChatGPT and Codex (GPT-5.5, GPT-5.6);
-# - Anthropic Claude Code (Opus 5).
+# - Anthropic Claude Code (Opus 5, Opus 5.5).
 #
 # Distributed under the MIT license.
 
@@ -49,7 +49,7 @@ then
 fi
 
 
-# Define fixture and output paths for a Slurm Bowtie2 submission test.
+# Define fixture and output paths for a Slurm Bowtie 2 submission test.
 dir_fx="${ROOT_REPO}/tests/fixtures/align_fastqs"
 in_se="${dir_fx}/fastq/se/tiny_se.atria.fastq.gz"
 idx_bt2="${dir_fx}/bowtie2/tiny"
@@ -135,7 +135,7 @@ fi
 # Submit execute_align_fastqs.sh as a two-task Slurm array.
 if \
     run_capture \
-        "execute align-fastqs Slurm Bowtie2 submission" \
+        "execute align-fastqs Slurm Bowtie 2 submission" \
         "${log_run}" \
         "${TEST_BASH}" "${ROOT_REPO}/bin/execute_align_fastqs.sh" \
             --env_nam "${env_nam}" \
@@ -155,10 +155,10 @@ if \
             --time "05:00" \
             --slurm
 then
-    record_pass "execute_align_fastqs.sh Slurm Bowtie2 submission exits 0"
+    record_pass "execute_align_fastqs.sh Slurm Bowtie 2 submission exits 0"
 else
     record_fail \
-        "execute_align_fastqs.sh Slurm Bowtie2 submission failed; see" \
+        "execute_align_fastqs.sh Slurm Bowtie 2 submission failed; see" \
         "$(print_relpath "${log_run}")"
 fi
 
@@ -209,84 +209,84 @@ done
 
 assert_file_nonempty \
     "${out_1}" \
-    "execute Slurm Bowtie2 BAM output 1"
+    "execute Slurm Bowtie 2 BAM output 1"
 
 assert_file_nonempty \
     "${bai_1}" \
-    "execute Slurm Bowtie2 BAM index 1"
+    "execute Slurm Bowtie 2 BAM index 1"
 
 assert_file_nonempty \
     "${out_2}" \
-    "execute Slurm Bowtie2 BAM output 2"
+    "execute Slurm Bowtie 2 BAM output 2"
 
 assert_file_nonempty \
     "${bai_2}" \
-    "execute Slurm Bowtie2 BAM index 2"
+    "execute Slurm Bowtie 2 BAM index 2"
 
 if [[ -s "${out_1}" ]]; then
     if \
         run_capture \
-            "quickcheck execute align-fastqs Slurm Bowtie2 BAM 1" \
+            "quickcheck execute align-fastqs Slurm Bowtie 2 BAM 1" \
             "${log_qc_1}" \
             run_samtools quickcheck "${out_1}"
     then
-        record_pass "execute Slurm Bowtie2 BAM 1 passes samtools quickcheck"
+        record_pass "execute Slurm Bowtie 2 BAM 1 passes samtools quickcheck"
     else
-        record_fail "execute Slurm Bowtie2 BAM 1 fails samtools quickcheck"
+        record_fail "execute Slurm Bowtie 2 BAM 1 fails samtools quickcheck"
     fi
 
     run_capture \
-        "idxstats execute align-fastqs Slurm Bowtie2 BAM 1" \
+        "idxstats execute align-fastqs Slurm Bowtie 2 BAM 1" \
         "${stat_1}" \
         run_samtools idxstats "${out_1}"
 
     run_capture \
-        "view execute align-fastqs Slurm Bowtie2 BAM 1" \
+        "view execute align-fastqs Slurm Bowtie 2 BAM 1" \
         "${vw_1}" \
         run_samtools view "${out_1}"
 
     assert_pattern_found \
         "${stat_1}" \
         $'^I\t108\t1\t0$' \
-        "execute Slurm Bowtie2 BAM 1 has one mapped read on chromosome I"
+        "execute Slurm Bowtie 2 BAM 1 has one mapped read on chromosome I"
 
     assert_pattern_found \
         "${vw_1}" \
         $'^tiny_se_read_1\t' \
-        "execute Slurm Bowtie2 BAM 1 contains expected read name"
+        "execute Slurm Bowtie 2 BAM 1 contains expected read name"
 fi
 
 if [[ -s "${out_2}" ]]; then
     if \
         run_capture \
-            "quickcheck execute align-fastqs Slurm Bowtie2 BAM 2" \
+            "quickcheck execute align-fastqs Slurm Bowtie 2 BAM 2" \
             "${log_qc_2}" \
             run_samtools quickcheck "${out_2}"
     then
-        record_pass "execute Slurm Bowtie2 BAM 2 passes samtools quickcheck"
+        record_pass "execute Slurm Bowtie 2 BAM 2 passes samtools quickcheck"
     else
-        record_fail "execute Slurm Bowtie2 BAM 2 fails samtools quickcheck"
+        record_fail "execute Slurm Bowtie 2 BAM 2 fails samtools quickcheck"
     fi
 
     run_capture \
-        "idxstats execute align-fastqs Slurm Bowtie2 BAM 2" \
+        "idxstats execute align-fastqs Slurm Bowtie 2 BAM 2" \
         "${stat_2}" \
         run_samtools idxstats "${out_2}"
 
     run_capture \
-        "view execute align-fastqs Slurm Bowtie2 BAM 2" \
+        "view execute align-fastqs Slurm Bowtie 2 BAM 2" \
         "${vw_2}" \
         run_samtools view "${out_2}"
 
     assert_pattern_found \
         "${stat_2}" \
         $'^I\t108\t1\t0$' \
-        "execute Slurm Bowtie2 BAM 2 has one mapped read on chromosome I"
+        "execute Slurm Bowtie 2 BAM 2 has one mapped read on chromosome I"
 
     assert_pattern_found \
         "${vw_2}" \
         $'^tiny_se_read_1\t' \
-        "execute Slurm Bowtie2 BAM 2 contains expected read name"
+        "execute Slurm Bowtie 2 BAM 2 contains expected read name"
 fi
 
 # shellcheck disable=SC2119

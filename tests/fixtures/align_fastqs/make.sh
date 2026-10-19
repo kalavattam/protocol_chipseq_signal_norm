@@ -236,7 +236,7 @@ rm_file "${dir_fix}" "${fq_r1_tmp}"
 rm_file "${dir_fix}" "${fq_r2_tmp}"
 
 
-# Remove stale Bowtie2 index files before regeneration.
+# Remove stale Bowtie 2 index files before regeneration.
 rm_files \
     "${dir_fix}" \
     "${idx_bt2}.1.bt2" \
@@ -252,7 +252,7 @@ rm_files \
     "${idx_bt2}.rev.1.bt2l" \
     "${idx_bt2}.rev.2.bt2l"
 
-# Build and validate the Bowtie2 index.
+# Build and validate the Bowtie 2 index.
 log_bt2="${dir_bt2}/bowtie2-build.log"
 if ! \
     bowtie2-build "${ref}" "${idx_bt2}" > "${log_bt2}" 2>&1
@@ -265,7 +265,7 @@ rm_file "${dir_fix}" "${log_bt2}"
 
 bowtie2-inspect -n "${idx_bt2}" > /dev/null
 
-# Validate Bowtie2 single-end and paired-end alignment paths.
+# Validate Bowtie 2 single-end and paired-end alignment paths.
 bowtie2 \
     -x "${idx_bt2}" \
     -U "${fq_se_gz}" \
@@ -497,7 +497,7 @@ rm_files \
     "${idx_rpt_bm2}.bwt.2bit.64" \
     "${idx_rpt_bm2}.pac"
 
-# Build the repeat indexes for Bowtie2, BWA, and BWA-MEM2.
+# Build the repeat indexes for Bowtie 2, BWA, and BWA-MEM2.
 log_rpt="${dir_ref}/repeat-index.log"
 if ! \
     {
