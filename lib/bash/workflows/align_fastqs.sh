@@ -415,10 +415,11 @@ EOM
         return 1
     fi
 
-    # List the names whose primary records, 'n_pri' of them, all pass. With
-    # '-F 2308' (4 + 256 + 2048), unaligned, secondary, and supplementary
-    # records are left out. Only aligned primary records count, even if an
-    # unaligned one reached this filter.
+    # List each read name that has exactly 'n_pri' aligned primary records at
+    # or above the MAPQ threshold: 2 for paired-end data, 1 for single-end.
+    # '-F 2308' (4 + 256 + 2048) leaves out unaligned, secondary, and
+    # supplementary records, so an unaligned record is never counted, even if
+    # one reached this filter.
     arr_view=(
         samtools view -@ "${threads}" -F 2308 -q "${mapq}" "${bam_in}"
     )
@@ -1359,7 +1360,7 @@ Usage
   _align_reads
     [--help] func dry_run threads aligner bt2_mode bt2_X bt2_inherited bwa_alg req_flg index fq_1 fq_2 fil_wrk
 
-  Build the 'samtools view' arguments that drop unaligned reads, then align with the selected aligner and write the BAM work file (Step 1 of 'align_fastqs()'). MAPQ is filtered by template in Step 2.
+  Build the 'samtools view' arguments that drop unaligned reads, then align with the selected aligner and write the BAM work file (Step 1 of 'align_fastqs()').
 
 Parameters
 ----------
@@ -1675,7 +1676,7 @@ EOM
         fi
 
         # Keep or drop all records of each template (they share its read name)
-        # by whether its primary records pass '--mapq'; in PE data both mates
+        # by whether its primary records pass '--mapq'; in PE data, both mates
         # must. A per-record '-q' would split templates whose records' MAPQs
         # differ, such as BWA mates, supplementary records, and Bowtie 2
         # secondaries under '-k'. Step 1 can also leave a PE template with one
@@ -1705,8 +1706,8 @@ EOM
             _run_or_print_cmd "${dry_run}" arr_cmd
         then
             echo_err_func "${func}" \
-                "Step #2: failed to rename MAPQ-filtered," \
-                "queryname-sorted BAM file."
+                "Step #2: failed to rename MAPQ-filtered, queryname-sorted" \
+                "BAM file."
             return 1
         fi
 

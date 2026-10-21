@@ -23,10 +23,13 @@ source "$(
 )/tests/support/test_helpers.sh"
 
 
-# Define fixture and output paths. BWA and BWA-MEM2 write unaligned reads, so
-# the helper must drop them, and with paired-end data the mates of unaligned
-# reads too, at any '--mapq'. The 'bridge' fixtures hold a pair whose second
-# mate runs off the end of one contig into the next.
+# Define fixture and output paths.
+#
+# The helper must drop every unaligned read. In paired-end data, if its mate is
+# aligned, then that mate must also be dropped. This must hold at every
+# '--mapq', so the filtering cannot rely on MAPQ: BWA-backtrack flags the
+# 'bridge' fixtures' second mate as unaligned but gives it MAPQ 60. That mate
+# runs off the end of one contig into the next.
 dir_fx="${ROOT_REPO}/tests/fixtures/align_fastqs"
 in_se="${dir_fx}/fastq/se/tiny_se.atria.fastq.gz"
 in_pe_1="${dir_fx}/fastq/pe/tiny_pe_R1.atria.fastq.gz"
@@ -181,9 +184,10 @@ done
 
 
 # BWA ALN can flag one mate unaligned and leave its partner's mate-unaligned
-# flag clear, so a per-record '-F 12' keeps the partner. Check that the raw
-# 'bwa sampe' output of the bridge pair still has that shape: one 'brdg' record
-# carries 0x4 and the other lacks 0x8. Otherwise the rows below test nothing.
+# flag (0x8) clear, so a per-record '-F 12' keeps the partner. Check that the
+# raw 'bwa sampe' output of the bridge pair still has that shape: one 'brdg'
+# record carries 0x4 and the other lacks 0x8. Otherwise the rows below test
+# nothing.
 rc=0
 # shellcheck disable=SC2016  # Expand in the child shell, not this one.
 flg_raw="$(
@@ -213,7 +217,7 @@ else
 fi
 
 # Each aligner on the bridge pair keeps only whole templates, with or without
-# '--req_flg'. BWA ALN must drop 'brdg' whole. Bowtie 2 end-to-end leaves
+# '--req_flg'. BWA ALN must drop 'brdg' whole. Bowtie 2 'end-to-end' leaves
 # 'brdg' R2 unaligned and flags its partner, so it drops 'brdg' whole too. The
 # other aligners align R2 in part and keep 'brdg'.
 bwa_aln="--aligner bwa --bwa_alg aln --index ${idx_brg_bwa}"

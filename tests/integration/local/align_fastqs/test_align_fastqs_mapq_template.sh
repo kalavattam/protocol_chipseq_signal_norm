@@ -175,8 +175,8 @@ done
 
 # Without '-k', Bowtie 2 gives both mates one MAPQ and writes no supplementary
 # or secondary records, so the template filter cannot change its output. Assert
-# both, including on the chimeric reads in local mode, so that a change in what
-# Bowtie 2 writes shows here.
+# both, including on the chimeric reads aligned in local mode, so that a change
+# in what Bowtie 2 writes shows here.
 guard=(
     "bowtie2 end-to-end|pe|${bt2}"
     "bowtie2 local|pe|${bt2_loc}"

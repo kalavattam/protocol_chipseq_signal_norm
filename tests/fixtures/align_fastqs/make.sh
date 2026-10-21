@@ -543,10 +543,11 @@ bwa-mem2 mem "${idx_rpt_bm2}" "${fq_rpt_r1_gz}" "${fq_rpt_r2_gz}" \
 
 # Write name-grouped SAM records with secondary records for the MAPQ template
 # filter: at MAPQ 30, 'sec_keep' has passing primaries and a failing secondary,
-# and 'sec_drop' a failing primary and a passing secondary. 'unal_mate' (PE)
-# has an aligned R1 and an R2 flagged unaligned (0x4) whose partner lacks 0x8,
-# as 'bwa sampe' writes one (#75), and 'unal' (SE) is an unaligned read. Both
-# unaligned records keep MAPQ 60, so only the filter's '-F 4' drops them.
+# and 'sec_drop' a failing primary and a passing secondary. In the paired-end
+# file, 'unal_mate' has an aligned R1 and an R2 flagged unaligned (0x4). R1
+# lacks the mate-unaligned flag (0x8), the shape 'bwa sampe' writes (#75). In
+# the single-end file, 'unal' is an unaligned read. Both unaligned records keep
+# MAPQ 60, so only the unaligned bit (4) of the filter's '-F 2308' drops them.
 {
     write_sam_line '@HD' 'VN:1.6' 'SO:queryname'
     write_sam_line '@SQ' 'SN:chrR' "LN:${#seq_rpt}"
