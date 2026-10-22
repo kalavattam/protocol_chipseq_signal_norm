@@ -192,8 +192,8 @@ EOM
 
         # Options that take a value, by program.
         case "${arr_prn_ref[*]:0:idx}" in
-            bowtie2)                  opt_val="-p --seed -x -X -1 -2 -U" ;;
-            "samtools view")          opt_val="-@ -F -f -q -o -T -O -N" ;;
+            bowtie2)                  opt_val="-p --seed -x -I -X -1 -2 -U" ;;
+            "samtools view")          opt_val="-@ -F -f -q -o -U -T -O -N" ;;
             "samtools markdup")       opt_val="-@ -d -f" ;;
             samtools\ *)              opt_val="-@ -o" ;;
             "bwa mem"|"bwa-mem2 mem") opt_val="-t -K" ;;
@@ -483,15 +483,17 @@ function _validate_args_align_fastqs() {
     local bt2_X="${6:-}"
     local bt2_X_set="${7:-}"
     local bt2_inherited="${8:-}"
-    local bwa_alg="${9:-}"
-    local bwa_alg_set="${10:-}"
-    local mapq="${11:-}"
-    local req_flg="${12:-}"
-    local index="${13:-}"
-    local ref_fa="${14:-}"
-    local fq_1="${15:-}"
-    local fq_2="${16:-}"
-    local fil_out="${17:-}"
+    local bt2_relaxed="${9:-}"
+    local bwa_alg="${10:-}"
+    local bwa_alg_set="${11:-}"
+    local mapq="${12:-}"
+    local req_flg="${13:-}"
+    local unal_mode="${14:-}"
+    local index="${15:-}"
+    local ref_fa="${16:-}"
+    local fq_1="${17:-}"
+    local fq_2="${18:-}"
+    local fil_out="${19:-}"
     local out_fmt
     local show_help
 
@@ -499,7 +501,7 @@ function _validate_args_align_fastqs() {
 Usage
 -----
   _validate_args_align_fastqs
-    [--help] func threads aligner bt2_mode bt2_mode_set bt2_X bt2_X_set bt2_inherited bwa_alg bwa_alg_set mapq req_flg index ref_fa fq_1 fq_2 fil_out
+    [--help] func threads aligner bt2_mode bt2_mode_set bt2_X bt2_X_set bt2_inherited bt2_relaxed bwa_alg bwa_alg_set mapq req_flg unal_mode index ref_fa fq_1 fq_2 fil_out
 
   Validate the parsed arguments of 'align_fastqs()' before alignment.
 
@@ -532,31 +534,37 @@ Parameters
   08  bt2_inherited : bool
     Whether the caller asked for the earlier "inherited" Bowtie 2 paired-end call.
 
-  09  bwa_alg : str
+  09  bt2_relaxed : bool
+    Whether the caller asked for the relaxed Bowtie 2 paired-end call.
+
+  10  bwa_alg : str
     BWA algorithm: 'mem' or 'aln'.
 
-  10  bwa_alg_set : bool
+  11  bwa_alg_set : bool
     Whether the caller supplied '--bwa_alg'.
 
-  11  mapq : int
+  12  mapq : int
     MAPQ threshold.
 
-  12  req_flg : bool
+  13  req_flg : bool
     Whether properly paired alignments are required.
 
-  13  index : path
+  14  unal_mode : str
+    What to do with unaligned reads and their mates: 'remove' or 'separate'.
+
+  15  index : path
     Path to the aligner index/reference.
 
-  14  ref_fa : file
+  16  ref_fa : file
     Reference FASTA path; required for CRAM output, otherwise ignored with a warning.
 
-  15  fq_1 : file
+  17  fq_1 : file
     First FASTQ input file.
 
-  16  fq_2 : file
+  18  fq_2 : file
     Second FASTQ input file, or empty for single-end data.
 
-  17  fil_out : file
+  19  fil_out : file
     Path to the final alignment file.
 
 Returns
@@ -582,10 +590,12 @@ Examples
         1000 \\
         false \\
         false \\
+        false \\
         mem \\
         false \\
         1 \\
         false \\
+        remove \\
         tests/fixtures/align_fastqs/bowtie2/tiny \\
         '' \\
         tests/fixtures/align_fastqs/fastq/se/tiny_se.atria.fastq.gz \\
@@ -604,10 +614,12 @@ Examples
         1000 \\
         false \\
         false \\
+        false \\
         mem \\
         false \\
         30 \\
         true \\
+        remove \\
         tests/fixtures/align_fastqs/bwa-mem2/tiny.fa \\
         tests/fixtures/align_fastqs/reference/tiny.fa \\
         tests/fixtures/align_fastqs/fastq/pe/tiny_pe_R1.atria.fastq.gz \\
@@ -682,6 +694,16 @@ EOM
             "than or equal to 0."
         return 1
     fi
+
+    case "${unal_mode}" in
+        remove|separate) : ;;
+        *)
+            echo_err_func "${func}" \
+                "'--unal_mode' must be 'remove' or 'separate':" \
+                "'${unal_mode}'."
+            return 1
+            ;;
+    esac
 
     if [[ -z "${index}" ]]; then
         echo_err_func "${func}" \
@@ -799,11 +821,44 @@ EOM
         return 1
     fi
 
+    if [[ "${aligner}" != "bowtie2" && "${bt2_relaxed}" == "true" ]]; then
+        echo_err_func "${func}" \
+            "'--bt2_relaxed' is for '--aligner bowtie2'; it has no effect" \
+            "with '--aligner ${aligner}'."
+        return 1
+    fi
+
     # The inherited call passes no '-X', so '--bt2_X' would change nothing.
     if [[ "${bt2_X_set}" == "true" && "${bt2_inherited}" == "true" ]]; then
         echo_err_func "${func}" \
             "'--bt2_X' has no effect with '--bt2_inherited', which passes no" \
             "'-X'."
+        return 1
+    fi
+
+    # Each makes its own paired-end call, so they cannot be combined.
+    if [[ "${bt2_relaxed}" == "true" && "${bt2_inherited}" == "true" ]]; then
+        echo_err_func "${func}" \
+            "'--bt2_relaxed' cannot be combined with '--bt2_inherited'; each" \
+            "makes its own Bowtie 2 paired-end call."
+        return 1
+    fi
+
+    # The inherited call keeps '--no-unal', so Bowtie 2 writes no unaligned
+    # reads to separate.
+    if [[ "${unal_mode}" == "separate" && "${bt2_inherited}" == "true" ]]
+    then
+        echo_err_func "${func}" \
+            "'--unal_mode separate' has no effect with '--bt2_inherited'," \
+            "whose call writes no unaligned reads."
+        return 1
+    fi
+
+    # Relaxed pairing is a paired-end call; single-end input has no pairs.
+    if [[ -z "${fq_2}" && "${bt2_relaxed}" == "true" ]]; then
+        echo_err_func "${func}" \
+            "'--bt2_relaxed' is for paired-end input; it has no effect with" \
+            "single-end input."
         return 1
     fi
 
@@ -836,6 +891,20 @@ EOM
             "'--bt2_inherited' has no effect with single-end input and is" \
             "ignored."
     fi
+
+    # Per 'HELP.ALIAS.PUBLIC', a hidden measurement setting warns on every run,
+    # and so does a side file that is not for downstream use.
+    if [[ "${bt2_relaxed}" == "true" ]]; then
+        echo_warn_func "${func}" \
+            "'--bt2_relaxed' makes the relaxed Bowtie 2 paired-end call; its" \
+            "output measures pairing and is not for signal or scaling."
+    fi
+
+    if [[ "${unal_mode}" == "separate" ]]; then
+        echo_warn_func "${func}" \
+            "'--unal_mode separate' writes the unaligned reads and their" \
+            "mates to a side file, which is not for signal or scaling."
+    fi
 }
 
 
@@ -848,9 +917,11 @@ function _align_bowtie2() {
     local bt2_mode="${4:-}"
     local bt2_X="${5:-}"
     local bt2_inherited="${6:-}"
-    local index="${7:-}"
-    local fq_1="${8:-}"
-    local fq_2="${9:-}"
+    local bt2_relaxed="${7:-}"
+    local unal_mode="${8:-}"
+    local index="${9:-}"
+    local fq_1="${10:-}"
+    local fq_2="${11:-}"
     local -a arr_bt2 arr_sam
     local show_help
 
@@ -858,7 +929,7 @@ function _align_bowtie2() {
 Usage
 -----
   _align_bowtie2
-    [--help] func dry_run threads bt2_mode bt2_X bt2_inherited index fq_1 fq_2 [samtools_arg ...]
+    [--help] func dry_run threads bt2_mode bt2_X bt2_inherited bt2_relaxed unal_mode index fq_1 fq_2 [samtools_arg ...]
 
   Align paired- or single-end reads with Bowtie 2 and pipe the alignments to 'samtools view' with the caller's arguments (Step 1 of 'align_fastqs()').
 
@@ -885,16 +956,22 @@ Parameters
   06  bt2_inherited : bool
     Whether to make the earlier paired-end call ('--no-overlap --no-dovetail', no '-X') instead.
 
-  07  index : path
+  07  bt2_relaxed : bool
+    Whether to make the relaxed paired-end call ('-I 0 -X bt2_X', without '--no-mixed' or '--no-discordant') instead.
+
+  08  unal_mode : str
+    What happens to unaligned reads: 'remove' passes '--no-unal', so Bowtie 2 writes none; 'separate' does not.
+
+  09  index : path
     Bowtie 2 index stem.
 
-  08  fq_1 : file
+  10  fq_1 : file
     First FASTQ input file.
 
-  09  fq_2 : file
+  11  fq_2 : file
     Second FASTQ input file, or empty for single-end data.
 
-  10+  samtools_arg : str
+  12+  samtools_arg : str
     Arguments for 'samtools view', ending with its output path.
 
 Returns
@@ -919,6 +996,8 @@ Examples
         end-to-end \\
         1000 \\
         false \\
+        false \\
+        remove \\
         tests/fixtures/align_fastqs/bowtie2/tiny \\
         tests/fixtures/align_fastqs/fastq/se/tiny_se.atria.fastq.gz \\
         '' \\
@@ -934,6 +1013,8 @@ Examples
         local \\
         1000 \\
         false \\
+        false \\
+        remove \\
         tests/fixtures/align_fastqs/bowtie2/tiny \\
         tests/fixtures/align_fastqs/fastq/pe/tiny_pe_R1.atria.fastq.gz \\
         tests/fixtures/align_fastqs/fastq/pe/tiny_pe_R2.atria.fastq.gz \\
@@ -958,16 +1039,25 @@ EOM
         arr_bt2+=( --very-sensitive )
     fi
 
-    # Exclude unaligned reads from output.
-    arr_bt2+=( --no-unal --phred33 )
+    # Exclude unaligned reads from output, unless they are kept in a side file.
+    if [[ "${unal_mode}" == "remove" ]]; then arr_bt2+=( --no-unal ); fi
+    arr_bt2+=( --phred33 )
 
-    # Run Bowtie 2 with paired-end (top) or single-end (bottom) sequenced reads.
-    if [[ -n "${fq_2}" ]]; then
+    # Run Bowtie 2 with relaxed paired-end (top), paired-end (middle), or
+    # single-end (bottom) sequenced reads.
+    if [[ -n "${fq_2}" && "${bt2_relaxed}" == "true" ]]; then
+        # Hidden per 'HELP.ALIAS.PUBLIC'. The relaxed call drops the pairing
+        # options/filters, so non-standard pairs are written rather than lost,
+        # and what the options would otherwise remove can now be measured. '-X'
+        # sets the boundary between concordant and discordant pairs.
+        arr_bt2+=( -I 0 -X "${bt2_X}" )
+        arr_bt2+=( -1 "${fq_1}" -2 "${fq_2}" )
+    elif [[ -n "${fq_2}" ]]; then
         arr_bt2+=( --no-mixed --no-discordant )
 
         # Keep overlapping mates and bound the fragment length, unless asked
-        # for the earlier call, which drops overlapping mates and leaves '-X'
-        # at Bowtie 2's default of 500.
+        # for the earlier "inherited" call, which drops overlapping mates and
+        # leaves '-X' at Bowtie 2's default of 500.
         if [[ "${bt2_inherited}" == "true" ]]; then
             arr_bt2+=( --no-overlap --no-dovetail )
         else
@@ -979,7 +1069,7 @@ EOM
         arr_bt2+=( -U "${fq_1}" )
     fi
 
-    arr_sam=( samtools view "${@:10}" )
+    arr_sam=( samtools view "${@:12}" )
 
     if [[ "${dry_run}" == "true" ]]; then
         _print_dry_run_cmd arr_bt2 arr_sam
@@ -1345,12 +1435,14 @@ function _align_reads() {
     local bt2_mode="${5:-}"
     local bt2_X="${6:-}"
     local bt2_inherited="${7:-}"
-    local bwa_alg="${8:-}"
-    local req_flg="${9:-}"
-    local index="${10:-}"
-    local fq_1="${11:-}"
-    local fq_2="${12:-}"
-    local fil_wrk="${13:-}"
+    local bt2_relaxed="${8:-}"
+    local bwa_alg="${9:-}"
+    local req_flg="${10:-}"
+    local unal_mode="${11:-}"
+    local index="${12:-}"
+    local fq_1="${13:-}"
+    local fq_2="${14:-}"
+    local fil_wrk="${15:-}"
     local -a arr_sam
     local show_help
 
@@ -1358,9 +1450,9 @@ function _align_reads() {
 Usage
 -----
   _align_reads
-    [--help] func dry_run threads aligner bt2_mode bt2_X bt2_inherited bwa_alg req_flg index fq_1 fq_2 fil_wrk
+    [--help] func dry_run threads aligner bt2_mode bt2_X bt2_inherited bt2_relaxed bwa_alg req_flg unal_mode index fq_1 fq_2 fil_wrk
 
-  Build the 'samtools view' arguments that drop unaligned reads, then align with the selected aligner and write the BAM work file (Step 1 of 'align_fastqs()').
+  Build the 'samtools view' arguments that drop unaligned reads, then align with the selected aligner and write the BAM work file (Step 1 of 'align_fastqs()'). With 'unal_mode' 'separate', the dropped records are written instead to the path of 'fil_wrk' with '.setA.bam' for '.bam'.
 
 Parameters
 ----------
@@ -1388,22 +1480,28 @@ Parameters
   07  bt2_inherited : bool
     Whether to make the earlier Bowtie 2 paired-end call.
 
-  08  bwa_alg : str
+  08  bt2_relaxed : bool
+    Whether to make the relaxed Bowtie 2 paired-end call.
+
+  09  bwa_alg : str
     BWA algorithm: 'mem' or 'aln'.
 
-  09  req_flg : bool
+  10  req_flg : bool
     Whether properly paired alignments are required.
 
-  10  index : path
+  11  unal_mode : str
+    What to do with unaligned reads and their mates: 'remove' or 'separate'.
+
+  12  index : path
     Path to the aligner index/reference.
 
-  11  fq_1 : file
+  13  fq_1 : file
     First FASTQ input file.
 
-  12  fq_2 : file
+  14  fq_2 : file
     Second FASTQ input file, or empty for single-end data.
 
-  13  fil_wrk : file
+  15  fil_wrk : file
     BAM work file to write.
 
 Returns
@@ -1431,15 +1529,17 @@ Examples
         end-to-end \\
         1000 \\
         false \\
+        false \\
         mem \\
         true \\
+        remove \\
         tests/fixtures/align_fastqs/bowtie2/tiny \\
         tests/fixtures/align_fastqs/fastq/pe/tiny_pe_R1.atria.fastq.gz \\
         tests/fixtures/align_fastqs/fastq/pe/tiny_pe_R2.atria.fastq.gz \\
         work/tiny_pe.bam
     '''
 
-  2. Print without running the single-end calls with BWA-backtrack.
+  2. Print without running the single-end calls with BWA-backtrack, writing the unaligned reads to a separate work file.
     '''bash
     _align_reads \\
         align_fastqs \\
@@ -1449,8 +1549,10 @@ Examples
         end-to-end \\
         1000 \\
         false \\
+        false \\
         aln \\
         false \\
+        separate \\
         tests/fixtures/align_fastqs/bwa/tiny.fa \\
         tests/fixtures/align_fastqs/fastq/se/tiny_se.atria.fastq.gz \\
         '' \\
@@ -1469,17 +1571,28 @@ EOM
             "# Step 1: align the reads into the BAM work file."
     fi
 
-    # Drop unaligned reads with Samtools. In PE data, '-F 12' also drops a read
-    # whose mate is flagged unaligned. Samtools tests each record alone, so
-    # this keeps pairs whole only when both records' flags agree. BWA-backtrack
-    # can flag one mate unaligned and leave its partner's 0x8 clear, so Step 2
-    # drops any template left with one primary record.
+    # Drop unaligned reads with Samtools.
+    #
+    # In PE data, '-F 12' (0xC) also drops a read whose mate is flagged
+    # unaligned. Samtools tests each record alone, so this keeps pairs whole
+    # only when both records' flags agree. BWA-backtrack can flag one mate
+    # unaligned and leave its partner's 0x8 clear, so Step 2 drops any template
+    # left with one primary record.
     arr_sam=( -@ "${threads}" )
     if [[ -n "${fq_2}" ]]; then
         arr_sam+=( -F 12 )
-        if [[ "${req_flg}" == "true" ]]; then arr_sam+=( -f 2 ); fi
     else
         arr_sam+=( -F 4 )
+    fi
+
+    # With '--unal_mode separate', write the dropped records ("Set A") to their
+    # own work file for the side file, and require proper pairs only in Step 2,
+    # after the templates split between the two files are moved whole into Set
+    # A. Otherwise, require them here, as before.
+    if [[ "${unal_mode}" == "separate" ]]; then
+        arr_sam+=( -U "${fil_wrk%.bam}.setA.bam" )
+    elif [[ -n "${fq_2}" && "${req_flg}" == "true" ]]; then
+        arr_sam+=( -f 2 )
     fi
 
     # The MAPQ threshold is not applied here. A per-record '-q' can split a
@@ -1492,7 +1605,8 @@ EOM
     if [[ "${aligner}" == "bowtie2" ]]; then
         _align_bowtie2 \
             "${func}" "${dry_run}" "${threads}" "${bt2_mode}" "${bt2_X}" \
-            "${bt2_inherited}" "${index}" "${fq_1}" "${fq_2}" "${arr_sam[@]}" \
+            "${bt2_inherited}" "${bt2_relaxed}" "${unal_mode}" "${index}" \
+            "${fq_1}" "${fq_2}" "${arr_sam[@]}" \
             || return 1
     elif [[ "${aligner}" == "bwa" ]]; then
         if [[ "${bwa_alg}" == "mem" ]]; then
@@ -1515,6 +1629,253 @@ EOM
 }
 
 
+# Step 2 with '--unal_mode separate': sort Step 1's unaligned work file ("Set
+# A") by queryname, list its read names, and move every template with records
+# in both work files wholly into Set A; then fix mates in Set A.
+function _route_unal_bam() {
+    local func="${1:-}"
+    local dry_run="${2:-}"
+    local threads="${3:-}"
+    local fq_2="${4:-}"
+    local fil_wrk="${5:-}"
+    local bam_qnam="${6:-}"
+    local bam_set_a="${7:-}"
+    local txt_nam="${fil_wrk%.bam}.unal.names.txt"
+    local bam_srt bam_mov bam_kep bam_mrg bam_mate
+    local -a arr_cmd arr_view arr_cut arr_uniq
+    local show_help
+
+    show_help=$(cat << EOM
+Usage
+-----
+  _route_unal_bam
+    [--help] func dry_run threads fq_2 fil_wrk bam_qnam bam_set_a
+
+  Sort Step 1's unaligned work file ("Set A") by queryname and list its read names in the path of 'fil_wrk' with '.unal.names.txt' for '.bam', which Step 4 uses to split Set A back out (Step 2 of 'align_fastqs()' with '--unal_mode separate'). For paired-end data, move every record of 'bam_qnam' whose read name is in Set A into Set A, so that no template has records in both, then fix mates in Set A.
+
+  A template is moved by its read name, not by a count of its records, so the rule holds for any number of records per read.
+
+Parameters
+----------
+  -h, --help : flag
+    Display this help message and exit.
+
+  1  func : str
+    Name of the calling function for diagnostics.
+
+  2  dry_run : bool
+    Whether to print the commands to stdout instead of running them.
+
+  3  threads : int
+    Number of threads to use.
+
+  4  fq_2 : file
+    Second FASTQ input file, or empty for single-end data, which needs no moving and no mate fixing.
+
+  5  fil_wrk : file
+    BAM work file from Step 1; names the read-name list.
+
+  6  bam_qnam : file
+    Queryname-sorted BAM file of the aligned reads ("Set B"), rewritten without the moved records.
+
+  7  bam_set_a : file
+    Set A from Step 1, rewritten sorted by queryname, with the moved records and fixed mates.
+
+Returns
+-------
+  Returns 0 on success or after printing the commands for a dry run; prints an error and returns 1 otherwise.
+
+Notes
+-----
+  Runtime requirements:
+    - bash >= 4.4
+    - cut
+    - mv
+    - samtools
+    - uniq
+
+Examples
+--------
+  1. Move the templates split between the two work files of a paired-end run into Set A.
+    '''bash
+    _route_unal_bam \\
+        align_fastqs \\
+        false \\
+        2 \\
+        tests/fixtures/align_fastqs/fastq/pe/bridge_pe_R2.atria.fastq.gz \\
+        work/bridge.bam \\
+        work/bridge.qnam.bam \\
+        work/bridge.setA.bam
+    '''
+
+  2. Display the helper's argument contract.
+    '''bash
+    _route_unal_bam --help
+    '''
+EOM
+    )
+
+    if [[ "${func}" =~ ^(-h|--h[e]?lp)$ ]]; then
+        echo "${show_help}" >&2
+        return 0
+    fi
+
+    # Sort Set A by queryname, as Set B is.
+    bam_srt="${bam_set_a%.bam}.qnam.bam"
+    arr_cmd=(
+        samtools sort
+            -@ "${threads}"
+            -n
+            -o "${bam_srt}"
+            "${bam_set_a}"
+    )
+
+    if ! \
+        _run_or_print_cmd "${dry_run}" arr_cmd
+    then
+        echo_err_func "${func}" \
+            "Step #2: failed to queryname-sort the unaligned-read work file."
+        return 1
+    fi
+
+    arr_cmd=( mv -f "${bam_srt}" "${bam_set_a}" )
+
+    if ! \
+        _run_or_print_cmd "${dry_run}" arr_cmd
+    then
+        echo_err_func "${func}" \
+            "Step #2: failed to rename the queryname-sorted unaligned-read" \
+            "work file."
+        return 1
+    fi
+
+    # List Set A's read names once each; its records are grouped by name.
+    arr_view=( samtools view -@ "${threads}" "${bam_set_a}" )
+    arr_cut=( cut -f 1 )
+    arr_uniq=( uniq )
+
+    if [[ "${dry_run}" == "true" ]]; then
+        _print_dry_run_cmd --out "${txt_nam}" arr_view arr_cut arr_uniq
+    elif ! (
+        set -o pipefail
+        "${arr_view[@]}" | "${arr_cut[@]}" | "${arr_uniq[@]}" > "${txt_nam}"
+    ); then
+        rm -f "${txt_nam}"
+        echo_err_func "${func}" \
+            "Step #2: failed to list the read names in the unaligned-read" \
+            "work file."
+        return 1
+    fi
+
+    # A single-end read is one template, so none is split between the files.
+    if [[ -z "${fq_2}" ]]; then return 0; fi
+
+    # Move every Set B record whose read name is in Set A, so that, for
+    # example, a BWA-backtrack partner of an unaligned mate (#75) joins it.
+    bam_mov="${fil_wrk%.bam}.moved.bam"
+    bam_kep="${fil_wrk%.bam}.kept.bam"
+    arr_cmd=(
+        samtools view
+            -@ "${threads}"
+            -b
+            -N "${txt_nam}"
+            -o "${bam_mov}"
+            -U "${bam_kep}"
+            "${bam_qnam}"
+    )
+
+    if ! \
+        _run_or_print_cmd "${dry_run}" arr_cmd
+    then
+        echo_err_func "${func}" \
+            "Step #2: failed to move templates split between the work files."
+        return 1
+    fi
+
+    arr_cmd=( mv -f "${bam_kep}" "${bam_qnam}" )
+
+    if ! \
+        _run_or_print_cmd "${dry_run}" arr_cmd
+    then
+        echo_err_func "${func}" \
+            "Step #2: failed to rename the queryname-sorted BAM file without" \
+            "the moved templates."
+        return 1
+    fi
+
+    bam_mrg="${bam_set_a%.bam}.merge.bam"
+    arr_cmd=(
+        samtools merge
+            -@ "${threads}"
+            -n
+            -o "${bam_mrg}"
+            "${bam_set_a}"
+            "${bam_mov}"
+    )
+
+    if ! \
+        _run_or_print_cmd "${dry_run}" arr_cmd
+    then
+        echo_err_func "${func}" \
+            "Step #2: failed to merge the moved templates into the" \
+            "unaligned-read work file."
+        return 1
+    fi
+
+    arr_cmd=( mv -f "${bam_mrg}" "${bam_set_a}" )
+
+    if ! \
+        _run_or_print_cmd "${dry_run}" arr_cmd
+    then
+        echo_err_func "${func}" \
+            "Step #2: failed to rename the merged unaligned-read work file."
+        return 1
+    fi
+
+    arr_cmd=( rm -f "${bam_mov}" )
+
+    if ! \
+        _run_or_print_cmd "${dry_run}" arr_cmd
+    then
+        echo_err_func "${func}" \
+            "Step #2: failed to delete the moved-template work file."
+        return 1
+    fi
+
+    # Every template in Set A is now whole, so fixing its mates here gives
+    # what fixing them beside Set B would.
+    bam_mate="${bam_set_a%.bam}.mate.bam"
+    arr_cmd=(
+        samtools fixmate
+            -@ "${threads}"
+            -c
+            -m
+            "${bam_set_a}"
+            "${bam_mate}"
+    )
+
+    if ! \
+        _run_or_print_cmd "${dry_run}" arr_cmd
+    then
+        echo_err_func "${func}" \
+            "Step #2: failed to fix mate pairs in the unaligned-read work" \
+            "file."
+        return 1
+    fi
+
+    arr_cmd=( mv -f "${bam_mate}" "${bam_set_a}" )
+
+    if ! \
+        _run_or_print_cmd "${dry_run}" arr_cmd
+    then
+        echo_err_func "${func}" \
+            "Step #2: failed to rename the mate-fixed unaligned-read work" \
+            "file."
+        return 1
+    fi
+}
+
+
 # Step 2: sort the BAM work file by queryname, fix mates if the file holds
 # paired-end alignments, and keep or drop each template whole by its primary
 # records' MAPQ.
@@ -1524,10 +1885,12 @@ function _sort_qname_bam() {
     local threads="${3:-}"
     local aligner="${4:-}"
     local mapq="${5:-}"
-    local fq_2="${6:-}"
-    local fil_wrk="${7:-}"
-    local bam_qnam="${8:-}"
-    local bam_mate bam_mapq n_pri
+    local req_flg="${6:-}"
+    local unal_mode="${7:-}"
+    local fq_2="${8:-}"
+    local fil_wrk="${9:-}"
+    local bam_qnam="${10:-}"
+    local bam_mate bam_mapq bam_pp bam_set_a bam_mrg n_pri
     local -a arr_cmd
     local show_help
 
@@ -1535,9 +1898,11 @@ function _sort_qname_bam() {
 Usage
 -----
   _sort_qname_bam
-    [--help] func dry_run threads aligner mapq fq_2 fil_wrk bam_qnam
+    [--help] func dry_run threads aligner mapq req_flg unal_mode fq_2 fil_wrk bam_qnam
 
   Sort the BAM work file by queryname into 'bam_qnam' and fix mates for paired-end data (Step 2 of 'align_fastqs()'). Then keep or drop each template whole by whether its primary records pass 'mapq', for every aligner and layout. A paired-end template that lost a mate in Step 1 is dropped too.
+
+  With 'unal_mode' 'separate', first move every template with records in Step 1's unaligned work file ("Set A") wholly into Set A, then require proper pairs in the rest if 'req_flg' is 'true'. Fix mates in Set A on its own, and merge it back into 'bam_qnam' after the MAPQ filter, so that Step 4 marks duplicates in both sets together.
 
 Parameters
 ----------
@@ -1559,13 +1924,19 @@ Parameters
   5  mapq : int
     MAPQ threshold that a template's primary records must pass.
 
-  6  fq_2 : file
+  6  req_flg : bool
+    Whether properly paired alignments are required; used here only with 'unal_mode' 'separate', since Step 1 applies it otherwise.
+
+  7  unal_mode : str
+    What to do with unaligned reads and their mates: 'remove' or 'separate'.
+
+  8  fq_2 : file
     Second FASTQ input file, or empty for single-end data; selects mate fixing.
 
-  7  fil_wrk : file
+  9  fil_wrk : file
     BAM work file from Step 1.
 
-  8  bam_qnam : file
+  10  bam_qnam : file
     Queryname-sorted BAM file to write.
 
 Returns
@@ -1577,8 +1948,10 @@ Notes
   Runtime requirements:
     - awk
     - bash >= 4.4
+    - cut
     - mv
     - samtools
+    - uniq
 
 Examples
 --------
@@ -1590,12 +1963,14 @@ Examples
         2 \\
         bwa \\
         1 \\
+        false \\
+        remove \\
         tests/fixtures/align_fastqs/fastq/pe/tiny_pe_R2.atria.fastq.gz \\
         work/tiny_pe.bam \\
         work/tiny_pe.qnam.bam
     '''
 
-  2. Print, without running, the queryname sort and template filter of a single-end Bowtie 2 work file.
+  2. Print, without running, the queryname sort and template filter of a single-end Bowtie 2 work file whose unaligned reads go to a side file.
     '''bash
     _sort_qname_bam \\
         align_fastqs \\
@@ -1603,6 +1978,8 @@ Examples
         1 \\
         bowtie2 \\
         1 \\
+        false \\
+        separate \\
         '' \\
         work/tiny_se.bam \\
         work/tiny_se.qnam.bam
@@ -1640,6 +2017,57 @@ EOM
                 "Step #2: failed to queryname-sort ${aligner}-aligned BAM" \
                 "file."
             return 1
+        fi
+
+        # With '--unal_mode separate', move templates split between the two
+        # work files into Set A, then require proper pairs in what remains.
+        # '-f 2' runs before 'fixmate', as in Step 1, so that the aligner's
+        # own 0x2 decides.
+        if [[ "${unal_mode}" == "separate" ]]; then
+            bam_set_a="${fil_wrk%.bam}.setA.bam"
+
+            if ! \
+                _route_unal_bam \
+                    "${func}" \
+                    "${dry_run}" \
+                    "${threads}" \
+                    "${fq_2}" \
+                    "${fil_wrk}" \
+                    "${bam_qnam}" \
+                    "${bam_set_a}"
+            then
+                return 1
+            fi
+
+            if [[ -n "${fq_2}" && "${req_flg}" == "true" ]]; then
+                bam_pp="${fil_wrk%.bam}.pp.bam"
+                arr_cmd=(
+                    samtools view
+                        -@ "${threads}"
+                        -b
+                        -f 2
+                        -o "${bam_pp}"
+                        "${bam_qnam}"
+                )
+
+                if ! \
+                    _run_or_print_cmd "${dry_run}" arr_cmd
+                then
+                    echo_err_func "${func}" \
+                        "Step #2: failed to keep properly paired alignments."
+                    return 1
+                fi
+
+                arr_cmd=( mv -f "${bam_pp}" "${bam_qnam}" )
+
+                if ! \
+                    _run_or_print_cmd "${dry_run}" arr_cmd
+                then
+                    echo_err_func "${func}" \
+                        "Step #2: failed to rename properly paired BAM file."
+                    return 1
+                fi
+            fi
         fi
 
         if [[ -n "${fq_2}" ]]; then
@@ -1709,6 +2137,50 @@ EOM
                 "Step #2: failed to rename MAPQ-filtered, queryname-sorted" \
                 "BAM file."
             return 1
+        fi
+
+        # Merge Set A back in, so that Step 4 marks duplicates in the whole
+        # library; Step 4 then splits it out again as the side file.
+        if [[ "${unal_mode}" == "separate" ]]; then
+            bam_mrg="${fil_wrk%.bam}.merge.bam"
+            arr_cmd=(
+                samtools merge
+                    -@ "${threads}"
+                    -n
+                    -o "${bam_mrg}"
+                    "${bam_qnam}"
+                    "${bam_set_a}"
+            )
+
+            if ! \
+                _run_or_print_cmd "${dry_run}" arr_cmd
+            then
+                echo_err_func "${func}" \
+                    "Step #2: failed to merge the unaligned reads and their" \
+                    "mates back into the queryname-sorted BAM file."
+                return 1
+            fi
+
+            arr_cmd=( mv -f "${bam_mrg}" "${bam_qnam}" )
+
+            if ! \
+                _run_or_print_cmd "${dry_run}" arr_cmd
+            then
+                echo_err_func "${func}" \
+                    "Step #2: failed to rename merged, queryname-sorted BAM" \
+                    "file."
+                return 1
+            fi
+
+            arr_cmd=( rm -f "${bam_set_a}" )
+
+            if ! \
+                _run_or_print_cmd "${dry_run}" arr_cmd
+            then
+                echo_err_func "${func}" \
+                    "Step #2: failed to delete the unaligned-read work file."
+                return 1
+            fi
         fi
 
     else
@@ -2008,7 +2480,8 @@ function _mark_dup_bam() {
     local fil_wrk="${4:-}"
     local txt_mrk="${5:-}"
     local dist_nam="${6:-}"
-    local bam_mrk dist_opt rc_opt
+    local idx="${7:-true}"
+    local bam_mrk dist_opt hdr_mrk rc_opt
     local -a arr_cmd arr_opt
     local show_help
 
@@ -2016,7 +2489,7 @@ function _mark_dup_bam() {
 Usage
 -----
   _mark_dup_bam
-    [--help] func dry_run threads fil_wrk txt_mrk dist_nam
+    [--help] func dry_run threads fil_wrk txt_mrk dist_nam [idx]
 
   Mark duplicate alignments in the coordinate-sorted BAM work file, write the duplicate statistics, and index the file again, skipping files already marked (Step 4 of 'align_fastqs()').
 
@@ -2044,6 +2517,9 @@ Parameters
 
   6  dist_nam : str
     Name of the variable to set to the optical duplicate distance, '2500', or to 'not used' and the reason; set to empty when the file was already marked.
+
+  7  idx : bool
+    Whether to index the marked file; 'false' with '--unal_mode separate', whose split rewrites the file at once and whose two files Step 5 indexes (default: '${idx}').
 
 Returns
 -------
@@ -2088,9 +2564,14 @@ EOM
     fi
 
     if [[ "${dry_run}" == "true" ]]; then
+        hdr_mrk="# Step 4: mark duplicates and index the BAM work file again."
+        if [[ "${idx}" == "false" ]]; then
+            hdr_mrk="# Step 4: mark duplicates, then split out the side file."
+        fi
+
         # Note: weird line break is necessary fror output text formatting.
         printf '\n%s %s\n%s\n' \
-            "# Step 4: mark duplicates and index the BAM work file again." \
+            "${hdr_mrk}" \
             "'-d 2500' only if" \
             "# all read names carry flow-cell coordinates of one format."
     fi
@@ -2186,7 +2667,10 @@ EOM
                 return 1
             fi
 
-            # Index the duplicate-marked coordinate-sorted BAM file.
+            # Index the duplicate-marked coordinate-sorted BAM file, unless
+            # the side file's split rewrites it at once.
+            if [[ "${idx}" == "false" ]]; then return 0; fi
+
             arr_cmd=( samtools index -@ "${threads}" "${fil_wrk}" )
 
             if ! \
@@ -2206,6 +2690,133 @@ EOM
 }
 
 
+# Step 4 with '--unal_mode separate': split the unaligned reads and their mates
+# ("Set A") out of the duplicate-marked BAM work file into the side file.
+function _split_unal_bam() {
+    local func="${1:-}"
+    local dry_run="${2:-}"
+    local threads="${3:-}"
+    local fil_wrk="${4:-}"
+    local fil_unal="${5:-}"
+    local txt_nam="${fil_wrk%.bam}.unal.names.txt"
+    local bam_main
+    local -a arr_cmd
+    local show_help
+
+    show_help=$(cat << EOM
+Usage
+-----
+  _split_unal_bam
+    [--help] func dry_run threads fil_wrk fil_unal
+
+  Move every record of the duplicate-marked BAM work file whose read name is in Set A, as listed by Step 2 beside 'fil_wrk' (with '.unal.names.txt' for '.bam'), into the side file 'fil_unal', and keep the rest in 'fil_wrk' (Step 4 of 'align_fastqs()' with '--unal_mode separate'). Both stay coordinate-sorted; Step 5 indexes them.
+
+Parameters
+----------
+  -h, --help : flag
+    Display this help message and exit.
+
+  1  func : str
+    Name of the calling function for diagnostics.
+
+  2  dry_run : bool
+    Whether to print the commands to stdout instead of running them.
+
+  3  threads : int
+    Number of threads to use.
+
+  4  fil_wrk : file
+    Duplicate-marked, coordinate-sorted BAM work file holding both sets.
+
+  5  fil_unal : file
+    BAM side file to write.
+
+Returns
+-------
+  Returns 0 on success or after printing the commands for a dry run; prints an error and returns 1 otherwise.
+
+Notes
+-----
+  Runtime requirements:
+    - bash >= 4.4
+    - mv
+    - rm
+    - samtools
+
+  - After Step 2's moves, no read name is in both sets, so the split is exact.
+
+Examples
+--------
+  1. Split the side file out of a paired-end work file.
+    '''bash
+    _split_unal_bam \\
+        align_fastqs \\
+        false \\
+        2 \\
+        work/bridge.bam \\
+        work/bridge.unal.bam
+    '''
+
+  2. Display the helper's argument contract.
+    '''bash
+    _split_unal_bam --help
+    '''
+EOM
+    )
+
+    if [[ "${func}" =~ ^(-h|--h[e]?lp)$ ]]; then
+        echo "${show_help}" >&2
+        return 0
+    fi
+
+    if [[ "${dry_run}" == "true" ]]; then
+        printf '%s\n' \
+            "# Split the unaligned reads and their mates into the side file."
+    fi
+
+    bam_main="${fil_wrk%.bam}.main.bam"
+    arr_cmd=(
+        samtools view
+            -@ "${threads}"
+            -b
+            -N "${txt_nam}"
+            -o "${fil_unal}"
+            -U "${bam_main}"
+            "${fil_wrk}"
+    )
+
+    if ! \
+        _run_or_print_cmd "${dry_run}" arr_cmd
+    then
+        echo_err_func "${func}" \
+            "Step #4: failed to split the unaligned reads and their mates" \
+            "into the side file."
+        return 1
+    fi
+
+    arr_cmd=( mv -f "${bam_main}" "${fil_wrk}" )
+
+    if ! \
+        _run_or_print_cmd "${dry_run}" arr_cmd
+    then
+        echo_err_func "${func}" \
+            "Step #4: failed to rename the BAM work file without the side" \
+            "file's records."
+        return 1
+    fi
+
+    arr_cmd=( rm -f "${txt_nam}" )
+
+    if ! \
+        _run_or_print_cmd "${dry_run}" arr_cmd
+    then
+        echo_err_func "${func}" \
+            "Step #4: failed to delete the unaligned-read name list."
+        return 1
+    fi
+}
+
+
 # Build the pipeline record ('OUTPUT.ALIGNMENT.RECORD') that Step 5 writes into
 # the header of the BAM work file as '@CO' lines.
 function _build_align_record() {
@@ -2217,15 +2828,17 @@ function _build_align_record() {
     local bt2_mode="${6:-}"
     local bt2_X="${7:-}"
     local bt2_inherited="${8:-}"
-    local bwa_alg="${9:-}"
-    local mapq="${10:-}"
-    local req_flg="${11:-}"
-    local index="${12:-}"
-    local ref_fa="${13:-}"
-    local fq_1="${14:-}"
-    local fq_2="${15:-}"
-    local fil_out="${16:-}"
-    local qname="${17:-}"
+    local bt2_relaxed="${9:-}"
+    local bwa_alg="${10:-}"
+    local mapq="${11:-}"
+    local req_flg="${12:-}"
+    local unal_mode="${13:-}"
+    local index="${14:-}"
+    local ref_fa="${15:-}"
+    local fq_1="${16:-}"
+    local fq_2="${17:-}"
+    local fil_out="${18:-}"
+    local qname="${19:-}"
     local md5_idx md5_ref md5_fq_1 md5_fq_2 prg_aln pkg_aln pkg_sam
     local -a arr_pth
     local show_help
@@ -2234,7 +2847,7 @@ function _build_align_record() {
 Usage
 -----
   _build_align_record
-    [--help] func cnt_nam run_nam threads aligner bt2_mode bt2_X bt2_inherited bwa_alg mapq req_flg index ref_fa fq_1 fq_2 fil_out qname
+    [--help] func cnt_nam run_nam threads aligner bt2_mode bt2_X bt2_inherited bt2_relaxed bwa_alg mapq req_flg unal_mode index ref_fa fq_1 fq_2 fil_out qname
 
   Fill two named arrays with the '@CO' lines of the pipeline record for 'align_fastqs()': one with the 'pipeline:' lines for what determines the file's content, the other with the 'pipeline-run:' lines for the run's context.
 
@@ -2267,31 +2880,37 @@ Parameters
   08  bt2_inherited : bool
     Whether the earlier Bowtie 2 paired-end call is made.
 
-  09  bwa_alg : str
+  09  bt2_relaxed : bool
+    Whether the relaxed Bowtie 2 paired-end call is made.
+
+  10  bwa_alg : str
     BWA algorithm: 'mem' or 'aln'.
 
-  10  mapq : int
+  11  mapq : int
     MAPQ threshold.
 
-  11  req_flg : bool
+  12  req_flg : bool
     Whether properly paired alignments are required.
 
-  12  index : path
+  13  unal_mode : str
+    What is done with unaligned reads and their mates: 'remove' or 'separate'.
+
+  14  index : path
     Path to the aligner index/reference.
 
-  13  ref_fa : file
+  15  ref_fa : file
     Reference FASTA, recorded only for CRAM output, or empty.
 
-  14  fq_1 : file
+  16  fq_1 : file
     First FASTQ input file.
 
-  15  fq_2 : file
+  17  fq_2 : file
     Second FASTQ input file, or empty for single-end data.
 
-  16  fil_out : file
+  18  fil_out : file
     Path to the final alignment file.
 
-  17  qname : bool
+  19  qname : bool
     Whether a queryname-sorted copy is also written.
 
 Returns
@@ -2327,9 +2946,11 @@ Examples
         end-to-end \\
         1000 \\
         false \\
+        false \\
         mem \\
         1 \\
         false \\
+        remove \\
         tests/fixtures/align_fastqs/bowtie2/tiny \\
         '' \\
         tests/fixtures/align_fastqs/fastq/se/tiny_se.atria.fastq.gz \\
@@ -2391,6 +3012,15 @@ EOM
             elif [[ -n "${fq_2}" ]]; then
                 cnt_ref+=( $'@CO\tpipeline: --bt2_X='"${bt2_X}" )
             fi
+
+            # Per 'HELP.ALIAS.PUBLIC', the hidden measurement setting records
+            # itself and its warning.
+            if [[ -n "${fq_2}" && "${bt2_relaxed}" == "true" ]]; then
+                cnt_ref+=(
+                    $'@CO\tpipeline: --bt2_relaxed=true'
+                    $'@CO\tpipeline: warning=not for signal or scaling'
+                )
+            fi
             ;;
 
         bwa)
@@ -2409,6 +3039,7 @@ EOM
     if [[ -n "${fq_2}" ]]; then
         cnt_ref+=( $'@CO\tpipeline: --req_flg='"${req_flg}" )
     fi
+    cnt_ref+=( $'@CO\tpipeline: --unal_mode='"${unal_mode}" )
 
     # Each input is named and then identified by the checksum of its bytes, so
     # a rebuild can confirm it has the same files rather than the same names.
@@ -2641,6 +3272,7 @@ function _finalize_align_output() {
     local qname="${8:-}"
     local bam_qnam="${9:-}"
     local fil_qnam_out="${10:-}"
+    local hdr="${11:-true}"
     local -a arr_cmd
     local show_help
 
@@ -2648,7 +3280,7 @@ function _finalize_align_output() {
 Usage
 -----
   _finalize_align_output
-    [--help] func dry_run threads out_fmt fil_out fil_wrk ref_fa qname bam_qnam fil_qnam_out
+    [--help] func dry_run threads out_fmt fil_out fil_wrk ref_fa qname bam_qnam fil_qnam_out [hdr]
 
   With 'qname', name-sort the final, duplicate-marked BAM work file into a queryname-sorted copy; then convert the work file and the copy to CRAM when requested, or rename the copy into place (Step 6 of 'align_fastqs()').
 
@@ -2686,6 +3318,9 @@ Parameters
 
   10  fil_qnam_out : file
     Path for the queryname-sorted output.
+
+  11  hdr : bool
+    Whether a dry run prints the step's heading; 'false' for the side file, which follows the main output (default: '${hdr}').
 
 Returns
 -------
@@ -2739,7 +3374,7 @@ EOM
         return 0
     fi
 
-    if [[ "${dry_run}" == "true" ]]; then
+    if [[ "${dry_run}" == "true" && "${hdr}" == "true" ]]; then
         printf '\n%s\n' \
             "# Step 6: write the final output and the retained files."
 
@@ -2858,14 +3493,16 @@ EOM
 
 
 function align_fastqs() {
-    local dry_run threads aligner bt2_mode bt2_X bt2_inherited bwa_alg mapq
-    local req_flg index ref_fa
+    local dry_run threads aligner bt2_mode bt2_X bt2_inherited bt2_relaxed
+    local bwa_alg mapq req_flg unal_mode index ref_fa
     local bt2_mode_set bt2_X_set bwa_alg_set
     local fq_1 fq_2 fil_out qname out_fmt
     local fil_wrk fil_qnam_out bam_qnam txt_mrk dist_mrk
+    local fil_unal_wrk fil_unal_out fil_unal_qnam_out bam_unal_qnam lin_opt
+    local idx_mrk
 
     # shellcheck disable=SC2034  # Filled and read by name in the helpers.
-    local -a arr_rec_cnt arr_rec_run
+    local -a arr_rec_cnt arr_rec_run arr_rec_unal
     local show_help
 
     # Assign default argument values.
@@ -2877,11 +3514,13 @@ function align_fastqs() {
     bt2_X=1000
     bt2_X_set=false
     bt2_inherited=false
+    bt2_relaxed=false
     bwa_alg="mem"
     bwa_alg_set=false
     ref_fa=""
     mapq=1
     req_flg=false
+    unal_mode="remove"
     fq_1=""
     fq_2=""
     fil_out=""
@@ -2891,7 +3530,7 @@ function align_fastqs() {
 Usage
 -----
   align_fastqs
-    [--help] [--dry_run] [--threads <int>] [--aligner <aligner>] [--bt2_mode <mode>] [--bt2_X <int>] [--bwa_alg <algorithm>] [--mapq <int>] [--req_flg] --index <path> [--ref_fa <file>] --fq_1 <file> [--fq_2 <file>] --fil_out <file> [--qname]
+    [--help] [--dry_run] [--threads <int>] [--aligner <aligner>] [--bt2_mode <mode>] [--bt2_X <int>] [--bwa_alg <algorithm>] [--mapq <int>] [--req_flg] [--unal_mode <mode>] --index <path> [--ref_fa <file>] --fq_1 <file> [--fq_2 <file>] --fil_out <file> [--qname]
 
   Align single- or paired-end Illumina short reads using Bowtie 2, BWA, or BWA-MEM2, and convert the output to a sorted, duplicate-marked, mate-fixed (if working with paired-end reads) alignment file using Samtools.
 
@@ -2936,6 +3575,15 @@ Parameters
   -rq, --req_flg : flag
     Require SAM flag bit 2 for properly paired alignments. Ignored with a warning for single-end data.
 
+  -um, --unal_mode : {'remove', 'separate'}
+    What to do with unaligned reads and, in paired-end data, their mates: 'remove' or 'separate' (default: '${unal_mode}'). With 'remove', they are dropped. With 'separate', they are also written to a side file, '<stem>.unal.bam' or '<stem>.unal.cram', and the alignment file holds the same records as with 'remove'. Refused as 'separate' with '--bt2_inherited', whose call writes no unaligned reads.
+
+    With single-end data, the side file holds the reads flagged unaligned (SAM flag 4). With Bowtie 2 and paired-end data, it holds the pairs that did not align as concordant pairs, which Bowtie 2 writes with both mates unaligned even when one mate could align alone. With BWA or BWA-MEM2 and paired-end data, it holds the records flagged unaligned or with an unaligned mate. When BWA-backtrack flags one mate unaligned but leaves its partner's mate flag clear, the partner goes to the side file beside its mate.
+
+    Each read pair is kept whole: when any record of a pair belongs in the side file, all of the pair's records go there. '--mapq' and '--req_flg' apply only to the alignment file (as both judge aligned pairs and would remove every pair the side file holds).
+
+    The side file is coordinate-sorted, indexed, and duplicate-marked. It carries the pipeline record and follows the alignment file into CRAM and into a '--qname' copy. It is not for signal or scaling.
+
   -ix, --idx, --index : path
     Path to the aligner index/reference.
 
@@ -2962,6 +3610,8 @@ Output
 ------
   Creates a final '.bam' or '.cram' file at '--fil_out'. A corresponding index ('.bai' or '.crai') is also created.
 
+  With '--unal_mode separate', also creates the side file '<stem>.unal.bam' or '<stem>.unal.cram' with its index and, with '--qname', its '<stem>.unal.qnam.bam' or '<stem>.unal.qnam.cram' copy.
+
 Notes
 -----
   Runtime requirements:
@@ -2976,13 +3626,14 @@ Notes
 
   - For '--index' when using Bowtie 2, the path should end with the index stem: 'path/to/dir/stem'; when using 'bwa' or 'bwa-mem2', the path should be the indexed reference FASTA path (for example, '.fa').
   - '--bwa_alg' is used only when '--aligner bwa'. It is refused with '--aligner bowtie2'; with '--aligner bwa-mem2', which always runs 'bwa-mem2 mem', 'mem' is ignored with a warning and 'aln' is refused.
-  - Unaligned reads are excluded from the output; with paired-end data, so are the mates of unaligned reads.
+  - Unaligned reads are excluded from the output; with paired-end data, so are the mates of unaligned reads. With '--unal_mode separate', they are written to the side file instead.
   - With Bowtie 2 and paired-end data, mates may overlap or contain one another, so fragments shorter than the two reads together are kept; mates that extend past each other ("dovetailed") are not.
   - Duplicates are marked (SAM flag 1024) in Step #4, after MAPQ filtering, and kept.
     + Like any other read, '--mapq' filters them by the MAPQ the aligner gave them.
     + When every read name carries Illumina flow-cell coordinates ('...:tile:x:y') in one format, duplicates on the same tile as their original and within 2500 pixels of it in x and y are tagged as optical ('dt:Z:SQ'); the rest are tagged as library duplicates ('dt:Z:LB').
     + Otherwise, as with most SRA-dumped names, no 'dt' tags are written and a warning says why.
     + Duplicate statistics are written to '<stem>.markdup.txt.gz' beside the alignment file; Samtools estimates library size for paired-end data only. The file's last line, 'OPTICAL DISTANCE:', gives 2500 when optical duplicates were told apart, or 'not used' and the reason.
+    + With '--unal_mode separate', duplicates are marked in the alignment file and the side file together, so an aligned mate in the side file can be marked as a duplicate of a read in the alignment file. The alignment file's records and flags are the same as with 'remove'; the statistics cover both files.
   - Bowtie 2 runs with '--reorder', so its output order does not depend on the thread count. It also runs with '--seed 0', its default, which the record gives as 'bt2_seed=0'.
     + Which of several equally good alignments a read gets depends on the seed and on the read's sequence, qualities, and whole FASTQ header line, so renaming reads can move them.
     + For paired-end data, the two mates' seeds are combined, which cancels the seed and any header text identical in both mates; only header differences between the mates move pairs.
@@ -3087,6 +3738,15 @@ EOM
                 shift 1
                 ;;
 
+            # Hidden per 'HELP.ALIAS.PUBLIC': a measurement setting that makes
+            # the relaxed Bowtie 2 PE call ('-I 0 -X <bt2_X>', without
+            # '--no-mixed' or '--no-discordant') to measure how many pairs the
+            # default call's pairing options remove.
+            -2r|--bt2[_-]relaxed)
+                bt2_relaxed=true
+                shift 1
+                ;;
+
             -ba|--bwa[_-]alg)
                 require_optarg "${1}" "${2:-}" "${FUNCNAME[0]}" || {
                     echo >&2
@@ -3111,6 +3771,16 @@ EOM
             -rq|--req[_-]flg)
                 req_flg=true
                 shift 1
+                ;;
+
+            -um|--unal[_-]mode)
+                require_optarg "${1}" "${2:-}" "${FUNCNAME[0]}" || {
+                    echo >&2
+                    echo "${show_help}" >&2
+                    return 1
+                }
+                unal_mode="${2,,}"
+                shift 2
                 ;;
 
             -ix|--idx|--index)
@@ -3188,10 +3858,12 @@ EOM
         "${bt2_X}" \
         "${bt2_X_set}" \
         "${bt2_inherited}" \
+        "${bt2_relaxed}" \
         "${bwa_alg}" \
         "${bwa_alg_set}" \
         "${mapq}" \
         "${req_flg}" \
+        "${unal_mode}" \
         "${index}" \
         "${ref_fa}" \
         "${fq_1}" \
@@ -3217,6 +3889,16 @@ EOM
     bam_qnam="${fil_wrk%.bam}.qnam.bam"
     txt_mrk="${fil_wrk%.bam}.markdup.txt"
 
+    # The side file of '--unal_mode separate' takes the same stem with '.unal'.
+    fil_unal_wrk="${fil_wrk%.bam}.unal.bam"
+    fil_unal_out="${fil_unal_wrk}"
+    fil_unal_qnam_out="${fil_unal_wrk%.bam}.qnam.bam"
+    if [[ "${out_fmt}" == "cram" ]]; then
+        fil_unal_out="${fil_out%.cram}.unal.cram"
+        fil_unal_qnam_out="${fil_out%.cram}.unal.qnam.cram"
+    fi
+    bam_unal_qnam="${fil_unal_wrk%.bam}.qnam.bam"
+
     # Build the pipeline record now, so that its start time is the run's.
     _build_align_record \
         "${FUNCNAME[0]}" \
@@ -3227,9 +3909,11 @@ EOM
         "${bt2_mode}" \
         "${bt2_X}" \
         "${bt2_inherited}" \
+        "${bt2_relaxed}" \
         "${bwa_alg}" \
         "${mapq}" \
         "${req_flg}" \
+        "${unal_mode}" \
         "${index}" \
         "${ref_fa}" \
         "${fq_1}" \
@@ -3239,7 +3923,27 @@ EOM
         || return 1
 
 
-    # Step 1: align the reads into the BAM work file, dropping unaligned reads.
+    # With '--unal_mode separate', the unaligned reads and their mates
+    # ("Set A") travel beside the aligned reads ("Set B"):
+    # - Step 1 writes Sets A and B to their own work files.
+    # - Step 2 moves every template with records in both sets into Set A, then
+    #   fixes mates in each set.
+    #   + Step 2 then filters Set B alone, as '--mapq' and '--req_flg' judge
+    #     aligned pairs and would otherwise remove every template in Set A.
+    #   + After filtering Set B, Set A is merged into Set B.
+    # - Step 3 sorts the union of Sets A and B.
+    # - Step 4 marks duplicates in the union, then splits Set A out as the side
+    #   file (e.g., for QC analyses, etc.).
+    #   + The union is not indexed here, since the split rewrites it at once.
+    # - Step 5 writes the pipeline record into each file and indexes each. The
+    #   side file's record also says what it holds.
+    # - Step 6 converts each file to CRAM, and makes a '--qname' copy of each,
+    #   when asked.
+    #
+    # With '--unal_mode remove', Set A is dropped in Step 1.
+
+    # Step 1: align the reads into the BAM work file, dropping unaligned reads
+    # or, with '--unal_mode separate', setting them aside.
     _align_reads \
         "${FUNCNAME[0]}" \
         "${dry_run}" \
@@ -3248,8 +3952,10 @@ EOM
         "${bt2_mode}" \
         "${bt2_X}" \
         "${bt2_inherited}" \
+        "${bt2_relaxed}" \
         "${bwa_alg}" \
         "${req_flg}" \
+        "${unal_mode}" \
         "${index}" \
         "${fq_1}" \
         "${fq_2}" \
@@ -3265,6 +3971,8 @@ EOM
         "${threads}" \
         "${aligner}" \
         "${mapq}" \
+        "${req_flg}" \
+        "${unal_mode}" \
         "${fq_2}" \
         "${fil_wrk}" \
         "${bam_qnam}" \
@@ -3281,7 +3989,12 @@ EOM
         || return 1
 
 
-    # Step 4: mark duplicates and index the BAM work file again.
+    # Step 4: mark duplicates and index the BAM work file again. With
+    # '--unal_mode separate', split the side file out instead of indexing;
+    # Step 5 indexes both files.
+    idx_mrk=true
+    if [[ "${unal_mode}" == "separate" ]]; then idx_mrk=false; fi
+
     _mark_dup_bam \
         "${FUNCNAME[0]}" \
         "${dry_run}" \
@@ -3289,22 +4002,41 @@ EOM
         "${fil_wrk}" \
         "${txt_mrk}" \
         dist_mrk \
+        "${idx_mrk}" \
         || return 1
+
+    # With '--unal_mode separate', split the side file back out.
+    if [[ "${unal_mode}" == "separate" ]]; then
+        _split_unal_bam \
+            "${FUNCNAME[0]}" \
+            "${dry_run}" \
+            "${threads}" \
+            "${fil_wrk}" \
+            "${fil_unal_wrk}" \
+            || return 1
+    fi
 
 
     # Step 5: write the pipeline record, with whether optical duplicates were
-    # told apart, into the header and index the BAM work file again.
+    # told apart, into the header and index the BAM work file again. The side
+    # file of '--unal_mode separate' carries the same record, plus what it
+    # holds; in each, the optical line ends the content lines.
     if [[ "${dist_mrk}" == "2500" ]]; then
-        arr_rec_cnt+=( $'@CO\tpipeline: optical_distance=2500' )
+        lin_opt=$'@CO\tpipeline: optical_distance=2500'
     elif [[ -n "${dist_mrk}" ]]; then
-        arr_rec_cnt+=(
-            $'@CO\tpipeline: skipped=optical duplicates ('"${dist_mrk})"
-        )
+        lin_opt=$'@CO\tpipeline: skipped=optical duplicates ('"${dist_mrk})"
     else
-        arr_rec_cnt+=(
-            $'@CO\tpipeline: optical_distance=unknown (marked earlier)'
-        )
+        lin_opt=$'@CO\tpipeline: optical_distance=unknown (marked earlier)'
     fi
+
+    # shellcheck disable=SC2034  # Read by name in '_write_align_record'.
+    arr_rec_unal=(
+        "${arr_rec_cnt[@]}"
+        $'@CO\tpipeline: content=unaligned reads and their mates'
+        $'@CO\tpipeline: warning=not for signal or scaling'
+        "${lin_opt}"
+    )
+    arr_rec_cnt+=( "${lin_opt}" )
 
     _write_align_record \
         "${FUNCNAME[0]}" \
@@ -3314,6 +4046,17 @@ EOM
         arr_rec_cnt \
         arr_rec_run \
         || return 1
+
+    if [[ "${unal_mode}" == "separate" ]]; then
+        _write_align_record \
+            "${FUNCNAME[0]}" \
+            "${dry_run}" \
+            "${threads}" \
+            "${fil_unal_wrk}" \
+            arr_rec_unal \
+            arr_rec_run \
+            || return 1
+    fi
 
 
     # Step 6: convert to CRAM if requested; with '--qname', name-sort the final
@@ -3330,6 +4073,22 @@ EOM
         "${bam_qnam}" \
         "${fil_qnam_out}" \
         || return 1
+
+    if [[ "${unal_mode}" == "separate" ]]; then
+        _finalize_align_output \
+            "${FUNCNAME[0]}" \
+            "${dry_run}" \
+            "${threads}" \
+            "${out_fmt}" \
+            "${fil_unal_out}" \
+            "${fil_unal_wrk}" \
+            "${ref_fa}" \
+            "${qname}" \
+            "${bam_unal_qnam}" \
+            "${fil_unal_qnam_out}" \
+            false \
+            || return 1
+    fi
 }
 
 

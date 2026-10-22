@@ -289,6 +289,7 @@ add_row \
     --bt2_X=1000 \
     --mapq=1 \
     --req_flg=false \
+    --unal_mode=remove \
     --qname=true \
     --index=tiny \
     "index_md5=${m_idx_bt2}" \
@@ -306,6 +307,7 @@ add_row \
     --bt2_inherited=true \
     --mapq=1 \
     --req_flg=true \
+    --unal_mode=remove \
     --qname=false \
     --index=tiny \
     "index_md5=${m_idx_bt2}" \
@@ -321,6 +323,7 @@ add_row \
     --bt2_mode=local \
     bt2_seed=0 \
     --mapq=1 \
+    --unal_mode=remove \
     --qname=false \
     --index=tiny \
     "index_md5=${m_idx_bt2}" \
@@ -337,6 +340,7 @@ add_row \
     bwa_K=100000000 \
     --mapq=0 \
     --req_flg=false \
+    --unal_mode=remove \
     --qname=false \
     --index=tiny.fa \
     "index_md5=${m_idx_bwa}" \
@@ -351,6 +355,7 @@ add_row \
     --aligner=bwa \
     --bwa_alg=aln \
     --mapq=20 \
+    --unal_mode=remove \
     --qname=false \
     --index=tiny.fa \
     "index_md5=${m_idx_bwa}" \
@@ -366,11 +371,34 @@ add_row \
     bwa_K=100000000 \
     --mapq=1 \
     --req_flg=false \
+    --unal_mode=remove \
     --qname=true \
     --index=tiny.fa \
     "index_md5=${m_idx_bm2}" \
     --ref_fa=tiny.fa \
     "ref_fa_md5=${m_ref}" \
+    "${arr_in_pe[@]}"
+
+# The hidden '--bt2_relaxed' records itself and its warning; with
+# '--unal_mode separate', so does the side file, checked below.
+add_row \
+    "Bowtie 2 PE, '--bt2_relaxed', '--unal_mode separate'" \
+    bt2_rlx.bam \
+    "--aligner bowtie2 --index ${idx_bt2} ${a_pe} -2r -um separate" \
+    "pkg_bowtie2=${pkg_bt2}" \
+    "pkg_samtools=${pkg_sam}" \
+    --aligner=bowtie2 \
+    --bt2_mode=end-to-end \
+    bt2_seed=0 \
+    --bt2_X=1000 \
+    --bt2_relaxed=true \
+    "warning=not for signal or scaling" \
+    --mapq=1 \
+    --req_flg=false \
+    --unal_mode=separate \
+    --qname=false \
+    --index=tiny \
+    "index_md5=${m_idx_bt2}" \
     "${arr_in_pe[@]}"
 
 for idx in "${!arr_rows[@]}"; do
@@ -468,6 +496,33 @@ for idx in "${!arr_rows[@]}"; do
         record_pass "${lbl}: the record's temporary files are removed"
     fi
 done
+
+# The side file of the last row carries the alignment file's record, its
+# '--unal_mode=separate' included, plus what it holds, with the alignment
+# file's run lines.
+idx=$(( ${#arr_rows[@]} - 1 ))
+IFS='|' read -r lbl nam arg lin <<< "${arr_rows[idx]}"
+IFS=';' read -r -a arr_lin <<< "${lin}"
+fil_out="${tmp}/out_${idx}/${nam}"
+fil_unal="${fil_out%.bam}.unal.bam"
+
+if [[ -s "${fil_unal}" ]]; then
+    check_record "${lbl}, side file" "${fil_unal}" \
+        "$(
+            print_cnt_exp \
+                "${arr_lin[@]}" \
+                "content=unaligned reads and their mates" \
+                "warning=not for signal or scaling"
+        )" \
+        "$(
+            print_pth_exp \
+                index "${idx_bt2}" fq_1 "${in_pe_1}" fq_2 "${in_pe_2}" \
+                fil_out "${fil_out}"
+        )" \
+        1
+else
+    record_fail "${lbl}: no side file '${fil_unal}'"
+fi
 
 
 # A dry run prints the content lines a real run writes.
@@ -616,6 +671,7 @@ else
         --bt2_mode=global \
         bt2_seed=0 \
         --mapq=0 \
+        --unal_mode=remove \
         --qname=false \
         --index=tiny \
         "index_md5=${m_idx_bt2}" \

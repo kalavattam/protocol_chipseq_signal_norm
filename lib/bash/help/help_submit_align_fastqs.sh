@@ -24,7 +24,7 @@ Usage
   submit_align_fastqs.sh
     [--help] [--dry_run]
     [--env_nam <str>] [--dir_scr <dir>] [--threads <int>]
-    [--aligner <spec>] [--bt2_mode <spec>] [--bt2_X <int>] [--bwa_alg <spec>] [--mapq <int>] [--req_flg]
+    [--aligner <spec>] [--bt2_mode <spec>] [--bt2_X <int>] [--bwa_alg <spec>] [--mapq <int>] [--req_flg] [--unal_mode <mode>]
     --index <path> --csv_fil_in <csv> [--ref_fa <file>]
     --dir_out <dir> [--out_ext <format>]
     [--qname] [--sfx_se <str>] [--sfx_pe <str>]
@@ -94,6 +94,15 @@ Parameters
 
     Ignored with a warning when every entry is single-end.
 
+  -um, --unal_mode : {'remove', 'separate'}
+    What to do with unaligned reads and, in paired-end data, their mates: 'remove' or 'separate' (default: '${unal_mode}'). With 'remove', they are dropped. With 'separate', they are also written to a side file beside each alignment file, '<stem>.unal.bam' or '<stem>.unal.cram', and the alignment file holds the same records as with 'remove'. Refused as 'separate' with '--bt2_inherited', whose call writes no unaligned reads.
+
+    With single-end data, the side file holds the reads flagged unaligned (SAM flag 4). With Bowtie 2 and paired-end data, it holds the pairs that did not align as concordant pairs, which Bowtie 2 writes with both mates unaligned even when one mate could align alone. With BWA or BWA-MEM2 and paired-end data, it holds the records flagged unaligned or with an unaligned mate. When BWA-backtrack flags one mate unaligned but leaves its partner's mate flag clear, the partner goes to the side file beside its mate.
+
+    Each read pair is kept whole: when any record of a pair belongs in the side file, all of the pair's records go there. '--mapq' and '--req_flg' apply only to the alignment file (as both judge aligned pairs and would remove every pair the side file holds).
+
+    The side file is coordinate-sorted, indexed, and duplicate-marked. It carries the pipeline record and follows the alignment file into CRAM and into a '--qname' copy. It is not for signal or scaling.
+
   -ix, --index : path
     Path to the aligner index/reference.
 
@@ -152,6 +161,7 @@ Notes
     + When every read name carries Illumina flow-cell coordinates ('...:tile:x:y') in one format, duplicates on the same tile as their original and within 2500 pixels of it in x and y are tagged as optical ('dt:Z:SQ'); the rest are tagged as library duplicates ('dt:Z:LB').
     + Otherwise, as with most SRA-dumped names, no 'dt' tags are written and a warning says why.
     + Duplicate statistics are written to '<stem>.markdup.txt.gz' beside the alignment file; Samtools estimates library size for paired-end data only. The file's last line, 'OPTICAL DISTANCE:', gives 2500 when optical duplicates were told apart, or 'not used' and the reason.
+    + With '--unal_mode separate', duplicates are marked in the alignment file and the side file together, so an aligned mate in the side file can be marked as a duplicate of a read in the alignment file. The alignment file's records and flags are the same as with 'remove'; the statistics cover both files.
   - Bowtie 2 runs with '--reorder', so its output order does not depend on the thread count. It also runs with '--seed 0', its default, which the record gives as 'bt2_seed=0'.
     + Which of several equally good alignments a read gets depends on the seed and on the read's sequence, qualities, and whole FASTQ header line, so renaming reads can move them.
     + For paired-end data, the two mates' seeds are combined, which cancels the seed and any header text identical in both mates; only header differences between the mates move pairs.

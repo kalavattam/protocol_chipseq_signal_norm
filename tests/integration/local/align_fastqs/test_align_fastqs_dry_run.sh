@@ -349,6 +349,120 @@ ${lin}    -1 ${in_pe_1} \\
 done
 
 
+# Bowtie 2, paired-end, the hidden '--bt2_relaxed' ('-2r'): '-I 0 -X <bt2_X>'
+# without the pairing options, with the preset from '--bt2_mode'. Bowtie 2
+# keeps '--no-unal' unless '--unal_mode separate' ('-um') keeps the unaligned
+# reads, which Step 1 then writes with '-U'. The record gives each setting.
+t="${tmp}/rlx"
+for arm in \
+    "-2r|--very-sensitive|--no-unal|1000|" \
+    "-2r --bt2_X 2000|--very-sensitive|--no-unal|2000|" \
+    "-2r --bt2_mode local|--very-sensitive-local|--no-unal|1000|" \
+    "-2r -um separate|--very-sensitive||1000|-U"
+do
+    IFS='|' read -r arg pst unl x_len set_a <<< "${arm}"
+    read -r -a args <<< "${arg}"
+    lin_unl=""
+    if [[ -n "${unl}" ]]; then lin_unl="    ${unl} \\"$'\n'; fi
+    lin_u=""
+    if [[ -n "${set_a}" ]]; then
+        lin_u="        -U ${t}.setA.bam \\"$'\n'
+    fi
+
+    out="$(
+        run_helper \
+            --dry_run \
+            --threads 1 \
+            --aligner bowtie2 \
+            --index "${idx_bt2}" \
+            --fq_1 "${in_pe_1}" \
+            --fq_2 "${in_pe_2}" \
+            "${args[@]}" \
+            --fil_out "${t}.bam" 2> /dev/null
+    )" || true
+
+    exp="# Step 1: align the reads into the BAM work file.
+bowtie2 \\
+    -p 1 \\
+    --reorder \\
+    --seed 0 \\
+    -x ${idx_bt2} \\
+    ${pst} \\
+${lin_unl}    --phred33 \\
+    -I 0 \\
+    -X ${x_len} \\
+    -1 ${in_pe_1} \\
+    -2 ${in_pe_2} \\
+    | samtools view \\
+        -@ 1 \\
+        -F 12 \\
+${lin_u}        -o ${t}.bam"
+
+    check_block \
+        "Bowtie 2 PE dry run with '${arg}' prints the relaxed call" \
+        "${exp}" \
+        "$(print_step 1 "${out}")"
+
+    if [[
+        "${out}" == *"pipeline: --bt2_X=${x_len}'"*
+        && "${out}" == *"pipeline: --bt2_relaxed=true'"*
+        && "${out}" == *"pipeline: warning=not for signal or scaling'"*
+    ]]; then
+        record_pass "Bowtie 2 PE dry run with '${arg}' records the settings"
+    else
+        record_fail "Bowtie 2 PE dry run with '${arg}' lacks its record lines"
+    fi
+done
+
+# With '--req_flg', '--unal_mode remove' requires proper pairs in Step 1, as
+# before; 'separate' requires them in Step 2, after the routing, and Step 4
+# splits the side file out without indexing the file it rewrites at once.
+t="${tmp}/req"
+for mod in remove separate; do
+    out="$(
+        run_helper \
+            --dry_run \
+            --threads 1 \
+            --aligner bowtie2 \
+            --index "${idx_bt2}" \
+            --fq_1 "${in_pe_1}" \
+            --fq_2 "${in_pe_2}" \
+            --req_flg \
+            --unal_mode "${mod}" \
+            --fil_out "${t}.${mod}.bam" 2> /dev/null
+    )" || true
+    st1="$(print_step 1 "${out}")"
+    st2="$(print_step 2 "${out}")"
+    st4="$(print_step 4 "${out}")"
+
+    if [[ "${mod}" == "remove" ]]; then
+        if [[
+            "${st1}" == *$'    --no-unal \\\n'*
+            && "${st1}" == *$'        -F 12 \\\n        -f 2 \\\n'*
+            && "${st2}" != *"-f 2"*
+            && "${out}" != *"setA"*
+            && "${out}" != *".unal."*
+        ]]; then
+            record_pass "dry run with '--req_flg' and 'remove' is unchanged"
+        else
+            record_fail "dry run with '--req_flg' and 'remove' changed"
+        fi
+    elif [[
+        "${st1}" != *"--no-unal"*
+        && "${st1}" != *"-f 2"*
+        && "${st1}" == *"-U ${t}.separate.setA.bam"*
+        && "${st2}" == *"-N ${t}.separate.unal.names.txt"*
+        && "${st2}" == *$'    -f 2 \\\n'*
+        && "${st4}" == *"-o ${t}.separate.unal.bam"*
+        && "${st4}" != *"samtools index"*
+    ]]; then
+        record_pass "dry run with '--req_flg' and 'separate' moves '-f 2'"
+    else
+        record_fail "dry run with '--req_flg' and 'separate' is wrong"
+    fi
+done
+
+
 # BWA-backtrack, paired-end, '--mapq 20': the '.sai' redirects, their removal,
 # and the template filter's pipeline.
 t="${tmp}/aln"

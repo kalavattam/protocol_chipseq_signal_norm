@@ -238,4 +238,89 @@ if [[ -s "${out_2}" ]]; then
         "execute GNU Parallel Bowtie 2 BAM 2 contains expected read name"
 fi
 
+
+# Run a mixed list through GNU Parallel with '--unal_mode separate' and the
+# hidden '--bt2_relaxed': each entry writes its side file, and only the
+# paired-end entry gets the relaxed call, so the single-end entry is neither
+# refused nor warned about it.
+dir_mix="${tmp}/mix"
+mkdir -p "${dir_mix}/in" "${dir_mix}/out" "${dir_mix}/logs"
+cp "${dir_fx}/fastq/se/pairs_se.atria.fastq.gz" "${dir_mix}/in/"
+cp \
+    "${dir_fx}/fastq/pe/pairs_pe_R1.atria.fastq.gz" \
+    "${dir_fx}/fastq/pe/pairs_pe_R2.atria.fastq.gz" \
+    "${dir_mix}/in/"
+csv_mix="${dir_mix}/in/pairs_se.atria.fastq.gz"
+csv_mix+=";${dir_mix}/in/pairs_pe_R1.atria.fastq.gz"
+csv_mix+=",${dir_mix}/in/pairs_pe_R2.atria.fastq.gz"
+log_mix="${dir_log}/execute_align_fastqs_parallel_unal_mode.log"
+
+if \
+    run_capture \
+        "execute align-fastqs GNU Parallel '--unal_mode separate' run" \
+        "${log_mix}" \
+        "${TEST_BASH}" "${ROOT_REPO}/bin/execute_align_fastqs.sh" \
+            --env_nam "${env_nam}" \
+            --threads 1 \
+            --aligner bowtie2 \
+            --bt2_relaxed \
+            --unal_mode separate \
+            --index "${dir_fx}/bowtie2/pairs" \
+            --csv_fil_in "${csv_mix}" \
+            --dir_out "${dir_mix}/out" \
+            --out_ext bam \
+            --sfx_se ".atria.fastq.gz" \
+            --sfx_pe "_pe_R1.atria.fastq.gz" \
+            --dir_eo "${dir_mix}/logs" \
+            --nam_job "test_execute_align_parallel_unal" \
+            --max_job 2
+then
+    record_pass "execute GNU Parallel '--unal_mode separate' run exits 0"
+else
+    record_fail \
+        "execute GNU Parallel '--unal_mode separate' run failed; see" \
+        "$(print_relpath "${log_mix}")"
+fi
+
+# Each entry's side file holds its unaligned reads; the paired-end entry's
+# relaxed call keeps 'pair_one' with its R1 aligned.
+declare -A unal_exp=(
+    [pairs_se]="se_none "
+    [pairs]="pair_none pair_one "
+)
+for samp in pairs_se pairs; do
+    fil_unal="${dir_mix}/out/${samp}.unal.bam"
+    got="$(
+        run_samtools view "${fil_unal}" 2> /dev/null \
+            | cut -f 1 | sort -u | tr '\n' ' '
+    )" || true
+
+    if [[ -s "${fil_unal}.bai" && "${got}" == "${unal_exp[${samp}]}" ]]; then
+        record_pass "GNU Parallel '${samp}' side file holds '${got% }'"
+    else
+        record_fail \
+            "GNU Parallel '${samp}' side file holds '${got}', expected" \
+            "'${unal_exp[${samp}]}'"
+    fi
+done
+
+# The relaxed call reached the paired-end entry alone, and nothing warned
+# that an option had no effect.
+hdr_se="$(
+    run_samtools view -H "${dir_mix}/out/pairs_se.bam" 2> /dev/null || true
+)"
+hdr_pe="$(
+    run_samtools view -H "${dir_mix}/out/pairs.bam" 2> /dev/null || true
+)"
+if [[
+    "${hdr_pe}" == *$'pipeline: --bt2_relaxed=true\n'*
+    && "${hdr_se}" != *"bt2_relaxed"*
+    && "$(cat "${dir_mix}/logs/"*.txt "${log_mix}" 2> /dev/null)" \
+        != *"has no effect"*
+]]; then
+    record_pass "GNU Parallel passes '--bt2_relaxed' to the PE entry alone"
+else
+    record_fail "GNU Parallel passed '--bt2_relaxed' wrongly, or warned"
+fi
+
 finish

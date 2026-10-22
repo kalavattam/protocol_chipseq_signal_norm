@@ -220,19 +220,21 @@ function run_alignment() {
     local bt2_mode="${3:-}"
     local bt2_X="${4:-}"
     local bt2_inherited="${5:-}"
-    local bwa_alg="${6:-}"
-    local mapq="${7:-}"
-    local req_flg="${8:-}"
-    local index="${9:-}"
-    local ref_fa="${10:-}"
-    local fq_1="${11:-}"
-    local fq_2="${12:-}"
-    local fil_out="${13:-}"
-    local qname="${14:-}"
-    local dir_eo="${15:-}"
-    local nam_job="${16:-}"
-    local samp="${17:-}"
-    local dry_run="${18:-false}"
+    local bt2_relaxed="${6:-}"
+    local bwa_alg="${7:-}"
+    local mapq="${8:-}"
+    local req_flg="${9:-}"
+    local unal_mode="${10:-}"
+    local index="${11:-}"
+    local ref_fa="${12:-}"
+    local fq_1="${13:-}"
+    local fq_2="${14:-}"
+    local fil_out="${15:-}"
+    local qname="${16:-}"
+    local dir_eo="${17:-}"
+    local nam_job="${18:-}"
+    local samp="${19:-}"
+    local dry_run="${20:-false}"
     local log_out log_err
     local -a cmd_aln
     local show_help
@@ -242,7 +244,7 @@ function run_alignment() {
 Usage
 -----
   run_alignment
-    [--help] threads aligner bt2_mode bt2_X bt2_inherited bwa_alg mapq req_flg index ref_fa fq_1 fq_2 fil_out qname dir_eo nam_job samp [dry_run]
+    [--help] threads aligner bt2_mode bt2_X bt2_inherited bt2_relaxed bwa_alg mapq req_flg unal_mode index ref_fa fq_1 fq_2 fil_out qname dir_eo nam_job samp [dry_run]
 
   Construct log-file paths and then run 'align_fastqs.sh::align_fastqs', writing stdout to
 
@@ -272,43 +274,49 @@ Parameters
   05  bt2_inherited : bool
     Whether to make the earlier Bowtie 2 paired-end call.
 
-  06  bwa_alg : {'mem', 'aln'}
+  06  bt2_relaxed : bool
+    Whether to make the relaxed Bowtie 2 paired-end call.
+
+  07  bwa_alg : {'mem', 'aln'}
     BWA algorithm when '--aligner bwa': 'mem' or 'aln'.
 
-  07  mapq : int
+  08  mapq : int
     MAPQ threshold for filtering alignment output files, always passed to 'align_fastqs'; 0 disables MAPQ-based filtering.
 
-  08  req_flg : flag
+  09  req_flg : flag
     Require SAM flag bit 2 for properly paired alignments.
 
-  09  index : path
+  10  unal_mode : {'remove', 'separate'}
+    What to do with unaligned reads and their mates, or empty to leave the default of 'align_fastqs'.
+
+  11  index : path
     Path to the aligner index/reference.
 
-  10  ref_fa : file
+  12  ref_fa : file
     Reference FASTA file for CRAM output; ignored for BAM output.
 
-  11  fq_1 : file
+  13  fq_1 : file
     First FASTQ input file.
 
-  12  fq_2 : file
+  14  fq_2 : file
     Second FASTQ input file, or 'NA' for single-end data.
 
-  13  fil_out : file
+  15  fil_out : file
     Output file path; must end in '.bam' or '.cram'.
 
-  14  qname : flag
+  16  qname : flag
     Also write a queryname-sorted copy of the final alignment file.
 
-  15  dir_eo : dir
+  17  dir_eo : dir
     Directory for stderr and stdout log files.
 
-  16  nam_job : str
+  18  nam_job : str
     Job name used in log-file naming.
 
-  17  samp : str
+  19  samp : str
     Sample name used in log-file naming.
 
-  18  dry_run : bool
+  20  dry_run : bool
     Whether to print the 'align_fastqs' call with its log redirections, then run it with '--dry_run', which prints its commands to stdout and writes no files or logs (default: '${dry_run}').
 
 Returns
@@ -330,7 +338,8 @@ Notes
   - This helper is a thin wrapper around 'align_fastqs'.
   - '--fq_2' is passed only when 'fq_2 != NA'.
   - '--req_flg' is passed only when its value is 'true' and 'fq_2' is not 'NA'.
-  - '--bt2_X' is passed only when 'bt2_X' is not empty and 'fq_2' is not 'NA'; the earlier call is asked for only when 'bt2_inherited' is 'true' and 'fq_2' is not 'NA'.
+  - '--bt2_X' is passed only when 'bt2_X' is not empty and 'fq_2' is not 'NA'; the earlier or the relaxed call is asked for only when 'bt2_inherited' or 'bt2_relaxed' is 'true' and 'fq_2' is not 'NA'.
+  - '--unal_mode' is passed only when 'unal_mode' is not empty.
   - '--qname' is passed only when its value is 'true'.
   - '--ref_fa' is passed only when 'fil_out' ends in '.cram'.
 
@@ -349,9 +358,11 @@ Examples
         global \\
         '' \\
         false \\
+        false \\
         mem \\
         0 \\
         false \\
+        '' \\
         tests/fixtures/align_fastqs/bowtie2/tiny \\
         '' \\
         tests/fixtures/align_fastqs/fastq/se/tiny_se.atria.fastq.gz NA \\
@@ -409,6 +420,14 @@ EOM
 
     if [[ "${bt2_inherited}" == "true" && "${fq_2}" != "NA" ]]; then
         cmd_aln+=( --bt2_inherited )
+    fi
+
+    if [[ "${bt2_relaxed}" == "true" && "${fq_2}" != "NA" ]]; then
+        cmd_aln+=( --bt2_relaxed )
+    fi
+
+    if [[ -n "${unal_mode}" ]]; then
+        cmd_aln+=( --unal_mode "${unal_mode}" )
     fi
 
     if [[ "${fil_out}" == *.cram ]]; then
@@ -527,12 +546,15 @@ function init_arg_defs() {
     bt2_X=1000
     bt2_X_set=false
     bt2_inherited=false
+    bt2_relaxed=false
     bwa_alg="mem"
     bwa_alg_set=false
     ref_fa=""
     out_ext="bam"
     mapq=1
     req_flg=false
+    unal_mode="remove"
+    unal_mode_set=false
     index=""
     csv_fil_in=""
     dir_out=""
@@ -633,6 +655,15 @@ function parse_args() {
                 shift 1
                 ;;
 
+            # Hidden per 'HELP.ALIAS.PUBLIC': a measurement setting that makes
+            # the relaxed Bowtie 2 PE call ('-I 0 -X <bt2_X>', without
+            # '--no-mixed' or '--no-discordant') to measure how many pairs the
+            # default call's pairing options remove.
+            -2r|--bt2[_-]relaxed)
+                bt2_relaxed=true
+                shift 1
+                ;;
+
             -ba|--bwa[_-]alg)
                 require_optarg "${1}" "${2:-}" "main" || {
                     echo >&2
@@ -657,6 +688,17 @@ function parse_args() {
             -rq|--req[_-]flg)
                 req_flg=true
                 shift 1
+                ;;
+
+            -um|--unal[_-]mode)
+                require_optarg "${1}" "${2:-}" "main" || {
+                    echo >&2
+                    help_submit_align_fastqs
+                    return 1
+                }
+                unal_mode="${2,,}"
+                unal_mode_set=true
+                shift 2
                 ;;
 
             -ix|--index)
@@ -783,6 +825,15 @@ function validate_args() {
     check_int_pos    "${threads}" "threads" || return 1
     check_int_nonneg "${mapq}"    "mapq"    || return 1
 
+    case "${unal_mode}" in
+        remove|separate) : ;;
+        *)
+            echo_err \
+                "'--unal_mode' must be 'remove' or 'separate': '${unal_mode}'."
+            return 1
+            ;;
+    esac
+
     case "${aligner}" in
         bowtie2|bwa|bwa-mem2) : ;;
         *)
@@ -849,6 +900,7 @@ function check_opts_mode() {
         --bt2_mode "${bt2_mode_set}" \
         --bt2_X "${bt2_X_set}" \
         --bt2_inherited "${bt2_inherited}" \
+        --bt2_relaxed "${bt2_relaxed}" \
         || return 1
 
     # The inherited call passes no '-X', so '--bt2_X' would change nothing.
@@ -856,6 +908,33 @@ function check_opts_mode() {
         echo_err \
             "'--bt2_X' has no effect with '--bt2_inherited', which passes no" \
             "'-X'."
+        return 1
+    fi
+
+    # Each makes its own paired-end call, so they cannot be combined.
+    if [[ "${bt2_relaxed}" == "true" && "${bt2_inherited}" == "true" ]]; then
+        echo_err \
+            "'--bt2_relaxed' cannot be combined with '--bt2_inherited'; each" \
+            "makes its own Bowtie 2 paired-end call."
+        return 1
+    fi
+
+    # The inherited call keeps '--no-unal', so Bowtie 2 writes no unaligned
+    # reads to separate.
+    if [[ "${unal_mode}" == "separate" && "${bt2_inherited}" == "true" ]]
+    then
+        echo_err \
+            "'--unal_mode separate' has no effect with '--bt2_inherited'," \
+            "whose call writes no unaligned reads."
+        return 1
+    fi
+
+    # Relaxed pairing is a paired-end call; with no paired-end entry, it has
+    # nothing to change.
+    if [[ "${bt2_relaxed}" == "true" && "${csv_fil_in}" != *,* ]]; then
+        echo_err \
+            "'--bt2_relaxed' is for paired-end input; it has no effect with" \
+            "single-end input."
         return 1
     fi
 
@@ -908,6 +987,7 @@ function check_opts_mode() {
 
     # A default is not passed on, so 'align_fastqs' applies its own.
     if [[ "${bt2_X_set}" != "true" ]]; then bt2_X=""; fi
+    if [[ "${unal_mode_set}" != "true" ]]; then unal_mode=""; fi
 
     # Each suffix names the files of one layout, so it is required when an
     # entry has that layout and is not passed on otherwise.
@@ -942,11 +1022,13 @@ function print_state_debug() {
             "bt2_mode=${bt2_mode}" \
             "bt2_X=${bt2_X}" \
             "bt2_inherited=${bt2_inherited}" \
+            "bt2_relaxed=${bt2_relaxed}" \
             "bwa_alg=${bwa_alg}" \
             "ref_fa=${ref_fa}" \
             "out_ext=${out_ext}" \
             "mapq=${mapq}" \
             "req_flg=${req_flg}" \
+            "unal_mode=${unal_mode}" \
             "index=${index}" \
             "csv_fil_in=${csv_fil_in}" \
             "dir_out=${dir_out}" \
@@ -1025,11 +1107,11 @@ function run_job() {
 
     if ! \
         run_alignment \
-            "${threads}"       "${aligner}" "${bt2_mode}" "${bt2_X}" \
-            "${bt2_inherited}" "${bwa_alg}" "${mapq}"     "${req_flg}" \
-            "${index}"         "${ref_fa}"  "${fq_1}"     "${fq_2}" \
-            "${fil_out}"       "${qname}"   "${dir_eo}"   "${nam_job}" \
-            "${samp}"          "${dry_run}"
+            "${threads}"       "${aligner}"     "${bt2_mode}" "${bt2_X}" \
+            "${bt2_inherited}" "${bt2_relaxed}" "${bwa_alg}"  "${mapq}" \
+            "${req_flg}"       "${unal_mode}"   "${index}"    "${ref_fa}" \
+            "${fq_1}"          "${fq_2}"        "${fil_out}"  "${qname}" \
+            "${dir_eo}"        "${nam_job}"     "${samp}"     "${dry_run}"
     then
         echo_err "failed to perform alignment."
         return 1
@@ -1102,11 +1184,11 @@ function run_job_slurm() {
 
     if ! \
         run_alignment \
-            "${threads}"       "${aligner}" "${bt2_mode}" "${bt2_X}" \
-            "${bt2_inherited}" "${bwa_alg}" "${mapq}"     "${req_flg}" \
-            "${index}"         "${ref_fa}"  "${fq_1}"     "${fq_2}" \
-            "${fil_out}"       "${qname}"   "${dir_eo}"   "${nam_job}" \
-            "${samp}"          "${dry_run}"
+            "${threads}"       "${aligner}"     "${bt2_mode}" "${bt2_X}" \
+            "${bt2_inherited}" "${bt2_relaxed}" "${bwa_alg}"  "${mapq}" \
+            "${req_flg}"       "${unal_mode}"   "${index}"    "${ref_fa}" \
+            "${fq_1}"          "${fq_2}"        "${fil_out}"  "${qname}" \
+            "${dir_eo}"        "${nam_job}"     "${samp}"     "${dry_run}"
     then
         echo_err "failed to perform alignment."
         return 1

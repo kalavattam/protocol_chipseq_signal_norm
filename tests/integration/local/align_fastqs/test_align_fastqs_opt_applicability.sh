@@ -26,7 +26,8 @@ source "$(
 # Define fixture and output paths. Per 'HELP.PARAMETER.APPLICABILITY', each
 # aligner refuses the other's option; '--ref_fa' without CRAM, an all-SE
 # '--req_flg', and a suffix for a layout no entry has are ignored with a
-# warning.
+# warning. The hidden '--bt2_relaxed' is refused without a PE entry, and it and
+# '--unal_mode separate' are refused with '--bt2_inherited'.
 dir_fx="${ROOT_REPO}/tests/fixtures/align_fastqs"
 in_se="${dir_fx}/fastq/se/tiny_se.atria.fastq.gz"
 in_pe_1="${dir_fx}/fastq/pe/tiny_pe_R1.atria.fastq.gz"
@@ -44,6 +45,9 @@ msg_bm2="'--bwa_alg' has no effect with '--aligner bwa-mem2'"
 msg_bx="'--bt2_X' has no effect with single-end input"
 msg_bi="'--bt2_inherited' has no effect with single-end input"
 msg_both="'--bt2_X' has no effect with '--bt2_inherited'"
+msg_rlx_inh="'--bt2_relaxed' cannot be combined with '--bt2_inherited'"
+msg_sep_inh="'--unal_mode separate' has no effect with '--bt2_inherited'"
+msg_rlx_se="'--bt2_relaxed' is for paired-end input"
 msg_sse="'--sfx_se' has no effect with paired-end input"
 msg_spe="'--sfx_pe' has no effect with single-end input"
 sfx_se=".atria.fastq.gz"
@@ -102,6 +106,11 @@ rows_exe=(
     "--bt2_inherited with SE only|se|${a_bt2} -2i|warn --bt2_inherited"
     "--bt2_X with a PE entry|mix|${a_bt2} --bt2_X 800|pass --bt2_X"
     "--bt2_inherited with a PE entry|mix|${a_bt2} -2i|pass --bt2_inherited"
+    "--bt2_relaxed with bwa|mix|${a_bwa} -2r|refuse --bt2_relaxed"
+    "--bt2_relaxed with a PE entry|mix|${a_bt2} -2r|pass --bt2_relaxed"
+    "--unal_mode separate, SE|se|${a_bwa} -um separate|pass --unal_mode"
+    "--unal_mode remove, -2i|pe|${a_bt2} -2i -um remove|pass --unal_mode"
+    "default --unal_mode|se|${a_bt2}|drop --unal_mode"
     "--time without --slurm|se|${a_bt2} --time 1:00:00|warn --time"
     "--sfx_pe with SE only|se|${a_bt2} --sfx_pe ${sfx_pe}|warn --sfx_pe"
     "--sfx_se with PE only|pe|${a_bt2} --sfx_se ${sfx_se}|warn --sfx_se"
@@ -299,6 +308,8 @@ rows_ref=(
     "--bwa_alg aln|${a_bm2} --bwa_alg aln|'--bwa_alg' is for '--aligner bwa';"
     "--bt2_X|${a_bwa} --bt2_X 800|'--bt2_X' is for '--aligner "
     "--bt2_inherited|${a_bm2} -2i|'--bt2_inherited' is for '--aligner "
+    "--bt2_relaxed|${a_bm2} -2r|'--bt2_relaxed' is for '--aligner "
+    "--unal_mode keep|${a_bt2} -um keep|'--unal_mode' must be 'remove' or "
 )
 
 for idx in "${!rows_ref[@]}"; do
@@ -390,10 +401,11 @@ fi
 
 # Likewise for the Bowtie 2 fragment settings: in a dry run of a mixed list,
 # only the paired-end entry's call carries them.
-for arg in "--bt2_X 800" "-2i"; do
+for arg in "--bt2_X 800" "-2i" "-2r"; do
     read -r -a args <<< "${arg}"
     opt="--bt2_X"
     if [[ "${arg}" == "-2i" ]]; then opt="--bt2_inherited"; fi
+    if [[ "${arg}" == "-2r" ]]; then opt="--bt2_relaxed"; fi
 
     out_bt2="$(
         run_submit "${tmp}/sub_mixed_bt2" --dry_run \
@@ -556,6 +568,7 @@ function run_helper() {
 # label|arguments|act|message
 ref_bt2="'--bt2_mode' is for '--aligner bowtie2'"
 ref_bwa="'--bwa_alg' is for '--aligner bwa'"
+ref_rlx="'--bt2_relaxed' is for '--aligner bowtie2'"
 rows_hlp=(
     "--bt2_mode with bwa|${a_bwa} --bt2_mode local|refuse|${ref_bt2}"
     "default --bwa_alg with bowtie2|${a_bt2} --bwa_alg mem|refuse|${ref_bwa}"
@@ -569,6 +582,10 @@ rows_hlp=(
     "--bt2_X with SE input|${a_bt2} --bt2_X 800|warn|${msg_bx}"
     "--bt2_inherited with SE input|${a_bt2} -2i|warn|${msg_bi}"
     "--bt2_mode in capitals|${a_bt2} --bt2_mode Local|pass|"
+    "--bt2_relaxed with bwa|${a_bwa} -2r|refuse|${ref_rlx}"
+    "--bt2_relaxed with SE input|${a_bt2} -2r|refuse|${msg_rlx_se}"
+    "--unal_mode keep|${a_bt2} -um keep|refuse|'--unal_mode' must be"
+    "--unal_mode in capitals|${a_bwa} --unal_mode SEPARATE|pass|"
 )
 
 for idx in "${!rows_hlp[@]}"; do
@@ -673,6 +690,81 @@ for lyr in execute submit helper; do
     else
         record_fail "${lyr} did not refuse '--bt2_X' with '--bt2_inherited'"
     fi
+done
+
+# '--bt2_relaxed' and '--unal_mode separate' with '--bt2_inherited', and
+# '--bt2_relaxed' with only SE input, are refused at every layer, in its own
+# name, before any file is written; '--unal_mode remove' with
+# '--bt2_inherited' is accepted. label|input|arguments|message, or empty for
+# acceptance.
+rows_cmb=(
+    "'--bt2_relaxed' with '--bt2_inherited'|pe|-2r -2i|${msg_rlx_inh}"
+    "'-um separate' with '--bt2_inherited'|pe|-um separate -2i|${msg_sep_inh}"
+    "'--bt2_relaxed' with SE input|se|-2r|${msg_rlx_se}"
+    "'--unal_mode remove' with '--bt2_inherited'|pe|-um remove -2i|"
+)
+
+for idx in "${!rows_cmb[@]}"; do
+    IFS='|' read -r lbl inp arg msg <<< "${rows_cmb[idx]}"
+    read -r -a args <<< "${arg}"
+    args=( --aligner bowtie2 --index "${idx_bt2}" "${args[@]}" )
+    csv="${in_se}"
+    args_hlp=( "${args[@]}" )
+    nam="tiny_se"
+    if [[ "${inp}" == "pe" ]]; then
+        csv="${in_pe}"
+        args_hlp+=( --fq_2 "${in_pe_2}" )
+        nam="tiny_pe"
+    fi
+
+    declare -A out_cmb rc_cmb
+    mkdir -p "${tmp}/exe_cmb_${idx}/logs"
+    rc_cmb[execute]=0
+    out_cmb[execute]="$(
+        "${TEST_BASH}" "${ROOT_REPO}/bin/execute_align_fastqs.sh" \
+            --dry_run \
+            --threads 1 \
+            --csv_fil_in "${csv}" \
+            --dir_out "${tmp}/exe_cmb_${idx}" \
+            --max_job 1 \
+            "${args[@]}" 2>&1
+    )" || rc_cmb[execute]=$?
+    rc_cmb[submit]=0
+    out_cmb[submit]="$(
+        run_submit "${tmp}/sub_cmb_${idx}" --csv_fil_in "${csv}" "${args[@]}"
+    )" || rc_cmb[submit]=$?
+    rc_cmb[helper]=0
+    out_cmb[helper]="$(
+        run_helper "${args_hlp[@]}" --fil_out "${tmp}/helper_cmb_${idx}.bam"
+    )" || rc_cmb[helper]=$?
+
+    # Each layer is judged by its own output alone, so a refusal missing in one
+    # layer fails that layer's row and no other.
+    declare -A fil_cmb=(
+        [execute]=""
+        [submit]="${tmp}/sub_cmb_${idx}/${nam}.bam"
+        [helper]="${tmp}/helper_cmb_${idx}.bam"
+    )
+
+    for lyr in execute submit helper; do
+        if [[ -n "${msg}" ]]; then
+            if [[
+                "${rc_cmb[${lyr}]}" -ne 0
+                && "${out_cmb[${lyr}]}" == *"${who_bth[${lyr}]}${msg}"*
+                && ( -z "${fil_cmb[${lyr}]}" || ! -e "${fil_cmb[${lyr}]}" )
+            ]]; then
+                record_pass "${lyr} refuses ${lbl}"
+            else
+                record_fail \
+                    "${lyr} did not refuse ${lbl} (exit ${rc_cmb[${lyr}]})"
+            fi
+        elif [[ "${rc_cmb[${lyr}]}" -eq 0 ]]; then
+            record_pass "${lyr} accepts ${lbl}"
+        else
+            record_fail "${lyr} did not accept ${lbl} (exit ${rc_cmb[${lyr}]})"
+        fi
+    done
+    unset out_cmb rc_cmb fil_cmb
 done
 
 # The 'bt2' alias is gone, and every layer words an invalid aligner alike.

@@ -61,6 +61,11 @@ function cleanup_tmp_fastqs() {
         "${fq_tie_cmt_se_tmp}" \
         "${fq_brg_r1_tmp}" \
         "${fq_brg_r2_tmp}" \
+        "${fq_par_r1_tmp}" \
+        "${fq_par_r2_tmp}" \
+        "${fq_par_se_tmp}" \
+        "${fq_dup_r1_tmp}" \
+        "${fq_dup_r2_tmp}" \
         "${tmp_bln_se}" \
         "${tmp_bln_r1}" \
         "${tmp_bln_r2}"
@@ -159,6 +164,25 @@ fq_brg_r1_gz="${dir_fq_pe}/bridge_pe_R1.atria.fastq.gz"
 fq_brg_r2_gz="${dir_fq_pe}/bridge_pe_R2.atria.fastq.gz"
 
 idx_brg_bt2="${dir_bt2}/bridge"
+
+ref_par="${dir_ref}/pairs.fa"
+ref_par_bwa="${dir_bwa}/pairs.fa"
+ref_par_bm2="${dir_bm2}/pairs.fa"
+fq_par_r1_tmp="${dir_fq_pe}/pairs_pe_R1.atria.fastq.tmp"
+fq_par_r2_tmp="${dir_fq_pe}/pairs_pe_R2.atria.fastq.tmp"
+fq_par_se_tmp="${dir_fq_se}/pairs_se.atria.fastq.tmp"
+fq_dup_r1_tmp="${dir_fq_pe}/dup_pe_R1.atria.fastq.tmp"
+fq_dup_r2_tmp="${dir_fq_pe}/dup_pe_R2.atria.fastq.tmp"
+
+fq_par_r1_gz="${dir_fq_pe}/pairs_pe_R1.atria.fastq.gz"
+fq_par_r2_gz="${dir_fq_pe}/pairs_pe_R2.atria.fastq.gz"
+fq_par_se_gz="${dir_fq_se}/pairs_se.atria.fastq.gz"
+fq_dup_r1_gz="${dir_fq_pe}/dup_pe_R1.atria.fastq.gz"
+fq_dup_r2_gz="${dir_fq_pe}/dup_pe_R2.atria.fastq.gz"
+
+idx_par_bt2="${dir_bt2}/pairs"
+
+sam_spl_pe="${dir_sam}/split_template_pe.sam"
 
 env_req="env_protocol"
 
@@ -773,8 +797,7 @@ rm_files \
     "${idx_brg_bt2}.rev.1.bt2" \
     "${idx_brg_bt2}.rev.2.bt2"
 
-# Build the bridge BWA and BWA-MEM2 indexes, then the Bowtie 2 index last; its
-# final file is the runner's sentinel.
+# Build the bridge BWA and BWA-MEM2 indexes, then the Bowtie 2 index.
 cp "${ref_brg}" "${ref_brg_bwa}"
 cp "${ref_brg}" "${ref_brg_bm2}"
 
@@ -794,6 +817,133 @@ rm_file "${dir_fix}" "${log_brg}"
 
 # Validate the bridge paired-end alignment path.
 bwa mem "${ref_brg_bwa}" "${fq_brg_r1_gz}" "${fq_brg_r2_gz}" \
+    > /dev/null 2> /dev/null
+
+
+# Write the pairs reference and reads, with one read pair per pair class, and
+# the duplicate set with 'make_pairs.py'; its docstring describes the data.
+python3 "${dir_scr}/make_pairs.py" \
+    --fil_ref "${ref_par}" \
+    --fil_r1 "${fq_par_r1_tmp}" \
+    --fil_r2 "${fq_par_r2_tmp}" \
+    --fil_se "${fq_par_se_tmp}" \
+    --fil_dup_r1 "${fq_dup_r1_tmp}" \
+    --fil_dup_r2 "${fq_dup_r2_tmp}"
+
+# Compress the pairs FASTQ fixtures with deterministic gzip metadata, then
+# remove the temporary FASTQs.
+gzip_n "${fq_par_r1_tmp}" "${fq_par_r1_gz}"
+gzip_n "${fq_par_r2_tmp}" "${fq_par_r2_gz}"
+gzip_n "${fq_par_se_tmp}" "${fq_par_se_gz}"
+gzip_n "${fq_dup_r1_tmp}" "${fq_dup_r1_gz}"
+gzip_n "${fq_dup_r2_tmp}" "${fq_dup_r2_gz}"
+
+rm_files \
+    "${dir_fix}" \
+    "${fq_par_r1_tmp}" \
+    "${fq_par_r2_tmp}" \
+    "${fq_par_se_tmp}" \
+    "${fq_dup_r1_tmp}" \
+    "${fq_dup_r2_tmp}"
+
+
+# Write a name-grouped paired-end SAM record set for Step 2 on its own:
+# - 'pair': a complete aligned pair.
+# - 't75': R1 aligned and R2 flagged unaligned (0x4), with R1's mate-unaligned
+#   flag (0x8) clear, the shape 'bwa sampe' writes (#75).
+# - 'supp': as 't75', plus a supplementary record for R1.
+# - 'lone': an aligned R1 with no R2 record at all.
+# - 'ffpp': a same-strand (FF) pair flagged proper, which 'samtools fixmate'
+#   unflags, so '-f 2' keeps it only before 'fixmate'.
+{
+    write_sam_line '@HD' 'VN:1.6' 'SO:queryname'
+    write_sam_line '@SQ' 'SN:chrS' 'LN:1000'
+
+    write_sam_line \
+        'lone' '97' 'chrS' '51' '60' '10M' \
+        '=' '251' '0' 'ACGTACGTAA' 'FFFFFFFFFF'
+
+    write_sam_line \
+        'ffpp' '67' 'chrS' '601' '60' '10M' \
+        '=' '701' '110' 'ACGTACGTAA' 'FFFFFFFFFF'
+
+    write_sam_line \
+        'ffpp' '131' 'chrS' '701' '60' '10M' \
+        '=' '601' '-110' 'ACGTACGTAA' 'FFFFFFFFFF'
+
+    write_sam_line \
+        'pair' '99' 'chrS' '101' '60' '10M' \
+        '=' '201' '110' 'ACGTACGTAA' 'FFFFFFFFFF'
+
+    write_sam_line \
+        'pair' '147' 'chrS' '201' '60' '10M' \
+        '=' '101' '-110' 'ACGTACGTAA' 'FFFFFFFFFF'
+
+    write_sam_line \
+        'supp' '97' 'chrS' '401' '60' '10M' \
+        '=' '401' '0' 'ACGTACGTAA' 'FFFFFFFFFF'
+
+    write_sam_line \
+        'supp' '181' 'chrS' '401' '0' '*' \
+        '=' '401' '0' 'ACGTACGTAA' 'FFFFFFFFFF'
+
+    write_sam_line \
+        'supp' '2145' 'chrS' '801' '60' '10M' \
+        '=' '401' '0' 'ACGTACGTAA' 'FFFFFFFFFF'
+
+    write_sam_line \
+        't75' '97' 'chrS' '301' '60' '10M' \
+        '=' '301' '0' 'ACGTACGTAA' 'FFFFFFFFFF'
+
+    write_sam_line \
+        't75' '181' 'chrS' '301' '60' '*' \
+        '=' '301' '0' 'ACGTACGTAA' 'FFFFFFFFFF'
+} > "${sam_spl_pe}"
+
+samtools quickcheck "${sam_spl_pe}"
+
+
+# Remove stale pairs index files before regeneration.
+rm_files \
+    "${dir_fix}" \
+    "${ref_par_bwa}.amb" \
+    "${ref_par_bwa}.ann" \
+    "${ref_par_bwa}.bwt" \
+    "${ref_par_bwa}.pac" \
+    "${ref_par_bwa}.sa" \
+    "${ref_par_bm2}.0123" \
+    "${ref_par_bm2}.amb" \
+    "${ref_par_bm2}.ann" \
+    "${ref_par_bm2}.bwt.2bit.64" \
+    "${ref_par_bm2}.pac" \
+    "${idx_par_bt2}.1.bt2" \
+    "${idx_par_bt2}.2.bt2" \
+    "${idx_par_bt2}.3.bt2" \
+    "${idx_par_bt2}.4.bt2" \
+    "${idx_par_bt2}.rev.1.bt2" \
+    "${idx_par_bt2}.rev.2.bt2"
+
+# Build the pairs BWA and BWA-MEM2 indexes, then the Bowtie 2 index last; its
+# final file is the runner's sentinel.
+cp "${ref_par}" "${ref_par_bwa}"
+cp "${ref_par}" "${ref_par_bm2}"
+
+log_par="${dir_ref}/pairs-index.log"
+if ! \
+    {
+        bwa index "${ref_par_bwa}" \
+            && bwa-mem2 index "${ref_par_bm2}" \
+            && bowtie2-build "${ref_par}" "${idx_par_bt2}"
+    } > "${log_par}" 2>&1
+then
+    cat "${log_par}" >&2
+    exit 1
+fi
+
+rm_file "${dir_fix}" "${log_par}"
+
+# Validate the pairs paired-end alignment path.
+bwa mem "${ref_par_bwa}" "${fq_par_r1_gz}" "${fq_par_r2_gz}" \
     > /dev/null 2> /dev/null
 
 

@@ -20,6 +20,7 @@ The fixture set focuses on single-end and paired-end Bowtie 2 alignment to BAM a
 Readable provenance:
 - `make.sh`
 - `make_tie.py`, the generator `make.sh` runs for the tie fixtures
+- `make_pairs.py`, the generator `make.sh` runs for the pairs and duplicate fixtures
 - `reference/tiny.fa`
 
 The FASTQ records are generated deterministically by `make.sh` as compressed workflow inputs and can be inspected with `gzip -cd`.
@@ -78,6 +79,16 @@ Bridge reference, reads, and indexes, for a mate that runs from one contig into 
 - `reference/bridge.fa`
 - `fastq/pe/bridge_pe_R1.atria.fastq.gz` and `fastq/pe/bridge_pe_R2.atria.fastq.gz`
 - `bowtie2/bridge.*.bt2`, `bwa/bridge.fa.*`, and `bwa-mem2/bridge.fa.*`, with the same index files as `tiny`
+
+Pairs reference, reads, and indexes, for `--unal_mode`, with one read pair per pair class and a duplicate set:
+- `reference/pairs.fa`
+- `fastq/pe/pairs_pe_R1.atria.fastq.gz` and `fastq/pe/pairs_pe_R2.atria.fastq.gz`
+- `fastq/se/pairs_se.atria.fastq.gz`
+- `fastq/pe/dup_pe_R1.atria.fastq.gz` and `fastq/pe/dup_pe_R2.atria.fastq.gz`
+- `bowtie2/pairs.*.bt2`, `bwa/pairs.fa.*`, and `bwa-mem2/pairs.fa.*`, with the same index files as `tiny`
+
+Queryname-grouped SAM records with templates split by Step 1, for Step 2 on its own:
+- `sam/split_template_pe.sam`
 
 <br />
 
@@ -143,6 +154,34 @@ Measured with Bowtie 2 2.5.5 and the pipeline's default paired-end call, about 1
 | `ctrl`    | unique in `chrB`         | unique in `chrB`                                                             |
 
 With BWA ALN (0.7.19), `bwa sampe` flags `brdg` R2 unaligned (0x4) but keeps its position. It leaves R1's mate-unaligned flag (0x8) clear, so a per-record `samtools view -F 12` keeps R1 alone. BWA MEM and bwa-mem2 MEM align R2 in part and write a supplementary record on `chrB`. Bowtie 2 end-to-end leaves R2 unaligned and flags R1's mate unaligned. Bowtie 2 local aligns R2 in part. `test_align_fastqs_unaligned.sh` checks the raw BWA ALN flags before relying on them.
+
+<br />
+
+### Pairs fixtures
+`make.sh` runs `make_pairs.py`, which draws the pairs reference and reads through `random.Random(0).random()`, as `make_tie.py` does. The reference has two chromosomes of random unique sequence. `chrP1` is 6,000 bases, with copies of one 300-base repeat at zero-based offsets 1,000, 2,500, and 4,000. `chrP2` is 3,000 bases. Each 50-base pair belongs to one class (offsets are zero-based leftmost positions of each mate's alignment):
+
+| Read name    | R1                    | R2                             | Class                         |
+| :---         | :---                  | :---                           | :---                          |
+| `pair_conc`  | forward, `chrP1` 100  | reverse, `chrP1` 350           | concordant, 300-base fragment |
+| `pair_ovlp`  | forward, `chrP1` 500  | reverse, `chrP1` 520           | mates overlap                 |
+| `pair_cont`  | forward, `chrP1` 700  | reverse, 30 bases, `chrP1` 720 | R2 contained in R1            |
+| `pair_far`   | forward, `chrP1` 4400 | reverse, `chrP1` 5850          | 1,500-base fragment           |
+| `pair_dove`  | forward, `chrP1` 1500 | reverse, `chrP1` 1490          | dovetailed                    |
+| `pair_rf`    | reverse, `chrP1` 1700 | forward, `chrP1` 1950          | outward-facing (RF)           |
+| `pair_ff`    | forward, `chrP1` 2000 | forward, `chrP1` 2200          | same strand (FF)              |
+| `pair_chrs`  | forward, `chrP1` 3000 | reverse, `chrP2` 500           | different chromosomes         |
+| `pair_one`   | forward, `chrP1` 3300 | random                         | one mate unaligned            |
+| `pair_none`  | random                | random                         | both mates unaligned          |
+| `pair_rpt`   | forward, `chrP1` 2550 | reverse, `chrP1` 2850          | R1 in the repeat              |
+| `pair_conc2` | forward, `chrP2` 1000 | reverse, `chrP2` 1200          | concordant                    |
+
+With Bowtie 2 2.5.5's default paired-end call (`--no-mixed --no-discordant -X 1000`), the concordant, overlapping, contained, and repeat pairs align concordantly (mate rescue places `pair_rpt`), and every other pair is written with both mates unaligned (flags 77 and 141). With the relaxed call (`-I 0 -X 1000`), `pair_far`, `pair_dove`, and `pair_chrs` are discordant, `pair_rf` and `pair_ff` keep their orientations, and `pair_one` has its R1 aligned (73 and 133). BWA MEM (0.7.19) cannot estimate insert sizes from so few pairs, so it flags no pair as proper; it aligns every mate the relaxed call does. `test_align_fastqs_unal_mode.sh` checks the side file's read names per call against these.
+
+The single-end file holds `se_uniq` (forward, `chrP1` 200), `se_uniq2` (reverse, `chrP2` 2000), `se_rpt` (in the repeat), and `se_none` (random).
+
+The duplicate set's names carry flow-cell coordinates (`A00123:8:HFLOWCELL:1:1101:<x>:<y>`). Its first pair is concordant on `chrP2` (R1 at 1500, x and y 1000). The other five have a random, unaligned R2, and their R1 is aligned: one at the first pair's R1 (x and y 20000); two at 2200, far apart on the tile; and two at 2600, 100 pixels apart in x and y. With BWA MEM and `--unal_mode separate`, `samtools markdup` marks the first of these as a duplicate of the pair's R1, one of the two at 2200 as a library duplicate, and one of the two at 2600 as an optical duplicate.
+
+In `sam/split_template_pe.sam`, `t75` has an aligned R1 and an R2 flagged unaligned (0x4) whose partner lacks 0x8, as `bwa sampe` writes (#75); `supp` is the same with a supplementary record for R1; `pair` is a complete pair; `lone` is an aligned R1 with no R2 record; and `ffpp` is a same-strand pair flagged proper, which `samtools fixmate` unflags, so `-f 2` keeps it only before `fixmate`.
 
 <br />
 

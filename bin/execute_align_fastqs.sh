@@ -111,14 +111,14 @@ Expected globals
   dir_scr, dir_out, dir_eo : dir
     Script, output, and wrapper-log directories, respectively.
 
-  env_nam, aligner, bt2_mode, bwa_alg, out_ext, csv_fil_in, sfx_se, sfx_pe, nam_job : str
-    Environment, aligner, Bowtie 2 mode, BWA algorithm, output extension, serialized inputs, SE suffix, PE suffix, and job-name values, respectively.
+  env_nam, aligner, bt2_mode, bwa_alg, unal_mode, out_ext, csv_fil_in, sfx_se, sfx_pe, nam_job : str
+    Environment, aligner, Bowtie 2 mode, BWA algorithm, unaligned-read mode, output extension, serialized inputs, SE suffix, PE suffix, and job-name values, respectively.
 
   threads, mapq, bt2_X : int
     Thread count, MAPQ threshold, and Bowtie 2 maximum fragment length, respectively.
 
-  req_flg, qname, bt2_X_set, bt2_inherited : bool
-    Flag-filter and queryname-sort switches, whether '--bt2_X' was supplied, and whether the earlier Bowtie 2 paired-end call was asked for, respectively.
+  req_flg, qname, bt2_X_set, bt2_inherited, bt2_relaxed, unal_mode_set : bool
+    Flag-filter and queryname-sort switches, whether '--bt2_X' was supplied, whether the earlier or the relaxed Bowtie 2 paired-end call was asked for, and whether '--unal_mode' was supplied, respectively.
 
   index : path
     Aligner index or reference prefix.
@@ -135,6 +135,7 @@ Notes
   - 'arr_cmd_bld' is written as a global indexed array.
   - The reference FASTA argument is included only when 'out_ext=cram'.
   - '--req_flg' is included only when the input being run includes a paired-end entry; a single-end entry run on its own gets none.
+  - '--unal_mode' is included only when it was supplied.
   - '--sfx_se' and '--sfx_pe' are included only when the input being run includes an entry of that layout.
   - Flag-only options are added as separate array elements.
   - On index handling:
@@ -220,6 +221,14 @@ EOM
         arr_cmd_bld+=( --bt2_inherited )
     fi
 
+    if [[ "${bt2_relaxed}" == "true" && "${fil_in_i}" == *,* ]]; then
+        arr_cmd_bld+=( --bt2_relaxed )
+    fi
+
+    if [[ "${unal_mode_set}" == "true" ]]; then
+        arr_cmd_bld+=( --unal_mode "${unal_mode}" )
+    fi
+
     if [[ "${out_ext}" == "cram" ]]; then
         arr_cmd_bld+=( --ref_fa "${ref_fa}" )
     fi
@@ -249,12 +258,15 @@ function init_arg_defs() {
     bt2_X=1000
     bt2_X_set=false
     bt2_inherited=false
+    bt2_relaxed=false
     bwa_alg="mem"
     bwa_alg_set=false
     ref_fa=""
     out_ext="bam"
     mapq=1
     req_flg=false
+    unal_mode="remove"
+    unal_mode_set=false
     index=""
     csv_fil_in=""
     dir_out=""
@@ -356,6 +368,15 @@ function parse_args() {
                 shift 1
                 ;;
 
+            # Hidden per 'HELP.ALIAS.PUBLIC': a measurement setting that makes
+            # the relaxed Bowtie 2 PE call ('-I 0 -X <bt2_X>', without
+            # '--no-mixed' or '--no-discordant') to measure how many pairs the
+            # default call's pairing options remove.
+            -2r|--bt2[_-]relaxed)
+                bt2_relaxed=true
+                shift 1
+                ;;
+
             -ba|--bwa[_-]alg)
                 require_optarg "${1}" "${2:-}" "main" || {
                     echo >&2
@@ -390,6 +411,17 @@ function parse_args() {
             -rq|--req[_-]flg)
                 req_flg=true
                 shift 1
+                ;;
+
+            -um|--unal[_-]mode)
+                require_optarg "${1}" "${2:-}" "main" || {
+                    echo >&2
+                    help_execute_align_fastqs >&2
+                    return 1
+                }
+                unal_mode="${2,,}"
+                unal_mode_set=true
+                shift 2
                 ;;
 
             -ix|--index)
@@ -529,6 +561,7 @@ function check_opts_mode() {
         --bt2_mode "${bt2_mode_set}" \
         --bt2_X "${bt2_X_set}" \
         --bt2_inherited "${bt2_inherited}" \
+        --bt2_relaxed "${bt2_relaxed}" \
         || return 1
 
     # The inherited call passes no '-X', so '--bt2_X' would change nothing.
@@ -536,6 +569,33 @@ function check_opts_mode() {
         echo_err \
             "'--bt2_X' has no effect with '--bt2_inherited', which passes no" \
             "'-X'."
+        return 1
+    fi
+
+    # Each makes its own paired-end call, so they cannot be combined.
+    if [[ "${bt2_relaxed}" == "true" && "${bt2_inherited}" == "true" ]]; then
+        echo_err \
+            "'--bt2_relaxed' cannot be combined with '--bt2_inherited'; each" \
+            "makes its own Bowtie 2 paired-end call."
+        return 1
+    fi
+
+    # The inherited call keeps '--no-unal', so Bowtie 2 writes no unaligned
+    # reads to separate.
+    if [[ "${unal_mode}" == "separate" && "${bt2_inherited}" == "true" ]]
+    then
+        echo_err \
+            "'--unal_mode separate' has no effect with '--bt2_inherited'," \
+            "whose call writes no unaligned reads."
+        return 1
+    fi
+
+    # Relaxed pairing is a paired-end call; with no paired-end entry, it has
+    # nothing to change.
+    if [[ "${bt2_relaxed}" == "true" && "${csv_fil_in}" != *,* ]]; then
+        echo_err \
+            "'--bt2_relaxed' is for paired-end input; it has no effect with" \
+            "single-end input."
         return 1
     fi
 
@@ -584,6 +644,19 @@ function check_opts_mode() {
             "'--bt2_inherited' has no effect with single-end input and is" \
             "ignored."
         bt2_inherited=false
+    fi
+
+    # Say at submission what each job's log also says.
+    if [[ "${bt2_relaxed}" == "true" ]]; then
+        echo_warn \
+            "'--bt2_relaxed' makes the relaxed Bowtie 2 paired-end call; its" \
+            "output measures pairing and is not for signal or scaling."
+    fi
+
+    if [[ "${unal_mode}" == "separate" ]]; then
+        echo_warn \
+            "'--unal_mode separate' writes the unaligned reads and their" \
+            "mates to a side file, which is not for signal or scaling."
     fi
 
     # Each suffix names the files of one layout, so it is required when an
@@ -678,6 +751,15 @@ function validate_args() {
     esac
 
     validate_var "mapq" "${mapq}" || return 1
+
+    case "${unal_mode}" in
+        remove|separate) : ;;
+        *)
+            echo_err \
+                "'--unal_mode' must be 'remove' or 'separate': '${unal_mode}'."
+            return 1
+            ;;
+    esac
     check_int_nonneg "${mapq}" "mapq" || return 1
 
     if [[ "${out_ext}" == "cram" ]]; then
@@ -822,11 +904,13 @@ function print_state_debug() {
         echo "bt2_mode=${bt2_mode}"
         echo "bt2_X=${bt2_X}"
         echo "bt2_inherited=${bt2_inherited}"
+        echo "bt2_relaxed=${bt2_relaxed}"
         echo "bwa_alg=${bwa_alg}"
         echo "ref_fa=${ref_fa}"
         echo "out_ext=${out_ext}"
         echo "mapq=${mapq}"
         echo "req_flg=${req_flg}"
+        echo "unal_mode=${unal_mode}"
         echo "index=${index}"
         echo "csv_fil_in=${csv_fil_in}"
         echo "dir_out=${dir_out}"

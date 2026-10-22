@@ -318,7 +318,7 @@ out="$(
             workflows/align_fastqs
         shift 1
         _sort_qname_bam "$@"
-    ' _ "${ROOT_REPO}" align_fastqs false 1 bwa 30 "" \
+    ' _ "${ROOT_REPO}" align_fastqs false 1 bwa 30 false remove "" \
         "${dir_fail}/x.bam" "${dir_fail}/x.qnam.bam" 2>&1
 )" || rc=$?
 n_own="$(grep -c '^error([^)]*::align_fastqs)' <<< "${out}" || true)"

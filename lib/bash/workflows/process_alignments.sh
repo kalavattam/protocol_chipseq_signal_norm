@@ -616,6 +616,7 @@ Notes
     - sort
 
   - This helper assumes adjacent queryname-sorted paired-end records.
+  - Records flagged unaligned (SAM flag 4) or with an unaligned mate (SAM flag 8) are dropped first ('samtools view -F 12'), so a file that keeps unaligned reads gives no fragment for them.
   - Use the Python converter helper for single-end data.
 
 Examples
@@ -666,9 +667,11 @@ EOM
         arr_ref_arg=( -T "${ref_fa}" )
     fi
 
+    # Drop unaligned reads and their mates, which have no fragment.
     {
         samtools view \
             -@ "${threads}" \
+            -F 12 \
             "${arr_ref_arg[@]}" \
             "${fil_in}" \
             | awk '{
