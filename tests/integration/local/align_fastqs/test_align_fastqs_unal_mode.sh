@@ -184,6 +184,23 @@ function print_keys() {
 }
 
 
+# Print each '@PG' line's ID and parent, in header order.
+function print_pg_ids() {
+    run_samtools view -H --no-PG "${1}" \
+        | awk -F '\t' '
+            $1 == "@PG" {
+                id = ""
+                pp = ""
+                for (i = 2; i <= NF; i++) {
+                    if ($i ~ /^ID:/) id = $i
+                    if ($i ~ /^PP:/) pp = $i
+                }
+                print id, pp
+            }
+        '
+}
+
+
 # Print the records sorted, whole.
 function print_recs() {
     run_samtools view "${1}" | sort
@@ -659,7 +676,9 @@ fi
 
 
 # Determinism (#61): the side file is the same at two thread counts, records
-# and content lines alike.
+# and content lines alike. In both files, the '@PG' IDs that 'samtools merge'
+# makes unique are the same too: their suffixes are seeded, not drawn from the
+# clock, which the pause between the runs would change.
 for cal in bt2 mem; do
     if [[ "${cal}" == "bt2" ]]; then
         args=( --aligner bowtie2 --index "${dir_fx}/bowtie2/pairs" )
@@ -675,7 +694,24 @@ for cal in bt2 mem; do
             --fq_1 "${dir_fx}/fastq/pe/pairs_pe_R1.atria.fastq.gz" \
             --fq_2 "${dir_fx}/fastq/pe/pairs_pe_R2.atria.fastq.gz" \
             --fil_out "${tmp}/det.${cal}.${thr}.bam" > /dev/null || true
+        if [[ "${thr}" == "1" ]]; then sleep 1.1; fi
     done
+
+    ok=true
+    for sfx in bam unal.bam; do
+        ids_1="$(print_pg_ids "${tmp}/det.${cal}.1.${sfx}")"
+        ids_3="$(print_pg_ids "${tmp}/det.${cal}.3.${sfx}")"
+
+        if [[ "${ids_1}" != *"-"* || "${ids_1}" != "${ids_3}" ]]; then
+            ok=false
+        fi
+    done
+
+    if [[ "${ok}" == "true" ]]; then
+        record_pass "${cal}: both files' merged '@PG' IDs match between runs"
+    else
+        record_fail "${cal}: the merged '@PG' IDs differ between runs"
+    fi
 
     if \
         cmp -s \

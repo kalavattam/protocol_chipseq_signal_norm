@@ -194,8 +194,9 @@ EOM
         case "${arr_prn_ref[*]:0:idx}" in
             bowtie2)                  opt_val="-p --seed -x -I -X -1 -2 -U" ;;
             "samtools view")          opt_val="-@ -F -f -q -o -U -T -O -N" ;;
-            "samtools markdup")       opt_val="-@ -d -f" ;;
-            samtools\ *)              opt_val="-@ -o" ;;
+            "samtools markdup")       opt_val="-@ -d -f -O" ;;
+            "samtools merge")         opt_val="-@ -o -O -s" ;;
+            samtools\ *)              opt_val="-@ -o -O" ;;
             "bwa mem"|"bwa-mem2 mem") opt_val="-t -K" ;;
             "bwa aln")                opt_val="-t" ;;
             awk)                      opt_val="-v" ;;
@@ -231,6 +232,11 @@ EOM
                 printf -v tok '%s %q' "${tok}" "${arr_prn_ref[idx+1]}"
                 idx=$(( idx + 1 ))
             fi
+
+            # An unquoted comma is literal in Bash, and '%q' escapes the braces
+            # that could make it special, so print it bare, as in '-O
+            # bam,level=1'; a quoted word is left as it is.
+            if [[ "${tok}" != *"'"* ]]; then tok="${tok//\\,/,}"; fi
 
             arr_lin+=( "${ind}    ${tok}" )
             idx=$(( idx + 1 ))
@@ -356,7 +362,7 @@ Parameters
     Queryname-grouped SAM or BAM file to filter.
 
   2  bam_out : file
-    BAM file to write the kept records to.
+    BAM file to write the kept records to, at compression level 1.
 
   3  mapq : int
     MAPQ threshold that every primary record of a kept template must meet.
@@ -447,11 +453,12 @@ EOM
     fi
 
     # Write every record of the listed names, secondary and supplementary
-    # records included.
+    # records included, at compression level 1, since 'align_fastqs()' sorts
+    # the file again in Step 3.
     arr_cmd=(
         samtools view
             -@ "${threads}"
-            -b
+            -O "bam,level=1"
             -N "${txt_nam}"
             -o "${bam_out}"
             "${bam_in}"
@@ -1598,7 +1605,10 @@ EOM
     # The MAPQ threshold is not applied here. A per-record '-q' can split a
     # template whenever its records' MAPQs differ, so Step 2 applies it by
     # template for every aligner.
-    arr_sam+=( -o "${fil_wrk}" )
+    #
+    # Step 2 rewrites both work files, so they are written at compression
+    # level 1, which is faster than the default.
+    arr_sam+=( -O "bam,level=1" -o "${fil_wrk}" )
 
     # Based on parsed arguments, run Bowtie 2, BWA, or BWA-MEM2 with output
     # piped to the above-constructed Samtools call.
@@ -1630,8 +1640,9 @@ EOM
 
 
 # Step 2 with '--unal_mode separate': sort Step 1's unaligned work file ("Set
-# A") by queryname, list its read names, and move every template with records
-# in both work files wholly into Set A; then fix mates in Set A.
+# A") by queryname and list its read names; for paired-end data, sort the
+# aligned reads ("Set B") by queryname, move every template with records in
+# both work files wholly into Set A, and fix mates in Set A.
 function _route_unal_bam() {
     local func="${1:-}"
     local dry_run="${2:-}"
@@ -1641,8 +1652,8 @@ function _route_unal_bam() {
     local bam_qnam="${6:-}"
     local bam_set_a="${7:-}"
     local txt_nam="${fil_wrk%.bam}.unal.names.txt"
-    local bam_srt bam_mov bam_kep bam_mrg bam_mate
-    local -a arr_cmd arr_view arr_cut arr_uniq
+    local bam_srt bam_mov bam_mate
+    local -a arr_cmd arr_view arr_cut arr_uniq arr_srt arr_mrg arr_fix
     local show_help
 
     show_help=$(cat << EOM
@@ -1651,7 +1662,7 @@ Usage
   _route_unal_bam
     [--help] func dry_run threads fq_2 fil_wrk bam_qnam bam_set_a
 
-  Sort Step 1's unaligned work file ("Set A") by queryname and list its read names in the path of 'fil_wrk' with '.unal.names.txt' for '.bam', which Step 4 uses to split Set A back out (Step 2 of 'align_fastqs()' with '--unal_mode separate'). For paired-end data, move every record of 'bam_qnam' whose read name is in Set A into Set A, so that no template has records in both, then fix mates in Set A.
+  Sort Step 1's unaligned work file ("Set A") by queryname and list its read names in the path of 'fil_wrk' with '.unal.names.txt' for '.bam', which Step 4 uses to split Set A back out (Step 2 of 'align_fastqs()' with '--unal_mode separate'). For paired-end data, sort the BAM work file ("Set B") by queryname into 'bam_qnam', moving every record whose read name is in Set A into Set A as it goes, so that no template has records in both; then fix mates in Set A.
 
   A template is moved by its read name, not by a count of its records, so the rule holds for any number of records per read.
 
@@ -1670,13 +1681,13 @@ Parameters
     Number of threads to use.
 
   4  fq_2 : file
-    Second FASTQ input file, or empty for single-end data, which needs no moving and no mate fixing.
+    Second FASTQ input file, or empty for single-end data, which needs no moving and no mate fixing; the caller then sorts Set B itself.
 
   5  fil_wrk : file
-    BAM work file from Step 1; names the read-name list.
+    BAM work file from Step 1 ("Set B"); names the read-name list.
 
   6  bam_qnam : file
-    Queryname-sorted BAM file of the aligned reads ("Set B"), rewritten without the moved records.
+    Queryname-sorted BAM file to write for paired-end data: Set B without the moved records.
 
   7  bam_set_a : file
     Set A from Step 1, rewritten sorted by queryname, with the moved records and fixed mates.
@@ -1720,12 +1731,14 @@ EOM
         return 0
     fi
 
-    # Sort Set A by queryname, as Set B is.
+    # Sort Set A by queryname, as Set B is. Like every work file that a later
+    # step rewrites, it is written at compression level 1.
     bam_srt="${bam_set_a%.bam}.qnam.bam"
     arr_cmd=(
         samtools sort
             -@ "${threads}"
             -n
+            -O "bam,level=1"
             -o "${bam_srt}"
             "${bam_set_a}"
     )
@@ -1770,96 +1783,74 @@ EOM
     # A single-end read is one template, so none is split between the files.
     if [[ -z "${fq_2}" ]]; then return 0; fi
 
-    # Move every Set B record whose read name is in Set A, so that, for
-    # example, a BWA-backtrack partner of an unaligned mate (#75) joins it.
+    # Sort Set B by queryname and, in the same stream, move every record whose
+    # read name is in Set A, so that, for example, a BWA-backtrack partner of
+    # an unaligned mate (#75) joins it.
     bam_mov="${fil_wrk%.bam}.moved.bam"
-    bam_kep="${fil_wrk%.bam}.kept.bam"
+    arr_srt=(
+        samtools sort
+            -@ "${threads}"
+            -n
+            -u
+            -o -
+            "${fil_wrk}"
+    )
     arr_cmd=(
         samtools view
             -@ "${threads}"
-            -b
+            -O "bam,level=1"
             -N "${txt_nam}"
             -o "${bam_mov}"
-            -U "${bam_kep}"
-            "${bam_qnam}"
+            -U "${bam_qnam}"
+            -
     )
 
-    if ! \
-        _run_or_print_cmd "${dry_run}" arr_cmd
-    then
+    if [[ "${dry_run}" == "true" ]]; then
+        _print_dry_run_cmd arr_srt arr_cmd
+    elif ! (
+        set -o pipefail
+        "${arr_srt[@]}" | "${arr_cmd[@]}"
+    ); then
         echo_err_func "${func}" \
-            "Step #2: failed to move templates split between the work files."
+            "Step #2: failed to queryname-sort the BAM work file and move" \
+            "templates split between the work files."
         return 1
     fi
 
-    arr_cmd=( mv -f "${bam_kep}" "${bam_qnam}" )
-
-    if ! \
-        _run_or_print_cmd "${dry_run}" arr_cmd
-    then
-        echo_err_func "${func}" \
-            "Step #2: failed to rename the queryname-sorted BAM file without" \
-            "the moved templates."
-        return 1
-    fi
-
-    bam_mrg="${bam_set_a%.bam}.merge.bam"
-    arr_cmd=(
+    # Merge the moved templates into Set A and fix mates in the same stream.
+    # Every template in Set A is now whole, so fixing its mates here gives
+    # what fixing them beside Set B would. 'merge' renames clashing '@PG' IDs
+    # with random suffixes; '-s 0' seeds them, so the header is reproducible.
+    bam_mate="${bam_set_a%.bam}.mate.bam"
+    arr_mrg=(
         samtools merge
             -@ "${threads}"
             -n
-            -o "${bam_mrg}"
+            -s 0
+            -u
+            -o -
             "${bam_set_a}"
             "${bam_mov}"
     )
-
-    if ! \
-        _run_or_print_cmd "${dry_run}" arr_cmd
-    then
-        echo_err_func "${func}" \
-            "Step #2: failed to merge the moved templates into the" \
-            "unaligned-read work file."
-        return 1
-    fi
-
-    arr_cmd=( mv -f "${bam_mrg}" "${bam_set_a}" )
-
-    if ! \
-        _run_or_print_cmd "${dry_run}" arr_cmd
-    then
-        echo_err_func "${func}" \
-            "Step #2: failed to rename the merged unaligned-read work file."
-        return 1
-    fi
-
-    arr_cmd=( rm -f "${bam_mov}" )
-
-    if ! \
-        _run_or_print_cmd "${dry_run}" arr_cmd
-    then
-        echo_err_func "${func}" \
-            "Step #2: failed to delete the moved-template work file."
-        return 1
-    fi
-
-    # Every template in Set A is now whole, so fixing its mates here gives
-    # what fixing them beside Set B would.
-    bam_mate="${bam_set_a%.bam}.mate.bam"
-    arr_cmd=(
+    arr_fix=(
         samtools fixmate
             -@ "${threads}"
             -c
             -m
-            "${bam_set_a}"
+            -O "bam,level=1"
+            -
             "${bam_mate}"
     )
 
-    if ! \
-        _run_or_print_cmd "${dry_run}" arr_cmd
-    then
+    if [[ "${dry_run}" == "true" ]]; then
+        _print_dry_run_cmd arr_mrg arr_fix
+    elif ! (
+        set -o pipefail
+        "${arr_mrg[@]}" | "${arr_fix[@]}"
+    ); then
         echo_err_func "${func}" \
-            "Step #2: failed to fix mate pairs in the unaligned-read work" \
-            "file."
+            "Step #2: failed to merge the moved templates into the" \
+            "unaligned-read work file and fix its mate pairs."
         return 1
     fi
 
@@ -1871,6 +1862,16 @@ EOM
         echo_err_func "${func}" \
             "Step #2: failed to rename the mate-fixed unaligned-read work" \
             "file."
+        return 1
+    fi
+
+    arr_cmd=( rm -f "${bam_mov}" )
+
+    if ! \
+        _run_or_print_cmd "${dry_run}" arr_cmd
+    then
+        echo_err_func "${func}" \
+            "Step #2: failed to delete the moved-template work file."
         return 1
     fi
 }
@@ -1890,8 +1891,8 @@ function _sort_qname_bam() {
     local fq_2="${8:-}"
     local fil_wrk="${9:-}"
     local bam_qnam="${10:-}"
-    local bam_mate bam_mapq bam_pp bam_set_a bam_mrg n_pri
-    local -a arr_cmd
+    local bam_mate bam_mapq bam_set_a bam_mrg n_pri
+    local -a arr_cmd arr_srt arr_fix
     local show_help
 
     show_help=$(cat << EOM
@@ -1901,6 +1902,8 @@ Usage
     [--help] func dry_run threads aligner mapq req_flg unal_mode fq_2 fil_wrk bam_qnam
 
   Sort the BAM work file by queryname into 'bam_qnam' and fix mates for paired-end data (Step 2 of 'align_fastqs()'). Then keep or drop each template whole by whether its primary records pass 'mapq', for every aligner and layout. A paired-end template that lost a mate in Step 1 is dropped too.
+
+  The sort streams into 'fixmate' without a file between them. Every file written here is at compression level 1, as Step 3 sorts the result again.
 
   With 'unal_mode' 'separate', first move every template with records in Step 1's unaligned work file ("Set A") wholly into Set A, then require proper pairs in the rest if 'req_flg' is 'true'. Fix mates in Set A on its own, and merge it back into 'bam_qnam' after the MAPQ filter, so that Step 4 marks duplicates in both sets together.
 
@@ -2002,27 +2005,8 @@ EOM
     # A dry run writes no Step 1 file, so it prints the commands as they would
     # run.
     if [[ "${dry_run}" == "true" || -f "${fil_wrk}" ]]; then
-        arr_cmd=(
-            samtools sort
-                -@ "${threads}"
-                -n
-                -o "${bam_qnam}"
-                "${fil_wrk}"
-        )
-
-        if ! \
-            _run_or_print_cmd "${dry_run}" arr_cmd
-        then
-            echo_err_func "${func}" \
-                "Step #2: failed to queryname-sort ${aligner}-aligned BAM" \
-                "file."
-            return 1
-        fi
-
         # With '--unal_mode separate', move templates split between the two
-        # work files into Set A, then require proper pairs in what remains.
-        # '-f 2' runs before 'fixmate', as in Step 1, so that the aligner's
-        # own 0x2 decides.
+        # work files into Set A; for PE data, this also sorts Set B.
         if [[ "${unal_mode}" == "separate" ]]; then
             bam_set_a="${fil_wrk%.bam}.setA.bam"
 
@@ -2038,57 +2022,88 @@ EOM
             then
                 return 1
             fi
+        fi
 
-            if [[ -n "${fq_2}" && "${req_flg}" == "true" ]]; then
-                bam_pp="${fil_wrk%.bam}.pp.bam"
+        # Sort by queryname and, for PE data, fix mates in the same stream.
+        # The template filter below reads the result twice, so it is written
+        # at compression level 1.
+        arr_srt=(
+            samtools sort
+                -@ "${threads}"
+                -n
+        )
+        arr_fix=(
+            samtools fixmate
+                -@ "${threads}"
+                -c
+                -m
+                -O "bam,level=1"
+        )
+
+        if [[ -z "${fq_2}" ]]; then
+            arr_srt+=( -O "bam,level=1" -o "${bam_qnam}" "${fil_wrk}" )
+
+            if ! \
+                _run_or_print_cmd "${dry_run}" arr_srt
+            then
+                echo_err_func "${func}" \
+                    "Step #2: failed to queryname-sort ${aligner}-aligned" \
+                    "BAM file."
+                return 1
+            fi
+        elif [[ "${unal_mode}" == "remove" ]]; then
+            arr_srt+=( -u -o - "${fil_wrk}" )
+            arr_fix+=( - "${bam_qnam}" )
+
+            if [[ "${dry_run}" == "true" ]]; then
+                _print_dry_run_cmd arr_srt arr_fix
+            elif ! (
+                set -o pipefail
+                "${arr_srt[@]}" | "${arr_fix[@]}"
+            ); then
+                echo_err_func "${func}" \
+                    "Step #2: failed to queryname-sort ${aligner}-aligned" \
+                    "BAM file and fix its mate pairs."
+                return 1
+            fi
+        else
+            # With '--unal_mode separate', Set B is already sorted; require
+            # proper pairs in it, then fix mates. '-f 2' runs before
+            # 'fixmate', as in Step 1, so that the aligner's own 0x2 decides.
+            bam_mate="${fil_wrk%.bam}.mate.bam"
+
+            if [[ "${req_flg}" == "true" ]]; then
                 arr_cmd=(
                     samtools view
                         -@ "${threads}"
-                        -b
+                        -u
                         -f 2
-                        -o "${bam_pp}"
                         "${bam_qnam}"
                 )
+                arr_fix+=( - "${bam_mate}" )
 
-                if ! \
-                    _run_or_print_cmd "${dry_run}" arr_cmd
-                then
+                if [[ "${dry_run}" == "true" ]]; then
+                    _print_dry_run_cmd arr_cmd arr_fix
+                elif ! (
+                    set -o pipefail
+                    "${arr_cmd[@]}" | "${arr_fix[@]}"
+                ); then
                     echo_err_func "${func}" \
-                        "Step #2: failed to keep properly paired alignments."
+                        "Step #2: failed to keep properly paired alignments" \
+                        "and fix their mate pairs."
                     return 1
                 fi
-
-                arr_cmd=( mv -f "${bam_pp}" "${bam_qnam}" )
+            else
+                arr_fix+=( "${bam_qnam}" "${bam_mate}" )
 
                 if ! \
-                    _run_or_print_cmd "${dry_run}" arr_cmd
+                    _run_or_print_cmd "${dry_run}" arr_fix
                 then
                     echo_err_func "${func}" \
-                        "Step #2: failed to rename properly paired BAM file."
+                        "Step #2: failed to fix mate pairs in" \
+                        "queryname-sorted BAM file."
                     return 1
                 fi
-            fi
-        fi
-
-        if [[ -n "${fq_2}" ]]; then
-            bam_mate="${fil_wrk%.bam}.mate.bam"
-
-            arr_cmd=(
-                samtools fixmate
-                    -@ "${threads}"
-                    -c
-                    -m
-                    "${bam_qnam}"
-                    "${bam_mate}"
-            )
-
-            if ! \
-                _run_or_print_cmd "${dry_run}" arr_cmd
-            then
-                echo_err_func "${func}" \
-                    "Step #2: failed to fix mate pairs in queryname-sorted" \
-                    "BAM file."
-                return 1
             fi
 
             arr_cmd=( mv -f "${bam_mate}" "${bam_qnam}" )
@@ -2140,13 +2155,17 @@ EOM
         fi
 
         # Merge Set A back in, so that Step 4 marks duplicates in the whole
-        # library; Step 4 then splits it out again as the side file.
+        # library; Step 4 then splits it out again as the side file. '-s 0'
+        # seeds the random suffixes 'merge' gives clashing '@PG' IDs, so the
+        # header is reproducible.
         if [[ "${unal_mode}" == "separate" ]]; then
             bam_mrg="${fil_wrk%.bam}.merge.bam"
             arr_cmd=(
                 samtools merge
                     -@ "${threads}"
                     -n
+                    -s 0
+                    -O "bam,level=1"
                     -o "${bam_mrg}"
                     "${bam_qnam}"
                     "${bam_set_a}"
@@ -2192,7 +2211,7 @@ EOM
 
 
 # Step 3: sort the queryname-sorted, fixmate-adjusted BAM file by coordinates
-# into the BAM work file, then index it.
+# into the BAM work file.
 function _sort_coord_bam() {
     local func="${1:-}"
     local dry_run="${2:-}"
@@ -2209,7 +2228,9 @@ Usage
   _sort_coord_bam
     [--help] func dry_run threads fil_wrk bam_qnam
 
-  Sort the queryname-sorted BAM file by coordinates into the BAM work file and index it, deleting the queryname-sorted file (Step 3 of 'align_fastqs()').
+  Sort the queryname-sorted BAM file by coordinates into the BAM work file, deleting the queryname-sorted file (Step 3 of 'align_fastqs()').
+
+  The work file is written at compression level 1 and is not indexed, as Step 4 reads it whole and rewrites it, and Step 5 indexes the final file.
 
 Parameters
 ----------
@@ -2233,7 +2254,7 @@ Parameters
 
 Returns
 -------
-  Returns 0 when sorting and indexing succeed or after printing the commands for a dry run; prints an error and returns 1 otherwise.
+  Returns 0 when sorting succeeds or after printing the commands for a dry run; prints an error and returns 1 otherwise.
 
 Notes
 -----
@@ -2269,7 +2290,7 @@ EOM
 
     if [[ "${dry_run}" == "true" ]]; then
         printf '\n%s\n' \
-            "# Step 3: sort the BAM work file by coordinates and index it."
+            "# Step 3: sort the BAM work file by coordinates."
     fi
 
     if [[ "${dry_run}" == "true" || -f "${bam_qnam}" ]]; then
@@ -2277,6 +2298,7 @@ EOM
         arr_cmd=(
             samtools sort
                 -@ "${threads}"
+                -O "bam,level=1"
                 -o "${bam_coor}"
                 "${bam_qnam}"
         )
@@ -2309,16 +2331,6 @@ EOM
         then
             echo_err_func "${func}" \
                 "Step #3: failed to rename coordinate-sorted BAM file."
-            return 1
-        fi
-
-        arr_cmd=( samtools index -@ "${threads}" "${fil_wrk}" )
-
-        if ! \
-            _run_or_print_cmd "${dry_run}" arr_cmd
-        then
-            echo_err_func "${func}" \
-                "Step #3: failed to index renamed, coordinate-sorted BAM file."
             return 1
         fi
     else
@@ -2471,8 +2483,7 @@ EOM
 }
 
 
-# Step 4: mark duplicate alignments in the coordinate-sorted BAM work file,
-# then index the file again.
+# Step 4: mark duplicate alignments in the coordinate-sorted BAM work file.
 function _mark_dup_bam() {
     local func="${1:-}"
     local dry_run="${2:-}"
@@ -2480,8 +2491,8 @@ function _mark_dup_bam() {
     local fil_wrk="${4:-}"
     local txt_mrk="${5:-}"
     local dist_nam="${6:-}"
-    local idx="${7:-true}"
-    local bam_mrk dist_opt hdr_mrk rc_opt
+    local fin="${7:-true}"
+    local bam_mrk dist_opt rc_opt
     local -a arr_cmd arr_opt
     local show_help
 
@@ -2489,9 +2500,9 @@ function _mark_dup_bam() {
 Usage
 -----
   _mark_dup_bam
-    [--help] func dry_run threads fil_wrk txt_mrk dist_nam [idx]
+    [--help] func dry_run threads fil_wrk txt_mrk dist_nam [fin]
 
-  Mark duplicate alignments in the coordinate-sorted BAM work file, write the duplicate statistics, and index the file again, skipping files already marked (Step 4 of 'align_fastqs()').
+  Mark duplicate alignments in the coordinate-sorted BAM work file and write the duplicate statistics, skipping files already marked (Step 4 of 'align_fastqs()'). The file is not indexed, as Step 5 rewrites its header and indexes it.
 
   Optical duplicates are told apart ('-d 2500') only when '_check_optical_names()' allows it.
 
@@ -2518,12 +2529,12 @@ Parameters
   6  dist_nam : str
     Name of the variable to set to the optical duplicate distance, '2500', or to 'not used' and the reason; set to empty when the file was already marked.
 
-  7  idx : bool
-    Whether to index the marked file; 'false' with '--unal_mode separate', whose split rewrites the file at once and whose two files Step 5 indexes (default: '${idx}').
+  7  fin : bool
+    Whether the marked file becomes the final output as it is, and so is written at the default compression level; 'false' writes it at level 1, for '--unal_mode separate', whose split rewrites it, and for CRAM output, which Step 6 converts it to (default: '${fin}').
 
 Returns
 -------
-  Returns 0 when marking and indexing succeed or are skipped or after printing the commands for a dry run; prints an error and returns 1 otherwise.
+  Returns 0 when marking succeeds or is skipped or after printing the commands for a dry run; prints an error and returns 1 otherwise.
 
 Notes
 -----
@@ -2564,14 +2575,9 @@ EOM
     fi
 
     if [[ "${dry_run}" == "true" ]]; then
-        hdr_mrk="# Step 4: mark duplicates and index the BAM work file again."
-        if [[ "${idx}" == "false" ]]; then
-            hdr_mrk="# Step 4: mark duplicates, then split out the side file."
-        fi
-
         # Note: weird line break is necessary fror output text formatting.
         printf '\n%s %s\n%s\n' \
-            "${hdr_mrk}" \
+            "# Step 4: mark duplicates in the BAM work file." \
             "'-d 2500' only if" \
             "# all read names carry flow-cell coordinates of one format."
     fi
@@ -2613,6 +2619,12 @@ EOM
             dist_out="${dist_opt}"
             if [[ "${dist_opt}" == "2500" ]]; then
                 arr_opt=( -d 2500 )
+            fi
+
+            # A work file that a later step rewrites is written at compression
+            # level 1. ('markdup -l' is the maximum read length, not a level.)
+            if [[ "${fin}" == "false" ]]; then
+                arr_opt+=( -O "bam,level=1" )
             fi
 
             arr_cmd=(
@@ -2667,20 +2679,6 @@ EOM
                 return 1
             fi
 
-            # Index the duplicate-marked coordinate-sorted BAM file, unless
-            # the side file's split rewrites it at once.
-            if [[ "${idx}" == "false" ]]; then return 0; fi
-
-            arr_cmd=( samtools index -@ "${threads}" "${fil_wrk}" )
-
-            if ! \
-                _run_or_print_cmd "${dry_run}" arr_cmd
-            then
-                echo_err_func "${func}" \
-                    "Step #4: failed to index duplicate-marked," \
-                    "coordinate-sorted BAM file."
-                return 1
-            fi
         fi
     else
         echo_err_func "${func}" \
@@ -2698,16 +2696,17 @@ function _split_unal_bam() {
     local threads="${3:-}"
     local fil_wrk="${4:-}"
     local fil_unal="${5:-}"
+    local fin="${6:-true}"
     local txt_nam="${fil_wrk%.bam}.unal.names.txt"
     local bam_main
-    local -a arr_cmd
+    local -a arr_cmd arr_lvl
     local show_help
 
     show_help=$(cat << EOM
 Usage
 -----
   _split_unal_bam
-    [--help] func dry_run threads fil_wrk fil_unal
+    [--help] func dry_run threads fil_wrk fil_unal [fin]
 
   Move every record of the duplicate-marked BAM work file whose read name is in Set A, as listed by Step 2 beside 'fil_wrk' (with '.unal.names.txt' for '.bam'), into the side file 'fil_unal', and keep the rest in 'fil_wrk' (Step 4 of 'align_fastqs()' with '--unal_mode separate'). Both stay coordinate-sorted; Step 5 indexes them.
 
@@ -2730,6 +2729,9 @@ Parameters
 
   5  fil_unal : file
     BAM side file to write.
+
+  6  fin : bool
+    Whether the two files become the final outputs as they are, and so are written at the default compression level; 'false' writes them at level 1, for CRAM output, which Step 6 converts them to (default: '${fin}').
 
 Returns
 -------
@@ -2775,10 +2777,13 @@ EOM
     fi
 
     bam_main="${fil_wrk%.bam}.main.bam"
+    arr_lvl=( -b )
+    if [[ "${fin}" == "false" ]]; then arr_lvl=( -O "bam,level=1" ); fi
+
     arr_cmd=(
         samtools view
             -@ "${threads}"
-            -b
+            "${arr_lvl[@]}"
             -N "${txt_nam}"
             -o "${fil_unal}"
             -U "${bam_main}"
@@ -3084,8 +3089,8 @@ EOM
 }
 
 
-# Step 5: write the pipeline record into the header of the BAM work file, then
-# index the file again, skipping files that already carry a record.
+# Step 5: write the pipeline record into the header of the BAM work file,
+# skipping files that already carry a record, then index the file.
 function _write_align_record() {
     local func="${1:-}"
     local dry_run="${2:-}"
@@ -3093,6 +3098,8 @@ function _write_align_record() {
     local fil_wrk="${4:-}"
     local cnt_nam="${5:-}"
     local run_nam="${6:-}"
+    local idx="${7:-true}"
+    local skp=false
     local hdr_rec bam_rec
     local -a arr_cmd
     local show_help
@@ -3101,9 +3108,9 @@ function _write_align_record() {
 Usage
 -----
   _write_align_record
-    [--help] func dry_run threads fil_wrk cnt_nam run_nam
+    [--help] func dry_run threads fil_wrk cnt_nam run_nam [idx]
 
-  Write the pipeline record, content lines first, into the header of the duplicate-marked BAM work file as '@CO' lines, and index the file again, skipping files that already carry a record (Step 5 of 'align_fastqs()').
+  Write the pipeline record, content lines first, into the header of the duplicate-marked BAM work file as '@CO' lines, skipping files that already carry a record, then index the file (Step 5 of 'align_fastqs()'). This is the only index the chain builds for a BAM file, so a skipped file is indexed too.
 
 Parameters
 ----------
@@ -3128,9 +3135,12 @@ Parameters
   6  run_nam : str
     Name of the indexed array holding the record's run lines.
 
+  7  idx : bool
+    Whether to index the file; 'false' for CRAM output, as Step 6 converts the file and indexes the CRAM file instead (default: '${idx}').
+
 Returns
 -------
-  Returns 0 when writing and indexing succeed or are skipped or after printing the commands for a dry run; prints an error and returns 1 otherwise.
+  Returns 0 when writing and indexing succeed, when writing is skipped and indexing succeeds, or after printing the commands for a dry run; prints an error and returns 1 otherwise.
 
 Notes
 -----
@@ -3185,68 +3195,74 @@ EOM
         echo_err_func "${func}" \
             "Step #5: duplicate-marked BAM file already carries a pipeline" \
             "record. Skipping record operations."
-        return 0
+        skp=true
     fi
 
-    local -n rec_cnt_ref="${cnt_nam}"
-    local -n rec_run_ref="${run_nam}"
-    hdr_rec="${fil_wrk%.bam}.header.sam"
-    bam_rec="${fil_wrk%.bam}.record.bam"
+    if [[ "${skp}" == "false" ]]; then
+        local -n rec_cnt_ref="${cnt_nam}"
+        local -n rec_run_ref="${run_nam}"
+        hdr_rec="${fil_wrk%.bam}.header.sam"
+        bam_rec="${fil_wrk%.bam}.record.bam"
 
-    # Write the header, then the record after it.
-    arr_cmd=( samtools view -H --no-PG "${fil_wrk}" )
+        # Write the header, then the record after it.
+        arr_cmd=( samtools view -H --no-PG "${fil_wrk}" )
 
-    if [[ "${dry_run}" == "true" ]]; then
-        _print_dry_run_cmd --out "${hdr_rec}" arr_cmd
-        printf 'printf %q' '%s\n'
-        printf ' \\\n    %q' "${rec_cnt_ref[@]}" "${rec_run_ref[@]}"
-        printf ' \\\n    >> %q\n\n' "${hdr_rec}"
-    elif ! \
-        {
-            "${arr_cmd[@]}" \
-                && printf '%s\n' "${rec_cnt_ref[@]}" "${rec_run_ref[@]}"
-        } > "${hdr_rec}"
-    then
-        echo_err_func "${func}" \
-            "Step #5: failed to write the header with the pipeline record."
-        return 1
+        if [[ "${dry_run}" == "true" ]]; then
+            _print_dry_run_cmd --out "${hdr_rec}" arr_cmd
+            printf 'printf %q' '%s\n'
+            printf ' \\\n    %q' "${rec_cnt_ref[@]}" "${rec_run_ref[@]}"
+            printf ' \\\n    >> %q\n\n' "${hdr_rec}"
+        elif ! \
+            {
+                "${arr_cmd[@]}" \
+                    && printf '%s\n' "${rec_cnt_ref[@]}" "${rec_run_ref[@]}"
+            } > "${hdr_rec}"
+        then
+            echo_err_func "${func}" \
+                "Step #5: failed to write the header with the pipeline record."
+            return 1
+        fi
+
+        # Replace the header of the BAM work file with the new one.
+        arr_cmd=( samtools reheader "${hdr_rec}" "${fil_wrk}" )
+
+        if [[ "${dry_run}" == "true" ]]; then
+            _print_dry_run_cmd --out "${bam_rec}" arr_cmd
+        elif ! \
+            "${arr_cmd[@]}" > "${bam_rec}"
+        then
+            echo_err_func "${func}" \
+                "Step #5: failed to write the pipeline record into the" \
+                "duplicate-marked BAM file."
+            return 1
+        fi
+
+        arr_cmd=( mv -f "${bam_rec}" "${fil_wrk}" )
+
+        if ! \
+            _run_or_print_cmd "${dry_run}" arr_cmd
+        then
+            echo_err_func "${func}" \
+                "Step #5: failed to rename the BAM file with the pipeline" \
+                "record."
+            return 1
+        fi
+
+        arr_cmd=( rm -f "${hdr_rec}" )
+
+        if ! \
+            _run_or_print_cmd "${dry_run}" arr_cmd
+        then
+            echo_err_func "${func}" \
+                "Step #5: failed to remove the header file."
+            return 1
+        fi
     fi
 
-    # Replace the header of the BAM work file with the new one.
-    arr_cmd=( samtools reheader "${hdr_rec}" "${fil_wrk}" )
+    # Index the file here, after the new header moves the records, and not
+    # in Steps 3 and 4, which rewrite the file.
+    if [[ "${idx}" == "false" ]]; then return 0; fi
 
-    if [[ "${dry_run}" == "true" ]]; then
-        _print_dry_run_cmd --out "${bam_rec}" arr_cmd
-    elif ! \
-        "${arr_cmd[@]}" > "${bam_rec}"
-    then
-        echo_err_func "${func}" \
-            "Step #5: failed to write the pipeline record into the" \
-            "duplicate-marked BAM file."
-        return 1
-    fi
-
-    arr_cmd=( mv -f "${bam_rec}" "${fil_wrk}" )
-
-    if ! \
-        _run_or_print_cmd "${dry_run}" arr_cmd
-    then
-        echo_err_func "${func}" \
-            "Step #5: failed to rename the BAM file with the pipeline record."
-        return 1
-    fi
-
-    arr_cmd=( rm -f "${hdr_rec}" )
-
-    if ! \
-        _run_or_print_cmd "${dry_run}" arr_cmd
-    then
-        echo_err_func "${func}" \
-            "Step #5: failed to remove the header file."
-        return 1
-    fi
-
-    # The new header moves the records, so index the file again.
     arr_cmd=( samtools index -@ "${threads}" "${fil_wrk}" )
 
     if ! \
@@ -3273,7 +3289,7 @@ function _finalize_align_output() {
     local bam_qnam="${9:-}"
     local fil_qnam_out="${10:-}"
     local hdr="${11:-true}"
-    local -a arr_cmd
+    local -a arr_cmd arr_lvl
     local show_help
 
     show_help=$(cat << EOM
@@ -3283,6 +3299,8 @@ Usage
     [--help] func dry_run threads out_fmt fil_out fil_wrk ref_fa qname bam_qnam fil_qnam_out [hdr]
 
   With 'qname', name-sort the final, duplicate-marked BAM work file into a queryname-sorted copy; then convert the work file and the copy to CRAM when requested, or rename the copy into place (Step 6 of 'align_fastqs()').
+
+  For CRAM output, the copy is a work file and is written at compression level 1.
 
 Parameters
 ----------
@@ -3296,7 +3314,7 @@ Parameters
     Whether to print the commands to stdout instead of running them.
 
   03  threads : int
-    Number of threads to use for indexing.
+    Number of threads to use for sorting and indexing.
 
   04  out_fmt : str
     Final output format: 'bam' or 'cram'.
@@ -3386,12 +3404,17 @@ EOM
         fi
     fi
 
-    # Queryname-sort the final, duplicate-marked work file.
+    # Queryname-sort the final, duplicate-marked work file. For CRAM output,
+    # the copy is converted below, so it is written at compression level 1.
     if [[ "${qname}" == "true" ]]; then
+        arr_lvl=()
+        if [[ "${out_fmt}" == "cram" ]]; then arr_lvl=( -O "bam,level=1" ); fi
+
         arr_cmd=(
             samtools sort
                 -@ "${threads}"
                 -n
+                "${arr_lvl[@]}"
                 -o "${bam_qnam}"
                 "${fil_wrk}"
         )
@@ -3499,7 +3522,7 @@ function align_fastqs() {
     local fq_1 fq_2 fil_out qname out_fmt
     local fil_wrk fil_qnam_out bam_qnam txt_mrk dist_mrk
     local fil_unal_wrk fil_unal_out fil_unal_qnam_out bam_unal_qnam lin_opt
-    local idx_mrk
+    local fin_mrk fin_spl idx_rec
 
     # shellcheck disable=SC2034  # Filled and read by name in the helpers.
     local -a arr_rec_cnt arr_rec_run arr_rec_unal
@@ -3934,7 +3957,6 @@ EOM
     # - Step 3 sorts the union of Sets A and B.
     # - Step 4 marks duplicates in the union, then splits Set A out as the side
     #   file (e.g., for QC analyses, etc.).
-    #   + The union is not indexed here, since the split rewrites it at once.
     # - Step 5 writes the pipeline record into each file and indexes each. The
     #   side file's record also says what it holds.
     # - Step 6 converts each file to CRAM, and makes a '--qname' copy of each,
@@ -3979,7 +4001,12 @@ EOM
         || return 1
 
 
-    # Step 3: sort by coordinates into the BAM work file and index it.
+    # Steps 3 and 4 do not index the BAM work file, as no step reads it by
+    # region and each rewrites it; Step 5 indexes the final file. Work files
+    # that a later step rewrites are written at compression level 1, and the
+    # files that ship at the default level.
+    #
+    # Step 3: sort by coordinates into the BAM work file.
     _sort_coord_bam \
         "${FUNCNAME[0]}" \
         "${dry_run}" \
@@ -3989,11 +4016,12 @@ EOM
         || return 1
 
 
-    # Step 4: mark duplicates and index the BAM work file again. With
-    # '--unal_mode separate', split the side file out instead of indexing;
-    # Step 5 indexes both files.
-    idx_mrk=true
-    if [[ "${unal_mode}" == "separate" ]]; then idx_mrk=false; fi
+    # Step 4: mark duplicates. The marked file ships as it is unless the side
+    # file's split rewrites it or Step 6 converts it to CRAM.
+    fin_mrk=true
+    if [[ "${unal_mode}" == "separate" || "${out_fmt}" == "cram" ]]; then
+        fin_mrk=false
+    fi
 
     _mark_dup_bam \
         "${FUNCNAME[0]}" \
@@ -4002,25 +4030,31 @@ EOM
         "${fil_wrk}" \
         "${txt_mrk}" \
         dist_mrk \
-        "${idx_mrk}" \
+        "${fin_mrk}" \
         || return 1
 
-    # With '--unal_mode separate', split the side file back out.
+    # With '--unal_mode separate', split the side file back out. The two files
+    # ship as they are unless Step 6 converts them to CRAM.
     if [[ "${unal_mode}" == "separate" ]]; then
+        fin_spl=true
+        if [[ "${out_fmt}" == "cram" ]]; then fin_spl=false; fi
+
         _split_unal_bam \
             "${FUNCNAME[0]}" \
             "${dry_run}" \
             "${threads}" \
             "${fil_wrk}" \
             "${fil_unal_wrk}" \
+            "${fin_spl}" \
             || return 1
     fi
 
 
     # Step 5: write the pipeline record, with whether optical duplicates were
-    # told apart, into the header and index the BAM work file again. The side
-    # file of '--unal_mode separate' carries the same record, plus what it
-    # holds; in each, the optical line ends the content lines.
+    # told apart, into the header and index the BAM work file, unless Step 6
+    # converts it to CRAM and indexes that instead. The side file of
+    # '--unal_mode separate' carries the same record, plus what it holds; in
+    # each, the optical line ends the content lines.
     if [[ "${dist_mrk}" == "2500" ]]; then
         lin_opt=$'@CO\tpipeline: optical_distance=2500'
     elif [[ -n "${dist_mrk}" ]]; then
@@ -4038,6 +4072,9 @@ EOM
     )
     arr_rec_cnt+=( "${lin_opt}" )
 
+    idx_rec=true
+    if [[ "${out_fmt}" == "cram" ]]; then idx_rec=false; fi
+
     _write_align_record \
         "${FUNCNAME[0]}" \
         "${dry_run}" \
@@ -4045,6 +4082,7 @@ EOM
         "${fil_wrk}" \
         arr_rec_cnt \
         arr_rec_run \
+        "${idx_rec}" \
         || return 1
 
     if [[ "${unal_mode}" == "separate" ]]; then
@@ -4055,6 +4093,7 @@ EOM
             "${fil_unal_wrk}" \
             arr_rec_unal \
             arr_rec_run \
+            "${idx_rec}" \
             || return 1
     fi
 

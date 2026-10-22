@@ -161,6 +161,7 @@ bowtie2 \\
         -@ 2 \\
         -F 12 \\
         -f 2 \\
+        -O bam,level=1 \\
         -o ${esc}.bam
 
 
@@ -169,19 +170,16 @@ bowtie2 \\
 samtools sort \\
     -@ 2 \\
     -n \\
-    -o ${esc}.qnam.bam \\
-    ${esc}.bam
-
-samtools fixmate \\
-    -@ 2 \\
-    -c \\
-    -m \\
-    ${esc}.qnam.bam \\
-    ${esc}.mate.bam
-
-mv -f \\
-    ${esc}.mate.bam \\
-    ${esc}.qnam.bam
+    -u \\
+    -o - \\
+    ${esc}.bam \\
+    | samtools fixmate \\
+        -@ 2 \\
+        -c \\
+        -m \\
+        -O bam,level=1 \\
+        - \\
+        ${esc}.qnam.bam
 
 samtools view \\
     -@ 2 \\
@@ -196,7 +194,7 @@ samtools view \\
 
 samtools view \\
     -@ 2 \\
-    -b \\
+    -O bam,level=1 \\
     -N ${esc}.mapq.names.txt \\
     -o ${esc}.mapq.bam \\
     ${esc}.qnam.bam
@@ -209,9 +207,10 @@ mv -f \\
     ${esc}.qnam.bam
 
 
-# Step 3: sort the BAM work file by coordinates and index it.
+# Step 3: sort the BAM work file by coordinates.
 samtools sort \\
     -@ 2 \\
+    -O bam,level=1 \\
     -o ${esc}.coor.bam \\
     ${esc}.qnam.bam
 
@@ -222,12 +221,8 @@ mv -f \\
     ${esc}.coor.bam \\
     ${esc}.bam
 
-samtools index \\
-    -@ 2 \\
-    ${esc}.bam
 
-
-# Step 4: mark duplicates and index the BAM work file again. '-d 2500' only if
+# Step 4: mark duplicates in the BAM work file. '-d 2500' only if
 # all read names carry flow-cell coordinates of one format.
 samtools markdup \\
     -@ 2 \\
@@ -244,10 +239,6 @@ gzip -f \\
 
 mv -f \\
     ${esc}.mark.bam \\
-    ${esc}.bam
-
-samtools index \\
-    -@ 2 \\
     ${esc}.bam
 
 
@@ -340,6 +331,7 @@ ${lin}    -1 ${in_pe_1} \\
     | samtools view \\
         -@ 1 \\
         -F 12 \\
+        -O bam,level=1 \\
         -o ${t}.bam"
 
     check_block \
@@ -396,7 +388,8 @@ ${lin_unl}    --phred33 \\
     | samtools view \\
         -@ 1 \\
         -F 12 \\
-${lin_u}        -o ${t}.bam"
+${lin_u}        -O bam,level=1 \\
+        -o ${t}.bam"
 
     check_block \
         "Bowtie 2 PE dry run with '${arg}' prints the relaxed call" \
@@ -463,6 +456,296 @@ for mod in remove separate; do
 done
 
 
+# With '--unal_mode separate' and '--req_flg', Step 2 sorts Set A to disk and
+# lists its names. It streams the sorted Set B into the routing, the seeded
+# Set A merge into 'fixmate', and the '-f 2' view into Set B's 'fixmate'. It
+# then filters Set B and merges Set A back, seeded again. Every file it writes
+# is at level 1.
+t="${tmp}/sep"
+out="$(
+    run_helper \
+        --dry_run \
+        --threads 1 \
+        --aligner bowtie2 \
+        --index "${idx_bt2}" \
+        --fq_1 "${in_pe_1}" \
+        --fq_2 "${in_pe_2}" \
+        --req_flg \
+        --unal_mode separate \
+        --fil_out "${t}.bam" 2> /dev/null
+)" || true
+
+exp="# Step 2: sort the BAM work file by queryname, fix mates in paired-end data,
+# and filter templates.
+samtools sort \\
+    -@ 1 \\
+    -n \\
+    -O bam,level=1 \\
+    -o ${t}.setA.qnam.bam \\
+    ${t}.setA.bam
+
+mv -f \\
+    ${t}.setA.qnam.bam \\
+    ${t}.setA.bam
+
+samtools view \\
+    -@ 1 \\
+    ${t}.setA.bam \\
+    | cut -f 1 \\
+    | uniq \\
+        > ${t}.unal.names.txt
+
+samtools sort \\
+    -@ 1 \\
+    -n \\
+    -u \\
+    -o - \\
+    ${t}.bam \\
+    | samtools view \\
+        -@ 1 \\
+        -O bam,level=1 \\
+        -N ${t}.unal.names.txt \\
+        -o ${t}.moved.bam \\
+        -U ${t}.qnam.bam \\
+        -
+
+samtools merge \\
+    -@ 1 \\
+    -n \\
+    -s 0 \\
+    -u \\
+    -o - \\
+    ${t}.setA.bam \\
+    ${t}.moved.bam \\
+    | samtools fixmate \\
+        -@ 1 \\
+        -c \\
+        -m \\
+        -O bam,level=1 \\
+        - \\
+        ${t}.setA.mate.bam
+
+mv -f \\
+    ${t}.setA.mate.bam \\
+    ${t}.setA.bam
+
+rm -f \\
+    ${t}.moved.bam
+
+samtools view \\
+    -@ 1 \\
+    -u \\
+    -f 2 \\
+    ${t}.qnam.bam \\
+    | samtools fixmate \\
+        -@ 1 \\
+        -c \\
+        -m \\
+        -O bam,level=1 \\
+        - \\
+        ${t}.mate.bam
+
+mv -f \\
+    ${t}.mate.bam \\
+    ${t}.qnam.bam
+
+samtools view \\
+    -@ 1 \\
+    -F 2308 \\
+    -q 1 \\
+    ${t}.qnam.bam \\
+    | cut -f 1 \\
+    | uniq -c \\
+    | awk -v n=2 \\
+        \\\$1\\ ==\\ n\\ \\{\\ print\\ \\\$2\\ \\} \\
+        > ${t}.mapq.names.txt
+
+samtools view \\
+    -@ 1 \\
+    -O bam,level=1 \\
+    -N ${t}.mapq.names.txt \\
+    -o ${t}.mapq.bam \\
+    ${t}.qnam.bam
+
+rm -f \\
+    ${t}.mapq.names.txt
+
+mv -f \\
+    ${t}.mapq.bam \\
+    ${t}.qnam.bam
+
+samtools merge \\
+    -@ 1 \\
+    -n \\
+    -s 0 \\
+    -O bam,level=1 \\
+    -o ${t}.merge.bam \\
+    ${t}.qnam.bam \\
+    ${t}.setA.bam
+
+mv -f \\
+    ${t}.merge.bam \\
+    ${t}.qnam.bam
+
+rm -f \\
+    ${t}.setA.bam"
+
+check_block \
+    "PE dry run with 'separate' and '--req_flg' prints Step 2" \
+    "${exp}" \
+    "$(print_step 2 "${out}")"
+
+# Without '--req_flg', Set B's 'fixmate' reads the sorted file itself. In
+# single-end data, Step 2 lists Set A's names, then sorts Set B to disk.
+out="$(
+    run_helper \
+        --dry_run \
+        --threads 1 \
+        --aligner bowtie2 \
+        --index "${idx_bt2}" \
+        --fq_1 "${in_pe_1}" \
+        --fq_2 "${in_pe_2}" \
+        --unal_mode separate \
+        --fil_out "${t}.bam" 2> /dev/null
+)" || true
+exp="samtools fixmate \\
+    -@ 1 \\
+    -c \\
+    -m \\
+    -O bam,level=1 \\
+    ${t}.qnam.bam \\
+    ${t}.mate.bam"
+
+if [[
+    "$(print_step 2 "${out}")" == *"${exp}"*
+    && "$(print_step 2 "${out}")" != *"-f 2"*
+]]; then
+    record_pass "PE dry run with 'separate' fixes Set B's mates from its file"
+else
+    record_fail "PE dry run with 'separate' fixes Set B's mates wrongly"
+fi
+
+out="$(
+    run_helper \
+        --dry_run \
+        --threads 1 \
+        --aligner bowtie2 \
+        --index "${idx_bt2}" \
+        --fq_1 "${in_se}" \
+        --unal_mode separate \
+        --fil_out "${t}_se.bam" 2> /dev/null
+)" || true
+exp="> ${t}_se.unal.names.txt
+
+samtools sort \\
+    -@ 1 \\
+    -n \\
+    -O bam,level=1 \\
+    -o ${t}_se.qnam.bam \\
+    ${t}_se.bam
+
+samtools view \\
+    -@ 1 \\
+    -F 2308 \\
+    -q 1 \\"
+st2="$(print_step 2 "${out}")"
+lin_mrg="    -s 0 \\
+    -O bam,level=1 \\
+    -o ${t}_se.merge.bam"
+
+if [[
+    "${st2}" == *"${exp}"*
+    && "${st2}" != *"fixmate"*
+    && "${st2}" != *"moved"*
+    && "${st2}" == *"${lin_mrg}"*
+]]; then
+    record_pass "SE dry run with 'separate' sorts Set B to disk, no routing"
+else
+    record_fail "SE dry run with 'separate' prints Step 2 wrongly"
+fi
+
+
+# Only Step 5 indexes a BAM file, once per file it writes, and not for CRAM
+# output, which Step 6 indexes instead. A file that a later step rewrites is
+# written at level 1; a file that ships is written at the default level.
+t="${tmp}/mtx"
+for mod in remove separate; do
+    for fmt in bam cram; do
+        lbl="'${mod}' with ${fmt^^} output"
+        out="$(
+            run_helper \
+                --dry_run \
+                --threads 1 \
+                --aligner bowtie2 \
+                --index "${idx_bt2}" \
+                --ref_fa "${ref_fa}" \
+                --fq_1 "${in_pe_1}" \
+                --fq_2 "${in_pe_2}" \
+                --unal_mode "${mod}" \
+                --qname \
+                --fil_out "${t}.${mod}.${fmt}" 2> /dev/null
+        )" || true
+        st3="$(print_step 3 "${out}")"
+        st4="$(print_step 4 "${out}")"
+        st5="$(print_step 5 "${out}")"
+        st6="$(print_step 6 "${out}")"
+        n_fil=1
+        if [[ "${mod}" == "separate" ]]; then n_fil=2; fi
+        n_idx5="$(grep -c '^samtools index' <<< "${st5}" || true)"
+        n_idx6="$(grep -c '^samtools index' <<< "${st6}" || true)"
+        n_lvl4="$(grep -c 'level=1' <<< "${st4}" || true)"
+        n_lvl6="$(grep -c 'level=1' <<< "${st6}" || true)"
+        n_b4="$(grep -c '^    -b \\$' <<< "${st4}" || true)"
+
+        exp_idx5="${n_fil}"
+        exp_lvl4=0
+        exp_lvl6=0
+        exp_b4=0
+        if [[ "${fmt}" == "cram" ]]; then
+            exp_idx5=0
+            exp_lvl6="${n_fil}"
+        fi
+        if [[ "${mod}" == "separate" && "${fmt}" == "bam" ]]; then
+            exp_lvl4=1
+            exp_b4=1
+        elif [[ "${mod}" == "separate" ]]; then
+            exp_lvl4=2
+        elif [[ "${fmt}" == "cram" ]]; then
+            exp_lvl4=1
+        fi
+
+        if [[
+            -n "${st3}" && -n "${st4}"
+            && "${st3}${st4}" != *"samtools index"*
+            && "${n_idx5}" == "${exp_idx5}"
+        ]]; then
+            record_pass "${lbl}: only Step 5 indexes, ${exp_idx5} file(s)"
+        else
+            record_fail "${lbl}: indexes in Steps 3 to 5 are wrong (${n_idx5})"
+        fi
+
+        if [[
+            "${fmt}" == "bam" && "${n_idx6}" == 0
+            || "${fmt}" == "cram" && "${n_idx6}" == "${n_fil}"
+        ]]; then
+            record_pass "${lbl}: Step 6 indexes ${n_idx6} file(s)"
+        else
+            record_fail "${lbl}: Step 6 indexes ${n_idx6} file(s)"
+        fi
+
+        if [[
+            "${n_lvl4}" == "${exp_lvl4}" && "${n_b4}" == "${exp_b4}"
+            && "${n_lvl6}" == "${exp_lvl6}"
+            && "$(grep -c 'level=1' <<< "${st3}")" == 1
+        ]]; then
+            record_pass "${lbl}: work files at level 1, shipped files not"
+        else
+            record_fail "${lbl}: levels wrong: Step 4 ${n_lvl4}," \
+                "'-b' ${n_b4}, Step 6 ${n_lvl6}"
+        fi
+    done
+done
+
 # BWA-backtrack, paired-end, '--mapq 20': the '.sai' redirects, their removal,
 # and the template filter's pipeline.
 t="${tmp}/aln"
@@ -501,6 +784,7 @@ bwa sampe \\
     | samtools view \\
         -@ 1 \\
         -F 12 \\
+        -O bam,level=1 \\
         -o ${t}.bam
 
 rm -f \\
@@ -517,19 +801,16 @@ exp="# Step 2: sort the BAM work file by queryname, fix mates in paired-end data
 samtools sort \\
     -@ 1 \\
     -n \\
-    -o ${t}.qnam.bam \\
-    ${t}.bam
-
-samtools fixmate \\
-    -@ 1 \\
-    -c \\
-    -m \\
-    ${t}.qnam.bam \\
-    ${t}.mate.bam
-
-mv -f \\
-    ${t}.mate.bam \\
-    ${t}.qnam.bam
+    -u \\
+    -o - \\
+    ${t}.bam \\
+    | samtools fixmate \\
+        -@ 1 \\
+        -c \\
+        -m \\
+        -O bam,level=1 \\
+        - \\
+        ${t}.qnam.bam
 
 samtools view \\
     -@ 1 \\
@@ -544,7 +825,7 @@ samtools view \\
 
 samtools view \\
     -@ 1 \\
-    -b \\
+    -O bam,level=1 \\
     -N ${t}.mapq.names.txt \\
     -o ${t}.mapq.bam \\
     ${t}.qnam.bam
@@ -638,6 +919,7 @@ bwa-mem2 mem \\
     | samtools view \\
         -@ 1 \\
         -F 4 \\
+        -O bam,level=1 \\
         -o ${t}.bam"
 
 check_block \
@@ -649,6 +931,7 @@ exp="# Step 6: write the final output and the retained files.
 samtools sort \\
     -@ 1 \\
     -n \\
+    -O bam,level=1 \\
     -o ${t}.qnam.bam \\
     ${t}.bam
 
