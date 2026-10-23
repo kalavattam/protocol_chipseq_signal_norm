@@ -272,7 +272,7 @@ Parameters
     Maximum fragment length for a Bowtie 2 paired-end alignment or empty to leave the default of 'align_fastqs'.
 
   05  bt2_inherited : bool
-    Whether to make the earlier Bowtie 2 paired-end call.
+    Whether to make the earlier "inherited" Bowtie 2 paired-end call.
 
   06  bt2_relaxed : bool
     Whether to make the relaxed Bowtie 2 paired-end call.
@@ -338,7 +338,7 @@ Notes
   - This helper is a thin wrapper around 'align_fastqs'.
   - '--fq_2' is passed only when 'fq_2 != NA'.
   - '--req_flg' is passed only when its value is 'true' and 'fq_2' is not 'NA'.
-  - '--bt2_X' is passed only when 'bt2_X' is not empty and 'fq_2' is not 'NA'; the earlier or the relaxed call is asked for only when 'bt2_inherited' or 'bt2_relaxed' is 'true' and 'fq_2' is not 'NA'.
+  - '--bt2_X' is passed only when 'bt2_X' is not empty and 'fq_2' is not 'NA'; the earlier ("inherited") or the relaxed call is asked for only when 'bt2_inherited' or 'bt2_relaxed' is 'true' and 'fq_2' is not 'NA'.
   - '--unal_mode' is passed only when 'unal_mode' is not empty.
   - '--qname' is passed only when its value is 'true'.
   - '--ref_fa' is passed only when 'fil_out' ends in '.cram'.

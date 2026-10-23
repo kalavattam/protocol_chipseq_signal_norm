@@ -23,11 +23,13 @@ source "$(
 )/tests/support/test_helpers.sh"
 
 
-# Define fixture and output paths. Per 'HELP.PARAMETER.APPLICABILITY', each
-# aligner refuses the other's option; '--ref_fa' without CRAM, an all-SE
-# '--req_flg', and a suffix for a layout no entry has are ignored with a
-# warning. The hidden '--bt2_relaxed' is refused without a PE entry, and it and
-# '--unal_mode separate' are refused with '--bt2_inherited'.
+# Define fixture and output paths.
+#
+# Per 'HELP.PARAMETER.APPLICABILITY', each aligner refuses the other's option;
+# '--ref_fa' without CRAM, an all-SE '--req_flg', and a suffix for a layout no
+# entry has are ignored with a warning. The hidden '--bt2_relaxed' is refused
+# without a PE entry, and it and '--unal_mode separate' are refused with
+# '--bt2_inherited'.
 dir_fx="${ROOT_REPO}/tests/fixtures/align_fastqs"
 in_se="${dir_fx}/fastq/se/tiny_se.atria.fastq.gz"
 in_pe_1="${dir_fx}/fastq/pe/tiny_pe_R1.atria.fastq.gz"
@@ -165,9 +167,9 @@ for idx in "${!rows_exe[@]}"; do
         warn)
             if [[
                 "${rc}" -eq 0
-                && "${out}" == *"warning("*"'${opt}' has no effect"*
-                && -n "${cmd}"
-                && "${cmd}" != *" ${opt}"*
+                    && "${out}" == *"warning("*"'${opt}' has no effect"*
+                    && -n "${cmd}"
+                    && "${cmd}" != *" ${opt}"*
             ]]; then
                 record_pass "${lbl} warns and is not passed on"
             else
@@ -179,9 +181,9 @@ for idx in "${!rows_exe[@]}"; do
         pass)
             if [[
                 "${rc}" -eq 0
-                && -n "${cmd}"
-                && ( -z "${opt}" || "${cmd}" == *" ${opt}"* )
-                && "${out}" != *"has no effect"*
+                    && -n "${cmd}"
+                    && ( -z "${opt}" || "${cmd}" == *" ${opt}"* )
+                    && "${out}" != *"has no effect"*
             ]]; then
                 record_pass "${lbl} is accepted with no message"
             else
@@ -192,9 +194,9 @@ for idx in "${!rows_exe[@]}"; do
         drop)
             if [[
                 "${rc}" -eq 0
-                && -n "${cmd}"
-                && "${cmd}" != *" ${opt}"*
-                && "${out}" != *"has no effect"*
+                    && -n "${cmd}"
+                    && "${cmd}" != *" ${opt}"*
+                    && "${out}" != *"has no effect"*
             ]]; then
                 record_pass "${lbl} is not passed on, with no message"
             else
@@ -230,9 +232,9 @@ cmd_pe="$(grep -m1 "${pat}.*tiny_pe_R1" <<< "${out}" || true)"
 
 if [[
     "${rc}" -eq 0
-    && "${cmd_se}" == *" --sfx_se "* && "${cmd_se}" != *" --sfx_pe "*
-    && "${cmd_pe}" == *" --sfx_pe "* && "${cmd_pe}" != *" --sfx_se "*
-    && "${out}" != *"has no effect"*
+        && "${cmd_se}" == *" --sfx_se "* && "${cmd_se}" != *" --sfx_pe "*
+        && "${cmd_pe}" == *" --sfx_pe "* && "${cmd_pe}" != *" --sfx_se "*
+        && "${out}" != *"has no effect"*
 ]]; then
     record_pass "execute passes each entry only its own suffix"
 else
@@ -272,10 +274,10 @@ cmd_pe="$(
 
 if [[
     "${rc}" -eq 0
-    && -n "${cmd_se}"
-    && -n "${cmd_pe}"
-    && "${cmd_se}" != *" --req_flg"*
-    && "${cmd_pe}" == *" --req_flg"*
+        && -n "${cmd_se}"
+        && -n "${cmd_pe}"
+        && "${cmd_se}" != *" --req_flg"*
+        && "${cmd_pe}" == *" --req_flg"*
 ]]; then
     record_pass "execute passes '--req_flg' only to a parallel PE entry"
 else
@@ -323,8 +325,8 @@ for idx in "${!rows_ref[@]}"; do
 
     if [[
         "${rc}" -ne 0
-        && "${out}" == *"error("*"${msg}"*
-        && ! -e "${dir_out}/tiny_se.bam"
+            && "${out}" == *"error("*"${msg}"*
+            && ! -e "${dir_out}/tiny_se.bam"
     ]]; then
         record_pass "submit '${opt}' is refused before aligning"
     else
@@ -353,9 +355,11 @@ for idx in "${!rows_wrn[@]}"; do
 
     if [[
         "${rc}" -eq 0
-        && "${out}" == *"warning("*"${msg}"*
-        && -s "${dir_out}/tiny_se.bam"
-    ]] && ! grep -rq "has no effect" "${dir_out}/logs"; then
+            && "${out}" == *"warning("*"${msg}"*
+            && -s "${dir_out}/tiny_se.bam"
+    ]] &&
+        ! grep -rq "has no effect" "${dir_out}/logs"
+    then
         record_pass "submit '${opt}' warns once and aligns"
     else
         record_fail \
@@ -387,11 +391,13 @@ n_req="$(grep -c "cmd_aln+=(--req_flg)" <<< "${out}" || true)"
 
 if [[
     "${rc}" -eq 0
-    && "${n_req}" -eq 1
-    && "${out}" != *"has no effect"*
-    && -s "${dir_out}/tiny_se.bam"
-    && -s "${dir_out}/tiny_pe.bam"
-]] && ! grep -rq "has no effect" "${dir_out}/logs"; then
+        && "${n_req}" -eq 1
+        && "${out}" != *"has no effect"*
+        && -s "${dir_out}/tiny_se.bam"
+        && -s "${dir_out}/tiny_pe.bam"
+]] &&
+    ! grep -rq "has no effect" "${dir_out}/logs"
+then
     record_pass "submit passes '--req_flg' only to a mixed list's PE entry"
 else
     record_fail \
@@ -408,9 +414,12 @@ for arg in "--bt2_X 800" "-2i" "-2r"; do
     if [[ "${arg}" == "-2r" ]]; then opt="--bt2_relaxed"; fi
 
     out_bt2="$(
-        run_submit "${tmp}/sub_mixed_bt2" --dry_run \
-            --csv_fil_in "${in_se};${in_pe}" --aligner bowtie2 \
-            --index "${idx_bt2}" "${args[@]}"
+        run_submit "${tmp}/sub_mixed_bt2" \
+            --dry_run \
+            --csv_fil_in "${in_se};${in_pe}" \
+            --aligner bowtie2 \
+            --index "${idx_bt2}" \
+            "${args[@]}"
     )" || true
     blk_se="$(
         awk '/^# Sample /{ on = /tiny_se/ } on' <<< "${out_bt2}"
@@ -421,8 +430,8 @@ for arg in "--bt2_X 800" "-2i" "-2r"; do
 
     if [[
         -n "${blk_se}"
-        && "${blk_se}" != *"${opt}"*
-        && "${blk_pe}" == *"    ${opt}"*
+            && "${blk_se}" != *"${opt}"*
+            && "${blk_pe}" == *"    ${opt}"*
     ]]; then
         record_pass "submit passes '${opt}' only to a mixed list's PE entry"
     else
@@ -509,8 +518,8 @@ for idx in "${!rows_sfx[@]}"; do
         refuse)
             if [[
                 "${rc}" -ne 0
-                && "${out}" == *"error("*"${msg}"*
-                && ! -e "${dir_out}/${stm}.bam"
+                    && "${out}" == *"error("*"${msg}"*
+                    && ! -e "${dir_out}/${stm}.bam"
             ]]; then
                 record_pass "${lbl} is refused before aligning"
             else
@@ -521,9 +530,9 @@ for idx in "${!rows_sfx[@]}"; do
         warn)
             if [[
                 "${rc}" -eq 0
-                && "${out}" == *"warning(submit_align_fastqs.sh"*"${msg}"*
-                && "${out}" != *"::check_string_fastqs): "*
-                && -s "${dir_out}/${stm}.bam"
+                    && "${out}" == *"warning(submit_align_fastqs.sh"*"${msg}"*
+                    && "${out}" != *"::check_string_fastqs): "*
+                    && -s "${dir_out}/${stm}.bam"
             ]]; then
                 record_pass "${lbl} warns once and aligns"
             else
@@ -535,8 +544,8 @@ for idx in "${!rows_sfx[@]}"; do
         pass)
             if [[
                 "${rc}" -eq 0
-                && "${out}" != *"has no effect"*
-                && -s "${dir_out}/${stm}.bam"
+                    && "${out}" != *"has no effect"*
+                    && -s "${dir_out}/${stm}.bam"
             ]]; then
                 record_pass "${lbl} aligns with no message"
             else
@@ -668,7 +677,8 @@ out_bth[submit]="$(
     run_submit "${tmp}/sub_bth" --csv_fil_in "${in_pe}" "${arg_bth[@]}"
 )" || true
 out_bth[helper]="$(
-    run_helper "${arg_bth[@]}" --fq_2 "${in_pe_2}" \
+    run_helper "${arg_bth[@]}" \
+        --fq_2 "${in_pe_2}" \
         --fil_out "${tmp}/helper_bth.bam"
 )" || true
 
@@ -683,8 +693,8 @@ declare -A who_bth=(
 for lyr in execute submit helper; do
     if [[
         "${out_bth[${lyr}]}" == *"${who_bth[${lyr}]}${msg_both}"*
-        && ! -e "${tmp}/sub_bth/tiny_pe.bam"
-        && ! -e "${tmp}/helper_bth.bam"
+            && ! -e "${tmp}/sub_bth/tiny_pe.bam"
+            && ! -e "${tmp}/helper_bth.bam"
     ]]; then
         record_pass "${lyr} refuses '--bt2_X' with '--bt2_inherited'"
     else
@@ -694,9 +704,8 @@ done
 
 # '--bt2_relaxed' and '--unal_mode separate' with '--bt2_inherited', and
 # '--bt2_relaxed' with only SE input, are refused at every layer, in its own
-# name, before any file is written; '--unal_mode remove' with
-# '--bt2_inherited' is accepted. label|input|arguments|message, or empty for
-# acceptance.
+# name, before any file is written; '--unal_mode remove' with '--bt2_inherited'
+# is accepted. label|input|arguments|message, or empty for acceptance.
 rows_cmb=(
     "'--bt2_relaxed' with '--bt2_inherited'|pe|-2r -2i|${msg_rlx_inh}"
     "'-um separate' with '--bt2_inherited'|pe|-um separate -2i|${msg_sep_inh}"
@@ -750,8 +759,8 @@ for idx in "${!rows_cmb[@]}"; do
         if [[ -n "${msg}" ]]; then
             if [[
                 "${rc_cmb[${lyr}]}" -ne 0
-                && "${out_cmb[${lyr}]}" == *"${who_bth[${lyr}]}${msg}"*
-                && ( -z "${fil_cmb[${lyr}]}" || ! -e "${fil_cmb[${lyr}]}" )
+                    && "${out_cmb[${lyr}]}" == *"${who_bth[${lyr}]}${msg}"*
+                    && ( -z "${fil_cmb[${lyr}]}" || ! -e "${fil_cmb[${lyr}]}" )
             ]]; then
                 record_pass "${lyr} refuses ${lbl}"
             else
@@ -811,10 +820,10 @@ n_err="$(grep -c '^error(' <<< "${out}" || true)"
 
 if [[
     "${rc}" -ne 0
-    && "${n_err}" -eq 1
-    && "${out}" == *"no Bowtie 2 index at '${tmp}/no_index'"*
-    && "${out}" != *"Step #1"*
-    && ! -e "${fil_out}"
+        && "${n_err}" -eq 1
+        && "${out}" == *"no Bowtie 2 index at '${tmp}/no_index'"*
+        && "${out}" != *"Step #1"*
+        && ! -e "${fil_out}"
 ]]; then
     record_pass "helper stops before Step 1 on a missing index, with one error"
 else
@@ -841,9 +850,10 @@ n_err="$(grep -c '^error(' <<< "${out}" || true)"
 
 if [[
     "${rc}" -ne 0
-    && "${n_err}" -eq 1
-    && "${out}" == *"::align_fastqs): Step #1: failed to align single-end"*
-    && ! -e "${fil_out}"
+        && "${n_err}" -eq 1
+        && "${out}" \
+            == *"::align_fastqs): Step #1: failed to align single-end"*
+        && ! -e "${fil_out}"
 ]]; then
     record_pass "helper stops at a Step 1 failure with one error by name"
 else
@@ -901,7 +911,7 @@ for idx in "${!rows_chk[@]}"; do
         refuse)
             if [[
                 "${rc}" -ne 0
-                && "${out}" == *"error("*"${fn_chk}${msg}"*
+                    && "${out}" == *"error("*"${fn_chk}${msg}"*
             ]]; then
                 record_pass "${lbl} is refused by name"
             else
@@ -912,7 +922,7 @@ for idx in "${!rows_chk[@]}"; do
         warn)
             if [[
                 "${rc}" -eq 0
-                && "${out}" == *"warning("*"${fn_chk}${msg}"*
+                    && "${out}" == *"warning("*"${fn_chk}${msg}"*
             ]]; then
                 record_pass "${lbl} warns"
             else

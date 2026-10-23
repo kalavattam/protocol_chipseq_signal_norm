@@ -137,7 +137,7 @@ function check_record() {
         || true
 
     # The optical line ends the content lines, right before the run lines.
-    if
+    if \
         print_co "${fil}" \
             | awk -v re="${re_opt}" '
                 /^@CO\tpipeline-run: / { exit !(prv ~ re) }
@@ -379,8 +379,8 @@ add_row \
     "ref_fa_md5=${m_ref}" \
     "${arr_in_pe[@]}"
 
-# The hidden '--bt2_relaxed' records itself and its warning; with
-# '--unal_mode separate', so does the side file, checked below.
+# The hidden '--bt2_relaxed' records itself and its warning; so does the side
+# file with '--unal_mode separate', as checked below.
 add_row \
     "Bowtie 2 PE, '--bt2_relaxed', '--unal_mode separate'" \
     bt2_rlx.bam \
@@ -431,8 +431,9 @@ for idx in "${!arr_rows[@]}"; do
 
     # A direct call to the library gives the library function alone.
     if [[
-        "$(print_co "${fil_out}")" \
-            == *$'pipeline-run: calls=align_fastqs.sh::align_fastqs\n'*
+        "$(
+            print_co "${fil_out}"
+        )" == *$'pipeline-run: calls=align_fastqs.sh::align_fastqs\n'*
     ]]; then
         record_pass "${lbl}: the call path is the library alone"
     else
@@ -448,7 +449,7 @@ for idx in "${!arr_rows[@]}"; do
     )"
     if [[
         "$(head -n 1 <<< "${pg}" | cut -f 3)" =~ ^PN:(bowtie2|bwa|bwa-mem2)$
-        && "${pg}" == *"CL:samtools reheader "*
+            && "${pg}" == *"CL:samtools reheader "*
     ]]; then
         record_pass "${lbl}: tools' '@PG' lines are kept"
     else
@@ -461,8 +462,9 @@ for idx in "${!arr_rows[@]}"; do
         n_all="$(run_samtools view -c "${fil_out}")"
         n_reg=0
         while read -r chr; do
-            n="$(run_samtools view -c "${fil_out}" "${chr}" 2> /dev/null)" \
-                || n=-1
+            n="$(
+                run_samtools view -c "${fil_out}" "${chr}" 2> /dev/null
+            )" || n=-1
             n_reg=$(( n_reg + n ))
         done < <(
             run_samtools view -H --no-PG "${fil_out}" \
@@ -480,7 +482,7 @@ for idx in "${!arr_rows[@]}"; do
         fil_qnm="${fil_out%.*}.qnam.${fil_out##*.}"
         if [[
             -s "${fil_qnm}"
-            && "$(print_co "${fil_qnm}")" == "$(print_co "${fil_out}")"
+                && "$(print_co "${fil_qnm}")" == "$(print_co "${fil_out}")"
         ]]; then
             record_pass "${lbl}: the '--qname' copy carries the same record"
         else
@@ -498,8 +500,8 @@ for idx in "${!arr_rows[@]}"; do
 done
 
 # The side file of the last row carries the alignment file's record, its
-# '--unal_mode=separate' included, plus what it holds, with the alignment
-# file's run lines.
+# '--unal_mode=separate' included, plus what it holds, with the run lines of
+# the alignment file.
 idx=$(( ${#arr_rows[@]} - 1 ))
 IFS='|' read -r lbl nam arg lin <<< "${arr_rows[idx]}"
 IFS=';' read -r -a arr_lin <<< "${lin}"
@@ -511,7 +513,7 @@ if [[ -s "${fil_unal}" ]]; then
         "$(
             print_cnt_exp \
                 "${arr_lin[@]}" \
-                "content=unaligned reads and their mates" \
+                "content=unaligned reads and their mates, aligned or not" \
                 "warning=not for signal or scaling"
         )" \
         "$(
@@ -600,9 +602,11 @@ rc=0
 
 if [[
     "${rc}" -eq 0
-    && "$(print_co "${fil_two}" \
-        | grep -c $'^@CO\tpipeline: chain=align_fastqs$')" == 1
-    && "$(cat "${tmp}/twice.log")" == *"already carries a pipeline record"*
+        && "$(
+            print_co "${fil_two}" \
+                | grep -c $'^@CO\tpipeline: chain=align_fastqs$'
+        )" == 1
+        && "$(cat "${tmp}/twice.log")" == *"already carries a pipeline record"*
 ]]; then
     record_pass "writing the record twice leaves one record"
 else
@@ -627,9 +631,9 @@ co_1="$(print_co "${tmp}/thr_1/x.bam")"
 co_2="$(print_co "${tmp}/thr_2/x.bam")"
 if [[
     -n "${co_1}"
-    && "$(print_cnt "${co_1}")" == "$(print_cnt "${co_2}")"
-    && "$(print_run "${co_1}")" != "$(print_run "${co_2}")"
-    && "$(print_run "${co_2}")" == *$'pipeline-run: --threads=2'*
+        && "$(print_cnt "${co_1}")" == "$(print_cnt "${co_2}")"
+        && "$(print_run "${co_1}")" != "$(print_run "${co_2}")"
+        && "$(print_run "${co_2}")" == *$'pipeline-run: --threads=2'*
 ]]; then
     record_pass "two thread counts: same content lines, different run lines"
 else
@@ -690,9 +694,9 @@ else
     co="$(print_co "${fil_drv}")"
     if [[
         "${co}" == *$'pipeline-run: calls=execute_align_fastqs.sh > '*
-        && "${co}" == *$'submit_align_fastqs.sh > '*
-        && "${co}" == *$'align_fastqs.sh::align_fastqs\n'*
-        && "${co}" == *$'pipeline-run: env='"${env_nam}"$'\n'*
+            && "${co}" == *$'submit_align_fastqs.sh > '*
+            && "${co}" == *$'align_fastqs.sh::align_fastqs\n'*
+            && "${co}" == *$'pipeline-run: env='"${env_nam}"$'\n'*
     ]]; then
         record_pass "driver: the call path and environment are recorded"
     else

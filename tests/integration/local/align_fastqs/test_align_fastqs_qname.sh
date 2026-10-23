@@ -23,18 +23,21 @@ source "$(
 )/tests/support/test_helpers.sh"
 
 
-# Define fixture and output paths. '--qname' name-sorts the final
-# duplicate-marked alignments, so the copy holds the same records and flags.
+# Define fixture and output paths.
+#
+# '--qname' name-sorts the final duplicate-marked alignments, so the copy holds
+# the same records and flags. In the 'qname' reads, 'dup_a' and 'dup_b' are one
+# fragment under two names, so Step 4 marks one of them.
 dir_fx="${ROOT_REPO}/tests/fixtures/align_fastqs"
 ref_rpt="${dir_fx}/reference/repeat.fa"
 idx_bt2="${dir_fx}/bowtie2/repeat"
 idx_bwa="${dir_fx}/bwa/repeat.fa"
 
+ref_fa="${ref_rpt}"
+fq_1="${dir_fx}/fastq/pe/qname_pe_R1.atria.fastq.gz"
+fq_2="${dir_fx}/fastq/pe/qname_pe_R2.atria.fastq.gz"
+
 tmp="${TEST_DIR_TMP}/align_fastqs_qname"
-ref_fa="${tmp}/repeat.fa"
-fq_1="${tmp}/qn_R1.fastq"
-fq_2="${tmp}/qn_R2.fastq"
-len_rd=50
 
 
 print_section "${TEST_NAME}"
@@ -47,47 +50,18 @@ require_env_project env_nam || {
     exit $?
 }
 
+# CRAM writing reads the reference's '.fai', which 'make.sh' builds; without
+# it, Samtools would write one beside the fixture.
 require_files_nonempty \
     "${ref_rpt}" \
+    "${ref_rpt}.fai" \
+    "${fq_1}" \
+    "${fq_2}" \
     "${idx_bt2}.1.bt2" \
     "${idx_bwa}.bwt" || {
     finish
     exit $?
 }
-
-# CRAM writing indexes the reference, so use a copy outside the fixtures.
-cp "${ref_rpt}" "${ref_fa}"
-
-
-# Print one FASTQ record.
-function print_fq() {
-    printf '@%s\n%s\n+\n%s\n' "${1}" "${2}" "${2//?/I}"
-}
-
-
-# Write one pair: R1 starts at a 0-based offset on the forward strand, and R2
-# is the reverse complement of the fragment's last bases.
-function print_pair() {
-    local nam="${1}"
-    local beg="${2}"
-    local frg="${3}"
-    local seq_2
-
-    seq_2="$(
-        rev <<< "${seq_ref:beg + frg - len_rd:len_rd}" | tr ACGT TGCA
-    )"
-    print_fq "${nam}" "${seq_ref:beg:len_rd}" >> "${fq_1}"
-    print_fq "${nam}" "${seq_2}" >> "${fq_2}"
-}
-
-
-# Three 300 bp fragments from the unique blocks; 'dup_a' and 'dup_b' are the
-# same fragment under two names, so Step 4 marks one of them.
-seq_ref="$(grep -v '^>' "${ref_rpt}" | tr -d '\n')"
-
-print_pair uniq 50 300
-print_pair dup_a 1200 300
-print_pair dup_b 1200 300
 
 
 # Run the helper.
@@ -166,7 +140,7 @@ for idx in "${!rows[@]}"; do
         continue
     fi
 
-    if
+    if \
         run_samtools view -H -T "${ref_fa}" "${fil_qnm}" \
             | grep -q $'^@HD\t.*SO:queryname'
     then

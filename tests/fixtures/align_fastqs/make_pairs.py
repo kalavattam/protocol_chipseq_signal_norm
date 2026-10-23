@@ -18,13 +18,15 @@ Write the pairs reference and reads for the align-fastqs unaligned-read checks.
 Two chromosomes of random unique sequence, the first holding three exact copies
 of one 300-base repeat, carry one read pair per pair class: concordant,
 overlapping, contained, beyond 1,000 bases, dovetailed, outward-facing (RF),
-same-strand (FF), on different chromosomes, with one mate unaligned, with
-both mates unaligned, and with one mate in the repeat. A single-end set holds
+same-strand (FF), on different chromosomes, with one mate unaligned, with both
+mates unaligned, and with one mate in the repeat. A single-end set holds
 unique, repeat, and unaligned reads. A duplicate set, whose names carry
 flow-cell coordinates, holds a concordant pair and pairs with one mate
-unaligned whose aligned mates duplicate that pair's first mate, each other,
-or each other on the same tile. Every random draw is via
-'random.Random(0).random()', whose stream Python guarantees across versions.
+unaligned whose aligned mates duplicate that pair's first mate, each other, or
+each other on the same tile. A filled set adds 300 concordant pairs to the pair
+classes, so that BWA can estimate insert sizes and flag pairs proper. Every
+random draw is via 'random.Random(0).random()', whose stream Python guarantees
+across versions; the filled set draws nothing.
 """
 
 from __future__ import annotations
@@ -35,6 +37,7 @@ import random
 BASES = "ACGT"
 LEN_READ = 50
 LEN_REP = 300
+N_FILL = 300
 WIDTH_FASTA = 60
 
 # Read names for the duplicate set: '<instrument>:<run>:<flow cell>:<lane>:'
@@ -84,6 +87,16 @@ def parse_args(
         "--fil_dup_r2",
         required=True,
         help="Paired-end R2 FASTQ of the duplicate set.",
+    )
+    parser.add_argument(
+        "--fil_fill_r1",
+        required=True,
+        help="Paired-end R1 FASTQ of the pair classes and the filler pairs.",
+    )
+    parser.add_argument(
+        "--fil_fill_r2",
+        required=True,
+        help="Paired-end R2 FASTQ of the pair classes and the filler pairs.",
     )
 
     return parser.parse_args(argv)
@@ -151,9 +164,8 @@ def build_chroms(rng: random.Random) -> dict[str, str]:
     """
     Return the pairs chromosomes by name.
 
-    'chrP1' is 6,000 bases: unique blocks with copies of one repeat at
-    offsets 1,000, 2,500, and 4,000 (zero-based). 'chrP2' is 3,000 unique
-    bases.
+    'chrP1' is 6,000 bases: unique blocks with copies of one repeat at offsets
+    1,000, 2,500, and 4,000 (zero-based). 'chrP2' is 3,000 unique bases.
 
     Parameters
     ----------
@@ -305,10 +317,10 @@ def build_dups(
     """
     Return the duplicate set as '(name, R1, R2)'.
 
-    Each name carries a tile and x and y coordinates. 'dupB' is concordant.
-    The rest have R2 unaligned: 'dupA1' has R1 at 'dupB''s R1; 'dupA2' and
-    'dupA3' share an R1 position far apart on the tile; 'dupA4' and 'dupA5'
-    share an R1 position within 2,500 pixels of each other.
+    Each name carries a tile and x and y coordinates. 'dupB' is concordant. The
+    rest have R2 unaligned: 'dupA1' has R1 at 'dupB''s R1; 'dupA2' and 'dupA3'
+    share an R1 position far apart on the tile; 'dupA4' and 'dupA5' share an R1
+    position within 2,500 pixels of each other.
 
     Parameters
     ----------
@@ -336,6 +348,56 @@ def build_dups(
         (name(5000, 5000), cut_fwd(p2, 2600), draw_seq(rng, LEN_READ)),
         (name(5100, 5100), cut_fwd(p2, 2600), draw_seq(rng, LEN_READ)),
     ]
+
+
+def build_fills(chroms: dict[str, str]) -> list[tuple[str, str, str]]:
+    """
+    Return 'N_FILL' concordant filler pairs as '(name, R1, R2)'.
+
+    The pairs lie in the unique blocks, away from the repeat copies, with R1
+    forward and R2 reverse. Fragment lengths cycle from 200 to 300 bases in
+    steps of 10, and each pair starts at its own position, ending in 5, so no
+    filler pair duplicates another or a pair class. Nothing is drawn at random.
+
+    Parameters
+    ----------
+    chroms : dict[str, str]
+        Sequence of each chromosome.
+
+    Returns
+    -------
+    pairs : list[tuple[str, str, str]]
+        Name, R1 sequence, and R2 sequence of each pair.
+    """
+
+    # Unique blocks as '(chromosome, start, end)', zero-based and half-open.
+    blocks = [
+        ("chrP1", 0, 1000),
+        ("chrP1", 1300, 2500),
+        ("chrP1", 2800, 4000),
+        ("chrP1", 4300, 6000),
+        ("chrP2", 0, 3000),
+    ]
+    starts = []
+    for nam, beg, end in blocks:
+        for pos in range(beg + 5, end - 300, 10):
+            starts.append((nam, pos))
+
+    step = len(starts) // N_FILL
+    pairs = []
+    for idx in range(N_FILL):
+        nam, pos = starts[idx * step]
+        len_frg = 200 + 10 * (idx % 11)
+        chrom = chroms[nam]
+        pairs.append(
+            (
+                f"fill_{idx:03d}",
+                cut_fwd(chrom, pos),
+                cut_rev(chrom, pos + len_frg - LEN_READ),
+            )
+        )
+
+    return pairs
 
 
 def write_fasta(path: str, chroms: dict[str, str]) -> None:
@@ -377,7 +439,8 @@ def write_fastq(path: str, reads: list[tuple[str, str]]) -> None:
 
 def main(argv: list[str] | None = None) -> int:
     """
-    Write the reference, then the pairs, single-end, and duplicate reads.
+    Write the reference, then the pairs, single-end, duplicate, and filled
+    reads.
     """
 
     args = parse_args(argv)
@@ -386,6 +449,8 @@ def main(argv: list[str] | None = None) -> int:
     pairs = build_pairs(rng, chroms)
     singles = build_singles(rng, chroms)
     dups = build_dups(rng, chroms)
+    fills = [(f"pair_{n}", r1, r2) for n, r1, r2 in pairs]
+    fills += build_fills(chroms)
 
     write_fasta(args.fil_ref, chroms)
     write_fastq(args.fil_r1, [(f"pair_{n}", r1) for n, r1, _ in pairs])
@@ -393,6 +458,8 @@ def main(argv: list[str] | None = None) -> int:
     write_fastq(args.fil_se, [(f"se_{n}", rd) for n, rd in singles])
     write_fastq(args.fil_dup_r1, [(n, r1) for n, r1, _ in dups])
     write_fastq(args.fil_dup_r2, [(n, r2) for n, _, r2 in dups])
+    write_fastq(args.fil_fill_r1, [(n, r1) for n, r1, _ in fills])
+    write_fastq(args.fil_fill_r2, [(n, r2) for n, _, r2 in fills])
 
     return 0
 

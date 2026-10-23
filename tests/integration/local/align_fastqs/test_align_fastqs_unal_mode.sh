@@ -27,10 +27,11 @@ source "$(
 #
 # '--unal_mode remove' drops unaligned reads and their mates; 'separate' also
 # writes them to a side file and leaves the alignment file as it is. Every
-# aligner call runs on the 'pairs' (one pair per pair class), 'bridge' (the
-# BWA-backtrack lone mate of #75), and 'dup' (duplicates among the side file's
-# aligned mates) fixtures, with and without '--req_flg', and its records are
-# checked against the aligner's own output.
+# aligner call runs on the 'pairs' (one pair per pair class), 'pairs_fill'
+# (the pair classes among 300 concordant pairs, so BWA can flag pairs proper),
+# 'bridge' (the BWA-backtrack lone mate of #75), and 'dup' (duplicates among
+# the side file's aligned mates) fixtures, with and without '--req_flg', and
+# its records are checked against the aligner's own output.
 dir_fx="${ROOT_REPO}/tests/fixtures/align_fastqs"
 ref_par="${dir_fx}/reference/pairs.fa"
 sam_spl="${dir_fx}/sam/split_template_pe.sam"
@@ -60,6 +61,8 @@ require_files_nonempty \
     "${dir_fx}/bwa-mem2/bridge.fa.0123" \
     "${dir_fx}/fastq/pe/pairs_pe_R1.atria.fastq.gz" \
     "${dir_fx}/fastq/pe/pairs_pe_R2.atria.fastq.gz" \
+    "${dir_fx}/fastq/pe/pairs_fill_pe_R1.atria.fastq.gz" \
+    "${dir_fx}/fastq/pe/pairs_fill_pe_R2.atria.fastq.gz" \
     "${dir_fx}/fastq/se/pairs_se.atria.fastq.gz" \
     "${dir_fx}/fastq/pe/dup_pe_R1.atria.fastq.gz" \
     "${dir_fx}/fastq/pe/dup_pe_R2.atria.fastq.gz" \
@@ -165,11 +168,11 @@ function run_raw() {
 }
 
 
-# Print one key per record: its name, which read it is, whether it is
-# secondary or supplementary, and where it aligned. 'fixmate' and 'markdup'
-# change none of these for an aligned record. An unaligned record has no
-# alignment, and 'fixmate' moves it to its mate's position, so it is keyed by
-# name and read alone.
+# Print one key per record: its name, which read it is, whether it is secondary
+# or supplementary, and where it aligned. 'fixmate' and 'markdup' change none
+# of these for an aligned record. An unaligned record has no alignment, and
+# 'fixmate' moves it to its mate's position, so it is keyed by name and read
+# alone.
 function print_keys() {
     run_samtools view "${1}" \
         | awk -F '\t' '
@@ -287,6 +290,7 @@ cals=(
 # Inputs: label|fixture set (index)|layout|FASTQ stem.
 ins=(
     "pairs|pairs|pe|pairs"
+    "pairs_fill|pairs|pe|pairs_fill"
     "bridge|bridge|pe|bridge"
     "dup|pairs|pe|dup"
     "pairs_se|pairs|se|pairs"
@@ -302,6 +306,8 @@ declare -A side_exp=(
     ["pairs bt2_relaxed"]="pair_none pair_one "
     ["pairs mem"]="pair_none pair_one "
     ["pairs bm2"]="pair_none pair_one "
+    ["pairs_fill mem"]="pair_none pair_one "
+    ["pairs_fill bm2"]="pair_none pair_one "
     ["bridge aln"]="brdg "
     ["bridge bt2"]="brdg "
     ["pairs_se bt2"]="se_none "
@@ -382,8 +388,8 @@ for ent in "${ins[@]}"; do
             # Only 'separate' writes a side file, indexed.
             if [[
                 ! -e "${stm}.remove.unal.bam"
-                && -s "${fil_side}"
-                && -s "${fil_side}.bai"
+                    && -s "${fil_side}"
+                    && -s "${fil_side}.bai"
             ]]; then
                 record_pass "${lbl}: only 'separate' writes a side file"
             else
@@ -402,8 +408,8 @@ for ent in "${ins[@]}"; do
                 record_fail "${lbl}: the alignment file differs between modes"
             fi
 
-            # Invariants: every raw record lands once, and each template
-            # lands whole, in the alignment file, the side file, or neither.
+            # Invariants: every raw record lands once, and each template lands
+            # whole, in the alignment file, the side file, or neither.
             bad="$(
                 print_split_templates \
                     "${sam_raw}" "${stm}.separate.bam" "${fil_side}"
@@ -428,8 +434,8 @@ for ent in "${ins[@]}"; do
             n_side="$(run_samtools view -c "${fil_side}")"
             if [[ "${n_bad}" -eq 0 ]]; then
                 record_pass \
-                    "${lbl}: the side file's ${n_side} records are" \
-                    "unaligned reads and their mates"
+                    "${lbl}: the side file's ${n_side} records are unaligned" \
+                    "reads and their mates"
             else
                 record_fail \
                     "${lbl}: the side file holds ${n_bad} records that are" \
@@ -499,6 +505,55 @@ for ent in "${ins[@]}"; do
 done
 
 
+# BWA flags no pair proper on 'pairs', too few to estimate insert sizes, so
+# '--req_flg' would leave its alignment file empty. On 'pairs_fill', BWA-MEM
+# and BWA-MEM2 flag every filler pair and the concordant classes proper, and
+# not 'far', 'dove', 'rf', 'ff', or 'chrs'. With '--req_flg', 'separate' keeps
+# exactly the proper pairs in the alignment file, as 'remove' does.
+cls_all="pair_chrs pair_conc pair_conc2 pair_cont pair_dove pair_far"
+cls_all+=" pair_ff pair_ovlp pair_rf pair_rpt "
+cls_pp="pair_conc pair_conc2 pair_cont pair_ovlp pair_rpt "
+for cal in mem bm2; do
+    n_pp="$(
+        run_samtools view -c -f 2 -F 2304 \
+            "${tmp}/pairs_fill.${cal}.raw.sam" 2> /dev/null
+    )" || n_pp=0
+    if [[ "${n_pp}" -ge 600 ]]; then
+        record_pass \
+            "pairs_fill ${cal}: the aligner flags ${n_pp} records proper"
+    else
+        record_fail \
+            "pairs_fill ${cal}: the aligner flags '${n_pp}' records proper," \
+            "expected at least 600"
+    fi
+
+    for req in no yes; do
+        exp="${cls_all}"
+        if [[ "${req}" == "yes" ]]; then exp="${cls_pp}"; fi
+        fil_main="${tmp}/pairs_fill.${cal}.${req}.separate.bam"
+        got="$(
+            run_samtools view "${fil_main}" 2> /dev/null \
+                | cut -f 1 | sort -u | grep -v '^fill_' | tr '\n' ' '
+        )" || true
+        n_fil="$(
+            run_samtools view "${fil_main}" 2> /dev/null \
+                | cut -f 1 | sort -u | grep -c '^fill_'
+        )" || true
+
+        if [[ "${got}" == "${exp}" && "${n_fil}" == 300 ]]; then
+            record_pass \
+                "pairs_fill ${cal} (req_flg ${req}): the alignment file" \
+                "holds '${exp% }' and the 300 filler pairs"
+        else
+            record_fail \
+                "pairs_fill ${cal} (req_flg ${req}): the alignment file" \
+                "holds '${got}' and ${n_fil} filler pairs, expected '${exp}'" \
+                "and 300"
+        fi
+    done
+done
+
+
 # With '--bt2_relaxed', every pair with both mates aligned stays in the
 # alignment file with Bowtie 2's own flags, whatever its class, including the
 # repeat-mate pair that mate rescue places; with '--req_flg', only the proper
@@ -537,22 +592,21 @@ for req in no yes; do
     if [[ "${got}" == "${exp}" ]]; then
         record_pass \
             "bt2_relaxed (req_flg ${req}): the alignment file keeps" \
-            "'${exp% }'" \
-            "with Bowtie 2's flags"
+            "'${exp% }' with Bowtie 2's flags"
     else
         record_fail \
             "bt2_relaxed (req_flg ${req}): the alignment file holds" \
-            "'${got}'," \
-            "expected '${exp}' ('!' marks changed flags)"
+            "'${got}', expected '${exp}' ('!' marks changed flags)"
     fi
 done
 
 
-# Duplicates in the side file: with BWA-MEM, 'dupA1''s aligned mate matches
-# 'dupB''s first mate and is marked; of 'dupA2' and 'dupA3', which share a
-# position far apart on the tile, one is marked; of 'dupA4' and 'dupA5', within
-# 2,500 pixels, one is marked as optical. Marking them leaves the alignment
-# file's flags as they are (checked above), and the statistics count them.
+# Duplicates in the side file: with BWA-MEM, the aligned mate of 'dupA1'
+# matches the first mate of 'dupB' and is marked; of 'dupA2' and 'dupA3', which
+# share a position far apart on the tile, one is marked; of 'dupA4' and
+# 'dupA5', within 2,500 pixels, one is marked as optical. Marking them leaves
+# the alignment file's flags as they are (checked above), and the statistics
+# count them.
 stm="${tmp}/dup.mem.no"
 got="$(
     run_samtools view -f 1024 "${stm}.separate.unal.bam" \
@@ -600,7 +654,7 @@ got="$(
         <(run_samtools view -H --no-PG "${stm}.unal.bam" | grep '^@CO') \
         | grep '^[<>]' || true
 )"
-exp="> @CO	pipeline: content=unaligned reads and their mates
+exp="> @CO	pipeline: content=unaligned reads and their mates, aligned or not
 > @CO	pipeline: warning=not for signal or scaling"
 if [[ "${got}" == "${exp}" ]]; then
     record_pass "the side file carries the record and what it holds"
@@ -664,10 +718,11 @@ else
     record_fail "the CRAM side file or its copy differs from the BAM run's"
 fi
 
+lin_cnt=$'@CO\tpipeline: content=unaligned reads and their mates,'
+lin_cnt+=' aligned or not'
 if \
     run_samtools view -H "${stm}.unal.qnam.cram" \
-        | grep -q -F -x \
-            $'@CO\tpipeline: content=unaligned reads and their mates'
+        | grep -q -F -x "${lin_cnt}"
 then
     record_pass "the side file's '--qname' copy carries its record"
 else

@@ -23,10 +23,11 @@ source "$(
 )/tests/support/test_helpers.sh"
 
 
-# Define fixture and output paths. Work files that a later step rewrites are
-# written at compression level 1 and are not indexed; the files that ship are
-# written at the default level, and Step 5 (or Step 6, for CRAM) indexes each
-# coordinate-sorted one.
+# Define fixture and output paths.
+#
+# Work files that a later step rewrites are written at compression level 1 and
+# are not indexed; the files that ship are written at the default level, and
+# Step 5 (or Step 6, for CRAM) indexes each coordinate-sorted one.
 dir_fx="${ROOT_REPO}/tests/fixtures/align_fastqs"
 idx_bt2="${dir_fx}/bowtie2/pairs"
 idx_bwa="${dir_fx}/bwa/bridge.fa"
@@ -35,9 +36,9 @@ fq_pe_2="${dir_fx}/fastq/pe/pairs_pe_R2.atria.fastq.gz"
 fq_se="${dir_fx}/fastq/se/pairs_se.atria.fastq.gz"
 fq_brg_1="${dir_fx}/fastq/pe/bridge_pe_R1.atria.fastq.gz"
 fq_brg_2="${dir_fx}/fastq/pe/bridge_pe_R2.atria.fastq.gz"
+ref_fa="${dir_fx}/reference/pairs.fa"
 
 tmp="${TEST_DIR_TMP}/align_fastqs_outputs"
-ref_fa="${tmp}/pairs.fa"
 
 
 print_section "${TEST_NAME}"
@@ -50,8 +51,11 @@ require_env_project env_nam || {
     exit $?
 }
 
+# CRAM writing reads the reference's '.fai', which 'make.sh' builds; without
+# it, Samtools would write one beside the fixture.
 require_files_nonempty \
-    "${dir_fx}/reference/pairs.fa" \
+    "${ref_fa}" \
+    "${ref_fa}.fai" \
     "${idx_bt2}.rev.2.bt2" \
     "${idx_bwa}.bwt" \
     "${fq_pe_1}" \
@@ -62,9 +66,6 @@ require_files_nonempty \
     finish
     exit $?
 }
-
-# CRAM writing indexes the reference, so use a copy outside the fixtures.
-cp "${dir_fx}/reference/pairs.fa" "${ref_fa}"
 
 
 # Run the helper.
@@ -102,58 +103,10 @@ function run_record() {
 }
 
 
-# Print how many BGZF blocks with records a BAM file holds after its header,
-# or 'same' and that count when they equal those of a second BAM file. A file
-# written at another compression level holds other bytes in those blocks;
-# 'samtools reheader' rewrites only the header's blocks, and empty blocks are
-# left out, since it can leave two end-of-file blocks.
+# Print 'same <n>' or 'differ <n>' for the BGZF blocks holding two BAM files'
+# records; see 'tests/support/compare_bam_blocks.py'.
 function compare_record_blocks() {
-    "${TEST_PYTHON}" - "$@" << 'PY'
-import struct
-import sys
-import zlib
-
-
-def read_blocks(path):
-    data = open(path, "rb").read()
-    blocks = []
-    off = 0
-    while off < len(data):
-        xlen = struct.unpack_from("<H", data, off + 10)[0]
-        extra = data[off + 12: off + 12 + xlen]
-        size = None
-        i = 0
-        while i < xlen:
-            slen = struct.unpack_from("<H", extra, i + 2)[0]
-            if extra[i: i + 2] == b"BC":
-                size = struct.unpack_from("<H", extra, i + 4)[0]
-            i += 4 + slen
-        raw = data[off: off + size + 1]
-        blocks.append((raw, zlib.decompress(raw[12 + xlen: -8], -15)))
-        off += size + 1
-    return blocks
-
-
-def read_record_blocks(path):
-    blocks = read_blocks(path)
-    data = b"".join(inflated for _, inflated in blocks)
-    end = 8 + struct.unpack_from("<i", data, 4)[0]
-    n_ref = struct.unpack_from("<i", data, end)[0]
-    end += 4
-    for _ in range(n_ref):
-        end += 4 + struct.unpack_from("<i", data, end)[0] + 4
-    pos = 0
-    for idx, (_, inflated) in enumerate(blocks):
-        if pos == end:
-            return [raw for raw, infl in blocks[idx:] if infl]
-        pos += len(inflated)
-    sys.exit(f"the header of '{path}' does not end on a block boundary")
-
-
-rec_a = read_record_blocks(sys.argv[1])
-rec_b = read_record_blocks(sys.argv[2])
-print("same" if rec_a == rec_b else "differ", len(rec_a))
-PY
+    "${TEST_PYTHON}" "${ROOT_REPO}/tests/support/compare_bam_blocks.py" "$@"
 }
 
 

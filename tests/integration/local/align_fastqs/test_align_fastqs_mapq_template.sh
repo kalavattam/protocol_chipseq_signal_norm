@@ -326,10 +326,10 @@ n_err="$(grep -c '^error(' <<< "${out}" || true)"
 
 if [[
     "${rc}" -ne 0
-    && "${n_own}" -eq 2
-    && "${n_err}" -eq 2
-    && "${out}" == *"failed to list read names"*
-    && "${out}" == *"Step #2: failed to filter"*
+        && "${n_own}" -eq 2
+        && "${n_err}" -eq 2
+        && "${out}" == *"failed to list read names"*
+        && "${out}" == *"Step #2: failed to filter"*
 ]]; then
     record_pass "template filter failure is reported in the caller's name"
 else

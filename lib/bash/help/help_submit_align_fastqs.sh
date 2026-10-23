@@ -95,11 +95,21 @@ Parameters
     Ignored with a warning when every entry is single-end.
 
   -um, --unal_mode : {'remove', 'separate'}
-    What to do with unaligned reads and, in paired-end data, their mates: 'remove' or 'separate' (default: '${unal_mode}'). With 'remove', they are dropped. With 'separate', they are also written to a side file beside each alignment file, '<stem>.unal.bam' or '<stem>.unal.cram', and the alignment file holds the same records as with 'remove'. Refused as 'separate' with '--bt2_inherited', whose call writes no unaligned reads.
+    What to do with unaligned reads and, in paired-end data, their mates, aligned or not: 'remove' or 'separate' (default: '${unal_mode}').
 
-    With single-end data, the side file holds the reads flagged unaligned (SAM flag 4). With Bowtie 2 and paired-end data, it holds the pairs that did not align as concordant pairs, which Bowtie 2 writes with both mates unaligned even when one mate could align alone. With BWA or BWA-MEM2 and paired-end data, it holds the records flagged unaligned or with an unaligned mate. When BWA-backtrack flags one mate unaligned but leaves its partner's mate flag clear, the partner goes to the side file beside its mate.
+    With 'remove', they are dropped. With 'separate', they are also written to a side file, '<stem>.unal.bam' or '<stem>.unal.cram', and the alignment file holds the same records as with 'remove'. Refused as 'separate' with '--bt2_inherited', whose call writes no unaligned reads.
 
-    Each read pair is kept whole: when any record of a pair belongs in the side file, all of the pair's records go there. '--mapq' and '--req_flg' apply only to the alignment file (as both judge aligned pairs and would remove every pair the side file holds).
+    With single-end data, the side file holds the reads flagged unaligned (SAM flag 4).
+
+    With Bowtie 2 and paired-end data, it holds the pairs that did not align as concordant pairs, which Bowtie 2 writes with both mates unaligned even when one mate could align alone.
+
+    With BWA or BWA-MEM2 and paired-end data, it holds the records flagged unaligned or with an unaligned mate.
+
+    When BWA-backtrack flags one mate unaligned but leaves its partner's mate flag clear, the partner goes to the side file beside its mate.
+
+    Each read pair is kept whole: when any record of a pair belongs in the side file, all of the pair's records go there.
+
+    '--mapq' and '--req_flg' apply only to the alignment file (as both judge aligned pairs and would remove every pair the side file holds).
 
     The side file is coordinate-sorted, indexed, and duplicate-marked. It carries the pipeline record and follows the alignment file into CRAM and into a '--qname' copy. It is not for signal or scaling.
 

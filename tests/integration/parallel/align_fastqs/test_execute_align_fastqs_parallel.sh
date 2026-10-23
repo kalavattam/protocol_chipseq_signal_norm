@@ -37,17 +37,15 @@ fi
 
 # Define fixture and output paths for a local GNU Parallel Bowtie 2 wet run.
 dir_fx="${ROOT_REPO}/tests/fixtures/align_fastqs"
-in_se="${dir_fx}/fastq/se/tiny_se.atria.fastq.gz"
 idx_bt2="${dir_fx}/bowtie2/tiny"
 
 tmp="${TEST_DIR_TMP}/execute_align_fastqs_parallel"
-dir_in="${tmp}/in"
 dir_out="${tmp}/out"
 dir_err="${tmp}/logs"
 dir_log="${TEST_DIR_LOG}/align_fastqs"
 
-in_1="${dir_in}/tiny_se_1.atria.fastq.gz"
-in_2="${dir_in}/tiny_se_2.atria.fastq.gz"
+in_1="${dir_fx}/fastq/se/tiny_se_1.atria.fastq.gz"
+in_2="${dir_fx}/fastq/se/tiny_se_2.atria.fastq.gz"
 csv_in="${in_1};${in_2}"
 
 out_1="${dir_out}/tiny_se_1.bam"
@@ -69,7 +67,7 @@ log_qc_2="${dir_log}/execute_align_fastqs_parallel_bam_2_quickcheck.log"
 print_section "${TEST_NAME}"
 
 rm -rf "${tmp}"
-mkdir -p "${dir_in}" "${dir_out}" "${dir_err}" "${dir_log}"
+mkdir -p "${dir_out}" "${dir_err}" "${dir_log}"
 
 require_env_project env_nam || {
     finish
@@ -77,7 +75,8 @@ require_env_project env_nam || {
 }
 
 require_files_nonempty \
-    "${in_se}" \
+    "${in_1}" \
+    "${in_2}" \
     "${idx_bt2}.1.bt2" \
     "${idx_bt2}.2.bt2" \
     "${idx_bt2}.3.bt2" \
@@ -89,15 +88,6 @@ require_files_nonempty \
         exit $?
     }
 
-cp "${in_se}" "${in_1}"
-cp "${in_se}" "${in_2}"
-
-require_files_nonempty \
-    "${in_1}" \
-    "${in_2}" || {
-    finish
-    exit $?
-}
 
 # shellcheck disable=SC2154
 if ! \
@@ -244,15 +234,10 @@ fi
 # paired-end entry gets the relaxed call, so the single-end entry is neither
 # refused nor warned about it.
 dir_mix="${tmp}/mix"
-mkdir -p "${dir_mix}/in" "${dir_mix}/out" "${dir_mix}/logs"
-cp "${dir_fx}/fastq/se/pairs_se.atria.fastq.gz" "${dir_mix}/in/"
-cp \
-    "${dir_fx}/fastq/pe/pairs_pe_R1.atria.fastq.gz" \
-    "${dir_fx}/fastq/pe/pairs_pe_R2.atria.fastq.gz" \
-    "${dir_mix}/in/"
-csv_mix="${dir_mix}/in/pairs_se.atria.fastq.gz"
-csv_mix+=";${dir_mix}/in/pairs_pe_R1.atria.fastq.gz"
-csv_mix+=",${dir_mix}/in/pairs_pe_R2.atria.fastq.gz"
+mkdir -p "${dir_mix}/out" "${dir_mix}/logs"
+csv_mix="${dir_fx}/fastq/se/pairs_se.atria.fastq.gz"
+csv_mix+=";${dir_fx}/fastq/pe/pairs_pe_R1.atria.fastq.gz"
+csv_mix+=",${dir_fx}/fastq/pe/pairs_pe_R2.atria.fastq.gz"
 log_mix="${dir_log}/execute_align_fastqs_parallel_unal_mode.log"
 
 if \
@@ -304,8 +289,8 @@ for samp in pairs_se pairs; do
     fi
 done
 
-# The relaxed call reached the paired-end entry alone, and nothing warned
-# that an option had no effect.
+# The relaxed call reached the paired-end entry alone, and nothing warned that
+# an option had no effect.
 hdr_se="$(
     run_samtools view -H "${dir_mix}/out/pairs_se.bam" 2> /dev/null || true
 )"
@@ -314,9 +299,10 @@ hdr_pe="$(
 )"
 if [[
     "${hdr_pe}" == *$'pipeline: --bt2_relaxed=true\n'*
-    && "${hdr_se}" != *"bt2_relaxed"*
-    && "$(cat "${dir_mix}/logs/"*.txt "${log_mix}" 2> /dev/null)" \
-        != *"has no effect"*
+        && "${hdr_se}" != *"bt2_relaxed"*
+        && "$(
+            cat "${dir_mix}/logs/"*.txt "${log_mix}" 2> /dev/null
+        )" != *"has no effect"*
 ]]; then
     record_pass "GNU Parallel passes '--bt2_relaxed' to the PE entry alone"
 else

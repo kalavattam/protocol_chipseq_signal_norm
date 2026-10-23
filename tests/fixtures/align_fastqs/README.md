@@ -27,6 +27,7 @@ The FASTQ records are generated deterministically by `make.sh` as compressed wor
 
 Compressed FASTQ input:
 - `fastq/se/tiny_se.atria.fastq.gz`
+- `fastq/se/tiny_se_1.atria.fastq.gz` and `fastq/se/tiny_se_2.atria.fastq.gz`, copies of `tiny_se`, so that the GNU Parallel test has two samples
 - `fastq/pe/tiny_pe_R1.atria.fastq.gz`
 - `fastq/pe/tiny_pe_R2.atria.fastq.gz`
 
@@ -63,6 +64,10 @@ Repeat reference, reads, and indexes, for keeping or dropping templates by MAPQ:
 - `fastq/pe/repeat_pe_R2.atria.fastq.gz`
 - `bowtie2/repeat.*.bt2`, `bwa/repeat.fa.*`, and `bwa-mem2/repeat.fa.*`, with the same index files as `tiny`
 
+Queryname-copy reads on the repeat reference, for `--qname`:
+- `fastq/pe/qname_pe_R1.atria.fastq.gz`, also the single-end input
+- `fastq/pe/qname_pe_R2.atria.fastq.gz`
+
 Queryname-grouped SAM records with secondary records, for the MAPQ template filter on its own:
 - `sam/repeat_secondary_pe.sam`
 - `sam/repeat_secondary_se.sam`
@@ -85,6 +90,7 @@ Pairs reference, reads, and indexes, for `--unal_mode`, with one read pair per p
 - `fastq/pe/pairs_pe_R1.atria.fastq.gz` and `fastq/pe/pairs_pe_R2.atria.fastq.gz`
 - `fastq/se/pairs_se.atria.fastq.gz`
 - `fastq/pe/dup_pe_R1.atria.fastq.gz` and `fastq/pe/dup_pe_R2.atria.fastq.gz`
+- `fastq/pe/pairs_fill_pe_R1.atria.fastq.gz` and `fastq/pe/pairs_fill_pe_R2.atria.fastq.gz`, the pair classes among 300 concordant filler pairs
 - `bowtie2/pairs.*.bt2`, `bwa/pairs.fa.*`, and `bwa-mem2/pairs.fa.*`, with the same index files as `tiny`
 
 Queryname-grouped SAM records with templates split by Step 1, for Step 2 on its own:
@@ -123,6 +129,8 @@ R1 matches chromosome `I` in forward orientation. R2 is the reverse complement o
 | `ctrl`    | unique                                        | unique | yes                 |
 
 With BWA MEM and bwa-mem2, `chim` R1 is a split read with its primary in the repeat, `rchm` R1 a split read with its supplementary in the repeat, and `half` a pair whose mates get different MAPQ; BWA ALN gives `half` different mate MAPQs too. Bowtie 2 writes no supplementary records. `test_align_fastqs_mapq_template.sh` checks the MAPQs each aligner writes before relying on them.
+
+The queryname-copy reads are three 50-base pairs from 300-base fragments of `chrR`, at zero-based offsets 50 (`uniq`) and 1,200 (`dup_a` and `dup_b`, one fragment under two names, so duplicate marking marks one of them). R1 starts the fragment on the forward strand, and R2 is the reverse complement of its last 50 bases.
 
 In the SAM fixtures, template `sec_keep` has primary records at MAPQ 60 and a secondary record at MAPQ 0, and `sec_drop` has a primary record at MAPQ 0 and a secondary record at MAPQ 255. Filtered at MAPQ 30 by primary records, only `sec_keep` is kept, with its secondary record. Template `unal_mate` has an aligned R1 and an R2 flagged unaligned (0x4) whose partner lacks 0x8, the shape `bwa sampe` writes in #75, and the single-end file holds an unaligned read, `unal`. Both unaligned records keep MAPQ 60, so the filter must drop them by their flag, not their MAPQ.
 
@@ -176,6 +184,8 @@ With BWA ALN (0.7.19), `bwa sampe` flags `brdg` R2 unaligned (0x4) but keeps its
 | `pair_conc2` | forward, `chrP2` 1000 | reverse, `chrP2` 1200          | concordant                    |
 
 With Bowtie 2 2.5.5's default paired-end call (`--no-mixed --no-discordant -X 1000`), the concordant, overlapping, contained, and repeat pairs align concordantly (mate rescue places `pair_rpt`), and every other pair is written with both mates unaligned (flags 77 and 141). With the relaxed call (`-I 0 -X 1000`), `pair_far`, `pair_dove`, and `pair_chrs` are discordant, `pair_rf` and `pair_ff` keep their orientations, and `pair_one` has its R1 aligned (73 and 133). BWA MEM (0.7.19) cannot estimate insert sizes from so few pairs, so it flags no pair as proper; it aligns every mate the relaxed call does. `test_align_fastqs_unal_mode.sh` checks the side file's read names per call against these.
+
+The filled set holds the twelve pair classes, under the same names, and 300 concordant filler pairs (`fill_000` to `fill_299`) in the unique blocks, away from the repeat copies, with fragments of 200 to 300 bases. Each filler pair starts at its own position, so none is a duplicate. `make_pairs.py` draws nothing at random for this set, so the other sets are unchanged. With the fillers, BWA MEM and bwa-mem2 MEM estimate insert sizes and flag pairs proper: every filler pair and `pair_conc`, `pair_ovlp`, `pair_cont`, `pair_rpt`, and `pair_conc2` (99 and 147), but not `pair_far`, `pair_dove`, `pair_chrs` (97 and 145), `pair_rf` (81 and 161), or `pair_ff` (65 and 129); `pair_one` (73 and 133) and `pair_none` (77 and 141) are as in the pairs set. `test_align_fastqs_unal_mode.sh` checks that BWA flags at least 600 records proper before relying on them.
 
 The single-end file holds `se_uniq` (forward, `chrP1` 200), `se_uniq2` (reverse, `chrP2` 2000), `se_rpt` (in the repeat), and `se_none` (random).
 

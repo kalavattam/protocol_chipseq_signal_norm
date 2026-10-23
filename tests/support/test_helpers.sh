@@ -3550,7 +3550,7 @@ EOM
 
     # Every line of the record is a content line or a run line, and the content
     # lines come first.
-    if
+    if \
         awk '
             /^@CO\tpipeline: / { if (run) bad = 1; next }
             /^@CO\tpipeline-run: / { run = 1; next }
@@ -3567,14 +3567,17 @@ EOM
         grep -E $'^@CO\tpipeline-run: --[a-z_0-9]+=/' <<< "${run}" || true
     )"
     if [[
-        "$(head -n 1 <<< "${run}")" \
-            == $'@CO\tpipeline-run: --threads='"${threads}"
-        && "$(sed -n $'s/^@CO\tpipeline-run: start=//p' <<< "${run}")" \
-            =~ ${re_start}
-        && "$(
-            grep -c -E $'^@CO\tpipeline-run: (host|calls|env)=.' <<< "${run}"
-        )" == 3
-        && "${got}" == "${exp_pth}"
+        "$(
+            head -n 1 <<< "${run}"
+        )" == $'@CO\tpipeline-run: --threads='"${threads}"
+            && "$(
+                sed -n $'s/^@CO\tpipeline-run: start=//p' <<< "${run}"
+            )" =~ ${re_start}
+            && "$(
+                grep -c -E \
+                    $'^@CO\tpipeline-run: (host|calls|env)=.' <<< "${run}"
+            )" == 3
+            && "${got}" == "${exp_pth}"
     ]]; then
         record_pass "${lbl}: run lines hold the threads, time, host, and paths"
     else

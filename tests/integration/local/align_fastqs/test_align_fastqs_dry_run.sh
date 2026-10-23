@@ -222,8 +222,8 @@ mv -f \\
     ${esc}.bam
 
 
-# Step 4: mark duplicates in the BAM work file. '-d 2500' only if
-# all read names carry flow-cell coordinates of one format.
+# Step 4: mark duplicates in the BAM work file. '-d 2500' applies only if all
+# read names carry flow-cell coordinates of one format.
 samtools markdup \\
     -@ 2 \\
     -t \\
@@ -398,8 +398,8 @@ ${lin_u}        -O bam,level=1 \\
 
     if [[
         "${out}" == *"pipeline: --bt2_X=${x_len}'"*
-        && "${out}" == *"pipeline: --bt2_relaxed=true'"*
-        && "${out}" == *"pipeline: warning=not for signal or scaling'"*
+            && "${out}" == *"pipeline: --bt2_relaxed=true'"*
+            && "${out}" == *"pipeline: warning=not for signal or scaling'"*
     ]]; then
         record_pass "Bowtie 2 PE dry run with '${arg}' records the settings"
     else
@@ -431,10 +431,10 @@ for mod in remove separate; do
     if [[ "${mod}" == "remove" ]]; then
         if [[
             "${st1}" == *$'    --no-unal \\\n'*
-            && "${st1}" == *$'        -F 12 \\\n        -f 2 \\\n'*
-            && "${st2}" != *"-f 2"*
-            && "${out}" != *"setA"*
-            && "${out}" != *".unal."*
+                && "${st1}" == *$'        -F 12 \\\n        -f 2 \\\n'*
+                && "${st2}" != *"-f 2"*
+                && "${out}" != *"setA"*
+                && "${out}" != *".unal."*
         ]]; then
             record_pass "dry run with '--req_flg' and 'remove' is unchanged"
         else
@@ -442,12 +442,12 @@ for mod in remove separate; do
         fi
     elif [[
         "${st1}" != *"--no-unal"*
-        && "${st1}" != *"-f 2"*
-        && "${st1}" == *"-U ${t}.separate.setA.bam"*
-        && "${st2}" == *"-N ${t}.separate.unal.names.txt"*
-        && "${st2}" == *$'    -f 2 \\\n'*
-        && "${st4}" == *"-o ${t}.separate.unal.bam"*
-        && "${st4}" != *"samtools index"*
+            && "${st1}" != *"-f 2"*
+            && "${st1}" == *"-U ${t}.separate.setA.bam"*
+            && "${st2}" == *"-N ${t}.separate.unal.names.txt"*
+            && "${st2}" == *$'    -f 2 \\\n'*
+            && "${st4}" == *"-o ${t}.separate.unal.bam"*
+            && "${st4}" != *"samtools index"*
     ]]; then
         record_pass "dry run with '--req_flg' and 'separate' moves '-f 2'"
     else
@@ -457,10 +457,10 @@ done
 
 
 # With '--unal_mode separate' and '--req_flg', Step 2 sorts Set A to disk and
-# lists its names. It streams the sorted Set B into the routing, the seeded
-# Set A merge into 'fixmate', and the '-f 2' view into Set B's 'fixmate'. It
-# then filters Set B and merges Set A back, seeded again. Every file it writes
-# is at level 1.
+# lists its names. It streams the sorted Set B into the routing, the seeded Set
+# A merge into 'fixmate', and the '-f 2' view into Set B's 'fixmate'. It then
+# filters Set B and merges Set A back, seeded again. Every file it writes is at
+# level 1.
 t="${tmp}/sep"
 out="$(
     run_helper \
@@ -618,7 +618,7 @@ exp="samtools fixmate \\
 
 if [[
     "$(print_step 2 "${out}")" == *"${exp}"*
-    && "$(print_step 2 "${out}")" != *"-f 2"*
+        && "$(print_step 2 "${out}")" != *"-f 2"*
 ]]; then
     record_pass "PE dry run with 'separate' fixes Set B's mates from its file"
 else
@@ -655,9 +655,9 @@ lin_mrg="    -s 0 \\
 
 if [[
     "${st2}" == *"${exp}"*
-    && "${st2}" != *"fixmate"*
-    && "${st2}" != *"moved"*
-    && "${st2}" == *"${lin_mrg}"*
+        && "${st2}" != *"fixmate"*
+        && "${st2}" != *"moved"*
+        && "${st2}" == *"${lin_mrg}"*
 ]]; then
     record_pass "SE dry run with 'separate' sorts Set B to disk, no routing"
 else
@@ -716,8 +716,8 @@ for mod in remove separate; do
 
         if [[
             -n "${st3}" && -n "${st4}"
-            && "${st3}${st4}" != *"samtools index"*
-            && "${n_idx5}" == "${exp_idx5}"
+                && "${st3}${st4}" != *"samtools index"*
+                && "${n_idx5}" == "${exp_idx5}"
         ]]; then
             record_pass "${lbl}: only Step 5 indexes, ${exp_idx5} file(s)"
         else
@@ -726,7 +726,7 @@ for mod in remove separate; do
 
         if [[
             "${fmt}" == "bam" && "${n_idx6}" == 0
-            || "${fmt}" == "cram" && "${n_idx6}" == "${n_fil}"
+                || "${fmt}" == "cram" && "${n_idx6}" == "${n_fil}"
         ]]; then
             record_pass "${lbl}: Step 6 indexes ${n_idx6} file(s)"
         else
@@ -735,8 +735,8 @@ for mod in remove separate; do
 
         if [[
             "${n_lvl4}" == "${exp_lvl4}" && "${n_b4}" == "${exp_b4}"
-            && "${n_lvl6}" == "${exp_lvl6}"
-            && "$(grep -c 'level=1' <<< "${st3}")" == 1
+                && "${n_lvl6}" == "${exp_lvl6}"
+                && "$(grep -c 'level=1' <<< "${st3}")" == 1
         ]]; then
             record_pass "${lbl}: work files at level 1, shipped files not"
         else
@@ -883,8 +883,9 @@ run_helper \
 
 if [[
     "${rc}" -eq 0
-    && "$(cd "${dir_par}/printed" && find . -type f | LC_ALL=C sort)" \
-        == "$(cd "${dir_par}/real" && find . -type f | LC_ALL=C sort)"
+        && "$(
+            cd "${dir_par}/printed" && find . -type f | LC_ALL=C sort
+        )" == "$(cd "${dir_par}/real" && find . -type f | LC_ALL=C sort)"
 ]] && cmp -s \
     <(run_samtools view "${dir_par}/printed/aln.bam" | cut -f 1-11) \
     <(run_samtools view "${dir_par}/real/aln.bam" | cut -f 1-11)
@@ -977,8 +978,8 @@ out="$(
 
 if [[
     "${rc}" -ne 0
-    && "${out}" == *"align_fastqs): file associated with '--fq_1' does not"*
-    && "${out}" != *"# Step "*
+        && "${out}" == *"align_fastqs): file associated with '--fq_1' does not"*
+        && "${out}" != *"# Step "*
 ]]; then
     record_pass "helper dry run still refuses a missing '--fq_1'"
 else
@@ -1010,9 +1011,10 @@ out="$(
 
 if [[
     "${rc}" -eq 0
-    && "${out}" == *"# Sample 'tiny_se': call to 'align_fastqs'."*
-    && "${out}" == *"    > ${log}.stdout.txt \\"$'\n'"    2> ${log}.stderr.txt"*
-    && "${out}" == *"# Step 6: "*
+        && "${out}" == *"# Sample 'tiny_se': call to 'align_fastqs'."*
+        && "${out}" \
+            == *"    > ${log}.stdout.txt \\"$'\n'"    2> ${log}.stderr.txt"*
+        && "${out}" == *"# Step 6: "*
 ]]; then
     record_pass "submit dry run prints the call, its logs, and the steps"
 else
@@ -1048,11 +1050,11 @@ out="$(
 
 if [[
     "${rc}" -eq 0
-    && "${out}" == *"submit_align_fastqs.sh --env_nam "*
-    && "${out}" == *"# Sample 'tiny_se': call to 'align_fastqs'."*
-    && "${out}" == *"# Sample 'tiny_pe': call to 'align_fastqs'."*
-    && "${out}" == *"-U ${in_se} \\"$'\n'"    | samtools view \\"*
-    && "${out}" == *"-2 ${in_pe_2} \\"$'\n'"    | samtools view \\"*
+        && "${out}" == *"submit_align_fastqs.sh --env_nam "*
+        && "${out}" == *"# Sample 'tiny_se': call to 'align_fastqs'."*
+        && "${out}" == *"# Sample 'tiny_pe': call to 'align_fastqs'."*
+        && "${out}" == *"-U ${in_se} \\"$'\n'"    | samtools view \\"*
+        && "${out}" == *"-2 ${in_pe_2} \\"$'\n'"    | samtools view \\"*
 ]]; then
     record_pass "execute dry run prints the dispatch and each entry's steps"
 else
@@ -1109,7 +1111,7 @@ for spl in --dry-run --dry; do
         if [[ "${spl}" == "--dry-run" ]]; then
             if [[
                 "${rc_lyr[${lyr}]}" -eq 0
-                && "${out_lyr[${lyr}]}" == *"# Step 1: "*
+                    && "${out_lyr[${lyr}]}" == *"# Step 1: "*
             ]]; then
                 record_pass "${lyr} accepts '--dry-run'"
             else
@@ -1117,8 +1119,8 @@ for spl in --dry-run --dry; do
             fi
         elif [[
             "${rc_lyr[${lyr}]}" -ne 0
-            && "${out_lyr[${lyr}]}" == *"'--dry'"*
-            && "${out_lyr[${lyr}]}" != *"# Step 1: "*
+                && "${out_lyr[${lyr}]}" == *"'--dry'"*
+                && "${out_lyr[${lyr}]}" != *"# Step 1: "*
         ]]; then
             record_pass "${lyr} refuses '--dry'"
         else

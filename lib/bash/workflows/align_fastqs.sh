@@ -234,8 +234,8 @@ EOM
             fi
 
             # An unquoted comma is literal in Bash, and '%q' escapes the braces
-            # that could make it special, so print it bare, as in '-O
-            # bam,level=1'; a quoted word is left as it is.
+            # that could make it special, so print it bare, as in
+            # '-O bam,level=1'; a quoted word is left as it is.
             if [[ "${tok}" != *"'"* ]]; then tok="${tok//\\,/,}"; fi
 
             arr_lin+=( "${ind}    ${tok}" )
@@ -706,8 +706,7 @@ EOM
         remove|separate) : ;;
         *)
             echo_err_func "${func}" \
-                "'--unal_mode' must be 'remove' or 'separate':" \
-                "'${unal_mode}'."
+                "'--unal_mode' must be 'remove' or 'separate': '${unal_mode}'."
             return 1
             ;;
     esac
@@ -964,7 +963,7 @@ Parameters
     Whether to make the earlier paired-end call ('--no-overlap --no-dovetail', no '-X') instead.
 
   07  bt2_relaxed : bool
-    Whether to make the relaxed paired-end call ('-I 0 -X bt2_X', without '--no-mixed' or '--no-discordant') instead.
+    Whether to make the relaxed paired-end call ('-I 0 -X bt2_X', without '--no-mixed' and without '--no-discordant') instead.
 
   08  unal_mode : str
     What happens to unaligned reads: 'remove' passes '--no-unal', so Bowtie 2 writes none; 'separate' does not.
@@ -1062,7 +1061,7 @@ EOM
     elif [[ -n "${fq_2}" ]]; then
         arr_bt2+=( --no-mixed --no-discordant )
 
-        # Keep overlapping mates and bound the fragment length, unless asked
+        # Keep overlapping mates and the bound fragment length unless asked for
         # for the earlier "inherited" call, which drops overlapping mates and
         # leaves '-X' at Bowtie 2's default of 500.
         if [[ "${bt2_inherited}" == "true" ]]; then
@@ -1203,9 +1202,10 @@ EOM
         return 0
     fi
 
-    # Assign BWA or BWA-MEM2 arguments. '-K' fixes the batch of read bases over
-    # which paired-end insert sizes are estimated, so the output does not
-    # depend on the thread count.
+    # Assign BWA or BWA-MEM2 arguments. By default, BWA estimates PE insert
+    # sizes per batch of input bases, and the batch grows with the thread
+    # count, so output changes with '-t'. A fixed '-K' sets the batch, making
+    # outputs the same at any thread count.
     arr_bwa=(
         "${prog}" mem -t "${threads}" -K 100000000 "${index}" "${fq_1}"
     )
@@ -1485,7 +1485,7 @@ Parameters
     Maximum fragment length for a Bowtie 2 paired-end alignment.
 
   07  bt2_inherited : bool
-    Whether to make the earlier Bowtie 2 paired-end call.
+    Whether to make the earlier "inherited" Bowtie 2 paired-end call.
 
   08  bt2_relaxed : bool
     Whether to make the relaxed Bowtie 2 paired-end call.
@@ -1580,11 +1580,11 @@ EOM
 
     # Drop unaligned reads with Samtools.
     #
-    # In PE data, '-F 12' (0xC) also drops a read whose mate is flagged
+    # In paired-end data, '-F 12' (0xC) drops a read whose mate is flagged
     # unaligned. Samtools tests each record alone, so this keeps pairs whole
-    # only when both records' flags agree. BWA-backtrack can flag one mate
-    # unaligned and leave its partner's 0x8 clear, so Step 2 drops any template
-    # left with one primary record.
+    # only when both records' flags agree. BWA-backtrack, however, can flag one
+    # mate unaligned and leave its partner's 0x8 clear. So, Step 2 drops any
+    # template left with one primary record.
     arr_sam=( -@ "${threads}" )
     if [[ -n "${fq_2}" ]]; then
         arr_sam+=( -F 12 )
@@ -1602,12 +1602,13 @@ EOM
         arr_sam+=( -f 2 )
     fi
 
-    # The MAPQ threshold is not applied here. A per-record '-q' can split a
-    # template whenever its records' MAPQs differ, so Step 2 applies it by
-    # template for every aligner.
+    # The MAPQ threshold is not applied here, as a per-record '-q' can split a
+    # template whenever its records' MAPQs differ. Instead, Step 2 applies it
+    # by template for every aligner.
     #
-    # Step 2 rewrites both work files, so they are written at compression
-    # level 1, which is faster than the default.
+    # Step 2 rewrites the work file (and, with '--unal_mode separate', Set A,
+    # the dropped records), so both are written at compression level 1, which
+    # is faster to write than the default compression level, 6.
     arr_sam+=( -O "bam,level=1" -o "${fil_wrk}" )
 
     # Based on parsed arguments, run Bowtie 2, BWA, or BWA-MEM2 with output
@@ -1642,7 +1643,7 @@ EOM
 # Step 2 with '--unal_mode separate': sort Step 1's unaligned work file ("Set
 # A") by queryname and list its read names; for paired-end data, sort the
 # aligned reads ("Set B") by queryname, move every template with records in
-# both work files wholly into Set A, and fix mates in Set A.
+# both work files wholly into Set A, and then fix mates in Set A.
 function _route_unal_bam() {
     local func="${1:-}"
     local dry_run="${2:-}"
@@ -1662,7 +1663,9 @@ Usage
   _route_unal_bam
     [--help] func dry_run threads fq_2 fil_wrk bam_qnam bam_set_a
 
-  Sort Step 1's unaligned work file ("Set A") by queryname and list its read names in the path of 'fil_wrk' with '.unal.names.txt' for '.bam', which Step 4 uses to split Set A back out (Step 2 of 'align_fastqs()' with '--unal_mode separate'). For paired-end data, sort the BAM work file ("Set B") by queryname into 'bam_qnam', moving every record whose read name is in Set A into Set A as it goes, so that no template has records in both; then fix mates in Set A.
+  Sort Step 1's unaligned work file ("Set A") by queryname and list its read names in the path of 'fil_wrk' with '.unal.names.txt' for '.bam', which Step 4 uses to split Set A back out (Step 2 of 'align_fastqs()' with '--unal_mode separate').
+
+  For paired-end data, sort the BAM work file ("Set B") by queryname into 'bam_qnam', moving every record whose read name is in Set A into Set A as it goes, so that no template has records in both; then, fix mates in the newly filtered Set A.
 
   A template is moved by its read name, not by a count of its records, so the rule holds for any number of records per read.
 
@@ -1818,9 +1821,9 @@ EOM
     fi
 
     # Merge the moved templates into Set A and fix mates in the same stream.
-    # Every template in Set A is now whole, so fixing its mates here gives
-    # what fixing them beside Set B would. 'merge' renames clashing '@PG' IDs
-    # with random suffixes; '-s 0' seeds them, so the header is reproducible.
+    # Every template in Set A is now whole, so fixing its mates here gives what
+    # fixing them beside Set B would. 'merge' renames clashing '@PG' IDs with
+    # random suffixes; '-s 0' seeds them, making the header reproducible.
     bam_mate="${bam_set_a%.bam}.mate.bam"
     arr_mrg=(
         samtools merge
@@ -1879,7 +1882,7 @@ EOM
 
 # Step 2: sort the BAM work file by queryname, fix mates if the file holds
 # paired-end alignments, and keep or drop each template whole by its primary
-# records' MAPQ.
+# records' MAPQ values.
 function _sort_qname_bam() {
     local func="${1:-}"
     local dry_run="${2:-}"
@@ -1901,42 +1904,46 @@ Usage
   _sort_qname_bam
     [--help] func dry_run threads aligner mapq req_flg unal_mode fq_2 fil_wrk bam_qnam
 
-  Sort the BAM work file by queryname into 'bam_qnam' and fix mates for paired-end data (Step 2 of 'align_fastqs()'). Then keep or drop each template whole by whether its primary records pass 'mapq', for every aligner and layout. A paired-end template that lost a mate in Step 1 is dropped too.
+  Sort the BAM work file by queryname into 'bam_qnam' and fix mates for paired-end data (Step 2 of 'align_fastqs()').
 
-  The sort streams into 'fixmate' without a file between them. Every file written here is at compression level 1, as Step 3 sorts the result again.
+  Then, keep or drop each template whole by whether its primary records pass 'mapq', for every aligner and layout. A paired-end template that lost a mate in Step 1 is dropped too.
 
-  With 'unal_mode' 'separate', first move every template with records in Step 1's unaligned work file ("Set A") wholly into Set A, then require proper pairs in the rest if 'req_flg' is 'true'. Fix mates in Set A on its own, and merge it back into 'bam_qnam' after the MAPQ filter, so that Step 4 marks duplicates in both sets together.
+  The sort streams into 'fixmate' without a file between them. Every file written here is at compression level 1, making it faster for Step 3 to sort the results again.
+
+  With 'unal_mode=separate', first move every template in the work file ("Set B") with records in Step 1's unaligned work file ("Set A") wholly into Set A, then require proper pairs in the rest if 'req_flg' is 'true'.
+
+  Then, fix mates in Set A on its own, and merge it back into 'bam_qnam' after the MAPQ filter, making it so that Step 4 marks duplicates in both sets together.
 
 Parameters
 ----------
   -h, --help : flag
     Display this help message and exit.
 
-  1  func : str
+  01  func : str
     Name of the calling function for diagnostics.
 
-  2  dry_run : bool
+  02  dry_run : bool
     Whether to print the commands to stdout instead of running them.
 
-  3  threads : int
+  03  threads : int
     Number of threads to use.
 
-  4  aligner : str
+  04  aligner : str
     Alignment program that wrote the BAM work file.
 
-  5  mapq : int
+  05  mapq : int
     MAPQ threshold that a template's primary records must pass.
 
-  6  req_flg : bool
-    Whether properly paired alignments are required; used here only with 'unal_mode' 'separate', since Step 1 applies it otherwise.
+  06  req_flg : bool
+    Whether properly paired alignments are required; used here only with 'unal_mode=separate', since Step 1 applies it otherwise.
 
-  7  unal_mode : str
+  07  unal_mode : str
     What to do with unaligned reads and their mates: 'remove' or 'separate'.
 
-  8  fq_2 : file
+  08  fq_2 : file
     Second FASTQ input file, or empty for single-end data; selects mate fixing.
 
-  9  fil_wrk : file
+  09  fil_wrk : file
     BAM work file from Step 1.
 
   10  bam_qnam : file
@@ -2024,9 +2031,9 @@ EOM
             fi
         fi
 
-        # Sort by queryname and, for PE data, fix mates in the same stream.
-        # The template filter below reads the result twice, so it is written
-        # at compression level 1.
+        # Sort by queryname and, for PE data, fix mates in the same stream. The
+        # below template filter reads the result twice, so it is written at
+        # compression level 1.
         arr_srt=(
             samtools sort
                 -@ "${threads}"
@@ -2068,8 +2075,8 @@ EOM
             fi
         else
             # With '--unal_mode separate', Set B is already sorted; require
-            # proper pairs in it, then fix mates. '-f 2' runs before
-            # 'fixmate', as in Step 1, so that the aligner's own 0x2 decides.
+            # proper pairs in it, then fix mates. '-f 2' runs before 'fixmate',
+            # as in Step 1, so that the aligner's own 0x2 decides.
             bam_mate="${fil_wrk%.bam}.mate.bam"
 
             if [[ "${req_flg}" == "true" ]]; then
@@ -2123,7 +2130,7 @@ EOM
         # must. A per-record '-q' would split templates whose records' MAPQs
         # differ, such as BWA mates, supplementary records, and Bowtie 2
         # secondaries under '-k'. Step 1 can also leave a PE template with one
-        # primary record (#75). So this filter runs for every call.
+        # primary record (#75). So, this filter runs for every call.
         bam_mapq="${fil_wrk%.bam}.mapq.bam"
         if [[ -n "${fq_2}" ]]; then n_pri=2; else n_pri=1; fi
 
@@ -2154,10 +2161,10 @@ EOM
             return 1
         fi
 
-        # Merge Set A back in, so that Step 4 marks duplicates in the whole
+        # Merge Set A back in so that Step 4 marks duplicates in the whole
         # library; Step 4 then splits it out again as the side file. '-s 0'
-        # seeds the random suffixes 'merge' gives clashing '@PG' IDs, so the
-        # header is reproducible.
+        # seeds the random suffixes 'merge' gives clashing '@PG' IDs, making
+        # the header reproducible.
         if [[ "${unal_mode}" == "separate" ]]; then
             bam_mrg="${fil_wrk%.bam}.merge.bam"
             arr_cmd=(
@@ -2254,7 +2261,7 @@ Parameters
 
 Returns
 -------
-  Returns 0 when sorting succeeds or after printing the commands for a dry run; prints an error and returns 1 otherwise.
+  Returns 0 when sorting succeeds or after printing the commands for a dry run; otherwise, prints an error and returns 1.
 
 Notes
 -----
@@ -2530,7 +2537,7 @@ Parameters
     Name of the variable to set to the optical duplicate distance, '2500', or to 'not used' and the reason; set to empty when the file was already marked.
 
   7  fin : bool
-    Whether the marked file becomes the final output as it is, and so is written at the default compression level; 'false' writes it at level 1, for '--unal_mode separate', whose split rewrites it, and for CRAM output, which Step 6 converts it to (default: '${fin}').
+    Whether the marked file ships as it is, at the default compression level (6). 'false' writes it at level 1, since a later step rewrites it: the split of '--unal_mode separate', or Step 6's CRAM conversion (default: '${fin}').
 
 Returns
 -------
@@ -2575,11 +2582,11 @@ EOM
     fi
 
     if [[ "${dry_run}" == "true" ]]; then
-        # Note: weird line break is necessary fror output text formatting.
+        # Note: the weird line break is necessary for output text formatting.
         printf '\n%s %s\n%s\n' \
             "# Step 4: mark duplicates in the BAM work file." \
-            "'-d 2500' only if" \
-            "# all read names carry flow-cell coordinates of one format."
+            "'-d 2500' applies only if all" \
+            "# read names carry flow-cell coordinates of one format."
     fi
 
     local -n dist_out="${dist_nam}"
@@ -2883,7 +2890,7 @@ Parameters
     Maximum fragment length for a Bowtie 2 paired-end alignment.
 
   08  bt2_inherited : bool
-    Whether the earlier Bowtie 2 paired-end call is made.
+    Whether the earlier "inherited" Bowtie 2 paired-end call is made.
 
   09  bt2_relaxed : bool
     Whether the relaxed Bowtie 2 paired-end call is made.
@@ -3110,7 +3117,9 @@ Usage
   _write_align_record
     [--help] func dry_run threads fil_wrk cnt_nam run_nam [idx]
 
-  Write the pipeline record, content lines first, into the header of the duplicate-marked BAM work file as '@CO' lines, skipping files that already carry a record, then index the file (Step 5 of 'align_fastqs()'). This is the only index the chain builds for a BAM file, so a skipped file is indexed too.
+  Write the pipeline record, content lines first, into the header of the duplicate-marked BAM work file as '@CO' lines, skipping files that already carry a record, then index the file (Step 5 of 'align_fastqs()').
+
+  This is the only index the chain builds for a BAM file, so a skipped file is indexed too.
 
 Parameters
 ----------
@@ -3259,8 +3268,8 @@ EOM
         fi
     fi
 
-    # Index the file here, after the new header moves the records, and not
-    # in Steps 3 and 4, which rewrite the file.
+    # Index the file here, after the new header moves the records, and not in
+    # Steps 3 and 4, which rewrite the file.
     if [[ "${idx}" == "false" ]]; then return 0; fi
 
     arr_cmd=( samtools index -@ "${threads}" "${fil_wrk}" )
@@ -3275,8 +3284,8 @@ EOM
 }
 
 
-# Step 6: with '--qname', name-sort the final BAM work file into a copy; then
-# convert the work file and the copy to CRAM if requested, or keep both as BAM.
+# Step 6: with '--qname', name-sort the final BAM work file into a copy; then,
+# for CRAM output, convert the work file and any copy to CRAM.
 function _finalize_align_output() {
     local func="${1:-}"
     local dry_run="${2:-}"
@@ -3515,6 +3524,7 @@ EOM
 }
 
 
+# TODO: "semantic paragraphs" for options under Usage.
 function align_fastqs() {
     local dry_run threads aligner bt2_mode bt2_X bt2_inherited bt2_relaxed
     local bwa_alg mapq req_flg unal_mode index ref_fa
@@ -3522,7 +3532,7 @@ function align_fastqs() {
     local fq_1 fq_2 fil_out qname out_fmt
     local fil_wrk fil_qnam_out bam_qnam txt_mrk dist_mrk
     local fil_unal_wrk fil_unal_out fil_unal_qnam_out bam_unal_qnam lin_opt
-    local fin_mrk fin_spl idx_rec
+    local fin_mrk fin_spl idx_rec lin_cnt
 
     # shellcheck disable=SC2034  # Filled and read by name in the helpers.
     local -a arr_rec_cnt arr_rec_run arr_rec_unal
@@ -3599,11 +3609,21 @@ Parameters
     Require SAM flag bit 2 for properly paired alignments. Ignored with a warning for single-end data.
 
   -um, --unal_mode : {'remove', 'separate'}
-    What to do with unaligned reads and, in paired-end data, their mates: 'remove' or 'separate' (default: '${unal_mode}'). With 'remove', they are dropped. With 'separate', they are also written to a side file, '<stem>.unal.bam' or '<stem>.unal.cram', and the alignment file holds the same records as with 'remove'. Refused as 'separate' with '--bt2_inherited', whose call writes no unaligned reads.
+    What to do with unaligned reads and, in paired-end data, their mates, aligned or not: 'remove' or 'separate' (default: '${unal_mode}').
 
-    With single-end data, the side file holds the reads flagged unaligned (SAM flag 4). With Bowtie 2 and paired-end data, it holds the pairs that did not align as concordant pairs, which Bowtie 2 writes with both mates unaligned even when one mate could align alone. With BWA or BWA-MEM2 and paired-end data, it holds the records flagged unaligned or with an unaligned mate. When BWA-backtrack flags one mate unaligned but leaves its partner's mate flag clear, the partner goes to the side file beside its mate.
+    With 'remove', they are dropped. With 'separate', they are also written to a side file, '<stem>.unal.bam' or '<stem>.unal.cram', and the alignment file holds the same records as with 'remove'. Refused as 'separate' with '--bt2_inherited', whose call writes no unaligned reads.
 
-    Each read pair is kept whole: when any record of a pair belongs in the side file, all of the pair's records go there. '--mapq' and '--req_flg' apply only to the alignment file (as both judge aligned pairs and would remove every pair the side file holds).
+    With single-end data, the side file holds the reads flagged unaligned (SAM flag 4).
+
+    With Bowtie 2 and paired-end data, it holds the pairs that did not align as concordant pairs, which Bowtie 2 writes with both mates unaligned even when one mate could align alone.
+
+    With BWA or BWA-MEM2 and paired-end data, it holds the records flagged unaligned or with an unaligned mate.
+
+    When BWA-backtrack flags one mate unaligned but leaves its partner's mate flag clear, the partner goes to the side file beside its mate.
+
+    Each read pair is kept whole: when any record of a pair belongs in the side file, all of the pair's records go there.
+
+    '--mapq' and '--req_flg' apply only to the alignment file (as both judge aligned pairs and would remove every pair the side file holds).
 
     The side file is coordinate-sorted, indexed, and duplicate-marked. It carries the pipeline record and follows the alignment file into CRAM and into a '--qname' copy. It is not for signal or scaling.
 
@@ -3947,20 +3967,21 @@ EOM
 
 
     # With '--unal_mode separate', the unaligned reads and their mates
-    # ("Set A") travel beside the aligned reads ("Set B"):
-    # - Step 1 writes Sets A and B to their own work files.
+    # ("Set A", the removed records) travel beside the aligned reads ("Set B",
+    # the kept records):
+    # - Step 1 writes Sets A and B to their own files.
     # - Step 2 moves every template with records in both sets into Set A, then
     #   fixes mates in each set.
     #   + Step 2 then filters Set B alone, as '--mapq' and '--req_flg' judge
     #     aligned pairs and would otherwise remove every template in Set A.
     #   + After filtering Set B, Set A is merged into Set B.
     # - Step 3 sorts the union of Sets A and B.
-    # - Step 4 marks duplicates in the union, then splits Set A out as the side
-    #   file (e.g., for QC analyses, etc.).
+    # - Step 4 marks duplicates in the union, then splits Set A out as a side
+    #   file (e.g., for QC analyses).
     # - Step 5 writes the pipeline record into each file and indexes each. The
     #   side file's record also says what it holds.
-    # - Step 6 converts each file to CRAM, and makes a '--qname' copy of each,
-    #   when asked.
+    # - Step 6 does two optional things to each file: (a )converts it to CRAM
+    #   and (b) makes a '--qname' copy.
     #
     # With '--unal_mode remove', Set A is dropped in Step 1.
 
@@ -4002,9 +4023,9 @@ EOM
 
 
     # Steps 3 and 4 do not index the BAM work file, as no step reads it by
-    # region and each rewrites it; Step 5 indexes the final file. Work files
-    # that a later step rewrites are written at compression level 1, and the
-    # files that ship at the default level.
+    # region and each step rewrites it; Step 5 indexes the final file. Work
+    # files that a later step rewrites are written at compression level 1;
+    # shipped files are written at the default level, 6.
     #
     # Step 3: sort by coordinates into the BAM work file.
     _sort_coord_bam \
@@ -4016,8 +4037,8 @@ EOM
         || return 1
 
 
-    # Step 4: mark duplicates. The marked file ships as it is unless the side
-    # file's split rewrites it or Step 6 converts it to CRAM.
+    # Step 4: mark duplicates. The marked file ships as is unless the split of
+    # the side file rewrites it or Step 6 CRAM-converts it.
     fin_mrk=true
     if [[ "${unal_mode}" == "separate" || "${out_fmt}" == "cram" ]]; then
         fin_mrk=false
@@ -4034,7 +4055,7 @@ EOM
         || return 1
 
     # With '--unal_mode separate', split the side file back out. The two files
-    # ship as they are unless Step 6 converts them to CRAM.
+    # ship as they are unless Step 6 CRAM-converts them.
     if [[ "${unal_mode}" == "separate" ]]; then
         fin_spl=true
         if [[ "${out_fmt}" == "cram" ]]; then fin_spl=false; fi
@@ -4050,11 +4071,11 @@ EOM
     fi
 
 
-    # Step 5: write the pipeline record, with whether optical duplicates were
-    # told apart, into the header and index the BAM work file, unless Step 6
-    # converts it to CRAM and indexes that instead. The side file of
-    # '--unal_mode separate' carries the same record, plus what it holds; in
-    # each, the optical line ends the content lines.
+    # Step 5: write the pipeline record, including whether optical duplicates
+    # were told apart, into the header, and index the BAM work file, unless
+    # Step 6 converts it to CRAM and indexes the CRAM file instead. The side
+    # file of '--unal_mode separate' carries the same record plus what it
+    # holds; in each, the optical line ends the content lines.
     if [[ "${dist_mrk}" == "2500" ]]; then
         lin_opt=$'@CO\tpipeline: optical_distance=2500'
     elif [[ -n "${dist_mrk}" ]]; then
@@ -4063,10 +4084,13 @@ EOM
         lin_opt=$'@CO\tpipeline: optical_distance=unknown (marked earlier)'
     fi
 
+    lin_cnt=$'@CO\tpipeline: content=unaligned reads and their mates,'
+    lin_cnt+=' aligned or not'
+
     # shellcheck disable=SC2034  # Read by name in '_write_align_record'.
     arr_rec_unal=(
         "${arr_rec_cnt[@]}"
-        $'@CO\tpipeline: content=unaligned reads and their mates'
+        "${lin_cnt}"
         $'@CO\tpipeline: warning=not for signal or scaling'
         "${lin_opt}"
     )

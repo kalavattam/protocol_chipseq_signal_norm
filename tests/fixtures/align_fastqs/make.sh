@@ -66,6 +66,8 @@ function cleanup_tmp_fastqs() {
         "${fq_par_se_tmp}" \
         "${fq_dup_r1_tmp}" \
         "${fq_dup_r2_tmp}" \
+        "${fq_fil_r1_tmp}" \
+        "${fq_fil_r2_tmp}" \
         "${tmp_bln_se}" \
         "${tmp_bln_r1}" \
         "${tmp_bln_r2}"
@@ -102,6 +104,8 @@ fq_r1_tmp="${dir_fq_pe}/tiny_pe_R1.atria.fastq.tmp"
 fq_r2_tmp="${dir_fq_pe}/tiny_pe_R2.atria.fastq.tmp"
 
 fq_se_gz="${dir_fq_se}/tiny_se.atria.fastq.gz"
+fq_se_1_gz="${dir_fq_se}/tiny_se_1.atria.fastq.gz"
+fq_se_2_gz="${dir_fq_se}/tiny_se_2.atria.fastq.gz"
 fq_r1_gz="${dir_fq_pe}/tiny_pe_R1.atria.fastq.gz"
 fq_r2_gz="${dir_fq_pe}/tiny_pe_R2.atria.fastq.gz"
 
@@ -123,6 +127,10 @@ fq_rpt_r2_tmp="${dir_fq_pe}/repeat_pe_R2.atria.fastq.tmp"
 fq_rpt_se_gz="${dir_fq_se}/repeat_se.atria.fastq.gz"
 fq_rpt_r1_gz="${dir_fq_pe}/repeat_pe_R1.atria.fastq.gz"
 fq_rpt_r2_gz="${dir_fq_pe}/repeat_pe_R2.atria.fastq.gz"
+fq_qn_r1_tmp="${dir_fq_pe}/qname_pe_R1.atria.fastq.tmp"
+fq_qn_r2_tmp="${dir_fq_pe}/qname_pe_R2.atria.fastq.tmp"
+fq_qn_r1_gz="${dir_fq_pe}/qname_pe_R1.atria.fastq.gz"
+fq_qn_r2_gz="${dir_fq_pe}/qname_pe_R2.atria.fastq.gz"
 
 idx_rpt_bt2="${dir_bt2}/repeat"
 idx_rpt_bwa="${ref_rpt_bwa}"
@@ -173,12 +181,16 @@ fq_par_r2_tmp="${dir_fq_pe}/pairs_pe_R2.atria.fastq.tmp"
 fq_par_se_tmp="${dir_fq_se}/pairs_se.atria.fastq.tmp"
 fq_dup_r1_tmp="${dir_fq_pe}/dup_pe_R1.atria.fastq.tmp"
 fq_dup_r2_tmp="${dir_fq_pe}/dup_pe_R2.atria.fastq.tmp"
+fq_fil_r1_tmp="${dir_fq_pe}/pairs_fill_pe_R1.atria.fastq.tmp"
+fq_fil_r2_tmp="${dir_fq_pe}/pairs_fill_pe_R2.atria.fastq.tmp"
 
 fq_par_r1_gz="${dir_fq_pe}/pairs_pe_R1.atria.fastq.gz"
 fq_par_r2_gz="${dir_fq_pe}/pairs_pe_R2.atria.fastq.gz"
 fq_par_se_gz="${dir_fq_se}/pairs_se.atria.fastq.gz"
 fq_dup_r1_gz="${dir_fq_pe}/dup_pe_R1.atria.fastq.gz"
 fq_dup_r2_gz="${dir_fq_pe}/dup_pe_R2.atria.fastq.gz"
+fq_fil_r1_gz="${dir_fq_pe}/pairs_fill_pe_R1.atria.fastq.gz"
+fq_fil_r2_gz="${dir_fq_pe}/pairs_fill_pe_R2.atria.fastq.gz"
 
 idx_par_bt2="${dir_bt2}/pairs"
 
@@ -247,6 +259,11 @@ gzip_n "${fq_se_tmp}" "${fq_se_gz}"
 
 # Remove the temporary single-end FASTQ after compression.
 rm_file "${dir_fix}" "${fq_se_tmp}"
+
+# Copy the single-end fixture into two samples, so that the GNU Parallel test
+# runs two jobs against the tiny index.
+cp "${fq_se_gz}" "${fq_se_1_gz}"
+cp "${fq_se_gz}" "${fq_se_2_gz}"
 
 
 # Write tiny paired-end FASTQ provenance and compressed input fixtures.
@@ -512,6 +529,31 @@ gzip_n "${fq_rpt_r2_tmp}" "${fq_rpt_r2_gz}"
 rm_file "${dir_fix}" "${fq_rpt_se_tmp}"
 rm_file "${dir_fix}" "${fq_rpt_r1_tmp}"
 rm_file "${dir_fix}" "${fq_rpt_r2_tmp}"
+
+
+# Write the queryname-copy reads on the repeat reference, 50 bases each: three
+# 300-base fragments from the unique blocks, at zero-based offsets 50, 1200,
+# and 1200. 'dup_a' and 'dup_b' are the same fragment under two names, so Step
+# 4 marks one of them. R1 starts the fragment on the forward strand; R2 is the
+# reverse complement of its last 50 bases. The R1 file is also the single-end
+# input.
+{
+    print_fq uniq "${seq_rpt:50:50}"
+    print_fq dup_a "${seq_rpt:1200:50}"
+    print_fq dup_b "${seq_rpt:1200:50}"
+} > "${fq_qn_r1_tmp}"
+
+{
+    print_fq uniq "$(print_rc "${seq_rpt:300:50}")"
+    print_fq dup_a "$(print_rc "${seq_rpt:1450:50}")"
+    print_fq dup_b "$(print_rc "${seq_rpt:1450:50}")"
+} > "${fq_qn_r2_tmp}"
+
+gzip_n "${fq_qn_r1_tmp}" "${fq_qn_r1_gz}"
+gzip_n "${fq_qn_r2_tmp}" "${fq_qn_r2_gz}"
+
+rm_file "${dir_fix}" "${fq_qn_r1_tmp}"
+rm_file "${dir_fix}" "${fq_qn_r2_tmp}"
 
 
 # Remove stale repeat index files before regeneration.
@@ -821,14 +863,16 @@ bwa mem "${ref_brg_bwa}" "${fq_brg_r1_gz}" "${fq_brg_r2_gz}" \
 
 
 # Write the pairs reference and reads, with one read pair per pair class, and
-# the duplicate set with 'make_pairs.py'; its docstring describes the data.
+# the duplicate set with 'make_pairs.py' (its docstring describes the data).
 python3 "${dir_scr}/make_pairs.py" \
     --fil_ref "${ref_par}" \
     --fil_r1 "${fq_par_r1_tmp}" \
     --fil_r2 "${fq_par_r2_tmp}" \
     --fil_se "${fq_par_se_tmp}" \
     --fil_dup_r1 "${fq_dup_r1_tmp}" \
-    --fil_dup_r2 "${fq_dup_r2_tmp}"
+    --fil_dup_r2 "${fq_dup_r2_tmp}" \
+    --fil_fill_r1 "${fq_fil_r1_tmp}" \
+    --fil_fill_r2 "${fq_fil_r2_tmp}"
 
 # Compress the pairs FASTQ fixtures with deterministic gzip metadata, then
 # remove the temporary FASTQs.
@@ -837,6 +881,8 @@ gzip_n "${fq_par_r2_tmp}" "${fq_par_r2_gz}"
 gzip_n "${fq_par_se_tmp}" "${fq_par_se_gz}"
 gzip_n "${fq_dup_r1_tmp}" "${fq_dup_r1_gz}"
 gzip_n "${fq_dup_r2_tmp}" "${fq_dup_r2_gz}"
+gzip_n "${fq_fil_r1_tmp}" "${fq_fil_r1_gz}"
+gzip_n "${fq_fil_r2_tmp}" "${fq_fil_r2_gz}"
 
 rm_files \
     "${dir_fix}" \
@@ -844,7 +890,9 @@ rm_files \
     "${fq_par_r2_tmp}" \
     "${fq_par_se_tmp}" \
     "${fq_dup_r1_tmp}" \
-    "${fq_dup_r2_tmp}"
+    "${fq_dup_r2_tmp}" \
+    "${fq_fil_r1_tmp}" \
+    "${fq_fil_r2_tmp}"
 
 
 # Write a name-grouped paired-end SAM record set for Step 2 on its own:
