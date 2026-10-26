@@ -27,8 +27,8 @@ source "$(
 #
 # '--unal_mode remove' drops unaligned reads and their mates; 'separate' also
 # writes them to a side file and leaves the alignment file as it is. Every
-# aligner call runs on the 'pairs' (one pair per pair class), 'pairs_fill'
-# (the pair classes among 300 concordant pairs, so BWA can flag pairs proper),
+# aligner call runs on the 'pairs' (one pair per pair class), 'pairs_fill' (the
+# pair classes among 300 concordant pairs, so BWA can flag pairs proper),
 # 'bridge' (the BWA-backtrack lone mate of #75), and 'dup' (duplicates among
 # the side file's aligned mates) fixtures, with and without '--req_flg', and
 # its records are checked against the aligner's own output.
@@ -99,8 +99,11 @@ function run_helper() {
 
 
 # Run an aligner call as Step 1 does, but write every record it makes, so the
-# helper's outputs can be checked against it. Arguments: the call's label, the
-# fixture set, the second FASTQ (or empty), and the output SAM.
+# helper's outputs can be checked against it. Arguments:
+# - the call's label,
+# - the fixture set,
+# - the second FASTQ (or empty), and
+# - the output SAM.
 function run_raw() {
     local cal="${1}"
     local set="${2}"
@@ -164,7 +167,9 @@ function run_raw() {
                 bwa samse "${idx_bwa}" "${sam%.sam}.R1.sai" "${fq_1}"
             fi
             ;;
-    esac 2> "${sam%.sam}.raw.log" > "${sam}"
+    esac \
+        2> "${sam%.sam}.raw.log" \
+        1> "${sam}"
 }
 
 
@@ -236,7 +241,7 @@ function print_names() {
 
 # Check that each template of the raw output lands whole in one place: the
 # alignment file, the side file, or neither (dropped by '--mapq' or
-# '--req_flg'). Print nothing when it holds, or the offending names.
+# '--req_flg'). Print nothing when it holds or the offending names.
 function print_split_templates() {
     local sam_raw="${1}"
     local fil_main="${2}"
@@ -248,7 +253,8 @@ function print_split_templates() {
         if [[ -n "${fil_side}" ]]; then
             print_keys "${fil_side}" | sed 's/^/S\t/'
         fi
-    } | awk -F '\t' '
+    } \
+    | awk -F '\t' '
         {
             key = $2 SUBSEP $3 SUBSEP $4 SUBSEP $5
             if ($1 == "R") { n_raw[$2]++; raw[key] = 1 }
@@ -270,7 +276,9 @@ function print_split_templates() {
             }
             for (nam in bad) { print nam }
         }
-    ' | sort | tr '\n' ' '
+    ' \
+    | sort \
+    | tr '\n' ' '
 }
 
 
@@ -342,8 +350,8 @@ for ent in "${ins[@]}"; do
         fi
 
         sam_raw="${tmp}/${inp}.${cal}.raw.sam"
-        if ! \
-            run_raw "${cal}" "${set}" "${fq_1}" "${fq_2}" "${sam_raw}"
+        if \
+            ! run_raw "${cal}" "${set}" "${fq_1}" "${fq_2}" "${sam_raw}"
         then
             record_fail "${inp} ${cal}: the raw aligner call failed"
             continue
@@ -398,9 +406,10 @@ for ent in "${ins[@]}"; do
 
             # Invariant: 'remove' and 'separate' give the same alignment file,
             # duplicate flags included.
-            if cmp -s \
-                <(print_recs "${stm}.remove.bam") \
-                <(print_recs "${stm}.separate.bam")
+            if \
+                cmp -s \
+                    <(print_recs "${stm}.remove.bam") \
+                    <(print_recs "${stm}.separate.bam")
             then
                 record_pass \
                     "${lbl}: the alignment file is the same in both modes"
@@ -442,9 +451,60 @@ for ent in "${ins[@]}"; do
                     "neither unaligned nor mates of unaligned reads"
             fi
 
+            # Under 'separate', Step 2 notes how many paired-end templates it
+            # moved: those with raw records on both sides of Step 1's split,
+            # some with an unaligned read or mate and some without. In
+            # 'bridge', BWA-backtrack splits one. 'remove', and single-end
+            # data, move nothing and print no note.
+            got="$(
+                grep -oE 'moved [0-9]+ template' "${stm}.separate.log" \
+                    | grep -oE '[0-9]+' \
+                    || true
+            )"
+            if [[ "${typ}" == "pe" ]]; then
+                n_exp="$(
+                    LC_ALL=C comm -12 \
+                        <(
+                            run_samtools view -F 12 "${sam_raw}" \
+                                | cut -f 1 \
+                                | LC_ALL=C sort -u
+                        ) \
+                        <(
+                            run_samtools view --expr 'flag & 12' "${sam_raw}" \
+                                | cut -f 1 \
+                                | LC_ALL=C sort -u
+                        ) \
+                        | wc -l \
+                        | tr -d ' '
+                )"
+                if [[
+                    "${inp} ${cal}" == "bridge aln" && "${n_exp}" -ne 1
+                ]]; then
+                    record_fail \
+                        "${lbl}: the raw output splits ${n_exp} templates," \
+                        "expected 1"
+                fi
+            else
+                n_exp=""
+            fi
+
+            n_rm="$(
+                grep -c 'moved [0-9]* template' "${stm}.remove.log"
+            )" || true
+            if [[ "${got}" == "${n_exp}" && "${n_rm}" -eq 0 ]]; then
+                record_pass \
+                    "${lbl}: Step 2 notes the templates it moved:" \
+                    "'${got:-none}'"
+            else
+                record_fail \
+                    "${lbl}: Step 2 notes '${got:-none}' moved templates," \
+                    "expected '${n_exp:-none}', and none under 'remove'"
+            fi
+
             # The side file's read names, where pinned above.
-            if [[ "${req}" == "no" && -n "${side_exp[${inp} ${cal}]:-}" ]]
-            then
+            if [[
+                "${req}" == "no" && -n "${side_exp[${inp} ${cal}]:-}"
+            ]]; then
                 got="$(print_names "${fil_side}")"
                 if [[ "${got}" == "${side_exp[${inp} ${cal}]}" ]]; then
                     record_pass "${lbl}: the side file holds '${got% }'"
@@ -457,15 +517,20 @@ for ent in "${ins[@]}"; do
 
             # With the default Bowtie 2 PE call, the side file holds exactly
             # the pairs Bowtie 2 reports as not aligned concordantly.
-            if [[ "${cal}" == "bt2" && "${typ}" == "pe" && "${req}" == "no" ]]
-            then
+            if [[
+                "${cal}" == "bt2" && "${typ}" == "pe" && "${req}" == "no"
+            ]]; then
                 n_cnc="$(
-                    awk '/aligned concordantly 0 times/ { print $1; exit }' \
+                    awk \
+                        '/aligned concordantly 0 times/ { print $1; exit }' \
                         "${stm}.separate.log"
                 )"
                 n_tpl="$(
-                    run_samtools view "${fil_side}" | cut -f 1 | sort -u \
-                        | wc -l | tr -d ' '
+                    run_samtools view "${fil_side}" \
+                        | cut -f 1 \
+                        | sort -u \
+                        | wc -l \
+                        | tr -d ' '
                 )"
                 if [[ -n "${n_cnc}" && "${n_cnc}" -eq "${n_tpl}" ]]; then
                     record_pass \
@@ -533,11 +598,16 @@ for cal in mem bm2; do
         fil_main="${tmp}/pairs_fill.${cal}.${req}.separate.bam"
         got="$(
             run_samtools view "${fil_main}" 2> /dev/null \
-                | cut -f 1 | sort -u | grep -v '^fill_' | tr '\n' ' '
+                | cut -f 1 \
+                | sort -u \
+                | grep -v '^fill_' \
+                | tr '\n' ' '
         )" || true
         n_fil="$(
             run_samtools view "${fil_main}" 2> /dev/null \
-                | cut -f 1 | sort -u | grep -c '^fill_'
+                | cut -f 1 \
+                | sort -u \
+                | grep -c '^fill_'
         )" || true
 
         if [[ "${got}" == "${exp}" && "${n_fil}" == 300 ]]; then
@@ -570,16 +640,22 @@ for req in no yes; do
                 | awk -F '\t' '
                     { print "M\t" $1 "\t" $2 - int($2 / 1024) % 2 * 1024 }
                 '
-        } | sort -t $'\t' -k 1,1 -k 2,2 -k 3,3n | awk -F '\t' '
-            $1 == "R" { raw[$2] = raw[$2] " " $3; next }
-            { got[$2] = got[$2] " " $3 }
-            END {
-                for (nam in got) {
-                    out = out (got[nam] == raw[nam] ? "" : "!") nam " "
+        } \
+            | sort -t $'\t' -k 1,1 -k 2,2 -k 3,3n \
+            | awk -F '\t' '
+                $1 == "R" { raw[$2] = raw[$2] " " $3; next }
+                { got[$2] = got[$2] " " $3 }
+                END {
+                    for (nam in got) {
+                        out = out (got[nam] == raw[nam] ? "" : "!") nam " "
+                    }
+                    print out
                 }
-                print out
-            }
-        ' | tr ' ' '\n' | sed '/^$/d' | sort | tr '\n' ' '
+            ' \
+            | tr ' ' '\n' \
+            | sed '/^$/d' \
+            | sort \
+            | tr '\n' ' '
     )"
 
     if [[ "${req}" == "no" ]]; then
@@ -619,7 +695,8 @@ got="$(
                 print $4 ":" dt
             }
         ' \
-        | sort | tr '\n' ' '
+        | sort \
+        | tr '\n' ' '
 )"
 if [[ "${got}" == "1501:LB 2201:LB 2601:SQ " ]]; then
     record_pass "dup mem: the side file's duplicates are marked as expected"
@@ -652,7 +729,8 @@ got="$(
     diff \
         <(run_samtools view -H --no-PG "${stm}.bam" | grep '^@CO') \
         <(run_samtools view -H --no-PG "${stm}.unal.bam" | grep '^@CO') \
-        | grep '^[<>]' || true
+        | grep '^[<>]' \
+        || true
 )"
 exp="> @CO	pipeline: content=unaligned reads and their mates, aligned or not
 > @CO	pipeline: warning=not for signal or scaling"
@@ -692,11 +770,11 @@ out="$(
 
 if [[
     "${rc}" -eq 0
-    && -s "${stm}.unal.cram"
-    && -s "${stm}.unal.cram.crai"
-    && -s "${stm}.unal.qnam.cram"
-    && ! -e "${stm}.unal.bam"
-    && ! -e "${stm}.unal.qnam.bam"
+        && -s "${stm}.unal.cram"
+        && -s "${stm}.unal.cram.crai"
+        && -s "${stm}.unal.qnam.cram"
+        && ! -e "${stm}.unal.bam"
+        && ! -e "${stm}.unal.qnam.bam"
 ]]; then
     record_pass "CRAM with '--qname' writes the side file, its index, and copy"
 else
@@ -833,10 +911,30 @@ for mod in remove separate; do
             "Step 2 alone under '${mod}' kept '${got}', expected '${exp}'" \
             "(exit ${rc}; Set A names '${nam}')"
     fi
+
+    # The routing moves 'supp' and 't75' (2 templates) with their records in
+    # Set B ('supp' primary and supplementary, 't75' R1: 3 records), so its
+    # note tells templates from records; 'remove' moves nothing.
+    got="$(grep -oE 'moved [0-9]+ template.*' <<< "${out}" || true)"
+    if [[ "${mod}" == "separate" ]]; then
+        exp="moved 2 template(s) split between the work files into Set A"
+        exp+=" (3 record(s))."
+    else
+        exp=""
+    fi
+
+    if [[ "${got}" == "${exp}" ]]; then
+        record_pass \
+            "Step 2 alone under '${mod}' notes '${got:-no moved templates}'"
+    else
+        record_fail \
+            "Step 2 alone under '${mod}' notes '${got:-nothing}', expected" \
+            "'${exp:-no note}'"
+    fi
 done
 
 
-# The awk BED converter drops unaligned reads and their mates, so a
+# The AWK BED converter drops unaligned reads and their mates, so a
 # queryname-sorted file with the side file's records merged in gives the same
 # fragments as the alignment file alone.
 stm="${tmp}/pairs.mem.no.separate"
@@ -856,8 +954,8 @@ done
 n_bed="$(gzip -cd "${tmp}/bed.main.bed.gz" 2> /dev/null | wc -l | tr -d ' ')"
 if [[
     "${rc}" -eq 0
-    && "${n_bed}" -gt 0
-    && -n "$(run_samtools view -c -f 4 "${tmp}/bed.both.bam")"
+        && "${n_bed}" -gt 0
+        && -n "$(run_samtools view -c -f 4 "${tmp}/bed.both.bam")"
 ]] \
     && cmp -s \
         <(gzip -cd "${tmp}/bed.both.bed.gz") \

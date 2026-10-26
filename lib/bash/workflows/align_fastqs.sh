@@ -1653,7 +1653,7 @@ function _route_unal_bam() {
     local bam_qnam="${6:-}"
     local bam_set_a="${7:-}"
     local txt_nam="${fil_wrk%.bam}.unal.names.txt"
-    local bam_srt bam_mov bam_mate
+    local bam_srt bam_mov bam_mate n_rec n_tpl
     local -a arr_cmd arr_view arr_cut arr_uniq arr_srt arr_mrg arr_fix
     local show_help
 
@@ -1665,7 +1665,7 @@ Usage
 
   Sort Step 1's unaligned work file ("Set A") by queryname and list its read names in the path of 'fil_wrk' with '.unal.names.txt' for '.bam', which Step 4 uses to split Set A back out (Step 2 of 'align_fastqs()' with '--unal_mode separate').
 
-  For paired-end data, sort the BAM work file ("Set B") by queryname into 'bam_qnam', moving every record whose read name is in Set A into Set A as it goes, so that no template has records in both; then, fix mates in the newly filtered Set A.
+  For paired-end data, sort the BAM work file ("Set B") by queryname into 'bam_qnam', moving every record whose read name is in Set A into Set A as it goes, so that no template has records in both, and print a note with the number of templates and records moved; then, fix mates in the newly filtered Set A.
 
   A template is moved by its read name, not by a count of its records, so the rule holds for any number of records per read.
 
@@ -1707,6 +1707,7 @@ Notes
     - mv
     - samtools
     - uniq
+    - wc
 
 Examples
 --------
@@ -1818,6 +1819,38 @@ EOM
             "Step #2: failed to queryname-sort the BAM work file and move" \
             "templates split between the work files."
         return 1
+    fi
+
+    # Report how many templates and records were moved, so that each run shows
+    # how many templates Step 1 split between the work files, such as
+    # BWA-backtrack's partners of unaligned mates (#75). The moved file is
+    # sorted by queryname, so 'uniq' counts its templates.
+    if [[ "${dry_run}" != "true" ]]; then
+        if ! \
+            n_rec="$(samtools view -c -@ "${threads}" "${bam_mov}")"
+        then
+            echo_err_func "${func}" \
+                "Step #2: failed to count the moved records."
+            return 1
+        fi
+
+        if ! \
+            n_tpl="$(
+                set -o pipefail
+                samtools view -@ "${threads}" "${bam_mov}" \
+                    | cut -f 1 \
+                    | uniq \
+                    | wc -l
+            )"
+        then
+            echo_err_func "${func}" \
+                "Step #2: failed to count the moved templates."
+            return 1
+        fi
+
+        echo_note_func "${func}" \
+            "Step #2: moved ${n_tpl// /} template(s) split between the work" \
+            "files into Set A (${n_rec} record(s))."
     fi
 
     # Merge the moved templates into Set A and fix mates in the same stream.
