@@ -169,11 +169,15 @@ function count_moved() {
     fi
 
     paste <(cut -f 2-9 "${1}") <(cut -f 2-9 "${2}") \
-        | awk -F '\t' '{
-            for (i = 1; i <= 8; i++) {
-                if ($i != $(i + 8)) { n++; break }
+        | awk -F '\t' '
+            {
+                for (i = 1; i <= 8; i++) {
+                    if ($i != $(i + 8)) { n++; break }
+                }
+            } END {
+                print n + 0
             }
-        } END { print n + 0 }'
+        '
 }
 
 
@@ -199,11 +203,14 @@ function print_cnt() {
 }
 
 
-# label|helper input arguments
+# label|helper input arguments. Rows below read the first and third by index
+# ('p1_0.sam', 'p1_2.sam'), so new rows go at the end.
+arg_pe="--fq_1 ${fq_pe_1} --fq_2 ${fq_pe_2}"
 arr_calls=(
-    "paired-end|--fq_1 ${fq_pe_1} --fq_2 ${fq_pe_2}"
-    "paired-end, '--bt2_inherited'|--fq_1 ${fq_pe_1} --fq_2 ${fq_pe_2} --bt2_inherited"
+    "paired-end|${arg_pe}"
+    "paired-end, '--bt2_inherited'|${arg_pe} --bt2_inherited"
     "single-end|--fq_1 ${fq_se}"
+    "paired-end, '--bt2_relaxed'|${arg_pe} --bt2_relaxed"
 )
 
 
@@ -322,8 +329,10 @@ for row in "${arr_mem[@]}"; do
             arr_in=( --fq_1 "${fq_se}" )
         fi
 
-        cmd=" $(print_aln_cmd "${head}" "${arr_args[@]}" "${arr_in[@]}" \
-            | paste -sd ' ' -) "
+        cmd=" $(
+            print_aln_cmd "${head}" "${arr_args[@]}" "${arr_in[@]}" \
+                | paste -sd ' ' -
+        ) "
         if [[ "${cmd}" == *" -K 100000000 "* ]]; then
             record_pass "${lbl} ${lay}: the call passes '-K 100000000'"
         else
@@ -400,7 +409,8 @@ for idx in "${!arr_rec[@]}"; do
             --fq_1 "${fq_pe_1}" \
             --fq_2 "${fq_pe_2}" \
             --fil_out "${fil_rec}" \
-            > "${tmp}/rec_${idx}.log" 2>&1
+            > "${tmp}/rec_${idx}.log" \
+            2>&1
     then
         record_fail "${lbl}: the run failed; see '${tmp}/rec_${idx}.log'"
         continue
@@ -449,7 +459,9 @@ for row in "${arr_chain[@]}"; do
                 "${arr_in[@]}" \
                 --qname \
                 --fil_out "${dir_run}_${thr}/x.bam" \
-                > "${dir_run}_${thr}/run.log" 2>&1 || true
+                > "${dir_run}_${thr}/run.log" \
+                2>&1 \
+                || true
         done
 
         for fil in x.bam x.qnam.bam; do
@@ -461,8 +473,9 @@ for row in "${arr_chain[@]}"; do
                 record_fail "${lbl}: missing"
             elif [[
                 "$(print_records "${fil_1}")" == "$(print_records "${fil_8}")"
-                && "$(print_cnt "${fil_1}")" == "$(print_cnt "${fil_8}")"
-                && "$(print_pg_ids "${fil_1}")" == "$(print_pg_ids "${fil_8}")"
+                    && "$(print_cnt "${fil_1}")" == "$(print_cnt "${fil_8}")"
+                    && "$(print_pg_ids "${fil_1}")" \
+                        == "$(print_pg_ids "${fil_8}")"
             ]]; then
                 record_pass \
                     "${lbl}: one and eight threads give the same records," \
