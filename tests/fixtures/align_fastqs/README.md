@@ -22,6 +22,7 @@ Readable provenance:
 - `make_tie.py`, the generator `make.sh` runs for the tie fixtures
 - `make_pairs.py`, the generator `make.sh` runs for the pairs and duplicate fixtures
 - `reference/tiny.fa`
+- `reference/tiny.fa.fai`
 
 The FASTQ records are generated deterministically by `make.sh` as compressed workflow inputs and can be inspected with `gzip -cd`.
 
@@ -59,6 +60,7 @@ The compressed FASTQ, Bowtie 2 index, BWA index, and bwa-mem2 index files are ge
 
 Repeat reference, reads, and indexes, for keeping or dropping templates by MAPQ:
 - `reference/repeat.fa`
+- `reference/repeat.fa.fai`
 - `fastq/se/repeat_se.atria.fastq.gz`
 - `fastq/pe/repeat_pe_R1.atria.fastq.gz`
 - `fastq/pe/repeat_pe_R2.atria.fastq.gz`
@@ -68,12 +70,17 @@ Queryname-copy reads on the repeat reference, for `--qname`:
 - `fastq/pe/qname_pe_R1.atria.fastq.gz`, also the single-end input
 - `fastq/pe/qname_pe_R2.atria.fastq.gz`
 
+Fragment-length pairs on the repeat reference, for the Bowtie 2 paired-end calls' fragment limits:
+- `fastq/pe/frg_pe_R1.atria.fastq.gz`
+- `fastq/pe/frg_pe_R2.atria.fastq.gz`
+
 Queryname-grouped SAM records with secondary records, for the MAPQ template filter on its own:
 - `sam/repeat_secondary_pe.sam`
 - `sam/repeat_secondary_se.sam`
 
 Tie reference, reads, and indexes for the determinism checks:
 - `reference/tie.fa`
+- `reference/tie.fa.fai`
 - `fastq/pe/tie_pe_R1.atria.fastq.gz` and `fastq/pe/tie_pe_R2.atria.fastq.gz`
 - `fastq/pe/tie_cmt_pe_R1.atria.fastq.gz` and `fastq/pe/tie_cmt_pe_R2.atria.fastq.gz`
 - `fastq/pe/tie_idx_pe_R1.atria.fastq.gz` and `fastq/pe/tie_idx_pe_R2.atria.fastq.gz`
@@ -82,11 +89,13 @@ Tie reference, reads, and indexes for the determinism checks:
 
 Bridge reference, reads, and indexes, for a mate that runs from one contig into the next:
 - `reference/bridge.fa`
+- `reference/bridge.fa.fai`
 - `fastq/pe/bridge_pe_R1.atria.fastq.gz` and `fastq/pe/bridge_pe_R2.atria.fastq.gz`
 - `bowtie2/bridge.*.bt2`, `bwa/bridge.fa.*`, and `bwa-mem2/bridge.fa.*`, with the same index files as `tiny`
 
 Pairs reference, reads, and indexes, for `--unal_mode`, with one read pair per pair class and a duplicate set:
 - `reference/pairs.fa`
+- `reference/pairs.fa.fai`
 - `fastq/pe/pairs_pe_R1.atria.fastq.gz` and `fastq/pe/pairs_pe_R2.atria.fastq.gz`
 - `fastq/se/pairs_se.atria.fastq.gz`
 - `fastq/pe/dup_pe_R1.atria.fastq.gz` and `fastq/pe/dup_pe_R2.atria.fastq.gz`

@@ -51,18 +51,15 @@ fi
 
 # Define fixture and output paths for a Slurm Bowtie 2 submission test.
 dir_fx="${ROOT_REPO}/tests/fixtures/align_fastqs"
-in_se="${dir_fx}/fastq/se/tiny_se.atria.fastq.gz"
+in_1="${dir_fx}/fastq/se/tiny_se_1.atria.fastq.gz"
+in_2="${dir_fx}/fastq/se/tiny_se_2.atria.fastq.gz"
+csv_in="${in_1};${in_2}"
 idx_bt2="${dir_fx}/bowtie2/tiny"
 
 tmp="${TEST_DIR_TMP}/execute_align_fastqs_slurm"
-dir_in="${tmp}/in"
 dir_out="${tmp}/out"
 dir_err="${tmp}/logs"
 dir_log="${TEST_DIR_LOG}/align_fastqs"
-
-in_1="${dir_in}/tiny_se_1.atria.fastq.gz"
-in_2="${dir_in}/tiny_se_2.atria.fastq.gz"
-csv_in="${in_1};${in_2}"
 
 out_1="${dir_out}/tiny_se_1.bam"
 out_2="${dir_out}/tiny_se_2.bam"
@@ -84,7 +81,7 @@ log_qc_2="${dir_log}/execute_align_fastqs_slurm_bam_2_quickcheck.log"
 print_section "${TEST_NAME}"
 
 rm -rf "${tmp}"
-mkdir -p "${dir_in}" "${dir_out}" "${dir_err}" "${dir_log}"
+mkdir -p "${dir_out}" "${dir_err}" "${dir_log}"
 
 require_env_project env_nam \
     || {
@@ -94,25 +91,14 @@ require_env_project env_nam \
     }
 
 require_files_nonempty \
-    "${in_se}" \
+    "${in_1}" \
+    "${in_2}" \
     "${idx_bt2}.1.bt2" \
     "${idx_bt2}.2.bt2" \
     "${idx_bt2}.3.bt2" \
     "${idx_bt2}.4.bt2" \
     "${idx_bt2}.rev.1.bt2" \
     "${idx_bt2}.rev.2.bt2" \
-    || {
-        # shellcheck disable=SC2119
-        finish
-        exit $?
-    }
-
-cp "${in_se}" "${in_1}"
-cp "${in_se}" "${in_2}"
-
-require_files_nonempty \
-    "${in_1}" \
-    "${in_2}" \
     || {
         # shellcheck disable=SC2119
         finish
@@ -195,10 +181,10 @@ elapsed=0
 
 while (( elapsed < sec_wait )); do
     if \
-           [[ -s "${out_1}" ]] \
-        && [[ -s "${bai_1}" ]] \
-        && [[ -s "${out_2}" ]] \
-        && [[ -s "${bai_2}" ]]
+        [[ -s "${out_1}" ]] \
+            && [[ -s "${bai_1}" ]] \
+            && [[ -s "${out_2}" ]] \
+            && [[ -s "${bai_2}" ]]
     then
         break
     fi

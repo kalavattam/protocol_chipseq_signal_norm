@@ -25,9 +25,9 @@ source "$(
 )/tests/support/test_helpers.sh"
 
 
-#  Define fixture and output paths for execute-to-submit Bowtie 2 alignment
+# Define fixture and output paths for execute-to-submit Bowtie 2 alignment.
 dir_fx="${ROOT_REPO}/tests/fixtures/align_fastqs"
-ref_src="${dir_fx}/reference/tiny.fa"
+ref_fa="${dir_fx}/reference/tiny.fa"
 in_se="${dir_fx}/fastq/se/tiny_se.atria.fastq.gz"
 in_pe_1="${dir_fx}/fastq/pe/tiny_pe_R1.atria.fastq.gz"
 in_pe_2="${dir_fx}/fastq/pe/tiny_pe_R2.atria.fastq.gz"
@@ -38,7 +38,6 @@ tmp="${TEST_DIR_TMP}/execute_align_fastqs_bowtie2"
 dir_out="${tmp}/out"
 dir_err="${tmp}/logs"
 dir_log="${TEST_DIR_LOG}/align_fastqs"
-ref_fa="${tmp}/tiny.fa"
 
 out_se="${dir_out}/tiny_se.bam"
 bai_se="${out_se}.bai"
@@ -83,8 +82,11 @@ require_env_project env_nam || {
     exit $?
 }
 
+# CRAM writing reads the reference's '.fai', which 'make.sh' builds; without
+# it, Samtools would write one beside the fixture.
 require_files_nonempty \
-    "${ref_src}" \
+    "${ref_fa}" \
+    "${ref_fa}.fai" \
     "${in_se}" \
     "${in_pe_1}" \
     "${in_pe_2}" \
@@ -99,10 +101,8 @@ require_files_nonempty \
         exit $?
     }
 
-cp "${ref_src}" "${ref_fa}"
 
-
-# Run execute_align_fastqs.sh through submit_align_fastqs.sh for SE input.
+# Run 'execute_align_fastqs.sh' through submit_align_fastqs.sh for SE input.
 if \
     run_capture \
         "execute align-fastqs bowtie2" \
@@ -176,7 +176,7 @@ if [[ -s "${out_se}" ]]; then
 fi
 
 
-# Run execute_align_fastqs.sh through submit_align_fastqs.sh for PE input.
+# Run 'execute_align_fastqs.sh' through submit_align_fastqs.sh for PE input.
 if \
     run_capture \
         "execute align-fastqs bowtie2 pe" \
@@ -261,7 +261,7 @@ if [[ -s "${out_pe}" ]]; then
 fi
 
 
-# Run execute_align_fastqs.sh through submit_align_fastqs.sh for SE CRAM.
+# Run 'execute_align_fastqs.sh' through submit_align_fastqs.sh for SE CRAM.
 if \
     run_capture \
         "execute align-fastqs bowtie2 se cram" \
@@ -332,7 +332,7 @@ if [[ -s "${out_se_cram}" ]]; then
 fi
 
 
-# Run execute_align_fastqs.sh through submit_align_fastqs.sh for PE CRAM.
+# Run 'execute_align_fastqs.sh' through submit_align_fastqs.sh for PE CRAM.
 if \
     run_capture \
         "execute align-fastqs bowtie2 pe cram" \
@@ -412,5 +412,6 @@ if [[ -s "${out_pe_cram}" ]]; then
         $'^tiny_pe_pair_1\t147\tI\t70\t' \
         "execute Bowtie 2 PE CRAM has proper-pair R2 flag and start"
 fi
+
 
 finish

@@ -6,9 +6,10 @@
 # Copyright 2026 by Kris Alavattam
 # Email: kalavattam@gmail.com
 #
-# OpenAI ChatGPT and Codex (GPT-5.5, GPT-5.6) were used in design, development,
-# and documentation, with all output reviewed, edited, and approved by the
-# author.
+# The following were used in design, development, and documentation, with all
+# output reviewed, edited, and approved by the author:
+# - OpenAI ChatGPT and Codex (GPT-5.5, GPT-5.6);
+# - Anthropic Claude Code (Opus 5.5).
 #
 # Distributed under the MIT license.
 
@@ -17,15 +18,15 @@ set -euo pipefail
 
 TEST_NAME="execute filter-alignments CRAM GNU Parallel"
 
-#  Source shared test helpers
+# Source shared test helpers.
 # shellcheck source=tests/support/test_helpers.sh
 source "$(
     git -C "$(dirname "${BASH_SOURCE[0]}")" rev-parse --show-toplevel
 )/tests/support/test_helpers.sh"
 
 
-#  Run execute_filter_alignments.sh through local GNU Parallel for two CRAM
-#+ inputs
+# Run execute_filter_alignments.sh through local GNU Parallel for two CRAM
+# inputs.
 function run_case_filter_parallel() {
     local retain="${1:-}"
     local nam_job="${2:-}"
@@ -281,7 +282,9 @@ then
 fi
 
 dir_fx="${ROOT_REPO}/tests/fixtures/filter_alignments"
-in_sam="${dir_fx}/sam/filter_sc_sp.sam"
+in_cram_1="${dir_fx}/cram/filter_sc_sp_parallel_1.cram"
+in_cram_2="${dir_fx}/cram/filter_sc_sp_parallel_2.cram"
+csv_in="${in_cram_1},${in_cram_2}"
 ref_fa="${dir_fx}/reference/filter_sc_sp.fa"
 ref_fai="${ref_fa}.fai"
 
@@ -297,16 +300,11 @@ ref_fai="${ref_fa}.fai"
 }
 
 tmp="${TEST_DIR_TMP}/execute_filter_alignments_cram_parallel"
-dir_in="${tmp}/input"
 dir_out_sc="${tmp}/out/sc"
 dir_out_sp="${tmp}/out/sp"
 dir_err_sc="${tmp}/logs/sc"
 dir_err_sp="${tmp}/logs/sp"
 dir_log="${TEST_DIR_LOG}/filter_alignments"
-
-in_cram_1="${dir_in}/filter_sc_sp_parallel_1.cram"
-in_cram_2="${dir_in}/filter_sc_sp_parallel_2.cram"
-csv_in="${in_cram_1},${in_cram_2}"
 
 nam_job_sc="test_execute_filter_alignments_cram_parallel_sc"
 nam_job_sp="test_execute_filter_alignments_cram_parallel_sp"
@@ -314,8 +312,6 @@ nam_job_sp="test_execute_filter_alignments_cram_parallel_sp"
 cfg_sc="${dir_err_sc}/${nam_job_sc}.config_parallel.txt"
 cfg_sp="${dir_err_sp}/${nam_job_sp}.config_parallel.txt"
 
-log_prep_1="${dir_log}/execute_filter_alignments_cram_parallel_prepare_1.log"
-log_prep_2="${dir_log}/execute_filter_alignments_cram_parallel_prepare_2.log"
 log_sc="${dir_log}/execute_filter_alignments_cram_parallel_sc.log"
 log_sp="${dir_log}/execute_filter_alignments_cram_parallel_sp.log"
 log_env_parallel="${dir_log}/execute_filter_alignments_cram_parallel_env.log"
@@ -324,7 +320,7 @@ log_env_parallel="${dir_log}/execute_filter_alignments_cram_parallel_env.log"
 print_section "${TEST_NAME}"
 
 rm -rf "${tmp}"
-mkdir -p "${dir_in}" "${dir_out_sc}" "${dir_out_sp}" \
+mkdir -p "${dir_out_sc}" "${dir_out_sp}" \
     "${dir_err_sc}" "${dir_err_sp}" "${dir_log}"
 
 require_env_project env_nam || {
@@ -333,7 +329,10 @@ require_env_project env_nam || {
 }
 
 require_files_nonempty \
-    "${in_sam}" \
+    "${in_cram_1}" \
+    "${in_cram_1}.crai" \
+    "${in_cram_2}" \
+    "${in_cram_2}.crai" \
     "${ref_fa}" \
     "${ref_fai}" || {
     finish
@@ -350,31 +349,6 @@ then
     exit $?
 fi
 
-
-#  Build two deterministic CRAM inputs with distinct basenames
-if ! \
-    build_filter_alignments_fixture_cram \
-        "${in_sam}" \
-        "${ref_fa}" \
-        "${in_cram_1}" \
-        "${log_prep_1}" \
-        "execute filter-alignments GNU Parallel CRAM fixture 1"
-then
-    finish
-    exit $?
-fi
-
-if ! \
-    build_filter_alignments_fixture_cram \
-        "${in_sam}" \
-        "${ref_fa}" \
-        "${in_cram_2}" \
-        "${log_prep_2}" \
-        "execute filter-alignments GNU Parallel CRAM fixture 2"
-then
-    finish
-    exit $?
-fi
 
 run_case_filter_parallel \
     sp \
@@ -406,5 +380,6 @@ assert_parallel_config \
 
 assert_parallel_output_sc "filter_sc_sp_parallel_1"
 assert_parallel_output_sc "filter_sc_sp_parallel_2"
+
 
 finish

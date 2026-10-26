@@ -6,9 +6,10 @@
 # Copyright 2026 by Kris Alavattam
 # Email: kalavattam@gmail.com
 #
-# OpenAI ChatGPT and Codex (GPT-5.5, GPT-5.6) were used in design, development,
-# and documentation, with all output reviewed, edited, and approved by the
-# author.
+# The following were used in design, development, and documentation, with all
+# output reviewed, edited, and approved by the author:
+# - OpenAI ChatGPT and Codex (GPT-5.5, GPT-5.6);
+# - Anthropic Claude Code (Opus 5.5).
 #
 # Distributed under the MIT license.
 
@@ -17,7 +18,7 @@ set -euo pipefail
 
 TEST_NAME="submit filter-alignments BAM to CRAM"
 
-#  Source shared test helpers
+# Source shared test helpers.
 # shellcheck source=tests/support/test_helpers.sh
 source "$(
     git -C "$(dirname "${BASH_SOURCE[0]}")" rev-parse --show-toplevel
@@ -25,19 +26,16 @@ source "$(
 
 
 dir_fx="${ROOT_REPO}/tests/fixtures/filter_alignments"
-in_sam="${dir_fx}/sam/filter_sc_sp.sam"
+in_bam="${dir_fx}/bam/filter_sc_sp.bam"
 ref_fa="${dir_fx}/reference/filter_sc_sp.fa"
 ref_fai="${ref_fa}.fai"
 
 tmp="${TEST_DIR_TMP}/submit_filter_alignments_bam_to_cram"
-dir_in="${tmp}/input"
 dir_out="${tmp}/out"
 dir_err="${tmp}/logs"
 dir_missing="${tmp}/missing_ref"
 dir_log="${TEST_DIR_LOG}/filter_alignments"
-in_bam="${dir_in}/filter_sc_sp.bam"
 
-log_prepare="${dir_log}/submit_filter_alignments_prepare_bam_to_cram.log"
 log_missing_ref="${dir_log}/submit_filter_alignments_bam_to_cram_missing_ref.log"
 
 fil_out_sc="${dir_out}/filter_sc_sp.sc.cram"
@@ -83,7 +81,7 @@ cnt_sp_chrun="${dir_out}/filter_sc_sp.sp.chrUn.count.txt"
 print_section "${TEST_NAME}"
 
 rm -rf "${tmp}"
-mkdir -p "${dir_in}" "${dir_out}" "${dir_err}" "${dir_missing}" "${dir_log}"
+mkdir -p "${dir_out}" "${dir_err}" "${dir_missing}" "${dir_log}"
 
 require_env_project env_nam || {
     finish
@@ -109,7 +107,8 @@ require_env_project env_nam || {
 }
 
 require_files_nonempty \
-    "${in_sam}" \
+    "${in_bam}" \
+    "${in_bam}.bai" \
     "${ref_fa}" \
     "${ref_fai}" || {
     finish
@@ -117,20 +116,7 @@ require_files_nonempty \
 }
 
 
-#  Build deterministic BAM input from committed SAM fixture
-if ! \
-    build_filter_alignments_fixture_bam \
-        "${in_sam}" \
-        "${in_bam}" \
-        "${log_prepare}" \
-        "submit filter-alignments BAM fixture for CRAM output"
-then
-    finish
-    exit $?
-fi
-
-
-#  CRAM output without --ref_fa should fail clearly
+# CRAM output without '--ref_fa' should fail clearly.
 if \
     run_capture \
         "submit filter-alignments BAM to CRAM missing ref" \
@@ -160,7 +146,7 @@ assert_pattern_found \
     "submit BAM-to-CRAM missing-ref error mentions --ref_fa"
 
 
-#  S. cerevisiae filtering should retain only canonical SC chromosomes
+# S. cerevisiae filtering should retain only canonical SC chromosomes.
 run_case_filter \
     sc \
     sc \
@@ -233,7 +219,7 @@ if [[ -s "${fil_out_sc}" ]]; then
 fi
 
 
-#  S. pombe filtering should honor optional TG, MTR, and mito contigs
+# S. pombe filtering should honor optional TG, MTR, and mito contigs.
 run_case_filter \
     sp \
     sp \
@@ -328,5 +314,6 @@ if [[ -s "${fil_out_sp}" ]]; then
         arr_rgn_chrun \
         "submit retain=sp CRAM omits unrelated contigs"
 fi
+
 
 finish

@@ -61,6 +61,8 @@ fil_bg_hdr_A="${dir_bdg}/ratio_headers_A.bedGraph"
 fil_bg_hdr_B="${dir_bdg}/ratio_headers_B.bedGraph"
 fil_bg_A_gz="${fil_bg_A}.gz"
 fil_bg_B_gz="${fil_bg_B}.gz"
+fil_bg_A_1="${dir_bdg}/ratio_A_1.bedGraph"
+fil_bg_A_2="${dir_bdg}/ratio_A_2.bedGraph"
 
 fil_cnt_se="${dir_bdg_cnt}/tiny_se.bedGraph"
 fil_cnt_se_frg="${dir_bdg_cnt}/tiny_se.n_frg.txt"
@@ -95,6 +97,8 @@ rm_files \
     "${fil_bg_hdr_B}" \
     "${fil_bg_A_gz}" \
     "${fil_bg_B_gz}" \
+    "${fil_bg_A_1}" \
+    "${fil_bg_A_2}" \
     "${fil_cnt_se}" \
     "${fil_cnt_se_frg}" \
     "${fil_cnt_se_ovlp}" \
@@ -194,6 +198,11 @@ require_cmd gzip "to compress the ratio bedGraph fixtures."
 # and timestamp, so regeneration is byte-identical.
 gzip -n -c "${fil_bg_A}" > "${fil_bg_A_gz}"
 gzip -n -c "${fil_bg_B}" > "${fil_bg_B_gz}"
+
+# Copy the plain A track into two samples, so that the GNU Parallel test runs
+# two jobs.
+cp "${fil_bg_A}" "${fil_bg_A_1}"
+cp "${fil_bg_A}" "${fil_bg_A_2}"
 
 # Write what '--method count --siz_bin 10' gives for the SAM records below:
 # count tracks, plus the 'n_frg' and 'n_ovlp' that '--csv_pseudo edger' reads.

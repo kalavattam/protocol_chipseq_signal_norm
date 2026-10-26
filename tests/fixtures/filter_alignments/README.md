@@ -2,10 +2,11 @@
 # Filter-alignments test fixtures
 These fixtures exercise `submit_filter_alignments.sh` and `execute_filter_alignments.sh` with tiny deterministic alignment inputs.
 
-They are intentionally small and hand-checkable. Running `make.sh` regenerates the fixture set deterministically.
+They are intentionally small and hand-checkable. Running `make.sh` from `env_protocol` regenerates the fixture set deterministically.
 
 Regenerate them from the repository root with:
 ```bash
+source activate env_protocol
 bash tests/fixtures/filter_alignments/make.sh
 ```
 
@@ -16,15 +17,22 @@ Generated fixture outputs are ignored by Git. When required inputs are missing, 
 ## Files
 - `sam/filter_sc_sp.sam`
   + Coordinate-sorted SAM with one read each on `I`, `Mito`, `SP_I`, `SP_II_TG`, `SP_MTR`, `SP_Mito`, and `chrUn`.
-  + Used by BAM tests to build BAM input at test runtime.
-  + Used by CRAM tests to build CRAM input at test runtime.
+  + The source of the BAM and CRAM inputs below.
 - `reference/filter_sc_sp.fa`
   + Tiny reference FASTA with all contigs present in the SAM header.
   + Every contig is 100 bp.
-  + Required for deterministic CRAM input generation, CRAM reading, and CRAM output writing.
+  + Required for CRAM input generation, CRAM reading, and CRAM output writing.
 - `reference/filter_sc_sp.fa.fai`
   + Deterministic FASTA index for `reference/filter_sc_sp.fa`.
   + Generated directly by this script because the reference uses fixed one-line contigs.
+- `bam/filter_sc_sp.bam` and `bam/filter_sc_sp.bam.bai`
+  + `sam/filter_sc_sp.sam` converted by `samtools view -b`, and its index.
+  + The BAM input that BAM-input tests read in place.
+- `cram/filter_sc_sp.cram` and `cram/filter_sc_sp.cram.crai`
+  + `sam/filter_sc_sp.sam` converted by `samtools view -C` against `reference/filter_sc_sp.fa`, and its index.
+  + The CRAM input that CRAM-input tests read in place. Its index is written last and is the runner's sentinel.
+- `cram/filter_sc_sp_parallel_1.cram` and `cram/filter_sc_sp_parallel_2.cram`, with their indexes
+  + Copies of `cram/filter_sc_sp.cram` under two sample names, so that the GNU Parallel test runs two jobs.
 
 <br />
 

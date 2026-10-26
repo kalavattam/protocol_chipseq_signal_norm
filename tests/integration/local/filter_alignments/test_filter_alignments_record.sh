@@ -28,10 +28,10 @@ source "$(
 # ('OUTPUT.ALIGNMENT.RECORD').
 dir_fx="${ROOT_REPO}/tests/fixtures/filter_alignments"
 in_sam="${dir_fx}/sam/filter_sc_sp.sam"
+ref_fa="${dir_fx}/reference/filter_sc_sp.fa"
 
 tmp="${TEST_DIR_TMP}/filter_alignments_record"
 dir_log="${TEST_DIR_LOG}/filter_alignments"
-ref_fa="${tmp}/filter_sc_sp.fa"
 sam_rec="${tmp}/in.sam"
 in_bam="${tmp}/in.bam"
 in_cram="${tmp}/in.cram"
@@ -49,13 +49,12 @@ require_env_project env_nam || {
     exit $?
 }
 
-require_files_nonempty "${in_sam}" "${dir_fx}/reference/filter_sc_sp.fa" || {
+# CRAM writing reads the reference's '.fai', which 'make.sh' builds; without
+# it, Samtools would write one beside the fixture.
+require_files_nonempty "${in_sam}" "${ref_fa}" "${ref_fa}.fai" || {
     finish
     exit $?
 }
-
-# CRAM writing indexes the reference, so use a copy outside the fixtures.
-cp "${dir_fx}/reference/filter_sc_sp.fa" "${ref_fa}"
 
 # Give the input an earlier record after its header lines.
 awk -v lin="${lin_aln}" '
@@ -237,8 +236,10 @@ run_filter filter_alignment_sc \
     > "${tmp}/twice.log" 2>&1 || true
 
 if [[
-    "$(print_co "${fil_two}" \
-        | grep -c $'^@CO\tpipeline: chain=filter_alignments$')" == 2
+    "$(
+        print_co "${fil_two}" \
+            | grep -c $'^@CO\tpipeline: chain=filter_alignments$'
+    )" == 2
 ]]; then
     record_pass "filtering twice keeps both filter records"
 else
@@ -260,11 +261,13 @@ co_1="$(print_co "${tmp}/thr_1/x.sc.bam")"
 co_2="$(print_co "${tmp}/thr_2/x.sc.bam")"
 if [[
     -n "${co_1}"
-    && "$(grep $'pipeline: ' <<< "${co_1}")" \
-        == "$(grep $'pipeline: ' <<< "${co_2}")"
-    && "$(grep 'pipeline-run: ' <<< "${co_1}")" \
-        != "$(grep 'pipeline-run: ' <<< "${co_2}")"
-    && "${co_2}" == *'pipeline-run: --threads=2'*
+        && "$(
+            grep $'pipeline: ' <<< "${co_1}"
+        )" == "$(grep $'pipeline: ' <<< "${co_2}")"
+        && "$(
+            grep 'pipeline-run: ' <<< "${co_1}"
+        )" != "$(grep 'pipeline-run: ' <<< "${co_2}")"
+        && "${co_2}" == *'pipeline-run: --threads=2'*
 ]]; then
     record_pass "two thread counts: same content lines, different run lines"
 else
@@ -303,9 +306,9 @@ else
     co="$(print_co "${fil_drv}")"
     if [[
         "${co}" == *$'pipeline-run: calls=execute_filter_alignments.sh > '*
-        && "${co}" == *$'submit_filter_alignments.sh > '*
-        && "${co}" == *$'filter_alignment.sh::filter_alignment_sc\n'*
-        && "${co}" == *$'pipeline-run: env='"${env_nam}"$'\n'*
+            && "${co}" == *$'submit_filter_alignments.sh > '*
+            && "${co}" == *$'filter_alignment.sh::filter_alignment_sc\n'*
+            && "${co}" == *$'pipeline-run: env='"${env_nam}"$'\n'*
     ]]; then
         record_pass "driver: the call path and environment are recorded"
     else

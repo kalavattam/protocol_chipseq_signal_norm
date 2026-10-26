@@ -39,14 +39,13 @@ fi
 dir_fx="${ROOT_REPO}/tests/fixtures/compute_signal/bedgraph"
 fil_A="${dir_fx}/ratio_A.bedGraph"
 fil_B="${dir_fx}/ratio_B.bedGraph"
+fil_A_1="${dir_fx}/ratio_A_1.bedGraph"
+fil_A_2="${dir_fx}/ratio_A_2.bedGraph"
 
 tmp="${TEST_DIR_TMP}/execute_compute_signal_parallel"
-dir_in="${tmp}/in"
 dir_out="${tmp}/out"
 dir_err="${tmp}/logs"
 dir_log="${TEST_DIR_LOG}/compute_signal"
-fil_A_1="${dir_in}/ratio_A_1.bedGraph"
-fil_A_2="${dir_in}/ratio_A_2.bedGraph"
 
 cfg_parallel="${dir_err}/test_execute_compute_parallel.config_parallel.txt"
 fil_out_wet_1="${dir_out}/exec_parallel_wet_ratio_A_1.bedGraph"
@@ -60,7 +59,7 @@ log_wet_run="${dir_log}/execute_compute_signal_parallel_wet_run.log"
 print_section "${TEST_NAME}"
 
 rm -rf "${tmp}"
-mkdir -p "${dir_in}" "${dir_out}" "${dir_err}" "${dir_log}"
+mkdir -p "${dir_out}" "${dir_err}" "${dir_log}"
 
 require_env_project env_nam || {
     finish
@@ -69,15 +68,7 @@ require_env_project env_nam || {
 
 require_files_nonempty \
     "${fil_A}" \
-    "${fil_B}" || {
-    finish
-    exit $?
-}
-
-cp "${fil_A}" "${fil_A_1}"
-cp "${fil_A}" "${fil_A_2}"
-
-require_files_nonempty \
+    "${fil_B}" \
     "${fil_A_1}" \
     "${fil_A_2}" || {
     finish
@@ -215,7 +206,7 @@ exp_mix="$(
         --n_frg_B "$(< "$(derive_report_path "${trk_se}" n_frg)")" \
         --n_ovlp_A "$(< "$(derive_report_path "${trk_pe}" n_ovlp)")" \
         --n_ovlp_B "$(< "$(derive_report_path "${trk_se}" n_ovlp)")" \
-        2>/dev/null
+        2> /dev/null
 )"
 
 rc_mix=0
@@ -236,7 +227,8 @@ rc_mix=0
     --max_job 2 \
     --csv_scl_fct NA,NA \
     --csv_dep_min NA,NA \
-    --csv_pseudo "1:1,edger" > /dev/null 2>&1 || rc_mix=$?
+    --csv_pseudo "1:1,edger" \
+    > /dev/null 2>&1 || rc_mix=$?
 
 pfx_mix_log="${dir_mix}/test_execute_compute_parallel_mix"
 log_mix_lit="${pfx_mix_log}.mix_tiny_se.stderr.txt"
@@ -244,9 +236,9 @@ log_mix_edg="${pfx_mix_log}.mix_tiny_pe.stderr.txt"
 
 if [[
     "${rc_mix}" -eq 0
-    && -n "${exp_mix}"
-    && -s "${dir_mix}/mix_tiny_se.bedGraph"
-    && -s "${dir_mix}/mix_tiny_pe.bedGraph"
+        && -n "${exp_mix}"
+        && -s "${dir_mix}/mix_tiny_se.bedGraph"
+        && -s "${dir_mix}/mix_tiny_pe.bedGraph"
 ]] \
     && grep -qF -- "--pseudo 1:1 " "${log_mix_lit}" 2>/dev/null \
     && grep -qF -- "--pseudo ${exp_mix} " "${log_mix_edg}" 2>/dev/null
@@ -291,8 +283,8 @@ rc_par=0
 
 if [[
     "${rc_par}" -ne 0
-    && ! -e "${dir_par_st}/st_a.bedGraph"
-    && -s "${dir_par_st}/st_tiny_se.bedGraph"
+        && ! -e "${dir_par_st}/st_a.bedGraph"
+        && -s "${dir_par_st}/st_tiny_se.bedGraph"
 ]]; then
     record_pass "a failed job fails the GNU Parallel run; the other still runs"
 else

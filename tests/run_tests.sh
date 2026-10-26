@@ -109,7 +109,7 @@ function ensure_integration_fixtures() {
     fi
 
     ensure_fixture filter_alignments \
-        "${repo_root}/tests/fixtures/filter_alignments/reference/filter_sc_sp.fa" \
+        "${repo_root}/tests/fixtures/filter_alignments/cram/filter_sc_sp.cram.crai" \
         env_protocol
 
     ensure_fixture trim_fastqs \

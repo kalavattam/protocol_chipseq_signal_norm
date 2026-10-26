@@ -29,8 +29,9 @@ source "$(
 dir_fx="${ROOT_REPO}/tests/fixtures/calculate_scaling_factor"
 fx_bam="${dir_fx}/bam/pe/IP_WT_G1_Hho1_6336.sc.bam"
 
+ref_fa="${dir_fx}/reference/tiny.fa"
+
 tmp="${TEST_DIR_TMP}/qsort_bam_record"
-ref_fa="${tmp}/tiny.fa"
 in_bam="${tmp}/in.bam"
 in_cram="${tmp}/in.cram"
 lin_aln=$'@CO\tpipeline: chain=align_fastqs'
@@ -46,13 +47,12 @@ require_env_project env_nam || {
     exit $?
 }
 
-require_files_nonempty "${fx_bam}" "${dir_fx}/reference/tiny.fa" || {
+# CRAM writing reads the reference's '.fai', which 'make.sh' builds; without
+# it, Samtools would write one beside the fixture.
+require_files_nonempty "${fx_bam}" "${ref_fa}" "${ref_fa}.fai" || {
     finish
     exit $?
 }
-
-# CRAM writing indexes the reference, so use a copy outside the fixtures.
-cp "${dir_fx}/reference/tiny.fa" "${ref_fa}"
 
 # Give the input an earlier record, then make a CRAM copy of it.
 {
@@ -132,8 +132,9 @@ for row in "${rows[@]}"; do
 
     # The earlier record is kept, ahead of the sort's.
     co="$(print_co "${fil_out}")"
-    if [[ "${co}" == "${lin_aln}"$'\n@CO\tpipeline: chain=qsort_bam'* ]]
-    then
+    if [[
+        "${co}" == "${lin_aln}"$'\n@CO\tpipeline: chain=qsort_bam'*
+    ]]; then
         record_pass "${lbl}: the input's earlier record is kept first"
     else
         record_fail "${lbl}: the input's earlier record is lost or misplaced"
@@ -161,8 +162,12 @@ for row in "${rows[@]}"; do
     fi
 
     if [[
-        -n "$(find "${dir_out}" -name '*.header.sam' -o -name '*.record.bam' \
-            -o -name '*.tmp.*')"
+        -n "$(
+            find "${dir_out}" \
+                -name '*.header.sam' \
+                -o -name '*.record.bam' \
+                -o -name '*.tmp.*'
+        )"
     ]]; then
         record_fail "${lbl}: the record's temporary files are left behind"
     else
@@ -176,10 +181,10 @@ co_1="$(print_co "${tmp}/out_bam/x.qnam.bam")"
 co_2="$(print_co "${tmp}/out_bam_2/x.qnam.bam")"
 if [[
     -n "${co_1}"
-    && "$(grep 'pipeline: ' <<< "${co_1}")" \
-        == "$(grep 'pipeline: ' <<< "${co_2}")"
-    && "$(grep 'pipeline-run: ' <<< "${co_1}")" \
-        != "$(grep 'pipeline-run: ' <<< "${co_2}")"
+        && "$(grep 'pipeline: ' <<< "${co_1}")" \
+            == "$(grep 'pipeline: ' <<< "${co_2}")"
+        && "$(grep 'pipeline-run: ' <<< "${co_1}")" \
+            != "$(grep 'pipeline-run: ' <<< "${co_2}")"
 ]]; then
     record_pass "two thread counts: same content lines, different run lines"
 else
@@ -216,8 +221,8 @@ else
     co="$(print_co "${fil_drv}")"
     if [[
         "${co}" == *$'pipeline-run: calls=submit_qsort_bam.sh > '*
-        && "${co}" == *$'process_alignments.sh::qsort_file_alignments\n'*
-        && "${co}" == *$'pipeline-run: env='"${env_nam}"$'\n'*
+            && "${co}" == *$'process_alignments.sh::qsort_file_alignments\n'*
+            && "${co}" == *$'pipeline-run: env='"${env_nam}"$'\n'*
     ]]; then
         record_pass "driver: the call path and environment are recorded"
     else

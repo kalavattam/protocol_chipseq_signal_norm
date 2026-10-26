@@ -227,13 +227,12 @@ assert_file_exists \
 dir_st="${tmp}/status"
 mkdir -p "${dir_st}/in" "${dir_st}/out" "${dir_st}/logs"
 printf 'this is not a fastq\n' | gzip -c > "${dir_st}/in/bad_se.fastq.gz"
-cp "${in_se}" "${dir_st}/in/tiny_se.fastq.gz"
 
 rc_st=0
 "${TEST_BASH}" "${ROOT_REPO}/bin/execute_trim_fastqs.sh" \
     --env_nam "${env_nam}" \
     --threads 2 \
-    --csv_fil_in "${dir_st}/in/bad_se.fastq.gz;${dir_st}/in/tiny_se.fastq.gz" \
+    --csv_fil_in "${dir_st}/in/bad_se.fastq.gz;${in_se}" \
     --dir_out "${dir_st}/out" \
     --sfx_se ".fastq.gz" \
     --sfx_pe "_R1.fastq.gz" \
@@ -241,10 +240,7 @@ rc_st=0
     --nam_job "test_execute_trim_parallel_status" \
     --max_job 2 > /dev/null 2>&1 || rc_st=$?
 
-if [[
-    "${rc_st}" -ne 0
-    && -s "${dir_st}/out/tiny_se.atria.fastq.gz"
-]]; then
+if [[ "${rc_st}" -ne 0 && -s "${dir_st}/out/tiny_se.atria.fastq.gz" ]]; then
     record_pass "a failed job fails the GNU Parallel run; the other still runs"
 else
     record_fail \

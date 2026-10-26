@@ -44,10 +44,16 @@ source "${dir_scr}/../../support/fixture_helpers.sh"
 # Define fixture paths, contig names, and the shared reference sequence.
 dir_sam="${dir_fix}/sam"
 dir_ref="${dir_fix}/reference"
+dir_bam="${dir_fix}/bam"
+dir_cram="${dir_fix}/cram"
 
 sam="${dir_sam}/filter_sc_sp.sam"
 ref="${dir_ref}/filter_sc_sp.fa"
 fai="${ref}.fai"
+bam="${dir_bam}/filter_sc_sp.bam"
+cram="${dir_cram}/filter_sc_sp.cram"
+cram_par_1="${dir_cram}/filter_sc_sp_parallel_1.cram"
+cram_par_2="${dir_cram}/filter_sc_sp_parallel_2.cram"
 
 contigs=(
     I II III IV V VI VII VIII IX X XI XII XIII XIV XV XVI Mito
@@ -62,10 +68,22 @@ seq_100="ACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACG
 # unconditionally, so this sweep is not what makes regeneration correct today;
 # it is what keeps regeneration correct after a later revision stops writing
 # one of them.
-rm_files "${dir_fix}" "${sam}" "${ref}" "${fai}"
+rm_files \
+    "${dir_fix}" \
+    "${sam}" \
+    "${ref}" \
+    "${fai}" \
+    "${bam}" \
+    "${bam}.bai" \
+    "${cram_par_1}" \
+    "${cram_par_1}.crai" \
+    "${cram_par_2}" \
+    "${cram_par_2}.crai" \
+    "${cram}" \
+    "${cram}.crai"
 
 # Create fixture output directories.
-mkdirs "${dir_sam}" "${dir_ref}"
+mkdirs "${dir_sam}" "${dir_ref}" "${dir_bam}" "${dir_cram}"
 
 
 # Write the tiny reference FASTA and matching FASTA index.
@@ -116,6 +134,22 @@ done
         'r_other' '0' 'chrUn' '1' '60' '10M' \
         '*' '0' '0' 'ACGTACGTAA' 'FFFFFFFFFF'
 } > "${sam}"
+
+# Build the BAM and CRAM inputs from the SAM, with their indexes; the CRAM
+# index is the runner's sentinel, so it is written last.
+require_env env_protocol "for filter-alignments BAM and CRAM fixtures."
+require_cmd samtools "in 'env_protocol' to generate BAM/CRAM fixtures."
+
+samtools view -b -o "${bam}" "${sam}"
+samtools index "${bam}"
+samtools view -C -T "${ref}" -o "${cram}" "${sam}"
+
+# Copy the CRAM into two samples, so that the GNU Parallel test runs two jobs.
+cp "${cram}" "${cram_par_1}"
+cp "${cram}" "${cram_par_2}"
+samtools index "${cram_par_1}"
+samtools index "${cram_par_2}"
+samtools index "${cram}"
 
 
 succeed "generated filter-alignments fixtures under ${dir_fix}"

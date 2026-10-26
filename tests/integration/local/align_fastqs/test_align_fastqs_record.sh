@@ -32,10 +32,9 @@ idx_bm2="${dir_fx}/bwa-mem2/tiny.fa"
 in_pe_1="${dir_fx}/fastq/pe/tiny_pe_R1.atria.fastq.gz"
 in_pe_2="${dir_fx}/fastq/pe/tiny_pe_R2.atria.fastq.gz"
 in_se="${dir_fx}/fastq/se/tiny_se.atria.fastq.gz"
-fa_tiny="${dir_fx}/reference/tiny.fa"
+ref_fa="${dir_fx}/reference/tiny.fa"
 
 tmp="${TEST_DIR_TMP}/align_fastqs_record"
-ref_fa="${tmp}/tiny.fa"
 dir_dry="${tmp}/dry"
 dir_drv="${tmp}/driver"
 fil_two="${tmp}/twice.bam"
@@ -59,8 +58,11 @@ require_env_project env_nam || {
     exit $?
 }
 
+# CRAM writing reads the reference's '.fai', which 'make.sh' builds; without
+# it, Samtools would write one beside the fixture.
 require_files_nonempty \
-    "${fa_tiny}" \
+    "${ref_fa}" \
+    "${ref_fa}.fai" \
     "${idx_bt2}.1.bt2" \
     "${idx_bwa}.bwt" \
     "${idx_bm2}.0123" \
@@ -70,9 +72,6 @@ require_files_nonempty \
     finish
     exit $?
 }
-
-# CRAM writing indexes the reference, so use a copy outside the fixtures.
-cp "${fa_tiny}" "${ref_fa}"
 
 
 # Run the helper.
@@ -239,7 +238,7 @@ function add_row() {
 m_fq_pe_1="$(print_md5 "${in_pe_1}")"
 m_fq_pe_2="$(print_md5 "${in_pe_2}")"
 m_fq_se="$(print_md5 "${in_se}")"
-m_ref="$(print_md5 "${fa_tiny}")"
+m_ref="$(print_md5 "${ref_fa}")"
 m_idx_bt2="$(
     print_index_md5 "${dir_fx}/bowtie2" \
         tiny.1.bt2 tiny.2.bt2 tiny.3.bt2 tiny.4.bt2 \

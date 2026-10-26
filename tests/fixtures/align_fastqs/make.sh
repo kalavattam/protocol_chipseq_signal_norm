@@ -51,6 +51,10 @@ function cleanup_tmp_fastqs() {
         "${fq_rpt_se_tmp}" \
         "${fq_rpt_r1_tmp}" \
         "${fq_rpt_r2_tmp}" \
+        "${fq_qn_r1_tmp}" \
+        "${fq_qn_r2_tmp}" \
+        "${fq_frg_r1_tmp}" \
+        "${fq_frg_r2_tmp}" \
         "${fq_tie_r1_tmp}" \
         "${fq_tie_r2_tmp}" \
         "${fq_tie_cmt_r1_tmp}" \
@@ -131,6 +135,10 @@ fq_qn_r1_tmp="${dir_fq_pe}/qname_pe_R1.atria.fastq.tmp"
 fq_qn_r2_tmp="${dir_fq_pe}/qname_pe_R2.atria.fastq.tmp"
 fq_qn_r1_gz="${dir_fq_pe}/qname_pe_R1.atria.fastq.gz"
 fq_qn_r2_gz="${dir_fq_pe}/qname_pe_R2.atria.fastq.gz"
+fq_frg_r1_tmp="${dir_fq_pe}/frg_pe_R1.atria.fastq.tmp"
+fq_frg_r2_tmp="${dir_fq_pe}/frg_pe_R2.atria.fastq.tmp"
+fq_frg_r1_gz="${dir_fq_pe}/frg_pe_R1.atria.fastq.gz"
+fq_frg_r2_gz="${dir_fq_pe}/frg_pe_R2.atria.fastq.gz"
 
 idx_rpt_bt2="${dir_bt2}/repeat"
 idx_rpt_bwa="${ref_rpt_bwa}"
@@ -556,6 +564,30 @@ rm_file "${dir_fix}" "${fq_qn_r1_tmp}"
 rm_file "${dir_fix}" "${fq_qn_r2_tmp}"
 
 
+# Write the fragment-length reads on the repeat reference, 50 bases each, cut
+# from the unique blocks (zero-based 0-399, 550-949, 1100-1499, and 1650-2049).
+# The 'mid' pairs are ordinary 300-base fragments; the 'shrt' pairs are 80
+# bases, so their mates overlap; the 'long' pairs are 800 bases, longer than
+# Bowtie 2's default '-X' of 500. R1 starts the fragment on the forward strand
+# at the given offset; R2 is the reverse complement of its last 50 bases.
+: > "${fq_frg_r1_tmp}"
+: > "${fq_frg_r2_tmp}"
+for frg in mid_a:50:300 mid_b:1700:300 shrt_a:600:80 shrt_b:1200:80 \
+    long_a:100:800 long_b:1150:800
+do
+    IFS=':' read -r nam beg len <<< "${frg}"
+    print_fq "${nam}" "${seq_rpt:beg:50}" >> "${fq_frg_r1_tmp}"
+    print_fq "${nam}" "$(print_rc "${seq_rpt:beg + len - 50:50}")" \
+        >> "${fq_frg_r2_tmp}"
+done
+
+gzip_n "${fq_frg_r1_tmp}" "${fq_frg_r1_gz}"
+gzip_n "${fq_frg_r2_tmp}" "${fq_frg_r2_gz}"
+
+rm_file "${dir_fix}" "${fq_frg_r1_tmp}"
+rm_file "${dir_fix}" "${fq_frg_r2_tmp}"
+
+
 # Remove stale repeat index files before regeneration.
 rm_files \
     "${dir_fix}" \
@@ -949,6 +981,23 @@ rm_files \
 } > "${sam_spl_pe}"
 
 samtools quickcheck "${sam_spl_pe}"
+
+
+# Index each reference with 'samtools faidx', so that tests reading a reference
+# for CRAM find its '.fai' and Samtools writes none beside the fixture.
+rm_files \
+    "${dir_fix}" \
+    "${ref}.fai" \
+    "${ref_rpt}.fai" \
+    "${ref_tie}.fai" \
+    "${ref_brg}.fai" \
+    "${ref_par}.fai"
+
+samtools faidx "${ref}"
+samtools faidx "${ref_rpt}"
+samtools faidx "${ref_tie}"
+samtools faidx "${ref_brg}"
+samtools faidx "${ref_par}"
 
 
 # Remove stale pairs index files before regeneration.

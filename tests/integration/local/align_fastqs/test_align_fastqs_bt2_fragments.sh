@@ -23,16 +23,14 @@ source "$(
 )/tests/support/test_helpers.sh"
 
 
-# Define fixture and output paths. Pairs cut from the repeat reference's unique
-# blocks show which fragments each Bowtie 2 paired-end call keeps.
+# Define fixture and output paths. The fragment-length pairs on the repeat
+# reference show which fragments each Bowtie 2 paired-end call keeps.
 dir_fx="${ROOT_REPO}/tests/fixtures/align_fastqs"
-ref_rpt="${dir_fx}/reference/repeat.fa"
 idx_rpt="${dir_fx}/bowtie2/repeat"
+fq_1="${dir_fx}/fastq/pe/frg_pe_R1.atria.fastq.gz"
+fq_2="${dir_fx}/fastq/pe/frg_pe_R2.atria.fastq.gz"
 
 tmp="${TEST_DIR_TMP}/align_fastqs_bt2_fragments"
-fq_1="${tmp}/frg_R1.fastq"
-fq_2="${tmp}/frg_R2.fastq"
-len_rd=50
 
 
 print_section "${TEST_NAME}"
@@ -46,52 +44,12 @@ require_env_project env_nam || {
 }
 
 require_files_nonempty \
-    "${ref_rpt}" \
+    "${fq_1}" \
+    "${fq_2}" \
     "${idx_rpt}.1.bt2" || {
     finish
     exit $?
 }
-
-
-# Print one FASTQ record.
-function print_fq() {
-    printf '@%s\n%s\n+\n%s\n' "${1}" "${2}" "${2//?/I}"
-}
-
-
-# Write one pair: R1 starts at a 0-based offset on the forward strand, and R2
-# is the reverse complement of the fragment's last bases.
-function print_pair() {
-    local nam="${1}"
-    local beg="${2}"
-    local frg="${3}"
-    local seq_2
-
-    seq_2="$(
-        rev <<< "${seq_ref:beg + frg - len_rd:len_rd}" | tr ACGT TGCA
-    )"
-    print_fq "${nam}" "${seq_ref:beg:len_rd}" >> "${fq_1}"
-    print_fq "${nam}" "${seq_2}" >> "${fq_2}"
-}
-
-
-# The unique blocks are 0-399, 550-949, 1100-1499, and 1650-2049. 'mid' pairs
-# are ordinary 300 bp fragments; 'shrt' pairs are 80 bp, so their mates
-# overlap; 'long' pairs are 800 bp, longer than Bowtie 2's default '-X' of 500.
-seq_ref="$(grep -v '^>' "${ref_rpt}" | tr -d '\n')"
-
-if [[ "${#seq_ref}" -ne 2050 ]]; then
-    record_fail "the repeat reference is not the expected 2050 bases"
-    finish
-    exit $?
-fi
-
-print_pair mid_a 50 300
-print_pair mid_b 1700 300
-print_pair shrt_a 600 80
-print_pair shrt_b 1200 80
-print_pair long_a 100 800
-print_pair long_b 1150 800
 
 
 # Run the helper.
