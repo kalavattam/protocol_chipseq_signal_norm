@@ -655,8 +655,9 @@ function check_opts_mode() {
 
     if [[ "${unal_mode}" == "separate" ]]; then
         echo_warn \
-            "'--unal_mode separate' writes the unaligned reads and their" \
-            "mates to a side file, which is not for signal or scaling."
+            "'--unal_mode separate' writes the records that the alignment" \
+            "file leaves out to diagnostic files, which are not for signal or" \
+            "scaling."
     fi
 
     # Each suffix names the files of one layout, so it is required when an

@@ -72,6 +72,8 @@ function cleanup_tmp_fastqs() {
         "${fq_dup_r2_tmp}" \
         "${fq_fil_r1_tmp}" \
         "${fq_fil_r2_tmp}" \
+        "${fq_thr_r1_tmp}" \
+        "${fq_thr_r2_tmp}" \
         "${tmp_bln_se}" \
         "${tmp_bln_r1}" \
         "${tmp_bln_r2}"
@@ -87,6 +89,14 @@ function print_rc() {
 # Print one FASTQ record with uniform base qualities.
 function print_fq() {
     printf '@%s\n%s\n+\n%s\n' "${1}" "${2}" "${2//?/I}"
+}
+
+
+# Write the SAM header of the '.diag.tsv' fixture: two references.
+function write_dia_header() {
+    write_sam_line '@HD' 'VN:1.6' 'SO:coordinate'
+    write_sam_line '@SQ' 'SN:chrS' 'LN:1000'
+    write_sam_line '@SQ' 'SN:chrS2' 'LN:1000'
 }
 
 
@@ -202,7 +212,18 @@ fq_fil_r2_gz="${dir_fq_pe}/pairs_fill_pe_R2.atria.fastq.gz"
 
 idx_par_bt2="${dir_bt2}/pairs"
 
+ref_thr="${dir_ref}/thr.fa"
+ref_thr_bwa="${dir_bwa}/thr.fa"
+fq_thr_r1_tmp="${dir_fq_pe}/thr_pe_R1.atria.fastq.tmp"
+fq_thr_r2_tmp="${dir_fq_pe}/thr_pe_R2.atria.fastq.tmp"
+
+fq_thr_r1_gz="${dir_fq_pe}/thr_pe_R1.atria.fastq.gz"
+fq_thr_r2_gz="${dir_fq_pe}/thr_pe_R2.atria.fastq.gz"
+
+idx_thr_bt2="${dir_bt2}/thr"
+
 sam_spl_pe="${dir_sam}/split_template_pe.sam"
+dir_dia="${dir_sam}/diag"
 
 env_req="env_protocol"
 
@@ -930,14 +951,21 @@ rm_files \
 # Write a name-grouped paired-end SAM record set for Step 2 on its own:
 # - 'pair': a complete aligned pair.
 # - 't75': R1 aligned and R2 flagged unaligned (0x4), with R1's mate-unaligned
-#   flag (0x8) clear, the shape 'bwa sampe' writes (#75).
+#   flag (0x8) clear. This is the shape 'bwa sampe' writes (#75).
 # - 'supp': as 't75', plus a supplementary record for R1.
 # - 'lone': an aligned R1 with no R2 record at all.
-# - 'ffpp': a same-strand (FF) pair flagged proper, which 'samtools fixmate'
-#   unflags, so '-f 2' keeps it only before 'fixmate'.
+# - 'ffpp': a same-orientation (FF) pair flagged proper, which
+#   'samtools fixmate' unflags, so '--req_flg' rejects it after 'fixmate'.
+# - 'xchr': a pair flagged proper whose mates map to different references, as
+#   'bwa sampe' writes for a pair on either side of a chromosome boundary
+#   (https://github.com/lh3/bwa/issues/460); 'fixmate' unflags it too.
+# - 'lowq': a proper pair with one mate at MAPQ 0.
+# - 'ffmq': as 'ffpp', with both mates at MAPQ 0, so it fails both filters.
+# - 'disc': a pair the aligner did not flag proper.
 {
     write_sam_line '@HD' 'VN:1.6' 'SO:queryname'
     write_sam_line '@SQ' 'SN:chrS' 'LN:1000'
+    write_sam_line '@SQ' 'SN:chrS2' 'LN:1000'
 
     write_sam_line \
         'lone' '97' 'chrS' '51' '60' '10M' \
@@ -978,9 +1006,162 @@ rm_files \
     write_sam_line \
         't75' '181' 'chrS' '301' '60' '*' \
         '=' '301' '0' 'ACGTACGTAA' 'FFFFFFFFFF'
+
+    write_sam_line \
+        'xchr' '99' 'chrS' '951' '60' '10M' \
+        'chrS2' '41' '100' 'ACGTACGTAA' 'FFFFFFFFFF'
+
+    write_sam_line \
+        'xchr' '147' 'chrS2' '41' '60' '10M' \
+        'chrS' '951' '-100' 'ACGTACGTAA' 'FFFFFFFFFF'
+
+    write_sam_line \
+        'lowq' '99' 'chrS2' '101' '60' '10M' \
+        '=' '201' '110' 'ACGTACGTAA' 'FFFFFFFFFF'
+
+    write_sam_line \
+        'lowq' '147' 'chrS2' '201' '0' '10M' \
+        '=' '101' '-110' 'ACGTACGTAA' 'FFFFFFFFFF'
+
+    write_sam_line \
+        'ffmq' '67' 'chrS2' '301' '0' '10M' \
+        '=' '401' '110' 'ACGTACGTAA' 'FFFFFFFFFF'
+
+    write_sam_line \
+        'ffmq' '131' 'chrS2' '401' '0' '10M' \
+        '=' '301' '-110' 'ACGTACGTAA' 'FFFFFFFFFF'
+
+    write_sam_line \
+        'disc' '97' 'chrS2' '501' '60' '10M' \
+        '=' '901' '410' 'ACGTACGTAA' 'FFFFFFFFFF'
+
+    write_sam_line \
+        'disc' '145' 'chrS2' '901' '60' '10M' \
+        '=' '501' '-410' 'ACGTACGTAA' 'FFFFFFFFFF'
 } > "${sam_spl_pe}"
 
 samtools quickcheck "${sam_spl_pe}"
+
+
+# Write, as SAM records, the four files of a paired-end '--unal_mode separate'
+# run and Markdup 2's statistics, for testing '.diag.tsv' on its own.
+# 'docs/design/align_fastqs_separate.md' describes the table. Each template
+# stands for one case:
+# - Main file: 'm1' is a pair. 'm2' is a pair that Markdup 2 marked as
+#   duplicates.
+# - Side file: 'u_both' has both mates unaligned. 'u_one' has an unaligned R2
+#   and an aligned R1 that Markdup 2 marked as a duplicate. 'u_t75' has the #75
+#   shape: an unaligned R2 and an aligned R1 whose mate-unaligned flag (0x8) is
+#   clear.
+# - Improper file: 'i_xr' has its mates on different references. 'i_ff' has
+#   both mates forward, and 'i_rr' both reverse. 'i_rf' has its mates facing
+#   outward. 'i_q30' has both mates at MAPQ 30, the threshold the test uses.
+#   'i_q10' has one mate at MAPQ 10.
+# - Low-MAPQ file: 'q_low' has one mate at MAPQ 5.
+# - Statistics: 3 duplicate records, all primary: both records of 'm2' and the
+#   R1 of 'u_one'.
+mkdirs "${dir_dia}"
+
+seq_dia="ACGTACGTAA"
+qua_dia="FFFFFFFFFF"
+{
+    write_dia_header
+    write_sam_line \
+        'm1' '99' 'chrS' '101' '60' '10M' \
+        '=' '201' '110' "${seq_dia}" "${qua_dia}"
+    write_sam_line \
+        'm1' '147' 'chrS' '201' '60' '10M' \
+        '=' '101' '-110' "${seq_dia}" "${qua_dia}"
+    write_sam_line \
+        'm2' '1123' 'chrS' '301' '60' '10M' \
+        '=' '401' '110' "${seq_dia}" "${qua_dia}"
+    write_sam_line \
+        'm2' '1171' 'chrS' '401' '60' '10M' \
+        '=' '301' '-110' "${seq_dia}" "${qua_dia}"
+} > "${dir_dia}/main.sam"
+
+{
+    write_dia_header
+    write_sam_line \
+        'u_one' '1097' 'chrS' '501' '60' '10M' \
+        '=' '501' '0' "${seq_dia}" "${qua_dia}"
+    write_sam_line \
+        'u_one' '133' 'chrS' '501' '0' '*' \
+        '=' '501' '0' "${seq_dia}" "${qua_dia}"
+    write_sam_line \
+        'u_t75' '97' 'chrS' '601' '60' '10M' \
+        '=' '601' '0' "${seq_dia}" "${qua_dia}"
+    write_sam_line \
+        'u_t75' '181' 'chrS' '601' '0' '*' \
+        '=' '601' '0' "${seq_dia}" "${qua_dia}"
+    write_sam_line \
+        'u_both' '77' '*' '0' '0' '*' '*' \
+        '0' '0' "${seq_dia}" "${qua_dia}"
+    write_sam_line \
+        'u_both' '141' '*' '0' '0' '*' '*' \
+        '0' '0' "${seq_dia}" "${qua_dia}"
+} > "${dir_dia}/unal.sam"
+
+{
+    write_dia_header
+    write_sam_line \
+        'i_ff' '65' 'chrS' '101' '60' '10M' \
+        '=' '201' '110' "${seq_dia}" "${qua_dia}"
+    write_sam_line \
+        'i_ff' '129' 'chrS' '201' '60' '10M' \
+        '=' '101' '-110' "${seq_dia}" "${qua_dia}"
+    write_sam_line \
+        'i_rr' '113' 'chrS' '301' '60' '10M' \
+        '=' '401' '110' "${seq_dia}" "${qua_dia}"
+    write_sam_line \
+        'i_rr' '177' 'chrS' '401' '60' '10M' \
+        '=' '301' '-110' "${seq_dia}" "${qua_dia}"
+    write_sam_line \
+        'i_rf' '81' 'chrS' '501' '60' '10M' \
+        '=' '601' '110' "${seq_dia}" "${qua_dia}"
+    write_sam_line \
+        'i_rf' '161' 'chrS' '601' '60' '10M' \
+        '=' '501' '-110' "${seq_dia}" "${qua_dia}"
+    write_sam_line \
+        'i_q30' '97' 'chrS' '701' '30' '10M' \
+        '=' '901' '210' "${seq_dia}" "${qua_dia}"
+    write_sam_line \
+        'i_q30' '145' 'chrS' '901' '30' '10M' \
+        '=' '701' '-210' "${seq_dia}" "${qua_dia}"
+    write_sam_line \
+        'i_xr' '97' 'chrS' '951' '60' '10M' \
+        'chrS2' '41' '0' "${seq_dia}" "${qua_dia}"
+    write_sam_line \
+        'i_q10' '97' 'chrS2' '101' '10' '10M' \
+        '=' '601' '510' "${seq_dia}" "${qua_dia}"
+    write_sam_line \
+        'i_xr' '145' 'chrS2' '41' '60' '10M' \
+        'chrS' '951' '0' "${seq_dia}" "${qua_dia}"
+    write_sam_line \
+        'i_q10' '145' 'chrS2' '601' '60' '10M' \
+        '=' '101' '-510' "${seq_dia}" "${qua_dia}"
+} > "${dir_dia}/improp.sam"
+
+{
+    write_dia_header
+    write_sam_line \
+        'q_low' '99' 'chrS' '851' '5' '10M' \
+        '=' '901' '60' "${seq_dia}" "${qua_dia}"
+    write_sam_line \
+        'q_low' '147' 'chrS' '901' '60' '10M' \
+        '=' '851' '-60' "${seq_dia}" "${qua_dia}"
+} > "${dir_dia}/mapq.sam"
+
+for nam in main unal improp mapq; do
+    samtools quickcheck "${dir_dia}/${nam}.sam"
+done
+
+printf '%s\n' \
+    'DUPLICATE TOTAL: 3' \
+    'DUPLICATE PRIMARY TOTAL: 3' \
+    > "${dir_dia}/all.markdup.txt"
+gzip_n "${dir_dia}/all.markdup.txt" "${dir_dia}/all.markdup.txt.gz"
+rm_file "${dir_fix}" "${dir_dia}/all.markdup.txt"
 
 
 # Index each reference with 'samtools faidx', so that tests reading a reference
@@ -1020,8 +1201,7 @@ rm_files \
     "${idx_par_bt2}.rev.1.bt2" \
     "${idx_par_bt2}.rev.2.bt2"
 
-# Build the pairs BWA and BWA-MEM2 indexes, then the Bowtie 2 index last; its
-# final file is the runner's sentinel.
+# Build the pairs BWA and BWA-MEM2 indexes, then the Bowtie 2 index.
 cp "${ref_par}" "${ref_par_bwa}"
 cp "${ref_par}" "${ref_par_bm2}"
 
@@ -1042,6 +1222,54 @@ rm_file "${dir_fix}" "${log_par}"
 # Validate the pairs paired-end alignment path.
 bwa mem "${ref_par_bwa}" "${fq_par_r1_gz}" "${fq_par_r2_gz}" \
     > /dev/null 2> /dev/null
+
+
+# Write the thread reference and reads with 'make_thr.py', whose docstring
+# describes the data. Compress the reads with deterministic gzip metadata, and
+# index the reference.
+python3 "${dir_scr}/make_thr.py" \
+    --fil_ref "${ref_thr}" \
+    --fil_r1 "${fq_thr_r1_tmp}" \
+    --fil_r2 "${fq_thr_r2_tmp}"
+
+gzip_n "${fq_thr_r1_tmp}" "${fq_thr_r1_gz}"
+gzip_n "${fq_thr_r2_tmp}" "${fq_thr_r2_gz}"
+
+rm_files \
+    "${dir_fix}" \
+    "${fq_thr_r1_tmp}" \
+    "${fq_thr_r2_tmp}" \
+    "${ref_thr}.fai" \
+    "${ref_thr_bwa}.amb" \
+    "${ref_thr_bwa}.ann" \
+    "${ref_thr_bwa}.bwt" \
+    "${ref_thr_bwa}.pac" \
+    "${ref_thr_bwa}.sa" \
+    "${idx_thr_bt2}.1.bt2" \
+    "${idx_thr_bt2}.2.bt2" \
+    "${idx_thr_bt2}.3.bt2" \
+    "${idx_thr_bt2}.4.bt2" \
+    "${idx_thr_bt2}.rev.1.bt2" \
+    "${idx_thr_bt2}.rev.2.bt2"
+
+samtools faidx "${ref_thr}"
+
+# Build the thread BWA index, then the Bowtie 2 index last; its final file is
+# the runner's sentinel.
+cp "${ref_thr}" "${ref_thr_bwa}"
+
+log_thr="${dir_ref}/thr-index.log"
+if ! \
+    {
+        bwa index "${ref_thr_bwa}" \
+            && bowtie2-build "${ref_thr}" "${idx_thr_bt2}"
+    } > "${log_thr}" 2>&1
+then
+    cat "${log_thr}" >&2
+    exit 1
+fi
+
+rm_file "${dir_fix}" "${log_thr}"
 
 
 succeed "generated align-fastqs fixtures under '${dir_fix}'."

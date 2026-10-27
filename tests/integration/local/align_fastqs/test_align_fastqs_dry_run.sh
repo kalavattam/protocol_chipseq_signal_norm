@@ -184,6 +184,7 @@ samtools sort \\
 samtools view \\
     -@ 2 \\
     -F 2308 \\
+    -f 2 \\
     -q 1 \\
     ${esc}.qnam.bam \\
     | cut -f 1 \\
@@ -358,7 +359,7 @@ do
     if [[ -n "${unl}" ]]; then lin_unl="    ${unl} \\"$'\n'; fi
     lin_u=""
     if [[ -n "${set_a}" ]]; then
-        lin_u="        -U ${t}.setA.bam \\"$'\n'
+        lin_u="        -U ${t}.setU.bam \\"$'\n'
     fi
 
     out="$(
@@ -408,8 +409,9 @@ ${lin_u}        -O bam,level=1 \\
 done
 
 # With '--req_flg', '--unal_mode remove' requires proper pairs in Step 1, as
-# before; 'separate' requires them in Step 2, after the routing, and Step 4
-# splits the side file out without indexing the file it rewrites at once.
+# before, and again by template after 'fixmate' in Step 2. 'separate' requires
+# them only in Step 2, after the routing, and keeps what it rejects. Its Step 4
+# splits the diagnostic files out without indexing any file.
 t="${tmp}/req"
 for mod in remove separate; do
     out="$(
@@ -429,12 +431,15 @@ for mod in remove separate; do
     st4="$(print_step 4 "${out}")"
 
     if [[ "${mod}" == "remove" ]]; then
+        n_f2="$(grep -c -- '-f 2' <<< "${st2}" || true)"
         if [[
             "${st1}" == *$'    --no-unal \\\n'*
                 && "${st1}" == *$'        -F 12 \\\n        -f 2 \\\n'*
-                && "${st2}" != *"-f 2"*
-                && "${out}" != *"setA"*
+                && "${n_f2}" == 1
+                && "${st2}" == *$'    -F 2308 \\\n    -f 2 \\\n    -q 1'*
+                && "${out}" != *"setU"*
                 && "${out}" != *".unal."*
+                && "${out}" != *".diag."*
         ]]; then
             record_pass "dry run with '--req_flg' and 'remove' is unchanged"
         else
@@ -443,10 +448,11 @@ for mod in remove separate; do
     elif [[
         "${st1}" != *"--no-unal"*
             && "${st1}" != *"-f 2"*
-            && "${st1}" == *"-U ${t}.separate.setA.bam"*
+            && "${st1}" == *"-U ${t}.separate.setU.bam"*
             && "${st2}" == *"-N ${t}.separate.unal.names.txt"*
-            && "${st2}" == *$'    -f 2 \\\n'*
+            && "${st2}" == *$'    -f 2 \\\n    -U '"${t}.separate.setI0.bam"*
             && "${st4}" == *"-o ${t}.separate.unal.bam"*
+            && "${st4}" == *"-o ${t}.separate.improp.bam"*
             && "${st4}" != *"samtools index"*
     ]]; then
         record_pass "dry run with '--req_flg' and 'separate' moves '-f 2'"
@@ -456,11 +462,15 @@ for mod in remove separate; do
 done
 
 
-# With '--unal_mode separate' and '--req_flg', Step 2 sorts Set A to disk and
-# lists its names. It streams the sorted Set B into the routing, the seeded Set
-# A merge into 'fixmate', and the '-f 2' view into Set B's 'fixmate'. It then
-# filters Set B and merges Set A back, seeded again. Every file it writes is at
-# level 1.
+# With '--unal_mode separate' and '--req_flg', Step 2 sorts Set U to disk and
+# lists its names. It then streams the sorted Set M into the routing, the
+# seeded merge into Set U into 'fixmate', and the '-f 2' view into Set M's
+# 'fixmate'. The view keeps the records it rejects.
+#
+# Next, Step 2 filters Set M by template and keeps the templates it drops. It
+# fixes mates in the rejected records and sorts the rejects into the improper
+# and low-MAPQ work files, with a seeded merge again. Last, it lists every
+# diagnostic work file's names. Every file it writes is at level 1.
 t="${tmp}/sep"
 out="$(
     run_helper \
@@ -481,16 +491,16 @@ samtools sort \\
     -@ 1 \\
     -n \\
     -O bam,level=1 \\
-    -o ${t}.setA.qnam.bam \\
-    ${t}.setA.bam
+    -o ${t}.setU.qnam.bam \\
+    ${t}.setU.bam
 
 mv -f \\
-    ${t}.setA.qnam.bam \\
-    ${t}.setA.bam
+    ${t}.setU.qnam.bam \\
+    ${t}.setU.bam
 
 samtools view \\
     -@ 1 \\
-    ${t}.setA.bam \\
+    ${t}.setU.bam \\
     | cut -f 1 \\
     | uniq \\
         > ${t}.unal.names.txt
@@ -515,7 +525,7 @@ samtools merge \\
     -s 0 \\
     -u \\
     -o - \\
-    ${t}.setA.bam \\
+    ${t}.setU.bam \\
     ${t}.moved.bam \\
     | samtools fixmate \\
         -@ 1 \\
@@ -523,11 +533,11 @@ samtools merge \\
         -m \\
         -O bam,level=1 \\
         - \\
-        ${t}.setA.mate.bam
+        ${t}.setU.mate.bam
 
 mv -f \\
-    ${t}.setA.mate.bam \\
-    ${t}.setA.bam
+    ${t}.setU.mate.bam \\
+    ${t}.setU.bam
 
 rm -f \\
     ${t}.moved.bam
@@ -536,6 +546,7 @@ samtools view \\
     -@ 1 \\
     -u \\
     -f 2 \\
+    -U ${t}.setI0.bam \\
     ${t}.qnam.bam \\
     | samtools fixmate \\
         -@ 1 \\
@@ -552,6 +563,7 @@ mv -f \\
 samtools view \\
     -@ 1 \\
     -F 2308 \\
+    -f 2 \\
     -q 1 \\
     ${t}.qnam.bam \\
     | cut -f 1 \\
@@ -565,6 +577,7 @@ samtools view \\
     -O bam,level=1 \\
     -N ${t}.mapq.names.txt \\
     -o ${t}.mapq.bam \\
+    -U ${t}.setR.bam \\
     ${t}.qnam.bam
 
 rm -f \\
@@ -574,29 +587,71 @@ mv -f \\
     ${t}.mapq.bam \\
     ${t}.qnam.bam
 
+samtools fixmate \\
+    -@ 1 \\
+    -c \\
+    -m \\
+    -O bam,level=1 \\
+    ${t}.setI0.bam \\
+    ${t}.setI0.mate.bam
+
+mv -f \\
+    ${t}.setI0.mate.bam \\
+    ${t}.setI0.bam
+
+samtools view \\
+    -@ 1 \\
+    -F 2308 \\
+    -f 2 \\
+    ${t}.setR.bam \\
+    | cut -f 1 \\
+    | uniq -c \\
+    | awk \\
+        \\\$1\\ ==\\ 2\\ \\{\\ print\\ \\\$2\\ \\} \\
+        > ${t}.setQ.names.txt
+
+samtools view \\
+    -@ 1 \\
+    -O bam,level=1 \\
+    -N ${t}.setQ.names.txt \\
+    -o ${t}.setQ.bam \\
+    -U ${t}.setI1.bam \\
+    ${t}.setR.bam
+
 samtools merge \\
     -@ 1 \\
     -n \\
     -s 0 \\
     -O bam,level=1 \\
-    -o ${t}.merge.bam \\
-    ${t}.qnam.bam \\
-    ${t}.setA.bam
-
-mv -f \\
-    ${t}.merge.bam \\
-    ${t}.qnam.bam
+    -o ${t}.setI.bam \\
+    ${t}.setI0.bam \\
+    ${t}.setI1.bam
 
 rm -f \\
-    ${t}.setA.bam"
+    ${t}.setR.bam \\
+    ${t}.setI0.bam \\
+    ${t}.setI1.bam
+
+samtools view \\
+    -@ 1 \\
+    ${t}.setI.bam \\
+    | cut -f 1 \\
+    | uniq \\
+        > ${t}.setI.names.txt
+
+cat \\
+    ${t}.unal.names.txt \\
+    ${t}.setQ.names.txt \\
+    ${t}.setI.names.txt \\
+    > ${t}.diag.names.txt"
 
 check_block \
     "PE dry run with 'separate' and '--req_flg' prints Step 2" \
     "${exp}" \
     "$(print_step 2 "${out}")"
 
-# Without '--req_flg', Set B's 'fixmate' reads the sorted file itself. In
-# single-end data, Step 2 lists Set A's names, then sorts Set B to disk.
+# Without '--req_flg', Set M's 'fixmate' reads the sorted file itself. In
+# single-end data, Step 2 lists Set U's names, then sorts Set M to disk.
 out="$(
     run_helper \
         --dry_run \
@@ -620,9 +675,9 @@ if [[
     "$(print_step 2 "${out}")" == *"${exp}"*
         && "$(print_step 2 "${out}")" != *"-f 2"*
 ]]; then
-    record_pass "PE dry run with 'separate' fixes Set B's mates from its file"
+    record_pass "PE dry run with 'separate' fixes Set M's mates from its file"
 else
-    record_fail "PE dry run with 'separate' fixes Set B's mates wrongly"
+    record_fail "PE dry run with 'separate' fixes Set M's mates wrongly"
 fi
 
 out="$(
@@ -649,17 +704,18 @@ samtools view \\
     -F 2308 \\
     -q 1 \\"
 st2="$(print_step 2 "${out}")"
-lin_mrg="    -s 0 \\
-    -O bam,level=1 \\
-    -o ${t}_se.merge.bam"
+lin_mov="mv -f \\
+    ${t}_se.setR.bam \\
+    ${t}_se.setQ.bam"
 
 if [[
     "${st2}" == *"${exp}"*
         && "${st2}" != *"fixmate"*
         && "${st2}" != *"moved"*
-        && "${st2}" == *"${lin_mrg}"*
+        && "${st2}" != *"setI"*
+        && "${st2}" == *"${lin_mov}"*
 ]]; then
-    record_pass "SE dry run with 'separate' sorts Set B to disk, no routing"
+    record_pass "SE dry run with 'separate' sorts Set M to disk, no routing"
 else
     record_fail "SE dry run with 'separate' prints Step 2 wrongly"
 fi
@@ -667,7 +723,9 @@ fi
 
 # Only Step 5 indexes a BAM file, once per file it writes, and not for CRAM
 # output, which Step 6 indexes instead. A file that a later step rewrites is
-# written at level 1; a file that ships is written at the default level.
+# written at level 1; a file that ships is written at the default level. Under
+# 'separate', Step 3 also sorts the diagnostic work files. Step 4 marks them
+# with the main file (Markdup 2) and splits them into three files.
 t="${tmp}/mtx"
 for mod in remove separate; do
     for fmt in bam cram; do
@@ -690,7 +748,7 @@ for mod in remove separate; do
         st5="$(print_step 5 "${out}")"
         st6="$(print_step 6 "${out}")"
         n_fil=1
-        if [[ "${mod}" == "separate" ]]; then n_fil=2; fi
+        if [[ "${mod}" == "separate" ]]; then n_fil=4; fi
         n_idx5="$(grep -c '^samtools index' <<< "${st5}" || true)"
         n_idx6="$(grep -c '^samtools index' <<< "${st6}" || true)"
         n_lvl4="$(grep -c 'level=1' <<< "${st4}" || true)"
@@ -698,6 +756,7 @@ for mod in remove separate; do
         n_b4="$(grep -c '^    -b \\$' <<< "${st4}" || true)"
 
         exp_idx5="${n_fil}"
+        exp_lvl3=1
         exp_lvl4=0
         exp_lvl6=0
         exp_b4=0
@@ -706,10 +765,12 @@ for mod in remove separate; do
             exp_lvl6="${n_fil}"
         fi
         if [[ "${mod}" == "separate" && "${fmt}" == "bam" ]]; then
+            exp_lvl3=2
             exp_lvl4=1
-            exp_b4=1
+            exp_b4=2
         elif [[ "${mod}" == "separate" ]]; then
-            exp_lvl4=2
+            exp_lvl3=2
+            exp_lvl4=4
         elif [[ "${fmt}" == "cram" ]]; then
             exp_lvl4=1
         fi
@@ -736,7 +797,7 @@ for mod in remove separate; do
         if [[
             "${n_lvl4}" == "${exp_lvl4}" && "${n_b4}" == "${exp_b4}"
                 && "${n_lvl6}" == "${exp_lvl6}"
-                && "$(grep -c 'level=1' <<< "${st3}")" == 1
+                && "$(grep -c 'level=1' <<< "${st3}")" == "${exp_lvl3}"
         ]]; then
             record_pass "${lbl}: work files at level 1, shipped files not"
         else

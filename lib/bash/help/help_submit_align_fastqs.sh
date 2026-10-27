@@ -92,26 +92,16 @@ Parameters
   -rq, --req_flg : flag
     Require SAM flag bit 2 for properly paired alignments.
 
+    The flag is checked as the aligner set it and again after 'samtools fixmate', which clears it on a pair whose mates map to different references or align in the same orientation (both forward or both reverse).
+
     Ignored with a warning when every entry is single-end.
 
   -um, --unal_mode : {'remove', 'separate'}
-    What to do with unaligned reads and, in paired-end data, their mates, aligned or not: 'remove' or 'separate' (default: '${unal_mode}').
+    What to do with the records that the alignment file leaves out: 'remove' or 'separate' (default: '${unal_mode}'). These are the unaligned reads and, in paired-end data, their mates (aligned or not), plus the templates that '--req_flg' and '--mapq' reject.
 
-    With 'remove', they are dropped. With 'separate', they are also written to a side file, '<stem>.unal.bam' or '<stem>.unal.cram', and the alignment file holds the same records as with 'remove'. Refused as 'separate' with '--bt2_inherited', whose call writes no unaligned reads.
+    With 'remove', they are dropped. With 'separate', nothing is dropped: each goes to a diagnostic file beside the alignment file, and the alignment file holds the same records as with 'remove' (see Notes).
 
-    With single-end data, the side file holds the reads flagged unaligned (SAM flag 4).
-
-    With Bowtie 2 and paired-end data, it holds the pairs that did not align as concordant pairs, which Bowtie 2 writes with both mates unaligned even when one mate could align alone.
-
-    With BWA or BWA-MEM2 and paired-end data, it holds the records flagged unaligned or with an unaligned mate.
-
-    When BWA-backtrack flags one mate unaligned but leaves its partner's mate flag clear, the partner goes to the side file beside its mate.
-
-    Each read pair is kept whole: when any record of a pair belongs in the side file, all of the pair's records go there.
-
-    '--mapq' and '--req_flg' apply only to the alignment file (as both judge aligned pairs and would remove every pair the side file holds).
-
-    The side file is coordinate-sorted, indexed, and duplicate-marked. It carries the pipeline record and follows the alignment file into CRAM and into a '--qname' copy. It is not for signal or scaling.
+    Refused as 'separate' with '--bt2_inherited', whose call writes no unaligned reads.
 
   -ix, --index : path
     Path to the aligner index/reference.
@@ -166,12 +156,32 @@ Notes
 
   - '--ref_fa' is required when '--out_ext cram'.
   - '--req_flg' and '--qname' are optional flags.
+  - With '--unal_mode separate', every record the aligner writes lands in exactly one file ('docs/design/align_fastqs_separate.md'):
+    + '<stem>.unal.bam' (or '.cram'), the side file, holds the unaligned reads and their mates:
+      - With single-end data, these are the reads flagged unaligned (SAM flag 4).
+      - With Bowtie 2 and paired-end data, they are the pairs that did not align as concordant pairs. Bowtie 2 writes both mates of such a pair unaligned even when one mate could align alone.
+      - With BWA or BWA-MEM2, they are the records flagged unaligned or with an unaligned mate.
+      - When BWA-backtrack flags one mate unaligned but leaves its partner's mate flag clear, the partner goes beside its mate.
+    + The templates that '--req_flg' and '--mapq' reject go to their own files:
+      - '<stem>.improp.bam' holds the pairs that '--req_flg' rejects. Single-end data has no improper file, and without '--req_flg' the improper file is empty.
+      - '<stem>.mapq.bam' holds the templates that '--mapq' rejects.
+      - A template that fails both is improper.
+      - '--mapq' and '--req_flg' do not apply to the side file, as both judge aligned pairs and would remove every pair it holds.
+    + Each template is kept whole: all of a read pair's records go to the same file.
+    + For each diagnostic file:
+      - It is coordinate-sorted and indexed.
+      - Its duplicates are marked against all the files together.
+      - It carries the pipeline record and follows the alignment file into CRAM and into a '--qname' copy.
+    + The diagnostic files are not for signal or scaling.
+    + '<stem>.diag.tsv' counts the templates and records each file holds, by category.
   - Duplicates are marked (SAM flag 1024) after MAPQ filtering, and kept.
     + Like any other read, '--mapq' filters them by the MAPQ the aligner gave them.
     + When every read name carries Illumina flow-cell coordinates ('...:tile:x:y') in one format, duplicates on the same tile as their original and within 2500 pixels of it in x and y are tagged as optical ('dt:Z:SQ'); the rest are tagged as library duplicates ('dt:Z:LB').
     + Otherwise, as with most SRA-dumped names, no 'dt' tags are written and a warning says why.
     + Duplicate statistics are written to '<stem>.markdup.txt.gz' beside the alignment file; Samtools estimates library size for paired-end data only. The file's last line, 'OPTICAL DISTANCE:', gives 2500 when optical duplicates were told apart, or 'not used' and the reason.
-    + With '--unal_mode separate', duplicates are marked in the alignment file and the side file together, so an aligned mate in the side file can be marked as a duplicate of a read in the alignment file. The alignment file's records and flags are the same as with 'remove'; the statistics cover both files.
+    + With '--unal_mode separate', duplicates are marked twice:
+      - Markdup 1 runs on the alignment file alone, as with 'remove', so its flags and '<stem>.markdup.txt.gz' are the same in both modes.
+      - Markdup 2 runs on all files together, so a read in a diagnostic file can be marked as a duplicate of a read in the alignment file. Its statistics are written to '<stem>.all.markdup.txt.gz'.
   - Bowtie 2 runs with '--reorder', so its output order does not depend on the thread count. It also runs with '--seed 0', its default, which the record gives as 'bt2_seed=0'.
     + Which of several equally good alignments a read gets depends on the seed and on the read's sequence, qualities, and whole FASTQ header line, so renaming reads can move them.
     + For paired-end data, the two mates' seeds are combined, which cancels the seed and any header text identical in both mates; only header differences between the mates move pairs.

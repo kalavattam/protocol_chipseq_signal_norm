@@ -21,6 +21,7 @@ Readable provenance:
 - `make.sh`
 - `make_tie.py`, the generator `make.sh` runs for the tie fixtures
 - `make_pairs.py`, the generator `make.sh` runs for the pairs and duplicate fixtures
+- `make_thr.py`, the generator `make.sh` runs for the thread fixtures
 - `reference/tiny.fa`
 - `reference/tiny.fa.fai`
 
@@ -105,6 +106,16 @@ Pairs reference, reads, and indexes, for `--unal_mode`, with one read pair per p
 Queryname-grouped SAM records with templates split by Step 1, for Step 2 on its own:
 - `sam/split_template_pe.sam`
 
+Coordinate-grouped SAM records standing for the four files of a paired-end `--unal_mode separate` run, and Markdup 2's statistics, for `<stem>.diag.tsv` on its own:
+- `sam/diag/main.sam`, `sam/diag/unal.sam`, `sam/diag/improp.sam`, and `sam/diag/mapq.sam`
+- `sam/diag/all.markdup.txt.gz`
+
+Thread reference, reads, and indexes, for files that must not depend on the thread count:
+- `reference/thr.fa`
+- `reference/thr.fa.fai`
+- `fastq/pe/thr_pe_R1.atria.fastq.gz` and `fastq/pe/thr_pe_R2.atria.fastq.gz`
+- `bowtie2/thr.*.bt2` and `bwa/thr.fa.*`; no BWA-MEM2 index
+
 <br />
 
 ## Expected alignment behavior
@@ -185,7 +196,7 @@ With BWA ALN (0.7.19), `bwa sampe` flags `brdg` R2 unaligned (0x4) but keeps its
 | `pair_far`   | forward, `chrP1` 4400 | reverse, `chrP1` 5850          | 1,500-base fragment           |
 | `pair_dove`  | forward, `chrP1` 1500 | reverse, `chrP1` 1490          | dovetailed                    |
 | `pair_rf`    | reverse, `chrP1` 1700 | forward, `chrP1` 1950          | outward-facing (RF)           |
-| `pair_ff`    | forward, `chrP1` 2000 | forward, `chrP1` 2200          | same strand (FF)              |
+| `pair_ff`    | forward, `chrP1` 2000 | forward, `chrP1` 2200          | same orientation (FF)         |
 | `pair_chrs`  | forward, `chrP1` 3000 | reverse, `chrP2` 500           | different chromosomes         |
 | `pair_one`   | forward, `chrP1` 3300 | random                         | one mate unaligned            |
 | `pair_none`  | random                | random                         | both mates unaligned          |
@@ -200,7 +211,25 @@ The single-end file holds `se_uniq` (forward, `chrP1` 200), `se_uniq2` (reverse,
 
 The duplicate set's names carry flow-cell coordinates (`A00123:8:HFLOWCELL:1:1101:<x>:<y>`). Its first pair is concordant on `chrP2` (R1 at 1500, x and y 1000). The other five have a random, unaligned R2, and their R1 is aligned: one at the first pair's R1 (x and y 20000); two at 2200, far apart on the tile; and two at 2600, 100 pixels apart in x and y. With BWA MEM and `--unal_mode separate`, `samtools markdup` marks the first of these as a duplicate of the pair's R1, one of the two at 2200 as a library duplicate, and one of the two at 2600 as an optical duplicate.
 
-In `sam/split_template_pe.sam`, `t75` has an aligned R1 and an R2 flagged unaligned (0x4) whose partner lacks 0x8, as `bwa sampe` writes (#75); `supp` is the same with a supplementary record for R1; `pair` is a complete pair; `lone` is an aligned R1 with no R2 record; and `ffpp` is a same-strand pair flagged proper, which `samtools fixmate` unflags, so `-f 2` keeps it only before `fixmate`.
+In `sam/split_template_pe.sam`, on two references, `chrS` and `chrS2`:
+- `t75` has an aligned R1 and an R2 flagged unaligned (0x4) whose partner lacks 0x8, as `bwa sampe` writes (#75); `supp` is the same with a supplementary record for R1.
+- `pair` is a complete pair; `lone` is an aligned R1 with no R2 record.
+- `ffpp` is a same-orientation (FF) pair flagged proper and `xchr` a pair flagged proper whose mates map to different references, as `bwa sampe` writes for a pair on either side of a chromosome boundary ([lh3/bwa#460](https://github.com/lh3/bwa/issues/460)). `samtools fixmate` unflags both, so `--req_flg` rejects them after `fixmate`.
+- `lowq` is a proper pair with one mate at MAPQ 0, `ffmq` a same-orientation pair flagged proper with both mates at MAPQ 0, which fails both `--req_flg` and `--mapq`, and `disc` a pair the aligner did not flag proper.
+
+In `sam/diag/`, read at MAPQ 30, each template stands for one `.diag.tsv` case:
+- Main file: `m1` is a pair. `m2` is a pair flagged duplicate.
+- Side file: `u_both` has both mates unaligned. `u_one` has an unaligned R2 and an aligned R1 flagged duplicate. `u_t75` has the #75 shape: an unaligned R2 and an aligned R1 whose mate-unaligned flag (0x8) is clear.
+- Improper file: `i_xr` has its mates on different references. `i_ff` has both mates forward, and `i_rr` both reverse. `i_rf` has its mates facing outward. `i_q30` has both mates at MAPQ 30, the threshold. `i_q10` has one mate at MAPQ 10.
+- Low-MAPQ file: `q_low` has one mate at MAPQ 5.
+- Statistics: 3 duplicate records, all primary: both records of `m2` and the R1 of `u_one`.
+
+<br />
+
+### Thread fixtures
+`make.sh` runs `make_thr.py`, which draws the thread reference and reads through `random.Random(0).random()`, as `make_tie.py` does. The reference, `chrH`, is 100,000 random bases. The 120,000 pairs of 50-base mates come in two blocks. The first holds 100,000 pairs from 190- to 210-base fragments, and one in every 50 of them is replaced by two random reads that do not align. The second holds 20,000 pairs from 590- to 610-base fragments. Each pair is on either strand.
+
+Without `-K`, BWA-MEM (0.7.19) reads 10,000,000 bases per batch per thread and estimates insert sizes per batch. At one thread, the long pairs fill their own batch and are flagged proper. At three threads, one batch holds both blocks, and they are not. Measured: 118,000 proper pairs at one thread and 98,000 at three. With the pipeline's `-K 100000000`, one batch holds every pair at any thread count, and the 20,000 long pairs are improper. So under `--unal_mode separate --req_flg`, a batch that followed the thread count would move them between the alignment file and `<stem>.improp.bam`. Bowtie 2 needs about 25 seconds for the set at one thread, and its final files do not depend on `--reorder`, since the coordinate sort fixes their order. `test_align_fastqs_unal_mode.sh` runs BWA-MEM on it.
 
 <br />
 

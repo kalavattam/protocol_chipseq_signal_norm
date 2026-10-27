@@ -23,8 +23,10 @@ source "$(
 )/tests/support/test_helpers.sh"
 
 
-# Define fixture and output paths. Every output, the '--qname' copy and CRAM
-# included, must carry the pipeline record ('OUTPUT.ALIGNMENT.RECORD').
+# Define fixture and output paths.
+#
+# Every output, the '--qname' copy and CRAM included, must carry the pipeline
+# record ('OUTPUT.ALIGNMENT.RECORD').
 dir_fx="${ROOT_REPO}/tests/fixtures/align_fastqs"
 idx_bt2="${dir_fx}/bowtie2/tiny"
 idx_bwa="${dir_fx}/bwa/tiny.fa"
@@ -498,32 +500,41 @@ for idx in "${!arr_rows[@]}"; do
     fi
 done
 
-# The side file of the last row carries the alignment file's record, its
-# '--unal_mode=separate' included, plus what it holds, with the run lines of
-# the alignment file.
+# Each diagnostic file of the last row carries the alignment file's record and
+# run lines, '--unal_mode=separate' included. It adds what the file holds, its
+# warning, and that Markdup 2 marked it.
 idx=$(( ${#arr_rows[@]} - 1 ))
 IFS='|' read -r lbl nam arg lin <<< "${arr_rows[idx]}"
 IFS=';' read -r -a arr_lin <<< "${lin}"
 fil_out="${tmp}/out_${idx}/${nam}"
-fil_unal="${fil_out%.bam}.unal.bam"
+declare -A arr_cnt_dia=(
+    [unal]="unaligned reads and their mates, aligned or not"
+    [improp]="pairs with both mates aligned that --req_flg rejects"
+    [mapq]="templates that --mapq rejects and --req_flg does not"
+)
 
-if [[ -s "${fil_unal}" ]]; then
-    check_record "${lbl}, side file" "${fil_unal}" \
-        "$(
-            print_cnt_exp \
-                "${arr_lin[@]}" \
-                "content=unaligned reads and their mates, aligned or not" \
-                "warning=not for signal or scaling"
-        )" \
-        "$(
-            print_pth_exp \
-                index "${idx_bt2}" fq_1 "${in_pe_1}" fq_2 "${in_pe_2}" \
-                fil_out "${fil_out}"
-        )" \
-        1
-else
-    record_fail "${lbl}: no side file '${fil_unal}'"
-fi
+for kind in unal improp mapq; do
+    fil_dia="${fil_out%.bam}.${kind}.bam"
+
+    if [[ -s "${fil_dia}" ]]; then
+        check_record "${lbl}, '${kind}' file" "${fil_dia}" \
+            "$(
+                print_cnt_exp \
+                    "${arr_lin[@]}" \
+                    "content=${arr_cnt_dia[${kind}]}" \
+                    "warning=not for signal or scaling" \
+                    "markdup=all files (Markdup 2)"
+            )" \
+            "$(
+                print_pth_exp \
+                    index "${idx_bt2}" fq_1 "${in_pe_1}" fq_2 "${in_pe_2}" \
+                    fil_out "${fil_out}"
+            )" \
+            1
+    else
+        record_fail "${lbl}: no '${kind}' file '${fil_dia}'"
+    fi
+done
 
 
 # A dry run prints the content lines a real run writes.

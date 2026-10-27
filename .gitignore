@@ -73,6 +73,7 @@ tests/fixtures/align_fastqs/**
 !tests/fixtures/align_fastqs/README.md
 !tests/fixtures/align_fastqs/make.sh
 !tests/fixtures/align_fastqs/make_pairs.py
+!tests/fixtures/align_fastqs/make_thr.py
 !tests/fixtures/align_fastqs/make_tie.py
 
 tests/fixtures/calculate_scaling_factor/**

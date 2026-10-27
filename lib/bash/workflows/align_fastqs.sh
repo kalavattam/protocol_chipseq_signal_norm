@@ -23,10 +23,20 @@
 # _align_bwa_mem
 # _align_bwa_aln
 # _align_reads
+# _route_unal_bam
+# _route_filt_bam
 # _sort_qname_bam
 # _sort_coord_bam
+# _sort_coord_diag_bam
 # _check_optical_names
 # _mark_dup_bam
+# _mark_dup_all_bam
+# _split_diag_bam
+# _build_align_record
+# _print_optical_line
+# _write_align_record
+# _count_diag_cat
+# _write_diag_tsv
 # _finalize_align_output
 # align_fastqs
 
@@ -105,7 +115,9 @@ Usage
   _print_dry_run_cmd
     [--help] [--out <file>] arr_nam [arr_nam ...]
 
-  Print a command to stdout for a dry run of 'align_fastqs()': each named command array in turn as a pipeline, then ' > file' when '--out' is given, then a blank line. The output is valid shell: words are shell-escaped, and each option or option-value pair is on its own continuation line.
+  Print a command to stdout for a dry run of 'align_fastqs()': each named command array in turn as a pipeline, then ' > file' when '--out' is given, then a blank line.
+
+  The output is valid shell: words are shell-escaped, and each option or option-value pair is on its own continuation line.
 
 Parameters
 ----------
@@ -128,8 +140,8 @@ Notes
     bash >= 4.4
 
   - The program name, with its subcommand for 'samtools', 'bwa', and 'bwa-mem2', starts the command; 'mv', 'rm', 'cut', 'uniq', 'awk', and 'gzip' also keep their leading options there, as in 'mv -f'.
-    + An option shares a line with its value only when it is in this function's table of value-taking options, kept per program in the source, since shape alone cannot tell 'samtools markdup -t in.bam' (a flag, then a file) from 'bwa aln -t 4' (an option and its value).
-    + A new value-taking option belongs in that table; without it, the option and its value print on separate lines, which changes the layout but not the command.
+  - An option shares a line with its value only when it is in this function's table of value-taking options, kept per program in the source, since shape alone cannot tell 'samtools markdup -t in.bam' (a flag, then a file) from 'bwa aln -t 4' (an option and its value).
+  - A new value-taking option belongs in that table; without it, the option and its value print on separate lines, which changes the layout but not the command.
 
 Examples
 --------
@@ -328,9 +340,11 @@ EOM
 }
 
 
-# Keep or drop each template (all records sharing a read name) of a SAM or BAM
-# file queryname-grouped as a whole, by whether its primary records pass a MAPQ
-# threshold; write the kept records to a BAM file.
+# Keep or drop each template (all records sharing a read name) of a queryname-
+# grouped SAM or BAM file as a whole. A template is kept when its primary
+# records pass a MAPQ threshold and, optionally, carry the proper-pair flag.
+# Write the kept records to a BAM file and, optionally, the dropped ones to
+# another.
 function _filter_bam_mapq_template() {
     local bam_in="${1:-}"
     local bam_out="${2:-}"
@@ -339,6 +353,8 @@ function _filter_bam_mapq_template() {
     local threads="${5:-1}"
     local func="${6:-${FUNCNAME[1]:-${FUNCNAME[0]}}}"
     local dry_run="${7:-false}"
+    local req_flg="${8:-false}"
+    local bam_rej="${9:-}"
     local txt_nam="${bam_out%.bam}.names.txt"
     local -a arr_view arr_cut arr_uniq arr_awk arr_cmd
     local show_help
@@ -347,11 +363,11 @@ function _filter_bam_mapq_template() {
 Usage
 -----
   _filter_bam_mapq_template
-    [--help] bam_in bam_out mapq n_pri [threads] [func] [dry_run]
+    [--help] bam_in bam_out mapq n_pri [threads] [func] [dry_run] [req_flg] [bam_rej]
 
-  Keep or drop each template (all records sharing a read name) of a queryname-grouped SAM or BAM file as a whole, by whether its primary records pass a MAPQ threshold, and write the kept records to a BAM file.
+  Keep or drop each template (all records sharing a read name) of a queryname-grouped SAM or BAM file as a whole, by whether its primary records pass a MAPQ threshold. With 'req_flg', they must also carry the proper-pair flag (SAM flag 2). Write the kept records to a BAM file.
 
-  Secondary and supplementary records follow their template, whatever their own MAPQ.
+  Secondary and supplementary records follow their template, whatever their own MAPQ and flags.
 
 Parameters
 ----------
@@ -379,9 +395,15 @@ Parameters
   7  dry_run : bool
     Whether to print the commands to stdout instead of running them (default: '${dry_run}').
 
+  8  req_flg : bool
+    Whether every primary record of a kept template must also carry the proper-pair flag (default: '${req_flg}').
+
+  9  bam_rej : file
+    BAM file to write the dropped templates to, at compression level 1, or '' to discard them (default: '').
+
 Returns
 -------
-  Writes 'bam_out' and returns 0 on success or prints the commands and returns 0 for a dry run; prints an error and returns 1 on failure.
+  Writes 'bam_out' (and 'bam_rej', if given) and returns 0 on success or prints the commands and returns 0 for a dry run; prints an error and returns 1 on failure.
 
 Notes
 -----
@@ -423,12 +445,18 @@ EOM
 
     # List each read name that has exactly 'n_pri' aligned primary records at
     # or above the MAPQ threshold: 2 for paired-end data, 1 for single-end.
+    #
     # '-F 2308' (4 + 256 + 2048) leaves out unaligned, secondary, and
-    # supplementary records, so an unaligned record is never counted, even if
+    # supplementary records. So an unaligned record is never counted, even if
     # one reached this filter.
-    arr_view=(
-        samtools view -@ "${threads}" -F 2308 -q "${mapq}" "${bam_in}"
-    )
+    #
+    # With 'req_flg', '-f 2' counts only records that still carry the
+    # proper-pair flag, so a pair that 'samtools fixmate' unflagged is dropped
+    # whole. One such pair is a cross-reference pair that 'bwa sampe' flags
+    # proper (https://github.com/lh3/bwa/issues/460).
+    arr_view=( samtools view -@ "${threads}" -F 2308 )
+    if [[ "${req_flg}" == "true" ]]; then arr_view+=( -f 2 ); fi
+    arr_view+=( -q "${mapq}" "${bam_in}" )
     arr_cut=( cut -f 1 )
     arr_uniq=( uniq -c )
     # shellcheck disable=SC2016  # The program is for awk, not the shell.
@@ -454,20 +482,21 @@ EOM
 
     # Write every record of the listed names, secondary and supplementary
     # records included, at compression level 1, since 'align_fastqs()' sorts
-    # the file again in Step 3.
+    # the file again in Step 3. With 'bam_rej', write the other records there.
     arr_cmd=(
         samtools view
             -@ "${threads}"
             -O "bam,level=1"
             -N "${txt_nam}"
             -o "${bam_out}"
-            "${bam_in}"
     )
+    if [[ -n "${bam_rej}" ]]; then arr_cmd+=( -U "${bam_rej}" ); fi
+    arr_cmd+=( "${bam_in}" )
 
     if ! \
         _run_or_print_cmd "${dry_run}" arr_cmd
     then
-        rm -f "${txt_nam}" "${bam_out}"
+        rm -f "${txt_nam}" "${bam_out}" ${bam_rej:+"${bam_rej}"}
         echo_err_func "${func}" \
             "failed to filter '${bam_in}' by read name."
         return 1
@@ -908,8 +937,9 @@ EOM
 
     if [[ "${unal_mode}" == "separate" ]]; then
         echo_warn_func "${func}" \
-            "'--unal_mode separate' writes the unaligned reads and their" \
-            "mates to a side file, which is not for signal or scaling."
+            "'--unal_mode separate' writes the records that the alignment" \
+            "file leaves out to diagnostic files, which are not for signal" \
+            "or scaling."
     fi
 }
 
@@ -1459,7 +1489,9 @@ Usage
   _align_reads
     [--help] func dry_run threads aligner bt2_mode bt2_X bt2_inherited bt2_relaxed bwa_alg req_flg unal_mode index fq_1 fq_2 fil_wrk
 
-  Build the 'samtools view' arguments that drop unaligned reads, then align with the selected aligner and write the BAM work file (Step 1 of 'align_fastqs()'). With 'unal_mode' 'separate', the dropped records are written instead to the path of 'fil_wrk' with '.setA.bam' for '.bam'.
+  Build the 'samtools view' arguments that drop unaligned reads, then align with the selected aligner and write the BAM work file (Step 1 of 'align_fastqs()').
+
+  With 'unal_mode' 'separate', the dropped records are written instead to the path of 'fil_wrk' with '.setU.bam' for '.bam'.
 
 Parameters
 ----------
@@ -1592,12 +1624,12 @@ EOM
         arr_sam+=( -F 4 )
     fi
 
-    # With '--unal_mode separate', write the dropped records ("Set A") to their
-    # own work file for the side file, and require proper pairs only in Step 2,
-    # after the templates split between the two files are moved whole into Set
-    # A. Otherwise, require them here, as before.
+    # With '--unal_mode separate', write the dropped records ("Set U") to their
+    # own work file for the side file. Proper pairs are then required only in
+    # Step 2, after the templates split between the two files move whole into
+    # Set U. Otherwise, require them here, as before.
     if [[ "${unal_mode}" == "separate" ]]; then
-        arr_sam+=( -U "${fil_wrk%.bam}.setA.bam" )
+        arr_sam+=( -U "${fil_wrk%.bam}.setU.bam" )
     elif [[ -n "${fq_2}" && "${req_flg}" == "true" ]]; then
         arr_sam+=( -f 2 )
     fi
@@ -1606,9 +1638,9 @@ EOM
     # template whenever its records' MAPQs differ. Instead, Step 2 applies it
     # by template for every aligner.
     #
-    # Step 2 rewrites the work file (and, with '--unal_mode separate', Set A,
-    # the dropped records), so both are written at compression level 1, which
-    # is faster to write than the default compression level, 6.
+    # Step 2 rewrites the work file and, with '--unal_mode separate', Set U.
+    # Both are written at compression level 1, which is faster to write than
+    # the default level, 6.
     arr_sam+=( -O "bam,level=1" -o "${fil_wrk}" )
 
     # Based on parsed arguments, run Bowtie 2, BWA, or BWA-MEM2 with output
@@ -1641,9 +1673,9 @@ EOM
 
 
 # Step 2 with '--unal_mode separate': sort Step 1's unaligned work file ("Set
-# A") by queryname and list its read names; for paired-end data, sort the
-# aligned reads ("Set B") by queryname, move every template with records in
-# both work files wholly into Set A, and then fix mates in Set A.
+# U") by queryname and list its read names. For paired-end data, also sort the
+# aligned reads ("Set M") by queryname, move every template with records in
+# both work files wholly into Set U, and fix mates in Set U.
 function _route_unal_bam() {
     local func="${1:-}"
     local dry_run="${2:-}"
@@ -1651,7 +1683,7 @@ function _route_unal_bam() {
     local fq_2="${4:-}"
     local fil_wrk="${5:-}"
     local bam_qnam="${6:-}"
-    local bam_set_a="${7:-}"
+    local bam_set_u="${7:-}"
     local txt_nam="${fil_wrk%.bam}.unal.names.txt"
     local bam_srt bam_mov bam_mate n_rec n_tpl
     local -a arr_cmd arr_view arr_cut arr_uniq arr_srt arr_mrg arr_fix
@@ -1661,11 +1693,13 @@ function _route_unal_bam() {
 Usage
 -----
   _route_unal_bam
-    [--help] func dry_run threads fq_2 fil_wrk bam_qnam bam_set_a
+    [--help] func dry_run threads fq_2 fil_wrk bam_qnam bam_set_u
 
-  Sort Step 1's unaligned work file ("Set A") by queryname and list its read names in the path of 'fil_wrk' with '.unal.names.txt' for '.bam', which Step 4 uses to split Set A back out (Step 2 of 'align_fastqs()' with '--unal_mode separate').
+  Sort Step 1's unaligned work file ("Set U") by queryname and list its read names (Step 2 of 'align_fastqs()' with '--unal_mode separate'). The list goes to the path of 'fil_wrk' with '.unal.names.txt' for '.bam', and Step 4 uses it to split Set U back out.
 
-  For paired-end data, sort the BAM work file ("Set B") by queryname into 'bam_qnam', moving every record whose read name is in Set A into Set A as it goes, so that no template has records in both, and print a note with the number of templates and records moved; then, fix mates in the newly filtered Set A.
+  For paired-end data, also sort the BAM work file ("Set M") by queryname into 'bam_qnam'. As it goes, move every record whose read name is in Set U into Set U, so that no template has records in both. Print a note with the number of templates and records moved. Then fix mates in the newly filtered Set U.
+
+  For single-end data, only Set U is sorted and listed. Each read is its own template, so no records move and no mates are fixed, and the caller sorts Set M itself.
 
   A template is moved by its read name, not by a count of its records, so the rule holds for any number of records per read.
 
@@ -1684,16 +1718,16 @@ Parameters
     Number of threads to use.
 
   4  fq_2 : file
-    Second FASTQ input file, or empty for single-end data, which needs no moving and no mate fixing; the caller then sorts Set B itself.
+    Second FASTQ input file, or empty for single-end data.
 
   5  fil_wrk : file
-    BAM work file from Step 1 ("Set B"); names the read-name list.
+    BAM work file from Step 1 ("Set M"); names the read-name list.
 
   6  bam_qnam : file
-    Queryname-sorted BAM file to write for paired-end data: Set B without the moved records.
+    Queryname-sorted BAM file to write for paired-end data: Set M without the moved records.
 
-  7  bam_set_a : file
-    Set A from Step 1, rewritten sorted by queryname, with the moved records and fixed mates.
+  7  bam_set_u : file
+    Set U from Step 1, rewritten sorted by queryname, with the moved records and fixed mates.
 
 Returns
 -------
@@ -1711,7 +1745,7 @@ Notes
 
 Examples
 --------
-  1. Move the templates split between the two work files of a paired-end run into Set A.
+  1. Move the templates split between the two work files of a paired-end run into Set U.
     '''bash
     _route_unal_bam \\
         align_fastqs \\
@@ -1720,7 +1754,7 @@ Examples
         tests/fixtures/align_fastqs/fastq/pe/bridge_pe_R2.atria.fastq.gz \\
         work/bridge.bam \\
         work/bridge.qnam.bam \\
-        work/bridge.setA.bam
+        work/bridge.setU.bam
     '''
 
   2. Display the helper's argument contract.
@@ -1735,16 +1769,16 @@ EOM
         return 0
     fi
 
-    # Sort Set A by queryname, as Set B is. Like every work file that a later
+    # Sort Set U by queryname, as Set M is. Like every work file that a later
     # step rewrites, it is written at compression level 1.
-    bam_srt="${bam_set_a%.bam}.qnam.bam"
+    bam_srt="${bam_set_u%.bam}.qnam.bam"
     arr_cmd=(
         samtools sort
             -@ "${threads}"
             -n
             -O "bam,level=1"
             -o "${bam_srt}"
-            "${bam_set_a}"
+            "${bam_set_u}"
     )
 
     if ! \
@@ -1755,7 +1789,7 @@ EOM
         return 1
     fi
 
-    arr_cmd=( mv -f "${bam_srt}" "${bam_set_a}" )
+    arr_cmd=( mv -f "${bam_srt}" "${bam_set_u}" )
 
     if ! \
         _run_or_print_cmd "${dry_run}" arr_cmd
@@ -1766,8 +1800,8 @@ EOM
         return 1
     fi
 
-    # List Set A's read names once each; its records are grouped by name.
-    arr_view=( samtools view -@ "${threads}" "${bam_set_a}" )
+    # List Set U's read names once each; its records are grouped by name.
+    arr_view=( samtools view -@ "${threads}" "${bam_set_u}" )
     arr_cut=( cut -f 1 )
     arr_uniq=( uniq )
 
@@ -1787,9 +1821,9 @@ EOM
     # A single-end read is one template, so none is split between the files.
     if [[ -z "${fq_2}" ]]; then return 0; fi
 
-    # Sort Set B by queryname and, in the same stream, move every record whose
-    # read name is in Set A, so that, for example, a BWA-backtrack partner of
-    # an unaligned mate (#75) joins it.
+    # Sort Set M by queryname and, in the same stream, move every record whose
+    # read name is in Set U. For example, a BWA-backtrack partner of an
+    # unaligned mate (#75) joins its mate.
     bam_mov="${fil_wrk%.bam}.moved.bam"
     arr_srt=(
         samtools sort
@@ -1850,14 +1884,14 @@ EOM
 
         echo_note_func "${func}" \
             "Step #2: moved ${n_tpl// /} template(s) split between the work" \
-            "files into Set A (${n_rec} record(s))."
+            "files into Set U (${n_rec} record(s))."
     fi
 
-    # Merge the moved templates into Set A and fix mates in the same stream.
-    # Every template in Set A is now whole, so fixing its mates here gives what
-    # fixing them beside Set B would. 'merge' renames clashing '@PG' IDs with
-    # random suffixes; '-s 0' seeds them, making the header reproducible.
-    bam_mate="${bam_set_a%.bam}.mate.bam"
+    # Merge the moved templates into Set U and fix mates in the same stream.
+    # Every template in Set U is now whole, so fixing mates here gives the same
+    # result as fixing them beside Set M. 'merge' gives clashing '@PG' IDs
+    # random suffixes, and '-s 0' seeds them so the header is reproducible.
+    bam_mate="${bam_set_u%.bam}.mate.bam"
     arr_mrg=(
         samtools merge
             -@ "${threads}"
@@ -1865,7 +1899,7 @@ EOM
             -s 0
             -u
             -o -
-            "${bam_set_a}"
+            "${bam_set_u}"
             "${bam_mov}"
     )
     arr_fix=(
@@ -1890,7 +1924,7 @@ EOM
         return 1
     fi
 
-    arr_cmd=( mv -f "${bam_mate}" "${bam_set_a}" )
+    arr_cmd=( mv -f "${bam_mate}" "${bam_set_u}" )
 
     if ! \
         _run_or_print_cmd "${dry_run}" arr_cmd
@@ -1913,6 +1947,315 @@ EOM
 }
 
 
+# Step 2 with '--unal_mode separate': sort the templates that the template
+# filter dropped ("Set R") into improper pairs ("Set I") and low-MAPQ templates
+# ("Set Q"), then list the read names of every diagnostic work file.
+function _route_filt_bam() {
+    local func="${1:-}"
+    local dry_run="${2:-}"
+    local threads="${3:-}"
+    local req_flg="${4:-}"
+    local fq_2="${5:-}"
+    local fil_wrk="${6:-}"
+    local stm="${fil_wrk%.bam}"
+    local bam_rej="${stm}.setR.bam"
+    local bam_rej0="${stm}.setI0.bam"
+    local bam_imp="${stm}.setI1.bam"
+    local bam_set_i="${stm}.setI.bam"
+    local bam_set_q="${stm}.setQ.bam"
+    local txt_unal="${stm}.unal.names.txt"
+    local txt_imp="${stm}.setI.names.txt"
+    local txt_mapq="${stm}.setQ.names.txt"
+    local txt_diag="${stm}.diag.names.txt"
+    local bam_mate
+    local -a arr_cmd arr_view arr_cut arr_uniq arr_awk
+    local show_help
+
+    show_help=$(cat << EOM
+Usage
+-----
+  _route_filt_bam
+    [--help] func dry_run threads req_flg fq_2 fil_wrk
+
+  Sort the templates that Step 2's template filter dropped into two queryname-sorted work files beside 'fil_wrk': the improper pairs and the low-MAPQ templates. Then list the read names of each diagnostic work file (Step 2 of 'align_fastqs()' with '--unal_mode separate').
+
+  A dropped template whose two primary records still carry the proper-pair flag failed only '--mapq', so it goes to the low-MAPQ work file (the path of 'fil_wrk' with '.setQ.bam' for '.bam'). Every other dropped template goes to the improper work file ('.setI.bam'), as do the records that '--req_flg' kept out of mate fixing, so a template that fails both filters is improper.
+
+  Without 'req_flg' or for single-end data, every dropped template goes to the low-MAPQ work file.
+
+  Single-end data gets no improper work file, and paired-end data without 'req_flg' gets an empty one.
+
+Parameters
+----------
+  -h, --help : flag
+    Display this help message and exit.
+
+  1  func : str
+    Name of the calling function for diagnostics.
+
+  2  dry_run : bool
+    Whether to print the commands to stdout instead of running them.
+
+  3  threads : int
+    Number of threads to use.
+
+  4  req_flg : bool
+    Whether '--req_flg' applied to the template filter, which it does only for paired-end data.
+
+  5  fq_2 : file
+    Second FASTQ input file, or empty for single-end data.
+
+  6  fil_wrk : file
+    BAM work file of Step 2; names every work file and name list.
+
+Returns
+-------
+  Returns 0 on success or after printing the commands for a dry run; prints an error and returns 1 otherwise.
+
+Notes
+-----
+  Runtime requirements:
+    - awk
+    - bash >= 4.4
+    - cat
+    - cut
+    - mv
+    - rm
+    - samtools
+    - uniq
+
+  - Reads the dropped templates from the path of 'fil_wrk' with '.setR.bam' for '.bam' and, with 'req_flg', the records kept out of mate fixing from '.setI0.bam'; deletes both.
+  - Writes the read names of the improper and low-MAPQ work files, once each, with '.setI.names.txt' and '.setQ.names.txt' for '.bam'.
+  - It also writes the names of every diagnostic work file, including the routing's unaligned-read list ('.unal.names.txt'), with '.diag.names.txt'.
+
+Examples
+--------
+  1. Sort the dropped templates of a paired-end run with '--req_flg'.
+    '''bash
+    _route_filt_bam \\
+        align_fastqs \\
+        false \\
+        2 \\
+        true \\
+        tests/fixtures/align_fastqs/fastq/pe/pairs_pe_R2.atria.fastq.gz \\
+        work/pairs.bam
+    '''
+
+  2. Display the helper's argument contract.
+    '''bash
+    _route_filt_bam --help
+    '''
+EOM
+    )
+
+    if [[ "${func}" =~ ^(-h|--h[e]?lp)$ ]]; then
+        echo "${show_help}" >&2
+        return 0
+    fi
+
+    arr_cut=( cut -f 1 )
+    arr_uniq=( uniq )
+
+    if [[ -z "${fq_2}" ]]; then
+        # A single-end read has no mate to be improper with, so every dropped
+        # read failed '--mapq'.
+        arr_cmd=( mv -f "${bam_rej}" "${bam_set_q}" )
+
+        if ! \
+            _run_or_print_cmd "${dry_run}" arr_cmd
+        then
+            echo_err_func "${func}" \
+                "Step #2: failed to rename the low-MAPQ work file."
+            return 1
+        fi
+
+        arr_view=( samtools view -@ "${threads}" "${bam_set_q}" )
+
+        if [[ "${dry_run}" == "true" ]]; then
+            _print_dry_run_cmd --out "${txt_mapq}" arr_view arr_cut arr_uniq
+        elif ! (
+            set -o pipefail
+            "${arr_view[@]}" | "${arr_cut[@]}" | "${arr_uniq[@]}" \
+                > "${txt_mapq}"
+        ); then
+            echo_err_func "${func}" \
+                "Step #2: failed to list the read names in the low-MAPQ work" \
+                "file."
+            return 1
+        fi
+    else
+        # Fix mates in the records that '--req_flg' kept out of mate fixing, as
+        # Markdup 2 needs the tags that 'fixmate -m' writes.
+        if [[ "${req_flg}" == "true" ]]; then
+            bam_mate="${bam_rej0%.bam}.mate.bam"
+            arr_cmd=(
+                samtools fixmate
+                    -@ "${threads}"
+                    -c
+                    -m
+                    -O "bam,level=1"
+                    "${bam_rej0}"
+                    "${bam_mate}"
+            )
+
+            if ! \
+                _run_or_print_cmd "${dry_run}" arr_cmd
+            then
+                echo_err_func "${func}" \
+                    "Step #2: failed to fix mate pairs in the records that" \
+                    "'--req_flg' kept out."
+                return 1
+            fi
+
+            arr_cmd=( mv -f "${bam_mate}" "${bam_rej0}" )
+
+            if ! \
+                _run_or_print_cmd "${dry_run}" arr_cmd
+            then
+                echo_err_func "${func}" \
+                    "Step #2: failed to rename the mate-fixed records that" \
+                    "'--req_flg' kept out."
+                return 1
+            fi
+        fi
+
+        # List the dropped templates that failed only '--mapq'. With '--
+        # req_flg', these are the ones whose two primary records still carry
+        # 0x2; without it, they're all of them. The file is grouped by name, so
+        # 'uniq' counts each template's records.
+        if [[ "${req_flg}" == "true" ]]; then
+            arr_view=(
+                samtools view -@ "${threads}" -F 2308 -f 2 "${bam_rej}"
+            )
+            arr_uniq=( uniq -c )
+            # shellcheck disable=SC2016  # The program is for awk.
+            arr_awk=( awk '$1 == 2 { print $2 }' )
+
+            if [[ "${dry_run}" == "true" ]]; then
+                _print_dry_run_cmd \
+                    --out "${txt_mapq}" arr_view arr_cut arr_uniq arr_awk
+            elif ! (
+                set -o pipefail
+                "${arr_view[@]}" \
+                    | "${arr_cut[@]}" \
+                    | "${arr_uniq[@]}" \
+                    | "${arr_awk[@]}" \
+                    > "${txt_mapq}"
+            ); then
+                echo_err_func "${func}" \
+                    "Step #2: failed to list the dropped templates that" \
+                    "failed only '--mapq'."
+                return 1
+            fi
+        else
+            arr_view=( samtools view -@ "${threads}" "${bam_rej}" )
+
+            if [[ "${dry_run}" == "true" ]]; then
+                _print_dry_run_cmd \
+                    --out "${txt_mapq}" arr_view arr_cut arr_uniq
+            elif ! (
+                set -o pipefail
+                "${arr_view[@]}" | "${arr_cut[@]}" | "${arr_uniq[@]}" \
+                    > "${txt_mapq}"
+            ); then
+                echo_err_func "${func}" \
+                    "Step #2: failed to list the dropped templates."
+                return 1
+            fi
+        fi
+
+        arr_cmd=(
+            samtools view
+                -@ "${threads}"
+                -O "bam,level=1"
+                -N "${txt_mapq}"
+                -o "${bam_set_q}"
+                -U "${bam_imp}"
+                "${bam_rej}"
+        )
+
+        if ! \
+            _run_or_print_cmd "${dry_run}" arr_cmd
+        then
+            echo_err_func "${func}" \
+                "Step #2: failed to split the dropped templates into the" \
+                "improper and low-MAPQ work files."
+            return 1
+        fi
+
+        # Join the records that '--req_flg' kept out of mate fixing to the
+        # improper pairs. '-s 0' seeds the random suffixes that 'merge' gives
+        # clashing '@PG' IDs, so the header is reproducible.
+        if [[ "${req_flg}" == "true" ]]; then
+            arr_cmd=(
+                samtools merge
+                    -@ "${threads}"
+                    -n
+                    -s 0
+                    -O "bam,level=1"
+                    -o "${bam_set_i}"
+                    "${bam_rej0}"
+                    "${bam_imp}"
+            )
+        else
+            arr_cmd=( mv -f "${bam_imp}" "${bam_set_i}" )
+        fi
+
+        if ! \
+            _run_or_print_cmd "${dry_run}" arr_cmd
+        then
+            echo_err_func "${func}" \
+                "Step #2: failed to write the improper work file."
+            return 1
+        fi
+
+        arr_cmd=( rm -f "${bam_rej}" "${bam_rej0}" "${bam_imp}" )
+
+        if ! \
+            _run_or_print_cmd "${dry_run}" arr_cmd
+        then
+            echo_err_func "${func}" \
+                "Step #2: failed to delete the dropped-template work files."
+            return 1
+        fi
+
+        # List the improper work file's read names once each; its records are
+        # grouped by name.
+        arr_view=( samtools view -@ "${threads}" "${bam_set_i}" )
+        arr_uniq=( uniq )
+
+        if [[ "${dry_run}" == "true" ]]; then
+            _print_dry_run_cmd --out "${txt_imp}" arr_view arr_cut arr_uniq
+        elif ! (
+            set -o pipefail
+            "${arr_view[@]}" | "${arr_cut[@]}" | "${arr_uniq[@]}" \
+                > "${txt_imp}"
+        ); then
+            echo_err_func "${func}" \
+                "Step #2: failed to list the read names in the improper work" \
+                "file."
+            return 1
+        fi
+    fi
+
+    # Step 4 keeps only these names from Markdup 2, which also reads the main
+    # file.
+    arr_cmd=( cat "${txt_unal}" "${txt_mapq}" )
+    if [[ -n "${fq_2}" ]]; then arr_cmd+=( "${txt_imp}" ); fi
+
+    if [[ "${dry_run}" == "true" ]]; then
+        _print_dry_run_cmd --out "${txt_diag}" arr_cmd
+    elif ! \
+        "${arr_cmd[@]}" > "${txt_diag}"
+    then
+        echo_err_func "${func}" \
+            "Step #2: failed to list the read names of the diagnostic work" \
+            "files."
+        return 1
+    fi
+}
+
+
 # Step 2: sort the BAM work file by queryname, fix mates if the file holds
 # paired-end alignments, and keep or drop each template whole by its primary
 # records' MAPQ values.
@@ -1927,7 +2270,7 @@ function _sort_qname_bam() {
     local fq_2="${8:-}"
     local fil_wrk="${9:-}"
     local bam_qnam="${10:-}"
-    local bam_mate bam_mapq bam_set_a bam_mrg n_pri
+    local bam_mate bam_mapq bam_set_u bam_rej bam_rej0 n_pri req_tpl
     local -a arr_cmd arr_srt arr_fix
     local show_help
 
@@ -1939,13 +2282,13 @@ Usage
 
   Sort the BAM work file by queryname into 'bam_qnam' and fix mates for paired-end data (Step 2 of 'align_fastqs()').
 
-  Then, keep or drop each template whole by whether its primary records pass 'mapq', for every aligner and layout. A paired-end template that lost a mate in Step 1 is dropped too.
+  Then, for every aligner and layout, keep or drop each template whole by whether its primary records pass 'mapq'. For paired-end data with 'req_flg', they must also still carry the proper-pair flag after 'fixmate'. A paired-end template that lost a mate in Step 1 is dropped too.
 
   The sort streams into 'fixmate' without a file between them. Every file written here is at compression level 1, making it faster for Step 3 to sort the results again.
 
-  With 'unal_mode=separate', first move every template in the work file ("Set B") with records in Step 1's unaligned work file ("Set A") wholly into Set A, then require proper pairs in the rest if 'req_flg' is 'true'.
+  With 'unal_mode=separate', first move every template in the work file ("Set M") that has records in Step 1's unaligned work file ("Set U") wholly into Set U. Fix mates in Set U on its own. Then, with 'req_flg', require proper pairs in the rest as Step 1 does under 'remove', and keep the records it rejects.
 
-  Then, fix mates in Set A on its own, and merge it back into 'bam_qnam' after the MAPQ filter, making it so that Step 4 marks duplicates in both sets together.
+  Last, sort those records and the templates the template filter drops into an improper and a low-MAPQ work file, so nothing is discarded. Steps 3 and 4 then write them out beside 'bam_qnam'.
 
 Parameters
 ----------
@@ -1968,7 +2311,7 @@ Parameters
     MAPQ threshold that a template's primary records must pass.
 
   06  req_flg : bool
-    Whether properly paired alignments are required; used here only with 'unal_mode=separate', since Step 1 applies it otherwise.
+    Whether properly paired alignments are required. The template filter applies it after 'fixmate'. Step 1 applies it before 'fixmate' under 'remove'; with 'unal_mode=separate', this step does so instead.
 
   07  unal_mode : str
     What to do with unaligned reads and their mates: 'remove' or 'separate'.
@@ -2046,9 +2389,9 @@ EOM
     # run.
     if [[ "${dry_run}" == "true" || -f "${fil_wrk}" ]]; then
         # With '--unal_mode separate', move templates split between the two
-        # work files into Set A; for PE data, this also sorts Set B.
+        # work files into Set U; for PE data, this also sorts Set M.
         if [[ "${unal_mode}" == "separate" ]]; then
-            bam_set_a="${fil_wrk%.bam}.setA.bam"
+            bam_set_u="${fil_wrk%.bam}.setU.bam"
 
             if ! \
                 _route_unal_bam \
@@ -2058,7 +2401,7 @@ EOM
                     "${fq_2}" \
                     "${fil_wrk}" \
                     "${bam_qnam}" \
-                    "${bam_set_a}"
+                    "${bam_set_u}"
             then
                 return 1
             fi
@@ -2107,17 +2450,22 @@ EOM
                 return 1
             fi
         else
-            # With '--unal_mode separate', Set B is already sorted; require
-            # proper pairs in it, then fix mates. '-f 2' runs before 'fixmate',
-            # as in Step 1, so that the aligner's own 0x2 decides.
+            # With '--unal_mode separate', Set M is already sorted. With '--
+            # req_flg', keep the records the aligner flagged proper, then fix
+            # mates. '-f 2' runs before 'fixmate', as in Step 1, so the
+            # aligner's own 0x2 decides. The records it rejects go to their own
+            # work file ("Set I0") and get their mates fixed there, so Markdup
+            # 2 can judge them.
             bam_mate="${fil_wrk%.bam}.mate.bam"
 
             if [[ "${req_flg}" == "true" ]]; then
+                bam_rej0="${fil_wrk%.bam}.setI0.bam"
                 arr_cmd=(
                     samtools view
                         -@ "${threads}"
                         -u
                         -f 2
+                        -U "${bam_rej0}"
                         "${bam_qnam}"
                 )
                 arr_fix+=( - "${bam_mate}" )
@@ -2158,14 +2506,26 @@ EOM
             fi
         fi
 
-        # Keep or drop all records of each template (they share its read name)
-        # by whether its primary records pass '--mapq'; in PE data, both mates
-        # must. A per-record '-q' would split templates whose records' MAPQs
-        # differ, such as BWA mates, supplementary records, and Bowtie 2
-        # secondaries under '-k'. Step 1 can also leave a PE template with one
-        # primary record (#75). So, this filter runs for every call.
+        # Keep or drop all records of each template (i.e., those sharing its
+        # read name) by whether its primary records pass '--mapq'. In PE data,
+        # both mates must pass. A per-record '-q' would split a template whose
+        # records' MAPQs differ, such as BWA mates, supplementary records, and
+        # Bowtie 2 secondaries under '-k'. Step 1 can also leave a PE template
+        # with one primary record (#75). This filter runs for every call.
+        #
+        # With '--req_flg', the primary records must also still carry 0x2,
+        # which 'fixmate' clears on a pair whose mates map to different
+        # references or align in the same orientation (both forward or both
+        # reverse). With '--unal_mode separate', the dropped templates go to a
+        # work file of their own ("Set R").
         bam_mapq="${fil_wrk%.bam}.mapq.bam"
         if [[ -n "${fq_2}" ]]; then n_pri=2; else n_pri=1; fi
+        req_tpl=false
+        if [[ -n "${fq_2}" && "${req_flg}" == "true" ]]; then req_tpl=true; fi
+        bam_rej=""
+        if [[ "${unal_mode}" == "separate" ]]; then
+            bam_rej="${fil_wrk%.bam}.setR.bam"
+        fi
 
         if ! \
             _filter_bam_mapq_template \
@@ -2175,7 +2535,9 @@ EOM
                 "${n_pri}" \
                 "${threads}" \
                 "${func}" \
-                "${dry_run}"
+                "${dry_run}" \
+                "${req_tpl}" \
+                "${bam_rej}"
         then
             echo_err_func "${func}" \
                 "Step #2: failed to filter queryname-sorted BAM file by" \
@@ -2194,50 +2556,19 @@ EOM
             return 1
         fi
 
-        # Merge Set A back in so that Step 4 marks duplicates in the whole
-        # library; Step 4 then splits it out again as the side file. '-s 0'
-        # seeds the random suffixes 'merge' gives clashing '@PG' IDs, making
-        # the header reproducible.
+        # With '--unal_mode separate', sort the dropped templates into the
+        # improper pairs and the low-MAPQ templates, then count what each work
+        # file holds for '.diag.tsv'.
         if [[ "${unal_mode}" == "separate" ]]; then
-            bam_mrg="${fil_wrk%.bam}.merge.bam"
-            arr_cmd=(
-                samtools merge
-                    -@ "${threads}"
-                    -n
-                    -s 0
-                    -O "bam,level=1"
-                    -o "${bam_mrg}"
-                    "${bam_qnam}"
-                    "${bam_set_a}"
-            )
-
             if ! \
-                _run_or_print_cmd "${dry_run}" arr_cmd
+                _route_filt_bam \
+                    "${func}" \
+                    "${dry_run}" \
+                    "${threads}" \
+                    "${req_tpl}" \
+                    "${fq_2}" \
+                    "${fil_wrk}"
             then
-                echo_err_func "${func}" \
-                    "Step #2: failed to merge the unaligned reads and their" \
-                    "mates back into the queryname-sorted BAM file."
-                return 1
-            fi
-
-            arr_cmd=( mv -f "${bam_mrg}" "${bam_qnam}" )
-
-            if ! \
-                _run_or_print_cmd "${dry_run}" arr_cmd
-            then
-                echo_err_func "${func}" \
-                    "Step #2: failed to rename merged, queryname-sorted BAM" \
-                    "file."
-                return 1
-            fi
-
-            arr_cmd=( rm -f "${bam_set_a}" )
-
-            if ! \
-                _run_or_print_cmd "${dry_run}" arr_cmd
-            then
-                echo_err_func "${func}" \
-                    "Step #2: failed to delete the unaligned-read work file."
                 return 1
             fi
         fi
@@ -2270,8 +2601,6 @@ Usage
 
   Sort the queryname-sorted BAM file by coordinates into the BAM work file, deleting the queryname-sorted file (Step 3 of 'align_fastqs()').
 
-  The work file is written at compression level 1 and is not indexed, as Step 4 reads it whole and rewrites it, and Step 5 indexes the final file.
-
 Parameters
 ----------
   -h, --help : flag
@@ -2303,6 +2632,8 @@ Notes
     - mv
     - rm
     - samtools
+
+  The work file is written at compression level 1 and is not indexed. Step 4 reads it whole and rewrites it, and Step 5 indexes the final file.
 
 Examples
 --------
@@ -2381,6 +2712,137 @@ EOM
 }
 
 
+# Step 3 with '--unal_mode separate': sort the diagnostic work files of Step 2
+# together by coordinates, for Markdup 2.
+function _sort_coord_diag_bam() {
+    local func="${1:-}"
+    local dry_run="${2:-}"
+    local threads="${3:-}"
+    local fq_2="${4:-}"
+    local fil_wrk="${5:-}"
+    local stm="${fil_wrk%.bam}"
+    local bam_diag="${stm}.diag.bam"
+    local -a arr_in arr_mrg arr_srt arr_cmd
+    local show_help
+
+    show_help=$(cat << EOM
+Usage
+-----
+  _sort_coord_diag_bam
+    [--help] func dry_run threads fq_2 fil_wrk
+
+  Merge the queryname-sorted diagnostic work files of Step 2 beside 'fil_wrk', sort them by coordinates into one work file, and delete them (Step 3 of 'align_fastqs()' with '--unal_mode separate').
+
+  The inputs are the unaligned-read, improper, and low-MAPQ work files ('.setU.bam', '.setI.bam', and '.setQ.bam' for '.bam').
+
+  The output is the path of 'fil_wrk' with '.diag.bam' for '.bam'.
+
+  Single-end data has no improper work file, so only the other two are merged.
+
+Parameters
+----------
+  -h, --help : flag
+    Display this help message and exit.
+
+  1  func : str
+    Name of the calling function for diagnostics.
+
+  2  dry_run : bool
+    Whether to print the commands to stdout instead of running them.
+
+  3  threads : int
+    Number of threads to use.
+
+  4  fq_2 : file
+    Second FASTQ input file, or empty for single-end data.
+
+  5  fil_wrk : file
+    BAM work file of the main output; names the diagnostic work files.
+
+Returns
+-------
+  Returns 0 on success or after printing the commands for a dry run; prints an error and returns 1 otherwise.
+
+Notes
+-----
+  Runtime requirements:
+    - bash >= 4.4
+    - rm
+    - samtools
+
+  - The work file is written at compression level 1, since Step 4 reads it whole and splits it again.
+  - 'samtools merge' renames clashing '@PG' IDs with random suffixes; '-s 0' seeds them, making the header reproducible.
+
+Examples
+--------
+  1. Sort the diagnostic work files of a paired-end run.
+    '''bash
+    _sort_coord_diag_bam \\
+        align_fastqs \\
+        false \\
+        2 \\
+        tests/fixtures/align_fastqs/fastq/pe/pairs_pe_R2.atria.fastq.gz \\
+        work/pairs.bam
+    '''
+
+  2. Display the helper's argument contract.
+    '''bash
+    _sort_coord_diag_bam --help
+    '''
+EOM
+    )
+
+    if [[ "${func}" =~ ^(-h|--h[e]?lp)$ ]]; then
+        echo "${show_help}" >&2
+        return 0
+    fi
+
+    arr_in=( "${stm}.setU.bam" )
+    if [[ -n "${fq_2}" ]]; then arr_in+=( "${stm}.setI.bam" ); fi
+    arr_in+=( "${stm}.setQ.bam" )
+
+    arr_mrg=(
+        samtools merge
+            -@ "${threads}"
+            -n
+            -s 0
+            -u
+            -o -
+            "${arr_in[@]}"
+    )
+    arr_srt=(
+        samtools sort
+            -@ "${threads}"
+            -O "bam,level=1"
+            -o "${bam_diag}"
+            -
+    )
+
+    if [[ "${dry_run}" == "true" ]]; then
+        _print_dry_run_cmd arr_mrg arr_srt
+    elif ! (
+        set -o pipefail
+        "${arr_mrg[@]}" | "${arr_srt[@]}"
+    ); then
+        echo_err_func "${func}" \
+            "Step #3: failed to merge and coordinate-sort the diagnostic" \
+            "work files."
+        return 1
+    fi
+
+    arr_cmd=( rm -f "${arr_in[@]}" )
+
+    if ! \
+        _run_or_print_cmd "${dry_run}" arr_cmd
+    then
+        echo_err_func "${func}" \
+            "Step #3: failed to delete the queryname-sorted diagnostic work" \
+            "files."
+        return 1
+    fi
+}
+
+
 # For Step 4: decide whether 'samtools markdup' can tell optical duplicates
 # apart based on whether every read name carries flow-cell coordinates and all
 # tile prefixes have one length.
@@ -2390,16 +2852,19 @@ function _check_optical_names() {
     local threads="${2:-}"
     local fil_wrk="${3:-}"
     local dist_nam="${4:-}"
-    local cnt n_nam n_bad n_len
+    local cnt n_nam n_bad n_len fil
+    local -a arr_fil
     local show_help
 
     show_help=$(cat << EOM
 Usage
 -----
   _check_optical_names
-    [--help] func threads fil_wrk dist_nam
+    [--help] func threads fil_wrk dist_nam [fil_add ...]
 
-  Decide whether 'samtools markdup -d' can tell optical duplicates apart in a BAM file: every read name must carry Illumina flow-cell coordinates and all tile prefixes ('machine:run:flowcell:lane:tile') must have one length (for Step 4 of 'align_fastqs()').
+  Decide whether 'samtools markdup -d' can tell optical duplicates apart in a BAM file, or in several marked together (for Step 4 of 'align_fastqs()').
+
+  Every read name must carry Illumina flow-cell coordinates, and all tile prefixes ('machine:run:flowcell:lane:tile') must have one length.
 
 Parameters
 ----------
@@ -2416,11 +2881,20 @@ Parameters
     BAM file whose read names to check.
 
   4  dist_nam : str
-    Name of the variable that receives the 'OPTICAL DISTANCE' value: '2500', or 'not used' and the reason.
+    Name of the variable that receives the 'OPTICAL DISTANCE' value: '2500' or 'not used' and the reason.
+
+  5+  fil_add : file
+    Further BAM files whose read names are checked with those of 'fil_wrk', for files that 'samtools markdup' reads together.
 
 Returns
 -------
-  Sets 'dist_nam' and returns 0 when optical duplicates can be told apart; sets it, prints a warning, and returns 1 when a read name has no coordinates or the tile prefixes differ in length; sets it and returns 1 silently when the file has no reads; prints an error and returns 2 when the names cannot be read.
+  Sets 'dist_nam' and returns 0 when optical duplicates can be told apart.
+
+  Sets it, prints a warning, and returns 1 when a read name has no coordinates or the tile prefixes differ in length.
+
+  Sets it and returns 1 silently when the file has no reads.
+
+  Prints an error and returns 2 when the names cannot be read.
 
 Notes
 -----
@@ -2453,6 +2927,8 @@ EOM
         return 0
     fi
 
+    arr_fil=( "${fil_wrk}" "${@:5}" )
+
     # Count names, names without coordinates, and distinct prefix lengths,
     # following the colon count that 'get_coordinates_colons()' in
     # 'bam_markdup.c' uses.
@@ -2460,7 +2936,9 @@ EOM
     if ! \
         cnt="$(
             set -o pipefail
-            samtools view -@ "${threads}" -F 0x980 "${fil_wrk}" \
+            for fil in "${arr_fil[@]}"; do
+                samtools view -@ "${threads}" -F 0x980 "${fil}" || exit 1
+            done \
                 | cut -f 1 \
                 | awk -F ':' '
                     {
@@ -2587,7 +3065,7 @@ Notes
     - mv
     - samtools
 
-  - A dry run cannot read the names, so it prints the '-d 2500' form after a comment saying when it applies.
+  A dry run cannot read the names, so it prints the '-d 2500' form after a comment saying when it applies.
 
 Examples
 --------
@@ -2728,27 +3206,34 @@ EOM
 }
 
 
-# Step 4 with '--unal_mode separate': split the unaligned reads and their mates
-# ("Set A") out of the duplicate-marked BAM work file into the side file.
-function _split_unal_bam() {
+# Step 4 with '--unal_mode separate': mark duplicates in all the files together
+# (Markdup 2), keeping the marked records of the diagnostic work file.
+function _mark_dup_all_bam() {
     local func="${1:-}"
     local dry_run="${2:-}"
     local threads="${3:-}"
     local fil_wrk="${4:-}"
-    local fil_unal="${5:-}"
-    local fin="${6:-true}"
-    local txt_nam="${fil_wrk%.bam}.unal.names.txt"
-    local bam_main
-    local -a arr_cmd arr_lvl
+    local txt_all="${5:-}"
+    local dist_nam="${6:-}"
+    local stm="${fil_wrk%.bam}"
+    local bam_diag="${stm}.diag.bam"
+    local bam_mrk="${stm}.diag.mark.bam"
+    local txt_diag="${stm}.diag.names.txt"
+    local dist_opt rc_opt
+    local -a arr_mrg arr_mrk arr_view arr_cmd arr_opt
     local show_help
 
     show_help=$(cat << EOM
 Usage
 -----
-  _split_unal_bam
-    [--help] func dry_run threads fil_wrk fil_unal [fin]
+  _mark_dup_all_bam
+    [--help] func dry_run threads fil_wrk txt_all dist_nam
 
-  Move every record of the duplicate-marked BAM work file whose read name is in Set A, as listed by Step 2 beside 'fil_wrk' (with '.unal.names.txt' for '.bam'), into the side file 'fil_unal', and keep the rest in 'fil_wrk' (Step 4 of 'align_fastqs()' with '--unal_mode separate'). Both stay coordinate-sorted; Step 5 indexes them.
+  Mark duplicates in the main BAM work file and the diagnostic work file beside it ('.diag.bam' for '.bam') together. Keep only the diagnostic records, now marked, in the diagnostic work file (Step 4 of 'align_fastqs()' with '--unal_mode separate': Markdup 2).
+
+  The main work file is read, not changed. Step 4 has already marked it alone (Markdup 1), as under '--unal_mode remove'. Those flags need no clearing: 'samtools markdup' only sets the duplicate flag, the main file's records are dropped from this pass's output, and its statistics count only the duplicates it marks itself. The statistics describe all the files together.
+
+  Optical duplicates are told apart ('-d 2500') only when '_check_optical_names()' allows it for both files' read names.
 
 Parameters
 ----------
@@ -2765,13 +3250,228 @@ Parameters
     Number of threads to use.
 
   4  fil_wrk : file
-    Duplicate-marked, coordinate-sorted BAM work file holding both sets.
+    Coordinate-sorted BAM work file of the main output, marked alone by Step 4.
 
-  5  fil_unal : file
-    BAM side file to write.
+  5  txt_all : file
+    Path for the duplicate statistics, without '.gz'; the file is written gzip-compressed, as 'txt_all.gz'.
 
-  6  fin : bool
-    Whether the two files become the final outputs as they are, and so are written at the default compression level; 'false' writes them at level 1, for CRAM output, which Step 6 converts them to (default: '${fin}').
+  6  dist_nam : str
+    Name of the variable to set to the optical duplicate distance, '2500', or to 'not used' and the reason.
+
+Returns
+-------
+  Returns 0 on success or after printing the commands for a dry run; prints an error and returns 1 otherwise.
+
+Notes
+-----
+  Runtime requirements:
+    - awk
+    - bash >= 4.4
+    - cut
+    - gzip
+    - mv
+    - samtools
+
+  - The diagnostic records are kept by the read names Step 2 listed beside 'fil_wrk', with '.diag.names.txt' for '.bam'.
+  - 'samtools merge' renames clashing '@PG' IDs with random suffixes; '-s 0' seeds them, making the header reproducible.
+  - A dry run cannot read the names, so it prints the '-d 2500' form, as '_mark_dup_bam()' does.
+
+Examples
+--------
+  1. Mark duplicates across a paired-end run's files.
+    '''bash
+    _mark_dup_all_bam \\
+        align_fastqs \\
+        false \\
+        2 \\
+        work/pairs.bam \\
+        work/pairs.all.markdup.txt \\
+        dist_all
+    '''
+
+  2. Display the helper's argument contract.
+    '''bash
+    _mark_dup_all_bam --help
+    '''
+EOM
+    )
+
+    if [[ "${func}" =~ ^(-h|--h[e]?lp)$ ]]; then
+        echo "${show_help}" >&2
+        return 0
+    fi
+
+    if [[ "${dry_run}" == "true" ]]; then
+        printf '%s\n' \
+            "# Mark duplicates in all files together (Markdup 2)."
+    fi
+
+    local -n dist_all_out="${dist_nam}"
+
+    # Tell optical duplicates apart only when the read names allow it.
+    dist_opt="2500"
+    if [[ "${dry_run}" == "false" ]]; then
+        rc_opt=0
+        _check_optical_names \
+            "${func}" \
+            "${threads}" \
+            "${fil_wrk}" \
+            dist_opt \
+            "${bam_diag}" \
+            || rc_opt=$?
+
+        if (( rc_opt == 2 )); then
+            return 1
+        fi
+    fi
+
+    # shellcheck disable=SC2034  # Read by name in the caller.
+    dist_all_out="${dist_opt}"
+    arr_opt=()
+    if [[ "${dist_opt}" == "2500" ]]; then arr_opt=( -d 2500 ); fi
+
+    # Merge, mark, and keep the diagnostic records in one stream, without
+    # writing the merged file.
+    arr_mrg=(
+        samtools merge
+            -@ "${threads}"
+            -s 0
+            -u
+            -o -
+            "${fil_wrk}"
+            "${bam_diag}"
+    )
+    arr_mrk=(
+        samtools markdup
+            -@ "${threads}"
+            -t
+            "${arr_opt[@]}"
+            -u
+            -f "${txt_all}"
+            -
+            -
+    )
+    arr_view=(
+        samtools view
+            -@ "${threads}"
+            -O "bam,level=1"
+            -N "${txt_diag}"
+            -o "${bam_mrk}"
+            -
+    )
+
+    if [[ "${dry_run}" == "true" ]]; then
+        _print_dry_run_cmd arr_mrg arr_mrk arr_view
+    elif ! (
+        set -o pipefail
+        "${arr_mrg[@]}" | "${arr_mrk[@]}" | "${arr_view[@]}"
+    ); then
+        echo_err_func "${func}" \
+            "Step #4: failed to mark duplicates in all files together."
+        return 1
+    fi
+
+    # As the statistics' last line, record whether optical duplicates were told
+    # apart and, if not, why.
+    if [[ "${dry_run}" == "true" ]]; then
+        printf '%s %q\n\n' \
+            "printf 'OPTICAL DISTANCE: %s\\n' 2500 >>" \
+            "${txt_all}"
+    else
+        printf 'OPTICAL DISTANCE: %s\n' "${dist_opt}" >> "${txt_all}"
+    fi
+
+    arr_cmd=( gzip -f "${txt_all}" )
+
+    if ! \
+        _run_or_print_cmd "${dry_run}" arr_cmd
+    then
+        echo_err_func "${func}" \
+            "Step #4: failed to compress the duplicate statistics of all" \
+            "files."
+        return 1
+    fi
+
+    arr_cmd=( mv -f "${bam_mrk}" "${bam_diag}" )
+
+    if ! \
+        _run_or_print_cmd "${dry_run}" arr_cmd
+    then
+        echo_err_func "${func}" \
+            "Step #4: failed to rename the duplicate-marked diagnostic work" \
+            "file."
+        return 1
+    fi
+}
+
+
+# Step 4 with '--unal_mode separate': split the duplicate-marked diagnostic
+# work file into the unaligned-read, improper, and low-MAPQ files.
+function _split_diag_bam() {
+    local func="${1:-}"
+    local dry_run="${2:-}"
+    local threads="${3:-}"
+    local fq_2="${4:-}"
+    local fil_wrk="${5:-}"
+    local fil_unal="${6:-}"
+    local fil_improp="${7:-}"
+    local fil_mapq="${8:-}"
+    local fin="${9:-true}"
+    local stm="${fil_wrk%.bam}"
+    local bam_diag="${stm}.diag.bam"
+    local bam_rest="${stm}.rest.bam"
+    local txt_unal="${stm}.unal.names.txt"
+    local txt_imp="${stm}.setI.names.txt"
+    local txt_mapq="${stm}.setQ.names.txt"
+    local txt_diag="${stm}.diag.names.txt"
+    local -a arr_cmd arr_lvl
+    local show_help
+
+    show_help=$(cat << EOM
+Usage
+-----
+  _split_diag_bam
+    [--help] func dry_run threads fq_2 fil_wrk fil_unal fil_improp fil_mapq [fin]
+
+  Split the duplicate-marked diagnostic work file beside 'fil_wrk' ('.diag.bam' for '.bam') by the read names Step 2 listed (Step 4 of 'align_fastqs()' with '--unal_mode separate').
+
+  The unaligned reads and their mates go to 'fil_unal', the improper pairs to 'fil_improp', and the rest (the low-MAPQ templates) to 'fil_mapq'.
+
+  All stay coordinate-sorted, and Step 5 indexes them.
+
+  Single-end data has no improper file, so 'fil_improp' is not written.
+
+Parameters
+----------
+  -h, --help : flag
+    Display this help message and exit.
+
+  1  func : str
+    Name of the calling function for diagnostics.
+
+  2  dry_run : bool
+    Whether to print the commands to stdout instead of running them.
+
+  3  threads : int
+    Number of threads to use.
+
+  4  fq_2 : file
+    Second FASTQ input file, or empty for single-end data.
+
+  5  fil_wrk : file
+    BAM work file of the main output; names the diagnostic work file and the name lists.
+
+  6  fil_unal : file
+    BAM file to write the unaligned reads and their mates to.
+
+  7  fil_improp : file
+    BAM file to write the improper pairs to.
+
+  8  fil_mapq : file
+    BAM file to write the low-MAPQ templates to.
+
+  9  fin : bool
+    Whether the files ship as they are, and so are written at the default compression level. 'false' writes them at level 1 for CRAM output, which Step 6 converts them to (default: '${fin}').
 
 Returns
 -------
@@ -2785,23 +3485,27 @@ Notes
     - rm
     - samtools
 
-  - After Step 2's moves, no read name is in both sets, so the split is exact.
+  - Step 2 moves templates whole and lists each work file's names, so no read name is in two lists and the split is exact.
+  - Deletes the diagnostic work file and the name lists.
 
 Examples
 --------
-  1. Split the side file out of a paired-end work file.
+  1. Split a paired-end run's diagnostic work file.
     '''bash
-    _split_unal_bam \\
+    _split_diag_bam \\
         align_fastqs \\
         false \\
         2 \\
-        work/bridge.bam \\
-        work/bridge.unal.bam
+        tests/fixtures/align_fastqs/fastq/pe/pairs_pe_R2.atria.fastq.gz \\
+        work/pairs.bam \\
+        work/pairs.unal.bam \\
+        work/pairs.improp.bam \\
+        work/pairs.mapq.bam
     '''
 
   2. Display the helper's argument contract.
     '''bash
-    _split_unal_bam --help
+    _split_diag_bam --help
     '''
 EOM
     )
@@ -2813,22 +3517,26 @@ EOM
 
     if [[ "${dry_run}" == "true" ]]; then
         printf '%s\n' \
-            "# Split the unaligned reads and their mates into the side file."
+            "# Split the diagnostic work file into the diagnostic files."
     fi
 
-    bam_main="${fil_wrk%.bam}.main.bam"
     arr_lvl=( -b )
     if [[ "${fin}" == "false" ]]; then arr_lvl=( -O "bam,level=1" ); fi
 
+    # For single-end data, the reads not in the side file are the low-MAPQ
+    # reads; for paired-end data, the improper pairs are split from them next.
     arr_cmd=(
         samtools view
             -@ "${threads}"
             "${arr_lvl[@]}"
-            -N "${txt_nam}"
+            -N "${txt_unal}"
             -o "${fil_unal}"
-            -U "${bam_main}"
-            "${fil_wrk}"
     )
+    if [[ -n "${fq_2}" ]]; then
+        arr_cmd+=( -U "${bam_rest}" "${bam_diag}" )
+    else
+        arr_cmd+=( -U "${fil_mapq}" "${bam_diag}" )
+    fi
 
     if ! \
         _run_or_print_cmd "${dry_run}" arr_cmd
@@ -2839,24 +3547,39 @@ EOM
         return 1
     fi
 
-    arr_cmd=( mv -f "${bam_main}" "${fil_wrk}" )
+    if [[ -n "${fq_2}" ]]; then
+        arr_cmd=(
+            samtools view
+                -@ "${threads}"
+                "${arr_lvl[@]}"
+                -N "${txt_imp}"
+                -o "${fil_improp}"
+                -U "${fil_mapq}"
+                "${bam_rest}"
+        )
 
-    if ! \
-        _run_or_print_cmd "${dry_run}" arr_cmd
-    then
-        echo_err_func "${func}" \
-            "Step #4: failed to rename the BAM work file without the side" \
-            "file's records."
-        return 1
+        if ! \
+            _run_or_print_cmd "${dry_run}" arr_cmd
+        then
+            echo_err_func "${func}" \
+                "Step #4: failed to split the improper pairs from the" \
+                "low-MAPQ templates."
+            return 1
+        fi
     fi
 
-    arr_cmd=( rm -f "${txt_nam}" )
+    arr_cmd=( rm -f "${bam_diag}" )
+    if [[ -n "${fq_2}" ]]; then arr_cmd+=( "${bam_rest}" ); fi
+    arr_cmd+=( "${txt_unal}" )
+    if [[ -n "${fq_2}" ]]; then arr_cmd+=( "${txt_imp}" ); fi
+    arr_cmd+=( "${txt_mapq}" "${txt_diag}" )
 
     if ! \
         _run_or_print_cmd "${dry_run}" arr_cmd
     then
         echo_err_func "${func}" \
-            "Step #4: failed to delete the unaligned-read name list."
+            "Step #4: failed to delete the diagnostic work file and the" \
+            "read-name lists."
         return 1
     fi
 }
@@ -3129,6 +3852,22 @@ EOM
 }
 
 
+# For Step 5: print the record's optical-duplicate line for an optical distance
+# that '_mark_dup_bam()' or '_mark_dup_all_bam()' set.
+function _print_optical_line() {
+    local dist="${1:-}"
+
+    if [[ "${dist}" == "2500" ]]; then
+        printf '%s\n' $'@CO\tpipeline: optical_distance=2500'
+    elif [[ -n "${dist}" ]]; then
+        printf '%s\n' $'@CO\tpipeline: skipped=optical duplicates ('"${dist})"
+    else
+        printf '%s\n' \
+            $'@CO\tpipeline: optical_distance=unknown (marked earlier)'
+    fi
+}
+
+
 # Step 5: write the pipeline record into the header of the BAM work file,
 # skipping files that already carry a record, then index the file.
 function _write_align_record() {
@@ -3312,6 +4051,414 @@ EOM
     then
         echo_err_func "${func}" \
             "Step #5: failed to index the BAM file with the pipeline record."
+        return 1
+    fi
+}
+
+
+# For '.diag.tsv': count the templates and records of one category in a BAM
+# file.
+function _count_diag_cat() {
+    local threads="${1:-}"
+    local mode="${2:-}"
+    local fil="${3:-}"
+    local txt_tmp="${4:-}"
+    local n_tpl n_rec
+    local -a arr_flt
+    local show_help
+
+    show_help=$(cat << EOM
+Usage
+-----
+  _count_diag_cat
+    [--help] threads mode fil txt_tmp [flt ...]
+
+  Print the number of templates and of records in one '.diag.tsv' category of a BAM file, tab-separated (for Step 5 of 'align_fastqs()' with '--unal_mode separate').
+
+Parameters
+----------
+  -h, --help : flag
+    Display this help message and exit.
+
+  1  threads : int
+    Number of threads to use for 'samtools view'.
+
+  2  mode : {'rec', 'tpl'}
+    'rec' counts the records that 'flt' selects and the templates holding them; 'tpl' counts the templates with a record that 'flt' selects and all their records.
+
+  3  fil : file
+    BAM file to count.
+
+  4  txt_tmp : file
+    Temporary file for the read names that mode 'tpl' selects; deleted before returning.
+
+  5+  flt : str
+    'samtools view' filter options, such as '-f 12' or '--expr', or none for every record.
+
+Returns
+-------
+  Prints '<templates><tab><records>' and returns 0; returns 1 if a count fails.
+
+Notes
+-----
+  Runtime requirements:
+    - bash >= 4.4
+    - cut
+    - rm
+    - samtools
+    - sort
+    - wc
+
+  Templates are counted by read name, so the file need not be grouped by name.
+
+Examples
+--------
+  1. Count the pairs with both mates unaligned in a side file.
+    '''bash
+    _count_diag_cat 2 rec work/pairs.unal.bam work/pairs.tmp.txt -f 12
+    '''
+
+  2. Count the improper pairs whose mates map to different references.
+    '''bash
+    _count_diag_cat \\
+        2 tpl work/pairs.improp.bam work/pairs.tmp.txt \\
+        -F 2308 --expr 'refid != mrefid'
+    '''
+EOM
+    )
+
+    if [[ "${threads}" =~ ^(-h|--h[e]?lp)$ ]]; then
+        echo "${show_help}" >&2
+        return 0
+    fi
+
+    arr_flt=( "${@:5}" )
+
+    if [[ "${mode}" == "rec" ]]; then
+        n_rec="$(
+            samtools view -c -@ "${threads}" "${arr_flt[@]}" "${fil}"
+        )" || return 1
+        n_tpl="$(
+            set -o pipefail
+            samtools view -@ "${threads}" "${arr_flt[@]}" "${fil}" \
+                | cut -f 1 \
+                | LC_ALL=C sort -u \
+                | wc -l
+        )" || return 1
+    else
+        if ! (
+            set -o pipefail
+            samtools view -@ "${threads}" "${arr_flt[@]}" "${fil}" \
+                | cut -f 1 \
+                | LC_ALL=C sort -u \
+                > "${txt_tmp}"
+        ); then
+            rm -f "${txt_tmp}"
+            return 1
+        fi
+
+        n_tpl="$(wc -l < "${txt_tmp}")" || return 1
+        n_rec="$(
+            samtools view -c -@ "${threads}" -N "${txt_tmp}" "${fil}"
+        )" || return 1
+        rm -f "${txt_tmp}"
+    fi
+
+    printf '%s\t%s\n' "${n_tpl// /}" "${n_rec}"
+}
+
+
+# Step 5 with '--unal_mode separate': write '<stem>.diag.tsv', the templates
+# and records of each file and category.
+function _write_diag_tsv() {
+    local func="${1:-}"
+    local dry_run="${2:-}"
+    local threads="${3:-}"
+    local fq_2="${4:-}"
+    local mapq="${5:-}"
+    local fil_wrk="${6:-}"
+    local fil_unal="${7:-}"
+    local fil_improp="${8:-}"
+    local fil_mapq="${9:-}"
+    local txt_all="${10:-}"
+    local fil_tsv="${11:-}"
+    local txt_tmp="${fil_tsv%.tsv}.names.tmp"
+    local tsv_tmp="${fil_tsv}.tmp"
+    local rol cat fil cnt n_tpl n_rec n_dup n_pri tot_dup tot_pri
+    local all_tpl all_rec sub_tpl sub_rec exp_ss
+    local -a arr_rol arr_row
+    local -A arr_fil_rol
+    local show_help
+
+    show_help=$(cat << EOM
+Usage
+-----
+  _write_diag_tsv
+    [--help] func dry_run threads fq_2 mapq fil_wrk fil_unal fil_improp fil_mapq txt_all fil_tsv
+
+  Write '.diag.tsv' for '--unal_mode separate' (Step 5 of 'align_fastqs()').
+
+  It holds a header line, then one row per alignment file and category with its templates and records, in the order that 'docs/design/align_fastqs_separate.md' gives.
+
+  Single-end data has no pair rows and no improper file.
+
+Parameters
+----------
+  -h, --help : flag
+    Display this help message and exit.
+
+  01  func : str
+    Name of the calling function for diagnostics.
+
+  02  dry_run : bool
+    Whether to print what the step writes instead of counting; the counts read files that a dry run does not write.
+
+  03  threads : int
+    Number of threads to use.
+
+  04  fq_2 : file
+    Second FASTQ input file, or empty for single-end data.
+
+  05  mapq : int
+    MAPQ threshold, for the improper pairs that would also have failed it.
+
+  06  fil_wrk : file
+    Main BAM work file.
+
+  07  fil_unal : file
+    BAM work file of the unaligned reads and their mates.
+
+  08  fil_improp : file
+    BAM work file of the improper pairs; not read for single-end data.
+
+  09  fil_mapq : file
+    BAM work file of the low-MAPQ templates.
+
+  10  txt_all : file
+    Gzip-compressed duplicate statistics of Markdup 2.
+
+  11  fil_tsv : file
+    Table to write.
+
+Returns
+-------
+  Returns 0 after writing the table or printing what it writes for a dry run; prints an error and returns 1 otherwise.
+
+Notes
+-----
+  Runtime requirements:
+    - awk
+    - bash >= 4.4
+    - cut
+    - gzip
+    - mv
+    - rm
+    - samtools
+    - sort
+    - wc
+
+  - The main file's 'duplicate_all' row comes from Markdup 2's statistics.
+  - Its records are the duplicate total less the other files' duplicate records.
+  - Its templates are the duplicate primary records less theirs, halved for paired-end data, since 'markdup' marks both mates of a duplicate pair.
+
+Examples
+--------
+  1. Write the table for a paired-end run.
+    '''bash
+    _write_diag_tsv \\
+        align_fastqs \\
+        false \\
+        2 \\
+        tests/fixtures/align_fastqs/fastq/pe/pairs_pe_R2.atria.fastq.gz \\
+        1 \\
+        work/pairs.bam \\
+        work/pairs.unal.bam \\
+        work/pairs.improp.bam \\
+        work/pairs.mapq.bam \\
+        work/pairs.all.markdup.txt.gz \\
+        work/pairs.diag.tsv
+    '''
+
+  2. Display the helper's argument contract.
+    '''bash
+    _write_diag_tsv --help
+    '''
+EOM
+    )
+
+    if [[ "${func}" =~ ^(-h|--h[e]?lp)$ ]]; then
+        echo "${show_help}" >&2
+        return 0
+    fi
+
+    if [[ "${dry_run}" == "true" ]]; then
+        printf '%s %q\n\n' \
+            "# Count each file's templates and records by category into" \
+            "${fil_tsv}"
+        return 0
+    fi
+
+    arr_fil_rol=( [unal]="${fil_unal}" [mapq]="${fil_mapq}" )
+    arr_rol=( unal )
+    if [[ -n "${fq_2}" ]]; then
+        arr_fil_rol[improp]="${fil_improp}"
+        arr_rol+=( improp )
+    fi
+    arr_rol+=( mapq )
+
+    # The main file holds whole templates only, so its templates are its
+    # primary first reads (paired-end) or primary reads (single-end).
+    if [[ -n "${fq_2}" ]]; then
+        arr_row=( -f 64 -F 2304 )
+    else
+        arr_row=( -F 2304 )
+    fi
+
+    if ! {
+        all_rec="$(samtools view -c -@ "${threads}" "${fil_wrk}")" \
+            && all_tpl="$(
+                samtools view -c -@ "${threads}" "${arr_row[@]}" "${fil_wrk}"
+            )"
+    }; then
+        echo_err_func "${func}" \
+            "Step #5: failed to count the main file's records."
+        return 1
+    fi
+
+    # Markdup 2's duplicates in the main file: its totals less the diagnostic
+    # files' duplicates.
+    if ! \
+        cnt="$(
+            set -o pipefail
+            gzip -cd "${txt_all}" \
+                | awk -F ': ' '
+                    $1 == "DUPLICATE TOTAL" { tot = $2 }
+                    $1 == "DUPLICATE PRIMARY TOTAL" { pri = $2 }
+                    END { print tot + 0, pri + 0 }
+                '
+        )"
+    then
+        echo_err_func "${func}" \
+            "Step #5: failed to read the duplicate statistics of all files."
+        return 1
+    fi
+    read -r tot_dup tot_pri <<< "${cnt}"
+
+    for rol in "${arr_rol[@]}"; do
+        fil="${arr_fil_rol[${rol}]}"
+        if ! {
+            n_dup="$(samtools view -c -@ "${threads}" -f 1024 "${fil}")" \
+                && n_pri="$(
+                    samtools view -c -@ "${threads}" -f 1024 -F 2304 "${fil}"
+                )"
+        }; then
+            echo_err_func "${func}" \
+                "Step #5: failed to count the duplicates in '${fil}'."
+            return 1
+        fi
+
+        tot_dup=$(( tot_dup - n_dup ))
+        tot_pri=$(( tot_pri - n_pri ))
+    done
+
+    if [[ -n "${fq_2}" ]]; then tot_pri=$(( tot_pri / 2 )); fi
+
+    # A pair has the same orientation when both mates are forward or both are
+    # reverse.
+    exp_ss='refid == mrefid'
+    exp_ss+=' && !flag.reverse == !flag.mreverse'
+
+    # Write the rows in the documented order: each file's 'all' row first and
+    # its 'duplicate_all' row last. The subshell stops at the first failed
+    # count.
+    (
+        printf 'file\tcategory\ttemplates\trecords\n'
+        printf 'main\tall\t%s\t%s\n' "${all_tpl}" "${all_rec}"
+        printf 'main\tduplicate_all\t%s\t%s\n' "${tot_pri}" "${tot_dup}"
+
+        for rol in "${arr_rol[@]}"; do
+            fil="${arr_fil_rol[${rol}]}"
+            cnt="$(_count_diag_cat "${threads}" rec "${fil}" "${txt_tmp}")" \
+                || exit 1
+            read -r all_tpl all_rec <<< "${cnt}"
+            printf '%s\tall\t%s\t%s\n' "${rol}" "${all_tpl}" "${all_rec}"
+
+            case "${rol}" in
+                unal)
+                    if [[ -n "${fq_2}" ]]; then
+                        cnt="$(
+                            _count_diag_cat \
+                                "${threads}" rec "${fil}" "${txt_tmp}" -f 12
+                        )" || exit 1
+                        read -r n_tpl n_rec <<< "${cnt}"
+                        printf 'unal\tboth_unaligned\t%s\t%s\n' \
+                            "${n_tpl}" "${n_rec}"
+                        printf 'unal\tone_unaligned\t%s\t%s\n' \
+                            "$(( all_tpl - n_tpl ))" "$(( all_rec - n_rec ))"
+                    fi
+
+                    cnt="$(
+                        _count_diag_cat \
+                            "${threads}" rec "${fil}" "${txt_tmp}" -f 4
+                    )" || exit 1
+                    printf 'unal\tunjudged\t%s\n' "${cnt}"
+                    ;;
+
+                improp)
+                    # Judge each pair's reason from its primary records, in
+                    # order: different references, then the same orientation.
+                    sub_tpl=0
+                    sub_rec=0
+                    for cat in diff_ref same_strand; do
+                        if [[ "${cat}" == "diff_ref" ]]; then
+                            arr_row=( --expr 'refid != mrefid' )
+                        else
+                            arr_row=( --expr "${exp_ss}" )
+                        fi
+
+                        cnt="$(
+                            _count_diag_cat \
+                                "${threads}" tpl "${fil}" "${txt_tmp}" \
+                                -F 2308 "${arr_row[@]}"
+                        )" || exit 1
+                        read -r n_tpl n_rec <<< "${cnt}"
+                        printf 'improp\t%s\t%s\t%s\n' \
+                            "${cat}" "${n_tpl}" "${n_rec}"
+                        sub_tpl=$(( sub_tpl + n_tpl ))
+                        sub_rec=$(( sub_rec + n_rec ))
+                    done
+
+                    printf 'improp\tother\t%s\t%s\n' \
+                        "$(( all_tpl - sub_tpl ))" "$(( all_rec - sub_rec ))"
+
+                    cnt="$(
+                        _count_diag_cat \
+                            "${threads}" tpl "${fil}" "${txt_tmp}" \
+                            -F 2308 --expr "mapq < ${mapq}"
+                    )" || exit 1
+                    printf 'improp\tlow_mapq\t%s\n' "${cnt}"
+                    ;;
+            esac
+
+            cnt="$(
+                _count_diag_cat \
+                    "${threads}" rec "${fil}" "${txt_tmp}" -f 1024
+            )" || exit 1
+            printf '%s\tduplicate_all\t%s\n' "${rol}" "${cnt}"
+        done
+    ) > "${tsv_tmp}" || {
+        rm -f "${tsv_tmp}" "${txt_tmp}"
+        echo_err_func "${func}" \
+            "Step #5: failed to count the diagnostic files' templates and" \
+            "records."
+        return 1
+    }
+
+    if ! \
+        mv -f "${tsv_tmp}" "${fil_tsv}"
+    then
+        echo_err_func "${func}" \
+            "Step #5: failed to rename the diagnostic table."
         return 1
     fi
 }
@@ -3564,11 +4711,13 @@ function align_fastqs() {
     local bt2_mode_set bt2_X_set bwa_alg_set
     local fq_1 fq_2 fil_out qname out_fmt
     local fil_wrk fil_qnam_out bam_qnam txt_mrk dist_mrk
-    local fil_unal_wrk fil_unal_out fil_unal_qnam_out bam_unal_qnam lin_opt
-    local fin_mrk fin_spl idx_rec lin_cnt
+    local txt_all dist_all fil_tsv lin_opt lin_opt_all kind
+    local fin_mrk fin_spl idx_rec
+    local -A arr_wrk arr_out arr_qnam_out arr_bam_qnam arr_cnt
+    local -a arr_kind
 
     # shellcheck disable=SC2034  # Filled and read by name in the helpers.
-    local -a arr_rec_cnt arr_rec_run arr_rec_unal
+    local -a arr_rec_cnt arr_rec_run arr_rec_unal arr_rec_improp arr_rec_mapq
     local show_help
 
     # Assign default argument values.
@@ -3639,26 +4788,18 @@ Parameters
     With paired-end data, a pair is kept only when both mates pass. Secondary (SAM flag 256) and supplementary (SAM flag 2048) alignments are kept or dropped with their associated primary read alignments, whatever their own MAPQ. With Bowtie 2, a MAPQ of 1 or more does not mean a unique alignment, as a read alignment with multiple equally good placements can get MAPQ 1, and its placement is chosen at random.
 
   -rq, --req_flg : flag
-    Require SAM flag bit 2 for properly paired alignments. Ignored with a warning for single-end data.
+    Require SAM flag bit 2 for properly paired alignments.
+
+    The flag is checked as the aligner set it and again after 'samtools fixmate', which clears it on a pair whose mates map to different references or align in the same orientation (both forward or both reverse).
+
+    Ignored with a warning for single-end data.
 
   -um, --unal_mode : {'remove', 'separate'}
-    What to do with unaligned reads and, in paired-end data, their mates, aligned or not: 'remove' or 'separate' (default: '${unal_mode}').
+    What to do with the records that the alignment file leaves out: 'remove' or 'separate' (default: '${unal_mode}'). These are the unaligned reads and, in paired-end data, their mates (aligned or not), plus the templates that '--req_flg' and '--mapq' reject.
 
-    With 'remove', they are dropped. With 'separate', they are also written to a side file, '<stem>.unal.bam' or '<stem>.unal.cram', and the alignment file holds the same records as with 'remove'. Refused as 'separate' with '--bt2_inherited', whose call writes no unaligned reads.
+    With 'remove', they are dropped. With 'separate', nothing is dropped: each goes to a diagnostic file beside the alignment file, and the alignment file holds the same records as with 'remove' (see Notes).
 
-    With single-end data, the side file holds the reads flagged unaligned (SAM flag 4).
-
-    With Bowtie 2 and paired-end data, it holds the pairs that did not align as concordant pairs, which Bowtie 2 writes with both mates unaligned even when one mate could align alone.
-
-    With BWA or BWA-MEM2 and paired-end data, it holds the records flagged unaligned or with an unaligned mate.
-
-    When BWA-backtrack flags one mate unaligned but leaves its partner's mate flag clear, the partner goes to the side file beside its mate.
-
-    Each read pair is kept whole: when any record of a pair belongs in the side file, all of the pair's records go there.
-
-    '--mapq' and '--req_flg' apply only to the alignment file (as both judge aligned pairs and would remove every pair the side file holds).
-
-    The side file is coordinate-sorted, indexed, and duplicate-marked. It carries the pipeline record and follows the alignment file into CRAM and into a '--qname' copy. It is not for signal or scaling.
+    Refused as 'separate' with '--bt2_inherited', whose call writes no unaligned reads.
 
   -ix, --idx, --index : path
     Path to the aligner index/reference.
@@ -3686,7 +4827,11 @@ Output
 ------
   Creates a final '.bam' or '.cram' file at '--fil_out'. A corresponding index ('.bai' or '.crai') is also created.
 
-  With '--unal_mode separate', also creates the side file '<stem>.unal.bam' or '<stem>.unal.cram' with its index and, with '--qname', its '<stem>.unal.qnam.bam' or '<stem>.unal.qnam.cram' copy.
+  With '--unal_mode separate', also creates the diagnostic files '<stem>.unal.bam', '<stem>.improp.bam' (paired-end data only), and '<stem>.mapq.bam', or the same with '.cram'.
+
+  Each comes with its index and, with '--qname', a '.qnam' copy (for example, '<stem>.unal.qnam.bam').
+
+  It also writes Markdup 2's duplicate statistics ('<stem>.all.markdup.txt.gz') and the counts ('<stem>.diag.tsv').
 
 Notes
 -----
@@ -3703,13 +4848,33 @@ Notes
   - For '--index' when using Bowtie 2, the path should end with the index stem: 'path/to/dir/stem'; when using 'bwa' or 'bwa-mem2', the path should be the indexed reference FASTA path (for example, '.fa').
   - '--bwa_alg' is used only when '--aligner bwa'. It is refused with '--aligner bowtie2'; with '--aligner bwa-mem2', which always runs 'bwa-mem2 mem', 'mem' is ignored with a warning and 'aln' is refused.
   - Unaligned reads are excluded from the output; with paired-end data, so are the mates of unaligned reads. With '--unal_mode separate', they are written to the side file instead.
+  - With '--unal_mode separate', every record the aligner writes lands in exactly one file ('docs/design/align_fastqs_separate.md'):
+    + '<stem>.unal.bam' (or '.cram'), the side file, holds the unaligned reads and their mates:
+      - With single-end data, these are the reads flagged unaligned (SAM flag 4).
+      - With Bowtie 2 and paired-end data, they are the pairs that did not align as concordant pairs. Bowtie 2 writes both mates of such a pair unaligned even when one mate could align alone.
+      - With BWA or BWA-MEM2, they are the records flagged unaligned or with an unaligned mate.
+      - When BWA-backtrack flags one mate unaligned but leaves its partner's mate flag clear, the partner goes beside its mate.
+    + The templates that '--req_flg' and '--mapq' reject go to their own files:
+      - '<stem>.improp.bam' holds the pairs that '--req_flg' rejects. Single-end data has no improper file, and without '--req_flg' the improper file is empty.
+      - '<stem>.mapq.bam' holds the templates that '--mapq' rejects.
+      - A template that fails both is improper.
+      - '--mapq' and '--req_flg' do not apply to the side file, as both judge aligned pairs and would remove every pair it holds.
+    + Each template is kept whole: all of a read pair's records go to the same file.
+    + For each diagnostic file:
+      - It is coordinate-sorted and indexed.
+      - Its duplicates are marked against all the files together.
+      - It carries the pipeline record and follows the alignment file into CRAM and into a '--qname' copy.
+    + The diagnostic files are not for signal or scaling.
+    + '<stem>.diag.tsv' counts the templates and records each file holds, by category.
   - With Bowtie 2 and paired-end data, mates may overlap or contain one another, so fragments shorter than the two reads together are kept; mates that extend past each other ("dovetailed") are not.
   - Duplicates are marked (SAM flag 1024) in Step #4, after MAPQ filtering, and kept.
     + Like any other read, '--mapq' filters them by the MAPQ the aligner gave them.
     + When every read name carries Illumina flow-cell coordinates ('...:tile:x:y') in one format, duplicates on the same tile as their original and within 2500 pixels of it in x and y are tagged as optical ('dt:Z:SQ'); the rest are tagged as library duplicates ('dt:Z:LB').
     + Otherwise, as with most SRA-dumped names, no 'dt' tags are written and a warning says why.
     + Duplicate statistics are written to '<stem>.markdup.txt.gz' beside the alignment file; Samtools estimates library size for paired-end data only. The file's last line, 'OPTICAL DISTANCE:', gives 2500 when optical duplicates were told apart, or 'not used' and the reason.
-    + With '--unal_mode separate', duplicates are marked in the alignment file and the side file together, so an aligned mate in the side file can be marked as a duplicate of a read in the alignment file. The alignment file's records and flags are the same as with 'remove'; the statistics cover both files.
+    + With '--unal_mode separate', duplicates are marked twice:
+      - Markdup 1 runs on the alignment file alone, as with 'remove', so its flags and '<stem>.markdup.txt.gz' are the same in both modes.
+      - Markdup 2 runs on all files together, so a read in a diagnostic file can be marked as a duplicate of a read in the alignment file. Its statistics are written to '<stem>.all.markdup.txt.gz'.
   - Bowtie 2 runs with '--reorder', so its output order does not depend on the thread count. It also runs with '--seed 0', its default, which the record gives as 'bt2_seed=0'.
     + Which of several equally good alignments a read gets depends on the seed and on the read's sequence, qualities, and whole FASTQ header line, so renaming reads can move them.
     + For paired-end data, the two mates' seeds are combined, which cancels the seed and any header text identical in both mates; only header differences between the mates move pairs.
@@ -3965,15 +5130,27 @@ EOM
     bam_qnam="${fil_wrk%.bam}.qnam.bam"
     txt_mrk="${fil_wrk%.bam}.markdup.txt"
 
-    # The side file of '--unal_mode separate' takes the same stem with '.unal'.
-    fil_unal_wrk="${fil_wrk%.bam}.unal.bam"
-    fil_unal_out="${fil_unal_wrk}"
-    fil_unal_qnam_out="${fil_unal_wrk%.bam}.qnam.bam"
-    if [[ "${out_fmt}" == "cram" ]]; then
-        fil_unal_out="${fil_out%.cram}.unal.cram"
-        fil_unal_qnam_out="${fil_out%.cram}.unal.qnam.cram"
-    fi
-    bam_unal_qnam="${fil_unal_wrk%.bam}.qnam.bam"
+    # The diagnostic files of '--unal_mode separate' share the stem with
+    # '.unal', '.improp' (paired-end data only), and/or '.mapq', and so do
+    # Markdup 2's statistics ('.all.markdup.txt.gz') and the table of counts
+    # ('.diag.tsv').
+    arr_kind=( unal )
+    if [[ -n "${fq_2}" ]]; then arr_kind+=( improp ); fi
+    arr_kind+=( mapq )
+
+    for kind in "${arr_kind[@]}"; do
+        arr_wrk[${kind}]="${fil_wrk%.bam}.${kind}.bam"
+        arr_out[${kind}]="${arr_wrk[${kind}]}"
+        arr_qnam_out[${kind}]="${fil_wrk%.bam}.${kind}.qnam.bam"
+        if [[ "${out_fmt}" == "cram" ]]; then
+            arr_out[${kind}]="${fil_out%.cram}.${kind}.cram"
+            arr_qnam_out[${kind}]="${fil_out%.cram}.${kind}.qnam.cram"
+        fi
+        arr_bam_qnam[${kind}]="${fil_wrk%.bam}.${kind}.qnam.bam"
+    done
+
+    txt_all="${fil_wrk%.bam}.all.markdup.txt"
+    fil_tsv="${fil_wrk%.bam}.diag.tsv"
 
     # Build the pipeline record now, so that its start time is the run's.
     _build_align_record \
@@ -3999,24 +5176,29 @@ EOM
         || return 1
 
 
-    # With '--unal_mode separate', the unaligned reads and their mates
-    # ("Set A", the removed records) travel beside the aligned reads ("Set B",
-    # the kept records):
-    # - Step 1 writes Sets A and B to their own files.
-    # - Step 2 moves every template with records in both sets into Set A, then
-    #   fixes mates in each set.
-    #   + Step 2 then filters Set B alone, as '--mapq' and '--req_flg' judge
-    #     aligned pairs and would otherwise remove every template in Set A.
-    #   + After filtering Set B, Set A is merged into Set B.
-    # - Step 3 sorts the union of Sets A and B.
-    # - Step 4 marks duplicates in the union, then splits Set A out as a side
-    #   file (e.g., for QC analyses).
-    # - Step 5 writes the pipeline record into each file and indexes each. The
-    #   side file's record also says what it holds.
-    # - Step 6 does two optional things to each file: (a )converts it to CRAM
+    # With '--unal_mode separate', nothing is discarded: every record the
+    # aligner writes lands in exactly one file (for more details, see
+    # 'docs/design/align_fastqs_separate.md'):
+    # - Step 1 writes the unaligned reads and their mates ("Set U") to one file
+    #   and the aligned reads ("Set M"), the main file's candidates, to
+    #   another.
+    # - Step 2 moves every template with records in both sets into Set U and
+    #   fixes mates in each set. It then filters Set M as under 'remove', but
+    #   keeps what the filters reject: the improper pairs ("Set I") and the
+    #   low-MAPQ templates ("Set Q").
+    # - Step 3 sorts the main file, as under 'remove'. It also sorts Sets U, I,
+    #   and Q together.
+    # - Step 4 marks duplicates in the main file alone (Markdup 1), as under
+    #   'remove'. It then marks them in all files together (Markdup 2), keeps
+    #   the marked records of Sets U, I, and Q, and splits them into their
+    #   files.
+    # - Step 5 writes the pipeline record into each file, noting what the file
+    #   holds. It indexes each file and counts what each holds in '.diag.tsv'.
+    # - Step 6 does two optional things to each file: (a) converts it to CRAM
     #   and (b) makes a '--qname' copy.
     #
-    # With '--unal_mode remove', Set A is dropped in Step 1.
+    # With '--unal_mode remove', Set U is dropped in Step 1 and Sets I and Q in
+    # Step 2, so the main file is the same in both modes.
 
     # Step 1: align the reads into the BAM work file, dropping unaligned reads
     # or, with '--unal_mode separate', setting them aside.
@@ -4040,7 +5222,9 @@ EOM
 
 
     # Step 2: sort by queryname, fix mates in paired-end data, and keep or drop
-    # each template whole by its primary records' MAPQ.
+    # each template whole. A template is kept by its primary records' MAPQ and,
+    # with '--req_flg', their proper-pair flags. With '--unal_mode separate',
+    # the dropped templates are set aside.
     _sort_qname_bam \
         "${FUNCNAME[0]}" \
         "${dry_run}" \
@@ -4056,11 +5240,12 @@ EOM
 
 
     # Steps 3 and 4 do not index the BAM work file, as no step reads it by
-    # region and each step rewrites it; Step 5 indexes the final file. Work
+    # region and each step rewrites it. Step 5 indexes the final file. Work
     # files that a later step rewrites are written at compression level 1;
-    # shipped files are written at the default level, 6.
+    # shipped files are written at the default compression level, 6.
     #
-    # Step 3: sort by coordinates into the BAM work file.
+    # Step 3: sort the BAM work file by coordinates. With '--unal_mode
+    # separate', also sort the diagnostic work files into their own.
     _sort_coord_bam \
         "${FUNCNAME[0]}" \
         "${dry_run}" \
@@ -4069,13 +5254,23 @@ EOM
         "${bam_qnam}" \
         || return 1
 
-
-    # Step 4: mark duplicates. The marked file ships as is unless the split of
-    # the side file rewrites it or Step 6 CRAM-converts it.
-    fin_mrk=true
-    if [[ "${unal_mode}" == "separate" || "${out_fmt}" == "cram" ]]; then
-        fin_mrk=false
+    if [[ "${unal_mode}" == "separate" ]]; then
+        _sort_coord_diag_bam \
+            "${FUNCNAME[0]}" \
+            "${dry_run}" \
+            "${threads}" \
+            "${fq_2}" \
+            "${fil_wrk}" \
+            || return 1
     fi
+
+
+    # Step 4: mark duplicates in the main work file alone (Markdup 1), as in
+    # every mode. With '--unal_mode separate', also mark them in all files
+    # together (Markdup 2), keeping only the diagnostic files' records. The
+    # marked files ship as they are unless Step 6 converts them to CRAM.
+    fin_mrk=true
+    if [[ "${out_fmt}" == "cram" ]]; then fin_mrk=false; fi
 
     _mark_dup_bam \
         "${FUNCNAME[0]}" \
@@ -4087,46 +5282,65 @@ EOM
         "${fin_mrk}" \
         || return 1
 
-    # With '--unal_mode separate', split the side file back out. The two files
-    # ship as they are unless Step 6 CRAM-converts them.
     if [[ "${unal_mode}" == "separate" ]]; then
-        fin_spl=true
-        if [[ "${out_fmt}" == "cram" ]]; then fin_spl=false; fi
-
-        _split_unal_bam \
+        _mark_dup_all_bam \
             "${FUNCNAME[0]}" \
             "${dry_run}" \
             "${threads}" \
             "${fil_wrk}" \
-            "${fil_unal_wrk}" \
+            "${txt_all}" \
+            dist_all \
+            || return 1
+    fi
+
+    # With '--unal_mode separate', split the marked diagnostic records into
+    # their files.
+    if [[ "${unal_mode}" == "separate" ]]; then
+        fin_spl="${fin_mrk}"
+
+        _split_diag_bam \
+            "${FUNCNAME[0]}" \
+            "${dry_run}" \
+            "${threads}" \
+            "${fq_2}" \
+            "${fil_wrk}" \
+            "${arr_wrk[unal]}" \
+            "${arr_wrk[improp]:-}" \
+            "${arr_wrk[mapq]}" \
             "${fin_spl}" \
             || return 1
     fi
 
 
-    # Step 5: write the pipeline record, including whether optical duplicates
-    # were told apart, into the header, and index the BAM work file, unless
-    # Step 6 converts it to CRAM and indexes the CRAM file instead. The side
-    # file of '--unal_mode separate' carries the same record plus what it
-    # holds; in each, the optical line ends the content lines.
-    if [[ "${dist_mrk}" == "2500" ]]; then
-        lin_opt=$'@CO\tpipeline: optical_distance=2500'
-    elif [[ -n "${dist_mrk}" ]]; then
-        lin_opt=$'@CO\tpipeline: skipped=optical duplicates ('"${dist_mrk})"
-    else
-        lin_opt=$'@CO\tpipeline: optical_distance=unknown (marked earlier)'
+    # Step 5: write the pipeline record into the header, including whether
+    # optical duplicates were told apart, and then index the BAM work file,
+    # unless Step 6 converts it to CRAM and indexes that instead. Under
+    # '--unal_mode separate', each diagnostic file carries the same record,
+    # plus what it holds and that Markdup 2 marked it. In each, the optical
+    # line ends the content lines.
+    if [[ "${unal_mode}" == "separate" ]]; then
+        lin_opt_all="$(_print_optical_line "${dist_all}")"
+        arr_cnt=(
+            [unal]="unaligned reads and their mates, aligned or not"
+            [improp]="pairs with both mates aligned that --req_flg rejects"
+            [mapq]="templates that --mapq rejects and --req_flg does not"
+        )
+
+        for kind in "${arr_kind[@]}"; do
+            local -n arr_rec_kind="arr_rec_${kind}"
+            # shellcheck disable=SC2034  # Read in '_write_align_record'.
+            arr_rec_kind=(
+                "${arr_rec_cnt[@]}"
+                $'@CO\tpipeline: content='"${arr_cnt[${kind}]}"
+                $'@CO\tpipeline: warning=not for signal or scaling'
+                $'@CO\tpipeline: markdup=all files (Markdup 2)'
+                "${lin_opt_all}"
+            )
+            unset -n arr_rec_kind
+        done
     fi
 
-    lin_cnt=$'@CO\tpipeline: content=unaligned reads and their mates,'
-    lin_cnt+=' aligned or not'
-
-    # shellcheck disable=SC2034  # Read by name in '_write_align_record'.
-    arr_rec_unal=(
-        "${arr_rec_cnt[@]}"
-        "${lin_cnt}"
-        $'@CO\tpipeline: warning=not for signal or scaling'
-        "${lin_opt}"
-    )
+    lin_opt="$(_print_optical_line "${dist_mrk}")"
     arr_rec_cnt+=( "${lin_opt}" )
 
     idx_rec=true
@@ -4143,14 +5357,30 @@ EOM
         || return 1
 
     if [[ "${unal_mode}" == "separate" ]]; then
-        _write_align_record \
+        for kind in "${arr_kind[@]}"; do
+            _write_align_record \
+                "${FUNCNAME[0]}" \
+                "${dry_run}" \
+                "${threads}" \
+                "${arr_wrk[${kind}]}" \
+                "arr_rec_${kind}" \
+                arr_rec_run \
+                "${idx_rec}" \
+                || return 1
+        done
+
+        _write_diag_tsv \
             "${FUNCNAME[0]}" \
             "${dry_run}" \
             "${threads}" \
-            "${fil_unal_wrk}" \
-            arr_rec_unal \
-            arr_rec_run \
-            "${idx_rec}" \
+            "${fq_2}" \
+            "${mapq}" \
+            "${fil_wrk}" \
+            "${arr_wrk[unal]}" \
+            "${arr_wrk[improp]:-}" \
+            "${arr_wrk[mapq]}" \
+            "${txt_all}.gz" \
+            "${fil_tsv}" \
             || return 1
     fi
 
@@ -4171,19 +5401,21 @@ EOM
         || return 1
 
     if [[ "${unal_mode}" == "separate" ]]; then
-        _finalize_align_output \
-            "${FUNCNAME[0]}" \
-            "${dry_run}" \
-            "${threads}" \
-            "${out_fmt}" \
-            "${fil_unal_out}" \
-            "${fil_unal_wrk}" \
-            "${ref_fa}" \
-            "${qname}" \
-            "${bam_unal_qnam}" \
-            "${fil_unal_qnam_out}" \
-            false \
-            || return 1
+        for kind in "${arr_kind[@]}"; do
+            _finalize_align_output \
+                "${FUNCNAME[0]}" \
+                "${dry_run}" \
+                "${threads}" \
+                "${out_fmt}" \
+                "${arr_out[${kind}]}" \
+                "${arr_wrk[${kind}]}" \
+                "${ref_fa}" \
+                "${qname}" \
+                "${arr_bam_qnam[${kind}]}" \
+                "${arr_qnam_out[${kind}]}" \
+                false \
+                || return 1
+        done
     fi
 }
 

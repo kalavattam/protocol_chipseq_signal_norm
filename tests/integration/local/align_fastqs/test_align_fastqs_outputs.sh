@@ -36,6 +36,9 @@ fq_pe_2="${dir_fx}/fastq/pe/pairs_pe_R2.atria.fastq.gz"
 fq_se="${dir_fx}/fastq/se/pairs_se.atria.fastq.gz"
 fq_brg_1="${dir_fx}/fastq/pe/bridge_pe_R1.atria.fastq.gz"
 fq_brg_2="${dir_fx}/fastq/pe/bridge_pe_R2.atria.fastq.gz"
+idx_fil="${dir_fx}/bwa/pairs.fa"
+fq_fil_1="${dir_fx}/fastq/pe/pairs_fill_pe_R1.atria.fastq.gz"
+fq_fil_2="${dir_fx}/fastq/pe/pairs_fill_pe_R2.atria.fastq.gz"
 ref_fa="${dir_fx}/reference/pairs.fa"
 
 tmp="${TEST_DIR_TMP}/align_fastqs_outputs"
@@ -62,7 +65,10 @@ require_files_nonempty \
     "${fq_pe_2}" \
     "${fq_se}" \
     "${fq_brg_1}" \
-    "${fq_brg_2}" || {
+    "${fq_brg_2}" \
+    "${idx_fil}.bwt" \
+    "${fq_fil_1}" \
+    "${fq_fil_2}" || {
     finish
     exit $?
 }
@@ -126,6 +132,8 @@ function check_outputs() {
         diff <(printf '%s\n' "${exp}") <(printf '%s\n' "${got}") >&2 || true
     fi
 
+    # A file without records has no record block to judge, such as an improper
+    # file without '--req_flg'.
     for fil in "${dir}"/*.bam; do
         [[ -e "${fil}" ]] || continue
         run_samtools view -b --no-PG -o "${tmp}/default.bam" "${fil}"
@@ -133,6 +141,10 @@ function check_outputs() {
 
         if [[ "${res}" == "same "* && "${res}" != "same 0" ]]; then
             record_pass "${lbl}: '${fil##*/}' is at the default level"
+        elif [[
+            "${res}" == "same 0" && "$(run_samtools view -c "${fil}")" == 0
+        ]]; then
+            record_pass "${lbl}: '${fil##*/}' holds no records"
         else
             record_fail "${lbl}: '${fil##*/}' is not at the default level" \
                 "(${res})"
@@ -154,13 +166,19 @@ function check_outputs() {
 
 
 # label|output extension|helper arguments|files expected beside 'x'
+#
+# With '--unal_mode separate', the BWA-backtrack call on 'pairs_fill' fills
+# every diagnostic file: '--req_flg' rejects the improper pairs and MAPQ 30 a
+# repeat pair.
 arr_calls=(
     "Bowtie 2 PE 'remove' BAM|bam|--aligner bowtie2 --index ${idx_bt2}\
  --fq_1 ${fq_pe_1} --fq_2 ${fq_pe_2} --qname\
 |bam bam.bai markdup.txt.gz qnam.bam"
     "Bowtie 2 PE 'separate' BAM|bam|--aligner bowtie2 --index ${idx_bt2}\
  --fq_1 ${fq_pe_1} --fq_2 ${fq_pe_2} --qname --unal_mode separate\
-|bam bam.bai markdup.txt.gz qnam.bam unal.bam unal.bam.bai unal.qnam.bam"
+|bam bam.bai markdup.txt.gz qnam.bam unal.bam unal.bam.bai unal.qnam.bam\
+ improp.bam improp.bam.bai improp.qnam.bam mapq.bam mapq.bam.bai\
+ mapq.qnam.bam all.markdup.txt.gz diag.tsv"
     "Bowtie 2 PE 'remove' CRAM|cram|--aligner bowtie2 --index ${idx_bt2}\
  --fq_1 ${fq_pe_1} --fq_2 ${fq_pe_2} --qname --ref_fa ${ref_fa}\
 |cram cram.crai markdup.txt.gz qnam.cram"
@@ -168,14 +186,23 @@ arr_calls=(
  --fq_1 ${fq_pe_1} --fq_2 ${fq_pe_2} --qname --ref_fa ${ref_fa}\
  --unal_mode separate\
 |cram cram.crai markdup.txt.gz qnam.cram unal.cram unal.cram.crai\
- unal.qnam.cram"
+ unal.qnam.cram improp.cram improp.cram.crai improp.qnam.cram mapq.cram\
+ mapq.cram.crai mapq.qnam.cram all.markdup.txt.gz diag.tsv"
     "BWA-backtrack PE 'separate' BAM|bam|--aligner bwa --bwa_alg aln\
  --mapq 0 --index ${idx_bwa} --fq_1 ${fq_brg_1} --fq_2 ${fq_brg_2}\
  --unal_mode separate\
-|bam bam.bai markdup.txt.gz unal.bam unal.bam.bai"
+|bam bam.bai markdup.txt.gz unal.bam unal.bam.bai improp.bam improp.bam.bai\
+ mapq.bam mapq.bam.bai all.markdup.txt.gz diag.tsv"
+    "BWA-backtrack PE 'separate' '--req_flg' BAM|bam|--aligner bwa\
+ --bwa_alg aln --req_flg --mapq 30 --index ${idx_fil} --fq_1 ${fq_fil_1}\
+ --fq_2 ${fq_fil_2} --qname --unal_mode separate\
+|bam bam.bai markdup.txt.gz qnam.bam unal.bam unal.bam.bai unal.qnam.bam\
+ improp.bam improp.bam.bai improp.qnam.bam mapq.bam mapq.bam.bai\
+ mapq.qnam.bam all.markdup.txt.gz diag.tsv"
     "Bowtie 2 SE 'separate' BAM|bam|--aligner bowtie2 --index ${idx_bt2}\
  --fq_1 ${fq_se} --unal_mode separate\
-|bam bam.bai markdup.txt.gz unal.bam unal.bam.bai"
+|bam bam.bai markdup.txt.gz unal.bam unal.bam.bai mapq.bam mapq.bam.bai\
+ all.markdup.txt.gz diag.tsv"
 )
 
 for idx in "${!arr_calls[@]}"; do
