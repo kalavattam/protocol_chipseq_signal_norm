@@ -77,6 +77,8 @@ require_files_nonempty \
     "${dir_fx}/fastq/pe/bridge_pe_R2.atria.fastq.gz" \
     "${dir_fx}/sam/diag/improp.sam" \
     "${dir_fx}/sam/diag/all.markdup.txt.gz" \
+    "${dir_fx}/sam/diag/all_neg.markdup.txt.gz" \
+    "${dir_fx}/sam/diag/all_odd.markdup.txt.gz" \
     "${dir_fx}/bwa/thr.fa.bwt" \
     "${dir_fx}/fastq/pe/thr_pe_R1.atria.fastq.gz" \
     "${dir_fx}/fastq/pe/thr_pe_R2.atria.fastq.gz" || {
@@ -368,14 +370,16 @@ declare -A side_exp=(
     ["pairs_se mem"]="se_none "
 )
 
-# The rows of '.diag.tsv', as 'file:category' pairs, for each layout.
-rows_pe="file:category:main:all:main:duplicate_all:unal:all:"
-rows_pe+="unal:both_unaligned:unal:one_unaligned:unal:unjudged:"
-rows_pe+="unal:duplicate_all:improp:all:"
-rows_pe+="improp:diff_ref:improp:same_strand:improp:other:improp:low_mapq:"
-rows_pe+="improp:duplicate_all:mapq:all:mapq:duplicate_all:"
-rows_se="file:category:main:all:main:duplicate_all:unal:all:unal:unjudged:"
-rows_se+="unal:duplicate_all:mapq:all:mapq:duplicate_all:"
+# The rows of '.diag.tsv.gz', as 'file:category' pairs, for each layout.
+rows_pe="file:category:main:all:main:unjudged:main:duplicate_all:"
+rows_pe+="unal:all:unal:both_unaligned:unal:one_unaligned:unal:unjudged:"
+rows_pe+="unal:duplicate_all:improp:all:improp:diff_ref:improp:orient_ff:"
+rows_pe+="improp:orient_rr:improp:orient_rf:improp:dovetailed:improp:too_far:"
+rows_pe+="improp:too_close:improp:failed_est:improp:other:improp:unjudged:"
+rows_pe+="improp:duplicate_all:mapq:all:mapq:unjudged:mapq:duplicate_all:"
+rows_se="file:category:main:all:main:unjudged:main:duplicate_all:unal:all:"
+rows_se+="unal:unjudged:unal:duplicate_all:mapq:all:mapq:unjudged:"
+rows_se+="mapq:duplicate_all:"
 
 
 # Run every call on every input, in both modes, with and without '--req_flg',
@@ -463,13 +467,13 @@ for ent in "${ins[@]}"; do
                 fi
             done
             for sfx in unal.bam improp.bam mapq.bam all.markdup.txt.gz \
-                diag.tsv
+                diag.tsv.gz
             do
                 if [[ -e "${stm}.remove.${sfx}" ]]; then ok_fil=false; fi
             done
             if [[
                 ! -s "${stm}.separate.all.markdup.txt.gz"
-                    || ! -s "${stm}.separate.diag.tsv"
+                    || ! -s "${stm}.separate.diag.tsv.gz"
             ]]; then
                 ok_fil=false
             fi
@@ -599,6 +603,7 @@ for ent in "${ins[@]}"; do
             # The table of counts: its rows, in order, and its 'all' rows equal
             # to each file's own counts, summing to the raw records.
             tsv="${stm}.separate.diag.tsv"
+            gzip -cd "${tsv}.gz" > "${tsv}" 2> /dev/null || true
             got="$(cut -f 1,2 "${tsv}" | tr '\t\n' '::')"
             if [[ "${typ}" == "pe" ]]; then
                 exp="${rows_pe}"
@@ -932,7 +937,7 @@ n_all="$(
 )"
 row="$(
     awk -F '\t' '$1 == "unal" && $2 == "duplicate_all" { print $3 " " $4 }' \
-        "${stm}.separate.diag.tsv"
+        <(gzip -cd "${stm}.separate.diag.tsv.gz")
 )"
 if [[
     "${n_rm}" == "0"
@@ -1014,7 +1019,7 @@ out="$(
 )" || rc=$?
 
 ok=true
-if [[ "${rc}" -ne 0 || ! -s "${stm}.diag.tsv" ]]; then ok=false; fi
+if [[ "${rc}" -ne 0 || ! -s "${stm}.diag.tsv.gz" ]]; then ok=false; fi
 for kind in unal improp mapq; do
     if [[
         ! -s "${stm}.${kind}.cram"
@@ -1060,7 +1065,7 @@ done
 
 if \
     [[ "${ok}" == "true" ]] \
-        && cmp -s "${stm}.diag.tsv" "${stm_bam}.diag.tsv"
+        && cmp -s "${stm}.diag.tsv.gz" "${stm_bam}.diag.tsv.gz"
 then
     record_pass \
         "the CRAM diagnostic files and copies hold the BAM run's records," \
@@ -1172,7 +1177,7 @@ done
 
 n_imp="$(
     awk -F '\t' '$1 == "improp" && $2 == "all" { print $3 }' \
-        "${tmp}/thr.1.diag.tsv" 2> /dev/null
+        <(gzip -cd "${tmp}/thr.1.diag.tsv.gz" 2> /dev/null)
 )" || true
 if [[ "${n_imp}" == "20000" ]]; then
     record_pass "thr: the improper file holds the 20,000 long pairs"
@@ -1195,7 +1200,7 @@ done
 
 if \
     [[ "${ok}" == "true" ]] \
-        && cmp -s "${tmp}/thr.1.diag.tsv" "${tmp}/thr.3.diag.tsv"
+        && cmp -s "${tmp}/thr.1.diag.tsv.gz" "${tmp}/thr.3.diag.tsv.gz"
 then
     record_pass "thr: every file and the counts are the same at 1 and 3 threads"
 else
@@ -1230,7 +1235,7 @@ n_tpl="$(
 )"
 row="$(
     awk -F '\t' '$1 == "main" && $2 == "duplicate_all" { print $3 " " $4 }' \
-        "${stm}.diag.tsv"
+        <(gzip -cd "${stm}.diag.tsv.gz")
 )"
 if [[ "${row}" == "${n_tpl} ${n_rec}" && "${n_rec}" -gt 0 ]]; then
     record_pass \
@@ -1245,14 +1250,15 @@ fi
 
 # The table's categories, pinned on the relaxed call. 'pair_none' has both
 # mates unaligned and 'pair_one' one mate, so the side file holds 3 unaligned
-# records. With '--req_flg', 'pair_chrs' is improper by reference and 'pair_ff'
-# by orientation. 'pair_far', 'pair_dove', and 'pair_rf' are improper for other
-# reasons.
+# records. With '--req_flg', 'pair_chrs' is improper by reference, 'pair_ff' by
+# orientation, 'pair_rf' by facing outward, 'pair_dove' by dovetailing, and
+# 'pair_far' by spanning more than '--bt2_X' (1000).
 #
 # Bowtie 2's highest MAPQ in end-to-end mode is 42, which every aligned pair
 # here gets. So '--mapq 43' fails every primary record. The improper pairs then
-# fail both filters and must stay improper (precedence), the proper pairs go to
-# the low-MAPQ file, and the alignment file is empty.
+# fail both filters and must stay improper (precedence), each counted in the
+# low-MAPQ columns. The proper pairs go to the low-MAPQ file, and the alignment
+# file is empty.
 stm="${tmp}/rows"
 run_helper \
     --threads 1 \
@@ -1266,12 +1272,21 @@ run_helper \
     --fq_2 "${dir_fx}/fastq/pe/pairs_pe_R2.atria.fastq.gz" \
     --fil_out "${stm}.bam" > "${stm}.log" 2>&1 || true
 
-exp="main:all:0:0 main:duplicate_all:0:0 unal:all:2:4"
-exp+=" unal:both_unaligned:1:2 unal:one_unaligned:1:2 unal:unjudged:2:3"
-exp+=" unal:duplicate_all:0:0 improp:all:5:10 improp:diff_ref:1:2"
-exp+=" improp:same_strand:1:2 improp:other:3:6 improp:low_mapq:5:10"
-exp+=" improp:duplicate_all:0:0 mapq:all:5:10 mapq:duplicate_all:0:0 "
-got="$(sed 1d "${stm}.diag.tsv" 2> /dev/null | tr '\t\n' ': ')" || true
+exp="main:all:0:0:NA:NA main:unjudged:0:0:NA:NA"
+exp+=" main:duplicate_all:0:0:NA:NA unal:all:2:4:NA:NA"
+exp+=" unal:both_unaligned:1:2:NA:NA unal:one_unaligned:1:2:NA:NA"
+exp+=" unal:unjudged:2:3:NA:NA unal:duplicate_all:0:0:NA:NA"
+exp+=" improp:all:5:10:5:10 improp:diff_ref:1:2:1:2"
+exp+=" improp:orient_ff:1:2:1:2 improp:orient_rr:0:0:0:0"
+exp+=" improp:orient_rf:1:2:1:2 improp:dovetailed:1:2:1:2"
+exp+=" improp:too_far:1:2:1:2 improp:too_close:0:0:0:0"
+exp+=" improp:failed_est:NA:NA:NA:NA improp:other:0:0:0:0"
+exp+=" improp:unjudged:0:0:0:0 improp:duplicate_all:0:0:0:0"
+exp+=" mapq:all:5:10:NA:NA mapq:unjudged:0:0:NA:NA"
+exp+=" mapq:duplicate_all:0:0:NA:NA "
+got="$(
+    gzip -cd "${stm}.diag.tsv.gz" 2> /dev/null | sed 1d | tr '\t\n' ': '
+)" || true
 nam_dr="$(
     run_samtools view -F 2308 --expr 'refid != mrefid' "${stm}.improp.bam" \
         | cut -f 1 \
@@ -1298,32 +1313,141 @@ else
         "references '${nam_dr}', same orientation '${nam_ss}'"
 fi
 
-# The table on its own, from the hand-made files in 'sam/diag/', at MAPQ 30.
-# Their recipe says what each record is. Four cases would each change the table
-# if the count were wrong. A pair with both mates reversed has the same
-# orientation. A pair at MAPQ 30 exactly is not low. The #75 shape's unaligned
-# R2 (0x4 without 0x8) is unjudged. The main file's Markdup 2 duplicates come
-# from the statistics, less the side file's one.
+# The table on its own, from the hand-made files in 'sam/diag/', at MAPQ 30 and
+# a Bowtie 2 '-X' of 500. Their recipe says what each record is. Each of these
+# cases would change the table if the count were wrong:
+# - 'i_xr' has both mates forward, but different references come first.
+# - A pair at MAPQ 30 exactly is not low, and its supplementary record at MAPQ
+#   0 neither makes it low nor gives it a reason.
+# - 'i_q10' spans 510 bases, more than '-X', and is low.
+# - 'i_dov' is dovetailed only because its reverse mate starts first, and
+#   'i_dov_fe' only because its forward mate ends last.
+# - Unaligned, secondary, and supplementary records are unjudged in every file.
+# - The main file's Markdup 2 duplicates come from the statistics, less the
+#   side file's one.
 dir_dia="${dir_fx}/sam/diag"
-rc=0
-run_func _write_diag_tsv \
-    align_fastqs false 1 pe 30 \
-    "${dir_dia}/main.sam" "${dir_dia}/unal.sam" "${dir_dia}/improp.sam" \
-    "${dir_dia}/mapq.sam" "${dir_dia}/all.markdup.txt.gz" \
-    "${tmp}/fx.diag.tsv" > "${tmp}/fx.diag.log" || rc=$?
+arr_dia=(
+    "${dir_dia}/main.sam" "${dir_dia}/unal.sam" "${dir_dia}/improp.sam"
+    "${dir_dia}/mapq.sam"
+)
+exp_all="main:all:2:5:NA:NA main:unjudged:1:1:NA:NA"
+exp_all+=" main:duplicate_all:1:2:NA:NA unal:all:3:6:NA:NA"
+exp_all+=" unal:both_unaligned:1:2:NA:NA unal:one_unaligned:2:4:NA:NA"
+exp_all+=" unal:unjudged:3:4:NA:NA unal:duplicate_all:1:1:NA:NA"
+exp_all+=" improp:all:8:17:1:2 improp:diff_ref:1:2:0:0"
+exp_all+=" improp:orient_ff:1:2:0:0 improp:orient_rr:1:2:0:0"
+exp_all+=" improp:orient_rf:1:2:0:0 improp:dovetailed:2:4:0:0"
+exp_bt2="${exp_all} improp:too_far:1:2:1:2 improp:too_close:0:0:0:0"
+exp_bt2+=" improp:failed_est:NA:NA:NA:NA improp:other:1:3:0:0"
+exp_bwa="${exp_all} improp:too_far:NA:NA:NA:NA"
+exp_bwa+=" improp:too_close:NA:NA:NA:NA improp:failed_est:NA:NA:NA:NA"
+exp_bwa+=" improp:other:2:5:1:2"
+exp_end=" improp:unjudged:1:1:0:0 improp:duplicate_all:0:0:0:0"
+exp_end+=" mapq:all:1:3:NA:NA mapq:unjudged:1:1:NA:NA"
+exp_end+=" mapq:duplicate_all:0:0:NA:NA "
 
-exp="main:all:2:4 main:duplicate_all:1:2 unal:all:3:6"
-exp+=" unal:both_unaligned:1:2 unal:one_unaligned:2:4 unal:unjudged:3:4"
-exp+=" unal:duplicate_all:1:1 improp:all:6:12 improp:diff_ref:1:2"
-exp+=" improp:same_strand:2:4 improp:other:3:6 improp:low_mapq:1:2"
-exp+=" improp:duplicate_all:0:0 mapq:all:1:2 mapq:duplicate_all:0:0 "
-got="$(sed 1d "${tmp}/fx.diag.tsv" 2> /dev/null | tr '\t\n' ': ')" || true
-if [[ "${rc}" -eq 0 && "${got}" == "${exp}" ]]; then
-    record_pass "the table from the hand-made files is as expected"
+for al in bowtie2 bwa; do
+    rc=0
+    run_func _write_diag_tsv \
+        align_fastqs false 1 "${al}" 500 pe 30 "${arr_dia[@]}" \
+        "${dir_dia}/all.markdup.txt.gz" \
+        "${tmp}/fx.${al}.diag.tsv.gz" > "${tmp}/fx.${al}.diag.log" 2>&1 \
+        || rc=$?
+
+    if [[ "${al}" == "bowtie2" ]]; then
+        exp="${exp_bt2}${exp_end}"
+    else
+        exp="${exp_bwa}${exp_end}"
+    fi
+    got="$(
+        gzip -cd "${tmp}/fx.${al}.diag.tsv.gz" 2> /dev/null \
+            | sed 1d \
+            | tr '\t\n' ': '
+    )" || true
+    hdr="$(
+        gzip -cd "${tmp}/fx.${al}.diag.tsv.gz" 2> /dev/null \
+            | head -n 1 \
+            | tr '\t' ' '
+    )" || true
+
+    if [[
+        "${rc}" -eq 0 && "${got}" == "${exp}"
+            && "${hdr}" == "file category templates records"*" records_mapq_low"
+    ]]; then
+        record_pass "the table from the hand-made files is as expected (${al})"
+    else
+        record_fail \
+            "the table from the hand-made files is '${got}' with header" \
+            "'${hdr}' (${al}, exit ${rc}), expected '${exp}'"
+    fi
+done
+
+# Statistics the other files cannot follow from: a duplicate total below the
+# side file's duplicate, then an odd count of primary duplicates left for the
+# main file. Only that row turns NA, with a warning, and the run goes on.
+for bad in neg odd; do
+    rc=0
+    run_func _write_diag_tsv \
+        align_fastqs false 1 bowtie2 500 pe 30 "${arr_dia[@]}" \
+        "${dir_dia}/all_${bad}.markdup.txt.gz" \
+        "${tmp}/fx.${bad}.diag.tsv.gz" > "${tmp}/fx.${bad}.diag.log" 2>&1 \
+        || rc=$?
+
+    got="$(
+        gzip -cd "${tmp}/fx.${bad}.diag.tsv.gz" 2> /dev/null \
+            | sed 1d \
+            | tr '\t\n' ': '
+    )" || true
+    exp="${exp_bt2}${exp_end}"
+    exp="${exp/main:duplicate_all:1:2:NA:NA/main:duplicate_all:NA:NA:NA:NA}"
+
+    if [[
+        "${rc}" -eq 0 && "${got}" == "${exp}"
+    ]] && grep -q "'duplicate_all' row is NA" "${tmp}/fx.${bad}.diag.log"; then
+        record_pass \
+            "statistics that do not add up ('${bad}') give an NA row and a" \
+            "warning"
+    else
+        record_fail \
+            "statistics that do not add up ('${bad}') give '${got}' (exit" \
+            "${rc}), expected the main file's 'duplicate_all' row NA and a" \
+            "warning"
+    fi
+done
+
+# The 'gawk' program on its own: with a minimum fragment of 300 bases, 'i_q30'
+# (210 bases) is too close. Without 'MC' on a primary record, or without the
+# first mate's primary record of 'i_rf', it stops.
+fil_awk="${ROOT_REPO}/lib/awk/classify_improp_pairs.awk"
+got="$(
+    run_samtools view "${dir_dia}/improp.sam" \
+        | gawk -f "${fil_awk}" \
+            -v aligner=bowtie2 -v max_frag=500 -v min_frag=300 -v mapq=30 \
+        | awk -F '\t' '$2 ~ /^(too_far|too_close|other)$/' \
+        | tr '\t\n' ': '
+)" || true
+exp="improp:too_far:1:2:1:2 improp:too_close:1:3:0:0 improp:other:0:0:0:0 "
+rc=0
+run_samtools view "${dir_dia}/improp.sam" \
+    | sed 's/\tMC:Z:10M$//' \
+    | gawk -f "${fil_awk}" -v aligner=bowtie2 -v max_frag=500 -v mapq=30 \
+        > /dev/null 2>&1 \
+    || rc=$?
+rc_r1=0
+run_samtools view "${dir_dia}/improp.sam" \
+    | awk -F '\t' '!($1 == "i_rf" && $2 == 81)' \
+    | gawk -f "${fil_awk}" -v aligner=bowtie2 -v max_frag=500 -v mapq=30 \
+        > /dev/null 2>&1 \
+    || rc_r1=$?
+
+if [[ "${got}" == "${exp}" && "${rc}" -ne 0 && "${rc_r1}" -ne 0 ]]; then
+    record_pass \
+        "the improper-pair program counts a short fragment as too close and" \
+        "stops without 'MC' or a first mate"
 else
     record_fail \
-        "the table from the hand-made files is '${got}' (exit ${rc})," \
-        "expected '${exp}'"
+        "the improper-pair program gives '${got}', expected '${exp}', and" \
+        "exits ${rc} without 'MC' and ${rc_r1} without a first mate"
 fi
 
 

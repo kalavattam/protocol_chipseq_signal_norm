@@ -178,7 +178,7 @@ arr_calls=(
  --fq_1 ${fq_pe_1} --fq_2 ${fq_pe_2} --qname --unal_mode separate\
 |bam bam.bai markdup.txt.gz qnam.bam unal.bam unal.bam.bai unal.qnam.bam\
  improp.bam improp.bam.bai improp.qnam.bam mapq.bam mapq.bam.bai\
- mapq.qnam.bam all.markdup.txt.gz diag.tsv"
+ mapq.qnam.bam all.markdup.txt.gz diag.tsv.gz"
     "Bowtie 2 PE 'remove' CRAM|cram|--aligner bowtie2 --index ${idx_bt2}\
  --fq_1 ${fq_pe_1} --fq_2 ${fq_pe_2} --qname --ref_fa ${ref_fa}\
 |cram cram.crai markdup.txt.gz qnam.cram"
@@ -187,22 +187,22 @@ arr_calls=(
  --unal_mode separate\
 |cram cram.crai markdup.txt.gz qnam.cram unal.cram unal.cram.crai\
  unal.qnam.cram improp.cram improp.cram.crai improp.qnam.cram mapq.cram\
- mapq.cram.crai mapq.qnam.cram all.markdup.txt.gz diag.tsv"
+ mapq.cram.crai mapq.qnam.cram all.markdup.txt.gz diag.tsv.gz"
     "BWA-backtrack PE 'separate' BAM|bam|--aligner bwa --bwa_alg aln\
  --mapq 0 --index ${idx_bwa} --fq_1 ${fq_brg_1} --fq_2 ${fq_brg_2}\
  --unal_mode separate\
 |bam bam.bai markdup.txt.gz unal.bam unal.bam.bai improp.bam improp.bam.bai\
- mapq.bam mapq.bam.bai all.markdup.txt.gz diag.tsv"
+ mapq.bam mapq.bam.bai all.markdup.txt.gz diag.tsv.gz"
     "BWA-backtrack PE 'separate' '--req_flg' BAM|bam|--aligner bwa\
  --bwa_alg aln --req_flg --mapq 30 --index ${idx_fil} --fq_1 ${fq_fil_1}\
  --fq_2 ${fq_fil_2} --qname --unal_mode separate\
 |bam bam.bai markdup.txt.gz qnam.bam unal.bam unal.bam.bai unal.qnam.bam\
  improp.bam improp.bam.bai improp.qnam.bam mapq.bam mapq.bam.bai\
- mapq.qnam.bam all.markdup.txt.gz diag.tsv"
+ mapq.qnam.bam all.markdup.txt.gz diag.tsv.gz"
     "Bowtie 2 SE 'separate' BAM|bam|--aligner bowtie2 --index ${idx_bt2}\
  --fq_1 ${fq_se} --unal_mode separate\
 |bam bam.bai markdup.txt.gz unal.bam unal.bam.bai mapq.bam mapq.bam.bai\
- all.markdup.txt.gz diag.tsv"
+ all.markdup.txt.gz diag.tsv.gz"
 )
 
 for idx in "${!arr_calls[@]}"; do

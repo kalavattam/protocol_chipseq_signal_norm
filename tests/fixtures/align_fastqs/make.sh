@@ -92,7 +92,7 @@ function print_fq() {
 }
 
 
-# Write the SAM header of the '.diag.tsv' fixture: two references.
+# Write the SAM header of the '.diag.tsv.gz' fixture: two references.
 function write_dia_header() {
     write_sam_line '@HD' 'VN:1.6' 'SO:coordinate'
     write_sam_line '@SQ' 'SN:chrS' 'LN:1000'
@@ -1044,31 +1044,44 @@ samtools quickcheck "${sam_spl_pe}"
 
 
 # Write, as SAM records, the four files of a paired-end '--unal_mode separate'
-# run and Markdup 2's statistics, for testing '.diag.tsv' on its own.
+# run and Markdup 2's statistics, for testing '.diag.tsv.gz' on its own.
 # 'docs/design/align_fastqs_separate.md' describes the table. Each template
 # stands for one case:
-# - Main file: 'm1' is a pair. 'm2' is a pair that Markdup 2 marked as
-#   duplicates.
+# - Main file: 'm1' is a pair with a secondary record. 'm2' is a pair that
+#   Markdup 2 marked as duplicates.
 # - Side file: 'u_both' has both mates unaligned. 'u_one' has an unaligned R2
 #   and an aligned R1 that Markdup 2 marked as a duplicate. 'u_t75' has the #75
 #   shape: an unaligned R2 and an aligned R1 whose mate-unaligned flag (0x8) is
 #   clear.
-# - Improper file: 'i_xr' has its mates on different references. 'i_ff' has
-#   both mates forward, and 'i_rr' both reverse. 'i_rf' has its mates facing
-#   outward. 'i_q30' has both mates at MAPQ 30, the threshold the test uses.
-#   'i_q10' has one mate at MAPQ 10.
-# - Low-MAPQ file: 'q_low' has one mate at MAPQ 5.
+# - Improper file, whose primary records carry 'MC' as 'samtools fixmate -m'
+#   writes it: 'i_xr' has its mates on different references, both forward.
+#   'i_ff' has both mates forward, and 'i_rr' both reverse. 'i_rf' has its
+#   mates facing outward. 'i_dov' is dovetailed: its reverse mate starts before
+#   its forward mate, and a deletion makes both end at the same base.
+#   'i_dov_fe' is dovetailed the other way: both mates start at the same base,
+#   and the forward mate ends after the reverse mate. 'i_q10' spans 510 bases,
+#   with one mate at MAPQ 10. 'i_q30' spans 210 bases, with both mates at MAPQ
+#   30, the threshold the test uses, and a supplementary record at MAPQ 0.
+# - Low-MAPQ file: 'q_low' has one mate at MAPQ 5 and a secondary record.
 # - Statistics: 3 duplicate records, all primary: both records of 'm2' and the
-#   R1 of 'u_one'.
+#   R1 of 'u_one'. Two more files cannot follow from these files: in
+#   'all_neg.markdup.txt.gz', the duplicate total is smaller than the side
+#   file's duplicate, though the primary count leaves an even number, and in
+#   'all_odd.markdup.txt.gz', the main file is left with an odd count of
+#   primary duplicates.
 mkdirs "${dir_dia}"
 
 seq_dia="ACGTACGTAA"
 qua_dia="FFFFFFFFFF"
+mc_dia="MC:Z:10M"
 {
     write_dia_header
     write_sam_line \
         'm1' '99' 'chrS' '101' '60' '10M' \
         '=' '201' '110' "${seq_dia}" "${qua_dia}"
+    write_sam_line \
+        'm1' '355' 'chrS' '151' '0' '10M' \
+        '=' '201' '60' "${seq_dia}" "${qua_dia}"
     write_sam_line \
         'm1' '147' 'chrS' '201' '60' '10M' \
         '=' '101' '-110' "${seq_dia}" "${qua_dia}"
@@ -1106,40 +1119,55 @@ qua_dia="FFFFFFFFFF"
     write_dia_header
     write_sam_line \
         'i_ff' '65' 'chrS' '101' '60' '10M' \
-        '=' '201' '110' "${seq_dia}" "${qua_dia}"
+        '=' '201' '110' "${seq_dia}" "${qua_dia}" "${mc_dia}"
     write_sam_line \
         'i_ff' '129' 'chrS' '201' '60' '10M' \
-        '=' '101' '-110' "${seq_dia}" "${qua_dia}"
+        '=' '101' '-110' "${seq_dia}" "${qua_dia}" "${mc_dia}"
     write_sam_line \
         'i_rr' '113' 'chrS' '301' '60' '10M' \
-        '=' '401' '110' "${seq_dia}" "${qua_dia}"
+        '=' '401' '110' "${seq_dia}" "${qua_dia}" "${mc_dia}"
     write_sam_line \
         'i_rr' '177' 'chrS' '401' '60' '10M' \
-        '=' '301' '-110' "${seq_dia}" "${qua_dia}"
+        '=' '301' '-110' "${seq_dia}" "${qua_dia}" "${mc_dia}"
     write_sam_line \
         'i_rf' '81' 'chrS' '501' '60' '10M' \
-        '=' '601' '110' "${seq_dia}" "${qua_dia}"
+        '=' '601' '110' "${seq_dia}" "${qua_dia}" "${mc_dia}"
     write_sam_line \
         'i_rf' '161' 'chrS' '601' '60' '10M' \
-        '=' '501' '-110' "${seq_dia}" "${qua_dia}"
+        '=' '501' '-110' "${seq_dia}" "${qua_dia}" "${mc_dia}"
     write_sam_line \
         'i_q30' '97' 'chrS' '701' '30' '10M' \
-        '=' '901' '210' "${seq_dia}" "${qua_dia}"
+        '=' '901' '210' "${seq_dia}" "${qua_dia}" "${mc_dia}"
+    write_sam_line \
+        'i_q30' '2145' 'chrS' '801' '0' '10M' \
+        '=' '901' '110' "${seq_dia}" "${qua_dia}"
     write_sam_line \
         'i_q30' '145' 'chrS' '901' '30' '10M' \
-        '=' '701' '-210' "${seq_dia}" "${qua_dia}"
+        '=' '701' '-210' "${seq_dia}" "${qua_dia}" "${mc_dia}"
     write_sam_line \
-        'i_xr' '97' 'chrS' '951' '60' '10M' \
-        'chrS2' '41' '0' "${seq_dia}" "${qua_dia}"
+        'i_xr' '65' 'chrS' '951' '60' '10M' \
+        'chrS2' '41' '0' "${seq_dia}" "${qua_dia}" "${mc_dia}"
+    write_sam_line \
+        'i_xr' '129' 'chrS2' '41' '60' '10M' \
+        'chrS' '951' '0' "${seq_dia}" "${qua_dia}" "${mc_dia}"
     write_sam_line \
         'i_q10' '97' 'chrS2' '101' '10' '10M' \
-        '=' '601' '510' "${seq_dia}" "${qua_dia}"
+        '=' '601' '510' "${seq_dia}" "${qua_dia}" "${mc_dia}"
     write_sam_line \
-        'i_xr' '145' 'chrS2' '41' '60' '10M' \
-        'chrS' '951' '0' "${seq_dia}" "${qua_dia}"
+        'i_dov' '81' 'chrS2' '301' '60' '5M4D5M' \
+        '=' '305' '14' "${seq_dia}" "${qua_dia}" "${mc_dia}"
+    write_sam_line \
+        'i_dov' '161' 'chrS2' '305' '60' '10M' \
+        '=' '301' '-14' "${seq_dia}" "${qua_dia}" 'MC:Z:5M4D5M'
+    write_sam_line \
+        'i_dov_fe' '97' 'chrS2' '401' '60' '5M4D5M' \
+        '=' '401' '14' "${seq_dia}" "${qua_dia}" "${mc_dia}"
+    write_sam_line \
+        'i_dov_fe' '145' 'chrS2' '401' '60' '10M' \
+        '=' '401' '-14' "${seq_dia}" "${qua_dia}" 'MC:Z:5M4D5M'
     write_sam_line \
         'i_q10' '145' 'chrS2' '601' '60' '10M' \
-        '=' '101' '-510' "${seq_dia}" "${qua_dia}"
+        '=' '101' '-510' "${seq_dia}" "${qua_dia}" "${mc_dia}"
 } > "${dir_dia}/improp.sam"
 
 {
@@ -1147,6 +1175,9 @@ qua_dia="FFFFFFFFFF"
     write_sam_line \
         'q_low' '99' 'chrS' '851' '5' '10M' \
         '=' '901' '60' "${seq_dia}" "${qua_dia}"
+    write_sam_line \
+        'q_low' '355' 'chrS' '871' '0' '10M' \
+        '=' '901' '40' "${seq_dia}" "${qua_dia}"
     write_sam_line \
         'q_low' '147' 'chrS' '901' '60' '10M' \
         '=' '851' '-60' "${seq_dia}" "${qua_dia}"
@@ -1156,12 +1187,15 @@ for nam in main unal improp mapq; do
     samtools quickcheck "${dir_dia}/${nam}.sam"
 done
 
-printf '%s\n' \
-    'DUPLICATE TOTAL: 3' \
-    'DUPLICATE PRIMARY TOTAL: 3' \
-    > "${dir_dia}/all.markdup.txt"
-gzip_n "${dir_dia}/all.markdup.txt" "${dir_dia}/all.markdup.txt.gz"
-rm_file "${dir_fix}" "${dir_dia}/all.markdup.txt"
+for ent in all:3:3 all_neg:0:3 all_odd:3:2; do
+    IFS=':' read -r nam n_dup n_pri <<< "${ent}"
+    printf '%s\n' \
+        "DUPLICATE TOTAL: ${n_dup}" \
+        "DUPLICATE PRIMARY TOTAL: ${n_pri}" \
+        > "${dir_dia}/${nam}.markdup.txt"
+    gzip_n "${dir_dia}/${nam}.markdup.txt" "${dir_dia}/${nam}.markdup.txt.gz"
+    rm_file "${dir_fix}" "${dir_dia}/${nam}.markdup.txt"
+done
 
 
 # Index each reference with 'samtools faidx', so that tests reading a reference

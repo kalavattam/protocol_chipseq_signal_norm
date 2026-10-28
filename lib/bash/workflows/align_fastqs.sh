@@ -95,6 +95,9 @@ fi
             fi
         }
 
+    # The 'gawk' program that '_write_diag_tsv' runs on the improper file.
+    _fil_awk_improp="${_dir_src_aln}/../../awk/classify_improp_pairs.awk"
+
     unset _dir_src_aln
 }
 
@@ -2558,7 +2561,7 @@ EOM
 
         # With '--unal_mode separate', sort the dropped templates into the
         # improper pairs and the low-MAPQ templates, then count what each work
-        # file holds for '.diag.tsv'.
+        # file holds for '.diag.tsv.gz'.
         if [[ "${unal_mode}" == "separate" ]]; then
             if ! \
                 _route_filt_bam \
@@ -4056,7 +4059,7 @@ EOM
 }
 
 
-# For '.diag.tsv': count the templates and records of one category in a BAM
+# For '.diag.tsv.gz': count the templates and records of one category in a BAM
 # file.
 function _count_diag_cat() {
     local threads="${1:-}"
@@ -4073,7 +4076,7 @@ Usage
   _count_diag_cat
     [--help] threads mode fil txt_tmp [flt ...]
 
-  Print the number of templates and of records in one '.diag.tsv' category of a BAM file, tab-separated (for Step 5 of 'align_fastqs()' with '--unal_mode separate').
+  Print the number of templates and of records in one '.diag.tsv.gz' category of a BAM file, tab-separated (for Step 5 of 'align_fastqs()' with '--unal_mode separate').
 
 Parameters
 ----------
@@ -4168,24 +4171,26 @@ EOM
 }
 
 
-# Step 5 with '--unal_mode separate': write '<stem>.diag.tsv', the templates
+# Step 5 with '--unal_mode separate': write '<stem>.diag.tsv.gz', the templates
 # and records of each file and category.
 function _write_diag_tsv() {
     local func="${1:-}"
     local dry_run="${2:-}"
     local threads="${3:-}"
-    local fq_2="${4:-}"
-    local mapq="${5:-}"
-    local fil_wrk="${6:-}"
-    local fil_unal="${7:-}"
-    local fil_improp="${8:-}"
-    local fil_mapq="${9:-}"
-    local txt_all="${10:-}"
-    local fil_tsv="${11:-}"
-    local txt_tmp="${fil_tsv%.tsv}.names.tmp"
-    local tsv_tmp="${fil_tsv}.tmp"
-    local rol cat fil cnt n_tpl n_rec n_dup n_pri tot_dup tot_pri
-    local all_tpl all_rec sub_tpl sub_rec exp_ss
+    local aligner="${4:-}"
+    local bt2_X="${5:-}"
+    local fq_2="${6:-}"
+    local mapq="${7:-}"
+    local fil_wrk="${8:-}"
+    local fil_unal="${9:-}"
+    local fil_improp="${10:-}"
+    local fil_mapq="${11:-}"
+    local txt_all="${12:-}"
+    local fil_tsv="${13:-}"
+    local txt_tmp="${fil_tsv%.tsv.gz}.names.tmp"
+    local tsv_tmp="${fil_tsv%.gz}.tmp"
+    local rol fil cat cnt n_tpl n_rec n_dup n_pri tot_dup tot_pri
+    local all_tpl all_rec ok_dup
     local -a arr_rol arr_row
     local -A arr_fil_rol
     local show_help
@@ -4194,9 +4199,9 @@ function _write_diag_tsv() {
 Usage
 -----
   _write_diag_tsv
-    [--help] func dry_run threads fq_2 mapq fil_wrk fil_unal fil_improp fil_mapq txt_all fil_tsv
+    [--help] func dry_run threads aligner bt2_X fq_2 mapq fil_wrk fil_unal fil_improp fil_mapq txt_all fil_tsv
 
-  Write '.diag.tsv' for '--unal_mode separate' (Step 5 of 'align_fastqs()').
+  Write '.diag.tsv.gz' for '--unal_mode separate' (Step 5 of 'align_fastqs()').
 
   It holds a header line, then one row per alignment file and category with its templates and records, in the order that 'docs/design/align_fastqs_separate.md' gives.
 
@@ -4216,29 +4221,35 @@ Parameters
   03  threads : int
     Number of threads to use.
 
-  04  fq_2 : file
+  04  aligner : {'bowtie2', 'bwa', 'bwa-mem2'}
+    Aligner of the run, which decides which improper-pair categories can be measured.
+
+  05  bt2_X : int
+    Bowtie 2's maximum fragment length ('-X'), for the improper pairs too far apart.
+
+  06  fq_2 : file
     Second FASTQ input file, or empty for single-end data.
 
-  05  mapq : int
+  07  mapq : int
     MAPQ threshold, for the improper pairs that would also have failed it.
 
-  06  fil_wrk : file
+  08  fil_wrk : file
     Main BAM work file.
 
-  07  fil_unal : file
+  09  fil_unal : file
     BAM work file of the unaligned reads and their mates.
 
-  08  fil_improp : file
+  10  fil_improp : file
     BAM work file of the improper pairs; not read for single-end data.
 
-  09  fil_mapq : file
+  11  fil_mapq : file
     BAM work file of the low-MAPQ templates.
 
-  10  txt_all : file
+  12  txt_all : file
     Gzip-compressed duplicate statistics of Markdup 2.
 
-  11  fil_tsv : file
-    Table to write.
+  13  fil_tsv : file
+    Gzip-compressed table to write.
 
 Returns
 -------
@@ -4250,6 +4261,7 @@ Notes
     - awk
     - bash >= 4.4
     - cut
+    - gawk
     - gzip
     - mv
     - rm
@@ -4257,9 +4269,11 @@ Notes
     - sort
     - wc
 
-  - The main file's 'duplicate_all' row comes from Markdup 2's statistics.
-  - Its records are the duplicate total less the other files' duplicate records.
-  - Its templates are the duplicate primary records less theirs, halved for paired-end data, since 'markdup' marks both mates of a duplicate pair.
+  - The improper file's rows come from 'lib/awk/classify_improp_pairs.awk', in one pass.
+  - The main file's 'duplicate_all' row comes from Markdup 2's statistics:
+    + Its records are the duplicate total less the other files' duplicate records.
+    + Its templates are the duplicate primary records less theirs, halved for paired-end data, since 'markdup' marks both mates of a duplicate pair.
+    + If a count comes out negative, or the paired-end primary count is odd, the row is NA, with a warning.
 
 Examples
 --------
@@ -4269,6 +4283,8 @@ Examples
         align_fastqs \\
         false \\
         2 \\
+        bowtie2 \\
+        1000 \\
         tests/fixtures/align_fastqs/fastq/pe/pairs_pe_R2.atria.fastq.gz \\
         1 \\
         work/pairs.bam \\
@@ -4276,7 +4292,7 @@ Examples
         work/pairs.improp.bam \\
         work/pairs.mapq.bam \\
         work/pairs.all.markdup.txt.gz \\
-        work/pairs.diag.tsv
+        work/pairs.diag.tsv.gz
     '''
 
   2. Display the helper's argument contract.
@@ -4361,90 +4377,91 @@ EOM
         tot_pri=$(( tot_pri - n_pri ))
     done
 
-    if [[ -n "${fq_2}" ]]; then tot_pri=$(( tot_pri / 2 )); fi
+    # The subtraction can only go wrong through a counting defect or a change
+    # in 'samtools markdup', never through the data. Its row is then NA, and
+    # every other count stands.
+    ok_dup=true
+    if (( tot_dup < 0 || tot_pri < 0 )); then
+        ok_dup=false
+    elif [[ -n "${fq_2}" ]]; then
+        if (( tot_pri % 2 != 0 )); then ok_dup=false; fi
+        tot_pri=$(( tot_pri / 2 ))
+    fi
 
-    # A pair has the same orientation when both mates are forward or both are
-    # reverse.
-    exp_ss='refid == mrefid'
-    exp_ss+=' && !flag.reverse == !flag.mreverse'
+    if [[ "${ok_dup}" == "false" ]]; then
+        echo_warn_func "${func}" \
+            "Step #5: the main file's Markdup 2 duplicates do not follow from" \
+            "the statistics in '${txt_all}' and the other files' duplicates;" \
+            "the main file's 'duplicate_all' row is NA."
+        tot_dup="NA"
+        tot_pri="NA"
+    fi
 
-    # Write the rows in the documented order: each file's 'all' row first and
-    # its 'duplicate_all' row last. The subshell stops at the first failed
-    # count.
+    # Write the rows in the documented order: each file's 'all' row first, its
+    # 'unjudged' and 'duplicate_all' rows last. Only the improper rows have the
+    # low-MAPQ columns. The subshell stops at the first failed count.
     (
-        printf 'file\tcategory\ttemplates\trecords\n'
-        printf 'main\tall\t%s\t%s\n' "${all_tpl}" "${all_rec}"
-        printf 'main\tduplicate_all\t%s\t%s\n' "${tot_pri}" "${tot_dup}"
+        printf '%s\t' file category templates records templates_mapq_low
+        printf '%s\n' records_mapq_low
+
+        cnt="$(
+            _count_diag_cat \
+                "${threads}" rec "${fil_wrk}" "${txt_tmp}" --rf 2308
+        )" || exit 1
+        read -r n_tpl n_rec <<< "${cnt}"
+        printf 'main\tall\t%s\t%s\tNA\tNA\n' "${all_tpl}" "${all_rec}"
+        printf 'main\tunjudged\t%s\t%s\tNA\tNA\n' "${n_tpl}" "${n_rec}"
+        printf 'main\tduplicate_all\t%s\t%s\tNA\tNA\n' \
+            "${tot_pri}" "${tot_dup}"
 
         for rol in "${arr_rol[@]}"; do
             fil="${arr_fil_rol[${rol}]}"
+
+            # One 'gawk' pass counts every improper row.
+            if [[ "${rol}" == "improp" ]]; then
+                (
+                    set -o pipefail
+                    samtools view -@ "${threads}" "${fil}" \
+                        | gawk -f "${_fil_awk_improp}" \
+                            -v aligner="${aligner}" \
+                            -v max_frag="${bt2_X}" \
+                            -v min_frag=0 \
+                            -v mapq="${mapq}"
+                ) || exit 1
+                continue
+            fi
+
             cnt="$(_count_diag_cat "${threads}" rec "${fil}" "${txt_tmp}")" \
                 || exit 1
             read -r all_tpl all_rec <<< "${cnt}"
-            printf '%s\tall\t%s\t%s\n' "${rol}" "${all_tpl}" "${all_rec}"
+            printf '%s\tall\t%s\t%s\tNA\tNA\n' \
+                "${rol}" "${all_tpl}" "${all_rec}"
 
-            case "${rol}" in
-                unal)
-                    if [[ -n "${fq_2}" ]]; then
-                        cnt="$(
-                            _count_diag_cat \
-                                "${threads}" rec "${fil}" "${txt_tmp}" -f 12
-                        )" || exit 1
-                        read -r n_tpl n_rec <<< "${cnt}"
-                        printf 'unal\tboth_unaligned\t%s\t%s\n' \
-                            "${n_tpl}" "${n_rec}"
-                        printf 'unal\tone_unaligned\t%s\t%s\n' \
-                            "$(( all_tpl - n_tpl ))" "$(( all_rec - n_rec ))"
-                    fi
+            if [[ "${rol}" == "unal" && -n "${fq_2}" ]]; then
+                cnt="$(
+                    _count_diag_cat \
+                        "${threads}" rec "${fil}" "${txt_tmp}" -f 12
+                )" || exit 1
+                read -r n_tpl n_rec <<< "${cnt}"
+                printf 'unal\tboth_unaligned\t%s\t%s\tNA\tNA\n' \
+                    "${n_tpl}" "${n_rec}"
+                printf 'unal\tone_unaligned\t%s\t%s\tNA\tNA\n' \
+                    "$(( all_tpl - n_tpl ))" "$(( all_rec - n_rec ))"
+            fi
 
-                    cnt="$(
-                        _count_diag_cat \
-                            "${threads}" rec "${fil}" "${txt_tmp}" -f 4
-                    )" || exit 1
-                    printf 'unal\tunjudged\t%s\n' "${cnt}"
-                    ;;
+            for cat in unjudged duplicate_all; do
+                if [[ "${cat}" == "unjudged" ]]; then
+                    arr_row=( --rf 2308 )
+                else
+                    arr_row=( -f 1024 )
+                fi
 
-                improp)
-                    # Judge each pair's reason from its primary records, in
-                    # order: different references, then the same orientation.
-                    sub_tpl=0
-                    sub_rec=0
-                    for cat in diff_ref same_strand; do
-                        if [[ "${cat}" == "diff_ref" ]]; then
-                            arr_row=( --expr 'refid != mrefid' )
-                        else
-                            arr_row=( --expr "${exp_ss}" )
-                        fi
-
-                        cnt="$(
-                            _count_diag_cat \
-                                "${threads}" tpl "${fil}" "${txt_tmp}" \
-                                -F 2308 "${arr_row[@]}"
-                        )" || exit 1
-                        read -r n_tpl n_rec <<< "${cnt}"
-                        printf 'improp\t%s\t%s\t%s\n' \
-                            "${cat}" "${n_tpl}" "${n_rec}"
-                        sub_tpl=$(( sub_tpl + n_tpl ))
-                        sub_rec=$(( sub_rec + n_rec ))
-                    done
-
-                    printf 'improp\tother\t%s\t%s\n' \
-                        "$(( all_tpl - sub_tpl ))" "$(( all_rec - sub_rec ))"
-
-                    cnt="$(
-                        _count_diag_cat \
-                            "${threads}" tpl "${fil}" "${txt_tmp}" \
-                            -F 2308 --expr "mapq < ${mapq}"
-                    )" || exit 1
-                    printf 'improp\tlow_mapq\t%s\n' "${cnt}"
-                    ;;
-            esac
-
-            cnt="$(
-                _count_diag_cat \
-                    "${threads}" rec "${fil}" "${txt_tmp}" -f 1024
-            )" || exit 1
-            printf '%s\tduplicate_all\t%s\n' "${rol}" "${cnt}"
+                cnt="$(
+                    _count_diag_cat \
+                        "${threads}" rec "${fil}" "${txt_tmp}" "${arr_row[@]}"
+                )" || exit 1
+                printf '%s\t%s\t%s\tNA\tNA\n' "${rol}" "${cat}" "${cnt}"
+            done
         done
     ) > "${tsv_tmp}" || {
         rm -f "${tsv_tmp}" "${txt_tmp}"
@@ -4455,12 +4472,15 @@ EOM
     }
 
     if ! \
-        mv -f "${tsv_tmp}" "${fil_tsv}"
+        gzip -n -c "${tsv_tmp}" > "${fil_tsv}"
     then
+        rm -f "${tsv_tmp}" "${fil_tsv}"
         echo_err_func "${func}" \
-            "Step #5: failed to rename the diagnostic table."
+            "Step #5: failed to compress the diagnostic table."
         return 1
     fi
+
+    rm -f "${tsv_tmp}"
 }
 
 
@@ -4831,7 +4851,7 @@ Output
 
   Each comes with its index and, with '--qname', a '.qnam' copy (for example, '<stem>.unal.qnam.bam').
 
-  It also writes Markdup 2's duplicate statistics ('<stem>.all.markdup.txt.gz') and the counts ('<stem>.diag.tsv').
+  It also writes Markdup 2's duplicate statistics ('<stem>.all.markdup.txt.gz') and the counts ('<stem>.diag.tsv.gz').
 
 Notes
 -----
@@ -4865,7 +4885,7 @@ Notes
       - Its duplicates are marked against all the files together.
       - It carries the pipeline record and follows the alignment file into CRAM and into a '--qname' copy.
     + The diagnostic files are not for signal or scaling.
-    + '<stem>.diag.tsv' counts the templates and records each file holds, by category.
+    + '<stem>.diag.tsv.gz' counts the templates and records each file holds, by category.
   - With Bowtie 2 and paired-end data, mates may overlap or contain one another, so fragments shorter than the two reads together are kept; mates that extend past each other ("dovetailed") are not.
   - Duplicates are marked (SAM flag 1024) in Step #4, after MAPQ filtering, and kept.
     + Like any other read, '--mapq' filters them by the MAPQ the aligner gave them.
@@ -5133,7 +5153,7 @@ EOM
     # The diagnostic files of '--unal_mode separate' share the stem with
     # '.unal', '.improp' (paired-end data only), and/or '.mapq', and so do
     # Markdup 2's statistics ('.all.markdup.txt.gz') and the table of counts
-    # ('.diag.tsv').
+    # ('.diag.tsv.gz').
     arr_kind=( unal )
     if [[ -n "${fq_2}" ]]; then arr_kind+=( improp ); fi
     arr_kind+=( mapq )
@@ -5150,7 +5170,7 @@ EOM
     done
 
     txt_all="${fil_wrk%.bam}.all.markdup.txt"
-    fil_tsv="${fil_wrk%.bam}.diag.tsv"
+    fil_tsv="${fil_wrk%.bam}.diag.tsv.gz"
 
     # Build the pipeline record now, so that its start time is the run's.
     _build_align_record \
@@ -5193,7 +5213,8 @@ EOM
     #   the marked records of Sets U, I, and Q, and splits them into their
     #   files.
     # - Step 5 writes the pipeline record into each file, noting what the file
-    #   holds. It indexes each file and counts what each holds in '.diag.tsv'.
+    #   holds. It indexes each file and counts what each holds in
+    #   '.diag.tsv.gz'.
     # - Step 6 does two optional things to each file: (a) converts it to CRAM
     #   and (b) makes a '--qname' copy.
     #
@@ -5373,6 +5394,8 @@ EOM
             "${FUNCNAME[0]}" \
             "${dry_run}" \
             "${threads}" \
+            "${aligner}" \
+            "${bt2_X}" \
             "${fq_2}" \
             "${mapq}" \
             "${fil_wrk}" \

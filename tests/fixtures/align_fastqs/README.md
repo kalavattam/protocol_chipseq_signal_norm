@@ -106,9 +106,9 @@ Pairs reference, reads, and indexes, for `--unal_mode`, with one read pair per p
 Queryname-grouped SAM records with templates split by Step 1, for Step 2 on its own:
 - `sam/split_template_pe.sam`
 
-Coordinate-grouped SAM records standing for the four files of a paired-end `--unal_mode separate` run, and Markdup 2's statistics, for `<stem>.diag.tsv` on its own:
+Coordinate-grouped SAM records standing for the four files of a paired-end `--unal_mode separate` run, and Markdup 2's statistics, for `<stem>.diag.tsv.gz` on its own:
 - `sam/diag/main.sam`, `sam/diag/unal.sam`, `sam/diag/improp.sam`, and `sam/diag/mapq.sam`
-- `sam/diag/all.markdup.txt.gz`
+- `sam/diag/all.markdup.txt.gz`, `sam/diag/all_neg.markdup.txt.gz`, and `sam/diag/all_odd.markdup.txt.gz`
 
 Thread reference, reads, and indexes, for files that must not depend on the thread count:
 - `reference/thr.fa`
@@ -217,12 +217,19 @@ In `sam/split_template_pe.sam`, on two references, `chrS` and `chrS2`:
 - `ffpp` is a same-orientation (FF) pair flagged proper and `xchr` a pair flagged proper whose mates map to different references, as `bwa sampe` writes for a pair on either side of a chromosome boundary ([lh3/bwa#460](https://github.com/lh3/bwa/issues/460)). `samtools fixmate` unflags both, so `--req_flg` rejects them after `fixmate`.
 - `lowq` is a proper pair with one mate at MAPQ 0, `ffmq` a same-orientation pair flagged proper with both mates at MAPQ 0, which fails both `--req_flg` and `--mapq`, and `disc` a pair the aligner did not flag proper.
 
-In `sam/diag/`, read at MAPQ 30, each template stands for one `.diag.tsv` case:
-- Main file: `m1` is a pair. `m2` is a pair flagged duplicate.
+In `sam/diag/`, read at MAPQ 30 and a Bowtie 2 `-X` of 500, each template stands for one `.diag.tsv.gz` case:
+- Main file: `m1` is a pair with a secondary record. `m2` is a pair flagged duplicate.
 - Side file: `u_both` has both mates unaligned. `u_one` has an unaligned R2 and an aligned R1 flagged duplicate. `u_t75` has the #75 shape: an unaligned R2 and an aligned R1 whose mate-unaligned flag (0x8) is clear.
-- Improper file: `i_xr` has its mates on different references. `i_ff` has both mates forward, and `i_rr` both reverse. `i_rf` has its mates facing outward. `i_q30` has both mates at MAPQ 30, the threshold. `i_q10` has one mate at MAPQ 10.
-- Low-MAPQ file: `q_low` has one mate at MAPQ 5.
-- Statistics: 3 duplicate records, all primary: both records of `m2` and the R1 of `u_one`.
+- Improper file, whose primary records carry `MC` as `samtools fixmate -m` writes it:
+  - `i_xr` has its mates on different references, both forward.
+  - `i_ff` has both mates forward, and `i_rr` both reverse.
+  - `i_rf` has its mates facing outward.
+  - `i_dov` is dovetailed: its reverse mate starts before its forward mate, and a deletion makes both end at the same base.
+  - `i_dov_fe` is dovetailed the other way: both mates start at the same base, and the forward mate ends after the reverse mate.
+  - `i_q10` spans 510 bases, with one mate at MAPQ 10.
+  - `i_q30` spans 210 bases, with both mates at MAPQ 30, the threshold, and a supplementary record at MAPQ 0.
+- Low-MAPQ file: `q_low` has one mate at MAPQ 5 and a secondary record.
+- Statistics: 3 duplicate records, all primary: both records of `m2` and the R1 of `u_one`. Two more files cannot follow from these files: in `all_neg.markdup.txt.gz`, the duplicate total is smaller than the side file's duplicate, though the primary count leaves an even number, and in `all_odd.markdup.txt.gz`, the main file is left with an odd count of primary duplicates.
 
 <br />
 

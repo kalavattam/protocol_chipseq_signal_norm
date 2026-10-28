@@ -181,7 +181,7 @@ Notes
       - Its duplicates are marked against all the files together.
       - It carries the pipeline record and follows the alignment file into CRAM and into a '--qname' copy.
     + The diagnostic files are not for signal or scaling.
-    + '<stem>.diag.tsv' counts the templates and records each file holds, by category.
+    + '<stem>.diag.tsv.gz' counts the templates and records each file holds, by category.
   - Duplicates are marked (SAM flag 1024) after MAPQ filtering, and kept.
     + Like any other read, '--mapq' filters them by the MAPQ the aligner gave them.
     + When every read name carries Illumina flow-cell coordinates ('...:tile:x:y') in one format, duplicates on the same tile as their original and within 2500 pixels of it in x and y are tagged as optical ('dt:Z:SQ'); the rest are tagged as library duplicates ('dt:Z:LB').
