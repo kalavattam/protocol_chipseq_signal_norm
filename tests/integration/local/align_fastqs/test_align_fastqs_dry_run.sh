@@ -224,7 +224,7 @@ mv -f \\
 
 
 # Step 4: mark duplicates in the BAM work file. '-d 2500' applies only if all
-# read names carry flow-cell coordinates of one format.
+# read names carry flow-cell coordinates.
 samtools markdup \\
     -@ 2 \\
     -t \\

@@ -6,8 +6,10 @@
 # Copyright 2026 by Kris Alavattam
 # Email: kalavattam@gmail.com
 #
-# OpenAI ChatGPT and Codex (GPT-5.6) were used in design, development, and
-# documentation, with all output reviewed, edited, and approved by the author.
+# The following were used in design, development, and documentation, with all
+# output reviewed, edited, and approved by the author:
+# - OpenAI ChatGPT and Codex (GPT-5.6);
+# - Anthropic Claude Code (Opus 5.5).
 #
 # Distributed under the MIT license.
 
@@ -133,7 +135,7 @@ if \
         "${log_update}" \
         --env_nam "${env_nam}" \
         --if_exists update \
-        --update_package samtools=1.24 \
+        --update_package samtools=1.25 \
         --yes
 then
     if run_isolated_tool samtools --version > /dev/null 2>&1; then
@@ -146,5 +148,6 @@ else
         "disposable env_siqchip update failed; see" \
         "$(print_relpath "${log_update}")"
 fi
+
 
 finish "$@"

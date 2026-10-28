@@ -184,7 +184,7 @@ Notes
     + '<stem>.diag.tsv.gz' counts the templates and records each file holds, by category.
   - Duplicates are marked (SAM flag 1024) after MAPQ filtering, and kept.
     + Like any other read, '--mapq' filters them by the MAPQ the aligner gave them.
-    + When every read name carries Illumina flow-cell coordinates ('...:tile:x:y') in one format, duplicates on the same tile as their original and within 2500 pixels of it in x and y are tagged as optical ('dt:Z:SQ'); the rest are tagged as library duplicates ('dt:Z:LB').
+    + When every read name carries Illumina flow-cell coordinates ('...:tile:x:y'), a duplicate is tagged as optical ('dt:Z:SQ') if it shares its original's tile and lies within 2500 pixels of it in x and y. Other duplicates are tagged as library duplicates ('dt:Z:LB').
     + Otherwise, as with most SRA-dumped names, no 'dt' tags are written and a warning says why.
     + Duplicate statistics are written to '<stem>.markdup.txt.gz' beside the alignment file; Samtools estimates library size for paired-end data only. The file's last line, 'OPTICAL DISTANCE:', gives 2500 when optical duplicates were told apart, or 'not used' and the reason.
     + With '--unal_mode separate', duplicates are marked twice:

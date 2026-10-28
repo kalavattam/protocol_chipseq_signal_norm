@@ -2126,15 +2126,13 @@ EOM
 
 
 # For Step 4: decide whether 'samtools markdup' can tell optical duplicates
-# apart based on whether every read name carries flow-cell coordinates and all
-# tile prefixes have one length.
-# TODO: revisit once pinned Samtools includes the fix for Samtools Issue #2399.
+# apart based on whether every read name carries flow-cell coordinates.
 function _check_optical_names() {
     local func="${1:-}"
     local threads="${2:-}"
     local fil_wrk="${3:-}"
     local dist_nam="${4:-}"
-    local cnt n_nam n_bad n_len fil
+    local cnt n_nam n_bad fil
     local -a arr_fil
     local show_help
 
@@ -2146,7 +2144,7 @@ Usage
 
   Decide whether 'samtools markdup -d' can tell optical duplicates apart in a BAM file, or in several marked together (for Step 4 of 'align_fastqs()').
 
-  Every read name must carry Illumina flow-cell coordinates, and all tile prefixes ('machine:run:flowcell:lane:tile') must have one length.
+  Every read name must carry Illumina flow-cell coordinates.
 
 Parameters
 ----------
@@ -2172,7 +2170,7 @@ Returns
 -------
   Sets 'dist_nam' and returns 0 when optical duplicates can be told apart.
 
-  Sets it, prints a warning, and returns 1 when a read name has no coordinates or the tile prefixes differ in length.
+  Sets it, prints a warning, and returns 1 when a read name has no coordinates.
 
   Sets it and returns 1 silently when the file has no reads.
 
@@ -2186,9 +2184,8 @@ Notes
     - cut
     - samtools
 
-  - A name is parsed as Samtools 1.24 parses it: it must have 3, 4, 6, or 7 colons, with digits where the x and y coordinates go; the tile prefix is everything before x.
+  - A name is parsed as Samtools 1.25 parses it: it must have 3, 4, 6, or 7 colons, with digits where the x and y coordinates go.
   - One name per template is read (primary records that are not the second mate).
-  - Samtools 1.24 calls duplicates on different tiles optical when tile prefixes in a duplicate set differ in length, which includes names it cannot parse (Samtools Issue #2399), so '-d' is not passed then.
 
 Examples
 --------
@@ -2211,9 +2208,8 @@ EOM
 
     arr_fil=( "${fil_wrk}" "${@:5}" )
 
-    # Count names, names without coordinates, and distinct prefix lengths,
-    # following the colon count that 'get_coordinates_colons()' in
-    # 'bam_markdup.c' uses.
+    # Count names and names without coordinates, following the colon count that
+    # 'get_coordinates_colons()' in 'bam_markdup.c' uses.
     # shellcheck disable=SC2016  # The program is for awk, not the shell.
     if ! \
         cnt="$(
@@ -2234,19 +2230,10 @@ EOM
 
                         if ($ix !~ /^[-+]?[0-9]/ || $iy !~ /^[-+]?[0-9]/) {
                             n_bad++
-                            next
                         }
-
-                        len = 0
-                        for (i = 1; i < ix; i++) len += length($i) + 1
-                        lens[len] = 1
                     }
 
-                    END {
-                        n_len = 0
-                        for (k in lens) n_len++
-                        print n_nam + 0, n_bad + 0, n_len
-                    }
+                    END { print n_nam + 0, n_bad + 0 }
                 '
         )"
     then
@@ -2257,7 +2244,7 @@ EOM
     fi
 
     local -n dist_ref="${dist_nam}"
-    read -r n_nam n_bad n_len <<< "${cnt}"
+    read -r n_nam n_bad <<< "${cnt}"
 
     if (( n_nam == 0 )); then
         dist_ref="not used; no reads"
@@ -2268,13 +2255,6 @@ EOM
         echo_warn_func "${func}" \
             "Step #4: ${n_bad} of ${n_nam} read names carry no flow-cell" \
             "coordinates, so optical duplicates are not told apart."
-        return 1
-    elif (( n_len > 1 )); then
-        dist_ref="not used; read names have ${n_len} tile-prefix lengths"
-        dist_ref+=" (Samtools Issue #2399)"
-        echo_warn_func "${func}" \
-            "Step #4: read names have ${n_len} tile-prefix lengths, so" \
-            "optical duplicates are not told apart (Samtools Issue #2399)."
         return 1
     fi
 
@@ -2379,7 +2359,7 @@ EOM
         printf '\n%s %s\n%s\n' \
             "# Step 4: mark duplicates in the BAM work file." \
             "'-d 2500' applies only if all" \
-            "# read names carry flow-cell coordinates of one format."
+            "# read names carry flow-cell coordinates."
     fi
 
     local -n dist_out="${dist_nam}"
@@ -3364,7 +3344,7 @@ Notes
   - With Bowtie 2 and paired-end data, mates may overlap or contain one another, so fragments shorter than the two reads together are kept; mates that extend past each other ("dovetailed") are not.
   - Duplicates are marked (SAM flag 1024) in Step #4, after MAPQ filtering, and kept.
     + Like any other read, '--mapq' filters them by the MAPQ the aligner gave them.
-    + When every read name carries Illumina flow-cell coordinates ('...:tile:x:y') in one format, duplicates on the same tile as their original and within 2500 pixels of it in x and y are tagged as optical ('dt:Z:SQ'); the rest are tagged as library duplicates ('dt:Z:LB').
+    + When every read name carries Illumina flow-cell coordinates ('...:tile:x:y'), a duplicate is tagged as optical ('dt:Z:SQ') if it shares its original's tile and lies within 2500 pixels of it in x and y. Other duplicates are tagged as library duplicates ('dt:Z:LB').
     + Otherwise, as with most SRA-dumped names, no 'dt' tags are written and a warning says why.
     + Duplicate statistics are written to '<stem>.markdup.txt.gz' beside the alignment file; Samtools estimates library size for paired-end data only. The file's last line, 'OPTICAL DISTANCE:', gives 2500 when optical duplicates were told apart, or 'not used' and the reason.
     + With '--unal_mode separate', duplicates are marked twice:

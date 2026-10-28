@@ -3,15 +3,16 @@ channels:
   - conda-forge
   - bioconda
 # Version pins fall into three kinds, and each pinned entry says which it is:
-# "pinned for reproducibility" for packages that can change a computed value,
-# "pinned for evidence" for packages whose output this repository cites, and
-# "pinned for compatibility" where a version is forced by another dependency.
+# - "pinned for reproducibility" for packages that can change a computed value,
+# - "pinned for evidence" for packages whose output this repository cites, and
+# - "pinned for compatibility" where a version is forced by another dependency.
 #
-# Resist pinning anything else. Pins are not free: a site installing from a
-# mirrored channel sees fewer builds than 'anaconda.org' carries, so every
-# additional pin raises the chance that a later solve is unsatisfiable there
-# while still solving elsewhere. Packages that cannot move a number and are not
-# cited as evidence are deliberately left to float.
+# Note: a site installing from a mirrored channel may see fewer builds than
+# 'anaconda.org' carries, so every additional pin potentially raises the chance
+# a later solve is unsatisfiable on the mirror while solvable elsewhere.
+#
+# Packages that cannot move a number and are not cited as evidence are
+# deliberately left to float.
 dependencies:
   - asciigenome               # Note: Added since publication in Bio-protocol. Maybe: remove from 'env_protocol'.
   - bash                      # Note: Added since publication in Bio-protocol.
@@ -37,12 +38,12 @@ dependencies:
   - python=3.11               # Note: Pinned for compatibility and to v3.11 for 'sequali' installation.
   - pyyaml                    # Note: Made explicit since Bio-protocol publication.
   - r-argparse
-  - r-base=4.5.1              # Note: Made explicit since Bio-protocol publication; pinned for reproducibility and evidence.
+  - r-base=4.5.2              # Note: Made explicit since Bio-protocol publication; pinned for reproducibility and evidence.
   - r-ggsci
   - r-plotly
   - rename
   - ruff=0.15.21              # Note: Added since publication in Bio-protocol; pinned for evidence, to the reviewed repository standard.
-  - samtools=1.24             # Note: Pinned for reproducibility; fragment counts and sequencing depth are derived from it.
+  - samtools=1.25             # Note: Pinned for reproducibility; fragment counts and sequencing depth are derived from it.
   - sequali=1.0.2             # Note: Pinned for evidence; gate reports in the analysis repositories cite its output.
   - setuptools
   - shellcheck=0.10.0         # Note: Added since publication in Bio-protocol; pinned for evidence, for repository static-analysis provenance.

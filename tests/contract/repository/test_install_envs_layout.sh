@@ -335,7 +335,7 @@ assert_readable_yaml "${yml_siq}" "env_siqchip YAML"
 assert_readable_yaml "${yml_qc}" "env_qc YAML"
 assert_pattern_found \
     "${yml_qc}" \
-    '^  - htslib=1\.24' \
+    '^  - htslib=1\.25' \
     "env_qc pins the htslib that preseq is built against"
 assert_pattern_absent \
     "${yml_qc}" \
@@ -410,11 +410,11 @@ if \
         "${log_fake}" \
         --env_nam env_siqchip \
         --if_exists update \
-        --update_package samtools=1.24
+        --update_package samtools=1.25
 then
     assert_pattern_found \
         "${fake_log}" \
-        '^mamba install -n env_siqchip.*samtools=1\.24' \
+        '^mamba install -n env_siqchip.*samtools=1\.25' \
         "install_envs update invokes the selected declared package"
     assert_pattern_absent \
         "${fake_log}" \
@@ -709,7 +709,7 @@ then
             "${log_implied_update}" \
             --dry_run \
             --env_nam env_protocol \
-            --update_package samtools=1.24
+            --update_package samtools=1.25
     then
         assert_pattern_found \
             "${log_implied_update}" \

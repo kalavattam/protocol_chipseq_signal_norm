@@ -76,7 +76,8 @@ function cleanup_tmp_fastqs() {
         "${fq_thr_r2_tmp}" \
         "${tmp_bln_se}" \
         "${tmp_bln_r1}" \
-        "${tmp_bln_r2}"
+        "${tmp_bln_r2}" \
+        "${arr_opt_tmp[@]}"
 }
 
 
@@ -86,9 +87,11 @@ function print_rc() {
 }
 
 
-# Print one FASTQ record with uniform base qualities.
+# Print one FASTQ record with uniform base qualities ('I' unless a third
+# argument gives another character).
 function print_fq() {
-    printf '@%s\n%s\n+\n%s\n' "${1}" "${2}" "${2//?/I}"
+    local qual="${3:-I}"
+    printf '@%s\n%s\n+\n%s\n' "${1}" "${2}" "${2//?/${qual}}"
 }
 
 
@@ -97,6 +100,62 @@ function write_dia_header() {
     write_sam_line '@HD' 'VN:1.6' 'SO:coordinate'
     write_sam_line '@SQ' 'SN:chrS' 'LN:1000'
     write_sam_line '@SQ' 'SN:chrS2' 'LN:1000'
+}
+
+
+# Write one optical-duplicate set. A 'pe' set is written to
+# '<dir_fq_pe>/opt_<stem>_pe_R1.atria.fastq.gz' and '_R2.atria.fastq.gz'. An
+# 'se' set is written to '<dir_fq_se>/opt_<stem>_se.atria.fastq.gz'. Every name
+# gets the same 300-bp fragment of the repeat reference. The fragment starts at
+# the given 0-based offset.
+#
+# The first name gets base quality 'I' and the rest '5', so 'markdup' keeps the
+# first as the original.
+function write_opt_set() {
+    local stm="${1}"
+    local lay="${2}"
+    local beg="${3}"
+    shift 3
+    local frg=300
+    local len=50
+    local qual="I"
+    local fq_1 fq_2 nam seq_2
+
+    if [[ "${lay}" == "pe" ]]; then
+        fq_1="${dir_fq_pe}/opt_${stm}_pe_R1.atria.fastq"
+        fq_2="${dir_fq_pe}/opt_${stm}_pe_R2.atria.fastq"
+    else
+        fq_1="${dir_fq_se}/opt_${stm}_se.atria.fastq"
+        fq_2=""
+    fi
+
+    seq_2="$(print_rc "${seq_rpt:beg + frg - len:len}")"
+
+    arr_opt_tmp+=( "${fq_1}.tmp" )
+    : > "${fq_1}.tmp"
+
+    if [[ -n "${fq_2}" ]]; then
+        arr_opt_tmp+=( "${fq_2}.tmp" )
+        : > "${fq_2}.tmp"
+    fi
+
+    for nam in "$@"; do
+        print_fq "${nam}" "${seq_rpt:beg:len}" "${qual}" >> "${fq_1}.tmp"
+
+        if [[ -n "${fq_2}" ]]; then
+            print_fq "${nam}" "${seq_2}" "${qual}" >> "${fq_2}.tmp"
+        fi
+
+        qual="5"
+    done
+
+    gzip_n "${fq_1}.tmp" "${fq_1}.gz"
+    rm_file "${dir_fix}" "${fq_1}.tmp"
+
+    if [[ -n "${fq_2}" ]]; then
+        gzip_n "${fq_2}.tmp" "${fq_2}.gz"
+        rm_file "${dir_fix}" "${fq_2}.tmp"
+    fi
 }
 
 
@@ -223,7 +282,12 @@ fq_thr_r2_gz="${dir_fq_pe}/thr_pe_R2.atria.fastq.gz"
 idx_thr_bt2="${dir_bt2}/thr"
 
 sam_spl_pe="${dir_sam}/split_template_pe.sam"
+sam_opt="${dir_sam}/optical_names.sam"
 dir_dia="${dir_sam}/diag"
+
+# 'write_opt_set' adds each temporary FASTQ of an optical-duplicate set here so
+# that cleanup removes it after a failure.
+arr_opt_tmp=()
 
 env_req="env_protocol"
 
@@ -289,7 +353,7 @@ gzip_n "${fq_se_tmp}" "${fq_se_gz}"
 # Remove the temporary single-end FASTQ after compression.
 rm_file "${dir_fix}" "${fq_se_tmp}"
 
-# Copy the single-end fixture into two samples, so that the GNU Parallel test
+# Copy the single-end fixture into two samples so that the GNU Parallel test
 # runs two jobs against the tiny index.
 cp "${fq_se_gz}" "${fq_se_1_gz}"
 cp "${fq_se_gz}" "${fq_se_2_gz}"
@@ -449,8 +513,8 @@ bwa-mem2 mem "${idx_bm2}" "${fq_r1_gz}" "${fq_r2_gz}" \
     > /dev/null 2> /dev/null
 
 
-# Write the repeat reference's sequence blocks, 50 bases per line: one 150-base
-# repeat and four 400-base unique blocks.
+# Write the repeat reference's sequence blocks at 50 bases per line: one
+# 150-base repeat and four 400-base unique blocks.
 blk_rep="$(tr -d '\n' << 'EOM'
 TAGGCCAAACAAGTTGCAACTCCCCTAAATACGATTCCGCATACCAAATT
 CATGAGAGGTCTCACATAATCTGCAAATATCCGAATCATATAGATATCGT
@@ -506,8 +570,9 @@ ACTGAGCGAGCATGCGGAGGCGGCAACGTAAGCCCGCGGGTATGCGAGTG
 EOM
 )"
 
-# Write the repeat reference: the unique blocks separated by three copies of
-# the repeat, so a read in the repeat has three equally good placements.
+# Write the repeat reference, where three copies of the repeat separate the
+# unique blocks. A read in the repeat therefore has three equally good
+# placements.
 seq_rpt="${blk_u_0}${blk_rep}${blk_u_1}${blk_rep}"
 seq_rpt+="${blk_u_2}${blk_rep}${blk_u_3}"
 
@@ -520,14 +585,13 @@ cp "${ref_rpt}" "${ref_rpt_bwa}"
 cp "${ref_rpt}" "${ref_rpt_bm2}"
 
 
-# Write the repeat reads, 100 bases each, cut from the blocks (offsets are
-# zero-based):
-# - 'chim': R1 is 60 bases of repeat then 40 bases of unique block 3, a split
-#   read whose primary lies in the repeat; R2 is unique.
-# - 'rchm': R1 is 60 bases of unique block 3 then 40 bases of repeat, a split
-#   read whose primary is unique; R2 is unique.
-# - 'half': R1 lies wholly in the repeat; R2 is unique.
-# - 'ctrl': both mates unique.
+# Cut the 100-base repeat reads from the blocks (offsets are zero-based):
+# - 'chim': R1 is 60 bases of repeat then 40 bases of unique block 3. It is a
+#   split read whose primary record lies in the repeat. R2 is unique.
+# - 'rchm': R1 is 60 bases of unique block 3 then 40 bases of repeat. It is a
+#   split read whose primary record is unique. R2 is unique.
+# - 'half': R1 lies wholly in the repeat. R2 is unique.
+# - 'ctrl': both mates are unique.
 # Single-end input holds the R1 of each read but 'half'.
 {
     print_fq chim "${blk_rep:20:60}${blk_u_3:100:40}"
@@ -549,7 +613,7 @@ cp "${ref_rpt}" "${ref_rpt_bm2}"
     print_fq ctrl "${blk_u_1:150:100}"
 } > "${fq_rpt_se_tmp}"
 
-# Compress the repeat FASTQ fixtures with deterministic gzip metadata, then
+# Compress the repeat FASTQ fixtures with deterministic gzip metadata and
 # remove the temporary FASTQs.
 gzip_n "${fq_rpt_se_tmp}" "${fq_rpt_se_gz}"
 gzip_n "${fq_rpt_r1_tmp}" "${fq_rpt_r1_gz}"
@@ -560,12 +624,15 @@ rm_file "${dir_fix}" "${fq_rpt_r1_tmp}"
 rm_file "${dir_fix}" "${fq_rpt_r2_tmp}"
 
 
-# Write the queryname-copy reads on the repeat reference, 50 bases each: three
-# 300-base fragments from the unique blocks, at zero-based offsets 50, 1200,
-# and 1200. 'dup_a' and 'dup_b' are the same fragment under two names, so Step
-# 4 marks one of them. R1 starts the fragment on the forward strand; R2 is the
-# reverse complement of its last 50 bases. The R1 file is also the single-end
-# input.
+# Write the queryname-copy reads on the repeat reference. Each mate is 50
+# bases. The three pairs come from 300-base fragments of the unique blocks:
+# - 'uniq': the fragment at zero-based offset 50.
+# - 'dup_a' and 'dup_b': the same fragment at offset 1200 under two names, so
+#   Step 4 marks one of them.
+#
+# R1 is the fragment's first 50 bases on the forward strand. R2 is the reverse
+# complement of the fragment's last 50 bases. The R1 file is also the
+# single-end input.
 {
     print_fq uniq "${seq_rpt:50:50}"
     print_fq dup_a "${seq_rpt:1200:50}"
@@ -585,12 +652,15 @@ rm_file "${dir_fix}" "${fq_qn_r1_tmp}"
 rm_file "${dir_fix}" "${fq_qn_r2_tmp}"
 
 
-# Write the fragment-length reads on the repeat reference, 50 bases each, cut
-# from the unique blocks (zero-based 0-399, 550-949, 1100-1499, and 1650-2049).
-# The 'mid' pairs are ordinary 300-base fragments; the 'shrt' pairs are 80
-# bases, so their mates overlap; the 'long' pairs are 800 bases, longer than
-# Bowtie 2's default '-X' of 500. R1 starts the fragment on the forward strand
-# at the given offset; R2 is the reverse complement of its last 50 bases.
+# Write the fragment-length reads on the repeat reference. Each 50-base mate
+# comes from the unique blocks (zero-based 0-399, 550-949, 1100-1499, and
+# 1650-2049). The pairs come in three fragment lengths:
+# - 'mid': ordinary 300-base fragments.
+# - 'shrt': 80-base fragments, so their mates overlap.
+# - 'long': 800-base fragments that exceed Bowtie 2's default '-X' of 500.
+#
+# R1 starts at the given offset on the forward strand. R2 is the reverse
+# complement of the fragment's last 50 bases.
 : > "${fq_frg_r1_tmp}"
 : > "${fq_frg_r2_tmp}"
 for frg in mid_a:50:300 mid_b:1700:300 shrt_a:600:80 shrt_b:1200:80 \
@@ -660,13 +730,19 @@ bwa-mem2 mem "${idx_rpt_bm2}" "${fq_rpt_r1_gz}" "${fq_rpt_r2_gz}" \
     > /dev/null 2> /dev/null
 
 
-# Write name-grouped SAM records with secondary records for the MAPQ template
-# filter: at MAPQ 30, 'sec_keep' has passing primaries and a failing secondary,
-# and 'sec_drop' a failing primary and a passing secondary. In the paired-end
-# file, 'unal_mate' has an aligned R1 and an R2 flagged unaligned (0x4). R1
-# lacks the mate-unaligned flag (0x8), the shape 'bwa sampe' writes (#75). In
-# the single-end file, 'unal' is an unaligned read. Both unaligned records keep
-# MAPQ 60, so only the unaligned bit (4) of the filter's '-F 2308' drops them.
+# Write queryname-grouped SAM records with secondary records for the MAPQ
+# template filter. Both files hold these templates, judged at MAPQ 30:
+# - 'sec_keep': passing primary records and a failing secondary record.
+# - 'sec_drop': a failing primary record and a passing secondary record.
+#
+# Each file also holds one unaligned record:
+# - Paired-end file: 'unal_mate' has an aligned R1 and an R2 flagged unaligned
+#   (0x4). R1 lacks the mate-unaligned flag (0x8). This is the shape
+#   'bwa sampe' writes (#75).
+# - Single-end file: 'unal' is an unaligned read.
+#
+# Both unaligned records keep MAPQ 60, so only the unaligned bit (4) of the
+# filter's '-F 2308' drops them.
 {
     write_sam_line '@HD' 'VN:1.6' 'SO:queryname'
     write_sam_line '@SQ' 'SN:chrR' "LN:${#seq_rpt}"
@@ -734,7 +810,7 @@ samtools quickcheck "${sam_sec_pe}" "${sam_sec_se}"
 
 
 # Write the tie reference and reads for the determinism checks with
-# 'make_tie.py'; its docstring describes the data.
+# 'make_tie.py'. Its docstring describes the data.
 require_cmd python3 "in '${env_req}' to generate the tie fixtures."
 
 python3 "${dir_scr}/make_tie.py" \
@@ -748,7 +824,7 @@ python3 "${dir_scr}/make_tie.py" \
     --fil_se "${fq_tie_se_tmp}" \
     --fil_cmt_se "${fq_tie_cmt_se_tmp}"
 
-# Compress the tie FASTQ fixtures with deterministic gzip metadata, then remove
+# Compress the tie FASTQ fixtures with deterministic gzip metadata and remove
 # the temporary FASTQs.
 gzip_n "${fq_tie_r1_tmp}" "${fq_tie_r1_gz}"
 gzip_n "${fq_tie_r2_tmp}" "${fq_tie_r2_gz}"
@@ -791,7 +867,7 @@ rm_files \
     "${idx_tie_bt2}.rev.1.bt2" \
     "${idx_tie_bt2}.rev.2.bt2"
 
-# Build the tie BWA and BWA-MEM2 indexes, then the Bowtie 2 index.
+# Build the tie BWA and BWA-MEM2 indexes and then the Bowtie 2 index.
 cp "${ref_tie}" "${ref_tie_bwa}"
 cp "${ref_tie}" "${ref_tie_bm2}"
 
@@ -835,8 +911,8 @@ bowtie2 \
         2> /dev/null
 
 
-# Write the bridge reference: two contigs, 'chrA' (unique blocks 0 and 1) and
-# 'chrB' (unique blocks 2 and 3), so that a read can run off the end of 'chrA'
+# Write the bridge reference as two contigs: 'chrA' (unique blocks 0 and 1) and
+# 'chrB' (unique blocks 2 and 3). A read can then run off the end of 'chrA'
 # into the start of 'chrB'.
 seq_brg_a="${blk_u_0}${blk_u_1}"
 seq_brg_b="${blk_u_2}${blk_u_3}"
@@ -848,7 +924,7 @@ seq_brg_b="${blk_u_2}${blk_u_3}"
     fold -w 60 <<< "${seq_brg_b}"
 } > "${ref_brg}"
 
-# Write the bridge reads, 100 bases each (offsets are zero-based):
+# Write the 100-base bridge reads (offsets are zero-based):
 # - 'brdg': R1 is unique in 'chrA'. R2 is the reverse complement of the last 70
 #   bases of 'chrA' and the first 30 of 'chrB'. BWA ALN flags R2 unaligned and
 #   leaves R1's mate-unaligned flag clear.
@@ -863,7 +939,7 @@ seq_brg_b="${blk_u_2}${blk_u_3}"
     print_fq ctrl "$(print_rc "${seq_brg_b:330:100}")"
 } > "${fq_brg_r2_tmp}"
 
-# Compress the bridge FASTQ fixtures with deterministic gzip metadata, then
+# Compress the bridge FASTQ fixtures with deterministic gzip metadata and
 # remove the temporary FASTQs.
 gzip_n "${fq_brg_r1_tmp}" "${fq_brg_r1_gz}"
 gzip_n "${fq_brg_r2_tmp}" "${fq_brg_r2_gz}"
@@ -892,7 +968,7 @@ rm_files \
     "${idx_brg_bt2}.rev.1.bt2" \
     "${idx_brg_bt2}.rev.2.bt2"
 
-# Build the bridge BWA and BWA-MEM2 indexes, then the Bowtie 2 index.
+# Build the bridge BWA and BWA-MEM2 indexes and then the Bowtie 2 index.
 cp "${ref_brg}" "${ref_brg_bwa}"
 cp "${ref_brg}" "${ref_brg_bm2}"
 
@@ -915,8 +991,9 @@ bwa mem "${ref_brg_bwa}" "${fq_brg_r1_gz}" "${fq_brg_r2_gz}" \
     > /dev/null 2> /dev/null
 
 
-# Write the pairs reference and reads, with one read pair per pair class, and
-# the duplicate set with 'make_pairs.py' (its docstring describes the data).
+# Use 'make_pairs.py' to write the pairs reference, its reads (one pair per
+# pair class), and the duplicate set. The script's docstring describes the
+# data.
 python3 "${dir_scr}/make_pairs.py" \
     --fil_ref "${ref_par}" \
     --fil_r1 "${fq_par_r1_tmp}" \
@@ -927,8 +1004,8 @@ python3 "${dir_scr}/make_pairs.py" \
     --fil_fill_r1 "${fq_fil_r1_tmp}" \
     --fil_fill_r2 "${fq_fil_r2_tmp}"
 
-# Compress the pairs FASTQ fixtures with deterministic gzip metadata, then
-# remove the temporary FASTQs.
+# Compress the pairs FASTQ fixtures with deterministic gzip metadata and remove
+# the temporary FASTQs.
 gzip_n "${fq_par_r1_tmp}" "${fq_par_r1_gz}"
 gzip_n "${fq_par_r2_tmp}" "${fq_par_r2_gz}"
 gzip_n "${fq_par_se_tmp}" "${fq_par_se_gz}"
@@ -948,19 +1025,20 @@ rm_files \
     "${fq_fil_r2_tmp}"
 
 
-# Write a name-grouped paired-end SAM record set for Step 2 on its own:
+# Write queryname-grouped paired-end SAM records for testing Step 2 on its own:
 # - 'pair': a complete aligned pair.
 # - 't75': R1 aligned and R2 flagged unaligned (0x4), with R1's mate-unaligned
 #   flag (0x8) clear. This is the shape 'bwa sampe' writes (#75).
 # - 'supp': as 't75', plus a supplementary record for R1.
 # - 'lone': an aligned R1 with no R2 record at all.
-# - 'ffpp': a same-orientation (FF) pair flagged proper, which
-#   'samtools fixmate' unflags, so '--req_flg' rejects it after 'fixmate'.
-# - 'xchr': a pair flagged proper whose mates map to different references, as
-#   'bwa sampe' writes for a pair on either side of a chromosome boundary
-#   (https://github.com/lh3/bwa/issues/460); 'fixmate' unflags it too.
+# - 'ffpp': a same-orientation (FF) pair flagged proper. 'samtools fixmate'
+#   unflags it, so '--req_flg' rejects it after 'fixmate'.
+# - 'xchr': a pair flagged proper whose mates map to different references.
+#   'bwa sampe' writes such a pair when its mates fall on either side of a
+#   chromosome boundary (https://github.com/lh3/bwa/issues/460). 'fixmate'
+#   unflags it too.
 # - 'lowq': a proper pair with one mate at MAPQ 0.
-# - 'ffmq': as 'ffpp', with both mates at MAPQ 0, so it fails both filters.
+# - 'ffmq': as 'ffpp' but with both mates at MAPQ 0, so it fails both filters.
 # - 'disc': a pair the aligner did not flag proper.
 {
     write_sam_line '@HD' 'VN:1.6' 'SO:queryname'
@@ -1043,32 +1121,42 @@ rm_files \
 samtools quickcheck "${sam_spl_pe}"
 
 
-# Write, as SAM records, the four files of a paired-end '--unal_mode separate'
-# run and Markdup 2's statistics, for testing '.diag.tsv.gz' on its own.
-# 'docs/design/align_fastqs_separate.md' describes the table. Each template
-# stands for one case:
-# - Main file: 'm1' is a pair with a secondary record. 'm2' is a pair that
-#   Markdup 2 marked as duplicates.
-# - Side file: 'u_both' has both mates unaligned. 'u_one' has an unaligned R2
-#   and an aligned R1 that Markdup 2 marked as a duplicate. 'u_t75' has the #75
-#   shape: an unaligned R2 and an aligned R1 whose mate-unaligned flag (0x8) is
-#   clear.
-# - Improper file, whose primary records carry 'MC' as 'samtools fixmate -m'
-#   writes it: 'i_xr' has its mates on different references, both forward.
-#   'i_ff' has both mates forward, and 'i_rr' both reverse. 'i_rf' has its
-#   mates facing outward. 'i_dov' is dovetailed: its reverse mate starts before
-#   its forward mate, and a deletion makes both end at the same base.
-#   'i_dov_fe' is dovetailed the other way: both mates start at the same base,
-#   and the forward mate ends after the reverse mate. 'i_q10' spans 510 bases,
-#   with one mate at MAPQ 10. 'i_q30' spans 210 bases, with both mates at MAPQ
-#   30, the threshold the test uses, and a supplementary record at MAPQ 0.
-# - Low-MAPQ file: 'q_low' has one mate at MAPQ 5 and a secondary record.
-# - Statistics: 3 duplicate records, all primary: both records of 'm2' and the
-#   R1 of 'u_one'. Two more files cannot follow from these files: in
-#   'all_neg.markdup.txt.gz', the duplicate total is smaller than the side
-#   file's duplicate, though the primary count leaves an even number, and in
-#   'all_odd.markdup.txt.gz', the main file is left with an odd count of
-#   primary duplicates.
+# Write SAM records for the four files of a paired-end '--unal_mode separate'
+# run. Then write Markdup 2's statistics. Together they test '.diag.tsv.gz' on
+# its own. 'docs/design/align_fastqs_separate.md' describes the table. Each
+# template stands for one case:
+# - Main file:
+#   + 'm1' is a pair with a secondary record.
+#   + 'm2' is a pair that Markdup 2 marked as duplicates.
+# - Side file:
+#   + 'u_both' has both mates unaligned.
+#   + 'u_one' has an unaligned R2 and an aligned R1 that Markdup 2 marked as a
+#     duplicate.
+#   + 'u_t75' has the #75 shape: an unaligned R2 and an aligned R1 whose
+#     mate-unaligned flag (0x8) is clear.
+# - Improper file (its primary records carry 'MC' as 'samtools fixmate -m'
+#   writes it):
+#   + 'i_xr' has both mates forward on different references.
+#   + 'i_ff' has both mates forward.
+#   + 'i_rr' has both mates reverse.
+#   + 'i_rf' has its mates facing outward.
+#   + 'i_dov' is dovetailed: its reverse mate starts before its forward mate,
+#     and a deletion makes both end at the same base.
+#   + 'i_dov_fe' is dovetailed the other way: both mates start at the same
+#     base, and the forward mate ends after the reverse mate.
+#   + 'i_q10' spans 510 bases and has one mate at MAPQ 10.
+#   + 'i_q30' spans 210 bases. Both its mates are at MAPQ 30 (the threshold the
+#     test uses), and it has a supplementary record at MAPQ 0.
+# - Low-MAPQ file:
+#   + 'q_low' has one mate at MAPQ 5 and a secondary record.
+# - Statistics:
+#   + 'all.markdup.txt.gz' counts 3 primary duplicate records (both records of
+#     'm2' and the R1 of 'u_one').
+#   + 'all_neg.markdup.txt.gz' holds totals these SAM files cannot produce. Its
+#     duplicate total (0) is below the side file's one duplicate record, though
+#     its primary total still leaves the main file an even count (2).
+#   + 'all_odd.markdup.txt.gz' holds totals these SAM files cannot produce. Its
+#     primary total leaves the main file an odd count (1).
 mkdirs "${dir_dia}"
 
 seq_dia="ACGTACGTAA"
@@ -1187,6 +1275,101 @@ for nam in main unal improp mapq; do
     samtools quickcheck "${dir_dia}/${nam}.sam"
 done
 
+
+# Write SAM records with two read names for testing '_check_optical_names' on
+# its own. 'A00123:8:HFLOWCELL:1:1101:1000:1000' carries flow-cell coordinates.
+# 'A00123:8:HFLOWCELL:1:1101:x1000:1000' has the colons of one but a letter
+# where x goes, so Samtools cannot read its coordinates.
+{
+    write_dia_header
+    write_sam_line \
+        'A00123:8:HFLOWCELL:1:1101:1000:1000' '0' 'chrS' '101' '60' '10M' \
+        '*' '0' '0' "${seq_dia}" "${qua_dia}"
+    write_sam_line \
+        'A00123:8:HFLOWCELL:1:1101:x1000:1000' '0' 'chrS' '201' '60' '10M' \
+        '*' '0' '0' "${seq_dia}" "${qua_dia}"
+} > "${sam_opt}"
+
+samtools quickcheck "${sam_opt}"
+
+
+# Write the optical-duplicate sets for Step 4's '-d'. Illumina names end in
+# 'tile:x:y'. The sets hold:
+# - 'pe':
+#   + an original on tile 1101.
+#   + three reads 30, 2000, and 6000 pixels from it in x.
+#   + a read on tile 1102.
+# - 'se': the original and reads 30 and 6000 pixels away.
+# - 'sra': SRA-style names (no coordinates).
+# - 'hiseq': names with four colons.
+# - 'umi': names with a UMI after y.
+# - 'mix_first': two coordinate names and then an SRA-style name.
+# - 'mix_last': an SRA-style name and then two coordinate names.
+# - 'len_tile' and 'len_run': two names whose tile prefixes differ in length.
+#   + 'len_tile': one tile has 5 digits.
+#   + 'len_run': one run number is longer.
+pfx_opt="LH00001:168:22ABCDEF:1:1101"
+pfx_opt_tile="LH00001:168:22ABCDEF:1:1102"
+pfx_opt_long="LH00001:168:22ABCDEF:1:11010"
+pfx_opt_run="LH00001:1001:22ABCDEF:1:1101"
+
+write_opt_set \
+    pe pe 50 \
+    "${pfx_opt}:10000:10000" \
+    "${pfx_opt}:10030:10000" \
+    "${pfx_opt}:12000:10000" \
+    "${pfx_opt}:16000:10000" \
+    "${pfx_opt_tile}:10000:10000"
+
+write_opt_set \
+    se se 600 \
+    "${pfx_opt}:20000:20000" \
+    "${pfx_opt}:20030:20000" \
+    "${pfx_opt}:26000:20000"
+
+write_opt_set \
+    sra pe 50 \
+    SRR1.1 SRR1.2 SRR1.3 SRR1.4 SRR1.5
+
+write_opt_set \
+    hiseq se 600 \
+    "HWI-ST100:8:1101:20000:20000" \
+    "HWI-ST100:8:1101:20030:20000"
+
+write_opt_set \
+    umi se 600 \
+    "${pfx_opt}:20000:20000:ACGTACGT" \
+    "${pfx_opt}:20030:20000:ACGTACGT"
+
+write_opt_set \
+    mix_first pe 50 \
+    "${pfx_opt}:10000:10000" \
+    "${pfx_opt}:10030:10000" \
+    SRR1.3
+
+write_opt_set \
+    mix_last pe 50 \
+    SRR1.1 \
+    "${pfx_opt}:10030:10000" \
+    "${pfx_opt}:10060:10000"
+
+write_opt_set \
+    len_tile pe 50 \
+    "${pfx_opt}:10000:10000" \
+    "${pfx_opt_long}:10030:10000"
+
+write_opt_set \
+    len_run pe 50 \
+    "${pfx_opt}:10000:10000" \
+    "${pfx_opt_run}:10030:10000"
+
+# Write one single-end read of 50 'N's that aligns nowhere.
+fq_opt_none="${dir_fq_se}/opt_none_se.atria.fastq"
+arr_opt_tmp+=( "${fq_opt_none}.tmp" )
+print_fq "${pfx_opt}:1:1" "$(printf 'N%.0s' {1..50})" > "${fq_opt_none}.tmp"
+gzip_n "${fq_opt_none}.tmp" "${fq_opt_none}.gz"
+rm_file "${dir_fix}" "${fq_opt_none}.tmp"
+
 for ent in all:3:3 all_neg:0:3 all_odd:3:2; do
     IFS=':' read -r nam n_dup n_pri <<< "${ent}"
     printf '%s\n' \
@@ -1198,7 +1381,7 @@ for ent in all:3:3 all_neg:0:3 all_odd:3:2; do
 done
 
 
-# Index each reference with 'samtools faidx', so that tests reading a reference
+# Index each reference with 'samtools faidx' so that tests reading a reference
 # for CRAM find its '.fai' and Samtools writes none beside the fixture.
 rm_files \
     "${dir_fix}" \
@@ -1235,7 +1418,7 @@ rm_files \
     "${idx_par_bt2}.rev.1.bt2" \
     "${idx_par_bt2}.rev.2.bt2"
 
-# Build the pairs BWA and BWA-MEM2 indexes, then the Bowtie 2 index.
+# Build the pairs BWA and BWA-MEM2 indexes and then the Bowtie 2 index.
 cp "${ref_par}" "${ref_par_bwa}"
 cp "${ref_par}" "${ref_par_bm2}"
 
@@ -1258,8 +1441,8 @@ bwa mem "${ref_par_bwa}" "${fq_par_r1_gz}" "${fq_par_r2_gz}" \
     > /dev/null 2> /dev/null
 
 
-# Write the thread reference and reads with 'make_thr.py', whose docstring
-# describes the data. Compress the reads with deterministic gzip metadata, and
+# Write the thread reference and reads with 'make_thr.py'. Its docstring
+# describes the data. Compress the reads with deterministic gzip metadata and
 # index the reference.
 python3 "${dir_scr}/make_thr.py" \
     --fil_ref "${ref_thr}" \
@@ -1288,8 +1471,8 @@ rm_files \
 
 samtools faidx "${ref_thr}"
 
-# Build the thread BWA index, then the Bowtie 2 index last; its final file is
-# the runner's sentinel.
+# Build the thread BWA index and then the Bowtie 2 index. The Bowtie 2 index
+# comes last because its final file is the runner's sentinel.
 cp "${ref_thr}" "${ref_thr_bwa}"
 
 log_thr="${dir_ref}/thr-index.log"

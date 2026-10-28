@@ -23,25 +23,29 @@ source "$(
 )/tests/support/test_helpers.sh"
 
 
-# Define fixture and output paths. Step 4 passes '-d 2500' to 'samtools
-# markdup' only when every read name carries flow-cell coordinates and all tile
-# prefixes have one length; duplicates are then tagged 'dt:Z:SQ' (optical) or
-# 'dt:Z:LB' (library: PCR copies of one molecule or separate molecules that
-# share both ends), and the statistics go to '<stem>.markdup.txt.gz'.
+# Define fixture and output paths.
+#
+# Step 4 passes '-d 2500' to 'samtools markdup' only when every read name
+# carries flow-cell coordinates. Samtools then tags a duplicate 'dt:Z:SQ'
+# (optical) when it lies on the same tile as another read of its duplicate set
+# and within 2500 pixels of it. Every other duplicate is tagged 'dt:Z:LB'
+# (library). 'LB' covers PCR copies of one molecule and separate molecules that
+# happen to share both ends (Samtools cannot tell them apart).
+#
+# The statistics go to '<stem>.markdup.txt.gz'. The reads are the 'opt_*' sets
+# that 'make.sh' writes, and the fixture README lists their names.
 dir_fx="${ROOT_REPO}/tests/fixtures/align_fastqs"
 ref_rpt="${dir_fx}/reference/repeat.fa"
 idx_bt2="${dir_fx}/bowtie2/repeat"
 idx_bwa="${dir_fx}/bwa/repeat.fa"
+dir_fq_pe="${dir_fx}/fastq/pe"
+dir_fq_se="${dir_fx}/fastq/se"
 
 tmp="${TEST_DIR_TMP}/align_fastqs_markdup_optical"
-ref_fa="${tmp}/repeat.fa"
-len_rd=50
 
-# Tile prefixes: one tile, another tile, a 5-digit tile, another run.
+# Tile prefixes of the expected names: one tile, another tile.
 pfx="LH00001:168:22ABCDEF:1:1101"
 pfx_tile="LH00001:168:22ABCDEF:1:1102"
-pfx_long="LH00001:168:22ABCDEF:1:11010"
-pfx_run="LH00001:1001:22ABCDEF:1:1101"
 
 
 print_section "${TEST_NAME}"
@@ -56,49 +60,13 @@ require_env_project env_nam || {
 
 require_files_nonempty \
     "${ref_rpt}" \
+    "${ref_rpt}.fai" \
     "${idx_bt2}.1.bt2" \
-    "${idx_bwa}.bwt" || {
+    "${idx_bwa}.bwt" \
+    "${dir_fx}/sam/optical_names.sam" \
+    "${dir_fq_se}/opt_none_se.atria.fastq.gz" || {
     finish
     exit $?
-}
-
-# CRAM writing indexes the reference, so use a copy outside the fixtures.
-cp "${ref_rpt}" "${ref_fa}"
-seq_ref="$(grep -v '^>' "${ref_rpt}" | tr -d '\n')"
-
-
-# Print one FASTQ record with every base quality set to the given character.
-function print_fq() {
-    local qual="${3}"
-    printf '@%s\n%s\n+\n%s\n' "${1}" "${2}" "${2//?/${qual}}"
-}
-
-
-# Write one duplicate set to 'fq_1' (and 'fq_2' when set): the same 300-bp
-# fragment at a 0-based offset under each name. The first name gets the highest
-# base qualities, so Step 4 keeps it as the original.
-function write_set() {
-    local fq_1="${1}"
-    local fq_2="${2}"
-    local beg="${3}"
-    shift 3
-    local frg=300
-    local qual="I"
-    local nam seq_2
-
-    seq_2="$(
-        rev <<< "${seq_ref:beg + frg - len_rd:len_rd}" | tr ACGT TGCA
-    )"
-
-    for nam in "$@"; do
-        print_fq "${nam}" "${seq_ref:beg:len_rd}" "${qual}" >> "${fq_1}"
-
-        if [[ -n "${fq_2}" ]]; then
-            print_fq "${nam}" "${seq_2}" "${qual}" >> "${fq_2}"
-        fi
-
-        qual="5"
-    done
 }
 
 
@@ -123,7 +91,7 @@ function run_helper() {
 # Print 'name<TAB>dt' for each primary first-mate or single-end record, with
 # '-' for a record without a 'dt' tag, sorted by name.
 function print_dt() {
-    run_samtools view -F 0x980 -T "${ref_fa}" "${1}" \
+    run_samtools view -F 0x980 -T "${ref_rpt}" "${1}" \
         | awk -F '\t' '{
             d = "-"
             for (i = 12; i <= NF; i++) if ($i ~ /^dt:Z:/) d = substr($i, 6)
@@ -135,7 +103,7 @@ function print_dt() {
 
 # Print the '@PG' command line of 'samtools markdup'.
 function print_pg_markdup() {
-    run_samtools view -H -T "${ref_fa}" "${1}" \
+    run_samtools view -H -T "${ref_rpt}" "${1}" \
         | grep '^@PG' \
         | grep -o 'CL:samtools markdup[^'$'\t'']*' \
         || true
@@ -249,17 +217,8 @@ function check_dist() {
 # 2000 pixels away on its tile are optical; reads 6000 away or on another tile
 # are library duplicates.
 lbl="PE coordinate names"
-fq_1="${tmp}/pe_R1.fastq"
-fq_2="${tmp}/pe_R2.fastq"
-write_set \
-    "${fq_1}" \
-    "${fq_2}" \
-    50 \
-    "${pfx}:10000:10000" \
-    "${pfx}:10030:10000" \
-    "${pfx}:12000:10000" \
-    "${pfx}:16000:10000" \
-    "${pfx_tile}:10000:10000"
+fq_1="${dir_fq_pe}/opt_pe_pe_R1.atria.fastq.gz"
+fq_2="${dir_fq_pe}/opt_pe_pe_R2.atria.fastq.gz"
 exp_pe="${pfx}:10000:10000	-
 ${pfx}:10030:10000	SQ
 ${pfx}:12000:10000	SQ
@@ -321,14 +280,7 @@ fi
 
 # Single-end, the same rule.
 lbl="SE coordinate names"
-fq_1="${tmp}/se_R1.fastq"
-write_set \
-    "${fq_1}" \
-    "" \
-    600 \
-    "${pfx}:20000:20000" \
-    "${pfx}:20030:20000" \
-    "${pfx}:26000:20000"
+fq_1="${dir_fq_se}/opt_se_se.atria.fastq.gz"
 
 if \
     run_case \
@@ -362,9 +314,8 @@ fi
 
 # SRA-style names: no coordinates, so no '-d'; flags as with coordinates.
 lbl="PE SRA-style names"
-fq_1="${tmp}/sra_R1.fastq"
-fq_2="${tmp}/sra_R2.fastq"
-write_set "${fq_1}" "${fq_2}" 50 SRR1.1 SRR1.2 SRR1.3 SRR1.4 SRR1.5
+fq_1="${dir_fq_pe}/opt_sra_pe_R1.atria.fastq.gz"
+fq_2="${dir_fq_pe}/opt_sra_pe_R2.atria.fastq.gz"
 
 if \
     run_case \
@@ -406,13 +357,7 @@ fi
 
 # Older and longer Illumina names parse as Samtools parses them: four colons
 # ('machine:lane:tile:x:y') and seven with a UMI after y.
-fq_1="${tmp}/hiseq_R1.fastq"
-write_set \
-    "${fq_1}" \
-    "" \
-    600 \
-    "HWI-ST100:8:1101:20000:20000" \
-    "HWI-ST100:8:1101:20030:20000"
+fq_1="${dir_fq_se}/opt_hiseq_se.atria.fastq.gz"
 lbl="SE 4-colon names"
 
 if \
@@ -433,13 +378,7 @@ HWI-ST100:8:1101:20030:20000	SQ"
         "2500"
 fi
 
-fq_1="${tmp}/umi_R1.fastq"
-write_set \
-    "${fq_1}" \
-    "" \
-    600 \
-    "${pfx}:20000:20000:ACGTACGT" \
-    "${pfx}:20030:20000:ACGTACGT"
+fq_1="${dir_fq_se}/opt_umi_se.atria.fastq.gz"
 lbl="SE 7-colon names (UMI)"
 
 if \
@@ -464,16 +403,8 @@ fi
 # Coordinate and SRA-style names mixed, in both orders: no '-d'.
 for ord in first last; do
     lbl="PE mixed names, coordinates ${ord}"
-    fq_1="${tmp}/mix_${ord}_R1.fastq"
-    fq_2="${tmp}/mix_${ord}_R2.fastq"
-
-    if [[ "${ord}" == "first" ]]; then
-        nams=( "${pfx}:10000:10000" "${pfx}:10030:10000" SRR1.3 )
-    else
-        nams=( SRR1.1 "${pfx}:10030:10000" "${pfx}:10060:10000" )
-    fi
-
-    write_set "${fq_1}" "${fq_2}" 50 "${nams[@]}"
+    fq_1="${dir_fq_pe}/opt_mix_${ord}_pe_R1.atria.fastq.gz"
+    fq_2="${dir_fq_pe}/opt_mix_${ord}_pe_R2.atria.fastq.gz"
 
     if \
         run_case \
@@ -498,23 +429,18 @@ for ord in first last; do
 done
 
 
-# Every name parses, but tile prefixes differ in length: a 5-digit tile or
-# another run number. Samtools 1.24 would call cross-tile duplicates optical
-# here (Samtools Issue #2399), so no '-d'.
-dist_len="not used; read names have 2 tile-prefix lengths"
-dist_len+=" (Samtools Issue #2399)"
-
-for arm in "tile|${pfx_long}" "run|${pfx_run}"; do
-    IFS='|' read -r nam pfx_oth <<< "${arm}"
+# Two reads whose names carry coordinates but whose tile prefixes differ in
+# length. In the 'tile' set, the second read has a 5-digit tile. In the 'run'
+# set, it has another run number. Before Samtools 1.25, 'markdup' compared such
+# names wrongly (Samtools Issue #2399), so Step 4 dropped '-d' for them. Now
+# '-d' applies. The two reads are not on the same tile of the same run, so the
+# duplicate is tagged 'LB' and not 'SQ'. Samtools picks which read is the
+# original, so the test checks the two tags ('-' and 'LB') and not which read
+# carries each.
+for nam in tile run; do
     lbl="PE mixed prefix lengths (${nam})"
-    fq_1="${tmp}/len_${nam}_R1.fastq"
-    fq_2="${tmp}/len_${nam}_R2.fastq"
-    write_set \
-        "${fq_1}" \
-        "${fq_2}" \
-        50 \
-        "${pfx}:10000:10000" \
-        "${pfx_oth}:10030:10000"
+    fq_1="${dir_fq_pe}/opt_len_${nam}_pe_R1.atria.fastq.gz"
+    fq_2="${dir_fq_pe}/opt_len_${nam}_pe_R2.atria.fastq.gz"
 
     if \
         run_case \
@@ -526,23 +452,33 @@ for arm in "tile|${pfx_long}" "run|${pfx_run}"; do
             --fq_2 "${fq_2}" \
             --fil_out "${tmp}/len_${nam}/x.bam"
     then
-        check_no_optical \
-            "${lbl}" \
-            "${dir_out}/x.bam" \
-            "read names have 2 tile-prefix lengths"
+        tag="$(print_dt "${dir_out}/x.bam" | cut -f 2 | LC_ALL=C sort)"
+
+        if \
+            print_pg_markdup "${dir_out}/x.bam" \
+                | grep -q -- ' -d 2500' \
+                && [[ "${tag}" == "$(printf '%s\n' - LB)" ]]
+        then
+            record_pass "${lbl}: '-d 2500', one library duplicate"
+        else
+            record_fail \
+                "${lbl}: markdup '@PG' is" \
+                "'$(print_pg_markdup "${dir_out}/x.bam")' and the tags are" \
+                "'${tag//$'\n'/ }', expected '-d 2500' and '- LB'"
+        fi
 
         check_dist \
             "${lbl}" \
             "${dir_out}/x.markdup.txt.gz" \
-            "${dist_len}"
+            "2500"
     fi
 done
 
 
 # CRAM output: the statistics take the CRAM file's stem.
 lbl="PE CRAM output"
-fq_1="${tmp}/pe_R1.fastq"
-fq_2="${tmp}/pe_R2.fastq"
+fq_1="${dir_fq_pe}/opt_pe_pe_R1.atria.fastq.gz"
+fq_2="${dir_fq_pe}/opt_pe_pe_R2.atria.fastq.gz"
 
 if \
     run_case \
@@ -552,7 +488,7 @@ if \
         --index "${idx_bt2}" \
         --fq_1 "${fq_1}" \
         --fq_2 "${fq_2}" \
-        --ref_fa "${ref_fa}" \
+        --ref_fa "${ref_rpt}" \
         --fil_out "${tmp}/cram/x.cram"
 then
     got="$(
@@ -607,8 +543,7 @@ fi
 
 # No aligned reads: no '-d' and no warning, statistics still written.
 lbl="SE no aligned reads"
-fq_1="${tmp}/none_R1.fastq"
-print_fq "${pfx}:1:1" "$(printf 'N%.0s' $(seq "${len_rd}"))" I > "${fq_1}"
+fq_1="${dir_fq_se}/opt_none_se.atria.fastq.gz"
 
 if \
     run_case \
@@ -686,10 +621,37 @@ else
 fi
 
 
+# The names check on its own: a name with the colons of a flow-cell name but a
+# letter where x goes carries no coordinates Samtools can read.
+lbl="names with a letter where x goes"
+rc=0
+
+# shellcheck disable=SC2016  # Expand in the child shell, not this one.
+out="$(
+    "${TEST_BASH}" -c '
+        # shellcheck source=lib/bash/core/source_helpers.sh
+        source "${1}/lib/bash/core/source_helpers.sh"
+
+        source_helpers "${1}/lib/bash" workflows/align_fastqs
+        rc_chk=0
+        _check_optical_names align_fastqs 1 "${2}" dist 2> /dev/null \
+            || rc_chk=$?
+        printf "%s|%s\n" "${rc_chk}" "${dist}"
+    ' _ "${ROOT_REPO}" "${dir_fx}/sam/optical_names.sam" 2>&1
+)" || rc=$?
+exp="1|not used; 1 of 2 read names carry no flow-cell coordinates"
+
+if [[ "${rc}" -eq 0 && "${out}" == "${exp}" ]]; then
+    record_pass "${lbl}: no '-d', and the reason"
+else
+    record_fail "${lbl}: exit ${rc}; got '${out}', expected '${exp}'"
+fi
+
+
 # BWA-MEM keeps the coordinates in the names too.
 lbl="PE BWA-MEM"
-fq_1="${tmp}/pe_R1.fastq"
-fq_2="${tmp}/pe_R2.fastq"
+fq_1="${dir_fq_pe}/opt_pe_pe_R1.atria.fastq.gz"
+fq_2="${dir_fq_pe}/opt_pe_pe_R2.atria.fastq.gz"
 
 if \
     run_case \

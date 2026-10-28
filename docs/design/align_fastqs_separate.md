@@ -51,7 +51,7 @@ Under `remove`, rules 1 to 3 drop the templates instead. Both modes apply the sa
 - **Markdup 1** runs on the main file alone, exactly as under `remove`. The main file's duplicate flags and `<stem>.markdup.txt.gz` are therefore identical in both modes.
 - **Markdup 2** runs on all the alignment files together. The `.unal`, `.improp`, and `.mapq` files keep its flags, so a read in one of them can be marked as a duplicate of a read in the main file. `<stem>.all.markdup.txt.gz` holds its statistics, which describe the whole library. The main file's records are marked in this pass too, but only their counts are kept, in `.diag.tsv.gz`.
 
-Optical duplicates are told apart in Markdup 1 and Markdup 2 only when every read name it reads carries flow-cell coordinates of one format. Each statistics file's last line, `OPTICAL DISTANCE:`, says whether they were.
+Each pass tells optical duplicates apart only when every read name it reads carries flow-cell coordinates. The last line of each statistics file, `OPTICAL DISTANCE:`, gives 2500 when that pass told them apart; otherwise, it gives `not used` and the reason.
 
 `samtools markdup` judges duplicates by alignment position. It cannot judge an unaligned read, so a pair with both mates unaligned is never marked, optical duplicates among such pairs included. In a pair with one mate unaligned, only the aligned mate can be marked. `.diag.tsv.gz` counts, in every file, the records `markdup` skips: these unaligned records, and secondary and supplementary records (the `unjudged` rows). A duplication estimate for such reads has to come from the reads themselves, not from their alignments.
 
