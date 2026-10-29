@@ -33,6 +33,11 @@ Ratio bedGraph:
 - `bedgraph/ratio_A_1.bedGraph`
 - `bedgraph/ratio_A_2.bedGraph`
 
+Space-delimited inputs for `merge_bins_bdg.py`, in `test_merge_bins_bdg.sh`:
+- `bedgraph/merge_bins/exact.bedGraph`: a run of `1`, a track line, a run of `1.000`, and then `NaN` and `nan`
+- `bedgraph/merge_bins/round.bedGraph`: values that merge only after rounding to two decimals
+- `bedgraph/merge_bins/malformed.bedGraph`: one row without a value
+
 Count bedGraph and per-sample counts:
 - `bedgraph/count/tiny_se.bedGraph`
 - `bedgraph/count/tiny_se.n_frg.txt`

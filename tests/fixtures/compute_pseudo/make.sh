@@ -44,11 +44,21 @@ source "${dir_scr}/../../support/fixture_helpers.sh"
 dir_bdg="${dir_fix}/bedgraph"
 fil_bdg_A="${dir_bdg}/pair_A.bedGraph"
 fil_bdg_B="${dir_bdg}/pair_B.bedGraph"
+dir_bdg_nrm="${dir_bdg}/norm"
+fil_nrm_A="${dir_bdg_nrm}/pair_A.bedGraph"
+fil_nrm_B="${dir_bdg_nrm}/pair_B.bedGraph"
 
 # Remove stale outputs so regeneration is idempotent.
-rm_files "${dir_fix}" "${fil_bdg_A}" "${fil_bdg_B}"
+rm_files \
+    "${dir_fix}" \
+    "${fil_bdg_A}" \
+    "${fil_bdg_B}" \
+    "${fil_nrm_A}" \
+    "${fil_nrm_B}"
 
-mkdirs "${dir_bdg}"
+mkdirs \
+    "${dir_bdg}" \
+    "${dir_bdg_nrm}"
 
 
 # Author both tracks literally. The values are chosen so every quantity the
@@ -76,6 +86,21 @@ cat << 'EOM' > "${fil_bdg_B}"
 chrI	0	10	4
 chrI	10	20	6
 chrI	20	30	8
+EOM
+
+# The same pair rescaled so each track sums to one, as normalized coverage
+# does: each value divided by its track's total (6 and 18), written as Python's
+# repr of the quotient.
+cat << 'EOM' > "${fil_nrm_A}"
+chrI	0	10	0.16666666666666666
+chrI	10	20	0.3333333333333333
+chrI	20	30	0.5
+EOM
+
+cat << 'EOM' > "${fil_nrm_B}"
+chrI	0	10	0.2222222222222222
+chrI	10	20	0.3333333333333333
+chrI	20	30	0.4444444444444444
 EOM
 
 

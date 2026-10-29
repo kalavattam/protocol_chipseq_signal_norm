@@ -50,6 +50,7 @@ FIXTURES = ROOT / "tests" / "fixtures" / "compute_signal"
 BAM_SE = FIXTURES / "bam" / "se" / "tiny_se.bam"
 CRAM_SE = FIXTURES / "cram" / "se" / "tiny_se.cram"
 REFERENCE_FASTA = FIXTURES / "reference" / "tiny.fa"
+BEDGRAPH_UNIT = ROOT / "tests" / "fixtures" / "bedgraph"
 
 MIXED_CASE_FORMAT_HINTS = (
     ("bAm", "bam"),
@@ -600,11 +601,9 @@ def test_callable_docstring_summary_matches_signature() -> None:
 
 
 def test_main_trims_noninformative_finite_output(
-    tmp_path: Path,
     capsys: pytest.CaptureFixture[str],
 ) -> None:
-    bedgraph = tmp_path / "input.bedGraph"
-    bedgraph.write_text("chrI\t0\t10\t1.23\n", encoding="utf-8")
+    bedgraph = BEDGRAPH_UNIT / "input_floor" / "one_bin_nonround.bedGraph"
 
     status = main(
         [
@@ -674,12 +673,8 @@ def test_main_normalizes_negative_zero_output(
     assert captured.err == ""
 
 
-def test_count_aln_bed_skips_headers_and_blanks(tmp_path: Path) -> None:
-    path = tmp_path / "alignments.bed"
-    path.write_text(
-        "# h\ntrack name=x\nchrI\t0\t10\n\n   \nchrI\t10\t20\n",
-        encoding="utf-8",
-    )
+def test_count_aln_bed_skips_headers_and_blanks() -> None:
+    path = BEDGRAPH_UNIT / "input_floor" / "headers_and_blanks.bed"
 
     assert _count_bed_records(str(path), DEF_SKP_PFX) == 2
 
@@ -817,16 +812,8 @@ def test_data_validation_raises_without_owning_process_exit() -> None:
         _validate_data_arguments(args)
 
 
-def test_compute_input_floor_norm_and_dist_modes(tmp_path: Path) -> None:
-    bdg = tmp_path / "input.bedGraph"
-    bdg.write_text(
-        "chrI 0 10 0\n"
-        "chrI 10 20 -1\n"
-        "chrI 20 30 1\n"
-        "chrI 30 40 2\n"
-        "chrI 40 50 10\n",
-        encoding="utf-8",
-    )
+def test_compute_input_floor_norm_and_dist_modes() -> None:
+    bdg = BEDGRAPH_UNIT / "input_floor" / "five_bins.bedGraph"
 
     normalized_floor = compute_input_floor("-", 10, 100, mode="norm")
 
@@ -848,12 +835,10 @@ def test_compute_input_floor_norm_and_dist_modes(tmp_path: Path) -> None:
     DIST_DIMENSION_CASES,
 )
 def test_compute_input_floor_dist_ignores_all_dimension_cases(
-    tmp_path: Path,
     siz_bin: int,
     siz_gen: int,
 ) -> None:
-    bedgraph = tmp_path / "input.bedGraph"
-    bedgraph.write_text("chrI\t0\t10\t2\n", encoding="utf-8")
+    bedgraph = BEDGRAPH_UNIT / "input_floor" / "one_bin_2.bedGraph"
 
     result = compute_input_floor(
         str(bedgraph),
@@ -890,11 +875,9 @@ def test_compute_input_floor_frag_and_norm_reject_invalid_dimensions(
 
 @pytest.mark.parametrize("mode", ("frag", "norm"))
 def test_compute_input_floor_frag_and_norm_accept_large_fraction(
-    tmp_path: Path,
     mode: str,
 ) -> None:
-    bed = tmp_path / "input.bed"
-    bed.write_text("chrI\t0\t10\n", encoding="utf-8")
+    bed = BEDGRAPH_UNIT / "input_floor" / "one_interval.bed"
     input_path = str(bed) if mode == "frag" else "-"
 
     result = compute_input_floor(
@@ -988,12 +971,10 @@ def test_main_reports_missing_cram_reference_as_anticipated_error(
     DIST_DIMENSION_CASES,
 )
 def test_main_dist_refuses_dimension_options(
-    tmp_path: Path,
     siz_bin: int,
     siz_gen: int,
 ) -> None:
-    bedgraph = tmp_path / "input.bedGraph"
-    bedgraph.write_text("chrI\t0\t10\t2\n", encoding="utf-8")
+    bedgraph = BEDGRAPH_UNIT / "input_floor" / "one_bin_2.bedGraph"
 
     # Refused before the values are checked, so any pair is refused by name.
     with pytest.raises(SystemExit) as error:
@@ -1022,15 +1003,13 @@ def test_main_dist_refuses_dimension_options(
     INVALID_MODE_DIMENSION_CASES,
 )
 def test_main_frag_and_norm_reject_invalid_dimensions(
-    tmp_path: Path,
     capsys: pytest.CaptureFixture[str],
     mode: str,
     siz_bin: int,
     siz_gen: int,
     error_text: str,
 ) -> None:
-    bed = tmp_path / "input.bed"
-    bed.write_text("chrI\t0\t10\n", encoding="utf-8")
+    bed = BEDGRAPH_UNIT / "input_floor" / "one_interval.bed"
     arguments = [
         "--mode",
         mode,
@@ -1053,12 +1032,10 @@ def test_main_frag_and_norm_reject_invalid_dimensions(
 
 @pytest.mark.parametrize("mode", ("frag", "norm"))
 def test_main_frag_and_norm_warn_and_succeed_for_large_fraction(
-    tmp_path: Path,
     capsys: pytest.CaptureFixture[str],
     mode: str,
 ) -> None:
-    bed = tmp_path / "input.bed"
-    bed.write_text("chrI\t0\t10\n", encoding="utf-8")
+    bed = BEDGRAPH_UNIT / "input_floor" / "one_interval.bed"
     arguments = [
         "--mode",
         mode,

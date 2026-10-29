@@ -64,6 +64,17 @@ fil_bg_B_gz="${fil_bg_B}.gz"
 fil_bg_A_1="${dir_bdg}/ratio_A_1.bedGraph"
 fil_bg_A_2="${dir_bdg}/ratio_A_2.bedGraph"
 
+dir_bdg_mrg="${dir_bdg}/merge_bins"
+fil_mrg_exact="${dir_bdg_mrg}/exact.bedGraph"
+fil_mrg_round="${dir_bdg_mrg}/round.bedGraph"
+fil_mrg_bad="${dir_bdg_mrg}/malformed.bedGraph"
+fil_unity_up="${dir_bdg}/unity.bedGraph.GZ"
+
+dir_exp="${dir_fix}/expected"
+dir_exp_mrg="${dir_exp}/merge_bins"
+fil_exp_mrg_exact="${dir_exp_mrg}/exact.bedGraph"
+fil_exp_mrg_round="${dir_exp_mrg}/round.bedGraph"
+
 fil_cnt_se="${dir_bdg_cnt}/tiny_se.bedGraph"
 fil_cnt_se_frg="${dir_bdg_cnt}/tiny_se.n_frg.txt"
 fil_cnt_se_ovlp="${dir_bdg_cnt}/tiny_se.n_ovlp.txt"
@@ -77,6 +88,8 @@ fil_sam_pe="${dir_sam_pe}/tiny_pe.sam"
 
 fil_bam_se="${dir_bam_se}/tiny_se.bam"
 fil_bam_pe="${dir_bam_pe}/tiny_pe.bam"
+dir_bam_noi="${dir_bam}/no_index"
+fil_bam_noi="${dir_bam_noi}/tiny_se.bam"
 
 fil_cram_se="${dir_cram_se}/tiny_se.cram"
 fil_cram_pe="${dir_cram_pe}/tiny_pe.cram"
@@ -99,6 +112,12 @@ rm_files \
     "${fil_bg_B_gz}" \
     "${fil_bg_A_1}" \
     "${fil_bg_A_2}" \
+    "${fil_mrg_exact}" \
+    "${fil_mrg_round}" \
+    "${fil_mrg_bad}" \
+    "${fil_unity_up}" \
+    "${fil_exp_mrg_exact}" \
+    "${fil_exp_mrg_round}" \
     "${fil_cnt_se}" \
     "${fil_cnt_se_frg}" \
     "${fil_cnt_se_ovlp}" \
@@ -110,6 +129,7 @@ rm_files \
     "${fil_sam_pe}" \
     "${fil_bam_se}" \
     "${fil_bam_pe}" \
+    "${fil_bam_noi}" \
     "${fil_cram_se}" \
     "${fil_cram_pe}"
 
@@ -124,6 +144,9 @@ rm -f -- \
 mkdirs \
     "${dir_bdg}" \
     "${dir_bdg_cnt}" \
+    "${dir_bdg_mrg}" \
+    "${dir_exp}" \
+    "${dir_exp_mrg}" \
     "${dir_ref}" \
     "${dir_sam}" \
     "${dir_sam_se}" \
@@ -131,6 +154,7 @@ mkdirs \
     "${dir_bam}" \
     "${dir_bam_se}" \
     "${dir_bam_pe}" \
+    "${dir_bam_noi}" \
     "${dir_cram}" \
     "${dir_cram_se}" \
     "${dir_cram_pe}"
@@ -192,12 +216,53 @@ mkdirs \
     printf "I\t70\t80\t1\n"
 } > "${fil_bg_hdr_B}"
 
+# Write the 'merge_bins_bdg.py' inputs, space-delimited as the script accepts.
+# 'exact' has a run of '1', a track line, a run of '1.000', and then 'NaN' and
+# 'nan'. 'round' has values that merge only after rounding to two decimals.
+# 'malformed' has a row without a value.
+{
+    printf 'chrI 0 10 1\n'
+    printf 'chrI 10 20 1\n'
+    printf 'track type=bedGraph\n'
+    printf 'chrI 20 30 1.000\n'
+    printf 'chrI 30 40 1.000\n'
+    printf 'chrI 40 50 NaN\n'
+    printf 'chrI 50 60 nan\n'
+} > "${fil_mrg_exact}"
+
+{
+    printf 'chrI 0 10 1.001\n'
+    printf 'chrI 10 20 1.002\n'
+    printf 'chrI 20 30 1.014\n'
+} > "${fil_mrg_round}"
+
+printf 'chrI 0 10\n' > "${fil_mrg_bad}"
+
+# Write the golden outputs of 'merge_bins_bdg.py' for 'exact' and for 'round'
+# at two decimals, tab-delimited as the script writes them.
+{
+    printf 'chrI\t0\t20\t1\n'
+    printf 'track type=bedGraph\n'
+    printf 'chrI\t20\t40\t1.000\n'
+    printf 'chrI\t40\t50\tnan\n'
+    printf 'chrI\t50\t60\tnan\n'
+} > "${fil_exp_mrg_exact}"
+
+{
+    printf 'chrI\t0\t20\t1.00\n'
+    printf 'chrI\t20\t30\t1.01\n'
+} > "${fil_exp_mrg_round}"
+
 require_cmd gzip "to compress the ratio bedGraph fixtures."
 
 # Compress the plain ratio pair for gzip input coverage. '-n' omits the name
 # and timestamp, so regeneration is byte-identical.
 gzip -n -c "${fil_bg_A}" > "${fil_bg_A_gz}"
 gzip -n -c "${fil_bg_B}" > "${fil_bg_B_gz}"
+
+# Write a gzip-compressed bedGraph of unity values with an upper-case suffix. A
+# user might name a file that way, and callers must match formats in any case.
+printf 'chrI\t0\t10\t0.5\nchrI\t10\t20\t0.5\n' | gzip -n -c > "${fil_unity_up}"
 
 # Copy the plain A track into two samples, so that the GNU Parallel test runs
 # two jobs.
@@ -276,6 +341,10 @@ samtools faidx "${fil_ref}"
 # Generate sorted and indexed BAM fixtures from SAM provenance.
 samtools view -bS "${fil_sam_se}" | samtools sort -o "${fil_bam_se}"
 samtools index "${fil_bam_se}"
+
+# A copy of the single-end BAM with no index beside it for the code paths that
+# must fall back or refuse without one.
+cp "${fil_bam_se}" "${fil_bam_noi}"
 
 samtools view -bS "${fil_sam_pe}" | samtools sort -o "${fil_bam_pe}"
 samtools index "${fil_bam_pe}"

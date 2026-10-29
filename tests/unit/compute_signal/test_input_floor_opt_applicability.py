@@ -38,6 +38,7 @@ BAM_SE = FIXTURES / "bam" / "se" / "tiny_se.bam"
 CRAM_SE = FIXTURES / "cram" / "se" / "tiny_se.cram"
 REFERENCE_FASTA = FIXTURES / "reference" / "tiny.fa"
 BDG = FIXTURES / "bedgraph" / "ratio_A.bedGraph"
+BEDGRAPH_UNIT = ROOT / "tests" / "fixtures" / "bedgraph"
 
 DIST_ONLY = (
     ("--method", "frc_mdn_nz"),
@@ -50,11 +51,8 @@ DIST_ONLY = (
 
 
 @pytest.fixture
-def bed(tmp_path: Path) -> Path:
-    path = tmp_path / "input.bed"
-    path.write_text("chrI\t0\t10\nchrI\t5\t15\n", encoding="utf-8")
-
-    return path
+def bed() -> Path:
+    return BEDGRAPH_UNIT / "input_floor" / "two_intervals.bed"
 
 
 def mode_args(mode: str, bed: Path) -> list[str]:

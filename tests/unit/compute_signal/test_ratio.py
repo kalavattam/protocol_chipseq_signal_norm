@@ -32,6 +32,9 @@ from protocol_chipseq_signal_norm.utilities.utils_cli import (
     CapArgumentParser,
 )
 
+ROOT = Path(__file__).resolve().parents[3]
+BEDGRAPH_UNIT = ROOT / "tests" / "fixtures" / "bedgraph"
+
 
 def test_parse_pair_accepts_single_or_pair_values() -> None:
     assert parse_pair("2", 1.0) == (2.0, 1.0)
@@ -230,11 +233,9 @@ def test_scaling_reaches_a_bin_whose_numerator_is_only_pseudocount() -> None:
 
 
 def test_comp_sig_rat_writes_small_bedgraph(tmp_path: Path) -> None:
-    fil_a = tmp_path / "a.bedGraph"
-    fil_b = tmp_path / "b.bedGraph"
+    fil_a = BEDGRAPH_UNIT / "ratio" / "small_A.bedGraph"
+    fil_b = BEDGRAPH_UNIT / "ratio" / "small_B.bedGraph"
     fil_out = tmp_path / "ratio.bedGraph"
-    fil_a.write_text("chrI 0 10 4\nchrI 10 20 0\n", encoding="utf-8")
-    fil_b.write_text("chrI 0 10 2\nchrI 10 20 0\n", encoding="utf-8")
 
     comp_sig_rat(
         str(fil_a),
@@ -258,11 +259,9 @@ def test_comp_sig_rat_writes_small_bedgraph(tmp_path: Path) -> None:
 
 
 def test_comp_sig_rat_strict_bins_rejects_end_mismatch(tmp_path: Path) -> None:
-    fil_a = tmp_path / "a.bedGraph"
-    fil_b = tmp_path / "b.bedGraph"
+    fil_a = BEDGRAPH_UNIT / "ratio" / "end_mismatch_A.bedGraph"
+    fil_b = BEDGRAPH_UNIT / "ratio" / "end_mismatch_B.bedGraph"
     fil_out = tmp_path / "ratio.bedGraph"
-    fil_a.write_text("chrI 0 10 4\nchrI 10 20 2\n", encoding="utf-8")
-    fil_b.write_text("chrI 0 10 2\nchrI 10 21 1\n", encoding="utf-8")
 
     with pytest.raises(ValueError, match="Mismatched bedGraph grids"):
         comp_sig_rat(
@@ -288,11 +287,9 @@ def test_comp_sig_rat_strict_bins_rejects_end_mismatch(tmp_path: Path) -> None:
 def test_comp_sig_rat_chr_sizes_rejects_out_of_bounds_input(
     tmp_path: Path,
 ) -> None:
-    fil_a = tmp_path / "a.bedGraph"
-    fil_b = tmp_path / "b.bedGraph"
+    fil_a = BEDGRAPH_UNIT / "ratio" / "out_of_bounds_A.bedGraph"
+    fil_b = BEDGRAPH_UNIT / "ratio" / "out_of_bounds_B.bedGraph"
     fil_out = tmp_path / "ratio.bedGraph"
-    fil_a.write_text("chrI 70 81 4\n", encoding="utf-8")
-    fil_b.write_text("chrI 70 80 2\n", encoding="utf-8")
 
     with pytest.raises(ValueError, match="extends beyond"):
         comp_sig_rat(
@@ -316,11 +313,8 @@ def test_comp_sig_rat_chr_sizes_rejects_out_of_bounds_input(
 
 
 def test_comp_sig_rat_rejects_dash_io(tmp_path: Path) -> None:
-    fil_a = tmp_path / "a.bedGraph"
-    fil_b = tmp_path / "b.bedGraph"
+    fil_b = BEDGRAPH_UNIT / "ratio" / "dash_io_B.bedGraph"
     fil_out = tmp_path / "ratio.bedGraph"
-    fil_a.write_text("chrI 0 10 4\n", encoding="utf-8")
-    fil_b.write_text("chrI 0 10 2\n", encoding="utf-8")
 
     with pytest.raises(ValueError, match="Dash input/output"):
         comp_sig_rat(
@@ -519,11 +513,9 @@ def test_a_bare_pseudocount_is_refused(tmp_path: Path, pseudo: str) -> None:
     A bare 'A' would regularize file A alone, so it is refused, naming 'A:B'.
     """
 
-    fil_a = tmp_path / "a.bedGraph"
-    fil_b = tmp_path / "b.bedGraph"
+    fil_a = BEDGRAPH_UNIT / "ratio" / "bare_pseudocount_A.bedGraph"
+    fil_b = BEDGRAPH_UNIT / "ratio" / "bare_pseudocount_B.bedGraph"
     fil_out = tmp_path / "ratio.bedGraph"
-    fil_a.write_text("chrI 0 10 4\nchrI 10 20 5\n", encoding="utf-8")
-    fil_b.write_text("chrI 0 10 2\nchrI 10 20 0\n", encoding="utf-8")
 
     with pytest.raises(SystemExit) as error:
         main(
@@ -548,11 +540,9 @@ def test_a_paired_pseudocount_reaches_both_tracks(tmp_path: Path) -> None:
     'A:A' regularizes the zero denominator that a bare 'A' would leave.
     """
 
-    fil_a = tmp_path / "a.bedGraph"
-    fil_b = tmp_path / "b.bedGraph"
+    fil_a = BEDGRAPH_UNIT / "ratio" / "paired_pseudocount_A.bedGraph"
+    fil_b = BEDGRAPH_UNIT / "ratio" / "paired_pseudocount_B.bedGraph"
     fil_out = tmp_path / "ratio.bedGraph"
-    fil_a.write_text("chrI 0 10 5\n", encoding="utf-8")
-    fil_b.write_text("chrI 0 10 0\n", encoding="utf-8")
 
     assert (
         main(

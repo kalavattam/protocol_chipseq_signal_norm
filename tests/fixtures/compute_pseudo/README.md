@@ -24,6 +24,7 @@ Readable provenance:
 Generated bedGraph inputs:
 - `bedgraph/pair_A.bedGraph`: three rows on a uniform 10 bp grid, summing to an overlap count of 6
 - `bedgraph/pair_B.bedGraph`: the same grid, summing to an overlap count of 18
+- `bedgraph/norm/pair_A.bedGraph`, `bedgraph/norm/pair_B.bedGraph`: the same pair rescaled so each track sums to one, as normalized coverage does
 
 <br />
 

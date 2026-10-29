@@ -6,9 +6,10 @@
 # Copyright 2026 by Kris Alavattam
 # Email: kalavattam@gmail.com
 #
-# OpenAI ChatGPT and Codex (GPT-5.5, GPT-5.6) were used in design, development,
-# and documentation, with all output reviewed, edited, and approved by the
-# author.
+# The following were used in design, development, and documentation, with all
+# output reviewed, edited, and approved by the author:
+# - OpenAI ChatGPT and Codex (GPT-5.5, GPT-5.6);
+# - Anthropic Claude Code (Opus 5.5).
 #
 # Distributed under the MIT license.
 
@@ -24,19 +25,21 @@ from protocol_chipseq_signal_norm.cli.merge_bins_bdg import (
 )
 from protocol_chipseq_signal_norm.utilities.utils_io import DEF_SKP_PFX
 
+ROOT = Path(__file__).resolve().parents[3]
+MERGE_BINS = ROOT / "tests" / "fixtures" / "bedgraph" / "merge_bins"
+
 
 def run_merge(
     tmp_path: Path,
-    text: str,
+    name: str,
     *,
     decimal_places: int | None = None,
     eps: float | None = None,
     skp_pfx: tuple[str, ...] = DEF_SKP_PFX,
 ) -> str:
-    fil_in = tmp_path / "input.bedGraph"
+    fil_in = MERGE_BINS / name
     fil_out = tmp_path / "output.bedGraph"
 
-    fil_in.write_text(text, encoding="utf-8")
     merge_bins(
         str(fil_in),
         str(fil_out),
@@ -71,15 +74,7 @@ def test_validate_merge_options_accepts_none_and_zero_values() -> None:
 def test_merge_bins_exact_text_mode(tmp_path: Path) -> None:
     observed = run_merge(
         tmp_path,
-        "\n".join(
-            [
-                "chrI 0 10 1",
-                "chrI 10 20 1",
-                "chrI 20 30 1.0",
-                "chrI 30 40 1.0",
-                "",
-            ],
-        ),
+        "exact_text.bedGraph",
     )
 
     assert observed == ("chrI\t0\t20\t1\nchrI\t20\t40\t1.0\n")
@@ -88,16 +83,7 @@ def test_merge_bins_exact_text_mode(tmp_path: Path) -> None:
 def test_merge_bins_flushes_on_midstream_header(tmp_path: Path) -> None:
     observed = run_merge(
         tmp_path,
-        "\n".join(
-            [
-                "chrI 0 10 2",
-                "chrI 10 20 2",
-                "track type=bedGraph",
-                "chrI 20 30 2",
-                "chrI 30 40 2",
-                "",
-            ],
-        ),
+        "midstream_header.bedGraph",
     )
 
     assert observed == (
@@ -108,14 +94,7 @@ def test_merge_bins_flushes_on_midstream_header(tmp_path: Path) -> None:
 def test_merge_bins_rounding_mode(tmp_path: Path) -> None:
     observed = run_merge(
         tmp_path,
-        "\n".join(
-            [
-                "chrI 0 10 1.001",
-                "chrI 10 20 1.002",
-                "chrI 20 30 1.014",
-                "",
-            ],
-        ),
+        "rounding.bedGraph",
         decimal_places=2,
     )
 
@@ -125,14 +104,7 @@ def test_merge_bins_rounding_mode(tmp_path: Path) -> None:
 def test_merge_bins_epsilon_mode(tmp_path: Path) -> None:
     observed = run_merge(
         tmp_path,
-        "\n".join(
-            [
-                "chrI 0 10 1.0000",
-                "chrI 10 20 1.0004",
-                "chrI 20 30 1.0020",
-                "",
-            ],
-        ),
+        "epsilon.bedGraph",
         eps=0.001,
     )
 
@@ -142,14 +114,7 @@ def test_merge_bins_epsilon_mode(tmp_path: Path) -> None:
 def test_merge_bins_rounding_plus_epsilon_mode(tmp_path: Path) -> None:
     observed = run_merge(
         tmp_path,
-        "\n".join(
-            [
-                "chrI 0 10 1.001",
-                "chrI 10 20 1.009",
-                "chrI 20 30 1.021",
-                "",
-            ],
-        ),
+        "rounding_epsilon.bedGraph",
         decimal_places=2,
         eps=0.01,
     )
@@ -160,15 +125,7 @@ def test_merge_bins_rounding_plus_epsilon_mode(tmp_path: Path) -> None:
 def test_merge_bins_never_merges_nonfinite_values(tmp_path: Path) -> None:
     observed = run_merge(
         tmp_path,
-        "\n".join(
-            [
-                "chrI 0 10 NaN",
-                "chrI 10 20 nan",
-                "chrI 20 30 inf",
-                "chrI 30 40 inf",
-                "",
-            ],
-        ),
+        "nonfinite.bedGraph",
     )
 
     assert observed == (
@@ -181,12 +138,12 @@ def test_merge_bins_never_merges_nonfinite_values(tmp_path: Path) -> None:
 
 def test_merge_bins_rejects_malformed_rows(tmp_path: Path) -> None:
     with pytest.raises(ValueError, match="Malformed bedGraph line"):
-        run_merge(tmp_path, "chrI 0 10\n")
+        run_merge(tmp_path, "malformed.bedGraph")
 
 
 def test_merge_bins_rejects_nonpositive_intervals(tmp_path: Path) -> None:
     with pytest.raises(ValueError, match="Non-positive interval width"):
-        run_merge(tmp_path, "chrI 10 10 1\n")
+        run_merge(tmp_path, "zero_width.bedGraph")
 
 
 def test_merge_bins_rejects_negative_rounding_precision(
@@ -195,11 +152,11 @@ def test_merge_bins_rejects_negative_rounding_precision(
     with pytest.raises(ValueError, match="'--dp' must be >= 0"):
         run_merge(
             tmp_path,
-            "chrI 0 10 1\n",
+            "one_row.bedGraph",
             decimal_places=-1,
         )
 
 
 def test_merge_bins_rejects_negative_epsilon(tmp_path: Path) -> None:
     with pytest.raises(ValueError, match="'--eps' must be >= 0"):
-        run_merge(tmp_path, "chrI 0 10 1\n", eps=-0.1)
+        run_merge(tmp_path, "one_row.bedGraph", eps=-0.1)

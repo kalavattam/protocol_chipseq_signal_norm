@@ -31,6 +31,7 @@ from protocol_chipseq_signal_norm.cli.compute_pseudo import (
 
 ROOT = Path(__file__).resolve().parents[3]
 BEDGRAPH = ROOT / "tests" / "fixtures" / "compute_pseudo" / "bedgraph"
+BEDGRAPH_UNIT = ROOT / "tests" / "fixtures" / "bedgraph"
 
 # Overlap counts the fixture pair carries, so 'L_bar' is 12 and the two
 # per-sample priors are '2 * 6 / 12' and '2 * 18 / 12' exactly. A fixture is
@@ -387,13 +388,10 @@ def test_callable_docstring_matches_signature_and_examples() -> None:
 
 
 def test_primary_pair_json_and_verbose_output_are_preserved(
-    tmp_path: Path,
     capsys: pytest.CaptureFixture[str],
 ) -> None:
-    first = tmp_path / "first.bedGraph"
-    second = tmp_path / "second.bedGraph"
-    first.write_text("chrI\t0\t10\t2\n", encoding="utf-8")
-    second.write_text("chrI\t0\t10\t3\n", encoding="utf-8")
+    first = BEDGRAPH_UNIT / "pseudo" / "one_bin_2.bedGraph"
+    second = BEDGRAPH_UNIT / "pseudo" / "one_bin_3.bedGraph"
 
     status = main(["--fil_A", str(first), "--method", "min_nz", "--dp", "2"])
     single = capsys.readouterr()
@@ -446,15 +444,10 @@ def test_primary_pair_json_and_verbose_output_are_preserved(
 
 
 def test_main_skips_malformed_rows_and_handles_strict_json_failure(
-    tmp_path: Path,
     capsys: pytest.CaptureFixture[str],
 ) -> None:
-    mixed = tmp_path / "mixed.bedGraph"
-    empty = tmp_path / "empty.bedGraph"
-    mixed.write_text(
-        "chrI\t0\t10\tnot-a-number\nchrI\t10\t20\t2\n", encoding="utf-8"
-    )
-    empty.write_text("chrI\t0\t10\tnot-a-number\n", encoding="utf-8")
+    mixed = BEDGRAPH_UNIT / "pseudo" / "one_malformed_row.bedGraph"
+    empty = BEDGRAPH_UNIT / "pseudo" / "all_malformed_rows.bedGraph"
 
     assert (
         main(["--fil_A", str(mixed), "--method", "min_nz", "--dp", "2"]) == 0
@@ -483,11 +476,8 @@ def test_main_skips_malformed_rows_and_handles_strict_json_failure(
     )
 
 
-def test_main_rejects_invalid_quantile_with_a_stable_error(
-    tmp_path: Path,
-) -> None:
-    input_path = tmp_path / "input.bedGraph"
-    input_path.write_text("chrI\t0\t10\t2\n", encoding="utf-8")
+def test_main_rejects_invalid_quantile_with_a_stable_error() -> None:
+    input_path = BEDGRAPH_UNIT / "pseudo" / "one_bin_2.bedGraph"
 
     with pytest.raises(
         SystemExit, match="'--qntl_nz' must be finite and in \\[0, 100\\]."
@@ -504,34 +494,25 @@ def test_main_rejects_invalid_quantile_with_a_stable_error(
         )
 
 
-def _bdg_pair(tmp_path: Path) -> tuple[str, str]:
+def _bdg_pair() -> tuple[str, str]:
     """
-    Write a bedGraph pair on a 10 bp grid.
+    Return the paths of a bedGraph pair on a 10 bp grid.
     """
 
-    first = tmp_path / "first.bedGraph"
-    second = tmp_path / "second.bedGraph"
-    first.write_text(
-        "chrI\t0\t10\t2\nchrI\t10\t20\t4\n",
-        encoding="utf-8",
-    )
-    second.write_text(
-        "chrI\t0\t10\t3\nchrI\t10\t20\t5\n",
-        encoding="utf-8",
-    )
+    first = BEDGRAPH_UNIT / "pseudo" / "grid_A.bedGraph"
+    second = BEDGRAPH_UNIT / "pseudo" / "grid_B.bedGraph"
 
     return str(first), str(second)
 
 
 def test_verbose_banner_marks_an_inferred_bin_width(
-    tmp_path: Path,
     capsys: pytest.CaptureFixture[str],
 ) -> None:
     """
     The banner reports the width used, not the flag that went unsupplied.
     """
 
-    fil_a, fil_b = _bdg_pair(tmp_path)
+    fil_a, fil_b = _bdg_pair()
 
     status = main(
         [
@@ -554,10 +535,9 @@ def test_verbose_banner_marks_an_inferred_bin_width(
 
 
 def test_verbose_banner_reports_a_supplied_bin_width_unmarked(
-    tmp_path: Path,
     capsys: pytest.CaptureFixture[str],
 ) -> None:
-    fil_a, fil_b = _bdg_pair(tmp_path)
+    fil_a, fil_b = _bdg_pair()
 
     status = main(
         [
@@ -582,14 +562,13 @@ def test_verbose_banner_reports_a_supplied_bin_width_unmarked(
 
 
 def test_verbose_banner_reports_an_unset_bin_width(
-    tmp_path: Path,
     capsys: pytest.CaptureFixture[str],
 ) -> None:
     """
     Supplying both overlap counts reads no track, so no width is resolved.
     """
 
-    fil_a, fil_b = _bdg_pair(tmp_path)
+    fil_a, fil_b = _bdg_pair()
 
     status = main(
         [
@@ -615,7 +594,6 @@ def test_verbose_banner_reports_an_unset_bin_width(
 
 
 def test_verbose_banner_survives_a_failure_during_resolution(
-    tmp_path: Path,
     capsys: pytest.CaptureFixture[str],
 ) -> None:
     """
@@ -626,7 +604,7 @@ def test_verbose_banner_survives_a_failure_during_resolution(
     which is the one case '--verbose' exists for.
     """
 
-    fil_a, fil_b = _bdg_pair(tmp_path)
+    fil_a, fil_b = _bdg_pair()
 
     with pytest.raises(SystemExit, match="disagrees with"):
         main(
@@ -1063,32 +1041,6 @@ def _edger_pseudo(n_ovlp_mean: float, prior: float = PRIOR) -> float:
     return 1e6 * prior / (n_ovlp_mean + 2.0 * prior)
 
 
-def _norm_like(tmp_path: Path) -> tuple[str, str]:
-    """
-    Write a fixture pair rescaled to sum to one, as normalized coverage does.
-    """
-
-    out = []
-
-    for name in ("pair_A.bedGraph", "pair_B.bedGraph"):
-        rows = [
-            row.split("\t")
-            for row in (BEDGRAPH / name).read_text().strip().splitlines()
-        ]
-        total = sum(float(row[3]) for row in rows)
-        path = tmp_path / f"norm_{name}"
-        path.write_text(
-            "\n".join(
-                "\t".join([*row[:3], repr(float(row[3]) / total)])
-                for row in rows
-            )
-            + "\n",
-        )
-        out.append(str(path))
-
-    return out[0], out[1]
-
-
 def test_inferred_overlap_count_refuses_a_track_that_cannot_be_counts(
     tmp_path: Path,
 ) -> None:
@@ -1103,7 +1055,8 @@ def test_inferred_overlap_count_refuses_a_track_that_cannot_be_counts(
     whole-count track cannot trip it.
     """
 
-    fil_a, fil_b = _norm_like(tmp_path)
+    fil_a = str(BEDGRAPH / "norm" / "pair_A.bedGraph")
+    fil_b = str(BEDGRAPH / "norm" / "pair_B.bedGraph")
 
     with pytest.raises(SystemExit) as excinfo:
         main(
@@ -1236,8 +1189,8 @@ def _fractional_prior(
 # One row per project signal type the other CLI tests never run: the extra
 # arguments it needs, and its expected pair. 'unadj' scales 'p_nc' by the
 # track's own base-pair total, 'frag' by the fragment count, and 'cpm' closes
-# on 'L_bar' with no per-sample index. 'norm' and 'count' are covered
-# elsewhere in this file.
+# on 'L_bar' with no per-sample index. 'norm' and 'count' are covered elsewhere
+# in this file.
 #
 # The fixture's 'unadj' totals happen to equal its overlap counts, so this row
 # cannot separate 'T' from 'L'; 'test_unadj_requires_the_overlap_counts' covers

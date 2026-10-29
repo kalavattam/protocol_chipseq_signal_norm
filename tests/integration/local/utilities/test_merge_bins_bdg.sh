@@ -6,9 +6,10 @@
 # Copyright 2026 by Kris Alavattam
 # Email: kalavattam@gmail.com
 #
-# OpenAI ChatGPT and Codex (GPT-5.5, GPT-5.6) were used in design, development,
-# and documentation, with all output reviewed, edited, and approved by the
-# author.
+# The following were used in design, development, and documentation, with all
+# output reviewed, edited, and approved by the author:
+# - OpenAI ChatGPT and Codex (GPT-5.5, GPT-5.6);
+# - Anthropic Claude Code (Opus 5.5).
 #
 # Distributed under the MIT license.
 
@@ -24,66 +25,19 @@ source "$(
 )/tests/support/test_helpers.sh"
 
 
-function write_exact_fixture() {
-    local out="${1:-}"
-
-    cat > "${out}" << 'EOF'
-chrI 0 10 1
-chrI 10 20 1
-track type=bedGraph
-chrI 20 30 1.000
-chrI 30 40 1.000
-chrI 40 50 NaN
-chrI 50 60 nan
-EOF
-}
-
-
-function write_exact_expected() {
-    local out="${1:-}"
-
-    cat > "${out}" << 'EOF'
-chrI	0	20	1
-track type=bedGraph
-chrI	20	40	1.000
-chrI	40	50	nan
-chrI	50	60	nan
-EOF
-}
-
-
-function write_round_fixture() {
-    local out="${1:-}"
-
-    cat > "${out}" << 'EOF'
-chrI 0 10 1.001
-chrI 10 20 1.002
-chrI 20 30 1.014
-EOF
-}
-
-
-function write_round_expected() {
-    local out="${1:-}"
-
-    cat > "${out}" << 'EOF'
-chrI	0	20	1.00
-chrI	20	30	1.01
-EOF
-}
-
-
 dir_tmp="${TEST_DIR_TMP}/merge_bins_bdg"
 dir_log="${TEST_DIR_LOG}/merge_bins_bdg"
 
 scr="${ROOT_REPO}/src/protocol_chipseq_signal_norm/cli/merge_bins_bdg.py"
-in_exact="${dir_tmp}/exact.input.bedGraph"
-exp_exact="${dir_tmp}/exact.expected.bedGraph"
+dir_fx="${ROOT_REPO}/tests/fixtures/compute_signal/bedgraph/merge_bins"
+dir_exp="${ROOT_REPO}/tests/fixtures/compute_signal/expected/merge_bins"
+in_exact="${dir_fx}/exact.bedGraph"
+exp_exact="${dir_exp}/exact.bedGraph"
 obs_exact="${dir_tmp}/exact.observed.bedGraph"
-in_round="${dir_tmp}/round.input.bedGraph"
-exp_round="${dir_tmp}/round.expected.bedGraph"
+in_round="${dir_fx}/round.bedGraph"
+exp_round="${dir_exp}/round.bedGraph"
 obs_round="${dir_tmp}/round.observed.bedGraph"
-bad_input="${dir_tmp}/malformed.input.bedGraph"
+bad_input="${dir_fx}/malformed.bedGraph"
 log_env_rslv="${dir_log}/resolve_env_python.log"
 log_help="${dir_log}/help.log"
 log_exact="${dir_log}/exact_stdin_stdout.log"
@@ -94,6 +48,16 @@ log_bad="${dir_log}/malformed_input.log"
 print_section "${TEST_NAME}"
 
 mkdir -p "${dir_tmp}" "${dir_log}"
+
+require_files_nonempty \
+    "${in_exact}" \
+    "${exp_exact}" \
+    "${in_round}" \
+    "${exp_round}" \
+    "${bad_input}" || {
+    finish
+    exit $?
+}
 
 require_env_project env_nam || {
     finish
@@ -137,12 +101,6 @@ else
 
     py_cmd=( "${py}" )
 fi
-
-write_exact_fixture "${in_exact}"
-write_exact_expected "${exp_exact}"
-write_round_fixture "${in_round}"
-write_round_expected "${exp_round}"
-printf 'chrI 0 10\n' > "${bad_input}"
 
 if \
     PYTHONDONTWRITEBYTECODE=1 \

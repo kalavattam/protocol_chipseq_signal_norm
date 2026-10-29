@@ -76,6 +76,11 @@ tests/fixtures/align_fastqs/**
 !tests/fixtures/align_fastqs/make_thr.py
 !tests/fixtures/align_fastqs/make_tie.py
 
+tests/fixtures/bedgraph/**
+!tests/fixtures/bedgraph/
+!tests/fixtures/bedgraph/README.md
+!tests/fixtures/bedgraph/make.sh
+
 tests/fixtures/calculate_scaling_factor/**
 !tests/fixtures/calculate_scaling_factor/
 !tests/fixtures/calculate_scaling_factor/README.md

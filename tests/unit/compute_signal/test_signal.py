@@ -9,14 +9,13 @@
 # The following were used in design, development, and documentation, with all
 # output reviewed, edited, and approved by the author:
 # - OpenAI ChatGPT and Codex (GPT-5.6);
-# - Anthropic Claude Code (Opus 5, Fable 5).
+# - Anthropic Claude Code (Opus 5, Fable 5, Opus 5.5).
 #
 # Distributed under the MIT license.
 
 
 import argparse
 import gzip
-import shutil
 from pathlib import Path
 
 import numpy as np
@@ -41,6 +40,7 @@ from protocol_chipseq_signal_norm.utilities.utils_cli import (
 
 ROOT = Path(__file__).resolve().parents[3]
 FIXTURES = ROOT / "tests" / "fixtures" / "compute_signal"
+BEDGRAPH_UNIT = ROOT / "tests" / "fixtures" / "bedgraph"
 
 
 def read_text(path: Path) -> str:
@@ -82,13 +82,12 @@ def test_resolve_siz_chr_rejects_an_empty_header() -> None:
         resolve_siz_chr({})
 
 
-def test_chr_siz_is_rejected(tmp_path: Path) -> None:
+def test_chr_siz_is_rejected() -> None:
     """
     The retired option is gone outright, with no compatibility retention.
     """
 
-    sizes = tmp_path / "chr.sizes"
-    sizes.write_text("chrI\t80\n", encoding="utf-8")
+    sizes = BEDGRAPH_UNIT / "signal" / "sizes.tsv"
 
     for spelling in ("--chr_siz", "--chr-siz", "-cs"):
         with pytest.raises(SystemExit):
@@ -317,8 +316,7 @@ def test_compute_signal_hidden_indexed_bed_strategies_match_serial(
 def test_compute_signal_auto_bed_falls_back_without_index(
     tmp_path: Path,
 ) -> None:
-    fil_in = tmp_path / "tiny_no_index.bam"
-    shutil.copyfile(FIXTURES / "bam" / "se" / "tiny_se.bam", fil_in)
+    fil_in = FIXTURES / "bam" / "no_index" / "tiny_se.bam"
     out_bed = tmp_path / "coord.bed"
 
     auto_status = main(
@@ -339,8 +337,7 @@ def test_compute_signal_auto_bed_falls_back_without_index(
 
 
 def test_compute_signal_public_engines_require_index(tmp_path: Path) -> None:
-    fil_in = tmp_path / "tiny_no_index.bam"
-    shutil.copyfile(FIXTURES / "bam" / "se" / "tiny_se.bam", fil_in)
+    fil_in = FIXTURES / "bam" / "no_index" / "tiny_se.bam"
 
     with pytest.raises(SystemExit, match="alignment index"):
         main(

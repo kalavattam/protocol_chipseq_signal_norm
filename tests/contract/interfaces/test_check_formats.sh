@@ -223,7 +223,8 @@ done
 
 
 # Callers recognize formats in any letter case. Links with upper-case suffixes
-# stand in for files a user named that way.
+# stand in for files a user named that way, as does the fixture
+# 'unity.bedGraph.GZ'.
 dir_up="${tmp}/upper"
 dir_cs="${ROOT_REPO}/tests/fixtures/calculate_scaling_factor"
 in_cram="${dir_cs}/cram/pe/IP_WT_G1_Hho1_6337.sc.cram"
@@ -235,8 +236,6 @@ ln -s "${in_se}" "${dir_up}/tiny_se.BAM"
 ln -s "${dir_fx}/cram/se/tiny_se.cram" "${dir_up}/tiny_se.CRAM"
 ln -s "${dir_fx}/cram/se/tiny_se.cram.crai" "${dir_up}/tiny_se.CRAM.crai"
 ln -s "${in_cram}" "${dir_up}/IP_up.sc.CRAM"
-printf 'chrI\t0\t10\t0.5\nchrI\t10\t20\t0.5\n' \
-    | gzip -c > "${dir_up}/unity.bedGraph.GZ"
 
 
 # Call a sourced helper library function in a fresh shell, printing its stdout
@@ -286,11 +285,11 @@ check_lib core/format_outputs \
 
 check_lib core/check_unity \
     "" \
-    check_unity "${dir_up}/unity.bedGraph.GZ" 0.99 1.01 true
+    check_unity "${dir_fx}/bedgraph/unity.bedGraph.GZ" 0.99 1.01 true
 
 check_lib workflows/process_region \
     "" \
-    check_region_bdg "${dir_up}/unity.bedGraph.GZ" chrI:1-20
+    check_region_bdg "${dir_fx}/bedgraph/unity.bedGraph.GZ" chrI:1-20
 
 # A signal output takes the input's stem without its upper-case suffix.
 rc=0

@@ -9,7 +9,7 @@
 # The following were used in design, development, and documentation, with all
 # output reviewed, edited, and approved by the author:
 # - OpenAI ChatGPT and Codex (GPT-5.6);
-# - Anthropic Claude Code (Opus 5).
+# - Anthropic Claude Code (Opus 5, Opus 5.5).
 #
 # Distributed under the MIT license.
 
@@ -34,6 +34,9 @@ from protocol_chipseq_signal_norm.utilities.utils_io import (
     DEF_SKP_PFX,
     is_header,
 )
+
+ROOT = Path(__file__).resolve().parents[3]
+BEDGRAPH_UNIT = ROOT / "tests" / "fixtures" / "bedgraph"
 
 
 def test_canon_nonfinite_and_try_float() -> None:
@@ -64,11 +67,9 @@ def test_iter_rows_bdg_skips_headers_and_malformed_rows() -> None:
     ]
 
 
-def test_check_size_bin_rejects_mismatched_bins(tmp_path: Path) -> None:
-    file_a = tmp_path / "a.bedGraph"
-    file_b = tmp_path / "b.bedGraph"
-    file_a.write_text("chrI 0 10 1\n", encoding="utf-8")
-    file_b.write_text("chrI 0 20 1\n", encoding="utf-8")
+def test_check_size_bin_rejects_mismatched_bins() -> None:
+    file_a = BEDGRAPH_UNIT / "bdg" / "bin_10.bedGraph"
+    file_b = BEDGRAPH_UNIT / "bdg" / "bin_20.bedGraph"
 
     with pytest.raises(ValueError, match="Mismatched bin sizes"):
         check_size_bin(str(file_a), str(file_b))
@@ -98,41 +99,27 @@ def test_write_bdg_clamps_final_bin_to_chromosome_size(tmp_path: Path) -> None:
     assert out.read_text(encoding="utf-8") == "chrI\t70\t75\t1\n"
 
 
-def test_load_chromosome_sizes_parses_tsv_and_rejects_duplicates(
-    tmp_path: Path,
-) -> None:
-    sizes = tmp_path / "chr.sizes"
-    sizes.write_text("# comment\nchrI\t80\nchrII 120\n", encoding="utf-8")
+def test_load_chromosome_sizes_parses_tsv_and_rejects_duplicates() -> None:
+    sizes = BEDGRAPH_UNIT / "bdg" / "sizes_mixed_delimiters.tsv"
 
     assert load_chromosome_sizes(str(sizes)) == {"chrI": 80, "chrII": 120}
 
-    sizes.write_text("chrI\t80\nchrI\t90\n", encoding="utf-8")
+    sizes = BEDGRAPH_UNIT / "bdg" / "sizes_duplicate.tsv"
 
     with pytest.raises(ValueError, match="Duplicate chromosome"):
         load_chromosome_sizes(str(sizes))
 
 
-def test_validate_bounds_bdg_rejects_out_of_bounds_rows(
-    tmp_path: Path,
-) -> None:
-    bdg = tmp_path / "signal.bedGraph"
-    bdg.write_text("chrI\t70\t81\t1\n", encoding="utf-8")
+def test_validate_bounds_bdg_rejects_out_of_bounds_rows() -> None:
+    bdg = BEDGRAPH_UNIT / "bdg" / "out_of_bounds.bedGraph"
 
     with pytest.raises(ValueError, match="extends beyond"):
         validate_bounds_bdg(str(bdg), {"chrI": 80})
 
 
-def test_check_grid_bin_rejects_late_end_mismatch(tmp_path: Path) -> None:
-    file_a = tmp_path / "a.bedGraph"
-    file_b = tmp_path / "b.bedGraph"
-    file_a.write_text(
-        "chrI 0 10 1\nchrI 10 20 1\nchrI 20 30 1\n",
-        encoding="utf-8",
-    )
-    file_b.write_text(
-        "chrI 0 10 1\nchrI 10 20 1\nchrI 20 31 1\n",
-        encoding="utf-8",
-    )
+def test_check_grid_bin_rejects_late_end_mismatch() -> None:
+    file_a = BEDGRAPH_UNIT / "bdg" / "grid_A.bedGraph"
+    file_b = BEDGRAPH_UNIT / "bdg" / "grid_late_mismatch_B.bedGraph"
 
     with pytest.raises(ValueError, match="Mismatched bedGraph grids"):
         check_grid_bin(str(file_a), str(file_b))
@@ -144,18 +131,12 @@ def test_generate_name_track_preserves_gzip_suffix() -> None:
     )
 
 
-def test_sum_counts_bdg_expands_run_lengths_over_bins(
-    tmp_path: Path,
-) -> None:
+def test_sum_counts_bdg_expands_run_lengths_over_bins() -> None:
     """
     An interval spanning 'k' bins contributes 'k' times its value, not once.
     """
 
-    path = tmp_path / "runs.bedGraph"
-    path.write_text(
-        "chrI\t0\t10\t2\nchrI\t10\t40\t3\n",
-        encoding="utf-8",
-    )
+    path = BEDGRAPH_UNIT / "bdg" / "runs.bedGraph"
 
     # One bin at 2, then three bins at 3, on a grid the track itself implies.
     result = sum_counts_bdg(str(path))
@@ -164,18 +145,12 @@ def test_sum_counts_bdg_expands_run_lengths_over_bins(
     assert result.total == 2.0 + 3.0 * 3
 
 
-def test_sum_counts_bdg_counts_a_partial_terminal_bin_as_one_bin(
-    tmp_path: Path,
-) -> None:
+def test_sum_counts_bdg_counts_a_partial_terminal_bin_as_one_bin() -> None:
     """
     A partial bin still holds a real count, so it rounds up rather than down.
     """
 
-    path = tmp_path / "partial.bedGraph"
-    path.write_text(
-        "chrI\t0\t10\t1\nchrI\t10\t14\t5\n",
-        encoding="utf-8",
-    )
+    path = BEDGRAPH_UNIT / "bdg" / "partial_terminal_bin.bedGraph"
 
     result = sum_counts_bdg(str(path), 10)
 
@@ -183,14 +158,8 @@ def test_sum_counts_bdg_counts_a_partial_terminal_bin_as_one_bin(
     assert result.total == 1.0 + 5.0
 
 
-def test_sum_counts_bdg_infers_the_bin_width_from_the_track(
-    tmp_path: Path,
-) -> None:
-    path = tmp_path / "fifty.bedGraph"
-    path.write_text(
-        "chrI\t0\t50\t1\nchrI\t50\t150\t2\n",
-        encoding="utf-8",
-    )
+def test_sum_counts_bdg_infers_the_bin_width_from_the_track() -> None:
+    path = BEDGRAPH_UNIT / "bdg" / "bin_50.bedGraph"
 
     inferred = sum_counts_bdg(str(path))
     supplied = sum_counts_bdg(str(path), 50)
@@ -199,53 +168,37 @@ def test_sum_counts_bdg_infers_the_bin_width_from_the_track(
     assert inferred.total == supplied.total
 
 
-def test_sum_counts_bdg_rejects_a_width_the_track_contradicts(
-    tmp_path: Path,
-) -> None:
+def test_sum_counts_bdg_rejects_a_width_the_track_contradicts() -> None:
     """
     A wrong width silently rescales every derived pseudocount, so refuse it.
     """
 
-    path = tmp_path / "ten.bedGraph"
-    path.write_text(
-        "chrI\t0\t10\t1\nchrI\t10\t20\t2\n",
-        encoding="utf-8",
-    )
+    path = BEDGRAPH_UNIT / "bdg" / "bin_10_two_rows.bedGraph"
 
     with pytest.raises(ValueError, match="imply a bin width of 10"):
         sum_counts_bdg(str(path), 20)
 
 
-def test_sum_counts_bdg_rejects_a_nonpositive_width(tmp_path: Path) -> None:
-    path = tmp_path / "any.bedGraph"
-    path.write_text("chrI\t0\t10\t1\n", encoding="utf-8")
+def test_sum_counts_bdg_rejects_a_nonpositive_width() -> None:
+    path = BEDGRAPH_UNIT / "bdg" / "one_row.bedGraph"
 
     with pytest.raises(ValueError, match="must be a positive integer"):
         sum_counts_bdg(str(path), 0)
 
 
-def test_sum_counts_bdg_rejects_a_track_with_no_usable_interval(
-    tmp_path: Path,
-) -> None:
-    path = tmp_path / "none.bedGraph"
-    path.write_text("track name=empty\n", encoding="utf-8")
+def test_sum_counts_bdg_rejects_a_track_with_no_usable_interval() -> None:
+    path = BEDGRAPH_UNIT / "bdg" / "no_interval.bedGraph"
 
     with pytest.raises(ValueError, match="no usable bedGraph interval"):
         sum_counts_bdg(str(path))
 
 
-def test_sum_counts_bdg_rounds_up_once_per_chromosome(
-    tmp_path: Path,
-) -> None:
+def test_sum_counts_bdg_rounds_up_once_per_chromosome() -> None:
     """
     Only a chromosome's final interval can be partial, so only it rounds up.
     """
 
-    path = tmp_path / "two_chrom.bedGraph"
-    path.write_text(
-        "chrI\t0\t10\t1\nchrI\t10\t15\t1\nchrII\t0\t10\t1\nchrII\t10\t15\t1\n",
-        encoding="utf-8",
-    )
+    path = BEDGRAPH_UNIT / "bdg" / "two_chromosomes.bedGraph"
 
     result = sum_counts_bdg(str(path), 10)
 
@@ -253,21 +206,18 @@ def test_sum_counts_bdg_rounds_up_once_per_chromosome(
     assert result.total == 4.0
 
 
-def test_sum_counts_bdg_rejects_a_noninteger_width(tmp_path: Path) -> None:
+def test_sum_counts_bdg_rejects_a_noninteger_width() -> None:
     """
     A float width corrupts the floor and remainder arithmetic downstream.
     """
 
-    path = tmp_path / "any.bedGraph"
-    path.write_text("chrI\t0\t10\t1\n", encoding="utf-8")
+    path = BEDGRAPH_UNIT / "bdg" / "one_row.bedGraph"
 
     with pytest.raises(ValueError, match="must be a positive integer"):
         sum_counts_bdg(str(path), 2.5)
 
 
-def test_sum_counts_bdg_survives_a_clamped_terminal_bin(
-    tmp_path: Path,
-) -> None:
+def test_sum_counts_bdg_survives_a_clamped_terminal_bin() -> None:
     """
     Track ends are clamped to chromosome size, so terminal runs are short.
 
@@ -276,11 +226,7 @@ def test_sum_counts_bdg_survives_a_clamped_terminal_bin(
     count, so terminal widths stay out of it.
     """
 
-    path = tmp_path / "clamped.bedGraph"
-    path.write_text(
-        "chrI\t0\t10\t2\nchrI\t10\t70\t3\nchrI\t70\t75\t4\n",
-        encoding="utf-8",
-    )
+    path = BEDGRAPH_UNIT / "bdg" / "clamped_terminal_bin.bedGraph"
 
     result = sum_counts_bdg(str(path))
 
@@ -288,9 +234,7 @@ def test_sum_counts_bdg_survives_a_clamped_terminal_bin(
     assert result.total == 2.0 + 3.0 * 6 + 4.0
 
 
-def test_sum_counts_bdg_infers_a_multiple_when_runs_share_a_factor(
-    tmp_path: Path,
-) -> None:
+def test_sum_counts_bdg_infers_a_multiple_when_runs_share_a_factor() -> None:
     """
     Pin the documented limit of inference so it is not mistaken for exact.
 
@@ -299,11 +243,7 @@ def test_sum_counts_bdg_infers_a_multiple_when_runs_share_a_factor(
     lengths and do not do this; supplying 'siz_bin' is the stated remedy.
     """
 
-    path = tmp_path / "even_runs.bedGraph"
-    path.write_text(
-        "chrI\t0\t20\t1\nchrI\t20\t40\t2\nchrI\t40\t60\t3\n",
-        encoding="utf-8",
-    )
+    path = BEDGRAPH_UNIT / "bdg" / "shared_factor.bedGraph"
 
     inferred = sum_counts_bdg(str(path))
     supplied = sum_counts_bdg(str(path), 10)

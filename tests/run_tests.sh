@@ -126,6 +126,9 @@ function ensure_checker_fixtures() {
     ensure_fixture ai_attribution \
         "${repo_root}/tests/fixtures/ai_attribution/accepted/multi_vendor.sh"
 
+    ensure_fixture bedgraph \
+        "${repo_root}/tests/fixtures/bedgraph/sum/two_widths.bedGraph"
+
     ensure_fixture compute_pseudo \
         "${repo_root}/tests/fixtures/compute_pseudo/bedgraph/pair_A.bedGraph"
 
@@ -376,6 +379,15 @@ fi
 
 if (( run_unit == 1 )) || (( ${#arr_shell_tests[@]} > 0 )); then
     ensure_checker_fixtures
+fi
+
+# The 'compute_signal' unit tests read alignments from this fixture set, which
+# the integration groups otherwise build.
+if (( run_unit == 1 )); then
+    ensure_fixture \
+        compute_signal \
+        "${repo_root}/tests/fixtures/compute_signal/bedgraph/count/tiny_pe.n_ovlp.txt" \
+        env_protocol
 fi
 
 passed=0
