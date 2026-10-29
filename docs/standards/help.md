@@ -1,6 +1,6 @@
 
 # Help and documentation standard
-This document owns shared help and documentation meaning across maintained implementation languages. Python and Shell are the active automated realizations. R and Rust inherit the shared architecture but remain dormant, unenforced, and unmigrated until their existing language-owner applicability triggers are satisfied. Language owners retain source syntax and language-native rendering.
+This document owns shared help and documentation meaning across maintained implementation languages. Python and Shell are the active automated realizations. [`awk.md`](awk.md) realizes function help as a comment block in each `.awk` file, with no checker yet. R and Rust inherit the shared architecture but remain dormant, unenforced, and unmigrated until their existing language-owner applicability triggers are satisfied. Language owners retain source syntax and language-native rendering.
 
 <br />
 

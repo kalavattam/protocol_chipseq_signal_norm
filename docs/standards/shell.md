@@ -110,6 +110,15 @@ Put a blank-line boundary before and after each noncompact sibling conditional, 
 
 Review multiline commands, command arrays, assignments, pipelines, and repeated `case` arms for both hyper-density and mechanical fragmentation. Preserve argument boundaries with arrays and quote expansions according to `SHELL.SOURCE.FORM`; Shell multiline arrays and invocations use continuation syntax and do not acquire a trailing comma. Break long invocations at semantic argument groups and use stable continuation indentation rather than visual alignment.
 
+A multiline invocation's first line names only what runs: the command, plus its subcommand (`samtools view`) or, for an interpreter, its script (`"${TEST_BASH}" "${ROOT_REPO}/bin/execute_align_fastqs.sh"`). End that line with `\` and put every argument and option on continuation lines indented one level, either one per line or several on a line when they form one group by meaning, such as a record's fields:
+```bash
+write_sam_line \
+    'q_low' '99' 'chrS' '851' '5' '10M' \
+    '=' '901' '60' "${seq_dia}" "${qua_dia}"
+```
+
+Do not start the arguments on the command's line, as in `write_opt_set pe pe 50 \`. A diagnostic keeps the first-line prefix that [`SHELL.DIAGNOSTIC.FORM`](#shell-diagnostic-source-form-shelldiagnosticform) prescribes, a conditional keeps the form in [`SHELL.SOURCE.FORM`](#shell-source-form-shellsourceform), and a line that ends before `|`, `&&`, `||`, or a redirection may carry its command's arguments, since the break falls between commands rather than inside one. `source_helpers` and `source_helpers_submit` keep their leading arguments on the first line, as in `source_helpers "${dir_fnc}" \` and `source_helpers_submit "${0##*/}" "${dir_scr}" \`, with one module per continuation line: those arguments say where the modules come from, so they belong with what runs.
+
 Keep `if`/`elif`/`else`/`fi`, loops and `done`, `case` and `esac`, function declarations, and heredoc boundaries syntactically connected. Apply compact-guard and transfer semantics to `return`, `exit`, `break`, and `continue`, and separate a transfer after substantive diagnostics, mutation, cleanup, or result preparation.
 
 Use `echo` for one simple blank output line, and write it with no argument at all: `echo`, not `echo ""`. The empty argument contributes nothing to the emitted line and only obscures that the line break itself is the whole purpose of the call. Continue to use `printf` when formatting, escaping, exact data, or portability of arbitrary content matters; this narrow form does not convert every `printf '\n'` call.
@@ -278,6 +287,33 @@ Every sourceable library loads in isolation after its declared prerequisites are
 **Semantic remainder:** Review global mutation, traps, option changes, expensive initialization, and side effects not detected by isolation loading.
 
 **Exceptions:** None permit production workflow execution at source time.
+
+<br />
+
+## Embedded programs in Shell (`SHELL.EMBED.PROGRAMS`)
+**Classification:** `advisory` while unconverted cases remain; blocking once the source-derived inventory reaches zero.
+
+**Scope:** Programs that maintained Shell carries as strings or heredocs, and scripts or stub executables that a test writes at run time.
+
+Realize [`SOURCE.EMBED.PROGRAMS`](source_layout.md) with these limits, counted in program lines:
+- Inline Bash (`"${TEST_BASH}" -c '...'` or `bash -c '...'`): one line, a single command. Longer Bash becomes a named function in the same file or in `tests/support/`. Moving it costs nothing, since it stays in the same language, and inline Bash escapes `shellcheck`.
+- `awk`: three program lines, enough for a one- or two-rule filter beside its single use.
+- `perl`: none. A `perl` program is rewritten in `gawk`, which `env_protocol.yml` pins; `perl` reaches the environment only as another package's dependency, at no version this repository chooses.
+- `sed`: one line.
+- Python: `python -c` with one line, and no heredocs.
+- A test that writes a script or stub executable at run time, with a heredoc, `printf`, or `cat`, embeds a program of the script's language, whatever its length, and the program moves to its home. A fixture recipe that writes a stub into its root's `tool/` is writing it to that home, so the recipe's heredoc is not an embedded program.
+
+In `lib/` and `bin/`, an AWK program whose input is sequencing or alignment records (from `samtools view`, from `zcat` or `gzip -cd`, or from a BAM, SAM, CRAM, FASTQ, BED, or bedGraph file) lives in `lib/awk/` and runs as `gawk -f`, whatever its length. A change to one of those files carries a full-library timing in its proof.
+
+[`awk.md`](awk.md) owns the form, documentation, and checking of each `.awk` file.
+
+Inline `sed` keeps to the forms that BSD and GNU `sed` share, since it runs on the system `sed`: macOS has BSD `sed`, and the cluster has GNU. GNU-only forms are flagged: `-i`, `-r`, `-z`, the `\+`, `\|`, and `\?` escapes, and long options.
+
+**Automation:** No dedicated checker or registry entry implements this rule yet.
+
+**Semantic remainder:** Judge an `awk` call's real input, which can follow the program's closing quote, and whether a short program reads better as a named function.
+
+**Exceptions:** A `sed` that fills a run-time value into a recipe-built template is a one-line `sed` and needs no exception.
 
 <br />
 

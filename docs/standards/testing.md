@@ -100,7 +100,13 @@ Every fixture root contains a tracked `README.md` and `make.sh`, plus any genera
 
 When Bash cannot draw a recipe's data reproducibly, `make.sh` may run a tracked generator script beside it, `python3 "${dir_scr}/make_<name>.py"`. The script is part of the recipe, not a fixture: it is maintained Python under [`python.md`](python.md) and [`source_headers.md`](source_headers.md), takes its output paths as arguments, imports only the standard library, and draws randomness only through calls whose output Python guarantees across versions, `random.Random(<int>).random()`; `choice`, `randint`, `randrange`, `shuffle`, and `sample` may change between versions. A recipe or generator that calls a checker, an audit tool, or the package remains the validation defect described above.
 
-The boundary is the corpus, not the file write. A test may construct a bounded perturbation of a fixture it consumes — a single altered line, a mutated field, a case built to fail one rule — because the perturbation is the assertion and belongs beside it. What belongs in a recipe is a set of inputs that stands on its own, that a second test could reuse, or that a person would want to read on disk.
+**Every input a test writes to disk comes from a recipe, however small.** A case built to fail one rule is a fixture like any other, in the role directory of its verdict. A test may write from a fixture in two cases only:
+- a copy that the code under test needs because it rewrites or writes beside its input;
+- a run-time value, such as a server port or URL, filled into a recipe-built template.
+
+Each such write carries `# fixture-perturbation: <why>` on its line, with the reason. A step's output may feed the next case when the next case reads it in place; a copy made only to rename it is not allowed. A stub executable lives in its fixture root's `tool/`, where the recipe writes it, or in `tests/support/` when tests of several roots share it.
+
+An input written as a multi-line string is an input whether the test writes it to disk or passes it in memory: at four lines or more it moves to a recipe. [`SOURCE.EMBED.PROGRAMS`](source_layout.md) and its language realizations own programs embedded in tests, and [`PY.EMBED.PROGRAMS`](python.md) owns the Python form of the string limit.
 
 **This direction is an open migration.** Tests that construct their inputs on disk predate the rule and are being converted; the source-derived inventory owns the current count. Until a test is converted, its inline construction is recorded work rather than a new permission, and no new test may add to it.
 

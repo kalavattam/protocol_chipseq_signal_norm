@@ -36,7 +36,7 @@ This file is the routing layer, not the full standards manual. Start with the or
 - `docs/standards/source_layout.md` owns cross-language source semantics.
 - `docs/standards/help.md` owns shared help and documentation semantics.
 - `docs/standards/output.md` owns output contracts.
-- Active language owners (`shell.md` and `python.md`) own language realization; `docs/standards/testing.md` and `tests/README.md` own test taxonomy and gates.
+- Active language owners (`shell.md`, `python.md`, and `awk.md`) own language realization; `docs/standards/testing.md` and `tests/README.md` own test taxonomy and gates.
 
 Before planning a governed change, use the ordinary task router to derive the smallest complete active task rule set. Identify the applicable normative owners and language realizations, plus only the configuration, checkers, fixtures, and contracts that the proposed change modifies or relies on. Present a compact task rules table stating what applies, what is deferred or excluded, what may change, what must remain unchanged, and the focused proof required. Consult historical reports and evidence packages only to verify a specific claim; do not load them as routine instructions.
 

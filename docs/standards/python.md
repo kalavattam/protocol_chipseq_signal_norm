@@ -574,6 +574,24 @@ Unit-test pure parsing, calculation, formatting, and stream transformations. CLI
 
 <br />
 
+## Embedded programs and inputs in Python (`PY.EMBED.PROGRAMS`)
+**Classification:** `advisory` while unconverted cases remain; blocking once the source-derived inventory reaches zero.
+
+**Scope:** Programs that maintained Python passes to an interpreter as strings, and multi-line string literals that a Python test passes as input.
+
+Realize [`SOURCE.EMBED.PROGRAMS`](source_layout.md) as follows:
+- A program passed to an interpreter (`python -c`, `bash -c`, or another tool's program argument) through `subprocess` or a similar call keeps to the limit the program's language owner sets. Python passed with `-c` is one line.
+- A script or stub executable that a test writes at run time moves to its home, whatever its length.
+- A multi-line string literal that a test passes as input, whether it writes it to disk or hands it straight to the function under test, stays inline at three lines or fewer. At four lines or more it moves to a recipe-built fixture file that the test reads in place, under [`TEST.FIXTURES`](testing.md#fixtures-testfixtures). A string compared as expected output is not an input.
+
+**Automation:** No dedicated checker or registry entry implements this rule yet.
+
+**Semantic remainder:** Decide whether a literal is input or expected output.
+
+**Exceptions:** A departure uses the governed exception process.
+
+<br />
+
 ## Python-generated state (`PY.ARTIFACTS.LOCATION`)
 **Classification:** `deterministic` for path cleanliness.
 

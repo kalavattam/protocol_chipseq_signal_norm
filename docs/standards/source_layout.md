@@ -1,6 +1,6 @@
 
 # Cross-language source-layout standard
-This document owns source-layout semantics shared by maintained Shell, Python, R, and Rust. Language standards own the syntax that realizes these semantics, numeric candidate thresholds, formatter and checker selection, applicability exclusions, and language-specific exceptions. [`help.md`](help.md) retains shared help and documentation vocabulary, [`source_headers.md`](source_headers.md) retains source-header profiles, and [`markdown.md`](markdown.md) retains Markdown source form.
+This document owns source-layout semantics shared by maintained Shell, Python, AWK, R, and Rust. Language standards own the syntax that realizes these semantics, numeric candidate thresholds, formatter and checker selection, applicability exclusions, and language-specific exceptions. [`help.md`](help.md) retains shared help and documentation vocabulary, [`source_headers.md`](source_headers.md) retains source-header profiles, and [`markdown.md`](markdown.md) retains Markdown source form.
 
 <br />
 
@@ -9,7 +9,7 @@ This document owns source-layout semantics shared by maintained Shell, Python, R
 
 **Scope:** Source-layout provisions intended to apply across maintained implementation languages and every language-specific standard that realizes them.
 
-This standard is the unique normative owner for common semantic paragraphs, density governance, candidate-evidence concepts, comment attachment, grammatical naming roles, multiline-structure semantics, and comparison-symbol context. A language standard must link to these owners instead of restating a competing shared rule.
+This standard is the unique normative owner for common semantic paragraphs, density governance, candidate-evidence concepts, comment attachment, grammatical naming roles, multiline-structure semantics, embedded programs, and comparison-symbol context. A language standard must link to these owners instead of restating a competing shared rule.
 
 Each language standard owns:
 - recognized syntax and construct families;
@@ -244,6 +244,35 @@ Python hanging indentation and trailing-comma guidance is grounded in [PEP 8](ht
 **Semantic remainder:** Decide whether a structure should remain inline, wrap, be extracted, or use a documented language-native exception; decide whether a non-prose or explicit fragment boundary is deliberate. Shell, R, and Rust require their own language adapters and migrations before this shared rule can be claimed as enforced there.
 
 **Exceptions:** Syntax-required or formatter-owned forms may differ only through the applicable language owner. Literal fixtures and generated source follow their owned applicability exclusions.
+
+<br />
+
+## Embedded programs (`SOURCE.EMBED.PROGRAMS`)
+**Classification:** `advisory` while unconverted cases remain; blocking once the source-derived inventory reaches zero.
+
+**Scope:** Programs written in one language and carried inside source of another, or passed to an interpreter as a string: Bash given to `bash -c`, `awk`, `sed`, and `perl` programs, Python given to `python -c` or fed through a heredoc, and scripts or stub executables that a test writes at run time. Applies to maintained source in every implementation root, tests included.
+
+An embedded program cannot be linted, tested alone, timed, or reused, and its quoting hides it from the tools that check its language. Keep a program embedded only while it is short. Each language owner sets the limit for the programs its source embeds, and a limit counts program lines only, not the line that calls the tool or the closing quote.
+
+A program moves to its own file, whatever its length, when it defines a function or when the same program appears in more than one place.
+
+A moved program goes to a file in its own language: `.py` for Python, a pure `.awk` file for AWK, and a named function or script for Bash. The home follows the program's role:
+- `lib/awk/<function>.awk` for an AWK program that production code runs;
+- `tests/support/` for a test helper, or a stub executable that tests of several fixture roots share;
+- a fixture root's `tool/`, where the root's recipe writes it, for a stub executable that one root's tests use;
+- `dev/audit/` for a whole audit now embedded in a test.
+
+A `sed` program over its limit is rewritten in AWK rather than moved to a `.sed` file. `sed` is not pinned in the managed environment and has no lint step, so a `.sed` file would run on whichever `sed` the system has.
+
+One checker counts every kind against its own limit and reports against the source-derived inventory. No baseline file tracks the cases not yet converted: the checker is advisory with a count until the count reaches zero, and then it blocks.
+
+[`shell.md`](shell.md) realizes this rule in `SHELL.EMBED.PROGRAMS`, and [`python.md`](python.md) in `PY.EMBED.PROGRAMS`. R and Rust realize it when maintained source in those languages is introduced. [`TEST.FIXTURES`](testing.md#fixtures-testfixtures) owns test inputs, including input data written as a multi-line string.
+
+**Automation:** No dedicated checker or registry entry implements this rule yet.
+
+**Semantic remainder:** Decide whether two programs are one program copied, whether a program within its limit still reads better as its own file, and which home a moved program's role selects.
+
+**Exceptions:** A departure uses the governed exception process. Language owners may name syntax-required forms.
 
 <br />
 

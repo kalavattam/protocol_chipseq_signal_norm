@@ -9,7 +9,7 @@
 # The following were used in design, development, and documentation, with all
 # output reviewed, edited, and approved by the author:
 # - OpenAI ChatGPT and Codex (GPT-5.5, GPT-5.6);
-# - Anthropic Claude Code (Opus 5).
+# - Anthropic Claude Code (Opus 5, Opus 5.5).
 #
 # Distributed under the MIT license.
 
@@ -54,7 +54,9 @@ function scan_owner_ids() {
         [[ -n "${label}" ]] || continue
         printf -v pattern '`%s`' "${rule_id}"
 
-        if ! grep -Fq -- "${pattern}" "${file}"; then
+        if \
+            ! grep -Fq -- "${pattern}" "${file}"
+        then
             found=1
             record_fail \
                 "standard missing ${label} owner ${rule_id}:" \
@@ -128,7 +130,9 @@ function scan_python_task_router() {
         "if no language owner exists, route the proposed specialization" \
         "instead of borrowing Python rules" \
         "record the anti-accretion evidence"; do
-        if ! grep -Fq -- "${required}" "${doc_router}"; then
+        if \
+            ! grep -Fq -- "${required}" "${doc_router}"
+        then
             found=1
             record_fail "ordinary task router missing: ${required}"
         fi
@@ -147,7 +151,9 @@ function scan_language_layout_realizations() {
     while IFS=$'\t' read -r label file pattern; do
         [[ -n "${label}" ]] || continue
 
-        if ! grep -Fq -- "${pattern}" "${file}"; then
+        if \
+            ! grep -Fq -- "${pattern}" "${file}"
+        then
             found=1
             record_fail "${label} missing language-owned text: ${pattern}"
         fi
@@ -162,6 +168,7 @@ R no trailing comma	${doc_r}	Multiline R calls do not use
 Rust comment markers	${doc_rust}	Ordinary full-line, continuation, and inline comments
 Rust documentation markers	${doc_rust}	outer documentation attached to the following item
 Rust trailing comma	${doc_rust}	and a trailing comma
+AWK comment markers	${doc_awk}	Comments begin with
 EOM
 
     if (( found == 0 )); then
@@ -190,7 +197,9 @@ function scan_broken_python_see_also() {
     local file
 
     for file in "${python_see_also_modules[@]}"; do
-        if grep -Fq -- "docs/dev/" "${file}"; then
+        if \
+            grep -Fq -- "docs/dev/" "${file}"
+        then
             found=1
             record_fail \
                 "public Python module retains a broken docs/dev reference:" \
@@ -206,6 +215,7 @@ function scan_broken_python_see_also() {
 
 print_section "${TEST_NAME}"
 
+doc_awk="${ROOT_REPO}/docs/standards/awk.md"
 doc_help="${ROOT_REPO}/docs/standards/help.md"
 doc_json="${ROOT_REPO}/docs/standards/json.md"
 doc_python="${ROOT_REPO}/docs/standards/python.md"
