@@ -403,7 +403,7 @@ EOM
 }
 
 
-# Sort one BAM or CRAM file by query name.
+# Sort one BAM or CRAM file by queryname.
 function qsort_file_alignments() {
     local threads="${1:-}"
     local fil_in="${2:-}"
@@ -423,7 +423,7 @@ Usage
   qsort_file_alignments
     [--help] threads fil_in fil_out ref_fa log_out log_err
 
-  Sort one BAM or CRAM alignment file by query name, and write the chain's pipeline record into the output's header.
+  Sort one BAM or CRAM alignment file by queryname, and write the chain's pipeline record into the output's header.
 
 Parameters
 ----------

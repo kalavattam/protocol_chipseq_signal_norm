@@ -915,7 +915,7 @@ EOM
     expr="$(_get_expr_filter "${aln_typ}")" || return 1
     _set_ref_arg_cram "${fil_aln}" arr_ref_arg || return 1
 
-    # Compute average fragment length using samtools and awk.
+    # Compute average fragment length using 'samtools' and 'awk'.
     samtools view -@ "${threads}" "${arr_ref_arg[@]}" --expr "${expr}" "${fil_aln}" \
         | awk '{
             if ($9 > 0) { sum += $9; count++ }

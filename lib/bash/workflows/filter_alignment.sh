@@ -919,7 +919,7 @@ EOM
     validate_var_file "fil_in" "${fil_in}" || return 1
 
     # TODO: explicitly use 'gawk'?
-    # The record reaches awk through the environment, as '-v' would expand its
+    # The record reaches 'awk' through the environment, as '-v' would expand its
     # backslashes.
     if ! \
         REC_FILTER="${rec}" awk \

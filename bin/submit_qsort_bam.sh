@@ -392,7 +392,7 @@ function derive_fil_out() {
 }
 
 
-# Sort one alignment file by query name.
+# Sort one alignment file by queryname.
 function run_job() {
     local idx="${1:-}"
     local fil_in fil_out samp log_out log_err ref_job=""

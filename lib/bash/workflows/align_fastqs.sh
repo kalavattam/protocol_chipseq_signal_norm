@@ -456,7 +456,7 @@ EOM
     arr_view+=( -q "${mapq}" "${bam_in}" )
     arr_cut=( cut -f 1 )
     arr_uniq=( uniq -c )
-    # shellcheck disable=SC2016  # The program is for awk, not the shell.
+    # shellcheck disable=SC2016  # The program is AWK, not shell.
     arr_awk=( awk -v "n=${n_pri}" '$1 == n { print $2 }' )
 
     if [[ "${dry_run}" == "true" ]]; then
@@ -2210,7 +2210,7 @@ EOM
 
     # Count names and names without coordinates, following the colon count that
     # 'get_coordinates_colons()' in 'bam_markdup.c' uses.
-    # shellcheck disable=SC2016  # The program is for awk, not the shell.
+    # shellcheck disable=SC2016  # The program is AWK, not shell.
     if ! \
         cnt="$(
             set -o pipefail

@@ -27,7 +27,7 @@ Usage
     --csv_fil_in <csv> [--ref_fa <file>]
     --dir_out <dir> --dir_eo <dir> [--nam_job <str>]
 
-  Sort BAM or CRAM input files by query name.
+  Sort BAM or CRAM input files by queryname.
 
   When run inside a Slurm array task, this script processes the indexed input selected by 'SLURM_ARRAY_TASK_ID'. Otherwise, it processes every input file serially in the current shell.
 

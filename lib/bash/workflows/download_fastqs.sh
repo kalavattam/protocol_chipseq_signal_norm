@@ -645,7 +645,7 @@ EOM
     # come from the environment, so the shell never reparses them. On success,
     # print 'ok <records>'; otherwise print the counts and first failed header
     # as 'bad <failed> <records> <first header>' and exit 1.
-    # shellcheck disable=SC2016  # The program is for awk, not the shell.
+    # shellcheck disable=SC2016  # The program is AWK, not shell.
     arr_awk=(
         awk
             -v acc="${acc}"
