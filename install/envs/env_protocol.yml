@@ -25,6 +25,7 @@ dependencies:
   - bwa=0.7.19                # Note: Added since publication in Bio-protocol; pinned for reproducibility, selectable via '--aligner'.
   - gawk=5.4.1                # Note: Pinned for reproducibility; used by 'lib/bash/core/format_outputs.sh' and 'lib/bash/core/check_unity.sh'.
   - ipython=9.17.1            # Note: Pinned for record.
+  - jsonschema=4.26.0         # Note: Pinned for evidence; 'dev/audit' validates configs against 'dev/schemas/' with it.
   - matplotlib=3.10.9         # Note: Pinned for record, at the newest version whose Linux build needs no glibc newer than the cluster's 2.27.
   - numpy=2.4.6               # Note: Pinned for reproducibility; required by 'src/protocol_chipseq_signal_norm/cli/compute_signal.py'. ('scipy' was checked and is imported nowhere, so it is not made explicit.)
   - parallel=20260922         # Note: Pinned for record.
