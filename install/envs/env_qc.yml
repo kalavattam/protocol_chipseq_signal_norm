@@ -13,12 +13,13 @@ channels:
 # compilers declared below.
 dependencies:
   - cxx-compiler    # Note: Builds 'preseq' from source; see 'install/scripts/install_preseq.sh'.
-  - fastqc=0.12.1   # Note: Pinned for evidence; gate reports in the analysis repositories cite its output.
+  - fastqc=0.13.0   # Note: Pinned for evidence; gate reports in the analysis repositories cite its output.
   - htslib=1.25     # Note: Pinned for compatibility; 'preseq' is built against it, at the version 'samtools=1.25' uses in 'env_protocol'.
   - kraken2=2.17.2  # Note: Pinned for evidence; classifies reads that align to neither genome.
   - longdust=1.4    # Note: Pinned for reproducibility; defines long low-complexity intervals.
   - make            # Note: Builds 'preseq' from source; see 'install/scripts/install_preseq.sh'.
   - multiqc=1.35    # Note: Pinned for evidence; gate reports in the analysis repositories cite its output.
+  - polars=2.1.0    # Note: Pinned for record; 'multiqc' depends on it.
   - python=3.11     # Note: Pinned for compatibility, as in 'env_protocol', for 'sequali'.
   - sdust=0.1       # Note: Pinned for reproducibility; defines short low-complexity intervals.
   - sequali=1.0.2   # Note: Pinned for evidence; gate reports in the analysis repositories cite its output.

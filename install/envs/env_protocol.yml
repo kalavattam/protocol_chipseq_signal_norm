@@ -4,49 +4,46 @@ channels:
   - bioconda
 # Version pins fall into three kinds, and each pinned entry says which it is:
 # - "pinned for reproducibility" for packages that can change a computed value,
-# - "pinned for evidence" for packages whose output this repository cites, and
-# - "pinned for compatibility" where a version is forced by another dependency.
+# - "pinned for evidence" for packages whose output this repository cites,
+# - "pinned for compatibility" where a version is forced by another dependency,
+# - "pinned for record" for every other package, at the version the
+#   environments were last verified with, so that a rebuild repeats it.
 #
 # Note: a site installing from a mirrored channel may see fewer builds than
 # 'anaconda.org' carries, so every additional pin potentially raises the chance
 # a later solve is unsatisfiable on the mirror while solvable elsewhere.
 #
-# Packages that cannot move a number and are not cited as evidence are
-# deliberately left to float.
+# Build tools ('pip', 'setuptools', 'wheel', and the compilers) are left to
+# float, since they cannot move a number and their builds differ by platform.
 dependencies:
-  - asciigenome               # Note: Added since publication in Bio-protocol. Maybe: remove from 'env_protocol'.
-  - bash                      # Note: Added since publication in Bio-protocol.
+  - asciigenome=1.20.0        # Note: Added since publication in Bio-protocol; pinned for record. For quick looks at signal and coverage.
+  - bash=5.3                  # Note: Added since publication in Bio-protocol; pinned for record.
   - bc=1.07.1                 # Note: Pinned for reproducibility; carries the scaling-factor arithmetic in 'lib/bash/workflows/calculate_scaling_factor.sh'.
   - bioconductor-edger=4.8.2  # Note: Added since publication in Bio-protocol; pinned for reproducibility and evidence, so test results stay reproducible.
   - bowtie2=2.5.5             # Note: Pinned for reproducibility; the aligner changes alignments and therefore every downstream count.
   - bwa-mem2=2.3              # Note: Added since publication in Bio-protocol; pinned for reproducibility, selectable via '--aligner'.
   - bwa=0.7.19                # Note: Added since publication in Bio-protocol; pinned for reproducibility, selectable via '--aligner'.
-  - datamash                  # Note: Added since publication in Bio-protocol. Maybe: remove; nothing in 'lib/', 'src/', 'bin/', or 'tests/' invokes it.
-  - fastqc
   - gawk=5.4.1                # Note: Pinned for reproducibility; used by 'lib/bash/core/format_outputs.sh' and 'lib/bash/core/check_unity.sh'.
-  - gnuplot                   # Note: Added since publication in Bio-protocol. Maybe: remove from 'env_protocol'.
-  - ipython
-  - matplotlib
-  - multiqc=1.35              # Note: Pinned for evidence; gate reports in the analysis repositories cite its output.
+  - ipython=9.17.1            # Note: Pinned for record.
+  - matplotlib=3.10.9         # Note: Pinned for record, at the newest version whose Linux build needs no glibc newer than the cluster's 2.27.
   - numpy=2.4.6               # Note: Pinned for reproducibility; required by 'src/protocol_chipseq_signal_norm/cli/compute_signal.py'. ('scipy' was checked and is imported nowhere, so it is not made explicit.)
-  - parallel
-  - pbzip2
-  - pigz
+  - parallel=20260922         # Note: Pinned for record.
+  - pbzip2=1.1.13             # Note: Pinned for record.
+  - pigz=2.8                  # Note: Pinned for record.
   - pip
   - pysam=0.24.0              # Note: Pinned for reproducibility; reads alignments for signal computation.
   - pytest=9.1.1              # Note: Added since publication in Bio-protocol; pinned for evidence, so test results stay reproducible.
-  - python=3.11               # Note: Pinned for compatibility and to v3.11 for 'sequali' installation.
-  - pyyaml                    # Note: Made explicit since Bio-protocol publication.
-  - r-argparse
+  - python=3.11               # Note: Pinned for reproducibility; the interpreter that 'src/' and the tests run under.
+  - pyyaml=6.0.3              # Note: Made explicit since Bio-protocol publication; pinned for record.
+  - r-argparse=2.3.1          # Note: Pinned for record.
   - r-base=4.5.2              # Note: Made explicit since Bio-protocol publication; pinned for reproducibility and evidence.
-  - r-ggsci
-  - r-plotly
-  - rename
+  - r-ggsci=5.2.0             # Note: Pinned for record.
+  - r-plotly=4.12.1           # Note: Pinned for record.
+  - rename=1.601              # Note: Pinned for record.
   - ruff=0.15.21              # Note: Added since publication in Bio-protocol; pinned for evidence, to the reviewed repository standard.
   - samtools=1.25             # Note: Pinned for reproducibility; fragment counts and sequencing depth are derived from it.
-  - sequali=1.0.2             # Note: Pinned for evidence; gate reports in the analysis repositories cite its output.
   - setuptools
   - shellcheck=0.10.0         # Note: Added since publication in Bio-protocol; pinned for evidence, for repository static-analysis provenance.
-  - tree                      # Note: Added since publication in Bio-protocol.
-  - wget
+  - tree=2.3.2                # Note: Added since publication in Bio-protocol; pinned for record.
+  - wget=1.25.0               # Note: Pinned for record.
   - wheel

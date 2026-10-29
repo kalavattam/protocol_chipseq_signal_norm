@@ -11,13 +11,12 @@ channels:
 # 'bc' on 2026-08-13 and 'samtools' on 2026-10-27. This environment has not yet
 # been built.
 dependencies:
-  - bc=1.07.1      # Note: Pinned for reproducibility; carries the reference implementation's arithmetic.
-  - bedtools
-  - datamash       # Maybe: remove; nothing in 'lib/', 'src/', 'bin/', or 'tests/' invokes it.
+  - bc=1.07.1                  # Note: Pinned for reproducibility; carries the reference implementation's arithmetic.
+  - bedtools=2.31.1            # Note: Pinned for record.
   - gfortran
-  - gnuplot
-  - parallel
-  - samtools=1.25  # Note: Pinned for reproducibility; matches the 'env_protocol' pin so both sides count alignments identically.
-  - tree
-  - ucsc-bedclip
-  - ucsc-bedgraphtobigwig
+  - gnuplot=6.0.5              # Note: Pinned for record; the reference implementation's plotting scripts need it.
+  - parallel=20260922          # Note: Pinned for record.
+  - samtools=1.25              # Note: Pinned for reproducibility; matches the 'env_protocol' pin so both sides count alignments identically.
+  - tree=2.3.2                 # Note: Pinned for record.
+  - ucsc-bedclip=502           # Note: Pinned for reproducibility; clips the bedGraph files the bigWigs are made from.
+  - ucsc-bedgraphtobigwig=502  # Note: Pinned for reproducibility; writes the bigWig files.
