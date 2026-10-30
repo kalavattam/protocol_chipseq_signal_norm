@@ -108,10 +108,21 @@ dir_out="${tmp}/worker/out"
 dir_sym="${tmp}/worker/links"
 dir_eo="${tmp}/worker/logs"
 fil_missing="${tmp}/missing.tsv"
+dir_fx="${ROOT_REPO}/tests/fixtures/download_fastqs"
+dir_mtd="${dir_fx}/metadata"
 env_missing="phase1b_interface_missing_env"
 
 rm -rf "${tmp}"
 mkdir -p "${dir_cap}" "${dir_out}" "${dir_sym}" "${dir_eo}"
+
+require_files_nonempty \
+    "${dir_mtd}/dry_se.tsv" \
+    "${dir_mtd}/worker_failure.tsv" \
+    "${dir_fx}/tool/wget_ok/wget" \
+    "${dir_fx}/tool/wget_fail/wget" || {
+    finish
+    exit $?
+}
 
 
 # Canonical execute spellings parse before deterministic validation failure.
@@ -444,40 +455,6 @@ assert_dir_empty "${dir_eo}" "submit help worker-log directory"
 dir_dry="${tmp}/dry_run"
 mkdir -p "${dir_dry}/out" "${dir_dry}/links" "${dir_dry}/logs"
 
-cat > "${dir_dry}/se.tsv" << 'EOM'
-run_accession	custom_name	fastq_https
-SRR_DRY_SE	dry_se	https://example.invalid/dry_se.fastq.gz
-EOM
-
-cat > "${dir_dry}/pe.tsv" << 'EOM'
-run_accession	custom_name	fastq_https
-SRR_DRY_PE	dry_pe	https://example.invalid/dry_pe_R1.fastq.gz;https://example.invalid/dry_pe_R2.fastq.gz
-EOM
-
-cat > "${dir_dry}/mixed.tsv" << 'EOM'
-run_accession	custom_name	fastq_https
-SRR_DRY_SE	dry_se	https://example.invalid/dry_se.fastq.gz
-SRR_DRY_PE	dry_pe	https://example.invalid/dry_pe_R1.fastq.gz;https://example.invalid/dry_pe_R2.fastq.gz
-EOM
-
-cat > "${dir_dry}/duplicate.tsv" << 'EOM'
-run_accession	custom_name	fastq_https
-SRR_DRY_DUP	dry_dup_a	https://example.invalid/dry_dup.fastq.gz
-SRR_DRY_DUP	dry_dup_b	https://example.invalid/dry_dup.fastq.gz
-EOM
-
-cat > "${dir_dry}/duplicate_custom.tsv" << 'EOM'
-run_accession	custom_name	fastq_https
-SRR_DRY_CUS_A	dry_duplicate	https://example.invalid/a.fastq.gz
-SRR_DRY_CUS_B	dry_duplicate	https://example.invalid/b.fastq.gz
-EOM
-
-cat > "${dir_dry}/conflicting.tsv" << 'EOM'
-run_accession	custom_name	fastq_https
-SRR_DRY_CONFLICT	dry_conflict_a	https://example.invalid/a.fastq.gz
-SRR_DRY_CONFLICT	dry_conflict_b	https://example.invalid/b.fastq.gz
-EOM
-
 for dry_case in se pe mixed duplicate; do
     log="${dir_cap}/dry_${dry_case}.log"
 
@@ -486,7 +463,7 @@ for dry_case in se pe mixed duplicate; do
         "${log}" \
         "${TEST_BASH}" "${scr_exe}" \
             --dry_run \
-            --fil_in "${dir_dry}/${dry_case}.tsv" \
+            --fil_in "${dir_mtd}/dry_${dry_case}.tsv" \
             --dir_out "${dir_dry}/out" \
             --dir_sym "${dir_dry}/links" \
             --dir_eo "${dir_dry}/logs"
@@ -539,7 +516,7 @@ expect_success \
         --dry_run \
         --slurm \
         --threads 2 \
-        --fil_in "${dir_dry}/mixed.tsv" \
+        --fil_in "${dir_mtd}/dry_mixed.tsv" \
         --dir_out "${dir_dry}/out" \
         --dir_sym "${dir_dry}/links" \
         --dir_eo "${dir_dry}/logs"
@@ -561,7 +538,7 @@ expect_failure \
     "${dir_cap}/dry_duplicate_custom.log" \
     "${TEST_BASH}" "${scr_exe}" \
         --dry_run \
-        --fil_in "${dir_dry}/duplicate_custom.tsv" \
+        --fil_in "${dir_mtd}/dry_duplicate_custom.tsv" \
         --dir_out "${dir_dry}/out" \
         --dir_sym "${dir_dry}/links" \
         --dir_eo "${dir_dry}/logs"
@@ -571,7 +548,7 @@ expect_failure \
     "${dir_cap}/dry_conflicting.log" \
     "${TEST_BASH}" "${scr_exe}" \
         --dry_run \
-        --fil_in "${dir_dry}/conflicting.tsv" \
+        --fil_in "${dir_mtd}/dry_conflicting.tsv" \
         --dir_out "${dir_dry}/out" \
         --dir_sym "${dir_dry}/links" \
         --dir_eo "${dir_dry}/logs"
@@ -588,10 +565,11 @@ assert_pattern_found \
 
 
 # Fake wget proves relative paths and worker-failure propagation without I/O.
-dir_fake="${tmp}/fake_bin"
+# The metadata directory is linked under the relative root, so that inputs are
+# also named by relative paths and still read in place.
+dir_fake="${dir_fx}/tool/wget_ok"
 dir_rel="${tmp}/relative"
 mkdir -p \
-    "${dir_fake}" \
     "${dir_rel}/submit/out" \
     "${dir_rel}/submit/links" \
     "${dir_rel}/submit/logs" \
@@ -602,35 +580,8 @@ mkdir -p \
     "${dir_rel}/failure/links" \
     "${dir_rel}/failure/logs"
 
-cat > "${dir_fake}/wget" << 'EOM'
-#!/usr/bin/env bash
+ln -s "${dir_mtd}" "${dir_rel}/metadata"
 
-set -euo pipefail
-
-output=""
-while (( $# > 0 )); do
-    case "${1}" in
-        -O)
-            output="${2}"
-            shift 2
-            ;;
-
-        *)
-            url="${1}"
-            shift
-            ;;
-    esac
-done
-
-printf '%s\n' "${url:-}" > "${output%/*}/wget_url.txt"
-printf '%s\n' '@synthetic-fastq' 'ACGT' '+' 'IIII' | gzip -c > "${output}"
-EOM
-chmod +x "${dir_fake}/wget"
-
-cat > "${dir_rel}/execute/input.tsv" << 'EOM'
-run_accession	custom_name	fastq_https
-SRR_REL_EXEC	relative_execute	https://example.invalid/relative.fastq.gz
-EOM
 
 expect_success \
     "submit relative-directory fake download" \
@@ -692,7 +643,7 @@ expect_success \
     run_from_dir "${tmp}" \
         env PATH="${dir_fake}:${PATH}" \
         "${TEST_BASH}" "${scr_exe}" \
-            --fil_in relative/execute/input.tsv \
+            --fil_in relative/metadata/relative_execute.tsv \
             --dir_out relative/execute/out \
             --dir_sym relative/execute/links \
             --dir_eo relative/execute/logs
@@ -710,33 +661,7 @@ else
     record_fail "execute relative symlink target is broken"
 fi
 
-cat > "${dir_fake}/wget" << 'EOM'
-#!/usr/bin/env bash
-
-set -euo pipefail
-
-output=""
-while (( $# > 0 )); do
-    case "${1}" in
-        -O)
-            output="${2}"
-            shift 2
-            ;;
-
-        *)
-            shift
-            ;;
-    esac
-done
-
-printf '%s\n' '@partial-fastq' 'TGCA' '+' 'IIII' > "${output}"
-exit 42
-EOM
-
-cat > "${dir_rel}/failure/input.tsv" << 'EOM'
-run_accession	custom_name	fastq_https
-SRR_FAIL	failed_worker	https://example.invalid/failure.fastq.gz
-EOM
+dir_fake="${dir_fx}/tool/wget_fail"
 
 expect_failure \
     "execute propagates fake worker failure" \
@@ -744,14 +669,14 @@ expect_failure \
     run_from_dir "${tmp}" \
         env PATH="${dir_fake}:${PATH}" \
         "${TEST_BASH}" "${scr_exe}" \
-            --fil_in relative/failure/input.tsv \
+            --fil_in relative/metadata/worker_failure.tsv \
             --dir_out relative/failure/out \
             --dir_sym relative/failure/links \
             --dir_eo relative/failure/logs
 
 if [[
     ! -e "${dir_rel}/failure/out/SRR_FAIL.fastq.gz"
-    && ! -e "${dir_rel}/failure/out/SRR_FAIL.fastq.gz.part"
+        && ! -e "${dir_rel}/failure/out/SRR_FAIL.fastq.gz.part"
 ]]; then
     record_pass "failed worker leaves no FASTQ or partial file"
 else

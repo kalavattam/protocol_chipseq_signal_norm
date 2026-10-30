@@ -336,8 +336,12 @@ done
 # whose mates are swapped fails it without a download.
 dir="${tmp}/use_existing_seq"
 mkdir -p "${dir}/out"
-cp "${dir_nam}/sequencer_R2.fastq.gz" "${dir}/out/SEQ_PE_R1.fastq.gz"
-cp "${dir_nam}/sequencer_R1.fastq.gz" "${dir}/out/SEQ_PE_R2.fastq.gz"
+cp \
+    "${dir_nam}/sequencer_R2.fastq.gz" \
+    "${dir}/out/SEQ_PE_R1.fastq.gz"  # fixture-perturbation: mates swapped
+cp \
+    "${dir_nam}/sequencer_R1.fastq.gz" \
+    "${dir}/out/SEQ_PE_R2.fastq.gz"  # fixture-perturbation: mates swapped
 
 rc=0
 run_template ue_seq "${dir}" local_names_sequencer_pe --use_existing || rc=$?
@@ -356,8 +360,12 @@ assert_pattern_absent \
 # the names are already restored and changes nothing.
 dir="${tmp}/use_existing"
 mkdir -p "${dir}/out"
-cp "${dir_nam}/ena_R1.fastq.gz" "${dir}/out/${pe_1}"
-cp "${dir_nam}/ena_R2.fastq.gz" "${dir}/out/${pe_2}"
+cp \
+    "${dir_nam}/ena_R1.fastq.gz" \
+    "${dir}/out/${pe_1}"  # fixture-perturbation: restored
+cp \
+    "${dir_nam}/ena_R2.fastq.gz" \
+    "${dir}/out/${pe_2}"  # fixture-perturbation: restored
 
 rc=0
 run_template ue "${dir}" local_names_pe_missing --use_existing || rc=$?
@@ -390,8 +398,12 @@ fi
 # An existing file that fails its check fails the entry without a download.
 dir="${tmp}/use_existing_bad"
 mkdir -p "${dir}/out"
-cp "${dir_nam}/ena_R1.fastq.gz" "${dir}/out/${pe_1}"
-cp "${dir_nam}/r2_name_R2.fastq.gz" "${dir}/out/${pe_2}"
+cp \
+    "${dir_nam}/ena_R1.fastq.gz" \
+    "${dir}/out/${pe_1}"  # fixture-perturbation: restored
+cp \
+    "${dir_nam}/r2_name_R2.fastq.gz" \
+    "${dir}/out/${pe_2}"  # fixture-perturbation: an R2 name unlike R1's
 
 rc=0
 run_template ue_bad "${dir}" local_names_pe_missing --use_existing || rc=$?
@@ -440,8 +452,6 @@ else
 fi
 
 # An empty file fails restoration instead of being taken for lost names.
-: > "${tmp}/empty.fastq.gz"
-
 rc=0
 # shellcheck disable=SC2016  # Expand in the child shell, not this one.
 run_capture \
@@ -457,7 +467,7 @@ run_capture \
             core/format_outputs \
             workflows/download_fastqs
         restore_fastq_names SRR_EMPTY "${2}" NA
-    ' _ "${ROOT_REPO}" "${tmp}/empty.fastq.gz" \
+    ' _ "${ROOT_REPO}" "${dir_nam}/empty.fastq.gz" \
     || rc=$?
 check_rc empty "${rc}" 1
 assert_pattern_found \

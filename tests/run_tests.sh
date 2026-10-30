@@ -101,13 +101,6 @@ function ensure_integration_fixtures() {
         "${repo_root}/tests/fixtures/compute_signal/bedgraph/count/tiny_pe.n_ovlp.txt" \
         env_protocol
 
-    if \
-        gate_enabled RUN_DOWNLOAD
-    then
-        ensure_fixture download_fastqs \
-            "${repo_root}/tests/fixtures/download_fastqs/metadata/local_names_sequencer_pe.template.tsv"
-    fi
-
     ensure_fixture filter_alignments \
         "${repo_root}/tests/fixtures/filter_alignments/cram/filter_sc_sp.cram.crai" \
         env_protocol
@@ -134,6 +127,9 @@ function ensure_checker_fixtures() {
 
     ensure_fixture diagnostics \
         "${repo_root}/tests/fixtures/diagnostics/script/run.sh"
+
+    ensure_fixture download_fastqs \
+        "${repo_root}/tests/fixtures/download_fastqs/metadata/local_names_sequencer_pe.template.tsv"
 
     ensure_fixture slurm_dry_run \
         "${repo_root}/tests/fixtures/slurm_dry_run/tool/sbatch"

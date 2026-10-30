@@ -58,6 +58,15 @@ Metadata template:
 - `metadata/local_names_sequencer_pe.template.tsv`
 - `metadata/local_names_sequencer_se.template.tsv`
 
+Metadata tables for runs that fetch nothing, with `.invalid` URLs, for `test_download_fastqs_interface.sh`:
+- `metadata/dry_se.tsv`, `metadata/dry_pe.tsv`, and `metadata/dry_mixed.tsv`: for dry-run planning
+- `metadata/dry_duplicate.tsv` (one accession under two custom names), `metadata/dry_duplicate_custom.tsv` (two accessions under one custom name), and `metadata/dry_conflicting.tsv` (one accession with two URLs)
+- `metadata/relative_execute.tsv` and `metadata/worker_failure.tsv`: for runs under the `wget` stubs
+
+`wget` stubs, each in its own directory so that a test puts one on `PATH` as `wget`:
+- `tool/wget_ok/wget` records the URL it was given in `wget_url.txt` beside its output and writes a one-record FASTQ
+- `tool/wget_fail/wget` writes a valid gzip-compressed FASTQ and exits 42, so that only its exit status marks the failure
+
 The compressed FASTQ files are generated with `gzip -n -c` so gzip headers do not encode timestamps or source filenames.
 
 The metadata template uses the columns required by `execute_download_fastqs.sh`:
@@ -139,6 +148,8 @@ The `source/names/` files have two 8-base records each, in ENA's form, `@<run>.<
 | `local_names_sequencer_pe` | `sequencer_R1`, `sequencer_R2` (bcl-convert comment), with MD5s | names need nothing; left as downloaded, with one note and no read past the first header |
 | `local_names_sequencer_se` | `sequencer_se` (no comment)                                     | names need nothing; left as downloaded, with one note                                   |
 | `local_names_pe_missing`   | none: URLs the server lacks                                     | right MD5s and sizes of `ena_R1` and `ena_R2`; only `--use_existing` passes             |
+
+`source/names/empty.fastq.gz` is an empty file that restoration must refuse rather than take for a file whose names were lost. The test passes it to `restore_fastq_names` directly, with no template.
 
 <br />
 

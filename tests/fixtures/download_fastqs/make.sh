@@ -67,6 +67,23 @@ function write_fastq_names() {
 }
 
 
+# Write one metadata table: the header, then one row per triplet of accession,
+# custom name, and URL.
+function write_metadata() {
+    local fil_out="${1}"
+    shift 1
+
+    {
+        write_tsv_row 'run_accession' 'custom_name' 'fastq_https'
+
+        while (( $# >= 3 )); do
+            write_tsv_row "${1}" "${2}" "${3}"
+            shift 3
+        done
+    } > "${fil_out}"
+}
+
+
 # Define fixture directories, FASTQ paths, and metadata templates.
 dir_src="${dir_fix}/source"
 dir_src_se="${dir_src}/se"
@@ -112,6 +129,19 @@ tpl_nam_se_lst="${dir_mtd}/local_names_se_lost.template.tsv"
 tpl_nam_seq="${dir_mtd}/local_names_sequencer_pe.template.tsv"
 tpl_nam_seq_se="${dir_mtd}/local_names_sequencer_se.template.tsv"
 
+mtd_dry_se="${dir_mtd}/dry_se.tsv"
+mtd_dry_pe="${dir_mtd}/dry_pe.tsv"
+mtd_dry_mix="${dir_mtd}/dry_mixed.tsv"
+mtd_dry_dup="${dir_mtd}/dry_duplicate.tsv"
+mtd_dry_dup_cus="${dir_mtd}/dry_duplicate_custom.tsv"
+mtd_dry_cnfl="${dir_mtd}/dry_conflicting.tsv"
+mtd_rel_exe="${dir_mtd}/relative_execute.tsv"
+mtd_fail="${dir_mtd}/worker_failure.tsv"
+
+dir_tol="${dir_fix}/tool"
+dir_tol_get="${dir_tol}/wget_ok"
+dir_tol_fail="${dir_tol}/wget_fail"
+
 
 # Register cleanup of temporary FASTQ intermediates on exit.
 register_cleanup cleanup_fastqs_tmp
@@ -127,7 +157,9 @@ mkdirs \
     "${dir_src_pe}" \
     "${dir_src_nam}" \
     "${dir_mtd}" \
-    "${dir_exp}"
+    "${dir_exp}" \
+    "${dir_tol_get}" \
+    "${dir_tol_fail}"
 
 # Remove stale temporary intermediates.
 cleanup_fastqs_tmp
@@ -263,6 +295,104 @@ rm_file "${dir_fix}" "${fq_r2_tmp}"
         '__BASE_URL__/pe/tiny_download_pe_R1.fastq.gz;__BASE_URL__/pe/tiny_download_pe_R2.fastq.gz'
 } > "${tpl_mix}"
 
+
+# Write metadata tables for runs that fetch nothing: dry runs, which plan
+# workers from '.invalid' URLs, and the runs under the 'wget' stubs below.
+url_dry_se="https://example.invalid/dry_se.fastq.gz"
+url_dry_pe_1="https://example.invalid/dry_pe_R1.fastq.gz"
+url_dry_pe_2="https://example.invalid/dry_pe_R2.fastq.gz"
+url_dry_pe="${url_dry_pe_1};${url_dry_pe_2}"
+
+write_metadata \
+    "${mtd_dry_se}" \
+    SRR_DRY_SE dry_se "${url_dry_se}"
+
+write_metadata \
+    "${mtd_dry_pe}" \
+    SRR_DRY_PE dry_pe "${url_dry_pe}"
+
+write_metadata \
+    "${mtd_dry_mix}" \
+    SRR_DRY_SE dry_se "${url_dry_se}" \
+    SRR_DRY_PE dry_pe "${url_dry_pe}"
+
+write_metadata \
+    "${mtd_dry_dup}" \
+    SRR_DRY_DUP dry_dup_a https://example.invalid/dry_dup.fastq.gz \
+    SRR_DRY_DUP dry_dup_b https://example.invalid/dry_dup.fastq.gz
+
+write_metadata \
+    "${mtd_dry_dup_cus}" \
+    SRR_DRY_CUS_A dry_duplicate https://example.invalid/a.fastq.gz \
+    SRR_DRY_CUS_B dry_duplicate https://example.invalid/b.fastq.gz
+
+write_metadata \
+    "${mtd_dry_cnfl}" \
+    SRR_DRY_CONFLICT dry_conflict_a https://example.invalid/a.fastq.gz \
+    SRR_DRY_CONFLICT dry_conflict_b https://example.invalid/b.fastq.gz
+
+write_metadata \
+    "${mtd_rel_exe}" \
+    SRR_REL_EXEC relative_execute https://example.invalid/relative.fastq.gz
+
+write_metadata \
+    "${mtd_fail}" \
+    SRR_FAIL failed_worker https://example.invalid/failure.fastq.gz
+
+
+# Write two 'wget' stubs, each in its own directory, so that a test puts one on
+# 'PATH' as 'wget'. 'wget_ok' records the URL it was given beside its output
+# and writes a one-record FASTQ. 'wget_fail' stands in for a download that
+# fails partway: it writes a valid gzip-compressed FASTQ and exits 42, so its
+# exit status alone marks the failure.
+cat << 'EOM' > "${dir_tol_get}/wget"
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+output=""
+while (( $# > 0 )); do
+    case "${1}" in
+        -O)
+            output="${2}"
+            shift 2
+            ;;
+
+        *)
+            url="${1}"
+            shift
+            ;;
+    esac
+done
+
+printf '%s\n' "${url:-}" > "${output%/*}/wget_url.txt"
+printf '%s\n' '@synthetic-fastq' 'ACGT' '+' 'IIII' | gzip -c > "${output}"
+EOM
+
+cat << 'EOM' > "${dir_tol_fail}/wget"
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+output=""
+while (( $# > 0 )); do
+    case "${1}" in
+        -O)
+            output="${2}"
+            shift 2
+            ;;
+
+        *)
+            shift
+            ;;
+    esac
+done
+
+printf '%s\n' '@partial-fastq' 'TGCA' '+' 'IIII' | gzip -c > "${output}"
+exit 42
+EOM
+
+chmod +x "${dir_tol_get}/wget" "${dir_tol_fail}/wget"
 
 # Write a single-end source whose gzip trailer (CRC and size, 8 bytes) is cut
 # off, so it fails 'gzip -t'.
@@ -511,6 +641,10 @@ write_fastq_names \
     "${dir_src_nam}/sequencer_se.fastq.gz" \
     "@${nam_1}" \
     "@${nam_2}"
+
+# Write an empty file, which restoration must refuse rather than take for a
+# file whose names were lost.
+: > "${dir_src_nam}/empty.fastq.gz"
 
 # Write the expected restored records, uncompressed; both mates of the pair
 # restore to the same headers.
