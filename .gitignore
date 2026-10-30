@@ -136,6 +136,11 @@ tests/fixtures/install_envs/**
 !tests/fixtures/install_envs/README.md
 !tests/fixtures/install_envs/make.sh
 
+tests/fixtures/install_preseq/**
+!tests/fixtures/install_preseq/
+!tests/fixtures/install_preseq/README.md
+!tests/fixtures/install_preseq/make.sh
+
 tests/fixtures/markdown/**
 !tests/fixtures/markdown/
 !tests/fixtures/markdown/README.md
@@ -170,6 +175,11 @@ tests/fixtures/slurm_dry_run/**
 !tests/fixtures/slurm_dry_run/
 !tests/fixtures/slurm_dry_run/README.md
 !tests/fixtures/slurm_dry_run/make.sh
+
+tests/fixtures/submit_bootstrap/**
+!tests/fixtures/submit_bootstrap/
+!tests/fixtures/submit_bootstrap/README.md
+!tests/fixtures/submit_bootstrap/make.sh
 
 tests/fixtures/trim_fastqs/**
 !tests/fixtures/trim_fastqs/

@@ -23,22 +23,6 @@ source "$(
 )/tests/support/test_helpers.sh"
 
 
-# Build a stand-in environment prefix: the compiler, 'make', and 'htslib' the
-# installer looks for, none of them functional. The installer must stop at its
-# checks before it would use any of them.
-function make_fake_prefix() {
-    local pth="${1:?}"
-
-    rm -rf "${pth}"
-    mkdir -p "${pth}/bin" "${pth}/include/htslib" "${pth}/lib"
-    printf '#!/usr/bin/env bash\nexit 1\n' > "${pth}/bin/clang++"
-    printf '#!/usr/bin/env bash\nexit 1\n' > "${pth}/bin/make"
-    chmod +x "${pth}/bin/clang++" "${pth}/bin/make"
-    : > "${pth}/include/htslib/sam.h"
-    : > "${pth}/lib/libhts.so.3"
-}
-
-
 function run_fake_env() {
     local label="${1:?}"
     local log="${2:?}"
@@ -57,10 +41,27 @@ function run_fake_env() {
 
 
 script="${ROOT_REPO}/install/scripts/install_preseq.sh"
+
+# Each prefix state stands in for a managed environment prefix, and the
+# installer writes into a prefix, so each case copies one.
+dir_fx="${ROOT_REPO}/tests/fixtures/install_preseq"
+pfx_bare="${dir_fx}/prefix/bare"
+pfx_no_cxx="${dir_fx}/prefix/no_compiler"
+pfx_inst="${dir_fx}/prefix/installed"
+
 dir_log="${TEST_DIR_LOG}/install_preseq"
 mkdir -p "${dir_log}"
 
 print_section "${TEST_NAME}"
+
+require_files_nonempty \
+    "${dir_fx}/tarball/not_a_tarball.tar.gz" \
+    "${pfx_bare}/bin/clang++" \
+    "${pfx_no_cxx}/bin/make" \
+    "${pfx_inst}/bin/preseq" || {
+    finish
+    exit $?
+}
 
 # Help.
 log_help="${dir_log}/help.log"
@@ -108,8 +109,7 @@ else
 fi
 
 # Dry run with a local tarball.
-fil_any="${TEST_DIR_TMP}/install_preseq_any.tar.gz"
-printf 'not a tarball\n' > "${fil_any}"
+fil_any="${dir_fx}/tarball/not_a_tarball.tar.gz"
 log_dry_tar="${dir_log}/dry_run_tarball.log"
 if \
     run_capture \
@@ -150,7 +150,8 @@ done
 
 # A tarball whose checksum does not match is refused before any build.
 prefix="${TEST_DIR_TMP}/install_preseq_prefix"
-make_fake_prefix "${prefix}"
+rm -rf "${prefix}"
+cp -R "${pfx_bare}" "${prefix}"  # fixture-perturbation: install target
 log_sha="${dir_log}/checksum_mismatch.log"
 if \
     run_fake_env \
@@ -174,7 +175,8 @@ else
 fi
 
 # An environment without a compiler is reported, not worked around.
-rm -f "${prefix}/bin/clang++"
+rm -rf "${prefix}"
+cp -R "${pfx_no_cxx}" "${prefix}"  # fixture-perturbation: install target
 log_cxx="${dir_log}/no_compiler.log"
 if \
     run_fake_env \
@@ -193,10 +195,8 @@ fi
 
 # An existing installation: 'fail' leaves it alone, 'reuse' accepts the pinned
 # version, and 'reuse' refuses another version.
-make_fake_prefix "${prefix}"
-printf '#!/usr/bin/env bash\necho "Version: 3.2.0" >&2\n' \
-    > "${prefix}/bin/preseq"
-chmod +x "${prefix}/bin/preseq"
+rm -rf "${prefix}"
+cp -R "${pfx_inst}" "${prefix}"  # fixture-perturbation: install target
 
 log_fail="${dir_log}/existing_fail.log"
 if \

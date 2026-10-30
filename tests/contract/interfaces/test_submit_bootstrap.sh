@@ -9,7 +9,7 @@
 # The following were used in design, development, and documentation, with all
 # output reviewed, edited, and approved by the author:
 # - OpenAI ChatGPT and Codex (GPT-5.6);
-# - Anthropic Claude Code (Opus 5).
+# - Anthropic Claude Code (Opus 5, Opus 5.5).
 #
 # Distributed under the MIT license.
 
@@ -79,12 +79,17 @@ log_resolve_help="${TEST_DIR_LOG}/submit_bootstrap/source_helper_resolve_help.lo
 out_resolve_help="${dir_tmp}/source_helper_resolve_help.stdout"
 log_sourced="${TEST_DIR_LOG}/submit_bootstrap/source_helper_sourced.log"
 marker="${dir_tmp}/source_count"
-helper="${dir_tmp}/counted_helper.sh"
+helper="${ROOT_REPO}/tests/fixtures/submit_bootstrap/script/counted_helper.sh"
 
 
 print_section "${TEST_NAME}"
 
 mkdir -p "${dir_tmp}" "$(dirname "${log_audit}")"
+
+require_files_nonempty "${helper}" || {
+    finish
+    exit $?
+}
 
 # shellcheck disable=SC2016
 if \
@@ -193,10 +198,6 @@ else
 fi
 
 # The canonical source registry suppresses a repeated helper bootstrap.
-# shellcheck disable=SC2016
-printf '%s\n' 'COUNTED_HELPER_LOADS=$(( ${COUNTED_HELPER_LOADS:-0} + 1 ))' \
-    > "${helper}"
-
 # shellcheck disable=SC2016
 "${TEST_BASH}" -c '
     source "$1"

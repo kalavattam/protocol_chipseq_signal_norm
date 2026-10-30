@@ -6,8 +6,10 @@
 # Copyright 2026 by Kris Alavattam
 # Email: kalavattam@gmail.com
 #
-# OpenAI ChatGPT and Codex (GPT-5.6) were used in design, development, and
-# documentation, with all output reviewed, edited, and approved by the author.
+# The following were used in design, development, and documentation, with all
+# output reviewed, edited, and approved by the author:
+# - OpenAI ChatGPT and Codex (GPT-5.6);
+# - Anthropic Claude Code (Opus 5.5).
 #
 # Distributed under the MIT license.
 
@@ -24,6 +26,16 @@ source "$(
 
 script="${ROOT_REPO}/install/scripts/install_atria.sh"
 tool="${ROOT_REPO}/tests/fixtures/install_atria/tool"
+dir_snp="${ROOT_REPO}/tests/fixtures/install_atria/snippet"
+snp_lgc="${dir_snp}/legacy_path.sh"
+snp_bad="${dir_snp}/malformed_path.sh"
+snt_pth="${dir_snp}/sentinel_path.sh"
+snt_atr="${dir_snp}/sentinel_atria.txt"
+stl_mft="${dir_snp}/stale_manifest.toml"
+stl_jul="${dir_snp}/julia_0.0.0"
+
+# The file where the installer records the Julia version of an Atria build.
+nam_ver=".protocol_chipseq_julia_version"
 log="${TEST_DIR_LOG}/install_atria.log"
 
 print_section "${TEST_NAME}"
@@ -83,6 +95,7 @@ function assert_active_atria() {
 
 
 install="${TEST_DIR_TMP}/install"
+dir_atr="${install}/Atria"
 fake_log="${TEST_DIR_LOG}/install_atria_fake.log"
 snippet="${TEST_DIR_TMP}/install_atria_path.sh"
 
@@ -107,11 +120,8 @@ else
 fi
 
 : > "${fake_log}"
-: > "${install}/Atria/Manifest.toml"
-cat > "${snippet}" << 'EOM'
-export PATH="${PATH}:/legacy/julia-1.8.5/bin"
-export PATH="/legacy/Atria/current/bin:${PATH}"
-EOM
+cp "${stl_mft}" "${dir_atr}/Manifest.toml"  # fixture-perturbation: planted
+cp "${snp_lgc}" "${snippet}"  # fixture-perturbation: rewritten
 
 if \
     PATH="${tool}:${PATH}" \
@@ -139,14 +149,14 @@ then
         "summary separates Atria tag and reported version"
     assert_active_atria "${install}" "atria-4.1.5" "v4.1.5"
 
-    if [[ ! -e "${install}/Atria/Manifest.toml" ]]; then
+    if [[ ! -e "${dir_atr}/Manifest.toml" ]]; then
         record_pass "Atria tag update clears the generated dependency state"
     else
         record_fail "Atria tag update retained generated dependency state"
     fi
 
     if [[ -d "${install}/julia-1.8.5" ]] \
-        && [[ -d "${install}/Atria/atria-4.1.4" ]]
+        && [[ -d "${dir_atr}/atria-4.1.4" ]]
     then
         record_pass "Atria update retains inactive Julia and Atria builds"
     else
@@ -175,7 +185,7 @@ then
         printf '%s\n%s\n' "$(command -v julia)" "$(command -v atria)"
     )"
     expected_paths="${install}/julia-1.8.5/bin/julia
-${install}/Atria/current/bin/atria"
+${dir_atr}/current/bin/atria"
 
     if [[ "${resolved_paths}" == "${expected_paths}" ]]
     then
@@ -198,13 +208,10 @@ if PATH="${tool}:${PATH}" ATRIA_FAKE_LOG="${fake_log}" \
 then
     assert_active_atria "${install}" "atria-4.1.5_julia-1.9.4" "v4.1.5"
 
-    if [[ "$(< "${install}/Atria/atria-4.1.5_julia-1.9.4/.protocol_chipseq_julia_version")" \
-        == "1.9.4" ]]
-    then
-        record_pass "Julia upgrade creates a matching Atria build"
-    else
-        record_fail "Julia upgrade did not create a matching Atria build"
-    fi
+    assert_file_exact_line \
+        "${dir_atr}/atria-4.1.5_julia-1.9.4/${nam_ver}" \
+        1.9.4 \
+        "Julia upgrade's Atria build version"
 else
     record_fail "fake Julia upgrade failed; see $(print_relpath "${log}")"
 fi
@@ -227,13 +234,10 @@ then
         "Julia downgrade does not check out Atria"
     assert_active_atria "${install}" "atria-4.1.5" "v4.1.5"
 
-    if [[ "$(< "${install}/Atria/atria-4.1.5/.protocol_chipseq_julia_version")" \
-        == "1.8.5" ]]
-    then
-        record_pass "Julia downgrade reactivates a matching Atria build"
-    else
-        record_fail "Julia downgrade did not reactivate matching Atria build"
-    fi
+    assert_file_exact_line \
+        "${dir_atr}/atria-4.1.5/${nam_ver}" \
+        1.8.5 \
+        "Julia downgrade's Atria build version"
 else
     record_fail "fake Julia downgrade failed; see $(print_relpath "${log}")"
 fi
@@ -242,8 +246,8 @@ fail_install="${TEST_DIR_TMP}/fail_existing_install"
 fail_snippet="${TEST_DIR_TMP}/fail_existing_path.sh"
 rm -rf "${fail_install}"
 mkdir -p "${fail_install}/Atria/.git"
-printf '%s\n' "Atria sentinel" > "${fail_install}/Atria/sentinel"
-printf '%s\n' "PATH sentinel" > "${fail_snippet}"
+cp "${snt_atr}" "${fail_install}/Atria/sentinel"  # fixture-perturbation: kept
+cp "${snt_pth}" "${fail_snippet}"  # fixture-perturbation: kept
 : > "${fake_log}"
 
 # shellcheck disable=SC2031
@@ -264,13 +268,19 @@ else
         "nothing was changed" \
         "Atria fail mode reports its non-mutation guarantee"
 
-    if [[ "$(< "${fail_install}/Atria/sentinel")" == "Atria sentinel" ]] \
-        && [[ ! -e "${fail_install}/julia-1.8.5" ]] \
-        && [[ "$(< "${fail_snippet}")" == "PATH sentinel" ]]
-    then
-        record_pass "Atria fail mode leaves existing installation state unchanged"
+    assert_files_equal \
+        "${fail_install}/Atria/sentinel" \
+        "${snt_atr}" \
+        "Atria fail mode leaves the existing Atria unchanged"
+    assert_files_equal \
+        "${fail_snippet}" \
+        "${snt_pth}" \
+        "Atria fail mode leaves the existing PATH snippet unchanged"
+
+    if [[ ! -e "${fail_install}/julia-1.8.5" ]]; then
+        record_pass "Atria fail mode installs no Julia"
     else
-        record_fail "Atria fail mode changed existing installation state"
+        record_fail "Atria fail mode installed a Julia"
     fi
 
     if [[ ! -s "${fake_log}" ]]; then
@@ -323,12 +333,9 @@ else
     assert_active_atria "${install}" "atria-4.1.5" "v4.1.5"
 fi
 
-cat > "${install}/julia-1.8.5/bin/julia" << 'EOM'
-#!/usr/bin/env bash
-
-printf 'julia version 0.0.0\n'
-EOM
-chmod +x "${install}/julia-1.8.5/bin/julia"
+cp \
+    "${stl_jul}" \
+    "${install}/julia-1.8.5/bin/julia"  # fixture-perturbation: planted
 : > "${fake_log}"
 
 # shellcheck disable=SC2031
@@ -347,8 +354,10 @@ then
     record_fail "failed staged Julia update unexpectedly succeeded"
 else
     if \
-        [[ "$("${install}/julia-1.8.5/bin/julia")" == "julia version 0.0.0" ]] \
-        && ! compgen -G "${install}/julia-1.8.5.invalid.*" > /dev/null
+        [[
+            "$("${install}/julia-1.8.5/bin/julia")" == "julia version 0.0.0"
+        ]] \
+            && ! compgen -G "${install}/julia-1.8.5.invalid.*" > /dev/null
     then
         record_pass "failed staged Julia update preserves the selected Julia"
     else
@@ -372,8 +381,11 @@ if \
         > "${log}" 2>&1
 then
     if \
-        [[ "$("${install}/julia-1.8.5/bin/julia" --version)" == "julia version 1.8.5" ]] \
-        && compgen -G "${install}/julia-1.8.5.invalid.*" > /dev/null
+        [[
+            "$("${install}/julia-1.8.5/bin/julia" --version)" \
+                == "julia version 1.8.5"
+        ]] \
+            && compgen -G "${install}/julia-1.8.5.invalid.*" > /dev/null
     then
         record_pass "Atria update quarantines and replaces invalid Julia"
     else
@@ -384,10 +396,7 @@ else
 fi
 
 malformed_snippet="${TEST_DIR_TMP}/install_atria_malformed_path.sh"
-cat > "${malformed_snippet}" << 'EOM'
-# <<< protocol_chipseq_signal_norm install_atria.sh <<<
-# >>> protocol_chipseq_signal_norm install_atria.sh >>>
-EOM
+cp "${snp_bad}" "${malformed_snippet}"  # fixture-perturbation: kept
 # shellcheck disable=SC2031
 if PATH="${tool}:${PATH}" ATRIA_FAKE_LOG="${fake_log}" \
     CONDA_DEFAULT_ENV=env_protocol \
@@ -402,11 +411,10 @@ else
         "has malformed managed block delimiters" \
         "malformed managed PATH block is rejected"
 
-    if [[ "$(< "${malformed_snippet}")" == $'# <<< protocol_chipseq_signal_norm install_atria.sh <<<\n# >>> protocol_chipseq_signal_norm install_atria.sh >>>' ]]; then
-        record_pass "malformed managed PATH block is unchanged"
-    else
-        record_fail "malformed managed PATH block was changed"
-    fi
+    assert_files_equal \
+        "${malformed_snippet}" \
+        "${snp_bad}" \
+        "malformed managed PATH block is unchanged"
 fi
 
 bad_install="${TEST_DIR_TMP}/bad_install"

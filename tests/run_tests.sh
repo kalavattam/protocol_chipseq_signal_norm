@@ -134,6 +134,9 @@ function ensure_checker_fixtures() {
     ensure_fixture slurm_dry_run \
         "${repo_root}/tests/fixtures/slurm_dry_run/tool/sbatch"
 
+    ensure_fixture submit_bootstrap \
+        "${repo_root}/tests/fixtures/submit_bootstrap/script/counted_helper.sh"
+
     ensure_fixture help "${repo_root}/${rel_help}"
 
     ensure_fixture help_contracts \
@@ -162,6 +165,9 @@ function ensure_checker_fixtures() {
 
     ensure_fixture install_envs \
         "${repo_root}/tests/fixtures/install_envs/tool/mamba"
+
+    ensure_fixture install_preseq \
+        "${repo_root}/tests/fixtures/install_preseq/prefix/installed/bin/preseq"
 }
 
 
