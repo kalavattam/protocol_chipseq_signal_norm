@@ -28,6 +28,11 @@ from protocol_chipseq_signal_norm.utilities.utils_check import (
     validate_output_path,
 )
 
+ROOT = Path(__file__).resolve().parents[3]
+
+# Any existing file serves these checks; this one is a recipe-built fixture.
+SAMPLE = ROOT / "tests" / "fixtures" / "utilities" / "text" / "sample.txt"
+
 
 def test_as_tuple_treats_strings_and_paths_as_scalars() -> None:
     assert as_tuple("abc") == ("abc",)
@@ -60,10 +65,7 @@ def test_validate_output_path_preserves_extension_and_gzip() -> None:
 def test_check_exists_accepts_files_and_rejects_missing(
     tmp_path: Path,
 ) -> None:
-    path = tmp_path / "input.txt"
-    path.write_text("x", encoding="utf-8")
-
-    check_exists(path, kind="file")
+    check_exists(SAMPLE, kind="file")
 
     with pytest.raises(FileNotFoundError):
         check_exists(tmp_path / "missing.txt", kind="file")
@@ -83,10 +85,7 @@ def test_check_writable_warns_about_must_exist_for_directories(
 def test_check_writable_does_not_warn_about_must_exist_for_files(
     tmp_path: Path,
 ) -> None:
-    path = tmp_path / "output.txt"
-    path.write_text("x", encoding="utf-8")
-
     with warnings.catch_warnings():
         warnings.simplefilter("error")
-        check_writable(path, kind="file", must_exist=True)
+        check_writable(SAMPLE, kind="file", must_exist=True)
         check_writable(tmp_path, kind="dir")

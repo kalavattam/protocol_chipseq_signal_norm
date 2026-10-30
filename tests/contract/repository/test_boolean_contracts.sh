@@ -9,7 +9,7 @@
 # The following were used in design, development, and documentation, with all
 # output reviewed, edited, and approved by the author:
 # - OpenAI ChatGPT and Codex (GPT-5.6);
-# - Anthropic Claude Code (Opus 5).
+# - Anthropic Claude Code (Opus 5, Opus 5.5).
 #
 # Distributed under the MIT license.
 
@@ -193,17 +193,20 @@ else
     record_fail "invalid nonempty Boolean environment gate was accepted"
 fi
 
-tmp_file="${TEST_DIR_TMP}/boolean_contracts_file"
-: > "${tmp_file}"
+# Any readable file serves, since these cases test the Boolean argument; the
+# test script itself is one.
+fil_any="${BASH_SOURCE[0]}"
 
-if validate_file test_file "${tmp_file}" 0 YES; then
+if \
+    validate_file test_file "${fil_any}" 0 YES
+then
     record_pass "validate_file accepts a canonical true-like token"
 else
     record_fail "validate_file rejected a canonical true-like token"
 fi
 
 set +e
-validate_file test_file "${tmp_file}" 0 sometimes \
+validate_file test_file "${fil_any}" 0 sometimes \
     > /dev/null 2> "${log_err}"
 status=$?
 set -e
@@ -218,7 +221,7 @@ before_fail="${TEST_FAIL}"
 
 set +e
 assert_scaling_factor_header \
-    "${tmp_file}" '^sample$' sometimes "invalid expect" \
+    "${fil_any}" '^sample$' sometimes "invalid expect" \
     > /dev/null 2> "${log_err}"
 status=$?
 set -e

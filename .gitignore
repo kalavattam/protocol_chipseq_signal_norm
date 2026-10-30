@@ -185,3 +185,8 @@ tests/fixtures/trim_fastqs/**
 !tests/fixtures/trim_fastqs/
 !tests/fixtures/trim_fastqs/README.md
 !tests/fixtures/trim_fastqs/make.sh
+
+tests/fixtures/utilities/**
+!tests/fixtures/utilities/
+!tests/fixtures/utilities/README.md
+!tests/fixtures/utilities/make.sh

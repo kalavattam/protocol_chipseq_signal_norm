@@ -26,6 +26,9 @@ Compressed FASTQ input:
 - `fastq/pe/tiny_pe_R1.fastq.gz`
 - `fastq/pe/tiny_pe_R2.fastq.gz`
 
+Input for a failing job:
+- `fastq/se/bad_se.fastq.gz`: gzip-compressed text that is not a FASTQ, so trimming it fails, in `test_execute_trim_fastqs_parallel.sh`
+
 The compressed FASTQ files are generated with `gzip -n -c` so gzip headers do not encode timestamps or source filenames.
 
 <br />

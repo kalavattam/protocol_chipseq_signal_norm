@@ -9,7 +9,7 @@
 # The following were used in design, development, and documentation, with all
 # output reviewed, edited, and approved by the author:
 # - OpenAI ChatGPT and Codex (GPT-5.5, GPT-5.6);
-# - Anthropic Claude Code (Opus 5).
+# - Anthropic Claude Code (Opus 5, Opus 5.5).
 #
 # Distributed under the MIT license.
 
@@ -124,6 +124,22 @@ dir_cram_pe="${dir_cram}/pe"
 dir_prt="${dir_fix}/parts"
 dir_met="${dir_fix}/metadata"
 dir_cfg="${dir_fix}/config"
+dir_tbl_rel="${dir_fix}/table/relativize"
+dir_tbl_hdr="${dir_fix}/table/write_header"
+
+tbl_rel_spk="${dir_tbl_rel}/spike.tsv"
+tbl_rel_siq="${dir_tbl_rel}/siq.tsv"
+tbl_rel_no_scl="${dir_tbl_rel}/missing_scaling.tsv"
+tbl_rel_no_smp="${dir_tbl_rel}/missing_sample.tsv"
+tbl_hdr_siq="${dir_tbl_hdr}/siq_row.tsv"
+tbl_hdr_spk="${dir_tbl_hdr}/spike_row.tsv"
+tbl_hdr_spk_hdr="${dir_tbl_hdr}/spike_headered.tsv"
+
+dir_bam_plc="${dir_fix}/bam/placeholder"
+plc_hho1="${dir_bam_plc}/IP_WT_G1_Hho1_6336.sc.bam"
+plc_hho1_bad="${dir_bam_plc}/IP_WT_G1_Hho1_9999.sc.bam"
+plc_extra="${dir_bam_plc}/IP_WT_G1_HU_Hho1_6336.sc.bam"
+plc_p857="${dir_bam_plc}/IP_HeLa_DMSO_H3K18ac_rep1.hs.bam"
 
 ref_fa="${dir_ref}/tiny.fa"
 
@@ -228,7 +244,10 @@ mkdirs \
     "${dir_cram_pe}" \
     "${dir_prt}" \
     "${dir_met}" \
-    "${dir_cfg}"
+    "${dir_cfg}" \
+    "${dir_tbl_rel}" \
+    "${dir_tbl_hdr}" \
+    "${dir_bam_plc}"
 
 
 # Write and index the tiny reference used for CRAM fixtures.
@@ -396,7 +415,18 @@ rm_files \
     "${bad_fld}" \
     "${bad_hdr}" \
     "${dup_idx_a}" \
-    "${dup_idx_b}"
+    "${dup_idx_b}" \
+    "${tbl_rel_spk}" \
+    "${tbl_rel_siq}" \
+    "${tbl_rel_no_scl}" \
+    "${tbl_rel_no_smp}" \
+    "${tbl_hdr_siq}" \
+    "${tbl_hdr_spk}" \
+    "${tbl_hdr_spk_hdr}" \
+    "${plc_hho1}" \
+    "${plc_hho1_bad}" \
+    "${plc_extra}" \
+    "${plc_p857}"
 
 rm -f -- \
     "${dir_met}"/measurements_siqchip*.tsv \
@@ -484,6 +514,59 @@ write_tsv_row \
     'chiprx_alpha_ratio' \
     '100' '60' '200' '80' \
     > "${dup_idx_b}"
+
+# Write the tables for 'relativize_scaling_factors.py': a spike-in table with
+# an input row, a siQ-ChIP table that also has a spike-in column, and two that
+# lack a required column.
+{
+    write_tsv_row 'sample' 'spike' 'other'
+    write_tsv_row 'IP_a' '2' 'a'
+    write_tsv_row 'IP_b' '4' 'b'
+    write_tsv_row 'in_a' '10' 'c'
+} > "${tbl_rel_spk}"
+
+{
+    write_tsv_row 'sample' 'siq' 'spike'
+    write_tsv_row 'IP_a' '3' '100'
+    write_tsv_row 'IP_b' '6' '200'
+} > "${tbl_rel_siq}"
+
+{
+    write_tsv_row 'sample' 'coef'
+    write_tsv_row 'IP_a' '1'
+} > "${tbl_rel_no_scl}"
+
+{
+    write_tsv_row 'spike'
+    write_tsv_row '1'
+} > "${tbl_rel_no_smp}"
+
+# Write the tables for 'write_header.sh': one siQ-ChIP data row, one spike-in
+# data row, and the spike-in row under its header.
+write_tsv_row \
+    '/path/IP.sc.bam' '/path/in.sc.bam' '0.5' '6nd' \
+    '2.7' '72.5' '300' '20' '10' '20' '100' '100' \
+    > "${tbl_hdr_siq}"
+
+write_tsv_row \
+    '/path/IP.sc.bam' '/path/IP.sp.bam' \
+    '/path/in.sc.bam' '/path/in.sp.bam' \
+    'chiprx_alpha_ratio' '2' '10' '5' '20' '10' \
+    > "${tbl_hdr_spk}"
+
+{
+    write_tsv_row \
+        'main_ip' 'spike_ip' 'main_in' 'spike_in' 'spike' 'coef' \
+        'num_mp' 'num_sp' 'num_mn' 'num_sn'
+    cat "${tbl_hdr_spk}"
+} > "${tbl_hdr_spk_hdr}"
+
+# Write empty placeholder BAM files for the siQ-ChIP metadata parser, which
+# matches metadata rows to files by name and never opens them.
+: > "${plc_hho1}"
+: > "${plc_hho1_bad}"
+: > "${plc_extra}"
+: > "${plc_p857}"
 
 # Write minimal siQ-ChIP metadata fixtures for production-YAML parsing tests.
 {

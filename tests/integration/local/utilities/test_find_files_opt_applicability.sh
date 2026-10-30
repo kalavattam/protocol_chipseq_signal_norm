@@ -26,14 +26,20 @@ source "$(
 # Define the search directory. Per 'HELP.PARAMETER.APPLICABILITY', '--shw_str'
 # and '--fastqs' are ignored with a warning when no one-line string is printed.
 tmp="${TEST_DIR_TMP}/find_files_opt_applicability"
-dir_fq="${tmp}/fq"
+dir_fq="${ROOT_REPO}/tests/fixtures/utilities/fastq/find"
 
 
 print_section "${TEST_NAME}"
 
 rm -rf "${tmp}"
-mkdir -p "${dir_fq}"
-touch "${dir_fq}/a_R1.fastq.gz" "${dir_fq}/a_R2.fastq.gz"
+mkdir -p "${tmp}"
+
+require_files_nonempty \
+    "${dir_fq}/a_R1.fastq.gz" \
+    "${dir_fq}/a_R2.fastq.gz" || {
+    finish
+    exit $?
+}
 
 
 # Run 'find_files' from outside the search directory, as it requires.
@@ -69,7 +75,7 @@ for row in "${rows[@]}"; do
     if [[ -n "${opt}" ]]; then
         if [[
             "${rc}" -eq 0
-            && "${out}" == *"warning("*"'${opt}' has no effect"*
+                && "${out}" == *"warning("*"'${opt}' has no effect"*
         ]]; then
             record_pass "${lbl} warns and still runs"
         else
@@ -81,5 +87,6 @@ for row in "${rows[@]}"; do
         record_fail "${lbl} warned or failed (exit ${rc})"
     fi
 done
+
 
 finish

@@ -225,14 +225,14 @@ assert_file_exists \
 # A failed job must fail the GNU Parallel run while the other still runs. The
 # first input is a gzipped file that is not a FASTQ, so its trimming fails.
 dir_st="${tmp}/status"
-mkdir -p "${dir_st}/in" "${dir_st}/out" "${dir_st}/logs"
-printf 'this is not a fastq\n' | gzip -c > "${dir_st}/in/bad_se.fastq.gz"
+fq_bad_se="${ROOT_REPO}/tests/fixtures/trim_fastqs/fastq/se/bad_se.fastq.gz"
+mkdir -p "${dir_st}/out" "${dir_st}/logs"
 
 rc_st=0
 "${TEST_BASH}" "${ROOT_REPO}/bin/execute_trim_fastqs.sh" \
     --env_nam "${env_nam}" \
     --threads 2 \
-    --csv_fil_in "${dir_st}/in/bad_se.fastq.gz;${in_se}" \
+    --csv_fil_in "${fq_bad_se};${in_se}" \
     --dir_out "${dir_st}/out" \
     --sfx_se ".fastq.gz" \
     --sfx_pe "_R1.fastq.gz" \

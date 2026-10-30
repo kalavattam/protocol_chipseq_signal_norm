@@ -6,14 +6,15 @@
 # Copyright 2026 by Kris Alavattam
 # Email: kalavattam@gmail.com
 #
-# OpenAI ChatGPT and Codex (GPT-5.5, GPT-5.6) were used in design, development,
-# and documentation, with all output reviewed, edited, and approved by the
-# author.
+# The following were used in design, development, and documentation, with all
+# output reviewed, edited, and approved by the author:
+# - OpenAI ChatGPT and Codex (GPT-5.5, GPT-5.6);
+# - Anthropic Claude Code (Opus 5.5).
 #
 # Distributed under the MIT license.
 
 
-#  Require Bash >= 4.4 before doing any work
+# Require Bash >= 4.4 before doing any work.
 if [[ -z "${BASH_VERSION:-}" ]]; then
     echo "error(shell):" \
         "this script must be run under Bash >= 4.4." >&2
@@ -27,20 +28,20 @@ elif ((
     exit 1
 fi
 
-#  Run in safe mode, exiting on errors, unset variables, and pipe failures
+# Run in safe mode, exiting on errors, unset variables, and pipe failures.
 set -euo pipefail
 
 
-#  Resolve paths relative to 'tests/fixtures'
+# Resolve paths relative to 'tests/fixtures'.
 dir_scr="$(cd "$(dirname "${BASH_SOURCE[0]}")" > /dev/null 2>&1 && pwd)"
 dir_fix="${dir_scr}"
 
-#  Source shared fixture-generation helpers
+# Source shared fixture-generation helpers.
 # shellcheck source=tests/support/fixture_helpers.sh
 source "${dir_scr}/../../support/fixture_helpers.sh"
 
 
-#  Remove temporary FASTQ intermediates on exit or failure
+# Remove temporary FASTQ intermediates on exit or failure.
 function cleanup_tmp_fastqs() {
     rm_files \
         "${dir_fix}" \
@@ -50,7 +51,7 @@ function cleanup_tmp_fastqs() {
 }
 
 
-#  Define fixture directories and FASTQ paths
+# Define fixture directories and FASTQ paths.
 dir_fq="${dir_fix}/fastq"
 dir_fq_se="${dir_fq}/se"
 dir_fq_pe="${dir_fq}/pe"
@@ -63,21 +64,24 @@ fq_se_gz="${dir_fq_se}/tiny_se.fastq.gz"
 fq_r1_gz="${dir_fq_pe}/tiny_pe_R1.fastq.gz"
 fq_r2_gz="${dir_fq_pe}/tiny_pe_R2.fastq.gz"
 
+fq_bad_se="${dir_fq_se}/bad_se.fastq.gz"
 
-#  Register cleanup of temporary FASTQ intermediates on exit
+
+# Register cleanup of temporary FASTQ intermediates on exit.
 register_cleanup cleanup_tmp_fastqs
 
-#  Require gzip for deterministic compressed workflow inputs
+# Require gzip for deterministic compressed workflow inputs.
 require_cmd gzip "to generate trim-fastqs fixtures."
 
-#  Create fixture output directories
+# Create fixture output directories.
 mkdirs "${dir_fq}" "${dir_fq_se}" "${dir_fq_pe}"
 
-#  Remove stale temporary intermediates
+# Remove stale temporary intermediates.
 cleanup_tmp_fastqs
+rm_file "${dir_fix}" "${fq_bad_se}"
 
 
-#  Write tiny single-end FASTQ provenance and compressed input fixture
+# Write tiny single-end FASTQ provenance and compressed input fixture.
 cat > "${fq_se_tmp}" << EOM
 @tiny_trim_se_read_1
 ACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGT
@@ -85,14 +89,14 @@ ACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGT
 IIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIII
 EOM
 
-#  Compress single-end FASTQ fixture with deterministic gzip metadata
+# Compress single-end FASTQ fixture with deterministic gzip metadata.
 gzip_n "${fq_se_tmp}" "${fq_se_gz}"
 
-#  Remove temporary single-end FASTQ intermediate after compression
+# Remove temporary single-end FASTQ intermediate after compression.
 rm_file "${dir_fix}" "${fq_se_tmp}"
 
 
-#  Write tiny paired-end FASTQ provenance and compressed input fixtures
+# Write tiny paired-end FASTQ provenance and compressed input fixtures.
 cat > "${fq_r1_tmp}" << EOM
 @tiny_trim_pe_pair_1/1
 ACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGT
@@ -107,13 +111,17 @@ TGCATGCATGCATGCATGCATGCATGCATGCATGCATGCATGCATGCATGCATGCATGCATGCA
 IIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIII
 EOM
 
-#  Compress paired-end FASTQ fixtures with deterministic gzip metadata
+# Compress paired-end FASTQ fixtures with deterministic gzip metadata.
 gzip_n "${fq_r1_tmp}" "${fq_r1_gz}"
 gzip_n "${fq_r2_tmp}" "${fq_r2_gz}"
 
-#  Remove temporary paired-end FASTQ intermediates after compression
+# Remove temporary paired-end FASTQ intermediates after compression.
 rm_file "${dir_fix}" "${fq_r1_tmp}"
 rm_file "${dir_fix}" "${fq_r2_tmp}"
+
+
+# Write a gzip-compressed file that is not a FASTQ, so trimming it fails.
+printf 'this is not a fastq\n' | gzip -n -c > "${fq_bad_se}"
 
 
 succeed "generated trim-fastqs fixtures under ${dir_fix}"

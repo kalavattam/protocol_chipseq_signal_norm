@@ -101,6 +101,22 @@ siQ-ChIP deterministic metadata parser fixtures:
 siQ-ChIP metadata parser config fixtures:
 - `config/parse_metadata_siqchip_field_to_column.yml`
 
+Scaling-factor tables for `relativize_scaling_factors.py`, in `test_relativize_scaling_factors.sh`:
+- `table/relativize/spike.tsv`: two IP rows and one input row
+- `table/relativize/siq.tsv`: siQ-ChIP values beside a spike-in column
+- `table/relativize/missing_scaling.tsv` and `table/relativize/missing_sample.tsv`: each lacks a required column
+
+Rows for `write_header.sh`, in `test_write_header.sh`:
+- `table/write_header/siq_row.tsv`: one siQ-ChIP data row
+- `table/write_header/spike_row.tsv`: one spike-in data row
+- `table/write_header/spike_headered.tsv`: the spike-in row under its header
+
+Empty placeholder BAM files for the siQ-ChIP metadata parser, which matches metadata rows to files by name and never opens them, in `test_calculate_scaling_factor_siq_yaml.sh`:
+- `bam/placeholder/IP_WT_G1_Hho1_6336.sc.bam`, which matches a metadata row
+- `bam/placeholder/IP_WT_G1_Hho1_9999.sc.bam`, which matches none
+- `bam/placeholder/IP_WT_G1_HU_Hho1_6336.sc.bam`, whose name holds an extra token
+- `bam/placeholder/IP_HeLa_DMSO_H3K18ac_rep1.hs.bam`, for the PRJNA857063 configuration
+
 The siQ metadata fixtures cover
 - the production deterministic parser config,
 - explicit field-to-column mapping,

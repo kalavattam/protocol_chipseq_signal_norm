@@ -18,7 +18,7 @@ set -euo pipefail
 
 TEST_NAME="write scaling-factor header"
 
-#  Source shared test helpers
+# Source shared test helpers.
 # shellcheck source=tests/support/test_helpers.sh
 source "$(
     git -C "$(dirname "${BASH_SOURCE[0]}")" rev-parse --show-toplevel
@@ -101,7 +101,10 @@ scr_hdr="${ROOT_REPO}/bin/write_header.sh"
 
 dir_tmp="${TEST_DIR_TMP}/write_header"
 dir_log="${TEST_DIR_LOG}/write_header"
-dir_in="${dir_tmp}/in"
+dir_fx="${ROOT_REPO}/tests/fixtures/calculate_scaling_factor/table"
+fx_siq="${dir_fx}/write_header/siq_row.tsv"
+fx_spk="${dir_fx}/write_header/spike_row.tsv"
+fx_spk_hdr="${dir_fx}/write_header/spike_headered.tsv"
 dir_out="${dir_tmp}/out"
 
 fil_spk_new="${dir_out}/spike.header_only.tsv"
@@ -109,13 +112,11 @@ fil_spk_vrb="${dir_out}/spike.verbose.tsv"
 fil_spk_hdr="${dir_out}/spike.headered.tsv"
 
 fil_siq_def="${dir_out}/siq.default.tsv"
-fil_siq_dat="${dir_in}/siq.data.tsv"
 fil_siq_cpy="${dir_out}/siq.copy.tsv"
 fil_siq_inp="${dir_out}/siq.in_place.tsv"
 
 fil_dry="${dir_out}/dry.tsv"
 fil_dry_hdr="${dir_out}/dry.headered.tsv"
-fil_dry_dat="${dir_in}/dry.data.tsv"
 fil_dry_out="${dir_out}/dry.copy.tsv"
 
 fil_old_amb="${dir_out}/old_ambiguous.tsv"
@@ -149,9 +150,13 @@ log_missing_output_dir="${dir_log}/missing_output_dir.log"
 print_section "${TEST_NAME}"
 
 rm -rf "${dir_tmp}"
-mkdir -p "${dir_in}" "${dir_out}" "${dir_log}"
+mkdir -p "${dir_out}" "${dir_log}"
 
-require_files_nonempty "${scr_hdr}" || {
+require_files_nonempty \
+    "${scr_hdr}" \
+    "${fx_siq}" \
+    "${fx_spk}" \
+    "${fx_spk_hdr}" || {
     finish
     exit $?
 }
@@ -166,19 +171,13 @@ printf -v hdr_siq \
     "fil_ip" "fil_in" "siq" "eqn" "mass_ip" "mass_in" \
     "vol_all" "vol_in" "dep_ip" "dep_in" "len_ip" "len_in"
 
-printf -v row_spk \
-    '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s' \
-    "/path/IP.sc.bam" "/path/IP.sp.bam" \
-    "/path/in.sc.bam" "/path/in.sp.bam" \
-    "chiprx_alpha_ratio" "2" "10" "5" "20" "10"
-
 printf -v row_siq \
     '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s' \
     "/path/IP.sc.bam" "/path/in.sc.bam" "0.5" "6nd" \
     "2.7" "72.5" "300" "20" "10" "20" "100" "100"
 
 
-#  Header-only utility mode remains supported when no input is supplied
+# Header-only utility mode remains supported when no input is supplied.
 run_header_success \
     header_only \
     "${log_header_only}" \
@@ -234,14 +233,12 @@ assert_pattern_found \
     "write_header.sh verbose prints spike header"
 
 
-#  Explicit input/output and in-place modes
-printf '%s\n' "${row_siq}" > "${fil_siq_dat}"
-
+# Explicit input/output and in-place modes.
 run_header_success \
     siq_copy \
     "${log_siq_copy}" \
     --mode siq \
-    --fil_in "${fil_siq_dat}" \
+    --fil_in "${fx_siq}" \
     --fil_out "${fil_siq_cpy}"
 
 assert_header_once \
@@ -254,13 +251,12 @@ assert_pattern_found \
     "^${row_siq}$" \
     "write_header.sh siq_copy keeps data row"
 
-if [[ "$(sed -n '1p' "${fil_siq_dat}")" == "${row_siq}" ]]; then
-    record_pass "write_header.sh siq_copy leaves input unchanged"
-else
-    record_fail "write_header.sh siq_copy modified input"
-fi
+assert_file_exact_line \
+    "${fx_siq}" \
+    "${row_siq}" \
+    "write_header.sh siq_copy input"
 
-printf '%s\n' "${row_siq}" > "${fil_siq_inp}"
+cp "${fx_siq}" "${fil_siq_inp}"  # fixture-perturbation: edited in place
 
 run_header_success \
     siq_in_place \
@@ -279,10 +275,7 @@ assert_pattern_found \
     "^${row_siq}$" \
     "write_header.sh siq_in_place keeps data row"
 
-{
-    printf '%s\n' "${hdr_spk}"
-    printf '%s\n' "${row_spk}"
-} > "${fil_spk_hdr}"
+cp "${fx_spk_hdr}" "${fil_spk_hdr}"  # fixture-perturbation: edited in place
 
 run_header_success \
     spike_idempotent \
@@ -303,7 +296,7 @@ else
 fi
 
 
-#  Dry-run modes report planned work without writing or modifying files
+# Dry-run modes report planned work without writing or modifying files.
 run_header_success \
     dry_header_only \
     "${log_dry_header_only}" \
@@ -327,8 +320,7 @@ assert_pattern_absent \
     'has no effect' \
     "write_header.sh dry_header_only warns about nothing"
 
-# A dry run already prints the header, so '--verbose' is ignored with a
-# warning.
+# A dry run prints the header, so '--verbose' is ignored with a warning.
 run_header_success \
     dry_verbose \
     "${log_dry_verbose}" \
@@ -347,10 +339,8 @@ assert_pattern_found \
     "^${hdr_spk}$" \
     "write_header.sh dry_verbose still prints the header"
 
-{
-    printf '%s\n' "${hdr_spk}"
-    printf '%s\n' "${row_spk}"
-} > "${fil_dry_hdr}"
+cp "${fx_spk_hdr}" "${fil_dry_hdr}"  # fixture-perturbation: dry run target
+
 run_header_success \
     dry_in_place \
     "${log_dry_in_place}" \
@@ -370,13 +360,12 @@ else
     record_fail "write_header.sh dry_in_place changed line count"
 fi
 
-printf '%s\n' "${row_siq}" > "${fil_dry_dat}"
 run_header_success \
     dry_copy \
     "${log_dry_copy}" \
     --dry_run \
     --mode siq \
-    --fil_in "${fil_dry_dat}" \
+    --fil_in "${fx_siq}" \
     --fil_out "${fil_dry_out}"
 
 assert_pattern_found \
@@ -390,14 +379,13 @@ else
     record_fail "write_header.sh dry_copy wrote output"
 fi
 
-if [[ "$(sed -n '1p' "${fil_dry_dat}")" == "${row_siq}" ]]; then
-    record_pass "write_header.sh dry_copy preserves input"
-else
-    record_fail "write_header.sh dry_copy modified input"
-fi
+assert_file_exact_line \
+    "${fx_siq}" \
+    "${row_siq}" \
+    "write_header.sh dry_copy input"
 
 
-#  Invalid mode and invalid argument combinations should fail clearly
+# Invalid mode and invalid argument combinations should fail clearly.
 run_header_failure \
     invalid_mode \
     "${log_invalid_mode}" \
@@ -436,7 +424,8 @@ run_header_failure \
     --fil_in "${fil_spk_hdr}" \
     --fil_out "${fil_spk_hdr}"
 
-printf '%s\n' "${row_spk}" > "${fil_old_amb}"
+cp "${fx_spk}" "${fil_old_amb}"  # fixture-perturbation: an existing output
+
 run_header_failure \
     old_fil_out_existing \
     "${log_old_fil_out_existing}" \
@@ -468,5 +457,6 @@ run_header_failure \
     "directory for 'dir_out' does not exist" \
     --mode spike \
     --fil_out "${fil_missing_dir}"
+
 
 finish

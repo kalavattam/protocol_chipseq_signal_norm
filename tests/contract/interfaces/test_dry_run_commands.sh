@@ -6,9 +6,10 @@
 # Copyright 2026 by Kris Alavattam
 # Email: kalavattam@gmail.com
 #
-# OpenAI ChatGPT and Codex (GPT-5.5, GPT-5.6) were used in design, development,
-# and documentation, with all output reviewed, edited, and approved by the
-# author.
+# The following were used in design, development, and documentation, with all
+# output reviewed, edited, and approved by the author:
+# - OpenAI ChatGPT and Codex (GPT-5.5, GPT-5.6);
+# - Anthropic Claude Code (Opus 5.5).
 #
 # Distributed under the MIT license.
 
@@ -17,7 +18,7 @@ set -euo pipefail
 
 TEST_NAME="dry-run and expected failure"
 
-#  Source shared test helpers
+# Source shared test helpers.
 # shellcheck source=tests/support/test_helpers.sh
 source "$(
     git -C "$(dirname "${BASH_SOURCE[0]}")" rev-parse --show-toplevel
@@ -40,8 +41,8 @@ function assert_fixed_before() {
     )"
     if \
         [[ -n "${first_line}" ]] \
-        && [[ -n "${second_line}" ]] \
-        && (( first_line < second_line ))
+            && [[ -n "${second_line}" ]] \
+            && (( first_line < second_line ))
     then
         record_pass "${label}"
     else
@@ -50,9 +51,10 @@ function assert_fixed_before() {
 }
 
 
-#  Create small temporary inputs for dry-run smoke checks
+# Create small temporary inputs for dry-run smoke checks.
 tmp="${TEST_DIR_TMP}/dry_run"
-fil_sample="${tmp}/in/sample.txt"
+dir_fx="${ROOT_REPO}/tests/fixtures/utilities"
+fil_sample="${dir_fx}/text/sample.txt"
 fil_header="${tmp}/out/header.tsv"
 dir_compress="${tmp}/compress"
 fil_compress="${dir_compress}/large.log"
@@ -71,10 +73,16 @@ log_find_missing="${TEST_DIR_LOG}/expected_fail/find_missing_args.log"
 print_section "${TEST_NAME}"
 
 rm -rf "${tmp}"
-mkdir -p "${tmp}/in" "${tmp}/out" "${tmp}/logs" "${dir_compress}"
-printf 'smoke\n' > "${fil_sample}"
-printf '%02048d' 0 > "${fil_compress}"
-: > "${fil_empty}"
+mkdir -p "${tmp}/out" "${tmp}/logs"
+
+require_files_nonempty \
+    "${fil_sample}" \
+    "${dir_fx}/log/large.log" || {
+    finish
+    exit $?
+}
+
+cp -R "${dir_fx}/log" "${dir_compress}"  # fixture-perturbation: dry run target
 
 if \
     run_capture \
@@ -98,6 +106,7 @@ then
 else
     record_fail "compress_remove_files.sh --help failed"
 fi
+
 assert_fixed_before \
     "${ROOT_REPO}/bin/compress_remove_files.sh" \
     "            -dr|--dry_run)" \
@@ -120,7 +129,7 @@ else
         "$(print_relpath "${log_symlink}")"
 fi
 
-#  Check that write_header.sh dry-run reports work without writing output
+# Check that 'write_header.sh' dry-run reports work without writing output.
 if \
     run_capture \
         "write_header dry-run" \
@@ -146,8 +155,7 @@ else
         "$(print_relpath "${log_header}")"
 fi
 
-#  Check canonical compress dry run without compressing or deleting files
-compress_before="$(< "${fil_compress}")"
+# Check canonical compress dry run without compressing or deleting files.
 if \
     run_capture \
         "compress dry-run" \
@@ -166,13 +174,18 @@ then
         "${log_compress}" \
         '^## Results of find command for files larger than 1k ##$' \
         "compress dry run prints results"
-    if [[ ! -f "${fil_compress}" || -e "${fil_compress}.gz" ]]; then
+
+    if [[ -e "${fil_compress}.gz" ]]; then
         record_fail "compress dry run compressed the matching file"
-    elif [[ "$(< "${fil_compress}")" != "${compress_before}" ]]; then
-        record_fail "compress dry run changed the matching file"
     else
-        record_pass "compress dry run leaves matching content unchanged"
+        record_pass "compress dry run writes no compressed file"
     fi
+
+    assert_files_equal \
+        "${fil_compress}" \
+        "${dir_fx}/log/large.log" \
+        "compress dry run leaves matching content unchanged"
+
     if [[ -e "${fil_empty}" ]]; then
         record_pass "compress dry run does not delete empty files"
     else
@@ -202,8 +215,12 @@ then
 else
     record_fail "compress_remove_files.sh -dr failed"
 fi
-if [[ -f "${fil_compress}" && ! -e "${fil_compress}.gz" && -e "${fil_empty}" ]]
-then
+
+if [[
+    -f "${fil_compress}"
+        && ! -e "${fil_compress}.gz"
+        && -e "${fil_empty}"
+]]; then
     record_pass "compress -dr is non-mutating"
 else
     record_fail "compress -dr changed target files"
@@ -267,14 +284,18 @@ else
         "only one of '--chk_con' or '--dry_run'" \
         "compress check and dry-run modes remain mutually exclusive"
 fi
-if [[ -f "${fil_compress}" && ! -e "${fil_compress}.gz" && -e "${fil_empty}" ]]
-then
+
+if [[
+    -f "${fil_compress}"
+        && ! -e "${fil_compress}.gz"
+        && -e "${fil_empty}"
+]]; then
     record_pass "compress mutual-exclusion failure is non-mutating"
 else
     record_fail "compress mutual-exclusion failure changed target files"
 fi
 
-#  Check that selected wrappers fail clearly when required arguments are absent
+# Check that selected wrappers fail clearly when required arguments are absent.
 if \
     run_capture \
         "symlink missing args" \
@@ -310,5 +331,6 @@ record_skip \
 record_skip \
     "submit_* dry-run wrappers may activate Conda/Mamba or require Slurm" \
     "context; covered later by integration fixtures"
+
 
 finish

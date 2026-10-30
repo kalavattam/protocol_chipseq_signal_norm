@@ -6,9 +6,10 @@
 # Copyright 2026 by Kris Alavattam
 # Email: kalavattam@gmail.com
 #
-# OpenAI ChatGPT and Codex (GPT-5.5, GPT-5.6) were used in design, development,
-# and documentation, with all output reviewed, edited, and approved by the
-# author.
+# The following were used in design, development, and documentation, with all
+# output reviewed, edited, and approved by the author:
+# - OpenAI ChatGPT and Codex (GPT-5.5, GPT-5.6);
+# - Anthropic Claude Code (Opus 5.5).
 #
 # Distributed under the MIT license.
 
@@ -104,10 +105,11 @@ tbl_lib_zer="${dir_met}/measurements_siqchip_lib_volume_zero.tsv"
 tbl_pre="${dir_met}/measurements_siqchip_precomputed.tsv"
 cfg_map="${dir_cfg}/parse_metadata_siqchip_field_to_column.yml"
 
-bam_hho1="${dir_tmp}/IP_WT_G1_Hho1_6336.sc.bam"
-bam_hho1_bad="${dir_tmp}/IP_WT_G1_Hho1_9999.sc.bam"
-bam_extra="${dir_tmp}/IP_WT_G1_HU_Hho1_6336.sc.bam"
-bam_p857="${dir_tmp}/IP_HeLa_DMSO_H3K18ac_rep1.hs.bam"
+dir_plc="${dir_fix}/bam/placeholder"
+bam_hho1="${dir_plc}/IP_WT_G1_Hho1_6336.sc.bam"
+bam_hho1_bad="${dir_plc}/IP_WT_G1_Hho1_9999.sc.bam"
+bam_extra="${dir_plc}/IP_WT_G1_HU_Hho1_6336.sc.bam"
+bam_p857="${dir_plc}/IP_HeLa_DMSO_H3K18ac_rep1.hs.bam"
 
 log_env_py="${dir_log}/resolve_env_python.log"
 log_canonical="${dir_log}/canonical.log"
@@ -128,7 +130,6 @@ print_section "${TEST_NAME}"
 
 rm -rf "${dir_tmp}"
 mkdir -p "${dir_tmp}" "${dir_log}"
-touch "${bam_hho1}" "${bam_hho1_bad}" "${bam_extra}" "${bam_p857}"
 
 require_files_nonempty \
     "${scr_prs}" \
@@ -324,5 +325,6 @@ run_parse_failure \
     "${bam_hho1}" \
     "${cfg_met}" \
     "lib_vol_.*must be > 0"
+
 
 finish

@@ -137,6 +137,9 @@ function ensure_checker_fixtures() {
     ensure_fixture submit_bootstrap \
         "${repo_root}/tests/fixtures/submit_bootstrap/script/counted_helper.sh"
 
+    ensure_fixture utilities \
+        "${repo_root}/tests/fixtures/utilities/fastq/find/a_R2.fastq.gz"
+
     ensure_fixture help "${repo_root}/${rel_help}"
 
     ensure_fixture help_contracts \

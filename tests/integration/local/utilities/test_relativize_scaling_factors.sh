@@ -6,9 +6,10 @@
 # Copyright 2026 by Kris Alavattam
 # Email: kalavattam@gmail.com
 #
-# OpenAI ChatGPT and Codex (GPT-5.5, GPT-5.6) were used in design, development,
-# and documentation, with all output reviewed, edited, and approved by the
-# author.
+# The following were used in design, development, and documentation, with all
+# output reviewed, edited, and approved by the author:
+# - OpenAI ChatGPT and Codex (GPT-5.5, GPT-5.6);
+# - Anthropic Claude Code (Opus 5.5).
 #
 # Distributed under the MIT license.
 
@@ -17,7 +18,7 @@ set -euo pipefail
 
 TEST_NAME="relativize scaling factors"
 
-#  Source shared test helpers
+# Source shared test helpers.
 # shellcheck source=tests/support/test_helpers.sh
 source "$(
     git -C "$(dirname "${BASH_SOURCE[0]}")" rev-parse --show-toplevel
@@ -75,10 +76,11 @@ scr_rel="${ROOT_REPO}/src/protocol_chipseq_signal_norm/cli/relativize_scaling_fa
 dir_tmp="${TEST_DIR_TMP}/relativize_scaling_factors"
 dir_log="${TEST_DIR_LOG}/relativize_scaling_factors"
 
-tbl_spike="${dir_tmp}/spike.tsv"
-tbl_siq="${dir_tmp}/siq.tsv"
-tbl_no_scl="${dir_tmp}/missing_scaling.tsv"
-tbl_no_sample="${dir_tmp}/missing_sample.tsv"
+dir_fx="${ROOT_REPO}/tests/fixtures/calculate_scaling_factor/table/relativize"
+tbl_spike="${dir_fx}/spike.tsv"
+tbl_siq="${dir_fx}/siq.tsv"
+tbl_no_scl="${dir_fx}/missing_scaling.tsv"
+tbl_no_sample="${dir_fx}/missing_sample.tsv"
 
 exp_spike="${dir_tmp}/spike.expected.tsv"
 exp_spike_input="${dir_tmp}/spike_input.expected.tsv"
@@ -97,7 +99,12 @@ print_section "${TEST_NAME}"
 rm -rf "${dir_tmp}"
 mkdir -p "${dir_tmp}" "${dir_log}"
 
-require_files_nonempty "${scr_rel}" || {
+require_files_nonempty \
+    "${scr_rel}" \
+    "${tbl_spike}" \
+    "${tbl_siq}" \
+    "${tbl_no_scl}" \
+    "${tbl_no_sample}" || {
     finish
     exit $?
 }
@@ -111,13 +118,6 @@ else
     finish
     exit $?
 fi
-
-{
-    printf 'sample\tspike\tother\n'
-    printf 'IP_a\t2\ta\n'
-    printf 'IP_b\t4\tb\n'
-    printf 'in_a\t10\tc\n'
-} > "${tbl_spike}"
 
 {
     printf 'sample\tspike\tscaled\tother\n'
@@ -134,26 +134,10 @@ fi
 } > "${exp_spike_input}"
 
 {
-    printf 'sample\tsiq\tspike\n'
-    printf 'IP_a\t3\t100\n'
-    printf 'IP_b\t6\t200\n'
-} > "${tbl_siq}"
-
-{
     printf 'sample\tsiq\tscaled\tspike\n'
     printf 'IP_a\t3\t0.5\t100\n'
     printf 'IP_b\t6\t1\t200\n'
 } > "${exp_siq}"
-
-{
-    printf 'sample\tcoef\n'
-    printf 'IP_a\t1\n'
-} > "${tbl_no_scl}"
-
-{
-    printf 'spike\n'
-    printf '1\n'
-} > "${tbl_no_sample}"
 
 
 run_relativize_success \
@@ -198,5 +182,6 @@ run_relativize_failure \
     "${log_missing_sample_column}" \
     "${tbl_no_sample}" \
     "missing required column 'sample'"
+
 
 finish
