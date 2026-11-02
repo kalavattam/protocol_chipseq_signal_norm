@@ -38,10 +38,10 @@ fi
 
 # Define fixture and output paths for direct loopback HTTP downloads.
 dir_fx="${ROOT_REPO}/tests/fixtures/download_fastqs"
-dir_src="${dir_fx}/source"
-src_se="${dir_src}/se/tiny_download_se.fastq.gz"
-src_r1="${dir_src}/pe/tiny_download_pe_R1.fastq.gz"
-src_r2="${dir_src}/pe/tiny_download_pe_R2.fastq.gz"
+dir_fq="${dir_fx}/fastq"
+src_se="${dir_fq}/se/tiny_download_se.fastq.gz"
+src_r1="${dir_fq}/pe/tiny_download_pe_R1.fastq.gz"
+src_r2="${dir_fq}/pe/tiny_download_pe_R2.fastq.gz"
 
 tmp="${TEST_DIR_TMP}/submit_download_fastqs_local"
 dir_out_se="${tmp}/se/out"
@@ -160,7 +160,7 @@ url_r1="${url_bas}/pe/tiny_download_pe_R1.fastq.gz"
 url_r2="${url_bas}/pe/tiny_download_pe_R2.fastq.gz"
 
 (
-    cd "${dir_src}" || exit 1
+    cd "${dir_fq}" || exit 1
     exec env PYTHONDONTWRITEBYTECODE=1 \
         "${py}" -m http.server "${port}" --bind 127.0.0.1
 ) > "${log_svr}" 2>&1 &

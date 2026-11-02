@@ -3647,8 +3647,8 @@ Examples
     # shellcheck source=tests/support/test_helpers.sh
     source tests/support/test_helpers.sh
     tmp="$(mktemp -d)"
-    cp tests/fixtures/download_fastqs/source/se/tiny_download_se.fastq.gz "${tmp}/read.fastq.gz"
-    assert_fastq_gzip "${tmp}/read.fastq.gz" '^@tiny_download_se_read_1$' "${tmp}/read.fastq" "${tmp}/count.txt" tests/fixtures/download_fastqs/source/se/tiny_download_se.fastq.gz
+    cp tests/fixtures/download_fastqs/fastq/se/tiny_download_se.fastq.gz "${tmp}/read.fastq.gz"
+    assert_fastq_gzip "${tmp}/read.fastq.gz" '^@tiny_download_se_read_1$' "${tmp}/read.fastq" "${tmp}/count.txt" tests/fixtures/download_fastqs/fastq/se/tiny_download_se.fastq.gz
     rm -r -- "${tmp}"
     '''
 

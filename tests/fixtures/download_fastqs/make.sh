@@ -85,22 +85,22 @@ function write_metadata() {
 
 
 # Define fixture directories, FASTQ paths, and metadata templates.
-dir_src="${dir_fix}/source"
-dir_src_se="${dir_src}/se"
-dir_src_pe="${dir_src}/pe"
+dir_fq="${dir_fix}/fastq"
+dir_fq_se="${dir_fq}/se"
+dir_fq_pe="${dir_fq}/pe"
 dir_mtd="${dir_fix}/metadata"
-dir_src_nam="${dir_src}/names"
+dir_fq_nam="${dir_fq}/names"
 dir_exp="${dir_fix}/expected"
 
-fq_se_tmp="${dir_src_se}/tiny_download_se.fastq.tmp"
-fq_r1_tmp="${dir_src_pe}/tiny_download_pe_R1.fastq.tmp"
-fq_r2_tmp="${dir_src_pe}/tiny_download_pe_R2.fastq.tmp"
-fq_nam_tmp="${dir_src_nam}/names.fastq.tmp"
+fq_se_tmp="${dir_fq_se}/tiny_download_se.fastq.tmp"
+fq_r1_tmp="${dir_fq_pe}/tiny_download_pe_R1.fastq.tmp"
+fq_r2_tmp="${dir_fq_pe}/tiny_download_pe_R2.fastq.tmp"
+fq_nam_tmp="${dir_fq_nam}/names.fastq.tmp"
 
-fq_se_gz="${dir_src_se}/tiny_download_se.fastq.gz"
-fq_r1_gz="${dir_src_pe}/tiny_download_pe_R1.fastq.gz"
-fq_r2_gz="${dir_src_pe}/tiny_download_pe_R2.fastq.gz"
-fq_se_trn="${dir_src_se}/tiny_download_se_truncated.fastq.gz"
+fq_se_gz="${dir_fq_se}/tiny_download_se.fastq.gz"
+fq_r1_gz="${dir_fq_pe}/tiny_download_pe_R1.fastq.gz"
+fq_r2_gz="${dir_fq_pe}/tiny_download_pe_R2.fastq.gz"
+fq_se_trn="${dir_fq_se}/tiny_download_se_truncated.fastq.gz"
 
 tpl_se="${dir_mtd}/local_se.template.tsv"
 tpl_pe="${dir_mtd}/local_pe.template.tsv"
@@ -152,10 +152,10 @@ require_cmd md5sum "to write expected MD5 values into metadata templates."
 
 # Create fixture output directories.
 mkdirs \
-    "${dir_src}" \
-    "${dir_src_se}" \
-    "${dir_src_pe}" \
-    "${dir_src_nam}" \
+    "${dir_fq}" \
+    "${dir_fq_se}" \
+    "${dir_fq_pe}" \
+    "${dir_fq_nam}" \
     "${dir_mtd}" \
     "${dir_exp}" \
     "${dir_tol_get}" \
@@ -581,70 +581,70 @@ nam_1="${pfx_nam}:30009:1000"
 nam_2="${pfx_nam}:30236:1000"
 
 write_fastq_names \
-    "${dir_src_nam}/ena_R1.fastq.gz" \
+    "${dir_fq_nam}/ena_R1.fastq.gz" \
     "@SRR_NAMES_PE.1 ${nam_1}/1" \
     "@SRR_NAMES_PE.2 ${nam_2}/1"
 
 write_fastq_names \
-    "${dir_src_nam}/ena_R2.fastq.gz" \
+    "${dir_fq_nam}/ena_R2.fastq.gz" \
     "@SRR_NAMES_PE.1 ${nam_1}/2" \
     "@SRR_NAMES_PE.2 ${nam_2}/2"
 
 write_fastq_names \
-    "${dir_src_nam}/r2_name_R2.fastq.gz" \
+    "${dir_fq_nam}/r2_name_R2.fastq.gz" \
     "@SRR_NAMES_PE.1 ${nam_1}/2" \
     "@SRR_NAMES_PE.2 ${pfx_nam}:30237:1000/2"
 
 write_fastq_names \
-    "${dir_src_nam}/order_R1.fastq.gz" \
+    "${dir_fq_nam}/order_R1.fastq.gz" \
     "@SRR_NAMES_PE.1 ${nam_1}/1" \
     "@SRR_NAMES_PE.3 ${nam_2}/1"
 
 write_fastq_names \
-    "${dir_src_nam}/order_R2.fastq.gz" \
+    "${dir_fq_nam}/order_R2.fastq.gz" \
     "@SRR_NAMES_PE.1 ${nam_1}/2" \
     "@SRR_NAMES_PE.3 ${nam_2}/2"
 
 write_fastq_names \
-    "${dir_src_nam}/mate_R1.fastq.gz" \
+    "${dir_fq_nam}/mate_R1.fastq.gz" \
     "@SRR_NAMES_PE.1 ${nam_1}/2" \
     "@SRR_NAMES_PE.2 ${nam_2}/1"
 
 write_fastq_names \
-    "${dir_src_nam}/ena_se.fastq.gz" \
+    "${dir_fq_nam}/ena_se.fastq.gz" \
     "@SRR_NAMES_SE.1 ${nam_1}/1" \
     "@SRR_NAMES_SE.2 ${nam_2}/1"
 
 write_fastq_names \
-    "${dir_src_nam}/ena_se_no_mate.fastq.gz" \
+    "${dir_fq_nam}/ena_se_no_mate.fastq.gz" \
     "@SRR_NAMES_SE.1 ${nam_1}" \
     "@SRR_NAMES_SE.2 ${nam_2}"
 
 write_fastq_names \
-    "${dir_src_nam}/lost_se.fastq.gz" \
+    "${dir_fq_nam}/lost_se.fastq.gz" \
     "@SRR_NAMES_LOST.1 1/1" \
     "@SRR_NAMES_LOST.2 2/1"
 
 # Write sources as they come from the sequencer, whose names need nothing: a
 # pair with the bcl-convert comment and a single-end file without a comment.
 write_fastq_names \
-    "${dir_src_nam}/sequencer_R1.fastq.gz" \
+    "${dir_fq_nam}/sequencer_R1.fastq.gz" \
     "@${nam_1} 1:N:0:ACGTACGT" \
     "@${nam_2} 1:N:0:ACGTACGT"
 
 write_fastq_names \
-    "${dir_src_nam}/sequencer_R2.fastq.gz" \
+    "${dir_fq_nam}/sequencer_R2.fastq.gz" \
     "@${nam_1} 2:N:0:ACGTACGT" \
     "@${nam_2} 2:N:0:ACGTACGT"
 
 write_fastq_names \
-    "${dir_src_nam}/sequencer_se.fastq.gz" \
+    "${dir_fq_nam}/sequencer_se.fastq.gz" \
     "@${nam_1}" \
     "@${nam_2}"
 
 # Write an empty file, which restoration must refuse rather than take for a
 # file whose names were lost.
-: > "${dir_src_nam}/empty.fastq.gz"
+: > "${dir_fq_nam}/empty.fastq.gz"
 
 # Write the expected restored records, uncompressed; both mates of the pair
 # restore to the same headers.
@@ -664,13 +664,13 @@ done
 # Write the read-name templates, one source pair or file per template; the
 # missing-file template has the right MD5 values and sizes but URLs the server
 # does not have, so only files already in place can satisfy it.
-md5_nam_r1="$(md5sum < "${dir_src_nam}/ena_R1.fastq.gz")"
+md5_nam_r1="$(md5sum < "${dir_fq_nam}/ena_R1.fastq.gz")"
 md5_nam_r1="${md5_nam_r1%% *}"
-md5_nam_r2="$(md5sum < "${dir_src_nam}/ena_R2.fastq.gz")"
+md5_nam_r2="$(md5sum < "${dir_fq_nam}/ena_R2.fastq.gz")"
 md5_nam_r2="${md5_nam_r2%% *}"
-siz_nam_r1="$(wc -c < "${dir_src_nam}/ena_R1.fastq.gz")"
+siz_nam_r1="$(wc -c < "${dir_fq_nam}/ena_R1.fastq.gz")"
 siz_nam_r1="${siz_nam_r1//[[:space:]]/}"
-siz_nam_r2="$(wc -c < "${dir_src_nam}/ena_R2.fastq.gz")"
+siz_nam_r2="$(wc -c < "${dir_fq_nam}/ena_R2.fastq.gz")"
 siz_nam_r2="${siz_nam_r2//[[:space:]]/}"
 
 url_nam='__BASE_URL__/names'
@@ -723,9 +723,9 @@ done
         "${siz_nam_r1};${siz_nam_r2}"
 } > "${tpl_nam_pe_404}"
 
-md5_seq_r1="$(md5sum < "${dir_src_nam}/sequencer_R1.fastq.gz")"
+md5_seq_r1="$(md5sum < "${dir_fq_nam}/sequencer_R1.fastq.gz")"
 md5_seq_r1="${md5_seq_r1%% *}"
-md5_seq_r2="$(md5sum < "${dir_src_nam}/sequencer_R2.fastq.gz")"
+md5_seq_r2="$(md5sum < "${dir_fq_nam}/sequencer_R2.fastq.gz")"
 md5_seq_r2="${md5_seq_r2%% *}"
 
 {

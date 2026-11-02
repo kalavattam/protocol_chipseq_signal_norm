@@ -19,12 +19,12 @@ The fixture set currently supports single-end, paired-end, and mixed-metadata lo
 Readable provenance:
 - `make.sh`
 
-Compressed source FASTQ:
-- `source/se/tiny_download_se.fastq.gz`
-- `source/pe/tiny_download_pe_R1.fastq.gz`
-- `source/pe/tiny_download_pe_R2.fastq.gz`
-- `source/se/tiny_download_se_truncated.fastq.gz` (the single-end file without its 8-byte gzip trailer)
-- `source/names/*.fastq.gz` (read-name sources; see "Read-name restoration")
+Compressed FASTQ that the tests serve as downloads:
+- `fastq/se/tiny_download_se.fastq.gz`
+- `fastq/pe/tiny_download_pe_R1.fastq.gz`
+- `fastq/pe/tiny_download_pe_R2.fastq.gz`
+- `fastq/se/tiny_download_se_truncated.fastq.gz` (the single-end file without its 8-byte gzip trailer)
+- `fastq/names/*.fastq.gz` (read-name sources; see "Read-name restoration")
 
 Expected restored FASTQ:
 - `expected/names_pe.fastq` (both mates of the restored pair)
@@ -134,7 +134,7 @@ When the same accession/URL pair appears more than once with different custom na
 ## Read-name restoration
 The `tiny_download_*` sources have names that are not `<run>.<n>`, so their names need nothing: they stay as downloaded, with one note.
 
-The `source/names/` files have two 8-base records each, in ENA's form, `@<run>.<n> <Illumina name>/<mate>`, with the Illumina names `VH00699:369:AACWKJJM5:1:1101:30009:1000` and `VH00699:369:AACWKJJM5:1:1101:30236:1000`. Each bad variant breaks exactly one check:
+The `fastq/names/` files have two 8-base records each in ENA's form, `@<run>.<n> <Illumina name>/<mate>`, with the Illumina names `VH00699:369:AACWKJJM5:1:1101:30009:1000` and `VH00699:369:AACWKJJM5:1:1101:30236:1000`. Each bad variant breaks exactly one check:
 
 | Template                   | Sources                                                         | Expected behavior                                                                       |
 | :---                       | :---                                                            | :---                                                                                    |
@@ -149,7 +149,7 @@ The `source/names/` files have two 8-base records each, in ENA's form, `@<run>.<
 | `local_names_sequencer_se` | `sequencer_se` (no comment)                                     | names need nothing; left as downloaded, with one note                                   |
 | `local_names_pe_missing`   | none: URLs the server lacks                                     | right MD5s and sizes of `ena_R1` and `ena_R2`; only `--use_existing` passes             |
 
-`source/names/empty.fastq.gz` is an empty file that restoration must refuse rather than take for a file whose names were lost. The test passes it to `restore_fastq_names` directly, with no template.
+`fastq/names/empty.fastq.gz` is an empty file that restoration must refuse rather than take for a file whose names were lost. The test passes it to `restore_fastq_names` directly, with no template.
 
 <br />
 

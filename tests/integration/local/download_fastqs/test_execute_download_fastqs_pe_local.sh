@@ -6,9 +6,10 @@
 # Copyright 2026 by Kris Alavattam
 # Email: kalavattam@gmail.com
 #
-# OpenAI ChatGPT and Codex (GPT-5.5, GPT-5.6) were used in design, development,
-# and documentation, with all output reviewed, edited, and approved by the
-# author.
+# The following were used in design, development, and documentation, with all
+# output reviewed, edited, and approved by the author:
+# - OpenAI ChatGPT and Codex (GPT-5.5, GPT-5.6);
+# - Anthropic Claude Code (Opus 5.5).
 #
 # Distributed under the MIT license.
 
@@ -37,15 +38,15 @@ fi
 
 #  Define fixture and output paths for a loopback-only HTTP PE download
 dir_fx="${ROOT_REPO}/tests/fixtures/download_fastqs"
-dir_src="${dir_fx}/source"
+dir_fq="${dir_fx}/fastq"
 
 mta_tpl="${dir_fx}/metadata/local_pe.template.tsv"
 mta_tpl_dup="${dir_fx}/metadata/local_pe_duplicate.template.tsv"
 mta_tpl_dup_cus="${dir_fx}/metadata/local_pe_duplicate_custom.template.tsv"
 mta_tpl_cnfl="${dir_fx}/metadata/local_pe_conflicting_accession.template.tsv"
 
-src_r1="${dir_src}/pe/tiny_download_pe_R1.fastq.gz"
-src_r2="${dir_src}/pe/tiny_download_pe_R2.fastq.gz"
+src_r1="${dir_fq}/pe/tiny_download_pe_R1.fastq.gz"
+src_r2="${dir_fq}/pe/tiny_download_pe_R2.fastq.gz"
 
 tmp="${TEST_DIR_TMP}/execute_download_fastqs_pe_local"
 
@@ -152,7 +153,7 @@ url_bas="http://127.0.0.1:${port}"
 url_src="${url_bas}/pe/tiny_download_pe_R1.fastq.gz"
 
 (
-    cd "${dir_src}" || exit 1
+    cd "${dir_fq}" || exit 1
     "${py}" -m http.server "${port}" --bind 127.0.0.1
 ) > "${log_srvr}" 2>&1 &
 pid_srvr=$!

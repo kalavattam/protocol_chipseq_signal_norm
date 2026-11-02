@@ -36,8 +36,8 @@ fi
 
 # Define fixture and output paths for loopback-only HTTP downloads.
 dir_fx="${ROOT_REPO}/tests/fixtures/download_fastqs"
-dir_src="${dir_fx}/source"
-dir_nam="${dir_src}/names"
+dir_fq="${dir_fx}/fastq"
+dir_nam="${dir_fq}/names"
 dir_mtd="${dir_fx}/metadata"
 dir_exp="${dir_fx}/expected"
 
@@ -93,7 +93,7 @@ port="$(find_port_free "${py}")"
 url_bas="http://127.0.0.1:${port}"
 
 (
-    cd "${dir_src}" || exit 1
+    cd "${dir_fq}" || exit 1
     "${py}" -m http.server "${port}" --bind 127.0.0.1
 ) > "${log_svr}" 2>&1 &
 svr_pid=$!

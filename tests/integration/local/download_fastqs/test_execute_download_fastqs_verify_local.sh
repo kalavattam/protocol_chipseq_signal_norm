@@ -36,7 +36,7 @@ fi
 
 # Define fixture and output paths for loopback-only HTTP downloads.
 dir_fx="${ROOT_REPO}/tests/fixtures/download_fastqs"
-dir_src="${dir_fx}/source"
+dir_fq="${dir_fx}/fastq"
 dir_mtd="${dir_fx}/metadata"
 
 tmp="${TEST_DIR_TMP}/execute_download_fastqs_verify_local"
@@ -58,8 +58,8 @@ require_env_project env_nam || {
 }
 
 require_files_nonempty \
-    "${dir_src}/se/tiny_download_se.fastq.gz" \
-    "${dir_src}/se/tiny_download_se_truncated.fastq.gz" \
+    "${dir_fq}/se/tiny_download_se.fastq.gz" \
+    "${dir_fq}/se/tiny_download_se_truncated.fastq.gz" \
     "${dir_mtd}/local_se_verified.template.tsv" \
     "${dir_mtd}/local_se_missing.template.tsv" || {
     finish
@@ -90,7 +90,7 @@ port="$(find_port_free "${py}")"
 url_bas="http://127.0.0.1:${port}"
 
 (
-    cd "${dir_src}" || exit 1
+    cd "${dir_fq}" || exit 1
     "${py}" -m http.server "${port}" --bind 127.0.0.1
 ) > "${log_svr}" 2>&1 &
 svr_pid=$!
@@ -201,7 +201,7 @@ done
 if \
     cmp -s \
         "${tmp}/se_verified/out/SRR_LOCAL_SE.fastq.gz" \
-        "${dir_src}/se/tiny_download_se.fastq.gz"
+        "${dir_fq}/se/tiny_download_se.fastq.gz"
 then
     record_pass "verified SE download matches its source"
 else
