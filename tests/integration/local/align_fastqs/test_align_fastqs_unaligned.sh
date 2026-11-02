@@ -43,15 +43,15 @@ idx_brg_bt2="${dir_fx}/bowtie2/bridge"
 idx_brg_bwa="${dir_fx}/bwa/bridge.fa"
 idx_brg_bm2="${dir_fx}/bwa-mem2/bridge.fa"
 
+# The tiny inputs plus reads absent from the tiny reference: the single-end
+# input has an unaligned read, and the paired-end input has an unaligned pair
+# and a pair whose second mate is unaligned.
+fq_se="${dir_fx}/fastq/se/unaligned_se.fastq"
+fq_1="${dir_fx}/fastq/pe/unaligned_pe_R1.fastq"
+fq_2="${dir_fx}/fastq/pe/unaligned_pe_R2.fastq"
+
 tmp="${TEST_DIR_TMP}/align_fastqs_unaligned"
 dir_log="${TEST_DIR_LOG}/align_fastqs"
-fq_se="${tmp}/se.fastq"
-fq_1="${tmp}/pe_R1.fastq"
-fq_2="${tmp}/pe_R2.fastq"
-
-# Sequences absent from the tiny reference.
-seq_jnk_1="GGGGCCCCAAAATTTTGGGGCCCCAAAATT"
-seq_jnk_2="CACACACAGTGTGTGTCACACACAGTGTGT"
 
 
 print_section "${TEST_NAME}"
@@ -68,6 +68,9 @@ require_files_nonempty \
     "${in_se}" \
     "${in_pe_1}" \
     "${in_pe_2}" \
+    "${fq_se}" \
+    "${fq_1}" \
+    "${fq_2}" \
     "${idx_bt2}.1.bt2" \
     "${idx_bwa}" \
     "${idx_bm2}" \
@@ -79,36 +82,6 @@ require_files_nonempty \
     finish
     exit $?
 }
-
-
-# Print one FASTQ record.
-function print_fq() {
-    printf '@%s\n%s\n+\n%s\n' "${1}" "${2}" "${2//?/I}"
-}
-
-
-# Add an unaligned read to the single-end input. Add an unaligned pair and a
-# pair whose second mate is unaligned to the paired-end input.
-seq_se="$(gzip -cd "${in_se}" | sed -n 2p)"
-seq_r1="$(gzip -cd "${in_pe_1}" | sed -n 2p)"
-
-{ gzip -cd "${in_se}"; print_fq jnk "${seq_jnk_1}"; } > "${fq_se}"
-{
-    gzip -cd "${in_pe_1}"
-    print_fq jnk "${seq_jnk_1}"
-    print_fq hlf "${seq_r1}"
-} > "${fq_1}"
-{
-    gzip -cd "${in_pe_2}"
-    print_fq jnk "${seq_jnk_2}"
-    print_fq hlf "${seq_jnk_2}"
-} > "${fq_2}"
-
-if [[ -z "${seq_se}" || -z "${seq_r1}" ]]; then
-    record_fail "could not read the fixture FASTQ sequences"
-    finish
-    exit $?
-fi
 
 
 # Run the helper.
@@ -205,9 +178,9 @@ read -r -a arr_flg_raw <<< "${flg_raw}"
 
 if [[
     "${rc}" -eq 0
-    && "${#arr_flg_raw[@]}" -eq 2
-    && $(( (arr_flg_raw[0] ^ arr_flg_raw[1]) & 4 )) -ne 0
-    && $(( (arr_flg_raw[0] | arr_flg_raw[1]) & 8 )) -eq 0
+        && "${#arr_flg_raw[@]}" -eq 2
+        && $(( (arr_flg_raw[0] ^ arr_flg_raw[1]) & 4 )) -ne 0
+        && $(( (arr_flg_raw[0] | arr_flg_raw[1]) & 8 )) -eq 0
 ]]; then
     record_pass "bwa aln bridge pair flags one mate unaligned, not its partner"
 else

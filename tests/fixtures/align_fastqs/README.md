@@ -33,6 +33,10 @@ Compressed FASTQ input:
 - `fastq/pe/tiny_pe_R1.atria.fastq.gz`
 - `fastq/pe/tiny_pe_R2.atria.fastq.gz`
 
+Uncompressed FASTQ input for `test_align_fastqs_unaligned.sh`: the tiny inputs plus reads absent from the tiny reference:
+- `fastq/se/unaligned_se.fastq`: the single-end read and one unaligned read
+- `fastq/pe/unaligned_pe_R1.fastq` and `fastq/pe/unaligned_pe_R2.fastq`: the pair, an unaligned pair, and a pair whose second mate is unaligned
+
 Bowtie 2 index:
 - `bowtie2/tiny.1.bt2`
 - `bowtie2/tiny.2.bt2`
@@ -105,10 +109,13 @@ Pairs reference, reads, and indexes for `--unal_mode`. The reads hold one pair p
 
 SAM records that test Step 2 on its own. They are grouped by queryname and hold templates that Step 1 split:
 - `sam/split_template_pe.sam`
+- `bam/split_template_pe.step1.remove.bam`: Step 1's split of those records under `remove`, the complete aligned proper pairs
+- `bam/split_template_pe.step1.separate.bam` and `bam/split_template_pe.step1.setU.bam`: Step 1's split under `separate`, the aligned records and Set U
 
 Inputs that test `<stem>.diag.tsv.gz` on its own. The four SAM files are grouped by coordinate and stand for the four files of a paired-end `--unal_mode separate` run. The three statistics files stand for Markdup 2's:
 - `sam/diag/main.sam`, `sam/diag/unal.sam`, `sam/diag/improp.sam`, and `sam/diag/mapq.sam`
 - `sam/diag/all.markdup.txt.gz`, `sam/diag/all_neg.markdup.txt.gz`, and `sam/diag/all_odd.markdup.txt.gz`
+- `sam/diag/improp_no_mc.sam` and `sam/diag/improp_no_first_mate.sam`: `improp.sam` without the `MC` tags of `10M` mates and without the first mate's primary record of `i_rf`, on which the improper-pair program must stop
 
 SAM records that test `_check_optical_names` on its own. One read name carries flow-cell coordinates. The other has the colons of a flow-cell name but a letter where x goes:
 - `sam/optical_names.sam`
@@ -134,6 +141,9 @@ Thread reference, reads, and indexes for checking that files do not depend on th
 - `reference/thr.fa.fai`
 - `fastq/pe/thr_pe_R1.atria.fastq.gz` and `fastq/pe/thr_pe_R2.atria.fastq.gz`
 - `bowtie2/thr.*.bt2` and `bwa/thr.fa.*` (no BWA-MEM2 index)
+
+Bowtie 2 index files that exist but hold no index, so alignment fails after the index check:
+- `bowtie2/not_an_index.*.bt2`
 
 <br />
 

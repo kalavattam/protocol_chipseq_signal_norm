@@ -834,16 +834,12 @@ fi
 
 # Index files that exist but hold no index pass the checksum; Step 1 then
 # fails, which must stop the helper with one error in the helper's name.
-for ext in 1 2 3 4 rev.1 rev.2; do
-    echo "not an index" > "${tmp}/bad_index.${ext}.bt2"
-done
-
 fil_out="${tmp}/helper_step1.bam"
 rc=0
 out="$(
     run_helper \
         --aligner bowtie2 \
-        --index "${tmp}/bad_index" \
+        --index "${dir_fx}/bowtie2/not_an_index" \
         --fil_out "${fil_out}"
 )" || rc=$?
 n_err="$(grep -c '^error(' <<< "${out}" || true)"

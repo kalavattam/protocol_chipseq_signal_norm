@@ -6,8 +6,10 @@
 # Copyright 2026 by Kris Alavattam
 # Email: kalavattam@gmail.com
 #
-# OpenAI ChatGPT and Codex (GPT-5.6) were used in design, development, and
-# documentation, with all output reviewed, edited, and approved by the author.
+# The following were used in design, development, and documentation, with all
+# output reviewed, edited, and approved by the author:
+# - OpenAI ChatGPT and Codex (GPT-5.6);
+# - Anthropic Claude Code (Opus 5.5).
 #
 # Distributed under the MIT license.
 
@@ -39,9 +41,18 @@ for name in "${arr_tool_nam[@]}"; do
     arr_gen+=( "${dir_tool}/${name}" )
 done
 
+# Declare the starting states of the fake environment list, which the fake
+# package manager appends to as it creates environments.
+dir_sta="${dir_scr}/state"
+arr_sta_nam=( "none" "env_protocol" "env_siqchip" )
+
+for name in "${arr_sta_nam[@]}"; do
+    arr_gen+=( "${dir_sta}/${name}.txt" )
+done
+
 # Remove stale outputs so regeneration is idempotent.
 rm_files "${dir_scr}" "${arr_gen[@]}"
-mkdirs "${dir_tool}"
+mkdirs "${dir_tool}" "${dir_sta}"
 
 cat << 'EOM' > "${fil_tool}"
 #!/usr/bin/env bash
@@ -181,5 +192,10 @@ chmod +x "${fil_tool}"
 for name in "${arr_tool_nam[@]}"; do
     ln -sf fake_package_manager "${dir_tool}/${name}"
 done
+
+# Write the starting states: no environment, or one named environment.
+: > "${dir_sta}/none.txt"
+printf '%s\n' env_protocol > "${dir_sta}/env_protocol.txt"
+printf '%s\n' env_siqchip > "${dir_sta}/env_siqchip.txt"
 
 succeed "generated install_envs fixtures under ${dir_scr}"

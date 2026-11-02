@@ -202,27 +202,20 @@ function print_index_md5() {
 
 
 # Print a program's Conda package as '<version>-<build>', from its package
-# record's fields rather than its file name.
+# record's fields rather than its file name; see
+# 'tests/support/print_conda_pkg.py'.
 function print_pkg() {
     local dir_pfx
 
     dir_pfx="$(dirname "$(dirname "$(command -v "${1}")")")"
-    "${TEST_PYTHON}" - "${1}" "${dir_pfx}" << 'PY'
-import glob
-import json
-import sys
-
-prg, prefix = sys.argv[1:]
-for path in glob.glob(f"{prefix}/conda-meta/{prg}-[0-9]*.json"):
-    with open(path, encoding="utf-8") as handle:
-        rec = json.load(handle)
-        if rec["name"] == prg:
-            print(f"{rec['version']}-{rec['build']}")
-PY
+    "${TEST_PYTHON}" \
+        "${ROOT_REPO}/tests/support/print_conda_pkg.py" \
+        "${1}" \
+        "${dir_pfx}"
 }
 
 
-# Add one row, as label|output|arguments|expected content lines; the content
+# Add one row, as 'label|output|arguments|expected' content lines; the content
 # lines are the arguments after the third, joined with ';'.
 function add_row() {
     local lbl="${1}"
@@ -593,7 +586,8 @@ fi
 
 # Step 5 skips a file that already carries a record, so writing twice leaves
 # one record.
-cp "${fil_aln_se}" "${fil_two}"
+cp "${fil_aln_se}" "${fil_two}"  # fixture-perturbation: a record is written in
+
 rc=0
 # shellcheck disable=SC2016  # Expand in the child shell, not this one.
 "${TEST_BASH}" -c '

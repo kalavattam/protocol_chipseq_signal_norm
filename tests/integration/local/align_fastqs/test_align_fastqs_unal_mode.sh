@@ -42,6 +42,8 @@ source "$(
 dir_fx="${ROOT_REPO}/tests/fixtures/align_fastqs"
 ref_par="${dir_fx}/reference/pairs.fa"
 sam_spl="${dir_fx}/sam/split_template_pe.sam"
+# Step 1's split of those records, as Step 1 makes it under each mode.
+stm_s1="${dir_fx}/bam/split_template_pe.step1"
 
 tmp="${TEST_DIR_TMP}/align_fastqs_unal_mode"
 dir_log="${TEST_DIR_LOG}/align_fastqs"
@@ -60,6 +62,9 @@ require_env_project env_nam || {
 require_files_nonempty \
     "${ref_par}" \
     "${sam_spl}" \
+    "${stm_s1}.remove.bam" \
+    "${stm_s1}.separate.bam" \
+    "${stm_s1}.setU.bam" \
     "${dir_fx}/bowtie2/pairs.rev.2.bt2" \
     "${dir_fx}/bwa/pairs.fa.bwt" \
     "${dir_fx}/bwa-mem2/pairs.fa.0123" \
@@ -76,6 +81,8 @@ require_files_nonempty \
     "${dir_fx}/fastq/pe/bridge_pe_R1.atria.fastq.gz" \
     "${dir_fx}/fastq/pe/bridge_pe_R2.atria.fastq.gz" \
     "${dir_fx}/sam/diag/improp.sam" \
+    "${dir_fx}/sam/diag/improp_no_mc.sam" \
+    "${dir_fx}/sam/diag/improp_no_first_mate.sam" \
     "${dir_fx}/sam/diag/all.markdup.txt.gz" \
     "${dir_fx}/sam/diag/all_neg.markdup.txt.gz" \
     "${dir_fx}/sam/diag/all_odd.markdup.txt.gz" \
@@ -1427,15 +1434,15 @@ got="$(
         | tr '\t\n' ': '
 )" || true
 exp="improp:too_far:1:2:1:2 improp:too_close:1:3:0:0 improp:other:0:0:0:0 "
+
 rc=0
-run_samtools view "${dir_dia}/improp.sam" \
-    | sed 's/\tMC:Z:10M$//' \
+run_samtools view "${dir_dia}/improp_no_mc.sam" \
     | gawk -f "${fil_awk}" -v aligner=bowtie2 -v max_frag=500 -v mapq=30 \
         > /dev/null 2>&1 \
     || rc=$?
+
 rc_r1=0
-run_samtools view "${dir_dia}/improp.sam" \
-    | awk -F '\t' '!($1 == "i_rf" && $2 == 81)' \
+run_samtools view "${dir_dia}/improp_no_first_mate.sam" \
     | gawk -f "${fil_awk}" -v aligner=bowtie2 -v max_frag=500 -v mapq=30 \
         > /dev/null 2>&1 \
     || rc_r1=$?
@@ -1462,12 +1469,11 @@ fi
 # - 'ffmq': a same-orientation pair flagged proper at MAPQ 0.
 # - 'disc': a pair the aligner did not flag proper.
 #
-# The test makes Step 1's split itself, as Step 1 would. 'fixmate' unflags
-# 'ffpp', 'ffmq', and 'xchr', so '--req_flg' rejects them after it in both
-# modes. Under 'separate', both split templates move whole into Set U, and
-# every rejected template is kept. 'lone', 'disc', and the unflagged pairs are
-# improper. That includes 'ffmq', though it also fails MAPQ 30. 'lowq' is
-# low-MAPQ at MAPQ 30.
+# The recipe makes Step 1's split as Step 1 would. 'fixmate' unflags 'ffpp',
+# 'ffmq', and 'xchr', so '--req_flg' rejects them after it in both modes. Under
+# 'separate', both split templates move whole into Set U, and every rejected
+# template is kept. 'lone', 'disc', and the unflagged pairs are improper. That
+# includes 'ffmq', though it also fails MAPQ 30. 'lowq' is low-MAPQ at MAPQ 30.
 declare -A arr_s2_exp=(
     ["remove 0"]="lowq:2 pair:2 "
     ["remove 30"]="pair:2 "
@@ -1483,11 +1489,13 @@ declare -A arr_s2_set=(
 for mod in remove separate; do
     for mpq in 0 30; do
         stm="${tmp}/step2.${mod}.${mpq}"
+        cp \
+            "${stm_s1}.${mod}.bam" \
+            "${stm}.bam"  # fixture-perturbation: sets are written beside it
         if [[ "${mod}" == "separate" ]]; then
-            run_samtools view -b -F 12 -U "${stm}.setU.bam" -o "${stm}.bam" \
-                "${sam_spl}"
-        else
-            run_samtools view -b -F 12 -f 2 -o "${stm}.bam" "${sam_spl}"
+            cp \
+                "${stm_s1}.setU.bam" \
+                "${stm}.setU.bam"  # fixture-perturbation: routing adds to it
         fi
 
         rc=0

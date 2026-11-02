@@ -284,6 +284,17 @@ idx_thr_bt2="${dir_bt2}/thr"
 sam_spl_pe="${dir_sam}/split_template_pe.sam"
 sam_opt="${dir_sam}/optical_names.sam"
 dir_dia="${dir_sam}/diag"
+dir_bam="${dir_fix}/bam"
+
+fq_unl_se="${dir_fq_se}/unaligned_se.fastq"
+fq_unl_r1="${dir_fq_pe}/unaligned_pe_R1.fastq"
+fq_unl_r2="${dir_fq_pe}/unaligned_pe_R2.fastq"
+idx_bad_bt2="${dir_bt2}/not_an_index"
+sam_dia_no_mc="${dir_dia}/improp_no_mc.sam"
+sam_dia_no_r1="${dir_dia}/improp_no_first_mate.sam"
+bam_s1_rmv="${dir_bam}/split_template_pe.step1.remove.bam"
+bam_s1_sep="${dir_bam}/split_template_pe.step1.separate.bam"
+bam_s1_u="${dir_bam}/split_template_pe.step1.setU.bam"
 
 # 'write_opt_set' adds each temporary FASTQ of an optical-duplicate set here so
 # that cleanup removes it after a failure.
@@ -322,7 +333,8 @@ mkdirs \
     "${dir_bt2}" \
     "${dir_bwa}" \
     "${dir_bm2}" \
-    "${dir_sam}"
+    "${dir_sam}" \
+    "${dir_bam}"
 
 # Remove stale temporary intermediates.
 cleanup_tmp_fastqs
@@ -1379,6 +1391,66 @@ for ent in all:3:3 all_neg:0:3 all_odd:3:2; do
     gzip_n "${dir_dia}/${nam}.markdup.txt" "${dir_dia}/${nam}.markdup.txt.gz"
     rm_file "${dir_fix}" "${dir_dia}/${nam}.markdup.txt"
 done
+
+
+# Write the inputs of 'test_align_fastqs_unaligned.sh': the tiny inputs plus
+# reads absent from the tiny reference. The single-end input gains an unaligned
+# read. The paired-end input gains an unaligned pair and a pair whose second
+# mate is unaligned.
+rm_files \
+    "${dir_fix}" \
+    "${fq_unl_se}" \
+    "${fq_unl_r1}" \
+    "${fq_unl_r2}"
+
+seq_jnk_1="GGGGCCCCAAAATTTTGGGGCCCCAAAATT"
+seq_jnk_2="CACACACAGTGTGTGTCACACACAGTGTGT"
+seq_r1_tny="$(gzip -cd "${fq_r1_gz}" | sed -n 2p)"
+
+{
+    gzip -cd "${fq_se_gz}"
+    print_fq jnk "${seq_jnk_1}"
+} > "${fq_unl_se}"
+
+{
+    gzip -cd "${fq_r1_gz}"
+    print_fq jnk "${seq_jnk_1}"
+    print_fq hlf "${seq_r1_tny}"
+} > "${fq_unl_r1}"
+
+{
+    gzip -cd "${fq_r2_gz}"
+    print_fq jnk "${seq_jnk_2}"
+    print_fq hlf "${seq_jnk_2}"
+} > "${fq_unl_r2}"
+
+# Write Bowtie 2 index files that exist but hold no index. They pass the index
+# check, and alignment then fails.
+for ext in 1 2 3 4 rev.1 rev.2; do
+    printf '%s\n' "not an index" > "${idx_bad_bt2}.${ext}.bt2"
+done
+
+# Write two broken copies of the improper-pair records: one without the 'MC'
+# tags of '10M' mates, and one without the first mate's primary record of
+# 'i_rf'. The improper-pair program must stop on each.
+sed 's/\tMC:Z:10M$//' "${dir_dia}/improp.sam" > "${sam_dia_no_mc}"
+awk -F '\t' '!($1 == "i_rf" && $2 == 81)' "${dir_dia}/improp.sam" \
+    > "${sam_dia_no_r1}"
+
+# Write Step 1's split of the split-template records, as Step 1 makes it: under
+# 'remove', complete aligned proper pairs; under 'separate', aligned records
+# with the rest in Set U.
+rm_files \
+    "${dir_fix}" \
+    "${bam_s1_rmv}" \
+    "${bam_s1_sep}" \
+    "${bam_s1_u}"
+
+samtools view --no-PG -b -F 12 -f 2 -o "${bam_s1_rmv}" "${sam_spl_pe}"
+samtools view --no-PG -b -F 12 \
+    -U "${bam_s1_u}" \
+    -o "${bam_s1_sep}" \
+    "${sam_spl_pe}"
 
 
 # Index each reference with 'samtools faidx' so that tests reading a reference

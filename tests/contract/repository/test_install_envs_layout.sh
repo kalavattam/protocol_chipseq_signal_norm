@@ -178,6 +178,11 @@ scr_atr="${ROOT_REPO}/install/scripts/install_atria.sh"
 scr_hlp="${ROOT_REPO}/lib/bash/help/help_install_envs.sh"
 tool_envs="${ROOT_REPO}/tests/fixtures/install_envs/tool"
 
+dir_sta="${ROOT_REPO}/tests/fixtures/install_envs/state"
+sta_none="${dir_sta}/none.txt"
+sta_prt="${dir_sta}/env_protocol.txt"
+sta_siq="${dir_sta}/env_siqchip.txt"
+
 yml_anl="${ROOT_REPO}/install/envs/env_analyze.yml"
 yml_prt="${ROOT_REPO}/install/envs/env_protocol.yml"
 yml_siq="${ROOT_REPO}/install/envs/env_siqchip.yml"
@@ -346,8 +351,7 @@ assert_pattern_found \
     '^  - shellcheck=0\.10\.0' \
     "env_protocol pins ShellCheck 0.10.0"
 
-: > "${fake_envs}"
-printf '%s\n' env_siqchip > "${fake_envs}"
+cp "${sta_siq}" "${fake_envs}"  # fixture-perturbation: appended to
 : > "${fake_log}"
 if \
     run_fake_install_envs \
@@ -365,7 +369,7 @@ else
 fi
 
 : > "${fake_log}"
-printf '%s\n' env_siqchip > "${fake_envs}"
+cp "${sta_siq}" "${fake_envs}"  # fixture-perturbation: appended to
 if \
     run_fake_install_envs \
         "install_envs reuse siqchip" \
@@ -382,7 +386,7 @@ else
 fi
 
 : > "${fake_log}"
-printf '%s\n' env_protocol > "${fake_envs}"
+cp "${sta_prt}" "${fake_envs}"  # fixture-perturbation: appended to
 if \
     run_fake_install_envs \
         "install_envs reuse protocol" \
@@ -403,7 +407,7 @@ else
 fi
 
 : > "${fake_log}"
-printf '%s\n' env_siqchip > "${fake_envs}"
+cp "${sta_siq}" "${fake_envs}"  # fixture-perturbation: appended to
 if \
     run_fake_install_envs \
         "install_envs targeted update" \
@@ -425,7 +429,7 @@ else
 fi
 
 : > "${fake_log}"
-printf '%s\n' env_protocol > "${fake_envs}"
+cp "${sta_prt}" "${fake_envs}"  # fixture-perturbation: appended to
 if \
     INSTALL_ENVS_FAKE_INSTALL_FAIL=true \
     run_fake_install_envs \
@@ -444,7 +448,7 @@ else
 fi
 
 : > "${fake_log}"
-: > "${fake_envs}"
+cp "${sta_none}" "${fake_envs}"  # fixture-perturbation: appended to
 if \
     run_fake_install_envs \
         "install_envs update missing" \
@@ -470,7 +474,7 @@ if \
     check_cmd_exists mamba || check_cmd_exists conda
 then
     # No target exists here, so each dry run plans a creation.
-    : > "${fake_envs}"
+    cp "${sta_none}" "${fake_envs}"  # fixture-perturbation: appended to
     assert_install_dry_run \
         "env_siqchip" "${yml_siq}" "${log_siqchip_dry_run}" \
         --dry_run \
@@ -500,7 +504,7 @@ then
         "install_envs.sh env_qc gets no editable repository install"
 
     # The reuse and update dry runs need 'env_protocol' to exist.
-    printf '%s\n' env_protocol > "${fake_envs}"
+    cp "${sta_prt}" "${fake_envs}"  # fixture-perturbation: appended to
     assert_install_dry_run \
         "env_protocol" "${yml_prt}" \
         "${log_protocol_channels_dry_run}" \
@@ -622,7 +626,7 @@ chn_mirror="https://example.invalid/conda-forge/,https://example.invalid/biocond
 if \
     check_cmd_exists mamba || check_cmd_exists conda
 then
-    : > "${fake_envs}"
+    cp "${sta_none}" "${fake_envs}"  # fixture-perturbation: appended to
     if \
         run_fake_install_envs \
             "install_envs render create channels" \
@@ -664,7 +668,7 @@ then
         record_fail "install_envs.sh create with channels unexpectedly failed"
     fi
 
-    printf '%s\n' env_protocol > "${fake_envs}"
+    cp "${sta_prt}" "${fake_envs}"  # fixture-perturbation: appended to
     if \
         run_fake_install_envs \
             "install_envs render update channels" \
@@ -702,7 +706,7 @@ fi
 if \
     check_cmd_exists mamba || check_cmd_exists conda
 then
-    printf '%s\n' env_protocol > "${fake_envs}"
+    cp "${sta_prt}" "${fake_envs}"  # fixture-perturbation: appended to
     if \
         run_fake_install_envs \
             "install_envs update_package implies update" \
@@ -756,7 +760,7 @@ fi
 if \
     check_cmd_exists mamba || check_cmd_exists conda
 then
-    : > "${fake_envs}"
+    cp "${sta_none}" "${fake_envs}"  # fixture-perturbation: appended to
     if \
         run_fake_install_envs \
             "install_envs additive channels" \
@@ -848,7 +852,7 @@ fi
 if \
     check_cmd_exists mamba || check_cmd_exists conda
 then
-    : > "${fake_envs}"
+    cp "${sta_none}" "${fake_envs}"  # fixture-perturbation: appended to
     if \
         run_fake_install_envs \
             "install_envs rendered condarc" \
@@ -932,7 +936,7 @@ fi
 
 # The stop path installs nothing and removes the rendered file on the way out,
 # so it must not name a path the caller cannot then read.
-printf '%s\n' env_protocol > "${fake_envs}"
+cp "${sta_prt}" "${fake_envs}"  # fixture-perturbation: appended to
 if \
     run_fake_install_envs \
         "install_envs stop path rendered report" \
@@ -957,5 +961,6 @@ then
 else
     record_fail "install_envs.sh stop-path dry run exited non-zero"
 fi
+
 
 finish "$@"
