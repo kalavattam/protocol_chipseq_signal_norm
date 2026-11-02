@@ -23,18 +23,17 @@ source "$(
 )/tests/support/test_helpers.sh"
 
 
-# Define fixture and output paths. The input carries an earlier record, as an
-# 'align_fastqs' output would, so the filter's record must follow it
+# Define fixture and output paths. The input already has the record line that
+# 'align_fastqs' writes, and the filter's record must come after it
 # ('OUTPUT.ALIGNMENT.RECORD').
 dir_fx="${ROOT_REPO}/tests/fixtures/filter_alignments"
-in_sam="${dir_fx}/sam/filter_sc_sp.sam"
 ref_fa="${dir_fx}/reference/filter_sc_sp.fa"
+
+in_bam="${dir_fx}/bam/prior_record.bam"
+in_cram="${dir_fx}/cram/prior_record.cram"
 
 tmp="${TEST_DIR_TMP}/filter_alignments_record"
 dir_log="${TEST_DIR_LOG}/filter_alignments"
-sam_rec="${tmp}/in.sam"
-in_bam="${tmp}/in.bam"
-in_cram="${tmp}/in.cram"
 chr_sc="I II III IV V VI VII VIII IX X XI XII XIII XIV XV XVI"
 lin_aln=$'@CO\tpipeline: chain=align_fastqs'
 
@@ -51,29 +50,14 @@ require_env_project env_nam || {
 
 # CRAM writing reads the reference's '.fai', which 'make.sh' builds; without
 # it, Samtools would write one beside the fixture.
-require_files_nonempty "${in_sam}" "${ref_fa}" "${ref_fa}.fai" || {
+require_files_nonempty \
+    "${in_bam}" \
+    "${in_cram}" \
+    "${ref_fa}" \
+    "${ref_fa}.fai" || {
     finish
     exit $?
 }
-
-# Give the input an earlier record after its header lines.
-awk -v lin="${lin_aln}" '
-    !/^@/ && !done { print lin; done = 1 }
-    { print }
-' "${in_sam}" > "${sam_rec}"
-
-if ! \
-    build_filter_alignments_fixture_bam \
-        "${sam_rec}" \
-        "${in_bam}" \
-        "${dir_log}/record_prepare.log" \
-        "filter-alignments record BAM fixture"
-then
-    finish
-    exit $?
-fi
-
-run_samtools view -C -T "${ref_fa}" -o "${in_cram}" "${in_bam}"
 
 
 # Run one helper.
@@ -97,6 +81,18 @@ function run_filter() {
 # Print an alignment file's '@CO' lines; reading adds no '@PG' line.
 function print_co() {
     run_samtools view -H --no-PG -T "${ref_fa}" "${1}" | grep '^@CO' || true
+}
+
+
+# Print the content lines of a record.
+function print_cnt() {
+    grep $'^@CO\tpipeline: ' <<< "${1}" || true
+}
+
+
+# Print the run lines of a record.
+function print_run() {
+    grep $'^@CO\tpipeline-run: ' <<< "${1}" || true
 }
 
 
@@ -143,7 +139,7 @@ add_row \
     --retain=sc \
     --mito=false \
     "chromosomes=${chr_sc}" \
-    --fil_in=in.bam
+    --fil_in=prior_record.bam
 
 add_row \
     "S. cerevisiae, BAM to CRAM, '--mito'" \
@@ -154,7 +150,7 @@ add_row \
     --retain=sc \
     --mito=true \
     "chromosomes=${chr_sc} Mito" \
-    --fil_in=in.bam \
+    --fil_in=prior_record.bam \
     --ref_fa=filter_sc_sp.fa
 
 add_row \
@@ -168,7 +164,7 @@ add_row \
     --tg=true \
     --mtr=true \
     "chromosomes=SP_II_TG SP_I SP_II SP_III SP_MTR" \
-    --fil_in=in.cram \
+    --fil_in=prior_record.cram \
     --ref_fa=filter_sc_sp.fa
 
 for idx in "${!rows[@]}"; do
@@ -261,12 +257,8 @@ co_1="$(print_co "${tmp}/thr_1/x.sc.bam")"
 co_2="$(print_co "${tmp}/thr_2/x.sc.bam")"
 if [[
     -n "${co_1}"
-        && "$(
-            grep $'pipeline: ' <<< "${co_1}"
-        )" == "$(grep $'pipeline: ' <<< "${co_2}")"
-        && "$(
-            grep 'pipeline-run: ' <<< "${co_1}"
-        )" != "$(grep 'pipeline-run: ' <<< "${co_2}")"
+        && "$(print_cnt "${co_1}")" == "$(print_cnt "${co_2}")"
+        && "$(print_run "${co_1}")" != "$(print_run "${co_2}")"
         && "${co_2}" == *'pipeline-run: --threads=2'*
 ]]; then
     record_pass "two thread counts: same content lines, different run lines"
@@ -291,14 +283,17 @@ rc=0
     --max_job 1 \
     > "${dir_drv}/run.log" 2>&1 || rc=$?
 
-fil_drv="${dir_drv}/out/in.sc.bam"
+fil_drv="${dir_drv}/out/prior_record.sc.bam"
 if (( rc != 0 )) || [[ ! -s "${fil_drv}" ]]; then
     record_fail "driver run failed (exit ${rc}); see '${dir_drv}/run.log'"
 else
     assert_alignment_record \
         "${fil_drv}" "${ref_fa}" filter_alignments 1 \
-        "$(print_lines pipeline chain=filter_alignments --retain=sc \
-            --mito=false "chromosomes=${chr_sc}" --fil_in=in.bam)" \
+        "$(
+            print_lines pipeline \
+                chain=filter_alignments --retain=sc --mito=false \
+                "chromosomes=${chr_sc}" --fil_in=prior_record.bam
+        )" \
         "$(print_pth_exp fil_in "${in_bam}" fil_out "${fil_drv}")" \
         "" "driver" \
         || true
@@ -339,9 +334,8 @@ exp_als+=" submit_filter_alignments.sh >"
 exp_als+=" filter_alignment.sh::filter_alignment_sc"
 if [[
     "${rc}" -eq 0
-    && "$(
-        print_co "${dir_als}/out/in.sc.bam"
-    )" == *$'pipeline-run: calls='"${exp_als}"$'\n'*
+        && "$(print_co "${dir_als}/out/prior_record.sc.bam")" \
+            == *$'pipeline-run: calls='"${exp_als}"$'\n'*
 ]]; then
     record_pass "alias: the call path names the alias first"
 else

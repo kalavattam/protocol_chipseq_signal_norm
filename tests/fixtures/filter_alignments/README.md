@@ -33,6 +33,12 @@ Generated fixture outputs are ignored by Git. When required inputs are missing, 
   + The CRAM input that CRAM-input tests read in place. Its index is written last and is the runner's sentinel.
 - `cram/filter_sc_sp_parallel_1.cram` and `cram/filter_sc_sp_parallel_2.cram`, with their indexes
   + Copies of `cram/filter_sc_sp.cram` under two sample names, so that the GNU Parallel test runs two jobs.
+- `sam/prior_record.sam`, `bam/prior_record.bam` with its index, and `cram/prior_record.cram`
+  + `sam/filter_sc_sp.sam` with one earlier record line, `@CO pipeline: chain=align_fastqs`, after its header lines. It stands for a file that `align_fastqs` wrote, since `align_fastqs` adds a record to every output.
+  + The inputs of `test_filter_alignments_record.sh`, whose filter record must follow the earlier one.
+- `sam/reordered.sam` and `bam/reordered.bam` with its index
+  + `sam/filter_sc_sp.sam` with `SP_I` listed before every other reference.
+  + The input of `test_filter_alignments_reference_order.sh`: a filter that drops references without renumbering them would move reads to the wrong chromosome.
 
 <br />
 

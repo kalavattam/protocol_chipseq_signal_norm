@@ -1224,9 +1224,15 @@ fi
 
 # A missing report must name what is missing, not fail as a bare open error.
 dir_miss="${tmp}/edger_missing"
+dir_bare="${ROOT_REPO}/tests/fixtures/compute_signal/bedgraph/count_bare"
+bare_A="${dir_bare}/bare_se.bedGraph"
+bare_B="${dir_bare}/bare_pe.bedGraph"
 mkdir -p "${dir_miss}"
-cp "${trk_A}" "${dir_miss}/a.bedGraph"
-cp "${trk_B}" "${dir_miss}/b.bedGraph"
+
+require_files_nonempty "${bare_A}" "${bare_B}" || {
+    finish
+    exit $?
+}
 
 out_miss="$(
     "${TEST_BASH}" "${ROOT_REPO}/bin/execute_compute_signal.sh" \
@@ -1235,8 +1241,8 @@ out_miss="$(
         --mode ratio \
         --method log2 \
         --typ_sig count \
-        --csv_fil_A "${dir_miss}/a.bedGraph" \
-        --csv_fil_B "${dir_miss}/b.bedGraph" \
+        --csv_fil_A "${bare_A}" \
+        --csv_fil_B "${bare_B}" \
         --dir_out "${dir_miss}" \
         --typ_out bedGraph \
         --dir_eo "${dir_err}" \
@@ -1273,8 +1279,8 @@ out_ser="$(
         --mode ratio \
         --method log2 \
         --typ_sig count \
-        --csv_fil_A "${dir_miss}/a.bedGraph,${trk_A}" \
-        --csv_fil_B "${dir_miss}/b.bedGraph,${trk_B}" \
+        --csv_fil_A "${bare_A},${trk_A}" \
+        --csv_fil_B "${bare_B},${trk_B}" \
         --dir_out "${dir_miss}" \
         --typ_out bedGraph \
         --prefix serial \
@@ -1288,9 +1294,9 @@ out_ser="$(
 
 if [[
     "${rc_ser}" -ne 0
-    && "${out_ser}" == *"1 of 2 task(s) failed"*
-    && ! -e "${dir_miss}/serial_a.bedGraph"
-    && -s "${dir_miss}/serial_tiny_se.bedGraph"
+        && "${out_ser}" == *"1 of 2 task(s) failed"*
+        && ! -e "${dir_miss}/serial_bare_se.bedGraph"
+        && -s "${dir_miss}/serial_tiny_se.bedGraph"
 ]]; then
     record_pass "a failed first pair fails the serial run; the second still runs"
 else

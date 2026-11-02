@@ -23,17 +23,16 @@ source "$(
 )/tests/support/test_helpers.sh"
 
 
-# Define fixture and output paths. The input carries an earlier record, as an
-# 'align_fastqs' output would, so the sort's record must follow it
+# Define fixture and output paths. The input already has the record line that
+# 'align_fastqs' writes, and the sort's record must come after it
 # ('OUTPUT.ALIGNMENT.RECORD').
 dir_fx="${ROOT_REPO}/tests/fixtures/calculate_scaling_factor"
-fx_bam="${dir_fx}/bam/pe/IP_WT_G1_Hho1_6336.sc.bam"
+in_bam="${dir_fx}/bam/prior_record.bam"
+in_cram="${dir_fx}/cram/prior_record.cram"
 
 ref_fa="${dir_fx}/reference/tiny.fa"
 
 tmp="${TEST_DIR_TMP}/qsort_bam_record"
-in_bam="${tmp}/in.bam"
-in_cram="${tmp}/in.cram"
 lin_aln=$'@CO\tpipeline: chain=align_fastqs'
 
 
@@ -49,18 +48,14 @@ require_env_project env_nam || {
 
 # CRAM writing reads the reference's '.fai', which 'make.sh' builds; without
 # it, Samtools would write one beside the fixture.
-require_files_nonempty "${fx_bam}" "${ref_fa}" "${ref_fa}.fai" || {
+require_files_nonempty \
+    "${in_bam}" \
+    "${in_cram}" \
+    "${ref_fa}" \
+    "${ref_fa}.fai" || {
     finish
     exit $?
 }
-
-# Give the input an earlier record, then make a CRAM copy of it.
-{
-    run_samtools view -H --no-PG "${fx_bam}"
-    printf '%s\n' "${lin_aln}"
-} > "${tmp}/in.header.sam"
-run_samtools reheader "${tmp}/in.header.sam" "${fx_bam}" > "${in_bam}"
-run_samtools view -C -T "${ref_fa}" -o "${in_cram}" "${in_bam}"
 
 
 # Run the helper.
@@ -207,13 +202,15 @@ rc=0
     --nam_job test_qsort_record \
     > "${dir_drv}/run.log" 2>&1 || rc=$?
 
-fil_drv="${dir_drv}/out/in.qnam.bam"
+fil_drv="${dir_drv}/out/prior_record.qnam.bam"
+cnt_drv=$'@CO\tpipeline: chain=qsort_bam\n'
+cnt_drv+=$'@CO\tpipeline: --fil_in=prior_record.bam'
 if (( rc != 0 )) || [[ ! -s "${fil_drv}" ]]; then
     record_fail "driver run failed (exit ${rc}); see '${dir_drv}/run.log'"
 else
     assert_alignment_record \
         "${fil_drv}" "" qsort_bam 1 \
-        $'@CO\tpipeline: chain=qsort_bam\n@CO\tpipeline: --fil_in=in.bam' \
+        "${cnt_drv}" \
         "$(print_pth_exp fil_in "${in_bam}" fil_out "${fil_drv}")" \
         "" "driver" \
         || true

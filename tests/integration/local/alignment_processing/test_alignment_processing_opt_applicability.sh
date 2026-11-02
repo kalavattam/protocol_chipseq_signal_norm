@@ -45,7 +45,11 @@ require_env_project env_nam || {
     exit $?
 }
 
-require_files_nonempty "${in_bam}" "${in_cram}" "${ref_fa}" || {
+require_files_nonempty \
+    "${in_bam}" \
+    "${in_cram}" \
+    "${ref_fa}" \
+    "${dir_fx}/tool/print_args.py" || {
     finish
     exit $?
 }
@@ -125,13 +129,7 @@ done
 
 # 'convert_bam_bed' passes '--threads' to the Python converter. A converter
 # that writes its arguments shows what it got.
-fil_py="${tmp}/print_args.py"
-cat > "${fil_py}" << 'PY'
-import sys
-
-with open(sys.argv[sys.argv.index("--fil_out") + 1], "w") as fil:
-    fil.write(" ".join(sys.argv[1:]) + "\n")
-PY
+fil_py="${dir_fx}/tool/print_args.py"
 
 dir_out="${tmp}/convert_threads"
 rc=0

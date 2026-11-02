@@ -117,6 +117,13 @@ Empty placeholder BAM files for the siQ-ChIP metadata parser, which matches meta
 - `bam/placeholder/IP_WT_G1_HU_Hho1_6336.sc.bam`, whose name holds an extra token
 - `bam/placeholder/IP_HeLa_DMSO_H3K18ac_rep1.hs.bam`, for the PRJNA857063 configuration
 
+A paired-end IP BAM with an earlier record, for `test_qsort_bam_record.sh`:
+- `bam/prior_record.bam`: `bam/pe/IP_WT_G1_Hho1_6336.sc.bam` with one earlier record line, `@CO pipeline: chain=align_fastqs`, after its header lines. It stands for a file that `align_fastqs` wrote.
+- `cram/prior_record.cram`: a CRAM copy of it
+
+A stand-in converter, for `test_alignment_processing_opt_applicability.sh`:
+- `tool/print_args.py`: writes the arguments it was given to its `--fil_out`, so the test can see what `submit_convert_bam_bed.sh` passed it
+
 The siQ metadata fixtures cover
 - the production deterministic parser config,
 - explicit field-to-column mapping,

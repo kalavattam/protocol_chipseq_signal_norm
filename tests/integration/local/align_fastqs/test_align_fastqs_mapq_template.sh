@@ -302,7 +302,9 @@ done
 # for root; the SAM fixture stands in for a single-end BAM work file.
 dir_fail="${tmp}/filter_fail"
 mkdir -p "${dir_fail}/x.mapq.names.txt"
-cp "${sam_sec_se}" "${dir_fail}/x.bam"
+cp \
+    "${sam_sec_se}" \
+    "${dir_fail}/x.bam"  # fixture-perturbation: the filter writes beside it
 
 rc=0
 # shellcheck disable=SC2016  # Expand in the child shell, not this one.

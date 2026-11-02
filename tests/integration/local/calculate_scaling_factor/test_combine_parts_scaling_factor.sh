@@ -6,9 +6,10 @@
 # Copyright 2026 by Kris Alavattam
 # Email: kalavattam@gmail.com
 #
-# OpenAI ChatGPT and Codex (GPT-5.5, GPT-5.6) were used in design, development,
-# and documentation, with all output reviewed, edited, and approved by the
-# author.
+# The following were used in design, development, and documentation, with all
+# output reviewed, edited, and approved by the author:
+# - OpenAI ChatGPT and Codex (GPT-5.5, GPT-5.6);
+# - Anthropic Claude Code (Opus 5.5).
 #
 # Distributed under the MIT license.
 
@@ -317,8 +318,12 @@ fi
 #  Confirm dry-run no_parts reports removal but retains copied inputs
 mkdir -p "${dir_prt_dry}"
 
-cp "${spk_0}" "${spk_dry_0}"
-cp "${spk_2}" "${spk_dry_2}"
+cp \
+    "${spk_0}" \
+    "${spk_dry_0}"  # fixture-perturbation: '--no_parts' removes it
+cp \
+    "${spk_2}" \
+    "${spk_dry_2}"  # fixture-perturbation: '--no_parts' removes it
 
 if \
     run_capture \
@@ -392,7 +397,9 @@ assert_combine_fails \
 
 mkdir -p "${dir_prt_out}"
 
-cp "${spk_0}" "${spk_out_in}"
+cp \
+    "${spk_0}" \
+    "${spk_out_in}"  # fixture-perturbation: the run may overwrite it
 
 assert_combine_fails \
     "rejects output that is also input" \
@@ -439,8 +446,12 @@ assert_combine_fails \
 #  Confirm force replaces output and no_parts removes only validated inputs
 mkdir -p "${dir_prt_tmp}"
 
-cp "${spk_0}" "${spk_tmp_0}"
-cp "${spk_2}" "${spk_tmp_2}"
+cp \
+    "${spk_0}" \
+    "${spk_tmp_0}"  # fixture-perturbation: '--no_parts' removes it
+cp \
+    "${spk_2}" \
+    "${spk_tmp_2}"  # fixture-perturbation: '--no_parts' removes it
 
 if \
     run_capture \

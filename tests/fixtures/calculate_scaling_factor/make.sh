@@ -141,6 +141,13 @@ plc_hho1_bad="${dir_bam_plc}/IP_WT_G1_Hho1_9999.sc.bam"
 plc_extra="${dir_bam_plc}/IP_WT_G1_HU_Hho1_6336.sc.bam"
 plc_p857="${dir_bam_plc}/IP_HeLa_DMSO_H3K18ac_rep1.hs.bam"
 
+bam_rec="${dir_bam}/prior_record.bam"
+cram_rec="${dir_cram}/prior_record.cram"
+hdr_rec="${dir_bam}/prior_record.header.sam"
+
+dir_tool="${dir_fix}/tool"
+fil_args_py="${dir_tool}/print_args.py"
+
 ref_fa="${dir_ref}/tiny.fa"
 
 sam_se_mip_0="${dir_sam_se}/IP_WT_log_Brn1_rep1.sc.sam"
@@ -247,6 +254,7 @@ mkdirs \
     "${dir_cfg}" \
     "${dir_tbl_rel}" \
     "${dir_tbl_hdr}" \
+    "${dir_tool}" \
     "${dir_bam_plc}"
 
 
@@ -402,6 +410,37 @@ for idx in \
 do
     [[ -s "${idx}" ]] || die "CRAM index missing or empty: '${idx}'."
 done
+
+
+# Copy the paired-end IP BAM, add the line '@CO pipeline: chain=align_fastqs'
+# after its header, and write a CRAM copy of it. The record test checks that a
+# later step adds its own lines after this one.
+rm_files \
+    "${dir_fix}" \
+    "${bam_rec}" \
+    "${cram_rec}" \
+    "${hdr_rec}"
+
+{
+    samtools view -H --no-PG "${bam_pe_mip_0}"
+    printf '@CO\tpipeline: chain=align_fastqs\n'
+} > "${hdr_rec}"
+samtools reheader "${hdr_rec}" "${bam_pe_mip_0}" > "${bam_rec}"
+samtools view -C -T "${ref_fa}" -o "${cram_rec}" "${bam_rec}"
+rm_file "${dir_fix}" "${hdr_rec}"
+
+
+# Write a stand-in for the Python BAM-to-BED converter that writes the
+# arguments it was given to its '--fil_out', so a test can see what a caller
+# passed it.
+rm_file "${dir_fix}" "${fil_args_py}"
+
+cat << 'EOM' > "${fil_args_py}"
+import sys
+
+with open(sys.argv[sys.argv.index("--fil_out") + 1], "w") as fil:
+    fil.write(" ".join(sys.argv[1:]) + "\n")
+EOM
 
 
 # Remove stale generated fixture outputs. Broad metadata/config cleanup clears

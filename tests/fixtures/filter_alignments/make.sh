@@ -54,6 +54,12 @@ bam="${dir_bam}/filter_sc_sp.bam"
 cram="${dir_cram}/filter_sc_sp.cram"
 cram_par_1="${dir_cram}/filter_sc_sp_parallel_1.cram"
 cram_par_2="${dir_cram}/filter_sc_sp_parallel_2.cram"
+sam_rec="${dir_sam}/prior_record.sam"
+bam_rec="${dir_bam}/prior_record.bam"
+cram_rec="${dir_cram}/prior_record.cram"
+sam_ord="${dir_sam}/reordered.sam"
+bam_ord="${dir_bam}/reordered.bam"
+lin_aln=$'@CO\tpipeline: chain=align_fastqs'
 
 contigs=(
     I II III IV V VI VII VIII IX X XI XII XIII XIV XV XVI Mito
@@ -80,7 +86,14 @@ rm_files \
     "${cram_par_2}" \
     "${cram_par_2}.crai" \
     "${cram}" \
-    "${cram}.crai"
+    "${cram}.crai" \
+    "${sam_rec}" \
+    "${bam_rec}" \
+    "${bam_rec}.bai" \
+    "${cram_rec}" \
+    "${sam_ord}" \
+    "${bam_ord}" \
+    "${bam_ord}.bai"
 
 # Create fixture output directories.
 mkdirs "${dir_sam}" "${dir_ref}" "${dir_bam}" "${dir_cram}"
@@ -135,6 +148,25 @@ done
         '*' '0' '0' 'ACGTACGTAA' 'FFFFFFFFFF'
 } > "${sam}"
 
+# Copy the SAM and add one line, '@CO pipeline: chain=align_fastqs', between
+# its header and its reads. The record test checks that the filter adds its own
+# lines after this one.
+{
+    grep '^@' "${sam}"
+    printf '%s\n' "${lin_aln}"
+    grep -v '^@' "${sam}"
+} > "${sam_rec}"
+
+# Write the same records with 'SP_I' listed before every other reference, so a
+# filter that drops references without renumbering them moves reads to the
+# wrong chromosome.
+{
+    grep '^@HD' "${sam}"
+    grep -F $'@SQ\tSN:SP_I\t' "${sam}"
+    grep '^@SQ' "${sam}" | grep -v -F $'\tSN:SP_I\t'
+    grep -v '^@' "${sam}"
+} > "${sam_ord}"
+
 # Build the BAM and CRAM inputs from the SAM, with their indexes; the CRAM
 # index is the runner's sentinel, so it is written last.
 require_env env_protocol "for filter-alignments BAM and CRAM fixtures."
@@ -143,6 +175,13 @@ require_cmd samtools "in 'env_protocol' to generate BAM/CRAM fixtures."
 samtools view -b -o "${bam}" "${sam}"
 samtools index "${bam}"
 samtools view -C -T "${ref}" -o "${cram}" "${sam}"
+
+# Build the BAM and CRAM inputs of the record and reference-order tests.
+samtools view -b -o "${bam_rec}" "${sam_rec}"
+samtools index "${bam_rec}"
+samtools view -C -T "${ref}" -o "${cram_rec}" "${bam_rec}"
+samtools view -b -o "${bam_ord}" "${sam_ord}"
+samtools index "${bam_ord}"
 
 # Copy the CRAM into two samples, so that the GNU Parallel test runs two jobs.
 cp "${cram}" "${cram_par_1}"

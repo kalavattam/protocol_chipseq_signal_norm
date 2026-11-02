@@ -81,6 +81,9 @@ fil_cnt_se_ovlp="${dir_bdg_cnt}/tiny_se.n_ovlp.txt"
 fil_cnt_pe="${dir_bdg_cnt}/tiny_pe.bedGraph"
 fil_cnt_pe_frg="${dir_bdg_cnt}/tiny_pe.n_frg.txt"
 fil_cnt_pe_ovlp="${dir_bdg_cnt}/tiny_pe.n_ovlp.txt"
+dir_bdg_bare="${dir_bdg}/count_bare"
+fil_bare_se="${dir_bdg_bare}/bare_se.bedGraph"
+fil_bare_pe="${dir_bdg_bare}/bare_pe.bedGraph"
 
 fil_ref="${dir_ref}/tiny.fa"
 fil_sam_se="${dir_sam_se}/tiny_se.sam"
@@ -124,6 +127,8 @@ rm_files \
     "${fil_cnt_pe}" \
     "${fil_cnt_pe_frg}" \
     "${fil_cnt_pe_ovlp}" \
+    "${fil_bare_se}" \
+    "${fil_bare_pe}" \
     "${fil_ref}" \
     "${fil_sam_se}" \
     "${fil_sam_pe}" \
@@ -144,6 +149,7 @@ rm -f -- \
 mkdirs \
     "${dir_bdg}" \
     "${dir_bdg_cnt}" \
+    "${dir_bdg_bare}" \
     "${dir_bdg_mrg}" \
     "${dir_exp}" \
     "${dir_exp_mrg}" \
@@ -289,6 +295,11 @@ printf "2\n" > "${fil_cnt_se_ovlp}"
 
 printf "2\n" > "${fil_cnt_pe_frg}"
 printf "5\n" > "${fil_cnt_pe_ovlp}"
+
+# Copy both count tracks to a directory without their 'n_frg' and 'n_ovlp', for
+# the runs where '--csv_pseudo edger' must name the report it lacks.
+cp "${fil_cnt_se}" "${fil_bare_se}"
+cp "${fil_cnt_pe}" "${fil_bare_pe}"
 
 # Write tiny reference FASTA used for BAM/CRAM fixture generation.
 cat > "${fil_ref}" << EOM

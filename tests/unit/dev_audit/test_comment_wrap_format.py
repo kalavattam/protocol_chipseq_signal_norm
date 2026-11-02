@@ -86,7 +86,9 @@ def test_main_previews_by_default_and_writes_only_when_asked(
     """
 
     target = tmp_path / "comment_wrap_input.sh"
-    shutil.copyfile(SHELL / "format/comment_wrap_input.sh", target)
+    shutil.copyfile(
+        SHELL / "format/comment_wrap_input.sh", target
+    )  # fixture-perturbation: '--write' rewrites it
     original = target.read_text()
     expected = (SHELL / "format/comment_wrap_expected.sh").read_text()
 

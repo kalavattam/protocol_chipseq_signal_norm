@@ -46,6 +46,9 @@ Count bedGraph and per-sample counts:
 - `bedgraph/count/tiny_pe.n_frg.txt`
 - `bedgraph/count/tiny_pe.n_ovlp.txt`
 
+Count tracks without their counts for the runs where `--csv_pseudo edger` must name the report it lacks:
+- `bedgraph/count_bare/bare_se.bedGraph` and `bedgraph/count_bare/bare_pe.bedGraph`: copies of `tiny_se` and `tiny_pe` with no `n_frg` or `n_ovlp` beside them
+
 Alignment fixtures:
 - `reference/tiny.fa`
 - `reference/tiny.fa.fai`

@@ -27,13 +27,12 @@ source "$(
 # cerevisiae chromosomes, so a filter that drops references without renumbering
 # them would move reads to the wrong chromosome.
 dir_fx="${ROOT_REPO}/tests/fixtures/filter_alignments"
-in_sam="${dir_fx}/sam/filter_sc_sp.sam"
 ref_fa="${dir_fx}/reference/filter_sc_sp.fa"
+
+in_bam="${dir_fx}/bam/reordered.bam"
 
 tmp="${TEST_DIR_TMP}/filter_alignments_reference_order"
 dir_log="${TEST_DIR_LOG}/filter_alignments"
-sam_ord="${tmp}/reordered.sam"
-in_bam="${tmp}/reordered.bam"
 
 
 print_section "${TEST_NAME}"
@@ -46,39 +45,14 @@ require_env_project env_nam || {
     exit $?
 }
 
-require_files_nonempty "${in_sam}" "${ref_fa}" "${ref_fa}.fai" || {
+require_files_nonempty "${in_bam}" "${ref_fa}" "${ref_fa}.fai" || {
     finish
     exit $?
 }
 
-# Move the 'SP_I' '@SQ' line ahead of every other '@SQ' line.
-awk '
-    /^@SQ/ && /\tSN:SP_I\t/ { sq_first = $0; next }
-    /^@SQ/ { sq[++n_sq] = $0; next }
-    /^@/ { hd[++n_hd] = $0; next }
-    { body[++n_bd] = $0 }
-    END {
-        for (i = 1; i <= n_hd; i++) if (hd[i] ~ /^@HD/) print hd[i]
-        print sq_first
-        for (i = 1; i <= n_sq; i++) print sq[i]
-        for (i = 1; i <= n_hd; i++) if (hd[i] !~ /^@HD/) print hd[i]
-        for (i = 1; i <= n_bd; i++) print body[i]
-    }
-' "${in_sam}" > "${sam_ord}"
-
-if [[ "$(grep -m1 '^@SQ' "${sam_ord}")" != *$'\tSN:SP_I\t'* ]]; then
+sq_first="$(run_samtools view -H "${in_bam}" | grep -m1 '^@SQ')" || true
+if [[ "${sq_first}" != *$'\tSN:SP_I\t'* ]]; then
     record_fail "reordered fixture does not list 'SP_I' first"
-    finish
-    exit $?
-fi
-
-if ! \
-    build_filter_alignments_fixture_bam \
-        "${sam_ord}" \
-        "${in_bam}" \
-        "${dir_log}/reference_order_prepare.log" \
-        "filter-alignments reordered BAM fixture"
-then
     finish
     exit $?
 fi
@@ -192,10 +166,10 @@ ids_pg="$(
 
 if [[
     "${rc}" -eq 0
-    && -n "${hd_in}"
-    && "${hd_out}" == "${hd_in}"
-    && "$(tr '\n' ' ' <<< "${ids_pg}")" \
-        == "ID:filter_alignment_sp ID:filter_alignment_sp.1 "
+        && -n "${hd_in}"
+        && "${hd_out}" == "${hd_in}"
+        && "$(tr '\n' ' ' <<< "${ids_pg}")" \
+            == "ID:filter_alignment_sp ID:filter_alignment_sp.1 "
 ]]; then
     record_pass "filtering twice keeps '@HD' and gives distinct '@PG' IDs"
 else

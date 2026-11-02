@@ -255,12 +255,11 @@ unset log_mix_edg
 
 
 # A failed job must fail the GNU Parallel run while the other still runs. The
-# first pair's track is copied without its counts, so its 'edger' fails.
+# first pair's tracks have no counts beside them, so its 'edger' fails.
 dir_cnt="${ROOT_REPO}/tests/fixtures/compute_signal/bedgraph/count"
+dir_bare="${ROOT_REPO}/tests/fixtures/compute_signal/bedgraph/count_bare"
 dir_par_st="${tmp}/par_status"
 mkdir -p "${dir_par_st}"
-cp "${dir_cnt}/tiny_se.bedGraph" "${dir_par_st}/a.bedGraph"
-cp "${dir_cnt}/tiny_pe.bedGraph" "${dir_par_st}/b.bedGraph"
 
 rc_par=0
 "${TEST_BASH}" "${ROOT_REPO}/bin/execute_compute_signal.sh" \
@@ -269,8 +268,8 @@ rc_par=0
     --mode ratio \
     --method log2 \
     --typ_sig count \
-    --csv_fil_A "${dir_par_st}/a.bedGraph,${dir_cnt}/tiny_se.bedGraph" \
-    --csv_fil_B "${dir_par_st}/b.bedGraph,${dir_cnt}/tiny_pe.bedGraph" \
+    --csv_fil_A "${dir_bare}/bare_se.bedGraph,${dir_cnt}/tiny_se.bedGraph" \
+    --csv_fil_B "${dir_bare}/bare_pe.bedGraph,${dir_cnt}/tiny_pe.bedGraph" \
     --dir_out "${dir_par_st}" \
     --typ_out bedGraph \
     --prefix st \
@@ -283,7 +282,7 @@ rc_par=0
 
 if [[
     "${rc_par}" -ne 0
-        && ! -e "${dir_par_st}/st_a.bedGraph"
+        && ! -e "${dir_par_st}/st_bare_se.bedGraph"
         && -s "${dir_par_st}/st_tiny_se.bedGraph"
 ]]; then
     record_pass "a failed job fails the GNU Parallel run; the other still runs"
@@ -292,7 +291,7 @@ else
         "a failed job was not reported by the GNU Parallel run, or the other" \
         "did not run (exit ${rc_par})"
 fi
-unset dir_cnt dir_par_st rc_par
+unset dir_cnt dir_bare dir_par_st rc_par
 
 
 finish
