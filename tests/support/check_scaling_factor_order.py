@@ -53,10 +53,12 @@ def check_region(file: str, begin: str, end: str, tokens: list[str]) -> None:
 
     region = text[start:stop]
     cursor = -1
+
     for token in tokens:
         position = region.find(token, cursor + 1)
         if position < 0:
             raise SystemExit(f"missing ordered token {token!r}")
+
         cursor = position
 
 
@@ -71,27 +73,31 @@ def check_fixtures(files: list[str]) -> None:
     for name in files:
         path = Path(name)
         lines = path.read_text(encoding="utf-8").splitlines()
+
         for index, line in enumerate(lines):
             if "--csv_mip" not in line:
                 continue
 
             prior = "\n".join(lines[max(0, index - 12) : index])
             uses_base_array = "arr_cmd" in prior
+
             if (
                 "--aln_typ" not in prior
                 and "--aln_typ" not in line
                 and not uses_base_array
             ):
                 failures.append(
-                    f"{path}:{index + 1}: --csv_mip lacks prior --aln_typ"
+                    f"{path}:{index + 1}: --csv_mip lacks prior --aln_typ",
                 )
+
             checked += 1
 
     if failures:
         raise SystemExit("\n".join(failures))
+
     if checked == 0:
         raise SystemExit(
-            "no calculate-scaling-factor fixture commands checked"
+            "no calculate-scaling-factor fixture commands checked",
         )
 
     print(checked)
@@ -99,8 +105,10 @@ def check_fixtures(files: list[str]) -> None:
 
 def main(argv: list[str] | None = None) -> int:
     """
-    Run the subcommand's check. Arguments are read by position, since tokens
-    such as '-at|' and '--aln_typ' look like options.
+    Run the subcommand's check.
+
+    Arguments are read by position, since tokens such as '-at|' and '--aln_typ'
+    look like options.
     """
 
     args = sys.argv[1:] if argv is None else argv

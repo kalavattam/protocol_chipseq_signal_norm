@@ -28,8 +28,9 @@ import argparse
 import ast
 import pathlib
 
-# 'metavar' takes a tuple when 'nargs' is set; the rest are always strings.
-KEY_STR = ("help", "description", "epilog")
+# The 'metavar' argument takes a tuple when 'nargs' is set; the rest are always
+# strings.
+STRING_KEYS = ("help", "description", "epilog")
 
 
 def parse_args(
@@ -65,11 +66,11 @@ def find_tuples(path: pathlib.Path) -> list[str]:
             if not isinstance(kwd.value, ast.Tuple):
                 continue
 
-            if kwd.arg in KEY_STR or (
+            if kwd.arg in STRING_KEYS or (
                 kwd.arg == "metavar" and "nargs" not in keys
             ):
                 found.append(
-                    f"{path}:{kwd.value.lineno}: {kwd.arg}= is a tuple"
+                    f"{path}:{kwd.value.lineno}: {kwd.arg}= is a tuple",
                 )
 
     return found

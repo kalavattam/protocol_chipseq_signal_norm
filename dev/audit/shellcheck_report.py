@@ -46,8 +46,10 @@ def merge_parts(output: str, parts: list[str]) -> None:
     """
 
     comments: list[object] = []
+
     for supplied in parts:
         value = json.loads(Path(supplied).read_text(encoding="utf-8"))
+
         if isinstance(value, dict) and isinstance(value.get("comments"), list):
             comments.extend(value["comments"])
         elif isinstance(value, list):
@@ -70,8 +72,10 @@ def load_findings(path: str) -> tuple[list[object], bool]:
         value = json.loads(Path(path).read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError):
         return [], False
+
     if isinstance(value, dict) and isinstance(value.get("comments"), list):
         return value["comments"], True
+
     if isinstance(value, list):
         return value, True
 
@@ -97,8 +101,10 @@ def write_summary(
     bash_findings, bash_valid = load_findings(bash_path)
     sh_findings, sh_valid = load_findings(sh_path)
     status = int(requested_status)
+
     if not bash_valid or not sh_valid:
         status = 2
+
     disposition = (
         "clean"
         if status == 0
@@ -106,6 +112,7 @@ def write_summary(
         if status == 1
         else "infrastructure_failure"
     )
+
     summary = {
         "schema_version": 1,
         "executable": executable,
@@ -135,6 +142,7 @@ def write_summary(
             },
         },
     }
+
     Path(summary_path).write_text(
         json.dumps(summary, indent=2, sort_keys=True) + "\n",
         encoding="utf-8",

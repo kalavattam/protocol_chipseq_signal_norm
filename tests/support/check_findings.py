@@ -52,7 +52,7 @@ def main(argv: list[str] | None = None) -> int:
     findings = json.loads(Path(args.report).read_text(encoding="utf-8"))
 
     return int(
-        any(item["classification"] == "deterministic" for item in findings)
+        any(item["classification"] == "deterministic" for item in findings),
     )
 
 

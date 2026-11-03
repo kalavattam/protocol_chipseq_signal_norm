@@ -60,25 +60,34 @@ def report_arity(path: str) -> None:
 
     guards = {}
     current = None
+
     for line in source:
         named = re.match(r"function (run_comp_\w+)\(\)", line)
+
         if named:
             current = named.group(1)
+
         guard = re.search(r"\[\[ \$# -ne (\d+) \]\]", line)
+
         if guard and current:
             guards.setdefault(current, int(guard.group(1)))
 
     calls = []
+
     for index, line in enumerate(source):
         called = re.match(r"\s*(run_comp_\w+) \\\s*$", line)
         if not called:
             continue
+
         count, cursor = 0, index + 1
+
         while cursor < len(source):
             count += 1
             if not source[cursor].rstrip().endswith("\\"):
                 break
+
             cursor += 1
+
         calls.append((called.group(1), index + 1, count))
 
     for name, line_no, count in calls:
@@ -86,7 +95,7 @@ def report_arity(path: str) -> None:
         status = "OK" if want == count else "MISMATCH"
         print(
             f"{status} {name} line {line_no}: passes {count}, "
-            f"guard expects {want}"
+            f"guard expects {want}",
         )
 
     print(f"CALLS {len(calls)}")

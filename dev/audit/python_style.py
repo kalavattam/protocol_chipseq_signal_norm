@@ -56,8 +56,7 @@ SECTION_SPACING_RE = re.compile(
     r"^(?P<indent>[ \t]*)"
     r"(?P<section>Usage|Parameters|Other Parameters|Returns|Yields|Receives|"
     r"Raises|Warns|Warnings|See Also|Notes|References|Examples|Attributes|"
-    r"Methods|Script|Description|Arguments|Output|Testing|#TODO)\n"
-    r"[ \t]*\n"
+    r"Methods|Script|Description|Arguments|Output|Testing|#TODO)\n[ \t]*\n"
     r"(?P=indent)-+\n",
     re.M,
 )
@@ -79,7 +78,11 @@ DOCSTRING_CLI_INVENTORY_RE = re.compile(
 
 class Finding:
     def __init__(
-        self, severity: str, path: Path, line: int, message: str
+        self,
+        severity: str,
+        path: Path,
+        line: int,
+        message: str,
     ) -> None:
         self.severity = severity
         self.path = path
@@ -95,9 +98,10 @@ def ann_text(node: ast.AST | None) -> str:
     return "" if node is None else ast.unparse(node)
 
 
-def literal_str(node: ast.AST) -> str | None:
+def read_literal_text(node: ast.AST) -> str | None:
     if isinstance(node, ast.Constant) and isinstance(node.value, str):
         return node.value
+
     return None
 
 
@@ -105,6 +109,7 @@ def keyword(call: ast.Call, name: str) -> ast.keyword | None:
     for kw in call.keywords:
         if kw.arg == name:
             return kw
+
     return None
 
 
@@ -112,9 +117,11 @@ def is_nonempty_help(call: ast.Call) -> bool:
     kw = keyword(call, "help")
     if kw is None:
         return False
-    text = literal_str(kw.value)
+
+    text = read_literal_text(kw.value)
     if text is not None:
         return bool(text.strip())
+
     return True
 
 
@@ -131,7 +138,9 @@ def is_hidden_compat(call: ast.Call) -> bool:
     kw = keyword(call, "help")
     if kw is None or not is_argparse_suppress(kw.value):
         return False
+
     opts = option_strings(call)
+
     return bool(opts) and all(is_hyphen_duplicate(opt) for opt in opts)
 
 
@@ -144,27 +153,36 @@ def is_hyphen_duplicate(opt: str) -> bool:
 
 def add_argument_calls(func: ast.FunctionDef) -> list[ast.Call]:
     calls: list[ast.Call] = []
+
     for node in ast.walk(func):
         if not isinstance(node, ast.Call):
             continue
+
         callee = node.func
+
         if isinstance(callee, ast.Attribute) and callee.attr == "add_argument":
             calls.append(node)
+
     return calls
 
 
 def option_strings(call: ast.Call) -> list[str]:
     opts: list[str] = []
+
     for arg in call.args:
-        text = literal_str(arg)
+        text = read_literal_text(arg)
         if text is None:
             break
+
         opts.append(text)
+
     return opts
 
 
 def check_parse_args(
-    path: Path, tree: ast.Module, findings: list[Finding]
+    path: Path,
+    tree: ast.Module,
+    findings: list[Finding],
 ) -> None:
     funcs = {
         node.name: node
@@ -172,8 +190,10 @@ def check_parse_args(
         if isinstance(node, ast.FunctionDef)
     }
     parse_args = funcs.get("parse_args")
+
     if parse_args is None:
         findings.append(Finding("FAIL", path, 1, "missing parse_args()"))
+
         return
 
     if len(parse_args.args.args) != 1 or parse_args.args.args[0].arg != "argv":
@@ -183,7 +203,7 @@ def check_parse_args(
                 path,
                 parse_args.lineno,
                 "parse_args() must accept argv",
-            )
+            ),
         )
     elif ann_text(parse_args.args.args[0].annotation) != "list[str] | None":
         findings.append(
@@ -192,10 +212,11 @@ def check_parse_args(
                 path,
                 parse_args.lineno,
                 "parse_args() argv must be typed list[str] | None",
-            )
+            ),
         )
 
     default_count = len(parse_args.args.defaults)
+
     if (
         default_count != 1
         or not isinstance(parse_args.args.defaults[0], ast.Constant)
@@ -207,7 +228,7 @@ def check_parse_args(
                 path,
                 parse_args.lineno,
                 "parse_args() argv must default to None",
-            )
+            ),
         )
 
     if ann_text(parse_args.returns) != "argparse.Namespace":
@@ -217,7 +238,7 @@ def check_parse_args(
                 path,
                 parse_args.lineno,
                 "parse_args() must return argparse.Namespace",
-            )
+            ),
         )
 
     if not ast.get_docstring(parse_args):
@@ -227,7 +248,7 @@ def check_parse_args(
                 path,
                 parse_args.lineno,
                 "parse_args() needs a docstring",
-            )
+            ),
         )
 
     has_cap_parser = any(
@@ -244,6 +265,7 @@ def check_parse_args(
         )
         for node in ast.walk(parse_args)
     )
+
     if not has_cap_parser:
         findings.append(
             Finding(
@@ -251,7 +273,7 @@ def check_parse_args(
                 path,
                 parse_args.lineno,
                 "parse_args() must use CapArgumentParser",
-            )
+            ),
         )
 
     has_help_cap = any(
@@ -260,6 +282,7 @@ def check_parse_args(
         and node.func.id == "add_help_cap"
         for node in ast.walk(parse_args)
     )
+
     if not has_help_cap:
         findings.append(
             Finding(
@@ -267,22 +290,25 @@ def check_parse_args(
                 path,
                 parse_args.lineno,
                 "parse_args() must call add_help_cap()",
-            )
+            ),
         )
 
     for call in add_argument_calls(parse_args):
         opts = option_strings(call)
         if not opts:
             continue
+
         is_optional = all(opt.startswith("-") for opt in opts)
         hidden_compat = is_optional and is_hidden_compat(call)
+
         if is_optional and not hidden_compat:
             if "--ref" in opts:
                 findings.append(
                     Finding(
                         "FAIL", path, call.lineno, "use --ref_fa, not --ref"
-                    )
+                    ),
                 )
+
             if "--ref_fa" in opts and "-rf" not in opts:
                 findings.append(
                     Finding(
@@ -290,8 +316,9 @@ def check_parse_args(
                         path,
                         call.lineno,
                         "use -rf, --ref_fa for reference FASTA",
-                    )
+                    ),
                 )
+
         if hidden_compat:
             if not opts or any(not is_hyphen_duplicate(opt) for opt in opts):
                 findings.append(
@@ -301,7 +328,7 @@ def check_parse_args(
                         call.lineno,
                         "hidden compatibility aliases must be systematic "
                         "hyphen variants",
-                    )
+                    ),
                 )
         elif not is_nonempty_help(call):
             findings.append(
@@ -310,8 +337,9 @@ def check_parse_args(
                     path,
                     call.lineno,
                     "parser argument needs non-empty help=",
-                )
+                ),
             )
+
         if is_optional:
             short_opts = [
                 opt
@@ -332,8 +360,9 @@ def check_parse_args(
                         call.lineno,
                         "optional argument exceeds alias cap "
                         f"(short={len(short_opts)} long={len(long_opts)})",
-                    )
+                    ),
                 )
+
             if keyword(call, "dest") is None:
                 findings.append(
                     Finding(
@@ -341,11 +370,12 @@ def check_parse_args(
                         path,
                         call.lineno,
                         "optional argument needs explicit dest=",
-                    )
+                    ),
                 )
             else:
                 dest_kw = keyword(call, "dest")
-                dest = literal_str(dest_kw.value)  # type: ignore[union-attr]
+                dest = read_literal_text(dest_kw.value) if dest_kw else None
+
                 if dest == "ref":
                     findings.append(
                         Finding(
@@ -353,8 +383,9 @@ def check_parse_args(
                             path,
                             call.lineno,
                             'use dest="ref_fa", not dest="ref"',
-                        )
+                        ),
                     )
+
                 if dest == "rnd":
                     findings.append(
                         Finding(
@@ -362,10 +393,12 @@ def check_parse_args(
                             path,
                             call.lineno,
                             'use dest="dp", not dest="rnd"',
-                        )
+                        ),
                     )
+
             if hidden_compat:
                 continue
+
             if not any(
                 re.match(r"^-[A-Za-z0-9][A-Za-z0-9_-]*$", opt) for opt in opts
             ):
@@ -375,8 +408,9 @@ def check_parse_args(
                         path,
                         call.lineno,
                         "optional argument needs a short form",
-                    )
+                    ),
                 )
+
             if not any(opt.startswith("--") for opt in opts):
                 findings.append(
                     Finding(
@@ -384,10 +418,11 @@ def check_parse_args(
                         path,
                         call.lineno,
                         "optional argument needs a long form",
-                    )
+                    ),
                 )
         else:
             name = opts[0]
+
             if not SNAKE_RE.match(name):
                 findings.append(
                     Finding(
@@ -395,7 +430,7 @@ def check_parse_args(
                         path,
                         call.lineno,
                         f"positional '{name}' is not snake_case",
-                    )
+                    ),
                 )
 
 
@@ -406,13 +441,15 @@ def check_main(path: Path, tree: ast.Module, findings: list[Finding]) -> None:
         if isinstance(node, ast.FunctionDef)
     }
     main = funcs.get("main")
+
     if main is None:
         findings.append(Finding("FAIL", path, 1, "missing main()"))
+
         return
 
     if len(main.args.args) != 1 or main.args.args[0].arg != "argv":
         findings.append(
-            Finding("FAIL", path, main.lineno, "main() must accept argv")
+            Finding("FAIL", path, main.lineno, "main() must accept argv"),
         )
     elif ann_text(main.args.args[0].annotation) != "list[str] | None":
         findings.append(
@@ -421,17 +458,17 @@ def check_main(path: Path, tree: ast.Module, findings: list[Finding]) -> None:
                 path,
                 main.lineno,
                 "main() argv must be typed list[str] | None",
-            )
+            ),
         )
 
     if ann_text(main.returns) != "int":
         findings.append(
-            Finding("FAIL", path, main.lineno, "main() must return int")
+            Finding("FAIL", path, main.lineno, "main() must return int"),
         )
 
     if not ast.get_docstring(main):
         findings.append(
-            Finding("FAIL", path, main.lineno, "main() needs a docstring")
+            Finding("FAIL", path, main.lineno, "main() needs a docstring"),
         )
 
     has_return_zero = any(
@@ -440,18 +477,22 @@ def check_main(path: Path, tree: ast.Module, findings: list[Finding]) -> None:
         and node.value.value == 0
         for node in ast.walk(main)
     )
+
     if not has_return_zero:
         findings.append(
             Finding(
                 "FAIL", path, main.lineno, "main() needs explicit return 0"
-            )
+            ),
         )
 
 
 def check_entrypoint(
-    path: Path, tree: ast.Module, findings: list[Finding]
+    path: Path,
+    tree: ast.Module,
+    findings: list[Finding],
 ) -> None:
     src = path.read_text()
+
     if "argparse.ArgumentParser" in src:
         findings.append(
             Finding(
@@ -459,10 +500,12 @@ def check_entrypoint(
                 path,
                 1,
                 "use CapArgumentParser, not argparse.ArgumentParser",
-            )
+            ),
         )
+
     if "args.rnd" in src:
         findings.append(Finding("FAIL", path, 1, "use args.dp, not args.rnd"))
+
     if re.search(r"\brnd\s*=", src):
         findings.append(
             Finding(
@@ -470,55 +513,66 @@ def check_entrypoint(
                 path,
                 1,
                 "use dp, not rnd, for decimal precision variables",
-            )
+            ),
         )
+
     if "sys.exit(main())" in src:
         findings.append(
-            Finding("FAIL", path, 1, "use raise SystemExit(main())")
+            Finding("FAIL", path, 1, "use raise SystemExit(main())"),
         )
 
     has_guard = False
     has_system_exit = False
+
     for node in tree.body:
         if not isinstance(node, ast.If):
             continue
+
         test = ast.unparse(node.test)
+
         if (
             test == "__name__ == '__main__'"
             or test == '__name__ == "__main__"'
         ):
             has_guard = True
+
             for stmt in ast.walk(node):
                 if not isinstance(stmt, ast.Raise) or stmt.exc is None:
                     continue
+
                 if ast.unparse(stmt.exc) == "SystemExit(main())":
                     has_system_exit = True
+
     if not has_guard:
         findings.append(
-            Finding("FAIL", path, 1, "missing __main__ entrypoint guard")
+            Finding("FAIL", path, 1, "missing __main__ entrypoint guard"),
         )
     elif not has_system_exit:
         findings.append(
             Finding(
                 "FAIL", path, 1, "entrypoint must raise SystemExit(main())"
-            )
+            ),
         )
 
 
 def check_docstrings(
-    path: Path, tree: ast.Module, findings: list[Finding]
+    path: Path,
+    tree: ast.Module,
+    findings: list[Finding],
 ) -> None:
     module_doc = ast.get_docstring(tree)
+
     if not module_doc:
         findings.append(
-            Finding("WARN", path, 1, "module docstring is missing")
+            Finding("WARN", path, 1, "module docstring is missing"),
         )
     elif "\n" in module_doc and not MODULE_SECTION_RE.search(module_doc):
         findings.append(
             Finding(
                 "WARN", path, 1, "module docstring lacks NumPy/SciPy sections"
-            )
+            ),
         )
+
     if module_doc:
         if DOCSTRING_CLI_INVENTORY_RE.search(module_doc):
             findings.append(
@@ -526,10 +580,11 @@ def check_docstrings(
                     "WARN",
                     path,
                     1,
-                    "module docstring contains a CLI option inventory; "
-                    "use parser help",
-                )
+                    "module docstring contains a CLI option inventory; use "
+                    "parser help",
+                ),
             )
+
         for match in MODULE_RETIRED_SECTION_RE.finditer(module_doc):
             line = module_doc.count("\n", 0, match.start()) + 1
             findings.append(
@@ -539,12 +594,15 @@ def check_docstrings(
                     line,
                     "module docstring uses retired section "
                     f"'{match.group(1)}'",
-                )
+                ),
             )
+
         sections: dict[str, int] = {}
+
         for match in MODULE_ANY_SECTION_RE.finditer(module_doc):
             section = match.group(1)
             sections[section] = sections.get(section, 0) + 1
+
         for section, count in sorted(sections.items()):
             if count > 1:
                 findings.append(
@@ -553,9 +611,11 @@ def check_docstrings(
                         path,
                         1,
                         f"module docstring has duplicate section '{section}'",
-                    )
+                    ),
                 )
+
         line_count = module_doc.count("\n") + 1
+
         if line_count > MODULE_DOC_MAX_LINES:
             findings.append(
                 Finding(
@@ -564,7 +624,7 @@ def check_docstrings(
                     1,
                     "module docstring is long; move detailed method notes to "
                     "maintained documentation",
-                )
+                ),
             )
 
     for node in tree.body:
@@ -572,16 +632,21 @@ def check_docstrings(
             node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)
         ):
             continue
+
         if isinstance(node, ast.FunctionDef) and node.name.startswith("_"):
             continue
+
         doc = ast.get_docstring(node)
+
         if not doc:
             findings.append(
                 Finding(
                     "FAIL", path, node.lineno, f"{node.name} needs a docstring"
-                )
+                ),
             )
+
             continue
+
         if DOCSTRING_CLI_INVENTORY_RE.search(doc):
             findings.append(
                 Finding(
@@ -590,8 +655,9 @@ def check_docstrings(
                     node.lineno,
                     f"{node.name} docstring contains a CLI option inventory; "
                     "use parser help",
-                )
+                ),
             )
+
         if GOOGLE_RE.search(doc):
             findings.append(
                 Finding(
@@ -599,8 +665,9 @@ def check_docstrings(
                     path,
                     node.lineno,
                     f"{node.name} uses Google-style sections",
-                )
+                ),
             )
+
         if NOOP_RAISES_RE.search(doc):
             findings.append(
                 Finding(
@@ -608,8 +675,9 @@ def check_docstrings(
                     path,
                     node.lineno,
                     f"{node.name} has a no-op Raises section",
-                )
+                ),
             )
+
         if DOCSTRING_MINI_GRAMMAR_RE.search(doc):
             findings.append(
                 Finding(
@@ -618,10 +686,12 @@ def check_docstrings(
                     node.lineno,
                     f"{node.name} uses compact mini-grammar in a docstring "
                     "type",
-                )
+                ),
             )
+
         for match in DOCSTRING_CHOICE_TYPE_RE.finditer(doc):
             choice = match.group(1)
+
             if '"' in choice or re.search(r",[^\s}]", choice):
                 findings.append(
                     Finding(
@@ -629,15 +699,18 @@ def check_docstrings(
                         path,
                         node.lineno,
                         f"{node.name} has a nonstandard choice-set type",
-                    )
+                    ),
                 )
+
                 break
 
 
 def check_docstring_section_spacing(
-    path: Path, findings: list[Finding]
+    path: Path,
+    findings: list[Finding],
 ) -> None:
     text = path.read_text()
+
     for match in SECTION_SPACING_RE.finditer(text):
         line = text.count("\n", 0, match.start()) + 1
         section = match.group("section")
@@ -647,33 +720,39 @@ def check_docstring_section_spacing(
                 path,
                 line,
                 f"{section} heading has a blank line before its underline",
-            )
+            ),
         )
 
 
 def iter_user_scripts() -> list[Path]:
     files: list[Path] = []
+
     for directory in SCRIPT_DIRS:
         if not directory.exists():
             continue
+
         files.extend(
             path
             for path in directory.glob("*.py")
             if path.name != "__init__.py"
         )
+
     return sorted(files)
 
 
 def iter_docstring_files() -> list[Path]:
     files: list[Path] = []
+
     for directory in DOCSTRING_DIRS:
         if not directory.exists():
             continue
+
         files.extend(
             path
             for path in directory.glob("*.py")
             if path.name != "__init__.py"
         )
+
     return sorted(set(files))
 
 
@@ -683,6 +762,7 @@ def main() -> int:
     """
 
     all_findings: list[Finding] = []
+
     for path in iter_docstring_files():
         check_docstring_section_spacing(path, all_findings)
 
@@ -693,9 +773,11 @@ def main() -> int:
             all_findings.append(
                 Finding(
                     "FAIL", path, exc.lineno or 1, f"syntax error: {exc.msg}"
-                )
+                ),
             )
+
             continue
+
         check_parse_args(path, tree, all_findings)
         check_main(path, tree, all_findings)
         check_entrypoint(path, tree, all_findings)

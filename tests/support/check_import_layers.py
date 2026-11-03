@@ -59,6 +59,7 @@ def find_violations(root: Path) -> list[str]:
 
         for node in ast.walk(tree):
             names = []
+
             if isinstance(node, ast.Import):
                 names = [alias.name for alias in node.names]
             elif isinstance(node, ast.ImportFrom):
@@ -67,15 +68,17 @@ def find_violations(root: Path) -> list[str]:
             for name in names:
                 if name == "scripts" or name.startswith("scripts."):
                     findings.append(
-                        f"{path}:{node.lineno}: retired scripts import"
+                        f"{path}:{node.lineno}: retired scripts import",
                     )
+
                 if role == "utilities" and ".cli" in name:
                     findings.append(
-                        f"{path}:{node.lineno}: utility imports CLI layer"
+                        f"{path}:{node.lineno}: utility imports CLI layer",
                     )
+
                 if role == "cli" and name.startswith(f"{PKG}.cli."):
                     findings.append(
-                        f"{path}:{node.lineno}: CLI imports peer CLI"
+                        f"{path}:{node.lineno}: CLI imports peer CLI",
                     )
 
     return findings

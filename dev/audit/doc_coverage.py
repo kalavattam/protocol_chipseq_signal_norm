@@ -15,8 +15,7 @@
 
 
 """
-Find maintained Python and shell functions that lack the documentation they
-need.
+Find maintained Python and shell functions that lack needed documentation.
 
 Python modules under 'src/protocol_chipseq_signal_norm' need a module
 docstring, and their public and nontrivial functions need docstrings. Shell
@@ -33,7 +32,7 @@ import ast
 import re
 from pathlib import Path
 
-ROOTS_PY = (Path("src/protocol_chipseq_signal_norm"),)
+PYTHON_ROOTS = (Path("src/protocol_chipseq_signal_norm"),)
 ROOTS_SH = (
     Path("bin"),
     Path("lib/bash"),
@@ -43,24 +42,24 @@ ROOTS_SH = (
 
 FUNC_RE = re.compile(
     r"^(?:function\s+([A-Za-z_][A-Za-z0-9_]*)\s*\(\)|"
-    r"([A-Za-z_][A-Za-z0-9_]*)\s*\(\)\s*\{)"
+    r"([A-Za-z_][A-Za-z0-9_]*)\s*\(\)\s*\{)",
 )
 LIFECYCLE_RE = re.compile(
     r"^(?:source_helpers.*|resolve_dir_scr|init_args_hardcoded|init_arg_defs|"
     r"init_defs|parse_args|canonicalize_args|validate_args|prepare_vecs|"
     r"validate_vecs|config_exec|setup_env|check_tools|print_.*debug|"
-    r"report_plan|report_results|run_jobs|main)$"
+    r"report_plan|report_results|run_jobs|main)$",
 )
 SECTION_RE = re.compile(
     r"(?m)^[ \t]*(?:Usage|Parameters|Returns|Notes|References|See Also|"
-    r"Examples)\n^[ \t]*-+$"
+    r"Examples)\n^[ \t]*-+$",
 )
 NOOP_HEREDOC_RE = re.compile(r"(?m)^[ \t]*:[ \t]*<<['\"]?EOM['\"]?")
 COMPLEX_SHELL_RE = re.compile(
     r"\b(?:getopts|case |while |for |if |awk |perl |python|samtools|"
     r"curl|wget|sbatch|parallel|mk"
     r"temp|rm |mv |cp |ln |printf )\b|"
-    r"declare -g|local -n|arr_cmd_bld|Expected globals|Generated globals"
+    r"declare -g|local -n|arr_cmd_bld|Expected globals|Generated globals",
 )
 
 
@@ -68,23 +67,27 @@ def emit(severity: str, path: Path, line: int, message: str) -> None:
     print(f"{severity}\t{path}\t{line}\t{message}")
 
 
-def py_files() -> list[Path]:
+def list_python_files() -> list[Path]:
     files = {
         path
-        for root in ROOTS_PY
+        for root in PYTHON_ROOTS
         if root.exists()
         for path in root.rglob("*.py")
         if path.name != "__init__.py"
     }
+
     return sorted(files)
 
 
 def shell_files() -> list[Path]:
     files: set[Path] = set()
+
     for root in ROOTS_SH:
         if not root.exists():
             continue
+
         files.update(root.rglob("*.sh"))
+
     return sorted(files)
 
 
@@ -99,6 +102,7 @@ def is_tiny_python_helper(node: ast.AST) -> bool:
     statements = [stmt for stmt in body if not isinstance(stmt, ast.Expr)]
     if len(statements) <= 1:
         return True
+
     return len(body) <= 3 and not any(
         isinstance(child, branch_kinds)
         for child in ast.walk(node)
@@ -107,15 +111,18 @@ def is_tiny_python_helper(node: ast.AST) -> bool:
 
 
 def check_python() -> None:
-    for path in py_files():
+    for path in list_python_files():
         tree = ast.parse(path.read_text(), filename=str(path))
+
         if not ast.get_docstring(tree):
             emit("FAIL", path, 1, "module docstring is required")
 
         node_kinds = (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)
+
         for node in tree.body:
             if not isinstance(node, node_kinds):
                 continue
+
             if is_public_python(node) and not ast.get_docstring(node):
                 emit(
                     "FAIL",
@@ -127,10 +134,13 @@ def check_python() -> None:
             for child in ast.walk(node):
                 if child is node:
                     continue
+
                 if not isinstance(child, node_kinds):
                     continue
+
                 if ast.get_docstring(child) or is_tiny_python_helper(child):
                     continue
+
                 emit(
                     "WARN",
                     path,
@@ -143,15 +153,19 @@ def check_python() -> None:
 def function_blocks(path: Path) -> list[tuple[int, str, str]]:
     lines = path.read_text(errors="ignore").splitlines()
     starts: list[tuple[int, str]] = []
+
     for idx, line in enumerate(lines):
         match = FUNC_RE.match(line)
+
         if match:
             starts.append((idx, match.group(1) or match.group(2)))
 
     blocks: list[tuple[int, str, str]] = []
+
     for idx, (start, name) in enumerate(starts):
         end = starts[idx + 1][0] if idx + 1 < len(starts) else len(lines)
         blocks.append((start + 1, name, "\n".join(lines[start:end])))
+
     return blocks
 
 
@@ -163,6 +177,7 @@ def is_tiny_shell_helper(body: str) -> bool:
         and not line.lstrip().startswith("#")
         and line.strip() not in {"}", ";;"}
     ]
+
     return len(code_lines) <= 5
 
 
@@ -183,22 +198,20 @@ def check_shell() -> None:
         for line, name, body in function_blocks(path):
             if has_local_help(body):
                 continue
+
             if path.match("lib/bash/help/*.sh"):
                 continue
+
             if LIFECYCLE_RE.match(name):
                 continue
+
             if is_tiny_shell_helper(body):
                 continue
 
-            public_reusable = path.match(
-                "lib/bash/**/*.sh"
-            ) and not name.startswith("_")
-            shared_test = path.match(
-                "tests/support/*.sh"
-            ) and not name.startswith("_")
-            complex_private = name.startswith("_") and COMPLEX_SHELL_RE.search(
-                body
-            )
+            private = name.startswith("_")
+            public_reusable = path.match("lib/bash/**/*.sh") and not private
+            shared_test = path.match("tests/support/*.sh") and not private
+            complex_private = private and COMPLEX_SHELL_RE.search(body)
 
             if public_reusable:
                 emit(

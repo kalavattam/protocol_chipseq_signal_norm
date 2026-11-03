@@ -66,7 +66,7 @@ def parse_args(
     )
     sub = parser.add_subparsers(dest="cmd", required=True)
     pkgs = sub.add_parser(
-        "packages", help="setuptools finds only the intended packages."
+        "packages", help="Setuptools finds only the intended packages."
     )
     pkgs.add_argument("root", help="Repository root.")
     sub.add_parser(

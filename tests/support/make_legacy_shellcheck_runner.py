@@ -81,7 +81,7 @@ def main(argv: list[str] | None = None) -> int:
     source, count = GUARD.subn(unguard, source)
     if count != GUARD_COUNT:
         raise SystemExit(
-            f"expected {GUARD_COUNT} empty-array guards, found {count}"
+            f"expected {GUARD_COUNT} empty-array guards, found {count}",
         )
 
     Path(args.destination).write_text(source, encoding="utf-8")

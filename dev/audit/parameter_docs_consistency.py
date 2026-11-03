@@ -122,10 +122,10 @@ SHARED_NAME_CANDIDATES = {
 }
 RETIRED_RE = re.compile(
     r"\b(?:" + "|".join(re.escape(name) for name in OLD_NAMES) + r")\b"
-    r"|--(?:csv_)?(?:" + OLD_IN + "|" + OLD_OUT + r")\b"
+    r"|--(?:csv_)?(?:" + OLD_IN + "|" + OLD_OUT + r")\b",
 )
 PARAM_ROW_RE = re.compile(
-    r"^(?P<indent>[ \t]{2,})(?P<head>[^:\n]+?)\s+:\s+(?P<typ>[^\n]+)$"
+    r"^(?P<indent>[ \t]{2,})(?P<head>[^:\n]+?)\s+:\s+(?P<typ>[^\n]+)$",
 )
 SECTION_RE = re.compile(r"^[A-Z][A-Za-z ]+\n-+\n", re.M)
 
@@ -156,6 +156,7 @@ def norm_compare(text: str) -> str:
         text,
     )
     text = re.sub(r"\s+", " ", text)
+
     return text.strip()
 
 
@@ -165,13 +166,17 @@ def has_shared_core(desc: str, expected: str) -> bool:
     exp_base = exp_cmp.rstrip(".")
     if desc_cmp == exp_cmp:
         return True
+
     if desc_cmp.startswith(exp_cmp + " "):
         return True
+
     if desc_cmp.startswith(exp_cmp + "\n"):
         return True
+
     if desc_cmp.startswith(exp_base):
         nxt = desc_cmp[len(exp_base) : len(exp_base) + 1]
         return nxt in {"", ".", ";", ":", ",", " "}
+
     return False
 
 
@@ -195,6 +200,7 @@ def duplicated_registered_core(desc: str, expected: str) -> str | None:
     ]
     if len(sentences) < 2:
         return None
+
     first_words = opening_words(sentences[0])
     second_words = opening_words(sentences[1])
     if first_words and first_words == second_words:
@@ -202,6 +208,7 @@ def duplicated_registered_core(desc: str, expected: str) -> str | None:
             "repeats the opening phrase across adjacent sentences: "
             f"'{sentences[0]}' / '{sentences[1]}'"
         )
+
     return None
 
 
@@ -210,12 +217,15 @@ def canonical_from_row(head: str) -> str | None:
     opts = re.findall(r"--([A-Za-z][A-Za-z0-9_]*)\b", head)
     if opts:
         return opts[-1]
+
     m_pos = re.match(r"\d+\s+([A-Za-z][A-Za-z0-9_]*)$", head)
     if m_pos:
         return m_pos.group(1)
+
     m_name = re.match(r"([A-Za-z][A-Za-z0-9_]*)$", head)
     if m_name:
         return m_name.group(1)
+
     return None
 
 
@@ -232,6 +242,7 @@ def read_canonical_table() -> dict[str, str]:
     )
     if start is None:
         raise RuntimeError("missing PARAMETER.DESCRIPTIONS owner section")
+
     end = next(
         (
             index
@@ -240,20 +251,27 @@ def read_canonical_table() -> dict[str, str]:
         ),
         len(lines),
     )
+
     for line in lines[start + 1 : end]:
         if line.startswith("Use `"):
             break
+
         if not line.startswith("| `"):
             continue
+
         cells = [cell.strip() for cell in line.strip().strip("|").split("|")]
         if len(cells) < 3:
             continue
+
         key = cells[0].strip("`")
         desc = norm_desc(cells[2])
+
         if key and desc and key != "Parameter":
             registry[key] = desc
+
     if not registry:
         raise RuntimeError("PARAMETER.DESCRIPTIONS contains no canonical rows")
+
     return registry
 
 
@@ -277,45 +295,53 @@ def family_registry_findings(
         if family.get("status") == "non_applicable_same_name"
     ]
     by_parameter: dict[str, list[dict[str, object]]] = defaultdict(list)
+
     for family in shared:
         by_parameter[str(family.get("parameter", ""))].append(family)
 
     for parameter, core in table.items():
         matches = by_parameter.get(parameter, [])
+
         if len(matches) != 1:
             findings.append(
                 f"canonical row '{parameter}' maps to {len(matches)} "
-                "registered_shared families"
+                "registered_shared families",
             )
+
             continue
+
         if norm_desc(str(matches[0].get("canonical_core", ""))) != core:
             findings.append(
-                f"canonical row '{parameter}' core differs from its family"
+                f"canonical row '{parameter}' core differs from its family",
             )
 
     for parameter, matches in sorted(by_parameter.items()):
         if len(matches) != 1:
             findings.append(
                 f"registered_shared family '{parameter}' occurs "
-                f"{len(matches)} times"
+                f"{len(matches)} times",
             )
+
         if parameter not in table:
             findings.append(
-                f"registered_shared family '{parameter}' has no canonical row"
+                f"registered_shared family '{parameter}' has no canonical row",
             )
 
     for family in local:
         parameter = str(family.get("parameter", ""))
+
         if parameter in table:
             findings.append(
                 f"non_applicable_same_name family '{parameter}' appears in "
-                "the canonical table"
+                "the canonical table",
             )
+
         meanings = family.get("local_meanings")
+
         if not isinstance(meanings, list) or not meanings:
             findings.append(
                 f"non_applicable_same_name family '{parameter}' lacks local "
-                "meaning evidence"
+                "meaning evidence",
             )
 
     return findings
@@ -332,13 +358,16 @@ def read_registered_families(
     families = data.get("parameter_families")
     if not isinstance(families, list):
         raise RuntimeError("help contracts lack parameter_families")
+
     for message in family_registry_findings(table, families):
         print(f"FAIL:{rel(CONTRACTS)}:1:{message}")
+
     registry = {
         str(family["parameter"]): norm_desc(str(family["canonical_core"]))
         for family in families
         if family.get("status") == "registered_shared"
     }
+
     return registry, families
 
 
@@ -386,39 +415,49 @@ def prove_family_fault_detection(
         ):
             print(
                 f"FAIL:{rel(CONTRACTS)}:1:fault injection was not detected: "
-                f"{label}"
+                f"{label}",
             )
 
 
 def iter_text_files() -> list[Path]:
     files: list[Path] = []
+
     for base in SCAN_DIRS:
         if not base.exists():
             continue
+
         for path in base.rglob("*"):
             if not path.is_file():
                 continue
+
             if "artifacts/tests" in path.as_posix():
                 continue
+
             if path.suffix not in {".sh", ".py", ".md"}:
                 continue
+
             files.append(path)
+
     return sorted(set(files))
 
 
 def scan_retired_names(paths: list[Path]) -> list[str]:
     findings: list[str] = []
+
     for path in paths:
         if path.name == "test_parameter_docs_consistency.sh":
             continue
+
         text = path.read_text(encoding="utf-8")
+
         for idx, line in enumerate(text.splitlines(), 1):
             if RETIRED_RE.search(line):
                 findings.append(
                     f"FAIL:{rel(path)}:{idx}:"
                     "retired input/output parameter name: "
-                    f"{line.strip()}"
+                    f"{line.strip()}",
                 )
+
     return findings
 
 
@@ -427,68 +466,95 @@ def shell_param_docs(path: Path) -> list[ParamDoc]:
     lines = path.read_text(encoding="utf-8").splitlines()
     in_params = False
     i = 0
+
     while i < len(lines):
         line = lines[i]
+
         if line.strip() == "Parameters":
             in_params = True
             i += 2
+
             continue
+
         if in_params and re.match(r"^[A-Z][A-Za-z ]+$", line.strip()):
             in_params = False
+
         if not in_params:
             i += 1
+
             continue
+
         m_row = PARAM_ROW_RE.match(line)
+
         if not m_row:
             i += 1
+
             continue
+
         key = canonical_from_row(m_row.group("head"))
+
         if key is None:
             i += 1
+
             continue
+
         desc_lines: list[str] = []
         j = i + 1
+
         while j < len(lines):
             nxt = lines[j]
             if PARAM_ROW_RE.match(nxt):
                 break
+
             if re.match(r"^[A-Z][A-Za-z ]+$", nxt.strip()):
                 break
+
             if nxt.startswith("    ") or nxt.startswith("\t"):
                 stripped = nxt.strip()
+
                 if stripped:
                     desc_lines.append(stripped)
                 elif desc_lines:
                     break
             elif desc_lines:
                 break
+
             j += 1
+
         if desc_lines:
             desc = norm_desc(" ".join(desc_lines))
             symbol = "<file>"
+
             for prior in reversed(lines[: i + 1]):
                 match = re.match(
                     r"(?:function\s+)?([A-Za-z_][A-Za-z0-9_]*)"
                     r"\s*(?:\(\))?\s*\{",
                     prior.strip(),
                 )
+
                 if match:
                     symbol = match.group(1)
                     break
+
             docs.append(ParamDoc(path, i + 1, key, desc, symbol))
+
         i = max(j, i + 1)
+
     return docs
 
 
-def literal_str(node: ast.AST) -> str | None:
+def read_literal_text(node: ast.AST) -> str | None:
     if isinstance(node, ast.Constant) and isinstance(node.value, str):
         return node.value
+
     if isinstance(node, ast.JoinedStr):
         return None
+
     try:
         value = ast.literal_eval(node)
     except Exception:
         return None
+
     return value if isinstance(value, str) else None
 
 
@@ -496,74 +562,97 @@ def keyword(call: ast.Call, name: str) -> ast.keyword | None:
     for kw in call.keywords:
         if kw.arg == name:
             return kw
+
     return None
 
 
 def option_strings(call: ast.Call) -> list[str]:
     opts: list[str] = []
+
     for arg in call.args:
-        text = literal_str(arg)
+        text = read_literal_text(arg)
         if text is None:
             break
+
         opts.append(text)
+
     return opts
 
 
 def python_param_docs(path: Path) -> list[ParamDoc]:
     docs: list[ParamDoc] = []
+
     try:
         tree = ast.parse(path.read_text(encoding="utf-8"))
     except SyntaxError as exc:
         line = exc.lineno or 1
         print(f"FAIL:{rel(path)}:{line}:Python syntax error: {exc.msg}")
+
         return docs
+
     for node in ast.walk(tree):
         if not isinstance(node, ast.Call):
             continue
+
         callee = node.func
         if not (
             isinstance(callee, ast.Attribute) and callee.attr == "add_argument"
         ):
             continue
+
         opts = option_strings(node)
         if not opts or all(
             opt.startswith("--") and "-" in opt[2:] for opt in opts
         ):
             continue
+
         dest_kw = keyword(node, "dest")
-        key = literal_str(dest_kw.value) if dest_kw is not None else None
+        key = read_literal_text(dest_kw.value) if dest_kw is not None else None
+
         if key is None:
             longs = [opt[2:] for opt in opts if opt.startswith("--")]
             key = longs[-1].replace("-", "_") if longs else opts[0]
+
         help_kw = keyword(node, "help")
         if help_kw is None:
             continue
-        desc = literal_str(help_kw.value)
+
+        desc = read_literal_text(help_kw.value)
         if desc is None or desc.strip() == "argparse.SUPPRESS":
             continue
+
         symbol = "<file>"
+
         for candidate in ast.walk(tree):
             if not isinstance(
                 candidate,
                 (ast.FunctionDef, ast.AsyncFunctionDef),
             ):
                 continue
+
             end_line = getattr(candidate, "end_lineno", candidate.lineno)
+
             if candidate.lineno <= node.lineno <= end_line:
                 symbol = candidate.name
                 break
+
         docs.append(ParamDoc(path, node.lineno, key, norm_desc(desc), symbol))
+
     return docs
 
 
 def approved_realization(member: dict[str, object], fallback: str) -> str:
-    """Return the exact registered natural realization, never a name guess."""
+    """
+    Return the exact registered natural realization, never a name guess.
+    """
 
     explicit = member.get("approved_realization")
     if isinstance(explicit, str) and explicit:
         return norm_desc(explicit)
+
     evidence = str(member.get("evidence", ""))
     marker = ": "
+
     return (
         norm_desc(evidence.partition(marker)[2])
         if marker in evidence
@@ -572,14 +661,17 @@ def approved_realization(member: dict[str, object], fallback: str) -> str:
 
 
 def prove_evidence_extraction() -> None:
-    """Prove approved text keeps its own ': ', as in '(default: x)'."""
+    """
+    Prove approved text keeps its own ': ', as in '(default: x)'.
+    """
 
     member = {"evidence": "Parameters row for 'x': Format (default: 'bam')."}
     got = approved_realization(member, "")
+
     if got != norm_desc("Format (default: 'bam')."):
         print(
             f"FAIL:{rel(CONTRACTS)}:1:evidence extraction truncated the "
-            f"approved text: {got!r}"
+            f"approved text: {got!r}",
         )
 
 
@@ -593,10 +685,12 @@ def main() -> int:
     prove_family_fault_detection(canonical_table, families)
     prove_evidence_extraction()
     paths = iter_text_files()
+
     for finding in scan_retired_names(paths):
         print(finding)
 
     docs: list[ParamDoc] = []
+
     for path in paths:
         if path.suffix == ".py":
             docs.extend(python_param_docs(path))
@@ -606,8 +700,10 @@ def main() -> int:
     for family in families:
         if family.get("status") != "registered_shared":
             continue
+
         parameter = str(family["parameter"])
         expected = registry[parameter]
+
         for member in family.get("members", []):
             member_path = ROOT / str(member["path"])
             matching = [
@@ -617,28 +713,29 @@ def main() -> int:
                 and doc.key == parameter
                 and doc.symbol == str(member["symbol"])
             ]
+
             if len(matching) != 1:
                 print(
                     f"FAIL:{rel(CONTRACTS)}:1:registered member "
                     f"'{member['surface_id']}' maps to {len(matching)} "
-                    "semantic parameter rows"
+                    "semantic parameter rows",
                 )
             else:
                 approved = approved_realization(member, expected)
                 duplicated = duplicated_registered_core(
                     matching[0].desc, approved
                 )
+
                 if duplicated is not None:
                     print(
                         f"FAIL:{rel(matching[0].path)}:{matching[0].line}:"
-                        f"malformed description for {parameter}: {duplicated}"
+                        f"malformed description for {parameter}: {duplicated}",
                     )
                 elif norm_compare(matching[0].desc) != norm_compare(approved):
                     print(
                         f"WARN:{rel(matching[0].path)}:{matching[0].line}:"
-                        "PARAMETER.DESCRIPTIONS registered-member "
-                        "divergence for "
-                        f"'{member['surface_id']}'"
+                        "PARAMETER.DESCRIPTIONS registered-member divergence "
+                        f"for '{member['surface_id']}'",
                     )
 
     return 0
