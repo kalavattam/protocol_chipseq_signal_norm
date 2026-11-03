@@ -514,8 +514,8 @@ class AiAttributionTest(unittest.TestCase):
             valid.replace("# Script: tool.sh\n#\n", "# Script: tool.sh\n# \n"),
             source_file(
                 (
-                    # Otherwise valid, but one physical line is too
-                    # wide, so only the width rule may reject it.
+                    # Otherwise valid, but one physical line is too wide, so
+                    # only the width rule may reject it.
                     "# OpenAI ChatGPT and Codex (GPT-5.4, GPT-5.5, "
                     "GPT-5.6) were used in development and "
                     "documentation, with all output reviewed, edited, "
@@ -718,7 +718,7 @@ class TrailerAgreementTests(unittest.TestCase):
         for name, declared in (
             ("accepted/single_vendor.sh", True),
             ("accepted/multi_vendor.sh", True),
-            ("non_applicable/no_attribution.sh", False),
+            ("nonapplicable/no_attribution.sh", False),
         ):
             with self.subTest(fixture=name):
                 text = (FIXTURES / name).read_text(encoding="utf-8")

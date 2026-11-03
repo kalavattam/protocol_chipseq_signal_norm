@@ -45,7 +45,7 @@ source "${dir_scr}/../../support/fixture_helpers.sh"
 # claim about a rewrite rather than about a verdict.
 dir_acc="${dir_fix}/accepted"
 dir_bnd="${dir_fix}/boundary"
-dir_nap="${dir_fix}/non_applicable"
+dir_nap="${dir_fix}/nonapplicable"
 dir_rej="${dir_fix}/rejected"
 dir_fmt="${dir_fix}/format"
 
@@ -278,7 +278,7 @@ The example must retain its canonical structure.
 EOM
 
 # Boundary: documents that sit on a decision edge and must still pass, and
-# non-applicable: documents the rule does not reach at all.
+# nonapplicable: documents the rule does not reach at all.
 cat << 'EOM' > "${fil_bnd_quotes}"
 
 # Attached heading
@@ -309,7 +309,7 @@ EOM
 
 cat << 'EOM' > "${fil_nap_fences}"
 
-# Non-applicable fence-like prose
+# Nonapplicable fence-like prose
 An inline ````````` run is not a fenced block.
 EOM
 

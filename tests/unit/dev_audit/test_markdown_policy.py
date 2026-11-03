@@ -568,7 +568,7 @@ def test_blockquote_owner_is_exact_and_nonoverlapping() -> None:
     accepted = check_text(read("accepted/blockquotes.md"))
     rejected = check_text(read("rejected/blockquotes.md"))
     boundary = check_text(read("boundary/blockquotes.md"))
-    non_applicable = check_text(read("non_applicable/blockquotes.md"))
+    nonapplicable = check_text(read("nonapplicable/blockquotes.md"))
 
     assert not [
         item for item in accepted if item.rule_id == "MD.BLOCKQUOTE.MARKER"
@@ -583,7 +583,7 @@ def test_blockquote_owner_is_exact_and_nonoverlapping() -> None:
     ]
     assert not [
         item
-        for item in non_applicable
+        for item in nonapplicable
         if item.rule_id == "MD.BLOCKQUOTE.MARKER"
     ]
 

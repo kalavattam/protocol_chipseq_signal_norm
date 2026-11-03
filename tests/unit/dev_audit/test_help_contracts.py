@@ -329,7 +329,7 @@ def test_parameter_elsewhere_in_file_does_not_satisfy_recorded_symbol() -> (
 
     payload = data()
     payload["parameter_occurrence_dispositions"][0]["disposition"] = (
-        "non_applicable_same_name"
+        "nonapplicable_same_name"
     )
     assert "HELP.CONTRACT.APPLICABILITY" in {
         item["rule_id"] for item in validate_contract(ROOT, payload)

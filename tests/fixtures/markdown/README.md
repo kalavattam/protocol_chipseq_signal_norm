@@ -43,8 +43,8 @@ Generated documents on a decision edge, which must still pass:
 - `boundary/nested_fences.md`
 
 Generated documents the rule does not reach:
-- `non_applicable/blockquotes.md`
-- `non_applicable/nested_fences.md`
+- `nonapplicable/blockquotes.md`
+- `nonapplicable/nested_fences.md`
 
 Generated formatter pairs:
 - `format/input.md` and `format/expected.md`
@@ -54,7 +54,7 @@ Generated formatter pairs:
 <br />
 
 ## Expected Markdown behavior
-Every document under `accepted/`, `boundary/`, and `non_applicable/` reports no deterministic finding. Each document under `rejected/` reports the rules named for it in the unit test and no others, so a regression that broadens one rule is separable from a regression that narrows another.
+Every document under `accepted/`, `boundary/`, and `nonapplicable/` reports no deterministic finding. Each document under `rejected/` reports the rules named for it in the unit test and no others, so a regression that broadens one rule is separable from a regression that narrows another.
 
 Each `format/` pair pins one rewrite and its fixpoint: formatting the input yields the expected document, and formatting the expected document yields itself.
 

@@ -32,7 +32,7 @@
           "disposition": {
             "enum": [
               "enrolled_member",
-              "non_applicable_same_name",
+              "nonapplicable_same_name",
               "unresolved_review_candidate"
             ]
           }
@@ -246,7 +246,7 @@
           "type": "array",
           "items": {"$ref": "#/$defs/localMeaning"}
         },
-        "status": {"enum": ["registered_shared", "non_applicable_same_name"]}
+        "status": {"enum": ["registered_shared", "nonapplicable_same_name"]}
       },
       "allOf": [
         {

@@ -6,7 +6,7 @@
 # Copyright 2026 by Kris Alavattam
 # Email: kalavattam@gmail.com
 #
-# Anthropic Claude Code (Opus 5) was used in design, development, and
+# Anthropic Claude Code (Opus 5, Opus 5.5) was used in design, development, and
 # documentation, with all output reviewed, edited, and approved by the author.
 #
 # Distributed under the MIT license.
@@ -110,7 +110,7 @@ def combine(left: float, right: float) -> tuple[float, float]:
 EOM
 
 # The verdict record. It enumerates the accepted, rejected, boundary, and
-# non-applicable readings the help-contract rules must produce, and it is
+# nonapplicable readings the help-contract rules must produce, and it is
 # written in the canonical form owned by 'JSON.SOURCE.FORM'.
 cat << 'EOM' > "${fil_cases}"
 {
@@ -157,7 +157,7 @@ cat << 'EOM' > "${fil_cases}"
     "token": "Ambiguous fragments require review.",
     "bash_block_meaning": "CLI invocation environment, not implementation language."
   },
-  "non_applicable": {
+  "nonapplicable": {
     "token": "compute_input_floor --mode dist --method qntl_nz",
     "context": "structured_usage",
     "function": "is_even",

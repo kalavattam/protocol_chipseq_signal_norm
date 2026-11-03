@@ -350,7 +350,7 @@ This owner does not govern attachment to headings or colon-introduced structures
 
 **Semantic remainder:** Decide whether prose should be quoted and whether nesting is meaningful.
 
-**Exceptions:** Fenced literal content is non-applicable and remains byte-identical.
+**Exceptions:** Fenced literal content is nonapplicable and remains byte-identical.
 
 <br />
 

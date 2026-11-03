@@ -292,7 +292,7 @@ def family_registry_findings(
     local = [
         family
         for family in families
-        if family.get("status") == "non_applicable_same_name"
+        if family.get("status") == "nonapplicable_same_name"
     ]
     by_parameter: dict[str, list[dict[str, object]]] = defaultdict(list)
 
@@ -332,7 +332,7 @@ def family_registry_findings(
 
         if parameter in table:
             findings.append(
-                f"non_applicable_same_name family '{parameter}' appears in "
+                f"nonapplicable_same_name family '{parameter}' appears in "
                 "the canonical table",
             )
 
@@ -340,7 +340,7 @@ def family_registry_findings(
 
         if not isinstance(meanings, list) or not meanings:
             findings.append(
-                f"non_applicable_same_name family '{parameter}' lacks local "
+                f"nonapplicable_same_name family '{parameter}' lacks local "
                 "meaning evidence",
             )
 
@@ -384,10 +384,10 @@ def prove_family_fault_detection(
         for index, family in enumerate(families)
         if family.get("status") == "registered_shared"
     )
-    non_applicable_index = next(
+    nonapplicable_index = next(
         index
         for index, family in enumerate(families)
-        if family.get("status") == "non_applicable_same_name"
+        if family.get("status") == "nonapplicable_same_name"
     )
     mutations: list[tuple[str, dict[str, str], list[dict[str, object]]]] = []
 
@@ -404,9 +404,9 @@ def prove_family_fault_detection(
     mutations.append(("core mismatch", table, mismatched))
 
     promoted_table = dict(table)
-    local_parameter = str(families[non_applicable_index]["parameter"])
+    local_parameter = str(families[nonapplicable_index]["parameter"])
     promoted_table[local_parameter] = "Injected shared meaning."
-    mutations.append(("non-applicable promotion", promoted_table, families))
+    mutations.append(("nonapplicable promotion", promoted_table, families))
 
     for label, candidate_table, candidate_families in mutations:
         if not family_registry_findings(

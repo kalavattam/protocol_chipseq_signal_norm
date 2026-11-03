@@ -11,7 +11,7 @@ bash tests/fixtures/semantic_movement/make.sh
 
 Generated fixture outputs are ignored by Git. `tests/run_tests.sh` regenerates this fixture set automatically when required inputs are missing.
 
-This fixture set is one record of every verdict at once rather than a set of inputs each carrying one, so it sits at the fixture root with no verdict directories beneath it. The unit test derives its rejected, boundary, and non-applicable cases by perturbing the accepted record, which keeps each rejection one edit away from an accepted record instead of a separately drifting document.
+This fixture set is one record of every verdict at once rather than a set of inputs each carrying one, so it sits at the fixture root with no verdict directories beneath it. The unit test derives its rejected, boundary, and nonapplicable cases by perturbing the accepted record, which keeps each rejection one edit away from an accepted record instead of a separately drifting document.
 
 <br />
 

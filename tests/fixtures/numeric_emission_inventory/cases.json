@@ -23,8 +23,5 @@
     ],
     "status": "unresolved"
   },
-  "non_applicable": {
-    "caller": "unenrolled",
-    "protocol_exception": "unresolved"
-  }
+  "nonapplicable": {"caller": "unenrolled", "protocol_exception": "unresolved"}
 }

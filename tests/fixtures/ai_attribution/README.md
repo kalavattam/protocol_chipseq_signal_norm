@@ -26,12 +26,12 @@ Generated headers the checker must accept:
 - `accepted/multi_vendor.sh`: two vendors credited in the lead-in and semicolon-list form, in first-use order
 
 Generated headers the rule does not reach:
-- `non_applicable/no_attribution.sh`: a coherent no-AI profile that declares no attribution at all
+- `nonapplicable/no_attribution.sh`: a coherent no-AI profile that declares no attribution at all
 
 <br />
 
 ## Expected attribution behavior
-All three fixtures are conforming inputs. `accepted/single_vendor.sh` and `accepted/multi_vendor.sh` exercise the two accepted representations, and `non_applicable/no_attribution.sh` exercises the profile that must report null observed attribution rather than a finding.
+All three fixtures are conforming inputs. `accepted/single_vendor.sh` and `accepted/multi_vendor.sh` exercise the two accepted representations, and `nonapplicable/no_attribution.sh` exercises the profile that must report null observed attribution rather than a finding.
 
 Trailer-agreement behavior is exercised against injected evidence rather than against these files, because a fixture has no commit history of its own.
 

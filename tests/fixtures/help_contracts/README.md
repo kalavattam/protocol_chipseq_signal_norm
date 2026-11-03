@@ -11,7 +11,7 @@ bash tests/fixtures/help_contracts/make.sh
 
 Generated fixture outputs are ignored by Git. `tests/run_tests.sh` regenerates this fixture set automatically when required inputs are missing.
 
-`accepted/` holds the surfaces the contracts must read without complaint. `cases.json` sits at the fixture root rather than under a verdict directory because it is the record of every verdict at once — accepted, rejected, boundary, and non-applicable — rather than an input carrying one of them.
+`accepted/` holds the surfaces the contracts must read without complaint. `cases.json` sits at the fixture root rather than under a verdict directory because it is the record of every verdict at once — accepted, rejected, boundary, and nonapplicable — rather than an input carrying one of them.
 
 Because the outputs are ignored, they are invisible to the checkers' own discovery, so a fixture help surface cannot be mistaken for a maintained tool's help surface.
 
@@ -22,7 +22,7 @@ Readable provenance:
 - `make.sh`
 
 Generated verdict record:
-- `cases.json`: the accepted, rejected, boundary, and non-applicable readings the help-contract rules must produce, in the canonical form owned by `JSON.SOURCE.FORM`
+- `cases.json`: the accepted, rejected, boundary, and nonapplicable readings the help-contract rules must produce, in the canonical form owned by `JSON.SOURCE.FORM`
 
 Generated help surfaces the contracts must accept:
 - `accepted/shell.sh`: one shell help function whose body is a heredoc carrying the standard Usage and Parameters sections

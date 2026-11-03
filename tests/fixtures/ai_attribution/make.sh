@@ -43,7 +43,7 @@ source "${dir_scr}/../../support/fixture_helpers.sh"
 # accepted, and a coherent no-AI profile is outside what the rule reaches
 # rather than a header it accepts.
 dir_acc="${dir_fix}/accepted"
-dir_nap="${dir_fix}/non_applicable"
+dir_nap="${dir_fix}/nonapplicable"
 fil_single="${dir_acc}/single_vendor.sh"
 fil_multi="${dir_acc}/multi_vendor.sh"
 fil_none="${dir_nap}/no_attribution.sh"

@@ -2,5 +2,5 @@
   "accepted": "unresolved evidence outside an unselected cohort passes foundation validation",
   "rejected": ["missing classification", "missing dp provenance", "exception without owner", "ready cohort containing unresolved site"],
   "boundary": "a ready bounded cohort does not close global readiness",
-  "non_applicable": "proved_not_dp_governed"
+  "nonapplicable": "proved_not_dp_governed"
 }

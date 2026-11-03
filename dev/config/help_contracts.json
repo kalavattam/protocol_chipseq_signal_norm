@@ -27,7 +27,7 @@
       "path": "lib/bash/core/source_helpers.sh",
       "symbol": "_source_helper_resolve",
       "parameter": "dir_fnc",
-      "disposition": "non_applicable_same_name"
+      "disposition": "nonapplicable_same_name"
     },
     {
       "id": "source_helpers_dir_fnc_276",
@@ -41,105 +41,105 @@
       "path": "lib/bash/help/help_submit_align_fastqs.sh",
       "symbol": "help_submit_align_fastqs",
       "parameter": "dir_scr",
-      "disposition": "non_applicable_same_name"
+      "disposition": "nonapplicable_same_name"
     },
     {
       "id": "calculate_dir_scr",
       "path": "lib/bash/help/help_submit_calculate_scaling_factor.sh",
       "symbol": "help_submit_calculate_scaling_factor",
       "parameter": "dir_scr",
-      "disposition": "non_applicable_same_name"
+      "disposition": "nonapplicable_same_name"
     },
     {
       "id": "compute_dir_scr",
       "path": "lib/bash/help/help_submit_compute_signal.sh",
       "symbol": "help_submit_compute_signal",
       "parameter": "dir_scr",
-      "disposition": "non_applicable_same_name"
+      "disposition": "nonapplicable_same_name"
     },
     {
       "id": "convert_dir_scr",
       "path": "lib/bash/help/help_submit_convert_bam_bed.sh",
       "symbol": "help_submit_convert_bam_bed",
       "parameter": "dir_scr",
-      "disposition": "non_applicable_same_name"
+      "disposition": "nonapplicable_same_name"
     },
     {
       "id": "filter_dir_scr",
       "path": "lib/bash/help/help_submit_filter_alignments.sh",
       "symbol": "help_submit_filter_alignments",
       "parameter": "dir_scr",
-      "disposition": "non_applicable_same_name"
+      "disposition": "nonapplicable_same_name"
     },
     {
       "id": "qsort_dir_scr",
       "path": "lib/bash/help/help_submit_qsort_bam.sh",
       "symbol": "help_submit_qsort_bam",
       "parameter": "dir_scr",
-      "disposition": "non_applicable_same_name"
+      "disposition": "nonapplicable_same_name"
     },
     {
       "id": "trim_dir_scr",
       "path": "lib/bash/help/help_submit_trim_fastqs.sh",
       "symbol": "help_submit_trim_fastqs",
       "parameter": "dir_scr",
-      "disposition": "non_applicable_same_name"
+      "disposition": "nonapplicable_same_name"
     },
     {
       "id": "floor_skp_pfx",
       "path": "src/protocol_chipseq_signal_norm/cli/compute_input_floor.py",
       "symbol": "parse_args",
       "parameter": "skp_pfx",
-      "disposition": "non_applicable_same_name"
+      "disposition": "nonapplicable_same_name"
     },
     {
       "id": "floor_qntl_nz",
       "path": "src/protocol_chipseq_signal_norm/cli/compute_input_floor.py",
       "symbol": "parse_args",
       "parameter": "qntl_nz",
-      "disposition": "non_applicable_same_name"
+      "disposition": "nonapplicable_same_name"
     },
     {
       "id": "floor_coef",
       "path": "src/protocol_chipseq_signal_norm/cli/compute_input_floor.py",
       "symbol": "parse_args",
       "parameter": "coef",
-      "disposition": "non_applicable_same_name"
+      "disposition": "nonapplicable_same_name"
     },
     {
       "id": "floor_eps",
       "path": "src/protocol_chipseq_signal_norm/cli/compute_input_floor.py",
       "symbol": "parse_args",
       "parameter": "eps",
-      "disposition": "non_applicable_same_name"
+      "disposition": "nonapplicable_same_name"
     },
     {
       "id": "floor_mode_nz",
       "path": "src/protocol_chipseq_signal_norm/cli/compute_input_floor.py",
       "symbol": "parse_args",
       "parameter": "mode_nz",
-      "disposition": "non_applicable_same_name"
+      "disposition": "nonapplicable_same_name"
     },
     {
       "id": "floor_floor",
       "path": "src/protocol_chipseq_signal_norm/cli/compute_input_floor.py",
       "symbol": "parse_args",
       "parameter": "floor",
-      "disposition": "non_applicable_same_name"
+      "disposition": "nonapplicable_same_name"
     },
     {
       "id": "floor_siz_bin",
       "path": "src/protocol_chipseq_signal_norm/cli/compute_input_floor.py",
       "symbol": "parse_args",
       "parameter": "siz_bin",
-      "disposition": "non_applicable_same_name"
+      "disposition": "nonapplicable_same_name"
     },
     {
       "id": "floor_siz_gen",
       "path": "src/protocol_chipseq_signal_norm/cli/compute_input_floor.py",
       "symbol": "parse_args",
       "parameter": "siz_gen",
-      "disposition": "non_applicable_same_name"
+      "disposition": "nonapplicable_same_name"
     },
     {
       "id": "merge_dp",
@@ -869,7 +869,7 @@
           "meaning": "Sequencing/alignment depth value(s) for main input alignment files, where 'min' abbreviates main input under the local mip/min/sip/sin scheme rather than minimum."
         }
       ],
-      "status": "non_applicable_same_name"
+      "status": "nonapplicable_same_name"
     },
     {
       "id": "shared_csv_pseudo",
@@ -1834,7 +1834,7 @@
           "meaning": "Optional scaling-factor data table to header."
         }
       ],
-      "status": "non_applicable_same_name"
+      "status": "nonapplicable_same_name"
     },
     {
       "id": "local_mode_meanings",
@@ -1861,7 +1861,7 @@
           "meaning": "Scaling-factor part-file mode: siq or spike."
         }
       ],
-      "status": "non_applicable_same_name"
+      "status": "nonapplicable_same_name"
     },
     {
       "id": "local_method_meanings",
@@ -1888,7 +1888,7 @@
           "meaning": "Pseudocount statistic selection."
         }
       ],
-      "status": "non_applicable_same_name"
+      "status": "nonapplicable_same_name"
     }
   ],
   "examples": [
