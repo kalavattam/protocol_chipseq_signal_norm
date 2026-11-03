@@ -9,7 +9,7 @@
 # The following were used in design, development, and documentation, with all
 # output reviewed, edited, and approved by the author:
 # - OpenAI ChatGPT and Codex (GPT-5.5, GPT-5.6);
-# - Anthropic Claude Code (Opus 5).
+# - Anthropic Claude Code (Opus 5, Opus 5.5).
 #
 # Distributed under the MIT license.
 
@@ -100,10 +100,7 @@ else
 fi
 
 if ! \
-    "${py_cmd[@]}" - << PY
-import sys
-raise SystemExit(0 if sys.version_info >= (3, 11) else 1)
-PY
+    "${py_cmd[@]}" -c 'import sys; sys.exit(sys.version_info < (3, 11))'
 then
     record_fail \
         "$("${py_cmd[@]}" --version 2>&1) is older than Python 3.11"
@@ -259,45 +256,9 @@ if \
     run_capture \
         "help literal tuple sweep" \
         "${log_tup_hlp}" \
-        "${py_cmd[@]}" - "${ROOT_REPO}/src" << 'PY'
-import ast
-import pathlib
-import sys
-
-# 'metavar' takes a tuple when 'nargs' is set; the rest are always strings.
-KEY_STR = ("help", "description", "epilog")
-
-root = pathlib.Path(sys.argv[1])
-paths = sorted(root.rglob("*.py"))
-found = []
-
-for path in paths:
-    tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
-
-    for node in ast.walk(tree):
-        if not isinstance(node, ast.Call):
-            continue
-
-        keys = {kwd.arg for kwd in node.keywords}
-
-        for kwd in node.keywords:
-            if not isinstance(kwd.value, ast.Tuple):
-                continue
-
-            if kwd.arg in KEY_STR or (
-                kwd.arg == "metavar" and "nargs" not in keys
-            ):
-                found.append(
-                    f"{path}:{kwd.value.lineno}: {kwd.arg}= is a tuple"
-                )
-
-print(f"inspected {len(paths)}")
-
-for line in found:
-    print(line)
-
-raise SystemExit(1 if found else 0)
-PY
+        "${py_cmd[@]}" \
+            "${ROOT_REPO}/tests/support/find_help_tuples.py" \
+            "${ROOT_REPO}/src"
 then
     assert_pattern_found \
         "${log_tup_hlp}" \

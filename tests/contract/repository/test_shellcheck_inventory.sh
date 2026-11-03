@@ -9,7 +9,7 @@
 # The following were used in design, development, and documentation, with all
 # output reviewed, edited, and approved by the author:
 # - OpenAI ChatGPT and Codex (GPT-5.6);
-# - Anthropic Claude Code (Opus 5).
+# - Anthropic Claude Code (Opus 5, Opus 5.5).
 #
 # Distributed under the MIT license.
 
@@ -24,32 +24,68 @@ source "$(
 )/tests/support/test_helpers.sh"
 
 
-function json_value() {
+# Print the value of a Python expression over a JSON file's 'value'.
+function print_json_value() {
     local source="${1}"
     local expression="${2}"
 
-    "${TEST_PYTHON}" - "${source}" "${expression}" << PY
-import json
-import sys
-
-with open(sys.argv[1], encoding="utf-8") as stream:
-    value = json.load(stream)
-print(eval(sys.argv[2], {"value": value}))
-PY
+    "${TEST_PYTHON}" \
+        "${ROOT_REPO}/tests/support/json_value.py" \
+        "${source}" \
+        "${expression}"
 }
 
 
+# Print how many files of one language a scan's summary counts.
+function print_file_count() {
+    print_json_value \
+        "${1}/summary.json" \
+        "value[\"languages\"][\"${2}\"][\"file_count\"]"
+}
+
+
+# Print how many lines of a file contain a fixed string; a missing file prints
+# nothing.
+function print_match_count() {
+    local fil="${1}"
+    local pattern="${2}"
+
+    grep -Fc -- "${pattern}" "${fil}" 2> /dev/null || true
+}
+
+
+# Print how many lines of a file are exactly a given line.
+function print_line_count() {
+    local fil="${1}"
+    local line="${2}"
+
+    grep -Fxc -- "${line}" "${fil}" 2> /dev/null || true
+}
+
+
+# Print the languages that a '--list' output names, sorted and joined by
+# spaces. Its provenance lines have no tab and are skipped.
+function print_languages() {
+    awk -F '\t' 'NF == 2 { print $1 }' "${1}" | sort -u | paste -sd ' ' -
+}
+
+
+# Make a prefix whose 'shellcheck' is the fixture stub and whose 'python' is
+# the test interpreter.
 function make_fake_prefix() {
     local prefix="${1}"
 
     mkdir -p "${prefix}/bin"
-    cp "${ROOT_REPO}/tests/fixtures/shellcheck/tool/fake_shellcheck.sh" \
+    cp \
+        "${ROOT_REPO}/tests/fixtures/shellcheck/tool/fake_shellcheck.sh" \
         "${prefix}/bin/shellcheck"
     chmod +x "${prefix}/bin/shellcheck"
     ln -sf "${TEST_PYTHON}" "${prefix}/bin/python"
 }
 
 
+# Run a runner under a shell against the fake prefix, with the stub's exit
+# status and call log set.
 function run_fake_with_runner() {
     local shell_path="${1}"
     local runner_path="${2}"
@@ -68,24 +104,30 @@ function run_fake_with_runner() {
 }
 
 
+# Run the maintained runner under the test Bash.
 function run_fake() {
     run_fake_with_runner "${TEST_BASH}" "${runner}" "$@"
 }
 
 
+# Run the maintained runner under the system Bash.
 function run_fake_system_bash() {
     run_fake_with_runner /bin/bash "${runner}" "$@"
 }
 
 
-function invocation_count() {
-    local log="${1}"
-    local pattern="${2}"
-
-    grep -Fc -- "${pattern}" "${log}" 2> /dev/null || true
+# Print the maintained runner's '--list' output for the given paths, under the
+# system Bash and the fake prefix.
+function run_list() {
+    CONDA_PREFIX="${fake_prefix}" \
+    CONDA_DEFAULT_ENV=env_protocol \
+        /bin/bash "${runner}" --list -- "$@"
 }
 
 
+# Make a small Git repository that holds the runner, its report module, one
+# Bash script in each discovered directory, the POSIX bootstrap, and a tracked
+# script deleted from the working tree.
 function make_discovery_repo() {
     local root="${1}"
 
@@ -94,71 +136,38 @@ function make_discovery_repo() {
         "${root}/dev/audit" \
         "${root}/install/scripts" \
         "${root}/tests/contract"
+
     cp "${runner}" "${root}/dev/audit/run_shellcheck.sh"
-    cp "${ROOT_REPO}/tests/fixtures/shellcheck/script/bash.sh" \
+    cp \
+        "${ROOT_REPO}/dev/audit/shellcheck_report.py" \
+        "${root}/dev/audit/shellcheck_report.py"
+    cp \
+        "${ROOT_REPO}/tests/fixtures/shellcheck/script/bash.sh" \
         "${root}/bin/discovered.sh"
-    cp "${ROOT_REPO}/tests/fixtures/shellcheck/script/posix.sh" \
+    cp \
+        "${ROOT_REPO}/tests/fixtures/shellcheck/script/posix.sh" \
         "${root}/install/scripts/install_envs_entrypoint.sh"
-    cp "${ROOT_REPO}/tests/fixtures/shellcheck/script/bash.sh" \
+    cp \
+        "${ROOT_REPO}/tests/fixtures/shellcheck/script/bash.sh" \
         "${root}/tests/contract/discovered.sh"
-    cp "${ROOT_REPO}/tests/fixtures/shellcheck/script/bash.sh" \
+    cp \
+        "${ROOT_REPO}/tests/fixtures/shellcheck/script/bash.sh" \
         "${root}/tests/contract/deleted.sh"
+
     git -C "${root}" init -q
     git -C "${root}" add bin dev install tests
     rm "${root}/tests/contract/deleted.sh"
 }
 
 
+# Write the Bash-only runner that predates the nounset fix.
 function make_legacy_runner() {
     local destination="${1}"
 
-    "${TEST_PYTHON}" - "${runner}" "${destination}" << 'PY'
-from pathlib import Path
-import sys
-
-
-source = Path(sys.argv[1]).read_text(encoding="utf-8")
-destination = Path(sys.argv[2])
-replacements = {
-    '''    if (( ${#arr_bash_paths[@]} > 0 )); then
-        for resolved in "${arr_bash_paths[@]}"; do
-            printf 'bash\\t%s\\n' "${resolved}"
-        done
-    fi
-''': '''    for resolved in "${arr_bash_paths[@]}"; do
-        printf 'bash\\t%s\\n' "${resolved}"
-    done
-''',
-    '''    if (( ${#arr_sh_paths[@]} > 0 )); then
-        for resolved in "${arr_sh_paths[@]}"; do
-            printf 'sh\\t%s\\n' "${resolved}"
-        done
-    fi
-''': '''    for resolved in "${arr_sh_paths[@]}"; do
-        printf 'sh\\t%s\\n' "${resolved}"
-    done
-''',
-    '''if (( ${#arr_bash_paths[@]} > 0 )); then
-    run_language bash "${bash_raw}" "${arr_bash_paths[@]}"
-else
-    run_language bash "${bash_raw}"
-fi
-''': '''run_language bash "${bash_raw}" "${arr_bash_paths[@]}"
-''',
-    '''if (( ${#arr_sh_paths[@]} > 0 )); then
-    run_language sh "${sh_raw}" "${arr_sh_paths[@]}"
-else
-    run_language sh "${sh_raw}"
-fi
-''': '''run_language sh "${sh_raw}" "${arr_sh_paths[@]}"
-''',
-}
-for expected, replacement in replacements.items():
-    if expected not in source:
-        raise SystemExit(f"missing guarded expansion: {expected!r}")
-    source = source.replace(expected, replacement, 1)
-destination.write_text(source, encoding="utf-8")
-PY
+    "${TEST_PYTHON}" \
+        "${ROOT_REPO}/tests/support/make_legacy_shellcheck_runner.py" \
+        "${runner}" \
+        "${destination}"
     chmod +x "${destination}"
 }
 
@@ -169,6 +178,7 @@ runner="${ROOT_REPO}/dev/audit/run_shellcheck.sh"
 environment="${ROOT_REPO}/install/envs/env_protocol.yml"
 actual_log="${TEST_DIR_LOG}/shellcheck/provenance.log"
 nonactivated_log="${TEST_DIR_LOG}/shellcheck/nonactivated.log"
+
 mkdir -p "$(dirname "${actual_log}")"
 
 assert_pattern_found \
@@ -182,12 +192,13 @@ else
     record_pass "env_protocol ShellCheck is an explicit executable"
 fi
 
-if run_capture \
-    "activated-prefix ShellCheck provenance" \
-    "${actual_log}" \
-    env CONDA_PREFIX="${TEST_ENV_PREFIX}" CONDA_DEFAULT_ENV=env_protocol \
-        PATH="/opt/homebrew/bin:${PATH}" \
-        "${TEST_BASH}" "${runner}" --provenance-only
+if \
+    run_capture \
+        "activated-prefix ShellCheck provenance" \
+        "${actual_log}" \
+        env CONDA_PREFIX="${TEST_ENV_PREFIX}" CONDA_DEFAULT_ENV=env_protocol \
+            PATH="/opt/homebrew/bin:${PATH}" \
+            "${TEST_BASH}" "${runner}" --provenance-only
 then
     assert_pattern_found \
         "${actual_log}" \
@@ -197,11 +208,12 @@ else
     record_fail "activated-prefix ShellCheck provenance failed"
 fi
 
-if run_capture \
-    "nonactivated ShellCheck provenance" \
-    "${nonactivated_log}" \
-    conda run --no-capture-output -n env_protocol /bin/bash \
-        "${runner}" --provenance-only
+if \
+    run_capture \
+        "nonactivated ShellCheck provenance" \
+        "${nonactivated_log}" \
+        conda run --no-capture-output -n env_protocol /bin/bash \
+            "${runner}" --provenance-only
 then
     assert_pattern_found \
         "${nonactivated_log}" \
@@ -216,30 +228,34 @@ else
 fi
 
 fake_prefix="${TEST_DIR_TMP}/shellcheck_prefix"
-make_fake_prefix "${fake_prefix}"
 bash_fixture="${ROOT_REPO}/tests/fixtures/shellcheck/script/bash.sh"
 bootstrap="${ROOT_REPO}/install/scripts/install_envs_entrypoint.sh"
-
 discovery_root="${TEST_DIR_TMP}/shellcheck_discovery"
-make_discovery_repo "${discovery_root}"
 discovery_log="${TEST_DIR_TMP}/shellcheck_discovery.log"
 
-# Name each expected discovery entry so the assertion stays scannable.
-discovered_bin="${discovery_root}/bin/discovered.sh"
-discovered_test="${discovery_root}/tests/contract/discovered.sh"
-discovered_bootstrap="${discovery_root}/install/scripts"
-discovered_bootstrap+="/install_envs_entrypoint.sh"
+make_fake_prefix "${fake_prefix}"
+make_discovery_repo "${discovery_root}"
 
-if CONDA_PREFIX="${fake_prefix}" CONDA_DEFAULT_ENV=env_protocol \
-    "${TEST_BASH}" \
-        "${discovery_root}/dev/audit/run_shellcheck.sh" --list \
-        > "${discovery_log}" 2>&1
+# Name each expected discovery entry so the assertion stays scannable. Each
+# entry must be a whole line, since 'sh<TAB><path>' is also part of
+# 'bash<TAB><path>'.
+entry_bin=$'bash\t'"${discovery_root}/bin/discovered.sh"
+entry_test=$'bash\t'"${discovery_root}/tests/contract/discovered.sh"
+entry_boot=$'sh\t'"${discovery_root}/install/scripts"
+entry_boot+="/install_envs_entrypoint.sh"
+deleted='tests/contract/deleted.sh'
+
+if \
+    CONDA_PREFIX="${fake_prefix}" CONDA_DEFAULT_ENV=env_protocol \
+        "${TEST_BASH}" "${discovery_root}/dev/audit/run_shellcheck.sh" \
+            --list > "${discovery_log}" 2>&1
 then
-    if grep -Fq $'bash\t'"${discovered_bin}" "${discovery_log}" && \
-        grep -Fq $'bash\t'"${discovered_test}" "${discovery_log}" && \
-        grep -Fq $'sh\t'"${discovered_bootstrap}" "${discovery_log}" && \
-        ! grep -Fq 'tests/contract/deleted.sh' "${discovery_log}"
-    then
+    if [[
+        "$(print_line_count "${discovery_log}" "${entry_bin}")" == "1"
+            && "$(print_line_count "${discovery_log}" "${entry_test}")" == "1"
+            && "$(print_line_count "${discovery_log}" "${entry_boot}")" == "1"
+            && "$(print_match_count "${discovery_log}" "${deleted}")" == "0"
+    ]]; then
         record_pass \
             "default discovery assigns maintained Bash and POSIX fixtures"
     else
@@ -252,23 +268,24 @@ fi
 legacy_runner="${TEST_DIR_TMP}/run_shellcheck_legacy.sh"
 legacy_output="${TEST_DIR_TMP}/shellcheck_legacy"
 legacy_log="${legacy_output}/invocations.log"
+
 rm -rf "${legacy_output}"
 mkdir -p "${legacy_output}"
+
 make_legacy_runner "${legacy_runner}"
 
-set +e
-
+legacy_status=0
 run_fake_with_runner /bin/bash "${legacy_runner}" \
     "${fake_prefix}" 0 "${legacy_output}" "${legacy_log}" "${bash_fixture}" \
-    > "${legacy_output}/runner.log" 2>&1
+    > "${legacy_output}/runner.log" 2>&1 \
+    || legacy_status=$?
 
-legacy_status="$?"
-
-set -e
-
-if (( legacy_status > 0 )) && \
-    grep -Fq 'unbound variable' "${legacy_output}/runner.log"
-then
+if [[
+    "${legacy_status}" -gt 0
+        && "$(
+            print_match_count "${legacy_output}/runner.log" 'unbound variable'
+        )" -ge 1
+]]; then
     record_pass "legacy Bash-only runner exposes the nounset array fault"
 else
     record_fail \
@@ -277,26 +294,23 @@ fi
 
 bash_only_output="${TEST_DIR_TMP}/shellcheck_bash_only"
 bash_only_log="${bash_only_output}/invocations.log"
+
 rm -rf "${bash_only_output}"
 mkdir -p "${bash_only_output}"
 
-if run_fake_system_bash \
-    "${fake_prefix}" 0 "${bash_only_output}" "${bash_only_log}" \
-    "${bash_fixture}" > "${bash_only_output}/runner.log" 2>&1
+if \
+    run_fake_system_bash \
+        "${fake_prefix}" 0 "${bash_only_output}" "${bash_only_log}" \
+        "${bash_fixture}" > "${bash_only_output}/runner.log" 2>&1
 then
-    if [[ "$(json_value "${bash_only_output}/summary.json" \
-        'value["languages"]["bash"]["file_count"]')" == "1" ]] && \
-        [[ "$(json_value "${bash_only_output}/summary.json" \
-        'value["languages"]["sh"]["file_count"]')" == "0" ]] && \
-        [[
-            "$(invocation_count "${bash_only_log}" '--shell=bash')" == "1"
-        ]] && \
-        [[
-            "$(invocation_count "${bash_only_log}" '--shell=sh')" == "0"
-        ]] && \
-        [[ -s "${bash_only_output}/bash_findings.json" ]] && \
-        [[ -s "${bash_only_output}/sh_findings.json" ]]
-    then
+    if [[
+        "$(print_file_count "${bash_only_output}" bash)" == "1"
+            && "$(print_file_count "${bash_only_output}" sh)" == "0"
+            && "$(print_match_count "${bash_only_log}" '--shell=bash')" == "1"
+            && "$(print_match_count "${bash_only_log}" '--shell=sh')" == "0"
+            && -s "${bash_only_output}/bash_findings.json"
+            && -s "${bash_only_output}/sh_findings.json"
+    ]]; then
         record_pass \
             "Bash-only scan preserves empty POSIX evidence under nounset"
     else
@@ -309,26 +323,23 @@ fi
 
 posix_only_output="${TEST_DIR_TMP}/shellcheck_posix_only"
 posix_only_log="${posix_only_output}/invocations.log"
+
 rm -rf "${posix_only_output}"
 mkdir -p "${posix_only_output}"
 
-if run_fake_system_bash \
-    "${fake_prefix}" 0 "${posix_only_output}" "${posix_only_log}" \
-    "${bootstrap}" > "${posix_only_output}/runner.log" 2>&1
+if \
+    run_fake_system_bash \
+        "${fake_prefix}" 0 "${posix_only_output}" "${posix_only_log}" \
+        "${bootstrap}" > "${posix_only_output}/runner.log" 2>&1
 then
-    if [[ "$(json_value "${posix_only_output}/summary.json" \
-        'value["languages"]["bash"]["file_count"]')" == "0" ]] && \
-        [[ "$(json_value "${posix_only_output}/summary.json" \
-        'value["languages"]["sh"]["file_count"]')" == "1" ]] && \
-        [[
-            "$(invocation_count "${posix_only_log}" '--shell=bash')" == "0"
-        ]] && \
-        [[
-            "$(invocation_count "${posix_only_log}" '--shell=sh')" == "1"
-        ]] && \
-        [[ -s "${posix_only_output}/bash_findings.json" ]] && \
-        [[ -s "${posix_only_output}/sh_findings.json" ]]
-    then
+    if [[
+        "$(print_file_count "${posix_only_output}" bash)" == "0"
+            && "$(print_file_count "${posix_only_output}" sh)" == "1"
+            && "$(print_match_count "${posix_only_log}" '--shell=bash')" == "0"
+            && "$(print_match_count "${posix_only_log}" '--shell=sh')" == "1"
+            && -s "${posix_only_output}/bash_findings.json"
+            && -s "${posix_only_output}/sh_findings.json"
+    ]]; then
         record_pass \
             "POSIX-only scan preserves empty Bash evidence under nounset"
     else
@@ -341,16 +352,16 @@ fi
 
 bash_list="${TEST_DIR_TMP}/shellcheck_bash_only.list"
 posix_list="${TEST_DIR_TMP}/shellcheck_posix_only.list"
-if CONDA_PREFIX="${fake_prefix}" CONDA_DEFAULT_ENV=env_protocol \
-    /bin/bash "${runner}" --list -- "${bash_fixture}" \
-        > "${bash_list}" 2>&1 && \
-    CONDA_PREFIX="${fake_prefix}" CONDA_DEFAULT_ENV=env_protocol \
-    /bin/bash "${runner}" --list -- "${bootstrap}" > "${posix_list}" 2>&1 && \
-    grep -Eq '^bash\t' "${bash_list}" && \
-    ! grep -Eq '^sh\t' "${bash_list}" && \
-    grep -Eq '^sh\t' "${posix_list}" && \
-    ! grep -Eq '^bash\t' "${posix_list}"
-then
+
+list_status=0
+run_list "${bash_fixture}" > "${bash_list}" 2>&1 || list_status=$?
+run_list "${bootstrap}" > "${posix_list}" 2>&1 || list_status=$?
+
+if [[
+    "${list_status}" -eq 0
+        && "$(print_languages "${bash_list}")" == "bash"
+        && "$(print_languages "${posix_list}")" == "sh"
+]]; then
     record_pass "single-dialect list loops are nounset-safe"
 else
     record_fail "single-dialect list loops failed under nounset"
@@ -358,21 +369,23 @@ fi
 
 default_output="${TEST_DIR_TMP}/shellcheck_default"
 default_log="${default_output}/invocations.log"
+
 rm -rf "${default_output}"
 mkdir -p "${default_output}"
-if run_fake_with_runner /bin/bash \
-    "${discovery_root}/dev/audit/run_shellcheck.sh" "${fake_prefix}" 0 \
-    "${default_output}" "${default_log}" \
-    > "${default_output}/runner.log" 2>&1
+
+if \
+    run_fake_with_runner /bin/bash \
+        "${discovery_root}/dev/audit/run_shellcheck.sh" "${fake_prefix}" 0 \
+        "${default_output}" "${default_log}" \
+        > "${default_output}/runner.log" 2>&1
 then
-    if [[ "$(json_value "${default_output}/summary.json" \
-        'value["languages"]["bash"]["file_count"]')" == "2" ]] && \
-        [[ "$(json_value "${default_output}/summary.json" \
-        'value["languages"]["sh"]["file_count"]')" == "1" ]] && \
-        [[ "$(invocation_count "${default_log}" '--shell=bash')" == "1" ]] && \
-        [[ "$(invocation_count "${default_log}" '--shell=sh')" == "1" ]] && \
-        ! grep -Fq 'tests/contract/deleted.sh' "${default_log}"
-    then
+    if [[
+        "$(print_file_count "${default_output}" bash)" == "2"
+            && "$(print_file_count "${default_output}" sh)" == "1"
+            && "$(print_match_count "${default_log}" '--shell=bash')" == "1"
+            && "$(print_match_count "${default_log}" '--shell=sh')" == "1"
+            && "$(print_match_count "${default_log}" "${deleted}")" == "0"
+    ]]; then
         record_pass "default scan executes both discovered language passes"
     else
         record_fail "default scan lost discovery or language-pass behavior"
@@ -383,19 +396,25 @@ fi
 
 missing_output="${TEST_DIR_TMP}/shellcheck_missing"
 missing_log="${missing_output}/invocations.log"
+missing_msg='ShellCheck path is not a file'
+
 rm -rf "${missing_output}"
 mkdir -p "${missing_output}"
-set +e
+
+missing_status=0
 run_fake_system_bash \
     "${fake_prefix}" 0 "${missing_output}" "${missing_log}" \
-    "${TEST_DIR_TMP}/not_a_shell_file.sh" > "${missing_output}/runner.log" 2>&1
-missing_status="$?"
-set -e
-if (( missing_status == 2 )) && \
-    grep -Fq 'ShellCheck path is not a file' \
-        "${missing_output}/runner.log" && \
-    [[ ! -e "${missing_log}" ]]
-then
+    "${TEST_DIR_TMP}/not_a_shell_file.sh" \
+    > "${missing_output}/runner.log" 2>&1 \
+    || missing_status=$?
+
+if [[
+    "${missing_status}" -eq 2
+        && "$(
+            print_match_count "${missing_output}/runner.log" "${missing_msg}"
+        )" -ge 1
+        && ! -e "${missing_log}"
+]]; then
     record_pass "missing explicit path remains an infrastructure failure"
 else
     record_fail "missing explicit path changed ShellCheck failure behavior"
@@ -403,22 +422,25 @@ fi
 
 duplicate_output="${TEST_DIR_TMP}/shellcheck_duplicates"
 duplicate_log="${duplicate_output}/invocations.log"
+
 rm -rf "${duplicate_output}"
 mkdir -p "${duplicate_output}"
-if run_fake_system_bash \
-    "${fake_prefix}" 0 "${duplicate_output}" "${duplicate_log}" \
-    "${bash_fixture}" "${bash_fixture}" \
-    > "${duplicate_output}/runner.log" 2>&1
+
+if \
+    run_fake_system_bash \
+        "${fake_prefix}" 0 "${duplicate_output}" "${duplicate_log}" \
+        "${bash_fixture}" "${bash_fixture}" \
+        > "${duplicate_output}/runner.log" 2>&1
 then
     duplicate_paths="$(
         grep -oF -- "${bash_fixture}" "${duplicate_log}" | wc -l
     )"
 
-    if [[ "$(json_value "${duplicate_output}/summary.json" \
-        'value["languages"]["bash"]["file_count"]')" == "2" ]] && \
-        [[ "${duplicate_paths//[[:space:]]/}" == "2" ]] && \
-        [[ "$(invocation_count "${duplicate_log}" '--shell=bash')" == "1" ]]
-    then
+    if [[
+        "$(print_file_count "${duplicate_output}" bash)" == "2"
+            && "${duplicate_paths//[[:space:]]/}" == "2"
+            && "$(print_match_count "${duplicate_log}" '--shell=bash')" == "1"
+    ]]; then
         record_pass "duplicate explicit paths retain count and order"
     else
         record_fail "duplicate explicit paths were deduplicated or reordered"
@@ -429,24 +451,25 @@ fi
 
 failure_output="${TEST_DIR_TMP}/shellcheck_failure_propagation"
 failure_log="${failure_output}/invocations.log"
+failure_summary="${failure_output}/summary.json"
+
 rm -rf "${failure_output}"
 mkdir -p "${failure_output}"
-set +e
+
+failure_status=0
 run_fake_system_bash \
     "${fake_prefix}" 3 "${failure_output}" "${failure_log}" \
     "${bash_fixture}" "${bootstrap}" \
-    > "${failure_output}/runner.log" 2>&1
-failure_status="$?"
-set -e
-if (( failure_status > 1 )) && \
-    [[ -s "${failure_output}/summary.json" ]] && \
-    [[
-        "$(json_value "${failure_output}/summary.json" 'value["status"]')" \
-            == "2"
-    ]] && \
-    [[ "$(invocation_count "${failure_log}" '--shell=bash')" == "1" ]] && \
-    [[ "$(invocation_count "${failure_log}" '--shell=sh')" == "1" ]]
-then
+    > "${failure_output}/runner.log" 2>&1 \
+    || failure_status=$?
+
+if [[
+    "${failure_status}" -gt 1
+        && -s "${failure_summary}"
+        && "$(print_json_value "${failure_summary}" 'value["status"]')" == "2"
+        && "$(print_match_count "${failure_log}" '--shell=bash')" == "1"
+        && "$(print_match_count "${failure_log}" '--shell=sh')" == "1"
+]]; then
     record_pass "mixed infrastructure failures propagate after both passes"
 else
     record_fail "mixed infrastructure failure propagation changed"
@@ -455,19 +478,22 @@ fi
 for expected_status in 0 1 3; do
     output="${TEST_DIR_TMP}/shellcheck_status_${expected_status}"
     invocation_log="${output}/invocations.log"
+
     mkdir -p "${output}"
-    set +e
+
+    observed_status=0
     run_fake \
         "${fake_prefix}" "${expected_status}" "${output}" \
         "${invocation_log}" "${bash_fixture}" \
-        > "${output}/runner.log" 2>&1
-    observed_status="$?"
-    set -e
+        > "${output}/runner.log" 2>&1 \
+        || observed_status=$?
+
     summary="${output}/summary.json"
     if [[ ! -s "${summary}" ]]; then
         record_fail "status ${expected_status} did not retain a summary"
         continue
     fi
+
     if (( expected_status == 0 && observed_status == 0 )); then
         record_pass "status 0 is clean"
     elif (( expected_status == 1 && observed_status == 1 )); then
@@ -483,7 +509,8 @@ done
 status_one_summary="${TEST_DIR_TMP}/shellcheck_status_1/summary.json"
 
 if [[
-    "$(json_value "${status_one_summary}" 'value["finding_count"]')" == "1"
+    "$(print_json_value "${status_one_summary}" 'value["finding_count"]')" \
+        == "1"
 ]]; then
     record_pass "status-1 structured evidence retains its finding count"
 else
@@ -492,20 +519,22 @@ fi
 
 split_output="${TEST_DIR_TMP}/shellcheck_split"
 split_log="${split_output}/invocations.log"
+
 rm -rf "${split_output}"
 mkdir -p "${split_output}"
-if run_fake \
-    "${fake_prefix}" 0 "${split_output}" "${split_log}" \
-    "${bash_fixture}" "${bootstrap}" \
-    > "${split_output}/runner.log" 2>&1
+
+if \
+    run_fake \
+        "${fake_prefix}" 0 "${split_output}" "${split_log}" \
+        "${bash_fixture}" "${bootstrap}" \
+        > "${split_output}/runner.log" 2>&1
 then
-    if grep -Fq -- '--shell=bash' "${split_log}" && \
-        grep -Fq -- '--shell=sh' "${split_log}" && \
-        [[ "$(json_value "${split_output}/summary.json" \
-            'value["languages"]["bash"]["file_count"]')" == "1" ]] && \
-        [[ "$(json_value "${split_output}/summary.json" \
-            'value["languages"]["sh"]["file_count"]')" == "1" ]]
-    then
+    if [[
+        "$(print_match_count "${split_log}" '--shell=bash')" -ge 1
+            && "$(print_match_count "${split_log}" '--shell=sh')" -ge 1
+            && "$(print_file_count "${split_output}" bash)" == "1"
+            && "$(print_file_count "${split_output}" sh)" == "1"
+    ]]; then
         record_pass "Bash and the POSIX bootstrap use separate language modes"
     else
         record_fail "ShellCheck language-mode discovery was not split"
@@ -514,11 +543,12 @@ else
     record_fail "fixture-backed language split failed"
 fi
 
-if grep -Fq -- "-x -P ${ROOT_REPO}" "${split_log}"; then
+if [[ "$(print_match_count "${split_log}" "-x -P ${ROOT_REPO}")" -ge 1 ]]; then
     record_pass \
         "ShellCheck retains external sources and repository source path"
 else
     record_fail "ShellCheck invocation lost -x or the repository source path"
 fi
+
 
 finish

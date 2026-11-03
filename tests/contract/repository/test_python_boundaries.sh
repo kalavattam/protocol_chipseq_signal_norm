@@ -9,7 +9,7 @@
 # The following were used in design, development, and documentation, with all
 # output reviewed, edited, and approved by the author:
 # - OpenAI ChatGPT and Codex (GPT-5.6);
-# - Anthropic Claude Code (Opus 5).
+# - Anthropic Claude Code (Opus 5, Opus 5.5).
 #
 # Distributed under the MIT license.
 
@@ -18,42 +18,19 @@ set -euo pipefail
 export PYTHONDONTWRITEBYTECODE=1
 
 TEST_NAME="Python package boundaries"
+
+# Source shared test helpers.
 # shellcheck source=tests/support/test_helpers.sh
 source "$(
     git -C "$(dirname "${BASH_SOURCE[0]}")" rev-parse --show-toplevel
 )/tests/support/test_helpers.sh"
+
+
 cd "${ROOT_REPO}"
+
 print_section "${TEST_NAME}"
 
-python - << PY
-from __future__ import annotations
-
-import ast
-from pathlib import Path
-
-root = Path("src/protocol_chipseq_signal_norm")
-findings: list[str] = []
-for path in sorted(root.rglob("*.py")):
-    tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
-    role = path.relative_to(root).parts[0]
-    for node in ast.walk(tree):
-        names: list[str] = []
-        if isinstance(node, ast.Import):
-            names = [alias.name for alias in node.names]
-        elif isinstance(node, ast.ImportFrom):
-            names = [node.module or ""]
-        for name in names:
-            if name == "scripts" or name.startswith("scripts."):
-                findings.append(f"{path}:{node.lineno}: retired scripts import")
-            if role == "utilities" and ".cli" in name:
-                findings.append(f"{path}:{node.lineno}: utility imports CLI layer")
-            if role == "cli" and name.startswith(
-                "protocol_chipseq_signal_norm.cli."
-            ):
-                findings.append(f"{path}:{node.lineno}: CLI imports peer CLI")
-
-if findings:
-    raise SystemExit("\n".join(findings))
-PY
+python "${ROOT_REPO}/tests/support/check_import_layers.py" "${ROOT_REPO}"
 record_pass "package import directions avoid retired and inverted layers"
+
 finish

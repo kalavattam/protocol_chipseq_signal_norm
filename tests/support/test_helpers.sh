@@ -1427,11 +1427,9 @@ EOM
 
     for py in "${arr_py[@]}"; do
         if \
-            "${py}" - << PY > /dev/null 2>&1
-import socket
-with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
-    sock.bind(("127.0.0.1", 0))
-PY
+            "${py}" -c \
+                'import socket; socket.socket().bind(("127.0.0.1", 0))' \
+                > /dev/null 2>&1
         then
             printf '%s\n' "${py}"
             return 0
@@ -1501,12 +1499,7 @@ EOM
         return 0
     fi
 
-    "${py}" - << PY
-import socket
-with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
-    sock.bind(("127.0.0.1", 0))
-    print(sock.getsockname()[1])
-PY
+    "${py}" "${TEST_DIR_LIB}/local_http.py" port
 }
 
 
@@ -1589,17 +1582,7 @@ EOM
 
     for (( i = 1; i <= try; i++ )); do
         if \
-            URL_LCL="${url}" "${py}" - << PY
-import os
-import urllib.request
-
-url = os.environ["URL_LCL"]
-try:
-    with urllib.request.urlopen(url, timeout=0.5) as response:
-        raise SystemExit(0 if response.status == 200 else 1)
-except Exception:
-    raise SystemExit(1)
-PY
+            "${py}" "${TEST_DIR_LIB}/local_http.py" ready "${url}"
         then
             return 0
         fi
@@ -1626,10 +1609,7 @@ function cleanup_server_http() {
 function check_python_ge_311() {
     local py="${1:-}"
 
-    "${py}" - << PY
-import sys
-raise SystemExit(0 if sys.version_info >= (3, 11) else 1)
-PY
+    "${py}" -c 'import sys; sys.exit(sys.version_info < (3, 11))'
 }
 
 

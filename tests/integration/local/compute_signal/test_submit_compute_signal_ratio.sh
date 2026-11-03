@@ -1137,20 +1137,10 @@ function call_has_pseudo() {
 
     [[ -s "${log}" ]] || return 1
 
-    "${TEST_MANAGED_PYTHON}" - "${log}" "${spec}" << 'PY'
-import math
-import re
-import sys
-
-text = open(sys.argv[1], encoding="utf-8").read()
-found = re.search(r"^--pseudo\s+(\S+):(\S+)$", text, re.MULTILINE)
-want = [float(v) for v in sys.argv[2].split(":")]
-got = [float(v) for v in found.groups()] if found else []
-same = len(got) == 2 and all(
-    math.isclose(g, w, rel_tol=1e-12) for g, w in zip(got, want)
-)
-raise SystemExit(0 if same else 1)
-PY
+    "${TEST_MANAGED_PYTHON}" \
+        "${ROOT_REPO}/tests/support/check_logged_pseudo.py" \
+        "${log}" \
+        "${spec}"
 }
 
 # The edgeR step passes only what 'compute_pseudo' reads, so it draws no note.

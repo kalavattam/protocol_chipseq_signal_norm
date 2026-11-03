@@ -9,7 +9,7 @@
 # The following were used in design, development, and documentation, with all
 # output reviewed, edited, and approved by the author:
 # - OpenAI ChatGPT and Codex (GPT-5.6);
-# - Anthropic Claude Code (Opus 5).
+# - Anthropic Claude Code (Opus 5, Opus 5.5).
 #
 # Distributed under the MIT license.
 
@@ -47,19 +47,12 @@ cp -R \
     "${ROOT_REPO}/pyproject.toml" \
     "${ROOT_REPO}/setup.cfg" \
     "${ROOT_REPO}/src" \
-    "${package_source}/"
+    "${package_source}/"  # fixture-perturbation: the build writes beside it
 
-if "${env_cmd[@]}" python - << PY
-from setuptools import find_packages
+chk_pkg="${ROOT_REPO}/tests/support/check_python_package.py"
 
-expected = {
-    "protocol_chipseq_signal_norm",
-    "protocol_chipseq_signal_norm.cli",
-    "protocol_chipseq_signal_norm.utilities",
-}
-actual = set(find_packages(where="src"))
-raise SystemExit(actual != expected)
-PY
+if \
+    "${env_cmd[@]}" python "${chk_pkg}" packages "${ROOT_REPO}"
 then
     record_pass "setuptools discovers only the intended src package"
 else
@@ -68,14 +61,7 @@ fi
 
 if (
     cd /private/tmp
-    env -u PYTHONPATH "${env_cmd[@]}" python - << PY
-from pathlib import Path
-
-import protocol_chipseq_signal_norm
-
-path = Path(protocol_chipseq_signal_norm.__file__).resolve()
-raise SystemExit(path.name != "__init__.py" or "src" not in path.parts)
-PY
+    env -u PYTHONPATH "${env_cmd[@]}" python "${chk_pkg}" import-path
 )
 then
     record_pass "editable package imports outside the checkout root"
@@ -83,36 +69,8 @@ else
     record_fail "editable package import outside the checkout root failed"
 fi
 
-if "${env_cmd[@]}" python - << PY
-from importlib import import_module
-from importlib.metadata import entry_points
-
-expected = {
-    "add_coeffs_namespaced",
-    "calculate_scaling_factor_siqchip",
-    "calculate_scaling_factor_spike",
-    "compute_input_floor",
-    "compute_pseudo",
-    "compute_pseudo_deeptools",
-    "compute_signal",
-    "compute_signal_ratio",
-    "merge_bins_bdg",
-    "parse_metadata_siqchip",
-    "relativize_scaling_factors",
-    "sum_bdg",
-}
-registered = {
-    item.name: item
-    for item in entry_points(group="console_scripts")
-    if item.name in expected
-}
-if set(registered) != expected:
-    raise SystemExit(1)
-for name, entry in registered.items():
-    module = import_module(f"protocol_chipseq_signal_norm.cli.{name}")
-    if entry.load() is not module.main:
-        raise SystemExit(1)
-PY
+if \
+    "${env_cmd[@]}" python "${chk_pkg}" entry-points
 then
     record_pass "console and explicit-module forms share each typed main"
 else

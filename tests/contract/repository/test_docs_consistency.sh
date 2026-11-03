@@ -30,7 +30,7 @@ function scan_required_files() {
     local found=0
     local file
 
-    for file in "${files_required[@]}"; do
+    for file in "${arr_fil_req[@]}"; do
         if [[ ! -f "${file}" ]]; then
             found=1
             record_fail \
@@ -50,7 +50,7 @@ function scan_owner_ids() {
     local found=0
     local file label pattern rule_id
 
-    while IFS=$'\t' read -r label file rule_id; do
+    while IFS='|' read -r label file rule_id; do
         [[ -n "${label}" ]] || continue
         printf -v pattern '`%s`' "${rule_id}"
 
@@ -63,28 +63,28 @@ function scan_owner_ids() {
                 "$(print_relpath "${file}")"
         fi
     done << EOM
-shared documentation schema	${doc_help}	HELP.SECTION.SCHEMA
-public aliases	${doc_help}	HELP.ALIAS.PUBLIC
-parameter vocabulary	${doc_help}	HELP.PARAMETER.VOCABULARY
-canonical parameter descriptions	${doc_help}	PARAMETER.DESCRIPTIONS
-documentation coverage	${doc_help}	DOC.COVERAGE
-shell wrapper topology	${doc_shell}	SHELL.WRAPPER_TOPOLOGY
-shell line length	${doc_shell}	SHELL.LINE_LENGTH
-shell diagnostic form	${doc_shell}	SHELL.DIAGNOSTIC.FORM
-submit bootstrap	${doc_shell}	SHELL.SUBMIT.BOOTSTRAP
-Python CLI parser	${doc_python}	PY.CLI.PARSER
-Python CLI help layout	${doc_python}	PY.CLI.HELP.LAYOUT
-Python callable annotations	${doc_python}	PY.TYPE.ANNOTATIONS
-Python exact docstring layout	${doc_python}	PY.DOCSTRING.LAYOUT
-Python NumPy docstrings	${doc_python}	PY.DOCSTRING.NUMPY
-Python ordinary strings	${doc_python}	PY.STRING.QUOTES
-Python comments	${doc_python}	PY.COMMENT.FORM
-Python identifiers	${doc_python}	PY.NAMING.IDENTIFIERS
-Python naming length	${doc_python}	PY.NAMING.LENGTH
-Python source layout	${doc_python}	PY.SOURCE.LAYOUT
-source layout candidates	${doc_source_layout}	SOURCE.LAYOUT.CANDIDATES
-multiline delimited structures	${doc_source_layout}	SOURCE.DELIMITED.MULTILINE
-JSON source form	${doc_json}	JSON.SOURCE.FORM
+shared documentation schema|${doc_help}|HELP.SECTION.SCHEMA
+public aliases|${doc_help}|HELP.ALIAS.PUBLIC
+parameter vocabulary|${doc_help}|HELP.PARAMETER.VOCABULARY
+canonical parameter descriptions|${doc_help}|PARAMETER.DESCRIPTIONS
+documentation coverage|${doc_help}|DOC.COVERAGE
+shell wrapper topology|${doc_shell}|SHELL.WRAPPER_TOPOLOGY
+shell line length|${doc_shell}|SHELL.LINE_LENGTH
+shell diagnostic form|${doc_shell}|SHELL.DIAGNOSTIC.FORM
+submit bootstrap|${doc_shell}|SHELL.SUBMIT.BOOTSTRAP
+Python CLI parser|${doc_python}|PY.CLI.PARSER
+Python CLI help layout|${doc_python}|PY.CLI.HELP.LAYOUT
+Python callable annotations|${doc_python}|PY.TYPE.ANNOTATIONS
+Python exact docstring layout|${doc_python}|PY.DOCSTRING.LAYOUT
+Python NumPy docstrings|${doc_python}|PY.DOCSTRING.NUMPY
+Python ordinary strings|${doc_python}|PY.STRING.QUOTES
+Python comments|${doc_python}|PY.COMMENT.FORM
+Python identifiers|${doc_python}|PY.NAMING.IDENTIFIERS
+Python naming length|${doc_python}|PY.NAMING.LENGTH
+Python source layout|${doc_python}|PY.SOURCE.LAYOUT
+source layout candidates|${doc_source_layout}|SOURCE.LAYOUT.CANDIDATES
+multiline delimited structures|${doc_source_layout}|SOURCE.DELIMITED.MULTILINE
+JSON source form|${doc_json}|JSON.SOURCE.FORM
 EOM
 
     if (( found == 0 )); then
@@ -129,7 +129,8 @@ function scan_python_task_router() {
         "--rule PY.DOCSTRING.LAYOUT <paths>" \
         "if no language owner exists, route the proposed specialization" \
         "instead of borrowing Python rules" \
-        "record the anti-accretion evidence"; do
+        "record the anti-accretion evidence"
+    do
         if \
             ! grep -Fq -- "${required}" "${doc_router}"
         then
@@ -148,7 +149,7 @@ function scan_python_task_router() {
 function scan_language_layout_realizations() {
     local file found=0 label pattern
 
-    while IFS=$'\t' read -r label file pattern; do
+    while IFS='|' read -r label file pattern; do
         [[ -n "${label}" ]] || continue
 
         if \
@@ -158,17 +159,17 @@ function scan_language_layout_realizations() {
             record_fail "${label} missing language-owned text: ${pattern}"
         fi
     done << EOM
-Python comment markers	${doc_python}	beginning each nonempty ordinary full-line or continuation comment
-Python trailing comma	${doc_python}	trailing comma in expanded calls
-Shell comment markers	${doc_shell}	Begin each nonempty ordinary comment line
-Shell no trailing comma	${doc_shell}	do not acquire a trailing comma
-R comment markers	${doc_r}	Ordinary R comments use
-R documentation markers	${doc_r}	for roxygen2 documentation
-R no trailing comma	${doc_r}	Multiline R calls do not use
-Rust comment markers	${doc_rust}	Ordinary full-line, continuation, and inline comments
-Rust documentation markers	${doc_rust}	outer documentation attached to the following item
-Rust trailing comma	${doc_rust}	and a trailing comma
-AWK comment markers	${doc_awk}	Comments begin with
+Python comment markers|${doc_python}|beginning each nonempty ordinary full-line or continuation comment
+Python trailing comma|${doc_python}|trailing comma in expanded calls
+Shell comment markers|${doc_shell}|Begin each nonempty ordinary comment line
+Shell no trailing comma|${doc_shell}|do not acquire a trailing comma
+R comment markers|${doc_r}|Ordinary R comments use
+R documentation markers|${doc_r}|for roxygen2 documentation
+R no trailing comma|${doc_r}|Multiline R calls do not use
+Rust comment markers|${doc_rust}|Ordinary full-line, continuation, and inline comments
+Rust documentation markers|${doc_rust}|outer documentation attached to the following item
+Rust trailing comma|${doc_rust}|and a trailing comma
+AWK comment markers|${doc_awk}|Comments begin with
 EOM
 
     if (( found == 0 )); then
@@ -196,7 +197,7 @@ function scan_broken_python_see_also() {
     local found=0
     local file
 
-    for file in "${python_see_also_modules[@]}"; do
+    for file in "${arr_mod_cli[@]}"; do
         if \
             grep -Fq -- "docs/dev/" "${file}"
         then
@@ -208,35 +209,36 @@ function scan_broken_python_see_also() {
     done
 
     if (( found == 0 )); then
-        record_pass "bounded public Python docstrings omit broken docs/dev paths"
+        record_pass \
+            "bounded public Python docstrings omit broken docs/dev paths"
     fi
 }
 
 
 print_section "${TEST_NAME}"
 
-doc_awk="${ROOT_REPO}/docs/standards/awk.md"
-doc_help="${ROOT_REPO}/docs/standards/help.md"
-doc_json="${ROOT_REPO}/docs/standards/json.md"
-doc_python="${ROOT_REPO}/docs/standards/python.md"
-doc_r="${ROOT_REPO}/docs/standards/r.md"
-doc_router="${ROOT_REPO}/docs/standards/README.md"
-doc_rust="${ROOT_REPO}/docs/standards/rust.md"
-doc_shell="${ROOT_REPO}/docs/standards/shell.md"
-doc_source_layout="${ROOT_REPO}/docs/standards/source_layout.md"
+dir_doc="${ROOT_REPO}/docs/standards"
+dir_chk="${ROOT_REPO}/tests/contract/repository"
 
-chk_help="${ROOT_REPO}/tests/contract/repository/test_help_style.sh"
-chk_python="${ROOT_REPO}/tests/contract/repository/test_python_style.sh"
-chk_wrapper="${ROOT_REPO}/tests/contract/repository/test_shell_wrapper_style.sh"
-chk_smoke="${ROOT_REPO}/tests/contract/repository/test_test_layout.sh"
-chk_docs="${ROOT_REPO}/tests/contract/repository/test_docs_consistency.sh"
-chk_doc_cov="${ROOT_REPO}/tests/contract/repository/test_doc_coverage.sh"
-chk_param_docs="$(
-    printf '%s' \
-        "${ROOT_REPO}/tests/contract/repository/test_parameter_docs_consistency.sh"
-)"
+doc_awk="${dir_doc}/awk.md"
+doc_help="${dir_doc}/help.md"
+doc_json="${dir_doc}/json.md"
+doc_python="${dir_doc}/python.md"
+doc_r="${dir_doc}/r.md"
+doc_router="${dir_doc}/README.md"
+doc_rust="${dir_doc}/rust.md"
+doc_shell="${dir_doc}/shell.md"
+doc_source_layout="${dir_doc}/source_layout.md"
 
-files_required=(
+chk_help="${dir_chk}/test_help_style.sh"
+chk_python="${dir_chk}/test_python_style.sh"
+chk_wrapper="${dir_chk}/test_shell_wrapper_style.sh"
+chk_smoke="${dir_chk}/test_test_layout.sh"
+chk_docs="${dir_chk}/test_docs_consistency.sh"
+chk_doc_cov="${dir_chk}/test_doc_coverage.sh"
+chk_param_docs="${dir_chk}/test_parameter_docs_consistency.sh"
+
+arr_fil_req=(
     "${doc_help}"
     "${doc_json}"
     "${doc_python}"
@@ -255,7 +257,7 @@ files_required=(
 )
 
 dir_cli="${ROOT_REPO}/src/protocol_chipseq_signal_norm/cli"
-python_see_also_modules=(
+arr_mod_cli=(
     "${dir_cli}/calculate_scaling_factor_siqchip.py"
     "${dir_cli}/calculate_scaling_factor_spike.py"
     "${dir_cli}/compute_input_floor.py"

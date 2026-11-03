@@ -31,29 +31,9 @@ function assert_order_in_region() {
     shift 4
 
     if output="$(
-        "${TEST_PYTHON}" - "${file}" "${begin}" "${end}" "$@" << 'PY'
-import sys
-from pathlib import Path
-
-path = Path(sys.argv[1])
-begin = sys.argv[2]
-end = sys.argv[3]
-tokens = sys.argv[4:]
-text = path.read_text(encoding="utf-8")
-start = text.find(begin)
-if start < 0:
-    raise SystemExit(f"missing region start {begin!r}")
-stop = text.find(end, start + len(begin))
-if stop < 0:
-    raise SystemExit(f"missing region end {end!r}")
-region = text[start:stop]
-cursor = -1
-for token in tokens:
-    position = region.find(token, cursor + 1)
-    if position < 0:
-        raise SystemExit(f"missing ordered token {token!r}")
-    cursor = position
-PY
+        "${TEST_PYTHON}" \
+            "${ROOT_REPO}/tests/support/check_scaling_factor_order.py" \
+            region "${file}" "${begin}" "${end}" "$@"
     )"; then
         record_pass "${label}"
     else
@@ -66,34 +46,9 @@ function assert_fixture_order() {
     local output=""
 
     if output="$(
-        "${TEST_PYTHON}" - "$@" << 'PY'
-import sys
-from pathlib import Path
-
-failures = []
-checked = 0
-for name in sys.argv[1:]:
-    path = Path(name)
-    lines = path.read_text(encoding="utf-8").splitlines()
-    for index, line in enumerate(lines):
-        if "--csv_mip" not in line:
-            continue
-        start = max(0, index - 12)
-        prior = "\n".join(lines[start:index])
-        uses_base_array = "arr_cmd" in prior
-        if (
-            "--aln_typ" not in prior
-            and "--aln_typ" not in line
-            and not uses_base_array
-        ):
-            failures.append(f"{path}:{index + 1}: --csv_mip lacks prior --aln_typ")
-        checked += 1
-if failures:
-    raise SystemExit("\n".join(failures))
-if checked == 0:
-    raise SystemExit("no calculate-scaling-factor fixture commands checked")
-print(checked)
-PY
+        "${TEST_PYTHON}" \
+            "${ROOT_REPO}/tests/support/check_scaling_factor_order.py" \
+            fixtures "$@"
     )"; then
         record_pass \
             "${output} fixture command(s) place --aln_typ before --csv_mip"
