@@ -83,9 +83,11 @@ def test_main_exits_one_only_on_a_blocking_finding(
     capsys: pytest.CaptureFixture[str],
 ) -> None:
     assert main(["--root", str(FIXTURES / "rejected")]) == 1
+
     capsys.readouterr()
 
     assert main(["--root", str(FIXTURES / "accepted")]) == 0
+
     out = capsys.readouterr().out
 
     assert "COUNT\tSHELL.EMBED.PYTHON\t0\tblocking" in out
@@ -96,6 +98,7 @@ def test_json_output_counts_each_diagnostic(
     capsys: pytest.CaptureFixture[str],
 ) -> None:
     main(["--root", str(FIXTURES / "rejected"), "--json"])
+
     report = json.loads(capsys.readouterr().out)
 
     assert report["counts"]["TEST.FIXTURES.RECORD_INPUT"] == 5
