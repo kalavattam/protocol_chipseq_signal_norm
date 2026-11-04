@@ -16,6 +16,7 @@ Generated fixture outputs are ignored by Git. `tests/run_tests.sh` regenerates t
 ## Files
 Readable provenance:
 - `make.sh`
+- `stub_sbatch.sh`: the `sbatch` stub, which `make.sh` copies to `tool/sbatch`
 
 Generated command stub:
 - `tool/sbatch`: prints an error and exits 1 when called

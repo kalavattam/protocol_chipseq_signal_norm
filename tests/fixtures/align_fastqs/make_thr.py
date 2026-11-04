@@ -144,7 +144,7 @@ def build_pairs(
             start = int(rng.random() * (len(chrom) - len_frg))
             r1 = chrom[start : start + LEN_READ]
             r2 = reverse_complement(
-                chrom[start + len_frg - LEN_READ : start + len_frg]
+                chrom[start + len_frg - LEN_READ : start + len_frg],
             )
 
             if rng.random() < 0.5:

@@ -188,7 +188,7 @@ def build_chroms(rng: random.Random) -> dict[str, str]:
             draw_seq(rng, 1200),
             rep,
             draw_seq(rng, 1700),
-        ]
+        ],
     )
 
     return {"chrP1": chr_p1, "chrP2": draw_seq(rng, 3000)}
@@ -379,12 +379,14 @@ def build_fills(chroms: dict[str, str]) -> list[tuple[str, str, str]]:
         ("chrP2", 0, 3000),
     ]
     starts = []
+
     for nam, beg, end in blocks:
         for pos in range(beg + 5, end - 300, 10):
             starts.append((nam, pos))
 
     step = len(starts) // N_FILL
     pairs = []
+
     for idx in range(N_FILL):
         nam, pos = starts[idx * step]
         len_frg = 200 + 10 * (idx % 11)
@@ -394,7 +396,7 @@ def build_fills(chroms: dict[str, str]) -> list[tuple[str, str, str]]:
                 f"fill_{idx:03d}",
                 cut_fwd(chrom, pos),
                 cut_rev(chrom, pos + len_frg - LEN_READ),
-            )
+            ),
         )
 
     return pairs
@@ -439,8 +441,9 @@ def write_fastq(path: str, reads: list[tuple[str, str]]) -> None:
 
 def main(argv: list[str] | None = None) -> int:
     """
-    Write the reference, then the pairs, single-end, duplicate, and filled
-    reads.
+    Write the reference, then each read set.
+
+    The read sets are the pairs, single-end, duplicate, and filled reads.
     """
 
     args = parse_args(argv)

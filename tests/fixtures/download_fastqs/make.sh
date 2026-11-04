@@ -340,58 +340,13 @@ write_metadata \
     SRR_FAIL failed_worker https://example.invalid/failure.fastq.gz
 
 
-# Write two 'wget' stubs, each in its own directory, so that a test puts one on
-# 'PATH' as 'wget'. 'wget_ok' records the URL it was given beside its output
+# Install two 'wget' stubs, each in its own directory, so that a test puts one
+# on 'PATH' as 'wget'. 'wget_ok' records the URL it was given beside its output
 # and writes a one-record FASTQ. 'wget_fail' stands in for a download that
 # fails partway: it writes a valid gzip-compressed FASTQ and exits 42, so its
 # exit status alone marks the failure.
-cat << 'EOM' > "${dir_tol_get}/wget"
-#!/usr/bin/env bash
-
-set -euo pipefail
-
-output=""
-while (( $# > 0 )); do
-    case "${1}" in
-        -O)
-            output="${2}"
-            shift 2
-            ;;
-
-        *)
-            url="${1}"
-            shift
-            ;;
-    esac
-done
-
-printf '%s\n' "${url:-}" > "${output%/*}/wget_url.txt"
-printf '%s\n' '@synthetic-fastq' 'ACGT' '+' 'IIII' | gzip -c > "${output}"
-EOM
-
-cat << 'EOM' > "${dir_tol_fail}/wget"
-#!/usr/bin/env bash
-
-set -euo pipefail
-
-output=""
-while (( $# > 0 )); do
-    case "${1}" in
-        -O)
-            output="${2}"
-            shift 2
-            ;;
-
-        *)
-            shift
-            ;;
-    esac
-done
-
-printf '%s\n' '@partial-fastq' 'TGCA' '+' 'IIII' | gzip -c > "${output}"
-exit 42
-EOM
-
+cp "${dir_scr}/stub_wget_ok.sh" "${dir_tol_get}/wget"
+cp "${dir_scr}/stub_wget_fail.sh" "${dir_tol_fail}/wget"
 chmod +x "${dir_tol_get}/wget" "${dir_tol_fail}/wget"
 
 # Write a single-end source whose gzip trailer (CRC and size, 8 bytes) is cut

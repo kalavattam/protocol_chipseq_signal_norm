@@ -48,15 +48,25 @@ function list_roots_declared() {
 }
 
 
-# Report whether a path is ignored by Git.
+# Report whether a path matches Git's ignore rules. '--no-index' tests the
+# rules alone, since Git never reports a tracked path as ignored.
 function path_is_ignored() {
-    git -C "${ROOT_REPO}" check-ignore -q "${1}"
+    git -C "${ROOT_REPO}" check-ignore -q --no-index "${1}"
 }
 
 
 # List the generator scripts, 'make_<name>.py', that a root's recipe names.
 function list_generators() {
     grep -oE 'make_[A-Za-z0-9_]+\.py' "${dir_fix}/${1}/make.sh" \
+        | LC_ALL=C sort -u \
+        || true
+}
+
+
+# List the stubs, 'stub_<name>.sh' or 'stub_<name>.py', that a root's recipe
+# names.
+function list_stubs() {
+    grep -oE 'stub_[A-Za-z0-9_]+\.(sh|py)' "${dir_fix}/${1}/make.sh" \
         | LC_ALL=C sort -u \
         || true
 }
@@ -84,8 +94,10 @@ function check_population() {
     if [[ "${observed}" != "${expected}" ]]; then
         record_fail \
             "fixture roots on disk disagree with Git's tracked inventory"
-        diff <(printf '%s\n' "${expected}") <(printf '%s\n' "${observed}") \
-            >&2 || true
+        diff \
+            <(printf '%s\n' "${expected}") \
+            <(printf '%s\n' "${observed}") >&2 \
+            || true
     else
         record_pass \
             "fixture-root population agrees across two derivations"
@@ -110,8 +122,10 @@ function check_declared_stanzas() {
     if [[ "${observed}" != "${expected}" ]]; then
         record_fail \
             "ignore stanzas disagree with the roots that carry a recipe"
-        diff <(printf '%s\n' "${expected}") <(printf '%s\n' "${observed}") \
-            >&2 || true
+        diff \
+            <(printf '%s\n' "${expected}") \
+            <(printf '%s\n' "${observed}") >&2 \
+            || true
         return 1
     fi
 
@@ -125,6 +139,7 @@ function check_declared_stanzas() {
 function check_ignore_stanza() {
     local root="${1}"
     local gen=""
+    local stub=""
     local findings=0
 
     if ! \
@@ -157,20 +172,33 @@ function check_ignore_stanza() {
         fi
     done < <(list_generators "${root}")
 
+    while IFS= read -r stub; do
+        if \
+            path_is_ignored "tests/fixtures/${root}/${stub}"
+        then
+            record_fail "fixture stub is ignored: ${root}/${stub}"
+            findings=1
+        fi
+    done < <(list_stubs "${root}")
+
     return "${findings}"
 }
 
 
-# Property 2: nothing but the README, the recipe, and the generator scripts the
-# recipe names is tracked. A named generator that is not tracked fails too,
-# since a fresh checkout could not run the recipe.
+# Property 2: nothing but the README, the recipe, and the generator scripts and
+# stubs the recipe names is tracked. A named generator or stub that is not
+# tracked fails too, since a fresh checkout could not run the recipe.
 function check_tracked_contents() {
     local root="${1}"
     local expected=""
     local observed=""
 
     expected="$(
-        { printf '%s\n' README.md make.sh; list_generators "${root}"; } \
+        {
+            printf '%s\n' README.md make.sh
+            list_generators "${root}"
+            list_stubs "${root}"
+        } \
             | LC_ALL=C sort \
             | paste -sd, -
     )"
@@ -185,7 +213,8 @@ function check_tracked_contents() {
     if [[ "${observed}" != "${expected}" ]]; then
         record_fail \
             "fixture root tracks other than its README, recipe, and named" \
-            "generators: ${root} tracks '${observed}', expected '${expected}'"
+            "generators and stubs: ${root} tracks '${observed}', expected" \
+            "'${expected}'"
         return 1
     fi
 
@@ -497,17 +526,24 @@ function check_regeneration() {
 # Print a digest of every generated file in one fixture root.
 function inventory_fixture_root() {
     local root="${1}"
+    local files=""
+    local file=""
 
-    find "${dir_fix}/${root}" \
-        -type f \
-        ! -name README.md ! -name make.sh ! -name 'make_*.py' \
-        -print \
-        | LC_ALL=C sort \
-        | while IFS= read -r file; do
-            printf '%s  %s\n' \
-                "$(shasum -a 256 "${file}" | cut -d' ' -f1)" \
-                "${file#"${dir_fix}/"}"
-        done
+    files="$(
+        find "${dir_fix}/${root}" \
+            -type f \
+            ! -name README.md ! -name make.sh ! -name 'make_*.py' \
+            ! -name 'stub_*' \
+            -print \
+            | LC_ALL=C sort
+    )"
+
+    while IFS= read -r file; do
+        [[ -n "${file}" ]] || continue
+        printf '%s  %s\n' \
+            "$(shasum -a 256 "${file}" | cut -d' ' -f1)" \
+            "${file#"${dir_fix}/"}"
+    done <<< "${files}"
 }
 
 

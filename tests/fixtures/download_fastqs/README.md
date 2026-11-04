@@ -18,6 +18,7 @@ The fixture set currently supports single-end, paired-end, and mixed-metadata lo
 ## Files
 Readable provenance:
 - `make.sh`
+- `stub_wget_ok.sh` and `stub_wget_fail.sh`: the `wget` stubs, described below
 
 Compressed FASTQ that the tests serve as downloads:
 - `fastq/se/tiny_download_se.fastq.gz`
@@ -63,7 +64,7 @@ Metadata tables for runs that fetch nothing, with `.invalid` URLs, for `test_dow
 - `metadata/dry_duplicate.tsv` (one accession under two custom names), `metadata/dry_duplicate_custom.tsv` (two accessions under one custom name), and `metadata/dry_conflicting.tsv` (one accession with two URLs)
 - `metadata/relative_execute.tsv` and `metadata/worker_failure.tsv`: for runs under the `wget` stubs
 
-`wget` stubs, each in its own directory so that a test puts one on `PATH` as `wget`:
+`wget` stubs, which `make.sh` copies from `stub_wget_ok.sh` and `stub_wget_fail.sh`, each into its own directory so that a test puts one on `PATH` as `wget`:
 - `tool/wget_ok/wget` records the URL it was given in `wget_url.txt` beside its output and writes a one-record FASTQ
 - `tool/wget_fail/wget` writes a valid gzip-compressed FASTQ and exits 42, so that only its exit status marks the failure
 

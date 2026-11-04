@@ -6,7 +6,7 @@
 # Copyright 2026 by Kris Alavattam
 # Email: kalavattam@gmail.com
 #
-# Anthropic Claude Code (Opus 5) was used in design, development, and
+# Anthropic Claude Code (Opus 5, Opus 5.5) was used in design, development, and
 # documentation, with all output reviewed, edited, and approved by the author.
 #
 # Distributed under the MIT license.
@@ -18,16 +18,21 @@ Exclude generated test fixtures from source-derived discovery.
 
 from __future__ import annotations
 
+import re
 from pathlib import Path
 
-# Generated fixtures live below this prefix and are ignored by Git, so a
-# discovery that asks Git never sees them and needs nothing from this module.
-# A discovery that globs the filesystem cannot see that they are ignored, and a
-# fixture admitted to a maintained universe is treated as source: a
-# deliberately malformed fixture becomes a finding, and a fixture help surface
-# becomes a surface the repository owes documentation. Both were observed once
-# fixtures took ordinary '.py' and '.sh' suffixes.
+# Generated fixtures live below this prefix. Git ignores them, but a discovery
+# that globs the filesystem would treat them as source, making a malformed
+# fixture a finding and a fixture's help a surface owed documentation.
 FIXTURE_ROOT = "tests/fixtures"
+
+# The tracked sources beside a root's recipe, which 'testing.md' names: the
+# recipe, its generators, and its stubs. They are maintained source, not
+# generated fixtures.
+FIXTURE_SOURCE = re.compile(
+    rf"^{FIXTURE_ROOT}/[^/]+/"
+    r"(?:make\.sh|make_\w+\.py|stub_\w+\.(?:sh|py))$",
+)
 
 
 def is_fixture_path(path: Path, root: Path) -> bool:
@@ -45,7 +50,8 @@ def is_fixture_path(path: Path, root: Path) -> bool:
     Returns
     -------
     result : bool
-        True when the path lies under the generated-fixture root.
+        True when the path lies under the generated-fixture root and is not one
+        of the tracked sources beside a recipe.
     """
 
     try:
@@ -53,7 +59,10 @@ def is_fixture_path(path: Path, root: Path) -> bool:
     except ValueError:
         relative = path
 
-    return relative.as_posix().startswith(f"{FIXTURE_ROOT}/")
+    posix = relative.as_posix()
+    under_root = posix.startswith(f"{FIXTURE_ROOT}/")
+
+    return under_root and not FIXTURE_SOURCE.match(posix)
 
 
 def is_fixture_recipe(path: str) -> bool:

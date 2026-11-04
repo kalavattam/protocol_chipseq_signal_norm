@@ -430,17 +430,11 @@ samtools view -C -T "${ref_fa}" -o "${cram_rec}" "${bam_rec}"
 rm_file "${dir_fix}" "${hdr_rec}"
 
 
-# Write a stand-in for the Python BAM-to-BED converter that writes the
+# Install a stand-in for the Python BAM-to-BED converter that writes the
 # arguments it was given to its '--fil_out', so a test can see what a caller
 # passed it.
 rm_file "${dir_fix}" "${fil_args_py}"
-
-cat << 'EOM' > "${fil_args_py}"
-import sys
-
-with open(sys.argv[sys.argv.index("--fil_out") + 1], "w") as fil:
-    fil.write(" ".join(sys.argv[1:]) + "\n")
-EOM
+cp "${dir_scr}/stub_print_args.py" "${fil_args_py}"
 
 
 # Remove stale generated fixture outputs. Broad metadata/config cleanup clears

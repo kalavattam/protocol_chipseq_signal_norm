@@ -72,9 +72,7 @@ tests/fixtures/align_fastqs/**
 !tests/fixtures/align_fastqs/
 !tests/fixtures/align_fastqs/README.md
 !tests/fixtures/align_fastqs/make.sh
-!tests/fixtures/align_fastqs/make_pairs.py
-!tests/fixtures/align_fastqs/make_thr.py
-!tests/fixtures/align_fastqs/make_tie.py
+!tests/fixtures/align_fastqs/make_*.py
 
 tests/fixtures/bedgraph/**
 !tests/fixtures/bedgraph/
@@ -85,6 +83,7 @@ tests/fixtures/calculate_scaling_factor/**
 !tests/fixtures/calculate_scaling_factor/
 !tests/fixtures/calculate_scaling_factor/README.md
 !tests/fixtures/calculate_scaling_factor/make.sh
+!tests/fixtures/calculate_scaling_factor/stub_*.py
 
 tests/fixtures/compute_pseudo/**
 !tests/fixtures/compute_pseudo/
@@ -105,6 +104,7 @@ tests/fixtures/download_fastqs/**
 !tests/fixtures/download_fastqs/
 !tests/fixtures/download_fastqs/README.md
 !tests/fixtures/download_fastqs/make.sh
+!tests/fixtures/download_fastqs/stub_*.sh
 
 tests/fixtures/filter_alignments/**
 !tests/fixtures/filter_alignments/
@@ -130,11 +130,13 @@ tests/fixtures/install_atria/**
 !tests/fixtures/install_atria/
 !tests/fixtures/install_atria/README.md
 !tests/fixtures/install_atria/make.sh
+!tests/fixtures/install_atria/stub_*.sh
 
 tests/fixtures/install_envs/**
 !tests/fixtures/install_envs/
 !tests/fixtures/install_envs/README.md
 !tests/fixtures/install_envs/make.sh
+!tests/fixtures/install_envs/stub_*.sh
 
 tests/fixtures/install_preseq/**
 !tests/fixtures/install_preseq/
@@ -165,6 +167,7 @@ tests/fixtures/shellcheck/**
 !tests/fixtures/shellcheck/
 !tests/fixtures/shellcheck/README.md
 !tests/fixtures/shellcheck/make.sh
+!tests/fixtures/shellcheck/stub_*.sh
 
 tests/fixtures/slurm/**
 !tests/fixtures/slurm/
@@ -175,6 +178,7 @@ tests/fixtures/slurm_dry_run/**
 !tests/fixtures/slurm_dry_run/
 !tests/fixtures/slurm_dry_run/README.md
 !tests/fixtures/slurm_dry_run/make.sh
+!tests/fixtures/slurm_dry_run/stub_*.sh
 
 tests/fixtures/submit_bootstrap/**
 !tests/fixtures/submit_bootstrap/

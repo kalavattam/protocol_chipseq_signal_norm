@@ -6,7 +6,7 @@
 # Copyright 2026 by Kris Alavattam
 # Email: kalavattam@gmail.com
 #
-# Anthropic Claude Code (Opus 5) was used in design, development, and
+# Anthropic Claude Code (Opus 5, Opus 5.5) was used in design, development, and
 # documentation, with all output reviewed, edited, and approved by the author.
 #
 # Distributed under the MIT license.
@@ -65,49 +65,10 @@ cat << 'EOM' > "${fil_posix}"
 printf 'POSIX fixture\n'
 EOM
 
-# One ShellCheck stub, standing in for the real tool so the runner's executable
-# selection, structured-finding parsing, and exit-status handling are exercised
-# without applying repository findings. The stub is written in two heredocs
-# around one assembled line: its findings payload is a single line of JSON
-# output, and building that line from fragments keeps the recipe itself inside
-# the shell line-length budget.
-cat << 'EOM' > "${fil_stub}"
-#!/usr/bin/env bash
-set -u
-
-if [[ "${1:-}" == "--version" ]]; then
-    cat << 'VERSION'
-ShellCheck - shell script analysis tool
-version: 0.10.0
-license: GNU General Public License, version 3
-website: https://www.shellcheck.net
-VERSION
-    exit 0
-fi
-
-if [[ -n "${FAKE_SHELLCHECK_LOG:-}" ]]; then
-    printf '%s\n' "$*" >> "${FAKE_SHELLCHECK_LOG}"
-fi
-
-comment='{"file":"fixture.sh","line":1,"column":1,'
-comment+='"level":"warning","code":9999,'
-comment+='"message":"fixture finding","fix":null}'
-
-status="${FAKE_SHELLCHECK_STATUS:-0}"
-case "${status}" in
-    0)
-        printf '{"comments":[]}\n'
-        ;;
-    1)
-        printf '{"comments":[%s]}\n' "${comment}"
-        ;;
-    *)
-        echo "fixture infrastructure failure" >&2
-        ;;
-esac
-exit "${status}"
-EOM
-
+# Install the ShellCheck stub, which stands in for the real tool so the
+# runner's executable selection, structured-finding parsing, and exit-status
+# handling are exercised without applying repository findings.
+cp "${dir_scr}/stub_shellcheck.sh" "${fil_stub}"
 chmod +x "${fil_stub}"
 
 

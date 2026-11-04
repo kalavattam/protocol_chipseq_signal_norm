@@ -20,20 +20,21 @@ The stub exists so the runner's behavior can be exercised without applying repos
 ## Files
 Readable provenance:
 - `make.sh`
+- `stub_shellcheck.sh`: the ShellCheck stub, which `make.sh` copies to `tool/fake_shellcheck.sh`
 
 Generated scripts, distinguished only by their shebang:
 - `script/bash.sh`: a Bash script the runner must classify as Bash
 - `script/posix.sh`: a POSIX script the runner must classify as POSIX
 
 Generated tooling:
-- `tool/fake_shellcheck.sh`: a ShellCheck stub reporting a fixed version, logging its invocation when `FAKE_SHELLCHECK_LOG` is set, and emitting an empty or one-comment result according to `FAKE_SHELLCHECK_STATUS`
+- `tool/fake_shellcheck.sh`: the installed ShellCheck stub, reporting a fixed version, logging its invocation when `FAKE_SHELLCHECK_LOG` is set, and emitting an empty or one-comment result according to `FAKE_SHELLCHECK_STATUS`
 
 <br />
 
 ## Expected runner behavior
 The runner must select the stub through the configured prefix rather than through `PATH`, split the two scripts by declared language, parse the stub's structured JSON output, and propagate the stub's exit status. Status `0` yields no comments, status `1` yields exactly one warning-level comment, and any other status is an infrastructure failure that must not be reported as a clean run.
 
-The stub's findings payload is a single line of JSON. It is assembled from fragments inside the stub rather than typed as one long line, so the recipe that writes it stays inside the shell line-length budget while the emitted output is unchanged.
+The stub's findings payload is a single line of JSON. It is assembled from fragments inside the stub rather than typed as one long line, so the stub stays inside the shell line-length budget while the emitted output is unchanged.
 
 <br />
 

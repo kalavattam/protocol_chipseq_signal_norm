@@ -51,15 +51,9 @@ rm_files "${dir_fix}" "${fil_sbt}"
 mkdirs "${dir_tol}"
 
 
-# Write the 'sbatch' stub. A dry run prints the 'sbatch' call and must never
+# Install the 'sbatch' stub. A dry run prints the 'sbatch' call and must never
 # submit it, so the stub fails if it is ever called.
-cat << 'EOM' > "${fil_sbt}"
-#!/usr/bin/env bash
-
-echo "error(sbatch): test stub called; a dry run must not submit." >&2
-exit 1
-EOM
-
+cp "${dir_scr}/stub_sbatch.sh" "${fil_sbt}"
 chmod +x "${fil_sbt}"
 
 

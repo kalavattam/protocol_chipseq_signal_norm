@@ -6,6 +6,7 @@ This fixture root generates fake `conda` and `mamba` commands for deterministic 
 
 ## Files
 - `make.sh`: Generates the fake package-manager toolchain.
+- `stub_package_manager.sh`: the stub package manager, which `make.sh` copies to `tool/fake_package_manager` and links as `conda` and `mamba`.
 - `tool/`: Ignored generated command stubs.
 - `state/none.txt`, `state/env_protocol.txt`, and `state/env_siqchip.txt`: starting states of the fake environment list, empty or naming one environment. The fake package manager appends to the list as it creates environments, so the test copies a state before each case.
 

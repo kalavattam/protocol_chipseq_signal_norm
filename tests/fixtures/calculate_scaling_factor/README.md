@@ -37,6 +37,7 @@ The production reference config `data/raw/docs/parse_metadata_siqchip_PRJNA85706
 ## Files
 Readable provenance:
 - `make.sh`
+- `stub_print_args.py`: the stand-in converter, which `make.sh` copies to `tool/print_args.py`
 
 Role-specific SE alignment fixtures:
 - `sam/se/IP_WT_log_Brn1_rep1.sc.sam`, `bam/se/IP_WT_log_Brn1_rep1.sc.bam`, `bam/se/IP_WT_log_Brn1_rep1.sc.bam.bai`

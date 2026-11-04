@@ -8,6 +8,8 @@ This generated fake toolchain exercises installer reference resolution and rebui
 
 ## Files
 - `make.sh`: Generates the local fake toolchain.
+- `stub_tool.sh`: the stub toolchain, which `make.sh` copies to `tool/fake_tool` and links under each tool name the installer calls.
+- `stub_julia.sh`: the stale Julia, which `make.sh` copies to `snippet/julia_0.0.0`.
 - `tool/`: Ignored generated command stubs.
 - `snippet/legacy_path.sh`: a PATH snippet holding the exports of an earlier installation that carried no markers.
 - `snippet/malformed_path.sh`: a PATH snippet whose installer markers are in the wrong order.
