@@ -6,8 +6,10 @@
 # Copyright 2026 by Kris Alavattam
 # Email: kalavattam@gmail.com
 #
-# OpenAI ChatGPT and Codex (GPT-5.6) were used in design, development, and
-# documentation, with all output reviewed, edited, and approved by the author.
+# The following were used in design, development, and documentation, with all
+# output reviewed, edited, and approved by the author:
+# - OpenAI ChatGPT and Codex (GPT-5.6);
+# - Anthropic Claude Code (Opus 5.5).
 #
 # Distributed under the MIT license.
 
@@ -441,9 +443,7 @@ def test_colon_structure_uses_block_specific_spacing(
     ]
 
 
-def test_spacing_findings_keep_heading_colon_and_table_ownership_distinct() -> (
-    None
-):
+def test_table_gap_reports_its_owning_rule() -> None:
     heading_gap = (
         "\n# Title\n\n| A    | B    |\n| :--- | :--- |\n| C    | D    |\n"
     )
