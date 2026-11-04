@@ -131,6 +131,9 @@ function ensure_checker_fixtures() {
     ensure_fixture download_fastqs \
         "${repo_root}/tests/fixtures/download_fastqs/metadata/local_names_sequencer_pe.template.tsv"
 
+    ensure_fixture embedded_programs \
+        "${repo_root}/tests/fixtures/embedded_programs/nonapplicable/tests/integration/helper.py"
+
     ensure_fixture slurm_dry_run \
         "${repo_root}/tests/fixtures/slurm_dry_run/tool/sbatch"
 

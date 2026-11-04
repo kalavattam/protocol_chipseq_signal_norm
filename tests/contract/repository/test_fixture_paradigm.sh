@@ -64,9 +64,12 @@ function list_generators() {
 
 
 # List the stubs, 'stub_<name>.sh' or 'stub_<name>.py', that a root's recipe
-# names.
+# names beside itself as '${dir_scr}/stub_<name>'. A stub name in a payload the
+# recipe writes as data is not one it installs.
 function list_stubs() {
-    grep -oE 'stub_[A-Za-z0-9_]+\.(sh|py)' "${dir_fix}/${1}/make.sh" \
+    grep -oE '\$\{dir_scr\}/stub_[A-Za-z0-9_]+\.(sh|py)' \
+        "${dir_fix}/${1}/make.sh" \
+        | sed 's|.*/||' \
         | LC_ALL=C sort -u \
         || true
 }

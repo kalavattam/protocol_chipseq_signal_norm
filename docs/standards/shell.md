@@ -309,7 +309,7 @@ In `lib/` and `bin/`, an AWK program whose input is sequencing or alignment reco
 
 Inline `sed` keeps to the forms that BSD and GNU `sed` share, since it runs on the system `sed`: macOS has BSD `sed`, and the cluster has GNU. GNU-only forms are flagged: `-i`, `-r`, `-z`, the `\+`, `\|`, and `\?` escapes, and long options.
 
-**Automation:** No dedicated checker or registry entry implements this rule yet.
+**Automation:** `dev/audit/embedded_programs.py` counts each kind above in maintained shell, outside heredoc bodies and quoted strings, with `subset` coverage: Python heredocs and multi-line `-c` programs, multi-line `bash -c`, AWK over three lines, multi-line and GNU-only `sed`, and `perl`. It does not judge an AWK call's input.
 
 **Semantic remainder:** Judge an `awk` call's real input, which can follow the program's closing quote, and whether a short program reads better as a named function.
 

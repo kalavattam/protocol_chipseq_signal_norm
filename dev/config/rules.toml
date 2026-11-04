@@ -2566,6 +2566,7 @@ output_paths = []
 output_parser = "smoke_summary"
 strict_availability = "unavailable"
 current_exclusions_or_allowlists = []
+diagnostic_ids = ["TEST.FIXTURES.RECORD_INPUT", "TEST.FIXTURES.PERTURBATION_REASON", "TEST.FIXTURES.INLINE_STUB"]
 
 [[rule]]
 rule_id = "TEST.EVIDENCE"
@@ -2917,3 +2918,90 @@ output_paths = []
 output_parser = "generic"
 strict_availability = "safe_adapter"
 current_exclusions_or_allowlists = []
+
+[[rule]]
+rule_id = "SOURCE.EMBED.PROGRAMS"
+description = "Count programs embedded in other source against each language owner's limit."
+normative_document = "docs/standards/source_layout.md"
+normative_section = "Embedded programs (`SOURCE.EMBED.PROGRAMS`)"
+owner_classification = "advisory"
+source_checker = "dev/audit/embedded_programs.py"
+execution_kind = "original"
+execution_role = "checker"
+coverage_relation = "subset"
+covered_scope = "Programs embedded in maintained Shell, and multi-line string literals in Python tests, counted by the language realizations."
+remaining_scope = "Decide whether two programs are one program copied, whether a program within its limit reads better as its own file, and which home a moved program's role selects."
+parity_test = "tests/unit/dev_audit/test_embedded_programs.py"
+gate = "tests/contract/repository/test_embedded_programs.sh"
+scope = "repository"
+command = ["python3", "-m", "dev.audit.embedded_programs", "--root", "."]
+applicable_paths = ["bin/**/*.sh", "lib/**/*.sh", "install/**/*.sh", "dev/**/*.sh", "tests/**/*.sh", "tests/**/*.py"]
+default_severity = "advisory"
+blocking = false
+semantic_review = true
+required_environment = "python>=3.11"
+required_commands = ["python3"]
+known_side_effects = ["none"]
+output_paths = []
+output_parser = "generic"
+strict_availability = "safe_adapter"
+current_exclusions_or_allowlists = []
+diagnostic_ids = []
+
+[[rule]]
+rule_id = "SHELL.EMBED.PROGRAMS"
+description = "Count Python, Bash, AWK, sed, and perl programs that maintained Shell carries inline, against their limits."
+normative_document = "docs/standards/shell.md"
+normative_section = "Embedded programs in Shell (`SHELL.EMBED.PROGRAMS`)"
+owner_classification = "advisory"
+source_checker = "dev/audit/embedded_programs.py"
+execution_kind = "original"
+execution_role = "checker"
+coverage_relation = "subset"
+covered_scope = "Python heredocs and multi-line '-c' programs, multi-line 'bash -c', AWK over three lines, multi-line and GNU-only sed, and perl, outside heredoc bodies and quoted strings."
+remaining_scope = "Judge an AWK call's real input, which can follow the program's closing quote, and whether a short program reads better as a named function."
+parity_test = "tests/unit/dev_audit/test_embedded_programs.py"
+gate = "tests/contract/repository/test_embedded_programs.sh"
+scope = "repository"
+command = ["python3", "-m", "dev.audit.embedded_programs", "--root", "."]
+applicable_paths = ["bin/**/*.sh", "lib/**/*.sh", "install/**/*.sh", "dev/**/*.sh", "tests/**/*.sh", "tests/**/*.py"]
+default_severity = "advisory"
+blocking = false
+semantic_review = true
+required_environment = "python>=3.11"
+required_commands = ["python3"]
+known_side_effects = ["none"]
+output_paths = []
+output_parser = "generic"
+strict_availability = "safe_adapter"
+current_exclusions_or_allowlists = []
+diagnostic_ids = ["SHELL.EMBED.PYTHON", "SHELL.EMBED.BASH_C", "SHELL.EMBED.AWK", "SHELL.EMBED.SED", "SHELL.EMBED.SED_GNU", "SHELL.EMBED.PERL"]
+
+[[rule]]
+rule_id = "PY.EMBED.PROGRAMS"
+description = "Count multi-line string literals in Python tests that may be inputs."
+normative_document = "docs/standards/python.md"
+normative_section = "Embedded programs and inputs in Python (`PY.EMBED.PROGRAMS`)"
+owner_classification = "advisory"
+source_checker = "dev/audit/embedded_programs.py"
+execution_kind = "original"
+execution_role = "checker"
+coverage_relation = "subset"
+covered_scope = "String literals of four or more lines in Python test files, other than docstrings."
+remaining_scope = "Decide whether a literal is input or expected output, and judge programs passed to an interpreter through subprocess."
+parity_test = "tests/unit/dev_audit/test_embedded_programs.py"
+gate = "tests/contract/repository/test_embedded_programs.sh"
+scope = "repository"
+command = ["python3", "-m", "dev.audit.embedded_programs", "--root", "."]
+applicable_paths = ["bin/**/*.sh", "lib/**/*.sh", "install/**/*.sh", "dev/**/*.sh", "tests/**/*.sh", "tests/**/*.py"]
+default_severity = "advisory"
+blocking = false
+semantic_review = true
+required_environment = "python>=3.11"
+required_commands = ["python3"]
+known_side_effects = ["none"]
+output_paths = []
+output_parser = "generic"
+strict_availability = "safe_adapter"
+current_exclusions_or_allowlists = []
+diagnostic_ids = ["PY.EMBED.STRING_INPUT"]

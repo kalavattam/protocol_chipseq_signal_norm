@@ -77,7 +77,8 @@ def is_fixture_recipe(path: str) -> bool:
     Returns
     -------
     result : bool
-        True when the path is a 'make.sh' below the fixture root.
+        True when the path is the 'make.sh' of a fixture root. A 'make.sh'
+        deeper down is generated fixture data, not a recipe.
     """
 
-    return path.startswith(f"{FIXTURE_ROOT}/") and path.endswith("/make.sh")
+    return re.fullmatch(rf"{FIXTURE_ROOT}/[^/]+/make\.sh", path) is not None

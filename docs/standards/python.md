@@ -584,7 +584,7 @@ Realize [`SOURCE.EMBED.PROGRAMS`](source_layout.md) as follows:
 - A script or stub executable that a test writes at run time moves to its home, whatever its length.
 - A multi-line string literal that a test passes as input, whether it writes it to disk or hands it straight to the function under test, stays inline at three lines or fewer. At four lines or more it moves to a recipe-built fixture file that the test reads in place, under [`TEST.FIXTURES`](testing.md#fixtures-testfixtures). A string compared as expected output is not an input.
 
-**Automation:** No dedicated checker or registry entry implements this rule yet.
+**Automation:** `dev/audit/embedded_programs.py` counts string literals of four or more lines in Python test files, other than docstrings, with `subset` coverage. It does not count programs passed to an interpreter through `subprocess`.
 
 **Semantic remainder:** Decide whether a literal is input or expected output.
 

@@ -160,7 +160,7 @@ Distinguish where a continuation sits from where the line broke. A list item may
 
 **Scope:** Comments, docstrings, help, diagnostics, and other natural-language text in maintained implementation source, the names of new and changed identifiers, and maintained Markdown prose through [`markdown.md`](markdown.md#natural-prose-mdproseunwrap).
 
-Write natural-language text in American English spelling: `neighbor`, `behavior`, `center`, `defense`, and `normalize` rather than `neighbour`, `behaviour`, `centre`, `defence`, and `normalise`. Apply the same spelling to the names of new and changed identifiers.
+Write natural-language text in American English spelling: `neighbor`, `behavior`, `center`, `defense`, and `normalize` rather than `neighbour`, `behaviour`, `centre`, `defence`, and `normalise`. Apply the same spelling to the names of new and changed identifiers. Capitalize "Shell" only where it names a language beside others, as in "Shell and Python"; elsewhere it is a common noun, as in "a shell script" or "maintained shell". In prose, name a tool, algorithm, or language in the form its own project uses, as "Bowtie 2", "BWA", "BWA-backtrack", "BWA-MEM", "bwa-mem2", "bwa-mem3", "minibwa", "AWK", "Bash", and "Samtools"; write `bowtie2`, `bwa`, `awk`, `bash`, or `samtools` only for the command, and never "Bowtie2".
 
 An externally owned or protected spelling keeps its form at its bounded interface: a public option, a production wrapper or command name, a file format, a serialized field, a package or tool name, and quoted source text. Changing one follows its existing interface owner and [`governance.md`](governance.md); an internal rename follows [`SOURCE.NAMING.SEMANTICS`](#grammatical-naming-and-migration-sourcenamingsemantics).
 
@@ -268,7 +268,7 @@ One checker counts every kind against its own limit and reports against the sour
 
 [`shell.md`](shell.md) realizes this rule in `SHELL.EMBED.PROGRAMS`, and [`python.md`](python.md) in `PY.EMBED.PROGRAMS`. R and Rust realize it when maintained source in those languages is introduced. [`TEST.FIXTURES`](testing.md#fixtures-testfixtures) owns test inputs, including input data written as a multi-line string.
 
-**Automation:** No dedicated checker or registry entry implements this rule yet.
+**Automation:** `dev/audit/embedded_programs.py` counts every kind against its language owner's limit, with `subset` coverage, and `tests/contract/repository/test_embedded_programs.sh` runs it on the repository. A kind whose count has reached zero blocks; each other kind reports its count as a warning.
 
 **Semantic remainder:** Decide whether two programs are one program copied, whether a program within its limit still reads better as its own file, and which home a moved program's role selects.
 
