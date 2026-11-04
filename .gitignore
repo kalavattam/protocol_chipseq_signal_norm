@@ -142,6 +142,7 @@ tests/fixtures/install_preseq/**
 !tests/fixtures/install_preseq/
 !tests/fixtures/install_preseq/README.md
 !tests/fixtures/install_preseq/make.sh
+!tests/fixtures/install_preseq/stub_*.sh
 
 tests/fixtures/markdown/**
 !tests/fixtures/markdown/

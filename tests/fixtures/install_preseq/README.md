@@ -14,11 +14,13 @@ Generated fixture outputs are ignored by Git. `tests/run_tests.sh` regenerates t
 ## Files
 Readable provenance:
 - `make.sh`
+- `stub_fail.sh`: the stub that `make.sh` copies to `bin/make` and `bin/clang++`
+- `stub_preseq.sh`: the stub that `make.sh` copies to `bin/preseq` in `prefix/installed/`
 
 A file named like a tarball:
 - `tarball/not_a_tarball.tar.gz`: text, so its SHA-256 never matches the pinned one
 
-Prefix states, each with `bin/make`, `include/htslib/sam.h`, and `lib/libhts.so.3`. Every stub exits 1, since the installer must stop at its checks before it would use them:
+Prefix states, each with `bin/make`, `include/htslib/sam.h`, and `lib/libhts.so.3`. The `make` and `clang++` stubs exit 1, since the installer must stop at its checks before it would use them:
 - `prefix/bare/`: also has `bin/clang++`
 - `prefix/no_compiler/`: has no `bin/clang++`
 - `prefix/installed/`: also has `bin/clang++`, and a `bin/preseq` that reports version 3.2.0

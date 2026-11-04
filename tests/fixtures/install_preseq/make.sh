@@ -70,26 +70,27 @@ mkdirs "${dir_tar}"
 printf 'not a tarball\n' > "${fil_tar}"
 
 # Write each prefix state. 'no_compiler' lacks 'clang++', and 'installed'
-# already holds a 'preseq' that reports version 3.2.0. The stubs exit 1, since
-# the installer must stop at its checks before it would use them.
+# already holds a 'preseq' that reports version 3.2.0. The 'make' and 'clang++'
+# stubs exit 1, since the installer must stop at its checks before it would use
+# them.
 for sta in "${arr_sta[@]}"; do
     pth="${dir_pfx}/${sta}"
 
     mkdirs "${pth}/bin" "${pth}/include/htslib" "${pth}/lib"
-    printf '#!/usr/bin/env bash\nexit 1\n' > "${pth}/bin/make"
+    cp "${dir_scr}/stub_fail.sh" "${pth}/bin/make"
+    chmod +x "${pth}/bin/make"
     : > "${pth}/include/htslib/sam.h"
     : > "${pth}/lib/libhts.so.3"
 
     if [[ "${sta}" != "no_compiler" ]]; then
-        printf '#!/usr/bin/env bash\nexit 1\n' > "${pth}/bin/clang++"
+        cp "${dir_scr}/stub_fail.sh" "${pth}/bin/clang++"
+        chmod +x "${pth}/bin/clang++"
     fi
 
     if [[ "${sta}" == "installed" ]]; then
-        printf '#!/usr/bin/env bash\necho "Version: 3.2.0" >&2\n' \
-            > "${pth}/bin/preseq"
+        cp "${dir_scr}/stub_preseq.sh" "${pth}/bin/preseq"
+        chmod +x "${pth}/bin/preseq"
     fi
-
-    chmod +x "${pth}/bin/"*
 done
 
 
