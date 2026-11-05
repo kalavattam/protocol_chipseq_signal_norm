@@ -277,9 +277,11 @@ If you encounter an issue (bugs, broken code, broken links, unexpected behavior,
 </details>
 <br />
 
-## Authorship and AI assistance in code, documentation, and related materials
+## Authorship and AI assistance attribution
 - Director, responsible author, and maintainer: Kris Alavattam.
-- Code, documentation, and related materials are planned, designed, developed, reviewed, revised, and maintained with AI assistance from ChatGPT and Codex (OpenAI), and Claude Cowork and Claude Code (Anthropic). All AI-assisted output is reviewed, edited, and approved by the author.
-    + ChatGPT: GPT-4- and GPT-5-series models (most recent: GPT-5.6 Terra and Sol).
-    + Codex: GPT-5.4, GPT-5.5, and GPT-5.6 Terra and Sol models.
-    + Claude Cowork and Code: Opus 4.8, Opus 5, Fable 5, and Opus 5.5 models.
+- Code, documentation, and related materials are planned, designed, developed, reviewed, revised, and maintained with assistance from OpenAI and Anthropic large language models. The primary model in current use is Anthropic Claude Opus 5.5.
+- Products and models used thus far:
+  + OpenAI ChatGPT: GPT-4- and GPT-5-series models (most recent: GPT-5.6 Terra and Sol).
+  + OpenAI Codex: GPT-5.4, GPT-5.5, and GPT-5.6 Terra and Sol.
+  + Anthropic Claude Cowork, Desktop, and Code: Opus 4.8, Opus 5, Fable 5, Fable 5.1, and Opus 5.5.
+- I review all AI-assisted output and approve or reject its use; I often edit what I end up using. I occasionally write the code, documentation, etc. myself.
