@@ -957,7 +957,7 @@ else
 fi
 
 
-# BWA-MEM2, single-end, CRAM with '--qname': Step 6 name-sorts the final BAM,
+# bwa-mem2, single-end, CRAM with '--qname': Step 6 name-sorts the final BAM,
 # converts both files, indexes the output, and removes the BAM work files.
 t="${tmp}/cram"
 out="$(
@@ -985,7 +985,7 @@ bwa-mem2 mem \\
         -o ${t}.bam"
 
 check_block \
-    "BWA-MEM2 SE dry run prints Step 1 without '-q'" \
+    "bwa-mem2 SE dry run prints Step 1 without '-q'" \
     "${exp}" \
     "$(print_step 1 "${out}")"
 

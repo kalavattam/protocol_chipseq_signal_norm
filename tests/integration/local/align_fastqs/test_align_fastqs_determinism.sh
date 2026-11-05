@@ -312,10 +312,10 @@ for row in "${arr_facts[@]}"; do
 done
 
 
-# BWA-MEM and BWA-MEM2 pass a fixed '-K' for either layout.
+# BWA-MEM and bwa-mem2 pass a fixed '-K' for either layout.
 arr_mem=(
     "BWA-MEM|bwa mem|--aligner bwa --index ${idx_bwa}"
-    "BWA-MEM2|bwa-mem2 mem|--aligner bwa-mem2 --index ${idx_bm2}"
+    "bwa-mem2|bwa-mem2 mem|--aligner bwa-mem2 --index ${idx_bm2}"
 )
 
 for row in "${arr_mem[@]}"; do
@@ -393,7 +393,7 @@ done
 arr_rec=(
     "Bowtie 2|--aligner bowtie2 --index ${idx_tie}|bt2_seed=0|yes"
     "BWA-MEM|--aligner bwa --index ${idx_bwa}|bwa_K=100000000|yes"
-    "BWA-MEM2|--aligner bwa-mem2 --index ${idx_bm2}|bwa_K=100000000|yes"
+    "bwa-mem2|--aligner bwa-mem2 --index ${idx_bm2}|bwa_K=100000000|yes"
     "BWA-backtrack|--aligner bwa --bwa_alg aln --index ${idx_bwa}|bwa_K=|no"
 )
 

@@ -6,25 +6,26 @@
 # Copyright 2026 by Kris Alavattam
 # Email: kalavattam@gmail.com
 #
-# OpenAI ChatGPT and Codex (GPT-5.5, GPT-5.6) were used in design, development,
-# and documentation, with all output reviewed, edited, and approved by the
-# author.
+# The following were used in design, development, and documentation, with all
+# output reviewed, edited, and approved by the author:
+# - OpenAI ChatGPT and Codex (GPT-5.5, GPT-5.6);
+# - Anthropic Claude Code (Opus 5.5).
 #
 # Distributed under the MIT license.
 
 
 set -euo pipefail
 
-TEST_NAME="submit align-fastqs BWA ALN"
+TEST_NAME="submit align-fastqs BWA-backtrack"
 
-#  Source shared test helpers
+# Source shared test helpers.
 # shellcheck source=tests/support/test_helpers.sh
 source "$(
     git -C "$(dirname "${BASH_SOURCE[0]}")" rev-parse --show-toplevel
 )/tests/support/test_helpers.sh"
 
 
-#  Define fixture and output paths for BWA ALN alignment
+# Define fixture and output paths for BWA-backtrack alignment.
 dir_fx="${ROOT_REPO}/tests/fixtures/align_fastqs"
 in_se="${dir_fx}/fastq/se/tiny_se.atria.fastq.gz"
 in_pe_1="${dir_fx}/fastq/pe/tiny_pe_R1.atria.fastq.gz"
@@ -79,7 +80,7 @@ require_files_nonempty \
     }
 
 
-#  Align one SE FASTQ fixture with BWA ALN and emit BAM
+# Align one SE FASTQ fixture with BWA-backtrack and emit BAM.
 # shellcheck disable=SC2154
 if \
     run_capture \
@@ -101,56 +102,56 @@ if \
             --dir_eo "${dir_err}" \
             --nam_job "test_submit_align_bwa_aln_se"
 then
-    record_pass "submit_align_fastqs.sh BWA ALN SE BAM exits 0"
+    record_pass "submit_align_fastqs.sh BWA-backtrack SE BAM exits 0"
 else
     record_fail \
-        "submit_align_fastqs.sh BWA ALN SE BAM failed; see" \
+        "submit_align_fastqs.sh BWA-backtrack SE BAM failed; see" \
         "$(print_relpath "${log_se}")"
 fi
 
 assert_file_nonempty \
     "${out_se}" \
-    "submit BWA ALN SE BAM output"
+    "submit BWA-backtrack SE BAM output"
 
 assert_file_nonempty \
     "${bai_se}" \
-    "submit BWA ALN SE BAM index"
+    "submit BWA-backtrack SE BAM index"
 
 if [[ -s "${out_se}" ]]; then
     if \
         run_capture \
-            "quickcheck submit align-fastqs BWA ALN SE BAM" \
+            "quickcheck submit align-fastqs BWA-backtrack SE BAM" \
             "${log_se_qc}" \
             run_samtools quickcheck "${out_se}"
     then
-        record_pass "submit BWA ALN SE BAM passes samtools quickcheck"
+        record_pass "submit BWA-backtrack SE BAM passes samtools quickcheck"
     else
-        record_fail "submit BWA ALN SE BAM fails samtools quickcheck"
+        record_fail "submit BWA-backtrack SE BAM fails samtools quickcheck"
     fi
 
     run_capture \
-        "idxstats submit align-fastqs BWA ALN SE BAM" \
+        "idxstats submit align-fastqs BWA-backtrack SE BAM" \
         "${stat_se}" \
         run_samtools idxstats "${out_se}"
 
     run_capture \
-        "view submit align-fastqs BWA ALN SE BAM" \
+        "view submit align-fastqs BWA-backtrack SE BAM" \
         "${vw_se}" \
         run_samtools view "${out_se}"
 
     assert_pattern_found \
         "${stat_se}" \
         $'^I\t108\t1\t0$' \
-        "submit BWA ALN SE BAM has one mapped read on chromosome I"
+        "submit BWA-backtrack SE BAM has one mapped read on chromosome I"
 
     assert_pattern_found \
         "${vw_se}" \
         $'^tiny_se_read_1\t' \
-        "submit BWA ALN SE BAM contains expected read name"
+        "submit BWA-backtrack SE BAM contains expected read name"
 fi
 
 
-#  Align one PE FASTQ fixture with BWA ALN and emit BAM
+# Align one PE FASTQ fixture with BWA-backtrack and emit BAM.
 # shellcheck disable=SC2154
 if \
     run_capture \
@@ -172,62 +173,62 @@ if \
             --dir_eo "${dir_err}" \
             --nam_job "test_submit_align_bwa_aln_pe"
 then
-    record_pass "submit_align_fastqs.sh BWA ALN PE BAM exits 0"
+    record_pass "submit_align_fastqs.sh BWA-backtrack PE BAM exits 0"
 else
     record_fail \
-        "submit_align_fastqs.sh BWA ALN PE BAM failed; see" \
+        "submit_align_fastqs.sh BWA-backtrack PE BAM failed; see" \
         "$(print_relpath "${log_pe}")"
 fi
 
 assert_file_nonempty \
     "${out_pe}" \
-    "submit BWA ALN PE BAM output"
+    "submit BWA-backtrack PE BAM output"
 
 assert_file_nonempty \
     "${bai_pe}" \
-    "submit BWA ALN PE BAM index"
+    "submit BWA-backtrack PE BAM index"
 
 if [[ -s "${out_pe}" ]]; then
     if \
         run_capture \
-            "quickcheck submit align-fastqs BWA ALN PE BAM" \
+            "quickcheck submit align-fastqs BWA-backtrack PE BAM" \
             "${log_pe_qc}" \
             run_samtools quickcheck "${out_pe}"
     then
-        record_pass "submit BWA ALN PE BAM passes samtools quickcheck"
+        record_pass "submit BWA-backtrack PE BAM passes samtools quickcheck"
     else
-        record_fail "submit BWA ALN PE BAM fails samtools quickcheck"
+        record_fail "submit BWA-backtrack PE BAM fails samtools quickcheck"
     fi
 
     run_capture \
-        "idxstats submit align-fastqs BWA ALN PE BAM" \
+        "idxstats submit align-fastqs BWA-backtrack PE BAM" \
         "${stat_pe}" \
         run_samtools idxstats "${out_pe}"
 
     run_capture \
-        "view submit align-fastqs BWA ALN PE BAM" \
+        "view submit align-fastqs BWA-backtrack PE BAM" \
         "${vw_pe}" \
         run_samtools view "${out_pe}"
 
     assert_pattern_found \
         "${stat_pe}" \
         $'^I\t108\t2\t0$' \
-        "submit BWA ALN PE BAM has two mapped reads on chromosome I"
+        "submit BWA-backtrack PE BAM has two mapped reads on chromosome I"
 
     assert_pattern_found \
         "${vw_pe}" \
         $'^tiny_pe_pair_1\t' \
-        "submit BWA ALN PE BAM contains expected read name"
+        "submit BWA-backtrack PE BAM contains expected read name"
 
     assert_pattern_found \
         "${vw_pe}" \
         $'^tiny_pe_pair_1\t99\tI\t17\t' \
-        "submit BWA ALN PE BAM has proper-pair R1 flag and start"
+        "submit BWA-backtrack PE BAM has proper-pair R1 flag and start"
 
     assert_pattern_found \
         "${vw_pe}" \
         $'^tiny_pe_pair_1\t147\tI\t70\t' \
-        "submit BWA ALN PE BAM has proper-pair R2 flag and start"
+        "submit BWA-backtrack PE BAM has proper-pair R2 flag and start"
 fi
 
 finish

@@ -6,25 +6,26 @@
 # Copyright 2026 by Kris Alavattam
 # Email: kalavattam@gmail.com
 #
-# OpenAI ChatGPT and Codex (GPT-5.5, GPT-5.6) were used in design, development,
-# and documentation, with all output reviewed, edited, and approved by the
-# author.
+# The following were used in design, development, and documentation, with all
+# output reviewed, edited, and approved by the author:
+# - OpenAI ChatGPT and Codex (GPT-5.5, GPT-5.6);
+# - Anthropic Claude Code (Opus 5.5).
 #
 # Distributed under the MIT license.
 
 
 set -euo pipefail
 
-TEST_NAME="execute align-fastqs bwa-mem2 MEM"
+TEST_NAME="execute align-fastqs bwa-mem2"
 
-#  Source shared test helpers
+# Source shared test helpers.
 # shellcheck source=tests/support/test_helpers.sh
 source "$(
     git -C "$(dirname "${BASH_SOURCE[0]}")" rev-parse --show-toplevel
 )/tests/support/test_helpers.sh"
 
 
-#  Define fixture and output paths for execute-to-submit bwa-mem2 MEM alignment
+# Define fixture and output paths for execute-to-submit bwa-mem2 alignment.
 dir_fx="${ROOT_REPO}/tests/fixtures/align_fastqs"
 in_se="${dir_fx}/fastq/se/tiny_se.atria.fastq.gz"
 in_pe_1="${dir_fx}/fastq/pe/tiny_pe_R1.atria.fastq.gz"
@@ -79,7 +80,7 @@ require_files_nonempty \
     }
 
 
-#  Run execute_align_fastqs.sh through submit_align_fastqs.sh for SE input
+# Run 'execute_align_fastqs.sh' through 'submit_align_fastqs.sh' for SE input.
 if \
     run_capture \
         "execute align-fastqs bwa-mem2 mem se" \
@@ -99,56 +100,56 @@ if \
             --nam_job "test_execute_align_bwa_mem2_se" \
             --max_job 1
 then
-    record_pass "execute_align_fastqs.sh bwa-mem2 MEM SE BAM exits 0"
+    record_pass "execute_align_fastqs.sh bwa-mem2 SE BAM exits 0"
 else
     record_fail \
-        "execute_align_fastqs.sh bwa-mem2 MEM SE BAM failed; see" \
+        "execute_align_fastqs.sh bwa-mem2 SE BAM failed; see" \
         "$(print_relpath "${log_se}")"
 fi
 
 assert_file_nonempty \
     "${out_se}" \
-    "execute bwa-mem2 MEM SE BAM output"
+    "execute bwa-mem2 SE BAM output"
 
 assert_file_nonempty \
     "${bai_se}" \
-    "execute bwa-mem2 MEM SE BAM index"
+    "execute bwa-mem2 SE BAM index"
 
 if [[ -s "${out_se}" ]]; then
     if \
         run_capture \
-            "quickcheck execute align-fastqs bwa-mem2 MEM SE BAM" \
+            "quickcheck execute align-fastqs bwa-mem2 SE BAM" \
             "${log_se_qc}" \
             run_samtools quickcheck "${out_se}"
     then
-        record_pass "execute bwa-mem2 MEM SE BAM passes samtools quickcheck"
+        record_pass "execute bwa-mem2 SE BAM passes samtools quickcheck"
     else
-        record_fail "execute bwa-mem2 MEM SE BAM fails samtools quickcheck"
+        record_fail "execute bwa-mem2 SE BAM fails samtools quickcheck"
     fi
 
     run_capture \
-        "idxstats execute align-fastqs bwa-mem2 MEM SE BAM" \
+        "idxstats execute align-fastqs bwa-mem2 SE BAM" \
         "${stat_se}" \
         run_samtools idxstats "${out_se}"
 
     run_capture \
-        "view execute align-fastqs bwa-mem2 MEM SE BAM" \
+        "view execute align-fastqs bwa-mem2 SE BAM" \
         "${vw_se}" \
         run_samtools view "${out_se}"
 
     assert_pattern_found \
         "${stat_se}" \
         $'^I\t108\t1\t0$' \
-        "execute bwa-mem2 MEM SE BAM has one mapped read on chromosome I"
+        "execute bwa-mem2 SE BAM has one mapped read on chromosome I"
 
     assert_pattern_found \
         "${vw_se}" \
         $'^tiny_se_read_1\t' \
-        "execute bwa-mem2 MEM SE BAM contains expected read name"
+        "execute bwa-mem2 SE BAM contains expected read name"
 fi
 
 
-#  Run execute_align_fastqs.sh through submit_align_fastqs.sh for PE input
+# Run 'execute_align_fastqs.sh' through 'submit_align_fastqs.sh' for PE input.
 if \
     run_capture \
         "execute align-fastqs bwa-mem2 mem pe" \
@@ -168,52 +169,52 @@ if \
             --nam_job "test_execute_align_bwa_mem2_pe" \
             --max_job 1
 then
-    record_pass "execute_align_fastqs.sh bwa-mem2 MEM PE BAM exits 0"
+    record_pass "execute_align_fastqs.sh bwa-mem2 PE BAM exits 0"
 else
     record_fail \
-        "execute_align_fastqs.sh bwa-mem2 MEM PE BAM failed; see" \
+        "execute_align_fastqs.sh bwa-mem2 PE BAM failed; see" \
         "$(print_relpath "${log_pe}")"
 fi
 
 assert_file_nonempty \
     "${out_pe}" \
-    "execute bwa-mem2 MEM PE BAM output"
+    "execute bwa-mem2 PE BAM output"
 
 assert_file_nonempty \
     "${bai_pe}" \
-    "execute bwa-mem2 MEM PE BAM index"
+    "execute bwa-mem2 PE BAM index"
 
 if [[ -s "${out_pe}" ]]; then
     if \
         run_capture \
-            "quickcheck execute align-fastqs bwa-mem2 MEM PE BAM" \
+            "quickcheck execute align-fastqs bwa-mem2 PE BAM" \
             "${log_pe_qc}" \
             run_samtools quickcheck "${out_pe}"
     then
-        record_pass "execute bwa-mem2 MEM PE BAM passes samtools quickcheck"
+        record_pass "execute bwa-mem2 PE BAM passes samtools quickcheck"
     else
-        record_fail "execute bwa-mem2 MEM PE BAM fails samtools quickcheck"
+        record_fail "execute bwa-mem2 PE BAM fails samtools quickcheck"
     fi
 
     run_capture \
-        "idxstats execute align-fastqs bwa-mem2 MEM PE BAM" \
+        "idxstats execute align-fastqs bwa-mem2 PE BAM" \
         "${stat_pe}" \
         run_samtools idxstats "${out_pe}"
 
     run_capture \
-        "view execute align-fastqs bwa-mem2 MEM PE BAM" \
+        "view execute align-fastqs bwa-mem2 PE BAM" \
         "${vw_pe}" \
         run_samtools view "${out_pe}"
 
     assert_pattern_found \
         "${stat_pe}" \
         $'^I\t108\t2\t0$' \
-        "execute bwa-mem2 MEM PE BAM has two mapped reads on chromosome I"
+        "execute bwa-mem2 PE BAM has two mapped reads on chromosome I"
 
     assert_pattern_found \
         "${vw_pe}" \
         $'^tiny_pe_pair_1\t' \
-        "execute bwa-mem2 MEM PE BAM contains expected read name"
+        "execute bwa-mem2 PE BAM contains expected read name"
 fi
 
 finish

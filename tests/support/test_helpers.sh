@@ -1015,7 +1015,7 @@ EOM
 }
 
 
-# Run samtools from the active shell or the resolved project environment.
+# Run 'samtools' from the active shell or the resolved project environment.
 function run_samtools() {
     local env_lcl="${env_nam:-env_protocol}"
     local show_help

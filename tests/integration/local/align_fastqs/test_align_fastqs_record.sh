@@ -356,7 +356,7 @@ add_row \
     "${arr_in_se[@]}"
 
 add_row \
-    "BWA-MEM2 PE, CRAM, '--qname'" \
+    "bwa-mem2 PE, CRAM, '--qname'" \
     bm2_pe.cram \
     "--aligner bwa-mem2 --index ${idx_bm2} ${a_ref} ${a_pe} --qname" \
     "pkg_bwa-mem2=${pkg_bm2}" \

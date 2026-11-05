@@ -115,7 +115,7 @@ The main file's `duplicate_all` row comes from Markdup 2's statistics. Its recor
 ## How each aligner judges a pair
 Each aligner decides for itself whether a pair is proper (SAM flag 2) from its own source:
 
-|                              | Bowtie 2 2.5.5 (`pe.cpp`)                                       | BWA-MEM 0.7.19 and BWA-MEM2 2.3 (`bwamem_pair`)                | BWA-backtrack 0.7.19 (`bwape.c`)                                   |
+|                              | Bowtie 2 2.5.5 (`pe.cpp`)                                       | BWA-MEM 0.7.19 and bwa-mem2 2.3 (`bwamem_pair`)                | BWA-backtrack 0.7.19 (`bwape.c`)                                   |
 | :---                         | :---                                                            | :---                                                           | :---                                                               |
 | What the span is measured on | Aligned extents only; soft clips are excluded                   | 5′ start of the forward mate to the 3′ end of the reverse mate | 5′ start of the forward mate to the 3′ end of the reverse mate     |
 | FF and RR                    | Improper                                                        | Improper unless that orientation's estimate succeeded          | Improper                                                           |

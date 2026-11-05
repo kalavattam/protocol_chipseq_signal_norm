@@ -149,9 +149,9 @@ fq_1_s="${dir_in}/tiny_pe_R1.atria.fastq.gz"
 fq_2_s="${dir_in}/tiny_pe_R2.atria.fastq.gz"
 
 arms=(
-    "bowtie2 PE, '--req_flg', '--qname'|bt2|pe|--aligner bowtie2 --req_flg --qname|bam"
+    "Bowtie 2 PE, '--req_flg', '--qname'|bt2|pe|--aligner bowtie2 --req_flg --qname|bam"
     "BWA-backtrack PE, '--mapq 20'|bwa|pe|--aligner bwa --bwa_alg aln --mapq 20|bam"
-    "BWA-MEM2 SE|bm2|se|--aligner bwa-mem2|bam"
+    "bwa-mem2 SE|bm2|se|--aligner bwa-mem2|bam"
     "BWA-MEM PE, CRAM, '--qname'|bwa|pe|--aligner bwa --qname|cram"
 )
 

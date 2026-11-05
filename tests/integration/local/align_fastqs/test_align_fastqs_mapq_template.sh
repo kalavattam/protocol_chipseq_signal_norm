@@ -23,7 +23,7 @@ source "$(
 )/tests/support/test_helpers.sh"
 
 
-# Define fixture and output paths. BWA and BWA-MEM2 can give two mates
+# Define fixture and output paths. BWA and bwa-mem2 can give two mates
 # different MAPQ values and write supplementary records, so '--mapq' must keep
 # or drop each template whole; the 'repeat' fixtures exercise this.
 dir_fx="${ROOT_REPO}/tests/fixtures/align_fastqs"
@@ -148,10 +148,10 @@ mq_mem_se="chim:p0,s0 ctrl:p60 rchm:p60,s0"
 
 # label|input|arguments|expected MAPQs
 pre=(
-    "bwa mem|pe|${bwa_mem}|${mq_mem_pe}"
+    "BWA-MEM|pe|${bwa_mem}|${mq_mem_pe}"
     "bwa-mem2|pe|${bm2}|${mq_mem_pe}"
-    "bwa aln|pe|${bwa_aln}|ctrl:p60,p60 half:p29,p37"
-    "bwa mem|se|${bwa_mem}|${mq_mem_se}"
+    "BWA-backtrack|pe|${bwa_aln}|ctrl:p60,p60 half:p29,p37"
+    "BWA-MEM|se|${bwa_mem}|${mq_mem_se}"
     "bwa-mem2|se|${bm2}|${mq_mem_se}"
 )
 
@@ -178,9 +178,9 @@ done
 # both, including on the chimeric reads aligned in local mode, so that a change
 # in what Bowtie 2 writes shows here.
 guard=(
-    "bowtie2 end-to-end|pe|${bt2}"
-    "bowtie2 local|pe|${bt2_loc}"
-    "bowtie2 local|se|${bt2_loc}"
+    "Bowtie 2 end-to-end|pe|${bt2}"
+    "Bowtie 2 local|pe|${bt2_loc}"
+    "Bowtie 2 local|se|${bt2_loc}"
 )
 
 for idx in "${!guard[@]}"; do
@@ -216,16 +216,16 @@ done
 
 # label|input|arguments|expected 'name:records'
 rows=(
-    "bwa mem|pe|${bwa_mem} --mapq 0|chim:3 ctrl:2 half:2 rchm:3"
-    "bwa mem|pe|${bwa_mem} --mapq 1|ctrl:2 rchm:3"
-    "bwa mem|pe|${bwa_mem} --mapq 30|ctrl:2 rchm:3"
-    "bwa aln|pe|${bwa_aln} --mapq 1|ctrl:2 half:2"
-    "bwa aln|pe|${bwa_aln} --mapq 30|ctrl:2"
+    "BWA-MEM|pe|${bwa_mem} --mapq 0|chim:3 ctrl:2 half:2 rchm:3"
+    "BWA-MEM|pe|${bwa_mem} --mapq 1|ctrl:2 rchm:3"
+    "BWA-MEM|pe|${bwa_mem} --mapq 30|ctrl:2 rchm:3"
+    "BWA-backtrack|pe|${bwa_aln} --mapq 1|ctrl:2 half:2"
+    "BWA-backtrack|pe|${bwa_aln} --mapq 30|ctrl:2"
     "bwa-mem2|pe|${bm2} --mapq 1|ctrl:2 rchm:3"
-    "bwa mem|se|${bwa_mem} --mapq 1|ctrl:1 rchm:2"
+    "BWA-MEM|se|${bwa_mem} --mapq 1|ctrl:1 rchm:2"
     "bwa-mem2|se|${bm2} --mapq 1|ctrl:1 rchm:2"
-    "bowtie2|pe|${bt2_loc} --mapq 20|chim:2 ctrl:2 half:2"
-    "bowtie2|se|${bt2_loc} --mapq 20|ctrl:1"
+    "Bowtie 2|pe|${bt2_loc} --mapq 20|chim:2 ctrl:2 half:2"
+    "Bowtie 2|se|${bt2_loc} --mapq 20|ctrl:1"
 )
 
 for idx in "${!rows[@]}"; do

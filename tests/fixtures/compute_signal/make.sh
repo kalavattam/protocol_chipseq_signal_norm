@@ -343,7 +343,7 @@ EOM
         '=' '41' '-20' 'ACGTACGTAC' 'FFFFFFFFFF'
 } > "${fil_sam_pe}"
 
-# Require samtools for indexed FASTA, BAM, and CRAM generation.
+# Require 'samtools' for indexed FASTA, BAM, and CRAM generation.
 require_cmd samtools "in '${env_req}' to generate BAM/CRAM fixtures."
 
 # Index the tiny reference for CRAM generation and reading.

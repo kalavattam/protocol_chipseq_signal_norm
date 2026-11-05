@@ -793,7 +793,7 @@ done
 
 # BWA flags no pair proper on 'pairs', too few to estimate insert sizes, so
 # '--req_flg' would leave its alignment file empty. On 'pairs_fill', BWA-MEM
-# and BWA-MEM2 flag every filler pair and the concordant classes proper, and
+# and bwa-mem2 flag every filler pair and the concordant classes proper, and
 # not 'far', 'dove', 'rf', 'ff', or 'chrs'. With '--req_flg', 'separate' keeps
 # exactly the proper pairs in the alignment file, as 'remove' does.
 cls_all="pair_chrs pair_conc pair_conc2 pair_cont pair_dove pair_far"

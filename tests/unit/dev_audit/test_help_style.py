@@ -410,7 +410,7 @@ Notes
 -----
   Runtime requirements:
     - Bash >= 4.4
-    - SAMtools
+    - Samtools
 """.removesuffix("\n")
 
         self.assertIn("HELP.RUNTIME.EXACT_CALLABLE", rule_ids(body))

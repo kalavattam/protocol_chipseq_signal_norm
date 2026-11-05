@@ -247,7 +247,7 @@ Parameters
     'bowtie2', 'bwa', or 'bwa-mem2'.
 
   2  index : path
-    The index as the aligner takes it: the stem for Bowtie 2, the reference FASTA path for BWA and BWA-MEM2.
+    The index as the aligner takes it: the stem for Bowtie 2, the reference FASTA path for BWA and bwa-mem2.
 
 Returns
 -------
@@ -262,7 +262,7 @@ Notes
   - The index files are:
     + For Bowtie 2,  '.1', '.2', '.3', '.4', '.rev.1', and '.rev.2', with '.bt2' or, when '<stem>.1.bt2' is absent, '.bt2l'.
     + For BWA, they are '.amb', '.ann', '.bwt', '.pac', and '.sa'.
-    + For BWA-MEM2, they are '.0123', '.amb', '.ann', '.bwt.2bit.64', and '.pac'.
+    + For bwa-mem2, they are '.0123', '.amb', '.ann', '.bwt.2bit.64', and '.pac'.
   - The checksum is taken over the lines '<md5>  <file name>', one per index file in that order and each ending in a newline.
     + Only file names appear, so it does not depend on the index's directory.
     + In a shell, 'cd <dir> && md5sum <files> | md5sum' gives the same value.
@@ -367,7 +367,7 @@ Notes
     - dirname
 
   - The version and build are read from the name of '<prefix>/conda-meta/<prg>-<version>-<build>.json', where '<prefix>' is the directory above the program's 'bin/'; together they name the exact binary, as in 'conda install <prg>=<version>=<build>'.
-  - The record takes every program's version from its package rather than from the program's own '@PG' line, because a program can misreport itself: BWA-MEM2 2.3 writes 'VN:2.2.1' (upstream bwa-mem2 issue #276).
+  - The record takes every program's version from its package rather than from the program's own '@PG' line, because a program can misreport itself: bwa-mem2 2.3 writes 'VN:2.2.1' (upstream bwa-mem2 issue #276).
 
 Examples
 --------

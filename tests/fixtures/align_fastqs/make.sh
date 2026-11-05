@@ -41,7 +41,7 @@ dir_fix="${dir_scr}"
 source "${dir_scr}/../../support/fixture_helpers.sh"
 
 
-# Remove temporary FASTQ and BWA ALN intermediates on exit or failure.
+# Remove temporary FASTQ and BWA-backtrack intermediates on exit or failure.
 function cleanup_tmp_fastqs() {
     rm_files \
         "${dir_fix}" \
@@ -303,7 +303,7 @@ arr_opt_tmp=()
 env_req="env_protocol"
 
 
-# Register cleanup of temporary FASTQ and BWA ALN intermediates on exit.
+# Register cleanup of temporary FASTQ and BWA-backtrack intermediates on exit.
 register_cleanup cleanup_tmp_fastqs
 
 # Require the project environment for aligner-backed fixtures.
@@ -465,14 +465,14 @@ fi
 
 rm_file "${dir_fix}" "${log_bwa}"
 
-# Validate BWA MEM single-end and paired-end alignment paths.
+# Validate BWA-MEM single-end and paired-end alignment paths.
 bwa mem "${idx_bwa}" "${fq_se_gz}" \
     > /dev/null 2> /dev/null
 
 bwa mem "${idx_bwa}" "${fq_r1_gz}" "${fq_r2_gz}" \
     > /dev/null 2> /dev/null
 
-# Validate BWA ALN single-end alignment path.
+# Validate BWA-backtrack single-end alignment path.
 bwa aln -t 1 "${idx_bwa}" "${fq_se_gz}" \
     > "${tmp_bln_se}" 2> /dev/null
 
@@ -481,7 +481,7 @@ bwa samse "${idx_bwa}" "${tmp_bln_se}" "${fq_se_gz}" \
 
 rm_file "${dir_fix}" "${tmp_bln_se}"
 
-# Validate BWA ALN paired-end alignment path.
+# Validate BWA-backtrack paired-end alignment path.
 bwa aln -t 1 "${idx_bwa}" "${fq_r1_gz}" \
     > "${tmp_bln_r1}" 2> /dev/null
 
@@ -497,7 +497,7 @@ rm_file "${dir_fix}" "${tmp_bln_r1}"
 rm_file "${dir_fix}" "${tmp_bln_r2}"
 
 
-# Remove stale BWA-MEM2 index files before regeneration.
+# Remove stale bwa-mem2 index files before regeneration.
 rm_files \
     "${dir_fix}" \
     "${idx_bm2}.0123" \
@@ -506,7 +506,7 @@ rm_files \
     "${idx_bm2}.bwt.2bit.64" \
     "${idx_bm2}.pac"
 
-# Build and validate the BWA-MEM2 index.
+# Build and validate the bwa-mem2 index.
 log_bm2="${dir_bm2}/bwa-mem2-index.log"
 if ! \
     bwa-mem2 index "${idx_bm2}" > "${log_bm2}" 2>&1
@@ -517,7 +517,7 @@ fi
 
 rm_file "${dir_fix}" "${log_bm2}"
 
-# Validate BWA-MEM2 single-end and paired-end alignment paths.
+# Validate bwa-mem2 single-end and paired-end alignment paths.
 bwa-mem2 mem "${idx_bm2}" "${fq_se_gz}" \
     > /dev/null 2> /dev/null
 
@@ -711,7 +711,7 @@ rm_files \
     "${idx_rpt_bm2}.bwt.2bit.64" \
     "${idx_rpt_bm2}.pac"
 
-# Build the repeat indexes for Bowtie 2, BWA, and BWA-MEM2.
+# Build the repeat indexes for Bowtie 2, BWA, and bwa-mem2.
 log_rpt="${dir_ref}/repeat-index.log"
 if ! \
     {
@@ -879,7 +879,7 @@ rm_files \
     "${idx_tie_bt2}.rev.1.bt2" \
     "${idx_tie_bt2}.rev.2.bt2"
 
-# Build the tie BWA and BWA-MEM2 indexes and then the Bowtie 2 index.
+# Build the tie BWA and bwa-mem2 indexes and then the Bowtie 2 index.
 cp "${ref_tie}" "${ref_tie_bwa}"
 cp "${ref_tie}" "${ref_tie_bm2}"
 
@@ -938,8 +938,8 @@ seq_brg_b="${blk_u_2}${blk_u_3}"
 
 # Write the 100-base bridge reads (offsets are zero-based):
 # - 'brdg': R1 is unique in 'chrA'. R2 is the reverse complement of the last 70
-#   bases of 'chrA' and the first 30 of 'chrB'. BWA ALN flags R2 unaligned and
-#   leaves R1's mate-unaligned flag clear.
+#   bases of 'chrA' and the first 30 of 'chrB'. BWA-backtrack flags R2
+#   unaligned and leaves R1's mate-unaligned flag clear.
 # - 'ctrl': both mates unique in 'chrB'.
 {
     print_fq brdg "${seq_brg_a:500:100}"
@@ -980,7 +980,7 @@ rm_files \
     "${idx_brg_bt2}.rev.1.bt2" \
     "${idx_brg_bt2}.rev.2.bt2"
 
-# Build the bridge BWA and BWA-MEM2 indexes and then the Bowtie 2 index.
+# Build the bridge BWA and bwa-mem2 indexes and then the Bowtie 2 index.
 cp "${ref_brg}" "${ref_brg_bwa}"
 cp "${ref_brg}" "${ref_brg_bm2}"
 
@@ -1490,7 +1490,7 @@ rm_files \
     "${idx_par_bt2}.rev.1.bt2" \
     "${idx_par_bt2}.rev.2.bt2"
 
-# Build the pairs BWA and BWA-MEM2 indexes and then the Bowtie 2 index.
+# Build the pairs BWA and bwa-mem2 indexes and then the Bowtie 2 index.
 cp "${ref_par}" "${ref_par_bwa}"
 cp "${ref_par}" "${ref_par_bm2}"
 

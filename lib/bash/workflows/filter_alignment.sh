@@ -60,7 +60,8 @@ fi
     # shellcheck source=lib/bash/core/source_helpers.sh
     source "${_dir_src_alignment}/../core/source_helpers.sh" || {
         echo "error($(basename "${BASH_SOURCE[0]}")):" \
-            "failed to source '${_dir_src_alignment}/../core/source_helpers.sh'." >&2
+            "failed to source" \
+            "'${_dir_src_alignment}/../core/source_helpers.sh'." >&2
 
         if [[ "${BASH_SOURCE[0]}" != "${0}" ]]; then
             return 1
@@ -1179,7 +1180,7 @@ EOM
         "${chrs}" \
         || return 1
 
-    # Rewriting through SAM text lets samtools renumber references by name;
+    # Rewriting through SAM text lets Samtools renumber references by name;
     # 'samtools reheader' does not, so it would relabel reads whenever a
     # dropped reference precedes a kept one.
     outdir="$(dirname "${fil_out}")"

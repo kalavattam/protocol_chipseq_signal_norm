@@ -104,12 +104,12 @@ function run_helper() {
 
 # label|input ('se' or 'pe')|arguments|expected primary records
 rows=(
-    "bwa mem|pe|--aligner bwa --index ${idx_bwa} --mapq 0|2"
-    "bwa mem|pe|--aligner bwa --index ${idx_bwa} --mapq 1|2"
-    "bwa aln|pe|--aligner bwa --bwa_alg aln --index ${idx_bwa} --mapq 0|2"
+    "BWA-MEM|pe|--aligner bwa --index ${idx_bwa} --mapq 0|2"
+    "BWA-MEM|pe|--aligner bwa --index ${idx_bwa} --mapq 1|2"
+    "BWA-backtrack|pe|--aligner bwa --bwa_alg aln --index ${idx_bwa} --mapq 0|2"
     "bwa-mem2|pe|--aligner bwa-mem2 --index ${idx_bm2} --mapq 0|2"
-    "bowtie2|pe|--aligner bowtie2 --index ${idx_bt2} --mapq 0|2"
-    "bwa mem|se|--aligner bwa --index ${idx_bwa} --mapq 0|1"
+    "Bowtie 2|pe|--aligner bowtie2 --index ${idx_bt2} --mapq 0|2"
+    "BWA-MEM|se|--aligner bwa --index ${idx_bwa} --mapq 0|1"
     "bwa-mem2|se|--aligner bwa-mem2 --index ${idx_bm2} --mapq 0|1"
 )
 
@@ -140,7 +140,10 @@ for idx in "${!rows[@]}"; do
     # Primary records only; no read is unaligned, and only the fixture's own
     # read or pair is kept, so no mate is left alone.
     names="$(
-        run_samtools view -F 0x900 "${fil_out}" | cut -f 1 | sort | uniq -c \
+        run_samtools view -F 0x900 "${fil_out}" \
+            | cut -f 1 \
+            | sort \
+            | uniq -c \
             | awk '{ printf "%s:%s ", $2, $1 }'
     )"
     n_unal="$(run_samtools view -c -f 4 "${fil_out}")"
@@ -156,11 +159,11 @@ for idx in "${!rows[@]}"; do
 done
 
 
-# BWA ALN can flag one mate unaligned and leave its partner's mate-unaligned
-# flag (0x8) clear, so a per-record '-F 12' keeps the partner. Check that the
-# raw 'bwa sampe' output of the bridge pair still has that shape: one 'brdg'
-# record carries 0x4 and the other lacks 0x8. Otherwise the rows below test
-# nothing.
+# BWA-backtrack can flag one mate unaligned and leave its partner's
+# mate-unaligned flag (0x8) clear, so a per-record '-F 12' keeps the partner.
+# Check that the raw 'bwa sampe' output of the bridge pair still has that
+# shape: one 'brdg' record carries 0x4 and the other lacks 0x8. Otherwise the
+# rows below test nothing.
 rc=0
 # shellcheck disable=SC2016  # Expand in the child shell, not this one.
 flg_raw="$(
@@ -185,14 +188,14 @@ if [[
     record_pass "bwa aln bridge pair flags one mate unaligned, not its partner"
 else
     record_fail \
-        "bwa aln bridge pair no longer has an unaligned mate with an" \
+        "BWA-backtrack bridge pair no longer has an unaligned mate with an" \
         "unflagged partner (exit ${rc}; flags '${flg_raw}')"
 fi
 
 # Each aligner on the bridge pair keeps only whole templates, with or without
-# '--req_flg'. BWA ALN must drop 'brdg' whole. Bowtie 2 'end-to-end' leaves
-# 'brdg' R2 unaligned and flags its partner, so it drops 'brdg' whole too. The
-# other aligners align R2 in part and keep 'brdg'.
+# '--req_flg'. BWA-backtrack must drop 'brdg' whole. Bowtie 2 'end-to-end'
+# leaves 'brdg' R2 unaligned and flags its partner, so it drops 'brdg' whole
+# too. The other aligners align R2 in part and keep 'brdg'.
 bwa_aln="--aligner bwa --bwa_alg aln --index ${idx_brg_bwa}"
 bwa_mem="--aligner bwa --index ${idx_brg_bwa}"
 bm2="--aligner bwa-mem2 --index ${idx_brg_bm2}"
@@ -200,14 +203,14 @@ bt2="--aligner bowtie2 --index ${idx_brg_bt2}"
 
 # label|arguments|expected primary records, as 'name:count'
 brg=(
-    "bwa aln|${bwa_aln} --mapq 0|ctrl:2"
-    "bwa aln|${bwa_aln} --req_flg --mapq 0|ctrl:2"
-    "bwa aln|${bwa_aln} --mapq 1|ctrl:2"
-    "bwa aln|${bwa_aln} --req_flg --mapq 1|ctrl:2"
-    "bwa mem|${bwa_mem} --mapq 0|brdg:2 ctrl:2"
+    "BWA-backtrack|${bwa_aln} --mapq 0|ctrl:2"
+    "BWA-backtrack|${bwa_aln} --req_flg --mapq 0|ctrl:2"
+    "BWA-backtrack|${bwa_aln} --mapq 1|ctrl:2"
+    "BWA-backtrack|${bwa_aln} --req_flg --mapq 1|ctrl:2"
+    "BWA-MEM|${bwa_mem} --mapq 0|brdg:2 ctrl:2"
     "bwa-mem2|${bm2} --mapq 0|brdg:2 ctrl:2"
-    "bowtie2 end-to-end|${bt2} --mapq 0|ctrl:2"
-    "bowtie2 local|${bt2} --bt2_mode local --mapq 0|brdg:2 ctrl:2"
+    "Bowtie 2 end-to-end|${bt2} --mapq 0|ctrl:2"
+    "Bowtie 2 local|${bt2} --bt2_mode local --mapq 0|brdg:2 ctrl:2"
 )
 
 for idx in "${!brg[@]}"; do

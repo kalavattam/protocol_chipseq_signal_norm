@@ -636,7 +636,7 @@ Examples
         work/tiny_se.bam
     '''
 
-  2. Validate a paired-end BWA-MEM2 call that writes CRAM.
+  2. Validate a paired-end bwa-mem2 call that writes CRAM.
     '''bash
     _validate_args_align_fastqs \\
         align_fastqs \\
@@ -1130,7 +1130,7 @@ EOM
 }
 
 
-# Step 1 with BWA-MEM or BWA-MEM2: align paired- or single-end reads and pipe
+# Step 1 with BWA-MEM or bwa-mem2: align paired- or single-end reads and pipe
 # them to the Samtools call that the caller built, which excludes unaligned
 # reads.
 function _align_bwa_mem() {
@@ -1196,7 +1196,7 @@ Notes
 
 Examples
 --------
-  1. Align the paired-end fixtures with BWA-MEM2 and write the BAM work file.
+  1. Align the paired-end fixtures with bwa-mem2 and write the BAM work file.
     '''bash
     _align_bwa_mem \\
         align_fastqs \\
@@ -1229,7 +1229,7 @@ EOM
         return 0
     fi
 
-    # Assign BWA or BWA-MEM2 arguments. By default, BWA estimates PE insert
+    # Assign BWA or bwa-mem2 arguments. By default, BWA estimates PE insert
     # sizes per batch of input bases, and the batch grows with the thread
     # count, so output changes with '-t'. A fixed '-K' sets the batch, making
     # outputs the same at any thread count.
@@ -1640,7 +1640,7 @@ EOM
     # the default level, 6.
     arr_sam+=( -O "bam,level=1" -o "${fil_wrk}" )
 
-    # Based on parsed arguments, run Bowtie 2, BWA, or BWA-MEM2 with output
+    # Based on parsed arguments, run Bowtie 2, BWA, or bwa-mem2 with output
     # piped to the above-constructed Samtools call.
     if [[ "${aligner}" == "bowtie2" ]]; then
         _align_bowtie2 \
@@ -2640,7 +2640,7 @@ EOM
     # Content lines: the chain, the commit, the packages that ran, the options
     # in effect, the inputs by file name, and the steps skipped from the start.
     # Package versions come from Conda, not from each program's own '@PG' line,
-    # which can be wrong (BWA-MEM2 2.3 reports 2.2.1, bwa-mem2#276).
+    # which can be wrong (bwa-mem2 2.3 reports 2.2.1, bwa-mem2#276).
     prg_aln="${aligner}"
     pkg_aln="$(print_record_conda_pkg "${prg_aln}")" || return 1
     pkg_sam="$(print_record_conda_pkg samtools)" || return 1
@@ -3222,7 +3222,7 @@ Usage
   align_fastqs
     [--help] [--dry_run] [--threads <int>] [--aligner <aligner>] [--bt2_mode <mode>] [--bt2_X <int>] [--bwa_alg <algorithm>] [--mapq <int>] [--req_flg] [--unal_mode <mode>] --index <path> [--ref_fa <file>] --fq_1 <file> [--fq_2 <file>] --fil_out <file> [--qname]
 
-  Align single- or paired-end Illumina short reads using Bowtie 2, BWA, or BWA-MEM2, and convert the output to a sorted, duplicate-marked, mate-fixed (if working with paired-end reads) alignment file using Samtools.
+  Align single- or paired-end Illumina short reads using Bowtie 2, BWA, or bwa-mem2, and convert the output to a sorted, duplicate-marked, mate-fixed (if working with paired-end reads) alignment file using Samtools.
 
   Final output format is inferred from '--fil_out': '.bam' or '.cram'. Internal post-processing is performed in BAM format. If CRAM output is requested, the final BAM work file and any retained queryname-sorted BAM intermediate are converted to CRAM in the final step.
 
@@ -3327,7 +3327,7 @@ Notes
     + '<stem>.unal.bam' (or '.cram'), the side file, holds the unaligned reads and their mates:
       - With single-end data, these are the reads flagged unaligned (SAM flag 4).
       - With Bowtie 2 and paired-end data, they are the pairs that did not align as concordant pairs. Bowtie 2 writes both mates of such a pair unaligned even when one mate could align alone.
-      - With BWA or BWA-MEM2, they are the records flagged unaligned or with an unaligned mate.
+      - With BWA or bwa-mem2, they are the records flagged unaligned or with an unaligned mate.
       - When BWA-backtrack flags one mate unaligned but leaves its partner's mate flag clear, the partner goes beside its mate.
     + The templates that '--req_flg' and '--mapq' reject go to their own files:
       - '<stem>.improp.bam' holds the pairs that '--req_flg' rejects. Single-end data has no improper file, and without '--req_flg' the improper file is empty.
@@ -3353,12 +3353,12 @@ Notes
   - Bowtie 2 runs with '--reorder', so its output order does not depend on the thread count. It also runs with '--seed 0', its default, which the record gives as 'bt2_seed=0'.
     + Which of several equally good alignments a read gets depends on the seed and on the read's sequence, qualities, and whole FASTQ header line, so renaming reads can move them.
     + For paired-end data, the two mates' seeds are combined, which cancels the seed and any header text identical in both mates; only header differences between the mates move pairs.
-  - BWA-MEM and BWA-MEM2 run with '-K 100000000', which fixes the batch of read bases over which paired-end insert sizes are estimated. Their output therefore does not depend on the thread count; the record gives the setting as 'bwa_K=100000000'.
+  - BWA-MEM and bwa-mem2 run with '-K 100000000', which fixes the batch of read bases over which paired-end insert sizes are estimated. Their output therefore does not depend on the thread count; the record gives the setting as 'bwa_K=100000000'.
   - Each alignment file's header, the '.qnam' copy's included, carries a pipeline record as '@CO' lines:
     + 'pipeline:' lines give the commit, the options in effect, the input file names, and any skipped steps;
     + 'pipeline-run:' lines give the thread count, the start time, the host, the scripts and functions that ran, and the full paths.
   - The record names each input and gives the MD5 checksum of its bytes, as stored: 'index_md5' for the index files, 'fq_1_md5' and 'fq_2_md5' for the FASTQs, and 'ref_fa_md5' for the reference with CRAM output.
-  - It also gives the Conda package version and build of the aligner and Samtools ('pkg_bowtie2=2.5.5-h9e91881_0', for example), since a program's own '@PG' version can be wrong: BWA-MEM2 2.3 reports 2.2.1 (bwa-mem2 issue #276).
+  - It also gives the Conda package version and build of the aligner and Samtools ('pkg_bowtie2=2.5.5-h9e91881_0', for example), since a program's own '@PG' version can be wrong: bwa-mem2 2.3 reports 2.2.1 (bwa-mem2 issue #276).
   - For '--qname', the retained queryname-sorted output will have the same path and stem assigned to '--fil_out', except '.qnam' will be inserted before the final extension (for example, '.qnam.bam' or '.qnam.cram'). The copy is made in Step #6 from the final, duplicate-marked alignments, so it holds the same records and flags.
   - '--ref_fa' is required when '--fil_out' ends in '.cram', since CRAM writing requires a reference FASTA.
 
@@ -3375,7 +3375,7 @@ Examples
         --fil_out work/tiny_se.bam
     '''
 
-  2. Align paired-end fixtures with BWA-MEM2 and retain CRAM queryname output.
+  2. Align paired-end fixtures with bwa-mem2 and retain CRAM queryname output.
     '''bash
     align_fastqs \\
         --threads 4 \\

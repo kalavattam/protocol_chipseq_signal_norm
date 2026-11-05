@@ -29,7 +29,7 @@ Usage
     [--dir_eo <dir>] [--nam_job <str>]
     [--max_job <int>] [--slurm] [--time <time>]
 
-  Align single- or paired-end short-read FASTQ files using Bowtie 2, BWA, or BWA-MEM2, followed by post-alignment processing with Samtools, including MAPQ-based filtering, sorting, mate fixing (for paired-end alignments), duplicate marking, and indexing.
+  Align single- or paired-end short-read FASTQ files using Bowtie 2, BWA, or bwa-mem2, followed by post-alignment processing with Samtools, including MAPQ-based filtering, sorting, mate fixing (for paired-end alignments), duplicate marking, and indexing.
 
   Jobs may be run through Slurm ('--slurm'), GNU Parallel, or serial execution, depending on user arguments and the resolved number of jobs.
 
@@ -94,7 +94,7 @@ Parameters
 
     If using Bowtie 2, the path should end with the index stem, e.g., "\${HOME}/path/stem".
 
-    If using BWA or BWA-MEM2, the path should be the indexed reference FASTA path, e.g., "\${HOME}/path/stem.fa".
+    If using BWA or bwa-mem2, the path should be the indexed reference FASTA path, e.g., "\${HOME}/path/stem.fa".
 
   -ci, --csv_fil_in : list of structured string
     Semicolon-delimited serialized string of FASTQ input entries.
@@ -159,7 +159,7 @@ Notes
     - sbatch (when '--slurm' is specified)
 
   - When the '--slurm' flag is used, jobs are parallelized via Slurm array tasks. Otherwise, if multiple jobs are to be run, they are parallelized locally via GNU Parallel; if only one job is to be run, execution proceeds in serial.
-  - If using Bowtie 2, ensure the path to index files ends with the index stem, e.g., "\${HOME}/path/stem" or "\${HOME}/path/sc_sp_proc". If using BWA or BWA-MEM2, the path should include the reference FASTA filename, e.g., "\${HOME}/path/stem.fa" or "\${HOME}/path/sc_sp_proc.fa".
+  - If using Bowtie 2, ensure the path to index files ends with the index stem, e.g., "\${HOME}/path/stem" or "\${HOME}/path/sc_sp_proc". If using BWA or bwa-mem2, the path should include the reference FASTA filename, e.g., "\${HOME}/path/stem.fa" or "\${HOME}/path/sc_sp_proc.fa".
   - Calling the script with '--qname' also writes a queryname-sorted copy of each final alignment file, with the same records and flags.
   - Retained queryname-sorted output files will share the same path and stem as the final alignment output file, but with '.qnam' inserted before the final extension (for example, '.qnam.bam' or '.qnam.cram').
   - When '--out_ext cram' is used, '--ref_fa' must also be supplied. Although intermediate work files are processed in BAM format, the final output, and any retained queryname-sorted output, are written as CRAM, which requires a reference FASTA.
@@ -167,7 +167,7 @@ Notes
     + '<stem>.unal.bam' (or '.cram'), the side file, holds the unaligned reads and their mates:
       - With single-end data, these are the reads flagged unaligned (SAM flag 4).
       - With Bowtie 2 and paired-end data, they are the pairs that did not align as concordant pairs. Bowtie 2 writes both mates of such a pair unaligned even when one mate could align alone.
-      - With BWA or BWA-MEM2, they are the records flagged unaligned or with an unaligned mate.
+      - With BWA or bwa-mem2, they are the records flagged unaligned or with an unaligned mate.
       - When BWA-backtrack flags one mate unaligned but leaves its partner's mate flag clear, the partner goes beside its mate.
     + The templates that '--req_flg' and '--mapq' reject go to their own files:
       - '<stem>.improp.bam' holds the pairs that '--req_flg' rejects. Single-end data has no improper file, and without '--req_flg' the improper file is empty.
@@ -192,12 +192,12 @@ Notes
   - Bowtie 2 runs with '--reorder', so its output order does not depend on the thread count. It also runs with '--seed 0', its default, which the record gives as 'bt2_seed=0'.
     + Which of several equally good alignments a read gets depends on the seed and on the read's sequence, qualities, and whole FASTQ header line, so renaming reads can move them.
     + For paired-end data, the two mates' seeds are combined, which cancels the seed and any header text identical in both mates; only header differences between the mates move pairs.
-  - BWA-MEM and BWA-MEM2 run with '-K 100000000', which fixes the batch of read bases over which paired-end insert sizes are estimated. Their output therefore does not depend on the thread count; the record gives the setting as 'bwa_K=100000000'.
+  - BWA-MEM and bwa-mem2 run with '-K 100000000', which fixes the batch of read bases over which paired-end insert sizes are estimated. Their output therefore does not depend on the thread count; the record gives the setting as 'bwa_K=100000000'.
   - Each alignment file's header, the '.qnam' copy's included, carries a pipeline record as '@CO' lines:
     + 'pipeline:' lines give the commit, the options in effect, the input file names, and any skipped steps;
     + 'pipeline-run:' lines give the thread count, the start time, the host, the scripts and functions that ran, and the full paths.
   - The record names each input and gives the MD5 checksum of its bytes, as stored: 'index_md5' for the index files, 'fq_1_md5' and 'fq_2_md5' for the FASTQs, and 'ref_fa_md5' for the reference with CRAM output.
-  - It also gives the Conda package version and build of the aligner and Samtools ('pkg_bowtie2=2.5.5-h9e91881_0', for example), since a program's own '@PG' version can be wrong: BWA-MEM2 2.3 reports 2.2.1 (bwa-mem2 issue #276).
+  - It also gives the Conda package version and build of the aligner and Samtools ('pkg_bowtie2=2.5.5-h9e91881_0', for example), since a program's own '@PG' version can be wrong: bwa-mem2 2.3 reports 2.2.1 (bwa-mem2 issue #276).
 
 Examples
 --------
@@ -214,7 +214,7 @@ Examples
         --dir_eo "\${dir_out}/logs"
     '''
 
-  2. Run local BWA-MEM2 alignment and write CRAM files.
+  2. Run local bwa-mem2 alignment and write CRAM files.
     '''bash
     bash "\${dir_scr}/execute_align_fastqs.sh" \\
         --threads "\${threads}" \\

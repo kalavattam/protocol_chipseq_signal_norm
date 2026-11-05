@@ -44,7 +44,7 @@ Prefer deterministic checks over agent memory. When a standard becomes important
 
 Prefer American English spelling in code, comments, help, and prose (`neighbor`, `behavior`, `center`, `defense`, `normalize`).
 
-Agent shells may be zsh, where an unquoted `$var` holding a list is not split into words and interactive aliases may shadow commands. Run list loops under `bash -c` or a script file, and use `command <tool>` for tools that may be aliased.
+Agent shells may be Zsh, where an unquoted `${var}` holding a list is not split into words and interactive aliases may shadow commands. Run list loops under `bash -c` or a script file, and use `command <tool>` for tools that may be aliased.
 
 For governed multi-domain changes, approve the normative owner before changing registries, applicability, automation, fixtures, contracts, or maintained realizations. Route through [`GOV.CHANGE.GOLDEN_FIRST`](docs/standards/governance.md#authoritative-standard-first-changes-govchangegoldenfirst), perform its anti-accretion review, record both old-to-new and new-to-old preservation, validate successive owner-specific passes, and finish with all-owner reconciliation.
 
