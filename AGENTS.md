@@ -60,9 +60,9 @@ For shell changes, run `bash -n` on changed scripts and `git diff --check`.
 ## Commits
 Use focused commits. The first line should follow `verb(subject): description`, for example `fix(trim): validate discovered SE output`. Follow-up message paragraphs should be complete sentences grouped by context or subject. Commit generated fixture outputs only if the user explicitly changes the fixture policy.
 
-Credit each agent that contributed materially to a commit with its own trailer, naming the tool surface rather than a bare model brand, as [`SOURCE.HEADER.AI_ATTRIBUTION`](docs/standards/source_headers.md#ai-attribution-sourceheaderaiattribution) requires of source headers. List several trailers in the order the tools reached the work:
+Credit each agent that contributed materially to a commit with its own trailer, as [`SOURCE.HEADER.AI_ATTRIBUTION`](docs/standards/source_headers.md#ai-attribution-sourceheaderaiattribution) requires of source headers. Name the tool surface rather than a bare model brand, replacing `model` with the model ID. List several trailers in the order the tools reached the work:
 ```txt
-Co-authored-by: Codex <codex@openai.com>
-Co-authored-by: Claude Code <noreply@anthropic.com>
+Co-authored-by: Claude Code (model) <noreply@anthropic.com>
+Co-authored-by: Codex (model) <codex@openai.com>
 ```
 Add a trailer only for an agent that actually contributed to that commit.
