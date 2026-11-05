@@ -311,4 +311,4 @@ EOS
 EOM
 
 
-succeed "generated shell source-form fixtures under ${dir_fix}"
+succeed "generated Shell source-form fixtures under ${dir_fix}"

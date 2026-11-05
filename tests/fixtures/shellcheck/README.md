@@ -34,7 +34,7 @@ Generated tooling:
 ## Expected runner behavior
 The runner must select the stub through the configured prefix rather than through `PATH`, split the two scripts by declared language, parse the stub's structured JSON output, and propagate the stub's exit status. Status `0` yields no comments, status `1` yields exactly one warning-level comment, and any other status is an infrastructure failure that must not be reported as a clean run.
 
-The stub's findings payload is a single line of JSON. It is assembled from fragments inside the stub rather than typed as one long line, so the stub stays inside the shell line-length budget while the emitted output is unchanged.
+The stub's findings payload is a single line of JSON. It is assembled from fragments inside the stub rather than typed as one long line, so the stub stays inside the Shell line-length budget while the emitted output is unchanged.
 
 <br />
 

@@ -9,7 +9,7 @@
 # The following were used in design, development, and documentation, with all
 # output reviewed, edited, and approved by the author:
 # - OpenAI ChatGPT and Codex (GPT-5.5, GPT-5.6);
-# - Anthropic Claude Code (Opus 5).
+# - Anthropic Claude Code (Opus 5, Opus 5.5).
 #
 # Distributed under the MIT license.
 
@@ -18,7 +18,7 @@ set -euo pipefail
 
 TEST_NAME="help output"
 
-#  Source shared test helpers
+# Source shared test helpers.
 # shellcheck source=tests/support/test_helpers.sh
 source "$(
     git -C "$(dirname "${BASH_SOURCE[0]}")" rev-parse --show-toplevel
@@ -28,7 +28,7 @@ source "$(
 print_section "${TEST_NAME}"
 
 
-#  Fail when one rendered help document repeats a top-level section
+# Fail when one rendered help document repeats a top-level section.
 function assert_no_duplicate_rendered_sections() {
     local file="${1:?}"
     local lbl="${2:?}"
@@ -68,7 +68,7 @@ function assert_no_duplicate_rendered_sections() {
 }
 
 
-#  Fail when maintainer TODO markers leak into rendered user-facing help
+# Fail when maintainer TODO markers leak into rendered user-facing help.
 function assert_no_rendered_todo() {
     local file="${1:?}"
     local lbl="${2:?}"
@@ -83,7 +83,7 @@ function assert_no_rendered_todo() {
 }
 
 
-#  Fail when sourced helper/function inventories leak into rendered help
+# Fail when sourced helper/function inventories leak into rendered help.
 function assert_no_rendered_helper_inventory() {
     local file="${1:?}"
     local lbl="${2:?}"
@@ -120,7 +120,7 @@ function assert_no_rendered_helper_inventory() {
 }
 
 
-#  Run the authoritative structural checker on one rendered help document
+# Run the authoritative structural checker on one rendered help document.
 function assert_rendered_help_structure() {
     local file="${1:?}"
     local lbl="${2:?}"
@@ -143,7 +143,7 @@ function assert_rendered_help_structure() {
 }
 
 
-#  Protect the representative multiline Examples section byte-for-byte
+# Protect the representative multiline Examples section byte-for-byte.
 function assert_combine_parts_examples_fixture() {
     local file="${1:?}"
     local expected="${ROOT_REPO}/tests/fixtures/help/expected/combine_parts_scaling_factor.examples.txt"
@@ -171,7 +171,7 @@ function assert_combine_parts_examples_fixture() {
 }
 
 
-#  Check short and detailed help rendering for top-level shell scripts
+# Check short and detailed help rendering for top-level Shell scripts.
 while IFS= read -r file; do
     rel="$(print_relpath "${file}")"
     log="${TEST_DIR_LOG}/help/${rel//\//__}.help.log"

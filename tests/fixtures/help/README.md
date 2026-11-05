@@ -38,4 +38,4 @@ Current coverage in `tests/contract/interfaces/test_help_output.sh`:
 - the extracted Examples section matches this fixture byte-for-byte.
 
 Deferred:
-- equivalent golden sections for the remaining shell entry points, which would multiply maintenance without exercising a distinct rule; the structural checks in the same contract already cover every surface.
+- equivalent golden sections for the remaining Shell entry points, which would multiply maintenance without exercising a distinct rule; the structural checks in the same contract already cover every surface.

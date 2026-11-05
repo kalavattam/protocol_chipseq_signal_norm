@@ -9,7 +9,7 @@ This directory is the normative source for maintained repository structure, sour
 | [`markdown.md`](markdown.md)                   | Golden Markdown source for every maintained Markdown file                                                             |
 | [`json.md`](json.md)                           | Canonical source form for every maintained authored JSON file                                                         |
 | [`source_layout.md`](source_layout.md)         | Cross-language semantic paragraphs, density, evidence, comments, naming, multiline structures, and comparison context |
-| [`shell.md`](shell.md)                         | Bash runtime, source form, static analysis, sourcing, wrapper topology, submit bootstrap, and shell-test form         |
+| [`shell.md`](shell.md)                         | Bash runtime, source form, static analysis, sourcing, wrapper topology, submit bootstrap, and Shell-test form         |
 | [`python.md`](python.md)                       | Python package, import, API, CLI, dependency, installation, source form, docstring, Ruff, and Python-test obligations |
 | [`awk.md`](awk.md)                             | `.awk` file form, the pinned `gawk`, lint, and the documentation block                                                |
 | [`r.md`](r.md)                                 | R applicability, naming, comments, documentation, source layout, and toolchain promotion                              |

@@ -9,7 +9,7 @@
 # The following were used in design, development, and documentation, with all
 # output reviewed, edited, and approved by the author:
 # - OpenAI ChatGPT and Codex (GPT-5.5, GPT-5.6);
-# - Anthropic Claude Code (Opus 5).
+# - Anthropic Claude Code (Opus 5, Opus 5.5).
 #
 # Distributed under the MIT license.
 
@@ -54,7 +54,7 @@ Parameters
     Atria release version or 'latest' (default: '${v_atria}'). A fixed value checks out its corresponding immutable Git tag. 'latest' resolves the newest stable upstream release tag during a non-dry run and may produce different installations on different dates.
 
   -ps, --path_snippet : file
-    Write one installer-managed PATH block to the requested file. This may be a shell configuration file such as '${HOME}/.bashrc' or '${HOME}/.zshrc', or a temporary snippet file for, e.g., testing. Later runs replace that block so the selected Julia and active Atria take precedence. Unmarked existing text is retained.
+    Write one installer-managed PATH block to the requested file. This may be a Shell configuration file such as '${HOME}/.bashrc' or '${HOME}/.zshrc', or a temporary snippet file for, e.g., testing. Later runs replace that block so the selected Julia and active Atria take precedence. Unmarked existing text is retained.
 
   -ie, --if_exists : {'fail', 'reuse', 'update'}
     What to do if Julia and/or Atria already exist in the requested installation directory (default: '${if_exists}'). 'fail' checks both requested paths before changing either, 'reuse' requires verified matching components, and 'update' creates missing components or reconciles mismatched components to the declared versions.

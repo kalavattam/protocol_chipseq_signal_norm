@@ -457,7 +457,7 @@ A direct-rename status is evidence, not authorization. Before an approved rename
 
 **Scope:** Maintained Python source below `src/`, `tests/`, and `dev/`.
 
-Keep ordinary source within 79 columns where Ruff can do so without degrading URLs, command strings, diagnostics, regexes, or other indivisible content. Markdown prose and shell heredocs have separate owners.
+Keep ordinary source within 79 columns where Ruff can do so without degrading URLs, command strings, diagnostics, regexes, or other indivisible content. Markdown prose and Shell heredocs have separate owners.
 
 **Automation:** An explicit Ruff `E501` inventory may report candidates but remains nonblocking and unapproved for enforcement.
 
@@ -564,7 +564,7 @@ Pin Ruff. An upgrade requires before-and-after findings, standards and configura
 
 **Scope:** Python unit, CLI, package, and workflow-integration obligations.
 
-Unit-test pure parsing, calculation, formatting, and stream transformations. CLI tests cover parsing, help, diagnostics, status ownership, and console/module parity. Package tests cover discovery, build, editable installation, imports outside the checkout, registered commands, reuse refresh, and dry-run noninstallation. Workflow integration covers shell-to-console dispatch and relevant external boundaries. `testing.md` owns the repository taxonomy and runner.
+Unit-test pure parsing, calculation, formatting, and stream transformations. CLI tests cover parsing, help, diagnostics, status ownership, and console/module parity. Package tests cover discovery, build, editable installation, imports outside the checkout, registered commands, reuse refresh, and dry-run noninstallation. Workflow integration covers Shell-to-console dispatch and relevant external boundaries. `testing.md` owns the repository taxonomy and runner.
 
 **Automation:** Focused Python unit and contract groups provide `subset` coverage.
 

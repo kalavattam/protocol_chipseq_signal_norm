@@ -6,8 +6,10 @@
 # Copyright 2026 by Kris Alavattam
 # Email: kalavattam@gmail.com
 #
-# OpenAI ChatGPT and Codex (GPT-5.6) were used in design, development, and
-# documentation, with all output reviewed, edited, and approved by the author.
+# The following were used in design, development, and documentation, with all
+# output reviewed, edited, and approved by the author:
+# - OpenAI ChatGPT and Codex (GPT-5.6);
+# - Anthropic Claude Code (Opus 5.5).
 #
 # Distributed under the MIT license.
 
@@ -134,7 +136,7 @@ class Contract:
 
 def shell_sources(root: Path) -> list[Path]:
     """
-    Return maintained shell production and test/helper sources.
+    Return maintained Shell production and test/helper sources.
     """
 
     candidates = [
@@ -284,7 +286,7 @@ def call_sites(
     own_identity: str,
 ) -> tuple[str, ...]:
     """
-    Return direct lexical callers of one shell function name.
+    Return direct lexical callers of one Shell function name.
     """
 
     callers: set[str] = set()
@@ -309,7 +311,7 @@ def build_call_index(
     sources: list[Path],
 ) -> dict[str, tuple[str, ...]]:
     """
-    Index direct shell callers once for deterministic inventory reuse.
+    Index direct Shell callers once for deterministic inventory reuse.
     """
 
     cache = {
@@ -418,7 +420,7 @@ def canonical_fields(classification: str) -> dict[str, object]:
 
 def shell_inventory(root: Path, sources: list[Path]) -> list[Contract]:
     """
-    Build shell contracts from existing help and function parsers.
+    Build Shell contracts from existing help and function parsers.
 
     Parameters
     ----------
@@ -462,7 +464,7 @@ def shell_inventory(root: Path, sources: list[Path]) -> list[Contract]:
                     path=path,
                     line=row.line,
                     public_status=public_status(path, row.owner),
-                    input_surface="shell option",
+                    input_surface="Shell option",
                     name=",".join(row.aliases),
                     classification="presence-only flag",
                     value_form="no-value flag",

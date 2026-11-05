@@ -195,7 +195,7 @@ Usage
   print_built_cmd
     [--help] [log_out] [log_err]
 
-  Print the current command array 'arr_cmd_bld' as one shell-escaped command line.
+  Print the current command array 'arr_cmd_bld' as one Shell-escaped command line.
 
   If both 'log_out' and 'log_err' are supplied, append stdout and stderr redirections to the printed command.
 
@@ -225,7 +225,7 @@ Notes
     bash >= 4.4
 
   - Redirections are appended only when both 'log_out' and 'log_err' are supplied.
-  - Output is shell-escaped via 'printf %q'.
+  - Output is Shell-escaped via 'printf %q'.
 
 Examples
 --------

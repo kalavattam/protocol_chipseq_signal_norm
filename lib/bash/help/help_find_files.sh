@@ -40,7 +40,7 @@ Parameters
     Directory to search with the program 'find'.
 
   -pa, --pttrn, --pattern : str
-    Primary file pattern, including shell wildcard characters, used in the construction of the underlying 'find' call.
+    Primary file pattern, including Shell wildcard characters, used in the construction of the underlying 'find' call.
 
   -de, --dpth, --depth : int
     Maximum depth to search within the directory.
@@ -54,10 +54,10 @@ Parameters
     Ignored with a warning with '--chk_con', or with '--chk_exc' without '--shw_str', since those print no string.
 
   -in, --incld, --include : csv
-    Comma-separated list of patterns to include, including shell wildcards. '--include' is subordinate to '--pattern'.
+    Comma-separated list of patterns to include, including Shell wildcards. '--include' is subordinate to '--pattern'.
 
   -ex, --excld, --exclude : csv
-    Comma-separated list of patterns to exclude, including shell wildcards. '--exclude' is subordinate to '--pattern'.
+    Comma-separated list of patterns to exclude, including Shell wildcards. '--exclude' is subordinate to '--pattern'.
 
   -cn, --chk_con : flag
     Check the construction of the 'find' command and exit.

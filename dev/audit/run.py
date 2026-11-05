@@ -6,8 +6,10 @@
 # Copyright 2026 by Kris Alavattam
 # Email: kalavattam@gmail.com
 #
-# OpenAI ChatGPT and Codex (GPT-5.6) were used in design, development, and
-# documentation, with all output reviewed, edited, and approved by the author.
+# The following were used in design, development, and documentation, with all
+# output reviewed, edited, and approved by the author:
+# - OpenAI ChatGPT and Codex (GPT-5.6);
+# - Anthropic Claude Code (Opus 5.5).
 #
 # Distributed under the MIT license.
 
@@ -290,7 +292,7 @@ def run_shell_syntax_batch(
     max_output_bytes: int,
 ) -> tuple[CommandResult, list[dict[str, object]]]:
     """
-    Run one atomic shell-syntax adapter with structured path subresults.
+    Run one atomic Shell-syntax adapter with structured path subresults.
     """
 
     started = time.monotonic()
@@ -3543,7 +3545,7 @@ def focused_diff_excerpt(
     anchors: tuple[str, ...] | None = None,
 ) -> str:
     """
-    Return bounded changed hunks relevant to the shell/help pilot review.
+    Return bounded changed hunks relevant to the Shell/help pilot review.
 
     Parameters
     ----------

@@ -9,13 +9,13 @@
 # The following were used in design, development, and documentation, with all
 # output reviewed, edited, and approved by the author:
 # - OpenAI ChatGPT and Codex (GPT-5.6);
-# - Anthropic Claude Code (Opus 5).
+# - Anthropic Claude Code (Opus 5, Opus 5.5).
 #
 # Distributed under the MIT license.
 
 
 """
-Audit physical source and rendered structure in shell help heredocs.
+Audit physical source and rendered structure in Shell help heredocs.
 """
 
 from __future__ import annotations
@@ -202,7 +202,7 @@ def run_git(
 
 def shell_paths(root: Path) -> list[str]:
     """
-    Return changed tracked and nonignored untracked shell paths.
+    Return changed tracked and nonignored untracked Shell paths.
     """
 
     tracked = run_git(
@@ -269,7 +269,7 @@ def is_help_body(
     start_source: str,
 ) -> bool:
     """
-    Recognize sectioned help without attempting a general shell parse.
+    Recognize sectioned help without attempting a general Shell parse.
     """
 
     body = [line for _, line in lines]
@@ -457,7 +457,7 @@ def _terminal_backslashes(line: str) -> tuple[int, str]:
 
 def _complex_reason(code: list[tuple[int, str]]) -> str | None:
     """
-    Return a narrow documented exclusion reason for complex shell syntax.
+    Return a narrow documented exclusion reason for complex Shell syntax.
 
     Parameters
     ----------
@@ -477,7 +477,7 @@ def _complex_reason(code: list[tuple[int, str]]) -> str | None:
 
         if COMPLEX_HEAD.match(stripped):
             return (
-                "shell control-flow syntax has separate indentation semantics"
+                "Shell control-flow syntax has separate indentation semantics"
             )
 
         if FUNCTION_DEFINITION.match(stripped):
@@ -506,7 +506,7 @@ def _complex_reason(code: list[tuple[int, str]]) -> str | None:
             return "structured redirection snippet is deliberately excluded"
 
         if re.search(r"(?:^|\s);(?:\s|$)", stripped):
-            return "multi-command shell list is deliberately excluded"
+            return "multi-command Shell list is deliberately excluded"
 
     return None
 
@@ -598,7 +598,7 @@ def _audit_simple_command(
     Parameters
     ----------
     command : list[tuple[int, str]]
-        Numbered physical lines forming one simple shell command.
+        Numbered physical lines forming one simple Shell command.
     path : str
         Repository-relative path that owns the command.
     owner : str
@@ -1024,7 +1024,7 @@ def audit_source_example_commands(
     path: str = "<memory>",
 ) -> ExampleCommandAudit:
     """
-    Audit every recognized source Examples block in one shell file.
+    Audit every recognized source Examples block in one Shell file.
     """
 
     findings: list[ExampleCommandFinding] = []
@@ -1215,7 +1215,7 @@ def is_wrap_pair(first: str, second: str) -> bool:
 
 def findings_for_path(root: Path, path: str) -> list[Finding]:
     """
-    Return strict changed-content findings for one current shell path.
+    Return strict changed-content findings for one current Shell path.
     """
 
     target = root / path
@@ -1262,7 +1262,7 @@ def scan_repository(
     paths: Iterable[str] | None = None,
 ) -> list[Finding]:
     """
-    Scan changed/new shell paths while excluding untouched historical prose.
+    Scan changed/new Shell paths while excluding untouched historical prose.
     """
 
     root = root.resolve()
@@ -1281,7 +1281,7 @@ def repository_shell_paths(
     production_only: bool = False,
 ) -> list[str]:
     """
-    Return maintained Git-visible shell sources in deterministic order.
+    Return maintained Git-visible Shell sources in deterministic order.
     """
 
     tracked = run_git(root, ["ls-files", "--", "*.sh"]).stdout.splitlines()

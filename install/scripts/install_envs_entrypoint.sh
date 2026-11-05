@@ -155,7 +155,7 @@ print_guidance_bash() {
     cat << EOM >&2
 Bash >= 4.4 was not found in PATH.
 
-If Bash >= 4.4 is already installed, then make sure it is available in PATH, for example by activating the appropriate environment or adjusting shell initialization.
+If Bash >= 4.4 is already installed, then make sure it is available in PATH, for example by activating the appropriate environment or adjusting Shell initialization.
 
 Conda or Mamba must also be available in PATH before this entrypoint can hand off to 'install_envs.sh'.
 
@@ -202,7 +202,7 @@ If neither Conda nor Mamba is installed, Miniforge (https://github.com/conda-for
 
   3. Run the installer and allow Conda initialization.
 
-  4. Restart the terminal, or source the updated shell configuration file.
+  4. Restart the terminal, or source the updated Shell configuration file.
 
   5. Verify installation:
 

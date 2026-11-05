@@ -14,7 +14,7 @@
 # Distributed under the MIT license.
 
 
-#  Print a fixture-generator error and stop
+# Print a fixture-generator error and stop.
 function die() {
     local src="${BASH_SOURCE[1]:-${0}}"
 
@@ -23,7 +23,7 @@ function die() {
 }
 
 
-#  Print a fixture-generator note
+# Print a fixture-generator note.
 function note() {
     local src="${BASH_SOURCE[1]:-${0}}"
 
@@ -31,7 +31,7 @@ function note() {
 }
 
 
-#  Print a fixture-generator success message
+# Print a fixture-generator success message.
 function succeed() {
     local src="${BASH_SOURCE[1]:-${0}}"
 
@@ -39,7 +39,7 @@ function succeed() {
 }
 
 
-#  Require one command to be available
+# Require one command to be available.
 function require_cmd() {
     local cmd="${1:-}"
     local show_help
@@ -113,7 +113,7 @@ EOM
 }
 
 
-#  Require one or more commands to be available
+# Require one or more commands to be available.
 function require_cmds() {
     local context="${1:-}"
     local show_help
@@ -187,7 +187,7 @@ EOM
 }
 
 
-#  Require a named Conda environment to be active
+# Require a named Conda environment to be active.
 function require_env() {
     local env_nam="${1:-}"
     local show_help
@@ -265,7 +265,7 @@ EOM
 }
 
 
-#  Create one or more directories
+# Create one or more directories.
 function mkdirs() {
     if (( $# == 0 )); then
         die "'mkdirs' requires at least one directory path."
@@ -275,7 +275,7 @@ function mkdirs() {
 }
 
 
-#  Remove a generated fixture file inside a fixture root
+# Remove a generated fixture file inside a fixture root.
 function rm_file() {
     local dir_fix="${1:-}"
     local file="${2:-}"
@@ -357,7 +357,7 @@ EOM
 }
 
 
-#  Remove generated fixture files inside a fixture root
+# Remove generated fixture files inside a fixture root.
 function rm_files() {
     local dir_fix="${1:-}"
     local show_help
@@ -439,7 +439,7 @@ EOM
 }
 
 
-#  Register a cleanup function for shell exit
+# Register a cleanup function for Shell exit.
 function register_cleanup() {
     local fnc="${1:-}"
     local show_help
@@ -458,7 +458,7 @@ Parameters
     Display this help message and exit.
 
   1  fnc : str
-    Name of a defined shell function to run on exit.
+    Name of a defined Shell function to run on exit.
 
 Returns
 -------
@@ -509,7 +509,7 @@ EOM
 }
 
 
-#  Write one tab-delimited line/row
+# Write one tab-delimited line/row.
 function write_line() {
     local field
     local show_help
@@ -579,15 +579,15 @@ EOM
 }
 
 
-#  Write one tab-delimited TSV row (alias for 'write_line')
+# Write one tab-delimited TSV row (alias for 'write_line').
 function write_tsv_row() { write_line "${@}"; }
 
 
-#  Write one tab-delimited SAM line (alias for 'write_line')
+# Write one tab-delimited SAM line (alias for 'write_line').
 function write_sam_line() { write_line "${@}"; }
 
 
-#  Write gzip output with deterministic headers
+# Write gzip output with deterministic headers.
 function gzip_n() {
     local fil_in="${1:-}"
     local fil_out="${2:-}"

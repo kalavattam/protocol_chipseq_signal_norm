@@ -88,7 +88,7 @@ function activate_env() { handle_env "$@"; }
 
 
 # Report current 'set -e' and 'set -u' states as, respectively, 'had_e' and
-# 'had_u' on stdout, each 0 (off) or 1 (on); does not change shell options.
+# 'had_u' on stdout, each 0 (off) or 1 (on); does not change Shell options.
 function _current_errexit_nounset() {
     local had_e=0
     local had_u=0
@@ -130,7 +130,7 @@ Usage
 
   Safely deactivate a Conda environment.
 
-  If deactivation is needed, temporarily disables 'set -e' and 'set -u' so Conda shell-hook and deactivation code can run without aborting on non-zero check steps or unset-variable references. Restores the prior shell-option state before returning.
+  If deactivation is needed, temporarily disables 'set -e' and 'set -u' so Conda Shell-hook and deactivation code can run without aborting on non-zero check steps or unset-variable references. Restores the prior Shell-option state before returning.
 
 Parameters
 ----------
@@ -138,7 +138,7 @@ Parameters
     Display this help message and exit.
 
   1  shl_cur : str
-    Optional shell-name hint for Conda hook initialization. This helper is intended for Bash >= 4.4 workflows. If supplied, 'bash' is the primary supported case and 'zsh' is handled only as a limited fallback for hook setup.
+    Optional Shell-name hint for Conda hook initialization. This helper is intended for Bash >= 4.4 workflows. If supplied, 'bash' is the primary supported case and 'zsh' is handled only as a limited fallback for hook setup.
 
 Returns
 -------
@@ -210,7 +210,7 @@ EOM
     # restore flags before returning.
     if [[ "${rc}" -ne 0 ]]; then
         echo_err_func "${FUNCNAME[0]}" \
-            "failed to initialize Conda shell hook."
+            "failed to initialize Conda Shell hook."
         _restore_errexit_nounset "${had_e}" "${had_u}"
         return 1
     fi
@@ -255,9 +255,9 @@ Usage
 
   Safely activate a specified Conda environment.
 
-  This helper first initializes the appropriate Conda shell hook for the current shell context, then attempts environment activation, preferring 'mamba' when available and falling back to 'conda' and finally 'source activate'.
+  This helper first initializes the appropriate Conda Shell hook for the current shell's context, then attempts environment activation, preferring 'mamba' when available and falling back to 'conda' and finally 'source activate'.
 
-  Temporarily disables 'set -e' and 'set -u' while sourcing Conda shell hooks and attempting activation, as those shell-initialization commands may reference unset variables or return non-zero statuses during checking/fallback steps. The original 'set' state is restored before returning.
+  Temporarily disables 'set -e' and 'set -u' while sourcing Conda Shell hooks and attempting activation, as those Shell-initialization commands may reference unset variables or return non-zero statuses during checking/fallback steps. The original 'set' state is restored before returning.
 
 Parameters
 ----------
@@ -309,12 +309,12 @@ EOM
         return 1
     fi
 
-    # Conda/Mamba shell-hook and activation logic may not be strict-mode-safe,
+    # Conda/Mamba Shell-hook and activation logic may not be strict-mode-safe,
     # so capture current '-e' / '-u' state and temporarily disable both.
     read -r had_e had_u < <(_current_errexit_nounset)
     set +e +u
 
-    # Source the appropriate Conda shell hook.
+    # Source the appropriate Conda Shell hook.
     shl_cur=$(basename "${SHELL:-/bin/bash}")
     case "${shl_cur}" in
         bash)
@@ -339,7 +339,7 @@ EOM
     # flags are restored before returning.
     if [[ "${rc}" -ne 0 ]]; then
         echo_err_func "${FUNCNAME[0]}" \
-            "failed to initialize Conda shell hook."
+            "failed to initialize Conda Shell hook."
         _restore_errexit_nounset "${had_e}" "${had_u}"
         return 1
     fi
@@ -368,7 +368,7 @@ EOM
     # Try activation with 'mamba', then 'conda', then 'source activate'.
     if command -v mamba &> /dev/null; then
         # TODO: when Mamba is installed/working, 'mamba activate' can still be
-        # unreliable depending on shell-hook/setup details; revisit this.
+        # unreliable depending on Shell-hook/setup details; revisit this.
         if mamba activate "${env_nam}" &> /dev/null; then
             _handle_env_activate_success \
                 "${env_nam}" "${had_e}" "${had_u}"
@@ -413,7 +413,7 @@ Usage
 
   If no environment is currently active, or if only 'base' is active, activates 'env_nam'. If a different environment is active, first deactivates it and then activates 'env_nam'. If the requested environment is already active, nothing changes.
 
-  Delegates environment switching to internal helper functions that temporarily relax 'set -e' and 'set -u' around Conda/Mamba shell-hook logic, then restore the prior shell-option state before returning.
+  Delegates environment switching to internal helper functions that temporarily relax 'set -e' and 'set -u' around Conda/Mamba Shell-hook logic, then restore the prior Shell-option state before returning.
 
 Parameters
 ----------

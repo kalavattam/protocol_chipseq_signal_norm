@@ -39,7 +39,7 @@ Usage
 
   In 'siq' mode, the script uses main-organism IP and input alignment files, together with a metadata table and YAML configuration file, to calculate siQ-ChIP alpha scaling factors via the downstream 'submit_calculate_scaling_factor.sh' wrapper and the Python helper scripts 'calculate_scaling_factor_siqchip.py' and 'parse_metadata_siqchip.py'. This workflow uses 'parse_metadata_siqchip.yml', which must be configured appropriately if input filenames do not follow the filename conventions described in the Tsukiyama Lab Bio-protocol manuscript (PMID: 40364978).
 
-  In 'spike' mode, the script uses main-organism and spike-in-organism IP and input alignment files to calculate spike-in scaling factors via the downstream 'submit_calculate_scaling_factor.sh' wrapper and the associated Python/helper-script workflow, including 'calculate_scaling_factor_spike.py' and supporting shell/Python utilities for obtaining fragment-length and alignment-depth values when needed.
+  In 'spike' mode, the script uses main-organism and spike-in-organism IP and input alignment files to calculate spike-in scaling factors via the downstream 'submit_calculate_scaling_factor.sh' wrapper and the associated Python/helper-script workflow, including 'calculate_scaling_factor_spike.py' and supporting Shell/Python utilities for obtaining fragment-length and alignment-depth values when needed.
 
   Jobs may be run through Slurm, GNU Parallel, or serial execution, depending on user arguments and the resolved number of jobs. After successful worker completion, the script combines deterministic per-sample part files into the requested final TSV, then writes the mode-specific header (unless '--no_header' is supplied).
 

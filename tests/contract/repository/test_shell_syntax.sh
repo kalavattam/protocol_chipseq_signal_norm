@@ -6,24 +6,26 @@
 # Copyright 2026 by Kris Alavattam
 # Email: kalavattam@gmail.com
 #
-# OpenAI ChatGPT and Codex (GPT-5.6) were used in design, development, and
-# documentation, with all output reviewed, edited, and approved by the author.
+# The following were used in design, development, and documentation, with all
+# output reviewed, edited, and approved by the author:
+# - OpenAI ChatGPT and Codex (GPT-5.6);
+# - Anthropic Claude Code (Opus 5.5).
 #
 # Distributed under the MIT license.
 
 
 set -euo pipefail
 
-TEST_NAME="shell syntax"
+TEST_NAME="Shell syntax"
 
-#  Source shared test helpers
+# Source shared test helpers.
 # shellcheck source=tests/support/test_helpers.sh
 source "$(
     git -C "$(dirname "${BASH_SOURCE[0]}")" rev-parse --show-toplevel
 )/tests/support/test_helpers.sh"
 
 
-#  Run Bash syntax checks over one shell-script group
+# Run Bash syntax checks over one Shell-script group.
 function check_group_shell_syntax() {
     local nam_grp="${1:-shell scripts}"
     local file=""
@@ -52,7 +54,7 @@ function check_group_shell_syntax() {
 }
 
 
-#  Check the POSIX installation bootstrap with sh, not Bash
+# Check the POSIX installation bootstrap with sh, not Bash.
 function check_posix_bootstrap_syntax() {
     local file="${ROOT_REPO}/install/scripts/install_envs_entrypoint.sh"
     local log="${TEST_DIR_LOG}/shell_syntax/install__scripts__install_envs_entrypoint.sh.log"
@@ -79,7 +81,7 @@ else
     record_pass "authoritative Bash satisfies >= 4.4"
 fi
 
-#  Collect active production and installation shell scripts
+# Collect active production and installation Shell scripts.
 arr_scr=()
 while IFS= read -r file; do
     arr_scr+=( "${file}" )
@@ -100,7 +102,7 @@ done < <(
 )
 
 
-#  Collect test harness and fixture-generation shell scripts
+# Collect test harness and fixture-generation Shell scripts.
 arr_test=()
 while IFS= read -r file; do
     arr_test+=( "${file}" )
@@ -112,8 +114,9 @@ done < <(
 )
 
 
-check_group_shell_syntax "Production shell scripts" "${arr_scr[@]}"
-check_group_shell_syntax "Test harness shell scripts" "${arr_test[@]}"
+check_group_shell_syntax "Production Shell scripts" "${arr_scr[@]}"
+check_group_shell_syntax "Test harness Shell scripts" "${arr_test[@]}"
 check_posix_bootstrap_syntax
+
 
 finish "$@"

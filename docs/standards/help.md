@@ -11,7 +11,7 @@ This document owns shared help and documentation meaning across maintained imple
 
 Use NumPy/SciPy-style section names and underline rows when a rendered format uses headed sections. The shared vocabulary is `Description`, `Usage`, `Parameters`, `Expected globals`, `Generated globals`, `Returns`, `Yields`, `Receives`, `Raises`, `Warns`, `Warnings`, `Output`, `See Also`, `Notes`, `References`, `Examples`, `Attributes`, and `Methods`.
 
-Use `Usage` for invocation shape, `Parameters` for positional arguments, options, and function inputs, `Returns` for shell status or a callable return value, and `Output` for stdout, stderr, or generated files. `Output` and `Returns` are not synonyms.
+Use `Usage` for invocation shape, `Parameters` for positional arguments, options, and function inputs, `Returns` for Shell status or a callable return value, and `Output` for stdout, stderr, or generated files. `Output` and `Returns` are not synonyms.
 
 Function help uses the applicable subsequence of:
 ```text
@@ -48,7 +48,7 @@ Do not create user-facing `Testing`, `TODO`, `Dependency`, `Dependencies`, `Argu
 ## Source help structure (`HELP.SOURCE_STYLE`)
 **Classification:** `advisory` with deterministic indentation and entry-shape portions.
 
-**Scope:** Heredoc-based shell help and local shell-function documentation.
+**Scope:** Heredoc-based Shell help and local Shell-function documentation.
 
 Top-level headings and underline rows begin at column zero. Content begins two spaces below the section, descriptions two spaces below their entry, and nested lists add two spaces per level. Avoid hard tabs. Preserve physical newlines deliberately because each heredoc newline affects rendered output.
 
@@ -125,7 +125,7 @@ A rendered document has one copy of each section. Merge repeated notes or runtim
 
 Installed help remains independently useful and contains every fact required to run the interface correctly. Callable documentation remains caller-focused and preserves the direct-call contract. Public design documentation owns extended derivation, rationale, compatibility, provenance, and historical context without becoming a runtime dependency. Absence of a public design document from an installed wheel does not permit installed help to omit required behavior.
 
-Write script help for people running the command and local function help for maintainers when a helper parses arguments, reads or creates globals, mutates state, emits structured output, or has non-obvious status. One centralized help function owns full help for each maintained top-level shell command; wrappers call it instead of embedding competing copies. `repository_layout.md` owns placement.
+Write script help for people running the command and local function help for maintainers when a helper parses arguments, reads or creates globals, mutates state, emits structured output, or has non-obvious status. One centralized help function owns full help for each maintained top-level Shell command; wrappers call it instead of embedding competing copies. `repository_layout.md` owns placement.
 
 For a command with `--details`, that surface owns the required full document and concise `--help` may omit `Examples` only when it advertises `--details` accurately. Without `--details`, default `--help` owns the full document. `--all_help` may combine concise and full output but does not replace an otherwise valid full owner. A compatibility wrapper may delegate full-help ownership to one canonical wrapper only when argument forwarding and the rendered owner and interface are unambiguous. Do not add `--details` merely to relocate required content. A recognized function-help heredoc is that function's full document.
 
@@ -192,7 +192,7 @@ Examples
 
 Provide exactly one final `Examples` section. Begin numbering at 1 without skips or duplicates. Each rendered CLI entry has exactly one nonempty `'''bash` block, with no blank line between its description and opening delimiter, and invokes the documented owner directly with public accepted spellings.
 
-A rendered CLI example uses the existing `'''bash` block because it shows invocation through a shell. The invoked implementation may be Bash, Python, R, Rust, or another language. A callable example uses the source-language-native representation governed by the applicable language documentation owner. `HELP.EXAMPLES` alone decides applicability and required count; the language owner governs only representation, source recognition, and language-specific documentation form. Markdown backtick fences are not rendered shell-help delimiters.
+A rendered CLI example uses the existing `'''bash` block because it shows invocation through a shell. The invoked implementation may be Bash, Python, R, Rust, or another language. A callable example uses the source-language-native representation governed by the applicable language documentation owner. `HELP.EXAMPLES` alone decides applicability and required count; the language owner governs only representation, source recognition, and language-specific documentation form. Markdown backtick fences are not rendered Shell-help delimiters.
 
 For an ordinary multiline CLI invocation, every continuation line begins four spaces beyond the first command line, tabs are forbidden, nonfinal lines render exactly one terminal backslash with no trailing whitespace, and the final line has none. An unquoted help heredoc therefore needs two literal source backslashes for each one intended in rendered output; a quoted heredoc needs one. Control flow, arrays, nested heredocs, structured pipelines, and other syntax with independent indentation are classified as complex snippets rather than forced into this simple-command shape.
 
@@ -274,7 +274,7 @@ File-format displays distinguish public choices, accepted aliases, internal cano
 ## Parameter applicability (`HELP.PARAMETER.APPLICABILITY`)
 **Classification:** `advisory` with deterministic tested-path portions.
 
-**Scope:** Every maintained shell driver, Python CLI, sourced shell function, and public Python function whose options or parameters have no effect under some condition, such as a mode, method, output format, input type, or another option's value.
+**Scope:** Every maintained Shell driver, Python CLI, sourced Shell function, and public Python function whose options or parameters have no effect under some condition, such as a mode, method, output format, input type, or another option's value.
 
 Applicability is decided by the call itself, not by which files exist at run time or what they contain. A parameter that matters only for some disk state, such as an overwrite flag when no output exists yet or a reuse choice when nothing is installed, or only for some detected file content, such as a single-end fallback when the layout is detected per file, is outside this rule. The call includes how its values relate: a parameter that another given value makes inert, such as a zero threshold below a minimum the denominator is clamped to, is within this rule. A parameter that is inert only for some input data, such as dropping non-finite values when the data happen to produce none, is outside it.
 
@@ -437,11 +437,11 @@ Python docstrings reuse shared concepts for parameters, returns, yields, raises,
 ## Documentation coverage (`DOC.COVERAGE`)
 **Classification:** `advisory` with deterministic owner-presence portions.
 
-**Scope:** Centralized help for maintained top-level shell commands and local documentation for reusable shell helpers.
+**Scope:** Centralized help for maintained top-level Shell commands and local documentation for reusable Shell helpers.
 
-Every maintained top-level shell command has one centralized full-help owner. Reusable public helpers should have local help when behavior, inputs, globals, output, side effects, or status are non-obvious. Lifecycle functions and tiny private pass-through helpers may remain undocumented when their role is mechanically recognizable or obvious. Python docstring applicability belongs to `PY.DOCSTRING.NUMPY`.
+Every maintained top-level Shell command has one centralized full-help owner. Reusable public helpers should have local help when behavior, inputs, globals, output, side effects, or status are non-obvious. Lifecycle functions and tiny private pass-through helpers may remain undocumented when their role is mechanically recognizable or obvious. Python docstring applicability belongs to `PY.DOCSTRING.NUMPY`.
 
-**Automation:** `tests/contract/repository/test_doc_coverage.sh` inventories shell help ownership and candidates. Coverage is `advisory`.
+**Automation:** `tests/contract/repository/test_doc_coverage.sh` inventories Shell help ownership and candidates. Coverage is `advisory`.
 
 **Semantic remainder:** Decide whether a helper is public or nontrivial enough to require local documentation and whether its help is useful.
 

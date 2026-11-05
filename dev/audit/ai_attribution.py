@@ -9,7 +9,7 @@
 # The following were used in design, development, and documentation, with all
 # output reviewed, edited, and approved by the author:
 # - OpenAI ChatGPT and Codex (GPT-5.6);
-# - Anthropic Claude Code (Opus 5).
+# - Anthropic Claude Code (Opus 5, Opus 5.5).
 #
 # Distributed under the MIT license.
 
@@ -320,8 +320,8 @@ def _parse_listed_attribution(
     if not items.endswith("."):
         return None
 
-    # A model parenthetical may itself contain '; ', so split only at an
-    # item boundary rather than at every semicolon.
+    # A model parenthetical may itself contain '; ', so split only at an item
+    # boundary rather than at every semicolon.
     entries = re.split(r"; (?=- )", items[:-1])
 
     if len(entries) < 2:
@@ -1213,7 +1213,7 @@ MAINTAINED_HEADER_GLOBS = (
 
 def attribution_paths(root: Path) -> list[str]:
     """
-    Return every maintained shell and Python source path.
+    Return every maintained Shell and Python source path.
 
     Discovery is repository-wide rather than changed-file scoped. A header that
     drifted in an earlier commit is absent from the current diff by

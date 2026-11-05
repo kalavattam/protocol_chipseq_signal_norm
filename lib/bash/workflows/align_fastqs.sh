@@ -114,7 +114,7 @@ Usage
 
   Print a command to stdout for a dry run of 'align_fastqs()': each named command array in turn as a pipeline, then ' > file' when '--out' is given, then a blank line.
 
-  The output is valid shell: words are shell-escaped, and each option or option-value pair is on its own continuation line.
+  The output is valid Shell: words are Shell-escaped, and each option or option-value pair is on its own continuation line.
 
 Parameters
 ----------
@@ -456,7 +456,7 @@ EOM
     arr_view+=( -q "${mapq}" "${bam_in}" )
     arr_cut=( cut -f 1 )
     arr_uniq=( uniq -c )
-    # shellcheck disable=SC2016  # The program is AWK, not shell.
+    # shellcheck disable=SC2016  # The program is AWK, not Shell.
     arr_awk=( awk -v "n=${n_pri}" '$1 == n { print $2 }' )
 
     if [[ "${dry_run}" == "true" ]]; then
@@ -2210,7 +2210,7 @@ EOM
 
     # Count names and names without coordinates, following the colon count that
     # 'get_coordinates_colons()' in 'bam_markdup.c' uses.
-    # shellcheck disable=SC2016  # The program is AWK, not shell.
+    # shellcheck disable=SC2016  # The program is AWK, not Shell.
     if ! \
         cnt="$(
             set -o pipefail

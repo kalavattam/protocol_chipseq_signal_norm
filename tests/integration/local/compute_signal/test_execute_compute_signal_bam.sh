@@ -427,8 +427,8 @@ bash "${ROOT_REPO}/bin/execute_compute_signal.sh" \
     --method unadj \
     > /dev/null 2>&1 || true
 
-# The shell and CLI each derive report paths; call the CLI with a bare flag so
-# its own rule runs, and compare it to the shell's.
+# The Shell driver and the CLI each derive report paths; call the CLI with a
+# bare flag so its own rule runs, and compare it to the driver's.
 # shellcheck source=lib/bash/core/format_outputs.sh
 source "${ROOT_REPO}/lib/bash/core/format_outputs.sh"
 
@@ -459,7 +459,7 @@ for label in n_frg n_ovlp; do
 
         if [[ -s "${derived}" && "${derived}" == "${want}" ]]; then
             record_pass \
-                "shell and CLI derivations agree for ${label} on .${ext}"
+                "Shell and CLI derivations agree for ${label} on .${ext}"
         else
             record_fail \
                 "derivation drift for ${label} on .${ext}: helper says" \

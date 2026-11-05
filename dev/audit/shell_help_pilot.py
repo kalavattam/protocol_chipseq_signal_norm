@@ -9,13 +9,13 @@
 # The following were used in design, development, and documentation, with all
 # output reviewed, edited, and approved by the author:
 # - OpenAI ChatGPT and Codex (GPT-5.6);
-# - Anthropic Claude Code (Opus 5).
+# - Anthropic Claude Code (Opus 5, Opus 5.5).
 #
 # Distributed under the MIT license.
 
 
 """
-Extract bounded download-fastqs shell/help pilot facts from a snapshot.
+Extract bounded download-fastqs Shell/help pilot facts from a snapshot.
 """
 
 from __future__ import annotations
@@ -681,7 +681,7 @@ def line_length_facts(
     Parameters
     ----------
     path : str
-        Repository-relative shell path under review.
+        Repository-relative Shell path under review.
     text : str
         Shell source whose physical lines are measured.
     facts : list[dict[str, object]]

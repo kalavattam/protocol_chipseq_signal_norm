@@ -95,7 +95,7 @@ field_to_column:
 <br />
 
 ### `calculator_inputs`
-The `calculator_inputs` section maps fixed parser-to-wrapper export keys to user-editable metadata TSV column names. The left-side keys are workflow interface names and should not be renamed (unless the shell wrappers are updated too).
+The `calculator_inputs` section maps fixed parser-to-wrapper export keys to user-editable metadata TSV column names. The left-side keys are workflow interface names and should not be renamed (unless the Shell wrappers are updated too).
 ```yaml
 calculator_inputs:
   siqchip:

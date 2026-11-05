@@ -290,7 +290,7 @@ function check_recipe_shape() {
     # Read only the recipe's own statements: everything after safe mode is set,
     # with heredoc bodies removed. The Bash version guard above that line
     # necessarily writes its own diagnostics, because it runs before the shared
-    # helpers can be sourced, and a fixture that is itself a shell script must
+    # helpers can be sourced, and a fixture that is itself a Shell script must
     # not be mistaken for the recipe that writes it. The opening delimiter is
     # captured by name and closed only on that same name, so a fixture carrying
     # its own heredoc does not end the recipe's.

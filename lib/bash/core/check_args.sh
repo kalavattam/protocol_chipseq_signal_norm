@@ -756,7 +756,7 @@ EOM
 
     if [[ -n "${out_nam}" && ! "${out_nam}" =~ ^[a-zA-Z_][a-zA-Z0-9_]*$ ]]; then
         echo_err_func "${FUNCNAME[0]}" \
-            "positional argument 4, 'out_nam', must be a valid shell" \
+            "positional argument 4, 'out_nam', must be a valid Shell" \
             "variable name: '${out_nam}'."
         return 1
     fi

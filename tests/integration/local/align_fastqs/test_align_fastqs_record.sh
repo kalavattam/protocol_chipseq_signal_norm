@@ -546,7 +546,7 @@ out="$(
 )" || rc=$?
 
 # Decode the printed lines, "    $'@CO\tpipeline: ...' \", into header lines.
-# shellcheck disable=SC2016  # The program is AWK, not shell.
+# shellcheck disable=SC2016  # The program is AWK, not Shell.
 dec="$(
     awk -v q="'" '
         substr($0, 1, 6) == "    $" q {

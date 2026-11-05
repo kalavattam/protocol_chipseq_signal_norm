@@ -1,6 +1,6 @@
 
 # Testing standard
-This document owns repository test taxonomy, runner behavior, gates, fixtures, generated evidence, shared reporting, cleanup safety, and proportional proof. Python- and shell-specific source obligations remain in their language standards; detailed wet Slurm operation remains in [`tests/integration/slurm/README.md`](../../tests/integration/slurm/README.md).
+This document owns repository test taxonomy, runner behavior, gates, fixtures, generated evidence, shared reporting, cleanup safety, and proportional proof. Python- and Shell-specific source obligations remain in their language standards; detailed wet Slurm operation remains in [`tests/integration/slurm/README.md`](../../tests/integration/slurm/README.md).
 
 <br />
 
@@ -152,13 +152,13 @@ Evidence from the current run may support review, but production behavior must n
 ## Shared harness reporting (`TEST.HARNESS.REPORTING`)
 **Classification:** `deterministic`.
 
-**Scope:** Maintained shell tests that source `tests/support/test_helpers.sh`.
+**Scope:** Maintained Shell tests that source `tests/support/test_helpers.sh`.
 
 Set `TEST_NAME`, source the shared helper, and use `print_section`, `record_pass`, `record_fail`, `record_warn`, `record_skip`, and `finish` for repository-standard reporting. `record_fail` increments the failure count; warnings and skips remain visible but nonfatal. `finish` prints the complete summary and returns nonzero exactly when failures were recorded.
 
 Tests must not replace shared counters or emit a second competing final summary. A test may exit early only through a shared skip or fatal-precondition path that records the disposition.
 
-**Automation:** The harness unit and source-form contract exercise counter transitions, output, exit status, required calls, and applicable exclusions with `subset` coverage for recognized shell tests.
+**Automation:** The harness unit and source-form contract exercise counter transitions, output, exit status, required calls, and applicable exclusions with `subset` coverage for recognized Shell tests.
 
 **Semantic remainder:** `None` for reporting mechanics.
 

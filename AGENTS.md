@@ -10,14 +10,14 @@ Do not introduce compatibility shims or preserve obsolete, deprecated, or otherw
 <br />
 
 ## Project layout
-Maintained shell entrypoints live in `bin/`; sourced Bash lives under `lib/bash/` by responsibility. Installable Python CLIs and utilities live under `src/protocol_chipseq_signal_norm/`.
+Maintained Shell entrypoints live in `bin/`; sourced Bash lives under `lib/bash/` by responsibility. Installable Python CLIs and utilities live under `src/protocol_chipseq_signal_norm/`.
 
 Tests are organized semantically under `tests/unit/`, `tests/contract/`, and `tests/integration/`; helpers live in `tests/support/`. Fixture recipes and documentation live in `tests/fixtures/<workflow>/`. Generated fixtures and all run evidence stay ignored under the documented fixture paths and `artifacts/`.
 
 <br />
 
 ## Common commands
-Create the main environment, run the safe test suite, and syntax-check shell scripts:
+Create the main environment, run the safe test suite, and syntax-check Shell scripts:
 ```bash
 sh install/scripts/install_envs_entrypoint.sh --env_nam env_protocol --yes
 bash tests/run_tests.sh
@@ -53,7 +53,7 @@ For governed multi-domain changes, approve the normative owner before changing r
 ## Testing expectations
 Verify a change with focused checks for the changed paths: the tests that reference them and the registered checkers that own them, not tests alone. Run `bash tests/run_tests.sh` or another whole-tree suite only when the user asks for it. Use existing gates: `RUN_ATRIA=1`, `RUN_PARALLEL=1`, `RUN_SLURM=1`, and `WAIT_SLURM=1`. Do not add fake dependency shims or broad integration gates.
 
-For shell changes, run `bash -n` on changed scripts and `git diff --check`.
+For Shell changes, run `bash -n` on changed scripts and `git diff --check`.
 
 <br />
 

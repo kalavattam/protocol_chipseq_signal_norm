@@ -1110,7 +1110,7 @@ Usage
   parse_table
     [--help] table tbl_col norm raw
 
-  Parse a tab-delimited table and extract supported columns into shell arrays.
+  Parse a tab-delimited table and extract supported columns into Shell arrays.
 
 Parameters
 ----------

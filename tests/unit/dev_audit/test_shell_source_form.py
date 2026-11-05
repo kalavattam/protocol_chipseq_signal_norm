@@ -15,7 +15,7 @@
 
 
 """
-Tests for the deliberately narrow shell source-form checker.
+Tests for the deliberately narrow Shell source-form checker.
 """
 
 from __future__ import annotations
@@ -35,7 +35,7 @@ FIXTURES = ROOT / "tests" / "fixtures" / "shell_source_form"
 
 def messages(text: str, path: str = "tool.sh") -> list[str]:
     """
-    Return stable messages for one in-memory shell source.
+    Return stable messages for one in-memory Shell source.
     """
 
     return [finding.message for finding in check_text(text, path)]
@@ -94,7 +94,7 @@ EOF
     assert "recognized array declaration should use the arr_ prefix" in output
     assert "leading indentation contains a tab" in output
     assert (
-        "ordinary shell-text heredoc should use EOM instead of EOF" in output
+        "ordinary Shell-text heredoc should use EOM instead of EOF" in output
     )
 
 

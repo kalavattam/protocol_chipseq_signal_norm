@@ -6,25 +6,26 @@
 # Copyright 2026 by Kris Alavattam
 # Email: kalavattam@gmail.com
 #
-# OpenAI ChatGPT and Codex (GPT-5.5, GPT-5.6) were used in design, development,
-# and documentation, with all output reviewed, edited, and approved by the
-# author.
+# The following were used in design, development, and documentation, with all
+# output reviewed, edited, and approved by the author:
+# - OpenAI ChatGPT and Codex (GPT-5.5, GPT-5.6);
+# - Anthropic Claude Code (Opus 5.5).
 #
 # Distributed under the MIT license.
 
 
 set -euo pipefail
 
-TEST_NAME="shell line length"
+TEST_NAME="Shell line length"
 
-#  Source shared test helpers
+# Source shared test helpers.
 # shellcheck source=tests/support/test_helpers.sh
 source "$(
     git -C "$(dirname "${BASH_SOURCE[0]}")" rev-parse --show-toplevel
 )/tests/support/test_helpers.sh"
 
 
-#  Check one shell script for long non-heredoc lines
+# Check one Shell script for long non-heredoc lines.
 function check_line_length_shell() {
     local file="${1:-}"
     local found=0
@@ -131,12 +132,12 @@ function check_line_length_shell() {
     )
 
     if (( found == 0 )); then
-        record_pass "no long non-help shell lines in ${rel}"
+        record_pass "no long non-help Shell lines in ${rel}"
     fi
 }
 
 
-#  Report bounded adjacent case-arm spacing as advisory
+# Report bounded adjacent case-arm spacing as advisory.
 function warn_case_arm_spacing() {
     local line=""
 
@@ -157,7 +158,7 @@ function warn_case_arm_spacing() {
 
 print_section "${TEST_NAME}"
 
-#  Collect production, installation, test harness, and fixture scripts
+# Collect production, installation, test harness, and fixture scripts.
 arr_fil=()
 if (( $# > 0 )); then
     arr_fil=( "$@" )
@@ -191,7 +192,8 @@ done
 warn_case_arm_spacing
 
 record_skip \
-    "non-pilot shell line-length findings remain advisory until existing" \
+    "non-pilot Shell line-length findings remain advisory until existing" \
     "scripts are cleaned up"
+
 
 finish

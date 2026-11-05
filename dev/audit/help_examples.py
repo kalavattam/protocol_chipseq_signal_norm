@@ -9,7 +9,7 @@
 # The following were used in design, development, and documentation, with all
 # output reviewed, edited, and approved by the author:
 # - OpenAI ChatGPT and Codex (GPT-5.6);
-# - Anthropic Claude Code (Opus 5).
+# - Anthropic Claude Code (Opus 5, Opus 5.5).
 #
 # Distributed under the MIT license.
 
@@ -966,7 +966,7 @@ def analyze_help_document(
     line_offset: int = 0,
 ) -> Analysis:
     """
-    Analyze one full help document with no general shell parsing.
+    Analyze one full help document with no general Shell parsing.
 
     Parameters
     ----------
@@ -1139,7 +1139,7 @@ def undispositioned_review_findings(
 
 def shell_help_paths(root: Path) -> list[Path]:
     """
-    Return repository shell sources that can own function help.
+    Return repository Shell sources that can own function help.
     """
 
     paths = list((root / "bin").glob("*.sh"))
@@ -1149,7 +1149,7 @@ def shell_help_paths(root: Path) -> list[Path]:
 
     # This discovery is a filesystem glob rather than a Git listing, so it
     # cannot see that generated fixtures are ignored; see 'fixture_paths'. A
-    # fixture shell script is an input to a checker, not a help surface a
+    # fixture Shell script is an input to a checker, not a help surface a
     # person invokes, so it owes no Examples section.
     return sorted(
         path
@@ -1274,7 +1274,7 @@ def inline_script_help_units(
 
 def script_help_units(root: Path) -> dict[str, tuple[Path, Path, Heredoc]]:
     """
-    Return every maintained top-level shell-script full-help owner.
+    Return every maintained top-level Shell-script full-help owner.
     """
 
     return {
@@ -1375,7 +1375,7 @@ def repository_crosswalk(root: Path) -> dict[str, object]:
             "all_parsed_help_bearing_source_units",
             (
                 "Every bounded sectioned help heredoc parsed from maintained "
-                "shell sources."
+                "Shell sources."
             ),
             parsed,
             (
@@ -1387,7 +1387,7 @@ def repository_crosswalk(root: Path) -> dict[str, object]:
         category(
             "shell_function_heredoc_owners",
             (
-                "Parsed heredocs lexically owned by shell functions after "
+                "Parsed heredocs lexically owned by Shell functions after "
                 "centralized script help and shared fragments are removed."
             ),
             list(functions),
@@ -1467,7 +1467,7 @@ def repository_crosswalk(root: Path) -> dict[str, object]:
             ),
             [],
             (
-                "Outside the parsed source universe; real tests shell "
+                "Outside the parsed source universe; real tests Shell "
                 "functions remain governed."
             ),
             False,

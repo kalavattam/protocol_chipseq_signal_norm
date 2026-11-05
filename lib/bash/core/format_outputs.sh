@@ -226,7 +226,7 @@ Notes
     - bash >= 4.4
     - sed (when formatting a non-Slurm command)
 
-  - This function is display-oriented only. It does not perform robust shell parsing and should not be used to reconstruct or re-execute commands.
+  - This function is display-oriented only. It does not perform robust Shell parsing and should not be used to reconstruct or re-execute commands.
   - Accepted true-like values: true, t, yes, y, 1. Accepted false-like values: false, f, no, n, 0. Matching is case-insensitive; surrounding whitespace and empty values are invalid. Successful normalization emits 'true' or 'false'.
   - For non-Slurm commands, the function does the following:
     + Reads a single-line command string from stdin.
@@ -587,7 +587,7 @@ Usage
   print_cmd_array
     [--help] arr_nam
 
-  Pretty-print a command array as a shell-escaped single-line command.
+  Pretty-print a command array as a Shell-escaped single-line command.
 
 Parameters
 ----------
@@ -599,7 +599,7 @@ Parameters
 
 Returns
 -------
-  0 after printing the shell-escaped array contents to stdout; 1 if 'arr_nam' is missing, invalid, unset, or not an indexed array.
+  0 after printing the Shell-escaped array contents to stdout; 1 if 'arr_nam' is missing, invalid, unset, or not an indexed array.
 
 Notes
 -----
@@ -608,7 +608,7 @@ Notes
 
 Examples
 --------
-  1. Print an indexed command array with shell escaping.
+  1. Print an indexed command array with Shell escaping.
     '''bash
     arr_cmd=( bash bin/find_files.sh --dir_fnd tests --pattern '*.bam' )
     print_cmd_array arr_cmd

@@ -6,9 +6,11 @@
 # Copyright 2024-2026 by Kris Alavattam
 # Email: kalavattam@gmail.com
 #
-# OpenAI ChatGPT and Codex (GPT-4- and GPT-5-series models; most recent:
-# GPT-5.6) were used in design, development, and documentation, with all output
-# reviewed, edited, and approved by the author.
+# The following were used in design, development, and documentation, with all
+# output reviewed, edited, and approved by the author:
+# - OpenAI ChatGPT and Codex (GPT-4- and GPT-5-series models; most recent:
+#   GPT-5.6);
+# - Anthropic Claude Code (Opus 5.5).
 #
 # Distributed under the MIT license.
 
@@ -16,7 +18,7 @@
 # populate_array_empty
 
 
-#  Require Bash >= 4.4 before defining functions
+# Require Bash >= 4.4 before defining functions.
 if [[ -z "${BASH_VERSION:-}" ]]; then
     echo "error(shell):" \
         "this script must be sourced or run under Bash >= 4.4." >&2
@@ -40,7 +42,7 @@ elif ((
     fi
 fi
 
-#  Source required helper functions if needed
+# Source required helper functions if needed.
 {
     _dir_src_pop="$(
         cd "$(dirname "${BASH_SOURCE[0]}")" > /dev/null 2>&1 && pwd
@@ -140,7 +142,7 @@ Examples
 EOM
     )
 
-    #  Parse and check function arguments
+    # Parse and check function arguments.
     if [[ "${arr_nam}" =~ ^(-h|--h[e]?lp)$ ]]; then
         echo "${show_help}" >&2
         return 0
@@ -158,7 +160,7 @@ EOM
         return 1
     fi
 
-    #  Check that target length is int >= 0
+    # Check that target length is int >= 0.
     if ! [[ "${len_tgt}" =~ ^[0-9]+$ ]]; then
         echo_err_func "${FUNCNAME[0]}" \
             "positional argument 2, 'len_tgt', must be a non-negative" \
@@ -168,15 +170,15 @@ EOM
         return 1
     fi
 
-    #  Check that 'arr_nam' is a valid Bash variable name
+    # Check that 'arr_nam' is a valid Bash variable name.
     if ! [[ "${arr_nam}" =~ ^[a-zA-Z_][a-zA-Z0-9_]*$ ]]; then
         echo_err_func "${FUNCNAME[0]}" \
-            "positional argument 1, 'arr_nam', must be a valid shell" \
+            "positional argument 1, 'arr_nam', must be a valid Shell" \
             "variable name: '${arr_nam}'."
         return 1
     fi
 
-    #  Ensure the target exists and is an indexed array
+    # Ensure the target exists and is an indexed array.
     if ! \
         decl="$(declare -p "${arr_nam}" 2> /dev/null)"
     then
@@ -193,7 +195,7 @@ EOM
         eval "len_cur=\${#${arr_nam}[@]}"
     fi
 
-    #  Only populate if the array is empty
+    # Only populate if the array is empty.
     if (( len_cur == 0 )); then
         for (( i = 0; i < len_tgt; i++ )); do
             printf -v "${arr_nam}[${i}]" '%s' "${fill}"
@@ -202,7 +204,7 @@ EOM
 }
 
 
-#  Print an error message when function script is executed directly
+# Print an error message when function script is executed directly.
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
     err_source_only "${BASH_SOURCE[0]}"
 fi

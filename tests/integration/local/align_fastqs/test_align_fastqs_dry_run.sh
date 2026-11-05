@@ -61,10 +61,10 @@ require_files_nonempty \
 }
 
 # The expected lines below spell paths as written, so the test paths must not
-# need shell escaping themselves.
+# need Shell escaping themselves.
 for pth in "${dir_fx}" "${tmp}"; do
     if [[ "$(printf '%q' "${pth}")" != "${pth}" ]]; then
-        record_fail "path needs shell escaping, so rows cannot match: ${pth}"
+        record_fail "path needs Shell escaping, so rows cannot match: ${pth}"
         finish
         exit $?
     fi

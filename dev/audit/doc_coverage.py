@@ -15,7 +15,7 @@
 
 
 """
-Find maintained Python and shell functions that lack needed documentation.
+Find maintained Python and Shell functions that lack needed documentation.
 
 Python modules under 'src/protocol_chipseq_signal_norm' need a module
 docstring, and their public and nontrivial functions need docstrings. Shell
@@ -238,7 +238,7 @@ def check_shell() -> None:
 
 def main() -> int:
     """
-    Print the Python findings, then the shell findings.
+    Print the Python findings, then the Shell findings.
     """
 
     check_python()

@@ -6,14 +6,16 @@
 # Copyright 2026 by Kris Alavattam
 # Email: kalavattam@gmail.com
 #
-# OpenAI ChatGPT and Codex (GPT-5.6) were used in design, development, and
-# documentation, with all output reviewed, edited, and approved by the author.
+# The following were used in design, development, and documentation, with all
+# output reviewed, edited, and approved by the author:
+# - OpenAI ChatGPT and Codex (GPT-5.6);
+# - Anthropic Claude Code (Opus 5.5).
 #
 # Distributed under the MIT license.
 
 
 """
-Resolve and describe the repository's authoritative shell syntax gates.
+Resolve and describe the repository's authoritative Shell syntax gates.
 """
 
 from __future__ import annotations
@@ -105,7 +107,7 @@ def resolve_env_bash(environment: str = "env_protocol") -> BashInterpreter:
 
 def syntax_command(path: str, interpreter: BashInterpreter) -> list[str]:
     """
-    Return the authoritative syntax command for one repository shell source.
+    Return the authoritative syntax command for one repository Shell source.
     """
 
     executable = "sh" if path == POSIX_BOOTSTRAP else str(interpreter.path)

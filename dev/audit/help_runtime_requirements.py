@@ -15,7 +15,7 @@
 
 
 """
-Audit source-grounded Runtime requirements in maintained shell help.
+Audit source-grounded Runtime requirements in maintained Shell help.
 
 The owner universe deliberately comes from 'help_examples'. This module adds
 requirement evidence and grammar checks; it must not grow a competing owner or
@@ -83,7 +83,7 @@ FUNCTION_START = re.compile(
     r"^\s*(?:function\s+)?(?P<name>[A-Za-z_][A-Za-z0-9_]*)\s*\(\s*\)\s*\{",
 )
 
-# This deliberately small set prevents a regex scan from turning shell syntax,
+# This deliberately small set prevents a regex scan from turning Shell syntax,
 # local functions, and arbitrary variables into asserted requirements. Unknown
 # literal command heads are emitted as semantic candidates instead.
 KNOWN_CALLABLES = frozenset(
@@ -1175,7 +1175,7 @@ def normalize_runtime_contract(entries: list[str]) -> list[str]:
 
 def rewrite_runtime_blocks(text: str) -> tuple[str, int]:
     """
-    Normalize recognized Runtime blocks without touching other shell text.
+    Normalize recognized Runtime blocks without touching other Shell text.
     """
 
     lines = text.splitlines()
@@ -1709,7 +1709,7 @@ def candidate(
         "current_text": documented,
         "disposition_options": [
             "document as callable",
-            "classify as shell/local syntax",
+            "classify as Shell/local syntax",
             "exclude as internal",
         ],
         "preferred_disposition": (

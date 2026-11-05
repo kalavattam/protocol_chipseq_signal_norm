@@ -244,8 +244,8 @@ function check_cmd_exists() {
 # Normalize one optional Boolean test gate.
 function invalid_test_gate_name() {
     echo_err_func "normalize_test_gate" \
-        "positional argument 1, 'name', must be a valid shell variable" \
-        "name: '${1:-}'."
+        "positional argument 1, 'name', must be a valid Shell variable name:" \
+        "'${1:-}'."
 }
 
 
@@ -375,7 +375,7 @@ EOM
     echo "MAMBA_EXE=${MAMBA_EXE:-UNSET}"
     echo
 
-    echo "Current shell command checks:"
+    echo "Command checks in the current shell:"
     for cmd in "${arr_cmd[@]}"; do
         printf '%s: ' "${cmd}"
         command -v "${cmd}" || true

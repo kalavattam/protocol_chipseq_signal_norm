@@ -9,7 +9,7 @@
 # The following were used in design, development, and documentation, with all
 # output reviewed, edited, and approved by the author:
 # - OpenAI ChatGPT and Codex (GPT-5.6);
-# - Anthropic Claude Code (Opus 5).
+# - Anthropic Claude Code (Opus 5, Opus 5.5).
 #
 # Distributed under the MIT license.
 
@@ -106,7 +106,7 @@ def test_normalize_input_map_and_validate_id_reject_bad_names() -> None:
         "mass_ip": "mass_ip",
     }
 
-    with pytest.raises(ValueError, match="shell-safe"):
+    with pytest.raises(ValueError, match="Shell-safe"):
         validate_id("bad-name", "field")
 
 

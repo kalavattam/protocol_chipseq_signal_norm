@@ -1031,8 +1031,8 @@
   "adapter_limitations": [
     {
       "rule_id": "EVIDENCE.SHELL.UNITS",
-      "adapter": "top-level shell semantic-unit renderer",
-      "limitation": "Recognizes top-level 'function name() {' blocks, tests standalone-brace endpoint candidates with 'bash -n', and preserves intervening top-level regions; it is not a general shell parser.",
+      "adapter": "top-level Shell semantic-unit renderer",
+      "limitation": "Recognizes top-level 'function name() {' blocks, tests standalone-brace endpoint candidates with 'bash -n', and preserves intervening top-level regions; it is not a general Shell parser.",
       "children": [
         "download-fastqs-dependency-closure-runtime-production",
         "download-fastqs-dependency-closure-tests-registration"
@@ -1040,7 +1040,7 @@
     },
     {
       "rule_id": "SHELL.LINE_LENGTH",
-      "adapter": "existing shell line-length checker",
+      "adapter": "existing Shell line-length checker",
       "limitation": "Repository coverage is warning-only advisory and is not strict enforcement for this package.",
       "children": [
         "download-fastqs-dependency-closure-runtime-production",

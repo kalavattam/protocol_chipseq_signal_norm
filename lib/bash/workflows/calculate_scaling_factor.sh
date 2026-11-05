@@ -1062,7 +1062,7 @@ Usage
   _import_shell_asgmt
     [--help] func arr_ref allowed_name [allowed_name ...]
 
-  Import validated shell assignments from an array of Python-emitted lines.
+  Import validated Shell assignments from an array of Python-emitted lines.
 
   Each non-empty input line must have the form:
 
@@ -1079,7 +1079,7 @@ Parameters
     Calling-function name for error reporting.
 
   2  arr_ref : str
-    Name of array variable containing shell-assignment lines.
+    Name of array variable containing Shell-assignment lines.
 
   3+ allowed_name : str
     One or more allowed variable names.
@@ -1094,7 +1094,7 @@ Notes
     bash >= 4.4
 
   - This helper is intentionally restrictive.
-  - It rejects unexpected variable names and selected unsafe shell constructs.
+  - It rejects unexpected variable names and selected unsafe Shell constructs.
 
 Examples
 --------
@@ -1128,7 +1128,7 @@ EOM
         return 1
     elif [[ ! "${arr_ref_nam}" =~ ^[A-Za-z_][A-Za-z0-9_]*$ ]]; then
         echo_err_func "${FUNCNAME[0]}" \
-            "positional argument 2, 'arr_ref', is not a valid shell" \
+            "positional argument 2, 'arr_ref', is not a valid Shell" \
             "identifier: '${arr_ref_nam}'."
         return 1
     elif [[ "$#" -eq 0 ]]; then
@@ -1142,7 +1142,7 @@ EOM
     for nam in "$@"; do
         if [[ ! "${nam}" =~ ^[A-Za-z_][A-Za-z0-9_]*$ ]]; then
             echo_err_func "${FUNCNAME[0]}" \
-                "allowed variable name is not a valid shell identifier:" \
+                "allowed variable name is not a valid Shell identifier:" \
                 "'${nam}'."
             return 1
         fi
@@ -1156,7 +1156,7 @@ EOM
             ! "${line}" =~ ^export[[:space:]]+([A-Za-z_][A-Za-z0-9_]*)=(.*)$
         ]]; then
             echo_err_func "${func}" \
-                "metadata parser emitted unsupported shell assignment:" \
+                "metadata parser emitted unsupported Shell assignment:" \
                 "'${line}'."
             return 1
         fi
@@ -1176,7 +1176,7 @@ EOM
             "${rhs}" == *'$('* || "${rhs}" == *'`'* || "${rhs}" == *';'*
         ]]; then
             echo_err_func "${func}" \
-                "metadata parser emitted unsafe shell value for variable" \
+                "metadata parser emitted unsafe Shell value for variable" \
                 "'${nam}': '${rhs}'."
             return 1
         fi
@@ -1200,7 +1200,7 @@ function _parse_metadata() {
     local fil_aln="${2:-}"  # Alignment file to process.
     local tbl_met="${3:-}"  # siQ-ChIP metadata table.
     local cfg_met="${4:-}"  # YAML configuration for metadata parsing.
-    local -a arr_shell      # Python-emitted shell assignment lines.
+    local -a arr_shell      # Python-emitted Shell assignment lines.
     local show_help
 
     show_help=$(cat << EOM
@@ -1230,7 +1230,7 @@ Parameters
 
 Returns
 -------
-  Assigns parsed metadata variables in the current shell environment from validated 'export key=value' lines emitted by the Python helper.
+  Assigns parsed metadata variables in the current shell's environment from validated 'export key=value' lines emitted by the Python helper.
 
 Notes
 -----

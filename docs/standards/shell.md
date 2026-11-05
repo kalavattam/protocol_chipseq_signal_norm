@@ -1,21 +1,21 @@
 
 # Shell standard
-This document owns maintained Bash runtime, source-layout realization, source form, comments, static analysis, execution semantics, sourcing, wrapper and processing topology, submit bootstrap, parser diagnostics, and shell-test source form. Shared source-layout semantics belong to [`source_layout.md`](source_layout.md), help semantics to [`help.md`](help.md), literal headers and shebang profiles to [`source_headers.md`](source_headers.md), general test operations to [`testing.md`](testing.md), and placement to [`repository_layout.md`](repository_layout.md).
+This document owns maintained Bash runtime, source-layout realization, source form, comments, static analysis, execution semantics, sourcing, wrapper and processing topology, submit bootstrap, parser diagnostics, and Shell-test source form. Shared source-layout semantics belong to [`source_layout.md`](source_layout.md), help semantics to [`help.md`](help.md), literal headers and shebang profiles to [`source_headers.md`](source_headers.md), general test operations to [`testing.md`](testing.md), and placement to [`repository_layout.md`](repository_layout.md).
 
 <br />
 
 ## Shell syntax and runtime (`SHELL.SYNTAX`)
 **Classification:** `advisory` with deterministic parseability and declared-runtime evidence.
 
-**Scope:** Maintained shell entrypoints, sourced libraries, installers, fixture recipes, and shell tests.
+**Scope:** Maintained Shell entrypoints, sourced libraries, installers, fixture recipes, and Shell tests.
 
-Use Bash for maintained shell except the explicit POSIX environment bootstrap. Bash code requires Bash 4.4 or newer and may use arrays, `[[ ]]`, arithmetic evaluation, `mapfile`, process substitution, and other supported Bash features. Parse Bash files with the resolved project Bash and parse `install/scripts/install_envs_entrypoint.sh` with `sh -n`.
+Use Bash for maintained Shell except the explicit POSIX environment bootstrap. Bash code requires Bash 4.4 or newer and may use arrays, `[[ ]]`, arithmetic evaluation, `mapfile`, process substitution, and other supported Bash features. Parse Bash files with the resolved project Bash and parse `install/scripts/install_envs_entrypoint.sh` with `sh -n`.
 
 The literal shebang row belongs to `source_headers.md`; this rule owns whether the chosen interpreter and syntax match runtime behavior. Do not claim POSIX compatibility for Bash source.
 
-**Automation:** `tests/contract/repository/test_shell_syntax.sh` parses maintained shell and checks the Bash floor and POSIX exception. Registry coverage is `subset` because parsing does not prove runtime portability.
+**Automation:** `tests/contract/repository/test_shell_syntax.sh` parses maintained Shell and checks the Bash floor and POSIX exception. Registry coverage is `subset` because parsing does not prove runtime portability.
 
-**Semantic remainder:** Review external shell-version behavior and constructs not exercised on all supported hosts.
+**Semantic remainder:** Review external Shell-version behavior and constructs not exercised on all supported hosts.
 
 **Exceptions:** Only the named POSIX bootstrap currently uses `/bin/sh` semantics.
 
@@ -24,11 +24,11 @@ The literal shebang row belongs to `source_headers.md`; this rule owns whether t
 ## Safe-mode boundaries (`SHELL.RUNTIME.SAFE_MODE`)
 **Classification:** `advisory` with deterministic declaration and exception portions.
 
-**Scope:** Directly executed shell entrypoints, sourced libraries, and test orchestration.
+**Scope:** Directly executed Shell entrypoints, sourced libraries, and test orchestration.
 
-Direct workflow and maintenance scripts normally use `set -euo pipefail` after runtime guards and before substantive work. Sourced libraries must not unilaterally change the caller's shell options. Handle expected nonzero statuses explicitly rather than disabling safety for a broad region.
+Direct workflow and maintenance scripts normally use `set -euo pipefail` after runtime guards and before substantive work. Sourced libraries must not unilaterally change the caller's Shell options. Handle expected nonzero statuses explicitly rather than disabling safety for a broad region.
 
-The canonical test runner uses `set -u` and aggregates individual failures intentionally; it is the explicit runner exception. Individual shell tests use `set -euo pipefail` unless the shared harness requires a narrower, documented control-flow exception.
+The canonical test runner uses `set -u` and aggregates individual failures intentionally; it is the explicit runner exception. Individual Shell tests use `set -euo pipefail` unless the shared harness requires a narrower, documented control-flow exception.
 
 **Automation:** Source-form contracts inventory recognized safe-mode declarations, ordering, and named exceptions with `subset` coverage.
 
@@ -59,7 +59,7 @@ Write a heredoc redirection as `<<` or `<<-`, exactly one space, then the delimi
 
 Leave the delimiter unquoted by default. Single-quote it only when the body must reach the command literally: that is, when the body contains `$`, a backtick, or a backslash sequence whose expansion would corrupt the intended value. The presence of such a character does not by itself require quoting, because a body may contain it precisely in order to be expanded. A rendered help heredoc that interpolates current option defaults is the ordinary unquoted case; an embedded interpreter body that must receive `${...}` verbatim is the ordinary quoted case. Quoting is therefore a deliberate literal-semantics decision about intent, not a lexical property of the body, and an unnecessarily quoted delimiter hides whether the body depends on expansion.
 
-Use `EOM` for ordinary shell-text heredocs. Use a language-specific delimiter such as `PY` for embedded interpreter input. Another meaningful delimiter is permitted when required to avoid a collision or express literal semantics. Heredoc bodies follow their content owner: help bodies follow `help.md`, embedded Python follows Python source expectations, and literal fixtures remain unchanged. Do not reindent or reflow a heredoc without reviewing rendered behavior.
+Use `EOM` for ordinary Shell-text heredocs. Use a language-specific delimiter such as `PY` for embedded interpreter input. Another meaningful delimiter is permitted when required to avoid a collision or express literal semantics. Heredoc bodies follow their content owner: help bodies follow `help.md`, embedded Python follows Python source expectations, and literal fixtures remain unchanged. Do not reindent or reflow a heredoc without reviewing rendered behavior.
 
 Diagnostics identify the failing script or function and direct errors to stderr. Use `printf` when format control matters; `echo` remains acceptable for simple fixed diagnostics. Do not print success before the operation succeeds.
 
@@ -163,7 +163,7 @@ Resolve repository libraries from a path anchored to the current source file, no
 
 Place ShellCheck source directives immediately above the source operation they describe and keep their target accurate. Do not use a directive to conceal a dynamically unresolved path when the repository can compute a stable source path.
 
-**Automation:** `dev/audit/source_policy.py` discovers current maintained shell paths and checks recognized source anchoring, direct guards, help sourcing, and role contracts with `subset` coverage.
+**Automation:** `dev/audit/source_policy.py` discovers current maintained Shell paths and checks recognized source anchoring, direct guards, help sourcing, and role contracts with `subset` coverage.
 
 **Semantic remainder:** Classify source-only versus dual-role intent and assess dynamic paths that static analysis cannot resolve.
 
@@ -174,7 +174,7 @@ Place ShellCheck source directives immediately above the source operation they d
 ## Shell static analysis (`SHELL.STATIC_ANALYSIS`)
 **Classification:** `advisory` with deterministic inventory and provenance evidence.
 
-**Scope:** Maintained Bash entrypoints, sourced libraries, installers, fixture recipes, and shell tests discovered by the repository ShellCheck runner.
+**Scope:** Maintained Bash entrypoints, sourced libraries, installers, fixture recipes, and Shell tests discovered by the repository ShellCheck runner.
 
 Run ShellCheck through `dev/audit/run_shellcheck.sh` with external-source following and the repository source path. The runner uses `${CONDA_PREFIX}/bin/shellcheck` directly, requires that path to be executable, and verifies version 0.10.0; it never selects ShellCheck through `PATH`. Check maintained Bash with `--shell=bash`, exclude `install/scripts/install_envs_entrypoint.sh` from that set, and check that POSIX bootstrap separately with `--shell=sh`. An ambient Homebrew or system executable is not repository evidence.
 
@@ -193,9 +193,9 @@ Treat ShellCheck status 0 as a completed clean inventory and status 1 as a compl
 ## Shell line length (`SHELL.LINE_LENGTH`)
 **Classification:** `advisory` with deterministic bounded-pilot portions.
 
-**Scope:** Maintained shell source outside exempt heredoc, URL, checksum, regex, parser-label, and fixture-literal contexts.
+**Scope:** Maintained Shell source outside exempt heredoc, URL, checksum, regex, parser-label, and fixture-literal contexts.
 
-Keep ordinary shell source within 79 columns when a readable split preserves behavior. Prefer semantic command-array and condition boundaries. Direct `echo` diagnostics follow `SHELL.DIAGNOSTIC.FORM`; do not split indivisible URLs, checksums, regular expressions, literal repository paths, or literal interface text merely to satisfy a count.
+Keep ordinary Shell source within 79 columns when a readable split preserves behavior. Prefer semantic command-array and condition boundaries. Direct `echo` diagnostics follow `SHELL.DIAGNOSTIC.FORM`; do not split indivisible URLs, checksums, regular expressions, literal repository paths, or literal interface text merely to satisfy a count.
 
 **Automation:** `tests/contract/repository/test_shell_line_length.sh` reports repository-wide candidates and strict bounded pilots. Coverage is `subset`, not `exact`.
 
@@ -208,7 +208,7 @@ Keep ordinary shell source within 79 columns when a readable split preserves beh
 ## Unknown-option diagnostics (`SHELL.PARSER.UNKNOWN_OPTION`)
 **Classification:** `deterministic` for recognized parser roles.
 
-**Scope:** Maintained top-level shell parsers and local function parsers.
+**Scope:** Maintained top-level Shell parsers and local function parsers.
 
 An unknown option emits the repository-standard error through the role-appropriate helper, preserves the exact offending token, emits applicable help, and returns or exits with status 1. Function diagnostics identify `${FUNCNAME[0]}`; script diagnostics identify the script basename. Do not silently shift or reinterpret an unknown option as a positional value.
 
@@ -309,7 +309,7 @@ In `lib/` and `bin/`, an AWK program whose input is sequencing or alignment reco
 
 Inline `sed` keeps to the forms that BSD and GNU `sed` share, since it runs on the system `sed`: macOS has BSD `sed`, and the cluster has GNU. GNU-only forms are flagged: `-i`, `-r`, `-z`, the `\+`, `\|`, and `\?` escapes, and long options.
 
-**Automation:** `dev/audit/embedded_programs.py` counts each kind above in maintained shell, outside heredoc bodies and quoted strings, with `subset` coverage: Python heredocs and multi-line `-c` programs, multi-line `bash -c`, AWK over three lines, multi-line and GNU-only `sed`, and `perl`. It does not judge an AWK call's input.
+**Automation:** `dev/audit/embedded_programs.py` counts each kind above in maintained Shell, outside heredoc bodies and quoted strings, with `subset` coverage: Python heredocs and multi-line `-c` programs, multi-line `bash -c`, AWK over three lines, multi-line and GNU-only `sed`, and `perl`. It does not judge an AWK call's input.
 
 **Semantic remainder:** Judge an `awk` call's real input, which can follow the program's closing quote, and whether a short program reads better as a named function.
 
@@ -320,15 +320,15 @@ Inline `sed` keeps to the forms that BSD and GNU `sed` share, since it runs on t
 ## Shell-test source form (`SHELL.TEST.SOURCE_FORM`)
 **Classification:** `advisory` with deterministic recognized-structure evidence.
 
-**Scope:** Maintained shell tests below `tests/contract/` and `tests/integration/`.
+**Scope:** Maintained Shell tests below `tests/contract/` and `tests/integration/`.
 
-Individual shell tests declare Bash, enable ordinary safe mode, set `TEST_NAME`, source `tests/support/test_helpers.sh`, report through the shared harness, and call `finish` when they reach normal completion. Tests use harness-provided scratch and log roots rather than repository-relative ad hoc paths.
+Individual Shell tests declare Bash, enable ordinary safe mode, set `TEST_NAME`, source `tests/support/test_helpers.sh`, report through the shared harness, and call `finish` when they reach normal completion. Tests use harness-provided scratch and log roots rather than repository-relative ad hoc paths.
 
-For a multiline assertion or capture helper call, put the helper name on its own line and each helper positional argument on its own continuation line. Keep one short human-readable label as one quoted argument, attach explanatory comments to the call they introduce, and separate adjacent multiline helper-call blocks with one empty line except inside shell control-flow conditions.
+For a multiline assertion or capture helper call, put the helper name on its own line and each helper positional argument on its own continuation line. Keep one short human-readable label as one quoted argument, attach explanatory comments to the call they introduce, and separate adjacent multiline helper-call blocks with one empty line except inside Shell control-flow conditions.
 
 `testing.md` owns taxonomy, gates, fixtures, evidence, cleanup, and result semantics. The aggregate runner is not an individual test and follows its explicit safe-mode and reporting exceptions.
 
-**Automation:** The test-layout contract scans contract, local, Parallel, and ordinary Slurm shell tests and maps source-form findings to this owner. Coverage is `subset` for conditional and generated forms.
+**Automation:** The test-layout contract scans contract, local, Parallel, and ordinary Slurm Shell tests and maps source-form findings to this owner. Coverage is `subset` for conditional and generated forms.
 
 **Semantic remainder:** Review clarity, appropriate helper reuse, and intentional early-exit paths.
 

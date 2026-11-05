@@ -79,11 +79,11 @@ PAIRED_OPTIONS = (
 
 def validate_id(name: str, label: str) -> None:
     """
-    Validate that a configured name can be exported as a shell identifier.
+    Validate that a configured name can be exported as a Shell identifier.
     """
 
     if not isinstance(name, str) or not IDENTIFIER_PATTERN.fullmatch(name):
-        raise ValueError(f"'{label}' must be a shell-safe identifier.")
+        raise ValueError(f"'{label}' must be a Shell-safe identifier.")
 
 
 def require_mapping(obj: object, label: str) -> dict[object, object]:
@@ -650,7 +650,7 @@ def collect_outputs(row: dict, configuration: dict) -> dict[str, str]:
 
 def output_shell(values: dict[str, str]) -> None:
     """
-    Print shell export statements for configured metadata values.
+    Print Shell export statements for configured metadata values.
     """
 
     for key in sorted(values):
@@ -748,7 +748,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         dest="shell",
         action="store_true",
         default=False,
-        help="Emit shell export statements instead of key-value lines.",
+        help="Emit Shell export statements instead of key-value lines.",
     )
     parser.add_argument(
         "-sp",

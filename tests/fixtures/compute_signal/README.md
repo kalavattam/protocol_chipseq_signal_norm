@@ -111,4 +111,4 @@ Tests should use these fixtures to verify ratio outputs, BAM-backed signal outpu
 ## Current and deferred test coverage
 The test suite covers submit- and execute-layer ratio mode, BAM-backed signal and coordinate output, and CRAM-backed signal and coordinate output with an explicit reference FASTA. It also covers local GNU Parallel ratio dispatch when gated by `RUN_PARALLEL=1`.
 
-`#TODO`: Add Slurm coverage. Consider extending GNU Parallel coverage to BAM- and CRAM-backed signal paths where that broader matrix provides useful regression protection. Add direct shell- and Python-script coverage where applicable.
+`#TODO`: Add Slurm coverage. Consider extending GNU Parallel coverage to BAM- and CRAM-backed signal paths where that broader matrix provides useful regression protection. Add direct Shell- and Python-script coverage where applicable.

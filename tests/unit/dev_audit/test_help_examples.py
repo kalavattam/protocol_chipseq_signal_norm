@@ -9,13 +9,13 @@
 # The following were used in design, development, and documentation, with all
 # output reviewed, edited, and approved by the author:
 # - OpenAI ChatGPT and Codex (GPT-5.6);
-# - Anthropic Claude Code (Opus 5).
+# - Anthropic Claude Code (Opus 5, Opus 5.5).
 #
 # Distributed under the MIT license.
 
 
 """
-Focused regressions for strict shell-help Examples documents.
+Focused regressions for strict Shell-help Examples documents.
 """
 
 from __future__ import annotations

@@ -16,7 +16,7 @@
 
 set -euo pipefail
 
-TEST_NAME="shell wrapper style"
+TEST_NAME="Shell wrapper style"
 
 # Source shared test helpers.
 # shellcheck source=tests/support/test_helpers.sh
@@ -305,7 +305,7 @@ function scan_execute_submit_dir_scr_policy() {
 
 print_section "${TEST_NAME}"
 
-# Scan maintained top-level shell CLIs for wrapper structural drift.
+# Scan maintained top-level Shell CLIs for wrapper structural drift.
 files_top=()
 while IFS= read -r file; do
     files_top+=( "${file}" )

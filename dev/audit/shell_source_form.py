@@ -169,7 +169,7 @@ def _heredoc_delimiter(match: re.Match[str]) -> str:
 @dataclasses.dataclass(frozen=True)
 class Finding:
     """
-    Represent one bounded shell-source finding.
+    Represent one bounded Shell-source finding.
     """
 
     rule_id: str
@@ -579,7 +579,7 @@ def check_text(text: str, path: str = "<memory>") -> list[Finding]:
                         path,
                         index,
                         (
-                            "ordinary shell-text heredoc should use EOM "
+                            "ordinary Shell-text heredoc should use EOM "
                             "instead of EOF"
                         ),
                     ),
@@ -601,7 +601,7 @@ def check_text(text: str, path: str = "<memory>") -> list[Finding]:
 
 def maintained_paths(root: Path) -> list[str]:
     """
-    Return current maintained shell paths without generated evidence.
+    Return current maintained Shell paths without generated evidence.
     """
 
     result = subprocess.run(
@@ -650,7 +650,7 @@ def scan(root: Path, paths: list[str] | None = None) -> list[Finding]:
 
 def main(argv: list[str] | None = None) -> int:
     """
-    Report bounded shell source-form findings.
+    Report bounded Shell source-form findings.
 
     Parameters
     ----------
@@ -660,7 +660,7 @@ def main(argv: list[str] | None = None) -> int:
     Returns
     -------
     status : int
-        Zero when selected shell source forms pass and one otherwise.
+        Zero when selected Shell source forms pass and one otherwise.
     """
 
     parser = argparse.ArgumentParser(description=__doc__)

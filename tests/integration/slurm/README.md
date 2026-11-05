@@ -124,7 +124,7 @@ PYTHONDONTWRITEBYTECODE=1 \
         --archive protocol_chipseq_signal_norm_slurm_runs/7i-slurm-bundle-20260716/incoming/source.tar.gz
 ```
 
-All three gate values must be exactly `1`. `RUN_SLURM` retains its established meaning of enabling scheduler execution, `WAIT_SLURM` retains its established meaning of waiting for completion, and `CONFIRM_SLURM_WET` is the additional deliberate real-submission confirmation. The shell runner and Python runner both enforce the gate before any `sbatch` call.
+All three gate values must be exactly `1`. `RUN_SLURM` retains its established meaning of enabling scheduler execution, `WAIT_SLURM` retains its established meaning of waiting for completion, and `CONFIRM_SLURM_WET` is the additional deliberate real-submission confirmation. The Shell runner and Python runner both enforce the gate before any `sbatch` call.
 
 The launcher verifies the transfer, extracts into `<remote-run-root>/<run-id>/source_bundle/`, verifies exact source membership and hashes, writes a run-local runtime configuration, and then invokes the dedicated wet runner. It never modifies the normal remote checkout.
 

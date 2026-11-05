@@ -958,7 +958,7 @@ def prepare(args: argparse.Namespace) -> int:
 
 def ssh_target(config: dict[str, Any]) -> str:
     """
-    Return the configured SSH target without shell metacharacters.
+    Return the configured SSH target without Shell metacharacters.
     """
 
     host = validate_remote_token(str(config["ssh_host"]), "SSH host")
@@ -992,7 +992,7 @@ def push_commands(session: Path, config: dict[str, Any]) -> list[list[str]]:
 
 def print_commands(commands: Iterable[Sequence[str]]) -> None:
     """
-    Print shell-copyable commands.
+    Print Shell-copyable commands.
     """
 
     for command in commands:

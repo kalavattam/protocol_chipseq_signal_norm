@@ -166,7 +166,7 @@ def _shell_source_units(path: str, source: str) -> list[dict[str, object]]:
         if end is None:
             raise ValueError(
                 (
-                    f"cannot identify complete top-level shell function "
+                    f"cannot identify complete top-level Shell function "
                     f"{name}: "
                     f"{path}:{start}"
                 ),
@@ -366,7 +366,7 @@ def configured_semantic_units(
     selection: dict[str, object],
 ) -> tuple[list[dict[str, object]], dict[str, object]]:
     """
-    Render configured target changes and named context as complete shell units.
+    Render configured target changes and named context as complete Shell units.
 
     Parameters
     ----------
@@ -1801,7 +1801,7 @@ def write_pilot_bundle(
             ),
             result("types_and_placeholders", ("help_parameter_rows",)),
             (
-                "Parameter rows remain in facts.ndjson; only "
+                "Parameters rows remain in facts.ndjson; only "
                 "vocabulary/syntax is mechanically evaluated."
             ),
             "File/path/directory/string choice is domain-specific.",
@@ -2236,7 +2236,7 @@ def write_pilot_bundle(
         ],
     )
 
-    body = "# Download FASTQs shell/help pilot: semantic review\n\n"
+    body = "# Download FASTQs Shell/help pilot: semantic review\n\n"
     body += f"Run ID: `{run_id or 'unspecified'}`\n\n"
 
     body += (
@@ -2341,7 +2341,7 @@ def write_pilot_bundle(
         )
 
     body += (
-        "## Adapter limitations and false-positive risks\n\nDynamic shell "
+        "## Adapter limitations and false-positive risks\n\nDynamic Shell "
         "construction, conceptual documentation quality, and "
         "behavior-sensitive command construction remain review-only. "
         "False-positive assessment remains pending independent review.\n\n"

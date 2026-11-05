@@ -36,7 +36,7 @@ Inspect the exact, deduplicated discovery set without running it:
 bash tests/run_tests.sh --list all-safe
 ```
 
-Logs and temporary products default to `artifacts/tests/`. Set `TEST_ARTIFACT_ROOT` to an absolute path outside the repository for non-mutating validation. In-repository overrides are rejected. The runner discovers every selected shell test at most once and never discovers `tests/integration/slurm/run_wet_tests.sh`.
+Logs and temporary products default to `artifacts/tests/`. Set `TEST_ARTIFACT_ROOT` to an absolute path outside the repository for non-mutating validation. In-repository overrides are rejected. The runner discovers every selected Shell test at most once and never discovers `tests/integration/slurm/run_wet_tests.sh`.
 
 <br />
 

@@ -9,13 +9,13 @@
 # The following were used in design, development, and documentation, with all
 # output reviewed, edited, and approved by the author:
 # - OpenAI ChatGPT and Codex (GPT-5.6);
-# - Anthropic Claude Code (Opus 5).
+# - Anthropic Claude Code (Opus 5, Opus 5.5).
 #
 # Distributed under the MIT license.
 
 
 """
-Check bounded structural conventions in changed shell help documentation.
+Check bounded structural conventions in changed Shell help documentation.
 """
 
 from __future__ import annotations
@@ -159,7 +159,7 @@ OLD_CATEGORY_NAMES = {
 @dataclasses.dataclass(frozen=True)
 class Finding:
     """
-    One structural shell-help finding.
+    One structural Shell-help finding.
     """
 
     rule_id: str
@@ -1034,7 +1034,7 @@ def check_runtime_blocks(
 
 def is_function_help(heredoc: Heredoc) -> bool:
     """
-    Return whether a bounded heredoc documents a shell function.
+    Return whether a bounded heredoc documents a Shell function.
     """
 
     return heredoc.owner not in {
@@ -1334,7 +1334,7 @@ def check_long_options_and_prose(
                     number,
                     (
                         "use straight single quotes as prose delimiters in "
-                        "shell help"
+                        "Shell help"
                     ),
                     active_lines,
                 )
@@ -1479,8 +1479,8 @@ def check_python_docstrings(
             if in_examples or in_fence or stripped.startswith((">>>", "...")):
                 continue
 
-            # Mask quoted spans first: a literal '--' inside command text
-            # is delimiter syntax rather than a prose dash.
+            # Mask quoted spans first: a literal '--' inside command text is
+            # delimiter syntax rather than a prose dash.
             if PROSE_DASH.search(QUOTED_SPAN.sub("", stripped)):
                 add_finding(
                     findings,
@@ -1644,7 +1644,7 @@ def scan_repository(
     registry_path: Path | None = None,
 ) -> list[Finding]:
     """
-    Scan changed lines in changed and untracked shell help.
+    Scan changed lines in changed and untracked Shell help.
     """
 
     root = root.resolve()

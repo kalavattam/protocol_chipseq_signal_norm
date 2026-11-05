@@ -61,12 +61,12 @@ mkdirs "${dir_acc}"
 # Author every fixture literally. The delimiter is quoted, so no '$' or
 # backtick in a fixture body reaches the shell.
 
-# One shell help surface. The fixture is itself a heredoc-bearing function, so
+# One Shell help surface. The fixture is itself a heredoc-bearing function, so
 # its last two lines are its own 'EOM' terminator and closing brace. Those two
 # lines are appended rather than written inside the heredoc below, because a
 # body line reading 'EOM' would end this heredoc at the fixture's terminator.
 # Switching this recipe to an 'EOF' delimiter would avoid that too, and is what
-# 'SHELL.SOURCE.FORM' asks shell-text heredocs not to do.
+# 'SHELL.SOURCE.FORM' asks Shell-text heredocs not to do.
 cat << 'EOM' > "${fil_acc_shell}"
 function demo() {
     cat << EOM

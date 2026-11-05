@@ -10,7 +10,7 @@
 # output reviewed, edited, and approved by the author:
 # - OpenAI ChatGPT and Codex (GPT-4- and GPT-5-series models; most recent:
 #   GPT-5.6);
-# - Anthropic Claude Code (Opus 5).
+# - Anthropic Claude Code (Opus 5, Opus 5.5).
 #
 # Distributed under the MIT license.
 
@@ -48,7 +48,7 @@ Parameters
     Directory to search with the program 'find'.
 
   -pa, --pttrn, --pattern : str
-    File pattern, including shell wildcard characters, used in the construction of the underlying 'find' call (default: '${pattern}').
+    File pattern, including Shell wildcard characters, used in the construction of the underlying 'find' call (default: '${pattern}').
 
   -sz, --size : int
     Minimum size in kilobytes for compression (default: ${size}).
@@ -57,10 +57,10 @@ Parameters
     Maximum depth to search within the directory.
 
   -in, --incld, --include : list of str
-    Comma-separated list of patterns to include with respect to '--pattern', including shell wildcards. '--include' is subordinate to '--pattern'.
+    Comma-separated list of patterns to include with respect to '--pattern', including Shell wildcards. '--include' is subordinate to '--pattern'.
 
   -ex, --excld, --exclude : list of str
-    Comma-separated list of patterns to exclude with respect to '--pattern', including shell wildcards (default: '${exclude}'). '--exclude' is subordinate to '--pattern'.
+    Comma-separated list of patterns to exclude with respect to '--pattern', including Shell wildcards (default: '${exclude}'). '--exclude' is subordinate to '--pattern'.
 
   -cn, --chk_con : flag
     Check the construction of the find command and exit.

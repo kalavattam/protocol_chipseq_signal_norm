@@ -25,7 +25,7 @@ Generated verdict record:
 - `cases.json`: the accepted, rejected, boundary, and nonapplicable readings the help-contract rules must produce, in the canonical form owned by `JSON.SOURCE.FORM`
 
 Generated help surfaces the contracts must accept:
-- `accepted/shell.sh`: one shell help function whose body is a heredoc carrying the standard Usage and Parameters sections
+- `accepted/shell.sh`: one Shell help function whose body is a heredoc carrying the standard Usage and Parameters sections
 - `accepted/python.py`: one `add_argument` help literal using the accepted inline-token form
 - `accepted/python_callable.py`: one callable whose Examples section is source-language rather than a rendered CLI invocation
 
@@ -40,7 +40,7 @@ All three generated surfaces are conforming inputs. `accepted/shell.sh` exercise
 
 ## Current and deferred test coverage
 Current coverage in `tests/unit/dev_audit/test_help_contracts.py` and `tests/unit/dev_audit/test_help_examples.py`:
-- the shell surface parses into its declared Usage and Parameters rows; and
+- the Shell surface parses into its declared Usage and Parameters rows; and
 - the callable surface yields two example blocks and two signatures, and a mutation of either is detected.
 
 Deferred:

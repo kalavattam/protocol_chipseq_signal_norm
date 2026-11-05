@@ -11,15 +11,15 @@ This document owns repository-root responsibilities, cross-root dependency direc
 
 Maintained production code and its authoritative standards use these required roots:
 ```text
-bin/                                         maintained shell entrypoints
-lib/bash/core/                               validation, bootstrap, state, output
-lib/bash/dispatch/                           local, Parallel, Slurm, and Python dispatch
-lib/bash/workflows/                          domain and workflow processing
-lib/bash/help/                               executable shell help owners
-src/protocol_chipseq_signal_norm/            sole distribution import tree
-src/protocol_chipseq_signal_norm/cli/         Python command-line modules
-src/protocol_chipseq_signal_norm/utilities/   reusable Python utilities
-docs/standards/                               normative repository standards
+bin/                                         # Maintained Shell entrypoints
+lib/bash/core/                               # Validation, bootstrap, state, output
+lib/bash/dispatch/                           # Local, Parallel, Slurm, and Python dispatch
+lib/bash/workflows/                          # Domain and workflow processing
+lib/bash/help/                               # Executable Shell help owners
+src/protocol_chipseq_signal_norm/            # Sole distribution import tree
+src/protocol_chipseq_signal_norm/cli/        # Python command-line modules
+src/protocol_chipseq_signal_norm/utilities/  # Reusable Python utilities
+docs/standards/                              # Normative repository standards
 ```
 
 The following retired roots are prohibited:
@@ -43,19 +43,19 @@ docs/style/
 ## Shell ownership (`LAYOUT.SHELL.BOUNDARY`)
 **Classification:** `advisory`.
 
-**Scope:** Maintained shell source under `bin/` and `lib/bash/`.
+**Scope:** Maintained Shell source under `bin/` and `lib/bash/`.
 
-`bin/` contains maintained user-facing shell entrypoints and approved delegates that preserve a supported command interface. Sourced implementation files do not live in `bin/`. `lib/bash/core/` owns generic validation, bootstrap, state, and output helpers; `dispatch/` owns execution backends; `workflows/` owns domain processing; and `help/` owns centralized executable help functions.
+`bin/` contains maintained user-facing Shell entrypoints and approved delegates that preserve a supported command interface. Sourced implementation files do not live in `bin/`. `lib/bash/core/` owns generic validation, bootstrap, state, and output helpers; `dispatch/` owns execution backends; `workflows/` owns domain processing; and `help/` owns centralized executable help functions.
 
 Cross-directory sourcing must resolve from the entrypoint or source file location, never from the caller's current working directory. A basename-only helper lookup is permitted only when the loader proves the basename is unique across its declared responsibility roots.
 
-Supported interface delegates stay in `bin/`; they must not recreate a retired source tree. Detailed shell organization and sourcing behavior belong to [`shell.md`](shell.md), and help ownership belongs to [`help.md`](help.md).
+Supported interface delegates stay in `bin/`; they must not recreate a retired source tree. Detailed Shell organization and sourcing behavior belong to [`shell.md`](shell.md), and help ownership belongs to [`help.md`](help.md).
 
-**Automation:** No execution-registry entry is dedicated to this rule ID. The repository-layout, shell-syntax, wrapper, source-policy, help, and interface contracts provide related evidence without establishing registered coverage for this rule.
+**Automation:** No execution-registry entry is dedicated to this rule ID. The repository-layout, Shell-syntax, wrapper, source-policy, help, and interface contracts provide related evidence without establishing registered coverage for this rule.
 
 **Semantic remainder:** Review determines whether a helper's responsibility belongs in `core/`, `dispatch/`, or `workflows/`, and whether a compatibility delegate still represents a supported interface.
 
-**Exceptions:** Use the exception process in [`governance.md`](governance.md); an exception may not establish an alternate shell architecture.
+**Exceptions:** Use the exception process in [`governance.md`](governance.md); an exception may not establish an alternate Shell architecture.
 
 <br />
 
@@ -85,7 +85,7 @@ Repository scripts, test helpers, and developer tooling do not become import nam
 
 Installation code may consume repository packaging metadata and environment definitions, but normal installed runtime behavior must not depend on the checkout's `install/` tree. Generated installer logs, package builds, and environment evidence belong under `artifacts/`.
 
-**Automation:** No execution-registry entry is dedicated to this rule ID. Installation-layout, shell-syntax, help, and Python-package contracts provide related evidence without establishing registered coverage for this rule.
+**Automation:** No execution-registry entry is dedicated to this rule ID. Installation-layout, Shell-syntax, help, and Python-package contracts provide related evidence without establishing registered coverage for this rule.
 
 **Semantic remainder:** Review distinguishes installation lifecycle behavior from ordinary workflow execution and reusable runtime logic.
 
@@ -166,9 +166,9 @@ docs/ and notebooks/ ----------> documented public interfaces
 
 Reverse dependencies are prohibited. In particular, `src/`, `bin/`, and `lib/bash/` must not depend on `tests/`, `dev/`, `notebooks/`, `artifacts/`, ignored local data, or the sibling private repository. Documentation and notebooks may demonstrate public interfaces but must not supply required runtime implementation. Tests and developer tools must not become undeclared production dependencies.
 
-**Automation:** No execution-registry entry is dedicated to this rule ID. Python-boundary, package, shell-source, dependency-closure, and scheduler-bundle contracts provide related evidence without establishing registered coverage for this rule.
+**Automation:** No execution-registry entry is dedicated to this rule ID. Python-boundary, package, Shell-source, dependency-closure, and scheduler-bundle contracts provide related evidence without establishing registered coverage for this rule.
 
-**Semantic remainder:** Review is required for dynamic shell dispatch, optional developer-only integrations, and dependencies that cross more than one responsibility boundary.
+**Semantic remainder:** Review is required for dynamic Shell dispatch, optional developer-only integrations, and dependencies that cross more than one responsibility boundary.
 
 **Exceptions:** An optional audit may accept the sibling private repository as explicit evidence input, but public build, installation, tests, and runtime remain complete without it, and tracked public output must not disclose private content.
 

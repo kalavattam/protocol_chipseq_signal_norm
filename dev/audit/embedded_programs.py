@@ -334,7 +334,7 @@ def next_quote_state(line: str, stack: list[str]) -> list[str]:
 
 def scan_shell(root: Path, path: Path) -> list[Finding]:
     """
-    Return the embedded programs and recorded inputs in one shell file.
+    Return the embedded programs and recorded inputs in one Shell file.
     """
 
     rel = path.relative_to(root).as_posix()

@@ -46,4 +46,4 @@ Current coverage in `tests/unit/dev_audit/test_ai_attribution.py`:
 
 Deferred:
 - malformed and duplicate-token cases, which remain inline in the unit test because each is a one-line perturbation of a conforming block rather than an independent input; and
-- Python-language fixtures, which would duplicate the shell cases without exercising a distinct rule.
+- Python-language fixtures, which would duplicate the Shell cases without exercising a distinct rule.

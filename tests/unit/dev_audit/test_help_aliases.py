@@ -9,13 +9,14 @@
 # The following were used in design, development, and documentation, with all
 # output reviewed, edited, and approved by the author:
 # - OpenAI ChatGPT and Codex (GPT-5.6);
-# - Anthropic Claude Code (Opus 5).
+# - Anthropic Claude Code (Opus 5, Opus 5.5).
 #
 # Distributed under the MIT license.
 
 
 """
-Focused regressions for authoritative shell Parameter alias comparison.
+Focused regressions for comparing Shell aliases with authoritative Parameters
+rows.
 """
 
 from __future__ import annotations
@@ -956,7 +957,7 @@ EOM
     ) -> None:
         # Generated fixtures are excluded because this glob reads the
         # filesystem rather than Git and cannot see that they are ignored. A
-        # fixture shell script is an input to a checker, not a help surface a
+        # fixture Shell script is an input to a checker, not a help surface a
         # person invokes, so it owes no alias coverage.
         paths = sorted(
             str(path.relative_to(REPO_ROOT))

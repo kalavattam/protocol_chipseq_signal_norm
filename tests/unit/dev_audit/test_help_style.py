@@ -15,7 +15,7 @@
 
 
 """
-Focused regressions for structural shell-help conventions.
+Focused regressions for structural Shell-help conventions.
 """
 
 from __future__ import annotations

@@ -6,8 +6,10 @@
 # Copyright 2026 by Kris Alavattam
 # Email: kalavattam@gmail.com
 #
-# OpenAI ChatGPT and Codex (GPT-5.6) were used in design, development, and
-# documentation, with all output reviewed, edited, and approved by the author.
+# The following were used in design, development, and documentation, with all
+# output reviewed, edited, and approved by the author:
+# - OpenAI ChatGPT and Codex (GPT-5.6);
+# - Anthropic Claude Code (Opus 5.5).
 #
 # Distributed under the MIT license.
 
@@ -98,12 +100,12 @@ def function_ranges(text: str) -> list[tuple[str, int, int]]:
 
 def lexical_owner(text: str, line: int) -> str:
     """
-    Identify the innermost recognized shell function at a source line.
+    Identify the innermost recognized Shell function at a source line.
 
     Parameters
     ----------
     text : str
-        Complete shell source.
+        Complete Shell source.
     line : int
         One-based source line to classify.
 
@@ -122,7 +124,7 @@ def lexical_owner(text: str, line: int) -> str:
 
 def is_top_level_cli(path: str) -> bool:
     """
-    Return whether a repository-relative shell path owns a top-level CLI.
+    Return whether a repository-relative Shell path owns a top-level CLI.
     """
 
     value = Path(path)
@@ -182,7 +184,7 @@ def helper_available(text: str, helper: str) -> bool:
 
 def check_text(path: str, text: str) -> list[Finding]:
     """
-    Check recognized unknown-option messages without parsing general shell.
+    Check recognized unknown-option messages without parsing general Shell.
     """
 
     lines = text.splitlines()
@@ -278,7 +280,7 @@ def check_text(path: str, text: str) -> list[Finding]:
 
 def shell_sources(root: Path) -> list[Path]:
     """
-    Discover maintained shell sources covered by the ownership audit.
+    Discover maintained Shell sources covered by the ownership audit.
 
     Parameters
     ----------
@@ -288,7 +290,7 @@ def shell_sources(root: Path) -> list[Path]:
     Returns
     -------
     paths : list[Path]
-        Stable, sorted shell-source paths.
+        Stable, sorted Shell-source paths.
     """
 
     paths = [
@@ -308,7 +310,7 @@ def scan_repository(
     root: Path,
 ) -> tuple[list[Finding], list[dict[str, object]]]:
     """
-    Audit unknown-option diagnostics throughout the shell-source cohort.
+    Audit unknown-option diagnostics throughout the Shell-source cohort.
 
     Parameters
     ----------

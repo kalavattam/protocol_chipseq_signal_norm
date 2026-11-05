@@ -39,7 +39,7 @@ sh install/scripts/install_envs_entrypoint.sh --env_nam env_protocol --yes
 <summary><i>(Click to view <code>install_envs_entrypoint.sh</code> details.)</i></summary>
 <br />
 
-> This POSIX-compatible entrypoint is intended to be runnable from various shell environments, including cases where the required Bash ≥ 4.4 is not yet available in `PATH`.
+> This POSIX-compatible entrypoint is intended to be runnable from various Shell environments, including cases where the required Bash ≥ 4.4 is not yet available in `PATH`.
 >
 > If Bash ≥ 4.4 is already available in `PATH` and Conda or Mamba is also available in `PATH`, `install_envs_entrypoint.sh` will hand off to `install_envs.sh`.
 >
@@ -99,7 +99,7 @@ bash install/scripts/install_atria.sh
 > bash install/scripts/install_atria.sh --dry_run --if_exists reuse
 > ```
 >
-> To maintain Julia and active Atria `PATH` entries in one installer-managed block in a shell configuration or snippet file, use `--path_snippet`:
+> To maintain Julia and active Atria `PATH` entries in one installer-managed block in a Shell configuration or snippet file, use `--path_snippet`:
 > ```bash
 > bash install/scripts/install_atria.sh \
 >     --if_exists reuse \
@@ -141,7 +141,7 @@ compute_pseudo --help
 python -m protocol_chipseq_signal_norm.cli.compute_pseudo --help
 ```
 
-Maintained shell entrypoints live in `bin/`, sourced Bash in `lib/bash/`, and installable Python in `src/protocol_chipseq_signal_norm/`. See [`docs/standards/README.md`](./docs/standards/README.md) for the governed layout and source standards.
+Maintained Shell entrypoints live in `bin/`, sourced Bash in `lib/bash/`, and installable Python in `src/protocol_chipseq_signal_norm/`. See [`docs/standards/README.md`](./docs/standards/README.md) for the governed layout and source standards.
 
 <br />
 
@@ -153,7 +153,7 @@ conda run -n env_protocol ruff check --no-fix src tests dev
 conda run -n env_protocol ruff format --check src tests dev
 ```
 
-Many workflow integration tests expect `env_protocol`, the canonical project environment. If that environment or a required dependency is unavailable, the affected tests skip with an explicit message. To run through the environment without relying on shell activation:
+Many workflow integration tests expect `env_protocol`, the canonical project environment. If that environment or a required dependency is unavailable, the affected tests skip with an explicit message. To run through the environment without relying on Shell activation:
 ```bash
 #  With Conda
 conda run -n env_protocol bash tests/run_tests.sh
@@ -162,7 +162,7 @@ conda run -n env_protocol bash tests/run_tests.sh
 mamba run -n env_protocol bash tests/run_tests.sh
 ```
 
-Interactive shell activation also works:
+Activation in an interactive shell also works:
 ```bash
 conda activate env_protocol
 bash tests/run_tests.sh

@@ -9,13 +9,13 @@
 # The following were used in design, development, and documentation, with all
 # output reviewed, edited, and approved by the author:
 # - OpenAI ChatGPT and Codex (GPT-5.6);
-# - Anthropic Claude Code (Opus 5).
+# - Anthropic Claude Code (Opus 5, Opus 5.5).
 #
 # Distributed under the MIT license.
 
 
 """
-Compare bounded shell parser aliases with public Parameter rows.
+Compare bounded Shell parser aliases with rows of public Parameters sections.
 """
 
 from __future__ import annotations
@@ -48,7 +48,7 @@ COMPATIBILITY_EXEC = re.compile(
 @dataclasses.dataclass(frozen=True)
 class AliasChunk:
     """
-    One bounded logical option group from a shell case arm.
+    One bounded logical option group from a Shell case arm.
     """
 
     owner: str
@@ -543,7 +543,7 @@ def logical_shell_statements(
     body_start_line: int,
 ) -> list[tuple[int, str]]:
     """
-    Join explicit shell continuations into line-addressable statements.
+    Join explicit Shell continuations into line-addressable statements.
     """
 
     statements: list[tuple[int, str]] = []
@@ -1266,7 +1266,7 @@ def check_document(
 
 def selected_documents(root: Path, paths: list[str] | None) -> list[str]:
     """
-    Return public production shell documents with recognized help.
+    Return public production Shell documents with recognized help.
     """
 
     selected = paths or shell_paths(root)
@@ -1760,7 +1760,8 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
 
 def main(argv: list[str] | None = None) -> int:
     """
-    Check or normalize current-diff shell Parameter alias sets.
+    Check or normalize current-diff alias sets in Shell help Parameters
+    sections.
 
     Parameters
     ----------

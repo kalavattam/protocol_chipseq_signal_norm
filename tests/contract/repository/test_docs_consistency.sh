@@ -68,9 +68,9 @@ public aliases|${doc_help}|HELP.ALIAS.PUBLIC
 parameter vocabulary|${doc_help}|HELP.PARAMETER.VOCABULARY
 canonical parameter descriptions|${doc_help}|PARAMETER.DESCRIPTIONS
 documentation coverage|${doc_help}|DOC.COVERAGE
-shell wrapper topology|${doc_shell}|SHELL.WRAPPER_TOPOLOGY
-shell line length|${doc_shell}|SHELL.LINE_LENGTH
-shell diagnostic form|${doc_shell}|SHELL.DIAGNOSTIC.FORM
+Shell wrapper topology|${doc_shell}|SHELL.WRAPPER_TOPOLOGY
+Shell line length|${doc_shell}|SHELL.LINE_LENGTH
+Shell diagnostic form|${doc_shell}|SHELL.DIAGNOSTIC.FORM
 submit bootstrap|${doc_shell}|SHELL.SUBMIT.BOOTSTRAP
 Python CLI parser|${doc_python}|PY.CLI.PARSER
 Python CLI help layout|${doc_python}|PY.CLI.HELP.LAYOUT

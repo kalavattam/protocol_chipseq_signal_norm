@@ -1,6 +1,6 @@
 
 # Shell source-form test fixtures
-These fixtures are synthetic micro-fixtures for fast, deterministic tests of the comment-wrap facet of the bounded shell source-form checker in `dev/audit/shell_source_form.py`. The facet realizes [`SOURCE.PROSE.WRAP`](../../../docs/standards/source_layout.md) for ordinary Shell comments under [`SHELL.COMMENT.FORM`](../../../docs/standards/shell.md).
+These fixtures are synthetic micro-fixtures for fast, deterministic tests of the comment-wrap facet of the bounded Shell source-form checker in `dev/audit/shell_source_form.py`. The facet realizes [`SOURCE.PROSE.WRAP`](../../../docs/standards/source_layout.md) for ordinary Shell comments under [`SHELL.COMMENT.FORM`](../../../docs/standards/shell.md).
 
 They are intentionally small and hand-checkable. Running `make.sh` regenerates the fixture set deterministically.
 
@@ -13,7 +13,7 @@ Generated fixture outputs are ignored by Git. `tests/run_tests.sh` regenerates t
 
 Each directory names the verdict the checker must return for the script inside it, except `format/`, whose pair claims a rewrite by `dev/tools/comment_wrap_format.py` rather than a verdict. The recipe writes and does nothing else; which lines the checker must report is asserted in `tests/unit/dev_audit/test_shell_source_form.py`.
 
-Because the outputs are ignored, they are invisible to the checker's own discovery, which asks Git for maintained shell paths, so the rejected script never reaches a repository-wide run.
+Because the outputs are ignored, they are invisible to the checker's own discovery, which asks Git for maintained Shell paths, so the rejected script never reaches a repository-wide run.
 
 <br />
 

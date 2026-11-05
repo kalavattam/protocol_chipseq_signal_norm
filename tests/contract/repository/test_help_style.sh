@@ -6,9 +6,10 @@
 # Copyright 2026 by Kris Alavattam
 # Email: kalavattam@gmail.com
 #
-# OpenAI ChatGPT and Codex (GPT-5.5, GPT-5.6) were used in design, development,
-# and documentation, with all output reviewed, edited, and approved by the
-# author.
+# The following were used in design, development, and documentation, with all
+# output reviewed, edited, and approved by the author:
+# - OpenAI ChatGPT and Codex (GPT-5.5, GPT-5.6);
+# - Anthropic Claude Code (Opus 5.5).
 #
 # Distributed under the MIT license.
 
@@ -17,14 +18,14 @@ set -euo pipefail
 
 TEST_NAME="help style"
 
-#  Source shared test helpers
+# Source shared test helpers.
 # shellcheck source=tests/support/test_helpers.sh
 source "$(
     git -C "$(dirname "${BASH_SOURCE[0]}")" rev-parse --show-toplevel
 )/tests/support/test_helpers.sh"
 
 
-#  Scan a caller-supplied file list for a fixed pattern
+# Scan a caller-supplied file list for a fixed pattern.
 function scan_fixed_files() {
     local lbl="${1:-}"
     local ptn="${2:-}"
@@ -53,7 +54,7 @@ function scan_fixed_files() {
 }
 
 
-#  Scan the default style-check file set for a fixed pattern
+# Scan the default style-check file set for a fixed pattern.
 function scan_fixed() {
     local lbl="${1:-}"
     local ptn="${2:-}"
@@ -63,7 +64,7 @@ function scan_fixed() {
 }
 
 
-#  Fail when retired reference-FASTA aliases are used in shell/docs/test text
+# Fail when retired reference-FASTA aliases are used in Shell/docs/test text.
 function scan_retired_ref_fa_aliases() {
     local found=0
     local file line
@@ -130,7 +131,7 @@ function scan_retired_ref_fa_aliases() {
 }
 
 
-#  Warn on hard tabs in user-facing help text
+# Warn on hard tabs in user-facing help text.
 function scan_tabs() {
     local found=0
     local file line
@@ -148,7 +149,7 @@ function scan_tabs() {
 }
 
 
-#  Fail when stale precision aliases appear as the canonical Usage spelling
+# Fail when stale precision aliases appear as the canonical Usage spelling.
 function scan_usage_legacy_precision() {
     local found=0
     local file line
@@ -175,7 +176,7 @@ function scan_usage_legacy_precision() {
 }
 
 
-#  Fail when a fixed pattern appears outside parser case-pattern lines
+# Fail when a fixed pattern appears outside parser case-pattern lines.
 function scan_fixed_nonparser() {
     local lbl="${1:-}"
     local ptn="${2:-}"
@@ -200,7 +201,7 @@ function scan_fixed_nonparser() {
 }
 
 
-#  Fail when legacy colon-terminated top-level help headings are used
+# Fail when legacy colon-terminated top-level help headings are used.
 function scan_legacy_colon_headings() {
     local found=0
     local file line
@@ -238,7 +239,7 @@ function scan_legacy_colon_headings() {
 }
 
 
-#  Fail when major underlined help headings have malformed spacing
+# Fail when major underlined help headings have malformed spacing.
 function scan_major_section_format() {
     local found=0
     local file line
@@ -287,7 +288,7 @@ function scan_major_section_format() {
 }
 
 
-#  Fail when retired user-facing headings appear in shell help
+# Fail when retired user-facing headings appear in Shell help.
 function scan_retired_user_headings() {
     local found=0
     local file line
@@ -321,7 +322,7 @@ function scan_retired_user_headings() {
 }
 
 
-#  Fail when shell Parameters rows still use angle-bracket type syntax
+# Fail when Parameters rows in Shell help still use angle-bracket type syntax.
 function scan_legacy_parameter_rows() {
     local found=0
     local file line
@@ -330,7 +331,7 @@ function scan_legacy_parameter_rows() {
         while IFS= read -r line; do
             found=1
             record_fail \
-                "legacy shell parameter row:" \
+                "legacy Shell parameter row:" \
                 "$(print_relpath "${file}"):${line}"
         done < <(
             perl -ne '
@@ -351,12 +352,13 @@ function scan_legacy_parameter_rows() {
     done
 
     if (( found == 0 )); then
-        record_pass "no legacy shell parameter row findings"
+        record_pass "no legacy Shell parameter row findings"
     fi
 }
 
 
-#  Fail when positional shell Parameters rows put the ordinal inside the type pair
+# Fail when positional Parameters rows in Shell help put the ordinal inside the
+# type pair.
 function scan_malformed_positional_parameter_rows() {
     local found=0
     local file line
@@ -390,7 +392,7 @@ function scan_malformed_positional_parameter_rows() {
 }
 
 
-#  Fail on noncanonical <...> placeholders in argument documentation
+# Fail on noncanonical <...> placeholders in argument documentation.
 function scan_argument_placeholders() {
     local found=0
     local file line
@@ -447,7 +449,7 @@ function scan_argument_placeholders() {
 }
 
 
-#  Fail when Parameters rows use compact mini-grammar instead of readable types
+# Fail when Parameters rows use compact mini-grammar instead of readable types.
 function scan_parameter_mini_grammar_types() {
     local found=0
     local file line
@@ -483,7 +485,7 @@ function scan_parameter_mini_grammar_types() {
 }
 
 
-#  Fail when choice-set parameter types are not quoted and comma-spaced
+# Fail when choice-set parameter types are not quoted and comma-spaced.
 function scan_choice_set_format() {
     local found=0
     local file line
@@ -519,15 +521,16 @@ function scan_choice_set_format() {
 }
 
 
-#  Defer Parameter alias cardinality to exact parser/public-set comparison
+# Defer the cardinality of Parameters aliases to exact parser/public-set
+# comparison.
 function scan_parameter_alias_counts() {
     record_pass \
-        "Parameter rows use the complete public alias set without a shell" \
+        "Parameters rows use the complete public alias set without a Shell" \
         "alias-count cap"
 }
 
 
-#  Fail on vague user-facing optionality markers
+# Fail on vague user-facing optionality markers.
 function scan_optional_marker() {
     local found=0
     local file line
@@ -547,7 +550,7 @@ function scan_optional_marker() {
 }
 
 
-#  Warn when prose suggests an option should be bracketed in Usage
+# Warn when prose suggests an option should be bracketed in Usage.
 function scan_usage_bracket_advisory() {
     local found=0
     local file line
@@ -628,7 +631,7 @@ function scan_usage_bracket_advisory() {
 }
 
 
-#  Warn when canonical placeholders are probably too vague for path-like args
+# Warn when canonical placeholders are probably too vague for path-like args.
 function scan_under_specific_placeholders() {
     local found=0
     local file line
@@ -682,7 +685,7 @@ function scan_under_specific_placeholders() {
 }
 
 
-#  Fail when string-like defaults are shown without required single quotes
+# Fail when string-like defaults are shown without required single quotes.
 function scan_unquoted_string_defaults() {
     local found=0
     local file line
@@ -724,7 +727,7 @@ function scan_unquoted_string_defaults() {
 }
 
 
-#  Fail when prefix uses the retired -pr short alias instead of -px
+# Fail when prefix uses the retired '-pr' short alias instead of '-px'.
 function scan_retired_prefix_short_alias() {
     local found=0
     local file line
@@ -751,7 +754,8 @@ function scan_retired_prefix_short_alias() {
 }
 
 
-#  Fail when a generic --suffix option omits the canonical -sx/--sfx aliases
+# Fail when a generic '--suffix' option omits the canonical '-sx'/'--sfx'
+# aliases.
 function scan_generic_suffix_aliases() {
     local found=0
     local file line
@@ -778,7 +782,7 @@ function scan_generic_suffix_aliases() {
 }
 
 
-#  Fail when user-facing help contains sourced helper/function inventories
+# Fail when user-facing help contains sourced helper/function inventories.
 function scan_user_facing_helper_inventories() {
     local found=0
     local file line
@@ -817,7 +821,7 @@ function scan_user_facing_helper_inventories() {
 }
 
 
-#  Run the authoritative changed-content structural help checker
+# Run the authoritative changed-content structural help checker.
 function scan_structural_help_style() {
     local output=""
 
@@ -836,7 +840,7 @@ function scan_structural_help_style() {
 }
 
 
-#  Enforce changed prose and repository-wide physical Examples commands
+# Enforce changed prose and repository-wide physical Examples commands.
 function scan_help_heredoc_source_reflow() {
     local output=""
 
@@ -855,7 +859,7 @@ function scan_help_heredoc_source_reflow() {
 }
 
 
-#  Run the authoritative full-help Examples checker
+# Run the authoritative full-help Examples checker.
 function scan_help_examples() {
     local output=""
 
@@ -874,7 +878,7 @@ function scan_help_examples() {
 }
 
 
-#  Validate shared help applicability and permitted checker assignments
+# Validate shared help applicability and permitted checker assignments.
 function scan_help_contracts() {
     local output=""
 
@@ -893,7 +897,7 @@ function scan_help_contracts() {
 }
 
 
-#  Check reviewed Python and Shell option-order realizations
+# Check reviewed Python and Shell option-order realizations.
 function scan_help_option_order() {
     local output=""
 
@@ -912,7 +916,7 @@ function scan_help_option_order() {
 }
 
 
-#  Enforce repository-wide Runtime requirements for every help owner
+# Enforce repository-wide Runtime requirements for every help owner.
 function scan_runtime_requirements() {
     local output=""
 
@@ -932,7 +936,7 @@ function scan_runtime_requirements() {
 }
 
 
-#  Run the authoritative Usage/Parameters alias-set checker
+# Run the authoritative Usage/Parameters alias-set checker.
 function scan_parameter_alias_sets() {
     local output=""
 
@@ -951,7 +955,7 @@ function scan_parameter_alias_sets() {
 }
 
 
-#  Check current-diff ShellCheck source mappings
+# Check current-diff ShellCheck source mappings.
 function scan_shellcheck_source_policy() {
     local output=""
 
@@ -970,7 +974,7 @@ function scan_shellcheck_source_policy() {
 }
 
 
-#  Check interface-owner selection for recognized unknown-option branches
+# Check interface-owner selection for recognized unknown-option branches.
 function scan_unknown_option_helpers() {
     local output=""
 
@@ -989,7 +993,7 @@ function scan_unknown_option_helpers() {
 }
 
 
-#  Report bounded submit-bootstrap spacing as an advisory
+# Report bounded submit-bootstrap spacing as an advisory.
 function warn_submit_help_source_spacing() {
     local output=""
 
@@ -1004,7 +1008,7 @@ function warn_submit_help_source_spacing() {
 
 print_section "${TEST_NAME}"
 
-#  Scan top-level script help text and extracted help files for style drift
+# Scan top-level script help text and extracted help files for style drift.
 files=()
 while IFS= read -r file; do
     files+=( "${file}" )
@@ -1017,7 +1021,7 @@ done < <(
     } | sort
 )
 
-#  Scan user-facing Python CLIs for parser and entrypoint consistency
+# Scan user-facing Python CLIs for parser and entrypoint consistency.
 files_py=()
 while IFS= read -r file; do
     files_py+=( "${file}" )
@@ -1028,7 +1032,7 @@ done < <(
     } | sort
 )
 
-#  Run lightweight help-style scans
+# Run lightweight help-style scans.
 ptn_flg="<fl""g>"
 ptn_mlt="<ml""t>"
 ptn_dry_run="--dry""-run"
@@ -1167,5 +1171,6 @@ scan_fixed \
 scan_fixed \
     "stale helper dependency submit.sh" \
     'submit\.sh'
+
 
 finish
