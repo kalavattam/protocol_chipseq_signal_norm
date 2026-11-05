@@ -238,7 +238,7 @@ Use one flat `Runtime requirements:` list. A singleton is unbulleted; two or mor
 
 List environments, interpreters, external executables, and user-provided resources people must install, provide, or understand. Repository-internal scripts and sourced functions are implementation details unless users directly provide or invoke them. Inspect the reachable top-level workflow before changing requirements; grep alone is insufficient.
 
-Use exact callable spelling and versions, including `bash >= 4.4`, `python >= 3.11`, `python3 >= 3.11`, `samtools`, `bamCompare`, and `multiBigwigSummary`. Use `A compatible Conda environment` for the resource; list `conda` or `mamba` only when reachable code invokes it. Attach conditions as `requirement (when <source-grounded trigger>)`, quoting complete option expressions with straight single quotes. Do not combine a tool with a redundant environment alternative; keep genuine interchangeable providers in one entry.
+Use exact callable spelling and versions, including `bash >= 4.4`, `python >= 3.11`, `python3 >= 3.11`, `samtools`, `bowtie2`, and `gzip`. Use `A compatible Conda environment` for the resource; list `conda` or `mamba` only when reachable code invokes it. Attach conditions as `requirement (when <source-grounded trigger>)`, quoting complete option expressions with straight single quotes. Do not combine a tool with a redundant environment alternative; keep genuine interchangeable providers in one entry.
 
 **Automation:** `dev/audit/help_runtime_requirements.py` is the authoritative Runtime parser. It checks recognized grammar, cardinality, order, callables, versions, conditions, environment wording, and overclaims with `subset` coverage. Other audits consume it rather than implement competing grammars.
 
