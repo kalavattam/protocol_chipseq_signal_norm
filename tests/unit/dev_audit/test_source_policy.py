@@ -6,8 +6,10 @@
 # Copyright 2026 by Kris Alavattam
 # Email: kalavattam@gmail.com
 #
-# OpenAI ChatGPT and Codex (GPT-5.6) were used in design, development, and
-# documentation, with all output reviewed, edited, and approved by the author.
+# The following were used in design, development, and documentation, with all
+# output reviewed, edited, and approved by the author:
+# - OpenAI ChatGPT and Codex (GPT-5.6);
+# - Anthropic Claude Code (Opus 5.5).
 #
 # Distributed under the MIT license.
 
@@ -26,6 +28,7 @@ from dev.audit.source_policy import (
     bootstrap_help_spacing_warnings,
     classify_source,
     discover_submit_interfaces,
+    is_help_bootstrap_path,
     submit_bootstrap_findings,
     suppression_mismatches,
 )
@@ -138,6 +141,55 @@ class SourcePolicyTest(unittest.TestCase):
             ),
             [],
         )
+
+    def test_help_bootstrap_paths_are_the_submit_workers(self) -> None:
+        root = Path(__file__).resolve().parents[3]
+
+        selected = {
+            path.relative_to(root).as_posix()
+            for path in (root / "bin").glob("*.sh")
+            if is_help_bootstrap_path(
+                path.relative_to(root).as_posix(),
+                path.read_text(encoding="utf-8"),
+            )
+        }
+        workers = {
+            row.path
+            for row in discover_submit_interfaces(root)
+            if row.classification == "worker-only interface"
+        }
+
+        self.assertTrue(selected)
+        self.assertEqual(selected, workers)
+
+    def test_help_bootstrap_path_selects_a_new_submit_worker(self) -> None:
+        self.assertTrue(
+            is_help_bootstrap_path(
+                "bin/submit_new_workflow.sh",
+                "#!/usr/bin/env bash\nset -euo pipefail\n",
+            ),
+        )
+
+    def test_help_bootstrap_path_skips_a_compatibility_wrapper(self) -> None:
+        text = (
+            "#!/usr/bin/env bash\n"
+            'exec "${BASH}" "${dir_scr}/submit_new_workflow.sh" "$@"\n'
+        )
+
+        self.assertFalse(
+            is_help_bootstrap_path("bin/submit_old_workflow.sh", text),
+        )
+
+    def test_help_bootstrap_path_skips_other_paths(self) -> None:
+        text = "#!/usr/bin/env bash\n"
+
+        for path in (
+            "bin/execute_new_workflow.sh",
+            "bin/extra/submit_new_workflow.sh",
+            "tests/bin/submit_new_workflow.sh",
+        ):
+            with self.subTest(path=path):
+                self.assertFalse(is_help_bootstrap_path(path, text))
 
     def test_submit_inventory_is_source_derived_and_unambiguous(self) -> None:
         root = Path(__file__).resolve().parents[3]

@@ -6,8 +6,10 @@
 # Copyright 2026 by Kris Alavattam
 # Email: kalavattam@gmail.com
 #
-# OpenAI ChatGPT and Codex (GPT-5.6) were used in design, development, and
-# documentation, with all output reviewed, edited, and approved by the author.
+# The following were used in design, development, and documentation, with all
+# output reviewed, edited, and approved by the author:
+# - OpenAI ChatGPT and Codex (GPT-5.6);
+# - Anthropic Claude Code (Opus 5.5).
 #
 # Distributed under the MIT license.
 
@@ -35,18 +37,6 @@ DISABLE = re.compile(
     r"^\s*#\s*shellcheck\s+disable=(?P<codes>SC\d+(?:,SC\d+)*)\s*$",
 )
 DIRECTIVE = re.compile(r"^\s*#\s*shellcheck\s+source=(?P<path>\S+)\s*$")
-HELP_BOOTSTRAP_PATHS = frozenset(
-    {
-        "bin/submit_align_fastqs.sh",
-        "bin/submit_calculate_scaling_factor.sh",
-        "bin/submit_compute_signal.sh",
-        "bin/submit_convert_bam_bed.sh",
-        "bin/submit_download_fastqs.sh",
-        "bin/submit_filter_alignments.sh",
-        "bin/submit_qsort_bam.sh",
-        "bin/submit_trim_fastqs.sh",
-    },
-)
 CANONICAL_BASH_SHEBANG = "#!/usr/bin/env bash"
 SUBMIT_GLOB = "submit_*.sh"
 SOURCE_CALL = re.compile(
@@ -842,12 +832,33 @@ def suppression_mismatches(path: str, text: str) -> list[Advisory]:
     return findings
 
 
-def bootstrap_help_spacing_warnings(path: str, text: str) -> list[Advisory]:
+def is_help_bootstrap_path(path: str, text: str) -> bool:
     """
-    Warn only for spacing before the eight submit-wrapper help sources.
+    Return whether a path is a submit interface that sources its own help.
+
+    Every top-level 'bin/submit_*.sh' qualifies except a compatibility
+    wrapper, which delegates before any help source.
     """
 
-    if path not in HELP_BOOTSTRAP_PATHS:
+    relative = PurePosixPath(path)
+
+    if relative.parent != PurePosixPath("bin"):
+        return False
+
+    if not relative.match(SUBMIT_GLOB):
+        return False
+
+    return not any(
+        COMPAT_EXEC.match(line.strip()) for line in text.splitlines()
+    )
+
+
+def bootstrap_help_spacing_warnings(path: str, text: str) -> list[Advisory]:
+    """
+    Warn only for spacing before the submit interfaces' help sources.
+    """
+
+    if not is_help_bootstrap_path(path, text):
         return []
 
     findings: list[Advisory] = []
