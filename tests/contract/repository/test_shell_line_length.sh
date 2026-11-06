@@ -35,16 +35,12 @@ function check_line_length_shell() {
 
     rel="$(print_relpath "${file}")"
 
+    # Hold the download-fastqs pilot's drivers, help, and integration tests to
+    # the strict limit.
     case "${rel}" in
-        bin/execute_download_fastqs.sh|\
-        bin/submit_download_fastqs.sh|\
-        lib/bash/help/help_execute_download_fastqs.sh|\
-        lib/bash/help/help_submit_download_fastqs.sh|\
-        tests/integration/local/download_fastqs/test_submit_download_fastqs_local.sh|\
-        tests/integration/local/download_fastqs/test_execute_download_fastqs_se_local.sh|\
-        tests/integration/local/download_fastqs/test_execute_download_fastqs_pe_local.sh|\
-        tests/integration/local/download_fastqs/test_execute_download_fastqs_mixed_local.sh|\
-        tests/integration/parallel/download_fastqs/test_execute_download_fastqs_parallel.sh)
+        bin/*_download_fastqs.sh|\
+        lib/bash/help/help_*_download_fastqs.sh|\
+        tests/integration/*/download_fastqs/test_*.sh)
             strict="true"
             ;;
     esac
