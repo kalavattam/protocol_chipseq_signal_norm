@@ -118,7 +118,7 @@ function check_line_length_shell() {
                 next
             }
 
-            length($0) > 80 && (strict == "true" || ! allowed_long_line($0)) {
+            length($0) > 79 && (strict == "true" || ! allowed_long_line($0)) {
                 printf "%s:%d:%d:%s\n", rel, FNR, length($0), $0
                 found = 1
             }
