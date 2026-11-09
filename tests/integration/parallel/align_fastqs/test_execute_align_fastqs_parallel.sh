@@ -36,16 +36,16 @@ then
 fi
 
 # Define fixture and output paths for a local GNU Parallel Bowtie 2 wet run.
-dir_fx="${ROOT_REPO}/tests/fixtures/align_fastqs"
-idx_bt2="${dir_fx}/bowtie2/tiny"
+dir_fix="${ROOT_REPO}/tests/fixtures/align_fastqs"
+idx_bt2="${dir_fix}/bowtie2/tiny"
 
 tmp="${TEST_DIR_TMP}/execute_align_fastqs_parallel"
 dir_out="${tmp}/out"
 dir_err="${tmp}/logs"
 dir_log="${TEST_DIR_LOG}/align_fastqs"
 
-in_1="${dir_fx}/fastq/se/tiny_se_1.atria.fastq.gz"
-in_2="${dir_fx}/fastq/se/tiny_se_2.atria.fastq.gz"
+in_1="${dir_fix}/fastq/se/tiny_se_1.atria.fastq.gz"
+in_2="${dir_fix}/fastq/se/tiny_se_2.atria.fastq.gz"
 csv_in="${in_1};${in_2}"
 
 out_1="${dir_out}/tiny_se_1.bam"
@@ -230,14 +230,14 @@ fi
 
 
 # Run a mixed list through GNU Parallel with '--unal_mode separate' and the
-# hidden '--bt2_relaxed': each entry writes its side file, and only the
-# paired-end entry gets the relaxed call, so the single-end entry is neither
-# refused nor warned about it.
+# hidden '--bt2_relaxed': each entry writes its side file, and only the PE
+# entry gets the relaxed call, so the SE entry is neither refused nor warned
+# about it.
 dir_mix="${tmp}/mix"
 mkdir -p "${dir_mix}/out" "${dir_mix}/logs"
-csv_mix="${dir_fx}/fastq/se/pairs_se.atria.fastq.gz"
-csv_mix+=";${dir_fx}/fastq/pe/pairs_pe_R1.atria.fastq.gz"
-csv_mix+=",${dir_fx}/fastq/pe/pairs_pe_R2.atria.fastq.gz"
+csv_mix="${dir_fix}/fastq/se/pairs_se.atria.fastq.gz"
+csv_mix+=";${dir_fix}/fastq/pe/pairs_pe_R1.atria.fastq.gz"
+csv_mix+=",${dir_fix}/fastq/pe/pairs_pe_R2.atria.fastq.gz"
 log_mix="${dir_log}/execute_align_fastqs_parallel_unal_mode.log"
 
 if \
@@ -250,7 +250,7 @@ if \
             --aligner bowtie2 \
             --bt2_relaxed \
             --unal_mode separate \
-            --index "${dir_fx}/bowtie2/pairs" \
+            --index "${dir_fix}/bowtie2/pairs" \
             --csv_fil_in "${csv_mix}" \
             --dir_out "${dir_mix}/out" \
             --out_ext bam \
@@ -308,5 +308,6 @@ if [[
 else
     record_fail "GNU Parallel passed '--bt2_relaxed' wrongly, or warned"
 fi
+
 
 finish

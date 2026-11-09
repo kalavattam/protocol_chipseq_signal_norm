@@ -36,11 +36,11 @@ then
 fi
 
 # Define fixture and output paths for lightweight execute-layer config checks.
-dir_fx="${ROOT_REPO}/tests/fixtures/compute_signal/bedgraph"
-fil_A="${dir_fx}/ratio_A.bedGraph"
-fil_B="${dir_fx}/ratio_B.bedGraph"
-fil_A_1="${dir_fx}/ratio_A_1.bedGraph"
-fil_A_2="${dir_fx}/ratio_A_2.bedGraph"
+dir_fix="${ROOT_REPO}/tests/fixtures/compute_signal/bedgraph"
+fil_A="${dir_fix}/ratio_A.bedGraph"
+fil_B="${dir_fix}/ratio_B.bedGraph"
+fil_A_1="${dir_fix}/ratio_A_1.bedGraph"
+fil_A_2="${dir_fix}/ratio_A_2.bedGraph"
 
 tmp="${TEST_DIR_TMP}/execute_compute_signal_parallel"
 dir_out="${tmp}/out"

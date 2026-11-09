@@ -18,7 +18,7 @@ set -euo pipefail
 
 TEST_NAME="execute download-fastqs PE local"
 
-#  Source shared test helpers
+# Source shared test helpers.
 # shellcheck source=tests/support/test_helpers.sh
 source "$(
     git -C "$(dirname "${BASH_SOURCE[0]}")" rev-parse --show-toplevel
@@ -36,14 +36,14 @@ then
 fi
 
 
-#  Define fixture and output paths for a loopback-only HTTP PE download
-dir_fx="${ROOT_REPO}/tests/fixtures/download_fastqs"
-dir_fq="${dir_fx}/fastq"
+# Define fixture and output paths for a loopback-only HTTP PE download.
+dir_fix="${ROOT_REPO}/tests/fixtures/download_fastqs"
+dir_fq="${dir_fix}/fastq"
 
-mta_tpl="${dir_fx}/metadata/local_pe.template.tsv"
-mta_tpl_dup="${dir_fx}/metadata/local_pe_duplicate.template.tsv"
-mta_tpl_dup_cus="${dir_fx}/metadata/local_pe_duplicate_custom.template.tsv"
-mta_tpl_cnfl="${dir_fx}/metadata/local_pe_conflicting_accession.template.tsv"
+mta_tpl="${dir_fix}/metadata/local_pe.template.tsv"
+mta_tpl_dup="${dir_fix}/metadata/local_pe_duplicate.template.tsv"
+mta_tpl_dup_cus="${dir_fix}/metadata/local_pe_duplicate_custom.template.tsv"
+mta_tpl_cnfl="${dir_fix}/metadata/local_pe_conflicting_accession.template.tsv"
 
 src_r1="${dir_fq}/pe/tiny_download_pe_R1.fastq.gz"
 src_r2="${dir_fq}/pe/tiny_download_pe_R2.fastq.gz"
@@ -192,7 +192,7 @@ require_files_nonempty \
 }
 
 
-#  Run execute_download_fastqs.sh serially on one loopback HTTP PE URL pair
+# Run 'execute_download_fastqs.sh' serially on one loopback HTTP PE URL pair.
 if \
     run_capture \
         "execute download-fastqs PE local HTTP wet run" \
@@ -253,7 +253,7 @@ assert_file_exists \
     "${log_err_r2}" \
     "execute download-fastqs PE R2 wget stderr log exists"
 
-#  Duplicate accession rows should download once and create all custom links
+# Duplicate accession rows should download once and create all custom links.
 if \
     run_capture \
         "execute download-fastqs PE duplicate accession local HTTP wet run" \
@@ -365,5 +365,6 @@ else
         "conflicting.*FASTQ URL" \
         "execute_download_fastqs.sh rejects conflicting accession URLs"
 fi
+
 
 finish

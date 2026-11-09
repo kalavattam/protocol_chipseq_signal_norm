@@ -28,14 +28,14 @@ source "$(
 # '--qname' name-sorts the final duplicate-marked alignments, so the copy holds
 # the same records and flags. In the 'qname' reads, 'dup_a' and 'dup_b' are one
 # fragment under two names, so Step 4 marks one of them.
-dir_fx="${ROOT_REPO}/tests/fixtures/align_fastqs"
-ref_rpt="${dir_fx}/reference/repeat.fa"
-idx_bt2="${dir_fx}/bowtie2/repeat"
-idx_bwa="${dir_fx}/bwa/repeat.fa"
+dir_fix="${ROOT_REPO}/tests/fixtures/align_fastqs"
+ref_rpt="${dir_fix}/reference/repeat.fa"
+idx_bt2="${dir_fix}/bowtie2/repeat"
+idx_bwa="${dir_fix}/bwa/repeat.fa"
 
 ref_fa="${ref_rpt}"
-fq_1="${dir_fx}/fastq/pe/qname_pe_R1.atria.fastq.gz"
-fq_2="${dir_fx}/fastq/pe/qname_pe_R2.atria.fastq.gz"
+fq_1="${dir_fix}/fastq/pe/qname_pe_R1.atria.fastq.gz"
+fq_2="${dir_fix}/fastq/pe/qname_pe_R2.atria.fastq.gz"
 
 tmp="${TEST_DIR_TMP}/align_fastqs_qname"
 

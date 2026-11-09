@@ -26,10 +26,10 @@ source "$(
 # Define fixture and output paths. The input header lists 'SP_I' before the S.
 # cerevisiae chromosomes, so a filter that drops references without renumbering
 # them would move reads to the wrong chromosome.
-dir_fx="${ROOT_REPO}/tests/fixtures/filter_alignments"
-ref_fa="${dir_fx}/reference/filter_sc_sp.fa"
+dir_fix="${ROOT_REPO}/tests/fixtures/filter_alignments"
+ref_fa="${dir_fix}/reference/filter_sc_sp.fa"
 
-in_bam="${dir_fx}/bam/reordered.bam"
+in_bam="${dir_fix}/bam/reordered.bam"
 
 tmp="${TEST_DIR_TMP}/filter_alignments_reference_order"
 dir_log="${TEST_DIR_LOG}/filter_alignments"
@@ -62,7 +62,7 @@ fi
 function run_filter() {
     # shellcheck disable=SC2016  # Expand in the child shell, not this one.
     "${TEST_BASH}" -c '
-        # shellcheck disable=SC1090
+        # shellcheck source=lib/bash/core/source_helpers.sh
         source "${1}/lib/bash/core/source_helpers.sh"
 
         source_helpers "${1}/lib/bash" \

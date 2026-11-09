@@ -6,9 +6,10 @@
 # Copyright 2026 by Kris Alavattam
 # Email: kalavattam@gmail.com
 #
-# OpenAI ChatGPT and Codex (GPT-5.5, GPT-5.6) were used in design, development,
-# and documentation, with all output reviewed, edited, and approved by the
-# author.
+# The following were used in design, development, and documentation, with all
+# output reviewed, edited, and approved by the author:
+# - OpenAI ChatGPT and Codex (GPT-5.5, GPT-5.6);
+# - Anthropic Claude Code (Opus 5.5).
 #
 # Distributed under the MIT license.
 
@@ -17,7 +18,7 @@ set -euo pipefail
 
 TEST_NAME="execute trim-fastqs SE"
 
-#  Source shared test helpers
+# Source shared test helpers.
 # shellcheck source=tests/support/test_helpers.sh
 source "$(
     git -C "$(dirname "${BASH_SOURCE[0]}")" rev-parse --show-toplevel
@@ -35,9 +36,9 @@ then
 fi
 
 
-#  Define fixture and output paths for local serial execute-layer Atria run
-dir_fx="${ROOT_REPO}/tests/fixtures/trim_fastqs"
-in_se="${dir_fx}/fastq/se/tiny_se.fastq.gz"
+# Define fixture and output paths for local serial execute-layer Atria run.
+dir_fix="${ROOT_REPO}/tests/fixtures/trim_fastqs"
+in_se="${dir_fix}/fastq/se/tiny_se.fastq.gz"
 
 tmp="${TEST_DIR_TMP}/execute_trim_fastqs_se"
 dir_out="${tmp}/out"
@@ -79,7 +80,7 @@ then
 fi
 
 
-#  Run execute_trim_fastqs.sh serially on one SE FASTQ fixture
+# Run 'execute_trim_fastqs.sh' serially on one SE FASTQ fixture.
 if \
     run_capture \
         "execute trim-fastqs SE Atria wet run" \
@@ -166,5 +167,6 @@ assert_file_exists \
 assert_file_exists \
     "${log_err_se}" \
     "execute trim-fastqs SE submit stderr log exists"
+
 
 finish

@@ -6,9 +6,10 @@
 # Copyright 2026 by Kris Alavattam
 # Email: kalavattam@gmail.com
 #
-# OpenAI ChatGPT and Codex (GPT-5.5, GPT-5.6) were used in design, development,
-# and documentation, with all output reviewed, edited, and approved by the
-# author.
+# The following were used in design, development, and documentation, with all
+# output reviewed, edited, and approved by the author:
+# - OpenAI ChatGPT and Codex (GPT-5.5, GPT-5.6);
+# - Anthropic Claude Code (Opus 5.5).
 #
 # Distributed under the MIT license.
 
@@ -17,18 +18,18 @@ set -euo pipefail
 
 TEST_NAME="submit qsort BAM/CRAM"
 
-#  Source shared test helpers
+# Source shared test helpers.
 # shellcheck source=tests/support/test_helpers.sh
 source "$(
     git -C "$(dirname "${BASH_SOURCE[0]}")" rev-parse --show-toplevel
 )/tests/support/test_helpers.sh"
 
 
-#  Define fixture and output paths for local serial qsort tests
-dir_fx="${ROOT_REPO}/tests/fixtures/calculate_scaling_factor"
-in_bam="${dir_fx}/bam/pe/IP_WT_G1_Hho1_6336.sc.bam"
-in_cram="${dir_fx}/cram/pe/IP_WT_G1_Hho1_6336.sc.cram"
-ref_fa="${dir_fx}/reference/tiny.fa"
+# Define fixture and output paths for local serial qsort tests.
+dir_fix="${ROOT_REPO}/tests/fixtures/calculate_scaling_factor"
+in_bam="${dir_fix}/bam/pe/IP_WT_G1_Hho1_6336.sc.bam"
+in_cram="${dir_fix}/cram/pe/IP_WT_G1_Hho1_6336.sc.cram"
+ref_fa="${dir_fix}/reference/tiny.fa"
 
 tmp="${TEST_DIR_TMP}/submit_qsort_bam"
 dir_out="${tmp}/out"
@@ -66,7 +67,7 @@ require_files_nonempty \
 }
 
 
-#  Help should exit successfully
+# Help should exit successfully.
 if \
     run_capture \
         "submit_qsort_bam.sh --help" \
@@ -82,7 +83,7 @@ else
 fi
 
 
-#  Old positional invocation should fail after the keyarg migration
+# Old positional invocation should fail after the keyarg migration.
 # shellcheck disable=SC2154
 if \
     run_capture \
@@ -102,7 +103,7 @@ else
 fi
 
 
-#  Unknown option should fail clearly
+# Unknown option should fail clearly.
 if \
     run_capture \
         "submit_qsort_bam.sh unknown option fails" \
@@ -116,7 +117,7 @@ else
 fi
 
 
-#  CRAM input without a reference should fail before execution
+# CRAM input without a reference should fail before execution.
 if \
     run_capture \
         "submit_qsort_bam.sh CRAM missing ref fails" \
@@ -136,7 +137,7 @@ else
 fi
 
 
-#  Serial BAM and CRAM qsort should write one output per input
+# Serial BAM and CRAM qsort should write one output per input.
 if \
     run_capture \
         "submit_qsort_bam.sh serial BAM/CRAM" \
@@ -191,5 +192,6 @@ if [[ -s "${out_cram}" ]]; then
         record_fail "qsort CRAM output fails samtools quickcheck"
     fi
 fi
+
 
 finish

@@ -9,7 +9,7 @@
 # The following were used in design, development, and documentation, with all
 # output reviewed, edited, and approved by the author:
 # - OpenAI ChatGPT and Codex (GPT-5.5, GPT-5.6);
-# - Anthropic Claude Code (Opus 5).
+# - Anthropic Claude Code (Opus 5, Opus 5.5).
 #
 # Distributed under the MIT license.
 
@@ -26,10 +26,10 @@ source "$(
 
 
 # Define fixture and output paths for the execute-to-submit CRAM path.
-dir_fx="${ROOT_REPO}/tests/fixtures/compute_signal"
-in_se="${dir_fx}/cram/se/tiny_se.cram"
-in_pe="${dir_fx}/cram/pe/tiny_pe.cram"
-ref_fa="${dir_fx}/reference/tiny.fa"
+dir_fix="${ROOT_REPO}/tests/fixtures/compute_signal"
+in_se="${dir_fix}/cram/se/tiny_se.cram"
+in_pe="${dir_fix}/cram/pe/tiny_pe.cram"
+ref_fa="${dir_fix}/reference/tiny.fa"
 
 tmp="${TEST_DIR_TMP}/execute_compute_signal_cram"
 dir_out="${tmp}/out"
@@ -280,5 +280,6 @@ if [[ -s "${log_window}" ]]; then
         "--engine *window" \
         "execute CRAM window run forwards '--engine window'"
 fi
+
 
 finish

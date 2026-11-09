@@ -26,10 +26,10 @@ source "$(
 # Define fixture and output paths. Per 'HELP.PARAMETER.APPLICABILITY', '--time'
 # without '--slurm' and a suffix for a layout no entry has are ignored with a
 # warning.
-dir_fx="${ROOT_REPO}/tests/fixtures/trim_fastqs"
-in_se="${dir_fx}/fastq/se/tiny_se.fastq.gz"
-in_pe_1="${dir_fx}/fastq/pe/tiny_pe_R1.fastq.gz"
-in_pe_2="${dir_fx}/fastq/pe/tiny_pe_R2.fastq.gz"
+dir_fix="${ROOT_REPO}/tests/fixtures/trim_fastqs"
+in_se="${dir_fix}/fastq/se/tiny_se.fastq.gz"
+in_pe_1="${dir_fix}/fastq/pe/tiny_pe_R1.fastq.gz"
+in_pe_2="${dir_fix}/fastq/pe/tiny_pe_R2.fastq.gz"
 in_pe="${in_pe_1},${in_pe_2}"
 
 msg_sse="'--sfx_se' has no effect with paired-end input"
@@ -312,5 +312,6 @@ for idx in "${!rows_sfx[@]}"; do
             ;;
     esac
 done
+
 
 finish

@@ -26,9 +26,9 @@ source "$(
 # Define fixture and output paths. Per 'HELP.PARAMETER.APPLICABILITY', '--tg'
 # and '--mtr' are refused with '--retain sc', and '--ref_fa' is ignored with a
 # warning when no input or output is CRAM.
-dir_fx="${ROOT_REPO}/tests/fixtures/filter_alignments"
-in_sam="${dir_fx}/sam/filter_sc_sp.sam"
-ref_fa="${dir_fx}/reference/filter_sc_sp.fa"
+dir_fix="${ROOT_REPO}/tests/fixtures/filter_alignments"
+in_sam="${dir_fix}/sam/filter_sc_sp.sam"
+ref_fa="${dir_fix}/reference/filter_sc_sp.fa"
 
 tmp="${TEST_DIR_TMP}/filter_alignments_opt_applicability"
 dir_in="${tmp}/input"

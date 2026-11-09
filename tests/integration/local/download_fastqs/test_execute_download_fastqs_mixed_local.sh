@@ -18,7 +18,7 @@ set -euo pipefail
 
 TEST_NAME="execute download-fastqs mixed local"
 
-#  Source shared test helpers
+# Source shared test helpers.
 # shellcheck source=tests/support/test_helpers.sh
 source "$(
     git -C "$(dirname "${BASH_SOURCE[0]}")" rev-parse --show-toplevel
@@ -36,10 +36,10 @@ then
 fi
 
 
-#  Define fixture and output paths for a loopback-only mixed SE/PE download
-dir_fx="${ROOT_REPO}/tests/fixtures/download_fastqs"
-dir_fq="${dir_fx}/fastq"
-mta_tpl="${dir_fx}/metadata/local_mixed.template.tsv"
+# Define fixture and output paths for a loopback-only mixed SE/PE download.
+dir_fix="${ROOT_REPO}/tests/fixtures/download_fastqs"
+dir_fq="${dir_fix}/fastq"
+mta_tpl="${dir_fix}/metadata/local_mixed.template.tsv"
 src_se="${dir_fq}/se/tiny_download_se.fastq.gz"
 src_r1="${dir_fq}/pe/tiny_download_pe_R1.fastq.gz"
 src_r2="${dir_fq}/pe/tiny_download_pe_R2.fastq.gz"
@@ -153,7 +153,7 @@ require_files_nonempty \
 }
 
 
-#  Run execute_download_fastqs.sh serially on one mixed SE/PE metadata TSV
+# Run 'execute_download_fastqs.sh' serially on one mixed SE/PE metadata TSV.
 if \
     run_capture \
         "execute download-fastqs mixed local HTTP wet run" \
@@ -233,5 +233,6 @@ assert_file_exists \
 assert_file_exists \
     "${log_err_r2}" \
     "execute download-fastqs mixed PE R2 wget stderr log exists"
+
 
 finish

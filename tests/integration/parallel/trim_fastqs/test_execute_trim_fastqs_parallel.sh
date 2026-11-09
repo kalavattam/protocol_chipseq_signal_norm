@@ -37,10 +37,10 @@ fi
 
 
 # Define fixture and output paths for a local GNU Parallel Atria wet run.
-dir_fx="${ROOT_REPO}/tests/fixtures/trim_fastqs"
-in_se="${dir_fx}/fastq/se/tiny_se.fastq.gz"
-in_r1="${dir_fx}/fastq/pe/tiny_pe_R1.fastq.gz"
-in_r2="${dir_fx}/fastq/pe/tiny_pe_R2.fastq.gz"
+dir_fix="${ROOT_REPO}/tests/fixtures/trim_fastqs"
+in_se="${dir_fix}/fastq/se/tiny_se.fastq.gz"
+in_r1="${dir_fix}/fastq/pe/tiny_pe_R1.fastq.gz"
+in_r2="${dir_fix}/fastq/pe/tiny_pe_R2.fastq.gz"
 csv_in="${in_se};${in_r1},${in_r2}"
 
 tmp="${TEST_DIR_TMP}/execute_trim_fastqs_parallel"

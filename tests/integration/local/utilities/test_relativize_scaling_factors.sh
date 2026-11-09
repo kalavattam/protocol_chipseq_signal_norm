@@ -76,11 +76,11 @@ scr_rel="${ROOT_REPO}/src/protocol_chipseq_signal_norm/cli/relativize_scaling_fa
 dir_tmp="${TEST_DIR_TMP}/relativize_scaling_factors"
 dir_log="${TEST_DIR_LOG}/relativize_scaling_factors"
 
-dir_fx="${ROOT_REPO}/tests/fixtures/calculate_scaling_factor/table/relativize"
-tbl_spike="${dir_fx}/spike.tsv"
-tbl_siq="${dir_fx}/siq.tsv"
-tbl_no_scl="${dir_fx}/missing_scaling.tsv"
-tbl_no_sample="${dir_fx}/missing_sample.tsv"
+dir_fix="${ROOT_REPO}/tests/fixtures/calculate_scaling_factor/table/relativize"
+tbl_spike="${dir_fix}/spike.tsv"
+tbl_siq="${dir_fix}/siq.tsv"
+tbl_no_scl="${dir_fix}/missing_scaling.tsv"
+tbl_no_sample="${dir_fix}/missing_sample.tsv"
 
 exp_spike="${dir_tmp}/spike.expected.tsv"
 exp_spike_input="${dir_tmp}/spike_input.expected.tsv"

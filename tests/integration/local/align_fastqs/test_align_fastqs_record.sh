@@ -27,14 +27,14 @@ source "$(
 #
 # Every output, the '--qname' copy and CRAM included, must carry the pipeline
 # record ('OUTPUT.ALIGNMENT.RECORD').
-dir_fx="${ROOT_REPO}/tests/fixtures/align_fastqs"
-idx_bt2="${dir_fx}/bowtie2/tiny"
-idx_bwa="${dir_fx}/bwa/tiny.fa"
-idx_bm2="${dir_fx}/bwa-mem2/tiny.fa"
-in_pe_1="${dir_fx}/fastq/pe/tiny_pe_R1.atria.fastq.gz"
-in_pe_2="${dir_fx}/fastq/pe/tiny_pe_R2.atria.fastq.gz"
-in_se="${dir_fx}/fastq/se/tiny_se.atria.fastq.gz"
-ref_fa="${dir_fx}/reference/tiny.fa"
+dir_fix="${ROOT_REPO}/tests/fixtures/align_fastqs"
+idx_bt2="${dir_fix}/bowtie2/tiny"
+idx_bwa="${dir_fix}/bwa/tiny.fa"
+idx_bm2="${dir_fix}/bwa-mem2/tiny.fa"
+in_pe_1="${dir_fix}/fastq/pe/tiny_pe_R1.atria.fastq.gz"
+in_pe_2="${dir_fix}/fastq/pe/tiny_pe_R2.atria.fastq.gz"
+in_se="${dir_fix}/fastq/se/tiny_se.atria.fastq.gz"
+ref_fa="${dir_fix}/reference/tiny.fa"
 
 tmp="${TEST_DIR_TMP}/align_fastqs_record"
 dir_dry="${tmp}/dry"
@@ -235,16 +235,16 @@ m_fq_pe_2="$(print_md5 "${in_pe_2}")"
 m_fq_se="$(print_md5 "${in_se}")"
 m_ref="$(print_md5 "${ref_fa}")"
 m_idx_bt2="$(
-    print_index_md5 "${dir_fx}/bowtie2" \
+    print_index_md5 "${dir_fix}/bowtie2" \
         tiny.1.bt2 tiny.2.bt2 tiny.3.bt2 tiny.4.bt2 \
         tiny.rev.1.bt2 tiny.rev.2.bt2
 )"
 m_idx_bwa="$(
-    print_index_md5 "${dir_fx}/bwa" \
+    print_index_md5 "${dir_fix}/bwa" \
         tiny.fa.amb tiny.fa.ann tiny.fa.bwt tiny.fa.pac tiny.fa.sa
 )"
 m_idx_bm2="$(
-    print_index_md5 "${dir_fx}/bwa-mem2" \
+    print_index_md5 "${dir_fix}/bwa-mem2" \
         tiny.fa.0123 tiny.fa.amb tiny.fa.ann tiny.fa.bwt.2bit.64 tiny.fa.pac
 )"
 

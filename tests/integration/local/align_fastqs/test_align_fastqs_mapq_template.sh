@@ -26,15 +26,15 @@ source "$(
 # Define fixture and output paths. BWA and bwa-mem2 can give two mates
 # different MAPQ values and write supplementary records, so '--mapq' must keep
 # or drop each template whole; the 'repeat' fixtures exercise this.
-dir_fx="${ROOT_REPO}/tests/fixtures/align_fastqs"
-idx_bt2="${dir_fx}/bowtie2/repeat"
-idx_bwa="${dir_fx}/bwa/repeat.fa"
-idx_bm2="${dir_fx}/bwa-mem2/repeat.fa"
-fq_se="${dir_fx}/fastq/se/repeat_se.atria.fastq.gz"
-fq_1="${dir_fx}/fastq/pe/repeat_pe_R1.atria.fastq.gz"
-fq_2="${dir_fx}/fastq/pe/repeat_pe_R2.atria.fastq.gz"
-sam_sec_pe="${dir_fx}/sam/repeat_secondary_pe.sam"
-sam_sec_se="${dir_fx}/sam/repeat_secondary_se.sam"
+dir_fix="${ROOT_REPO}/tests/fixtures/align_fastqs"
+idx_bt2="${dir_fix}/bowtie2/repeat"
+idx_bwa="${dir_fix}/bwa/repeat.fa"
+idx_bm2="${dir_fix}/bwa-mem2/repeat.fa"
+fq_se="${dir_fix}/fastq/se/repeat_se.atria.fastq.gz"
+fq_1="${dir_fix}/fastq/pe/repeat_pe_R1.atria.fastq.gz"
+fq_2="${dir_fix}/fastq/pe/repeat_pe_R2.atria.fastq.gz"
+sam_sec_pe="${dir_fix}/sam/repeat_secondary_pe.sam"
+sam_sec_se="${dir_fix}/sam/repeat_secondary_se.sam"
 
 tmp="${TEST_DIR_TMP}/align_fastqs_mapq_template"
 dir_log="${TEST_DIR_LOG}/align_fastqs"

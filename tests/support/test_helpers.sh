@@ -2258,15 +2258,15 @@ Examples
     source tests/support/test_helpers.sh
     require_env_project env_nam
     tmp="$(mktemp -d)"
-    dir_fx=tests/fixtures/calculate_scaling_factor/bam/se
-    mip_0="${dir_fx}/IP_WT_log_Brn1_rep1.sc.bam"
-    mip_1="${dir_fx}/IP_WT_log_Brn1_rep2.sc.bam"
-    min_0="${dir_fx}/in_WT_log_Brn1_rep1.sc.bam"
-    min_1="${dir_fx}/in_WT_log_Brn1_rep2.sc.bam"
-    sip_0="${dir_fx}/IP_WT_log_Brn1_rep1.sp.bam"
-    sip_1="${dir_fx}/IP_WT_log_Brn1_rep2.sp.bam"
-    sin_0="${dir_fx}/in_WT_log_Brn1_rep1.sp.bam"
-    sin_1="${dir_fx}/in_WT_log_Brn1_rep2.sp.bam"
+    dir_fix=tests/fixtures/calculate_scaling_factor/bam/se
+    mip_0="${dir_fix}/IP_WT_log_Brn1_rep1.sc.bam"
+    mip_1="${dir_fix}/IP_WT_log_Brn1_rep2.sc.bam"
+    min_0="${dir_fix}/in_WT_log_Brn1_rep1.sc.bam"
+    min_1="${dir_fix}/in_WT_log_Brn1_rep2.sc.bam"
+    sip_0="${dir_fix}/IP_WT_log_Brn1_rep1.sp.bam"
+    sip_1="${dir_fix}/IP_WT_log_Brn1_rep2.sp.bam"
+    sin_0="${dir_fix}/in_WT_log_Brn1_rep1.sp.bam"
+    sin_1="${dir_fix}/in_WT_log_Brn1_rep2.sp.bam"
     cmd=( "${TEST_BASH}" bin/execute_calculate_scaling_factor.sh --threads 1 --mode spike --aln_typ auto --csv_mip "${mip_0},${mip_1}" --csv_min "${min_0},${min_1}" --csv_sip "${sip_0},${sip_1}" --csv_sin "${sin_0},${sin_1}" --dir_eo "${tmp}/logs" --max_job 1 )
     row_0="${mip_0}"$'\t'"${sip_0}"$'\t'"${min_0}"$'\t'"${sin_0}"
     row_1="${mip_1}"$'\t'"${sip_1}"$'\t'"${min_1}"$'\t'"${sin_1}"
@@ -2280,11 +2280,11 @@ Examples
     source tests/support/test_helpers.sh
     require_env_project env_nam
     tmp="$(mktemp -d)"
-    dir_fx=tests/fixtures/calculate_scaling_factor/bam/pe
-    mip_0="${dir_fx}/IP_WT_G1_Hho1_6336.sc.bam"
-    mip_1="${dir_fx}/IP_WT_G1_Hho1_6337.sc.bam"
-    min_0="${dir_fx}/in_WT_G1_Hho1_6336.sc.bam"
-    min_1="${dir_fx}/in_WT_G1_Hho1_6337.sc.bam"
+    dir_fix=tests/fixtures/calculate_scaling_factor/bam/pe
+    mip_0="${dir_fix}/IP_WT_G1_Hho1_6336.sc.bam"
+    mip_1="${dir_fix}/IP_WT_G1_Hho1_6337.sc.bam"
+    min_0="${dir_fix}/in_WT_G1_Hho1_6336.sc.bam"
+    min_1="${dir_fix}/in_WT_G1_Hho1_6337.sc.bam"
     cmd=( "${TEST_BASH}" bin/execute_calculate_scaling_factor.sh --threads 1 --mode siq --aln_typ auto --csv_mip "${mip_0},${mip_1}" --csv_min "${min_0},${min_1}" --tbl_met tests/fixtures/calculate_scaling_factor/metadata/measurements_siqchip.tsv --cfg_met data/raw/docs/parse_metadata_siqchip.yml --eqn 6nd --dir_eo "${tmp}/logs" --max_job 1 )
     row_0="${mip_0}"$'\t'"${min_0}"
     row_1="${mip_1}"$'\t'"${min_1}"
@@ -2439,11 +2439,11 @@ Examples
     source tests/support/test_helpers.sh
     require_env_project env_nam
     tmp="$(mktemp -d)"
-    dir_fx=tests/fixtures/calculate_scaling_factor/bam/se
-    mip="${dir_fx}/IP_WT_log_Brn1_rep1.sc.bam"
-    min="${dir_fx}/in_WT_log_Brn1_rep1.sc.bam"
-    sip="${dir_fx}/IP_WT_log_Brn1_rep1.sp.bam"
-    sin="${dir_fx}/in_WT_log_Brn1_rep1.sp.bam"
+    dir_fix=tests/fixtures/calculate_scaling_factor/bam/se
+    mip="${dir_fix}/IP_WT_log_Brn1_rep1.sc.bam"
+    min="${dir_fix}/in_WT_log_Brn1_rep1.sc.bam"
+    sip="${dir_fix}/IP_WT_log_Brn1_rep1.sp.bam"
+    sin="${dir_fix}/in_WT_log_Brn1_rep1.sp.bam"
     out="${tmp}/scaling.tsv"
     cmd=( "${TEST_BASH}" bin/submit_calculate_scaling_factor.sh --env_nam "${env_nam}" --dir_scr scripts --threads 1 --mode spike --aln_typ auto --csv_mip "${mip}" --csv_min "${min}" --csv_sip "${sip}" --csv_sin "${sin}" --fil_out "${out}" --idx_out 0 --dir_eo "${tmp}/logs" --nam_job test_spike )
     row="${mip}"$'\t'"${sip}"$'\t'"${min}"$'\t'"${sin}"$'\t2\tchiprx_alpha_ratio\t3\t1\t2\t2'
@@ -2457,9 +2457,9 @@ Examples
     source tests/support/test_helpers.sh
     require_env_project env_nam
     tmp="$(mktemp -d)"
-    dir_fx=tests/fixtures/calculate_scaling_factor/bam/pe
-    mip="${dir_fx}/IP_WT_G1_Hho1_6336.sc.bam"
-    min="${dir_fx}/in_WT_G1_Hho1_6336.sc.bam"
+    dir_fix=tests/fixtures/calculate_scaling_factor/bam/pe
+    mip="${dir_fix}/IP_WT_G1_Hho1_6336.sc.bam"
+    min="${dir_fix}/in_WT_G1_Hho1_6336.sc.bam"
     out="${tmp}/scaling.tsv"
     cmd=( "${TEST_BASH}" bin/submit_calculate_scaling_factor.sh --env_nam "${env_nam}" --dir_scr scripts --threads 1 --mode siq --aln_typ auto --csv_mip "${mip}" --csv_min "${min}" --fil_out "${out}" --idx_out 19 --tbl_met tests/fixtures/calculate_scaling_factor/metadata/measurements_siqchip.tsv.gz --cfg_met data/raw/docs/parse_metadata_siqchip.yml --eqn 6nd --dir_eo "${tmp}/logs" --nam_job test_siq )
     row="${mip}"$'\t'"${min}"$'\t0.001912211397724232486706\t6nd\t2.7\t72.5\t300\t20\t3\t2\t626\t450'

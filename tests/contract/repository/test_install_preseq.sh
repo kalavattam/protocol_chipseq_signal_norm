@@ -44,10 +44,10 @@ script="${ROOT_REPO}/install/scripts/install_preseq.sh"
 
 # Each prefix state stands in for a managed environment prefix, and the
 # installer writes into a prefix, so each case copies one.
-dir_fx="${ROOT_REPO}/tests/fixtures/install_preseq"
-pfx_bare="${dir_fx}/prefix/bare"
-pfx_no_cxx="${dir_fx}/prefix/no_compiler"
-pfx_inst="${dir_fx}/prefix/installed"
+dir_fix="${ROOT_REPO}/tests/fixtures/install_preseq"
+pfx_bare="${dir_fix}/prefix/bare"
+pfx_no_cxx="${dir_fix}/prefix/no_compiler"
+pfx_inst="${dir_fix}/prefix/installed"
 
 dir_log="${TEST_DIR_LOG}/install_preseq"
 mkdir -p "${dir_log}"
@@ -55,7 +55,7 @@ mkdir -p "${dir_log}"
 print_section "${TEST_NAME}"
 
 require_files_nonempty \
-    "${dir_fx}/tarball/not_a_tarball.tar.gz" \
+    "${dir_fix}/tarball/not_a_tarball.tar.gz" \
     "${pfx_bare}/bin/clang++" \
     "${pfx_no_cxx}/bin/make" \
     "${pfx_inst}/bin/preseq" || {
@@ -109,7 +109,7 @@ else
 fi
 
 # Dry run with a local tarball.
-fil_any="${dir_fx}/tarball/not_a_tarball.tar.gz"
+fil_any="${dir_fix}/tarball/not_a_tarball.tar.gz"
 log_dry_tar="${dir_log}/dry_run_tarball.log"
 if \
     run_capture \
@@ -249,5 +249,6 @@ else
         "is not version 3\.2\.0" \
         "'--if_exists reuse' refuses a mismatched version"
 fi
+
 
 finish "$@"

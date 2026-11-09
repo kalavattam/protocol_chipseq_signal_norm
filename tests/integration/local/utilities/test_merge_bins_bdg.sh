@@ -18,7 +18,7 @@ set -euo pipefail
 
 TEST_NAME="merge_bins_bdg.py smoke"
 
-#  Source shared test helpers
+# Source shared test helpers.
 # shellcheck source=tests/support/test_helpers.sh
 source "$(
     git -C "$(dirname "${BASH_SOURCE[0]}")" rev-parse --show-toplevel
@@ -29,15 +29,15 @@ dir_tmp="${TEST_DIR_TMP}/merge_bins_bdg"
 dir_log="${TEST_DIR_LOG}/merge_bins_bdg"
 
 scr="${ROOT_REPO}/src/protocol_chipseq_signal_norm/cli/merge_bins_bdg.py"
-dir_fx="${ROOT_REPO}/tests/fixtures/compute_signal/bedgraph/merge_bins"
+dir_fix="${ROOT_REPO}/tests/fixtures/compute_signal/bedgraph/merge_bins"
 dir_exp="${ROOT_REPO}/tests/fixtures/compute_signal/expected/merge_bins"
-in_exact="${dir_fx}/exact.bedGraph"
+in_exact="${dir_fix}/exact.bedGraph"
 exp_exact="${dir_exp}/exact.bedGraph"
 obs_exact="${dir_tmp}/exact.observed.bedGraph"
-in_round="${dir_fx}/round.bedGraph"
+in_round="${dir_fix}/round.bedGraph"
 exp_round="${dir_exp}/round.bedGraph"
 obs_round="${dir_tmp}/round.observed.bedGraph"
-bad_input="${dir_fx}/malformed.bedGraph"
+bad_input="${dir_fix}/malformed.bedGraph"
 log_env_rslv="${dir_log}/resolve_env_python.log"
 log_help="${dir_log}/help.log"
 log_exact="${dir_log}/exact_stdin_stdout.log"
@@ -179,5 +179,6 @@ else
         'Malformed bedGraph line' \
         "merge_bins_bdg.py malformed input reports parser error"
 fi
+
 
 finish

@@ -37,9 +37,9 @@ fi
 
 
 # Define fixture and output paths for a loopback-only GNU Parallel download.
-dir_fx="${ROOT_REPO}/tests/fixtures/download_fastqs"
-dir_fq="${dir_fx}/fastq"
-mta_tpl="${dir_fx}/metadata/local_mixed.template.tsv"
+dir_fix="${ROOT_REPO}/tests/fixtures/download_fastqs"
+dir_fq="${dir_fix}/fastq"
+mta_tpl="${dir_fix}/metadata/local_mixed.template.tsv"
 
 src_se="${dir_fq}/se/tiny_download_se.fastq.gz"
 src_r1="${dir_fq}/pe/tiny_download_pe_R1.fastq.gz"

@@ -6,9 +6,10 @@
 # Copyright 2026 by Kris Alavattam
 # Email: kalavattam@gmail.com
 #
-# OpenAI ChatGPT and Codex (GPT-5.5, GPT-5.6) were used in design, development,
-# and documentation, with all output reviewed, edited, and approved by the
-# author.
+# The following were used in design, development, and documentation, with all
+# output reviewed, edited, and approved by the author:
+# - OpenAI ChatGPT and Codex (GPT-5.5, GPT-5.6);
+# - Anthropic Claude Code (Opus 5.5).
 #
 # Distributed under the MIT license.
 
@@ -17,18 +18,18 @@ set -euo pipefail
 
 TEST_NAME="submit convert BAM/CRAM to BED"
 
-#  Source shared test helpers
+# Source shared test helpers.
 # shellcheck source=tests/support/test_helpers.sh
 source "$(
     git -C "$(dirname "${BASH_SOURCE[0]}")" rev-parse --show-toplevel
 )/tests/support/test_helpers.sh"
 
 
-#  Define fixture and output paths for local serial conversion tests
-dir_fx="${ROOT_REPO}/tests/fixtures/calculate_scaling_factor"
-in_bam="${dir_fx}/bam/pe/IP_WT_G1_Hho1_6336.sc.bam"
-in_cram="${dir_fx}/cram/pe/IP_WT_G1_Hho1_6337.sc.cram"
-ref_fa="${dir_fx}/reference/tiny.fa"
+# Define fixture and output paths for local serial conversion tests.
+dir_fix="${ROOT_REPO}/tests/fixtures/calculate_scaling_factor"
+in_bam="${dir_fix}/bam/pe/IP_WT_G1_Hho1_6336.sc.bam"
+in_cram="${dir_fix}/cram/pe/IP_WT_G1_Hho1_6337.sc.cram"
+ref_fa="${dir_fix}/reference/tiny.fa"
 
 tmp="${TEST_DIR_TMP}/submit_convert_bam_bed"
 dir_qsort="${tmp}/qsort"
@@ -75,7 +76,7 @@ require_files_nonempty \
 }
 
 
-#  Help should exit successfully
+# Help should exit successfully.
 if \
     run_capture \
         "submit_convert_bam_bed.sh --help" \
@@ -92,7 +93,7 @@ else
 fi
 
 
-#  Old positional invocation should fail after the keyarg migration
+# Old positional invocation should fail after the keyarg migration.
 # shellcheck disable=SC2154
 if \
     run_capture \
@@ -117,7 +118,7 @@ else
 fi
 
 
-#  Unknown option should fail clearly
+# Unknown option should fail clearly.
 if \
     run_capture \
         "submit_convert_bam_bed.sh unknown option fails" \
@@ -132,7 +133,7 @@ else
 fi
 
 
-#  CRAM input without a reference should fail before execution
+# CRAM input without a reference should fail before execution.
 if \
     run_capture \
         "submit_convert_bam_bed.sh CRAM missing ref fails" \
@@ -155,7 +156,7 @@ else
 fi
 
 
-#  Explicit Python script and AWK branch are mutually exclusive
+# Explicit Python script and AWK branch are mutually exclusive.
 if \
     run_capture \
         "submit_convert_bam_bed.sh Python and AWK conflict" \
@@ -180,7 +181,7 @@ else
 fi
 
 
-#  Prepare qname-sorted temporary inputs for conversion tests
+# Prepare qname-sorted temporary inputs for conversion tests.
 if \
     run_capture \
         "prepare qname-sorted BAM/CRAM conversion inputs" \
@@ -210,7 +211,7 @@ require_files_nonempty \
 }
 
 
-#  Serial Python conversion should write BED.GZ output for BAM and CRAM inputs
+# Serial Python conversion should write BED.GZ output for BAM and CRAM inputs.
 if \
     run_capture \
         "submit_convert_bam_bed.sh Python BAM/CRAM" \
@@ -279,7 +280,7 @@ if [[ -s "${out_cram_bed}" ]]; then
 fi
 
 
-#  AWK branch should also handle qname-sorted PE BAM input
+# AWK branch should also handle qname-sorted PE BAM input.
 rm -f "${out_bam_bed}"
 if \
     run_capture \
@@ -299,8 +300,8 @@ then
     record_pass "submit_convert_bam_bed.sh AWK BAM exits 0"
 else
     record_fail \
-        "submit_convert_bam_bed.sh AWK BAM failed;" \
-        "see $(print_relpath "${log_awk}")"
+        "submit_convert_bam_bed.sh AWK BAM failed; see" \
+        "$(print_relpath "${log_awk}")"
 fi
 
 assert_file_nonempty \
@@ -324,5 +325,6 @@ if [[ -s "${out_bam_bed}" ]]; then
         $'^[^\t][^\t]*\t[0-9][0-9]*\t[0-9][0-9]*\t[0-9][0-9]*$' \
         "convert AWK BAM BED.GZ has BED-like rows"
 fi
+
 
 finish

@@ -25,14 +25,14 @@ source "$(
 )/tests/support/test_helpers.sh"
 
 
-dir_fx="${ROOT_REPO}/tests/fixtures/compute_signal/bedgraph"
+dir_fix="${ROOT_REPO}/tests/fixtures/compute_signal/bedgraph"
 chr_siz="${ROOT_REPO}/tests/fixtures/compute_signal/reference/tiny.fa.fai"
-fil_A="${dir_fx}/ratio_A.bedGraph"
-fil_B="${dir_fx}/ratio_B.bedGraph"
-fil_A_hdr="${dir_fx}/ratio_headers_A.bedGraph"
-fil_B_hdr="${dir_fx}/ratio_headers_B.bedGraph"
-fil_A_gz="${dir_fx}/ratio_A.bedGraph.gz"
-fil_B_gz="${dir_fx}/ratio_B.bedGraph.gz"
+fil_A="${dir_fix}/ratio_A.bedGraph"
+fil_B="${dir_fix}/ratio_B.bedGraph"
+fil_A_hdr="${dir_fix}/ratio_headers_A.bedGraph"
+fil_B_hdr="${dir_fix}/ratio_headers_B.bedGraph"
+fil_A_gz="${dir_fix}/ratio_A.bedGraph.gz"
+fil_B_gz="${dir_fix}/ratio_B.bedGraph.gz"
 
 tmp="${TEST_DIR_TMP}/submit_compute_signal_ratio"
 dir_out="${tmp}/out"
@@ -886,8 +886,9 @@ out_pc="$(
 
 if [[
     "${rc_pc}" -ne 0
-    && "${out_pc}" == *"'--prior_count' applies only to '--csv_pseudo edger'"*
-    && ! -e "${tmp}/ratio_pc_lit.bedGraph"
+        && "${out_pc}" \
+            == *"'--prior_count' applies only to '--csv_pseudo edger'"*
+        && ! -e "${tmp}/ratio_pc_lit.bedGraph"
 ]]; then
     record_pass "submit rejects '--prior_count' when no element is 'edger'"
 else
@@ -915,8 +916,9 @@ out_pc="$(
 
 if [[
     "${rc_pc}" -ne 0
-    && "${out_pc}" == *"'--prior_count' applies only to '--csv_pseudo edger'"*
-    && ! -e "${tmp}/ratio_pc_none.bedGraph"
+        && "${out_pc}" \
+            == *"'--prior_count' applies only to '--csv_pseudo edger'"*
+        && ! -e "${tmp}/ratio_pc_none.bedGraph"
 ]]; then
     record_pass "submit rejects '--prior_count' when '--csv_pseudo' is omitted"
 else
@@ -948,8 +950,8 @@ out_ts="$(
 
 if [[
     "${rc_ts}" -ne 0
-    && "${out_ts}" == *"'--typ_sig'"* && "${out_ts}" == *"'--method'"*
-    && ! -e "${tmp}/signal_ts.bedGraph"
+        && "${out_ts}" == *"'--typ_sig'"* && "${out_ts}" == *"'--method'"*
+        && ! -e "${tmp}/signal_ts.bedGraph"
 ]]; then
     record_pass "submit rejects '--typ_sig' in signal mode, naming '--method'"
 else
@@ -975,7 +977,7 @@ out_pc="$(
 
 if [[
     "${rc_pc}" -ne 0
-    && "${out_pc}" == *"'--prior_count' is for '--mode ratio'"*
+        && "${out_pc}" == *"'--prior_count' is for '--mode ratio'"*
 ]]; then
     record_pass "submit rejects '--prior_count' in signal mode"
 else
@@ -1005,8 +1007,8 @@ out_bare="$(
 
 if [[
     "${rc_bare}" -ne 0
-    && "${out_bare}" == *"needs 'A:B'"*
-    && ! -e "${tmp}/ratio_bare.bedGraph"
+        && "${out_bare}" == *"needs 'A:B'"*
+        && ! -e "${tmp}/ratio_bare.bedGraph"
 ]]; then
     record_pass "submit refuses a bare '--csv_pseudo' literal, naming 'A:B'"
 else
@@ -1036,8 +1038,8 @@ out_crd="$(
 
 if [[
     "${rc_crd}" -ne 0
-    && "${out_crd}" == *"'--prior_count' is for '--mode ratio'"*
-    && ! -e "${tmp}/coord_pc.bed"
+        && "${out_crd}" == *"'--prior_count' is for '--mode ratio'"*
+        && ! -e "${tmp}/coord_pc.bed"
 ]]; then
     record_pass "submit rejects '--prior_count' in coord mode"
 else
@@ -1067,8 +1069,8 @@ out_nan="$(
 
 if [[
     "${rc_nan}" -ne 0
-    && "${out_nan}" == *"'--prior_count' was assigned 'two'"*
-    && ! -e "${tmp}/ratio_pc_nan.bedGraph"
+        && "${out_nan}" == *"'--prior_count' was assigned 'two'"*
+        && ! -e "${tmp}/ratio_pc_nan.bedGraph"
 ]]; then
     record_pass "submit refuses a non-numeric '--prior_count' before any work"
 else
@@ -1146,10 +1148,10 @@ function call_has_pseudo() {
 # The edgeR step passes only what 'compute_pseudo' reads, so it draws no note.
 if [[
     "${rc_mix}" -eq 0
-    && -n "${exp_mix_1}"
-    && -s "${out_mix_1}"
-    && -s "${out_mix_2}"
-    && "${out_mix}" != *"has no effect"*
+        && -n "${exp_mix_1}"
+        && -s "${out_mix_1}"
+        && -s "${out_mix_2}"
+        && "${out_mix}" != *"has no effect"*
 ]] \
     && call_has_pseudo "${out_mix_1}" "${exp_mix_1}" \
     && call_has_pseudo "${out_mix_2}" "1:1"
@@ -1199,9 +1201,9 @@ out_run="$(
 
 if [[
     "${rc_unadj}" -eq 0
-    && -n "${exp_unadj}"
-    && -s "${out_unadj}"
-    && "${out_run}" != *"has no effect"*
+        && -n "${exp_unadj}"
+        && -s "${out_unadj}"
+        && "${out_run}" != *"has no effect"*
 ]] \
     && call_has_pseudo "${out_unadj}" "${exp_unadj}"
 then
@@ -1270,8 +1272,8 @@ out_bl="$(
 
 if [[
     "${rc_bl}" -ne 0
-    && "${out_bl}" == *"single literal '--csv_pseudo'"*
-    && ! -e "${dir_bc}/lit_1.bedGraph"
+        && "${out_bl}" == *"single literal '--csv_pseudo'"*
+        && ! -e "${dir_bc}/lit_1.bedGraph"
 ]]; then
     record_pass \
         "submit does not apply a single literal pseudocount to all pairs"
@@ -1281,5 +1283,6 @@ else
         "${rc_bl})"
 fi
 unset dir_bc n_bc out rc_bl out_bl
+
 
 finish

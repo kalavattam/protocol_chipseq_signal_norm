@@ -39,11 +39,11 @@ source "$(
 #
 # Each call's records are checked against the aligner's own output. The 'thr'
 # fixture checks that the files do not depend on the thread count.
-dir_fx="${ROOT_REPO}/tests/fixtures/align_fastqs"
-ref_par="${dir_fx}/reference/pairs.fa"
-sam_spl="${dir_fx}/sam/split_template_pe.sam"
+dir_fix="${ROOT_REPO}/tests/fixtures/align_fastqs"
+ref_par="${dir_fix}/reference/pairs.fa"
+sam_spl="${dir_fix}/sam/split_template_pe.sam"
 # Step 1's split of those records, as Step 1 makes it under each mode.
-stm_s1="${dir_fx}/bam/split_template_pe.step1"
+stm_s1="${dir_fix}/bam/split_template_pe.step1"
 
 tmp="${TEST_DIR_TMP}/align_fastqs_unal_mode"
 dir_log="${TEST_DIR_LOG}/align_fastqs"
@@ -65,30 +65,30 @@ require_files_nonempty \
     "${stm_s1}.remove.bam" \
     "${stm_s1}.separate.bam" \
     "${stm_s1}.setU.bam" \
-    "${dir_fx}/bowtie2/pairs.rev.2.bt2" \
-    "${dir_fx}/bwa/pairs.fa.bwt" \
-    "${dir_fx}/bwa-mem2/pairs.fa.0123" \
-    "${dir_fx}/bowtie2/bridge.rev.2.bt2" \
-    "${dir_fx}/bwa/bridge.fa.bwt" \
-    "${dir_fx}/bwa-mem2/bridge.fa.0123" \
-    "${dir_fx}/fastq/pe/pairs_pe_R1.atria.fastq.gz" \
-    "${dir_fx}/fastq/pe/pairs_pe_R2.atria.fastq.gz" \
-    "${dir_fx}/fastq/pe/pairs_fill_pe_R1.atria.fastq.gz" \
-    "${dir_fx}/fastq/pe/pairs_fill_pe_R2.atria.fastq.gz" \
-    "${dir_fx}/fastq/se/pairs_se.atria.fastq.gz" \
-    "${dir_fx}/fastq/pe/dup_pe_R1.atria.fastq.gz" \
-    "${dir_fx}/fastq/pe/dup_pe_R2.atria.fastq.gz" \
-    "${dir_fx}/fastq/pe/bridge_pe_R1.atria.fastq.gz" \
-    "${dir_fx}/fastq/pe/bridge_pe_R2.atria.fastq.gz" \
-    "${dir_fx}/sam/diag/improp.sam" \
-    "${dir_fx}/sam/diag/improp_no_mc.sam" \
-    "${dir_fx}/sam/diag/improp_no_first_mate.sam" \
-    "${dir_fx}/sam/diag/all.markdup.txt.gz" \
-    "${dir_fx}/sam/diag/all_neg.markdup.txt.gz" \
-    "${dir_fx}/sam/diag/all_odd.markdup.txt.gz" \
-    "${dir_fx}/bwa/thr.fa.bwt" \
-    "${dir_fx}/fastq/pe/thr_pe_R1.atria.fastq.gz" \
-    "${dir_fx}/fastq/pe/thr_pe_R2.atria.fastq.gz" || {
+    "${dir_fix}/bowtie2/pairs.rev.2.bt2" \
+    "${dir_fix}/bwa/pairs.fa.bwt" \
+    "${dir_fix}/bwa-mem2/pairs.fa.0123" \
+    "${dir_fix}/bowtie2/bridge.rev.2.bt2" \
+    "${dir_fix}/bwa/bridge.fa.bwt" \
+    "${dir_fix}/bwa-mem2/bridge.fa.0123" \
+    "${dir_fix}/fastq/pe/pairs_pe_R1.atria.fastq.gz" \
+    "${dir_fix}/fastq/pe/pairs_pe_R2.atria.fastq.gz" \
+    "${dir_fix}/fastq/pe/pairs_fill_pe_R1.atria.fastq.gz" \
+    "${dir_fix}/fastq/pe/pairs_fill_pe_R2.atria.fastq.gz" \
+    "${dir_fix}/fastq/se/pairs_se.atria.fastq.gz" \
+    "${dir_fix}/fastq/pe/dup_pe_R1.atria.fastq.gz" \
+    "${dir_fix}/fastq/pe/dup_pe_R2.atria.fastq.gz" \
+    "${dir_fix}/fastq/pe/bridge_pe_R1.atria.fastq.gz" \
+    "${dir_fix}/fastq/pe/bridge_pe_R2.atria.fastq.gz" \
+    "${dir_fix}/sam/diag/improp.sam" \
+    "${dir_fix}/sam/diag/improp_no_mc.sam" \
+    "${dir_fix}/sam/diag/improp_no_first_mate.sam" \
+    "${dir_fix}/sam/diag/all.markdup.txt.gz" \
+    "${dir_fix}/sam/diag/all_neg.markdup.txt.gz" \
+    "${dir_fix}/sam/diag/all_odd.markdup.txt.gz" \
+    "${dir_fix}/bwa/thr.fa.bwt" \
+    "${dir_fix}/fastq/pe/thr_pe_R1.atria.fastq.gz" \
+    "${dir_fix}/fastq/pe/thr_pe_R2.atria.fastq.gz" || {
     finish
     exit $?
 }
@@ -131,9 +131,9 @@ function run_raw() {
     local fq_1="${3}"
     local fq_2="${4}"
     local sam="${5}"
-    local idx_bt2="${dir_fx}/bowtie2/${set}"
-    local idx_bwa="${dir_fx}/bwa/${set}.fa"
-    local idx_bm2="${dir_fx}/bwa-mem2/${set}.fa"
+    local idx_bt2="${dir_fix}/bowtie2/${set}"
+    local idx_bwa="${dir_fix}/bwa/${set}.fa"
+    local idx_bm2="${dir_fix}/bwa-mem2/${set}.fa"
     local -a arr_bt2 arr_in
 
     arr_bt2=( bowtie2 -p 1 --reorder --seed 0 -x "${idx_bt2}" )
@@ -338,9 +338,9 @@ function print_recs_nomd() {
 
 
 # Calls: label|helper arguments for the fixture set '@SET@'|layouts.
-i_bt2="--index ${dir_fx}/bowtie2/@SET@"
-i_bwa="--index ${dir_fx}/bwa/@SET@.fa"
-i_bm2="--index ${dir_fx}/bwa-mem2/@SET@.fa"
+i_bt2="--index ${dir_fix}/bowtie2/@SET@"
+i_bwa="--index ${dir_fix}/bwa/@SET@.fa"
+i_bm2="--index ${dir_fix}/bwa-mem2/@SET@.fa"
 cals=(
     "bt2|--aligner bowtie2 ${i_bt2}|pe se"
     "bt2_local|--aligner bowtie2 --bt2_mode local ${i_bt2}|pe se"
@@ -394,10 +394,10 @@ rows_se+="mapq:duplicate_all:"
 for ent in "${ins[@]}"; do
     IFS='|' read -r inp set typ stm_fq <<< "${ent}"
     if [[ "${typ}" == "pe" ]]; then
-        fq_1="${dir_fx}/fastq/pe/${stm_fq}_pe_R1.atria.fastq.gz"
-        fq_2="${dir_fx}/fastq/pe/${stm_fq}_pe_R2.atria.fastq.gz"
+        fq_1="${dir_fix}/fastq/pe/${stm_fq}_pe_R1.atria.fastq.gz"
+        fq_2="${dir_fix}/fastq/pe/${stm_fq}_pe_R2.atria.fastq.gz"
     else
-        fq_1="${dir_fx}/fastq/se/${stm_fq}_se.atria.fastq.gz"
+        fq_1="${dir_fix}/fastq/se/${stm_fq}_se.atria.fastq.gz"
         fq_2=""
     fi
 
@@ -1016,11 +1016,11 @@ out="$(
         --aligner bowtie2 \
         --bt2_relaxed \
         --req_flg \
-        --index "${dir_fx}/bowtie2/pairs" \
+        --index "${dir_fix}/bowtie2/pairs" \
         --unal_mode separate \
         --ref_fa "${ref_par}" \
-        --fq_1 "${dir_fx}/fastq/pe/pairs_pe_R1.atria.fastq.gz" \
-        --fq_2 "${dir_fx}/fastq/pe/pairs_pe_R2.atria.fastq.gz" \
+        --fq_1 "${dir_fix}/fastq/pe/pairs_pe_R1.atria.fastq.gz" \
+        --fq_2 "${dir_fix}/fastq/pe/pairs_pe_R2.atria.fastq.gz" \
         --qname \
         --fil_out "${stm}.cram"
 )" || rc=$?
@@ -1091,9 +1091,9 @@ fi
 # alignment file is not merged, and its IDs match as well.
 for cal in bt2 mem; do
     if [[ "${cal}" == "bt2" ]]; then
-        args=( --aligner bowtie2 --index "${dir_fx}/bowtie2/pairs" )
+        args=( --aligner bowtie2 --index "${dir_fix}/bowtie2/pairs" )
     else
-        args=( --aligner bwa --index "${dir_fx}/bwa/pairs.fa" )
+        args=( --aligner bwa --index "${dir_fix}/bwa/pairs.fa" )
     fi
 
     for thr in 1 3; do
@@ -1101,8 +1101,8 @@ for cal in bt2 mem; do
             --threads "${thr}" \
             "${args[@]}" \
             --unal_mode separate \
-            --fq_1 "${dir_fx}/fastq/pe/pairs_pe_R1.atria.fastq.gz" \
-            --fq_2 "${dir_fx}/fastq/pe/pairs_pe_R2.atria.fastq.gz" \
+            --fq_1 "${dir_fix}/fastq/pe/pairs_pe_R1.atria.fastq.gz" \
+            --fq_2 "${dir_fix}/fastq/pe/pairs_pe_R2.atria.fastq.gz" \
             --fil_out "${tmp}/det.${cal}.${thr}.bam" > /dev/null || true
         if [[ "${thr}" == "1" ]]; then sleep 1.1; fi
     done
@@ -1161,15 +1161,15 @@ done
 # batch followed the thread count, they would be proper at one thread and move
 # into the alignment file. So each file's records, in file order, and the
 # counts must match at 1 and 3 threads.
-fq_thr_1="${dir_fx}/fastq/pe/thr_pe_R1.atria.fastq.gz"
-fq_thr_2="${dir_fx}/fastq/pe/thr_pe_R2.atria.fastq.gz"
+fq_thr_1="${dir_fix}/fastq/pe/thr_pe_R1.atria.fastq.gz"
+fq_thr_2="${dir_fix}/fastq/pe/thr_pe_R2.atria.fastq.gz"
 for thr in 1 3; do
     rc=0
     out="$(
         run_helper \
             --threads "${thr}" \
             --aligner bwa \
-            --index "${dir_fx}/bwa/thr.fa" \
+            --index "${dir_fix}/bwa/thr.fa" \
             --req_flg \
             --unal_mode separate \
             --fq_1 "${fq_thr_1}" \
@@ -1273,10 +1273,10 @@ run_helper \
     --bt2_relaxed \
     --req_flg \
     --mapq 43 \
-    --index "${dir_fx}/bowtie2/pairs" \
+    --index "${dir_fix}/bowtie2/pairs" \
     --unal_mode separate \
-    --fq_1 "${dir_fx}/fastq/pe/pairs_pe_R1.atria.fastq.gz" \
-    --fq_2 "${dir_fx}/fastq/pe/pairs_pe_R2.atria.fastq.gz" \
+    --fq_1 "${dir_fix}/fastq/pe/pairs_pe_R1.atria.fastq.gz" \
+    --fq_2 "${dir_fix}/fastq/pe/pairs_pe_R2.atria.fastq.gz" \
     --fil_out "${stm}.bam" > "${stm}.log" 2>&1 || true
 
 exp="main:all:0:0:NA:NA main:unjudged:0:0:NA:NA"
@@ -1332,7 +1332,7 @@ fi
 # - Unaligned, secondary, and supplementary records are unjudged in every file.
 # - The main file's Markdup 2 duplicates come from the statistics, less the
 #   side file's one.
-dir_dia="${dir_fx}/sam/diag"
+dir_dia="${dir_fix}/sam/diag"
 arr_dia=(
     "${dir_dia}/main.sam" "${dir_dia}/unal.sam" "${dir_dia}/improp.sam"
     "${dir_dia}/mapq.sam"
@@ -1358,7 +1358,7 @@ for al in bowtie2 bwa; do
     run_func _write_diag_tsv \
         align_fastqs false 1 "${al}" 500 pe 30 "${arr_dia[@]}" \
         "${dir_dia}/all.markdup.txt.gz" \
-        "${tmp}/fx.${al}.diag.tsv.gz" > "${tmp}/fx.${al}.diag.log" 2>&1 \
+        "${tmp}/fix.${al}.diag.tsv.gz" > "${tmp}/fix.${al}.diag.log" 2>&1 \
         || rc=$?
 
     if [[ "${al}" == "bowtie2" ]]; then
@@ -1367,12 +1367,12 @@ for al in bowtie2 bwa; do
         exp="${exp_bwa}${exp_end}"
     fi
     got="$(
-        gzip -cd "${tmp}/fx.${al}.diag.tsv.gz" 2> /dev/null \
+        gzip -cd "${tmp}/fix.${al}.diag.tsv.gz" 2> /dev/null \
             | sed 1d \
             | tr '\t\n' ': '
     )" || true
     hdr="$(
-        gzip -cd "${tmp}/fx.${al}.diag.tsv.gz" 2> /dev/null \
+        gzip -cd "${tmp}/fix.${al}.diag.tsv.gz" 2> /dev/null \
             | head -n 1 \
             | tr '\t' ' '
     )" || true
@@ -1397,11 +1397,11 @@ for bad in neg odd; do
     run_func _write_diag_tsv \
         align_fastqs false 1 bowtie2 500 pe 30 "${arr_dia[@]}" \
         "${dir_dia}/all_${bad}.markdup.txt.gz" \
-        "${tmp}/fx.${bad}.diag.tsv.gz" > "${tmp}/fx.${bad}.diag.log" 2>&1 \
+        "${tmp}/fix.${bad}.diag.tsv.gz" > "${tmp}/fix.${bad}.diag.log" 2>&1 \
         || rc=$?
 
     got="$(
-        gzip -cd "${tmp}/fx.${bad}.diag.tsv.gz" 2> /dev/null \
+        gzip -cd "${tmp}/fix.${bad}.diag.tsv.gz" 2> /dev/null \
             | sed 1d \
             | tr '\t\n' ': '
     )" || true
@@ -1410,7 +1410,9 @@ for bad in neg odd; do
 
     if [[
         "${rc}" -eq 0 && "${got}" == "${exp}"
-    ]] && grep -q "'duplicate_all' row is NA" "${tmp}/fx.${bad}.diag.log"; then
+    ]] \
+        && grep -q "'duplicate_all' row is NA" "${tmp}/fix.${bad}.diag.log"
+    then
         record_pass \
             "statistics that do not add up ('${bad}') give an NA row and a" \
             "warning"

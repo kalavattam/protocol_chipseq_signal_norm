@@ -26,11 +26,11 @@ source "$(
 # Define fixture and output paths. The input already has the record line that
 # 'align_fastqs' writes, and the sort's record must come after it
 # ('OUTPUT.ALIGNMENT.RECORD').
-dir_fx="${ROOT_REPO}/tests/fixtures/calculate_scaling_factor"
-in_bam="${dir_fx}/bam/prior_record.bam"
-in_cram="${dir_fx}/cram/prior_record.cram"
+dir_fix="${ROOT_REPO}/tests/fixtures/calculate_scaling_factor"
+in_bam="${dir_fix}/bam/prior_record.bam"
+in_cram="${dir_fix}/cram/prior_record.cram"
 
-ref_fa="${dir_fx}/reference/tiny.fa"
+ref_fa="${dir_fix}/reference/tiny.fa"
 
 tmp="${TEST_DIR_TMP}/qsort_bam_record"
 lin_aln=$'@CO\tpipeline: chain=align_fastqs'

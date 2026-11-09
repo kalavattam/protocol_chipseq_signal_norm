@@ -26,11 +26,11 @@ source "$(
 # Define fixture and output paths. The input already has the record line that
 # 'align_fastqs' writes, and the filter's record must come after it
 # ('OUTPUT.ALIGNMENT.RECORD').
-dir_fx="${ROOT_REPO}/tests/fixtures/filter_alignments"
-ref_fa="${dir_fx}/reference/filter_sc_sp.fa"
+dir_fix="${ROOT_REPO}/tests/fixtures/filter_alignments"
+ref_fa="${dir_fix}/reference/filter_sc_sp.fa"
 
-in_bam="${dir_fx}/bam/prior_record.bam"
-in_cram="${dir_fx}/cram/prior_record.cram"
+in_bam="${dir_fix}/bam/prior_record.bam"
+in_cram="${dir_fix}/cram/prior_record.cram"
 
 tmp="${TEST_DIR_TMP}/filter_alignments_record"
 dir_log="${TEST_DIR_LOG}/filter_alignments"

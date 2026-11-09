@@ -28,18 +28,18 @@ source "$(
 # Work files that a later step rewrites are written at compression level 1 and
 # are not indexed; the files that ship are written at the default level, and
 # Step 5 (or Step 6, for CRAM) indexes each coordinate-sorted one.
-dir_fx="${ROOT_REPO}/tests/fixtures/align_fastqs"
-idx_bt2="${dir_fx}/bowtie2/pairs"
-idx_bwa="${dir_fx}/bwa/bridge.fa"
-fq_pe_1="${dir_fx}/fastq/pe/pairs_pe_R1.atria.fastq.gz"
-fq_pe_2="${dir_fx}/fastq/pe/pairs_pe_R2.atria.fastq.gz"
-fq_se="${dir_fx}/fastq/se/pairs_se.atria.fastq.gz"
-fq_brg_1="${dir_fx}/fastq/pe/bridge_pe_R1.atria.fastq.gz"
-fq_brg_2="${dir_fx}/fastq/pe/bridge_pe_R2.atria.fastq.gz"
-idx_fil="${dir_fx}/bwa/pairs.fa"
-fq_fil_1="${dir_fx}/fastq/pe/pairs_fill_pe_R1.atria.fastq.gz"
-fq_fil_2="${dir_fx}/fastq/pe/pairs_fill_pe_R2.atria.fastq.gz"
-ref_fa="${dir_fx}/reference/pairs.fa"
+dir_fix="${ROOT_REPO}/tests/fixtures/align_fastqs"
+idx_bt2="${dir_fix}/bowtie2/pairs"
+idx_bwa="${dir_fix}/bwa/bridge.fa"
+fq_pe_1="${dir_fix}/fastq/pe/pairs_pe_R1.atria.fastq.gz"
+fq_pe_2="${dir_fix}/fastq/pe/pairs_pe_R2.atria.fastq.gz"
+fq_se="${dir_fix}/fastq/se/pairs_se.atria.fastq.gz"
+fq_brg_1="${dir_fix}/fastq/pe/bridge_pe_R1.atria.fastq.gz"
+fq_brg_2="${dir_fix}/fastq/pe/bridge_pe_R2.atria.fastq.gz"
+idx_fil="${dir_fix}/bwa/pairs.fa"
+fq_fil_1="${dir_fix}/fastq/pe/pairs_fill_pe_R1.atria.fastq.gz"
+fq_fil_2="${dir_fix}/fastq/pe/pairs_fill_pe_R2.atria.fastq.gz"
+ref_fa="${dir_fix}/reference/pairs.fa"
 
 tmp="${TEST_DIR_TMP}/align_fastqs_outputs"
 

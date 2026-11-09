@@ -26,8 +26,8 @@ source "$(
 # Define fixture and output paths. Per 'HELP.PARAMETER.APPLICABILITY', '--time'
 # is ignored with a warning without '--slurm'. Dry runs download nothing, so
 # the metadata URLs point at an unused loopback port.
-dir_fx="${ROOT_REPO}/tests/fixtures/download_fastqs"
-mta_tpl="${dir_fx}/metadata/local_se.template.tsv"
+dir_fix="${ROOT_REPO}/tests/fixtures/download_fastqs"
+mta_tpl="${dir_fix}/metadata/local_se.template.tsv"
 
 tmp="${TEST_DIR_TMP}/download_fastqs_opt_applicability"
 mta="${tmp}/local_se.tsv"
@@ -75,7 +75,7 @@ out="$(run_execute "${tmp}/exe_time" --time 1:00:00)" || rc=$?
 
 if [[
     "${rc}" -eq 0
-    && "${out}" == *"warning("*"'--time' has no effect without '--slurm'"*
+        && "${out}" == *"warning("*"'--time' has no effect without '--slurm'"*
 ]]; then
     record_pass "execute warns about '--time' without '--slurm'"
 else
@@ -91,5 +91,6 @@ if [[ "${rc}" -eq 0 && "${out}" != *"has no effect"* ]]; then
 else
     record_fail "execute warned about the default time limit (exit ${rc})"
 fi
+
 
 finish

@@ -50,11 +50,11 @@ fi
 
 
 # Define fixture and output paths for a Slurm Bowtie 2 submission test.
-dir_fx="${ROOT_REPO}/tests/fixtures/align_fastqs"
-in_1="${dir_fx}/fastq/se/tiny_se_1.atria.fastq.gz"
-in_2="${dir_fx}/fastq/se/tiny_se_2.atria.fastq.gz"
+dir_fix="${ROOT_REPO}/tests/fixtures/align_fastqs"
+in_1="${dir_fix}/fastq/se/tiny_se_1.atria.fastq.gz"
+in_2="${dir_fix}/fastq/se/tiny_se_2.atria.fastq.gz"
 csv_in="${in_1};${in_2}"
-idx_bt2="${dir_fx}/bowtie2/tiny"
+idx_bt2="${dir_fix}/bowtie2/tiny"
 
 tmp="${TEST_DIR_TMP}/execute_align_fastqs_slurm"
 dir_out="${tmp}/out"
@@ -118,7 +118,7 @@ else
 fi
 
 
-# Submit execute_align_fastqs.sh as a two-task Slurm array.
+# Submit 'execute_align_fastqs.sh' as a two-task Slurm array.
 if \
     run_capture \
         "execute align-fastqs Slurm Bowtie 2 submission" \
@@ -180,12 +180,12 @@ sec_slp="${SLURM_POLL_SECONDS:-5}"
 elapsed=0
 
 while (( elapsed < sec_wait )); do
-    if \
-        [[ -s "${out_1}" ]] \
-            && [[ -s "${bai_1}" ]] \
-            && [[ -s "${out_2}" ]] \
-            && [[ -s "${bai_2}" ]]
-    then
+    if [[
+        -s "${out_1}"
+            && -s "${bai_1}"
+            && -s "${out_2}"
+            && -s "${bai_2}"
+    ]]; then
         break
     fi
 
@@ -274,6 +274,7 @@ if [[ -s "${out_2}" ]]; then
         $'^tiny_se_read_1\t' \
         "execute Slurm Bowtie 2 BAM 2 contains expected read name"
 fi
+
 
 # shellcheck disable=SC2119
 finish

@@ -25,9 +25,9 @@ source "$(
 )/tests/support/test_helpers.sh"
 
 
-dir_fx="${ROOT_REPO}/tests/fixtures/filter_alignments"
-in_cram="${dir_fx}/cram/filter_sc_sp.cram"
-ref_fa="${dir_fx}/reference/filter_sc_sp.fa"
+dir_fix="${ROOT_REPO}/tests/fixtures/filter_alignments"
+in_cram="${dir_fix}/cram/filter_sc_sp.cram"
+ref_fa="${dir_fix}/reference/filter_sc_sp.fa"
 ref_fai="${ref_fa}.fai"
 
 # shellcheck disable=SC2034

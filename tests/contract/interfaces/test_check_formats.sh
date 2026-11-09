@@ -25,10 +25,10 @@ source "$(
 
 # Define fixture and output paths. Format names and file suffixes match in any
 # letter case; the short bedGraph spellings 'bdg' and 'bg' are refused.
-dir_fx="${ROOT_REPO}/tests/fixtures/compute_signal"
-in_se="${dir_fx}/bam/se/tiny_se.bam"
-fil_A="${dir_fx}/bedgraph/ratio_A.bedGraph.gz"
-fil_B="${dir_fx}/bedgraph/ratio_B.bedGraph.gz"
+dir_fix="${ROOT_REPO}/tests/fixtures/compute_signal"
+in_se="${dir_fix}/bam/se/tiny_se.bam"
+fil_A="${dir_fix}/bedgraph/ratio_A.bedGraph.gz"
+fil_B="${dir_fix}/bedgraph/ratio_B.bedGraph.gz"
 
 tmp="${TEST_DIR_TMP}/check_formats"
 dir_out="${tmp}/out"
@@ -229,12 +229,12 @@ dir_up="${tmp}/upper"
 dir_cs="${ROOT_REPO}/tests/fixtures/calculate_scaling_factor"
 in_cram="${dir_cs}/cram/pe/IP_WT_G1_Hho1_6337.sc.cram"
 ref_cs="${dir_cs}/reference/tiny.fa"
-ref_se="${dir_fx}/reference/tiny.fa"
+ref_se="${dir_fix}/reference/tiny.fa"
 
 mkdir -p "${dir_up}/logs" "${dir_up}/q"
 ln -s "${in_se}" "${dir_up}/tiny_se.BAM"
-ln -s "${dir_fx}/cram/se/tiny_se.cram" "${dir_up}/tiny_se.CRAM"
-ln -s "${dir_fx}/cram/se/tiny_se.cram.crai" "${dir_up}/tiny_se.CRAM.crai"
+ln -s "${dir_fix}/cram/se/tiny_se.cram" "${dir_up}/tiny_se.CRAM"
+ln -s "${dir_fix}/cram/se/tiny_se.cram.crai" "${dir_up}/tiny_se.CRAM.crai"
 ln -s "${in_cram}" "${dir_up}/IP_up.sc.CRAM"
 
 
@@ -285,11 +285,11 @@ check_lib core/format_outputs \
 
 check_lib core/check_unity \
     "" \
-    check_unity "${dir_fx}/bedgraph/unity.bedGraph.GZ" 0.99 1.01 true
+    check_unity "${dir_fix}/bedgraph/unity.bedGraph.GZ" 0.99 1.01 true
 
 check_lib workflows/process_region \
     "" \
-    check_region_bdg "${dir_fx}/bedgraph/unity.bedGraph.GZ" chrI:1-20
+    check_region_bdg "${dir_fix}/bedgraph/unity.bedGraph.GZ" chrI:1-20
 
 # A signal output takes the input's stem without its upper-case suffix.
 rc=0
@@ -390,6 +390,7 @@ if [[ "${rc}" -eq 0 && -s "${dir_out}/IP_up.sc.bed.gz" ]]; then
 else
     record_fail "convert did not write 'IP_up.sc.bed.gz' (exit ${rc})"
 fi
+
 
 unset row fnc arg rc_exp out_exp out want lbl rc cmd msg in_A fil_out
 unset dir_up dir_cs in_cram ref_cs ref_se q_up

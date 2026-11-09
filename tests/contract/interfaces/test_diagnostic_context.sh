@@ -24,9 +24,9 @@ source "$(
 
 
 # Define fixture and output paths.
-dir_fx="${ROOT_REPO}/tests/fixtures/diagnostics"
-fil_run="${dir_fx}/script/run.sh"
-fil_lib="${dir_fx}/script/lib.sh"
+dir_fix="${ROOT_REPO}/tests/fixtures/diagnostics"
+fil_run="${dir_fix}/script/run.sh"
+fil_lib="${dir_fix}/script/lib.sh"
 
 tmp="${TEST_DIR_TMP}/diagnostic_context"
 

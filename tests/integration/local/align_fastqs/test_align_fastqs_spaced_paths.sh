@@ -25,7 +25,7 @@ source "$(
 
 # Define fixture and output paths. Each arm runs on the fixture paths and on
 # spaced links to them; both runs must write the same files and records.
-dir_fx="${ROOT_REPO}/tests/fixtures/align_fastqs"
+dir_fix="${ROOT_REPO}/tests/fixtures/align_fastqs"
 
 tmp="${TEST_DIR_TMP}/align_fastqs_spaced_paths"
 dir_in="${tmp}/in dir"
@@ -45,35 +45,35 @@ require_env_project env_nam || {
 }
 
 require_files_nonempty \
-    "${dir_fx}/fastq/se/tiny_se.atria.fastq.gz" \
-    "${dir_fx}/fastq/pe/tiny_pe_R1.atria.fastq.gz" \
-    "${dir_fx}/fastq/pe/tiny_pe_R2.atria.fastq.gz" \
-    "${dir_fx}/reference/tiny.fa" \
-    "${dir_fx}/bowtie2/tiny.1.bt2" \
-    "${dir_fx}/bwa/tiny.fa.bwt" \
-    "${dir_fx}/bwa-mem2/tiny.fa.0123" || {
+    "${dir_fix}/fastq/se/tiny_se.atria.fastq.gz" \
+    "${dir_fix}/fastq/pe/tiny_pe_R1.atria.fastq.gz" \
+    "${dir_fix}/fastq/pe/tiny_pe_R2.atria.fastq.gz" \
+    "${dir_fix}/reference/tiny.fa" \
+    "${dir_fix}/bowtie2/tiny.1.bt2" \
+    "${dir_fix}/bwa/tiny.fa.bwt" \
+    "${dir_fix}/bwa-mem2/tiny.fa.0123" || {
     finish
     exit $?
 }
 
 # Link the inputs and indexes under directories whose names hold spaces.
 for fil in \
-    "${dir_fx}"/fastq/se/tiny_se.atria.fastq.gz \
-    "${dir_fx}"/fastq/pe/tiny_pe_R[12].atria.fastq.gz \
-    "${dir_fx}"/reference/tiny.fa*
+    "${dir_fix}"/fastq/se/tiny_se.atria.fastq.gz \
+    "${dir_fix}"/fastq/pe/tiny_pe_R[12].atria.fastq.gz \
+    "${dir_fix}"/reference/tiny.fa*
 do
     ln -s "${fil}" "${dir_in}/$(basename "${fil}")"
 done
 
-for fil in "${dir_fx}"/bowtie2/tiny*; do
+for fil in "${dir_fix}"/bowtie2/tiny*; do
     ln -s "${fil}" "${dir_in}/bt2 idx/$(basename "${fil}")"
 done
 
-for fil in "${dir_fx}"/bwa/tiny*; do
+for fil in "${dir_fix}"/bwa/tiny*; do
     ln -s "${fil}" "${dir_in}/bwa idx/$(basename "${fil}")"
 done
 
-for fil in "${dir_fx}"/bwa-mem2/tiny*; do
+for fil in "${dir_fix}"/bwa-mem2/tiny*; do
     ln -s "${fil}" "${dir_in}/bm2 idx/$(basename "${fil}")"
 done
 
@@ -100,8 +100,8 @@ function run_helper() {
 # paths, so they are left out).
 function same_records() {
     cmp -s \
-        <(run_samtools view --no-PG -T "${dir_fx}/reference/tiny.fa" "${1}") \
-        <(run_samtools view --no-PG -T "${dir_fx}/reference/tiny.fa" "${2}")
+        <(run_samtools view --no-PG -T "${dir_fix}/reference/tiny.fa" "${1}") \
+        <(run_samtools view --no-PG -T "${dir_fix}/reference/tiny.fa" "${2}")
 }
 
 
@@ -141,9 +141,9 @@ function check_same_outputs() {
 
 
 # label|arguments on fixture paths|arguments on spaced paths|output stem
-fq_se_p="${dir_fx}/fastq/se/tiny_se.atria.fastq.gz"
-fq_1_p="${dir_fx}/fastq/pe/tiny_pe_R1.atria.fastq.gz"
-fq_2_p="${dir_fx}/fastq/pe/tiny_pe_R2.atria.fastq.gz"
+fq_se_p="${dir_fix}/fastq/se/tiny_se.atria.fastq.gz"
+fq_1_p="${dir_fix}/fastq/pe/tiny_pe_R1.atria.fastq.gz"
+fq_2_p="${dir_fix}/fastq/pe/tiny_pe_R2.atria.fastq.gz"
 fq_se_s="${dir_in}/tiny_se.atria.fastq.gz"
 fq_1_s="${dir_in}/tiny_pe_R1.atria.fastq.gz"
 fq_2_s="${dir_in}/tiny_pe_R2.atria.fastq.gz"
@@ -161,17 +161,17 @@ for idx in "${!arms[@]}"; do
 
     case "${ind}" in
         bt2)
-            ind_p="${dir_fx}/bowtie2/tiny"
+            ind_p="${dir_fix}/bowtie2/tiny"
             ind_s="${dir_in}/bt2 idx/tiny"
             ;;
 
         bwa)
-            ind_p="${dir_fx}/bwa/tiny.fa"
+            ind_p="${dir_fix}/bwa/tiny.fa"
             ind_s="${dir_in}/bwa idx/tiny.fa"
             ;;
 
         bm2)
-            ind_p="${dir_fx}/bwa-mem2/tiny.fa"
+            ind_p="${dir_fix}/bwa-mem2/tiny.fa"
             ind_s="${dir_in}/bm2 idx/tiny.fa"
             ;;
     esac
@@ -187,7 +187,7 @@ for idx in "${!arms[@]}"; do
     ref_p=()
     ref_s=()
     if [[ "${ext}" == "cram" ]]; then
-        ref_p=( --ref_fa "${dir_fx}/reference/tiny.fa" )
+        ref_p=( --ref_fa "${dir_fix}/reference/tiny.fa" )
         ref_s=( --ref_fa "${dir_in}/tiny.fa" )
     fi
 

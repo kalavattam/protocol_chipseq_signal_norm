@@ -26,14 +26,14 @@ source "$(
 
 
 # Define fixture and output paths for the execute-to-submit ratio path.
-dir_fx="${ROOT_REPO}/tests/fixtures/compute_signal/bedgraph"
+dir_fix="${ROOT_REPO}/tests/fixtures/compute_signal/bedgraph"
 chr_siz="${ROOT_REPO}/tests/fixtures/compute_signal/reference/tiny.fa.fai"
-fil_A="${dir_fx}/ratio_A.bedGraph"
-fil_B="${dir_fx}/ratio_B.bedGraph"
-fil_A_hdr="${dir_fx}/ratio_headers_A.bedGraph"
-fil_B_hdr="${dir_fx}/ratio_headers_B.bedGraph"
-fil_A_gz="${dir_fx}/ratio_A.bedGraph.gz"
-fil_B_gz="${dir_fx}/ratio_B.bedGraph.gz"
+fil_A="${dir_fix}/ratio_A.bedGraph"
+fil_B="${dir_fix}/ratio_B.bedGraph"
+fil_A_hdr="${dir_fix}/ratio_headers_A.bedGraph"
+fil_B_hdr="${dir_fix}/ratio_headers_B.bedGraph"
+fil_A_gz="${dir_fix}/ratio_A.bedGraph.gz"
+fil_B_gz="${dir_fix}/ratio_B.bedGraph.gz"
 
 tmp="${TEST_DIR_TMP}/execute_compute_signal_ratio"
 dir_out="${tmp}/out"

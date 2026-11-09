@@ -281,11 +281,11 @@ then
     exit $?
 fi
 
-dir_fx="${ROOT_REPO}/tests/fixtures/filter_alignments"
-in_cram_1="${dir_fx}/cram/filter_sc_sp_parallel_1.cram"
-in_cram_2="${dir_fx}/cram/filter_sc_sp_parallel_2.cram"
+dir_fix="${ROOT_REPO}/tests/fixtures/filter_alignments"
+in_cram_1="${dir_fix}/cram/filter_sc_sp_parallel_1.cram"
+in_cram_2="${dir_fix}/cram/filter_sc_sp_parallel_2.cram"
 csv_in="${in_cram_1},${in_cram_2}"
-ref_fa="${dir_fx}/reference/filter_sc_sp.fa"
+ref_fa="${dir_fix}/reference/filter_sc_sp.fa"
 ref_fai="${ref_fa}.fai"
 
 # shellcheck disable=SC2034

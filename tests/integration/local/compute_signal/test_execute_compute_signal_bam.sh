@@ -26,9 +26,9 @@ source "$(
 
 
 # Define fixture and output paths for the execute-to-submit BAM path.
-dir_fx="${ROOT_REPO}/tests/fixtures/compute_signal"
-in_se="${dir_fx}/bam/se/tiny_se.bam"
-in_pe="${dir_fx}/bam/pe/tiny_pe.bam"
+dir_fix="${ROOT_REPO}/tests/fixtures/compute_signal"
+in_se="${dir_fix}/bam/se/tiny_se.bam"
+in_pe="${dir_fix}/bam/pe/tiny_pe.bam"
 
 tmp="${TEST_DIR_TMP}/execute_compute_signal_bam"
 dir_out="${tmp}/out"
@@ -558,8 +558,8 @@ for mode_ro in coord ratio; do
         args_ro=( --csv_fil_in "${in_se}" --typ_out bed.gz )
     else
         args_ro=(
-            --csv_fil_A "${dir_fx}/bedgraph/ratio_A.bedGraph.gz"
-            --csv_fil_B "${dir_fx}/bedgraph/ratio_B.bedGraph.gz"
+            --csv_fil_A "${dir_fix}/bedgraph/ratio_A.bedGraph.gz"
+            --csv_fil_B "${dir_fix}/bedgraph/ratio_B.bedGraph.gz"
         )
     fi
 
@@ -687,7 +687,7 @@ done
 
 # Recompute the literal 'count/' fixtures, so they cannot drift from what
 # '--method count --siz_bin 10' actually writes.
-dir_cnt_fx="${dir_fx}/bedgraph/count"
+dir_cnt_fix="${dir_fix}/bedgraph/count"
 dir_cnt_out="${tmp}/count_fixture"
 mkdir -p "${dir_cnt_out}"
 
@@ -698,7 +698,7 @@ for samp in se pe; do
         PYTHONDONTWRITEBYTECODE=1 \
         "${TEST_MANAGED_PYTHON}" \
             -m protocol_chipseq_signal_norm.cli.compute_signal \
-            --fil_in "${dir_fx}/bam/${samp}/tiny_${samp}.bam" \
+            --fil_in "${dir_fix}/bam/${samp}/tiny_${samp}.bam" \
             --fil_out "${trk_cnt}" \
             --siz_bin 10 \
             --method count \
@@ -709,14 +709,14 @@ for samp in se pe; do
         for ext in bedGraph n_frg.txt n_ovlp.txt; do
             assert_files_equal \
                 "${dir_cnt_out}/tiny_${samp}.${ext}" \
-                "${dir_cnt_fx}/tiny_${samp}.${ext}" \
+                "${dir_cnt_fix}/tiny_${samp}.${ext}" \
                 "'count' fixture tiny_${samp}.${ext} matches compute_signal"
         done
     else
         record_fail "compute_signal --method count failed on tiny_${samp}.bam"
     fi
 done
-unset dir_cnt_fx dir_cnt_out samp trk_cnt ext
+unset dir_cnt_fix dir_cnt_out samp trk_cnt ext
 
 # One scale factor and one fragment length apply to every input in signal mode:
 # both tracks double, and the SE track also extends to 20 bp.

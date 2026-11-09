@@ -26,14 +26,14 @@ source "$(
 # Define fixture and output paths. A dry run validates, then prints each step's
 # commands from the arrays a real run executes, and writes nothing; 'execute'
 # forwards it through 'submit' to 'align_fastqs'.
-dir_fx="${ROOT_REPO}/tests/fixtures/align_fastqs"
-in_se="${dir_fx}/fastq/se/tiny_se.atria.fastq.gz"
-in_pe_1="${dir_fx}/fastq/pe/tiny_pe_R1.atria.fastq.gz"
-in_pe_2="${dir_fx}/fastq/pe/tiny_pe_R2.atria.fastq.gz"
-ref_fa="${dir_fx}/reference/tiny.fa"
-idx_bt2="${dir_fx}/bowtie2/tiny"
-idx_bwa="${dir_fx}/bwa/tiny.fa"
-idx_bm2="${dir_fx}/bwa-mem2/tiny.fa"
+dir_fix="${ROOT_REPO}/tests/fixtures/align_fastqs"
+in_se="${dir_fix}/fastq/se/tiny_se.atria.fastq.gz"
+in_pe_1="${dir_fix}/fastq/pe/tiny_pe_R1.atria.fastq.gz"
+in_pe_2="${dir_fix}/fastq/pe/tiny_pe_R2.atria.fastq.gz"
+ref_fa="${dir_fix}/reference/tiny.fa"
+idx_bt2="${dir_fix}/bowtie2/tiny"
+idx_bwa="${dir_fix}/bwa/tiny.fa"
+idx_bm2="${dir_fix}/bwa-mem2/tiny.fa"
 
 tmp="${TEST_DIR_TMP}/align_fastqs_dry_run"
 
@@ -62,7 +62,7 @@ require_files_nonempty \
 
 # The expected lines below spell paths as written, so the test paths must not
 # need Shell escaping themselves.
-for pth in "${dir_fx}" "${tmp}"; do
+for pth in "${dir_fix}" "${tmp}"; do
     if [[ "$(printf '%q' "${pth}")" != "${pth}" ]]; then
         record_fail "path needs Shell escaping, so rows cannot match: ${pth}"
         finish

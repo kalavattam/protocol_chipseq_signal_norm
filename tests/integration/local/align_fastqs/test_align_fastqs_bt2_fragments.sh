@@ -25,10 +25,10 @@ source "$(
 
 # Define fixture and output paths. The fragment-length pairs on the repeat
 # reference show which fragments each Bowtie 2 paired-end call keeps.
-dir_fx="${ROOT_REPO}/tests/fixtures/align_fastqs"
-idx_rpt="${dir_fx}/bowtie2/repeat"
-fq_1="${dir_fx}/fastq/pe/frg_pe_R1.atria.fastq.gz"
-fq_2="${dir_fx}/fastq/pe/frg_pe_R2.atria.fastq.gz"
+dir_fix="${ROOT_REPO}/tests/fixtures/align_fastqs"
+idx_rpt="${dir_fix}/bowtie2/repeat"
+fq_1="${dir_fix}/fastq/pe/frg_pe_R1.atria.fastq.gz"
+fq_2="${dir_fix}/fastq/pe/frg_pe_R2.atria.fastq.gz"
 
 tmp="${TEST_DIR_TMP}/align_fastqs_bt2_fragments"
 

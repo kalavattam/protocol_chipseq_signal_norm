@@ -108,8 +108,8 @@ dir_out="${tmp}/worker/out"
 dir_sym="${tmp}/worker/links"
 dir_eo="${tmp}/worker/logs"
 fil_missing="${tmp}/missing.tsv"
-dir_fx="${ROOT_REPO}/tests/fixtures/download_fastqs"
-dir_mtd="${dir_fx}/metadata"
+dir_fix="${ROOT_REPO}/tests/fixtures/download_fastqs"
+dir_mtd="${dir_fix}/metadata"
 env_missing="phase1b_interface_missing_env"
 
 rm -rf "${tmp}"
@@ -118,8 +118,8 @@ mkdir -p "${dir_cap}" "${dir_out}" "${dir_sym}" "${dir_eo}"
 require_files_nonempty \
     "${dir_mtd}/dry_se.tsv" \
     "${dir_mtd}/worker_failure.tsv" \
-    "${dir_fx}/tool/wget_ok/wget" \
-    "${dir_fx}/tool/wget_fail/wget" || {
+    "${dir_fix}/tool/wget_ok/wget" \
+    "${dir_fix}/tool/wget_fail/wget" || {
     finish
     exit $?
 }
@@ -567,7 +567,7 @@ assert_pattern_found \
 # Fake wget proves relative paths and worker-failure propagation without I/O.
 # The metadata directory is linked under the relative root, so that inputs are
 # also named by relative paths and still read in place.
-dir_fake="${dir_fx}/tool/wget_ok"
+dir_fake="${dir_fix}/tool/wget_ok"
 dir_rel="${tmp}/relative"
 mkdir -p \
     "${dir_rel}/submit/out" \
@@ -661,7 +661,7 @@ else
     record_fail "execute relative symlink target is broken"
 fi
 
-dir_fake="${dir_fx}/tool/wget_fail"
+dir_fake="${dir_fix}/tool/wget_fail"
 
 expect_failure \
     "execute propagates fake worker failure" \

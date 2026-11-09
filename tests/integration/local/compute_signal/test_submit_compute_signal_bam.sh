@@ -26,9 +26,9 @@ source "$(
 
 
 # Define fixture and output paths for local serial BAM-backed tests.
-dir_fx="${ROOT_REPO}/tests/fixtures/compute_signal"
-in_se="${dir_fx}/bam/se/tiny_se.bam"
-in_pe="${dir_fx}/bam/pe/tiny_pe.bam"
+dir_fix="${ROOT_REPO}/tests/fixtures/compute_signal"
+in_se="${dir_fix}/bam/se/tiny_se.bam"
+in_pe="${dir_fix}/bam/pe/tiny_pe.bam"
 
 tmp="${TEST_DIR_TMP}/submit_compute_signal_bam"
 dir_out="${tmp}/out"

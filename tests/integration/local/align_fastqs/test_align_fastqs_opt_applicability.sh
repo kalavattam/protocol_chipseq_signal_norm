@@ -30,15 +30,15 @@ source "$(
 # entry has are ignored with a warning. The hidden '--bt2_relaxed' is refused
 # without a PE entry, and it and '--unal_mode separate' are refused with
 # '--bt2_inherited'.
-dir_fx="${ROOT_REPO}/tests/fixtures/align_fastqs"
-in_se="${dir_fx}/fastq/se/tiny_se.atria.fastq.gz"
-in_pe_1="${dir_fx}/fastq/pe/tiny_pe_R1.atria.fastq.gz"
-in_pe_2="${dir_fx}/fastq/pe/tiny_pe_R2.atria.fastq.gz"
+dir_fix="${ROOT_REPO}/tests/fixtures/align_fastqs"
+in_se="${dir_fix}/fastq/se/tiny_se.atria.fastq.gz"
+in_pe_1="${dir_fix}/fastq/pe/tiny_pe_R1.atria.fastq.gz"
+in_pe_2="${dir_fix}/fastq/pe/tiny_pe_R2.atria.fastq.gz"
 in_pe="${in_pe_1},${in_pe_2}"
-ref_fa="${dir_fx}/reference/tiny.fa"
-idx_bt2="${dir_fx}/bowtie2/tiny"
-idx_bwa="${dir_fx}/bwa/tiny.fa"
-idx_bm2="${dir_fx}/bwa-mem2/tiny.fa"
+ref_fa="${dir_fix}/reference/tiny.fa"
+idx_bt2="${dir_fix}/bowtie2/tiny"
+idx_bwa="${dir_fix}/bwa/tiny.fa"
+idx_bm2="${dir_fix}/bwa-mem2/tiny.fa"
 
 tmp="${TEST_DIR_TMP}/align_fastqs_opt_applicability"
 msg_ref="'--ref_fa' has no effect"
@@ -839,7 +839,7 @@ rc=0
 out="$(
     run_helper \
         --aligner bowtie2 \
-        --index "${dir_fx}/bowtie2/not_an_index" \
+        --index "${dir_fix}/bowtie2/not_an_index" \
         --fil_out "${fil_out}"
 )" || rc=$?
 n_err="$(grep -c '^error(' <<< "${out}" || true)"

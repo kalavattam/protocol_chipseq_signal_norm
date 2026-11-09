@@ -30,25 +30,25 @@ source "$(
 # '--mapq', so the filtering cannot rely on MAPQ: BWA-backtrack flags the
 # 'bridge' fixtures' second mate as unaligned but gives it MAPQ 60. That mate
 # runs off the end of one contig into the next.
-dir_fx="${ROOT_REPO}/tests/fixtures/align_fastqs"
-in_se="${dir_fx}/fastq/se/tiny_se.atria.fastq.gz"
-in_pe_1="${dir_fx}/fastq/pe/tiny_pe_R1.atria.fastq.gz"
-in_pe_2="${dir_fx}/fastq/pe/tiny_pe_R2.atria.fastq.gz"
-idx_bt2="${dir_fx}/bowtie2/tiny"
-idx_bwa="${dir_fx}/bwa/tiny.fa"
-idx_bm2="${dir_fx}/bwa-mem2/tiny.fa"
-brg_1="${dir_fx}/fastq/pe/bridge_pe_R1.atria.fastq.gz"
-brg_2="${dir_fx}/fastq/pe/bridge_pe_R2.atria.fastq.gz"
-idx_brg_bt2="${dir_fx}/bowtie2/bridge"
-idx_brg_bwa="${dir_fx}/bwa/bridge.fa"
-idx_brg_bm2="${dir_fx}/bwa-mem2/bridge.fa"
+dir_fix="${ROOT_REPO}/tests/fixtures/align_fastqs"
+in_se="${dir_fix}/fastq/se/tiny_se.atria.fastq.gz"
+in_pe_1="${dir_fix}/fastq/pe/tiny_pe_R1.atria.fastq.gz"
+in_pe_2="${dir_fix}/fastq/pe/tiny_pe_R2.atria.fastq.gz"
+idx_bt2="${dir_fix}/bowtie2/tiny"
+idx_bwa="${dir_fix}/bwa/tiny.fa"
+idx_bm2="${dir_fix}/bwa-mem2/tiny.fa"
+brg_1="${dir_fix}/fastq/pe/bridge_pe_R1.atria.fastq.gz"
+brg_2="${dir_fix}/fastq/pe/bridge_pe_R2.atria.fastq.gz"
+idx_brg_bt2="${dir_fix}/bowtie2/bridge"
+idx_brg_bwa="${dir_fix}/bwa/bridge.fa"
+idx_brg_bm2="${dir_fix}/bwa-mem2/bridge.fa"
 
 # The tiny inputs plus reads absent from the tiny reference: the single-end
 # input has an unaligned read, and the paired-end input has an unaligned pair
 # and a pair whose second mate is unaligned.
-fq_se="${dir_fx}/fastq/se/unaligned_se.fastq"
-fq_1="${dir_fx}/fastq/pe/unaligned_pe_R1.fastq"
-fq_2="${dir_fx}/fastq/pe/unaligned_pe_R2.fastq"
+fq_se="${dir_fix}/fastq/se/unaligned_se.fastq"
+fq_1="${dir_fix}/fastq/pe/unaligned_pe_R1.fastq"
+fq_2="${dir_fix}/fastq/pe/unaligned_pe_R2.fastq"
 
 tmp="${TEST_DIR_TMP}/align_fastqs_unaligned"
 dir_log="${TEST_DIR_LOG}/align_fastqs"

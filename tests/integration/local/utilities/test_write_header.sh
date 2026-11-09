@@ -101,10 +101,10 @@ scr_hdr="${ROOT_REPO}/bin/write_header.sh"
 
 dir_tmp="${TEST_DIR_TMP}/write_header"
 dir_log="${TEST_DIR_LOG}/write_header"
-dir_fx="${ROOT_REPO}/tests/fixtures/calculate_scaling_factor/table"
-fx_siq="${dir_fx}/write_header/siq_row.tsv"
-fx_spk="${dir_fx}/write_header/spike_row.tsv"
-fx_spk_hdr="${dir_fx}/write_header/spike_headered.tsv"
+dir_fix="${ROOT_REPO}/tests/fixtures/calculate_scaling_factor/table"
+fix_siq="${dir_fix}/write_header/siq_row.tsv"
+fix_spk="${dir_fix}/write_header/spike_row.tsv"
+fix_spk_hdr="${dir_fix}/write_header/spike_headered.tsv"
 dir_out="${dir_tmp}/out"
 
 fil_spk_new="${dir_out}/spike.header_only.tsv"
@@ -154,9 +154,9 @@ mkdir -p "${dir_out}" "${dir_log}"
 
 require_files_nonempty \
     "${scr_hdr}" \
-    "${fx_siq}" \
-    "${fx_spk}" \
-    "${fx_spk_hdr}" || {
+    "${fix_siq}" \
+    "${fix_spk}" \
+    "${fix_spk_hdr}" || {
     finish
     exit $?
 }
@@ -238,7 +238,7 @@ run_header_success \
     siq_copy \
     "${log_siq_copy}" \
     --mode siq \
-    --fil_in "${fx_siq}" \
+    --fil_in "${fix_siq}" \
     --fil_out "${fil_siq_cpy}"
 
 assert_header_once \
@@ -252,11 +252,11 @@ assert_pattern_found \
     "write_header.sh siq_copy keeps data row"
 
 assert_file_exact_line \
-    "${fx_siq}" \
+    "${fix_siq}" \
     "${row_siq}" \
     "write_header.sh siq_copy input"
 
-cp "${fx_siq}" "${fil_siq_inp}"  # fixture-perturbation: edited in place
+cp "${fix_siq}" "${fil_siq_inp}"  # fixture-perturbation: edited in place
 
 run_header_success \
     siq_in_place \
@@ -275,7 +275,7 @@ assert_pattern_found \
     "^${row_siq}$" \
     "write_header.sh siq_in_place keeps data row"
 
-cp "${fx_spk_hdr}" "${fil_spk_hdr}"  # fixture-perturbation: edited in place
+cp "${fix_spk_hdr}" "${fil_spk_hdr}"  # fixture-perturbation: edited in place
 
 run_header_success \
     spike_idempotent \
@@ -339,7 +339,7 @@ assert_pattern_found \
     "^${hdr_spk}$" \
     "write_header.sh dry_verbose still prints the header"
 
-cp "${fx_spk_hdr}" "${fil_dry_hdr}"  # fixture-perturbation: dry run target
+cp "${fix_spk_hdr}" "${fil_dry_hdr}"  # fixture-perturbation: dry run target
 
 run_header_success \
     dry_in_place \
@@ -365,7 +365,7 @@ run_header_success \
     "${log_dry_copy}" \
     --dry_run \
     --mode siq \
-    --fil_in "${fx_siq}" \
+    --fil_in "${fix_siq}" \
     --fil_out "${fil_dry_out}"
 
 assert_pattern_found \
@@ -380,7 +380,7 @@ else
 fi
 
 assert_file_exact_line \
-    "${fx_siq}" \
+    "${fix_siq}" \
     "${row_siq}" \
     "write_header.sh dry_copy input"
 
@@ -424,7 +424,7 @@ run_header_failure \
     --fil_in "${fil_spk_hdr}" \
     --fil_out "${fil_spk_hdr}"
 
-cp "${fx_spk}" "${fil_old_amb}"  # fixture-perturbation: an existing output
+cp "${fix_spk}" "${fil_old_amb}"  # fixture-perturbation: an existing output
 
 run_header_failure \
     old_fil_out_existing \

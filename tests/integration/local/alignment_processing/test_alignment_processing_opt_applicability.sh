@@ -24,12 +24,12 @@ source "$(
 
 
 # Define fixture and output paths. Per 'HELP.PARAMETER.APPLICABILITY',
-# '--ref_fa' without CRAM input is ignored with a warning and not checked, so
-# a missing path is not refused; with a mixed list, only CRAM entries get it.
-dir_fx="${ROOT_REPO}/tests/fixtures/calculate_scaling_factor"
-in_bam="${dir_fx}/bam/pe/IP_WT_G1_Hho1_6336.sc.bam"
-in_cram="${dir_fx}/cram/pe/IP_WT_G1_Hho1_6337.sc.cram"
-ref_fa="${dir_fx}/reference/tiny.fa"
+# '--ref_fa' without CRAM input is ignored with a warning and not checked, so a
+# missing path is not refused; with a mixed list, only CRAM entries get it.
+dir_fix="${ROOT_REPO}/tests/fixtures/calculate_scaling_factor"
+in_bam="${dir_fix}/bam/pe/IP_WT_G1_Hho1_6336.sc.bam"
+in_cram="${dir_fix}/cram/pe/IP_WT_G1_Hho1_6337.sc.cram"
+ref_fa="${dir_fix}/reference/tiny.fa"
 
 tmp="${TEST_DIR_TMP}/alignment_processing_opt_applicability"
 q_bam="${tmp}/qsort_0/IP_WT_G1_Hho1_6336.sc.qnam.bam"
@@ -49,7 +49,7 @@ require_files_nonempty \
     "${in_bam}" \
     "${in_cram}" \
     "${ref_fa}" \
-    "${dir_fx}/tool/print_args.py" || {
+    "${dir_fix}/tool/print_args.py" || {
     finish
     exit $?
 }
@@ -111,8 +111,8 @@ for idx in "${!rows[@]}"; do
 
     if [[
         "${rc}" -eq 0
-        && "${n_out}" -eq "${n_exp}"
-        && "${n_msg}" -eq "${n_msg_exp}"
+            && "${n_out}" -eq "${n_exp}"
+            && "${n_msg}" -eq "${n_msg_exp}"
     ]]; then
         if (( n_msg_exp )); then
             record_pass "${lbl} warns once and still runs"
@@ -129,7 +129,7 @@ done
 
 # 'convert_bam_bed' passes '--threads' to the Python converter. A converter
 # that writes its arguments shows what it got.
-fil_py="${dir_fx}/tool/print_args.py"
+fil_py="${dir_fix}/tool/print_args.py"
 
 dir_out="${tmp}/convert_threads"
 rc=0
@@ -152,7 +152,7 @@ fi
 function run_helper() {
     # shellcheck disable=SC2016  # Expand in the child shell, not this one.
     "${TEST_BASH}" -c '
-        # shellcheck disable=SC1090
+        # shellcheck source=lib/bash/core/source_helpers.sh
         source "${1}/lib/bash/core/source_helpers.sh"
 
         source_helpers "${1}/lib/bash" \
@@ -166,8 +166,8 @@ function run_helper() {
 }
 
 # Each helper warns about a reference given with BAM input and still runs,
-# without checking it, so a missing path is not refused. The Python helper
-# does not pass it to the converter: helper and leading arguments|output.
+# without checking it, so a missing path is not refused. The Python helper does
+# not pass it to the converter: helper and leading arguments|output.
 dir_hlp="${tmp}/helper"
 mkdir -p "${dir_hlp}"
 
@@ -192,14 +192,17 @@ for row in "${rows_hlp[@]}"; do
 
     if [[
         "${rc}" -eq 0
-        && -s "${fil_out}"
-        && "${out}" == *"'ref_fa' has no effect without CRAM input"*
-    ]] && ! grep -qa -- '--ref_fa' "${fil_out}"; then
+            && -s "${fil_out}"
+            && "${out}" == *"'ref_fa' has no effect without CRAM input"*
+    ]] \
+        && ! grep -qa -- '--ref_fa' "${fil_out}"
+    then
         record_pass "${lbl} warns about 'ref_fa' with BAM and still runs"
     else
         record_fail \
             "${lbl} did not warn, failed, or passed 'ref_fa' on (exit ${rc})"
     fi
 done
+
 
 finish

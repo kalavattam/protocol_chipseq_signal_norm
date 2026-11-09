@@ -34,12 +34,12 @@ source "$(
 #
 # The statistics go to '<stem>.markdup.txt.gz'. The reads are the 'opt_*' sets
 # that 'make.sh' writes, and the fixture README lists their names.
-dir_fx="${ROOT_REPO}/tests/fixtures/align_fastqs"
-ref_rpt="${dir_fx}/reference/repeat.fa"
-idx_bt2="${dir_fx}/bowtie2/repeat"
-idx_bwa="${dir_fx}/bwa/repeat.fa"
-dir_fq_pe="${dir_fx}/fastq/pe"
-dir_fq_se="${dir_fx}/fastq/se"
+dir_fix="${ROOT_REPO}/tests/fixtures/align_fastqs"
+ref_rpt="${dir_fix}/reference/repeat.fa"
+idx_bt2="${dir_fix}/bowtie2/repeat"
+idx_bwa="${dir_fix}/bwa/repeat.fa"
+dir_fq_pe="${dir_fix}/fastq/pe"
+dir_fq_se="${dir_fix}/fastq/se"
 
 tmp="${TEST_DIR_TMP}/align_fastqs_markdup_optical"
 
@@ -63,7 +63,7 @@ require_files_nonempty \
     "${ref_rpt}.fai" \
     "${idx_bt2}.1.bt2" \
     "${idx_bwa}.bwt" \
-    "${dir_fx}/sam/optical_names.sam" \
+    "${dir_fix}/sam/optical_names.sam" \
     "${dir_fq_se}/opt_none_se.atria.fastq.gz" || {
     finish
     exit $?
@@ -637,7 +637,7 @@ out="$(
         _check_optical_names align_fastqs 1 "${2}" dist 2> /dev/null \
             || rc_chk=$?
         printf "%s|%s\n" "${rc_chk}" "${dist}"
-    ' _ "${ROOT_REPO}" "${dir_fx}/sam/optical_names.sam" 2>&1
+    ' _ "${ROOT_REPO}" "${dir_fix}/sam/optical_names.sam" 2>&1
 )" || rc=$?
 exp="1|not used; 1 of 2 read names carry no flow-cell coordinates"
 

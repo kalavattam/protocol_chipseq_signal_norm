@@ -26,10 +26,10 @@ source "$(
 
 
 # Define fixture and output paths for local serial CRAM-backed tests.
-dir_fx="${ROOT_REPO}/tests/fixtures/compute_signal"
-in_se="${dir_fx}/cram/se/tiny_se.cram"
-in_pe="${dir_fx}/cram/pe/tiny_pe.cram"
-ref_fa="${dir_fx}/reference/tiny.fa"
+dir_fix="${ROOT_REPO}/tests/fixtures/compute_signal"
+in_se="${dir_fix}/cram/se/tiny_se.cram"
+in_pe="${dir_fix}/cram/pe/tiny_pe.cram"
+ref_fa="${dir_fix}/reference/tiny.fa"
 
 tmp="${TEST_DIR_TMP}/submit_compute_signal_cram"
 dir_out="${tmp}/out"
@@ -316,7 +316,7 @@ if \
     PYTHONDONTWRITEBYTECODE=1 \
     "${TEST_MANAGED_PYTHON}" \
         -m protocol_chipseq_signal_norm.cli.compute_signal \
-        --fil_in "${dir_fx}/bam/pe/tiny_pe.bam" \
+        --fil_in "${dir_fix}/bam/pe/tiny_pe.bam" \
         --siz_bin 10 \
         --report_n_frg "${dir_rep}/bam.n_frg.txt" \
         --report_n_ovlp "${dir_rep}/bam.n_ovlp.txt" \

@@ -26,12 +26,12 @@ source "$(
 
 
 # Define fixture and output paths for BWA-backtrack alignment.
-dir_fx="${ROOT_REPO}/tests/fixtures/align_fastqs"
-in_se="${dir_fx}/fastq/se/tiny_se.atria.fastq.gz"
-in_pe_1="${dir_fx}/fastq/pe/tiny_pe_R1.atria.fastq.gz"
-in_pe_2="${dir_fx}/fastq/pe/tiny_pe_R2.atria.fastq.gz"
+dir_fix="${ROOT_REPO}/tests/fixtures/align_fastqs"
+in_se="${dir_fix}/fastq/se/tiny_se.atria.fastq.gz"
+in_pe_1="${dir_fix}/fastq/pe/tiny_pe_R1.atria.fastq.gz"
+in_pe_2="${dir_fix}/fastq/pe/tiny_pe_R2.atria.fastq.gz"
 in_pe="${in_pe_1},${in_pe_2}"
-idx_bwa="${dir_fx}/bwa/tiny.fa"
+idx_bwa="${dir_fix}/bwa/tiny.fa"
 
 tmp="${TEST_DIR_TMP}/submit_align_fastqs_bwa_aln"
 dir_out="${tmp}/out"
@@ -230,5 +230,6 @@ if [[ -s "${out_pe}" ]]; then
         $'^tiny_pe_pair_1\t147\tI\t70\t' \
         "submit BWA-backtrack PE BAM has proper-pair R2 flag and start"
 fi
+
 
 finish

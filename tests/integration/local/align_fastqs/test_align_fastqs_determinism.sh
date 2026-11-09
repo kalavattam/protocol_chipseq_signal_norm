@@ -26,19 +26,19 @@ source "$(
 # Define fixture and output paths. The tie fixtures hold reads with several
 # equally good placements, so they show the effects of Bowtie 2's seed, its
 # output order, and BWA's batch size.
-dir_fx="${ROOT_REPO}/tests/fixtures/align_fastqs"
-ref_tie="${dir_fx}/reference/tie.fa"
-idx_tie="${dir_fx}/bowtie2/tie"
-idx_bwa="${dir_fx}/bwa/tie.fa"
-idx_bm2="${dir_fx}/bwa-mem2/tie.fa"
-fq_pe_1="${dir_fx}/fastq/pe/tie_pe_R1.atria.fastq.gz"
-fq_pe_2="${dir_fx}/fastq/pe/tie_pe_R2.atria.fastq.gz"
-fq_cmt_1="${dir_fx}/fastq/pe/tie_cmt_pe_R1.atria.fastq.gz"
-fq_cmt_2="${dir_fx}/fastq/pe/tie_cmt_pe_R2.atria.fastq.gz"
-fq_idx_1="${dir_fx}/fastq/pe/tie_idx_pe_R1.atria.fastq.gz"
-fq_idx_2="${dir_fx}/fastq/pe/tie_idx_pe_R2.atria.fastq.gz"
-fq_se="${dir_fx}/fastq/se/tie_se.atria.fastq.gz"
-fq_cmt_se="${dir_fx}/fastq/se/tie_cmt_se.atria.fastq.gz"
+dir_fix="${ROOT_REPO}/tests/fixtures/align_fastqs"
+ref_tie="${dir_fix}/reference/tie.fa"
+idx_tie="${dir_fix}/bowtie2/tie"
+idx_bwa="${dir_fix}/bwa/tie.fa"
+idx_bm2="${dir_fix}/bwa-mem2/tie.fa"
+fq_pe_1="${dir_fix}/fastq/pe/tie_pe_R1.atria.fastq.gz"
+fq_pe_2="${dir_fix}/fastq/pe/tie_pe_R2.atria.fastq.gz"
+fq_cmt_1="${dir_fix}/fastq/pe/tie_cmt_pe_R1.atria.fastq.gz"
+fq_cmt_2="${dir_fix}/fastq/pe/tie_cmt_pe_R2.atria.fastq.gz"
+fq_idx_1="${dir_fix}/fastq/pe/tie_idx_pe_R1.atria.fastq.gz"
+fq_idx_2="${dir_fix}/fastq/pe/tie_idx_pe_R2.atria.fastq.gz"
+fq_se="${dir_fix}/fastq/se/tie_se.atria.fastq.gz"
+fq_cmt_se="${dir_fix}/fastq/se/tie_cmt_se.atria.fastq.gz"
 
 tmp="${TEST_DIR_TMP}/align_fastqs_determinism"
 

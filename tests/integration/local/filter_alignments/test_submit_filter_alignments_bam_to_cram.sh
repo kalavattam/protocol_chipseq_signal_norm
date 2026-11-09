@@ -25,9 +25,9 @@ source "$(
 )/tests/support/test_helpers.sh"
 
 
-dir_fx="${ROOT_REPO}/tests/fixtures/filter_alignments"
-in_bam="${dir_fx}/bam/filter_sc_sp.bam"
-ref_fa="${dir_fx}/reference/filter_sc_sp.fa"
+dir_fix="${ROOT_REPO}/tests/fixtures/filter_alignments"
+in_bam="${dir_fix}/bam/filter_sc_sp.bam"
+ref_fa="${dir_fix}/reference/filter_sc_sp.fa"
 ref_fai="${ref_fa}.fai"
 
 tmp="${TEST_DIR_TMP}/submit_filter_alignments_bam_to_cram"

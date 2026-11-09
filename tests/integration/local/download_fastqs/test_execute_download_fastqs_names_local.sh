@@ -35,11 +35,11 @@ fi
 
 
 # Define fixture and output paths for loopback-only HTTP downloads.
-dir_fx="${ROOT_REPO}/tests/fixtures/download_fastqs"
-dir_fq="${dir_fx}/fastq"
+dir_fix="${ROOT_REPO}/tests/fixtures/download_fastqs"
+dir_fq="${dir_fix}/fastq"
 dir_nam="${dir_fq}/names"
-dir_mtd="${dir_fx}/metadata"
-dir_exp="${dir_fx}/expected"
+dir_mtd="${dir_fix}/metadata"
+dir_exp="${dir_fix}/expected"
 
 tmp="${TEST_DIR_TMP}/execute_download_fastqs_names_local"
 dir_log="${TEST_DIR_LOG}/download_fastqs"

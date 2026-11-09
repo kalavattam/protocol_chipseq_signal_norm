@@ -39,11 +39,11 @@ function assert_fixed_before() {
     second_line="$(
         grep -n -m 1 -F -- "${second}" "${file}" | cut -d: -f1
     )"
-    if \
-        [[ -n "${first_line}" ]] \
-            && [[ -n "${second_line}" ]] \
-            && (( first_line < second_line ))
-    then
+    if [[
+        -n "${first_line}"
+            && -n "${second_line}"
+            && "${first_line}" -lt "${second_line}"
+    ]]; then
         record_pass "${label}"
     else
         record_fail "${label}"
@@ -53,8 +53,8 @@ function assert_fixed_before() {
 
 # Create small temporary inputs for dry-run smoke checks.
 tmp="${TEST_DIR_TMP}/dry_run"
-dir_fx="${ROOT_REPO}/tests/fixtures/utilities"
-fil_sample="${dir_fx}/text/sample.txt"
+dir_fix="${ROOT_REPO}/tests/fixtures/utilities"
+fil_sample="${dir_fix}/text/sample.txt"
 fil_header="${tmp}/out/header.tsv"
 dir_compress="${tmp}/compress"
 fil_compress="${dir_compress}/large.log"
@@ -77,12 +77,14 @@ mkdir -p "${tmp}/out" "${tmp}/logs"
 
 require_files_nonempty \
     "${fil_sample}" \
-    "${dir_fx}/log/large.log" || {
+    "${dir_fix}/log/large.log" || {
     finish
     exit $?
 }
 
-cp -R "${dir_fx}/log" "${dir_compress}"  # fixture-perturbation: dry run target
+cp -R \
+    "${dir_fix}/log" \
+    "${dir_compress}"  # fixture-perturbation: dry run target
 
 if \
     run_capture \
@@ -183,7 +185,7 @@ then
 
     assert_files_equal \
         "${fil_compress}" \
-        "${dir_fx}/log/large.log" \
+        "${dir_fix}/log/large.log" \
         "compress dry run leaves matching content unchanged"
 
     if [[ -e "${fil_empty}" ]]; then

@@ -18,7 +18,7 @@ set -euo pipefail
 
 TEST_NAME="execute download-fastqs SE local"
 
-#  Source shared test helpers
+# Source shared test helpers.
 # shellcheck source=tests/support/test_helpers.sh
 source "$(
     git -C "$(dirname "${BASH_SOURCE[0]}")" rev-parse --show-toplevel
@@ -36,10 +36,10 @@ then
 fi
 
 
-#  Define fixture and output paths for a loopback-only HTTP download
-dir_fx="${ROOT_REPO}/tests/fixtures/download_fastqs"
-dir_fq="${dir_fx}/fastq"
-mta_tpl="${dir_fx}/metadata/local_se.template.tsv"
+# Define fixture and output paths for a loopback-only HTTP download.
+dir_fix="${ROOT_REPO}/tests/fixtures/download_fastqs"
+dir_fq="${dir_fix}/fastq"
+mta_tpl="${dir_fix}/metadata/local_se.template.tsv"
 src_fq="${dir_fq}/se/tiny_download_se.fastq.gz"
 
 tmp="${TEST_DIR_TMP}/execute_download_fastqs_se_local"
@@ -132,7 +132,7 @@ require_files_nonempty \
 }
 
 
-#  Run execute_download_fastqs.sh serially on one loopback HTTP FASTQ URL
+# Run 'execute_download_fastqs.sh' serially on one loopback HTTP FASTQ URL.
 if \
     run_capture \
         "execute download-fastqs local HTTP wet run" \
@@ -172,5 +172,6 @@ assert_file_exists \
 assert_file_exists \
     "${log_err_se}" \
     "execute download-fastqs local wget stderr log exists"
+
 
 finish

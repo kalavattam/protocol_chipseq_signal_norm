@@ -26,8 +26,8 @@ source "$(
 
 
 # Define fixture and output paths for BAM input filtering.
-dir_fx="${ROOT_REPO}/tests/fixtures/filter_alignments"
-in_bam="${dir_fx}/bam/filter_sc_sp.bam"
+dir_fix="${ROOT_REPO}/tests/fixtures/filter_alignments"
+in_bam="${dir_fix}/bam/filter_sc_sp.bam"
 
 tmp="${TEST_DIR_TMP}/submit_filter_alignments_bam_to_bam"
 dir_out="${tmp}/out"

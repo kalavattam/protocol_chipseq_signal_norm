@@ -26,11 +26,11 @@ source "$(
 # Define fixture and output paths. Each row passes one option to a mode it does
 # not apply to, per 'HELP.PARAMETER.APPLICABILITY'; a warned option is not
 # checked, so rows with a missing file or a malformed value still warn.
-dir_fx="${ROOT_REPO}/tests/fixtures/compute_signal"
-in_se="${dir_fx}/bam/se/tiny_se.bam"
-fil_A="${dir_fx}/bedgraph/ratio_A.bedGraph.gz"
-fil_B="${dir_fx}/bedgraph/ratio_B.bedGraph.gz"
-ref_fa="${dir_fx}/reference/tiny.fa"
+dir_fix="${ROOT_REPO}/tests/fixtures/compute_signal"
+in_se="${dir_fix}/bam/se/tiny_se.bam"
+fil_A="${dir_fix}/bedgraph/ratio_A.bedGraph.gz"
+fil_B="${dir_fix}/bedgraph/ratio_B.bedGraph.gz"
+ref_fa="${dir_fix}/reference/tiny.fa"
 
 tmp="${TEST_DIR_TMP}/compute_signal_opt_applicability"
 dir_out="${tmp}/out"
@@ -507,8 +507,8 @@ rc=0
 out="$(
     "${TEST_BASH}" "${ROOT_REPO}/bin/execute_compute_signal.sh" \
         --mode ratio \
-        --csv_fil_A "${dir_fx}/bedgraph/count/tiny_se.bedGraph" \
-        --csv_fil_B "${dir_fx}/bedgraph/count/tiny_pe.bedGraph" \
+        --csv_fil_A "${dir_fix}/bedgraph/count/tiny_se.bedGraph" \
+        --csv_fil_B "${dir_fix}/bedgraph/count/tiny_pe.bedGraph" \
         --csv_pseudo edger \
         --typ_sig count \
         --dir_out "${dir_edg}" \

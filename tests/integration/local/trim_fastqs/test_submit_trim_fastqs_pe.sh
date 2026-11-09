@@ -6,9 +6,10 @@
 # Copyright 2026 by Kris Alavattam
 # Email: kalavattam@gmail.com
 #
-# OpenAI ChatGPT and Codex (GPT-5.5, GPT-5.6) were used in design, development,
-# and documentation, with all output reviewed, edited, and approved by the
-# author.
+# The following were used in design, development, and documentation, with all
+# output reviewed, edited, and approved by the author:
+# - OpenAI ChatGPT and Codex (GPT-5.5, GPT-5.6);
+# - Anthropic Claude Code (Opus 5.5).
 #
 # Distributed under the MIT license.
 
@@ -17,7 +18,7 @@ set -euo pipefail
 
 TEST_NAME="submit trim-fastqs PE"
 
-#  Source shared test helpers
+# Source shared test helpers.
 # shellcheck source=tests/support/test_helpers.sh
 source "$(
     git -C "$(dirname "${BASH_SOURCE[0]}")" rev-parse --show-toplevel
@@ -34,10 +35,10 @@ then
 fi
 
 
-#  Define fixture and output paths for a minimal submit-layer Atria wet run
-dir_fx="${ROOT_REPO}/tests/fixtures/trim_fastqs"
-in_r1="${dir_fx}/fastq/pe/tiny_pe_R1.fastq.gz"
-in_r2="${dir_fx}/fastq/pe/tiny_pe_R2.fastq.gz"
+# Define fixture and output paths for a minimal submit-layer Atria wet run.
+dir_fix="${ROOT_REPO}/tests/fixtures/trim_fastqs"
+in_r1="${dir_fix}/fastq/pe/tiny_pe_R1.fastq.gz"
+in_r2="${dir_fix}/fastq/pe/tiny_pe_R2.fastq.gz"
 csv_in="${in_r1},${in_r2}"
 
 tmp="${TEST_DIR_TMP}/submit_trim_fastqs_pe"
@@ -85,7 +86,7 @@ then
 fi
 
 
-#  Run submit_trim_fastqs.sh on one PE FASTQ pair through real Atria
+# Run 'submit_trim_fastqs.sh' on one PE FASTQ pair through real Atria.
 if \
     run_capture \
         "submit trim-fastqs PE Atria wet run" \
@@ -111,12 +112,16 @@ fi
 # shellcheck disable=SC2034
 {
     mapfile -t trimmed_outputs_r1 < <(
-        find "${dir_out}" -maxdepth 1 -type f \
+        find "${dir_out}" \
+            -maxdepth 1 \
+            -type f \
             \( -name 'tiny_pe*R1*.fastq.gz' -o -name 'tiny_pe*R1*.fq.gz' \) \
             | sort
     )
     mapfile -t trimmed_outputs_r2 < <(
-        find "${dir_out}" -maxdepth 1 -type f \
+        find "${dir_out}" \
+            -maxdepth 1 \
+            -type f \
             \( -name 'tiny_pe*R2*.fastq.gz' -o -name 'tiny_pe*R2*.fq.gz' \) \
             | sort
     )
@@ -160,5 +165,6 @@ assert_file_exists \
 assert_file_exists \
     "${log_err_pe}" \
     "submit trim-fastqs PE stderr log exists"
+
 
 finish
